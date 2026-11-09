@@ -19,7 +19,7 @@ The spec's budgets are tests: a build fails when one is missed. The numbers from
 | Queries the plugin adds to a request with the schema current | 0 | The integration suite (`InstallHooksTest`) | Milestone 1 |
 | Requests for a file of the plugin's on a page without a builder | 0 | Playwright (`smoke.spec.ts`) | Milestone 1 |
 
-Until its first benchmark exists, `composer test:benchmark` says so and passes, and `npm run budget` measures an empty `build/`. Each was broken on purpose to see it fail (`docs/reviews/M1.md`).
+Until its first benchmark exists, `composer test:benchmark` says so and passes, and `npm run budget` measures an empty `build/`. Each was broken on purpose to see it fail (`docs/reviews/M1.md`, Deliberate breaks).
 
 ## v0.1.0
 
@@ -29,7 +29,7 @@ The plugin draws nothing yet, so these are the site's own numbers with the plugi
 
 | What | Result | Budget |
 | --- | --- | --- |
-| LCP, front page (Twenty Twenty-Five), minified assets (D-032) | 2,367 ms median (2,367, 2,367, 2,400) | 2,500 ms |
+| LCP, front page (Twenty Twenty-Five), minified assets (D-032) | 2,362 ms median (2,349, 2,362, 2,647) | 2,500 ms |
 | The same page with the plugin deactivated, `SCRIPT_DEBUG` on | 2,723 ms median | For comparison |
 | The same page with the plugin active, `SCRIPT_DEBUG` on | 2,728 ms median | For comparison |
 | CLS | 0.012 | Under 0.1 |
@@ -38,4 +38,4 @@ The plugin draws nothing yet, so these are the site's own numbers with the plugi
 | Queries added to a request with the schema current | 0 | 0 |
 | Plugin files requested on a shop page | 0 | 0 |
 
-The plugin's presence costs nothing measurable: 5 ms between the two debug-mode medians is inside the run-to-run spread. The site alone leaves about 130 ms under the LCP budget on this machine and theme, which is what the builder page has to fit in from milestone 6.
+The plugin's presence costs nothing measurable: 5 ms between the two debug-mode medians is inside the run-to-run spread. The site alone leaves about 140 ms under the LCP budget on this machine and theme, and one run of the three was over it (2,647 ms, the first after the assets changed). That is what the builder page has to fit in from milestone 6.

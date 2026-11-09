@@ -37,7 +37,7 @@ Neither carries the site's address, the version of WordPress or WooCommerce, or 
 
 - **Deactivation** keeps everything but pending scheduled actions and the upgrade lock, so reactivation finds the shop as it was.
 - **Uninstall** removes everything in the table above, on every site of a network.
-- **A site deleted from a network** has its two tables dropped with it where the plugin is loaded on the request that deletes it: active for the network, or on the site the deletion is made from. Deleted from elsewhere, with the plugin active only on that site, its two tables stay in the database until someone drops them. They hold no personal data before milestone 8, and that milestone closes the gap before saved builds exist.
+- **A site deleted from a network** has its two tables dropped with it where the plugin is loaded on the request that deletes it: active for the network, or on the site the deletion is made from. Deleted from elsewhere, with the plugin active only on that site, its two tables stay in the database until someone drops them. They hold no personal data before milestone 8, when saved builds arrive; closing the gap before then is raised with Zach in `docs/reviews/M1.md`.
 
 ## Who sees it
 
