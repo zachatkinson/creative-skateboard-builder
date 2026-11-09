@@ -7,8 +7,8 @@ The whole Creative Skateboard Builder project: nine milestones to 1.0, then what
 1. `/plan-milestone`: the plan, with the risks under each of the twelve dimensions, written into `docs/reviews/M<n>.md` before any code. Questions for Zach go first.
 2. Build, test first where the spec gives cases. `/verify` before every commit.
 3. `/audit-milestone`: the two reviewer agents, every blocker and should-fix fixed with a test that fails without it, and the review written up.
-4. A pull request using the template, with a `CHANGELOG.md` entry.
-5. Zach sends the summary to Claude in Cowork for the independent review. Its fixes land, Zach merges, and the next milestone's `/plan-milestone` tags the merge (`v0.<n>.0`; `v1.0.0` for milestone 9).
+4. A draft pull request using the template, with a `CHANGELOG.md` entry, marked ready once the gates pass locally (D-041).
+5. Zach sends the summary to Claude in Cowork for the independent review. Its fixes land, Claude merges once the full CI run is green, and the next milestone's `/plan-milestone` tags the merge (`v0.<n>.0`; `v1.0.0` for milestone 9).
 
 ---
 
