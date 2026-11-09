@@ -62,7 +62,7 @@ if [ -d src/Domain ]; then
 fi
 
 # 7. Nothing private of WooCommerce's (docs/STANDARDS.md: nothing private, internal or undocumented).
-hits="$(grep -rnE 'Automattic\\\\WooCommerce\\\\Internal\\\\' src --include='*.php' | grep -vE '^[^:]+:[0-9]+:\s*(\*|//|#)' || true)"
+hits="$(grep -rnE 'Automattic\\WooCommerce\\Internal\\' src --include='*.php' | grep -vE '^[^:]+:[0-9]+:\s*(\*|//|#)' || true)"
 if [ -n "$hits" ]; then
 	echo "Gate 7: WooCommerce's Internal namespace:"; echo "$hits"; status=1
 fi

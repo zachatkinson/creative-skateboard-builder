@@ -1,0 +1,51 @@
+<?php
+/**
+ * Options.
+ *
+ * @package CreativeBranding\SkateboardBuilder\Tests
+ */
+
+declare( strict_types=1 );
+
+namespace CreativeBranding\SkateboardBuilder\Tests\Unit\Support;
+
+use CreativeBranding\SkateboardBuilder\Support\Options;
+use PHPUnit\Framework\TestCase;
+
+/**
+ * The lists uninstall, deactivation and the API snapshot read: every name the plugin stores under, each prefixed.
+ */
+final class OptionsTest extends TestCase {
+
+	public function test_every_option_is_listed_once_with_the_prefix(): void {
+		$names = Options::names();
+		self::assertSame( array( 'cbuild_db_version', 'cbuild_migrations', 'cbuild_migration_lock' ), $names );
+		self::assertSame( $names, array_unique( $names ) );
+		foreach ( $names as $name ) {
+			self::assertStringStartsWith( 'cbuild_', $name );
+		}
+	}
+
+	public function test_the_site_transients_carry_the_transient_prefix(): void {
+		self::assertSame( array( 'cbuild_update_manifest' ), Options::siteTransients() );
+		foreach ( Options::siteTransients() as $transient ) {
+			self::assertStringStartsWith( Options::TRANSIENT_PREFIX, $transient );
+		}
+	}
+
+	public function test_the_jobs_are_the_ones_deactivation_cancels(): void {
+		self::assertSame( array( Options::JOB_MIGRATE ), Options::jobs() );
+		self::assertSame( 'cbuild_migrate', Options::JOB_MIGRATE );
+	}
+
+	public function test_no_meta_or_settings_key_exists_before_its_milestone(): void {
+		self::assertSame( array(), Options::metaKeys() );
+		self::assertSame( array(), Options::settingsKeys() );
+	}
+
+	public function test_the_group_and_the_log_source_are_the_slug(): void {
+		self::assertSame( 'creative-skateboard-builder', Options::QUEUE_GROUP );
+		self::assertSame( 'creative-skateboard-builder', Options::LOG_SOURCE );
+		self::assertSame( 'cbuild', Options::CACHE_GROUP );
+	}
+}

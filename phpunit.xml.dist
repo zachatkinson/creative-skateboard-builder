@@ -1,7 +1,8 @@
 <?xml version="1.0"?>
-<!-- The unit suite: PHPUnit 13, no WordPress. <source> lists what the unit suite is meant to cover; the floors in
-     tools/coverage-floor.php (100 % of src/Domain's lines and branches, 90 % of these lines overall) read it. The
-     WordPress-bound classes are proven by the integration suite (phpunit-integration.xml.dist). -->
+<!-- The unit suite: PHPUnit 13, no WordPress. <source> is all of src/ but the WordPress-bound classes it names, which the
+     integration suite proves (phpunit-integration.xml.dist), so a new class is measured unless it is excluded with a
+     reason. The floors in tools/coverage-floor.php (100 % of src/Domain's lines and branches, 90 % of these lines
+     overall) read it. -->
 <phpunit
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	xsi:noNamespaceSchemaLocation="https://schema.phpunit.de/13.4/phpunit.xsd"
@@ -28,17 +29,23 @@
 	</testsuites>
 	<source>
 		<include>
-			<directory suffix=".php">src/Domain</directory>
-			<directory suffix=".php">src/Install/Migrations</directory>
-			<file>src/Adapter/SystemClock.php</file>
-			<file>src/Container.php</file>
-			<file>src/Support/Cast.php</file>
-			<file>src/Support/Requirements.php</file>
-			<file>src/Updates/Manifest.php</file>
+			<directory suffix=".php">src</directory>
 		</include>
 		<exclude>
-			<!-- Runs dbDelta(): the integration suite's (tests/Integration/ActivationTest.php). -->
+			<!-- Everything in src/ is measured unless it is named here. Each of these needs WordPress, WooCommerce or
+			     the database to run, and is proven by the integration suite (tests/Integration). -->
+			<directory suffix=".php">src/Hooks</directory>
+			<directory suffix=".php">src/Repository</directory>
+			<file>src/Plugin.php</file>
+			<file>src/Adapter/ActionSchedulerQueue.php</file>
+			<file>src/Adapter/WooCommerceLogger.php</file>
+			<file>src/Install/Activator.php</file>
+			<file>src/Install/Deactivator.php</file>
+			<file>src/Install/Schema.php</file>
+			<file>src/Install/Uninstaller.php</file>
 			<file>src/Install/Migrations/SchemaMigration.php</file>
+			<file>src/Updates/HttpManifestSource.php</file>
+			<file>src/Updates/Updater.php</file>
 		</exclude>
 	</source>
 </phpunit>

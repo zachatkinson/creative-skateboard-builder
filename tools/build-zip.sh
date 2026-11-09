@@ -18,8 +18,9 @@ done
 npm run build >/dev/null
 stage="$(mktemp -d)/creative-skateboard-builder"
 mkdir -p "$stage"
-rsync -a --exclude-from=.distignore ./ "$stage/"
-# A dotfile is never part of what a shop installs: one here means .distignore missed a tool's cache or config.
+# No dotfile ships, whatever tool left it: caches and configs are all dot-prefixed. .distignore lists the rest.
+rsync -a --exclude='.*' --exclude-from=.distignore ./ "$stage/"
+# Checked as well as excluded, so a change to the line above cannot let one through.
 dotfiles="$(find "$stage" -mindepth 1 -name '.*' -print)"
 if [ -n "$dotfiles" ]; then
 	echo "Dev files would ship; add them to .distignore:" >&2
