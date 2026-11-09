@@ -1,7 +1,7 @@
 /**
  * npm run types: the state route's TypeScript types, generated from its JSON Schema (D-015). Each schema/*.json becomes
  * assets/src/types/<name>.d.ts; CI fails when the generated files differ from the committed ones. Until the state
- * route's schema lands (milestone 5) there is no schema and nothing is written.
+ * route's schema lands (milestone 4) there is no schema and nothing is written.
  */
 import { readdirSync, writeFileSync, mkdirSync } from 'node:fs';
 import { basename, join } from 'node:path';

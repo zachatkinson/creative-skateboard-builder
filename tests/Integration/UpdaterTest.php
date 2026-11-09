@@ -145,6 +145,27 @@ final class UpdaterTest extends IntegrationTestCase {
 		self::assertSame( $before, $GLOBALS['wp_filter']['plugins_api'] ?? null, 'nothing attached' );
 	}
 
+	public function test_a_manifest_address_that_is_not_https_is_never_requested(): void {
+		HttpManifestSource::flush();
+		$calls = 0;
+		add_filter(
+			'pre_http_request',
+			static function () use ( &$calls ) {
+				++$calls;
+				return array(
+					'headers'  => array(),
+					'body'     => (string) wp_json_encode( array( 'version' => '9.0.0', 'package' => self::PACKAGE, 'sha256' => str_repeat( 'b', 64 ) ) ),
+					'response' => array( 'code' => 200, 'message' => '' ),
+					'cookies'  => array(),
+				);
+			}
+		);
+		$source = new HttpManifestSource( str_replace( 'https://', 'http://', Updater::MANIFEST_URL ) );
+		self::assertNull( $source->latest(), 'no manifest from an address anyone on the path could rewrite' );
+		self::assertSame( 0, $calls, 'and no request made' );
+		HttpManifestSource::flush();
+	}
+
 	public function test_http_source_caches_and_retries_after_failure_and_names_only_the_plugin(): void {
 		HttpManifestSource::flush();
 		$calls = 0;

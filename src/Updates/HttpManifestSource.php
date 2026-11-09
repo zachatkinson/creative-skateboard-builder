@@ -65,6 +65,10 @@ final class HttpManifestSource implements ManifestSource {
 	 * The decoded manifest, or null.
 	 */
 	private function fetch(): mixed {
+		// Only over https: a manifest read in the clear could be rewritten on the way to name another release.
+		if ( 'https' !== wp_parse_url( $this->url, PHP_URL_SCHEME ) ) {
+			return null;
+		}
 		$response = wp_safe_remote_get(
 			$this->url,
 			array(

@@ -49,7 +49,7 @@ Per site, each named with the site's table prefix first (`wp_cbuild_specs` on a 
 | Table | Since | What it holds |
 | --- | --- | --- |
 | `cbuild_specs` | 0.1.0 | One row per part and spec: the index the fit engine reads. Empty until milestone 3. |
-| `cbuild_builds` | 0.1.0 | Saved builds. Empty until milestone 7. |
+| `cbuild_builds` | 0.1.0 | Saved builds. Empty until milestone 8. |
 
 ### Scheduled actions
 
