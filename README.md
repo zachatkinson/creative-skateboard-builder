@@ -11,7 +11,7 @@ Version 0.1.0 is the foundation: the plugin's two tables, its upgrade steps, uni
 - Benchmarks: [docs/BENCHMARK.md](docs/BENCHMARK.md)
 - How it is judged: [docs/AUDIT.md](docs/AUDIT.md) · Milestone reviews: [docs/reviews/](docs/reviews/)
 
-Requires WordPress 7.0 or newer, WooCommerce 11.2 or newer and PHP 8.5 or newer, on MySQL 8.4 or MariaDB 10.11. GPL-2.0-or-later.
+Requires WordPress 7.0 or newer, WooCommerce 11.2 or newer and PHP 8.5 or newer, on MySQL 8.0 or MariaDB 10.6 or newer, as WordPress itself asks. Tested on MySQL 8.4 and MariaDB 10.11. GPL-2.0-or-later.
 
 ## Developing
 
@@ -26,4 +26,4 @@ wp-env serves the site at http://localhost:8898 and the tests site at http://loc
 
 ## Installing a release
 
-Releases are published to [zachatkinson/creative-releases](https://github.com/zachatkinson/creative-releases) once CI has passed on the tagged commit. Upload the zip under Plugins > Add New > Upload Plugin. From then on WordPress offers each new version on the Plugins screen, and checks the zip's SHA-256 before it installs it.
+Releases are published to [zachatkinson/creative-releases](https://github.com/zachatkinson/creative-releases) once CI has passed on the tagged commit. Upload the zip under Plugins > Add New > Upload Plugin. From then on WordPress offers each new version on the Plugins screen, and the plugin checks the zip's SHA-256 before WordPress installs it.

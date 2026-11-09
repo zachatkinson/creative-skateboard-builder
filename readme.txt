@@ -27,7 +27,7 @@ The plugin needs WooCommerce 11.2 or newer, WordPress 7.0 or newer and PHP 8.5 o
 
 = Does it send anything off the site? =
 
-Nothing about the shop or its shoppers. The plugin makes two kinds of request, both for its own updates: at most twice a day, when WordPress checks for plugin updates, it reads its release notes from the agency's public releases on GitHub, and when you install an update it downloads that release's zip from the same place. Neither sends the site's address. Turn both off with `define( 'CBUILD_DISABLE_UPDATES', true );` in wp-config.php.
+Nothing about the shop or its shoppers. The plugin makes two kinds of request, both for its own updates: when WordPress checks for plugin updates it reads its release notes, at most once in 12 hours, or once an hour after a read that failed, from the agency's public releases on GitHub, and when you install an update it downloads that release's zip from the same place. Neither sends the site's address. Turn both off with `define( 'CBUILD_DISABLE_UPDATES', true );` in wp-config.php.
 
 = What does deleting the plugin remove? =
 
