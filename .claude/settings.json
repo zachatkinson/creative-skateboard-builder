@@ -1,0 +1,16 @@
+{
+	"permissions": {
+		"allow": [
+			"Bash(composer *)",
+			"Bash(npm run *)",
+			"Bash(npm ci)",
+			"Bash(npx wp-env *)",
+			"Bash(npx playwright *)",
+			"Bash(npx tsc *)",
+			"Bash(npx vitest *)",
+			"Bash(php vendor/bin/*)",
+			"Bash(php tools/*)",
+			"Bash(bash tools/*)"
+		]
+	}
+}
