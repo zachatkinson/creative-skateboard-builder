@@ -407,3 +407,10 @@ A pull request marked as a draft runs what a narrow one runs (D-036): the secret
 
 **Why:** Zach agreed on 9 November 2026, to save billed minutes (D-040): about 12 a push while the work is in progress instead of 28. GitHub does not merge a draft, so nothing reaches `main` without the full run, and a release still waits for `main`'s own.
 **Status:** Accepted.
+
+### D-042 · Work owed lives in GitHub's issues; the plan stays in the roadmap · 2026-11-09
+
+`docs/ROADMAP.md` and `docs/SPEC.md` remain the only statement of what each milestone builds; none of it is copied into issues. An issue is for work the roadmap does not list: a finding a review left unfixed, a follow-up a decision promised, a defect, a flaky test, a red canary. Each such issue sits in a GitHub milestone named as the roadmap names it, and one a review found carries the `from-review` label. `/plan-milestone` reads the milestone's open issues into its plan, and `/audit-milestone` closes them or says in the review why one moved.
+
+**Why:** Seven items from milestone 1 existed only as lines in its review and in these decisions, where the milestone they fall due in would not see them. Copying the roadmap into issues as well would make a second plan that drifts from the first. Agreed with Zach on 9 November 2026.
+**Status:** Accepted.
