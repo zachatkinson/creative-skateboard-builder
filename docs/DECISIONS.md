@@ -230,3 +230,92 @@ All three sit in the ability category `creative-skateboard-builder`, registered 
 
 **Why:** 8888 to 8897 belong to Stockroom, Search, Shipment Tracking, Restock and Reviews, so all of them can run at once.
 **Status:** Accepted.
+
+### D-020 · The layout and its layers, as deptrac enforces them · 2026-11-09
+
+`docs/STANDARDS.md`'s layout, with these refinements:
+
+- `Hooks`, `Rest`, `Abilities`, `Cli`, `Block`, `Front`, `Cart`, `Order`, `Admin`, `Privacy`, `Health` and `Updates` form one deptrac layer, Presentation. It may depend on `Service`, `Domain`, `Port`, `Support`, `Install` and the core (`Plugin`, `Container`, `Hookable`), never on `Adapter` or `Repository`.
+- `Install` may depend on `Domain`, `Port`, `Support` and the core; the migration framework's pure parts live in `Install\Migrations` and reach the database, the clock, the log and the queue only through ports, so the unit suite covers them.
+- WordPress and WooCommerce classes (`WP_*`, `WC_*`, `wpdb`, `Automattic\WooCommerce\*`, `ActionScheduler*`) form a layer of their own that `Domain`, `Port` and `Service` may not reach. Their global functions are caught by `tools/gates.sh` (no WordPress in `src/Domain`).
+- PHPUnit 9.6 and the Yoast polyfills live in `tools/integration/`, their own Composer project, and the plugin's Composer loader is registered behind PHPUnit 9.6's (Creative Search's D-021 and D-023).
+
+**Why:** deptrac needs every dependency covered by a layer, and the presentation directories share one rule, so one layer says it once. The WordPress layer turns "the domain has no WordPress in it" into a failing build.
+**Status:** Accepted.
+
+### D-021 · The migration lock is one atomic statement, taken over by compare-and-swap · 2026-11-09
+
+`cbuild_migration_lock` is taken with `INSERT IGNORE` into the options table, autoload off, and read straight from the table. An expired lock is taken over with `UPDATE ... WHERE option_name = %s AND option_value = %s`, the expired value, so only one of two requests racing for it wins. The lock holds a timestamp from the Clock; it expires after 300 seconds and a long migration refreshes it between batches.
+
+**Why:** `add_option()` writes `INSERT ... ON DUPLICATE KEY UPDATE` (WordPress 7.1.4, wp-includes/option.php:1142), so a second request that races past the existence check also gets a truthy result, and `get_option()` answers from the object cache. `WP_Upgrader::create_lock()` uses `INSERT IGNORE` with autoload off (wp-admin/includes/class-wp-upgrader.php:1096); `ActionScheduler_OptionLock::set()` reads the row from the table and takes over an expired lock by compare-and-swap (WooCommerce 11.2.2, packages/action-scheduler/classes/ActionScheduler_OptionLock.php:37-72 and :150). The lock follows both. Its test runs two real `wp` processes against one database, since two calls in one PHPUnit process pass even with a broken lock and the test case's transaction hides one connection's writes from the other. Raised by Claude in Cowork's review of the milestone 1 plan.
+**Status:** Accepted.
+
+### D-022 · Where migrations run · 2026-11-09
+
+When `cbuild_db_version` is behind:
+
+- a signed-in user with `manage_woocommerce` on an admin page that is not admin-ajax.php, admin-post.php or cron runs the migrations inline, on `admin_init`;
+- a `wp cbuild` command runs them before its work;
+- every other request, on `init`, queues one `cbuild_migrate` action with Action Scheduler's unique flag and runs nothing itself;
+- the code keeps working on the previous schema until the job finishes.
+
+**Why:** `admin_init` also fires on admin-ajax.php (wp-admin/admin-ajax.php:45) and admin-post.php (wp-admin/admin-post.php:27), which storefront requests reach, and nothing else would queue the job after an unattended update. `as_enqueue_async_action()` and `as_schedule_single_action()` take `$unique` (WooCommerce 11.2.2, packages/action-scheduler/functions.php:19 and :69). This narrows the spec's "migrations run on load": they are started on load and finish off the shopper's request. Raised by Claude in Cowork's review of the milestone 1 plan.
+**Status:** Accepted. This narrows the spec's Upgrades and the public API.
+
+### D-023 · The floors are checked in the main file, before the autoloader · 2026-11-09
+
+`creative-skateboard-builder.php` checks `PHP_VERSION_ID` and the WordPress version before it loads the autoloader. Below either floor, or without WooCommerce 11.2, it shows one notice and hooks nothing. The check is `Support\Requirements`, a file the main file requires directly, so the unit suite tests it with the versions injected. The main file, `uninstall.php` and `Support\Requirements` parse on PHP 7.4, the oldest PHP WordPress 7.0 and 7.1 run on, and CI lints them with PHP 7.4.
+
+**Why:** WordPress reads `Requires PHP` and `Requires at least` only when a plugin is activated (`validate_plugin_requirements()`, called from `activate_plugin()`, wp-admin/includes/plugin.php:663), so a host downgraded after activation would load the plugin anyway; the main file is then the only thing that runs. WordPress 7.0.8 and 7.1.4 require PHP 7.4 (api.wordpress.org version-check, 9 November 2026), and the PHPCompatibility run at `8.5-` cannot flag 8.5-only syntax. Raised by Claude in Cowork's review of the milestone 1 plan.
+**Status:** Accepted.
+
+### D-024 · Uninstall without Action Scheduler · 2026-11-09
+
+Deactivation unschedules every pending `cbuild_*` action through Action Scheduler, which is loaded then, since `Requires Plugins` keeps WooCommerce active while the builder is. Uninstall deletes the group's remaining rows through Action Scheduler's store when it is loaded, and otherwise with prepared SQL on Action Scheduler's own tables, when they exist: the one exception to "SQL only on the plugin's tables" in `docs/STANDARDS.md`.
+
+**Why:** WordPress refuses to deactivate a plugin with active dependents (wp-admin/includes/class-wp-plugins-list-table.php:981), so a shop removing both deactivates the builder first, then WooCommerce, then deletes them, and `uninstall.php` runs with no Action Scheduler loaded. Leaving the rows would leave the plugin's data behind, which the spec's Uninstall forbids; the alternative, loading Action Scheduler from WooCommerce's folder during uninstall, runs another plugin's code while it is deactivated. Raised by Claude in Cowork's review of the milestone 1 plan.
+**Status:** Accepted.
+
+### D-025 · Network activation installs every site · 2026-11-09
+
+On a network, activating the plugin for the whole network installs each site in turn, as Creative Search does; a site added to the network later installs itself the first time its admin loads, through the migration runner, since its `cbuild_db_version` is behind. Deleting a site drops its tables through `wpmu_drop_tables` (wp-includes/ms-site.php:832). Uninstall walks every site.
+
+**Why:** the spec says the plugin activates per site; refusing network activation would make a network's admin repeat the same click on every site for the same result. Raised by Claude in Cowork's review of the milestone 1 plan.
+**Status:** Accepted.
+
+### D-026 · The attribute mapping and which source wins are shop-wide · 2026-11-09
+
+The attribute mapping (which attribute feeds which spec, in which unit) and which source wins where two disagree move from the kit's Build tab to WooCommerce > Settings > Builder. Kits keep their rule switches and tolerances, which apply when fit is checked, not when parts are indexed. The two tables don't change.
+
+**Why:** the specs index holds one value per part and spec, so neither can differ by kit. The spec's Data model, Part specs, Compatibility rules, Build tab and Settings paragraphs were updated with this entry. Raised by Claude in Cowork's review of the milestone 1 plan; it lands in milestone 3.
+**Status:** Accepted. This changes the spec's Data model and Admin.
+
+### D-027 · No `product_block_editor` declaration · 2026-11-09
+
+The plugin declares `custom_order_tables` and `cart_checkout_blocks` compatible and declares nothing about `product_block_editor`.
+
+**Why:** the feature is gone from both ends of the matrix. WooCommerce 11.2.2's `FeaturesController` defines `cart_checkout_blocks` (src/Internal/Features/FeaturesController.php:339) and `custom_order_tables` (src/Internal/DataStores/Orders/CustomOrdersTableController.php:624) and no `product_block_editor`; 11.2.0 is the same. `FeaturesUtil::declare_compatibility()` returns false for an unknown feature (FeaturesController.php:1007-1022), so declaring it would be a silent no-op at best. The declarations are registered from the main file's top level on `before_woocommerce_init`, which WooCommerce fires while it is included (includes/class-woocommerce.php:998), before `plugins_loaded`.
+**Status:** Accepted. This settles the spec's open check under Cart, checkout and orders.
+
+### D-028 · No `load_plugin_textdomain()` · 2026-11-09
+
+**Why:** WordPress registers a plugin's `Domain Path` with the text domain registry as it loads the plugin (WordPress 7.1.4, wp-settings.php:589-592), and translations load just in time on the first translated string. `docs/STANDARDS.md` says the domain loads on `init`; with the floor at WordPress 7.0 nothing needs to.
+**Status:** Accepted.
+
+### D-029 · The API snapshot is not empty · 2026-11-09
+
+`tests/Fixtures/api-surface.json` holds the `cbuild_updates_enabled` filter, the `CBUILD_DISABLE_UPDATES` constant, the three options, the two tables, the Action Scheduler group and the `cbuild_migrate` action, and the log source.
+
+**Why:** the roadmap says "empty, committed", but the updater's switch and the migration framework's names exist from this milestone and `CLAUDE.md` names them. The snapshot holds what exists.
+**Status:** Accepted. This changes the roadmap's milestone 1 test list.
+
+### D-030 · Toolchain pins and tools · 2026-11-09
+
+- Coverage: pcov measures lines; Xdebug's path coverage measures `src/Domain`'s branches in a second run (`tools/coverage.sh`), since pcov measures lines only.
+- Node 24 (`.nvmrc`), at 24.15 or later, which `@wordpress/scripts` 37 requires.
+- TypeScript 5.9: `typescript-eslint`, which `@wordpress/eslint-plugin` carries, allows only below 6.1.
+- The secrets scan is gitleaks, pinned to a commit, on every push and pull request (Zach, 9 November 2026).
+- The CycloneDX SBOM is written in `release.yml` only, by `@cyclonedx/cyclonedx-npm` and `cyclonedx/cyclonedx-php-composer`, so neither joins the lock files (Zach, 9 November 2026). It lists what the zip ships: Composer's non-dev packages and the npm packages webpack bundles into `build/`, which stay in `dependencies` so `--omit dev` counts them.
+- Every GitHub Action is pinned to a commit SHA; Dependabot updates them weekly with the lock files.
+
+**Status:** Accepted.
