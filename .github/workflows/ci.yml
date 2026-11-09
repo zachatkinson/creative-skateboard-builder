@@ -22,16 +22,24 @@ concurrency:
 jobs:
   # A pull request that touches only the browser tests or the workflows runs the standards, the unit tests and the
   # newest leg, not the other legs, mutation testing or the budgets. Main always runs everything; a release waits for it.
+  # The secrets scan rides in the same job: both need the history and neither takes ten seconds, and every job is
+  # billed to the whole minute (D-040). A secret found stops the jobs that wait for this one.
   scope:
-    name: What this change runs
+    name: What this change runs, and the secrets scan (gitleaks)
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # gitleaks lists the pull request's commits to scan them, which the workflow's contents-only token may not do.
+    permissions:
+      contents: read
+      pull-requests: read
     outputs:
       full: ${{ steps.scope.outputs.full }}
       legs: ${{ steps.scope.outputs.legs }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
-          fetch-depth: ${{ github.event_name == 'pull_request' && '0' || '1' }}
+          persist-credentials: false
+          fetch-depth: 0
       - id: scope
         env:
           BASE: ${{ github.base_ref }}
@@ -48,17 +56,23 @@ jobs:
           fi
           echo "full=$full" >> "$GITHUB_OUTPUT"
           if [ "$full" = true ]; then
-            echo 'legs=["newest","oldest","mysql84","mariadb1011","hpos-off","hpos-sync","multisite","object-cache"]' >> "$GITHUB_OUTPUT"
+            echo 'legs=["newest","oldest","variants"]' >> "$GITHUB_OUTPUT"
           else
             echo 'legs=["newest"]' >> "$GITHUB_OUTPUT"
           fi
           echo "Full run: $full"
+      - uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
 
   static:
-    name: Lint, analyse, architecture, gates, unit tests, API snapshot
+    name: Lint, analyse, architecture, gates, unit tests, API snapshot, audits, benchmarks, PHP 7.4 parse
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
       - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
         with:
           php-version: '8.5'
@@ -72,34 +86,37 @@ jobs:
       - name: Unit tests with the coverage floors (100 % of src/Domain's lines and branches, 90 % of lines overall)
         run: composer test:coverage
       - run: composer api:check
+      # The audits read the three lock files, so nothing more has to be installed for them.
+      - run: composer audit:deps
+      - name: Benchmarks (the server budgets are tests)
+        run: composer test:benchmark
+      # The main file, uninstall.php and the floors check must parse on PHP 7.4, the oldest PHP WordPress 7.0 runs on,
+      # so a host below the floor sees the notice and no parse error (D-023). The 8.5- PHPCompatibility run cannot flag
+      # 8.5-only syntax in them. Last, since it replaces the job's PHP.
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
+        with:
+          php-version: '7.4'
+          coverage: none
+      - name: The main file parses on PHP 7.4
+        run: |
+          php -v | head -n 1 | grep -F 'PHP 7.4'
+          php -l creative-skateboard-builder.php
+          php -l uninstall.php
+          php -l src/Support/Requirements.php
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         if: always()
         with:
           name: coverage
           path: tmp/coverage.txt
 
-  # The main file, uninstall.php and the floors check must parse on PHP 7.4, the oldest PHP WordPress 7.0 runs on, so
-  # a host below the floor sees the notice and no parse error (D-023). The 8.5- PHPCompatibility run cannot flag 8.5-only
-  # syntax in them.
-  floors:
-    name: The main file parses on PHP 7.4
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
-        with:
-          php-version: '7.4'
-          coverage: none
-      - run: |
-          php -l creative-skateboard-builder.php
-          php -l uninstall.php
-          php -l src/Support/Requirements.php
-
   js:
     name: TypeScript, JavaScript and CSS standards; generated types; the asset budgets
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with:
           node-version-file: .nvmrc
@@ -117,46 +134,16 @@ jobs:
       - run: npm run build
       - run: npm run budget
 
-  secrets:
-    name: Secrets scan (gitleaks)
-    runs-on: ubuntu-latest
-    # The action lists the pull request's commits to scan them, which the workflow's contents-only token may not do.
-    permissions:
-      contents: read
-      pull-requests: read
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-        with:
-          fetch-depth: 0
-      - uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-
-  dependencies:
-    name: Dependency audits
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
-        with:
-          php-version: '8.5'
-          coverage: none
-          tools: composer:v2
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
-        with:
-          node-version-file: .nvmrc
-          cache: npm
-      # The audits read the three lock files, so nothing has to be installed for them.
-      - run: composer audit:deps
-
   mutation:
-    name: Mutation testing (Infection and StrykerJS)
+    name: Mutation testing (Infection and StrykerJS), and the release dry run
     needs: scope
     if: needs.scope.outputs.full == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
+          persist-credentials: false
           # A pull request mutates the lines it changes, against its base branch. Quoted: a bare 0 is falsy in an
           # expression, so `&& 0 || 1` would always be 1 and the base branch never fetched.
           fetch-depth: ${{ github.event_name == 'pull_request' && '0' || '1' }}
@@ -184,65 +171,35 @@ jobs:
       - run: npm ci
       - name: StrykerJS on the builder's store (90 %; skipped while assets/src has no TypeScript)
         run: npm run mutate:js
+      # Everything release.yml does short of publishing (tools/release-dry-run.sh): the zip, the SBOMs from their
+      # pinned tools, and the manifest read back by the updater's own class. release.yml runs only on a tag, so without
+      # this a broken step would first be met by a release. It runs whatever mutation testing found.
+      - name: Release dry run (zip, SBOMs, manifest)
+        if: ${{ !cancelled() }}
+        run: bash tools/release-dry-run.sh
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         if: always()
         with:
           name: infection-logs
           path: tmp/infection*.log
 
-  benchmarks:
-    name: Benchmarks (the server budgets are tests)
-    needs: scope
-    if: needs.scope.outputs.full == 'true'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
-        with:
-          php-version: '8.5'
-          coverage: none
-          tools: composer:v2
-      - uses: ramsey/composer-install@65e4f84970763564f46a70b8a54b90d033b3bdda # 4.0.0
-      - run: composer test:benchmark
-
-  # Everything release.yml does short of publishing (tools/release-dry-run.sh): the zip, the SBOMs from their pinned
-  # tools, and the manifest read back by the updater's own class. release.yml runs only on a tag, so without this a
-  # broken step would first be met by a release.
-  release-dry-run:
-    name: Release dry run (zip, SBOMs, manifest)
-    needs: scope
-    if: needs.scope.outputs.full == 'true'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
-        with:
-          php-version: '8.5'
-          coverage: none
-          tools: composer:v2
-      - uses: ramsey/composer-install@65e4f84970763564f46a70b8a54b90d033b3bdda # 4.0.0
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
-        with:
-          node-version-file: .nvmrc
-          cache: npm
-      - run: npm ci
-      - run: bash tools/release-dry-run.sh
-
-  # The matrix (docs/AUDIT.md: The platform; D-004): the newest and oldest WordPress and WooCommerce pairs on PHP 8.5,
-  # MySQL 8.4 and MariaDB 10.11 as their own database servers, and the HPOS off, HPOS syncing, multisite and
-  # persistent object cache variants. The browser projects, Plugin Check, the i18n check and Lighthouse run on the two
-  # version legs, which run the browser site; the others are integration legs.
+  # The matrix (docs/AUDIT.md: The platform; D-004, D-040): the newest and oldest WordPress and WooCommerce pairs on
+  # PHP 8.5, each with the browser projects, Plugin Check and the zip's lifecycle; and one leg that runs the
+  # integration suite six more times on one wp-env (tools/integration-variants.sh): MySQL 8.4 and MariaDB 10.11 as
+  # their own database servers, HPOS off and syncing, a persistent object cache, and multisite.
   integration:
     name: Integration, Plugin Check, browser (${{ matrix.leg }})
     needs: scope
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
         leg: ${{ fromJSON(needs.scope.outputs.legs) }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
       - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
         with:
           php-version: '8.5'
@@ -262,15 +219,11 @@ jobs:
       - name: The i18n check (the POT current, the translations complete)
         if: matrix.leg == 'newest'
         run: composer i18n:check
-      - name: A database server for the leg
-        if: matrix.leg == 'mysql84' || matrix.leg == 'mariadb1011'
-        run: bash tools/matrix-db.sh ${{ matrix.leg == 'mysql84' && 'mysql:8.4' || 'mariadb:10.11' }} cbuild-${{ matrix.leg }}
       - run: composer test:integration
-        env:
-          CBUILD_DB_HOST: ${{ (matrix.leg == 'mysql84' || matrix.leg == 'mariadb1011') && format('cbuild-{0}', matrix.leg) || '' }}
-          CBUILD_HPOS: ${{ matrix.leg == 'hpos-off' && 'off' || matrix.leg == 'hpos-sync' && 'sync' || '' }}
-          CBUILD_MULTISITE: ${{ matrix.leg == 'multisite' && '1' || '' }}
-          CBUILD_OBJECT_CACHE: ${{ matrix.leg == 'object-cache' && 'persistent' || '' }}
+        if: matrix.leg != 'variants'
+      - name: The six variants (two database servers, HPOS off and syncing, object cache, multisite)
+        if: matrix.leg == 'variants'
+        run: bash tools/integration-variants.sh
       - run: npm run plugin-check
         if: matrix.leg == 'newest' || matrix.leg == 'oldest'
       - name: The zip installs, upgrades over itself and uninstalls clean

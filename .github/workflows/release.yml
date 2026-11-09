@@ -34,6 +34,7 @@ jobs:
     name: CI passed on the tagged commit
     if: github.event_name == 'push' || (github.event.workflow_run.event == 'push' && github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     outputs:
       publish: ${{ steps.gate.outputs.publish }}
       sha: ${{ steps.gate.outputs.sha }}
@@ -77,6 +78,7 @@ jobs:
     needs: ci
     if: needs.ci.outputs.publish == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     env:
       RELEASES_REPO: zachatkinson/creative-releases
       SLUG: creative-skateboard-builder
@@ -91,6 +93,7 @@ jobs:
           test "$push" = "true" || { echo "RELEASES_TOKEN can't write to ${RELEASES_REPO}: give it Contents read and write."; exit 1; }
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
+          persist-credentials: false
           ref: ${{ needs.ci.outputs.sha }}
       - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
         with:
@@ -149,6 +152,8 @@ jobs:
           GH_TOKEN: ${{ secrets.RELEASES_TOKEN }}
         run: |
           tag="${SLUG}-${VERSION}"
+          # The single quotes hold PHP, whose variables the shell must leave alone.
+          # shellcheck disable=SC2016
           gh release create "$tag" "tmp/${SLUG}-${VERSION}.zip" "tmp/${SLUG}-${VERSION}.composer.cdx.json" "tmp/${SLUG}-${VERSION}.npm.cdx.json" --repo "$RELEASES_REPO" --title "Creative Skateboard Builder ${VERSION}" \
             --notes "$(php -r '$m = json_decode(file_get_contents("tmp/info.json"), true); echo "- " . implode("\n- ", $m["changelog"]);')"
       - name: Point info.json at it

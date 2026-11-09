@@ -388,3 +388,15 @@ Adding a class to the exclusions narrows a floor, and needs Zach as moving one d
 
 **Why:** The first version repeated the uninstaller's list by hand for the no-autoloader case, kept in step by a test that matched strings. Both milestone 1 reviews found it: a rule written twice, whose second copy never ran in any test and had already fallen behind the first.
 **Status:** Accepted.
+
+### D-040 · CI is shaped by what it costs · 2026-11-09
+
+The repository is private, so GitHub bills every job to the whole minute. The same gates run as before, in fewer jobs:
+
+- The six variants of the matrix (MySQL 8.4, MariaDB 10.11, HPOS off, HPOS syncing, a persistent object cache, multisite) run one after another on one wp-env, in one leg, through `tools/integration-variants.sh`. Each is still a full run of the integration suite; every variant runs when an earlier one fails, and the leg fails if any did. The legs are now `newest`, `oldest` and `variants`.
+- The secrets scan runs in the job that decides what a change runs. The dependency audits, the benchmarks and the PHP 7.4 parse run in the standards job. The release dry run runs after mutation testing, whatever mutation testing found. This revises D-036 in one place: the benchmarks now run on a narrow pull request too.
+- Every job has a time limit, and no checkout leaves its token in the working copy.
+- Dependabot opens one pull request per ecosystem, monthly, for releases at least a week old. Security updates are a repository setting of their own and are not delayed.
+
+**Why:** Zach asked on 9 November 2026 that CI not overspend on minutes. The first full runs billed 48 to 56 minutes each. Six of the legs spent about three minutes each starting wp-env to run a 25 second suite, and five jobs billed a minute each for under 20 seconds of work. Dependabot's weekly, ungrouped pull requests would each have been a full run. No gate is removed and no floor moves.
+**Status:** Accepted. The measured cost of a run goes here once the first has finished.
