@@ -62,16 +62,18 @@ final class Uninstaller {
 		foreach ( Options::names() as $option ) {
 			delete_option( $option );
 		}
-		// Every transient, by prefix.
+		// Every transient the options table holds, by prefix, each through delete_transient() so the cached copy of
+		// its option goes with the row. With a persistent object cache transients are not rows at all, and the cache
+		// group's flush below is what clears the plugin's own entries.
+		$prefix = '_transient_' . Options::TRANSIENT_PREFIX;
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-		$wpdb->query(
-			$wpdb->prepare(
-				'DELETE FROM %i WHERE option_name LIKE %s OR option_name LIKE %s',
-				$wpdb->options,
-				$wpdb->esc_like( '_transient_' . Options::TRANSIENT_PREFIX ) . '%',
-				$wpdb->esc_like( '_transient_timeout_' . Options::TRANSIENT_PREFIX ) . '%'
-			)
-		);
+		$names = $wpdb->get_col( $wpdb->prepare( 'SELECT option_name FROM %i WHERE option_name LIKE %s', $wpdb->options, $wpdb->esc_like( $prefix ) . '%' ) );
+		foreach ( $names as $name ) {
+			delete_transient( substr( (string) $name, strlen( '_transient_' ) ) );
+		}
+		// A timeout whose value row is already gone.
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$wpdb->query( $wpdb->prepare( 'DELETE FROM %i WHERE option_name LIKE %s', $wpdb->options, $wpdb->esc_like( '_transient_timeout_' . Options::TRANSIENT_PREFIX ) . '%' ) );
 
 		foreach ( Options::metaKeys() as $key ) {
 			delete_post_meta_by_key( $key );
@@ -89,6 +91,10 @@ final class Uninstaller {
 	 * Unscheduling alone would only mark pending actions cancelled and leave their rows and logs.
 	 */
 	public static function deleteJobs(): void {
+		if ( ! self::queueTablesExist() ) {
+			// A site of a network that was never loaded has no Action Scheduler tables, and so no action of the plugin's.
+			return;
+		}
 		if ( class_exists( 'ActionScheduler' ) && \ActionScheduler::is_initialized() ) {
 			$store = \ActionScheduler::store();
 			do {
@@ -120,11 +126,8 @@ final class Uninstaller {
 		$actions = $wpdb->prefix . 'actionscheduler_actions';
 		$groups  = $wpdb->prefix . 'actionscheduler_groups';
 		$logs    = $wpdb->prefix . 'actionscheduler_logs';
-		foreach ( array( $actions, $groups, $logs ) as $table ) {
-			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-			if ( null === $wpdb->get_var( $wpdb->prepare( 'SELECT 1 FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = %s', $table ) ) ) {
-				return;
-			}
+		if ( ! self::queueTablesExist() ) {
+			return;
 		}
 		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Uninstall; nothing to cache.
 		$groupId = $wpdb->get_var( $wpdb->prepare( 'SELECT group_id FROM %i WHERE slug = %s', $groups, Options::QUEUE_GROUP ) );
@@ -135,6 +138,20 @@ final class Uninstaller {
 		$wpdb->query( $wpdb->prepare( 'DELETE FROM %i WHERE group_id = %d', $actions, (int) $groupId ) );
 		$wpdb->query( $wpdb->prepare( 'DELETE FROM %i WHERE group_id = %d', $groups, (int) $groupId ) );
 		// phpcs:enable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+	}
+
+	/**
+	 * Whether the current site has Action Scheduler's three tables.
+	 */
+	private static function queueTablesExist(): bool {
+		global $wpdb;
+		foreach ( array( 'actionscheduler_actions', 'actionscheduler_groups', 'actionscheduler_logs' ) as $table ) {
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+			if ( null === $wpdb->get_var( $wpdb->prepare( 'SELECT 1 FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = %s', $wpdb->prefix . $table ) ) ) {
+				return false;
+			}
+		}
+		return true;
 	}
 
 	/**

@@ -156,6 +156,66 @@ final class ActivationTest extends IntegrationTestCase {
 		}
 	}
 
+	public function test_network_deactivation_cancels_the_jobs_and_releases_the_lock_on_every_site(): void {
+		global $wpdb;
+		if ( ! is_multisite() ) {
+			self::markTestSkipped( 'The multisite leg (composer test:integration:multisite).' );
+		}
+		$with    = (int) self::factory()->blog->create();
+		$without = (int) self::factory()->blog->create();
+		$repo    = $this->service( MigrationRepository::class );
+
+		// The first site and a second one each hold the lock and a pending job. Action Scheduler's tables follow
+		// switch_to_blog() (ActionScheduler_Abstract_Schema.php:54 adds them to $wpdb->tables), and are made here
+		// for the second site as its first admin load would. A third site has none: it was never loaded.
+		as_enqueue_async_action( Options::JOB_MIGRATE, array(), Options::QUEUE_GROUP, true );
+		self::assertTrue( $repo->acquireLock( 1_800_000_000, 300 ) );
+		switch_to_blog( $with );
+		( new \ActionScheduler_StoreSchema() )->register_tables( true );
+		( new \ActionScheduler_LoggerSchema() )->register_tables( true );
+		as_enqueue_async_action( Options::JOB_MIGRATE, array(), Options::QUEUE_GROUP, true );
+		self::assertTrue( $repo->acquireLock( 1_800_000_000, 300 ) );
+		self::assertCount( 1, self::pendingJobs( Options::JOB_MIGRATE ) );
+		update_option( Options::DB_VERSION, MigrationRegistry::VERSION );
+		restore_current_blog();
+
+		$wpdb->last_error = '';
+		Deactivator::deactivate( true );
+		self::assertSame( '', $wpdb->last_error, 'a site with no Action Scheduler tables raises nothing' );
+
+		self::assertSame( array(), self::pendingJobs( Options::JOB_MIGRATE ), 'the first site' );
+		self::assertNull( $repo->lockValue(), 'the first site' );
+		switch_to_blog( $with );
+		try {
+			self::assertSame( array(), self::pendingJobs( Options::JOB_MIGRATE ), 'the second site\'s job is cancelled' );
+			self::assertNull( $repo->lockValue(), 'the second site\'s lock is released' );
+			self::assertSame( MigrationRegistry::VERSION, get_option( Options::DB_VERSION ), 'its data stays' );
+		} finally {
+			restore_current_blog();
+		}
+		self::assertGreaterThan( 1, $without );
+	}
+
+	public function test_deactivating_one_site_of_a_network_leaves_the_others(): void {
+		if ( ! is_multisite() ) {
+			self::markTestSkipped( 'The multisite leg (composer test:integration:multisite).' );
+		}
+		$other = (int) self::factory()->blog->create();
+		$repo  = $this->service( MigrationRepository::class );
+		switch_to_blog( $other );
+		self::assertTrue( $repo->acquireLock( 1_800_000_000, 300 ) );
+		restore_current_blog();
+
+		Deactivator::deactivate( false );
+
+		switch_to_blog( $other );
+		try {
+			self::assertSame( '1800000000', $repo->lockValue(), 'another site\'s lock is its own' );
+		} finally {
+			restore_current_blog();
+		}
+	}
+
 	public function test_plugin_booted_once_with_a_container_and_constants(): void {
 		self::assertTrue( defined( 'CBUILD_VERSION' ) );
 		self::assertSame( get_plugin_data( CBUILD_FILE, false, false )['Version'], CBUILD_VERSION, 'the constant and the header agree' );

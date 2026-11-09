@@ -33,6 +33,7 @@ abstract class IntegrationTestCase extends WP_UnitTestCase {
 		// CREATE TEMPORARY TABLE, which dbDelta cannot see on the next run). The lock is a row written around the
 		// options API, so a test that took it and rolled back may still hold it.
 		delete_option( Options::MIGRATION_LOCK );
+		self::dropLeftoverSites();
 		Schema::install();
 		foreach ( Tables::all() as $table ) {
 			$wpdb->query( 'TRUNCATE TABLE ' . Tables::name( $table ) ); // phpcs:ignore
@@ -49,6 +50,27 @@ abstract class IntegrationTestCase extends WP_UnitTestCase {
 		}
 		parent::set_up();
 		wp_cache_flush();
+	}
+
+	/**
+	 * On the multisite leg: remove every site but the first, with its tables. A test that makes real tables commits
+	 * the test's transaction (DDL does), so a site it created would otherwise outlive it as a row with no tables,
+	 * and the next walk over the network would read tables that are not there.
+	 */
+	private static function dropLeftoverSites(): void {
+		global $wpdb;
+		if ( ! is_multisite() ) {
+			return;
+		}
+		$ids = $wpdb->get_col( "SELECT blog_id FROM {$wpdb->blogs} WHERE blog_id > 1" ); // phpcs:ignore
+		foreach ( $ids as $id ) {
+			$tables = $wpdb->get_col( $wpdb->prepare( 'SHOW TABLES LIKE %s', $wpdb->esc_like( $wpdb->base_prefix . (int) $id . '_' ) . '%' ) ); // phpcs:ignore
+			foreach ( $tables as $table ) {
+				$wpdb->query( 'DROP TABLE IF EXISTS `' . $table . '`' ); // phpcs:ignore
+			}
+			$wpdb->delete( $wpdb->blogs, array( 'blog_id' => (int) $id ) ); // phpcs:ignore
+			clean_blog_cache( (int) $id );
+		}
 	}
 
 	/**

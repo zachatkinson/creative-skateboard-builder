@@ -123,6 +123,8 @@ final class UninstallTest extends IntegrationTestCase {
 		}
 		// On wp-env's tests site (its own tables), as a shop does it: deactivate the builder, then WooCommerce, then
 		// delete the builder. uninstall.php runs with no Action Scheduler loaded (D-024).
+		// The second site keeps its state between runs, so the test empties the plugin's queue there itself.
+		self::wpEval( '\\CreativeBranding\\SkateboardBuilder\\Install\\Uninstaller::deleteJobs();' );
 		$seed = self::wpEval( 'echo as_enqueue_async_action( "' . Options::JOB_MIGRATE . '", array(), "' . Options::QUEUE_GROUP . '", true ) > 0 ? "queued" : "not queued";' );
 		self::assertSame( 'queued', $seed['out'], $seed['err'] );
 		$count = 'global $wpdb; echo (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$wpdb->prefix}actionscheduler_actions a INNER JOIN {$wpdb->prefix}actionscheduler_groups g ON g.group_id = a.group_id WHERE g.slug = \'' . Options::QUEUE_GROUP . '\'" ), "|", (int) $wpdb->get_var( "SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME LIKE \'{$wpdb->prefix}cbuild_%\'" ), "|", (string) get_option( "' . Options::DB_VERSION . '", "none" );';
@@ -148,24 +150,63 @@ final class UninstallTest extends IntegrationTestCase {
 		self::assertSame( 'not a list', Uninstaller::siteTables( 'not a list' ) );
 	}
 
-	public function test_uninstall_php_fallback_lists_the_same_tables_options_and_names(): void {
+	public function test_uninstall_on_a_network_clears_every_site(): void {
+		global $wpdb;
+		if ( ! is_multisite() ) {
+			self::markTestSkipped( 'The multisite leg (composer test:integration:multisite).' );
+		}
+		$site = (int) self::factory()->blog->create();
+		$this->withRealTables(
+			static function () use ( $site, $wpdb ): void {
+				\CreativeBranding\SkateboardBuilder\Install\Activator::activate( true );
+				switch_to_blog( $site );
+				$specs = Tables::specs();
+				self::assertNotNull( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $specs ) ), 'installed on the second site first' );
+				self::assertSame( '1', (string) get_option( Options::DB_VERSION ) );
+				set_transient( Options::TRANSIENT_PREFIX . 'x', 'x', HOUR_IN_SECONDS );
+				restore_current_blog();
+
+				$wpdb->last_error = '';
+				Uninstaller::run();
+				self::assertSame( '', $wpdb->last_error, 'a site with no Action Scheduler tables raises nothing' );
+
+				switch_to_blog( $site );
+				try {
+					foreach ( Tables::all() as $table ) {
+						self::assertNull( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', Tables::name( $table ) ) ), Tables::name( $table ) . ' still exists on the second site' );
+					}
+					self::assertStringContainsString( '_' . $site . '_', $specs, 'the second site has tables of its own' );
+					foreach ( Options::names() as $option ) {
+						self::assertFalse( get_option( $option ), $option . ' left on the second site' );
+					}
+					self::assertFalse( get_transient( Options::TRANSIENT_PREFIX . 'x' ) );
+				} finally {
+					restore_current_blog();
+				}
+			}
+		);
+		self::assertFalse( get_option( Options::DB_VERSION ), 'and the first site' );
+	}
+
+	public function test_uninstall_php_without_the_autoloader_loads_all_the_uninstaller_needs(): void {
+		// One uninstaller: with no vendor/ folder uninstall.php requires the class files themselves. Every class of
+		// the plugin's that the uninstaller, or a file it needs, names must be among them, or it would fatal there.
 		$source = (string) file_get_contents( CBUILD_PATH . 'uninstall.php' );
-		foreach ( Tables::all() as $table ) {
-			self::assertStringContainsString( "'{$table}'", $source, "uninstall.php fallback misses table {$table}" );
+		self::assertSame( 1, preg_match_all( '/Uninstaller::run\(\)/', $source ), 'and nothing of its own beside the call' );
+		self::assertStringNotContainsString( '$wpdb', $source );
+		preg_match_all( "#require_once __DIR__ \\. '/(src/[^']+)'#", $source, $required );
+		$required = $required[1];
+		self::assertContains( 'src/Install/Uninstaller.php', $required );
+		foreach ( $required as $file ) {
+			self::assertFileExists( CBUILD_PATH . $file );
+			$code = (string) file_get_contents( CBUILD_PATH . $file );
+			preg_match_all( '/^use CreativeBranding\\\\SkateboardBuilder\\\\([A-Za-z\\\\]+);/m', $code, $uses );
+			foreach ( $uses[1] as $class ) {
+				self::assertContains( 'src/' . str_replace( '\\', '/', $class ) . '.php', $required, "{$file} uses {$class}, which uninstall.php does not load" );
+			}
+			self::assertDoesNotMatchRegularExpression( '/\\\\CreativeBranding\\\\SkateboardBuilder\\\\(?!Install\\\\Uninstaller)/', $code, "{$file} names a class by its full name" );
+			self::assertStringNotContainsString( 'Plugin::', $code, "{$file} reaches for the container" );
 		}
-		self::assertStringContainsString( "'" . Tables::PREFIX . "'", $source );
-		foreach ( Options::names() as $option ) {
-			self::assertStringContainsString( "'{$option}'", $source, "uninstall.php fallback misses option {$option}" );
-		}
-		foreach ( Options::metaKeys() as $key ) {
-			self::assertStringContainsString( "'{$key}'", $source, "uninstall.php fallback misses meta {$key}" );
-		}
-		foreach ( Options::siteTransients() as $transient ) {
-			self::assertStringContainsString( "delete_site_transient( '{$transient}' )", $source );
-		}
-		self::assertStringContainsString( "'_transient_" . Options::TRANSIENT_PREFIX . "'", $source );
-		self::assertStringContainsString( "'" . Options::QUEUE_GROUP . "'", $source );
-		self::assertStringContainsString( "wp_cache_flush_group( '" . Options::CACHE_GROUP . "' )", $source );
 	}
 
 	public function test_uninstall_is_idempotent(): void {
