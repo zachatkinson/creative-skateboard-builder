@@ -440,3 +440,19 @@ Each of its four should-fix findings was checked against the installed source fi
 
 **Why:** Raised by Claude in Cowork's review (minor 6). Failing the build on the dev tree's advisories would be a new floor, and clearing them means moving `@wordpress/scripts` a major version, the one Creative Search uses; both are Zach's to decide. Issue #9 holds the triage.
 **Status:** Accepted for milestone 1. Zach to say whether the dev tree should gate.
+
+### D-045 · What reading CI's logs changed · 2026-11-09
+
+Zach asked for the logs of a passing run to be read for warnings as well as failures. Four things came of it.
+
+- **The runner image is named.** Every job runs on `ubuntu-26.04`, the image `ubuntu-latest` already resolved to, so a run no longer carries the notice that the label is moving, and the image changes when a commit changes it.
+- **`gitleaks/gitleaks-action` is v3.0.0**, which runs on Node 24. v2 targets Node 20, which the runners have dropped; it ran only because the runner forced it onto Node 24.
+- **Every dependency's install script is denied by name** in `package.json`'s `allowScripts`: `core-js`, `core-js-pure`, `@parcel/watcher`, `fs-ext-extra-prebuilt` and, on macOS, `fsevents`. npm 11 already skips a script nobody has approved, and every gate passes without them, so this changes nothing that runs; it records the choice, and a dependency that adds an install script later shows up as a warning to review.
+- **The mutants that escaped were test gaps, and are closed.** Infection reported 25 on the 345 mutants outside the domain. Ten new unit tests kill 19 of them, among them the anchors of the manifest's version and checksum patterns and the release prefix check. Five were lines whose removal changed nothing (a guard for a value that is not an array, in three readers; a `true` no code read; a cast `sprintf()` makes itself), and those lines are simpler now. One is left: `Container::hookables()` returning only its first Hookable, which no test can tell apart while the plugin has one Hookable. The first milestone to add a second kills it.
+
+The floor stays at 90 %: the run is at 99.71 %, and raising a floor is Zach's to decide.
+
+Left alone, with the reason: npm's deprecation warnings come from packages under `@wordpress/scripts` and `@wordpress/env` (issue #9); git's hint about the default branch name comes from `actions/checkout`'s own `git init`.
+
+**Why:** A warning nobody reads hides the one that matters, and an escaped mutant in the updater's validation is a test that would not have caught a real fault.
+**Status:** Accepted.

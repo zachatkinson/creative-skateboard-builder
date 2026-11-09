@@ -23,7 +23,7 @@ Until its first benchmark exists, `composer test:benchmark` says so and passes, 
 
 ## v0.1.0
 
-Machine: Apple M1 Max, PHP 8.5.12, Node 24.22.2, wp-env on OrbStack with WordPress 7.1.4 and WooCommerce 11.2.2. 9 November 2026. CI runs the same gates on `ubuntu-latest`.
+Machine: Apple M1 Max, PHP 8.5.12, Node 24.22.2, wp-env on OrbStack with WordPress 7.1.4 and WooCommerce 11.2.2. 9 November 2026. CI runs the same gates on `ubuntu-26.04`.
 
 The plugin draws nothing yet, so these are the site's own numbers with the plugin active: the floor the builder starts from.
 
