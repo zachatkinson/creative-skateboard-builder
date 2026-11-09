@@ -33,8 +33,8 @@ Per site. All three are removed on uninstall.
 | Option | Since | Autoloaded | What it holds |
 | --- | --- | --- | --- |
 | `cbuild_db_version` | 0.1.0 | Yes | The installed schema version. Behind the code's version means migrations are pending. |
-| `cbuild_migrations` | 0.1.0 | No | Each migration's status, attempts and cursor, so an interrupted one resumes. |
-| `cbuild_migration_lock` | 0.1.0 | No | The time the running migration took the lock, in UTC seconds. It expires after 300 seconds (D-021). Read it, never write it. |
+| `cbuild_migrations` | 0.1.0 | No | Each migration's status, attempts, cursor, last error and, after a failure, the time of its next attempt, so an interrupted one resumes and a failing one waits. |
+| `cbuild_migration_lock` | 0.1.0 | No | The time the running migration took or last refreshed the lock, in UTC seconds, then a colon and a token naming the run that holds it (D-033). It expires after 300 seconds (D-021). Read it, never write it. |
 
 ### Site transients
 
@@ -57,7 +57,7 @@ Action Scheduler, in the group `creative-skateboard-builder`.
 
 | Action | Since | Arguments | What it does |
 | --- | --- | --- | --- |
-| `cbuild_migrate` | 0.1.0 | None | Runs pending migrations off the request, within a 20 second budget, and queues itself again if there is more. At most one is pending at a time (D-022). |
+| `cbuild_migrate` | 0.1.0 | None | Runs pending migrations off the request, within a 20 second budget, and queues itself again if there is more. At most one is pending at a time (D-022). After a failed step the next run is scheduled 1, 5 and 30 minutes later, then hourly (D-033). |
 
 Pending actions are unscheduled on deactivation. Every action in the group, with its logs and the group's own row, is deleted on uninstall (D-024).
 

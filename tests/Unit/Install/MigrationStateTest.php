@@ -41,7 +41,7 @@ final class MigrationStateTest extends TestCase {
 	}
 
 	public function test_a_second_start_keeps_the_first_start_and_counts_the_attempt(): void {
-		$state = MigrationState::pending( 'm' )->started( 100 )->advanced( Cursor::at( 2 ) )->failed( 'boom' );
+		$state = MigrationState::pending( 'm' )->started( 100 )->advanced( Cursor::at( 2 ) )->failed( 'boom', 160 );
 		self::assertSame( MigrationState::FAILED, $state->status );
 		self::assertSame( 'boom', $state->error );
 		self::assertSame( 2, $state->cursor->position, 'the cursor stays for the resume' );
@@ -54,9 +54,10 @@ final class MigrationStateTest extends TestCase {
 	}
 
 	public function test_round_trips_through_the_store(): void {
-		$state = MigrationState::pending( 'm' )->started( 100 )->advanced( Cursor::at( 'p' ) )->failed( 'e' );
+		$state = MigrationState::pending( 'm' )->started( 100 )->advanced( Cursor::at( 'p' ) )->failed( 'e', 160 );
 		$back  = MigrationState::fromArray( 'm', $state->toArray() );
 		self::assertSame( $state->toArray(), $back->toArray() );
+		self::assertSame( 160, $back->retryAt );
 		self::assertSame( 'm', $back->key );
 
 		$done = MigrationState::pending( 'd' )->started( 1 )->finished( 2 );
@@ -82,5 +83,17 @@ final class MigrationStateTest extends TestCase {
 		self::assertNull( $odd->finishedAt );
 		self::assertSame( 0, $odd->attempts );
 		self::assertSame( '', $odd->error );
+	}
+
+	public function test_a_failed_state_waits_until_its_moment_and_a_new_start_clears_it(): void {
+		$failed = MigrationState::pending( 'm' )->started( 100 )->failed( 'boom', 160 );
+		self::assertTrue( $failed->isWaiting( 159 ) );
+		self::assertFalse( $failed->isWaiting( 160 ), 'due at the moment itself' );
+		self::assertNull( $failed->started( 200 )->retryAt, 'the next attempt starts clean' );
+		self::assertFalse( MigrationState::pending( 'm' )->isWaiting( 0 ), 'only a failure waits' );
+		self::assertFalse( MigrationState::pending( 'm' )->started( 1 )->isWaiting( 0 ) );
+		$old = $failed->toArray();
+		unset( $old['retry_at'] );
+		self::assertFalse( MigrationState::fromArray( 'm', $old )->isWaiting( 0 ), 'a state saved before the wait existed is tried at once' );
 	}
 }

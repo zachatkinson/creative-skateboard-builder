@@ -13,8 +13,8 @@ None in 0.1.0. Saved builds (milestone 8) will be the only personal data the plu
 | Where | Name | What it holds | Personal | Kept until | Tests |
 | --- | --- | --- | --- | --- | --- |
 | Option, autoloaded | `cbuild_db_version` | The installed schema version, a number. | No | Uninstall | `ActivationTest`, `UninstallTest` |
-| Option | `cbuild_migrations` | Each upgrade step's status, attempts and cursor. | No | Uninstall | `MigrationTest`, `UninstallTest` |
-| Option | `cbuild_migration_lock` | The time an upgrade took its lock, in UTC seconds. | No | The upgrade ends, or 300 seconds; deactivation; uninstall | `MigrationTest`, `ActivationTest` |
+| Option | `cbuild_migrations` | Each upgrade step's status, attempts, cursor, last error message and next attempt time. | No | Uninstall | `MigrationTest`, `UninstallTest` |
+| Option | `cbuild_migration_lock` | The time an upgrade took its lock, in UTC seconds, and a random token naming that run. | No | The upgrade ends, or 300 seconds; deactivation; uninstall | `MigrationTest`, `ActivationTest` |
 | Site transient | `cbuild_update_manifest` | The agency's release manifest: versions, a download address, a checksum, release notes. | No | 12 hours (1 hour after a failed request); uninstall | `UpdaterTest`, `UninstallTest` |
 | Table | `{prefix}cbuild_specs` | Empty in 0.1.0. From milestone 3: one row per part and spec. | No | Uninstall; the site's deletion on a network | `ActivationTest`, `UninstallTest` |
 | Table | `{prefix}cbuild_builds` | Empty in 0.1.0. From milestone 8: saved builds. | Will be | Uninstall; the site's deletion on a network | `ActivationTest`, `UninstallTest` |

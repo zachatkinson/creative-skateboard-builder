@@ -44,10 +44,11 @@ final class InstallHooks implements Hookable {
 	}
 
 	/**
-	 * On every request that cannot run the migrations itself: queue the job, once.
+	 * On every request that cannot run the migrations itself: queue the job, once. After a failure nothing is queued
+	 * until the wait has passed; the runner has already scheduled that attempt.
 	 */
 	public function queueWhenBehind(): void {
-		if ( $this->runner->needed() && ! self::inlineAllowed() ) {
+		if ( ! self::inlineAllowed() && $this->runner->due() ) {
 			$this->runner->queue();
 		}
 	}

@@ -210,7 +210,7 @@ final class ActivationTest extends IntegrationTestCase {
 
 		switch_to_blog( $other );
 		try {
-			self::assertSame( '1800000000', $repo->lockValue(), 'another site\'s lock is its own' );
+			self::assertStringStartsWith( '1800000000:', (string) $repo->lockValue(), 'another site\'s lock is its own' );
 		} finally {
 			restore_current_blog();
 		}

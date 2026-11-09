@@ -109,6 +109,13 @@ class InMemoryMigrationStore implements MigrationStore {
 	}
 
 	/**
+	 * Whether the lock is this store's own: false once another request has taken it over.
+	 *
+	 * @var bool
+	 */
+	public bool $mine = false;
+
+	/**
 	 * Lock, or take over an expired one.
 	 *
 	 * @param int $now Now.
@@ -117,26 +124,53 @@ class InMemoryMigrationStore implements MigrationStore {
 	public function acquireLock( int $now, int $ttl ): bool {
 		if ( null === $this->lock || $now - $this->lock > $ttl ) {
 			$this->lock = $now;
+			$this->mine = true;
 			return true;
 		}
 		return false;
 	}
 
 	/**
-	 * Refresh.
+	 * Another request decides this one crashed and takes the lock.
 	 *
-	 * @param int $now Now.
+	 * @param int $at When.
 	 */
-	public function refreshLock( int $now ): void {
-		++$this->refreshes;
-		$this->lock = $now;
+	public function takenOver( int $at ): void {
+		$this->lock = $at;
+		$this->mine = false;
 	}
 
 	/**
-	 * Release.
+	 * Refresh, if the lock is still this store's.
+	 *
+	 * @param int $now Now.
+	 */
+	public function refreshLock( int $now ): bool {
+		++$this->refreshes;
+		if ( ! $this->mine ) {
+			return false;
+		}
+		$this->lock = $now;
+		return true;
+	}
+
+	/**
+	 * Release, if the lock is this store's.
 	 */
 	public function releaseLock(): void {
+		if ( ! $this->mine ) {
+			return;
+		}
 		++$this->releases;
 		$this->lock = null;
+		$this->mine = false;
+	}
+
+	/**
+	 * Remove the lock whoever holds it.
+	 */
+	public function clearLock(): void {
+		$this->lock = null;
+		$this->mine = false;
 	}
 }

@@ -9,6 +9,7 @@ declare( strict_types=1 );
 
 namespace CreativeBranding\SkateboardBuilder\Tests\Unit\Install;
 
+use CreativeBranding\SkateboardBuilder\Install\Migrations\Cursor;
 use CreativeBranding\SkateboardBuilder\Install\Migrations\Migration;
 use CreativeBranding\SkateboardBuilder\Install\Migrations\MigrationRegistry;
 use CreativeBranding\SkateboardBuilder\Install\Migrations\MigrationRunner;
@@ -139,7 +140,7 @@ final class MigrationRunnerTest extends TestCase {
 	public function test_the_lock_is_refreshed_after_every_batch_within_the_budget(): void {
 		$m = new BatchMigration( 9, 3 );
 		self::assertSame( RunResult::Finished, $this->runner( $m )->run() );
-		self::assertSame( 2, $this->store->refreshes, 'after each unfinished batch' );
+		self::assertSame( 3, $this->store->refreshes, 'after each unfinished batch, and once before the version is recorded' );
 	}
 
 	public function test_the_budget_is_measured_by_the_clock(): void {
@@ -185,11 +186,12 @@ final class MigrationRunnerTest extends TestCase {
 		self::assertSame( 'throwing_1', $line['context']['migration'] );
 		self::assertSame( 5, $line['context']['cursor'] );
 		self::assertSame( \RuntimeException::class, $line['context']['exception'] );
-		self::assertSame( array(), $this->queue->calls, 'a failure is not queued again by the runner' );
+		self::assertSame( array(), $this->queue->calls, 'a failure is not queued to run again at once' );
+		self::assertSame( $line['context']['retry_at'], $this->queue->scheduled[ Options::JOB_MIGRATE ], 'it is scheduled for after its wait' );
 	}
 
 	public function test_a_failed_migration_is_retried_on_the_next_run_from_its_cursor(): void {
-		$this->store->seed( MigrationState::pending( 'counting_1' )->started( 1 )->advanced( \CreativeBranding\SkateboardBuilder\Install\Migrations\Cursor::at( 2 ) )->failed( 'x' ) );
+		$this->store->seed( MigrationState::pending( 'counting_1' )->started( 1 )->advanced( \CreativeBranding\SkateboardBuilder\Install\Migrations\Cursor::at( 2 ) )->failed( 'x', 2 ) );
 		$m = new CountingMigration();
 		self::assertSame( RunResult::Finished, $this->runner( $m )->run() );
 		self::assertSame( 1, $m->runs );
@@ -197,7 +199,106 @@ final class MigrationRunnerTest extends TestCase {
 		self::assertSame( '', $this->store->stateOf( 'counting_1' )?->error );
 	}
 
-	public function test_queue_queues_one_job(): void {
+	public function test_a_run_whose_lock_was_taken_over_stops_and_leaves_the_new_holders_lock(): void {
+		$store = $this->store;
+		$slow  = new class( $store ) implements Migration {
+			public int $batches = 0;
+			public function __construct( private InMemoryMigrationStore $store ) {}
+			public function key(): string {
+				return 'slow_1';
+			}
+			public function run( Cursor $cursor ): Cursor {
+				unset( $cursor );
+				++$this->batches;
+				// The batch took longer than the lock lives: another request took the lock over meanwhile.
+				$this->store->takenOver( 1_900_000_000 );
+				return Cursor::at( $this->batches );
+			}
+		};
+		self::assertSame( RunResult::Locked, $this->runner( $slow )->run() );
+		self::assertSame( 1, $slow->batches, 'it stops at once' );
+		self::assertSame( 1_900_000_000, $this->store->lock, 'the new holder\'s lock is neither refreshed over nor released' );
+		self::assertSame( 0, $this->store->releases );
+		self::assertSame( '0', $this->store->version );
+	}
+
+	public function test_a_lock_lost_during_the_last_batch_records_no_version(): void {
+		$store = $this->store;
+		$last  = new class( $store ) implements Migration {
+			public function __construct( private InMemoryMigrationStore $store ) {}
+			public function key(): string {
+				return 'last_1';
+			}
+			public function run( Cursor $cursor ): Cursor {
+				unset( $cursor );
+				$this->store->takenOver( 1_900_000_000 );
+				return Cursor::done();
+			}
+		};
+		self::assertSame( RunResult::Locked, $this->runner( $last )->run() );
+		self::assertSame( '0', $this->store->version, 'the new holder records it' );
+		self::assertSame( 1_900_000_000, $this->store->lock );
+	}
+
+	public function test_the_lock_is_refreshed_and_the_budget_checked_between_migrations(): void {
+		$first  = new CountingMigration( 'first' );
+		$second = new CountingMigration( 'second' );
+		// Every reading of the clock is 25 seconds on, so the first migration alone uses up a budget of 20.
+		$clock = new class() extends FakeClock {
+			public function now(): \DateTimeImmutable {
+				$this->advance( 25 );
+				return parent::now();
+			}
+		};
+		$runner = new MigrationRunner( new MigrationRegistry( $first, $second ), $this->store, $clock, $this->logger, $this->queue );
+		self::assertSame( RunResult::Continued, $runner->run( 20 ) );
+		self::assertSame( 1, $first->runs );
+		self::assertSame( 0, $second->runs, 'left for the queued job' );
+		self::assertSame( 1, $this->store->refreshes, 'a migration that ends in one batch refreshes the lock too' );
+		self::assertSame( 1, $this->queue->calls[ Options::JOB_MIGRATE ] );
+		self::assertSame( '0', $this->store->version );
+	}
+
+	public function test_a_failure_waits_before_the_next_attempt(): void {
+		$throwing = new ThrowingMigration();
+		$runner   = $this->runner( $throwing );
+		$start    = $this->clock->timestamp();
+
+		self::assertSame( RunResult::Failed, $runner->run() );
+		self::assertSame( $start + 60, $this->store->stateOf( 'throwing_1' )?->retryAt );
+		self::assertSame( $start + 60, $this->queue->scheduled[ Options::JOB_MIGRATE ], 'the retry is scheduled for then' );
+		self::assertTrue( $runner->needed() );
+		self::assertFalse( $runner->due(), 'behind, but not yet' );
+
+		$this->clock->advance( 59 );
+		self::assertSame( RunResult::Waiting, $runner->run() );
+		self::assertCount( 1, $this->logger->lines, 'nothing ran, so nothing more is logged' );
+		self::assertSame( 1, $this->store->stateOf( 'throwing_1' )?->attempts );
+		self::assertNull( $this->store->lock, 'and no lock is taken to wait' );
+
+		$this->clock->advance( 1 );
+		self::assertTrue( $runner->due() );
+		$this->queue->cancelAll( Options::JOB_MIGRATE );
+		self::assertSame( RunResult::Failed, $runner->run() );
+		self::assertSame( 2, $this->store->stateOf( 'throwing_1' )?->attempts );
+		self::assertSame( $start + 60 + 300, $this->store->stateOf( 'throwing_1' )?->retryAt, 'the second wait is longer' );
+	}
+
+	public function test_the_wait_grows_with_the_attempts_and_is_capped_at_an_hour(): void {
+		self::assertSame( 60, MigrationRunner::retryDelay( 1 ) );
+		self::assertSame( 300, MigrationRunner::retryDelay( 2 ) );
+		self::assertSame( 1800, MigrationRunner::retryDelay( 3 ) );
+		self::assertSame( 3600, MigrationRunner::retryDelay( 4 ) );
+		self::assertSame( 3600, MigrationRunner::retryDelay( 40 ) );
+		self::assertSame( 60, MigrationRunner::retryDelay( 0 ) );
+	}
+
+	public function test_a_current_schema_is_never_due(): void {
+		$this->store->version = MigrationRegistry::VERSION;
+		self::assertFalse( $this->runner( new CountingMigration() )->due() );
+	}
+
+	public function test_queue_asks_the_queue_each_time_and_the_queue_keeps_one(): void {
 		$this->runner( new CountingMigration() )->queue();
 		$this->runner( new CountingMigration() )->queue();
 		self::assertSame( 2, $this->queue->calls[ Options::JOB_MIGRATE ] );
@@ -210,5 +311,6 @@ final class MigrationRunnerTest extends TestCase {
 		self::assertSame( 'finished', RunResult::Finished->value );
 		self::assertSame( 'continued', RunResult::Continued->value );
 		self::assertSame( 'failed', RunResult::Failed->value );
+		self::assertSame( 'waiting', RunResult::Waiting->value );
 	}
 }

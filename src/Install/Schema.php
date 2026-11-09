@@ -36,6 +36,25 @@ final class Schema {
 	}
 
 	/**
+	 * The plugin's tables the database does not have. dbDelta() reports a failed CREATE TABLE as if it had worked,
+	 * so the migration asks.
+	 *
+	 * @return string[] Full table names.
+	 */
+	public static function missing(): array {
+		global $wpdb;
+		$missing = array();
+		foreach ( Tables::all() as $table ) {
+			$name = Tables::name( $table );
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Asked once, after dbDelta().
+			if ( null === $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $wpdb->esc_like( $name ) ) ) ) {
+				$missing[] = $name;
+			}
+		}
+		return $missing;
+	}
+
+	/**
 	 * The full CREATE TABLE set as one string, dbDelta style. The specs index: one row per part and spec, the value
 	 * as a number or a short text, where it came from and when. Saved builds: a customer's picks under a UUID.
 	 */

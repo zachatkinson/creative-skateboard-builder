@@ -333,3 +333,12 @@ The plugin declares `custom_order_tables` and `cart_checkout_blocks` compatible 
 
 **Why:** wp-env sets `SCRIPT_DEBUG`, so WordPress and WooCommerce serve unminified scripts and styles, and with them the front page alone misses the LCP budget whether the plugin is active or not: 2,723 ms without it and 2,728 ms with it (median of three, mobile profile, 9 November 2026). With minified assets the same page measures 2,380 ms. A budget for the builder page should not fail on a debug setting no shop runs with. The margin under 2,500 ms is about 120 ms before the builder draws anything, which milestone 6 has to work within.
 **Status:** Accepted. Zach to confirm at the milestone's review.
+
+### D-033 · The migration lock names its holder, and a failed step waits · 2026-11-09
+
+The lock's value is the moment it was taken or last refreshed, a colon, and a random token of the process that holds it. A run refreshes and releases the lock only where the row still carries its own token, refreshes it between migrations as well as between batches, and stops at once, recording no version, when a refresh finds the lock is no longer its own. Deactivation removes the lock whoever holds it.
+
+A migration that fails records when it may be tried again: 60 seconds after the first failure, then 5 minutes, 30 minutes, and an hour after every later one. Until then no request queues a job and no admin page runs it inline; the runner schedules one `cbuild_migrate` for that moment. `SchemaMigration` fails when a table is still missing after `dbDelta()`, which does not report a failed `CREATE TABLE`.
+
+**Why:** Raised by the milestone 1 audit. With a bare timestamp, a run that outlived the 300 second expiry and was taken over would carry on, write its own time over the new holder's and then delete the new holder's lock, letting a third run in beside it (`docs/AUDIT.md`: "two requests never run the same one"). Without a wait, a step that fails every time was queued again by the next front-end request and run again on every manager's admin page, with an error logged each time (`docs/AUDIT.md`: "retried with backoff").
+**Status:** Accepted.

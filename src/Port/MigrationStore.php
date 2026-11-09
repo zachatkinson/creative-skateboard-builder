@@ -75,11 +75,18 @@ interface MigrationStore {
 	 * Keep a held lock fresh during a long run.
 	 *
 	 * @param int $now The moment, as a UTC timestamp.
+	 * @return bool Whether the lock is still this caller's. False means another request took it over, and this run
+	 *              must stop without touching it.
 	 */
-	public function refreshLock( int $now ): void;
+	public function refreshLock( int $now ): bool;
 
 	/**
-	 * Release the lock.
+	 * Release the lock, if this caller holds it. A lock another request has taken over is left alone.
 	 */
 	public function releaseLock(): void;
+
+	/**
+	 * Remove the lock whoever holds it: deactivation, where no run should outlive the plugin.
+	 */
+	public function clearLock(): void;
 }

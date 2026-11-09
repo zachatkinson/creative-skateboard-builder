@@ -92,6 +92,21 @@ final class MigrationRepository implements MigrationStore {
 	}
 
 	/**
+	 * The lock's value while this instance holds it: the moment it was taken or last refreshed, a colon, and a token
+	 * of this process's own, so a lock is only ever refreshed or released by the run that holds it (D-033).
+	 *
+	 * @var string|null
+	 */
+	private ?string $held = null;
+
+	/**
+	 * This process's token.
+	 *
+	 * @var string|null
+	 */
+	private ?string $token = null;
+
+	/**
 	 * Take the lock in one statement, or take over one older than the TTL by compare-and-swap.
 	 *
 	 * @param int $now The moment, as a UTC timestamp.
@@ -99,39 +114,85 @@ final class MigrationRepository implements MigrationStore {
 	 */
 	public function acquireLock( int $now, int $ttl ): bool {
 		global $wpdb;
-		$inserted = $wpdb->query( $wpdb->prepare( 'INSERT IGNORE INTO %i (option_name, option_value, autoload) VALUES (%s, %s, %s)', $wpdb->options, Options::MIGRATION_LOCK, (string) $now, 'off' ) );
+		$mine     = $this->lockFor( $now );
+		$inserted = $wpdb->query( $wpdb->prepare( 'INSERT IGNORE INTO %i (option_name, option_value, autoload) VALUES (%s, %s, %s)', $wpdb->options, Options::MIGRATION_LOCK, $mine, 'off' ) );
 		if ( 1 === $inserted ) {
 			$this->forgetLockCache();
+			$this->held = $mine;
 			return true;
 		}
 		$held = $wpdb->get_var( $wpdb->prepare( 'SELECT option_value FROM %i WHERE option_name = %s', $wpdb->options, Options::MIGRATION_LOCK ) );
-		if ( ! is_string( $held ) || ! is_numeric( $held ) || $now - (int) $held <= $ttl ) {
+		if ( ! is_string( $held ) ) {
 			return false;
 		}
-		$taken = $wpdb->query( $wpdb->prepare( 'UPDATE %i SET option_value = %s WHERE option_name = %s AND option_value = %s', $wpdb->options, (string) $now, Options::MIGRATION_LOCK, $held ) );
+		$since = explode( ':', $held, 2 )[0];
+		if ( ! ctype_digit( $since ) || $now - (int) $since <= $ttl ) {
+			return false;
+		}
+		$taken = $wpdb->query( $wpdb->prepare( 'UPDATE %i SET option_value = %s WHERE option_name = %s AND option_value = %s', $wpdb->options, $mine, Options::MIGRATION_LOCK, $held ) );
 		if ( 1 === $taken ) {
 			$this->forgetLockCache();
+			$this->held = $mine;
 			return true;
 		}
 		return false;
 	}
 
 	/**
-	 * Keep a held lock fresh.
+	 * Keep a held lock fresh, if it is still this instance's.
 	 *
 	 * @param int $now The moment, as a UTC timestamp.
 	 */
-	public function refreshLock( int $now ): void {
+	public function refreshLock( int $now ): bool {
 		global $wpdb;
-		$wpdb->query( $wpdb->prepare( 'UPDATE %i SET option_value = %s WHERE option_name = %s', $wpdb->options, (string) $now, Options::MIGRATION_LOCK ) );
+		if ( null === $this->held ) {
+			return false;
+		}
+		$mine = $this->lockFor( $now );
+		if ( $mine === $this->held ) {
+			// The same second: nothing to write, and an UPDATE that changes nothing reports no row either way.
+			return $this->lockValue() === $this->held;
+		}
+		$kept = $wpdb->query( $wpdb->prepare( 'UPDATE %i SET option_value = %s WHERE option_name = %s AND option_value = %s', $wpdb->options, $mine, Options::MIGRATION_LOCK, $this->held ) );
 		$this->forgetLockCache();
+		if ( 1 !== $kept ) {
+			$this->held = null;
+			return false;
+		}
+		$this->held = $mine;
+		return true;
 	}
 
 	/**
-	 * Release the lock.
+	 * Release the lock, if this instance holds it.
 	 */
 	public function releaseLock(): void {
+		global $wpdb;
+		if ( null === $this->held ) {
+			return;
+		}
+		$wpdb->query( $wpdb->prepare( 'DELETE FROM %i WHERE option_name = %s AND option_value = %s', $wpdb->options, Options::MIGRATION_LOCK, $this->held ) );
+		$this->forgetLockCache();
+		$this->held = null;
+	}
+
+	/**
+	 * Remove the lock whoever holds it.
+	 */
+	public function clearLock(): void {
 		delete_option( Options::MIGRATION_LOCK );
+		$this->forgetLockCache();
+		$this->held = null;
+	}
+
+	/**
+	 * The value this process writes for a moment.
+	 *
+	 * @param int $now The moment, as a UTC timestamp.
+	 */
+	private function lockFor( int $now ): string {
+		$this->token ??= bin2hex( random_bytes( 8 ) );
+		return $now . ':' . $this->token;
 	}
 
 	/**

@@ -24,7 +24,7 @@ enum RunResult: string {
 	case NotNeeded = 'not_needed';
 
 	/**
-	 * Another request holds the lock; nothing ran here.
+	 * Another request holds the lock, or took it over while this one worked; this run did nothing more.
 	 */
 	case Locked = 'locked';
 
@@ -39,7 +39,13 @@ enum RunResult: string {
 	case Continued = 'continued';
 
 	/**
-	 * A migration threw; its state and the error are saved, the lock released and the version left behind.
+	 * A migration failed earlier and its wait has not passed; nothing ran.
+	 */
+	case Waiting = 'waiting';
+
+	/**
+	 * A migration threw; its state and the error are saved, the lock released, the version left behind
+	 * and the next attempt scheduled.
 	 */
 	case Failed = 'failed';
 }

@@ -17,6 +17,8 @@ use CreativeBranding\SkateboardBuilder\Port\Logger;
 use CreativeBranding\SkateboardBuilder\Port\Queue;
 use CreativeBranding\SkateboardBuilder\Repository\MigrationRepository;
 use CreativeBranding\SkateboardBuilder\Support\Options;
+use CreativeBranding\SkateboardBuilder\Install\Migrations\MigrationState;
+use CreativeBranding\SkateboardBuilder\Support\Tables;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\BatchMigration;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\ThrowingMigration;
 use CreativeBranding\SkateboardBuilder\Tests\Support\IntegrationTestCase;
@@ -47,20 +49,82 @@ final class MigrationTest extends IntegrationTestCase {
 		self::assertNull( $this->store->lockValue() );
 		self::assertTrue( $this->store->acquireLock( 1_800_000_000, 300 ) );
 		$row = $wpdb->get_row( $wpdb->prepare( 'SELECT option_value, autoload FROM %i WHERE option_name = %s', $wpdb->options, Options::MIGRATION_LOCK ), ARRAY_A ); // phpcs:ignore
-		self::assertSame( array( 'option_value' => '1800000000', 'autoload' => 'off' ), $row );
+		self::assertIsArray( $row );
+		self::assertSame( 'off', $row['autoload'] );
+		self::assertMatchesRegularExpression( '/^1800000000:[0-9a-f]{16}$/', $row['option_value'], 'the moment, then the holder\'s token (D-033)' );
 		self::assertFalse( $this->store->acquireLock( 1_800_000_100, 300 ), 'held' );
 		self::assertFalse( $this->store->acquireLock( 1_800_000_300, 300 ), 'held until the TTL has passed' );
 
-		$this->store->refreshLock( 1_800_000_200 );
-		self::assertSame( '1800000200', $this->store->lockValue() );
-		self::assertSame( '1800000200', get_option( Options::MIGRATION_LOCK ), 'the options cache is not stale' );
+		self::assertTrue( $this->store->refreshLock( 1_800_000_200 ) );
+		self::assertStringStartsWith( '1800000200:', (string) $this->store->lockValue() );
+		self::assertSame( $this->store->lockValue(), get_option( Options::MIGRATION_LOCK ), 'the options cache is not stale' );
+		self::assertTrue( $this->store->refreshLock( 1_800_000_200 ), 'the same second again: still held' );
 
 		self::assertTrue( $this->store->acquireLock( 1_800_000_501, 300 ), 'taken over once expired' );
-		self::assertSame( '1800000501', $this->store->lockValue() );
+		self::assertStringStartsWith( '1800000501:', (string) $this->store->lockValue() );
 
 		$this->store->releaseLock();
 		self::assertNull( $this->store->lockValue() );
 		self::assertFalse( get_option( Options::MIGRATION_LOCK ) );
+	}
+
+	public function test_a_lock_another_holder_took_over_is_neither_refreshed_nor_released(): void {
+		global $wpdb;
+		self::assertTrue( $this->store->acquireLock( 1_800_000_000, 300 ) );
+		// Another process decides this one crashed and takes the lock: the row now carries its token.
+		$theirs = '1800000400:' . str_repeat( 'f', 16 );
+		$wpdb->update( $wpdb->options, array( 'option_value' => $theirs ), array( 'option_name' => Options::MIGRATION_LOCK ) );
+		wp_cache_delete( Options::MIGRATION_LOCK, 'options' );
+
+		self::assertFalse( $this->store->refreshLock( 1_800_000_450 ), 'no longer this process\'s' );
+		self::assertSame( $theirs, $this->store->lockValue(), 'not written over' );
+		$this->store->releaseLock();
+		self::assertSame( $theirs, $this->store->lockValue(), 'not released' );
+		self::assertFalse( $this->store->refreshLock( 1_800_000_460 ), 'and stays lost' );
+
+		$this->store->clearLock();
+		self::assertNull( $this->store->lockValue(), 'deactivation removes it whoever holds it' );
+		self::assertFalse( get_option( Options::MIGRATION_LOCK ) );
+	}
+
+	public function test_a_lock_written_before_the_token_existed_expires_like_any_other(): void {
+		global $wpdb;
+		$wpdb->insert( $wpdb->options, array( 'option_name' => Options::MIGRATION_LOCK, 'option_value' => '1800000000', 'autoload' => 'off' ) );
+		self::assertFalse( $this->store->acquireLock( 1_800_000_300, 300 ) );
+		self::assertTrue( $this->store->acquireLock( 1_800_000_301, 300 ) );
+	}
+
+	public function test_a_table_that_could_not_be_created_fails_the_migration_and_is_tried_again(): void {
+		global $wpdb;
+		$specs = Tables::specs();
+		$this->withRealTables(
+			function () use ( $wpdb, $specs ): void {
+				$wpdb->query( 'DROP TABLE IF EXISTS ' . $specs ); // phpcs:ignore
+				delete_option( Options::DB_VERSION );
+				delete_option( Options::MIGRATIONS );
+				// The database refuses this one table, as it would without the CREATE privilege.
+				$refuse = static fn( string $query ): string => str_contains( $query, 'CREATE TABLE ' . $specs ) ? 'CREATE TABLE ' . $specs . ' (broken' : $query;
+				add_filter( 'query', $refuse );
+				$wpdb->suppress_errors( true );
+				$result = $this->service( MigrationRunner::class )->run();
+				$wpdb->suppress_errors( false );
+				remove_filter( 'query', $refuse );
+
+				self::assertSame( RunResult::Failed, $result, 'dbDelta() does not throw; the migration checks its tables' );
+				self::assertFalse( get_option( Options::DB_VERSION ), 'the version is left behind' );
+				$state = MigrationState::fromArray( 'schema_1', $this->store->state( 'schema_1' ) );
+				self::assertSame( MigrationState::FAILED, $state->status );
+				self::assertStringContainsString( $specs, $state->error, 'the error names the table' );
+				self::assertNull( $this->store->lockValue(), 'the lock is released' );
+				self::assertCount( 1, self::pendingJobs( Options::JOB_MIGRATE ), 'the next attempt is scheduled' );
+
+				// Once the wait has passed and the database allows it, the same migration finishes.
+				delete_option( Options::MIGRATIONS );
+				self::assertSame( RunResult::Finished, $this->service( MigrationRunner::class )->run() );
+				self::assertNotNull( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $specs ) ) );
+			}
+		);
+		self::assertSame( MigrationRegistry::VERSION, get_option( Options::DB_VERSION ) );
 	}
 
 	public function test_a_lock_row_holding_junk_is_not_taken_over(): void {
@@ -110,7 +174,7 @@ final class MigrationTest extends IntegrationTestCase {
 		sort( $outcomes );
 		self::assertSame( array( 'lost', 'won' ), $outcomes, $case . ' lock: ' . implode( ', ', $outcomes ) );
 		$value = self::wpEval( 'global $wpdb; echo (string) $wpdb->get_var( "SELECT option_value FROM {$wpdb->options} WHERE option_name = \'' . Options::MIGRATION_LOCK . '\'" );' );
-		self::assertSame( (string) $at, $value['out'], 'the winner\'s timestamp is in the row' );
+		self::assertStringStartsWith( $at . ':', $value['out'], 'the winner\'s timestamp is in the row' );
 		self::wp( 'option', 'delete', Options::MIGRATION_LOCK );
 	}
 

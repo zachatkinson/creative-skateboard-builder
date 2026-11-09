@@ -34,6 +34,7 @@ final class MigrationState {
 	 * @param int|null $finishedAt When it finished, UTC timestamp.
 	 * @param int      $attempts   How many runs have started it.
 	 * @param string   $error      The last failure's message, '' when none.
+	 * @param int|null $retryAt    After a failure, the moment before which it is not tried again, UTC timestamp.
 	 */
 	public function __construct(
 		public readonly string $key,
@@ -42,7 +43,8 @@ final class MigrationState {
 		public readonly ?int $startedAt = null,
 		public readonly ?int $finishedAt = null,
 		public readonly int $attempts = 0,
-		public readonly string $error = ''
+		public readonly string $error = '',
+		public readonly ?int $retryAt = null
 	) {}
 
 	/**
@@ -89,18 +91,28 @@ final class MigrationState {
 	}
 
 	/**
-	 * Failed; the cursor stays, so the next run resumes from it.
+	 * Failed; the cursor stays, so the next run resumes from it, and not before `$retryAt`.
 	 *
-	 * @param string $error The failure's message.
+	 * @param string $error   The failure's message.
+	 * @param int    $retryAt The moment before which it is not tried again, UTC timestamp.
 	 */
-	public function failed( string $error ): self {
-		return new self( $this->key, self::FAILED, $this->cursor, $this->startedAt, null, $this->attempts, $error );
+	public function failed( string $error, int $retryAt ): self {
+		return new self( $this->key, self::FAILED, $this->cursor, $this->startedAt, null, $this->attempts, $error, $retryAt );
+	}
+
+	/**
+	 * Whether it failed and its wait has not passed.
+	 *
+	 * @param int $now UTC timestamp.
+	 */
+	public function isWaiting( int $now ): bool {
+		return self::FAILED === $this->status && null !== $this->retryAt && $now < $this->retryAt;
 	}
 
 	/**
 	 * For the store.
 	 *
-	 * @return array{status: string, cursor: array{position: int|string|null, done: bool}, started_at: int|null, finished_at: int|null, attempts: int, error: string}
+	 * @return array{status: string, cursor: array{position: int|string|null, done: bool}, started_at: int|null, finished_at: int|null, attempts: int, error: string, retry_at: int|null}
 	 */
 	public function toArray(): array {
 		return array(
@@ -110,6 +122,7 @@ final class MigrationState {
 			'finished_at' => $this->finishedAt,
 			'attempts'    => $this->attempts,
 			'error'       => $this->error,
+			'retry_at'    => $this->retryAt,
 		);
 	}
 
@@ -135,7 +148,8 @@ final class MigrationState {
 			$int( $data['started_at'] ?? null ),
 			$int( $data['finished_at'] ?? null ),
 			$int( $data['attempts'] ?? null ) ?? 0,
-			isset( $data['error'] ) && is_string( $data['error'] ) ? $data['error'] : ''
+			isset( $data['error'] ) && is_string( $data['error'] ) ? $data['error'] : '',
+			$int( $data['retry_at'] ?? null )
 		);
 	}
 }

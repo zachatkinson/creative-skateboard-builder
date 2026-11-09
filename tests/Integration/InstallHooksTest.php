@@ -11,6 +11,7 @@ namespace CreativeBranding\SkateboardBuilder\Tests\Integration;
 
 use CreativeBranding\SkateboardBuilder\Hooks\InstallHooks;
 use CreativeBranding\SkateboardBuilder\Install\Migrations\MigrationRegistry;
+use CreativeBranding\SkateboardBuilder\Install\Migrations\MigrationState;
 use CreativeBranding\SkateboardBuilder\Support\Options;
 use CreativeBranding\SkateboardBuilder\Tests\Support\IntegrationTestCase;
 
@@ -53,6 +54,30 @@ final class InstallHooksTest extends IntegrationTestCase {
 
 		self::assertCount( 1, self::pendingJobs( Options::JOB_MIGRATE ), 'one job, however many requests' );
 		self::assertFalse( get_option( Options::DB_VERSION ), 'nothing ran on the request' );
+	}
+
+	public function test_after_a_failure_no_request_queues_or_runs_anything_until_the_wait_has_passed(): void {
+		delete_option( Options::DB_VERSION );
+		$retryAt = time() + 300; // phpcs:ignore -- the test's own clock
+		update_option( Options::MIGRATIONS, array( 'schema_1' => MigrationState::pending( 'schema_1' )->started( 1 )->failed( 'no', $retryAt )->toArray() ), false );
+
+		$this->hooks->queueWhenBehind();
+		$this->hooks->queueWhenBehind();
+		self::assertSame( array(), self::pendingJobs( Options::JOB_MIGRATE ), 'a front-end request queues nothing while a failed step waits' );
+
+		$this->asManagerInAdmin();
+		$this->hooks->runWhenBehind();
+		self::assertFalse( get_option( Options::DB_VERSION ), 'and a manager\'s admin page does not run it again' );
+		$state = get_option( Options::MIGRATIONS );
+		self::assertSame( 1, $state['schema_1']['attempts'], 'no new attempt' );
+
+		// The wait over: the next front-end request queues the job again.
+		$state['schema_1']['retry_at'] = time() - 1; // phpcs:ignore -- the test's own clock
+		update_option( Options::MIGRATIONS, $state, false );
+		set_current_screen( 'front' );
+		wp_set_current_user( 0 );
+		$this->hooks->queueWhenBehind();
+		self::assertCount( 1, self::pendingJobs( Options::JOB_MIGRATE ) );
 	}
 
 	public function test_a_manager_on_an_admin_page_runs_the_migrations_inline_and_queues_nothing(): void {

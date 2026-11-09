@@ -43,6 +43,29 @@ final class FakeQueue implements Queue {
 	}
 
 	/**
+	 * When each hook is scheduled for, by hook.
+	 *
+	 * @var array<string, int>
+	 */
+	public array $scheduled = array();
+
+	/**
+	 * Queue once, for a moment.
+	 *
+	 * @param int                  $timestamp When.
+	 * @param string               $hook      Hook.
+	 * @param array<string, mixed> $args      Arguments.
+	 */
+	public function scheduleUnique( int $timestamp, string $hook, array $args = array() ): void {
+		unset( $args );
+		if ( isset( $this->pending[ $hook ] ) ) {
+			return;
+		}
+		$this->scheduled[ $hook ] = $timestamp;
+		$this->pending[ $hook ]   = true;
+	}
+
+	/**
 	 * Whether pending.
 	 *
 	 * @param string $hook Hook.

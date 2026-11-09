@@ -29,6 +29,15 @@ interface Queue {
 	public function enqueueUnique( string $hook, array $args = array() ): void;
 
 	/**
+	 * Run an action at a moment, once: dropped while one with this hook is pending.
+	 *
+	 * @param int                  $timestamp When, as a UTC timestamp.
+	 * @param string               $hook      The action.
+	 * @param array<string, mixed> $args      Its arguments.
+	 */
+	public function scheduleUnique( int $timestamp, string $hook, array $args = array() ): void;
+
+	/**
 	 * Whether an action is pending or running.
 	 *
 	 * @param string $hook The action.

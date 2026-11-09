@@ -38,6 +38,20 @@ final class ActionSchedulerQueue implements Queue {
 	}
 
 	/**
+	 * Run an action at a moment, once.
+	 *
+	 * @param int                  $timestamp When, as a UTC timestamp.
+	 * @param string               $hook      The action.
+	 * @param array<string, mixed> $args      Its arguments.
+	 */
+	public function scheduleUnique( int $timestamp, string $hook, array $args = array() ): void {
+		if ( ! function_exists( 'as_schedule_single_action' ) ) {
+			return;
+		}
+		as_schedule_single_action( $timestamp, $hook, $args, Options::QUEUE_GROUP, true );
+	}
+
+	/**
 	 * Whether an action is pending or running.
 	 *
 	 * @param string $hook The action.

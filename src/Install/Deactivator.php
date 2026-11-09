@@ -62,6 +62,6 @@ final class Deactivator {
 				$queue->cancelAll( $job );
 			}
 		}
-		Plugin::container()->get( MigrationStore::class )->releaseLock();
+		Plugin::container()->get( MigrationStore::class )->clearLock();
 	}
 }
