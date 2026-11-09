@@ -439,7 +439,7 @@ Each of its four should-fix findings was checked against the installed source fi
 `composer audit:deps` runs `npm audit --omit=dev`: it fails on an advisory in a package webpack bundles into `build/`, which `package.json` keeps in `dependencies`. Today there is none, so the audit passes over nothing, and the docs say that and no longer call the tree clean. The dev toolchain (2,098 packages, all of them dev) had 48 advisories on 9 November 2026: 13 high, 29 moderate and 6 low, most of them under `@wordpress/scripts`, whose fix is a major version these docs pin against. None reaches the zip. Dependabot's security updates are on for the whole tree, and the release's build job holds no secret (D-043), which is what a compromised dev package could otherwise have reached.
 
 **Why:** Raised by Claude in Cowork's review (minor 6). Failing the build on the dev tree's advisories would be a new floor, and clearing them means moving `@wordpress/scripts` a major version, the one Creative Search uses; both are Zach's to decide. Issue #9 holds the triage.
-**Status:** Accepted for milestone 1. Zach to say whether the dev tree should gate.
+**Status:** Accepted for milestone 1. Zach to say whether the dev tree should gate. The count is revised by D-046: 4 low advisories are left.
 
 ### D-045 · What reading CI's logs changed · 2026-11-09
 
@@ -448,11 +448,22 @@ Zach asked for the logs of a passing run to be read for warnings as well as fail
 - **The runner image is named.** Every job runs on `ubuntu-26.04`, the image `ubuntu-latest` already resolved to, so a run no longer carries the notice that the label is moving, and the image changes when a commit changes it.
 - **`gitleaks/gitleaks-action` is v3.0.0**, which runs on Node 24. v2 targets Node 20, which the runners have dropped; it ran only because the runner forced it onto Node 24.
 - **Every dependency's install script is denied by name** in `package.json`'s `allowScripts`: `core-js`, `core-js-pure`, `@parcel/watcher`, `fs-ext-extra-prebuilt` and, on macOS, `fsevents`. npm 11 already skips a script nobody has approved, and every gate passes without them, so this changes nothing that runs; it records the choice, and a dependency that adds an install script later shows up as a warning to review.
-- **The mutants that escaped were test gaps, and are closed.** Infection reported 25 on the 345 mutants outside the domain. Ten new unit tests kill 19 of them, among them the anchors of the manifest's version and checksum patterns and the release prefix check. Five were lines whose removal changed nothing (a guard for a value that is not an array, in three readers; a `true` no code read; a cast `sprintf()` makes itself), and those lines are simpler now. One is left: `Container::hookables()` returning only its first Hookable, which no test can tell apart while the plugin has one Hookable. The first milestone to add a second kills it.
+- **The mutants that escaped were test gaps, and are closed.** Infection reported 25 on the 345 mutants outside the domain. Ten new unit tests kill 19 of them, among them the anchors of the manifest's version and checksum patterns and the release prefix check. Five were lines whose removal changed nothing (a guard for a value that is not an array, in three readers; a `true` no code read; a cast `sprintf()` makes itself), and those lines are simpler now. The last, `Container::hookables()` returning only its first Hookable, could not be told apart while the plugin has one Hookable: the container now takes its list of Hookable classes as an optional constructor argument, the plugin's own by default, and a test builds two. None escapes.
 
-The floor stays at 90 %: the run is at 99.71 %, and raising a floor is Zach's to decide.
+The floor stays at 90 %: the run kills every mutant (2 of 341 by timing out), and raising a floor is Zach's to decide.
 
 Left alone, with the reason: npm's deprecation warnings come from packages under `@wordpress/scripts` and `@wordpress/env` (issue #9); git's hint about the default branch name comes from `actions/checkout`'s own `git init`.
 
 **Why:** A warning nobody reads hides the one that matters, and an escaped mutant in the updater's validation is a test that would not have caught a real fault.
 **Status:** Accepted.
+
+### D-046 · The dev toolchain's advisories are closed with npm overrides · 2026-11-09
+
+`package.json` carries an `overrides` block that moves eight packages deep in the dev toolchain to the release that fixes their advisories: `basic-ftp`, `isomorphic-git`, `js-yaml` 5, `katex`, `minimatch` 7 to 11, `qs`, `rimraf` 4 to 6 (which brings a fixed `glob`), `serialize-javascript` and `smol-toml`. `npm audit` on the whole tree goes from 48 advisories (13 high) to 4, all low and all one fault: `deepmerge` under `@wordpress/scripts`' SVG loader, which has no fixed release. None of this reaches the zip.
+
+`@wordpress/scripts`, `@wordpress/env` and `@lhci/cli` are already on their latest major. The "fix" `npm audit` offers for each is an older major, so the packages beneath them are overridden instead. Four of the overrides cross a major version of the package they replace (`basic-ftp`, `minimatch`, `rimraf`, `serialize-javascript`), so the whole toolchain was run against them before they were committed: a fresh install, the standards, the build, StrykerJS, a fresh `wp-env start --update`, the integration suite, Plugin Check, four browser projects, Lighthouse, the zip's lifecycle and the release dry run.
+
+An override is dropped when the package above it ships the fix itself: `npm ls <package>` shows it, and issue #9 holds the list. npm's deprecation warnings (`inflight`, `glob` 7, `rimraf` 3, `abab`, `eslint` 9, `@octokit/webhooks-types`) are the toolchain's own pins and are left to it.
+
+**Why:** Zach pasted the install's output on 9 November 2026. A dev-only fault cannot reach a shop, but it runs on the machine and the runner that build the zip, and the fixes existed.
+**Status:** Accepted. Whether the whole tree should fail the build is still Zach's to decide (D-044).
