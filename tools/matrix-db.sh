@@ -6,7 +6,15 @@
 set -euo pipefail
 image="$1"
 name="$2"
-network="$(docker network ls --format '{{.Name}}' | grep -E '^[0-9a-f]{32}_default$' | while read -r n; do if docker network inspect "$n" --format '{{range .Containers}}{{.Name}} {{end}}' | grep -q 'tests-wordpress'; then echo "$n"; fi; done | head -n 1)"
+# wp-env's tests site for this checkout is the tests-wordpress container that mounts this folder; other projects'
+# wp-env containers may be running beside it.
+here="$(cd "$(dirname "$0")/.." && pwd)"
+network=""
+for container in $(docker ps -q --filter label=com.docker.compose.service=tests-wordpress); do
+	if docker inspect "$container" --format '{{range .Mounts}}{{println .Source}}{{end}}' | grep -x "$here" >/dev/null; then
+		network="$(docker inspect "$container" --format '{{range $name, $_ := .NetworkSettings.Networks}}{{println $name}}{{end}}' | head -n 1)"
+	fi
+done
 if [ -z "$network" ]; then
 	echo "wp-env's network was not found: run npx wp-env start first." >&2
 	exit 1

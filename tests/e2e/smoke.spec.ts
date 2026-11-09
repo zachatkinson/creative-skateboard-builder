@@ -39,32 +39,46 @@ function collectPluginRequests( page: Page ): string[] {
 test.describe( 'Creative Skateboard Builder, milestone 1', () => {
 	test( 'the plugin is active and its row on the Plugins screen is axe-clean', async ( {
 		page,
+		javaScriptEnabled,
 	} ) => {
 		await login( page );
-		const errors = collectConsoleErrors( page );
+		// Arrive first, then listen and reload: leaving the dashboard cancels WooCommerce's widget requests, which
+		// WebKit reports as page errors of the screen being left.
+		// Each page settles before it is left, so no request of its own is cancelled and reported as an error too.
 		await page.goto( '/wp-admin/plugins.php' );
+		await page.waitForLoadState( 'networkidle' );
+		const errors = collectConsoleErrors( page );
+		await page.reload();
+		await page.waitForLoadState( 'networkidle' );
 		const row = page.locator(
 			'tr[data-slug="creative-skateboard-builder"]'
 		);
 		await expect( row ).toBeVisible();
 		await expect( row ).toHaveClass( /active/ );
+		// By core's id, which is the same in every language.
 		await expect(
-			row.getByRole( 'link', {
-				name: 'Deactivate Creative Skateboard Builder',
-			} )
+			row.locator( '#deactivate-creative-skateboard-builder' )
 		).toBeVisible();
 		// Each row carries core's own hidden notice for the auto-update toggle; an error a person sees is visible.
 		await expect( page.locator( '.notice-error:visible' ) ).toHaveCount(
 			0
 		);
 		// Core's "View details" link reads "More information about …" to a screen reader: WordPress's markup.
-		await axe(
-			page,
-			'plugins-row',
-			'tr[data-slug="creative-skateboard-builder"]',
-			[],
-			[ '.open-plugin-details-modal' ]
-		);
+		// axe is a script in the page, so it cannot run in the project with scripts off; the others run it.
+		if ( javaScriptEnabled ) {
+			await axe(
+				page,
+				'plugins-row',
+				'tr[data-slug="creative-skateboard-builder"]',
+				[],
+				// Also core's: the "Visit plugin site" link, whose label and text differ in the fr_CA and he_IL
+				// language packs (label-content-name-mismatch). The plugin supplies the address, not the words.
+				[
+					'.open-plugin-details-modal',
+					'.plugin-version-author-uri a[aria-label]',
+				]
+			);
+		}
 		expect( errors, errors.join( '\n' ) ).toEqual( [] );
 	} );
 
