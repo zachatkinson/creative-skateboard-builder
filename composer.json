@@ -54,7 +54,7 @@
 		"gates": "bash tools/gates.sh",
 		"test:unit": "phpunit -c phpunit.xml.dist --testsuite unit --exclude-group benchmark",
 		"test:coverage": "bash tools/coverage.sh",
-		"test:benchmark": "phpunit -c phpunit.xml.dist --testsuite unit --group benchmark",
+		"test:benchmark": "bash tools/benchmark.sh",
 		"test:integration": "bash tools/integration.sh",
 		"test:integration:hpos-off": "CBUILD_HPOS=off bash tools/integration.sh",
 		"test:integration:hpos-sync": "CBUILD_HPOS=sync bash tools/integration.sh",

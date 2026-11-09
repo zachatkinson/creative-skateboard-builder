@@ -2,6 +2,7 @@
  * Lighthouse CI on the builder page in wp-env, median of three on the mobile profile (docs/AUDIT.md: Performance).
  * Until the Builder block ships (milestone 6) the page is the shop's front page with the plugin active, so the
  * budgets are already measured and a regression from the plugin's presence alone would show.
+ * tools/lhci.sh runs it with minified assets and the shop open, as a shop serves the page (D-032).
  */
 const url = process.env.CBUILD_LHCI_URL || 'http://localhost:8898/';
 

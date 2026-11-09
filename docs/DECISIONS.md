@@ -326,3 +326,10 @@ The plugin declares `custom_order_tables` and `cart_checkout_blocks` compatible 
 
 **Why:** wp-env 12 writes one `wp-tests-config.php` for both, with `wp_` as the default prefix (`/wordpress-phpunit/wp-tests-config.php:102`), so the suite's installer dropped the tests site's tables on every run and the second process found no active plugin. The core bootstrap reads `WP_MULTISITE` from the environment (`/wordpress-phpunit/includes/bootstrap.php:244`), not `WP_TESTS_MULTISITE`, which is a constant. Creative Search has no test that starts a second process, so its script never met either.
 **Status:** Accepted.
+
+### D-032 · Lighthouse measures the site as a shop serves it · 2026-11-09
+
+`npm run lhci` runs through `tools/lhci.sh`, which turns `SCRIPT_DEBUG` off and WooCommerce's "coming soon" mode off on wp-env's browser site for the run and puts both back afterwards. The budgets in `docs/AUDIT.md` are unchanged. Until the Builder block ships (milestone 6) the page measured is the shop's front page with the plugin active.
+
+**Why:** wp-env sets `SCRIPT_DEBUG`, so WordPress and WooCommerce serve unminified scripts and styles, and with them the front page alone misses the LCP budget whether the plugin is active or not: 2,723 ms without it and 2,728 ms with it (median of three, mobile profile, 9 November 2026). With minified assets the same page measures 2,380 ms. A budget for the builder page should not fail on a debug setting no shop runs with. The margin under 2,500 ms is about 120 ms before the builder draws anything, which milestone 6 has to work within.
+**Status:** Accepted. Zach to confirm at the milestone's review.
