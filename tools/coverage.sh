@@ -22,9 +22,9 @@ if [ -n "$(find src/Domain -name '*.php' 2>/dev/null | head -n 1)" ]; then
 		echo "Xdebug is not loaded; src/Domain's branch coverage cannot be measured." >&2
 		exit 1
 	fi
-	rm -rf tmp/coverage-domain
-	php -d pcov.enabled=0 -d xdebug.mode=coverage vendor/bin/phpunit -c phpunit.xml.dist --testsuite unit --exclude-group benchmark --path-coverage --coverage-xml tmp/coverage-domain --no-output
-	php tools/coverage-floor.php tmp/coverage.xml tmp/coverage-domain
+	rm -f tmp/coverage-domain.xml
+	php -d pcov.enabled=0 -d xdebug.mode=coverage vendor/bin/phpunit -c phpunit-domain.xml.dist --testsuite unit --exclude-group benchmark --path-coverage --coverage-cobertura tmp/coverage-domain.xml --no-output
+	php tools/coverage-floor.php tmp/coverage.xml tmp/coverage-domain.xml
 else
 	echo "src/Domain has no file yet; its branch coverage run is skipped."
 	php tools/coverage-floor.php tmp/coverage.xml

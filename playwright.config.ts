@@ -34,7 +34,9 @@ export default defineConfig( {
 	testDir: './tests/e2e',
 	globalSetup: './tests/e2e/support/global-setup.ts',
 	timeout: 60_000,
-	retries: process.env.CI ? 1 : 0,
+	// Never retried: a test that fails once and passes on a second go is flaky, and is fixed or quarantined with an
+	// issue the same day (docs/AUDIT.md: Testing).
+	retries: 0,
 	workers: 1,
 	reporter: [ [ 'list' ] ],
 	outputDir: 'test-results',

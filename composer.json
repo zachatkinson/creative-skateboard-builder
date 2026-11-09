@@ -51,7 +51,10 @@
 		"analyse:src": "phpstan analyse --memory-limit=2G --configuration=phpstan.neon",
 		"analyse:domain": "bash tools/analyse-domain.sh",
 		"arch": "deptrac analyse --config-file=deptrac.yaml --fail-on-uncovered --report-uncovered --no-progress",
-		"gates": "bash tools/gates.sh",
+		"gates": [
+			"bash tools/gates.sh",
+			"bash tools/gates-selftest.sh"
+		],
 		"test:unit": "phpunit -c phpunit.xml.dist --testsuite unit --exclude-group benchmark",
 		"test:coverage": "bash tools/coverage.sh",
 		"test:benchmark": "bash tools/benchmark.sh",

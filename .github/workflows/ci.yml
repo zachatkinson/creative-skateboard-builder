@@ -38,9 +38,12 @@ jobs:
         run: |
           full=true
           if [ "${GITHUB_EVENT_NAME}" = pull_request ]; then
-            others=$(git diff --name-only "origin/${BASE}...HEAD" | grep -Ev '^(tests/e2e/|\.github/workflows/|docs/|LICENSE$)|\.md$' || true)
-            if [ -z "$others" ]; then
-              full=false
+            # The lighter run only when the diff was read and holds nothing else: if git cannot say, everything runs.
+            if changed=$(git diff --name-only "origin/${BASE}...HEAD"); then
+              others=$(grep -Ev '^(tests/e2e/|\.github/workflows/|docs/|LICENSE$)|\.md$' <<<"$changed" || true)
+              if [ -n "$changed" ] && [ -z "$others" ]; then
+                full=false
+              fi
             fi
           fi
           echo "full=$full" >> "$GITHUB_OUTPUT"
@@ -144,7 +147,7 @@ jobs:
       - run: composer audit:deps
 
   mutation:
-    name: Mutation testing (Infection)
+    name: Mutation testing (Infection and StrykerJS)
     needs: scope
     if: needs.scope.outputs.full == 'true'
     runs-on: ubuntu-latest
@@ -171,6 +174,13 @@ jobs:
           else
             composer infection
           fi
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - name: StrykerJS on the builder's store (90 %; skipped while assets/src has no TypeScript)
+        run: npm run mutate:js
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         if: always()
         with:
@@ -191,6 +201,29 @@ jobs:
           tools: composer:v2
       - uses: ramsey/composer-install@65e4f84970763564f46a70b8a54b90d033b3bdda # 4.0.0
       - run: composer test:benchmark
+
+  # Everything release.yml does short of publishing (tools/release-dry-run.sh): the zip, the SBOMs from their pinned
+  # tools, and the manifest read back by the updater's own class. release.yml runs only on a tag, so without this a
+  # broken step would first be met by a release.
+  release-dry-run:
+    name: Release dry run (zip, SBOMs, manifest)
+    needs: scope
+    if: needs.scope.outputs.full == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
+        with:
+          php-version: '8.5'
+          coverage: none
+          tools: composer:v2
+      - uses: ramsey/composer-install@65e4f84970763564f46a70b8a54b90d033b3bdda # 4.0.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: bash tools/release-dry-run.sh
 
   # The matrix (docs/AUDIT.md: The platform; D-004): the newest and oldest WordPress and WooCommerce pairs on PHP 8.5,
   # MySQL 8.4 and MariaDB 10.11 as their own database servers, and the HPOS off, HPOS syncing, multisite and
@@ -237,6 +270,9 @@ jobs:
           CBUILD_OBJECT_CACHE: ${{ matrix.leg == 'object-cache' && 'persistent' || '' }}
       - run: npm run plugin-check
         if: matrix.leg == 'newest' || matrix.leg == 'oldest'
+      - name: The zip installs, upgrades over itself and uninstalls clean
+        if: matrix.leg == 'newest' || matrix.leg == 'oldest'
+        run: npm run zip-lifecycle
       # Newest runs every browser project, the visual snapshots among them; oldest, which is there for the WordPress
       # and WooCommerce versions, one desktop and one phone engine. The browsers are cached by Playwright's version;
       # the system packages they need are installed each time.

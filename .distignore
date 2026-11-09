@@ -29,6 +29,7 @@ phpcs.xml
 phpstan.neon
 phpstan-domain.neon
 phpunit.xml.dist
+phpunit-domain.xml.dist
 phpunit-integration.xml.dist
 playwright.config.ts
 stryker.config.mjs

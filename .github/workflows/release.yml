@@ -7,7 +7,8 @@
 # workflow_run trigger); a tag on a commit whose CI failed, or that CI never ran on, fails here and says so.
 # Publishing is skipped when the release already exists, so the two triggers never publish twice; a run that finds the
 # release but not its info.json (an earlier run stopped between the two) writes info.json from the published zip.
-# Copied from Creative Search and kept the same, plus the SBOM step (docs/STANDARDS.md: Releases).
+# Copied from Creative Search and kept the same, plus the SBOM step (docs/STANDARDS.md: Releases), which is
+# tools/sbom.sh.
 name: Release
 
 on:
@@ -134,15 +135,11 @@ jobs:
       - name: Build
         if: env.PUBLISHED != 'yes'
         run: bash tools/build-zip.sh
-      # The CycloneDX SBOMs (D-003, D-030): what the zip ships. Composer's non-dev packages, and the npm packages
-      # webpack bundles into build/, which package.json keeps in `dependencies` so --omit dev counts them. Both tools
-      # run from here at release time only, so neither joins the lock files.
+      # The CycloneDX SBOMs of what the zip ships (D-003, D-030), from pinned tools fetched at release time. The same
+      # script runs in CI's release dry run, so this step has always run before a tag meets it.
       - name: SBOM
         if: env.PUBLISHED != 'yes'
-        run: |
-          composer global require cyclonedx/cyclonedx-php-composer --no-interaction --quiet
-          composer CycloneDX:make-sbom --omit=dev --output-format=JSON --output-file="tmp/${SLUG}-${VERSION}.composer.cdx.json" --spec-version=1.6
-          npx --yes @cyclonedx/cyclonedx-npm --omit dev --output-format JSON --output-file "tmp/${SLUG}-${VERSION}.npm.cdx.json" --spec-version 1.6
+        run: bash tools/sbom.sh "$VERSION"
       - name: Write the manifest
         if: env.POINTED != 'yes'
         run: php tools/release-manifest.php "tmp/${SLUG}-${VERSION}.zip" > tmp/info.json

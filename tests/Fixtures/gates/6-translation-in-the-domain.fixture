@@ -1,0 +1,8 @@
+<?php
+declare( strict_types=1 );
+namespace CreativeBranding\SkateboardBuilder\Domain;
+final class Probe {
+	public function run(): string {
+		return __( 'Too wide', 'creative-skateboard-builder' );
+	}
+}

@@ -50,6 +50,24 @@ abstract class IntegrationTestCase extends WP_UnitTestCase {
 		}
 		parent::set_up();
 		wp_cache_flush();
+		// WordPress loads the suite at its non-debug error level, which hides deprecations and notices. Every level
+		// is reported while a test runs, and phpunit-integration.xml.dist turns each into a failure.
+		$this->errorLevel = error_reporting( E_ALL ); // phpcs:ignore
+	}
+
+	/**
+	 * The error level before the test.
+	 *
+	 * @var int
+	 */
+	private int $errorLevel = E_ALL;
+
+	/**
+	 * Tear down.
+	 */
+	public function tear_down(): void {
+		error_reporting( $this->errorLevel ); // phpcs:ignore
+		parent::tear_down();
 	}
 
 	/**

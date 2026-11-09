@@ -1,9 +1,9 @@
 <?php
 /**
  * Fails when coverage is under the floors: 90 % of the lines phpunit.xml.dist's <source> lists, 100 % of
- * src/Domain's lines, and 100 % of its branches when the path-coverage XML is given (docs/AUDIT.md: Unit tests).
+ * src/Domain's lines, and 100 % of its branches when the domain's Cobertura report is given (docs/AUDIT.md: Unit tests).
  *
- * Run: php tools/coverage-floor.php tmp/coverage.xml [tmp/coverage-domain]
+ * Run: php tools/coverage-floor.php tmp/coverage.xml [tmp/coverage-domain.xml]
  *
  * @package CreativeBranding\SkateboardBuilder
  */
@@ -49,33 +49,22 @@ if ( $cbuild_pct( $cbuild_domain ) < 100.0 ) {
 	$cbuild_status = 1;
 }
 
-// Branches, from PHPUnit's XML report with path coverage: each file's <totals><branches .../>.
+// Branches, from a Cobertura report of src/Domain alone, collected with path coverage (phpunit-domain.xml.dist).
+// PHPUnit's XML report carries lines only: reading branches from it found none and passed whatever the tests did.
 if ( '' !== $cbuild_dir ) {
-	$cbuild_branches = array( 'total' => 0, 'covered' => 0 );
-	$cbuild_files    = glob( rtrim( $cbuild_dir, '/' ) . '/**/*.xml', GLOB_BRACE ) ?: array();
-	$cbuild_iterator = new RecursiveIteratorIterator( new RecursiveDirectoryIterator( $cbuild_dir, FilesystemIterator::SKIP_DOTS ) );
-	foreach ( $cbuild_iterator as $cbuild_path ) {
-		$cbuild_path = (string) $cbuild_path;
-		if ( ! str_ends_with( $cbuild_path, '.xml' ) || str_ends_with( $cbuild_path, '/index.xml' ) ) {
-			continue;
-		}
-		$cbuild_report = simplexml_load_file( $cbuild_path );
-		if ( false === $cbuild_report ) {
-			continue;
-		}
-		$cbuild_report->registerXPathNamespace( 'p', 'https://schema.phpunit.de/coverage/1.0' );
-		$cbuild_file_node = $cbuild_report->xpath( '//p:file' )[0] ?? null;
-		if ( null === $cbuild_file_node || ! str_contains( (string) $cbuild_file_node['path'], 'src/Domain' ) ) {
-			continue;
-		}
-		foreach ( $cbuild_report->xpath( '//p:file/p:totals/p:branches' ) ?: array() as $cbuild_b ) {
-			$cbuild_branches['total']   += (int) $cbuild_b['count'];
-			$cbuild_branches['covered'] += (int) $cbuild_b['tested'];
-		}
+	$cbuild_report = is_readable( $cbuild_dir ) ? simplexml_load_file( $cbuild_dir ) : false;
+	if ( false === $cbuild_report || ! isset( $cbuild_report['branches-valid'], $cbuild_report['branches-covered'] ) ) {
+		fwrite( STDERR, "The domain's branch coverage could not be read from {$cbuild_dir}.\n" );
+		exit( 1 );
 	}
-	$cbuild_branch_pct = $cbuild_branches['total'] > 0 ? 100.0 * $cbuild_branches['covered'] / $cbuild_branches['total'] : 100.0;
-	printf( "Branches in src/Domain: %.2f%% (%d/%d).\n", $cbuild_branch_pct, $cbuild_branches['covered'], $cbuild_branches['total'] );
-	if ( $cbuild_branch_pct < 100.0 ) {
+	$cbuild_valid   = (int) $cbuild_report['branches-valid'];
+	$cbuild_covered = (int) $cbuild_report['branches-covered'];
+	printf( "Branches in src/Domain: %d of %d.\n", $cbuild_covered, $cbuild_valid );
+	if ( 0 === $cbuild_valid ) {
+		// The domain has files and no branch was counted: path coverage was not collected, and the floor measured nothing.
+		fwrite( STDERR, "No branch of src/Domain was measured; the branch floor cannot be checked.\n" );
+		$cbuild_status = 1;
+	} elseif ( $cbuild_covered < $cbuild_valid ) {
 		fwrite( STDERR, "src/Domain branch coverage is under 100%.\n" );
 		$cbuild_status = 1;
 	}

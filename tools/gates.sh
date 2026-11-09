@@ -2,21 +2,26 @@
 # The grep gates (CLAUDE.md: composer gates). Each fails the run:
 #   1. SQL outside src/Repository/ and src/Install/, and SQL built from strings anywhere.
 #   2. Banned functions.
-#   3. date(), time() and mktime() outside Adapter\SystemClock (times go through Port\Clock, in UTC).
+#   3. Any reading of the time outside Adapter\SystemClock (times go through Port\Clock, in UTC).
 #   4. A file without declare( strict_types=1 ).
 #   5. An outbound request anywhere but Updates\HttpManifestSource (and the package download in Updates\Updater).
 #   6. WordPress or WooCommerce in src/Domain.
 #   7. Anything from WooCommerce's Internal namespace.
-#   8. An em dash, or a word from tools/copy-words.txt, in the POT file (docs/STANDARDS.md: Copy).
+#   8. An em dash, an exclamation mark or a word from tools/copy-words.txt in the POT file (docs/STANDARDS.md: Copy).
+# Gate 1 also covers string-built SQL (1b) and the database's clock in a statement (1c). Every gate has snippets it
+# must reject in tests/Fixtures/gates/, run by tools/gates-selftest.sh.
 # Run: composer gates
 set -euo pipefail
-cd "$(dirname "$0")/.."
+tools="$(cd "$(dirname "$0")" && pwd)"
+# CBUILD_GATES_ROOT points the gates at another tree: tools/gates-selftest.sh runs them on snippets they must reject.
+cd "${CBUILD_GATES_ROOT:-$tools/..}"
 status=0
 main=creative-skateboard-builder.php
 php_files=(src "$main" uninstall.php)
 
-# 1. $wpdb calls outside src/Repository/ and src/Install/.
-hits="$(grep -rnE '\$wpdb->(query|get_results|get_row|get_var|get_col|insert|update|delete|replace)\(' src --include='*.php' | grep -vE '^src/(Repository|Install)/' || true)"
+# 1. The database outside src/Repository/ and src/Install/: $wpdb by either name (Support\Tables reads its prefix and
+# nothing else), and wpdb's reading methods on any variable, so an alias does not slip by.
+hits="$(grep -rnE '\$wpdb|\$GLOBALS\[\s*.wpdb.\s*\]|->(get_results|get_row|get_var|get_col)\(' "${php_files[@]}" --include='*.php' | grep -vE '^src/(Repository|Install)/' | grep -vE '^[^:]+:[0-9]+:\s*(\*|//|#)' | grep -vE '^src/Support/Tables\.php:[0-9]+:\s*(global \$wpdb;|return \$wpdb->prefix )' || true)"
 if [ -n "$hits" ]; then
 	echo "Gate 1: direct SQL outside src/Repository/ and src/Install/:"; echo "$hits"; status=1
 fi
@@ -27,14 +32,22 @@ if [ -n "$hits" ]; then
 	echo "Gate 1b: string-built SQL (use \$wpdb->prepare()):"; echo "$hits"; status=1
 fi
 
+# 1c. The database's clock in a statement: times come from Port\Clock and are bound as values. Matched in capitals, as
+# SQL is written here.
+hits="$(grep -rnE '(^|[^A-Za-z_])(NOW|CURDATE|CURTIME|SYSDATE|UTC_TIMESTAMP|UTC_DATE|UTC_TIME|UNIX_TIMESTAMP|LOCALTIME|LOCALTIMESTAMP)\s*\(\s*\)|(^|[^A-Za-z_])CURRENT_(TIMESTAMP|DATE|TIME)([^A-Za-z_]|$)' "${php_files[@]}" --include='*.php' | grep -vE '^[^:]+:[0-9]+:\s*(\*|//|#)' || true)"
+if [ -n "$hits" ]; then
+	echo "Gate 1c: the database's clock in SQL; bind a time from Port\\Clock:"; echo "$hits"; status=1
+fi
+
 # 2. Banned functions.
 hits="$(grep -rnE '(^|[^a-zA-Z_>$])(eval|extract|unserialize|maybe_unserialize|query_posts|create_function|base64_decode|exec|shell_exec|system|passthru|popen|proc_open|var_dump|print_r|var_export|error_log)\s*\(' "${php_files[@]}" --include='*.php' | grep -vE '^[^:]+:[0-9]+:\s*(\*|//|#)' || true)"
 if [ -n "$hits" ]; then
 	echo "Gate 2: banned function:"; echo "$hits"; status=1
 fi
 
-# 3. date(), time() and mktime(): the Clock port is the only clock.
-hits="$(grep -rnE '(^|[^a-zA-Z_>$])(date|time|mktime|gmdate|current_time)\s*\(' "${php_files[@]}" --include='*.php' | grep -vE '^[^:]+:[0-9]+:\s*(\*|//|#)' | grep -vE '^src/Adapter/SystemClock\.php:' || true)"
+# 3. Every way of reading the time: the Clock port is the only clock. The functions, and a date object made from
+# "now", which is what a bare constructor gives.
+hits="$(grep -rnE '(^|[^a-zA-Z_>$])(date|time|mktime|gmdate|gmmktime|current_time|current_datetime|microtime|hrtime|strtotime|date_create|date_create_immutable|getdate|localtime|idate|gettimeofday)\s*\(|new\s+\\?DateTime(Immutable)?\s*\(' "${php_files[@]}" --include='*.php' | grep -vE '^[^:]+:[0-9]+:\s*(\*|//|#)' | grep -vE '^src/Adapter/SystemClock\.php:' || true)"
 if [ -n "$hits" ]; then
 	echo "Gate 3: a clock call outside Adapter\\SystemClock; use Port\\Clock:"; echo "$hits"; status=1
 fi
@@ -47,7 +60,7 @@ fi
 
 # 5. No remote requests but the update manifest (Updates\HttpManifestSource). The package itself is downloaded by
 #    WordPress's upgrader (download_url() through Updates\Updater's injected downloader).
-hits="$(grep -rnE 'wp_(safe_)?remote_(get|post|request|head)|curl_init|fsockopen|download_url\(|file_get_contents\(\s*["'"'"']https?:' "${php_files[@]}" --include='*.php' \
+hits="$(grep -rnE 'wp_(safe_)?remote_(get|post|request|head|fopen)|WP_Http|WpOrg.Requests|Requests::|curl_(init|exec|multi_init)|fsockopen|pfsockopen|stream_socket_client|download_url\(|(file_get_contents|fopen|copy)\(\s*["'"'"']https?:' "${php_files[@]}" --include='*.php' \
 	| grep -vE '^src/Updates/HttpManifestSource\.php:[0-9]+:.*wp_safe_remote_get\(|^src/Updates/Updater\.php:[0-9]+:.*return download_url\(' | grep -vE '^[^:]+:[0-9]+:\s*(\*|//|#)' || true)"
 if [ -n "$hits" ]; then
 	echo "Gate 5: outbound request:"; echo "$hits"; status=1
@@ -62,29 +75,30 @@ if [ -d src/Domain ]; then
 fi
 
 # 7. Nothing private of WooCommerce's (docs/STANDARDS.md: nothing private, internal or undocumented).
-hits="$(grep -rnE 'Automattic\\WooCommerce\\Internal\\' src --include='*.php' | grep -vE '^[^:]+:[0-9]+:\s*(\*|//|#)' || true)"
+hits="$(grep -rnE 'Automattic\\WooCommerce\\Internal\\' "${php_files[@]}" --include='*.php' | grep -vE '^[^:]+:[0-9]+:\s*(\*|//|#)' || true)"
 if [ -n "$hits" ]; then
 	echo "Gate 7: WooCommerce's Internal namespace:"; echo "$hits"; status=1
 fi
 
-# 8. The copy gate on the POT: no em dash, no banned word (tools/copy-words.txt), no exclamation mark in a string.
+# 8. The copy gate on the POT: no em dash, no banned word ($tools/copy-words.txt), no exclamation mark in a string.
 pot=languages/creative-skateboard-builder.pot
 if [ -f "$pot" ]; then
-	strings="$(grep -E '^(msgid|msgid_plural|msgstr) "' "$pot" | sed -E 's/^[a-z_]+ "//; s/"$//' | grep -v '^$' || true)"
+	# Each string whole: a long one is wrapped over lines that each start with a quote.
+	strings="$(awk '/^(msgid|msgid_plural|msgstr(\[[0-9]+\])?) "/ { if ( text != "" ) print text; sub( /^[a-z_]+(\[[0-9]+\])? "/, "" ); sub( /"$/, "" ); text = $0; open = 1; next } open && /^"/ { sub( /^"/, "" ); sub( /"$/, "" ); text = text $0; next } { if ( text != "" ) print text; text = ""; open = 0 } END { if ( text != "" ) print text }' "$pot")"
 	if printf '%s\n' "$strings" | grep -n '—' ; then
 		echo "Gate 8: an em dash in the POT."; status=1
 	fi
 	if printf '%s\n' "$strings" | grep -nE '!' ; then
 		echo "Gate 8: an exclamation mark in the POT."; status=1
 	fi
-	if [ -f tools/copy-words.txt ]; then
+	if [ -f "$tools/copy-words.txt" ]; then
 		while IFS= read -r word; do
 			[ -z "$word" ] && continue
 			case "$word" in \#*) continue ;; esac
 			if printf '%s\n' "$strings" | grep -niE "(^|[^a-z])${word}([^a-z]|$)" ; then
 				echo "Gate 8: banned word '${word}' in the POT."; status=1
 			fi
-		done < tools/copy-words.txt
+		done < "$tools/copy-words.txt"
 	fi
 fi
 
