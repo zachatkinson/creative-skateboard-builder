@@ -25,6 +25,8 @@ final class Activator {
 	/**
 	 * Activation hook.
 	 *
+	 * @since 0.1.0
+	 *
 	 * @param bool|mixed $networkWide Whether the plugin is being network-activated.
 	 */
 	public static function activate( $networkWide = false ): void {
@@ -48,6 +50,8 @@ final class Activator {
 
 	/**
 	 * Activate the current site.
+	 *
+	 * @since 0.1.0
 	 */
 	public static function site(): void {
 		Plugin::container()->get( MigrationRunner::class )->run();

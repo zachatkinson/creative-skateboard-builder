@@ -48,6 +48,8 @@ final class Updater {
 	/**
 	 * Constructor.
 	 *
+	 * @since 0.1.0
+	 *
 	 * @param ManifestSource                             $source   The latest release.
 	 * @param string                                     $basename The plugin's basename (creative-skateboard-builder/creative-skateboard-builder.php).
 	 * @param (callable(string): (string|WP_Error))|null $download Downloader; WordPress's own when null.
@@ -75,6 +77,8 @@ final class Updater {
 	/**
 	 * Attach hooks. Whether updates are on is asked each time one runs, so the filter and the constant work
 	 * wherever they are set, a theme's functions.php included.
+	 *
+	 * @since 0.1.0
 	 */
 	public function register(): void {
 		add_filter( 'update_plugins_' . (string) wp_parse_url( self::MANIFEST_URL, PHP_URL_HOST ), array( $this, 'check' ), 10, 3 );
@@ -85,6 +89,8 @@ final class Updater {
 
 	/**
 	 * Whether update checks are on.
+	 *
+	 * @since 0.1.0
 	 */
 	public static function enabled(): bool {
 		$on = ! ( defined( 'CBUILD_DISABLE_UPDATES' ) && CBUILD_DISABLE_UPDATES );
@@ -100,6 +106,8 @@ final class Updater {
 
 	/**
 	 * The update core asks about, for this plugin only.
+	 *
+	 * @since 0.1.0
 	 *
 	 * @param mixed $update      What another filter returned, or false.
 	 * @param mixed $plugin_data The plugin's header data.
@@ -138,6 +146,8 @@ final class Updater {
 	 * the whole version (`version_compare( '7.1.4', '7.1', '<=' )` is false) and would warn that the plugin "has not
 	 * been tested" with it. Any other value is passed on as it is.
 	 *
+	 * @since 0.1.0
+	 *
 	 * @param string $tested The manifest's "Tested up to".
 	 * @param string $site   The site's WordPress version.
 	 */
@@ -150,6 +160,8 @@ final class Updater {
 
 	/**
 	 * The "View details" popup.
+	 *
+	 * @since 0.1.0
 	 *
 	 * @param mixed $result What another filter returned, or false.
 	 * @param mixed $action The plugins_api action.
@@ -186,6 +198,8 @@ final class Updater {
 
 	/**
 	 * Download the package and check its SHA-256 against the manifest before WordPress unpacks it.
+	 *
+	 * @since 0.1.0
 	 *
 	 * @param mixed $reply   False, or what another filter returned.
 	 * @param mixed $package The package address.
@@ -231,6 +245,8 @@ final class Updater {
 
 	/**
 	 * Dashboard > Updates > Check again: read the manifest afresh.
+	 *
+	 * @since 0.1.0
 	 */
 	public static function forceCheck(): void {
 		if ( isset( $_GET['force-check'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Only clears a cache, as core's own check does.

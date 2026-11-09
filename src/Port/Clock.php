@@ -23,6 +23,8 @@ interface Clock {
 
 	/**
 	 * The current moment, in UTC.
+	 *
+	 * @since 0.1.0
 	 */
 	public function now(): DateTimeImmutable;
 }

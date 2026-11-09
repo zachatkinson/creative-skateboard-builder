@@ -23,11 +23,15 @@ interface Migration {
 
 	/**
 	 * The step's key, unique and never changed once released: `schema_1`, `spec_tables_1`.
+	 *
+	 * @since 0.1.0
 	 */
 	public function key(): string;
 
 	/**
 	 * Do one batch of the work from the cursor and return the next cursor.
+	 *
+	 * @since 0.1.0
 	 *
 	 * @param Cursor $cursor Where the last batch stopped, or `Cursor::start()`.
 	 */

@@ -47,6 +47,8 @@ final class MigrationRegistry {
 	/**
 	 * Constructor.
 	 *
+	 * @since 0.1.0
+	 *
 	 * @param Migration ...$migrations The migrations, oldest first.
 	 * @throws PluginException When two migrations share a key.
 	 */
@@ -64,6 +66,8 @@ final class MigrationRegistry {
 	/**
 	 * The migrations, oldest first.
 	 *
+	 * @since 0.1.0
+	 *
 	 * @return list<Migration>
 	 */
 	public function all(): array {
@@ -72,6 +76,8 @@ final class MigrationRegistry {
 
 	/**
 	 * The keys, oldest first.
+	 *
+	 * @since 0.1.0
 	 *
 	 * @return list<string>
 	 */

@@ -25,6 +25,8 @@ final class Uninstaller {
 
 	/**
 	 * Uninstall every site.
+	 *
+	 * @since 0.1.0
 	 */
 	public static function run(): void {
 		foreach ( Options::siteTransients() as $transient ) {
@@ -50,6 +52,8 @@ final class Uninstaller {
 
 	/**
 	 * Uninstall the current site.
+	 *
+	 * @since 0.1.0
 	 */
 	public static function site(): void {
 		global $wpdb;
@@ -81,7 +85,10 @@ final class Uninstaller {
 
 		self::deleteJobs();
 
-		wp_cache_flush_group( Options::CACHE_GROUP );
+		// Not every object cache can flush one group; where it cannot, the plugin's entries expire on their own.
+		if ( wp_cache_supports( 'flush_group' ) ) {
+			wp_cache_flush_group( Options::CACHE_GROUP );
+		}
 	}
 
 	/**
@@ -89,6 +96,8 @@ final class Uninstaller {
 	 * it is loaded, then straight from its tables for what the store leaves or when it is not loaded (D-024): a shop removing WooCommerce too deactivates the
 	 * builder first, then WooCommerce, then deletes both, so this often runs with no Action Scheduler loaded.
 	 * Unscheduling alone would only mark pending actions cancelled and leave their rows and logs.
+	 *
+	 * @since 0.1.0
 	 */
 	public static function deleteJobs(): void {
 		if ( ! self::queueTablesExist() ) {
@@ -120,6 +129,8 @@ final class Uninstaller {
 	/**
 	 * Delete the group's actions, their logs and the group row from Action Scheduler's tables, when the tables exist.
 	 * The one place the plugin writes another plugin's tables (D-024).
+	 *
+	 * @since 0.1.0
 	 */
 	public static function deleteJobsBySql(): void {
 		global $wpdb;
@@ -156,6 +167,8 @@ final class Uninstaller {
 
 	/**
 	 * The plugin's tables, for `wpmu_drop_tables` when a network site is deleted (D-025).
+	 *
+	 * @since 0.1.0
 	 *
 	 * @param mixed $tables Tables WordPress will drop.
 	 * @return mixed

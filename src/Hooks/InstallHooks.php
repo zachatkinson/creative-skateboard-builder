@@ -29,12 +29,16 @@ final class InstallHooks implements Hookable {
 	/**
 	 * Constructor.
 	 *
+	 * @since 0.1.0
+	 *
 	 * @param MigrationRunner $runner The migration runner.
 	 */
 	public function __construct( private MigrationRunner $runner ) {}
 
 	/**
 	 * Attach hooks.
+	 *
+	 * @since 0.1.0
 	 */
 	public function register(): void {
 		add_action( 'init', array( $this, 'queueWhenBehind' ) );
@@ -46,6 +50,8 @@ final class InstallHooks implements Hookable {
 	/**
 	 * On every request that cannot run the migrations itself: queue the job, once. After a failure nothing is queued
 	 * until the wait has passed; the runner has already scheduled that attempt.
+	 *
+	 * @since 0.1.0
 	 */
 	public function queueWhenBehind(): void {
 		if ( ! self::inlineAllowed() && $this->runner->due() ) {
@@ -55,6 +61,8 @@ final class InstallHooks implements Hookable {
 
 	/**
 	 * On an admin page, for a user who may: run the migrations now.
+	 *
+	 * @since 0.1.0
 	 */
 	public function runWhenBehind(): void {
 		if ( self::inlineAllowed() && $this->runner->needed() ) {
@@ -64,6 +72,8 @@ final class InstallHooks implements Hookable {
 
 	/**
 	 * The queued job: run within the budget, and queue again if there is more.
+	 *
+	 * @since 0.1.0
 	 */
 	public function runJob(): void {
 		$this->runner->run();
@@ -72,6 +82,8 @@ final class InstallHooks implements Hookable {
 	/**
 	 * Whether this request may run a migration inline: a signed-in user with `manage_woocommerce`, on an admin page
 	 * that is not an AJAX, admin-post or cron request (D-022).
+	 *
+	 * @since 0.1.0
 	 */
 	public static function inlineAllowed(): bool {
 		if ( ! is_admin() || wp_doing_ajax() || wp_doing_cron() ) {

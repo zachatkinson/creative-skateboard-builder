@@ -21,6 +21,17 @@ function collectConsoleErrors( page: Page ): string[] {
 		}
 	} );
 	page.on( 'pageerror', ( error ) => errors.push( error.message ) );
+	// The console says a resource failed without saying which; the response does.
+	page.on( 'response', ( response ) => {
+		if ( response.status() >= 400 ) {
+			errors.push( `${ response.status() } ${ response.url() }` );
+		}
+	} );
+	page.on( 'requestfailed', ( request ) => {
+		if ( request.url().includes( '/creative-skateboard-builder/' ) ) {
+			errors.push( `failed ${ request.url() }` );
+		}
+	} );
 	return errors;
 }
 
@@ -82,23 +93,39 @@ test.describe( 'Creative Skateboard Builder, milestone 1', () => {
 		expect( errors, errors.join( '\n' ) ).toEqual( [] );
 	} );
 
-	test( 'a shop page loads nothing of the plugin and raises no console error', async ( {
-		page,
-	} ) => {
-		const errors = collectConsoleErrors( page );
-		const requests = collectPluginRequests( page );
-		const response = await page.goto( '/?post_type=product' );
-		expect( response?.status() ).toBe( 200 );
-		await expect( page.locator( 'body' ) ).toBeVisible();
-		const head = await page.locator( 'head' ).innerHTML();
-		expect( head ).not.toContain( 'cbuild' );
-		// By element, since wp-env titles the site after the folder, which is the plugin's slug.
-		await expect(
-			page.locator(
-				'head [id*="creative-skateboard-builder"], head [href*="/creative-skateboard-builder/"], head [src*="/creative-skateboard-builder/"]'
-			)
-		).toHaveCount( 0 );
-		expect( requests, requests.join( '\n' ) ).toEqual( [] );
-		expect( errors, errors.join( '\n' ) ).toEqual( [] );
-	} );
+	// axe is not run on these: the plugin adds no element to them (asserted below), and what axe finds there is
+	// WooCommerce's Mini-Cart drawer and the theme's navigation list (D-035).
+	// The shop's own pages, as a visitor sees them (tests/e2e/fixtures/shop.php opens the shop and makes the product).
+	const SHOP_PAGES = [
+		[ 'the shop', '/?post_type=product' ],
+		[ 'a product', '/?product=smoke-test-deck' ],
+		[ 'the cart', '/?pagename=cart' ],
+		[ 'the checkout', '/?pagename=checkout' ],
+	] as const;
+
+	for ( const [ name, path ] of SHOP_PAGES ) {
+		test( `${ name } loads nothing of the plugin and raises no console error`, async ( {
+			page,
+		} ) => {
+			const errors = collectConsoleErrors( page );
+			const requests = collectPluginRequests( page );
+			const response = await page.goto( path );
+			expect( response?.status() ).toBe( 200 );
+			await expect( page.locator( 'body' ) ).toBeVisible();
+			await expect(
+				page.locator( 'meta[name="woo-coming-soon-page"]' )
+			).toHaveCount( 0 );
+			await page.waitForLoadState( 'networkidle' );
+			const head = await page.locator( 'head' ).innerHTML();
+			expect( head ).not.toContain( 'cbuild' );
+			// By element, since wp-env titles the site after the folder, which is the plugin's slug.
+			await expect(
+				page.locator(
+					'head [id*="creative-skateboard-builder"], head [href*="/creative-skateboard-builder/"], head [src*="/creative-skateboard-builder/"]'
+				)
+			).toHaveCount( 0 );
+			expect( requests, requests.join( '\n' ) ).toEqual( [] );
+			expect( errors, errors.join( '\n' ) ).toEqual( [] );
+		} );
+	}
 } );

@@ -45,4 +45,15 @@ final class MigrationRegistryTest extends TestCase {
 		self::assertSame( 'noop_1', $noop->key() );
 		self::assertTrue( $noop->run( \CreativeBranding\SkateboardBuilder\Install\Migrations\Cursor::start() )->done );
 	}
+
+	public function test_the_version_is_raised_with_every_migration_added(): void {
+		// VERSION and CLASSES are two constants: a migration appended without raising VERSION would never run on a
+		// site already at that version. Each release that adds one adds its pair here.
+		$versionAfter = array(
+			2 => '1',
+		);
+		self::assertArrayHasKey( count( MigrationRegistry::CLASSES ), $versionAfter, 'a migration was added: raise MigrationRegistry::VERSION and add the pair here' );
+		self::assertSame( $versionAfter[ count( MigrationRegistry::CLASSES ) ], MigrationRegistry::VERSION );
+		self::assertSame( MigrationRegistry::CLASSES, array_values( array_unique( MigrationRegistry::CLASSES ) ) );
+	}
 }

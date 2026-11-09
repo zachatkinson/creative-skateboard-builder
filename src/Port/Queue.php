@@ -23,6 +23,8 @@ interface Queue {
 	/**
 	 * Run an action as soon as the queue can, once: a second call while one is pending is dropped.
 	 *
+	 * @since 0.1.0
+	 *
 	 * @param string               $hook The action.
 	 * @param array<string, mixed> $args Its arguments.
 	 */
@@ -30,6 +32,8 @@ interface Queue {
 
 	/**
 	 * Run an action at a moment, once: dropped while one with this hook is pending.
+	 *
+	 * @since 0.1.0
 	 *
 	 * @param int                  $timestamp When, as a UTC timestamp.
 	 * @param string               $hook      The action.
@@ -40,12 +44,16 @@ interface Queue {
 	/**
 	 * Whether an action is pending or running.
 	 *
+	 * @since 0.1.0
+	 *
 	 * @param string $hook The action.
 	 */
 	public function isPending( string $hook ): bool;
 
 	/**
 	 * Cancel every pending action with this hook.
+	 *
+	 * @since 0.1.0
 	 *
 	 * @param string $hook The action.
 	 */

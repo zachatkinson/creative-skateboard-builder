@@ -2,7 +2,7 @@ import { expect, Page } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 
 /**
- * Fails on serious and critical WCAG 2.2 AA violations inside a region; shared by every spec.
+ * Fails on any violation of the WCAG 2.0, 2.1 and 2.2 A and AA rules inside a region; shared by every spec.
  *
  * @param page    The page.
  * @param name    What is being checked, for the message.
@@ -35,14 +35,14 @@ export async function axe(
 		.disableRules( exempt );
 	outside.forEach( ( selector ) => builder.exclude( selector ) );
 	const results = await builder.analyze();
-	const serious = results.violations.filter(
-		( v ) => v.impact === 'serious' || v.impact === 'critical'
-	);
+	// Every violation of the tagged rules, whatever impact axe gives it (docs/AUDIT.md: the A and AA rules).
+	const violations = results.violations;
 	expect(
-		serious,
+		violations,
 		`${ name }: ${ JSON.stringify(
-			serious.map( ( v ) => ( {
+			violations.map( ( v ) => ( {
 				id: v.id,
+				impact: v.impact,
 				nodes: v.nodes.map( ( n ) => n.html ),
 			} ) ),
 			null,

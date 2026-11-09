@@ -25,6 +25,8 @@ final class SchemaMigration implements Migration {
 
 	/**
 	 * The key.
+	 *
+	 * @since 0.1.0
 	 */
 	public function key(): string {
 		return 'schema_1';
@@ -32,6 +34,8 @@ final class SchemaMigration implements Migration {
 
 	/**
 	 * Create or update the tables.
+	 *
+	 * @since 0.1.0
 	 *
 	 * @param Cursor $cursor Ignored: dbDelta() is one statement set.
 	 * @throws PluginException When a table is still missing afterwards: dbDelta() does not say when a CREATE TABLE fails.

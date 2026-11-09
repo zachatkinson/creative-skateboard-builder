@@ -49,6 +49,8 @@ final class MigrationRunner {
 	/**
 	 * Constructor.
 	 *
+	 * @since 0.1.0
+	 *
 	 * @param MigrationRegistry $registry The migrations, oldest first.
 	 * @param MigrationStore    $store    Versions, states and the lock.
 	 * @param Clock             $clock    The clock.
@@ -66,6 +68,8 @@ final class MigrationRunner {
 	/**
 	 * Whether the stored schema version is behind the code's.
 	 *
+	 * @since 0.1.0
+	 *
 	 * @phpstan-impure A run in between changes the answer.
 	 */
 	public function needed(): bool {
@@ -76,6 +80,8 @@ final class MigrationRunner {
 	 * Whether there is work to do now: the version is behind and no failed migration is still waiting. One read of
 	 * the states, and only while the version is behind.
 	 *
+	 * @since 0.1.0
+	 *
 	 * @phpstan-impure The clock and a run in between change the answer.
 	 */
 	public function due(): bool {
@@ -84,6 +90,8 @@ final class MigrationRunner {
 
 	/**
 	 * Seconds to wait after a failed attempt.
+	 *
+	 * @since 0.1.0
 	 *
 	 * @param int $attempts How many attempts have been made.
 	 */
@@ -107,6 +115,8 @@ final class MigrationRunner {
 
 	/**
 	 * Queue one job to run the migrations off this request (D-022). The queue drops a second while one is pending.
+	 *
+	 * @since 0.1.0
 	 */
 	public function queue(): void {
 		$this->queue->enqueueUnique( Options::JOB_MIGRATE );
@@ -114,6 +124,8 @@ final class MigrationRunner {
 
 	/**
 	 * Run what is pending, within the budget.
+	 *
+	 * @since 0.1.0
 	 *
 	 * @param int $budgetSeconds Seconds to work before queuing the rest; 0 runs one batch.
 	 */

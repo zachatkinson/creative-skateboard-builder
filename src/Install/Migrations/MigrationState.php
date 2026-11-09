@@ -27,6 +27,8 @@ final class MigrationState {
 	/**
 	 * Constructor.
 	 *
+	 * @since 0.1.0
+	 *
 	 * @param string   $key        The migration's key.
 	 * @param string   $status     One of the status constants.
 	 * @param Cursor   $cursor     Where the next batch starts.
@@ -50,6 +52,8 @@ final class MigrationState {
 	/**
 	 * A migration that has never run.
 	 *
+	 * @since 0.1.0
+	 *
 	 * @param string $key The migration's key.
 	 */
 	public static function pending( string $key ): self {
@@ -58,6 +62,8 @@ final class MigrationState {
 
 	/**
 	 * Whether it finished.
+	 *
+	 * @since 0.1.0
 	 */
 	public function isDone(): bool {
 		return self::DONE === $this->status;
@@ -65,6 +71,8 @@ final class MigrationState {
 
 	/**
 	 * A run begins: running, one more attempt, the start kept from the first run.
+	 *
+	 * @since 0.1.0
 	 *
 	 * @param int $now UTC timestamp.
 	 */
@@ -75,6 +83,8 @@ final class MigrationState {
 	/**
 	 * A batch ended with a new cursor.
 	 *
+	 * @since 0.1.0
+	 *
 	 * @param Cursor $cursor Where the next batch starts.
 	 */
 	public function advanced( Cursor $cursor ): self {
@@ -84,6 +94,8 @@ final class MigrationState {
 	/**
 	 * Finished.
 	 *
+	 * @since 0.1.0
+	 *
 	 * @param int $now UTC timestamp.
 	 */
 	public function finished( int $now ): self {
@@ -92,6 +104,8 @@ final class MigrationState {
 
 	/**
 	 * Failed; the cursor stays, so the next run resumes from it, and not before `$retryAt`.
+	 *
+	 * @since 0.1.0
 	 *
 	 * @param string $error   The failure's message.
 	 * @param int    $retryAt The moment before which it is not tried again, UTC timestamp.
@@ -103,6 +117,8 @@ final class MigrationState {
 	/**
 	 * Whether it failed and its wait has not passed.
 	 *
+	 * @since 0.1.0
+	 *
 	 * @param int $now UTC timestamp.
 	 */
 	public function isWaiting( int $now ): bool {
@@ -111,6 +127,8 @@ final class MigrationState {
 
 	/**
 	 * For the store.
+	 *
+	 * @since 0.1.0
 	 *
 	 * @return array{status: string, cursor: array{position: int|string|null, done: bool}, started_at: int|null, finished_at: int|null, attempts: int, error: string, retry_at: int|null}
 	 */
@@ -128,6 +146,8 @@ final class MigrationState {
 
 	/**
 	 * From the store; anything malformed reads as pending.
+	 *
+	 * @since 0.1.0
 	 *
 	 * @param string $key  The migration's key.
 	 * @param mixed  $data What was stored.

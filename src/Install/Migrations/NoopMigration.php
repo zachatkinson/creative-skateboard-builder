@@ -21,6 +21,8 @@ final class NoopMigration implements Migration {
 
 	/**
 	 * The key.
+	 *
+	 * @since 0.1.0
 	 */
 	public function key(): string {
 		return 'noop_1';
@@ -28,6 +30,8 @@ final class NoopMigration implements Migration {
 
 	/**
 	 * Nothing to do.
+	 *
+	 * @since 0.1.0
 	 *
 	 * @param Cursor $cursor Ignored.
 	 */

@@ -26,6 +26,8 @@ final class WooCommerceLogger implements Logger {
 	/**
 	 * Write one line.
 	 *
+	 * @since 0.1.0
+	 *
 	 * @param string               $level   One of the level constants.
 	 * @param string               $message The line.
 	 * @param array<string, mixed> $context Values worth keeping beside it.

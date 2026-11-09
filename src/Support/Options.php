@@ -67,6 +67,8 @@ final class Options {
 	/**
 	 * Every fixed-name option, per site.
 	 *
+	 * @since 0.1.0
+	 *
 	 * @return string[]
 	 */
 	public static function names(): array {
@@ -75,6 +77,8 @@ final class Options {
 
 	/**
 	 * Every fixed-name site transient, for the network.
+	 *
+	 * @since 0.1.0
 	 *
 	 * @return string[]
 	 */
@@ -85,6 +89,8 @@ final class Options {
 	/**
 	 * Every Action Scheduler action the plugin schedules.
 	 *
+	 * @since 0.1.0
+	 *
 	 * @return string[]
 	 */
 	public static function jobs(): array {
@@ -94,6 +100,8 @@ final class Options {
 	/**
 	 * Every product meta key (none before milestone 3).
 	 *
+	 * @since 0.1.0
+	 *
 	 * @return string[]
 	 */
 	public static function metaKeys(): array {
@@ -102,6 +110,8 @@ final class Options {
 
 	/**
 	 * Every settings key (none before milestone 4; docs/SETTINGS.md).
+	 *
+	 * @since 0.1.0
 	 *
 	 * @return string[]
 	 */

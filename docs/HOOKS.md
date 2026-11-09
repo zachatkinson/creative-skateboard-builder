@@ -6,7 +6,7 @@ Everything another plugin, a theme or a shop's own code may rely on, added as it
 
 ## Milestone 1: the foundation (0.1.0)
 
-The foundation adds one filter and one constant, both for the updater. It adds no action, REST route, ability, block, WP-CLI command, setting key, meta key, CSS class or DOM event.
+The foundation adds one filter and one constant a site may set, both for the updater, and four constants it defines itself. It adds no action, REST route, ability, block, WP-CLI command, setting key, meta key, CSS class or DOM event.
 
 ### `cbuild_updates_enabled` (filter)
 
@@ -25,6 +25,17 @@ add_filter( 'cbuild_updates_enabled', '__return_false' );
 - **Since:** 0.1.0
 - **What it does:** `define( 'CBUILD_DISABLE_UPDATES', true );` in `wp-config.php` turns the update check off for a site whose releases are deployed another way. The `cbuild_updates_enabled` filter runs after it and may turn the check back on.
 - **Where it is read:** `Updates\Updater::enabled()`.
+
+### Constants the plugin defines
+
+Defined by the main file as soon as the plugin loads, also below the floors. Read them; never define them.
+
+| Constant | Since | What it holds |
+| --- | --- | --- |
+| `CBUILD_VERSION` | 0.1.0 | The plugin's version, the same as its header. |
+| `CBUILD_FILE` | 0.1.0 | The main file's full path. |
+| `CBUILD_PATH` | 0.1.0 | The plugin's folder, with a trailing slash. |
+| `CBUILD_URL` | 0.1.0 | The plugin's URL, with a trailing slash. |
 
 ### Options
 

@@ -28,6 +28,8 @@ final class Schema {
 	/**
 	 * Create or upgrade every table. Idempotent.
 	 *
+	 * @since 0.1.0
+	 *
 	 * @return string[] dbDelta's report lines; empty when nothing changed.
 	 */
 	public static function install(): array {
@@ -38,6 +40,8 @@ final class Schema {
 	/**
 	 * The plugin's tables the database does not have. dbDelta() reports a failed CREATE TABLE as if it had worked,
 	 * so the migration asks.
+	 *
+	 * @since 0.1.0
 	 *
 	 * @return string[] Full table names.
 	 */
@@ -57,6 +61,8 @@ final class Schema {
 	/**
 	 * The full CREATE TABLE set as one string, dbDelta style. The specs index: one row per part and spec, the value
 	 * as a number or a short text, where it came from and when. Saved builds: a customer's picks under a UUID.
+	 *
+	 * @since 0.1.0
 	 */
 	public static function sql(): string {
 		global $wpdb;

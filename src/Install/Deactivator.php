@@ -28,6 +28,8 @@ final class Deactivator {
 	/**
 	 * Deactivation hook.
 	 *
+	 * @since 0.1.0
+	 *
 	 * @param bool|mixed $networkWide Whether the plugin is being deactivated for the whole network.
 	 */
 	public static function deactivate( $networkWide = false ): void {
@@ -52,6 +54,8 @@ final class Deactivator {
 	/**
 	 * Deactivate the current site. Action Scheduler's tables follow switch_to_blog(), and a site of a network that
 	 * was never loaded has none yet, so its queue is left alone: it holds nothing.
+	 *
+	 * @since 0.1.0
 	 */
 	public static function site(): void {
 		global $wpdb;

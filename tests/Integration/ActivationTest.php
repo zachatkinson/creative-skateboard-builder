@@ -261,6 +261,15 @@ final class ActivationTest extends IntegrationTestCase {
 	}
 
 	public function test_the_floors_notice_is_an_error_notice_naming_every_floor(): void {
+		wp_set_current_user( (int) self::factory()->user->create( array( 'role' => 'shop_manager' ) ) );
+		ob_start();
+		Plugin::floorsNotice();
+		self::assertSame( '', (string) ob_get_clean(), 'not shown to someone who cannot manage plugins' );
+
+		wp_set_current_user( (int) self::factory()->user->create( array( 'role' => 'administrator' ) ) );
+		if ( is_multisite() ) {
+			grant_super_admin( get_current_user_id() );
+		}
 		ob_start();
 		Plugin::floorsNotice();
 		$html = (string) ob_get_clean();
@@ -278,7 +287,7 @@ final class ActivationTest extends IntegrationTestCase {
 		$result = self::wpEval(
 			'ob_start(); do_action( "admin_notices" ); $notice = ob_get_clean();' .
 			'echo has_action( "' . Options::JOB_MIGRATE . '" ) ? "hooked" : "nothing", "|", has_filter( "update_plugins_raw.githubusercontent.com" ) ? "updater" : "no-updater", "|", $notice;',
-			array( '--skip-plugins=woocommerce', '--skip-themes' )
+			array( '--skip-plugins=woocommerce', '--skip-themes', '--user=1' )
 		);
 		self::assertSame( 0, $result['code'], $result['err'] );
 		self::assertStringStartsWith( 'nothing|updater|', $result['out'], 'no hook of the plugin\'s but the updater (D-003)' );
@@ -316,6 +325,12 @@ final class ActivationTest extends IntegrationTestCase {
 	public function test_no_text_domain_is_loaded_by_hand(): void {
 		// WordPress registers the Domain Path of an active plugin itself (wp-settings.php:589-592, D-028).
 		self::assertStringNotContainsString( 'load_plugin_textdomain', (string) file_get_contents( CBUILD_FILE ) );
-		self::assertSame( array(), array_filter( glob( CBUILD_PATH . 'src/**/*.php' ) ?: array(), static fn( string $f ): bool => str_contains( (string) file_get_contents( $f ), 'load_plugin_textdomain' ) ) );
+		// Every file under src/, at any depth: glob()'s ** is not recursive in PHP.
+		$files = array();
+		foreach ( new \RecursiveIteratorIterator( new \RecursiveDirectoryIterator( CBUILD_PATH . 'src', \FilesystemIterator::SKIP_DOTS ) ) as $file ) {
+			$files[] = (string) $file;
+		}
+		self::assertGreaterThan( 20, count( $files ) );
+		self::assertSame( array(), array_values( array_filter( $files, static fn( string $f ): bool => str_contains( (string) file_get_contents( $f ), 'load_plugin_textdomain' ) ) ) );
 	}
 }

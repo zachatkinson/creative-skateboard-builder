@@ -77,6 +77,8 @@ final class Container {
 	/**
 	 * Get (building on first use) a service.
 	 *
+	 * @since 0.1.0
+	 *
 	 * @template T of object
 	 * @param class-string<T> $id Service class or interface.
 	 * @return T
@@ -90,6 +92,8 @@ final class Container {
 	/**
 	 * Get (building on first use) a service, untyped.
 	 *
+	 * @since 0.1.0
+	 *
 	 * @param string $id Service class or interface.
 	 */
 	public function resolve( string $id ): object {
@@ -100,7 +104,10 @@ final class Container {
 	}
 
 	/**
-	 * Replace a service (tests, and a shop's own plugin when it swaps an implementation).
+	 * Replace a service, for tests. Not part of the public API: another plugin changes behaviour through the hooks in
+	 * docs/HOOKS.md.
+	 *
+	 * @since 0.1.0
 	 *
 	 * @param string $id       Service class or interface.
 	 * @param object $instance Replacement.
@@ -112,6 +119,8 @@ final class Container {
 	/**
 	 * Whether a service has been built or set.
 	 *
+	 * @since 0.1.0
+	 *
 	 * @param string $id Service class or interface.
 	 */
 	public function has( string $id ): bool {
@@ -120,6 +129,8 @@ final class Container {
 
 	/**
 	 * Every class that attaches hooks, built and ready.
+	 *
+	 * @since 0.1.0
 	 *
 	 * @return Hookable[]
 	 */

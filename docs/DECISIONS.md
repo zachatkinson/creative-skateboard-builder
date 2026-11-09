@@ -264,7 +264,7 @@ When `cbuild_db_version` is behind:
 
 ### D-023 · The floors are checked in the main file, before the autoloader · 2026-11-09
 
-`creative-skateboard-builder.php` checks `PHP_VERSION_ID` and the WordPress version before it loads the autoloader. Below either floor, or without WooCommerce 11.2, it shows one notice and hooks nothing. The check is `Support\Requirements`, a file the main file requires directly, so the unit suite tests it with the versions injected. The main file, `uninstall.php` and `Support\Requirements` parse on PHP 7.4, the oldest PHP WordPress 7.0 and 7.1 run on, and CI lints them with PHP 7.4.
+`creative-skateboard-builder.php` checks `PHP_VERSION` and the WordPress version before it loads the autoloader. Below either floor, or without WooCommerce 11.2, it shows one notice and hooks nothing. The check is `Support\Requirements`, a file the main file requires directly, so the unit suite tests it with the versions injected. The main file, `uninstall.php` and `Support\Requirements` parse on PHP 7.4, the oldest PHP WordPress 7.0 and 7.1 run on, and CI lints them with PHP 7.4.
 
 **Why:** WordPress reads `Requires PHP` and `Requires at least` only when a plugin is activated (`validate_plugin_requirements()`, called from `activate_plugin()`, wp-admin/includes/plugin.php:663), so a host downgraded after activation would load the plugin anyway; the main file is then the only thing that runs. WordPress 7.0.8 and 7.1.4 require PHP 7.4 (api.wordpress.org version-check, 9 November 2026), and the PHPCompatibility run at `8.5-` cannot flag 8.5-only syntax. Raised by Claude in Cowork's review of the milestone 1 plan.
 **Status:** Accepted.
@@ -341,4 +341,50 @@ The lock's value is the moment it was taken or last refreshed, a colon, and a ra
 A migration that fails records when it may be tried again: 60 seconds after the first failure, then 5 minutes, 30 minutes, and an hour after every later one. Until then no request queues a job and no admin page runs it inline; the runner schedules one `cbuild_migrate` for that moment. `SchemaMigration` fails when a table is still missing after `dbDelta()`, which does not report a failed `CREATE TABLE`.
 
 **Why:** Raised by the milestone 1 audit. With a bare timestamp, a run that outlived the 300 second expiry and was taken over would carry on, write its own time over the new holder's and then delete the new holder's lock, letting a third run in beside it (`docs/AUDIT.md`: "two requests never run the same one"). Without a wait, a step that fails every time was queued again by the next front-end request and run again on every manager's admin page, with an error logged each time (`docs/AUDIT.md`: "retried with backoff").
+**Status:** Accepted.
+
+### D-034 · Plugin Check's one allowed finding · 2026-11-09
+
+`npm run plugin-check` fails on any error or warning but one: `plugin_updater_detected`, which Plugin Check raises for the `Update URI` header. `tools/plugin-check.sh` names that code and no other.
+
+**Why:** The finding is a WordPress.org hosting rule. This plugin is installed from a zip and updates from the agency's releases (D-003); the header is what points core at them and stops WordPress.org offering a plugin with the same slug over it. Creative Search allows the same one for the same reason. Raised by the milestone 1 spec review, since the allowance was written only in the script.
+**Status:** Accepted.
+
+### D-035 · axe runs on what the plugin draws · 2026-11-09
+
+The axe helper fails on any violation of the WCAG 2.0, 2.1 and 2.2 A and AA rules, whatever its impact, inside the region it is given. It is run on every screen and state the plugin draws. On a page where the plugin draws nothing, the test asserts that instead (no element, no request, no console error of the plugin's) and axe is not run. In milestone 1 that is the shop, a product, the cart and the checkout; axe runs on the plugin's row of the Plugins screen, with core's own two links in that row left out at the call.
+
+**Why:** The milestone 1 plan said the smoke test would run axe on the shop's pages. Run there on 9 November 2026 with WooCommerce 11.2.2 and Twenty Twenty-Five, axe reports `aria-hidden-focus` in WooCommerce's Mini-Cart drawer and `list` in the theme's navigation block, on every page, with the plugin adding nothing to any of them. Passing would mean exempting other projects' markup rule by rule, and a failure there would say nothing about this plugin. From milestone 6 the builder's own region is checked on every state.
+**Status:** Accepted.
+
+### D-036 · What a narrow pull request runs, and the oldest leg's browsers · 2026-11-09
+
+As Creative Search: a pull request that changes only `tests/e2e/`, `.github/workflows/`, `docs/` or Markdown runs the standards, the unit tests and the newest leg, not the other legs, mutation testing, the benchmarks or the release dry run. If git cannot read the diff, everything runs. A push to `main` always runs everything, and a release waits for that run. The oldest leg runs the integration suite, Plugin Check, the zip's lifecycle and two browser projects (`chromium-desktop` and `webkit-phone`); the newest leg runs every browser project. `/audit-milestone` runs all nine local projects on both legs before the pull request.
+
+**Why:** The oldest leg is there for the WordPress and WooCommerce versions, which the integration suite and one desktop and one phone engine show; the engines themselves are covered on the newest. A change to a browser test or a workflow cannot change what the other legs measure. Raised by the milestone 1 spec review, since the narrowing was not written down here.
+**Status:** Accepted.
+
+### D-037 · The schema is the first migration, and the 7.0 leg is its latest patch · 2026-11-09
+
+The tables are created by a migration, `schema_1`, which runs first; the no-op step the roadmap asks for, `noop_1`, runs second and proves a step with nothing to do. Activation runs the migrations, so "activation creates the two tables" holds. A later schema change is a `schema_<n>` migration calling the same `Schema::install()`.
+
+The oldest leg pins WordPress 7.0.8, the 7.0 branch's latest release on 9 November 2026, with WooCommerce 11.2.0. `Requires at least` stays 7.0.
+
+**Why:** One path creates and changes tables, on activation and on upgrade alike, under the same lock and with the same failure handling (D-033); a schema outside the migrations would be a second path to keep right. A shop on the 7.0 branch gets its security releases, so its latest patch is what a real 7.0 site runs. Both raised by the milestone 1 spec review as differences from the roadmap's wording.
+**Status:** Accepted.
+
+### D-038 · What the 90 % floors measure · 2026-11-09
+
+"90 % of lines overall" and "90 % MSI outside the domain" are measured on everything in `src/` except the classes that cannot run without WordPress, WooCommerce or the database, which `phpunit.xml.dist` and `infection.json5` exclude by name: `src/Hooks`, `src/Repository`, `Plugin.php`, the two WordPress-bound adapters, `Install\Activator`, `Deactivator`, `Schema`, `Uninstaller`, `Migrations\SchemaMigration`, `Updates\HttpManifestSource` and `Updates\Updater`. A new class is measured unless it is added to that list with a reason. The excluded classes are proven by the integration suite, whose coverage is not measured. On 9 November 2026 the measured set is 299 lines at 91.97 %, and 315 mutants at 93 %.
+
+Adding a class to the exclusions narrows a floor, and needs Zach as moving one does.
+
+**Why:** The unit suite runs without WordPress, so a class that calls it cannot be covered there, and the WordPress test suite on PHPUnit 9.6 has no coverage driver wired. Before the milestone 1 audit the floor read a hand-picked list of files, so a new untested class was invisible to it; `Support\Options` and `Support\Tables` had no unit tests for that reason. The updater is the largest excluded class and the most security-sensitive: its reader (`Updates\Manifest`) is measured, and its hooks are driven by 14 integration tests. Raised by both milestone 1 reviews.
+**Status:** Accepted for milestone 1. Zach to confirm the list, and whether measuring the integration suite's coverage should be a later milestone's work.
+
+### D-039 · One uninstaller · 2026-11-09
+
+`uninstall.php` holds no logic of its own. With the autoloader it calls `Install\Uninstaller::run()`; without it (a checkout where Composer never ran) it loads the three files the uninstaller is made of, `Support\Options`, `Support\Tables` and `Install\Uninstaller`, and calls the same method. A test fails if the uninstaller comes to need a class `uninstall.php` does not load.
+
+**Why:** The first version repeated the uninstaller's list by hand for the no-autoloader case, kept in step by a test that matched strings. Both milestone 1 reviews found it: a rule written twice, whose second copy never ran in any test and had already fallen behind the first.
 **Status:** Accepted.

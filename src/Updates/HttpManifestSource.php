@@ -29,12 +29,16 @@ final class HttpManifestSource implements ManifestSource {
 	/**
 	 * Constructor.
 	 *
+	 * @since 0.1.0
+	 *
 	 * @param string $url The manifest's https address.
 	 */
 	public function __construct( private string $url ) {}
 
 	/**
 	 * The latest release, cached for the network.
+	 *
+	 * @since 0.1.0
 	 */
 	public function latest(): ?Manifest {
 		$cached = get_site_transient( Options::UPDATE_MANIFEST );
@@ -48,6 +52,8 @@ final class HttpManifestSource implements ManifestSource {
 
 	/**
 	 * The latest release read again now; the answer replaces the cached one.
+	 *
+	 * @since 0.1.0
 	 */
 	public function fresh(): ?Manifest {
 		self::flush();
@@ -56,6 +62,8 @@ final class HttpManifestSource implements ManifestSource {
 
 	/**
 	 * Forget the cached manifest (Dashboard > Updates > Check again).
+	 *
+	 * @since 0.1.0
 	 */
 	public static function flush(): void {
 		delete_site_transient( Options::UPDATE_MANIFEST );

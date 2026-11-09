@@ -39,6 +39,8 @@ final class Plugin {
 
 	/**
 	 * Boot on plugins_loaded.
+	 *
+	 * @since 0.1.0
 	 */
 	public static function boot(): void {
 		if ( self::$booted ) {
@@ -61,6 +63,8 @@ final class Plugin {
 
 	/**
 	 * The container (lazily built).
+	 *
+	 * @since 0.1.0
 	 */
 	public static function container(): Container {
 		if ( null === self::$container ) {
@@ -71,6 +75,8 @@ final class Plugin {
 
 	/**
 	 * WooCommerce's version, or null when it is not active.
+	 *
+	 * @since 0.1.0
 	 */
 	public static function woocommerceVersion(): ?string {
 		if ( ! class_exists( 'WooCommerce' ) || ! defined( 'WC_VERSION' ) ) {
@@ -81,9 +87,14 @@ final class Plugin {
 
 	/**
 	 * The notice when WooCommerce is missing or too old: the same one the main file shows below the PHP or WordPress
-	 * floor (D-023).
+	 * floor (D-023). Shown to the people who can do something about it.
+	 *
+	 * @since 0.1.0
 	 */
 	public static function floorsNotice(): void {
+		if ( ! current_user_can( 'activate_plugins' ) ) {
+			return;
+		}
 		wp_admin_notice( Requirements::notice(), array( 'type' => 'error' ) );
 	}
 }

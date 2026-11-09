@@ -22,6 +22,8 @@ final class Cast {
 	/**
 	 * An integer; anything not numeric is the fallback.
 	 *
+	 * @since 0.1.0
+	 *
 	 * @param mixed $value    Value.
 	 * @param int   $fallback Fallback.
 	 */
@@ -31,6 +33,8 @@ final class Cast {
 
 	/**
 	 * A string; arrays, objects and null are the fallback.
+	 *
+	 * @since 0.1.0
 	 *
 	 * @param mixed  $value    Value.
 	 * @param string $fallback Fallback.
@@ -42,6 +46,8 @@ final class Cast {
 	/**
 	 * A float from a number or numeric string, else the fallback.
 	 *
+	 * @since 0.1.0
+	 *
 	 * @param mixed $value    Value.
 	 * @param float $fallback When the value is not numeric.
 	 */
@@ -51,6 +57,8 @@ final class Cast {
 
 	/**
 	 * A boolean: true, 1, '1', 'yes', 'true' and 'on' are true; everything else false.
+	 *
+	 * @since 0.1.0
 	 *
 	 * @param mixed $value Value.
 	 */
@@ -66,6 +74,8 @@ final class Cast {
 
 	/**
 	 * A list of integers from an array (non-numeric members dropped); anything else is empty.
+	 *
+	 * @since 0.1.0
 	 *
 	 * @param mixed $value Value.
 	 * @return int[]
@@ -83,6 +93,8 @@ final class Cast {
 	/**
 	 * A list of strings from an array (non-scalar members dropped); anything else is empty.
 	 *
+	 * @since 0.1.0
+	 *
 	 * @param mixed $value Value.
 	 * @return string[]
 	 */
@@ -98,6 +110,8 @@ final class Cast {
 
 	/**
 	 * An array keyed by strings (other keys dropped); anything else is empty.
+	 *
+	 * @since 0.1.0
 	 *
 	 * @param mixed $value Value.
 	 * @return array<string, mixed>

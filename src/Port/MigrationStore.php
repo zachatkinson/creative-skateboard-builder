@@ -23,17 +23,23 @@ interface MigrationStore {
 
 	/**
 	 * The installed schema version, '0' when none. May come from the object cache.
+	 *
+	 * @since 0.1.0
 	 */
 	public function schemaVersion(): string;
 
 	/**
 	 * The installed schema version read from the database now, past any cache: what the runner trusts once it holds
 	 * the lock, since another request may have finished in between.
+	 *
+	 * @since 0.1.0
 	 */
 	public function freshSchemaVersion(): string;
 
 	/**
 	 * Record the schema version, once every migration is done.
+	 *
+	 * @since 0.1.0
 	 *
 	 * @param string $version The version.
 	 */
@@ -41,6 +47,8 @@ interface MigrationStore {
 
 	/**
 	 * One migration's stored state, or null when it has never started.
+	 *
+	 * @since 0.1.0
 	 *
 	 * @param string $key The migration's key.
 	 * @return array<string, mixed>|null
@@ -50,12 +58,16 @@ interface MigrationStore {
 	/**
 	 * Every migration's stored state, keyed by migration.
 	 *
+	 * @since 0.1.0
+	 *
 	 * @return array<string, array<string, mixed>>
 	 */
 	public function states(): array;
 
 	/**
 	 * Save one migration's state.
+	 *
+	 * @since 0.1.0
 	 *
 	 * @param string               $key  The migration's key.
 	 * @param array<string, mixed> $data The state, as MigrationState::toArray() writes it.
@@ -64,6 +76,8 @@ interface MigrationStore {
 
 	/**
 	 * Take the lock in one atomic step, or take over one older than the TTL by compare-and-swap (D-021).
+	 *
+	 * @since 0.1.0
 	 *
 	 * @param int $now The moment, as a UTC timestamp.
 	 * @param int $ttl Seconds after which a held lock counts as abandoned.
@@ -74,6 +88,8 @@ interface MigrationStore {
 	/**
 	 * Keep a held lock fresh during a long run.
 	 *
+	 * @since 0.1.0
+	 *
 	 * @param int $now The moment, as a UTC timestamp.
 	 * @return bool Whether the lock is still this caller's. False means another request took it over, and this run
 	 *              must stop without touching it.
@@ -82,11 +98,15 @@ interface MigrationStore {
 
 	/**
 	 * Release the lock, if this caller holds it. A lock another request has taken over is left alone.
+	 *
+	 * @since 0.1.0
 	 */
 	public function releaseLock(): void;
 
 	/**
 	 * Remove the lock whoever holds it: deactivation, where no run should outlive the plugin.
+	 *
+	 * @since 0.1.0
 	 */
 	public function clearLock(): void;
 }

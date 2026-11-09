@@ -33,6 +33,12 @@ Two requests, both to GitHub, both for the plugin's own updates, and neither abo
 
 Neither carries the site's address, the version of WordPress or WooCommerce, or any identifier: the user agent of both names only the plugin and its version, in place of WordPress's default, which includes the site's address (`UpdaterTest`). GitHub sees the server's IP address, as any host does. `CBUILD_DISABLE_UPDATES` or the `cbuild_updates_enabled` filter turns both off, and then nothing leaves the site at all.
 
+## What is left behind, and when
+
+- **Deactivation** keeps everything but pending scheduled actions and the upgrade lock, so reactivation finds the shop as it was.
+- **Uninstall** removes everything in the table above, on every site of a network.
+- **A site deleted from a network** has its two tables dropped with it where the plugin is loaded on the request that deletes it: active for the network, or on the site the deletion is made from. Deleted from elsewhere, with the plugin active only on that site, its two tables stay in the database until someone drops them. They hold no personal data before milestone 8, and that milestone closes the gap before saved builds exist.
+
 ## Who sees it
 
 Only people who can already read the site's database or WooCommerce's logs. No screen of the plugin's shows any of it in 0.1.0.

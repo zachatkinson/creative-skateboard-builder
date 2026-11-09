@@ -146,6 +146,11 @@ abstract class IntegrationTestCase extends WP_UnitTestCase {
 		}
 		$found = shell_exec( 'command -v wp 2>/dev/null' ); // phpcs:ignore
 		if ( ! is_string( $found ) || '' === trim( $found ) ) {
+			// In wp-env and in CI there is always a `wp`: a missing one there means these tests would be skipped
+			// without anyone seeing, so it is an error. Only a bare PHPUnit run outside wp-env may skip them.
+			if ( false !== getenv( 'CI' ) || is_dir( '/var/www/html/wp-content' ) ) {
+				throw new \RuntimeException( 'WP-CLI is not on the path, so the tests that need a second process cannot run.' );
+			}
 			self::$secondSite = false;
 			return false;
 		}

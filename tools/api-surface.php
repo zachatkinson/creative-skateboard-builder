@@ -6,7 +6,8 @@
  *
  * What it reads, and from where:
  *   filters and actions   apply_filters()/do_action() of a cbuild_* hook, anywhere the plugin ships;
- *   constants             CBUILD_* constants a site may define (checked with defined());
+ *   constants             CBUILD_* constants: those a site may define (checked with defined()) and those the plugin
+ *                         defines for others to read;
  *   options, jobs, meta   Support\Options;
  *   tables                Support\Tables;
  *   site transients       Support\Options::siteTransients();
@@ -159,7 +160,7 @@ sort( $cbuild_tables_list );
 $cbuild_surface = array(
 	'filters'           => cbuild_api_matches( $cbuild_php, "/apply_filters(?:_deprecated|_ref_array)?\\(\\s*'(cbuild_[a-z0-9_]+)'/" ),
 	'actions'           => cbuild_api_matches( $cbuild_php, "/do_action(?:_deprecated|_ref_array)?\\(\\s*'(cbuild_[a-z0-9_]+)'/" ),
-	'constants'         => cbuild_api_matches( $cbuild_php, "/defined\\(\\s*'(CBUILD_[A-Z0-9_]+)'/" ),
+	'constants'         => cbuild_api_matches( $cbuild_php, "/defined?\\(\\s*'(CBUILD_[A-Z0-9_]+)'/" ),
 	'options'           => cbuild_api_list( $cbuild_options, 'names' ),
 	'site_transients'   => cbuild_api_list( $cbuild_options, 'siteTransients' ),
 	'tables'            => $cbuild_tables_list,

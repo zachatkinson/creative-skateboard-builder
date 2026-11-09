@@ -27,6 +27,8 @@ final class ActionSchedulerQueue implements Queue {
 	/**
 	 * Run an action as soon as the queue can, once.
 	 *
+	 * @since 0.1.0
+	 *
 	 * @param string               $hook The action.
 	 * @param array<string, mixed> $args Its arguments.
 	 */
@@ -39,6 +41,8 @@ final class ActionSchedulerQueue implements Queue {
 
 	/**
 	 * Run an action at a moment, once.
+	 *
+	 * @since 0.1.0
 	 *
 	 * @param int                  $timestamp When, as a UTC timestamp.
 	 * @param string               $hook      The action.
@@ -54,6 +58,8 @@ final class ActionSchedulerQueue implements Queue {
 	/**
 	 * Whether an action is pending or running.
 	 *
+	 * @since 0.1.0
+	 *
 	 * @param string $hook The action.
 	 */
 	public function isPending( string $hook ): bool {
@@ -65,6 +71,8 @@ final class ActionSchedulerQueue implements Queue {
 
 	/**
 	 * Cancel every pending action with this hook.
+	 *
+	 * @since 0.1.0
 	 *
 	 * @param string $hook The action.
 	 */

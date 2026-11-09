@@ -29,6 +29,8 @@ final class Manifest {
 	/**
 	 * Constructor.
 	 *
+	 * @since 0.1.0
+	 *
 	 * @param string   $version      Version, such as 0.1.0.
 	 * @param string   $package      The zip's https address.
 	 * @param string   $sha256       The zip's SHA-256, 64 lowercase hex characters.
@@ -51,6 +53,8 @@ final class Manifest {
 
 	/**
 	 * Read a decoded manifest; null when anything required is missing or unsafe.
+	 *
+	 * @since 0.1.0
 	 *
 	 * @param mixed $data Decoded JSON.
 	 */
@@ -86,6 +90,8 @@ final class Manifest {
 	/**
 	 * Whether a package address is a zip among this plugin's releases: the prefix as written, then the rest of the
 	 * tag and one file name, in plain characters. No user info, port, query, fragment, encoding or further folder.
+	 *
+	 * @since 0.1.0
 	 *
 	 * @param string $package Address.
 	 */

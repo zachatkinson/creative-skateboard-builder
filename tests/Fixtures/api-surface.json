@@ -4,7 +4,11 @@
     ],
     "actions": [],
     "constants": [
-        "CBUILD_DISABLE_UPDATES"
+        "CBUILD_DISABLE_UPDATES",
+        "CBUILD_FILE",
+        "CBUILD_PATH",
+        "CBUILD_URL",
+        "CBUILD_VERSION"
     ],
     "options": [
         "cbuild_db_version",

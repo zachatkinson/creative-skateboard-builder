@@ -26,6 +26,8 @@ final class Tables {
 	/**
 	 * Every plugin table, in creation order.
 	 *
+	 * @since 0.1.0
+	 *
 	 * @return string[]
 	 */
 	public static function all(): array {
@@ -34,6 +36,8 @@ final class Tables {
 
 	/**
 	 * Fully prefixed table name.
+	 *
+	 * @since 0.1.0
 	 *
 	 * @param string $table One of the class constants.
 	 */
@@ -44,6 +48,8 @@ final class Tables {
 
 	/**
 	 * The specs index.
+	 *
+	 * @since 0.1.0
 	 */
 	public static function specs(): string {
 		return self::name( self::SPECS );
@@ -51,6 +57,8 @@ final class Tables {
 
 	/**
 	 * The saved builds.
+	 *
+	 * @since 0.1.0
 	 */
 	public static function builds(): string {
 		return self::name( self::BUILDS );

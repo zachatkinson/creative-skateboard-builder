@@ -29,6 +29,8 @@ final class Cursor {
 
 	/**
 	 * Before the first batch.
+	 *
+	 * @since 0.1.0
 	 */
 	public static function start(): self {
 		return new self( null, false );
@@ -36,6 +38,8 @@ final class Cursor {
 
 	/**
 	 * After a batch, with where the next starts.
+	 *
+	 * @since 0.1.0
 	 *
 	 * @param int|string $position Where the next batch starts.
 	 */
@@ -45,6 +49,8 @@ final class Cursor {
 
 	/**
 	 * Finished.
+	 *
+	 * @since 0.1.0
 	 */
 	public static function done(): self {
 		return new self( null, true );
@@ -52,6 +58,8 @@ final class Cursor {
 
 	/**
 	 * For the store.
+	 *
+	 * @since 0.1.0
 	 *
 	 * @return array{position: int|string|null, done: bool}
 	 */
@@ -64,6 +72,8 @@ final class Cursor {
 
 	/**
 	 * From the store; anything malformed reads as the start.
+	 *
+	 * @since 0.1.0
 	 *
 	 * @param mixed $data What was stored.
 	 */

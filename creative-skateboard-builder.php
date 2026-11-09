@@ -41,7 +41,10 @@ if ( null !== \CreativeBranding\SkateboardBuilder\Support\Requirements::platform
 	add_action(
 		'admin_notices',
 		static function (): void {
-			wp_admin_notice( \CreativeBranding\SkateboardBuilder\Support\Requirements::notice(), array( 'type' => 'error' ) );
+			// For the people who can do something about it.
+			if ( current_user_can( 'activate_plugins' ) ) {
+				wp_admin_notice( \CreativeBranding\SkateboardBuilder\Support\Requirements::notice(), array( 'type' => 'error' ) );
+			}
 		}
 	);
 	return;
@@ -51,6 +54,9 @@ if ( ! is_readable( __DIR__ . '/vendor/autoload.php' ) ) {
 	add_action(
 		'admin_notices',
 		static function (): void {
+			if ( ! current_user_can( 'activate_plugins' ) ) {
+				return;
+			}
 			wp_admin_notice(
 				esc_html__( 'Creative Skateboard Builder: run "composer install" before activating the plugin.', 'creative-skateboard-builder' ),
 				array( 'type' => 'error' )

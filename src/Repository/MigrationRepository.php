@@ -28,6 +28,8 @@ final class MigrationRepository implements MigrationStore {
 
 	/**
 	 * The installed schema version, '0' when none.
+	 *
+	 * @since 0.1.0
 	 */
 	public function schemaVersion(): string {
 		$stored = get_option( Options::DB_VERSION, '0' );
@@ -36,6 +38,8 @@ final class MigrationRepository implements MigrationStore {
 
 	/**
 	 * The installed schema version read from the table now.
+	 *
+	 * @since 0.1.0
 	 */
 	public function freshSchemaVersion(): string {
 		global $wpdb;
@@ -46,6 +50,8 @@ final class MigrationRepository implements MigrationStore {
 	/**
 	 * Record the schema version, autoloaded.
 	 *
+	 * @since 0.1.0
+	 *
 	 * @param string $version The version.
 	 */
 	public function recordSchemaVersion( string $version ): void {
@@ -54,6 +60,8 @@ final class MigrationRepository implements MigrationStore {
 
 	/**
 	 * One migration's stored state, or null when it has never started.
+	 *
+	 * @since 0.1.0
 	 *
 	 * @param string $key The migration's key.
 	 * @return array<string, mixed>|null
@@ -64,6 +72,8 @@ final class MigrationRepository implements MigrationStore {
 
 	/**
 	 * Every migration's stored state, keyed by migration.
+	 *
+	 * @since 0.1.0
 	 *
 	 * @return array<string, array<string, mixed>>
 	 */
@@ -81,6 +91,8 @@ final class MigrationRepository implements MigrationStore {
 
 	/**
 	 * Save one migration's state, not autoloaded.
+	 *
+	 * @since 0.1.0
 	 *
 	 * @param string               $key  The migration's key.
 	 * @param array<string, mixed> $data The state.
@@ -108,6 +120,8 @@ final class MigrationRepository implements MigrationStore {
 
 	/**
 	 * Take the lock in one statement, or take over one older than the TTL by compare-and-swap.
+	 *
+	 * @since 0.1.0
 	 *
 	 * @param int $now The moment, as a UTC timestamp.
 	 * @param int $ttl Seconds after which a held lock counts as abandoned.
@@ -141,6 +155,8 @@ final class MigrationRepository implements MigrationStore {
 	/**
 	 * Keep a held lock fresh, if it is still this instance's.
 	 *
+	 * @since 0.1.0
+	 *
 	 * @param int $now The moment, as a UTC timestamp.
 	 */
 	public function refreshLock( int $now ): bool {
@@ -165,6 +181,8 @@ final class MigrationRepository implements MigrationStore {
 
 	/**
 	 * Release the lock, if this instance holds it.
+	 *
+	 * @since 0.1.0
 	 */
 	public function releaseLock(): void {
 		global $wpdb;
@@ -178,6 +196,8 @@ final class MigrationRepository implements MigrationStore {
 
 	/**
 	 * Remove the lock whoever holds it.
+	 *
+	 * @since 0.1.0
 	 */
 	public function clearLock(): void {
 		delete_option( Options::MIGRATION_LOCK );
@@ -197,6 +217,8 @@ final class MigrationRepository implements MigrationStore {
 
 	/**
 	 * The lock's value, read from the table, or null when none is held. For the tests and Site Health.
+	 *
+	 * @since 0.1.0
 	 */
 	public function lockValue(): ?string {
 		global $wpdb;

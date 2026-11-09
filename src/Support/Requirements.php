@@ -33,6 +33,8 @@ final class Requirements {
 	/**
 	 * Which platform floor a site is below, or null when PHP and WordPress are both new enough.
 	 *
+	 * @since 0.1.0
+	 *
 	 * @param string $php       The running PHP version.
 	 * @param string $wordpress The running WordPress version.
 	 */
@@ -49,6 +51,8 @@ final class Requirements {
 	/**
 	 * Whether WooCommerce is missing or too old.
 	 *
+	 * @since 0.1.0
+	 *
 	 * @param string|null $woocommerce WooCommerce's version, or null when it is not active.
 	 */
 	public static function woocommerceShortfall( ?string $woocommerce ): ?string {
@@ -60,11 +64,13 @@ final class Requirements {
 
 	/**
 	 * The notice shown when any floor is not met, escaped for wp_admin_notice().
+	 *
+	 * @since 0.1.0
 	 */
 	public static function notice(): string {
 		return sprintf(
 			/* translators: 1: the PHP version the plugin needs, 2: the WordPress version, 3: the WooCommerce version. */
-			esc_html__( 'Creative Skateboard Builder needs PHP %1$s, WordPress %2$s and WooCommerce %3$s or newer, and loads nothing until they are in place.', 'creative-skateboard-builder' ),
+			esc_html__( 'Creative Skateboard Builder needs PHP %1$s, WordPress %2$s and WooCommerce %3$s or newer, and does nothing until they are in place.', 'creative-skateboard-builder' ),
 			self::PHP,
 			self::WORDPRESS,
 			self::WOOCOMMERCE
