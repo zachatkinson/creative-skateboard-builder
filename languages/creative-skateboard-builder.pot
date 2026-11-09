@@ -9,7 +9,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-11-09T21:31:35+00:00\n"
+"POT-Creation-Date: 2026-11-09T23:27:15+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: creative-skateboard-builder\n"
@@ -39,7 +39,7 @@ msgstr ""
 msgid "https://zachatkinson.com"
 msgstr ""
 
-#: creative-skateboard-builder.php:61
+#: creative-skateboard-builder.php:68
 msgid "Creative Skateboard Builder: run \"composer install\" before activating the plugin."
 msgstr ""
 
@@ -53,10 +53,14 @@ msgstr ""
 msgid "Complete skateboards built from the parts the shop stocks: fit checked from specs, a picture of the build, the total in view, each part its own cart and order line."
 msgstr ""
 
-#: src/Updates/Updater.php:218
+#: src/Updates/Updater.php:216
+msgid "Updates for Creative Skateboard Builder are turned off on this site, so this update was not installed."
+msgstr ""
+
+#: src/Updates/Updater.php:224
 msgid "This Creative Skateboard Builder update could not be checked against its published release, so it was not installed. Check for updates again, then update."
 msgstr ""
 
-#: src/Updates/Updater.php:227
+#: src/Updates/Updater.php:233
 msgid "The Creative Skateboard Builder update did not match its published checksum, so it was not installed."
 msgstr ""

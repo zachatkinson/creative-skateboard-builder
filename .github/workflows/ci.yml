@@ -22,8 +22,9 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  # A draft pull request, and one that touches only the browser tests or the workflows, runs the standards, the unit
-  # tests and the newest leg, not the other legs, mutation testing or the release dry run. Main always runs everything;
+  # A draft pull request, and one that touches only the browser tests, runs the standards, the unit tests and the
+  # newest leg, not the other legs, mutation testing or the release dry run. A change to a workflow takes the full
+  # run: it is what can break the other legs, and Dependabot's bumps of the actions are such changes (D-043). Main always runs everything;
   # a release waits for it.
   # The secrets scan rides in the same job: both need the history and neither takes ten seconds, and every job is
   # billed to the whole minute (D-040). A secret found stops the jobs that wait for this one.
@@ -56,7 +57,7 @@ jobs:
           elif [ "${GITHUB_EVENT_NAME}" = pull_request ]; then
             # The lighter run only when the diff was read and holds nothing else: if git cannot say, everything runs.
             if changed=$(git diff --name-only "origin/${BASE}...HEAD"); then
-              others=$(grep -Ev '^(tests/e2e/|\.github/workflows/|docs/|LICENSE$)|\.md$' <<<"$changed" || true)
+              others=$(grep -Ev '^(tests/e2e/|docs/|LICENSE$)|\.md$' <<<"$changed" || true)
               if [ -n "$changed" ] && [ -z "$others" ]; then
                 full=false
               fi
@@ -111,6 +112,11 @@ jobs:
           php -l creative-skateboard-builder.php
           php -l uninstall.php
           php -l src/Support/Requirements.php
+          # Below the floors uninstall.php loads these four itself, past the autoloader (D-043).
+          php -l src/Install/Sites.php
+          php -l src/Support/Options.php
+          php -l src/Support/Tables.php
+          php -l src/Install/Uninstaller.php
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         if: always()
         with:

@@ -31,18 +31,7 @@ final class Activator {
 	 */
 	public static function activate( $networkWide = false ): void {
 		if ( is_multisite() && true === $networkWide ) {
-			/** @var int[] $siteIds */
-			$siteIds = get_sites(
-				array(
-					'fields' => 'ids',
-					'number' => 0,
-				)
-			);
-			foreach ( $siteIds as $siteId ) {
-				switch_to_blog( (int) $siteId ); // phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.switch_to_blog_switch_to_blog -- activation walks every site once; only the plugin's tables and options are written.
-				self::site();
-				restore_current_blog();
-			}
+			Sites::each( array( self::class, 'site' ) );
 			return;
 		}
 		self::site();

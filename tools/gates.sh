@@ -8,6 +8,7 @@
 #   6. WordPress or WooCommerce in src/Domain.
 #   7. Anything from WooCommerce's Internal namespace.
 #   8. An em dash, an exclamation mark or a word from tools/copy-words.txt in the POT file (docs/STANDARDS.md: Copy).
+#   9. A job of release.yml that holds a secret and also checks the code out or runs a tool (D-043).
 # Gate 1 also covers string-built SQL (1b) and the database's clock in a statement (1c). Every gate has snippets it
 # must reject in tests/Fixtures/gates/, run by tools/gates-selftest.sh.
 # Run: composer gates
@@ -45,9 +46,10 @@ if [ -n "$hits" ]; then
 	echo "Gate 2: banned function:"; echo "$hits"; status=1
 fi
 
-# 3. Every way of reading the time: the Clock port is the only clock. The functions, and a date object made from
-# "now", which is what a bare constructor gives.
-hits="$(grep -rnE '(^|[^a-zA-Z_>$])(date|time|mktime|gmdate|gmmktime|current_time|current_datetime|microtime|hrtime|strtotime|date_create|date_create_immutable|getdate|localtime|idate|gettimeofday)\s*\(|new\s+\\?DateTime(Immutable)?\s*\(' "${php_files[@]}" --include='*.php' | grep -vE '^[^:]+:[0-9]+:\s*(\*|//|#)' | grep -vE '^src/Adapter/SystemClock\.php:' || true)"
+# 3. Every way of reading the time: the Clock port is the only clock. The functions, WordPress's own that fall back to
+# now (wp_date(), date_i18n(), human_time_diff()), the request's start time, and a date object made from "now", which
+# is what a bare constructor gives.
+hits="$(grep -rnE '(^|[^a-zA-Z_>$])(date|time|mktime|gmdate|gmmktime|current_time|current_datetime|microtime|hrtime|strtotime|date_create|date_create_immutable|getdate|localtime|idate|gettimeofday|wp_date|date_i18n|human_time_diff)\s*\(|new\s+\\?DateTime(Immutable)?\s*\(|REQUEST_TIME' "${php_files[@]}" --include='*.php' | grep -vE '^[^:]+:[0-9]+:\s*(\*|//|#)' | grep -vE '^src/Adapter/SystemClock\.php:' || true)"
 if [ -n "$hits" ]; then
 	echo "Gate 3: a clock call outside Adapter\\SystemClock; use Port\\Clock:"; echo "$hits"; status=1
 fi
@@ -59,8 +61,9 @@ if [ -n "$missing" ]; then
 fi
 
 # 5. No remote requests but the update manifest (Updates\HttpManifestSource). The package itself is downloaded by
-#    WordPress's upgrader (download_url() through Updates\Updater's injected downloader).
-hits="$(grep -rnE 'wp_(safe_)?remote_(get|post|request|head|fopen)|WP_Http|WpOrg.Requests|Requests::|curl_(init|exec|multi_init)|fsockopen|pfsockopen|stream_socket_client|download_url\(|(file_get_contents|fopen|copy)\(\s*["'"'"']https?:' "${php_files[@]}" --include='*.php' \
+#    WordPress's upgrader (download_url() through Updates\Updater's injected downloader). PHP's file functions take a
+#    URL as readily as a path, so they are refused too: a class that must read a local file is exempted here by name.
+hits="$(grep -rnE 'wp_(safe_)?remote_(get|post|request|head|fopen)|WP_Http|WpOrg.Requests|Requests::|curl_(init|exec|multi_init)|fsockopen|pfsockopen|stream_socket_client|download_url\(|copy\(\s*["'"'"']https?:|(^|[^a-zA-Z_>$])(file_get_contents|fopen|readfile|file|getimagesize|exif_read_data|get_headers|simplexml_load_file|wp_oembed_get|wp_get_http_headers|fetch_feed|_wp_http_get_object)\s*\(' "${php_files[@]}" --include='*.php' \
 	| grep -vE '^src/Updates/HttpManifestSource\.php:[0-9]+:.*wp_safe_remote_get\(|^src/Updates/Updater\.php:[0-9]+:.*return download_url\(' | grep -vE '^[^:]+:[0-9]+:\s*(\*|//|#)' || true)"
 if [ -n "$hits" ]; then
 	echo "Gate 5: outbound request:"; echo "$hits"; status=1
@@ -99,6 +102,27 @@ if [ -f "$pot" ]; then
 				echo "Gate 8: banned word '${word}' in the POT."; status=1
 			fi
 		done < "$tools/copy-words.txt"
+	fi
+fi
+
+# 9. The release workflow: a job that holds a secret runs gh and nothing of the repository's or of any package, so
+# nothing installed can reach the token that publishes to the repository every shop's updater trusts (D-043). Such a
+# job may download the build job's files; it may not check the code out, set up a toolchain or run one.
+release=.github/workflows/release.yml
+if [ -f "$release" ]; then
+	hits="$(awk '
+		/^jobs:/ { injobs = 1; next }
+		injobs && /^  [A-Za-z0-9_-]+:[[:space:]]*$/ { job = $1; sub( /:$/, "", job ); next }
+		injobs && job != "" {
+			if ( $0 ~ /secrets\./ ) secret[job] = 1
+			if ( $0 ~ /^[[:space:]]*#/ ) next
+			if ( $0 ~ /uses:/ && $0 !~ /uses:[[:space:]]*actions\/download-artifact@/ ) bad[job] = bad[job] "\n  " $0
+			if ( $0 ~ /(^|[^A-Za-z_\/.-])(npm|npx|node|composer|php|bash|sh|make|pip|python3?)[[:space:]]/ ) bad[job] = bad[job] "\n  " $0
+		}
+		END { for ( j in secret ) if ( bad[j] != "" ) print "job " j ":" bad[j] }
+	' "$release")"
+	if [ -n "$hits" ]; then
+		echo "Gate 9: a job of release.yml holds a secret and runs more than gh:"; echo "$hits"; status=1
 	fi
 fi
 

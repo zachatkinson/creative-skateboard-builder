@@ -149,9 +149,14 @@ final class UpdaterTest extends IntegrationTestCase {
 		self::assertFalse( Updater::enabled() );
 		self::assertFalse( $updater->check( false, array(), self::BASENAME ), 'no offer' );
 		self::assertFalse( $updater->details( false, 'plugin_information', (object) array( 'slug' => 'creative-skateboard-builder' ) ), 'no details' );
-		self::assertFalse( $updater->verify( false, self::PACKAGE ), 'and nothing downloaded' );
-		self::assertSame( 0, $calls );
-		self::assertSame( 0, $source->fresh );
+		// A package of this plugin's can still arrive: WordPress keeps the offer it was made before updates were turned
+		// off. Answering false would have WordPress download and install it unchecked, so it is refused.
+		$refused = $updater->verify( false, self::PACKAGE );
+		self::assertInstanceOf( \WP_Error::class, $refused, 'this plugin\'s package is not left to install unchecked' );
+		self::assertSame( 'cbuild_updates_off', $refused->get_error_code() );
+		self::assertSame( 0, $calls, 'nothing downloaded' );
+		self::assertSame( 0, $source->fresh, 'and no request made' );
+		self::assertFalse( $updater->verify( false, 'https://downloads.wordpress.org/plugin/akismet.5.3.zip' ), 'another plugin\'s package is not this one\'s business' );
 	}
 
 	public function test_the_checksum_is_checked_on_the_hook_wordpress_downloads_through(): void {

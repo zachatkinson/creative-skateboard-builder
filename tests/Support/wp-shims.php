@@ -36,3 +36,23 @@ if ( ! function_exists( 'apply_filters' ) ) {
 if ( ! defined( 'HOUR_IN_SECONDS' ) ) {
 	define( 'HOUR_IN_SECONDS', 3600 );
 }
+
+// A network's sites, for Install\Sites: the unit test sets the ids and reads the walk back.
+if ( ! function_exists( 'get_sites' ) ) {
+	function get_sites( array $args = array() ): array {
+		$GLOBALS['cbuild_test_walk'][] = 'get_sites:' . ( $args['fields'] ?? '' ) . ':' . ( $args['number'] ?? '' );
+		return $GLOBALS['cbuild_test_sites'] ?? array();
+	}
+}
+if ( ! function_exists( 'switch_to_blog' ) ) {
+	function switch_to_blog( int $site ): bool {
+		$GLOBALS['cbuild_test_walk'][] = 'switch:' . $site;
+		return true;
+	}
+}
+if ( ! function_exists( 'restore_current_blog' ) ) {
+	function restore_current_blog(): bool {
+		$GLOBALS['cbuild_test_walk'][] = 'restore';
+		return true;
+	}
+}

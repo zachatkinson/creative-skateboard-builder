@@ -34,18 +34,7 @@ final class Deactivator {
 	 */
 	public static function deactivate( $networkWide = false ): void {
 		if ( is_multisite() && true === $networkWide ) {
-			/** @var int[] $siteIds */
-			$siteIds = get_sites(
-				array(
-					'fields' => 'ids',
-					'number' => 0,
-				)
-			);
-			foreach ( $siteIds as $siteId ) {
-				switch_to_blog( (int) $siteId ); // phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.switch_to_blog_switch_to_blog -- deactivation walks every site once; only the plugin's jobs and its lock are touched.
-				self::site();
-				restore_current_blog();
-			}
+			Sites::each( array( self::class, 'site' ) );
 			return;
 		}
 		self::site();
@@ -58,9 +47,7 @@ final class Deactivator {
 	 * @since 0.1.0
 	 */
 	public static function site(): void {
-		global $wpdb;
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Asked once per site on deactivation.
-		if ( null !== $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $wpdb->esc_like( $wpdb->prefix . 'actionscheduler_actions' ) ) ) ) {
+		if ( Sites::hasQueueTables() ) {
 			$queue = Plugin::container()->get( Queue::class );
 			foreach ( Options::jobs() as $job ) {
 				$queue->cancelAll( $job );

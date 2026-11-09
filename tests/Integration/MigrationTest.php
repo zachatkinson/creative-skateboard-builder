@@ -9,6 +9,8 @@ declare( strict_types=1 );
 
 namespace CreativeBranding\SkateboardBuilder\Tests\Integration;
 
+use CreativeBranding\SkateboardBuilder\Install\Migrations\Cursor;
+use CreativeBranding\SkateboardBuilder\Install\Migrations\Migration;
 use CreativeBranding\SkateboardBuilder\Install\Migrations\MigrationRegistry;
 use CreativeBranding\SkateboardBuilder\Install\Migrations\MigrationRunner;
 use CreativeBranding\SkateboardBuilder\Install\Migrations\RunResult;
@@ -215,6 +217,123 @@ final class MigrationTest extends IntegrationTestCase {
 		self::assertSame( MigrationRegistry::VERSION, get_option( Options::DB_VERSION ) );
 		self::assertSame( 'done', get_option( Options::MIGRATIONS )['batch_1']['status'] );
 		self::assertSame( RunResult::NotNeeded, $runner->run() );
+	}
+
+	/**
+	 * Write the states' row as another process would: straight to the table, past this request's options cache.
+	 *
+	 * @param array<string, array<string, mixed>> $states States by migration.
+	 */
+	private function writeStatesRow( array $states ): void {
+		global $wpdb;
+		$wpdb->replace( $wpdb->options, array( 'option_name' => Options::MIGRATIONS, 'option_value' => serialize( $states ), 'autoload' => 'off' ) ); // phpcs:ignore
+	}
+
+	/**
+	 * The states' row as the table holds it.
+	 *
+	 * @return array<string, array<string, mixed>>
+	 */
+	private function statesRow(): array {
+		global $wpdb;
+		$row = $wpdb->get_var( $wpdb->prepare( 'SELECT option_value FROM %i WHERE option_name = %s', $wpdb->options, Options::MIGRATIONS ) ); // phpcs:ignore
+		return is_string( $row ) ? (array) unserialize( $row ) : array(); // phpcs:ignore
+	}
+
+	public function test_a_state_written_to_the_table_after_the_request_read_it_is_the_one_the_run_resumes_from(): void {
+		delete_option( Options::DB_VERSION );
+		delete_option( Options::MIGRATIONS );
+		$m      = new BatchMigration( 10, 3 );
+		$runner = $this->runner( $m );
+		self::assertTrue( $runner->due(), 'init: this request reads the states, and finds none' );
+
+		// Another process ran three batches, saved its cursor and released the lock.
+		$this->writeStatesRow( array( 'batch_1' => MigrationState::pending( 'batch_1' )->started( 1 )->advanced( Cursor::at( 9 ) )->toArray() ) );
+
+		self::assertSame( RunResult::Finished, $runner->run() );
+		self::assertSame( array( 10 ), $m->rows, 'resumed from the cursor in the table: no row written twice' );
+		self::assertSame( 1, $this->statesRow()['batch_1']['attempts'], 'a continued run, not a new attempt' );
+	}
+
+	public function test_a_wait_written_to_the_table_after_the_request_read_it_is_kept(): void {
+		delete_option( Options::DB_VERSION );
+		delete_option( Options::MIGRATIONS );
+		$m      = new BatchMigration( 10, 3 );
+		$runner = $this->runner( $m );
+		self::assertTrue( $runner->due(), 'init: this request reads the states, and finds none' );
+
+		// Another process failed and recorded a wait of five minutes.
+		$failed = MigrationState::pending( 'batch_1' )->started( 1 )->failed( 'no', time() + 300 )->toArray(); // phpcs:ignore -- the test's own clock
+		$this->writeStatesRow( array( 'batch_1' => $failed ) );
+
+		self::assertSame( RunResult::Waiting, $runner->run() );
+		self::assertSame( 0, $m->batches );
+		self::assertSame( $failed, $this->statesRow()['batch_1'], 'the failure and its wait are not erased' );
+		self::assertNull( $this->store->lockValue(), 'the lock taken to look is released' );
+	}
+
+	public function test_a_run_that_loses_its_lock_during_a_batch_writes_no_state(): void {
+		delete_option( Options::DB_VERSION );
+		delete_option( Options::MIGRATIONS );
+		$theirs = array( 'slow_1' => MigrationState::pending( 'slow_1' )->started( 1 )->advanced( Cursor::at( 9 ) )->toArray() );
+		$write  = function () use ( $theirs ): void {
+			global $wpdb;
+			// The batch outlived the lock: another process took it over and has already run further.
+			$wpdb->update( $wpdb->options, array( 'option_value' => '1900000000:' . str_repeat( 'f', 16 ) ), array( 'option_name' => Options::MIGRATION_LOCK ) );
+			$this->writeStatesRow( $theirs );
+		};
+		$slow   = new class( $write ) implements Migration {
+			public function __construct( private \Closure $write ) {}
+			public function key(): string {
+				return 'slow_1';
+			}
+			public function run( Cursor $cursor ): Cursor {
+				unset( $cursor );
+				( $this->write )();
+				return Cursor::at( 3 );
+			}
+		};
+
+		self::assertSame( RunResult::Locked, $this->runner( $slow )->run() );
+		self::assertSame( 9, $this->statesRow()['slow_1']['cursor']['position'], 'the new holder\'s cursor stands' );
+		self::assertStringStartsWith( '1900000000:', (string) $this->store->lockValue(), 'and so does its lock' );
+		$this->store->clearLock();
+	}
+
+	public function test_a_job_out_of_budget_queues_its_own_continuation_from_inside_action_schedulers_runner(): void {
+		delete_option( Options::DB_VERSION );
+		delete_option( Options::MIGRATIONS );
+		$m      = new BatchMigration( 10, 3 );
+		$runner = $this->runner( $m );
+		// The job as the plugin hooks it, over a migration of four batches and with no budget: one batch a run.
+		remove_all_actions( Options::JOB_MIGRATE );
+		add_action(
+			Options::JOB_MIGRATE,
+			static function () use ( $runner ): void {
+				$runner->run( 0, true );
+			}
+		);
+		$runner->queue();
+		$first = self::pendingJobs( Options::JOB_MIGRATE );
+		self::assertCount( 1, $first );
+
+		// Action Scheduler marks the action as running, then runs it: its unique check now matches the job itself.
+		\ActionScheduler_QueueRunner::instance()->process_action( $first[0], 'test' );
+
+		self::assertSame( 1, $m->batches, 'the job ran one batch' );
+		$next = self::pendingJobs( Options::JOB_MIGRATE );
+		self::assertCount( 1, $next, 'and queued the rest itself, without waiting for a request to notice' );
+		self::assertNotSame( $first[0], $next[0] );
+
+		// Until it is done: each run queues the next, and the last queues nothing.
+		for ( $i = 0; $i < 3; $i++ ) {
+			$pending = self::pendingJobs( Options::JOB_MIGRATE );
+			self::assertCount( 1, $pending );
+			\ActionScheduler_QueueRunner::instance()->process_action( $pending[0], 'test' );
+		}
+		self::assertSame( array( 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ), $m->rows );
+		self::assertSame( MigrationRegistry::VERSION, get_option( Options::DB_VERSION ) );
+		self::assertSame( array(), self::pendingJobs( Options::JOB_MIGRATE ) );
 	}
 
 	public function test_a_failure_is_logged_under_the_plugin_source_and_leaves_the_version_behind(): void {

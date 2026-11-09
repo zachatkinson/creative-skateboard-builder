@@ -33,18 +33,7 @@ final class Uninstaller {
 			delete_site_transient( $transient );
 		}
 		if ( is_multisite() ) {
-			/** @var int[] $siteIds */
-			$siteIds = get_sites(
-				array(
-					'fields' => 'ids',
-					'number' => 0,
-				)
-			);
-			foreach ( $siteIds as $siteId ) {
-				switch_to_blog( (int) $siteId ); // phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.switch_to_blog_switch_to_blog -- uninstall walks every site once; only options and the plugin's tables are touched.
-				self::site();
-				restore_current_blog();
-			}
+			Sites::each( array( self::class, 'site' ) );
 			return;
 		}
 		self::site();
@@ -100,7 +89,7 @@ final class Uninstaller {
 	 * @since 0.1.0
 	 */
 	public static function deleteJobs(): void {
-		if ( ! self::queueTablesExist() ) {
+		if ( ! Sites::hasQueueTables() ) {
 			// A site of a network that was never loaded has no Action Scheduler tables, and so no action of the plugin's.
 			return;
 		}
@@ -137,7 +126,7 @@ final class Uninstaller {
 		$actions = $wpdb->prefix . 'actionscheduler_actions';
 		$groups  = $wpdb->prefix . 'actionscheduler_groups';
 		$logs    = $wpdb->prefix . 'actionscheduler_logs';
-		if ( ! self::queueTablesExist() ) {
+		if ( ! Sites::hasQueueTables() ) {
 			return;
 		}
 		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Uninstall; nothing to cache.
@@ -149,20 +138,6 @@ final class Uninstaller {
 		$wpdb->query( $wpdb->prepare( 'DELETE FROM %i WHERE group_id = %d', $actions, (int) $groupId ) );
 		$wpdb->query( $wpdb->prepare( 'DELETE FROM %i WHERE group_id = %d', $groups, (int) $groupId ) );
 		// phpcs:enable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-	}
-
-	/**
-	 * Whether the current site has Action Scheduler's three tables.
-	 */
-	private static function queueTablesExist(): bool {
-		global $wpdb;
-		foreach ( array( 'actionscheduler_actions', 'actionscheduler_groups', 'actionscheduler_logs' ) as $table ) {
-			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-			if ( null === $wpdb->get_var( $wpdb->prepare( 'SELECT 1 FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = %s', $wpdb->prefix . $table ) ) ) {
-				return false;
-			}
-		}
-		return true;
 	}
 
 	/**

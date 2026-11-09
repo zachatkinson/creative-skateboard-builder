@@ -34,6 +34,51 @@ parameters:
             function: 'mktime()'
             message: 'use Port\Clock (UTC)'
         -
+            function: 'wp_date()'
+            message: 'use Port\Clock (UTC)'
+        -
+            function: 'date_i18n()'
+            message: 'use Port\Clock (UTC)'
+        -
+            function: 'human_time_diff()'
+            message: 'use Port\Clock (UTC)'
+        -
+            function: 'file_get_contents()'
+            message: 'takes a URL as readily as a path; the one outbound request is the update manifest'
+        -
+            function: 'fopen()'
+            message: 'takes a URL as readily as a path; the one outbound request is the update manifest'
+        -
+            function: 'readfile()'
+            message: 'takes a URL as readily as a path; the one outbound request is the update manifest'
+        -
+            function: 'file()'
+            message: 'takes a URL as readily as a path; the one outbound request is the update manifest'
+        -
+            function: 'getimagesize()'
+            message: 'takes a URL as readily as a path; the one outbound request is the update manifest'
+        -
+            function: 'exif_read_data()'
+            message: 'takes a URL as readily as a path; the one outbound request is the update manifest'
+        -
+            function: 'get_headers()'
+            message: 'takes a URL as readily as a path; the one outbound request is the update manifest'
+        -
+            function: 'simplexml_load_file()'
+            message: 'takes a URL as readily as a path; the one outbound request is the update manifest'
+        -
+            function: 'wp_oembed_get()'
+            message: 'takes a URL as readily as a path; the one outbound request is the update manifest'
+        -
+            function: 'wp_get_http_headers()'
+            message: 'takes a URL as readily as a path; the one outbound request is the update manifest'
+        -
+            function: 'fetch_feed()'
+            message: 'takes a URL as readily as a path; the one outbound request is the update manifest'
+        -
+            function: '_wp_http_get_object()'
+            message: 'takes a URL as readily as a path; the one outbound request is the update manifest'
+        -
             function: 'eval()'
             message: 'banned'
         -

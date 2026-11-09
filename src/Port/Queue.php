@@ -21,7 +21,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 interface Queue {
 
 	/**
-	 * Run an action as soon as the queue can, once: a second call while one is pending is dropped.
+	 * Run an action as soon as the queue can, once: a call while one is pending or running is dropped.
 	 *
 	 * @since 0.1.0
 	 *
@@ -31,7 +31,7 @@ interface Queue {
 	public function enqueueUnique( string $hook, array $args = array() ): void;
 
 	/**
-	 * Run an action at a moment, once: dropped while one with this hook is pending.
+	 * Run an action at a moment, once: dropped while one with this hook is pending or running.
 	 *
 	 * @since 0.1.0
 	 *
@@ -40,6 +40,28 @@ interface Queue {
 	 * @param array<string, mixed> $args      Its arguments.
 	 */
 	public function scheduleUnique( int $timestamp, string $hook, array $args = array() ): void;
+
+	/**
+	 * Run an action as soon as the queue can, whatever is pending or running. For a running job that queues its own
+	 * continuation: the unique check would find the job itself and drop it (D-043).
+	 *
+	 * @since 0.1.0
+	 *
+	 * @param string               $hook The action.
+	 * @param array<string, mixed> $args Its arguments.
+	 */
+	public function enqueue( string $hook, array $args = array() ): void;
+
+	/**
+	 * Run an action at a moment, whatever is pending or running. For a running job that schedules its own retry.
+	 *
+	 * @since 0.1.0
+	 *
+	 * @param int                  $timestamp When, as a UTC timestamp.
+	 * @param string               $hook      The action.
+	 * @param array<string, mixed> $args      Its arguments.
+	 */
+	public function schedule( int $timestamp, string $hook, array $args = array() ): void;
 
 	/**
 	 * Whether an action is pending or running.

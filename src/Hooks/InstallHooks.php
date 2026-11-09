@@ -66,7 +66,8 @@ final class InstallHooks implements Hookable {
 	 */
 	public function runWhenBehind(): void {
 		if ( self::inlineAllowed() && $this->runner->needed() ) {
-			$this->runner->run();
+			// A short budget: a long migration must not hold a manager's every admin page. The job takes the rest.
+			$this->runner->run( MigrationRunner::INLINE_BUDGET );
 		}
 	}
 
@@ -76,7 +77,7 @@ final class InstallHooks implements Hookable {
 	 * @since 0.1.0
 	 */
 	public function runJob(): void {
-		$this->runner->run();
+		$this->runner->run( MigrationRunner::BUDGET, true );
 	}
 
 	/**

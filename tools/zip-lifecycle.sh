@@ -4,7 +4,9 @@
 #   1. the site is cleared of the plugin's data, with the checkout's copy deactivated;
 #   2. the zip is installed and activated: the tables and the schema version are there;
 #   3. the same zip is installed over itself: still active, the version and tables as they were, nothing logged;
-#   4. it is uninstalled: no table, option, transient or scheduled action is left, and its folder is gone.
+#   4. it is uninstalled: no table, option, transient or scheduled action is left, and its folder is gone;
+#   5. it is installed again and uninstalled by WP-CLI running on PHP 7.4, below the plugin's floor, against the same
+#      site and database: Composer's platform check must not stop the uninstall, and nothing is left (D-023, D-043).
 # wp-env mounts this checkout at wp-content/plugins/creative-skateboard-builder, and installing a zip there would
 # replace the checkout, so the zip's folder is renamed to cbuild-zip first; every file in it is the release's.
 # Run: npm run zip-lifecycle (wp-env up).
@@ -12,6 +14,8 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 slug=creative-skateboard-builder
 copy=cbuild-zip
+# A PHP below the plugin's floor that WordPress and WooCommerce still run on.
+old_php=7.4
 zip="$(bash tools/build-zip.sh)"
 stage="$(mktemp -d)"
 unzip -q "$zip" -d "$stage"
@@ -27,7 +31,7 @@ restore() {
 	wp plugin deactivate "$copy" >/dev/null
 	npx wp-env run cli -- bash -c "rm -rf wp-content/plugins/$copy" >/dev/null 2>&1 || true
 	wp plugin activate "$slug" >/dev/null
-	rm -f "tmp/$copy.zip"
+	rm -f "tmp/$copy.zip" tmp/old-php.env
 }
 trap restore EXIT
 
@@ -63,4 +67,35 @@ gone="$(read_state)"
 [ "$gone" = "none|0|0|0|$errors" ] || fail "after the uninstall: $gone (version|tables|options|actions|errors)"
 if npx wp-env run cli -- test -d "wp-content/plugins/$copy" >/dev/null 2>&1; then fail "the plugin's folder is still there"; fi
 echo "   nothing left: $gone"
-echo "Zip lifecycle: $zip installs, upgrades over itself and uninstalls clean."
+echo "5. Install it again, and uninstall it on PHP $old_php, below the floor."
+wp plugin install "wp-content/plugins/$slug/tmp/$copy.zip" --activate >/dev/null
+again="$(read_state)"
+[ "$again" = "$installed" ] || fail "the second install: $again (version|tables|options|actions|errors)"
+wp plugin deactivate "$copy" >/dev/null
+# The site's own WP-CLI container gives the files, the network and the database settings; only the PHP is older.
+here="$(pwd)"
+cli=""
+for container in $(docker ps -q --filter label=com.docker.compose.service=cli); do
+	if docker inspect "$container" --format '{{range .Mounts}}{{println .Source}}{{end}}' | grep -x "$here" >/dev/null; then
+		cli="$container"
+	fi
+done
+[ -n "$cli" ] || fail "wp-env's cli container was not found"
+network="$(docker inspect "$cli" --format '{{range $name, $_ := .NetworkSettings.Networks}}{{println $name}}{{end}}' | head -n 1)"
+docker inspect "$cli" --format '{{range .Config.Env}}{{println .}}{{end}}' | grep '^WORDPRESS_' > tmp/old-php.env
+old_wp() {
+	docker run --rm --volumes-from "$cli" --network "$network" --env-file tmp/old-php.env \
+		--user "$(docker inspect "$cli" --format '{{.Config.User}}')" -w /var/www/html "wordpress:cli-php$old_php" wp "$@"
+}
+ran_on="$(old_wp eval 'echo PHP_VERSION;' 2>/dev/null | tail -n 1)"
+case "$ran_on" in "$old_php".*) ;; *) fail "WP-CLI did not run on PHP $old_php: '$ran_on'" ;; esac
+if ! old_wp plugin uninstall "$copy" > tmp/old-php-uninstall.log 2>&1; then
+	tail -n 5 tmp/old-php-uninstall.log >&2
+	fail "the uninstall failed on PHP $ran_on"
+fi
+tail -n 2 tmp/old-php-uninstall.log
+below="$(read_state)"
+[ "$below" = "none|0|0|0|$errors" ] || fail "after the uninstall on PHP $ran_on: $below (version|tables|options|actions|errors)"
+if npx wp-env run cli -- test -d "wp-content/plugins/$copy" >/dev/null 2>&1; then fail "the plugin's folder is still there"; fi
+echo "   nothing left on PHP $ran_on: $below"
+echo "Zip lifecycle: $zip installs, upgrades over itself and uninstalls clean, on PHP $ran_on as well."

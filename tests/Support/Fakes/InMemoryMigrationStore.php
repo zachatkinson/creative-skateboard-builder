@@ -37,6 +37,16 @@ class InMemoryMigrationStore implements MigrationStore {
 	public int $freshReads = 0;
 
 	/**
+	 * What this request read before another process wrote: the copy the options cache answers from until it is
+	 * dropped. Null when the request has no copy of its own.
+	 *
+	 * @var array<string, array<string, mixed>>|null
+	 */
+	public ?array $cached = null;
+
+	public int $freshStateReads = 0;
+
+	/**
 	 * The version.
 	 */
 	public function schemaVersion(): string {
@@ -67,7 +77,7 @@ class InMemoryMigrationStore implements MigrationStore {
 	 * @return array<string, mixed>|null
 	 */
 	public function state( string $key ): ?array {
-		return $this->saved[ $key ] ?? null;
+		return $this->states()[ $key ] ?? null;
 	}
 
 	/**
@@ -76,6 +86,17 @@ class InMemoryMigrationStore implements MigrationStore {
 	 * @return array<string, array<string, mixed>>
 	 */
 	public function states(): array {
+		return $this->cached ?? $this->saved;
+	}
+
+	/**
+	 * All stored states, read from the table: the request's earlier copy is dropped.
+	 *
+	 * @return array<string, array<string, mixed>>
+	 */
+	public function freshStates(): array {
+		++$this->freshStateReads;
+		$this->cached = null;
 		return $this->saved;
 	}
 
@@ -86,7 +107,13 @@ class InMemoryMigrationStore implements MigrationStore {
 	 * @param array<string, mixed> $data State.
 	 */
 	public function save( string $key, array $data ): void {
-		$this->saved[ $key ] = $data;
+		// As the repository does: the whole option is rewritten from the copy this request holds.
+		$all         = $this->states();
+		$all[ $key ] = $data;
+		$this->saved = $all;
+		if ( null !== $this->cached ) {
+			$this->cached = $all;
+		}
 		++$this->saves;
 	}
 

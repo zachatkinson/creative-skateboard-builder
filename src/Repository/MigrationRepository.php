@@ -90,6 +90,20 @@ final class MigrationRepository implements MigrationStore {
 	}
 
 	/**
+	 * Every migration's stored state read from the table now. The options cache's copy, and its note that the option
+	 * did not exist, are dropped first, so this read and every read and save after it in this request start from the
+	 * row (D-043).
+	 *
+	 * @since 0.1.0
+	 *
+	 * @return array<string, array<string, mixed>>
+	 */
+	public function freshStates(): array {
+		$this->forgetCached( Options::MIGRATIONS );
+		return $this->states();
+	}
+
+	/**
 	 * Save one migration's state, not autoloaded.
 	 *
 	 * @since 0.1.0
@@ -230,10 +244,19 @@ final class MigrationRepository implements MigrationStore {
 	 * The lock is written around the options API, so its cached copy, and the note that it did not exist, go.
 	 */
 	private function forgetLockCache(): void {
-		wp_cache_delete( Options::MIGRATION_LOCK, 'options' );
+		$this->forgetCached( Options::MIGRATION_LOCK );
+	}
+
+	/**
+	 * Drop an option's cached copy, and the note that it did not exist, so the next read is the table's.
+	 *
+	 * @param string $option The option.
+	 */
+	private function forgetCached( string $option ): void {
+		wp_cache_delete( $option, 'options' );
 		$notoptions = wp_cache_get( 'notoptions', 'options' );
-		if ( is_array( $notoptions ) && isset( $notoptions[ Options::MIGRATION_LOCK ] ) ) {
-			unset( $notoptions[ Options::MIGRATION_LOCK ] );
+		if ( is_array( $notoptions ) && isset( $notoptions[ $option ] ) ) {
+			unset( $notoptions[ $option ] );
 			wp_cache_set( 'notoptions', $notoptions, 'options' );
 		}
 	}

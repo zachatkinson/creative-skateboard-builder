@@ -206,8 +206,14 @@ final class Updater {
 	 * @return mixed The downloaded file's path, a WP_Error, or $reply for other packages.
 	 */
 	public function verify( mixed $reply, mixed $package ): mixed {
-		if ( false !== $reply || ! is_string( $package ) || ! self::enabled() || ! $this->ours( $package ) ) {
+		if ( false !== $reply || ! is_string( $package ) || ! $this->ours( $package ) ) {
 			return $reply;
+		}
+		if ( ! self::enabled() ) {
+			// WordPress can still hold an offer it was made before updates were turned off. Answering false would
+			// have it download and install this plugin's package unchecked, so the package is refused, with no
+			// request made.
+			return new WP_Error( 'cbuild_updates_off', __( 'Updates for Creative Skateboard Builder are turned off on this site, so this update was not installed.', 'creative-skateboard-builder' ) );
 		}
 		$manifest = $this->source->latest();
 		if ( null === $manifest || $manifest->package !== $package ) {

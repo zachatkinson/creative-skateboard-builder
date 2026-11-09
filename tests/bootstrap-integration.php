@@ -51,6 +51,13 @@ if ( 'persistent' === getenv( 'CBUILD_OBJECT_CACHE' ) ) {
 	tests_add_filter( 'muplugins_loaded', static fn() => wp_using_ext_object_cache( true ), 0 );
 }
 
+// A shop that has finished Action Scheduler's one-time move to its own tables, which is every shop installed in years,
+// runs ActionScheduler_DBStore. A site that has not runs ActionScheduler_HybridStore, which has no unique insert: the
+// factory falls back to a check for pending actions only (ActionScheduler_ActionFactory::store_unique_action()), so a
+// running action does not block a unique one there, and it does on a shop. The suite's freshly installed site would be
+// the second kind, so it is told the move is done (D-043).
+tests_add_filter( 'pre_option_action_scheduler_migration_status', static fn(): string => 'complete' );
+
 tests_add_filter(
 	'muplugins_loaded',
 	static function () use ( $cbuild_plugin_dir ): void {

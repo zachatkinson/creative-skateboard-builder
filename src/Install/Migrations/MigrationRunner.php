@@ -22,7 +22,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 /**
  * When `cbuild_db_version` is behind `MigrationRegistry::VERSION`: takes the lock, runs each migration not yet done
- * in order, one batch at a time, saving the cursor after every batch and refreshing the lock, until all are done or
+ * in order, one batch at a time, refreshing the lock and then saving the cursor after every batch, until all are done or
  * the time budget runs out, in which case a `cbuild_migrate` job continues from the saved cursors (spec: Upgrades and
  * the public API; D-021, D-022). A migration that throws is recorded as failed with its error and cursor, logged,
  * and tried again after a wait that grows with each attempt; the version is recorded only when every migration is
@@ -40,6 +40,11 @@ final class MigrationRunner {
 	 * Seconds a run works before queuing the rest. Well under PHP's default execution time and Action Scheduler's.
 	 */
 	public const BUDGET = 20;
+
+	/**
+	 * Seconds an inline run on a manager's admin page works before queuing the rest.
+	 */
+	public const INLINE_BUDGET = 2;
 
 	/**
 	 * Seconds to wait after a failed attempt, by attempt; the last holds for every attempt after it.
@@ -100,12 +105,22 @@ final class MigrationRunner {
 	}
 
 	/**
-	 * Whether a failed migration's wait has not passed.
+	 * Whether a failed migration's wait has not passed, by the copy of the states this request already holds.
 	 *
 	 * @param int $now UTC timestamp.
 	 */
 	private function waiting( int $now ): bool {
-		foreach ( $this->store->states() as $key => $data ) {
+		return self::anyWaiting( $this->store->states(), $now );
+	}
+
+	/**
+	 * Whether any of these states is a failure whose wait has not passed.
+	 *
+	 * @param array<string, array<string, mixed>> $states States by migration.
+	 * @param int                                 $now    UTC timestamp.
+	 */
+	private static function anyWaiting( array $states, int $now ): bool {
+		foreach ( $states as $key => $data ) {
 			if ( MigrationState::fromArray( $key, $data )->isWaiting( $now ) ) {
 				return true;
 			}
@@ -127,9 +142,12 @@ final class MigrationRunner {
 	 *
 	 * @since 0.1.0
 	 *
-	 * @param int $budgetSeconds Seconds to work before queuing the rest; 0 runs one batch.
+	 * @param int  $budgetSeconds Seconds to work before queuing the rest; 0 runs one batch.
+	 * @param bool $insideJob     Whether this run is the `cbuild_migrate` action itself. Action Scheduler's unique
+	 *                            check also matches the action that is running, so from inside it the rest, or the
+	 *                            retry, is queued as a plain action; the lock keeps two runs apart (D-043).
 	 */
-	public function run( int $budgetSeconds = self::BUDGET ): RunResult {
+	public function run( int $budgetSeconds = self::BUDGET, bool $insideJob = false ): RunResult {
 		if ( ! $this->needed() ) {
 			return RunResult::NotNeeded;
 		}
@@ -141,26 +159,28 @@ final class MigrationRunner {
 			return RunResult::Locked;
 		}
 		try {
-			// The version this request loaded may be stale: another request may have finished before the lock was taken.
+			// What this request loaded may be stale: another process may have finished, moved a cursor on or recorded
+			// a failure before the lock was taken. Under the lock the version and the states come from the table, and
+			// only this run writes them (D-043).
 			if ( version_compare( $this->store->freshSchemaVersion(), MigrationRegistry::VERSION, '>=' ) ) {
 				return RunResult::NotNeeded;
+			}
+			$states = $this->store->freshStates();
+			if ( self::anyWaiting( $states, $now ) ) {
+				return RunResult::Waiting;
 			}
 			$deadline = $now + $budgetSeconds;
 			$worked   = false;
 			foreach ( $this->registry->all() as $migration ) {
-				$state = MigrationState::fromArray( $migration->key(), $this->store->state( $migration->key() ) );
+				$state = MigrationState::fromArray( $migration->key(), $states[ $migration->key() ] ?? null );
 				if ( $state->isDone() ) {
 					continue;
 				}
-				if ( $worked ) {
-					// Between migrations, as between batches: the lock must still be this run's, and the budget open.
-					if ( ! $this->store->refreshLock( $now ) ) {
-						return RunResult::Locked;
-					}
-					if ( $now >= $deadline ) {
-						$this->queue();
-						return RunResult::Continued;
-					}
+				// Between migrations, as between batches, the budget must still be open. The lock was refreshed when
+				// the migration before this one was saved.
+				if ( $worked && $now >= $deadline ) {
+					$this->continueLater( $insideJob );
+					return RunResult::Continued;
 				}
 				$worked = true;
 				if ( MigrationState::RUNNING !== $state->status ) {
@@ -172,6 +192,11 @@ final class MigrationRunner {
 					while ( true ) {
 						$cursor = $migration->run( $state->cursor );
 						$now    = $this->clock->now()->getTimestamp();
+						// The lock before the state: a run whose batch outlived its lock was taken over, and writes
+						// nothing over the new holder's cursor, nor the version, which is the new holder's to record.
+						if ( ! $this->store->refreshLock( $now ) ) {
+							return RunResult::Locked;
+						}
 						if ( $cursor->done ) {
 							$state = $state->finished( $now );
 							$this->store->save( $state->key, $state->toArray() );
@@ -179,17 +204,14 @@ final class MigrationRunner {
 						}
 						$state = $state->advanced( $cursor );
 						$this->store->save( $state->key, $state->toArray() );
-						if ( ! $this->store->refreshLock( $now ) ) {
-							return RunResult::Locked;
-						}
 						if ( $now >= $deadline ) {
-							$this->queue();
+							$this->continueLater( $insideJob );
 							return RunResult::Continued;
 						}
 					}
 				} catch ( Throwable $e ) {
-					$retryAt = $this->clock->now()->getTimestamp() + self::retryDelay( $state->attempts );
-					$this->store->save( $state->key, $state->failed( $e->getMessage(), $retryAt )->toArray() );
+					$failedAt = $this->clock->now()->getTimestamp();
+					$retryAt  = $failedAt + self::retryDelay( $state->attempts );
 					$this->logger->log(
 						Logger::ERROR,
 						sprintf( 'Migration %s failed on attempt %d at cursor %s: %s', $migration->key(), $state->attempts, null === $state->cursor->position ? 'start' : (string) $state->cursor->position, $e->getMessage() ),
@@ -201,19 +223,36 @@ final class MigrationRunner {
 							'retry_at'  => $retryAt,
 						)
 					);
-					$this->queue->scheduleUnique( $retryAt, Options::JOB_MIGRATE );
+					// As after a batch: a run that was taken over records nothing and schedules nothing.
+					if ( ! $this->store->refreshLock( $failedAt ) ) {
+						return RunResult::Locked;
+					}
+					$this->store->save( $state->key, $state->failed( $e->getMessage(), $retryAt )->toArray() );
+					if ( $insideJob ) {
+						$this->queue->schedule( $retryAt, Options::JOB_MIGRATE );
+					} else {
+						$this->queue->scheduleUnique( $retryAt, Options::JOB_MIGRATE );
+					}
 					return RunResult::Failed;
 				}
-			}
-			// The version is this run's to record only while the lock is: a run that was taken over leaves it to
-			// the holder that replaced it.
-			if ( $worked && ! $this->store->refreshLock( $now ) ) {
-				return RunResult::Locked;
 			}
 			$this->store->recordSchemaVersion( MigrationRegistry::VERSION );
 			return RunResult::Finished;
 		} finally {
 			$this->store->releaseLock();
 		}
+	}
+
+	/**
+	 * Queue the rest of a run that used up its budget.
+	 *
+	 * @param bool $insideJob Whether the run is the queued action itself.
+	 */
+	private function continueLater( bool $insideJob ): void {
+		if ( $insideJob ) {
+			$this->queue->enqueue( Options::JOB_MIGRATE );
+			return;
+		}
+		$this->queue();
 	}
 }

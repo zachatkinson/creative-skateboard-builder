@@ -71,4 +71,8 @@ final class RequirementsTest extends TestCase {
 		self::assertDoesNotMatchRegularExpression( '/\b(readonly|enum|match|never|mixed)\b/', $code );
 		self::assertDoesNotMatchRegularExpression( '/\?->|:\s*(int|string|bool)\|/', $code );
 	}
+	public function test_the_notice_can_be_printed_where_wordpress_has_no_admin_notice_function(): void {
+		// wp_admin_notice() arrived in WordPress 6.4, and this notice is for a WordPress below the floor.
+		self::assertSame( '<div class="notice notice-error"><p>Needs more.</p></div>', Requirements::noticeMarkup( 'Needs more.' ) );
+	}
 }

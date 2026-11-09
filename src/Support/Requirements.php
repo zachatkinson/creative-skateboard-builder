@@ -76,4 +76,16 @@ final class Requirements {
 			self::WOOCOMMERCE
 		);
 	}
+
+	/**
+	 * The notice's markup, for a WordPress without wp_admin_notice() (below 6.4): the notice for a WordPress below
+	 * the floor must not itself be a fatal error there.
+	 *
+	 * @since 0.1.0
+	 *
+	 * @param string $notice The notice, already escaped.
+	 */
+	public static function noticeMarkup( string $notice ): string {
+		return '<div class="notice notice-error"><p>' . $notice . '</p></div>';
+	}
 }

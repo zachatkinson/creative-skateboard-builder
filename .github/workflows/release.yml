@@ -7,8 +7,13 @@
 # workflow_run trigger); a tag on a commit whose CI failed, or that CI never ran on, fails here and says so.
 # Publishing is skipped when the release already exists, so the two triggers never publish twice; a run that finds the
 # release but not its info.json (an earlier run stopped between the two) writes info.json from the published zip.
-# Copied from Creative Search and kept the same, plus the SBOM step (docs/STANDARDS.md: Releases), which is
-# tools/sbom.sh.
+#
+# The token and the toolchain never share a runner (D-043). `state` holds the token and runs only gh; `build` installs
+# the dev dependencies, builds the zip, the SBOMs, info.json and the release notes with no secret in reach, and hands
+# them on as an artifact; `publish` starts on a fresh runner, downloads those files and runs only gh. A package's
+# install script that wrote to $GITHUB_ENV or $GITHUB_PATH could otherwise have its code run by the steps that
+# publish to the repository every shop's updater trusts.
+# Copied from Creative Search, plus the SBOMs (docs/STANDARDS.md: Releases) and this split.
 name: Release
 
 on:
@@ -74,16 +79,24 @@ jobs:
           fi
           printf 'publish=true\nsha=%s\ntag=%s\n' "$sha" "$tag" >> "$GITHUB_OUTPUT"
 
-  release:
+  # What is already published. Each half is skipped once done: the release, then info.json. A run that stopped between
+  # them is finished by the next, from the zip already published, so the manifest's checksum is that zip's.
+  state:
+    name: What is already published
     needs: ci
     if: needs.ci.outputs.publish == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 5
     env:
       RELEASES_REPO: zachatkinson/creative-releases
       SLUG: creative-skateboard-builder
       TAG: ${{ needs.ci.outputs.tag }}
+    outputs:
+      version: ${{ steps.state.outputs.version }}
+      published: ${{ steps.state.outputs.published }}
+      pointed: ${{ steps.state.outputs.pointed }}
     steps:
+      # No checkout and no package: this job runs gh and nothing of the repository's.
       - name: Check RELEASES_TOKEN can write to the releases repo
         env:
           GH_TOKEN: ${{ secrets.RELEASES_TOKEN }}
@@ -91,6 +104,38 @@ jobs:
           test -n "$GH_TOKEN" || { echo "The RELEASES_TOKEN secret is missing."; exit 1; }
           push="$(gh api "repos/${RELEASES_REPO}" --jq .permissions.push)" || { echo "RELEASES_TOKEN can't read ${RELEASES_REPO} (expired, or not given that repo)."; exit 1; }
           test "$push" = "true" || { echo "RELEASES_TOKEN can't write to ${RELEASES_REPO}: give it Contents read and write."; exit 1; }
+      - id: state
+        env:
+          GH_TOKEN: ${{ secrets.RELEASES_TOKEN }}
+        run: |
+          version="${TAG#v}"
+          published=no
+          pointed=no
+          if gh release view "${SLUG}-${version}" --repo "$RELEASES_REPO" > /dev/null 2>&1; then
+            echo "${SLUG}-${version} is already published."
+            published=yes
+          fi
+          current="$(gh api "repos/${RELEASES_REPO}/contents/${SLUG}/info.json" --jq .content 2>/dev/null | base64 -d 2>/dev/null | jq -r '.version // empty' || true)"
+          if [ "$current" = "$version" ]; then
+            echo "info.json already names ${version}."
+            pointed=yes
+          fi
+          printf 'version=%s\npublished=%s\npointed=%s\n' "$version" "$published" "$pointed" >> "$GITHUB_OUTPUT"
+
+  # The files a release is made of, built with no secret in the job.
+  build:
+    name: Build the zip, the SBOMs and the manifest
+    needs: [ci, state]
+    if: needs.state.outputs.published != 'yes' || needs.state.outputs.pointed != 'yes'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      RELEASES_REPO: zachatkinson/creative-releases
+      SLUG: creative-skateboard-builder
+      TAG: ${{ needs.ci.outputs.tag }}
+      VERSION: ${{ needs.state.outputs.version }}
+      PUBLISHED: ${{ needs.state.outputs.published }}
+    steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
@@ -104,29 +149,6 @@ jobs:
         run: |
           version="$(grep -E '^ \* Version:' "${SLUG}.php" | awk '{print $3}')"
           test "v${version}" = "${TAG}" || { echo "Tag ${TAG} is not v${version}"; exit 1; }
-          echo "VERSION=${version}" >> "$GITHUB_ENV"
-      # Each half is skipped once done: the release, then info.json. A run that stopped between them is finished by the
-      # next, from the zip already published, so the manifest's checksum is that zip's.
-      - name: Skip what is already published
-        env:
-          GH_TOKEN: ${{ secrets.RELEASES_TOKEN }}
-        run: |
-          if gh release view "${SLUG}-${VERSION}" --repo "$RELEASES_REPO" > /dev/null 2>&1; then
-            echo "${SLUG}-${VERSION} is already published."
-            echo "PUBLISHED=yes" >> "$GITHUB_ENV"
-          fi
-          current="$(gh api "repos/${RELEASES_REPO}/contents/${SLUG}/info.json" --jq .content 2>/dev/null | base64 -d 2>/dev/null | jq -r '.version // empty' || true)"
-          if [ "$current" = "$VERSION" ]; then
-            echo "info.json already names ${VERSION}."
-            echo "POINTED=yes" >> "$GITHUB_ENV"
-          fi
-      - name: Download the published zip, for info.json
-        if: env.PUBLISHED == 'yes' && env.POINTED != 'yes'
-        env:
-          GH_TOKEN: ${{ secrets.RELEASES_TOKEN }}
-        run: |
-          mkdir -p tmp
-          gh release download "${SLUG}-${VERSION}" --repo "$RELEASES_REPO" --pattern "${SLUG}-${VERSION}.zip" --dir tmp
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         if: env.PUBLISHED != 'yes'
         with:
@@ -135,27 +157,54 @@ jobs:
       # The zip carries the built assets (build/), so the scripts are installed and built first.
       - run: npm ci
         if: env.PUBLISHED != 'yes'
-      - name: Build
+      # The zip, the CycloneDX SBOMs of what it ships (D-003, D-030), info.json read back by the updater's own class,
+      # and the release notes: the script CI's release dry run runs, so every line of it has run before a tag meets it.
+      - name: Build the release's files
         if: env.PUBLISHED != 'yes'
-        run: bash tools/build-zip.sh
-      # The CycloneDX SBOMs of what the zip ships (D-003, D-030), from pinned tools fetched at release time. The same
-      # script runs in CI's release dry run, so this step has always run before a tag meets it.
-      - name: SBOM
-        if: env.PUBLISHED != 'yes'
-        run: bash tools/sbom.sh "$VERSION"
-      - name: Write the manifest
-        if: env.POINTED != 'yes'
-        run: php tools/release-manifest.php "tmp/${SLUG}-${VERSION}.zip" > tmp/info.json
+        run: bash tools/release-dry-run.sh
+      # An earlier run published the release and stopped before info.json: write it from that zip, which is public.
+      - name: The published zip, for info.json
+        if: env.PUBLISHED == 'yes'
+        run: |
+          mkdir -p tmp
+          curl --fail --silent --show-error --location --output "tmp/${SLUG}-${VERSION}.zip" "https://github.com/${RELEASES_REPO}/releases/download/${SLUG}-${VERSION}/${SLUG}-${VERSION}.zip"
+          php tools/release-manifest.php "tmp/${SLUG}-${VERSION}.zip" > tmp/info.json
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: release
+          if-no-files-found: error
+          retention-days: 1
+          path: |
+            tmp/${{ env.SLUG }}-${{ env.VERSION }}.zip
+            tmp/${{ env.SLUG }}-${{ env.VERSION }}.composer.cdx.json
+            tmp/${{ env.SLUG }}-${{ env.VERSION }}.npm.cdx.json
+            tmp/info.json
+            tmp/release-notes.md
+
+  # A fresh runner: nothing of the repository's or of any package has run on it. It downloads the files and runs gh.
+  publish:
+    name: Publish to the releases repo
+    needs: [state, build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      RELEASES_REPO: zachatkinson/creative-releases
+      SLUG: creative-skateboard-builder
+      VERSION: ${{ needs.state.outputs.version }}
+      PUBLISHED: ${{ needs.state.outputs.published }}
+      POINTED: ${{ needs.state.outputs.pointed }}
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          name: release
+          path: tmp
       - name: Publish the release
         if: env.PUBLISHED != 'yes'
         env:
           GH_TOKEN: ${{ secrets.RELEASES_TOKEN }}
         run: |
-          tag="${SLUG}-${VERSION}"
-          # The single quotes hold PHP, whose variables the shell must leave alone.
-          # shellcheck disable=SC2016
-          gh release create "$tag" "tmp/${SLUG}-${VERSION}.zip" "tmp/${SLUG}-${VERSION}.composer.cdx.json" "tmp/${SLUG}-${VERSION}.npm.cdx.json" --repo "$RELEASES_REPO" --title "Creative Skateboard Builder ${VERSION}" \
-            --notes "$(php -r '$m = json_decode(file_get_contents("tmp/info.json"), true); echo "- " . implode("\n- ", $m["changelog"]);')"
+          gh release create "${SLUG}-${VERSION}" "tmp/${SLUG}-${VERSION}.zip" "tmp/${SLUG}-${VERSION}.composer.cdx.json" "tmp/${SLUG}-${VERSION}.npm.cdx.json" \
+            --repo "$RELEASES_REPO" --title "Creative Skateboard Builder ${VERSION}" --notes-file tmp/release-notes.md
       - name: Point info.json at it
         if: env.POINTED != 'yes'
         env:

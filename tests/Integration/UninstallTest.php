@@ -204,6 +204,15 @@ final class UninstallTest extends IntegrationTestCase {
 			foreach ( $uses[1] as $class ) {
 				self::assertContains( 'src/' . str_replace( '\\', '/', $class ) . '.php', $required, "{$file} uses {$class}, which uninstall.php does not load" );
 			}
+			// A class of the file's own namespace needs no import, so every class called statically is looked for too.
+			preg_match( '/^namespace CreativeBranding\\\\SkateboardBuilder\\\\([A-Za-z\\\\]+);/m', $code, $namespace );
+			preg_match_all( '/(?<![\\\\A-Za-z_$>])([A-Z][A-Za-z]+)::/', $code, $called );
+			foreach ( array_unique( $called[1] ) as $class ) {
+				$own = 'src/' . str_replace( '\\', '/', ( $namespace[1] ?? '' ) . '\\' . $class ) . '.php';
+				if ( file_exists( CBUILD_PATH . $own ) ) {
+					self::assertContains( $own, $required, "{$file} calls {$class}, which uninstall.php does not load" );
+				}
+			}
 			self::assertDoesNotMatchRegularExpression( '/\\\\CreativeBranding\\\\SkateboardBuilder\\\\(?!Install\\\\Uninstaller)/', $code, "{$file} names a class by its full name" );
 			self::assertStringNotContainsString( 'Plugin::', $code, "{$file} reaches for the container" );
 		}

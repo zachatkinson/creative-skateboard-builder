@@ -210,16 +210,89 @@ final class MigrationRunnerTest extends TestCase {
 			public function run( Cursor $cursor ): Cursor {
 				unset( $cursor );
 				++$this->batches;
-				// The batch took longer than the lock lives: another request took the lock over meanwhile.
+				// The batch took longer than the lock lives: another request took the lock over meanwhile, and has
+				// already run further.
 				$this->store->takenOver( 1_900_000_000 );
+				$this->store->saved['slow_1'] = MigrationState::pending( 'slow_1' )->started( 1_900_000_000 )->advanced( Cursor::at( 9 ) )->toArray();
 				return Cursor::at( $this->batches );
 			}
 		};
 		self::assertSame( RunResult::Locked, $this->runner( $slow )->run() );
 		self::assertSame( 1, $slow->batches, 'it stops at once' );
+		self::assertSame( 9, $this->store->stateOf( 'slow_1' )?->cursor->position, 'and writes nothing over the new holder\'s state' );
 		self::assertSame( 1_900_000_000, $this->store->lock, 'the new holder\'s lock is neither refreshed over nor released' );
 		self::assertSame( 0, $this->store->releases );
 		self::assertSame( '0', $this->store->version );
+	}
+
+	public function test_a_failure_after_the_lock_was_taken_over_records_nothing(): void {
+		$store   = $this->store;
+		$failing = new class( $store ) implements Migration {
+			public function __construct( private InMemoryMigrationStore $store ) {}
+			public function key(): string {
+				return 'failing_1';
+			}
+			public function run( Cursor $cursor ): Cursor {
+				unset( $cursor );
+				$this->store->takenOver( 1_900_000_000 );
+				$this->store->saved['failing_1'] = MigrationState::pending( 'failing_1' )->started( 1_900_000_000 )->advanced( Cursor::at( 9 ) )->toArray();
+				throw new \RuntimeException( 'too late' );
+			}
+		};
+		self::assertSame( RunResult::Locked, $this->runner( $failing )->run() );
+		self::assertSame( MigrationState::RUNNING, $this->store->stateOf( 'failing_1' )?->status, 'the new holder\'s state stands' );
+		self::assertSame( 9, $this->store->stateOf( 'failing_1' )?->cursor->position );
+		self::assertSame( array(), $this->queue->scheduled, 'and no retry is scheduled over its run' );
+		self::assertSame( 1_900_000_000, $this->store->lock );
+	}
+
+	public function test_under_the_lock_the_states_are_read_from_the_table_not_from_the_requests_earlier_copy(): void {
+		$m = new BatchMigration( 10, 3 );
+		// This request read the states on init. Since then another process ran three batches and released the lock.
+		$this->store->cached = array();
+		$this->store->saved  = array( 'batch_1' => MigrationState::pending( 'batch_1' )->started( 1 )->advanced( Cursor::at( 9 ) )->toArray() );
+
+		self::assertSame( RunResult::Finished, $this->runner( $m )->run() );
+		self::assertSame( array( 10 ), $m->rows, 'resumed from the cursor in the table: no row is written twice' );
+		self::assertSame( 1, $this->store->stateOf( 'batch_1' )?->attempts, 'a continued run, not a new attempt' );
+		self::assertSame( 1, $this->store->freshStateReads, 'one read of the table, under the lock' );
+	}
+
+	public function test_a_wait_recorded_since_the_request_first_read_is_kept(): void {
+		$m = new CountingMigration();
+		// This request read the states on init. Since then another process failed and recorded its wait.
+		$this->store->cached = array();
+		$failed              = MigrationState::pending( 'counting_1' )->started( 1 )->failed( 'no', $this->clock->timestamp() + 300 )->toArray();
+		$this->store->saved  = array( 'counting_1' => $failed );
+
+		self::assertSame( RunResult::Waiting, $this->runner( $m )->run() );
+		self::assertSame( 0, $m->runs );
+		self::assertSame( $failed, $this->store->saved['counting_1'], 'the failure and its wait are not erased' );
+		self::assertNull( $this->store->lock, 'the lock taken to look is released' );
+	}
+
+	public function test_inside_the_job_a_run_out_of_budget_queues_its_continuation_past_its_own_running_action(): void {
+		// Action Scheduler's unique check sees the action that is running this very job, so a unique action is dropped.
+		$this->queue->running[ Options::JOB_MIGRATE ] = true;
+		$runner                                       = $this->runner( new BatchMigration( 10, 3 ) );
+
+		self::assertSame( RunResult::Continued, $runner->run( 0, true ) );
+		self::assertTrue( $this->queue->isPending( Options::JOB_MIGRATE ), 'the rest is queued' );
+		self::assertSame( 1, $this->queue->plain[ Options::JOB_MIGRATE ] ?? 0, 'by one plain action' );
+	}
+
+	public function test_inside_the_job_a_failure_schedules_its_retry_past_its_own_running_action(): void {
+		$this->queue->running[ Options::JOB_MIGRATE ] = true;
+		$start                                        = $this->clock->timestamp();
+
+		self::assertSame( RunResult::Failed, $this->runner( new ThrowingMigration() )->run( MigrationRunner::BUDGET, true ) );
+		self::assertSame( $start + 60, $this->queue->scheduled[ Options::JOB_MIGRATE ] ?? null, 'the retry is scheduled' );
+	}
+
+	public function test_outside_the_job_the_continuation_and_the_retry_stay_unique(): void {
+		self::assertSame( RunResult::Continued, $this->runner( new BatchMigration( 10, 3 ) )->run( 0 ) );
+		self::assertSame( array(), $this->queue->plain, 'a request never adds a second job beside a pending one' );
+		self::assertSame( 1, $this->queue->calls[ Options::JOB_MIGRATE ] );
 	}
 
 	public function test_a_lock_lost_during_the_last_batch_records_no_version(): void {

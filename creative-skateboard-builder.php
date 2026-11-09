@@ -42,9 +42,16 @@ if ( null !== \CreativeBranding\SkateboardBuilder\Support\Requirements::platform
 		'admin_notices',
 		static function (): void {
 			// For the people who can do something about it.
-			if ( current_user_can( 'activate_plugins' ) ) {
-				wp_admin_notice( \CreativeBranding\SkateboardBuilder\Support\Requirements::notice(), array( 'type' => 'error' ) );
+			if ( ! current_user_can( 'activate_plugins' ) ) {
+				return;
 			}
+			$notice = \CreativeBranding\SkateboardBuilder\Support\Requirements::notice();
+			if ( function_exists( 'wp_admin_notice' ) ) {
+				wp_admin_notice( $notice, array( 'type' => 'error' ) );
+				return;
+			}
+			// WordPress below 6.4 has no wp_admin_notice(), and this is the notice for a WordPress below the floor.
+			echo wp_kses_post( \CreativeBranding\SkateboardBuilder\Support\Requirements::noticeMarkup( $notice ) );
 		}
 	);
 	return;

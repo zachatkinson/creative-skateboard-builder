@@ -56,13 +56,24 @@ interface MigrationStore {
 	public function state( string $key ): ?array;
 
 	/**
-	 * Every migration's stored state, keyed by migration.
+	 * Every migration's stored state, keyed by migration. May come from the object cache.
 	 *
 	 * @since 0.1.0
 	 *
 	 * @return array<string, array<string, mixed>>
 	 */
 	public function states(): array;
+
+	/**
+	 * Every migration's stored state read from the database now, past any cache, and the copy every later read and
+	 * save in this request starts from: what the runner trusts once it holds the lock, since another process may
+	 * have moved a cursor on or recorded a failure in between (D-043).
+	 *
+	 * @since 0.1.0
+	 *
+	 * @return array<string, array<string, mixed>>
+	 */
+	public function freshStates(): array;
 
 	/**
 	 * Save one migration's state.

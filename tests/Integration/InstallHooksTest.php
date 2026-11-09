@@ -11,6 +11,13 @@ namespace CreativeBranding\SkateboardBuilder\Tests\Integration;
 
 use CreativeBranding\SkateboardBuilder\Hooks\InstallHooks;
 use CreativeBranding\SkateboardBuilder\Install\Migrations\MigrationRegistry;
+use CreativeBranding\SkateboardBuilder\Install\Migrations\MigrationRunner;
+use CreativeBranding\SkateboardBuilder\Port\Clock;
+use CreativeBranding\SkateboardBuilder\Port\Logger;
+use CreativeBranding\SkateboardBuilder\Port\MigrationStore;
+use CreativeBranding\SkateboardBuilder\Port\Queue;
+use CreativeBranding\SkateboardBuilder\Support\Tables;
+use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\BatchMigration;
 use CreativeBranding\SkateboardBuilder\Install\Migrations\MigrationState;
 use CreativeBranding\SkateboardBuilder\Support\Options;
 use CreativeBranding\SkateboardBuilder\Tests\Support\IntegrationTestCase;
@@ -131,6 +138,64 @@ final class InstallHooksTest extends IntegrationTestCase {
 		delete_option( Options::DB_VERSION );
 		$this->hooks->runJob();
 		self::assertSame( MigrationRegistry::VERSION, get_option( Options::DB_VERSION ) );
+	}
+
+	public function test_the_job_schedules_its_own_retry_from_inside_action_schedulers_runner(): void {
+		global $wpdb;
+		$specs = Tables::specs();
+		$this->withRealTables(
+			function () use ( $wpdb, $specs ): void {
+				$wpdb->query( 'DROP TABLE IF EXISTS ' . $specs ); // phpcs:ignore
+				delete_option( Options::DB_VERSION );
+				delete_option( Options::MIGRATIONS );
+				$this->hooks->queueWhenBehind();
+				$job = self::pendingJobs( Options::JOB_MIGRATE );
+				self::assertCount( 1, $job, 'a front-end request queued the job' );
+
+				// The database refuses the table, so the job fails while Action Scheduler holds it as running.
+				$refuse = static fn( string $query ): string => str_contains( $query, 'CREATE TABLE ' . $specs ) ? 'CREATE TABLE ' . $specs . ' (broken' : $query;
+				add_filter( 'query', $refuse );
+				$wpdb->suppress_errors( true );
+				$before = time(); // phpcs:ignore -- the test's own clock
+				\ActionScheduler_QueueRunner::instance()->process_action( $job[0], 'test' );
+				$wpdb->suppress_errors( false );
+				remove_filter( 'query', $refuse );
+
+				self::assertSame( 'failed', get_option( Options::MIGRATIONS )['schema_1']['status'] );
+				$retry = self::pendingJobs( Options::JOB_MIGRATE );
+				self::assertCount( 1, $retry, 'the job scheduled its own retry, past its own running action' );
+				$when = as_next_scheduled_action( Options::JOB_MIGRATE, array(), Options::QUEUE_GROUP );
+				self::assertIsInt( $when );
+				self::assertGreaterThanOrEqual( $before + 60, $when, 'for after the first wait' );
+
+				// Put the table back for the tests that follow.
+				delete_option( Options::MIGRATIONS );
+				self::assertSame( MigrationRegistry::VERSION, $this->service( MigrationRunner::class )->run()->value === 'finished' ? MigrationRegistry::VERSION : '' );
+			}
+		);
+	}
+
+	public function test_an_inline_run_on_an_admin_page_works_for_two_seconds_and_leaves_the_rest_to_the_job(): void {
+		delete_option( Options::DB_VERSION );
+		delete_option( Options::MIGRATIONS );
+		$m = new BatchMigration( 10, 3 );
+		// Every batch takes three seconds: more than an admin page should wait, far less than the job's budget.
+		$clock = new class() implements Clock {
+			private int $at = 1_800_000_000;
+			public function now(): \DateTimeImmutable {
+				$this->at += 3;
+				return new \DateTimeImmutable( '@' . $this->at );
+			}
+		};
+		$runner = new MigrationRunner( new MigrationRegistry( $m ), $this->service( MigrationStore::class ), $clock, $this->service( Logger::class ), $this->service( Queue::class ) );
+		$hooks  = new InstallHooks( $runner );
+		$this->asManagerInAdmin();
+
+		$hooks->runWhenBehind();
+
+		self::assertSame( 1, $m->batches, 'one batch, then the page carries on' );
+		self::assertCount( 1, self::pendingJobs( Options::JOB_MIGRATE ), 'the job takes the rest' );
+		self::assertFalse( get_option( Options::DB_VERSION ) );
 	}
 
 	public function test_a_current_version_costs_no_query_on_any_request(): void {
