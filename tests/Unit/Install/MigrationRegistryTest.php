@@ -29,6 +29,13 @@ final class MigrationRegistryTest extends TestCase {
 		self::assertSame( array( 'b', 'a' ), $registry->keys() );
 	}
 
+	public function test_named_migrations_are_kept_as_a_list(): void {
+		$a        = new CountingMigration( 'a' );
+		$b        = new CountingMigration( 'b' );
+		$registry = new MigrationRegistry( first: $a, second: $b );
+		self::assertSame( array( $a, $b ), $registry->all() );
+	}
+
 	public function test_refuses_two_migrations_with_one_key(): void {
 		$this->expectException( PluginException::class );
 		$this->expectExceptionMessage( 'share the key dup' );

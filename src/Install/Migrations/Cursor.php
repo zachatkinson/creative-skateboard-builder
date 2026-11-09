@@ -78,9 +78,7 @@ final class Cursor {
 	 * @param mixed $data What was stored.
 	 */
 	public static function fromArray( mixed $data ): self {
-		if ( ! is_array( $data ) ) {
-			return self::start();
-		}
+		$data     = is_array( $data ) ? $data : array();
 		$position = $data['position'] ?? null;
 		if ( ! is_int( $position ) && ! is_string( $position ) ) {
 			$position = null;

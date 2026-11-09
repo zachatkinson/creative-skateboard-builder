@@ -86,6 +86,12 @@ final class ContainerTest extends TestCase {
 		self::assertSame( 7, $service->limit );
 	}
 
+	public function test_a_dependency_after_a_scalar_with_a_default_is_still_resolved(): void {
+		$service = ( new Container() )->get( DefaultThenService::class );
+		self::assertSame( 7, $service->limit );
+		self::assertInstanceOf( SystemClock::class, $service->clock );
+	}
+
 	public function test_hookables_are_every_hookable_class_once(): void {
 		$container = new Container();
 		$container->set( MigrationStore::class, new InMemoryMigrationStore() );
@@ -117,4 +123,17 @@ final class HasDefault {
 	 * @param int $limit Default 7.
 	 */
 	public function __construct( public int $limit = 7 ) {}
+}
+
+/**
+ * A scalar default first, then a service.
+ */
+final class DefaultThenService {
+	/**
+	 * Constructor.
+	 *
+	 * @param int        $limit Default 7.
+	 * @param Clock|null $clock The clock.
+	 */
+	public function __construct( public int $limit = 7, public ?Clock $clock = null ) {}
 }

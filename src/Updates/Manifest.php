@@ -59,9 +59,8 @@ final class Manifest {
 	 * @param mixed $data Decoded JSON.
 	 */
 	public static function fromArray( mixed $data ): ?self {
-		if ( ! is_array( $data ) ) {
-			return null;
-		}
+		// Anything but an array has no field, so it fails on the version below.
+		$data    = is_array( $data ) ? $data : array();
 		$text    = static fn( string $key ): string => isset( $data[ $key ] ) && is_string( $data[ $key ] ) ? trim( $data[ $key ] ) : '';
 		$version = $text( 'version' );
 		$package = $text( 'package' );

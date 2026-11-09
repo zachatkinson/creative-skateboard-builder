@@ -279,6 +279,7 @@ final class MigrationRunnerTest extends TestCase {
 		self::assertSame( RunResult::Continued, $runner->run( 0, true ) );
 		self::assertTrue( $this->queue->isPending( Options::JOB_MIGRATE ), 'the rest is queued' );
 		self::assertSame( 1, $this->queue->plain[ Options::JOB_MIGRATE ] ?? 0, 'by one plain action' );
+		self::assertSame( array(), $this->queue->calls, 'and no unique one is asked for as well' );
 	}
 
 	public function test_inside_the_job_a_failure_schedules_its_retry_past_its_own_running_action(): void {
@@ -332,6 +333,36 @@ final class MigrationRunnerTest extends TestCase {
 		self::assertSame( '0', $this->store->version );
 	}
 
+	public function test_a_budget_used_to_the_second_stops_before_the_next_migration(): void {
+		$first  = new CountingMigration( 'first' );
+		$second = new CountingMigration( 'second' );
+		// A budget of 0 is used up the moment the first migration ends, with the clock standing still.
+		self::assertSame( RunResult::Continued, $this->runner( $first, $second )->run( 0 ) );
+		self::assertSame( 1, $first->runs );
+		self::assertSame( 0, $second->runs );
+	}
+
+	public function test_an_attempt_is_recorded_as_running_before_its_first_batch(): void {
+		$store = $this->store;
+		$seen  = new class( $store ) implements Migration {
+			public ?MigrationState $during = null;
+
+			public function __construct( private InMemoryMigrationStore $store ) {}
+
+			public function key(): string {
+				return 'seen_1';
+			}
+
+			public function run( Cursor $cursor ): Cursor {
+				$this->during = $this->store->stateOf( 'seen_1' );
+				return Cursor::done();
+			}
+		};
+		self::assertSame( RunResult::Finished, $this->runner( $seen )->run() );
+		self::assertSame( MigrationState::RUNNING, $seen->during?->status, 'a crash in the batch leaves the attempt on record' );
+		self::assertSame( 1, $seen->during?->attempts );
+	}
+
 	public function test_a_failure_waits_before_the_next_attempt(): void {
 		$throwing = new ThrowingMigration();
 		$runner   = $this->runner( $throwing );
@@ -348,6 +379,19 @@ final class MigrationRunnerTest extends TestCase {
 		self::assertCount( 1, $this->logger->lines, 'nothing ran, so nothing more is logged' );
 		self::assertSame( 1, $this->store->stateOf( 'throwing_1' )?->attempts );
 		self::assertNull( $this->store->lock, 'and no lock is taken to wait' );
+		self::assertSame( 1, $this->store->releases, 'none taken, so none released: the one release is the failed run\'s' );
+		self::assertSame(
+			array(
+				'migration' => 'throwing_1',
+				'attempt'   => 1,
+				'cursor'    => 5,
+				'exception' => 'RuntimeException',
+				'retry_at'  => $start + 60,
+			),
+			$this->logger->lines[0]['context'],
+			'the log line carries what a shop owner needs to act on'
+		);
+		self::assertStringContainsString( 'failed on attempt 1 at cursor 5', $this->logger->lines[0]['message'] );
 
 		$this->clock->advance( 1 );
 		self::assertTrue( $runner->due() );

@@ -57,6 +57,23 @@ final class MigrationStateTest extends TestCase {
 		$state = MigrationState::pending( 'm' )->started( 100 )->advanced( Cursor::at( 'p' ) )->failed( 'e', 160 );
 		$back  = MigrationState::fromArray( 'm', $state->toArray() );
 		self::assertSame( $state->toArray(), $back->toArray() );
+		self::assertSame(
+			array(
+				'status'      => MigrationState::FAILED,
+				'cursor'      => array(
+					'position' => 'p',
+					'done'     => false,
+				),
+				'started_at'  => 100,
+				'finished_at' => null,
+				'attempts'    => 1,
+				'error'       => 'e',
+				'retry_at'    => 160,
+			),
+			$state->toArray(),
+			'what the store holds, field by field'
+		);
+		self::assertSame( 2, MigrationState::pending( 'd' )->started( 1 )->finished( 2 )->toArray()['finished_at'] );
 		self::assertSame( 160, $back->retryAt );
 		self::assertSame( 'm', $back->key );
 
@@ -92,6 +109,14 @@ final class MigrationStateTest extends TestCase {
 		self::assertNull( $failed->started( 200 )->retryAt, 'the next attempt starts clean' );
 		self::assertFalse( MigrationState::pending( 'm' )->isWaiting( 0 ), 'only a failure waits' );
 		self::assertFalse( MigrationState::pending( 'm' )->started( 1 )->isWaiting( 0 ) );
+		$running = MigrationState::fromArray(
+			'm',
+			array(
+				'status'   => MigrationState::RUNNING,
+				'retry_at' => 160,
+			)
+		);
+		self::assertFalse( $running->isWaiting( 100 ), 'a moment left on a state that did not fail is no wait' );
 		$old = $failed->toArray();
 		unset( $old['retry_at'] );
 		self::assertFalse( MigrationState::fromArray( 'm', $old )->isWaiting( 0 ), 'a state saved before the wait existed is tried at once' );

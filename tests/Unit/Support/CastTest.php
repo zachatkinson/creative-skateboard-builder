@@ -105,6 +105,19 @@ final class CastTest extends TestCase {
 
 	public function test_map_keeps_string_keys_only(): void {
 		self::assertSame( array( 'a' => 1 ), Cast::map( array( 'a' => 1, 0 => 'dropped' ) ) );
+		self::assertSame(
+			array(
+				'a' => 1,
+				'b' => 2,
+			),
+			Cast::map(
+				array(
+					'a' => 1,
+					'b' => 2,
+				)
+			),
+			'every string key, not the first alone'
+		);
 		self::assertSame( array(), Cast::map( 'x' ) );
 	}
 }

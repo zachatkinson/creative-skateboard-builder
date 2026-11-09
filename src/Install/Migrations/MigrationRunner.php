@@ -214,7 +214,7 @@ final class MigrationRunner {
 					$retryAt  = $failedAt + self::retryDelay( $state->attempts );
 					$this->logger->log(
 						Logger::ERROR,
-						sprintf( 'Migration %s failed on attempt %d at cursor %s: %s', $migration->key(), $state->attempts, null === $state->cursor->position ? 'start' : (string) $state->cursor->position, $e->getMessage() ),
+						sprintf( 'Migration %s failed on attempt %d at cursor %s: %s', $migration->key(), $state->attempts, $state->cursor->position ?? 'start', $e->getMessage() ),
 						array(
 							'migration' => $migration->key(),
 							'attempt'   => $state->attempts,

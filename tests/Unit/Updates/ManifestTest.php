@@ -91,6 +91,10 @@ final class ManifestTest extends TestCase {
 		yield 'null' => array( null );
 		yield 'no version' => array( array_diff_key( self::valid(), array( 'version' => 1 ) ) );
 		yield 'two-part version' => array( array_merge( self::valid(), array( 'version' => '1.0' ) ) );
+		yield 'a version with something before it' => array( array_merge( self::valid(), array( 'version' => 'v0.1.0' ) ) );
+		yield 'a version with something after it' => array( array_merge( self::valid(), array( 'version' => '0.1.0-beta' ) ) );
+		yield 'a sha one character too long, at the front' => array( array_merge( self::valid(), array( 'sha256' => 'a' . self::SHA ) ) );
+		yield 'a sha one character too long, at the end' => array( array_merge( self::valid(), array( 'sha256' => self::SHA . 'a' ) ) );
 		yield 'short sha' => array( array_merge( self::valid(), array( 'sha256' => 'abc' ) ) );
 		yield 'sha with a non-hex character' => array( array_merge( self::valid(), array( 'sha256' => str_repeat( 'g', 64 ) ) ) );
 		yield 'sha not a string' => array( array_merge( self::valid(), array( 'sha256' => 123 ) ) );
@@ -123,5 +127,29 @@ final class ManifestTest extends TestCase {
 		self::assertFalse( Manifest::allowedPackage( self::PACKAGE . '#https://github.com/' ) );
 		self::assertFalse( Manifest::allowedPackage( self::PACKAGE . '?x=1' ) );
 		self::assertFalse( Manifest::allowedPackage( Manifest::RELEASES . '0.1.0/a b.zip' ) );
+		self::assertFalse( Manifest::allowedPackage( str_repeat( 'x', strlen( Manifest::RELEASES ) ) . '0.1.0/a.zip' ), 'the prefix is checked, not skipped over' );
+	}
+
+	public function test_the_fields_are_trimmed(): void {
+		$data            = self::valid();
+		$data['version'] = " 0.1.0\n";
+		$data['package'] = ' ' . self::PACKAGE . ' ';
+		$data['sha256']  = "\t" . self::SHA . ' ';
+		$m               = Manifest::fromArray( $data );
+		self::assertNotNull( $m );
+		self::assertSame( '0.1.0', $m->version );
+		self::assertSame( self::PACKAGE, $m->package );
+		self::assertSame( self::SHA, $m->sha256 );
+	}
+
+	public function test_the_release_page_is_kept_only_when_it_is_one_https_address(): void {
+		$with = static function ( string $url ): string {
+			$m = Manifest::fromArray( array_merge( self::valid(), array( 'url' => $url ) ) );
+			self::assertNotNull( $m );
+			return $m->url;
+		};
+		self::assertSame( 'HTTPS://Example.com/release', $with( 'HTTPS://Example.com/release' ), 'the scheme in any case' );
+		self::assertSame( '', $with( 'https://example.com/release and more' ), 'nothing after the address' );
+		self::assertSame( '', $with( 'https://' ), 'a host is needed' );
 	}
 }

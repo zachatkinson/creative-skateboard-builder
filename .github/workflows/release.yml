@@ -38,7 +38,7 @@ jobs:
   ci:
     name: CI passed on the tagged commit
     if: github.event_name == 'push' || (github.event.workflow_run.event == 'push' && github.event.workflow_run.conclusion == 'success')
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 15
     outputs:
       publish: ${{ steps.gate.outputs.publish }}
@@ -85,7 +85,7 @@ jobs:
     name: What is already published
     needs: ci
     if: needs.ci.outputs.publish == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 5
     env:
       RELEASES_REPO: zachatkinson/creative-releases
@@ -127,7 +127,7 @@ jobs:
     name: Build the zip, the SBOMs and the manifest
     needs: [ci, state]
     if: needs.state.outputs.published != 'yes' || needs.state.outputs.pointed != 'yes'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 15
     env:
       RELEASES_REPO: zachatkinson/creative-releases
@@ -185,7 +185,7 @@ jobs:
   publish:
     name: Publish to the releases repo
     needs: [state, build]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 10
     env:
       RELEASES_REPO: zachatkinson/creative-releases

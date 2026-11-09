@@ -153,9 +153,7 @@ final class MigrationState {
 	 * @param mixed  $data What was stored.
 	 */
 	public static function fromArray( string $key, mixed $data ): self {
-		if ( ! is_array( $data ) ) {
-			return self::pending( $key );
-		}
+		$data   = is_array( $data ) ? $data : array();
 		$status = $data['status'] ?? self::PENDING;
 		if ( ! in_array( $status, array( self::PENDING, self::RUNNING, self::DONE, self::FAILED ), true ) ) {
 			$status = self::PENDING;

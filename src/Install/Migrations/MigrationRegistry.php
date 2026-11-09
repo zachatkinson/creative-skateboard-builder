@@ -53,12 +53,12 @@ final class MigrationRegistry {
 	 * @throws PluginException When two migrations share a key.
 	 */
 	public function __construct( Migration ...$migrations ) {
-		$keys = array();
+		$seen = array();
 		foreach ( $migrations as $migration ) {
-			if ( isset( $keys[ $migration->key() ] ) ) {
+			if ( isset( $seen[ $migration->key() ] ) ) {
 				throw new PluginException( esc_html( sprintf( 'Two migrations share the key %s.', $migration->key() ) ) );
 			}
-			$keys[ $migration->key() ] = true;
+			$seen[ $migration->key() ] = $migration;
 		}
 		$this->migrations = array_values( $migrations );
 	}
