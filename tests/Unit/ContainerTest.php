@@ -99,6 +99,15 @@ final class ContainerTest extends TestCase {
 		self::assertCount( 1, $hookables );
 		self::assertContainsOnlyInstancesOf( Hookable::class, $hookables );
 	}
+
+	public function test_every_hookable_is_built_in_registration_order(): void {
+		$container = new Container( array( SecondHooks::class, FirstHooks::class ) );
+		$hookables = $container->hookables();
+		self::assertCount( 2, $hookables, 'every one, not the first alone' );
+		self::assertInstanceOf( SecondHooks::class, $hookables[0] );
+		self::assertInstanceOf( FirstHooks::class, $hookables[1] );
+		self::assertSame( $hookables, $container->hookables(), 'built once' );
+	}
 }
 
 /**
@@ -136,4 +145,18 @@ final class DefaultThenService {
 	 * @param Clock|null $clock The clock.
 	 */
 	public function __construct( public int $limit = 7, public ?Clock $clock = null ) {}
+}
+
+/**
+ * A Hookable with nothing to attach.
+ */
+final class FirstHooks implements Hookable {
+	public function register(): void {}
+}
+
+/**
+ * Another.
+ */
+final class SecondHooks implements Hookable {
+	public function register(): void {}
 }

@@ -75,6 +75,24 @@ final class Container {
 	private array $instances = array();
 
 	/**
+	 * The Hookable classes this container builds, in registration order.
+	 *
+	 * @var class-string<Hookable>[]
+	 */
+	private array $hookableClasses;
+
+	/**
+	 * Constructor.
+	 *
+	 * @since 0.1.0
+	 *
+	 * @param class-string<Hookable>[]|null $hookableClasses The Hookable classes, for tests; the plugin's own when null.
+	 */
+	public function __construct( ?array $hookableClasses = null ) {
+		$this->hookableClasses = $hookableClasses ?? self::hookableClasses();
+	}
+
+	/**
 	 * Get (building on first use) a service.
 	 *
 	 * @since 0.1.0
@@ -136,7 +154,7 @@ final class Container {
 	 */
 	public function hookables(): array {
 		$out = array();
-		foreach ( self::hookableClasses() as $id ) {
+		foreach ( $this->hookableClasses as $id ) {
 			$out[] = $this->get( $id );
 		}
 		return $out;
