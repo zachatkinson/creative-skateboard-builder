@@ -1,7 +1,7 @@
 {
 	// The plugin outside the domain, at 90 % (docs/AUDIT.md: Mutation testing). src/Domain has its own 100 % run in
-	// infection-domain.json5. The WordPress-bound directories are proven by the integration suite in wp-env, so only
-	// what the unit suite covers is mutated here: the same list as phpunit.xml.dist's <source>.
+	// infection-domain.json5. The WordPress-bound directories are proven by the integration suite in wp-env, so they
+	// are excluded by name and everything else in src/ is mutated: the same list as phpunit.xml.dist's <source>.
 	"$schema": "vendor/infection/infection/resources/schema.json",
 	"source": {
 		"directories": [
@@ -9,7 +9,8 @@
 		],
 		"excludes": [
 			"Domain",
-			"Adapter",
+			"Adapter/ActionSchedulerQueue.php",
+			"Adapter/WooCommerceLogger.php",
 			"Repository",
 			"Hooks",
 			"Plugin.php",
@@ -18,8 +19,7 @@
 			"Install/Deactivator.php",
 			"Install/Schema.php",
 			"Install/Uninstaller.php",
-			"Support/Options.php",
-			"Support/Tables.php",
+			"Install/Migrations/SchemaMigration.php",
 			"Updates/HttpManifestSource.php",
 			"Updates/Updater.php"
 		]
