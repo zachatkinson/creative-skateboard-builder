@@ -67,8 +67,8 @@
 		"api:check": "@php tools/api-surface.php --check",
 		"api:snapshot": "@php tools/api-surface.php --write",
 		"audit:deps": [
-			"composer audit",
-			"composer audit --working-dir=tools/integration",
+			"composer audit --locked",
+			"composer audit --locked --working-dir=tools/integration",
 			"npm audit --omit=dev"
 		],
 		"check": [
