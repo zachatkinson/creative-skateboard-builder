@@ -8,7 +8,7 @@ Status is one of:
 - **Accepted**: Zach agreed, or it's an engineering call made with the brief.
 - **Replaced by D-n.**
 
-Zach confirms the proposed entries (D-002 to D-004, D-006 and D-007 before milestone 1; the rest by the milestone named in the spec's Open questions).
+Zach accepted D-002 to D-011 as proposed on 9 November 2026, before milestone 1.
 
 ### D-001 · The name: Creative Skateboard Builder · 2026-11-09
 
@@ -42,7 +42,7 @@ Zach chose Creative Skateboard Builder over the working name, Creative Builder, 
 - the accessibility bar and the no-JavaScript version;
 - one codebase for every shop the agency builds, with no licence per site.
 
-**Status:** Proposed (open question 2).
+**Status:** Accepted (Zach, 9 November 2026; open question 2).
 
 ### D-003 · Repository, licence and releases · 2026-11-09
 
@@ -58,7 +58,7 @@ Releases go out as Creative Search's do:
 - shops update through `Updates\Updater`.
 
 **Why:** one release path for every agency plugin. The license follows WordPress's own.
-**Status:** Proposed (open question 3).
+**Status:** Accepted (Zach, 9 November 2026; open question 3).
 
 ### D-004 · Floors: PHP 8.5, WordPress 7.0, WooCommerce 11.2 · 2026-11-09
 
@@ -79,7 +79,7 @@ CI tests two pairs, both on PHP 8.5, on MySQL 8.4 and MariaDB 10.11:
 WooCommerce 11.2 is the first release with the Store API filters the cart relies on: `woocommerce_store_api_cart_item_quantity_validation`, which refuses a part's quantity changed on its own, and the validation for a build's first add (advisory, 24 September 2026). On 11.0 and 11.1 a locked line is refused only above its maximum, so a build could be split. A repair after the fact was considered and rejected: it can't refuse the change, only undo it. The agency's other WooCommerce plugins have an 11.0 floor; the builder is the first to need 11.2. It also leaves only one Mini-Cart to support: the Interactivity API one, the default since 10.4.
 
 **Trade-off:** a host without PHP 8.5 can't run the plugin. The agency controls the hosting of the shops it ships to.
-**Status:** Proposed (open question 8). This changes the spec's earlier floors (WordPress 6.8, WooCommerce 10.0, PHP 8.2).
+**Status:** Accepted (Zach, 9 November 2026; open question 8). This changes the spec's earlier floors (WordPress 6.8, WooCommerce 10.0, PHP 8.2).
 
 ### D-005 · The toolchain: Creative Search's, with additions · 2026-11-09
 
@@ -115,35 +115,35 @@ The picture is drawn through one renderer interface. Two renderers ship in 1.0:
 A 3D renderer that loads on a tap is a module after 1.0 (ROADMAP.md, Module B).
 
 **Why:** the deep dive's option A. It works on every device and without JavaScript, stays within the largest-paint budget, and needs no models of trucks the shop doesn't stock yet. Independent research finds 3D's lift small. The picture is still what catches the eye, which is why it is now a milestone of its own (D-012).
-**Status:** Proposed (open question 9). This changes the spec's earlier non-goal, which ruled out a layered preview in 1.0.
+**Status:** Accepted (Zach, 9 November 2026; open question 9). This changes the spec's earlier non-goal, which ruled out a layered preview in 1.0.
 
 ### D-007 · Shoppers' own graphics: a module after 1.0 · 2026-11-09
 
 **Why:** it changes what Skatehouse makes and waits on the owner's seven questions (UX-RESEARCH.md). The picture's deck layer already takes any image, so the module adds uploads, the editor, proofs, approval and print files without changing the picture.
-**Status:** Proposed (open question 9).
+**Status:** Accepted (Zach, 9 November 2026; open question 9).
 
 ### D-008 · Where the builder lives on Skatehouse · 2026-11-09
 
 The Builder block on /build-a-complete/, already in the menu, with the kit's own page pointing there.
 
-**Status:** Proposed (open question 4).
+**Status:** Accepted (Zach, 9 November 2026; open question 4).
 
 ### D-009 · One cart count per build · 2026-11-09
 
 `woocommerce_cart_contents_count` counts a build once, as Bundles and Mix and Match count theirs. It sets the header count and the Store API's `items_count`, which the Mini-Cart then shows (checked in WooCommerce 11.2.1).
 
-**Status:** Proposed (open question 5).
+**Status:** Accepted (Zach, 9 November 2026; open question 5).
 
 ### D-010 · No checkout script on every page for the Mini-Cart · 2026-11-09
 
 **Why:** it would add about 140 kB compressed to every page. Item data and CSS group a build's parts in the Mini-Cart, and removing any part removes the whole build.
-**Status:** Proposed (open question 6).
+**Status:** Accepted (Zach, 9 November 2026; open question 6).
 
 ### D-011 · Dealers see retail prices in 1.0 · 2026-11-09
 
 A signed-in dealer sees a line saying the builder is for retail orders. This is revisited with the owner's trade terms in Phase 4.
 
-**Status:** Proposed (open question 7).
+**Status:** Accepted (Zach, 9 November 2026; open question 7).
 
 ### D-012 · Nine milestones · 2026-11-09
 
