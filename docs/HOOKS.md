@@ -12,8 +12,8 @@ The foundation adds one filter and one constant, both for the updater. It adds n
 
 - **Since:** 0.1.0
 - **Signature:** `apply_filters( 'cbuild_updates_enabled', bool $on ): bool`
-- **What it does:** decides whether the plugin checks the agency's release manifest for a new version. `$on` is true unless `CBUILD_DISABLE_UPDATES` is defined and true. When the answer is false the plugin attaches none of its update hooks and makes no outbound request.
-- **Where it runs:** `Updates\Updater::enabled()`, once on `plugins_loaded`, also while WooCommerce is missing, so a fix still arrives (D-003).
+- **What it does:** decides whether the plugin checks the agency's release manifest for a new version. `$on` is true unless `CBUILD_DISABLE_UPDATES` is defined and true. When the answer is false the plugin offers no update, shows no release details and makes no outbound request.
+- **Where it runs:** `Updates\Updater::enabled()`, each time WordPress asks the plugin about an update, release details or a download, also while WooCommerce is missing, so a fix still arrives (D-003). It can be added at any point, a theme's `functions.php` included.
 - **Example:**
 
 ```php

@@ -26,7 +26,12 @@ Order item meta is part of the shop's order records and is kept on uninstall (sp
 
 ## What leaves the site
 
-One request: the update check. When WordPress checks for plugin updates, at most twice a day, the plugin reads `info.json` from the agency's public releases on GitHub. The request carries no site address, no version of WordPress or WooCommerce and no identifier; its user agent names only the plugin and its version (`UpdaterTest`). `CBUILD_DISABLE_UPDATES` or the `cbuild_updates_enabled` filter turns it off, and then nothing leaves the site at all.
+Two requests, both to GitHub, both for the plugin's own updates, and neither about a shopper.
+
+- **The update check.** When WordPress checks for plugin updates, at most twice a day, the plugin reads `info.json` from the agency's public releases.
+- **The download.** When someone installs an update, WordPress downloads the release's zip from the same repository, and the plugin checks its SHA-256 before it is installed.
+
+Neither carries the site's address, the version of WordPress or WooCommerce, or any identifier: the user agent of both names only the plugin and its version, in place of WordPress's default, which includes the site's address (`UpdaterTest`). GitHub sees the server's IP address, as any host does. `CBUILD_DISABLE_UPDATES` or the `cbuild_updates_enabled` filter turns both off, and then nothing leaves the site at all.
 
 ## Who sees it
 

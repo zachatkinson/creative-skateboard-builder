@@ -72,11 +72,13 @@ final class HttpManifestSource implements ManifestSource {
 		$response = wp_safe_remote_get(
 			$this->url,
 			array(
-				'timeout'     => self::TIMEOUT,
-				'redirection' => 2,
+				'timeout'             => self::TIMEOUT,
+				// The address answers itself. A redirect could lead off https, and a manifest is a few hundred bytes.
+				'redirection'         => 0,
+				'limit_response_size' => 65536,
 				// WordPress's default user agent names the site; this one names only the plugin.
-				'user-agent'  => 'Creative Skateboard Builder/' . CBUILD_VERSION,
-				'headers'     => array( 'Accept' => 'application/json' ),
+				'user-agent'          => 'Creative Skateboard Builder/' . CBUILD_VERSION,
+				'headers'             => array( 'Accept' => 'application/json' ),
 			)
 		);
 		if ( is_wp_error( $response ) || 200 !== wp_remote_retrieve_response_code( $response ) ) {

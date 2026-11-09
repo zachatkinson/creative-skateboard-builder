@@ -33,11 +33,10 @@ final class Updater {
 	public const SLUG = 'creative-skateboard-builder';
 
 	/**
-	 * Where this plugin's release zips are published: a package under it is this plugin's to check. The repository
-	 * holds every agency plugin's releases, so the prefix names this one's (`creative-skateboard-builder-<version>`);
-	 * a sibling's package is left to its own updater.
+	 * Where this plugin's release zips are published: a package under it is this plugin's to check, and the only
+	 * kind the manifest may name. A sibling's package is left to its own updater.
 	 */
-	public const RELEASES = 'https://github.com/zachatkinson/creative-releases/releases/download/' . self::SLUG . '-';
+	public const RELEASES = Manifest::RELEASES;
 
 	/**
 	 * How a package is downloaded to a temporary file.
@@ -56,17 +55,28 @@ final class Updater {
 	public function __construct( private ManifestSource $source, private string $basename, ?callable $download = null ) {
 		$this->download = $download ?? static function ( string $url ) {
 			require_once ABSPATH . 'wp-admin/includes/file.php';
-			return download_url( $url );
+			// download_url() sends WordPress's default user agent, which carries the site's address
+			// (wp-includes/class-wp-http.php:211). For this one request it names only the plugin, as the manifest's does.
+			$agent = static function ( $args, $requested ) use ( $url ) {
+				if ( is_array( $args ) && $requested === $url ) {
+					$args['user-agent'] = 'Creative Skateboard Builder/' . CBUILD_VERSION;
+				}
+				return $args;
+			};
+			add_filter( 'http_request_args', $agent, 10, 2 ); // phpcs:ignore WordPressVIPMinimum.Hooks.RestrictedHooks.http_request_args -- Sets the user agent of one request; the timeout is untouched.
+			try {
+				return download_url( $url );
+			} finally {
+				remove_filter( 'http_request_args', $agent, 10 );
+			}
 		};
 	}
 
 	/**
-	 * Attach hooks, unless updates are turned off.
+	 * Attach hooks. Whether updates are on is asked each time one runs, so the filter and the constant work
+	 * wherever they are set, a theme's functions.php included.
 	 */
 	public function register(): void {
-		if ( ! self::enabled() ) {
-			return;
-		}
 		add_filter( 'update_plugins_' . (string) wp_parse_url( self::MANIFEST_URL, PHP_URL_HOST ), array( $this, 'check' ), 10, 3 );
 		add_filter( 'plugins_api', array( $this, 'details' ), 10, 3 );
 		add_filter( 'upgrader_pre_download', array( $this, 'verify' ), 10, 2 );
@@ -98,6 +108,9 @@ final class Updater {
 	 */
 	public function check( mixed $update, mixed $plugin_data, mixed $plugin_file ): mixed {
 		unset( $plugin_data );
+		if ( ! self::enabled() ) {
+			return $update;
+		}
 		if ( $this->basename !== $plugin_file ) {
 			return $update;
 		}
@@ -144,7 +157,7 @@ final class Updater {
 	 * @return mixed
 	 */
 	public function details( mixed $result, mixed $action, mixed $args ): mixed {
-		if ( 'plugin_information' !== $action || ! is_object( $args ) || ! isset( $args->slug ) || self::SLUG !== $args->slug ) {
+		if ( 'plugin_information' !== $action || ! is_object( $args ) || ! isset( $args->slug ) || self::SLUG !== $args->slug || ! self::enabled() ) {
 			return $result;
 		}
 		$manifest = $this->source->latest();
@@ -179,7 +192,7 @@ final class Updater {
 	 * @return mixed The downloaded file's path, a WP_Error, or $reply for other packages.
 	 */
 	public function verify( mixed $reply, mixed $package ): mixed {
-		if ( false !== $reply || ! is_string( $package ) || ! $this->ours( $package ) ) {
+		if ( false !== $reply || ! is_string( $package ) || ! self::enabled() || ! $this->ours( $package ) ) {
 			return $reply;
 		}
 		$manifest = $this->source->latest();

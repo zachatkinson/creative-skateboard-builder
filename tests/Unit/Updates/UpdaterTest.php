@@ -44,6 +44,7 @@ final class UpdaterTest extends TestCase {
 
 	public function test_releases_prefix_names_this_plugin(): void {
 		self::assertStringEndsWith( '/creative-skateboard-builder-', Updater::RELEASES );
-		self::assertStringStartsWith( 'https://github.com/', Updater::RELEASES );
+		self::assertSame( 'https://github.com/zachatkinson/creative-releases/releases/download/creative-skateboard-builder-', Updater::RELEASES );
+		self::assertSame( \CreativeBranding\SkateboardBuilder\Updates\Manifest::RELEASES, Updater::RELEASES, 'one prefix: what the manifest may name is what the updater checks' );
 	}
 }

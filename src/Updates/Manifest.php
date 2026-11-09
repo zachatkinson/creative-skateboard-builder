@@ -20,9 +20,11 @@ if ( ! defined( 'ABSPATH' ) ) {
 final class Manifest {
 
 	/**
-	 * Hosts a package may be downloaded from (GitHub release assets).
+	 * Where this plugin's release zips are published, and the only place a package may be: the agency's releases
+	 * repository, under this plugin's own tags (`creative-skateboard-builder-<version>`). The repository holds every
+	 * agency plugin's releases, and github.com holds everyone's, so the whole prefix is matched, not the host.
 	 */
-	public const PACKAGE_HOSTS = array( 'github.com' );
+	public const RELEASES = 'https://github.com/zachatkinson/creative-releases/releases/download/creative-skateboard-builder-';
 
 	/**
 	 * Constructor.
@@ -82,17 +84,16 @@ final class Manifest {
 	}
 
 	/**
-	 * Whether a package address is https on an allowed host, ending in .zip.
+	 * Whether a package address is a zip among this plugin's releases: the prefix as written, then the rest of the
+	 * tag and one file name, in plain characters. No user info, port, query, fragment, encoding or further folder.
 	 *
 	 * @param string $package Address.
 	 */
 	public static function allowedPackage( string $package ): bool {
-		// Host, then a plain path ending in .zip: no user info, port, query or fragment. Read by pattern, since this
-		// class runs without WordPress and wp_parse_url() isn't there.
-		if ( 1 !== preg_match( '~^https://([a-z0-9.-]+)(/[^?#\s]*\.zip)$~i', $package, $parts ) ) {
+		if ( ! str_starts_with( $package, self::RELEASES ) ) {
 			return false;
 		}
-		return in_array( strtolower( $parts[1] ), self::PACKAGE_HOSTS, true );
+		return 1 === preg_match( '~^[0-9A-Za-z][0-9A-Za-z.+-]*/[0-9A-Za-z][0-9A-Za-z._+-]*\.zip$~', substr( $package, strlen( self::RELEASES ) ) );
 	}
 
 	/**

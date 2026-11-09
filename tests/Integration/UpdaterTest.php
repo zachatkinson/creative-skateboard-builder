@@ -136,13 +136,123 @@ final class UpdaterTest extends IntegrationTestCase {
 		self::assertSame( 0, $calls );
 	}
 
-	public function test_turned_off_by_the_filter(): void {
+	public function test_turned_off_by_the_filter_whenever_it_is_added(): void {
 		self::assertTrue( Updater::enabled() );
+		$calls   = 0;
+		$source  = new FakeManifestSource( self::manifest( hash( 'sha256', 'zip bytes' ) ) );
+		$updater = new Updater( $source, self::BASENAME, self::downloader( 'zip bytes', $calls ) );
+		$updater->register();
+		self::assertIsArray( $updater->check( false, array(), self::BASENAME ), 'on: the release is offered' );
+
+		// Added after the plugin booted, as a theme's functions.php or another plugin's plugins_loaded callback would.
 		add_filter( 'cbuild_updates_enabled', '__return_false' );
 		self::assertFalse( Updater::enabled() );
-		$before = $GLOBALS['wp_filter']['plugins_api'] ?? null;
-		( new Updater( new FakeManifestSource( null ), self::BASENAME ) )->register();
-		self::assertSame( $before, $GLOBALS['wp_filter']['plugins_api'] ?? null, 'nothing attached' );
+		self::assertFalse( $updater->check( false, array(), self::BASENAME ), 'no offer' );
+		self::assertFalse( $updater->details( false, 'plugin_information', (object) array( 'slug' => 'creative-skateboard-builder' ) ), 'no details' );
+		self::assertFalse( $updater->verify( false, self::PACKAGE ), 'and nothing downloaded' );
+		self::assertSame( 0, $calls );
+		self::assertSame( 0, $source->fresh );
+	}
+
+	public function test_the_checksum_is_checked_on_the_hook_wordpress_downloads_through(): void {
+		$calls   = 0;
+		$updater = new Updater( new FakeManifestSource( self::manifest( hash( 'sha256', 'other bytes' ) ) ), self::BASENAME, self::downloader( 'zip bytes', $calls ) );
+		// The plugin booted an updater of its own on these hooks; this one stands in for it.
+		remove_all_filters( 'upgrader_pre_download' );
+		$updater->register();
+		self::assertSame( 10, has_filter( 'upgrader_pre_download', array( $updater, 'verify' ) ) );
+		self::assertSame( 10, has_filter( 'plugins_api', array( $updater, 'details' ) ) );
+		self::assertSame( 10, has_action( 'load-update-core.php', array( Updater::class, 'forceCheck' ) ) );
+
+		// As WP_Upgrader::download_package() asks (wp-admin/includes/class-wp-upgrader.php): a wrong checksum comes
+		// back as the error the upgrader shows, and the file is gone.
+		$result = apply_filters( 'upgrader_pre_download', false, self::PACKAGE, new \stdClass(), array() );
+		self::assertInstanceOf( WP_Error::class, $result );
+		self::assertSame( 'cbuild_package_mismatch', $result->get_error_code() );
+		self::assertSame( 1, $calls );
+		self::assertFalse( apply_filters( 'upgrader_pre_download', false, 'https://downloads.wordpress.org/plugin/akismet.zip', new \stdClass(), array() ), 'core\'s own packages are left to core' );
+		self::assertSame( 1, $calls );
+	}
+
+	public function test_the_package_wordpress_was_offered_for_this_plugin_is_checked_wherever_it_is(): void {
+		$calls   = 0;
+		$mirror  = 'https://downloads.example.org/creative-skateboard-builder.zip';
+		$updater = new Updater( new FakeManifestSource( self::manifest() ), self::BASENAME, self::downloader( 'zip bytes', $calls ) );
+		self::assertFalse( $updater->verify( false, $mirror ), 'not offered: not ours' );
+
+		$updates           = new \stdClass();
+		$updates->response = array( self::BASENAME => (object) array( 'package' => $mirror ) );
+		set_site_transient( 'update_plugins', $updates );
+		$result = $updater->verify( false, $mirror );
+		self::assertInstanceOf( WP_Error::class, $result, 'offered for this plugin, and not what the manifest names: refused' );
+		self::assertSame( 'cbuild_package_unknown', $result->get_error_code() );
+		self::assertSame( 0, $calls, 'before any download' );
+		delete_site_transient( 'update_plugins' );
+	}
+
+	public function test_the_package_is_downloaded_without_naming_the_site(): void {
+		$agent = '';
+		$seen  = '';
+		add_filter(
+			'pre_http_request',
+			static function ( $pre, $args, $url ) use ( &$agent, &$seen ) {
+				$agent = (string) $args['user-agent'];
+				$seen  = (string) $url;
+				return new WP_Error( 'cbuild_test', 'stopped by the test' );
+			},
+			10,
+			3
+		);
+		// WordPress's own downloader, as in production.
+		$updater = new Updater( new FakeManifestSource( self::manifest() ), self::BASENAME );
+		$result  = $updater->verify( false, self::PACKAGE );
+		self::assertInstanceOf( WP_Error::class, $result );
+		self::assertSame( self::PACKAGE, $seen );
+		self::assertSame( 'Creative Skateboard Builder/' . CBUILD_VERSION, $agent, 'WordPress\'s default user agent carries the site\'s address' );
+		self::assertStringNotContainsString( (string) wp_parse_url( home_url(), PHP_URL_HOST ), $agent );
+
+		// Only for that one request: the next one of anybody's has WordPress's own again.
+		wp_remote_get( 'https://example.org/' );
+		self::assertStringContainsString( 'WordPress/', $agent );
+	}
+
+	public function test_check_again_on_the_updates_screen_forgets_the_cached_manifest(): void {
+		set_site_transient( Options::UPDATE_MANIFEST, array( 'data' => null ), HOUR_IN_SECONDS );
+		Updater::forceCheck();
+		self::assertIsArray( get_site_transient( Options::UPDATE_MANIFEST ), 'an ordinary load of the screen keeps it' );
+		$_GET['force-check'] = '1';
+		Updater::forceCheck();
+		unset( $_GET['force-check'] );
+		self::assertFalse( get_site_transient( Options::UPDATE_MANIFEST ) );
+	}
+
+	public function test_the_constant_turns_updates_off(): void {
+		if ( ! self::hasWpCli() ) {
+			self::markTestSkipped( 'Needs wp on the path (wp-env).' );
+		}
+		// A constant cannot be undefined again, so it is defined in a process of its own, before WordPress loads.
+		$code   = 'echo \CreativeBranding\SkateboardBuilder\Updates\Updater::enabled() ? "on" : "off", "|", false === apply_filters( "update_plugins_raw.githubusercontent.com", false, array(), "' . self::BASENAME . '", array() ) ? "no offer" : "offer";';
+		$result = self::wpEval( $code, array( '--exec=define( "CBUILD_DISABLE_UPDATES", true );' ) );
+		self::assertSame( 0, $result['code'], $result['err'] );
+		self::assertSame( 'off|no offer', $result['out'] );
+	}
+
+	public function test_the_manifest_request_follows_no_redirect_and_reads_a_bounded_body(): void {
+		HttpManifestSource::flush();
+		$args = array();
+		add_filter(
+			'pre_http_request',
+			static function ( $pre, $request ) use ( &$args ) {
+				$args = $request;
+				return new WP_Error( 'cbuild_test', 'stopped by the test' );
+			},
+			10,
+			2
+		);
+		( new HttpManifestSource( Updater::MANIFEST_URL ) )->latest();
+		self::assertSame( 0, $args['redirection'], 'a redirect could leave https' );
+		self::assertSame( 65536, $args['limit_response_size'] );
+		HttpManifestSource::flush();
 	}
 
 	public function test_a_manifest_address_that_is_not_https_is_never_requested(): void {

@@ -99,6 +99,12 @@ final class ManifestTest extends TestCase {
 		yield 'host that only looks right' => array( array_merge( self::valid(), array( 'package' => 'https://github.com.evil.example/x.zip' ) ) );
 		yield 'not a zip' => array( array_merge( self::valid(), array( 'package' => 'https://github.com/zachatkinson/creative-releases/releases/download/x/x.php' ) ) );
 		yield 'zip only in the query' => array( array_merge( self::valid(), array( 'package' => 'https://github.com/zachatkinson/x?f=.zip' ) ) );
+		yield 'another owner on GitHub' => array( array_merge( self::valid(), array( 'package' => 'https://github.com/attacker/evil/releases/download/v1/creative-skateboard-builder-9.9.9.zip' ) ) );
+		yield 'another repository of the agency' => array( array_merge( self::valid(), array( 'package' => 'https://github.com/zachatkinson/other/releases/download/creative-skateboard-builder-0.1.0/creative-skateboard-builder-0.1.0.zip' ) ) );
+		yield 'a branch archive, not a release' => array( array_merge( self::valid(), array( 'package' => 'https://github.com/zachatkinson/creative-releases/archive/refs/heads/main.zip' ) ) );
+		yield 'a sibling plugin of the agency' => array( array_merge( self::valid(), array( 'package' => 'https://github.com/zachatkinson/creative-releases/releases/download/creative-search-1.0.0/creative-search-1.0.0.zip' ) ) );
+		yield 'a path that climbs out of the releases' => array( array_merge( self::valid(), array( 'package' => 'https://github.com/zachatkinson/creative-releases/releases/download/creative-skateboard-builder-0.1.0/../../../../attacker/evil/x.zip' ) ) );
+		yield 'an encoded path' => array( array_merge( self::valid(), array( 'package' => 'https://github.com/zachatkinson/creative-releases/releases/download/creative-skateboard-builder-0.1.0/%2e%2e/x.zip' ) ) );
 		yield 'empty package' => array( array_merge( self::valid(), array( 'package' => '' ) ) );
 	}
 
@@ -107,11 +113,15 @@ final class ManifestTest extends TestCase {
 		self::assertNull( Manifest::fromArray( $data ) );
 	}
 
-	public function test_allowed_package_is_https_on_github_ending_in_zip(): void {
+	public function test_allowed_package_is_a_zip_among_this_plugins_releases_and_nothing_else(): void {
 		self::assertTrue( Manifest::allowedPackage( self::PACKAGE ) );
-		self::assertTrue( Manifest::allowedPackage( 'HTTPS://GITHUB.COM/a/b/c.ZIP' ) );
+		self::assertStringStartsWith( Manifest::RELEASES, self::PACKAGE );
+		self::assertFalse( Manifest::allowedPackage( 'HTTPS://GITHUB.COM/a/b/c.ZIP' ), 'github.com is everyone\'s host' );
+		self::assertFalse( Manifest::allowedPackage( strtoupper( self::PACKAGE ) ), 'a path is matched as written' );
 		self::assertFalse( Manifest::allowedPackage( 'https://github.com' ) );
 		self::assertFalse( Manifest::allowedPackage( 'https://user@github.com/a.zip' ), 'user info is not a host' );
-		self::assertFalse( Manifest::allowedPackage( 'https://github.com/a.zip#https://github.com/' ) );
+		self::assertFalse( Manifest::allowedPackage( self::PACKAGE . '#https://github.com/' ) );
+		self::assertFalse( Manifest::allowedPackage( self::PACKAGE . '?x=1' ) );
+		self::assertFalse( Manifest::allowedPackage( Manifest::RELEASES . '0.1.0/a b.zip' ) );
 	}
 }
