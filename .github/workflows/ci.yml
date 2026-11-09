@@ -103,7 +103,13 @@ jobs:
           cache: npm
       - run: npm ci
       - name: The generated types are committed
-        run: npm run types && git diff --exit-code -- assets/src
+        # git status, not git diff: a types file never committed is untracked, and a diff does not show it.
+        run: |
+          npm run types
+          changed="$(git status --porcelain -- assets/src)"
+          if [ -n "$changed" ]; then
+            echo "The generated types differ from the committed ones:"; echo "$changed"; exit 1
+          fi
       - run: npm run check
       - run: npm run build
       - run: npm run budget
