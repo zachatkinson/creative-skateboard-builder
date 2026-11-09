@@ -332,7 +332,7 @@ The plugin declares `custom_order_tables` and `cart_checkout_blocks` compatible 
 `npm run lhci` runs through `tools/lhci.sh`, which turns `SCRIPT_DEBUG` off and WooCommerce's "coming soon" mode off on wp-env's browser site for the run and puts both back afterwards. The budgets in `docs/AUDIT.md` are unchanged. Until the Builder block ships (milestone 6) the page measured is the shop's front page with the plugin active.
 
 **Why:** wp-env sets `SCRIPT_DEBUG`, so WordPress and WooCommerce serve unminified scripts and styles, and with them the front page alone misses the LCP budget whether the plugin is active or not: 2,723 ms without it and 2,728 ms with it (median of three, mobile profile, 9 November 2026). With minified assets the same page measures 2,380 ms. A budget for the builder page should not fail on a debug setting no shop runs with. The margin under 2,500 ms is about 120 ms before the builder draws anything, which milestone 6 has to work within.
-**Status:** Accepted. Zach to confirm at the milestone's review.
+**Status:** Accepted. Zach left the measuring to Claude on 9 November 2026. The margin is looked into in milestone 6's plan, before the builder page exists.
 
 ### D-033 · The migration lock names its holder, and a failed step waits · 2026-11-09
 
@@ -380,7 +380,7 @@ The oldest leg pins WordPress 7.0.8, the 7.0 branch's latest release on 9 Novemb
 Adding a class to the exclusions narrows a floor, and needs Zach as moving one does.
 
 **Why:** The unit suite runs without WordPress, so a class that calls it cannot be covered there, and the WordPress test suite on PHPUnit 9.6 has no coverage driver wired. Before the milestone 1 audit the floor read a hand-picked list of files, so a new untested class was invisible to it; `Support\Options` and `Support\Tables` had no unit tests for that reason. The updater is the largest excluded class and the most security-sensitive: its reader (`Updates\Manifest`) is measured, and its hooks are driven by 14 integration tests. Raised by both milestone 1 reviews.
-**Status:** Accepted for milestone 1. Zach to confirm the list, and whether measuring the integration suite's coverage should be a later milestone's work.
+**Status:** Accepted for milestone 1. Zach agreed on 9 November 2026 that milestone 2 starts by measuring the integration suite's coverage inside wp-env (`wp-env start --xdebug=coverage`) and merging it with the unit suite's, so the 90 % line floor counts every class in `src/` where it is tested and the named exclusions go from `phpunit.xml.dist`. The list stays in `infection.json5`: mutation testing runs on the unit suite only.
 
 ### D-039 · One uninstaller · 2026-11-09
 
