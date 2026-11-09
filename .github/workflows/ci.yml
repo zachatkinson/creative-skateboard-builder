@@ -8,6 +8,8 @@ on:
     branches: [main]
     paths-ignore: ['docs/**', '**.md', 'LICENSE']
   pull_request:
+    # ready_for_review as well as the defaults: marking a draft ready is what starts its full run (D-041).
+    types: [opened, synchronize, reopened, ready_for_review]
     paths-ignore: ['docs/**', '**.md', 'LICENSE']
 
 permissions:
@@ -20,8 +22,9 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  # A pull request that touches only the browser tests or the workflows runs the standards, the unit tests and the
-  # newest leg, not the other legs, mutation testing or the budgets. Main always runs everything; a release waits for it.
+  # A draft pull request, and one that touches only the browser tests or the workflows, runs the standards, the unit
+  # tests and the newest leg, not the other legs, mutation testing or the release dry run. Main always runs everything;
+  # a release waits for it.
   # The secrets scan rides in the same job: both need the history and neither takes ten seconds, and every job is
   # billed to the whole minute (D-040). A secret found stops the jobs that wait for this one.
   scope:
@@ -43,9 +46,14 @@ jobs:
       - id: scope
         env:
           BASE: ${{ github.base_ref }}
+          DRAFT: ${{ github.event.pull_request.draft }}
         run: |
           full=true
-          if [ "${GITHUB_EVENT_NAME}" = pull_request ]; then
+          if [ "${GITHUB_EVENT_NAME}" = pull_request ] && [ "${DRAFT}" = true ]; then
+            # A draft is work in progress: the lighter run on each push, everything once it is marked ready (D-041).
+            # GitHub does not merge a draft, so nothing reaches main without the full run.
+            full=false
+          elif [ "${GITHUB_EVENT_NAME}" = pull_request ]; then
             # The lighter run only when the diff was read and holds nothing else: if git cannot say, everything runs.
             if changed=$(git diff --name-only "origin/${BASE}...HEAD"); then
               others=$(grep -Ev '^(tests/e2e/|\.github/workflows/|docs/|LICENSE$)|\.md$' <<<"$changed" || true)

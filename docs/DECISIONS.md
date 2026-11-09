@@ -400,3 +400,10 @@ The repository is private, so GitHub bills every job to the whole minute. The sa
 
 **Why:** Zach asked on 9 November 2026 that CI not overspend on minutes. The first full runs billed 48 to 56 minutes each. Six of the legs spent about three minutes each starting wp-env to run a 25 second suite, and five jobs billed a minute each for under 20 seconds of work. Dependabot's weekly, ungrouped pull requests would each have been a full run. No gate is removed and no floor moves.
 **Status:** Accepted. The first full run in this shape passed in 7 jobs and billed 28 minutes.
+
+### D-041 · A draft pull request takes the lighter run · 2026-11-09
+
+A pull request marked as a draft runs what a narrow one runs (D-036): the secrets scan, the standards, the unit tests, the audits, the benchmarks and the newest leg with every browser project. Marking it ready for review starts the full run: the oldest leg, the six variants, mutation testing and the release dry run. A push to `main` always runs everything.
+
+**Why:** Zach agreed on 9 November 2026, to save billed minutes (D-040): about 12 a push while the work is in progress instead of 28. GitHub does not merge a draft, so nothing reaches `main` without the full run, and a release still waits for `main`'s own.
+**Status:** Accepted.
