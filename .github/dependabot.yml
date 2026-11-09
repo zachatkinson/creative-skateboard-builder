@@ -1,0 +1,26 @@
+# Dependabot keeps the lock files and the pinned actions current (docs/STANDARDS.md: CI hygiene). Each action is pinned
+# to a commit SHA; Dependabot updates the SHA and the version comment beside it.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+  - package-ecosystem: composer
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+  - package-ecosystem: composer
+    directory: /tools/integration
+    schedule:
+      interval: weekly
+      day: monday
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5

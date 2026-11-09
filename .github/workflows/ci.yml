@@ -1,0 +1,273 @@
+name: CI
+
+# Every gate on every push to main and every pull request (docs/AUDIT.md: CI gates). A change to the docs alone runs
+# nothing. A version tag runs nothing either: release.yml publishes once this workflow has passed on the tagged
+# commit's push to main. Every action is pinned to a commit SHA (docs/STANDARDS.md: CI hygiene).
+on:
+  push:
+    branches: [main]
+    paths-ignore: ['docs/**', '**.md', 'LICENSE']
+  pull_request:
+    paths-ignore: ['docs/**', '**.md', 'LICENSE']
+
+permissions:
+  contents: read
+
+# A new push to a pull request cancels the run it replaces; each push to main keeps its own run, which a release
+# waits for.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  # A pull request that touches only the browser tests or the workflows runs the standards, the unit tests and the
+  # newest leg, not the other legs, mutation testing or the budgets. Main always runs everything; a release waits for it.
+  scope:
+    name: What this change runs
+    runs-on: ubuntu-latest
+    outputs:
+      full: ${{ steps.scope.outputs.full }}
+      legs: ${{ steps.scope.outputs.legs }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: ${{ github.event_name == 'pull_request' && '0' || '1' }}
+      - id: scope
+        env:
+          BASE: ${{ github.base_ref }}
+        run: |
+          full=true
+          if [ "${GITHUB_EVENT_NAME}" = pull_request ]; then
+            others=$(git diff --name-only "origin/${BASE}...HEAD" | grep -Ev '^(tests/e2e/|\.github/workflows/|docs/|LICENSE$)|\.md$' || true)
+            if [ -z "$others" ]; then
+              full=false
+            fi
+          fi
+          echo "full=$full" >> "$GITHUB_OUTPUT"
+          if [ "$full" = true ]; then
+            echo 'legs=["newest","oldest","mysql84","mariadb1011","hpos-off","hpos-sync","multisite","object-cache"]' >> "$GITHUB_OUTPUT"
+          else
+            echo 'legs=["newest"]' >> "$GITHUB_OUTPUT"
+          fi
+          echo "Full run: $full"
+
+  static:
+    name: Lint, analyse, architecture, gates, unit tests, API snapshot
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
+        with:
+          php-version: '8.5'
+          coverage: xdebug
+          tools: composer:v2
+      - uses: ramsey/composer-install@65e4f84970763564f46a70b8a54b90d033b3bdda # 4.0.0
+      - run: composer lint
+      - run: composer analyse
+      - run: composer arch
+      - run: composer gates
+      - name: Unit tests with the coverage floors (100 % of src/Domain's lines and branches, 90 % of lines overall)
+        run: composer test:coverage
+      - run: composer api:check
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        if: always()
+        with:
+          name: coverage
+          path: tmp/coverage.txt
+
+  # The main file, uninstall.php and the floors check must parse on PHP 7.4, the oldest PHP WordPress 7.0 runs on, so
+  # a host below the floor sees the notice and no parse error (D-023). The 8.5- PHPCompatibility run cannot flag 8.5-only
+  # syntax in them.
+  floors:
+    name: The main file parses on PHP 7.4
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
+        with:
+          php-version: '7.4'
+          coverage: none
+      - run: |
+          php -l creative-skateboard-builder.php
+          php -l uninstall.php
+          php -l src/Support/Requirements.php
+
+  js:
+    name: TypeScript, JavaScript and CSS standards; generated types; the asset budgets
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - name: The generated types are committed
+        run: npm run types && git diff --exit-code -- assets/src
+      - run: npm run check
+      - run: npm run build
+      - run: npm run budget
+
+  secrets:
+    name: Secrets scan (gitleaks)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
+  dependencies:
+    name: Dependency audits
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
+        with:
+          php-version: '8.5'
+          coverage: none
+          tools: composer:v2
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: composer install --working-dir=tools/integration --no-interaction
+      - run: composer audit:deps
+
+  mutation:
+    name: Mutation testing (Infection)
+    needs: scope
+    if: needs.scope.outputs.full == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          # A pull request mutates the lines it changes, against its base branch. Quoted: a bare 0 is falsy in an
+          # expression, so `&& 0 || 1` would always be 1 and the base branch never fetched.
+          fetch-depth: ${{ github.event_name == 'pull_request' && '0' || '1' }}
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
+        with:
+          php-version: '8.5'
+          coverage: pcov
+          tools: composer:v2
+      - uses: ramsey/composer-install@65e4f84970763564f46a70b8a54b90d033b3bdda # 4.0.0
+      # The same two configurations and floors either way (90 % outside the domain, 100 % inside it); a pull request
+      # applies them to its changed lines, and passes when it changed none they mutate. Main runs everything.
+      - name: Infection (a pull request's changed lines; everything on main)
+        env:
+          BASE: ${{ github.base_ref }}
+        run: |
+          if [ "${GITHUB_EVENT_NAME}" = pull_request ]; then
+            bash tools/infection.sh --git-diff-lines "--git-diff-base=origin/${BASE}" --ignore-msi-with-no-mutations
+          else
+            composer infection
+          fi
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        if: always()
+        with:
+          name: infection-logs
+          path: tmp/infection*.log
+
+  benchmarks:
+    name: Benchmarks (the server budgets are tests)
+    needs: scope
+    if: needs.scope.outputs.full == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
+        with:
+          php-version: '8.5'
+          coverage: none
+          tools: composer:v2
+      - uses: ramsey/composer-install@65e4f84970763564f46a70b8a54b90d033b3bdda # 4.0.0
+      - run: composer test:benchmark
+
+  # The matrix (docs/AUDIT.md: The platform; D-004): the newest and oldest WordPress and WooCommerce pairs on PHP 8.5,
+  # MySQL 8.4 and MariaDB 10.11 as their own database servers, and the HPOS off, HPOS syncing, multisite and
+  # persistent object cache variants. The browser projects, Plugin Check, the i18n check and Lighthouse run on the two
+  # version legs, which run the browser site; the others are integration legs.
+  integration:
+    name: Integration, Plugin Check, browser (${{ matrix.leg }})
+    needs: scope
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        leg: ${{ fromJSON(needs.scope.outputs.legs) }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
+        with:
+          php-version: '8.5'
+          coverage: none
+          tools: composer:v2
+      - uses: ramsey/composer-install@65e4f84970763564f46a70b8a54b90d033b3bdda # 4.0.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: Pin the oldest supported WordPress and WooCommerce
+        if: matrix.leg == 'oldest'
+        run: npm run env:oldest
+      - run: npx wp-env start
+      - name: The i18n check (the POT current, the translations complete)
+        if: matrix.leg == 'newest'
+        run: composer i18n:check
+      - name: A database server for the leg
+        if: matrix.leg == 'mysql84' || matrix.leg == 'mariadb1011'
+        run: bash tools/matrix-db.sh ${{ matrix.leg == 'mysql84' && 'mysql:8.4' || 'mariadb:10.11' }} cbuild-${{ matrix.leg }}
+      - run: composer test:integration
+        env:
+          CBUILD_DB_HOST: ${{ (matrix.leg == 'mysql84' || matrix.leg == 'mariadb1011') && format('cbuild-{0}', matrix.leg) || '' }}
+          CBUILD_HPOS: ${{ matrix.leg == 'hpos-off' && 'off' || matrix.leg == 'hpos-sync' && 'sync' || '' }}
+          CBUILD_MULTISITE: ${{ matrix.leg == 'multisite' && '1' || '' }}
+          CBUILD_OBJECT_CACHE: ${{ matrix.leg == 'object-cache' && 'persistent' || '' }}
+      - run: npm run plugin-check
+        if: matrix.leg == 'newest' || matrix.leg == 'oldest'
+      # Newest runs every browser project, the visual snapshots among them; oldest, which is there for the WordPress
+      # and WooCommerce versions, one desktop and one phone engine. The browsers are cached by Playwright's version;
+      # the system packages they need are installed each time.
+      - name: The browser projects for the leg
+        id: browsers
+        if: matrix.leg == 'newest' || matrix.leg == 'oldest'
+        run: |
+          if [ "${{ matrix.leg }}" = newest ]; then
+            echo "engines=chromium firefox webkit" >> "$GITHUB_OUTPUT"
+            echo "projects=" >> "$GITHUB_OUTPUT"
+          else
+            echo "engines=chromium webkit" >> "$GITHUB_OUTPUT"
+            echo "projects=--project=chromium-desktop --project=webkit-phone" >> "$GITHUB_OUTPUT"
+          fi
+          echo "version=$(node -p "require('./node_modules/@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+        id: playwright-cache
+        if: matrix.leg == 'newest' || matrix.leg == 'oldest'
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.browsers.outputs.version }}-${{ matrix.leg }}
+      - run: npx playwright install --with-deps ${{ steps.browsers.outputs.engines }}
+        if: (matrix.leg == 'newest' || matrix.leg == 'oldest') && steps.playwright-cache.outputs.cache-hit != 'true'
+      - run: npx playwright install-deps ${{ steps.browsers.outputs.engines }}
+        if: (matrix.leg == 'newest' || matrix.leg == 'oldest') && steps.playwright-cache.outputs.cache-hit == 'true'
+      - run: npm run test:e2e -- ${{ steps.browsers.outputs.projects }}
+        if: matrix.leg == 'newest' || matrix.leg == 'oldest'
+      - name: Lighthouse CI (LCP, CLS, TBT, SEO on the mobile profile)
+        if: matrix.leg == 'newest'
+        run: npm run lhci
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        if: failure()
+        with:
+          name: browser-${{ matrix.leg }}
+          path: |
+            test-results
+            tmp/lhci
+      - name: WordPress's debug log
+        if: failure()
+        run: npx wp-env run tests-cli -- bash -c 'cat wp-content/debug.log 2>/dev/null || true'; npx wp-env run cli -- bash -c 'cat wp-content/debug.log 2>/dev/null || true'

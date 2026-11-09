@@ -1,0 +1,167 @@
+# On a version tag (v0.1.0), once CI passes on it: build the zip, write its manifest and SBOMs, and publish them to the
+# public releases repo that shops check for updates (Updates\Updater, D-003). Needs a RELEASES_TOKEN secret: a
+# fine-grained token with Contents read and write on zachatkinson/creative-releases only.
+#
+# CI is not run again for the tag: the tagged commit is the merge on main, whose push already ran every CI job. A tag
+# pushed after that run passed publishes at once; a tag pushed while it runs publishes when it passes (the
+# workflow_run trigger); a tag on a commit whose CI failed, or that CI never ran on, fails here and says so.
+# Publishing is skipped when the release already exists, so the two triggers never publish twice; a run that finds the
+# release but not its info.json (an earlier run stopped between the two) writes info.json from the published zip.
+# Copied from Creative Search and kept the same, plus the SBOM step (docs/STANDARDS.md: Releases).
+name: Release
+
+on:
+  push:
+    tags: ['v*.*.*']
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+
+permissions:
+  contents: read
+  actions: read
+
+# One queue per commit: GitHub keeps one waiting run per queue and cancels the one already waiting when another
+# arrives, so a single queue could drop a tag's run behind CI completions on other commits.
+concurrency:
+  group: release-${{ github.event.workflow_run.head_sha || github.sha }}
+  cancel-in-progress: false
+
+jobs:
+  ci:
+    name: CI passed on the tagged commit
+    if: github.event_name == 'push' || (github.event.workflow_run.event == 'push' && github.event.workflow_run.conclusion == 'success')
+    runs-on: ubuntu-latest
+    outputs:
+      publish: ${{ steps.gate.outputs.publish }}
+      sha: ${{ steps.gate.outputs.sha }}
+      tag: ${{ steps.gate.outputs.tag }}
+    steps:
+      - id: gate
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          set -euo pipefail
+          if [ "$GITHUB_EVENT_NAME" = workflow_run ]; then
+            sha="$RUN_SHA"
+            tag="$(gh api "repos/${GITHUB_REPOSITORY}/tags?per_page=100" --jq "[.[] | select(.commit.sha == \"${sha}\") | .name | select(test(\"^v[0-9]+[.][0-9]+[.][0-9]+$\"))] | first // empty")"
+            if [ -z "$tag" ]; then
+              echo "CI passed on ${sha}, which has no version tag yet: its tag's push will publish it."
+              echo "publish=false" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          else
+            sha="$GITHUB_SHA"
+            tag="$GITHUB_REF_NAME"
+            run="$(gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/ci.yml/runs?head_sha=${sha}&event=push&branch=main&per_page=1" --jq '.workflow_runs[0] // {} | "\(.status // "none") \(.conclusion // "")"')"
+            case "$run" in
+              "completed success") ;;
+              "none"*)
+                echo "::error::CI never ran on ${sha} as a push to main. Tag the merge commit on main, after its CI has run."
+                exit 1 ;;
+              "completed "*)
+                echo "::error::CI on ${sha} ended ${run#completed }. Fix it on main and tag the new commit."
+                exit 1 ;;
+              *)
+                echo "::notice::CI on ${sha} is still running (${run}); ${tag} publishes when it passes."
+                echo "publish=false" >> "$GITHUB_OUTPUT"
+                exit 0 ;;
+            esac
+          fi
+          printf 'publish=true\nsha=%s\ntag=%s\n' "$sha" "$tag" >> "$GITHUB_OUTPUT"
+
+  release:
+    needs: ci
+    if: needs.ci.outputs.publish == 'true'
+    runs-on: ubuntu-latest
+    env:
+      RELEASES_REPO: zachatkinson/creative-releases
+      SLUG: creative-skateboard-builder
+      TAG: ${{ needs.ci.outputs.tag }}
+    steps:
+      - name: Check RELEASES_TOKEN can write to the releases repo
+        env:
+          GH_TOKEN: ${{ secrets.RELEASES_TOKEN }}
+        run: |
+          test -n "$GH_TOKEN" || { echo "The RELEASES_TOKEN secret is missing."; exit 1; }
+          push="$(gh api "repos/${RELEASES_REPO}" --jq .permissions.push)" || { echo "RELEASES_TOKEN can't read ${RELEASES_REPO} (expired, or not given that repo)."; exit 1; }
+          test "$push" = "true" || { echo "RELEASES_TOKEN can't write to ${RELEASES_REPO}: give it Contents read and write."; exit 1; }
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ needs.ci.outputs.sha }}
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
+        with:
+          php-version: '8.5'
+          tools: composer:v2
+          coverage: none
+      - name: Check the tag matches the plugin version
+        run: |
+          version="$(grep -E '^ \* Version:' "${SLUG}.php" | awk '{print $3}')"
+          test "v${version}" = "${TAG}" || { echo "Tag ${TAG} is not v${version}"; exit 1; }
+          echo "VERSION=${version}" >> "$GITHUB_ENV"
+      # Each half is skipped once done: the release, then info.json. A run that stopped between them is finished by the
+      # next, from the zip already published, so the manifest's checksum is that zip's.
+      - name: Skip what is already published
+        env:
+          GH_TOKEN: ${{ secrets.RELEASES_TOKEN }}
+        run: |
+          if gh release view "${SLUG}-${VERSION}" --repo "$RELEASES_REPO" > /dev/null 2>&1; then
+            echo "${SLUG}-${VERSION} is already published."
+            echo "PUBLISHED=yes" >> "$GITHUB_ENV"
+          fi
+          current="$(gh api "repos/${RELEASES_REPO}/contents/${SLUG}/info.json" --jq .content 2>/dev/null | base64 -d 2>/dev/null | jq -r '.version // empty' || true)"
+          if [ "$current" = "$VERSION" ]; then
+            echo "info.json already names ${VERSION}."
+            echo "POINTED=yes" >> "$GITHUB_ENV"
+          fi
+      - name: Download the published zip, for info.json
+        if: env.PUBLISHED == 'yes' && env.POINTED != 'yes'
+        env:
+          GH_TOKEN: ${{ secrets.RELEASES_TOKEN }}
+        run: |
+          mkdir -p tmp
+          gh release download "${SLUG}-${VERSION}" --repo "$RELEASES_REPO" --pattern "${SLUG}-${VERSION}.zip" --dir tmp
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        if: env.PUBLISHED != 'yes'
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      # The zip carries the built assets (build/), so the scripts are installed and built first.
+      - run: npm ci
+        if: env.PUBLISHED != 'yes'
+      - name: Build
+        if: env.PUBLISHED != 'yes'
+        run: bash tools/build-zip.sh
+      # The CycloneDX SBOMs (D-003, D-030): what the zip ships. Composer's non-dev packages, and the npm packages
+      # webpack bundles into build/, which package.json keeps in `dependencies` so --omit dev counts them. Both tools
+      # run from here at release time only, so neither joins the lock files.
+      - name: SBOM
+        if: env.PUBLISHED != 'yes'
+        run: |
+          composer global require cyclonedx/cyclonedx-php-composer --no-interaction --quiet
+          composer CycloneDX:make-sbom --omit=dev --output-format=JSON --output-file="tmp/${SLUG}-${VERSION}.composer.cdx.json" --spec-version=1.6
+          npx --yes @cyclonedx/cyclonedx-npm --omit dev --output-format JSON --output-file "tmp/${SLUG}-${VERSION}.npm.cdx.json" --spec-version 1.6
+      - name: Write the manifest
+        if: env.POINTED != 'yes'
+        run: php tools/release-manifest.php "tmp/${SLUG}-${VERSION}.zip" > tmp/info.json
+      - name: Publish the release
+        if: env.PUBLISHED != 'yes'
+        env:
+          GH_TOKEN: ${{ secrets.RELEASES_TOKEN }}
+        run: |
+          tag="${SLUG}-${VERSION}"
+          gh release create "$tag" "tmp/${SLUG}-${VERSION}.zip" "tmp/${SLUG}-${VERSION}.composer.cdx.json" "tmp/${SLUG}-${VERSION}.npm.cdx.json" --repo "$RELEASES_REPO" --title "Creative Skateboard Builder ${VERSION}" \
+            --notes "$(php -r '$m = json_decode(file_get_contents("tmp/info.json"), true); echo "- " . implode("\n- ", $m["changelog"]);')"
+      - name: Point info.json at it
+        if: env.POINTED != 'yes'
+        env:
+          GH_TOKEN: ${{ secrets.RELEASES_TOKEN }}
+        run: |
+          path="${SLUG}/info.json"
+          sha="$(gh api "repos/${RELEASES_REPO}/contents/${path}" --jq .sha 2>/dev/null || true)"
+          gh api --method PUT "repos/${RELEASES_REPO}/contents/${path}" \
+            -f message="Creative Skateboard Builder ${VERSION}" \
+            -f content="$(base64 -w0 tmp/info.json)" \
+            ${sha:+-f sha="$sha"}
