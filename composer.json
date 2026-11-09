@@ -1,0 +1,99 @@
+{
+	"name": "creativebranding/creative-skateboard-builder",
+	"description": "Complete skateboards built from the parts a WooCommerce shop stocks: fit checked from specs, a picture of the build, the total in view, each part its own cart and order line.",
+	"type": "wordpress-plugin",
+	"license": "GPL-2.0-or-later",
+	"homepage": "https://creativebranding.ca",
+	"authors": [
+		{
+			"name": "Zach Atkinson",
+			"homepage": "https://zachatkinson.com"
+		}
+	],
+	"require": {
+		"php": ">=8.5"
+	},
+	"require-dev": {
+		"automattic/vipwpcs": "^3.1",
+		"dealerdirect/phpcodesniffer-composer-installer": "^1.2",
+		"deptrac/deptrac": "^4.7",
+		"infection/infection": "^0.35",
+		"php-stubs/woocommerce-stubs": "^11.2",
+		"php-stubs/wordpress-stubs": "^7.1",
+		"phpcompatibility/phpcompatibility-wp": "^2.1",
+		"phpstan/extension-installer": "^1.4",
+		"phpstan/phpstan": "^2.3",
+		"phpstan/phpstan-deprecation-rules": "^2.0",
+		"phpstan/phpstan-strict-rules": "^2.1",
+		"phpunit/phpunit": "^13.4",
+		"spaze/phpstan-disallowed-calls": "^4.15",
+		"szepeviktor/phpstan-wordpress": "^2.0",
+		"wp-coding-standards/wpcs": "^3.4",
+		"wp-phpunit/wp-phpunit": "^7.1"
+	},
+	"autoload": {
+		"psr-4": {
+			"CreativeBranding\\SkateboardBuilder\\": "src/"
+		}
+	},
+	"autoload-dev": {
+		"psr-4": {
+			"CreativeBranding\\SkateboardBuilder\\Tests\\": "tests/"
+		}
+	},
+	"scripts": {
+		"lint": "phpcs",
+		"lint:fix": "phpcbf",
+		"analyse": [
+			"@analyse:src",
+			"@analyse:domain"
+		],
+		"analyse:src": "phpstan analyse --memory-limit=2G --configuration=phpstan.neon",
+		"analyse:domain": "bash tools/analyse-domain.sh",
+		"arch": "deptrac analyse --config-file=deptrac.yaml --fail-on-uncovered --report-uncovered --no-progress",
+		"gates": "bash tools/gates.sh",
+		"test:unit": "phpunit -c phpunit.xml.dist --testsuite unit --exclude-group benchmark",
+		"test:coverage": "bash tools/coverage.sh",
+		"test:benchmark": "phpunit -c phpunit.xml.dist --testsuite unit --group benchmark",
+		"test:integration": "bash tools/integration.sh",
+		"test:integration:hpos-off": "CBUILD_HPOS=off bash tools/integration.sh",
+		"test:integration:hpos-sync": "CBUILD_HPOS=sync bash tools/integration.sh",
+		"test:integration:multisite": "CBUILD_MULTISITE=1 bash tools/integration.sh",
+		"test:integration:object-cache": "CBUILD_OBJECT_CACHE=persistent bash tools/integration.sh",
+		"infection": "bash tools/infection.sh",
+		"api:check": "@php tools/api-surface.php --check",
+		"api:snapshot": "@php tools/api-surface.php --write",
+		"audit:deps": [
+			"composer audit",
+			"composer audit --working-dir=tools/integration",
+			"npm audit --omit=dev"
+		],
+		"check": [
+			"@lint",
+			"@analyse",
+			"@arch",
+			"@gates",
+			"@test:unit",
+			"@api:check"
+		],
+		"build": "bash tools/build-zip.sh",
+		"i18n:pot": "npx wp-env run cli --env-cwd=wp-content/plugins/creative-skateboard-builder -- wp i18n make-pot . languages/creative-skateboard-builder.pot --domain=creative-skateboard-builder --exclude=node_modules,vendor,tests,tools,tmp,docs,assets/src",
+		"i18n:po": "npx wp-env run cli --env-cwd=wp-content/plugins/creative-skateboard-builder -- wp i18n update-po languages/creative-skateboard-builder.pot languages/",
+		"i18n:check": [
+			"npx wp-env run cli --env-cwd=wp-content/plugins/creative-skateboard-builder -- wp i18n make-pot . tmp/i18n-check.pot --domain=creative-skateboard-builder --exclude=node_modules,vendor,tests,tools,tmp,docs,assets/src",
+			"@php tools/i18n-check.php tmp/i18n-check.pot languages/creative-skateboard-builder.pot languages/*.po"
+		],
+		"i18n:compile": "npx wp-env run cli --env-cwd=wp-content/plugins/creative-skateboard-builder -- bash -c 'rm -f languages/*.json languages/*.mo languages/*.l10n.php && wp i18n make-mo languages/ languages/ && wp i18n make-php languages/ languages/ && wp i18n make-json languages/ --no-purge'"
+	},
+	"config": {
+		"allow-plugins": {
+			"dealerdirect/phpcodesniffer-composer-installer": true,
+			"phpstan/extension-installer": true,
+			"infection/extension-installer": true
+		},
+		"sort-packages": true,
+		"platform": {
+			"php": "8.5.99"
+		}
+	}
+}

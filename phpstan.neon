@@ -1,0 +1,130 @@
+# Level 9 on everything the plugin ships (docs/STANDARDS.md). src/Domain runs again at level 10 from phpstan-domain.neon.
+# The strict, deprecation and disallowed-calls rules and szepeviktor/phpstan-wordpress load through phpstan/extension-installer.
+parameters:
+    level: 9
+    phpVersion: 80500
+    tmpDir: tmp/cache/phpstan
+    paths:
+        - src
+        - creative-skateboard-builder.php
+        - uninstall.php
+    excludePaths:
+        - vendor
+        - tests
+    bootstrapFiles:
+        - tools/phpstan-bootstrap.php
+    scanFiles:
+        - vendor/php-stubs/woocommerce-stubs/woocommerce-stubs.php
+        - vendor/php-stubs/woocommerce-stubs/woocommerce-packages-stubs.php
+        - tools/wp-cli-stubs.php
+    treatPhpDocTypesAsCertain: false
+    reportUnmatchedIgnoredErrors: true
+    # The banned calls (CLAUDE.md: Rules), as tools/gates.sh also checks them by grep. Time goes through Port\Clock;
+    # the one outbound request is the update manifest's (Updates\HttpManifestSource).
+    disallowedFunctionCalls:
+        -
+            function: 'date()'
+            message: 'use Port\Clock (UTC)'
+        -
+            function: 'time()'
+            message: 'use Port\Clock (UTC)'
+            allowIn:
+                - src/Adapter/SystemClock.php
+        -
+            function: 'mktime()'
+            message: 'use Port\Clock (UTC)'
+        -
+            function: 'eval()'
+            message: 'banned'
+        -
+            function: 'extract()'
+            message: 'banned'
+        -
+            function: 'unserialize()'
+            message: 'banned'
+        -
+            function: 'maybe_unserialize()'
+            message: 'banned'
+        -
+            function: 'create_function()'
+            message: 'banned'
+        -
+            function: 'base64_decode()'
+            message: 'banned'
+        -
+            function: 'query_posts()'
+            message: 'banned'
+        -
+            function: 'exec()'
+            message: 'banned'
+        -
+            function: 'shell_exec()'
+            message: 'banned'
+        -
+            function: 'system()'
+            message: 'banned'
+        -
+            function: 'passthru()'
+            message: 'banned'
+        -
+            function: 'popen()'
+            message: 'banned'
+        -
+            function: 'proc_open()'
+            message: 'banned'
+        -
+            function: 'var_dump()'
+            message: 'debugging left in'
+        -
+            function: 'print_r()'
+            message: 'debugging left in'
+        -
+            function: 'var_export()'
+            message: 'debugging left in'
+        -
+            function: 'error_log()'
+            message: 'log through Port\Logger'
+        -
+            function: 'wp_remote_get()'
+            message: 'no outbound requests but the update manifest'
+        -
+            function: 'wp_remote_post()'
+            message: 'no outbound requests but the update manifest'
+        -
+            function: 'wp_remote_request()'
+            message: 'no outbound requests but the update manifest'
+        -
+            function: 'wp_remote_head()'
+            message: 'no outbound requests but the update manifest'
+        -
+            function: 'wp_safe_remote_get()'
+            message: 'no outbound requests but the update manifest'
+            allowIn:
+                - src/Updates/HttpManifestSource.php
+        -
+            function: 'wp_safe_remote_post()'
+            message: 'no outbound requests but the update manifest'
+        -
+            function: 'wp_safe_remote_request()'
+            message: 'no outbound requests but the update manifest'
+        -
+            function: 'wp_safe_remote_head()'
+            message: 'no outbound requests but the update manifest'
+        -
+            function: 'curl_init()'
+            message: 'no outbound requests but the update manifest'
+        -
+            function: 'fsockopen()'
+            message: 'no outbound requests but the update manifest'
+        -
+            function: 'get_post_meta()'
+            message: 'products and orders only through WooCommerce CRUD'
+        -
+            function: 'update_post_meta()'
+            message: 'products and orders only through WooCommerce CRUD'
+        -
+            function: 'wp_schedule_event()'
+            message: 'background work through Action Scheduler'
+        -
+            function: 'wp_schedule_single_event()'
+            message: 'background work through Action Scheduler'

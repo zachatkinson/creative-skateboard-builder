@@ -1,0 +1,176 @@
+<?php
+/**
+ * Uninstall tests.
+ *
+ * @package CreativeBranding\SkateboardBuilder\Tests
+ */
+
+declare( strict_types=1 );
+
+namespace CreativeBranding\SkateboardBuilder\Tests\Integration;
+
+use CreativeBranding\SkateboardBuilder\Install\Uninstaller;
+use CreativeBranding\SkateboardBuilder\Support\Options;
+use CreativeBranding\SkateboardBuilder\Support\Tables;
+use CreativeBranding\SkateboardBuilder\Tests\Support\IntegrationTestCase;
+
+/**
+ * Uninstall leaves nothing: no table, option, transient, scheduled action or cache entry, with WooCommerce on or off
+ * (D-024), and keeps the shop's own records.
+ */
+final class UninstallTest extends IntegrationTestCase {
+
+	/**
+	 * Rows of the plugin's group in Action Scheduler's tables, whatever their status, and their log lines.
+	 *
+	 * @return array{actions: int, logs: int, groups: int}
+	 */
+	private static function actionRows(): array {
+		global $wpdb;
+		$actions = $wpdb->prefix . 'actionscheduler_actions';
+		$groups  = $wpdb->prefix . 'actionscheduler_groups';
+		$logs    = $wpdb->prefix . 'actionscheduler_logs';
+		return array(
+			'actions' => (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM %i a INNER JOIN %i g ON g.group_id = a.group_id WHERE g.slug = %s', $actions, $groups, Options::QUEUE_GROUP ) ), // phpcs:ignore
+			'logs'    => (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM %i l INNER JOIN %i a ON a.action_id = l.action_id INNER JOIN %i g ON g.group_id = a.group_id WHERE g.slug = %s', $logs, $actions, $groups, Options::QUEUE_GROUP ) ), // phpcs:ignore
+			'groups'  => (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM %i WHERE slug = %s', $groups, Options::QUEUE_GROUP ) ), // phpcs:ignore
+		);
+	}
+
+	/**
+	 * An order with one line carrying a builder meta key, and a product: the shop's records.
+	 *
+	 * @return array{order: int, item: int, product: int}
+	 */
+	private static function shopRecords(): array {
+		$product = new \WC_Product_Simple();
+		$product->set_name( 'Deck' );
+		$product->set_regular_price( '10' );
+		$product->save();
+		$order = wc_create_order();
+		$item  = new \WC_Order_Item_Product();
+		$item->set_product( $product );
+		$item->set_quantity( 1 );
+		$item->add_meta_data( '_cbuild_build', 'c0ffee', true );
+		$order->add_item( $item );
+		$order->save();
+		$items = $order->get_items();
+		return array(
+			'order'   => $order->get_id(),
+			'item'    => (int) array_key_first( $items ),
+			'product' => $product->get_id(),
+		);
+	}
+
+	public function test_uninstall_leaves_nothing_and_keeps_the_shop_records(): void {
+		global $wpdb;
+
+		// Make the plugin's footprint as big as it ever gets.
+		update_option( Options::DB_VERSION, '1' );
+		update_option( Options::MIGRATIONS, array( 'x' => array() ) );
+		update_option( Options::MIGRATION_LOCK, '1' );
+		set_transient( Options::TRANSIENT_PREFIX . 'notice_1', 'x', HOUR_IN_SECONDS );
+		set_transient( Options::TRANSIENT_PREFIX . 'forever', 'x' );
+		set_site_transient( Options::UPDATE_MANIFEST, array( 'data' => null ), HOUR_IN_SECONDS );
+		wp_cache_set( 'fit:1', array( 1 ), Options::CACHE_GROUP );
+		$wpdb->insert( Tables::specs(), array( 'part_id' => 1, 'spec' => 'width', 'number' => '8.25', 'source' => 'attribute', 'indexed_at' => '2026-11-09 00:00:00' ) );
+		$records  = self::shopRecords();
+		$pending  = as_schedule_single_action( 1_900_000_000, Options::JOB_MIGRATE, array(), Options::QUEUE_GROUP );
+		$complete = as_enqueue_async_action( Options::JOB_MIGRATE, array( 'a' => 1 ), Options::QUEUE_GROUP );
+		\ActionScheduler::store()->mark_complete( $complete );
+		\ActionScheduler::logger()->log( $complete, 'done' );
+		self::assertGreaterThan( 0, $pending );
+		self::assertGreaterThan( 0, self::actionRows()['logs'] );
+
+		$this->withRealTables( static fn() => Uninstaller::run() );
+
+		foreach ( Tables::all() as $table ) {
+			self::assertNull( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', Tables::name( $table ) ) ), Tables::name( $table ) . ' still exists' );
+		}
+		$options = $wpdb->get_col( $wpdb->prepare( 'SELECT option_name FROM %i WHERE option_name LIKE %s OR option_name LIKE %s OR option_name LIKE %s', $wpdb->options, '%' . $wpdb->esc_like( 'cbuild' ) . '%', $wpdb->esc_like( '_transient_cbuild_' ) . '%', $wpdb->esc_like( '_transient_timeout_cbuild_' ) . '%' ) );
+		self::assertSame( array(), $options, 'options or transients left behind' );
+		self::assertFalse( get_option( Options::DB_VERSION ) );
+		self::assertFalse( get_site_transient( Options::UPDATE_MANIFEST ), 'the update manifest cache left behind' );
+		self::assertSame( array( 'actions' => 0, 'logs' => 0, 'groups' => 0 ), self::actionRows(), 'actions of any status, their logs or the group left behind' );
+		self::assertSame( array(), as_get_scheduled_actions( array( 'group' => Options::QUEUE_GROUP, 'status' => '', 'per_page' => 5 ), 'ids' ) );
+		self::assertFalse( wp_cache_get( 'fit:1', Options::CACHE_GROUP ), 'cache group not flushed' );
+
+		self::assertNotEmpty( get_post( $records['product'] ), 'products are never touched' );
+		$order = wc_get_order( $records['order'] );
+		self::assertNotFalse( $order, 'orders are never touched' );
+		self::assertSame( 'c0ffee', (string) $order->get_item( $records['item'] )->get_meta( '_cbuild_build' ), 'order item meta is part of the shop\'s records (spec: Uninstall)' );
+	}
+
+	public function test_delete_jobs_by_sql_removes_only_the_plugin_group(): void {
+		$ours   = as_enqueue_async_action( Options::JOB_MIGRATE, array(), Options::QUEUE_GROUP );
+		$theirs = as_enqueue_async_action( 'cbuild_test_other_plugin', array(), 'another-plugin' );
+		\ActionScheduler::logger()->log( $ours, 'ours' );
+		\ActionScheduler::logger()->log( $theirs, 'theirs' );
+		// Two log lines: Action Scheduler's own "action created" and this one.
+		self::assertSame( array( 'actions' => 1, 'logs' => 2, 'groups' => 1 ), self::actionRows() );
+		$theirLogs = count( \ActionScheduler::logger()->get_logs( $theirs ) );
+
+		Uninstaller::deleteJobsBySql();
+
+		self::assertSame( array( 'actions' => 0, 'logs' => 0, 'groups' => 0 ), self::actionRows() );
+		self::assertCount( 1, as_get_scheduled_actions( array( 'group' => 'another-plugin', 'status' => '', 'per_page' => 5 ), 'ids' ), 'the other plugin\'s action stays' );
+		self::assertCount( $theirLogs, \ActionScheduler::logger()->get_logs( $theirs ), 'and its logs' );
+	}
+
+	public function test_uninstall_with_woocommerce_deactivated_removes_the_actions_too(): void {
+		if ( ! self::hasWpCli() ) {
+			self::markTestSkipped( 'Needs wp on the path (wp-env).' );
+		}
+		// On wp-env's tests site (its own tables), as a shop does it: deactivate the builder, then WooCommerce, then
+		// delete the builder. uninstall.php runs with no Action Scheduler loaded (D-024).
+		$seed = self::wpEval( 'echo as_enqueue_async_action( "' . Options::JOB_MIGRATE . '", array(), "' . Options::QUEUE_GROUP . '", true ) > 0 ? "queued" : "not queued";' );
+		self::assertSame( 'queued', $seed['out'], $seed['err'] );
+		$count = 'global $wpdb; echo (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$wpdb->prefix}actionscheduler_actions a INNER JOIN {$wpdb->prefix}actionscheduler_groups g ON g.group_id = a.group_id WHERE g.slug = \'' . Options::QUEUE_GROUP . '\'" ), "|", (int) $wpdb->get_var( "SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME LIKE \'{$wpdb->prefix}cbuild_%\'" ), "|", (string) get_option( "' . Options::DB_VERSION . '", "none" );';
+		self::assertSame( '1|2|1', self::wpEval( $count )['out'], 'one action, two tables, version 1 before' );
+		try {
+			$off = self::wp( 'plugin', 'deactivate', 'creative-skateboard-builder' );
+			self::assertSame( 0, $off['code'], $off['err'] );
+			$gone = self::wp( 'plugin', 'uninstall', 'creative-skateboard-builder', '--skip-delete', '--skip-plugins=woocommerce', '--skip-themes' );
+			self::assertSame( 0, $gone['code'], $gone['err'] );
+			self::assertStringNotContainsString( 'Fatal', $gone['err'] . $gone['out'] );
+			self::assertSame( '0|0|none', self::wpEval( $count )['out'], 'no action, no table, no version after' );
+		} finally {
+			self::wp( 'plugin', 'activate', 'creative-skateboard-builder' );
+		}
+		self::assertSame( '0|2|1', self::wpEval( $count )['out'], 'reactivated: the tables and the version are back' );
+	}
+
+	public function test_a_deleted_network_site_drops_the_plugin_tables(): void {
+		$tables = apply_filters( 'wpmu_drop_tables', array( 'wp_posts' ), 1 );
+		foreach ( Tables::all() as $table ) {
+			self::assertContains( Tables::name( $table ), $tables );
+		}
+		self::assertSame( 'not a list', Uninstaller::siteTables( 'not a list' ) );
+	}
+
+	public function test_uninstall_php_fallback_lists_the_same_tables_options_and_names(): void {
+		$source = (string) file_get_contents( CBUILD_PATH . 'uninstall.php' );
+		foreach ( Tables::all() as $table ) {
+			self::assertStringContainsString( "'{$table}'", $source, "uninstall.php fallback misses table {$table}" );
+		}
+		self::assertStringContainsString( "'" . Tables::PREFIX . "'", $source );
+		foreach ( Options::names() as $option ) {
+			self::assertStringContainsString( "'{$option}'", $source, "uninstall.php fallback misses option {$option}" );
+		}
+		foreach ( Options::metaKeys() as $key ) {
+			self::assertStringContainsString( "'{$key}'", $source, "uninstall.php fallback misses meta {$key}" );
+		}
+		foreach ( Options::siteTransients() as $transient ) {
+			self::assertStringContainsString( "delete_site_transient( '{$transient}' )", $source );
+		}
+		self::assertStringContainsString( "'_transient_" . Options::TRANSIENT_PREFIX . "'", $source );
+		self::assertStringContainsString( "'" . Options::QUEUE_GROUP . "'", $source );
+		self::assertStringContainsString( "wp_cache_flush_group( '" . Options::CACHE_GROUP . "' )", $source );
+	}
+
+	public function test_uninstall_is_idempotent(): void {
+		$this->withRealTables( static fn() => Uninstaller::run() );
+		$this->withRealTables( static fn() => Uninstaller::run() );
+		self::assertFalse( get_option( Options::DB_VERSION ), 'a second run on an empty site raises nothing' );
+	}
+}

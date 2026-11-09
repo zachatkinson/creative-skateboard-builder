@@ -1,5 +1,37 @@
+# Dependencies (composer.lock and package-lock.json are committed; the installs are not)
+/vendor/
+/node_modules/
+
+# Build output and release zips (tools/build-zip.sh writes to tmp/; @wordpress/scripts to build/)
+/build/
+/tmp/
+/*.zip
+
+# Test and tool output
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+/coverage/
+/.phpunit.cache/
+/.phpunit.result.cache
+/infection.log
+/.eslintcache
+/.stryker-tmp/
+/.lighthouseci/
+*.log
+
+# Local environment
+/.wp-env.override.json
+/.env
+/.env.*
+
 # Editors and OS
 /.idea/
 /.vscode/
 .DS_Store
 Thumbs.db
+
+# PHPUnit 9.6 and the polyfills for the WordPress suite (tools/integration.sh installs them; the lock is committed)
+/tools/integration/vendor/
+.deptrac.cache

@@ -1,0 +1,48 @@
+{
+	"name": "creative-skateboard-builder",
+	"version": "0.1.0",
+	"private": true,
+	"description": "Complete skateboards built from the parts a WooCommerce shop stocks.",
+	"author": "Zach Atkinson",
+	"license": "GPL-2.0-or-later",
+	"engines": {
+		"node": ">=24"
+	},
+	"scripts": {
+		"env:start": "wp-env start",
+		"env:stop": "wp-env stop",
+		"env:clean": "wp-env clean all",
+		"env:oldest": "bash tools/wp-env-oldest.sh",
+		"env:newest": "bash tools/wp-env-newest.sh",
+		"env:canary": "bash tools/wp-env-canary.sh",
+		"build": "bash tools/build-assets.sh",
+		"start": "wp-scripts start --experimental-modules --webpack-src-dir=assets/src --output-path=build",
+		"lint:js": "wp-scripts lint-js --no-error-on-unmatched-pattern assets/src tests/js tests/e2e tools/*.mjs playwright.config.ts vitest.config.mts stryker.config.mjs eslint.config.js lighthouserc.cjs",
+		"lint:css": "wp-scripts lint-style --allow-empty-input 'assets/**/*.{css,scss}'",
+		"format:check": "prettier --check --no-error-on-unmatched-pattern assets/src tests/js tests/e2e tools/*.mjs playwright.config.ts vitest.config.mts stryker.config.mjs eslint.config.js .prettierrc.js lighthouserc.cjs",
+		"format": "prettier --write --no-error-on-unmatched-pattern assets/src tests/js tests/e2e tools/*.mjs playwright.config.ts vitest.config.mts stryker.config.mjs eslint.config.js .prettierrc.js lighthouserc.cjs",
+		"types": "node tools/types.mjs",
+		"typecheck": "tsc --noEmit",
+		"test:js": "vitest run --passWithNoTests",
+		"test:e2e": "playwright test",
+		"plugin-check": "bash tools/plugin-check.sh",
+		"mutate:js": "bash tools/mutate-js.sh",
+		"budget": "node tools/budget.mjs",
+		"lhci": "lhci autorun --config=lighthouserc.cjs",
+		"check": "npm run lint:js && npm run lint:css && npm run format:check && npm run typecheck && npm run test:js"
+	},
+	"devDependencies": {
+		"@axe-core/playwright": "^4.14.0",
+		"@lhci/cli": "^0.16.0",
+		"@playwright/test": "^1.65.0",
+		"@stryker-mutator/core": "^10.1.1",
+		"@stryker-mutator/vitest-runner": "^10.1.1",
+		"@types/node": "^24.0.0",
+		"@wordpress/env": "^12.1.0",
+		"@wordpress/scripts": "^37.1.0",
+		"jsdom": "^31.0.0",
+		"json-schema-to-typescript": "^16.0.0",
+		"typescript": "^5.9.3",
+		"vitest": "5.1.0"
+	}
+}

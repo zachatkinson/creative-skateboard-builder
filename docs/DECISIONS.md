@@ -319,3 +319,10 @@ The plugin declares `custom_order_tables` and `cart_checkout_blocks` compatible 
 - Every GitHub Action is pinned to a commit SHA; Dependabot updates them weekly with the lock files.
 
 **Status:** Accepted.
+
+### D-031 · The integration suite keeps its own tables · 2026-11-09
+
+`tools/integration.sh` passes `WORDPRESS_TABLE_PREFIX=wptests_`, so the WordPress test suite installs into `wptests_` tables and leaves wp-env's tests site (`wp_`) alone. The tests that need a second PHP process (two requests racing for the migration lock, uninstall with WooCommerce off, boot without WooCommerce) run WP-CLI against that site, with the prefix taken back out of the child's environment. On a matrix leg's empty database server the test case installs the site first, so the lock's race runs on that server too. The multisite leg is switched on with `WP_MULTISITE=1`.
+
+**Why:** wp-env 12 writes one `wp-tests-config.php` for both, with `wp_` as the default prefix (`/wordpress-phpunit/wp-tests-config.php:102`), so the suite's installer dropped the tests site's tables on every run and the second process found no active plugin. The core bootstrap reads `WP_MULTISITE` from the environment (`/wordpress-phpunit/includes/bootstrap.php:244`), not `WP_TESTS_MULTISITE`, which is a constant. Creative Search has no test that starts a second process, so its script never met either.
+**Status:** Accepted.

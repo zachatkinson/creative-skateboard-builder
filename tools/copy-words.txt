@@ -1,0 +1,34 @@
+# Words the copy never uses (docs/STANDARDS.md: Copy). One per line; matched whole, case-insensitive, in the POT's strings.
+# Superlatives and sales words.
+best
+greatest
+ultimate
+perfect
+amazing
+awesome
+incredible
+unbeatable
+world-class
+premium
+seamless
+seamlessly
+effortless
+effortlessly
+powerful
+robust
+cutting-edge
+state-of-the-art
+revolutionary
+# Pressure.
+hurry
+now or never
+don't miss
+limited time
+# Templated constructions.
+not just
+whether you're
+whether you are
+# Jargon the shopper never reads.
+leverage
+utilize
+synergy

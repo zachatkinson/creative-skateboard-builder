@@ -1,0 +1,16 @@
+{
+	"name": "creativebranding/creative-skateboard-builder-integration-tools",
+	"description": "PHPUnit 9.6 and the Yoast polyfills for the WordPress core test suite (Creative Search's D-021; this plugin's D-020). Installed by tools/integration.sh; not part of the plugin.",
+	"type": "project",
+	"license": "GPL-2.0-or-later",
+	"require-dev": {
+		"phpunit/phpunit": "^9.6",
+		"yoast/phpunit-polyfills": "^4.0"
+	},
+	"config": {
+		"platform": {
+			"php": "8.5.99"
+		},
+		"sort-packages": true
+	}
+}

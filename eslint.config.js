@@ -1,0 +1,38 @@
+const wordpress = require( '@wordpress/scripts/config/eslint.config.cjs' );
+
+module.exports = [
+	...wordpress,
+	{
+		// WordPress provides the @wordpress/* packages at runtime: the build marks them external
+		// (@wordpress/dependency-extraction-webpack-plugin), so they are not installed for the browser bundle.
+		files: [ 'assets/src/**/*.{js,ts}' ],
+		settings: {
+			'import/core-modules': [
+				'@wordpress/blocks',
+				'@wordpress/block-editor',
+				'@wordpress/components',
+				'@wordpress/i18n',
+				'@wordpress/interactivity',
+				'@wordpress/server-side-render',
+			],
+		},
+	},
+	{
+		// Command-line scripts report on the console.
+		files: [ 'tools/*.mjs' ],
+		rules: { 'no-console': 'off' },
+	},
+	{
+		ignores: [
+			'vendor/**',
+			'node_modules/**',
+			'build/**',
+			'tmp/**',
+			'test-results/**',
+			'playwright-report/**',
+			'.stryker-tmp/**',
+			'.lighthouseci/**',
+			'tools/integration/**',
+		],
+	},
+];
