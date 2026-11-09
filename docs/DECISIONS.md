@@ -399,4 +399,4 @@ The repository is private, so GitHub bills every job to the whole minute. The sa
 - Dependabot opens one pull request per ecosystem, monthly, for releases at least a week old. Security updates are a repository setting of their own and are not delayed.
 
 **Why:** Zach asked on 9 November 2026 that CI not overspend on minutes. The first full runs billed 48 to 56 minutes each. Six of the legs spent about three minutes each starting wp-env to run a 25 second suite, and five jobs billed a minute each for under 20 seconds of work. Dependabot's weekly, ungrouped pull requests would each have been a full run. No gate is removed and no floor moves.
-**Status:** Accepted. The measured cost of a run goes here once the first has finished.
+**Status:** Accepted. The first full run in this shape passed in 7 jobs and billed 28 minutes.
