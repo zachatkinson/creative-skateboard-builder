@@ -409,4 +409,14 @@ final class IndexJobsTest extends TestCase {
 		self::assertNotNull( $this->jobs->state() );
 		self::assertSame( 1, $this->queue->calls['cbuild_reindex'], 'once, though two lines name the attribute' );
 	}
+
+	public function test_an_attribute_mapped_by_the_name_the_shop_gave_it_is_matched_as_the_catalogue_reads_it(): void {
+		$this->settings->mapping = array_values( array_filter( array( AttributeMap::read( array( 'attribute' => 'Width', 'spec' => 'deck_width' ) ) ) ) );
+		$this->jobs->termChanged( 'pa_diameter' );
+		self::assertNull( $this->jobs->state() );
+		$this->jobs->termChanged( 'pa_width' );
+		self::assertSame( 1, $this->jobs->state()?->run );
+		$this->jobs->termChanged( 'width' );
+		self::assertSame( 2, $this->jobs->state()?->run );
+	}
 }

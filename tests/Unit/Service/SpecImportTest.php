@@ -195,6 +195,78 @@ final class SpecImportTest extends TestCase {
 		self::assertSame( 0, $plan[1]['part'] );
 	}
 
+	public function test_which_product_a_sku_names_is_asked_once_and_checked_on_each_use(): void {
+		$this->import->read( "sku,deck_width\nDK-7750,8\n,8\nDK-7750,9\nNOPE,8\nTR-149,8\n", 'sku' );
+		self::assertSame( array( array( 'DK-7750', 'NOPE', 'TR-149' ) ), $this->parts->asked, 'each SKU once, and no blank one' );
+		self::assertSame( array( 'DK-7750' => 7, 'TR-149' => 9 ), $this->store->state['found'] ?? null );
+		$this->plan();
+		$this->plan();
+		self::assertCount( 1, $this->parts->asked, 'a draw of the page asks nothing more' );
+		// The found products are kept while the import runs, and dropped at its end.
+		$token = (string) $this->import->state()?->token;
+		$this->import->confirm( $token );
+		self::assertSame( array( 'DK-7750' => 7, 'TR-149' => 9 ), $this->store->state['found'] ?? null );
+		// A product that lost its SKU since is not the row's any more.
+		$this->parts->held[9]['sku'] = 'TR-159';
+		$this->import->run();
+		$state = $this->import->state();
+		self::assertSame( ImportState::DONE, $state?->status );
+		self::assertSame( array(), $state?->found );
+		self::assertSame( array( 2, 3, 4, 5, 6 ), array_column( (array) $state?->refused, 'row' ) );
+		self::assertSame( array( 'key_twice', 'key_missing', 'key_twice', 'part_missing', 'part_missing' ), array_column( (array) $state?->refused, 'code' ) );
+		self::assertSame( array(), $this->parts->written );
+		self::assertCount( 1, $this->parts->asked );
+	}
+
+	public function test_the_products_found_by_sku_are_kept_through_a_retry_and_dropped_when_the_import_stops(): void {
+		$state = new ImportState( ImportState::RUNNING, 't', 'sku', '.', 1, array( 'sku' => 0 ), array( array( 'A' ) ), 1, found: array( 'A' => 7 ) );
+		for ( $failure = 1; $failure < ImportState::MAX_FAILURES; $failure++ ) {
+			$state = $state->failed( 5 );
+			self::assertSame( array( 'A' => 7 ), $state->found, (string) $failure );
+			self::assertSame( array( 'A' => 7 ), ImportState::fromArray( $state->toArray() )?->found );
+		}
+		self::assertSame( array(), $state->failed( 5 )->found );
+		self::assertSame( array(), ImportState::fromArray( array( 'status' => 'running', 'key' => 'sku', 'found' => array( 'A' => 0, 'B' => '7', 'C' => -1 ) ) )?->found, 'only a product ID is one' );
+		self::assertSame( array( '12' => 7 ), ImportState::fromArray( array( 'status' => 'running', 'key' => 'sku', 'found' => array( 12 => 7 ) ) )?->found, 'a SKU that is all digits' );
+	}
+
+	public function test_matched_by_id_no_sku_is_asked_for_and_none_is_kept(): void {
+		$this->import->read( "id,sku,deck_width\n7,DK-7750,8\n" );
+		self::assertSame( array(), $this->parts->asked );
+		self::assertSame( array(), $this->store->state['found'] ?? null );
+	}
+
+	public function test_a_running_import_with_no_job_is_given_one_and_only_then(): void {
+		self::assertFalse( $this->import->resume(), 'none in hand' );
+		$this->import->read( "id,deck_width\n7,8\n" );
+		self::assertFalse( $this->import->resume(), 'one that waits has no job to lose' );
+		$this->import->confirm( (string) $this->import->state()?->token );
+		self::assertFalse( $this->import->resume(), 'its job waits' );
+		self::assertSame( array( SpecImport::JOB => 1 ), $this->queue->calls );
+
+		// The queue was emptied under it, as a deactivation does.
+		$this->queue->cancelAll( SpecImport::JOB );
+		self::assertTrue( $this->import->resume() );
+		self::assertTrue( $this->queue->isPending( SpecImport::JOB ) );
+		self::assertSame( array( SpecImport::JOB => 2 ), $this->queue->calls );
+
+		// A new file finds it stopped, starts it again, and still waits for it.
+		$this->queue->cancelAll( SpecImport::JOB );
+		self::assertSame( array( SpecImport::BUSY ), $this->import->read( "id,deck_width\n9,8\n" ) );
+		self::assertTrue( $this->queue->isPending( SpecImport::JOB ) );
+		$this->import->run();
+		self::assertSame( ImportState::DONE, $this->import->state()?->status );
+		self::assertFalse( $this->import->resume(), 'one that is done' );
+	}
+
+	public function test_a_file_with_too_many_rows_is_refused_without_reading_all_of_it(): void {
+		$start = hrtime( true );
+		self::assertSame( array( SpecImport::ROWS_MANY ), $this->import->read( "id,deck_width\n" . str_repeat( "7,8\n", 400000 ) ) );
+		self::assertLessThan( 2.0, ( hrtime( true ) - $start ) / 1e9, '1.6 MB of short rows; reading them all took over a minute' );
+		self::assertSame( array( SpecImport::ROWS_MANY ), $this->import->read( "id,deck_width\n" . str_repeat( "7,8\n", SpecImport::MAX_ROWS + 1 ) ) );
+		self::assertNull( $this->store->state );
+	}
+
 	public function test_matched_by_id_a_sku_that_is_another_parts_refuses_the_row(): void {
 		$this->import->read( "id,sku,deck_width\n7,TR-149,8\n9,TR-149,8\n7,,8\n" );
 		$this->parts->add( 11, '' );

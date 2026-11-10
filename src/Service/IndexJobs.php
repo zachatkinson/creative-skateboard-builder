@@ -13,6 +13,7 @@ use CreativeBranding\SkateboardBuilder\Port\Clock;
 use CreativeBranding\SkateboardBuilder\Port\Logger;
 use CreativeBranding\SkateboardBuilder\Port\PartCatalogue;
 use CreativeBranding\SkateboardBuilder\Port\Queue;
+use CreativeBranding\SkateboardBuilder\Port\Reindex;
 use CreativeBranding\SkateboardBuilder\Port\ReindexStore;
 use CreativeBranding\SkateboardBuilder\Port\ShopSettings;
 use CreativeBranding\SkateboardBuilder\Port\SpecIndex;
@@ -30,7 +31,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  *
  * @since 0.3.0
  */
-final class IndexJobs {
+final class IndexJobs implements Reindex {
 
 	/**
 	 * The jobs' actions. `Support\Options` lists the same names for deactivation and uninstall, and a test holds the
@@ -111,7 +112,9 @@ final class IndexJobs {
 	}
 
 	/**
-	 * A term was edited: when its taxonomy is one the shop mapped, every part with it may read differently.
+	 * A term was edited or deleted: when its taxonomy is one the shop mapped, every part with it may read differently.
+	 * The mapping may name the attribute as the shop does, `Width` for `pa_width`, so the catalogue says whether a
+	 * name is read from the taxonomy.
 	 *
 	 * @since 0.3.0
 	 *
@@ -119,7 +122,7 @@ final class IndexJobs {
 	 */
 	public function termChanged( string $taxonomy ): void {
 		foreach ( $this->settings->attributeMapping() as $map ) {
-			if ( $map->attribute === $taxonomy ) {
+			if ( $this->catalogue->reads( $map->attribute, $taxonomy ) ) {
 				$this->requestReindex();
 				return;
 			}

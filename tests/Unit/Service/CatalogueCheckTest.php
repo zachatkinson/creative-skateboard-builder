@@ -284,6 +284,14 @@ final class CatalogueCheckTest extends TestCase {
 		self::assertSame( array( 'count' => '3' ), $this->check->run()[0]->values );
 	}
 
+	public function test_failed_jobs_are_counted_from_when_the_last_reindex_finished(): void {
+		$this->check->run();
+		self::assertSame( 0, $this->queue->since );
+		$this->reindex->state = ( new ReindexState( ReindexState::DONE, 3, 300, 100, 250 ) )->toArray();
+		$this->check->run();
+		self::assertSame( 250, $this->queue->since );
+	}
+
 	public function test_a_part_carries_how_many_the_shop_holds_when_it_counts_them(): void {
 		self::assertNull( ( new Part( 1, '', Specs::none(), 100, true ) )->stock );
 		self::assertSame( 3, ( new Part( 1, '', Specs::none(), 100, true, 3 ) )->stock );

@@ -14,6 +14,7 @@ use CreativeBranding\SkateboardBuilder\Domain\Spec\Origin;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\SpecKey;
 use CreativeBranding\SkateboardBuilder\Port\PartCatalogue;
 use CreativeBranding\SkateboardBuilder\Port\Queue;
+use CreativeBranding\SkateboardBuilder\Port\ReindexStore;
 use CreativeBranding\SkateboardBuilder\Port\SpecIndex;
 use CreativeBranding\SkateboardBuilder\Service\IndexJobs;
 use CreativeBranding\SkateboardBuilder\Service\ReindexState;
@@ -253,6 +254,89 @@ final class IndexJobsTest extends IntegrationTestCase {
 		self::assertNotContains( Options::REINDEX, array_keys( wp_load_alloptions() ) );
 	}
 
+	public function test_a_reindex_stopped_halfway_goes_on_from_its_place_and_ends_as_one_never_stopped(): void {
+		// More than a batch of parts, so the row pass and the catalogue pass each take more than one job.
+		$ids = array();
+		for ( $n = 0; $n < IndexJobs::BATCH + 20; $n++ ) {
+			$ids[] = self::deck( number_format( 7 + $n / 1000, 4 ) )->get_id();
+		}
+		$this->service( Queue::class )->cancelAll( Options::JOB_INDEX_PART );
+		$jobs = $this->service( IndexJobs::class );
+		$rows = function () use ( $ids ): array {
+			global $wpdb;
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- The test's own read of the plugin's table.
+			return $wpdb->get_results( 'SELECT part_id, spec, number, text, source, source_ref FROM ' . Tables::name( Tables::SPECS ) . ' WHERE part_id IN (' . implode( ',', $ids ) . ') ORDER BY part_id, spec', ARRAY_A );
+		};
+
+		// The run nothing interrupts.
+		$jobs->requestReindex();
+		self::work();
+		self::assertSame( ReindexState::DONE, $jobs->state()?->phase );
+		$whole = $rows();
+		self::assertCount( count( $ids ), $whole );
+
+		// The index emptied, so every row below is one the second run wrote.
+		$this->service( SpecIndex::class )->forget( ...$ids );
+		self::assertSame( array(), $rows() );
+
+		// Again, stopped after each batch as a deactivation or a dead request stops it: the job is gone, the place is
+		// kept, and the job put back goes on from there.
+		$jobs->requestReindex();
+		$store   = $this->service( ReindexStore::class );
+		$batches = 0;
+		$again   = true;
+		while ( $jobs->state()?->isRunning() ) {
+			self::assertLessThan( 20, ++$batches );
+			$before = $store->load();
+			$jobs->runReindex();
+			$this->service( Queue::class )->cancelAll( Options::JOB_REINDEX );
+			// The request died after the batch's rows were written and before its place was saved: the batch runs a
+			// second time from the place before it.
+			if ( 2 === $batches && $again && is_array( $before ) ) {
+				$again = false;
+				$store->save( $before );
+				--$batches;
+			}
+		}
+		self::assertGreaterThanOrEqual( 3, $batches, 'the catalogue took more than one batch' );
+		self::assertSame( $whole, $rows(), 'the same rows as the run nothing stopped, none twice' );
+		self::assertSame( count( $ids ), $jobs->state()?->parts, 'the batch that ran twice is counted once' );
+		self::assertSame( ReindexState::DONE, $jobs->state()?->phase );
+	}
+
+	public function test_the_place_another_process_saved_is_read_past_this_requests_cache(): void {
+		global $wpdb;
+		$store = $this->service( ReindexStore::class );
+		self::assertNull( $store->load(), 'none yet, which WordPress now remembers as a missing option' );
+		// Another process writes the option: this request's cache does not hear of it.
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- The other process.
+		$wpdb->insert( $wpdb->options, array( 'option_name' => Options::REINDEX, 'option_value' => maybe_serialize( ReindexState::begin( 1_800_000_000, 7 )->toArray() ), 'autoload' => 'off' ) );
+		self::assertFalse( get_option( Options::REINDEX ), 'the cache still says there is none' );
+		self::assertSame( 7, $store->load()['run'] ?? null );
+
+		// And changes it: the cached copy is stale.
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- The other process.
+		$wpdb->update( $wpdb->options, array( 'option_value' => maybe_serialize( ReindexState::begin( 1_800_000_000, 8 )->toArray() ) ), array( 'option_name' => Options::REINDEX ) );
+		self::assertSame( 7, get_option( Options::REINDEX )['run'] );
+		self::assertSame( 8, $store->load()['run'] ?? null );
+		self::assertSame( 8, $this->service( IndexJobs::class )->state()?->run );
+	}
+
+	public function test_a_job_that_failed_before_the_last_reindex_finished_is_no_longer_counted(): void {
+		$queue = $this->service( Queue::class );
+		$fails = static function (): void {
+			throw new \RuntimeException( 'no' );
+		};
+		add_action( 'cbuild_test_fails', $fails );
+		as_enqueue_async_action( 'cbuild_test_fails', array(), Options::QUEUE_GROUP );
+		self::work();
+		remove_action( 'cbuild_test_fails', $fails );
+		$now = time(); // phpcs:ignore -- The queue's own clock stamps the attempt.
+		self::assertSame( 1, $queue->failed(), 'from the beginning' );
+		self::assertSame( 1, $queue->failed( $now - 60 ), 'it failed after that moment' );
+		self::assertSame( 0, $queue->failed( $now + 60 ), 'and before this one' );
+	}
+
 	public function test_saving_the_settings_or_a_mapped_attributes_term_asks_for_a_reindex(): void {
 		$jobs = $this->service( IndexJobs::class );
 		self::assertNull( $jobs->state() );
@@ -275,6 +359,9 @@ final class IndexJobsTest extends IntegrationTestCase {
 		update_option( Options::SETTINGS, array( Options::SETTING_ATTRIBUTE_MAPPING => $mapping, Options::SETTING_SOURCE_ORDER => array( 'attribute', 'field', 'table' ) ) );
 		self::assertSame( ReindexState::ROWS, $jobs->state()?->phase, 'the settings changed' );
 		self::work();
+		$run = $jobs->state()?->run;
+		update_option( Options::SETTINGS, array( Options::SETTING_ATTRIBUTE_MAPPING => $mapping, Options::SETTING_SOURCE_ORDER => array( 'attribute', 'field', 'table' ) ) );
+		self::assertSame( $run, $jobs->state()?->run, 'saved as they were: WordPress writes nothing, and nothing is asked' );
 
 		wp_update_term( $other['term_id'], 'product_cat', array( 'name' => 'Boards' ) );
 		self::assertSame( ReindexState::DONE, $jobs->state()?->phase, 'a category is not a mapped attribute' );
@@ -282,5 +369,35 @@ final class IndexJobsTest extends IntegrationTestCase {
 		self::assertSame( ReindexState::ROWS, $jobs->state()?->phase, 'every part with the term may read differently' );
 		self::assertCount( 1, self::waiting( Options::JOB_REINDEX ) );
 		unregister_taxonomy( 'pa_cbuild_test_width' );
+	}
+
+	public function test_a_deleted_term_and_an_attribute_mapped_by_its_name_ask_for_a_reindex(): void {
+		$jobs = $this->service( IndexJobs::class );
+		register_taxonomy( 'pa_cbuild-test-width', array( 'product' ) );
+		$term  = wp_insert_term( '8.25', 'pa_cbuild-test-width' );
+		$gone  = wp_insert_term( '8.5', 'pa_cbuild-test-width' );
+		$other = wp_insert_term( 'Decks to delete', 'product_cat' );
+		self::assertIsArray( $term );
+		self::assertIsArray( $gone );
+		self::assertIsArray( $other );
+
+		// As the shop names it, which is how WooCommerce reads it: the slug, then the slug after pa_.
+		$mapping = array( array( 'attribute' => 'Cbuild Test Width', 'spec' => 'deck_width' ) );
+		update_option( Options::SETTINGS, array( Options::SETTING_ATTRIBUTE_MAPPING => $mapping ) );
+		self::work();
+		self::assertSame( ReindexState::DONE, $jobs->state()?->phase );
+		$run = $jobs->state()->run;
+
+		wp_delete_term( $other['term_id'], 'product_cat' );
+		self::assertSame( $run, $jobs->state()?->run, 'a category is not a mapped attribute' );
+
+		wp_update_term( $term['term_id'], 'pa_cbuild-test-width', array( 'name' => '8.75' ) );
+		self::assertSame( $run + 1, $jobs->state()?->run, 'an edited term of an attribute mapped by its name' );
+		self::work();
+
+		wp_delete_term( $gone['term_id'], 'pa_cbuild-test-width' );
+		self::assertSame( $run + 2, $jobs->state()?->run, 'a deleted term: no product is saved when its term goes' );
+		self::assertCount( 1, self::waiting( Options::JOB_REINDEX ) );
+		unregister_taxonomy( 'pa_cbuild-test-width' );
 	}
 }

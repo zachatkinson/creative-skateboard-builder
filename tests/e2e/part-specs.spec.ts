@@ -158,4 +158,36 @@ test.describe( 'The Part specs panel', () => {
 		await open( page, FIELDS, 'Trucks' );
 		await expect( axle ).toHaveAccessibleDescription( '' );
 	} );
+
+	test( "an address that names a variation opens it, as the Catalogue check's links do", async ( {
+		page,
+	} ) => {
+		await login( page );
+		await edit( page, 'panel-test-trucks', 'Panel test trucks' );
+		await tab( page, '#variable_product_options' );
+		const first = page.locator( '.woocommerce_variation' ).first();
+		await expect( first ).toBeAttached();
+		const id = await first.locator( 'input.variable_post_id' ).inputValue();
+		const address = page.url().replace( /#.*$/, '' );
+
+		// The variation: its tab, its row opened, and its fields in view.
+		await page.goto( 'about:blank' );
+		await page.goto( `${ address }#cbuild_variation_${ id }` );
+		const fields = page
+			.locator( '.woocommerce_variation' )
+			.filter( {
+				has: page.locator( `input.variable_post_id[value="${ id }"]` ),
+			} )
+			.locator( '.cbuild-part-specs' );
+		await expect( fields ).toBeVisible();
+		await expect( fields ).toBeInViewport();
+
+		// The product's own tab.
+		await page.goto( 'about:blank' );
+		await page.goto( `${ address }#cbuild_part_specs` );
+		await expect( page.locator( '#cbuild_part_specs' ) ).toBeVisible();
+		await expect(
+			page.locator( '#variable_product_options' )
+		).toBeHidden();
+	} );
 } );

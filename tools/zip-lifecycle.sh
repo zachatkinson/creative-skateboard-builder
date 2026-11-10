@@ -16,6 +16,9 @@ slug=creative-skateboard-builder
 copy=cbuild-zip
 # A PHP below the plugin's floor that WordPress and WooCommerce still run on.
 old_php=7.4
+# The schema version a fresh install ends at: the registry's, read from the source so a new migration needs no edit here.
+schema="$(sed -n "s/.*const VERSION = '\([0-9]*\)';.*/\1/p" src/Install/Migrations/MigrationRegistry.php)"
+[ -n "$schema" ] || { echo "zip lifecycle: the schema version was not found in MigrationRegistry.php" >&2; exit 1; }
 zip="$(bash tools/build-zip.sh)"
 stage="$(mktemp -d)"
 unzip -q "$zip" -d "$stage"
@@ -51,7 +54,7 @@ echo "2. Install the zip and activate it."
 wp plugin install "wp-content/plugins/$slug/tmp/$copy.zip" --activate | tail -n 2
 [ "$(active)" = active ] || fail "the zip did not activate"
 installed="$(read_state)"
-[ "$installed" = "1|2|1|0|$errors" ] || [ "$installed" = "1|2|2|0|$errors" ] || fail "after the install: $installed (version|tables|options|actions|errors)"
+[ "$installed" = "$schema|2|1|0|$errors" ] || [ "$installed" = "$schema|2|2|0|$errors" ] || fail "after the install: $installed (version|tables|options|actions|errors)"
 echo "   version|tables|options|actions|errors: $installed"
 
 echo "3. Install the same zip over itself."

@@ -819,7 +819,7 @@ The table is milestone 1's and does not change. These are the choices the reposi
 
 ### D-071 · The index's jobs · 2026-11-10
 
-- **One job per product, deduplicated by its arguments, not by the unique flag.** Action Scheduler's unique flag compares the hook and group only (`ActionScheduler_DBStore::build_where_clause_for_insert()`), so the second of two parts saved together would be dropped. `Queue::enqueueDistinct()` queues unless an action with the same hook and arguments is pending. A running one does not count: it may already have read the product, so a save during it needs a job of its own.
+- **One job per product, deduplicated by its arguments, not by the unique flag.** Action Scheduler's unique flag refuses an action while another with the same hook, group and arguments is pending or running (4.1.0 in WooCommerce 11.2.2, `classes/data-stores/ActionScheduler_DBStore.php:218-233`). Its function's comment names the hook and group alone (`functions.php:14`), which is what the plan read; the query compares the arguments too, so two parts saved together would both be queued either way (corrected in the milestone's audit). What the flag gets wrong for a part is the running action: a save while the part's job runs would be dropped. `Queue::enqueueDistinct()` queues unless an action with the same hook and arguments is pending. A running one does not count: it may already have read the product, so a save during it needs a job of its own.
 - **The save hooks are WooCommerce's four,** `woocommerce_new_product`, `woocommerce_update_product`, `woocommerce_new_product_variation` and `woocommerce_update_product_variation` (WooCommerce 11.2.2, `includes/data-stores/class-wc-product-data-store-cpt.php:263` and `:398`, `class-wc-product-variation-data-store-cpt.php:174` and `:279`), and for a delete WordPress's `deleted_post` (WordPress 7.1.4, `wp-includes/post.php:3996`), which fires however the product was deleted. The hook does nothing but queue.
 - **A variable product's job indexes its variations and drops its own rows.** The parts are the variations; the parent is never one. A product that is gone has no parts, so its job only removes rows.
 - **A reindex walks the index's rows first, then the shop's products by page.** The first pass is what removes rows whose product was deleted while the plugin was off. Both passes read the sources again, so a batch run twice writes the same rows. Its place is saved after each batch in `cbuild_reindex_state`, and each batch queues the next plainly, since the unique check counts the action that is running.
@@ -977,3 +977,27 @@ The table is milestone 1's and does not change. These are the choices the reposi
 
 **Status:** Accepted.
 
+
+### D-082 · What the audit changed: a reindex on install, upgrade and activation, and ways back from a stop · 2026-11-10
+
+Found by the milestone's two reviews, each fixed with a test that fails without it (`docs/reviews/M3.md`).
+
+- **Every part is read again after an install, an upgrade's migrations and an activation.** Until the audit nothing indexed a catalogue that was already there: the index filled a part at a time, as parts were saved. `Install\Activator` asks once its migrations are done, and `Hooks\InstallHooks` asks when a run that an admin page or the job finished brought the schema up to date, since an upgrade arrives with no activation. Deactivation cancels the plugin's jobs and hears no save, so activation asks again. The installer reaches the index through `Port\Reindex`, which `Service\IndexJobs` implements, so the Install layer still knows no service. A site activated while WooCommerce is missing has no queue to hold the job and is not asked for; the Catalogue check's button is the way there.
+- **"Read every part again" is a button on the Catalogue check,** a post with the tab's nonce for who can manage WooCommerce. The demo's host has no WP-CLI, and the sentences that said "Save the Builder settings to start it again" were wrong: a save that changes nothing fires no hook. Site Health and the check now point at the button.
+- **A deleted term asks for a reindex as an edited one does** (`delete_term`, WordPress 7.1.4, `wp-includes/taxonomy.php:2235`): no product is saved when a term it carried goes.
+- **A mapped attribute is matched to a taxonomy as WooCommerce reads it:** by the name's slug, then by the slug after `pa_` (`WC_Product::get_attribute()`, WooCommerce 11.2.2, `includes/abstracts/abstract-wc-product.php:2278`). A mapping line that says `Width` reads `pa_width`, so a term of `pa_width` must ask too. `PartCatalogue::reads()` answers, since the slug is WordPress's to make.
+- **An import left running with no job is given its job back** when Import and export is opened or a new file is read (`SpecImport::resume()`), and Site Health's jobs test reports an import that failed or stalled. Before, a deactivation mid-import left the screen refusing every file for good.
+- **An import by SKU looks each SKU up once,** when the file is read, and keeps the matches in its state. Each batch checks that the product still holds the SKU, so a SKU that moved since is skipped, not written to the wrong part. Before, every batch asked for every SKU again.
+- **A file is read to its row limit and no further** (`Csv::parse()`'s `$most`), so a file far over the limit is refused without being parsed whole.
+- **Failed jobs are counted from when the last reindex finished,** by when each last ran (`modified`, `ActionScheduler_DBStore.php:627`): that reindex read every part again, and Action Scheduler keeps a failed action for three months. Before, one failure kept Site Health and the check amber long after it was mended.
+- **The reindex's and the import's state are read from the table, past the request's cache** (`Adapter\FreshOption`): a long request would otherwise save its stale copy over another process's place.
+
+**Status:** Accepted.
+
+### D-083 · The product screen's one script is inline · 2026-11-10
+
+- **The Catalogue check's links open the tab or the variation they name.** WooCommerce's product screen opens no tab from the address, so the link used to land on General with the field out of sight. `#cbuild_part_specs` opens the Part specs tab; `#cbuild_variation_<id>` opens the Variations tab and, when the variation is on the page WooCommerce loads first, opens it and scrolls to its fields. A variation on a later page is left to WooCommerce's own paging.
+- **It is twenty-odd lines added after WooCommerce's variation script** (`wp_add_inline_script()`), with no data in it and no markup built. `docs/STANDARDS.md` says the admin scripts are TypeScript built by `@wordpress/scripts`; the first entry point and its build land with the builder in milestone 6, and bringing the pipeline forward for this would change what the zip, the budgets and Plugin Check measure in a milestone that planned no script. It moves into the admin bundle when there is one. **This is Zach's standard to keep or bend:** raised under For Zach in the milestone's review.
+- **Tested in the browser:** `tests/e2e/check.spec.ts` follows a finding's link and sees the panel; `tests/e2e/part-specs.spec.ts` opens a variation by its address.
+
+**Status:** Accepted, pending Zach's word on the standard.

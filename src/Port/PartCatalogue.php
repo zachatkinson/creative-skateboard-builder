@@ -51,4 +51,14 @@ interface PartCatalogue {
 	 * @param string $postType A post type.
 	 */
 	public function holds( string $postType ): bool;
+
+	/**
+	 * Whether a product's attribute, asked for by this name, is read from this taxonomy.
+	 *
+	 * @since 0.3.0
+	 *
+	 * @param string $attribute The name a mapping line holds: `pa_width`, `width` or `Width`.
+	 * @param string $taxonomy  A taxonomy.
+	 */
+	public function reads( string $attribute, string $taxonomy ): bool;
 }

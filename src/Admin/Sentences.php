@@ -58,7 +58,7 @@ final class Sentences {
 				/* translators: 1: a spec's name. 2: a source. 3: what the source holds. */
 				return sprintf( __( '%1$s: %2$s holds "%3$s", which cannot be read as a value.', 'creative-skateboard-builder' ), $spec, $source( 'from' ), $values['text'] ?? '' );
 			case CatalogueCheck::REINDEX_FAILED:
-				return __( 'Reading every part again stopped after five failures. Save the Builder settings to start it again; WooCommerce > Status > Logs has the reason.', 'creative-skateboard-builder' );
+				return __( 'Reading every part again stopped after five failures. Start it again with "Read every part again" on this page; WooCommerce > Status > Logs has the reason.', 'creative-skateboard-builder' );
 			case CatalogueCheck::IMPORT_FAILED:
 				return __( 'The last specs import stopped before its end. Import the file again; WooCommerce > Status > Logs has the reason.', 'creative-skateboard-builder' );
 			case CatalogueCheck::JOBS_FAILED:

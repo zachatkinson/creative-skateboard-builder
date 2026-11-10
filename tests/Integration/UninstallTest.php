@@ -159,7 +159,10 @@ final class UninstallTest extends IntegrationTestCase {
 		} finally {
 			self::wp( 'plugin', 'activate', 'creative-skateboard-builder' );
 		}
-		self::assertSame( '0|2|' . MigrationRegistry::VERSION, self::wpEval( $count )['out'], 'reactivated: the tables and the version are back' );
+		// Activation asks for every part to be read again (D-082): the one action is that job.
+		self::assertSame( '1|2|' . MigrationRegistry::VERSION, self::wpEval( $count )['out'], 'reactivated: the tables and the version are back, and the reindex waits' );
+		self::assertSame( Options::JOB_REINDEX, self::wpEval( 'global $wpdb; echo $wpdb->get_var( "SELECT a.hook FROM {$wpdb->prefix}actionscheduler_actions a INNER JOIN {$wpdb->prefix}actionscheduler_groups g ON g.group_id = a.group_id WHERE g.slug = \'' . Options::QUEUE_GROUP . '\'" );' )['out'] );
+		self::wpEval( '\\CreativeBranding\\SkateboardBuilder\\Install\\Uninstaller::deleteJobs(); delete_option( "' . Options::REINDEX . '" );' );
 	}
 
 	public function test_a_deleted_network_site_drops_the_plugin_tables(): void {

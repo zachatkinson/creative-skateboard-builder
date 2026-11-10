@@ -120,14 +120,16 @@ final class CatalogueCheck {
 	 * @return list<CheckFinding>
 	 */
 	private function work(): array {
-		$found = array();
-		if ( ReindexState::FAILED === ReindexState::fromArray( $this->reindex->load() )?->phase ) {
+		$found   = array();
+		$reindex = ReindexState::fromArray( $this->reindex->load() );
+		if ( ReindexState::FAILED === $reindex?->phase ) {
 			$found[] = new CheckFinding( self::REINDEX_FAILED );
 		}
 		if ( ImportState::FAILED === ImportState::fromArray( $this->import->load() )?->status ) {
 			$found[] = new CheckFinding( self::IMPORT_FAILED );
 		}
-		$failed = $this->queue->failed();
+		// A reindex that finished read every part again, so a job that failed before it has nothing left to say.
+		$failed = $this->queue->failed( Health::since( $reindex ) );
 		if ( $failed > 0 ) {
 			$found[] = new CheckFinding( self::JOBS_FAILED, values: array( 'count' => (string) $failed ) );
 		}

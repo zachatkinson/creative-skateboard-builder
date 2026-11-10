@@ -186,17 +186,24 @@ final class PartSpecsPanelTest extends IntegrationTestCase {
 
 	public function test_the_groups_headings_are_styled_on_the_product_screen_and_nowhere_else(): void {
 		wp_register_style( 'woocommerce_admin_styles', 'https://example.com/admin.css', array(), '1' );
-		$added = static fn(): string => implode( '', (array) wp_styles()->get_data( 'woocommerce_admin_styles', 'after' ) );
+		wp_register_script( 'wc-admin-variation-meta-boxes', 'https://example.com/meta-boxes.js', array(), '1', true );
+		$added  = static fn(): string => implode( '', (array) wp_styles()->get_data( 'woocommerce_admin_styles', 'after' ) );
+		$script = static fn(): string => implode( '', (array) wp_scripts()->get_data( 'wc-admin-variation-meta-boxes', 'after' ) );
 
 		set_current_screen( 'dashboard' );
 		$this->hooks()->styles();
 		self::assertSame( '', $added() );
+		self::assertSame( '', $script() );
 
 		set_current_screen( 'product' );
 		$this->hooks()->styles();
 		self::assertStringContainsString( '.cbuild-part-specs summary{padding:8px 12px;', $added(), 'a target 34 pixels high' );
+		// The Catalogue check's links open the tab, or the variation, they name.
+		self::assertStringContainsString( "'#cbuild_part_specs' === hash", $script() );
+		self::assertStringContainsString( '/^#cbuild_variation_(\\d+)$/', $script() );
 
 		wp_deregister_style( 'woocommerce_admin_styles' );
+		wp_deregister_script( 'wc-admin-variation-meta-boxes' );
 		set_current_screen( 'front' );
 	}
 

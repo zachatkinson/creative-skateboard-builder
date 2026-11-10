@@ -12,6 +12,7 @@
  * @var bool                                                                 $none  Whether the shop has no kit yet.
  * @var string                                                               $nonce The form's nonce action.
  * @var string                                                               $back  The tab's own address.
+ * @var bool                                                                 $asked Whether a reindex was asked for in this request.
  */
 
 declare( strict_types=1 );
@@ -34,6 +35,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 		<?php submit_button( $ran ? __( 'Run the check again', 'creative-skateboard-builder' ) : __( 'Run the check', 'creative-skateboard-builder' ), 'primary', 'submit', true ); ?>
 	</form>
 
+	<?php if ( $asked ) : ?>
+		<div class="notice notice-success inline" role="status"><p><?php esc_html_e( 'Every part is being read again in the background, 100 at a time. Tools > Site Health shows how far it is.', 'creative-skateboard-builder' ); ?></p></div>
+	<?php endif; ?>
 	<?php if ( $ran && 0 === $count ) : ?>
 		<div class="notice notice-success inline" role="status"><p><?php esc_html_e( 'The check found nothing to fix.', 'creative-skateboard-builder' ); ?></p></div>
 	<?php elseif ( $ran ) : ?>
@@ -81,4 +85,12 @@ if ( ! defined( 'ABSPATH' ) ) {
 			</p>
 		<?php endif; ?>
 	<?php endif; ?>
+	<h2><?php esc_html_e( 'Read every part again', 'creative-skateboard-builder' ); ?></h2>
+	<p><?php esc_html_e( 'The builder keeps an index of each part\'s specs and updates a part whenever it is saved. Use this when the index was not rebuilt, or stopped part way. It runs in the background, and parts keep what they held until they are reached.', 'creative-skateboard-builder' ); ?></p>
+	<form method="post" action="<?php echo esc_url( $back ); ?>">
+		<?php // The page's first form holds the field with the id; an id is not repeated. ?>
+		<input type="hidden" name="_wpnonce" value="<?php echo esc_attr( wp_create_nonce( $nonce ) ); ?>" />
+		<input type="hidden" name="cbuild_action" value="reindex" />
+		<?php submit_button( __( 'Read every part again', 'creative-skateboard-builder' ), 'secondary', 'submit', true, array( 'id' => 'cbuild-reindex' ) ); ?>
+	</form>
 </div>

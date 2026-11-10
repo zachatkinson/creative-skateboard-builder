@@ -16,6 +16,7 @@ use CreativeBranding\SkateboardBuilder\Port\ImportStore;
 use CreativeBranding\SkateboardBuilder\Port\Kits;
 use CreativeBranding\SkateboardBuilder\Port\PartCatalogue;
 use CreativeBranding\SkateboardBuilder\Port\Queue;
+use CreativeBranding\SkateboardBuilder\Port\Reindex;
 use CreativeBranding\SkateboardBuilder\Port\ReindexStore;
 use CreativeBranding\SkateboardBuilder\Port\SpecTables;
 use CreativeBranding\SkateboardBuilder\Service\CatalogueCheck;
@@ -55,7 +56,7 @@ final class CheckScreenTest extends IntegrationTestCase {
 	private function screen( ?Kits $kits = null ): CheckScreen {
 		$kits ??= $this->service( Kits::class );
 		$check  = new CatalogueCheck( $kits, $this->service( PartCatalogue::class ), $this->service( SpecIndexer::class ), $this->service( ReindexStore::class ), $this->service( ImportStore::class ), $this->service( Queue::class ) );
-		return new CheckScreen( $check, $kits );
+		return new CheckScreen( $check, $kits, $this->service( Reindex::class ) );
 	}
 
 	/**
@@ -155,8 +156,8 @@ final class CheckScreenTest extends IntegrationTestCase {
 		self::assertStringContainsString( 'Stage 11 &lt;b&gt;149&lt;/b&gt; (TR-149)</a>', $page );
 		self::assertStringContainsString( 'post=' . $truck->get_id() . '&#038;action=edit#cbuild_part_specs"', $page );
 		self::assertStringContainsString( 'Axle width: two sources disagree. The maker&#039;s chart says 8.5 in, which is used. The part&#039;s own field says 8 in.', $page );
-		// A variation's fields are on its parent's screen.
-		self::assertStringContainsString( 'post=' . $parent->get_id() . '&#038;action=edit#cbuild_part_specs"', $page );
+		// A variation's fields are on its parent's screen, in the variation.
+		self::assertStringContainsString( 'post=' . $parent->get_id() . '&#038;action=edit#cbuild_variation_' . $size->get_id() . '"', $page );
 		self::assertStringContainsString( 'It names the size &quot;151&quot;, which its maker&#039;s chart does not have.', $page );
 		self::assertStringContainsString( 'It names a maker&#039;s chart that is no longer there.', $page );
 		self::assertStringNotContainsString( '<b>149', $page );
@@ -242,6 +243,47 @@ final class CheckScreenTest extends IntegrationTestCase {
 		self::assertStringContainsString( 'The check found ' . number_format_i18n( CheckScreen::SHOWN + 2 ) . ' things to fix.', $page );
 		self::assertSame( CheckScreen::SHOWN + 1, substr_count( $page, '<tr>' ) );
 		self::assertStringContainsString( 'And 2 more.', $page );
+	}
+
+	public function test_a_manager_starts_the_reindex_again_from_the_page_and_nobody_else_does(): void {
+		$sent = static function ( CheckScreen $screen, bool $nonce = true ): string {
+			$_POST['cbuild_action'] = 'reindex';
+			unset( $_REQUEST['_wpnonce'] );
+			if ( $nonce ) {
+				$_REQUEST['_wpnonce'] = wp_create_nonce( CheckScreen::NONCE );
+			}
+			$screen->handle();
+			return self::drawn( $screen );
+		};
+		// A reindex that stopped for good: the check says where to start it again, and the page has the button.
+		$this->service( ReindexStore::class )->save( ( new ReindexState( ReindexState::FAILED, 0, 0, 1, null, false, ReindexState::MAX_FAILURES, 'gone' ) )->toArray() );
+		$this->as( 'shop_manager' );
+		$page = self::checked( $this->screen() );
+		self::assertStringContainsString( 'Start it again with &quot;Read every part again&quot; on this page', $page );
+		self::assertStringContainsString( '<input type="hidden" name="cbuild_action" value="reindex" />', $page );
+		self::assertStringContainsString( 'id="cbuild-reindex" class="button" value="Read every part again"', $page );
+		self::assertStringNotContainsString( 'Every part is being read again in the background', $page );
+
+		$this->as( 'editor' );
+		self::assertSame( '', $sent( $this->screen() ) );
+		self::assertSame( ReindexState::FAILED, get_option( Options::REINDEX )['phase'], 'not for who cannot manage the shop' );
+
+		$this->as( 'shop_manager' );
+		try {
+			$sent( $this->screen(), false );
+			self::fail( 'The reindex was asked for without its nonce.' );
+		} catch ( \WPDieException $stopped ) {
+			self::assertSame( ReindexState::FAILED, get_option( Options::REINDEX )['phase'] );
+		}
+
+		$page = $sent( $this->screen() );
+		self::assertStringContainsString( '<div class="notice notice-success inline" role="status"><p>Every part is being read again in the background', $page );
+		self::assertStringNotContainsString( 'What it found', $page, 'the check did not run' );
+		self::assertSame( 2, get_option( Options::REINDEX )['run'] );
+		self::assertSame( ReindexState::ROWS, get_option( Options::REINDEX )['phase'] );
+		self::assertCount( 1, self::waiting( Options::JOB_REINDEX ) );
+		self::work();
+		self::assertSame( ReindexState::DONE, get_option( Options::REINDEX )['phase'] );
 	}
 
 	public function test_who_cannot_manage_the_shop_runs_nothing_and_sees_nothing_and_the_form_needs_its_nonce(): void {

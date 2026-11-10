@@ -11,6 +11,7 @@ namespace CreativeBranding\SkateboardBuilder\Health;
 
 use Closure;
 use CreativeBranding\SkateboardBuilder\Admin\CheckScreen;
+use CreativeBranding\SkateboardBuilder\Admin\ImportScreen;
 use CreativeBranding\SkateboardBuilder\Admin\Labels;
 use CreativeBranding\SkateboardBuilder\Hookable;
 use CreativeBranding\SkateboardBuilder\Port\MigrationStore;
@@ -93,16 +94,16 @@ final class SiteHealth implements Hookable {
 	public function index(): array {
 		$verdict  = ( $this->health )()->index();
 		$parts    = number_format_i18n( $verdict['parts'] );
-		$settings = sprintf( '<a href="%s">%s</a>', esc_url( admin_url( 'admin.php?page=wc-settings&tab=cbuild' ) ), esc_html__( 'Open the Builder settings', 'creative-skateboard-builder' ) );
+		$settings = sprintf( '<a href="%s">%s</a>', esc_url( CheckScreen::url() ), esc_html__( 'Open the Catalogue check', 'creative-skateboard-builder' ) );
 		switch ( $verdict['code'] ) {
 			case Health::INDEX_FAILED:
 				$label = __( 'The skateboard builder\'s specs index was not rebuilt', 'creative-skateboard-builder' );
-				$says  = __( 'Reading every part again stopped after five failures, so some parts are still indexed with what they held before. Save the Builder settings to start it again. WooCommerce > Status > Logs has the reason, under creative-skateboard-builder.', 'creative-skateboard-builder' );
+				$says  = __( 'Reading every part again stopped after five failures, so some parts are still indexed with what they held before. Start it again with "Read every part again" on the Catalogue check. WooCommerce > Status > Logs has the reason, under creative-skateboard-builder.', 'creative-skateboard-builder' );
 				break;
 			case Health::INDEX_STALLED:
 				$label = __( 'The skateboard builder\'s specs index stopped part way', 'creative-skateboard-builder' );
 				/* translators: %s: a number of parts. */
-				$says = sprintf( __( 'Reading every part again got as far as %s parts and has no job waiting to go on. Save the Builder settings to start it again.', 'creative-skateboard-builder' ), $parts );
+				$says = sprintf( __( 'Reading every part again got as far as %s parts and has no job waiting to go on. Start it again with "Read every part again" on the Catalogue check.', 'creative-skateboard-builder' ), $parts );
 				break;
 			case Health::INDEX_BUILDING:
 				$label = __( 'The skateboard builder\'s specs index is being rebuilt', 'creative-skateboard-builder' );
@@ -127,6 +128,13 @@ final class SiteHealth implements Hookable {
 	 */
 	public function jobs(): array {
 		$verdict = ( $this->health )()->jobs();
+		$import  = sprintf( '<a href="%s">%s</a>', esc_url( ImportScreen::url() ), esc_html__( 'Open Import and export', 'creative-skateboard-builder' ) );
+		if ( Health::IMPORT_FAILED === $verdict['code'] ) {
+			return self::result( self::TEST_JOBS, $verdict['status'], __( 'The skateboard builder\'s last specs import stopped before its end', 'creative-skateboard-builder' ), __( 'A batch of the import failed four times, so the parts after it were not written. Import the file again: a part already written takes the same values. WooCommerce > Status > Logs has the reason, under creative-skateboard-builder.', 'creative-skateboard-builder' ), $import );
+		}
+		if ( Health::IMPORT_STALLED === $verdict['code'] ) {
+			return self::result( self::TEST_JOBS, $verdict['status'], __( 'The skateboard builder\'s specs import has no job left to run it', 'creative-skateboard-builder' ), __( 'An import is part way through and nothing is queued to go on, as happens when the plugin is switched off while one runs. Opening Import and export starts it again from where it stopped.', 'creative-skateboard-builder' ), $import );
+		}
 		if ( Health::JOBS_FAILED !== $verdict['code'] ) {
 			return self::result( self::TEST_JOBS, $verdict['status'], __( 'No background job of the skateboard builder has failed', 'creative-skateboard-builder' ), __( 'The builder indexes parts and writes imports in the background. A job that fails is tried again, and shows here if it still fails.', 'creative-skateboard-builder' ), '' );
 		}

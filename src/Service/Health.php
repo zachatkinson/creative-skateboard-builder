@@ -9,6 +9,7 @@ declare( strict_types=1 );
 
 namespace CreativeBranding\SkateboardBuilder\Service;
 
+use CreativeBranding\SkateboardBuilder\Port\ImportStore;
 use CreativeBranding\SkateboardBuilder\Port\Queue;
 use CreativeBranding\SkateboardBuilder\Port\ReindexStore;
 
@@ -43,8 +44,10 @@ final class Health {
 	/**
 	 * What the jobs' test finds.
 	 */
-	public const JOBS_FINE   = 'jobs_fine';
-	public const JOBS_FAILED = 'jobs_failed';
+	public const JOBS_FINE      = 'jobs_fine';
+	public const JOBS_FAILED    = 'jobs_failed';
+	public const IMPORT_FAILED  = 'import_failed';
+	public const IMPORT_STALLED = 'import_stalled';
 
 	/**
 	 * Constructor.
@@ -53,8 +56,9 @@ final class Health {
 	 *
 	 * @param ReindexStore $reindex The reindex's place.
 	 * @param Queue        $queue   The background queue.
+	 * @param ImportStore  $import  The import in hand.
 	 */
-	public function __construct( private ReindexStore $reindex, private Queue $queue ) {}
+	public function __construct( private ReindexStore $reindex, private Queue $queue, private ImportStore $import ) {}
 
 	/**
 	 * Whether the index is up to date.
@@ -83,19 +87,44 @@ final class Health {
 	}
 
 	/**
-	 * Whether any of the plugin's background jobs has failed.
+	 * Whether any of the plugin's background work has failed or stopped.
+	 *
+	 * A job that failed before the last reindex finished is not counted: that reindex read every part again. An
+	 * import catches its own failures, so its actions end well and its state says what happened: stopped after its
+	 * failures, or still marked running with no action left to run it.
 	 *
 	 * @since 0.3.0
 	 *
 	 * @return array{status: string, code: string, failed: int}
 	 */
 	public function jobs(): array {
-		$failed = $this->queue->failed();
+		$failed = $this->queue->failed( self::since( ReindexState::fromArray( $this->reindex->load() ) ) );
+		$import = ImportState::fromArray( $this->import->load() );
+		$code   = self::JOBS_FINE;
+		if ( $failed > 0 ) {
+			$code = self::JOBS_FAILED;
+		} elseif ( ImportState::FAILED === $import?->status ) {
+			$code = self::IMPORT_FAILED;
+		} elseif ( ImportState::RUNNING === $import?->status && ! $this->queue->isPending( SpecImport::JOB ) ) {
+			$code = self::IMPORT_STALLED;
+		}
 		return array(
-			'status' => $failed > 0 ? self::RECOMMENDED : self::GOOD,
-			'code'   => $failed > 0 ? self::JOBS_FAILED : self::JOBS_FINE,
+			'status' => self::JOBS_FINE === $code ? self::GOOD : self::RECOMMENDED,
+			'code'   => $code,
 			'failed' => $failed,
 		);
+	}
+
+	/**
+	 * The moment failed jobs count from: when the last reindex finished, or the beginning when none has.
+	 *
+	 * @since 0.3.0
+	 *
+	 * @param ReindexState|null $reindex The reindex's state.
+	 * @return int A UTC timestamp, 0 for the beginning.
+	 */
+	public static function since( ?ReindexState $reindex ): int {
+		return ReindexState::DONE === $reindex?->phase ? (int) $reindex->finishedAt : 0;
 	}
 
 	/**

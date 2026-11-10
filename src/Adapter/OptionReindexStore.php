@@ -31,8 +31,8 @@ final class OptionReindexStore implements ReindexStore {
 	 * @return array<mixed>|null
 	 */
 	public function load(): ?array {
-		$stored = get_option( Options::REINDEX, null );
-		return is_array( $stored ) ? $stored : null;
+		// From the table: a batch reads the state again before it saves, to see a request made while it ran.
+		return FreshOption::read( Options::REINDEX );
 	}
 
 	/**

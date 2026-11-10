@@ -10,7 +10,9 @@ declare( strict_types=1 );
 namespace CreativeBranding\SkateboardBuilder\Tests\Integration;
 
 use CreativeBranding\SkateboardBuilder\Health\SiteHealth;
+use CreativeBranding\SkateboardBuilder\Port\ImportStore;
 use CreativeBranding\SkateboardBuilder\Port\ReindexStore;
+use CreativeBranding\SkateboardBuilder\Service\ImportState;
 use CreativeBranding\SkateboardBuilder\Service\IndexJobs;
 use CreativeBranding\SkateboardBuilder\Service\ReindexState;
 use CreativeBranding\SkateboardBuilder\Support\Options;
@@ -75,7 +77,8 @@ final class SiteHealthTest extends IntegrationTestCase {
 		self::assertSame( 'recommended', $result['status'] );
 		self::assertSame( 'orange', $result['badge']['color'] );
 		self::assertSame( 'The skateboard builder\'s specs index stopped part way', $result['label'] );
-		self::assertStringContainsString( 'page=wc-settings&#038;tab=cbuild">Open the Builder settings</a>', $result['actions'] );
+		self::assertStringContainsString( 'Start it again with &quot;Read every part again&quot; on the Catalogue check.', $result['description'] );
+		self::assertStringContainsString( 'page=cbuild&#038;tab=check">Open the Catalogue check</a>', $result['actions'] );
 
 		$this->service( ReindexStore::class )->save( ( new ReindexState( ReindexState::FAILED, 0, 0, 1, null, false, ReindexState::MAX_FAILURES, '<b>gone</b>' ) )->toArray() );
 		$result = $index();
@@ -83,6 +86,8 @@ final class SiteHealthTest extends IntegrationTestCase {
 		self::assertSame( 'red', $result['badge']['color'] );
 		self::assertSame( 'The skateboard builder\'s specs index was not rebuilt', $result['label'] );
 		self::assertStringStartsWith( '<p>Reading every part again stopped after five failures', $result['description'] );
+		self::assertStringContainsString( 'Start it again with &quot;Read every part again&quot; on the Catalogue check.', $result['description'] );
+		self::assertStringContainsString( 'page=cbuild&#038;tab=check">Open the Catalogue check</a>', $result['actions'] );
 		self::assertStringNotContainsString( 'gone', $result['description'] . $result['actions'], 'the error stays in the log' );
 	}
 
@@ -100,6 +105,31 @@ final class SiteHealthTest extends IntegrationTestCase {
 		self::assertSame( '1 background job of the skateboard builder has failed', $result['label'] );
 		self::assertStringContainsString( 'page=wc-status&#038;tab=action-scheduler&#038;status=failed">See the failed jobs</a>', $result['actions'] );
 		self::assertStringContainsString( 'page=cbuild&#038;tab=check">Open the Catalogue check</a>', $result['actions'] );
+	}
+
+	public function test_an_import_that_stopped_or_lost_its_job_reaches_site_health(): void {
+		$tests = $this->tests();
+		$jobs  = $tests['direct']['cbuild_jobs']['test'];
+		$store = $this->service( ImportStore::class );
+
+		$store->save( ( new ImportState( ImportState::FAILED, 't', 'id', '.', 1, array( 'id' => 0 ), array(), 300, 100, 90, 10 ) )->toArray() );
+		$result = $jobs();
+		self::assertSame( 'recommended', $result['status'] );
+		self::assertSame( 'The skateboard builder\'s last specs import stopped before its end', $result['label'] );
+		self::assertStringContainsString( 'Import the file again', $result['description'] );
+		self::assertStringContainsString( 'page=cbuild&#038;tab=import">Open Import and export</a>', $result['actions'] );
+
+		// Running with its job waiting is fine; with none, it has stalled.
+		$store->save( ( new ImportState( ImportState::RUNNING, 't', 'id', '.', 1, array( 'id' => 0 ), array(), 300, 100, 90, 10 ) )->toArray() );
+		as_enqueue_async_action( Options::JOB_IMPORT, array(), Options::QUEUE_GROUP, true );
+		self::assertSame( 'good', $jobs()['status'] );
+		as_unschedule_all_actions( Options::JOB_IMPORT );
+		$result = $jobs();
+		self::assertSame( 'recommended', $result['status'] );
+		self::assertSame( 'The skateboard builder\'s specs import has no job left to run it', $result['label'] );
+		self::assertStringContainsString( 'Opening Import and export starts it again', $result['description'] );
+		self::assertStringContainsString( 'page=cbuild&#038;tab=import">Open Import and export</a>', $result['actions'] );
+		delete_option( Options::IMPORT );
 	}
 
 	public function test_wordpress_itself_runs_the_tests_and_takes_their_results(): void {

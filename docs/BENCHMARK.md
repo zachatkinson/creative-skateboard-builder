@@ -76,7 +76,7 @@ Peak memory for the whole run was 111 MB, with 2,000 products made in the same p
 
 Each piece is two orders under what a request allows, so the Catalogue check stays in the request that asks for it (D-077) and the dry run is planned whole when the page is drawn (D-076).
 
-The query counts are one a product and a page's own. That one is WooCommerce reading a product's meta when the product is built (`WC_Data_Store_WP::read_meta()`), a look-up by the product's ID on an indexed column, which WooCommerce caches in the object cache where a shop has one. Reading the meta past WooCommerce would save it and break the rule that products go through its CRUD (D-081). A batch late in the reindex asks what an early one does: the walk is by ID, not by offset, and the test holds the last full batch to the second's count.
+The query counts are one a product and a page's own. That one is WooCommerce reading a product's meta when the product is built (`WC_Data_Store_WP::read_meta()`), a look-up by the product's ID on an indexed column, which WooCommerce caches in the object cache where a shop has one. Reading the meta past WooCommerce would save it and break the rule that products go through its CRUD (D-081). A batch late in the reindex's first pass asks what an early one does: that pass walks the index's rows by ID, not by offset, and the test holds the last full batch to the second's count. The second pass pages the shop's products by offset, through WooCommerce's own query (D-071).
 
 The test's limits were each broken on purpose and seen to fail: see `docs/reviews/M3.md`.
 

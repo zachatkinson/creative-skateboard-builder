@@ -14,6 +14,7 @@ use CreativeBranding\SkateboardBuilder\Admin\BuilderHooks;
 use CreativeBranding\SkateboardBuilder\Admin\ImportScreen;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\SpecTable;
 use CreativeBranding\SkateboardBuilder\Hooks\ImportHooks;
+use CreativeBranding\SkateboardBuilder\Install\Deactivator;
 use CreativeBranding\SkateboardBuilder\Port\ImportStore;
 use CreativeBranding\SkateboardBuilder\Port\PartSpecs;
 use CreativeBranding\SkateboardBuilder\Port\SpecTables;
@@ -421,6 +422,32 @@ final class ImportScreenTest extends IntegrationTestCase {
 		self::assertNull( $this->screen()->handle() );
 		self::assertNull( $this->screen()->download() );
 		self::assertStringNotContainsString( 'class="notice', self::drawn( $this->screen(), 'erase' ) );
+	}
+
+	public function test_an_import_whose_job_was_lost_goes_on_when_the_page_is_opened_and_ends_as_one_never_stopped(): void {
+		$first  = self::part( 'A' );
+		$second = self::part( 'B' );
+		$this->as( 'shop_manager' );
+		$this->read( "id,wheelbase\n{$first->get_id()},14\n{$second->get_id()},14.25\n" );
+		$import = $this->service( SpecImport::class );
+		self::assertTrue( $import->confirm( (string) $import->state()?->token, get_current_user_id() ) );
+
+		// The plugin is switched off while the import runs: its job is cancelled, and the state still says running.
+		Deactivator::deactivate();
+		self::assertSame( array(), self::waiting( Options::JOB_IMPORT ) );
+		self::assertSame( ImportState::RUNNING, $import->state()?->status );
+		self::assertSame( '', self::stored( $first->get_id() ) );
+
+		$page = self::drawn( $this->screen() );
+		self::assertStringContainsString( 'The import had stopped part way and has been started again from where it was.', $page );
+		self::assertCount( 1, self::waiting( Options::JOB_IMPORT ) );
+		self::assertStringNotContainsString( 'has been started again', self::drawn( $this->screen() ), 'once: its job waits now' );
+		self::assertCount( 1, self::waiting( Options::JOB_IMPORT ) );
+
+		self::work();
+		self::assertSame( ImportState::DONE, $import->state()?->status );
+		self::assertSame( array( 'wheelbase' => '14.0000' ), self::stored( $first->get_id() ) );
+		self::assertSame( array( 'wheelbase' => '14.2500' ), self::stored( $second->get_id() ) );
 	}
 
 	public function test_an_import_that_stopped_says_so(): void {

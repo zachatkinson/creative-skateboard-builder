@@ -10,6 +10,9 @@ declare( strict_types=1 );
 namespace CreativeBranding\SkateboardBuilder\Tests\Unit\Service;
 
 use CreativeBranding\SkateboardBuilder\Service\Health;
+use CreativeBranding\SkateboardBuilder\Service\ImportState;
+use CreativeBranding\SkateboardBuilder\Service\SpecImport;
+use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\InMemoryImportStore;
 use CreativeBranding\SkateboardBuilder\Service\IndexJobs;
 use CreativeBranding\SkateboardBuilder\Service\ReindexState;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\FakeQueue;
@@ -28,12 +31,15 @@ final class HealthTest extends TestCase {
 
 	private FakeQueue $queue;
 
+	private InMemoryImportStore $imports;
+
 	private Health $health;
 
 	protected function setUp(): void {
 		$this->store  = new InMemoryReindexStore();
 		$this->queue  = new FakeQueue();
-		$this->health = new Health( $this->store, $this->queue );
+		$this->imports = new InMemoryImportStore();
+		$this->health  = new Health( $this->store, $this->queue, $this->imports );
 	}
 
 	public function test_an_index_never_rebuilt_or_rebuilt_to_its_end_is_up_to_date(): void {
@@ -119,5 +125,57 @@ final class HealthTest extends TestCase {
 		);
 		$this->queue->failures = 12;
 		self::assertSame( 12, $this->health->jobs()['failed'] );
+	}
+
+	public function test_a_job_that_failed_before_the_last_reindex_finished_is_not_counted(): void {
+		$this->health->jobs();
+		self::assertSame( 0, $this->queue->since, 'no reindex yet: from the beginning' );
+		$this->store->state = ( new ReindexState( ReindexState::CATALOGUE, 3, 300, 100 ) )->toArray();
+		$this->health->jobs();
+		self::assertSame( 0, $this->queue->since, 'one under way has not read every part yet' );
+		$this->store->state = ( new ReindexState( ReindexState::FAILED, 3, 300, 100, 150 ) )->toArray();
+		$this->health->jobs();
+		self::assertSame( 0, $this->queue->since );
+		$this->store->state = ( new ReindexState( ReindexState::DONE, 3, 300, 100, 250 ) )->toArray();
+		$this->health->jobs();
+		self::assertSame( 250, $this->queue->since, 'from when it finished, not when it started' );
+		self::assertSame( 0, Health::since( null ) );
+	}
+
+	public function test_an_import_that_stopped_or_lost_its_job_is_said_and_one_at_work_is_not(): void {
+		$import = static fn( string $status ): array => ( new ImportState( $status, 't', 'id', '.', 1, array(), array(), 1 ) )->toArray();
+		foreach ( array( ImportState::WAITING, ImportState::DONE ) as $status ) {
+			$this->imports->state = $import( $status );
+			self::assertSame( 'jobs_fine', $this->health->jobs()['code'], $status );
+		}
+		$this->imports->state = $import( ImportState::FAILED );
+		self::assertSame(
+			array(
+				'status' => 'recommended',
+				'code'   => 'import_failed',
+				'failed' => 0,
+			),
+			$this->health->jobs()
+		);
+		// Its job waiting changes nothing for one that has stopped.
+		$this->queue->enqueueUnique( SpecImport::JOB );
+		self::assertSame( 'import_failed', $this->health->jobs()['code'] );
+
+		$this->imports->state = $import( ImportState::RUNNING );
+		self::assertSame( 'jobs_fine', $this->health->jobs()['code'], 'running, with its job' );
+		$this->queue->cancelAll( SpecImport::JOB );
+		$this->queue->enqueueUnique( IndexJobs::JOB_REINDEX );
+		self::assertSame(
+			array(
+				'status' => 'recommended',
+				'code'   => 'import_stalled',
+				'failed' => 0,
+			),
+			$this->health->jobs()
+		);
+		// A failed job is said first: it is the one with a part behind it.
+		$this->queue->failures = 2;
+		self::assertSame( 'jobs_failed', $this->health->jobs()['code'] );
+		self::assertSame( 'recommended', $this->health->jobs()['status'] );
 	}
 }

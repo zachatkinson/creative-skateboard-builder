@@ -45,6 +45,8 @@ final class AttributeMapTest extends TestCase {
 	}
 
 	public function test_what_is_not_a_line_reads_as_none(): void {
+		// What answers like an array and is not one was never stored by this plugin.
+		self::assertNull( AttributeMap::read( new \ArrayObject( array( 'attribute' => 'pa_width', 'spec' => 'deck_width' ) ) ) );
 		$longest = str_repeat( 'a', AttributeMap::MAX_NAME );
 		self::assertSame( 190, AttributeMap::MAX_NAME );
 		self::assertNotNull( AttributeMap::read( array( 'attribute' => $longest, 'spec' => 'deck_width' ) ) );

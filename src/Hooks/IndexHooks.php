@@ -50,6 +50,7 @@ final class IndexHooks implements Hookable {
 		}
 		add_action( 'deleted_post', array( $this, 'deleted' ), 10, 2 );
 		add_action( 'edited_term', array( $this, 'termEdited' ), 10, 3 );
+		add_action( 'delete_term', array( $this, 'termEdited' ), 10, 3 );
 		add_action( 'add_option_' . Options::SETTINGS, array( $this->jobs, 'requestReindex' ), 10, 0 );
 		add_action( 'update_option_' . Options::SETTINGS, array( $this->jobs, 'requestReindex' ), 10, 0 );
 		add_action( Options::JOB_INDEX_PART, array( $this->jobs, 'indexPart' ), 10, 2 );
@@ -69,7 +70,8 @@ final class IndexHooks implements Hookable {
 	}
 
 	/**
-	 * A term was edited.
+	 * A term was edited, or deleted: `delete_term` passes the same three first (WordPress 7.1.4,
+	 * wp-includes/taxonomy.php:2235), and no product is saved when a term it carried goes.
 	 *
 	 * @since 0.3.0
 	 *

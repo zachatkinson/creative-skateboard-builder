@@ -108,6 +108,7 @@ final class SpecImport {
 	 * @return list<string> Why the file was not read; none when it now waits.
 	 */
 	public function read( string $text, string $key = SpecSheet::ID, string $separator = '.', int $by = 0 ): array {
+		$this->resume();
 		if ( ImportState::RUNNING === $this->state()?->status ) {
 			return array( self::BUSY );
 		}
@@ -120,7 +121,8 @@ final class SpecImport {
 		if ( str_starts_with( $text, "\xEF\xBB\xBF" ) ) {
 			$text = substr( $text, 3 );
 		}
-		$rows   = Csv::parse( $text, Csv::delimiter( $text ) );
+		// The heading, the most rows a file may have, and one more to know it has too many.
+		$rows   = Csv::parse( $text, Csv::delimiter( $text ), self::MAX_ROWS + 2 );
 		$header = array_shift( $rows );
 		if ( null === $header || array() === $rows ) {
 			return array( self::FILE_EMPTY );
@@ -143,8 +145,18 @@ final class SpecImport {
 		if ( array() !== $problems ) {
 			return $problems;
 		}
+		// Which product each SKU names is asked once, here: a look-up a row on every draw of the page was 5,000
+		// queries for the largest file. Whether the product still has that SKU is checked on each use.
+		$found = array();
+		if ( SpecSheet::SKU === $key ) {
+			$skus = array();
+			foreach ( $rows as $row ) {
+				$skus[] = self::key( $row[ $map['columns'][ $key ] ] ?? '', $key );
+			}
+			$found = $this->parts->bySku( ...array_values( array_unique( array_filter( $skus, static fn( string $sku ): bool => '' !== $sku ) ) ) );
+		}
 		$now   = $this->clock->now()->getTimestamp();
-		$state = new ImportState( ImportState::WAITING, hash( 'sha256', $now . '|' . $text ), $key, $separator, $now, $map['columns'], $rows, count( $rows ), by: $by );
+		$state = new ImportState( ImportState::WAITING, hash( 'sha256', $now . '|' . $text ), $key, $separator, $now, $map['columns'], $rows, count( $rows ), by: $by, found: $found );
 		$this->store->save( $state->toArray() );
 		return array();
 	}
@@ -161,6 +173,23 @@ final class SpecImport {
 			return null;
 		}
 		return $state;
+	}
+
+	/**
+	 * Give a running import its job back when it has none. A batch that died with its request, or a deactivation
+	 * that cancelled the queue, leaves the import running with nothing to run it; without this it would refuse
+	 * every new file for good. The job starts from the saved place, and a batch run twice writes the same values.
+	 *
+	 * @since 0.3.0
+	 *
+	 * @return bool Whether it had stopped and was queued again.
+	 */
+	public function resume(): bool {
+		if ( ImportState::RUNNING !== $this->state()?->status || $this->queue->isPending( self::JOB ) ) {
+			return false;
+		}
+		$this->queue->enqueueUnique( self::JOB );
+		return true;
 	}
 
 	/**
@@ -213,8 +242,12 @@ final class SpecImport {
 		$often = array_count_values( $keys );
 		$rows  = array_slice( $state->rows, $from, $count );
 		$asked = array_filter( array_slice( $keys, $from, $count ), static fn( string $key ): bool => '' !== $key );
-		$ids   = SpecSheet::SKU === $state->key ? $this->parts->bySku( ...$asked ) : array_combine( $asked, array_map( 'intval', $asked ) );
+		$ids   = SpecSheet::SKU === $state->key ? array_intersect_key( $state->found, array_flip( $asked ) ) : array_combine( $asked, array_map( 'intval', $asked ) );
 		$held  = $this->parts->read( ...array_values( $ids ) );
+		if ( SpecSheet::SKU === $state->key ) {
+			// A product that has since lost the SKU is no longer the row's.
+			$ids = array_filter( $ids, static fn( int $id, string $sku ): bool => ( $held[ $id ]['sku'] ?? null ) === $sku, ARRAY_FILTER_USE_BOTH );
+		}
 
 		$charts = $this->tables->all();
 		$named  = array();

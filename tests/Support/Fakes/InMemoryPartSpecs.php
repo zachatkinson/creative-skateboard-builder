@@ -57,7 +57,15 @@ final class InMemoryPartSpecs implements PartSpecs {
 		return array_intersect_key( $this->held, array_flip( $ids ) );
 	}
 
+	/**
+	 * The SKUs each bySku() was asked for.
+	 *
+	 * @var list<list<string>>
+	 */
+	public array $asked = array();
+
 	public function bySku( string ...$skus ): array {
+		$this->asked[] = $skus;
 		$found = array();
 		foreach ( $this->held as $id => $part ) {
 			if ( in_array( $part['sku'], $skus, true ) ) {

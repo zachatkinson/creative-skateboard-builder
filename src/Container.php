@@ -46,6 +46,7 @@ final class Container {
 			Port\Uploads::class        => Adapter\RequestUploads::class,
 			Port\Kits::class           => Adapter\NoKits::class,
 			Port\Files::class          => Adapter\DiskFiles::class,
+			Port\Reindex::class        => Service\IndexJobs::class,
 		);
 	}
 
@@ -62,6 +63,16 @@ final class Container {
 					$migrations[] = $c->get( $class );
 				}
 				return new Install\Migrations\MigrationRegistry( ...$migrations );
+			},
+			// The index's services are built when a migration finishes, not on every request.
+			Hooks\InstallHooks::class                   => static function ( Container $c ): object {
+				return new Hooks\InstallHooks(
+					$c->get( Install\Migrations\MigrationRunner::class ),
+					$c->get( Install\Migrations\InlineRule::class ),
+					static function () use ( $c ): Port\Reindex {
+						return $c->get( Port\Reindex::class );
+					}
+				);
 			},
 			// The settings tab extends a class WooCommerce loads on its settings screen alone, so it is built when asked for.
 			Admin\SettingsHooks::class                  => static function ( Container $c ): object {

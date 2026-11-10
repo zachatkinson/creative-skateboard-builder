@@ -60,6 +60,9 @@ final readonly class ImportState {
 	 *                                                                                  row.
 	 * @param int                                                            $by        The user who sent the file,
 	 *                                                                                  while it waits; 0 after.
+	 * @param array<string, int>                                             $found     Matched by SKU: the product
+	 *                                                                                  each SKU named when the
+	 *                                                                                  file was read.
 	 */
 	public function __construct(
 		public string $status,
@@ -75,7 +78,8 @@ final readonly class ImportState {
 		public int $same = 0,
 		public array $refused = array(),
 		public int $failures = 0,
-		public int $by = 0
+		public int $by = 0,
+		public array $found = array()
 	) {}
 
 	/**
@@ -84,7 +88,7 @@ final readonly class ImportState {
 	 * @since 0.3.0
 	 */
 	public function started(): self {
-		return new self( self::RUNNING, $this->token, $this->key, $this->separator, $this->at, $this->columns, $this->rows, $this->total );
+		return new self( self::RUNNING, $this->token, $this->key, $this->separator, $this->at, $this->columns, $this->rows, $this->total, found: $this->found );
 	}
 
 	/**
@@ -113,7 +117,8 @@ final readonly class ImportState {
 			$cursor,
 			$this->changed + $changed,
 			$this->same + $same,
-			array( ...$this->refused, ...$refused )
+			array( ...$this->refused, ...$refused ),
+			found: $last ? array() : $this->found
 		);
 	}
 
@@ -140,7 +145,8 @@ final readonly class ImportState {
 			$this->changed,
 			$this->same,
 			$this->refused,
-			$failures
+			$failures,
+			found: $stopped ? array() : $this->found
 		);
 	}
 
@@ -167,6 +173,7 @@ final readonly class ImportState {
 			'refused'   => $this->refused,
 			'failures'  => $this->failures,
 			'by'        => $this->by,
+			'found'     => $this->found,
 		);
 	}
 
@@ -206,6 +213,12 @@ final readonly class ImportState {
 				);
 			}
 		}
+		$found = array();
+		foreach ( is_array( $data['found'] ?? null ) ? $data['found'] : array() as $sku => $id ) {
+			if ( is_int( $id ) && $id > 0 ) {
+				$found[ (string) $sku ] = $id;
+			}
+		}
 		return new self(
 			$status,
 			$text( $data['token'] ?? null ),
@@ -220,7 +233,8 @@ final readonly class ImportState {
 			$int( $data['same'] ?? null ),
 			$refused,
 			$int( $data['failures'] ?? null ),
-			$int( $data['by'] ?? null )
+			$int( $data['by'] ?? null ),
+			$found
 		);
 	}
 }

@@ -20,7 +20,7 @@
 			"Adapter/DiskFiles.php",
 			"Cli",
 			"Abilities",
-			"Health",
+			"Health/SiteHealth.php",
 			"Adapter/ActionSchedulerQueue.php",
 			"Adapter/AttributeSpecSource.php",
 			"Adapter/FieldSpecSource.php",

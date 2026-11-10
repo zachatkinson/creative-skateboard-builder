@@ -33,8 +33,8 @@ final class OptionImportStore implements ImportStore {
 	 * @return array<mixed>|null
 	 */
 	public function load(): ?array {
-		$stored = get_option( Options::IMPORT, null );
-		return is_array( $stored ) ? $stored : null;
+		// From the table: a second manager, the queue or the command line may have changed it (FreshOption).
+		return FreshOption::read( Options::IMPORT );
 	}
 
 	/**

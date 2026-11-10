@@ -74,4 +74,18 @@ final class WooPartCatalogue implements PartCatalogue {
 	public function holds( string $postType ): bool {
 		return 'product' === $postType || 'product_variation' === $postType;
 	}
+
+	/**
+	 * Whether a product's attribute, asked for by this name, is read from this taxonomy: as WooCommerce 11.2.2 looks
+	 * one up, by the name's slug and then by the slug after `pa_` (includes/abstracts/abstract-wc-product.php:2278).
+	 *
+	 * @since 0.3.0
+	 *
+	 * @param string $attribute The name a mapping line holds.
+	 * @param string $taxonomy  A taxonomy.
+	 */
+	public function reads( string $attribute, string $taxonomy ): bool {
+		$slug = sanitize_title( $attribute );
+		return $taxonomy === $slug || 'pa_' . $slug === $taxonomy;
+	}
 }

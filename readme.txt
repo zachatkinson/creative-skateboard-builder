@@ -40,13 +40,14 @@ Yes. Activating it for the network installs it on every site, and a site added l
 == Changelog ==
 
 = 0.3.0 =
-* The index of part specs: one value per part and spec, from the part's own fields, an attribute the shop maps or a maker's size chart. More of this version's work is listed here as it lands.
+* The index of part specs: one value per part and spec, from the part's own fields, an attribute the shop maps or a maker's size chart.
 * A Part specs tab on each product, and the same fields in each variation, where the shop fills in what the builder needs to know of a part.
 * WooCommerce > Builder, where the shop keeps each truck maker's size chart.
 * Import and export under WooCommerce > Builder: download every part's specs as a CSV file, fill it in with a spreadsheet, and import it. The file is checked and shown first, and nothing changes until you confirm.
 * A Catalogue check under WooCommerce > Builder: lists the parts whose sources disagree or hold a value that cannot be read, and background work that failed, each with a link to where it is fixed.
-* WP-CLI commands for the same work: `wp cbuild specs export`, `wp cbuild specs import`, `wp cbuild check` and `wp cbuild reindex`.
-* Two Site Health tests, which say when the specs index was not rebuilt or a background job failed.
+* The same work from the command line, for shops that use WP-CLI: export and import specs, run the Catalogue check, and rebuild the index.
+* Every part is read into the index when the plugin is installed, updated or activated, and the Catalogue check has a button to read them all again.
+* Two Site Health tests, which say when the specs index was not rebuilt, a background job failed or an import stopped.
 * A settings screen, WooCommerce > Settings > Builder, to say which product attribute holds which spec and which source wins where two disagree.
 
 = 0.2.0 =

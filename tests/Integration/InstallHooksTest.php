@@ -17,6 +17,7 @@ use CreativeBranding\SkateboardBuilder\Port\Clock;
 use CreativeBranding\SkateboardBuilder\Port\Logger;
 use CreativeBranding\SkateboardBuilder\Port\MigrationStore;
 use CreativeBranding\SkateboardBuilder\Port\Queue;
+use CreativeBranding\SkateboardBuilder\Port\Reindex;
 use CreativeBranding\SkateboardBuilder\Support\Tables;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\BatchMigration;
 use CreativeBranding\SkateboardBuilder\Install\Migrations\MigrationState;
@@ -98,6 +99,31 @@ final class InstallHooksTest extends IntegrationTestCase {
 
 		self::assertSame( MigrationRegistry::VERSION, get_option( Options::DB_VERSION ) );
 		self::assertSame( array(), self::pendingJobs( Options::JOB_MIGRATE ) );
+	}
+
+	public function test_an_upgrade_that_finishes_its_migrations_asks_for_every_part_to_be_read_again(): void {
+		delete_option( Options::REINDEX );
+		$this->asManagerInAdmin();
+		$this->hooks->runWhenBehind();
+		self::assertFalse( get_option( Options::REINDEX ), 'nothing to migrate, nothing asked' );
+
+		// An upgrade arrives with no activation: on a manager's admin page, and in the job.
+		delete_option( Options::DB_VERSION );
+		$this->hooks->runWhenBehind();
+		self::assertSame( MigrationRegistry::VERSION, get_option( Options::DB_VERSION ) );
+		// At least once: a run that seeds the makers' charts asks for each chart too.
+		$asked = get_option( Options::REINDEX )['run'] ?? 0;
+		self::assertGreaterThan( 0, $asked );
+		self::assertCount( 1, self::pendingJobs( Options::JOB_REINDEX ) );
+
+		$this->hooks->runJob();
+		self::assertSame( $asked, get_option( Options::REINDEX )['run'], 'a job with nothing left to run asks nothing' );
+		delete_option( Options::DB_VERSION );
+		delete_option( Options::MIGRATIONS );
+		$this->hooks->runJob();
+		self::assertGreaterThan( $asked, get_option( Options::REINDEX )['run'] );
+		self::assertCount( 1, self::pendingJobs( Options::JOB_REINDEX ), 'still one job' );
+		delete_option( Options::REINDEX );
 	}
 
 	public function test_an_admin_page_without_the_capability_queues_instead(): void {
@@ -189,7 +215,7 @@ final class InstallHooksTest extends IntegrationTestCase {
 			}
 		};
 		$runner = new MigrationRunner( new MigrationRegistry( $m ), $this->service( MigrationStore::class ), $clock, $this->service( Logger::class ), $this->service( Queue::class ) );
-		$hooks  = new InstallHooks( $runner, new InlineRule() );
+		$hooks  = new InstallHooks( $runner, new InlineRule(), fn(): Reindex => $this->service( Reindex::class ) );
 		$this->asManagerInAdmin();
 
 		$hooks->runWhenBehind();

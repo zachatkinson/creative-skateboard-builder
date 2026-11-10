@@ -9,7 +9,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-11-10T10:00:16+00:00\n"
+"POT-Creation-Date: 2026-11-10T11:11:31+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: creative-skateboard-builder\n"
@@ -17,7 +17,7 @@ msgstr ""
 #. Plugin Name of the plugin
 #: creative-skateboard-builder.php
 #: src/Abilities/CatalogueCheckAbility.php:65
-#: src/Health/SiteHealth.php:161
+#: src/Health/SiteHealth.php:169
 msgid "Creative Skateboard Builder"
 msgstr ""
 
@@ -68,7 +68,7 @@ msgid "Import and export"
 msgstr ""
 
 #: src/Admin/BuilderHooks.php:71
-#: templates/admin/check.php:26
+#: templates/admin/check.php:27
 msgid "Catalogue check"
 msgstr ""
 
@@ -76,59 +76,63 @@ msgstr ""
 #: src/Admin/BuilderHooks.php:123
 #: src/Admin/SettingsPage.php:59
 #: templates/admin/builder-tabs.php:16
-#: templates/admin/check.php:24
+#: templates/admin/check.php:25
 #: templates/admin/import.php:30
 #: templates/admin/spec-tables.php:24
 msgid "Builder"
 msgstr ""
 
 #. translators: %s: a product's ID.
-#: src/Admin/CheckScreen.php:123
+#: src/Admin/CheckScreen.php:136
 #, php-format
 msgid "Product %s"
 msgstr ""
 
-#: src/Admin/CheckScreen.php:125
+#: src/Admin/CheckScreen.php:138
 msgid "Background work"
 msgstr ""
 
-#: src/Admin/ImportScreen.php:169
+#: src/Admin/ImportScreen.php:167
+msgid "The import had stopped part way and has been started again from where it was."
+msgstr ""
+
+#: src/Admin/ImportScreen.php:173
 msgid "The import stopped: a batch failed four times. The parts before it were written. WooCommerce > Status > Logs has the reason."
 msgstr ""
 
-#: src/Admin/ImportScreen.php:174
+#: src/Admin/ImportScreen.php:178
 msgid "The file was not read. Nothing has changed."
 msgstr ""
 
-#: src/Admin/ImportScreen.php:254
+#: src/Admin/ImportScreen.php:258
 msgid "ID"
 msgstr ""
 
-#: src/Admin/ImportScreen.php:255
+#: src/Admin/ImportScreen.php:259
 msgid "SKU"
 msgstr ""
 
-#: src/Admin/ImportScreen.php:256
+#: src/Admin/ImportScreen.php:260
 msgid "Maker's chart"
 msgstr ""
 
-#: src/Admin/ImportScreen.php:257
+#: src/Admin/ImportScreen.php:261
 msgid "Size in the chart"
 msgstr ""
 
-#: src/Admin/ImportScreen.php:270
+#: src/Admin/ImportScreen.php:274
 msgid "Nothing"
 msgstr ""
 
-#: src/Admin/ImportScreen.php:283
+#: src/Admin/ImportScreen.php:287
 msgid "The import has started. It runs in the background, 100 rows at a time."
 msgstr ""
 
-#: src/Admin/ImportScreen.php:284
+#: src/Admin/ImportScreen.php:288
 msgid "The import was put away. Nothing was changed."
 msgstr ""
 
-#: src/Admin/ImportScreen.php:285
+#: src/Admin/ImportScreen.php:289
 msgid "That import is no longer waiting. Choose the file again."
 msgstr ""
 
@@ -288,139 +292,139 @@ msgid "%s mm"
 msgstr ""
 
 #: src/Admin/Labels.php:152
-#: src/Admin/PartSpecsPanel.php:268
+#: src/Admin/PartSpecsPanel.php:305
 msgid "Yes"
 msgstr ""
 
 #: src/Admin/Labels.php:152
-#: src/Admin/PartSpecsPanel.php:269
+#: src/Admin/PartSpecsPanel.php:306
 msgid "No"
 msgstr ""
 
-#: src/Admin/PartSpecsPanel.php:90
+#: src/Admin/PartSpecsPanel.php:127
 #: src/Admin/SettingsPage.php:77
 #: templates/admin/part-specs.php:27
 msgid "Part specs"
 msgstr ""
 
 #. translators: 1: a variation's ID. 2: a sentence saying what was not saved.
-#: src/Admin/PartSpecsPanel.php:219
+#: src/Admin/PartSpecsPanel.php:256
 #, php-format
 msgid "Variation #%1$d: %2$s"
 msgstr ""
 
-#: src/Admin/PartSpecsPanel.php:307
+#: src/Admin/PartSpecsPanel.php:344
 msgid "Deck"
 msgstr ""
 
-#: src/Admin/PartSpecsPanel.php:308
+#: src/Admin/PartSpecsPanel.php:345
 msgid "Trucks"
 msgstr ""
 
-#: src/Admin/PartSpecsPanel.php:309
+#: src/Admin/PartSpecsPanel.php:346
 msgid "Wheels"
 msgstr ""
 
-#: src/Admin/PartSpecsPanel.php:310
+#: src/Admin/PartSpecsPanel.php:347
 msgid "Risers"
 msgstr ""
 
-#: src/Admin/PartSpecsPanel.php:311
+#: src/Admin/PartSpecsPanel.php:348
 msgid "Hardware"
 msgstr ""
 
-#: src/Admin/PartSpecsPanel.php:312
+#: src/Admin/PartSpecsPanel.php:349
 msgid "Bearings"
 msgstr ""
 
-#: src/Admin/PartSpecsPanel.php:313
+#: src/Admin/PartSpecsPanel.php:350
 msgid "Grip tape"
 msgstr ""
 
-#: src/Admin/PartSpecsPanel.php:314
+#: src/Admin/PartSpecsPanel.php:351
 msgid "Sold in sets"
 msgstr ""
 
-#: src/Admin/PartSpecsPanel.php:337
+#: src/Admin/PartSpecsPanel.php:374
 msgid "None"
 msgstr ""
 
-#: src/Admin/PartSpecsPanel.php:340
+#: src/Admin/PartSpecsPanel.php:377
 msgid "Leave as it is"
 msgstr ""
 
-#: src/Admin/PartSpecsPanel.php:346
+#: src/Admin/PartSpecsPanel.php:383
 msgid "Maker's chart and size"
 msgstr ""
 
-#: src/Admin/PartSpecsPanel.php:348
+#: src/Admin/PartSpecsPanel.php:385
 msgid "A truck that names its size in a chart takes that row's figures."
 msgstr ""
 
 #. translators: 1: a spec's value with its unit, such as 8.25 in. 2: a product attribute's name, such as Width.
-#: src/Admin/PartSpecsPanel.php:383
+#: src/Admin/PartSpecsPanel.php:420
 #, php-format
 msgid "In use: %1$s, from the %2$s attribute."
 msgstr ""
 
 #. translators: 1: a spec's value with its unit, such as 8.5 in. 2: a truck maker's name, such as Independent. 3: a size in the maker's chart, such as 149.
-#: src/Admin/PartSpecsPanel.php:389
+#: src/Admin/PartSpecsPanel.php:426
 #, php-format
 msgid "In use: %1$s, from %2$s's chart, size %3$s."
 msgstr ""
 
 #. translators: %s: a spec's value with its unit, such as 8.25 in.
-#: src/Admin/PartSpecsPanel.php:392
+#: src/Admin/PartSpecsPanel.php:429
 #, php-format
 msgid "In use: %s, from the parent product."
 msgstr ""
 
 #. translators: %s: the size that was chosen.
-#: src/Admin/PartSpecsPanel.php:416
+#: src/Admin/PartSpecsPanel.php:453
 #, php-format
 msgid "The maker's chart was not saved: the chart has no size %s now. Choose again."
 msgstr ""
 
-#: src/Admin/PartSpecsPanel.php:417
+#: src/Admin/PartSpecsPanel.php:454
 msgid "The maker's chart was not saved: that chart is no longer there. Choose again."
 msgstr ""
 
-#: src/Admin/PartSpecsPanel.php:418
+#: src/Admin/PartSpecsPanel.php:455
 msgid "The maker's chart was not saved. Choose again."
 msgstr ""
 
 #. translators: 1: a spec's name. 2: what was typed.
-#: src/Admin/PartSpecsPanel.php:425
+#: src/Admin/PartSpecsPanel.php:462
 #, php-format
 msgid "%1$s was not saved: \"%2$s\" is not a measurement. Type a number, or a fraction such as 8 1/4."
 msgstr ""
 
 #. translators: 1: a spec's name. 2: what was typed.
-#: src/Admin/PartSpecsPanel.php:427
+#: src/Admin/PartSpecsPanel.php:464
 #, php-format
 msgid "%1$s was not saved: the fraction in \"%2$s\" divides by zero."
 msgstr ""
 
 #. translators: 1: a spec's name. 2: what was typed.
-#: src/Admin/PartSpecsPanel.php:429
+#: src/Admin/PartSpecsPanel.php:466
 #, php-format
 msgid "%1$s was not saved: \"%2$s\" is below zero."
 msgstr ""
 
 #. translators: 1: a spec's name. 2: what was typed.
-#: src/Admin/PartSpecsPanel.php:431
+#: src/Admin/PartSpecsPanel.php:468
 #, php-format
 msgid "%1$s was not saved: \"%2$s\" must be more than zero."
 msgstr ""
 
 #. translators: 1: a spec's name. 2: what was typed.
-#: src/Admin/PartSpecsPanel.php:433
+#: src/Admin/PartSpecsPanel.php:470
 #, php-format
 msgid "%1$s was not saved: \"%2$s\" is too large a number."
 msgstr ""
 
 #. translators: 1: a spec's name. 2: what was typed.
-#: src/Admin/PartSpecsPanel.php:435
+#: src/Admin/PartSpecsPanel.php:472
 #, php-format
 msgid "%1$s was not saved: \"%2$s\" is not a value it takes."
 msgstr ""
@@ -448,7 +452,7 @@ msgid "%1$s: %2$s holds \"%3$s\", which cannot be read as a value."
 msgstr ""
 
 #: src/Admin/Sentences.php:61
-msgid "Reading every part again stopped after five failures. Save the Builder settings to start it again; WooCommerce > Status > Logs has the reason."
+msgid "Reading every part again stopped after five failures. Start it again with \"Read every part again\" on this page; WooCommerce > Status > Logs has the reason."
 msgstr ""
 
 #: src/Admin/Sentences.php:63
@@ -741,13 +745,13 @@ msgid "%1$s: \"%2$s\" is not a value it takes."
 msgstr ""
 
 #: src/Cli/CheckCommand.php:87
-#: templates/admin/check.php:38
+#: templates/admin/check.php:42
 msgid "The check found nothing to fix."
 msgstr ""
 
 #. translators: %s: a number of findings.
 #: src/Cli/CheckCommand.php:95
-#: templates/admin/check.php:44
+#: templates/admin/check.php:48
 #, php-format
 msgid "The check found %s thing to fix."
 msgid_plural "The check found %s things to fix."
@@ -818,109 +822,126 @@ msgstr ""
 msgid "The file has no %s column. Add one, or match parts by the other with --key."
 msgstr ""
 
-#: src/Health/SiteHealth.php:75
+#: src/Health/SiteHealth.php:76
 msgid "The skateboard builder's specs index"
 msgstr ""
 
-#: src/Health/SiteHealth.php:79
+#: src/Health/SiteHealth.php:80
 msgid "The skateboard builder's background jobs"
 msgstr ""
 
-#: src/Health/SiteHealth.php:96
-msgid "Open the Builder settings"
-msgstr ""
-
-#: src/Health/SiteHealth.php:99
-msgid "The skateboard builder's specs index was not rebuilt"
+#: src/Health/SiteHealth.php:97
+#: src/Health/SiteHealth.php:145
+msgid "Open the Catalogue check"
 msgstr ""
 
 #: src/Health/SiteHealth.php:100
-msgid "Reading every part again stopped after five failures, so some parts are still indexed with what they held before. Save the Builder settings to start it again. WooCommerce > Status > Logs has the reason, under creative-skateboard-builder."
+msgid "The skateboard builder's specs index was not rebuilt"
 msgstr ""
 
-#: src/Health/SiteHealth.php:103
+#: src/Health/SiteHealth.php:101
+msgid "Reading every part again stopped after five failures, so some parts are still indexed with what they held before. Start it again with \"Read every part again\" on the Catalogue check. WooCommerce > Status > Logs has the reason, under creative-skateboard-builder."
+msgstr ""
+
+#: src/Health/SiteHealth.php:104
 msgid "The skateboard builder's specs index stopped part way"
 msgstr ""
 
 #. translators: %s: a number of parts.
-#: src/Health/SiteHealth.php:105
+#: src/Health/SiteHealth.php:106
 #, php-format
-msgid "Reading every part again got as far as %s parts and has no job waiting to go on. Save the Builder settings to start it again."
+msgid "Reading every part again got as far as %s parts and has no job waiting to go on. Start it again with \"Read every part again\" on the Catalogue check."
 msgstr ""
 
-#: src/Health/SiteHealth.php:108
+#: src/Health/SiteHealth.php:109
 msgid "The skateboard builder's specs index is being rebuilt"
 msgstr ""
 
 #. translators: %s: a number of parts.
-#: src/Health/SiteHealth.php:110
+#: src/Health/SiteHealth.php:111
 #, php-format
 msgid "Every part is being read again in the background, 100 at a time: %s so far. Parts keep what they held until they are reached."
 msgstr ""
 
-#: src/Health/SiteHealth.php:114
+#: src/Health/SiteHealth.php:115
 msgid "The skateboard builder's specs index is up to date"
 msgstr ""
 
-#: src/Health/SiteHealth.php:115
+#: src/Health/SiteHealth.php:116
 msgid "The index holds each part's specs, and a part is read again in the background whenever it is saved."
 msgstr ""
 
 #: src/Health/SiteHealth.php:131
+msgid "Open Import and export"
+msgstr ""
+
+#: src/Health/SiteHealth.php:133
+msgid "The skateboard builder's last specs import stopped before its end"
+msgstr ""
+
+#: src/Health/SiteHealth.php:133
+msgid "A batch of the import failed four times, so the parts after it were not written. Import the file again: a part already written takes the same values. WooCommerce > Status > Logs has the reason, under creative-skateboard-builder."
+msgstr ""
+
+#: src/Health/SiteHealth.php:136
+msgid "The skateboard builder's specs import has no job left to run it"
+msgstr ""
+
+#: src/Health/SiteHealth.php:136
+msgid "An import is part way through and nothing is queued to go on, as happens when the plugin is switched off while one runs. Opening Import and export starts it again from where it stopped."
+msgstr ""
+
+#: src/Health/SiteHealth.php:139
 msgid "No background job of the skateboard builder has failed"
 msgstr ""
 
-#: src/Health/SiteHealth.php:131
+#: src/Health/SiteHealth.php:139
 msgid "The builder indexes parts and writes imports in the background. A job that fails is tried again, and shows here if it still fails."
 msgstr ""
 
 #. translators: %s: a number of jobs.
-#: src/Health/SiteHealth.php:134
+#: src/Health/SiteHealth.php:142
 #, php-format
 msgid "%s background job of the skateboard builder has failed"
 msgid_plural "%s background jobs of the skateboard builder have failed"
 msgstr[0] ""
 msgstr[1] ""
 
-#: src/Health/SiteHealth.php:135
+#: src/Health/SiteHealth.php:143
 msgid "A part whose job failed may be indexed with what it held before. The Catalogue check lists what needs fixing, and WooCommerce > Status > Logs has each failure's reason, under creative-skateboard-builder."
 msgstr ""
 
-#: src/Health/SiteHealth.php:136
+#: src/Health/SiteHealth.php:144
 msgid "See the failed jobs"
 msgstr ""
 
-#: src/Health/SiteHealth.php:137
-msgid "Open the Catalogue check"
-msgstr ""
-
-#: src/Health/SiteHealth.php:164
+#: src/Health/SiteHealth.php:172
 msgid "Version"
 msgstr ""
 
-#: src/Health/SiteHealth.php:168
+#: src/Health/SiteHealth.php:176
 msgid "Database version"
 msgstr ""
 
-#: src/Health/SiteHealth.php:172
+#: src/Health/SiteHealth.php:180
 #: templates/admin/settings-order.php:20
 #: templates/admin/settings-order.php:23
 msgid "Which source wins"
 msgstr ""
 
-#: src/Health/SiteHealth.php:177
+#: src/Health/SiteHealth.php:185
 msgid "Attributes mapped to specs"
 msgstr ""
 
-#: src/Health/SiteHealth.php:181
+#: src/Health/SiteHealth.php:189
 msgid "Specs index"
 msgstr ""
 
-#: src/Health/SiteHealth.php:185
+#: src/Health/SiteHealth.php:193
 msgid "Failed background jobs"
 msgstr ""
 
-#: src/Health/SiteHealth.php:208
+#: src/Health/SiteHealth.php:216
 msgid "Skateboard builder"
 msgstr ""
 
@@ -950,40 +971,44 @@ msgstr ""
 msgid "The Creative Skateboard Builder update did not match its published checksum, so it was not installed."
 msgstr ""
 
-#: templates/admin/check.php:27
+#: templates/admin/check.php:28
 msgid "Finds what keeps a part out of the builder: sources that disagree about a part, values that cannot be read, and background work that failed. It reads every part and changes nothing."
 msgstr ""
 
-#: templates/admin/check.php:29
+#: templates/admin/check.php:30
 msgid "The shop has no kit yet. Once it has one, the check also lists each kit's parts that lack a spec, presets that no longer fit and slots with nothing in stock."
 msgstr ""
 
-#: templates/admin/check.php:34
+#: templates/admin/check.php:35
 msgid "Run the check again"
 msgstr ""
 
-#: templates/admin/check.php:34
+#: templates/admin/check.php:35
 msgid "Run the check"
 msgstr ""
 
-#: templates/admin/check.php:48
+#: templates/admin/check.php:39
+msgid "Every part is being read again in the background, 100 at a time. Tools > Site Health shows how far it is."
+msgstr ""
+
+#: templates/admin/check.php:52
 msgid "What it found"
 msgstr ""
 
-#: templates/admin/check.php:53
+#: templates/admin/check.php:57
 msgid "Where"
 msgstr ""
 
-#: templates/admin/check.php:54
+#: templates/admin/check.php:58
 msgid "Kit"
 msgstr ""
 
-#: templates/admin/check.php:55
+#: templates/admin/check.php:59
 msgid "What to fix"
 msgstr ""
 
 #. translators: %s: how many more rows a list has than it shows.
-#: templates/admin/check.php:79
+#: templates/admin/check.php:83
 #: templates/admin/import.php:131
 #: templates/admin/import.php:167
 #, php-format
@@ -991,6 +1016,15 @@ msgid "And %s more."
 msgid_plural "And %s more."
 msgstr[0] ""
 msgstr[1] ""
+
+#: templates/admin/check.php:88
+#: templates/admin/check.php:94
+msgid "Read every part again"
+msgstr ""
+
+#: templates/admin/check.php:89
+msgid "The builder keeps an index of each part's specs and updates a part whenever it is saved. Use this when the index was not rebuilt, or stopped part way. It runs in the background, and parts keep what they held until they are reached."
+msgstr ""
 
 #: templates/admin/import.php:37
 msgid "Check the import"

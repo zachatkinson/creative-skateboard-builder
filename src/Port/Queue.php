@@ -83,9 +83,9 @@ interface Queue {
 
 	/**
 	 * Queue an action unless one with the same hook and the same arguments is already waiting. Unlike
-	 * enqueueUnique(), another part's action does not stand in for this one (Action Scheduler's unique flag compares
-	 * the hook and the group alone), and an action that is running does not either: it may have read its data
-	 * already, so a change made since needs a run of its own.
+	 * enqueueUnique(), an action that is running does not stand in for this one: it may have read its data already,
+	 * so a change made since needs a run of its own. Action Scheduler's unique flag counts a running action as well
+	 * as a pending one (4.1.0 in WooCommerce 11.2.2, classes/data-stores/ActionScheduler_DBStore.php:218-221).
 	 *
 	 * @since 0.3.0
 	 *
@@ -98,6 +98,8 @@ interface Queue {
 	 * How many of the plugin's actions have failed and are still on the queue's record.
 	 *
 	 * @since 0.3.0
+	 *
+	 * @param int $since Count only actions scheduled after this moment, a UTC timestamp; 0 for all of them.
 	 */
-	public function failed(): int;
+	public function failed( int $since = 0 ): int;
 }

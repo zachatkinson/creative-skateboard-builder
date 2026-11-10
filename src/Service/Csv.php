@@ -37,9 +37,11 @@ final class Csv {
 	 *
 	 * @param string $text      The CSV.
 	 * @param string $delimiter What parts the cells: a comma, or a semicolon as some spreadsheets write.
+	 * @param int    $most      Reading stops once this many rows are read, so a caller with a limit asks for one
+	 *                          more than it and never waits for the rest of a file it will refuse.
 	 * @return list<list<string>>
 	 */
-	public static function parse( string $text, string $delimiter = ',' ): array {
+	public static function parse( string $text, string $delimiter = ',', int $most = PHP_INT_MAX ): array {
 		$rows   = array();
 		$row    = array();
 		$cell   = '';
@@ -67,24 +69,28 @@ final class Csv {
 				// A carriage return and a line feed together end one row and then a blank one, which is left out.
 				$row[] = $cell;
 				$cell  = '';
-				$rows  = self::with( $rows, $row );
-				$row   = array();
+				self::add( $rows, $row );
+				$row = array();
+				if ( count( $rows ) >= $most ) {
+					return $rows;
+				}
 			} else {
 				$cell .= $char;
 			}
 		}
 		$row[] = $cell;
-		return self::with( $rows, $row );
+		self::add( $rows, $row );
+		return $rows;
 	}
 
 	/**
-	 * The rows with one more, unless it is blank.
+	 * Add a row to the rows, unless it is blank. In place: handing the rows over and back copied every one of them
+	 * for each row read, so a file of many short rows took the square of its length.
 	 *
 	 * @param list<list<string>> $rows The rows so far.
 	 * @param list<string>       $row  The next.
-	 * @return list<list<string>>
 	 */
-	private static function with( array $rows, array $row ): array {
+	private static function add( array &$rows, array $row ): void {
 		$cells = array();
 		foreach ( $row as $cell ) {
 			$cell    = trim( $cell );
@@ -93,7 +99,6 @@ final class Csv {
 		if ( '' !== implode( '', $cells ) ) {
 			$rows[] = $cells;
 		}
-		return $rows;
 	}
 
 	/**

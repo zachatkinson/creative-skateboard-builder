@@ -59,4 +59,9 @@ final class InMemoryPartCatalogue implements PartCatalogue {
 	public function holds( string $postType ): bool {
 		return 'product' === $postType || 'product_variation' === $postType;
 	}
+
+	public function reads( string $attribute, string $taxonomy ): bool {
+		$slug = strtolower( $attribute );
+		return $taxonomy === $slug || 'pa_' . $slug === $taxonomy;
+	}
 }

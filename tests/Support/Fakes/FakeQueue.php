@@ -163,11 +163,17 @@ final class FakeQueue implements Queue {
 	}
 
 	/**
+	 * The moment failed() was last asked to count from.
+	 */
+	public int $since = -1;
+
+	/**
 	 * What failed() answers.
 	 */
 	public int $failures = 0;
 
-	public function failed(): int {
+	public function failed( int $since = 0 ): int {
+		$this->since = $since;
 		return $this->failures;
 	}
 }

@@ -27,6 +27,15 @@ final class CsvTest extends TestCase {
 		}
 	}
 
+	public function test_reading_stops_at_the_most_rows_asked_for_and_blank_rows_do_not_count(): void {
+		$text = "a\n\nb\r\nc\nd";
+		self::assertSame( array( array( 'a' ), array( 'b' ) ), Csv::parse( $text, ',', 2 ) );
+		self::assertSame( array( array( 'a' ), array( 'b' ), array( 'c' ) ), Csv::parse( $text, ',', 3 ) );
+		self::assertSame( array( array( 'a' ), array( 'b' ), array( 'c' ), array( 'd' ) ), Csv::parse( $text, ',', 4 ) );
+		self::assertSame( array( array( 'a' ), array( 'b' ), array( 'c' ), array( 'd' ) ), Csv::parse( $text ) );
+		self::assertSame( array( array( 'a' ) ), Csv::parse( $text, ',', 1 ) );
+	}
+
 	public function test_a_quoted_cell_holds_commas_quotes_and_line_breaks(): void {
 		self::assertSame(
 			array(

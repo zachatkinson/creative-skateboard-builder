@@ -9,10 +9,13 @@ declare( strict_types=1 );
 
 namespace CreativeBranding\SkateboardBuilder\Hooks;
 
+use Closure;
 use CreativeBranding\SkateboardBuilder\Hookable;
 use CreativeBranding\SkateboardBuilder\Install\Migrations\InlineRule;
 use CreativeBranding\SkateboardBuilder\Install\Migrations\MigrationRunner;
+use CreativeBranding\SkateboardBuilder\Install\Migrations\RunResult;
 use CreativeBranding\SkateboardBuilder\Install\Uninstaller;
+use CreativeBranding\SkateboardBuilder\Port\Reindex;
 use CreativeBranding\SkateboardBuilder\Support\Options;
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -32,10 +35,11 @@ final class InstallHooks implements Hookable {
 	 *
 	 * @since 0.1.0
 	 *
-	 * @param MigrationRunner $runner The migration runner.
-	 * @param InlineRule      $inline Whether this request may run migrations itself.
+	 * @param MigrationRunner    $runner  The migration runner.
+	 * @param InlineRule         $inline  Whether this request may run migrations itself.
+	 * @param Closure(): Reindex $reindex Builds what asks for every part to be read again.
 	 */
-	public function __construct( private MigrationRunner $runner, private InlineRule $inline ) {}
+	public function __construct( private MigrationRunner $runner, private InlineRule $inline, private Closure $reindex ) {}
 
 	/**
 	 * Attach hooks.
@@ -69,7 +73,7 @@ final class InstallHooks implements Hookable {
 	public function runWhenBehind(): void {
 		if ( $this->inline->allows() && $this->runner->needed() ) {
 			// A short budget: a long migration must not hold a manager's every admin page. The job takes the rest.
-			$this->runner->run( MigrationRunner::INLINE_BUDGET );
+			$this->finished( $this->runner->run( MigrationRunner::INLINE_BUDGET ) );
 		}
 	}
 
@@ -79,6 +83,18 @@ final class InstallHooks implements Hookable {
 	 * @since 0.1.0
 	 */
 	public function runJob(): void {
-		$this->runner->run( MigrationRunner::BUDGET, true );
+		$this->finished( $this->runner->run( MigrationRunner::BUDGET, true ) );
+	}
+
+	/**
+	 * After a run that brought the schema up to date, every part is read again: an upgrade arrives with no
+	 * activation, and the version before may have had no index, or have read a spec differently.
+	 *
+	 * @param RunResult $result How the run ended.
+	 */
+	private function finished( RunResult $result ): void {
+		if ( RunResult::Finished === $result ) {
+			( $this->reindex )()->requestReindex();
+		}
 	}
 }

@@ -83,9 +83,15 @@ test.describe( 'WooCommerce > Builder, Catalogue check', () => {
 			await axe( page, 'the Catalogue check, with findings', REGION );
 		}
 
-		// The link lands on the part's own screen.
+		// The link lands on the part's own screen, with its Part specs open where scripts run.
 		await row.getByRole( 'link' ).click();
 		await expect( page ).toHaveURL( /post\.php\?post=\d+&action=edit/ );
+		if ( javaScriptEnabled ) {
+			await expect( page.locator( '#cbuild_part_specs' ) ).toBeVisible();
+			await expect(
+				page.locator( '#general_product_data' )
+			).toBeHidden();
+		}
 
 		// Fixed, the part is no longer listed.
 		forget( deck );

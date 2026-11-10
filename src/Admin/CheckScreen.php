@@ -12,6 +12,7 @@ namespace CreativeBranding\SkateboardBuilder\Admin;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\Origin;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\SpecKey;
 use CreativeBranding\SkateboardBuilder\Port\Kits;
+use CreativeBranding\SkateboardBuilder\Port\Reindex;
 use CreativeBranding\SkateboardBuilder\Service\CatalogueCheck;
 use CreativeBranding\SkateboardBuilder\Service\CheckFinding;
 
@@ -46,14 +47,22 @@ final class CheckScreen {
 	private ?array $found = null;
 
 	/**
+	 * Whether a reindex was asked for in this request.
+	 *
+	 * @var bool
+	 */
+	private bool $asked = false;
+
+	/**
 	 * Constructor.
 	 *
 	 * @since 0.3.0
 	 *
-	 * @param CatalogueCheck $check The check.
-	 * @param Kits           $kits  The kits, for their names.
+	 * @param CatalogueCheck $check   The check.
+	 * @param Kits           $kits    The kits, for their names.
+	 * @param Reindex        $reindex Asks for every part to be read again.
 	 */
-	public function __construct( private CatalogueCheck $check, private Kits $kits ) {}
+	public function __construct( private CatalogueCheck $check, private Kits $kits, private Reindex $reindex ) {}
 
 	/**
 	 * The tab's address.
@@ -80,7 +89,7 @@ final class CheckScreen {
 	}
 
 	/**
-	 * Run the check when its form was sent.
+	 * Run the check, or ask for every part to be read again, when the form for it was sent.
 	 *
 	 * @since 0.3.0
 	 *
@@ -93,6 +102,9 @@ final class CheckScreen {
 		check_admin_referer( self::NONCE );
 		if ( 'check' === $_POST['cbuild_action'] ) {
 			$this->found = $this->check->run();
+		} elseif ( 'reindex' === $_POST['cbuild_action'] ) {
+			$this->reindex->requestReindex();
+			$this->asked = true;
 		}
 		return null;
 	}
@@ -117,7 +129,8 @@ final class CheckScreen {
 			if ( $product instanceof \WC_Product ) {
 				$owner = 0 === $product->get_parent_id() ? $product->get_id() : $product->get_parent_id();
 				$about = '' === $product->get_sku() ? $product->get_name() : $product->get_name() . ' (' . $product->get_sku() . ')';
-				$link  = (string) get_edit_post_link( $owner, 'raw' ) . '#cbuild_part_specs';
+				// The product's screen opens the tab, or the variation, the address names (PartSpecsPanel).
+				$link = (string) get_edit_post_link( $owner, 'raw' ) . ( $owner === $product->get_id() ? '#cbuild_part_specs' : '#cbuild_variation_' . $product->get_id() );
 			} elseif ( 0 !== $finding->part ) {
 				/* translators: %s: a product's ID. */
 				$about = sprintf( __( 'Product %s', 'creative-skateboard-builder' ), (string) $finding->part );
@@ -138,6 +151,7 @@ final class CheckScreen {
 		$nonce = self::NONCE;
 		$back  = self::url();
 		$none  = array() === $kits;
+		$asked = $this->asked;
 		include CBUILD_PATH . 'templates/admin/check.php';
 	}
 }

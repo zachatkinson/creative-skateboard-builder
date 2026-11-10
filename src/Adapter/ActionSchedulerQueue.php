@@ -155,22 +155,28 @@ final class ActionSchedulerQueue implements Queue {
 
 	/**
 	 * How many of the plugin's actions have failed and are still on the queue's record. Action Scheduler keeps a
-	 * failed action for its retention period, a month by default, so one counted here is recent.
+	 * failed action for three months by default (WooCommerce 11.2.2,
+	 * packages/action-scheduler/classes/ActionScheduler_QueueCleaner.php:121), so the caller says from when.
 	 *
 	 * @since 0.3.0
+	 *
+	 * @param int $since Count only actions scheduled after this moment, a UTC timestamp; 0 for all of them.
 	 */
-	public function failed(): int {
+	public function failed( int $since = 0 ): int {
 		if ( ! function_exists( 'as_get_scheduled_actions' ) ) {
 			return 0;
 		}
-		$failed = as_get_scheduled_actions(
-			array(
-				'group'    => Options::QUEUE_GROUP,
-				'status'   => \ActionScheduler_Store::STATUS_FAILED,
-				'per_page' => self::MOST_FAILED,
-			),
-			'ids'
+		$query = array(
+			'group'    => Options::QUEUE_GROUP,
+			'status'   => \ActionScheduler_Store::STATUS_FAILED,
+			'per_page' => self::MOST_FAILED,
 		);
-		return count( $failed );
+		if ( $since > 0 ) {
+			// When it last ran, not when it was due: a job queued before the moment may fail after it
+			// (Action Scheduler in WooCommerce 11.2.2, classes/data-stores/ActionScheduler_DBStore.php:627).
+			$query['modified']         = $since;
+			$query['modified_compare'] = '>';
+		}
+		return count( as_get_scheduled_actions( $query, 'ids' ) );
 	}
 }

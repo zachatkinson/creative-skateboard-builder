@@ -89,6 +89,25 @@ final class ActivationTest extends IntegrationTestCase {
 		self::assertSame( MigrationRegistry::VERSION, get_option( Options::DB_VERSION ) );
 	}
 
+	public function test_activation_asks_for_every_part_to_be_read_and_again_after_the_plugin_was_switched_off(): void {
+		delete_option( Options::REINDEX );
+		Activator::activate();
+		$state = get_option( Options::REINDEX );
+		self::assertIsArray( $state );
+		self::assertSame( 1, $state['run'] );
+		self::assertCount( 1, self::pendingJobs( Options::JOB_REINDEX ), 'one job, on a site whose migrations had already run' );
+		self::work();
+		self::assertSame( 'done', get_option( Options::REINDEX )['phase'] );
+
+		// Switched off, its jobs are cancelled and no save is heard; switched on, the index is rebuilt.
+		Deactivator::deactivate();
+		Activator::activate();
+		self::assertSame( 2, get_option( Options::REINDEX )['run'] );
+		self::assertNotSame( 'done', get_option( Options::REINDEX )['phase'] );
+		self::assertCount( 1, self::pendingJobs( Options::JOB_REINDEX ) );
+		delete_option( Options::REINDEX );
+	}
+
 	public function test_network_activation_installs_every_site(): void {
 		if ( ! is_multisite() ) {
 			self::markTestSkipped( 'The multisite leg (composer test:integration:multisite).' );

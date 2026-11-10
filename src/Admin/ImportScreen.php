@@ -162,6 +162,10 @@ final class ImportScreen {
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Chooses what is shown and changes nothing.
 		$notice = self::notice( isset( $_GET['notice'] ) && is_string( $_GET['notice'] ) ? sanitize_key( wp_unslash( $_GET['notice'] ) ) : '' );
 		$failed = false;
+		// An import left running with no job, by a request that died or a deactivation, gets its job back here.
+		if ( $this->import->resume() ) {
+			$notice = __( 'The import had stopped part way and has been started again from where it was.', 'creative-skateboard-builder' );
+		}
 		$state  = $this->import->state();
 		$status = $state->status ?? '';
 		if ( ImportState::FAILED === $status ) {

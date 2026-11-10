@@ -2,7 +2,7 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html). One entry per milestone; `v1.0.0` closes milestone 9.
 
-## [Unreleased]
+## [0.3.0] - 2026-11-10
 
 ### Added
 
@@ -19,6 +19,10 @@ All notable changes to this project are documented here. The format follows [Kee
 - WP-CLI: the commands `cbuild specs` (`wp cbuild specs export [<file>]` and `wp cbuild specs import <file> [--dry-run] [--key=<id|sku>]`), `cbuild check` and `cbuild reindex` (`wp cbuild reindex [--background]`), each the service its screen runs. A command exits 1 when a file or a row is not read, a batch fails, or the check finds anything.
 - The ability `creative-skateboard-builder/catalogue-check` (WordPress's Abilities API), in the category `creative-skateboard-builder`: the Catalogue check's findings for the shop's own tools, for those who can manage WooCommerce. Read-only, and served over REST by `GET`.
 - Site Health: the tests `cbuild_index` (critical when a reindex stopped after its failures, recommended when one stopped part way) and `cbuild_jobs` (recommended when a background job of the plugin has failed), and a section on the Info tab with the plugin's versions and settings.
+- Every part is read into the index after an install, after an upgrade's migrations and on activation, in the background, 100 at a time. WooCommerce > Builder > Catalogue check has a button, "Read every part again", to start it by hand (D-082).
+- A term of a mapped attribute that is deleted asks for a reindex, as an edited one does, and a mapping line may name its attribute as the shop does: `Width` for `pa_width` (D-082).
+- An import whose job was lost, as when the plugin is switched off while one runs, goes on from its place when Import and export is opened. Site Health's `cbuild_jobs` also reports an import that failed or stalled (D-082).
+- A link from the Catalogue check opens the product's Part specs tab, or the variation it names (D-083).
 - `Domain\Kit\Part::$stock`: a part's managed stock count, or null where stock is not managed. Nothing reads it yet.
 - A value a person types is read with the shop's decimal separator and, when that does not read, with a point: in a shop that writes a comma, `8,25` and `8.25` are one value, on the Part specs panel, in a chart and in a mapped attribute.
 

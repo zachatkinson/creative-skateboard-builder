@@ -37,6 +37,7 @@ final class SpecTableTest extends TestCase {
 
 	public function test_a_row_needs_a_size_of_a_sensible_length(): void {
 		self::assertNull( TableRow::read( 'a row' ) );
+		self::assertNull( TableRow::read( new \ArrayObject( array( 'size' => '149' ) ) ), 'what answers like an array and is not one' );
 		self::assertNull( TableRow::read( array() ) );
 		self::assertNull( TableRow::read( array( 'size' => 149 ) ) );
 		self::assertNull( TableRow::read( array( 'size' => '  ' ) ) );
