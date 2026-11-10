@@ -38,14 +38,14 @@ It is the agency's showpiece, built to the twelve-dimension audit in `docs/AUDIT
   - banned functions and `date()`;
   - `strict_types`;
   - outbound requests;
-  - WordPress in the domain;
+  - WordPress, words, untyped throws and top-level statements in the domain;
   - em dashes and banned words in the POT;
   - a job of `release.yml` that holds the token and runs anything but `gh`, and the release plan's cases.
 - `composer test:unit`: PHPUnit 13, no WordPress
 - `composer test:coverage`: unit tests with the domain's floors: 100 % of lines and branches in `src/Domain` (Xdebug's path coverage, since pcov measures lines only)
 - `composer test:coverage:all`: the unit and integration suites' line coverage merged, with the floor: 95 % of all of `src/`, each file's direct-access guard left out (D-050, D-061). Needs the integration site, which `npm run env:start` starts with Xdebug in coverage mode
 - `composer test:benchmark`: the server budgets
-- `composer infection`: 100 % MSI on `src/Domain`, 95 % elsewhere
+- `composer infection`: 100 % MSI on `src/Domain`, 95 % elsewhere. In the domain, a mutant only static analysis catches must be in `tools/infection-static-allowed.txt` (D-063)
 - `composer api:check`: the public API against `docs/HOOKS.md`, `tests/Fixtures/api-surface.json` and the changelog's entry for each item's version. `composer api:snapshot` rewrites the snapshot; do it, `HOOKS.md` and the changelog in the same commit as the change
 - `composer check`: lint, analyse, arch, gates, unit tests and api:check
 - `npm run env:start`: two wp-env environments on WordPress 7.1.4, WooCommerce 11.2.2 and PHP 8.5: the browser site at :8898 (`.wp-env.json`, with Plugin Check) and the integration site at :8899 (`.wp-env.tests.json`, D-047). `npx wp-env start` starts the browser site alone; a command for the integration site takes `--config=.wp-env.tests.json`, and `--xdebug=coverage` when it starts it. `npm run env:oldest` switches to WordPress 7.0 with WooCommerce 11.2.0, and `npm run env:newest` back. `@wordpress/env` is pinned to the major Creative Search uses (^12). Search still runs its integration suite in wp-env's built-in tests site, which wp-env 12 deprecates

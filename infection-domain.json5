@@ -1,6 +1,6 @@
 {
-	// src/Domain at 100 % MSI (docs/AUDIT.md: Mutation testing). tools/infection.sh skips this run while the domain
-	// has no file (milestone 1).
+	// src/Domain at 100 % MSI (docs/AUDIT.md: Mutation testing). tools/infection.sh fails this run when the domain
+	// has no file.
 	"$schema": "vendor/infection/infection/resources/schema.json",
 	"source": {
 		"directories": [
@@ -20,7 +20,7 @@
 		"customPath": "vendor/bin/phpunit"
 	},
 	// A mutant PHPStan refuses is dead: level 10 on the domain is a gate of its own (composer analyse), so code that
-	// only passes with a cast removed or a type loosened never reaches a shop (D-052).
+	// only passes with a cast removed or a type loosened never reaches a shop (D-052). tools/infection.sh holds those to a list (D-063).
 	"staticAnalysisTool": "phpstan",
 	"staticAnalysisToolOptions": "--configuration=phpstan-domain.neon --memory-limit=2G",
 	"testFramework": "phpunit",

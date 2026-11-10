@@ -17,7 +17,7 @@ for fixture in "$fixtures"/*.fixture; do
 	case "$name" in
 		*.pot) cp "$fixture" "$root/languages/creative-skateboard-builder.pot" ;;
 		*.yml) mkdir -p "$root/.github/workflows"; cp "$fixture" "$root/.github/workflows/release.yml" ;;
-		6-*|11-*|12-*) mkdir -p "$root/src/Domain"; cp "$fixture" "$root/src/Domain/Probe.php" ;;
+		6-*|11-*|12-*|13-*) mkdir -p "$root/src/Domain"; cp "$fixture" "$root/src/Domain/Probe.php" ;;
 		*) cp "$fixture" "$root/src/Support/Probe.php" ;;
 	esac
 	code=0

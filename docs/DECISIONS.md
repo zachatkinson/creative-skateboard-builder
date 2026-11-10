@@ -708,3 +708,13 @@ The spec review and the audit found seven should-fix gaps and a dozen minors. Za
 
 **Why:** Each was a place the code and what is written about it had come apart, or a check that could pass without checking.
 **Status:** Accepted.
+
+### D-063 · Static-analysis kills are listed, and a domain file only declares · 2026-11-10
+
+Zach asked for best practice on the two questions milestone 2's review put to him.
+
+- **A mutant static analysis alone catches counts only if it is on a list.** Infection counts a mutant PHPStan refuses as caught (D-052), which is sound for a mutant that cannot differ at run time and unsound for one that can: three of the ten before the review changed behaviour with no test noticing. `tools/infection-static-allowed.txt` names the four that remain by mutator and file, each a cast or a null-safe arrow PHP makes no use of at run time. `tools/infection.sh` fails on any other, in a full run or a pull request's, until a test catches it or it is looked at and listed with its reason. Ignoring the four in the code instead would have put four notes in the domain to say the same thing.
+- **A domain file has no direct-access guard, and gate 13 is why that is safe.** The guard's job is to stop a file doing anything when it is requested outside WordPress. The domain cannot name WordPress's constant (gate 6), and a guard there would make the domain's own tests need a shim. So the property is held directly: gate 13 fails on any statement at the top of a file in `src/Domain` that is not `declare`, `namespace`, `use` or the declaration of a class, an interface, an enum or a trait. A file that only declares runs nothing when requested. Every other file in `src/` keeps its guard.
+
+**Why:** In both, a claim the review made in words ("none changes behaviour", "each only declares") is now a check that fails when the claim stops being true.
+**Status:** Accepted.

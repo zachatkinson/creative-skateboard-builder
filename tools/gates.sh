@@ -97,6 +97,15 @@ if [ -d src/Domain ]; then
 	fi
 fi
 
+# 13. A domain file only declares: no statement at its top runs when the file is requested, which is why it needs no
+#     direct-access guard (tools/gate-domain-declares.php; D-063).
+if [ -d src/Domain ]; then
+	hits="$(php "$tools/gate-domain-declares.php" src/Domain)"
+	if [ -n "$hits" ]; then
+		echo "Gate 13: a statement that runs at the top of a file in src/Domain:"; echo "$hits"; status=1
+	fi
+fi
+
 # 7. Nothing private of WooCommerce's (docs/STANDARDS.md: nothing private, internal or undocumented).
 hits="$(grep -rnE 'Automattic\\WooCommerce\\Internal\\' "${php_files[@]}" --include='*.php' | grep -vE '^[^:]+:[0-9]+:\s*(\*|//|#)' || true)"
 if [ -n "$hits" ]; then
