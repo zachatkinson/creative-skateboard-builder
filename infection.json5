@@ -17,6 +17,7 @@
 			"Hookable.php",
 			"Install/Activator.php",
 			"Install/Deactivator.php",
+			"Install/Migrations/InlineRule.php",
 			"Install/Schema.php",
 			"Install/Uninstaller.php",
 			"Install/Migrations/SchemaMigration.php",

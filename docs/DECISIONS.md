@@ -777,3 +777,17 @@ Issues #3 and #2, from the milestone 1 audit. Zach said to do both now.
 
 **Why:** milestone 3 adds about eight Hookables, most of them admin screens and WP-CLI commands. Without scopes a shopper's page would build every one of them and every service they take.
 **Status:** Accepted.
+
+### D-068 · How the specs index is stored and read · 2026-11-10
+
+The table is milestone 1's and does not change. These are the choices the repository makes inside it.
+
+- **A measure, a flag and a count go in `number`; a choice goes in `text`.** A measure is stored in its key's unit, as the four-place decimal the domain writes (`Specs::toIndex()`), which is the column's own scale, so nothing is rounded on the way in or out. A flag is 1 or 0 and a count is a whole number; the repository hands both back as whole digits, which is what `Specs::fromIndex()` reads.
+- **One row type for the port, `Domain\Spec\IndexedSpec`:** the key, the value as text, the source (`Domain\Spec\Origin`: `field`, `attribute`, `table`) and what in that source. The domain holds them because which source wins is the domain's rule, and comes with the indexer.
+- **Replacing a part's specs is two statements,** a `REPLACE INTO` for every row and a `DELETE` for any spec no longer there, with no transaction. `REPLACE` runs the same on MySQL 8.4 and MariaDB 10.11 (the `VALUES()` form of `ON DUPLICATE KEY UPDATE` is deprecated on MySQL). Between the two a reader may see a spec the part has just lost beside its new values. The index is derived, and the cart checks a build again when it is added, so that moment costs nothing a transaction would be worth.
+- **A row this version cannot read is passed over,** in the repository as in the domain: a key or a source a newer version wrote, or a value in the wrong column. After a rollback the part keeps every spec this version knows.
+- **The plans are checked in the integration suite, not the benchmark group.** The roadmap puts the `EXPLAIN` cases in the benchmark group, which is the unit suite's and has no database. `SpecIndexRepositoryTest::test_every_read_uses_an_index` asks the database for the plan of each statement the repository runs, over 1,800 rows, on every leg of the matrix: the key used, no full scan, no filesort. The two candidate statements are constants of the repository, so the plan asked for is the plan of what runs.
+- **One set of cases for the repository and the in-memory index** (`tests/Support/SpecIndexCases.php`), so the fake every service's unit tests use cannot drift from the table.
+- **`InlineRule` joins the classes mutation testing leaves to the integration suite** (`infection.json5`). It reads only WordPress (`is_admin()`, `wp_doing_ajax()`, `current_user_can()`), and `InstallHooksTest` proves each branch. D-067 should have listed it.
+
+**Status:** Accepted.

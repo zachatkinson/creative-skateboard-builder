@@ -36,6 +36,7 @@ final class Container {
 			Port\Logger::class         => Adapter\WooCommerceLogger::class,
 			Port\Queue::class          => Adapter\ActionSchedulerQueue::class,
 			Port\MigrationStore::class => Repository\MigrationRepository::class,
+			Port\SpecIndex::class      => Repository\SpecIndexRepository::class,
 		);
 	}
 
