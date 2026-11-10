@@ -124,6 +124,14 @@ final class Options {
 	public const REINDEX = 'cbuild_reindex_state';
 
 	/**
+	 * Set while a reindex is owed: the plugin was activated on a site with no queue to put it in. Autoloaded, and
+	 * removed when the reindex is asked for.
+	 *
+	 * @since 0.3.0
+	 */
+	public const REINDEX_OWED = 'cbuild_reindex_owed';
+
+	/**
 	 * The job that writes a confirmed specs import, 100 rows at a time.
 	 *
 	 * @since 0.3.0
@@ -153,7 +161,7 @@ final class Options {
 	 * @return string[]
 	 */
 	public static function names(): array {
-		return array( self::DB_VERSION, self::MIGRATIONS, self::MIGRATION_LOCK, self::SETTINGS, self::REINDEX, self::IMPORT, self::IMPORT_ROWS );
+		return array( self::DB_VERSION, self::MIGRATIONS, self::MIGRATION_LOCK, self::SETTINGS, self::REINDEX, self::REINDEX_OWED, self::IMPORT, self::IMPORT_ROWS );
 	}
 
 	/**

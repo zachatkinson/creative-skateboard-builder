@@ -17,17 +17,16 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 /**
  * Independent's, Thunder's and Venture's size charts, from the table under R1 in the spec: each size's axle width
- * and the deck widths its maker gives, in inches. Each row says where it was read and on which day; a row with no
- * day is the spec's own figure, not read again since (D-072).
+ * and the deck widths its maker gives, in inches. Each row says where it was read and on which day: the maker's own
+ * size chart, read on 10 November 2026 (D-072, D-093).
  *
  * @since 0.3.0
  */
 final class SeedSpecTables {
 
-	private const INDEPENDENT  = 'Independent, https://independenttrucks.com/trucks';
-	private const TACTICS      = 'Tactics, https://www.tactics.com/thunder/hollow-lights-skateboard-trucks';
-	private const WAREHOUSE    = 'Warehouse Skateboards, https://www.warehouseskateboards.com/thunder-skateboard-trucks';
-	private const ROLLERSNAKES = 'Rollersnakes, https://us.rollersnakes.com/pages/venture-skateboard-trucks-size-guide-chart';
+	private const INDEPENDENT = 'Independent, https://independenttrucks.com/trucks';
+	private const THUNDER     = 'Thunder, https://www.thundertrucks.com/sizing/';
+	private const VENTURE     = 'Venture, https://venturetrucks.net/sizes/';
 
 	/**
 	 * Each seed's rows: the size, the axle, the narrowest deck, the widest deck, the source, the day read. '' where
@@ -55,23 +54,24 @@ final class SeedSpecTables {
 		'thunder'     => array(
 			'name' => 'Thunder',
 			'rows' => array(
-				array( '143', '7.0000', '', '', self::WAREHOUSE, '' ),
-				array( '145', '7.6000', '7.3800', '8.0000', self::TACTICS, '2026-11-10' ),
-				array( '147', '8.0000', '7.7500', '8.2500', self::TACTICS, '2026-11-10' ),
-				array( '148', '8.2500', '8.0000', '8.5000', self::WAREHOUSE, '' ),
-				array( '149', '8.5000', '8.2500', '8.7500', self::TACTICS, '2026-11-10' ),
-				array( '151', '8.7500', '8.5000', '9.0000', self::TACTICS, '2026-11-10' ),
-				array( '161', '9.1250', '', '', self::WAREHOUSE, '' ),
+				array( '143', '7.1250', '', '7.4000', self::THUNDER, '2026-11-10' ),
+				array( '145', '7.6200', '7.4000', '7.9000', self::THUNDER, '2026-11-10' ),
+				array( '147', '8.0000', '7.9000', '8.1200', self::THUNDER, '2026-11-10' ),
+				array( '148', '8.2500', '8.1200', '8.3800', self::THUNDER, '2026-11-10' ),
+				array( '149', '8.5000', '8.3800', '8.6200', self::THUNDER, '2026-11-10' ),
+				array( '151', '8.7500', '8.6200', '8.8500', self::THUNDER, '2026-11-10' ),
+				array( '161', '9.1250', '8.9000', '9.5000', self::THUNDER, '2026-11-10' ),
+				array( '181', '10.0000', '9.5000', '', self::THUNDER, '2026-11-10' ),
 			),
 		),
 		'venture'     => array(
 			'name' => 'Venture',
 			'rows' => array(
-				array( '5.0', '7.6200', '', '7.9000', self::ROLLERSNAKES, '2026-11-10' ),
-				array( '5.2', '8.0000', '7.9000', '8.1000', self::ROLLERSNAKES, '2026-11-10' ),
-				array( '5.6', '8.2500', '8.1000', '8.3000', self::ROLLERSNAKES, '2026-11-10' ),
-				array( '5.8', '8.5000', '8.4000', '8.6000', self::ROLLERSNAKES, '2026-11-10' ),
-				array( '6.1', '8.7500', '8.6200', '', self::ROLLERSNAKES, '2026-11-10' ),
+				array( '5.0', '7.6200', '', '7.9000', self::VENTURE, '2026-11-10' ),
+				array( '5.2', '8.0000', '7.9000', '8.1000', self::VENTURE, '2026-11-10' ),
+				array( '5.6', '8.2500', '8.1000', '8.3000', self::VENTURE, '2026-11-10' ),
+				array( '5.8', '8.5000', '8.4000', '8.6000', self::VENTURE, '2026-11-10' ),
+				array( '6.1', '8.7500', '8.6200', '', self::VENTURE, '2026-11-10' ),
 			),
 		),
 	);

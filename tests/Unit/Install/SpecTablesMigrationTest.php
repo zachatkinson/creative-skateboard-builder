@@ -61,16 +61,17 @@ final class SpecTablesMigrationTest extends TestCase {
 		);
 		self::assertSame(
 			array(
-				'143 7.0000 - -',
-				'145 7.6000 7.3800 8.0000',
-				'147 8.0000 7.7500 8.2500',
-				'148 8.2500 8.0000 8.5000',
-				'149 8.5000 8.2500 8.7500',
-				'151 8.7500 8.5000 9.0000',
-				'161 9.1250 - -',
+				'143 7.1250 - 7.4000',
+				'145 7.6200 7.4000 7.9000',
+				'147 8.0000 7.9000 8.1200',
+				'148 8.2500 8.1200 8.3800',
+				'149 8.5000 8.3800 8.6200',
+				'151 8.7500 8.6200 8.8500',
+				'161 9.1250 8.9000 9.5000',
+				'181 10.0000 9.5000 -',
 			),
 			self::chart( 'thunder' ),
-			'two sizes have no published range'
+			'Thunder\'s own chart: the smallest has no narrowest deck and the largest no widest (D-093)'
 		);
 		self::assertSame(
 			array(
@@ -99,25 +100,21 @@ final class SpecTablesMigrationTest extends TestCase {
 				}
 			}
 		}
-		self::assertSame( 23, $rows );
+		self::assertSame( 24, $rows );
 	}
 
-	public function test_a_row_says_the_day_it_was_read_or_none_when_it_is_the_specs_own_figure(): void {
-		$days = array();
+	public function test_every_row_is_its_makers_own_figure_with_the_day_it_was_read(): void {
+		$makers = array(
+			'independent' => 'Independent, https://independenttrucks.com/',
+			'thunder'     => 'Thunder, https://www.thundertrucks.com/',
+			'venture'     => 'Venture, https://venturetrucks.net/',
+		);
 		foreach ( SeedSpecTables::all() as $seed => $chart ) {
 			foreach ( $chart['table']->rows as $row ) {
-				$days[ $seed ][ $row->readOn ][] = $row->size;
+				self::assertSame( '2026-11-10', $row->readOn, $seed . ' ' . $row->size );
+				self::assertStringStartsWith( $makers[ $seed ], $row->source, $seed . ' ' . $row->size . ': the maker\'s page, not a shop\'s (D-093)' );
 			}
 		}
-		self::assertSame( array( '2026-11-10' ), array_keys( $days['independent'] ) );
-		self::assertSame( array( '2026-11-10' ), array_keys( $days['venture'] ) );
-		self::assertSame( array( '143', '148', '161' ), $days['thunder'][''], 'not on the page read on that day' );
-		self::assertSame( array( '145', '147', '149', '151' ), $days['thunder']['2026-11-10'] );
-		$thunder = SeedSpecTables::all()['thunder']['table'];
-		self::assertStringStartsWith( 'Warehouse Skateboards, ', $thunder->row( '148' )?->source ?? '' );
-		self::assertStringStartsWith( 'Tactics, ', $thunder->row( '149' )?->source ?? '' );
-		self::assertStringStartsWith( 'Independent, ', SeedSpecTables::all()['independent']['table']->row( '149' )?->source ?? '' );
-		self::assertStringStartsWith( 'Rollersnakes, ', SeedSpecTables::all()['venture']['table']->row( '5.2' )?->source ?? '' );
 	}
 
 	public function test_the_specs_two_r1_cases_hold_on_the_seeds(): void {

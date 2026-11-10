@@ -15,6 +15,8 @@ use CreativeBranding\SkateboardBuilder\Install\Migrations\InlineRule;
 use CreativeBranding\SkateboardBuilder\Install\Migrations\MigrationRunner;
 use CreativeBranding\SkateboardBuilder\Install\Migrations\RunResult;
 use CreativeBranding\SkateboardBuilder\Install\Uninstaller;
+use CreativeBranding\SkateboardBuilder\Install\Sites;
+use CreativeBranding\SkateboardBuilder\Install\Activator;
 use CreativeBranding\SkateboardBuilder\Port\Reindex;
 use CreativeBranding\SkateboardBuilder\Support\Options;
 
@@ -48,6 +50,7 @@ final class InstallHooks implements Hookable {
 	 */
 	public function register(): void {
 		add_action( 'init', array( $this, 'queueWhenBehind' ) );
+		add_action( 'init', array( $this, 'askWhenOwed' ) );
 		add_action( 'admin_init', array( $this, 'runWhenBehind' ) );
 		add_action( Options::JOB_MIGRATE, array( $this, 'runJob' ) );
 		add_filter( 'wpmu_drop_tables', array( Uninstaller::class, 'siteTables' ) );
@@ -62,6 +65,18 @@ final class InstallHooks implements Hookable {
 	public function queueWhenBehind(): void {
 		if ( ! $this->inline->allows() && $this->runner->due() ) {
 			$this->runner->queue();
+		}
+	}
+
+	/**
+	 * On every request: ask for the reindex an activation without a queue could not (D-095). A site that owes none
+	 * spends no query here; one that does looks for the queue's tables until it finds them.
+	 *
+	 * @since 0.3.0
+	 */
+	public function askWhenOwed(): void {
+		if ( Activator::owesReindex() && Sites::hasQueueTables() ) {
+			Activator::settle( true, ( $this->reindex )() );
 		}
 	}
 

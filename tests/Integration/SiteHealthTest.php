@@ -9,14 +9,18 @@ declare( strict_types=1 );
 
 namespace CreativeBranding\SkateboardBuilder\Tests\Integration;
 
+use CreativeBranding\SkateboardBuilder\Admin\CheckScreen;
+use CreativeBranding\SkateboardBuilder\Domain\Spec\SpecTable;
 use CreativeBranding\SkateboardBuilder\Health\SiteHealth;
 use CreativeBranding\SkateboardBuilder\Port\ImportStore;
 use CreativeBranding\SkateboardBuilder\Port\ReindexStore;
+use CreativeBranding\SkateboardBuilder\Port\SpecTables;
 use CreativeBranding\SkateboardBuilder\Service\ImportState;
 use CreativeBranding\SkateboardBuilder\Service\IndexJobs;
 use CreativeBranding\SkateboardBuilder\Service\ReindexState;
 use CreativeBranding\SkateboardBuilder\Support\Options;
 use CreativeBranding\SkateboardBuilder\Tests\Support\IntegrationTestCase;
+use WP_REST_Request;
 
 /**
  * Spec, Resilience: Site Health checks the specs index and failed jobs, and its Info tab lists the plugin's versions
@@ -45,7 +49,7 @@ final class SiteHealthTest extends IntegrationTestCase {
 		self::assertSame( 'core', $ids[0] );
 		// WooCommerce adds its own between.
 		self::assertSame( array( 'cbuild_index', 'cbuild_jobs' ), array_slice( $ids, -2 ) );
-		self::assertSame( array(), $tests['async'] );
+		self::assertSame( array( 'cbuild_catalogue' ), array_keys( $tests['async'] ) );
 		self::assertSame( 'The skateboard builder\'s specs index', $tests['direct']['cbuild_index']['label'] );
 		self::assertIsCallable( $tests['direct']['cbuild_index']['test'] );
 		self::assertIsCallable( $tests['direct']['cbuild_jobs']['test'] );
@@ -130,6 +134,77 @@ final class SiteHealthTest extends IntegrationTestCase {
 		self::assertStringContainsString( 'Opening Import and export starts it again', $result['description'] );
 		self::assertStringContainsString( 'page=cbuild&#038;tab=import">Open Import and export</a>', $result['actions'] );
 		delete_option( Options::IMPORT );
+	}
+
+	/**
+	 * A truck whose own field and maker's chart disagree about its axle.
+	 */
+	private function truckThatDisagrees(): int {
+		$chart = $this->service( SpecTables::class )->create( 'Independent', SpecTable::read( array( array( 'size' => '149', 'specs' => array( 'axle_width' => '8.5000' ) ) ) ) );
+		$truck = new \WC_Product_Simple();
+		$truck->set_name( 'Stage 11 149' );
+		$truck->update_meta_data( Options::META_SPECS, array( 'axle_width' => '8.0000' ) );
+		$truck->update_meta_data( Options::META_SPEC_TABLE, array( 'table' => $chart, 'size' => '149' ) );
+		return $truck->save();
+	}
+
+	// Spec, Resilience: "Site Health checks the specs index, failed jobs and the Catalogue check" (D-094).
+	public function test_the_catalogue_check_is_an_async_test_wordpress_asks_for_over_rest(): void {
+		$tests = $this->tests();
+		$test  = $tests['async']['cbuild_catalogue'];
+		self::assertSame( 'The skateboard builder\'s Catalogue check', $test['label'] );
+		self::assertTrue( $test['has_rest'] );
+		self::assertSame( rest_url( 'cbuild/v1/site-health/catalogue-check' ), $test['test'] );
+		self::assertSame( array( $this->service( SiteHealth::class ), 'catalogue' ), $test['async_direct_test'], 'the weekly check cannot sign in, and calls it' );
+		require_once ABSPATH . 'wp-admin/includes/class-wp-site-health.php';
+		self::assertArrayHasKey( 'cbuild_catalogue', \WP_Site_Health::get_tests()['async'] );
+		self::assertArrayNotHasKey( 'cbuild_catalogue', \WP_Site_Health::get_tests()['direct'], 'it reads every part, so the page does not wait for it' );
+	}
+
+	public function test_the_catalogue_check_is_good_until_a_part_has_something_to_fix(): void {
+		$health = $this->service( SiteHealth::class );
+		$result = $health->catalogue();
+		self::assertSame( array( 'label', 'status', 'badge', 'description', 'actions', 'test' ), array_keys( $result ) );
+		self::assertSame( 'good', $result['status'] );
+		self::assertSame( 'cbuild_catalogue', $result['test'] );
+		self::assertSame( 'The skateboard builder\'s Catalogue check found nothing to fix', $result['label'] );
+		self::assertSame( '', $result['actions'] );
+
+		$this->truckThatDisagrees();
+		$result = $health->catalogue();
+		self::assertSame( 'recommended', $result['status'] );
+		self::assertSame( 'orange', $result['badge']['color'] );
+		self::assertSame( 'The skateboard builder\'s Catalogue check found 1 thing to fix', $result['label'] );
+		self::assertStringContainsString( 'in 1 part', $result['description'] );
+		self::assertStringContainsString( 'href="' . esc_url( CheckScreen::url() ) . '"', $result['actions'] );
+		self::assertStringContainsString( 'Open the Catalogue check', $result['actions'] );
+	}
+
+	public function test_the_route_answers_who_may_see_site_health_and_nobody_else(): void {
+		$this->service( SiteHealth::class )->register();
+		// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- WordPress's own, to build the routes.
+		do_action( 'rest_api_init', rest_get_server() );
+		$route = '/cbuild/v1/site-health/catalogue-check';
+		self::assertArrayHasKey( $route, rest_get_server()->get_routes( 'cbuild/v1' ) );
+		$this->truckThatDisagrees();
+
+		wp_set_current_user( 0 );
+		self::assertSame( 401, rest_get_server()->dispatch( new WP_REST_Request( 'GET', $route ) )->get_status() );
+		// A shop manager runs the check on its own screen; Site Health is an administrator's.
+		wp_set_current_user( self::factory()->user->create( array( 'role' => 'shop_manager' ) ) );
+		self::assertSame( 403, rest_get_server()->dispatch( new WP_REST_Request( 'GET', $route ) )->get_status() );
+		$admin = self::factory()->user->create( array( 'role' => 'administrator' ) );
+		wp_set_current_user( $admin );
+		if ( is_multisite() ) {
+			// On a network Site Health is the network's: a site's administrator is refused, as WordPress's own tests are.
+			self::assertSame( 403, rest_get_server()->dispatch( new WP_REST_Request( 'GET', $route ) )->get_status() );
+			grant_super_admin( $admin );
+		}
+		$answer = rest_get_server()->dispatch( new WP_REST_Request( 'GET', $route ) );
+		self::assertSame( 200, $answer->get_status() );
+		self::assertSame( 'recommended', $answer->get_data()['status'] );
+		self::assertSame( 'cbuild_catalogue', $answer->get_data()['test'] );
+		self::assertSame( 404, rest_get_server()->dispatch( new WP_REST_Request( 'POST', $route ) )->get_status(), 'it changes nothing, and takes no post' );
 	}
 
 	public function test_wordpress_itself_runs_the_tests_and_takes_their_results(): void {

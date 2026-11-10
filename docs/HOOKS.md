@@ -246,6 +246,7 @@ In the option `cbuild_settings`. [SETTINGS.md](SETTINGS.md) has each key's defau
 | --- | --- | --- |
 | `cbuild_settings` | 0.3.0 | The shop's settings, one array, with the keys above. |
 | `cbuild_reindex_state` | 0.3.0 | Where the reindex is: its phase (`rows`, `catalogue`, `done` or `failed`), its place in that phase, how many parts it has indexed, when it started and finished in UTC seconds, whether it must pass once more, its failures in a row with the last error's message, and which request it is, counted from 1. Not autoloaded. Read it, never write it. |
+| `cbuild_reindex_owed` | 0.3.0 | Present, with the value `1`, while a reindex is owed: the plugin was activated on a site that had no queue, as when WooCommerce is missing. The first request that finds the queue asks for the reindex and removes the option. Autoloaded. Read it, never write it. |
 | `cbuild_import_state` | 0.3.0 | The specs import in hand: its status (`waiting`, `running`, `done` or `failed`), a token naming it, the column rows are matched by (`id` or `sku`), the shop's decimal separator when the file was read, where each column sits, whether its rows are held (`has_rows`, while it waits and runs), how many rows there were and how many are done, the parts changed, the rows that changed nothing, each row refused with its column, a code and what the cell held, its failures in a row, and while it waits the ID of the user who sent the file. Not autoloaded. Read it, never write it. |
 | `cbuild_import_rows` | 0.3.0 | The rows of the specs import in hand, kept apart so a batch does not write them again: the import's token, the rows read from the file, and the product each SKU matched when the file was read (for an import by SKU). Written once when a file is read, and removed when the import ends, is put away or is replaced. Not autoloaded. Read it, never write it. |
 
@@ -322,11 +323,20 @@ It is annotated read-only and idempotent and shown in REST, so WordPress serves 
 
 ### Site Health
 
-Two direct tests on Tools > Site Health, and a section on its Info tab.
+Two direct tests and one asynchronous test on Tools > Site Health, and a section on its Info tab.
 
 | Test | Since | Good | Recommended | Critical |
 | --- | --- | --- | --- | --- |
 | `cbuild_index` | 0.3.0 | No reindex has been asked for, the last one finished, or one is under way with its job waiting or running. | A reindex is under way and has no job: it stopped part way. | A reindex stopped after five failures. |
 | `cbuild_jobs` | 0.3.0 | No action of the group `creative-skateboard-builder` is marked failed. | One or more is, with links to the failed actions and the Catalogue check. | Never. |
+| `cbuild_catalogue` | 0.3.0 | The Catalogue check finds nothing in any part or kit. | It finds something: the result counts the findings and the parts they are in, and links to the check. Background work that failed is left to the two tests above. | Never. |
+
+`cbuild_catalogue` reads every part, so it is asynchronous: the page asks for it once it has drawn, and WordPress's weekly check calls it directly.
+
+### REST routes
+
+| Route | Since | Method | Who | Answers |
+| --- | --- | --- | --- | --- |
+| `cbuild/v1/site-health/catalogue-check` | 0.3.0 | `GET` | `view_site_health_checks`, as WordPress's own Site Health routes | The `cbuild_catalogue` test's result, in the shape Site Health takes: `label`, `status` (`good` or `recommended`), `badge` (`label`, `color`), `description`, `actions` and `test`. It reads and changes nothing, and is for Site Health's page; another caller wants the ability above, which gives the findings. |
 
 The Info tab's section `creative-skateboard-builder` lists the plugin's version, its database version, which source wins, how many attributes are mapped, the index's state and the count of failed jobs. None of it is marked private, and none of it is about a person.

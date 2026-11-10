@@ -9,6 +9,8 @@ declare( strict_types=1 );
 
 namespace CreativeBranding\SkateboardBuilder\Tests\Unit\Service;
 
+use CreativeBranding\SkateboardBuilder\Service\CatalogueCheck;
+use CreativeBranding\SkateboardBuilder\Service\CheckFinding;
 use CreativeBranding\SkateboardBuilder\Service\Health;
 use CreativeBranding\SkateboardBuilder\Service\ImportState;
 use CreativeBranding\SkateboardBuilder\Service\SpecImport;
@@ -177,5 +179,48 @@ final class HealthTest extends TestCase {
 		$this->queue->failures = 2;
 		self::assertSame( 'jobs_failed', $this->health->jobs()['code'] );
 		self::assertSame( 'recommended', $this->health->jobs()['status'] );
+	}
+	public function test_the_catalogue_checks_findings_are_counted_by_finding_and_by_part(): void {
+		self::assertSame(
+			array(
+				'status'   => Health::GOOD,
+				'code'     => Health::CHECK_CLEAR,
+				'findings' => 0,
+				'parts'    => 0,
+			),
+			Health::catalogue( array() )
+		);
+		$found = array(
+			new CheckFinding( CatalogueCheck::DISAGREE, 12, spec: 'axle_width' ),
+			new CheckFinding( CatalogueCheck::UNREAD, 12, spec: 'deck_min' ),
+			new CheckFinding( CatalogueCheck::UNREAD, 15, spec: 'deck_min' ),
+			new CheckFinding( CatalogueCheck::SLOT_EMPTY, 0, 7, 'trucks' ),
+		);
+		self::assertSame(
+			array(
+				'status'   => Health::RECOMMENDED,
+				'code'     => Health::CHECK_FOUND,
+				'findings' => 4,
+				'parts'    => 2,
+			),
+			Health::catalogue( $found )
+		);
+		self::assertSame( 1, Health::catalogue( array( $found[3] ) )['findings'] );
+		self::assertSame( 0, Health::catalogue( array( $found[3] ) )['parts'], 'a kit\'s finding names no part' );
+	}
+
+	public function test_background_work_is_the_other_two_tests_to_report(): void {
+		$work = array(
+			new CheckFinding( CatalogueCheck::REINDEX_FAILED ),
+			new CheckFinding( CatalogueCheck::IMPORT_FAILED ),
+			new CheckFinding( CatalogueCheck::JOBS_FAILED, values: array( 'count' => '3' ) ),
+		);
+		self::assertSame( Health::CHECK_CLEAR, Health::catalogue( $work )['code'] );
+		self::assertSame( Health::GOOD, Health::catalogue( $work )['status'] );
+		foreach ( $work as $one ) {
+			$with = Health::catalogue( array( $one, new CheckFinding( CatalogueCheck::DISAGREE, 12 ) ) );
+			self::assertSame( 1, $with['findings'], $one->code );
+			self::assertSame( Health::CHECK_FOUND, $with['code'] );
+		}
 	}
 }

@@ -17,6 +17,7 @@ use CreativeBranding\SkateboardBuilder\Port\Clock;
 use CreativeBranding\SkateboardBuilder\Port\Logger;
 use CreativeBranding\SkateboardBuilder\Port\MigrationStore;
 use CreativeBranding\SkateboardBuilder\Port\Queue;
+use CreativeBranding\SkateboardBuilder\Install\Activator;
 use CreativeBranding\SkateboardBuilder\Port\Reindex;
 use CreativeBranding\SkateboardBuilder\Support\Tables;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\BatchMigration;
@@ -232,6 +233,7 @@ final class InstallHooksTest extends IntegrationTestCase {
 		$before = $wpdb->num_queries;
 		$this->hooks->queueWhenBehind();
 		$this->hooks->runWhenBehind();
+		$this->hooks->askWhenOwed();
 		self::assertSame( 0, $wpdb->num_queries - $before, 'a front-end request: the autoloaded version answers from memory' );
 		// Signing the manager in costs queries of its own, so the count starts again after it.
 		$this->asManagerInAdmin();
@@ -239,6 +241,39 @@ final class InstallHooksTest extends IntegrationTestCase {
 		$before = $wpdb->num_queries;
 		$this->hooks->queueWhenBehind();
 		$this->hooks->runWhenBehind();
+		$this->hooks->askWhenOwed();
 		self::assertSame( 0, $wpdb->num_queries - $before, 'an admin page for a manager' );
+	}
+
+	// D-095: activated while WooCommerce was missing, a site had no queue to put the reindex in.
+	public function test_a_reindex_activation_could_not_ask_for_is_asked_for_on_the_first_request_with_a_queue(): void {
+		delete_option( Options::REINDEX );
+		$reindex = $this->service( Reindex::class );
+
+		Activator::settle( false, $reindex );
+		self::assertTrue( Activator::owesReindex() );
+		self::assertFalse( get_option( Options::REINDEX ), 'nothing was asked for with no queue' );
+		self::assertSame( array(), self::waiting( Options::JOB_REINDEX ) );
+		self::assertContains( $GLOBALS['wpdb']->get_var( $GLOBALS['wpdb']->prepare( "SELECT autoload FROM {$GLOBALS['wpdb']->options} WHERE option_name = %s", Options::REINDEX_OWED ) ), array( 'yes', 'on', 'auto', 'auto-on' ), 'autoloaded, so asking whether it is owed costs no query' );
+
+		// WooCommerce is back, and with it the queue.
+		$this->hooks->askWhenOwed();
+		self::assertFalse( Activator::owesReindex() );
+		self::assertFalse( get_option( Options::REINDEX_OWED ) );
+		self::assertCount( 1, self::waiting( Options::JOB_REINDEX ) );
+		self::assertIsArray( get_option( Options::REINDEX ) );
+
+		// Paid once: the next request asks for nothing.
+		$this->hooks->askWhenOwed();
+		self::assertCount( 1, self::waiting( Options::JOB_REINDEX ) );
+
+		// With a queue, activation asks at once and owes nothing.
+		as_unschedule_all_actions( Options::JOB_REINDEX );
+		Activator::settle( true, $reindex );
+		self::assertFalse( Activator::owesReindex() );
+		self::assertCount( 1, self::waiting( Options::JOB_REINDEX ) );
+		as_unschedule_all_actions( Options::JOB_REINDEX );
+		delete_option( Options::REINDEX );
+		self::assertContains( Options::REINDEX_OWED, Options::names(), 'so uninstall removes it' );
 	}
 }

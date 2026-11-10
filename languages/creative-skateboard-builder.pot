@@ -9,7 +9,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-11-10T17:38:19+00:00\n"
+"POT-Creation-Date: 2026-11-10T18:26:42+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: creative-skateboard-builder\n"
@@ -17,7 +17,7 @@ msgstr ""
 #. Plugin Name of the plugin
 #: creative-skateboard-builder.php
 #: src/Abilities/CatalogueCheckAbility.php:65
-#: src/Health/SiteHealth.php:169
+#: src/Health/SiteHealth.php:227
 msgid "Creative Skateboard Builder"
 msgstr ""
 
@@ -848,126 +848,155 @@ msgstr ""
 msgid "The file has no %s column. Add one, or match parts by the other with --key."
 msgstr ""
 
-#: src/Health/SiteHealth.php:76
+#: src/Health/SiteHealth.php:106
 msgid "The skateboard builder's specs index"
 msgstr ""
 
-#: src/Health/SiteHealth.php:80
+#: src/Health/SiteHealth.php:110
 msgid "The skateboard builder's background jobs"
 msgstr ""
 
-#: src/Health/SiteHealth.php:97
-#: src/Health/SiteHealth.php:145
+#: src/Health/SiteHealth.php:116
+msgid "The skateboard builder's Catalogue check"
+msgstr ""
+
+#: src/Health/SiteHealth.php:135
+#: src/Health/SiteHealth.php:183
+#: src/Health/SiteHealth.php:204
 msgid "Open the Catalogue check"
 msgstr ""
 
-#: src/Health/SiteHealth.php:100
+#: src/Health/SiteHealth.php:138
 msgid "The skateboard builder's specs index was not rebuilt"
 msgstr ""
 
-#: src/Health/SiteHealth.php:101
+#: src/Health/SiteHealth.php:139
 msgid "Reading every part again stopped after five failures, so some parts are still indexed with what they held before. Start it again with \"Read every part again\" on the Catalogue check. WooCommerce > Status > Logs has the reason, under creative-skateboard-builder."
 msgstr ""
 
-#: src/Health/SiteHealth.php:104
+#: src/Health/SiteHealth.php:142
 msgid "The skateboard builder's specs index stopped part way"
 msgstr ""
 
 #. translators: %s: a number of parts.
-#: src/Health/SiteHealth.php:106
+#: src/Health/SiteHealth.php:144
 #, php-format
 msgid "Reading every part again got as far as %s parts and has no job waiting to go on. Start it again with \"Read every part again\" on the Catalogue check."
 msgstr ""
 
-#: src/Health/SiteHealth.php:109
+#: src/Health/SiteHealth.php:147
 msgid "The skateboard builder's specs index is being rebuilt"
 msgstr ""
 
 #. translators: %s: a number of parts.
-#: src/Health/SiteHealth.php:111
+#: src/Health/SiteHealth.php:149
 #, php-format
 msgid "Every part is being read again in the background, 100 at a time: %s so far. Parts keep what they held until they are reached."
 msgstr ""
 
-#: src/Health/SiteHealth.php:115
+#: src/Health/SiteHealth.php:153
 msgid "The skateboard builder's specs index is up to date"
 msgstr ""
 
-#: src/Health/SiteHealth.php:116
+#: src/Health/SiteHealth.php:154
 msgid "The index holds each part's specs, and a part is read again in the background whenever it is saved."
 msgstr ""
 
-#: src/Health/SiteHealth.php:131
+#: src/Health/SiteHealth.php:169
 msgid "Open Import and export"
 msgstr ""
 
-#: src/Health/SiteHealth.php:133
+#: src/Health/SiteHealth.php:171
 msgid "The skateboard builder's last specs import stopped before its end"
 msgstr ""
 
-#: src/Health/SiteHealth.php:133
+#: src/Health/SiteHealth.php:171
 msgid "A batch of the import failed four times, so the parts after it were not written. Import the file again: a part already written takes the same values. WooCommerce > Status > Logs has the reason, under creative-skateboard-builder."
 msgstr ""
 
-#: src/Health/SiteHealth.php:136
+#: src/Health/SiteHealth.php:174
 msgid "The skateboard builder's specs import has no job left to run it"
 msgstr ""
 
-#: src/Health/SiteHealth.php:136
+#: src/Health/SiteHealth.php:174
 msgid "An import is part way through and nothing is queued to go on, as happens when the plugin is switched off while one runs. Opening Import and export starts it again from where it stopped."
 msgstr ""
 
-#: src/Health/SiteHealth.php:139
+#: src/Health/SiteHealth.php:177
 msgid "No background job of the skateboard builder has failed"
 msgstr ""
 
-#: src/Health/SiteHealth.php:139
+#: src/Health/SiteHealth.php:177
 msgid "The builder indexes parts and writes imports in the background. A job that fails is tried again, and shows here if it still fails."
 msgstr ""
 
 #. translators: %s: a number of jobs.
-#: src/Health/SiteHealth.php:142
+#: src/Health/SiteHealth.php:180
 #, php-format
 msgid "%s background job of the skateboard builder has failed"
 msgid_plural "%s background jobs of the skateboard builder have failed"
 msgstr[0] ""
 msgstr[1] ""
 
-#: src/Health/SiteHealth.php:143
+#: src/Health/SiteHealth.php:181
 msgid "A part whose job failed may be indexed with what it held before. The Catalogue check lists what needs fixing, and WooCommerce > Status > Logs has each failure's reason, under creative-skateboard-builder."
 msgstr ""
 
-#: src/Health/SiteHealth.php:144
+#: src/Health/SiteHealth.php:182
 msgid "See the failed jobs"
 msgstr ""
 
-#: src/Health/SiteHealth.php:172
+#: src/Health/SiteHealth.php:198
+msgid "The skateboard builder's Catalogue check found nothing to fix"
+msgstr ""
+
+#: src/Health/SiteHealth.php:198
+msgid "The check reads every part and lists sources that disagree and values that cannot be read. It found none."
+msgstr ""
+
+#. translators: %s: a number of findings.
+#: src/Health/SiteHealth.php:201
+#, php-format
+msgid "The skateboard builder's Catalogue check found %s thing to fix"
+msgid_plural "The skateboard builder's Catalogue check found %s things to fix"
+msgstr[0] ""
+msgstr[1] ""
+
+#. translators: %s: a number of parts.
+#: src/Health/SiteHealth.php:203
+#, php-format
+msgid "What it found is in %s part. Until it is fixed, a part may be left out of the builder or offered by the wrong figure. The check lists each finding with a link to where it is fixed."
+msgid_plural "What it found is in %s parts. Until it is fixed, a part may be left out of the builder or offered by the wrong figure. The check lists each finding with a link to where it is fixed."
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/Health/SiteHealth.php:230
 msgid "Version"
 msgstr ""
 
-#: src/Health/SiteHealth.php:176
+#: src/Health/SiteHealth.php:234
 msgid "Database version"
 msgstr ""
 
-#: src/Health/SiteHealth.php:180
+#: src/Health/SiteHealth.php:238
 #: templates/admin/settings-order.php:20
 #: templates/admin/settings-order.php:23
 msgid "Which source wins"
 msgstr ""
 
-#: src/Health/SiteHealth.php:185
+#: src/Health/SiteHealth.php:243
 msgid "Attributes mapped to specs"
 msgstr ""
 
-#: src/Health/SiteHealth.php:189
+#: src/Health/SiteHealth.php:247
 msgid "Specs index"
 msgstr ""
 
-#: src/Health/SiteHealth.php:193
+#: src/Health/SiteHealth.php:251
 msgid "Failed background jobs"
 msgstr ""
 
-#: src/Health/SiteHealth.php:216
+#: src/Health/SiteHealth.php:274
 msgid "Skateboard builder"
 msgstr ""
 

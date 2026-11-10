@@ -50,6 +50,12 @@ final class Health {
 	public const IMPORT_STALLED = 'import_stalled';
 
 	/**
+	 * What the Catalogue check's verdict can say.
+	 */
+	public const CHECK_CLEAR = 'check_clear';
+	public const CHECK_FOUND = 'check_found';
+
+	/**
 	 * Constructor.
 	 *
 	 * @since 0.3.0
@@ -112,6 +118,35 @@ final class Health {
 			'status' => self::JOBS_FINE === $code ? self::GOOD : self::RECOMMENDED,
 			'code'   => $code,
 			'failed' => $failed,
+		);
+	}
+
+	/**
+	 * What the Catalogue check found, for Site Health. Background work that failed is left out: the index's and the
+	 * jobs' tests report it, and one failure is not shown three times.
+	 *
+	 * @since 0.3.0
+	 *
+	 * @param list<CheckFinding> $found The check's findings.
+	 * @return array{status: string, code: string, findings: int, parts: int}
+	 */
+	public static function catalogue( array $found ): array {
+		$findings = 0;
+		$parts    = array();
+		foreach ( $found as $finding ) {
+			if ( in_array( $finding->code, array( CatalogueCheck::REINDEX_FAILED, CatalogueCheck::IMPORT_FAILED, CatalogueCheck::JOBS_FAILED ), true ) ) {
+				continue;
+			}
+			++$findings;
+			if ( $finding->part > 0 ) {
+				$parts[ $finding->part ] = true;
+			}
+		}
+		return array(
+			'status'   => 0 === $findings ? self::GOOD : self::RECOMMENDED,
+			'code'     => 0 === $findings ? self::CHECK_CLEAR : self::CHECK_FOUND,
+			'findings' => $findings,
+			'parts'    => count( $parts ),
 		);
 	}
 

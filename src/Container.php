@@ -107,6 +107,9 @@ final class Container {
 					},
 					static function () use ( $c ): Port\MigrationStore {
 						return $c->get( Port\MigrationStore::class );
+					},
+					static function () use ( $c ): Service\CatalogueCheck {
+						return $c->get( Service\CatalogueCheck::class );
 					}
 				);
 			},
@@ -158,8 +161,9 @@ final class Container {
 			Admin\PartSpecsHooks::class            => array( Scope::Admin ),
 			Admin\BuilderHooks::class              => array( Scope::Admin ),
 			Hooks\CliHooks::class                  => array( Scope::Cli ),
-			// Site Health's page and Info tab are wp-admin's; its weekly check runs in cron, and WP-CLI can ask too.
-			Health\SiteHealth::class               => array( Scope::Admin, Scope::Cron, Scope::Cli ),
+			// Site Health's page and Info tab are wp-admin's; its weekly check runs in cron, and WP-CLI can ask too. The
+			// page asks for the Catalogue check's test over REST.
+			Health\SiteHealth::class               => array( Scope::Admin, Scope::Cron, Scope::Cli, Scope::Rest ),
 			// WordPress builds its abilities when something first asks for one, on any kind of request.
 			Abilities\CatalogueCheckAbility::class => array( Scope::Everywhere ),
 		);

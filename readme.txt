@@ -47,7 +47,7 @@ Yes. Activating it for the network installs it on every site, and a site added l
 * A Catalogue check under WooCommerce > Builder: lists the parts whose sources disagree or hold a value that cannot be read, and background work that failed, each with a link to where it is fixed.
 * The same work from the command line, for shops that use WP-CLI: export and import specs, run the Catalogue check, and rebuild the index.
 * Every part is read into the index when the plugin is installed, updated or activated, and the Catalogue check has a button to read them all again.
-* Two Site Health tests, which say when the specs index was not rebuilt, a background job failed or an import stopped.
+* Three Site Health tests, which say when the specs index was not rebuilt, a background job failed or an import stopped, or the Catalogue check has something to fix.
 * A settings screen, WooCommerce > Settings > Builder, to say which product attribute holds which spec and which source wins where two disagree. A variation takes an attribute from its parent product when it has none of its own.
 
 = 0.2.0 =

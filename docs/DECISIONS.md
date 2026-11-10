@@ -845,7 +845,7 @@ The table is milestone 1's and does not change. These are the choices the reposi
 - **Uninstall deletes the spec tables first.** Deleting a post fires hooks, and a hook that writes an option or queues an action after those were removed would leave it behind. `UninstallTest` failed on the other order.
 - **`MigrationRegistry::VERSION` is 2.**
 
-**Status:** Accepted.
+**Status:** Accepted. D-093 reads Thunder's and Venture's rows from the makers' own charts.
 
 ### D-073 · The settings screen · 2026-11-10
 
@@ -966,7 +966,7 @@ The table is milestone 1's and does not change. These are the choices the reposi
 - **The Hookable is built in wp-admin, cron and WP-CLI** (D-067), and its services only when a test runs or the Info tab is drawn.
 - **The sibling plugins have no Site Health code,** so this follows WordPress's own filters: `site_status_tests` (`wp-admin/includes/class-wp-site-health.php:3047`) and `debug_information` (`wp-admin/includes/class-wp-debug-data.php:135`).
 
-**Status:** Accepted.
+**Status:** Accepted. D-094 adds the Catalogue check as an asynchronous test.
 
 ### D-081 · The specs benchmark runs on real WordPress, and one query a product stays · 2026-11-10
 
@@ -992,7 +992,7 @@ Found by the milestone's two reviews, each fixed with a test that fails without 
 - **Failed jobs are counted from when the last reindex finished,** by when each last ran (`modified`, `ActionScheduler_DBStore.php:627`): that reindex read every part again, and Action Scheduler keeps a failed action for three months. Before, one failure kept Site Health and the check amber long after it was mended.
 - **The reindex's and the import's state are read from the table, past the request's cache** (`Adapter\FreshOption`): a long request would otherwise save its stale copy over another process's place.
 
-**Status:** Accepted. D-089 revises the matching of a mapped attribute: a line names one attribute, and `Width` no longer reads `pa_width`.
+**Status:** Accepted. D-089 revises the matching of a mapped attribute: a line names one attribute, and `Width` no longer reads `pa_width`. D-095 asks for the reindex a site without WooCommerce was owed.
 
 ### D-083 · The product screen's one script is inline · 2026-11-10
 
@@ -1114,3 +1114,56 @@ Zach had every minor of milestone 2's reviews fixed, and these follow that.
 - **Minor 10 is two issues,** for the plans it speaks to: #20 in milestone 4 (a settings save reindexes only when the mapping or the order changed) and #21 in milestone 5 (a stock change queues an index job for every order line).
 
 **Status:** Accepted.
+
+### D-093 · The seeded charts are each maker's own · 2026-11-10
+
+Zach's answer on 10 November 2026 to the two open figures of D-072 (Venture 5.0's axle, and Thunder's 143, 148 and 161): "lets do whatever is best practice for 2026 and standard." A figure a shop's builder decides fit by should come from whoever makes the part, with the page and the day beside it.
+
+- **Thunder publishes a chart,** at https://www.thundertrucks.com/sizing/, as one image a size. The spec took Thunder's sizes from two retailers because the chart is an image; read on 10 November 2026, the images give every size an axle and a deck range. All eight rows are now Thunder's:
+
+  | Size | Axle | Decks |
+  | --- | --- | --- |
+  | 143 | 7.125 in | 7.4 in and thinner |
+  | 145 | 7.62 in | 7.4 to 7.9 in |
+  | 147 | 8.0 in | 7.9 to 8.12 in |
+  | 148 | 8.25 in | 8.12 to 8.38 in |
+  | 149 | 8.5 in | 8.38 to 8.62 in |
+  | 151 | 8.75 in | 8.62 to 8.85 in |
+  | 161 | 9.125 in | 8.9 to 9.5 in |
+  | 181 | 10.0 in | 9.5 in and up |
+
+- **What changed from the seed before.** The 143's axle was 7.0 in, the spec's figure, and is 7.125. The 145's was 7.6 and is 7.62. The 143 and 161 had no deck range and have one. The retailers' ranges for the 145 to 151 were half an inch wide and overlapped; Thunder's are a quarter inch and meet end to end, so rule R1 now offers a Thunder truck to fewer deck widths, the ones its maker names. The 181 is new, from the maker's chart of 2026.
+- **Venture publishes one too,** at https://venturetrucks.net/sizes/. Its five sizes are what the seed held from Rollersnakes, the 5.0's 7.62 in axle among them, so the figures stay and the source is now Venture. The spec's grid puts the 5.0 in its 7.6 in row, which groups makers by axle; the row is a grouping, not a figure.
+- **Every seeded row now has the day it was read,** and `SpecTablesMigrationTest` holds that each names its maker's own site.
+- **`docs/SPEC.md` is not edited.** Its table under R1 and its line "Thunder's chart is an image and Venture publishes none" are behind this; they are Zach's to change.
+- **A shop that already has a chart keeps it** (D-072): the seed is passed over where a table exists. 0.3.0 is the first version with charts, so no shop has the old rows.
+
+**Status:** Accepted. Revises D-072's seeds.
+
+### D-094 · The Catalogue check is an asynchronous Site Health test · 2026-11-10
+
+Zach on 10 November 2026, of the review's question whether the spec's third Site Health check should wait for milestone 4: "we should resolve this too". D-080 left it out because a test that reads every part must not hold the Site Health page.
+
+- **`cbuild_catalogue` is an asynchronous test,** WordPress's own answer for a slow one (`wp-admin/includes/class-wp-site-health.php:2941`, as its loopback and background-update tests): the page draws, then asks for the result. At 2,000 parts the check takes half a second (docs/BENCHMARK.md).
+- **The page asks over REST,** the form WordPress has used since 5.6 (`has_rest`): `GET cbuild/v1/site-health/catalogue-check`, the plugin's first route. Its `permission_callback` is `view_site_health_checks`, the capability WordPress's own Site Health routes use (`wp-includes/rest-api/endpoints/class-wp-rest-site-health-controller.php:189`). It reads and changes nothing.
+- **The weekly check calls it directly** (`async_direct_test`), since a scheduled event cannot sign in (`class-wp-site-health.php:3401`).
+- **It reports counts, not findings:** how many things there are to fix and in how many parts, with a link to the check. Recommended when there is one, never critical: a finding keeps a part out of the builder or names a disagreement, and the shop still sells.
+- **Background work that failed is left out of its count.** The check lists a failed reindex, import and job; `cbuild_index` and `cbuild_jobs` already report those, and one failure is not shown three times (`Service\Health::catalogue()`).
+- **`Health\SiteHealth` is also built on a REST request** (D-067), for the route. `ContainerTest` lists it.
+- **Tests:** `HealthTest` for the verdict; `SiteHealthTest` for the test's registration, its results, and the route as a visitor (401), a shop manager (403) and an administrator. With the permission check removed: "Failed asserting that 200 is identical to 401".
+- Issue #18 is closed by this.
+
+**Status:** Accepted. Revises D-080.
+
+### D-095 · A reindex owed to a site without WooCommerce is asked for when the queue is there · 2026-11-10
+
+Zach on 10 November 2026, of the review's sixth question: "if this is best practice, do it". It is: a site that repairs itself does not depend on someone finding a button.
+
+- **Activation leaves a mark where it has no queue:** the option `cbuild_reindex_owed`. Without WooCommerce there are no Action Scheduler tables, and the plugin hooks nothing until WooCommerce is back.
+- **The first request that finds the queue asks, then removes the mark** (`Hooks\InstallHooks::askWhenOwed()`, on `init`). Asked first: a request that dies between the two asks again, and a reindex asked for twice starts once.
+- **A site that owes nothing spends no query on this.** The mark is autoloaded and exists only while owed, and it is looked for in the options WordPress has already loaded (`wp_load_alloptions()`), since `get_option()` on an option that is absent queries the table on every request. `InstallHooksTest::test_a_current_version_costs_no_query_on_any_request` holds it; with `get_option()` in its place: "Failed asserting that 1 is identical to 0".
+- **While it is owed,** each request looks for the queue's three tables, three small queries, until they are there.
+- **The logic is two static methods on `Install\Activator`,** which mutation testing already leaves out for the reason D-087 gives, so the list of exclusions does not grow.
+
+**Status:** Accepted. Revises D-082's "the button covers it".
+

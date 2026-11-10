@@ -48,4 +48,4 @@ Code that writes the option itself is held to the same shape: `schema/settings.j
 
 ## Options beside the settings
 
-The plugin keeps six options of its own, which no screen edits: `cbuild_db_version`, `cbuild_migrations`, `cbuild_migration_lock` and, from 0.3.0, `cbuild_reindex_state`, `cbuild_import_state` and `cbuild_import_rows`. [HOOKS.md](HOOKS.md) says what each holds, and [PRIVACY.md](PRIVACY.md) lists everything stored.
+The plugin keeps seven options of its own, which no screen edits: `cbuild_db_version`, `cbuild_migrations`, `cbuild_migration_lock` and, from 0.3.0, `cbuild_reindex_state`, `cbuild_reindex_owed`, `cbuild_import_state` and `cbuild_import_rows`. [HOOKS.md](HOOKS.md) says what each holds, and [PRIVACY.md](PRIVACY.md) lists everything stored.

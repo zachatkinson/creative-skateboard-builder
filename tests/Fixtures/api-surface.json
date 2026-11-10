@@ -16,6 +16,7 @@
         "cbuild_import_state",
         "cbuild_migration_lock",
         "cbuild_migrations",
+        "cbuild_reindex_owed",
         "cbuild_reindex_state",
         "cbuild_settings"
     ],
@@ -47,7 +48,9 @@
         "attribute_mapping",
         "source_order"
     ],
-    "rest_routes": [],
+    "rest_routes": [
+        "cbuild/v1/site-health/catalogue-check"
+    ],
     "abilities": [
         "creative-skateboard-builder/catalogue-check"
     ],
