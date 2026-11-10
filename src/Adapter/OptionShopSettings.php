@@ -45,7 +45,45 @@ final class OptionShopSettings implements ShopSettings {
 	 * @return list<AttributeMap>
 	 */
 	public function attributeMapping(): array {
-		$lines   = $this->stored()[ Options::SETTING_ATTRIBUTE_MAPPING ] ?? null;
+		return self::mapping( $this->stored() );
+	}
+
+	/**
+	 * What of a stored settings value the index is built from.
+	 *
+	 * @since 0.4.0
+	 *
+	 * @param mixed $stored The option's value, or anything else when there was none.
+	 * @return array{0: list<array<string, string>>, 1: list<string>}
+	 */
+	public function indexedFrom( mixed $stored ): array {
+		return self::indexed( $stored );
+	}
+
+	/**
+	 * The same, without a shop: the unit tests' settings read a stored value through it.
+	 *
+	 * @since 0.4.0
+	 *
+	 * @param mixed $stored The option's value.
+	 * @return array{0: list<array<string, string>>, 1: list<string>}
+	 */
+	public static function indexed( mixed $stored ): array {
+		$stored = is_array( $stored ) ? $stored : array();
+		return array(
+			array_map( static fn( AttributeMap $map ): array => $map->toArray(), self::mapping( $stored ) ),
+			SourceOrder::read( $stored[ Options::SETTING_SOURCE_ORDER ] ?? null )->names(),
+		);
+	}
+
+	/**
+	 * The mapping's lines that read, from the option.
+	 *
+	 * @param array<mixed> $stored The option.
+	 * @return list<AttributeMap>
+	 */
+	private static function mapping( array $stored ): array {
+		$lines   = $stored[ Options::SETTING_ATTRIBUTE_MAPPING ] ?? null;
 		$mapping = array();
 		foreach ( is_array( $lines ) ? $lines : array() as $line ) {
 			$map = AttributeMap::read( $line );

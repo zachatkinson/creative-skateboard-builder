@@ -49,4 +49,15 @@ interface ShopSettings {
 	 * @param SourceOrder        $order   Which source wins.
 	 */
 	public function save( array $mapping, SourceOrder $order ): void;
+
+	/**
+	 * What of a stored settings value the index is built from: the mapping's lines and the order's names, each as
+	 * the settings read them, so a default left out and a default written compare as the same.
+	 *
+	 * @since 0.4.0
+	 *
+	 * @param mixed $stored The option's value, or anything else when there was none.
+	 * @return array{0: list<array<string, string>>, 1: list<string>}
+	 */
+	public function indexedFrom( mixed $stored ): array;
 }

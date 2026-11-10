@@ -51,8 +51,8 @@ final class IndexHooks implements Hookable {
 		add_action( 'deleted_post', array( $this, 'deleted' ), 10, 2 );
 		add_action( 'edited_term', array( $this, 'termEdited' ), 10, 3 );
 		add_action( 'delete_term', array( $this, 'termEdited' ), 10, 3 );
-		add_action( 'add_option_' . Options::SETTINGS, array( $this->jobs, 'requestReindex' ), 10, 0 );
-		add_action( 'update_option_' . Options::SETTINGS, array( $this->jobs, 'requestReindex' ), 10, 0 );
+		add_action( 'add_option_' . Options::SETTINGS, array( $this, 'settingsAdded' ), 10, 2 );
+		add_action( 'update_option_' . Options::SETTINGS, array( $this->jobs, 'settingsChanged' ), 10, 2 );
 		add_action( Options::JOB_INDEX_PART, array( $this->jobs, 'indexPart' ), 10, 2 );
 		add_action( Options::JOB_REINDEX, array( $this->jobs, 'runReindex' ), 10, 0 );
 	}
@@ -82,5 +82,18 @@ final class IndexHooks implements Hookable {
 	public function termEdited( int $term, int $ttId, string $taxonomy ): void {
 		unset( $term, $ttId );
 		$this->jobs->termChanged( $taxonomy );
+	}
+
+	/**
+	 * The settings saved for the first time: until now the index was built with no mapping and the default order.
+	 *
+	 * @since 0.4.0
+	 *
+	 * @param mixed $option The option's name.
+	 * @param mixed $value  What was saved.
+	 */
+	public function settingsAdded( mixed $option, mixed $value ): void {
+		unset( $option );
+		$this->jobs->settingsChanged( array(), $value );
 	}
 }

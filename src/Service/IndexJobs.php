@@ -130,6 +130,22 @@ final class IndexJobs implements Reindex {
 	}
 
 	/**
+	 * The settings were saved: ask for a reindex when what the index reads from them changed, which is the mapping
+	 * and the order of the sources. The option's other keys change nothing a part's row holds. Each side is read as
+	 * the settings are read, so a default left out and a default written are the same.
+	 *
+	 * @since 0.4.0
+	 *
+	 * @param mixed $before The option as it was, or anything else when it was not there.
+	 * @param mixed $after  The option as it is.
+	 */
+	public function settingsChanged( mixed $before, mixed $after ): void {
+		if ( $this->settings->indexedFrom( $before ) !== $this->settings->indexedFrom( $after ) ) {
+			$this->requestReindex();
+		}
+	}
+
+	/**
 	 * The job for one product: index the parts it stands for, and drop its own rows when it is not one of them (a
 	 * variable product, or a product that is gone). A failure is logged with the product and tried again, a few
 	 * times, each after a longer wait; then it is thrown, so the queue records the action as failed.

@@ -362,6 +362,10 @@ final class IndexJobsTest extends IntegrationTestCase {
 		$run = $jobs->state()?->run;
 		update_option( Options::SETTINGS, array( Options::SETTING_ATTRIBUTE_MAPPING => $mapping, Options::SETTING_SOURCE_ORDER => array( 'attribute', 'field', 'table' ) ) );
 		self::assertSame( $run, $jobs->state()?->run, 'saved as they were: WordPress writes nothing, and nothing is asked' );
+		// Issue #20: a key the index does not read is saved, and nothing is asked.
+		update_option( Options::SETTINGS, array( Options::SETTING_ATTRIBUTE_MAPPING => $mapping, Options::SETTING_SOURCE_ORDER => array( 'attribute', 'field', 'table' ), 'cbuild_test_other' => 60 ) );
+		self::assertSame( 60, get_option( Options::SETTINGS )['cbuild_test_other'] );
+		self::assertSame( $run, $jobs->state()?->run, 'a setting the index is not built from' );
 
 		wp_update_term( $other['term_id'], 'product_cat', array( 'name' => 'Boards' ) );
 		self::assertSame( ReindexState::DONE, $jobs->state()?->phase, 'a category is not a mapped attribute' );

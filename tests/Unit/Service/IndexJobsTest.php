@@ -477,4 +477,32 @@ final class IndexJobsTest extends TestCase {
 		$this->jobs->termChanged( 'pa_width' );
 		self::assertSame( 1, $this->jobs->state()?->run );
 	}
+
+	// Issue #20: milestone 4 adds keys the index does not read to the option the mapping and the order are in.
+	public function test_a_settings_save_reindexes_only_when_the_mapping_or_the_order_changed(): void {
+		$line  = array( 'attribute' => 'pa_width', 'spec' => 'deck_width', 'unit' => 'in' );
+		$saved = array(
+			'attribute_mapping' => array( $line ),
+			'source_order'      => array( 'table', 'field', 'attribute' ),
+		);
+		$this->jobs->settingsChanged( $saved, $saved + array( 'rate_limit' => 60 ) );
+		$this->jobs->settingsChanged( $saved + array( 'rate_limit' => 60 ), $saved + array( 'rate_limit' => 120 ) );
+		self::assertNull( $this->jobs->state(), 'a key the index does not read' );
+		// What reads the same is the same: the default order left out or written, a line the reader drops.
+		$this->jobs->settingsChanged( array( 'attribute_mapping' => array( $line ) ), $saved );
+		$this->jobs->settingsChanged( $saved, array( 'attribute_mapping' => array( $line, array( 'attribute' => '', 'spec' => 'deck_width' ) ) ) );
+		$this->jobs->settingsChanged( 'not settings', array() );
+		$this->jobs->settingsChanged( array(), null );
+		self::assertNull( $this->jobs->state() );
+
+		$this->jobs->settingsChanged( $saved, array( 'source_order' => array( 'field', 'table', 'attribute' ) ) + $saved );
+		self::assertSame( 1, $this->jobs->state()?->run, 'the order' );
+		$this->jobs->settingsChanged( $saved, array( 'attribute_mapping' => array( array( 'unit' => 'mm' ) + $line ) ) + $saved );
+		self::assertSame( 2, $this->jobs->state()?->run, 'a line\'s unit' );
+		$this->jobs->settingsChanged( $saved, array( 'attribute_mapping' => array() ) + $saved );
+		self::assertSame( 3, $this->jobs->state()?->run, 'a line removed' );
+		$this->jobs->settingsChanged( array(), $saved );
+		self::assertSame( 4, $this->jobs->state()?->run, 'the settings saved for the first time, with a mapping' );
+		self::assertTrue( $this->queue->isPending( IndexJobs::JOB_REINDEX ) );
+	}
 }

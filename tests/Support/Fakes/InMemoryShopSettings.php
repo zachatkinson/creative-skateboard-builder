@@ -41,4 +41,8 @@ final class InMemoryShopSettings implements ShopSettings {
 		$this->order   = $order;
 		++$this->saves;
 	}
+
+	public function indexedFrom( mixed $stored ): array {
+		return \CreativeBranding\SkateboardBuilder\Adapter\OptionShopSettings::indexed( $stored );
+	}
 }
