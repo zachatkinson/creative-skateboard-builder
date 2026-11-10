@@ -8,7 +8,7 @@ The spec's budgets are tests: a build fails when one is missed. The numbers from
 | --- | --- | --- | --- |
 | The state route's server time, p95, 500 candidate parts in a slot | Under 80 ms | `composer test:benchmark` and the integration suite | Milestone 4 |
 | Adding a 7-part build to the cart | Under 300 ms | The integration suite | Milestone 5 |
-| The fit engine with 500 candidates | Grows linearly with options times rules | `composer test:benchmark` | Milestone 2 |
+| The fit engine with 500 candidates | The slowest slot under 40 ms, half the state route's budget; four times the candidates in under six times the time | `composer test:benchmark` (`FitEngineBenchmarkTest`) | Milestone 2 |
 | Rebuilding the specs index for 2,000 parts | Recorded; in jobs of 100 | The integration suite | Milestone 3 |
 | The builder's script, compressed | Under 15 kB | `npm run budget` | Milestone 6 |
 | The builder's styles, compressed | Under 10 kB | `npm run budget` | Milestone 6 |
@@ -19,7 +19,7 @@ The spec's budgets are tests: a build fails when one is missed. The numbers from
 | Queries the plugin adds to a request with the schema current | 0 | The integration suite (`InstallHooksTest`) | Milestone 1 |
 | Requests for a file of the plugin's on a page without a builder | 0 | Playwright (`smoke.spec.ts`) | Milestone 1 |
 
-Until its first benchmark exists, `composer test:benchmark` says so and passes, and `npm run budget` measures an empty `build/`. Each was broken on purpose to see it fail (`docs/reviews/M1.md`, Deliberate breaks).
+`composer test:benchmark` runs with Xdebug off, as a shop's PHP does. Until the builder's assets exist, `npm run budget` measures an empty `build/`. Each was broken on purpose to see it fail (`docs/reviews/M1.md`, Deliberate breaks).
 
 ## v0.1.0
 
@@ -39,3 +39,19 @@ The plugin draws nothing yet, so these are the site's own numbers with the plugi
 | Plugin files requested on a shop page | 0 | 0 |
 
 The plugin's presence costs nothing measurable: 5 ms between the two debug-mode medians is inside the run-to-run spread. The site alone leaves about 140 ms under the LCP budget on this machine and theme, and one run of the three was over it (2,647 ms, the first after the assets changed). That is what the builder page has to fit in from milestone 6.
+
+## v0.2.0
+
+Machine: Apple M1 Max, PHP 8.5.12, Xdebug off. 9 November 2026.
+
+The fit engine alone, with no WordPress: every slot of a generated catalogue judged against a complete build, the quickest of five runs. The catalogue has a shop's faults in it (parts that warn, are blocked, lack a spec or a set size, or are sold out), so the hidden groups are counted too.
+
+| Candidates a slot | The slowest slot (grip) | All seven slots |
+| --- | --- | --- |
+| 500 | 9.3 ms | 55.5 ms |
+| 1,000 | 17.8 ms | 109.3 ms |
+| 2,000 | 36.3 ms | 224.9 ms |
+
+Four times the candidates took 4.05 times as long, so the time grows in step with them. The state route judges one slot a request, so at 500 candidates the engine takes about 9 ms of the route's 80 ms here. With Xdebug loaded the same run takes 23 ms for that slot, which is why the benchmark turns it off.
+
+The test's two limits were each broken on purpose and seen to fail: the growth limit set to 3.5 ("4.04 is less than 3.5"), and the slot's budget set to 4 ms.

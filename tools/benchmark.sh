@@ -8,4 +8,5 @@ if ! grep -rqE "Group\( *'benchmark' *\)|@group +benchmark" tests --include='*.p
 	echo "No test is in the benchmark group yet; nothing to measure."
 	exit 0
 fi
-exec vendor/bin/phpunit -c phpunit.xml.dist --testsuite unit --group benchmark "$@"
+# Xdebug is off for the run: a shop does not load it, and loaded it more than doubles the engine's time.
+exec php -d xdebug.mode=off vendor/bin/phpunit -c phpunit.xml.dist --testsuite unit --group benchmark "$@"
