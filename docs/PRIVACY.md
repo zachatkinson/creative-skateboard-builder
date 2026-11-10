@@ -51,4 +51,11 @@ Neither carries the site's address, the version of WordPress or WooCommerce, or 
 
 ## Who sees it
 
-Only people who can already read the site's database or WooCommerce's logs. No screen of the plugin's shows any of it in 0.1.0.
+Only people who can already read the site's database or WooCommerce's logs, and from 0.3.0:
+
+- **Who can manage WooCommerce** (`manage_woocommerce`): the Builder settings, the makers' charts, the specs sheet out and in, the Catalogue check on its screen and through the ability `creative-skateboard-builder/catalogue-check`, and the name of the manager whose import waits.
+- **Who can edit products** (`edit_products`): a product's Part specs.
+- **Who can see Site Health** (`view_site_health_checks`, an administrator): the two tests and the Info tab's section, which holds the plugin's versions, the source order, counts and the index's state. None of it is marked private, since none of it is about a person or would help someone attack the site.
+- **Who has a shell on the server:** the `wp cbuild` commands. A sheet written by `wp cbuild specs export <file>` is a file where that person put it; the plugin keeps no record of it and uninstall does not look for it.
+
+Specs, charts and findings describe products. None of these screens shows a customer, an order or an address.

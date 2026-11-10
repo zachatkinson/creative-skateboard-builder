@@ -45,6 +45,7 @@ It is the agency's showpiece, built to the twelve-dimension audit in `docs/AUDIT
 - `composer test:coverage`: unit tests with the domain's floors: 100 % of lines and branches in `src/Domain` (Xdebug's path coverage, since pcov measures lines only)
 - `composer test:coverage:all`: the unit and integration suites' line coverage merged, with the floor: 95 % of all of `src/`, each file's direct-access guard left out (D-050, D-061). Needs the integration site, which `npm run env:start` starts with Xdebug in coverage mode
 - `composer test:benchmark`: the server budgets
+- `composer test:benchmark:integration`: `tests/Benchmark` in the integration site with Xdebug off: 2,000 parts indexed, exported, checked and dry-run, each inside a request
 - `composer infection`: 100 % MSI on `src/Domain`, 95 % elsewhere. In the domain, a mutant only static analysis catches must be in `tools/infection-static-allowed.txt` (D-063)
 - `composer api:check`: the public API against `docs/HOOKS.md`, `tests/Fixtures/api-surface.json` and the changelog's entry for each item's version. `composer api:snapshot` rewrites the snapshot; do it, `HOOKS.md` and the changelog in the same commit as the change
 - `composer check`: lint, analyse, arch, gates, unit tests and api:check

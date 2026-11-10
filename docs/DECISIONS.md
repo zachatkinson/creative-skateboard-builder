@@ -967,3 +967,13 @@ The table is milestone 1's and does not change. These are the choices the reposi
 - **The sibling plugins have no Site Health code,** so this follows WordPress's own filters: `site_status_tests` (`wp-admin/includes/class-wp-site-health.php:3047`) and `debug_information` (`wp-admin/includes/class-wp-debug-data.php:135`).
 
 **Status:** Accepted.
+
+### D-081 · The specs benchmark runs on real WordPress, and one query a product stays · 2026-11-10
+
+- **`composer test:benchmark:integration` runs `tests/Benchmark` in the integration site with Xdebug off** (`tools/benchmark-integration.sh`). The roadmap puts the 2,000-part reindex in the integration suite; that suite runs with coverage on in CI, which would time Xdebug. The directory is outside the suite's, so the suite's runs and its coverage are as they were. CI runs it on the newest leg, on the site that leg already has up: seconds, and no job of its own.
+- **It measures four things at 2,000 parts,** each with WordPress's cache emptied first: the reindex batch by batch, the export, the Catalogue check, and a 5,000-row file read and planned. The roadmap asks for the reindex to be recorded; the other three answer inside a request (D-076, D-077), so each has a ceiling: 10 seconds, a third of PHP's usual limit, on a machine several times slower than the one that measured 0.5 s.
+- **Query ceilings are set from what the work is:** one query a product and a page's own (`parts × 1.1 + 60`), and under 400 for a reindex batch of 100. A change that adds a query a part fails the test.
+- **The one query a product is WooCommerce's and stays.** Building a `WC_Product` reads its meta with a query of its own (`WC_Data_Store_WP::read_meta()`, WooCommerce 11.2.2, `includes/data-stores/class-wc-data-store-wp.php:83`), which the posts' meta cache does not serve; WooCommerce keeps the answer in the object cache where a shop has a persistent one. `get_post_meta()` on primed IDs would be one query a page, and would read past WooCommerce's CRUD, which the project's rules forbid and which a later product store would break. At 0.15 ms a query it is 0.3 s in 2,000 parts.
+
+**Status:** Accepted.
+

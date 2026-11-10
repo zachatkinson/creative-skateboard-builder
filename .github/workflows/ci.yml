@@ -246,6 +246,10 @@ jobs:
         run: composer test:coverage:all
       - run: composer test:integration
         if: matrix.leg == 'oldest'
+      # Seconds on a site that is already up: 2,000 parts indexed, exported, checked and dry-run, each inside a request.
+      - name: The specs benchmark at 2,000 parts (Xdebug off)
+        if: matrix.leg == 'newest'
+        run: composer test:benchmark:integration
       - name: The six variants (two database servers, HPOS off and syncing, object cache, multisite)
         if: matrix.leg == 'variants'
         run: bash tools/integration-variants.sh
