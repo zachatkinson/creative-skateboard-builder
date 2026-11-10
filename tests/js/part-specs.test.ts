@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { named, open, start } from '../../assets/src/admin/part-specs';
+import { field, named, open, start } from '../../assets/src/admin/part-specs';
 import type { Query } from '../../assets/src/admin/part-specs';
 
 /**
@@ -68,7 +68,7 @@ function screen( rows = '', box = true ) {
 			<li><a href="#variable_product_options">Variations</a></li>
 		</ul>
 		<div ${ box ? 'id="woocommerce-product-data"' : '' }>
-			<div id="cbuild_part_specs"><input type="hidden" value="x"><input id="panel-first"><select id="panel-second"></select></div>
+			<div id="cbuild_part_specs"><input type="hidden" value="x"><input id="panel-first"><select id="panel-second"></select><details id="group"><summary>Deck</summary><input id="cbuild-spec-deck-width"></details><select id="cbuild-spec-chart"></select></div>
 			<div id="variable_product_options">${ rows }</div>
 		</div>`;
 }
@@ -116,6 +116,75 @@ describe( 'what an address names', () => {
 		] ) {
 			expect( [ hash, named( hash ) ] ).toEqual( [ hash, null ] );
 		}
+	} );
+} );
+
+describe( 'a field of the panel', () => {
+	// Issue #19: a value that was not saved is named in a notice, and the notice is a link to its field.
+	it( "is named by its ID, and a variation's field or anything else is not", () => {
+		expect( field( '#cbuild-spec-deck-width' ) ).toBe(
+			'cbuild-spec-deck-width'
+		);
+		expect( field( '#cbuild-spec-chart' ) ).toBe( 'cbuild-spec-chart' );
+		for ( const hash of [
+			'',
+			'#cbuild-spec-',
+			'#cbuild-spec-3-deck-width',
+			'#cbuild-spec-deck_width',
+			'#cbuild-spec-deck-',
+			'#cbuild-spec--deck',
+			'cbuild-spec-chart',
+			'#cbuild-spec-chart ',
+			'x#cbuild-spec-chart',
+			'#cbuild_part_specs',
+		] ) {
+			expect( [ hash, field( hash ) ] ).toEqual( [ hash, null ] );
+		}
+	} );
+
+	it( 'has its tab and its group opened, and is scrolled and moved to', () => {
+		screen();
+		const seen = clicks();
+		const { $, heard } = jQuery();
+		const own = document.getElementById(
+			'cbuild-spec-deck-width'
+		) as HTMLElement;
+		const focused: unknown[] = [];
+		const native = own.focus.bind( own );
+		own.focus = ( how?: FocusOptions ) => {
+			focused.push( how );
+			native( how );
+		};
+		open( document, '#cbuild-spec-deck-width', $ );
+		expect( seen ).toEqual( [ '#cbuild_part_specs' ] );
+		expect( document.getElementById( 'group' ) ).toHaveProperty(
+			'open',
+			true
+		);
+		expect( scrolled ).toEqual( [ [ own, { block: 'center' } ] ] );
+		expect( focus() ).toBe( own );
+		expect( focused ).toEqual( [ { preventScroll: true } ] );
+		expect( heard ).toEqual( [] );
+	} );
+
+	it( 'in no group is moved to all the same', () => {
+		screen();
+		const { $ } = jQuery();
+		open( document, '#cbuild-spec-chart', $ );
+		expect( focus()?.id ).toBe( 'cbuild-spec-chart' );
+		expect( document.getElementById( 'group' ) ).toHaveProperty(
+			'open',
+			false
+		);
+	} );
+
+	it( 'that the screen does not have opens nothing', () => {
+		screen();
+		const seen = clicks();
+		const { $ } = jQuery();
+		open( document, '#cbuild-spec-wheelbase', $ );
+		expect( seen ).toEqual( [] );
+		expect( scrolled ).toEqual( [] );
 	} );
 } );
 
@@ -309,11 +378,35 @@ describe( 'the script', () => {
 			jQuery: spy,
 			document,
 			location: { hash: '#cbuild_part_specs' },
+			addEventListener: () => undefined,
 		} as unknown as Window & { jQuery?: Query } );
 		expect( ready ).toHaveLength( 1 );
 		expect( seen ).toEqual( [] );
 		ready[ 0 ]?.();
 		expect( seen ).toEqual( [ '#cbuild_part_specs' ] );
+	} );
+
+	it( 'opens what the address names each time it changes', () => {
+		screen();
+		const seen = clicks();
+		const { $, ready } = jQuery();
+		const location = { hash: '' };
+		const heard: Record< string, () => void > = {};
+		start( {
+			jQuery: $,
+			document,
+			location,
+			addEventListener: ( event: string, run: () => void ) => {
+				heard[ event ] = run;
+			},
+		} as unknown as Window & { jQuery?: Query } );
+		ready[ 0 ]?.();
+		expect( seen ).toEqual( [] );
+		location.hash = '#cbuild-spec-deck-width';
+		heard.hashchange?.();
+		expect( seen ).toEqual( [ '#cbuild_part_specs' ] );
+		expect( focus()?.id ).toBe( 'cbuild-spec-deck-width' );
+		expect( Object.keys( heard ) ).toEqual( [ 'hashchange' ] );
 	} );
 
 	it( 'does nothing where jQuery is not loaded', () => {
@@ -335,6 +428,7 @@ describe( 'the script', () => {
 			jQuery: $,
 			document,
 			location: { hash: '#cbuild_variation_7' },
+			addEventListener: () => undefined,
 		} as unknown as Window & { jQuery?: Query } );
 		ready[ 0 ]?.();
 		expect( heard ).toHaveLength( 1 );

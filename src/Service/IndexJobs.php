@@ -81,7 +81,9 @@ final class IndexJobs implements Reindex {
 	) {}
 
 	/**
-	 * A product or variation was saved: queue its job. Nothing is read here, so a save costs one queue check.
+	 * A product or variation was saved: queue its job. Nothing is read here, so a save costs one queue check. A
+	 * running reindex is not told, as it is of a delete: a save moves no page under it, and this job indexes the
+	 * part whichever of the two runs last (D-096).
 	 *
 	 * @since 0.3.0
 	 *

@@ -284,6 +284,22 @@ final class IndexJobsTest extends TestCase {
 		self::assertSame( $saves, $this->store->saves );
 	}
 
+	// Issue #19, D-096: a save is not a delete. It moves no page, and its own job indexes the part.
+	public function test_a_save_under_a_running_reindex_queues_its_own_job_and_asks_for_no_second_pass(): void {
+		$this->parts( ...range( 1, 150 ) );
+		$this->jobs->requestReindex();
+		unset( $this->queue->pending['cbuild_reindex'] );
+		$this->jobs->runReindex();
+		$this->jobs->runReindex();
+		self::assertSame( ReindexState::CATALOGUE, $this->jobs->state()?->phase );
+		$saves = $this->store->saves;
+
+		$this->jobs->changed( 50 );
+
+		self::assertFalse( $this->jobs->state()?->again );
+		self::assertSame( $saves, $this->store->saves, 'the reindex is not told' );
+	}
+
 	public function test_a_delete_under_a_running_reindex_makes_it_pass_once_more(): void {
 		$this->parts( ...range( 1, 150 ) );
 		$this->jobs->requestReindex();

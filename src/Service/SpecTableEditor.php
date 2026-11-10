@@ -9,6 +9,7 @@ declare( strict_types=1 );
 
 namespace CreativeBranding\SkateboardBuilder\Service;
 
+use CreativeBranding\SkateboardBuilder\Domain\Spec\StoredSpecs;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\Origin;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\Reading;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\SpecKey;
@@ -50,8 +51,8 @@ final class SpecTableEditor {
 	public const NAME_MISSING   = 'name_missing';
 	public const NAME_LONG      = 'name_long';
 	public const NAME_TAKEN     = 'name_taken';
-	public const TABLE_MISSING  = 'table_missing';
-	public const SIZE_MISSING   = 'size_missing';
+	public const TABLE_MISSING  = StoredSpecs::TABLE_MISSING;
+	public const SIZE_MISSING   = StoredSpecs::SIZE_MISSING;
 	public const SIZE_LONG      = 'size_long';
 	public const SIZE_DUPLICATE = 'size_duplicate';
 	public const SOURCE_LONG    = 'source_long';

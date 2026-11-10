@@ -17,6 +17,7 @@ use CreativeBranding\SkateboardBuilder\Service\IndexJobs;
 use CreativeBranding\SkateboardBuilder\Service\ReindexState;
 use CreativeBranding\SkateboardBuilder\Service\SpecExport;
 use CreativeBranding\SkateboardBuilder\Service\SpecImport;
+use CreativeBranding\SkateboardBuilder\Service\SpecSheet;
 use CreativeBranding\SkateboardBuilder\Support\Options;
 use CreativeBranding\SkateboardBuilder\Tests\Support\IntegrationTestCase;
 
@@ -47,6 +48,7 @@ final class SpecsBenchmarkTest extends IntegrationTestCase {
 	 * @return list<int>
 	 */
 	private static function parts(): array {
+		global $wpdb;
 		$ids = array();
 		for ( $at = 0; $at < self::PARTS; $at++ ) {
 			$id = (int) wp_insert_post(
@@ -57,6 +59,14 @@ final class SpecsBenchmarkTest extends IntegrationTestCase {
 				)
 			);
 			update_post_meta( $id, '_sku', 'BENCH-' . $at );
+			// WooCommerce finds a product by its SKU in its lookup table, which its own save fills.
+			$wpdb->insert( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- A test's fixture.
+				$wpdb->wc_product_meta_lookup,
+				array(
+					'product_id' => $id,
+					'sku'        => 'BENCH-' . $at,
+				)
+			);
 			update_post_meta(
 				$id,
 				Options::META_SPECS,
@@ -129,6 +139,48 @@ final class SpecsBenchmarkTest extends IntegrationTestCase {
 		self::assertLessThan( self::REQUEST, $took, 'the check answers in one request (D-077)' );
 		self::assertLessThan( self::PARTS * 1.1 + 60, $queries );
 
+		// The check again with something to find (#19): one part in ten holds a width that cannot be read, so the
+		// check builds a finding for each as well as reading it.
+		$wrong = array_values( array_filter( $ids, static fn( int $at ): bool => 0 === $at % 10, ARRAY_FILTER_USE_KEY ) );
+		foreach ( $wrong as $id ) {
+			update_post_meta( $id, Options::META_SPECS, array( 'deck_width' => 'wide' ) );
+		}
+		[ $took, $queries, $found ] = self::timed( fn() => $this->service( CatalogueCheck::class )->run() );
+		self::say( sprintf( 'check with findings: %.2f s, %d queries, %d findings in %d parts', $took, $queries, count( (array) $found ), count( $wrong ) ) );
+		self::assertGreaterThanOrEqual( count( $wrong ), count( (array) $found ) );
+		self::assertLessThan( self::REQUEST, $took, 'the check answers in one request when it finds something too' );
+		self::assertLessThan( self::PARTS * 1.1 + 60, $queries, 'a finding costs no query of its own' );
+		foreach ( $wrong as $id ) {
+			update_post_meta(
+				$id,
+				Options::META_SPECS,
+				array(
+					'deck_width'  => '8.0000',
+					'deck_length' => '32.0000',
+					'wheelbase'   => '14.2500',
+				)
+			);
+		}
+
+		// A file matched by SKU (#19): 2,000 rows, each SKU looked up, read and planned as the screen does.
+		$text = "sku,deck_width\n";
+		foreach ( array_keys( $ids ) as $at ) {
+			$text .= 'BENCH-' . $at . ",8.5\n";
+		}
+		$import               = $this->service( SpecImport::class );
+		[ $took, $queries ]   = self::timed( static fn() => $import->read( $text, SpecSheet::SKU ) );
+		$state                = $import->state();
+		self::assertInstanceOf( ImportState::class, $state );
+		[ $planned, $asked2, $plan ] = self::timed( static fn() => $import->plan( $state, 0, $state->total ) );
+		$summary              = SpecImport::summary( (array) $plan );
+		self::say( sprintf( 'dry run by SKU: %d rows read in %.2f s (%d queries), planned in %.2f s (%d queries), %d would change', self::PARTS, $took, $queries, $planned, $asked2, count( $summary['changed'] ) ) );
+		self::assertSame( array(), $summary['refused'], 'every SKU names its part' );
+		self::assertSame( self::PARTS, count( $summary['changed'] ) + $summary['same'] );
+		self::assertLessThan( self::REQUEST, $took + $planned, 'a file matched by SKU is read and shown in one request' );
+		self::assertLessThan( self::PARTS * 1.1 + 60, $queries, 'one query a SKU to find its product' );
+		self::assertLessThan( self::PARTS * 1.1 + 60, $asked2, 'and the plan asks for no SKU again' );
+		$import->discard();
+
 		// The largest file an import takes: 5,000 rows, 2,000 of them parts, read and planned whole as the screen does.
 		$text = "id,sku,deck_width\n";
 		foreach ( $ids as $at => $id ) {
@@ -137,7 +189,6 @@ final class SpecsBenchmarkTest extends IntegrationTestCase {
 		for ( $at = 0; $at < SpecImport::MAX_ROWS - self::PARTS; $at++ ) {
 			$text .= ( 90000000 + $at ) . ",,8.5\n";
 		}
-		$import               = $this->service( SpecImport::class );
 		[ $took, $queries ]   = self::timed( static fn() => $import->read( $text ) );
 		$state                = $import->state();
 		self::assertInstanceOf( ImportState::class, $state );

@@ -1167,3 +1167,43 @@ Zach on 10 November 2026, of the review's sixth question: "if this is best pract
 
 **Status:** Accepted. Revises D-082's "the button covers it".
 
+### D-096 · A save under a running reindex is not treated as a delete · 2026-11-10
+
+The milestone 3 audit noted that a delete during the reindex's catalogue pass asks for a second pass and a save does not (issue #19). They stay unlike, on purpose.
+
+- **A delete moves a page.** The catalogue pass walks the shop's products a page at a time, so a product removed from a page already walked pulls one from the next page back into it, and that one would be missed. The second pass picks it up.
+- **A save moves nothing.** The product keeps its place, and the save's own job indexes it. Whichever of the job and the pass runs last writes the same rows.
+- **Telling the reindex of every save would cost a read on each save,** where a save now costs one queue check, and WooCommerce saves a product each time its stock changes. A busy shop could also keep a reindex passing again for as long as it sells.
+- **Test:** `IndexJobsTest::test_a_save_under_a_running_reindex_queues_its_own_job_and_asks_for_no_second_pass` holds it. It passed when written, since it pins what the code already did.
+
+**Status:** Accepted.
+
+### D-097 · Decimals are read by the domain's parser, not `wc_format_decimal()` · 2026-11-10
+
+`docs/SPEC.md` (Part specs) and `docs/STANDARDS.md` say a field's decimal is read with `wc_format_decimal()`. The plugin does not call it. Milestone 3's plan noted the difference in its table of installed source, and the audit asked for it here (issue #19).
+
+- **`wc_format_decimal()` cannot read a fraction or say what was wrong.** It strips what it does not know and returns a number (WooCommerce 11.2.2, `includes/wc-formatting-functions.php:290`): run in the integration site on 10 November 2026, `8 1/4` comes back as `814` and `wide` as an empty string, with no reason for either. The spec asks for 8.25, 8,25 and 8 1/4 to be the same, and for a refused value to be named.
+- **The domain's parser takes the shop's separator as an argument:** `wc_get_price_decimal_separator()` (`includes/wc-formatting-functions.php:557`), the same setting `wc_format_decimal()` reads. So the shop's separator is honoured, the domain stays free of WordPress, and one parser reads the panel, the charts, the import and the command line.
+- **Each field is still sanitised first** with `sanitize_text_field()`.
+- `PartSpecsPanelTest`, `SpecTablesScreenTest` and `ImportScreenTest` each save with the separator set to a comma.
+
+**Status:** Accepted. A difference from `docs/SPEC.md`'s wording, not from what it asks for.
+
+### D-098 · The rest of issue #19's minors · 2026-11-10
+
+Milestone 3's audit listed thirteen minors as the first work of milestone 4.
+
+- **The settings screen** prints a problem with the order under the order alone, and the mapping's own problems in one element with one id.
+- **The Info tab** shows the index's state in words, with the code as its `debug` value, which is what Site Health copies to the clipboard. The ability's schema descriptions are translated.
+- **`SpecImport::summary()`** sorts a plan's rows once, for the screen, the command line and the job.
+- **`Domain\Spec\StoredSpecs::kept()`** says what a part's meta holds, and both writers store that. The product screen writes into the product WooCommerce is about to save and the import loads its own, so they stay two callers of one rule. `StoredSpecs::TABLE_MISSING` and `SIZE_MISSING` are the one home of those two codes.
+- **The API snapshot** also holds Site Health's test ids, each command's arguments and flags, the CSV's columns and a digest of each ability's output schema. The last three are held by the snapshot alone: their words are too plain to look for in `docs/HOOKS.md`. With `[--dry-run]` renamed in the command's doc comment, `composer api:check` fails on `cli_synopses`.
+- **A value the Part specs tab refuses** is named in a notice that is a link to its field. The screen's script opens the tab and the field's group and moves focus there, on load and when the address changes. A variation's notice leads to the variation, since its fields are loaded later and numbered by their place on the page.
+- **The index's and the import's services** are built when a part is saved or a job runs. `Hooks\CliHooks` still takes its commands built: WP-CLI reads a command's arguments from the object's doc comments when it is added, and the scope is the command line alone.
+- **The EXPLAIN test** hears the repository's own queries as they run, `rowsOf()` among them. With `rowsOf()` reading by a column that has no index: "Failed asserting that null is identical to 'PRIMARY'".
+- **The benchmark** runs the check on a catalogue with 200 findings and reads a 2,000-row file matched by SKU (`docs/BENCHMARK.md`).
+- **A foreground reindex** leaving its queued action was fixed in milestone 3 by `reindexNow()`.
+- **The charts' screen's permission test** sends every action as every role that may not.
+
+**Status:** Accepted.
+

@@ -62,6 +62,16 @@ final class AbilityTest extends IntegrationTestCase {
 		);
 	}
 
+	// Issue #19: the schema's descriptions were English in every language.
+	public function test_the_schemas_descriptions_are_translated_with_the_rest(): void {
+		$translate = static fn( string $translation, string $text, string $domain ): string => 'creative-skateboard-builder' === $domain ? 'fr: ' . $text : $translation;
+		add_filter( 'gettext', $translate, 10, 3 );
+		$schema = CatalogueCheckAbility::outputSchema();
+		remove_filter( 'gettext', $translate, 10 );
+		self::assertSame( 'fr: How many things the check found.', $schema['properties']['count']['description'] );
+		self::assertSame( 'fr: The findings, the first 500 where there are more.', $schema['properties']['findings']['description'] );
+	}
+
 	public function test_who_can_manage_the_shop_gets_the_checks_findings_and_no_one_else_does(): void {
 		$part    = self::lost( 'Lost' );
 		$ability = wp_get_ability( CatalogueCheckAbility::NAME );

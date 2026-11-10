@@ -245,7 +245,8 @@ final class SiteHealth implements Hookable {
 				),
 				'index'      => array(
 					'label' => __( 'Specs index', 'creative-skateboard-builder' ),
-					'value' => $index['code'],
+					'value' => Labels::index( $index['code'] ),
+					'debug' => $index['code'],
 				),
 				'failedJobs' => array(
 					'label' => __( 'Failed background jobs', 'creative-skateboard-builder' ),

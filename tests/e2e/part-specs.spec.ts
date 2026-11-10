@@ -84,7 +84,14 @@ test.describe( 'The Part specs panel', () => {
 				'Deck length was not saved: "long" is not a measurement. Type a number, or a fraction such as 8 1/4.'
 			)
 		).toBeVisible();
-		await tab( page, PANEL );
+		// The notice is a link to its field (#19): followed by keyboard, it opens the tab and lands on the field.
+		const notice = page.getByRole( 'link', {
+			name: /^Deck length was not saved/,
+		} );
+		await notice.focus();
+		await page.keyboard.press( 'Enter' );
+		await expect( page.locator( PANEL ) ).toBeVisible();
+		await expect( length ).toBeFocused();
 		await expect(
 			page
 				.locator( `${ PANEL } details` )

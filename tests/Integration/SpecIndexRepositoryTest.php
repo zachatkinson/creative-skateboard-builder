@@ -115,24 +115,33 @@ final class SpecIndexRepositoryTest extends IntegrationTestCase {
 		}
 		$wpdb->query( $wpdb->prepare( 'ANALYZE TABLE %i', Tables::specs() ) ); // phpcs:ignore
 
-		$plans = array(
-			'spec_number' => $wpdb->prepare( SpecIndexRepository::BETWEEN, Tables::specs(), 'deck_width', '8.0000', '8.2500', 500 ),
-			'spec_text'   => $wpdb->prepare( SpecIndexRepository::WITH, Tables::specs(), 'hole_pattern', 'both', 500 ),
-			'PRIMARY'     => $wpdb->prepare( 'SELECT part_id, spec, number, text FROM %i WHERE part_id IN (%d, %d, %d)', Tables::specs(), 1000, 1200, 1599 ),
-		);
-		$walk = $wpdb->get_results( 'EXPLAIN ' . $wpdb->prepare( SpecIndexRepository::AFTER, Tables::specs(), 1300, 100 ), ARRAY_A ); // phpcs:ignore
-		self::assertSame( 'PRIMARY', $walk[0]['key'], 'the reindex walks the primary key' );
-		self::assertNotSame( 'ALL', $walk[0]['type'] );
-		self::assertStringNotContainsString( 'filesort', (string) $walk[0]['Extra'] );
-		foreach ( $plans as $key => $sql ) {
+		// The SQL is the repository's own, heard as it runs: a query changed there is the query explained here (#19).
+		$ran  = array();
+		$hear = static function ( string $sql ) use ( &$ran ): string {
+			if ( str_starts_with( $sql, 'SELECT' ) && str_contains( $sql, Tables::specs() ) ) {
+				$ran[] = $sql;
+			}
+			return $sql;
+		};
+		add_filter( 'query', $hear );
+		$between = $index->partsBetween( SpecKey::DeckWidth, \CreativeBranding\SkateboardBuilder\Domain\Measure\Measure::inches( 80000 ), \CreativeBranding\SkateboardBuilder\Domain\Measure\Measure::inches( 82500 ), 500 );
+		$with    = $index->partsWith( SpecKey::HolePattern, 'both', 500 );
+		$index->specsOf( 1000, 1200, 1599 );
+		$index->rowsOf( 1200 );
+		$index->partsAfter( 1300, 100 );
+		remove_filter( 'query', $hear );
+		self::assertCount( 111, $between );
+		self::assertCount( 200, $with );
+
+		$keys = array( 'spec_number', 'spec_text', 'PRIMARY', 'PRIMARY', 'PRIMARY' );
+		self::assertCount( count( $keys ), $ran, 'one query for each read' );
+		foreach ( $ran as $at => $sql ) {
 			$plan = $wpdb->get_results( 'EXPLAIN ' . $sql, ARRAY_A ); // phpcs:ignore
-			self::assertCount( 1, $plan, $key );
-			self::assertSame( $key, $plan[0]['key'], $sql );
+			self::assertCount( 1, $plan, $sql );
+			self::assertSame( $keys[ $at ], $plan[0]['key'], $sql );
 			self::assertNotSame( 'ALL', $plan[0]['type'], 'a full scan: ' . $sql );
 			self::assertStringNotContainsString( 'filesort', (string) $plan[0]['Extra'], $sql );
 			self::assertLessThan( 1800, (int) $plan[0]['rows'], 'it reads a part of the table, not all 1,800 rows: ' . $sql );
 		}
-		self::assertCount( 111, $index->partsBetween( SpecKey::DeckWidth, \CreativeBranding\SkateboardBuilder\Domain\Measure\Measure::inches( 80000 ), \CreativeBranding\SkateboardBuilder\Domain\Measure\Measure::inches( 82500 ), 500 ) );
-		self::assertCount( 200, $index->partsWith( SpecKey::HolePattern, 'both', 500 ) );
 	}
 }

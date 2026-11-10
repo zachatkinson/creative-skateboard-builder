@@ -121,6 +121,28 @@ final class Container {
 					}
 				);
 			},
+			// The jobs and the import are built when a part is saved or a job runs, not on every request.
+			Hooks\IndexHooks::class                     => static function ( Container $c ): object {
+				return new Hooks\IndexHooks(
+					static function () use ( $c ): Service\IndexJobs {
+						return $c->get( Service\IndexJobs::class );
+					}
+				);
+			},
+			Hooks\SpecTableHooks::class                 => static function ( Container $c ): object {
+				return new Hooks\SpecTableHooks(
+					static function () use ( $c ): Service\IndexJobs {
+						return $c->get( Service\IndexJobs::class );
+					}
+				);
+			},
+			Hooks\ImportHooks::class                    => static function ( Container $c ): object {
+				return new Hooks\ImportHooks(
+					static function () use ( $c ): Service\SpecImport {
+						return $c->get( Service\SpecImport::class );
+					}
+				);
+			},
 			// The panel reads the sources, so it is built when one of its hooks fires.
 			Admin\PartSpecsHooks::class                 => static function ( Container $c ): object {
 				return new Admin\PartSpecsHooks(

@@ -9,6 +9,7 @@ declare( strict_types=1 );
 
 namespace CreativeBranding\SkateboardBuilder\Admin;
 
+use CreativeBranding\SkateboardBuilder\Domain\Spec\StoredSpecs;
 use CreativeBranding\SkateboardBuilder\Domain\Measure\MeasureError;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\Origin;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\SpecKey;
@@ -48,10 +49,10 @@ final class Sentences {
 				/* translators: 1: a spec's name. 2: a source, such as "The maker's chart". 3: a value. 4: another source. 5: its value. */
 				return sprintf( __( '%1$s: two sources disagree. %2$s says %3$s, which is used. %4$s says %5$s.', 'creative-skateboard-builder' ), $spec, $source( 'kept_from' ), $value( 'kept' ), $source( 'other_from' ), $value( 'other' ) );
 			case CatalogueCheck::UNREAD:
-				if ( 'table_missing' === ( $values['reason'] ?? '' ) ) {
+				if ( StoredSpecs::TABLE_MISSING === ( $values['reason'] ?? '' ) ) {
 					return __( 'It names a maker\'s chart that is no longer there. Choose another on its Part specs.', 'creative-skateboard-builder' );
 				}
-				if ( 'size_missing' === ( $values['reason'] ?? '' ) ) {
+				if ( StoredSpecs::SIZE_MISSING === ( $values['reason'] ?? '' ) ) {
 					/* translators: %s: a size in a maker's chart. */
 					return sprintf( __( 'It names the size "%s", which its maker\'s chart does not have.', 'creative-skateboard-builder' ), $values['text'] ?? '' );
 				}

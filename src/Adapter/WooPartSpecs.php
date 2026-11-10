@@ -116,21 +116,16 @@ final class WooPartSpecs implements PartSpecs {
 		if ( null === $product ) {
 			return;
 		}
-		if ( array() === $fields ) {
-			$product->delete_meta_data( Options::META_SPECS );
-		} else {
-			$product->update_meta_data( Options::META_SPECS, $fields );
-		}
-		if ( 0 === $table && '' === $size ) {
-			$product->delete_meta_data( Options::META_SPEC_TABLE );
-		} else {
-			$product->update_meta_data(
-				Options::META_SPEC_TABLE,
-				array(
-					'table' => $table,
-					'size'  => $size,
-				)
-			);
+		$kept = StoredSpecs::kept( $fields, $table, $size );
+		foreach ( array(
+			Options::META_SPECS      => $kept['fields'],
+			Options::META_SPEC_TABLE => $kept['named'],
+		) as $key => $value ) {
+			if ( null === $value ) {
+				$product->delete_meta_data( $key );
+			} else {
+				$product->update_meta_data( $key, $value );
+			}
 		}
 		$product->save();
 	}

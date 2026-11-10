@@ -101,6 +101,16 @@ final class ContainerTest extends TestCase {
 		self::assertContainsOnlyInstancesOf( Hookable::class, $hookables );
 	}
 
+	// Issue #19: a request that saves no part and runs no job built the index's and the import's services all the same.
+	public function test_a_request_builds_the_jobs_services_only_when_one_of_their_hooks_fires(): void {
+		$container = new Container();
+		$container->set( MigrationStore::class, new InMemoryMigrationStore() );
+		$container->hookablesFor( Scope::Everywhere );
+		foreach ( array( \CreativeBranding\SkateboardBuilder\Service\IndexJobs::class, \CreativeBranding\SkateboardBuilder\Service\SpecImport::class, \CreativeBranding\SkateboardBuilder\Service\SpecIndexer::class, \CreativeBranding\SkateboardBuilder\Port\SpecIndex::class, \CreativeBranding\SkateboardBuilder\Port\PartSpecs::class ) as $service ) {
+			self::assertFalse( $container->has( $service ), $service );
+		}
+	}
+
 	// Claude in Cowork's review of milestone 3, minor 9: mutation testing left the plugin's own scopes unpinned.
 	public function test_each_scope_builds_its_own_hookables_and_no_others(): void {
 		$scopes = array(

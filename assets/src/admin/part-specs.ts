@@ -4,6 +4,8 @@
  * field out of sight.
  *
  * - `#cbuild_part_specs` opens the Part specs tab.
+ * - `#cbuild-spec-<key>` opens the Part specs tab and the group the field is in, and moves to the field, as the
+ *   notice for a value that was not saved does.
  * - `#cbuild_variation_<id>` opens the Variations tab, then the variation once WooCommerce has loaded it, and
  *   scrolls to its fields. A variation on a later page is left to WooCommerce's own paging.
  *
@@ -48,6 +50,15 @@ export function named( hash: string ): 'panel' | string | null {
 }
 
 /**
+ * The field of the product's panel an address names, by its ID, or nothing.
+ *
+ * @param hash The address's fragment, with its #.
+ */
+export function field( hash: string ): string | null {
+	return hash.match( /^#(cbuild-spec-[a-z]+(?:-[a-z]+)*)$/ )?.[ 1 ] ?? null;
+}
+
+/**
  * Opens what the address names.
  *
  * @param doc  The product screen.
@@ -67,6 +78,14 @@ export function open( doc: Document, hash: string, $: Query ): void {
 			.querySelector< HTMLElement >( `ul.wc-tabs a[href="#${ id }"]` )
 			?.click();
 
+	const own = doc.getElementById( field( hash ) ?? '' );
+	if ( own ) {
+		tab( PANEL );
+		own.closest( 'details' )?.setAttribute( 'open', '' );
+		own.scrollIntoView( { block: 'center' } );
+		own.focus( { preventScroll: true } );
+		return;
+	}
 	const part = named( hash );
 	if ( part === null ) {
 		return;
@@ -106,7 +125,8 @@ export function open( doc: Document, hash: string, $: Query ): void {
 }
 
 /**
- * Waits for the page, then opens what its address names. Does nothing where jQuery is not loaded.
+ * Waits for the page, then opens what its address names, and again each time the address changes, as it does when
+ * a notice's link is followed. Does nothing where jQuery is not loaded.
  *
  * @param win The window.
  */
@@ -115,7 +135,9 @@ export function start( win: Window & { jQuery?: Query } ): void {
 	if ( ! $ ) {
 		return;
 	}
-	$( () => open( win.document, win.location.hash, $ ) );
+	const now = () => open( win.document, win.location.hash, $ );
+	$( now );
+	win.addEventListener( 'hashchange', now );
 }
 
 start( window );

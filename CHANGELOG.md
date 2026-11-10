@@ -2,6 +2,17 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html). One entry per milestone; `v1.0.0` closes milestone 9.
 
+## [Unreleased]
+
+### Changed
+
+- A settings save asks for a reindex only when the attribute mapping or the order of the sources changed.
+- A value the Part specs tab does not save is named in a notice that is a link to its field: following it opens the tab and the field's group and moves focus to the field. A variation's notice leads to the variation.
+- Site Health's Info tab shows the index's state in words, and copies its code. The ability's schema descriptions are translated.
+- The settings screen shows a problem with the order of the sources under the order alone.
+- The index's and the import's services are built when a part is saved or a job runs, not on every request.
+- `composer api:check` also holds Site Health's test ids, each WP-CLI command's arguments and flags, the CSV's columns and each ability's output schema.
+
 ## [0.3.0] - 2026-11-10
 
 ### Added

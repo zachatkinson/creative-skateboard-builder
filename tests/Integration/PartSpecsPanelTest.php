@@ -495,12 +495,12 @@ final class PartSpecsPanelTest extends IntegrationTestCase {
 		self::assertSame( '', $saved->get_meta( Options::META_SPEC_TABLE, true ) );
 		self::assertSame(
 			array(
-				'Deck width was not saved: &quot;wide&quot; is not a measurement. Type a number, or a fraction such as 8 1/4.',
-				'Number in a set was not saved: &quot;0&quot; must be more than zero.',
-				'The maker&#039;s chart was not saved: the chart has no size 169 now. Choose again.',
+				'<a href="#cbuild-spec-deck-width">Deck width was not saved: &quot;wide&quot; is not a measurement. Type a number, or a fraction such as 8 1/4.</a>',
+				'<a href="#cbuild-spec-set-size">Number in a set was not saved: &quot;0&quot; must be more than zero.</a>',
+				'<a href="#cbuild-spec-chart">The maker&#039;s chart was not saved: the chart has no size 169 now. Choose again.</a>',
 			),
 			\WC_Admin_Meta_Boxes::$meta_box_errors,
-			'each escaped, since WooCommerce prints its notices as HTML'
+			'each escaped, since WooCommerce prints its notices as HTML, and each a link to its field (#19)'
 		);
 	}
 
@@ -524,7 +524,7 @@ final class PartSpecsPanelTest extends IntegrationTestCase {
 			$saved->get_meta( Options::META_SPECS, true )
 		);
 		self::assertSame(
-			array( 'Narrowest deck and Widest deck were not saved: the narrowest, 8.6 in, is wider than the widest, 8.375 in.' ),
+			array( '<a href="#cbuild-spec-deck-min">Narrowest deck and Widest deck were not saved: the narrowest, 8.6 in, is wider than the widest, 8.375 in.</a>' ),
 			\WC_Admin_Meta_Boxes::$meta_box_errors
 		);
 	}
@@ -554,7 +554,7 @@ final class PartSpecsPanelTest extends IntegrationTestCase {
 		);
 		$gone = $this->send( $product, array(), ( $chart + 999 ) . ':149' );
 		self::assertSame( $chart, $gone->get_meta( Options::META_SPEC_TABLE, true )['table'] );
-		self::assertSame( array( 'The maker&#039;s chart was not saved: that chart is no longer there. Choose again.' ), \WC_Admin_Meta_Boxes::$meta_box_errors );
+		self::assertSame( array( '<a href="#cbuild-spec-chart">The maker&#039;s chart was not saved: that chart is no longer there. Choose again.</a>' ), \WC_Admin_Meta_Boxes::$meta_box_errors );
 	}
 
 	public function test_who_cannot_edit_products_saves_nothing_and_a_save_without_the_fields_changes_nothing(): void {
@@ -615,7 +615,7 @@ final class PartSpecsPanelTest extends IntegrationTestCase {
 			$saved->get_meta( Options::META_SPEC_TABLE, true )
 		);
 		self::assertSame(
-			array( 'Variation #' . $variation->get_id() . ': Truck height was not saved: &quot;tall&quot; is not a measurement. Type a number, or a fraction such as 8 1/4.' ),
+			array( '<a href="#cbuild_variation_' . $variation->get_id() . '">Variation #' . $variation->get_id() . ': Truck height was not saved: &quot;tall&quot; is not a measurement. Type a number, or a fraction such as 8 1/4.</a>' ),
 			\WC_Admin_Meta_Boxes::$meta_box_errors
 		);
 	}

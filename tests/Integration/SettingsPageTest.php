@@ -203,6 +203,9 @@ final class SettingsPageTest extends IntegrationTestCase {
 		self::assertSame( 2, substr_count( $mapping, 'aria-describedby="cbuild-mapping-problem-2"' ) );
 		self::assertSame( 1, substr_count( $mapping, 'id="cbuild-mapping-problem-2"' ) );
 		self::assertSame( 5, substr_count( $mapping, '[attribute]"' ), 'the two sent and three blank' );
+		// Issue #19: the order's problem is the order's to show, and no id is on the page twice.
+		self::assertStringNotContainsString( 'Put each source in one place', $mapping );
+		self::assertStringNotContainsString( 'id="cbuild-mapping-problem"', $mapping );
 
 		$order = self::drawn( $page, 'orderField' );
 		self::assertStringContainsString( 'Put each source in one place: first, second and third.', $order );

@@ -38,14 +38,14 @@ final class TableSpecSource implements SpecSource {
 	 *
 	 * @since 0.3.0
 	 */
-	public const TABLE_MISSING = 'table_missing';
+	public const TABLE_MISSING = StoredSpecs::TABLE_MISSING;
 
 	/**
 	 * Why a part's name could not be read: the table has no row for the size, or the part names none.
 	 *
 	 * @since 0.3.0
 	 */
-	public const SIZE_MISSING = 'size_missing';
+	public const SIZE_MISSING = StoredSpecs::SIZE_MISSING;
 
 	/**
 	 * Constructor.

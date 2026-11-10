@@ -9,6 +9,7 @@ declare( strict_types=1 );
 
 namespace CreativeBranding\SkateboardBuilder\Service;
 
+use CreativeBranding\SkateboardBuilder\Domain\Spec\StoredSpecs;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\Origin;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\Reading;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\SpecKey;
@@ -37,8 +38,8 @@ final class SpecWriter {
 	/**
 	 * Problems with the table and the size. A value's problem carries the domain's own code.
 	 */
-	public const TABLE_MISSING = 'table_missing';
-	public const SIZE_MISSING  = 'size_missing';
+	public const TABLE_MISSING = StoredSpecs::TABLE_MISSING;
+	public const SIZE_MISSING  = StoredSpecs::SIZE_MISSING;
 	public const SIZE_LONG     = 'size_long';
 
 	/**

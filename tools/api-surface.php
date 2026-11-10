@@ -14,7 +14,11 @@
  *   site transients       Support\Options::siteTransients();
  *   REST routes           register_rest_route( 'cbuild/v1', ... );
  *   abilities             wp_register_ability();
- *   WP-CLI commands       WP_CLI::add_command();
+ *   WP-CLI commands       WP_CLI::add_command(), and each command's arguments and flags, from the OPTIONS of its
+ *                         doc comment, which is what WP-CLI itself reads them from;
+ *   CSV columns           Service\SpecSheet::columns(): the export's headings, which the import matches;
+ *   Site Health tests     Health\SiteHealth's TEST_* constants;
+ *   ability schemas       each ability's output schema, by a digest as the document schemas are;
  *   blocks                block.json under assets/src;
  *   DOM events            'cbuild:*' strings under assets/src;
  *   document schemas      schema/*.json, each by its path, and each one's content by a digest of its decoded JSON, so
@@ -233,6 +237,16 @@ $cbuild_surface = array(
 
 // The kit's document schemas. The digest is of the decoded document with its keys sorted, so re-indenting a file
 // changes nothing and changing a bound, a pattern or a property does.
+$cbuild_sort = static function ( array &$node ) use ( &$cbuild_sort ): void {
+	if ( ! array_is_list( $node ) ) {
+		ksort( $node );
+	}
+	foreach ( $node as &$cbuild_child ) {
+		if ( is_array( $cbuild_child ) ) {
+			$cbuild_sort( $cbuild_child );
+		}
+	}
+};
 $cbuild_schemas = array();
 $cbuild_digests = array();
 foreach ( glob( $cbuild_root . '/schema/*.json' ) ?: array() as $cbuild_schema_file ) {
@@ -241,21 +255,51 @@ foreach ( glob( $cbuild_root . '/schema/*.json' ) ?: array() as $cbuild_schema_f
 		fwrite( STDERR, 'schema/' . basename( $cbuild_schema_file ) . " is not a JSON object.\n" );
 		exit( 1 );
 	}
-	$cbuild_sort = static function ( array &$node ) use ( &$cbuild_sort ): void {
-		if ( ! array_is_list( $node ) ) {
-			ksort( $node );
-		}
-		foreach ( $node as &$cbuild_child ) {
-			if ( is_array( $cbuild_child ) ) {
-				$cbuild_sort( $cbuild_child );
-			}
-		}
-	};
 	$cbuild_sort( $cbuild_schema );
 	$cbuild_name                    = 'schema/' . basename( $cbuild_schema_file );
 	$cbuild_schemas[]               = $cbuild_name;
 	$cbuild_digests[ $cbuild_name ] = hash( 'sha256', json_encode( $cbuild_schema, JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR ) );
 }
+// Site Health's test ids, which a site's monitoring keys on.
+$cbuild_surface['site_health_tests'] = cbuild_api_matches( array( $cbuild_root . '/src/Health/SiteHealth.php' ), "/const TEST_[A-Z_]+\\s*=\\s*'([^']+)'/" );
+
+// Each command's arguments and flags, as its OPTIONS section gives them: `Class::method` to the synopsis.
+$cbuild_synopses = array();
+foreach ( cbuild_api_files( $cbuild_root . '/src/Cli', '.php' ) as $cbuild_cli_file ) {
+	preg_match_all( '#/\\*\\*(?:(?!\\*/).)*?\\#\\# OPTIONS((?:(?!\\*/).)*?)\\*/\\s*public function (\\w+)#s', (string) file_get_contents( $cbuild_cli_file ), $cbuild_docs, PREG_SET_ORDER );
+	foreach ( $cbuild_docs as $cbuild_doc ) {
+		$cbuild_options_text = (string) preg_replace( '/^\\s*\\*\\s\\#\\#.*\\z/ms', '', $cbuild_doc[1] );
+		preg_match_all( '/^\\s*\\*\\s(\\[?(?:<|--[a-z])\\S+)\\s*$/m', $cbuild_options_text, $cbuild_flags );
+		$cbuild_synopses[ basename( $cbuild_cli_file, '.php' ) . '::' . $cbuild_doc[2] ] = implode( ' ', $cbuild_flags[1] );
+	}
+}
+ksort( $cbuild_synopses );
+$cbuild_surface['cli_synopses'] = $cbuild_synopses;
+
+// The CSV's columns and the abilities' output schemas. Both classes need only the translation functions to answer.
+$cbuild_columns   = array();
+$cbuild_abilities = array();
+if ( is_file( $cbuild_root . '/src/Service/SpecSheet.php' ) ) {
+	require_once $cbuild_root . '/vendor/autoload.php';
+	require_once $cbuild_root . '/tests/Support/wp-shims.php';
+	if ( ! defined( 'ABSPATH' ) ) {
+		define( 'ABSPATH', $cbuild_root . '/' );
+	}
+	$cbuild_columns = ( 'CreativeBranding\\SkateboardBuilder\\Service\\SpecSheet' )::columns();
+	foreach ( cbuild_api_files( $cbuild_root . '/src/Abilities', '.php' ) as $cbuild_ability_file ) {
+		$cbuild_ability_class = 'CreativeBranding\\SkateboardBuilder\\Abilities\\' . basename( $cbuild_ability_file, '.php' );
+		$cbuild_ability_names = cbuild_api_matches( array( $cbuild_ability_file ), "/wp_register_ability\\(\\s*'([^']+)'/" );
+		if ( array() === $cbuild_ability_names || ! method_exists( $cbuild_ability_class, 'outputSchema' ) ) {
+			continue;
+		}
+		$cbuild_ability_schema = $cbuild_ability_class::outputSchema();
+		$cbuild_sort( $cbuild_ability_schema );
+		$cbuild_abilities[ $cbuild_ability_names[0] ] = hash( 'sha256', json_encode( $cbuild_ability_schema, JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR ) );
+	}
+}
+$cbuild_surface['csv_columns']     = $cbuild_columns;
+$cbuild_surface['ability_schemas'] = $cbuild_abilities;
+
 $cbuild_surface['schemas']        = $cbuild_schemas;
 $cbuild_surface['schema_digests'] = $cbuild_digests;
 
@@ -335,7 +379,7 @@ $cbuild_surface['refusal_codes']  = $cbuild_refusal_codes;
 
 // Groups that describe another group's items, or whose values are too plain a word to look for in the docs, and are
 // held by the snapshot alone.
-$cbuild_details = array( 'schema_digests', 'spec_kinds', 'severities', 'sources', 'message_values' );
+$cbuild_details = array( 'schema_digests', 'spec_kinds', 'severities', 'sources', 'message_values', 'cli_synopses', 'csv_columns', 'ability_schemas' );
 
 $cbuild_json     = json_encode( $cbuild_surface, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR ) . "\n";
 $cbuild_snapshot = $cbuild_root . '/tests/Fixtures/api-surface.json';

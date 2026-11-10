@@ -437,6 +437,47 @@ final class SpecImportTest extends TestCase {
 		yield 'too big' => array( "id,deck_width\n7,8\n" . str_repeat( ' ', SpecImport::MAX_BYTES ), array( SpecImport::FILE_BIG ) );
 	}
 
+	public function test_a_plans_rows_are_sorted_once_and_a_row_with_a_problem_is_refused_whole(): void {
+		$row  = static fn( int $at, array $changes, array $problems ): array => array(
+			'row'      => $at,
+			'part'     => $at * 10,
+			'name'     => '',
+			'sku'      => '',
+			'fields'   => array(),
+			'table'    => 0,
+			'size'     => '',
+			'changes'  => $changes,
+			'problems' => $problems,
+		);
+		$to   = array(
+			'key'  => 'width',
+			'from' => '8',
+			'to'   => '8.25',
+		);
+		$bad  = static fn( string $key ): array => array(
+			'key'  => $key,
+			'code' => 'not_a_number',
+			'text' => 'x',
+		);
+		$plan = array( $row( 2, array( $to ), array() ), $row( 3, array(), array() ), $row( 4, array( $to ), array( $bad( 'width' ), $bad( 'length' ) ) ), $row( 5, array(), array() ) );
+
+		$summary = SpecImport::summary( $plan );
+
+		self::assertSame( array( $plan[0] ), $summary['changed'] );
+		self::assertSame( 2, $summary['same'] );
+		self::assertSame( array( array( 'row' => 4 ) + $bad( 'width' ), array( 'row' => 4 ) + $bad( 'length' ) ), $summary['refused'] );
+		self::assertSame( 1, $summary['rows'] );
+		self::assertSame(
+			array(
+				'changed' => array(),
+				'same'    => 0,
+				'refused' => array(),
+				'rows'    => 0,
+			),
+			SpecImport::summary( array() )
+		);
+	}
+
 	#[\PHPUnit\Framework\Attributes\DataProvider( 'refusedFiles' )]
 	public function test_a_file_that_cannot_be_read_is_refused_whole( string $text, array $problems ): void {
 		self::assertSame( $problems, $this->import->read( $text ) );

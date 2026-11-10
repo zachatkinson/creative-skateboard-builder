@@ -24,6 +24,15 @@ use function trim;
 final class StoredSpecs {
 
 	/**
+	 * Why the table and size a part names cannot be read: the table is not there, or it has no such size. Every
+	 * class that says so says it with these.
+	 *
+	 * @since 0.4.0
+	 */
+	public const TABLE_MISSING = 'table_missing';
+	public const SIZE_MISSING  = 'size_missing';
+
+	/**
 	 * The part's own values: those that are text and not blank, trimmed, by key. A key this version does not know is
 	 * kept, since a newer version may have written it.
 	 *
@@ -57,6 +66,27 @@ final class StoredSpecs {
 		return array(
 			'table' => is_int( $table ) ? max( 0, $table ) : 0,
 			'size'  => is_string( $size ) ? trim( $size ) : '',
+		);
+	}
+
+	/**
+	 * What a part is to keep, as `fields()` and `named()` read it back. Null is nothing to keep: no value of its own,
+	 * or neither a table nor a size. Every writer of a part stores this.
+	 *
+	 * @since 0.4.0
+	 *
+	 * @param array<string, string> $fields Its own values, by spec key.
+	 * @param int                   $table  The spec table it names, 0 for none.
+	 * @param string                $size   The size it names, '' for none.
+	 * @return array{fields: array<string, string>|null, named: array{table: int, size: string}|null}
+	 */
+	public static function kept( array $fields, int $table, string $size ): array {
+		return array(
+			'fields' => array() === $fields ? null : $fields,
+			'named'  => 0 === $table && '' === $size ? null : array(
+				'table' => $table,
+				'size'  => $size,
+			),
 		);
 	}
 }

@@ -388,13 +388,41 @@ final class SpecTablesScreenTest extends IntegrationTestCase {
 			'cbuild_action' => 'delete',
 			'cbuild_table'  => (string) $id,
 		);
-		foreach ( array( 'editor', 'customer', 'subscriber' ) as $role ) {
-			$this->as( $role );
-			self::assertNull( $this->send( $fields )[1], $role );
-			self::assertCount( 1, $this->service( SpecTables::class )->all(), $role );
+		// Every action the page takes (#19), each as it would be sent by someone who may.
+		$forms = array(
+			'delete' => $fields,
+			'add'    => array(
+				'cbuild_action' => 'add',
+				'cbuild_name'   => 'Another maker',
+			),
+			'save'   => array(
+				'cbuild_action' => 'save',
+				'cbuild_table'  => (string) $id,
+				'cbuild_name'   => 'Renamed',
+				'cbuild_rows'   => array(
+					array(
+						'size'  => '159',
+						'specs' => array( 'axle_width' => '8.75' ),
+					),
+				),
+			),
+		);
+		$before = $this->service( SpecTables::class )->all();
+		$held   = static fn( array $charts ): array => array_map( static fn( array $chart ): array => array( $chart['name'], $chart['table']->toArray() ), $charts );
+		delete_option( Options::REINDEX );
+		foreach ( array( 'editor', 'customer', 'subscriber', '' ) as $role ) {
+			if ( '' === $role ) {
+				wp_set_current_user( 0 );
+			} else {
+				$this->as( $role );
+			}
+			foreach ( $forms as $action => $form ) {
+				$who = $action . ' as ' . ( '' === $role ? 'a visitor' : $role );
+				self::assertNull( $this->send( $form )[1], $who );
+				self::assertSame( $held( $before ), $held( $this->service( SpecTables::class )->all() ), $who );
+				self::assertFalse( get_option( Options::REINDEX ), $who . ' asks for no reindex' );
+			}
 		}
-		wp_set_current_user( 0 );
-		self::assertNull( $this->send( $fields )[1], 'signed out' );
 
 		$this->as( 'administrator' );
 		try {

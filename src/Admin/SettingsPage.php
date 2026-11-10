@@ -106,6 +106,10 @@ final class SettingsPage extends WC_Settings_Page {
 		if ( null !== $this->refused ) {
 			$lines = $this->refused['lines'];
 			foreach ( $this->refused['draft']->problems as $problem ) {
+				if ( SettingsEditor::ORDER_INVALID === $problem['code'] ) {
+					// The order's own field shows it.
+					continue;
+				}
 				$problems[ $problem['line'] ][] = self::problem( $problem['code'] );
 				if ( in_array( $problem['code'], array( SettingsEditor::UNIT_UNKNOWN, SettingsEditor::UNIT_NOT_MEASURE ), true ) ) {
 					$units_at[ $problem['line'] ] = true;

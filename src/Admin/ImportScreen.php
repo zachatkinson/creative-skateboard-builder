@@ -189,21 +189,15 @@ final class ImportScreen {
 		$changes = array();
 		$rows    = array();
 		if ( null !== $state && ImportState::WAITING === $status ) {
-			$counts['changed'] = 0;
-			foreach ( $this->import->plan( $state, 0, $state->total ) as $row ) {
+			$summary           = SpecImport::summary( $this->import->plan( $state, 0, $state->total ) );
+			$wrong             = $summary['refused'];
+			$counts['changed'] = count( $summary['changed'] );
+			$counts['same']    = $summary['same'];
+			foreach ( $wrong as $left ) {
+				$rows[ $left['row'] ] = true;
+			}
+			foreach ( $summary['changed'] as $row ) {
 				$part = '' === $row['name'] ? $row['sku'] : $row['name'];
-				foreach ( $row['problems'] as $problem ) {
-					$wrong[]             = array( 'row' => $row['row'] ) + $problem;
-					$rows[ $row['row'] ] = true;
-				}
-				if ( array() !== $row['problems'] ) {
-					continue;
-				}
-				if ( array() === $row['changes'] ) {
-					++$counts['same'];
-					continue;
-				}
-				++$counts['changed'];
 				foreach ( $row['changes'] as $change ) {
 					$changes[] = array(
 						'row'    => $row['row'],

@@ -61,6 +61,47 @@
     ],
     "blocks": [],
     "dom_events": [],
+    "site_health_tests": [
+        "cbuild_catalogue",
+        "cbuild_index",
+        "cbuild_jobs"
+    ],
+    "cli_synopses": {
+        "CheckCommand::__invoke": "[--format=<format>]",
+        "ReindexCommand::__invoke": "[--background]",
+        "SpecsCommand::export": "[<file>]",
+        "SpecsCommand::import": "<file> [--dry-run] [--key=<key>] [--format=<format>]"
+    },
+    "csv_columns": [
+        "id",
+        "sku",
+        "name",
+        "spec_table",
+        "spec_size",
+        "deck_width",
+        "deck_length",
+        "wheelbase",
+        "hole_pattern",
+        "axle_width",
+        "deck_min",
+        "deck_max",
+        "truck_height",
+        "height_class",
+        "max_wheel",
+        "baseplate",
+        "axle_diameter",
+        "wheel_diameter",
+        "riser_thickness",
+        "bolt_length",
+        "bearing_bore",
+        "spacers_built_in",
+        "grip_width",
+        "grip_length",
+        "set_size"
+    ],
+    "ability_schemas": {
+        "creative-skateboard-builder/catalogue-check": "1b575457b21b9b14ca9cdd3567b86b165b04408f9de0875e2afd11121bfe4853"
+    },
     "schemas": [
         "schema/kit-assembly.json",
         "schema/kit-presets.json",
