@@ -11,6 +11,7 @@ namespace CreativeBranding\SkateboardBuilder\Port;
 
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Kit;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Part;
+use CreativeBranding\SkateboardBuilder\Domain\Kit\SlotSources;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -52,6 +53,17 @@ interface Kits {
 	 * @return list<Part>
 	 */
 	public function candidates( int $kit, string $slot ): array;
+
+	/**
+	 * The parts these sources find, as candidates() finds a stored slot's: for sources that are not stored yet, as
+	 * when a kit is being saved.
+	 *
+	 * @since 0.4.0
+	 *
+	 * @param SlotSources $sources A slot's sources.
+	 * @return list<Part>
+	 */
+	public function parts( SlotSources $sources ): array;
 
 	/**
 	 * The keys of the slots, in these kits, whose sources take a product or variation, whether or not a shopper

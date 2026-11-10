@@ -226,6 +226,22 @@ final class Options {
 	}
 
 	/**
+	 * A kit's documents' meta keys, by the name the kit's services and schemas know each by.
+	 *
+	 * @since 0.4.0
+	 *
+	 * @return array<string, string>
+	 */
+	public static function kitDocumentNames(): array {
+		return array(
+			'slots'    => self::META_KIT_SLOTS,
+			'rules'    => self::META_KIT_RULES,
+			'presets'  => self::META_KIT_PRESETS,
+			'assembly' => self::META_KIT_ASSEMBLY,
+		);
+	}
+
+	/**
 	 * Every product type the plugin adds.
 	 *
 	 * @since 0.4.0

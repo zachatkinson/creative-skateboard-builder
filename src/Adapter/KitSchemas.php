@@ -9,8 +9,7 @@ declare( strict_types=1 );
 
 namespace CreativeBranding\SkateboardBuilder\Adapter;
 
-use CreativeBranding\SkateboardBuilder\Support\Options;
-use WP_Error;
+use CreativeBranding\SkateboardBuilder\Port\DocumentSchemas;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -22,46 +21,47 @@ if ( ! defined( 'ABSPATH' ) ) {
  *
  * @since 0.4.0
  */
-final class KitSchemas {
+final class KitSchemas implements DocumentSchemas {
 
 	/**
-	 * The schema files, by meta key.
+	 * The schema files, by the document's name.
 	 */
 	private const array FILES = array(
-		Options::META_KIT_SLOTS    => 'kit-slots.json',
-		Options::META_KIT_RULES    => 'kit-rules.json',
-		Options::META_KIT_PRESETS  => 'kit-presets.json',
-		Options::META_KIT_ASSEMBLY => 'kit-assembly.json',
+		'slots'    => 'kit-slots.json',
+		'rules'    => 'kit-rules.json',
+		'presets'  => 'kit-presets.json',
+		'assembly' => 'kit-assembly.json',
 	);
 
 	/**
-	 * The schemas read so far, by meta key.
+	 * The schemas read so far, by name.
 	 *
 	 * @var array<string, array<mixed>>
 	 */
 	private array $read = array();
 
 	/**
-	 * Why a document is refused, or null when its schema accepts it. A key that is not a kit document's is refused.
+	 * Why a document is refused, as WordPress's code for it, or null when its schema accepts it. A name that is
+	 * not a kit document's is refused.
 	 *
 	 * @since 0.4.0
 	 *
-	 * @param string $key      The document's meta key.
+	 * @param string $name     The document's name.
 	 * @param mixed  $document The decoded document.
 	 */
-	public function refusal( string $key, mixed $document ): ?WP_Error {
-		$schema = $this->schema( $key );
+	public function refusal( string $name, mixed $document ): ?string {
+		$schema = $this->schema( $name );
 		if ( null === $schema ) {
-			return new WP_Error( 'cbuild_no_schema', $key );
+			return 'cbuild_no_schema';
 		}
-		$valid = rest_validate_value_from_schema( $document, $schema, $key );
-		return is_wp_error( $valid ) ? $valid : null;
+		$valid = rest_validate_value_from_schema( $document, $schema, $name );
+		return is_wp_error( $valid ) ? (string) $valid->get_error_code() : null;
 	}
 
 	/**
 	 * A document's schema.
 	 *
-	 * @param string $key The document's meta key.
+	 * @param string $key The document's name.
 	 * @return array<mixed>|null
 	 */
 	private function schema( string $key ): ?array {

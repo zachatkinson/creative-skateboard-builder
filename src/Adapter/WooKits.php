@@ -15,6 +15,7 @@ use CreativeBranding\SkateboardBuilder\Domain\Kit\Kit;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Part;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\SlotSources;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\Specs;
+use CreativeBranding\SkateboardBuilder\Port\DocumentSchemas;
 use CreativeBranding\SkateboardBuilder\Port\Kits;
 use CreativeBranding\SkateboardBuilder\Port\SpecIndex;
 use CreativeBranding\SkateboardBuilder\Support\Cast;
@@ -65,11 +66,11 @@ final class WooKits implements Kits {
 	 *
 	 * @since 0.4.0
 	 *
-	 * @param Products   $products Loads products in batches.
-	 * @param KitSchemas $schemas  The documents' schemas.
-	 * @param SpecIndex  $index    The parts' specs.
+	 * @param Products        $products Loads products in batches.
+	 * @param DocumentSchemas $schemas  The documents' schemas.
+	 * @param SpecIndex       $index    The parts' specs.
 	 */
-	public function __construct( private Products $products, private KitSchemas $schemas, private SpecIndex $index ) {}
+	public function __construct( private Products $products, private DocumentSchemas $schemas, private SpecIndex $index ) {}
 
 	/**
 	 * Every kit whose documents read, by the kit product's ID.
@@ -126,10 +127,18 @@ final class WooKits implements Kits {
 	public function candidates( int $kit, string $slot ): array {
 		$product = $this->products->load( $kit )[ $kit ] ?? null;
 		$sources = null === $product ? null : $this->read( $product )?->slots->get( $slot )?->sources;
-		if ( null === $sources ) {
-			return array();
-		}
+		return null === $sources ? array() : $this->parts( $sources );
+	}
 
+	/**
+	 * The parts these sources find.
+	 *
+	 * @since 0.4.0
+	 *
+	 * @param SlotSources $sources A slot's sources.
+	 * @return list<Part>
+	 */
+	public function parts( SlotSources $sources ): array {
 		// What the sources find, and what they name: a named product is not narrowed.
 		$found  = $this->products->load( ...$this->found( $sources ) );
 		$named  = $this->products->load( ...$sources->products );
@@ -185,8 +194,8 @@ final class WooKits implements Kits {
 			return null;
 		}
 		$documents = $product->documents();
-		foreach ( $documents as $key => $document ) {
-			if ( null !== $this->schemas->refusal( $key, $document ) ) {
+		foreach ( Options::kitDocumentNames() as $name => $key ) {
+			if ( null !== $this->schemas->refusal( $name, $documents[ $key ] ) ) {
 				return null;
 			}
 		}

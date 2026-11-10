@@ -1308,3 +1308,23 @@ The second half of Claude in Cowork's note on issue #23: "draw no panel where a 
 - **Red run:** `PartSpecsPanelTest::test_a_product_no_kit_takes_has_no_fields_and_its_tab_says_why`, "a variation draws nothing. Failed asserting that two strings are identical."
 
 **Status:** Accepted.
+
+### D-106 · What the Build tab's save does with what it is sent · 2026-11-10
+
+`docs/SPEC.md` (Admin, The kit's Build tab): each setting is checked against its schema, one that fails isn't saved, the rest saves, and each problem is named with a link to its field. Presets are saved only when the rules accept them. `Service\KitEditor` is that, in plain PHP with no WordPress in it, so the tab and anything else that edits a kit share it and its tests mutate it (225 of 226 mutants killed; the one left is a guard no build reaches). What the spec leaves open:
+
+- **The domain reads a document first, then its schema.** The plan had the schema first. The domain says which field and why (`slots[2].units`, `document_wrong_type`); WordPress's validator says less. A document is saved only when both accept it, so the schema is still the gate, and `document_schema` is the code for one only the schema refuses. `KitSchemasTest` holds the two in agreement.
+- **Each wrong slot and each wrong preset is named,** a problem a row. What is wrong with the rows together (the deck not first, the risers after the hardware, a key twice, too many) is named once every row reads. The rules and assembly name the first thing wrong.
+- **What was typed in a refused document is kept** in the draft, as the document built from it, so the tab can show it again with the problem beside its field. The measure nobody could read is there as typed.
+- **A slot's key.** A row that carries a key the stored kit has keeps it, whatever its label becomes. Any other row is new, and a key the form made up is not taken. A new slot is one of the eight the rules read (deck, trucks, wheels, risers, bearings, hardware, grip, spacers), chosen by name, or another, whose key is made from its label once: lower-case letters, digits and underscores, 32 at most, numbered when another slot has it. The spec has every key made from its label; a French shop's "Planche" would then be a slot no rule reads, and the deck would have no fit at all.
+- **A switch that is not sent is off,** as a box left empty is. R7 and R8 have no switch: R7 is the engine's own and a kit cannot turn it off (D-056), and R8 is a note.
+- **Measures take the shop's decimal separator and fractions,** as the Part specs fields do, and are written with a point and no zeros they do not need. The fee takes the separator or a point.
+- **Presets are held to the slots and rules that will be stored once the save is done:** those sent where they read, else those stored. A new kit whose slots were refused has nothing to hold a preset to, and says so (`presets_without_slots`); one whose rules were refused is held to the usual rules.
+- **A preset is refused when it names a part its slot does not take, leaves a required slot empty, names a slot the kit lacks, or holds a part the rules block.** One refused, none saved, since the document is one setting.
+- **A part that is sold out does not refuse a preset.** Stock comes and goes; the Catalogue check lists it and the builder handles it (the roadmap's milestone 6).
+- **A misfit is said once,** of the part picked later. The validator names it from both sides, the deck and the trucks that do not fit it.
+- **R7 at save is a note, not a refusal** (D-062): in each slot that takes more than one unit, how many parts have no set size. A kit is set up before every part is filled in. Slots that take one unit are not asked for their parts.
+- **The slots' parts come from `Port\Kits::parts()`,** which takes sources that are not stored yet, and each slot is asked once a save.
+- **The documents have names here** (`slots`, `rules`, `presets`, `assembly`), which the schemas' port shares. Where each is stored is `Support\Options`', which a service may not use.
+
+**Status:** Accepted.

@@ -32,21 +32,22 @@ final class Container {
 	 */
 	private static function bindings(): array {
 		return array(
-			Port\Clock::class          => Adapter\SystemClock::class,
-			Port\Logger::class         => Adapter\WooCommerceLogger::class,
-			Port\Queue::class          => Adapter\ActionSchedulerQueue::class,
-			Port\MigrationStore::class => Repository\MigrationRepository::class,
-			Port\SpecIndex::class      => Repository\SpecIndexRepository::class,
-			Port\ShopSettings::class   => Adapter\OptionShopSettings::class,
-			Port\PartCatalogue::class  => Adapter\WooPartCatalogue::class,
-			Port\ReindexStore::class   => Adapter\OptionReindexStore::class,
-			Port\SpecTables::class     => Adapter\PostSpecTables::class,
-			Port\PartSpecs::class      => Adapter\WooPartSpecs::class,
-			Port\ImportStore::class    => Adapter\OptionImportStore::class,
-			Port\Uploads::class        => Adapter\RequestUploads::class,
-			Port\Kits::class           => Adapter\WooKits::class,
-			Port\Files::class          => Adapter\DiskFiles::class,
-			Port\Reindex::class        => Service\IndexJobs::class,
+			Port\Clock::class           => Adapter\SystemClock::class,
+			Port\Logger::class          => Adapter\WooCommerceLogger::class,
+			Port\Queue::class           => Adapter\ActionSchedulerQueue::class,
+			Port\MigrationStore::class  => Repository\MigrationRepository::class,
+			Port\SpecIndex::class       => Repository\SpecIndexRepository::class,
+			Port\ShopSettings::class    => Adapter\OptionShopSettings::class,
+			Port\PartCatalogue::class   => Adapter\WooPartCatalogue::class,
+			Port\ReindexStore::class    => Adapter\OptionReindexStore::class,
+			Port\SpecTables::class      => Adapter\PostSpecTables::class,
+			Port\PartSpecs::class       => Adapter\WooPartSpecs::class,
+			Port\ImportStore::class     => Adapter\OptionImportStore::class,
+			Port\Uploads::class         => Adapter\RequestUploads::class,
+			Port\Kits::class            => Adapter\WooKits::class,
+			Port\DocumentSchemas::class => Adapter\KitSchemas::class,
+			Port\Files::class           => Adapter\DiskFiles::class,
+			Port\Reindex::class         => Service\IndexJobs::class,
 		);
 	}
 
