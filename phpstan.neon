@@ -164,6 +164,9 @@ parameters:
         -
             function: 'get_post_meta()'
             message: 'products and orders only through WooCommerce CRUD'
+            # A spec table is a post of the plugin's own type, neither a product nor an order (D-072).
+            allowIn:
+                - src/Adapter/PostSpecTables.php
         -
             function: 'update_post_meta()'
             message: 'products and orders only through WooCommerce CRUD'

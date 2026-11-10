@@ -33,6 +33,13 @@ abstract class IntegrationTestCase extends WP_UnitTestCase {
 		// CREATE TEMPORARY TABLE, which dbDelta cannot see on the next run). The lock is a row written around the
 		// options API, so a test that took it and rolled back may still hold it.
 		delete_option( Options::MIGRATION_LOCK );
+		// A test that makes real tables commits what it wrote before, so a spec table, the settings or the reindex's
+		// state it left would be here for the next test. The tables go first: deleting one asks for a reindex.
+		foreach ( $wpdb->get_col( $wpdb->prepare( 'SELECT ID FROM %i WHERE post_type = %s', $wpdb->posts, Options::POST_TYPE_SPEC_TABLE ) ) as $left ) { // phpcs:ignore
+			wp_delete_post( (int) $left, true );
+		}
+		delete_option( Options::SETTINGS );
+		delete_option( Options::REINDEX );
 		self::dropLeftoverSites();
 		Schema::install();
 		foreach ( Tables::all() as $table ) {
@@ -107,6 +114,53 @@ abstract class IntegrationTestCase extends WP_UnitTestCase {
 			add_filter( 'query', array( $this, '_create_temporary_tables' ) );
 			add_filter( 'query', array( $this, '_drop_temporary_tables' ) );
 		}
+	}
+
+	/**
+	 * The arguments of the plugin's waiting actions with this hook.
+	 *
+	 * @param string $hook The action.
+	 * @return list<array<mixed>>
+	 */
+	protected static function waiting( string $hook ): array {
+		$actions = as_get_scheduled_actions(
+			array(
+				'hook'     => $hook,
+				'group'    => Options::QUEUE_GROUP,
+				'status'   => \ActionScheduler_Store::STATUS_PENDING,
+				'per_page' => -1,
+				'orderby'  => 'action_id',
+				'order'    => 'ASC',
+			)
+		);
+		return array_values( array_map( static fn( \ActionScheduler_Action $action ): array => $action->get_args(), $actions ) );
+	}
+
+	/**
+	 * Run the plugin's due actions as the queue's runner does, until none is due.
+	 *
+	 * @return int How many ran.
+	 */
+	protected static function work(): int {
+		$ran = 0;
+		do {
+			$due = as_get_scheduled_actions(
+				array(
+					'group'        => Options::QUEUE_GROUP,
+					'status'       => \ActionScheduler_Store::STATUS_PENDING,
+					'date'         => as_get_datetime_object(),
+					'date_compare' => '<=',
+					'per_page'     => 50,
+				),
+				'ids'
+			);
+			foreach ( $due as $id ) {
+				\ActionScheduler::runner()->process_action( (int) $id, 'tests' );
+				++$ran;
+			}
+			self::assertLessThan( 200, $ran, 'the queue does not empty' );
+		} while ( array() !== $due );
+		return $ran;
 	}
 
 	/**

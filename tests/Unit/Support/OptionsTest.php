@@ -39,7 +39,10 @@ final class OptionsTest extends TestCase {
 	}
 
 	public function test_the_meta_and_settings_keys_are_the_ones_uninstall_and_the_snapshot_read(): void {
-		self::assertSame( array( '_cbuild_specs' ), Options::metaKeys() );
+		self::assertSame( array( '_cbuild_specs', '_cbuild_spec_table', '_cbuild_rows', '_cbuild_seed' ), Options::metaKeys() );
+		self::assertSame( array( 'cbuild_spec_table' ), Options::postTypes() );
+		self::assertStringStartsWith( 'cbuild_', Options::POST_TYPE_SPEC_TABLE );
+		self::assertLessThanOrEqual( 20, strlen( Options::POST_TYPE_SPEC_TABLE ), 'a post type\'s name is at most 20 characters' );
 		self::assertSame( array( 'attribute_mapping', 'source_order' ), Options::settingsKeys() );
 		foreach ( Options::metaKeys() as $key ) {
 			self::assertStringStartsWith( '_cbuild_', $key, 'hidden from the custom fields box, and the plugin\'s own' );

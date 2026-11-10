@@ -257,7 +257,7 @@ final class SpecSourcesTest extends IntegrationTestCase {
 		}
 		self::assertContains( Options::SETTINGS, Options::names(), 'uninstall removes it' );
 		self::assertSame( array( 'attribute_mapping', 'source_order' ), Options::settingsKeys() );
-		self::assertSame( array( '_cbuild_specs' ), Options::metaKeys() );
+		self::assertContains( '_cbuild_specs', Options::metaKeys() );
 	}
 
 	public function test_the_indexer_writes_real_parts_to_the_table_and_flags_where_they_disagree(): void {

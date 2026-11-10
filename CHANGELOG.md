@@ -10,6 +10,7 @@ All notable changes to this project are documented here. The format follows [Kee
 - A part's own specs in the product meta `_cbuild_specs`, a value per spec key; a variation left blank for a spec takes its parent's.
 - The option `cbuild_settings` with its first two keys: `attribute_mapping` (which attribute feeds which spec, in which unit) and `source_order` (which source wins where two disagree). Their screen comes later in this version.
 - The index is kept in the background. Saving or deleting a product queues the `cbuild_index_part` action for it, and the request that saves indexes nothing. Saving the settings or editing a term of a mapped attribute queues `cbuild_reindex`, which indexes every part again, 100 at a time, from a place it keeps in the option `cbuild_reindex_state`, so one stopped halfway carries on (D-071).
+- Spec tables: the post type `cbuild_spec_table`, a maker's size chart with a row per size in the meta `_cbuild_rows`. A part names a table and a size in the product meta `_cbuild_spec_table` and takes that row's values; a variation left blank takes its parent's. Independent's, Thunder's and Venture's charts are made by a migration, each marked with `_cbuild_seed`, on a new site and an upgraded one alike. Saving, binning or deleting a table indexes every part again. Their screen comes later in this version (D-072).
 
 ### Fixed
 

@@ -61,7 +61,7 @@ final class ContainerTest extends TestCase {
 	public function test_the_registry_is_built_from_its_classes(): void {
 		$registry = ( new Container() )->get( MigrationRegistry::class );
 		$keys     = $registry->keys();
-		self::assertSame( array( 'schema_1', 'noop_1' ), $keys );
+		self::assertSame( array( 'schema_1', 'noop_1', 'spec_tables_1' ), $keys );
 	}
 
 	public function test_an_unknown_service_throws(): void {
@@ -97,7 +97,7 @@ final class ContainerTest extends TestCase {
 		$container = new Container();
 		$container->set( MigrationStore::class, new InMemoryMigrationStore() );
 		$hookables = $container->hookablesFor( Scope::Everywhere );
-		self::assertCount( 2, $hookables, 'the install\'s and the index\'s' );
+		self::assertCount( 3, $hookables, 'the install\'s, the index\'s and the spec tables\'' );
 		self::assertContainsOnlyInstancesOf( Hookable::class, $hookables );
 	}
 

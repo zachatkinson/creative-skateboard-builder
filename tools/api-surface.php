@@ -222,6 +222,7 @@ $cbuild_surface = array(
 	'queue_group'       => cbuild_api_const( $cbuild_options, 'QUEUE_GROUP' ),
 	'log_source'        => cbuild_api_const( $cbuild_options, 'LOG_SOURCE' ),
 	'meta_keys'         => cbuild_api_list( $cbuild_options, 'metaKeys' ),
+	'post_types'        => cbuild_api_list( $cbuild_options, 'postTypes' ),
 	'settings_keys'     => cbuild_api_list( $cbuild_options, 'settingsKeys' ),
 	'rest_routes'       => array_map( static fn( string $r ): string => 'cbuild/v1/' . ltrim( $r, '/' ), cbuild_api_matches( $cbuild_php, "/register_rest_route\\(\\s*(?:self::NAMESPACE|'cbuild\\/v1')\\s*,\\s*'([^']+)'/" ) ),
 	'abilities'         => cbuild_api_matches( $cbuild_php, "/wp_register_ability\\(\\s*'([^']+)'/" ),

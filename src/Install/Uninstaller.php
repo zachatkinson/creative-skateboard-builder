@@ -17,7 +17,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * Removes everything the plugin made: the two tables (saved builds with them), every option and transient, the
+ * Removes everything the plugin made: the two tables (saved builds with them), the spec tables, every option and transient, the
  * scheduled actions, the object-cache group and the network's cached update manifest. Per site on a network. Never
  * touches products or orders: order item meta is part of the shop's records (spec: Uninstall).
  */
@@ -46,6 +46,28 @@ final class Uninstaller {
 	 */
 	public static function site(): void {
 		global $wpdb;
+
+		// The spec tables first, every one, whatever its state: deleting a post fires hooks, and nothing they write
+		// may outlive the options and actions removed below. The type is not registered during uninstall, so the
+		// statuses are named.
+		do {
+			$query  = new \WP_Query(
+				array(
+					'post_type'      => Options::postTypes(),
+					'post_status'    => array_keys( get_post_stati() ),
+					'posts_per_page' => 100,
+					'fields'         => 'ids',
+					'no_found_rows'  => true,
+					'orderby'        => 'none',
+				)
+			);
+			$tables = is_array( $query->posts ) ? $query->posts : array();
+			foreach ( $tables as $table ) {
+				if ( is_int( $table ) ) {
+					wp_delete_post( $table, true );
+				}
+			}
+		} while ( array() !== $tables );
 
 		foreach ( array_reverse( Tables::all() ) as $table ) {
 			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange

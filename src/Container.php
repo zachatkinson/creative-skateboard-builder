@@ -40,6 +40,7 @@ final class Container {
 			Port\ShopSettings::class   => Adapter\OptionShopSettings::class,
 			Port\PartCatalogue::class  => Adapter\WooPartCatalogue::class,
 			Port\ReindexStore::class   => Adapter\OptionReindexStore::class,
+			Port\SpecTables::class     => Adapter\PostSpecTables::class,
 		);
 	}
 
@@ -57,11 +58,12 @@ final class Container {
 				}
 				return new Install\Migrations\MigrationRegistry( ...$migrations );
 			},
-			// The sources, each asked once per batch. The spec tables' source joins them with the tables.
+			// The sources, each asked once per batch.
 			Service\SpecIndexer::class                  => static fn( Container $c ): object => new Service\SpecIndexer(
 				$c->get( Port\SpecIndex::class ),
 				$c->get( Port\ShopSettings::class ),
 				$c->get( Port\Clock::class ),
+				$c->get( Adapter\TableSpecSource::class ),
 				$c->get( Adapter\FieldSpecSource::class ),
 				$c->get( Adapter\AttributeSpecSource::class )
 			),
@@ -76,9 +78,11 @@ final class Container {
 	private static function hookableClasses(): array {
 		return array(
 			// `init`, `admin_init`, the migration job and a network's deleted site: any request.
-			Hooks\InstallHooks::class => array( Scope::Everywhere ),
+			Hooks\InstallHooks::class   => array( Scope::Everywhere ),
 			// A product is saved, and a job runs, on any kind of request.
-			Hooks\IndexHooks::class   => array( Scope::Everywhere ),
+			Hooks\IndexHooks::class     => array( Scope::Everywhere ),
+			// A post type is registered on every request, and a table is saved from any.
+			Hooks\SpecTableHooks::class => array( Scope::Everywhere ),
 		);
 	}
 

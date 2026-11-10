@@ -831,3 +831,18 @@ The table is milestone 1's and does not change. These are the choices the reposi
 - **The jobs' names are constants on `Service\IndexJobs` and on `Support\Options`.** A service may not use the support layer (deptrac); a unit test holds the two equal.
 
 **Status:** Accepted.
+
+### D-072 · Spec tables: what a row stores, how a part names one, and the seeds · 2026-11-10
+
+- **A table is a post of the type `cbuild_spec_table`:** the title is the maker's name, and the rows are one meta value, `_cbuild_rows`. A row has a size, a value per spec key as the index stores it, a source and the day it was read. A row may hold any spec key, so a chart with heights or wheel limits needs no change here. Only a published table feeds the index; a draft is a chart still being typed.
+- **A part names a table and a size in one meta value, `_cbuild_spec_table`:** the table's ID and the size's name. A variation takes its parent's table or size where its own is blank, each on its own, so a variable truck names the chart once and each variation its size.
+- **A name that leads nowhere is reported, not dropped.** A table that is gone, binned or a draft is `table_missing`; a size the table has no row for is `size_missing`. The source returns each as an unread value, which the Catalogue check will list.
+- **Any change to a table indexes every part again.** The spec says a change re-indexes every part that names the table. Finding those parts needs a query on a serialised meta value outside WooCommerce's CRUD; the reindex is already resumable, runs in the background, and a chart changes a few times a year. It hangs on `wp_after_insert_post` (WordPress 7.1.4, `wp-includes/post.php:6021`), which fires after the post's meta is saved, and for the bin and back; and on `deleted_post` (`:3996`).
+- **The post type is the shop's record and nobody's page:** not public, not publicly queryable, out of search, sitemaps and the REST API, with every capability mapped to `manage_woocommerce`. `show_ui` is off until its screen lands in this milestone. `SpecTablesTest` asserts each, with the visitor's request parsed as WordPress parses it (`wp-includes/class-wp.php:376`).
+- **The seeds are the spec's table under R1, read again on 10 November 2026.** Independent's own chart gives every figure the spec has. Tactics gives Thunder's 145, 147, 149 and 151 as the spec has them. Rollersnakes gives Venture's five sizes as the spec has them, with one difference: the 5.0's axle is 7.62 in there and 7.6 in the spec's grid, whose rows group makers by axle. The seed holds 7.62, the source's figure. Thunder's 143, 148 and 161 were on neither page read that day; their rows hold the spec's figures, name Warehouse Skateboards as the spec does, and have no day. Both are in the review's For Zach.
+- **A seed that has a table is passed over,** whatever state the shop left it in, by the meta `_cbuild_seed`. So the migration run twice, or again after being cut off between two tables, makes each once and overwrites nothing. One deleted for good is not remade on that shop: a migration that is done does not run again.
+- **`get_post_meta()` is allowed in `Adapter\PostSpecTables` alone.** The analysis rule keeps products and orders behind WooCommerce's CRUD; a spec table is neither.
+- **Uninstall deletes the spec tables first.** Deleting a post fires hooks, and a hook that writes an option or queues an action after those were removed would leave it behind. `UninstallTest` failed on the other order.
+- **`MigrationRegistry::VERSION` is 2.**
+
+**Status:** Accepted.

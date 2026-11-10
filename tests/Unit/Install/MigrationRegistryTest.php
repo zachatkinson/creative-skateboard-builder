@@ -42,9 +42,9 @@ final class MigrationRegistryTest extends TestCase {
 		new MigrationRegistry( new CountingMigration( 'dup' ), new CountingMigration( 'dup' ) );
 	}
 
-	public function test_the_shipped_list_is_the_schema_then_the_noop(): void {
-		self::assertSame( array( SchemaMigration::class, NoopMigration::class ), MigrationRegistry::CLASSES );
-		self::assertSame( '1', MigrationRegistry::VERSION );
+	public function test_the_shipped_list_is_in_the_order_it_shipped(): void {
+		self::assertSame( array( SchemaMigration::class, NoopMigration::class, \CreativeBranding\SkateboardBuilder\Install\Migrations\SpecTablesMigration::class ), MigrationRegistry::CLASSES );
+		self::assertSame( '2', MigrationRegistry::VERSION );
 	}
 
 	public function test_the_noop_migration_does_nothing_and_is_done(): void {
@@ -58,6 +58,7 @@ final class MigrationRegistryTest extends TestCase {
 		// site already at that version. Each release that adds one adds its pair here.
 		$versionAfter = array(
 			2 => '1',
+			3 => '2',
 		);
 		self::assertArrayHasKey( count( MigrationRegistry::CLASSES ), $versionAfter, 'a migration was added: raise MigrationRegistry::VERSION and add the pair here' );
 		self::assertSame( $versionAfter[ count( MigrationRegistry::CLASSES ) ], MigrationRegistry::VERSION );

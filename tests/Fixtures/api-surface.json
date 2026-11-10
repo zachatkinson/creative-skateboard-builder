@@ -32,7 +32,13 @@
     "queue_group": "creative-skateboard-builder",
     "log_source": "creative-skateboard-builder",
     "meta_keys": [
+        "_cbuild_rows",
+        "_cbuild_seed",
+        "_cbuild_spec_table",
         "_cbuild_specs"
+    ],
+    "post_types": [
+        "cbuild_spec_table"
     ],
     "settings_keys": [
         "attribute_mapping",

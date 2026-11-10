@@ -72,53 +72,6 @@ final class IndexJobsTest extends IntegrationTestCase {
 	}
 
 	/**
-	 * The arguments of the plugin's waiting actions with this hook.
-	 *
-	 * @param string $hook The action.
-	 * @return list<array<mixed>>
-	 */
-	private static function waiting( string $hook ): array {
-		$actions = as_get_scheduled_actions(
-			array(
-				'hook'     => $hook,
-				'group'    => Options::QUEUE_GROUP,
-				'status'   => \ActionScheduler_Store::STATUS_PENDING,
-				'per_page' => -1,
-				'orderby'  => 'action_id',
-				'order'    => 'ASC',
-			)
-		);
-		return array_values( array_map( static fn( \ActionScheduler_Action $action ): array => $action->get_args(), $actions ) );
-	}
-
-	/**
-	 * Run the plugin's due actions as the queue's runner does, until none is due.
-	 *
-	 * @return int How many ran.
-	 */
-	private static function work(): int {
-		$ran = 0;
-		do {
-			$due = as_get_scheduled_actions(
-				array(
-					'group'        => Options::QUEUE_GROUP,
-					'status'       => \ActionScheduler_Store::STATUS_PENDING,
-					'date'         => as_get_datetime_object(),
-					'date_compare' => '<=',
-					'per_page'     => 50,
-				),
-				'ids'
-			);
-			foreach ( $due as $id ) {
-				\ActionScheduler::runner()->process_action( (int) $id, 'tests' );
-				++$ran;
-			}
-			self::assertLessThan( 200, $ran, 'the queue does not empty' );
-		} while ( array() !== $due );
-		return $ran;
-	}
-
-	/**
 	 * The widths the index holds, by part.
 	 *
 	 * @param int ...$ids The parts.

@@ -87,6 +87,28 @@ final class Options {
 	public const META_SPECS = '_cbuild_specs';
 
 	/**
+	 * Product meta: the spec table and the size a part names, as `table` (the table's ID) and `size`.
+	 *
+	 * @since 0.3.0
+	 */
+	public const META_SPEC_TABLE = '_cbuild_spec_table';
+
+	/**
+	 * The spec tables' post type.
+	 *
+	 * @since 0.3.0
+	 */
+	public const POST_TYPE_SPEC_TABLE = 'cbuild_spec_table';
+
+	/**
+	 * A spec table's meta: its rows, and the seed it was made from.
+	 *
+	 * @since 0.3.0
+	 */
+	public const META_TABLE_ROWS = '_cbuild_rows';
+	public const META_TABLE_SEED = '_cbuild_seed';
+
+	/**
 	 * The jobs that keep the specs index: one part, and everything, 100 parts at a time (spec: Options and jobs).
 	 *
 	 * @since 0.3.0
@@ -142,7 +164,18 @@ final class Options {
 	 * @return string[]
 	 */
 	public static function metaKeys(): array {
-		return array( self::META_SPECS );
+		return array( self::META_SPECS, self::META_SPEC_TABLE, self::META_TABLE_ROWS, self::META_TABLE_SEED );
+	}
+
+	/**
+	 * Every post type the plugin registers. Uninstall deletes their posts.
+	 *
+	 * @since 0.3.0
+	 *
+	 * @return list<string>
+	 */
+	public static function postTypes(): array {
+		return array( self::POST_TYPE_SPEC_TABLE );
 	}
 
 	/**
