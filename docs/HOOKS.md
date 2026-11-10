@@ -1,6 +1,6 @@
 # Hooks and the public API
 
-Everything another plugin, a theme or a shop's own code may rely on, added as it appears: filters and actions, constants, options, tables, scheduled actions and the names the plugin writes under. Names carry the `cbuild_` prefix. An item listed in the spec and not here has not been built yet.
+Everything another plugin, a theme or a shop's own code may rely on, added as it appears: filters and actions, constants, options, tables, scheduled actions, the names the plugin writes under, the kit's document schemas and the spec keys. Names carry the `cbuild_` prefix. An item listed in the spec and not here has not been built yet.
 
 `composer api:check` reads the code and fails when an item is missing from this file or from `tests/Fixtures/api-surface.json`. Renaming or removing anything here is a breaking change and needs Zach.
 
@@ -75,3 +75,49 @@ Pending actions are unscheduled on deactivation. Every action in the group, with
 ### Log source
 
 Every log line goes through `wc_get_logger()` with the source `creative-skateboard-builder` (since 0.1.0), under WooCommerce > Status > Logs.
+
+## Milestone 2: the domain (0.2.0)
+
+The domain adds no hook, route, setting, option, table or meta key. It fixes two things other code will read from milestone 3 on: the shape of a kit's four documents, and the keys a part's specs are stored under.
+
+### Document schemas
+
+A kit is four JSON documents. Each has a JSON Schema (draft 4) in the plugin's `schema/` folder, which is what the Build tab and the imports validate against with `rest_validate_value_from_schema()`. Every document carries `schema_version`, now 1; a document of a version the plugin does not know is refused, never guessed at. The meta keys that hold the documents arrive with the kit in milestone 4.
+
+| Schema | Since | What the document holds |
+| --- | --- | --- |
+| `schema/kit-slots.json` | 0.2.0 | The kit's slots in step order, 1 to 20, the deck first: each one's key, label, help, whether it is required, the units a build takes, its default part and where its parts come from (categories, brands, products, attribute terms). |
+| `schema/kit-rules.json` | 0.2.0 | Each fit rule, R1 to R6, on or off, with R1's tolerances, R3's limits by height class and its riser table, and whether R6 checks a deck's length. Measures are decimal strings in the rule's unit, with no unit mark. |
+| `schema/kit-presets.json` | 0.2.0 | Up to six presets: a name, a description and a part for each slot it fills. |
+| `schema/kit-assembly.json` | 0.2.0 | Whether assembly is on by default, its fee as a decimal string in the shop's currency, the lead time and the returns notice. |
+
+A schema says what shape a document has. Three things it cannot say are checked when the document is read: slot keys are unique, the deck is the first slot, and each row of R3's riser table reaches further than the one before. A preset must also fill every required slot and name only slots the kit has.
+
+A change to a schema that refuses a document it accepted before is a breaking change and comes with a new `schema_version` and a migration.
+
+### Spec keys
+
+The keys a part's specs are stored under: in the specs index (`cbuild_specs`), in a part's meta and in imports from milestone 3. Each has one kind. A measure has one unit, and is held to four decimal places.
+
+| Key | Since | Kind | Unit or values | What it is |
+| --- | --- | --- | --- | --- |
+| `deck_width` | 0.2.0 | Measure | in | A deck's width. |
+| `deck_length` | 0.2.0 | Measure | in | A deck's length. |
+| `wheelbase` | 0.2.0 | Measure | in | A deck's wheelbase. |
+| `hole_pattern` | 0.2.0 | Choice | `new_school`, `old_school`, `both` | The mounting pattern a deck is drilled for. |
+| `axle_width` | 0.2.0 | Measure | in | A truck's axle width. |
+| `deck_min` | 0.2.0 | Measure | in | The narrowest deck a truck's maker gives for it. |
+| `deck_max` | 0.2.0 | Measure | in | The widest deck a truck's maker gives for it. |
+| `truck_height` | 0.2.0 | Measure | mm | A truck's height. |
+| `height_class` | 0.2.0 | Choice | `low`, `mid`, `high` | The height class a truck is sold in. |
+| `max_wheel` | 0.2.0 | Measure | mm | The largest wheel a truck takes without risers. |
+| `baseplate` | 0.2.0 | Choice | `new_school`, `old_school`, `both` | The mounting pattern a truck's baseplate takes. |
+| `axle_diameter` | 0.2.0 | Measure | mm | A truck's axle diameter. |
+| `wheel_diameter` | 0.2.0 | Measure | mm | A wheel's diameter. |
+| `riser_thickness` | 0.2.0 | Measure | in | A riser's thickness. |
+| `bolt_length` | 0.2.0 | Measure | in | The length of a hardware set's bolts. |
+| `bearing_bore` | 0.2.0 | Measure | mm | A bearing's bore. |
+| `spacers_built_in` | 0.2.0 | Flag | | Whether a bearing has its spacers built in. |
+| `grip_width` | 0.2.0 | Measure | in | A sheet of grip tape's width. |
+| `grip_length` | 0.2.0 | Measure | in | A sheet of grip tape's length. |
+| `set_size` | 0.2.0 | Count | | How many units one of the product holds: a pair of trucks is 2. |

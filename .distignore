@@ -9,6 +9,7 @@
 .gitignore
 .nvmrc
 .prettierrc.js
+.prettierignore
 .stylelintrc.json
 .wp-env.json
 .wp-env.override.json

@@ -33,5 +33,61 @@
     "abilities": [],
     "cli_commands": [],
     "blocks": [],
-    "dom_events": []
+    "dom_events": [],
+    "schemas": [
+        "schema/kit-assembly.json",
+        "schema/kit-presets.json",
+        "schema/kit-rules.json",
+        "schema/kit-slots.json"
+    ],
+    "schema_digests": {
+        "schema/kit-assembly.json": "af2408d2ad789d14d5b46296f955934eb622f1600ec41d42a8790a0ff6e72f33",
+        "schema/kit-presets.json": "2ee5a43c535aebfba283373e1848e2a9570bdc52faa04e8a7704df0f89c35e26",
+        "schema/kit-rules.json": "fb033a9bb7a8bb08035b423fe7348ed473ec5b6905b6e6bf54d1c2070968eca7",
+        "schema/kit-slots.json": "bdcaa3107e8e591b2cc6971e104ed3a7270a00f54f775d7d0474ebb5d06f6a5c"
+    },
+    "spec_keys": [
+        "deck_width",
+        "deck_length",
+        "wheelbase",
+        "hole_pattern",
+        "axle_width",
+        "deck_min",
+        "deck_max",
+        "truck_height",
+        "height_class",
+        "max_wheel",
+        "baseplate",
+        "axle_diameter",
+        "wheel_diameter",
+        "riser_thickness",
+        "bolt_length",
+        "bearing_bore",
+        "spacers_built_in",
+        "grip_width",
+        "grip_length",
+        "set_size"
+    ],
+    "spec_kinds": {
+        "deck_width": "measure in",
+        "deck_length": "measure in",
+        "wheelbase": "measure in",
+        "hole_pattern": "choice",
+        "axle_width": "measure in",
+        "deck_min": "measure in",
+        "deck_max": "measure in",
+        "truck_height": "measure mm",
+        "height_class": "choice",
+        "max_wheel": "measure mm",
+        "baseplate": "choice",
+        "axle_diameter": "measure mm",
+        "wheel_diameter": "measure mm",
+        "riser_thickness": "measure in",
+        "bolt_length": "measure in",
+        "bearing_bore": "measure mm",
+        "spacers_built_in": "flag",
+        "grip_width": "measure in",
+        "grip_length": "measure in",
+        "set_size": "count"
+    }
 }

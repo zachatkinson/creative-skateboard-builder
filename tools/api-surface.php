@@ -16,7 +16,10 @@
  *   abilities             wp_register_ability();
  *   WP-CLI commands       WP_CLI::add_command();
  *   blocks                block.json under assets/src;
- *   DOM events            'cbuild:*' strings under assets/src.
+ *   DOM events            'cbuild:*' strings under assets/src;
+ *   document schemas      schema/*.json, each by its path, and each one's content by a digest of its decoded JSON, so
+ *                         a schema cannot change shape without the snapshot changing with it;
+ *   spec keys             Domain\Spec\SpecKey's cases, with each one's kind and unit.
  *
  * @package CreativeBranding\SkateboardBuilder
  */
@@ -222,6 +225,50 @@ $cbuild_surface = array(
 	'dom_events'        => cbuild_api_matches( $cbuild_assets, "/'(cbuild:[a-z0-9-]+)'/" ),
 );
 
+// The kit's document schemas. The digest is of the decoded document with its keys sorted, so re-indenting a file
+// changes nothing and changing a bound, a pattern or a property does.
+$cbuild_schemas = array();
+$cbuild_digests = array();
+foreach ( glob( $cbuild_root . '/schema/*.json' ) ?: array() as $cbuild_schema_file ) {
+	$cbuild_schema = json_decode( (string) file_get_contents( $cbuild_schema_file ), true );
+	if ( ! is_array( $cbuild_schema ) ) {
+		fwrite( STDERR, 'schema/' . basename( $cbuild_schema_file ) . " is not a JSON object.\n" );
+		exit( 1 );
+	}
+	$cbuild_sort = static function ( array &$node ) use ( &$cbuild_sort ): void {
+		if ( ! array_is_list( $node ) ) {
+			ksort( $node );
+		}
+		foreach ( $node as &$cbuild_child ) {
+			if ( is_array( $cbuild_child ) ) {
+				$cbuild_sort( $cbuild_child );
+			}
+		}
+	};
+	$cbuild_sort( $cbuild_schema );
+	$cbuild_name                    = 'schema/' . basename( $cbuild_schema_file );
+	$cbuild_schemas[]               = $cbuild_name;
+	$cbuild_digests[ $cbuild_name ] = hash( 'sha256', json_encode( $cbuild_schema, JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR ) );
+}
+$cbuild_surface['schemas']        = $cbuild_schemas;
+$cbuild_surface['schema_digests'] = $cbuild_digests;
+
+// The spec keys, from the domain's enum. The domain loads without WordPress, through Composer's loader.
+$cbuild_spec_keys = array();
+$cbuild_spec_enum = 'CreativeBranding\\SkateboardBuilder\\Domain\\Spec\\SpecKey';
+if ( is_file( $cbuild_root . '/src/Domain/Spec/SpecKey.php' ) ) {
+	require_once $cbuild_root . '/vendor/autoload.php';
+	foreach ( $cbuild_spec_enum::cases() as $cbuild_spec_key ) {
+		$cbuild_spec_unit                             = $cbuild_spec_key->unit();
+		$cbuild_spec_keys[ $cbuild_spec_key->value ] = $cbuild_spec_key->kind()->value . ( null === $cbuild_spec_unit ? '' : ' ' . $cbuild_spec_unit->value );
+	}
+}
+$cbuild_surface['spec_keys']  = array_keys( $cbuild_spec_keys );
+$cbuild_surface['spec_kinds'] = $cbuild_spec_keys;
+
+// Groups that describe another group's items and are not themselves named in the docs.
+$cbuild_details = array( 'schema_digests', 'spec_kinds' );
+
 $cbuild_json     = json_encode( $cbuild_surface, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR ) . "\n";
 $cbuild_snapshot = $cbuild_root . '/tests/Fixtures/api-surface.json';
 
@@ -251,6 +298,9 @@ if ( $cbuild_stored !== $cbuild_json ) {
 
 $cbuild_hooks = is_readable( $cbuild_root . '/docs/HOOKS.md' ) ? (string) file_get_contents( $cbuild_root . '/docs/HOOKS.md' ) : '';
 foreach ( $cbuild_surface as $cbuild_key => $cbuild_items ) {
+	if ( in_array( $cbuild_key, $cbuild_details, true ) ) {
+		continue;
+	}
 	foreach ( is_array( $cbuild_items ) ? $cbuild_items : array( $cbuild_items ) as $cbuild_item ) {
 		if ( '' !== $cbuild_item && ! str_contains( $cbuild_hooks, '`' . $cbuild_item . '`' ) ) {
 			fwrite( STDERR, "docs/HOOKS.md does not list {$cbuild_key} `{$cbuild_item}`.\n" );
@@ -264,6 +314,9 @@ foreach ( $cbuild_surface as $cbuild_key => $cbuild_items ) {
 $cbuild_changelog = is_readable( $cbuild_root . '/CHANGELOG.md' ) ? (string) file_get_contents( $cbuild_root . '/CHANGELOG.md' ) : '';
 $cbuild_entries   = cbuild_api_changelog_entries( $cbuild_changelog );
 foreach ( $cbuild_surface as $cbuild_key => $cbuild_items ) {
+	if ( in_array( $cbuild_key, $cbuild_details, true ) ) {
+		continue;
+	}
 	foreach ( is_array( $cbuild_items ) ? $cbuild_items : array( $cbuild_items ) as $cbuild_item ) {
 		if ( '' === $cbuild_item || ! str_contains( $cbuild_hooks, '`' . $cbuild_item . '`' ) ) {
 			continue;
@@ -284,7 +337,10 @@ foreach ( $cbuild_surface as $cbuild_key => $cbuild_items ) {
 
 if ( 0 === $cbuild_status ) {
 	$cbuild_count = 0;
-	foreach ( $cbuild_surface as $cbuild_items ) {
+	foreach ( $cbuild_surface as $cbuild_key => $cbuild_items ) {
+		if ( in_array( $cbuild_key, $cbuild_details, true ) ) {
+			continue;
+		}
 		$cbuild_count += is_array( $cbuild_items ) ? count( $cbuild_items ) : ( '' === $cbuild_items ? 0 : 1 );
 	}
 	echo "API surface: {$cbuild_count} items match the snapshot, docs/HOOKS.md and CHANGELOG.md.\n";

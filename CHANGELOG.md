@@ -4,6 +4,12 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+### Added
+
+- The kit's four document schemas, `schema/kit-slots.json`, `schema/kit-rules.json`, `schema/kit-presets.json` and `schema/kit-assembly.json`, each at `schema_version` 1, with the domain's value objects that read the same documents and an integration test that holds the two together.
+- The spec keys: `deck_width`, `deck_length`, `wheelbase`, `hole_pattern`, `axle_width`, `deck_min`, `deck_max`, `truck_height`, `height_class`, `max_wheel`, `baseplate`, `axle_diameter`, `wheel_diameter`, `riser_thickness`, `bolt_length`, `bearing_bore`, `spacers_built_in`, `grip_width`, `grip_length` and `set_size`.
+- `composer api:check` reads the schemas, by path and by content, and the spec keys, with each one's kind and unit.
+
 ### Changed
 
 - The update's "View details" popup and the release's notes show `readme.txt`'s changelog, written for shop owners, not this file's (D-053).
