@@ -7,6 +7,7 @@ All notable changes to this project are documented here. The format follows [Kee
 ### Added
 
 - The product type `cbuild_kit`, a kit: virtual, not purchasable as a product, its price the assembly fee and never in WooCommerce's price fields, so a kit is not sold with the plugin switched off.
+- A kit stays out of the catalogue, search results, product feeds and WordPress's sitemap, and prints no product markup. Its catalogue visibility is always hidden.
 - A kit's four documents as product meta, each as JSON text: `_cbuild_slots`, `_cbuild_rules`, `_cbuild_presets` and `_cbuild_assembly`. Their schemas have been public since 0.2.0.
 
 ### Changed

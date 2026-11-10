@@ -13,6 +13,7 @@ use CreativeBranding\SkateboardBuilder\Adapter\KitProduct;
 use CreativeBranding\SkateboardBuilder\Support\Options;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Domain\KitDocuments;
 use CreativeBranding\SkateboardBuilder\Tests\Support\IntegrationTestCase;
+use CreativeBranding\SkateboardBuilder\Tests\Support\KitFactory;
 
 /**
  * A kit is a product of the type `cbuild_kit` (spec: Data model). It is virtual, cannot be bought outside the
@@ -21,19 +22,8 @@ use CreativeBranding\SkateboardBuilder\Tests\Support\IntegrationTestCase;
  */
 final class KitProductTest extends IntegrationTestCase {
 
-	/**
-	 * A saved kit with the complete set of documents.
-	 */
 	private static function kit(): KitProduct {
-		$kit = new KitProduct();
-		$kit->set_name( 'Complete skateboard' );
-		$kit->set_status( 'publish' );
-		$kit->setDocument( Options::META_KIT_SLOTS, KitDocuments::slots() );
-		$kit->setDocument( Options::META_KIT_RULES, KitDocuments::rules() );
-		$kit->setDocument( Options::META_KIT_PRESETS, KitDocuments::presets() );
-		$kit->setDocument( Options::META_KIT_ASSEMBLY, KitDocuments::assembly() );
-		$kit->save();
-		return $kit;
+		return KitFactory::kit();
 	}
 
 	/**

@@ -1223,3 +1223,18 @@ Milestone 3's audit listed thirteen minors as the first work of milestone 4.
 
 **Status:** Accepted.
 
+### D-100 · How a kit stays out of search · 2026-11-10
+
+`docs/SPEC.md` (SEO and sharing): the kit is kept out of the catalogue, search results, feeds and the sitemaps, and prints no product markup.
+
+- **A kit's catalogue visibility is always `hidden`,** to `view` and to `edit` (`Adapter\KitProduct::get_catalog_visibility()`). WooCommerce's data store writes the terms `exclude-from-catalog` and `exclude-from-search` from it (WooCommerce 11.2.2, `includes/data-stores/class-wc-product-data-store-cpt.php:1061`), and its catalogue pages, its search, WordPress's site search, its feeds, `wc_get_products()` and the Store API all read those terms (`includes/class-wc-query.php:421` and `:937`). So one fact hides the kit everywhere WooCommerce lists products, and a kit set to visible on the product screen, by an import or over REST is saved hidden all the same.
+- **"Feeds" is WooCommerce's product feeds,** a category's and the shop's, which run the same query. A feed plugin that builds its own list reads the visibility terms, which are set.
+- **WordPress's sitemap does not read visibility,** so `wp_sitemaps_posts_query_args` (WordPress 7.1.4, `wp-includes/sitemaps/providers/class-wp-sitemaps-posts.php:238`) adds a condition to the products' query: not of the type `cbuild_kit`. A condition another plugin added stays.
+- **No markup:** `woocommerce_structured_data_product` (`includes/class-wc-structured-data.php:545`) answers an empty array for a kit, and WooCommerce prints nothing for markup with no type. Without it a kit would print an offer at its assembly fee.
+- **The two rules that are not WooCommerce's are `Service\KitVisibility`,** plain PHP, unit-tested and mutated.
+- **The test site's theme gives products no archive,** so `KitHiddenTest` asks for a product category's page and its feed, which WooCommerce queries as it does the shop's.
+- **Deliberate break:** with the visibility WooCommerce's own and the two filters removed, all six of `KitHiddenTest` fail ("Tests: 6, Assertions: 12, Failures: 6").
+- **Yoast's sitemap** is the next commit's, with the adapter that lists the shop's kits.
+
+**Status:** Accepted.
+

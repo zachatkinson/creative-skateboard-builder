@@ -56,6 +56,21 @@ final class KitProduct extends WC_Product {
 	}
 
 	/**
+	 * Hidden from the catalogue and from search, whatever it is set to: the kit is the builder, not a product to
+	 * list (spec: SEO and sharing). WooCommerce's data store writes the two visibility terms from this
+	 * (WooCommerce 11.2.2, includes/data-stores/class-wc-product-data-store-cpt.php:1061), and its queries, its
+	 * search, its feed and the Store API all read those terms.
+	 *
+	 * @since 0.4.0
+	 *
+	 * @param string $context What the value is for: `view` or `edit`.
+	 */
+	public function get_catalog_visibility( $context = 'view' ): string {
+		unset( $context );
+		return 'hidden';
+	}
+
+	/**
 	 * Not purchasable as a product: the builder puts a kit in the cart with its parts, and nothing else may.
 	 * Milestone 5 answers this filter for the build it is adding.
 	 *

@@ -9,7 +9,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-11-10T20:26:15+00:00\n"
+"POT-Creation-Date: 2026-11-10T20:50:34+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: creative-skateboard-builder\n"
@@ -1024,7 +1024,7 @@ msgstr ""
 msgid "Skateboard builder"
 msgstr ""
 
-#: src/Hooks/KitHooks.php:55
+#: src/Hooks/KitHooks.php:62
 msgid "Builder kit"
 msgstr ""
 

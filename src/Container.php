@@ -124,7 +124,7 @@ final class Container {
 			// The kit's class is an adapter's, which a Hookable may not name.
 			Hooks\KitHooks::class                       => static function ( Container $c ): object {
 				unset( $c );
-				return new Hooks\KitHooks( Adapter\KitProduct::class );
+				return new Hooks\KitHooks( Adapter\KitProduct::class, new Service\KitVisibility( Support\Options::PRODUCT_TYPE_KIT ) );
 			},
 			// The jobs and the import are built when a part is saved or a job runs, not on every request.
 			Hooks\IndexHooks::class                     => static function ( Container $c ): object {
