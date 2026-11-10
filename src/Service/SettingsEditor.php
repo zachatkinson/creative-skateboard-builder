@@ -9,6 +9,9 @@ declare( strict_types=1 );
 
 namespace CreativeBranding\SkateboardBuilder\Service;
 
+use CreativeBranding\SkateboardBuilder\Domain\Kit\Assembly;
+use CreativeBranding\SkateboardBuilder\Domain\Kit\BuildTerms;
+use CreativeBranding\SkateboardBuilder\Domain\Kit\InvalidDocument;
 use CreativeBranding\SkateboardBuilder\Domain\Measure\Unit;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\AttributeMap;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\SourceOrder;
@@ -20,8 +23,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * What a person sends from WooCommerce > Settings > Builder is checked here, line by line, and saved only when
- * nothing is wrong with any of it: a mapping half saved would index every part against settings nobody chose. The
+ * What a person sends from WooCommerce > Settings > Builder is checked here, line by line and field by field, and
+ * saved only when nothing is wrong with any of it: a mapping half saved would index every part against settings nobody chose. The
  * screen, and anything else that edits the settings, calls this one service.
  *
  * @since 0.3.0
@@ -42,6 +45,13 @@ final class SettingsEditor {
 	public const DUPLICATE         = 'mapping_duplicate';
 	public const TOO_MANY          = 'mapping_too_many';
 	public const ORDER_INVALID     = 'order_invalid';
+	public const DISCOUNT_INVALID  = 'discount_invalid';
+	public const COUPONS_INVALID   = 'coupons_invalid';
+	public const RATE_INVALID      = 'rate_invalid';
+	public const HEADER_INVALID    = 'header_invalid';
+	public const FEE_INVALID       = 'fee_invalid';
+	public const LEAD_TIME_LONG    = 'lead_time_long';
+	public const RETURNS_LONG      = 'returns_notice_long';
 
 	/**
 	 * Constructor.
@@ -57,10 +67,17 @@ final class SettingsEditor {
 	 *
 	 * @since 0.3.0
 	 *
-	 * @param array<mixed> $lines The mapping as typed: each line an `attribute`, a `spec` and a `unit`.
-	 * @param array<mixed> $order The sources' names, first wins.
+	 * @since 0.4.0 Takes the terms.
+	 *
+	 * @param array<mixed>      $lines     The mapping as typed: each line an `attribute`, a `spec` and a `unit`.
+	 * @param array<mixed>      $order     The sources' names, first wins.
+	 * @param array<mixed>|null $terms     The terms as typed: `discount`, `coupons`, `rate`, `header`, and a new kit's
+	 *                                     `default_on`, `fee`, `lead_time` and `returns_notice`. Null leaves the
+	 *                                     terms as they are.
+	 * @param string            $separator The shop's decimal separator, which the discount and the fee may be typed
+	 *                                     with.
 	 */
-	public function submit( array $lines, array $order ): SettingsDraft {
+	public function submit( array $lines, array $order, ?array $terms = null, string $separator = '.' ): SettingsDraft {
 		$mapping  = array();
 		$problems = array();
 		$seen     = array();
@@ -101,11 +118,95 @@ final class SettingsEditor {
 				'line' => 0,
 			);
 		}
-		$draft = new SettingsDraft( $mapping, $sources, $problems );
+		$built = null;
+		if ( null !== $terms ) {
+			$stored = self::terms( $terms, $separator );
+			$wrong  = self::wrong( $stored );
+			$built  = array() === $wrong ? BuildTerms::read( $stored ) : null;
+			foreach ( $wrong as $code ) {
+				$problems[] = array(
+					'code' => $code,
+					'line' => 0,
+				);
+			}
+		}
+		$draft = new SettingsDraft( $mapping, $sources, $problems, $built );
 		if ( null !== $sources && $draft->saved() ) {
-			$this->settings->save( $mapping, $sources );
+			$this->settings->save( $mapping, $sources, $built );
 		}
 		return $draft;
+	}
+
+	/**
+	 * The terms as the settings write them, from what was typed. A discount or a fee left empty is none, and a rate
+	 * that is no whole number is no rate.
+	 *
+	 * @param array<mixed> $sent      The fields.
+	 * @param string       $separator The shop's decimal separator.
+	 * @return array{build_discount: string, fixed_coupons: string, rate_limit: int|null, trusted_proxy_header: string, kit_defaults: array{assembly: array<string, mixed>}}
+	 */
+	private static function terms( array $sent, string $separator ): array {
+		$rate = self::text( $sent, 'rate' );
+		return array(
+			BuildTerms::DISCOUNT     => self::decimal( self::text( $sent, 'discount' ), $separator ),
+			BuildTerms::COUPONS      => self::text( $sent, 'coupons' ),
+			BuildTerms::RATE         => 1 === preg_match( '/\A\d{1,4}\z/', $rate ) ? (int) $rate : null,
+			BuildTerms::PROXY        => self::text( $sent, 'header' ),
+			BuildTerms::KIT_DEFAULTS => array(
+				'assembly' => array(
+					'schema_version' => 1,
+					'default_on'     => '' !== self::text( $sent, 'default_on' ),
+					'fee'            => self::decimal( self::text( $sent, 'fee' ), $separator ),
+					'lead_time'      => self::text( $sent, 'lead_time' ),
+					'returns_notice' => self::text( $sent, 'returns_notice' ),
+				),
+			),
+		);
+	}
+
+	/**
+	 * What is wrong with the terms, a code for each field the domain does not take.
+	 *
+	 * @param array{build_discount: string, fixed_coupons: string, rate_limit: int|null, trusted_proxy_header: string, kit_defaults: array{assembly: array<string, mixed>}} $stored The terms as the settings would write them.
+	 * @return list<string>
+	 */
+	private static function wrong( array $stored ): array {
+		$wrong = array();
+		if ( null === BuildTerms::discountFrom( $stored[ BuildTerms::DISCOUNT ] ) ) {
+			$wrong[] = self::DISCOUNT_INVALID;
+		}
+		if ( null === BuildTerms::couponsFrom( $stored[ BuildTerms::COUPONS ] ) ) {
+			$wrong[] = self::COUPONS_INVALID;
+		}
+		if ( null === BuildTerms::rateFrom( $stored[ BuildTerms::RATE ] ) ) {
+			$wrong[] = self::RATE_INVALID;
+		}
+		if ( null === BuildTerms::headerFrom( $stored[ BuildTerms::PROXY ] ) ) {
+			$wrong[] = self::HEADER_INVALID;
+		}
+		try {
+			Assembly::fromDocument( $stored[ BuildTerms::KIT_DEFAULTS ]['assembly'] );
+		} catch ( InvalidDocument $refused ) {
+			$wrong[] = match ( $refused->path ) {
+				'lead_time'      => self::LEAD_TIME_LONG,
+				'returns_notice' => self::RETURNS_LONG,
+				default          => self::FEE_INVALID,
+			};
+		}
+		return $wrong;
+	}
+
+	/**
+	 * A decimal as the settings write one, with a point. Nothing typed is none.
+	 *
+	 * @param string $text      What was typed.
+	 * @param string $separator The shop's decimal separator.
+	 */
+	private static function decimal( string $text, string $separator ): string {
+		if ( '' === $text ) {
+			return '0';
+		}
+		return '' === $separator ? $text : str_replace( $separator, '.', $text );
 	}
 
 	/**

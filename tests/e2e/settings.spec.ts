@@ -3,8 +3,9 @@ import { axe } from './support/axe';
 import { login } from './support/login';
 
 /**
- * WooCommerce > Settings > Builder (milestone 3): the attribute mapping and which source wins. Saved by keyboard,
- * refused whole when a line is wrong, with the problem beside its field, and axe-clean in each state.
+ * WooCommerce > Settings > Builder: the attribute mapping and which source wins (milestone 3), and the terms a build
+ * is sold on (milestone 4). Saved by keyboard, refused whole when a line or a field is wrong, with the problem beside
+ * its field, and axe-clean in each state.
  */
 
 const TAB = '/wp-admin/admin.php?page=wc-settings&tab=cbuild';
@@ -124,5 +125,83 @@ test.describe( 'WooCommerce > Settings > Builder', () => {
 		await reset( page );
 		await page.goto( TAB );
 		await expect( field( page, 1, 'Attribute' ) ).toHaveValue( '' );
+	} );
+
+	test( 'the terms are saved by keyboard, and a wrong rate saves none of them', async ( {
+		page,
+	} ) => {
+		await login( page );
+		await page.goto( TAB );
+		for ( const heading of [ 'Builds', 'Visitors', 'New kits' ] ) {
+			await expect(
+				page.getByRole( 'heading', { name: heading, exact: true } )
+			).toBeVisible();
+		}
+		const discount = page.getByLabel( 'Build discount (%)' );
+		const rate = page.getByLabel( 'Requests a minute from one address' );
+		const lead = page.getByLabel( 'Lead time' );
+		await expect( rate ).toHaveAccessibleDescription( /from 10 to 6000/ );
+
+		// By keyboard alone: a discount, then a rate below the least, then a lead time.
+		const type = async ( text: string ) => {
+			await page.keyboard.press( 'ControlOrMeta+a' );
+			await page.keyboard.type( text );
+		};
+		await discount.focus();
+		await type( '7.5' );
+		await rate.focus();
+		await type( '5' );
+		await lead.focus();
+		await type( 'Two working days' );
+		await save( page );
+
+		await expect(
+			page.getByText( 'The settings were not saved.' )
+		).toBeVisible();
+		await expect( rate ).toHaveValue( '5' );
+		await expect( rate ).toHaveAttribute( 'aria-invalid', 'true' );
+		await expect( rate ).toHaveAccessibleDescription(
+			/Enter a whole number from 10 to 6000\./
+		);
+		await expect( discount ).toHaveValue( '7.5' );
+		await expect( discount ).not.toHaveAttribute( 'aria-invalid', 'true' );
+		await axe( page, 'the Builder tab, a term refused', FIELDS );
+
+		// None of it was stored.
+		await page.goto( TAB );
+		await expect( discount ).toHaveValue( '0' );
+		await expect( lead ).toHaveValue( '' );
+
+		await discount.focus();
+		await type( '7.5' );
+		await rate.focus();
+		await type( '60' );
+		await page
+			.getByLabel( 'A fixed product discount coupon applies to' )
+			.selectOption( 'parts' );
+		await save( page );
+		await expect(
+			page.getByText( 'Your settings have been saved.' )
+		).toBeVisible();
+		await page.goto( TAB );
+		await expect( discount ).toHaveValue( '7.5' );
+		await expect( rate ).toHaveValue( '60' );
+		await expect(
+			page.getByLabel( 'A fixed product discount coupon applies to' )
+		).toHaveValue( 'parts' );
+		await axe( page, 'the Builder tab, with terms', FIELDS );
+
+		// Back to what a new shop has, so the next run starts from it.
+		await discount.focus();
+		await type( '0' );
+		await rate.focus();
+		await type( '120' );
+		await page
+			.getByLabel( 'A fixed product discount coupon applies to' )
+			.selectOption( 'kit' );
+		await save( page );
+		await page.goto( TAB );
+		await expect( rate ).toHaveValue( '120' );
+		await expect( discount ).toHaveValue( '0' );
 	} );
 } );

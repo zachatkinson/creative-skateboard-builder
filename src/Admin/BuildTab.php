@@ -16,6 +16,7 @@ use CreativeBranding\SkateboardBuilder\Domain\Kit\RuleSettings;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Slot;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\SlotKey;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Slots;
+use CreativeBranding\SkateboardBuilder\Port\ShopSettings;
 use CreativeBranding\SkateboardBuilder\Service\KitEditor;
 use CreativeBranding\SkateboardBuilder\Support\Options;
 use CreativeBranding\SkateboardBuilder\Support\StoredKit;
@@ -117,9 +118,10 @@ final class BuildTab {
 	 *
 	 * @since 0.4.0
 	 *
-	 * @param KitEditor $editor Checks what is sent.
+	 * @param KitEditor    $editor   Checks what is sent.
+	 * @param ShopSettings $settings The shop's settings, for what a new kit's assembly starts from.
 	 */
-	public function __construct( private KitEditor $editor ) {}
+	public function __construct( private KitEditor $editor, private ShopSettings $settings ) {}
 
 	/**
 	 * Style the tab and load its script.
@@ -278,7 +280,7 @@ final class BuildTab {
 		$shown = array();
 		foreach ( array_keys( Options::kitDocumentNames() ) as $name ) {
 			$typed          = $refused[ $name ] ?? null;
-			$shown[ $name ] = is_array( $typed ) ? $typed : ( $stored[ $name ] ?? self::fresh( $name ) );
+			$shown[ $name ] = is_array( $typed ) ? $typed : ( $stored[ $name ] ?? $this->fresh( $name ) );
 		}
 		$known = array_column( self::rows( $stored[ KitEditor::SLOTS ] ?? null, 'slots' ), 'key' );
 
@@ -708,14 +710,18 @@ final class BuildTab {
 	}
 
 	/**
-	 * What a new kit's tab starts from: the seven parts of a complete, the rules as seeded, no presets and no fee.
+	 * What a new kit's tab starts from: the seven parts of a complete, the rules as seeded, no presets, and assembly
+	 * as the shop's settings have it for a new kit.
 	 *
 	 * @param string $name The document's name.
 	 * @return array<string, mixed>
 	 */
-	private static function fresh( string $name ): array {
+	private function fresh( string $name ): array {
 		if ( KitEditor::RULES === $name ) {
 			return RuleSettings::DEFAULTS;
+		}
+		if ( KitEditor::ASSEMBLY === $name ) {
+			return $this->settings->terms()->assembly;
 		}
 		if ( KitEditor::SLOTS !== $name ) {
 			return array();

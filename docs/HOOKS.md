@@ -91,7 +91,7 @@ A kit is four JSON documents. Each has a JSON Schema (draft 4) in the plugin's `
 | `schema/kit-presets.json` | 0.2.0 | Up to six presets: a name, a description and a part for each slot it fills. |
 | `schema/kit-assembly.json` | 0.2.0 | Whether assembly is on by default, its fee as a decimal string in the shop's currency, the lead time and the returns notice. |
 
-| `schema/settings.json` | 0.3.0 | Not a kit document: the shape of the option `cbuild_settings` as the plugin writes it. `attribute_mapping` is up to 50 lines, each an `attribute` of 1 to 190 characters, a `spec` that is a spec key and a `unit` of `in`, `mm` or empty; `source_order` is `table`, `field` and `attribute`, each once. Other keys are allowed, so a later version's settings pass. It has no `schema_version`: a key that is missing or malformed reads as its default. |
+| `schema/settings.json` | 0.3.0 | Not a kit document: the shape of the option `cbuild_settings` as the plugin writes it. `attribute_mapping` is up to 50 lines, each an `attribute` of 1 to 190 characters, a `spec` that is a spec key and a `unit` of `in`, `mm` or empty; `source_order` is `table`, `field` and `attribute`, each once. From 0.4.0 it also holds the five keys that version adds, listed under Settings keys with their ranges: the discount as text, the coupon's place, the rate as a whole number, the header's name, and a new kit's assembly as `schema/kit-assembly.json` has it. Other keys are allowed, so a later version's settings pass. It has no `schema_version`: a key that is missing or malformed reads as its default. |
 
 A schema says what shape a document has. Five things it cannot say are checked when the document is read: slot keys are unique, the deck is the first slot, the risers come before the hardware, R1's `axle_warn` is at least its `axle_fit`, and each row of R3's riser table reaches further than the one before. A preset must also fill every required slot and name only slots the kit has.
 
@@ -239,6 +239,11 @@ In the option `cbuild_settings`. [SETTINGS.md](SETTINGS.md) has each key's defau
 | --- | --- | --- |
 | `attribute_mapping` | 0.3.0 | Which attribute feeds which spec, and the unit its values are in. |
 | `source_order` | 0.3.0 | Which source wins where two disagree. |
+| `build_discount` | 0.4.0 | The percentage taken off each part of a build, as text with a point and up to two decimals: `7.5`. `0` is none, and it is always below 100. |
+| `fixed_coupons` | 0.4.0 | Where a fixed product discount coupon that takes the kit lands: `kit` or `parts`. |
+| `rate_limit` | 0.4.0 | How many times a minute one address may ask the state route: 10 to 6000. |
+| `trusted_proxy_header` | 0.4.0 | The request header a trusted proxy names the visitor's address in: a header's name of up to 64 letters, digits and hyphens, starting with a letter. Empty reads `REMOTE_ADDR`. |
+| `kit_defaults` | 0.4.0 | What a new kit starts from: `assembly`, an assembly document. |
 
 ### Options
 

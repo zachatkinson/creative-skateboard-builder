@@ -15,6 +15,7 @@ use CreativeBranding\SkateboardBuilder\Admin\BuildTabHooks;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Kit;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\RuleSettings;
 use CreativeBranding\SkateboardBuilder\Port\DocumentSchemas;
+use CreativeBranding\SkateboardBuilder\Port\ShopSettings;
 use CreativeBranding\SkateboardBuilder\Service\KitEditor;
 use CreativeBranding\SkateboardBuilder\Service\SpecIndexer;
 use CreativeBranding\SkateboardBuilder\Support\Options;
@@ -44,7 +45,7 @@ final class BuildTabTest extends IntegrationTestCase {
 	}
 
 	private function hooks(): BuildTabHooks {
-		$tab = new BuildTab( $this->service( KitEditor::class ) );
+		$tab = new BuildTab( $this->service( KitEditor::class ), $this->service( ShopSettings::class ) );
 		return new BuildTabHooks( static fn(): BuildTab => $tab );
 	}
 
@@ -230,6 +231,45 @@ final class BuildTabTest extends IntegrationTestCase {
 			self::assertNull( $this->service( DocumentSchemas::class )->refusal( $name, $stored[ $key ] ), $name );
 		}
 		Kit::fromDocuments( $stored[ Options::META_KIT_SLOTS ], $stored[ Options::META_KIT_RULES ], $stored[ Options::META_KIT_PRESETS ], $stored[ Options::META_KIT_ASSEMBLY ] );
+	}
+
+	public function test_a_new_kits_assembly_starts_from_the_shops_settings_and_a_kit_that_has_its_own_keeps_it(): void {
+		$this->as( 'shop_manager' );
+		$kit = new KitProduct();
+		$kit->set_name( 'New kit' );
+		$kit->save();
+		$panel = $this->panel( $kit );
+		self::assertMatchesRegularExpression( '/name="cbuild_kit\[assembly\]\[fee\]"\s+value="0"/', $panel, 'a shop that has set nothing: no fee' );
+		self::assertDoesNotMatchRegularExpression( '/name="cbuild_kit\[assembly\]\[default_on\]"[^>]*checked/', $panel );
+
+		update_option( 'woocommerce_price_decimal_sep', ',' );
+		update_option(
+			Options::SETTINGS,
+			array(
+				'kit_defaults' => array(
+					'assembly' => array(
+						'schema_version' => 1,
+						'default_on'     => true,
+						'fee'            => '15.5',
+						'lead_time'      => 'Two working days',
+						'returns_notice' => 'An assembled board cannot be returned.',
+					),
+				),
+			)
+		);
+		$panel = $this->panel( $kit );
+		self::assertMatchesRegularExpression( '/name="cbuild_kit\[assembly\]\[fee\]"\s+value="15,5"/', $panel, 'with the shop\'s separator' );
+		self::assertMatchesRegularExpression( '/name="cbuild_kit\[assembly\]\[default_on\]"[^>]*checked/', $panel );
+		self::assertMatchesRegularExpression( '/name="cbuild_kit\[assembly\]\[lead_time\]"\s+value="Two working days"/', $panel );
+		self::assertStringContainsString( '>An assembled board cannot be returned.</textarea>', $panel );
+
+		// A kit with assembly of its own shows its own, whatever the shop's settings say.
+		$own = KitFactory::kit();
+		self::assertNotSame( '15.5', KitDocuments::assembly()['fee'] );
+		$panel = $this->panel( $own );
+		self::assertDoesNotMatchRegularExpression( '/name="cbuild_kit\[assembly\]\[fee\]"\s+value="15,5"/', $panel );
+		self::assertStringNotContainsString( 'Two working days', $panel );
+		delete_option( Options::SETTINGS );
 	}
 
 	public function test_a_shop_manager_saves_each_section_through_the_kits_own_crud(): void {

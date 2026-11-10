@@ -9,6 +9,7 @@ declare( strict_types=1 );
 
 namespace CreativeBranding\SkateboardBuilder\Tests\Support\Fakes;
 
+use CreativeBranding\SkateboardBuilder\Domain\Kit\BuildTerms;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\SourceOrder;
 use CreativeBranding\SkateboardBuilder\Port\ShopSettings;
 
@@ -36,9 +37,16 @@ final class InMemoryShopSettings implements ShopSettings {
 
 	public int $saves = 0;
 
-	public function save( array $mapping, SourceOrder $order ): void {
+	public ?BuildTerms $terms = null;
+
+	public function terms(): BuildTerms {
+		return $this->terms ?? BuildTerms::read( null );
+	}
+
+	public function save( array $mapping, SourceOrder $order, ?BuildTerms $terms = null ): void {
 		$this->mapping = $mapping;
 		$this->order   = $order;
+		$this->terms   = $terms ?? $this->terms;
 		++$this->saves;
 	}
 

@@ -46,7 +46,7 @@ final class OptionsTest extends TestCase {
 		self::assertSame( array( 'cbuild_spec_table' ), Options::postTypes() );
 		self::assertStringStartsWith( 'cbuild_', Options::POST_TYPE_SPEC_TABLE );
 		self::assertLessThanOrEqual( 20, strlen( Options::POST_TYPE_SPEC_TABLE ), 'a post type\'s name is at most 20 characters' );
-		self::assertSame( array( 'attribute_mapping', 'source_order' ), Options::settingsKeys() );
+		self::assertSame( array( 'attribute_mapping', 'source_order', 'build_discount', 'fixed_coupons', 'rate_limit', 'trusted_proxy_header', 'kit_defaults' ), Options::settingsKeys() );
 		foreach ( Options::metaKeys() as $key ) {
 			self::assertStringStartsWith( '_cbuild_', $key, 'hidden from the custom fields box, and the plugin\'s own' );
 		}

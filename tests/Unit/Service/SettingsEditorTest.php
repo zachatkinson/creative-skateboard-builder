@@ -9,10 +9,12 @@ declare( strict_types=1 );
 
 namespace CreativeBranding\SkateboardBuilder\Tests\Unit\Service;
 
+use CreativeBranding\SkateboardBuilder\Domain\Kit\BuildTerms;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\AttributeMap;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\SourceOrder;
 use CreativeBranding\SkateboardBuilder\Service\SettingsEditor;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\InMemoryShopSettings;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -169,5 +171,165 @@ final class SettingsEditorTest extends TestCase {
 			array( 'mapping_attribute_missing', 'mapping_spec_missing', 'mapping_attribute_long', 'mapping_spec_unknown', 'mapping_unit_unknown', 'mapping_unit_not_measure', 'mapping_duplicate', 'mapping_too_many', 'order_invalid' ),
 			array( SettingsEditor::ATTRIBUTE_MISSING, SettingsEditor::SPEC_MISSING, SettingsEditor::ATTRIBUTE_LONG, SettingsEditor::SPEC_UNKNOWN, SettingsEditor::UNIT_UNKNOWN, SettingsEditor::UNIT_NOT_MEASURE, SettingsEditor::DUPLICATE, SettingsEditor::TOO_MANY, SettingsEditor::ORDER_INVALID )
 		);
+	}
+
+	/**
+	 * The terms as the form sends them, with nothing wrong.
+	 */
+	private const array TERMS = array(
+		'discount'       => '7,5',
+		'coupons'        => 'parts',
+		'rate'           => '60',
+		'header'         => ' CF-Connecting-IP ',
+		'default_on'     => '1',
+		'fee'            => '15,50',
+		'lead_time'      => ' Two working days ',
+		'returns_notice' => 'An assembled board cannot be returned.',
+	);
+
+	/**
+	 * The problems of the terms, as code@line.
+	 *
+	 * @param array<string, mixed> $terms The fields that differ from the ones with nothing wrong.
+	 * @return list<string>
+	 */
+	private function wrong( array $terms ): array {
+		return array_map( static fn( array $problem ): string => $problem['code'] . '@' . $problem['line'], $this->editor->submit( array(), self::ORDER, $terms + self::TERMS, ',' )->problems );
+	}
+
+	public function test_the_terms_are_saved_with_the_mapping_as_the_settings_write_them(): void {
+		$draft = $this->editor->submit( array( self::line( 'pa_width', 'deck_width' ) ), self::ORDER, self::TERMS, ',' );
+		self::assertTrue( $draft->saved() );
+		self::assertSame( 1, $this->settings->saves );
+		self::assertNotNull( $draft->terms );
+		self::assertSame( $draft->terms, $this->settings->terms() );
+		self::assertSame(
+			array(
+				'build_discount'       => '7.5',
+				'fixed_coupons'        => 'parts',
+				'rate_limit'           => 60,
+				'trusted_proxy_header' => 'CF-Connecting-IP',
+				'kit_defaults'         => array(
+					'assembly' => array(
+						'schema_version' => 1,
+						'default_on'     => true,
+						'fee'            => '15.5',
+						'lead_time'      => 'Two working days',
+						'returns_notice' => 'An assembled board cannot be returned.',
+					),
+				),
+			),
+			$this->settings->terms()->toArray()
+		);
+	}
+
+	public function test_fields_left_empty_are_no_discount_no_header_and_no_fee(): void {
+		$draft = $this->editor->submit(
+			array(),
+			self::ORDER,
+			array(
+				'discount' => '',
+				'coupons'  => 'kit',
+				'rate'     => '120',
+			)
+		);
+		self::assertTrue( $draft->saved() );
+		self::assertSame( BuildTerms::read( null )->toArray(), $this->settings->terms()->toArray() );
+	}
+
+	public function test_a_submission_without_terms_leaves_the_terms_as_they_are(): void {
+		$this->editor->submit( array(), self::ORDER, self::TERMS, ',' );
+		$draft = $this->editor->submit( array( self::line( 'pa_width', 'deck_width' ) ), self::ORDER );
+		self::assertTrue( $draft->saved() );
+		self::assertNull( $draft->terms );
+		self::assertSame( 750, $this->settings->terms()->discount );
+		self::assertCount( 1, $this->settings->mapping );
+	}
+
+	public function test_a_point_is_read_whatever_the_shops_separator(): void {
+		self::assertSame(
+			array(),
+			$this->wrong(
+				array(
+					'discount' => '7.5',
+					'fee'      => '15.50',
+				)
+			)
+		);
+		self::assertSame( 750, $this->settings->terms()->discount );
+		self::assertSame( '15.5', $this->settings->terms()->assembly['fee'] );
+	}
+
+	/**
+	 * @return iterable<string, array{array<string, mixed>, list<string>}>
+	 */
+	public static function wrongTerms(): iterable {
+		yield 'a discount of everything' => array( array( 'discount' => '100' ), array( 'discount_invalid@0' ) );
+		yield 'a discount in words' => array( array( 'discount' => 'five' ), array( 'discount_invalid@0' ) );
+		yield 'a discount with three places' => array( array( 'discount' => '5,125' ), array( 'discount_invalid@0' ) );
+		yield 'a discount that is no text' => array( array( 'discount' => array( '5' ) ), array() );
+		yield 'coupons somewhere else' => array( array( 'coupons' => 'cart' ), array( 'coupons_invalid@0' ) );
+		yield 'no coupons choice' => array( array( 'coupons' => '' ), array( 'coupons_invalid@0' ) );
+		yield 'a rate below the least' => array( array( 'rate' => '9' ), array( 'rate_invalid@0' ) );
+		yield 'a rate above the most' => array( array( 'rate' => '6001' ), array( 'rate_invalid@0' ) );
+		yield 'a rate with a point' => array( array( 'rate' => '120.5' ), array( 'rate_invalid@0' ) );
+		yield 'a rate with a sign' => array( array( 'rate' => '+120' ), array( 'rate_invalid@0' ) );
+		yield 'a rate too long to be a number' => array( array( 'rate' => '00000000000000000000120' ), array( 'rate_invalid@0' ) );
+		yield 'no rate' => array( array( 'rate' => '' ), array( 'rate_invalid@0' ) );
+		yield 'a header with a space' => array( array( 'header' => 'X Real IP' ), array( 'header_invalid@0' ) );
+		yield 'a header as PHP names it' => array( array( 'header' => 'HTTP_X_REAL_IP' ), array( 'header_invalid@0' ) );
+		yield 'a fee in words' => array( array( 'fee' => 'free' ), array( 'fee_invalid@0' ) );
+		yield 'a fee with five places' => array( array( 'fee' => '1,00001' ), array( 'fee_invalid@0' ) );
+		yield 'a long lead time' => array( array( 'lead_time' => str_repeat( 'a', 201 ) ), array( 'lead_time_long@0' ) );
+		yield 'a long returns notice' => array( array( 'returns_notice' => str_repeat( 'a', 1001 ) ), array( 'returns_notice_long@0' ) );
+		yield 'every field wrong' => array(
+			array(
+				'discount' => '-1',
+				'coupons'  => 'both',
+				'rate'     => 'often',
+				'header'   => 'X:Y',
+				'fee'      => '-1',
+			),
+			array( 'discount_invalid@0', 'coupons_invalid@0', 'rate_invalid@0', 'header_invalid@0', 'fee_invalid@0' ),
+		);
+	}
+
+	/**
+	 * @param array<string, mixed> $terms    The fields that are wrong.
+	 * @param list<string>         $problems What is said of them.
+	 */
+	#[DataProvider( 'wrongTerms' )]
+	public function test_a_term_that_is_wrong_is_named_and_nothing_is_saved( array $terms, array $problems ): void {
+		self::assertSame( $problems, $this->wrong( $terms ) );
+		self::assertSame( array() === $problems ? 1 : 0, $this->settings->saves );
+	}
+
+	public function test_a_wrong_term_keeps_a_good_mapping_from_saving_and_a_wrong_line_keeps_good_terms(): void {
+		$draft = $this->editor->submit( array( self::line( 'pa_width', 'deck_width' ) ), self::ORDER, array( 'rate' => '1' ) + self::TERMS, ',' );
+		self::assertFalse( $draft->saved() );
+		self::assertNull( $draft->terms );
+		self::assertCount( 1, $draft->mapping );
+
+		$draft = $this->editor->submit( array( self::line( 'pa_width', 'nothing' ) ), self::ORDER, self::TERMS, ',' );
+		self::assertFalse( $draft->saved() );
+		self::assertNotNull( $draft->terms );
+		self::assertSame( 0, $this->settings->saves );
+		self::assertSame( 0, $this->settings->terms()->discount );
+	}
+
+	public function test_the_most_and_the_least_a_field_takes_are_taken(): void {
+		self::assertSame(
+			array(),
+			$this->wrong(
+				array(
+					'discount'       => '99,99',
+					'rate'           => '6000',
+					'lead_time'      => str_repeat( 'é', 200 ),
+					'returns_notice' => str_repeat( 'é', 1000 ),
+				)
+			)
+		);
+		self::assertSame( array(), $this->wrong( array( 'rate' => '10' ) ) );
+		self::assertSame( 10, $this->settings->terms()->rateLimit );
 	}
 }

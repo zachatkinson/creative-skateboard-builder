@@ -11,6 +11,7 @@ namespace CreativeBranding\SkateboardBuilder\Tests\Integration;
 
 use CreativeBranding\SkateboardBuilder\Admin\SettingsHooks;
 use CreativeBranding\SkateboardBuilder\Admin\SettingsPage;
+use CreativeBranding\SkateboardBuilder\Domain\Kit\BuildTerms;
 use CreativeBranding\SkateboardBuilder\Domain\Measure\Unit;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\AttributeMap;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\Origin;
@@ -38,7 +39,8 @@ final class SettingsPageTest extends IntegrationTestCase {
 	}
 
 	public function tear_down(): void {
-		unset( $_POST['cbuild_mapping'], $_POST['cbuild_order'], $_POST['_wpnonce'], $_REQUEST['_wpnonce'] );
+		unset( $_POST['cbuild_mapping'], $_POST['cbuild_order'], $_POST['cbuild_terms'], $_POST['_wpnonce'], $_REQUEST['_wpnonce'] );
+		delete_option( 'woocommerce_price_decimal_sep' );
 		delete_option( Options::SETTINGS );
 		delete_option( Options::REINDEX );
 		parent::tear_down();
@@ -98,7 +100,10 @@ final class SettingsPageTest extends IntegrationTestCase {
 		self::assertSame( 'Builder', $pages[1]->get_label() );
 		self::assertSame( array( 'theirs' => 'x', 'cbuild' => 'Builder' ), $pages[1]->add_settings_page( array( 'theirs' => 'x' ) ) );
 		self::assertSame( 'not a list', $this->service( SettingsHooks::class )->add( 'not a list' ) );
-		self::assertSame( array( 'title', 'cbuild_mapping', 'cbuild_order', 'sectionend' ), array_column( $pages[1]->get_settings_for_section( '' ), 'type' ) );
+		self::assertSame(
+			array( 'title', 'cbuild_mapping', 'cbuild_order', 'sectionend', 'title', 'cbuild_terms', 'sectionend', 'title', 'cbuild_terms', 'sectionend', 'title', 'cbuild_terms', 'sectionend' ),
+			array_column( $pages[1]->get_settings_for_section( '' ), 'type' )
+		);
 	}
 
 	public function test_a_shop_manager_saves_the_mapping_and_the_order_and_a_reindex_is_asked_for(): void {
@@ -313,5 +318,255 @@ final class SettingsPageTest extends IntegrationTestCase {
 		$this->expectException( PluginException::class );
 		$this->expectExceptionMessage( 'schema/settings.json' );
 		$this->service( ShopSettings::class )->save( array_values( array_filter( $lines ) ), SourceOrder::standard() );
+	}
+
+	/**
+	 * The terms as the form sends them, with nothing wrong, in a shop that writes decimals with a comma.
+	 */
+	private const array TERMS = array(
+		'discount'       => '7,5',
+		'coupons'        => 'parts',
+		'rate'           => '60',
+		'header'         => 'X-Forwarded-For',
+		'default_on'     => '1',
+		'fee'            => '15,50',
+		'lead_time'      => 'Two working days',
+		'returns_notice' => "An assembled board\ncan't be \"returned\".",
+	);
+
+	/**
+	 * Send the form with its terms as this role.
+	 *
+	 * @param string       $role  The user's role.
+	 * @param array<mixed> $terms The fields that differ from the ones with nothing wrong.
+	 * @param array<mixed> $lines The mapping's lines.
+	 */
+	private function terms( string $role, array $terms = array(), array $lines = array() ): SettingsPage {
+		update_option( 'woocommerce_price_decimal_sep', ',' );
+		$_POST['cbuild_terms'] = wp_slash( $terms + self::TERMS );
+		return $this->send( $role, $lines );
+	}
+
+	/**
+	 * The three groups of terms as the tab draws them.
+	 *
+	 * @param SettingsPage $page The tab.
+	 */
+	private static function groups( SettingsPage $page ): string {
+		$drawn = '';
+		foreach ( array( 'pricing', 'requests', 'kits' ) as $group ) {
+			ob_start();
+			$page->termsField( array( 'group' => $group ) );
+			$drawn .= (string) ob_get_clean();
+		}
+		return $drawn;
+	}
+
+	public function test_a_shop_manager_saves_the_terms_and_no_part_is_read_again(): void {
+		$this->terms( 'shop_manager' );
+		$stored = get_option( Options::SETTINGS );
+		self::assertSame(
+			array(
+				'build_discount'       => '7.5',
+				'fixed_coupons'        => 'parts',
+				'rate_limit'           => 60,
+				'trusted_proxy_header' => 'X-Forwarded-For',
+				'kit_defaults'         => array(
+					'assembly' => array(
+						'schema_version' => 1,
+						'default_on'     => true,
+						'fee'            => '15.5',
+						'lead_time'      => 'Two working days',
+						'returns_notice' => "An assembled board\ncan't be \"returned\".",
+					),
+				),
+				'attribute_mapping'    => array(),
+				'source_order'         => array( 'table', 'field', 'attribute' ),
+			),
+			$stored,
+			'as typed, the notice with its line break and no slash added'
+		);
+		self::assertSame( array_keys( $stored ), array_values( array_intersect( array_keys( $stored ), Options::settingsKeys() ) ), 'every key is one the plugin names' );
+		$terms = $this->service( ShopSettings::class )->terms();
+		self::assertSame( 750, $terms->discount );
+		self::assertSame( 60, $terms->rateLimit );
+		self::assertNull( $this->service( IndexJobs::class )->state(), 'the terms feed no spec' );
+		self::assertSame( array(), self::waiting( Options::JOB_REINDEX ) );
+	}
+
+	public function test_the_terms_keys_are_the_domains(): void {
+		self::assertSame(
+			array( BuildTerms::DISCOUNT, BuildTerms::COUPONS, BuildTerms::RATE, BuildTerms::PROXY, BuildTerms::KIT_DEFAULTS ),
+			array( Options::SETTING_BUILD_DISCOUNT, Options::SETTING_FIXED_COUPONS, Options::SETTING_RATE_LIMIT, Options::SETTING_PROXY_HEADER, Options::SETTING_KIT_DEFAULTS )
+		);
+		self::assertSame( array_keys( BuildTerms::read( null )->toArray() ), array_slice( Options::settingsKeys(), 2 ) );
+	}
+
+	public function test_who_cannot_manage_woocommerce_saves_no_terms(): void {
+		$this->terms( 'editor' );
+		self::assertFalse( get_option( Options::SETTINGS ) );
+	}
+
+	public function test_a_form_without_the_terms_leaves_them_as_they_are(): void {
+		$this->terms( 'shop_manager' );
+		unset( $_POST['cbuild_terms'] );
+		$this->send( 'shop_manager', array( array( 'attribute' => 'pa_width', 'spec' => 'deck_width', 'unit' => '' ) ) );
+		self::assertSame( 750, $this->service( ShopSettings::class )->terms()->discount );
+		self::assertCount( 1, $this->service( ShopSettings::class )->attributeMapping() );
+	}
+
+	public function test_a_term_that_is_wrong_saves_nothing_and_is_shown_again_beside_what_is_wrong(): void {
+		$this->terms( 'shop_manager' );
+		$before = get_option( Options::SETTINGS );
+		$evil   = '"><script>alert(1)</script>';
+		$page   = $this->terms(
+			'shop_manager',
+			array(
+				'discount' => '100',
+				'rate'     => '5',
+				'header'   => $evil,
+				'fee'      => 'free',
+				'coupons'  => 'kit',
+			),
+			array( array( 'attribute' => 'pa_width', 'spec' => 'deck_width', 'unit' => '' ) )
+		);
+		self::assertSame( $before, get_option( Options::SETTINGS ), 'not the mapping either' );
+		ob_start();
+		\WC_Admin_Settings::show_messages();
+		self::assertStringContainsString( 'The settings were not saved. Each problem is shown beside its field.', (string) ob_get_clean() );
+
+		$mapping = self::drawn( $page, 'mappingField' );
+		self::assertStringNotContainsString( 'aria-invalid', $mapping, 'the mapping shows none of the terms\' problems' );
+		self::assertStringNotContainsString( 'notice-error', $mapping );
+		self::assertStringContainsString( 'value="pa_width"', $mapping, 'and is shown as sent' );
+
+		$drawn = self::groups( $page );
+		self::assertStringNotContainsString( '<script>', $drawn );
+		self::assertSame( 4, substr_count( $drawn, 'aria-invalid="true"' ) );
+		$wrong = array(
+			'discount' => array( '100', 'Enter a percentage below 100 with up to two decimals, or 0 for none.' ),
+			'rate'     => array( '5', 'Enter a whole number from 10 to 6000.' ),
+			'header'   => array( '&quot;&gt;', 'Enter the header&#039;s name alone, such as X-Forwarded-For: letters, digits and hyphens, starting with a letter, 64 characters at most.' ),
+			'fee'      => array( 'free', 'Enter an amount with up to four decimals, or 0 for none.' ),
+		);
+		foreach ( $wrong as $field => $shown ) {
+			self::assertMatchesRegularExpression( '/<input[^>]*id="cbuild-terms-' . $field . '"[^>]*value="' . preg_quote( $shown[0], '/' ) . '"[^>]*aria-describedby="cbuild-terms-' . $field . '-note cbuild-terms-' . $field . '-problem"[^>]*aria-invalid="true"/', $drawn, $field );
+			self::assertStringContainsString( '<div class="notice notice-error inline" id="cbuild-terms-' . $field . '-problem"><p>' . $shown[1] . '</p></div>', $drawn, $field );
+		}
+		// What was right is shown as sent, not as saved.
+		self::assertStringContainsString( '<option value="kit"  selected=\'selected\'>', $drawn );
+		self::assertMatchesRegularExpression( '/id="cbuild-terms-lead_time"[^>]*value="Two working days"/', $drawn );
+	}
+
+	public function test_a_long_lead_time_and_a_long_notice_are_each_named(): void {
+		$page  = $this->terms( 'shop_manager', array( 'lead_time' => str_repeat( 'a', 201 ) ) );
+		$drawn = self::groups( $page );
+		self::assertStringContainsString( 'id="cbuild-terms-lead_time-problem"><p>The lead time is too long. Use 200 characters or fewer.</p>', $drawn );
+		$page  = $this->terms( 'shop_manager', array( 'returns_notice' => str_repeat( 'a', 1001 ) ) );
+		$drawn = self::groups( $page );
+		self::assertStringContainsString( 'id="cbuild-terms-returns_notice-problem"><p>The returns notice is too long. Use 1,000 characters or fewer.</p>', $drawn );
+		$page  = $this->terms( 'shop_manager', array( 'coupons' => 'cart' ) );
+		$drawn = self::groups( $page );
+		self::assertStringContainsString( 'id="cbuild-terms-coupons-problem"><p>Choose where the coupon applies from the list.</p>', $drawn );
+		self::assertFalse( get_option( Options::SETTINGS ) );
+	}
+
+	public function test_the_terms_draw_what_is_saved_with_the_shops_separator_and_every_control_named(): void {
+		$drawn = self::groups( $this->page() );
+		self::assertMatchesRegularExpression( '/id="cbuild-terms-discount"[^>]*value="0"/', $drawn, 'a shop that has saved nothing' );
+		self::assertMatchesRegularExpression( '/id="cbuild-terms-rate"[^>]*value="120"/', $drawn );
+		self::assertMatchesRegularExpression( '/id="cbuild-terms-header"[^>]*value=""/', $drawn );
+		self::assertMatchesRegularExpression( '/id="cbuild-terms-fee"[^>]*value="0"/', $drawn );
+		self::assertStringContainsString( '<option value="kit"  selected=\'selected\'>', $drawn );
+		self::assertDoesNotMatchRegularExpression( '/id="cbuild-terms-default_on"[^>]*checked/', $drawn );
+
+		$this->terms( 'shop_manager' );
+		$drawn = self::groups( $this->page() );
+		self::assertMatchesRegularExpression( '/id="cbuild-terms-discount"[^>]*value="7,5"/', $drawn );
+		self::assertMatchesRegularExpression( '/id="cbuild-terms-fee"[^>]*value="15,5"/', $drawn );
+		self::assertMatchesRegularExpression( '/id="cbuild-terms-rate"[^>]*value="60"/', $drawn );
+		self::assertMatchesRegularExpression( '/id="cbuild-terms-header"[^>]*value="X-Forwarded-For"/', $drawn );
+		self::assertStringContainsString( '<option value="parts"  selected=\'selected\'>', $drawn );
+		self::assertMatchesRegularExpression( '/id="cbuild-terms-default_on"[^>]*checked/', $drawn );
+		self::assertStringContainsString( ">An assembled board\ncan&#039;t be &quot;returned&quot;.</textarea>", $drawn );
+		self::assertStringNotContainsString( 'aria-invalid', $drawn );
+		self::assertStringNotContainsString( 'notice-error', $drawn );
+		foreach ( array( 'discount', 'coupons', 'rate', 'header', 'default_on', 'fee', 'lead_time', 'returns_notice' ) as $field ) {
+			self::assertSame( 1, substr_count( $drawn, '<label for="cbuild-terms-' . $field . '">' ), $field . ': a visible label' );
+			self::assertSame( 1, preg_match_all( '/\sid="cbuild-terms-' . $field . '"/', $drawn ), $field . ': for one control' );
+			self::assertSame( 1, preg_match_all( '/\sname="cbuild_terms\[' . $field . '\]"/', $drawn ), $field );
+		}
+		self::assertSame( 8, substr_count( $drawn, '<th scope="row" class="titledesc">' ) );
+		self::assertSame( '', self::groups_of( $this->page(), 'nothing' ), 'a group the tab does not have draws nothing' );
+	}
+
+	/**
+	 * One group as the tab draws it.
+	 *
+	 * @param SettingsPage $page  The tab.
+	 * @param string       $group The group.
+	 */
+	private static function groups_of( SettingsPage $page, string $group ): string {
+		ob_start();
+		$page->termsField( array( 'group' => $group ) );
+		return (string) ob_get_clean();
+	}
+
+	public function test_the_schema_and_the_domain_agree_on_what_a_term_is(): void {
+		$schema = wp_json_file_decode( CBUILD_PATH . 'schema/settings.json', array( 'associative' => true ) );
+		self::assertIsArray( $schema );
+		$kit = wp_json_file_decode( CBUILD_PATH . 'schema/kit-assembly.json', array( 'associative' => true ) );
+		self::assertIsArray( $kit );
+		$assembly = $schema['properties']['kit_defaults']['properties']['assembly'];
+		foreach ( array( 'type', 'additionalProperties', 'required', 'properties' ) as $part ) {
+			self::assertSame( $kit[ $part ], $assembly[ $part ], 'a new kit\'s assembly is a kit\'s: ' . $part );
+		}
+		self::assertSame( BuildTerms::RATE_MIN, $schema['properties']['rate_limit']['minimum'] );
+		self::assertSame( BuildTerms::RATE_MAX, $schema['properties']['rate_limit']['maximum'] );
+		self::assertSame( array( BuildTerms::ON_KIT, BuildTerms::ON_PARTS ), $schema['properties']['fixed_coupons']['enum'] );
+
+		$accepts = static fn( array $document ): bool => true === rest_validate_value_from_schema( $document, $schema, 'cbuild_settings' );
+		self::assertTrue( $accepts( BuildTerms::read( null )->toArray() ), 'the defaults' );
+		$most = array(
+			'build_discount'       => '99.99',
+			'fixed_coupons'        => 'parts',
+			'rate_limit'           => 6000,
+			'trusted_proxy_header' => 'X' . str_repeat( '1', 63 ),
+			'kit_defaults'         => array(
+				'assembly' => array(
+					'schema_version' => 1,
+					'default_on'     => true,
+					'fee'            => '999999999.9999',
+					'lead_time'      => str_repeat( 'é', 200 ),
+					'returns_notice' => str_repeat( 'é', 1000 ),
+				),
+			),
+		);
+		self::assertTrue( $accepts( $most ), 'the most each takes' );
+		self::assertSame( $most, BuildTerms::read( $most )->toArray() );
+
+		// What the schema refuses, the reader does not take as a setting either.
+		$none    = BuildTerms::read( null )->toArray();
+		$refused = array(
+			'all of it'          => array( 'build_discount' => '100' ),
+			'three places'       => array( 'build_discount' => '5.125' ),
+			'a number'           => array( 'build_discount' => 5 ),
+			'a line after'       => array( 'build_discount' => "5\n" ),
+			'the cart'           => array( 'fixed_coupons' => 'cart' ),
+			'too few'            => array( 'rate_limit' => 9 ),
+			'too many'           => array( 'rate_limit' => 6001 ),
+			'a rate in text'     => array( 'rate_limit' => 'often' ),
+			'a header with more' => array( 'trusted_proxy_header' => 'X-Real-IP: 1' ),
+			'a long header'      => array( 'trusted_proxy_header' => 'X' . str_repeat( '1', 64 ) ),
+			'defaults in text'   => array( 'kit_defaults' => 'none' ),
+			'a fee in words'     => array( 'kit_defaults' => array( 'assembly' => array( 'fee' => 'free' ) + $none['kit_defaults']['assembly'] ) ),
+			'a long lead time'   => array( 'kit_defaults' => array( 'assembly' => array( 'lead_time' => str_repeat( 'a', 201 ) ) + $none['kit_defaults']['assembly'] ) ),
+		);
+		$settings = $this->service( ShopSettings::class );
+		foreach ( $refused as $what => $document ) {
+			self::assertFalse( $accepts( $document ), $what );
+			update_option( Options::SETTINGS, $document );
+			self::assertSame( $none, $settings->terms()->toArray(), $what );
+		}
 	}
 }

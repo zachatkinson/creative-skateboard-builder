@@ -78,6 +78,11 @@ final class Options {
 	 */
 	public const SETTING_ATTRIBUTE_MAPPING = 'attribute_mapping';
 	public const SETTING_SOURCE_ORDER      = 'source_order';
+	public const SETTING_BUILD_DISCOUNT    = 'build_discount';
+	public const SETTING_FIXED_COUPONS     = 'fixed_coupons';
+	public const SETTING_RATE_LIMIT        = 'rate_limit';
+	public const SETTING_PROXY_HEADER      = 'trusted_proxy_header';
+	public const SETTING_KIT_DEFAULTS      = 'kit_defaults';
 
 	/**
 	 * Product meta: a part's own specs, a value per spec key.
@@ -271,6 +276,6 @@ final class Options {
 	 * @return string[]
 	 */
 	public static function settingsKeys(): array {
-		return array( self::SETTING_ATTRIBUTE_MAPPING, self::SETTING_SOURCE_ORDER );
+		return array( self::SETTING_ATTRIBUTE_MAPPING, self::SETTING_SOURCE_ORDER, self::SETTING_BUILD_DISCOUNT, self::SETTING_FIXED_COUPONS, self::SETTING_RATE_LIMIT, self::SETTING_PROXY_HEADER, self::SETTING_KIT_DEFAULTS );
 	}
 }

@@ -9,6 +9,7 @@ declare( strict_types=1 );
 
 namespace CreativeBranding\SkateboardBuilder\Service;
 
+use CreativeBranding\SkateboardBuilder\Domain\Kit\BuildTerms;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\AttributeMap;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\SourceOrder;
 
@@ -17,8 +18,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * The mapping and the order a person submitted, with everything wrong with them. Each problem is a code and the
- * line of the mapping it is on, counted from 1 as the screen shows them; 0 is the form as a whole.
+ * The mapping, the order and the terms a person submitted, with everything wrong with them. Each problem is a code
+ * and the line of the mapping it is on, counted from 1 as the screen shows them; 0 is a field of its own.
  *
  * @since 0.3.0
  */
@@ -32,8 +33,9 @@ final readonly class SettingsDraft {
 	 * @param list<AttributeMap>                   $mapping  The lines that read.
 	 * @param SourceOrder|null                     $order    The order, null when it is not one.
 	 * @param list<array{code: string, line: int}> $problems What is wrong.
+	 * @param BuildTerms|null                      $terms    The terms, null when none were sent or one is wrong.
 	 */
-	public function __construct( public array $mapping, public ?SourceOrder $order, public array $problems ) {}
+	public function __construct( public array $mapping, public ?SourceOrder $order, public array $problems, public ?BuildTerms $terms = null ) {}
 
 	/**
 	 * Whether it was saved: nothing was wrong with it.
