@@ -6,30 +6,32 @@
 set -euo pipefail
 image="$1"
 name="$2"
-# wp-env's tests site for this checkout is the tests-wordpress container that mounts this folder; other projects'
-# wp-env containers may be running beside it.
+# The integration site (.wp-env.tests.json) is the wordpress container that mounts this folder and serves :8899; the
+# browser site mounts it too, and other projects' wp-env containers may be running beside them.
 here="$(cd "$(dirname "$0")/.." && pwd)"
 network=""
-for container in $(docker ps -q --filter label=com.docker.compose.service=tests-wordpress); do
+database=""
+for container in $(docker ps -q --filter label=com.docker.compose.service=wordpress --filter publish=8899); do
 	if docker inspect "$container" --format '{{range .Mounts}}{{println .Source}}{{end}}' | grep -x "$here" >/dev/null; then
 		network="$(docker inspect "$container" --format '{{range $name, $_ := .NetworkSettings.Networks}}{{println $name}}{{end}}' | head -n 1)"
+		database="$(docker exec "$container" printenv WORDPRESS_DB_NAME)"
 	fi
 done
-if [ -z "$network" ]; then
-	echo "wp-env's network was not found: run npx wp-env start first." >&2
+if [ -z "$network" ] || [ -z "$database" ]; then
+	echo "The integration site was not found: run npm run env:start first." >&2
 	exit 1
 fi
 if ! docker ps --format '{{.Names}}' | grep -qx "$name"; then
 	docker rm -f "$name" >/dev/null 2>&1 || true
 	docker run -d --name "$name" --network "$network" --network-alias "$name" \
 		-e MYSQL_ROOT_PASSWORD=password -e MARIADB_ROOT_PASSWORD=password \
-		-e MYSQL_DATABASE=tests-wordpress -e MARIADB_DATABASE=tests-wordpress \
+		-e MYSQL_DATABASE="$database" -e MARIADB_DATABASE="$database" \
 		"$image" >/dev/null
 fi
 client=mysql
 case "$image" in mariadb:1[1-9]*|mariadb:lts*|mariadb:10.1[1-9]*) client=mariadb ;; esac
 for _ in $(seq 1 90); do
-	if docker exec "$name" "$client" -uroot -ppassword -e 'SELECT 1' tests-wordpress >/dev/null 2>&1; then
+	if docker exec "$name" "$client" -uroot -ppassword -e 'SELECT 1' "$database" >/dev/null 2>&1; then
 		echo "$name ($image) is ready on $network."
 		exit 0
 	fi

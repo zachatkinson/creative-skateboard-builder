@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Writes .wp-env.override.json for the weekly canary (docs/AUDIT.md: Compatibility): WordPress trunk and WooCommerce's
+# Writes .wp-env.override.json, and the same for the integration site (.wp-env.tests.override.json), for the weekly canary (docs/AUDIT.md: Compatibility): WordPress trunk and WooCommerce's
 # newest pre-release when there is one, else its newest release. Run before `wp-env start`; `npm run env:newest` removes it.
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -14,4 +14,5 @@ cat > .wp-env.override.json <<JSON
 	}
 }
 JSON
-echo ".wp-env.override.json written (WordPress trunk, WooCommerce ${wc}, PHP 8.5). Run npx wp-env start."
+cp .wp-env.override.json .wp-env.tests.override.json
+echo "The override files are written (WordPress trunk, WooCommerce ${wc}, PHP 8.5). Run npm run env:start."

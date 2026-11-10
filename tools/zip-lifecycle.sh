@@ -75,9 +75,11 @@ wp plugin deactivate "$copy" >/dev/null
 # The site's own WP-CLI container gives the files, the network and the database settings; only the PHP is older.
 here="$(pwd)"
 cli=""
-for container in $(docker ps -q --filter label=com.docker.compose.service=cli); do
-	if docker inspect "$container" --format '{{range .Mounts}}{{println .Source}}{{end}}' | grep -x "$here" >/dev/null; then
-		cli="$container"
+# The browser site is the one serving :8898; the integration site (:8899) mounts this folder too.
+for site in $(docker ps -q --filter label=com.docker.compose.service=wordpress --filter publish=8898); do
+	if docker inspect "$site" --format '{{range .Mounts}}{{println .Source}}{{end}}' | grep -x "$here" >/dev/null; then
+		project="$(docker inspect "$site" --format '{{index .Config.Labels "com.docker.compose.project"}}')"
+		cli="$(docker ps -q --filter label=com.docker.compose.service=cli --filter "label=com.docker.compose.project=$project" | head -n 1)"
 	fi
 done
 [ -n "$cli" ] || fail "wp-env's cli container was not found"

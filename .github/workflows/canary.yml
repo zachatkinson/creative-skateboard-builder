@@ -39,12 +39,12 @@ jobs:
           # green without having tested anything new.
           set -o pipefail
           bash tools/wp-env-canary.sh | tee tmp-canary.txt
-          test -f .wp-env.override.json
+          test -f .wp-env.override.json && test -f .wp-env.tests.override.json
           echo "pins=$(cat tmp-canary.txt)" >> "$GITHUB_OUTPUT"
-      - run: npx wp-env start
+      - run: npm run env:start
       - name: The site is running WordPress trunk
         run: |
-          version="$(npx wp-env run tests-cli wp core version 2>/dev/null | tr -d '\r' | tail -n 1)"
+          version="$(npx wp-env run cli --config=.wp-env.tests.json wp core version 2>/dev/null | tr -d '\r' | tail -n 1)"
           echo "WordPress ${version}"
           case "$version" in
             *-alpha*|*-beta*|*-RC*) ;;

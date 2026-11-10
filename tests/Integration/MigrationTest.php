@@ -140,7 +140,7 @@ final class MigrationTest extends IntegrationTestCase {
 			self::markTestSkipped( 'Needs wp on the path (wp-env).' );
 		}
 		// Two calls in one PHPUnit process pass even with a broken lock, and the test transaction hides one
-		// connection's writes from another (D-021), so two `wp` processes race on wp-env's tests site.
+		// connection's writes from another (D-021), so two `wp` processes race on the integration site.
 		self::wp( 'option', 'delete', Options::MIGRATION_LOCK );
 		$this->raceForTheLock( 'fresh' );
 

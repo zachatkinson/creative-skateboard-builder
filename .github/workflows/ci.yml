@@ -229,7 +229,12 @@ jobs:
       - name: Pin the oldest supported WordPress and WooCommerce
         if: matrix.leg == 'oldest'
         run: npm run env:oldest
-      - run: npx wp-env start
+      # The browser site (:8898) and the integration site (:8899) are two wp-env environments (D-047). The variants
+      # leg runs the integration suite alone, so it starts the one.
+      - run: npm run env:start
+        if: matrix.leg != 'variants'
+      - run: npx wp-env start --config=.wp-env.tests.json
+        if: matrix.leg == 'variants'
       - name: The i18n check (the POT current, the translations complete)
         if: matrix.leg == 'newest'
         run: composer i18n:check
@@ -282,4 +287,4 @@ jobs:
             tmp/lhci
       - name: WordPress's debug log
         if: failure()
-        run: npx wp-env run tests-cli -- bash -c 'cat wp-content/debug.log 2>/dev/null || true'; npx wp-env run cli -- bash -c 'cat wp-content/debug.log 2>/dev/null || true'
+        run: npx wp-env run cli --config=.wp-env.tests.json -- bash -c 'cat wp-content/debug.log 2>/dev/null || true'; npx wp-env run cli -- bash -c 'cat wp-content/debug.log 2>/dev/null || true'

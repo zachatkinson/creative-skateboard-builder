@@ -121,7 +121,7 @@ final class UninstallTest extends IntegrationTestCase {
 		if ( ! self::hasWpCli() ) {
 			self::markTestSkipped( 'Needs wp on the path (wp-env).' );
 		}
-		// On wp-env's tests site (its own tables), as a shop does it: deactivate the builder, then WooCommerce, then
+		// On the integration site (its own tables), as a shop does it: deactivate the builder, then WooCommerce, then
 		// delete the builder. uninstall.php runs with no Action Scheduler loaded (D-024).
 		// The second site keeps its state between runs, so the test empties the plugin's queue there itself.
 		self::wpEval( '\\CreativeBranding\\SkateboardBuilder\\Install\\Uninstaller::deleteJobs();' );

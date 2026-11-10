@@ -9,8 +9,14 @@ export default function globalSetup() {
 		execSync( `npx wp-env run cli -- wp ${ command }`, {
 			stdio: [ 'ignore', 'ignore', 'inherit' ],
 		} );
-	run( 'plugin activate creative-skateboard-builder' );
-	run( 'theme activate twentytwentyfive' );
+	// Activate only what is not active: WP-CLI warns about the rest, and a warning nobody needs hides one that matters.
+	const ensure = ( kind: 'plugin' | 'theme', slug: string ) =>
+		execSync(
+			`npx wp-env run cli -- sh -c "wp ${ kind } is-active ${ slug } || wp ${ kind } activate ${ slug }"`,
+			{ stdio: [ 'ignore', 'ignore', 'inherit' ] }
+		);
+	ensure( 'plugin', 'creative-skateboard-builder' );
+	ensure( 'theme', 'twentytwentyfive' );
 	run(
 		'eval-file wp-content/plugins/creative-skateboard-builder/tests/e2e/fixtures/shop.php'
 	);

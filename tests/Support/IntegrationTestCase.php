@@ -136,7 +136,7 @@ abstract class IntegrationTestCase extends WP_UnitTestCase {
 
 	/**
 	 * Whether a second PHP process can run against a real site: the tests that need one (the lock, uninstall without
-	 * WooCommerce, boot without WooCommerce) spawn WP-CLI on wp-env's tests site, whose tables (`wp_`) are not this
+	 * WooCommerce, boot without WooCommerce) spawn WP-CLI on the integration site, whose tables (`wp_`) are not this
 	 * suite's (`wptests_`, set by tools/integration.sh; D-031). False only where there is no `wp` on the path. On a
 	 * matrix leg's empty database server the site is installed first, so the race runs on that server too.
 	 */
@@ -217,7 +217,7 @@ abstract class IntegrationTestCase extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Run PHP in a fresh WordPress process on the tests site, with the plugin loaded as an active plugin.
+	 * Run PHP in a fresh WordPress process on the integration site, with the plugin loaded as an active plugin.
 	 *
 	 * @param string   $code  PHP, without the opening tag.
 	 * @param string[] $flags Extra `wp` flags, such as --skip-plugins=woocommerce.

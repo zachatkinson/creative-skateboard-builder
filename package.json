@@ -9,9 +9,9 @@
 		"node": ">=24"
 	},
 	"scripts": {
-		"env:start": "wp-env start",
-		"env:stop": "wp-env stop",
-		"env:clean": "wp-env clean all",
+		"env:start": "wp-env start && wp-env start --config=.wp-env.tests.json",
+		"env:stop": "wp-env stop && wp-env stop --config=.wp-env.tests.json",
+		"env:clean": "wp-env clean all && wp-env clean all --config=.wp-env.tests.json",
 		"env:oldest": "bash tools/wp-env-oldest.sh",
 		"env:newest": "bash tools/wp-env-newest.sh",
 		"env:canary": "bash tools/wp-env-canary.sh",

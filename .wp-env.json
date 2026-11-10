@@ -9,7 +9,7 @@
 		"wp-content/mu-plugins/cbuild-e2e-locale.php": "./tests/e2e/fixtures/locale.php"
 	},
 	"port": 8898,
-	"testsPort": 8899,
+	"testsEnvironment": false,
 	"config": {
 		"WP_DEBUG": true,
 		"WP_DEBUG_LOG": true,
@@ -17,7 +17,7 @@
 		"SCRIPT_DEBUG": true
 	},
 	"lifecycleScripts": {
-		"afterStart": "wp-env run cli wp plugin activate woocommerce plugin-check creative-skateboard-builder && wp-env run tests-cli wp plugin activate woocommerce creative-skateboard-builder && wp-env run cli wp language core install fr_CA he_IL"
+		"afterStart": "wp-env run cli wp plugin activate woocommerce plugin-check creative-skateboard-builder && wp-env run cli wp language core install fr_CA he_IL"
 	},
 	"themes": [
 		"https://downloads.wordpress.org/theme/storefront.4.6.2.zip",
