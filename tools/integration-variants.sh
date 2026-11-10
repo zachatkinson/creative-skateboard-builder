@@ -2,7 +2,8 @@
 # The six variants of the compatibility matrix, one after another on one wp-env (docs/AUDIT.md: The platform; D-040):
 # MySQL 8.4 and MariaDB 10.11 as their own database servers, HPOS off and syncing, a persistent object cache, and
 # multisite. Each is a full run of the integration suite, which installs its own tables first, so none depends on the
-# one before it. Every variant runs even when an earlier one fails, and the script fails if any did.
+# one before it. A seventh run is a few seconds: the tests that need Yoast SEO, alone, with Yoast loaded (D-102).
+# Every variant runs even when an earlier one fails, and the script fails if any did.
 # Run with wp-env started: bash tools/integration-variants.sh
 set -uo pipefail
 cd "$(dirname "$0")/.."
@@ -10,12 +11,15 @@ cd "$(dirname "$0")/.."
 failed=()
 ran=0
 
+# The tests a variant runs, when not the whole suite: arguments for PHPUnit.
+only=()
+
 # variant <name> [VAR=value ...]: the integration suite with those switches.
 variant() {
 	local name="$1"
 	shift
 	echo "::group::Integration: ${name}"
-	if env "$@" bash tools/integration.sh; then
+	if env "$@" bash tools/integration.sh ${only[@]+"${only[@]}"}; then
 		echo "Variant ${name}: passed."
 	else
 		echo "Variant ${name}: FAILED."
@@ -51,15 +55,26 @@ else
 	ran=$((ran + 1))
 fi
 bash tools/object-cache.sh down
+# Yoast SEO in the site's plugins, loaded for its own tests alone (tools/yoast.sh, D-102).
+if bash tools/yoast.sh up; then
+	only=(--filter KitYoastTest)
+	variant yoast CBUILD_YOAST=1
+	only=()
+else
+	echo "Variant yoast: FAILED (Yoast SEO could not be installed)."
+	failed+=("yoast")
+	ran=$((ran + 1))
+fi
+bash tools/yoast.sh down
 # Last: it is the one variant that leaves a network's tables behind it.
 variant multisite CBUILD_MULTISITE=1
 
-if [ "$ran" -ne 6 ]; then
-	echo "Expected 6 variants, ran ${ran}." >&2
+if [ "$ran" -ne 7 ]; then
+	echo "Expected 7 variants, ran ${ran}." >&2
 	exit 1
 fi
 if [ "${#failed[@]}" -gt 0 ]; then
 	echo "Failed variants: ${failed[*]}" >&2
 	exit 1
 fi
-echo "Integration variants: 6 ran, 6 passed."
+echo "Integration variants: 7 ran, 7 passed."

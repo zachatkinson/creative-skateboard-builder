@@ -205,7 +205,8 @@ jobs:
   # The matrix (docs/AUDIT.md: The platform; D-004, D-040): the newest and oldest WordPress and WooCommerce pairs on
   # PHP 8.5, each with the browser projects, Plugin Check and the zip's lifecycle; and one leg that runs the
   # integration suite six more times on one wp-env (tools/integration-variants.sh): MySQL 8.4 and MariaDB 10.11 as
-  # their own database servers, HPOS off and syncing, a persistent object cache, and multisite.
+  # their own database servers, HPOS off and syncing, a persistent object cache, and multisite, and then the tests that
+  # need Yoast SEO, alone (D-102).
   integration:
     name: Integration, Plugin Check, browser (${{ matrix.leg }})
     needs: scope
@@ -257,7 +258,7 @@ jobs:
       - name: The specs benchmark at 2,000 parts (Xdebug off)
         if: matrix.leg == 'newest'
         run: composer test:benchmark:integration
-      - name: The six variants (two database servers, HPOS off and syncing, object cache, multisite)
+      - name: The six variants (two database servers, HPOS off and syncing, object cache, multisite) and the Yoast tests
         if: matrix.leg == 'variants'
         run: bash tools/integration-variants.sh
       - run: npm run plugin-check

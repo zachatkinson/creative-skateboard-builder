@@ -1234,7 +1234,49 @@ Milestone 3's audit listed thirteen minors as the first work of milestone 4.
 - **The two rules that are not WooCommerce's are `Service\KitVisibility`,** plain PHP, unit-tested and mutated.
 - **The test site's theme gives products no archive,** so `KitHiddenTest` asks for a product category's page and its feed, which WooCommerce queries as it does the shop's.
 - **Deliberate break:** with the visibility WooCommerce's own and the two filters removed, all six of `KitHiddenTest` fail ("Tests: 6, Assertions: 12, Failures: 6").
-- **Yoast's sitemap** is the next commit's, with the adapter that lists the shop's kits.
+- **Yoast's sitemap** is D-102's.
 
 **Status:** Accepted.
 
+
+### D-101 · Which products fill a slot · 2026-11-10
+
+`docs/SPEC.md` (Data model) gives a slot its sources: categories, brands, products and attribute values, as IDs. It does not say how they combine, nor which of the products found is a part. `Adapter\WooKits` decides both, and `WooKitsTest` holds each line.
+
+- **Categories, brands and attributes narrow each other.** A product is found when it is in one of the slot's categories, and of one of its brands, and has one of the values of each attribute, for whichever of the three the slot gives. "Decks" with the brand "Rascals" is the Rascals decks, which is what an owner who picks both means; either alone is all of it. A category holds its sub-categories, as WooCommerce's own queries have it.
+- **A named product is added,** whatever it is in, and is not narrowed. It is how an owner adds the one part the terms miss.
+- **A variable product stands for its variations.** A variation that sets an attribute to one value is held to that value when the slot asks for values of that attribute; one that takes any value is kept. A named variable product gives all of its variations, and a variation can be named by itself.
+- **A part is what a shopper could be shown and could buy:** published (and its parent), not hidden from the catalogue, without a password, with a price, and not a kit. WooCommerce's `is_purchasable()` lets a person who may edit a product buy it unpublished (WooCommerce 11.2.2, `includes/abstracts/abstract-wc-product.php:1777`), so the status is checked here and who is asking changes nothing: the public route and the owner's check read the same list.
+- **A part that is sold out is still a part,** marked so. The builder shows it as gone, and the check's "nothing in stock" rule needs to see it.
+- **The price is what the shop shows for one,** `wc_get_price_to_display()`, in the currency's minor units, so tax is in or out as the shop's settings have it. The count in stock is given when the shop counts it and does not sell on backorder; otherwise there is no cap to hold a build to (issue #14).
+- **A part's brand is its `product_brand` term's slug,** its parent's for a variation, and the first by name when a product has several.
+- **A slot holds 2,000 parts at most** and a shop's list 200 kits, each in ID order, so a request's work is bounded whatever the catalogue.
+- **A kit is listed when each document passes its schema and the four agree** (`Adapter\KitSchemas`, then `Kit::fromDocuments()`). One that does not is left out of `all()` and is still in `ids()`, which is every kit product not in the bin: what hides kits must hide a broken one too. A draft is a kit, so its owner can check it before it is published.
+- **`slotsOf()` asks the same question of one product without the query,** and without the shopper's conditions: the Part specs panel opens the group a product's slot needs before the product is published (issue #16). The panel reads the kits once for a screen of variations; with them read for each: "Failed asserting that 3 is identical to 1."
+- **`Adapter\NoKits` is gone,** and the Catalogue check's kit rules now run on the shop's kits (issue #17).
+
+**For Zach's eye:** the first line is a choice an owner will feel. The other reading, categories or brands, would make "Decks" with "Rascals" every deck and every Rascals product.
+
+**Status:** Accepted.
+
+### D-102 · Yoast SEO's sitemap, and the leg that tests it · 2026-11-10
+
+Zach on 10 November 2026, of the plan's question: "sure put free yoast in the test site if we need it".
+
+- **Yoast builds its sitemap from its own query** and never asks WordPress's, so D-100's condition does not reach it. `wpseo_exclude_from_sitemap_by_post_ids` (Yoast SEO 28.8, `inc/sitemaps/class-post-type-sitemap-provider.php:296`) takes the IDs to leave out; `Service\KitVisibility::excluded()` adds every kit product's, from `Port\Kits::ids()`. The kits are read when a sitemap is built and not before. Yoast compares the IDs strictly, so they are whole numbers.
+- **The test needs Yoast itself.** `tools/yoast.sh up` downloads Yoast SEO 28.8 from WordPress.org into the integration site's plugins, its zip checked against a pinned SHA-256, and `down` removes it. It is never activated in the site: the suite's bootstrap loads it when `CBUILD_YOAST=1`, and fails if the flag is set without it. `composer test:integration:yoast` does all three and runs `KitYoastTest` alone.
+- **In CI it is a seventh, short run of the variants leg** (`tools/integration-variants.sh`), a few seconds on a site that is already up, so it costs no job (D-040). In the ordinary run the test is skipped and says why.
+- **Deliberate break:** with the filter unhooked, "Failed asserting that an array does not contain 'http://localhost:8899/?product=complete-skateboard'."
+- **Yoast is the one SEO plugin tested.** Another that builds its own sitemap needs its own filter; `Port\Kits::ids()` is there for it.
+
+**Status:** Accepted.
+
+### D-103 · Zach's answers of 10 November 2026, on three questions · 2026-11-10
+
+Asked: whether issue #23 ships as 0.3.1 or with milestone 4; whether three adapters may be left out of the unit suite's mutation run; and D-101's reading of a slot's sources. Zach: "1 and 2 do to best practice 3 is perfect already."
+
+- **Issue #23 ships as 0.3.1.** A fault that drops other plugins' fields on a shop today is fixed where shops are, and does not wait for a milestone that is steps from done. The fix is made on a branch from `main`, released from there, and merged into milestone 4's branch. What needs kits (no panel on a product that fills no slot) is milestone 4's.
+- **`Adapter\KitProduct`, `Adapter\KitSchemas` and `Adapter\WooKits` are left out of `infection.json5`,** by D-087's rule: the first is WooCommerce's product object, the second does its work through `rest_validate_value_from_schema()`, the third through WooCommerce's product queries and WordPress's terms. Each is proven in wp-env (`KitProductTest`, `KitHiddenTest`, `KitSchemasTest`, `WooKitsTest`), with its deliberate breaks in D-099 to D-102. `Service\KitVisibility`, which is plain PHP, is mutated.
+- **D-101's first line stands:** a slot's categories, brands and attributes narrow each other.
+
+**Status:** Accepted.

@@ -22,7 +22,7 @@ final class KitVisibilityTest extends TestCase {
 	);
 
 	public function test_the_products_sitemap_query_leaves_kits_out_and_keeps_what_it_asked(): void {
-		$visibility = new KitVisibility( 'cbuild_kit' );
+		$visibility = new KitVisibility( 'cbuild_kit', static fn(): array => array( 7, 9 ) );
 		self::assertSame(
 			array(
 				'orderby'   => 'ID',
@@ -47,7 +47,7 @@ final class KitVisibilityTest extends TestCase {
 	}
 
 	public function test_another_post_types_sitemap_and_what_is_not_a_query_are_left_as_they_are(): void {
-		$visibility = new KitVisibility( 'cbuild_kit' );
+		$visibility = new KitVisibility( 'cbuild_kit', static fn(): array => array( 7, 9 ) );
 		$args       = array( 'orderby' => 'ID' );
 		self::assertSame( $args, $visibility->sitemapQuery( $args, 'page' ) );
 		self::assertSame( $args, $visibility->sitemapQuery( $args, 'product_variation' ) );
@@ -57,11 +57,27 @@ final class KitVisibilityTest extends TestCase {
 	}
 
 	public function test_a_kit_has_no_markup_and_any_other_product_keeps_its_own(): void {
-		$visibility = new KitVisibility( 'cbuild_kit' );
+		$visibility = new KitVisibility( 'cbuild_kit', static fn(): array => array( 7, 9 ) );
 		$markup     = array( '@type' => 'Product' );
 		self::assertSame( array(), $visibility->markup( $markup, 'cbuild_kit' ) );
 		self::assertSame( $markup, $visibility->markup( $markup, 'simple' ) );
 		self::assertSame( $markup, $visibility->markup( $markup, '' ) );
-		self::assertSame( array(), ( new KitVisibility( 'other' ) )->markup( $markup, 'other' ), 'the type is the one it was given' );
+		self::assertSame( array(), ( new KitVisibility( 'other', static fn(): array => array() ) )->markup( $markup, 'other' ), 'the type is the one it was given' );
+	}
+
+	public function test_yoasts_sitemap_is_told_each_kit_and_keeps_what_others_left_out(): void {
+		$asked      = 0;
+		$visibility = new KitVisibility(
+			'cbuild_kit',
+			static function () use ( &$asked ): array {
+				++$asked;
+				return array( 7, 9 );
+			}
+		);
+		self::assertSame( 0, $asked, 'the kits are read when a sitemap is built, not on every request' );
+		self::assertSame( array( 3, 7, 9 ), $visibility->excluded( array( 3, 7 ) ), 'each once, as the whole numbers Yoast compares' );
+		self::assertSame( array( 7, 9 ), $visibility->excluded( array() ) );
+		self::assertSame( array( 7, 9 ), $visibility->excluded( null ), 'another plugin\'s answer that is no list' );
+		self::assertSame( array( 12, 7, 9 ), $visibility->excluded( array( '12', 'x', 0 ) ) );
 	}
 }

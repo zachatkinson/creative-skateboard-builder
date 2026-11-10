@@ -13,11 +13,14 @@ use CreativeBranding\SkateboardBuilder\Admin\PartSpecsHooks;
 use CreativeBranding\SkateboardBuilder\Admin\PartSpecsPanel;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\SpecKey;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\SpecTable;
+use CreativeBranding\SkateboardBuilder\Port\Kits;
 use CreativeBranding\SkateboardBuilder\Port\SpecTables;
 use CreativeBranding\SkateboardBuilder\Scope;
 use CreativeBranding\SkateboardBuilder\Service\SpecIndexer;
 use CreativeBranding\SkateboardBuilder\Service\SpecWriter;
 use CreativeBranding\SkateboardBuilder\Support\Options;
+use CreativeBranding\SkateboardBuilder\Tests\Support\Domain\KitDocuments;
+use CreativeBranding\SkateboardBuilder\Tests\Support\KitFactory;
 use CreativeBranding\SkateboardBuilder\Tests\Support\IntegrationTestCase;
 
 /**
@@ -48,7 +51,7 @@ final class PartSpecsPanelTest extends IntegrationTestCase {
 	 */
 	private function hooks(): PartSpecsHooks {
 		if ( null === $this->hooks ) {
-			$panel       = new PartSpecsPanel( $this->service( SpecWriter::class ), $this->service( SpecIndexer::class ), $this->service( SpecTables::class ) );
+			$panel       = new PartSpecsPanel( $this->service( SpecWriter::class ), $this->service( SpecIndexer::class ), $this->service( SpecTables::class ), $this->service( Kits::class ) );
 			$this->hooks = new PartSpecsHooks( static fn(): PartSpecsPanel => $panel );
 		}
 		return $this->hooks;
@@ -386,10 +389,13 @@ final class PartSpecsPanelTest extends IntegrationTestCase {
 				return array_fill_keys( $partIds, array() );
 			}
 		};
+		$kits     = new \CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\InMemoryKits();
+		$kits->add( 5, KitDocuments::kit(), array() );
 		$panel    = new PartSpecsPanel(
 			$this->service( SpecWriter::class ),
 			new SpecIndexer( $this->service( \CreativeBranding\SkateboardBuilder\Port\SpecIndex::class ), $this->service( \CreativeBranding\SkateboardBuilder\Port\ShopSettings::class ), $this->service( \CreativeBranding\SkateboardBuilder\Port\Clock::class ), $counting ),
-			$this->service( SpecTables::class )
+			$this->service( SpecTables::class ),
+			$kits
 		);
 		ob_start();
 		foreach ( $ids as $loop => $id ) {
@@ -398,6 +404,7 @@ final class PartSpecsPanelTest extends IntegrationTestCase {
 		$drawn = (string) ob_get_clean();
 		self::assertSame( 3, substr_count( $drawn, '<fieldset class="cbuild-part-specs">' ) );
 		self::assertSame( array( $ids ), $counting->asked, 'the page\'s variations together, once' );
+		self::assertSame( 1, $kits->read, 'and the kits once' );
 
 		// The product's own panel asks for the product alone, and a save asks again.
 		$GLOBALS['product_object'] = wc_get_product( $parent->get_id() );
@@ -618,5 +625,43 @@ final class PartSpecsPanelTest extends IntegrationTestCase {
 			array( '<a href="#cbuild_variation_' . $variation->get_id() . '">Variation #' . $variation->get_id() . ': Truck height was not saved: &quot;tall&quot; is not a measurement. Type a number, or a fraction such as 8 1/4.</a>' ),
 			\WC_Admin_Meta_Boxes::$meta_box_errors
 		);
+	}
+
+	/**
+	 * Issue #16: before kits, the panel could not know which specs a product needs, and opened a group only where
+	 * the part had a value.
+	 */
+	public function test_the_group_a_products_kit_slot_needs_is_open_and_the_rest_stay_closed(): void {
+		$trucks = self::factory()->term->create(
+			array(
+				'taxonomy' => 'product_cat',
+				'name'     => 'Trucks',
+			)
+		);
+		$slots  = KitDocuments::slots();
+		$slots['slots'][1]['sources'] = array( 'categories' => array( $trucks ) );
+		$draft                        = self::simple();
+		$draft->set_status( 'draft' );
+		$draft->save();
+		$slots['slots'][6]['sources'] = array( 'products' => array( $draft->get_id() ) );
+		KitFactory::kit( 'Complete', array( Options::META_KIT_SLOTS => $slots ) );
+
+		$simple = self::simple();
+		wp_set_object_terms( $simple->get_id(), array( $trucks ), 'product_cat' );
+		$panel = $this->panel( $simple );
+		self::assertSame( 1, substr_count( $panel, '<details open>' ) );
+		self::assertMatchesRegularExpression( '#<details open>\s*<summary>Trucks</summary>#', $panel );
+
+		// A part not yet published is filled in before it is: the slot that names it opens its group.
+		self::assertMatchesRegularExpression( '#<details open>\s*<summary>Grip tape</summary>#', $this->panel( $draft ) );
+
+		// A variation is in what its parent is in.
+		list( $parent, $variation ) = self::variable();
+		self::assertSame( 0, substr_count( $this->fields( $variation ), '<details open>' ), 'in no kit\'s slot, nothing opens' );
+		wp_set_object_terms( $parent->get_id(), array( $trucks ), 'product_cat' );
+		$this->hooks = null;
+		$fields      = $this->fields( $variation );
+		self::assertSame( 1, substr_count( $fields, '<details open>' ) );
+		self::assertMatchesRegularExpression( '#<details open>\s*<summary>Trucks</summary>#', $fields );
 	}
 }

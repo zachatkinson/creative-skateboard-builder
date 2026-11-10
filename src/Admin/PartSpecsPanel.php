@@ -17,6 +17,7 @@ use CreativeBranding\SkateboardBuilder\Domain\Spec\SpecKey;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\SpecKind;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\StoredSpecs;
 use CreativeBranding\SkateboardBuilder\Port\SpecSource;
+use CreativeBranding\SkateboardBuilder\Port\Kits;
 use CreativeBranding\SkateboardBuilder\Port\SpecTables;
 use CreativeBranding\SkateboardBuilder\Service\SpecIndexer;
 use CreativeBranding\SkateboardBuilder\Service\SpecWriter;
@@ -88,6 +89,26 @@ final class PartSpecsPanel {
 	private const FIELDS = 'cbuild-spec';
 
 	/**
+	 * The slot whose parts need each group, by the group's first spec. Sets are any part's.
+	 */
+	private const array SLOTS = array(
+		'deck_width'      => 'deck',
+		'axle_width'      => 'trucks',
+		'wheel_diameter'  => 'wheels',
+		'riser_thickness' => 'risers',
+		'bolt_length'     => 'hardware',
+		'bearing_bore'    => 'bearings',
+		'grip_width'      => 'grip',
+	);
+
+	/**
+	 * The shop's kits, once read.
+	 *
+	 * @var list<\CreativeBranding\SkateboardBuilder\Domain\Kit\Kit>|null
+	 */
+	private ?array $read = null;
+
+	/**
 	 * Constructor.
 	 *
 	 * @since 0.3.0
@@ -95,8 +116,9 @@ final class PartSpecsPanel {
 	 * @param SpecWriter  $writer  Checks what is typed.
 	 * @param SpecIndexer $indexer Says which value is in use, and from where.
 	 * @param SpecTables  $charts  The makers' charts.
+	 * @param Kits        $kits    The kits, for the slot a product fills.
 	 */
-	public function __construct( private SpecWriter $writer, private SpecIndexer $indexer, private SpecTables $charts ) {}
+	public function __construct( private SpecWriter $writer, private SpecIndexer $indexer, private SpecTables $charts, private Kits $kits ) {}
 
 	/**
 	 * Style the groups' headings, and open the tab a link names.
@@ -289,12 +311,14 @@ final class PartSpecsPanel {
 		$own    = StoredSpecs::fields( $product->get_meta( Options::META_SPECS, true ) );
 		$notes  = $this->inUse( $product );
 		$groups = array();
+		$slots  = $this->slots( $product->get_id() );
 		foreach ( self::layout() as $label => $keys ) {
 			$fields = array();
-			$open   = false;
+			// The group a kit's slot needs of this part is open (issue #16), and so is one with a value.
+			$open = in_array( self::SLOTS[ $keys[0]->value ] ?? '', $slots, true );
 			if ( in_array( SpecKey::AxleWidth, $keys, true ) ) {
 				$fields[] = $this->chartField( $product, self::field( $id, SpecWriter::TABLE ), $chart );
-				$open     = '' !== $fields[0]['value'];
+				$open     = $open || '' !== $fields[0]['value'];
 			}
 			foreach ( $keys as $key ) {
 				$value   = $own[ $key->value ] ?? '';
@@ -333,8 +357,19 @@ final class PartSpecsPanel {
 	}
 
 	/**
+	 * The slots, in any kit, that take this product. The kits are read once for a screen of variations.
+	 *
+	 * @param int $product The product's or variation's ID.
+	 * @return list<string>
+	 */
+	private function slots( int $product ): array {
+		$this->read ??= array_values( array_column( $this->kits->all(), 'kit' ) );
+		return $this->kits->slotsOf( $product, ...$this->read );
+	}
+
+	/**
 	 * The specs in the order the panel shows them, under the kind of part each belongs to. Every group is shown on
-	 * every part until milestone 4, when a kit's slots say which specs a part needs.
+	 * every part, and the one its kit slot needs is open (SLOTS).
 	 *
 	 * @return array<string, list<SpecKey>>
 	 */

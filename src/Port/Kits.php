@@ -17,8 +17,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * A kit is a product a shopper builds from parts (spec: Vocabulary). The kit product type arrives in milestone 4;
- * until then the shop has none, and what reads kits is tested against kits made from documents.
+ * A kit is a product a shopper builds from parts (spec: Vocabulary): a product of the kit type, with four documents.
  *
  * @since 0.3.0
  */
@@ -34,7 +33,17 @@ interface Kits {
 	public function all(): array;
 
 	/**
-	 * The parts that can fill one of a kit's slots, as the catalogue finds them, with their specs from the index.
+	 * Every kit product's ID, whatever its documents hold, for what must leave each one out of a listing.
+	 *
+	 * @since 0.4.0
+	 *
+	 * @return list<int>
+	 */
+	public function ids(): array;
+
+	/**
+	 * The parts that can fill one of a kit's slots, as the catalogue finds them, with their specs from the index: only parts
+	 * a shopper could be shown and could buy. One that is sold out is among them, marked so.
 	 *
 	 * @since 0.3.0
 	 *
@@ -43,4 +52,16 @@ interface Kits {
 	 * @return list<Part>
 	 */
 	public function candidates( int $kit, string $slot ): array;
+
+	/**
+	 * The keys of the slots, in these kits, whose sources take a product or variation, whether or not a shopper
+	 * could buy it yet: a part's specs are filled in before it is published.
+	 *
+	 * @since 0.4.0
+	 *
+	 * @param int $product The product's or variation's ID.
+	 * @param Kit ...$kits The kits, as all() gave them.
+	 * @return list<string>
+	 */
+	public function slotsOf( int $product, Kit ...$kits ): array;
 }

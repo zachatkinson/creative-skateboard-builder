@@ -44,7 +44,7 @@ final class Container {
 			Port\PartSpecs::class      => Adapter\WooPartSpecs::class,
 			Port\ImportStore::class    => Adapter\OptionImportStore::class,
 			Port\Uploads::class        => Adapter\RequestUploads::class,
-			Port\Kits::class           => Adapter\NoKits::class,
+			Port\Kits::class           => Adapter\WooKits::class,
 			Port\Files::class          => Adapter\DiskFiles::class,
 			Port\Reindex::class        => Service\IndexJobs::class,
 		);
@@ -123,8 +123,15 @@ final class Container {
 			},
 			// The kit's class is an adapter's, which a Hookable may not name.
 			Hooks\KitHooks::class                       => static function ( Container $c ): object {
-				unset( $c );
-				return new Hooks\KitHooks( Adapter\KitProduct::class, new Service\KitVisibility( Support\Options::PRODUCT_TYPE_KIT ) );
+				return new Hooks\KitHooks(
+					Adapter\KitProduct::class,
+					new Service\KitVisibility(
+						Support\Options::PRODUCT_TYPE_KIT,
+						static function () use ( $c ): array {
+							return $c->get( Port\Kits::class )->ids();
+						}
+					)
+				);
 			},
 			// The jobs and the import are built when a part is saved or a job runs, not on every request.
 			Hooks\IndexHooks::class                     => static function ( Container $c ): object {

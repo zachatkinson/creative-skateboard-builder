@@ -45,6 +45,8 @@ final class KitHooks implements Hookable {
 		add_filter( 'woocommerce_product_class', array( $this, 'productClass' ), 10, 2 );
 		// WordPress 7.1.4, wp-includes/sitemaps/providers/class-wp-sitemaps-posts.php:238.
 		add_filter( 'wp_sitemaps_posts_query_args', array( $this->visibility, 'sitemapQuery' ), 10, 2 );
+		// Yoast SEO 28.8, inc/sitemaps/class-post-type-sitemap-provider.php:296. It fires only where Yoast is.
+		add_filter( 'wpseo_exclude_from_sitemap_by_post_ids', array( $this->visibility, 'excluded' ), 10, 1 );
 		// WooCommerce 11.2.2, includes/class-wc-structured-data.php:545.
 		add_filter( 'woocommerce_structured_data_product', array( $this, 'markup' ), 10, 2 );
 	}

@@ -28,6 +28,8 @@
 			"Adapter/AttributeSpecSource.php",
 			"Adapter/DiskFiles.php",
 			"Adapter/FieldSpecSource.php",
+			"Adapter/KitProduct.php",
+			"Adapter/KitSchemas.php",
 			"Adapter/OptionImportStore.php",
 			"Adapter/OptionReindexStore.php",
 			"Adapter/OptionShopSettings.php",
@@ -37,6 +39,7 @@
 			"Adapter/TableSpecSource.php",
 			"Adapter/WooPartCatalogue.php",
 			"Adapter/WooPartSpecs.php",
+			"Adapter/WooKits.php",
 			"Adapter/WooCommerceLogger.php",
 			// SQL through $wpdb, and the classes that only add hooks.
 			"Repository",

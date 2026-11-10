@@ -36,8 +36,29 @@ final class InMemoryKits implements Kits {
 		$this->parts[ $id ] = $parts;
 	}
 
+	/**
+	 * How many times the kits were read.
+	 */
+	public int $read = 0;
+
 	public function all(): array {
+		++$this->read;
 		return $this->kits;
+	}
+
+	public function ids(): array {
+		return array_keys( $this->kits );
+	}
+
+	/**
+	 * The slots each product is said to fill.
+	 *
+	 * @var array<int, list<string>>
+	 */
+	public array $slotsOf = array();
+
+	public function slotsOf( int $product, Kit ...$kits ): array {
+		return $this->slotsOf[ $product ] ?? array();
 	}
 
 	public function candidates( int $kit, string $slot ): array {

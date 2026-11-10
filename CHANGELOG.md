@@ -7,7 +7,9 @@ All notable changes to this project are documented here. The format follows [Kee
 ### Added
 
 - The product type `cbuild_kit`, a kit: virtual, not purchasable as a product, its price the assembly fee and never in WooCommerce's price fields, so a kit is not sold with the plugin switched off.
-- A kit stays out of the catalogue, search results, product feeds and WordPress's sitemap, and prints no product markup. Its catalogue visibility is always hidden.
+- A kit stays out of the catalogue, search results, product feeds, WordPress's sitemap and Yoast SEO's, and prints no product markup. Its catalogue visibility is always hidden.
+- The shop's kits are read from its kit products, and a slot's parts from its sources: the products in its categories, of its brands and with its attribute values, and any it names, each variable product as its variations. A part is one a shopper could be shown and could buy (D-101).
+- The Catalogue check's kit rules run on the shop's kits: a slot with no parts or nothing in stock, a part missing a spec its slot needs, a preset that no longer fits.
 - A kit's four documents as product meta, each as JSON text: `_cbuild_slots`, `_cbuild_rules`, `_cbuild_presets` and `_cbuild_assembly`. Their schemas have been public since 0.2.0.
 
 ### Changed
@@ -16,6 +18,8 @@ All notable changes to this project are documented here. The format follows [Kee
 - A value the Part specs tab does not save is named in a notice that is a link to its field: following it opens the tab and the field's group and moves focus to the field. A variation's notice leads to the variation.
 - Site Health's Info tab shows the index's state in words, and copies its code. The ability's schema descriptions are translated.
 - The settings screen shows a problem with the order of the sources under the order alone.
+- The Part specs tab opens the group a product's kit slot needs, as well as any group with a value.
+- `composer test:integration:yoast` runs the tests that need Yoast SEO, with Yoast SEO 28.8 put in the integration site for the run (D-102).
 - The index's and the import's services are built when a part is saved or a job runs, not on every request.
 - `composer api:check` also holds Site Health's test ids, each WP-CLI command's arguments and flags, the CSV's columns and each ability's output schema.
 

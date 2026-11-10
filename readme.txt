@@ -41,6 +41,9 @@ Yes. Activating it for the network installs it on every site, and a site added l
 
 = 0.4.0 =
 * A new product type, Builder kit: the product a shopper will build from parts. It cannot be bought as an ordinary product, and it holds no price of its own. More of this version's work is listed here as it lands.
+* A kit stays out of your catalogue, search results, feeds and sitemaps, Yoast SEO's among them.
+* The Catalogue check now reads your kits: a slot with no parts or nothing in stock, a part missing a spec its slot needs, a ready build that no longer fits.
+* The Part specs tab opens the group of fields a product's slot needs.
 * When a value on the Part specs tab is not saved, the notice is now a link that takes you to its field.
 * Site Health's Info tab shows the state of the specs index in words.
 
