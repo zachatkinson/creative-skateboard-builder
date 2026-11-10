@@ -21,9 +21,9 @@ if ( '' === $zip || ! is_file( $zip ) ) {
 	exit( 1 );
 }
 
-$header = (string) file_get_contents( $root . '/creative-skateboard-builder.php' );
-$readme = (string) file_get_contents( $root . '/readme.txt' );
-$field  = static function ( string $text, string $name ): string {
+$header  = (string) file_get_contents( $root . '/creative-skateboard-builder.php' );
+$readme  = (string) file_get_contents( $root . '/readme.txt' );
+$field   = static function ( string $text, string $name ): string {
 	return preg_match( '/^[\s*]*' . preg_quote( $name, '/' ) . ':\s*(\S+)/mi', $text, $m ) ? $m[1] : '';
 };
 $version = $field( $header, 'Version' );

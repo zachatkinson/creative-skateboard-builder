@@ -24,7 +24,7 @@
 		"fee": {
 			"description": "The assembly fee in the shop's currency, as a decimal in text: 15 or 15.50. 0 is free.",
 			"type": "string",
-			"pattern": "^[0-9]{1,9}(\\.[0-9]{1,4})?$"
+			"pattern": "^[0-9]{1,9}(\\.[0-9]{1,4})?(?!\\n)$"
 		},
 		"lead_time": {
 			"description": "The lead time, in the owner's words.",

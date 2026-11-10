@@ -34,7 +34,7 @@
 					"key": {
 						"description": "The slot's key. The fit rules read the slots keyed deck, trucks, wheels, risers, bearings, hardware, grip and spacers.",
 						"type": "string",
-						"pattern": "^[a-z][a-z0-9_]{0,31}$"
+						"pattern": "^[a-z][a-z0-9_]{0,31}(?!\\n)$"
 					},
 					"label": {
 						"description": "The owner's name for the slot.",
@@ -102,7 +102,7 @@
 									"properties": {
 										"taxonomy": {
 											"type": "string",
-											"pattern": "^pa_[a-z0-9_-]{1,28}$"
+											"pattern": "^pa_[a-z0-9_-]{1,28}(?!\\n)$"
 										},
 										"terms": {
 											"type": "array",

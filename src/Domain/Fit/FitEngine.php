@@ -48,7 +48,9 @@ final readonly class FitEngine {
 
 	/**
 	 * How many of a part cover a slot (R7): as many sets as it takes, so 4 wheels from sets of 4 is 1 and 2 trucks
-	 * sold singly is 2. Null when the part gives no set size, or the kit has no such slot.
+	 * sold singly is 2. A slot that takes one unit takes one of any part, whatever it holds, so a deck or a sheet of
+	 * grip needs no set size. Null when a slot that takes more is given a part with no set size, or the kit has no such
+	 * slot.
 	 *
 	 * @since 0.2.0
 	 *
@@ -58,7 +60,10 @@ final readonly class FitEngine {
 	 */
 	public function quantity( Kit $kit, string $slot, Part $part ): ?int {
 		$units = $kit->slots->get( $slot )?->units;
-		$size  = $part->specs->count( SpecKey::SetSize );
+		if ( 1 === $units ) {
+			return 1;
+		}
+		$size = $part->specs->count( SpecKey::SetSize );
 		if ( null === $units || null === $size ) {
 			return null;
 		}
@@ -67,7 +72,7 @@ final readonly class FitEngine {
 
 	/**
 	 * What the rules find about one part in one slot beside other picks: every finding that reads the slot, and a
-	 * missing set size.
+	 * missing set size where the slot takes more than one unit.
 	 *
 	 * @since 0.2.0
 	 *
@@ -84,7 +89,7 @@ final readonly class FitEngine {
 				$findings[] = $finding;
 			}
 		}
-		if ( null === $part->specs->count( SpecKey::SetSize ) ) {
+		if ( 1 !== $kit->slots->get( $slot )?->units && null === $part->specs->count( SpecKey::SetSize ) ) {
 			$findings[] = Finding::missing( RuleId::R7, $slot, SpecKey::SetSize );
 		}
 		return $findings;

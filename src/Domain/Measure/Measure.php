@@ -30,7 +30,8 @@ final readonly class Measure {
 	 */
 	private function __construct( public int $tenThousandths, public Unit $unit ) {
 		if ( $tenThousandths < 0 ) {
-			throw InvalidMeasure::negative();
+			$refused = InvalidMeasure::because( MeasureError::Negative );
+			throw $refused;
 		}
 	}
 

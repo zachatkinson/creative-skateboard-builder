@@ -23,8 +23,8 @@ use const PHP_INT_MAX;
 /**
  * When a pick changes, walks the slots after it in step order and asks the engine about each later pick against the
  * build as it now stands. A pick that still fits is kept. One that does not gets the closest part that does: the
- * nearest on the slot's own spec, then the same brand, then the nearest price, among the parts in stock (spec: How
- * rules run). A swap made for one slot is what the next slot is held against. It decides nothing about fit itself.
+ * nearest on the slot's own spec (for trucks, nearest the new deck's width), then the same brand, then the nearest
+ * price, among the parts in stock (spec: How rules run). A swap made for one slot is what the next slot is held against. It decides nothing about fit itself.
  */
 final readonly class ChangePlanner {
 
@@ -39,6 +39,14 @@ final readonly class ChangePlanner {
 		SlotKey::BEARINGS => SpecKey::BearingBore,
 		SlotKey::HARDWARE => SpecKey::BoltLength,
 		SlotKey::GRIP     => SpecKey::GripWidth,
+	);
+
+	/**
+	 * Where a slot's spec is measured to another pick's, when the build has one: a truck is chosen for the deck it
+	 * goes under, so the swap is the axle nearest the new deck's width, not the one nearest the old truck's.
+	 */
+	private const array TARGETS = array(
+		SlotKey::TRUCKS => array( SlotKey::DECK, SpecKey::DeckWidth ),
 	);
 
 	/**
@@ -86,7 +94,7 @@ final readonly class ChangePlanner {
 				$proposed = $proposed->with( $later, $was );
 				continue;
 			}
-			$closest   = $this->closest( $later, $was, $this->engine->options( $kit, $later, $proposed, $candidates[ $later ] ?? array() ) );
+			$closest   = $this->closest( $later, $was, $proposed, $this->engine->options( $kit, $later, $proposed, $candidates[ $later ] ?? array() ) );
 			$changes[] = new Change( $later, $was, $findings, $closest );
 			if ( null !== $closest ) {
 				$proposed = $proposed->with( $later, $closest->part );
@@ -96,16 +104,20 @@ final readonly class ChangePlanner {
 	}
 
 	/**
-	 * The offered, in-stock option closest to the part that was picked: nearest spec, then the same brand, then the
-	 * nearest price; the first given where all three tie.
+	 * The offered, in-stock option closest to the part that was picked: nearest spec (to the pick the slot is measured
+	 * to, where the build has it, and otherwise to the part's own), then the same brand, then the nearest price; the
+	 * first given where all three tie.
 	 *
-	 * @param string      $slot    The slot's key.
-	 * @param Part        $was     The part that was picked.
-	 * @param SlotOptions $options The slot's options against the build as it now stands.
+	 * @param string      $slot     The slot's key.
+	 * @param Part        $was      The part that was picked.
+	 * @param Picks       $proposed The build as it now stands, up to this slot.
+	 * @param SlotOptions $options  The slot's options against that build.
 	 */
-	private function closest( string $slot, Part $was, SlotOptions $options ): ?Option {
+	private function closest( string $slot, Part $was, Picks $proposed, SlotOptions $options ): ?Option {
 		$spec    = self::SPECS[ $slot ] ?? null;
 		$wanted  = null === $spec ? null : $was->specs->measure( $spec );
+		$target  = self::TARGETS[ $slot ] ?? null;
+		$wanted  = ( null === $target ? null : $proposed->part( $target[0] )?->specs->measure( $target[1] ) ) ?? $wanted;
 		$closest = null;
 		$best    = array();
 		foreach ( $options->offered as $option ) {

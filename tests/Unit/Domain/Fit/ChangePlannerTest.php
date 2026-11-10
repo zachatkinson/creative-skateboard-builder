@@ -73,7 +73,7 @@ final class ChangePlannerTest extends TestCase {
 		self::assertSame( SlotKey::TRUCKS, $change->slot );
 		self::assertSame( 144, $change->was->id );
 		self::assertSame( array( MessageCode::DeckAboveRange ), array_column( $change->findings, 'code' ), 'why it no longer fits' );
-		self::assertSame( 146, $change->closest?->part->id, 'the nearest axle to the 144\'s that takes an 8.5 in deck' );
+		self::assertSame( 149, $change->closest?->part->id, 'the axle nearest the new deck: the 149 is 8.5 in, and the 146 that sits nearer the old truck is 8.375' );
 		self::assertSame( Severity::Fits, $change->closest?->severity );
 		self::assertSame( 1, $change->closest?->quantity );
 	}
@@ -200,9 +200,9 @@ final class ChangePlannerTest extends TestCase {
 			$before,
 			SlotKey::DECK,
 			Builds::deck( '8.5', 101 ),
-			array( SlotKey::TRUCKS => array( self::truck( 1, '8.5' ), self::truck( 2, '8.1' ), self::truck( 3, '8.45' ) ) )
+			array( SlotKey::TRUCKS => array( self::truck( 1, '8.75' ), self::truck( 2, '8.3' ), self::truck( 3, '8.9' ) ) )
 		);
-		self::assertSame( 2, $list->changes[0]->closest?->part->id, '8.1 in is 0.15 from 8.25; 8.45 is 0.2' );
+		self::assertSame( 2, $list->changes[0]->closest?->part->id, '8.3 in is 0.2 under the 8.5 in deck; 8.75 is 0.25 over' );
 	}
 
 	public function test_closest_then_prefers_the_same_brand(): void {
@@ -277,7 +277,7 @@ final class ChangePlannerTest extends TestCase {
 			'key'      => 'tool',
 			'label'    => 'Skate tool',
 			'required' => false,
-			'units'    => 1,
+			'units'    => 2,
 		);
 		$kit              = KitDocuments::kit( $slots );
 		$unsized          = Parts::of( array(), 900, 1500, 'rascals' );
@@ -302,5 +302,21 @@ final class ChangePlannerTest extends TestCase {
 		$rules['r1']['enabled'] = false;
 		$list   = ( new ChangePlanner( FitEngine::standard() ) )->plan( KitDocuments::kit( null, $rules ), $before, SlotKey::DECK, Builds::deck( '8.5', 101 ), array() );
 		self::assertTrue( $list->isClean(), 'with R1 off, the engine keeps the trucks, and so does the list' );
+	}
+
+	public function test_a_truck_is_swapped_for_the_one_nearest_the_new_deck_not_the_old_truck(): void {
+		$before = Builds::complete( array( SlotKey::DECK => Builds::deck( '8.0' ), SlotKey::TRUCKS => Builds::truck( '139' ) ) );
+		$list   = self::plan( $before, SlotKey::DECK, Builds::deck( '8.5', 101 ), array( SlotKey::TRUCKS => array( Builds::truck( '139' ), Builds::truck( '146' ), Builds::truck( '149' ), Builds::truck( '151' ) ) ) );
+		self::assertSame( 149, $list->changes[0]->closest?->part->id, 'from an 8.0 in deck to an 8.5: the 8.5 in axle, not the 8.375 nearest the 139' );
+	}
+
+	public function test_with_no_width_on_the_new_deck_a_truck_is_swapped_for_the_one_nearest_the_old(): void {
+		// The new deck is drilled old school and gives no width: R2 puts the trucks out, and there is no deck to measure to.
+		$before   = Builds::complete( array( SlotKey::DECK => Builds::deck( '8.25' ), SlotKey::TRUCKS => Builds::truck( '144' ) ) );
+		$unsized  = Parts::of( array( 'deck_length' => '32', 'hole_pattern' => 'old_school' ), 101 );
+		$old      = static fn( int $id, string $axle ): Part => Parts::of( array( 'axle_width' => $axle, 'baseplate' => 'old_school', 'max_wheel' => '56', 'axle_diameter' => '8', 'set_size' => 2 ), $id, 2999, 'independent' );
+		$list     = self::plan( $before, SlotKey::DECK, $unsized, array( SlotKey::TRUCKS => array( $old( 1, '8.75' ), $old( 2, '8.3' ), $old( 3, '7.6' ) ) ) );
+		self::assertSame( array( MessageCode::PatternMismatch ), array_column( $list->changes[0]->findings, 'code' ) );
+		self::assertSame( 2, $list->changes[0]->closest?->part->id, '8.3 in is nearest the 144\'s 8.25' );
 	}
 }

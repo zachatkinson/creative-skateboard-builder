@@ -334,7 +334,7 @@ Seed spec tables. Independent's figures come from its own site; Thunder's and Ve
 **R7. Quantities (checked when the kit is saved).**
 
 - A complete takes 1 deck, 2 trucks, 4 matching wheels, 8 bearings, risers in pairs, one set of 8 bolts and nuts, and 1 grip sheet.
-- Each slot says how many units a build takes, and each part says how many units it holds (`set_size`: trucks as a pair is 2, wheels 4, bearings 8, hardware 8, risers 2).
+- Each slot says how many units a build takes, and each part says how many units it holds (`set_size`: trucks as a pair is 2, wheels 4, bearings 8, hardware 8, risers 2). A slot that takes one unit, as the deck and the grip do, takes one of any part and needs no `set_size` (D-064).
 - The build adds as many of the part as it takes to cover the slot. Wheels can't be mixed, since a slot holds one part.
 
 **R8. Wheelbase and deck length (no rule).** These change how a board turns, not whether parts fit. The deck's option shows them when they're known.
@@ -749,12 +749,12 @@ The plugin can be built and tested on a generated catalogue now. Selling complet
 
 | Slot or task | Today | Needed |
 | --- | --- | --- |
-| Trucks | None stocked; the Trucks category is empty | The brands and sizes the owner will carry (owner question 13). Independent, Thunder and Venture charts come seeded; another brand needs its chart added |
-| Bearings | None stocked | The same question. Each needs its bore (8 mm for a 608) and whether it has spacers built in |
+| Trucks | None stocked; the Trucks category is empty | The brands and sizes the owner will carry (owner question 13). Independent, Thunder and Venture charts come seeded; another brand needs its chart added. Each needs its `set_size`: 1 sold singly, 2 as a pair |
+| Bearings | None stocked | The same question. Each needs its bore (8 mm for a 608), whether it has spacers built in, and its `set_size` (8 for a set) |
 | Decks | Widths from `pa_width`; since 6 Nov, Length on 13 of the 160 (L'ÉTAT and Baitshop) and Wheelbase on 19, copied from their descriptions; no hole patterns | A missing pattern counts as new school and is flagged (R2). R6 checks a deck's length where it has one and skips the check where it doesn't, so lengths can be filled in over time |
-| Wheels | Retna and Blotto, 52 to 58 mm, diameters from `pa_diameter` | Nothing. A 58 mm set warns with standard-height trucks and suggests a ¼ in riser |
-| Risers | None stocked | The riser slot stays off until they are, and R3 only warns |
-| Hardware | Philly's, in 7/8, 1 and 1¼ in | Enough for no riser up to ¼ in risers. ½ in risers would need 1½ in bolts (R4) |
+| Wheels | Retna and Blotto, 52 to 58 mm, diameters from `pa_diameter` | A `set_size` of 4 on each set, filled in with the specs import (milestone 3). A 58 mm set warns with standard-height trucks and suggests a ¼ in riser |
+| Risers | None stocked | The riser slot stays off until they are, and R3 only warns. Each will need its `set_size` (2 for a pair) |
+| Hardware | Philly's, in 7/8, 1 and 1¼ in | Enough for no riser up to ¼ in risers. ½ in risers would need 1½ in bolts (R4). Each pack needs its `set_size` (8) |
 | Grip | Three 9 × 33 in sheets (Graffic Grip's Blank and Cam Man, Mumber-Fur's; only Cam Man in stock on 6 Nov), with Mumber-Fur's strips in the same category; Sheet size on the sheets and strips since 6 Nov | The grip slot takes the category's parts whose Sheet size covers a deck (the 9 × 33 in sheets, never the strips), so a new sheet joins without editing the kit. A deck over 9 in wide can't take a 9 in sheet (R6) |
 | Fingerboards | Fingerboard decks, trucks and completes in their own categories | The slots draw from the skateboard categories only, so these never show |
 | Picture | Product photos only | Deck cut-outs from today's photos (agency); trucks, wheels, risers and grip shot to `docs/PICTURE.md` as they arrive (the owner's stock, the agency's template). Until then the picture shows labelled product photos |

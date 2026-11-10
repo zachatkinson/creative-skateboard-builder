@@ -66,6 +66,24 @@ final class FitEngineTest extends TestCase {
 		self::assertSame( $quantity, FitEngine::standard()->quantity( KitDocuments::kit(), $slot, Parts::of( array( 'set_size' => $setSize ) ) ) );
 	}
 
+	public function test_r7_a_slot_that_takes_one_takes_one_of_any_part_set_size_or_none(): void {
+		$engine = FitEngine::standard();
+		$kit    = KitDocuments::kit();
+		$deck   = Parts::of( array( 'deck_width' => '8.5', 'deck_length' => '32', 'hole_pattern' => 'new_school' ), 101 );
+		$grip   = Parts::of( array( 'grip_width' => '9', 'grip_length' => '33' ), 701 );
+		self::assertSame( 1, $engine->quantity( $kit, SlotKey::DECK, $deck ) );
+		self::assertSame( 1, $engine->quantity( $kit, SlotKey::DECK, Parts::of( array( 'set_size' => 2 ) ) ), 'and one of a part that holds two' );
+		$decks = $engine->options( $kit, SlotKey::DECK, Picks::none(), array( $deck ) );
+		self::assertSame( array( 101 ), self::ids( $decks->offered ), 'a deck with no set size is offered' );
+		self::assertSame( array(), $decks->offered[0]->findings );
+		self::assertSame( 1, $decks->offered[0]->quantity );
+		$build = $engine->build( $kit, Builds::complete( array( SlotKey::DECK => $deck, SlotKey::GRIP => $grip ) ) );
+		self::assertSame( array(), $build[ SlotKey::GRIP ]->findings );
+		self::assertSame( 1, $build[ SlotKey::GRIP ]->quantity );
+		self::assertNull( $engine->quantity( $kit, SlotKey::TRUCKS, Parts::of() ), 'a slot that takes two still needs it' );
+		self::assertEquals( array( Finding::missing( RuleId::R7, SlotKey::SPACERS, SpecKey::SetSize ) ), $engine->judge( $kit, SlotKey::SPACERS, Parts::of(), Picks::none() ), 'and so does a slot the kit lacks, whose units nobody knows' );
+	}
+
 	public function test_r7_a_part_with_no_set_size_has_no_quantity_and_is_not_offered(): void {
 		$engine = FitEngine::standard();
 		$kit    = KitDocuments::kit();

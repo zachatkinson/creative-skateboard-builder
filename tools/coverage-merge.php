@@ -79,7 +79,7 @@ if ( array() === $cbuild_unit ) {
 	fwrite( STDERR, "The unit report lists no file of src/; nothing was measured.\n" );
 	exit( 1 );
 }
-$cbuild_boot        = json_decode( is_readable( $argv[3] ) ? (string) file_get_contents( $argv[3] ) : '', true );
+$cbuild_boot = json_decode( is_readable( $argv[3] ) ? (string) file_get_contents( $argv[3] ) : '', true );
 if ( ! is_array( $cbuild_boot ) || array() === $cbuild_boot ) {
 	fwrite( STDERR, "No lines from the integration bootstrap at {$argv[3]}: was the suite run with CBUILD_COVERAGE=1?\n" );
 	exit( 1 );
@@ -113,7 +113,7 @@ foreach ( $cbuild_unit as $cbuild_name => $cbuild_lines ) {
 	$cbuild_nums  = array_keys( $cbuild_lines );
 	$cbuild_hit   = 0;
 	foreach ( $cbuild_nums as $cbuild_num ) {
-		$cbuild_is = $cbuild_lines[ $cbuild_num ] || ( $cbuild_other[ $cbuild_num ] ?? false );
+		$cbuild_is   = $cbuild_lines[ $cbuild_num ] || ( $cbuild_other[ $cbuild_num ] ?? false );
 		$cbuild_hit += $cbuild_is ? 1 : 0;
 	}
 	$cbuild_total   += count( $cbuild_nums );

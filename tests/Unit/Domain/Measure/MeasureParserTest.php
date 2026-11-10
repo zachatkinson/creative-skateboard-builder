@@ -40,6 +40,8 @@ final class MeasureParserTest extends TestCase {
 		yield 'six whole digits' => array( '123456', Unit::Millimetre, 1234560000 );
 		yield 'a fraction' => array( '7/8', Unit::Inch, 8750 );
 		yield 'a mixed number with a space' => array( '8 1/4', Unit::Inch, 82500 );
+		yield 'a mixed number just under the next whole' => array( '8 3/4', Unit::Inch, 87500 );
+		yield 'nought and a fraction' => array( '0 7/8', Unit::Inch, 8750 );
 		yield 'a mixed number with a hyphen' => array( '8-1/4', Unit::Inch, 82500 );
 		yield 'eighths' => array( '8 3/8', Unit::Inch, 83750 );
 		yield 'a sixteenth' => array( '1/16', Unit::Inch, 625 );
@@ -96,6 +98,9 @@ final class MeasureParserTest extends TestCase {
 		yield 'a plus sign' => array( '+8', '.', MeasureError::Malformed );
 		yield 'a range' => array( '8.0 - 8.5', '.', MeasureError::Malformed );
 		yield 'two numbers' => array( '8 9', '.', MeasureError::Malformed );
+		yield 'a whole and a fraction over one' => array( '8 5/4', '.', MeasureError::Malformed );
+		yield 'a whole and a fraction of one' => array( '8 4/4', '.', MeasureError::Malformed );
+		yield 'a whole, a hyphen and a fraction over one' => array( '8-9/8', '.', MeasureError::Malformed );
 		yield 'the other separator' => array( '8,25', '.', MeasureError::Malformed );
 		yield 'a point when the shop uses a comma' => array( '8.25', ',', MeasureError::Malformed );
 		yield 'a decimal with nothing after it' => array( '8.', '.', MeasureError::Malformed );
@@ -137,5 +142,15 @@ final class MeasureParserTest extends TestCase {
 		// A point is "any character" to a pattern: 8x25 must not read as 8.25.
 		$this->expectException( InvalidMeasure::class );
 		MeasureParser::parse( '8x25', Unit::Inch, '.' );
+	}
+
+	public function test_read_answers_null_where_parse_refuses(): void {
+		self::assertSame( 82500, MeasureParser::read( '8 1/4', Unit::Inch )?->tenThousandths );
+		self::assertSame( 82500, MeasureParser::read( '8,25', Unit::Inch, ',' )?->tenThousandths );
+		self::assertSame( Unit::Millimetre, MeasureParser::read( '2 in', Unit::Millimetre )?->unit );
+		foreach ( array( 'wide', '', '8 5/4', '1/0', '8.25' ) as $text ) {
+			self::assertNull( MeasureParser::read( $text, Unit::Inch, 'wide' === $text || '8.25' === $text ? ',' : '.' ), $text );
+		}
+		self::assertNull( MeasureParser::read( '8', Unit::Inch, '' ) );
 	}
 }

@@ -61,7 +61,7 @@ final readonly class Finding {
 	 * @param SpecKey $spec The spec it lacks.
 	 */
 	public static function missing( RuleId $rule, string $slot, SpecKey $spec ): self {
-		return new self( $rule, Severity::Block, MessageCode::SpecMissing, Source::Maker, array( $slot ), array( 'spec' => $spec->value ) );
+		return new self( $rule, Severity::Block, MessageCode::SpecMissing, Source::None, array( $slot ), array( 'spec' => $spec->value ) );
 	}
 
 	/**

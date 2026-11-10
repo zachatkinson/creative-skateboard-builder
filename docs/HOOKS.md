@@ -91,7 +91,7 @@ A kit is four JSON documents. Each has a JSON Schema (draft 4) in the plugin's `
 | `schema/kit-presets.json` | 0.2.0 | Up to six presets: a name, a description and a part for each slot it fills. |
 | `schema/kit-assembly.json` | 0.2.0 | Whether assembly is on by default, its fee as a decimal string in the shop's currency, the lead time and the returns notice. |
 
-A schema says what shape a document has. Three things it cannot say are checked when the document is read: slot keys are unique, the deck is the first slot, and each row of R3's riser table reaches further than the one before. A preset must also fill every required slot and name only slots the kit has.
+A schema says what shape a document has. Five things it cannot say are checked when the document is read: slot keys are unique, the deck is the first slot, the risers come before the hardware, R1's `axle_warn` is at least its `axle_fit`, and each row of R3's riser table reaches further than the one before. A preset must also fill every required slot and name only slots the kit has.
 
 A change to a schema that refuses a document it accepted before is a breaking change and comes with a new `schema_version` and a migration.
 
@@ -120,13 +120,13 @@ The keys a part's specs are stored under: in the specs index (`cbuild_specs`), i
 | `spacers_built_in` | 0.2.0 | Flag | | Whether a bearing has its spacers built in. |
 | `grip_width` | 0.2.0 | Measure | in | A sheet of grip tape's width. |
 | `grip_length` | 0.2.0 | Measure | in | A sheet of grip tape's length. |
-| `set_size` | 0.2.0 | Count | | How many units one of the product holds: a pair of trucks is 2. |
+| `set_size` | 0.2.0 | Count | | How many units one of the product holds: a pair of trucks is 2. Needed only in a slot that takes more than one unit. |
 
 ### Findings and message codes
 
-A fit rule answers with findings. Each carries its rule (`r1`, `r2`, `r3`, `r4`, `r5` or `r6`, and `r7` for a part with no `set_size`; all since 0.2.0), a severity, a message code, the values behind it, where the figure came from and the slots it read. The state route carries them from milestone 4, and the translations turn a code and its values into a sentence. The domain holds no words.
+A fit rule answers with findings. Each carries its rule (`r1`, `r2`, `r3`, `r4`, `r5` or `r6`, and `r7` for a part with no `set_size` in a slot that takes more than one unit; all since 0.2.0), a severity, a message code, the values behind it, where the figure came from and the slots it read. The state route carries them from milestone 4, and the translations turn a code and its values into a sentence. The domain holds no words.
 
-Severities, since 0.2.0: `fits` (a note: a default was taken for a spec the part does not give), `warn` (the build can go ahead) and `block` (it can't). Sources, since 0.2.0: `maker` (a spec on the part), `kit` (a kit setting) and `standard` (the trade's usual figure).
+Severities, since 0.2.0: `fits` (a note: a default was taken for a spec the part does not give), `warn` (the build can go ahead) and `block` (it can't). Sources, since 0.2.0: `maker` (a spec on the part), `kit` (a kit setting), `standard` (the trade's usual figure) and `none` (no figure: the finding is that a spec is missing).
 
 | Code | Since | Rule | Severity | Values | What it means |
 | --- | --- | --- | --- | --- | --- |

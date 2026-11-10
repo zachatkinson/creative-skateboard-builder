@@ -211,4 +211,32 @@ final class KitSchemasTest extends IntegrationTestCase {
 			}
 		}
 	}
+
+	public function test_a_line_break_at_the_end_of_a_value_is_refused_by_the_schema_as_it_is_by_the_domain(): void {
+		// WordPress runs a pattern without the D modifier, so a bare "$" lets a trailing line break through. The domain
+		// reads to the very end, and the schemas' patterns must too, or the edge accepts what the domain then refuses.
+		$fee             = array( 'fee' => "12.50\n" ) + KitDocuments::assembly();
+		$key             = KitDocuments::slots();
+		$key['slots'][2] = array( 'key' => $key['slots'][2]['key'] . "\n" ) + $key['slots'][2];
+		$taxonomy        = KitDocuments::slots();
+		$taxonomy['slots'][1]['sources'] = array(
+			'attributes' => array(
+				array(
+					'taxonomy' => "pa_width\n",
+					'terms'    => array( 21 ),
+				),
+			),
+		);
+		$tolerance                    = RuleSettings::DEFAULTS;
+		$tolerance['r1']['axle_fit'] .= "\n";
+		foreach ( array( 'the fee' => array( 'kit-assembly', $fee, Assembly::class ), 'a slot key' => array( 'kit-slots', $key, Slots::class ), 'a taxonomy' => array( 'kit-slots', $taxonomy, Slots::class ), 'a tolerance' => array( 'kit-rules', $tolerance, RuleSettings::class ) ) as $what => [ $schema, $document, $reader ] ) {
+			$this->assertFalse( self::accepts( $document, $schema ), $what . ': the schema' );
+			try {
+				$reader::fromDocument( $document );
+				$this->fail( $what . ': the domain accepted it' );
+			} catch ( InvalidDocument $e ) {
+				$this->assertNotSame( '', $e->path, $what );
+			}
+		}
+	}
 }

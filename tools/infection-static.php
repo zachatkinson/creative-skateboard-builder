@@ -42,9 +42,9 @@ $cbuild_found = array();
 $cbuild_where = array();
 $cbuild_root  = dirname( __DIR__ ) . '/';
 foreach ( $cbuild_report['killedByStaticAnalysis'] ?? array() as $cbuild_mutant ) {
-	$cbuild_file = (string) ( $cbuild_mutant['mutator']['originalFilePath'] ?? '' );
-	$cbuild_file = str_starts_with( $cbuild_file, $cbuild_root ) ? substr( $cbuild_file, strlen( $cbuild_root ) ) : $cbuild_file;
-	$cbuild_key  = ( $cbuild_mutant['mutator']['mutatorName'] ?? '' ) . ' ' . $cbuild_file;
+	$cbuild_file                   = (string) ( $cbuild_mutant['mutator']['originalFilePath'] ?? '' );
+	$cbuild_file                   = str_starts_with( $cbuild_file, $cbuild_root ) ? substr( $cbuild_file, strlen( $cbuild_root ) ) : $cbuild_file;
+	$cbuild_key                    = ( $cbuild_mutant['mutator']['mutatorName'] ?? '' ) . ' ' . $cbuild_file;
 	$cbuild_found[ $cbuild_key ]   = ( $cbuild_found[ $cbuild_key ] ?? 0 ) + 1;
 	$cbuild_where[ $cbuild_key ][] = (int) ( $cbuild_mutant['mutator']['originalStartLine'] ?? 0 );
 }

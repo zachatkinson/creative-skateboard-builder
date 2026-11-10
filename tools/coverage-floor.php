@@ -23,12 +23,18 @@ if ( false === $cbuild_xml ) {
 	exit( 1 );
 }
 
-$cbuild_total  = array( 'statements' => 0, 'covered' => 0 );
-$cbuild_domain = array( 'statements' => 0, 'covered' => 0 );
+$cbuild_total  = array(
+	'statements' => 0,
+	'covered'    => 0,
+);
+$cbuild_domain = array(
+	'statements' => 0,
+	'covered'    => 0,
+);
 foreach ( $cbuild_xml->xpath( '//file' ) ?: array() as $cbuild_node ) {
-	$cbuild_metrics = $cbuild_node->metrics;
-	$cbuild_s       = (int) $cbuild_metrics['statements'];
-	$cbuild_c       = (int) $cbuild_metrics['coveredstatements'];
+	$cbuild_metrics              = $cbuild_node->metrics;
+	$cbuild_s                    = (int) $cbuild_metrics['statements'];
+	$cbuild_c                    = (int) $cbuild_metrics['coveredstatements'];
 	$cbuild_total['statements'] += $cbuild_s;
 	$cbuild_total['covered']    += $cbuild_c;
 	if ( str_contains( (string) $cbuild_node['name'], '/src/Domain/' ) ) {

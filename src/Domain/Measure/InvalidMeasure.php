@@ -13,7 +13,7 @@ use InvalidArgumentException;
 
 /**
  * Thrown by the parser, and for a length below nothing. Its message is the reason's code, never a sentence: the edge has the words. Made through a
- * named constructor for each reason: Plugin Check reads an argument to `throw new` as output to be escaped.
+ * named constructor: Plugin Check reads an argument to `throw new` as output to be escaped.
  */
 final class InvalidMeasure extends InvalidArgumentException {
 
@@ -27,29 +27,13 @@ final class InvalidMeasure extends InvalidArgumentException {
 	}
 
 	/**
-	 * Not a measure at all.
+	 * A measure refused, for this reason.
 	 *
 	 * @since 0.2.0
-	 */
-	public static function malformed(): self {
-		return new self( MeasureError::Malformed );
-	}
-
-	/**
-	 * A fraction over zero.
 	 *
-	 * @since 0.2.0
+	 * @param MeasureError $reason Why.
 	 */
-	public static function zeroDenominator(): self {
-		return new self( MeasureError::ZeroDenominator );
-	}
-
-	/**
-	 * A length below nothing.
-	 *
-	 * @since 0.2.0
-	 */
-	public static function negative(): self {
-		return new self( MeasureError::Negative );
+	public static function because( MeasureError $reason ): self {
+		return new self( $reason );
 	}
 }

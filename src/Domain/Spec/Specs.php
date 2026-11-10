@@ -9,7 +9,6 @@ declare( strict_types=1 );
 
 namespace CreativeBranding\SkateboardBuilder\Domain\Spec;
 
-use CreativeBranding\SkateboardBuilder\Domain\Measure\InvalidMeasure;
 use CreativeBranding\SkateboardBuilder\Domain\Measure\Measure;
 use CreativeBranding\SkateboardBuilder\Domain\Measure\MeasureParser;
 
@@ -57,59 +56,79 @@ final readonly class Specs {
 	 * @throws InvalidSpec When the value is not of the key's kind, not one of its choices, or a count below one.
 	 */
 	public function with( SpecKey $key, Measure|string|bool|int $value ): self {
-		$unit    = $key->unit();
-		$choices = $key->choices();
-		$problem = null;
-		if ( null !== $unit ) {
-			$problem = $value instanceof Measure ? null : SpecError::WrongKind;
-			$value   = $value instanceof Measure ? $value->to( $unit ) : $value;
-			$problem = $value instanceof Measure && 0 === $value->tenThousandths ? SpecError::NotPositive : $problem;
-		} elseif ( array() !== $choices ) {
-			$problem = is_string( $value ) ? null : SpecError::WrongKind;
-			$problem = null === $problem && ! in_array( $value, $choices, true ) ? SpecError::UnknownChoice : $problem;
-		} elseif ( SpecKind::Flag === $key->kind() ) {
-			$problem = is_bool( $value ) ? null : SpecError::WrongKind;
-		} else {
-			$problem = is_int( $value ) ? null : SpecError::WrongKind;
-			$problem = null === $problem && $value < 1 ? SpecError::NotPositive : $problem;
-			$problem = null === $problem && $value > self::MAX_COUNT ? SpecError::TooMany : $problem;
-		}
-		if ( null !== $problem ) {
-			$refused = InvalidSpec::because( $problem, $key->value );
+		$fitted = self::fitted( $key, $value );
+		if ( $fitted instanceof SpecError ) {
+			$refused = InvalidSpec::because( $fitted, $key->value );
 			throw $refused;
 		}
-		return new self( array( $key->value => $value ) + $this->values );
+		return new self( array( $key->value => $fitted ) + $this->values );
+	}
+
+	/**
+	 * A value as its key holds it (a measure in the key's unit), or why it cannot be this key's.
+	 *
+	 * @param SpecKey                 $key   The spec.
+	 * @param Measure|string|bool|int $value The value.
+	 */
+	private static function fitted( SpecKey $key, Measure|string|bool|int $value ): Measure|string|bool|int|SpecError {
+		$unit    = $key->unit();
+		$choices = $key->choices();
+		if ( null !== $unit ) {
+			if ( ! $value instanceof Measure ) {
+				return SpecError::WrongKind;
+			}
+			$value = $value->to( $unit );
+			return 0 === $value->tenThousandths ? SpecError::NotPositive : $value;
+		}
+		if ( array() !== $choices ) {
+			if ( ! is_string( $value ) ) {
+				return SpecError::WrongKind;
+			}
+			return in_array( $value, $choices, true ) ? $value : SpecError::UnknownChoice;
+		}
+		if ( SpecKind::Flag === $key->kind() ) {
+			return is_bool( $value ) ? $value : SpecError::WrongKind;
+		}
+		if ( ! is_int( $value ) ) {
+			return SpecError::WrongKind;
+		}
+		if ( $value < 1 ) {
+			return SpecError::NotPositive;
+		}
+		return $value > self::MAX_COUNT ? SpecError::TooMany : $value;
 	}
 
 	/**
 	 * A part's specs from the index: each value as the text the index stores. A measure is a decimal in the key's
-	 * unit, a flag is `1` or `0`, and a count is digits.
+	 * unit, a flag is `1` or `0`, and a count is digits. A row this version cannot read is passed over: a key it does
+	 * not know, a choice it does not offer, a value out of range or in another form. A newer version may have written
+	 * it, and refusing the part would cost it every spec it has after a rollback. A rule that needs the spec then
+	 * says it is missing, and the Catalogue check lists it. What a person types is checked at the edge, with `with()`.
 	 *
 	 * @since 0.2.0
 	 *
 	 * @param array<string, string> $rows The values by key.
-	 *
-	 * @throws InvalidSpec    When a value is not of its key's kind. A key this version does not know is passed over.
-	 * @throws InvalidMeasure When a measure cannot be read.
 	 */
 	public static function fromIndex( array $rows ): self {
 		$specs = self::none();
 		foreach ( $rows as $name => $text ) {
 			$key = SpecKey::tryFrom( $name );
 			if ( null === $key ) {
-				// A row a newer version wrote. Refusing it would cost the part every spec it has after a rollback.
 				continue;
 			}
 			$unit  = $key->unit();
 			$value = $text;
 			if ( null !== $unit ) {
-				$value = MeasureParser::parse( $text, $unit );
+				$value = MeasureParser::read( $text, $unit );
 			} elseif ( SpecKind::Flag === $key->kind() ) {
 				$value = in_array( $text, array( '0', '1' ), true ) ? '1' === $text : $text;
 			} elseif ( SpecKind::Count === $key->kind() ) {
 				$value = ctype_digit( $text ) ? (int) $text : $text;
 			}
-			$specs = $specs->with( $key, $value );
+			$fitted = null === $value ? SpecError::WrongKind : self::fitted( $key, $value );
+			if ( ! $fitted instanceof SpecError ) {
+				$specs = new self( array( $key->value => $fitted ) + $specs->values );
+			}
 		}
 		return $specs;
 	}

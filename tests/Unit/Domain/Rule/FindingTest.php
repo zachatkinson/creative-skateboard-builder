@@ -65,7 +65,7 @@ final class FindingTest extends TestCase {
 		self::assertSame( RuleId::R6, $finding->rule );
 		self::assertSame( Severity::Block, $finding->severity );
 		self::assertSame( MessageCode::SpecMissing, $finding->code );
-		self::assertSame( Source::Maker, $finding->source );
+		self::assertSame( Source::None, $finding->source );
 		self::assertSame( array( SlotKey::GRIP ), $finding->slots );
 		self::assertSame( array( 'spec' => 'grip_width' ), $finding->values );
 	}
@@ -130,7 +130,7 @@ final class FindingTest extends TestCase {
 		}
 		self::assertSame( 'spec_missing', MessageCode::SpecMissing->value );
 		self::assertSame( array( 'fits', 'warn', 'block' ), array_column( Severity::cases(), 'value' ) );
-		self::assertSame( array( 'maker', 'kit', 'standard' ), array_column( Source::cases(), 'value' ) );
+		self::assertSame( array( 'maker', 'kit', 'standard', 'none' ), array_column( Source::cases(), 'value' ) );
 	}
 
 	public function test_the_reader_reads_a_picked_parts_specs(): void {
@@ -172,5 +172,11 @@ final class FindingTest extends TestCase {
 		self::assertCount( 2, $missing );
 		self::assertEquals( Finding::missing( RuleId::R2, SlotKey::DECK, SpecKey::DeckWidth ), $missing[0] );
 		self::assertEquals( Finding::missing( RuleId::R2, SlotKey::TRUCKS, SpecKey::Baseplate ), $missing[1] );
+	}
+
+	public function test_a_missing_spec_has_no_source_since_no_figure_came_from_anyone(): void {
+		$finding = Finding::missing( RuleId::R1, SlotKey::TRUCKS, SpecKey::AxleWidth );
+		self::assertSame( Source::None, $finding->source );
+		self::assertSame( 'none', $finding->source->value );
 	}
 }

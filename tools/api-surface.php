@@ -264,7 +264,7 @@ $cbuild_spec_enum = 'CreativeBranding\\SkateboardBuilder\\Domain\\Spec\\SpecKey'
 if ( is_file( $cbuild_root . '/src/Domain/Spec/SpecKey.php' ) ) {
 	require_once $cbuild_root . '/vendor/autoload.php';
 	foreach ( $cbuild_spec_enum::cases() as $cbuild_spec_key ) {
-		$cbuild_spec_unit                             = $cbuild_spec_key->unit();
+		$cbuild_spec_unit                            = $cbuild_spec_key->unit();
 		$cbuild_spec_keys[ $cbuild_spec_key->value ] = $cbuild_spec_key->kind()->value . ( null === $cbuild_spec_unit ? '' : ' ' . $cbuild_spec_unit->value );
 	}
 }

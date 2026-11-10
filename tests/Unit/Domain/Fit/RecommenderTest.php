@@ -15,10 +15,17 @@ use CreativeBranding\SkateboardBuilder\Domain\Kit\Kit;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Part;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Picks;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\SlotKey;
-use CreativeBranding\SkateboardBuilder\Domain\Rule\Severity;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Domain\Builds;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Domain\KitDocuments;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Domain\Parts;
+use CreativeBranding\SkateboardBuilder\Domain\Kit\RuleSettings;
+use CreativeBranding\SkateboardBuilder\Domain\Rule\Finding;
+use CreativeBranding\SkateboardBuilder\Domain\Rule\MessageCode;
+use CreativeBranding\SkateboardBuilder\Domain\Rule\Rule;
+use CreativeBranding\SkateboardBuilder\Domain\Rule\RuleId;
+use CreativeBranding\SkateboardBuilder\Domain\Rule\RuleSet;
+use CreativeBranding\SkateboardBuilder\Domain\Rule\Severity;
+use CreativeBranding\SkateboardBuilder\Domain\Rule\Source;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -151,5 +158,57 @@ final class RecommenderTest extends TestCase {
 		$later = $tall->with( SlotKey::HARDWARE, Builds::bolts( '2' ) );
 		self::assertSame( 402, self::recommend( self::kit(), SlotKey::RISERS, $later, $risers ), 'what is picked after the slot does not ask' );
 		self::assertNull( self::recommend( self::kit(), SlotKey::RISERS, $fine->with( SlotKey::HARDWARE, Builds::bolts( '2' ) ), $risers ), 'bolts that stand proud are picked after the risers step, and do not ask' );
+	}
+
+	public function test_p2_the_riser_the_wheels_ask_for_comes_before_the_middle_price(): void {
+		// An eighth at 4.00, a half at 8.00 and a quarter at 12.00: the half is nearest the middle price, and with it no
+		// bolt a shop stocks reaches (R4). 58 mm wheels on a 56 mm limit ask for a quarter inch.
+		$riser  = static fn( string $thickness, int $id, int $price ): Part => Parts::of( array( 'riser_thickness' => $thickness, 'set_size' => 2 ), $id, $price );
+		$risers = array( $riser( '1/8', 401, 400 ), $riser( '1/2', 403, 800 ), $riser( '1/4', 402, 1200 ) );
+		$tall   = Parts::picks( array( SlotKey::DECK => Builds::deck(), SlotKey::TRUCKS => Builds::truck( '149' ), SlotKey::WHEELS => Builds::wheel( '58' ) ) );
+		self::assertSame( 402, self::recommend( self::kit(), SlotKey::RISERS, $tall, $risers ), 'the quarter inch asked for, not the half nearest the middle price' );
+		self::assertSame( 403, self::recommend( self::kit(), SlotKey::RISERS, $tall, array( $risers[0], $risers[1] ) ), 'with no quarter inch, the next one up' );
+		self::assertSame( 404, self::recommend( self::kit(), SlotKey::RISERS, $tall, array( ...$risers, $riser( '1/4', 404, 900 ) ) ), 'of two quarter inches, the one nearest the middle price' );
+		self::assertSame( 403, self::recommend( self::kit( array( SlotKey::RISERS => 403 ) ), SlotKey::RISERS, $tall, $risers ), 'the kit\'s default still comes first' );
+	}
+
+	public function test_p2_a_part_thinner_than_asked_or_with_no_figure_comes_after_one_that_covers_it(): void {
+		// A rule of the test's own, which asks for a quarter inch and takes any riser, so the order is the recommender's.
+		$asks = new class() implements Rule {
+			/**
+			 * @var list<array{MessageCode, string|null}> Each finding's code and the riser it names.
+			 */
+			public array $findings = array( array( MessageCode::WheelNeedsRiser, '1/4' ) );
+
+			public function id(): RuleId {
+				return RuleId::R3;
+			}
+
+			public function check( Picks $picks, RuleSettings $settings ): array {
+				$found = array();
+				foreach ( null === $picks->part( SlotKey::RISERS ) && null !== $picks->part( SlotKey::WHEELS ) ? $this->findings : array() as [ $code, $riser ] ) {
+					$found[] = new Finding( RuleId::R3, Severity::Warn, $code, Source::Kit, array( SlotKey::WHEELS, SlotKey::RISERS ), null === $riser ? array() : array( 'riser' => Parts::inches( $riser ) ) );
+				}
+				return $found;
+			}
+		};
+		$recommend = static fn( array $risers ): ?int => ( new Recommender( new FitEngine( new RuleSet( array( $asks ) ) ) ) )->recommend( self::kit(), SlotKey::RISERS, Parts::picks( array( SlotKey::WHEELS => Builds::wheel( '58' ) ) ), $risers )?->part->id;
+		$riser     = static fn( string $thickness, int $id, int $price ): Part => Parts::of( array( 'riser_thickness' => $thickness, 'set_size' => 2 ), $id, $price );
+		$unsized   = Parts::of( array( 'set_size' => 2 ), 409, 800 );
+		self::assertSame( 403, $recommend( array( $riser( '3/16', 401, 800 ), $riser( '1/2', 403, 800 ) ) ), 'a sixteenth under is nearer, and a quarter over covers it' );
+		self::assertSame( 402, $recommend( array( $riser( '1/2', 403, 800 ), $riser( '5/16', 402, 800 ) ) ), 'of two that cover it, the nearer' );
+		self::assertSame( 401, $recommend( array( $unsized, $riser( '1/8', 401, 100 ) ) ), 'a part with no figure comes last' );
+		self::assertSame( 409, $recommend( array( $unsized ) ), 'and is still a recommendation' );
+		$three          = array( $riser( '1/8', 401, 100 ), $riser( '1/2', 403, 800 ), $riser( '1/4', 402, 2000 ) );
+		$asks->findings = array( array( MessageCode::WheelNeedsRiser, null ) );
+		self::assertSame( 403, $recommend( $three ), 'a finding that names no figure leaves it to the middle price' );
+		$asks->findings = array( array( MessageCode::LimitFromClass, null ) );
+		self::assertSame( 403, $recommend( $three ), 'and so does a finding of another kind' );
+		$asks->findings = array( array( MessageCode::WheelNeedsRiser, null ), array( MessageCode::WheelNeedsRiser, '1/4' ) );
+		self::assertSame( 402, $recommend( $three ), 'the first finding that names a figure is the one that counts' );
+		$asks->findings = array( array( MessageCode::LimitFromClass, null ), array( MessageCode::WheelNeedsRiser, '1/4' ) );
+		self::assertSame( 402, $recommend( $three ), 'whatever kind comes before it' );
+		$asks->findings = array( array( MessageCode::WheelNeedsRiser, '1/8' ), array( MessageCode::WheelNeedsRiser, '1/2' ) );
+		self::assertSame( 401, $recommend( $three ), 'and not one after it' );
 	}
 }

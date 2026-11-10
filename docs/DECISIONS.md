@@ -614,7 +614,7 @@ Choices made while building R1 to R6, where the spec leaves them open:
 - **The engine does not sort.** Options come back in the order the candidates were given. Sold-out parts after those in stock is the page's order, for milestone 6.
 
 **Why:** One engine answers the step, the cart and the change list, and none of them needs to know how the others ask.
-**Status:** Accepted.
+**Status:** Accepted. Revised by D-064: a slot that takes one unit needs no `set_size`.
 
 ### D-057 · The change list and the recommendation · 2026-11-09
 
@@ -635,7 +635,7 @@ Choices made while building R1 to R6, where the spec leaves them open:
 - With nothing fitting and in stock, there is none, and the shopper picks.
 
 **Why:** Both ask the engine and decide nothing about fit; these are the choices the spec's sentences leave open.
-**Status:** Accepted.
+**Status:** Accepted. Revised by D-064: a truck is measured to the new deck, and a size the build asks for comes before the middle price.
 
 ### D-058 · Money in the domain, and the build discount's rounding · 2026-11-09
 
@@ -717,4 +717,22 @@ Zach asked for best practice on the two questions milestone 2's review put to hi
 - **A domain file has no direct-access guard, and gate 13 is why that is safe.** The guard's job is to stop a file doing anything when it is requested outside WordPress. The domain cannot name WordPress's constant (gate 6), and a guard there would make the domain's own tests need a shim. So the property is held directly: gate 13 fails on any statement at the top of a file in `src/Domain` that is not `declare`, `namespace`, `use` or the declaration of a class, an interface, an enum or a trait. A file that only declares runs nothing when requested. Every other file in `src/` keeps its guard.
 
 **Why:** In both, a claim the review made in words ("none changes behaviour", "each only declares") is now a check that fails when the claim stops being true.
+**Status:** Accepted.
+
+### D-064 · What Claude in Cowork's review of milestone 2 changed · 2026-11-10
+
+Cowork found no blocker, four should-fix gaps and eight minors. All are fixed but two that are notes for later milestones.
+
+- **A slot that takes one unit needs no `set_size`.** D-056 required it on every part. In a one-unit slot the quantity is 1 whatever the part holds, so the requirement bought no safety there and would have hidden every deck and grip sheet on Skatehouse until the field was filled in. `r7` still blocks a part with no `set_size` in a slot that takes more than one unit, where guessing 1 would double a pair. The spec's "What Skatehouse needs" table now lists `set_size` for trucks, wheels, risers, bearings and hardware. Zach agreed to the one-unit change in Cowork's review. This revises D-056.
+- **The risers step starts on the riser the wheels ask for.** R3's warning names a thickness. Among the parts that fit and are in stock, one that covers the size asked for comes first, then the nearest to it, and only then the nearest the middle price. The kit's default still comes before all of that. Nearest the middle price alone could start the step on a ½ in riser no stocked bolt reaches through. `Recommender::ASKED` maps a message code to the value that names the size and the spec it is measured on; R3's is the only one today. This revises D-057.
+- **A swapped truck is the one nearest the new deck.** "Nearest spec" was measured to the part replaced, so an 8.0 in deck's truck changed for an 8.5 in deck proposed the 8.375 in axle next to the old one, not the 8.5. For the trucks slot the target is the deck's width in the build as it now stands; with no width on the deck it is the old truck's axle, as before. Other slots are unchanged. Zach leaned this way in Cowork's review. This revises D-057.
+- **A row of the index this version cannot read is passed over**, whatever is wrong with it: a choice it does not offer, a count out of range, a measure of nothing, a value in another form. D-062 did this for an unknown key only. `Specs::fromIndex()` no longer throws; the part keeps its other specs, a rule that needs the missing one answers `spec_missing`, and the Catalogue check lists it. What a person types is still refused at the edge, by `Specs::with()` and `MeasureParser::parse()`.
+- **A missing spec has the source `none`.** It was `maker`, though no figure came from a maker. Sources go on the page from milestone 4.
+- **A whole number followed by a fraction of one or more is refused** ("8 5/4"). A fraction alone may still be improper ("9/8"), as hardware is sometimes written.
+- **The schemas' patterns end with `(?!\n)$`.** WordPress runs a pattern without the D modifier, so a bare `$` let a trailing line break through that the domain then refused.
+- **Gate 13 refuses a namespace or a declare with a block of its own**, since what is inside the braces runs as the top of the file does.
+- **The mutation script deletes the domain's report before the domain's run, and checks the static-analysis list only when the run wrote one.** A pull request that changes no line of the domain mutates nothing there, Infection succeeds without writing a report, and D-063's check then failed for want of one. The gates' self-test holds both halves with a stand-in for Infection.
+- **Left as notes.** A part's stock is a yes or no in the domain; a build that takes two of a part with one in stock is stopped by WooCommerce at the cart, not by the builder. Carrying the count is milestone 3's and 5's (issue #14). And from milestone 3 each rule's or fix's failing cases are committed before the code, so the red run is in the history: put to Zach in the review, since it changes "keep commits small and green".
+
+**Why:** Each should-fix was a way the first shop would have met an empty step or a red pull request.
 **Status:** Accepted.

@@ -39,17 +39,17 @@
 				"range_tolerance": {
 					"description": "How far outside a maker's deck range still fits, in inches.",
 					"type": "string",
-					"pattern": "^[0-9]{1,9}(\\.[0-9]{1,4})?$"
+					"pattern": "^[0-9]{1,9}(\\.[0-9]{1,4})?(?!\\n)$"
 				},
 				"axle_fit": {
 					"description": "For a truck with no published range: how far its axle may be from the deck's width and fit, in inches.",
 					"type": "string",
-					"pattern": "^[0-9]{1,9}(\\.[0-9]{1,4})?$"
+					"pattern": "^[0-9]{1,9}(\\.[0-9]{1,4})?(?!\\n)$"
 				},
 				"axle_warn": {
 					"description": "And how far it may be and warn, in inches; beyond it the truck is blocked. Not less than axle_fit.",
 					"type": "string",
-					"pattern": "^[0-9]{1,9}(\\.[0-9]{1,4})?$"
+					"pattern": "^[0-9]{1,9}(\\.[0-9]{1,4})?(?!\\n)$"
 				}
 			}
 		},
@@ -93,15 +93,15 @@
 					"properties": {
 						"low": {
 							"type": "string",
-							"pattern": "^[0-9]{1,9}(\\.[0-9]{1,4})?$"
+							"pattern": "^[0-9]{1,9}(\\.[0-9]{1,4})?(?!\\n)$"
 						},
 						"mid": {
 							"type": "string",
-							"pattern": "^[0-9]{1,9}(\\.[0-9]{1,4})?$"
+							"pattern": "^[0-9]{1,9}(\\.[0-9]{1,4})?(?!\\n)$"
 						},
 						"high": {
 							"type": "string",
-							"pattern": "^[0-9]{1,9}(\\.[0-9]{1,4})?$"
+							"pattern": "^[0-9]{1,9}(\\.[0-9]{1,4})?(?!\\n)$"
 						}
 					}
 				},
@@ -120,11 +120,11 @@
 						"properties": {
 							"over": {
 								"type": "string",
-								"pattern": "^[0-9]{1,9}(\\.[0-9]{1,4})?$"
+								"pattern": "^[0-9]{1,9}(\\.[0-9]{1,4})?(?!\\n)$"
 							},
 							"riser": {
 								"type": "string",
-								"pattern": "^[0-9]{1,9}(\\.[0-9]{1,4})?$"
+								"pattern": "^[0-9]{1,9}(\\.[0-9]{1,4})?(?!\\n)$"
 							}
 						}
 					}
