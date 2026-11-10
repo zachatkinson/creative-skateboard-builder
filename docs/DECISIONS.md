@@ -929,3 +929,19 @@ The table is milestone 1's and does not change. These are the choices the reposi
 - **A variation's finding links to its parent's edit screen,** at `#cbuild_part_specs`, since a variation has no screen of its own. A part that is not a product of this shop is named by its ID with no link.
 
 **Status:** Accepted.
+
+### D-078 · `wp cbuild`: what each command does, and when it exits 1 · 2026-11-10
+
+- **A command exits 1 exactly when a script should stop:** the file was not read, a row was not, a batch failed, or the check found something. `WP_CLI::error()` says the summary and exits; what was found is listed before it, so `--format=json` on standard output stays JSON and the sentence goes to standard error.
+- **`wp cbuild specs import` without `--dry-run` writes at once.** The spec's "writes nothing until confirmed" is the screen's; at a command line the command is the confirmation and `--dry-run` is the showing first, as the spec's own example has it. A prompt would stop a script.
+- **The rows that read are written though others do not,** as on the screen, and the command then exits 1 with the rows it left out. A script that wants all or nothing runs `--dry-run` first and stops on its exit status.
+- **An import and a reindex run in the command's own process,** batch after batch through the job's own method, so the place is saved as the queue saves it and a command that is stopped is finished by the queue. The actions the batches queued find nothing left to do. `wp cbuild reindex --background` only queues.
+- **A batch that fails stops the command** after the one failure, with the retry left to the queue, which waits a minute; the command does not sleep.
+- **A dry run uses the one import a shop has in hand** (D-076) and puts it away when it ends, so it takes the place of a file a manager had waiting on the screen, as another upload would. One that is running refuses the command.
+- **A file is a path on the server's disk ending in `.csv`** (`Port\Files`, `Adapter\DiskFiles`): a path with a scheme is refused before anything opens it, since `WP_Filesystem_Direct` reads through PHP's file functions, which follow `phar://` and `https://`. The plan's risk was "a path from the CLI read where it should not be". An export replaces a file that is there, as `wp db export` does, and is written with mode 0644 given outright: `WP_Filesystem_Direct::put_contents()` otherwise reads `FS_CHMOD_FILE`, which only `WP_Filesystem()` defines (`wp-admin/includes/class-wp-filesystem-direct.php:89`, `:170`; `CliTest` found it).
+- **The commands are objects handed to `WP_CLI::add_command()`,** not closures, so WP-CLI reads each synopsis from its docblock (`wp help cbuild specs import`, which `CliTest` reads in a real process). `Hooks\CliHooks` is built only when WP-CLI runs (D-067).
+- **`Admin\Sentences` holds the check's and the import's sentences,** moved out of the two screens, so the command line and the admin say one thing. The command line has its own words only for a file's path, where the screen speaks of choosing a file.
+- **The help text in the docblocks is English,** as WP-CLI's own is: WP-CLI reads it from the source and has no way to translate it. What a command prints goes through the text domain.
+
+**Why:** `docs/STANDARDS.md` asks for a docblock synopsis, examples, clear exit codes and `--format` where a command prints a table. The demo's host has no WP-CLI, so each command is a second way into something the admin already has.
+**Status:** Accepted.

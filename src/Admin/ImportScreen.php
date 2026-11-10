@@ -168,7 +168,7 @@ final class ImportScreen {
 			$failed = true;
 			$notice = __( 'The import stopped: a batch failed four times. The parts before it were written. WooCommerce > Status > Logs has the reason.', 'creative-skateboard-builder' );
 		}
-		$problems = array_map( self::whyNotRead( ... ), $this->refused );
+		$problems = array_map( Sentences::fileRefused( ... ), $this->refused );
 		if ( array() !== $problems ) {
 			$failed = true;
 			$notice = __( 'The file was not read. Nothing has changed.', 'creative-skateboard-builder' );
@@ -222,7 +222,7 @@ final class ImportScreen {
 			$listed[] = array(
 				'row'     => $entry['row'],
 				'column'  => self::column( $entry['key'] ),
-				'problem' => self::rowProblem( $entry['code'], $entry['text'] ),
+				'problem' => Sentences::rowProblem( $entry['code'], $entry['text'] ),
 			);
 		}
 		$more    = array(
@@ -285,61 +285,5 @@ final class ImportScreen {
 			'stale'     => __( 'That import is no longer waiting. Choose the file again.', 'creative-skateboard-builder' ),
 		);
 		return $notices[ $code ] ?? '';
-	}
-
-	/**
-	 * Why a file was not read, as a sentence.
-	 *
-	 * @param string $code The code.
-	 */
-	private static function whyNotRead( string $code ): string {
-		$problems = array(
-			UploadRefused::MISSING   => __( 'Choose a CSV file first.', 'creative-skateboard-builder' ),
-			UploadRefused::FAILED    => __( 'The file did not arrive whole. Choose it again.', 'creative-skateboard-builder' ),
-			UploadRefused::NOT_CSV   => __( 'That is not a .csv file. Save the sheet as CSV and choose it again.', 'creative-skateboard-builder' ),
-			SpecImport::FILE_BIG     => __( 'The file is over 2 MB. Split it into smaller files.', 'creative-skateboard-builder' ),
-			SpecImport::FILE_NOT_UTF => __( 'The file is not saved as UTF-8. Save it as CSV UTF-8 and choose it again.', 'creative-skateboard-builder' ),
-			SpecImport::FILE_EMPTY   => __( 'The file has no rows under its headings.', 'creative-skateboard-builder' ),
-			SpecImport::ROWS_MANY    => __( 'The file has more than 5,000 rows. Split it into smaller files.', 'creative-skateboard-builder' ),
-			SpecImport::KEY_COLUMN   => __( 'The file has no column for what parts are matched by. Add an id or a sku column, or change the choice below.', 'creative-skateboard-builder' ),
-			SpecImport::COLUMN_TWICE => __( 'A column is in the file twice. Keep one of each.', 'creative-skateboard-builder' ),
-			SpecImport::NO_SPECS     => __( 'The file has no spec columns, so there is nothing to import.', 'creative-skateboard-builder' ),
-			SpecImport::BUSY         => __( 'An import is running. Wait for it to finish.', 'creative-skateboard-builder' ),
-		);
-		return $problems[ $code ] ?? $code;
-	}
-
-	/**
-	 * What is wrong with a row, as a sentence.
-	 *
-	 * @param string $code The code.
-	 * @param string $text What the cell held.
-	 */
-	private static function rowProblem( string $code, string $text ): string {
-		return match ( $code ) {
-			SpecImport::KEY_MISSING => __( 'The row does not say which part it is for.', 'creative-skateboard-builder' ),
-			/* translators: %s: an ID or a SKU. */
-			SpecImport::KEY_TWICE => sprintf( __( '"%s" is in the file more than once. Keep one row for it.', 'creative-skateboard-builder' ), $text ),
-			/* translators: %s: an ID or a SKU. */
-			SpecImport::PART_MISSING => sprintf( __( 'No product is "%s".', 'creative-skateboard-builder' ), $text ),
-			/* translators: %s: a SKU. */
-			SpecImport::SKU_MISMATCH => sprintf( __( 'The product with this ID does not have the SKU "%s". Check the row is for this shop, or match parts by SKU.', 'creative-skateboard-builder' ), $text ),
-			/* translators: %s: a chart's name. */
-			SpecImport::TABLE_UNKNOWN => sprintf( __( 'There is no chart named "%s". Add it under Spec tables first.', 'creative-skateboard-builder' ), $text ),
-			/* translators: %s: a chart's name. */
-			SpecImport::TABLE_TWICE => sprintf( __( 'More than one chart is named "%s". Rename one under Spec tables.', 'creative-skateboard-builder' ), $text ),
-			/* translators: %s: a size in a chart. */
-			SpecWriter::SIZE_MISSING => sprintf( __( 'The chart has no size "%s".', 'creative-skateboard-builder' ), $text ),
-			SpecWriter::SIZE_LONG => __( 'The size is too long. Use 40 characters or fewer.', 'creative-skateboard-builder' ),
-			SpecWriter::TABLE_MISSING => __( 'That chart is no longer there.', 'creative-skateboard-builder' ),
-			/* translators: %s: what a cell held. */
-			MeasureError::Malformed->value => sprintf( __( '"%s" is not a measurement. Use a number, or a fraction such as 8 1/4.', 'creative-skateboard-builder' ), $text ),
-			/* translators: %s: what a cell held. */
-			MeasureError::ZeroDenominator->value => sprintf( __( 'The fraction in "%s" divides by zero.', 'creative-skateboard-builder' ), $text ),
-			/* translators: %s: what a cell held. */
-			MeasureError::Negative->value => sprintf( __( '"%s" is below zero.', 'creative-skateboard-builder' ), $text ),
-			/* translators: %s: what a cell held. */
-			default => sprintf( __( '"%s" is not a value this column takes.', 'creative-skateboard-builder' ), $text ),
-		};
 	}
 }

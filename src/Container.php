@@ -45,6 +45,7 @@ final class Container {
 			Port\ImportStore::class    => Adapter\OptionImportStore::class,
 			Port\Uploads::class        => Adapter\RequestUploads::class,
 			Port\Kits::class           => Adapter\NoKits::class,
+			Port\Files::class          => Adapter\DiskFiles::class,
 		);
 	}
 
@@ -123,6 +124,7 @@ final class Container {
 			Admin\SettingsHooks::class  => array( Scope::Admin ),
 			Admin\PartSpecsHooks::class => array( Scope::Admin ),
 			Admin\BuilderHooks::class   => array( Scope::Admin ),
+			Hooks\CliHooks::class       => array( Scope::Cli ),
 		);
 	}
 

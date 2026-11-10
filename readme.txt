@@ -45,6 +45,7 @@ Yes. Activating it for the network installs it on every site, and a site added l
 * WooCommerce > Builder, where the shop keeps each truck maker's size chart.
 * Import and export under WooCommerce > Builder: download every part's specs as a CSV file, fill it in with a spreadsheet, and import it. The file is checked and shown first, and nothing changes until you confirm.
 * A Catalogue check under WooCommerce > Builder: lists the parts whose sources disagree or hold a value that cannot be read, and background work that failed, each with a link to where it is fixed.
+* WP-CLI commands for the same work: `wp cbuild specs export`, `wp cbuild specs import`, `wp cbuild check` and `wp cbuild reindex`.
 * A settings screen, WooCommerce > Settings > Builder, to say which product attribute holds which spec and which source wins where two disagree.
 
 = 0.2.0 =

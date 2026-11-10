@@ -129,7 +129,7 @@ final class CheckScreen {
 				'kit'   => 0 === $finding->kit ? '' : ( $kits[ $finding->kit ]['name'] ?? (string) $finding->kit ),
 				'about' => $about,
 				'link'  => $link,
-				'says'  => self::sentence( $finding ),
+				'says'  => Sentences::finding( $finding ),
 			);
 		}
 		$more  = count( $found ) - count( $rows );
@@ -139,62 +139,5 @@ final class CheckScreen {
 		$back  = self::url();
 		$none  = array() === $kits;
 		include CBUILD_PATH . 'templates/admin/check.php';
-	}
-
-	/**
-	 * A finding as a sentence.
-	 *
-	 * @param CheckFinding $finding The finding.
-	 */
-	private static function sentence( CheckFinding $finding ): string {
-		$key    = SpecKey::tryFrom( $finding->spec );
-		$spec   = null === $key ? $finding->spec : Labels::spec( $key );
-		$values = $finding->values;
-		$value  = static fn( string $name ): string => null === $key || '' === ( $values[ $name ] ?? '' ) ? ( $values[ $name ] ?? '' ) : Labels::value( $key, $values[ $name ] );
-		$source = static fn( string $name ): string => Labels::source( Origin::tryFrom( $values[ $name ] ?? '' ) ?? Origin::Field );
-		switch ( $finding->code ) {
-			case CatalogueCheck::DISAGREE:
-				/* translators: 1: a spec's name. 2: a source, such as "The maker's chart". 3: a value. 4: another source. 5: its value. */
-				return sprintf( __( '%1$s: two sources disagree. %2$s says %3$s, which is used. %4$s says %5$s.', 'creative-skateboard-builder' ), $spec, $source( 'kept_from' ), $value( 'kept' ), $source( 'other_from' ), $value( 'other' ) );
-			case CatalogueCheck::UNREAD:
-				if ( 'table_missing' === ( $values['reason'] ?? '' ) ) {
-					return __( 'It names a maker\'s chart that is no longer there. Choose another on its Part specs.', 'creative-skateboard-builder' );
-				}
-				if ( 'size_missing' === ( $values['reason'] ?? '' ) ) {
-					/* translators: %s: a size in a maker's chart. */
-					return sprintf( __( 'It names the size "%s", which its maker\'s chart does not have.', 'creative-skateboard-builder' ), $values['text'] ?? '' );
-				}
-				/* translators: 1: a spec's name. 2: a source. 3: what the source holds. */
-				return sprintf( __( '%1$s: %2$s holds "%3$s", which cannot be read as a value.', 'creative-skateboard-builder' ), $spec, $source( 'from' ), $values['text'] ?? '' );
-			case CatalogueCheck::REINDEX_FAILED:
-				return __( 'Reading every part again stopped after five failures. Save the Builder settings to start it again; WooCommerce > Status > Logs has the reason.', 'creative-skateboard-builder' );
-			case CatalogueCheck::IMPORT_FAILED:
-				return __( 'The last specs import stopped before its end. Import the file again; WooCommerce > Status > Logs has the reason.', 'creative-skateboard-builder' );
-			case CatalogueCheck::JOBS_FAILED:
-				/* translators: %s: a number of jobs. */
-				return sprintf( _n( '%s background job of the builder has failed.', '%s background jobs of the builder have failed.', (int) ( $values['count'] ?? '0' ), 'creative-skateboard-builder' ), number_format_i18n( (int) ( $values['count'] ?? '0' ) ) );
-			case CatalogueCheck::SLOT_EMPTY:
-				/* translators: %s: a slot's key, such as trucks. */
-				return sprintf( __( 'The slot "%s" has no parts.', 'creative-skateboard-builder' ), $finding->slot );
-			case CatalogueCheck::SLOT_NO_STOCK:
-				/* translators: %s: a slot's key, such as trucks. */
-				return sprintf( __( 'The slot "%s" has nothing in stock.', 'creative-skateboard-builder' ), $finding->slot );
-			case CatalogueCheck::SPEC_MISSING:
-				/* translators: 1: a spec's name. 2: a slot's key. */
-				return sprintf( __( '%1$s is missing, so the part is not offered in the slot "%2$s".', 'creative-skateboard-builder' ), $spec, $finding->slot );
-			case CatalogueCheck::ASSUMED:
-				/* translators: %s: a spec's name. */
-				return sprintf( __( '%s is not filled in, so the builder assumes the usual one.', 'creative-skateboard-builder' ), $spec );
-			case CatalogueCheck::PRESET:
-				$problems = array(
-					/* translators: 1: a preset's name. 2: a slot's key. */
-					'part_not_in_slot' => __( 'The preset "%1$s" names it for the slot "%2$s", and it is not one of that slot\'s parts now.', 'creative-skateboard-builder' ),
-					/* translators: 1: a preset's name. 2: a slot's key. */
-					'part_sold_out'    => __( 'The preset "%1$s" names it for the slot "%2$s", and it is sold out.', 'creative-skateboard-builder' ),
-				);
-				/* translators: 1: a preset's name. 2: a slot's key. */
-				return sprintf( $problems[ $values['problem'] ?? '' ] ?? __( 'The preset "%1$s" names it for the slot "%2$s", and it no longer fits the preset\'s other parts.', 'creative-skateboard-builder' ), $values['preset'] ?? '', $finding->slot );
-		}
-		return $finding->code;
 	}
 }

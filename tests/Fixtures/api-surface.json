@@ -48,7 +48,11 @@
     ],
     "rest_routes": [],
     "abilities": [],
-    "cli_commands": [],
+    "cli_commands": [
+        "cbuild check",
+        "cbuild reindex",
+        "cbuild specs"
+    ],
     "blocks": [],
     "dom_events": [],
     "schemas": [

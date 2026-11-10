@@ -9,7 +9,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-11-10T09:28:08+00:00\n"
+"POT-Creation-Date: 2026-11-10T09:41:12+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: creative-skateboard-builder\n"
@@ -78,78 +78,6 @@ msgstr ""
 msgid "Background work"
 msgstr ""
 
-#. translators: 1: a spec's name. 2: a source, such as "The maker's chart". 3: a value. 4: another source. 5: its value.
-#: src/Admin/CheckScreen.php:158
-#, php-format
-msgid "%1$s: two sources disagree. %2$s says %3$s, which is used. %4$s says %5$s."
-msgstr ""
-
-#: src/Admin/CheckScreen.php:161
-msgid "It names a maker's chart that is no longer there. Choose another on its Part specs."
-msgstr ""
-
-#. translators: %s: a size in a maker's chart.
-#: src/Admin/CheckScreen.php:165
-#, php-format
-msgid "It names the size \"%s\", which its maker's chart does not have."
-msgstr ""
-
-#. translators: 1: a spec's name. 2: a source. 3: what the source holds.
-#: src/Admin/CheckScreen.php:168
-#, php-format
-msgid "%1$s: %2$s holds \"%3$s\", which cannot be read as a value."
-msgstr ""
-
-#: src/Admin/CheckScreen.php:170
-msgid "Reading every part again stopped after five failures. Save the Builder settings to start it again; WooCommerce > Status > Logs has the reason."
-msgstr ""
-
-#: src/Admin/CheckScreen.php:172
-msgid "The last specs import stopped before its end. Import the file again; WooCommerce > Status > Logs has the reason."
-msgstr ""
-
-#. translators: %s: a slot's key, such as trucks.
-#: src/Admin/CheckScreen.php:178
-#, php-format
-msgid "The slot \"%s\" has no parts."
-msgstr ""
-
-#. translators: %s: a slot's key, such as trucks.
-#: src/Admin/CheckScreen.php:181
-#, php-format
-msgid "The slot \"%s\" has nothing in stock."
-msgstr ""
-
-#. translators: 1: a spec's name. 2: a slot's key.
-#: src/Admin/CheckScreen.php:184
-#, php-format
-msgid "%1$s is missing, so the part is not offered in the slot \"%2$s\"."
-msgstr ""
-
-#. translators: %s: a spec's name.
-#: src/Admin/CheckScreen.php:187
-#, php-format
-msgid "%s is not filled in, so the builder assumes the usual one."
-msgstr ""
-
-#. translators: 1: a preset's name. 2: a slot's key.
-#: src/Admin/CheckScreen.php:191
-#, php-format
-msgid "The preset \"%1$s\" names it for the slot \"%2$s\", and it is not one of that slot's parts now."
-msgstr ""
-
-#. translators: 1: a preset's name. 2: a slot's key.
-#: src/Admin/CheckScreen.php:193
-#, php-format
-msgid "The preset \"%1$s\" names it for the slot \"%2$s\", and it is sold out."
-msgstr ""
-
-#. translators: 1: a preset's name. 2: a slot's key.
-#: src/Admin/CheckScreen.php:196
-#, php-format
-msgid "The preset \"%1$s\" names it for the slot \"%2$s\", and it no longer fits the preset's other parts."
-msgstr ""
-
 #: src/Admin/ImportScreen.php:169
 msgid "The import stopped: a batch failed four times. The parts before it were written. WooCommerce > Status > Logs has the reason."
 msgstr ""
@@ -188,125 +116,6 @@ msgstr ""
 
 #: src/Admin/ImportScreen.php:285
 msgid "That import is no longer waiting. Choose the file again."
-msgstr ""
-
-#: src/Admin/ImportScreen.php:297
-msgid "Choose a CSV file first."
-msgstr ""
-
-#: src/Admin/ImportScreen.php:298
-msgid "The file did not arrive whole. Choose it again."
-msgstr ""
-
-#: src/Admin/ImportScreen.php:299
-msgid "That is not a .csv file. Save the sheet as CSV and choose it again."
-msgstr ""
-
-#: src/Admin/ImportScreen.php:300
-msgid "The file is over 2 MB. Split it into smaller files."
-msgstr ""
-
-#: src/Admin/ImportScreen.php:301
-msgid "The file is not saved as UTF-8. Save it as CSV UTF-8 and choose it again."
-msgstr ""
-
-#: src/Admin/ImportScreen.php:302
-msgid "The file has no rows under its headings."
-msgstr ""
-
-#: src/Admin/ImportScreen.php:303
-msgid "The file has more than 5,000 rows. Split it into smaller files."
-msgstr ""
-
-#: src/Admin/ImportScreen.php:304
-msgid "The file has no column for what parts are matched by. Add an id or a sku column, or change the choice below."
-msgstr ""
-
-#: src/Admin/ImportScreen.php:305
-msgid "A column is in the file twice. Keep one of each."
-msgstr ""
-
-#: src/Admin/ImportScreen.php:306
-msgid "The file has no spec columns, so there is nothing to import."
-msgstr ""
-
-#: src/Admin/ImportScreen.php:307
-msgid "An import is running. Wait for it to finish."
-msgstr ""
-
-#: src/Admin/ImportScreen.php:320
-msgid "The row does not say which part it is for."
-msgstr ""
-
-#. translators: %s: an ID or a SKU.
-#: src/Admin/ImportScreen.php:322
-#, php-format
-msgid "\"%s\" is in the file more than once. Keep one row for it."
-msgstr ""
-
-#. translators: %s: an ID or a SKU.
-#: src/Admin/ImportScreen.php:324
-#, php-format
-msgid "No product is \"%s\"."
-msgstr ""
-
-#. translators: %s: a SKU.
-#: src/Admin/ImportScreen.php:326
-#, php-format
-msgid "The product with this ID does not have the SKU \"%s\". Check the row is for this shop, or match parts by SKU."
-msgstr ""
-
-#. translators: %s: a chart's name.
-#: src/Admin/ImportScreen.php:328
-#, php-format
-msgid "There is no chart named \"%s\". Add it under Spec tables first."
-msgstr ""
-
-#. translators: %s: a chart's name.
-#: src/Admin/ImportScreen.php:330
-#, php-format
-msgid "More than one chart is named \"%s\". Rename one under Spec tables."
-msgstr ""
-
-#. translators: %s: a size in a chart.
-#: src/Admin/ImportScreen.php:332
-#, php-format
-msgid "The chart has no size \"%s\"."
-msgstr ""
-
-#: src/Admin/ImportScreen.php:333
-#: src/Admin/SpecTablesScreen.php:335
-msgid "The size is too long. Use 40 characters or fewer."
-msgstr ""
-
-#: src/Admin/ImportScreen.php:334
-#: src/Admin/SpecTablesScreen.php:319
-#: src/Admin/SpecTablesScreen.php:333
-msgid "That chart is no longer there."
-msgstr ""
-
-#. translators: %s: what a cell held.
-#: src/Admin/ImportScreen.php:336
-#, php-format
-msgid "\"%s\" is not a measurement. Use a number, or a fraction such as 8 1/4."
-msgstr ""
-
-#. translators: %s: what a cell held.
-#: src/Admin/ImportScreen.php:338
-#, php-format
-msgid "The fraction in \"%s\" divides by zero."
-msgstr ""
-
-#. translators: %s: what a cell held.
-#: src/Admin/ImportScreen.php:340
-#, php-format
-msgid "\"%s\" is below zero."
-msgstr ""
-
-#. translators: %s: what a cell held.
-#: src/Admin/ImportScreen.php:342
-#, php-format
-msgid "\"%s\" is not a value this column takes."
 msgstr ""
 
 #: src/Admin/Labels.php:40
@@ -602,6 +411,197 @@ msgstr ""
 msgid "%1$s was not saved: \"%2$s\" is not a value it takes."
 msgstr ""
 
+#. translators: 1: a spec's name. 2: a source, such as "The maker's chart". 3: a value. 4: another source. 5: its value.
+#: src/Admin/Sentences.php:49
+#, php-format
+msgid "%1$s: two sources disagree. %2$s says %3$s, which is used. %4$s says %5$s."
+msgstr ""
+
+#: src/Admin/Sentences.php:52
+msgid "It names a maker's chart that is no longer there. Choose another on its Part specs."
+msgstr ""
+
+#. translators: %s: a size in a maker's chart.
+#: src/Admin/Sentences.php:56
+#, php-format
+msgid "It names the size \"%s\", which its maker's chart does not have."
+msgstr ""
+
+#. translators: 1: a spec's name. 2: a source. 3: what the source holds.
+#: src/Admin/Sentences.php:59
+#, php-format
+msgid "%1$s: %2$s holds \"%3$s\", which cannot be read as a value."
+msgstr ""
+
+#: src/Admin/Sentences.php:61
+msgid "Reading every part again stopped after five failures. Save the Builder settings to start it again; WooCommerce > Status > Logs has the reason."
+msgstr ""
+
+#: src/Admin/Sentences.php:63
+msgid "The last specs import stopped before its end. Import the file again; WooCommerce > Status > Logs has the reason."
+msgstr ""
+
+#. translators: %s: a slot's key, such as trucks.
+#: src/Admin/Sentences.php:69
+#, php-format
+msgid "The slot \"%s\" has no parts."
+msgstr ""
+
+#. translators: %s: a slot's key, such as trucks.
+#: src/Admin/Sentences.php:72
+#, php-format
+msgid "The slot \"%s\" has nothing in stock."
+msgstr ""
+
+#. translators: 1: a spec's name. 2: a slot's key.
+#: src/Admin/Sentences.php:75
+#, php-format
+msgid "%1$s is missing, so the part is not offered in the slot \"%2$s\"."
+msgstr ""
+
+#. translators: %s: a spec's name.
+#: src/Admin/Sentences.php:78
+#, php-format
+msgid "%s is not filled in, so the builder assumes the usual one."
+msgstr ""
+
+#. translators: 1: a preset's name. 2: a slot's key.
+#: src/Admin/Sentences.php:82
+#, php-format
+msgid "The preset \"%1$s\" names it for the slot \"%2$s\", and it is not one of that slot's parts now."
+msgstr ""
+
+#. translators: 1: a preset's name. 2: a slot's key.
+#: src/Admin/Sentences.php:84
+#, php-format
+msgid "The preset \"%1$s\" names it for the slot \"%2$s\", and it is sold out."
+msgstr ""
+
+#. translators: 1: a preset's name. 2: a slot's key.
+#: src/Admin/Sentences.php:87
+#, php-format
+msgid "The preset \"%1$s\" names it for the slot \"%2$s\", and it no longer fits the preset's other parts."
+msgstr ""
+
+#: src/Admin/Sentences.php:101
+msgid "Choose a CSV file first."
+msgstr ""
+
+#: src/Admin/Sentences.php:102
+msgid "The file did not arrive whole. Choose it again."
+msgstr ""
+
+#: src/Admin/Sentences.php:103
+msgid "That is not a .csv file. Save the sheet as CSV and choose it again."
+msgstr ""
+
+#: src/Admin/Sentences.php:104
+msgid "The file is over 2 MB. Split it into smaller files."
+msgstr ""
+
+#: src/Admin/Sentences.php:105
+msgid "The file is not saved as UTF-8. Save it as CSV UTF-8 and choose it again."
+msgstr ""
+
+#: src/Admin/Sentences.php:106
+msgid "The file has no rows under its headings."
+msgstr ""
+
+#: src/Admin/Sentences.php:107
+msgid "The file has more than 5,000 rows. Split it into smaller files."
+msgstr ""
+
+#: src/Admin/Sentences.php:108
+msgid "The file has no column for what parts are matched by. Add an id or a sku column, or change the choice below."
+msgstr ""
+
+#: src/Admin/Sentences.php:109
+msgid "A column is in the file twice. Keep one of each."
+msgstr ""
+
+#: src/Admin/Sentences.php:110
+msgid "The file has no spec columns, so there is nothing to import."
+msgstr ""
+
+#: src/Admin/Sentences.php:111
+msgid "An import is running. Wait for it to finish."
+msgstr ""
+
+#: src/Admin/Sentences.php:126
+msgid "The row does not say which part it is for."
+msgstr ""
+
+#. translators: %s: an ID or a SKU.
+#: src/Admin/Sentences.php:128
+#, php-format
+msgid "\"%s\" is in the file more than once. Keep one row for it."
+msgstr ""
+
+#. translators: %s: an ID or a SKU.
+#: src/Admin/Sentences.php:130
+#, php-format
+msgid "No product is \"%s\"."
+msgstr ""
+
+#. translators: %s: a SKU.
+#: src/Admin/Sentences.php:132
+#, php-format
+msgid "The product with this ID does not have the SKU \"%s\". Check the row is for this shop, or match parts by SKU."
+msgstr ""
+
+#. translators: %s: a chart's name.
+#: src/Admin/Sentences.php:134
+#, php-format
+msgid "There is no chart named \"%s\". Add it under Spec tables first."
+msgstr ""
+
+#. translators: %s: a chart's name.
+#: src/Admin/Sentences.php:136
+#, php-format
+msgid "More than one chart is named \"%s\". Rename one under Spec tables."
+msgstr ""
+
+#. translators: %s: a size in a chart.
+#: src/Admin/Sentences.php:138
+#, php-format
+msgid "The chart has no size \"%s\"."
+msgstr ""
+
+#: src/Admin/Sentences.php:139
+#: src/Admin/SpecTablesScreen.php:335
+msgid "The size is too long. Use 40 characters or fewer."
+msgstr ""
+
+#: src/Admin/Sentences.php:140
+#: src/Admin/SpecTablesScreen.php:319
+#: src/Admin/SpecTablesScreen.php:333
+msgid "That chart is no longer there."
+msgstr ""
+
+#. translators: %s: what a cell held.
+#: src/Admin/Sentences.php:142
+#, php-format
+msgid "\"%s\" is not a measurement. Use a number, or a fraction such as 8 1/4."
+msgstr ""
+
+#. translators: %s: what a cell held.
+#: src/Admin/Sentences.php:144
+#, php-format
+msgid "The fraction in \"%s\" divides by zero."
+msgstr ""
+
+#. translators: %s: what a cell held.
+#: src/Admin/Sentences.php:146
+#, php-format
+msgid "\"%s\" is below zero."
+msgstr ""
+
+#. translators: %s: what a cell held.
+#: src/Admin/Sentences.php:148
+#, php-format
+msgid "\"%s\" is not a value this column takes."
+msgstr ""
+
 #: src/Admin/SettingsPage.php:79
 msgid "Where the builder reads each part's specs. Saving a change here reads every part again, in the background."
 msgstr ""
@@ -726,6 +726,84 @@ msgstr ""
 msgid "%1$s: \"%2$s\" is not a value it takes."
 msgstr ""
 
+#: src/Cli/CheckCommand.php:87
+#: templates/admin/check.php:38
+msgid "The check found nothing to fix."
+msgstr ""
+
+#. translators: %s: a number of findings.
+#: src/Cli/CheckCommand.php:95
+#: templates/admin/check.php:44
+#, php-format
+msgid "The check found %s thing to fix."
+msgid_plural "The check found %s things to fix."
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/Cli/ReindexCommand.php:63
+msgid "The reindex is queued. It runs in the background, 100 parts at a time."
+msgstr ""
+
+#: src/Cli/ReindexCommand.php:71
+msgid "A batch of the reindex failed. It is tried again in the background. WooCommerce > Status > Logs has the reason."
+msgstr ""
+
+#. translators: %s: a number of parts.
+#: src/Cli/ReindexCommand.php:74
+#, php-format
+msgid "%s part read into the index."
+msgid_plural "%s parts read into the index."
+msgstr[0] ""
+msgstr[1] ""
+
+#. translators: 1: a number of rows. 2: a file's path.
+#: src/Cli/SpecsCommand.php:83
+#, php-format
+msgid "%1$s row written to %2$s."
+msgid_plural "%1$s rows written to %2$s."
+msgstr[0] ""
+msgstr[1] ""
+
+#. translators: 1: parts the file would change. 2: parts it would leave as they are. 3: rows that cannot be read.
+#: src/Cli/SpecsCommand.php:169
+#, php-format
+msgid "Dry run: %1$s would change, %2$s would stay as they are, %3$s cannot be read. Nothing was written."
+msgstr ""
+
+#: src/Cli/SpecsCommand.php:180
+msgid "A batch of the import failed. The rows before it are written, and the rest are tried again in the background. WooCommerce > Status > Logs has the reason."
+msgstr ""
+
+#. translators: 1: parts changed. 2: parts left as they were. 3: rows not written.
+#: src/Cli/SpecsCommand.php:184
+#, php-format
+msgid "Imported: %1$s changed, %2$s already as the file has them, %3$s not written."
+msgstr ""
+
+#. translators: %s: a file's path.
+#: src/Cli/SpecsCommand.php:244
+#, php-format
+msgid "There is no file at %s."
+msgstr ""
+
+#. translators: %s: a file's path.
+#: src/Cli/SpecsCommand.php:247
+#, php-format
+msgid "%s cannot be read or written. Check the folder is there and its permissions."
+msgstr ""
+
+#. translators: %s: a file's path.
+#: src/Cli/SpecsCommand.php:250
+#, php-format
+msgid "%s is not a .csv file."
+msgstr ""
+
+#. translators: %s: a column's name, id or sku.
+#: src/Cli/SpecsCommand.php:253
+#, php-format
+msgid "The file has no %s column. Add one, or match parts by the other with --key."
+msgstr ""
+
 #: src/Hooks/SpecTableHooks.php:69
 msgid "Spec table"
 msgstr ""
@@ -767,18 +845,6 @@ msgstr ""
 #: templates/admin/check.php:34
 msgid "Run the check"
 msgstr ""
-
-#: templates/admin/check.php:38
-msgid "The check found nothing to fix."
-msgstr ""
-
-#. translators: %s: a number of findings.
-#: templates/admin/check.php:44
-#, php-format
-msgid "The check found %s thing to fix."
-msgid_plural "The check found %s things to fix."
-msgstr[0] ""
-msgstr[1] ""
 
 #: templates/admin/check.php:48
 msgid "What it found"

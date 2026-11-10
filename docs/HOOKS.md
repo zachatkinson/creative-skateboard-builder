@@ -295,3 +295,16 @@ What WooCommerce > Builder > Catalogue check lists, each a `Service\CheckFinding
 | `preset_broken` | 0.3.0 | A kit, a slot and a part | A preset names a part that is gone from its slot, is sold out, or no longer fits the preset's other parts. `values` holds the preset's name and the build problem's code. |
 
 The kit codes are found once the shop has a kit, which milestone 4 builds: until then `Port\Kits` answers with none, and the screen says so.
+
+### WP-CLI commands
+
+Each runs the service its screen runs, and says a finding or a refused row in the same sentence. A command that ends with `Error:` exits 1.
+
+| Command | Since | Usage | What it does | Exit status |
+| --- | --- | --- | --- | --- |
+| `cbuild specs` | 0.3.0 | `wp cbuild specs export [<file>]` | Writes the specs sheet to a path ending in `.csv`, in place of a file that is there, or prints it. | 0; 1 when the file cannot be written. |
+| | | `wp cbuild specs import <file> [--dry-run] [--key=<id\|sku>] [--format=<table\|csv\|json\|yaml>]` | Reads a sheet from a path ending in `.csv`, lists each row it cannot read with its `row`, `column`, `code` and `message`, and writes the rest, here and now. With `--dry-run` it says what would change and writes nothing. | 0 when every row was read; 1 when the file was not read, a row was not, or a batch failed. |
+| `cbuild check` | 0.3.0 | `wp cbuild check [--format=<table\|csv\|json\|yaml\|count>]` | Runs the Catalogue check and lists each finding's `code`, `part`, `kit`, `slot`, `spec` and `message`. | 0 when it found nothing; 1 when it found anything. |
+| `cbuild reindex` | 0.3.0 | `wp cbuild reindex [--background]` | Reads every part's specs into the index again, here and now, or queues the `cbuild_reindex` action with `--background`. | 0; 1 when a batch failed, which the queue then tries again. |
+
+`cbuild specs` is the namespace `export` and `import` sit under. A path with a scheme (`https://`, `phar://`, `php://`) is refused before anything opens it.
