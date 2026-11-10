@@ -124,7 +124,7 @@ The keys a part's specs are stored under: in the specs index (`cbuild_specs`), i
 
 ### Findings and message codes
 
-A fit rule answers with findings. Each carries its rule (`r1` to `r6`), a severity, a message code, the values behind it, where the figure came from and the slots it read. The state route carries them from milestone 4, and the translations turn a code and its values into a sentence. The domain holds no words.
+A fit rule answers with findings. Each carries its rule (`r1` to `r6`, and `r7` for a part with no `set_size`), a severity, a message code, the values behind it, where the figure came from and the slots it read. The state route carries them from milestone 4, and the translations turn a code and its values into a sentence. The domain holds no words.
 
 Severities, since 0.2.0: `fits` (a note: a default was taken for a spec the part does not give), `warn` (the build can go ahead) and `block` (it can't). Sources, since 0.2.0: `maker` (a spec on the part), `kit` (a kit setting) and `standard` (the trade's usual figure).
 

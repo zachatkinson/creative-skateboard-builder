@@ -112,7 +112,7 @@ final readonly class RuleSettings {
 	public static function fromDocument( mixed $document ): self {
 		$root    = Fields::document( $document );
 		$enabled = array();
-		foreach ( RuleId::cases() as $rule ) {
+		foreach ( RuleId::fit() as $rule ) {
 			$enabled[ $rule->value ] = $root->object( $rule->value )->flag( 'enabled' );
 		}
 		$r1       = $root->object( RuleId::R1->value );
@@ -157,7 +157,7 @@ final readonly class RuleSettings {
 	 * @param RuleId $rule The rule.
 	 */
 	public function enabled( RuleId $rule ): bool {
-		return $this->enabled[ $rule->value ];
+		return $this->enabled[ $rule->value ] ?? true;
 	}
 
 	/**

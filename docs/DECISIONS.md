@@ -604,3 +604,14 @@ Choices made while building R1 to R6, where the spec leaves them open:
 
 **Why:** Each keeps the page able to say why (P1) and keeps a guess from being sold as a fit, without the rules knowing anything of step order, stock or price.
 **Status:** Accepted.
+
+### D-056 · The fit engine, and quantities · 2026-11-09
+
+- **A slot's options are held against the picks before it**, in step order, as the spec has it. A pick in the slot itself or after it is not read, so going back to the deck step offers every deck, and what happens to the later picks is the change list's to say.
+- **A whole build is held together**: each pick against every other pick. A pair that does not fit is found on both its slots, and a riser picked after the wheels clears R3's warning, which the wheels step on its own could not know. Whatever the steps offered, this accepts, since every pair was checked when its later part was picked; the invariant test holds the two to that.
+- **A hidden part is in one group**, the one for its first blocking finding, grouped by rule and then by reason, so the counts add up to the number hidden. The group carries its first part's finding, for the figure a heading names ("too narrow for 8.5 in").
+- **R7.** A build takes as many of a part as cover the slot: the slot's units over the part's `set_size`, rounded up. `set_size` is required on every part. One without it is not offered, with `spec_missing` under `r7`, which is the engine's own rule and not one a kit can switch off. The alternative, counting a missing set size as 1, would put two pairs of trucks in a build whenever a pair was entered without it.
+- **The engine does not sort.** Options come back in the order the candidates were given. Sold-out parts after those in stock is the page's order, for milestone 6.
+
+**Why:** One engine answers the step, the cart and the change list, and none of them needs to know how the others ask.
+**Status:** Accepted.

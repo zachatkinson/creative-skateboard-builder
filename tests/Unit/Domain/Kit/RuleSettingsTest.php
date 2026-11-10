@@ -23,12 +23,14 @@ use PHPUnit\Framework\TestCase;
 final class RuleSettingsTest extends TestCase {
 
 	public function test_the_rules_are_r1_to_r6(): void {
-		self::assertSame( array( 'r1', 'r2', 'r3', 'r4', 'r5', 'r6' ), array_map( static fn( RuleId $rule ): string => $rule->value, RuleId::cases() ) );
+		self::assertSame( array( 'r1', 'r2', 'r3', 'r4', 'r5', 'r6' ), array_map( static fn( RuleId $rule ): string => $rule->value, RuleId::fit() ) );
+		self::assertSame( array( 'r1', 'r2', 'r3', 'r4', 'r5', 'r6', 'r7' ), array_column( RuleId::cases(), 'value' ), 'R7, the quantities, is the engine\'s own' );
+		self::assertTrue( RuleSettings::defaults()->enabled( RuleId::R7 ), 'and no kit switches it off' );
 	}
 
 	public function test_a_new_kit_starts_from_the_specs_seeds(): void {
 		$rules = RuleSettings::defaults();
-		foreach ( RuleId::cases() as $rule ) {
+		foreach ( RuleId::fit() as $rule ) {
 			self::assertTrue( $rules->enabled( $rule ), $rule->value );
 		}
 		self::assertSame( 0, $rules->rangeTolerance->tenThousandths );
@@ -63,11 +65,11 @@ final class RuleSettingsTest extends TestCase {
 	}
 
 	public function test_each_rule_is_switched_on_its_own(): void {
-		foreach ( RuleId::cases() as $off ) {
+		foreach ( RuleId::fit() as $off ) {
 			$document                          = RuleSettings::DEFAULTS;
 			$document[ $off->value ]['enabled'] = false;
 			$rules                             = RuleSettings::fromDocument( $document );
-			foreach ( RuleId::cases() as $rule ) {
+			foreach ( RuleId::fit() as $rule ) {
 				self::assertSame( $rule !== $off, $rules->enabled( $rule ), $off->value . ' off, ' . $rule->value );
 			}
 		}

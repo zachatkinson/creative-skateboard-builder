@@ -64,7 +64,7 @@ final class RuleSetTest extends TestCase {
 
 	public function test_the_standard_set_is_r1_to_r6_in_order(): void {
 		$findings = RuleSet::standard()->check( self::wrong(), RuleSettings::defaults() );
-		self::assertSame( RuleId::cases(), array_column( $findings, 'rule' ) );
+		self::assertSame( RuleId::fit(), array_column( $findings, 'rule' ) );
 		self::assertSame(
 			array(
 				MessageCode::DeckAboveRange,
@@ -80,12 +80,12 @@ final class RuleSetTest extends TestCase {
 	}
 
 	public function test_a_rule_the_kit_switched_off_finds_nothing(): void {
-		foreach ( RuleId::cases() as $off ) {
+		foreach ( RuleId::fit() as $off ) {
 			$document                           = RuleSettings::DEFAULTS;
 			$document[ $off->value ]['enabled'] = false;
 			$findings                           = RuleSet::standard()->check( self::wrong(), RuleSettings::fromDocument( $document ) );
 			self::assertSame(
-				array_values( array_filter( RuleId::cases(), static fn( RuleId $rule ): bool => $rule !== $off ) ),
+				array_values( array_filter( RuleId::fit(), static fn( RuleId $rule ): bool => $rule !== $off ) ),
 				array_column( $findings, 'rule' ),
 				$off->value
 			);
