@@ -47,7 +47,9 @@
         "source_order"
     ],
     "rest_routes": [],
-    "abilities": [],
+    "abilities": [
+        "creative-skateboard-builder/catalogue-check"
+    ],
     "cli_commands": [
         "cbuild check",
         "cbuild reindex",

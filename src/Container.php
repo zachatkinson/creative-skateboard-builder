@@ -85,6 +85,14 @@ final class Container {
 					}
 				);
 			},
+			// The check is built when the ability is run.
+			Abilities\CatalogueCheckAbility::class      => static function ( Container $c ): object {
+				return new Abilities\CatalogueCheckAbility(
+					static function () use ( $c ): Service\CatalogueCheck {
+						return $c->get( Service\CatalogueCheck::class );
+					}
+				);
+			},
 			// The panel reads the sources, so it is built when one of its hooks fires.
 			Admin\PartSpecsHooks::class                 => static function ( Container $c ): object {
 				return new Admin\PartSpecsHooks(
@@ -113,18 +121,20 @@ final class Container {
 	private static function hookableClasses(): array {
 		return array(
 			// `init`, `admin_init`, the migration job and a network's deleted site: any request.
-			Hooks\InstallHooks::class   => array( Scope::Everywhere ),
+			Hooks\InstallHooks::class              => array( Scope::Everywhere ),
 			// A product is saved, and a job runs, on any kind of request.
-			Hooks\IndexHooks::class     => array( Scope::Everywhere ),
+			Hooks\IndexHooks::class                => array( Scope::Everywhere ),
 			// A post type is registered on every request, and a table is saved from any.
-			Hooks\SpecTableHooks::class => array( Scope::Everywhere ),
+			Hooks\SpecTableHooks::class            => array( Scope::Everywhere ),
 			// The import's job runs wherever the queue does.
-			Hooks\ImportHooks::class    => array( Scope::Everywhere ),
+			Hooks\ImportHooks::class               => array( Scope::Everywhere ),
 			// WooCommerce's settings screen.
-			Admin\SettingsHooks::class  => array( Scope::Admin ),
-			Admin\PartSpecsHooks::class => array( Scope::Admin ),
-			Admin\BuilderHooks::class   => array( Scope::Admin ),
-			Hooks\CliHooks::class       => array( Scope::Cli ),
+			Admin\SettingsHooks::class             => array( Scope::Admin ),
+			Admin\PartSpecsHooks::class            => array( Scope::Admin ),
+			Admin\BuilderHooks::class              => array( Scope::Admin ),
+			Hooks\CliHooks::class                  => array( Scope::Cli ),
+			// WordPress builds its abilities when something first asks for one, on any kind of request.
+			Abilities\CatalogueCheckAbility::class => array( Scope::Everywhere ),
 		);
 	}
 

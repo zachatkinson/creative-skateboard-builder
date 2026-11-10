@@ -19,6 +19,7 @@
 			"Adapter/NoKits.php",
 			"Adapter/DiskFiles.php",
 			"Cli",
+			"Abilities",
 			"Adapter/ActionSchedulerQueue.php",
 			"Adapter/AttributeSpecSource.php",
 			"Adapter/FieldSpecSource.php",

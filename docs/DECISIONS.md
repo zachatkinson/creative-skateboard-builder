@@ -945,3 +945,13 @@ The table is milestone 1's and does not change. These are the choices the reposi
 
 **Why:** `docs/STANDARDS.md` asks for a docblock synopsis, examples, clear exit codes and `--format` where a command prints a table. The demo's host has no WP-CLI, so each command is a second way into something the admin already has.
 **Status:** Accepted.
+
+### D-079 · The ability `creative-skateboard-builder/catalogue-check` · 2026-11-10
+
+- **It runs the screen's service and says the screen's sentences** (`Service\CatalogueCheck`, `Admin\Sentences`), under the screen's capability, `manage_woocommerce`. It takes no input and holds no rule.
+- **It answers with a count and the first 500 findings,** as many as the screen lists, each with its code, IDs, the finding's values and its sentence. `values` is cast to an object so that an empty one is `{}` as JSON, which the output schema says it is.
+- **It is shown in REST, and annotated read-only, not destructive, idempotent.** The spec gives abilities to "the shop's own tools and AI assistants", which reach them over REST; the permission callback guards it there as anywhere. WordPress serves a read-only ability by `GET` and refuses `POST` (`wp-includes/rest-api/endpoints/class-wp-rest-abilities-v1-run-controller.php:110`). A `GET` here reads every part, as the screen's post does; nothing is cached, since the answer is out of date the moment a part is saved, and only a manager can ask.
+- **Its Hookable is built on every request and builds nothing else until the ability is run** (a closure for the check): WordPress fires `wp_abilities_api_init` when something first asks its registry, which can be any kind of request (`wp-includes/abilities-api/class-wp-abilities-registry.php:313`).
+- **The category is the plugin's slug,** and milestone 4's `check-build` and `price-build` join it.
+
+**Status:** Accepted.
