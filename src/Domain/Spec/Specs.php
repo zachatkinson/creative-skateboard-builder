@@ -26,6 +26,11 @@ use function is_string;
 final readonly class Specs {
 
 	/**
+	 * The most a count may be: a set of a thousand. Past it the engine's sums would leave whole numbers.
+	 */
+	public const int MAX_COUNT = 1000;
+
+	/**
 	 * Constructor.
 	 *
 	 * @param array<string, Measure|string|bool|int> $values The values by key.
@@ -58,6 +63,7 @@ final readonly class Specs {
 		if ( null !== $unit ) {
 			$problem = $value instanceof Measure ? null : SpecError::WrongKind;
 			$value   = $value instanceof Measure ? $value->to( $unit ) : $value;
+			$problem = $value instanceof Measure && 0 === $value->tenThousandths ? SpecError::NotPositive : $problem;
 		} elseif ( array() !== $choices ) {
 			$problem = is_string( $value ) ? null : SpecError::WrongKind;
 			$problem = null === $problem && ! in_array( $value, $choices, true ) ? SpecError::UnknownChoice : $problem;
@@ -66,6 +72,7 @@ final readonly class Specs {
 		} else {
 			$problem = is_int( $value ) ? null : SpecError::WrongKind;
 			$problem = null === $problem && $value < 1 ? SpecError::NotPositive : $problem;
+			$problem = null === $problem && $value > self::MAX_COUNT ? SpecError::TooMany : $problem;
 		}
 		if ( null !== $problem ) {
 			$refused = InvalidSpec::because( $problem, $key->value );
@@ -82,7 +89,7 @@ final readonly class Specs {
 	 *
 	 * @param array<string, string> $rows The values by key.
 	 *
-	 * @throws InvalidSpec    When a key is unknown or a value is not of its kind.
+	 * @throws InvalidSpec    When a value is not of its key's kind. A key this version does not know is passed over.
 	 * @throws InvalidMeasure When a measure cannot be read.
 	 */
 	public static function fromIndex( array $rows ): self {
@@ -90,8 +97,8 @@ final readonly class Specs {
 		foreach ( $rows as $name => $text ) {
 			$key = SpecKey::tryFrom( $name );
 			if ( null === $key ) {
-				$refused = InvalidSpec::because( SpecError::UnknownKey, $name );
-				throw $refused;
+				// A row a newer version wrote. Refusing it would cost the part every spec it has after a rollback.
+				continue;
 			}
 			$unit  = $key->unit();
 			$value = $text;

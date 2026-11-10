@@ -10,6 +10,8 @@
 #   8. An em dash, an exclamation mark or a word from tools/copy-words.txt in the POT file (docs/STANDARDS.md: Copy).
 #   9. A job of release.yml that holds a secret and runs anything but gh and a few shell built-ins (D-043, D-048).
 #  10. release.yml running the release dry run without installing Composer's and npm's packages first (D-048).
+#  11. A string literal with words in it in src/Domain: the domain answers in codes (D-062).
+#  12. An exception of PHP's own made in src/Domain: its refusals are typed, with a reason code (D-062).
 # Gate 1 also covers string-built SQL (1b) and the database's clock in a statement (1c). Every gate has snippets it
 # must reject in tests/Fixtures/gates/, run by tools/gates-selftest.sh.
 # Run: composer gates
@@ -75,6 +77,23 @@ if [ -d src/Domain ]; then
 	hits="$(grep -rnE '(^|[^a-zA-Z_\\>$])(wp_[a-z_]+|wc_[a-z_]+|get_option|update_option|add_option|delete_option|apply_filters|do_action|add_filter|add_action|__|_e|_x|_n|_nx|esc_[a-z_]+|sanitize_[a-z_]+|get_post[a-z_]*|get_user[a-z_]*|current_user_can|is_admin|absint|WC|wp_cache_[a-z_]+)\s*\(|\\?(WP_[A-Za-z_]+|WC_[A-Za-z_]+|wpdb|WooCommerce|Automattic\\\\WooCommerce|ActionScheduler)\b|ABSPATH' src/Domain --include='*.php' | grep -vE '^[^:]+:[0-9]+:\s*(\*|//|#)' || true)"
 	if [ -n "$hits" ]; then
 		echo "Gate 6: WordPress or WooCommerce in src/Domain:"; echo "$hits"; status=1
+	fi
+fi
+
+# 11. No words in the domain: it answers in codes and values, never in a sentence (tools/gate-domain-strings.php).
+if [ -d src/Domain ]; then
+	hits="$(php "$tools/gate-domain-strings.php" src/Domain)"
+	if [ -n "$hits" ]; then
+		echo "Gate 11: a string with words in src/Domain:"; echo "$hits"; status=1
+	fi
+fi
+
+# 12. No untyped throw in the domain: every refusal is an exception of the domain's own with a reason code, so the edge
+#     never has to match a message (docs/AUDIT.md: Resilience; D-062).
+if [ -d src/Domain ]; then
+	hits="$(grep -rnE 'new[[:space:]]+\\?([A-Za-z]*Exception|Error|[A-Z][A-Za-z]*Error)[[:space:]]*\(' src/Domain --include='*.php' | grep -vE '^[^:]+:[0-9]+:\s*(\*|//|#)' || true)"
+	if [ -n "$hits" ]; then
+		echo "Gate 12: an untyped throw in src/Domain:"; echo "$hits"; status=1
 	fi
 fi
 

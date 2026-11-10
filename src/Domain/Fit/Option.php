@@ -47,11 +47,6 @@ final readonly class Option {
 	 * @since 0.2.0
 	 */
 	public function reason(): ?Finding {
-		foreach ( $this->findings as $finding ) {
-			if ( Severity::Block === $finding->severity ) {
-				return $finding;
-			}
-		}
-		return null;
+		return Finding::blocking( $this->findings )[0] ?? null;
 	}
 }

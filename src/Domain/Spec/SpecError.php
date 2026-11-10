@@ -14,8 +14,8 @@ namespace CreativeBranding\SkateboardBuilder\Domain\Spec;
  */
 enum SpecError: string {
 
-	case UnknownKey    = 'spec_unknown_key';
 	case WrongKind     = 'spec_wrong_kind';
 	case UnknownChoice = 'spec_unknown_choice';
 	case NotPositive   = 'spec_not_positive';
+	case TooMany       = 'spec_too_many';
 }

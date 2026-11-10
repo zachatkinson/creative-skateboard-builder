@@ -189,17 +189,20 @@ final class KitSchemasTest extends IntegrationTestCase {
 	}
 
 	public function test_what_only_the_domain_can_tell_the_schemas_let_through(): void {
-		// A schema cannot say "unique by key", "the deck first" or "each row reaches further": the domain's own invariants.
+		// A schema cannot say "unique by key", "the deck first", "risers before hardware" or "each row reaches further": the domain's own invariants.
 		$repeated                    = KitDocuments::slots();
 		$repeated['slots'][3]['key'] = 'trucks';
 		$this->assertTrue( self::accepts( $repeated, 'kit-slots' ) );
 		$reversed          = KitDocuments::slots();
 		$reversed['slots'] = array_reverse( $reversed['slots'] );
 		$this->assertTrue( self::accepts( $reversed, 'kit-slots' ) );
+		$bolts_first = KitDocuments::slots();
+		[ $bolts_first['slots'][3], $bolts_first['slots'][5] ] = array( $bolts_first['slots'][5], $bolts_first['slots'][3] );
+		$this->assertTrue( self::accepts( $bolts_first, 'kit-slots' ) );
 		$disordered                 = RuleSettings::DEFAULTS;
 		$disordered['r3']['risers'] = array_reverse( $disordered['r3']['risers'] );
 		$this->assertTrue( self::accepts( $disordered, 'kit-rules' ) );
-		foreach ( array( array( Slots::class, $repeated ), array( Slots::class, $reversed ), array( RuleSettings::class, $disordered ) ) as [ $reader, $document ] ) {
+		foreach ( array( array( Slots::class, $repeated ), array( Slots::class, $reversed ), array( Slots::class, $bolts_first ), array( RuleSettings::class, $disordered ) ) as [ $reader, $document ] ) {
 			try {
 				$reader::fromDocument( $document );
 				$this->fail( 'the domain accepted it' );

@@ -124,7 +124,7 @@ The keys a part's specs are stored under: in the specs index (`cbuild_specs`), i
 
 ### Findings and message codes
 
-A fit rule answers with findings. Each carries its rule (`r1` to `r6`, and `r7` for a part with no `set_size`), a severity, a message code, the values behind it, where the figure came from and the slots it read. The state route carries them from milestone 4, and the translations turn a code and its values into a sentence. The domain holds no words.
+A fit rule answers with findings. Each carries its rule (`r1`, `r2`, `r3`, `r4`, `r5` or `r6`, and `r7` for a part with no `set_size`; all since 0.2.0), a severity, a message code, the values behind it, where the figure came from and the slots it read. The state route carries them from milestone 4, and the translations turn a code and its values into a sentence. The domain holds no words.
 
 Severities, since 0.2.0: `fits` (a note: a default was taken for a spec the part does not give), `warn` (the build can go ahead) and `block` (it can't). Sources, since 0.2.0: `maker` (a spec on the part), `kit` (a kit setting) and `standard` (the trade's usual figure).
 
@@ -149,6 +149,8 @@ Severities, since 0.2.0: `fits` (a note: a default was taken for a spec the part
 | `grip_too_short` | 0.2.0 | R6 | Block | `grip_length`, `deck_length` | The sheet is shorter than the deck. |
 | `length_unchecked` | 0.2.0 | R6 | Fits | None | The deck gives no length, so the length check was skipped. |
 
+The names under Values are public too: a translation's placeholders are written against them. A finding may leave a value out (a maker's range with one end published carries that end only) and never carries one its code does not name.
+
 A measure among the values is in its spec's unit; `gap` is in inches, `limit` and `over` in millimetres, and `riser`, `shortest` and `usual` in inches.
 
 ### Build problems
@@ -164,3 +166,36 @@ Before a build is sold, the validator checks the whole of it and answers with wh
 | `part_blocked` | 0.2.0 | The part does not fit the rest of the build. Its findings say why. |
 
 A build that only warns has no problem and can go to the cart.
+
+### Refusal codes
+
+When the domain refuses what it was given, it answers with a typed exception whose `reason` is one of these codes and, for a document, the path of the field. The Build tab, the Part specs panel and the imports turn them into a notice beside the field from milestones 3 and 4.
+
+| Code | Since | Refuses | What it means |
+| --- | --- | --- | --- |
+| `document_not_an_object` | 0.2.0 | A kit document | The document, or an object inside it, is not an object. |
+| `document_unknown_version` | 0.2.0 | A kit document | Its `schema_version` is one this version does not read. |
+| `document_field_missing` | 0.2.0 | A kit document | A required field is not there. |
+| `document_wrong_type` | 0.2.0 | A kit document | A field holds the wrong kind of value. |
+| `document_out_of_range` | 0.2.0 | A kit document | A number, a list's length or a text's length is outside what the schema allows. |
+| `document_bad_measure` | 0.2.0 | A kit document | A length or the fee is not a decimal with a point and up to four places. |
+| `document_bad_key` | 0.2.0 | A kit document | A key or an attribute's taxonomy is not in its form. |
+| `document_duplicate` | 0.2.0 | A kit document | A slot's key appears twice. |
+| `slots_deck_not_first` | 0.2.0 | The slots | The first slot is not the deck. |
+| `slots_risers_after_hardware` | 0.2.0 | The slots | The risers come after the hardware. The bolts are picked to reach through the riser, so the risers come first. |
+| `rules_out_of_order` | 0.2.0 | The rules | A tolerance is under the one before it, or a riser row does not reach further than the last. |
+| `presets_unknown_slot` | 0.2.0 | The presets | A preset picks for a slot the kit does not have. |
+| `presets_slot_not_filled` | 0.2.0 | The presets | A preset leaves a required slot empty. |
+| `spec_wrong_kind` | 0.2.0 | A part's spec | The value is not of the key's kind: a measure, a choice, a flag or a count. |
+| `spec_unknown_choice` | 0.2.0 | A part's spec | The value is not one of the choice's. |
+| `spec_not_positive` | 0.2.0 | A part's spec | A measure or a count of nothing. |
+| `spec_too_many` | 0.2.0 | A part's spec | A count over 1,000. |
+| `measure_malformed` | 0.2.0 | A typed measure | The text is not a number, a fraction or a mixed number, with or without its unit. |
+| `measure_zero_denominator` | 0.2.0 | A typed measure | A fraction over zero. |
+| `measure_negative` | 0.2.0 | A measure | A length below nothing. |
+| `part_id_not_positive` | 0.2.0 | A part | The product id is not one or more. |
+| `part_price_negative` | 0.2.0 | A part | The price is below nothing. |
+| `discount_out_of_range` | 0.2.0 | A quote | The build discount is below 0 or is 100 % or more. |
+| `price_decimals_over_eight` | 0.2.0 | A quote | The shop's prices have more than eight decimal places. |
+
+A spec row in the index whose key this version does not know is passed over, not refused, so a part keeps its other specs after a rollback.

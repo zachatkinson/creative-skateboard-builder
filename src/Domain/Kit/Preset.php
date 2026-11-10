@@ -16,6 +16,13 @@ namespace CreativeBranding\SkateboardBuilder\Domain\Kit;
 final readonly class Preset {
 
 	/**
+	 * The most characters a name and a description may have, as the schema says.
+	 */
+	public const int MAX_NAME = 60;
+
+	public const int MAX_DESCRIPTION = 160;
+
+	/**
 	 * Constructor.
 	 *
 	 * @param string             $name        The owner's name for it.
@@ -43,6 +50,6 @@ final readonly class Preset {
 			}
 			$picks[ $slot ] = $chosen->whole( $slot, 1, PHP_INT_MAX );
 		}
-		return new self( $fields->text( 'name' ), $fields->textOrEmpty( 'description' ), $picks );
+		return new self( $fields->text( 'name', self::MAX_NAME ), $fields->textOrEmpty( 'description', self::MAX_DESCRIPTION ), $picks );
 	}
 }

@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <!-- The unit suite: PHPUnit 13, no WordPress. <source> is all of src/, so its report lists every file, tested here
-     or not. The domain's floors (tools/coverage-floor.php) read it, and so does the 90 % floor on both suites together
+     or not. The domain's floors (tools/coverage-floor.php) read it, and so does the 95 % floor on both suites together
      (tools/coverage-merge.php, D-050), which counts a WordPress-bound class by what the integration suite runs of it. -->
 <phpunit
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"

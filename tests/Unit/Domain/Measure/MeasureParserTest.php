@@ -116,6 +116,8 @@ final class MeasureParserTest extends TestCase {
 		yield 'text before the number' => array( 'x8.25', '.', MeasureError::Malformed );
 		yield 'a line break inside' => array( "8\n.25", '.', MeasureError::Malformed );
 		yield 'a trailing second line' => array( "8.25\n9", '.', MeasureError::Malformed );
+		yield 'no separator at all' => array( '12345678', '', MeasureError::Malformed );
+		yield 'no separator, a plain number' => array( '8', '', MeasureError::Malformed );
 		yield 'a zero bottom' => array( '1/0', '.', MeasureError::ZeroDenominator );
 		yield 'a zero bottom in a mixed number' => array( '8 1/0', '.', MeasureError::ZeroDenominator );
 	}

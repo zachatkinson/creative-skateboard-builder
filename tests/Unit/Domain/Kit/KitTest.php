@@ -117,6 +117,9 @@ final class KitTest extends TestCase {
 		yield 'a part that is not an id' => array( static fn( array $p ): array => array( 'picks' => array( 'trucks' => '22' ) + $p['picks'] ) + $p, DocumentError::WrongType, 'presets[1].picks.trucks' );
 		yield 'a part of none' => array( static fn( array $p ): array => array( 'picks' => array( 'trucks' => 0 ) + $p['picks'] ) + $p, DocumentError::OutOfRange, 'presets[1].picks.trucks' );
 		yield 'a slot the kit lacks' => array( static fn( array $p ): array => array( 'picks' => $p['picks'] + array( 'spacers' => 5 ) ) + $p, DocumentError::UnknownSlot, 'presets[1].picks.spacers' );
+		yield 'a name of nothing' => array( static fn( array $p ): array => array( 'name' => '' ) + $p, DocumentError::OutOfRange, 'presets[1].name' );
+		yield 'a name of sixty-one characters' => array( static fn( array $p ): array => array( 'name' => str_repeat( 'é', 61 ) ) + $p, DocumentError::OutOfRange, 'presets[1].name' );
+		yield 'a description of a hundred and sixty-one characters' => array( static fn( array $p ): array => array( 'description' => str_repeat( 'a', 161 ) ) + $p, DocumentError::OutOfRange, 'presets[1].description' );
 		yield 'a required slot left empty' => array(
 			static function ( array $p ): array {
 				unset( $p['picks']['hardware'] );
@@ -197,7 +200,10 @@ final class KitTest extends TestCase {
 		yield 'one decimal' => array( '15.55', 1, 156 );
 		yield 'dinars' => array( '15.5555', 3, 15556 );
 		yield 'four decimals' => array( '15.5555', 4, 155555 );
-		yield 'more decimals than are kept reads as four' => array( '15.5555', 9, 155555 );
+		yield 'five decimals, one more than the fee is kept to' => array( '15.50', 5, 1550000 );
+		yield 'six decimals' => array( '15.5555', 6, 15555500 );
+		yield 'seven decimals' => array( '0.0001', 7, 1000 );
+		yield 'eight decimals, as a coin has' => array( '15.5555', 8, 1555550000 );
 		yield 'fewer than none reads as none' => array( '15.5', -1, 16 );
 	}
 
@@ -205,6 +211,17 @@ final class KitTest extends TestCase {
 	public function test_the_fee_in_minor_units( string $fee, int $decimals, int $minor ): void {
 		self::assertSame( 4, Assembly::MAX_DECIMALS );
 		self::assertSame( $minor, Assembly::fromDocument( array( 'fee' => $fee ) + KitDocuments::assembly() )->fee( $decimals ) );
+	}
+
+	public function test_the_fee_is_refused_for_more_decimals_than_eight(): void {
+		self::assertSame( 8, Assembly::MOST_DECIMALS );
+		try {
+			Assembly::fromDocument( KitDocuments::assembly() )->fee( 9 );
+			self::fail( 'accepted' );
+		} catch ( \CreativeBranding\SkateboardBuilder\Domain\Kit\InvalidMoney $e ) {
+			self::assertSame( \CreativeBranding\SkateboardBuilder\Domain\Kit\MoneyError::TooManyDecimals, $e->reason );
+			self::assertSame( 'price_decimals_over_eight', $e->getMessage() );
+		}
 	}
 
 	public function test_assembly_reads_each_field(): void {
@@ -241,6 +258,39 @@ final class KitTest extends TestCase {
 			self::fail( 'accepted' );
 		} catch ( InvalidDocument $e ) {
 			self::assertSame( $reason, $e->reason );
+			self::assertSame( $path, $e->path );
+		}
+	}
+
+	public function test_a_presets_and_the_assemblys_text_are_as_long_as_the_schemas_allow(): void {
+		$preset = array( 'name' => str_repeat( 'é', 60 ), 'description' => str_repeat( 'é', 160 ) ) + self::preset();
+		$kit    = KitDocuments::kit( null, null, self::presets( array( $preset ) ), array( 'lead_time' => str_repeat( 'é', 200 ), 'returns_notice' => str_repeat( "é\n", 500 ) ) + KitDocuments::assembly() );
+		self::assertSame( str_repeat( 'é', 60 ), $kit->presets[0]->name );
+		self::assertSame( str_repeat( 'é', 160 ), $kit->presets[0]->description );
+		self::assertSame( str_repeat( 'é', 200 ), $kit->assembly->leadTime );
+		self::assertSame( str_repeat( "é\n", 500 ), $kit->assembly->returnsNotice );
+		self::assertSame( array( 60, 160 ), array( \CreativeBranding\SkateboardBuilder\Domain\Kit\Preset::MAX_NAME, \CreativeBranding\SkateboardBuilder\Domain\Kit\Preset::MAX_DESCRIPTION ) );
+		self::assertSame( array( 200, 1000 ), array( Assembly::MAX_LEAD_TIME, Assembly::MAX_RETURNS_NOTICE ) );
+	}
+
+	/**
+	 * @return iterable<string, array{array<string, mixed>, string}>
+	 */
+	public static function longAssemblyText(): iterable {
+		yield 'a lead time of two hundred and one characters' => array( array( 'lead_time' => str_repeat( 'a', 201 ) ), 'lead_time' );
+		yield 'a returns notice of a thousand and one characters' => array( array( 'returns_notice' => str_repeat( 'a', 1001 ) ), 'returns_notice' );
+	}
+
+	/**
+	 * @param array<string, mixed> $fields
+	 */
+	#[DataProvider( 'longAssemblyText' )]
+	public function test_the_assemblys_text_is_bounded( array $fields, string $path ): void {
+		try {
+			Assembly::fromDocument( $fields + KitDocuments::assembly() );
+			self::fail( 'accepted' );
+		} catch ( InvalidDocument $e ) {
+			self::assertSame( DocumentError::OutOfRange, $e->reason );
 			self::assertSame( $path, $e->path );
 		}
 	}

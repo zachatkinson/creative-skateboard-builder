@@ -9,8 +9,6 @@ declare( strict_types=1 );
 
 namespace CreativeBranding\SkateboardBuilder\Domain\Measure;
 
-use InvalidArgumentException;
-
 use function abs;
 use function intdiv;
 use function sprintf;
@@ -28,11 +26,11 @@ final readonly class Measure {
 	 * @param int  $tenThousandths The length in ten-thousandths of the unit, zero or more.
 	 * @param Unit $unit           The unit.
 	 *
-	 * @throws InvalidArgumentException When the length is negative.
+	 * @throws InvalidMeasure When the length is negative.
 	 */
 	private function __construct( public int $tenThousandths, public Unit $unit ) {
 		if ( $tenThousandths < 0 ) {
-			throw new InvalidArgumentException( 'negative_measure' );
+			throw InvalidMeasure::negative();
 		}
 	}
 
@@ -81,7 +79,7 @@ final readonly class Measure {
 		if ( $unit === $this->unit ) {
 			return $this;
 		}
-		return new self( intdiv( 2 * $this->base() + $unit->base(), 2 * $unit->base() ), $unit );
+		return new self( Rounding::halfUp( $this->base(), $unit->base() ), $unit );
 	}
 
 	/**

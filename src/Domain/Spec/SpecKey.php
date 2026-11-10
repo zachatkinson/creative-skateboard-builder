@@ -11,6 +11,8 @@ namespace CreativeBranding\SkateboardBuilder\Domain\Spec;
 
 use CreativeBranding\SkateboardBuilder\Domain\Measure\Unit;
 
+use function array_column;
+
 /**
  * One measured fact about a part (spec: Vocabulary, Spec; Compatibility rules). The value is the key the specs index,
  * the part's meta and the imports use, so it is public API and never renamed in place. Each key has one kind, a
@@ -40,16 +42,6 @@ enum SpecKey: string {
 	case SetSize        = 'set_size';
 
 	/**
-	 * The mounting patterns a deck is drilled for and a baseplate takes (R2).
-	 */
-	public const PATTERNS = array( 'new_school', 'old_school', 'both' );
-
-	/**
-	 * The height classes a truck is sold in (R3).
-	 */
-	public const CLASSES = array( 'low', 'mid', 'high' );
-
-	/**
 	 * Each measure's unit. A key that is not here is not a measure.
 	 */
 	private const UNITS = array(
@@ -71,12 +63,14 @@ enum SpecKey: string {
 	);
 
 	/**
-	 * Each choice's values. A key that is not here is not a choice.
+	 * Each choice's enum, whose values are the choice's. A key that is not here is not a choice.
+	 *
+	 * @var array<string, class-string<HolePattern>|class-string<HeightClass>>
 	 */
 	private const CHOICES = array(
-		'hole_pattern' => self::PATTERNS,
-		'baseplate'    => self::PATTERNS,
-		'height_class' => self::CLASSES,
+		'hole_pattern' => HolePattern::class,
+		'baseplate'    => HolePattern::class,
+		'height_class' => HeightClass::class,
 	);
 
 	/**
@@ -131,6 +125,7 @@ enum SpecKey: string {
 	 * @return list<string>
 	 */
 	public function choices(): array {
-		return self::CHOICES[ $this->value ] ?? array();
+		$enum = self::CHOICES[ $this->value ] ?? null;
+		return null === $enum ? array() : array_column( $enum::cases(), 'value' );
 	}
 }

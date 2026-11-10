@@ -14,6 +14,7 @@ use CreativeBranding\SkateboardBuilder\Domain\Kit\InvalidDocument;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\RuleSettings;
 use CreativeBranding\SkateboardBuilder\Domain\Measure\Unit;
 use CreativeBranding\SkateboardBuilder\Domain\Rule\RuleId;
+use CreativeBranding\SkateboardBuilder\Domain\Spec\HeightClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
@@ -39,10 +40,10 @@ final class RuleSettingsTest extends TestCase {
 		self::assertSame( Unit::Inch, $rules->axleFit->unit );
 		self::assertSame( 5000, $rules->axleWarn->tenThousandths );
 		self::assertSame( Unit::Inch, $rules->axleWarn->unit );
-		self::assertSame( 530000, $rules->classLimit( 'low' )->tenThousandths );
-		self::assertSame( 560000, $rules->classLimit( 'mid' )->tenThousandths );
-		self::assertSame( 560000, $rules->classLimit( 'high' )->tenThousandths );
-		self::assertSame( Unit::Millimetre, $rules->classLimit( 'low' )->unit );
+		self::assertSame( 530000, $rules->classLimit( HeightClass::Low )->tenThousandths );
+		self::assertSame( 560000, $rules->classLimit( HeightClass::Mid )->tenThousandths );
+		self::assertSame( 560000, $rules->classLimit( HeightClass::High )->tenThousandths );
+		self::assertSame( Unit::Millimetre, $rules->classLimit( HeightClass::Low )->unit );
 		self::assertCount( 2, $rules->riserSteps );
 		self::assertSame( 20000, $rules->riserSteps[0]->over->tenThousandths );
 		self::assertSame( Unit::Millimetre, $rules->riserSteps[0]->over->unit );
@@ -57,11 +58,14 @@ final class RuleSettingsTest extends TestCase {
 		$document                     = RuleSettings::DEFAULTS;
 		$document['r3']['limits']     = array( 'low' => '52', 'mid' => '54', 'high' => '57' );
 		$rules                        = RuleSettings::fromDocument( $document );
-		self::assertSame( 520000, $rules->classLimit( 'low' )->tenThousandths );
-		self::assertSame( 540000, $rules->classLimit( 'mid' )->tenThousandths );
-		self::assertSame( 570000, $rules->classLimit( 'high' )->tenThousandths );
-		self::assertSame( 570000, $rules->classLimit( null )->tenThousandths );
-		self::assertSame( 570000, $rules->classLimit( 'forged' )->tenThousandths );
+		self::assertSame( 520000, $rules->classLimit( HeightClass::Low )->tenThousandths );
+		self::assertSame( 540000, $rules->classLimit( HeightClass::Mid )->tenThousandths );
+		self::assertSame( 570000, $rules->classLimit( HeightClass::High )->tenThousandths );
+		self::assertSame( 570000, $rules->classLimit( HeightClass::of( null ) )->tenThousandths, 'a truck with no class counts as high' );
+		self::assertSame( 570000, $rules->classLimit( HeightClass::of( 'forged' ) )->tenThousandths, 'as does a class nobody knows' );
+		self::assertSame( HeightClass::Low, HeightClass::of( 'low' ) );
+		self::assertSame( HeightClass::Mid, HeightClass::of( 'mid' ) );
+		self::assertSame( HeightClass::High, HeightClass::USUAL );
 	}
 
 	public function test_each_rule_is_switched_on_its_own(): void {

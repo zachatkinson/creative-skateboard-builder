@@ -107,6 +107,9 @@ final class SpecsTest extends TestCase {
 		yield 'a measure for a count' => array( SpecKey::SetSize, Measure::inches( 4 ), SpecError::WrongKind );
 		yield 'a count of none' => array( SpecKey::SetSize, 0, SpecError::NotPositive );
 		yield 'a count below none' => array( SpecKey::SetSize, -2, SpecError::NotPositive );
+		yield 'a count past a thousand' => array( SpecKey::SetSize, 1001, SpecError::TooMany );
+		yield 'a measure of nothing' => array( SpecKey::DeckWidth, Measure::inches( 0 ), SpecError::NotPositive );
+		yield 'a measure of nothing in another unit' => array( SpecKey::WheelDiameter, Measure::inches( 0 ), SpecError::NotPositive );
 	}
 
 	#[DataProvider( 'refusedValues' )]
@@ -119,6 +122,15 @@ final class SpecsTest extends TestCase {
 			self::assertSame( $key->value, $e->key );
 			self::assertSame( $reason->value, $e->getMessage() );
 		}
+	}
+
+	public function test_a_count_of_a_thousand_is_the_largest(): void {
+		self::assertSame( 1000, Specs::MAX_COUNT );
+		self::assertSame( 1000, Specs::none()->with( SpecKey::SetSize, 1000 )->count( SpecKey::SetSize ) );
+	}
+
+	public function test_the_smallest_measure_is_one_ten_thousandth(): void {
+		self::assertEquals( Measure::inches( 1 ), Specs::none()->with( SpecKey::DeckWidth, Measure::inches( 1 ) )->measure( SpecKey::DeckWidth ) );
 	}
 
 	public function test_a_count_of_one_is_the_smallest(): void {
@@ -157,6 +169,15 @@ final class SpecsTest extends TestCase {
 		self::assertFalse( $specs->flag( SpecKey::SpacersBuiltIn ) );
 	}
 
+	public function test_a_row_for_a_key_this_version_does_not_know_is_passed_over(): void {
+		// A newer version may have written it. After a rollback the part keeps the specs this version reads.
+		$specs = Specs::fromIndex( array( 'concave' => 'steep', 'deck_width' => '8.25', 'DECK_LENGTH' => '32', '' => 'x' ) );
+		self::assertEquals( Measure::inches( 82500 ), $specs->measure( SpecKey::DeckWidth ) );
+		self::assertNull( $specs->measure( SpecKey::DeckLength ), 'a key is its exact name' );
+		self::assertEquals( Specs::fromIndex( array( 'deck_width' => '8.25' ) ), $specs );
+		self::assertEquals( Specs::none(), Specs::fromIndex( array( 'concave' => 'steep' ) ) );
+	}
+
 	public function test_no_rows_is_no_specs(): void {
 		self::assertFalse( Specs::fromIndex( array() )->has( SpecKey::DeckWidth ) );
 	}
@@ -165,8 +186,6 @@ final class SpecsTest extends TestCase {
 	 * @return iterable<string, array{array<string, string>, SpecError, string}>
 	 */
 	public static function refusedRows(): iterable {
-		yield 'a key nobody knows' => array( array( 'colour' => 'red' ), SpecError::UnknownKey, 'colour' );
-		yield 'a key in capitals' => array( array( 'DECK_WIDTH' => '8.25' ), SpecError::UnknownKey, 'DECK_WIDTH' );
 		yield 'a flag that is a word' => array( array( 'spacers_built_in' => 'yes' ), SpecError::WrongKind, 'spacers_built_in' );
 		yield 'a flag that is two' => array( array( 'spacers_built_in' => '2' ), SpecError::WrongKind, 'spacers_built_in' );
 		yield 'a flag that is nothing' => array( array( 'spacers_built_in' => '' ), SpecError::WrongKind, 'spacers_built_in' );
@@ -175,6 +194,8 @@ final class SpecsTest extends TestCase {
 		yield 'a count that is nothing' => array( array( 'set_size' => '' ), SpecError::WrongKind, 'set_size' );
 		yield 'a negative count' => array( array( 'set_size' => '-2' ), SpecError::WrongKind, 'set_size' );
 		yield 'a count of none' => array( array( 'set_size' => '0' ), SpecError::NotPositive, 'set_size' );
+		yield 'a count too long to be a number' => array( array( 'set_size' => '99999999999999999999' ), SpecError::TooMany, 'set_size' );
+		yield 'a width of nothing' => array( array( 'deck_width' => '0.0' ), SpecError::NotPositive, 'deck_width' );
 		yield 'a choice nobody offers' => array( array( 'baseplate' => 'six_hole' ), SpecError::UnknownChoice, 'baseplate' );
 		yield 'the second of two rows' => array( array( 'deck_width' => '8.25', 'hole_pattern' => 'none' ), SpecError::UnknownChoice, 'hole_pattern' );
 	}

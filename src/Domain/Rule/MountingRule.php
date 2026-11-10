@@ -12,6 +12,7 @@ namespace CreativeBranding\SkateboardBuilder\Domain\Rule;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Picks;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\RuleSettings;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\SlotKey;
+use CreativeBranding\SkateboardBuilder\Domain\Spec\HolePattern;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\SpecKey;
 
 /**
@@ -20,16 +21,6 @@ use CreativeBranding\SkateboardBuilder\Domain\Spec\SpecKey;
  * and is flagged so the Catalogue check can list it (spec: R2).
  */
 final readonly class MountingRule implements Rule {
-
-	/**
-	 * The pattern a deck is taken to have when it gives none.
-	 */
-	private const string USUAL = 'new_school';
-
-	/**
-	 * A deck drilled for both patterns, or a baseplate that takes both.
-	 */
-	private const string BOTH = 'both';
 
 	/**
 	 * Which rule this is.
@@ -55,10 +46,10 @@ final readonly class MountingRule implements Rule {
 		$findings  = $read->missing();
 		$pattern   = $read->optionalChoice( SlotKey::DECK, SpecKey::HolePattern );
 		if ( null === $pattern && $read->picked( SlotKey::DECK ) ) {
-			$pattern    = self::USUAL;
+			$pattern    = HolePattern::USUAL->value;
 			$findings[] = new Finding( RuleId::R2, Severity::Fits, MessageCode::PatternAssumed, Source::Standard, array( SlotKey::DECK ), array( 'hole_pattern' => $pattern ) );
 		}
-		if ( null === $pattern || null === $baseplate || self::BOTH === $baseplate || self::BOTH === $pattern || $baseplate === $pattern ) {
+		if ( null === $pattern || null === $baseplate || HolePattern::Both->value === $baseplate || HolePattern::Both->value === $pattern || $baseplate === $pattern ) {
 			return $findings;
 		}
 		$findings[] = new Finding(

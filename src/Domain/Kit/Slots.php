@@ -54,6 +54,12 @@ final readonly class Slots {
 				$refused = InvalidDocument::because( DocumentError::DeckNotFirst, $row->path( 'key' ) );
 				throw $refused;
 			}
+			if ( SlotKey::RISERS === $slot->key && isset( $slots[ SlotKey::HARDWARE ] ) ) {
+				// The bolts are picked to reach through the riser (R4). With the bolts first, wheels that ask for a
+				// riser would find every riser hidden by bolts already chosen (docs/UX-RESEARCH.md, W2).
+				$refused = InvalidDocument::because( DocumentError::RisersAfterHardware, $row->path( 'key' ) );
+				throw $refused;
+			}
 			$slots[ $slot->key ] = $slot;
 		}
 		return new self( $slots );

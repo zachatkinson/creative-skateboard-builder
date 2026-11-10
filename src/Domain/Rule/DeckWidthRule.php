@@ -18,7 +18,7 @@ use CreativeBranding\SkateboardBuilder\Domain\Spec\SpecKey;
  * A deck fits a truck when its width is inside the range the truck's maker publishes, widened by the kit's tolerance
  * (0 unless the shop sets one). A truck with no published range goes by its axle: within the kit's first tolerance of
  * the deck's width it fits, within the second it warns, and beyond that it is blocked. Widths are compared, never size
- * numbers (spec: R1). A range is both ends; one end alone is not a range.
+ * numbers (spec: R1). A range may have one end only, as "8.62 and up": the end left out is open (D-062).
  */
 final readonly class DeckWidthRule implements Rule {
 
@@ -46,19 +46,22 @@ final readonly class DeckWidthRule implements Rule {
 		$width = $read->measure( SlotKey::DECK, SpecKey::DeckWidth );
 		$min   = $read->optional( SlotKey::TRUCKS, SpecKey::DeckMin );
 		$max   = $read->optional( SlotKey::TRUCKS, SpecKey::DeckMax );
-		if ( null !== $min && null !== $max ) {
+		if ( null !== $min || null !== $max ) {
+			// The maker's range, as far as it is published: an end the maker leaves out is open (D-062).
 			if ( null === $width ) {
 				return $read->missing();
 			}
-			$values = array(
-				'deck_width' => $width,
-				'deck_min'   => $min,
-				'deck_max'   => $max,
-			);
-			if ( $width->plus( $settings->rangeTolerance )->lessThan( $min ) ) {
+			$values = array( 'deck_width' => $width );
+			if ( null !== $min ) {
+				$values['deck_min'] = $min;
+			}
+			if ( null !== $max ) {
+				$values['deck_max'] = $max;
+			}
+			if ( null !== $min && $width->plus( $settings->rangeTolerance )->lessThan( $min ) ) {
 				return array( new Finding( RuleId::R1, Severity::Block, MessageCode::DeckBelowRange, Source::Maker, $slots, $values ) );
 			}
-			if ( $width->moreThan( $max->plus( $settings->rangeTolerance ) ) ) {
+			if ( null !== $max && $width->moreThan( $max->plus( $settings->rangeTolerance ) ) ) {
 				return array( new Finding( RuleId::R1, Severity::Block, MessageCode::DeckAboveRange, Source::Maker, $slots, $values ) );
 			}
 			return array();

@@ -12,6 +12,7 @@ namespace CreativeBranding\SkateboardBuilder\Domain\Kit;
 use CreativeBranding\SkateboardBuilder\Domain\Measure\Measure;
 use CreativeBranding\SkateboardBuilder\Domain\Measure\Unit;
 use CreativeBranding\SkateboardBuilder\Domain\Rule\RuleId;
+use CreativeBranding\SkateboardBuilder\Domain\Spec\HeightClass;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\SpecKey;
 
 /**
@@ -24,12 +25,6 @@ final readonly class RuleSettings {
 	 * The most rows a riser table holds.
 	 */
 	public const int MAX_RISER_STEPS = 6;
-
-	/**
-	 * The height class a truck is taken to have when it gives none: a truck not labelled high or low counts as high
-	 * (spec: R3).
-	 */
-	public const string USUAL_CLASS = 'high';
 
 	/**
 	 * The document a new kit starts from: every rule on, R1's tolerances, R3's class limits and riser table as the
@@ -124,8 +119,8 @@ final readonly class RuleSettings {
 		}
 		$r3     = $root->object( RuleId::R3->value );
 		$limits = array();
-		foreach ( SpecKey::CLASSES as $class ) {
-			$limits[ $class ] = $r3->object( 'limits' )->measure( $class, Unit::Millimetre );
+		foreach ( HeightClass::cases() as $class ) {
+			$limits[ $class->value ] = $r3->object( 'limits' )->measure( $class->value, Unit::Millimetre );
 		}
 		$steps = array();
 		$reach = null;
@@ -161,14 +156,13 @@ final readonly class RuleSettings {
 	}
 
 	/**
-	 * R3: the largest wheel a truck of a height class takes without risers. A class nobody knows counts as high, as a
-	 * truck with no class does.
+	 * R3: the largest wheel a truck of a height class takes without risers.
 	 *
 	 * @since 0.2.0
 	 *
-	 * @param string|null $heightClass The truck's `height_class`, or null when it has none.
+	 * @param HeightClass $heightClass The truck's class.
 	 */
-	public function classLimit( ?string $heightClass ): Measure {
-		return $this->classLimits[ $heightClass ?? self::USUAL_CLASS ] ?? $this->classLimits[ self::USUAL_CLASS ];
+	public function classLimit( HeightClass $heightClass ): Measure {
+		return $this->classLimits[ $heightClass->value ];
 	}
 }

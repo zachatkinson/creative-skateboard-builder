@@ -21,6 +21,13 @@ final readonly class Slot {
 	public const int MAX_UNITS = 99;
 
 	/**
+	 * The most characters a label and a line of help may have, as the schema says.
+	 */
+	public const int MAX_LABEL = 80;
+
+	public const int MAX_HELP = 300;
+
+	/**
 	 * Constructor.
 	 *
 	 * @param string      $key         The slot's key.
@@ -53,8 +60,8 @@ final readonly class Slot {
 	public static function fromFields( Fields $fields ): self {
 		return new self(
 			$fields->key( 'key' ),
-			$fields->text( 'label' ),
-			$fields->textOrEmpty( 'help' ),
+			$fields->text( 'label', self::MAX_LABEL ),
+			$fields->textOrEmpty( 'help', self::MAX_HELP ),
 			$fields->flag( 'required' ),
 			$fields->whole( 'units', 1, self::MAX_UNITS ),
 			SlotSources::fromFields( $fields->objectOrEmpty( 'sources' ) ),

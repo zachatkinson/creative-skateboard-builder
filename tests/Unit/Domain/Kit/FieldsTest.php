@@ -94,21 +94,49 @@ final class FieldsTest extends TestCase {
 
 	public function test_text(): void {
 		$root = self::root( array( 'label' => 'Deck', 'empty' => '', 'n' => 4, 'none' => null ) );
-		self::assertSame( 'Deck', $root->text( 'label' ) );
-		self::assertSame( '', $root->text( 'empty' ) );
-		self::assertSame( DocumentError::Missing, self::refusal( static fn() => $root->text( 'help' ) )->reason );
-		self::assertSame( 'help', self::refusal( static fn() => $root->text( 'help' ) )->path );
-		self::assertSame( DocumentError::WrongType, self::refusal( static fn() => $root->text( 'n' ) )->reason );
-		self::assertSame( 'n', self::refusal( static fn() => $root->text( 'n' ) )->path );
-		self::assertSame( DocumentError::WrongType, self::refusal( static fn() => $root->text( 'none' ) )->reason );
+		self::assertSame( 'Deck', $root->text( 'label', 80 ) );
+		self::assertSame( 'Deck', $root->text( 'label', 4 ), 'as long as it may be' );
+		self::assertSame( DocumentError::OutOfRange, self::refusal( static fn() => $root->text( 'label', 3 ) )->reason );
+		self::assertSame( 'label', self::refusal( static fn() => $root->text( 'label', 3 ) )->path );
+		self::assertSame( DocumentError::OutOfRange, self::refusal( static fn() => $root->text( 'empty', 80 ) )->reason, 'required text is a character or more' );
+		self::assertSame( DocumentError::Missing, self::refusal( static fn() => $root->text( 'help', 80 ) )->reason );
+		self::assertSame( 'help', self::refusal( static fn() => $root->text( 'help', 80 ) )->path );
+		self::assertSame( DocumentError::WrongType, self::refusal( static fn() => $root->text( 'n', 80 ) )->reason );
+		self::assertSame( 'n', self::refusal( static fn() => $root->text( 'n', 80 ) )->path );
+		self::assertSame( DocumentError::WrongType, self::refusal( static fn() => $root->text( 'none', 80 ) )->reason );
+	}
+
+	public function test_text_is_counted_in_characters_and_must_be_utf_8(): void {
+		$root = self::root( array( 'accents' => 'éééé', 'lines' => "a\nb", 'broken' => "ab\xC3", 'one' => 'é' ) );
+		self::assertSame( 'éééé', $root->text( 'accents', 4 ), 'four characters, eight bytes' );
+		self::assertSame( DocumentError::OutOfRange, self::refusal( static fn() => $root->text( 'accents', 3 ) )->reason );
+		self::assertSame( "a\nb", $root->text( 'lines', 3 ), 'a line break is a character' );
+		self::assertSame( DocumentError::OutOfRange, self::refusal( static fn() => $root->text( 'lines', 2 ) )->reason );
+		self::assertSame( 'é', $root->text( 'one', 1 ) );
+		self::assertSame( DocumentError::OutOfRange, self::refusal( static fn() => $root->text( 'broken', 80 ) )->reason );
+		self::assertSame( DocumentError::OutOfRange, self::refusal( static fn() => $root->textOrEmpty( 'broken', 80 ) )->reason );
 	}
 
 	public function test_text_that_may_be_left_out(): void {
-		$root = self::root( array( 'help' => 'Pick a width', 'n' => 4 ) );
-		self::assertSame( 'Pick a width', $root->textOrEmpty( 'help' ) );
-		self::assertSame( '', $root->textOrEmpty( 'label' ) );
-		self::assertSame( DocumentError::WrongType, self::refusal( static fn() => $root->textOrEmpty( 'n' ) )->reason );
+		$root = self::root( array( 'help' => 'Pick a width', 'empty' => '', 'n' => 4 ) );
+		self::assertSame( 'Pick a width', $root->textOrEmpty( 'help', 300 ) );
+		self::assertSame( 'Pick a width', $root->textOrEmpty( 'help', 12 ) );
+		self::assertSame( DocumentError::OutOfRange, self::refusal( static fn() => $root->textOrEmpty( 'help', 11 ) )->reason );
+		self::assertSame( 'help', self::refusal( static fn() => $root->textOrEmpty( 'help', 11 ) )->path );
+		self::assertSame( '', $root->textOrEmpty( 'label', 300 ) );
+		self::assertSame( '', $root->textOrEmpty( 'empty', 300 ), 'left empty is as good as left out' );
+		self::assertSame( DocumentError::WrongType, self::refusal( static fn() => $root->textOrEmpty( 'n', 300 ) )->reason );
 	}
+
+	public function test_text_in_a_form(): void {
+		$root = self::root( array( 'taxonomy' => 'pa_size', 'other' => 'size', 'n' => 4 ) );
+		self::assertSame( 'pa_size', $root->matching( 'taxonomy', '/\\Apa_[a-z]+\\z/D' ) );
+		self::assertSame( DocumentError::BadKey, self::refusal( static fn() => $root->matching( 'other', '/\\Apa_[a-z]+\\z/D' ) )->reason );
+		self::assertSame( 'other', self::refusal( static fn() => $root->matching( 'other', '/\\Apa_[a-z]+\\z/D' ) )->path );
+		self::assertSame( DocumentError::WrongType, self::refusal( static fn() => $root->matching( 'n', '/\\A.+\\z/D' ) )->reason );
+		self::assertSame( DocumentError::Missing, self::refusal( static fn() => $root->matching( 'gone', '/\\A.+\\z/D' ) )->reason );
+	}
+
 
 	/**
 	 * @return iterable<string, array{string, bool}>
@@ -238,8 +266,8 @@ final class FieldsTest extends TestCase {
 			)
 		);
 		$rows = $root->rows( 'slots', 2 );
-		self::assertSame( 'deck', $rows[0]->text( 'key' ) );
-		self::assertSame( 'trucks', $rows[1]->text( 'key' ) );
+		self::assertSame( 'deck', $rows[0]->key( 'key' ) );
+		self::assertSame( 'trucks', $rows[1]->key( 'key' ) );
 		self::assertSame( array(), $root->rows( 'empty', 5 ) );
 		self::assertSame( array(), $root->rows( 'missing', 5 ) );
 		self::assertSame( array(), $root->rows( 'empty', 0 ) );
@@ -263,7 +291,7 @@ final class FieldsTest extends TestCase {
 			)
 		);
 		self::assertCount( 2, $root->rowsFilled( 'slots', 2 ) );
-		self::assertSame( 'deck', $root->rowsFilled( 'one', 1 )[0]->text( 'key' ) );
+		self::assertSame( 'deck', $root->rowsFilled( 'one', 1 )[0]->key( 'key' ) );
 		$empty = self::refusal( static fn() => $root->rowsFilled( 'empty', 5 ) );
 		self::assertSame( DocumentError::OutOfRange, $empty->reason );
 		self::assertSame( 'empty', $empty->path );

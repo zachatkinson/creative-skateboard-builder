@@ -11,9 +11,10 @@ namespace CreativeBranding\SkateboardBuilder\Domain\Pricing;
 
 use CreativeBranding\SkateboardBuilder\Domain\Fit\Option;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Kit;
-use InvalidArgumentException;
+use CreativeBranding\SkateboardBuilder\Domain\Kit\InvalidMoney;
+use CreativeBranding\SkateboardBuilder\Domain\Kit\MoneyError;
+use CreativeBranding\SkateboardBuilder\Domain\Measure\Rounding;
 
-use function intdiv;
 
 /**
  * Each part at the price the server read for it, times the quantity the build takes; the optional build discount, a
@@ -43,11 +44,12 @@ final readonly class Pricer {
 	 * @param int                   $discount The build discount in basis points: 500 is 5 %. 0 is none.
 	 * @param int                   $decimals The shop's price decimals, for the fee.
 	 *
-	 * @throws InvalidArgumentException When the discount is below 0 or is 100 % or more.
+	 * @throws InvalidMoney When the discount is below 0 or is 100 % or more, or the shop has more than eight price decimals.
 	 */
 	public function quote( Kit $kit, array $build, bool $assembly, int $discount, int $decimals ): Quote {
 		if ( $discount < 0 || $discount >= self::WHOLE ) {
-			throw new InvalidArgumentException( 'discount_out_of_range' );
+			$refused = InvalidMoney::because( MoneyError::DiscountOutOfRange );
+			throw $refused;
 		}
 		$lines = array();
 		foreach ( $build as $slot => $option ) {
@@ -69,6 +71,6 @@ final readonly class Pricer {
 	 * @param int $discount The discount in basis points.
 	 */
 	public static function discounted( int $price, int $discount ): int {
-		return intdiv( 2 * $price * ( self::WHOLE - $discount ) + self::WHOLE, 2 * self::WHOLE );
+		return Rounding::halfUp( $price * ( self::WHOLE - $discount ), self::WHOLE );
 	}
 }

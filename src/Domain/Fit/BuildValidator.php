@@ -14,8 +14,6 @@ use CreativeBranding\SkateboardBuilder\Domain\Kit\Picks;
 use CreativeBranding\SkateboardBuilder\Domain\Rule\Finding;
 use CreativeBranding\SkateboardBuilder\Domain\Rule\Severity;
 
-use function array_filter;
-use function array_values;
 use function in_array;
 
 /**
@@ -72,7 +70,7 @@ final readonly class BuildValidator {
 					Problem::PartBlocked,
 					$slot->key,
 					$option->part->id,
-					array_values( array_filter( $option->findings, static fn( Finding $finding ): bool => Severity::Block === $finding->severity ) )
+					Finding::blocking( $option->findings )
 				);
 			}
 		}

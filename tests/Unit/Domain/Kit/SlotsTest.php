@@ -172,10 +172,27 @@ final class SlotsTest extends TestCase {
 		yield 'a key repeated' => array( $bend( 3, 'key', 'trucks' ), DocumentError::Duplicate, 'slots[3].key' );
 		yield 'the deck not first' => array( static fn( array $d ): array => array( 'slots' => array_reverse( $d['slots'] ) ) + $d, DocumentError::DeckNotFirst, 'slots[0].key' );
 		yield 'no deck at all' => array( $bend( 0, 'key', 'board' ), DocumentError::DeckNotFirst, 'slots[0].key' );
+		yield 'the risers after the hardware' => array(
+			static function ( array $d ): array {
+				[ $d['slots'][3], $d['slots'][5] ] = array( $d['slots'][5], $d['slots'][3] );
+				return $d;
+			},
+			DocumentError::RisersAfterHardware,
+			'slots[5].key',
+		);
 		yield 'a key that is not one' => array( $bend( 2, 'key', 'Wheels' ), DocumentError::BadKey, 'slots[2].key' );
 		yield 'no key' => array( $drop( 2, 'key' ), DocumentError::Missing, 'slots[2].key' );
 		yield 'no label' => array( $drop( 1, 'label' ), DocumentError::Missing, 'slots[1].label' );
 		yield 'a label that is a number' => array( $bend( 1, 'label', 7 ), DocumentError::WrongType, 'slots[1].label' );
+		yield 'a label of nothing' => array( $bend( 1, 'label', '' ), DocumentError::OutOfRange, 'slots[1].label' );
+		yield 'a label of eighty-one characters' => array( $bend( 1, 'label', str_repeat( 'é', 81 ) ), DocumentError::OutOfRange, 'slots[1].label' );
+		yield 'a label that is not text a browser can show' => array( $bend( 1, 'label', "Trucks\xC3" ), DocumentError::OutOfRange, 'slots[1].label' );
+		yield 'help of three hundred and one characters' => array( $bend( 1, 'help', str_repeat( 'a', 301 ) ), DocumentError::OutOfRange, 'slots[1].help' );
+		yield 'a taxonomy that is not an attribute' => array( $bend( 1, 'sources', array( 'attributes' => array( array( 'taxonomy' => 'product_cat' ) ) ) ), DocumentError::BadKey, 'slots[1].sources.attributes[0].taxonomy' );
+		yield 'a taxonomy with a capital' => array( $bend( 1, 'sources', array( 'attributes' => array( array( 'taxonomy' => 'pa_Size' ) ) ) ), DocumentError::BadKey, 'slots[1].sources.attributes[0].taxonomy' );
+		yield 'a taxonomy longer than WordPress keeps' => array( $bend( 1, 'sources', array( 'attributes' => array( array( 'taxonomy' => 'pa_' . str_repeat( 'a', 29 ) ) ) ) ), DocumentError::BadKey, 'slots[1].sources.attributes[0].taxonomy' );
+		yield 'a taxonomy with a second line' => array( $bend( 1, 'sources', array( 'attributes' => array( array( 'taxonomy' => "pa_size\n" ) ) ) ), DocumentError::BadKey, 'slots[1].sources.attributes[0].taxonomy' );
+		yield 'a taxonomy of the prefix alone' => array( $bend( 1, 'sources', array( 'attributes' => array( array( 'taxonomy' => 'pa_' ) ) ) ), DocumentError::BadKey, 'slots[1].sources.attributes[0].taxonomy' );
 		yield 'help that is a number' => array( $bend( 1, 'help', 7 ), DocumentError::WrongType, 'slots[1].help' );
 		yield 'required left out' => array( $drop( 4, 'required' ), DocumentError::Missing, 'slots[4].required' );
 		yield 'required as a word' => array( $bend( 4, 'required', 'yes' ), DocumentError::WrongType, 'slots[4].required' );
@@ -188,6 +205,8 @@ final class SlotsTest extends TestCase {
 		yield 'a category that is not an id' => array( $bend( 1, 'sources', array( 'categories' => array( 'trucks' ) ) ), DocumentError::WrongType, 'slots[1].sources.categories[0]' );
 		yield 'a brand that is not an id' => array( $bend( 1, 'sources', array( 'brands' => array( 0 ) ) ), DocumentError::OutOfRange, 'slots[1].sources.brands[0]' );
 		yield 'a product that is not an id' => array( $bend( 1, 'sources', array( 'products' => array( 5, -5 ) ) ), DocumentError::OutOfRange, 'slots[1].sources.products[1]' );
+		yield 'five hundred and one products' => array( $bend( 1, 'sources', array( 'products' => range( 1, 501 ) ) ), DocumentError::OutOfRange, 'slots[1].sources.products' );
+		yield 'five hundred and one terms of an attribute' => array( $bend( 1, 'sources', array( 'attributes' => array( array( 'taxonomy' => 'pa_size', 'terms' => range( 1, 501 ) ) ) ) ), DocumentError::OutOfRange, 'slots[1].sources.attributes[0].terms' );
 		yield 'an attribute with no taxonomy' => array( $bend( 1, 'sources', array( 'attributes' => array( array( 'terms' => array( 1 ) ) ) ) ), DocumentError::Missing, 'slots[1].sources.attributes[0].taxonomy' );
 		yield 'an attribute term that is not an id' => array( $bend( 1, 'sources', array( 'attributes' => array( array( 'taxonomy' => 'pa_size', 'terms' => array( 'x' ) ) ) ) ), DocumentError::WrongType, 'slots[1].sources.attributes[0].terms[0]' );
 		yield 'twenty-one attributes' => array( $bend( 1, 'sources', array( 'attributes' => array_fill( 0, 21, array( 'taxonomy' => 'pa_size' ) ) ) ), DocumentError::OutOfRange, 'slots[1].sources.attributes' );
@@ -225,6 +244,39 @@ final class SlotsTest extends TestCase {
 			self::assertSame( DocumentError::Duplicate, $e->reason );
 			self::assertSame( 'slots[1].key', $e->path );
 		}
+	}
+
+	public function test_hardware_with_no_risers_and_risers_with_no_hardware_are_both_a_kit(): void {
+		$bare = KitDocuments::slots();
+		unset( $bare['slots'][3] );
+		$bare['slots'] = array_values( $bare['slots'] );
+		self::assertNull( Slots::fromDocument( $bare )->get( 'risers' ) );
+		$boltless = KitDocuments::slots();
+		unset( $boltless['slots'][5] );
+		$boltless['slots'] = array_values( $boltless['slots'] );
+		self::assertNull( Slots::fromDocument( $boltless )->get( 'hardware' ) );
+		self::assertSame( 'slots_risers_after_hardware', DocumentError::RisersAfterHardware->value );
+	}
+
+	public function test_text_is_as_long_as_the_schema_allows_counted_in_characters(): void {
+		$document                      = KitDocuments::slots();
+		$document['slots'][1]['label'] = str_repeat( 'é', 80 );
+		$document['slots'][1]['help']  = str_repeat( "é\n", 150 );
+		$document['slots'][2]['help']  = '';
+		$document['slots'][1]['sources'] = array( 'attributes' => array( array( 'taxonomy' => 'pa_' . str_repeat( 'a', 26 ) . '-9' ), array( 'taxonomy' => 'pa_x' ) ) );
+		$slots                         = Slots::fromDocument( $document );
+		self::assertSame( str_repeat( 'é', 80 ), $slots->get( 'trucks' )?->label );
+		self::assertSame( str_repeat( "é\n", 150 ), $slots->get( 'trucks' )?->help );
+		self::assertSame( '', $slots->get( 'wheels' )?->help );
+		self::assertSame( 'pa_x', $slots->get( 'trucks' )?->sources->attributes[1]['taxonomy'] ?? '' );
+		self::assertSame( array( 80, 300 ), array( \CreativeBranding\SkateboardBuilder\Domain\Kit\Slot::MAX_LABEL, \CreativeBranding\SkateboardBuilder\Domain\Kit\Slot::MAX_HELP ) );
+	}
+
+	public function test_five_hundred_ids_are_allowed(): void {
+		self::assertSame( 500, \CreativeBranding\SkateboardBuilder\Domain\Kit\Fields::MAX_IDS );
+		$document                        = KitDocuments::slots();
+		$document['slots'][1]['sources'] = array( 'products' => range( 1, 500 ) );
+		self::assertCount( 500, Slots::fromDocument( $document )->get( 'trucks' )?->sources->products ?? array() );
 	}
 
 	public function test_only_the_first_slot_must_be_the_deck(): void {

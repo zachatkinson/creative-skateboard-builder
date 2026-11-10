@@ -96,6 +96,32 @@ final class ChangePlannerTest extends TestCase {
 		}
 	}
 
+	public function test_a_changes_findings_are_a_list_when_a_note_comes_before_the_block(): void {
+		// A kit that asks for trucks after wheels and bearings: the truck's note about its wheel limit comes first, and
+		// its 10 mm axle, which the bearings do not fit, second.
+		$document          = KitDocuments::slots();
+		$rows              = array_column( $document['slots'], null, 'key' );
+		$document['slots'] = array( $rows['deck'], $rows['wheels'], $rows['risers'], $rows['bearings'], $rows['trucks'], $rows['hardware'], $rows['grip'] );
+		$before            = Builds::complete( array( SlotKey::TRUCKS => Parts::indy( '149', array( 'baseplate' => 'new_school', 'axle_diameter' => '10', 'set_size' => 2 ) ) ) );
+		$list              = ( new ChangePlanner( FitEngine::standard() ) )->plan( KitDocuments::kit( $document ), $before, SlotKey::DECK, Builds::deck( '8.5', 101 ), array() );
+
+		self::assertCount( 1, $list->changes );
+		self::assertSame( SlotKey::TRUCKS, $list->changes[0]->slot );
+		self::assertSame( array( 0 ), array_keys( $list->changes[0]->findings ) );
+		self::assertSame( MessageCode::BoreMismatch, $list->changes[0]->findings[0]->code );
+	}
+
+	public function test_a_slot_the_kit_lacks_changes_nothing(): void {
+		$before = Builds::complete();
+		$list   = self::plan( $before, 'stickers', Parts::of( array( 'set_size' => 1 ), 900 ) );
+
+		self::assertEquals( $before, $list->proposed, 'every pick is still there, and the stray part is not' );
+		self::assertNull( $list->proposed->part( 'stickers' ) );
+		self::assertSame( $before->slots(), $list->kept );
+		self::assertSame( array(), $list->changes );
+		self::assertTrue( $list->isClean() );
+	}
+
 	public function test_a_change_that_breaks_nothing_is_clean(): void {
 		$before = Builds::complete();
 		$list   = self::plan( $before, SlotKey::DECK, Builds::deck( '8.4', 101 ) );

@@ -17,7 +17,7 @@ for fixture in "$fixtures"/*.fixture; do
 	case "$name" in
 		*.pot) cp "$fixture" "$root/languages/creative-skateboard-builder.pot" ;;
 		*.yml) mkdir -p "$root/.github/workflows"; cp "$fixture" "$root/.github/workflows/release.yml" ;;
-		6-*) mkdir -p "$root/src/Domain"; cp "$fixture" "$root/src/Domain/Probe.php" ;;
+		6-*|11-*|12-*) mkdir -p "$root/src/Domain"; cp "$fixture" "$root/src/Domain/Probe.php" ;;
 		*) cp "$fixture" "$root/src/Support/Probe.php" ;;
 	esac
 	code=0
@@ -32,5 +32,18 @@ for fixture in "$fixtures"/*.fixture; do
 		echo "Gates self-test: gate ${gate} did not reject ${name}."; status=1
 	fi
 done
+# The runs that measure the domain, and the benchmark, must fail when there is nothing for them to measure (D-062).
+empty="$(mktemp -d)"
+for run in analyse-domain infection coverage; do
+	if CBUILD_DOMAIN_DIR="$empty" bash "$tools/$run.sh" > /dev/null 2>&1; then
+		echo "Gates self-test: tools/$run.sh passed with no domain to measure."; status=1
+	fi
+	count=$((count + 1))
+done
+if CBUILD_TESTS_DIR="$empty" bash "$tools/benchmark.sh" > /dev/null 2>&1; then
+	echo "Gates self-test: tools/benchmark.sh passed with no benchmark to run."; status=1
+fi
+count=$((count + 1))
+rmdir "$empty"
 if [ "$status" -eq 0 ]; then echo "Gates self-test: ${count} snippets, each rejected by its gate (and the clean one passed)."; fi
 exit "$status"

@@ -11,7 +11,8 @@ namespace CreativeBranding\SkateboardBuilder\Tests\Unit\Domain\Measure;
 
 use CreativeBranding\SkateboardBuilder\Domain\Measure\Measure;
 use CreativeBranding\SkateboardBuilder\Domain\Measure\Unit;
-use InvalidArgumentException;
+use CreativeBranding\SkateboardBuilder\Domain\Measure\InvalidMeasure;
+use CreativeBranding\SkateboardBuilder\Domain\Measure\MeasureError;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -30,8 +31,13 @@ final class MeasureTest extends TestCase {
 	}
 
 	public function test_a_measure_is_never_negative(): void {
-		$this->expectException( InvalidArgumentException::class );
-		Measure::inches( -1 );
+		try {
+			Measure::inches( -1 );
+			self::fail( 'accepted' );
+		} catch ( InvalidMeasure $e ) {
+			self::assertSame( MeasureError::Negative, $e->reason );
+			self::assertSame( 'measure_negative', $e->getMessage() );
+		}
 	}
 
 	public function test_an_inch_is_25_4_millimetres_exactly(): void {

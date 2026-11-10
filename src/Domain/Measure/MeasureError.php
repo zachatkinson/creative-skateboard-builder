@@ -16,4 +16,5 @@ enum MeasureError: string {
 
 	case Malformed       = 'measure_malformed';
 	case ZeroDenominator = 'measure_zero_denominator';
+	case Negative        = 'measure_negative';
 }

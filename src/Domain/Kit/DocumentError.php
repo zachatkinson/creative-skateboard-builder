@@ -14,16 +14,17 @@ namespace CreativeBranding\SkateboardBuilder\Domain\Kit;
  */
 enum DocumentError: string {
 
-	case NotAnObject    = 'document_not_an_object';
-	case UnknownVersion = 'document_unknown_version';
-	case Missing        = 'document_field_missing';
-	case WrongType      = 'document_wrong_type';
-	case OutOfRange     = 'document_out_of_range';
-	case BadMeasure     = 'document_bad_measure';
-	case BadKey         = 'document_bad_key';
-	case Duplicate      = 'document_duplicate';
-	case DeckNotFirst   = 'slots_deck_not_first';
-	case OutOfOrder     = 'rules_out_of_order';
-	case UnknownSlot    = 'presets_unknown_slot';
-	case SlotNotFilled  = 'presets_slot_not_filled';
+	case NotAnObject         = 'document_not_an_object';
+	case UnknownVersion      = 'document_unknown_version';
+	case Missing             = 'document_field_missing';
+	case WrongType           = 'document_wrong_type';
+	case OutOfRange          = 'document_out_of_range';
+	case BadMeasure          = 'document_bad_measure';
+	case BadKey              = 'document_bad_key';
+	case Duplicate           = 'document_duplicate';
+	case DeckNotFirst        = 'slots_deck_not_first';
+	case RisersAfterHardware = 'slots_risers_after_hardware';
+	case OutOfOrder          = 'rules_out_of_order';
+	case UnknownSlot         = 'presets_unknown_slot';
+	case SlotNotFilled       = 'presets_slot_not_filled';
 }

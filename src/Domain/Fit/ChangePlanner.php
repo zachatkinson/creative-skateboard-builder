@@ -14,12 +14,9 @@ use CreativeBranding\SkateboardBuilder\Domain\Kit\Part;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Picks;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\SlotKey;
 use CreativeBranding\SkateboardBuilder\Domain\Rule\Finding;
-use CreativeBranding\SkateboardBuilder\Domain\Rule\Severity;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\SpecKey;
 
 use function abs;
-use function array_filter;
-use function array_values;
 
 use const PHP_INT_MAX;
 
@@ -65,6 +62,10 @@ final readonly class ChangePlanner {
 	 * @param array<string, list<Part>> $candidates Each later slot's parts, by slot key, as the server found them.
 	 */
 	public function plan( Kit $kit, Picks $before, string $slot, Part $part, array $candidates ): ChangeList {
+		if ( null === $kit->slots->get( $slot ) ) {
+			// A slot the kit lacks has nothing before or after it: the build stands as it is.
+			return new ChangeList( $before, $before, $before->slots(), array() );
+		}
 		$earlier  = $kit->slots->before( $slot );
 		$proposed = $before->only( $earlier )->with( $slot, $part );
 		$kept     = array();
@@ -79,12 +80,7 @@ final readonly class ChangePlanner {
 			if ( null === $was ) {
 				continue;
 			}
-			$findings = array_values(
-				array_filter(
-					$this->engine->judge( $kit, $later, $was, $proposed ),
-					static fn( Finding $finding ): bool => Severity::Block === $finding->severity
-				)
-			);
+			$findings = Finding::blocking( $this->engine->judge( $kit, $later, $was, $proposed ) );
 			if ( array() === $findings ) {
 				$kept[]   = $later;
 				$proposed = $proposed->with( $later, $was );

@@ -18,7 +18,8 @@ use CreativeBranding\SkateboardBuilder\Domain\Pricing\Pricer;
 use CreativeBranding\SkateboardBuilder\Domain\Pricing\Quote;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Domain\KitDocuments;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Domain\Parts;
-use InvalidArgumentException;
+use CreativeBranding\SkateboardBuilder\Domain\Kit\InvalidMoney;
+use CreativeBranding\SkateboardBuilder\Domain\Kit\MoneyError;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
@@ -205,8 +206,9 @@ final class PricerTest extends TestCase {
 		try {
 			( new Pricer() )->quote( $kit, self::build( $kit ), true, $discount, 2 );
 			self::assertTrue( $accepted );
-		} catch ( InvalidArgumentException $e ) {
+		} catch ( InvalidMoney $e ) {
 			self::assertFalse( $accepted );
+			self::assertSame( MoneyError::DiscountOutOfRange, $e->reason );
 			self::assertSame( 'discount_out_of_range', $e->getMessage() );
 		}
 	}

@@ -18,8 +18,6 @@ use CreativeBranding\SkateboardBuilder\Domain\Rule\RuleSet;
 use CreativeBranding\SkateboardBuilder\Domain\Rule\Severity;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\SpecKey;
 
-use function array_filter;
-use function array_values;
 use function intdiv;
 
 /**
@@ -80,12 +78,12 @@ final readonly class FitEngine {
 	 * @return list<Finding>
 	 */
 	public function judge( Kit $kit, string $slot, Part $part, Picks $others ): array {
-		$findings = array_values(
-			array_filter(
-				$this->rules->check( $others->with( $slot, $part ), $kit->rules ),
-				static fn( Finding $finding ): bool => $finding->reads( $slot )
-			)
-		);
+		$findings = array();
+		foreach ( $this->rules->check( $others->with( $slot, $part ), $kit->rules ) as $finding ) {
+			if ( $finding->reads( $slot ) ) {
+				$findings[] = $finding;
+			}
+		}
 		if ( null === $part->specs->count( SpecKey::SetSize ) ) {
 			$findings[] = Finding::missing( RuleId::R7, $slot, SpecKey::SetSize );
 		}

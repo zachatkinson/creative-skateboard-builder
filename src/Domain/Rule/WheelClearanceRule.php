@@ -12,6 +12,7 @@ namespace CreativeBranding\SkateboardBuilder\Domain\Rule;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Picks;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\RuleSettings;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\SlotKey;
+use CreativeBranding\SkateboardBuilder\Domain\Spec\HeightClass;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\SpecKey;
 
 /**
@@ -52,7 +53,7 @@ final readonly class WheelClearanceRule implements Rule {
 		$source = Source::Maker;
 		$limit  = $read->optional( SlotKey::TRUCKS, SpecKey::MaxWheel );
 		if ( null === $limit ) {
-			$class      = $read->optionalChoice( SlotKey::TRUCKS, SpecKey::HeightClass ) ?? RuleSettings::USUAL_CLASS;
+			$class      = HeightClass::of( $read->optionalChoice( SlotKey::TRUCKS, SpecKey::HeightClass ) );
 			$source     = Source::Kit;
 			$limit      = $settings->classLimit( $class );
 			$findings[] = new Finding(
@@ -62,7 +63,7 @@ final readonly class WheelClearanceRule implements Rule {
 				Source::Kit,
 				array( SlotKey::TRUCKS ),
 				array(
-					'height_class' => $class,
+					'height_class' => $class->value,
 					'limit'        => $limit,
 				)
 			);

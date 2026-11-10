@@ -2,7 +2,7 @@
 /**
  * Fails when the domain's coverage is under its floors: 100 % of src/Domain's lines, and 100 % of its branches when the
  * domain's Cobertura report is given (docs/AUDIT.md: Unit tests). The unit suite's share of all of src/ is printed and
- * not judged: the 90 % floor is on both suites together (tools/coverage-merge.php, D-050).
+ * not judged: the 95 % floor is on both suites together (tools/coverage-merge.php, D-050).
  *
  * Run: php tools/coverage-floor.php tmp/coverage.xml [tmp/coverage-domain.xml]
  *

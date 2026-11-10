@@ -12,6 +12,8 @@ namespace CreativeBranding\SkateboardBuilder\Domain\Rule;
 use CreativeBranding\SkateboardBuilder\Domain\Measure\Measure;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\SpecKey;
 
+use function array_diff;
+use function array_keys;
 use function in_array;
 
 /**
@@ -32,7 +34,9 @@ final readonly class Finding {
 	 * @param MessageCode                   $code     Why.
 	 * @param Source                        $source   Where the figure came from.
 	 * @param list<string>                  $slots    The slots it read, in the rule's own order.
-	 * @param array<string, Measure|string> $values   The figures behind it, by name.
+	 * @param array<string, Measure|string> $values   The figures behind it, by name: only names its code gives.
+	 *
+	 * @throws InvalidFinding When a value has a name the code does not give.
 	 */
 	public function __construct(
 		public RuleId $rule,
@@ -41,7 +45,11 @@ final readonly class Finding {
 		public Source $source,
 		public array $slots,
 		public array $values
-	) {}
+	) {
+		if ( array() !== array_diff( array_keys( $values ), $code->values() ) ) {
+			throw InvalidFinding::valueNotNamed();
+		}
+	}
 
 	/**
 	 * A part lacks a spec the rule needs: a block on that part's slot alone, whatever else is picked.
@@ -80,5 +88,24 @@ final readonly class Finding {
 			$worst = $worst->worst( $finding->severity );
 		}
 		return $worst;
+	}
+
+	/**
+	 * The findings among some that block, in the order given: why a part is hidden, refused or swapped. The one place
+	 * that says which findings those are.
+	 *
+	 * @since 0.2.0
+	 *
+	 * @param list<self> $findings The findings.
+	 * @return list<self>
+	 */
+	public static function blocking( array $findings ): array {
+		$blocking = array();
+		foreach ( $findings as $finding ) {
+			if ( Severity::Block === $finding->severity ) {
+				$blocking[] = $finding;
+			}
+		}
+		return $blocking;
 	}
 }

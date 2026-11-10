@@ -21,7 +21,10 @@
  *                         a schema cannot change shape without the snapshot changing with it;
  *   spec keys             Domain\Spec\SpecKey's cases, with each one's kind and unit;
  *   message codes         Domain\Rule\MessageCode's cases, with the severities and sources a finding carries;
- *   build problems        Domain\Fit\Problem's cases: why the validator refuses a build.
+ *   build problems        Domain\Fit\Problem's cases: why the validator refuses a build;
+ *   rule ids              Domain\Rule\RuleId's cases, with the names of the values each message code carries;
+ *   refusal codes         the cases of the domain's five error enums: why a document, a spec, a measure, a part or a
+ *                         sum was refused.
  *
  * @package CreativeBranding\SkateboardBuilder
  */
@@ -296,9 +299,33 @@ if ( is_file( $cbuild_root . '/src/Domain/Fit/Problem.php' ) ) {
 }
 $cbuild_surface['build_problems'] = $cbuild_problems;
 
+// The rules' ids, the names of the values each message code carries, and the codes the domain refuses bad input with.
+// The edge keys its notices and its translations on all three.
+$cbuild_rule_ids      = array();
+$cbuild_value_names   = array();
+$cbuild_refusal_codes = array();
+if ( is_file( $cbuild_root . '/src/Domain/Rule/RuleId.php' ) ) {
+	require_once $cbuild_root . '/vendor/autoload.php';
+	$cbuild_domain = 'CreativeBranding\\SkateboardBuilder\\Domain\\';
+	foreach ( ( $cbuild_domain . 'Rule\\RuleId' )::cases() as $cbuild_case ) {
+		$cbuild_rule_ids[] = $cbuild_case->value;
+	}
+	foreach ( ( $cbuild_domain . 'Rule\\MessageCode' )::cases() as $cbuild_case ) {
+		$cbuild_value_names[ $cbuild_case->value ] = implode( ' ', $cbuild_case->values() );
+	}
+	foreach ( array( 'Kit\\DocumentError', 'Spec\\SpecError', 'Measure\\MeasureError', 'Kit\\PartError', 'Kit\\MoneyError' ) as $cbuild_enum ) {
+		foreach ( ( $cbuild_domain . $cbuild_enum )::cases() as $cbuild_case ) {
+			$cbuild_refusal_codes[] = $cbuild_case->value;
+		}
+	}
+}
+$cbuild_surface['rule_ids']       = $cbuild_rule_ids;
+$cbuild_surface['message_values'] = $cbuild_value_names;
+$cbuild_surface['refusal_codes']  = $cbuild_refusal_codes;
+
 // Groups that describe another group's items, or whose values are too plain a word to look for in the docs, and are
 // held by the snapshot alone.
-$cbuild_details = array( 'schema_digests', 'spec_kinds', 'severities', 'sources' );
+$cbuild_details = array( 'schema_digests', 'spec_kinds', 'severities', 'sources', 'message_values' );
 
 $cbuild_json     = json_encode( $cbuild_surface, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR ) . "\n";
 $cbuild_snapshot = $cbuild_root . '/tests/Fixtures/api-surface.json';
@@ -344,6 +371,17 @@ foreach ( $cbuild_surface as $cbuild_key => $cbuild_items ) {
 // docs/HOOKS.md gives beside the item; an entry not yet released is read from [Unreleased].
 $cbuild_changelog = is_readable( $cbuild_root . '/CHANGELOG.md' ) ? (string) file_get_contents( $cbuild_root . '/CHANGELOG.md' ) : '';
 $cbuild_entries   = cbuild_api_changelog_entries( $cbuild_changelog );
+// The fourth: the plugin is at the version its newest item is dated to, and readme.txt has that version's entry for
+// shop owners, which the release's manifest is made from (D-053). Without this a milestone's merge could be tagged
+// while the header still gave the last version, and the release would fail, or ship under the old number (D-062).
+$cbuild_main_file      = is_readable( $cbuild_root . '/creative-skateboard-builder.php' ) ? (string) file_get_contents( $cbuild_root . '/creative-skateboard-builder.php' ) : '';
+$cbuild_plugin_version = 1 === preg_match( '/^ \* Version:\s+(\d+\.\d+\.\d+)\s*$/m', $cbuild_main_file, $cbuild_found ) ? $cbuild_found[1] : '0.0.0';
+$cbuild_readme         = is_readable( $cbuild_root . '/readme.txt' ) ? (string) file_get_contents( $cbuild_root . '/readme.txt' ) : '';
+$cbuild_ahead          = array();
+if ( 1 !== preg_match( '/^= ' . preg_quote( $cbuild_plugin_version, '/' ) . ' =$/m', $cbuild_readme ) ) {
+	fwrite( STDERR, "readme.txt has no changelog entry for {$cbuild_plugin_version}, the plugin header's version.\n" );
+	$cbuild_status = 1;
+}
 foreach ( $cbuild_surface as $cbuild_key => $cbuild_items ) {
 	if ( in_array( $cbuild_key, $cbuild_details, true ) ) {
 		continue;
@@ -358,12 +396,20 @@ foreach ( $cbuild_surface as $cbuild_key => $cbuild_items ) {
 			$cbuild_status = 1;
 			continue;
 		}
+		if ( version_compare( $cbuild_since, $cbuild_plugin_version, '>' ) ) {
+			$cbuild_ahead[ $cbuild_since ] = ( $cbuild_ahead[ $cbuild_since ] ?? 0 ) + 1;
+		}
 		$cbuild_where = isset( $cbuild_entries[ $cbuild_since ] ) ? $cbuild_since : 'Unreleased';
 		if ( ! str_contains( $cbuild_entries[ $cbuild_where ] ?? '', '`' . $cbuild_item . '`' ) ) {
 			fwrite( STDERR, "CHANGELOG.md's [{$cbuild_where}] entry does not name {$cbuild_key} `{$cbuild_item}`, which docs/HOOKS.md dates to {$cbuild_since}.\n" );
 			$cbuild_status = 1;
 		}
 	}
+}
+
+foreach ( $cbuild_ahead as $cbuild_since => $cbuild_count ) {
+	fwrite( STDERR, "docs/HOOKS.md dates {$cbuild_count} item(s) to {$cbuild_since}, and the plugin header says {$cbuild_plugin_version}: the version moves with the first item.\n" );
+	$cbuild_status = 1;
 }
 
 if ( 0 === $cbuild_status ) {

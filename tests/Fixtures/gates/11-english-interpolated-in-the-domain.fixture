@@ -1,0 +1,10 @@
+<?php
+declare( strict_types=1 );
+
+namespace CreativeBranding\SkateboardBuilder\Domain;
+
+final class Probe {
+	public function reason( string $slot ): string {
+		return "No part for {$slot} is left";
+	}
+}

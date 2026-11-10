@@ -4,6 +4,8 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-09
+
 ### Added
 
 - The kit's four document schemas, `schema/kit-slots.json`, `schema/kit-rules.json`, `schema/kit-presets.json` and `schema/kit-assembly.json`, each at `schema_version` 1, with the domain's value objects that read the same documents and an integration test that holds the two together.
@@ -15,7 +17,12 @@ All notable changes to this project are documented here. The format follows [Kee
 - The build validator the cart will use, which is the engine asked about a whole build, with the problems `slot_unknown`, `slot_empty`, `part_not_in_slot`, `part_sold_out` and `part_blocked`; and the invariant, over seeded random builds on a generated catalogue: what the engine offers, the validator accepts, and what it hides, the validator refuses (D-059).
 - The picture's layout, from the specs to each layer's position and size: the deck by its width and length, the trucks by the wheelbase or the shape's usual one, the wheels at the axles' ends and the grip as a strip along the edge. It names every spec it had to assume (D-060).
 - The engine's benchmark: each slot of a generated catalogue at 500, 1,000 and 2,000 candidates. It fails when the slowest slot at 500 takes 40 ms or more, or when the time grows faster than the candidates. `docs/BENCHMARK.md` has the figures.
-- `composer api:check` reads the schemas, by path and by content, the spec keys, with each one's kind and unit, the message codes and the build problems.
+- The rules' ids `r1`, `r2`, `r3`, `r4`, `r5`, `r6` and `r7`, and the names of the values each message code carries, which a finding may not add to.
+- The refusal codes, each the `reason` of a typed exception: `document_not_an_object`, `document_unknown_version`, `document_field_missing`, `document_wrong_type`, `document_out_of_range`, `document_bad_measure`, `document_bad_key`, `document_duplicate`, `slots_deck_not_first`, `slots_risers_after_hardware`, `rules_out_of_order`, `presets_unknown_slot`, `presets_slot_not_filled`, `spec_wrong_kind`, `spec_unknown_choice`, `spec_not_positive`, `spec_too_many`, `measure_malformed`, `measure_zero_denominator`, `measure_negative`, `part_id_not_positive`, `part_price_negative`, `discount_out_of_range` and `price_decimals_over_eight`.
+- R1 holds a truck to whichever end of its deck range the maker publishes; the other end is open (D-062).
+- The assembly fee in the shop's minor units at up to eight price decimals.
+- Gates: no words in a string in `src/Domain` (11) and no exception of PHP's own made there (12). The runs that measure the domain, and the benchmark, fail when they find nothing to measure.
+- `composer api:check` reads the schemas, by path and by content, the spec keys, with each one's kind and unit, the message codes with their value names, the build problems, the rule ids and the refusal codes. It also fails when `docs/HOOKS.md` dates an item to a version newer than the plugin header's, or `readme.txt` has no entry for that version (D-062).
 
 ### Changed
 

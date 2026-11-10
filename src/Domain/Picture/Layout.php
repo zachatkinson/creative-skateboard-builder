@@ -9,10 +9,12 @@ declare( strict_types=1 );
 
 namespace CreativeBranding\SkateboardBuilder\Domain\Picture;
 
+use CreativeBranding\SkateboardBuilder\Domain\Kit\Part;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Picks;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\SlotKey;
 use CreativeBranding\SkateboardBuilder\Domain\Measure\Measure;
 use CreativeBranding\SkateboardBuilder\Domain\Measure\Unit;
+use CreativeBranding\SkateboardBuilder\Domain\Spec\HolePattern;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\SpecKey;
 
 use function intdiv;
@@ -102,7 +104,7 @@ final readonly class Layout {
 		$base    = $deck->specs->measure( SpecKey::Wheelbase );
 		if ( null === $base ) {
 			$assumed[] = SpecKey::Wheelbase;
-			$base      = Measure::inches( null === $length ? self::usualWheelbase( $width ) : intdiv( $length->tenThousandths * self::WHEELBASE_SHARE, 1000 ) );
+			$base      = self::usualWheelbase( $width, $length );
 		}
 		if ( null === $length ) {
 			$assumed[] = SpecKey::DeckLength;
@@ -122,21 +124,53 @@ final readonly class Layout {
 		if ( null === $axle && ( null !== $trucks || null !== $wheels ) ) {
 			$assumed[] = SpecKey::AxleWidth;
 		}
+		if ( null !== $wheels && null === $wheels->specs->measure( SpecKey::WheelDiameter ) ) {
+			$assumed[] = SpecKey::WheelDiameter;
+		}
 		$across  = self::mm( $axle ?? $width );
-		$spacing = 'old_school' === $deck->specs->choice( SpecKey::HolePattern ) ? self::OLD_SCHOOL_SPACING : self::HOLE_SPACING;
+		$spacing = HolePattern::OldSchool->value === $deck->specs->choice( SpecKey::HolePattern ) ? self::OLD_SCHOOL_SPACING : self::HOLE_SPACING;
 		// The wheelbase runs between the inner holes, so a truck's middle is half a spacing further out.
 		$out = intdiv( self::mm( $base ) + $spacing, 2 );
+		return new self(
+			max( $wide, $across ),
+			$long,
+			array( ...$layers, ...self::trucks( $trucks, $out, $across, $spacing ), ...self::wheels( $wheels, $out, $across ) ),
+			$assumed
+		);
+	}
+
+	/**
+	 * The two trucks' layers, the nose's first; none when no trucks are picked.
+	 *
+	 * @param Part|null $trucks  The trucks.
+	 * @param int       $out     How far a truck's middle is from the deck's.
+	 * @param int       $across  The axle's width.
+	 * @param int       $spacing Between a baseplate's two rows of holes.
+	 * @return list<Layer>
+	 */
+	private static function trucks( ?Part $trucks, int $out, int $across, int $spacing ): array {
+		$layers = array();
 		if ( null !== $trucks ) {
 			foreach ( array( $out, -$out ) as $y ) {
 				$layers[] = new Layer( SlotKey::TRUCKS, $trucks->id, 0, $y, $across, $spacing + self::BASEPLATE_MARGIN );
 			}
 		}
+		return $layers;
+	}
+
+	/**
+	 * The four wheels' layers, the nose's pair first and the left of each pair first; none when no wheels are picked.
+	 *
+	 * @param Part|null $wheels The wheels.
+	 * @param int       $out    How far an axle is from the deck's middle.
+	 * @param int       $across The axle's width.
+	 * @return list<Layer>
+	 */
+	private static function wheels( ?Part $wheels, int $out, int $across ): array {
+		$layers = array();
 		if ( null !== $wheels ) {
 			$diameter = $wheels->specs->measure( SpecKey::WheelDiameter );
-			if ( null === $diameter ) {
-				$assumed[] = SpecKey::WheelDiameter;
-			}
-			$round = null === $diameter ? self::USUAL_WHEEL : self::mm( $diameter );
+			$round    = null === $diameter ? self::USUAL_WHEEL : self::mm( $diameter );
 			// A wheel is about three fifths as wide as it is tall, and its outer face sits at the axle's end.
 			$thick = intdiv( $round * 3, 5 );
 			$side  = intdiv( $across - $thick, 2 );
@@ -146,21 +180,25 @@ final readonly class Layout {
 				}
 			}
 		}
-		return new self( max( $wide, $across ), $long, $layers, $assumed );
+		return $layers;
 	}
 
 	/**
-	 * The usual wheelbase of a deck this wide, in ten-thousandths of an inch.
+	 * The usual wheelbase of a deck that gives none: a share of its length when that is known, otherwise by its width.
 	 *
-	 * @param Measure $width The deck's width, in inches.
+	 * @param Measure      $width  The deck's width, in inches.
+	 * @param Measure|null $length The deck's length, in inches, when it gives one.
 	 */
-	private static function usualWheelbase( Measure $width ): int {
+	private static function usualWheelbase( Measure $width, ?Measure $length ): Measure {
+		if ( null !== $length ) {
+			return Measure::inches( intdiv( $length->tenThousandths * self::WHEELBASE_SHARE, 1000 ) );
+		}
 		foreach ( self::USUAL_WHEELBASES as $from => $usual ) {
 			if ( $width->tenThousandths >= $from ) {
-				return $usual;
+				return Measure::inches( $usual );
 			}
 		}
-		return self::NARROW_WHEELBASE;
+		return Measure::inches( self::NARROW_WHEELBASE );
 	}
 
 	/**

@@ -14,7 +14,8 @@ use CreativeBranding\SkateboardBuilder\Domain\Kit\Picks;
 use CreativeBranding\SkateboardBuilder\Domain\Measure\Measure;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\SpecKey;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\Specs;
-use InvalidArgumentException;
+use CreativeBranding\SkateboardBuilder\Domain\Kit\InvalidPart;
+use CreativeBranding\SkateboardBuilder\Domain\Kit\PartError;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -43,7 +44,8 @@ final class PicksTest extends TestCase {
 		try {
 			self::part( 0 );
 			self::fail( 'accepted' );
-		} catch ( InvalidArgumentException $e ) {
+		} catch ( InvalidPart $e ) {
+			self::assertSame( PartError::IdNotPositive, $e->reason );
 			self::assertSame( 'part_id_not_positive', $e->getMessage() );
 		}
 	}
@@ -52,7 +54,8 @@ final class PicksTest extends TestCase {
 		try {
 			new Part( 1, '', Specs::none(), -1, true );
 			self::fail( 'accepted' );
-		} catch ( InvalidArgumentException $e ) {
+		} catch ( InvalidPart $e ) {
+			self::assertSame( PartError::PriceNegative, $e->reason );
 			self::assertSame( 'part_price_negative', $e->getMessage() );
 		}
 	}

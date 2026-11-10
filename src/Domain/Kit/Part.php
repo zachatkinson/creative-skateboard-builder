@@ -10,7 +10,6 @@ declare( strict_types=1 );
 namespace CreativeBranding\SkateboardBuilder\Domain\Kit;
 
 use CreativeBranding\SkateboardBuilder\Domain\Spec\Specs;
-use InvalidArgumentException;
 
 /**
  * A part as the engine sees it (spec: Vocabulary, Part): its id, its brand, its specs, and the price and stock the
@@ -29,14 +28,16 @@ final readonly class Part {
 	 * @param int    $price   The price of one, in the currency's minor units.
 	 * @param bool   $inStock Whether it can be bought now.
 	 *
-	 * @throws InvalidArgumentException When the id is not positive or the price is negative.
+	 * @throws InvalidPart When the id is not positive or the price is negative.
 	 */
 	public function __construct( public int $id, public string $brand, public Specs $specs, public int $price, public bool $inStock ) {
 		if ( $id < 1 ) {
-			throw new InvalidArgumentException( 'part_id_not_positive' );
+			$refused = InvalidPart::because( PartError::IdNotPositive );
+			throw $refused;
 		}
 		if ( $price < 0 ) {
-			throw new InvalidArgumentException( 'part_price_negative' );
+			$refused = InvalidPart::because( PartError::PriceNegative );
+			throw $refused;
 		}
 	}
 }

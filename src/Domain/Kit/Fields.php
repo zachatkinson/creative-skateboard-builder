@@ -10,6 +10,7 @@ declare( strict_types=1 );
 namespace CreativeBranding\SkateboardBuilder\Domain\Kit;
 
 use CreativeBranding\SkateboardBuilder\Domain\Measure\Measure;
+use CreativeBranding\SkateboardBuilder\Domain\Measure\Rounding;
 use CreativeBranding\SkateboardBuilder\Domain\Measure\Unit;
 
 use function array_is_list;
@@ -21,7 +22,6 @@ use function is_bool;
 use function is_int;
 use function is_string;
 use function preg_match;
-use function substr;
 
 /**
  * One object of a kit's JSON document, with the path that leads to it. Every read names its field, checks its type
@@ -34,6 +34,11 @@ final readonly class Fields {
 	 * The only version of each document so far.
 	 */
 	public const VERSION = 1;
+
+	/**
+	 * The most ids one list may hold, as the schemas say.
+	 */
+	public const int MAX_IDS = 500;
 
 	/**
 	 * Constructor.
@@ -124,15 +129,13 @@ final readonly class Fields {
 	}
 
 	/**
-	 * A required string.
-	 *
-	 * @since 0.2.0
+	 * A required string of any length, for the readers here that go on to check its form.
 	 *
 	 * @param string $key The field.
 	 *
 	 * @throws InvalidDocument When it is missing or not a string.
 	 */
-	public function text( string $key ): string {
+	private function string( string $key ): string {
 		$value = $this->need( $key );
 		if ( ! is_string( $value ) ) {
 			$refused = $this->wrongType( $key );
@@ -142,16 +145,68 @@ final readonly class Fields {
 	}
 
 	/**
-	 * A string that may be left out, read as empty.
+	 * A string of a length in characters, line breaks counted. Text that is not UTF-8 has no length and is refused.
+	 *
+	 * @param string $key The field.
+	 * @param int    $min The fewest characters.
+	 * @param int    $max The most.
+	 *
+	 * @throws InvalidDocument When it is missing, not a string, or shorter or longer than allowed.
+	 */
+	private function sized( string $key, int $min, int $max ): string {
+		$value = $this->string( $key );
+		if ( 1 !== preg_match( '/\A.{' . $min . ',' . $max . '}\z/su', $value ) ) {
+			$refused = InvalidDocument::because( DocumentError::OutOfRange, $this->path( $key ) );
+			throw $refused;
+		}
+		return $value;
+	}
+
+	/**
+	 * Required text of one character or more.
 	 *
 	 * @since 0.2.0
 	 *
 	 * @param string $key The field.
+	 * @param int    $max The most characters it may have, as its schema says.
 	 *
-	 * @throws InvalidDocument When it is there and not a string.
+	 * @throws InvalidDocument When it is missing, not a string, empty or too long.
 	 */
-	public function textOrEmpty( string $key ): string {
-		return $this->has( $key ) ? $this->text( $key ) : '';
+	public function text( string $key, int $max ): string {
+		return $this->sized( $key, 1, $max );
+	}
+
+	/**
+	 * Text that may be left out or left empty, read as empty.
+	 *
+	 * @since 0.2.0
+	 *
+	 * @param string $key The field.
+	 * @param int    $max The most characters it may have, as its schema says.
+	 *
+	 * @throws InvalidDocument When it is there and not a string, or too long.
+	 */
+	public function textOrEmpty( string $key, int $max ): string {
+		return $this->has( $key ) ? $this->sized( $key, 0, $max ) : '';
+	}
+
+	/**
+	 * A required string in a form: a product attribute's taxonomy, say.
+	 *
+	 * @since 0.2.0
+	 *
+	 * @param string $key     The field.
+	 * @param string $pattern The form, as a pattern anchored at both ends.
+	 *
+	 * @throws InvalidDocument When it is missing, not a string or not in the form.
+	 */
+	public function matching( string $key, string $pattern ): string {
+		$value = $this->string( $key );
+		if ( 1 !== preg_match( $pattern, $value ) ) {
+			$refused = InvalidDocument::because( DocumentError::BadKey, $this->path( $key ) );
+			throw $refused;
+		}
+		return $value;
 	}
 
 	/**
@@ -164,7 +219,7 @@ final readonly class Fields {
 	 * @throws InvalidDocument When it is missing, not a string or not a key.
 	 */
 	public function key( string $key ): string {
-		$value = $this->text( $key );
+		$value = $this->string( $key );
 		if ( ! self::isKey( $value ) ) {
 			$refused = InvalidDocument::because( DocumentError::BadKey, $this->path( $key ) );
 			throw $refused;
@@ -250,8 +305,13 @@ final readonly class Fields {
 	 * @throws InvalidDocument When it is not a list, or holds something that is not a positive integer.
 	 */
 	public function ids( string $key ): array {
-		$ids = array();
-		foreach ( $this->items( $key ) as $at => $value ) {
+		$ids   = array();
+		$items = $this->items( $key );
+		if ( count( $items ) > self::MAX_IDS ) {
+			$refused = InvalidDocument::because( DocumentError::OutOfRange, $this->path( $key ) );
+			throw $refused;
+		}
+		foreach ( $items as $at => $value ) {
 			if ( ! is_int( $value ) ) {
 				$refused = $this->wrongType( $key . '[' . $at . ']' );
 				throw $refused;
@@ -381,12 +441,12 @@ final readonly class Fields {
 	 * @throws InvalidDocument When it is missing, not a string or not such a decimal.
 	 */
 	public function amount( string $key ): int {
-		$text = $this->text( $key );
+		$text = $this->string( $key );
 		if ( 1 !== preg_match( '/\A(?<whole>\d{1,9})(?:\.(?<places>\d{1,4}))?\z/', $text, $found ) ) {
 			$refused = InvalidDocument::because( DocumentError::BadMeasure, $this->path( $key ) );
 			throw $refused;
 		}
-		return 10000 * (int) $found['whole'] + (int) substr( ( $found['places'] ?? '' ) . '0000', 0, 4 );
+		return Rounding::decimal( $found['whole'], $found['places'] ?? '' );
 	}
 
 	/**

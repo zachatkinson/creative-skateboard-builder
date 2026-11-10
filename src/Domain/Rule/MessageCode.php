@@ -47,4 +47,39 @@ enum MessageCode: string {
 	case GripTooNarrow   = 'grip_too_narrow';
 	case GripTooShort    = 'grip_too_short';
 	case LengthUnchecked = 'length_unchecked';
+
+	/**
+	 * The names of the values each code carries, in the order the docs give them. A translation is written against
+	 * these names, so they are public API and never renamed in place. A finding may leave one out (a maker's range
+	 * with one end has no other), and may not add one.
+	 */
+	private const VALUES = array(
+		'spec_missing'      => array( 'spec' ),
+		'deck_below_range'  => array( 'deck_width', 'deck_min', 'deck_max' ),
+		'deck_above_range'  => array( 'deck_width', 'deck_min', 'deck_max' ),
+		'axle_narrower'     => array( 'deck_width', 'axle_width', 'gap' ),
+		'axle_wider'        => array( 'deck_width', 'axle_width', 'gap' ),
+		'pattern_mismatch'  => array( 'hole_pattern', 'baseplate' ),
+		'pattern_assumed'   => array( 'hole_pattern' ),
+		'wheel_needs_riser' => array( 'wheel_diameter', 'limit', 'over', 'riser' ),
+		'wheel_no_riser'    => array( 'wheel_diameter', 'limit', 'over' ),
+		'limit_from_class'  => array( 'height_class', 'limit' ),
+		'bolts_too_short'   => array( 'bolt_length', 'shortest', 'usual', 'riser_thickness' ),
+		'bolts_too_long'    => array( 'bolt_length', 'shortest', 'usual', 'riser_thickness' ),
+		'bore_mismatch'     => array( 'bearing_bore', 'axle_diameter' ),
+		'axle_assumed'      => array( 'axle_diameter' ),
+		'grip_too_narrow'   => array( 'grip_width', 'deck_width' ),
+		'grip_too_short'    => array( 'grip_length', 'deck_length' ),
+	);
+
+	/**
+	 * The names of the values a finding with this code may carry; none for a code that carries no figure.
+	 *
+	 * @since 0.2.0
+	 *
+	 * @return list<string>
+	 */
+	public function values(): array {
+		return self::VALUES[ $this->value ] ?? array();
+	}
 }

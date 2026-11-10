@@ -174,12 +174,59 @@ final class DeckWidthRuleTest extends TestCase {
 		self::assertSame( Severity::Block, Finding::worst( self::check( self::deck( '8.5' ), self::axle( '7.7499' ), $loose ) ) );
 	}
 
-	public function test_half_a_range_is_no_range(): void {
-		// Only one end published: the axle decides, and the lone figure is not used.
-		$low  = Parts::of( array( 'axle_width' => '8.5', 'deck_min' => '9.0' ) );
-		$high = Parts::of( array( 'axle_width' => '8.5', 'deck_max' => '8.0' ) );
-		self::assertSame( array(), self::check( self::deck( '8.5' ), $low ) );
-		self::assertSame( array(), self::check( self::deck( '8.5' ), $high ) );
+	public function test_the_specs_table_venture_6_1_fits_8_62_and_up(): void {
+		// One end published: that end holds, and the other is open. The axle is not asked.
+		$truck = Parts::of( array( 'axle_width' => '8.75', 'deck_min' => '8.62' ) );
+		self::assertSame( array(), self::check( self::deck( '8.62' ), $truck ) );
+		self::assertSame( array(), self::check( self::deck( '9.5' ), $truck ), 'no upper end, though the axle is 0.75 in narrower' );
+
+		$findings = self::check( self::deck( '8.5' ), $truck );
+		self::assertCount( 1, $findings );
+		self::assertSame( Severity::Block, $findings[0]->severity );
+		self::assertSame( MessageCode::DeckBelowRange, $findings[0]->code );
+		self::assertSame( Source::Maker, $findings[0]->source );
+		self::assertEquals(
+			array(
+				'deck_width' => Parts::inches( '8.5' ),
+				'deck_min'   => Parts::inches( '8.62' ),
+			),
+			$findings[0]->values
+		);
+	}
+
+	public function test_the_specs_table_venture_5_0_fits_up_to_7_9(): void {
+		$truck = Parts::of( array( 'axle_width' => '7.6', 'deck_max' => '7.9' ) );
+		self::assertSame( array(), self::check( self::deck( '7.9' ), $truck ) );
+		self::assertSame( array(), self::check( self::deck( '7.0' ), $truck ), 'no lower end, though the axle is 0.6 in wider' );
+
+		$findings = self::check( self::deck( '8.0' ), $truck );
+		self::assertCount( 1, $findings );
+		self::assertSame( Severity::Block, $findings[0]->severity );
+		self::assertSame( MessageCode::DeckAboveRange, $findings[0]->code );
+		self::assertSame( Source::Maker, $findings[0]->source );
+		self::assertEquals(
+			array(
+				'deck_width' => Parts::inches( '8.0' ),
+				'deck_max'   => Parts::inches( '7.9' ),
+			),
+			$findings[0]->values
+		);
+	}
+
+	public function test_the_kits_tolerance_widens_a_single_end_too(): void {
+		$wider = self::settings( array( 'range_tolerance' => '0.125' ) );
+		$up    = Parts::of( array( 'deck_min' => '8.62' ) );
+		$down  = Parts::of( array( 'deck_max' => '7.9' ) );
+		self::assertSame( array(), self::check( self::deck( '8.495' ), $up, $wider ) );
+		self::assertSame( MessageCode::DeckBelowRange, self::check( self::deck( '8.4949' ), $up, $wider )[0]->code );
+		self::assertSame( array(), self::check( self::deck( '8.025' ), $down, $wider ) );
+		self::assertSame( MessageCode::DeckAboveRange, self::check( self::deck( '8.0251' ), $down, $wider )[0]->code );
+	}
+
+	public function test_a_truck_with_one_end_and_no_axle_needs_no_axle(): void {
+		self::assertSame( array(), self::check( self::deck( '9.0' ), Parts::of( array( 'deck_min' => '8.62' ) ) ) );
+		self::assertSame( array(), self::check( null, Parts::of( array( 'deck_min' => '8.62' ) ) ), 'before a deck is picked too' );
+		self::assertSame( array(), self::check( null, Parts::of( array( 'deck_max' => '7.9' ) ) ) );
 	}
 
 	public function test_a_range_wins_over_the_axle(): void {
@@ -191,7 +238,6 @@ final class DeckWidthRuleTest extends TestCase {
 		$expected = array( Finding::missing( RuleId::R1, SlotKey::TRUCKS, SpecKey::AxleWidth ) );
 		self::assertEquals( $expected, self::check( self::deck( '8.5' ), Parts::of() ) );
 		self::assertEquals( $expected, self::check( null, Parts::of() ), 'before a deck is picked too' );
-		self::assertEquals( $expected, self::check( null, Parts::of( array( 'deck_min' => '8.0' ) ) ) );
 	}
 
 	public function test_a_deck_with_no_width_is_missing_it(): void {

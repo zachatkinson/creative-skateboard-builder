@@ -78,7 +78,7 @@ final class FitEngineTest extends TestCase {
 		self::assertEquals( array( Finding::missing( RuleId::R7, SlotKey::WHEELS, SpecKey::SetSize ) ), $options->hidden[0]->findings );
 	}
 
-	public function test_the_trucks_step_offers_what_fits_the_deck_and_hides_the_rest_with_reasons(): void {
+	public function test_p1_the_trucks_step_offers_what_fits_the_deck_and_hides_the_rest_with_reasons(): void {
 		$loose      = Parts::of( array( 'axle_width' => '8.0', 'baseplate' => 'new_school', 'set_size' => 2 ), 800 );
 		$unmeasured = Parts::of( array( 'baseplate' => 'new_school', 'set_size' => 2 ), 801 );
 		$candidates = array( Builds::truck( '139' ), Builds::truck( '144' ), Builds::truck( '149' ), Builds::truck( '159' ), $loose, $unmeasured, Builds::truck( '129' ) );
@@ -176,7 +176,7 @@ final class FitEngineTest extends TestCase {
 		self::assertSame( array( MessageCode::WheelNeedsRiser ), array_column( $wheels->offered[1]->findings, 'code' ) );
 	}
 
-	public function test_the_risers_step_shows_which_riser_clears_the_wheels(): void {
+	public function test_p2_the_risers_step_shows_which_riser_clears_the_wheels(): void {
 		$picks   = Builds::complete( array( SlotKey::WHEELS => Builds::wheel( '58' ), SlotKey::HARDWARE => Builds::bolts( '7/8' ) ) );
 		$options = FitEngine::standard()->options( KitDocuments::kit(), SlotKey::RISERS, $picks, array( Builds::riser( '1/8', 401 ), Builds::riser( '1/4', 402 ) ) );
 		self::assertSame( array( 401, 402 ), self::ids( $options->offered ), 'the bolts come later and are not read' );
@@ -215,6 +215,38 @@ final class FitEngineTest extends TestCase {
 		self::assertSame( array( MessageCode::WheelNeedsRiser ), array_column( $findings, 'code' ), 'the deck and trucks not fitting is not the wheel\'s' );
 		$replaced = FitEngine::standard()->judge( KitDocuments::kit(), SlotKey::TRUCKS, Builds::truck( '169' ), $others );
 		self::assertSame( array(), $replaced, 'the slot\'s own pick is replaced, not read' );
+	}
+
+	public function test_judging_a_part_answers_with_a_list_when_another_slots_finding_comes_first(): void {
+		// The truck's note about its wheel limit does not read the bearings; the bore that does not fit does, and comes second.
+		$truck    = Parts::indy( '149', array( 'baseplate' => 'new_school', 'axle_diameter' => '10', 'set_size' => 2 ) );
+		$findings = FitEngine::standard()->judge( KitDocuments::kit(), SlotKey::BEARINGS, Builds::bearings(), Builds::complete( array( SlotKey::TRUCKS => $truck ) ) );
+
+		self::assertSame( array( 0 ), array_keys( $findings ) );
+		self::assertSame( MessageCode::BoreMismatch, $findings[0]->code );
+	}
+
+	public function test_r8_a_decks_wheelbase_and_length_ride_on_its_option_and_decide_nothing(): void {
+		$kit     = KitDocuments::kit();
+		$long    = Parts::of( array( 'deck_width' => '8.5', 'deck_length' => '33.5', 'wheelbase' => '15', 'hole_pattern' => 'new_school', 'set_size' => 1 ), 101 );
+		$bare    = Parts::of( array( 'deck_width' => '8.5', 'hole_pattern' => 'new_school', 'set_size' => 1 ), 102 );
+		$options = FitEngine::standard()->options( $kit, SlotKey::DECK, Picks::none(), array( $long, $bare ) );
+
+		self::assertCount( 2, $options->offered, 'neither is needed for a deck to be offered' );
+		self::assertSame( array(), $options->offered[0]->findings );
+		// Without a length the deck still fits; R6 notes that the grip's length cannot be checked against it.
+		self::assertSame( Severity::Fits, $options->offered[1]->severity );
+		self::assertSame( array( MessageCode::LengthUnchecked ), array_column( $options->offered[1]->findings, 'code' ) );
+		self::assertEquals( Parts::inches( '15' ), $options->offered[0]->part->specs->measure( SpecKey::Wheelbase ) );
+		self::assertEquals( Parts::inches( '33.5' ), $options->offered[0]->part->specs->measure( SpecKey::DeckLength ) );
+		self::assertNull( $options->offered[1]->part->specs->measure( SpecKey::Wheelbase ) );
+		self::assertNull( RuleId::tryFrom( 'r8' ), 'R8 is what the deck\'s option shows, and no rule' );
+		// A whole build is not judged on either: the same build with and without them has the same findings.
+		$with    = FitEngine::standard()->build( $kit, Builds::complete( array( SlotKey::DECK => Parts::of( array( 'deck_width' => '8.5', 'deck_length' => '32', 'wheelbase' => '12', 'hole_pattern' => 'new_school', 'set_size' => 1 ), 100 ) ) ) );
+		$without = FitEngine::standard()->build( $kit, Builds::complete() );
+		foreach ( $with as $slot => $option ) {
+			self::assertEquals( $without[ $slot ]->findings, $option->findings, $slot );
+		}
 	}
 
 	public function test_a_whole_build_that_fits(): void {

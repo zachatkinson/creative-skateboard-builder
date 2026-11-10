@@ -11,6 +11,7 @@ namespace CreativeBranding\SkateboardBuilder\Tests\Unit\Domain\Rule;
 
 use CreativeBranding\SkateboardBuilder\Domain\Kit\SlotKey;
 use CreativeBranding\SkateboardBuilder\Domain\Rule\Finding;
+use CreativeBranding\SkateboardBuilder\Domain\Rule\InvalidFinding;
 use CreativeBranding\SkateboardBuilder\Domain\Rule\MessageCode;
 use CreativeBranding\SkateboardBuilder\Domain\Rule\Reader;
 use CreativeBranding\SkateboardBuilder\Domain\Rule\RuleId;
@@ -67,6 +68,60 @@ final class FindingTest extends TestCase {
 		self::assertSame( Source::Maker, $finding->source );
 		self::assertSame( array( SlotKey::GRIP ), $finding->slots );
 		self::assertSame( array( 'spec' => 'grip_width' ), $finding->values );
+	}
+
+	public function test_the_blocking_findings_are_a_list_in_the_order_given(): void {
+		$note  = new Finding( RuleId::R3, Severity::Fits, MessageCode::LimitFromClass, Source::Standard, array( SlotKey::TRUCKS ), array() );
+		$warn  = new Finding( RuleId::R3, Severity::Warn, MessageCode::WheelNeedsRiser, Source::Maker, array( SlotKey::WHEELS ), array() );
+		$first = new Finding( RuleId::R5, Severity::Block, MessageCode::BoreMismatch, Source::Maker, array( SlotKey::BEARINGS ), array() );
+		$next  = new Finding( RuleId::R1, Severity::Block, MessageCode::DeckAboveRange, Source::Maker, array( SlotKey::DECK ), array() );
+
+		self::assertSame( array( $first, $next ), Finding::blocking( array( $note, $first, $warn, $next ) ) );
+		self::assertSame( array(), Finding::blocking( array( $note, $warn ) ) );
+		self::assertSame( array(), Finding::blocking( array() ) );
+	}
+
+	public function test_each_code_names_the_values_it_carries(): void {
+		$names = array();
+		foreach ( MessageCode::cases() as $code ) {
+			$names[ $code->value ] = $code->values();
+		}
+		self::assertSame(
+			array(
+				'spec_missing'      => array( 'spec' ),
+				'deck_below_range'  => array( 'deck_width', 'deck_min', 'deck_max' ),
+				'deck_above_range'  => array( 'deck_width', 'deck_min', 'deck_max' ),
+				'axle_narrower'     => array( 'deck_width', 'axle_width', 'gap' ),
+				'axle_wider'        => array( 'deck_width', 'axle_width', 'gap' ),
+				'pattern_mismatch'  => array( 'hole_pattern', 'baseplate' ),
+				'pattern_assumed'   => array( 'hole_pattern' ),
+				'wheel_needs_riser' => array( 'wheel_diameter', 'limit', 'over', 'riser' ),
+				'wheel_no_riser'    => array( 'wheel_diameter', 'limit', 'over' ),
+				'limit_from_class'  => array( 'height_class', 'limit' ),
+				'bolts_too_short'   => array( 'bolt_length', 'shortest', 'usual', 'riser_thickness' ),
+				'bolts_too_long'    => array( 'bolt_length', 'shortest', 'usual', 'riser_thickness' ),
+				'bore_mismatch'     => array( 'bearing_bore', 'axle_diameter' ),
+				'axle_assumed'      => array( 'axle_diameter' ),
+				'spacers_built_in'  => array(),
+				'grip_too_narrow'   => array( 'grip_width', 'deck_width' ),
+				'grip_too_short'    => array( 'grip_length', 'deck_length' ),
+				'length_unchecked'  => array(),
+			),
+			$names
+		);
+	}
+
+	public function test_a_finding_carries_only_the_values_its_code_names(): void {
+		$some = new Finding( RuleId::R1, Severity::Block, MessageCode::DeckBelowRange, Source::Maker, array( SlotKey::DECK ), array( 'deck_min' => Parts::inches( '8.62' ) ) );
+		self::assertSame( array( 'deck_min' ), array_keys( $some->values ), 'a code need not carry every value it names' );
+		try {
+			new Finding( RuleId::R1, Severity::Block, MessageCode::DeckBelowRange, Source::Maker, array( SlotKey::DECK ), array( 'deck_width' => Parts::inches( '8.5' ), 'gap' => Parts::inches( '0.1' ) ) );
+			self::fail( 'accepted' );
+		} catch ( InvalidFinding $e ) {
+			self::assertSame( 'finding_value_not_named', $e->getMessage() );
+		}
+		$this->expectException( InvalidFinding::class );
+		new Finding( RuleId::R6, Severity::Fits, MessageCode::LengthUnchecked, Source::Standard, array( SlotKey::DECK ), array( 'deck_length' => Parts::inches( '32' ) ) );
 	}
 
 	public function test_the_codes_are_keys_not_words(): void {

@@ -10,13 +10,11 @@ declare( strict_types=1 );
 namespace CreativeBranding\SkateboardBuilder\Domain\Measure;
 
 use function array_map;
-use function intdiv;
 use function preg_match;
 use function preg_quote;
 use function preg_replace;
 use function strtolower;
 use function strtr;
-use function substr;
 use function trim;
 
 /**
@@ -67,24 +65,24 @@ final class MeasureParser {
 	public static function parse( string $text, Unit $unit, string $separator = '.' ): Measure {
 		$text = trim( strtr( $text, array_map( static fn( string $fraction ): string => ' ' . $fraction, self::VULGAR ) ) );
 		$text = (string) preg_replace( '/[ \t]+/', ' ', $text );
+		if ( '' === $separator ) {
+			// With no separator the pattern would read "12345678" as 123456.78.
+			throw InvalidMeasure::malformed();
+		}
 		$mark = '(?<mark>"|″|in\.?|inch|inches|mm)';
 		$sep  = preg_quote( $separator, '/' );
 		$form = '/\A(?:(?<whole>\d{1,6})(?:' . $sep . '(?<places>\d+)|[ -](?<top>\d{1,4})\/(?<bottom>\d{1,4}))?|(?<top>\d{1,4})\/(?<bottom>\d{1,4})) ?' . $mark . '?\z/iJ';
 		if ( 1 !== preg_match( $form, $text, $found, PREG_UNMATCHED_AS_NULL ) ) {
 			throw InvalidMeasure::malformed();
 		}
-		$tenThousandths = 10000 * (int) $found['whole'];
-		if ( null !== $found['places'] ) {
-			// Four places and the one that rounds them, whatever was typed.
-			$places          = $found['places'] . '0000';
-			$tenThousandths += (int) substr( $places, 0, 4 ) + ( $places[4] >= '5' ? 1 : 0 );
-		}
+		// Four places and the one that rounds them, whatever was typed.
+		$tenThousandths = Rounding::decimal( (string) $found['whole'], (string) $found['places'] );
 		if ( null !== $found['bottom'] ) {
 			$bottom = (int) $found['bottom'];
 			if ( 0 === $bottom ) {
 				throw InvalidMeasure::zeroDenominator();
 			}
-			$tenThousandths += intdiv( 2 * 10000 * (int) $found['top'] + $bottom, 2 * $bottom );
+			$tenThousandths += Rounding::halfUp( 10000 * (int) $found['top'], $bottom );
 		}
 		$marked = null === $found['mark'] ? $unit : self::MARKS[ strtolower( $found['mark'] ) ];
 		return Measure::of( $tenThousandths, $marked )->to( $unit );

@@ -21,6 +21,12 @@ final readonly class SlotSources {
 	public const int MAX_ATTRIBUTES = 20;
 
 	/**
+	 * A product attribute's taxonomy, as the schema says: `pa_` and up to 28 lower-case letters, digits, underscores
+	 * or hyphens. D ends the match at the very end, so a trailing line break is not let through.
+	 */
+	private const string TAXONOMY = '/\Apa_[a-z0-9_-]{1,28}\z/D';
+
+	/**
 	 * Constructor.
 	 *
 	 * @param list<int>                                       $categories Product category ids.
@@ -43,7 +49,7 @@ final readonly class SlotSources {
 		$attributes = array();
 		foreach ( $fields->rows( 'attributes', self::MAX_ATTRIBUTES ) as $row ) {
 			$attributes[] = array(
-				'taxonomy' => $row->text( 'taxonomy' ),
+				'taxonomy' => $row->matching( 'taxonomy', self::TAXONOMY ),
 				'terms'    => $row->ids( 'terms' ),
 			);
 		}

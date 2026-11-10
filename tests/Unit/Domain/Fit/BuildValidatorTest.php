@@ -131,6 +131,15 @@ final class BuildValidatorTest extends TestCase {
 		self::assertSame( array( MessageCode::DeckAboveRange, MessageCode::LimitFromClass, MessageCode::AxleAssumed ), array_column( $validation->build[ SlotKey::TRUCKS ]->findings, 'code' ) );
 	}
 
+	public function test_a_problems_findings_are_a_list_when_a_note_comes_before_the_block(): void {
+		// The truck gives no wheel limit, a note, and its 10 mm axle does not take the bearings, a block, in that order.
+		$validation = self::validate( Builds::complete( array( SlotKey::TRUCKS => Parts::indy( '149', array( 'baseplate' => 'new_school', 'axle_diameter' => '10', 'set_size' => 2 ) ) ) ) );
+		self::assertSame( array( MessageCode::LimitFromClass, MessageCode::BoreMismatch ), array_column( $validation->build[ SlotKey::TRUCKS ]->findings, 'code' ) );
+		self::assertSame( array( 'part_blocked', SlotKey::TRUCKS, 149 ), self::rows( $validation )[0] );
+		self::assertSame( array( 0 ), array_keys( $validation->problems[0]->findings ) );
+		self::assertSame( MessageCode::BoreMismatch, $validation->problems[0]->findings[0]->code );
+	}
+
 	public function test_a_part_with_no_set_size_is_refused(): void {
 		$validation = self::validate( Builds::complete( array( SlotKey::WHEELS => Parts::of( array( 'wheel_diameter' => '54' ), 300 ) ) ) );
 		self::assertSame( array( array( 'part_blocked', SlotKey::WHEELS, 300 ) ), self::rows( $validation ) );
