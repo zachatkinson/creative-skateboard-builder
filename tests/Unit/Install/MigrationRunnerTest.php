@@ -288,12 +288,19 @@ final class MigrationRunnerTest extends TestCase {
 
 		self::assertSame( RunResult::Failed, $this->runner( new ThrowingMigration() )->run( MigrationRunner::BUDGET, true ) );
 		self::assertSame( $start + 60, $this->queue->scheduled[ Options::JOB_MIGRATE ] ?? null, 'the retry is scheduled' );
+		self::assertSame( 1, $this->queue->plainScheduled[ Options::JOB_MIGRATE ] ?? 0, 'by one plain action' );
 	}
 
 	public function test_outside_the_job_the_continuation_and_the_retry_stay_unique(): void {
 		self::assertSame( RunResult::Continued, $this->runner( new BatchMigration( 10, 3 ) )->run( 0 ) );
 		self::assertSame( array(), $this->queue->plain, 'a request never adds a second job beside a pending one' );
 		self::assertSame( 1, $this->queue->calls[ Options::JOB_MIGRATE ] );
+
+		$this->setUp();
+		$start = $this->clock->timestamp();
+		self::assertSame( RunResult::Failed, $this->runner( new ThrowingMigration() )->run() );
+		self::assertSame( $start + 60, $this->queue->scheduled[ Options::JOB_MIGRATE ] ?? null, 'the retry is scheduled' );
+		self::assertSame( array(), $this->queue->plainScheduled, 'as a unique action' );
 	}
 
 	public function test_a_lock_lost_during_the_last_batch_records_no_version(): void {

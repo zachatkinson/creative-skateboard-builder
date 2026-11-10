@@ -74,5 +74,17 @@ final class RequirementsTest extends TestCase {
 	public function test_the_notice_can_be_printed_where_wordpress_has_no_admin_notice_function(): void {
 		// wp_admin_notice() arrived in WordPress 6.4, and this notice is for a WordPress below the floor.
 		self::assertSame( '<div class="notice notice-error"><p>Needs more.</p></div>', Requirements::noticeMarkup( 'Needs more.' ) );
+		self::assertFalse( function_exists( 'wp_admin_notice' ), 'this suite is a WordPress without it' );
+		$this->expectOutputString( '<div class="notice notice-error"><p>Needs more.</p></div>' );
+		Requirements::printNotice( 'Needs more.' );
+	}
+
+	#[\PHPUnit\Framework\Attributes\RunInSeparateProcess]
+	#[\PHPUnit\Framework\Attributes\PreserveGlobalState( false )]
+	public function test_the_notice_goes_through_wordpress_where_it_can(): void {
+		// Declared in this process alone, so the test above still runs without it.
+		eval( 'function wp_admin_notice( string $message, array $args = array() ): void { echo "[", $args["type"] ?? "", "] ", $message; }' ); // phpcs:ignore
+		$this->expectOutputString( '[error] Needs more.' );
+		Requirements::printNotice( 'Needs more.' );
 	}
 }

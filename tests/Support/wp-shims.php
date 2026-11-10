@@ -18,6 +18,11 @@ if ( ! function_exists( 'esc_html' ) ) {
 		return htmlspecialchars( $text, ENT_QUOTES, 'UTF-8' );
 	}
 }
+if ( ! function_exists( 'wp_kses_post' ) ) {
+	function wp_kses_post( string $html ): string {
+		return $html;
+	}
+}
 if ( ! function_exists( '__' ) ) {
 	function __( string $text, string $domain = 'default' ): string {
 		return $text;

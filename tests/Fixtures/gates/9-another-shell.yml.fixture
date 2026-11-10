@@ -1,0 +1,14 @@
+name: Release
+on:
+  push:
+    tags: ['v*.*.*']
+jobs:
+  publish:
+    runs-on: ubuntu-26.04
+    steps:
+      - name: Publish the release
+        shell: python {0}
+        env:
+          GH_TOKEN: ${{ secrets.RELEASES_TOKEN }}
+        run: |
+          echo

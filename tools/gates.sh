@@ -8,7 +8,8 @@
 #   6. WordPress or WooCommerce in src/Domain.
 #   7. Anything from WooCommerce's Internal namespace.
 #   8. An em dash, an exclamation mark or a word from tools/copy-words.txt in the POT file (docs/STANDARDS.md: Copy).
-#   9. A job of release.yml that holds a secret and also checks the code out or runs a tool (D-043).
+#   9. A job of release.yml that holds a secret and runs anything but gh and a few shell built-ins (D-043, D-048).
+#  10. release.yml running the release dry run without installing Composer's and npm's packages first (D-048).
 # Gate 1 also covers string-built SQL (1b) and the database's clock in a statement (1c). Every gate has snippets it
 # must reject in tests/Fixtures/gates/, run by tools/gates-selftest.sh.
 # Run: composer gates
@@ -105,24 +106,15 @@ if [ -f "$pot" ]; then
 	fi
 fi
 
-# 9. The release workflow: a job that holds a secret runs gh and nothing of the repository's or of any package, so
-# nothing installed can reach the token that publishes to the repository every shop's updater trusts (D-043). Such a
-# job may download the build job's files; it may not check the code out, set up a toolchain or run one.
+# 9 and 10. The release workflow (tools/gate-release.awk). 9: a job that holds a secret runs gh and nothing of the
+# repository's or of any package, so nothing installed can reach the token that publishes to the repository every
+# shop's updater trusts (D-043); an allow-list of commands, not a list of tools to refuse (D-048). 10: the job that
+# runs the release dry run installs what the script needs first.
 release=.github/workflows/release.yml
 if [ -f "$release" ]; then
-	hits="$(awk '
-		/^jobs:/ { injobs = 1; next }
-		injobs && /^  [A-Za-z0-9_-]+:[[:space:]]*$/ { job = $1; sub( /:$/, "", job ); next }
-		injobs && job != "" {
-			if ( $0 ~ /secrets\./ ) secret[job] = 1
-			if ( $0 ~ /^[[:space:]]*#/ ) next
-			if ( $0 ~ /uses:/ && $0 !~ /uses:[[:space:]]*actions\/download-artifact@/ ) bad[job] = bad[job] "\n  " $0
-			if ( $0 ~ /(^|[^A-Za-z_\/.-])(npm|npx|node|composer|php|bash|sh|make|pip|python3?)[[:space:]]/ ) bad[job] = bad[job] "\n  " $0
-		}
-		END { for ( j in secret ) if ( bad[j] != "" ) print "job " j ":" bad[j] }
-	' "$release")"
+	hits="$(awk -f "$tools/gate-release.awk" "$release")"
 	if [ -n "$hits" ]; then
-		echo "Gate 9: a job of release.yml holds a secret and runs more than gh:"; echo "$hits"; status=1
+		echo "$hits"; status=1
 	fi
 fi
 

@@ -88,4 +88,19 @@ final class Requirements {
 	public static function noticeMarkup( string $notice ): string {
 		return '<div class="notice notice-error"><p>' . $notice . '</p></div>';
 	}
+
+	/**
+	 * Print the notice: through wp_admin_notice() where WordPress has it, as its own markup where it does not.
+	 *
+	 * @since 0.1.0
+	 *
+	 * @param string $notice The notice, already escaped.
+	 */
+	public static function printNotice( string $notice ): void {
+		if ( function_exists( 'wp_admin_notice' ) ) {
+			wp_admin_notice( $notice, array( 'type' => 'error' ) );
+			return;
+		}
+		echo wp_kses_post( self::noticeMarkup( $notice ) );
+	}
 }

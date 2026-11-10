@@ -82,9 +82,17 @@ final class FakeQueue implements Queue {
 	 */
 	public function schedule( int $timestamp, string $hook, array $args = array() ): void {
 		unset( $args );
-		$this->scheduled[ $hook ] = $timestamp;
-		$this->pending[ $hook ]   = true;
+		$this->scheduled[ $hook ]      = $timestamp;
+		$this->pending[ $hook ]        = true;
+		$this->plainScheduled[ $hook ] = ( $this->plainScheduled[ $hook ] ?? 0 ) + 1;
 	}
+
+	/**
+	 * How many times schedule() was called, by hook: the plain kind, which is not dropped beside a pending action.
+	 *
+	 * @var array<string, int>
+	 */
+	public array $plainScheduled = array();
 
 	/**
 	 * When each hook is scheduled for, by hook.
