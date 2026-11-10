@@ -656,3 +656,19 @@ Choices made while building R1 to R6, where the spec leaves them open:
 
 **Why:** The spec asks for the invariant and for the floors; this keeps both without one hiding gaps in the other.
 **Status:** Accepted.
+
+### D-060 · The picture's layout · 2026-11-09
+
+The spec says what is drawn and by which spec; these are the choices it leaves.
+
+- **The view and the units.** The board is seen from underneath with the nose up, as the layer images are shot. Every number is a whole ten-thousandth of a millimetre from the deck's centre, x to the right and y towards the nose, so a renderer's scale is one multiplication and no float is compared.
+- **The stack.** The deck, the grip, the two trucks, the four wheels, in that order from the bottom. The kit's Picture section can reorder it in milestone 7. Risers, bearings, hardware and spacers are hidden by the board and have no layer.
+- **Nothing is laid out before a deck with a width.** Every other position hangs off it. The labelled picture covers that case.
+- **The trucks.** A wheelbase runs between the inner mounting holes, so a truck's middle is half the wheelbase and half the hole spacing from the centre: 2.125 in between the rows, 2.5 in on a deck drilled old school only. A truck is drawn its axle's width across and the spacing plus 0.875 in along.
+- **The usual wheelbase,** when the deck gives none: 0.445 of its length when that is known (a 32 in deck gets 14.24 in), otherwise by width: under 8 in, 14 in; from 8 in, 14.25 in; from 8.5 in, 14.5 in. Street decks of 8 to 8.25 in average about 14.25 in, in a range of 14 to 15.5 in (SkateboardersHQ's and Concrete Waves' wheelbase guides, read 9 November 2026). A kit's own anchor overrides it in milestone 7.
+- **The other usual values.** A deck with no length is drawn 32 in long. Trucks with no axle width, and wheels picked before trucks, take the deck's width. Wheels with no diameter are drawn at 54 mm. A wheel is drawn three fifths as wide as its diameter, its outer face at the axle's end.
+- **The grip** is a 1 in strip the deck's length, flush with its right edge. The spec asks for a strip along the edge and says no more.
+- **Every usual value is named.** The layout lists the specs it assumed, so the page and the Catalogue check can say the picture is approximate, and for which part.
+
+**Why:** One layout for both renderers, exact to the specs where they are known and honest where they are not.
+**Status:** Accepted. The constants are the domain's until milestone 7 shows them against real layer images.
