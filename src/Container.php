@@ -57,13 +57,14 @@ final class Container {
 	}
 
 	/**
-	 * Hookable classes, in registration order.
+	 * Hookable classes in registration order, each with the scopes its hooks can fire in (D-067).
 	 *
-	 * @return class-string<Hookable>[]
+	 * @return array<class-string<Hookable>, list<Scope>>
 	 */
 	private static function hookableClasses(): array {
 		return array(
-			Hooks\InstallHooks::class,
+			// `init`, `admin_init`, the migration job and a network's deleted site: any request.
+			Hooks\InstallHooks::class => array( Scope::Everywhere ),
 		);
 	}
 
@@ -75,18 +76,25 @@ final class Container {
 	private array $instances = array();
 
 	/**
-	 * The Hookable classes this container builds, in registration order.
+	 * The Hookable classes this container builds, in registration order, each with its scopes.
 	 *
-	 * @var class-string<Hookable>[]
+	 * @var array<class-string<Hookable>, list<Scope>>
 	 */
 	private array $hookableClasses;
+
+	/**
+	 * The Hookable classes already handed out.
+	 *
+	 * @var array<class-string<Hookable>, true>
+	 */
+	private array $handedOut = array();
 
 	/**
 	 * Constructor.
 	 *
 	 * @since 0.1.0
 	 *
-	 * @param class-string<Hookable>[]|null $hookableClasses The Hookable classes, for tests; the plugin's own when null.
+	 * @param array<class-string<Hookable>, list<Scope>>|null $hookableClasses The Hookable classes and their scopes, for tests; the plugin's own when null.
 	 */
 	public function __construct( ?array $hookableClasses = null ) {
 		$this->hookableClasses = $hookableClasses ?? self::hookableClasses();
@@ -146,16 +154,23 @@ final class Container {
 	}
 
 	/**
-	 * Every class that attaches hooks, built and ready.
+	 * The classes that attach hooks in any of the scopes given, built and ready, in registration order. Each is handed
+	 * out once, so a Hookable with two scopes is not registered twice when a request turns out to be in both. One
+	 * with no scope the request is in is never built.
 	 *
-	 * @since 0.1.0
+	 * @since 0.3.0
 	 *
-	 * @return Hookable[]
+	 * @param Scope ...$scopes The scopes the request is in.
+	 * @return list<Hookable>
 	 */
-	public function hookables(): array {
+	public function hookablesFor( Scope ...$scopes ): array {
 		$out = array();
-		foreach ( $this->hookableClasses as $id ) {
-			$out[] = $this->get( $id );
+		foreach ( $this->hookableClasses as $id => $fires ) {
+			if ( isset( $this->handedOut[ $id ] ) || array() === array_intersect( array_column( $fires, 'name' ), array_column( $scopes, 'name' ) ) ) {
+				continue;
+			}
+			$this->handedOut[ $id ] = true;
+			$out[]                  = $this->get( $id );
 		}
 		return $out;
 	}

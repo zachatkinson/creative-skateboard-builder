@@ -80,7 +80,7 @@ tools/                    gates.sh, integration/ (PHPUnit 9.6), build, release, 
 
 ## WordPress
 
-- **Hooks:** each feature is a Hookable class registered by the container. Callbacks are one line into a service. Priorities are named constants where they matter.
+- **Hooks:** each feature is a Hookable class registered by the container, which names the scopes its hooks can fire in (`Scope`: everywhere, admin, WP-CLI, cron, REST, storefront). The plugin builds a Hookable only on a request in one of them (D-067). `Everywhere` is for a job's handler and a hook that fires on any request, and needs a comment saying which. Callbacks are one line into a service. Priorities are named constants where they matter.
 - **Security:**
   - Sanitise on input (`sanitize_*`, `absint`, `wc_format_decimal`) and escape on output (`esc_html`, `esc_attr`, `esc_url`, `wp_kses` with a named allowlist).
   - Nonces and capabilities on every state change. Nonces prove intent, never identity.

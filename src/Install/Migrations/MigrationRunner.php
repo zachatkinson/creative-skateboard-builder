@@ -183,7 +183,7 @@ final class MigrationRunner {
 					return RunResult::Continued;
 				}
 				$worked = true;
-				if ( MigrationState::RUNNING !== $state->status ) {
+				if ( MigrationStatus::Running !== $state->status ) {
 					// Pending or failed: a new attempt. A running one is a continued run, resumed from its cursor.
 					$state = $state->started( $now );
 					$this->store->save( $state->key, $state->toArray() );

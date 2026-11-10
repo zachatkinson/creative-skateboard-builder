@@ -42,7 +42,7 @@ deptrac:
     - name: Core
       collectors:
         - type: classLike
-          value: ^CreativeBranding\\SkateboardBuilder\\(Plugin|Container|Hookable)$
+          value: ^CreativeBranding\\SkateboardBuilder\\(Plugin|Container|Hookable|Scope)$
     - name: WordPress
       collectors:
         - type: classLike

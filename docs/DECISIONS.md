@@ -761,3 +761,19 @@ Issue #4: the object-cache leg called `wp_using_ext_object_cache( true )` and ra
 **Why Redis:** it is what managed WordPress hosts offer for the object cache (Valkey, its fork, speaks the same protocol and the drop-in supports it), and Redis Object Cache is the most installed drop-in that does only this (500,000 active installs, tested to WordPress 7.1.4; WordPress.org, 2026-11-10). The Memcached drop-in on WordPress.org was last updated in 2022. LiteSpeed Cache (7 million installs) and W3 Total Cache include an object cache that is itself Redis or Memcached behind the same drop-in interface. The Skatehouse demo has Redis Object Cache installed, and Creative Search was checked against the same pair (its D-051).
 **Differs from Creative Search:** its `object-cache` leg still sets the flag only. The sibling repository is not changed from here.
 **Status:** Accepted, on Zach's "figure out the industry standard for the object cache and make sure its compatible with other wordpress caches too".
+
+### D-067 · A Hookable is built only where its hooks can fire; the migration's status is an enum · 2026-11-10
+
+Issues #3 and #2, from the milestone 1 audit. Zach said to do both now.
+
+- **Each Hookable has scopes.** `Container::hookableClasses()` maps each class to a list of `Scope` cases: `Everywhere`, `Admin`, `Cli`, `Cron`, `Rest`, `Storefront`. `Plugin::boot()` asks WordPress what the request is (`is_admin()`, `WP_CLI`, `wp_doing_cron()`) and builds the Hookables in those scopes. One in no scope of the request is never built, nor are its services.
+- **REST Hookables are built on `rest_api_init`, at priority 0.** WordPress defines `REST_REQUEST` in `rest_api_loaded()` on `parse_request` (WordPress 7.1.4, `wp-includes/rest-api.php:478`, hooked at `wp-includes/default-filters.php:549`), long after `plugins_loaded`, so a REST request cannot be told at boot. `rest_api_init` fires only when a REST server is made (`rest-api.php:657`), and a callback added at priority 0 can still add its own at 10. At boot a REST request counts as `Storefront`.
+- **A Hookable is handed out once.** One with two scopes (`Storefront` and `Rest`) is registered at boot and not again at `rest_api_init`. The container keeps the list, so it is tested without WordPress.
+- **Admin includes admin-ajax.php and admin-post.php,** as `is_admin()` does. A Hookable that must not run on AJAX says so in its callback's service, as the inline rule does.
+- **Registering lazily was the other way:** every Hookable declares its hooks statically and a closure builds it when one fires. It builds even less, and it costs a second way to declare hooks, `has_action()` on a closure in every test, and filters whose arguments must be declared twice. Scopes keep `register()` as it is.
+- **The migration's status is `MigrationStatus`,** a string enum whose values are what `cbuild_migrations` already stores, so no stored state changes. `MigrationState`'s four constants are gone; they were not in the public API.
+- **The inline rule is `Install\Migrations\InlineRule::allows()`,** a service `InstallHooks` is given. `InstallHooks::inlineAllowed()` is gone; it was not in the public API either.
+- **The asset budget's compression is named where the budget is stated** (Brotli at quality 11; `CLAUDE.md`, `docs/AUDIT.md`, `docs/BENCHMARK.md`), the second half of issue #3.
+
+**Why:** milestone 3 adds about eight Hookables, most of them admin screens and WP-CLI commands. Without scopes a shopper's page would build every one of them and every service they take.
+**Status:** Accepted.

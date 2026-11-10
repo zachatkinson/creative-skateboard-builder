@@ -20,6 +20,7 @@ use CreativeBranding\SkateboardBuilder\Port\Queue;
 use CreativeBranding\SkateboardBuilder\Repository\MigrationRepository;
 use CreativeBranding\SkateboardBuilder\Support\Options;
 use CreativeBranding\SkateboardBuilder\Install\Migrations\MigrationState;
+use CreativeBranding\SkateboardBuilder\Install\Migrations\MigrationStatus;
 use CreativeBranding\SkateboardBuilder\Support\Tables;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\BatchMigration;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\ThrowingMigration;
@@ -115,7 +116,7 @@ final class MigrationTest extends IntegrationTestCase {
 				self::assertSame( RunResult::Failed, $result, 'dbDelta() does not throw; the migration checks its tables' );
 				self::assertFalse( get_option( Options::DB_VERSION ), 'the version is left behind' );
 				$state = MigrationState::fromArray( 'schema_1', $this->store->state( 'schema_1' ) );
-				self::assertSame( MigrationState::FAILED, $state->status );
+				self::assertSame( MigrationStatus::Failed, $state->status );
 				self::assertStringContainsString( $specs, $state->error, 'the error names the table' );
 				self::assertNull( $this->store->lockValue(), 'the lock is released' );
 				self::assertCount( 1, self::pendingJobs( Options::JOB_MIGRATE ), 'the next attempt is scheduled' );

@@ -199,8 +199,8 @@ The commands are in `CLAUDE.md`. The fast gates run on every commit through `ver
 | State route, server time | p95 under 80 ms with 500 candidate parts | Benchmark group, generated catalogue, cold and warm, with and without a persistent object cache |
 | Add a 7-part build to the cart | Under 300 ms | Benchmark group |
 | Queries | A fixed number per page and per route, whatever the number of options | Integration tests count every query |
-| The builder's own script module | Under 15 kB compressed (the Interactivity API's runtime is shared and not counted) | `npm run budget` |
-| The builder's styles | Under 10 kB compressed | `npm run budget` |
+| The builder's own script module | Under 15 kB compressed with Brotli at quality 11, as a shop's server sends it (the Interactivity API's runtime is shared and not counted) | `npm run budget` |
+| The builder's styles | Under 10 kB compressed, measured the same way | `npm run budget` |
 | Builder page, lab | LCP 2.5 s or less, CLS under 0.1 (0 is the target), TBT under 200 ms, on Lighthouse's mobile profile, median of three runs | `npm run lhci` |
 | A pick | The pick's own selected state painted within 100 ms on a 4× slowed CPU; the total follows when the route answers | Playwright, Chromium with CPU throttling |
 | Composed picture | Made off the request, in Action Scheduler; a page never waits on it | Integration test |

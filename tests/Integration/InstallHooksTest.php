@@ -10,6 +10,7 @@ declare( strict_types=1 );
 namespace CreativeBranding\SkateboardBuilder\Tests\Integration;
 
 use CreativeBranding\SkateboardBuilder\Hooks\InstallHooks;
+use CreativeBranding\SkateboardBuilder\Install\Migrations\InlineRule;
 use CreativeBranding\SkateboardBuilder\Install\Migrations\MigrationRegistry;
 use CreativeBranding\SkateboardBuilder\Install\Migrations\MigrationRunner;
 use CreativeBranding\SkateboardBuilder\Port\Clock;
@@ -90,7 +91,7 @@ final class InstallHooksTest extends IntegrationTestCase {
 	public function test_a_manager_on_an_admin_page_runs_the_migrations_inline_and_queues_nothing(): void {
 		delete_option( Options::DB_VERSION );
 		$this->asManagerInAdmin();
-		self::assertTrue( InstallHooks::inlineAllowed() );
+		self::assertTrue( $this->service( InlineRule::class )->allows() );
 
 		$this->hooks->queueWhenBehind();
 		$this->hooks->runWhenBehind();
@@ -103,7 +104,7 @@ final class InstallHooksTest extends IntegrationTestCase {
 		delete_option( Options::DB_VERSION );
 		wp_set_current_user( (int) self::factory()->user->create( array( 'role' => 'customer' ) ) );
 		set_current_screen( 'dashboard' );
-		self::assertFalse( InstallHooks::inlineAllowed() );
+		self::assertFalse( $this->service( InlineRule::class )->allows() );
 
 		$this->hooks->queueWhenBehind();
 		$this->hooks->runWhenBehind();
@@ -114,18 +115,18 @@ final class InstallHooksTest extends IntegrationTestCase {
 
 	public function test_ajax_cron_and_admin_post_requests_queue_instead(): void {
 		$this->asManagerInAdmin();
-		self::assertTrue( InstallHooks::inlineAllowed() );
+		self::assertTrue( $this->service( InlineRule::class )->allows() );
 
 		add_filter( 'wp_doing_ajax', '__return_true' );
-		self::assertFalse( InstallHooks::inlineAllowed(), 'admin-ajax.php' );
+		self::assertFalse( $this->service( InlineRule::class )->allows(), 'admin-ajax.php' );
 		remove_filter( 'wp_doing_ajax', '__return_true' );
 
 		add_filter( 'wp_doing_cron', '__return_true' );
-		self::assertFalse( InstallHooks::inlineAllowed(), 'cron' );
+		self::assertFalse( $this->service( InlineRule::class )->allows(), 'cron' );
 		remove_filter( 'wp_doing_cron', '__return_true' );
 
 		$GLOBALS['pagenow'] = 'admin-post.php'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited
-		self::assertFalse( InstallHooks::inlineAllowed(), 'admin-post.php' );
+		self::assertFalse( $this->service( InlineRule::class )->allows(), 'admin-post.php' );
 
 		delete_option( Options::DB_VERSION );
 		$this->hooks->queueWhenBehind();
@@ -188,7 +189,7 @@ final class InstallHooksTest extends IntegrationTestCase {
 			}
 		};
 		$runner = new MigrationRunner( new MigrationRegistry( $m ), $this->service( MigrationStore::class ), $clock, $this->service( Logger::class ), $this->service( Queue::class ) );
-		$hooks  = new InstallHooks( $runner );
+		$hooks  = new InstallHooks( $runner, new InlineRule() );
 		$this->asManagerInAdmin();
 
 		$hooks->runWhenBehind();

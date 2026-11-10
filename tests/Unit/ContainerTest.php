@@ -18,6 +18,7 @@ use CreativeBranding\SkateboardBuilder\Port\Clock;
 use CreativeBranding\SkateboardBuilder\Port\Logger;
 use CreativeBranding\SkateboardBuilder\Port\MigrationStore;
 use CreativeBranding\SkateboardBuilder\Port\Queue;
+use CreativeBranding\SkateboardBuilder\Scope;
 use CreativeBranding\SkateboardBuilder\Support\PluginException;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\FakeClock;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\FakeLogger;
@@ -92,21 +93,56 @@ final class ContainerTest extends TestCase {
 		self::assertInstanceOf( SystemClock::class, $service->clock );
 	}
 
-	public function test_hookables_are_every_hookable_class_once(): void {
+	public function test_the_plugins_own_hookables_are_built_for_any_request(): void {
 		$container = new Container();
 		$container->set( MigrationStore::class, new InMemoryMigrationStore() );
-		$hookables = $container->hookables();
+		$hookables = $container->hookablesFor( Scope::Everywhere );
 		self::assertCount( 1, $hookables );
 		self::assertContainsOnlyInstancesOf( Hookable::class, $hookables );
 	}
 
-	public function test_every_hookable_is_built_in_registration_order(): void {
-		$container = new Container( array( SecondHooks::class, FirstHooks::class ) );
-		$hookables = $container->hookables();
-		self::assertCount( 2, $hookables, 'every one, not the first alone' );
+	public function test_a_hookable_is_built_only_in_a_scope_it_fires_in_and_in_registration_order(): void {
+		$container = new Container(
+			array(
+				SecondHooks::class => array( Scope::Admin, Scope::Rest ),
+				FirstHooks::class  => array( Scope::Everywhere ),
+				ThirdHooks::class  => array( Scope::Cli ),
+			)
+		);
+		$hookables = $container->hookablesFor( Scope::Everywhere, Scope::Admin );
+		self::assertCount( 2, $hookables, 'every one in scope, not the first alone' );
 		self::assertInstanceOf( SecondHooks::class, $hookables[0] );
 		self::assertInstanceOf( FirstHooks::class, $hookables[1] );
-		self::assertSame( $hookables, $container->hookables(), 'built once' );
+		self::assertFalse( $container->has( ThirdHooks::class ), 'out of scope: never built' );
+	}
+
+	public function test_a_hookable_is_handed_out_once_whatever_scopes_follow(): void {
+		$container = new Container(
+			array(
+				FirstHooks::class  => array( Scope::Storefront, Scope::Rest ),
+				SecondHooks::class => array( Scope::Rest ),
+			)
+		);
+		self::assertSame( array(), $container->hookablesFor( Scope::Admin, Scope::Cron ) );
+		self::assertFalse( $container->has( FirstHooks::class ) );
+		$boot = $container->hookablesFor( Scope::Everywhere, Scope::Storefront );
+		self::assertCount( 1, $boot );
+		self::assertInstanceOf( FirstHooks::class, $boot[0] );
+		$rest = $container->hookablesFor( Scope::Rest );
+		self::assertCount( 1, $rest, 'the one registered at boot is not registered again' );
+		self::assertInstanceOf( SecondHooks::class, $rest[0] );
+		self::assertSame( array(), $container->hookablesFor( Scope::Rest, Scope::Storefront ) );
+	}
+
+	public function test_the_scopes_at_boot(): void {
+		self::assertSame( array( Scope::Everywhere, Scope::Storefront ), Scope::atBoot( false, false, false ) );
+		self::assertSame( array( Scope::Everywhere, Scope::Admin ), Scope::atBoot( true, false, false ) );
+		self::assertSame( array( Scope::Everywhere, Scope::Cli ), Scope::atBoot( false, true, false ) );
+		self::assertSame( array( Scope::Everywhere, Scope::Cron ), Scope::atBoot( false, false, true ) );
+		self::assertSame( array( Scope::Everywhere, Scope::Admin, Scope::Cli, Scope::Cron ), Scope::atBoot( true, true, true ), 'wp-admin code run from WP-CLI' );
+		foreach ( array( array( true, false, false ), array( false, true, false ), array( false, false, true ), array( false, false, false ) ) as $request ) {
+			self::assertNotContains( Scope::Rest, Scope::atBoot( ...$request ), 'known only at rest_api_init' );
+		}
 	}
 }
 
@@ -158,5 +194,12 @@ final class FirstHooks implements Hookable {
  * Another.
  */
 final class SecondHooks implements Hookable {
+	public function register(): void {}
+}
+
+/**
+ * A third.
+ */
+final class ThirdHooks implements Hookable {
 	public function register(): void {}
 }

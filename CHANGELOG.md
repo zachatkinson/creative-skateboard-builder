@@ -4,6 +4,12 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+### Changed
+
+- A class that attaches hooks is built only on a request where its hooks can fire: wp-admin, WP-CLI, cron, REST or the storefront (D-067).
+- A migration's status is an enum, and the rule for running migrations on an admin page is a service of its own (D-067). Nothing stored changes.
+- The object-cache leg of the integration suite runs on a Redis server with Redis Object Cache's drop-in (D-066).
+
 ## [0.2.0] - 2026-11-09
 
 ### Added

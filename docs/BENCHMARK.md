@@ -10,8 +10,8 @@ The spec's budgets are tests: a build fails when one is missed. The numbers from
 | Adding a 7-part build to the cart | Under 300 ms | The integration suite | Milestone 5 |
 | The fit engine with 500 candidates | The slowest slot under 40 ms, half the state route's budget; four times the candidates in under six times the time | `composer test:benchmark` (`FitEngineBenchmarkTest`) | Milestone 2 |
 | Rebuilding the specs index for 2,000 parts | Recorded; in jobs of 100 | The integration suite | Milestone 3 |
-| The builder's script, compressed | Under 15 kB | `npm run budget` | Milestone 6 |
-| The builder's styles, compressed | Under 10 kB | `npm run budget` | Milestone 6 |
+| The builder's script, compressed (Brotli, quality 11) | Under 15 kB | `npm run budget` | Milestone 6 |
+| The builder's styles, compressed (Brotli, quality 11) | Under 10 kB | `npm run budget` | Milestone 6 |
 | LCP on the builder page, mobile profile, median of three | 2.5 s or less | `npm run lhci` | Milestone 1 (the front page until milestone 6) |
 | CLS, the same run | Under 0.1; 0 is the target | `npm run lhci` | Milestone 1 |
 | TBT, the same run | Under 200 ms | `npm run lhci` | Milestone 1 |
