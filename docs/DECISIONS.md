@@ -574,3 +574,33 @@ Claude in Cowork checked 0.1.0 on the demo: the "View details" popup showed `CHA
 
 **Why:** The popup is the one place a shop owner reads about a release before installing it.
 **Status:** Accepted.
+
+### D-054 · R3's seeds stand after the check against their sources · 2026-11-09
+
+The spec asks milestone 2 to check R3's seeded class limits (low 53 mm, mid 56 mm, high 56 mm) and riser table against its sources. Read on 9 November 2026:
+
+- Hammer's guide gives the riser table as the spec has it: no riser up to 56 mm, ¼ in for 57 to 58 mm, ½ in for 59 to 62 mm, with 1¼ in bolts for a ¼ in riser and 1½ in for ½ in, which is also R4's table.
+- Skate Warehouse UK gives 48 to 53 mm for low trucks, which is the low seed. For high trucks it gives 53 to 58 mm, 2 mm past the seed. It gives no range for mid.
+- Switch says to consider risers from 57 mm, which agrees with a 56 mm limit.
+- Thunder's truck styles page carries its figures in images, and nothing could be read from it.
+
+Nothing changes. The high seed stays at 56 mm, Independent's own figure for its 55 mm Standard and Hammer's, and not Skate Warehouse UK's 58 mm.
+
+**Why:** R3 only warns, so a limit 2 mm low costs a shopper a riser suggestion they can ignore, while a limit 2 mm high sells wheel bite without a word. The limit is a kit setting, and a maker's `max_wheel` on the truck overrides it.
+**Status:** Accepted.
+
+### D-055 · How the fit rules answer · 2026-11-09
+
+Choices made while building R1 to R6, where the spec leaves them open:
+
+- **A finding, not a verdict.** A rule returns a list of findings, each with its rule, severity, message code, values, source and the slots it read. No finding means the picks fit as far as that rule goes. A finding of severity `fits` is a note: a default taken for a spec the part does not give (`pattern_assumed`, `axle_assumed`, `limit_from_class`, `length_unchecked`), which the Catalogue check will list.
+- **A missing spec is the part's own block.** A picked part that lacks a spec a rule needs gets `spec_missing` on its own slot, whether or not the other slot is filled, so a deck with no width is not offered at step one and does not go on to hide every truck.
+- **R1.** A range is both `deck_min` and `deck_max`; a truck with one end only goes by its axle. The kit's `range_tolerance` widens a maker's range at both ends and is 0 unless the shop sets it. `axle_fit` (0.25 in) and `axle_warn` (0.5 in) are the kit's too.
+- **R2.** A deck drilled for both patterns fits either baseplate, as a baseplate that takes both fits either deck.
+- **R3.** How far over is measured, not counted in whole millimetres: anything over the limit and up to the first row's reach gets that row's riser. Past the last row the warning says no riser covers it, and a riser does not clear it.
+- **R4.** 7/8 in, 1 in and the ¼ in of slack are constants, not kit settings: they are the trade's published table, and the spec gives the kit nothing to set here.
+- **R5.** The mismatch's source is the maker when the truck gives its axle, and the standard when 8 mm was assumed.
+- **R6.** A sheet needs `grip_length` only where it is held to a deck's length: the length check is on and the deck picked has a length.
+
+**Why:** Each keeps the page able to say why (P1) and keeps a guess from being sold as a fit, without the rules knowing anything of step order, stock or price.
+**Status:** Accepted.

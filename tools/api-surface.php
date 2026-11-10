@@ -19,7 +19,8 @@
  *   DOM events            'cbuild:*' strings under assets/src;
  *   document schemas      schema/*.json, each by its path, and each one's content by a digest of its decoded JSON, so
  *                         a schema cannot change shape without the snapshot changing with it;
- *   spec keys             Domain\Spec\SpecKey's cases, with each one's kind and unit.
+ *   spec keys             Domain\Spec\SpecKey's cases, with each one's kind and unit;
+ *   message codes         Domain\Rule\MessageCode's cases, with the severities and sources a finding carries.
  *
  * @package CreativeBranding\SkateboardBuilder
  */
@@ -266,8 +267,26 @@ if ( is_file( $cbuild_root . '/src/Domain/Spec/SpecKey.php' ) ) {
 $cbuild_surface['spec_keys']  = array_keys( $cbuild_spec_keys );
 $cbuild_surface['spec_kinds'] = $cbuild_spec_keys;
 
-// Groups that describe another group's items and are not themselves named in the docs.
-$cbuild_details = array( 'schema_digests', 'spec_kinds' );
+// The message codes a finding carries, with its severities and sources.
+$cbuild_rule_values = array(
+	'message_codes' => array(),
+	'severities'    => array(),
+	'sources'       => array(),
+);
+if ( is_file( $cbuild_root . '/src/Domain/Rule/MessageCode.php' ) ) {
+	require_once $cbuild_root . '/vendor/autoload.php';
+	foreach ( array( 'message_codes' => 'MessageCode', 'severities' => 'Severity', 'sources' => 'Source' ) as $cbuild_group => $cbuild_enum ) { // phpcs:ignore WordPress.Arrays.ArrayDeclarationSpacing.AssociativeArrayFound
+		$cbuild_enum = 'CreativeBranding\\SkateboardBuilder\\Domain\\Rule\\' . $cbuild_enum;
+		foreach ( $cbuild_enum::cases() as $cbuild_case ) {
+			$cbuild_rule_values[ $cbuild_group ][] = $cbuild_case->value;
+		}
+	}
+}
+$cbuild_surface += $cbuild_rule_values;
+
+// Groups that describe another group's items, or whose values are too plain a word to look for in the docs, and are
+// held by the snapshot alone.
+$cbuild_details = array( 'schema_digests', 'spec_kinds', 'severities', 'sources' );
 
 $cbuild_json     = json_encode( $cbuild_surface, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR ) . "\n";
 $cbuild_snapshot = $cbuild_root . '/tests/Fixtures/api-surface.json';

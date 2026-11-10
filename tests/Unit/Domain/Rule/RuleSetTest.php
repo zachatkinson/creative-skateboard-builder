@@ -1,0 +1,98 @@
+<?php
+/**
+ * RuleSet.
+ *
+ * @package CreativeBranding\SkateboardBuilder\Tests
+ */
+
+declare( strict_types=1 );
+
+namespace CreativeBranding\SkateboardBuilder\Tests\Unit\Domain\Rule;
+
+use CreativeBranding\SkateboardBuilder\Domain\Kit\Picks;
+use CreativeBranding\SkateboardBuilder\Domain\Kit\RuleSettings;
+use CreativeBranding\SkateboardBuilder\Domain\Kit\SlotKey;
+use CreativeBranding\SkateboardBuilder\Domain\Rule\Finding;
+use CreativeBranding\SkateboardBuilder\Domain\Rule\MessageCode;
+use CreativeBranding\SkateboardBuilder\Domain\Rule\RuleId;
+use CreativeBranding\SkateboardBuilder\Domain\Rule\RuleSet;
+use CreativeBranding\SkateboardBuilder\Domain\Rule\Severity;
+use CreativeBranding\SkateboardBuilder\Tests\Support\Domain\Parts;
+use PHPUnit\Framework\TestCase;
+
+/**
+ * The six rules run together, and a kit's switches.
+ */
+final class RuleSetTest extends TestCase {
+
+	/**
+	 * A build that every rule has something to say about.
+	 */
+	private static function wrong(): Picks {
+		return Parts::picks(
+			array(
+				SlotKey::DECK     => Parts::of( array( 'deck_width' => '9.5', 'deck_length' => '33', 'hole_pattern' => 'old_school' ) ),
+				SlotKey::TRUCKS   => Parts::indy( '144', array( 'baseplate' => 'new_school', 'max_wheel' => '56', 'axle_diameter' => '8' ) ),
+				SlotKey::WHEELS   => Parts::of( array( 'wheel_diameter' => '60' ) ),
+				SlotKey::BEARINGS => Parts::of( array( 'bearing_bore' => '7' ) ),
+				SlotKey::HARDWARE => Parts::of( array( 'bolt_length' => '3/4' ) ),
+				SlotKey::GRIP     => Parts::of( array( 'grip_width' => '9', 'grip_length' => '33' ) ),
+			)
+		);
+	}
+
+	/**
+	 * A build that fits.
+	 */
+	private static function right(): Picks {
+		return Parts::picks(
+			array(
+				SlotKey::DECK     => Parts::of( array( 'deck_width' => '8.25', 'deck_length' => '31.875', 'hole_pattern' => 'new_school' ) ),
+				SlotKey::TRUCKS   => Parts::indy( '144', array( 'baseplate' => 'new_school', 'max_wheel' => '56', 'axle_diameter' => '8' ) ),
+				SlotKey::WHEELS   => Parts::of( array( 'wheel_diameter' => '54' ) ),
+				SlotKey::BEARINGS => Parts::of( array( 'bearing_bore' => '8' ) ),
+				SlotKey::HARDWARE => Parts::of( array( 'bolt_length' => '1' ) ),
+				SlotKey::GRIP     => Parts::of( array( 'grip_width' => '9', 'grip_length' => '33' ) ),
+			)
+		);
+	}
+
+	public function test_a_build_that_fits_has_no_findings(): void {
+		self::assertSame( array(), RuleSet::standard()->check( self::right(), RuleSettings::defaults() ) );
+		self::assertSame( array(), RuleSet::standard()->check( Picks::none(), RuleSettings::defaults() ) );
+	}
+
+	public function test_the_standard_set_is_r1_to_r6_in_order(): void {
+		$findings = RuleSet::standard()->check( self::wrong(), RuleSettings::defaults() );
+		self::assertSame( RuleId::cases(), array_column( $findings, 'rule' ) );
+		self::assertSame(
+			array(
+				MessageCode::DeckAboveRange,
+				MessageCode::PatternMismatch,
+				MessageCode::WheelNeedsRiser,
+				MessageCode::BoltsTooShort,
+				MessageCode::BoreMismatch,
+				MessageCode::GripTooNarrow,
+			),
+			array_column( $findings, 'code' )
+		);
+		self::assertSame( Severity::Block, Finding::worst( $findings ) );
+	}
+
+	public function test_a_rule_the_kit_switched_off_finds_nothing(): void {
+		foreach ( RuleId::cases() as $off ) {
+			$document                           = RuleSettings::DEFAULTS;
+			$document[ $off->value ]['enabled'] = false;
+			$findings                           = RuleSet::standard()->check( self::wrong(), RuleSettings::fromDocument( $document ) );
+			self::assertSame(
+				array_values( array_filter( RuleId::cases(), static fn( RuleId $rule ): bool => $rule !== $off ) ),
+				array_column( $findings, 'rule' ),
+				$off->value
+			);
+		}
+	}
+
+	public function test_a_set_of_no_rules_finds_nothing(): void {
+		self::assertSame( array(), ( new RuleSet( array() ) )->check( self::wrong(), RuleSettings::defaults() ) );
+	}
+}

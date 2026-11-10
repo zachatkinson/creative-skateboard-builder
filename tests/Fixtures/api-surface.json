@@ -89,5 +89,35 @@
         "grip_width": "measure in",
         "grip_length": "measure in",
         "set_size": "count"
-    }
+    },
+    "message_codes": [
+        "spec_missing",
+        "deck_below_range",
+        "deck_above_range",
+        "axle_narrower",
+        "axle_wider",
+        "pattern_mismatch",
+        "pattern_assumed",
+        "wheel_needs_riser",
+        "wheel_no_riser",
+        "limit_from_class",
+        "bolts_too_short",
+        "bolts_too_long",
+        "bore_mismatch",
+        "axle_assumed",
+        "spacers_built_in",
+        "grip_too_narrow",
+        "grip_too_short",
+        "length_unchecked"
+    ],
+    "severities": [
+        "fits",
+        "warn",
+        "block"
+    ],
+    "sources": [
+        "maker",
+        "kit",
+        "standard"
+    ]
 }

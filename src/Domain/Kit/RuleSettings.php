@@ -26,6 +26,12 @@ final readonly class RuleSettings {
 	public const int MAX_RISER_STEPS = 6;
 
 	/**
+	 * The height class a truck is taken to have when it gives none: a truck not labelled high or low counts as high
+	 * (spec: R3).
+	 */
+	public const string USUAL_CLASS = 'high';
+
+	/**
 	 * The document a new kit starts from: every rule on, R1's tolerances, R3's class limits and riser table as the
 	 * spec seeds them, and R6's length check on.
 	 */
@@ -163,6 +169,6 @@ final readonly class RuleSettings {
 	 * @param string|null $heightClass The truck's `height_class`, or null when it has none.
 	 */
 	public function classLimit( ?string $heightClass ): Measure {
-		return $this->classLimits[ $heightClass ?? 'high' ] ?? $this->classLimits['high'];
+		return $this->classLimits[ $heightClass ?? self::USUAL_CLASS ] ?? $this->classLimits[ self::USUAL_CLASS ];
 	}
 }

@@ -8,7 +8,8 @@ All notable changes to this project are documented here. The format follows [Kee
 
 - The kit's four document schemas, `schema/kit-slots.json`, `schema/kit-rules.json`, `schema/kit-presets.json` and `schema/kit-assembly.json`, each at `schema_version` 1, with the domain's value objects that read the same documents and an integration test that holds the two together.
 - The spec keys: `deck_width`, `deck_length`, `wheelbase`, `hole_pattern`, `axle_width`, `deck_min`, `deck_max`, `truck_height`, `height_class`, `max_wheel`, `baseplate`, `axle_diameter`, `wheel_diameter`, `riser_thickness`, `bolt_length`, `bearing_bore`, `spacers_built_in`, `grip_width`, `grip_length` and `set_size`.
-- `composer api:check` reads the schemas, by path and by content, and the spec keys, with each one's kind and unit.
+- The fit rules R1 to R6 (`Domain\Rule`), each answering with findings: a severity, a message code, the values behind it, its source and the slots it read (D-055). The message codes: `spec_missing`, `deck_below_range`, `deck_above_range`, `axle_narrower`, `axle_wider`, `pattern_mismatch`, `pattern_assumed`, `wheel_needs_riser`, `wheel_no_riser`, `limit_from_class`, `bolts_too_short`, `bolts_too_long`, `bore_mismatch`, `axle_assumed`, `spacers_built_in`, `grip_too_narrow`, `grip_too_short` and `length_unchecked`. R3's seeded limits were checked against their sources and stand (D-054).
+- `composer api:check` reads the schemas, by path and by content, the spec keys, with each one's kind and unit, and the message codes.
 
 ### Changed
 
