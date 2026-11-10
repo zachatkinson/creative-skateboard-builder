@@ -615,3 +615,24 @@ Choices made while building R1 to R6, where the spec leaves them open:
 
 **Why:** One engine answers the step, the cart and the change list, and none of them needs to know how the others ask.
 **Status:** Accepted.
+
+### D-057 · The change list and the recommendation · 2026-11-09
+
+**The change list.**
+
+- It walks the slots after the changed one in step order and holds each later pick against the build as it now stands, swaps included, so a truck swapped for the wider deck is what the bearings are then held against. Slots before the change are kept and not asked about.
+- A later pick is changed only when it is blocked. One that now warns is kept: a warning lets the build go ahead, and the step shows it.
+- "Nearest spec" is measured on one spec per slot, the one a shopper picks that part by: deck width, axle width, wheel diameter, riser thickness, bearing bore, bolt length, grip width. A part with no figure for it is the furthest, and still better than an empty slot. A slot the rules do not know goes straight to brand and price.
+- Then the same brand as the part picked, then the nearest price to it, then the first given. Only parts in stock that the slot offers, warned ones included.
+- With nothing that fits, the slot is empty in the proposed build and the shopper picks again.
+- It is a value: the build as it was, the build proposed, the slots kept and the changes. Applying or undoing it is the caller's.
+
+**The recommendation.**
+
+- "Fits" is the severity: a part that only fits with a warning is offered and never recommended, since the total counts a recommendation from the start (P9) and a warned part should be the shopper's own choice.
+- "The middle of the slot's prices" is the median of every candidate's price, hidden and sold-out parts included, so one dear part does not pull it. For an even number it is halfway between the two in the middle. Where two parts are as near as each other, the first given.
+- A slot the kit does not require gets a recommendation only when a finding among the picks before it reads that slot: wheels over a truck's limit name the risers slot, so the risers step then starts on the riser that clears the warning (P2). Otherwise an optional slot starts empty, whatever its default.
+- With nothing fitting and in stock, there is none, and the shopper picks.
+
+**Why:** Both ask the engine and decide nothing about fit; these are the choices the spec's sentences leave open.
+**Status:** Accepted.
