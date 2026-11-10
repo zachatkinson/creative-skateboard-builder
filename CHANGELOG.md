@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html). One entry per milestone; `v1.0.0` closes milestone 9.
 
+## [0.3.1] - 2026-11-10
+
+### Fixed
+
+- The Part specs panel no longer pushes a product's edit form past PHP's `max_input_vars` (issue #23). It added 21 named fields to the product's tab and to each variation WooCommerce loads, 15 to a page, on every product. Where the limit is 1,000, a common host default, PHP kept the first 1,000 fields of an Update and dropped the rest without an error: other plugins' fields, the short description, the slug. A group of fields that is closed is now drawn disabled and sends nothing, and the screen's script enables a group when it opens. A part with no specs adds no field to the form; one with specs adds its open groups'. A group that sends nothing keeps what the part has.
+- A link to a variation's fields (`#cbuild_variation_<id>`) checks a frame later that the control it moved focus to is still in view, and scrolls it back if the page moved.
+
 ## [0.3.0] - 2026-11-10
 
 ### Added

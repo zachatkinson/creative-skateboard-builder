@@ -1167,3 +1167,18 @@ Zach on 10 November 2026, of the review's sixth question: "if this is best pract
 
 **Status:** Accepted. Revises D-082's "the button covers it".
 
+
+### D-104 · 0.3.1: a closed group of Part specs sends nothing · 2026-11-10
+
+Claude in Cowork, checking 0.3.0 on a shop on 10 November 2026, found four products whose edit form posted more than 1,000 variables with the Variations tab open, where PHP's `max_input_vars` is 1,000. PHP keeps the first 1,000 and drops the rest with no error. The panel had added 21 named fields to the product's tab and to each of the 15 variations on a page, on every product, part or not (issue #23). Zach, asked whether the fix is a 0.3.1 or milestone 4's: "do to best practice". A fault that loses a shop's data is fixed where shops are, so it is 0.3.1, made on a branch from `main`. The numbers D-096 to D-103 are milestone 4's, on its branch.
+
+- **A closed group's fields are drawn `disabled`.** A browser sends no disabled field. A group is open when the part has a value in it or one in use from elsewhere, as before, so a part with no specs sends nothing, and one with specs sends its open groups'.
+- **The screen's script enables a group's fields when it opens,** in the product's tab and in any variation WooCommerce loads later, by hearing `toggle` on its way down (it does not bubble). The fields stay enabled when the group closes again, so what was typed is still sent. The product screen already needs scripts (D-074); without them a closed group cannot be filled in, and neither can a variation be opened.
+- **A group that sends nothing keeps what the part has.** `SpecWriter::draft()` already read a field that was not sent as unchanged; `PartSpecsPanelTest` now holds it.
+- **Asking hosts to raise the limit was not weighed:** the plugin must work where it is installed.
+- **Not drawing the panel at all on a product that cannot be a part** needs kits to say which products fill a slot, and is milestone 4's (issue #16).
+- **The jump to a variation's fields** is checked a frame later: if what has focus is outside the viewport, it is scrolled to the middle. Cowork saw the page end 200 px low once, on a first load.
+- **Red runs:** `PartSpecsPanelTest::test_a_closed_group_sends_nothing_so_a_part_with_no_specs_adds_no_field_to_the_form`, "Failed asserting that two arrays are identical"; the script's tests, "TypeError: groups is not a function", 11 failing.
+- **Deliberate break:** with the fields drawn enabled, the browser test that reads what the form sends: "Expected - 1, Received + 65".
+
+**Status:** Accepted.

@@ -1,5 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { named, open, start } from '../../assets/src/admin/part-specs';
+import {
+	enable,
+	groups,
+	named,
+	open,
+	settle,
+	start,
+} from '../../assets/src/admin/part-specs';
 import type { Query } from '../../assets/src/admin/part-specs';
 
 /**
@@ -338,5 +345,142 @@ describe( 'the script', () => {
 		} as unknown as Window & { jQuery?: Query } );
 		ready[ 0 ]?.();
 		expect( heard ).toHaveLength( 1 );
+	} );
+} );
+
+// Issue #23: a closed group's fields are drawn disabled, so a part with no specs adds nothing to the product's form.
+describe( 'a closed group', () => {
+	const drawn = () => {
+		document.body.innerHTML = `
+			<div class="cbuild-part-specs">
+				<details id="deck"><summary>Deck</summary><input id="width" disabled><select id="pattern" disabled></select></details>
+				<details id="trucks"><summary>Trucks</summary><input id="axle" disabled></details>
+			</div>
+			<details id="other"><summary>Another plugin's</summary><input id="theirs" disabled></details>`;
+	};
+	const disabled = ( id: string ) =>
+		( document.getElementById( id ) as HTMLInputElement ).disabled;
+	const toggle = ( id: string, isOpen: boolean ) => {
+		const group = document.getElementById( id ) as HTMLDetailsElement;
+		group.open = isOpen;
+		// The browser's own event does not bubble; the script hears it on its way down.
+		group.dispatchEvent( new Event( 'toggle' ) );
+	};
+
+	it( 'has its fields enabled when it opens, and no other group has', () => {
+		drawn();
+		groups( document );
+		toggle( 'deck', true );
+		expect( disabled( 'width' ) ).toBe( false );
+		expect( disabled( 'pattern' ) ).toBe( false );
+		expect( disabled( 'axle' ) ).toBe( true );
+	} );
+
+	it( 'keeps them enabled when it closes again, so what was typed is still sent', () => {
+		drawn();
+		groups( document );
+		toggle( 'deck', true );
+		toggle( 'deck', false );
+		expect( disabled( 'width' ) ).toBe( false );
+	} );
+
+	it( 'is not touched while it stays closed, and nothing outside the panel is', () => {
+		drawn();
+		groups( document );
+		toggle( 'trucks', false );
+		toggle( 'other', true );
+		expect( disabled( 'axle' ) ).toBe( true );
+		expect( disabled( 'theirs' ) ).toBe( true );
+	} );
+
+	it( 'is heard in a variation WooCommerce loads later', () => {
+		document.body.innerHTML = '';
+		groups( document );
+		drawn();
+		toggle( 'trucks', true );
+		expect( disabled( 'axle' ) ).toBe( false );
+	} );
+
+	it( 'can be enabled directly', () => {
+		drawn();
+		enable( document.getElementById( 'trucks' ) as Element );
+		expect( disabled( 'axle' ) ).toBe( false );
+		expect( disabled( 'width' ) ).toBe( true );
+	} );
+
+	it( 'is listened for when the script starts, with or without jQuery', () => {
+		drawn();
+		start( {
+			document,
+			location: { hash: '' },
+		} as unknown as Window );
+		toggle( 'deck', true );
+		expect( disabled( 'width' ) ).toBe( false );
+	} );
+} );
+
+// Issue #23, seen once: the page moved after the jump, and the focused summary ended up above the viewport.
+describe( 'what was scrolled to', () => {
+	const view = ( height: number ) => {
+		const frames: Array< () => void > = [];
+		return {
+			frames,
+			innerHeight: height,
+			requestAnimationFrame: ( run: () => void ) => frames.push( run ),
+		};
+	};
+	const at = ( top: number, bottom: number ) => {
+		const target = document.createElement( 'summary' );
+		target.getBoundingClientRect = () => ( { top, bottom } ) as DOMRect;
+		return target;
+	};
+
+	it( 'is checked a frame later, and brought back when it is above the viewport', () => {
+		const win = view( 800 );
+		const target = at( -200, -170 );
+		settle( win, target );
+		expect( scrolled ).toEqual( [] );
+		win.frames[ 0 ]?.();
+		expect( scrolled ).toEqual( [ [ target, { block: 'center' } ] ] );
+	} );
+
+	it( 'is brought back when it is below the viewport', () => {
+		const win = view( 800 );
+		const target = at( 790, 820 );
+		settle( win, target );
+		win.frames[ 0 ]?.();
+		expect( scrolled ).toHaveLength( 1 );
+	} );
+
+	it( 'is left alone when it is in view, edge to edge', () => {
+		const win = view( 800 );
+		settle( win, at( 0, 800 ) );
+		win.frames[ 0 ]?.();
+		expect( scrolled ).toEqual( [] );
+	} );
+
+	it( 'is nothing to do without a window, or with nothing focused', () => {
+		expect( () => settle( null, at( -5, 0 ) ) ).not.toThrow();
+		const win = view( 800 );
+		expect( () => settle( win, null ) ).not.toThrow();
+		expect( win.frames ).toEqual( [] );
+	} );
+
+	it( 'is the control focus moved to, when the address names the panel', () => {
+		screen();
+		const frames: Array< () => void > = [];
+		const first = document.getElementById( 'panel-first' ) as HTMLElement;
+		first.getBoundingClientRect = () =>
+			( { top: -300, bottom: -270 } ) as DOMRect;
+		const win = document.defaultView as Window;
+		const real = win.requestAnimationFrame;
+		win.requestAnimationFrame = ( run: FrameRequestCallback ) =>
+			frames.push( () => run( 0 ) );
+		const { $ } = jQuery();
+		open( document, '#cbuild_part_specs', $ );
+		scrolled.length = 0;
+		frames[ 0 ]?.();
+		win.requestAnimationFrame = real;
+		expect( scrolled ).toEqual( [ [ first, { block: 'center' } ] ] );
 	} );
 } );
