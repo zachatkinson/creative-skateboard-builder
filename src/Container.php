@@ -164,6 +164,14 @@ final class Container {
 					}
 				);
 			},
+			// The tab reads the kit and its parts, so it is built when one of its hooks fires.
+			Admin\BuildTabHooks::class                  => static function ( Container $c ): object {
+				return new Admin\BuildTabHooks(
+					static function () use ( $c ): Admin\BuildTab {
+						return $c->get( Admin\BuildTab::class );
+					}
+				);
+			},
 			// The sources, each asked once per batch.
 			Service\SpecIndexer::class                  => static fn( Container $c ): object => new Service\SpecIndexer(
 				$c->get( Port\SpecIndex::class ),
@@ -196,6 +204,7 @@ final class Container {
 			// WooCommerce's settings screen.
 			Admin\SettingsHooks::class             => array( Scope::Admin ),
 			Admin\PartSpecsHooks::class            => array( Scope::Admin ),
+			Admin\BuildTabHooks::class             => array( Scope::Admin ),
 			Admin\BuilderHooks::class              => array( Scope::Admin ),
 			Hooks\CliHooks::class                  => array( Scope::Cli ),
 			// Site Health's page and Info tab are wp-admin's; its weekly check runs in cron, and WP-CLI can ask too. The

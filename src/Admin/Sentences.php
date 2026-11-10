@@ -9,13 +9,19 @@ declare( strict_types=1 );
 
 namespace CreativeBranding\SkateboardBuilder\Admin;
 
+use CreativeBranding\SkateboardBuilder\Domain\Kit\DocumentError;
+use CreativeBranding\SkateboardBuilder\Domain\Kit\Kit;
+use CreativeBranding\SkateboardBuilder\Domain\Kit\Slot;
+use CreativeBranding\SkateboardBuilder\Domain\Kit\Slots;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\StoredSpecs;
 use CreativeBranding\SkateboardBuilder\Domain\Measure\MeasureError;
+use CreativeBranding\SkateboardBuilder\Domain\Rule\MessageCode;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\Origin;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\SpecKey;
 use CreativeBranding\SkateboardBuilder\Port\UploadRefused;
 use CreativeBranding\SkateboardBuilder\Service\CatalogueCheck;
 use CreativeBranding\SkateboardBuilder\Service\CheckFinding;
+use CreativeBranding\SkateboardBuilder\Service\KitEditor;
 use CreativeBranding\SkateboardBuilder\Service\SpecImport;
 use CreativeBranding\SkateboardBuilder\Service\SpecWriter;
 
@@ -162,6 +168,53 @@ final class Sentences {
 			MeasureError::Negative->value => sprintf( __( '"%s" is below zero.', 'creative-skateboard-builder' ), $text ),
 			/* translators: %s: what a cell held. */
 			default => sprintf( __( '"%s" is not a value this column takes.', 'creative-skateboard-builder' ), $text ),
+		};
+	}
+
+	/**
+	 * What was wrong with a kit's setting, as a sentence that starts with the field's name.
+	 *
+	 * @since 0.4.0
+	 *
+	 * @param string                $code   The problem's code: a `DocumentError`, or one of `KitEditor`'s.
+	 * @param string                $field  The field's name, such as "The Trucks slot, Units per build".
+	 * @param array<string, string> $values What the words need: `preset`, `slot`, `part`, `rule` and `message`, where the code has them.
+	 */
+	public static function kit( string $code, string $field, array $values = array() ): string {
+		$preset = $values['preset'] ?? '';
+		$slot   = $values['slot'] ?? '';
+		$part   = $values['part'] ?? '';
+		return match ( $code ) {
+			/* translators: %s: a field's name. */
+			DocumentError::Missing->value => sprintf( __( '%s: fill this in.', 'creative-skateboard-builder' ), $field ),
+			/* translators: %s: a field's name. */
+			DocumentError::BadMeasure->value => sprintf( __( '%s: type a number, such as 0.25.', 'creative-skateboard-builder' ), $field ),
+			/* translators: 1: a field's name. 2: the most units a slot takes. 3: the most slots a kit takes. 4: the most presets a kit takes. */
+			DocumentError::OutOfRange->value => sprintf( __( '%1$s: this is more than the kit takes, or less. A slot takes 1 to %2$d units, a kit %3$d slots and %4$d presets, and text no more than its field allows.', 'creative-skateboard-builder' ), $field, Slot::MAX_UNITS, Slots::MAX, Kit::MAX_PRESETS ),
+			/* translators: %s: a field's name. */
+			DocumentError::Duplicate->value => sprintf( __( '%s: the kit already has a slot of this kind. A kit takes one of each.', 'creative-skateboard-builder' ), $field ),
+			/* translators: %s: a field's name. */
+			DocumentError::DeckNotFirst->value => sprintf( __( '%s: the deck\'s slot must come first, since every other part is checked against the deck. Move it up.', 'creative-skateboard-builder' ), $field ),
+			/* translators: %s: a field's name. */
+			DocumentError::RisersAfterHardware->value => sprintf( __( '%s: the risers\' slot must come before the hardware\'s, since the bolts\' length depends on the riser. Move it up.', 'creative-skateboard-builder' ), $field ),
+			/* translators: %s: a field's name. */
+			DocumentError::OutOfOrder->value => sprintf( __( '%s: this must not be less than the figure before it.', 'creative-skateboard-builder' ), $field ),
+			/* translators: %s: a field's name. */
+			DocumentError::UnknownSlot->value => sprintf( __( '%s: the kit has no such slot now. Clear the part, or keep the slot.', 'creative-skateboard-builder' ), $field ),
+			/* translators: %s: a field's name. */
+			DocumentError::SlotNotFilled->value => sprintf( __( '%s: choose a part. A build must have one.', 'creative-skateboard-builder' ), $field ),
+			KitEditor::NO_SLOTS => __( 'Presets need the kit\'s slots. Put the slots right and save, then add the presets.', 'creative-skateboard-builder' ),
+			/* translators: 1: a field's name. 2: a product's name. 3: a slot's label. */
+			KitEditor::NOT_IN_SLOT => sprintf( __( '%1$s: %2$s is not a part the %3$s slot takes, or it cannot be bought now.', 'creative-skateboard-builder' ), $field, $part, $slot ),
+			KitEditor::BLOCKED => MessageCode::SpecMissing->value === ( $values['message'] ?? '' )
+				/* translators: 1: a field's name. 2: a product's name. 3: a rule's number, such as R1. */
+				? sprintf( __( '%1$s: %2$s lacks a spec that rule %3$s reads, so the builder does not offer it. Fill it in on its Part specs.', 'creative-skateboard-builder' ), $field, $part, $values['rule'] ?? '' )
+				/* translators: 1: a field's name. 2: a product's name. 3: a rule's number, such as R1. 4: a preset's name. */
+				: sprintf( __( '%1$s: %2$s does not fit the other parts of "%4$s". Rule %3$s does not let them go together.', 'creative-skateboard-builder' ), $field, $part, $values['rule'] ?? '', $preset ),
+			/* translators: %s: a field's name. */
+			DocumentError::WrongType->value => sprintf( __( '%s: this is not a value the field takes.', 'creative-skateboard-builder' ), $field ),
+			/* translators: %s: a section's name. */
+			default => sprintf( __( '%s: what was sent could not be read. Load the page again and try once more.', 'creative-skateboard-builder' ), $field ),
 		};
 	}
 }

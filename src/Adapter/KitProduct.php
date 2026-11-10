@@ -12,6 +12,7 @@ namespace CreativeBranding\SkateboardBuilder\Adapter;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Assembly;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\InvalidDocument;
 use CreativeBranding\SkateboardBuilder\Support\Options;
+use CreativeBranding\SkateboardBuilder\Support\StoredKit;
 use WC_Product;
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -127,16 +128,7 @@ final class KitProduct extends WC_Product {
 	 * @return array<string, mixed>|null
 	 */
 	public function document( string $key ): ?array {
-		if ( ! in_array( $key, Options::kitDocuments(), true ) ) {
-			return null;
-		}
-		$stored  = $this->get_meta( $key, true );
-		$decoded = is_string( $stored ) ? json_decode( $stored, true ) : null;
-		if ( ! is_array( $decoded ) || array_is_list( $decoded ) ) {
-			return null;
-		}
-		/** @var array<string, mixed> $decoded */
-		return $decoded;
+		return StoredKit::read( $this, $key );
 	}
 
 	/**
@@ -163,13 +155,7 @@ final class KitProduct extends WC_Product {
 	 * @param array<string, mixed> $document The document.
 	 */
 	public function setDocument( string $key, array $document ): void {
-		if ( ! in_array( $key, Options::kitDocuments(), true ) ) {
-			return;
-		}
-		$text = wp_json_encode( $document, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
-		if ( false !== $text ) {
-			$this->update_meta_data( $key, $text );
-		}
+		StoredKit::write( $this, $key, $document );
 	}
 
 	/**

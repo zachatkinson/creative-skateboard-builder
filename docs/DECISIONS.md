@@ -1328,3 +1328,35 @@ The second half of Claude in Cowork's note on issue #23: "draw no panel where a 
 - **The documents have names here** (`slots`, `rules`, `presets`, `assembly`), which the schemas' port shares. Where each is stored is `Support\Options`', which a service may not use.
 
 **Status:** Accepted.
+
+### D-107 · The mutation job's time limit is 25 minutes · 2026-11-10
+
+On `main`, `composer infection` mutates everything, which took 11 minutes on 0.3.0's merge and 14 on 0.3.1's, on the same code but for one template and a script. StrykerJS, `npm ci` and the release dry run follow it. The job's limit was 15 minutes, so on 0.3.1's merge (run 42911035398) it was cancelled with nothing wrong, CI ended cancelled, and `release.yml` skipped the release until the job was run again.
+
+- **The limit is 25 minutes.** A limit is there to stop a job that hangs, not one that is slow on a busy runner. GitHub bills what a job uses, not its limit (D-040), so this costs nothing on a run that passes.
+- **CI gives Infection every core the runner has** (`CBUILD_INFECTION_THREADS`, from `nproc`). `tools/infection.sh` asked for `--threads=max`, which Infection 0.35.10 reads as every core but one (`src/Resource/Processor/CpuCoresCountProvider.php`, `RESERVED_CPUS`), and the job's log on `main` reads "Threads: 1" for both runs: 5 minutes 34 seconds outside the domain and 2 minutes 41 inside it. Away from CI the script still asks for `max`, so a laptop keeps a core.
+- **No floor moves.** The scores asked for are as they were.
+- **A pull request's run is not touched by this:** it mutates its changed lines and takes two to three minutes.
+
+**Status:** Accepted.
+
+### D-108 · The Build tab's screen · 2026-11-10
+
+`docs/SPEC.md` (Admin, The kit's Build tab). `Admin\BuildTab` draws the tab and hands what is sent to `Service\KitEditor` (D-106); `templates/admin/build-tab.php` is its one template, and `assets/src/admin/build-tab.ts` its script.
+
+- **Only a kit's screen holds the fields.** WooCommerce prints every tab's panel on every product's screen and shows the ones the type takes. The tab's fields on a simple product would be some 150 more for its form to send, which is issue #23 again. Another product's panel holds one sentence, and its fields arrive once it is saved as a kit.
+- **Saved by who may manage the shop** (`manage_woocommerce`, the spec's capability for setting up kits), checked in the save as well as by WooCommerce, which checks `woocommerce_meta_nonce` before it fires the hook (11.2.2, `includes/admin/class-wc-admin-meta-boxes.php:228`). Someone who may only edit products can save the kit's name and leaves its settings as they were.
+- **Every value is plain text:** `sanitize_text_field()`, and `sanitize_textarea_field()` for the two that take lines (a slot's help and the returns notice). The documents hold no markup, and the builder escapes them when it prints them.
+- **One way to store a document.** `Support\StoredKit` reads and writes a kit's documents on a product through its CRUD. `Adapter\KitProduct` uses it, and so does the tab, which may not reach into the adapters (deptrac).
+- **A new kit starts from a complete's seven parts** (deck 1, trucks 2, wheels 4, risers 2 and optional, bearings 8, hardware 8, grip 1) and the seeded rules. Nothing is stored until the kit is saved. The shop's own defaults for new kits are the settings page's, later in this milestone.
+- **A slot is added by typing a label into the empty row at the end, and removed by a box on its row.** Neither needs a script, and neither builds markup in the browser. Six presets are always drawn, the empty ones folded shut, and the riser suggestions end with two spare rows.
+- **Rows move by Move up and Move down, and by dragging** their handle (jQuery UI's sortable, which WooCommerce's product screen loads). The rows are sent in the order they stand in. After a move, focus stays on the button pressed, or goes to the row's other button at an end; the button with nowhere to go is switched off; and `wp.a11y.speak` says where the row now is, in a sentence the page carries (WCAG 2.5.7, 2.4.3, 4.1.3).
+- **A refused section is shown once more as it was typed,** to the person who typed it, with each wrong field marked (`aria-invalid`) and tied to its sentence (`aria-describedby`), and the section's problems listed above it. It is kept in a transient named for the kit and the user, `cbuild_kit_draft_<kit>_<user>`, until the tab is next drawn and an hour at most. A reload after that shows the stored kit. Kept longer, it would stand over what someone else had saved since.
+- **A notice's link names its field by the document's own path:** `slots[2].units` is `#cbuild-kit-slots-2-units`. The script opens the tab and every folded group the field is in, and moves focus to it. A path deeper than a field (one ID in a list) leads to the field, and one with no field of its own to its row or its section.
+- **Labels stand above their fields.** WooCommerce floats a label into a column 150 pixels wide, which "With no range: the axle warns within (in)" does not fit, less so at phone width or in French. Each slot's settings and each preset fold shut unless they hold something wrong, so the tab is some 5,600 pixels tall and not 11,000.
+- **The rules report one thing at a time for the rules and assembly** (D-106), so a second wrong measure is met on the next save.
+- **A preset's part that lacks a spec is said as that,** not as a misfit: "lacks a spec that rule R6 reads".
+- **WooCommerce's search fields are left out of axe's region in the browser test.** The spec asks for them ("picked with WooCommerce's own search fields"): `wc-category-search`, `wc-taxonomy-term-search` and `wc-product-search`, each returning IDs (11.2.2, `assets/js/admin/wc-enhanced-select.js:250`, `:473`, `:539`). Their widget, selectWoo, fails two axe rules in its own markup: `aria-allowed-attr` on its box and `aria-input-field-name` on a single choice. That markup is WooCommerce's, on every product screen, and not the plugin's to rewrite. The `select` each stands for is the plugin's, has its label, and is checked. Native lists of each slot's parts would pass, at up to 2,000 options a list. Zach, 10 November 2026: "widget out of axe region is fine for now, we can always revisit later if needed."
+- **Red runs.** `BuildTabTest::test_a_section_that_fails_is_not_saved_the_rest_is_and_each_problem_links_to_its_field`, "Failed asserting that two arrays are identical", and `build-tab.spec.ts`, "a slot's row moves by its buttons", "expect(locator).toBeFocused() failed".
+
+**Status:** Accepted.

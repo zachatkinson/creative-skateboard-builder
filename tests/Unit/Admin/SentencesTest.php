@@ -251,4 +251,53 @@ final class SentencesTest extends TestCase {
 			self::assertSame( $sentence, Sentences::rowProblem( $code, 'deck_range_reversed' === $code ? "8.6000\t8.3750" : 'YEA-DK' ), $code );
 		}
 	}
+
+	public function test_each_problem_with_a_kits_setting_has_its_sentence_and_names_its_field(): void {
+		$field     = 'The Trucks slot, Units per build';
+		$sentences = array(
+			'document_field_missing'      => 'The Trucks slot, Units per build: fill this in.',
+			'document_bad_measure'        => 'The Trucks slot, Units per build: type a number, such as 0.25.',
+			'document_out_of_range'       => 'The Trucks slot, Units per build: this is more than the kit takes, or less. A slot takes 1 to 99 units, a kit 20 slots and 6 presets, and text no more than its field allows.',
+			'document_duplicate'          => 'The Trucks slot, Units per build: the kit already has a slot of this kind. A kit takes one of each.',
+			'slots_deck_not_first'        => 'The Trucks slot, Units per build: the deck\'s slot must come first, since every other part is checked against the deck. Move it up.',
+			'slots_risers_after_hardware' => 'The Trucks slot, Units per build: the risers\' slot must come before the hardware\'s, since the bolts\' length depends on the riser. Move it up.',
+			'rules_out_of_order'          => 'The Trucks slot, Units per build: this must not be less than the figure before it.',
+			'presets_unknown_slot'        => 'The Trucks slot, Units per build: the kit has no such slot now. Clear the part, or keep the slot.',
+			'presets_slot_not_filled'     => 'The Trucks slot, Units per build: choose a part. A build must have one.',
+			'presets_without_slots'       => 'Presets need the kit\'s slots. Put the slots right and save, then add the presets.',
+			'preset_part_not_in_slot'     => 'The Trucks slot, Units per build: Indy 144 is not a part the Trucks slot takes, or it cannot be bought now.',
+			'preset_part_blocked'         => 'The Trucks slot, Units per build: Indy 144 does not fit the other parts of "Street". Rule R1 does not let them go together.',
+			'document_wrong_type'         => 'The Trucks slot, Units per build: this is not a value the field takes.',
+			'document_schema'             => 'The Trucks slot, Units per build: what was sent could not be read. Load the page again and try once more.',
+			'document_bad_key'            => 'The Trucks slot, Units per build: what was sent could not be read. Load the page again and try once more.',
+			'document_not_an_object'      => 'The Trucks slot, Units per build: what was sent could not be read. Load the page again and try once more.',
+			'document_unknown_version'    => 'The Trucks slot, Units per build: what was sent could not be read. Load the page again and try once more.',
+		);
+		$values    = array(
+			'preset'  => 'Street',
+			'slot'    => 'Trucks',
+			'part'    => 'Indy 144',
+			'rule'    => 'R1',
+			'message' => 'deck_below_range',
+		);
+		foreach ( $sentences as $code => $sentence ) {
+			self::assertSame( $sentence, Sentences::kit( $code, $field, $values ), $code );
+		}
+		self::assertSame(
+			'Preset 1, Deck: Plain deck lacks a spec that rule R6 reads, so the builder does not offer it. Fill it in on its Part specs.',
+			Sentences::kit(
+				'preset_part_blocked',
+				'Preset 1, Deck',
+				array(
+					'part'    => 'Plain deck',
+					'rule'    => 'R6',
+					'message' => 'spec_missing',
+				)
+			)
+		);
+		// With nothing to name, the words still stand.
+		self::assertSame( 'Preset 1:  is not a part the  slot takes, or it cannot be bought now.', Sentences::kit( 'preset_part_not_in_slot', 'Preset 1' ) );
+		self::assertSame( 'Preset 1:  does not fit the other parts of "". Rule  does not let them go together.', Sentences::kit( 'preset_part_blocked', 'Preset 1' ) );
+		self::assertSame( 'Preset 1:  lacks a spec that rule  reads, so the builder does not offer it. Fill it in on its Part specs.', Sentences::kit( 'preset_part_blocked', 'Preset 1', array( 'message' => 'spec_missing' ) ) );
+	}
 }

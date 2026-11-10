@@ -10,6 +10,7 @@ All notable changes to this project are documented here. The format follows [Kee
 - A kit stays out of the catalogue, search results, product feeds, WordPress's sitemap and Yoast SEO's, and prints no product markup. Its catalogue visibility is always hidden.
 - The shop's kits are read from its kit products, and a slot's parts from its sources: the products in its categories, of its brands and with its attribute values, and any it names, each variable product as its variations. A part is one a shopper could be shown and could buy (D-101).
 - The Catalogue check's kit rules run on the shop's kits: a slot with no parts or nothing in stock, a part missing a spec its slot needs, a preset that no longer fits.
+- The Build tab on a kit's product screen: its slots (label, help, required, units, the categories, brands, products and attribute values that may fill it, a default part), the rules R1 to R6 with their settings, up to six presets and the assembly settings. A section that fails its checks is not saved while the rest is, each problem is a notice that links to its field, and the tab shows the section once more as it was typed. Rows move by Move up and Move down as well as by dragging. Saved by who may manage the shop (D-106, D-108).
 - A kit's four documents as product meta, each as JSON text: `_cbuild_slots`, `_cbuild_rules`, `_cbuild_presets` and `_cbuild_assembly`. Their schemas have been public since 0.2.0.
 
 ### Changed
@@ -22,6 +23,7 @@ All notable changes to this project are documented here. The format follows [Kee
 - Where the shop has kits and none takes a product, its variations draw no Part specs fields and its tab says how to make it a part (D-105).
 - `composer test:integration:yoast` runs the tests that need Yoast SEO, with Yoast SEO 28.8 put in the integration site for the run (D-102).
 - The index's and the import's services are built when a part is saved or a job runs, not on every request.
+- CI's mutation job may take 25 minutes, up from 15, which a full run on `main` reached, and runs Infection on every core of its runner, where it had run on one (D-107).
 - `composer api:check` also holds Site Health's test ids, each WP-CLI command's arguments and flags, the CSV's columns and each ability's output schema.
 
 ## [0.3.1] - 2026-11-10

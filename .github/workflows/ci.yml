@@ -158,7 +158,9 @@ jobs:
     needs: scope
     if: needs.scope.outputs.full == 'true'
     runs-on: ubuntu-26.04
-    timeout-minutes: 15
+    # Everything on main takes Infection 11 to 14 minutes on this runner, and Stryker and the dry run two more. At
+    # 15 the job was cancelled on 0.3.1's merge with nothing wrong, and the release waited on a second run (D-107).
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
@@ -178,6 +180,10 @@ jobs:
         env:
           BASE: ${{ github.base_ref }}
         run: |
+          # Every core the runner has: nothing else runs beside it here, and Infection's own "max" keeps one back,
+          # which left one thread and an 8 to 14 minute run on main (D-107).
+          CBUILD_INFECTION_THREADS="$(nproc)"
+          export CBUILD_INFECTION_THREADS
           if [ "${GITHUB_EVENT_NAME}" = pull_request ]; then
             bash tools/infection.sh --git-diff-lines "--git-diff-base=origin/${BASE}" --ignore-msi-with-no-mutations
           else

@@ -10,10 +10,12 @@ source tools/domain-present.sh
 mkdir -p tmp
 infection="${CBUILD_INFECTION:-php -d xdebug.mode=off vendor/bin/infection}"
 report="${CBUILD_INFECTION_REPORT:-tmp/infection-domain.json}"
-$infection --threads=max --configuration=infection.json5 "$@"
+# Infection's "max" is every core but one, which is one thread on a runner with two. CI names its own count (D-107).
+threads="${CBUILD_INFECTION_THREADS:-max}"
+$infection "--threads=${threads}" --configuration=infection.json5 "$@"
 # An earlier run's report must not stand in for this one's.
 rm -f "$report"
-$infection --threads=max --configuration=infection-domain.json5 "$@"
+$infection "--threads=${threads}" --configuration=infection-domain.json5 "$@"
 # A mutant only static analysis caught must be one the list allows (D-063). A pull request that changes no line of the
 # domain has nothing to mutate there: Infection says so, succeeds and writes no report, and there is nothing to hold.
 if [ -f "$report" ]; then

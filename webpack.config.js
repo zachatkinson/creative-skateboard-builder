@@ -16,6 +16,10 @@ const ADMIN = {
 		__dirname,
 		'assets/src/admin/part-specs.ts'
 	),
+	'admin/build-tab': path.resolve(
+		__dirname,
+		'assets/src/admin/build-tab.ts'
+	),
 };
 
 // Asked for the blocks' scripts only once there is a block: with none, wp-scripts warns that it found no entry.

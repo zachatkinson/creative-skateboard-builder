@@ -45,6 +45,42 @@ if ( 0 === wc_get_product_id_by_sku( 'panel-test-trucks' ) ) {
 	}
 }
 
+// A kit, for the Build tab (milestone 4). A kit has no SKU field to be found by, so its slug finds it. Its slots are
+// written afresh each run, so every run starts from the same kit. The last slot names the two products above: where
+// a shop has kits, a product no kit takes has no Part specs fields (D-105), and those products' specs are tested. It
+// is not a slot the rules read and takes one unit, so it opens no group on them and asks no set size of them.
+$cbuild_post = get_page_by_path( 'build-tab-test-kit', OBJECT, 'product' );
+$cbuild_kit  = new CreativeBranding\SkateboardBuilder\Adapter\KitProduct( $cbuild_post instanceof WP_Post ? $cbuild_post->ID : 0 );
+$cbuild_kit->set_name( 'Build tab test kit' );
+$cbuild_kit->set_slug( 'build-tab-test-kit' );
+$cbuild_kit->set_status( 'publish' );
+$cbuild_slots = array();
+foreach ( array(
+	'deck'     => array( 'Deck', true, 1 ),
+	'trucks'   => array( 'Trucks', true, 2 ),
+	'wheels'   => array( 'Wheels', true, 4 ),
+	'risers'   => array( 'Risers', false, 2 ),
+	'bearings' => array( 'Bearings', true, 8 ),
+	'hardware' => array( 'Hardware', true, 8 ),
+	'grip'     => array( 'Grip tape', true, 1 ),
+	'extras'   => array( 'Extras', false, 1 ),
+) as $cbuild_key => $cbuild_slot ) {
+	$cbuild_slots[] = array(
+		'key'      => $cbuild_key,
+		'label'    => $cbuild_slot[0],
+		'required' => $cbuild_slot[1],
+		'units'    => $cbuild_slot[2],
+	) + ( 'extras' === $cbuild_key ? array( 'sources' => array( 'products' => array( wc_get_product_id_by_sku( 'smoke-test-deck' ), wc_get_product_id_by_sku( 'panel-test-trucks' ) ) ) ) : array() );
+}
+$cbuild_kit->setDocument(
+	'_cbuild_slots',
+	array(
+		'schema_version' => 1,
+		'slots'          => $cbuild_slots,
+	)
+);
+$cbuild_kit->save();
+
 // wp-env's uploads folder does not hold the placeholder image WooCommerce's installer recorded, so every product
 // without a photo asked for a file that is not there. With no attachment set, WooCommerce serves the one it ships.
 $cbuild_placeholder = (int) get_option( 'woocommerce_placeholder_image', 0 );
