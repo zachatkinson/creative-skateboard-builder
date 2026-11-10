@@ -647,3 +647,12 @@ Choices made while building R1 to R6, where the spec leaves them open:
 
 **Why:** The spec says the discount is rounded per line to the shop's decimals and leaves the direction and the unit open.
 **Status:** Accepted.
+
+### D-059 · The build validator, and where the invariant runs · 2026-11-09
+
+- **The validator is the engine asked about a whole build**, plus four things that are not fit: a pick for a slot the kit lacks, a required slot left empty, a part that is not one of its slot's parts, and a part that is sold out. It takes each slot's part ids from the server, so an id the browser sent for the wrong slot, or for a product the kit never listed, is refused. Everything wrong is reported at once, unknown slots first and then in step order. A build that only warns is valid.
+- **The invariant** runs 200 seeded builds on a generated catalogue of 30 parts a slot, five ways: what the steps offer the validator accepts; what a step hides the validator refuses; the recommendations taken one after another make a build with nothing wrong but slots left to fill; a change list's proposed build has nothing wrong but slots left to fill; and the generator itself makes parts that fit, warn, are blocked, lack a spec, lack a set size and are sold out. A failure names its seed.
+- **It is in the group `invariant`.** `composer test:unit` and the line-coverage run include it. The domain's branch run (Xdebug's path coverage) and Infection leave it out: path coverage turns its five seconds into more than ten minutes, and the 100 % floors are the case tests' to meet. A branch or a mutant that only a random walk reaches is not one a test has pinned down, so leaving it out makes the floors harder to meet, not easier. Both runs were at 100 % without it when it was added.
+
+**Why:** The spec asks for the invariant and for the floors; this keeps both without one hiding gaps in the other.
+**Status:** Accepted.

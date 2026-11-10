@@ -20,7 +20,8 @@
  *   document schemas      schema/*.json, each by its path, and each one's content by a digest of its decoded JSON, so
  *                         a schema cannot change shape without the snapshot changing with it;
  *   spec keys             Domain\Spec\SpecKey's cases, with each one's kind and unit;
- *   message codes         Domain\Rule\MessageCode's cases, with the severities and sources a finding carries.
+ *   message codes         Domain\Rule\MessageCode's cases, with the severities and sources a finding carries;
+ *   build problems        Domain\Fit\Problem's cases: why the validator refuses a build.
  *
  * @package CreativeBranding\SkateboardBuilder
  */
@@ -283,6 +284,17 @@ if ( is_file( $cbuild_root . '/src/Domain/Rule/MessageCode.php' ) ) {
 	}
 }
 $cbuild_surface += $cbuild_rule_values;
+
+// Why the validator refuses a build.
+$cbuild_problems = array();
+if ( is_file( $cbuild_root . '/src/Domain/Fit/Problem.php' ) ) {
+	require_once $cbuild_root . '/vendor/autoload.php';
+	$cbuild_problem_enum = 'CreativeBranding\\SkateboardBuilder\\Domain\\Fit\\Problem';
+	foreach ( $cbuild_problem_enum::cases() as $cbuild_case ) {
+		$cbuild_problems[] = $cbuild_case->value;
+	}
+}
+$cbuild_surface['build_problems'] = $cbuild_problems;
 
 // Groups that describe another group's items, or whose values are too plain a word to look for in the docs, and are
 // held by the snapshot alone.

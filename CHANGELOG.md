@@ -12,7 +12,8 @@ All notable changes to this project are documented here. The format follows [Kee
 - The fit engine (`Domain\Fit`): each slot's options against the picks before it, the parts it hid grouped by rule and reason, the quantity a build takes of each part (R7), and a whole build held together for the cart (D-056).
 - The change list for a pick that breaks later ones (the picks kept, each that no longer fits with the closest part that does, the build proposed and the undo) and the recommendation each slot after the deck starts on (D-057).
 - Pricing (`Domain\Pricing`): each part at the price passed in times the quantity the build takes, the build discount off each part's price rounded half up, and the assembly fee on the parent, all in whole minor units (D-058).
-- `composer api:check` reads the schemas, by path and by content, the spec keys, with each one's kind and unit, and the message codes.
+- The build validator the cart will use, which is the engine asked about a whole build, with the problems `slot_unknown`, `slot_empty`, `part_not_in_slot`, `part_sold_out` and `part_blocked`; and the invariant, over seeded random builds on a generated catalogue: what the engine offers, the validator accepts, and what it hides, the validator refuses (D-059).
+- `composer api:check` reads the schemas, by path and by content, the spec keys, with each one's kind and unit, the message codes and the build problems.
 
 ### Changed
 

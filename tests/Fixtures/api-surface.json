@@ -119,5 +119,12 @@
         "maker",
         "kit",
         "standard"
+    ],
+    "build_problems": [
+        "slot_unknown",
+        "slot_empty",
+        "part_not_in_slot",
+        "part_sold_out",
+        "part_blocked"
     ]
 }

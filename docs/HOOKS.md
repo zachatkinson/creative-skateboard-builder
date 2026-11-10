@@ -150,3 +150,17 @@ Severities, since 0.2.0: `fits` (a note: a default was taken for a spec the part
 | `length_unchecked` | 0.2.0 | R6 | Fits | None | The deck gives no length, so the length check was skipped. |
 
 A measure among the values is in its spec's unit; `gap` is in inches, `limit` and `over` in millimetres, and `riser`, `shortest` and `usual` in inches.
+
+### Build problems
+
+Before a build is sold, the validator checks the whole of it and answers with what is wrong, if anything. Each problem carries one of these codes, the slot, the part where there is one, and for a part that does not fit, the findings that block it. The cart's notices and the state route carry them from milestones 4 and 5.
+
+| Code | Since | What it means |
+| --- | --- | --- |
+| `slot_unknown` | 0.2.0 | The build holds a pick for a slot the kit does not have. |
+| `slot_empty` | 0.2.0 | A slot the kit requires is empty. |
+| `part_not_in_slot` | 0.2.0 | The part is not one of the slot's parts. |
+| `part_sold_out` | 0.2.0 | The part cannot be bought now. |
+| `part_blocked` | 0.2.0 | The part does not fit the rest of the build. Its findings say why. |
+
+A build that only warns has no problem and can go to the cart.

@@ -4,7 +4,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 mkdir -p tmp
-php -d pcov.enabled=0 -d xdebug.mode=coverage vendor/bin/phpunit -c phpunit-domain.xml.dist --path-coverage --coverage-php tmp/coverage-domain.cov --no-output
+php -d pcov.enabled=0 -d xdebug.mode=coverage vendor/bin/phpunit -c phpunit-domain.xml.dist --exclude-group benchmark --exclude-group invariant --path-coverage --coverage-php tmp/coverage-domain.cov --no-output
 php -r '
 require "vendor/autoload.php";
 $report = include "tmp/coverage-domain.cov";

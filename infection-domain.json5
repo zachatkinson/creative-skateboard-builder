@@ -24,7 +24,8 @@
 	"staticAnalysisTool": "phpstan",
 	"staticAnalysisToolOptions": "--configuration=phpstan-domain.neon --memory-limit=2G",
 	"testFramework": "phpunit",
-	"testFrameworkOptions": "--testsuite=unit --exclude-group=benchmark",
+	// The seeded invariant is left out, as it is from the branch run: the case tests kill every mutant (D-059).
+	"testFrameworkOptions": "--testsuite=unit --exclude-group=benchmark --exclude-group=invariant",
 	"mutators": {
 		"@default": true
 	},
