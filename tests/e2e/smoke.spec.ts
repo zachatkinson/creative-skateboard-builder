@@ -53,15 +53,15 @@ test.describe( 'Creative Skateboard Builder, milestone 1', () => {
 		javaScriptEnabled,
 	} ) => {
 		await login( page );
-		// Arrive first, then listen and reload: leaving the dashboard cancels WooCommerce's widget requests, which
-		// WebKit reports as page errors of the screen being left.
-		// Each page settles before it is left, so no request of its own is cancelled and reported as an error too.
-		await page.goto( '/wp-admin/plugins.php' );
-		await page.waitForLoadState( 'networkidle' );
-		const errors = collectConsoleErrors( page );
-		await page.reload();
-		await page.waitForLoadState( 'networkidle' );
-		const row = page.locator(
+		// A page of its own, heard from its first request. A page that is left or reloaded has its unfinished requests
+		// cancelled, and the browser reports each as an error of whatever is listening by then: WebKit did for the
+		// dashboard's widgets, and Firefox for the Plugins screen's own request for the user, cancelled by a reload.
+		// This page loads one document and leaves none, so every error it reports is that document's.
+		const screen = await page.context().newPage();
+		const errors = collectConsoleErrors( screen );
+		await screen.goto( '/wp-admin/plugins.php' );
+		await screen.waitForLoadState( 'networkidle' );
+		const row = screen.locator(
 			'tr[data-slug="creative-skateboard-builder"]'
 		);
 		await expect( row ).toBeVisible();
@@ -71,14 +71,14 @@ test.describe( 'Creative Skateboard Builder, milestone 1', () => {
 			row.locator( '#deactivate-creative-skateboard-builder' )
 		).toBeVisible();
 		// Each row carries core's own hidden notice for the auto-update toggle; an error a person sees is visible.
-		await expect( page.locator( '.notice-error:visible' ) ).toHaveCount(
+		await expect( screen.locator( '.notice-error:visible' ) ).toHaveCount(
 			0
 		);
 		// Core's "View details" link reads "More information about …" to a screen reader: WordPress's markup.
 		// axe is a script in the page, so it cannot run in the project with scripts off; the others run it.
 		if ( javaScriptEnabled ) {
 			await axe(
-				page,
+				screen,
 				'plugins-row',
 				'tr[data-slug="creative-skateboard-builder"]',
 				[],

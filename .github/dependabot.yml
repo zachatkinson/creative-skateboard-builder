@@ -42,3 +42,11 @@ updates:
     groups:
       npm:
         patterns: ['*']
+    ignore:
+      # typescript-eslint, which @wordpress/scripts lints with, accepts TypeScript below 6.1 (D-049). Lift this when
+      # its peer range moves.
+      - dependency-name: typescript
+        versions: ['>=6.1.0']
+      # The types follow the Node the project runs (.nvmrc), so they move with it, by hand.
+      - dependency-name: '@types/node'
+        update-types: ['version-update:semver-major']

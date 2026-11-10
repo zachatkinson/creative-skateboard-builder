@@ -4,6 +4,14 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+### Changed
+
+- The toolchain: TypeScript 6.0, the newest `typescript-eslint` accepts, and `actions/github-script` 9 in the canary. Dependabot leaves TypeScript 6.1 and later, and `@types/node`'s major versions, alone (D-049).
+
+### Fixed
+
+- The browser test of the Plugins screen opens a page of its own, so a request cancelled by a reload is no longer reported as the screen's error (D-049).
+
 ## [0.1.0] - 2026-11-09
 
 Milestone 1, the foundation. Nothing a shopper or shop owner sees yet: the skeleton the next eight milestones build on, with every CI gate wired and passing against it.

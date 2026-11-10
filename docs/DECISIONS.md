@@ -507,3 +507,15 @@ One finding is answered and not changed. The audit showed a retry can go unsched
 
 **Why:** A release path that has never run is the likeliest thing to fail on its first tag, and a guard that lists what to refuse passes whatever nobody thought to list.
 **Status:** Accepted.
+
+### D-049 · TypeScript 6.0, and what Dependabot's first run showed · 2026-11-09
+
+Dependabot's first two pull requests arrived with the merge of milestone 1. The npm one failed twice, for two unrelated reasons.
+
+- **TypeScript moves to 6.0, not 7.0.** Dependabot offered 7.0.2, and ESLint stopped with "typescript-eslint does not support TS 7.0". The newest `typescript-eslint` (8.72.2, the one `@wordpress/eslint-plugin` already carries, and its canary) accepts TypeScript below 6.1, so there is no newer linter to move to. 6.0.3 is the newest release the toolchain can lint, and replaces D-030's 5.9. `.github/dependabot.yml` ignores TypeScript 6.1 and later until that range moves.
+- **`@types/node` stays on 24.** The types describe the Node the project runs (`.nvmrc`), so they move with it, by hand. Dependabot ignores their major versions.
+- **The Plugins screen test has a page of its own.** In Firefox the test failed once on an uncaught `{ message, code }`: the screen's own request for `/wp/v2/users/me`, cancelled by the test's reload and reported to the listener attached just before it (the run's trace shows the request ending `NS_BINDING_ABORTED`). The reload was there so WebKit's errors for the dashboard being left were not heard; it moved the same race one page along. The test now opens a new page and listens from its first request, so no document is left while it listens. A deliberate page error still fails it.
+- **`actions/github-script` 9.0.0** in the canary. Its breaking changes are to `require('@actions/github')` and a script's own `getOctokit`; the canary's script uses neither.
+
+**Why:** A dependency pull request that cannot pass teaches everyone to ignore red ones, and a test that fails one run in many does the same.
+**Status:** Accepted.
