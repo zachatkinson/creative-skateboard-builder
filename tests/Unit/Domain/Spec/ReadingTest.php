@@ -117,6 +117,31 @@ final class ReadingTest extends TestCase {
 		self::assertInstanceOf( Unread::class, Reading::from( SpecKey::DeckWidth, '8,25', Origin::Field ), 'a comma is not the default separator' );
 	}
 
+	public function test_what_a_person_types_reads_with_the_shops_separator_or_a_point(): void {
+		foreach ( array( '8,25', '8.25', '8 1/4' ) as $typed ) {
+			$reading = Reading::typed( SpecKey::DeckWidth, $typed, Origin::Attribute, 'pa_width', ',' );
+			self::assertInstanceOf( Reading::class, $reading, $typed );
+			self::assertSame( '8.2500', $reading->text, $typed );
+			self::assertSame( Origin::Attribute, $reading->origin );
+			self::assertSame( 'pa_width', $reading->ref );
+		}
+		$metric = Reading::typed( SpecKey::DeckWidth, '209.55', Origin::Attribute, 'pa_width', ',', Unit::Millimetre );
+		self::assertInstanceOf( Reading::class, $metric );
+		self::assertSame( '8.2500', $metric->text, 'with a point as with a comma, an unmarked number is in the unit given' );
+		$comma = Reading::typed( SpecKey::DeckWidth, '209,55', Origin::Attribute, 'pa_width', ',', Unit::Millimetre );
+		self::assertInstanceOf( Reading::class, $comma );
+		self::assertSame( '8.2500', $comma->text );
+
+		$unread = Reading::typed( SpecKey::DeckWidth, 'wide', Origin::Table, '7:149', ',' );
+		self::assertInstanceOf( Unread::class, $unread );
+		self::assertSame( array( 'deck_width', 'wide', Origin::Table, '7:149', 'measure_malformed' ), array( $unread->key, $unread->text, $unread->origin, $unread->ref, $unread->reason ) );
+
+		$plain = Reading::typed( SpecKey::DeckWidth, '8.25', Origin::Field );
+		self::assertInstanceOf( Reading::class, $plain );
+		self::assertSame( array( '8.2500', '' ), array( $plain->text, $plain->ref ), 'a point and no reference, unless told' );
+		self::assertInstanceOf( Unread::class, Reading::typed( SpecKey::DeckWidth, '8,25', Origin::Field ), 'a comma is not read in a shop that writes a point' );
+	}
+
 	public function test_the_standard_order_is_the_chart_the_field_the_attribute(): void {
 		$order = SourceOrder::standard();
 		self::assertSame( array( Origin::Table, Origin::Field, Origin::Attribute ), $order->origins );

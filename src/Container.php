@@ -66,6 +66,14 @@ final class Container {
 					}
 				);
 			},
+			// The Builder page's screen is built when the page is asked for.
+			Admin\BuilderHooks::class                   => static function ( Container $c ): object {
+				return new Admin\BuilderHooks(
+					static function () use ( $c ): Admin\SpecTablesScreen {
+						return $c->get( Admin\SpecTablesScreen::class );
+					}
+				);
+			},
 			// The panel reads the sources, so it is built when one of its hooks fires.
 			Admin\PartSpecsHooks::class                 => static function ( Container $c ): object {
 				return new Admin\PartSpecsHooks(
@@ -102,6 +110,7 @@ final class Container {
 			// WooCommerce's settings screen.
 			Admin\SettingsHooks::class  => array( Scope::Admin ),
 			Admin\PartSpecsHooks::class => array( Scope::Admin ),
+			Admin\BuilderHooks::class   => array( Scope::Admin ),
 		);
 	}
 

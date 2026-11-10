@@ -62,4 +62,24 @@ interface SpecTables {
 	 * @return array<int, array{name: string, table: SpecTable}>
 	 */
 	public function all(): array;
+
+	/**
+	 * Replace a table's name and rows.
+	 *
+	 * @since 0.3.0
+	 *
+	 * @param int       $id    The table's ID.
+	 * @param string    $name  The maker's name.
+	 * @param SpecTable $table Its rows.
+	 */
+	public function update( int $id, string $name, SpecTable $table ): void;
+
+	/**
+	 * Delete a table for good.
+	 *
+	 * @since 0.3.0
+	 *
+	 * @param int $id The table's ID.
+	 */
+	public function delete( int $id ): void;
 }

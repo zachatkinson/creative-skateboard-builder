@@ -12,6 +12,7 @@
 			"Admin/Labels.php",
 			"Admin/SettingsPage.php",
 			"Admin/PartSpecsPanel.php",
+			"Admin/SpecTablesScreen.php",
 			"Adapter/ActionSchedulerQueue.php",
 			"Adapter/AttributeSpecSource.php",
 			"Adapter/FieldSpecSource.php",

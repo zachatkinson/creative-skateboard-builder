@@ -74,4 +74,31 @@ final class InMemorySpecTables implements SpecTables {
 		uasort( $all, static fn( array $a, array $b ): int => $a['name'] <=> $b['name'] );
 		return $all;
 	}
+
+	/**
+	 * Replace a table's name and rows.
+	 *
+	 * @param int       $id    The table's ID.
+	 * @param string    $name  The name.
+	 * @param SpecTable $table The rows.
+	 */
+	public function update( int $id, string $name, SpecTable $table ): void {
+		$this->made[ $id ]['name']  = $name;
+		$this->made[ $id ]['table'] = $table;
+		++$this->updates;
+	}
+
+	/**
+	 * How many times update() was called.
+	 */
+	public int $updates = 0;
+
+	/**
+	 * Delete a table.
+	 *
+	 * @param int $id The table's ID.
+	 */
+	public function delete( int $id ): void {
+		unset( $this->made[ $id ] );
+	}
 }

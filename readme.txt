@@ -42,6 +42,7 @@ Yes. Activating it for the network installs it on every site, and a site added l
 = 0.3.0 =
 * The index of part specs: one value per part and spec, from the part's own fields, an attribute the shop maps or a maker's size chart. More of this version's work is listed here as it lands.
 * A Part specs tab on each product, and the same fields in each variation, where the shop fills in what the builder needs to know of a part.
+* WooCommerce > Builder, where the shop keeps each truck maker's size chart.
 * A settings screen, WooCommerce > Settings > Builder, to say which product attribute holds which spec and which source wins where two disagree.
 
 = 0.2.0 =

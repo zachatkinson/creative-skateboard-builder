@@ -879,3 +879,19 @@ The table is milestone 1's and does not change. These are the choices the reposi
 - **The browser test skips where scripts are off,** since WooCommerce's product data box needs one for its tabs and its variations. `PartSpecsPanelTest` covers the plain form post.
 
 **Status:** Accepted.
+
+### D-075 · WooCommerce > Builder, and the spec tables' screen · 2026-11-10
+
+- **The page is the plugin's own, `admin.php?page=cbuild` under WooCommerce, for `manage_woocommerce`,** added on `admin_menu` at 60, after WooCommerce's own entries. The spec puts three things there: spec tables now, the import and the Catalogue check in the steps that follow.
+- **The post type keeps `show_ui` off.** D-072 said it would be turned on with the screen. WordPress's own editor for a post type edits a title and custom fields; a chart is rows of figures that must be checked together. The screen is the plugin's, and the post type stays out of the menu, the list tables and quick edit.
+- **`Service\SpecTableEditor` saves a chart whole or not at all,** as the settings do (D-073): a chart half saved would give some trucks this year's figures and others last year's. Each figure is read as the index reads it and stored as the index writes it.
+- **A chart is a group of fields per size, not a table,** for the reason D-073 found: at phone width a table's headers part from its cells. Saved rows are followed by three blank ones, and a save adds three more. A row with every field cleared is removed. A chart holds 100 sizes at most.
+- **The screen shows the six figures the spec names** (axle width, the deck range, height, largest wheel, baseplate holes). A row may hold any spec key (D-072); one the screen does not show is carried through a save in a hidden field, and checked like the rest.
+- **A form is handled before the page draws** (`load-{page}`), and a save that passes redirects to the page it leads to, so a reload does not send it twice. One that is refused draws the page in the same request, as typed.
+- **Deleting is for good, after a page that asks.** With no screen for a bin there would be no way to bring a binned chart back or to empty the bin. The page that asks is a page, not a script's dialog, so it works with scripts off. Parts that named the chart keep the name; the source reports `table_missing` and the Catalogue check will list them. A seed that is deleted is not remade (D-072).
+- **Every form checks `manage_woocommerce` and then its nonce** before it reads a field. The page itself draws nothing for anyone else, though WordPress has already refused them the menu.
+- **Two style rules on the page, added with `wp_add_inline_style()`** to WordPress's `common` style sheet, as the panel's one is (D-074).
+- **`Reading::typed()` reads what a person typed with the shop's separator, then with a point.** The spec says 8.25, 8,25 and 8 1/4 are the same; in a shop that writes a comma the parser read only the comma. The attribute source already tried both, inline. The panel, the charts and the attribute source now share the one method, and the import will.
+- **`SpecTables` gains `update()` and `delete()`.** The adapter refuses a post that is not a spec table in both.
+
+**Status:** Accepted.

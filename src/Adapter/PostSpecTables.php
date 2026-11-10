@@ -13,6 +13,7 @@ use CreativeBranding\SkateboardBuilder\Domain\Spec\SpecTable;
 use CreativeBranding\SkateboardBuilder\Port\SpecTables;
 use CreativeBranding\SkateboardBuilder\Support\Options;
 use CreativeBranding\SkateboardBuilder\Support\PluginException;
+use WP_Error;
 use WP_Post;
 use WP_Query;
 
@@ -143,5 +144,47 @@ final class PostSpecTables implements SpecTables {
 			}
 		}
 		return $tables;
+	}
+
+	/**
+	 * Replace a table's name and rows. The rows go in with the post, so the hook that follows the save sees them.
+	 *
+	 * @since 0.3.0
+	 *
+	 * @param int       $id    The table's ID.
+	 * @param string    $name  The maker's name.
+	 * @param SpecTable $table Its rows.
+	 *
+	 * @throws PluginException When WordPress refuses the save, or the post is not a spec table.
+	 */
+	public function update( int $id, string $name, SpecTable $table ): void {
+		$saved = Options::POST_TYPE_SPEC_TABLE === get_post_type( $id )
+			? wp_update_post(
+				wp_slash(
+					array(
+						'ID'         => $id,
+						'post_title' => $name,
+						'meta_input' => array( Options::META_TABLE_ROWS => $table->toArray() ),
+					)
+				),
+				true
+			)
+			: new WP_Error( 'cbuild_not_a_table', 'It is not a spec table.' );
+		if ( is_wp_error( $saved ) ) {
+			throw new PluginException( esc_html( sprintf( 'The spec table %1$d could not be saved: %2$s', $id, $saved->get_error_message() ) ) );
+		}
+	}
+
+	/**
+	 * Delete a table for good. A post that is not a spec table is left alone.
+	 *
+	 * @since 0.3.0
+	 *
+	 * @param int $id The table's ID.
+	 */
+	public function delete( int $id ): void {
+		if ( Options::POST_TYPE_SPEC_TABLE === get_post_type( $id ) ) {
+			wp_delete_post( $id, true );
+		}
 	}
 }

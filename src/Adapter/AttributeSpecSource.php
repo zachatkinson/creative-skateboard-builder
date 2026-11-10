@@ -59,12 +59,7 @@ final class AttributeSpecSource implements SpecSource {
 				if ( '' === $text ) {
 					continue;
 				}
-				$reading = Reading::from( $map->spec, $text, Origin::Attribute, $map->attribute, $separator, $map->unit );
-				if ( ! $reading instanceof Reading && '.' !== $separator ) {
-					$pointed = Reading::from( $map->spec, $text, Origin::Attribute, $map->attribute, '.', $map->unit );
-					$reading = $pointed instanceof Reading ? $pointed : $reading;
-				}
-				$found[ $id ][] = $reading;
+				$found[ $id ][] = Reading::typed( $map->spec, $text, Origin::Attribute, $map->attribute, $separator, $map->unit );
 			}
 		}
 		return $found;

@@ -73,7 +73,7 @@ final class SpecWriter {
 			$kept = trim( $stored[ $key->value ] ?? '' );
 			$text = trim( $sent[ $key->value ] ?? $kept );
 			if ( isset( $sent[ $key->value ] ) && '' !== $text ) {
-				$reading = Reading::from( $key, $text, Origin::Field, '', $separator );
+				$reading = Reading::typed( $key, $text, Origin::Field, '', $separator );
 				if ( $reading instanceof Reading ) {
 					$text = $reading->text;
 				} else {

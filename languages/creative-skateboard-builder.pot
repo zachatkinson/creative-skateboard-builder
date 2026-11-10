@@ -9,7 +9,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-11-10T07:57:11+00:00\n"
+"POT-Creation-Date: 2026-11-10T08:15:45+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: creative-skateboard-builder\n"
@@ -41,6 +41,13 @@ msgstr ""
 
 #: creative-skateboard-builder.php:64
 msgid "Creative Skateboard Builder: run \"composer install\" before activating the plugin."
+msgstr ""
+
+#: src/Admin/BuilderHooks.php:61
+#: src/Admin/BuilderHooks.php:62
+#: src/Admin/SettingsPage.php:59
+#: templates/admin/spec-tables.php:23
+msgid "Builder"
 msgstr ""
 
 #: src/Admin/Labels.php:40
@@ -336,10 +343,6 @@ msgstr ""
 msgid "%1$s was not saved: \"%2$s\" is not a value it takes."
 msgstr ""
 
-#: src/Admin/SettingsPage.php:59
-msgid "Builder"
-msgstr ""
-
 #: src/Admin/SettingsPage.php:79
 msgid "Where the builder reads each part's specs. Saving a change here reads every part again, in the background."
 msgstr ""
@@ -396,7 +399,85 @@ msgstr ""
 msgid "Put each source in one place: first, second and third."
 msgstr ""
 
+#: src/Admin/SpecTablesScreen.php:193
+msgid "Nothing was saved. Each problem is shown with the field it is about."
+msgstr ""
+
+#: src/Admin/SpecTablesScreen.php:315
+msgid "The chart was added. Give it a row for each size."
+msgstr ""
+
+#: src/Admin/SpecTablesScreen.php:316
+msgid "The chart was saved. Every part is being read again, in the background."
+msgstr ""
+
+#: src/Admin/SpecTablesScreen.php:317
+msgid "The chart was deleted."
+msgstr ""
+
+#: src/Admin/SpecTablesScreen.php:318
+#: src/Admin/SpecTablesScreen.php:332
+msgid "That chart is no longer there."
+msgstr ""
+
+#: src/Admin/SpecTablesScreen.php:330
+msgid "Type the maker's name."
+msgstr ""
+
+#: src/Admin/SpecTablesScreen.php:331
+msgid "The maker's name is too long. Use 190 characters or fewer."
+msgstr ""
+
+#: src/Admin/SpecTablesScreen.php:333
+msgid "Type the size this row is for, or clear the row."
+msgstr ""
+
+#: src/Admin/SpecTablesScreen.php:334
+msgid "The size is too long. Use 40 characters or fewer."
+msgstr ""
+
+#: src/Admin/SpecTablesScreen.php:335
+msgid "This size is on a row above. Clear one of the two."
+msgstr ""
+
+#: src/Admin/SpecTablesScreen.php:336
+msgid "The source is too long. Use 200 characters or fewer."
+msgstr ""
+
+#: src/Admin/SpecTablesScreen.php:337
+msgid "The day it was read is not a date. Choose one, or clear it."
+msgstr ""
+
+#: src/Admin/SpecTablesScreen.php:338
+msgid "A chart holds 100 sizes at most. Clear some rows."
+msgstr ""
+
+#. translators: 1: a spec's name. 2: what was typed.
+#: src/Admin/SpecTablesScreen.php:353
+#, php-format
+msgid "%1$s: \"%2$s\" is not a measurement. Type a number, or a fraction such as 8 1/4."
+msgstr ""
+
+#. translators: 1: a spec's name. 2: what was typed.
+#: src/Admin/SpecTablesScreen.php:355
+#, php-format
+msgid "%1$s: the fraction in \"%2$s\" divides by zero."
+msgstr ""
+
+#. translators: 1: a spec's name. 2: what was typed.
+#: src/Admin/SpecTablesScreen.php:357
+#, php-format
+msgid "%1$s: \"%2$s\" is below zero."
+msgstr ""
+
+#. translators: 1: a spec's name. 2: what was typed.
+#: src/Admin/SpecTablesScreen.php:359
+#, php-format
+msgid "%1$s: \"%2$s\" is not a value it takes."
+msgstr ""
+
 #: src/Hooks/SpecTableHooks.php:68
+#: templates/admin/spec-tables.php:27
 msgid "Spec tables"
 msgstr ""
 
@@ -435,6 +516,7 @@ msgid "A field left blank takes the parent product's value."
 msgstr ""
 
 #: templates/admin/part-specs.php:64
+#: templates/admin/spec-table.php:134
 msgid "Not set"
 msgstr ""
 
@@ -479,4 +561,98 @@ msgstr ""
 
 #: templates/admin/settings-order.php:25
 msgid "A part's spec can come from three places. Where two say different things, the one placed first here is used, and the Catalogue check lists the part."
+msgstr ""
+
+#. translators: %s: a truck maker's name, such as Independent.
+#: templates/admin/spec-table-delete.php:23
+#, php-format
+msgid "Delete the chart %s?"
+msgstr ""
+
+#: templates/admin/spec-table-delete.php:26
+msgid "A part that names this chart keeps the name and loses the chart's figures, so the builder stops offering it until it has figures of its own. The Catalogue check lists each one. A deleted chart cannot be brought back."
+msgstr ""
+
+#: templates/admin/spec-table-delete.php:32
+msgid "Delete the chart"
+msgstr ""
+
+#: templates/admin/spec-table-delete.php:33
+msgid "Keep it"
+msgstr ""
+
+#. translators: %s: a truck maker's name, such as Independent.
+#: templates/admin/spec-table.php:32
+#, php-format
+msgid "Spec table: %s"
+msgstr ""
+
+#: templates/admin/spec-table.php:35
+msgid "All spec tables"
+msgstr ""
+
+#: templates/admin/spec-table.php:51
+#: templates/admin/spec-tables.php:58
+msgid "Maker's name"
+msgstr ""
+
+#: templates/admin/spec-table.php:66
+#: templates/admin/spec-tables.php:36
+msgid "Sizes"
+msgstr ""
+
+#: templates/admin/spec-table.php:67
+msgid "A group of fields per size. Leave a figure blank where the maker gives none. A measurement takes a decimal or a fraction. To remove a size, clear every field of its group. Save to add more groups."
+msgstr ""
+
+#. translators: %d: the row's number in the chart.
+#: templates/admin/spec-table.php:81
+#, php-format
+msgid "Row %d"
+msgstr ""
+
+#. translators: 1: the row's number in the chart. 2: a size in a truck maker's chart, such as 149.
+#: templates/admin/spec-table.php:84
+#, php-format
+msgid "Row %1$d: size %2$s"
+msgstr ""
+
+#: templates/admin/spec-table.php:96
+msgid "Size"
+msgstr ""
+
+#: templates/admin/spec-table.php:143
+msgid "Source"
+msgstr ""
+
+#: templates/admin/spec-table.php:158
+msgid "Read on"
+msgstr ""
+
+#: templates/admin/spec-table.php:176
+msgid "Save chart"
+msgstr ""
+
+#: templates/admin/spec-table.php:178
+msgid "Delete this chart"
+msgstr ""
+
+#: templates/admin/spec-tables.php:28
+msgid "A truck maker's size chart: for each size, the axle width, the decks it fits and the rest. A truck that names its size in a chart, on its Part specs, takes that row's figures."
+msgstr ""
+
+#: templates/admin/spec-tables.php:30
+msgid "There are no charts yet."
+msgstr ""
+
+#: templates/admin/spec-tables.php:35
+msgid "Maker"
+msgstr ""
+
+#: templates/admin/spec-tables.php:50
+msgid "Add a chart"
+msgstr ""
+
+#: templates/admin/spec-tables.php:71
+msgid "Add chart"
 msgstr ""

@@ -71,6 +71,24 @@ final readonly class Reading {
 	}
 
 	/**
+	 * A value a person typed: read with the shop's decimal separator, and with a point when that does not read, so
+	 * 8,25 and 8.25 are one value in a shop that writes a comma (spec: Admin, Part specs).
+	 *
+	 * @since 0.3.0
+	 *
+	 * @param SpecKey   $key       The spec.
+	 * @param string    $text      What was typed.
+	 * @param Origin    $origin    The source.
+	 * @param string    $ref       What in the source.
+	 * @param string    $separator The shop's decimal separator.
+	 * @param Unit|null $unit      The unit an unmarked measure is in, when it is not the key's own.
+	 */
+	public static function typed( SpecKey $key, string $text, Origin $origin, string $ref = '', string $separator = '.', ?Unit $unit = null ): self|Unread {
+		$read = self::from( $key, $text, $origin, $ref, $separator, $unit );
+		return $read instanceof self ? $read : self::from( $key, $text, $origin, $ref, '.', $unit );
+	}
+
+	/**
 	 * A value as it was typed or stored, or why it cannot be read.
 	 *
 	 * @since 0.3.0

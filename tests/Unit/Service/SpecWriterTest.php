@@ -53,7 +53,7 @@ final class SpecWriterTest extends TestCase {
 	}
 
 	public function test_a_value_is_stored_as_the_index_writes_it_however_it_was_typed(): void {
-		foreach ( array( array( '8.25', '.' ), array( '8,25', ',' ), array( '8 1/4', ',' ), array( ' 8.25 in ', '.' ), array( '209.55mm', '.' ) ) as [ $typed, $separator ] ) {
+		foreach ( array( array( '8.25', '.' ), array( '8,25', ',' ), array( '8.25', ',' ), array( '8 1/4', ',' ), array( ' 8.25 in ', '.' ), array( '209.55mm', '.' ) ) as [ $typed, $separator ] ) {
 			$draft = $this->writer->draft( array( 'deck_width' => $typed ), array(), $separator );
 			self::assertSame( array( 'deck_width' => '8.2500' ), $draft->fields, $typed );
 			self::assertSame( array(), $draft->problems, $typed );
