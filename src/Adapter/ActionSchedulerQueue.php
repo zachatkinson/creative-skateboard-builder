@@ -27,6 +27,11 @@ if ( ! defined( 'ABSPATH' ) ) {
 final class ActionSchedulerQueue implements Queue {
 
 	/**
+	 * The most failed actions counted: past this the answer is "many".
+	 */
+	public const MOST_FAILED = 100;
+
+	/**
 	 * Run an action as soon as the queue can, once.
 	 *
 	 * @since 0.1.0
@@ -146,5 +151,26 @@ final class ActionSchedulerQueue implements Queue {
 		if ( array() === $waiting ) {
 			as_enqueue_async_action( $hook, $args, Options::QUEUE_GROUP, false );
 		}
+	}
+
+	/**
+	 * How many of the plugin's actions have failed and are still on the queue's record. Action Scheduler keeps a
+	 * failed action for its retention period, a month by default, so one counted here is recent.
+	 *
+	 * @since 0.3.0
+	 */
+	public function failed(): int {
+		if ( ! function_exists( 'as_get_scheduled_actions' ) ) {
+			return 0;
+		}
+		$failed = as_get_scheduled_actions(
+			array(
+				'group'    => Options::QUEUE_GROUP,
+				'status'   => \ActionScheduler_Store::STATUS_FAILED,
+				'per_page' => self::MOST_FAILED,
+			),
+			'ids'
+		);
+		return count( $failed );
 	}
 }

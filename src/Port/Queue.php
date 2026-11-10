@@ -93,4 +93,11 @@ interface Queue {
 	 * @param array<string, mixed> $args Its arguments.
 	 */
 	public function enqueueDistinct( string $hook, array $args ): void;
+
+	/**
+	 * How many of the plugin's actions have failed and are still on the queue's record.
+	 *
+	 * @since 0.3.0
+	 */
+	public function failed(): int;
 }

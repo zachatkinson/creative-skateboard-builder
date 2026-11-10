@@ -9,7 +9,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-11-10T09:04:43+00:00\n"
+"POT-Creation-Date: 2026-11-10T09:28:08+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: creative-skateboard-builder\n"
@@ -43,23 +43,111 @@ msgstr ""
 msgid "Creative Skateboard Builder: run \"composer install\" before activating the plugin."
 msgstr ""
 
-#: src/Admin/BuilderHooks.php:61
+#: src/Admin/BuilderHooks.php:69
 #: src/Hooks/SpecTableHooks.php:68
 #: templates/admin/spec-tables.php:29
 msgid "Spec tables"
 msgstr ""
 
-#: src/Admin/BuilderHooks.php:62
+#: src/Admin/BuilderHooks.php:70
 msgid "Import and export"
 msgstr ""
 
-#: src/Admin/BuilderHooks.php:110
-#: src/Admin/BuilderHooks.php:111
+#: src/Admin/BuilderHooks.php:71
+#: templates/admin/check.php:26
+msgid "Catalogue check"
+msgstr ""
+
+#: src/Admin/BuilderHooks.php:122
+#: src/Admin/BuilderHooks.php:123
 #: src/Admin/SettingsPage.php:59
 #: templates/admin/builder-tabs.php:16
+#: templates/admin/check.php:24
 #: templates/admin/import.php:30
 #: templates/admin/spec-tables.php:24
 msgid "Builder"
+msgstr ""
+
+#. translators: %s: a product's ID.
+#: src/Admin/CheckScreen.php:123
+#, php-format
+msgid "Product %s"
+msgstr ""
+
+#: src/Admin/CheckScreen.php:125
+msgid "Background work"
+msgstr ""
+
+#. translators: 1: a spec's name. 2: a source, such as "The maker's chart". 3: a value. 4: another source. 5: its value.
+#: src/Admin/CheckScreen.php:158
+#, php-format
+msgid "%1$s: two sources disagree. %2$s says %3$s, which is used. %4$s says %5$s."
+msgstr ""
+
+#: src/Admin/CheckScreen.php:161
+msgid "It names a maker's chart that is no longer there. Choose another on its Part specs."
+msgstr ""
+
+#. translators: %s: a size in a maker's chart.
+#: src/Admin/CheckScreen.php:165
+#, php-format
+msgid "It names the size \"%s\", which its maker's chart does not have."
+msgstr ""
+
+#. translators: 1: a spec's name. 2: a source. 3: what the source holds.
+#: src/Admin/CheckScreen.php:168
+#, php-format
+msgid "%1$s: %2$s holds \"%3$s\", which cannot be read as a value."
+msgstr ""
+
+#: src/Admin/CheckScreen.php:170
+msgid "Reading every part again stopped after five failures. Save the Builder settings to start it again; WooCommerce > Status > Logs has the reason."
+msgstr ""
+
+#: src/Admin/CheckScreen.php:172
+msgid "The last specs import stopped before its end. Import the file again; WooCommerce > Status > Logs has the reason."
+msgstr ""
+
+#. translators: %s: a slot's key, such as trucks.
+#: src/Admin/CheckScreen.php:178
+#, php-format
+msgid "The slot \"%s\" has no parts."
+msgstr ""
+
+#. translators: %s: a slot's key, such as trucks.
+#: src/Admin/CheckScreen.php:181
+#, php-format
+msgid "The slot \"%s\" has nothing in stock."
+msgstr ""
+
+#. translators: 1: a spec's name. 2: a slot's key.
+#: src/Admin/CheckScreen.php:184
+#, php-format
+msgid "%1$s is missing, so the part is not offered in the slot \"%2$s\"."
+msgstr ""
+
+#. translators: %s: a spec's name.
+#: src/Admin/CheckScreen.php:187
+#, php-format
+msgid "%s is not filled in, so the builder assumes the usual one."
+msgstr ""
+
+#. translators: 1: a preset's name. 2: a slot's key.
+#: src/Admin/CheckScreen.php:191
+#, php-format
+msgid "The preset \"%1$s\" names it for the slot \"%2$s\", and it is not one of that slot's parts now."
+msgstr ""
+
+#. translators: 1: a preset's name. 2: a slot's key.
+#: src/Admin/CheckScreen.php:193
+#, php-format
+msgid "The preset \"%1$s\" names it for the slot \"%2$s\", and it is sold out."
+msgstr ""
+
+#. translators: 1: a preset's name. 2: a slot's key.
+#: src/Admin/CheckScreen.php:196
+#, php-format
+msgid "The preset \"%1$s\" names it for the slot \"%2$s\", and it no longer fits the preset's other parts."
 msgstr ""
 
 #: src/Admin/ImportScreen.php:169
@@ -664,6 +752,60 @@ msgstr ""
 msgid "The Creative Skateboard Builder update did not match its published checksum, so it was not installed."
 msgstr ""
 
+#: templates/admin/check.php:27
+msgid "Finds what keeps a part out of the builder: sources that disagree about a part, values that cannot be read, and background work that failed. It reads every part and changes nothing."
+msgstr ""
+
+#: templates/admin/check.php:29
+msgid "The shop has no kit yet. Once it has one, the check also lists each kit's parts that lack a spec, presets that no longer fit and slots with nothing in stock."
+msgstr ""
+
+#: templates/admin/check.php:34
+msgid "Run the check again"
+msgstr ""
+
+#: templates/admin/check.php:34
+msgid "Run the check"
+msgstr ""
+
+#: templates/admin/check.php:38
+msgid "The check found nothing to fix."
+msgstr ""
+
+#. translators: %s: a number of findings.
+#: templates/admin/check.php:44
+#, php-format
+msgid "The check found %s thing to fix."
+msgid_plural "The check found %s things to fix."
+msgstr[0] ""
+msgstr[1] ""
+
+#: templates/admin/check.php:48
+msgid "What it found"
+msgstr ""
+
+#: templates/admin/check.php:53
+msgid "Where"
+msgstr ""
+
+#: templates/admin/check.php:54
+msgid "Kit"
+msgstr ""
+
+#: templates/admin/check.php:55
+msgid "What to fix"
+msgstr ""
+
+#. translators: %s: how many more rows a list has than it shows.
+#: templates/admin/check.php:79
+#: templates/admin/import.php:131
+#: templates/admin/import.php:167
+#, php-format
+msgid "And %s more."
+msgid_plural "And %s more."
+msgstr[0] ""
+msgstr[1] ""
+
 #: templates/admin/import.php:37
 msgid "Check the import"
 msgstr ""
@@ -766,15 +908,6 @@ msgstr ""
 #: templates/admin/import.php:113
 msgid "What is wrong"
 msgstr ""
-
-#. translators: %s: how many more rows a list has than it shows.
-#: templates/admin/import.php:131
-#: templates/admin/import.php:167
-#, php-format
-msgid "And %s more."
-msgid_plural "And %s more."
-msgstr[0] ""
-msgstr[1] ""
 
 #: templates/admin/import.php:138
 msgid "What would change"

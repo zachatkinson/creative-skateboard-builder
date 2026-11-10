@@ -161,4 +161,13 @@ final class FakeQueue implements Queue {
 			$this->pending[ $hook ] = true;
 		}
 	}
+
+	/**
+	 * What failed() answers.
+	 */
+	public int $failures = 0;
+
+	public function failed(): int {
+		return $this->failures;
+	}
 }

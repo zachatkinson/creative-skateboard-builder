@@ -276,3 +276,22 @@ An import reads a file of 2 MB and 5,000 rows at most, comma- or semicolon-separ
 Why a file is not read: `upload_missing`, `upload_failed`, `upload_not_csv`, `file_too_big`, `file_not_utf8`, `file_empty`, `rows_too_many`, `key_column_missing`, `column_twice`, `no_spec_columns` and `import_running`.
 
 Why a row is not written: `key_missing`, `key_twice`, `part_missing`, `sku_mismatch`, `table_unknown`, `table_ambiguous`, `table_missing`, `size_missing`, `size_long`, and the refusal codes of a value (`measure_malformed`, `measure_zero_denominator`, `measure_negative`, `spec_unknown_choice`, `spec_not_positive`, `spec_wrong_kind`).
+
+### The Catalogue check
+
+What WooCommerce > Builder > Catalogue check lists, each a `Service\CheckFinding` with a code. The check runs when asked, reads the sources as the indexer does and writes nothing. A kit's findings are the fit engine's and the build validator's own, asked of each part alone; the check holds no rule.
+
+| Code | Since | About | What it means |
+| --- | --- | --- | --- |
+| `sources_disagree` | 0.3.0 | A part and a spec | Two sources hold different values. The finding carries each source's value, the one the settings' order uses first. |
+| `value_unread` | 0.3.0 | A part, and a spec where there is one | A source holds a value that cannot be read: its `values` are the source, the refusal code and the text. A part that names a chart that is gone, or a size its chart does not have, is one. |
+| `reindex_failed` | 0.3.0 | The shop | Reading every part again stopped after its failures. |
+| `import_failed` | 0.3.0 | The shop | The last specs import stopped before its end. |
+| `jobs_failed` | 0.3.0 | The shop | Actions of the group `creative-skateboard-builder` are marked failed in Action Scheduler. `values` holds how many, counted to 100. |
+| `slot_empty` | 0.3.0 | A kit and a slot | The slot has no parts. |
+| `slot_out_of_stock` | 0.3.0 | A kit and a slot | The slot has parts and none in stock. |
+| `spec_missing` | 0.3.0 | A kit, a slot, a part and a spec | A rule needs the spec, the part lacks it, and the part is not offered. Said once per part and spec. |
+| `spec_assumed` | 0.3.0 | A kit, a slot, a part and a spec | A rule went without the spec and assumed the usual: the hole pattern, the axle's diameter, the deck's length, or the wheel a truck clears. |
+| `preset_broken` | 0.3.0 | A kit, a slot and a part | A preset names a part that is gone from its slot, is sold out, or no longer fits the preset's other parts. `values` holds the preset's name and the build problem's code. |
+
+The kit codes are found once the shop has a kit, which milestone 4 builds: until then `Port\Kits` answers with none, and the screen says so.

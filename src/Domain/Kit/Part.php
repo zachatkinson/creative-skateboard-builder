@@ -22,15 +22,16 @@ final readonly class Part {
 	 *
 	 * @since 0.2.0
 	 *
-	 * @param int    $id      The product's or variation's id.
-	 * @param string $brand   The brand's key, or empty when the part has none.
-	 * @param Specs  $specs   The part's specs.
-	 * @param int    $price   The price of one, in the currency's minor units.
-	 * @param bool   $inStock Whether it can be bought now.
+	 * @param int      $id      The product's or variation's id.
+	 * @param string   $brand   The brand's key, or empty when the part has none.
+	 * @param Specs    $specs   The part's specs.
+	 * @param int      $price   The price of one, in the currency's minor units.
+	 * @param bool     $inStock Whether it can be bought now.
+	 * @param int|null $stock   How many the shop holds, when it counts them; null when it does not (issue #14).
 	 *
 	 * @throws InvalidPart When the id is not positive or the price is negative.
 	 */
-	public function __construct( public int $id, public string $brand, public Specs $specs, public int $price, public bool $inStock ) {
+	public function __construct( public int $id, public string $brand, public Specs $specs, public int $price, public bool $inStock, public ?int $stock = null ) {
 		if ( $id < 1 ) {
 			$refused = InvalidPart::because( PartError::IdNotPositive );
 			throw $refused;

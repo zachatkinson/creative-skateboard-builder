@@ -916,3 +916,16 @@ The table is milestone 1's and does not change. These are the choices the reposi
 - **The browser test runs the queue itself,** `wp action-scheduler run --hooks=cbuild_import`, and waits for the page to say the import is done: the shop's own requests may have started the job first.
 
 **Status:** Accepted.
+
+### D-077 · The Catalogue check: what it reads, and what waits for kits · 2026-11-10
+
+- **The check holds no rule.** A part's findings are `FitEngine::standard()`'s, asked of the part with no picks beside it, and a preset's problems are `BuildValidator`'s. A rule added to the engine is then in the check without a line changed here, and the two cannot come to disagree.
+- **It reads the sources, not the index.** `SpecIndexer::resolve()` is what the indexer runs, so the check says what the index would hold if it were rebuilt now, and it finds two sources that disagree, which the index does not keep: it stores the winner alone.
+- **Kits come through `Port\Kits`, which answers with none until milestone 4** (`Adapter\NoKits`). The spec's list for the check is per kit (parts that lack a spec, presets that no longer fit, slots with nothing in stock), and kits are milestone 4's. Those findings are written and tested now against kits made from documents (`InMemoryKits`, `KitDocuments`); the screen says the shop has no kit yet and what the check will add when it has. What is found without a kit is live now: disagreeing sources, values that cannot be read, a reindex or an import that stopped, and failed jobs.
+- **A missing spec is said once per part and spec,** though two rules may each want it; and an assumed spec is a finding of its own (`spec_assumed`), since the part is still offered and the shop may be content with the usual.
+- **Failed jobs are counted, to 100, through a new `Port\Queue::failed()`** (the roadmap's "failed jobs found"). The count is Action Scheduler's own, of failed actions in the plugin's group, and the finding links to WooCommerce > Status > Scheduled Actions, where each can be read and run again. Action Scheduler deletes failed actions after its retention period, so the finding clears itself.
+- **The check runs when asked, in the request, by a post with a nonce,** and its findings are not stored. A get that read every part would run on every visit to the tab, and a stored result would be out of date the moment a part was saved. The page lists 500 findings and says how many more there are. How long 2,000 parts take is measured in this milestone's benchmark; if that is over the budget, the check moves to the queue.
+- **`Domain\Kit\Part` gains `$stock`, the managed count or null for "not managed"** (issue #14's first half, Claude in Cowork's finding 11 of milestone 2). Nothing reads it yet: milestone 4's adapter fills it when it builds a `Part`, and milestone 5's validator checks it against what a build takes.
+- **A variation's finding links to its parent's edit screen,** at `#cbuild_part_specs`, since a variation has no screen of its own. A part that is not a product of this shop is named by its ID with no link.
+
+**Status:** Accepted.

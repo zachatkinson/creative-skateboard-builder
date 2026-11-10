@@ -44,6 +44,7 @@ final class Container {
 			Port\PartSpecs::class      => Adapter\WooPartSpecs::class,
 			Port\ImportStore::class    => Adapter\OptionImportStore::class,
 			Port\Uploads::class        => Adapter\RequestUploads::class,
+			Port\Kits::class           => Adapter\NoKits::class,
 		);
 	}
 
@@ -77,6 +78,9 @@ final class Container {
 					},
 					static function () use ( $c ): Admin\ImportScreen {
 						return $c->get( Admin\ImportScreen::class );
+					},
+					static function () use ( $c ): Admin\CheckScreen {
+						return $c->get( Admin\CheckScreen::class );
 					}
 				);
 			},

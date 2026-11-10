@@ -14,6 +14,8 @@
 			"Admin/PartSpecsPanel.php",
 			"Admin/SpecTablesScreen.php",
 			"Admin/ImportScreen.php",
+			"Admin/CheckScreen.php",
+			"Adapter/NoKits.php",
 			"Adapter/ActionSchedulerQueue.php",
 			"Adapter/AttributeSpecSource.php",
 			"Adapter/FieldSpecSource.php",

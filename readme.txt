@@ -44,6 +44,7 @@ Yes. Activating it for the network installs it on every site, and a site added l
 * A Part specs tab on each product, and the same fields in each variation, where the shop fills in what the builder needs to know of a part.
 * WooCommerce > Builder, where the shop keeps each truck maker's size chart.
 * Import and export under WooCommerce > Builder: download every part's specs as a CSV file, fill it in with a spreadsheet, and import it. The file is checked and shown first, and nothing changes until you confirm.
+* A Catalogue check under WooCommerce > Builder: lists the parts whose sources disagree or hold a value that cannot be read, and background work that failed, each with a link to where it is fixed.
 * A settings screen, WooCommerce > Settings > Builder, to say which product attribute holds which spec and which source wins where two disagree.
 
 = 0.2.0 =

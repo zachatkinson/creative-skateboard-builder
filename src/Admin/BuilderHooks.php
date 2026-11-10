@@ -17,8 +17,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * The page is the shop's own tools for the builder, a tab each: the makers' charts and the import and export now,
- * the Catalogue check after. Its screen is built when the page is asked for, not on every admin request.
+ * The page is the shop's own tools for the builder, a tab each: the makers' charts, the import and export, and
+ * the Catalogue check. Its screen is built when the page is asked for, not on every admin request.
  *
  * @since 0.3.0
  */
@@ -39,14 +39,22 @@ final class BuilderHooks implements Hookable {
 	public const TAB_IMPORT = 'import';
 
 	/**
+	 * The Catalogue check's tab: `admin.php?page=cbuild&tab=check`.
+	 *
+	 * @since 0.3.0
+	 */
+	public const TAB_CHECK = 'check';
+
+	/**
 	 * Constructor.
 	 *
 	 * @since 0.3.0
 	 *
 	 * @param Closure(): SpecTablesScreen $tables Builds the Spec tables screen.
 	 * @param Closure(): ImportScreen     $import Builds the Import and export screen.
+	 * @param Closure(): CheckScreen      $check  Builds the Catalogue check's screen.
 	 */
-	public function __construct( private Closure $tables, private Closure $import ) {}
+	public function __construct( private Closure $tables, private Closure $import, private Closure $check ) {}
 
 	/**
 	 * The page's tabs, for its templates to draw.
@@ -60,6 +68,7 @@ final class BuilderHooks implements Hookable {
 		$tabs = array(
 			''               => __( 'Spec tables', 'creative-skateboard-builder' ),
 			self::TAB_IMPORT => __( 'Import and export', 'creative-skateboard-builder' ),
+			self::TAB_CHECK  => __( 'Catalogue check', 'creative-skateboard-builder' ),
 		);
 		$list = array();
 		foreach ( $tabs as $tab => $label ) {
@@ -83,9 +92,12 @@ final class BuilderHooks implements Hookable {
 	/**
 	 * The screen the address asks for.
 	 */
-	private function screen(): SpecTablesScreen|ImportScreen {
+	private function screen(): SpecTablesScreen|ImportScreen|CheckScreen {
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Chooses what is shown and changes nothing.
 		$tab = isset( $_GET['tab'] ) && is_string( $_GET['tab'] ) ? sanitize_key( wp_unslash( $_GET['tab'] ) ) : '';
+		if ( self::TAB_CHECK === $tab ) {
+			return ( $this->check )();
+		}
 		return self::TAB_IMPORT === $tab ? ( $this->import )() : ( $this->tables )();
 	}
 
