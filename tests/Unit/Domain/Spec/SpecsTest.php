@@ -14,6 +14,8 @@ use CreativeBranding\SkateboardBuilder\Domain\Measure\Measure;
 use CreativeBranding\SkateboardBuilder\Domain\Measure\Unit;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\InvalidSpec;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\SpecError;
+use CreativeBranding\SkateboardBuilder\Domain\Spec\IndexedSpec;
+use CreativeBranding\SkateboardBuilder\Domain\Spec\Origin;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\SpecKey;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\Specs;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -211,5 +213,39 @@ final class SpecsTest extends TestCase {
 		self::assertEquals( Specs::fromIndex( array( 'deck_width' => '8.25', 'wheelbase' => '14.25' ) ), $specs );
 		self::assertFalse( $specs->has( SpecKey::from( $key ) ) );
 		self::assertEquals( Specs::none(), Specs::fromIndex( array( $key => $text ) ) );
+	}
+
+	public function test_specs_go_to_the_index_as_text_and_come_back_the_same(): void {
+		$specs = Specs::none()
+			->with( SpecKey::DeckWidth, Measure::inches( 82500 ) )
+			->with( SpecKey::MaxWheel, Measure::millimetres( 560000 ) )
+			->with( SpecKey::HolePattern, 'both' )
+			->with( SpecKey::SpacersBuiltIn, true )
+			->with( SpecKey::SetSize, 4 );
+		$rows  = $specs->toIndex();
+		ksort( $rows );
+		self::assertSame(
+			array(
+				'deck_width'       => '8.2500',
+				'hole_pattern'     => 'both',
+				'max_wheel'        => '56.0000',
+				'set_size'         => '4',
+				'spacers_built_in' => '1',
+			),
+			$rows
+		);
+		self::assertEquals( $specs, Specs::fromIndex( $specs->toIndex() ) );
+		self::assertSame( array( 'spacers_built_in' => '0' ), Specs::none()->with( SpecKey::SpacersBuiltIn, false )->toIndex() );
+		self::assertSame( array(), Specs::none()->toIndex() );
+	}
+
+	public function test_an_index_row_holds_what_it_was_given_and_the_sources_are_the_columns_values(): void {
+		$row = new IndexedSpec( SpecKey::AxleWidth, '8.5000', Origin::Table, 'independent:149' );
+		self::assertSame( SpecKey::AxleWidth, $row->key );
+		self::assertSame( '8.5000', $row->text );
+		self::assertSame( Origin::Table, $row->origin );
+		self::assertSame( 'independent:149', $row->ref );
+		self::assertSame( '', ( new IndexedSpec( SpecKey::AxleWidth, '8.5000', Origin::Field ) )->ref );
+		self::assertSame( array( 'field', 'attribute', 'table' ), array_column( Origin::cases(), 'value' ) );
 	}
 }

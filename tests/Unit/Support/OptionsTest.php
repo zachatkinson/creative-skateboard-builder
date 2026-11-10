@@ -19,7 +19,7 @@ final class OptionsTest extends TestCase {
 
 	public function test_every_option_is_listed_once_with_the_prefix(): void {
 		$names = Options::names();
-		self::assertSame( array( 'cbuild_db_version', 'cbuild_migrations', 'cbuild_migration_lock' ), $names );
+		self::assertSame( array( 'cbuild_db_version', 'cbuild_migrations', 'cbuild_migration_lock', 'cbuild_settings', 'cbuild_reindex_state', 'cbuild_reindex_owed', 'cbuild_import_state', 'cbuild_import_rows' ), $names );
 		self::assertSame( $names, array_unique( $names ) );
 		foreach ( $names as $name ) {
 			self::assertStringStartsWith( 'cbuild_', $name );
@@ -34,13 +34,19 @@ final class OptionsTest extends TestCase {
 	}
 
 	public function test_the_jobs_are_the_ones_deactivation_cancels(): void {
-		self::assertSame( array( Options::JOB_MIGRATE ), Options::jobs() );
+		self::assertSame( array( 'cbuild_migrate', 'cbuild_index_part', 'cbuild_reindex', 'cbuild_import' ), Options::jobs() );
 		self::assertSame( 'cbuild_migrate', Options::JOB_MIGRATE );
 	}
 
-	public function test_no_meta_or_settings_key_exists_before_its_milestone(): void {
-		self::assertSame( array(), Options::metaKeys() );
-		self::assertSame( array(), Options::settingsKeys() );
+	public function test_the_meta_and_settings_keys_are_the_ones_uninstall_and_the_snapshot_read(): void {
+		self::assertSame( array( '_cbuild_specs', '_cbuild_spec_table', '_cbuild_rows', '_cbuild_seed' ), Options::metaKeys() );
+		self::assertSame( array( 'cbuild_spec_table' ), Options::postTypes() );
+		self::assertStringStartsWith( 'cbuild_', Options::POST_TYPE_SPEC_TABLE );
+		self::assertLessThanOrEqual( 20, strlen( Options::POST_TYPE_SPEC_TABLE ), 'a post type\'s name is at most 20 characters' );
+		self::assertSame( array( 'attribute_mapping', 'source_order' ), Options::settingsKeys() );
+		foreach ( Options::metaKeys() as $key ) {
+			self::assertStringStartsWith( '_cbuild_', $key, 'hidden from the custom fields box, and the plugin\'s own' );
+		}
 	}
 
 	public function test_the_group_and_the_log_source_are_the_slug(): void {

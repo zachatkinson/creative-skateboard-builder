@@ -18,6 +18,7 @@ use CreativeBranding\SkateboardBuilder\Install\Schema;
 use CreativeBranding\SkateboardBuilder\Plugin;
 use CreativeBranding\SkateboardBuilder\Port\MigrationStore;
 use CreativeBranding\SkateboardBuilder\Repository\MigrationRepository;
+use CreativeBranding\SkateboardBuilder\Scope;
 use CreativeBranding\SkateboardBuilder\Support\Options;
 use CreativeBranding\SkateboardBuilder\Support\Requirements;
 use CreativeBranding\SkateboardBuilder\Support\Tables;
@@ -62,7 +63,7 @@ final class ActivationTest extends IntegrationTestCase {
 		self::assertArrayHasKey( Options::DB_VERSION, wp_load_alloptions( true ), 'the version is autoloaded: read on every request' );
 		$states = get_option( Options::MIGRATIONS );
 		self::assertIsArray( $states );
-		self::assertSame( array( 'schema_1', 'noop_1' ), array_keys( $states ), 'in order' );
+		self::assertSame( array( 'schema_1', 'noop_1', 'spec_tables_1' ), array_keys( $states ), 'in order' );
 		foreach ( $states as $key => $state ) {
 			self::assertSame( 'done', $state['status'], $key );
 			self::assertSame( 1, $state['attempts'], $key );
@@ -86,6 +87,25 @@ final class ActivationTest extends IntegrationTestCase {
 		Activator::activate();
 		self::assertSame( $before, get_option( Options::MIGRATIONS ), 'the same states: no second attempt' );
 		self::assertSame( MigrationRegistry::VERSION, get_option( Options::DB_VERSION ) );
+	}
+
+	public function test_activation_asks_for_every_part_to_be_read_and_again_after_the_plugin_was_switched_off(): void {
+		delete_option( Options::REINDEX );
+		Activator::activate();
+		$state = get_option( Options::REINDEX );
+		self::assertIsArray( $state );
+		self::assertSame( 1, $state['run'] );
+		self::assertCount( 1, self::pendingJobs( Options::JOB_REINDEX ), 'one job, on a site whose migrations had already run' );
+		self::work();
+		self::assertSame( 'done', get_option( Options::REINDEX )['phase'] );
+
+		// Switched off, its jobs are cancelled and no save is heard; switched on, the index is rebuilt.
+		Deactivator::deactivate();
+		Activator::activate();
+		self::assertSame( 2, get_option( Options::REINDEX )['run'] );
+		self::assertNotSame( 'done', get_option( Options::REINDEX )['phase'] );
+		self::assertCount( 1, self::pendingJobs( Options::JOB_REINDEX ) );
+		delete_option( Options::REINDEX );
 	}
 
 	public function test_network_activation_installs_every_site(): void {
@@ -223,7 +243,11 @@ final class ActivationTest extends IntegrationTestCase {
 		self::assertSame( CBUILD_URL, plugin_dir_url( CBUILD_FILE ) );
 		self::assertInstanceOf( Container::class, Plugin::container() );
 		self::assertSame( Plugin::container(), Plugin::container() );
-		self::assertCount( 1, Plugin::container()->hookables(), 'the install hooks' );
+		self::assertTrue( Plugin::container()->has( InstallHooks::class ), 'the install hooks, built at boot' );
+		self::assertSame( array(), Plugin::container()->hookablesFor( Scope::Everywhere ), 'and registered once' );
+		self::assertSame( 0, has_action( 'rest_api_init', array( Plugin::class, 'registerRest' ) ) );
+		Plugin::registerRest();
+		self::assertSame( 10, has_action( 'init', array( $this->service( InstallHooks::class ), 'queueWhenBehind' ) ), 'a REST request registers nothing twice' );
 		$hooks = $this->service( InstallHooks::class );
 		self::assertSame( 10, has_action( 'init', array( $hooks, 'queueWhenBehind' ) ) );
 		self::assertSame( 10, has_action( 'admin_init', array( $hooks, 'runWhenBehind' ) ) );
@@ -320,6 +344,26 @@ final class ActivationTest extends IntegrationTestCase {
 		self::assertSame( '1' === getenv( 'CBUILD_MULTISITE' ), is_multisite() );
 		$host = getenv( 'WORDPRESS_DB_HOST' );
 		self::assertSame( false === $host ? DB_HOST : $host, DB_HOST );
+	}
+
+	public function test_the_object_cache_leg_shares_a_value_between_two_processes(): void {
+		if ( ! self::hasWpCli() ) {
+			self::markTestSkipped( 'No WP-CLI outside wp-env.' );
+		}
+		// A flag alone makes WordPress take the object-cache paths in one process. What a shop has is a cache server
+		// two processes share, and that is what the leg must run on (issue #4, D-066).
+		$key = 'leg-' . bin2hex( random_bytes( 4 ) );
+		$set = self::wpEval( "wp_cache_set( '{$key}', array( 'n' => 7 ), '" . Options::CACHE_GROUP . "', 60 ); echo 'set';" );
+		self::assertSame( 'set', $set['out'], $set['err'] );
+		$got = self::wpEval( "echo wp_json_encode( wp_cache_get( '{$key}', '" . Options::CACHE_GROUP . "' ) );" );
+		self::assertSame( 0, $got['code'], $got['err'] );
+		$expected = 'persistent' === getenv( 'CBUILD_OBJECT_CACHE' ) ? '{"n":7}' : 'false';
+		self::assertSame( $expected, $got['out'], 'what a second process reads from the cache' );
+		if ( 'persistent' === getenv( 'CBUILD_OBJECT_CACHE' ) ) {
+			// The suite's own process is on the same server, through a drop-in that is there.
+			self::assertFileExists( WP_CONTENT_DIR . '/object-cache.php' );
+			self::assertTrue( wp_cache_supports( 'flush_group' ) );
+		}
 	}
 
 	public function test_no_text_domain_is_loaded_by_hand(): void {

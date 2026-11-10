@@ -1,28 +1,60 @@
 {
 	// The plugin outside the domain, at 95 % (D-061; docs/AUDIT.md: Mutation testing). src/Domain has its own 100 % run in
-	// infection-domain.json5. The WordPress-bound directories are proven by the integration suite in wp-env, so they
-	// are excluded by name and everything else in src/ is mutated: the same list as phpunit.xml.dist's <source>.
+	// infection-domain.json5. Everything in src/ is mutated but the list below, which phpunit.xml.dist's <source> matches.
 	"$schema": "vendor/infection/infection/resources/schema.json",
 	"source": {
 		"directories": [
 			"src"
 		],
+		// A class is left out only when it cannot run without WordPress or WooCommerce loaded: it takes or builds
+		// their objects, or does its work through their functions. Each is proven in wp-env by the integration suite,
+		// with a deliberate break in its milestone's review. A class whose logic needs no more than the translation
+		// functions is mutated here, with the shims in tests/Support/wp-shims.php (D-087).
 		"excludes": [
+			// Its own run at 100 %: infection-domain.json5.
 			"Domain",
+			// wp-admin screens: requests, nonces, capabilities, redirects and templates.
+			"Admin/SettingsPage.php",
+			"Admin/PartSpecsPanel.php",
+			"Admin/SpecTablesScreen.php",
+			"Admin/ImportScreen.php",
+			"Admin/CheckScreen.php",
+			// WP-CLI commands, the Abilities API and Site Health: each is a registration and WordPress's own objects.
+			"Cli",
+			"Abilities",
+			"Health/SiteHealth.php",
+			// Adapters: WooCommerce's products, WordPress's options, posts, uploads, filesystem and the queue.
 			"Adapter/ActionSchedulerQueue.php",
+			"Adapter/AttributeSpecSource.php",
+			"Adapter/DiskFiles.php",
+			"Adapter/FieldSpecSource.php",
+			"Adapter/OptionImportStore.php",
+			"Adapter/OptionReindexStore.php",
+			"Adapter/OptionShopSettings.php",
+			"Adapter/PostSpecTables.php",
+			"Adapter/Products.php",
+			"Adapter/RequestUploads.php",
+			"Adapter/TableSpecSource.php",
+			"Adapter/WooPartCatalogue.php",
+			"Adapter/WooPartSpecs.php",
 			"Adapter/WooCommerceLogger.php",
+			// SQL through $wpdb, and the classes that only add hooks.
 			"Repository",
 			"Hooks",
 			"Plugin.php",
 			"Hookable.php",
+			// Activation, the schema and uninstall: dbDelta, $wpdb and the request WordPress is serving.
 			"Install/Activator.php",
 			"Install/Deactivator.php",
+			"Install/Migrations/InlineRule.php",
 			"Install/Schema.php",
 			"Install/Uninstaller.php",
 			"Install/Migrations/SchemaMigration.php",
+			// The update manifest's request and WordPress's update transients.
 			"Updates/HttpManifestSource.php",
 			"Updates/Updater.php"
 		]
+
 	},
 	"bootstrap": "tests/bootstrap.php",
 	"timeout": 20,

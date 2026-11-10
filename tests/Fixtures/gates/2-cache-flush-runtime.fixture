@@ -1,0 +1,9 @@
+<?php
+declare( strict_types=1 );
+namespace CreativeBranding\SkateboardBuilder\Support;
+final class Probe {
+	public function run(): mixed {
+		wp_cache_flush_runtime();
+		return null;
+	}
+}

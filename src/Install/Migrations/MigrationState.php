@@ -19,28 +19,23 @@ if ( ! defined( 'ABSPATH' ) ) {
  */
 final class MigrationState {
 
-	public const PENDING = 'pending';
-	public const RUNNING = 'running';
-	public const DONE    = 'done';
-	public const FAILED  = 'failed';
-
 	/**
 	 * Constructor.
 	 *
 	 * @since 0.1.0
 	 *
-	 * @param string   $key        The migration's key.
-	 * @param string   $status     One of the status constants.
-	 * @param Cursor   $cursor     Where the next batch starts.
-	 * @param int|null $startedAt  When the first run began, UTC timestamp.
-	 * @param int|null $finishedAt When it finished, UTC timestamp.
-	 * @param int      $attempts   How many runs have started it.
-	 * @param string   $error      The last failure's message, '' when none.
-	 * @param int|null $retryAt    After a failure, the moment before which it is not tried again, UTC timestamp.
+	 * @param string          $key        The migration's key.
+	 * @param MigrationStatus $status Where it stands.
+	 * @param Cursor          $cursor     Where the next batch starts.
+	 * @param int|null        $startedAt  When the first run began, UTC timestamp.
+	 * @param int|null        $finishedAt When it finished, UTC timestamp.
+	 * @param int             $attempts   How many runs have started it.
+	 * @param string          $error      The last failure's message, '' when none.
+	 * @param int|null        $retryAt    After a failure, the moment before which it is not tried again, UTC timestamp.
 	 */
 	public function __construct(
 		public readonly string $key,
-		public readonly string $status,
+		public readonly MigrationStatus $status,
 		public readonly Cursor $cursor,
 		public readonly ?int $startedAt = null,
 		public readonly ?int $finishedAt = null,
@@ -57,7 +52,7 @@ final class MigrationState {
 	 * @param string $key The migration's key.
 	 */
 	public static function pending( string $key ): self {
-		return new self( $key, self::PENDING, Cursor::start() );
+		return new self( $key, MigrationStatus::Pending, Cursor::start() );
 	}
 
 	/**
@@ -66,7 +61,7 @@ final class MigrationState {
 	 * @since 0.1.0
 	 */
 	public function isDone(): bool {
-		return self::DONE === $this->status;
+		return MigrationStatus::Done === $this->status;
 	}
 
 	/**
@@ -77,7 +72,7 @@ final class MigrationState {
 	 * @param int $now UTC timestamp.
 	 */
 	public function started( int $now ): self {
-		return new self( $this->key, self::RUNNING, $this->cursor, $this->startedAt ?? $now, null, $this->attempts + 1, '' );
+		return new self( $this->key, MigrationStatus::Running, $this->cursor, $this->startedAt ?? $now, null, $this->attempts + 1, '' );
 	}
 
 	/**
@@ -88,7 +83,7 @@ final class MigrationState {
 	 * @param Cursor $cursor Where the next batch starts.
 	 */
 	public function advanced( Cursor $cursor ): self {
-		return new self( $this->key, self::RUNNING, $cursor, $this->startedAt, null, $this->attempts, '' );
+		return new self( $this->key, MigrationStatus::Running, $cursor, $this->startedAt, null, $this->attempts, '' );
 	}
 
 	/**
@@ -99,7 +94,7 @@ final class MigrationState {
 	 * @param int $now UTC timestamp.
 	 */
 	public function finished( int $now ): self {
-		return new self( $this->key, self::DONE, Cursor::done(), $this->startedAt, $now, $this->attempts, '' );
+		return new self( $this->key, MigrationStatus::Done, Cursor::done(), $this->startedAt, $now, $this->attempts, '' );
 	}
 
 	/**
@@ -111,7 +106,7 @@ final class MigrationState {
 	 * @param int    $retryAt The moment before which it is not tried again, UTC timestamp.
 	 */
 	public function failed( string $error, int $retryAt ): self {
-		return new self( $this->key, self::FAILED, $this->cursor, $this->startedAt, null, $this->attempts, $error, $retryAt );
+		return new self( $this->key, MigrationStatus::Failed, $this->cursor, $this->startedAt, null, $this->attempts, $error, $retryAt );
 	}
 
 	/**
@@ -122,7 +117,7 @@ final class MigrationState {
 	 * @param int $now UTC timestamp.
 	 */
 	public function isWaiting( int $now ): bool {
-		return self::FAILED === $this->status && null !== $this->retryAt && $now < $this->retryAt;
+		return MigrationStatus::Failed === $this->status && null !== $this->retryAt && $now < $this->retryAt;
 	}
 
 	/**
@@ -134,7 +129,7 @@ final class MigrationState {
 	 */
 	public function toArray(): array {
 		return array(
-			'status'      => $this->status,
+			'status'      => $this->status->value,
 			'cursor'      => $this->cursor->toArray(),
 			'started_at'  => $this->startedAt,
 			'finished_at' => $this->finishedAt,
@@ -153,15 +148,11 @@ final class MigrationState {
 	 * @param mixed  $data What was stored.
 	 */
 	public static function fromArray( string $key, mixed $data ): self {
-		$data   = is_array( $data ) ? $data : array();
-		$status = $data['status'] ?? self::PENDING;
-		if ( ! in_array( $status, array( self::PENDING, self::RUNNING, self::DONE, self::FAILED ), true ) ) {
-			$status = self::PENDING;
-		}
-		$int = static fn( mixed $v ): ?int => is_int( $v ) ? $v : null;
+		$data = is_array( $data ) ? $data : array();
+		$int  = static fn( mixed $v ): ?int => is_int( $v ) ? $v : null;
 		return new self(
 			$key,
-			$status,
+			MigrationStatus::read( $data['status'] ?? null ),
 			Cursor::fromArray( $data['cursor'] ?? null ),
 			$int( $data['started_at'] ?? null ),
 			$int( $data['finished_at'] ?? null ),

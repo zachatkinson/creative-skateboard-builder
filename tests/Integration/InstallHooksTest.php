@@ -10,12 +10,15 @@ declare( strict_types=1 );
 namespace CreativeBranding\SkateboardBuilder\Tests\Integration;
 
 use CreativeBranding\SkateboardBuilder\Hooks\InstallHooks;
+use CreativeBranding\SkateboardBuilder\Install\Migrations\InlineRule;
 use CreativeBranding\SkateboardBuilder\Install\Migrations\MigrationRegistry;
 use CreativeBranding\SkateboardBuilder\Install\Migrations\MigrationRunner;
 use CreativeBranding\SkateboardBuilder\Port\Clock;
 use CreativeBranding\SkateboardBuilder\Port\Logger;
 use CreativeBranding\SkateboardBuilder\Port\MigrationStore;
 use CreativeBranding\SkateboardBuilder\Port\Queue;
+use CreativeBranding\SkateboardBuilder\Install\Activator;
+use CreativeBranding\SkateboardBuilder\Port\Reindex;
 use CreativeBranding\SkateboardBuilder\Support\Tables;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\BatchMigration;
 use CreativeBranding\SkateboardBuilder\Install\Migrations\MigrationState;
@@ -90,7 +93,7 @@ final class InstallHooksTest extends IntegrationTestCase {
 	public function test_a_manager_on_an_admin_page_runs_the_migrations_inline_and_queues_nothing(): void {
 		delete_option( Options::DB_VERSION );
 		$this->asManagerInAdmin();
-		self::assertTrue( InstallHooks::inlineAllowed() );
+		self::assertTrue( $this->service( InlineRule::class )->allows() );
 
 		$this->hooks->queueWhenBehind();
 		$this->hooks->runWhenBehind();
@@ -99,11 +102,36 @@ final class InstallHooksTest extends IntegrationTestCase {
 		self::assertSame( array(), self::pendingJobs( Options::JOB_MIGRATE ) );
 	}
 
+	public function test_an_upgrade_that_finishes_its_migrations_asks_for_every_part_to_be_read_again(): void {
+		delete_option( Options::REINDEX );
+		$this->asManagerInAdmin();
+		$this->hooks->runWhenBehind();
+		self::assertFalse( get_option( Options::REINDEX ), 'nothing to migrate, nothing asked' );
+
+		// An upgrade arrives with no activation: on a manager's admin page, and in the job.
+		delete_option( Options::DB_VERSION );
+		$this->hooks->runWhenBehind();
+		self::assertSame( MigrationRegistry::VERSION, get_option( Options::DB_VERSION ) );
+		// At least once: a run that seeds the makers' charts asks for each chart too.
+		$asked = get_option( Options::REINDEX )['run'] ?? 0;
+		self::assertGreaterThan( 0, $asked );
+		self::assertCount( 1, self::pendingJobs( Options::JOB_REINDEX ) );
+
+		$this->hooks->runJob();
+		self::assertSame( $asked, get_option( Options::REINDEX )['run'], 'a job with nothing left to run asks nothing' );
+		delete_option( Options::DB_VERSION );
+		delete_option( Options::MIGRATIONS );
+		$this->hooks->runJob();
+		self::assertGreaterThan( $asked, get_option( Options::REINDEX )['run'] );
+		self::assertCount( 1, self::pendingJobs( Options::JOB_REINDEX ), 'still one job' );
+		delete_option( Options::REINDEX );
+	}
+
 	public function test_an_admin_page_without_the_capability_queues_instead(): void {
 		delete_option( Options::DB_VERSION );
 		wp_set_current_user( (int) self::factory()->user->create( array( 'role' => 'customer' ) ) );
 		set_current_screen( 'dashboard' );
-		self::assertFalse( InstallHooks::inlineAllowed() );
+		self::assertFalse( $this->service( InlineRule::class )->allows() );
 
 		$this->hooks->queueWhenBehind();
 		$this->hooks->runWhenBehind();
@@ -114,18 +142,18 @@ final class InstallHooksTest extends IntegrationTestCase {
 
 	public function test_ajax_cron_and_admin_post_requests_queue_instead(): void {
 		$this->asManagerInAdmin();
-		self::assertTrue( InstallHooks::inlineAllowed() );
+		self::assertTrue( $this->service( InlineRule::class )->allows() );
 
 		add_filter( 'wp_doing_ajax', '__return_true' );
-		self::assertFalse( InstallHooks::inlineAllowed(), 'admin-ajax.php' );
+		self::assertFalse( $this->service( InlineRule::class )->allows(), 'admin-ajax.php' );
 		remove_filter( 'wp_doing_ajax', '__return_true' );
 
 		add_filter( 'wp_doing_cron', '__return_true' );
-		self::assertFalse( InstallHooks::inlineAllowed(), 'cron' );
+		self::assertFalse( $this->service( InlineRule::class )->allows(), 'cron' );
 		remove_filter( 'wp_doing_cron', '__return_true' );
 
 		$GLOBALS['pagenow'] = 'admin-post.php'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited
-		self::assertFalse( InstallHooks::inlineAllowed(), 'admin-post.php' );
+		self::assertFalse( $this->service( InlineRule::class )->allows(), 'admin-post.php' );
 
 		delete_option( Options::DB_VERSION );
 		$this->hooks->queueWhenBehind();
@@ -188,7 +216,7 @@ final class InstallHooksTest extends IntegrationTestCase {
 			}
 		};
 		$runner = new MigrationRunner( new MigrationRegistry( $m ), $this->service( MigrationStore::class ), $clock, $this->service( Logger::class ), $this->service( Queue::class ) );
-		$hooks  = new InstallHooks( $runner );
+		$hooks  = new InstallHooks( $runner, new InlineRule(), fn(): Reindex => $this->service( Reindex::class ) );
 		$this->asManagerInAdmin();
 
 		$hooks->runWhenBehind();
@@ -205,6 +233,7 @@ final class InstallHooksTest extends IntegrationTestCase {
 		$before = $wpdb->num_queries;
 		$this->hooks->queueWhenBehind();
 		$this->hooks->runWhenBehind();
+		$this->hooks->askWhenOwed();
 		self::assertSame( 0, $wpdb->num_queries - $before, 'a front-end request: the autoloaded version answers from memory' );
 		// Signing the manager in costs queries of its own, so the count starts again after it.
 		$this->asManagerInAdmin();
@@ -212,6 +241,39 @@ final class InstallHooksTest extends IntegrationTestCase {
 		$before = $wpdb->num_queries;
 		$this->hooks->queueWhenBehind();
 		$this->hooks->runWhenBehind();
+		$this->hooks->askWhenOwed();
 		self::assertSame( 0, $wpdb->num_queries - $before, 'an admin page for a manager' );
+	}
+
+	// D-095: activated while WooCommerce was missing, a site had no queue to put the reindex in.
+	public function test_a_reindex_activation_could_not_ask_for_is_asked_for_on_the_first_request_with_a_queue(): void {
+		delete_option( Options::REINDEX );
+		$reindex = $this->service( Reindex::class );
+
+		Activator::settle( false, $reindex );
+		self::assertTrue( Activator::owesReindex() );
+		self::assertFalse( get_option( Options::REINDEX ), 'nothing was asked for with no queue' );
+		self::assertSame( array(), self::waiting( Options::JOB_REINDEX ) );
+		self::assertContains( $GLOBALS['wpdb']->get_var( $GLOBALS['wpdb']->prepare( "SELECT autoload FROM {$GLOBALS['wpdb']->options} WHERE option_name = %s", Options::REINDEX_OWED ) ), array( 'yes', 'on', 'auto', 'auto-on' ), 'autoloaded, so asking whether it is owed costs no query' );
+
+		// WooCommerce is back, and with it the queue.
+		$this->hooks->askWhenOwed();
+		self::assertFalse( Activator::owesReindex() );
+		self::assertFalse( get_option( Options::REINDEX_OWED ) );
+		self::assertCount( 1, self::waiting( Options::JOB_REINDEX ) );
+		self::assertIsArray( get_option( Options::REINDEX ) );
+
+		// Paid once: the next request asks for nothing.
+		$this->hooks->askWhenOwed();
+		self::assertCount( 1, self::waiting( Options::JOB_REINDEX ) );
+
+		// With a queue, activation asks at once and owes nothing.
+		as_unschedule_all_actions( Options::JOB_REINDEX );
+		Activator::settle( true, $reindex );
+		self::assertFalse( Activator::owesReindex() );
+		self::assertCount( 1, self::waiting( Options::JOB_REINDEX ) );
+		as_unschedule_all_actions( Options::JOB_REINDEX );
+		delete_option( Options::REINDEX );
+		self::assertContains( Options::REINDEX_OWED, Options::names(), 'so uninstall removes it' );
 	}
 }

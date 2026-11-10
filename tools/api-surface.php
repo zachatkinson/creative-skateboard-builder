@@ -222,6 +222,7 @@ $cbuild_surface = array(
 	'queue_group'       => cbuild_api_const( $cbuild_options, 'QUEUE_GROUP' ),
 	'log_source'        => cbuild_api_const( $cbuild_options, 'LOG_SOURCE' ),
 	'meta_keys'         => cbuild_api_list( $cbuild_options, 'metaKeys' ),
+	'post_types'        => cbuild_api_list( $cbuild_options, 'postTypes' ),
 	'settings_keys'     => cbuild_api_list( $cbuild_options, 'settingsKeys' ),
 	'rest_routes'       => array_map( static fn( string $r ): string => 'cbuild/v1/' . ltrim( $r, '/' ), cbuild_api_matches( $cbuild_php, "/register_rest_route\\(\\s*(?:self::NAMESPACE|'cbuild\\/v1')\\s*,\\s*'([^']+)'/" ) ),
 	'abilities'         => cbuild_api_matches( $cbuild_php, "/wp_register_ability\\(\\s*'([^']+)'/" ),
@@ -270,6 +271,15 @@ if ( is_file( $cbuild_root . '/src/Domain/Spec/SpecKey.php' ) ) {
 }
 $cbuild_surface['spec_keys']  = array_keys( $cbuild_spec_keys );
 $cbuild_surface['spec_kinds'] = $cbuild_spec_keys;
+
+// The sources a spec's value comes from, as the index's `source` column holds them.
+$cbuild_index_sources = array();
+$cbuild_origin_enum   = 'CreativeBranding\\SkateboardBuilder\\Domain\\Spec\\Origin';
+if ( is_file( $cbuild_root . '/src/Domain/Spec/Origin.php' ) ) {
+	require_once $cbuild_root . '/vendor/autoload.php';
+	$cbuild_index_sources = array_column( $cbuild_origin_enum::cases(), 'value' );
+}
+$cbuild_surface['index_sources'] = $cbuild_index_sources;
 
 // The message codes a finding carries, with its severities and sources.
 $cbuild_rule_values = array(

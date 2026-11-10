@@ -1,0 +1,282 @@
+<?php
+/**
+ * Site Health.
+ *
+ * @package CreativeBranding\SkateboardBuilder
+ */
+
+declare( strict_types=1 );
+
+namespace CreativeBranding\SkateboardBuilder\Health;
+
+use Closure;
+use CreativeBranding\SkateboardBuilder\Admin\CheckScreen;
+use CreativeBranding\SkateboardBuilder\Admin\ImportScreen;
+use CreativeBranding\SkateboardBuilder\Admin\Labels;
+use CreativeBranding\SkateboardBuilder\Hookable;
+use CreativeBranding\SkateboardBuilder\Port\MigrationStore;
+use CreativeBranding\SkateboardBuilder\Port\ShopSettings;
+use CreativeBranding\SkateboardBuilder\Service\CatalogueCheck;
+use CreativeBranding\SkateboardBuilder\Service\Health;
+
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
+/**
+ * Three tests on Tools > Site Health and a section on its Info tab with the plugin's versions and settings. Two are
+ * direct: the specs index up to date, and no failed background job, each a saved place read and failed actions
+ * counted. The third runs the Catalogue check, which reads every part, so it is asynchronous: the page asks for it
+ * over REST once it has drawn, and WordPress's weekly check calls it (D-094). Nothing here is about a person.
+ *
+ * @since 0.3.0
+ */
+final class SiteHealth implements Hookable {
+
+	/**
+	 * The tests' identifiers, and the Info tab's section.
+	 */
+	public const TEST_INDEX     = 'cbuild_index';
+	public const TEST_JOBS      = 'cbuild_jobs';
+	public const TEST_CATALOGUE = 'cbuild_catalogue';
+	public const SECTION        = 'creative-skateboard-builder';
+
+	/**
+	 * The Catalogue check's route, for Site Health's page.
+	 */
+	private const NAMESPACE = 'cbuild/v1';
+	private const ROUTE     = '/site-health/catalogue-check';
+
+	/**
+	 * Constructor.
+	 *
+	 * @since 0.3.0
+	 *
+	 * @param Closure(): Health         $health     Builds the verdicts, when a test runs.
+	 * @param Closure(): ShopSettings   $settings   Builds the settings, when the Info tab is drawn.
+	 * @param Closure(): MigrationStore $migrations Builds the schema's version, when the Info tab is drawn.
+	 * @param Closure(): CatalogueCheck $check      Builds the Catalogue check, when its test runs.
+	 */
+	public function __construct( private Closure $health, private Closure $settings, private Closure $migrations, private Closure $check ) {}
+
+	/**
+	 * Attach hooks.
+	 *
+	 * @since 0.3.0
+	 */
+	public function register(): void {
+		add_filter( 'site_status_tests', array( $this, 'tests' ) );
+		add_filter( 'debug_information', array( $this, 'info' ) );
+		add_action( 'rest_api_init', array( $this, 'routes' ) );
+	}
+
+	/**
+	 * The route Site Health's page asks for the Catalogue check's test. It reads and changes nothing, and answers
+	 * whoever may see Site Health, as WordPress's own asynchronous tests do
+	 * (wp-includes/rest-api/endpoints/class-wp-rest-site-health-controller.php:189).
+	 *
+	 * @since 0.3.0
+	 */
+	public function routes(): void {
+		register_rest_route(
+			self::NAMESPACE,
+			'/site-health/catalogue-check',
+			array(
+				'methods'             => 'GET',
+				'callback'            => array( $this, 'catalogue' ),
+				'permission_callback' => static fn(): bool => current_user_can( 'view_site_health_checks' ),
+			)
+		);
+	}
+
+	/**
+	 * Add the tests. Two are direct: each is an option read and one indexed query. The Catalogue check is not.
+	 *
+	 * @since 0.3.0
+	 *
+	 * @param mixed $tests Site Health's tests.
+	 * @return mixed
+	 */
+	public function tests( mixed $tests ): mixed {
+		if ( ! is_array( $tests ) ) {
+			return $tests;
+		}
+		$direct                        = is_array( $tests['direct'] ?? null ) ? $tests['direct'] : array();
+		$direct[ self::TEST_INDEX ]    = array(
+			'label' => __( 'The skateboard builder\'s specs index', 'creative-skateboard-builder' ),
+			'test'  => array( $this, 'index' ),
+		);
+		$direct[ self::TEST_JOBS ]     = array(
+			'label' => __( 'The skateboard builder\'s background jobs', 'creative-skateboard-builder' ),
+			'test'  => array( $this, 'jobs' ),
+		);
+		$tests['direct']               = $direct;
+		$async                         = is_array( $tests['async'] ?? null ) ? $tests['async'] : array();
+		$async[ self::TEST_CATALOGUE ] = array(
+			'label'             => __( 'The skateboard builder\'s Catalogue check', 'creative-skateboard-builder' ),
+			'test'              => rest_url( self::NAMESPACE . self::ROUTE ),
+			'has_rest'          => true,
+			'async_direct_test' => array( $this, 'catalogue' ),
+		);
+		$tests['async']                = $async;
+		return $tests;
+	}
+
+	/**
+	 * The test of the specs index.
+	 *
+	 * @since 0.3.0
+	 *
+	 * @return array{label: string, status: string, badge: array{label: string, color: string}, description: string, actions: string, test: string}
+	 */
+	public function index(): array {
+		$verdict  = ( $this->health )()->index();
+		$parts    = number_format_i18n( $verdict['parts'] );
+		$settings = sprintf( '<a href="%s">%s</a>', esc_url( CheckScreen::url() ), esc_html__( 'Open the Catalogue check', 'creative-skateboard-builder' ) );
+		switch ( $verdict['code'] ) {
+			case Health::INDEX_FAILED:
+				$label = __( 'The skateboard builder\'s specs index was not rebuilt', 'creative-skateboard-builder' );
+				$says  = __( 'Reading every part again stopped after five failures, so some parts are still indexed with what they held before. Start it again with "Read every part again" on the Catalogue check. WooCommerce > Status > Logs has the reason, under creative-skateboard-builder.', 'creative-skateboard-builder' );
+				break;
+			case Health::INDEX_STALLED:
+				$label = __( 'The skateboard builder\'s specs index stopped part way', 'creative-skateboard-builder' );
+				/* translators: %s: a number of parts. */
+				$says = sprintf( __( 'Reading every part again got as far as %s parts and has no job waiting to go on. Start it again with "Read every part again" on the Catalogue check.', 'creative-skateboard-builder' ), $parts );
+				break;
+			case Health::INDEX_BUILDING:
+				$label = __( 'The skateboard builder\'s specs index is being rebuilt', 'creative-skateboard-builder' );
+				/* translators: %s: a number of parts. */
+				$says     = sprintf( __( 'Every part is being read again in the background, 100 at a time: %s so far. Parts keep what they held until they are reached.', 'creative-skateboard-builder' ), $parts );
+				$settings = '';
+				break;
+			default:
+				$label    = __( 'The skateboard builder\'s specs index is up to date', 'creative-skateboard-builder' );
+				$says     = __( 'The index holds each part\'s specs, and a part is read again in the background whenever it is saved.', 'creative-skateboard-builder' );
+				$settings = '';
+		}
+		return self::result( self::TEST_INDEX, $verdict['status'], $label, $says, $settings );
+	}
+
+	/**
+	 * The test of the background jobs.
+	 *
+	 * @since 0.3.0
+	 *
+	 * @return array{label: string, status: string, badge: array{label: string, color: string}, description: string, actions: string, test: string}
+	 */
+	public function jobs(): array {
+		$verdict = ( $this->health )()->jobs();
+		$import  = sprintf( '<a href="%s">%s</a>', esc_url( ImportScreen::url() ), esc_html__( 'Open Import and export', 'creative-skateboard-builder' ) );
+		if ( Health::IMPORT_FAILED === $verdict['code'] ) {
+			return self::result( self::TEST_JOBS, $verdict['status'], __( 'The skateboard builder\'s last specs import stopped before its end', 'creative-skateboard-builder' ), __( 'A batch of the import failed four times, so the parts after it were not written. Import the file again: a part already written takes the same values. WooCommerce > Status > Logs has the reason, under creative-skateboard-builder.', 'creative-skateboard-builder' ), $import );
+		}
+		if ( Health::IMPORT_STALLED === $verdict['code'] ) {
+			return self::result( self::TEST_JOBS, $verdict['status'], __( 'The skateboard builder\'s specs import has no job left to run it', 'creative-skateboard-builder' ), __( 'An import is part way through and nothing is queued to go on, as happens when the plugin is switched off while one runs. Opening Import and export starts it again from where it stopped.', 'creative-skateboard-builder' ), $import );
+		}
+		if ( Health::JOBS_FAILED !== $verdict['code'] ) {
+			return self::result( self::TEST_JOBS, $verdict['status'], __( 'No background job of the skateboard builder has failed', 'creative-skateboard-builder' ), __( 'The builder indexes parts and writes imports in the background. A job that fails is tried again, and shows here if it still fails.', 'creative-skateboard-builder' ), '' );
+		}
+		/* translators: %s: a number of jobs. */
+		$label   = sprintf( _n( '%s background job of the skateboard builder has failed', '%s background jobs of the skateboard builder have failed', $verdict['failed'], 'creative-skateboard-builder' ), number_format_i18n( $verdict['failed'] ) );
+		$says    = __( 'A part whose job failed may be indexed with what it held before. The Catalogue check lists what needs fixing, and WooCommerce > Status > Logs has each failure\'s reason, under creative-skateboard-builder.', 'creative-skateboard-builder' );
+		$actions = sprintf( '<a href="%s">%s</a>', esc_url( admin_url( 'admin.php?page=wc-status&tab=action-scheduler&status=failed' ) ), esc_html__( 'See the failed jobs', 'creative-skateboard-builder' ) )
+			. ' | ' . sprintf( '<a href="%s">%s</a>', esc_url( CheckScreen::url() ), esc_html__( 'Open the Catalogue check', 'creative-skateboard-builder' ) );
+		return self::result( self::TEST_JOBS, $verdict['status'], $label, $says, $actions );
+	}
+
+	/**
+	 * The test of the Catalogue check: what keeps a part out of the builder, counted. The findings themselves are on
+	 * the check's own screen.
+	 *
+	 * @since 0.3.0
+	 *
+	 * @return array{label: string, status: string, badge: array{label: string, color: string}, description: string, actions: string, test: string}
+	 */
+	public function catalogue(): array {
+		$verdict = Health::catalogue( ( $this->check )()->run() );
+		if ( Health::CHECK_FOUND !== $verdict['code'] ) {
+			return self::result( self::TEST_CATALOGUE, $verdict['status'], __( 'The skateboard builder\'s Catalogue check found nothing to fix', 'creative-skateboard-builder' ), __( 'The check reads every part and lists sources that disagree and values that cannot be read. It found none.', 'creative-skateboard-builder' ), '' );
+		}
+		/* translators: %s: a number of findings. */
+		$label = sprintf( _n( 'The skateboard builder\'s Catalogue check found %s thing to fix', 'The skateboard builder\'s Catalogue check found %s things to fix', $verdict['findings'], 'creative-skateboard-builder' ), number_format_i18n( $verdict['findings'] ) );
+		/* translators: %s: a number of parts. */
+		$says = sprintf( _n( 'What it found is in %s part. Until it is fixed, a part may be left out of the builder or offered by the wrong figure. The check lists each finding with a link to where it is fixed.', 'What it found is in %s parts. Until it is fixed, a part may be left out of the builder or offered by the wrong figure. The check lists each finding with a link to where it is fixed.', $verdict['parts'], 'creative-skateboard-builder' ), number_format_i18n( $verdict['parts'] ) );
+		return self::result( self::TEST_CATALOGUE, $verdict['status'], $label, $says, sprintf( '<a href="%s">%s</a>', esc_url( CheckScreen::url() ), esc_html__( 'Open the Catalogue check', 'creative-skateboard-builder' ) ) );
+	}
+
+	/**
+	 * Add the plugin's section to the Info tab.
+	 *
+	 * @since 0.3.0
+	 *
+	 * @param mixed $info The sections.
+	 * @return mixed
+	 */
+	public function info( mixed $info ): mixed {
+		if ( ! is_array( $info ) ) {
+			return $info;
+		}
+		$settings = ( $this->settings )();
+		$order    = array();
+		foreach ( $settings->sourceOrder()->origins as $origin ) {
+			$order[] = Labels::source( $origin );
+		}
+		$index                 = ( $this->health )()->index();
+		$jobs                  = ( $this->health )()->jobs();
+		$info[ self::SECTION ] = array(
+			'label'  => __( 'Creative Skateboard Builder', 'creative-skateboard-builder' ),
+			'fields' => array(
+				'version'    => array(
+					'label' => __( 'Version', 'creative-skateboard-builder' ),
+					'value' => CBUILD_VERSION,
+				),
+				'schema'     => array(
+					'label' => __( 'Database version', 'creative-skateboard-builder' ),
+					'value' => ( $this->migrations )()->schemaVersion(),
+				),
+				'order'      => array(
+					'label' => __( 'Which source wins', 'creative-skateboard-builder' ),
+					'value' => implode( ', ', $order ),
+					'debug' => implode( ', ', array_column( $settings->sourceOrder()->origins, 'value' ) ),
+				),
+				'mapping'    => array(
+					'label' => __( 'Attributes mapped to specs', 'creative-skateboard-builder' ),
+					'value' => count( $settings->attributeMapping() ),
+				),
+				'index'      => array(
+					'label' => __( 'Specs index', 'creative-skateboard-builder' ),
+					'value' => $index['code'],
+				),
+				'failedJobs' => array(
+					'label' => __( 'Failed background jobs', 'creative-skateboard-builder' ),
+					'value' => $jobs['failed'],
+				),
+			),
+		);
+		return $info;
+	}
+
+	/**
+	 * A test's result as Site Health takes it.
+	 *
+	 * @param string $test    The test's identifier.
+	 * @param string $status  good, recommended or critical.
+	 * @param string $label   The heading.
+	 * @param string $says    The paragraph under it.
+	 * @param string $actions Links, already escaped.
+	 * @return array{label: string, status: string, badge: array{label: string, color: string}, description: string, actions: string, test: string}
+	 */
+	private static function result( string $test, string $status, string $label, string $says, string $actions ): array {
+		return array(
+			'label'       => $label,
+			'status'      => $status,
+			'badge'       => array(
+				'label' => __( 'Skateboard builder', 'creative-skateboard-builder' ),
+				'color' => Health::GOOD === $status ? 'blue' : ( Health::CRITICAL === $status ? 'red' : 'orange' ),
+			),
+			'description' => '<p>' . esc_html( $says ) . '</p>',
+			'actions'     => '' === $actions ? '' : '<p>' . $actions . '</p>',
+			'test'        => $test,
+		);
+	}
+}

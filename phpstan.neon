@@ -13,6 +13,11 @@ parameters:
         - tests
     bootstrapFiles:
         - tools/phpstan-bootstrap.php
+    # Where the plugin is installed differs from site to site, so a path built from these is not one the analysis
+    # can look for on this machine: build/ exists only after `npm run build`, which the analysis job does not run.
+    dynamicConstantNames:
+        - CBUILD_PATH
+        - CBUILD_URL
     scanFiles:
         - vendor/php-stubs/woocommerce-stubs/woocommerce-stubs.php
         - vendor/php-stubs/woocommerce-stubs/woocommerce-packages-stubs.php
@@ -164,6 +169,9 @@ parameters:
         -
             function: 'get_post_meta()'
             message: 'products and orders only through WooCommerce CRUD'
+            # A spec table is a post of the plugin's own type, neither a product nor an order (D-072).
+            allowIn:
+                - src/Adapter/PostSpecTables.php
         -
             function: 'update_post_meta()'
             message: 'products and orders only through WooCommerce CRUD'

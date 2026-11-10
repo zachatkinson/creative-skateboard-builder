@@ -134,6 +134,26 @@ final readonly class Specs {
 	}
 
 	/**
+	 * These specs as the index stores them, by key: what `fromIndex()` reads back to the same specs.
+	 *
+	 * @since 0.3.0
+	 *
+	 * @return array<string, string>
+	 */
+	public function toIndex(): array {
+		$rows = array();
+		foreach ( $this->values as $name => $value ) {
+			if ( $value instanceof Measure ) {
+				$value = $value->decimal();
+			} elseif ( is_bool( $value ) ) {
+				$value = $value ? '1' : '0';
+			}
+			$rows[ $name ] = (string) $value;
+		}
+		return $rows;
+	}
+
+	/**
 	 * Whether the part has this spec.
 	 *
 	 * @since 0.2.0

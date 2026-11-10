@@ -81,11 +81,18 @@ final class FakeQueue implements Queue {
 	 * @param array<string, mixed> $args      Arguments.
 	 */
 	public function schedule( int $timestamp, string $hook, array $args = array() ): void {
-		unset( $args );
+		$this->scheduledWith[ $hook ]  = $args;
 		$this->scheduled[ $hook ]      = $timestamp;
 		$this->pending[ $hook ]        = true;
 		$this->plainScheduled[ $hook ] = ( $this->plainScheduled[ $hook ] ?? 0 ) + 1;
 	}
+
+	/**
+	 * The arguments of the last schedule() call, by hook.
+	 *
+	 * @var array<string, array<string, mixed>>
+	 */
+	public array $scheduledWith = array();
 
 	/**
 	 * How many times schedule() was called, by hook: the plain kind, which is not dropped beside a pending action.
@@ -133,5 +140,40 @@ final class FakeQueue implements Queue {
 	 */
 	public function cancelAll( string $hook ): void {
 		unset( $this->pending[ $hook ] );
+	}
+
+	/**
+	 * The actions queued with enqueueDistinct() and still waiting, each once.
+	 *
+	 * @var list<array{0: string, 1: array<string, mixed>}>
+	 */
+	public array $distinct = array();
+
+	/**
+	 * Queue unless the same hook and arguments wait.
+	 *
+	 * @param string               $hook Hook.
+	 * @param array<string, mixed> $args Arguments.
+	 */
+	public function enqueueDistinct( string $hook, array $args ): void {
+		if ( ! in_array( array( $hook, $args ), $this->distinct, true ) ) {
+			$this->distinct[]       = array( $hook, $args );
+			$this->pending[ $hook ] = true;
+		}
+	}
+
+	/**
+	 * The moment failed() was last asked to count from.
+	 */
+	public int $since = -1;
+
+	/**
+	 * What failed() answers.
+	 */
+	public int $failures = 0;
+
+	public function failed( int $since = 0 ): int {
+		$this->since = $since;
+		return $this->failures;
 	}
 }

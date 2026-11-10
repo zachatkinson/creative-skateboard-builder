@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# StrykerJS on the builder's store at 90 % (docs/AUDIT.md: Mutation testing). The run waits for the store's first file
-# (milestone 6).
+# StrykerJS on the plugin's TypeScript at 90 % (docs/AUDIT.md: Mutation testing): the admin's script now (D-086), and
+# the builder's store from milestone 6. With no file to mutate, the run is skipped.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 if [ -z "$(find assets/src -name '*.ts' ! -name '*.d.ts' 2>/dev/null | head -n 1)" ]; then

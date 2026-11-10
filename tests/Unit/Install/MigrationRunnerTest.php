@@ -14,6 +14,7 @@ use CreativeBranding\SkateboardBuilder\Install\Migrations\Migration;
 use CreativeBranding\SkateboardBuilder\Install\Migrations\MigrationRegistry;
 use CreativeBranding\SkateboardBuilder\Install\Migrations\MigrationRunner;
 use CreativeBranding\SkateboardBuilder\Install\Migrations\MigrationState;
+use CreativeBranding\SkateboardBuilder\Install\Migrations\MigrationStatus;
 use CreativeBranding\SkateboardBuilder\Install\Migrations\RunResult;
 use CreativeBranding\SkateboardBuilder\Port\Logger;
 use CreativeBranding\SkateboardBuilder\Support\Options;
@@ -120,7 +121,7 @@ final class MigrationRunnerTest extends TestCase {
 		self::assertSame( RunResult::Continued, $runner->run( 0 ) );
 		self::assertSame( array( 1, 2, 3 ), $stopped->rows );
 		self::assertSame( 3, $this->store->stateOf( 'batch_1' )?->cursor->position, 'the cursor is saved after the batch' );
-		self::assertSame( MigrationState::RUNNING, $this->store->stateOf( 'batch_1' )?->status );
+		self::assertSame( MigrationStatus::Running, $this->store->stateOf( 'batch_1' )?->status );
 		self::assertSame( 1, $this->queue->calls[ Options::JOB_MIGRATE ] ?? 0, 'one job queued' );
 		self::assertNull( $this->store->lock, 'released between runs' );
 		self::assertSame( '0', $this->store->version, 'not current until done' );
@@ -171,7 +172,7 @@ final class MigrationRunnerTest extends TestCase {
 
 		$state = $this->store->stateOf( 'throwing_1' );
 		self::assertNotNull( $state );
-		self::assertSame( MigrationState::FAILED, $state->status );
+		self::assertSame( MigrationStatus::Failed, $state->status );
 		self::assertSame( 'the disk is full', $state->error );
 		self::assertSame( 5, $state->cursor->position, 'the cursor of the batch that failed is kept' );
 		self::assertSame( 1, $state->attempts );
@@ -240,7 +241,7 @@ final class MigrationRunnerTest extends TestCase {
 			}
 		};
 		self::assertSame( RunResult::Locked, $this->runner( $failing )->run() );
-		self::assertSame( MigrationState::RUNNING, $this->store->stateOf( 'failing_1' )?->status, 'the new holder\'s state stands' );
+		self::assertSame( MigrationStatus::Running, $this->store->stateOf( 'failing_1' )?->status, 'the new holder\'s state stands' );
 		self::assertSame( 9, $this->store->stateOf( 'failing_1' )?->cursor->position );
 		self::assertSame( array(), $this->queue->scheduled, 'and no retry is scheduled over its run' );
 		self::assertSame( 1_900_000_000, $this->store->lock );
@@ -366,7 +367,7 @@ final class MigrationRunnerTest extends TestCase {
 			}
 		};
 		self::assertSame( RunResult::Finished, $this->runner( $seen )->run() );
-		self::assertSame( MigrationState::RUNNING, $seen->during?->status, 'a crash in the batch leaves the attempt on record' );
+		self::assertSame( MigrationStatus::Running, $seen->during?->status, 'a crash in the batch leaves the attempt on record' );
 		self::assertSame( 1, $seen->during?->attempts );
 	}
 

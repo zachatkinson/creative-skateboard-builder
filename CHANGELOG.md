@@ -2,7 +2,51 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html). One entry per milestone; `v1.0.0` closes milestone 9.
 
-## [Unreleased]
+## [0.3.0] - 2026-11-10
+
+### Added
+
+- The specs index's sources, as its `source` column holds them: `field`, `attribute` and `table`. The indexer keeps one value per part and spec, the winner by the shop's order with the maker's chart first by default, and records where sources disagree (D-069).
+- A part's own specs in the product meta `_cbuild_specs`, a value per spec key; a variation left blank for a spec takes its parent's.
+- The option `cbuild_settings` with its first two keys: `attribute_mapping` (which attribute feeds which spec, in which unit) and `source_order` (which source wins where two disagree).
+- The settings screen, WooCommerce > Settings > Builder: the attribute mapping, a line per attribute, and which source wins. A save with a mistake in it stores nothing and names each mistake beside its field. `schema/settings.json` is the shape the option is written in (D-073).
+- The index is kept in the background. Saving or deleting a product queues the `cbuild_index_part` action for it, and the request that saves indexes nothing. Saving the settings or editing a term of a mapped attribute queues `cbuild_reindex`, which indexes every part again, 100 at a time, from a place it keeps in the option `cbuild_reindex_state`, so one stopped halfway carries on (D-071).
+- Spec tables: the post type `cbuild_spec_table`, a maker's size chart with a row per size in the meta `_cbuild_rows`. A part names a table and a size in the product meta `_cbuild_spec_table` and takes that row's values; a variation left blank takes its parent's. Independent's, Thunder's and Venture's charts are made by a migration, each marked with `_cbuild_seed`, on a new site and an upgraded one alike. Saving, binning or deleting a table indexes every part again. (D-072).
+- The Part specs panel: a tab of the product data box on simple and variable products, and a group of fields inside each variation. A field takes the shop's decimal separator or a fraction, and what is stored is the same in every locale. A value in use that comes from the parent product, a mapped attribute or a maker's chart is named beneath its field. A value that is wrong is not saved, what the part had is kept, and the rest of the product saves (D-074).
+- WooCommerce > Builder, with the spec tables' screen: the list of charts, a chart's sizes to edit, a chart added by its maker's name, and a chart deleted after the page asks. A chart saves whole or not at all, and one that is refused comes back as typed with each problem in its row. Every form works with scripts off (D-075).
+- WooCommerce > Builder > Import and export: every part's own specs as a CSV file, out and in, with the columns `id`, `sku`, `name`, `spec_table`, `spec_size` and one per spec key. A file that is chosen is checked and shown, with what it would change and each row it cannot read, and nothing is written until the person who sent it confirms. A confirmed import is written in the background by the action `cbuild_import`, 100 rows at a time, from a place it keeps in the option `cbuild_import_state`. A cell of an export that a spreadsheet would run is neutralised (D-076).
+- WooCommerce > Builder > Catalogue check: run when asked, it reads every part and lists what keeps one out of the builder, each with a link to the part's fields: two sources that disagree about a spec, a value that cannot be read (a chart that is gone, a size its chart does not have), a reindex or an import that stopped, and the plugin's failed background jobs. For each kit it also lists parts that lack a spec a rule needs, specs a rule had to assume, slots with no parts or none in stock, and presets that can no longer be bought; a shop has kits from 0.4.0. It changes nothing.
+- WP-CLI: the commands `cbuild specs` (`wp cbuild specs export [<file>]` and `wp cbuild specs import <file> [--dry-run] [--key=<id|sku>]`), `cbuild check` and `cbuild reindex` (`wp cbuild reindex [--background]`), each the service its screen runs. A command exits 1 when a file or a row is not read, a batch fails, or the check finds anything.
+- The ability `creative-skateboard-builder/catalogue-check` (WordPress's Abilities API), in the category `creative-skateboard-builder`: the Catalogue check's findings for the shop's own tools, for those who can manage WooCommerce. Read-only, and served over REST by `GET`.
+- Site Health: the tests `cbuild_index` (critical when a reindex stopped after its failures, recommended when one stopped part way) and `cbuild_jobs` (recommended when a background job of the plugin has failed), and a section on the Info tab with the plugin's versions and settings.
+- Site Health: the asynchronous test `cbuild_catalogue`, which runs the Catalogue check and is recommended when it finds something in a part or a kit, with the counts and a link to the check. Site Health's page reads it from the REST route `cbuild/v1/site-health/catalogue-check`, which answers those who can see Site Health (D-094).
+- The option `cbuild_reindex_owed`: a site activated while WooCommerce is missing has no queue, so the reindex is owed and asked for on the first request that finds one (D-095).
+- The seeded charts hold each maker's own figures: Thunder's eight sizes from thundertrucks.com, with the 181 added and a deck range for every size, and Venture's five from venturetrucks.net (D-093).
+- Every part is read into the index after an install, after an upgrade's migrations and on activation, in the background, 100 at a time. WooCommerce > Builder > Catalogue check has a button, "Read every part again", to start it by hand (D-082).
+- A term of a mapped attribute that is deleted asks for a reindex, as an edited one does (D-082).
+- A mapping line names one attribute: `pa_width` is the shop's Width taxonomy, and `Width` is a product's own attribute of that name. A variation with no value of its own for a mapped attribute takes its parent's, where the parent does not use the attribute for variations, and the Part specs panel says so (D-089).
+- The option `cbuild_import_rows`: the rows of the specs import in hand, written once when the file is read. `cbuild_import_state` keeps the import's place and counts, so a batch no longer saves the whole file again (D-090).
+- A size an import or the panel names is matched to a chart's row by its number when no name matches: `5` finds Venture's `5.0`, as a spreadsheet writes it (D-091).
+- A narrowest deck wider than the widest is refused, on the Part specs panel, in a chart's row and in an import, with both figures named. A chart cannot take a name another chart has (D-092).
+- `wp cbuild reindex` and `wp cbuild specs import` run their batches themselves and leave nothing in the queue. The reindex drops index rows for products that are no longer parts (D-092).
+- A link from the Catalogue check moves keyboard focus to the fields it opens, and a unit's problem on the settings screen is tied to its control (D-092).
+- An import whose job was lost, as when the plugin is switched off while one runs, goes on from its place when Import and export is opened. Site Health's `cbuild_jobs` also reports an import that failed or stalled (D-082).
+- A link from the Catalogue check opens the product's Part specs tab, or the variation it names. The script that does it is the plugin's first built file, `build/admin/part-specs.js`, loaded on the product screen alone (D-083, D-086).
+- `Domain\Kit\Part::$stock`: a part's managed stock count, or null where stock is not managed. Nothing reads it yet.
+- A value a person types is read with the shop's decimal separator and, when that does not read, with a point: in a shop that writes a comma, `8,25` and `8.25` are one value, on the Part specs panel, in a chart and in a mapped attribute.
+
+### Fixed
+
+- Uninstall forgets the ID Action Scheduler caches for the plugin's group. On a shop with a persistent object cache, a reinstall within ten minutes filed its jobs under a group that was gone (D-084).
+- Deactivation unschedules a pending action whatever its arguments. With the group given, Action Scheduler cancelled only actions with no arguments, which was every action until this version (D-071).
+
+### Changed
+
+- A class that attaches hooks is built only on a request where its hooks can fire: wp-admin, WP-CLI, cron, REST or the storefront (D-067).
+- A migration's status is an enum, and the rule for running migrations on an admin page is a service of its own (D-067). Nothing stored changes.
+- The object-cache leg of the integration suite runs on a Redis server with Redis Object Cache's drop-in (D-066).
+- The browser tests log in once for the run, and a draft pull request runs one desktop and one phone engine; every project runs once it is ready (D-085).
+- Mutation testing covers the admin's labels and sentences, and every class it leaves out has its reason beside it (D-087).
 
 ## [0.2.0] - 2026-11-09
 

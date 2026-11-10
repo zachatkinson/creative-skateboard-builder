@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# npm run build: @wordpress/scripts with script modules (docs/STANDARDS.md: Script modules). Until the first entry
-# point lands (milestone 6) there is nothing to bundle, so build/ is made empty and the budgets measure nothing.
+# npm run build: @wordpress/scripts with script modules (docs/STANDARDS.md: Script modules), through webpack.config.js,
+# which names the admin's scripts (D-086). With nothing in assets/src to bundle, build/ is left empty.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 mkdir -p build

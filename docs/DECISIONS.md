@@ -407,7 +407,7 @@ The repository is private, so GitHub bills every job to the whole minute. The sa
 A pull request marked as a draft runs what a narrow one runs (D-036): the secrets scan, the standards, the unit tests, the audits, the benchmarks and the newest leg with every browser project. Marking it ready for review starts the full run: the oldest leg, the six variants, mutation testing and the release dry run. A push to `main` always runs everything.
 
 **Why:** Zach agreed on 9 November 2026, to save billed minutes (D-040): about 12 a push while the work is in progress instead of 28. GitHub does not merge a draft, so nothing reaches `main` without the full run, and a release still waits for `main`'s own.
-**Status:** Accepted.
+**Status:** Accepted. Revised by D-085: a draft's newest leg runs two browser projects, not every one.
 
 ### D-042 · Work owed lives in GitHub's issues; the plan stays in the roadmap · 2026-11-09
 
@@ -747,3 +747,423 @@ Cowork asked that from milestone 3 a rule's or a fix's failing cases be committe
 
 **Why:** The thing wanted is proof that each test can fail for the right reason. Mutation testing and a recorded break give that without a broken commit.
 **Status:** Accepted, on Zach's "whatever is best practice and industry standard".
+
+### D-066 · The object-cache leg runs on Redis, and the plugin's cache rule · 2026-11-10
+
+Issue #4: the object-cache leg called `wp_using_ext_object_cache( true )` and ran no cache server, so nothing was shared between two PHP processes. Zach asked for the industry standard, and for the plugin to work with other WordPress caches too.
+
+- **The leg's cache is Redis with Redis Object Cache's drop-in.** `tools/object-cache.sh up` starts `redis:8.10-alpine` on the integration site's Docker network, installs Redis Object Cache 3.0.0 from WordPress.org (its zip checked against a pinned SHA-256) and puts a drop-in in `wp-content`; `down` removes all of it. `composer test:integration:object-cache` and the variants script do both around the run, so no other leg meets the cache. The client is Predis, which the plugin carries, so wp-env's PHP image needs no extension.
+- **The drop-in is a three-line file of ours** (`tools/object-cache/object-cache.php`) that names the server and loads Redis Object Cache's own, unchanged. The suite's process reads `wp-tests-config.php` and the WP-CLI processes its tests start read `wp-config.php`; a setting in the drop-in reaches both.
+- **A bare `CBUILD_OBJECT_CACHE=persistent` is refused** by the bootstrap when the drop-in is missing, and `ActivationTest` proves on every leg what a second process reads: the value on this leg, nothing on the others.
+- **The plugin's rule is in `docs/STANDARDS.md` (WordPress: Object cache).** In short: only `wp_cache_*` in the `cbuild` group; a miss is answered from the database; plain values; entries go out of date by key, never by a flush; `wp_cache_flush_group()` and the `*_multiple` functions only behind `wp_cache_supports()`. Gate 2 now rejects `wp_cache_flush()` and `wp_cache_flush_runtime()`.
+- **One back end is tested, and the rule covers the rest.** The drop-in interface is the same whatever is behind it. Where back ends differ is the optional features (`flush_group` is missing from the Memcached drop-ins and from some of LiteSpeed's and W3 Total Cache's modes), the serialiser, and whether an entry outlives the request. The rule keeps the plugin off each of those. A second cache server in the matrix would cost a suite's run per pull request to test code the plugin does not have.
+
+**Why Redis:** it is what managed WordPress hosts offer for the object cache (Valkey, its fork, speaks the same protocol and the drop-in supports it), and Redis Object Cache is the most installed drop-in that does only this (500,000 active installs, tested to WordPress 7.1.4; WordPress.org, 2026-11-10). The Memcached drop-in on WordPress.org was last updated in 2022. LiteSpeed Cache (7 million installs) and W3 Total Cache include an object cache that is itself Redis or Memcached behind the same drop-in interface. The Skatehouse demo has Redis Object Cache installed, and Creative Search was checked against the same pair (its D-051).
+**Differs from Creative Search:** its `object-cache` leg still sets the flag only. The sibling repository is not changed from here.
+**Status:** Accepted, on Zach's "figure out the industry standard for the object cache and make sure its compatible with other wordpress caches too".
+
+### D-067 · A Hookable is built only where its hooks can fire; the migration's status is an enum · 2026-11-10
+
+Issues #3 and #2, from the milestone 1 audit. Zach said to do both now.
+
+- **Each Hookable has scopes.** `Container::hookableClasses()` maps each class to a list of `Scope` cases: `Everywhere`, `Admin`, `Cli`, `Cron`, `Rest`, `Storefront`. `Plugin::boot()` asks WordPress what the request is (`is_admin()`, `WP_CLI`, `wp_doing_cron()`) and builds the Hookables in those scopes. One in no scope of the request is never built, nor are its services.
+- **REST Hookables are built on `rest_api_init`, at priority 0.** WordPress defines `REST_REQUEST` in `rest_api_loaded()` on `parse_request` (WordPress 7.1.4, `wp-includes/rest-api.php:478`, hooked at `wp-includes/default-filters.php:549`), long after `plugins_loaded`, so a REST request cannot be told at boot. `rest_api_init` fires only when a REST server is made (`rest-api.php:657`), and a callback added at priority 0 can still add its own at 10. At boot a REST request counts as `Storefront`.
+- **A Hookable is handed out once.** One with two scopes (`Storefront` and `Rest`) is registered at boot and not again at `rest_api_init`. The container keeps the list, so it is tested without WordPress.
+- **Admin includes admin-ajax.php and admin-post.php,** as `is_admin()` does. A Hookable that must not run on AJAX says so in its callback's service, as the inline rule does.
+- **Registering lazily was the other way:** every Hookable declares its hooks statically and a closure builds it when one fires. It builds even less, and it costs a second way to declare hooks, `has_action()` on a closure in every test, and filters whose arguments must be declared twice. Scopes keep `register()` as it is.
+- **The migration's status is `MigrationStatus`,** a string enum whose values are what `cbuild_migrations` already stores, so no stored state changes. `MigrationState`'s four constants are gone; they were not in the public API.
+- **The inline rule is `Install\Migrations\InlineRule::allows()`,** a service `InstallHooks` is given. `InstallHooks::inlineAllowed()` is gone; it was not in the public API either.
+- **The asset budget's compression is named where the budget is stated** (Brotli at quality 11; `CLAUDE.md`, `docs/AUDIT.md`, `docs/BENCHMARK.md`), the second half of issue #3.
+
+**Why:** milestone 3 adds about eight Hookables, most of them admin screens and WP-CLI commands. Without scopes a shopper's page would build every one of them and every service they take.
+**Status:** Accepted.
+
+### D-068 · How the specs index is stored and read · 2026-11-10
+
+The table is milestone 1's and does not change. These are the choices the repository makes inside it.
+
+- **A measure, a flag and a count go in `number`; a choice goes in `text`.** A measure is stored in its key's unit, as the four-place decimal the domain writes (`Specs::toIndex()`), which is the column's own scale, so nothing is rounded on the way in or out. A flag is 1 or 0 and a count is a whole number; the repository hands both back as whole digits, which is what `Specs::fromIndex()` reads.
+- **One row type for the port, `Domain\Spec\IndexedSpec`:** the key, the value as text, the source (`Domain\Spec\Origin`: `field`, `attribute`, `table`) and what in that source. The domain holds them because which source wins is the domain's rule, and comes with the indexer.
+- **Replacing a part's specs is two statements,** a `REPLACE INTO` for every row and a `DELETE` for any spec no longer there, with no transaction. `REPLACE` runs the same on MySQL 8.4 and MariaDB 10.11 (the `VALUES()` form of `ON DUPLICATE KEY UPDATE` is deprecated on MySQL). Between the two a reader may see a spec the part has just lost beside its new values. The index is derived, and the cart checks a build again when it is added, so that moment costs nothing a transaction would be worth.
+- **A row this version cannot read is passed over,** in the repository as in the domain: a key or a source a newer version wrote, or a value in the wrong column. After a rollback the part keeps every spec this version knows.
+- **The plans are checked in the integration suite, not the benchmark group.** The roadmap puts the `EXPLAIN` cases in the benchmark group, which is the unit suite's and has no database. `SpecIndexRepositoryTest::test_every_read_uses_an_index` asks the database for the plan of each statement the repository runs, over 1,800 rows, on every leg of the matrix: the key used, no full scan, no filesort. The two candidate statements are constants of the repository, so the plan asked for is the plan of what runs.
+- **One set of cases for the repository and the in-memory index** (`tests/Support/SpecIndexCases.php`), so the fake every service's unit tests use cannot drift from the table.
+- **`InlineRule` joins the classes mutation testing leaves to the integration suite** (`infection.json5`). It reads only WordPress (`is_admin()`, `wp_doing_ajax()`, `current_user_can()`), and `InstallHooksTest` proves each branch. D-067 should have listed it.
+
+**Status:** Accepted.
+
+### D-069 · A part's sources: what each returns, and where the winner is chosen · 2026-11-10
+
+- **A source reads; the domain chooses.** `Port\SpecSource::read()` returns, for each part asked about, a `Reading` for each value it can read and an `Unread` for each it holds and cannot. `Domain\Spec\Resolution::of()` takes every source's readings and the shop's `SourceOrder` and keeps one per spec. So which source wins is tested without WordPress at the domain's floors, and a source added later adds no rule.
+- **Every typed or stored value is read in one place,** `Reading::from()`: a measure through `MeasureParser` with the separator and unit it was typed in, a choice, a flag (`1`, `yes`, `true`, `0`, `no`, `false`) or a count, then checked by `Specs::with()`. The panel, the import, the CLI and the attribute source will all call it, so 8.25, 8,25 and 8 1/4 are one value at every edge.
+- **A disagreement is two readings whose stored text differs.** 8.5 in from the field and 215.9 mm from a chart are the same four-place value in the key's unit and do not disagree. The reading kept is listed with each that says otherwise.
+- **Of two readings from one source the first wins,** and the other is a disagreement: two attributes mapped to one spec is a shop's mistake the Catalogue check should show, not an error.
+- **The default order is the chart, the field, the attribute** (spec: "the maker's chart, the field or the attribute; the chart by default"). A saved order that is not every source exactly once reads as the default, so a setting from a version with another source cannot leave one out.
+- **Nothing is stored about a disagreement or an unread value.** `SpecIndexer::resolve()` gives both without writing, and the Catalogue check will call it when asked. The index table stays as milestone 1 made it.
+- **A part no source speaks of ends with no row,** which is also how a deleted product leaves the index: its job runs, the sources find nothing, and the rows go.
+- **No `cbuild_spec_sources` filter yet.** The plan expected one. Nothing uses it, and a hook is public from the day it ships. It is added when another plugin has a source to add.
+
+**Status:** Accepted.
+
+### D-070 · The field and attribute sources on WooCommerce · 2026-11-10
+
+- **A part's own specs are one meta value, `_cbuild_specs`:** an array with a value per spec key, each as the index stores it (a point for the decimal, the key's unit). The spec says "one value per spec key"; one array keeps a part's specs in one row of meta and one read. What a person types in the shop's separator or as a fraction is turned into this form by the writer that comes with the panel, so the source never guesses a separator.
+- **A variation takes its parent's value spec by spec,** not all or nothing: a variation with its own width and no length has the parent's length. The reading's reference is `parent`, which the panel will show as where the value comes from.
+- **A mapped attribute is read from `WC_Product::get_attribute()`,** which gives a variation's own value and a product's terms by name, for a taxonomy and for a product's own attribute alike. A product with several values for a mapped attribute has no single value; the text does not read, and the source reports it as unread, so the Catalogue check can show it.
+- **A term's name is read with the shop's decimal separator, then with a point.** Terms are typed by people over years: a French-Canadian shop has "8,25" beside "8.5". The field needs no such fallback, since its writer stores one form.
+- **A batch is loaded in one `wc_get_products()` call, and its variations' parents in a second,** through WooCommerce's CRUD, of every type and status. A draft or private part is indexed like any other; whether a part is offered is the kit's question, in milestone 4. `SpecSourcesTest` holds the load to fewer queries than parts.
+- **The settings are read defensively** (`Adapter\OptionShopSettings`): whatever the option holds, the answer is a valid setting. The screen that saves it, with its schema, is this milestone's step 7.
+- **The settings option exists before its screen.** `docs/SETTINGS.md` said the option arrives in milestone 4; D-026 puts these two keys in milestone 3, since the index cannot be built without them.
+
+**Status:** Accepted. D-089 revises how a mapped attribute is read: by its own key, and from the parent for a variation that has none.
+
+### D-071 · The index's jobs · 2026-11-10
+
+- **One job per product, deduplicated by its arguments, not by the unique flag.** Action Scheduler's unique flag refuses an action while another with the same hook, group and arguments is pending or running (4.1.0 in WooCommerce 11.2.2, `classes/data-stores/ActionScheduler_DBStore.php:218-233`). Its function's comment names the hook and group alone (`functions.php:14`), which is what the plan read; the query compares the arguments too, so two parts saved together would both be queued either way (corrected in the milestone's audit). What the flag gets wrong for a part is the running action: a save while the part's job runs would be dropped. `Queue::enqueueDistinct()` queues unless an action with the same hook and arguments is pending. A running one does not count: it may already have read the product, so a save during it needs a job of its own.
+- **The save hooks are WooCommerce's four,** `woocommerce_new_product`, `woocommerce_update_product`, `woocommerce_new_product_variation` and `woocommerce_update_product_variation` (WooCommerce 11.2.2, `includes/data-stores/class-wc-product-data-store-cpt.php:263` and `:398`, `class-wc-product-variation-data-store-cpt.php:174` and `:279`), and for a delete WordPress's `deleted_post` (WordPress 7.1.4, `wp-includes/post.php:3996`), which fires however the product was deleted. The hook does nothing but queue.
+- **A variable product's job indexes its variations and drops its own rows.** The parts are the variations; the parent is never one. A product that is gone has no parts, so its job only removes rows.
+- **A reindex walks the index's rows first, then the shop's products by page.** The first pass is what removes rows whose product was deleted while the plugin was off. Both passes read the sources again, so a batch run twice writes the same rows. Its place is saved after each batch in `cbuild_reindex_state`, and each batch queues the next plainly, since the unique check counts the action that is running.
+- **A delete during the page pass makes the reindex pass once more.** Pages are by offset, so a delete moves every later part back one and a part could be missed. A second pass costs less than keying the catalogue by ID would cost in a query outside WooCommerce's CRUD.
+- **A request during a batch wins.** Each request counts the state's `run` up by one. The batch reads the state again before saving; if the run is no longer its own, it leaves the new state alone and queues the next batch, since the request's own unique job was refused while this one ran. The run is a count, not the start time, because two requests can fall in one second.
+- **Failures:** a part's job is tried again after 1, 2 and 4 minutes, then thrown so Action Scheduler records it as failed. A reindex batch keeps its place and waits 1, 2, 4 and 8 minutes; the fifth failure in a row stops it with the phase `failed`, which Site Health will show. Each failure is logged with the part or the batch.
+- **No migration asks for a first reindex.** Before 0.3.0 no part had a field or a mapped attribute, so there is nothing to index until the shop saves a product or the settings, and each of those queues its own work.
+- **`Queue::cancelAll()` passes no arguments and no group.** With a group, `as_unschedule_all_actions()` cancels only actions whose arguments equal the ones given (WooCommerce 11.2.2, `packages/action-scheduler/functions.php:316` to `:328`), so deactivation would have left every part's job waiting. `IndexJobsTest::test_deactivation_cancels_the_parts_jobs_though_they_carry_arguments` failed on the old call. The hooks are the plugin's own, so no other group holds them.
+- **The jobs' names are constants on `Service\IndexJobs` and on `Support\Options`.** A service may not use the support layer (deptrac); a unit test holds the two equal.
+
+**Status:** Accepted.
+
+### D-072 · Spec tables: what a row stores, how a part names one, and the seeds · 2026-11-10
+
+- **A table is a post of the type `cbuild_spec_table`:** the title is the maker's name, and the rows are one meta value, `_cbuild_rows`. A row has a size, a value per spec key as the index stores it, a source and the day it was read. A row may hold any spec key, so a chart with heights or wheel limits needs no change here. Only a published table feeds the index; a draft is a chart still being typed.
+- **A part names a table and a size in one meta value, `_cbuild_spec_table`:** the table's ID and the size's name. A variation takes its parent's table or size where its own is blank, each on its own, so a variable truck names the chart once and each variation its size.
+- **A name that leads nowhere is reported, not dropped.** A table that is gone, binned or a draft is `table_missing`; a size the table has no row for is `size_missing`. The source returns each as an unread value, which the Catalogue check will list.
+- **Any change to a table indexes every part again.** The spec says a change re-indexes every part that names the table. Finding those parts needs a query on a serialised meta value outside WooCommerce's CRUD; the reindex is already resumable, runs in the background, and a chart changes a few times a year. It hangs on `wp_after_insert_post` (WordPress 7.1.4, `wp-includes/post.php:6021`), which fires after the post's meta is saved, and for the bin and back; and on `deleted_post` (`:3996`).
+- **The post type is the shop's record and nobody's page:** not public, not publicly queryable, out of search, sitemaps and the REST API, with every capability mapped to `manage_woocommerce`. `show_ui` is off until its screen lands in this milestone. `SpecTablesTest` asserts each, with the visitor's request parsed as WordPress parses it (`wp-includes/class-wp.php:376`).
+- **The seeds are the spec's table under R1, read again on 10 November 2026.** Independent's own chart gives every figure the spec has. Tactics gives Thunder's 145, 147, 149 and 151 as the spec has them. Rollersnakes gives Venture's five sizes as the spec has them, with one difference: the 5.0's axle is 7.62 in there and 7.6 in the spec's grid, whose rows group makers by axle. The seed holds 7.62, the source's figure. Thunder's 143, 148 and 161 were on neither page read that day; their rows hold the spec's figures, name Warehouse Skateboards as the spec does, and have no day. Both are in the review's For Zach.
+- **A seed that has a table is passed over,** whatever state the shop left it in, by the meta `_cbuild_seed`. So the migration run twice, or again after being cut off between two tables, makes each once and overwrites nothing. One deleted for good is not remade on that shop: a migration that is done does not run again.
+- **`get_post_meta()` is allowed in `Adapter\PostSpecTables` alone.** The analysis rule keeps products and orders behind WooCommerce's CRUD; a spec table is neither.
+- **Uninstall deletes the spec tables first.** Deleting a post fires hooks, and a hook that writes an option or queues an action after those were removed would leave it behind. `UninstallTest` failed on the other order.
+- **`MigrationRegistry::VERSION` is 2.**
+
+**Status:** Accepted. D-093 reads Thunder's and Venture's rows from the makers' own charts.
+
+### D-073 · The settings screen · 2026-11-10
+
+- **A tab of WooCommerce's settings, `cbuild`, labelled Builder,** added on `woocommerce_get_settings_pages` (WooCommerce 11.2.2, `includes/admin/class-wc-admin-settings.php:64`). `WC_Settings_Page` is loaded on that screen alone, so the page's class is built inside the filter and nowhere else.
+- **WooCommerce checks the capability and the nonce before a page's `save()`** (`class-wc-admin-settings.php:87` and `:91`). `save()` checks both again: it is a public method, and the rule is that the code that writes checks.
+- **A save is all or nothing.** `Service\SettingsEditor` reads every line and the order, and stores only when there is no problem. A half-saved mapping would index the shop against lines the owner has not finished. A refused save comes back with what was typed and each problem beside its field, by a code the screen turns into a sentence.
+- **No markup is built in JavaScript, so the screen has no script.** The saved lines are drawn with three blank ones after them, and a save adds three more. A line with its attribute and spec both cleared is removed.
+- **The attribute is a text field with a list of the shop's attribute taxonomies** (`datalist`), not a select: a product's own attribute, which has no taxonomy, is mapped by its name, and a select could not offer it.
+- **Each line is a `fieldset` named "Line N", and each control has a visible label of its own.** The first draft was a table with a header row. At phone width WordPress's admin styles stack a form table's cells, which left the three headers alone above unlabelled controls. Labels above their controls read the same at every width, and need no style sheet of the plugin's.
+- **The adapter validates what it writes against `schema/settings.json`** with `rest_validate_value_from_schema()` and throws when it does not fit. The editor has already refused everything the schema would; the schema is the second lock, and the public statement of the option's shape. It allows other keys, so a later version's settings are not refused by an older schema, and has no `schema_version`, since a malformed key reads as its default.
+- **`update_option()` fires its action only when the value changes,** so a save that changes nothing queues no reindex. `SettingsPageTest` asserts it.
+- **The browser test skips where scripts are off.** WooCommerce disables its Save button until a script sees a change, so its settings cannot be saved by a click without one. The plugin's part, a plain form post, is covered by `SettingsPageTest`.
+- **`phpcs.xml` lints `templates/`,** which exists from this step. A template's variables carry the `cbuild_` prefix where they are its own.
+- **`SourceOrder::of()` returns null for an order that is not all three once;** `read()` keeps answering the default. The editor needs to tell a wrong order from the default.
+
+**Status:** Accepted.
+
+### D-074 · The Part specs panel · 2026-11-10
+
+- **`Service\SpecWriter` checks a part's own specs, whoever sends them.** It reads each value as the index's sources do (`Reading::from()`) and answers what to store and what was wrong. The panel uses it now; the import and the command line will. What is stored is the index's own text, `8.2500`, so `8.25`, `8,25` and `8 1/4` are one value in every locale and the field source needs no separator.
+- **A value that is wrong is not saved, what the part had is kept, and the rest saves,** as the spec has it for the Build tab. The problem goes to WooCommerce's own notices (`WC_Admin_Meta_Boxes::add_error()`), which the product screen prints after its redirect and the variations' save prints in its answer (WooCommerce 11.2.2, `includes/class-wc-ajax.php:3150`). WooCommerce prints them through `wp_kses_post()`, so each is escaped first: it quotes what was typed.
+- **The panel shows every spec, in eight groups by kind of part,** each a `details` element that opens when it holds a value. The spec says it shows only the specs the product's kits need. A kit does not exist until milestone 4, which narrows the groups to what a kit's slots ask for; nothing stored changes then.
+- **The tab is on variable products as well as simple ones.** The spec names simple products and variations. A variation left blank takes its parent's value, and without the tab the parent's values could only come from an import.
+- **A value from somewhere else is a sentence beneath its field,** "In use: 8.5 in, from Independent's chart, size 149.", tied to the field with `aria-describedby`. The spec says it shows read-only; a disabled input is skipped by the keyboard and unread by some screen readers. The sentence is shown whenever the value in use is not the field's own, so a field the shop filled in that another source outranks says so too. The panel asks `SpecIndexer::resolve()`, the indexer's own reading, and decides nothing itself.
+- **A maker's chart and a size are one list,** a group of sizes per chart, so a size cannot be chosen that its chart does not have, with no script. Stored, the two stay apart (D-072), and an import may store a chart alone or a size alone; the list then offers "Leave as it is" and stores nothing new unless another choice is made.
+- **`SpecTables::all()`** lists the published tables for that field, in two queries, once per request however many variations are drawn. `PartSpecsPanelTest` holds it to that.
+- **`Domain\Spec\StoredSpecs` reads what a part stores,** for the two sources and the panel alike. The two sources each had their own copy.
+- **A key this version does not know is not taken from the form, and one already stored is left where it is,** as the index does (D-062's rule for a rollback).
+- **Both save hooks check `edit_products` themselves,** as the spec says. WooCommerce's two callers of `save_variations()` each check a nonce first (`includes/class-wc-ajax.php:3137`, `includes/admin/class-wc-admin-meta-boxes.php:228`), as the plan found; any code can fire the hooks. A save whose request does not carry the panel's fields (a quick edit, another plugin's save) changes nothing.
+- **One style rule, added to WooCommerce's admin style sheet with `wp_add_inline_style()`** on the product screen: the groups' headings get padding. axe failed the browser's own 18 pixel `summary` on target size (WCAG 2.2, 2.5.8). One rule does not earn a built file and a request.
+- **The browser test skips where scripts are off,** since WooCommerce's product data box needs one for its tabs and its variations. `PartSpecsPanelTest` covers the plain form post.
+
+**Status:** Accepted.
+
+### D-075 · WooCommerce > Builder, and the spec tables' screen · 2026-11-10
+
+- **The page is the plugin's own, `admin.php?page=cbuild` under WooCommerce, for `manage_woocommerce`,** added on `admin_menu` at 60, after WooCommerce's own entries. The spec puts three things there: spec tables now, the import and the Catalogue check in the steps that follow.
+- **The post type keeps `show_ui` off.** D-072 said it would be turned on with the screen. WordPress's own editor for a post type edits a title and custom fields; a chart is rows of figures that must be checked together. The screen is the plugin's, and the post type stays out of the menu, the list tables and quick edit.
+- **`Service\SpecTableEditor` saves a chart whole or not at all,** as the settings do (D-073): a chart half saved would give some trucks this year's figures and others last year's. Each figure is read as the index reads it and stored as the index writes it.
+- **A chart is a group of fields per size, not a table,** for the reason D-073 found: at phone width a table's headers part from its cells. Saved rows are followed by three blank ones, and a save adds three more. A row with every field cleared is removed. A chart holds 100 sizes at most.
+- **The screen shows the six figures the spec names** (axle width, the deck range, height, largest wheel, baseplate holes). A row may hold any spec key (D-072); one the screen does not show is carried through a save in a hidden field, and checked like the rest.
+- **A form is handled before the page draws** (`load-{page}`), and a save that passes redirects to the page it leads to, so a reload does not send it twice. One that is refused draws the page in the same request, as typed.
+- **Deleting is for good, after a page that asks.** With no screen for a bin there would be no way to bring a binned chart back or to empty the bin. The page that asks is a page, not a script's dialog, so it works with scripts off. Parts that named the chart keep the name; the source reports `table_missing` and the Catalogue check will list them. A seed that is deleted is not remade (D-072).
+- **Every form checks `manage_woocommerce` and then its nonce** before it reads a field. The page itself draws nothing for anyone else, though WordPress has already refused them the menu.
+- **Two style rules on the page, added with `wp_add_inline_style()`** to WordPress's `common` style sheet, as the panel's one is (D-074).
+- **`Reading::typed()` reads what a person typed with the shop's separator, then with a point.** The spec says 8.25, 8,25 and 8 1/4 are the same; in a shop that writes a comma the parser read only the comma. The attribute source already tried both, inline. The panel, the charts and the attribute source now share the one method, and the import will.
+- **`SpecTables` gains `update()` and `delete()`.** The adapter refuses a post that is not a spec table in both.
+
+**Status:** Accepted.
+
+### D-076 · The specs sheet: export, and an import that shows before it writes · 2026-11-10
+
+- **The columns are `id`, `sku`, `name`, `spec_table`, `spec_size` and one per spec key, in English in every locale,** as the spec keys are, so a sheet from one shop or one language reads in another. `name` is for the reader and an import passes over it. `spec_table` holds a chart's name, not its ID, which differs from site to site; a name no chart has, or two share, refuses the row.
+- **A variable product has a row.** `PartCatalogue::page()` leaves it out, since it is not a part; it names the chart its variations take their sizes from, and holds values they inherit, so `Port\PartSpecs` pages every product.
+- **An export holds what each part holds itself,** not what the index resolved. Importing a sheet back then changes nothing, which `SpecImportTest` holds. One exception: a part that names a chart since deleted exports an empty name, and importing that row removes the name.
+- **A cell is read as the Part specs panel reads a field,** through `SpecWriter`: a column the file leaves out is left as it is, an empty cell removes the value, and a value takes the shop's separator, a point or a fraction. The plan said the CSV always uses a point. An export does; an import also takes the shop's separator, since a spreadsheet in a comma locale writes `8,25` when it saves, and `Reading::typed()` already reads both.
+- **A row with anything wrong in it is not written at all,** unlike the panel, where the rest of the product saves. On the panel a person sees which field failed; in a file of thousands of rows a part half written would pass for one that was done.
+- **Parts are matched by `id` or by `sku`, the person's choice, never a mix.** Matched by ID, a row whose `sku` cell is not that product's SKU is refused: a sheet exported from a staging site carries IDs that are other products on the live one. A key in the file twice refuses both rows.
+- **The file is read where PHP received it,** after its error code, size, `.csv` ending and `is_uploaded_file()` are checked (`Adapter\RequestUploads`). The plan said it would go through WordPress's own handler; `wp_handle_upload()` moves the file into the uploads folder, where it has an address until it is deleted. It is read with `WP_Filesystem_Direct`, since the functions that read a path also read a URL and are banned. The text must be UTF-8, with or without a byte-order mark, 2 MB and 5,000 rows at most, with commas or semicolons, which is told from the heading row.
+- **The dry run is the rows, kept in the option `cbuild_import_state`, not autoloaded.** An option and not a transient: with a persistent object cache a transient lives in the cache, where a flush or an entry over the cache's size limit would lose a waiting import. One import is in hand per shop. A new file takes the place of one that waits; nothing takes the place of one that runs. One that waits is forgotten after an hour.
+- **What a file would change is worked out when the page is drawn, and again by each batch that writes,** from the rows and what the shop holds then. Nothing checked an hour ago is trusted.
+- **Only the person who sent the file confirms it,** by a token that names that import (the plan's risk: confirming someone else's dry run). Another manager sees it and may put it away. The user's ID is kept while the import waits and dropped when it starts (docs/PRIVACY.md).
+- **A confirmed import is written in the background,** by the action `cbuild_import`, 100 rows at a time from a saved place: the demo's host has no command line, and 5,000 products saved in one request would time out. A batch that fails is logged and tried again after 1, 2 and 4 minutes; the fourth failure stops the import, with the parts before it written and the screen saying so. A batch run twice writes the same values; a row it had already written counts the second time as changing nothing.
+- **A write saves the product through WooCommerce,** so its index job is queued as for any save, and the import indexes nothing itself.
+- **`Service\Csv` is the plugin's own reader and writer,** a state machine over a string. PHP's `fgetcsv()` needs a stream, and `str_getcsv()` does not read a quoted line break across rows. Writing, a cell that starts with `=`, `+`, `-`, `@`, a tab or a carriage return gets a leading apostrophe (OWASP's CSV injection guidance); reading, that apostrophe is taken off again.
+- **The export is one request,** built 100 products at a time and sent as an attachment with a byte-order mark, so a spreadsheet reads accents. The benchmark in step 14 measures it at 2,000 parts.
+- **The Builder page has tabs,** Spec tables and Import and export, links in a `nav`. The Catalogue check will be the third.
+- **The browser test runs the queue itself,** `wp action-scheduler run --hooks=cbuild_import`, and waits for the page to say the import is done: the shop's own requests may have started the job first.
+
+**Status:** Accepted. D-090 moves the rows into an option of their own.
+
+### D-077 · The Catalogue check: what it reads, and what waits for kits · 2026-11-10
+
+- **The check holds no rule.** A part's findings are `FitEngine::standard()`'s, asked of the part with no picks beside it, and a preset's problems are `BuildValidator`'s. A rule added to the engine is then in the check without a line changed here, and the two cannot come to disagree.
+- **It reads the sources, not the index.** `SpecIndexer::resolve()` is what the indexer runs, so the check says what the index would hold if it were rebuilt now, and it finds two sources that disagree, which the index does not keep: it stores the winner alone.
+- **Kits come through `Port\Kits`, which answers with none until milestone 4** (`Adapter\NoKits`). The spec's list for the check is per kit (parts that lack a spec, presets that no longer fit, slots with nothing in stock), and kits are milestone 4's. Those findings are written and tested now against kits made from documents (`InMemoryKits`, `KitDocuments`); the screen says the shop has no kit yet and what the check will add when it has. What is found without a kit is live now: disagreeing sources, values that cannot be read, a reindex or an import that stopped, and failed jobs.
+- **A missing spec is said once per part and spec,** though two rules may each want it; and an assumed spec is a finding of its own (`spec_assumed`), since the part is still offered and the shop may be content with the usual.
+- **Failed jobs are counted, to 100, through a new `Port\Queue::failed()`** (the roadmap's "failed jobs found"). The count is Action Scheduler's own, of failed actions in the plugin's group, and the finding links to WooCommerce > Status > Scheduled Actions, where each can be read and run again. Action Scheduler deletes failed actions after its retention period, so the finding clears itself.
+- **The check runs when asked, in the request, by a post with a nonce,** and its findings are not stored. A get that read every part would run on every visit to the tab, and a stored result would be out of date the moment a part was saved. The page lists 500 findings and says how many more there are. How long 2,000 parts take is measured in this milestone's benchmark; if that is over the budget, the check moves to the queue.
+- **`Domain\Kit\Part` gains `$stock`, the managed count or null for "not managed"** (issue #14's first half, Claude in Cowork's finding 11 of milestone 2). Nothing reads it yet: milestone 4's adapter fills it when it builds a `Part`, and milestone 5's validator checks it against what a build takes.
+- **A variation's finding links to its parent's edit screen,** at `#cbuild_part_specs`, since a variation has no screen of its own. A part that is not a product of this shop is named by its ID with no link.
+
+**Status:** Accepted.
+
+### D-078 · `wp cbuild`: what each command does, and when it exits 1 · 2026-11-10
+
+- **A command exits 1 exactly when a script should stop:** the file was not read, a row was not, a batch failed, or the check found something. `WP_CLI::error()` says the summary and exits; what was found is listed before it, so `--format=json` on standard output stays JSON and the sentence goes to standard error.
+- **`wp cbuild specs import` without `--dry-run` writes at once.** The spec's "writes nothing until confirmed" is the screen's; at a command line the command is the confirmation and `--dry-run` is the showing first, as the spec's own example has it. A prompt would stop a script.
+- **The rows that read are written though others do not,** as on the screen, and the command then exits 1 with the rows it left out. A script that wants all or nothing runs `--dry-run` first and stops on its exit status.
+- **An import and a reindex run in the command's own process,** batch after batch through the job's own method, so the place is saved as the queue saves it and a command that is stopped is finished by the queue. The actions the batches queued find nothing left to do. `wp cbuild reindex --background` only queues.
+- **A batch that fails stops the command** after the one failure, with the retry left to the queue, which waits a minute; the command does not sleep.
+- **A dry run uses the one import a shop has in hand** (D-076) and puts it away when it ends, so it takes the place of a file a manager had waiting on the screen, as another upload would. One that is running refuses the command.
+- **A file is a path on the server's disk ending in `.csv`** (`Port\Files`, `Adapter\DiskFiles`): a path with a scheme is refused before anything opens it, since `WP_Filesystem_Direct` reads through PHP's file functions, which follow `phar://` and `https://`. The plan's risk was "a path from the CLI read where it should not be". An export replaces a file that is there, as `wp db export` does, and is written with mode 0644 given outright: `WP_Filesystem_Direct::put_contents()` otherwise reads `FS_CHMOD_FILE`, which only `WP_Filesystem()` defines (`wp-admin/includes/class-wp-filesystem-direct.php:89`, `:170`; `CliTest` found it).
+- **The commands are objects handed to `WP_CLI::add_command()`,** not closures, so WP-CLI reads each synopsis from its docblock (`wp help cbuild specs import`, which `CliTest` reads in a real process). `Hooks\CliHooks` is built only when WP-CLI runs (D-067).
+- **`Admin\Sentences` holds the check's and the import's sentences,** moved out of the two screens, so the command line and the admin say one thing. The command line has its own words only for a file's path, where the screen speaks of choosing a file.
+- **The help text in the docblocks is English,** as WP-CLI's own is: WP-CLI reads it from the source and has no way to translate it. What a command prints goes through the text domain.
+
+**Why:** `docs/STANDARDS.md` asks for a docblock synopsis, examples, clear exit codes and `--format` where a command prints a table. The demo's host has no WP-CLI, so each command is a second way into something the admin already has.
+**Status:** Accepted.
+
+### D-079 · The ability `creative-skateboard-builder/catalogue-check` · 2026-11-10
+
+- **It runs the screen's service and says the screen's sentences** (`Service\CatalogueCheck`, `Admin\Sentences`), under the screen's capability, `manage_woocommerce`. It takes no input and holds no rule.
+- **It answers with a count and the first 500 findings,** as many as the screen lists, each with its code, IDs, the finding's values and its sentence. `values` is cast to an object so that an empty one is `{}` as JSON, which the output schema says it is.
+- **It is shown in REST, and annotated read-only, not destructive, idempotent.** The spec gives abilities to "the shop's own tools and AI assistants", which reach them over REST; the permission callback guards it there as anywhere. WordPress serves a read-only ability by `GET` and refuses `POST` (`wp-includes/rest-api/endpoints/class-wp-rest-abilities-v1-run-controller.php:110`). A `GET` here reads every part, as the screen's post does; nothing is cached, since the answer is out of date the moment a part is saved, and only a manager can ask.
+- **Its Hookable is built on every request and builds nothing else until the ability is run** (a closure for the check): WordPress fires `wp_abilities_api_init` when something first asks its registry, which can be any kind of request (`wp-includes/abilities-api/class-wp-abilities-registry.php:313`).
+- **The category is the plugin's slug,** and milestone 4's `check-build` and `price-build` join it.
+
+**Status:** Accepted.
+
+### D-080 · Site Health: two tests that read no part, and the Info section · 2026-11-10
+
+- **`cbuild_index` and `cbuild_jobs` are direct tests** that cost an option read and one query of Action Scheduler's indexed table each (`Service\Health`). They run when the Site Health page loads and in WordPress's weekly check, so neither reads a part; the Catalogue check, which does, is linked from a failed job's result and is not a test itself. The spec lists the Catalogue check among what Site Health checks: a test that read every part on each visit to the page would be the wrong cost, and the check has nothing kit-shaped to find until milestone 4. Whether its findings get a test of their own is a question for milestone 4's plan.
+- **A failed reindex is critical; a failed job is recommended.** The first leaves parts indexed with old figures, shop-wide, until someone starts it again. The second is one part or one batch, already retried, and Action Scheduler clears it after its retention period.
+- **A reindex under way with no action pending or running is "stopped part way"** (recommended). `as_has_scheduled_action()` counts pending and running actions (WooCommerce 11.2.2, `packages/action-scheduler/functions.php:406`), so a batch in progress is not mistaken for a stall. It happens when the queue's tables are cleared, or a host kills the request between a batch's save and its next enqueue.
+- **A reindex's error text stays in the log** and is not printed on the page: it can hold a query or a path.
+- **The Info tab's section** lists the version, the database version, the source order (with its codes as the copied debug text), the number of mapped attributes, the index's state and the failed-job count. Nothing is marked private since nothing is: no name, address or key.
+- **The Hookable is built in wp-admin, cron and WP-CLI** (D-067), and its services only when a test runs or the Info tab is drawn.
+- **The sibling plugins have no Site Health code,** so this follows WordPress's own filters: `site_status_tests` (`wp-admin/includes/class-wp-site-health.php:3047`) and `debug_information` (`wp-admin/includes/class-wp-debug-data.php:135`).
+
+**Status:** Accepted. D-094 adds the Catalogue check as an asynchronous test.
+
+### D-081 · The specs benchmark runs on real WordPress, and one query a product stays · 2026-11-10
+
+- **`composer test:benchmark:integration` runs `tests/Benchmark` in the integration site with Xdebug off** (`tools/benchmark-integration.sh`). The roadmap puts the 2,000-part reindex in the integration suite; that suite runs with coverage on in CI, which would time Xdebug. The directory is outside the suite's, so the suite's runs and its coverage are as they were. CI runs it on the newest leg, on the site that leg already has up: seconds, and no job of its own.
+- **It measures four things at 2,000 parts,** each with WordPress's cache emptied first: the reindex batch by batch, the export, the Catalogue check, and a 5,000-row file read and planned. The roadmap asks for the reindex to be recorded; the other three answer inside a request (D-076, D-077), so each has a ceiling: 10 seconds, a third of PHP's usual limit, on a machine several times slower than the one that measured 0.5 s.
+- **Query ceilings are set from what the work is:** one query a product and a page's own (`parts × 1.1 + 60`), and under 400 for a reindex batch of 100. A change that adds a query a part fails the test.
+- **The one query a product is WooCommerce's and stays.** Building a `WC_Product` reads its meta with a query of its own (`WC_Data_Store_WP::read_meta()`, WooCommerce 11.2.2, `includes/data-stores/class-wc-data-store-wp.php:83`), which the posts' meta cache does not serve; WooCommerce keeps the answer in the object cache where a shop has a persistent one. `get_post_meta()` on primed IDs would be one query a page, and would read past WooCommerce's CRUD, which the project's rules forbid and which a later product store would break. At 0.15 ms a query it is 0.3 s in 2,000 parts.
+
+**Status:** Accepted.
+
+
+### D-082 · What the audit changed: a reindex on install, upgrade and activation, and ways back from a stop · 2026-11-10
+
+Found by the milestone's two reviews, each fixed with a test that fails without it (`docs/reviews/M3.md`).
+
+- **Every part is read again after an install, an upgrade's migrations and an activation.** Until the audit nothing indexed a catalogue that was already there: the index filled a part at a time, as parts were saved. `Install\Activator` asks once its migrations are done, and `Hooks\InstallHooks` asks when a run that an admin page or the job finished brought the schema up to date, since an upgrade arrives with no activation. Deactivation cancels the plugin's jobs and hears no save, so activation asks again. The installer reaches the index through `Port\Reindex`, which `Service\IndexJobs` implements, so the Install layer still knows no service. A site activated while WooCommerce is missing has no queue to hold the job and is not asked for; the Catalogue check's button is the way there.
+- **"Read every part again" is a button on the Catalogue check,** a post with the tab's nonce for who can manage WooCommerce. The demo's host has no WP-CLI, and the sentences that said "Save the Builder settings to start it again" were wrong: a save that changes nothing fires no hook. Site Health and the check now point at the button.
+- **A deleted term asks for a reindex as an edited one does** (`delete_term`, WordPress 7.1.4, `wp-includes/taxonomy.php:2235`): no product is saved when a term it carried goes.
+- **A mapped attribute is matched to a taxonomy as WooCommerce reads it:** by the name's slug, then by the slug after `pa_` (`WC_Product::get_attribute()`, WooCommerce 11.2.2, `includes/abstracts/abstract-wc-product.php:2278`). A mapping line that says `Width` reads `pa_width`, so a term of `pa_width` must ask too. `PartCatalogue::reads()` answers, since the slug is WordPress's to make.
+- **An import left running with no job is given its job back** when Import and export is opened or a new file is read (`SpecImport::resume()`), and Site Health's jobs test reports an import that failed or stalled. Before, a deactivation mid-import left the screen refusing every file for good.
+- **An import by SKU looks each SKU up once,** when the file is read, and keeps the matches in its state. Each batch checks that the product still holds the SKU, so a SKU that moved since is skipped, not written to the wrong part. Before, every batch asked for every SKU again.
+- **A file is read to its row limit and no further** (`Csv::parse()`'s `$most`), so a file far over the limit is refused without being parsed whole.
+- **Failed jobs are counted from when the last reindex finished,** by when each last ran (`modified`, `ActionScheduler_DBStore.php:627`): that reindex read every part again, and Action Scheduler keeps a failed action for three months. Before, one failure kept Site Health and the check amber long after it was mended.
+- **The reindex's and the import's state are read from the table, past the request's cache** (`Adapter\FreshOption`): a long request would otherwise save its stale copy over another process's place.
+
+**Status:** Accepted. D-089 revises the matching of a mapped attribute: a line names one attribute, and `Width` no longer reads `pa_width`. D-095 asks for the reindex a site without WooCommerce was owed.
+
+### D-083 · The product screen's one script is inline · 2026-11-10
+
+- **The Catalogue check's links open the tab or the variation they name.** WooCommerce's product screen opens no tab from the address, so the link used to land on General with the field out of sight. `#cbuild_part_specs` opens the Part specs tab; `#cbuild_variation_<id>` opens the Variations tab and, when the variation is on the page WooCommerce loads first, opens it and scrolls to its fields. A variation on a later page is left to WooCommerce's own paging.
+- **It is twenty-odd lines added after WooCommerce's variation script** (`wp_add_inline_script()`), with no data in it and no markup built. `docs/STANDARDS.md` says the admin scripts are TypeScript built by `@wordpress/scripts`; the first entry point and its build land with the builder in milestone 6, and bringing the pipeline forward for this would change what the zip, the budgets and Plugin Check measure in a milestone that planned no script. It moves into the admin bundle when there is one. **This is Zach's standard to keep or bend:** raised under For Zach in the milestone's review.
+- **Tested in the browser:** `tests/e2e/check.spec.ts` follows a finding's link and sees the panel; `tests/e2e/part-specs.spec.ts` opens a variation by its address.
+
+**Status:** The links stand. The inline script is superseded by D-086: Zach's word on 10 November 2026 was "whatever is best practice", and the standard's own answer is a built file.
+
+### D-084 · Uninstall forgets Action Scheduler's cached group, and browser tests read numbers in the project's locale · 2026-11-10
+
+- **Uninstall deletes the object cache's entry for the plugin's group** (`wp_cache_delete( 'creative-skateboard-builder', 'action_scheduler_groups' )`). Action Scheduler keeps a group's ID in the object cache for ten minutes (4.1.0 in WooCommerce 11.2.2, `classes/data-stores/ActionScheduler_DBStore.php:15`, `:344`). The uninstaller deletes the group's row with SQL (D-024), so on a persistent cache a reinstall inside ten minutes filed its actions under a row that was gone: they still ran, but nothing found them by group, so deactivation would not cancel them and the Catalogue check would not count their failures. The object-cache leg's `UninstallTest` found it once activation queued a job (D-082): `Failed asserting that two strings are identical. -'1|2|2' +'0|2|2'`.
+- **A browser test that reads a formatted number asks for it in the project's locale** (`inLocale()` in `tests/e2e/support/test.ts`). The screens write a value with `number_format_i18n()`, so the `fr-ca` project sees `8,5 in`. The field a person types into keeps the shop's own separator, as WooCommerce's price fields do.
+
+**Status:** Accepted.
+
+### D-085 · The browser run fits its job: one login, a real wait for a form's answer, two engines on a draft · 2026-11-10
+
+Pull request #15's first full run failed in the newest leg. Three causes, none of which a Mac shows:
+
+- **The job ran out of time.** Milestone 3 took the browser suite from 5 tests to 12, in 9 projects on one worker: 108 runs at 20 to 45 seconds each on GitHub's runner, which is about three and a half times slower than the Mac the gates ran on. That is some 37 minutes, after 12 of setup and gates, in a job with a limit of 30.
+- **`settings.spec.ts` failed on `webkit-phone`.** Its `save()` waited with `waitForLoadState( 'load' )`, which is already true of the page the form is on, so it waited for nothing. The `goto` that followed could cancel the post before the server had it. The same wait was in `import.spec.ts` and `spec-tables.spec.ts`.
+- **`import.spec.ts` timed out on `firefox-desktop`** at the usual 60 seconds. It runs three imports from end to end, each with its job run through wp-env.
+
+What changed:
+
+- **A form's answer is waited for by the next `load` event,** set before the form is sent (`answered()` in `tests/e2e/support/test.ts`).
+- **The administrator logs in once for the run,** over HTTP in the global setup, and `login()` gives each test that session's cookies. No spec tests wp-login.php; typing into it before each admin test was about four seconds of every one on the runner.
+- **The import's test is marked slow,** which triples its limit.
+- **A draft's newest leg runs `chromium-desktop` and `webkit-phone`,** as the oldest leg does. Every project runs when the pull request is marked ready, and on `main`. This revises D-041 in one place: a draft's run no longer includes every browser project. GitHub does not merge a draft, so nothing reaches `main` without all of them.
+- **The newest leg has 60 minutes when it runs every project,** and 30 otherwise, as every other leg has.
+- **A job that runs out of time keeps its traces.** The artifact was uploaded on failure only, and a cancelled run prints no failure, so the first run left nothing to read but the list of tests.
+
+**Not done:** more than one worker. The specs share one shop (its settings, its one deck, its import), so two at once would break each other; the fix for that is a shop per worker, which is a milestone 6 question, when the builder's own specs arrive.
+
+**Why:** Zach asked on 9 November 2026 that CI not overspend on minutes (D-040). No gate is removed and no floor moves: the same specs run in the same projects before anything merges. **For Zach:** the suite's cost grows with every screen, nine times over. A full run's newest leg is now about 45 billed minutes. Running the wp-admin specs in fewer projects than the builder's would cut that, and would move the audit's floor, so it is his to say.
+**Status:** Accepted.
+
+### D-086 · The product screen's script is built TypeScript · 2026-11-10
+
+Zach's answer to the review's first question, on 10 November 2026: "whatever is best practice". `docs/STANDARDS.md` already says it: admin scripts are TypeScript in strict mode, built by `@wordpress/scripts`. The pipeline was all there but a first entry, so D-083's reason for waiting did not hold.
+
+- **`assets/src/admin/part-specs.ts`** replaces the inline script. It is built to `build/admin/part-specs.js` (879 bytes) and enqueued on the product screen alone, in the footer, after `jquery` and `wc-admin-variation-meta-boxes`, with the build's own hash as its version.
+- **jQuery is used for two things only,** each WooCommerce's doing: the Variations tab announces its rows with a jQuery event, which the DOM never hears (11.2.2, `assets/js/admin/meta-boxes-product-variation.js:636`), and a row opens with a jQuery animation, whose end only jQuery can promise. Tabs and rows are opened with a native click.
+- **`webpack.config.js` names the admin's entry.** `@wordpress/scripts` finds a block's scripts from its `block.json`; a wp-admin script belongs to no block. The file extends the package's own configuration, as its documentation describes, and stays out of the zip.
+- **A checkout that was never built has no script,** and the screen works without it. The zip is checked instead: `tools/build-zip.sh` fails when a file `src/` loads from `build/` is not in it (broken on purpose: `The zip would ship without build/admin/part-spec.js, which src/ loads.`).
+- **Tests:** 15 in Vitest with a double for the two jQuery calls, StrykerJS at 97.3 % against the 90 % floor; the two browser tests of D-083 run the real thing in every project. `PartSpecsPanelTest` holds the handle, the address, the dependencies, the version and that nothing is inline.
+
+**Status:** Accepted. Supersedes D-083's inline script.
+
+### D-087 · What mutation testing may leave out · 2026-11-10
+
+Zach's answer to the review's second question, on 10 November 2026: "whatever is best practice and modern standards in 2026". Milestone 3 had added 24 entries to `infection.json5`'s list without his word, which D-038 asks for.
+
+- **The rule.** A class is left out of the unit suite's mutation run only when it cannot run without WordPress or WooCommerce loaded: it takes or builds their objects, or does its work through their functions. Such a class is proven in wp-env by the integration suite, with a deliberate break in its milestone's review. A class whose logic needs no more than the translation and number functions is mutated, with shims in `tests/Support/wp-shims.php`. Mutating against the integration suite itself was weighed and left: each mutant would boot WordPress, seconds apiece across thousands of mutants.
+- **Three come back in:** `Admin\Labels`, `Admin\Sentences` and `Adapter\NoKits`. The first two map the services' codes to what a shop manager reads, with branches of their own; the third is plain PHP. Their unit tests kill 118 of 118 mutants.
+- **Twenty-one stay out,** each under a line in `infection.json5` that says why: the five wp-admin screens, `Cli`, `Abilities`, `Health\SiteHealth`, the twelve adapters over WooCommerce's products and WordPress's options, posts, uploads and filesystem, and `Install\Migrations\InlineRule`.
+- **Adding to the list still needs Zach** (D-038), and now needs the entry to meet the rule.
+
+**Status:** Accepted.
+
+### D-088 · A review's screenshots are AVIF · 2026-11-10
+
+Zach asked on 10 November 2026 whether the reviews' images should be ignored by Git, then why they were not smaller and in a modern format. They stay tracked: they are the walkthrough's evidence, the review names them, and Claude in Cowork reads the repository as it is on disk. They never reach the zip (`docs` is in `.distignore`) and start no CI run.
+
+- **`tools/review-images.sh <folder>`** turns each PNG Playwright wrote into AVIF at quality 50 and removes the PNG. A phone's full-page shot is taken at three device pixels; it is kept at two (780 wide), which reads as well. Milestone 3's 24 images went from 7.0 MB to 1.7 MB.
+- **It uses `sips`,** which macOS ships, so no tool is added. The walkthrough is taken on the Mac, never in CI.
+- **The PNGs pushed before this stay in the branch's history,** 7 MB once. Rewriting a branch under review to drop them would cost more than it saves.
+
+**Status:** Accepted.
+
+### D-089 · A mapped attribute is read by its own key, and a variation takes its parent's · 2026-11-10
+
+Claude in Cowork's review of pull request #15, its one should-fix. `WC_Product_Variation::get_attribute()` answers from the attributes used for variations only (WooCommerce 11.2.2, `includes/class-wc-product-variation.php:140`), so an attribute set on a variable product never reached its variations, while the field and chart sources both fall back to the parent.
+
+- **A variation with no value of its own takes its parent's,** when the parent holds the attribute and does not use it for variations. `Products::parentsOf()` already loads a batch's parents once. An attribute the parent uses for variations is the variation's to answer: one set to "Any" has no single value, and stays unread.
+- **The reading says where it came from.** Its reference is the attribute's name after `^` (`Port\SpecSource::PARENT_ATTRIBUTE`), one character since the mapping allows a name of 190 and the index's column holds 191. The panel says "In use: 32 in, from the parent product's Length attribute."
+- **A line names one attribute, by the key WooCommerce stores it under** (`sanitize_title()` of the name): `pa_length` is the taxonomy, and `Length` is a product's own attribute of that name. `WC_Product::get_attribute()` alone would answer `Length` from `pa_length` where a product has no attribute of its own by that name (`includes/abstracts/abstract-wc-product.php:2278`), and a line mapping a bolt's own Length would have given every deck with a `pa_length` a bolt length. The source checks the key before it asks.
+- **This takes back D-082's `Width` for `pa_width`.** A term of `pa_width` asks for a reindex only when a line names `pa_width`. The settings screen says to choose a taxonomy from the list or type a product's own attribute name.
+- **Tests:** `SpecSourcesTest` (the parent's value, "Any", and a line that reads the attribute it names and not a taxonomy of the same name), `PartSpecsPanelTest` and the unit and integration `IndexJobsTest`. Red before the fix: "the deck's Length is the taxonomy, which this line does not name". Without the fallback the parent tests fail; without the check on attributes used for variations the "Any" test fails.
+
+**Status:** Accepted. Revises D-070 and D-082.
+
+### D-090 · An import's rows are stored once · 2026-11-10
+
+Cowork's minor 6. The option `cbuild_import_state` held the whole sheet, and each batch of 100 saved it again: 50 saves of up to 5,000 rows.
+
+- **The rows have an option of their own, `cbuild_import_rows`,** with the import's token and, for an import by SKU, the product each SKU named. It is written when the file is read and removed when the import ends, is put away or is replaced. `cbuild_import_state` keeps the status, the place, the counts and the rows refused, which is what a batch changes.
+- **The split is the adapter's** (`Adapter\OptionImportStore`). `Port\ImportStore` and `Service\ImportState` are as they were: the service still loads and saves one import.
+- **Rows that are gone or carry another import's token make the import none,** which the screen then clears. The rows are written before the state that says it has them.
+- **A request that has read an import's rows does not write or compare them again.** `update_option()` would skip an unchanged value, but only after reading and serializing 5,000 rows to find that out.
+- **The write batch stays at 100.** Cowork noted WooCommerce's own importer writes 30 a request and that the benchmark planned and never wrote. It writes now: 1,778 parts in 20 jobs of 100, 706 ms for the slowest on the Mac, so about 2.5 s on CI's runner, against the 10 s a job is allowed. A product save is about 81 queries, WooCommerce's own.
+- **What stays large:** a file in which most rows are refused. The 3,000 rows of the benchmark's file that name no product leave 187 kB of refusals in `cbuild_import_state`, saved by each batch as it grows. A real sheet is an export filled in, where refusals are few.
+- **A new public item:** the option, in `docs/HOOKS.md`, the snapshot, `docs/PRIVACY.md` and `Options::names()`, so uninstall removes it.
+
+**Status:** Accepted. Revises D-076's "the dry run is the rows, kept in the option `cbuild_import_state`".
+
+### D-091 · A chart's size is matched by its number when no name matches · 2026-11-10
+
+Cowork's minor 7. A spreadsheet opens Venture's size `5.0` as the number 5 and saves it so, and the import refused the row as a size the chart lacks.
+
+- **`Domain\Spec\SpecTable::named()`** gives the row of that name, or failing that the one row whose name is the same plain number: `5`, `5.00` and `05` find `5.0`. A name that is anything but digits and one point is matched exactly, as before.
+- **Two rows that are the same number are not guessed at.** A chart with `5.0` and `5.00` refuses `5`, and each still answers to its own name.
+- **What is stored is the chart's own name for the row,** so the index and the panel's list find it. `SpecWriter` is the one place a named size is checked, for the panel and the import alike.
+
+**Status:** Accepted.
+
+### D-092 · The rest of Cowork's review of milestone 3 · 2026-11-10
+
+Zach had every minor of milestone 2's reviews fixed, and these follow that.
+
+- **A narrowest deck wider than the widest is refused** (minor 1) where the writers check: `SpecWriter` for the panel and the import, where neither figure is saved and the two stay as they were, and `SpecTableEditor` for a chart's row. The sentence names both figures. Rule R1 would otherwise hide the truck from every deck with nothing to say why.
+- **A chart's name is its own** (minor 2): a name another chart has, whatever its case, is refused when a chart is added or renamed. Two charts of one name made the import refuse every row that named either.
+- **A command in the foreground queues nothing** (minor 3). `IndexJobs::reindexNow()` and `SpecImport::runNow()` cancel what is queued, then run each batch themselves. Before, `wp cbuild reindex` on 2,000 parts left 22 actions a queue runner could take beside the command.
+- **The reindex's first pass asks which of the index's IDs are parts** (minor 4), through `PartCatalogue::partsOf()` as `indexPart()` does. A product that became variable while the plugin was off loses the rows under its own ID, and its variations are indexed.
+- **A page of variations asks the sources once** (minor 5), for up to 50 siblings together (`PartSpecsPanel::TOGETHER`); a save empties what was kept.
+- **A link from the Catalogue check moves focus** to the first control of the panel or the variation it opens, without scrolling again, and a unit's problem on the settings screen is tied to its select with `aria-invalid` and `aria-describedby` (minor 8).
+- **`ContainerTest` lists each scope's Hookables** (minor 9, landed with D-087's commit).
+- **Minor 10 is two issues,** for the plans it speaks to: #20 in milestone 4 (a settings save reindexes only when the mapping or the order changed) and #21 in milestone 5 (a stock change queues an index job for every order line).
+
+**Status:** Accepted.
+
+### D-093 · The seeded charts are each maker's own · 2026-11-10
+
+Zach's answer on 10 November 2026 to the two open figures of D-072 (Venture 5.0's axle, and Thunder's 143, 148 and 161): "lets do whatever is best practice for 2026 and standard." A figure a shop's builder decides fit by should come from whoever makes the part, with the page and the day beside it.
+
+- **Thunder publishes a chart,** at https://www.thundertrucks.com/sizing/, as one image a size. The spec took Thunder's sizes from two retailers because the chart is an image; read on 10 November 2026, the images give every size an axle and a deck range. All eight rows are now Thunder's:
+
+  | Size | Axle | Decks |
+  | --- | --- | --- |
+  | 143 | 7.125 in | 7.4 in and thinner |
+  | 145 | 7.62 in | 7.4 to 7.9 in |
+  | 147 | 8.0 in | 7.9 to 8.12 in |
+  | 148 | 8.25 in | 8.12 to 8.38 in |
+  | 149 | 8.5 in | 8.38 to 8.62 in |
+  | 151 | 8.75 in | 8.62 to 8.85 in |
+  | 161 | 9.125 in | 8.9 to 9.5 in |
+  | 181 | 10.0 in | 9.5 in and up |
+
+- **What changed from the seed before.** The 143's axle was 7.0 in, the spec's figure, and is 7.125. The 145's was 7.6 and is 7.62. The 143 and 161 had no deck range and have one. The retailers' ranges for the 145 to 151 were half an inch wide and overlapped; Thunder's are a quarter inch and meet end to end, so rule R1 now offers a Thunder truck to fewer deck widths, the ones its maker names. The 181 is new, from the maker's chart of 2026.
+- **Venture publishes one too,** at https://venturetrucks.net/sizes/. Its five sizes are what the seed held from Rollersnakes, the 5.0's 7.62 in axle among them, so the figures stay and the source is now Venture. The spec's grid puts the 5.0 in its 7.6 in row, which groups makers by axle; the row is a grouping, not a figure.
+- **Every seeded row now has the day it was read,** and `SpecTablesMigrationTest` holds that each names its maker's own site.
+- **`docs/SPEC.md` is not edited.** Its table under R1 and its line "Thunder's chart is an image and Venture publishes none" are behind this; they are Zach's to change.
+- **A shop that already has a chart keeps it** (D-072): the seed is passed over where a table exists. 0.3.0 is the first version with charts, so no shop has the old rows.
+
+**Status:** Accepted. Revises D-072's seeds.
+
+### D-094 · The Catalogue check is an asynchronous Site Health test · 2026-11-10
+
+Zach on 10 November 2026, of the review's question whether the spec's third Site Health check should wait for milestone 4: "we should resolve this too". D-080 left it out because a test that reads every part must not hold the Site Health page.
+
+- **`cbuild_catalogue` is an asynchronous test,** WordPress's own answer for a slow one (`wp-admin/includes/class-wp-site-health.php:2941`, as its loopback and background-update tests): the page draws, then asks for the result. At 2,000 parts the check takes half a second (docs/BENCHMARK.md).
+- **The page asks over REST,** the form WordPress has used since 5.6 (`has_rest`): `GET cbuild/v1/site-health/catalogue-check`, the plugin's first route. Its `permission_callback` is `view_site_health_checks`, the capability WordPress's own Site Health routes use (`wp-includes/rest-api/endpoints/class-wp-rest-site-health-controller.php:189`). It reads and changes nothing.
+- **The weekly check calls it directly** (`async_direct_test`), since a scheduled event cannot sign in (`class-wp-site-health.php:3401`).
+- **It reports counts, not findings:** how many things there are to fix and in how many parts, with a link to the check. Recommended when there is one, never critical: a finding keeps a part out of the builder or names a disagreement, and the shop still sells.
+- **Background work that failed is left out of its count.** The check lists a failed reindex, import and job; `cbuild_index` and `cbuild_jobs` already report those, and one failure is not shown three times (`Service\Health::catalogue()`).
+- **`Health\SiteHealth` is also built on a REST request** (D-067), for the route. `ContainerTest` lists it.
+- **Tests:** `HealthTest` for the verdict; `SiteHealthTest` for the test's registration, its results, and the route as a visitor (401), a shop manager (403) and an administrator. With the permission check removed: "Failed asserting that 200 is identical to 401".
+- Issue #18 is closed by this.
+
+**Status:** Accepted. Revises D-080.
+
+### D-095 · A reindex owed to a site without WooCommerce is asked for when the queue is there · 2026-11-10
+
+Zach on 10 November 2026, of the review's sixth question: "if this is best practice, do it". It is: a site that repairs itself does not depend on someone finding a button.
+
+- **Activation leaves a mark where it has no queue:** the option `cbuild_reindex_owed`. Without WooCommerce there are no Action Scheduler tables, and the plugin hooks nothing until WooCommerce is back.
+- **The first request that finds the queue asks, then removes the mark** (`Hooks\InstallHooks::askWhenOwed()`, on `init`). Asked first: a request that dies between the two asks again, and a reindex asked for twice starts once.
+- **A site that owes nothing spends no query on this.** The mark is autoloaded and exists only while owed, and it is looked for in the options WordPress has already loaded (`wp_load_alloptions()`), since `get_option()` on an option that is absent queries the table on every request. `InstallHooksTest::test_a_current_version_costs_no_query_on_any_request` holds it; with `get_option()` in its place: "Failed asserting that 1 is identical to 0".
+- **While it is owed,** each request looks for the queue's three tables, three small queries, until they are there.
+- **The logic is two static methods on `Install\Activator`,** which mutation testing already leaves out for the reason D-087 gives, so the list of exclusions does not grow.
+
+**Status:** Accepted. Revises D-082's "the button covers it".
+

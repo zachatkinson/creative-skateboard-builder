@@ -42,7 +42,15 @@ database mysql84 mysql:8.4
 database mariadb1011 mariadb:10.11
 variant hpos-off CBUILD_HPOS=off
 variant hpos-sync CBUILD_HPOS=sync
-variant object-cache CBUILD_OBJECT_CACHE=persistent
+# A Redis server and Redis Object Cache's drop-in, for this variant alone (tools/object-cache.sh, D-066).
+if bash tools/object-cache.sh up; then
+	variant object-cache CBUILD_OBJECT_CACHE=persistent
+else
+	echo "Variant object-cache: FAILED (the cache server or its drop-in did not start)."
+	failed+=("object-cache")
+	ran=$((ran + 1))
+fi
+bash tools/object-cache.sh down
 # Last: it is the one variant that leaves a network's tables behind it.
 variant multisite CBUILD_MULTISITE=1
 

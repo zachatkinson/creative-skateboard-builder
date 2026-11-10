@@ -1,0 +1,134 @@
+<?php
+/**
+ * Reads and writes CSV text.
+ *
+ * @package CreativeBranding\SkateboardBuilder
+ */
+
+declare( strict_types=1 );
+
+namespace CreativeBranding\SkateboardBuilder\Service;
+
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
+/**
+ * CSV as spreadsheets write it (RFC 4180): cells between commas, a cell with a comma, a quote or a line break
+ * inside double quotes, a quote inside a quoted cell doubled. Read from text already in memory, so no file is
+ * opened here, and written a line at a time.
+ *
+ * A cell that starts with `=`, `+`, `-`, `@`, a tab or a carriage return is written with an apostrophe before it:
+ * a spreadsheet would otherwise run it as a formula (spec: Security, Admin). Read back, the apostrophe is taken off.
+ *
+ * @since 0.3.0
+ */
+final class Csv {
+
+	/**
+	 * What a spreadsheet takes for the start of a formula.
+	 */
+	private const FORMULA = array( '=', '+', '-', '@', "\t", "\r" );
+
+	/**
+	 * The rows of a text, each a list of cells. A row with nothing in any cell is left out.
+	 *
+	 * @since 0.3.0
+	 *
+	 * @param string $text      The CSV.
+	 * @param string $delimiter What parts the cells: a comma, or a semicolon as some spreadsheets write.
+	 * @param int    $most      Reading stops once this many rows are read, so a caller with a limit asks for one
+	 *                          more than it and never waits for the rest of a file it will refuse.
+	 * @return list<list<string>>
+	 */
+	public static function parse( string $text, string $delimiter = ',', int $most = PHP_INT_MAX ): array {
+		$rows   = array();
+		$row    = array();
+		$cell   = '';
+		$quoted = false;
+		$length = strlen( $text );
+		for ( $at = 0; $at < $length; $at++ ) {
+			$char = $text[ $at ];
+			if ( $quoted ) {
+				if ( '"' !== $char ) {
+					$cell .= $char;
+				} elseif ( '"' === ( $text[ $at + 1 ] ?? '' ) ) {
+					$cell .= '"';
+					++$at;
+				} else {
+					$quoted = false;
+				}
+				continue;
+			}
+			if ( '"' === $char && '' === $cell ) {
+				$quoted = true;
+			} elseif ( $delimiter === $char ) {
+				$row[] = $cell;
+				$cell  = '';
+			} elseif ( "\n" === $char || "\r" === $char ) {
+				// A carriage return and a line feed together end one row and then a blank one, which is left out.
+				$row[] = $cell;
+				$cell  = '';
+				self::add( $rows, $row );
+				$row = array();
+				if ( count( $rows ) >= $most ) {
+					return $rows;
+				}
+			} else {
+				$cell .= $char;
+			}
+		}
+		$row[] = $cell;
+		self::add( $rows, $row );
+		return $rows;
+	}
+
+	/**
+	 * Add a row to the rows, unless it is blank. In place: handing the rows over and back copied every one of them
+	 * for each row read, so a file of many short rows took the square of its length.
+	 *
+	 * @param list<list<string>> $rows The rows so far.
+	 * @param list<string>       $row  The next.
+	 */
+	private static function add( array &$rows, array $row ): void {
+		$cells = array();
+		foreach ( $row as $cell ) {
+			$cell    = trim( $cell );
+			$cells[] = strlen( $cell ) > 1 && "'" === $cell[0] && in_array( $cell[1], self::FORMULA, true ) ? trim( substr( $cell, 1 ) ) : $cell;
+		}
+		if ( '' !== implode( '', $cells ) ) {
+			$rows[] = $cells;
+		}
+	}
+
+	/**
+	 * What parts the cells of a text: a semicolon when its first line has more of them than commas.
+	 *
+	 * @since 0.3.0
+	 *
+	 * @param string $text The CSV.
+	 */
+	public static function delimiter( string $text ): string {
+		$first = strtok( $text, "\r\n" );
+		$first = false === $first ? '' : $first;
+		return substr_count( $first, ';' ) > substr_count( $first, ',' ) ? ';' : ',';
+	}
+
+	/**
+	 * One row as a line of CSV, ending in a line break, safe to open in a spreadsheet.
+	 *
+	 * @since 0.3.0
+	 *
+	 * @param list<string> $cells The cells.
+	 */
+	public static function line( array $cells ): string {
+		$written = array();
+		foreach ( $cells as $cell ) {
+			if ( '' !== $cell && in_array( $cell[0], self::FORMULA, true ) ) {
+				$cell = "'" . $cell;
+			}
+			$written[] = 1 === preg_match( '/[",\r\n;]/', $cell ) ? '"' . str_replace( '"', '""', $cell ) . '"' : $cell;
+		}
+		return implode( ',', $written ) . "\r\n";
+	}
+}

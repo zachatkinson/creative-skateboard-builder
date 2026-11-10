@@ -1,6 +1,6 @@
 /**
- * StrykerJS on the builder's store, 90 % (docs/AUDIT.md: Mutation testing). tools/mutate-js.sh runs it once
- * assets/src has a file to mutate (milestone 6).
+ * StrykerJS on the plugin's TypeScript, 90 % (docs/AUDIT.md: Mutation testing): the admin's script (D-086), and the
+ * builder's store from milestone 6. tools/mutate-js.sh runs it when assets/src has a file to mutate.
  *
  * @type {import('@stryker-mutator/api/core').PartialStrykerOptions}
  */

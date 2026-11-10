@@ -56,7 +56,28 @@ final class Plugin {
 			return;
 		}
 
-		foreach ( self::container()->hookables() as $hookable ) {
+		// Only the Hookables whose hooks can fire on this kind of request are built (D-067).
+		self::register( ...Scope::atBoot( is_admin(), defined( 'WP_CLI' ) && WP_CLI, wp_doing_cron() ) );
+		// Before any route is registered at the default priority, so a Hookable built here can add its own.
+		add_action( 'rest_api_init', array( self::class, 'registerRest' ), 0 );
+	}
+
+	/**
+	 * On a REST request: the Hookables that fire there.
+	 *
+	 * @since 0.3.0
+	 */
+	public static function registerRest(): void {
+		self::register( Scope::Rest );
+	}
+
+	/**
+	 * Build and register the Hookables of the scopes given that are not registered yet.
+	 *
+	 * @param Scope ...$scopes The scopes the request is in.
+	 */
+	private static function register( Scope ...$scopes ): void {
+		foreach ( self::container()->hookablesFor( ...$scopes ) as $hookable ) {
 			$hookable->register();
 		}
 	}

@@ -27,6 +27,15 @@ if [ -n "$dotfiles" ]; then
 	echo "$dotfiles" >&2
 	exit 1
 fi
+# Every script the plugin enqueues from build/ is in the zip, built: a zip without one would lose it silently (D-086).
+for built in $(grep -rhoE "'build/[a-z0-9/-]+'" src | tr -d "'" | sort -u); do
+	for file in "$built.js" "$built.asset.php"; do
+		if [ ! -s "$stage/$file" ]; then
+			echo "The zip would ship without $file, which src/ loads. Run npm run build and look at its output." >&2
+			exit 1
+		fi
+	done
+done
 cp composer.json composer.lock "$stage/"
 # composer.json stays beside vendor/ so a reviewer (and Plugin Check's missing_composer_json_file) can see what it holds.
 ( cd "$stage" && composer install --no-dev --no-interaction --quiet --optimize-autoloader && rm -f composer.lock )

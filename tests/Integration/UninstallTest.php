@@ -9,6 +9,7 @@ declare( strict_types=1 );
 
 namespace CreativeBranding\SkateboardBuilder\Tests\Integration;
 
+use CreativeBranding\SkateboardBuilder\Install\Migrations\MigrationRegistry;
 use CreativeBranding\SkateboardBuilder\Install\Uninstaller;
 use CreativeBranding\SkateboardBuilder\Support\Options;
 use CreativeBranding\SkateboardBuilder\Support\Tables;
@@ -46,6 +47,7 @@ final class UninstallTest extends IntegrationTestCase {
 		$product = new \WC_Product_Simple();
 		$product->set_name( 'Deck' );
 		$product->set_regular_price( '10' );
+		$product->update_meta_data( Options::META_SPECS, array( 'deck_width' => '8.2500' ) );
 		$product->save();
 		$order = wc_create_order();
 		$item  = new \WC_Order_Item_Product();
@@ -69,11 +71,19 @@ final class UninstallTest extends IntegrationTestCase {
 		update_option( Options::DB_VERSION, '1' );
 		update_option( Options::MIGRATIONS, array( 'x' => array() ) );
 		update_option( Options::MIGRATION_LOCK, '1' );
+		update_option( Options::SETTINGS, array( Options::SETTING_SOURCE_ORDER => array( 'field', 'table', 'attribute' ) ) );
+		self::assertIsArray( get_option( Options::REINDEX ), 'saving the settings started a reindex, with its state and its job' );
+		update_option( Options::IMPORT, array( 'status' => 'waiting' ), false );
+		self::assertTrue( as_has_scheduled_action( Options::JOB_REINDEX, null, Options::QUEUE_GROUP ) );
 		set_transient( Options::TRANSIENT_PREFIX . 'notice_1', 'x', HOUR_IN_SECONDS );
 		set_transient( Options::TRANSIENT_PREFIX . 'forever', 'x' );
 		set_site_transient( Options::UPDATE_MANIFEST, array( 'data' => null ), HOUR_IN_SECONDS );
 		wp_cache_set( 'fit:1', array( 1 ), Options::CACHE_GROUP );
 		$wpdb->insert( Tables::specs(), array( 'part_id' => 1, 'spec' => 'width', 'number' => '8.25', 'source' => 'attribute', 'indexed_at' => '2026-11-09 00:00:00' ) );
+		$spec_table = $this->service( \CreativeBranding\SkateboardBuilder\Port\SpecTables::class )->create( 'Independent', \CreativeBranding\SkateboardBuilder\Domain\Spec\SpecTable::read( array( array( 'size' => '149' ) ) ), 'independent' );
+		$binned     = $this->service( \CreativeBranding\SkateboardBuilder\Port\SpecTables::class )->create( 'Binned', \CreativeBranding\SkateboardBuilder\Domain\Spec\SpecTable::read( array() ) );
+		wp_trash_post( $binned );
+		$page = self::factory()->post->create( array( 'post_type' => 'page' ) );
 		$records  = self::shopRecords();
 		$pending  = as_schedule_single_action( 1_900_000_000, Options::JOB_MIGRATE, array(), Options::QUEUE_GROUP );
 		$complete = as_enqueue_async_action( Options::JOB_MIGRATE, array( 'a' => 1 ), Options::QUEUE_GROUP );
@@ -95,6 +105,15 @@ final class UninstallTest extends IntegrationTestCase {
 		self::assertSame( array(), as_get_scheduled_actions( array( 'group' => Options::QUEUE_GROUP, 'status' => '', 'per_page' => 5 ), 'ids' ) );
 		self::assertFalse( wp_cache_get( 'fit:1', Options::CACHE_GROUP ), 'cache group not flushed' );
 
+		self::assertFalse( get_option( Options::SETTINGS ), 'the settings left behind' );
+		self::assertFalse( get_option( Options::REINDEX ), 'the reindex\'s state left behind' );
+		self::assertFalse( get_option( Options::IMPORT ), 'a waiting import left behind' );
+		self::assertNull( get_post( $spec_table ), 'a spec table left behind' );
+		self::assertNull( get_post( $binned ), 'a spec table in the bin left behind' );
+		self::assertSame( 0, (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM %i WHERE post_type = %s', $wpdb->posts, Options::POST_TYPE_SPEC_TABLE ) ) );
+		self::assertSame( 0, (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM %i WHERE meta_key LIKE %s', $wpdb->postmeta, $wpdb->esc_like( '_cbuild_' ) . '%' ) ), 'meta of the plugin\'s left behind' );
+		self::assertNotNull( get_post( $page ), 'the shop\'s pages are never touched' );
+		self::assertFalse( metadata_exists( 'post', $records['product'], Options::META_SPECS ), 'a part\'s specs left behind' );
 		self::assertNotEmpty( get_post( $records['product'] ), 'products are never touched' );
 		$order = wc_get_order( $records['order'] );
 		self::assertNotFalse( $order, 'orders are never touched' );
@@ -124,11 +143,12 @@ final class UninstallTest extends IntegrationTestCase {
 		// On the integration site (its own tables), as a shop does it: deactivate the builder, then WooCommerce, then
 		// delete the builder. uninstall.php runs with no Action Scheduler loaded (D-024).
 		// The second site keeps its state between runs, so the test empties the plugin's queue there itself.
-		self::wpEval( '\\CreativeBranding\\SkateboardBuilder\\Install\\Uninstaller::deleteJobs();' );
+		// It is brought up to date first: a site with a migration pending queues that job itself on every request.
+		self::wpEval( '\\CreativeBranding\\SkateboardBuilder\\Plugin::container()->get( \\CreativeBranding\\SkateboardBuilder\\Install\\Migrations\\MigrationRunner::class )->run(); \\CreativeBranding\\SkateboardBuilder\\Install\\Uninstaller::deleteJobs();' );
 		$seed = self::wpEval( 'echo as_enqueue_async_action( "' . Options::JOB_MIGRATE . '", array(), "' . Options::QUEUE_GROUP . '", true ) > 0 ? "queued" : "not queued";' );
 		self::assertSame( 'queued', $seed['out'], $seed['err'] );
 		$count = 'global $wpdb; echo (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$wpdb->prefix}actionscheduler_actions a INNER JOIN {$wpdb->prefix}actionscheduler_groups g ON g.group_id = a.group_id WHERE g.slug = \'' . Options::QUEUE_GROUP . '\'" ), "|", (int) $wpdb->get_var( "SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME LIKE \'{$wpdb->prefix}cbuild_%\'" ), "|", (string) get_option( "' . Options::DB_VERSION . '", "none" );';
-		self::assertSame( '1|2|1', self::wpEval( $count )['out'], 'one action, two tables, version 1 before' );
+		self::assertSame( '1|2|' . MigrationRegistry::VERSION, self::wpEval( $count )['out'], 'one action, two tables, the version before' );
 		try {
 			$off = self::wp( 'plugin', 'deactivate', 'creative-skateboard-builder' );
 			self::assertSame( 0, $off['code'], $off['err'] );
@@ -139,7 +159,10 @@ final class UninstallTest extends IntegrationTestCase {
 		} finally {
 			self::wp( 'plugin', 'activate', 'creative-skateboard-builder' );
 		}
-		self::assertSame( '0|2|1', self::wpEval( $count )['out'], 'reactivated: the tables and the version are back' );
+		// Activation asks for every part to be read again (D-082): the one action is that job.
+		self::assertSame( '1|2|' . MigrationRegistry::VERSION, self::wpEval( $count )['out'], 'reactivated: the tables and the version are back, and the reindex waits' );
+		self::assertSame( Options::JOB_REINDEX, self::wpEval( 'global $wpdb; echo $wpdb->get_var( "SELECT a.hook FROM {$wpdb->prefix}actionscheduler_actions a INNER JOIN {$wpdb->prefix}actionscheduler_groups g ON g.group_id = a.group_id WHERE g.slug = \'' . Options::QUEUE_GROUP . '\'" );' )['out'] );
+		self::wpEval( '\\CreativeBranding\\SkateboardBuilder\\Install\\Uninstaller::deleteJobs(); delete_option( "' . Options::REINDEX . '" );' );
 	}
 
 	public function test_a_deleted_network_site_drops_the_plugin_tables(): void {
@@ -162,7 +185,7 @@ final class UninstallTest extends IntegrationTestCase {
 				switch_to_blog( $site );
 				$specs = Tables::specs();
 				self::assertNotNull( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $specs ) ), 'installed on the second site first' );
-				self::assertSame( '1', (string) get_option( Options::DB_VERSION ) );
+				self::assertSame( MigrationRegistry::VERSION, (string) get_option( Options::DB_VERSION ) );
 				set_transient( Options::TRANSIENT_PREFIX . 'x', 'x', HOUR_IN_SECONDS );
 				restore_current_blog();
 

@@ -80,7 +80,7 @@ tools/                    gates.sh, integration/ (PHPUnit 9.6), build, release, 
 
 ## WordPress
 
-- **Hooks:** each feature is a Hookable class registered by the container. Callbacks are one line into a service. Priorities are named constants where they matter.
+- **Hooks:** each feature is a Hookable class registered by the container, which names the scopes its hooks can fire in (`Scope`: everywhere, admin, WP-CLI, cron, REST, storefront). The plugin builds a Hookable only on a request in one of them (D-067). `Everywhere` is for a job's handler and a hook that fires on any request, and needs a comment saying which. Callbacks are one line into a service. Priorities are named constants where they matter.
 - **Security:**
   - Sanitise on input (`sanitize_*`, `absint`, `wc_format_decimal`) and escape on output (`esc_html`, `esc_attr`, `esc_url`, `wp_kses` with a named allowlist).
   - Nonces and capabilities on every state change. Nonces prove intent, never identity.
@@ -101,6 +101,13 @@ tools/                    gates.sh, integration/ (PHPUnit 9.6), build, release, 
   - One settings option, autoloaded only if read on every request.
   - Large or rarely read data is never autoloaded.
   - Transients are for caches that can vanish, never for state.
+- **Object cache** (D-066), so the plugin behaves the same on Redis, Valkey, Memcached, LiteSpeed's cache, APCu, a file or SQLite cache, and none:
+  - Only the `wp_cache_*` functions, in the `cbuild` group, with an expiry on every entry. No Redis or Memcached call of the plugin's own.
+  - A miss is always answered from the database. Nothing is correct only because an entry was there, and nothing is correct only because it was gone by the next request.
+  - What is cached is scalars and arrays of them: no object, closure or resource, since each cache serialises its own way.
+  - An entry goes out of date by its key changing (a part's last change, the index's generation), never by a flush. `wp_cache_flush()` and `wp_cache_flush_runtime()` are banned (gate 2): they empty every other plugin's entries too.
+  - `wp_cache_flush_group()` and the `*_multiple` functions only behind `wp_cache_supports()`, with a path that works where the cache has neither.
+  - No global group: on a network, each site's entries are its own.
 - **Background work:** Action Scheduler, in the `creative-skateboard-builder` group. Actions are unique where duplicates would waste work, and idempotent always. No WP-Cron for anything that must run.
 - **Settings:** through WooCommerce's settings API (WooCommerce > Settings > Builder), with every option described in `docs/SETTINGS.md`.
 - **Internationalisation:** the spec's French section. The text domain loads on `init`. Translations ship as `.po`, `.mo` and `.l10n.php`.

@@ -36,6 +36,17 @@ final class Container {
 			Port\Logger::class         => Adapter\WooCommerceLogger::class,
 			Port\Queue::class          => Adapter\ActionSchedulerQueue::class,
 			Port\MigrationStore::class => Repository\MigrationRepository::class,
+			Port\SpecIndex::class      => Repository\SpecIndexRepository::class,
+			Port\ShopSettings::class   => Adapter\OptionShopSettings::class,
+			Port\PartCatalogue::class  => Adapter\WooPartCatalogue::class,
+			Port\ReindexStore::class   => Adapter\OptionReindexStore::class,
+			Port\SpecTables::class     => Adapter\PostSpecTables::class,
+			Port\PartSpecs::class      => Adapter\WooPartSpecs::class,
+			Port\ImportStore::class    => Adapter\OptionImportStore::class,
+			Port\Uploads::class        => Adapter\RequestUploads::class,
+			Port\Kits::class           => Adapter\NoKits::class,
+			Port\Files::class          => Adapter\DiskFiles::class,
+			Port\Reindex::class        => Service\IndexJobs::class,
 		);
 	}
 
@@ -53,17 +64,108 @@ final class Container {
 				}
 				return new Install\Migrations\MigrationRegistry( ...$migrations );
 			},
+			// The index's services are built when a migration finishes, not on every request.
+			Hooks\InstallHooks::class                   => static function ( Container $c ): object {
+				return new Hooks\InstallHooks(
+					$c->get( Install\Migrations\MigrationRunner::class ),
+					$c->get( Install\Migrations\InlineRule::class ),
+					static function () use ( $c ): Port\Reindex {
+						return $c->get( Port\Reindex::class );
+					}
+				);
+			},
+			// The settings tab extends a class WooCommerce loads on its settings screen alone, so it is built when asked for.
+			Admin\SettingsHooks::class                  => static function ( Container $c ): object {
+				return new Admin\SettingsHooks(
+					static function () use ( $c ): object {
+						return $c->get( Admin\SettingsPage::class );
+					}
+				);
+			},
+			// The Builder page's screen is built when the page is asked for.
+			Admin\BuilderHooks::class                   => static function ( Container $c ): object {
+				return new Admin\BuilderHooks(
+					static function () use ( $c ): Admin\SpecTablesScreen {
+						return $c->get( Admin\SpecTablesScreen::class );
+					},
+					static function () use ( $c ): Admin\ImportScreen {
+						return $c->get( Admin\ImportScreen::class );
+					},
+					static function () use ( $c ): Admin\CheckScreen {
+						return $c->get( Admin\CheckScreen::class );
+					}
+				);
+			},
+			// Nothing is built until a test runs or the Info tab is drawn.
+			Health\SiteHealth::class                    => static function ( Container $c ): object {
+				return new Health\SiteHealth(
+					static function () use ( $c ): Service\Health {
+						return $c->get( Service\Health::class );
+					},
+					static function () use ( $c ): Port\ShopSettings {
+						return $c->get( Port\ShopSettings::class );
+					},
+					static function () use ( $c ): Port\MigrationStore {
+						return $c->get( Port\MigrationStore::class );
+					},
+					static function () use ( $c ): Service\CatalogueCheck {
+						return $c->get( Service\CatalogueCheck::class );
+					}
+				);
+			},
+			// The check is built when the ability is run.
+			Abilities\CatalogueCheckAbility::class      => static function ( Container $c ): object {
+				return new Abilities\CatalogueCheckAbility(
+					static function () use ( $c ): Service\CatalogueCheck {
+						return $c->get( Service\CatalogueCheck::class );
+					}
+				);
+			},
+			// The panel reads the sources, so it is built when one of its hooks fires.
+			Admin\PartSpecsHooks::class                 => static function ( Container $c ): object {
+				return new Admin\PartSpecsHooks(
+					static function () use ( $c ): Admin\PartSpecsPanel {
+						return $c->get( Admin\PartSpecsPanel::class );
+					}
+				);
+			},
+			// The sources, each asked once per batch.
+			Service\SpecIndexer::class                  => static fn( Container $c ): object => new Service\SpecIndexer(
+				$c->get( Port\SpecIndex::class ),
+				$c->get( Port\ShopSettings::class ),
+				$c->get( Port\Clock::class ),
+				$c->get( Adapter\TableSpecSource::class ),
+				$c->get( Adapter\FieldSpecSource::class ),
+				$c->get( Adapter\AttributeSpecSource::class )
+			),
 		);
 	}
 
 	/**
-	 * Hookable classes, in registration order.
+	 * Hookable classes in registration order, each with the scopes its hooks can fire in (D-067).
 	 *
-	 * @return class-string<Hookable>[]
+	 * @return array<class-string<Hookable>, list<Scope>>
 	 */
 	private static function hookableClasses(): array {
 		return array(
-			Hooks\InstallHooks::class,
+			// `init`, `admin_init`, the migration job and a network's deleted site: any request.
+			Hooks\InstallHooks::class              => array( Scope::Everywhere ),
+			// A product is saved, and a job runs, on any kind of request.
+			Hooks\IndexHooks::class                => array( Scope::Everywhere ),
+			// A post type is registered on every request, and a table is saved from any.
+			Hooks\SpecTableHooks::class            => array( Scope::Everywhere ),
+			// The import's job runs wherever the queue does.
+			Hooks\ImportHooks::class               => array( Scope::Everywhere ),
+			// WooCommerce's settings screen.
+			Admin\SettingsHooks::class             => array( Scope::Admin ),
+			Admin\PartSpecsHooks::class            => array( Scope::Admin ),
+			Admin\BuilderHooks::class              => array( Scope::Admin ),
+			Hooks\CliHooks::class                  => array( Scope::Cli ),
+			// Site Health's page and Info tab are wp-admin's; its weekly check runs in cron, and WP-CLI can ask too. The
+			// page asks for the Catalogue check's test over REST.
+			Health\SiteHealth::class               => array( Scope::Admin, Scope::Cron, Scope::Cli, Scope::Rest ),
+			// WordPress builds its abilities when something first asks for one, on any kind of request.
+			Abilities\CatalogueCheckAbility::class => array( Scope::Everywhere ),
 		);
 	}
 
@@ -75,18 +177,25 @@ final class Container {
 	private array $instances = array();
 
 	/**
-	 * The Hookable classes this container builds, in registration order.
+	 * The Hookable classes this container builds, in registration order, each with its scopes.
 	 *
-	 * @var class-string<Hookable>[]
+	 * @var array<class-string<Hookable>, list<Scope>>
 	 */
 	private array $hookableClasses;
+
+	/**
+	 * The Hookable classes already handed out.
+	 *
+	 * @var array<class-string<Hookable>, true>
+	 */
+	private array $handedOut = array();
 
 	/**
 	 * Constructor.
 	 *
 	 * @since 0.1.0
 	 *
-	 * @param class-string<Hookable>[]|null $hookableClasses The Hookable classes, for tests; the plugin's own when null.
+	 * @param array<class-string<Hookable>, list<Scope>>|null $hookableClasses The Hookable classes and their scopes, for tests; the plugin's own when null.
 	 */
 	public function __construct( ?array $hookableClasses = null ) {
 		$this->hookableClasses = $hookableClasses ?? self::hookableClasses();
@@ -146,16 +255,23 @@ final class Container {
 	}
 
 	/**
-	 * Every class that attaches hooks, built and ready.
+	 * The classes that attach hooks in any of the scopes given, built and ready, in registration order. Each is handed
+	 * out once, so a Hookable with two scopes is not registered twice when a request turns out to be in both. One
+	 * with no scope the request is in is never built.
 	 *
-	 * @since 0.1.0
+	 * @since 0.3.0
 	 *
-	 * @return Hookable[]
+	 * @param Scope ...$scopes The scopes the request is in.
+	 * @return list<Hookable>
 	 */
-	public function hookables(): array {
+	public function hookablesFor( Scope ...$scopes ): array {
 		$out = array();
-		foreach ( $this->hookableClasses as $id ) {
-			$out[] = $this->get( $id );
+		foreach ( $this->hookableClasses as $id => $fires ) {
+			if ( isset( $this->handedOut[ $id ] ) || array() === array_intersect( array_column( $fires, 'name' ), array_column( $scopes, 'name' ) ) ) {
+				continue;
+			}
+			$this->handedOut[ $id ] = true;
+			$out[]                  = $this->get( $id );
 		}
 		return $out;
 	}

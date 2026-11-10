@@ -9,9 +9,15 @@ declare( strict_types=1 );
 
 namespace CreativeBranding\SkateboardBuilder\Hooks;
 
+use Closure;
 use CreativeBranding\SkateboardBuilder\Hookable;
+use CreativeBranding\SkateboardBuilder\Install\Migrations\InlineRule;
 use CreativeBranding\SkateboardBuilder\Install\Migrations\MigrationRunner;
+use CreativeBranding\SkateboardBuilder\Install\Migrations\RunResult;
 use CreativeBranding\SkateboardBuilder\Install\Uninstaller;
+use CreativeBranding\SkateboardBuilder\Install\Sites;
+use CreativeBranding\SkateboardBuilder\Install\Activator;
+use CreativeBranding\SkateboardBuilder\Port\Reindex;
 use CreativeBranding\SkateboardBuilder\Support\Options;
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -19,8 +25,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * Where migrations run when `cbuild_db_version` is behind (D-022): inline on `admin_init` for a user who can manage
- * WooCommerce on an admin page that is not admin-ajax.php, admin-post.php or cron; everywhere else one
+ * Where migrations run when `cbuild_db_version` is behind (D-022): inline on `admin_init` where
+ * the InlineRule allows it; everywhere else one
  * `cbuild_migrate` job is queued on `init`, and runs the migrations off the request. Also the `cbuild_migrate` action
  * itself, and `wpmu_drop_tables` for a deleted network site (D-025).
  */
@@ -31,9 +37,11 @@ final class InstallHooks implements Hookable {
 	 *
 	 * @since 0.1.0
 	 *
-	 * @param MigrationRunner $runner The migration runner.
+	 * @param MigrationRunner    $runner  The migration runner.
+	 * @param InlineRule         $inline  Whether this request may run migrations itself.
+	 * @param Closure(): Reindex $reindex Builds what asks for every part to be read again.
 	 */
-	public function __construct( private MigrationRunner $runner ) {}
+	public function __construct( private MigrationRunner $runner, private InlineRule $inline, private Closure $reindex ) {}
 
 	/**
 	 * Attach hooks.
@@ -42,6 +50,7 @@ final class InstallHooks implements Hookable {
 	 */
 	public function register(): void {
 		add_action( 'init', array( $this, 'queueWhenBehind' ) );
+		add_action( 'init', array( $this, 'askWhenOwed' ) );
 		add_action( 'admin_init', array( $this, 'runWhenBehind' ) );
 		add_action( Options::JOB_MIGRATE, array( $this, 'runJob' ) );
 		add_filter( 'wpmu_drop_tables', array( Uninstaller::class, 'siteTables' ) );
@@ -54,8 +63,20 @@ final class InstallHooks implements Hookable {
 	 * @since 0.1.0
 	 */
 	public function queueWhenBehind(): void {
-		if ( ! self::inlineAllowed() && $this->runner->due() ) {
+		if ( ! $this->inline->allows() && $this->runner->due() ) {
 			$this->runner->queue();
+		}
+	}
+
+	/**
+	 * On every request: ask for the reindex an activation without a queue could not (D-095). A site that owes none
+	 * spends no query here; one that does looks for the queue's tables until it finds them.
+	 *
+	 * @since 0.3.0
+	 */
+	public function askWhenOwed(): void {
+		if ( Activator::owesReindex() && Sites::hasQueueTables() ) {
+			Activator::settle( true, ( $this->reindex )() );
 		}
 	}
 
@@ -65,9 +86,9 @@ final class InstallHooks implements Hookable {
 	 * @since 0.1.0
 	 */
 	public function runWhenBehind(): void {
-		if ( self::inlineAllowed() && $this->runner->needed() ) {
+		if ( $this->inline->allows() && $this->runner->needed() ) {
 			// A short budget: a long migration must not hold a manager's every admin page. The job takes the rest.
-			$this->runner->run( MigrationRunner::INLINE_BUDGET );
+			$this->finished( $this->runner->run( MigrationRunner::INLINE_BUDGET ) );
 		}
 	}
 
@@ -77,22 +98,18 @@ final class InstallHooks implements Hookable {
 	 * @since 0.1.0
 	 */
 	public function runJob(): void {
-		$this->runner->run( MigrationRunner::BUDGET, true );
+		$this->finished( $this->runner->run( MigrationRunner::BUDGET, true ) );
 	}
 
 	/**
-	 * Whether this request may run a migration inline: a signed-in user with `manage_woocommerce`, on an admin page
-	 * that is not an AJAX, admin-post or cron request (D-022).
+	 * After a run that brought the schema up to date, every part is read again: an upgrade arrives with no
+	 * activation, and the version before may have had no index, or have read a spec differently.
 	 *
-	 * @since 0.1.0
+	 * @param RunResult $result How the run ended.
 	 */
-	public static function inlineAllowed(): bool {
-		if ( ! is_admin() || wp_doing_ajax() || wp_doing_cron() ) {
-			return false;
+	private function finished( RunResult $result ): void {
+		if ( RunResult::Finished === $result ) {
+			( $this->reindex )()->requestReindex();
 		}
-		if ( isset( $GLOBALS['pagenow'] ) && 'admin-post.php' === $GLOBALS['pagenow'] ) {
-			return false;
-		}
-		return current_user_can( 'manage_woocommerce' );
 	}
 }

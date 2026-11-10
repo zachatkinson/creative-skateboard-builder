@@ -21,6 +21,30 @@ if ( 0 === wc_get_product_id_by_sku( 'smoke-test-deck' ) ) {
 	$cbuild_product->save();
 }
 
+// A variable product with two variations, for the Part specs panel inside a variation (milestone 3).
+if ( 0 === wc_get_product_id_by_sku( 'panel-test-trucks' ) ) {
+	$cbuild_size = new WC_Product_Attribute();
+	$cbuild_size->set_name( 'Size' );
+	$cbuild_size->set_options( array( '139', '149' ) );
+	$cbuild_size->set_visible( true );
+	$cbuild_size->set_variation( true );
+	$cbuild_trucks = new WC_Product_Variable();
+	$cbuild_trucks->set_name( 'Panel test trucks' );
+	$cbuild_trucks->set_slug( 'panel-test-trucks' );
+	$cbuild_trucks->set_sku( 'panel-test-trucks' );
+	$cbuild_trucks->set_attributes( array( $cbuild_size ) );
+	$cbuild_trucks->set_status( 'publish' );
+	$cbuild_trucks->save();
+	foreach ( array( '139', '149' ) as $cbuild_option ) {
+		$cbuild_variation = new WC_Product_Variation();
+		$cbuild_variation->set_parent_id( $cbuild_trucks->get_id() );
+		$cbuild_variation->set_attributes( array( 'size' => $cbuild_option ) );
+		$cbuild_variation->set_sku( 'panel-test-trucks-' . $cbuild_option );
+		$cbuild_variation->set_regular_price( '30' );
+		$cbuild_variation->save();
+	}
+}
+
 // wp-env's uploads folder does not hold the placeholder image WooCommerce's installer recorded, so every product
 // without a photo asked for a file that is not there. With no attachment set, WooCommerce serves the one it ships.
 $cbuild_placeholder = (int) get_option( 'woocommerce_placeholder_image', 0 );

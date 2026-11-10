@@ -45,16 +45,17 @@ It is the agency's showpiece, built to the twelve-dimension audit in `docs/AUDIT
 - `composer test:coverage`: unit tests with the domain's floors: 100 % of lines and branches in `src/Domain` (Xdebug's path coverage, since pcov measures lines only)
 - `composer test:coverage:all`: the unit and integration suites' line coverage merged, with the floor: 95 % of all of `src/`, each file's direct-access guard left out (D-050, D-061). Needs the integration site, which `npm run env:start` starts with Xdebug in coverage mode
 - `composer test:benchmark`: the server budgets
+- `composer test:benchmark:integration`: `tests/Benchmark` in the integration site with Xdebug off: 2,000 parts indexed, exported, checked and dry-run, each inside a request
 - `composer infection`: 100 % MSI on `src/Domain`, 95 % elsewhere. In the domain, a mutant only static analysis catches must be in `tools/infection-static-allowed.txt` (D-063)
 - `composer api:check`: the public API against `docs/HOOKS.md`, `tests/Fixtures/api-surface.json` and the changelog's entry for each item's version. `composer api:snapshot` rewrites the snapshot; do it, `HOOKS.md` and the changelog in the same commit as the change
 - `composer check`: lint, analyse, arch, gates, unit tests and api:check
 - `npm run env:start`: two wp-env environments on WordPress 7.1.4, WooCommerce 11.2.2 and PHP 8.5: the browser site at :8898 (`.wp-env.json`, with Plugin Check) and the integration site at :8899 (`.wp-env.tests.json`, D-047). `npx wp-env start` starts the browser site alone; a command for the integration site takes `--config=.wp-env.tests.json`, and `--xdebug=coverage` when it starts it. `npm run env:oldest` switches to WordPress 7.0 with WooCommerce 11.2.0, and `npm run env:newest` back. `@wordpress/env` is pinned to the major Creative Search uses (^12). Search still runs its integration suite in wp-env's built-in tests site, which wp-env 12 deprecates
-- `composer test:integration`: PHPUnit 9.6 from `tools/integration/`, inside the integration site, as Search's `tools/integration.sh`. The variants are `composer test:integration:hpos-off`, `:hpos-sync`, `:multisite` and `:object-cache`
+- `composer test:integration`: PHPUnit 9.6 from `tools/integration/`, inside the integration site, as Search's `tools/integration.sh`. The variants are `composer test:integration:hpos-off`, `:hpos-sync`, `:multisite` and `:object-cache`. `:object-cache` starts a Redis 8.10 server on wp-env's network with Redis Object Cache 3.0.0's drop-in, and removes both after (`tools/object-cache.sh`, D-066)
 - `npm run build` / `npm run start`: `wp-scripts --experimental-modules` (script modules, Interactivity API)
 - `npm run types`: the state route's TypeScript types, generated from its JSON Schema. CI fails if the tree changes
 - `npm run check`: ESLint, Stylelint, Prettier, `tsc --noEmit` and Vitest
 - `npm run mutate:js`: StrykerJS on the builder's store (90 %)
-- `npm run budget`: the script under 15 kB and the styles under 10 kB, compressed
+- `npm run budget`: the script under 15 kB and the styles under 10 kB, compressed with Brotli at quality 11
 - `npm run test:e2e`: Playwright with axe. The projects are `chromium-desktop`, `chromium-phone`, `webkit-desktop`, `webkit-phone`, `firefox-desktop`, `firefox-phone`, `no-js`, `fr-ca`, `rtl` and `visual`. `visual` runs only in CI's Linux container, so its baselines stay stable
 - `npm run lhci`: Lighthouse CI on the builder page (LCP, CLS, TBT, SEO)
 - `npm run plugin-check`: builds the zip and runs Plugin Check on it in wp-env. Any error or warning fails

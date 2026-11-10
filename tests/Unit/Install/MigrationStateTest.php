@@ -11,6 +11,7 @@ namespace CreativeBranding\SkateboardBuilder\Tests\Unit\Install;
 
 use CreativeBranding\SkateboardBuilder\Install\Migrations\Cursor;
 use CreativeBranding\SkateboardBuilder\Install\Migrations\MigrationState;
+use CreativeBranding\SkateboardBuilder\Install\Migrations\MigrationStatus;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -20,18 +21,18 @@ final class MigrationStateTest extends TestCase {
 
 	public function test_pending_then_started_advanced_finished(): void {
 		$state = MigrationState::pending( 'm' );
-		self::assertSame( MigrationState::PENDING, $state->status );
+		self::assertSame( MigrationStatus::Pending, $state->status );
 		self::assertFalse( $state->isDone() );
 		self::assertSame( 0, $state->attempts );
 
 		$state = $state->started( 100 );
-		self::assertSame( MigrationState::RUNNING, $state->status );
+		self::assertSame( MigrationStatus::Running, $state->status );
 		self::assertSame( 100, $state->startedAt );
 		self::assertSame( 1, $state->attempts );
 
 		$state = $state->advanced( Cursor::at( 3 ) );
 		self::assertSame( 3, $state->cursor->position );
-		self::assertSame( MigrationState::RUNNING, $state->status );
+		self::assertSame( MigrationStatus::Running, $state->status );
 
 		$state = $state->finished( 150 );
 		self::assertTrue( $state->isDone() );
@@ -42,7 +43,7 @@ final class MigrationStateTest extends TestCase {
 
 	public function test_a_second_start_keeps_the_first_start_and_counts_the_attempt(): void {
 		$state = MigrationState::pending( 'm' )->started( 100 )->advanced( Cursor::at( 2 ) )->failed( 'boom', 160 );
-		self::assertSame( MigrationState::FAILED, $state->status );
+		self::assertSame( MigrationStatus::Failed, $state->status );
 		self::assertSame( 'boom', $state->error );
 		self::assertSame( 2, $state->cursor->position, 'the cursor stays for the resume' );
 
@@ -59,7 +60,7 @@ final class MigrationStateTest extends TestCase {
 		self::assertSame( $state->toArray(), $back->toArray() );
 		self::assertSame(
 			array(
-				'status'      => MigrationState::FAILED,
+				'status'      => 'failed',
 				'cursor'      => array(
 					'position' => 'p',
 					'done'     => false,
@@ -82,7 +83,7 @@ final class MigrationStateTest extends TestCase {
 	}
 
 	public function test_malformed_data_reads_as_pending(): void {
-		self::assertSame( MigrationState::PENDING, MigrationState::fromArray( 'm', 'junk' )->status );
+		self::assertSame( MigrationStatus::Pending, MigrationState::fromArray( 'm', 'junk' )->status );
 		$odd = MigrationState::fromArray(
 			'm',
 			array(
@@ -94,7 +95,7 @@ final class MigrationStateTest extends TestCase {
 				'error'       => array(),
 			)
 		);
-		self::assertSame( MigrationState::PENDING, $odd->status );
+		self::assertSame( MigrationStatus::Pending, $odd->status );
 		self::assertNull( $odd->cursor->position );
 		self::assertNull( $odd->startedAt );
 		self::assertNull( $odd->finishedAt );
@@ -112,7 +113,7 @@ final class MigrationStateTest extends TestCase {
 		$running = MigrationState::fromArray(
 			'm',
 			array(
-				'status'   => MigrationState::RUNNING,
+				'status'   => 'running',
 				'retry_at' => 160,
 			)
 		);
@@ -120,5 +121,15 @@ final class MigrationStateTest extends TestCase {
 		$old = $failed->toArray();
 		unset( $old['retry_at'] );
 		self::assertFalse( MigrationState::fromArray( 'm', $old )->isWaiting( 0 ), 'a state saved before the wait existed is tried at once' );
+	}
+
+	public function test_a_status_reads_from_the_store_and_anything_else_is_pending(): void {
+		self::assertSame( array( 'pending', 'running', 'done', 'failed' ), array_column( MigrationStatus::cases(), 'value' ), 'what cbuild_migrations holds' );
+		foreach ( MigrationStatus::cases() as $status ) {
+			self::assertSame( $status, MigrationStatus::read( $status->value ) );
+		}
+		foreach ( array( 'DONE', '', 1, null, true, array( 'done' ) ) as $junk ) {
+			self::assertSame( MigrationStatus::Pending, MigrationStatus::read( $junk ) );
+		}
 	}
 }
