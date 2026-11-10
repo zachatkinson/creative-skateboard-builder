@@ -4,7 +4,7 @@
  *
  * @package CreativeBranding\SkateboardBuilder
  *
- * @var list<array{label: string, open: bool, fields: list<array{id: string, name: string, label: string, value: string, note: string, options: array<int|string, string>|null, charts: array<string, array<string, string>>}>}> $groups The groups of fields.
+ * @var list<array{label: string, open: bool, fields: list<array{id: string, name: string, label: string, value: string, note: string, options: array<int|string, string>|null, charts: array<string, array<string, string>>}>}> $groups The groups of fields. None on the tab of a product no kit takes.
  * @var bool $whole Whether this is the tab's panel (true) or a variation's fields (false).
  */
 
@@ -27,12 +27,15 @@ $cbuild_row = $whole ? 'form-field' : 'form-row form-row-full';
 	<legend><strong><?php esc_html_e( 'Part specs', 'creative-skateboard-builder' ); ?></strong></legend>
 <?php endif; ?>
 	<p class="<?php echo esc_attr( $cbuild_row ); ?>">
-		<?php if ( $whole ) : ?>
+		<?php if ( array() === $groups ) : ?>
+			<?php esc_html_e( 'No kit takes this product, so the builder needs nothing of it. To make it a part, put it in a category or brand that a kit\'s slot takes, or name it in a slot, then save. Its fields appear here.', 'creative-skateboard-builder' ); ?>
+		<?php elseif ( $whole ) : ?>
 			<?php esc_html_e( 'What the builder needs to know of this part to check that it fits. Fill in the group that matches it and leave the rest. A measurement takes a decimal or a fraction: 8.25 or 8 1/4. On a variable product, each variation takes these values unless it has its own.', 'creative-skateboard-builder' ); ?>
 		<?php else : ?>
 			<?php esc_html_e( 'A field left blank takes the parent product\'s value.', 'creative-skateboard-builder' ); ?>
 		<?php endif; ?>
 	</p>
+	<?php // A closed group holds nothing, so its fields are disabled and add nothing to the product's form; the screen's script enables them when the group opens (issue #23). ?>
 	<?php foreach ( $groups as $cbuild_group ) : ?>
 		<details<?php echo $cbuild_group['open'] ? ' open' : ''; ?>>
 			<summary><?php echo esc_html( $cbuild_group['label'] ); ?></summary>
@@ -47,6 +50,7 @@ $cbuild_row = $whole ? 'form-field' : 'form-row form-row-full';
 							name="<?php echo esc_attr( $cbuild_field['name'] ); ?>"
 							value="<?php echo esc_attr( $cbuild_field['value'] ); ?>"
 							autocomplete="off"
+							<?php disabled( ! $cbuild_group['open'] ); ?>
 							<?php if ( '' !== $cbuild_field['note'] ) : ?>
 								aria-describedby="<?php echo esc_attr( $cbuild_field['id'] . '-note' ); ?>"
 							<?php endif; ?>
@@ -56,6 +60,7 @@ $cbuild_row = $whole ? 'form-field' : 'form-row form-row-full';
 							class="short"
 							id="<?php echo esc_attr( $cbuild_field['id'] ); ?>"
 							name="<?php echo esc_attr( $cbuild_field['name'] ); ?>"
+							<?php disabled( ! $cbuild_group['open'] ); ?>
 							<?php if ( '' !== $cbuild_field['note'] ) : ?>
 								aria-describedby="<?php echo esc_attr( $cbuild_field['id'] . '-note' ); ?>"
 							<?php endif; ?>

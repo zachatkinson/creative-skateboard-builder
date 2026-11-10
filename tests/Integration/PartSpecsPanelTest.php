@@ -391,6 +391,8 @@ final class PartSpecsPanelTest extends IntegrationTestCase {
 		};
 		$kits     = new \CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\InMemoryKits();
 		$kits->add( 5, KitDocuments::kit(), array() );
+		// The kit takes each of them, so each has its fields.
+		$kits->slotsOf = array_fill_keys( array( ...$ids, $parent->get_id() ), array( 'trucks' ) );
 		$panel    = new PartSpecsPanel(
 			$this->service( SpecWriter::class ),
 			new SpecIndexer( $this->service( \CreativeBranding\SkateboardBuilder\Port\SpecIndex::class ), $this->service( \CreativeBranding\SkateboardBuilder\Port\ShopSettings::class ), $this->service( \CreativeBranding\SkateboardBuilder\Port\Clock::class ), $counting ),
@@ -663,5 +665,104 @@ final class PartSpecsPanelTest extends IntegrationTestCase {
 		$fields      = $this->fields( $variation );
 		self::assertSame( 1, substr_count( $fields, '<details open>' ) );
 		self::assertMatchesRegularExpression( '#<details open>\s*<summary>Trucks</summary>#', $fields );
+	}
+
+	/**
+	 * The names of the controls a browser would send: those not disabled.
+	 *
+	 * @return list<string>
+	 */
+	private static function sent( string $html ): array {
+		preg_match_all( '#<(?:input|select)\b[^>]*>#s', $html, $controls );
+		$names = array();
+		foreach ( $controls[0] as $control ) {
+			if ( 1 === preg_match( '#\sname="([^"]+)"#', $control, $name ) && 1 !== preg_match( '#\sdisabled\b#', $control ) ) {
+				$names[] = $name[1];
+			}
+		}
+		return $names;
+	}
+
+	/**
+	 * Issue #23: 21 fields in every variation, 15 variations to a page, pushed a product's form past PHP's
+	 * max_input_vars of 1,000, and PHP drops what is over with no error. A group that is closed holds nothing to
+	 * send, so its fields are drawn disabled; the screen's script enables them when it opens.
+	 */
+	public function test_a_closed_group_sends_nothing_so_a_part_with_no_specs_adds_no_field_to_the_form(): void {
+		list( $parent, $variation ) = self::variable();
+		self::assertSame( array(), self::sent( $this->fields( $variation ) ), 'a variation with no specs' );
+		self::assertSame( array(), self::sent( $this->panel( $parent ) ), 'and its parent' );
+		self::assertSame( 21, substr_count( $this->fields( $variation ), ' disabled' ), 'every field is still drawn' );
+
+		$variation->update_meta_data( Options::META_SPECS, array( 'wheel_diameter' => '54.0000' ) );
+		$variation->save();
+		self::assertSame( array( 'cbuild_variation_specs[0][wheel_diameter]' ), self::sent( $this->fields( $variation ) ), 'one with specs sends its open groups alone' );
+
+		$deck = self::simple( array( 'deck_width' => '8.2500' ) );
+		self::assertSame(
+			array( 'cbuild_specs[deck_width]', 'cbuild_specs[deck_length]', 'cbuild_specs[wheelbase]', 'cbuild_specs[hole_pattern]' ),
+			self::sent( $this->panel( $deck ) )
+		);
+	}
+
+	public function test_a_save_that_sends_no_field_of_a_group_keeps_what_the_part_has(): void {
+		$this->as( 'shop_manager' );
+		$deck = self::simple(
+			array(
+				'deck_width'   => '8.2500',
+				'bearing_bore' => '8.0000',
+			)
+		);
+		// The deck's group was open and its width changed; the bearings' group never opened, and sent nothing.
+		$saved = $this->send( $deck, array( 'deck_width' => '8.5' ) );
+		self::assertSame(
+			array(
+				'deck_width'   => '8.5000',
+				'bearing_bore' => '8.0000',
+			),
+			$saved->get_meta( Options::META_SPECS, true )
+		);
+	}
+
+	/**
+	 * Issue #23, the part that needs kits: where the shop has kits and none takes a product, the builder needs
+	 * nothing of it, and its screen is left alone.
+	 */
+	public function test_a_product_no_kit_takes_has_no_fields_and_its_tab_says_why(): void {
+		$trucks                       = self::factory()->term->create(
+			array(
+				'taxonomy' => 'product_cat',
+				'name'     => 'Trucks',
+			)
+		);
+		$slots                        = KitDocuments::slots();
+		$slots['slots'][1]['sources'] = array( 'categories' => array( $trucks ) );
+		KitFactory::kit( 'Complete', array( Options::META_KIT_SLOTS => $slots ) );
+
+		// A shirt and its sizes: no kit takes them.
+		list( $shirt, $size ) = self::variable();
+		self::assertSame( '', $this->fields( $size ), 'a variation draws nothing' );
+		$panel = $this->panel( $shirt );
+		self::assertStringContainsString( 'id="cbuild_part_specs"', $panel, 'the tab still has its panel' );
+		self::assertStringContainsString( 'No kit takes this product, so the builder needs nothing of it. To make it a part, put it in a category or brand that a kit&#039;s slot takes, or name it in a slot, then save. Its fields appear here.', $panel );
+		self::assertSame( 0, substr_count( $panel, '<details' ) );
+		self::assertSame( array(), self::sent( $panel ) );
+
+		// One that holds specs all the same keeps its fields, so they can be seen and cleared.
+		$size->update_meta_data( Options::META_SPECS, array( 'wheel_diameter' => '54.0000' ) );
+		$size->save();
+		$this->hooks = null;
+		self::assertSame( 8, substr_count( $this->fields( $size ), '<details' ) );
+
+		// A part of a kit is drawn as ever.
+		wp_set_object_terms( $shirt->get_id(), array( $trucks ), 'product_cat' );
+		$this->hooks = null;
+		self::assertSame( 8, substr_count( $this->panel( $shirt ), '<details' ) );
+	}
+
+	public function test_a_shop_with_no_kit_yet_draws_every_products_fields(): void {
+		list( $parent, $variation ) = self::variable();
+		self::assertSame( 8, substr_count( $this->fields( $variation ), '<details' ) );
+		self::assertSame( 8, substr_count( $this->panel( $parent ), '<details' ) );
 	}
 }

@@ -13,7 +13,11 @@
  * Two things are jQuery's alone: the Variations tab announces its rows with a jQuery event
  * (assets/js/admin/meta-boxes-product-variation.js:636), which the DOM never hears, and a row opens with a jQuery
  * animation, whose end only jQuery can promise. So jQuery is used for those two and nothing else. No data is read
- * and no markup is built. Focus follows the scroll.
+ * and no markup is built. Focus follows the scroll, and a frame later what has focus is checked to be in view still.
+ *
+ * It also keeps the product's form small (issue #23). A group of fields that is closed is drawn with its fields
+ * disabled, so a part with no specs sends none: 21 fields in each of 15 variations took a product's form past PHP's
+ * max_input_vars on a host that leaves it at 1,000. A group's fields are enabled when it opens and stay so.
  */
 
 /**
@@ -36,6 +40,72 @@ const PANEL = 'cbuild_part_specs';
 const VARIATIONS = 'variable_product_options';
 // A group of fields opens from its summary, so that comes first where the fields are grouped.
 const CONTROLS = 'summary, input:not([type="hidden"]), select, textarea';
+
+const FIELDS = '.cbuild-part-specs';
+
+/**
+ * Enables a group's fields, so the form sends them.
+ *
+ * @param group The group: a details element.
+ */
+export function enable( group: Element ): void {
+	group
+		.querySelectorAll< HTMLInputElement | HTMLSelectElement >(
+			'input:disabled, select:disabled'
+		)
+		.forEach( ( control ) => {
+			control.disabled = false;
+		} );
+}
+
+/**
+ * Enables each of the panel's groups as it opens, in the product's tab and in every variation, whenever WooCommerce
+ * loads it. A group that closes again keeps its fields enabled: what was typed in it is still to be sent.
+ *
+ * @param doc The product screen.
+ */
+export function groups( doc: Document ): void {
+	// A details element's toggle does not bubble, so it is heard on its way down.
+	doc.addEventListener(
+		'toggle',
+		( event ) => {
+			const group = event.target;
+			if (
+				group instanceof HTMLDetailsElement &&
+				group.open &&
+				group.closest( FIELDS )
+			) {
+				enable( group );
+			}
+		},
+		true
+	);
+}
+
+/**
+ * A frame after a jump, brings what has focus back into view if the page has moved under it: a notice above that
+ * WordPress moves or removes once the page is ready shifts everything below.
+ *
+ * @param view   The window, or as much of it as this needs.
+ * @param target What focus moved to.
+ */
+export function settle(
+	view: {
+		innerHeight: number;
+		requestAnimationFrame?: ( run: () => void ) => unknown;
+	} | null,
+	target: Element | null
+): void {
+	if ( ! view || ! target ) {
+		return;
+	}
+	view.requestAnimationFrame?.( () => {
+		const box = target.getBoundingClientRect();
+		if ( box.top < 0 || box.bottom > view.innerHeight ) {
+			target.scrollIntoView( { block: 'center' } );
+		}
+	} );
+}
 
 /**
  * What an address names: the panel, a variation's ID, or nothing of ours.
@@ -69,9 +139,10 @@ export function open( doc: Document, hash: string, $: Query ): void {
 	// Scrolled to, and focus moved to its first control, so a keyboard or a screen reader lands where the eye does.
 	const show = ( element: Element | null ) => {
 		element?.scrollIntoView( { block: 'start' } );
-		element
-			?.querySelector< HTMLElement >( CONTROLS )
-			?.focus( { preventScroll: true } );
+		const control =
+			element?.querySelector< HTMLElement >( CONTROLS ) ?? null;
+		control?.focus( { preventScroll: true } );
+		settle( doc.defaultView, control );
 	};
 	const tab = ( id: string ) =>
 		doc
@@ -81,9 +152,15 @@ export function open( doc: Document, hash: string, $: Query ): void {
 	const own = doc.getElementById( field( hash ) ?? '' );
 	if ( own ) {
 		tab( PANEL );
-		own.closest( 'details' )?.setAttribute( 'open', '' );
+		const group = own.closest( 'details' );
+		if ( group ) {
+			// Open, and its fields enabled before focus moves to one: a closed group's are disabled (issue #23).
+			group.setAttribute( 'open', '' );
+			enable( group );
+		}
 		own.scrollIntoView( { block: 'center' } );
 		own.focus( { preventScroll: true } );
+		settle( doc.defaultView, own );
 		return;
 	}
 	const part = named( hash );
@@ -131,6 +208,7 @@ export function open( doc: Document, hash: string, $: Query ): void {
  * @param win The window.
  */
 export function start( win: Window & { jQuery?: Query } ): void {
+	groups( win.document );
 	const $ = win.jQuery;
 	if ( ! $ ) {
 		return;

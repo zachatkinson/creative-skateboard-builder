@@ -19,9 +19,17 @@ All notable changes to this project are documented here. The format follows [Kee
 - Site Health's Info tab shows the index's state in words, and copies its code. The ability's schema descriptions are translated.
 - The settings screen shows a problem with the order of the sources under the order alone.
 - The Part specs tab opens the group a product's kit slot needs, as well as any group with a value.
+- Where the shop has kits and none takes a product, its variations draw no Part specs fields and its tab says how to make it a part (D-105).
 - `composer test:integration:yoast` runs the tests that need Yoast SEO, with Yoast SEO 28.8 put in the integration site for the run (D-102).
 - The index's and the import's services are built when a part is saved or a job runs, not on every request.
 - `composer api:check` also holds Site Health's test ids, each WP-CLI command's arguments and flags, the CSV's columns and each ability's output schema.
+
+## [0.3.1] - 2026-11-10
+
+### Fixed
+
+- The Part specs panel no longer pushes a product's edit form past PHP's `max_input_vars` (issue #23). It added 21 named fields to the product's tab and to each variation WooCommerce loads, 15 to a page, on every product. Where the limit is 1,000, a common host default, PHP kept the first 1,000 fields of an Update and dropped the rest without an error: other plugins' fields, the short description, the slug. A group of fields that is closed is now drawn disabled and sends nothing, and the screen's script enables a group when it opens. A part with no specs adds no field to the form; one with specs adds its open groups'. A group that sends nothing keeps what the part has.
+- A link to a variation's fields (`#cbuild_variation_<id>`) checks a frame later that the control it moved focus to is still in view, and scrolls it back if the page moved.
 
 ## [0.3.0] - 2026-11-10
 

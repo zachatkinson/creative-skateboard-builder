@@ -44,8 +44,13 @@ Yes. Activating it for the network installs it on every site, and a site added l
 * A kit stays out of your catalogue, search results, feeds and sitemaps, Yoast SEO's among them.
 * The Catalogue check now reads your kits: a slot with no parts or nothing in stock, a part missing a spec its slot needs, a ready build that no longer fits.
 * The Part specs tab opens the group of fields a product's slot needs.
+* A product that no kit takes no longer shows Part specs fields in its variations.
 * When a value on the Part specs tab is not saved, the notice is now a link that takes you to its field.
 * Site Health's Info tab shows the state of the specs index in words.
+
+= 0.3.1 =
+* Fixed: the Part specs fields no longer add to what a product's edit form sends unless their group is open. On a host that limits a form to 1,000 fields, a product with many variations could go over the limit when updated, and other plugins' settings on that product, its short description or its slug could go unsaved.
+* A link to a variation's Part specs now checks a moment later that the fields are still in view.
 
 = 0.3.0 =
 * The index of part specs: one value per part and spec, from the part's own fields, an attribute the shop maps or a maker's size chart.

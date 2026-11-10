@@ -9,7 +9,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-11-10T20:50:34+00:00\n"
+"POT-Creation-Date: 2026-11-10T21:39:50+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: creative-skateboard-builder\n"
@@ -316,151 +316,151 @@ msgid "%s mm"
 msgstr ""
 
 #: src/Admin/Labels.php:170
-#: src/Admin/PartSpecsPanel.php:304
+#: src/Admin/PartSpecsPanel.php:331
 msgid "Yes"
 msgstr ""
 
 #: src/Admin/Labels.php:170
-#: src/Admin/PartSpecsPanel.php:305
+#: src/Admin/PartSpecsPanel.php:332
 msgid "No"
 msgstr ""
 
-#: src/Admin/PartSpecsPanel.php:126
+#: src/Admin/PartSpecsPanel.php:148
 #: src/Admin/SettingsPage.php:77
 #: templates/admin/part-specs.php:27
 msgid "Part specs"
 msgstr ""
 
 #. translators: 1: a variation's ID. 2: a sentence saying what was not saved.
-#: src/Admin/PartSpecsPanel.php:252
+#: src/Admin/PartSpecsPanel.php:277
 #, php-format
 msgid "Variation #%1$d: %2$s"
 msgstr ""
 
-#: src/Admin/PartSpecsPanel.php:343
+#: src/Admin/PartSpecsPanel.php:387
 msgid "Deck"
 msgstr ""
 
-#: src/Admin/PartSpecsPanel.php:344
+#: src/Admin/PartSpecsPanel.php:388
 msgid "Trucks"
 msgstr ""
 
-#: src/Admin/PartSpecsPanel.php:345
+#: src/Admin/PartSpecsPanel.php:389
 msgid "Wheels"
 msgstr ""
 
-#: src/Admin/PartSpecsPanel.php:346
+#: src/Admin/PartSpecsPanel.php:390
 msgid "Risers"
 msgstr ""
 
-#: src/Admin/PartSpecsPanel.php:347
+#: src/Admin/PartSpecsPanel.php:391
 msgid "Hardware"
 msgstr ""
 
-#: src/Admin/PartSpecsPanel.php:348
+#: src/Admin/PartSpecsPanel.php:392
 msgid "Bearings"
 msgstr ""
 
-#: src/Admin/PartSpecsPanel.php:349
+#: src/Admin/PartSpecsPanel.php:393
 msgid "Grip tape"
 msgstr ""
 
-#: src/Admin/PartSpecsPanel.php:350
+#: src/Admin/PartSpecsPanel.php:394
 msgid "Sold in sets"
 msgstr ""
 
-#: src/Admin/PartSpecsPanel.php:373
+#: src/Admin/PartSpecsPanel.php:417
 msgid "None"
 msgstr ""
 
-#: src/Admin/PartSpecsPanel.php:376
+#: src/Admin/PartSpecsPanel.php:420
 msgid "Leave as it is"
 msgstr ""
 
-#: src/Admin/PartSpecsPanel.php:382
+#: src/Admin/PartSpecsPanel.php:426
 msgid "Maker's chart and size"
 msgstr ""
 
-#: src/Admin/PartSpecsPanel.php:384
+#: src/Admin/PartSpecsPanel.php:428
 msgid "A truck that names its size in a chart takes that row's figures."
 msgstr ""
 
 #. translators: 1: a spec's value with its unit, such as 32 in. 2: a product attribute's name, such as Length.
-#: src/Admin/PartSpecsPanel.php:433
+#: src/Admin/PartSpecsPanel.php:477
 #, php-format
 msgid "In use: %1$s, from the parent product's %2$s attribute."
 msgstr ""
 
 #. translators: 1: a spec's value with its unit, such as 8.25 in. 2: a product attribute's name, such as Width.
-#: src/Admin/PartSpecsPanel.php:436
+#: src/Admin/PartSpecsPanel.php:480
 #, php-format
 msgid "In use: %1$s, from the %2$s attribute."
 msgstr ""
 
 #. translators: 1: a spec's value with its unit, such as 8.5 in. 2: a truck maker's name, such as Independent. 3: a size in the maker's chart, such as 149.
-#: src/Admin/PartSpecsPanel.php:442
+#: src/Admin/PartSpecsPanel.php:486
 #, php-format
 msgid "In use: %1$s, from %2$s's chart, size %3$s."
 msgstr ""
 
 #. translators: %s: a spec's value with its unit, such as 8.25 in.
-#: src/Admin/PartSpecsPanel.php:445
+#: src/Admin/PartSpecsPanel.php:489
 #, php-format
 msgid "In use: %s, from the parent product."
 msgstr ""
 
 #. translators: %s: the size that was chosen.
-#: src/Admin/PartSpecsPanel.php:479
+#: src/Admin/PartSpecsPanel.php:523
 #, php-format
 msgid "The maker's chart was not saved: the chart has no size %s now. Choose again."
 msgstr ""
 
-#: src/Admin/PartSpecsPanel.php:480
+#: src/Admin/PartSpecsPanel.php:524
 msgid "The maker's chart was not saved: that chart is no longer there. Choose again."
 msgstr ""
 
-#: src/Admin/PartSpecsPanel.php:481
+#: src/Admin/PartSpecsPanel.php:525
 msgid "The maker's chart was not saved. Choose again."
 msgstr ""
 
 #. translators: 1: a deck's width with its unit, such as 8.6 in. 2: another, such as 8.375 in.
-#: src/Admin/PartSpecsPanel.php:488
+#: src/Admin/PartSpecsPanel.php:532
 #, php-format
 msgid "Narrowest deck and Widest deck were not saved: the narrowest, %1$s, is wider than the widest, %2$s."
 msgstr ""
 
 #. translators: 1: a spec's name. 2: what was typed.
-#: src/Admin/PartSpecsPanel.php:490
+#: src/Admin/PartSpecsPanel.php:534
 #, php-format
 msgid "%1$s was not saved: \"%2$s\" is not a measurement. Type a number, or a fraction such as 8 1/4."
 msgstr ""
 
 #. translators: 1: a spec's name. 2: what was typed.
-#: src/Admin/PartSpecsPanel.php:492
+#: src/Admin/PartSpecsPanel.php:536
 #, php-format
 msgid "%1$s was not saved: the fraction in \"%2$s\" divides by zero."
 msgstr ""
 
 #. translators: 1: a spec's name. 2: what was typed.
-#: src/Admin/PartSpecsPanel.php:494
+#: src/Admin/PartSpecsPanel.php:538
 #, php-format
 msgid "%1$s was not saved: \"%2$s\" is below zero."
 msgstr ""
 
 #. translators: 1: a spec's name. 2: what was typed.
-#: src/Admin/PartSpecsPanel.php:496
+#: src/Admin/PartSpecsPanel.php:540
 #, php-format
 msgid "%1$s was not saved: \"%2$s\" must be more than zero."
 msgstr ""
 
 #. translators: 1: a spec's name. 2: what was typed.
-#: src/Admin/PartSpecsPanel.php:498
+#: src/Admin/PartSpecsPanel.php:542
 #, php-format
 msgid "%1$s was not saved: \"%2$s\" is too large a number."
 msgstr ""
 
 #. translators: 1: a spec's name. 2: what was typed.
-#: src/Admin/PartSpecsPanel.php:500
+#: src/Admin/PartSpecsPanel.php:544
 #, php-format
 msgid "%1$s was not saved: \"%2$s\" is not a value it takes."
 msgstr ""
@@ -1024,7 +1024,7 @@ msgstr ""
 msgid "Skateboard builder"
 msgstr ""
 
-#: src/Hooks/KitHooks.php:62
+#: src/Hooks/KitHooks.php:64
 msgid "Builder kit"
 msgstr ""
 
@@ -1274,14 +1274,18 @@ msgid "Download the CSV file"
 msgstr ""
 
 #: templates/admin/part-specs.php:31
-msgid "What the builder needs to know of this part to check that it fits. Fill in the group that matches it and leave the rest. A measurement takes a decimal or a fraction: 8.25 or 8 1/4. On a variable product, each variation takes these values unless it has its own."
+msgid "No kit takes this product, so the builder needs nothing of it. To make it a part, put it in a category or brand that a kit's slot takes, or name it in a slot, then save. Its fields appear here."
 msgstr ""
 
 #: templates/admin/part-specs.php:33
+msgid "What the builder needs to know of this part to check that it fits. Fill in the group that matches it and leave the rest. A measurement takes a decimal or a fraction: 8.25 or 8 1/4. On a variable product, each variation takes these values unless it has its own."
+msgstr ""
+
+#: templates/admin/part-specs.php:35
 msgid "A field left blank takes the parent product's value."
 msgstr ""
 
-#: templates/admin/part-specs.php:64
+#: templates/admin/part-specs.php:69
 #: templates/admin/spec-table.php:134
 msgid "Not set"
 msgstr ""

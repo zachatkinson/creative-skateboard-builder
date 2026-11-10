@@ -182,7 +182,10 @@ final class PartSpecsPanel {
 			return;
 		}
 		$groups = $this->groups( $product, self::FIELDS . '-' . $loop, 'cbuild_variation_specs[' . $loop . ']', 'cbuild_variation_spec_table[' . $loop . ']' );
-		$whole  = false;
+		if ( array() === $groups ) {
+			return;
+		}
+		$whole = false;
 		include CBUILD_PATH . 'templates/admin/part-specs.php';
 	}
 
@@ -305,7 +308,7 @@ final class PartSpecsPanel {
 	 * @param string     $id      The prefix of each control's ID.
 	 * @param string     $name    The name the fields are sent under.
 	 * @param string     $chart   The name the chart field is sent under.
-	 * @return list<array{label: string, open: bool, fields: list<array{id: string, name: string, label: string, value: string, note: string, options: array<int|string, string>|null, charts: array<string, array<string, string>>}>}>
+	 * @return list<array{label: string, open: bool, fields: list<array{id: string, name: string, label: string, value: string, note: string, options: array<int|string, string>|null, charts: array<string, array<string, string>>}>}> None when no kit takes the product and it holds nothing.
 	 */
 	private function groups( WC_Product $product, string $id, string $name, string $chart ): array {
 		$own    = StoredSpecs::fields( $product->get_meta( Options::META_SPECS, true ) );
@@ -352,6 +355,12 @@ final class PartSpecsPanel {
 				'open'   => $open,
 				'fields' => $fields,
 			);
+		}
+		// Where the shop has kits and none takes this product, the builder needs nothing of it: no fields, unless
+		// it holds a value all the same, which must be seen to be cleared (issue #23). Before the first kit there
+		// is no telling, and every product has its fields.
+		if ( array() !== $this->read && array() === $slots && ! in_array( true, array_column( $groups, 'open' ), true ) ) {
+			return array();
 		}
 		return $groups;
 	}
