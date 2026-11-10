@@ -6,21 +6,8 @@
 set -euo pipefail
 image="$1"
 name="$2"
-# The integration site (.wp-env.tests.json) is the wordpress container that mounts this folder and serves :8899; the
-# browser site mounts it too, and other projects' wp-env containers may be running beside them.
-here="$(cd "$(dirname "$0")/.." && pwd)"
-network=""
-database=""
-for container in $(docker ps -q --filter label=com.docker.compose.service=wordpress --filter publish=8899); do
-	if docker inspect "$container" --format '{{range .Mounts}}{{println .Source}}{{end}}' | grep -x "$here" >/dev/null; then
-		network="$(docker inspect "$container" --format '{{range $name, $_ := .NetworkSettings.Networks}}{{println $name}}{{end}}' | head -n 1)"
-		database="$(docker exec "$container" printenv WORDPRESS_DB_NAME)"
-	fi
-done
-if [ -z "$network" ] || [ -z "$database" ]; then
-	echo "The integration site was not found: run npm run env:start first." >&2
-	exit 1
-fi
+# shellcheck source=tools/wp-env-site.sh
+source "$(dirname "$0")/wp-env-site.sh"
 if ! docker ps --format '{{.Names}}' | grep -qx "$name"; then
 	docker rm -f "$name" >/dev/null 2>&1 || true
 	docker run -d --name "$name" --network "$network" --network-alias "$name" \

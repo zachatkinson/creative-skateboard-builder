@@ -747,3 +747,17 @@ Cowork asked that from milestone 3 a rule's or a fix's failing cases be committe
 
 **Why:** The thing wanted is proof that each test can fail for the right reason. Mutation testing and a recorded break give that without a broken commit.
 **Status:** Accepted, on Zach's "whatever is best practice and industry standard".
+
+### D-066 · The object-cache leg runs on Redis, and the plugin's cache rule · 2026-11-10
+
+Issue #4: the object-cache leg called `wp_using_ext_object_cache( true )` and ran no cache server, so nothing was shared between two PHP processes. Zach asked for the industry standard, and for the plugin to work with other WordPress caches too.
+
+- **The leg's cache is Redis with Redis Object Cache's drop-in.** `tools/object-cache.sh up` starts `redis:8.10-alpine` on the integration site's Docker network, installs Redis Object Cache 3.0.0 from WordPress.org (its zip checked against a pinned SHA-256) and puts a drop-in in `wp-content`; `down` removes all of it. `composer test:integration:object-cache` and the variants script do both around the run, so no other leg meets the cache. The client is Predis, which the plugin carries, so wp-env's PHP image needs no extension.
+- **The drop-in is a three-line file of ours** (`tools/object-cache/object-cache.php`) that names the server and loads Redis Object Cache's own, unchanged. The suite's process reads `wp-tests-config.php` and the WP-CLI processes its tests start read `wp-config.php`; a setting in the drop-in reaches both.
+- **A bare `CBUILD_OBJECT_CACHE=persistent` is refused** by the bootstrap when the drop-in is missing, and `ActivationTest` proves on every leg what a second process reads: the value on this leg, nothing on the others.
+- **The plugin's rule is in `docs/STANDARDS.md` (WordPress: Object cache).** In short: only `wp_cache_*` in the `cbuild` group; a miss is answered from the database; plain values; entries go out of date by key, never by a flush; `wp_cache_flush_group()` and the `*_multiple` functions only behind `wp_cache_supports()`. Gate 2 now rejects `wp_cache_flush()` and `wp_cache_flush_runtime()`.
+- **One back end is tested, and the rule covers the rest.** The drop-in interface is the same whatever is behind it. Where back ends differ is the optional features (`flush_group` is missing from the Memcached drop-ins and from some of LiteSpeed's and W3 Total Cache's modes), the serialiser, and whether an entry outlives the request. The rule keeps the plugin off each of those. A second cache server in the matrix would cost a suite's run per pull request to test code the plugin does not have.
+
+**Why Redis:** it is what managed WordPress hosts offer for the object cache (Valkey, its fork, speaks the same protocol and the drop-in supports it), and Redis Object Cache is the most installed drop-in that does only this (500,000 active installs, tested to WordPress 7.1.4; WordPress.org, 2026-11-10). The Memcached drop-in on WordPress.org was last updated in 2022. LiteSpeed Cache (7 million installs) and W3 Total Cache include an object cache that is itself Redis or Memcached behind the same drop-in interface. The Skatehouse demo has Redis Object Cache installed, and Creative Search was checked against the same pair (its D-051).
+**Differs from Creative Search:** its `object-cache` leg still sets the flag only. The sibling repository is not changed from here.
+**Status:** Accepted, on Zach's "figure out the industry standard for the object cache and make sure its compatible with other wordpress caches too".

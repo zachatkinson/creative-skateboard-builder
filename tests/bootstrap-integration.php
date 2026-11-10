@@ -46,8 +46,7 @@ if ( ! defined( 'WP_TESTS_PHPUNIT_POLYFILLS_PATH' ) ) {
 require_once $cbuild_tests_dir . '/includes/functions.php';
 
 // The compatibility matrix's switches (spec: Compatibility), set by tools/integration.sh from the environment: HPOS
-// off or in sync mode, and WordPress told a persistent object cache is present, so transients and the plugin's caches
-// take the object-cache path.
+// off or in sync mode. The object-cache leg's switch is checked below.
 $cbuild_hpos = getenv( 'CBUILD_HPOS' );
 if ( 'off' === $cbuild_hpos ) {
 	tests_add_filter( 'pre_option_woocommerce_custom_orders_table_enabled', static fn(): string => 'no' );
@@ -56,8 +55,11 @@ if ( 'sync' === $cbuild_hpos ) {
 	tests_add_filter( 'pre_option_woocommerce_custom_orders_table_enabled', static fn(): string => 'yes' );
 	tests_add_filter( 'pre_option_woocommerce_custom_orders_table_data_sync_enabled', static fn(): string => 'yes' );
 }
-if ( 'persistent' === getenv( 'CBUILD_OBJECT_CACHE' ) ) {
-	tests_add_filter( 'muplugins_loaded', static fn() => wp_using_ext_object_cache( true ), 0 );
+// The object-cache leg has a real cache: tools/object-cache.sh put a Redis server on the network and Redis Object
+// Cache's drop-in in wp-content, which WordPress loads by itself (D-066). A flag without them would prove nothing.
+if ( 'persistent' === getenv( 'CBUILD_OBJECT_CACHE' ) && ! file_exists( '/var/www/html/wp-content/object-cache.php' ) ) {
+	fwrite( STDERR, "CBUILD_OBJECT_CACHE=persistent needs the leg's cache: run composer test:integration:object-cache.\n" );
+	exit( 1 );
 }
 
 // A shop that has finished Action Scheduler's one-time move to its own tables, which is every shop installed in years,

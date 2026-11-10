@@ -322,6 +322,26 @@ final class ActivationTest extends IntegrationTestCase {
 		self::assertSame( false === $host ? DB_HOST : $host, DB_HOST );
 	}
 
+	public function test_the_object_cache_leg_shares_a_value_between_two_processes(): void {
+		if ( ! self::hasWpCli() ) {
+			self::markTestSkipped( 'No WP-CLI outside wp-env.' );
+		}
+		// A flag alone makes WordPress take the object-cache paths in one process. What a shop has is a cache server
+		// two processes share, and that is what the leg must run on (issue #4, D-066).
+		$key = 'leg-' . bin2hex( random_bytes( 4 ) );
+		$set = self::wpEval( "wp_cache_set( '{$key}', array( 'n' => 7 ), '" . Options::CACHE_GROUP . "', 60 ); echo 'set';" );
+		self::assertSame( 'set', $set['out'], $set['err'] );
+		$got = self::wpEval( "echo wp_json_encode( wp_cache_get( '{$key}', '" . Options::CACHE_GROUP . "' ) );" );
+		self::assertSame( 0, $got['code'], $got['err'] );
+		$expected = 'persistent' === getenv( 'CBUILD_OBJECT_CACHE' ) ? '{"n":7}' : 'false';
+		self::assertSame( $expected, $got['out'], 'what a second process reads from the cache' );
+		if ( 'persistent' === getenv( 'CBUILD_OBJECT_CACHE' ) ) {
+			// The suite's own process is on the same server, through a drop-in that is there.
+			self::assertFileExists( WP_CONTENT_DIR . '/object-cache.php' );
+			self::assertTrue( wp_cache_supports( 'flush_group' ) );
+		}
+	}
+
 	public function test_no_text_domain_is_loaded_by_hand(): void {
 		// WordPress registers the Domain Path of an active plugin itself (wp-settings.php:589-592, D-028).
 		self::assertStringNotContainsString( 'load_plugin_textdomain', (string) file_get_contents( CBUILD_FILE ) );
