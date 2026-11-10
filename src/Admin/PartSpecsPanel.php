@@ -51,40 +51,15 @@ final class PartSpecsPanel {
 	private const STYLES = '.cbuild-part-specs summary{padding:8px 12px;cursor:pointer;font-weight:600}';
 
 	/**
-	 * The panel's only script: WooCommerce's product screen opens no tab from the address, so the Catalogue check's
-	 * link opens the one it names. `#cbuild_part_specs` opens the Part specs tab; `#cbuild_variation_<id>` opens the
-	 * Variations tab and, once WooCommerce has loaded the page of variations that holds it, the variation. It
-	 * carries no data and builds no markup. Added after the last of WooCommerce's product scripts
-	 * (11.2.2, includes/admin/class-wc-admin-assets.php:566), so it runs once the first tab has been shown
+	 * The panel's only script, built from assets/src/admin/part-specs.ts: WooCommerce's product screen opens no tab
+	 * from the address, so the Catalogue check's link opens the one it names. It carries no data and builds no
+	 * markup. It loads after the last of WooCommerce's product scripts (11.2.2,
+	 * includes/admin/class-wc-admin-assets.php:566), so it runs once the first tab has been shown
 	 * (assets/js/admin/meta-boxes.js:149) and the Variations tab loads its variations when clicked
-	 * (assets/js/admin/meta-boxes-product-variation.js:636) (D-083).
+	 * (assets/js/admin/meta-boxes-product-variation.js:636) (D-083, D-086).
 	 */
-	private const SCRIPT = <<<'JS'
-jQuery( function ( $ ) {
-	var hash = window.location.hash, part = hash.match( /^#cbuild_variation_(\d+)$/ ), show = function ( el ) {
-		if ( el ) {
-			el.scrollIntoView( { block: 'start' } );
-		}
-	};
-	if ( '#cbuild_part_specs' === hash ) {
-		$( 'ul.wc-tabs a[href="#cbuild_part_specs"]' ).trigger( 'click' );
-		show( document.getElementById( 'cbuild_part_specs' ) );
-	} else if ( part ) {
-		$( '#woocommerce-product-data' ).one( 'woocommerce_variations_loaded', function () {
-			var row = $( 'input.variable_post_id' ).filter( function () {
-				return this.value === part[ 1 ];
-			} ).closest( '.woocommerce_variation' );
-			if ( row.hasClass( 'closed' ) ) {
-				row.find( 'h3' ).first().trigger( 'click' );
-			}
-			row.find( '.wc-metabox-content' ).promise().done( function () {
-				show( row.find( '.cbuild-part-specs' ).get( 0 ) || row.get( 0 ) );
-			} );
-		} );
-		$( 'ul.wc-tabs a[href="#variable_product_options"]' ).trigger( 'click' );
-	}
-} );
-JS;
+	private const SCRIPT = 'cbuild-part-specs';
+	private const BUILT  = 'build/admin/part-specs';
 
 	/**
 	 * The tables, asked for once per request.
@@ -111,7 +86,12 @@ JS;
 	 */
 	public function styles(): void {
 		wp_add_inline_style( 'woocommerce_admin_styles', self::STYLES );
-		wp_add_inline_script( 'wc-admin-variation-meta-boxes', self::SCRIPT );
+		// A checkout that was never built has no script; the screen works without it, and the zip is checked for it.
+		$built = is_readable( CBUILD_PATH . self::BUILT . '.asset.php' ) ? require CBUILD_PATH . self::BUILT . '.asset.php' : null;
+		if ( ! is_array( $built ) || ! is_string( $built['version'] ?? null ) ) {
+			return;
+		}
+		wp_enqueue_script( self::SCRIPT, CBUILD_URL . self::BUILT . '.js', array( 'jquery', 'wc-admin-variation-meta-boxes' ), $built['version'], array( 'in_footer' => true ) );
 	}
 
 	/**

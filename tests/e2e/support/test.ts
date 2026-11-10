@@ -1,4 +1,5 @@
 import { test as base } from '@playwright/test';
+import type { Page } from '@playwright/test';
 
 export { expect } from '@playwright/test';
 export type { Page } from '@playwright/test';
@@ -34,4 +35,17 @@ export const test = base.extend( {
  */
 export function inLocale( project: string, text: string ): string {
 	return project === 'fr-ca' ? text.replace( /(\d)\.(\d)/g, '$1,$2' ) : text;
+}
+
+/**
+ * Does something that sends a form, and waits for the page that answers. The wait is for the next `load` event, set
+ * before the form is sent: `waitForLoadState( 'load' )` is already true of the page the form is on, so it waited for
+ * nothing, and a `goto` straight after could cancel the post before the server had it (CI, 10 November 2026:
+ * settings.spec.ts on webkit-phone).
+ *
+ * @param page The page.
+ * @param send What sends the form: a click, or Enter on its button.
+ */
+export async function answered( page: Page, send: () => Promise< void > ) {
+	await Promise.all( [ page.waitForEvent( 'load' ), send() ] );
 }

@@ -1,4 +1,4 @@
-import { test, expect, Page } from './support/test';
+import { test, expect, Page, answered } from './support/test';
 import { axe } from './support/axe';
 import { login } from './support/login';
 
@@ -20,10 +20,9 @@ function field( page: Page, line: number, label: string ) {
 }
 
 async function save( page: Page ) {
-	await Promise.all( [
-		page.waitForLoadState( 'load' ),
-		page.getByRole( 'button', { name: 'Save changes' } ).click(),
-	] );
+	await answered( page, () =>
+		page.getByRole( 'button', { name: 'Save changes' } ).click()
+	);
 }
 
 // Leaves the mapping empty and the order as a new shop has it, whatever an earlier run left.

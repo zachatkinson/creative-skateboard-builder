@@ -61,3 +61,26 @@ if ( ! function_exists( 'restore_current_blog' ) ) {
 		return true;
 	}
 }
+
+// The translation and number functions Admin\Labels and Admin\Sentences reach for. A test sets the decimal point to
+// read a number as another locale writes it.
+if ( ! function_exists( '_x' ) ) {
+	function _x( string $text, string $context, string $domain = 'default' ): string {
+		return $text;
+	}
+}
+if ( ! function_exists( '_n' ) ) {
+	function _n( string $single, string $plural, int $number, string $domain = 'default' ): string {
+		return 1 === $number ? $single : $plural;
+	}
+}
+if ( ! function_exists( 'number_format_i18n' ) ) {
+	function number_format_i18n( $number, int $decimals = 0 ): string {
+		return number_format( (float) $number, $decimals, $GLOBALS['cbuild_test_decimal'] ?? '.', ',' );
+	}
+}
+if ( ! function_exists( 'wc_get_price_decimal_separator' ) ) {
+	function wc_get_price_decimal_separator(): string {
+		return $GLOBALS['cbuild_test_decimal'] ?? '.';
+	}
+}

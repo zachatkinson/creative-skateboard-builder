@@ -407,7 +407,7 @@ The repository is private, so GitHub bills every job to the whole minute. The sa
 A pull request marked as a draft runs what a narrow one runs (D-036): the secrets scan, the standards, the unit tests, the audits, the benchmarks and the newest leg with every browser project. Marking it ready for review starts the full run: the oldest leg, the six variants, mutation testing and the release dry run. A push to `main` always runs everything.
 
 **Why:** Zach agreed on 9 November 2026, to save billed minutes (D-040): about 12 a push while the work is in progress instead of 28. GitHub does not merge a draft, so nothing reaches `main` without the full run, and a release still waits for `main`'s own.
-**Status:** Accepted.
+**Status:** Accepted. Revised by D-085: a draft's newest leg runs two browser projects, not every one.
 
 ### D-042 · Work owed lives in GitHub's issues; the plan stays in the roadmap · 2026-11-09
 
@@ -1000,7 +1000,7 @@ Found by the milestone's two reviews, each fixed with a test that fails without 
 - **It is twenty-odd lines added after WooCommerce's variation script** (`wp_add_inline_script()`), with no data in it and no markup built. `docs/STANDARDS.md` says the admin scripts are TypeScript built by `@wordpress/scripts`; the first entry point and its build land with the builder in milestone 6, and bringing the pipeline forward for this would change what the zip, the budgets and Plugin Check measure in a milestone that planned no script. It moves into the admin bundle when there is one. **This is Zach's standard to keep or bend:** raised under For Zach in the milestone's review.
 - **Tested in the browser:** `tests/e2e/check.spec.ts` follows a finding's link and sees the panel; `tests/e2e/part-specs.spec.ts` opens a variation by its address.
 
-**Status:** Accepted, pending Zach's word on the standard.
+**Status:** The links stand. The inline script is superseded by D-086: Zach's word on 10 November 2026 was "whatever is best practice", and the standard's own answer is a built file.
 
 ### D-084 · Uninstall forgets Action Scheduler's cached group, and browser tests read numbers in the project's locale · 2026-11-10
 
@@ -1008,3 +1008,59 @@ Found by the milestone's two reviews, each fixed with a test that fails without 
 - **A browser test that reads a formatted number asks for it in the project's locale** (`inLocale()` in `tests/e2e/support/test.ts`). The screens write a value with `number_format_i18n()`, so the `fr-ca` project sees `8,5 in`. The field a person types into keeps the shop's own separator, as WooCommerce's price fields do.
 
 **Status:** Accepted.
+
+### D-085 · The browser run fits its job: one login, a real wait for a form's answer, two engines on a draft · 2026-11-10
+
+Pull request #15's first full run failed in the newest leg. Three causes, none of which a Mac shows:
+
+- **The job ran out of time.** Milestone 3 took the browser suite from 5 tests to 12, in 9 projects on one worker: 108 runs at 20 to 45 seconds each on GitHub's runner, which is about three and a half times slower than the Mac the gates ran on. That is some 37 minutes, after 12 of setup and gates, in a job with a limit of 30.
+- **`settings.spec.ts` failed on `webkit-phone`.** Its `save()` waited with `waitForLoadState( 'load' )`, which is already true of the page the form is on, so it waited for nothing. The `goto` that followed could cancel the post before the server had it. The same wait was in `import.spec.ts` and `spec-tables.spec.ts`.
+- **`import.spec.ts` timed out on `firefox-desktop`** at the usual 60 seconds. It runs three imports from end to end, each with its job run through wp-env.
+
+What changed:
+
+- **A form's answer is waited for by the next `load` event,** set before the form is sent (`answered()` in `tests/e2e/support/test.ts`).
+- **The administrator logs in once for the run,** over HTTP in the global setup, and `login()` gives each test that session's cookies. No spec tests wp-login.php; typing into it before each admin test was about four seconds of every one on the runner.
+- **The import's test is marked slow,** which triples its limit.
+- **A draft's newest leg runs `chromium-desktop` and `webkit-phone`,** as the oldest leg does. Every project runs when the pull request is marked ready, and on `main`. This revises D-041 in one place: a draft's run no longer includes every browser project. GitHub does not merge a draft, so nothing reaches `main` without all of them.
+- **The newest leg has 60 minutes when it runs every project,** and 30 otherwise, as every other leg has.
+- **A job that runs out of time keeps its traces.** The artifact was uploaded on failure only, and a cancelled run prints no failure, so the first run left nothing to read but the list of tests.
+
+**Not done:** more than one worker. The specs share one shop (its settings, its one deck, its import), so two at once would break each other; the fix for that is a shop per worker, which is a milestone 6 question, when the builder's own specs arrive.
+
+**Why:** Zach asked on 9 November 2026 that CI not overspend on minutes (D-040). No gate is removed and no floor moves: the same specs run in the same projects before anything merges. **For Zach:** the suite's cost grows with every screen, nine times over. A full run's newest leg is now about 45 billed minutes. Running the wp-admin specs in fewer projects than the builder's would cut that, and would move the audit's floor, so it is his to say.
+**Status:** Accepted.
+
+### D-086 · The product screen's script is built TypeScript · 2026-11-10
+
+Zach's answer to the review's first question, on 10 November 2026: "whatever is best practice". `docs/STANDARDS.md` already says it: admin scripts are TypeScript in strict mode, built by `@wordpress/scripts`. The pipeline was all there but a first entry, so D-083's reason for waiting did not hold.
+
+- **`assets/src/admin/part-specs.ts`** replaces the inline script. It is built to `build/admin/part-specs.js` (879 bytes) and enqueued on the product screen alone, in the footer, after `jquery` and `wc-admin-variation-meta-boxes`, with the build's own hash as its version.
+- **jQuery is used for two things only,** each WooCommerce's doing: the Variations tab announces its rows with a jQuery event, which the DOM never hears (11.2.2, `assets/js/admin/meta-boxes-product-variation.js:636`), and a row opens with a jQuery animation, whose end only jQuery can promise. Tabs and rows are opened with a native click.
+- **`webpack.config.js` names the admin's entry.** `@wordpress/scripts` finds a block's scripts from its `block.json`; a wp-admin script belongs to no block. The file extends the package's own configuration, as its documentation describes, and stays out of the zip.
+- **A checkout that was never built has no script,** and the screen works without it. The zip is checked instead: `tools/build-zip.sh` fails when a file `src/` loads from `build/` is not in it (broken on purpose: `The zip would ship without build/admin/part-spec.js, which src/ loads.`).
+- **Tests:** 15 in Vitest with a double for the two jQuery calls, StrykerJS at 97.3 % against the 90 % floor; the two browser tests of D-083 run the real thing in every project. `PartSpecsPanelTest` holds the handle, the address, the dependencies, the version and that nothing is inline.
+
+**Status:** Accepted. Supersedes D-083's inline script.
+
+### D-087 · What mutation testing may leave out · 2026-11-10
+
+Zach's answer to the review's second question, on 10 November 2026: "whatever is best practice and modern standards in 2026". Milestone 3 had added 24 entries to `infection.json5`'s list without his word, which D-038 asks for.
+
+- **The rule.** A class is left out of the unit suite's mutation run only when it cannot run without WordPress or WooCommerce loaded: it takes or builds their objects, or does its work through their functions. Such a class is proven in wp-env by the integration suite, with a deliberate break in its milestone's review. A class whose logic needs no more than the translation and number functions is mutated, with shims in `tests/Support/wp-shims.php`. Mutating against the integration suite itself was weighed and left: each mutant would boot WordPress, seconds apiece across thousands of mutants.
+- **Three come back in:** `Admin\Labels`, `Admin\Sentences` and `Adapter\NoKits`. The first two map the services' codes to what a shop manager reads, with branches of their own; the third is plain PHP. Their unit tests kill 118 of 118 mutants.
+- **Twenty-one stay out,** each under a line in `infection.json5` that says why: the five wp-admin screens, `Cli`, `Abilities`, `Health\SiteHealth`, the twelve adapters over WooCommerce's products and WordPress's options, posts, uploads and filesystem, and `Install\Migrations\InlineRule`.
+- **Adding to the list still needs Zach** (D-038), and now needs the entry to meet the rule.
+
+**Status:** Accepted.
+
+### D-088 · A review's screenshots are AVIF · 2026-11-10
+
+Zach asked on 10 November 2026 whether the reviews' images should be ignored by Git, then why they were not smaller and in a modern format. They stay tracked: they are the walkthrough's evidence, the review names them, and Claude in Cowork reads the repository as it is on disk. They never reach the zip (`docs` is in `.distignore`) and start no CI run.
+
+- **`tools/review-images.sh <folder>`** turns each PNG Playwright wrote into AVIF at quality 50 and removes the PNG. A phone's full-page shot is taken at three device pixels; it is kept at two (780 wide), which reads as well. Milestone 3's 24 images went from 7.0 MB to 1.7 MB.
+- **It uses `sips`,** which macOS ships, so no tool is added. The walkthrough is taken on the Mac, never in CI.
+- **The PNGs pushed before this stay in the branch's history,** 7 MB once. Rewriting a branch under review to drop them would cost more than it saves.
+
+**Status:** Accepted.
+

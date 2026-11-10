@@ -22,7 +22,7 @@ All notable changes to this project are documented here. The format follows [Kee
 - Every part is read into the index after an install, after an upgrade's migrations and on activation, in the background, 100 at a time. WooCommerce > Builder > Catalogue check has a button, "Read every part again", to start it by hand (D-082).
 - A term of a mapped attribute that is deleted asks for a reindex, as an edited one does, and a mapping line may name its attribute as the shop does: `Width` for `pa_width` (D-082).
 - An import whose job was lost, as when the plugin is switched off while one runs, goes on from its place when Import and export is opened. Site Health's `cbuild_jobs` also reports an import that failed or stalled (D-082).
-- A link from the Catalogue check opens the product's Part specs tab, or the variation it names (D-083).
+- A link from the Catalogue check opens the product's Part specs tab, or the variation it names. The script that does it is the plugin's first built file, `build/admin/part-specs.js`, loaded on the product screen alone (D-083, D-086).
 - `Domain\Kit\Part::$stock`: a part's managed stock count, or null where stock is not managed. Nothing reads it yet.
 - A value a person types is read with the shop's decimal separator and, when that does not read, with a point: in a shop that writes a comma, `8,25` and `8.25` are one value, on the Part specs panel, in a chart and in a mapped attribute.
 
@@ -36,6 +36,8 @@ All notable changes to this project are documented here. The format follows [Kee
 - A class that attaches hooks is built only on a request where its hooks can fire: wp-admin, WP-CLI, cron, REST or the storefront (D-067).
 - A migration's status is an enum, and the rule for running migrations on an admin page is a service of its own (D-067). Nothing stored changes.
 - The object-cache leg of the integration suite runs on a Redis server with Redis Object Cache's drop-in (D-066).
+- The browser tests log in once for the run, and a draft pull request runs one desktop and one phone engine; every project runs once it is ready (D-085).
+- Mutation testing covers the admin's labels and sentences, and every class it leaves out has its reason beside it (D-087).
 
 ## [0.2.0] - 2026-11-09
 

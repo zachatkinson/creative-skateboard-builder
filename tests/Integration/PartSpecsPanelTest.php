@@ -188,19 +188,31 @@ final class PartSpecsPanelTest extends IntegrationTestCase {
 		wp_register_style( 'woocommerce_admin_styles', 'https://example.com/admin.css', array(), '1' );
 		wp_register_script( 'wc-admin-variation-meta-boxes', 'https://example.com/meta-boxes.js', array(), '1', true );
 		$added  = static fn(): string => implode( '', (array) wp_styles()->get_data( 'woocommerce_admin_styles', 'after' ) );
-		$script = static fn(): string => implode( '', (array) wp_scripts()->get_data( 'wc-admin-variation-meta-boxes', 'after' ) );
+		$inline = static fn(): string => implode( '', (array) wp_scripts()->get_data( 'wc-admin-variation-meta-boxes', 'after' ) );
 
 		set_current_screen( 'dashboard' );
 		$this->hooks()->styles();
 		self::assertSame( '', $added() );
-		self::assertSame( '', $script() );
+		self::assertFalse( wp_script_is( 'cbuild-part-specs', 'enqueued' ) );
 
 		set_current_screen( 'product' );
 		$this->hooks()->styles();
 		self::assertStringContainsString( '.cbuild-part-specs summary{padding:8px 12px;', $added(), 'a target 34 pixels high' );
-		// The Catalogue check's links open the tab, or the variation, they name.
-		self::assertStringContainsString( "'#cbuild_part_specs' === hash", $script() );
-		self::assertStringContainsString( '/^#cbuild_variation_(\\d+)$/', $script() );
+		// The Catalogue check's links open the tab, or the variation, they name: the built script, in the footer,
+		// after the last of WooCommerce's product scripts, with the build's own version (D-086).
+		self::assertTrue( wp_script_is( 'cbuild-part-specs', 'enqueued' ) );
+		$script = wp_scripts()->registered['cbuild-part-specs'];
+		$built  = require CBUILD_PATH . 'build/admin/part-specs.asset.php';
+		self::assertSame( CBUILD_URL . 'build/admin/part-specs.js', $script->src );
+		self::assertSame( array( 'jquery', 'wc-admin-variation-meta-boxes' ), $script->deps );
+		self::assertSame( $built['version'], $script->ver );
+		self::assertMatchesRegularExpression( '/^[0-9a-f]{20}$/', $script->ver );
+		self::assertSame( 1, $script->extra['group'], 'in the footer' );
+		self::assertSame( '', $inline(), 'no inline script (docs/STANDARDS.md: TypeScript)' );
+		self::assertFileExists( CBUILD_PATH . 'build/admin/part-specs.js' );
+
+		wp_dequeue_script( 'cbuild-part-specs' );
+		wp_deregister_script( 'cbuild-part-specs' );
 
 		wp_deregister_style( 'woocommerce_admin_styles' );
 		wp_deregister_script( 'wc-admin-variation-meta-boxes' );

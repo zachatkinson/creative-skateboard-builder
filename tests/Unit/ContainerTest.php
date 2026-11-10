@@ -101,6 +101,26 @@ final class ContainerTest extends TestCase {
 		self::assertContainsOnlyInstancesOf( Hookable::class, $hookables );
 	}
 
+	// Claude in Cowork's review of milestone 3, minor 9: mutation testing left the plugin's own scopes unpinned.
+	public function test_each_scope_builds_its_own_hookables_and_no_others(): void {
+		$scopes = array(
+			'Everywhere' => array( 'Hooks\\InstallHooks', 'Hooks\\IndexHooks', 'Hooks\\SpecTableHooks', 'Hooks\\ImportHooks', 'Abilities\\CatalogueCheckAbility' ),
+			'Admin'      => array( 'Admin\\SettingsHooks', 'Admin\\PartSpecsHooks', 'Admin\\BuilderHooks', 'Health\\SiteHealth' ),
+			'Cli'        => array( 'Hooks\\CliHooks', 'Health\\SiteHealth' ),
+			'Cron'       => array( 'Health\\SiteHealth' ),
+			'Rest'       => array(),
+			'Storefront' => array(),
+		);
+		self::assertSame( array_column( Scope::cases(), 'name' ), array_keys( $scopes ), 'every scope' );
+		foreach ( Scope::cases() as $scope ) {
+			$built = array_map(
+				static fn( Hookable $hookable ): string => substr( $hookable::class, strlen( 'CreativeBranding\\SkateboardBuilder\\' ) ),
+				( new Container() )->hookablesFor( $scope )
+			);
+			self::assertSame( $scopes[ $scope->name ], $built, $scope->name );
+		}
+	}
+
 	public function test_a_hookable_is_built_only_in_a_scope_it_fires_in_and_in_registration_order(): void {
 		$container = new Container(
 			array(

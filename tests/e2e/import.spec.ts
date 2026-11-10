@@ -1,6 +1,6 @@
 import { execSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
-import { test, expect, Page, inLocale } from './support/test';
+import { test, expect, Page, inLocale, answered } from './support/test';
 import { axe } from './support/axe';
 import { login } from './support/login';
 
@@ -15,10 +15,9 @@ const REGION = '#wpbody-content .wrap';
 const SKU = 'smoke-test-deck';
 
 async function submit( page: Page, button: string ) {
-	await Promise.all( [
-		page.waitForLoadState( 'load' ),
-		page.getByRole( 'button', { name: button, exact: true } ).click(),
-	] );
+	await answered( page, () =>
+		page.getByRole( 'button', { name: button, exact: true } ).click()
+	);
 }
 
 // A file chosen and sent to be checked, matched by SKU.
@@ -95,6 +94,9 @@ test.describe( 'WooCommerce > Builder, Import and export', () => {
 				await axe( page, name, REGION );
 			}
 		};
+		// Three imports from end to end, each with its job run through wp-env: 14 seconds here and over a minute on
+		// CI's runner in Firefox, where the usual limit cut it off (10 November 2026).
+		test.slow();
 		await login( page );
 		await reset( page, '' );
 

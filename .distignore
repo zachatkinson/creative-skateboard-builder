@@ -38,6 +38,7 @@ playwright.config.ts
 stryker.config.mjs
 tsconfig.json
 vitest.config.mts
+webpack.config.js
 playwright-report
 test-results
 blob-report

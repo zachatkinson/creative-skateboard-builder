@@ -1,4 +1,4 @@
-import { test, expect, Page } from './support/test';
+import { test, expect, Page, answered } from './support/test';
 import { axe } from './support/axe';
 import { login } from './support/login';
 
@@ -20,10 +20,9 @@ function field( page: Page, row: number, label: string ) {
 }
 
 async function submit( page: Page, button: string ) {
-	await Promise.all( [
-		page.waitForLoadState( 'load' ),
-		page.getByRole( 'button', { name: button, exact: true } ).click(),
-	] );
+	await answered( page, () =>
+		page.getByRole( 'button', { name: button, exact: true } ).click()
+	);
 }
 
 // Deletes the chart an earlier run left behind, if one did.
