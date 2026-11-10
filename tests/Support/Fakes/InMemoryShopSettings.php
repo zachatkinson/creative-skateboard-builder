@@ -33,4 +33,12 @@ final class InMemoryShopSettings implements ShopSettings {
 	public function sourceOrder(): SourceOrder {
 		return $this->order ?? SourceOrder::standard();
 	}
+
+	public int $saves = 0;
+
+	public function save( array $mapping, SourceOrder $order ): void {
+		$this->mapping = $mapping;
+		$this->order   = $order;
+		++$this->saves;
+	}
 }

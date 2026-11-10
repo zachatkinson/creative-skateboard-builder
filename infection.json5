@@ -9,6 +9,8 @@
 		],
 		"excludes": [
 			"Domain",
+			"Admin/Labels.php",
+			"Admin/SettingsPage.php",
 			"Adapter/ActionSchedulerQueue.php",
 			"Adapter/AttributeSpecSource.php",
 			"Adapter/FieldSpecSource.php",

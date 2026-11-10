@@ -846,3 +846,19 @@ The table is milestone 1's and does not change. These are the choices the reposi
 - **`MigrationRegistry::VERSION` is 2.**
 
 **Status:** Accepted.
+
+### D-073 · The settings screen · 2026-11-10
+
+- **A tab of WooCommerce's settings, `cbuild`, labelled Builder,** added on `woocommerce_get_settings_pages` (WooCommerce 11.2.2, `includes/admin/class-wc-admin-settings.php:64`). `WC_Settings_Page` is loaded on that screen alone, so the page's class is built inside the filter and nowhere else.
+- **WooCommerce checks the capability and the nonce before a page's `save()`** (`class-wc-admin-settings.php:87` and `:91`). `save()` checks both again: it is a public method, and the rule is that the code that writes checks.
+- **A save is all or nothing.** `Service\SettingsEditor` reads every line and the order, and stores only when there is no problem. A half-saved mapping would index the shop against lines the owner has not finished. A refused save comes back with what was typed and each problem beside its field, by a code the screen turns into a sentence.
+- **No markup is built in JavaScript, so the screen has no script.** The saved lines are drawn with three blank ones after them, and a save adds three more. A line with its attribute and spec both cleared is removed.
+- **The attribute is a text field with a list of the shop's attribute taxonomies** (`datalist`), not a select: a product's own attribute, which has no taxonomy, is mapped by its name, and a select could not offer it.
+- **Each line is a `fieldset` named "Line N", and each control has a visible label of its own.** The first draft was a table with a header row. At phone width WordPress's admin styles stack a form table's cells, which left the three headers alone above unlabelled controls. Labels above their controls read the same at every width, and need no style sheet of the plugin's.
+- **The adapter validates what it writes against `schema/settings.json`** with `rest_validate_value_from_schema()` and throws when it does not fit. The editor has already refused everything the schema would; the schema is the second lock, and the public statement of the option's shape. It allows other keys, so a later version's settings are not refused by an older schema, and has no `schema_version`, since a malformed key reads as its default.
+- **`update_option()` fires its action only when the value changes,** so a save that changes nothing queues no reindex. `SettingsPageTest` asserts it.
+- **The browser test skips where scripts are off.** WooCommerce disables its Save button until a script sees a change, so its settings cannot be saved by a click without one. The plugin's part, a plain form post, is covered by `SettingsPageTest`.
+- **`phpcs.xml` lints `templates/`,** which exists from this step. A template's variables carry the `cbuild_` prefix where they are its own.
+- **`SourceOrder::of()` returns null for an order that is not all three once;** `read()` keeps answering the default. The editor needs to tell a wrong order from the default.
+
+**Status:** Accepted.

@@ -39,4 +39,14 @@ interface ShopSettings {
 	 * @return list<AttributeMap>
 	 */
 	public function attributeMapping(): array;
+
+	/**
+	 * Save both, leaving the shop's other settings as they are.
+	 *
+	 * @since 0.3.0
+	 *
+	 * @param list<AttributeMap> $mapping The mapping.
+	 * @param SourceOrder        $order   Which source wins.
+	 */
+	public function save( array $mapping, SourceOrder $order ): void;
 }

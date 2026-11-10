@@ -58,6 +58,14 @@ final class Container {
 				}
 				return new Install\Migrations\MigrationRegistry( ...$migrations );
 			},
+			// The settings tab extends a class WooCommerce loads on its settings screen alone, so it is built when asked for.
+			Admin\SettingsHooks::class                  => static function ( Container $c ): object {
+				return new Admin\SettingsHooks(
+					static function () use ( $c ): object {
+						return $c->get( Admin\SettingsPage::class );
+					}
+				);
+			},
 			// The sources, each asked once per batch.
 			Service\SpecIndexer::class                  => static fn( Container $c ): object => new Service\SpecIndexer(
 				$c->get( Port\SpecIndex::class ),
@@ -83,6 +91,8 @@ final class Container {
 			Hooks\IndexHooks::class     => array( Scope::Everywhere ),
 			// A post type is registered on every request, and a table is saved from any.
 			Hooks\SpecTableHooks::class => array( Scope::Everywhere ),
+			// WooCommerce's settings screen.
+			Admin\SettingsHooks::class  => array( Scope::Admin ),
 		);
 	}
 

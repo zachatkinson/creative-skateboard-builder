@@ -1,0 +1,81 @@
+{
+	"$schema": "http://json-schema.org/draft-04/schema#",
+	"title": "cbuild_settings",
+	"description": "The shop's settings, stored in the cbuild_settings option. What WooCommerce > Settings > Builder saves is checked against this.",
+	"type": "object",
+	"additionalProperties": true,
+	"properties": {
+		"attribute_mapping": {
+			"description": "Which product attribute feeds which spec, and the unit its values are written in.",
+			"type": "array",
+			"maxItems": 50,
+			"items": {
+				"type": "object",
+				"additionalProperties": false,
+				"required": [
+					"attribute",
+					"spec",
+					"unit"
+				],
+				"properties": {
+					"attribute": {
+						"description": "A taxonomy such as pa_width, or the name of a product's own attribute.",
+						"type": "string",
+						"minLength": 1,
+						"maxLength": 190
+					},
+					"spec": {
+						"description": "The spec key the attribute feeds.",
+						"type": "string",
+						"enum": [
+							"deck_width",
+							"deck_length",
+							"wheelbase",
+							"hole_pattern",
+							"axle_width",
+							"deck_min",
+							"deck_max",
+							"truck_height",
+							"height_class",
+							"max_wheel",
+							"baseplate",
+							"axle_diameter",
+							"wheel_diameter",
+							"riser_thickness",
+							"bolt_length",
+							"bearing_bore",
+							"spacers_built_in",
+							"grip_width",
+							"grip_length",
+							"set_size"
+						]
+					},
+					"unit": {
+						"description": "The unit an unmarked value is in, for a measure. Empty is the spec's own.",
+						"type": "string",
+						"enum": [
+							"",
+							"in",
+							"mm"
+						]
+					}
+				}
+			}
+		},
+		"source_order": {
+			"description": "Which source wins where two say different things of one spec. First wins; each source once.",
+			"type": "array",
+			"minItems": 3,
+			"maxItems": 3,
+			"uniqueItems": true,
+			"items": {
+				"type": "string",
+				"enum": [
+					"table",
+					"field",
+					"attribute"
+				]
+			}
+		}
+	}
+}

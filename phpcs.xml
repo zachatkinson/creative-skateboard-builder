@@ -5,6 +5,7 @@
 	<file>creative-skateboard-builder.php</file>
 	<file>uninstall.php</file>
 	<file>src/</file>
+	<file>templates/</file>
 	<file>tools/phpstan-bootstrap.php</file>
 
 	<exclude-pattern>vendor/</exclude-pattern>

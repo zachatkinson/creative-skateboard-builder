@@ -49,6 +49,18 @@ final readonly class SourceOrder {
 	 * @param mixed $names What was stored.
 	 */
 	public static function read( mixed $names ): self {
+		return self::of( $names ) ?? self::standard();
+	}
+
+	/**
+	 * The order these names give, or null when they are not every source exactly once: what the settings screen
+	 * checks before it saves.
+	 *
+	 * @since 0.3.0
+	 *
+	 * @param mixed $names The sources' names, first wins.
+	 */
+	public static function of( mixed $names ): ?self {
 		$given   = is_array( $names ) ? $names : array();
 		$origins = array();
 		foreach ( $given as $name ) {
@@ -58,7 +70,7 @@ final readonly class SourceOrder {
 			}
 		}
 		$whole = count( $origins ) === count( Origin::cases() ) && count( $origins ) === count( $given );
-		return $whole ? new self( $origins ) : self::standard();
+		return $whole ? new self( $origins ) : null;
 	}
 
 	/**

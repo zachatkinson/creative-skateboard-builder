@@ -91,6 +91,8 @@ A kit is four JSON documents. Each has a JSON Schema (draft 4) in the plugin's `
 | `schema/kit-presets.json` | 0.2.0 | Up to six presets: a name, a description and a part for each slot it fills. |
 | `schema/kit-assembly.json` | 0.2.0 | Whether assembly is on by default, its fee as a decimal string in the shop's currency, the lead time and the returns notice. |
 
+| `schema/settings.json` | 0.3.0 | Not a kit document: the shape of the option `cbuild_settings` as the plugin writes it. `attribute_mapping` is up to 50 lines, each an `attribute` of 1 to 190 characters, a `spec` that is a spec key and a `unit` of `in`, `mm` or empty; `source_order` is `table`, `field` and `attribute`, each once. Other keys are allowed, so a later version's settings pass. It has no `schema_version`: a key that is missing or malformed reads as its default. |
+
 A schema says what shape a document has. Five things it cannot say are checked when the document is read: slot keys are unique, the deck is the first slot, the risers come before the hardware, R1's `axle_warn` is at least its `axle_fit`, and each row of R3's riser table reaches further than the one before. A preset must also fill every required slot and name only slots the kit has.
 
 A change to a schema that refuses a document it accepted before is a breaking change and comes with a new `schema_version` and a migration.
@@ -231,7 +233,7 @@ Where a spec's value came from, as the specs index's `source` column holds it. `
 
 ### Settings keys
 
-In the option `cbuild_settings`. [SETTINGS.md](SETTINGS.md) has each key's default and range.
+In the option `cbuild_settings`. [SETTINGS.md](SETTINGS.md) has each key's default and range, and the screen that sets them: the tab `cbuild` of WooCommerce's settings (`admin.php?page=wc-settings&tab=cbuild`).
 
 | Key | Since | What it holds |
 | --- | --- | --- |

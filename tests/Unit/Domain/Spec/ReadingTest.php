@@ -132,6 +132,7 @@ final class ReadingTest extends TestCase {
 		self::assertSame( array( 'attribute', 'table', 'field' ), $saved->names() );
 		self::assertSame( 2, $saved->rank( Origin::Field ) );
 		self::assertEquals( $saved, SourceOrder::read( $saved->names() ) );
+		self::assertEquals( $saved, SourceOrder::of( array( 'attribute', 'table', 'field' ) ) );
 		$junk = array(
 			'nothing'             => null,
 			'a word'              => 'table',
@@ -145,6 +146,7 @@ final class ReadingTest extends TestCase {
 		);
 		foreach ( $junk as $what => $names ) {
 			self::assertEquals( SourceOrder::standard(), SourceOrder::read( $names ), $what );
+			self::assertNull( SourceOrder::of( $names ), $what );
 		}
 	}
 

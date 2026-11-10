@@ -13,6 +13,7 @@ use CreativeBranding\SkateboardBuilder\Domain\Spec\AttributeMap;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\SourceOrder;
 use CreativeBranding\SkateboardBuilder\Port\ShopSettings;
 use CreativeBranding\SkateboardBuilder\Support\Options;
+use CreativeBranding\SkateboardBuilder\Support\PluginException;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -53,6 +54,29 @@ final class OptionShopSettings implements ShopSettings {
 			}
 		}
 		return $mapping;
+	}
+
+	/**
+	 * Save both, leaving the option's other keys as they are. What is stored is checked against
+	 * `schema/settings.json` first: the screen's own checks should have caught anything it refuses.
+	 *
+	 * @since 0.3.0
+	 *
+	 * @param list<AttributeMap> $mapping The mapping.
+	 * @param SourceOrder        $order   Which source wins.
+	 * @throws PluginException When the schema refuses the document.
+	 */
+	public function save( array $mapping, SourceOrder $order ): void {
+		$stored                                       = $this->stored();
+		$stored[ Options::SETTING_ATTRIBUTE_MAPPING ] = array_map( static fn( AttributeMap $map ): array => $map->toArray(), $mapping );
+		$stored[ Options::SETTING_SOURCE_ORDER ]      = $order->names();
+
+		$schema = wp_json_file_decode( CBUILD_PATH . 'schema/settings.json', array( 'associative' => true ) );
+		$valid  = is_array( $schema ) ? rest_validate_value_from_schema( $stored, $schema, Options::SETTINGS ) : false;
+		if ( true !== $valid ) {
+			throw new PluginException( esc_html( 'The settings do not match schema/settings.json' . ( is_wp_error( $valid ) ? ': ' . $valid->get_error_message() : '.' ) ) );
+		}
+		update_option( Options::SETTINGS, $stored );
 	}
 
 	/**

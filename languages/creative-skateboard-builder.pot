@@ -9,7 +9,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-11-10T07:05:04+00:00\n"
+"POT-Creation-Date: 2026-11-10T07:23:22+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: creative-skateboard-builder\n"
@@ -43,6 +43,170 @@ msgstr ""
 msgid "Creative Skateboard Builder: run \"composer install\" before activating the plugin."
 msgstr ""
 
+#: src/Admin/Labels.php:37
+msgid "Deck width"
+msgstr ""
+
+#: src/Admin/Labels.php:38
+msgid "Deck length"
+msgstr ""
+
+#: src/Admin/Labels.php:39
+msgid "Wheelbase"
+msgstr ""
+
+#: src/Admin/Labels.php:40
+msgid "Deck hole pattern"
+msgstr ""
+
+#: src/Admin/Labels.php:41
+msgid "Axle width"
+msgstr ""
+
+#: src/Admin/Labels.php:42
+msgid "Narrowest deck"
+msgstr ""
+
+#: src/Admin/Labels.php:43
+msgid "Widest deck"
+msgstr ""
+
+#: src/Admin/Labels.php:44
+msgid "Truck height"
+msgstr ""
+
+#: src/Admin/Labels.php:45
+msgid "Truck height class"
+msgstr ""
+
+#: src/Admin/Labels.php:46
+msgid "Largest wheel without risers"
+msgstr ""
+
+#: src/Admin/Labels.php:47
+msgid "Baseplate hole pattern"
+msgstr ""
+
+#: src/Admin/Labels.php:48
+msgid "Axle diameter"
+msgstr ""
+
+#: src/Admin/Labels.php:49
+msgid "Wheel diameter"
+msgstr ""
+
+#: src/Admin/Labels.php:50
+msgid "Riser thickness"
+msgstr ""
+
+#: src/Admin/Labels.php:51
+msgid "Bolt length"
+msgstr ""
+
+#: src/Admin/Labels.php:52
+msgid "Bearing bore"
+msgstr ""
+
+#: src/Admin/Labels.php:53
+msgid "Spacers built in"
+msgstr ""
+
+#: src/Admin/Labels.php:54
+msgid "Grip width"
+msgstr ""
+
+#: src/Admin/Labels.php:55
+msgid "Grip length"
+msgstr ""
+
+#: src/Admin/Labels.php:56
+msgid "Number in a set"
+msgstr ""
+
+#: src/Admin/Labels.php:70
+msgid "Inches (in)"
+msgstr ""
+
+#: src/Admin/Labels.php:71
+msgid "Millimetres (mm)"
+msgstr ""
+
+#: src/Admin/Labels.php:83
+msgid "The maker's chart"
+msgstr ""
+
+#: src/Admin/Labels.php:84
+msgid "The part's own field"
+msgstr ""
+
+#: src/Admin/Labels.php:85
+msgid "A mapped attribute"
+msgstr ""
+
+#: src/Admin/SettingsPage.php:59
+msgid "Builder"
+msgstr ""
+
+#: src/Admin/SettingsPage.php:77
+msgid "Part specs"
+msgstr ""
+
+#: src/Admin/SettingsPage.php:79
+msgid "Where the builder reads each part's specs. Saving a change here reads every part again, in the background."
+msgstr ""
+
+#: src/Admin/SettingsPage.php:151
+msgid "First"
+msgstr ""
+
+#: src/Admin/SettingsPage.php:152
+msgid "Second"
+msgstr ""
+
+#: src/Admin/SettingsPage.php:153
+msgid "Third"
+msgstr ""
+
+#: src/Admin/SettingsPage.php:187
+msgid "The settings were not saved. Each problem is shown beside its field."
+msgstr ""
+
+#: src/Admin/SettingsPage.php:215
+msgid "Choose the attribute this spec is read from, or clear the line."
+msgstr ""
+
+#: src/Admin/SettingsPage.php:216
+msgid "Choose the spec this attribute feeds, or clear the line."
+msgstr ""
+
+#: src/Admin/SettingsPage.php:217
+msgid "The attribute's name is too long. Use 190 characters or fewer."
+msgstr ""
+
+#: src/Admin/SettingsPage.php:218
+msgid "Choose a spec from the list."
+msgstr ""
+
+#: src/Admin/SettingsPage.php:219
+msgid "Choose a unit from the list."
+msgstr ""
+
+#: src/Admin/SettingsPage.php:220
+msgid "This spec is not a length, so it has no unit. Set the unit to the spec's own."
+msgstr ""
+
+#: src/Admin/SettingsPage.php:221
+msgid "This attribute already feeds this spec on a line above. Clear one of the two."
+msgstr ""
+
+#: src/Admin/SettingsPage.php:222
+msgid "The mapping holds 50 lines at most. Clear some lines."
+msgstr ""
+
+#: src/Admin/SettingsPage.php:223
+msgid "Put each source in one place: first, second and third."
+msgstr ""
+
 #: src/Hooks/SpecTableHooks.php:68
 msgid "Spec tables"
 msgstr ""
@@ -71,4 +235,47 @@ msgstr ""
 
 #: src/Updates/Updater.php:233
 msgid "The Creative Skateboard Builder update did not match its published checksum, so it was not installed."
+msgstr ""
+
+#: templates/admin/settings-mapping.php:22
+msgid "Attribute mapping"
+msgstr ""
+
+#: templates/admin/settings-mapping.php:25
+msgid "Read a spec from a product attribute your shop already fills in: the deck's width from the Width attribute, for one. Type the name of an attribute, or choose one of the shop's. The unit is what a value with no unit is in. To remove a line, clear its attribute and its spec. Save to add more lines."
+msgstr ""
+
+#. translators: %d: the line's number in the attribute mapping.
+#: templates/admin/settings-mapping.php:48
+#, php-format
+msgid "Line %d"
+msgstr ""
+
+#: templates/admin/settings-mapping.php:59
+msgid "Attribute"
+msgstr ""
+
+#: templates/admin/settings-mapping.php:74
+msgid "Spec"
+msgstr ""
+
+#: templates/admin/settings-mapping.php:82
+msgid "No spec"
+msgstr ""
+
+#: templates/admin/settings-mapping.php:89
+msgid "Unit"
+msgstr ""
+
+#: templates/admin/settings-mapping.php:94
+msgid "The spec's own"
+msgstr ""
+
+#: templates/admin/settings-order.php:20
+#: templates/admin/settings-order.php:23
+msgid "Which source wins"
+msgstr ""
+
+#: templates/admin/settings-order.php:25
+msgid "A part's spec can come from three places. Where two say different things, the one placed first here is used, and the Catalogue check lists the part."
 msgstr ""
