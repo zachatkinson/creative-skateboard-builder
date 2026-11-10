@@ -160,6 +160,10 @@ final class Uninstaller {
 		$wpdb->query( $wpdb->prepare( 'DELETE FROM %i WHERE group_id = %d', $actions, (int) $groupId ) );
 		$wpdb->query( $wpdb->prepare( 'DELETE FROM %i WHERE group_id = %d', $groups, (int) $groupId ) );
 		// phpcs:enable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		// Action Scheduler keeps a group's ID in the object cache for ten minutes (4.1.0 in WooCommerce 11.2.2,
+		// classes/data-stores/ActionScheduler_DBStore.php:15, :344). On a persistent cache a reinstall inside that
+		// time would file its actions under the row just deleted, where nothing finds them by group.
+		wp_cache_delete( Options::QUEUE_GROUP, 'action_scheduler_groups' );
 	}
 
 	/**

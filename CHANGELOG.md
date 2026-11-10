@@ -28,6 +28,7 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Fixed
 
+- Uninstall forgets the ID Action Scheduler caches for the plugin's group. On a shop with a persistent object cache, a reinstall within ten minutes filed its jobs under a group that was gone (D-084).
 - Deactivation unschedules a pending action whatever its arguments. With the group given, Action Scheduler cancelled only actions with no arguments, which was every action until this version (D-071).
 
 ### Changed

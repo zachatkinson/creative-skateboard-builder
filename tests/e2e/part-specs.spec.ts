@@ -1,4 +1,4 @@
-import { test, expect, Page } from './support/test';
+import { test, expect, Page, inLocale } from './support/test';
 import { axe } from './support/axe';
 import { login } from './support/login';
 
@@ -103,7 +103,7 @@ test.describe( 'The Part specs panel', () => {
 
 	test( "a variation names its size in a maker's chart, and each figure says where it comes from", async ( {
 		page,
-	} ) => {
+	}, testInfo ) => {
 		const FIELDS = '.woocommerce_variation:first-child .cbuild-part-specs';
 		const variations = async () => {
 			await tab( page, '#variable_product_options' );
@@ -146,7 +146,10 @@ test.describe( 'The Part specs panel', () => {
 		await expect( axle ).toBeVisible();
 		await expect( axle ).toHaveValue( '' );
 		await expect( axle ).toHaveAccessibleDescription(
-			"In use: 8.5 in, from Independent's chart, size 149."
+			inLocale(
+				testInfo.project.name,
+				"In use: 8.5 in, from Independent's chart, size 149."
+			)
 		);
 		await axe( page, "a variation's Part specs, with a chart", FIELDS );
 

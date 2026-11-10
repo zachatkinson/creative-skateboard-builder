@@ -24,3 +24,14 @@ export const test = base.extend( {
 		await provide( context );
 	},
 } );
+
+/**
+ * A number as the page writes it for the project's locale: French writes a decimal comma. The page formats a value
+ * it shows with WordPress's `number_format_i18n()`, so the expectation follows the locale the project asks for.
+ *
+ * @param project The Playwright project's name.
+ * @param text    Text holding a number written with a point.
+ */
+export function inLocale( project: string, text: string ): string {
+	return project === 'fr-ca' ? text.replace( /(\d)\.(\d)/g, '$1,$2' ) : text;
+}

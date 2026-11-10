@@ -54,7 +54,9 @@ echo "2. Install the zip and activate it."
 wp plugin install "wp-content/plugins/$slug/tmp/$copy.zip" --activate | tail -n 2
 [ "$(active)" = active ] || fail "the zip did not activate"
 installed="$(read_state)"
-[ "$installed" = "$schema|2|1|0|$errors" ] || [ "$installed" = "$schema|2|2|0|$errors" ] || fail "after the install: $installed (version|tables|options|actions|errors)"
+# Activation asks for every part to be read again (D-082): the reindex's state is one more option, and its job the one
+# action, waiting or already run.
+[ "$installed" = "$schema|2|2|1|$errors" ] || [ "$installed" = "$schema|2|3|1|$errors" ] || fail "after the install: $installed (version|tables|options|actions|errors)"
 echo "   version|tables|options|actions|errors: $installed"
 
 echo "3. Install the same zip over itself."

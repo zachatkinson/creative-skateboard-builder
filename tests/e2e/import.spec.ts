@@ -1,6 +1,6 @@
 import { execSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
-import { test, expect, Page } from './support/test';
+import { test, expect, Page, inLocale } from './support/test';
 import { axe } from './support/axe';
 import { login } from './support/login';
 
@@ -88,7 +88,7 @@ test.describe( 'WooCommerce > Builder, Import and export', () => {
 	test( 'the sheet is downloaded, and a file is refused, shown, confirmed and written', async ( {
 		page,
 		javaScriptEnabled,
-	} ) => {
+	}, testInfo ) => {
 		// axe is a script in the page, so it cannot run in the project with scripts off; the others run it.
 		const clean = async ( name: string ) => {
 			if ( javaScriptEnabled ) {
@@ -169,7 +169,10 @@ test.describe( 'WooCommerce > Builder, Import and export', () => {
 		} );
 		await expect(
 			changes.getByRole( 'row', {
-				name: '2 Smoke test deck Wheelbase Nothing 14.25 in',
+				name: inLocale(
+					testInfo.project.name,
+					'2 Smoke test deck Wheelbase Nothing 14.25 in'
+				),
 			} )
 		).toBeVisible();
 		await expect(

@@ -1001,3 +1001,10 @@ Found by the milestone's two reviews, each fixed with a test that fails without 
 - **Tested in the browser:** `tests/e2e/check.spec.ts` follows a finding's link and sees the panel; `tests/e2e/part-specs.spec.ts` opens a variation by its address.
 
 **Status:** Accepted, pending Zach's word on the standard.
+
+### D-084 · Uninstall forgets Action Scheduler's cached group, and browser tests read numbers in the project's locale · 2026-11-10
+
+- **Uninstall deletes the object cache's entry for the plugin's group** (`wp_cache_delete( 'creative-skateboard-builder', 'action_scheduler_groups' )`). Action Scheduler keeps a group's ID in the object cache for ten minutes (4.1.0 in WooCommerce 11.2.2, `classes/data-stores/ActionScheduler_DBStore.php:15`, `:344`). The uninstaller deletes the group's row with SQL (D-024), so on a persistent cache a reinstall inside ten minutes filed its actions under a row that was gone: they still ran, but nothing found them by group, so deactivation would not cancel them and the Catalogue check would not count their failures. The object-cache leg's `UninstallTest` found it once activation queued a job (D-082): `Failed asserting that two strings are identical. -'1|2|2' +'0|2|2'`.
+- **A browser test that reads a formatted number asks for it in the project's locale** (`inLocale()` in `tests/e2e/support/test.ts`). The screens write a value with `number_format_i18n()`, so the `fr-ca` project sees `8,5 in`. The field a person types into keeps the shop's own separator, as WooCommerce's price fields do.
+
+**Status:** Accepted.
