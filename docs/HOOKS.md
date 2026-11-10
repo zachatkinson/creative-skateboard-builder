@@ -340,3 +340,25 @@ Two direct tests and one asynchronous test on Tools > Site Health, and a section
 | `cbuild/v1/site-health/catalogue-check` | 0.3.0 | `GET` | `view_site_health_checks`, as WordPress's own Site Health routes | The `cbuild_catalogue` test's result, in the shape Site Health takes: `label`, `status` (`good` or `recommended`), `badge` (`label`, `color`), `description`, `actions` and `test`. It reads and changes nothing, and is for Site Health's page; another caller wants the ability above, which gives the findings. |
 
 The Info tab's section `creative-skateboard-builder` lists the plugin's version, its database version, which source wins, how many attributes are mapped, the index's state and the count of failed jobs. None of it is marked private, and none of it is about a person.
+
+## Milestone 4: kits (0.4.0)
+
+The rest of this milestone's items are added here as each lands.
+
+### Product types
+
+| Type | Since | What it is |
+| --- | --- | --- |
+| `cbuild_kit` | 0.4.0 | A kit: the product a shopper builds from parts. Virtual. `is_purchasable()` is false, so nothing but the builder puts one in a cart. Its price to whoever shows it is the assembly fee from `_cbuild_assembly`; WooCommerce's price fields stay empty, and a price set on a kit is not kept. With the plugin switched off WooCommerce reads a kit as a simple product with no price, which it does not sell. |
+
+### Kit meta
+
+Each is on a kit product, as JSON text, and is the document its schema describes (Document schemas, above). Read one with `json_decode( $product->get_meta( $key ), true )`. A document is checked against its schema and then by the plugin before it is used, so one written by hand that fails either is treated as missing.
+
+| Key | Since | Schema | What it holds |
+| --- | --- | --- | --- |
+| `_cbuild_slots` | 0.4.0 | `schema/kit-slots.json` | The slots, in step order. |
+| `_cbuild_rules` | 0.4.0 | `schema/kit-rules.json` | Which rules run for the kit, and their settings. |
+| `_cbuild_presets` | 0.4.0 | `schema/kit-presets.json` | Up to six ready builds. |
+| `_cbuild_assembly` | 0.4.0 | `schema/kit-assembly.json` | Assembly: on or off to start, the fee, the lead time and the returns notice. |
+

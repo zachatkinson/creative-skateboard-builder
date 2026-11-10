@@ -1207,3 +1207,19 @@ Milestone 3's audit listed thirteen minors as the first work of milestone 4.
 
 **Status:** Accepted.
 
+### D-099 · The kit product type · 2026-11-10
+
+`docs/SPEC.md` (Data model) gives the type, `cbuild_kit`, its class, `KitProduct extends WC_Product`, and its four documents. What it leaves open:
+
+- **The class is `Adapter\KitProduct`.** It is WooCommerce's object, so it belongs with the adapters. `Hooks\KitHooks` answers `product_type_selector` and `woocommerce_product_class` and is handed the class's name by the container, since a Hookable may not name an adapter.
+- **No data store of its own.** WooCommerce looks for `product-cbuild_kit` and falls back to the product store (WooCommerce 11.2.2, `includes/class-wc-data-store.php:84`).
+- **Each document is JSON text in its meta,** as the spec says, and not a PHP array. WooCommerce's CRUD slashes a string before WordPress unslashes it and does not slash an array, so a backslash in a label survives as text and would be lost in an array. `KitProductTest` saves one.
+- **`document()` gives null for anything that is not a JSON object** and checks nothing more. The schema and the domain check a document where it is used (`Adapter\WooKits`, the Build tab), so there is one place that decides a document is good.
+- **The price to `view` is the fee; to `edit` it is empty.** WooCommerce's data store writes what `edit` gives (`includes/data-stores/class-wc-product-data-store-cpt.php:790`), so a price an importer or the REST API sets on a kit never reaches `_price` or `_regular_price`. That is what makes a kit unsellable with the plugin off, and `KitProductTest` removes the type's filters and asks WooCommerce. With `edit` answering as WooCommerce's own: "Failed asserting that two strings are identical."
+- **`is_purchasable()` is false, through WooCommerce's own filter,** so milestone 5 can answer it for the build it is adding and nothing else can add a kit.
+- **The type's name in the list is "Builder kit".** No shop's word is in it.
+- **Uninstall removes the four documents with the plugin's other meta** and leaves the products, which WooCommerce then reads as simple products with no price.
+- **The plugin's version is 0.4.0 from this commit,** since the type is the milestone's first public item (D-062).
+
+**Status:** Accepted.
+

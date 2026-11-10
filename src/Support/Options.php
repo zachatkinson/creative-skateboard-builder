@@ -94,6 +94,23 @@ final class Options {
 	public const META_SPEC_TABLE = '_cbuild_spec_table';
 
 	/**
+	 * The kit's product type.
+	 *
+	 * @since 0.4.0
+	 */
+	public const PRODUCT_TYPE_KIT = 'cbuild_kit';
+
+	/**
+	 * A kit's meta: its four documents, each as JSON text (docs/HOOKS.md, Document schemas).
+	 *
+	 * @since 0.4.0
+	 */
+	public const META_KIT_SLOTS    = '_cbuild_slots';
+	public const META_KIT_RULES    = '_cbuild_rules';
+	public const META_KIT_PRESETS  = '_cbuild_presets';
+	public const META_KIT_ASSEMBLY = '_cbuild_assembly';
+
+	/**
 	 * The spec tables' post type.
 	 *
 	 * @since 0.3.0
@@ -194,7 +211,29 @@ final class Options {
 	 * @return string[]
 	 */
 	public static function metaKeys(): array {
-		return array( self::META_SPECS, self::META_SPEC_TABLE, self::META_TABLE_ROWS, self::META_TABLE_SEED );
+		return array( self::META_SPECS, self::META_SPEC_TABLE, self::META_TABLE_ROWS, self::META_TABLE_SEED, ...self::kitDocuments() );
+	}
+
+	/**
+	 * The meta keys of a kit's four documents.
+	 *
+	 * @since 0.4.0
+	 *
+	 * @return list<string>
+	 */
+	public static function kitDocuments(): array {
+		return array( self::META_KIT_SLOTS, self::META_KIT_RULES, self::META_KIT_PRESETS, self::META_KIT_ASSEMBLY );
+	}
+
+	/**
+	 * Every product type the plugin adds.
+	 *
+	 * @since 0.4.0
+	 *
+	 * @return list<string>
+	 */
+	public static function productTypes(): array {
+		return array( self::PRODUCT_TYPE_KIT );
 	}
 
 	/**

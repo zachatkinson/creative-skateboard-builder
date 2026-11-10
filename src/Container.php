@@ -121,6 +121,11 @@ final class Container {
 					}
 				);
 			},
+			// The kit's class is an adapter's, which a Hookable may not name.
+			Hooks\KitHooks::class                       => static function ( Container $c ): object {
+				unset( $c );
+				return new Hooks\KitHooks( Adapter\KitProduct::class );
+			},
 			// The jobs and the import are built when a part is saved or a job runs, not on every request.
 			Hooks\IndexHooks::class                     => static function ( Container $c ): object {
 				return new Hooks\IndexHooks(
@@ -178,6 +183,8 @@ final class Container {
 			Hooks\SpecTableHooks::class            => array( Scope::Everywhere ),
 			// The import's job runs wherever the queue does.
 			Hooks\ImportHooks::class               => array( Scope::Everywhere ),
+			// WooCommerce builds a product from its type's class wherever one is read.
+			Hooks\KitHooks::class                  => array( Scope::Everywhere ),
 			// WooCommerce's settings screen.
 			Admin\SettingsHooks::class             => array( Scope::Admin ),
 			Admin\PartSpecsHooks::class            => array( Scope::Admin ),
