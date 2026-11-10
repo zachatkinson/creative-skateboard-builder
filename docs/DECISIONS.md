@@ -565,3 +565,12 @@ Also here: the browser site maps `tests/e2e/mu-plugins` as a folder. Mapped as o
 
 **Why:** 100 % of branches and mutants is only worth holding if none of the misses is a phantom, so each phantom is removed at its source and not excused.
 **Status:** Accepted.
+
+### D-053 · The update popup shows the shop owner's changelog · 2026-11-09
+
+Claude in Cowork checked 0.1.0 on the demo: the "View details" popup showed `CHANGELOG.md`'s bullets, with their class names and decision numbers. `tools/release-manifest.php` now takes a release's lines from `readme.txt`'s `== Changelog ==` entry for the version, which is written for shop owners, and fails when that entry is missing or carries a decision number, code or a path. `CHANGELOG.md` stays the developers' record. The release's notes on the releases repository are built from the same lines.
+
+0.1.0's published manifest is left as it is; the popup reads the new lines from 0.2.0.
+
+**Why:** The popup is the one place a shop owner reads about a release before installing it.
+**Status:** Accepted.

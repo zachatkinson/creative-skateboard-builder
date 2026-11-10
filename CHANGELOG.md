@@ -6,6 +6,7 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Changed
 
+- The update's "View details" popup and the release's notes show `readme.txt`'s changelog, written for shop owners, not this file's (D-053).
 - `composer api:check` also fails when the changelog's entry for an item's version does not name it (issue #5). The 0.1.0 entry now names its options and its site transient.
 - The 90 % line floor is on all of `src/`, read from the unit and integration suites together by `composer test:coverage:all`; no class is left out by name (D-050, issue #6).
 - The weekly canary fails on a high or critical advisory anywhere in the npm tree (D-051, issue #9).
