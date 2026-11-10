@@ -1,0 +1,24 @@
+<?xml version="1.0"?>
+<!-- The unit suite measured on src/Domain alone, with Xdebug's path coverage, for the 100 % branch floor
+     (tools/coverage.sh, tools/coverage-floor.php). phpunit.xml.dist is the suite's own configuration and holds its
+     strictness; this one only narrows what is measured, so the report's totals are the domain's. -->
+<phpunit
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:noNamespaceSchemaLocation="https://schema.phpunit.de/13.4/phpunit.xsd"
+	bootstrap="tests/bootstrap.php"
+	cacheDirectory="tmp/.phpunit.cache-domain"
+>
+	<php>
+		<ini name="memory_limit" value="1G"/>
+	</php>
+	<testsuites>
+		<testsuite name="unit">
+			<directory suffix="Test.php">tests/Unit</directory>
+		</testsuite>
+	</testsuites>
+	<source>
+		<include>
+			<directory suffix=".php">src/Domain</directory>
+		</include>
+	</source>
+</phpunit>

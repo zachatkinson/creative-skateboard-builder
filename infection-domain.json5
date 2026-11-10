@@ -1,0 +1,28 @@
+{
+	// src/Domain at 100 % MSI (docs/AUDIT.md: Mutation testing). tools/infection.sh skips this run while the domain
+	// has no file (milestone 1).
+	"$schema": "vendor/infection/infection/resources/schema.json",
+	"source": {
+		"directories": [
+			"src/Domain"
+		]
+	},
+	"bootstrap": "tests/bootstrap.php",
+	"timeout": 20,
+	"logs": {
+		"text": "tmp/infection-domain.log",
+		"summary": "tmp/infection-domain-summary.log",
+		"json": "tmp/infection-domain.json"
+	},
+	"tmpDir": "tmp/infection-domain",
+	"phpUnit": {
+		"configDir": "."
+	},
+	"testFramework": "phpunit",
+	"testFrameworkOptions": "--testsuite=unit --exclude-group=benchmark",
+	"mutators": {
+		"@default": true
+	},
+	"minMsi": 100,
+	"minCoveredMsi": 100
+}

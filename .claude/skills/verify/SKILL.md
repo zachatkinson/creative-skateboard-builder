@@ -11,7 +11,7 @@ Run these in order. Stop at the first failure and report its output verbatim. Do
 4. `composer gates`
 5. `composer test:coverage`
 6. `composer api:check`
-7. `npm run types`, then `git diff --exit-code -- assets/src`. Generated types must already be committed.
+7. `npm run types`, then `git status --porcelain -- assets/src`, which must print nothing (a diff misses a types file that was never committed). Generated types must already be committed.
 8. `npm run check`
 9. `npm run build && npm run budget`
 10. If wp-env is up (`curl -sf http://localhost:8898/ > /dev/null`):

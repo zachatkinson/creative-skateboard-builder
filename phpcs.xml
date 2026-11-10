@@ -1,0 +1,88 @@
+<?xml version="1.0"?>
+<ruleset name="Creative Skateboard Builder">
+	<description>Every WordPress standard, in full, for Creative Skateboard Builder (docs/STANDARDS.md).</description>
+
+	<file>creative-skateboard-builder.php</file>
+	<file>uninstall.php</file>
+	<file>src/</file>
+	<file>tools/phpstan-bootstrap.php</file>
+
+	<exclude-pattern>vendor/</exclude-pattern>
+	<exclude-pattern>node_modules/</exclude-pattern>
+	<exclude-pattern>tests/</exclude-pattern>
+	<exclude-pattern>tmp/</exclude-pattern>
+	<exclude-pattern>*/index.php</exclude-pattern>
+
+	<arg value="ps"/>
+	<arg name="colors"/>
+	<arg name="encoding" value="utf-8"/>
+	<arg name="extensions" value="php"/>
+	<arg name="parallel" value="8"/>
+	<!-- Zero warnings: a warning fails the run. -->
+	<arg name="warning-severity" value="1"/>
+	<arg name="error-severity" value="1"/>
+
+	<rule ref="WordPress-Extra">
+		<!-- PSR-4: one class per file, file named after the class. -->
+		<exclude name="WordPress.Files.FileName.InvalidClassFileName"/>
+		<exclude name="WordPress.Files.FileName.NotHyphenatedLowercase"/>
+	</rule>
+	<rule ref="WordPress-Docs">
+		<!-- Generics such as list<Part> and inline /** @var */ annotations are PHPStan's, not this sniff's. -->
+		<exclude name="Squiz.Commenting.FunctionComment.IncorrectTypeHint"/>
+		<exclude name="Generic.Commenting.DocComment.MissingShort"/>
+	</rule>
+	<rule ref="WordPress-VIP-Go">
+		<!-- The plugin's own tables are read and written in repositories, by design (spec: Data model). -->
+		<exclude name="WordPressVIPMinimum.Variables.RestrictedVariables.user_meta__wpdb__users"/>
+	</rule>
+
+	<config name="minimum_supported_wp_version" value="7.0"/>
+	<config name="testVersion" value="8.5-"/>
+	<rule ref="PHPCompatibilityWP"/>
+
+	<rule ref="WordPress.WP.I18n">
+		<properties>
+			<property name="text_domain" type="array">
+				<element value="creative-skateboard-builder"/>
+			</property>
+		</properties>
+	</rule>
+
+	<rule ref="WordPress.NamingConventions.PrefixAllGlobals">
+		<properties>
+			<property name="prefixes" type="array">
+				<element value="cbuild"/>
+				<element value="creative_skateboard_builder"/>
+				<element value="CreativeBranding\SkateboardBuilder"/>
+			</property>
+		</properties>
+	</rule>
+
+	<!-- Method names are camelCase inside the namespace (docs/STANDARDS.md); WPCS's snake_case rule is for procedural code. -->
+	<rule ref="WordPress.NamingConventions.ValidFunctionName.MethodNameInvalid">
+		<severity>0</severity>
+	</rule>
+	<rule ref="WordPress.NamingConventions.ValidVariableName">
+		<severity>0</severity>
+	</rule>
+
+	<!-- Raw queries belong in the repositories and the installer, and nowhere else (CLAUDE.md: Data access). -->
+	<rule ref="WordPress.DB.DirectDatabaseQuery">
+		<exclude-pattern>src/Repository/</exclude-pattern>
+		<exclude-pattern>src/Install/</exclude-pattern>
+	</rule>
+	<rule ref="WordPress.DB.PreparedSQLPlaceholders.UnsupportedIdentifierPlaceholder">
+		<!-- %i is supported since WordPress 6.2; the sniff predates it. -->
+		<severity>0</severity>
+	</rule>
+
+	<rule ref="WordPress.WP.Capabilities">
+		<properties>
+			<property name="custom_capabilities" type="array">
+				<element value="manage_woocommerce"/>
+				<element value="edit_products"/>
+			</property>
+		</properties>
+	</rule>
+</ruleset>

@@ -1,0 +1,93 @@
+# The layers of docs/STANDARDS.md (D-020). `composer arch` fails on any arrow not listed here and on any dependency
+# no layer covers. WordPress and WooCommerce classes form a layer of their own, so the domain, the ports and the
+# services can be forbidden from reaching them; their global functions are caught by tools/gates.sh.
+deptrac:
+  paths:
+    - ./src
+  exclude_files:
+    - '#index\.php$#'
+  layers:
+    - name: Domain
+      collectors:
+        - type: classLike
+          value: ^CreativeBranding\\SkateboardBuilder\\Domain\\
+    - name: Port
+      collectors:
+        - type: classLike
+          value: ^CreativeBranding\\SkateboardBuilder\\Port\\
+    - name: Service
+      collectors:
+        - type: classLike
+          value: ^CreativeBranding\\SkateboardBuilder\\Service\\
+    - name: Adapter
+      collectors:
+        - type: classLike
+          value: ^CreativeBranding\\SkateboardBuilder\\Adapter\\
+    - name: Repository
+      collectors:
+        - type: classLike
+          value: ^CreativeBranding\\SkateboardBuilder\\Repository\\
+    - name: Install
+      collectors:
+        - type: classLike
+          value: ^CreativeBranding\\SkateboardBuilder\\Install\\
+    - name: Support
+      collectors:
+        - type: classLike
+          value: ^CreativeBranding\\SkateboardBuilder\\Support\\
+    - name: Presentation
+      collectors:
+        - type: classLike
+          value: ^CreativeBranding\\SkateboardBuilder\\(Hooks|Rest|Abilities|Cli|Block|Front|Cart|Order|Admin|Privacy|Health|Updates)\\
+    - name: Core
+      collectors:
+        - type: classLike
+          value: ^CreativeBranding\\SkateboardBuilder\\(Plugin|Container|Hookable)$
+    - name: WordPress
+      collectors:
+        - type: classLike
+          value: ^(WP_|WC_|WooCommerce$|wpdb$|Automattic\\WooCommerce\\|ActionScheduler)
+  ruleset:
+    Domain: []
+    Port:
+      - Domain
+    Service:
+      - Domain
+      - Port
+    Adapter:
+      - Domain
+      - Port
+      - Support
+      - WordPress
+    Repository:
+      - Domain
+      - Port
+      - Support
+      - WordPress
+    Install:
+      - Domain
+      - Port
+      - Support
+      - Core
+      - WordPress
+    Support:
+      - WordPress
+    Presentation:
+      - Domain
+      - Port
+      - Service
+      - Support
+      - Install
+      - Core
+      - WordPress
+    Core:
+      - Domain
+      - Port
+      - Service
+      - Adapter
+      - Repository
+      - Install
+      - Support
+      - Presentation
+      - WordPress
+    WordPress: []

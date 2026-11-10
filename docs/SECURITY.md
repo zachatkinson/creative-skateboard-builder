@@ -1,0 +1,34 @@
+# Security checklist
+
+Walked before each tag by someone other than the author of the milestone. OWASP's top ten mapped to a WordPress plugin, plus the spec's own rules. Each line is marked with the tag it was walked for and a word on how.
+
+## Rules the code is held to (spec: Security, performance and compatibility)
+
+1. Nothing from the browser is trusted. A build link, a preset or a form carries IDs only; each is checked on every use, and prices are always the server's.
+2. The state route is public and read-only: a GET with an explicit `permission_callback`, a schema for its arguments, a rate limit per address and `Cache-Control: no-store`. It shows only what the shop shows.
+3. Every admin action checks a capability and a nonce. Input is sanitised where it arrives and output is escaped where it is printed.
+4. SQL only in `src/Repository/` and `src/Install/`, always prepared. Products and orders only through WooCommerce's CRUD. CI: PHPCS `WordPress.DB`, PHPStan and `tools/gates.sh` (gates 1 and 1b).
+5. No user data is unserialised and no PHP object is stored. `unserialize`, `eval`, `extract` and the shell functions are banned (gate 2).
+6. No outbound request but the update manifest and the release it names (gate 5). The updater reads only the agency's manifest, over HTTPS with no redirect followed, takes a package only from this plugin's own releases in the agency's releases repository, and checks the zip's SHA-256 before WordPress installs it.
+7. Saved builds are read and changed only by the customer who owns them, checked on every request.
+8. Generated files are made only for builds that pass validation, from a capped queue, and named by a hash, never by anything a visitor sends.
+9. Logs hold part, kit and order IDs, never names, emails or addresses.
+10. Supply chain: both lock files committed, `composer audit` passing, `npm audit` passing on what the zip ships (D-044), a secrets scan on every push, every GitHub Action pinned to a commit SHA, a CycloneDX SBOM with each release, and the release's token never on a runner that installs or runs the toolchain (D-043, gate 9).
+11. Uninstall removes everything the plugin made and keeps the shop's order records.
+
+## Walk, per tag
+
+"n/a" means the thing the check is about does not exist yet. The walk for a tag is done by a reviewer, not by the milestone's author; the v0.1.0 column is the author's own notes for that reviewer.
+
+| # | OWASP | Check | v0.1.0 |
+| --- | --- | --- | --- |
+| A01 | Broken access control | Every admin action, AJAX handler and REST route has a capability check; REST routes have a `permission_callback`; saved builds check their owner. | n/a: no handler, route or screen yet. Inline migrations run only for `manage_woocommerce` on an admin page (`Hooks\InstallHooks::inlineAllowed()`, tested). |
+| A02 | Cryptographic failures | No secret is stored or logged. Hashes that guard something use SHA-256 or better. | The updater compares the zip's SHA-256 with `hash_equals()`; a mismatch deletes the download and refuses it (tested). No secret exists. |
+| A03 | Injection | SQL prepared; output escaped; no shell, `eval` or `unserialize`. | Every statement in `Repository\MigrationRepository`, `Install\Schema` and `Install\Uninstaller` goes through `$wpdb->prepare()` with `%i` for identifiers. Gates 1, 1b, 1c and 2 pass, and each was broken on purpose to see it fail (`docs/reviews/M1.md`, Deliberate breaks). |
+| A04 | Insecure design | The browser never decides fit or price. | n/a: no fit engine or price yet. |
+| A05 | Security misconfiguration | Every PHP file exits without `ABSPATH`; no debug output; no directory of the plugin's is written to. | Every file in `src/` has the guard; `var_dump`, `print_r` and `error_log` are banned (gate 2). Nothing is written to disk. |
+| A06 | Vulnerable components | `composer audit` and `npm audit --omit=dev` clean; Dependabot on. | Both pass on 9 November 2026. No run-time Composer or npm dependency ships, so the npm audit has nothing to read. The dev toolchain's advisories are closed by overrides but for 4 low ones with no fixed release, which do not reach the zip (D-046, issue #9). |
+| A07 | Identification and authentication failures | Nonces on every state change; no authentication of the plugin's own. | n/a: no form or state-changing request yet. |
+| A08 | Software and data integrity failures | The update path cannot install anything but the agency's release. | The manifest is read over HTTPS only: an address on another scheme is never requested (`UpdaterTest`). A package must be a zip under this plugin's own release tags in `zachatkinson/creative-releases`: another owner, another repository, a branch archive and a sibling plugin's zip are each refused (`ManifestTest`). Its SHA-256 must match before WordPress installs it, checked on `upgrader_pre_download`, the hook WordPress downloads through (`UpdaterTest`). Actions pinned to SHAs, each checked against its tag. |
+| A09 | Logging and monitoring failures | Failures are logged with enough to act on, and with no personal data. | A migration that throws releases its lock and logs its name and cursor through `Port\Logger` (tested). No personal data exists to log. |
+| A10 | Server-side request forgery | No request to an address a visitor supplies. | The manifest is read from a constant address (`Updates\Updater::MANIFEST_URL`), with no redirect followed, and a package only from under a constant prefix (`Updates\Manifest::RELEASES`). Gate 5 passes. |

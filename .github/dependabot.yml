@@ -1,0 +1,44 @@
+# Dependabot keeps the lock files and the pinned actions current (docs/STANDARDS.md: CI hygiene). Each action is pinned
+# to a commit SHA; Dependabot updates the SHA and the version comment beside it.
+#
+# Monthly, one pull request per ecosystem, and nothing younger than a week (D-040): each pull request is a full CI
+# run, billed by the minute, and a release a few days old is the one most likely to be withdrawn. Security updates are
+# a repository setting of their own and arrive as soon as an advisory does, whatever this schedule says.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    cooldown:
+      default-days: 7
+    groups:
+      actions:
+        patterns: ['*']
+  - package-ecosystem: composer
+    directory: /
+    schedule:
+      interval: monthly
+    cooldown:
+      default-days: 7
+    groups:
+      composer:
+        patterns: ['*']
+  - package-ecosystem: composer
+    directory: /tools/integration
+    schedule:
+      interval: monthly
+    cooldown:
+      default-days: 7
+    groups:
+      integration:
+        patterns: ['*']
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: monthly
+    cooldown:
+      default-days: 7
+    groups:
+      npm:
+        patterns: ['*']

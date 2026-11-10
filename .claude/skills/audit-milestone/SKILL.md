@@ -36,4 +36,4 @@ description: Close a milestone. Run the full gates, have the spec-reviewer and a
    - `docs/BENCHMARK.md` and `docs/A11Y.md`;
    - `readme.txt`.
 7. **The walkthrough.** For a milestone with a screen, take its screenshots (desktop and phone, dark and light, English and French) into `docs/reviews/M<n>/`. Cover what the milestone built. Admin-only milestones walk their screens. From milestone 6, also cover the ways in built so far, a change that breaks later picks, a sold-out part in a preset, and the phone bar.
-8. **The pull request.** Open it with `.github/pull_request_template.md` filled from the review. Stop, and tell Zach it's ready for Claude in Cowork's review.
+8. **The pull request.** Open it as a draft with `.github/pull_request_template.md` filled from the review, and mark it ready once the gates pass locally, which starts the full CI run (D-041). Tell Zach it's ready for Claude in Cowork's review. When the review's fixes have landed and the full run is green, merge it. Then stop: the next milestone waits for "Milestone N is approved".

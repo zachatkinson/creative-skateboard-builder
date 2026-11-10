@@ -1,0 +1,290 @@
+name: CI
+
+# Every gate on every push to main and every pull request (docs/AUDIT.md: CI gates). A change to the docs alone runs
+# nothing. A version tag runs nothing either: release.yml publishes once this workflow has passed on the tagged
+# commit's push to main. Every action is pinned to a commit SHA (docs/STANDARDS.md: CI hygiene).
+on:
+  push:
+    branches: [main]
+    paths-ignore: ['docs/**', '**.md', 'LICENSE']
+  pull_request:
+    # ready_for_review as well as the defaults: marking a draft ready is what starts its full run (D-041).
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths-ignore: ['docs/**', '**.md', 'LICENSE']
+
+permissions:
+  contents: read
+
+# A new push to a pull request cancels the run it replaces; each push to main keeps its own run, which a release
+# waits for.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  # A draft pull request, and one that touches only the browser tests, runs the standards, the unit tests and the
+  # newest leg, not the other legs, mutation testing or the release dry run. A change to a workflow takes the full
+  # run: it is what can break the other legs, and Dependabot's bumps of the actions are such changes (D-043). Main always runs everything;
+  # a release waits for it.
+  # The secrets scan rides in the same job: both need the history and neither takes ten seconds, and every job is
+  # billed to the whole minute (D-040). A secret found stops the jobs that wait for this one.
+  scope:
+    name: What this change runs, and the secrets scan (gitleaks)
+    runs-on: ubuntu-26.04
+    timeout-minutes: 10
+    # gitleaks lists the pull request's commits to scan them, which the workflow's contents-only token may not do.
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      full: ${{ steps.scope.outputs.full }}
+      legs: ${{ steps.scope.outputs.legs }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - id: scope
+        env:
+          BASE: ${{ github.base_ref }}
+          DRAFT: ${{ github.event.pull_request.draft }}
+        run: |
+          full=true
+          if [ "${GITHUB_EVENT_NAME}" = pull_request ] && [ "${DRAFT}" = true ]; then
+            # A draft is work in progress: the lighter run on each push, everything once it is marked ready (D-041).
+            # GitHub does not merge a draft, so nothing reaches main without the full run.
+            full=false
+          elif [ "${GITHUB_EVENT_NAME}" = pull_request ]; then
+            # The lighter run only when the diff was read and holds nothing else: if git cannot say, everything runs.
+            if changed=$(git diff --name-only "origin/${BASE}...HEAD"); then
+              others=$(grep -Ev '^(tests/e2e/|docs/|LICENSE$)|\.md$' <<<"$changed" || true)
+              if [ -n "$changed" ] && [ -z "$others" ]; then
+                full=false
+              fi
+            fi
+          fi
+          echo "full=$full" >> "$GITHUB_OUTPUT"
+          if [ "$full" = true ]; then
+            echo 'legs=["newest","oldest","variants"]' >> "$GITHUB_OUTPUT"
+          else
+            echo 'legs=["newest"]' >> "$GITHUB_OUTPUT"
+          fi
+          echo "Full run: $full"
+      - uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
+  static:
+    name: Lint, analyse, architecture, gates, unit tests, API snapshot, audits, benchmarks, PHP 7.4 parse
+    runs-on: ubuntu-26.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
+        with:
+          php-version: '8.5'
+          coverage: xdebug
+          tools: composer:v2
+      - uses: ramsey/composer-install@65e4f84970763564f46a70b8a54b90d033b3bdda # 4.0.0
+      - run: composer lint
+      - run: composer analyse
+      - run: composer arch
+      - run: composer gates
+      - name: Unit tests with the coverage floors (100 % of src/Domain's lines and branches, 90 % of lines overall)
+        run: composer test:coverage
+      - run: composer api:check
+      # The audits read the three lock files, so nothing more has to be installed for them.
+      - run: composer audit:deps
+      - name: Benchmarks (the server budgets are tests)
+        run: composer test:benchmark
+      # The main file, uninstall.php and the floors check must parse on PHP 7.4, the oldest PHP WordPress 7.0 runs on,
+      # so a host below the floor sees the notice and no parse error (D-023). The 8.5- PHPCompatibility run cannot flag
+      # 8.5-only syntax in them. Last, since it replaces the job's PHP.
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
+        with:
+          php-version: '7.4'
+          coverage: none
+      - name: The main file parses on PHP 7.4
+        run: |
+          php -v | head -n 1 | grep -F 'PHP 7.4'
+          php -l creative-skateboard-builder.php
+          php -l uninstall.php
+          php -l src/Support/Requirements.php
+          # Below the floors uninstall.php loads these four itself, past the autoloader (D-043).
+          php -l src/Install/Sites.php
+          php -l src/Support/Options.php
+          php -l src/Support/Tables.php
+          php -l src/Install/Uninstaller.php
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        if: always()
+        with:
+          name: coverage
+          path: tmp/coverage.txt
+
+  js:
+    name: TypeScript, JavaScript and CSS standards; generated types; the asset budgets
+    runs-on: ubuntu-26.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - name: The generated types are committed
+        # git status, not git diff: a types file never committed is untracked, and a diff does not show it.
+        run: |
+          npm run types
+          changed="$(git status --porcelain -- assets/src)"
+          if [ -n "$changed" ]; then
+            echo "The generated types differ from the committed ones:"; echo "$changed"; exit 1
+          fi
+      - run: npm run check
+      - run: npm run build
+      - run: npm run budget
+
+  mutation:
+    name: Mutation testing (Infection and StrykerJS), and the release dry run
+    needs: scope
+    if: needs.scope.outputs.full == 'true'
+    runs-on: ubuntu-26.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+          # A pull request mutates the lines it changes, against its base branch. Quoted: a bare 0 is falsy in an
+          # expression, so `&& 0 || 1` would always be 1 and the base branch never fetched.
+          fetch-depth: ${{ github.event_name == 'pull_request' && '0' || '1' }}
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
+        with:
+          php-version: '8.5'
+          coverage: pcov
+          tools: composer:v2
+      - uses: ramsey/composer-install@65e4f84970763564f46a70b8a54b90d033b3bdda # 4.0.0
+      # The same two configurations and floors either way (90 % outside the domain, 100 % inside it); a pull request
+      # applies them to its changed lines, and passes when it changed none they mutate. Main runs everything.
+      - name: Infection (a pull request's changed lines; everything on main)
+        env:
+          BASE: ${{ github.base_ref }}
+        run: |
+          if [ "${GITHUB_EVENT_NAME}" = pull_request ]; then
+            bash tools/infection.sh --git-diff-lines "--git-diff-base=origin/${BASE}" --ignore-msi-with-no-mutations
+          else
+            composer infection
+          fi
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - name: StrykerJS on the builder's store (90 %; skipped while assets/src has no TypeScript)
+        run: npm run mutate:js
+      # Everything release.yml does short of publishing (tools/release-dry-run.sh): the zip, the SBOMs from their
+      # pinned tools, and the manifest read back by the updater's own class. release.yml runs only on a tag, so without
+      # this a broken step would first be met by a release. It runs whatever mutation testing found.
+      - name: Release dry run (zip, SBOMs, manifest)
+        if: ${{ !cancelled() }}
+        run: bash tools/release-dry-run.sh
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        if: always()
+        with:
+          name: infection-logs
+          path: tmp/infection*.log
+
+  # The matrix (docs/AUDIT.md: The platform; D-004, D-040): the newest and oldest WordPress and WooCommerce pairs on
+  # PHP 8.5, each with the browser projects, Plugin Check and the zip's lifecycle; and one leg that runs the
+  # integration suite six more times on one wp-env (tools/integration-variants.sh): MySQL 8.4 and MariaDB 10.11 as
+  # their own database servers, HPOS off and syncing, a persistent object cache, and multisite.
+  integration:
+    name: Integration, Plugin Check, browser (${{ matrix.leg }})
+    needs: scope
+    runs-on: ubuntu-26.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        leg: ${{ fromJSON(needs.scope.outputs.legs) }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
+        with:
+          php-version: '8.5'
+          coverage: none
+          tools: composer:v2
+      - uses: ramsey/composer-install@65e4f84970763564f46a70b8a54b90d033b3bdda # 4.0.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: Pin the oldest supported WordPress and WooCommerce
+        if: matrix.leg == 'oldest'
+        run: npm run env:oldest
+      # The browser site (:8898) and the integration site (:8899) are two wp-env environments (D-047). The variants
+      # leg runs the integration suite alone, so it starts the one.
+      - run: npm run env:start
+        if: matrix.leg != 'variants'
+      - run: npx wp-env start --config=.wp-env.tests.json
+        if: matrix.leg == 'variants'
+      - name: The i18n check (the POT current, the translations complete)
+        if: matrix.leg == 'newest'
+        run: composer i18n:check
+      - run: composer test:integration
+        if: matrix.leg != 'variants'
+      - name: The six variants (two database servers, HPOS off and syncing, object cache, multisite)
+        if: matrix.leg == 'variants'
+        run: bash tools/integration-variants.sh
+      - run: npm run plugin-check
+        if: matrix.leg == 'newest' || matrix.leg == 'oldest'
+      - name: The zip installs, upgrades over itself and uninstalls clean
+        if: matrix.leg == 'newest' || matrix.leg == 'oldest'
+        run: npm run zip-lifecycle
+      # Newest runs every browser project, the visual snapshots among them; oldest, which is there for the WordPress
+      # and WooCommerce versions, one desktop and one phone engine. The browsers are cached by Playwright's version;
+      # the system packages they need are installed each time.
+      - name: The browser projects for the leg
+        id: browsers
+        if: matrix.leg == 'newest' || matrix.leg == 'oldest'
+        run: |
+          if [ "${{ matrix.leg }}" = newest ]; then
+            echo "engines=chromium firefox webkit" >> "$GITHUB_OUTPUT"
+            echo "projects=" >> "$GITHUB_OUTPUT"
+          else
+            echo "engines=chromium webkit" >> "$GITHUB_OUTPUT"
+            echo "projects=--project=chromium-desktop --project=webkit-phone" >> "$GITHUB_OUTPUT"
+          fi
+          echo "version=$(node -p "require('./node_modules/@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+        id: playwright-cache
+        if: matrix.leg == 'newest' || matrix.leg == 'oldest'
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.browsers.outputs.version }}-${{ matrix.leg }}
+      - run: npx playwright install --with-deps ${{ steps.browsers.outputs.engines }}
+        if: (matrix.leg == 'newest' || matrix.leg == 'oldest') && steps.playwright-cache.outputs.cache-hit != 'true'
+      - run: npx playwright install-deps ${{ steps.browsers.outputs.engines }}
+        if: (matrix.leg == 'newest' || matrix.leg == 'oldest') && steps.playwright-cache.outputs.cache-hit == 'true'
+      - run: npm run test:e2e -- ${{ steps.browsers.outputs.projects }}
+        if: matrix.leg == 'newest' || matrix.leg == 'oldest'
+      - name: Lighthouse CI (LCP, CLS, TBT, SEO on the mobile profile)
+        if: matrix.leg == 'newest'
+        run: npm run lhci
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        if: failure()
+        with:
+          name: browser-${{ matrix.leg }}
+          path: |
+            test-results
+            tmp/lhci
+      - name: WordPress's debug log
+        if: failure()
+        run: npx wp-env run cli --config=.wp-env.tests.json -- bash -c 'cat wp-content/debug.log 2>/dev/null || true'; npx wp-env run cli -- bash -c 'cat wp-content/debug.log 2>/dev/null || true'

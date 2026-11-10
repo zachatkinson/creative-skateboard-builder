@@ -24,7 +24,7 @@ It is the agency's showpiece, built to the twelve-dimension audit in `docs/AUDIT
 1. `/plan-milestone`: write the plan into `docs/reviews/M<n>.md`, with the risks under all twelve dimensions. Ask Zach anything that needs him before writing code.
 2. Build. The spec's test cases come first. Run `/verify` before every commit (docs-only commits skip it; in milestone 1 it runs the gates that exist so far). Keep commits small and green.
 3. `/audit-milestone`: the `spec-reviewer` and `auditor` agents read the diff since the last tag. Fix every blocker and should-fix with a test that fails without the fix, then write the review.
-4. Open a pull request with the template and a `CHANGELOG.md` entry. Zach merges it after Claude in Cowork's review.
+4. Open a draft pull request with the template and a `CHANGELOG.md` entry, and mark it ready once the gates pass locally (D-041). After Claude in Cowork's review, its fixes land and Claude merges, once the full CI run is green.
 5. Stop. Don't start the next milestone until Zach says "Milestone N is approved". The next `/plan-milestone` tags the merge: `v0.<n>.0`, and `v1.0.0` for milestone 9.
 
 ## Commands
@@ -39,15 +39,16 @@ It is the agency's showpiece, built to the twelve-dimension audit in `docs/AUDIT
   - `strict_types`;
   - outbound requests;
   - WordPress in the domain;
-  - em dashes and banned words in the POT.
+  - em dashes and banned words in the POT;
+  - a job of `release.yml` that holds the token and runs anything but `gh`, and the release plan's cases.
 - `composer test:unit`: PHPUnit 13, no WordPress
 - `composer test:coverage`: unit tests with the floors: 100 % of lines and branches in `src/Domain` (Xdebug's path coverage, since pcov measures lines only) and 90 % of lines overall
 - `composer test:benchmark`: the server budgets
 - `composer infection`: 100 % MSI on `src/Domain`, 90 % elsewhere
 - `composer api:check`: the public API against `docs/HOOKS.md` and `tests/Fixtures/api-surface.json`. `composer api:snapshot` rewrites the snapshot; do it, `HOOKS.md` and the changelog in the same commit as the change
 - `composer check`: lint, analyse, arch, gates, unit tests and api:check
-- `npx wp-env start`: WordPress 7.1.4, WooCommerce 11.2.2 and Plugin Check, on PHP 8.5, at :8898 (tests site :8899). `npm run env:oldest` switches to WordPress 7.0 with WooCommerce 11.2.0, and `npm run env:newest` back. `@wordpress/env` is pinned to the major Creative Search uses (^12), with the same `.wp-env.json` shape: a tests site on `testsPort`
-- `composer test:integration`: PHPUnit 9.6 from `tools/integration/`, inside wp-env's tests site, as Search's `tools/integration.sh`. The variants are `composer test:integration:hpos-off`, `:hpos-sync`, `:multisite` and `:object-cache`
+- `npm run env:start`: two wp-env environments on WordPress 7.1.4, WooCommerce 11.2.2 and PHP 8.5: the browser site at :8898 (`.wp-env.json`, with Plugin Check) and the integration site at :8899 (`.wp-env.tests.json`, D-047). `npx wp-env start` starts the browser site alone; a command for the integration site takes `--config=.wp-env.tests.json`. `npm run env:oldest` switches to WordPress 7.0 with WooCommerce 11.2.0, and `npm run env:newest` back. `@wordpress/env` is pinned to the major Creative Search uses (^12). Search still runs its integration suite in wp-env's built-in tests site, which wp-env 12 deprecates
+- `composer test:integration`: PHPUnit 9.6 from `tools/integration/`, inside the integration site, as Search's `tools/integration.sh`. The variants are `composer test:integration:hpos-off`, `:hpos-sync`, `:multisite` and `:object-cache`
 - `npm run build` / `npm run start`: `wp-scripts --experimental-modules` (script modules, Interactivity API)
 - `npm run types`: the state route's TypeScript types, generated from its JSON Schema. CI fails if the tree changes
 - `npm run check`: ESLint, Stylelint, Prettier, `tsc --noEmit` and Vitest

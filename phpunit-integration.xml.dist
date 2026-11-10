@@ -1,0 +1,33 @@
+<?xml version="1.0"?>
+<!-- PHPUnit 9.6 from tools/integration/: the newest version the WordPress core test suite supports (Creative Search's
+     D-021; this plugin's D-020). Run through composer test:integration, inside the integration site (.wp-env.tests.json).
+     A deprecation, notice or warning raised while a test runs fails it (docs/AUDIT.md: zero PHP deprecations): the
+     WordPress-bound classes run only in this suite. -->
+<phpunit
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:noNamespaceSchemaLocation="https://schema.phpunit.de/9.3/phpunit.xsd"
+	bootstrap="tests/bootstrap-integration.php"
+	colors="true"
+	beStrictAboutTestsThatDoNotTestAnything="true"
+	convertDeprecationsToExceptions="true"
+	convertErrorsToExceptions="true"
+	convertNoticesToExceptions="true"
+	convertWarningsToExceptions="true"
+	failOnWarning="true"
+	failOnRisky="true"
+	cacheResultFile="tmp/.phpunit.integration.result.cache"
+>
+	<testsuites>
+		<testsuite name="integration">
+			<directory suffix="Test.php">tests/Integration</directory>
+		</testsuite>
+	</testsuites>
+	<groups>
+		<exclude>
+			<group>benchmark</group>
+		</exclude>
+	</groups>
+	<php>
+		<const name="WP_TESTS_PHPUNIT_POLYFILLS_PATH" value="tools/integration/vendor/yoast/phpunit-polyfills"/>
+	</php>
+</phpunit>

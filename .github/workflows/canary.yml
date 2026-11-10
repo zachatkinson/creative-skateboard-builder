@@ -1,0 +1,72 @@
+name: Canary
+
+# Every Monday (docs/AUDIT.md: Compatibility): the integration suite, Plugin Check and the Chromium smoke run on
+# WordPress trunk with WooCommerce's newest pre-release, so a change coming in either is seen before a shop meets it.
+# A red run opens an issue (or comments on the open one); the issue is closed by hand once the cause is known.
+on:
+  schedule:
+    - cron: '17 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  canary:
+    name: WordPress trunk and WooCommerce's pre-release
+    runs-on: ubuntu-26.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
+        with:
+          php-version: '8.5'
+          coverage: none
+          tools: composer:v2
+      - uses: ramsey/composer-install@65e4f84970763564f46a70b8a54b90d033b3bdda # 4.0.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - id: pins
+        run: |
+          # Without pipefail a failed script hides behind tee, wp-env starts on the usual pins and the canary is
+          # green without having tested anything new.
+          set -o pipefail
+          bash tools/wp-env-canary.sh | tee tmp-canary.txt
+          test -f .wp-env.override.json && test -f .wp-env.tests.override.json
+          echo "pins=$(cat tmp-canary.txt)" >> "$GITHUB_OUTPUT"
+      - run: npm run env:start
+      - name: The site is running WordPress trunk
+        run: |
+          version="$(npx wp-env run cli --config=.wp-env.tests.json wp core version 2>/dev/null | tr -d '\r' | tail -n 1)"
+          echo "WordPress ${version}"
+          case "$version" in
+            *-alpha*|*-beta*|*-RC*) ;;
+            *) echo "::error::The canary is not on WordPress trunk (${version})."; exit 1 ;;
+          esac
+      - run: composer test:integration
+      - run: npm run plugin-check
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e -- --project=chromium-desktop --project=chromium-phone
+      - name: Open or update the issue when red
+        if: failure()
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        env:
+          PINS: ${{ steps.pins.outputs.pins }}
+        with:
+          script: |
+            const title = 'Canary: red on WordPress trunk or WooCommerce pre-release';
+            const body = `The weekly canary failed on ${new Date().toISOString().slice(0, 10)}.\n\n${process.env.PINS}\n\nRun: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const { data: open } = await github.rest.issues.listForRepo({ ...context.repo, state: 'open', labels: 'canary' });
+            const existing = open.find((issue) => issue.title === title);
+            if (existing) {
+              await github.rest.issues.createComment({ ...context.repo, issue_number: existing.number, body });
+            } else {
+              await github.rest.issues.create({ ...context.repo, title, body, labels: ['canary'] });
+            }

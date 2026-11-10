@@ -17,6 +17,7 @@ The UX deep dive, Zach's audit list and the plugin's new name reshaped the plan.
 | The floors move to PHP 8.5, WordPress 7.0 and WooCommerce 11.2 | PHP and WordPress as Creative Search's D-023. WooCommerce 11.2 is the first release with the Store API validation filters the cart relies on. Open question 8 |
 | Four new sections | SEO and sharing; Privacy and data handling; and, under Security, performance and compatibility, Upgrades and the public API, and Resilience |
 | The brief around this spec | `CLAUDE.md`, `docs/PROJECT.md`, `docs/STANDARDS.md`, `docs/AUDIT.md`, `docs/ROADMAP.md`, `docs/UX-RESEARCH.md` and `docs/DECISIONS.md` |
+| The attribute mapping and which source wins are shop-wide (milestone 1's review, 9 Nov) | The specs index holds one value per part and spec, so what feeds a spec and which source wins when two disagree can't differ by kit. Both move from the kit's Build tab to WooCommerce > Settings > Builder. Kits keep their rule switches and tolerances, which apply when fit is checked, not when parts are indexed (D-026) |
 
 ## What changed since 22 Oct
 
@@ -238,12 +239,12 @@ Two tables, product meta on the kit and the parts, and keys on cart and order it
 | Meta | Holds |
 | --- | --- |
 | `_cbuild_slots` | The slots in order: key, label, help text, required or optional, units per build, which products may fill it (categories, brands, products, attribute values), a default part |
-| `_cbuild_rules` | Which rules run for this kit, and their settings (tolerances, the source to trust where sources disagree) |
+| `_cbuild_rules` | Which rules run for this kit, and their settings (R1's tolerances, R3's riser suggestions, R6's length check). They apply when fit is checked, never when parts are indexed; what feeds a spec and which source wins are the shop's settings (D-026) |
 | `_cbuild_presets` | Ready builds: name, a line of description, and a pick per slot |
 | `_cbuild_assembly` | Default on or off, the fee, the lead time, and the returns notice shown before checkout |
 | `_cbuild_picture` | The picture's settings (milestone 7): the slots' layer order, and any anchor the kit moves, such as where the trucks sit on a shape with no wheelbase |
 
-**Part specs.** A shop manager fills them in on each part's Part specs panel (simple products and variations), or imports them; they're stored as `_cbuild_specs` meta, one value per spec key. Two other sources feed the same specs: an attribute mapping (the kit says the deck's `deck_width` comes from the `pa_width` attribute, in inches) and **spec tables**, a post type `cbuild_spec_table` holding a maker's size chart (Independent 149: axle 8.5 in, decks 8.375 to 8.6 in, height 55 mm, wheels up to 56 mm). A truck variation names its table and size, and inherits the rest. From milestone 7 a part can also carry a **layer image** for the picture, an attachment ID in `_cbuild_layer`, set on the same panel.
+**Part specs.** A shop manager fills them in on each part's Part specs panel (simple products and variations), or imports them; they're stored as `_cbuild_specs` meta, one value per spec key. Two other sources feed the same specs: an attribute mapping, set once for the shop at WooCommerce > Settings > Builder (the deck's `deck_width` comes from the `pa_width` attribute, in inches), and **spec tables**, a post type `cbuild_spec_table` holding a maker's size chart (Independent 149: axle 8.5 in, decks 8.375 to 8.6 in, height 55 mm, wheels up to 56 mm). A truck variation names its table and size, and inherits the rest. Which source wins where two disagree is a shop-wide setting as well, so the index holds one value per part and spec whichever kit reads it (D-026). From milestone 7 a part can also carry a **layer image** for the picture, an attachment ID in `_cbuild_layer`, set on the same panel.
 
 **The specs index**, table `{prefix}cbuild_specs`: one row per part and spec, with the value as a number (`DECIMAL(10,4)`) or a short text, where it came from, and when. Keyed on the part and the spec, indexed on spec and value so a slot's candidates come back in one query. Derived: rebuilt in the background from the three sources, never edited.
 
@@ -259,7 +260,7 @@ Two tables, product meta on the kit and the parts, and keys on cart and order it
 
 ## Compatibility rules
 
-Eight numbered rules, each with its source: six fit tests between two slots (R1 to R6), a quantity check when the kit is saved (R7), and a note that isn't a test (R8). A fit test reads specs from two slots and returns fits, warn (the build can go ahead, with a note) or block (it can't). Where sources disagree, the maker's own figures win, and the kit can loosen a rule with a tolerance.
+Eight numbered rules, each with its source: six fit tests between two slots (R1 to R6), a quantity check when the kit is saved (R7), and a note that isn't a test (R8). A fit test reads specs from two slots and returns fits, warn (the build can go ahead, with a note) or block (it can't). Where sources disagree, the maker's own figures win unless the shop's settings say otherwise (D-026), and the kit can loosen a rule with a tolerance.
 
 **How rules run.**
 
@@ -528,7 +529,7 @@ Everything sits in WooCommerce's own screens, built from WordPress's admin marku
 **The kit's Build tab.** A product data tab on kit products (`woocommerce_product_data_tabs`, `woocommerce_product_data_panels`), saved in `woocommerce_admin_process_product_object` so the settings go through the product's own CRUD.
 
 - **Slots:** a row each, with its label, help text, required or optional, units per build, what may fill it (categories, brands, products, attribute values, picked with WooCommerce's own search fields) and a default part. A slot's key is made from its label once and never changes, since builds and orders store it. Rows move with Move up and Move down buttons as well as by dragging, as WCAG 2.2 asks (2.5.7).
-- **Rules:** R1 to R8, each with a switch and its settings: R1's tolerances, R3's riser suggestions, R6's length check, and which source wins when two disagree.
+- **Rules:** R1 to R8, each with a switch and its settings: R1's tolerances, R3's riser suggestions and R6's length check. The attribute mapping and which source wins when two disagree are the shop's, under Settings (D-026).
 - **Presets:** a name, a line of description and a pick per slot, saved only when the rules accept them.
 - **Assembly:** on or off by default, the fee, the lead time and the returns notice.
 - **Saving:** each setting is checked against its schema. One that fails isn't saved, the rest of the product saves as usual, and the notice after saving lists each problem with a link to its field.
@@ -546,7 +547,7 @@ Everything sits in WooCommerce's own screens, built from WordPress's admin marku
 - **Spec tables** (`cbuild_spec_table`): a maker's size chart, a row per size with its axle width, deck range, height, largest wheel without risers and baseplate holes. Independent, Thunder and Venture are created by a migration from the table under R1, each row with its source and the date it was read, so an upgraded site gets them as a new one does. Changing a table re-indexes every part that names it.
 - **Catalogue check:** for each kit, the parts that can fill a slot but lack a spec one of their rules needs (and so aren't offered), parts whose sources disagree (the Width attribute says 8.25 in, the field 8.5 in), presets that no longer fit or hold a sold-out part, and slots with nothing in stock. Each row links to the field that fixes it. It runs when asked, in the admin or as `wp cbuild check`, which exits with an error for CI or a monitor.
 - **Import and export:** specs as CSV, a row per part, keyed on the product or variation ID, or on the SKU where a shop uses them (Skatehouse does since 6 Nov). An import first shows what it would change and any rows it can't read, and writes nothing until confirmed. The same runs as `wp cbuild specs import <file> --dry-run` and `wp cbuild specs export`.
-- **Settings**, at WooCommerce > Settings > Builder through WooCommerce's settings API: defaults for new kits, the build discount, how coupons reach the parts, and the state route's rate limit.
+- **Settings**, at WooCommerce > Settings > Builder through WooCommerce's settings API: defaults for new kits, the attribute mapping (which attribute feeds which spec, in which unit), which source wins where two disagree (the maker's chart, the field or the attribute; the chart by default), the build discount, how coupons reach the parts, and the state route's rate limit.
 
 **The picture's images**, from milestone 7.
 

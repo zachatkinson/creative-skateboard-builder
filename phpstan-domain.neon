@@ -1,0 +1,9 @@
+# Level 10 on src/Domain (docs/STANDARDS.md): pure PHP, no WordPress. tools/analyse-domain.sh runs it once the domain has a file.
+parameters:
+    level: 10
+    phpVersion: 80500
+    tmpDir: tmp/cache/phpstan-domain
+    paths:
+        - src/Domain
+    treatPhpDocTypesAsCertain: false
+    reportUnmatchedIgnoredErrors: true

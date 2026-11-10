@@ -1,0 +1,37 @@
+{
+    "filters": [
+        "cbuild_updates_enabled"
+    ],
+    "actions": [],
+    "constants": [
+        "CBUILD_DISABLE_UPDATES",
+        "CBUILD_FILE",
+        "CBUILD_PATH",
+        "CBUILD_URL",
+        "CBUILD_VERSION"
+    ],
+    "options": [
+        "cbuild_db_version",
+        "cbuild_migration_lock",
+        "cbuild_migrations"
+    ],
+    "site_transients": [
+        "cbuild_update_manifest"
+    ],
+    "tables": [
+        "cbuild_builds",
+        "cbuild_specs"
+    ],
+    "scheduled_actions": [
+        "cbuild_migrate"
+    ],
+    "queue_group": "creative-skateboard-builder",
+    "log_source": "creative-skateboard-builder",
+    "meta_keys": [],
+    "settings_keys": [],
+    "rest_routes": [],
+    "abilities": [],
+    "cli_commands": [],
+    "blocks": [],
+    "dom_events": []
+}
