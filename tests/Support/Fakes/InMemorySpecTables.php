@@ -57,4 +57,21 @@ final class InMemorySpecTables implements SpecTables {
 	public function hasSeed( string $seed ): bool {
 		return in_array( $seed, array_column( $this->made, 'seed' ), true );
 	}
+
+	/**
+	 * Every table, by ID, in the order of their names.
+	 *
+	 * @return array<int, array{name: string, table: SpecTable}>
+	 */
+	public function all(): array {
+		$all = array();
+		foreach ( $this->made as $id => $made ) {
+			$all[ $id ] = array(
+				'name'  => $made['name'],
+				'table' => $made['table'],
+			);
+		}
+		uasort( $all, static fn( array $a, array $b ): int => $a['name'] <=> $b['name'] );
+		return $all;
+	}
 }

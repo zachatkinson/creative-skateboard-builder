@@ -66,6 +66,14 @@ final class Container {
 					}
 				);
 			},
+			// The panel reads the sources, so it is built when one of its hooks fires.
+			Admin\PartSpecsHooks::class                 => static function ( Container $c ): object {
+				return new Admin\PartSpecsHooks(
+					static function () use ( $c ): Admin\PartSpecsPanel {
+						return $c->get( Admin\PartSpecsPanel::class );
+					}
+				);
+			},
 			// The sources, each asked once per batch.
 			Service\SpecIndexer::class                  => static fn( Container $c ): object => new Service\SpecIndexer(
 				$c->get( Port\SpecIndex::class ),
@@ -93,6 +101,7 @@ final class Container {
 			Hooks\SpecTableHooks::class => array( Scope::Everywhere ),
 			// WooCommerce's settings screen.
 			Admin\SettingsHooks::class  => array( Scope::Admin ),
+			Admin\PartSpecsHooks::class => array( Scope::Admin ),
 		);
 	}
 

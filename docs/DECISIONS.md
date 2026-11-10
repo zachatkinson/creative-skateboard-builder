@@ -862,3 +862,20 @@ The table is milestone 1's and does not change. These are the choices the reposi
 - **`SourceOrder::of()` returns null for an order that is not all three once;** `read()` keeps answering the default. The editor needs to tell a wrong order from the default.
 
 **Status:** Accepted.
+
+### D-074 · The Part specs panel · 2026-11-10
+
+- **`Service\SpecWriter` checks a part's own specs, whoever sends them.** It reads each value as the index's sources do (`Reading::from()`) and answers what to store and what was wrong. The panel uses it now; the import and the command line will. What is stored is the index's own text, `8.2500`, so `8.25`, `8,25` and `8 1/4` are one value in every locale and the field source needs no separator.
+- **A value that is wrong is not saved, what the part had is kept, and the rest saves,** as the spec has it for the Build tab. The problem goes to WooCommerce's own notices (`WC_Admin_Meta_Boxes::add_error()`), which the product screen prints after its redirect and the variations' save prints in its answer (WooCommerce 11.2.2, `includes/class-wc-ajax.php:3150`). WooCommerce prints them through `wp_kses_post()`, so each is escaped first: it quotes what was typed.
+- **The panel shows every spec, in eight groups by kind of part,** each a `details` element that opens when it holds a value. The spec says it shows only the specs the product's kits need. A kit does not exist until milestone 4, which narrows the groups to what a kit's slots ask for; nothing stored changes then.
+- **The tab is on variable products as well as simple ones.** The spec names simple products and variations. A variation left blank takes its parent's value, and without the tab the parent's values could only come from an import.
+- **A value from somewhere else is a sentence beneath its field,** "In use: 8.5 in, from Independent's chart, size 149.", tied to the field with `aria-describedby`. The spec says it shows read-only; a disabled input is skipped by the keyboard and unread by some screen readers. The sentence is shown whenever the value in use is not the field's own, so a field the shop filled in that another source outranks says so too. The panel asks `SpecIndexer::resolve()`, the indexer's own reading, and decides nothing itself.
+- **A maker's chart and a size are one list,** a group of sizes per chart, so a size cannot be chosen that its chart does not have, with no script. Stored, the two stay apart (D-072), and an import may store a chart alone or a size alone; the list then offers "Leave as it is" and stores nothing new unless another choice is made.
+- **`SpecTables::all()`** lists the published tables for that field, in two queries, once per request however many variations are drawn. `PartSpecsPanelTest` holds it to that.
+- **`Domain\Spec\StoredSpecs` reads what a part stores,** for the two sources and the panel alike. The two sources each had their own copy.
+- **A key this version does not know is not taken from the form, and one already stored is left where it is,** as the index does (D-062's rule for a rollback).
+- **Both save hooks check `edit_products` themselves,** as the spec says. WooCommerce's two callers of `save_variations()` each check a nonce first (`includes/class-wc-ajax.php:3137`, `includes/admin/class-wc-admin-meta-boxes.php:228`), as the plan found; any code can fire the hooks. A save whose request does not carry the panel's fields (a quick edit, another plugin's save) changes nothing.
+- **One style rule, added to WooCommerce's admin style sheet with `wp_add_inline_style()`** on the product screen: the groups' headings get padding. axe failed the browser's own 18 pixel `summary` on target size (WCAG 2.2, 2.5.8). One rule does not earn a built file and a request.
+- **The browser test skips where scripts are off,** since WooCommerce's product data box needs one for its tabs and its variations. `PartSpecsPanelTest` covers the plain form post.
+
+**Status:** Accepted.

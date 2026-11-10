@@ -9,7 +9,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-11-10T07:23:22+00:00\n"
+"POT-Creation-Date: 2026-11-10T07:57:11+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: creative-skateboard-builder\n"
@@ -43,112 +43,301 @@ msgstr ""
 msgid "Creative Skateboard Builder: run \"composer install\" before activating the plugin."
 msgstr ""
 
-#: src/Admin/Labels.php:37
+#: src/Admin/Labels.php:40
 msgid "Deck width"
 msgstr ""
 
-#: src/Admin/Labels.php:38
+#: src/Admin/Labels.php:41
 msgid "Deck length"
 msgstr ""
 
-#: src/Admin/Labels.php:39
+#: src/Admin/Labels.php:42
 msgid "Wheelbase"
 msgstr ""
 
-#: src/Admin/Labels.php:40
+#: src/Admin/Labels.php:43
 msgid "Deck hole pattern"
 msgstr ""
 
-#: src/Admin/Labels.php:41
+#: src/Admin/Labels.php:44
 msgid "Axle width"
 msgstr ""
 
-#: src/Admin/Labels.php:42
+#: src/Admin/Labels.php:45
 msgid "Narrowest deck"
 msgstr ""
 
-#: src/Admin/Labels.php:43
+#: src/Admin/Labels.php:46
 msgid "Widest deck"
 msgstr ""
 
-#: src/Admin/Labels.php:44
+#: src/Admin/Labels.php:47
 msgid "Truck height"
 msgstr ""
 
-#: src/Admin/Labels.php:45
+#: src/Admin/Labels.php:48
 msgid "Truck height class"
 msgstr ""
 
-#: src/Admin/Labels.php:46
+#: src/Admin/Labels.php:49
 msgid "Largest wheel without risers"
 msgstr ""
 
-#: src/Admin/Labels.php:47
+#: src/Admin/Labels.php:50
 msgid "Baseplate hole pattern"
 msgstr ""
 
-#: src/Admin/Labels.php:48
+#: src/Admin/Labels.php:51
 msgid "Axle diameter"
 msgstr ""
 
-#: src/Admin/Labels.php:49
+#: src/Admin/Labels.php:52
 msgid "Wheel diameter"
 msgstr ""
 
-#: src/Admin/Labels.php:50
+#: src/Admin/Labels.php:53
 msgid "Riser thickness"
 msgstr ""
 
-#: src/Admin/Labels.php:51
+#: src/Admin/Labels.php:54
 msgid "Bolt length"
 msgstr ""
 
-#: src/Admin/Labels.php:52
+#: src/Admin/Labels.php:55
 msgid "Bearing bore"
 msgstr ""
 
-#: src/Admin/Labels.php:53
+#: src/Admin/Labels.php:56
 msgid "Spacers built in"
 msgstr ""
 
-#: src/Admin/Labels.php:54
+#: src/Admin/Labels.php:57
 msgid "Grip width"
 msgstr ""
 
-#: src/Admin/Labels.php:55
+#: src/Admin/Labels.php:58
 msgid "Grip length"
 msgstr ""
 
-#: src/Admin/Labels.php:56
+#: src/Admin/Labels.php:59
 msgid "Number in a set"
 msgstr ""
 
-#: src/Admin/Labels.php:70
+#: src/Admin/Labels.php:73
 msgid "Inches (in)"
 msgstr ""
 
-#: src/Admin/Labels.php:71
+#: src/Admin/Labels.php:74
 msgid "Millimetres (mm)"
 msgstr ""
 
-#: src/Admin/Labels.php:83
+#: src/Admin/Labels.php:86
 msgid "The maker's chart"
 msgstr ""
 
-#: src/Admin/Labels.php:84
+#: src/Admin/Labels.php:87
 msgid "The part's own field"
 msgstr ""
 
-#: src/Admin/Labels.php:85
+#: src/Admin/Labels.php:88
 msgid "A mapped attribute"
+msgstr ""
+
+#: src/Admin/Labels.php:107
+msgctxt "inches, in the label of a field"
+msgid "in"
+msgstr ""
+
+#: src/Admin/Labels.php:108
+msgctxt "millimetres, in the label of a field"
+msgid "mm"
+msgstr ""
+
+#. translators: 1: a spec's name, such as Deck width. 2: its unit, such as in or mm.
+#: src/Admin/Labels.php:110
+#, php-format
+msgctxt "the label of a field, with its unit"
+msgid "%1$s (%2$s)"
+msgstr ""
+
+#: src/Admin/Labels.php:122
+msgid "New school"
+msgstr ""
+
+#: src/Admin/Labels.php:123
+msgid "Old school"
+msgstr ""
+
+#: src/Admin/Labels.php:124
+msgid "Both"
+msgstr ""
+
+#: src/Admin/Labels.php:125
+msgid "Low"
+msgstr ""
+
+#: src/Admin/Labels.php:126
+msgid "Mid"
+msgstr ""
+
+#: src/Admin/Labels.php:127
+msgid "High"
+msgstr ""
+
+#. translators: %s: a number of inches.
+#: src/Admin/Labels.php:146
+#, php-format
+msgctxt "inches"
+msgid "%s in"
+msgstr ""
+
+#. translators: %s: a number of millimetres.
+#: src/Admin/Labels.php:149
+#, php-format
+msgctxt "millimetres"
+msgid "%s mm"
+msgstr ""
+
+#: src/Admin/Labels.php:152
+#: src/Admin/PartSpecsPanel.php:268
+msgid "Yes"
+msgstr ""
+
+#: src/Admin/Labels.php:152
+#: src/Admin/PartSpecsPanel.php:269
+msgid "No"
+msgstr ""
+
+#: src/Admin/PartSpecsPanel.php:90
+#: src/Admin/SettingsPage.php:77
+#: templates/admin/part-specs.php:27
+msgid "Part specs"
+msgstr ""
+
+#. translators: 1: a variation's ID. 2: a sentence saying what was not saved.
+#: src/Admin/PartSpecsPanel.php:219
+#, php-format
+msgid "Variation #%1$d: %2$s"
+msgstr ""
+
+#: src/Admin/PartSpecsPanel.php:307
+msgid "Deck"
+msgstr ""
+
+#: src/Admin/PartSpecsPanel.php:308
+msgid "Trucks"
+msgstr ""
+
+#: src/Admin/PartSpecsPanel.php:309
+msgid "Wheels"
+msgstr ""
+
+#: src/Admin/PartSpecsPanel.php:310
+msgid "Risers"
+msgstr ""
+
+#: src/Admin/PartSpecsPanel.php:311
+msgid "Hardware"
+msgstr ""
+
+#: src/Admin/PartSpecsPanel.php:312
+msgid "Bearings"
+msgstr ""
+
+#: src/Admin/PartSpecsPanel.php:313
+msgid "Grip tape"
+msgstr ""
+
+#: src/Admin/PartSpecsPanel.php:314
+msgid "Sold in sets"
+msgstr ""
+
+#: src/Admin/PartSpecsPanel.php:337
+msgid "None"
+msgstr ""
+
+#: src/Admin/PartSpecsPanel.php:340
+msgid "Leave as it is"
+msgstr ""
+
+#: src/Admin/PartSpecsPanel.php:346
+msgid "Maker's chart and size"
+msgstr ""
+
+#: src/Admin/PartSpecsPanel.php:348
+msgid "A truck that names its size in a chart takes that row's figures."
+msgstr ""
+
+#. translators: 1: a spec's value with its unit, such as 8.25 in. 2: a product attribute's name, such as Width.
+#: src/Admin/PartSpecsPanel.php:383
+#, php-format
+msgid "In use: %1$s, from the %2$s attribute."
+msgstr ""
+
+#. translators: 1: a spec's value with its unit, such as 8.5 in. 2: a truck maker's name, such as Independent. 3: a size in the maker's chart, such as 149.
+#: src/Admin/PartSpecsPanel.php:389
+#, php-format
+msgid "In use: %1$s, from %2$s's chart, size %3$s."
+msgstr ""
+
+#. translators: %s: a spec's value with its unit, such as 8.25 in.
+#: src/Admin/PartSpecsPanel.php:392
+#, php-format
+msgid "In use: %s, from the parent product."
+msgstr ""
+
+#. translators: %s: the size that was chosen.
+#: src/Admin/PartSpecsPanel.php:416
+#, php-format
+msgid "The maker's chart was not saved: the chart has no size %s now. Choose again."
+msgstr ""
+
+#: src/Admin/PartSpecsPanel.php:417
+msgid "The maker's chart was not saved: that chart is no longer there. Choose again."
+msgstr ""
+
+#: src/Admin/PartSpecsPanel.php:418
+msgid "The maker's chart was not saved. Choose again."
+msgstr ""
+
+#. translators: 1: a spec's name. 2: what was typed.
+#: src/Admin/PartSpecsPanel.php:425
+#, php-format
+msgid "%1$s was not saved: \"%2$s\" is not a measurement. Type a number, or a fraction such as 8 1/4."
+msgstr ""
+
+#. translators: 1: a spec's name. 2: what was typed.
+#: src/Admin/PartSpecsPanel.php:427
+#, php-format
+msgid "%1$s was not saved: the fraction in \"%2$s\" divides by zero."
+msgstr ""
+
+#. translators: 1: a spec's name. 2: what was typed.
+#: src/Admin/PartSpecsPanel.php:429
+#, php-format
+msgid "%1$s was not saved: \"%2$s\" is below zero."
+msgstr ""
+
+#. translators: 1: a spec's name. 2: what was typed.
+#: src/Admin/PartSpecsPanel.php:431
+#, php-format
+msgid "%1$s was not saved: \"%2$s\" must be more than zero."
+msgstr ""
+
+#. translators: 1: a spec's name. 2: what was typed.
+#: src/Admin/PartSpecsPanel.php:433
+#, php-format
+msgid "%1$s was not saved: \"%2$s\" is too large a number."
+msgstr ""
+
+#. translators: 1: a spec's name. 2: what was typed.
+#: src/Admin/PartSpecsPanel.php:435
+#, php-format
+msgid "%1$s was not saved: \"%2$s\" is not a value it takes."
 msgstr ""
 
 #: src/Admin/SettingsPage.php:59
 msgid "Builder"
-msgstr ""
-
-#: src/Admin/SettingsPage.php:77
-msgid "Part specs"
 msgstr ""
 
 #: src/Admin/SettingsPage.php:79
@@ -235,6 +424,18 @@ msgstr ""
 
 #: src/Updates/Updater.php:233
 msgid "The Creative Skateboard Builder update did not match its published checksum, so it was not installed."
+msgstr ""
+
+#: templates/admin/part-specs.php:31
+msgid "What the builder needs to know of this part to check that it fits. Fill in the group that matches it and leave the rest. A measurement takes a decimal or a fraction: 8.25 or 8 1/4. On a variable product, each variation takes these values unless it has its own."
+msgstr ""
+
+#: templates/admin/part-specs.php:33
+msgid "A field left blank takes the parent product's value."
+msgstr ""
+
+#: templates/admin/part-specs.php:64
+msgid "Not set"
 msgstr ""
 
 #: templates/admin/settings-mapping.php:22

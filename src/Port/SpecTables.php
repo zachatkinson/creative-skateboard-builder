@@ -53,4 +53,13 @@ interface SpecTables {
 	 * @param string $seed The seed's name.
 	 */
 	public function hasSeed( string $seed ): bool;
+
+	/**
+	 * Every table that feeds the index, by ID, in the order of their names.
+	 *
+	 * @since 0.3.0
+	 *
+	 * @return array<int, array{name: string, table: SpecTable}>
+	 */
+	public function all(): array;
 }

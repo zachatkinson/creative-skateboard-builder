@@ -12,6 +12,7 @@ namespace CreativeBranding\SkateboardBuilder\Adapter;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\Origin;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\Reading;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\SpecKey;
+use CreativeBranding\SkateboardBuilder\Domain\Spec\StoredSpecs;
 use CreativeBranding\SkateboardBuilder\Port\SpecSource;
 use CreativeBranding\SkateboardBuilder\Support\Options;
 use WC_Product;
@@ -73,19 +74,12 @@ final class FieldSpecSource implements SpecSource {
 	}
 
 	/**
-	 * A product's own fields: the values that are text and not blank, by key.
+	 * A product's own fields.
 	 *
 	 * @param WC_Product $product The product.
 	 * @return array<string, string>
 	 */
 	private static function fields( WC_Product $product ): array {
-		$stored = $product->get_meta( Options::META_SPECS, true );
-		$fields = array();
-		foreach ( is_array( $stored ) ? $stored : array() as $key => $value ) {
-			if ( is_string( $key ) && is_string( $value ) && '' !== trim( $value ) ) {
-				$fields[ $key ] = $value;
-			}
-		}
-		return $fields;
+		return StoredSpecs::fields( $product->get_meta( Options::META_SPECS, true ) );
 	}
 }

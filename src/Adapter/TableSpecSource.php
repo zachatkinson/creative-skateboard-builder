@@ -12,6 +12,7 @@ namespace CreativeBranding\SkateboardBuilder\Adapter;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\Origin;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\Reading;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\SpecKey;
+use CreativeBranding\SkateboardBuilder\Domain\Spec\StoredSpecs;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\Unread;
 use CreativeBranding\SkateboardBuilder\Port\SpecSource;
 use CreativeBranding\SkateboardBuilder\Port\SpecTables;
@@ -106,10 +107,7 @@ final class TableSpecSource implements SpecSource {
 	 * @return array{0: int, 1: string}
 	 */
 	private static function named( WC_Product $product ): array {
-		$stored = $product->get_meta( Options::META_SPEC_TABLE, true );
-		$stored = is_array( $stored ) ? $stored : array();
-		$table  = $stored['table'] ?? 0;
-		$size   = $stored['size'] ?? '';
-		return array( is_int( $table ) && $table > 0 ? $table : 0, is_string( $size ) ? trim( $size ) : '' );
+		$named = StoredSpecs::named( $product->get_meta( Options::META_SPEC_TABLE, true ) );
+		return array( $named['table'], $named['size'] );
 	}
 }

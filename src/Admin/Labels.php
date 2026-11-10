@@ -10,8 +10,11 @@ declare( strict_types=1 );
 namespace CreativeBranding\SkateboardBuilder\Admin;
 
 use CreativeBranding\SkateboardBuilder\Domain\Measure\Unit;
+use CreativeBranding\SkateboardBuilder\Domain\Spec\HeightClass;
+use CreativeBranding\SkateboardBuilder\Domain\Spec\HolePattern;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\Origin;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\SpecKey;
+use CreativeBranding\SkateboardBuilder\Domain\Spec\SpecKind;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -85,5 +88,91 @@ final class Labels {
 			Origin::Attribute->value => __( 'A mapped attribute', 'creative-skateboard-builder' ),
 		);
 		return $labels[ $origin->value ] ?? $origin->value;
+	}
+
+	/**
+	 * A spec's name with the unit its field is in, for a field's label: "Deck width (in)". A spec that is not a
+	 * measure is its name alone.
+	 *
+	 * @since 0.3.0
+	 *
+	 * @param SpecKey $key The spec.
+	 */
+	public static function field( SpecKey $key ): string {
+		$unit = $key->unit();
+		if ( null === $unit ) {
+			return self::spec( $key );
+		}
+		$short = Unit::Inch === $unit
+			? _x( 'in', 'inches, in the label of a field', 'creative-skateboard-builder' )
+			: _x( 'mm', 'millimetres, in the label of a field', 'creative-skateboard-builder' );
+		/* translators: 1: a spec's name, such as Deck width. 2: its unit, such as in or mm. */
+		return sprintf( _x( '%1$s (%2$s)', 'the label of a field, with its unit', 'creative-skateboard-builder' ), self::spec( $key ), $short );
+	}
+
+	/**
+	 * One of a spec's choices.
+	 *
+	 * @since 0.3.0
+	 *
+	 * @param string $choice The choice, as stored.
+	 */
+	public static function choice( string $choice ): string {
+		$labels = array(
+			HolePattern::NewSchool->value => __( 'New school', 'creative-skateboard-builder' ),
+			HolePattern::OldSchool->value => __( 'Old school', 'creative-skateboard-builder' ),
+			HolePattern::Both->value      => __( 'Both', 'creative-skateboard-builder' ),
+			HeightClass::Low->value       => __( 'Low', 'creative-skateboard-builder' ),
+			HeightClass::Mid->value       => __( 'Mid', 'creative-skateboard-builder' ),
+			HeightClass::High->value      => __( 'High', 'creative-skateboard-builder' ),
+		);
+		return $labels[ $choice ] ?? $choice;
+	}
+
+	/**
+	 * A spec's value as a person reads it: "8.25 in", "55 mm", "New school", "Yes", "8".
+	 *
+	 * @since 0.3.0
+	 *
+	 * @param SpecKey $key  The spec.
+	 * @param string  $text Its value, as the index writes it.
+	 */
+	public static function value( SpecKey $key, string $text ): string {
+		$unit = $key->unit();
+		if ( null !== $unit ) {
+			$number = number_format_i18n( (float) $text, strlen( self::decimals( $text ) ) );
+			if ( Unit::Inch === $unit ) {
+				/* translators: %s: a number of inches. */
+				return sprintf( _x( '%s in', 'inches', 'creative-skateboard-builder' ), $number );
+			}
+			/* translators: %s: a number of millimetres. */
+			return sprintf( _x( '%s mm', 'millimetres', 'creative-skateboard-builder' ), $number );
+		}
+		if ( SpecKind::Flag === $key->kind() ) {
+			return '1' === $text ? __( 'Yes', 'creative-skateboard-builder' ) : __( 'No', 'creative-skateboard-builder' );
+		}
+		return SpecKind::Count === $key->kind() ? number_format_i18n( (int) $text ) : self::choice( $text );
+	}
+
+	/**
+	 * A measure as its field shows it: no trailing zeros, and the shop's decimal separator.
+	 *
+	 * @since 0.3.0
+	 *
+	 * @param string $text The measure, as the index writes it.
+	 */
+	public static function typed( string $text ): string {
+		$decimals = self::decimals( $text );
+		$whole    = explode( '.', $text )[0];
+		return '' === $decimals ? $whole : $whole . wc_get_price_decimal_separator() . $decimals;
+	}
+
+	/**
+	 * The digits after a decimal's point, without trailing zeros.
+	 *
+	 * @param string $text A decimal with a point.
+	 */
+	private static function decimals( string $text ): string {
+		return rtrim( explode( '.', $text )[1] ?? '', '0' );
 	}
 }

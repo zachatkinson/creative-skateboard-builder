@@ -29,6 +29,12 @@ if ( ! defined( 'ABSPATH' ) ) {
 final class PostSpecTables implements SpecTables {
 
 	/**
+	 * The most tables listed at once. A shop keeps a chart per truck maker; this is far past any.
+	 */
+	public const MOST = 200;
+
+
+	/**
 	 * The tables in use among these IDs.
 	 *
 	 * @since 0.3.0
@@ -106,5 +112,36 @@ final class PostSpecTables implements SpecTables {
 			)
 		);
 		return array() !== $found->posts;
+	}
+
+	/**
+	 * Every published table, by ID, in the order of their names. Two queries however many there are: the posts, and
+	 * their meta.
+	 *
+	 * @since 0.3.0
+	 *
+	 * @return array<int, array{name: string, table: SpecTable}>
+	 */
+	public function all(): array {
+		$found  = new WP_Query(
+			array(
+				'post_type'      => Options::POST_TYPE_SPEC_TABLE,
+				'post_status'    => 'publish',
+				'posts_per_page' => self::MOST,
+				'orderby'        => 'title',
+				'order'          => 'ASC',
+				'no_found_rows'  => true,
+			)
+		);
+		$tables = array();
+		foreach ( is_array( $found->posts ) ? $found->posts : array() as $post ) {
+			if ( $post instanceof WP_Post ) {
+				$tables[ $post->ID ] = array(
+					'name'  => $post->post_title,
+					'table' => SpecTable::read( get_post_meta( $post->ID, Options::META_TABLE_ROWS, true ) ),
+				);
+			}
+		}
+		return $tables;
 	}
 }
