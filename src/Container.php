@@ -38,6 +38,8 @@ final class Container {
 			Port\MigrationStore::class => Repository\MigrationRepository::class,
 			Port\SpecIndex::class      => Repository\SpecIndexRepository::class,
 			Port\ShopSettings::class   => Adapter\OptionShopSettings::class,
+			Port\PartCatalogue::class  => Adapter\WooPartCatalogue::class,
+			Port\ReindexStore::class   => Adapter\OptionReindexStore::class,
 		);
 	}
 
@@ -75,6 +77,8 @@ final class Container {
 		return array(
 			// `init`, `admin_init`, the migration job and a network's deleted site: any request.
 			Hooks\InstallHooks::class => array( Scope::Everywhere ),
+			// A product is saved, and a job runs, on any kind of request.
+			Hooks\IndexHooks::class   => array( Scope::Everywhere ),
 		);
 	}
 

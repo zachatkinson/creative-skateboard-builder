@@ -80,4 +80,17 @@ interface Queue {
 	 * @param string $hook The action.
 	 */
 	public function cancelAll( string $hook ): void;
+
+	/**
+	 * Queue an action unless one with the same hook and the same arguments is already waiting. Unlike
+	 * enqueueUnique(), another part's action does not stand in for this one (Action Scheduler's unique flag compares
+	 * the hook and the group alone), and an action that is running does not either: it may have read its data
+	 * already, so a change made since needs a run of its own.
+	 *
+	 * @since 0.3.0
+	 *
+	 * @param string               $hook The action.
+	 * @param array<string, mixed> $args Its arguments.
+	 */
+	public function enqueueDistinct( string $hook, array $args ): void;
 }

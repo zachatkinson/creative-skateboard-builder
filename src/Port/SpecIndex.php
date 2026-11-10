@@ -94,4 +94,15 @@ interface SpecIndex {
 	 * @return list<int> Part IDs.
 	 */
 	public function partsWith( SpecKey $key, string $choice, int $limit ): array;
+
+	/**
+	 * The parts the index holds anything for, after a part ID, by ID: how a reindex walks what is already there.
+	 *
+	 * @since 0.3.0
+	 *
+	 * @param int $after The last part ID seen, 0 to start.
+	 * @param int $limit How many at most.
+	 * @return list<int> Part IDs, each once.
+	 */
+	public function partsAfter( int $after, int $limit ): array;
 }

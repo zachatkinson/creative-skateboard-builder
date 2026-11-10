@@ -71,6 +71,8 @@ final class UninstallTest extends IntegrationTestCase {
 		update_option( Options::MIGRATIONS, array( 'x' => array() ) );
 		update_option( Options::MIGRATION_LOCK, '1' );
 		update_option( Options::SETTINGS, array( Options::SETTING_SOURCE_ORDER => array( 'field', 'table', 'attribute' ) ) );
+		self::assertIsArray( get_option( Options::REINDEX ), 'saving the settings started a reindex, with its state and its job' );
+		self::assertTrue( as_has_scheduled_action( Options::JOB_REINDEX, null, Options::QUEUE_GROUP ) );
 		set_transient( Options::TRANSIENT_PREFIX . 'notice_1', 'x', HOUR_IN_SECONDS );
 		set_transient( Options::TRANSIENT_PREFIX . 'forever', 'x' );
 		set_site_transient( Options::UPDATE_MANIFEST, array( 'data' => null ), HOUR_IN_SECONDS );
@@ -98,6 +100,7 @@ final class UninstallTest extends IntegrationTestCase {
 		self::assertFalse( wp_cache_get( 'fit:1', Options::CACHE_GROUP ), 'cache group not flushed' );
 
 		self::assertFalse( get_option( Options::SETTINGS ), 'the settings left behind' );
+		self::assertFalse( get_option( Options::REINDEX ), 'the reindex\'s state left behind' );
 		self::assertFalse( metadata_exists( 'post', $records['product'], Options::META_SPECS ), 'a part\'s specs left behind' );
 		self::assertNotEmpty( get_post( $records['product'] ), 'products are never touched' );
 		$order = wc_get_order( $records['order'] );

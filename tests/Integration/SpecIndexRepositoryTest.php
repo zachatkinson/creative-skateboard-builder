@@ -120,6 +120,10 @@ final class SpecIndexRepositoryTest extends IntegrationTestCase {
 			'spec_text'   => $wpdb->prepare( SpecIndexRepository::WITH, Tables::specs(), 'hole_pattern', 'both', 500 ),
 			'PRIMARY'     => $wpdb->prepare( 'SELECT part_id, spec, number, text FROM %i WHERE part_id IN (%d, %d, %d)', Tables::specs(), 1000, 1200, 1599 ),
 		);
+		$walk = $wpdb->get_results( 'EXPLAIN ' . $wpdb->prepare( SpecIndexRepository::AFTER, Tables::specs(), 1300, 100 ), ARRAY_A ); // phpcs:ignore
+		self::assertSame( 'PRIMARY', $walk[0]['key'], 'the reindex walks the primary key' );
+		self::assertNotSame( 'ALL', $walk[0]['type'] );
+		self::assertStringNotContainsString( 'filesort', (string) $walk[0]['Extra'] );
 		foreach ( $plans as $key => $sql ) {
 			$plan = $wpdb->get_results( 'EXPLAIN ' . $sql, ARRAY_A ); // phpcs:ignore
 			self::assertCount( 1, $plan, $key );

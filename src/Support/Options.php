@@ -87,6 +87,21 @@ final class Options {
 	public const META_SPECS = '_cbuild_specs';
 
 	/**
+	 * The jobs that keep the specs index: one part, and everything, 100 parts at a time (spec: Options and jobs).
+	 *
+	 * @since 0.3.0
+	 */
+	public const JOB_INDEX_PART = 'cbuild_index_part';
+	public const JOB_REINDEX    = 'cbuild_reindex';
+
+	/**
+	 * Where the reindex has got to, so one stopped halfway resumes.
+	 *
+	 * @since 0.3.0
+	 */
+	public const REINDEX = 'cbuild_reindex_state';
+
+	/**
 	 * Every fixed-name option, per site.
 	 *
 	 * @since 0.1.0
@@ -94,7 +109,7 @@ final class Options {
 	 * @return string[]
 	 */
 	public static function names(): array {
-		return array( self::DB_VERSION, self::MIGRATIONS, self::MIGRATION_LOCK, self::SETTINGS );
+		return array( self::DB_VERSION, self::MIGRATIONS, self::MIGRATION_LOCK, self::SETTINGS, self::REINDEX );
 	}
 
 	/**
@@ -116,7 +131,7 @@ final class Options {
 	 * @return string[]
 	 */
 	public static function jobs(): array {
-		return array( self::JOB_MIGRATE );
+		return array( self::JOB_MIGRATE, self::JOB_INDEX_PART, self::JOB_REINDEX );
 	}
 
 	/**

@@ -1,0 +1,250 @@
+<?php
+/**
+ * The jobs that keep the specs index.
+ *
+ * @package CreativeBranding\SkateboardBuilder
+ */
+
+declare( strict_types=1 );
+
+namespace CreativeBranding\SkateboardBuilder\Service;
+
+use CreativeBranding\SkateboardBuilder\Port\Clock;
+use CreativeBranding\SkateboardBuilder\Port\Logger;
+use CreativeBranding\SkateboardBuilder\Port\PartCatalogue;
+use CreativeBranding\SkateboardBuilder\Port\Queue;
+use CreativeBranding\SkateboardBuilder\Port\ReindexStore;
+use CreativeBranding\SkateboardBuilder\Port\ShopSettings;
+use CreativeBranding\SkateboardBuilder\Port\SpecIndex;
+use Throwable;
+
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
+/**
+ * The index is rebuilt in the background, never in the request that saves a product (spec: Performance). A change
+ * to a product queues one job for it; a change to what every part is read with (the settings, a mapped attribute's
+ * terms) queues a reindex, which runs 100 parts at a time from a saved place. Every job can run twice and leave the
+ * index as running once would.
+ *
+ * @since 0.3.0
+ */
+final class IndexJobs {
+
+	/**
+	 * The jobs' actions. `Support\Options` lists the same names for deactivation and uninstall, and a test holds the
+	 * two together: a service may not reach the support layer (deptrac).
+	 */
+	public const JOB_PART    = 'cbuild_index_part';
+	public const JOB_REINDEX = 'cbuild_reindex';
+
+	/**
+	 * Parts in one batch of a reindex.
+	 */
+	public const BATCH = 100;
+
+	/**
+	 * How many times one part's job is tried again after it fails.
+	 */
+	public const RETRIES = 3;
+
+	/**
+	 * Seconds before a failed job's first retry; each later one waits twice as long.
+	 */
+	public const RETRY_AFTER = 60;
+
+	/**
+	 * Constructor.
+	 *
+	 * @since 0.3.0
+	 *
+	 * @param SpecIndexer   $indexer   Reads the sources and writes the index.
+	 * @param SpecIndex     $index     The index.
+	 * @param PartCatalogue $catalogue The shop's parts.
+	 * @param Queue         $queue     The background queue.
+	 * @param ReindexStore  $store     The reindex's place.
+	 * @param ShopSettings  $settings  The mapping.
+	 * @param Clock         $clock     The time.
+	 * @param Logger        $logger    Where failures go.
+	 */
+	public function __construct(
+		private SpecIndexer $indexer,
+		private SpecIndex $index,
+		private PartCatalogue $catalogue,
+		private Queue $queue,
+		private ReindexStore $store,
+		private ShopSettings $settings,
+		private Clock $clock,
+		private Logger $logger
+	) {}
+
+	/**
+	 * A product or variation was saved: queue its job. Nothing is read here, so a save costs one queue check.
+	 *
+	 * @since 0.3.0
+	 *
+	 * @param int $id The product's or variation's ID.
+	 */
+	public function changed( int $id ): void {
+		$this->queue->enqueueDistinct( self::JOB_PART, array( 'part' => $id ) );
+	}
+
+	/**
+	 * A post was deleted: when it was a product or a variation, queue its job, which will find nothing and remove
+	 * its rows. A reindex walking the shop's pages is told, since a page just moved under it.
+	 *
+	 * @since 0.3.0
+	 *
+	 * @param int    $id       The post's ID.
+	 * @param string $postType Its type.
+	 */
+	public function removed( int $id, string $postType ): void {
+		if ( ! $this->catalogue->holds( $postType ) ) {
+			return;
+		}
+		$this->changed( $id );
+		$state = $this->state();
+		if ( null !== $state && $state->isRunning() && ! $state->again ) {
+			$this->store->save( $state->disturbed()->toArray() );
+		}
+	}
+
+	/**
+	 * A term was edited: when its taxonomy is one the shop mapped, every part with it may read differently.
+	 *
+	 * @since 0.3.0
+	 *
+	 * @param string $taxonomy The term's taxonomy.
+	 */
+	public function termChanged( string $taxonomy ): void {
+		foreach ( $this->settings->attributeMapping() as $map ) {
+			if ( $map->attribute === $taxonomy ) {
+				$this->requestReindex();
+				return;
+			}
+		}
+	}
+
+	/**
+	 * The job for one product: index the parts it stands for, and drop its own rows when it is not one of them (a
+	 * variable product, or a product that is gone). A failure is logged with the product and tried again, a few
+	 * times, each after a longer wait; then it is thrown, so the queue records the action as failed.
+	 *
+	 * @since 0.3.0
+	 *
+	 * @param int $id      The product's or variation's ID.
+	 * @param int $attempt How many times it has failed before.
+	 *
+	 * @throws Throwable The failure, once it has been tried again as often as allowed.
+	 */
+	public function indexPart( int $id, int $attempt = 0 ): void {
+		try {
+			$parts = $this->catalogue->partsOf( $id );
+			if ( ! in_array( $id, $parts, true ) ) {
+				$this->index->forget( $id );
+			}
+			if ( array() !== $parts ) {
+				$this->indexer->index( ...$parts );
+			}
+		} catch ( Throwable $failure ) {
+			$this->logger->log(
+				'error',
+				'A part could not be indexed.',
+				array(
+					'part'    => $id,
+					'attempt' => $attempt,
+					'error'   => $failure->getMessage(),
+				)
+			);
+			if ( $attempt >= self::RETRIES ) {
+				throw $failure;
+			}
+			$this->queue->schedule(
+				$this->clock->now()->getTimestamp() + self::RETRY_AFTER * 2 ** $attempt,
+				self::JOB_PART,
+				array(
+					'part'    => $id,
+					'attempt' => $attempt + 1,
+				)
+			);
+		}
+	}
+
+	/**
+	 * Ask for everything to be indexed again, from the start. Asked twice, it starts once: a reindex that is running
+	 * goes back to its beginning, and one job is queued.
+	 *
+	 * @since 0.3.0
+	 */
+	public function requestReindex(): void {
+		$run = ( $this->state()->run ?? 0 ) + 1;
+		$this->store->save( ReindexState::begin( $this->clock->now()->getTimestamp(), $run )->toArray() );
+		$this->queue->enqueueUnique( self::JOB_REINDEX );
+	}
+
+	/**
+	 * The reindex's job: one batch from the saved place, the place saved, and the next batch queued. Stopped at any
+	 * point, the next run starts from the last place saved, and a batch run twice writes the same rows.
+	 *
+	 * @since 0.3.0
+	 */
+	public function runReindex(): void {
+		$state = $this->state();
+		if ( null === $state || ! $state->isRunning() ) {
+			return;
+		}
+		try {
+			if ( ReindexState::ROWS === $state->phase ) {
+				$parts    = $this->index->partsAfter( $state->position, self::BATCH );
+				$position = array() === $parts ? $state->position : $parts[ count( $parts ) - 1 ];
+			} else {
+				$parts    = $this->catalogue->page( $state->position + 1, self::BATCH );
+				$position = $state->position + 1;
+			}
+			if ( array() !== $parts ) {
+				$this->indexer->index( ...$parts );
+			}
+		} catch ( Throwable $failure ) {
+			$failed = ( $this->state() ?? $state )->failed( $failure->getMessage() );
+			$this->store->save( $failed->toArray() );
+			$this->logger->log(
+				'error',
+				'A batch of the reindex failed.',
+				array(
+					'phase'    => $state->phase,
+					'position' => $state->position,
+					'failures' => $failed->failures,
+					'error'    => $failure->getMessage(),
+				)
+			);
+			if ( $failed->isRunning() ) {
+				$this->queue->schedule( $this->clock->now()->getTimestamp() + self::RETRY_AFTER * 2 ** ( $failed->failures - 1 ), self::JOB_REINDEX );
+			}
+			return;
+		}
+		// Read again: a delete or a new request may have changed the state while the batch ran.
+		$current = $this->state() ?? $state;
+		if ( $current->run !== $state->run ) {
+			// Asked for again from the start while this batch ran. That request's unique job was refused, since this
+			// action was running, so the next batch is queued here and starts from the new beginning.
+			$this->queue->enqueue( self::JOB_REINDEX );
+			return;
+		}
+		$next = $current->advanced( $position, count( $parts ), count( $parts ) < self::BATCH, $this->clock->now()->getTimestamp() );
+		$this->store->save( $next->toArray() );
+		if ( $next->isRunning() ) {
+			// Plain, not unique: this action is still running, and the unique check counts it.
+			$this->queue->enqueue( self::JOB_REINDEX );
+		}
+	}
+
+	/**
+	 * Where the reindex is, or null when none has been asked for.
+	 *
+	 * @since 0.3.0
+	 */
+	public function state(): ?ReindexState {
+		return ReindexState::fromArray( $this->store->load() );
+	}
+}

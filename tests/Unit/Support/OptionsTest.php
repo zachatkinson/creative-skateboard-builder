@@ -19,7 +19,7 @@ final class OptionsTest extends TestCase {
 
 	public function test_every_option_is_listed_once_with_the_prefix(): void {
 		$names = Options::names();
-		self::assertSame( array( 'cbuild_db_version', 'cbuild_migrations', 'cbuild_migration_lock', 'cbuild_settings' ), $names );
+		self::assertSame( array( 'cbuild_db_version', 'cbuild_migrations', 'cbuild_migration_lock', 'cbuild_settings', 'cbuild_reindex_state' ), $names );
 		self::assertSame( $names, array_unique( $names ) );
 		foreach ( $names as $name ) {
 			self::assertStringStartsWith( 'cbuild_', $name );
@@ -34,7 +34,7 @@ final class OptionsTest extends TestCase {
 	}
 
 	public function test_the_jobs_are_the_ones_deactivation_cancels(): void {
-		self::assertSame( array( Options::JOB_MIGRATE ), Options::jobs() );
+		self::assertSame( array( 'cbuild_migrate', 'cbuild_index_part', 'cbuild_reindex' ), Options::jobs() );
 		self::assertSame( 'cbuild_migrate', Options::JOB_MIGRATE );
 	}
 

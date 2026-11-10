@@ -100,4 +100,10 @@ final class InMemorySpecIndex implements SpecIndex {
 		sort( $found );
 		return array_slice( $found, 0, $limit );
 	}
+
+	public function partsAfter( int $after, int $limit ): array {
+		$found = array_values( array_filter( array_keys( $this->rows ), static fn( int $partId ): bool => $partId > $after ) );
+		sort( $found );
+		return array_slice( $found, 0, $limit );
+	}
 }

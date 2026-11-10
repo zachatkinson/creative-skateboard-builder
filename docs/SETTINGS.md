@@ -24,4 +24,4 @@ The option `cbuild_settings` arrives with its first two keys. Their screen, WooC
 
 ## Options beside the settings
 
-The plugin keeps three options of its own, which no screen edits: `cbuild_db_version`, `cbuild_migrations` and `cbuild_migration_lock`. [HOOKS.md](HOOKS.md) says what each holds, and [PRIVACY.md](PRIVACY.md) lists everything stored.
+The plugin keeps four options of its own, which no screen edits: `cbuild_db_version`, `cbuild_migrations`, `cbuild_migration_lock` and, from 0.3.0, `cbuild_reindex_state`. [HOOKS.md](HOOKS.md) says what each holds, and [PRIVACY.md](PRIVACY.md) lists everything stored.

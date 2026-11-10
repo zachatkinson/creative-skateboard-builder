@@ -14,6 +14,7 @@
         "cbuild_db_version",
         "cbuild_migration_lock",
         "cbuild_migrations",
+        "cbuild_reindex_state",
         "cbuild_settings"
     ],
     "site_transients": [
@@ -24,7 +25,9 @@
         "cbuild_specs"
     ],
     "scheduled_actions": [
-        "cbuild_migrate"
+        "cbuild_index_part",
+        "cbuild_migrate",
+        "cbuild_reindex"
     ],
     "queue_group": "creative-skateboard-builder",
     "log_source": "creative-skateboard-builder",

@@ -9,6 +9,11 @@ All notable changes to this project are documented here. The format follows [Kee
 - The specs index's sources, as its `source` column holds them: `field`, `attribute` and `table`. The indexer keeps one value per part and spec, the winner by the shop's order with the maker's chart first by default, and records where sources disagree (D-069).
 - A part's own specs in the product meta `_cbuild_specs`, a value per spec key; a variation left blank for a spec takes its parent's.
 - The option `cbuild_settings` with its first two keys: `attribute_mapping` (which attribute feeds which spec, in which unit) and `source_order` (which source wins where two disagree). Their screen comes later in this version.
+- The index is kept in the background. Saving or deleting a product queues the `cbuild_index_part` action for it, and the request that saves indexes nothing. Saving the settings or editing a term of a mapped attribute queues `cbuild_reindex`, which indexes every part again, 100 at a time, from a place it keeps in the option `cbuild_reindex_state`, so one stopped halfway carries on (D-071).
+
+### Fixed
+
+- Deactivation unschedules a pending action whatever its arguments. With the group given, Action Scheduler cancelled only actions with no arguments, which was every action until this version (D-071).
 
 ### Changed
 

@@ -97,7 +97,7 @@ final class ContainerTest extends TestCase {
 		$container = new Container();
 		$container->set( MigrationStore::class, new InMemoryMigrationStore() );
 		$hookables = $container->hookablesFor( Scope::Everywhere );
-		self::assertCount( 1, $hookables );
+		self::assertCount( 2, $hookables, 'the install\'s and the index\'s' );
 		self::assertContainsOnlyInstancesOf( Hookable::class, $hookables );
 	}
 

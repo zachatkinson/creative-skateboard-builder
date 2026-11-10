@@ -156,4 +156,14 @@ trait SpecIndexCases {
 		self::assertSame( array(), $index->partsWith( SpecKey::HolePattern, 'none', 10 ) );
 		self::assertSame( array(), $index->partsWith( SpecKey::DeckWidth, '8.2500', 10 ), 'not a choice' );
 	}
+
+	public function test_the_parts_the_index_holds_after_one_by_id_each_once(): void {
+		$index = $this->index();
+		foreach ( array( 45, 41, 43, 42, 44 ) as $part ) {
+			$index->replace( $part, self::deck(), self::when() );
+		}
+		self::assertSame( array( 41, 42, 43 ), $index->partsAfter( 0, 3 ), 'a part with three rows is there once' );
+		self::assertSame( array( 44, 45 ), $index->partsAfter( 43, 3 ) );
+		self::assertSame( array(), $index->partsAfter( 45, 3 ) );
+	}
 }

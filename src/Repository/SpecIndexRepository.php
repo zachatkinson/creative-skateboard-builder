@@ -180,11 +180,27 @@ final class SpecIndexRepository implements SpecIndex {
 	}
 
 	/**
-	 * The two candidate queries, named so the benchmark can ask the database for the plan of the very statements
+	 * The parts the index holds anything for, after a part ID, by ID.
+	 *
+	 * @since 0.3.0
+	 *
+	 * @param int $after The last part ID seen.
+	 * @param int $limit How many at most.
+	 * @return list<int>
+	 */
+	public function partsAfter( int $after, int $limit ): array {
+		global $wpdb;
+		// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- The statement is the constant below, a literal with placeholders.
+		return self::ids( $wpdb->get_col( $wpdb->prepare( self::AFTER, Tables::specs(), $after, $limit ) ) );
+	}
+
+	/**
+	 * The candidate queries and the reindex's walk, named so the benchmark can ask the database for the plan of the very statements
 	 * that run.
 	 */
 	public const BETWEEN = 'SELECT part_id FROM %i WHERE spec = %s AND number BETWEEN %s AND %s ORDER BY number, part_id LIMIT %d';
 	public const WITH    = 'SELECT part_id FROM %i WHERE spec = %s AND text = %s ORDER BY part_id LIMIT %d';
+	public const AFTER   = 'SELECT DISTINCT part_id FROM %i WHERE part_id > %d ORDER BY part_id LIMIT %d';
 
 	/**
 	 * What a query returned, as rows.

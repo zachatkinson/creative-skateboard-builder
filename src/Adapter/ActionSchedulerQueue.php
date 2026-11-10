@@ -103,7 +103,12 @@ final class ActionSchedulerQueue implements Queue {
 	}
 
 	/**
-	 * Cancel every pending action with this hook.
+	 * Cancel every pending action with this hook, whatever its arguments.
+	 *
+	 * No arguments and no group are passed: with a group, Action Scheduler cancels only the actions whose arguments
+	 * equal the ones given, so `array()` would leave every part's job waiting (WooCommerce 11.2.2,
+	 * packages/action-scheduler/functions.php:316 to :328). The hooks are the plugin's own, so its group is the only
+	 * one that holds them.
 	 *
 	 * @since 0.1.0
 	 *
@@ -113,6 +118,33 @@ final class ActionSchedulerQueue implements Queue {
 		if ( ! function_exists( 'as_unschedule_all_actions' ) ) {
 			return;
 		}
-		as_unschedule_all_actions( $hook, array(), Options::QUEUE_GROUP );
+		as_unschedule_all_actions( $hook );
+	}
+
+	/**
+	 * Queue an action unless one with the same hook and arguments is waiting.
+	 *
+	 * @since 0.3.0
+	 *
+	 * @param string               $hook The action.
+	 * @param array<string, mixed> $args Its arguments.
+	 */
+	public function enqueueDistinct( string $hook, array $args ): void {
+		if ( ! function_exists( 'as_enqueue_async_action' ) || ! function_exists( 'as_get_scheduled_actions' ) ) {
+			return;
+		}
+		$waiting = as_get_scheduled_actions(
+			array(
+				'hook'     => $hook,
+				'args'     => $args,
+				'group'    => Options::QUEUE_GROUP,
+				'status'   => \ActionScheduler_Store::STATUS_PENDING,
+				'per_page' => 1,
+			),
+			'ids'
+		);
+		if ( array() === $waiting ) {
+			as_enqueue_async_action( $hook, $args, Options::QUEUE_GROUP, false );
+		}
 	}
 }
