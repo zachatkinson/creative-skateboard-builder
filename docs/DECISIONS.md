@@ -736,3 +736,14 @@ Cowork found no blocker, four should-fix gaps and eight minors. All are fixed bu
 
 **Why:** Each should-fix was a way the first shop would have met an empty step or a red pull request.
 **Status:** Accepted.
+
+### D-065 · Every commit is green, and the red run is recorded in it · 2026-11-10
+
+Cowork asked that from milestone 3 a rule's or a fix's failing cases be committed before the code, so the red run is in the history. Zach asked for whatever is best practice.
+
+- **No commit fails.** The history stays bisectable and every commit can be built, which is what trunk-based work and `git bisect` depend on. A red commit, or a test marked as expected to fail and unmarked a commit later, breaks the first or adds churn for the second.
+- **The cases are still written first, and the commit says so.** A test and the code that makes it pass go in one commit. Its message carries the red run: the test's name and the line it failed with before the code was written.
+- **That a test bites is shown by breaking the code, not by the order of commits.** The mutation floors do it for every line on every pull request, and the review's deliberate-break table does it by name for each blocker and should-fix. An order of commits shows a test once failed; a mutant or a break shows it would fail today.
+
+**Why:** The thing wanted is proof that each test can fail for the right reason. Mutation testing and a recorded break give that without a broken commit.
+**Status:** Accepted, on Zach's "whatever is best practice and industry standard".

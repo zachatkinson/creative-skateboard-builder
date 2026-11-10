@@ -88,6 +88,7 @@ It is the agency's showpiece, built to the twelve-dimension audit in `docs/AUDIT
 - **Tests.**
   - The spec's cases come first.
   - A bug gets a failing test first, and a fix gets a deliberate-break run.
+  - A test and the code that passes it go in one green commit, and its message carries the red run: the test's name and the line it failed with (D-065).
   - No floor is lowered and no test weakened to make a run pass.
   - A flaky test is fixed or quarantined with an issue the same day.
 
