@@ -184,6 +184,8 @@ test.describe( 'The Part specs panel', () => {
 			.locator( '.cbuild-part-specs' );
 		await expect( fields ).toBeVisible();
 		await expect( fields ).toBeInViewport();
+		// And focus is in them, for a keyboard or a screen reader.
+		await expect( fields.locator( ':focus' ) ).toHaveCount( 1 );
 
 		// The product's own tab.
 		await page.goto( 'about:blank' );

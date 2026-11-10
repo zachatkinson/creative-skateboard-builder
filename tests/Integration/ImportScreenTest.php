@@ -640,4 +640,63 @@ final class ImportScreenTest extends IntegrationTestCase {
 		$store->clear();
 		self::assertFalse( get_option( Options::IMPORT ) );
 	}
+
+	public function test_the_rows_are_stored_once_and_a_batch_saves_only_its_place(): void {
+		$text = "id,deck_width\n";
+		for ( $at = 0; $at < 250; $at++ ) {
+			$text .= ( 90000000 + $at ) . ",8.5\n";
+		}
+		$import = $this->service( SpecImport::class );
+		$writes = array();
+		$count  = static function ( string $option ) use ( &$writes ): void {
+			$writes[ $option ] = ( $writes[ $option ] ?? 0 ) + 1;
+		};
+		$reads = 0;
+		$read  = static function ( mixed $pre ) use ( &$reads ): mixed {
+			++$reads;
+			return $pre;
+		};
+		add_action( 'added_option', $count );
+		add_action( 'updated_option', $count );
+		$import->read( $text );
+		$token = (string) $import->state()?->token;
+		self::assertTrue( $import->confirm( $token ) );
+		for ( $batch = 0; $batch < 3; $batch++ ) {
+			$held = get_option( Options::IMPORT_ROWS );
+			self::assertIsArray( $held );
+			self::assertCount( 250, $held['rows'], 'while it runs' );
+			add_filter( 'pre_option_' . Options::IMPORT_ROWS, $read );
+			// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- The plugin's own job.
+			do_action( Options::JOB_IMPORT );
+			remove_filter( 'pre_option_' . Options::IMPORT_ROWS, $read );
+			self::assertArrayNotHasKey( 'rows', (array) get_option( Options::IMPORT ), 'the place and the counts, without the rows' );
+		}
+		remove_action( 'added_option', $count );
+		remove_action( 'updated_option', $count );
+
+		$state = $import->state();
+		self::assertSame( ImportState::DONE, $state?->status );
+		self::assertCount( 250, $state->refused, 'every row was reached' );
+		self::assertSame( 1, $writes[ Options::IMPORT_ROWS ] ?? 0, 'the rows are written when the file is read, and not again' );
+		self::assertSame( 5, $writes[ Options::IMPORT ] ?? 0, 'read, confirmed and three batches' );
+		self::assertSame( 3, $reads, 'a batch reads the rows once, and saving its place does not read or compare them again' );
+		self::assertFalse( get_option( Options::IMPORT_ROWS ), 'the rows go when the import is done' );
+		self::assertContains( Options::IMPORT_ROWS, Options::names(), 'so uninstall removes them' );
+	}
+
+	public function test_an_import_whose_rows_are_gone_or_are_another_imports_is_none(): void {
+		$store  = $this->service( ImportStore::class );
+		$import = $this->service( SpecImport::class );
+		$import->read( "id,deck_width\n90000000,8.5\n" );
+		self::assertCount( 1, (array) $import->state()?->rows );
+		delete_option( Options::IMPORT_ROWS );
+		self::assertNull( $store->load() );
+		self::assertNull( $import->state() );
+
+		$import->read( "id,deck_width\n90000000,8.5\n" );
+		update_option( Options::IMPORT_ROWS, array( 'token' => 'another', 'rows' => array( array( '1', '2' ) ), 'found' => array() ), false );
+		self::assertNull( $store->load() );
+		$store->clear();
+		self::assertFalse( get_option( Options::IMPORT_ROWS ) );
+	}
 }

@@ -148,6 +148,22 @@ final class SpecsBenchmarkTest extends IntegrationTestCase {
 		self::assertLessThan( self::REQUEST, $took + $planned, 'a file is read and shown in one request' );
 		self::assertLessThan( self::PARTS * 1.1 + 60, $asked2, 'a row that names no product costs no query of its own' );
 		self::assertSame( '', $this->service( ReindexStore::class )->load()['error'] ?? null, 'no batch failed' );
+
+		// The import confirmed: 100 rows a job, each a product written through WooCommerce and indexed. The first 20
+		// jobs are the 2,000 rows that are parts, every one a write; the rest name nothing and write nothing.
+		self::assertTrue( $import->confirm( $state->token ) );
+		$batches = array();
+		do {
+			[ $took, $queries ] = self::timed( static fn() => $import->run( false ) );
+			$batches[]          = array( $took, $queries );
+			$state              = $import->state();
+		} while ( ImportState::RUNNING === $state?->status );
+		self::assertSame( ImportState::DONE, $state?->status );
+		self::assertSame( $changes, $state->changed );
+		$writing = array_slice( $batches, 0, (int) ceil( self::PARTS / SpecImport::BATCH ) );
+		$times   = array_column( $writing, 0 );
+		self::say( sprintf( 'import: %d parts written in %d jobs of %d, %.2f s in all; a job %.0f ms at its slowest and %d queries at its most; the place it saves is %d kB', $state->changed, count( $writing ), SpecImport::BATCH, array_sum( $times ), 1000 * max( $times ), max( array_column( $writing, 1 ) ), strlen( (string) wp_json_encode( get_option( Options::IMPORT ) ) ) / 1024 ) );
+		self::assertLessThan( self::REQUEST, max( $times ), 'a job of 100 writes is one request of the queue\'s' );
 		self::say( "done\n" );
 	}
 }

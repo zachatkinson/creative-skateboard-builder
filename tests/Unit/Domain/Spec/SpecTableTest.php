@@ -87,6 +87,33 @@ final class SpecTableTest extends TestCase {
 		self::assertNull( $table->row( '' ) );
 	}
 
+	public function test_a_size_a_spreadsheet_wrote_as_a_number_finds_the_one_row_that_is_that_number(): void {
+		$sizes = static fn( string ...$names ): SpecTable => SpecTable::read( array_map( static fn( string $name ): array => array( 'size' => $name ), $names ) );
+		$table = $sizes( '5.2', '5.0', '5.80', '147', 'Hi 5.0', '08', '5.0 Hi' );
+		// A spreadsheet opens 5.0 as the number 5, and saves it so.
+		self::assertSame( '5.0', $table->named( '5' )?->size );
+		self::assertSame( '5.0', $table->named( '5.0' )?->size );
+		self::assertSame( '5.0', $table->named( ' 5.00 ' )?->size );
+		self::assertSame( '5.0', $table->named( '05' )?->size );
+		self::assertSame( '5.80', $table->named( '5.8' )?->size );
+		self::assertSame( '147', $table->named( '147.0' )?->size );
+		self::assertSame( '08', $table->named( '8' )?->size );
+		self::assertSame( 'Hi 5.0', $table->named( 'Hi 5.0' )?->size, 'a name is its own' );
+		self::assertNull( $table->named( 'Hi 5' ), 'only a size that is a number and nothing else' );
+		self::assertNull( $table->named( '5 Hi' ) );
+		self::assertNull( $table->named( '5.' ) );
+		self::assertNull( $table->named( '-5' ) );
+		self::assertNull( $table->named( '50' ) );
+		self::assertNull( $table->named( '0.5' ) );
+		self::assertNull( $table->named( '5.02' ) );
+		self::assertNull( $table->named( '' ) );
+		// Two rows that are the same number: neither is guessed at, and each still answers to its own name.
+		$twice = $sizes( '5.0', '5.00' );
+		self::assertNull( $twice->named( '5' ) );
+		self::assertSame( '5.00', $twice->named( '5.00' )?->size );
+		self::assertNull( $sizes( 'Hi', 'Lo' )->named( '5' ) );
+	}
+
 	public function test_whatever_is_stored_reads_as_a_table(): void {
 		self::assertSame( array(), SpecTable::read( null )->rows );
 		self::assertSame( array(), SpecTable::read( 'rows' )->rows );

@@ -19,7 +19,7 @@ final class OptionsTest extends TestCase {
 
 	public function test_every_option_is_listed_once_with_the_prefix(): void {
 		$names = Options::names();
-		self::assertSame( array( 'cbuild_db_version', 'cbuild_migrations', 'cbuild_migration_lock', 'cbuild_settings', 'cbuild_reindex_state', 'cbuild_import_state' ), $names );
+		self::assertSame( array( 'cbuild_db_version', 'cbuild_migrations', 'cbuild_migration_lock', 'cbuild_settings', 'cbuild_reindex_state', 'cbuild_import_state', 'cbuild_import_rows' ), $names );
 		self::assertSame( $names, array_unique( $names ) );
 		foreach ( $names as $name ) {
 			self::assertStringStartsWith( 'cbuild_', $name );

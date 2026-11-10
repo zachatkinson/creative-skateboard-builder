@@ -58,15 +58,12 @@ final class ReindexCommand {
 	 */
 	public function __invoke( array $args, array $assoc = array() ): void {
 		unset( $args );
-		$this->jobs->requestReindex();
 		if ( isset( $assoc['background'] ) && false !== $assoc['background'] ) {
+			$this->jobs->requestReindex();
 			WP_CLI::success( __( 'The reindex is queued. It runs in the background, 100 parts at a time.', 'creative-skateboard-builder' ) );
 			return;
 		}
-		do {
-			$this->jobs->runReindex();
-			$state = $this->jobs->state();
-		} while ( null !== $state && $state->isRunning() && 0 === $state->failures );
+		$state = $this->jobs->reindexNow();
 		if ( null === $state || ReindexState::DONE !== $state->phase ) {
 			WP_CLI::error( __( 'A batch of the reindex failed. It is tried again in the background. WooCommerce > Status > Logs has the reason.', 'creative-skateboard-builder' ) );
 		}

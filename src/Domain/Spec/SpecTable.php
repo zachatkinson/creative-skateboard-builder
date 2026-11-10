@@ -65,6 +65,47 @@ final readonly class SpecTable {
 	}
 
 	/**
+	 * The row a size names: the row of that name, or failing that the one row whose name is the same number. A
+	 * spreadsheet opens the size 5.0 as the number 5 and saves it so, and a file that has been through one still
+	 * names the row it did. Null when no row is that number, or more than one is.
+	 *
+	 * @since 0.3.0
+	 *
+	 * @param string $size The size as it was written.
+	 */
+	public function named( string $size ): ?TableRow {
+		$exact = $this->row( $size );
+		if ( null !== $exact ) {
+			return $exact;
+		}
+		$number = self::number( trim( $size ) );
+		$found  = null;
+		foreach ( $this->rows as $row ) {
+			if ( null === $number || self::number( $row->size ) !== $number ) {
+				continue;
+			}
+			if ( null !== $found ) {
+				return null;
+			}
+			$found = $row;
+		}
+		return $found;
+	}
+
+	/**
+	 * A size that is a plain number, without the zeros that do not change it: 5, 5.0 and 05 are all `5.`. Null for
+	 * a size that is anything else.
+	 *
+	 * @param string $size The size's name.
+	 */
+	private static function number( string $size ): ?string {
+		if ( 1 !== preg_match( '/^(\d+)(?:\.(\d+))?$/', $size, $digits ) ) {
+			return null;
+		}
+		return ltrim( $digits[1], '0' ) . '.' . rtrim( $digits[2] ?? '', '0' );
+	}
+
+	/**
 	 * The table for the store.
 	 *
 	 * @since 0.3.0

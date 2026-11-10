@@ -330,6 +330,7 @@ final class SpecTablesScreen {
 		$problems = array(
 			SpecTableEditor::NAME_MISSING   => __( 'Type the maker\'s name.', 'creative-skateboard-builder' ),
 			SpecTableEditor::NAME_LONG      => __( 'The maker\'s name is too long. Use 190 characters or fewer.', 'creative-skateboard-builder' ),
+			SpecTableEditor::NAME_TAKEN     => __( 'Another chart has this name. Give this one a name of its own.', 'creative-skateboard-builder' ),
 			SpecTableEditor::TABLE_MISSING  => __( 'That chart is no longer there.', 'creative-skateboard-builder' ),
 			SpecTableEditor::SIZE_MISSING   => __( 'Type the size this row is for, or clear the row.', 'creative-skateboard-builder' ),
 			SpecTableEditor::SIZE_LONG      => __( 'The size is too long. Use 40 characters or fewer.', 'creative-skateboard-builder' ),
@@ -350,6 +351,7 @@ final class SpecTablesScreen {
 	 */
 	private static function figure( string $label, string $typed, string $code ): string {
 		return match ( $code ) {
+			SpecTableEditor::RANGE => __( 'The narrowest deck is wider than the widest deck. Check the two figures on this row.', 'creative-skateboard-builder' ),
 			/* translators: 1: a spec's name. 2: what was typed. */
 			MeasureError::Malformed->value => sprintf( __( '%1$s: "%2$s" is not a measurement. Type a number, or a fraction such as 8 1/4.', 'creative-skateboard-builder' ), $label, $typed ),
 			/* translators: 1: a spec's name. 2: what was typed. */

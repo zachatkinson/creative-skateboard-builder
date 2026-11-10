@@ -223,6 +223,13 @@ final class SentencesTest extends TestCase {
 		}
 	}
 
+	public function test_a_refused_deck_range_names_both_ends_as_the_locale_writes_them(): void {
+		self::assertSame( array( '8.6 in', '8.375 in' ), Sentences::ends( "8.6000\t8.3750" ) );
+		self::assertSame( array( '9 in', '0 in' ), Sentences::ends( '9.0000' ), 'a text with one end is not an error' );
+		$GLOBALS['cbuild_test_decimal'] = ',';
+		self::assertSame( 'The narrowest deck, 8,6 in, is wider than the widest deck, 8,375 in.', Sentences::rowProblem( 'deck_range_reversed', "8.6000\t8.3750" ) );
+	}
+
 	public function test_each_problem_with_a_row_has_its_sentence_and_names_what_the_row_held(): void {
 		$sentences = array(
 			'key_missing'              => 'The row does not say which part it is for.',
@@ -234,13 +241,14 @@ final class SentencesTest extends TestCase {
 			'size_missing'             => 'The chart has no size "YEA-DK".',
 			'size_long'                => 'The size is too long. Use 40 characters or fewer.',
 			'table_missing'            => 'That chart is no longer there.',
+			'deck_range_reversed'      => 'The narrowest deck, 8.6 in, is wider than the widest deck, 8.375 in.',
 			'measure_malformed'        => '"YEA-DK" is not a measurement. Use a number, or a fraction such as 8 1/4.',
 			'measure_zero_denominator' => 'The fraction in "YEA-DK" divides by zero.',
 			'measure_negative'         => '"YEA-DK" is below zero.',
 			'something_new'            => '"YEA-DK" is not a value this column takes.',
 		);
 		foreach ( $sentences as $code => $sentence ) {
-			self::assertSame( $sentence, Sentences::rowProblem( $code, 'YEA-DK' ), $code );
+			self::assertSame( $sentence, Sentences::rowProblem( $code, 'deck_range_reversed' === $code ? "8.6000\t8.3750" : 'YEA-DK' ), $code );
 		}
 	}
 }

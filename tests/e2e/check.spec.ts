@@ -88,6 +88,10 @@ test.describe( 'WooCommerce > Builder, Catalogue check', () => {
 		await expect( page ).toHaveURL( /post\.php\?post=\d+&action=edit/ );
 		if ( javaScriptEnabled ) {
 			await expect( page.locator( '#cbuild_part_specs' ) ).toBeVisible();
+			// Focus follows: a keyboard lands in the panel, not at the top of the page.
+			await expect(
+				page.locator( '#cbuild_part_specs :focus' )
+			).toHaveCount( 1 );
 			await expect(
 				page.locator( '#general_product_data' )
 			).toBeHidden();

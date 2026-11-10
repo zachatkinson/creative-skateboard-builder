@@ -102,10 +102,14 @@ final class SettingsPage extends WC_Settings_Page {
 	public function mappingField(): void {
 		$lines    = array();
 		$problems = array();
+		$units_at = array();
 		if ( null !== $this->refused ) {
 			$lines = $this->refused['lines'];
 			foreach ( $this->refused['draft']->problems as $problem ) {
 				$problems[ $problem['line'] ][] = self::problem( $problem['code'] );
+				if ( in_array( $problem['code'], array( SettingsEditor::UNIT_UNKNOWN, SettingsEditor::UNIT_NOT_MEASURE ), true ) ) {
+					$units_at[ $problem['line'] ] = true;
+				}
 			}
 		} else {
 			foreach ( $this->settings->attributeMapping() as $map ) {

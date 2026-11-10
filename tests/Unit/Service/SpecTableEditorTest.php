@@ -167,6 +167,62 @@ final class SpecTableEditorTest extends TestCase {
 		self::assertSame( 'Indy', $this->tables->made[ $id ]['name'] );
 	}
 
+	// Claude in Cowork's review of milestone 3, minor 1.
+	public function test_a_row_whose_narrowest_deck_is_wider_than_its_widest_is_refused(): void {
+		$id    = $this->editor->add( 'Indy' )->id;
+		$draft = $this->editor->save(
+			$id,
+			'Indy',
+			array(
+				self::row(
+					'159',
+					array(
+						'deck_min' => '8.6',
+						'deck_max' => '8 3/8',
+					)
+				),
+				self::row(
+					'149',
+					array(
+						'deck_min' => '8.5',
+						'deck_max' => '8.5',
+					)
+				),
+				self::row( '139', array( 'deck_min' => '9' ) ),
+				self::row(
+					'129',
+					array(
+						'deck_min' => 'wide',
+						'deck_max' => '7',
+					)
+				),
+			)
+		);
+		self::assertSame( 'deck_range_reversed', SpecTableEditor::RANGE );
+		self::assertSame( array( '1:deck_min:deck_range_reversed', '4:deck_min:measure_malformed' ), self::codes( $draft->problems ) );
+		self::assertSame( 0, $this->tables->updates );
+	}
+
+	// Minor 2: two charts of one name made every import row naming either ambiguous, and the panel's list one group.
+	public function test_a_chart_cannot_take_a_name_another_chart_has_whatever_its_case(): void {
+		$indy    = $this->editor->add( 'Independent' )->id;
+		$thunder = $this->editor->add( 'Thunder' )->id;
+		self::assertSame( 'name_taken', SpecTableEditor::NAME_TAKEN );
+
+		$again = $this->editor->add( ' INDEPENDENT ' );
+		self::assertSame( 0, $again->id );
+		self::assertSame( array( '0:name:name_taken' ), self::codes( $again->problems ) );
+		self::assertCount( 2, $this->tables->made );
+
+		self::assertSame( array( '0:name:name_taken' ), self::codes( $this->editor->save( $thunder, 'independent', array() )->problems ) );
+		self::assertSame( 0, $this->tables->updates );
+
+		// Its own name, in another case or as it was, is its own to keep.
+		self::assertTrue( $this->editor->save( $indy, 'INDEPENDENT', array() )->saved() );
+		self::assertTrue( $this->editor->save( $thunder, 'Thunder', array() )->saved() );
+		self::assertTrue( $this->editor->add( 'Independent Trucks' )->saved() );
+	}
+
 	public function test_the_edges_of_what_a_row_takes(): void {
 		$id    = $this->editor->add( 'Indy' )->id;
 		$draft = $this->editor->save(

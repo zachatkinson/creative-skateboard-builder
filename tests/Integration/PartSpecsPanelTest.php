@@ -337,6 +337,77 @@ final class PartSpecsPanelTest extends IntegrationTestCase {
 		self::assertSame( '', ob_get_clean() );
 	}
 
+	// Claude in Cowork's review of milestone 3, should-fix 1: the parent said "from the Length attribute" while its
+	// variations, under "takes the parent product's value", showed nothing.
+	public function test_a_variation_says_when_a_mapped_attribute_is_its_parents(): void {
+		update_option(
+			Options::SETTINGS,
+			array(
+				'attribute_mapping' => array(
+					array(
+						'attribute' => 'Length <i>',
+						'spec'      => 'deck_length',
+						'unit'      => '',
+					),
+				),
+			)
+		);
+		[ $parent, $variation ] = self::variable();
+		$length                 = new \WC_Product_Attribute();
+		$length->set_name( 'Length <i>' );
+		$length->set_options( array( '32' ) );
+		$length->set_variation( false );
+		$parent->set_attributes( array_merge( array_values( $parent->get_attributes() ), array( $length ) ) );
+		$parent->save();
+
+		self::assertStringContainsString( 'In use: 32 in, from the Length &lt;i&gt; attribute.', $this->panel( wc_get_product( $parent->get_id() ) ) );
+		$fields = $this->fields( wc_get_product( $variation->get_id() ) );
+		self::assertStringContainsString( 'In use: 32 in, from the parent product&#039;s Length &lt;i&gt; attribute.</span>', $fields );
+		self::assertStringNotContainsString( '<i>', $fields );
+	}
+
+	// Claude in Cowork's review of milestone 3, minor 5: each variation drawn resolved the three sources for itself,
+	// and each source loaded the variation and its parent again.
+	public function test_a_page_of_variations_asks_the_sources_once_for_all_of_them(): void {
+		[ $parent, $first ] = self::variable();
+		$ids                = array( $first->get_id() );
+		foreach ( array( '31', '32' ) as $price ) {
+			$variation = new \WC_Product_Variation();
+			$variation->set_parent_id( $parent->get_id() );
+			$variation->set_regular_price( $price );
+			$variation->save();
+			$ids[] = $variation->get_id();
+		}
+		$counting = new class() implements \CreativeBranding\SkateboardBuilder\Port\SpecSource {
+			/** @var list<list<int>> */
+			public array $asked = array();
+			public function read( int ...$partIds ): array {
+				$this->asked[] = $partIds;
+				return array_fill_keys( $partIds, array() );
+			}
+		};
+		$panel    = new PartSpecsPanel(
+			$this->service( SpecWriter::class ),
+			new SpecIndexer( $this->service( \CreativeBranding\SkateboardBuilder\Port\SpecIndex::class ), $this->service( \CreativeBranding\SkateboardBuilder\Port\ShopSettings::class ), $this->service( \CreativeBranding\SkateboardBuilder\Port\Clock::class ), $counting ),
+			$this->service( SpecTables::class )
+		);
+		ob_start();
+		foreach ( $ids as $loop => $id ) {
+			$panel->variation( $loop, get_post( $id ) );
+		}
+		$drawn = (string) ob_get_clean();
+		self::assertSame( 3, substr_count( $drawn, '<fieldset class="cbuild-part-specs">' ) );
+		self::assertSame( array( $ids ), $counting->asked, 'the page\'s variations together, once' );
+
+		// The product's own panel asks for the product alone, and a save asks again.
+		$GLOBALS['product_object'] = wc_get_product( $parent->get_id() );
+		ob_start();
+		$panel->product();
+		ob_end_clean();
+		self::assertSame( array( $ids, array( $parent->get_id() ) ), $counting->asked );
+		self::assertSame( 50, PartSpecsPanel::TOGETHER );
+	}
+
 	public function test_the_charts_are_asked_for_once_however_many_variations_are_drawn(): void {
 		$this->chart();
 		[ , $variation ] = self::variable();
@@ -430,6 +501,31 @@ final class PartSpecsPanelTest extends IntegrationTestCase {
 			),
 			\WC_Admin_Meta_Boxes::$meta_box_errors,
 			'each escaped, since WooCommerce prints its notices as HTML'
+		);
+	}
+
+	// Claude in Cowork's review of milestone 3, minor 1.
+	public function test_a_narrowest_deck_wider_than_the_widest_is_not_saved_and_the_notice_names_both(): void {
+		$this->as( 'administrator' );
+		$product = self::simple( array( 'deck_min' => '8.0000' ) );
+		$saved   = $this->send(
+			$product,
+			array(
+				'deck_min'   => '8.6',
+				'deck_max'   => '8.375',
+				'axle_width' => '8.5',
+			)
+		);
+		self::assertSame(
+			array(
+				'axle_width' => '8.5000',
+				'deck_min'   => '8.0000',
+			),
+			$saved->get_meta( Options::META_SPECS, true )
+		);
+		self::assertSame(
+			array( 'Narrowest deck and Widest deck were not saved: the narrowest, 8.6 in, is wider than the widest, 8.375 in.' ),
+			\WC_Admin_Meta_Boxes::$meta_box_errors
 		);
 	}
 

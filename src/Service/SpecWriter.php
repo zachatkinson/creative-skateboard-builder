@@ -12,6 +12,7 @@ namespace CreativeBranding\SkateboardBuilder\Service;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\Origin;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\Reading;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\SpecKey;
+use CreativeBranding\SkateboardBuilder\Domain\Spec\SpecTable;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\TableRow;
 use CreativeBranding\SkateboardBuilder\Port\SpecTables;
 
@@ -39,6 +40,13 @@ final class SpecWriter {
 	public const TABLE_MISSING = 'table_missing';
 	public const SIZE_MISSING  = 'size_missing';
 	public const SIZE_LONG     = 'size_long';
+
+	/**
+	 * A narrowest deck wider than the widest. Each figure reads alone, and the two together fit no deck: R1 would
+	 * hide the truck from every one. The problem's text is the two figures as the index writes them, with a tab
+	 * between.
+	 */
+	public const RANGE = 'deck_range_reversed';
 
 	/**
 	 * Constructor.
@@ -97,14 +105,31 @@ final class SpecWriter {
 			}
 		}
 
+		if ( self::reversed( $fields[ SpecKey::DeckMin->value ] ?? '', $fields[ SpecKey::DeckMax->value ] ?? '' ) ) {
+			$problems[] = array(
+				'key'  => SpecKey::DeckMin->value,
+				'code' => self::RANGE,
+				'text' => $fields[ SpecKey::DeckMin->value ] . "\t" . $fields[ SpecKey::DeckMax->value ],
+			);
+			// Both go back to what was stored: there is no telling which of the two was mistyped.
+			foreach ( array( SpecKey::DeckMin->value, SpecKey::DeckMax->value ) as $end ) {
+				if ( '' === trim( $stored[ $end ] ?? '' ) ) {
+					unset( $fields[ $end ] );
+				} else {
+					$fields[ $end ] = trim( $stored[ $end ] );
+				}
+			}
+		}
 		$table = $naming['table'];
 		$size  = $naming['size'];
 		if ( null !== $named ) {
 			$asked   = trim( $named['size'] );
-			$problem = $this->refused( $named['table'], $asked );
+			$found   = $named['table'] > 0 ? ( $this->tables->find( $named['table'] )[ $named['table'] ] ?? null ) : null;
+			$problem = $this->refused( $named['table'], $asked, $found );
 			if ( null === $problem ) {
 				$table = $named['table'];
-				$size  = $asked;
+				// Under the chart's own name for the size: a spreadsheet writes Venture's 5.0 as 5 (D-091).
+				$size = $found?->named( $asked )->size ?? $asked;
 			} else {
 				$problems[] = array(
 					'key'  => self::TABLE,
@@ -117,24 +142,36 @@ final class SpecWriter {
 	}
 
 	/**
+	 * Whether a narrowest deck is wider than a widest, each as the index writes it. One that is blank is no range.
+	 *
+	 * @since 0.3.0
+	 *
+	 * @param string $narrowest The narrowest deck.
+	 * @param string $widest    The widest deck.
+	 */
+	public static function reversed( string $narrowest, string $widest ): bool {
+		return '' !== $narrowest && '' !== $widest && (float) $narrowest > (float) $widest;
+	}
+
+	/**
 	 * Why a table and a size cannot be named, or null when they can. A size with no table is a variation taking its
 	 * parent's table, and a table with no size is a parent naming the chart for its variations; neither can be
 	 * checked here, and the Catalogue check lists a name that leads nowhere.
 	 *
-	 * @param int    $table The table's ID, 0 for none.
-	 * @param string $size  The size, '' for none.
+	 * @param int            $table The table's ID, 0 for none.
+	 * @param string         $size  The size, '' for none.
+	 * @param SpecTable|null $found The table of that ID, null when there is none.
 	 */
-	private function refused( int $table, string $size ): ?string {
+	private function refused( int $table, string $size, ?SpecTable $found ): ?string {
 		if ( strlen( $size ) > TableRow::MAX_SIZE ) {
 			return self::SIZE_LONG;
 		}
 		if ( $table <= 0 ) {
 			return null;
 		}
-		$found = $this->tables->find( $table )[ $table ] ?? null;
 		if ( null === $found ) {
 			return self::TABLE_MISSING;
 		}
-		return '' === $size || null !== $found->row( $size ) ? null : self::SIZE_MISSING;
+		return '' === $size || null !== $found->named( $size ) ? null : self::SIZE_MISSING;
 	}
 }

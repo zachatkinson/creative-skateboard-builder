@@ -76,8 +76,8 @@ final class WooPartCatalogue implements PartCatalogue {
 	}
 
 	/**
-	 * Whether a product's attribute, asked for by this name, is read from this taxonomy: as WooCommerce 11.2.2 looks
-	 * one up, by the name's slug and then by the slug after `pa_` (includes/abstracts/abstract-wc-product.php:2278).
+	 * Whether a mapping line's attribute is this taxonomy: by the name's slug alone, as the attribute source reads
+	 * one (D-089). A product's own attribute has no taxonomy, and no term to change.
 	 *
 	 * @since 0.3.0
 	 *
@@ -85,7 +85,6 @@ final class WooPartCatalogue implements PartCatalogue {
 	 * @param string $taxonomy  A taxonomy.
 	 */
 	public function reads( string $attribute, string $taxonomy ): bool {
-		$slug = sanitize_title( $attribute );
-		return $taxonomy === $slug || 'pa_' . $slug === $taxonomy;
+		return sanitize_title( $attribute ) === $taxonomy;
 	}
 }

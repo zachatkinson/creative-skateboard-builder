@@ -53,11 +53,12 @@ interface PartCatalogue {
 	public function holds( string $postType ): bool;
 
 	/**
-	 * Whether a product's attribute, asked for by this name, is read from this taxonomy.
+	 * Whether a mapping line's attribute is this taxonomy. A line names a taxonomy in full (`pa_width`); a name
+	 * without `pa_` is a product's own attribute, which has no taxonomy (D-089).
 	 *
 	 * @since 0.3.0
 	 *
-	 * @param string $attribute The name a mapping line holds: `pa_width`, `width` or `Width`.
+	 * @param string $attribute The name a mapping line holds.
 	 * @param string $taxonomy  A taxonomy.
 	 */
 	public function reads( string $attribute, string $taxonomy ): bool;

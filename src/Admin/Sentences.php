@@ -114,6 +114,19 @@ final class Sentences {
 	}
 
 	/**
+	 * The two ends of a deck range a writer refused, each with its unit, as the shop's locale writes numbers.
+	 *
+	 * @since 0.3.0
+	 *
+	 * @param string $text The narrowest and the widest as the index writes them, with a tab between.
+	 * @return array{0: string, 1: string}
+	 */
+	public static function ends( string $text ): array {
+		$ends = explode( "\t", $text );
+		return array( Labels::value( SpecKey::DeckMin, $ends[0] ), Labels::value( SpecKey::DeckMax, $ends[1] ?? '' ) );
+	}
+
+	/**
 	 * What is wrong with a row, as a sentence.
 	 *
 	 * @since 0.3.0
@@ -137,6 +150,8 @@ final class Sentences {
 			/* translators: %s: a size in a chart. */
 			SpecWriter::SIZE_MISSING => sprintf( __( 'The chart has no size "%s".', 'creative-skateboard-builder' ), $text ),
 			SpecWriter::SIZE_LONG => __( 'The size is too long. Use 40 characters or fewer.', 'creative-skateboard-builder' ),
+			/* translators: 1: a deck's width with its unit, such as 8.6 in. 2: another, such as 8.375 in. */
+			SpecWriter::RANGE => sprintf( __( 'The narrowest deck, %1$s, is wider than the widest deck, %2$s.', 'creative-skateboard-builder' ), ...self::ends( $text ) ),
 			SpecWriter::TABLE_MISSING => __( 'That chart is no longer there.', 'creative-skateboard-builder' ),
 			/* translators: %s: what a cell held. */
 			MeasureError::Malformed->value => sprintf( __( '"%s" is not a measurement. Use a number, or a fraction such as 8 1/4.', 'creative-skateboard-builder' ), $text ),

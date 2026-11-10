@@ -171,11 +171,7 @@ final class SpecsCommand {
 			return;
 		}
 
-		$this->import->confirm( $state->token, $by );
-		do {
-			$this->import->run();
-			$state = $this->import->state();
-		} while ( null !== $state && ImportState::RUNNING === $state->status && 0 === $state->failures );
+		$state = $this->import->runNow( $state->token, $by );
 		if ( null === $state || ImportState::DONE !== $state->status ) {
 			WP_CLI::error( __( 'A batch of the import failed. The rows before it are written, and the rest are tried again in the background. WooCommerce > Status > Logs has the reason.', 'creative-skateboard-builder' ) );
 		}

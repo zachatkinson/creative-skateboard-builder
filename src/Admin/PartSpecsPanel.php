@@ -16,9 +16,11 @@ use CreativeBranding\SkateboardBuilder\Domain\Spec\SpecError;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\SpecKey;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\SpecKind;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\StoredSpecs;
+use CreativeBranding\SkateboardBuilder\Port\SpecSource;
 use CreativeBranding\SkateboardBuilder\Port\SpecTables;
 use CreativeBranding\SkateboardBuilder\Service\SpecIndexer;
 use CreativeBranding\SkateboardBuilder\Service\SpecWriter;
+use CreativeBranding\SkateboardBuilder\Support\Cast;
 use CreativeBranding\SkateboardBuilder\Support\Options;
 use WC_Admin_Meta_Boxes;
 use WC_Product;
@@ -60,6 +62,18 @@ final class PartSpecsPanel {
 	 */
 	private const SCRIPT = 'cbuild-part-specs';
 	private const BUILT  = 'build/admin/part-specs';
+
+	/**
+	 * How many variations of one product the sources are asked for together.
+	 */
+	public const TOGETHER = 50;
+
+	/**
+	 * What the sources come to for the parts drawn so far, by part. Emptied by a save.
+	 *
+	 * @var array<int, \CreativeBranding\SkateboardBuilder\Service\Sourced>
+	 */
+	private array $sourced = array();
 
 	/**
 	 * The tables, asked for once per request.
@@ -157,6 +171,7 @@ final class PartSpecsPanel {
 		if ( ! $product instanceof WC_Product || ! current_user_can( 'edit_products' ) ) {
 			return;
 		}
+		$this->sourced = array();
 		// phpcs:disable WordPress.Security.NonceVerification.Missing -- WooCommerce checks woocommerce_meta_nonce before it fires this hook (includes/admin/class-wc-admin-meta-boxes.php:228).
 		// phpcs:disable WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Each value is sanitised in store().
 		$sent  = isset( $_POST['cbuild_specs'] ) && is_array( $_POST['cbuild_specs'] ) ? wp_unslash( $_POST['cbuild_specs'] ) : null;
@@ -180,6 +195,7 @@ final class PartSpecsPanel {
 		if ( ! $variation instanceof WC_Product || ! is_int( $loop ) || ! current_user_can( 'edit_products' ) ) {
 			return;
 		}
+		$this->sourced = array();
 		// phpcs:disable WordPress.Security.NonceVerification.Missing -- Both callers of save_variations() check a nonce first: the save-variations one (includes/class-wc-ajax.php:3137) and woocommerce_meta_nonce (includes/admin/class-wc-admin-meta-boxes.php:228).
 		// phpcs:disable WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Each value is sanitised in store().
 		$rows   = isset( $_POST['cbuild_variation_specs'] ) && is_array( $_POST['cbuild_variation_specs'] ) ? wp_unslash( $_POST['cbuild_variation_specs'] ) : array();
@@ -268,7 +284,7 @@ final class PartSpecsPanel {
 	 */
 	private function groups( WC_Product $product, string $id, string $name, string $chart ): array {
 		$own    = StoredSpecs::fields( $product->get_meta( Options::META_SPECS, true ) );
-		$notes  = $this->inUse( $product->get_id() );
+		$notes  = $this->inUse( $product );
 		$groups = array();
 		foreach ( self::layout() as $label => $keys ) {
 			$fields = array();
@@ -372,15 +388,28 @@ final class PartSpecsPanel {
 	 * For each spec whose value in use is not the part's own field: the value and where it comes from, as a
 	 * sentence.
 	 *
-	 * @param int $id The product's or variation's ID, 0 for one not saved yet.
+	 * @param WC_Product $product The product or variation; one not saved yet has nothing in use.
 	 * @return array<string, string>
 	 */
-	private function inUse( int $id ): array {
+	private function inUse( WC_Product $product ): array {
+		$id = $product->get_id();
 		if ( $id <= 0 ) {
 			return array();
 		}
+		if ( ! isset( $this->sourced[ $id ] ) ) {
+			// WooCommerce draws a page of variations one after another. The first one asks the sources for it and
+			// its siblings together, so each source loads the batch once and not once per variation.
+			$together = array( $id );
+			$parent   = $product->is_type( 'variation' ) ? wc_get_product( $product->get_parent_id() ) : null;
+			foreach ( array_chunk( $parent instanceof WC_Product ? Cast::ints( $parent->get_children() ) : array(), self::TOGETHER ) as $siblings ) {
+				if ( in_array( $id, $siblings, true ) ) {
+					$together = $siblings;
+				}
+			}
+			$this->sourced = array_replace( $this->sourced, $this->indexer->resolve( ...$together ) );
+		}
 		$notes = array();
-		foreach ( $this->indexer->resolve( $id )[ $id ]->resolution->kept as $reading ) {
+		foreach ( $this->sourced[ $id ]->resolution->kept as $reading ) {
 			if ( Origin::Field !== $reading->origin || '' !== $reading->ref ) {
 				$notes[ $reading->key->value ] = $this->source( $reading );
 			}
@@ -396,6 +425,10 @@ final class PartSpecsPanel {
 	private function source( Reading $reading ): string {
 		$value = Labels::value( $reading->key, $reading->text );
 		if ( Origin::Attribute === $reading->origin ) {
+			if ( str_starts_with( $reading->ref, SpecSource::PARENT_ATTRIBUTE ) ) {
+				/* translators: 1: a spec's value with its unit, such as 32 in. 2: a product attribute's name, such as Length. */
+				return sprintf( __( 'In use: %1$s, from the parent product\'s %2$s attribute.', 'creative-skateboard-builder' ), $value, wc_attribute_label( substr( $reading->ref, strlen( SpecSource::PARENT_ATTRIBUTE ) ) ) );
+			}
 			/* translators: 1: a spec's value with its unit, such as 8.25 in. 2: a product attribute's name, such as Width. */
 			return sprintf( __( 'In use: %1$s, from the %2$s attribute.', 'creative-skateboard-builder' ), $value, wc_attribute_label( $reading->ref ) );
 		}
@@ -438,6 +471,8 @@ final class PartSpecsPanel {
 		$spec  = SpecKey::tryFrom( $key );
 		$label = null === $spec ? $key : Labels::spec( $spec );
 		return match ( $code ) {
+			/* translators: 1: a deck's width with its unit, such as 8.6 in. 2: another, such as 8.375 in. */
+			SpecWriter::RANGE => sprintf( __( 'Narrowest deck and Widest deck were not saved: the narrowest, %1$s, is wider than the widest, %2$s.', 'creative-skateboard-builder' ), ...Sentences::ends( $text ) ),
 			/* translators: 1: a spec's name. 2: what was typed. */
 			MeasureError::Malformed->value => sprintf( __( '%1$s was not saved: "%2$s" is not a measurement. Type a number, or a fraction such as 8 1/4.', 'creative-skateboard-builder' ), $label, $text ),
 			/* translators: 1: a spec's name. 2: what was typed. */

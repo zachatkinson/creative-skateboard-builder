@@ -159,6 +159,23 @@ final class SettingsPageTest extends IntegrationTestCase {
 		}
 	}
 
+	// Claude in Cowork's review of milestone 3, minor 8: a unit problem was not tied to the unit's own control.
+	public function test_a_units_problem_is_tied_to_the_unit_control_of_its_line(): void {
+		$page    = $this->send(
+			'shop_manager',
+			array(
+				array( 'attribute' => 'pa_width', 'spec' => 'deck_width', 'unit' => 'in' ),
+				array( 'attribute' => 'pa_pattern', 'spec' => 'hole_pattern', 'unit' => 'mm' ),
+			),
+			array( 'table', 'field', 'attribute' )
+		);
+		$mapping = self::drawn( $page, 'mappingField' );
+		self::assertStringContainsString( 'This spec is not a length, so it has no unit.', $mapping );
+		self::assertMatchesRegularExpression( '/id="cbuild-mapping-2-unit"\s+name="cbuild_mapping\[1\]\[unit\]"\s+aria-invalid="true" aria-describedby="cbuild-mapping-problem-2"/', $mapping );
+		self::assertDoesNotMatchRegularExpression( '/id="cbuild-mapping-1-unit"[^>]*aria-invalid/', $mapping );
+		self::assertSame( 3, substr_count( $mapping, 'aria-invalid="true"' ), 'the line\'s attribute, spec and unit' );
+	}
+
 	public function test_a_line_that_is_wrong_saves_nothing_and_is_shown_again_with_what_is_wrong(): void {
 		update_option( Options::SETTINGS, array( 'attribute_mapping' => array( array( 'attribute' => 'pa_old', 'spec' => 'deck_width', 'unit' => '' ) ) ) );
 		$before = get_option( Options::SETTINGS );

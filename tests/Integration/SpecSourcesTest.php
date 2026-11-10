@@ -191,6 +191,133 @@ final class SpecSourcesTest extends IntegrationTestCase {
 		);
 	}
 
+	/**
+	 * The Length attribute as a taxonomy with these terms, as an attribute a product does not vary by.
+	 *
+	 * @param string ...$names The terms' names.
+	 */
+	private static function lengthAttribute( string ...$names ): \WC_Product_Attribute {
+		if ( 0 === wc_attribute_taxonomy_id_by_name( 'pa_length' ) ) {
+			unregister_taxonomy( 'pa_length' );
+			self::assertIsInt( wc_create_attribute( array( 'name' => 'Length', 'slug' => 'length' ) ) );
+		}
+		if ( ! taxonomy_exists( 'pa_length' ) ) {
+			register_taxonomy( 'pa_length', array( 'product' ) );
+		}
+		$terms = array();
+		foreach ( $names as $name ) {
+			$term    = term_exists( $name, 'pa_length' ) ?: wp_insert_term( $name, 'pa_length' );
+			$terms[] = (int) $term['term_id'];
+		}
+		$attribute = new \WC_Product_Attribute();
+		$attribute->set_id( wc_attribute_taxonomy_id_by_name( 'pa_length' ) );
+		$attribute->set_name( 'pa_length' );
+		$attribute->set_options( $terms );
+		$attribute->set_visible( true );
+		$attribute->set_variation( false );
+		return $attribute;
+	}
+
+	/**
+	 * An attribute of a product's own, which it does not vary by.
+	 *
+	 * @param string $name  Its name.
+	 * @param string $value Its value.
+	 */
+	private static function ownAttribute( string $name, string $value ): \WC_Product_Attribute {
+		$attribute = new \WC_Product_Attribute();
+		$attribute->set_name( $name );
+		$attribute->set_options( array( $value ) );
+		$attribute->set_variation( false );
+		return $attribute;
+	}
+
+	/**
+	 * Map several attributes at once.
+	 *
+	 * @param array<string, string> $lines Each attribute and the spec it feeds.
+	 */
+	private static function mapAll( array $lines ): void {
+		$mapping = array();
+		foreach ( $lines as $attribute => $spec ) {
+			$mapping[] = array(
+				'attribute' => $attribute,
+				'spec'      => $spec,
+				'unit'      => '',
+			);
+		}
+		update_option( Options::SETTINGS, array( Options::SETTING_ATTRIBUTE_MAPPING => $mapping ) );
+	}
+
+	// Claude in Cowork's review of milestone 3, should-fix 1: Skatehouse's decks hold Length and Wheelbase on the
+	// parent, as attributes the deck does not vary by, and WooCommerce answers a variation from its own alone
+	// (11.2.2, includes/class-wc-product-variation.php:140).
+	public function test_a_variation_takes_a_mapped_attribute_from_its_parent_when_the_parent_does_not_vary_by_it(): void {
+		[ $parent, $variations ] = self::variableDeck( '8.25', '8.5' );
+		$parent->set_attributes( array_merge( array_values( $parent->get_attributes() ), array( self::lengthAttribute( '32' ), self::ownAttribute( 'Wheel base', '14.25' ) ) ) );
+		$parent->save();
+		self::mapAll(
+			array(
+				'pa_width'   => 'deck_width',
+				'pa_length'  => 'deck_length',
+				'Wheel base' => 'wheelbase',
+			)
+		);
+
+		$read = $this->service( AttributeSpecSource::class )->read( $variations[0]->get_id(), $variations[1]->get_id(), $parent->get_id() );
+		self::assertSame( '^', AttributeSpecSource::PARENT_ATTRIBUTE );
+		self::assertEquals(
+			array(
+				Reading::from( SpecKey::DeckWidth, '8.25', Origin::Attribute, 'pa_width' ),
+				Reading::from( SpecKey::DeckLength, '32', Origin::Attribute, '^pa_length' ),
+				Reading::from( SpecKey::Wheelbase, '14.25', Origin::Attribute, '^Wheel base' ),
+			),
+			$read[ $variations[0]->get_id() ],
+			'its own width, and the parent\'s length and wheelbase, each saying where it came from'
+		);
+		self::assertSame( array( '8.5000', '32.0000', '14.2500' ), array_column( $read[ $variations[1]->get_id() ], 'text' ) );
+		self::assertSame( array( 'pa_width', 'pa_length', 'Wheel base' ), array_column( $read[ $parent->get_id() ], 'ref' ), 'the parent\'s own are its own' );
+	}
+
+	public function test_a_variation_left_at_any_takes_nothing_from_the_attribute_its_parent_varies_by(): void {
+		[ $parent, $variations ] = self::variableDeck( '8.25' );
+		$variations[0]->set_attributes( array( 'pa_width' => '' ) );
+		$variations[0]->save();
+		self::map();
+		$read = $this->service( AttributeSpecSource::class )->read( $variations[0]->get_id() );
+		self::assertSame( array(), $read[ $variations[0]->get_id() ], 'any width is no width, though the parent has one' );
+		self::assertSame( '8.25', $parent->get_attribute( 'pa_width' ) );
+	}
+
+	// The same review: WooCommerce looks an attribute up by its name and then by `pa_` and the name
+	// (includes/abstracts/abstract-wc-product.php:2278), so a line for the hardware's own Length attribute would
+	// have given every deck with a Length taxonomy a bolt length.
+	public function test_a_line_reads_the_attribute_it_names_and_not_a_taxonomy_of_the_same_name(): void {
+		$bolts = new \WC_Product_Simple();
+		$bolts->set_name( 'Bolts' );
+		$bolts->set_attributes( array( self::ownAttribute( 'Length', '1' ) ) );
+		$bolts->save();
+		$deck = new \WC_Product_Simple();
+		$deck->set_name( 'Deck' );
+		$deck->set_attributes( array( self::lengthAttribute( '32' ) ) );
+		$deck->save();
+		[ $parent, $variations ] = self::variableDeck( '8.25' );
+		$parent->set_attributes( array_merge( array_values( $parent->get_attributes() ), array( self::lengthAttribute( '32' ) ) ) );
+		$parent->save();
+
+		self::mapAll( array( 'Length' => 'bolt_length' ) );
+		$read = $this->service( AttributeSpecSource::class )->read( $bolts->get_id(), $deck->get_id(), $variations[0]->get_id() );
+		self::assertSame( array( '1.0000' ), array_column( $read[ $bolts->get_id() ], 'text' ) );
+		self::assertSame( array(), $read[ $deck->get_id() ], 'the deck\'s Length is the taxonomy, which this line does not name' );
+		self::assertSame( array(), $read[ $variations[0]->get_id() ], 'nor does its parent\'s' );
+		self::assertSame( '32', $deck->get_attribute( 'Length' ), 'as WooCommerce would have answered' );
+
+		self::mapAll( array( 'pa_length' => 'deck_length' ) );
+		$read = $this->service( AttributeSpecSource::class )->read( $bolts->get_id(), $deck->get_id() );
+		self::assertSame( array(), $read[ $bolts->get_id() ], 'and the taxonomy\'s line does not read the bolts\' own' );
+		self::assertSame( array( '32.0000' ), array_column( $read[ $deck->get_id() ], 'text' ) );
+	}
+
 	public function test_a_mapped_attribute_is_read_in_its_lines_unit_and_from_a_products_own_attribute(): void {
 		$attribute = new \WC_Product_Attribute();
 		$attribute->set_name( 'Diameter' );

@@ -48,7 +48,7 @@ Yes. Activating it for the network installs it on every site, and a site added l
 * The same work from the command line, for shops that use WP-CLI: export and import specs, run the Catalogue check, and rebuild the index.
 * Every part is read into the index when the plugin is installed, updated or activated, and the Catalogue check has a button to read them all again.
 * Two Site Health tests, which say when the specs index was not rebuilt, a background job failed or an import stopped.
-* A settings screen, WooCommerce > Settings > Builder, to say which product attribute holds which spec and which source wins where two disagree.
+* A settings screen, WooCommerce > Settings > Builder, to say which product attribute holds which spec and which source wins where two disagree. A variation takes an attribute from its parent product when it has none of its own.
 
 = 0.2.0 =
 * The fit rules: the checks that will decide which trucks, wheels, risers, bolts, bearings and grip go with a deck, from each part's specs.

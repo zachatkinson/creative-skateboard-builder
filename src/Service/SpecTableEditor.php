@@ -49,6 +49,7 @@ final class SpecTableEditor {
 	 */
 	public const NAME_MISSING   = 'name_missing';
 	public const NAME_LONG      = 'name_long';
+	public const NAME_TAKEN     = 'name_taken';
 	public const TABLE_MISSING  = 'table_missing';
 	public const SIZE_MISSING   = 'size_missing';
 	public const SIZE_LONG      = 'size_long';
@@ -56,6 +57,7 @@ final class SpecTableEditor {
 	public const SOURCE_LONG    = 'source_long';
 	public const DATE_INVALID   = 'date_invalid';
 	public const TOO_MANY       = 'rows_too_many';
+	public const RANGE          = SpecWriter::RANGE;
 
 	/**
 	 * Constructor.
@@ -74,7 +76,7 @@ final class SpecTableEditor {
 	 * @param string $name The maker's name.
 	 */
 	public function add( string $name ): TableDraft {
-		$problem = self::nameRefused( trim( $name ) );
+		$problem = $this->nameRefused( trim( $name ), 0 );
 		if ( null !== $problem ) {
 			return new TableDraft( 0, array( $problem ) );
 		}
@@ -97,7 +99,7 @@ final class SpecTableEditor {
 			return new TableDraft( $id, array( self::problem( 0, self::NAME, self::TABLE_MISSING ) ) );
 		}
 		$problems = array();
-		$problem  = self::nameRefused( trim( $name ) );
+		$problem  = $this->nameRefused( trim( $name ), $id );
 		if ( null !== $problem ) {
 			$problems[] = $problem;
 		}
@@ -129,6 +131,12 @@ final class SpecTableEditor {
 			}
 			if ( '' === $size && '' === $from && '' === $read && array() === $values ) {
 				continue;
+			}
+			// Only where both read: a figure that did not is named above, and is not a width to compare.
+			$ends = array_column( array_filter( $problems, static fn( array $problem ): bool => $problem['row'] === $line ), 'field' );
+			if ( ! in_array( SpecKey::DeckMin->value, $ends, true ) && ! in_array( SpecKey::DeckMax->value, $ends, true )
+				&& SpecWriter::reversed( $values[ SpecKey::DeckMin->value ] ?? '', $values[ SpecKey::DeckMax->value ] ?? '' ) ) {
+				$problems[] = self::problem( $line, SpecKey::DeckMin->value, self::RANGE );
 			}
 
 			if ( '' === $size ) {
@@ -181,13 +189,32 @@ final class SpecTableEditor {
 	 * Why a name cannot be a chart's, or null when it can.
 	 *
 	 * @param string $name The name, trimmed.
+	 * @param int    $id   The chart the name is for, 0 for a new one.
 	 * @return array{row: int, field: string, code: string}|null
 	 */
-	private static function nameRefused( string $name ): ?array {
+	private function nameRefused( string $name, int $id ): ?array {
 		if ( '' === $name ) {
 			return self::problem( 0, self::NAME, self::NAME_MISSING );
 		}
-		return strlen( $name ) > self::MAX_NAME ? self::problem( 0, self::NAME, self::NAME_LONG ) : null;
+		if ( strlen( $name ) > self::MAX_NAME ) {
+			return self::problem( 0, self::NAME, self::NAME_LONG );
+		}
+		foreach ( $this->tables->all() as $other => $chart ) {
+			// Whatever its case: an import names a chart as a person typed it into a sheet.
+			if ( $other !== $id && self::folded( $chart['name'] ) === self::folded( $name ) ) {
+				return self::problem( 0, self::NAME, self::NAME_TAKEN );
+			}
+		}
+		return null;
+	}
+
+	/**
+	 * A name in one case, with mbstring where the server has it: WordPress does not ask for it.
+	 *
+	 * @param string $name The name.
+	 */
+	private static function folded( string $name ): string {
+		return function_exists( 'mb_strtolower' ) ? mb_strtolower( $name ) : strtolower( $name );
 	}
 
 	/**

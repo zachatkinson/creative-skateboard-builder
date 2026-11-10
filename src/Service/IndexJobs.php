@@ -181,9 +181,35 @@ final class IndexJobs implements Reindex {
 	 * @since 0.3.0
 	 */
 	public function requestReindex(): void {
+		$this->begin();
+		$this->queue->enqueueUnique( self::JOB_REINDEX );
+	}
+
+	/**
+	 * Read every part again in this process, a batch after another, for the command line. Nothing is queued: a
+	 * queue runner would take a queued batch and run it beside this one. A job an earlier request left waiting is
+	 * cancelled, since this run does its work. A batch that fails stops the run, and its retry is the queue's.
+	 *
+	 * @since 0.3.0
+	 *
+	 * @return ReindexState|null Where it ended.
+	 */
+	public function reindexNow(): ?ReindexState {
+		$this->queue->cancelAll( self::JOB_REINDEX );
+		$this->begin();
+		do {
+			$this->runReindex( false );
+			$state = $this->state();
+		} while ( null !== $state && $state->isRunning() && 0 === $state->failures );
+		return $state;
+	}
+
+	/**
+	 * Save a reindex that starts from the beginning, as a run of its own.
+	 */
+	private function begin(): void {
 		$run = ( $this->state()->run ?? 0 ) + 1;
 		$this->store->save( ReindexState::begin( $this->clock->now()->getTimestamp(), $run )->toArray() );
-		$this->queue->enqueueUnique( self::JOB_REINDEX );
 	}
 
 	/**
@@ -191,18 +217,32 @@ final class IndexJobs implements Reindex {
 	 * point, the next run starts from the last place saved, and a batch run twice writes the same rows.
 	 *
 	 * @since 0.3.0
+	 *
+	 * @param bool $queued Whether the next batch is queued. The command line runs its batches itself.
 	 */
-	public function runReindex(): void {
+	public function runReindex( bool $queued = true ): void {
 		$state = $this->state();
 		if ( null === $state || ! $state->isRunning() ) {
 			return;
 		}
 		try {
 			if ( ReindexState::ROWS === $state->phase ) {
-				$parts    = $this->index->partsAfter( $state->position, self::BATCH );
-				$position = array() === $parts ? $state->position : $parts[ count( $parts ) - 1 ];
+				$held     = $this->index->partsAfter( $state->position, self::BATCH );
+				$position = array() === $held ? $state->position : $held[ count( $held ) - 1 ];
+				// A row's product may no longer be a part: made variable, or deleted, while the plugin was off.
+				// It is read as the parts it stands for now, as a save of it would be.
+				$parts = array();
+				foreach ( $held as $id ) {
+					$stands = $this->catalogue->partsOf( $id );
+					if ( ! in_array( $id, $stands, true ) ) {
+						$this->index->forget( $id );
+					}
+					array_push( $parts, ...$stands );
+				}
+				$parts = array_values( array_unique( $parts ) );
 			} else {
-				$parts    = $this->catalogue->page( $state->position + 1, self::BATCH );
+				$held     = $this->catalogue->page( $state->position + 1, self::BATCH );
+				$parts    = $held;
 				$position = $state->position + 1;
 			}
 			if ( array() !== $parts ) {
@@ -231,12 +271,14 @@ final class IndexJobs implements Reindex {
 		if ( $current->run !== $state->run ) {
 			// Asked for again from the start while this batch ran. That request's unique job was refused, since this
 			// action was running, so the next batch is queued here and starts from the new beginning.
-			$this->queue->enqueue( self::JOB_REINDEX );
+			if ( $queued ) {
+				$this->queue->enqueue( self::JOB_REINDEX );
+			}
 			return;
 		}
-		$next = $current->advanced( $position, count( $parts ), count( $parts ) < self::BATCH, $this->clock->now()->getTimestamp() );
+		$next = $current->advanced( $position, count( $held ), count( $held ) < self::BATCH, $this->clock->now()->getTimestamp() );
 		$this->store->save( $next->toArray() );
-		if ( $next->isRunning() ) {
+		if ( $queued && $next->isRunning() ) {
 			// Plain, not unique: this action is still running, and the unique check counts it.
 			$this->queue->enqueue( self::JOB_REINDEX );
 		}

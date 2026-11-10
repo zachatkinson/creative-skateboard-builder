@@ -131,11 +131,19 @@ final class Options {
 	public const JOB_IMPORT = 'cbuild_import';
 
 	/**
-	 * The specs import in hand: its rows while it waits and runs, and what it did after. Not autoloaded.
+	 * The specs import in hand: where it is, its place and its counts, and what it did after. Not autoloaded.
 	 *
 	 * @since 0.3.0
 	 */
 	public const IMPORT = 'cbuild_import_state';
+
+	/**
+	 * The rows of the specs import in hand, written once when the file is read and removed when the import ends.
+	 * Not autoloaded.
+	 *
+	 * @since 0.3.0
+	 */
+	public const IMPORT_ROWS = 'cbuild_import_rows';
 
 	/**
 	 * Every fixed-name option, per site.
@@ -145,7 +153,7 @@ final class Options {
 	 * @return string[]
 	 */
 	public static function names(): array {
-		return array( self::DB_VERSION, self::MIGRATIONS, self::MIGRATION_LOCK, self::SETTINGS, self::REINDEX, self::IMPORT );
+		return array( self::DB_VERSION, self::MIGRATIONS, self::MIGRATION_LOCK, self::SETTINGS, self::REINDEX, self::IMPORT, self::IMPORT_ROWS );
 	}
 
 	/**

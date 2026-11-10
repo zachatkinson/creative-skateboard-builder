@@ -48,8 +48,10 @@ function variation(
 	content = true
 ) {
 	const inner = `${
-		fields ? '<div class="cbuild-part-specs"></div>' : ''
-	}<input class="variable_post_id" value="${ id }">`;
+		fields
+			? `<div class="cbuild-part-specs"><input type="hidden" value="x"><details><summary id="first-${ id }">Deck</summary><input id="field-${ id }"></details></div>`
+			: ''
+	}<input type="hidden" class="variable_post_id" value="${ id }">`;
 	return `<div class="woocommerce_variation wc-metabox${
 		closed ? ' closed' : ''
 	}" id="row-${ id }">
@@ -66,7 +68,7 @@ function screen( rows = '', box = true ) {
 			<li><a href="#variable_product_options">Variations</a></li>
 		</ul>
 		<div ${ box ? 'id="woocommerce-product-data"' : '' }>
-			<div id="cbuild_part_specs"></div>
+			<div id="cbuild_part_specs"><input type="hidden" value="x"><input id="panel-first"><select id="panel-second"></select></div>
 			<div id="variable_product_options">${ rows }</div>
 		</div>`;
 }
@@ -79,6 +81,11 @@ function clicks(): string[] {
 		seen.push( target.getAttribute( 'href' ) ?? target.tagName );
 	} );
 	return seen;
+}
+
+// Where focus is, asked of the page the fixture drew.
+function focus(): Element | null {
+	return document.body.ownerDocument.activeElement;
 }
 
 const scrolled: Array< [ Element, unknown ] > = [];
@@ -248,6 +255,47 @@ describe( 'a variation', () => {
 		open( document, '#cbuild_variation_7', $ );
 		expect( seen ).toEqual( [] );
 		expect( heard ).toEqual( [] );
+	} );
+} );
+
+describe( 'focus', () => {
+	// Claude in Cowork's review of milestone 3, minor 8: the links scrolled, and left focus at the top of the page.
+	it( "moves to the panel's first field, past a hidden one", () => {
+		screen();
+		const { $ } = jQuery();
+		open( document, '#cbuild_part_specs', $ );
+		expect( focus()?.id ).toBe( 'panel-first' );
+	} );
+
+	it( "moves to a variation's first group once its row has opened, not before", () => {
+		screen( variation( 6, true ) + variation( 7, true ) );
+		const { $, heard, promised } = jQuery();
+		open( document, '#cbuild_variation_7', $ );
+		heard[ 0 ]?.run();
+		expect( focus() ).toBe( document.body );
+		promised[ 0 ]?.finish();
+		expect( focus()?.id ).toBe( 'first-7' );
+	} );
+
+	it( 'stays where it is when what is shown has no control', () => {
+		screen( variation( 7, true, false ) );
+		const { $, heard, promised } = jQuery();
+		open( document, '#cbuild_variation_7', $ );
+		heard[ 0 ]?.run();
+		expect( () => promised[ 0 ]?.finish() ).not.toThrow();
+		expect( focus() ).toBe( document.body );
+	} );
+
+	it( 'does not scroll a second time', () => {
+		screen();
+		const focused: unknown[] = [];
+		const panel = document.getElementById( 'panel-first' ) as HTMLElement;
+		panel.focus = ( how?: unknown ) => {
+			focused.push( how );
+		};
+		const { $ } = jQuery();
+		open( document, '#cbuild_part_specs', $ );
+		expect( focused ).toEqual( [ { preventScroll: true } ] );
 	} );
 } );
 

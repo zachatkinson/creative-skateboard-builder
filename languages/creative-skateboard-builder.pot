@@ -9,7 +9,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-11-10T11:11:31+00:00\n"
+"POT-Creation-Date: 2026-11-10T17:38:19+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: creative-skateboard-builder\n"
@@ -292,139 +292,151 @@ msgid "%s mm"
 msgstr ""
 
 #: src/Admin/Labels.php:152
-#: src/Admin/PartSpecsPanel.php:305
+#: src/Admin/PartSpecsPanel.php:301
 msgid "Yes"
 msgstr ""
 
 #: src/Admin/Labels.php:152
-#: src/Admin/PartSpecsPanel.php:306
+#: src/Admin/PartSpecsPanel.php:302
 msgid "No"
 msgstr ""
 
-#: src/Admin/PartSpecsPanel.php:127
+#: src/Admin/PartSpecsPanel.php:121
 #: src/Admin/SettingsPage.php:77
 #: templates/admin/part-specs.php:27
 msgid "Part specs"
 msgstr ""
 
 #. translators: 1: a variation's ID. 2: a sentence saying what was not saved.
-#: src/Admin/PartSpecsPanel.php:256
+#: src/Admin/PartSpecsPanel.php:252
 #, php-format
 msgid "Variation #%1$d: %2$s"
 msgstr ""
 
-#: src/Admin/PartSpecsPanel.php:344
+#: src/Admin/PartSpecsPanel.php:340
 msgid "Deck"
 msgstr ""
 
-#: src/Admin/PartSpecsPanel.php:345
+#: src/Admin/PartSpecsPanel.php:341
 msgid "Trucks"
 msgstr ""
 
-#: src/Admin/PartSpecsPanel.php:346
+#: src/Admin/PartSpecsPanel.php:342
 msgid "Wheels"
 msgstr ""
 
-#: src/Admin/PartSpecsPanel.php:347
+#: src/Admin/PartSpecsPanel.php:343
 msgid "Risers"
 msgstr ""
 
-#: src/Admin/PartSpecsPanel.php:348
+#: src/Admin/PartSpecsPanel.php:344
 msgid "Hardware"
 msgstr ""
 
-#: src/Admin/PartSpecsPanel.php:349
+#: src/Admin/PartSpecsPanel.php:345
 msgid "Bearings"
 msgstr ""
 
-#: src/Admin/PartSpecsPanel.php:350
+#: src/Admin/PartSpecsPanel.php:346
 msgid "Grip tape"
 msgstr ""
 
-#: src/Admin/PartSpecsPanel.php:351
+#: src/Admin/PartSpecsPanel.php:347
 msgid "Sold in sets"
 msgstr ""
 
-#: src/Admin/PartSpecsPanel.php:374
+#: src/Admin/PartSpecsPanel.php:370
 msgid "None"
 msgstr ""
 
-#: src/Admin/PartSpecsPanel.php:377
+#: src/Admin/PartSpecsPanel.php:373
 msgid "Leave as it is"
 msgstr ""
 
-#: src/Admin/PartSpecsPanel.php:383
+#: src/Admin/PartSpecsPanel.php:379
 msgid "Maker's chart and size"
 msgstr ""
 
-#: src/Admin/PartSpecsPanel.php:385
+#: src/Admin/PartSpecsPanel.php:381
 msgid "A truck that names its size in a chart takes that row's figures."
 msgstr ""
 
+#. translators: 1: a spec's value with its unit, such as 32 in. 2: a product attribute's name, such as Length.
+#: src/Admin/PartSpecsPanel.php:430
+#, php-format
+msgid "In use: %1$s, from the parent product's %2$s attribute."
+msgstr ""
+
 #. translators: 1: a spec's value with its unit, such as 8.25 in. 2: a product attribute's name, such as Width.
-#: src/Admin/PartSpecsPanel.php:420
+#: src/Admin/PartSpecsPanel.php:433
 #, php-format
 msgid "In use: %1$s, from the %2$s attribute."
 msgstr ""
 
 #. translators: 1: a spec's value with its unit, such as 8.5 in. 2: a truck maker's name, such as Independent. 3: a size in the maker's chart, such as 149.
-#: src/Admin/PartSpecsPanel.php:426
+#: src/Admin/PartSpecsPanel.php:439
 #, php-format
 msgid "In use: %1$s, from %2$s's chart, size %3$s."
 msgstr ""
 
 #. translators: %s: a spec's value with its unit, such as 8.25 in.
-#: src/Admin/PartSpecsPanel.php:429
+#: src/Admin/PartSpecsPanel.php:442
 #, php-format
 msgid "In use: %s, from the parent product."
 msgstr ""
 
 #. translators: %s: the size that was chosen.
-#: src/Admin/PartSpecsPanel.php:453
+#: src/Admin/PartSpecsPanel.php:466
 #, php-format
 msgid "The maker's chart was not saved: the chart has no size %s now. Choose again."
 msgstr ""
 
-#: src/Admin/PartSpecsPanel.php:454
+#: src/Admin/PartSpecsPanel.php:467
 msgid "The maker's chart was not saved: that chart is no longer there. Choose again."
 msgstr ""
 
-#: src/Admin/PartSpecsPanel.php:455
+#: src/Admin/PartSpecsPanel.php:468
 msgid "The maker's chart was not saved. Choose again."
 msgstr ""
 
+#. translators: 1: a deck's width with its unit, such as 8.6 in. 2: another, such as 8.375 in.
+#: src/Admin/PartSpecsPanel.php:475
+#, php-format
+msgid "Narrowest deck and Widest deck were not saved: the narrowest, %1$s, is wider than the widest, %2$s."
+msgstr ""
+
 #. translators: 1: a spec's name. 2: what was typed.
-#: src/Admin/PartSpecsPanel.php:462
+#: src/Admin/PartSpecsPanel.php:477
 #, php-format
 msgid "%1$s was not saved: \"%2$s\" is not a measurement. Type a number, or a fraction such as 8 1/4."
 msgstr ""
 
 #. translators: 1: a spec's name. 2: what was typed.
-#: src/Admin/PartSpecsPanel.php:464
+#: src/Admin/PartSpecsPanel.php:479
 #, php-format
 msgid "%1$s was not saved: the fraction in \"%2$s\" divides by zero."
 msgstr ""
 
 #. translators: 1: a spec's name. 2: what was typed.
-#: src/Admin/PartSpecsPanel.php:466
+#: src/Admin/PartSpecsPanel.php:481
 #, php-format
 msgid "%1$s was not saved: \"%2$s\" is below zero."
 msgstr ""
 
 #. translators: 1: a spec's name. 2: what was typed.
-#: src/Admin/PartSpecsPanel.php:468
+#: src/Admin/PartSpecsPanel.php:483
 #, php-format
 msgid "%1$s was not saved: \"%2$s\" must be more than zero."
 msgstr ""
 
 #. translators: 1: a spec's name. 2: what was typed.
-#: src/Admin/PartSpecsPanel.php:470
+#: src/Admin/PartSpecsPanel.php:485
 #, php-format
 msgid "%1$s was not saved: \"%2$s\" is too large a number."
 msgstr ""
 
 #. translators: 1: a spec's name. 2: what was typed.
-#: src/Admin/PartSpecsPanel.php:472
+#: src/Admin/PartSpecsPanel.php:487
 #, php-format
 msgid "%1$s was not saved: \"%2$s\" is not a value it takes."
 msgstr ""
@@ -545,77 +557,83 @@ msgstr ""
 msgid "An import is running. Wait for it to finish."
 msgstr ""
 
-#: src/Admin/Sentences.php:126
+#: src/Admin/Sentences.php:139
 msgid "The row does not say which part it is for."
 msgstr ""
 
 #. translators: %s: an ID or a SKU.
-#: src/Admin/Sentences.php:128
+#: src/Admin/Sentences.php:141
 #, php-format
 msgid "\"%s\" is in the file more than once. Keep one row for it."
 msgstr ""
 
 #. translators: %s: an ID or a SKU.
-#: src/Admin/Sentences.php:130
+#: src/Admin/Sentences.php:143
 #, php-format
 msgid "No product is \"%s\"."
 msgstr ""
 
 #. translators: %s: a SKU.
-#: src/Admin/Sentences.php:132
+#: src/Admin/Sentences.php:145
 #, php-format
 msgid "The product with this ID does not have the SKU \"%s\". Check the row is for this shop, or match parts by SKU."
 msgstr ""
 
 #. translators: %s: a chart's name.
-#: src/Admin/Sentences.php:134
+#: src/Admin/Sentences.php:147
 #, php-format
 msgid "There is no chart named \"%s\". Add it under Spec tables first."
 msgstr ""
 
 #. translators: %s: a chart's name.
-#: src/Admin/Sentences.php:136
+#: src/Admin/Sentences.php:149
 #, php-format
 msgid "More than one chart is named \"%s\". Rename one under Spec tables."
 msgstr ""
 
 #. translators: %s: a size in a chart.
-#: src/Admin/Sentences.php:138
+#: src/Admin/Sentences.php:151
 #, php-format
 msgid "The chart has no size \"%s\"."
 msgstr ""
 
-#: src/Admin/Sentences.php:139
-#: src/Admin/SpecTablesScreen.php:335
+#: src/Admin/Sentences.php:152
+#: src/Admin/SpecTablesScreen.php:336
 msgid "The size is too long. Use 40 characters or fewer."
 msgstr ""
 
-#: src/Admin/Sentences.php:140
+#. translators: 1: a deck's width with its unit, such as 8.6 in. 2: another, such as 8.375 in.
+#: src/Admin/Sentences.php:154
+#, php-format
+msgid "The narrowest deck, %1$s, is wider than the widest deck, %2$s."
+msgstr ""
+
+#: src/Admin/Sentences.php:155
 #: src/Admin/SpecTablesScreen.php:319
-#: src/Admin/SpecTablesScreen.php:333
+#: src/Admin/SpecTablesScreen.php:334
 msgid "That chart is no longer there."
 msgstr ""
 
 #. translators: %s: what a cell held.
-#: src/Admin/Sentences.php:142
+#: src/Admin/Sentences.php:157
 #, php-format
 msgid "\"%s\" is not a measurement. Use a number, or a fraction such as 8 1/4."
 msgstr ""
 
 #. translators: %s: what a cell held.
-#: src/Admin/Sentences.php:144
+#: src/Admin/Sentences.php:159
 #, php-format
 msgid "The fraction in \"%s\" divides by zero."
 msgstr ""
 
 #. translators: %s: what a cell held.
-#: src/Admin/Sentences.php:146
+#: src/Admin/Sentences.php:161
 #, php-format
 msgid "\"%s\" is below zero."
 msgstr ""
 
 #. translators: %s: what a cell held.
-#: src/Admin/Sentences.php:148
+#: src/Admin/Sentences.php:163
 #, php-format
 msgid "\"%s\" is not a value this column takes."
 msgstr ""
@@ -624,55 +642,55 @@ msgstr ""
 msgid "Where the builder reads each part's specs. Saving a change here reads every part again, in the background."
 msgstr ""
 
-#: src/Admin/SettingsPage.php:151
+#: src/Admin/SettingsPage.php:155
 msgid "First"
 msgstr ""
 
-#: src/Admin/SettingsPage.php:152
+#: src/Admin/SettingsPage.php:156
 msgid "Second"
 msgstr ""
 
-#: src/Admin/SettingsPage.php:153
+#: src/Admin/SettingsPage.php:157
 msgid "Third"
 msgstr ""
 
-#: src/Admin/SettingsPage.php:187
+#: src/Admin/SettingsPage.php:191
 msgid "The settings were not saved. Each problem is shown beside its field."
 msgstr ""
 
-#: src/Admin/SettingsPage.php:215
+#: src/Admin/SettingsPage.php:219
 msgid "Choose the attribute this spec is read from, or clear the line."
 msgstr ""
 
-#: src/Admin/SettingsPage.php:216
+#: src/Admin/SettingsPage.php:220
 msgid "Choose the spec this attribute feeds, or clear the line."
 msgstr ""
 
-#: src/Admin/SettingsPage.php:217
+#: src/Admin/SettingsPage.php:221
 msgid "The attribute's name is too long. Use 190 characters or fewer."
 msgstr ""
 
-#: src/Admin/SettingsPage.php:218
+#: src/Admin/SettingsPage.php:222
 msgid "Choose a spec from the list."
 msgstr ""
 
-#: src/Admin/SettingsPage.php:219
+#: src/Admin/SettingsPage.php:223
 msgid "Choose a unit from the list."
 msgstr ""
 
-#: src/Admin/SettingsPage.php:220
+#: src/Admin/SettingsPage.php:224
 msgid "This spec is not a length, so it has no unit. Set the unit to the spec's own."
 msgstr ""
 
-#: src/Admin/SettingsPage.php:221
+#: src/Admin/SettingsPage.php:225
 msgid "This attribute already feeds this spec on a line above. Clear one of the two."
 msgstr ""
 
-#: src/Admin/SettingsPage.php:222
+#: src/Admin/SettingsPage.php:226
 msgid "The mapping holds 50 lines at most. Clear some lines."
 msgstr ""
 
-#: src/Admin/SettingsPage.php:223
+#: src/Admin/SettingsPage.php:227
 msgid "Put each source in one place: first, second and third."
 msgstr ""
 
@@ -700,46 +718,54 @@ msgstr ""
 msgid "The maker's name is too long. Use 190 characters or fewer."
 msgstr ""
 
-#: src/Admin/SpecTablesScreen.php:334
+#: src/Admin/SpecTablesScreen.php:333
+msgid "Another chart has this name. Give this one a name of its own."
+msgstr ""
+
+#: src/Admin/SpecTablesScreen.php:335
 msgid "Type the size this row is for, or clear the row."
 msgstr ""
 
-#: src/Admin/SpecTablesScreen.php:336
+#: src/Admin/SpecTablesScreen.php:337
 msgid "This size is on a row above. Clear one of the two."
 msgstr ""
 
-#: src/Admin/SpecTablesScreen.php:337
+#: src/Admin/SpecTablesScreen.php:338
 msgid "The source is too long. Use 200 characters or fewer."
 msgstr ""
 
-#: src/Admin/SpecTablesScreen.php:338
+#: src/Admin/SpecTablesScreen.php:339
 msgid "The day it was read is not a date. Choose one, or clear it."
 msgstr ""
 
-#: src/Admin/SpecTablesScreen.php:339
+#: src/Admin/SpecTablesScreen.php:340
 msgid "A chart holds 100 sizes at most. Clear some rows."
 msgstr ""
 
-#. translators: 1: a spec's name. 2: what was typed.
 #: src/Admin/SpecTablesScreen.php:354
-#, php-format
-msgid "%1$s: \"%2$s\" is not a measurement. Type a number, or a fraction such as 8 1/4."
+msgid "The narrowest deck is wider than the widest deck. Check the two figures on this row."
 msgstr ""
 
 #. translators: 1: a spec's name. 2: what was typed.
 #: src/Admin/SpecTablesScreen.php:356
 #, php-format
-msgid "%1$s: the fraction in \"%2$s\" divides by zero."
+msgid "%1$s: \"%2$s\" is not a measurement. Type a number, or a fraction such as 8 1/4."
 msgstr ""
 
 #. translators: 1: a spec's name. 2: what was typed.
 #: src/Admin/SpecTablesScreen.php:358
 #, php-format
-msgid "%1$s: \"%2$s\" is below zero."
+msgid "%1$s: the fraction in \"%2$s\" divides by zero."
 msgstr ""
 
 #. translators: 1: a spec's name. 2: what was typed.
 #: src/Admin/SpecTablesScreen.php:360
+#, php-format
+msgid "%1$s: \"%2$s\" is below zero."
+msgstr ""
+
+#. translators: 1: a spec's name. 2: what was typed.
+#: src/Admin/SpecTablesScreen.php:362
 #, php-format
 msgid "%1$s: \"%2$s\" is not a value it takes."
 msgstr ""
@@ -762,12 +788,12 @@ msgstr[1] ""
 msgid "The reindex is queued. It runs in the background, 100 parts at a time."
 msgstr ""
 
-#: src/Cli/ReindexCommand.php:71
+#: src/Cli/ReindexCommand.php:68
 msgid "A batch of the reindex failed. It is tried again in the background. WooCommerce > Status > Logs has the reason."
 msgstr ""
 
 #. translators: %s: a number of parts.
-#: src/Cli/ReindexCommand.php:74
+#: src/Cli/ReindexCommand.php:71
 #, php-format
 msgid "%s part read into the index."
 msgid_plural "%s parts read into the index."
@@ -788,36 +814,36 @@ msgstr[1] ""
 msgid "Dry run: %1$s would change, %2$s would stay as they are, %3$s cannot be read. Nothing was written."
 msgstr ""
 
-#: src/Cli/SpecsCommand.php:180
+#: src/Cli/SpecsCommand.php:176
 msgid "A batch of the import failed. The rows before it are written, and the rest are tried again in the background. WooCommerce > Status > Logs has the reason."
 msgstr ""
 
 #. translators: 1: parts changed. 2: parts left as they were. 3: rows not written.
-#: src/Cli/SpecsCommand.php:184
+#: src/Cli/SpecsCommand.php:180
 #, php-format
 msgid "Imported: %1$s changed, %2$s already as the file has them, %3$s not written."
 msgstr ""
 
 #. translators: %s: a file's path.
-#: src/Cli/SpecsCommand.php:244
+#: src/Cli/SpecsCommand.php:240
 #, php-format
 msgid "There is no file at %s."
 msgstr ""
 
 #. translators: %s: a file's path.
-#: src/Cli/SpecsCommand.php:247
+#: src/Cli/SpecsCommand.php:243
 #, php-format
 msgid "%s cannot be read or written. Check the folder is there and its permissions."
 msgstr ""
 
 #. translators: %s: a file's path.
-#: src/Cli/SpecsCommand.php:250
+#: src/Cli/SpecsCommand.php:246
 #, php-format
 msgid "%s is not a .csv file."
 msgstr ""
 
 #. translators: %s: a column's name, id or sku.
-#: src/Cli/SpecsCommand.php:253
+#: src/Cli/SpecsCommand.php:249
 #, php-format
 msgid "The file has no %s column. Add one, or match parts by the other with --key."
 msgstr ""
@@ -1138,7 +1164,7 @@ msgid "Part"
 msgstr ""
 
 #: templates/admin/import.php:145
-#: templates/admin/settings-mapping.php:74
+#: templates/admin/settings-mapping.php:75
 msgid "Spec"
 msgstr ""
 
@@ -1203,33 +1229,33 @@ msgstr ""
 msgid "Not set"
 msgstr ""
 
-#: templates/admin/settings-mapping.php:22
+#: templates/admin/settings-mapping.php:23
 msgid "Attribute mapping"
 msgstr ""
 
-#: templates/admin/settings-mapping.php:25
-msgid "Read a spec from a product attribute your shop already fills in: the deck's width from the Width attribute, for one. Type the name of an attribute, or choose one of the shop's. The unit is what a value with no unit is in. To remove a line, clear its attribute and its spec. Save to add more lines."
+#: templates/admin/settings-mapping.php:26
+msgid "Read a spec from a product attribute your shop already fills in: the deck's width from the Width attribute, for one. Choose one of the shop's attributes from the list, which names each as WooCommerce stores it (pa_width), or type the name of an attribute a product has of its own. A variation with no value of its own takes its parent's. The unit is what a value with no unit is in. To remove a line, clear its attribute and its spec. Save to add more lines."
 msgstr ""
 
 #. translators: %d: the line's number in the attribute mapping.
-#: templates/admin/settings-mapping.php:48
+#: templates/admin/settings-mapping.php:49
 #, php-format
 msgid "Line %d"
 msgstr ""
 
-#: templates/admin/settings-mapping.php:59
+#: templates/admin/settings-mapping.php:60
 msgid "Attribute"
 msgstr ""
 
-#: templates/admin/settings-mapping.php:82
+#: templates/admin/settings-mapping.php:83
 msgid "No spec"
 msgstr ""
 
-#: templates/admin/settings-mapping.php:89
+#: templates/admin/settings-mapping.php:90
 msgid "Unit"
 msgstr ""
 
-#: templates/admin/settings-mapping.php:94
+#: templates/admin/settings-mapping.php:98
 msgid "The spec's own"
 msgstr ""
 

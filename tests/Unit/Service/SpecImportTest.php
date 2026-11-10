@@ -587,6 +587,36 @@ final class SpecImportTest extends TestCase {
 		self::assertCount( SpecImport::BATCH + 2, $after->refused );
 	}
 
+	// Claude in Cowork's review of milestone 3, minor 3: a queue runner could take the command's queued batches and
+	// run them beside it, doubling an import's counts and its refused rows.
+	public function test_an_import_run_now_writes_every_batch_and_queues_nothing(): void {
+		$rows = '';
+		for ( $part = 100; $part < 350; $part++ ) {
+			$this->parts->add( $part, 'P-' . $part, array(), 0, '', 'Part ' . $part );
+			$rows .= $part . ",8.25\n";
+		}
+		self::assertSame( array(), $this->import->read( "id,deck_width\n" . $rows . "999999,8\n" ) );
+		$token = $this->import->state()?->token ?? '';
+
+		self::assertNull( $this->import->runNow( 'not the token' ), 'not the import that was shown' );
+		$state = $this->import->runNow( $token );
+		self::assertSame( ImportState::DONE, $state?->status );
+		self::assertSame( array( 250, 0, 1 ), array( $state->changed, $state->same, count( $state->refused ) ) );
+		self::assertSame( array(), $this->queue->plain );
+		self::assertSame( array(), $this->queue->calls );
+		self::assertFalse( $this->queue->isPending( SpecImport::JOB ) );
+	}
+
+	public function test_an_import_run_now_stops_at_a_batch_that_fails_and_leaves_its_retry_to_the_queue(): void {
+		self::assertSame( array(), $this->import->read( "id,deck_width\n7,8.5\n" ) );
+		$this->parts->fails   = new RuntimeException( 'The database went away.' );
+		$this->parts->failsOn = 7;
+		$state                = $this->import->runNow( $this->import->state()?->token ?? '' );
+		self::assertSame( array( ImportState::RUNNING, 1 ), array( $state?->status, $state?->failures ) );
+		self::assertSame( 1, $this->queue->plainScheduled[ SpecImport::JOB ] );
+		self::assertSame( array(), $this->queue->plain );
+	}
+
 	public function test_a_batch_that_fails_is_logged_and_tried_again_then_the_import_stops(): void {
 		$this->import->read( "id,wheelbase\n7,14\n9,14\n" );
 		$this->import->confirm( (string) $this->import->state()?->token );

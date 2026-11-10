@@ -11,7 +11,7 @@
  * Two things are jQuery's alone: the Variations tab announces its rows with a jQuery event
  * (assets/js/admin/meta-boxes-product-variation.js:636), which the DOM never hears, and a row opens with a jQuery
  * animation, whose end only jQuery can promise. So jQuery is used for those two and nothing else. No data is read
- * and no markup is built.
+ * and no markup is built. Focus follows the scroll.
  */
 
 /**
@@ -32,6 +32,8 @@ export interface Query {
 
 const PANEL = 'cbuild_part_specs';
 const VARIATIONS = 'variable_product_options';
+// A group of fields opens from its summary, so that comes first where the fields are grouped.
+const CONTROLS = 'summary, input:not([type="hidden"]), select, textarea';
 
 /**
  * What an address names: the panel, a variation's ID, or nothing of ours.
@@ -53,8 +55,13 @@ export function named( hash: string ): 'panel' | string | null {
  * @param $    jQuery.
  */
 export function open( doc: Document, hash: string, $: Query ): void {
-	const show = ( element: Element | null ) =>
+	// Scrolled to, and focus moved to its first control, so a keyboard or a screen reader lands where the eye does.
+	const show = ( element: Element | null ) => {
 		element?.scrollIntoView( { block: 'start' } );
+		element
+			?.querySelector< HTMLElement >( CONTROLS )
+			?.focus( { preventScroll: true } );
+	};
 	const tab = ( id: string ) =>
 		doc
 			.querySelector< HTMLElement >( `ul.wc-tabs a[href="#${ id }"]` )

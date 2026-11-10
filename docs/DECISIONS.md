@@ -815,7 +815,7 @@ The table is milestone 1's and does not change. These are the choices the reposi
 - **The settings are read defensively** (`Adapter\OptionShopSettings`): whatever the option holds, the answer is a valid setting. The screen that saves it, with its schema, is this milestone's step 7.
 - **The settings option exists before its screen.** `docs/SETTINGS.md` said the option arrives in milestone 4; D-026 puts these two keys in milestone 3, since the index cannot be built without them.
 
-**Status:** Accepted.
+**Status:** Accepted. D-089 revises how a mapped attribute is read: by its own key, and from the parent for a variation that has none.
 
 ### D-071 · The index's jobs · 2026-11-10
 
@@ -915,7 +915,7 @@ The table is milestone 1's and does not change. These are the choices the reposi
 - **The Builder page has tabs,** Spec tables and Import and export, links in a `nav`. The Catalogue check will be the third.
 - **The browser test runs the queue itself,** `wp action-scheduler run --hooks=cbuild_import`, and waits for the page to say the import is done: the shop's own requests may have started the job first.
 
-**Status:** Accepted.
+**Status:** Accepted. D-090 moves the rows into an option of their own.
 
 ### D-077 · The Catalogue check: what it reads, and what waits for kits · 2026-11-10
 
@@ -992,7 +992,7 @@ Found by the milestone's two reviews, each fixed with a test that fails without 
 - **Failed jobs are counted from when the last reindex finished,** by when each last ran (`modified`, `ActionScheduler_DBStore.php:627`): that reindex read every part again, and Action Scheduler keeps a failed action for three months. Before, one failure kept Site Health and the check amber long after it was mended.
 - **The reindex's and the import's state are read from the table, past the request's cache** (`Adapter\FreshOption`): a long request would otherwise save its stale copy over another process's place.
 
-**Status:** Accepted.
+**Status:** Accepted. D-089 revises the matching of a mapped attribute: a line names one attribute, and `Width` no longer reads `pa_width`.
 
 ### D-083 · The product screen's one script is inline · 2026-11-10
 
@@ -1064,3 +1064,53 @@ Zach asked on 10 November 2026 whether the reviews' images should be ignored by 
 
 **Status:** Accepted.
 
+### D-089 · A mapped attribute is read by its own key, and a variation takes its parent's · 2026-11-10
+
+Claude in Cowork's review of pull request #15, its one should-fix. `WC_Product_Variation::get_attribute()` answers from the attributes used for variations only (WooCommerce 11.2.2, `includes/class-wc-product-variation.php:140`), so an attribute set on a variable product never reached its variations, while the field and chart sources both fall back to the parent.
+
+- **A variation with no value of its own takes its parent's,** when the parent holds the attribute and does not use it for variations. `Products::parentsOf()` already loads a batch's parents once. An attribute the parent uses for variations is the variation's to answer: one set to "Any" has no single value, and stays unread.
+- **The reading says where it came from.** Its reference is the attribute's name after `^` (`Port\SpecSource::PARENT_ATTRIBUTE`), one character since the mapping allows a name of 190 and the index's column holds 191. The panel says "In use: 32 in, from the parent product's Length attribute."
+- **A line names one attribute, by the key WooCommerce stores it under** (`sanitize_title()` of the name): `pa_length` is the taxonomy, and `Length` is a product's own attribute of that name. `WC_Product::get_attribute()` alone would answer `Length` from `pa_length` where a product has no attribute of its own by that name (`includes/abstracts/abstract-wc-product.php:2278`), and a line mapping a bolt's own Length would have given every deck with a `pa_length` a bolt length. The source checks the key before it asks.
+- **This takes back D-082's `Width` for `pa_width`.** A term of `pa_width` asks for a reindex only when a line names `pa_width`. The settings screen says to choose a taxonomy from the list or type a product's own attribute name.
+- **Tests:** `SpecSourcesTest` (the parent's value, "Any", and a line that reads the attribute it names and not a taxonomy of the same name), `PartSpecsPanelTest` and the unit and integration `IndexJobsTest`. Red before the fix: "the deck's Length is the taxonomy, which this line does not name". Without the fallback the parent tests fail; without the check on attributes used for variations the "Any" test fails.
+
+**Status:** Accepted. Revises D-070 and D-082.
+
+### D-090 · An import's rows are stored once · 2026-11-10
+
+Cowork's minor 6. The option `cbuild_import_state` held the whole sheet, and each batch of 100 saved it again: 50 saves of up to 5,000 rows.
+
+- **The rows have an option of their own, `cbuild_import_rows`,** with the import's token and, for an import by SKU, the product each SKU named. It is written when the file is read and removed when the import ends, is put away or is replaced. `cbuild_import_state` keeps the status, the place, the counts and the rows refused, which is what a batch changes.
+- **The split is the adapter's** (`Adapter\OptionImportStore`). `Port\ImportStore` and `Service\ImportState` are as they were: the service still loads and saves one import.
+- **Rows that are gone or carry another import's token make the import none,** which the screen then clears. The rows are written before the state that says it has them.
+- **A request that has read an import's rows does not write or compare them again.** `update_option()` would skip an unchanged value, but only after reading and serializing 5,000 rows to find that out.
+- **The write batch stays at 100.** Cowork noted WooCommerce's own importer writes 30 a request and that the benchmark planned and never wrote. It writes now: 1,778 parts in 20 jobs of 100, 706 ms for the slowest on the Mac, so about 2.5 s on CI's runner, against the 10 s a job is allowed. A product save is about 81 queries, WooCommerce's own.
+- **What stays large:** a file in which most rows are refused. The 3,000 rows of the benchmark's file that name no product leave 187 kB of refusals in `cbuild_import_state`, saved by each batch as it grows. A real sheet is an export filled in, where refusals are few.
+- **A new public item:** the option, in `docs/HOOKS.md`, the snapshot, `docs/PRIVACY.md` and `Options::names()`, so uninstall removes it.
+
+**Status:** Accepted. Revises D-076's "the dry run is the rows, kept in the option `cbuild_import_state`".
+
+### D-091 · A chart's size is matched by its number when no name matches · 2026-11-10
+
+Cowork's minor 7. A spreadsheet opens Venture's size `5.0` as the number 5 and saves it so, and the import refused the row as a size the chart lacks.
+
+- **`Domain\Spec\SpecTable::named()`** gives the row of that name, or failing that the one row whose name is the same plain number: `5`, `5.00` and `05` find `5.0`. A name that is anything but digits and one point is matched exactly, as before.
+- **Two rows that are the same number are not guessed at.** A chart with `5.0` and `5.00` refuses `5`, and each still answers to its own name.
+- **What is stored is the chart's own name for the row,** so the index and the panel's list find it. `SpecWriter` is the one place a named size is checked, for the panel and the import alike.
+
+**Status:** Accepted.
+
+### D-092 · The rest of Cowork's review of milestone 3 · 2026-11-10
+
+Zach had every minor of milestone 2's reviews fixed, and these follow that.
+
+- **A narrowest deck wider than the widest is refused** (minor 1) where the writers check: `SpecWriter` for the panel and the import, where neither figure is saved and the two stay as they were, and `SpecTableEditor` for a chart's row. The sentence names both figures. Rule R1 would otherwise hide the truck from every deck with nothing to say why.
+- **A chart's name is its own** (minor 2): a name another chart has, whatever its case, is refused when a chart is added or renamed. Two charts of one name made the import refuse every row that named either.
+- **A command in the foreground queues nothing** (minor 3). `IndexJobs::reindexNow()` and `SpecImport::runNow()` cancel what is queued, then run each batch themselves. Before, `wp cbuild reindex` on 2,000 parts left 22 actions a queue runner could take beside the command.
+- **The reindex's first pass asks which of the index's IDs are parts** (minor 4), through `PartCatalogue::partsOf()` as `indexPart()` does. A product that became variable while the plugin was off loses the rows under its own ID, and its variations are indexed.
+- **A page of variations asks the sources once** (minor 5), for up to 50 siblings together (`PartSpecsPanel::TOGETHER`); a save empties what was kept.
+- **A link from the Catalogue check moves focus** to the first control of the panel or the variation it opens, without scrolling again, and a unit's problem on the settings screen is tied to its select with `aria-invalid` and `aria-describedby` (minor 8).
+- **`ContainerTest` lists each scope's Hookables** (minor 9, landed with D-087's commit).
+- **Minor 10 is two issues,** for the plans it speaks to: #20 in milestone 4 (a settings save reindexes only when the mapping or the order changed) and #21 in milestone 5 (a stock change queues an index job for every order line).
+
+**Status:** Accepted.

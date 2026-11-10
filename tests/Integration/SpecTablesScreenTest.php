@@ -343,6 +343,45 @@ final class SpecTablesScreenTest extends IntegrationTestCase {
 		self::assertSame( 2, substr_count( $page, '<fieldset class="cbuild-chart-row">' ), 'the rows that were sent, as they were sent' );
 	}
 
+	// Claude in Cowork's review of milestone 3, minors 1 and 2.
+	public function test_a_reversed_deck_range_and_a_name_another_chart_has_are_refused_with_their_sentences(): void {
+		$this->as( 'administrator' );
+		$this->chart( 'Thunder' );
+		$id                = $this->chart();
+		$before            = $this->rows( $id );
+		[ $screen, $next ] = $this->send(
+			array(
+				'cbuild_action' => 'save',
+				'cbuild_table'  => (string) $id,
+				'cbuild_name'   => 'THUNDER',
+				'cbuild_rows'   => array(
+					array(
+						'size'  => '159',
+						'specs' => array(
+							'deck_min' => '8.6',
+							'deck_max' => '8.375',
+						),
+					),
+				),
+			)
+		);
+		self::assertNull( $next );
+		self::assertSame( $before, $this->rows( $id ) );
+		$page = self::drawn( $screen, array( 'table' => $id ) );
+		self::assertStringContainsString( '<p>Another chart has this name. Give this one a name of its own.</p>', $page );
+		self::assertStringContainsString( '<p>The narrowest deck is wider than the widest deck. Check the two figures on this row.</p>', $page );
+		self::assertMatchesRegularExpression( '/name="cbuild_rows\[0\]\[specs\]\[deck_min\]"[^>]*aria-invalid="true"/s', $page, 'on the narrowest deck\'s field' );
+
+		[ $screen ] = $this->send(
+			array(
+				'cbuild_action' => 'add',
+				'cbuild_name'   => 'independent',
+			)
+		);
+		self::assertStringContainsString( '<p>Another chart has this name. Give this one a name of its own.</p>', self::drawn( $screen ) );
+		self::assertCount( 2, $this->service( SpecTables::class )->all() );
+	}
+
 	public function test_who_cannot_manage_woocommerce_changes_nothing_and_a_form_needs_its_nonce(): void {
 		$id     = $this->chart();
 		$fields = array(

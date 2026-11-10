@@ -10,7 +10,7 @@ The spec's budgets are tests: a build fails when one is missed. The numbers from
 | Adding a 7-part build to the cart | Under 300 ms | The integration suite | Milestone 5 |
 | The fit engine with 500 candidates | The slowest slot under 40 ms, half the state route's budget; four times the candidates in under six times the time | `composer test:benchmark` (`FitEngineBenchmarkTest`) | Milestone 2 |
 | Rebuilding the specs index for 2,000 parts | Recorded; in jobs of 100, each under 10 s and 400 queries | `composer test:benchmark:integration` (`SpecsBenchmarkTest`) | Milestone 3 |
-| The specs export, the Catalogue check, and a 5,000-row import read and shown, at 2,000 parts | Each under 10 s, a third of PHP's usual limit for a request, and one query a product | `composer test:benchmark:integration` | Milestone 3 |
+| The specs export, the Catalogue check, a 5,000-row import read and shown, and each job of 100 import writes, at 2,000 parts | Each under 10 s, a third of PHP's usual limit for a request, and one query a product | `composer test:benchmark:integration` | Milestone 3 |
 | The builder's script, compressed (Brotli, quality 11) | Under 15 kB | `npm run budget` | Milestone 6 |
 | The builder's styles, compressed (Brotli, quality 11) | Under 10 kB | `npm run budget` | Milestone 6 |
 | LCP on the builder page, mobile profile, median of three | 2.5 s or less | `npm run lhci` | Milestone 1 (the front page until milestone 6) |
@@ -71,8 +71,10 @@ Machine: Apple M1 Max, PHP 8.5.12 in wp-env on OrbStack, WordPress 7.1.4, WooCom
 | The Catalogue check | 0.46 s | 2,112 |
 | A 5,000-row file read | 0.07 s | 3 |
 | The same file planned, as the screen shows it (2,000 rows are parts, 3,000 name none) | 0.28 s | 2,009 |
+| The import confirmed: 1,778 parts written, in 20 jobs of 100 | 12.82 s | 8,126 a job at most |
+| Its slowest job | 706 ms | |
 
-Peak memory for the whole run was 111 MB, with 2,000 products made in the same process; the import in hand is 117 kB in its option.
+Peak memory for the whole run was 111 MB, with 2,000 products made in the same process; the import in hand is 117 kB, its rows in an option written once (D-090). A job of 100 writes would take about 2.5 s on CI's runner, a quarter of what a job is allowed, so the batch stays at 100.
 
 Each piece is two orders under what a request allows, so the Catalogue check stays in the request that asks for it (D-077) and the dry run is planned whole when the page is drawn (D-076).
 

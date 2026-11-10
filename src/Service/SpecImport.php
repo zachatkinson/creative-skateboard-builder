@@ -213,12 +213,47 @@ final class SpecImport {
 	 * @return bool Whether that import was waiting, and was this user's.
 	 */
 	public function confirm( string $token, int $by = 0 ): bool {
+		if ( ! $this->start( $token, $by ) ) {
+			return false;
+		}
+		$this->queue->enqueueUnique( self::JOB );
+		return true;
+	}
+
+	/**
+	 * Confirm the import that waits and write it in this process, a batch after another, for the command line.
+	 * Nothing is queued: a queue runner would take a queued batch and run it beside this one, and count its rows
+	 * twice. A batch that fails stops the run, and its retry is the queue's.
+	 *
+	 * @since 0.3.0
+	 *
+	 * @param string $token The token of the import that was shown.
+	 * @param int    $by    The user who confirms it.
+	 * @return ImportState|null Where it ended, or null when that import was not waiting or not this user's.
+	 */
+	public function runNow( string $token, int $by = 0 ): ?ImportState {
+		if ( ! $this->start( $token, $by ) ) {
+			return null;
+		}
+		do {
+			$this->run( false );
+			$state = $this->state();
+		} while ( null !== $state && ImportState::RUNNING === $state->status && 0 === $state->failures );
+		return $state;
+	}
+
+	/**
+	 * Mark the waiting import as started, when it is the one shown and this user's.
+	 *
+	 * @param string $token The token of the import that was shown.
+	 * @param int    $by    The user who confirms it.
+	 */
+	private function start( string $token, int $by ): bool {
 		$state = $this->state();
 		if ( null === $state || ImportState::WAITING !== $state->status || $token !== $state->token || $by !== $state->by ) {
 			return false;
 		}
 		$this->store->save( $state->started()->toArray() );
-		$this->queue->enqueueUnique( self::JOB );
 		return true;
 	}
 
@@ -335,8 +370,10 @@ final class SpecImport {
 	 * twice writes the same values; rows it had already written count the second time as changing nothing.
 	 *
 	 * @since 0.3.0
+	 *
+	 * @param bool $queued Whether the next batch is queued. The command line runs its batches itself.
 	 */
-	public function run(): void {
+	public function run( bool $queued = true ): void {
 		$state = $this->state();
 		if ( null === $state || ImportState::RUNNING !== $state->status ) {
 			return;
@@ -378,7 +415,7 @@ final class SpecImport {
 		}
 		$next = $state->advanced( self::BATCH, $changed, $same, $refused, $now );
 		$this->store->save( $next->toArray() );
-		if ( ImportState::RUNNING === $next->status ) {
+		if ( $queued && ImportState::RUNNING === $next->status ) {
 			// Plain, not unique: this action is still running, and the unique check counts it.
 			$this->queue->enqueue( self::JOB );
 		}

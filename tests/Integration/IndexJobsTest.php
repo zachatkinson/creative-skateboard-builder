@@ -381,8 +381,8 @@ final class IndexJobsTest extends IntegrationTestCase {
 		self::assertIsArray( $gone );
 		self::assertIsArray( $other );
 
-		// As the shop names it, which is how WooCommerce reads it: the slug, then the slug after pa_.
-		$mapping = array( array( 'attribute' => 'Cbuild Test Width', 'spec' => 'deck_width' ) );
+		// By the taxonomy's own name, whatever its case: a name without pa_ is a product's own attribute (D-089).
+		$mapping = array( array( 'attribute' => 'PA_Cbuild-Test-Width', 'spec' => 'deck_width' ) );
 		update_option( Options::SETTINGS, array( Options::SETTING_ATTRIBUTE_MAPPING => $mapping ) );
 		self::work();
 		self::assertSame( ReindexState::DONE, $jobs->state()?->phase );

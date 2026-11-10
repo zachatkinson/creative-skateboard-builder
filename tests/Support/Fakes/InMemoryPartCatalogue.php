@@ -61,7 +61,6 @@ final class InMemoryPartCatalogue implements PartCatalogue {
 	}
 
 	public function reads( string $attribute, string $taxonomy ): bool {
-		$slug = strtolower( $attribute );
-		return $taxonomy === $slug || 'pa_' . $slug === $taxonomy;
+		return strtolower( $attribute ) === $taxonomy;
 	}
 }

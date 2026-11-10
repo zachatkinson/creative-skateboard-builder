@@ -6,6 +6,7 @@
  *
  * @var list<array{attribute: string, spec: string, unit: string}> $lines      The lines, the blank ones last.
  * @var array<int, list<string>>                                   $problems   What is wrong, by line from 1; 0 is the whole mapping.
+ * @var array<int, true>                                           $units_at   The lines whose problem is their unit.
  * @var array<string, string>                                      $attributes The shop's attributes: taxonomy => label.
  * @var array<string, string>                                      $specs      Spec key => label.
  * @var array<string, string>                                      $units      Unit => label.
@@ -22,7 +23,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	<th scope="row" class="titledesc"><?php esc_html_e( 'Attribute mapping', 'creative-skateboard-builder' ); ?></th>
 	<td class="forminp">
 		<p class="description" id="cbuild-mapping-help">
-			<?php esc_html_e( 'Read a spec from a product attribute your shop already fills in: the deck\'s width from the Width attribute, for one. Type the name of an attribute, or choose one of the shop\'s. The unit is what a value with no unit is in. To remove a line, clear its attribute and its spec. Save to add more lines.', 'creative-skateboard-builder' ); ?>
+			<?php esc_html_e( 'Read a spec from a product attribute your shop already fills in: the deck\'s width from the Width attribute, for one. Choose one of the shop\'s attributes from the list, which names each as WooCommerce stores it (pa_width), or type the name of an attribute a product has of its own. A variation with no value of its own takes its parent\'s. The unit is what a value with no unit is in. To remove a line, clear its attribute and its spec. Save to add more lines.', 'creative-skateboard-builder' ); ?>
 		</p>
 		<?php if ( isset( $problems[0] ) ) : ?>
 			<?php foreach ( $problems[0] as $cbuild_problem ) : ?>
@@ -90,6 +91,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 					<select
 						id="<?php echo esc_attr( $cbuild_id . '-unit' ); ?>"
 						name="cbuild_mapping[<?php echo esc_attr( (string) $cbuild_index ); ?>][unit]"
+						<?php if ( isset( $units_at[ $cbuild_number ] ) ) : ?>
+							aria-invalid="true" aria-describedby="<?php echo esc_attr( $cbuild_note ); ?>"
+						<?php endif; ?>
 					>
 						<option value=""><?php esc_html_e( 'The spec\'s own', 'creative-skateboard-builder' ); ?></option>
 						<?php foreach ( $units as $cbuild_key => $cbuild_label ) : ?>

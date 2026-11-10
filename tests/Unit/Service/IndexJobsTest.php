@@ -229,7 +229,7 @@ final class IndexJobsTest extends TestCase {
 		self::assertSame( 4, $batches, 'the one row, then pages of 100, 100 and 50' );
 		self::assertSame( array( 1, 2, 3 ), $this->catalogue->pages );
 		self::assertSame( range( 1, 250 ), array_keys( $this->index->rows ), 'every part, and the stale row gone' );
-		self::assertSame( array( 1, 100, 100, 50 ), array_map( 'count', $this->source->asked ) );
+		self::assertSame( array( 100, 100, 50 ), array_map( 'count', $this->source->asked ), 'the stale row is dropped without a read' );
 		self::assertEquals( new ReindexState( ReindexState::DONE, 0, 251, $started, $started + 30 ), $this->jobs->state() );
 		self::assertSame( 3, $this->queue->plain['cbuild_reindex'], 'each batch but the last queues the next, plainly' );
 	}
@@ -310,7 +310,8 @@ final class IndexJobsTest extends TestCase {
 
 	public function test_a_reindex_asked_for_while_a_batch_runs_starts_over_and_is_not_overwritten(): void {
 		$this->parts( ...range( 1, 150 ) );
-		$this->index->replace( 500, array( new IndexedSpec( SpecKey::DeckWidth, '8.0000', Origin::Field ) ), $this->clock->now() );
+		// A row of a part the shop still has, so the first batch reads it.
+		$this->index->replace( 1, array( new IndexedSpec( SpecKey::DeckWidth, '8.0000', Origin::Field ) ), $this->clock->now() );
 		$this->jobs->requestReindex();
 		$asking = new class() implements \CreativeBranding\SkateboardBuilder\Port\SpecSource {
 			public ?IndexJobs $jobs = null;
@@ -331,6 +332,60 @@ final class IndexJobsTest extends TestCase {
 		self::assertEquals( ReindexState::begin( $this->clock->now()->getTimestamp(), 2 ), $jobs->state(), 'the new request\'s state stands' );
 		self::assertTrue( $this->queue->pending['cbuild_reindex'] ?? false, 'and its batch is queued, though the unique one was refused' );
 		self::assertSame( 1, $this->queue->plain['cbuild_reindex'] );
+	}
+
+	// Claude in Cowork's review of milestone 3, minor 3: the command's own batches each queued the next, 22 actions
+	// for 2,000 parts, which a queue runner could take and run beside it.
+	public function test_a_reindex_run_now_reads_every_part_and_leaves_no_job_behind(): void {
+		$this->parts( ...range( 1, 250 ) );
+		$this->jobs->requestReindex();
+		self::assertTrue( $this->queue->isPending( IndexJobs::JOB_REINDEX ), 'an earlier request, still waiting' );
+
+		$state = $this->jobs->reindexNow();
+		self::assertSame( ReindexState::DONE, $state?->phase );
+		self::assertSame( 250, $state->parts );
+		self::assertSame( 2, $state->run, 'a run of its own, from the start' );
+		self::assertCount( 250, $this->index->rows );
+		self::assertFalse( $this->queue->isPending( IndexJobs::JOB_REINDEX ), 'the earlier request\'s job is cancelled, and none is queued' );
+		self::assertSame( array(), $this->queue->plain );
+		self::assertSame( 1, $this->queue->calls[ IndexJobs::JOB_REINDEX ], 'the earlier request\'s alone' );
+	}
+
+	public function test_a_reindex_run_now_stops_at_a_batch_that_fails_and_leaves_its_retry_to_the_queue(): void {
+		$this->parts( 1, 2, 3 );
+		$failing = new class() implements \CreativeBranding\SkateboardBuilder\Port\SpecSource {
+			public function read( int ...$partIds ): array {
+				throw new RuntimeException( 'the database went away' );
+			}
+		};
+		$jobs    = new IndexJobs( new SpecIndexer( $this->index, $this->settings, $this->clock, $failing ), $this->index, $this->catalogue, $this->queue, $this->store, $this->settings, $this->clock, $this->logger );
+		$state   = $jobs->reindexNow();
+		self::assertSame( 1, $state?->failures );
+		self::assertTrue( $state->isRunning() );
+		self::assertSame( 1, $this->queue->plainScheduled[ IndexJobs::JOB_REINDEX ], 'tried again in the background, once' );
+		self::assertSame( array(), $this->queue->plain );
+	}
+
+	// Claude in Cowork's review of milestone 3, minor 4: a simple part made variable while the plugin was off kept
+	// rows under the parent's ID, rewritten from the parent's own fields by every reindex.
+	public function test_the_first_pass_reads_each_row_as_the_part_its_product_stands_for_now(): void {
+		$this->parts( 5, 8, 9 );
+		$this->jobs->reindexNow();
+		self::assertSame( array( 5, 8, 9 ), array_keys( $this->index->rows ) );
+
+		// 5 became a variable product with two variations, and 8 was deleted, with nothing to tell the index.
+		$this->parts( 6, 7 );
+		$this->catalogue->products[5] = array( 6, 7 );
+		unset( $this->catalogue->products[8] );
+
+		$this->jobs->requestReindex();
+		unset( $this->queue->pending['cbuild_reindex'] );
+		$this->jobs->runReindex();
+		$rows = array_keys( $this->index->rows );
+		sort( $rows );
+		self::assertSame( array( 6, 7, 9 ), $rows, 'after the pass over the rows alone' );
+		self::assertSame( ReindexState::CATALOGUE, $this->jobs->state()?->phase );
+		self::assertSame( 3, $this->jobs->state()->parts, 'the three rows it went through' );
 	}
 
 	public function test_a_batch_that_fails_keeps_its_place_and_is_tried_again_then_stops(): void {
@@ -410,13 +465,16 @@ final class IndexJobsTest extends TestCase {
 		self::assertSame( 1, $this->queue->calls['cbuild_reindex'], 'once, though two lines name the attribute' );
 	}
 
-	public function test_an_attribute_mapped_by_the_name_the_shop_gave_it_is_matched_as_the_catalogue_reads_it(): void {
+	// A line names the taxonomy in full; a name without pa_ is a product's own attribute, which has no terms (D-089).
+	public function test_a_changed_term_reindexes_only_when_a_line_names_its_taxonomy(): void {
 		$this->settings->mapping = array_values( array_filter( array( AttributeMap::read( array( 'attribute' => 'Width', 'spec' => 'deck_width' ) ) ) ) );
 		$this->jobs->termChanged( 'pa_diameter' );
+		$this->jobs->termChanged( 'pa_width' );
+		self::assertNull( $this->jobs->state(), 'Width is a product\'s own attribute, not the Width taxonomy' );
+		$this->settings->mapping = array_values( array_filter( array( AttributeMap::read( array( 'attribute' => 'PA_Width', 'spec' => 'deck_width' ) ) ) ) );
+		$this->jobs->termChanged( 'width' );
 		self::assertNull( $this->jobs->state() );
 		$this->jobs->termChanged( 'pa_width' );
 		self::assertSame( 1, $this->jobs->state()?->run );
-		$this->jobs->termChanged( 'width' );
-		self::assertSame( 2, $this->jobs->state()?->run );
 	}
 }

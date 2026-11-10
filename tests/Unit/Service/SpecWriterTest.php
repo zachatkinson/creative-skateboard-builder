@@ -144,6 +144,70 @@ final class SpecWriterTest extends TestCase {
 		);
 	}
 
+	// Claude in Cowork's review of milestone 3, minor 1: each figure was checked alone, and R1 then hid the truck
+	// from every deck with nothing to say why.
+	public function test_a_narrowest_deck_wider_than_the_widest_is_refused_and_both_are_kept_as_they_were(): void {
+		$draft = $this->writer->draft(
+			array(
+				'deck_min'   => '8.6',
+				'deck_max'   => '8.375',
+				'axle_width' => '8.5',
+			),
+			array(
+				'deck_min' => '8.0000',
+				'deck_max' => '8.5000',
+			)
+		);
+		self::assertSame( 'deck_range_reversed', SpecWriter::RANGE );
+		self::assertSame(
+			array(
+				array(
+					'key'  => 'deck_min',
+					'code' => 'deck_range_reversed',
+					'text' => "8.6000\t8.3750",
+				),
+			),
+			$draft->problems
+		);
+		self::assertSame(
+			array(
+				'axle_width' => '8.5000',
+				'deck_min'   => '8.0000',
+				'deck_max'   => '8.5000',
+			),
+			$draft->fields,
+			'the rest saves; the two are as they were'
+		);
+
+		// One sent against the other stored; with nothing stored, neither is kept.
+		$draft = $this->writer->draft( array( 'deck_min' => '9' ), array( 'deck_max' => '8.5000' ) );
+		self::assertSame( array( 'deck_min:deck_range_reversed' ), self::codes( $draft->problems ) );
+		self::assertSame( array( 'deck_max' => '8.5000' ), $draft->fields );
+		$draft = $this->writer->draft(
+			array(
+				'deck_min' => '9',
+				'deck_max' => '8',
+			),
+			array()
+		);
+		self::assertSame( array( 'deck_min:deck_range_reversed' ), self::codes( $draft->problems ) );
+		self::assertSame( array(), $draft->fields );
+	}
+
+	public function test_a_range_of_one_width_one_end_alone_and_a_ten_inch_deck_are_all_allowed(): void {
+		foreach ( array( array( '8.5', '8.5' ), array( '8.5', '' ), array( '', '8.5' ), array( '9.75', '10' ), array( '8', '8.001' ) ) as [ $min, $max ] ) {
+			$draft = $this->writer->draft(
+				array(
+					'deck_min' => $min,
+					'deck_max' => $max,
+				),
+				array()
+			);
+			self::assertSame( array(), $draft->problems, $min . ' to ' . $max );
+			self::assertCount( (int) ( '' !== $min ) + (int) ( '' !== $max ), $draft->fields );
+		}
+	}
+
 	public function test_a_key_this_version_does_not_know_is_not_taken_and_one_already_stored_is_left(): void {
 		$draft = $this->writer->draft(
 			array(
@@ -237,5 +301,17 @@ final class SpecWriterTest extends TestCase {
 		self::assertSame( array(), $draft->problems );
 		$none = $this->writer->draft( array(), array() );
 		self::assertSame( array( 0, '' ), array( $none->table, $none->size ) );
+	}
+
+	public function test_a_size_a_spreadsheet_rewrote_is_stored_under_the_charts_own_name(): void {
+		$venture = $this->tables->create( 'Venture', SpecTable::read( array( array( 'size' => '5.0' ), array( 'size' => '5.2' ) ) ) );
+		$draft   = $this->writer->draft( array(), array(), '.', array( 'table' => $venture, 'size' => '5' ) );
+		self::assertSame( array(), $draft->problems );
+		self::assertSame( $venture, $draft->table );
+		self::assertSame( '5.0', $draft->size, 'the row\'s name, so the index finds it' );
+		self::assertSame( '5.2', $this->writer->draft( array(), array(), '.', array( 'table' => $venture, 'size' => ' 5.20 ' ) )->size );
+		self::assertSame( array( SpecWriter::TABLE . ':' . SpecWriter::SIZE_MISSING ), self::codes( $this->writer->draft( array(), array(), '.', array( 'table' => $venture, 'size' => '5.5' ) )->problems ) );
+		// With no chart to look in, a variation's size is kept as it was typed.
+		self::assertSame( '5', $this->writer->draft( array(), array(), '.', array( 'table' => 0, 'size' => '5' ) )->size );
 	}
 }
