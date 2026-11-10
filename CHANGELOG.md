@@ -11,6 +11,7 @@ All notable changes to this project are documented here. The format follows [Kee
 - The fit rules R1 to R6 (`Domain\Rule`), each answering with findings: a severity, a message code, the values behind it, its source and the slots it read (D-055). The message codes: `spec_missing`, `deck_below_range`, `deck_above_range`, `axle_narrower`, `axle_wider`, `pattern_mismatch`, `pattern_assumed`, `wheel_needs_riser`, `wheel_no_riser`, `limit_from_class`, `bolts_too_short`, `bolts_too_long`, `bore_mismatch`, `axle_assumed`, `spacers_built_in`, `grip_too_narrow`, `grip_too_short` and `length_unchecked`. R3's seeded limits were checked against their sources and stand (D-054).
 - The fit engine (`Domain\Fit`): each slot's options against the picks before it, the parts it hid grouped by rule and reason, the quantity a build takes of each part (R7), and a whole build held together for the cart (D-056).
 - The change list for a pick that breaks later ones (the picks kept, each that no longer fits with the closest part that does, the build proposed and the undo) and the recommendation each slot after the deck starts on (D-057).
+- Pricing (`Domain\Pricing`): each part at the price passed in times the quantity the build takes, the build discount off each part's price rounded half up, and the assembly fee on the parent, all in whole minor units (D-058).
 - `composer api:check` reads the schemas, by path and by content, the spec keys, with each one's kind and unit, and the message codes.
 
 ### Changed

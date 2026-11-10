@@ -636,3 +636,14 @@ Choices made while building R1 to R6, where the spec leaves them open:
 
 **Why:** Both ask the engine and decide nothing about fit; these are the choices the spec's sentences leave open.
 **Status:** Accepted.
+
+### D-058 · Money in the domain, and the build discount's rounding · 2026-11-09
+
+- **Money is whole minor units of the shop's price decimals.** A part's price reaches the domain as an integer the server made from WooCommerce's price and `wc_get_price_decimals()` (`includes/wc-formatting-functions.php:568`), and the assembly fee is turned into the same units from its document. Nothing is added up as a float.
+- **The build discount is basis points off each part's price for one**, rounded half up to the minor unit, and a line is that price times the quantity. The cart charges one price per line, so this is the figure `woocommerce_before_calculate_totals` will set in milestone 5, and the builder's total and the cart's are the same sum.
+- **Half up, though `wc_round_discount()` rounds half down** (`includes/wc-core-functions.php:2488`; `WC_DISCOUNT_ROUNDING_MODE` is 2, `includes/class-woocommerce.php:549`). That function rounds a coupon's amount. The build discount is not a coupon: it sets a price, and WooCommerce rounds a price half up. Milestone 5 checks the cart's own totals against the domain's with the discount on.
+- **The discount is from 0 to just under 100 %.** A part is never free because it is in a build, since at most one line of a build may be 0, the parent (spec: Pricing). The fee is never discounted.
+- **A part with no quantity has no line.** The engine blocks it, so it is never sold, and it adds nothing to a running total.
+
+**Why:** The spec says the discount is rounded per line to the shop's decimals and leaves the direction and the unit open.
+**Status:** Accepted.
