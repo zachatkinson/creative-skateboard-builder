@@ -21,7 +21,8 @@ All notable changes to this project are documented here. The format follows [Kee
 
 - The update's "View details" popup and the release's notes show `readme.txt`'s changelog, written for shop owners, not this file's (D-053).
 - `composer api:check` also fails when the changelog's entry for an item's version does not name it (issue #5). The 0.1.0 entry now names its options and its site transient.
-- The 90 % line floor is on all of `src/`, read from the unit and integration suites together by `composer test:coverage:all`; no class is left out by name (D-050, issue #6).
+- The line floor is on all of `src/`, read from the unit and integration suites together by `composer test:coverage:all`; no class is left out by name (D-050, issue #6). It is 95 %, up from 90 %, and each file's direct-access guard is left out of the count by one rule in `tools/coverage-merge.php` (D-061).
+- Infection's floor outside the domain is 95 %, up from 90 % (D-061).
 - The weekly canary fails on a high or critical advisory anywhere in the npm tree (D-051, issue #9).
 - The toolchain: TypeScript 6.0, the newest `typescript-eslint` accepts, and `actions/github-script` 9 in the canary. Dependabot leaves TypeScript 6.1 and later, and `@types/node`'s major versions, alone (D-049).
 

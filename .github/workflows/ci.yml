@@ -167,7 +167,7 @@ jobs:
           coverage: pcov
           tools: composer:v2
       - uses: ramsey/composer-install@65e4f84970763564f46a70b8a54b90d033b3bdda # 4.0.0
-      # The same two configurations and floors either way (90 % outside the domain, 100 % inside it); a pull request
+      # The same two configurations and floors either way (95 % outside the domain, 100 % inside it); a pull request
       # applies them to its changed lines, and passes when it changed none they mutate. Main runs everything.
       - name: Infection (a pull request's changed lines; everything on main)
         env:
@@ -241,7 +241,7 @@ jobs:
         run: composer i18n:check
       # The integration suite either way. The newest leg runs it with coverage and merges the unit suite's, for the one
       # floor on all of src/ (D-050): this leg already has the site up, so the number costs no job of its own (D-040).
-      - name: The integration suite, and the 90 % line floor on both suites together
+      - name: The integration suite, and the 95 % line floor on both suites together
         if: matrix.leg == 'newest'
         run: composer test:coverage:all
       - run: composer test:integration

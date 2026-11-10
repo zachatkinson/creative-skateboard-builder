@@ -59,8 +59,8 @@ The commands are in `CLAUDE.md`. The fast gates run on every commit through `ver
 | Architecture: deptrac layers (the domain depends on nothing; WordPress only in adapters) | `composer arch` | 1 |
 | Grep gates: SQL outside repositories, banned functions, `date()`, `strict_types`, outbound requests, WordPress calls in the domain, the copy rules in translatable strings | `composer gates` | 1, 2, 3, 12 |
 | Unit tests and the domain's coverage floors (100 % lines and branches on `src/Domain`) | `composer test:coverage` | 9 |
-| The coverage floor on all of `src/` (90 % of lines, the unit and integration suites together) | `composer test:coverage:all` | 9 |
-| Mutation testing: Infection (100 % MSI on `src/Domain`, 90 % elsewhere), StrykerJS (90 % on the builder's store) | `composer infection`, `npm run mutate:js` | 9 |
+| The coverage floor on all of `src/` (95 % of lines, the unit and integration suites together) | `composer test:coverage:all` | 9 |
+| Mutation testing: Infection (100 % MSI on `src/Domain`, 95 % elsewhere), StrykerJS (90 % on the builder's store) | `composer infection`, `npm run mutate:js` | 9 |
 | Public API snapshot: hooks, REST schemas, block attributes, settings keys, against `docs/HOOKS.md` and the committed snapshot | `composer api:check` | 10 |
 | Integration: WordPress test suite in wp-env, oldest and newest, HPOS on, off and syncing, multisite, a persistent object cache | `composer test:integration` and its variants | 3, 4, 9, 10, 11 |
 | Benchmarks: the server budgets as tests | `composer test:benchmark` | 8 |

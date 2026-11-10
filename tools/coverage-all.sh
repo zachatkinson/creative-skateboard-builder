@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # One line-coverage number for all of src/ (composer test:coverage:all; issue #6, D-050): the unit suite's report and the
-# integration suite's, merged line by line, with the 90 % floor on the result. A class is counted wherever it is
+# integration suite's, merged line by line, with the 95 % floor on the result. A class is counted wherever it is
 # tested, so nothing in src/ is left out by name. The integration site must be up with Xdebug in coverage mode, which
 # is how `npm run env:start` starts it.
 set -euo pipefail

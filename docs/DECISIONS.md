@@ -672,3 +672,16 @@ The spec says what is drawn and by which spec; these are the choices it leaves.
 
 **Why:** One layout for both renderers, exact to the specs where they are known and honest where they are not.
 **Status:** Accepted. The constants are the domain's until milestone 7 shows them against real layer images.
+
+### D-061 · The floors outside the domain, settled · 2026-11-09
+
+Zach's, delegated: asked on 9 November 2026 about the questions left open for him, he answered "whatever is best practice for them all". Three changes follow, and each moves a floor up.
+
+- **Infection outside the domain: 95 %, from 90 %.** The run is at 100 % (344 of 346 mutants killed by tests, 2 by static analysis). A floor ten points under the run lets ten points of regression through unseen. It is not 100 %, as the domain's is, because hook and adapter code produces equivalent mutants that only a contorted test would kill.
+- **A file's direct-access guard leaves the coverage count.** The `exit` of `if ( ! defined( 'ABSPATH' ) )` runs only when a file is requested outside WordPress, where no test can be. Counting 34 such lines as not covered blurred what the number says about the code tests can reach. The rule is written once, in `tools/coverage-merge.php`, which recognises the guard as every file writes it (the ABSPATH test on one line, a bare `exit;` on the next) and leaves out that line alone. A first version marked each of the 34 lines with a coverage-ignore comment; Zach saw the repetition, and a new file could have forgotten its comment. A guard written any other way is still counted: `exit( 0 );` in one file took the count from 34 guards to 33 and added the line back.
+- **The merged line floor: 95 %, from 90 %.** Leaving the guards out lifts the number from 95.69 % to 98.23 % (1,334 of 1,358 lines, 89 files). Left at 90 %, the floor would have become looser by the same change that made the number clearer.
+
+The other two open questions stand as decided: the invariant stays out of the two measuring runs (D-059), and the layout's constants wait for milestone 7's layer images (D-060). This revises D-050's last paragraph and the 90 % figures in D-038 and D-050.
+
+**Why:** A floor should sit close under what the code holds, and a rule should be written once.
+**Status:** Accepted.

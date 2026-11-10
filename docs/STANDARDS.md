@@ -189,7 +189,7 @@ tools/                    gates.sh, integration/ (PHPUnit 9.6), build, release, 
 | --- | --- | --- |
 | Unit | PHPUnit 13 | No WordPress. The domain must need no shim to run. Coverage: pcov for lines; branch coverage of `src/Domain` needs Xdebug in coverage mode (`--path-coverage`), which `composer test:coverage` uses for the domain |
 | Integration | PHPUnit 9.6 with the Yoast polyfills in `tools/integration/`, its own Composer project | The WordPress core test suite still calls an API PHPUnit 10 removed (Creative Search D-021; WordPress core ticket [#62004](https://core.trac.wordpress.org/ticket/62004) is open). Integration tests use `set_up()`/`tear_down()` and no PHPUnit 10+ attributes. Register the plugin's Composer loader behind PHPUnit 9.6's (Search D-023) |
-| PHP mutation | Infection 0.35 | `infection-domain.json5` at 100 %, `infection.json5` at 90 % |
+| PHP mutation | Infection 0.35 | `infection-domain.json5` at 100 %, `infection.json5` at 95 % |
 | JavaScript unit | Vitest, jsdom | The store's actions and derived state |
 | JavaScript mutation | StrykerJS with the Vitest runner | 90 % on the store |
 | Browser | Playwright, `@axe-core/playwright` | Chromium, WebKit and Firefox at phone and desktop widths; projects for JavaScript off, fr_CA, right to left and visual snapshots. Firefox on macOS 27 needs the `CFFIXED_USER_HOME` workaround (Search D-022) |

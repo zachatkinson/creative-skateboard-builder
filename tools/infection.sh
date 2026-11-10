@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Mutation testing (composer infection): 90 % outside the domain (infection.json5), 100 % inside it
+# Mutation testing (composer infection): 95 % outside the domain (infection.json5), 100 % inside it
 # (infection-domain.json5). The domain's run waits for its first file (milestone 2).
 set -euo pipefail
 cd "$(dirname "$0")/.."
