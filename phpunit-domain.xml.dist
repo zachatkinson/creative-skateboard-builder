@@ -1,19 +1,25 @@
 <?xml version="1.0"?>
-<!-- The unit suite measured on src/Domain alone, with Xdebug's path coverage, for the 100 % branch floor
-     (tools/coverage.sh, tools/coverage-floor.php). phpunit.xml.dist is the suite's own configuration and holds its
-     strictness; this one only narrows what is measured, so the report's totals are the domain's. -->
+<!-- The domain's tests on their own, measured on src/Domain with Xdebug's path coverage, for the 100 % branch floor
+     (tools/coverage.sh, tools/coverage-floor.php). The bootstrap is the autoloader alone: no WordPress, no shim, so
+     this run is also the proof that the domain needs neither. phpunit.xml.dist runs the same tests again with the
+     rest of the unit suite. -->
 <phpunit
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	xsi:noNamespaceSchemaLocation="https://schema.phpunit.de/13.4/phpunit.xsd"
-	bootstrap="tests/bootstrap.php"
+	bootstrap="tests/bootstrap-domain.php"
 	cacheDirectory="tmp/.phpunit.cache-domain"
+	failOnRisky="true"
+	failOnWarning="true"
+	failOnDeprecation="true"
+	failOnNotice="true"
+	beStrictAboutTestsThatDoNotTestAnything="true"
 >
 	<php>
 		<ini name="memory_limit" value="1G"/>
 	</php>
 	<testsuites>
 		<testsuite name="unit">
-			<directory suffix="Test.php">tests/Unit</directory>
+			<directory suffix="Test.php">tests/Unit/Domain</directory>
 		</testsuite>
 	</testsuites>
 	<source>

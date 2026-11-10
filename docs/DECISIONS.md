@@ -548,3 +548,20 @@ Issue #9's two calls, answered by Zach on 9 November 2026.
 
 **Why:** A new advisory in a dev tool should reach Zach within a week without turning an unrelated pull request red, and at no cost in minutes.
 **Status:** Accepted.
+
+### D-052 · How the domain is written to meet its floors · 2026-11-09
+
+The first domain classes (measures and their parser) met four things the floors and Plugin Check force on every class after them.
+
+- **A measure is a whole number of ten-thousandths of its unit**, the precision of the index's `DECIMAL(10,4)`. Inches and millimetres compare exactly through a common step (a hundred-thousandth of a millimetre; an inch is 25.4 mm exactly). A conversion, a fifth decimal place and a fraction finer than four places (1/32 in) round half up.
+- **Global functions are imported by name** (`use function trim;`). Since PHP 8.4 an unqualified call to some built-in functions compiles a branch for "a function of this name exists in the namespace", which no test can take, and Xdebug's branch coverage counts it.
+- **An enum's values come from a table, not a `match`.** A `match` with no default compiles a branch for the case that cannot happen. The table is an untyped constant: PHPCompatibility reads a typed constant in an enum as a constant named `array`, and reports `$this` in an enum's method as PHP 7.1's error, so that one sniff (`ForbiddenThisUseContexts.OutsideObjectContext`) is off in `phpcs.xml.dist`. PHP and PHPStan both refuse `$this` outside an object.
+- **A domain exception is made through a named constructor with no argument** (`InvalidMeasure::malformed()`). Plugin Check reads any argument to `throw new` as output to be escaped, and the domain has no WordPress to escape with. The message is the reason's code.
+- **PHPStan kills mutants in the domain's mutation run** (`staticAnalysisTool` in `infection-domain.json5`). A mutant that removes a cast leaves code level 10 refuses, and level 10 on the domain is already a gate. The floor stays 100 %.
+- **The domain's tests run a second time on their own**, with a bootstrap that is the autoloader and nothing else (`phpunit-domain.xml.dist`), which is the milestone's "done when".
+- `tools/domain-branches.sh` lists the branches no test takes; `composer test:coverage` only counts them.
+
+Also here: the browser site maps `tests/e2e/mu-plugins` as a folder. Mapped as one file, the locale mu-plugin vanished from the container whenever git rewrote the file.
+
+**Why:** 100 % of branches and mutants is only worth holding if none of the misses is a phantom, so each phantom is removed at its source and not excused.
+**Status:** Accepted.

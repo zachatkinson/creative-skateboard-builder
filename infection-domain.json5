@@ -7,7 +7,7 @@
 			"src/Domain"
 		]
 	},
-	"bootstrap": "tests/bootstrap.php",
+	"bootstrap": "tests/bootstrap-domain.php",
 	"timeout": 20,
 	"logs": {
 		"text": "tmp/infection-domain.log",
@@ -16,8 +16,13 @@
 	},
 	"tmpDir": "tmp/infection-domain",
 	"phpUnit": {
-		"configDir": "."
+		"configDir": ".",
+		"customPath": "vendor/bin/phpunit"
 	},
+	// A mutant PHPStan refuses is dead: level 10 on the domain is a gate of its own (composer analyse), so code that
+	// only passes with a cast removed or a type loosened never reaches a shop (D-052).
+	"staticAnalysisTool": "phpstan",
+	"staticAnalysisToolOptions": "--configuration=phpstan-domain.neon --memory-limit=2G",
 	"testFramework": "phpunit",
 	"testFrameworkOptions": "--testsuite=unit --exclude-group=benchmark",
 	"mutators": {
