@@ -791,3 +791,17 @@ The table is milestone 1's and does not change. These are the choices the reposi
 - **`InlineRule` joins the classes mutation testing leaves to the integration suite** (`infection.json5`). It reads only WordPress (`is_admin()`, `wp_doing_ajax()`, `current_user_can()`), and `InstallHooksTest` proves each branch. D-067 should have listed it.
 
 **Status:** Accepted.
+
+### D-069 · A part's sources: what each returns, and where the winner is chosen · 2026-11-10
+
+- **A source reads; the domain chooses.** `Port\SpecSource::read()` returns, for each part asked about, a `Reading` for each value it can read and an `Unread` for each it holds and cannot. `Domain\Spec\Resolution::of()` takes every source's readings and the shop's `SourceOrder` and keeps one per spec. So which source wins is tested without WordPress at the domain's floors, and a source added later adds no rule.
+- **Every typed or stored value is read in one place,** `Reading::from()`: a measure through `MeasureParser` with the separator and unit it was typed in, a choice, a flag (`1`, `yes`, `true`, `0`, `no`, `false`) or a count, then checked by `Specs::with()`. The panel, the import, the CLI and the attribute source will all call it, so 8.25, 8,25 and 8 1/4 are one value at every edge.
+- **A disagreement is two readings whose stored text differs.** 8.5 in from the field and 215.9 mm from a chart are the same four-place value in the key's unit and do not disagree. The reading kept is listed with each that says otherwise.
+- **Of two readings from one source the first wins,** and the other is a disagreement: two attributes mapped to one spec is a shop's mistake the Catalogue check should show, not an error.
+- **The default order is the chart, the field, the attribute** (spec: "the maker's chart, the field or the attribute; the chart by default"). A saved order that is not every source exactly once reads as the default, so a setting from a version with another source cannot leave one out.
+- **Nothing is stored about a disagreement or an unread value.** `SpecIndexer::resolve()` gives both without writing, and the Catalogue check will call it when asked. The index table stays as milestone 1 made it.
+- **A part no source speaks of ends with no row,** which is also how a deleted product leaves the index: its job runs, the sources find nothing, and the rows go.
+- **No `cbuild_spec_sources` filter yet.** The plan expected one. Nothing uses it, and a hook is public from the day it ships. It is added when another plugin has a source to add.
+
+**Status:** Accepted.
+

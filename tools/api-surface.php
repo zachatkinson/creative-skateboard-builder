@@ -271,6 +271,15 @@ if ( is_file( $cbuild_root . '/src/Domain/Spec/SpecKey.php' ) ) {
 $cbuild_surface['spec_keys']  = array_keys( $cbuild_spec_keys );
 $cbuild_surface['spec_kinds'] = $cbuild_spec_keys;
 
+// The sources a spec's value comes from, as the index's `source` column holds them.
+$cbuild_index_sources = array();
+$cbuild_origin_enum   = 'CreativeBranding\\SkateboardBuilder\\Domain\\Spec\\Origin';
+if ( is_file( $cbuild_root . '/src/Domain/Spec/Origin.php' ) ) {
+	require_once $cbuild_root . '/vendor/autoload.php';
+	$cbuild_index_sources = array_column( $cbuild_origin_enum::cases(), 'value' );
+}
+$cbuild_surface['index_sources'] = $cbuild_index_sources;
+
 // The message codes a finding carries, with its severities and sources.
 $cbuild_rule_values = array(
 	'message_codes' => array(),

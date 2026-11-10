@@ -199,3 +199,18 @@ When the domain refuses what it was given, it answers with a typed exception who
 | `price_decimals_over_eight` | 0.2.0 | A quote | The shop's prices have more than eight decimal places. |
 
 A spec row in the index whose key this version does not know is passed over, not refused, so a part keeps its other specs after a rollback.
+
+## Milestone 3: specs (0.3.0)
+
+The rest of this milestone's items are added here as each lands.
+
+### Index sources
+
+Where a spec's value came from, as the specs index's `source` column holds it. `source_ref` says what in that source. Which source wins where two disagree is the shop's setting; the order below is the default.
+
+| Source | Since | What it is | `source_ref` |
+| --- | --- | --- | --- |
+| `table` | 0.3.0 | The spec table and size the part names: a maker's chart. | The table and the size. |
+| `field` | 0.3.0 | The part's own Part specs field. | Empty, or `parent` when a variation takes its parent's value. |
+| `attribute` | 0.3.0 | A product attribute the shop mapped to the spec. | The attribute's name, such as `pa_width`. |
+

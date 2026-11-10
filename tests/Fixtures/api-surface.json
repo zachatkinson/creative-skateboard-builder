@@ -90,6 +90,11 @@
         "grip_length": "measure in",
         "set_size": "count"
     },
+    "index_sources": [
+        "field",
+        "attribute",
+        "table"
+    ],
     "message_codes": [
         "spec_missing",
         "deck_below_range",

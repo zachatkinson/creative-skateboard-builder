@@ -4,6 +4,10 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+### Added
+
+- The specs index's sources, as its `source` column holds them: `field`, `attribute` and `table`. The indexer keeps one value per part and spec, the winner by the shop's order with the maker's chart first by default, and records where sources disagree (D-069).
+
 ### Changed
 
 - A class that attaches hooks is built only on a request where its hooks can fire: wp-admin, WP-CLI, cron, REST or the storefront (D-067).
