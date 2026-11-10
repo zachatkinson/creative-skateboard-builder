@@ -19,7 +19,7 @@ Requires WordPress 7.0 or newer, WooCommerce 11.2 or newer and PHP 8.5 or newer,
 composer install && npm ci
 composer check && npm run check
 npx wp-env start
-composer test:integration && npm run plugin-check && npx playwright test
+composer test:coverage:all && npm run plugin-check && npx playwright test
 ```
 
 `npm run env:start` serves the site at http://localhost:8898 and the integration suite's site at http://localhost:8899. See [CLAUDE.md](CLAUDE.md) for every command and the rules the code is held to.

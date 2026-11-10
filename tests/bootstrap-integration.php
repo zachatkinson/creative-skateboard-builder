@@ -9,6 +9,15 @@ declare( strict_types=1 );
 
 $cbuild_plugin_dir = dirname( __DIR__ );
 
+// PHPUnit measures coverage from the first test, so the lines that run while WordPress loads the plugin (the main
+// file, Plugin::boot() and every hook's registration) would count as never run. When the merged coverage report is
+// being made (tools/coverage-all.sh, issue #6), Xdebug records them from here to the end of this file, and
+// tools/coverage-merge.php adds them to the suite's report.
+$cbuild_boot_coverage = '1' === getenv( 'CBUILD_COVERAGE' ) && function_exists( 'xdebug_start_code_coverage' );
+if ( $cbuild_boot_coverage ) {
+	xdebug_start_code_coverage();
+}
+
 $cbuild_loader = require $cbuild_plugin_dir . '/vendor/autoload.php';
 // The suite runs on PHPUnit 9.6 from tools/integration/ (D-020; Creative Search's D-021 and D-023) while the plugin's
 // own vendor tree holds PHPUnit 13 for the unit suite. Composer prepends a loader on registration, so the plugin's
@@ -106,5 +115,16 @@ tests_add_filter(
 );
 
 require $cbuild_tests_dir . '/includes/bootstrap.php';
+
+if ( $cbuild_boot_coverage ) {
+	$cbuild_boot_lines = array();
+	foreach ( xdebug_get_code_coverage() as $cbuild_boot_file => $cbuild_boot_ran ) {
+		if ( str_starts_with( $cbuild_boot_file, $cbuild_plugin_dir . '/src/' ) ) {
+			$cbuild_boot_lines[ substr( $cbuild_boot_file, strlen( $cbuild_plugin_dir ) + 1 ) ] = array_keys( $cbuild_boot_ran );
+		}
+	}
+	xdebug_stop_code_coverage( true );
+	file_put_contents( $cbuild_plugin_dir . '/tmp/coverage-bootstrap.json', (string) wp_json_encode( $cbuild_boot_lines ) );
+}
 
 require_once __DIR__ . '/Support/IntegrationTestCase.php';

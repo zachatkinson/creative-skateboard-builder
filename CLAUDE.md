@@ -42,12 +42,13 @@ It is the agency's showpiece, built to the twelve-dimension audit in `docs/AUDIT
   - em dashes and banned words in the POT;
   - a job of `release.yml` that holds the token and runs anything but `gh`, and the release plan's cases.
 - `composer test:unit`: PHPUnit 13, no WordPress
-- `composer test:coverage`: unit tests with the floors: 100 % of lines and branches in `src/Domain` (Xdebug's path coverage, since pcov measures lines only) and 90 % of lines overall
+- `composer test:coverage`: unit tests with the domain's floors: 100 % of lines and branches in `src/Domain` (Xdebug's path coverage, since pcov measures lines only)
+- `composer test:coverage:all`: the unit and integration suites' line coverage merged, with the floor: 90 % of all of `src/` (D-050). Needs the integration site, which `npm run env:start` starts with Xdebug in coverage mode
 - `composer test:benchmark`: the server budgets
 - `composer infection`: 100 % MSI on `src/Domain`, 90 % elsewhere
 - `composer api:check`: the public API against `docs/HOOKS.md` and `tests/Fixtures/api-surface.json`. `composer api:snapshot` rewrites the snapshot; do it, `HOOKS.md` and the changelog in the same commit as the change
 - `composer check`: lint, analyse, arch, gates, unit tests and api:check
-- `npm run env:start`: two wp-env environments on WordPress 7.1.4, WooCommerce 11.2.2 and PHP 8.5: the browser site at :8898 (`.wp-env.json`, with Plugin Check) and the integration site at :8899 (`.wp-env.tests.json`, D-047). `npx wp-env start` starts the browser site alone; a command for the integration site takes `--config=.wp-env.tests.json`. `npm run env:oldest` switches to WordPress 7.0 with WooCommerce 11.2.0, and `npm run env:newest` back. `@wordpress/env` is pinned to the major Creative Search uses (^12). Search still runs its integration suite in wp-env's built-in tests site, which wp-env 12 deprecates
+- `npm run env:start`: two wp-env environments on WordPress 7.1.4, WooCommerce 11.2.2 and PHP 8.5: the browser site at :8898 (`.wp-env.json`, with Plugin Check) and the integration site at :8899 (`.wp-env.tests.json`, D-047). `npx wp-env start` starts the browser site alone; a command for the integration site takes `--config=.wp-env.tests.json`, and `--xdebug=coverage` when it starts it. `npm run env:oldest` switches to WordPress 7.0 with WooCommerce 11.2.0, and `npm run env:newest` back. `@wordpress/env` is pinned to the major Creative Search uses (^12). Search still runs its integration suite in wp-env's built-in tests site, which wp-env 12 deprecates
 - `composer test:integration`: PHPUnit 9.6 from `tools/integration/`, inside the integration site, as Search's `tools/integration.sh`. The variants are `composer test:integration:hpos-off`, `:hpos-sync`, `:multisite` and `:object-cache`
 - `npm run build` / `npm run start`: `wp-scripts --experimental-modules` (script modules, Interactivity API)
 - `npm run types`: the state route's TypeScript types, generated from its JSON Schema. CI fails if the tree changes

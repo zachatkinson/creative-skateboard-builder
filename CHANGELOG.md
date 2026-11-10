@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Changed
 
+- The 90 % line floor is on all of `src/`, read from the unit and integration suites together by `composer test:coverage:all`; no class is left out by name (D-050, issue #6).
+- The weekly canary fails on a high or critical advisory anywhere in the npm tree (D-051, issue #9).
 - The toolchain: TypeScript 6.0, the newest `typescript-eslint` accepts, and `actions/github-script` 9 in the canary. Dependabot leaves TypeScript 6.1 and later, and `@types/node`'s major versions, alone (D-049).
 
 ### Fixed

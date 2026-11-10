@@ -15,7 +15,7 @@ Run these in order. Stop at the first failure and report its output verbatim. Do
 8. `npm run check`
 9. `npm run build && npm run budget`
 10. If wp-env is up (`curl -sf http://localhost:8898/ > /dev/null`):
-    1. `composer test:integration`
+    1. `composer test:coverage:all` (the integration suite, and the 90 % floor on both suites together)
     2. `composer i18n:check`
     3. `npm run plugin-check`
     4. `npx playwright test --project=chromium-desktop --project=chromium-phone`

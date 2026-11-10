@@ -381,6 +381,7 @@ Adding a class to the exclusions narrows a floor, and needs Zach as moving one d
 
 **Why:** The unit suite runs without WordPress, so a class that calls it cannot be covered there, and the WordPress test suite on PHPUnit 9.6 has no coverage driver wired. Before the milestone 1 audit the floor read a hand-picked list of files, so a new untested class was invisible to it; `Support\Options` and `Support\Tables` had no unit tests for that reason. The updater is the largest excluded class and the most security-sensitive: its reader (`Updates\Manifest`) is measured, and its hooks are driven by 14 integration tests. Raised by both milestone 1 reviews.
 **Status:** Accepted for milestone 1. Zach agreed on 9 November 2026 that milestone 2 starts by measuring the integration suite's coverage inside wp-env (`wp-env start --xdebug=coverage`) and merging it with the unit suite's, so the 90 % line floor counts every class in `src/` where it is tested and the named exclusions go from `phpunit.xml.dist`. The list stays in `infection.json5`: mutation testing runs on the unit suite only.
+Done in milestone 2: D-050.
 
 ### D-039 · One uninstaller · 2026-11-09
 
@@ -518,4 +519,32 @@ Dependabot's first two pull requests arrived with the merge of milestone 1. The 
 - **`actions/github-script` 9.0.0** in the canary. Its breaking changes are to `require('@actions/github')` and a script's own `getOctokit`; the canary's script uses neither.
 
 **Why:** A dependency pull request that cannot pass teaches everyone to ignore red ones, and a test that fails one run in many does the same.
+**Status:** Accepted.
+
+### D-050 · One coverage number for all of `src/` · 2026-11-09
+
+Issue #6, as D-038 promised. `composer test:coverage:all` runs the unit suite with coverage, runs the integration suite with coverage inside the integration site, and merges the two reports line by line (`tools/coverage-merge.php`). The 90 % line floor is on the merged number, and `phpunit.xml.dist` no longer leaves any class out by name. On 9 November 2026 it reads 91.46 % (621 of 679 lines, 34 files); the unit suite alone covers 45.75 % of the same lines.
+
+- **A line counts when either suite ran it.** The unit report lists every file in `src/` and names the lines that count. A line only the integration report lists is left out, so where PHPUnit 9.6 and 13 name a statement by different lines the number errs low, never high.
+- **The lines that run while WordPress loads are recorded by the bootstrap.** PHPUnit measures from the first test, so the main file's `require`s, `Plugin::boot()` and every hook's registration read as never run. With `CBUILD_COVERAGE=1`, `tests/bootstrap-integration.php` has Xdebug record from its first line to its last and writes the lines to `tmp/coverage-bootstrap.json`, which the merge reads. Without them the number was 88.95 %.
+- **The merge refuses to guess.** It fails when the integration report ran no line (a site started without Xdebug), or the bootstrap's lines are missing, and it deletes the last run's reports before it starts.
+- **`npm run env:start` starts the integration site with `--xdebug=coverage`**, so the command works wherever the site is up. The browser site has no Xdebug.
+- **`composer test:coverage` keeps the domain's floors** (100 % of lines and branches) and prints the unit suite's share without judging it.
+- **In CI the newest leg runs it** in place of `composer test:integration`: that leg already has the site up, so the number costs no job (D-040). The oldest leg and the variants run the suite without coverage.
+- **`infection.json5` keeps its list**, as agreed: mutation testing runs on the unit suite only.
+- **Shown failing:** a 32-line class with no test, added to `src/Support` and then to `src/Repository`, took the number to 87.34 % and the command to exit 1 both times.
+
+34 of the 58 lines not covered are one line each: the `exit` of every file's direct-access guard, which runs only when a file is requested outside WordPress. They are counted as not covered. Leaving them out would raise the number by five points and is a change to what the floor measures, so it is Zach's call, and not made here.
+
+**Why:** A floor that leaves the updater and the repositories out by name says nothing about the code most likely to hurt a shop.
+**Status:** Accepted. Supersedes the list in D-038 for line coverage.
+
+### D-051 · The dev toolchain's advisories reach the canary, not pull requests · 2026-11-09
+
+Issue #9's two calls, answered by Zach on 9 November 2026.
+
+- The weekly canary runs `npm audit --audit-level=high` on the whole tree and opens its issue when red. Pull requests still gate only what the zip ships (D-044). The tree stands at 4 low, with no fix published (D-046).
+- `@wordpress/scripts` stays on the major Creative Search uses, and moves when Search's does.
+
+**Why:** A new advisory in a dev tool should reach Zach within a week without turning an unrelated pull request red, and at no cost in minutes.
 **Status:** Accepted.

@@ -1,7 +1,8 @@
 <?php
 /**
- * Fails when coverage is under the floors: 90 % of the lines phpunit.xml.dist's <source> lists, 100 % of
- * src/Domain's lines, and 100 % of its branches when the domain's Cobertura report is given (docs/AUDIT.md: Unit tests).
+ * Fails when the domain's coverage is under its floors: 100 % of src/Domain's lines, and 100 % of its branches when the
+ * domain's Cobertura report is given (docs/AUDIT.md: Unit tests). The unit suite's share of all of src/ is printed and
+ * not judged: the 90 % floor is on both suites together (tools/coverage-merge.php, D-050).
  *
  * Run: php tools/coverage-floor.php tmp/coverage.xml [tmp/coverage-domain.xml]
  *
@@ -37,13 +38,9 @@ foreach ( $cbuild_xml->xpath( '//file' ) ?: array() as $cbuild_node ) {
 }
 
 $cbuild_pct = static fn( array $m ): float => $m['statements'] > 0 ? 100.0 * $m['covered'] / $m['statements'] : 100.0;
-printf( "Lines: %.2f%% (%d/%d) overall; %.2f%% (%d/%d) in src/Domain.\n", $cbuild_pct( $cbuild_total ), $cbuild_total['covered'], $cbuild_total['statements'], $cbuild_pct( $cbuild_domain ), $cbuild_domain['covered'], $cbuild_domain['statements'] );
+printf( "Lines, unit suite alone: %.2f%% (%d/%d) of src/; %.2f%% (%d/%d) in src/Domain.\n", $cbuild_pct( $cbuild_total ), $cbuild_total['covered'], $cbuild_total['statements'], $cbuild_pct( $cbuild_domain ), $cbuild_domain['covered'], $cbuild_domain['statements'] );
 
 $cbuild_status = 0;
-if ( $cbuild_pct( $cbuild_total ) < 90.0 ) {
-	fwrite( STDERR, "Line coverage is under 90%.\n" );
-	$cbuild_status = 1;
-}
 if ( $cbuild_pct( $cbuild_domain ) < 100.0 ) {
 	fwrite( STDERR, "src/Domain line coverage is under 100%.\n" );
 	$cbuild_status = 1;
