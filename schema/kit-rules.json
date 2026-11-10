@@ -1,0 +1,182 @@
+{
+	"$schema": "http://json-schema.org/draft-04/schema#",
+	"title": "cbuild_rules",
+	"description": "Which fit rules a kit runs, and their settings, stored in the _cbuild_rules product meta. Lengths are decimals in text, so no float carries one.",
+	"type": "object",
+	"additionalProperties": false,
+	"required": [
+		"schema_version",
+		"r1",
+		"r2",
+		"r3",
+		"r4",
+		"r5",
+		"r6"
+	],
+	"properties": {
+		"schema_version": {
+			"description": "The document's version. Version 1 is the only one so far.",
+			"type": "integer",
+			"enum": [
+				1
+			]
+		},
+		"r1": {
+			"description": "R1, deck width and truck size.",
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"enabled",
+				"range_tolerance",
+				"axle_fit",
+				"axle_warn"
+			],
+			"properties": {
+				"enabled": {
+					"description": "Whether the kit runs the rule.",
+					"type": "boolean"
+				},
+				"range_tolerance": {
+					"description": "How far outside a maker's deck range still fits, in inches.",
+					"type": "string",
+					"pattern": "^[0-9]{1,9}(\\.[0-9]{1,4})?(?!\\n)$"
+				},
+				"axle_fit": {
+					"description": "For a truck with no published range: how far its axle may be from the deck's width and fit, in inches.",
+					"type": "string",
+					"pattern": "^[0-9]{1,9}(\\.[0-9]{1,4})?(?!\\n)$"
+				},
+				"axle_warn": {
+					"description": "And how far it may be and warn, in inches; beyond it the truck is blocked. Not less than axle_fit.",
+					"type": "string",
+					"pattern": "^[0-9]{1,9}(\\.[0-9]{1,4})?(?!\\n)$"
+				}
+			}
+		},
+		"r2": {
+			"description": "R2, mounting holes.",
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"enabled"
+			],
+			"properties": {
+				"enabled": {
+					"description": "Whether the kit runs the rule.",
+					"type": "boolean"
+				}
+			}
+		},
+		"r3": {
+			"description": "R3, wheels, truck height and risers.",
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"enabled",
+				"limits",
+				"risers"
+			],
+			"properties": {
+				"enabled": {
+					"description": "Whether the kit runs the rule.",
+					"type": "boolean"
+				},
+				"limits": {
+					"description": "The largest wheel a truck takes without risers, by height class, in millimetres. Used where a truck has no maker's figure.",
+					"type": "object",
+					"additionalProperties": false,
+					"required": [
+						"low",
+						"mid",
+						"high"
+					],
+					"properties": {
+						"low": {
+							"type": "string",
+							"pattern": "^[0-9]{1,9}(\\.[0-9]{1,4})?(?!\\n)$"
+						},
+						"mid": {
+							"type": "string",
+							"pattern": "^[0-9]{1,9}(\\.[0-9]{1,4})?(?!\\n)$"
+						},
+						"high": {
+							"type": "string",
+							"pattern": "^[0-9]{1,9}(\\.[0-9]{1,4})?(?!\\n)$"
+						}
+					}
+				},
+				"risers": {
+					"description": "The riser table, shortest reach first: a wheel up to `over` millimetres past the limit takes a riser `riser` inches thick. Each row reaches further than the one before.",
+					"type": "array",
+					"minItems": 1,
+					"maxItems": 6,
+					"items": {
+						"type": "object",
+						"additionalProperties": false,
+						"required": [
+							"over",
+							"riser"
+						],
+						"properties": {
+							"over": {
+								"type": "string",
+								"pattern": "^[0-9]{1,9}(\\.[0-9]{1,4})?(?!\\n)$"
+							},
+							"riser": {
+								"type": "string",
+								"pattern": "^[0-9]{1,9}(\\.[0-9]{1,4})?(?!\\n)$"
+							}
+						}
+					}
+				}
+			}
+		},
+		"r4": {
+			"description": "R4, bolts and risers.",
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"enabled"
+			],
+			"properties": {
+				"enabled": {
+					"description": "Whether the kit runs the rule.",
+					"type": "boolean"
+				}
+			}
+		},
+		"r5": {
+			"description": "R5, bearings.",
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"enabled"
+			],
+			"properties": {
+				"enabled": {
+					"description": "Whether the kit runs the rule.",
+					"type": "boolean"
+				}
+			}
+		},
+		"r6": {
+			"description": "R6, grip.",
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"enabled",
+				"check_length"
+			],
+			"properties": {
+				"enabled": {
+					"description": "Whether the kit runs the rule.",
+					"type": "boolean"
+				},
+				"check_length": {
+					"description": "Whether the grip must be at least as long as the deck.",
+					"type": "boolean"
+				}
+			}
+		}
+	}
+}

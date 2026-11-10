@@ -1,0 +1,9 @@
+# The domain's mutants that static analysis may catch in place of a test (D-063): mutator, file, how many.
+# Each removes a cast or a null-safe arrow where PHP does the same at run time, so no test can tell it from the code.
+# A new one fails tools/infection.sh until a test catches it, or it is looked at and added here with its reason.
+NullSafePropertyCall src/Domain/Fit/BuildValidator.php 1
+CastString src/Domain/Measure/MeasureParser.php 1
+CastInt src/Domain/Measure/MeasureParser.php 1
+CastInt src/Domain/Measure/Rounding.php 1
+# The trucks are only ever swapped after a change to the deck, so the build always has a deck there.
+NullSafePropertyCall src/Domain/Fit/ChangePlanner.php 1

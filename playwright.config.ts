@@ -8,7 +8,7 @@ import { defineConfig, devices } from '@playwright/test';
  * (docs/AUDIT.md: Browser tests). CI runs every project; `visual` runs only in CI's Linux container, so its
  * baselines stay stable. Locally `npx playwright test --project=chromium-desktop` is enough.
  *
- * fr-ca and rtl send a header the mu-plugin in tests/e2e/fixtures/locale.php reads to switch the site's locale for
+ * fr-ca and rtl send a header the mu-plugin in tests/e2e/mu-plugins/cbuild-e2e-locale.php reads to switch the site's locale for
  * that request alone, so the same specs run in each.
  *
  * macOS 27 protects ~/Library/Application Support/Firefox, which Playwright's Firefox build still reads for

@@ -189,7 +189,7 @@ tools/                    gates.sh, integration/ (PHPUnit 9.6), build, release, 
 | --- | --- | --- |
 | Unit | PHPUnit 13 | No WordPress. The domain must need no shim to run. Coverage: pcov for lines; branch coverage of `src/Domain` needs Xdebug in coverage mode (`--path-coverage`), which `composer test:coverage` uses for the domain |
 | Integration | PHPUnit 9.6 with the Yoast polyfills in `tools/integration/`, its own Composer project | The WordPress core test suite still calls an API PHPUnit 10 removed (Creative Search D-021; WordPress core ticket [#62004](https://core.trac.wordpress.org/ticket/62004) is open). Integration tests use `set_up()`/`tear_down()` and no PHPUnit 10+ attributes. Register the plugin's Composer loader behind PHPUnit 9.6's (Search D-023) |
-| PHP mutation | Infection 0.35 | `infection-domain.json5` at 100 %, `infection.json5` at 90 % |
+| PHP mutation | Infection 0.35 | `infection-domain.json5` at 100 %, `infection.json5` at 95 % |
 | JavaScript unit | Vitest, jsdom | The store's actions and derived state |
 | JavaScript mutation | StrykerJS with the Vitest runner | 90 % on the store |
 | Browser | Playwright, `@axe-core/playwright` | Chromium, WebKit and Firefox at phone and desktop widths; projects for JavaScript off, fr_CA, right to left and visual snapshots. Firefox on macOS 27 needs the `CFFIXED_USER_HOME` workaround (Search D-022) |
@@ -206,7 +206,7 @@ tools/                    gates.sh, integration/ (PHPUnit 9.6), build, release, 
 - **Branches:** `main` is protected. Each milestone works on its own branch (`m6-builder`) and lands through one pull request, using the template in `.github/`.
 - **Commits:** an area and an imperative summary (`Cart: keep a build's parts with their parent`), with D-numbers where a decision is involved, as the family's repositories do. Small, each green.
 - **Versions:** milestones tag `v0.<n>.0`; the last tags `v1.0.0`. Semantic Versioning from 1.0, with the public API rules in `AUDIT.md`. The version lives in the plugin header, `readme.txt`'s stable tag, `package.json` and a constant, kept in step by the build script.
-- **Changelog:** `CHANGELOG.md` in Keep a Changelog's sections (Added, Changed, Deprecated, Removed, Fixed, Security), one entry per milestone. `readme.txt`'s changelog is generated from it.
+- **Changelog:** `CHANGELOG.md` in Keep a Changelog's sections (Added, Changed, Deprecated, Removed, Fixed, Security), one entry per milestone. `readme.txt`'s `== Changelog ==` is written by hand for shop owners, a line or two per release in plain words, and is what the update's "View details" popup and the release's notes show (D-053).
 - **Releases:** `.github/workflows/release.yml`, copied from Creative Search and kept the same:
   - It runs on a version tag once CI has passed on that commit.
   - It builds the zip and writes `info.json` with the SHA-256.

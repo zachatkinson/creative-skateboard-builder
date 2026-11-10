@@ -1,8 +1,9 @@
 <?php
 /**
  * The public API, read from the code (docs/AUDIT.md: Contracts). `--write` rewrites tests/Fixtures/api-surface.json;
- * `--check` fails when the code's API differs from the snapshot, or when an item is missing from docs/HOOKS.md.
- * A change to the API is therefore three edits in one commit: the code, the snapshot and HOOKS.md (CLAUDE.md).
+ * `--check` fails when the code's API differs from the snapshot, when an item is missing from docs/HOOKS.md, or when
+ * the changelog's entry for the version HOOKS.md dates it to does not name it. A change to the API is therefore four
+ * edits in one commit: the code, the snapshot, HOOKS.md and CHANGELOG.md (CLAUDE.md).
  *
  * What it reads, and from where:
  *   filters and actions   apply_filters()/do_action() of a cbuild_* hook, anywhere the plugin ships;
@@ -15,7 +16,15 @@
  *   abilities             wp_register_ability();
  *   WP-CLI commands       WP_CLI::add_command();
  *   blocks                block.json under assets/src;
- *   DOM events            'cbuild:*' strings under assets/src.
+ *   DOM events            'cbuild:*' strings under assets/src;
+ *   document schemas      schema/*.json, each by its path, and each one's content by a digest of its decoded JSON, so
+ *                         a schema cannot change shape without the snapshot changing with it;
+ *   spec keys             Domain\Spec\SpecKey's cases, with each one's kind and unit;
+ *   message codes         Domain\Rule\MessageCode's cases, with the severities and sources a finding carries;
+ *   build problems        Domain\Fit\Problem's cases: why the validator refuses a build;
+ *   rule ids              Domain\Rule\RuleId's cases, with the names of the values each message code carries;
+ *   refusal codes         the cases of the domain's five error enums: why a document, a spec, a measure, a part or a
+ *                         sum was refused.
  *
  * @package CreativeBranding\SkateboardBuilder
  */
@@ -69,6 +78,51 @@ function cbuild_api_files( string $dir, string $suffix ): array {
 		}
 	}
 	return $out;
+}
+
+/**
+ * The changelog's entries by version ('Unreleased' included), each with its text.
+ *
+ * @param string $changelog CHANGELOG.md.
+ * @return array<string, string>
+ */
+function cbuild_api_changelog_entries( string $changelog ): array {
+	$entries = array();
+	$parts   = preg_split( '/^## \\[([^\\]]+)\\].*$/m', $changelog, -1, PREG_SPLIT_DELIM_CAPTURE );
+	for ( $i = 1; $i + 1 < count( $parts ?: array() ); $i += 2 ) {
+		$entries[ $parts[ $i ] ] = $parts[ $i + 1 ];
+	}
+	return $entries;
+}
+
+/**
+ * The version docs/HOOKS.md gives an item: the first on a line that names it, or, where a heading names it, the first
+ * before the next heading.
+ *
+ * @param string $hooks docs/HOOKS.md.
+ * @param string $item  The item.
+ */
+function cbuild_api_since( string $hooks, string $item ): ?string {
+	$lines   = explode( "\n", $hooks );
+	$version = '/\\b(\\d+\\.\\d+\\.\\d+)\\b/';
+	foreach ( $lines as $at => $line ) {
+		if ( ! str_contains( $line, '`' . $item . '`' ) ) {
+			continue;
+		}
+		if ( 1 === preg_match( $version, $line, $found ) ) {
+			return $found[1];
+		}
+		if ( ! str_starts_with( $line, '#' ) ) {
+			continue;
+		}
+		$count = count( $lines );
+		for ( $next = $at + 1; $next < $count && ! str_starts_with( $lines[ $next ], '#' ); $next++ ) {
+			if ( 1 === preg_match( $version, $lines[ $next ], $found ) ) {
+				return $found[1];
+			}
+		}
+	}
+	return null;
 }
 
 /**
@@ -176,6 +230,103 @@ $cbuild_surface = array(
 	'dom_events'        => cbuild_api_matches( $cbuild_assets, "/'(cbuild:[a-z0-9-]+)'/" ),
 );
 
+// The kit's document schemas. The digest is of the decoded document with its keys sorted, so re-indenting a file
+// changes nothing and changing a bound, a pattern or a property does.
+$cbuild_schemas = array();
+$cbuild_digests = array();
+foreach ( glob( $cbuild_root . '/schema/*.json' ) ?: array() as $cbuild_schema_file ) {
+	$cbuild_schema = json_decode( (string) file_get_contents( $cbuild_schema_file ), true );
+	if ( ! is_array( $cbuild_schema ) ) {
+		fwrite( STDERR, 'schema/' . basename( $cbuild_schema_file ) . " is not a JSON object.\n" );
+		exit( 1 );
+	}
+	$cbuild_sort = static function ( array &$node ) use ( &$cbuild_sort ): void {
+		if ( ! array_is_list( $node ) ) {
+			ksort( $node );
+		}
+		foreach ( $node as &$cbuild_child ) {
+			if ( is_array( $cbuild_child ) ) {
+				$cbuild_sort( $cbuild_child );
+			}
+		}
+	};
+	$cbuild_sort( $cbuild_schema );
+	$cbuild_name                    = 'schema/' . basename( $cbuild_schema_file );
+	$cbuild_schemas[]               = $cbuild_name;
+	$cbuild_digests[ $cbuild_name ] = hash( 'sha256', json_encode( $cbuild_schema, JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR ) );
+}
+$cbuild_surface['schemas']        = $cbuild_schemas;
+$cbuild_surface['schema_digests'] = $cbuild_digests;
+
+// The spec keys, from the domain's enum. The domain loads without WordPress, through Composer's loader.
+$cbuild_spec_keys = array();
+$cbuild_spec_enum = 'CreativeBranding\\SkateboardBuilder\\Domain\\Spec\\SpecKey';
+if ( is_file( $cbuild_root . '/src/Domain/Spec/SpecKey.php' ) ) {
+	require_once $cbuild_root . '/vendor/autoload.php';
+	foreach ( $cbuild_spec_enum::cases() as $cbuild_spec_key ) {
+		$cbuild_spec_unit                            = $cbuild_spec_key->unit();
+		$cbuild_spec_keys[ $cbuild_spec_key->value ] = $cbuild_spec_key->kind()->value . ( null === $cbuild_spec_unit ? '' : ' ' . $cbuild_spec_unit->value );
+	}
+}
+$cbuild_surface['spec_keys']  = array_keys( $cbuild_spec_keys );
+$cbuild_surface['spec_kinds'] = $cbuild_spec_keys;
+
+// The message codes a finding carries, with its severities and sources.
+$cbuild_rule_values = array(
+	'message_codes' => array(),
+	'severities'    => array(),
+	'sources'       => array(),
+);
+if ( is_file( $cbuild_root . '/src/Domain/Rule/MessageCode.php' ) ) {
+	require_once $cbuild_root . '/vendor/autoload.php';
+	foreach ( array( 'message_codes' => 'MessageCode', 'severities' => 'Severity', 'sources' => 'Source' ) as $cbuild_group => $cbuild_enum ) { // phpcs:ignore WordPress.Arrays.ArrayDeclarationSpacing.AssociativeArrayFound
+		$cbuild_enum = 'CreativeBranding\\SkateboardBuilder\\Domain\\Rule\\' . $cbuild_enum;
+		foreach ( $cbuild_enum::cases() as $cbuild_case ) {
+			$cbuild_rule_values[ $cbuild_group ][] = $cbuild_case->value;
+		}
+	}
+}
+$cbuild_surface += $cbuild_rule_values;
+
+// Why the validator refuses a build.
+$cbuild_problems = array();
+if ( is_file( $cbuild_root . '/src/Domain/Fit/Problem.php' ) ) {
+	require_once $cbuild_root . '/vendor/autoload.php';
+	$cbuild_problem_enum = 'CreativeBranding\\SkateboardBuilder\\Domain\\Fit\\Problem';
+	foreach ( $cbuild_problem_enum::cases() as $cbuild_case ) {
+		$cbuild_problems[] = $cbuild_case->value;
+	}
+}
+$cbuild_surface['build_problems'] = $cbuild_problems;
+
+// The rules' ids, the names of the values each message code carries, and the codes the domain refuses bad input with.
+// The edge keys its notices and its translations on all three.
+$cbuild_rule_ids      = array();
+$cbuild_value_names   = array();
+$cbuild_refusal_codes = array();
+if ( is_file( $cbuild_root . '/src/Domain/Rule/RuleId.php' ) ) {
+	require_once $cbuild_root . '/vendor/autoload.php';
+	$cbuild_domain = 'CreativeBranding\\SkateboardBuilder\\Domain\\';
+	foreach ( ( $cbuild_domain . 'Rule\\RuleId' )::cases() as $cbuild_case ) {
+		$cbuild_rule_ids[] = $cbuild_case->value;
+	}
+	foreach ( ( $cbuild_domain . 'Rule\\MessageCode' )::cases() as $cbuild_case ) {
+		$cbuild_value_names[ $cbuild_case->value ] = implode( ' ', $cbuild_case->values() );
+	}
+	foreach ( array( 'Kit\\DocumentError', 'Spec\\SpecError', 'Measure\\MeasureError', 'Kit\\PartError', 'Kit\\MoneyError' ) as $cbuild_enum ) {
+		foreach ( ( $cbuild_domain . $cbuild_enum )::cases() as $cbuild_case ) {
+			$cbuild_refusal_codes[] = $cbuild_case->value;
+		}
+	}
+}
+$cbuild_surface['rule_ids']       = $cbuild_rule_ids;
+$cbuild_surface['message_values'] = $cbuild_value_names;
+$cbuild_surface['refusal_codes']  = $cbuild_refusal_codes;
+
+// Groups that describe another group's items, or whose values are too plain a word to look for in the docs, and are
+// held by the snapshot alone.
+$cbuild_details = array( 'schema_digests', 'spec_kinds', 'severities', 'sources', 'message_values' );
+
 $cbuild_json     = json_encode( $cbuild_surface, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR ) . "\n";
 $cbuild_snapshot = $cbuild_root . '/tests/Fixtures/api-surface.json';
 
@@ -205,6 +356,9 @@ if ( $cbuild_stored !== $cbuild_json ) {
 
 $cbuild_hooks = is_readable( $cbuild_root . '/docs/HOOKS.md' ) ? (string) file_get_contents( $cbuild_root . '/docs/HOOKS.md' ) : '';
 foreach ( $cbuild_surface as $cbuild_key => $cbuild_items ) {
+	if ( in_array( $cbuild_key, $cbuild_details, true ) ) {
+		continue;
+	}
 	foreach ( is_array( $cbuild_items ) ? $cbuild_items : array( $cbuild_items ) as $cbuild_item ) {
 		if ( '' !== $cbuild_item && ! str_contains( $cbuild_hooks, '`' . $cbuild_item . '`' ) ) {
 			fwrite( STDERR, "docs/HOOKS.md does not list {$cbuild_key} `{$cbuild_item}`.\n" );
@@ -213,11 +367,59 @@ foreach ( $cbuild_surface as $cbuild_key => $cbuild_items ) {
 	}
 }
 
+// The third edit: the changelog's entry for the version an item arrived in names it (issue #5). The version is the one
+// docs/HOOKS.md gives beside the item; an entry not yet released is read from [Unreleased].
+$cbuild_changelog = is_readable( $cbuild_root . '/CHANGELOG.md' ) ? (string) file_get_contents( $cbuild_root . '/CHANGELOG.md' ) : '';
+$cbuild_entries   = cbuild_api_changelog_entries( $cbuild_changelog );
+// The fourth: the plugin is at the version its newest item is dated to, and readme.txt has that version's entry for
+// shop owners, which the release's manifest is made from (D-053). Without this a milestone's merge could be tagged
+// while the header still gave the last version, and the release would fail, or ship under the old number (D-062).
+$cbuild_main_file      = is_readable( $cbuild_root . '/creative-skateboard-builder.php' ) ? (string) file_get_contents( $cbuild_root . '/creative-skateboard-builder.php' ) : '';
+$cbuild_plugin_version = 1 === preg_match( '/^ \* Version:\s+(\d+\.\d+\.\d+)\s*$/m', $cbuild_main_file, $cbuild_found ) ? $cbuild_found[1] : '0.0.0';
+$cbuild_readme         = is_readable( $cbuild_root . '/readme.txt' ) ? (string) file_get_contents( $cbuild_root . '/readme.txt' ) : '';
+$cbuild_ahead          = array();
+if ( 1 !== preg_match( '/^= ' . preg_quote( $cbuild_plugin_version, '/' ) . ' =$/m', $cbuild_readme ) ) {
+	fwrite( STDERR, "readme.txt has no changelog entry for {$cbuild_plugin_version}, the plugin header's version.\n" );
+	$cbuild_status = 1;
+}
+foreach ( $cbuild_surface as $cbuild_key => $cbuild_items ) {
+	if ( in_array( $cbuild_key, $cbuild_details, true ) ) {
+		continue;
+	}
+	foreach ( is_array( $cbuild_items ) ? $cbuild_items : array( $cbuild_items ) as $cbuild_item ) {
+		if ( '' === $cbuild_item || ! str_contains( $cbuild_hooks, '`' . $cbuild_item . '`' ) ) {
+			continue;
+		}
+		$cbuild_since = cbuild_api_since( $cbuild_hooks, $cbuild_item );
+		if ( null === $cbuild_since ) {
+			fwrite( STDERR, "docs/HOOKS.md gives no version for {$cbuild_key} `{$cbuild_item}`: its row or its Since line needs one.\n" );
+			$cbuild_status = 1;
+			continue;
+		}
+		if ( version_compare( $cbuild_since, $cbuild_plugin_version, '>' ) ) {
+			$cbuild_ahead[ $cbuild_since ] = ( $cbuild_ahead[ $cbuild_since ] ?? 0 ) + 1;
+		}
+		$cbuild_where = isset( $cbuild_entries[ $cbuild_since ] ) ? $cbuild_since : 'Unreleased';
+		if ( ! str_contains( $cbuild_entries[ $cbuild_where ] ?? '', '`' . $cbuild_item . '`' ) ) {
+			fwrite( STDERR, "CHANGELOG.md's [{$cbuild_where}] entry does not name {$cbuild_key} `{$cbuild_item}`, which docs/HOOKS.md dates to {$cbuild_since}.\n" );
+			$cbuild_status = 1;
+		}
+	}
+}
+
+foreach ( $cbuild_ahead as $cbuild_since => $cbuild_count ) {
+	fwrite( STDERR, "docs/HOOKS.md dates {$cbuild_count} item(s) to {$cbuild_since}, and the plugin header says {$cbuild_plugin_version}: the version moves with the first item.\n" );
+	$cbuild_status = 1;
+}
+
 if ( 0 === $cbuild_status ) {
 	$cbuild_count = 0;
-	foreach ( $cbuild_surface as $cbuild_items ) {
+	foreach ( $cbuild_surface as $cbuild_key => $cbuild_items ) {
+		if ( in_array( $cbuild_key, $cbuild_details, true ) ) {
+			continue;
+		}
 		$cbuild_count += is_array( $cbuild_items ) ? count( $cbuild_items ) : ( '' === $cbuild_items ? 0 : 1 );
 	}
-	echo "API surface: {$cbuild_count} items match the snapshot and docs/HOOKS.md.\n";
+	echo "API surface: {$cbuild_count} items match the snapshot, docs/HOOKS.md and CHANGELOG.md.\n";
 }
 exit( $cbuild_status );

@@ -39,7 +39,11 @@
 
 	<config name="minimum_supported_wp_version" value="7.0"/>
 	<config name="testVersion" value="8.5-"/>
-	<rule ref="PHPCompatibilityWP"/>
+	<rule ref="PHPCompatibilityWP">
+		<!-- The sniff does not know an enum's method is in object context, and reports $this there as PHP 7.1's error.
+		     PHP itself, and PHPStan, refuse $this outside one (D-052). -->
+		<exclude name="PHPCompatibility.Variables.ForbiddenThisUseContexts.OutsideObjectContext"/>
+	</rule>
 
 	<rule ref="WordPress.WP.I18n">
 		<properties>

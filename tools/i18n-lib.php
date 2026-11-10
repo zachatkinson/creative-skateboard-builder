@@ -25,7 +25,13 @@ function cbuild_po_entries( string $file ): array {
 		}
 		$entry = null;
 	};
-	$fresh   = static fn(): array => array( 'ctx' => '', 'id' => '', 'plural' => null, 'strs' => array(), 'fuzzy' => false );
+	$fresh   = static fn(): array => array(
+		'ctx'    => '',
+		'id'     => '',
+		'plural' => null,
+		'strs'   => array(),
+		'fuzzy'  => false,
+	);
 	foreach ( false === $lines ? array() : $lines as $line ) {
 		if ( '' === trim( $line ) ) {
 			$flush();
@@ -73,7 +79,7 @@ function cbuild_po_append( array &$entry, string $field, string $text ): void {
 	} elseif ( 'msgid_plural' === $field ) {
 		$entry['plural'] = ( $entry['plural'] ?? '' ) . $text;
 	} else {
-		$n                     = (int) substr( $field, 3 );
+		$n                   = (int) substr( $field, 3 );
 		$entry['strs'][ $n ] = ( $entry['strs'][ $n ] ?? '' ) . $text;
 	}
 }

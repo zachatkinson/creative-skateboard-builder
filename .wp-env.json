@@ -6,7 +6,7 @@
 		"wp-content/plugins/woocommerce": "https://downloads.wordpress.org/plugin/woocommerce.11.2.2.zip",
 		"wp-content/plugins/plugin-check": "https://downloads.wordpress.org/plugin/plugin-check.2.2.0.zip",
 		"wp-content/plugins/creative-skateboard-builder": ".",
-		"wp-content/mu-plugins/cbuild-e2e-locale.php": "./tests/e2e/fixtures/locale.php"
+		"wp-content/mu-plugins": "./tests/e2e/mu-plugins"
 	},
 	"port": 8898,
 	"testsEnvironment": false,

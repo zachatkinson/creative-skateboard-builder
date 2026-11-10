@@ -92,7 +92,7 @@ jobs:
       - run: composer analyse
       - run: composer arch
       - run: composer gates
-      - name: Unit tests with the coverage floors (100 % of src/Domain's lines and branches, 90 % of lines overall)
+      - name: Unit tests with the domain's coverage floors (100 % of src/Domain's lines and branches)
         run: composer test:coverage
       - run: composer api:check
       # The audits read the three lock files, so nothing more has to be installed for them.
@@ -167,7 +167,7 @@ jobs:
           coverage: pcov
           tools: composer:v2
       - uses: ramsey/composer-install@65e4f84970763564f46a70b8a54b90d033b3bdda # 4.0.0
-      # The same two configurations and floors either way (90 % outside the domain, 100 % inside it); a pull request
+      # The same two configurations and floors either way (95 % outside the domain, 100 % inside it); a pull request
       # applies them to its changed lines, and passes when it changed none they mutate. Main runs everything.
       - name: Infection (a pull request's changed lines; everything on main)
         env:
@@ -217,7 +217,8 @@ jobs:
       - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
         with:
           php-version: '8.5'
-          coverage: none
+          # The newest leg measures the unit suite's lines beside the integration suite's (D-050).
+          coverage: ${{ matrix.leg == 'newest' && 'pcov' || 'none' }}
           tools: composer:v2
       - uses: ramsey/composer-install@65e4f84970763564f46a70b8a54b90d033b3bdda # 4.0.0
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
@@ -238,8 +239,13 @@ jobs:
       - name: The i18n check (the POT current, the translations complete)
         if: matrix.leg == 'newest'
         run: composer i18n:check
+      # The integration suite either way. The newest leg runs it with coverage and merges the unit suite's, for the one
+      # floor on all of src/ (D-050): this leg already has the site up, so the number costs no job of its own (D-040).
+      - name: The integration suite, and the 95 % line floor on both suites together
+        if: matrix.leg == 'newest'
+        run: composer test:coverage:all
       - run: composer test:integration
-        if: matrix.leg != 'variants'
+        if: matrix.leg == 'oldest'
       - name: The six variants (two database servers, HPOS off and syncing, object cache, multisite)
         if: matrix.leg == 'variants'
         run: bash tools/integration-variants.sh

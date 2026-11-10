@@ -4,6 +4,40 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-09
+
+### Added
+
+- The kit's four document schemas, `schema/kit-slots.json`, `schema/kit-rules.json`, `schema/kit-presets.json` and `schema/kit-assembly.json`, each at `schema_version` 1, with the domain's value objects that read the same documents and an integration test that holds the two together.
+- The spec keys: `deck_width`, `deck_length`, `wheelbase`, `hole_pattern`, `axle_width`, `deck_min`, `deck_max`, `truck_height`, `height_class`, `max_wheel`, `baseplate`, `axle_diameter`, `wheel_diameter`, `riser_thickness`, `bolt_length`, `bearing_bore`, `spacers_built_in`, `grip_width`, `grip_length` and `set_size`.
+- The fit rules R1 to R6 (`Domain\Rule`), each answering with findings: a severity, a message code, the values behind it, its source and the slots it read (D-055). The message codes: `spec_missing`, `deck_below_range`, `deck_above_range`, `axle_narrower`, `axle_wider`, `pattern_mismatch`, `pattern_assumed`, `wheel_needs_riser`, `wheel_no_riser`, `limit_from_class`, `bolts_too_short`, `bolts_too_long`, `bore_mismatch`, `axle_assumed`, `spacers_built_in`, `grip_too_narrow`, `grip_too_short` and `length_unchecked`. R3's seeded limits were checked against their sources and stand (D-054).
+- The fit engine (`Domain\Fit`): each slot's options against the picks before it, the parts it hid grouped by rule and reason, the quantity a build takes of each part (R7), and a whole build held together for the cart (D-056).
+- The change list for a pick that breaks later ones (the picks kept, each that no longer fits with the closest part that does, the build proposed and the undo) and the recommendation each slot after the deck starts on (D-057).
+- Pricing (`Domain\Pricing`): each part at the price passed in times the quantity the build takes, the build discount off each part's price rounded half up, and the assembly fee on the parent, all in whole minor units (D-058).
+- The build validator the cart will use, which is the engine asked about a whole build, with the problems `slot_unknown`, `slot_empty`, `part_not_in_slot`, `part_sold_out` and `part_blocked`; and the invariant, over seeded random builds on a generated catalogue: what the engine offers, the validator accepts, and what it hides, the validator refuses (D-059).
+- The picture's layout, from the specs to each layer's position and size: the deck by its width and length, the trucks by the wheelbase or the shape's usual one, the wheels at the axles' ends and the grip as a strip along the edge. It names every spec it had to assume (D-060).
+- The engine's benchmark: each slot of a generated catalogue at 500, 1,000 and 2,000 candidates. It fails when the slowest slot at 500 takes 40 ms or more, or when the time grows faster than the candidates. `docs/BENCHMARK.md` has the figures.
+- The rules' ids `r1`, `r2`, `r3`, `r4`, `r5`, `r6` and `r7`, and the names of the values each message code carries, which a finding may not add to.
+- The refusal codes, each the `reason` of a typed exception: `document_not_an_object`, `document_unknown_version`, `document_field_missing`, `document_wrong_type`, `document_out_of_range`, `document_bad_measure`, `document_bad_key`, `document_duplicate`, `slots_deck_not_first`, `slots_risers_after_hardware`, `rules_out_of_order`, `presets_unknown_slot`, `presets_slot_not_filled`, `spec_wrong_kind`, `spec_unknown_choice`, `spec_not_positive`, `spec_too_many`, `measure_malformed`, `measure_zero_denominator`, `measure_negative`, `part_id_not_positive`, `part_price_negative`, `discount_out_of_range` and `price_decimals_over_eight`.
+- R1 holds a truck to whichever end of its deck range the maker publishes; the other end is open (D-062).
+- The assembly fee in the shop's minor units at up to eight price decimals.
+- After Claude in Cowork's review (D-064): a slot that takes one unit needs no `set_size` on its parts; the risers step starts on the riser the wheels ask for; a swapped truck is the one nearest the new deck's width; a row of the specs index this version cannot read is passed over, and the part keeps its other specs; a missing spec's finding has the source `none`; a whole number followed by a fraction of one or more is refused; and the schemas' patterns refuse a trailing line break, as the domain does.
+- Gates: no words in a string in `src/Domain` (11), no exception of PHP's own made there (12), and no statement at the top of a file there that is not a declaration (13). A mutant of the domain that only static analysis catches must be on a list (D-063). The runs that measure the domain, and the benchmark, fail when they find nothing to measure.
+- `composer api:check` reads the schemas, by path and by content, the spec keys, with each one's kind and unit, the message codes with their value names, the build problems, the rule ids and the refusal codes. It also fails when `docs/HOOKS.md` dates an item to a version newer than the plugin header's, or `readme.txt` has no entry for that version (D-062).
+
+### Changed
+
+- The update's "View details" popup and the release's notes show `readme.txt`'s changelog, written for shop owners, not this file's (D-053).
+- `composer api:check` also fails when the changelog's entry for an item's version does not name it (issue #5). The 0.1.0 entry now names its options and its site transient.
+- The line floor is on all of `src/`, read from the unit and integration suites together by `composer test:coverage:all`; no class is left out by name (D-050, issue #6). It is 95 %, up from 90 %, and each file's direct-access guard is left out of the count by one rule in `tools/coverage-merge.php` (D-061).
+- Infection's floor outside the domain is 95 %, up from 90 % (D-061).
+- The weekly canary fails on a high or critical advisory anywhere in the npm tree (D-051, issue #9).
+- The toolchain: TypeScript 6.0, the newest `typescript-eslint` accepts, and `actions/github-script` 9 in the canary. Dependabot leaves TypeScript 6.1 and later, and `@types/node`'s major versions, alone (D-049).
+
+### Fixed
+
+- The browser test of the Plugins screen opens a page of its own, so a request cancelled by a reload is no longer reported as the screen's error (D-049).
+
 ## [0.1.0] - 2026-11-09
 
 Milestone 1, the foundation. Nothing a shopper or shop owner sees yet: the skeleton the next eight milestones build on, with every CI gate wired and passing against it.
@@ -17,7 +51,7 @@ Milestone 1, the foundation. Nothing a shopper or shop owner sees yet: the skele
 - Activation and deactivation on a single site and across a network, with a site added later installing itself (D-025); uninstall, which removes the tables, options, transients, scheduled actions with their logs and group, and the cache group, on every site, with or without WooCommerce active and on a PHP below the floor (D-024, D-039, D-043), and keeps order item meta.
 - `Port\Clock` and `Port\Logger` with `Adapter\SystemClock` (UTC) and `Adapter\WooCommerceLogger` (source `creative-skateboard-builder`); `Port\Queue` over Action Scheduler.
 - The updater (`Updates\`): reads the agency's release manifest over HTTPS, takes a package only from this plugin's own releases, refuses a zip whose SHA-256 does not match, and names only the plugin in its two requests. Off with `CBUILD_DISABLE_UPDATES` or the `cbuild_updates_enabled` filter, whenever either is set; its own package is then refused, not installed unchecked.
-- The public API: the `cbuild_updates_enabled` filter; the constants `CBUILD_DISABLE_UPDATES`, `CBUILD_VERSION`, `CBUILD_FILE`, `CBUILD_PATH` and `CBUILD_URL`; three options, one site transient, two tables, the `cbuild_migrate` action and the log source, each in `docs/HOOKS.md` and the snapshot (`tests/Fixtures/api-surface.json`). `composer api:check` fails when the code, the snapshot and the document disagree.
+- The public API: the `cbuild_updates_enabled` filter; the constants `CBUILD_DISABLE_UPDATES`, `CBUILD_VERSION`, `CBUILD_FILE`, `CBUILD_PATH` and `CBUILD_URL`; the options `cbuild_db_version`, `cbuild_migrations` and `cbuild_migration_lock`; the site transient `cbuild_update_manifest`; the tables `cbuild_specs` and `cbuild_builds`; the `cbuild_migrate` action and the log source `creative-skateboard-builder`, each in `docs/HOOKS.md` and the snapshot (`tests/Fixtures/api-surface.json`). `composer api:check` fails when the code, the snapshot and the document disagree.
 - Tests: 153 unit tests; 62 integration tests in wp-env on the newest and oldest WordPress and WooCommerce, MySQL 8.4, MariaDB 10.11, HPOS off, HPOS syncing, multisite and with WordPress told a persistent object cache is present (a real shared cache is issue #4), among them two real processes racing for the migration lock; a browser smoke test on nine Playwright projects, with axe.
 - CI (`.github/workflows/ci.yml`): PHPCS, PHPStan level 9, deptrac, the grep gates and their self-test, the coverage floors, the API snapshot, the JavaScript and CSS standards, the asset budgets, Infection and StrykerJS, the benchmarks, the integration matrix, Plugin Check on the built zip, the zip installed, upgraded over itself and uninstalled, the browser projects, Lighthouse CI, a release dry run, the dependency audits and a gitleaks scan, with every action pinned to a commit SHA. A weekly canary on WordPress trunk and WooCommerce's pre-release, the release workflow with CycloneDX SBOMs, and Dependabot.
 - Docs: `HOOKS.md`, `SETTINGS.md`, `SECURITY.md`, `PRIVACY.md`, `A11Y.md`, `BENCHMARK.md`, `DECISIONS.md` (D-020 to D-048), `reviews/M1.md`, `README.md` and `readme.txt`; the POT file.

@@ -1,0 +1,11 @@
+<?php
+declare( strict_types=1 );
+
+namespace CreativeBranding\SkateboardBuilder\Domain;
+
+if ( PHP_VERSION_ID < 80500 ) {
+	return;
+}
+
+final class Probe {
+}

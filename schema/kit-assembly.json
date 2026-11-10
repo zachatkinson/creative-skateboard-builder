@@ -1,0 +1,40 @@
+{
+	"$schema": "http://json-schema.org/draft-04/schema#",
+	"title": "cbuild_assembly",
+	"description": "A kit's assembly settings, stored in the _cbuild_assembly product meta.",
+	"type": "object",
+	"additionalProperties": false,
+	"required": [
+		"schema_version",
+		"default_on",
+		"fee"
+	],
+	"properties": {
+		"schema_version": {
+			"description": "The document's version. Version 1 is the only one so far.",
+			"type": "integer",
+			"enum": [
+				1
+			]
+		},
+		"default_on": {
+			"description": "Whether a build starts with assembly on.",
+			"type": "boolean"
+		},
+		"fee": {
+			"description": "The assembly fee in the shop's currency, as a decimal in text: 15 or 15.50. 0 is free.",
+			"type": "string",
+			"pattern": "^[0-9]{1,9}(\\.[0-9]{1,4})?(?!\\n)$"
+		},
+		"lead_time": {
+			"description": "The lead time, in the owner's words.",
+			"type": "string",
+			"maxLength": 200
+		},
+		"returns_notice": {
+			"description": "The returns notice shown before checkout.",
+			"type": "string",
+			"maxLength": 1000
+		}
+	}
+}

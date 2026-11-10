@@ -381,6 +381,7 @@ Adding a class to the exclusions narrows a floor, and needs Zach as moving one d
 
 **Why:** The unit suite runs without WordPress, so a class that calls it cannot be covered there, and the WordPress test suite on PHPUnit 9.6 has no coverage driver wired. Before the milestone 1 audit the floor read a hand-picked list of files, so a new untested class was invisible to it; `Support\Options` and `Support\Tables` had no unit tests for that reason. The updater is the largest excluded class and the most security-sensitive: its reader (`Updates\Manifest`) is measured, and its hooks are driven by 14 integration tests. Raised by both milestone 1 reviews.
 **Status:** Accepted for milestone 1. Zach agreed on 9 November 2026 that milestone 2 starts by measuring the integration suite's coverage inside wp-env (`wp-env start --xdebug=coverage`) and merging it with the unit suite's, so the 90 % line floor counts every class in `src/` where it is tested and the named exclusions go from `phpunit.xml.dist`. The list stays in `infection.json5`: mutation testing runs on the unit suite only.
+Done in milestone 2: D-050.
 
 ### D-039 · One uninstaller · 2026-11-09
 
@@ -507,3 +508,242 @@ One finding is answered and not changed. The audit showed a retry can go unsched
 
 **Why:** A release path that has never run is the likeliest thing to fail on its first tag, and a guard that lists what to refuse passes whatever nobody thought to list.
 **Status:** Accepted.
+
+### D-049 · TypeScript 6.0, and what Dependabot's first run showed · 2026-11-09
+
+Dependabot's first two pull requests arrived with the merge of milestone 1. The npm one failed twice, for two unrelated reasons.
+
+- **TypeScript moves to 6.0, not 7.0.** Dependabot offered 7.0.2, and ESLint stopped with "typescript-eslint does not support TS 7.0". The newest `typescript-eslint` (8.72.2, the one `@wordpress/eslint-plugin` already carries, and its canary) accepts TypeScript below 6.1, so there is no newer linter to move to. 6.0.3 is the newest release the toolchain can lint, and replaces D-030's 5.9. `.github/dependabot.yml` ignores TypeScript 6.1 and later until that range moves.
+- **`@types/node` stays on 24.** The types describe the Node the project runs (`.nvmrc`), so they move with it, by hand. Dependabot ignores their major versions.
+- **The Plugins screen test has a page of its own.** In Firefox the test failed once on an uncaught `{ message, code }`: the screen's own request for `/wp/v2/users/me`, cancelled by the test's reload and reported to the listener attached just before it (the run's trace shows the request ending `NS_BINDING_ABORTED`). The reload was there so WebKit's errors for the dashboard being left were not heard; it moved the same race one page along. The test now opens a new page and listens from its first request, so no document is left while it listens. A deliberate page error still fails it.
+- **`actions/github-script` 9.0.0** in the canary. Its breaking changes are to `require('@actions/github')` and a script's own `getOctokit`; the canary's script uses neither.
+
+**Why:** A dependency pull request that cannot pass teaches everyone to ignore red ones, and a test that fails one run in many does the same.
+**Status:** Accepted.
+
+### D-050 · One coverage number for all of `src/` · 2026-11-09
+
+Issue #6, as D-038 promised. `composer test:coverage:all` runs the unit suite with coverage, runs the integration suite with coverage inside the integration site, and merges the two reports line by line (`tools/coverage-merge.php`). The 90 % line floor is on the merged number, and `phpunit.xml.dist` no longer leaves any class out by name. On 9 November 2026 it reads 91.46 % (621 of 679 lines, 34 files); the unit suite alone covers 45.75 % of the same lines.
+
+- **A line counts when either suite ran it.** The unit report lists every file in `src/` and names the lines that count. A line only the integration report lists is left out, so where PHPUnit 9.6 and 13 name a statement by different lines the number errs low, never high.
+- **The lines that run while WordPress loads are recorded by the bootstrap.** PHPUnit measures from the first test, so the main file's `require`s, `Plugin::boot()` and every hook's registration read as never run. With `CBUILD_COVERAGE=1`, `tests/bootstrap-integration.php` has Xdebug record from its first line to its last and writes the lines to `tmp/coverage-bootstrap.json`, which the merge reads. Without them the number was 88.95 %.
+- **The merge refuses to guess.** It fails when the integration report ran no line (a site started without Xdebug), or the bootstrap's lines are missing, and it deletes the last run's reports before it starts.
+- **`npm run env:start` starts the integration site with `--xdebug=coverage`**, so the command works wherever the site is up. The browser site has no Xdebug.
+- **`composer test:coverage` keeps the domain's floors** (100 % of lines and branches) and prints the unit suite's share without judging it.
+- **In CI the newest leg runs it** in place of `composer test:integration`: that leg already has the site up, so the number costs no job (D-040). The oldest leg and the variants run the suite without coverage.
+- **`infection.json5` keeps its list**, as agreed: mutation testing runs on the unit suite only.
+- **Shown failing:** a 32-line class with no test, added to `src/Support` and then to `src/Repository`, took the number to 87.34 % and the command to exit 1 both times.
+
+34 of the 58 lines not covered are one line each: the `exit` of every file's direct-access guard, which runs only when a file is requested outside WordPress. They are counted as not covered. Leaving them out would raise the number by five points and is a change to what the floor measures, so it is Zach's call, and not made here.
+
+**Why:** A floor that leaves the updater and the repositories out by name says nothing about the code most likely to hurt a shop.
+**Status:** Accepted. Supersedes the list in D-038 for line coverage.
+
+### D-051 · The dev toolchain's advisories reach the canary, not pull requests · 2026-11-09
+
+Issue #9's two calls, answered by Zach on 9 November 2026.
+
+- The weekly canary runs `npm audit --audit-level=high` on the whole tree and opens its issue when red. Pull requests still gate only what the zip ships (D-044). The tree stands at 4 low, with no fix published (D-046).
+- `@wordpress/scripts` stays on the major Creative Search uses, and moves when Search's does.
+
+**Why:** A new advisory in a dev tool should reach Zach within a week without turning an unrelated pull request red, and at no cost in minutes.
+**Status:** Accepted.
+
+### D-052 · How the domain is written to meet its floors · 2026-11-09
+
+The first domain classes (measures and their parser) met four things the floors and Plugin Check force on every class after them.
+
+- **A measure is a whole number of ten-thousandths of its unit**, the precision of the index's `DECIMAL(10,4)`. Inches and millimetres compare exactly through a common step (a hundred-thousandth of a millimetre; an inch is 25.4 mm exactly). A conversion, a fifth decimal place and a fraction finer than four places (1/32 in) round half up.
+- **Global functions are imported by name** (`use function trim;`). Since PHP 8.4 an unqualified call to some built-in functions compiles a branch for "a function of this name exists in the namespace", which no test can take, and Xdebug's branch coverage counts it.
+- **An enum's values come from a table, not a `match`.** A `match` with no default compiles a branch for the case that cannot happen. The table is an untyped constant: PHPCompatibility reads a typed constant in an enum as a constant named `array`, and reports `$this` in an enum's method as PHP 7.1's error, so that one sniff (`ForbiddenThisUseContexts.OutsideObjectContext`) is off in `phpcs.xml.dist`. PHP and PHPStan both refuse `$this` outside an object.
+- **A domain exception is made through a named constructor with no argument** (`InvalidMeasure::malformed()`). Plugin Check reads any argument to `throw new` as output to be escaped, and the domain has no WordPress to escape with. The message is the reason's code.
+- **PHPStan kills mutants in the domain's mutation run** (`staticAnalysisTool` in `infection-domain.json5`). A mutant that removes a cast leaves code level 10 refuses, and level 10 on the domain is already a gate. The floor stays 100 %.
+- **The domain's tests run a second time on their own**, with a bootstrap that is the autoloader and nothing else (`phpunit-domain.xml.dist`), which is the milestone's "done when".
+- `tools/domain-branches.sh` lists the branches no test takes; `composer test:coverage` only counts them.
+
+Also here: the browser site maps `tests/e2e/mu-plugins` as a folder. Mapped as one file, the locale mu-plugin vanished from the container whenever git rewrote the file.
+
+**Why:** 100 % of branches and mutants is only worth holding if none of the misses is a phantom, so each phantom is removed at its source and not excused.
+**Status:** Accepted.
+
+### D-053 · The update popup shows the shop owner's changelog · 2026-11-09
+
+Claude in Cowork checked 0.1.0 on the demo: the "View details" popup showed `CHANGELOG.md`'s bullets, with their class names and decision numbers. `tools/release-manifest.php` now takes a release's lines from `readme.txt`'s `== Changelog ==` entry for the version, which is written for shop owners, and fails when that entry is missing or carries a decision number, code or a path. `CHANGELOG.md` stays the developers' record. The release's notes on the releases repository are built from the same lines.
+
+0.1.0's published manifest is left as it is; the popup reads the new lines from 0.2.0.
+
+**Why:** The popup is the one place a shop owner reads about a release before installing it.
+**Status:** Accepted.
+
+### D-054 · R3's seeds stand after the check against their sources · 2026-11-09
+
+The spec asks milestone 2 to check R3's seeded class limits (low 53 mm, mid 56 mm, high 56 mm) and riser table against its sources. Read on 9 November 2026:
+
+- Hammer's guide gives the riser table as the spec has it: no riser up to 56 mm, ¼ in for 57 to 58 mm, ½ in for 59 to 62 mm, with 1¼ in bolts for a ¼ in riser and 1½ in for ½ in, which is also R4's table.
+- Skate Warehouse UK gives 48 to 53 mm for low trucks, which is the low seed. For high trucks it gives 53 to 58 mm, 2 mm past the seed. It gives no range for mid.
+- Switch says to consider risers from 57 mm, which agrees with a 56 mm limit.
+- Thunder's truck styles page carries its figures in images, and nothing could be read from it.
+
+Nothing changes. The high seed stays at 56 mm, Independent's own figure for its 55 mm Standard and Hammer's, and not Skate Warehouse UK's 58 mm.
+
+**Why:** R3 only warns, so a limit 2 mm low costs a shopper a riser suggestion they can ignore, while a limit 2 mm high sells wheel bite without a word. The limit is a kit setting, and a maker's `max_wheel` on the truck overrides it.
+**Status:** Accepted.
+
+### D-055 · How the fit rules answer · 2026-11-09
+
+Choices made while building R1 to R6, where the spec leaves them open:
+
+- **A finding, not a verdict.** A rule returns a list of findings, each with its rule, severity, message code, values, source and the slots it read. No finding means the picks fit as far as that rule goes. A finding of severity `fits` is a note: a default taken for a spec the part does not give (`pattern_assumed`, `axle_assumed`, `limit_from_class`, `length_unchecked`), which the Catalogue check will list.
+- **A missing spec is the part's own block.** A picked part that lacks a spec a rule needs gets `spec_missing` on its own slot, whether or not the other slot is filled, so a deck with no width is not offered at step one and does not go on to hide every truck.
+- **R1.** A range is both `deck_min` and `deck_max`; a truck with one end only goes by its axle (revised by D-062: one end is a range, open at the other). The kit's `range_tolerance` widens a maker's range at both ends and is 0 unless the shop sets it. `axle_fit` (0.25 in) and `axle_warn` (0.5 in) are the kit's too.
+- **R2.** A deck drilled for both patterns fits either baseplate, as a baseplate that takes both fits either deck.
+- **R3.** How far over is measured, not counted in whole millimetres: anything over the limit and up to the first row's reach gets that row's riser. Past the last row the warning says no riser covers it, and a riser does not clear it.
+- **R4.** 7/8 in, 1 in and the ¼ in of slack are constants, not kit settings: they are the trade's published table, and the spec gives the kit nothing to set here.
+- **R5.** The mismatch's source is the maker when the truck gives its axle, and the standard when 8 mm was assumed.
+- **R6.** A sheet needs `grip_length` only where it is held to a deck's length: the length check is on and the deck picked has a length.
+
+**Why:** Each keeps the page able to say why (P1) and keeps a guess from being sold as a fit, without the rules knowing anything of step order, stock or price.
+**Status:** Accepted.
+
+### D-056 · The fit engine, and quantities · 2026-11-09
+
+- **A slot's options are held against the picks before it**, in step order, as the spec has it. A pick in the slot itself or after it is not read, so going back to the deck step offers every deck, and what happens to the later picks is the change list's to say.
+- **A whole build is held together**: each pick against every other pick. A pair that does not fit is found on both its slots, and a riser picked after the wheels clears R3's warning, which the wheels step on its own could not know. Whatever the steps offered, this accepts, since every pair was checked when its later part was picked; the invariant test holds the two to that.
+- **A hidden part is in one group**, the one for its first blocking finding, grouped by rule and then by reason, so the counts add up to the number hidden. The group carries its first part's finding, for the figure a heading names ("too narrow for 8.5 in").
+- **R7.** A build takes as many of a part as cover the slot: the slot's units over the part's `set_size`, rounded up. `set_size` is required on every part. One without it is not offered, with `spec_missing` under `r7`, which is the engine's own rule and not one a kit can switch off. The alternative, counting a missing set size as 1, would put two pairs of trucks in a build whenever a pair was entered without it.
+- **The engine does not sort.** Options come back in the order the candidates were given. Sold-out parts after those in stock is the page's order, for milestone 6.
+
+**Why:** One engine answers the step, the cart and the change list, and none of them needs to know how the others ask.
+**Status:** Accepted. Revised by D-064: a slot that takes one unit needs no `set_size`.
+
+### D-057 · The change list and the recommendation · 2026-11-09
+
+**The change list.**
+
+- It walks the slots after the changed one in step order and holds each later pick against the build as it now stands, swaps included, so a truck swapped for the wider deck is what the bearings are then held against. Slots before the change are kept and not asked about.
+- A later pick is changed only when it is blocked. One that now warns is kept: a warning lets the build go ahead, and the step shows it.
+- "Nearest spec" is measured on one spec per slot, the one a shopper picks that part by: deck width, axle width, wheel diameter, riser thickness, bearing bore, bolt length, grip width. A part with no figure for it is the furthest, and still better than an empty slot. A slot the rules do not know goes straight to brand and price.
+- Then the same brand as the part picked, then the nearest price to it, then the first given. Only parts in stock that the slot offers, warned ones included.
+- With nothing that fits, the slot is empty in the proposed build and the shopper picks again.
+- It is a value: the build as it was, the build proposed, the slots kept and the changes. Applying or undoing it is the caller's.
+
+**The recommendation.**
+
+- "Fits" is the severity: a part that only fits with a warning is offered and never recommended, since the total counts a recommendation from the start (P9) and a warned part should be the shopper's own choice.
+- "The middle of the slot's prices" is the median of every candidate's price, hidden and sold-out parts included, so one dear part does not pull it. For an even number it is halfway between the two in the middle. Where two parts are as near as each other, the first given.
+- A slot the kit does not require gets a recommendation only when a finding among the picks before it reads that slot: wheels over a truck's limit name the risers slot, so the risers step then starts on the riser that clears the warning (P2). Otherwise an optional slot starts empty, whatever its default.
+- With nothing fitting and in stock, there is none, and the shopper picks.
+
+**Why:** Both ask the engine and decide nothing about fit; these are the choices the spec's sentences leave open.
+**Status:** Accepted. Revised by D-064: a truck is measured to the new deck, and a size the build asks for comes before the middle price.
+
+### D-058 · Money in the domain, and the build discount's rounding · 2026-11-09
+
+- **Money is whole minor units of the shop's price decimals.** A part's price reaches the domain as an integer the server made from WooCommerce's price and `wc_get_price_decimals()` (`includes/wc-formatting-functions.php:568`), and the assembly fee is turned into the same units from its document. Nothing is added up as a float.
+- **The build discount is basis points off each part's price for one**, rounded half up to the minor unit, and a line is that price times the quantity. The cart charges one price per line, so this is the figure `woocommerce_before_calculate_totals` will set in milestone 5, and the builder's total and the cart's are the same sum.
+- **Half up, though `wc_round_discount()` rounds half down** (`includes/wc-core-functions.php:2488`; `WC_DISCOUNT_ROUNDING_MODE` is 2, `includes/class-woocommerce.php:549`). That function rounds a coupon's amount. The build discount is not a coupon: it sets a price, and WooCommerce rounds a price half up. Milestone 5 checks the cart's own totals against the domain's with the discount on.
+- **The discount is from 0 to just under 100 %.** A part is never free because it is in a build, since at most one line of a build may be 0, the parent (spec: Pricing). The fee is never discounted.
+- **A part with no quantity has no line.** The engine blocks it, so it is never sold, and it adds nothing to a running total.
+
+**Why:** The spec says the discount is rounded per line to the shop's decimals and leaves the direction and the unit open.
+**Status:** Accepted.
+
+### D-059 · The build validator, and where the invariant runs · 2026-11-09
+
+- **The validator is the engine asked about a whole build**, plus four things that are not fit: a pick for a slot the kit lacks, a required slot left empty, a part that is not one of its slot's parts, and a part that is sold out. It takes each slot's part ids from the server, so an id the browser sent for the wrong slot, or for a product the kit never listed, is refused. Everything wrong is reported at once, unknown slots first and then in step order. A build that only warns is valid.
+- **The invariant** runs 200 seeded builds on a generated catalogue of 30 parts a slot, five ways: what the steps offer the validator accepts; what a step hides the validator refuses; the recommendations taken one after another make a build with nothing wrong but slots left to fill; a change list's proposed build has nothing wrong but slots left to fill; and the generator itself makes parts that fit, warn, are blocked, lack a spec, lack a set size and are sold out. A failure names its seed.
+- **It is in the group `invariant`.** `composer test:unit` and the line-coverage run include it. The domain's branch run (Xdebug's path coverage) and Infection leave it out: path coverage turns its five seconds into more than ten minutes, and the 100 % floors are the case tests' to meet. A branch or a mutant that only a random walk reaches is not one a test has pinned down, so leaving it out makes the floors harder to meet, not easier. Both runs were at 100 % without it when it was added.
+
+**Why:** The spec asks for the invariant and for the floors; this keeps both without one hiding gaps in the other.
+**Status:** Accepted.
+
+### D-060 · The picture's layout · 2026-11-09
+
+The spec says what is drawn and by which spec; these are the choices it leaves.
+
+- **The view and the units.** The board is seen from underneath with the nose up, as the layer images are shot. Every number is a whole ten-thousandth of a millimetre from the deck's centre, x to the right and y towards the nose, so a renderer's scale is one multiplication and no float is compared.
+- **The stack.** The deck, the grip, the two trucks, the four wheels, in that order from the bottom. The kit's Picture section can reorder it in milestone 7. Risers, bearings, hardware and spacers are hidden by the board and have no layer.
+- **Nothing is laid out before a deck with a width.** Every other position hangs off it. The labelled picture covers that case.
+- **The trucks.** A wheelbase runs between the inner mounting holes, so a truck's middle is half the wheelbase and half the hole spacing from the centre: 2.125 in between the rows, 2.5 in on a deck drilled old school only. A truck is drawn its axle's width across and the spacing plus 0.875 in along.
+- **The usual wheelbase,** when the deck gives none: 0.445 of its length when that is known (a 32 in deck gets 14.24 in), otherwise by width: under 8 in, 14 in; from 8 in, 14.25 in; from 8.5 in, 14.5 in. Street decks of 8 to 8.25 in average about 14.25 in, in a range of 14 to 15.5 in (SkateboardersHQ's and Concrete Waves' wheelbase guides, read 9 November 2026). A kit's own anchor overrides it in milestone 7.
+- **The other usual values.** A deck with no length is drawn 32 in long. Trucks with no axle width, and wheels picked before trucks, take the deck's width. Wheels with no diameter are drawn at 54 mm. A wheel is drawn three fifths as wide as its diameter, its outer face at the axle's end.
+- **The grip** is a 1 in strip the deck's length, flush with its right edge. The spec asks for a strip along the edge and says no more.
+- **Every usual value is named.** The layout lists the specs it assumed, so the page and the Catalogue check can say the picture is approximate, and for which part.
+
+**Why:** One layout for both renderers, exact to the specs where they are known and honest where they are not.
+**Status:** Accepted. The constants are the domain's until milestone 7 shows them against real layer images.
+
+### D-061 · The floors outside the domain, settled · 2026-11-09
+
+Zach's, delegated: asked on 9 November 2026 about the questions left open for him, he answered "whatever is best practice for them all". Three changes follow, and each moves a floor up.
+
+- **Infection outside the domain: 95 %, from 90 %.** The run is at 100 % (344 of 346 mutants killed by tests; the other 2 timed out, which Infection counts as caught). A floor ten points under the run lets ten points of regression through unseen. It is not 100 %, as the domain's is, because hook and adapter code produces equivalent mutants that only a contorted test would kill.
+- **A file's direct-access guard leaves the coverage count.** The `exit` of `if ( ! defined( 'ABSPATH' ) )` runs only when a file is requested outside WordPress, where no test can be. Counting 34 such lines as not covered blurred what the number says about the code tests can reach. The rule is written once, in `tools/coverage-merge.php`, which recognises the guard as every file writes it (the ABSPATH test on one line, a bare `exit;` on the next) and leaves out that line alone. A first version marked each of the 34 lines with a coverage-ignore comment; Zach saw the repetition, and a new file could have forgotten its comment. A guard written any other way is still counted: `exit( 0 );` in one file took the count from 34 guards to 33 and added the line back.
+- **The merged line floor: 95 %, from 90 %.** Leaving the guards out lifts the number from 95.69 % to 98.23 % (1,334 of 1,358 lines, 89 files). Left at 90 %, the floor would have become looser by the same change that made the number clearer.
+
+The other two open questions stand as decided: the invariant stays out of the two measuring runs (D-059), and the layout's constants wait for milestone 7's layer images (D-060). This revises D-050's last paragraph and the 90 % figures in D-038 and D-050.
+
+**Why:** A floor should sit close under what the code holds, and a rule should be written once.
+**Status:** Accepted.
+
+### D-062 · What the milestone 2 reviews changed · 2026-11-09
+
+The spec review and the audit found seven should-fix gaps and a dozen minors. Zach asked for all of them fixed. The choices made in fixing them:
+
+- **R1: one end of a maker's range is a range.** The spec's own seed table has "8.62 and up" and "up to 7.9". A truck with `deck_min` or `deck_max` alone is held to that end and is open at the other; the axle is asked only when the truck gives neither. The finding carries the ends that are published. This revises D-055.
+- **The risers come before the hardware.** A slots document with both, and the hardware first, is refused with `slots_risers_after_hardware`. The bolts are picked to reach through the riser (R4), so with the bolts first, wheels that ask for a riser found every riser hidden by bolts already chosen (W2).
+- **The assembly fee is in the shop's own minor units at any price decimals from 0 to 8.** It was clamped to four, so at five or more the fee and the parts' prices were added in different units. Above eight the domain refuses with `price_decimals_over_eight`: a sum that could leave whole numbers is not made. This adds to D-058.
+- **R7's save-time check is the engine's.** The spec has quantities "checked when the kit is saved". The domain's part of it is `FitEngine::judge()`, which answers `spec_missing` under `r7` for a part with no `set_size`; milestone 4's Build tab asks it for each candidate when the kit is saved, and the Catalogue check lists what it finds. Nothing more is built for it here. This adds to D-056.
+- **R8 is what the deck's option shows, and no rule.** It has no rule id, no code and no finding. A deck's `wheelbase` and `deck_length` ride on its option's part, a deck without them is offered all the same, and a test pins both.
+- **A preset fills every slot the kit requires.** The spec says "every slot"; an optional slot (risers) may be left empty in a preset as it may in any build, and a preset that leaves a required slot empty is refused.
+- **What the domain bounds and what it leaves to the schema.** The domain now holds every bound the schemas state: id lists to 500, each text to its length in characters, an attribute's taxonomy to its form. A spec's count stops at 1,000 and a measure of nothing is refused. A document that never met the schema (a direct meta write, an import) meets the same limits.
+- **A spec key this version does not know is passed over in the index.** It was refused, which would have cost a part every spec it has when a newer version's row survived a rollback. Imports and the Part specs panel check keys at the edge, against `SpecKey`.
+- **Refusals are typed, and finding values are named.** No exception of PHP's own is made in the domain (gate 12); each refusal has a reason code, listed in `docs/HOOKS.md` and held by `api:check`. A message code names the values it may carry and a finding may not add one, so a translation's placeholders cannot drift.
+- **One place each** for the blocking findings among some (`Finding::blocking()`), rounding half up and reading decimal digits (`Measure\Rounding`), and the hole patterns and height classes (two enums the spec keys' choices are read from).
+- **No words in the domain is a gate** (11), with snippets it must reject, in place of the test the plan named: a gate reads every file, and a test reads what it is pointed at.
+- **A run that measures nothing fails.** The level 10 run, the branch floor, the 100 % mutation run and the benchmark each skipped while the domain or the first benchmark did not exist. Each now fails when it finds nothing to measure, from one check (`tools/domain-present.sh`), and the gates' self-test runs each against an empty folder.
+- **The version moves with the first item dated to it.** `api:check` fails when `docs/HOOKS.md` dates an item to a version newer than the plugin header's, or `readme.txt` has no entry for the header's version. The branch said 0.1.0 with 47 items dated 0.2.0, and the first failure would have been the tag.
+- **Mutants caught by static analysis.** After the fixes 4 of 870 are caught by PHPStan and not by a test, down from 10. All four remove a cast or a null-safe arrow where PHP would do the same at run time; none changes what the code does. The three that did change behaviour (a filtered list left with gaps in its keys) are now held by tests. Whether static analysis should count towards the domain's 100 % at all (D-052) is put to Zach in the review.
+- **Looked at and left:** `Kit\Fields` is over 400 lines. It is one reader with one job, a method per kind of field, and splitting it would scatter that. The parser reads the one decimal separator it is given; whether the edge tries both for an attribute term is milestone 3's to settle with the attribute mapping.
+
+**Why:** Each was a place the code and what is written about it had come apart, or a check that could pass without checking.
+**Status:** Accepted.
+
+### D-063 · Static-analysis kills are listed, and a domain file only declares · 2026-11-10
+
+Zach asked for best practice on the two questions milestone 2's review put to him.
+
+- **A mutant static analysis alone catches counts only if it is on a list.** Infection counts a mutant PHPStan refuses as caught (D-052), which is sound for a mutant that cannot differ at run time and unsound for one that can: three of the ten before the review changed behaviour with no test noticing. `tools/infection-static-allowed.txt` names the four that remain by mutator and file, each a cast or a null-safe arrow PHP makes no use of at run time. `tools/infection.sh` fails on any other, in a full run or a pull request's, until a test catches it or it is looked at and listed with its reason. Ignoring the four in the code instead would have put four notes in the domain to say the same thing.
+- **A domain file has no direct-access guard, and gate 13 is why that is safe.** The guard's job is to stop a file doing anything when it is requested outside WordPress. The domain cannot name WordPress's constant (gate 6), and a guard there would make the domain's own tests need a shim. So the property is held directly: gate 13 fails on any statement at the top of a file in `src/Domain` that is not `declare`, `namespace`, `use` or the declaration of a class, an interface, an enum or a trait. A file that only declares runs nothing when requested. Every other file in `src/` keeps its guard.
+
+**Why:** In both, a claim the review made in words ("none changes behaviour", "each only declares") is now a check that fails when the claim stops being true.
+**Status:** Accepted.
+
+### D-064 · What Claude in Cowork's review of milestone 2 changed · 2026-11-10
+
+Cowork found no blocker, four should-fix gaps and eight minors. All are fixed but two that are notes for later milestones.
+
+- **A slot that takes one unit needs no `set_size`.** D-056 required it on every part. In a one-unit slot the quantity is 1 whatever the part holds, so the requirement bought no safety there and would have hidden every deck and grip sheet on Skatehouse until the field was filled in. `r7` still blocks a part with no `set_size` in a slot that takes more than one unit, where guessing 1 would double a pair. The spec's "What Skatehouse needs" table now lists `set_size` for trucks, wheels, risers, bearings and hardware. Zach agreed to the one-unit change in Cowork's review. This revises D-056.
+- **The risers step starts on the riser the wheels ask for.** R3's warning names a thickness. Among the parts that fit and are in stock, one that covers the size asked for comes first, then the nearest to it, and only then the nearest the middle price. The kit's default still comes before all of that. Nearest the middle price alone could start the step on a ½ in riser no stocked bolt reaches through. `Recommender::ASKED` maps a message code to the value that names the size and the spec it is measured on; R3's is the only one today. This revises D-057.
+- **A swapped truck is the one nearest the new deck.** "Nearest spec" was measured to the part replaced, so an 8.0 in deck's truck changed for an 8.5 in deck proposed the 8.375 in axle next to the old one, not the 8.5. For the trucks slot the target is the deck's width in the build as it now stands; with no width on the deck it is the old truck's axle, as before. Other slots are unchanged. Zach leaned this way in Cowork's review. This revises D-057.
+- **A row of the index this version cannot read is passed over**, whatever is wrong with it: a choice it does not offer, a count out of range, a measure of nothing, a value in another form. D-062 did this for an unknown key only. `Specs::fromIndex()` no longer throws; the part keeps its other specs, a rule that needs the missing one answers `spec_missing`, and the Catalogue check lists it. What a person types is still refused at the edge, by `Specs::with()` and `MeasureParser::parse()`.
+- **A missing spec has the source `none`.** It was `maker`, though no figure came from a maker. Sources go on the page from milestone 4.
+- **A whole number followed by a fraction of one or more is refused** ("8 5/4"). A fraction alone may still be improper ("9/8"), as hardware is sometimes written.
+- **The schemas' patterns end with `(?!\n)$`.** WordPress runs a pattern without the D modifier, so a bare `$` let a trailing line break through that the domain then refused.
+- **Gate 13 refuses a namespace or a declare with a block of its own**, since what is inside the braces runs as the top of the file does.
+- **The mutation script deletes the domain's report before the domain's run, and checks the static-analysis list only when the run wrote one.** A pull request that changes no line of the domain mutates nothing there, Infection succeeds without writing a report, and D-063's check then failed for want of one. The gates' self-test holds both halves with a stand-in for Infection.
+- **Left as notes.** A part's stock is a yes or no in the domain; a build that takes two of a part with one in stock is stopped by WooCommerce at the cart, not by the builder. Carrying the count is milestone 3's and 5's (issue #14). And from milestone 3 each rule's or fix's failing cases are committed before the code, so the red run is in the history: put to Zach in the review, since it changes "keep commits small and green".
+
+**Why:** Each should-fix was a way the first shop would have met an empty step or a red pull request.
+**Status:** Accepted.
+
+### D-065 · Every commit is green, and the red run is recorded in it · 2026-11-10
+
+Cowork asked that from milestone 3 a rule's or a fix's failing cases be committed before the code, so the red run is in the history. Zach asked for whatever is best practice.
+
+- **No commit fails.** The history stays bisectable and every commit can be built, which is what trunk-based work and `git bisect` depend on. A red commit, or a test marked as expected to fail and unmarked a commit later, breaks the first or adds churn for the second.
+- **The cases are still written first, and the commit says so.** A test and the code that makes it pass go in one commit. Its message carries the red run: the test's name and the line it failed with before the code was written.
+- **That a test bites is shown by breaking the code, not by the order of commits.** The mutation floors do it for every line on every pull request, and the review's deliberate-break table does it by name for each blocker and should-fix. An order of commits shows a test once failed; a mutant or a break shows it would fail today.
+
+**Why:** The thing wanted is proof that each test can fail for the right reason. Mutation testing and a recorded break give that without a broken commit.
+**Status:** Accepted, on Zach's "whatever is best practice and industry standard".

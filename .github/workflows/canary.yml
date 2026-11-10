@@ -54,9 +54,14 @@ jobs:
       - run: npm run plugin-check
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e -- --project=chromium-desktop --project=chromium-phone
+      # The whole npm tree, dev tools included: none of it reaches the zip, so a pull request is not held up by it
+      # (D-044), and a high or critical advisory in the toolchain still reaches the issue within a week (D-051).
+      - name: The dev toolchain has no high or critical advisory
+        if: ${{ !cancelled() }}
+        run: npm audit --audit-level=high
       - name: Open or update the issue when red
         if: failure()
-        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
           PINS: ${{ steps.pins.outputs.pins }}
         with:

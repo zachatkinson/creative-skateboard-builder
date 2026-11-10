@@ -4,7 +4,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 mkdir -p build
-if [ -z "$(find assets/src -maxdepth 2 \( -name '*.ts' -o -name '*.js' -o -name '*.scss' -o -name 'block.json' \) 2>/dev/null | head -n 1)" ]; then
+if [ -z "$(find assets/src -maxdepth 2 \( -name '*.ts' ! -name '*.d.ts' -o -name '*.js' -o -name '*.scss' -o -name 'block.json' \) 2>/dev/null | head -n 1)" ]; then
 	echo "assets/src has no entry yet; build/ is empty."
 	exit 0
 fi

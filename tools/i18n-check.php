@@ -77,8 +77,8 @@ foreach ( $cbuild_pos as $cbuild_po ) {
 				continue;
 			}
 			$cbuild_source = 1 === $cbuild_n ? (string) $cbuild_entry['plural'] : $cbuild_entry['id'];
-			$cbuild_want = cbuild_placeholders( $cbuild_source );
-			$cbuild_have = cbuild_placeholders( $cbuild_str );
+			$cbuild_want   = cbuild_placeholders( $cbuild_source );
+			$cbuild_have   = cbuild_placeholders( $cbuild_str );
 			if ( $cbuild_want !== $cbuild_have ) {
 				$cbuild_problems[] = "{$cbuild_po}: {$cbuild_name} form {$cbuild_n} has placeholders " . implode( ' ', $cbuild_have ) . ', the source ' . implode( ' ', $cbuild_want );
 			}

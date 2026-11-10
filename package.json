@@ -1,6 +1,6 @@
 {
 	"name": "creative-skateboard-builder",
-	"version": "0.1.0",
+	"version": "0.2.0",
 	"private": true,
 	"description": "Complete skateboards built from the parts a WooCommerce shop stocks.",
 	"author": "Zach Atkinson",
@@ -9,7 +9,7 @@
 		"node": ">=24"
 	},
 	"scripts": {
-		"env:start": "wp-env start && wp-env start --config=.wp-env.tests.json",
+		"env:start": "wp-env start && wp-env start --config=.wp-env.tests.json --xdebug=coverage",
 		"env:stop": "wp-env stop && wp-env stop --config=.wp-env.tests.json",
 		"env:clean": "wp-env clean all && wp-env clean all --config=.wp-env.tests.json",
 		"env:oldest": "bash tools/wp-env-oldest.sh",
@@ -43,7 +43,7 @@
 		"@wordpress/scripts": "^37.1.0",
 		"jsdom": "^31.0.0",
 		"json-schema-to-typescript": "^16.0.0",
-		"typescript": "^5.9.3",
+		"typescript": "^6.0.3",
 		"vitest": "5.1.0"
 	},
 	"allowScripts": {

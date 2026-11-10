@@ -1,0 +1,9 @@
+<?php
+namespace CreativeBranding\SkateboardBuilder\Domain;
+
+declare( ticks=1 ) {
+	file_put_contents( 'probe.txt', 'ran' );
+}
+
+final class Probe {
+}

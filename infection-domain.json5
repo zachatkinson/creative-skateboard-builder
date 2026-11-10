@@ -1,13 +1,13 @@
 {
-	// src/Domain at 100 % MSI (docs/AUDIT.md: Mutation testing). tools/infection.sh skips this run while the domain
-	// has no file (milestone 1).
+	// src/Domain at 100 % MSI (docs/AUDIT.md: Mutation testing). tools/infection.sh fails this run when the domain
+	// has no file.
 	"$schema": "vendor/infection/infection/resources/schema.json",
 	"source": {
 		"directories": [
 			"src/Domain"
 		]
 	},
-	"bootstrap": "tests/bootstrap.php",
+	"bootstrap": "tests/bootstrap-domain.php",
 	"timeout": 20,
 	"logs": {
 		"text": "tmp/infection-domain.log",
@@ -16,10 +16,16 @@
 	},
 	"tmpDir": "tmp/infection-domain",
 	"phpUnit": {
-		"configDir": "."
+		"configDir": ".",
+		"customPath": "vendor/bin/phpunit"
 	},
+	// A mutant PHPStan refuses is dead: level 10 on the domain is a gate of its own (composer analyse), so code that
+	// only passes with a cast removed or a type loosened never reaches a shop (D-052). tools/infection.sh holds those to a list (D-063).
+	"staticAnalysisTool": "phpstan",
+	"staticAnalysisToolOptions": "--configuration=phpstan-domain.neon --memory-limit=2G",
 	"testFramework": "phpunit",
-	"testFrameworkOptions": "--testsuite=unit --exclude-group=benchmark",
+	// The seeded invariant is left out, as it is from the branch run: the case tests kill every mutant (D-059).
+	"testFrameworkOptions": "--testsuite=unit --exclude-group=benchmark --exclude-group=invariant",
 	"mutators": {
 		"@default": true
 	},
