@@ -33,6 +33,7 @@ $cbuild_row = $whole ? 'form-field' : 'form-row form-row-full';
 			<?php esc_html_e( 'A field left blank takes the parent product\'s value.', 'creative-skateboard-builder' ); ?>
 		<?php endif; ?>
 	</p>
+	<?php // A closed group holds nothing, so its fields are disabled and add nothing to the product's form; the screen's script enables them when the group opens (issue #23). ?>
 	<?php foreach ( $groups as $cbuild_group ) : ?>
 		<details<?php echo $cbuild_group['open'] ? ' open' : ''; ?>>
 			<summary><?php echo esc_html( $cbuild_group['label'] ); ?></summary>
@@ -47,6 +48,7 @@ $cbuild_row = $whole ? 'form-field' : 'form-row form-row-full';
 							name="<?php echo esc_attr( $cbuild_field['name'] ); ?>"
 							value="<?php echo esc_attr( $cbuild_field['value'] ); ?>"
 							autocomplete="off"
+							<?php disabled( ! $cbuild_group['open'] ); ?>
 							<?php if ( '' !== $cbuild_field['note'] ) : ?>
 								aria-describedby="<?php echo esc_attr( $cbuild_field['id'] . '-note' ); ?>"
 							<?php endif; ?>
@@ -56,6 +58,7 @@ $cbuild_row = $whole ? 'form-field' : 'form-row form-row-full';
 							class="short"
 							id="<?php echo esc_attr( $cbuild_field['id'] ); ?>"
 							name="<?php echo esc_attr( $cbuild_field['name'] ); ?>"
+							<?php disabled( ! $cbuild_group['open'] ); ?>
 							<?php if ( '' !== $cbuild_field['note'] ) : ?>
 								aria-describedby="<?php echo esc_attr( $cbuild_field['id'] . '-note' ); ?>"
 							<?php endif; ?>

@@ -195,4 +195,47 @@ test.describe( 'The Part specs panel', () => {
 			page.locator( '#variable_product_options' )
 		).toBeHidden();
 	} );
+
+	// Issue #23: on a host that leaves PHP's max_input_vars at 1,000, 21 fields in each of a page's 15 variations
+	// took a product's form past it, and PHP drops what is over without a word.
+	test( 'a part with no specs adds nothing to what the product form sends, and an open group adds its own', async ( {
+		page,
+	} ) => {
+		const sent = async () => {
+			const [ request ] = await Promise.all( [
+				page.waitForRequest(
+					( asked ) =>
+						asked.method() === 'POST' &&
+						asked.url().includes( '/wp-admin/post.php' )
+				),
+				update( page ),
+			] );
+			return Array.from(
+				new URLSearchParams( request.postData() ?? '' ).keys()
+			).filter( ( name ) => name.startsWith( 'cbuild_' ) );
+		};
+
+		await login( page );
+		await edit( page, 'panel-test-trucks', 'Panel test trucks' );
+		// With its variations loaded and one open, as a shop manager leaves them.
+		await tab( page, '#variable_product_options' );
+		await page
+			.locator( '.woocommerce_variation:first-child h3 .edit_variation' )
+			.click();
+		await expect(
+			page.locator(
+				'.woocommerce_variation:first-child .cbuild-part-specs'
+			)
+		).toBeVisible();
+		expect( await sent() ).toEqual( [] );
+
+		// A group that is opened sends its fields, and no other group does.
+		const PANEL = '#cbuild_part_specs';
+		await tab( page, PANEL );
+		await open( page, PANEL, 'Wheels' );
+		await expect(
+			page.locator( PANEL ).getByLabel( 'Wheel diameter (mm)' )
+		).toBeEnabled();
+		expect( await sent() ).toEqual( [ 'cbuild_specs[wheel_diameter]' ] );
+	} );
 } );
