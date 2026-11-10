@@ -467,3 +467,18 @@ An override is dropped when the package above it ships the fix itself: `npm ls <
 
 **Why:** Zach pasted the install's output on 9 November 2026. A dev-only fault cannot reach a shop, but it runs on the machine and the runner that build the zip, and the fixes existed.
 **Status:** Accepted. Whether the whole tree should fail the build is still Zach's to decide (D-044).
+
+### D-047 · The integration suite has a wp-env environment of its own · 2026-11-09
+
+wp-env 12 warns on every start that its built-in tests environment, `testsPort` and `env.tests` are deprecated, and names the replacement: a second config file, started with `--config` (`node_modules/@wordpress/env/lib/commands/start.js:97`, and its README, "Running parallel environments"). So:
+
+- `.wp-env.json` is the browser site alone, on :8898, with `"testsEnvironment": false`.
+- `.wp-env.tests.json` is the integration site, on :8899: the same WordPress, WooCommerce and PHP, without Plugin Check, the extra themes or the browser tests' locale file.
+- `npm run env:start`, `env:stop` and `env:clean` act on both. `npm run env:oldest` and `env:canary` write the same pins for both (`.wp-env.override.json` and `.wp-env.tests.override.json`), and `env:newest` removes both.
+- `tools/integration.sh` runs the suite in the integration site's `cli` container. `tools/matrix-db.sh` and `tools/zip-lifecycle.sh` tell the two sites apart by the port each serves.
+- CI's newest and oldest legs start both; the variants leg, which runs the integration suite only, starts the integration site alone.
+
+The ports are D-019's. D-031 stands: the suite keeps its own tables beside the integration site's.
+
+**Why:** Zach asked on 9 November 2026 for it to be done in milestone 1 and not left as issue #10. Nothing breaks on `@wordpress/env` ^12, but the option goes in a later major, and the harness is cheapest to move while it is small. Creative Search still uses the built-in tests site and shows the same warning; this repository does not change a sibling.
+**Status:** Accepted.

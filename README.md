@@ -22,7 +22,7 @@ npx wp-env start
 composer test:integration && npm run plugin-check && npx playwright test
 ```
 
-wp-env serves the site at http://localhost:8898 and the tests site at http://localhost:8899. See [CLAUDE.md](CLAUDE.md) for every command and the rules the code is held to.
+`npm run env:start` serves the site at http://localhost:8898 and the integration suite's site at http://localhost:8899. See [CLAUDE.md](CLAUDE.md) for every command and the rules the code is held to.
 
 ## Installing a release
 
