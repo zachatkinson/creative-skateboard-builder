@@ -318,3 +318,14 @@ WordPress's Abilities API, in the category `creative-skateboard-builder`.
 | `creative-skateboard-builder/catalogue-check` | 0.3.0 | `manage_woocommerce` | None | `count`, how many things the check found, and `findings`, the first 500: each with its `code`, `part`, `kit`, `slot`, `spec`, `values` (an object of strings) and `message`, the sentence the screen shows, in the caller's language. The codes are the Catalogue check's, above. |
 
 It is annotated read-only and idempotent and shown in REST, so WordPress serves it at `GET /wp-abilities/v1/abilities/creative-skateboard-builder/catalogue-check/run` to a signed-in user who can manage WooCommerce, and refuses a `POST` with 405.
+
+### Site Health
+
+Two direct tests on Tools > Site Health, and a section on its Info tab.
+
+| Test | Since | Good | Recommended | Critical |
+| --- | --- | --- | --- | --- |
+| `cbuild_index` | 0.3.0 | No reindex has been asked for, the last one finished, or one is under way with its job waiting or running. | A reindex is under way and has no job: it stopped part way. | A reindex stopped after five failures. |
+| `cbuild_jobs` | 0.3.0 | No action of the group `creative-skateboard-builder` is marked failed. | One or more is, with links to the failed actions and the Catalogue check. | Never. |
+
+The Info tab's section `creative-skateboard-builder` lists the plugin's version, its database version, which source wins, how many attributes are mapped, the index's state and the count of failed jobs. None of it is marked private, and none of it is about a person.

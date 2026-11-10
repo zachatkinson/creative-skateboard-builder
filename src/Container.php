@@ -85,6 +85,20 @@ final class Container {
 					}
 				);
 			},
+			// Nothing is built until a test runs or the Info tab is drawn.
+			Health\SiteHealth::class                    => static function ( Container $c ): object {
+				return new Health\SiteHealth(
+					static function () use ( $c ): Service\Health {
+						return $c->get( Service\Health::class );
+					},
+					static function () use ( $c ): Port\ShopSettings {
+						return $c->get( Port\ShopSettings::class );
+					},
+					static function () use ( $c ): Port\MigrationStore {
+						return $c->get( Port\MigrationStore::class );
+					}
+				);
+			},
 			// The check is built when the ability is run.
 			Abilities\CatalogueCheckAbility::class      => static function ( Container $c ): object {
 				return new Abilities\CatalogueCheckAbility(
@@ -133,6 +147,8 @@ final class Container {
 			Admin\PartSpecsHooks::class            => array( Scope::Admin ),
 			Admin\BuilderHooks::class              => array( Scope::Admin ),
 			Hooks\CliHooks::class                  => array( Scope::Cli ),
+			// Site Health's page and Info tab are wp-admin's; its weekly check runs in cron, and WP-CLI can ask too.
+			Health\SiteHealth::class               => array( Scope::Admin, Scope::Cron, Scope::Cli ),
 			// WordPress builds its abilities when something first asks for one, on any kind of request.
 			Abilities\CatalogueCheckAbility::class => array( Scope::Everywhere ),
 		);

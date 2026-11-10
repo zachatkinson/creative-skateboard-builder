@@ -955,3 +955,15 @@ The table is milestone 1's and does not change. These are the choices the reposi
 - **The category is the plugin's slug,** and milestone 4's `check-build` and `price-build` join it.
 
 **Status:** Accepted.
+
+### D-080 · Site Health: two tests that read no part, and the Info section · 2026-11-10
+
+- **`cbuild_index` and `cbuild_jobs` are direct tests** that cost an option read and one query of Action Scheduler's indexed table each (`Service\Health`). They run when the Site Health page loads and in WordPress's weekly check, so neither reads a part; the Catalogue check, which does, is linked from a failed job's result and is not a test itself. The spec lists the Catalogue check among what Site Health checks: a test that read every part on each visit to the page would be the wrong cost, and the check has nothing kit-shaped to find until milestone 4. Whether its findings get a test of their own is a question for milestone 4's plan.
+- **A failed reindex is critical; a failed job is recommended.** The first leaves parts indexed with old figures, shop-wide, until someone starts it again. The second is one part or one batch, already retried, and Action Scheduler clears it after its retention period.
+- **A reindex under way with no action pending or running is "stopped part way"** (recommended). `as_has_scheduled_action()` counts pending and running actions (WooCommerce 11.2.2, `packages/action-scheduler/functions.php:406`), so a batch in progress is not mistaken for a stall. It happens when the queue's tables are cleared, or a host kills the request between a batch's save and its next enqueue.
+- **A reindex's error text stays in the log** and is not printed on the page: it can hold a query or a path.
+- **The Info tab's section** lists the version, the database version, the source order (with its codes as the copied debug text), the number of mapped attributes, the index's state and the failed-job count. Nothing is marked private since nothing is: no name, address or key.
+- **The Hookable is built in wp-admin, cron and WP-CLI** (D-067), and its services only when a test runs or the Info tab is drawn.
+- **The sibling plugins have no Site Health code,** so this follows WordPress's own filters: `site_status_tests` (`wp-admin/includes/class-wp-site-health.php:3047`) and `debug_information` (`wp-admin/includes/class-wp-debug-data.php:135`).
+
+**Status:** Accepted.
