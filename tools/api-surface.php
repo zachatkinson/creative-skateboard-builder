@@ -1,8 +1,9 @@
 <?php
 /**
  * The public API, read from the code (docs/AUDIT.md: Contracts). `--write` rewrites tests/Fixtures/api-surface.json;
- * `--check` fails when the code's API differs from the snapshot, or when an item is missing from docs/HOOKS.md.
- * A change to the API is therefore three edits in one commit: the code, the snapshot and HOOKS.md (CLAUDE.md).
+ * `--check` fails when the code's API differs from the snapshot, when an item is missing from docs/HOOKS.md, or when
+ * the changelog's entry for the version HOOKS.md dates it to does not name it. A change to the API is therefore four
+ * edits in one commit: the code, the snapshot, HOOKS.md and CHANGELOG.md (CLAUDE.md).
  *
  * What it reads, and from where:
  *   filters and actions   apply_filters()/do_action() of a cbuild_* hook, anywhere the plugin ships;
@@ -69,6 +70,51 @@ function cbuild_api_files( string $dir, string $suffix ): array {
 		}
 	}
 	return $out;
+}
+
+/**
+ * The changelog's entries by version ('Unreleased' included), each with its text.
+ *
+ * @param string $changelog CHANGELOG.md.
+ * @return array<string, string>
+ */
+function cbuild_api_changelog_entries( string $changelog ): array {
+	$entries = array();
+	$parts   = preg_split( '/^## \\[([^\\]]+)\\].*$/m', $changelog, -1, PREG_SPLIT_DELIM_CAPTURE );
+	for ( $i = 1; $i + 1 < count( $parts ?: array() ); $i += 2 ) {
+		$entries[ $parts[ $i ] ] = $parts[ $i + 1 ];
+	}
+	return $entries;
+}
+
+/**
+ * The version docs/HOOKS.md gives an item: the first on a line that names it, or, where a heading names it, the first
+ * before the next heading.
+ *
+ * @param string $hooks docs/HOOKS.md.
+ * @param string $item  The item.
+ */
+function cbuild_api_since( string $hooks, string $item ): ?string {
+	$lines   = explode( "\n", $hooks );
+	$version = '/\\b(\\d+\\.\\d+\\.\\d+)\\b/';
+	foreach ( $lines as $at => $line ) {
+		if ( ! str_contains( $line, '`' . $item . '`' ) ) {
+			continue;
+		}
+		if ( 1 === preg_match( $version, $line, $found ) ) {
+			return $found[1];
+		}
+		if ( ! str_starts_with( $line, '#' ) ) {
+			continue;
+		}
+		$count = count( $lines );
+		for ( $next = $at + 1; $next < $count && ! str_starts_with( $lines[ $next ], '#' ); $next++ ) {
+			if ( 1 === preg_match( $version, $lines[ $next ], $found ) ) {
+				return $found[1];
+			}
+		}
+	}
+	return null;
 }
 
 /**
@@ -213,11 +259,34 @@ foreach ( $cbuild_surface as $cbuild_key => $cbuild_items ) {
 	}
 }
 
+// The third edit: the changelog's entry for the version an item arrived in names it (issue #5). The version is the one
+// docs/HOOKS.md gives beside the item; an entry not yet released is read from [Unreleased].
+$cbuild_changelog = is_readable( $cbuild_root . '/CHANGELOG.md' ) ? (string) file_get_contents( $cbuild_root . '/CHANGELOG.md' ) : '';
+$cbuild_entries   = cbuild_api_changelog_entries( $cbuild_changelog );
+foreach ( $cbuild_surface as $cbuild_key => $cbuild_items ) {
+	foreach ( is_array( $cbuild_items ) ? $cbuild_items : array( $cbuild_items ) as $cbuild_item ) {
+		if ( '' === $cbuild_item || ! str_contains( $cbuild_hooks, '`' . $cbuild_item . '`' ) ) {
+			continue;
+		}
+		$cbuild_since = cbuild_api_since( $cbuild_hooks, $cbuild_item );
+		if ( null === $cbuild_since ) {
+			fwrite( STDERR, "docs/HOOKS.md gives no version for {$cbuild_key} `{$cbuild_item}`: its row or its Since line needs one.\n" );
+			$cbuild_status = 1;
+			continue;
+		}
+		$cbuild_where = isset( $cbuild_entries[ $cbuild_since ] ) ? $cbuild_since : 'Unreleased';
+		if ( ! str_contains( $cbuild_entries[ $cbuild_where ] ?? '', '`' . $cbuild_item . '`' ) ) {
+			fwrite( STDERR, "CHANGELOG.md's [{$cbuild_where}] entry does not name {$cbuild_key} `{$cbuild_item}`, which docs/HOOKS.md dates to {$cbuild_since}.\n" );
+			$cbuild_status = 1;
+		}
+	}
+}
+
 if ( 0 === $cbuild_status ) {
 	$cbuild_count = 0;
 	foreach ( $cbuild_surface as $cbuild_items ) {
 		$cbuild_count += is_array( $cbuild_items ) ? count( $cbuild_items ) : ( '' === $cbuild_items ? 0 : 1 );
 	}
-	echo "API surface: {$cbuild_count} items match the snapshot and docs/HOOKS.md.\n";
+	echo "API surface: {$cbuild_count} items match the snapshot, docs/HOOKS.md and CHANGELOG.md.\n";
 }
 exit( $cbuild_status );
