@@ -214,3 +214,24 @@ Where a spec's value came from, as the specs index's `source` column holds it. `
 | `field` | 0.3.0 | The part's own Part specs field. | Empty, or `parent` when a variation takes its parent's value. |
 | `attribute` | 0.3.0 | A product attribute the shop mapped to the spec. | The attribute's name, such as `pa_width`. |
 
+### Product meta
+
+| Key | Since | On | What it holds |
+| --- | --- | --- | --- |
+| `_cbuild_specs` | 0.3.0 | Products and variations | The part's own specs: an array with a value per spec key, each as text in the key's unit with a point for the decimal (`8.2500`), a choice's value, `1` or `0` for a flag, or digits for a count. A variation with no value for a key takes its parent's. A key the plugin does not know is ignored. Write it through the product's CRUD; the Part specs panel and the import do. |
+
+### Settings keys
+
+In the option `cbuild_settings`. [SETTINGS.md](SETTINGS.md) has each key's default and range.
+
+| Key | Since | What it holds |
+| --- | --- | --- |
+| `attribute_mapping` | 0.3.0 | Which attribute feeds which spec, and the unit its values are in. |
+| `source_order` | 0.3.0 | Which source wins where two disagree. |
+
+### Options
+
+| Option | Since | What it holds |
+| --- | --- | --- |
+| `cbuild_settings` | 0.3.0 | The shop's settings, one array, with the keys above. |
+

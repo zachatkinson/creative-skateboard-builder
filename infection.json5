@@ -10,6 +10,10 @@
 		"excludes": [
 			"Domain",
 			"Adapter/ActionSchedulerQueue.php",
+			"Adapter/AttributeSpecSource.php",
+			"Adapter/FieldSpecSource.php",
+			"Adapter/OptionShopSettings.php",
+			"Adapter/Products.php",
 			"Adapter/WooCommerceLogger.php",
 			"Repository",
 			"Hooks",

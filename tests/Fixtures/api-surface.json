@@ -13,7 +13,8 @@
     "options": [
         "cbuild_db_version",
         "cbuild_migration_lock",
-        "cbuild_migrations"
+        "cbuild_migrations",
+        "cbuild_settings"
     ],
     "site_transients": [
         "cbuild_update_manifest"
@@ -27,8 +28,13 @@
     ],
     "queue_group": "creative-skateboard-builder",
     "log_source": "creative-skateboard-builder",
-    "meta_keys": [],
-    "settings_keys": [],
+    "meta_keys": [
+        "_cbuild_specs"
+    ],
+    "settings_keys": [
+        "attribute_mapping",
+        "source_order"
+    ],
     "rest_routes": [],
     "abilities": [],
     "cli_commands": [],

@@ -805,3 +805,15 @@ The table is milestone 1's and does not change. These are the choices the reposi
 
 **Status:** Accepted.
 
+### D-070 · The field and attribute sources on WooCommerce · 2026-11-10
+
+- **A part's own specs are one meta value, `_cbuild_specs`:** an array with a value per spec key, each as the index stores it (a point for the decimal, the key's unit). The spec says "one value per spec key"; one array keeps a part's specs in one row of meta and one read. What a person types in the shop's separator or as a fraction is turned into this form by the writer that comes with the panel, so the source never guesses a separator.
+- **A variation takes its parent's value spec by spec,** not all or nothing: a variation with its own width and no length has the parent's length. The reading's reference is `parent`, which the panel will show as where the value comes from.
+- **A mapped attribute is read from `WC_Product::get_attribute()`,** which gives a variation's own value and a product's terms by name, for a taxonomy and for a product's own attribute alike. A product with several values for a mapped attribute has no single value; the text does not read, and the source reports it as unread, so the Catalogue check can show it.
+- **A term's name is read with the shop's decimal separator, then with a point.** Terms are typed by people over years: a French-Canadian shop has "8,25" beside "8.5". The field needs no such fallback, since its writer stores one form.
+- **A batch is loaded in one `wc_get_products()` call, and its variations' parents in a second,** through WooCommerce's CRUD, of every type and status. A draft or private part is indexed like any other; whether a part is offered is the kit's question, in milestone 4. `SpecSourcesTest` holds the load to fewer queries than parts.
+- **The settings are read defensively** (`Adapter\OptionShopSettings`): whatever the option holds, the answer is a valid setting. The screen that saves it, with its schema, is this milestone's step 7.
+- **The settings option exists before its screen.** `docs/SETTINGS.md` said the option arrives in milestone 4; D-026 puts these two keys in milestone 3, since the index cannot be built without them.
+
+**Status:** Accepted.
+

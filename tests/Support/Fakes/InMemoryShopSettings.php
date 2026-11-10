@@ -19,6 +19,17 @@ final class InMemoryShopSettings implements ShopSettings {
 
 	public ?SourceOrder $order = null;
 
+	/**
+	 * The mapping.
+	 *
+	 * @var list<\CreativeBranding\SkateboardBuilder\Domain\Spec\AttributeMap>
+	 */
+	public array $mapping = array();
+
+	public function attributeMapping(): array {
+		return $this->mapping;
+	}
+
 	public function sourceOrder(): SourceOrder {
 		return $this->order ?? SourceOrder::standard();
 	}

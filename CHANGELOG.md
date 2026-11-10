@@ -7,6 +7,8 @@ All notable changes to this project are documented here. The format follows [Kee
 ### Added
 
 - The specs index's sources, as its `source` column holds them: `field`, `attribute` and `table`. The indexer keeps one value per part and spec, the winner by the shop's order with the maker's chart first by default, and records where sources disagree (D-069).
+- A part's own specs in the product meta `_cbuild_specs`, a value per spec key; a variation left blank for a spec takes its parent's.
+- The option `cbuild_settings` with its first two keys: `attribute_mapping` (which attribute feeds which spec, in which unit) and `source_order` (which source wins where two disagree). Their screen comes later in this version.
 
 ### Changed
 

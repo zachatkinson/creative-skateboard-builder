@@ -37,6 +37,7 @@ final class Container {
 			Port\Queue::class          => Adapter\ActionSchedulerQueue::class,
 			Port\MigrationStore::class => Repository\MigrationRepository::class,
 			Port\SpecIndex::class      => Repository\SpecIndexRepository::class,
+			Port\ShopSettings::class   => Adapter\OptionShopSettings::class,
 		);
 	}
 
@@ -54,6 +55,14 @@ final class Container {
 				}
 				return new Install\Migrations\MigrationRegistry( ...$migrations );
 			},
+			// The sources, each asked once per batch. The spec tables' source joins them with the tables.
+			Service\SpecIndexer::class                  => static fn( Container $c ): object => new Service\SpecIndexer(
+				$c->get( Port\SpecIndex::class ),
+				$c->get( Port\ShopSettings::class ),
+				$c->get( Port\Clock::class ),
+				$c->get( Adapter\FieldSpecSource::class ),
+				$c->get( Adapter\AttributeSpecSource::class )
+			),
 		);
 	}
 

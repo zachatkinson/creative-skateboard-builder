@@ -65,6 +65,28 @@ final class Options {
 	public const UPDATE_MANIFEST = 'cbuild_update_manifest';
 
 	/**
+	 * The shop's settings, one option (docs/SETTINGS.md).
+	 *
+	 * @since 0.3.0
+	 */
+	public const SETTINGS = 'cbuild_settings';
+
+	/**
+	 * Settings keys: which attribute feeds which spec, and which source wins where two disagree (D-026).
+	 *
+	 * @since 0.3.0
+	 */
+	public const SETTING_ATTRIBUTE_MAPPING = 'attribute_mapping';
+	public const SETTING_SOURCE_ORDER      = 'source_order';
+
+	/**
+	 * Product meta: a part's own specs, a value per spec key.
+	 *
+	 * @since 0.3.0
+	 */
+	public const META_SPECS = '_cbuild_specs';
+
+	/**
 	 * Every fixed-name option, per site.
 	 *
 	 * @since 0.1.0
@@ -72,7 +94,7 @@ final class Options {
 	 * @return string[]
 	 */
 	public static function names(): array {
-		return array( self::DB_VERSION, self::MIGRATIONS, self::MIGRATION_LOCK );
+		return array( self::DB_VERSION, self::MIGRATIONS, self::MIGRATION_LOCK, self::SETTINGS );
 	}
 
 	/**
@@ -98,24 +120,24 @@ final class Options {
 	}
 
 	/**
-	 * Every product meta key (none before milestone 3).
+	 * Every product meta key.
 	 *
 	 * @since 0.1.0
 	 *
 	 * @return string[]
 	 */
 	public static function metaKeys(): array {
-		return array();
+		return array( self::META_SPECS );
 	}
 
 	/**
-	 * Every settings key (none before milestone 4; docs/SETTINGS.md).
+	 * Every settings key (docs/SETTINGS.md).
 	 *
 	 * @since 0.1.0
 	 *
 	 * @return string[]
 	 */
 	public static function settingsKeys(): array {
-		return array();
+		return array( self::SETTING_ATTRIBUTE_MAPPING, self::SETTING_SOURCE_ORDER );
 	}
 }

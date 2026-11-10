@@ -19,7 +19,7 @@ final class OptionsTest extends TestCase {
 
 	public function test_every_option_is_listed_once_with_the_prefix(): void {
 		$names = Options::names();
-		self::assertSame( array( 'cbuild_db_version', 'cbuild_migrations', 'cbuild_migration_lock' ), $names );
+		self::assertSame( array( 'cbuild_db_version', 'cbuild_migrations', 'cbuild_migration_lock', 'cbuild_settings' ), $names );
 		self::assertSame( $names, array_unique( $names ) );
 		foreach ( $names as $name ) {
 			self::assertStringStartsWith( 'cbuild_', $name );
@@ -38,9 +38,12 @@ final class OptionsTest extends TestCase {
 		self::assertSame( 'cbuild_migrate', Options::JOB_MIGRATE );
 	}
 
-	public function test_no_meta_or_settings_key_exists_before_its_milestone(): void {
-		self::assertSame( array(), Options::metaKeys() );
-		self::assertSame( array(), Options::settingsKeys() );
+	public function test_the_meta_and_settings_keys_are_the_ones_uninstall_and_the_snapshot_read(): void {
+		self::assertSame( array( '_cbuild_specs' ), Options::metaKeys() );
+		self::assertSame( array( 'attribute_mapping', 'source_order' ), Options::settingsKeys() );
+		foreach ( Options::metaKeys() as $key ) {
+			self::assertStringStartsWith( '_cbuild_', $key, 'hidden from the custom fields box, and the plugin\'s own' );
+		}
 	}
 
 	public function test_the_group_and_the_log_source_are_the_slug(): void {

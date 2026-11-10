@@ -46,6 +46,7 @@ final class UninstallTest extends IntegrationTestCase {
 		$product = new \WC_Product_Simple();
 		$product->set_name( 'Deck' );
 		$product->set_regular_price( '10' );
+		$product->update_meta_data( Options::META_SPECS, array( 'deck_width' => '8.2500' ) );
 		$product->save();
 		$order = wc_create_order();
 		$item  = new \WC_Order_Item_Product();
@@ -69,6 +70,7 @@ final class UninstallTest extends IntegrationTestCase {
 		update_option( Options::DB_VERSION, '1' );
 		update_option( Options::MIGRATIONS, array( 'x' => array() ) );
 		update_option( Options::MIGRATION_LOCK, '1' );
+		update_option( Options::SETTINGS, array( Options::SETTING_SOURCE_ORDER => array( 'field', 'table', 'attribute' ) ) );
 		set_transient( Options::TRANSIENT_PREFIX . 'notice_1', 'x', HOUR_IN_SECONDS );
 		set_transient( Options::TRANSIENT_PREFIX . 'forever', 'x' );
 		set_site_transient( Options::UPDATE_MANIFEST, array( 'data' => null ), HOUR_IN_SECONDS );
@@ -95,6 +97,8 @@ final class UninstallTest extends IntegrationTestCase {
 		self::assertSame( array(), as_get_scheduled_actions( array( 'group' => Options::QUEUE_GROUP, 'status' => '', 'per_page' => 5 ), 'ids' ) );
 		self::assertFalse( wp_cache_get( 'fit:1', Options::CACHE_GROUP ), 'cache group not flushed' );
 
+		self::assertFalse( get_option( Options::SETTINGS ), 'the settings left behind' );
+		self::assertFalse( metadata_exists( 'post', $records['product'], Options::META_SPECS ), 'a part\'s specs left behind' );
 		self::assertNotEmpty( get_post( $records['product'] ), 'products are never touched' );
 		$order = wc_get_order( $records['order'] );
 		self::assertNotFalse( $order, 'orders are never touched' );

@@ -9,6 +9,7 @@ declare( strict_types=1 );
 
 namespace CreativeBranding\SkateboardBuilder\Port;
 
+use CreativeBranding\SkateboardBuilder\Domain\Spec\AttributeMap;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\SourceOrder;
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -29,4 +30,13 @@ interface ShopSettings {
 	 * @since 0.3.0
 	 */
 	public function sourceOrder(): SourceOrder;
+
+	/**
+	 * Which attribute feeds which spec, and in which unit. None until the shop maps one.
+	 *
+	 * @since 0.3.0
+	 *
+	 * @return list<AttributeMap>
+	 */
+	public function attributeMapping(): array;
 }

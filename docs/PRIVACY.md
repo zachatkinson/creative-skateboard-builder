@@ -20,6 +20,8 @@ None in 0.1.0. Saved builds (milestone 8) will be the only personal data the plu
 | Table | `{prefix}cbuild_builds` | Empty in 0.1.0. From milestone 8: saved builds. | Will be | Uninstall; the site's deletion on a network | `ActivationTest`, `UninstallTest` |
 | Action Scheduler | Group `creative-skateboard-builder`, action `cbuild_migrate` | A queued upgrade run, with no arguments. | No | It runs; deactivation unschedules it; uninstall deletes every row, log and the group | `InstallHooksTest`, `UninstallTest` |
 | Log | Source `creative-skateboard-builder` | A failed upgrade step's name, its cursor and the error's message. | No | WooCommerce's own log retention | `MigrationRunnerTest`, `MigrationTest` |
+| Option | `cbuild_settings` | The shop's settings: which attribute feeds which spec, and which source wins. Nothing about a person. | No | Uninstall | `UninstallTest`, `SpecSourcesTest` |
+| Product meta | `_cbuild_specs` | On a product or variation: the part's own specs, a value per spec key. Nothing about a person. | No | Uninstall; with the product | `UninstallTest`, `SpecSourcesTest` |
 | Object cache | Group `cbuild` | Nothing in 0.1.0. | No | Uninstall flushes the group | `UninstallTest` |
 
 Order item meta is part of the shop's order records and is kept on uninstall (spec: Uninstall). None is written in 0.1.0.
