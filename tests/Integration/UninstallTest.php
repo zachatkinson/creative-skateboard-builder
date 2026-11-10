@@ -73,6 +73,7 @@ final class UninstallTest extends IntegrationTestCase {
 		update_option( Options::MIGRATION_LOCK, '1' );
 		update_option( Options::SETTINGS, array( Options::SETTING_SOURCE_ORDER => array( 'field', 'table', 'attribute' ) ) );
 		self::assertIsArray( get_option( Options::REINDEX ), 'saving the settings started a reindex, with its state and its job' );
+		update_option( Options::IMPORT, array( 'status' => 'waiting' ), false );
 		self::assertTrue( as_has_scheduled_action( Options::JOB_REINDEX, null, Options::QUEUE_GROUP ) );
 		set_transient( Options::TRANSIENT_PREFIX . 'notice_1', 'x', HOUR_IN_SECONDS );
 		set_transient( Options::TRANSIENT_PREFIX . 'forever', 'x' );
@@ -106,6 +107,7 @@ final class UninstallTest extends IntegrationTestCase {
 
 		self::assertFalse( get_option( Options::SETTINGS ), 'the settings left behind' );
 		self::assertFalse( get_option( Options::REINDEX ), 'the reindex\'s state left behind' );
+		self::assertFalse( get_option( Options::IMPORT ), 'a waiting import left behind' );
 		self::assertNull( get_post( $spec_table ), 'a spec table left behind' );
 		self::assertNull( get_post( $binned ), 'a spec table in the bin left behind' );
 		self::assertSame( 0, (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM %i WHERE post_type = %s', $wpdb->posts, Options::POST_TYPE_SPEC_TABLE ) ) );

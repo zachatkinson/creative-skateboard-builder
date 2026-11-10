@@ -41,6 +41,9 @@ final class Container {
 			Port\PartCatalogue::class  => Adapter\WooPartCatalogue::class,
 			Port\ReindexStore::class   => Adapter\OptionReindexStore::class,
 			Port\SpecTables::class     => Adapter\PostSpecTables::class,
+			Port\PartSpecs::class      => Adapter\WooPartSpecs::class,
+			Port\ImportStore::class    => Adapter\OptionImportStore::class,
+			Port\Uploads::class        => Adapter\RequestUploads::class,
 		);
 	}
 
@@ -71,6 +74,9 @@ final class Container {
 				return new Admin\BuilderHooks(
 					static function () use ( $c ): Admin\SpecTablesScreen {
 						return $c->get( Admin\SpecTablesScreen::class );
+					},
+					static function () use ( $c ): Admin\ImportScreen {
+						return $c->get( Admin\ImportScreen::class );
 					}
 				);
 			},
@@ -107,6 +113,8 @@ final class Container {
 			Hooks\IndexHooks::class     => array( Scope::Everywhere ),
 			// A post type is registered on every request, and a table is saved from any.
 			Hooks\SpecTableHooks::class => array( Scope::Everywhere ),
+			// The import's job runs wherever the queue does.
+			Hooks\ImportHooks::class    => array( Scope::Everywhere ),
 			// WooCommerce's settings screen.
 			Admin\SettingsHooks::class  => array( Scope::Admin ),
 			Admin\PartSpecsHooks::class => array( Scope::Admin ),

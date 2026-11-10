@@ -11,6 +11,7 @@
  * @var string                                             $problem What was wrong with it, '' when nothing was.
  * @var string                                             $nonce   The forms' nonce action.
  * @var string                                             $back    The page's own address.
+ * @var list<array{label: string, url: string, current: bool}> $tabs The page's tabs.
  */
 
 declare( strict_types=1 );
@@ -21,6 +22,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 ?>
 <div class="wrap">
 	<h1><?php esc_html_e( 'Builder', 'creative-skateboard-builder' ); ?></h1>
+	<?php require __DIR__ . '/builder-tabs.php'; ?>
 	<?php if ( '' !== $notice ) : ?>
 		<div class="notice <?php echo $failed ? 'notice-error' : 'notice-success'; ?>"><p><?php echo esc_html( $notice ); ?></p></div>
 	<?php endif; ?>

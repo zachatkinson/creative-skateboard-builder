@@ -9,7 +9,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-11-10T08:15:45+00:00\n"
+"POT-Creation-Date: 2026-11-10T09:04:43+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: creative-skateboard-builder\n"
@@ -44,10 +44,181 @@ msgid "Creative Skateboard Builder: run \"composer install\" before activating t
 msgstr ""
 
 #: src/Admin/BuilderHooks.php:61
+#: src/Hooks/SpecTableHooks.php:68
+#: templates/admin/spec-tables.php:29
+msgid "Spec tables"
+msgstr ""
+
 #: src/Admin/BuilderHooks.php:62
+msgid "Import and export"
+msgstr ""
+
+#: src/Admin/BuilderHooks.php:110
+#: src/Admin/BuilderHooks.php:111
 #: src/Admin/SettingsPage.php:59
-#: templates/admin/spec-tables.php:23
+#: templates/admin/builder-tabs.php:16
+#: templates/admin/import.php:30
+#: templates/admin/spec-tables.php:24
 msgid "Builder"
+msgstr ""
+
+#: src/Admin/ImportScreen.php:169
+msgid "The import stopped: a batch failed four times. The parts before it were written. WooCommerce > Status > Logs has the reason."
+msgstr ""
+
+#: src/Admin/ImportScreen.php:174
+msgid "The file was not read. Nothing has changed."
+msgstr ""
+
+#: src/Admin/ImportScreen.php:254
+msgid "ID"
+msgstr ""
+
+#: src/Admin/ImportScreen.php:255
+msgid "SKU"
+msgstr ""
+
+#: src/Admin/ImportScreen.php:256
+msgid "Maker's chart"
+msgstr ""
+
+#: src/Admin/ImportScreen.php:257
+msgid "Size in the chart"
+msgstr ""
+
+#: src/Admin/ImportScreen.php:270
+msgid "Nothing"
+msgstr ""
+
+#: src/Admin/ImportScreen.php:283
+msgid "The import has started. It runs in the background, 100 rows at a time."
+msgstr ""
+
+#: src/Admin/ImportScreen.php:284
+msgid "The import was put away. Nothing was changed."
+msgstr ""
+
+#: src/Admin/ImportScreen.php:285
+msgid "That import is no longer waiting. Choose the file again."
+msgstr ""
+
+#: src/Admin/ImportScreen.php:297
+msgid "Choose a CSV file first."
+msgstr ""
+
+#: src/Admin/ImportScreen.php:298
+msgid "The file did not arrive whole. Choose it again."
+msgstr ""
+
+#: src/Admin/ImportScreen.php:299
+msgid "That is not a .csv file. Save the sheet as CSV and choose it again."
+msgstr ""
+
+#: src/Admin/ImportScreen.php:300
+msgid "The file is over 2 MB. Split it into smaller files."
+msgstr ""
+
+#: src/Admin/ImportScreen.php:301
+msgid "The file is not saved as UTF-8. Save it as CSV UTF-8 and choose it again."
+msgstr ""
+
+#: src/Admin/ImportScreen.php:302
+msgid "The file has no rows under its headings."
+msgstr ""
+
+#: src/Admin/ImportScreen.php:303
+msgid "The file has more than 5,000 rows. Split it into smaller files."
+msgstr ""
+
+#: src/Admin/ImportScreen.php:304
+msgid "The file has no column for what parts are matched by. Add an id or a sku column, or change the choice below."
+msgstr ""
+
+#: src/Admin/ImportScreen.php:305
+msgid "A column is in the file twice. Keep one of each."
+msgstr ""
+
+#: src/Admin/ImportScreen.php:306
+msgid "The file has no spec columns, so there is nothing to import."
+msgstr ""
+
+#: src/Admin/ImportScreen.php:307
+msgid "An import is running. Wait for it to finish."
+msgstr ""
+
+#: src/Admin/ImportScreen.php:320
+msgid "The row does not say which part it is for."
+msgstr ""
+
+#. translators: %s: an ID or a SKU.
+#: src/Admin/ImportScreen.php:322
+#, php-format
+msgid "\"%s\" is in the file more than once. Keep one row for it."
+msgstr ""
+
+#. translators: %s: an ID or a SKU.
+#: src/Admin/ImportScreen.php:324
+#, php-format
+msgid "No product is \"%s\"."
+msgstr ""
+
+#. translators: %s: a SKU.
+#: src/Admin/ImportScreen.php:326
+#, php-format
+msgid "The product with this ID does not have the SKU \"%s\". Check the row is for this shop, or match parts by SKU."
+msgstr ""
+
+#. translators: %s: a chart's name.
+#: src/Admin/ImportScreen.php:328
+#, php-format
+msgid "There is no chart named \"%s\". Add it under Spec tables first."
+msgstr ""
+
+#. translators: %s: a chart's name.
+#: src/Admin/ImportScreen.php:330
+#, php-format
+msgid "More than one chart is named \"%s\". Rename one under Spec tables."
+msgstr ""
+
+#. translators: %s: a size in a chart.
+#: src/Admin/ImportScreen.php:332
+#, php-format
+msgid "The chart has no size \"%s\"."
+msgstr ""
+
+#: src/Admin/ImportScreen.php:333
+#: src/Admin/SpecTablesScreen.php:335
+msgid "The size is too long. Use 40 characters or fewer."
+msgstr ""
+
+#: src/Admin/ImportScreen.php:334
+#: src/Admin/SpecTablesScreen.php:319
+#: src/Admin/SpecTablesScreen.php:333
+msgid "That chart is no longer there."
+msgstr ""
+
+#. translators: %s: what a cell held.
+#: src/Admin/ImportScreen.php:336
+#, php-format
+msgid "\"%s\" is not a measurement. Use a number, or a fraction such as 8 1/4."
+msgstr ""
+
+#. translators: %s: what a cell held.
+#: src/Admin/ImportScreen.php:338
+#, php-format
+msgid "The fraction in \"%s\" divides by zero."
+msgstr ""
+
+#. translators: %s: what a cell held.
+#: src/Admin/ImportScreen.php:340
+#, php-format
+msgid "\"%s\" is below zero."
+msgstr ""
+
+#. translators: %s: what a cell held.
+#: src/Admin/ImportScreen.php:342
+#, php-format
+msgid "\"%s\" is not a value this column takes."
 msgstr ""
 
 #: src/Admin/Labels.php:40
@@ -403,82 +574,68 @@ msgstr ""
 msgid "Nothing was saved. Each problem is shown with the field it is about."
 msgstr ""
 
-#: src/Admin/SpecTablesScreen.php:315
+#: src/Admin/SpecTablesScreen.php:316
 msgid "The chart was added. Give it a row for each size."
 msgstr ""
 
-#: src/Admin/SpecTablesScreen.php:316
+#: src/Admin/SpecTablesScreen.php:317
 msgid "The chart was saved. Every part is being read again, in the background."
 msgstr ""
 
-#: src/Admin/SpecTablesScreen.php:317
+#: src/Admin/SpecTablesScreen.php:318
 msgid "The chart was deleted."
 msgstr ""
 
-#: src/Admin/SpecTablesScreen.php:318
-#: src/Admin/SpecTablesScreen.php:332
-msgid "That chart is no longer there."
-msgstr ""
-
-#: src/Admin/SpecTablesScreen.php:330
+#: src/Admin/SpecTablesScreen.php:331
 msgid "Type the maker's name."
 msgstr ""
 
-#: src/Admin/SpecTablesScreen.php:331
+#: src/Admin/SpecTablesScreen.php:332
 msgid "The maker's name is too long. Use 190 characters or fewer."
 msgstr ""
 
-#: src/Admin/SpecTablesScreen.php:333
+#: src/Admin/SpecTablesScreen.php:334
 msgid "Type the size this row is for, or clear the row."
 msgstr ""
 
-#: src/Admin/SpecTablesScreen.php:334
-msgid "The size is too long. Use 40 characters or fewer."
-msgstr ""
-
-#: src/Admin/SpecTablesScreen.php:335
+#: src/Admin/SpecTablesScreen.php:336
 msgid "This size is on a row above. Clear one of the two."
 msgstr ""
 
-#: src/Admin/SpecTablesScreen.php:336
+#: src/Admin/SpecTablesScreen.php:337
 msgid "The source is too long. Use 200 characters or fewer."
 msgstr ""
 
-#: src/Admin/SpecTablesScreen.php:337
+#: src/Admin/SpecTablesScreen.php:338
 msgid "The day it was read is not a date. Choose one, or clear it."
 msgstr ""
 
-#: src/Admin/SpecTablesScreen.php:338
+#: src/Admin/SpecTablesScreen.php:339
 msgid "A chart holds 100 sizes at most. Clear some rows."
 msgstr ""
 
 #. translators: 1: a spec's name. 2: what was typed.
-#: src/Admin/SpecTablesScreen.php:353
+#: src/Admin/SpecTablesScreen.php:354
 #, php-format
 msgid "%1$s: \"%2$s\" is not a measurement. Type a number, or a fraction such as 8 1/4."
 msgstr ""
 
 #. translators: 1: a spec's name. 2: what was typed.
-#: src/Admin/SpecTablesScreen.php:355
+#: src/Admin/SpecTablesScreen.php:356
 #, php-format
 msgid "%1$s: the fraction in \"%2$s\" divides by zero."
 msgstr ""
 
 #. translators: 1: a spec's name. 2: what was typed.
-#: src/Admin/SpecTablesScreen.php:357
+#: src/Admin/SpecTablesScreen.php:358
 #, php-format
 msgid "%1$s: \"%2$s\" is below zero."
 msgstr ""
 
 #. translators: 1: a spec's name. 2: what was typed.
-#: src/Admin/SpecTablesScreen.php:359
+#: src/Admin/SpecTablesScreen.php:360
 #, php-format
 msgid "%1$s: \"%2$s\" is not a value it takes."
-msgstr ""
-
-#: src/Hooks/SpecTableHooks.php:68
-#: templates/admin/spec-tables.php:27
-msgid "Spec tables"
 msgstr ""
 
 #: src/Hooks/SpecTableHooks.php:69
@@ -505,6 +662,179 @@ msgstr ""
 
 #: src/Updates/Updater.php:233
 msgid "The Creative Skateboard Builder update did not match its published checksum, so it was not installed."
+msgstr ""
+
+#: templates/admin/import.php:37
+msgid "Check the import"
+msgstr ""
+
+#: templates/admin/import.php:38
+msgid "Nothing has been changed yet. This is what the file would do."
+msgstr ""
+
+#. translators: %s: a number of parts.
+#: templates/admin/import.php:43
+#, php-format
+msgid "%s part would change."
+msgid_plural "%s parts would change."
+msgstr[0] ""
+msgstr[1] ""
+
+#. translators: %s: a number of rows.
+#: templates/admin/import.php:49
+#, php-format
+msgid "%s row is the same as the shop has now."
+msgid_plural "%s rows are the same as the shop has now."
+msgstr[0] ""
+msgstr[1] ""
+
+#. translators: %s: a number of rows.
+#: templates/admin/import.php:55
+#, php-format
+msgid "%s row cannot be read, and would be left out."
+msgid_plural "%s rows cannot be read, and would be left out."
+msgstr[0] ""
+msgstr[1] ""
+
+#: templates/admin/import.php:60
+msgid "Another person sent this file, and only they can confirm it. You can put it away and choose a file of your own."
+msgstr ""
+
+#: templates/admin/import.php:67
+msgid "Import these changes"
+msgstr ""
+
+#: templates/admin/import.php:69
+msgid "Put the file away"
+msgstr ""
+
+#: templates/admin/import.php:73
+msgid "The import is running"
+msgstr ""
+
+#. translators: 1: rows done. 2: rows in the file.
+#: templates/admin/import.php:77
+#, php-format
+msgid "%1$s of %2$s rows done. It runs in the background, so this page can be left."
+msgstr ""
+
+#: templates/admin/import.php:80
+msgid "Check again"
+msgstr ""
+
+#: templates/admin/import.php:82
+msgid "The last import"
+msgstr ""
+
+#. translators: %s: a number of parts.
+#: templates/admin/import.php:87
+#, php-format
+msgid "%s part was changed."
+msgid_plural "%s parts were changed."
+msgstr[0] ""
+msgstr[1] ""
+
+#. translators: %s: a number of rows.
+#: templates/admin/import.php:93
+#, php-format
+msgid "%s row was the same as the shop had."
+msgid_plural "%s rows were the same as the shop had."
+msgstr[0] ""
+msgstr[1] ""
+
+#. translators: %s: a number of rows.
+#: templates/admin/import.php:99
+#, php-format
+msgid "%s row could not be read, and was left out."
+msgid_plural "%s rows could not be read, and were left out."
+msgstr[0] ""
+msgstr[1] ""
+
+#: templates/admin/import.php:106
+msgid "Rows that cannot be read"
+msgstr ""
+
+#: templates/admin/import.php:111
+#: templates/admin/import.php:143
+msgid "Row"
+msgstr ""
+
+#: templates/admin/import.php:112
+msgid "Column"
+msgstr ""
+
+#: templates/admin/import.php:113
+msgid "What is wrong"
+msgstr ""
+
+#. translators: %s: how many more rows a list has than it shows.
+#: templates/admin/import.php:131
+#: templates/admin/import.php:167
+#, php-format
+msgid "And %s more."
+msgid_plural "And %s more."
+msgstr[0] ""
+msgstr[1] ""
+
+#: templates/admin/import.php:138
+msgid "What would change"
+msgstr ""
+
+#: templates/admin/import.php:144
+msgid "Part"
+msgstr ""
+
+#: templates/admin/import.php:145
+#: templates/admin/settings-mapping.php:74
+msgid "Spec"
+msgstr ""
+
+#: templates/admin/import.php:146
+msgid "Now"
+msgstr ""
+
+#: templates/admin/import.php:147
+msgid "After"
+msgstr ""
+
+#: templates/admin/import.php:181
+msgid "Import"
+msgstr ""
+
+#: templates/admin/import.php:182
+msgid "Choose a CSV file with a row for each product or variation, and a column for each spec to set. A column the file leaves out is left as it is, and an empty cell removes the value. The file is checked first and shown here; nothing changes until you confirm."
+msgstr ""
+
+#: templates/admin/import.php:187
+msgid "CSV file, 2 MB and 5,000 rows at most"
+msgstr ""
+
+#: templates/admin/import.php:199
+msgid "Match parts by"
+msgstr ""
+
+#: templates/admin/import.php:201
+msgid "Product ID, the id column"
+msgstr ""
+
+#: templates/admin/import.php:202
+msgid "SKU, the sku column"
+msgstr ""
+
+#: templates/admin/import.php:205
+msgid "Check the file"
+msgstr ""
+
+#: templates/admin/import.php:209
+msgid "Export"
+msgstr ""
+
+#: templates/admin/import.php:210
+msgid "A CSV file with a row for every product and variation and what each holds itself. Fill it in with a spreadsheet and import it here."
+msgstr ""
+
+#: templates/admin/import.php:214
+msgid "Download the CSV file"
 msgstr ""
 
 #: templates/admin/part-specs.php:31
@@ -536,10 +866,6 @@ msgstr ""
 
 #: templates/admin/settings-mapping.php:59
 msgid "Attribute"
-msgstr ""
-
-#: templates/admin/settings-mapping.php:74
-msgid "Spec"
 msgstr ""
 
 #: templates/admin/settings-mapping.php:82
@@ -592,12 +918,12 @@ msgid "All spec tables"
 msgstr ""
 
 #: templates/admin/spec-table.php:51
-#: templates/admin/spec-tables.php:58
+#: templates/admin/spec-tables.php:60
 msgid "Maker's name"
 msgstr ""
 
 #: templates/admin/spec-table.php:66
-#: templates/admin/spec-tables.php:36
+#: templates/admin/spec-tables.php:38
 msgid "Sizes"
 msgstr ""
 
@@ -637,22 +963,22 @@ msgstr ""
 msgid "Delete this chart"
 msgstr ""
 
-#: templates/admin/spec-tables.php:28
+#: templates/admin/spec-tables.php:30
 msgid "A truck maker's size chart: for each size, the axle width, the decks it fits and the rest. A truck that names its size in a chart, on its Part specs, takes that row's figures."
 msgstr ""
 
-#: templates/admin/spec-tables.php:30
+#: templates/admin/spec-tables.php:32
 msgid "There are no charts yet."
 msgstr ""
 
-#: templates/admin/spec-tables.php:35
+#: templates/admin/spec-tables.php:37
 msgid "Maker"
 msgstr ""
 
-#: templates/admin/spec-tables.php:50
+#: templates/admin/spec-tables.php:52
 msgid "Add a chart"
 msgstr ""
 
-#: templates/admin/spec-tables.php:71
+#: templates/admin/spec-tables.php:73
 msgid "Add chart"
 msgstr ""

@@ -211,6 +211,7 @@ final class SpecTablesScreen {
 			}
 			$name    = $this->refused['name'] ?? '';
 			$problem = null === $this->refused ? '' : self::problem( $this->refused['draft']->problems[0]['code'] );
+			$tabs    = BuilderHooks::tabs( '' );
 			include CBUILD_PATH . 'templates/admin/spec-tables.php';
 			return;
 		}

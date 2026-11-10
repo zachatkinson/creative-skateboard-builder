@@ -12,6 +12,7 @@
     ],
     "options": [
         "cbuild_db_version",
+        "cbuild_import_state",
         "cbuild_migration_lock",
         "cbuild_migrations",
         "cbuild_reindex_state",
@@ -25,6 +26,7 @@
         "cbuild_specs"
     ],
     "scheduled_actions": [
+        "cbuild_import",
         "cbuild_index_part",
         "cbuild_migrate",
         "cbuild_reindex"

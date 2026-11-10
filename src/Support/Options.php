@@ -124,6 +124,20 @@ final class Options {
 	public const REINDEX = 'cbuild_reindex_state';
 
 	/**
+	 * The job that writes a confirmed specs import, 100 rows at a time.
+	 *
+	 * @since 0.3.0
+	 */
+	public const JOB_IMPORT = 'cbuild_import';
+
+	/**
+	 * The specs import in hand: its rows while it waits and runs, and what it did after. Not autoloaded.
+	 *
+	 * @since 0.3.0
+	 */
+	public const IMPORT = 'cbuild_import_state';
+
+	/**
 	 * Every fixed-name option, per site.
 	 *
 	 * @since 0.1.0
@@ -131,7 +145,7 @@ final class Options {
 	 * @return string[]
 	 */
 	public static function names(): array {
-		return array( self::DB_VERSION, self::MIGRATIONS, self::MIGRATION_LOCK, self::SETTINGS, self::REINDEX );
+		return array( self::DB_VERSION, self::MIGRATIONS, self::MIGRATION_LOCK, self::SETTINGS, self::REINDEX, self::IMPORT );
 	}
 
 	/**
@@ -153,7 +167,7 @@ final class Options {
 	 * @return string[]
 	 */
 	public static function jobs(): array {
-		return array( self::JOB_MIGRATE, self::JOB_INDEX_PART, self::JOB_REINDEX );
+		return array( self::JOB_MIGRATE, self::JOB_INDEX_PART, self::JOB_REINDEX, self::JOB_IMPORT );
 	}
 
 	/**

@@ -17,8 +17,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * The page is the shop's own tools for the builder: the makers' charts now, the import and the Catalogue check
- * after. Its screen is built when the page is asked for, not on every admin request.
+ * The page is the shop's own tools for the builder, a tab each: the makers' charts and the import and export now,
+ * the Catalogue check after. Its screen is built when the page is asked for, not on every admin request.
  *
  * @since 0.3.0
  */
@@ -32,13 +32,62 @@ final class BuilderHooks implements Hookable {
 	public const PAGE = 'cbuild';
 
 	/**
+	 * The Import and export tab: `admin.php?page=cbuild&tab=import`.
+	 *
+	 * @since 0.3.0
+	 */
+	public const TAB_IMPORT = 'import';
+
+	/**
 	 * Constructor.
 	 *
 	 * @since 0.3.0
 	 *
-	 * @param Closure(): SpecTablesScreen $screen Builds the screen.
+	 * @param Closure(): SpecTablesScreen $tables Builds the Spec tables screen.
+	 * @param Closure(): ImportScreen     $import Builds the Import and export screen.
 	 */
-	public function __construct( private Closure $screen ) {}
+	public function __construct( private Closure $tables, private Closure $import ) {}
+
+	/**
+	 * The page's tabs, for its templates to draw.
+	 *
+	 * @since 0.3.0
+	 *
+	 * @param string $current The tab being drawn: '' for Spec tables.
+	 * @return list<array{label: string, url: string, current: bool}>
+	 */
+	public static function tabs( string $current ): array {
+		$tabs = array(
+			''               => __( 'Spec tables', 'creative-skateboard-builder' ),
+			self::TAB_IMPORT => __( 'Import and export', 'creative-skateboard-builder' ),
+		);
+		$list = array();
+		foreach ( $tabs as $tab => $label ) {
+			$list[] = array(
+				'label'   => $label,
+				'url'     => add_query_arg(
+					array_filter(
+						array(
+							'page' => self::PAGE,
+							'tab'  => $tab,
+						) 
+					),
+					admin_url( 'admin.php' ) 
+				),
+				'current' => $tab === $current,
+			);
+		}
+		return $list;
+	}
+
+	/**
+	 * The screen the address asks for.
+	 */
+	private function screen(): SpecTablesScreen|ImportScreen {
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Chooses what is shown and changes nothing.
+		$tab = isset( $_GET['tab'] ) && is_string( $_GET['tab'] ) ? sanitize_key( wp_unslash( $_GET['tab'] ) ) : '';
+		return self::TAB_IMPORT === $tab ? ( $this->import )() : ( $this->tables )();
+	}
 
 	/**
 	 * Attach.
@@ -75,8 +124,18 @@ final class BuilderHooks implements Hookable {
 	 * @since 0.3.0
 	 */
 	public function load(): void {
-		$screen = ( $this->screen )();
+		$screen = $this->screen();
 		$screen->styles();
+		$file = $screen instanceof ImportScreen ? $screen->download() : null;
+		if ( null !== $file ) {
+			nocache_headers();
+			header( 'Content-Type: text/csv; charset=utf-8' );
+			header( 'Content-Disposition: attachment; filename="part-specs.csv"' );
+			header( 'X-Content-Type-Options: nosniff' );
+			// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- A CSV file sent as an attachment, not HTML; each cell went through Csv::line().
+			echo $file;
+			exit;
+		}
 		$next = $screen->handle();
 		if ( null !== $next ) {
 			wp_safe_redirect( $next );
@@ -90,6 +149,6 @@ final class BuilderHooks implements Hookable {
 	 * @since 0.3.0
 	 */
 	public function render(): void {
-		( $this->screen )()->render();
+		$this->screen()->render();
 	}
 }
