@@ -1526,3 +1526,20 @@ The first answer kept each slot's list in a transient (commit `ae04b23`). It hel
 
 **Status:** Accepted. The table is Zach's word of 10 November; the `specs` column is for him at the review.
 
+### D-117 · axe's target-size is quarantined in a variation's Part specs, and the headings are measured there instead · 2026-11-10
+
+Issue #22. `part-specs.spec.ts`, "a variation names its size in a maker's chart", has failed twice on axe's `target-size` for the Deck group's heading: in CI on `main`'s merge of milestone 3 (webkit-phone, "smallest space is 261.2px by 20.6px") and once locally in a full two-project run (chromium-phone, "281px by 23px"). Both name as covering it the row's attribute select, which is about 1,000 px above it in the settled page, and the next group's heading, which starts where it ends. The heading is 34 px high.
+
+Tried, and none showed it: the test alone, 12 times; three full two-project runs; jQuery's animations slowed to 6 s; the row's box clipped 20 px into the heading, as a slide would leave it; a scan at eight moments of the row's slide; a scan while the page scrolls. So it is not the layout as a shopkeeper meets it, and I cannot yet say what it is.
+
+CLAUDE.md: a flaky test is fixed or quarantined with an issue the same day. Quarantined, as narrowly as it goes:
+
+- `target-size` alone is left out of axe's two scans of a variation's Part specs. Every other rule still runs there, and `target-size` still runs on the product's own Part specs tab and everywhere else.
+- In its place the test measures what the rule is for: every group heading in the variation at least 24 px by 24 px, and none overlapping the one before.
+
+Issue #22 stays open in milestone 4's list until the cause is found and the rule is back.
+
+**Deliberate break.** With the padding above and below a heading taken out of the panel's rule, the measurement fails in chromium-phone: "Expected: >= 24. Received: 18.1875".
+
+**Status:** Accepted. For Zach at the review: the quarantine, and whether it may stand past this milestone.
+

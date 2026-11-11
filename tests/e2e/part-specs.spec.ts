@@ -121,6 +121,37 @@ test.describe( 'The Part specs panel', () => {
 				.click();
 			await expect( page.locator( FIELDS ) ).toBeVisible();
 		};
+		// Issue #22, D-117: twice under load axe's target-size has said a group's heading was partly covered by
+		// nodes that are nowhere near it in the settled page, and no run since has shown it again. Until that is
+		// found, the rule is quarantined in this region alone and the headings are measured here instead: each at
+		// least 24 px by 24 px, and none overlapping the next.
+		const QUARANTINED = [ 'target-size' ];
+		const targets = async () => {
+			const boxes = await page
+				.locator( `${ FIELDS } summary` )
+				.evaluateAll( ( summaries ) =>
+					summaries.map( ( summary ) => {
+						const box = summary.getBoundingClientRect();
+						return {
+							top: box.top,
+							bottom: box.bottom,
+							width: box.width,
+							height: box.height,
+						};
+					} )
+				);
+			expect( boxes.length ).toBeGreaterThan( 1 );
+			boxes.forEach( ( box, at ) => {
+				expect( box.width ).toBeGreaterThanOrEqual( 24 );
+				expect( box.height ).toBeGreaterThanOrEqual( 24 );
+				const before = boxes[ at - 1 ];
+				if ( before ) {
+					expect( box.top ).toBeGreaterThanOrEqual(
+						before.bottom - 0.5
+					);
+				}
+			} );
+		};
 		const save = async () => {
 			await page.getByRole( 'button', { name: 'Save changes' } ).click();
 			await expect(
@@ -144,7 +175,8 @@ test.describe( 'The Part specs panel', () => {
 			.filter( { hasText: /^149$/ } )
 			.getAttribute( 'value' );
 		await chart.selectOption( size );
-		await axe( page, "a variation's Part specs", FIELDS );
+		await axe( page, "a variation's Part specs", FIELDS, QUARANTINED );
+		await targets();
 		await save();
 
 		await page.reload();
@@ -158,7 +190,13 @@ test.describe( 'The Part specs panel', () => {
 				"In use: 8.5 in, from Independent's chart, size 149."
 			)
 		);
-		await axe( page, "a variation's Part specs, with a chart", FIELDS );
+		await axe(
+			page,
+			"a variation's Part specs, with a chart",
+			FIELDS,
+			QUARANTINED
+		);
+		await targets();
 
 		// As the fixture left it.
 		await chart.selectOption( '' );
