@@ -1842,3 +1842,24 @@ Milestone 5's steps 10 and 11.
 **Red run and deliberate break** are in the commit's message.
 
 **Status:** Accepted.
+
+### D-136 · Milestone 4's listed minors, and the issues carried into the audit (#29, #22, #25) · 2026-11-11
+
+Issue #29 lists ten minors from milestone 4's review. What was done with each:
+
+- **Site Health's Info section does not list the five new settings.** Fixed: the section lists them, the proxy header by its name, which is never an address. `SiteHealthTest` failed first on the section's keys.
+- **Two adapters reach a service's constant across a layer.** Already gone: no file under `src/Adapter` names a class of `src/Service`.
+- **`get_objects_in_term()` asked with no bound.** Stays. The function takes no limit, and a bound put on it by another query would cut a category's products at an arbitrary one before the slot's own rule chose among them. The cart no longer pays for it seven times three on a read (D-134); the state route reads it once a slot.
+- **Two `!important` in the Build tab's styles.** Stay: the padding answers a rule of WooCommerce's that is itself `!important` (`.woocommerce_options_panel p.form-field`), and the width answers the width select2 writes on its container's own `style`. Nothing less wins over either.
+- **The schema's `additionalProperties: false`.** Stays until the builder's script reads the answer in milestone 6: the strict schema is what makes the generated types exact and the route's tests catch a key nobody declared. Whether to loosen it before 1.0 is a question for that milestone's plan.
+- **`ready: true` when a refused pick was replaced by the default.** Stays: the schema says `problems` is empty exactly when `ready` is true, and the answer names the replaced pick under `refused`. What the builder shows a shopper whose pick was replaced is milestone 6's.
+- **Rows of a price context nobody asks for again, and a password set by `wp_update_post()` alone.** Stay, bounded by the two hours a row is read within, as the review said.
+- **`Admin\BuildTab` is over 1,000 lines.** Stays. Its tests hold its behaviour, and the split is a change with no behaviour to test; it is better made beside the next change to the tab than alone in a cart milestone.
+- **The route's benchmark on a persistent object cache.** Not run; the integration suite runs on Redis (`composer test:integration:object-cache`), the benchmark does not yet.
+- **The change list has no undo.** Milestone 6's, as listed.
+
+**#22** (axe's `target-size` on a variation's Part specs, seen twice under load) stays quarantined as D-117 left it: the rule is left out of two scans and the test measures the headings itself. The cause is still not found.
+
+**#25**: three mutants are left, each the same program as the original as far as can be shown (a cast of an array key PHP makes a number again, one row more read past the row that already says too many, and the branch for a server without mbstring). They are inside the floor and go to Zach at the review.
+
+**Status:** Accepted.

@@ -23,6 +23,7 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Changed
 
+- Site Health's Info section lists the build discount, where a fixed product coupon lands, the state route's rate limit, the trusted proxy header's name and whether a new kit starts with assembly chosen (#29).
 - The state route prices for the shopper WooCommerce knows, by its own session, so where tax goes by the shopper's address the builder's total is the cart's. A visitor with no session is priced for the shop's default address as before, and is given no session by asking (#27, D-135).
 - A build's parts are read from the shop together, in the cart and at the checkout: adding a 7-part build asks 54 queries where it asked 132, and a cart read with a build in it 30 where it asked 84 (D-134).
 - A product save that changes only its stock, its stock status or its sales count queues no `cbuild_index_part` job, so an order no longer queues one for each line. A save that changes nothing queues none either (#21, D-127).
