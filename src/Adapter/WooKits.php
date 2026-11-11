@@ -226,6 +226,25 @@ final class WooKits implements Kits {
 	}
 
 	/**
+	 * One part as the shop has it now, read from WooCommerce and not from what is kept (issue #26).
+	 *
+	 * @since 0.5.0
+	 *
+	 * @param Slot $slot One of a kit's slots.
+	 * @param int  $id   A product's or variation's ID.
+	 */
+	public function picked( Slot $slot, int $id ): ?Part {
+		$read = $this->shopSays( $this->clock->now()->getTimestamp(), $id );
+		// The one product alone, with the slot's own rule for which of the shop's products are its parts.
+		foreach ( $this->chosen( $slot->sources, $this->found( $slot->sources ), array( $id => $read[ $id ] ) ) as $part ) {
+			if ( $id === $part->id ) {
+				return $part;
+			}
+		}
+		return null;
+	}
+
+	/**
 	 * Forget what is kept of these products, or of every product when none is named.
 	 *
 	 * @since 0.4.0

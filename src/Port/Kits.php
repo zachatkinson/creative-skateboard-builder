@@ -89,6 +89,18 @@ interface Kits {
 	public function offered( int $kit, Slot $slot ): array;
 
 	/**
+	 * One part as the shop has it now, read from WooCommerce itself and not from what is kept of it, for a build
+	 * on its way to the cart (issue #26): its price, its stock and its specs as they are at this moment. Null
+	 * when it is not one of the slot's parts, or not one a shopper could be shown and could buy.
+	 *
+	 * @since 0.5.0
+	 *
+	 * @param Slot $slot One of a kit's slots, as kit() gave it.
+	 * @param int  $id   A product's or variation's ID.
+	 */
+	public function picked( Slot $slot, int $id ): ?Part;
+
+	/**
 	 * Forget what is kept of these products and variations, or of every one when none is named.
 	 *
 	 * @since 0.4.0
