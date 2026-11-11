@@ -292,9 +292,9 @@ final class Container {
 	private array $hookableClasses;
 
 	/**
-	 * The Hookable classes already handed out.
+	 * The Hookable classes already handed out, each under its own name.
 	 *
-	 * @var array<class-string<Hookable>, true>
+	 * @var array<class-string<Hookable>, class-string<Hookable>>
 	 */
 	private array $handedOut = array();
 
@@ -378,7 +378,7 @@ final class Container {
 			if ( isset( $this->handedOut[ $id ] ) || array() === array_intersect( array_column( $fires, 'name' ), array_column( $scopes, 'name' ) ) ) {
 				continue;
 			}
-			$this->handedOut[ $id ] = true;
+			$this->handedOut[ $id ] = $id;
 			$out[]                  = $this->get( $id );
 		}
 		return $out;

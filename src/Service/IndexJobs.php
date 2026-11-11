@@ -257,7 +257,7 @@ final class IndexJobs implements Reindex {
 					}
 					array_push( $parts, ...$stands );
 				}
-				$parts = array_values( array_unique( $parts ) );
+				$parts = array_unique( $parts );
 			} else {
 				$held     = $this->catalogue->page( $state->position + 1, self::BATCH );
 				$parts    = $held;

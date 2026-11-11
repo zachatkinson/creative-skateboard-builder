@@ -77,7 +77,7 @@ final class SpecTableEditor {
 	 * @param string $name The maker's name.
 	 */
 	public function add( string $name ): TableDraft {
-		$problem = $this->nameRefused( trim( $name ), 0 );
+		$problem = $this->nameRefused( trim( $name ) );
 		if ( null !== $problem ) {
 			return new TableDraft( 0, array( $problem ) );
 		}
@@ -193,7 +193,7 @@ final class SpecTableEditor {
 	 * @param int    $id   The chart the name is for, 0 for a new one.
 	 * @return array{row: int, field: string, code: string}|null
 	 */
-	private function nameRefused( string $name, int $id ): ?array {
+	private function nameRefused( string $name, ?int $id = null ): ?array {
 		if ( '' === $name ) {
 			return self::problem( 0, self::NAME, self::NAME_MISSING );
 		}

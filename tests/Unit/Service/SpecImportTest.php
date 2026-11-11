@@ -195,6 +195,18 @@ final class SpecImportTest extends TestCase {
 		self::assertSame( 0, $plan[1]['part'] );
 	}
 
+	// Issue #25: a batch read every product the file names, not its own rows'.
+	public function test_a_batch_matched_by_sku_reads_the_products_of_its_own_rows_alone(): void {
+		$this->import->read( "sku,deck_width\nDK-7750,8\nTR-149,8\n", 'sku' );
+		$state = $this->import->state();
+		self::assertNotNull( $state );
+		$this->parts->reads = array();
+		$first              = $this->import->plan( $state, 0, 1 );
+		$second             = $this->import->plan( $state, 1, 1 );
+		self::assertSame( array( array( 7 ), array( 9 ) ), $this->parts->reads );
+		self::assertSame( array( 7, 9 ), array( $first[0]['part'], $second[0]['part'] ) );
+	}
+
 	public function test_which_product_a_sku_names_is_asked_once_and_checked_on_each_use(): void {
 		$this->import->read( "sku,deck_width\nDK-7750,8\n,8\nDK-7750,9\nNOPE,8\nTR-149,8\n", 'sku' );
 		self::assertSame( array( array( 'DK-7750', 'NOPE', 'TR-149' ) ), $this->parts->asked, 'each SKU once, and no blank one' );

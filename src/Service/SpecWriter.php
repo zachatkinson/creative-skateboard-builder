@@ -125,7 +125,7 @@ final class SpecWriter {
 		$size  = $naming['size'];
 		if ( null !== $named ) {
 			$asked   = trim( $named['size'] );
-			$found   = $named['table'] > 0 ? ( $this->tables->find( $named['table'] )[ $named['table'] ] ?? null ) : null;
+			$found   = $this->tables->find( $named['table'] )[ $named['table'] ] ?? null;
 			$problem = $this->refused( $named['table'], $asked, $found );
 			if ( null === $problem ) {
 				$table = $named['table'];

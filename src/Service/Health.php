@@ -139,7 +139,7 @@ final class Health {
 			}
 			++$findings;
 			if ( $finding->part > 0 ) {
-				$parts[ $finding->part ] = true;
+				$parts[ $finding->part ] = $finding->part;
 			}
 		}
 		return array(
@@ -159,7 +159,7 @@ final class Health {
 	 * @return int A UTC timestamp, 0 for the beginning.
 	 */
 	public static function since( ?ReindexState $reindex ): int {
-		return ReindexState::DONE === $reindex?->phase ? (int) $reindex->finishedAt : 0;
+		return ReindexState::DONE === $reindex?->phase ? ( $reindex->finishedAt ?? 0 ) : 0;
 	}
 
 	/**

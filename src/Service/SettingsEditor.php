@@ -102,7 +102,7 @@ final class SettingsEditor {
 				);
 				continue;
 			}
-			$seen[ $spec ][ $attribute ] = true;
+			$seen[ $spec ][ $attribute ] = $number;
 			$mapping[]                   = $map;
 		}
 		if ( count( $mapping ) > self::MAX_LINES ) {

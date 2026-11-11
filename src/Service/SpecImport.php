@@ -153,7 +153,7 @@ final class SpecImport {
 			foreach ( $rows as $row ) {
 				$skus[] = self::key( $row[ $map['columns'][ $key ] ] ?? '', $key );
 			}
-			$found = $this->parts->bySku( ...array_values( array_unique( array_filter( $skus, static fn( string $sku ): bool => '' !== $sku ) ) ) );
+			$found = $this->parts->bySku( ...array_unique( array_filter( $skus, static fn( string $sku ): bool => '' !== $sku ) ) );
 		}
 		$now   = $this->clock->now()->getTimestamp();
 		$state = new ImportState( ImportState::WAITING, hash( 'sha256', $now . '|' . $text ), $key, $separator, $now, $map['columns'], $rows, count( $rows ), by: $by, found: $found );

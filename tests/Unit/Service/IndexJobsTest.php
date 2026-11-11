@@ -404,6 +404,21 @@ final class IndexJobsTest extends TestCase {
 		self::assertSame( 3, $this->jobs->state()->parts, 'the three rows it went through' );
 	}
 
+	// Issue #25: two rows that stand for the same parts now had each of them read twice in one batch.
+	public function test_the_first_pass_reads_a_part_two_rows_stand_for_once(): void {
+		$this->parts( 5, 8, 9 );
+		$this->jobs->reindexNow();
+		$this->parts( 6, 7 );
+		$this->catalogue->products[5] = array( 6, 7 );
+		$this->catalogue->products[8] = array( 6, 7 );
+
+		$this->jobs->requestReindex();
+		unset( $this->queue->pending['cbuild_reindex'] );
+		$this->source->asked = array();
+		$this->jobs->runReindex();
+		self::assertSame( array( array( 6, 7, 9 ) ), $this->source->asked );
+	}
+
 	public function test_a_batch_that_fails_keeps_its_place_and_is_tried_again_then_stops(): void {
 		$this->parts( ...range( 1, 150 ) );
 		$this->jobs->requestReindex();

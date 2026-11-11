@@ -203,6 +203,46 @@ final class SpecTableEditorTest extends TestCase {
 		self::assertSame( 0, $this->tables->updates );
 	}
 
+	// Issue #25: the range is held only where both of the row's own ends read, whatever another row's did.
+	public function test_a_range_is_compared_only_where_both_of_its_own_rows_ends_read(): void {
+		$id    = $this->editor->add( 'Indy' )->id;
+		$draft = $this->editor->save(
+			$id,
+			'Indy',
+			array(
+				// Each would compare as reversed by the number it starts with.
+				self::row(
+					'129',
+					array(
+						'deck_min' => '9 wide',
+						'deck_max' => '8',
+					)
+				),
+				self::row(
+					'139',
+					array(
+						'deck_min' => '9',
+						'deck_max' => '8 wide',
+					)
+				),
+				// Reversed, and its own ends both read: the rows above do not excuse it.
+				self::row(
+					'149',
+					array(
+						'deck_min' => '8.6',
+						'deck_max' => '8',
+					)
+				),
+			)
+		);
+		self::assertSame( array( '1:deck_min:measure_malformed', '2:deck_max:measure_malformed', '3:deck_min:deck_range_reversed' ), self::codes( $draft->problems ) );
+	}
+
+	public function test_a_name_is_another_charts_whatever_the_case_of_its_accented_letters(): void {
+		$this->editor->add( 'Éclat' );
+		self::assertSame( array( '0:name:name_taken' ), self::codes( $this->editor->add( 'éCLAT' )->problems ) );
+	}
+
 	// Minor 2: two charts of one name made every import row naming either ambiguous, and the panel's list one group.
 	public function test_a_chart_cannot_take_a_name_another_chart_has_whatever_its_case(): void {
 		$indy    = $this->editor->add( 'Independent' )->id;

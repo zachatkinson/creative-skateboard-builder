@@ -179,6 +179,30 @@ final class SpecWriterTest extends TestCase {
 			'the rest saves; the two are as they were'
 		);
 
+		// What goes back is what was stored, without the spaces round it.
+		$draft = $this->writer->draft(
+			array(
+				'deck_min' => '9',
+				'deck_max' => '8',
+			),
+			array(
+				'deck_min' => ' 8.0000 ',
+				'deck_max' => "8.5000\n",
+			)
+		);
+		self::assertSame(
+			array(
+				'deck_min' => '8.0000',
+				'deck_max' => '8.5000',
+			),
+			$draft->fields
+		);
+
+		// Issue #25: each end is compared as the number it starts with, whichever of the two is not all number.
+		self::assertTrue( SpecWriter::reversed( '10 wide', '9' ) );
+		self::assertTrue( SpecWriter::reversed( '10', '9 wide' ) );
+		self::assertFalse( SpecWriter::reversed( '9', '10 wide' ) );
+
 		// One sent against the other stored; with nothing stored, neither is kept.
 		$draft = $this->writer->draft( array( 'deck_min' => '9' ), array( 'deck_max' => '8.5000' ) );
 		self::assertSame( array( 'deck_min:deck_range_reversed' ), self::codes( $draft->problems ) );
