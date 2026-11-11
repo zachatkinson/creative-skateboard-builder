@@ -54,8 +54,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 							<p class="cbuild-kit-moves">
 								<span class="cbuild-kit-handle dashicons dashicons-menu" aria-hidden="true"></span>
 								<?php // Each button is named with its row: "Move up Slot: Trucks", not "Move up" seven times over. ?>
-								<button type="button" class="button" data-cbuild-move="up" id="<?php echo esc_attr( $cbuild_group['id'] . '-up' ); ?>" aria-labelledby="<?php echo esc_attr( $cbuild_group['id'] . '-up ' . $cbuild_group['id'] . '-legend' ); ?>"><?php esc_html_e( 'Move up', 'creative-skateboard-builder' ); ?></button>
-								<button type="button" class="button" data-cbuild-move="down" id="<?php echo esc_attr( $cbuild_group['id'] . '-down' ); ?>" aria-labelledby="<?php echo esc_attr( $cbuild_group['id'] . '-down ' . $cbuild_group['id'] . '-legend' ); ?>"><?php esc_html_e( 'Move down', 'creative-skateboard-builder' ); ?></button>
+								<button type="button" class="button" data-cbuild-move="up" id="<?php echo esc_attr( $cbuild_group['id'] . '-up' ); ?>"><?php esc_html_e( 'Move up', 'creative-skateboard-builder' ); ?> <span class="screen-reader-text"><?php echo esc_html( $cbuild_group['legend'] ); ?></span></button>
+								<button type="button" class="button" data-cbuild-move="down" id="<?php echo esc_attr( $cbuild_group['id'] . '-down' ); ?>"><?php esc_html_e( 'Move down', 'creative-skateboard-builder' ); ?> <span class="screen-reader-text"><?php echo esc_html( $cbuild_group['legend'] ); ?></span></button>
 							</p>
 						<?php endif; ?>
 						<?php if ( '' !== $cbuild_group['fold'] ) : ?>

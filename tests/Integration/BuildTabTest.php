@@ -503,11 +503,16 @@ final class BuildTabTest extends IntegrationTestCase {
 	public function test_each_rows_buttons_and_fold_are_named_with_the_row(): void {
 		$this->as( 'shop_manager' );
 		$panel = $this->panel( KitFactory::kit() );
-		foreach ( array( 'up', 'down', 'fold' ) as $control ) {
-			self::assertSame( 1, preg_match_all( '/id="cbuild-kit-slots-1-' . $control . '"\s+aria-labelledby="cbuild-kit-slots-1-' . $control . ' cbuild-kit-slots-1-legend"/', $panel ), $control );
+		// The buttons carry the row's name as hidden text, not by aria-labelledby: Firefox's page crashed under axe when a
+		// button named from the legend had been moved (D-120).
+		foreach ( array( 'up' => 'Move up', 'down' => 'Move down' ) as $control => $name ) {
+			self::assertSame( 1, preg_match_all( '/id="cbuild-kit-slots-1-' . $control . '">' . $name . ' <span class="screen-reader-text">Slot: Trucks<\/span><\/button>/', $panel ), $control );
 		}
+		self::assertSame( 1, preg_match_all( '/id="cbuild-kit-slots-1-fold"\s+aria-labelledby="cbuild-kit-slots-1-fold cbuild-kit-slots-1-legend"/', $panel ), 'fold' );
 		self::assertSame( 1, preg_match_all( '/<legend id="cbuild-kit-slots-1-legend">Slot: Trucks<\/legend>/', $panel ) );
-		self::assertSame( 0, preg_match_all( '/<(?:button|summary)(?![^>]*aria-labelledby)[^>]*(?:data-cbuild-move|id="cbuild-kit-(?:slots|presets)-\d+-fold")/', $panel ), 'none is left with the bare name' );
+		self::assertSame( 0, preg_match_all( '/<button[^>]*data-cbuild-move[^>]*>[^<]*<\/button>/', $panel ), 'no button is left with the bare name' );
+		self::assertSame( 0, preg_match_all( '/<button[^>]*data-cbuild-move[^>]*aria-labelledby/', $panel ), 'and none is named from the legend' );
+		self::assertSame( 0, preg_match_all( '/<summary(?![^>]*aria-labelledby)[^>]*id="cbuild-kit-(?:slots|presets)-\d+-fold"/', $panel ), 'no fold is left with the bare name' );
 	}
 
 	public function test_a_slot_is_removed_when_ticked_and_the_rows_keep_the_order_they_are_sent_in(): void {

@@ -1571,7 +1571,7 @@ Found by the `auditor` and `spec-reviewer` agents on the diff, each held by a te
 - **A kit that does not read is said** (auditor 11, spec reviewer 3). The Catalogue check lists it under the new code `kit_unread`, with a link to its Build tab. `Service\BuildState` writes a line to the log when a caller asks for a kit that does not read, and when a build cannot be priced, each at most once an hour (`Port\Logger::hourly()`, a transient `cbuild_logged_<what>`), with the kit's ID and nothing of the request. Site Health is not told; the check and the log are. For Zach if he wants a Site Health test as well.
 - **The limit's counts take 1,024 rows at most** (auditor 4). Without a persistent object cache each address and minute was a transient of its own, never read again, so two rows of the options table stayed for each until WordPress's daily clean, and addresses that keep changing filled the table. `Adapter\CacheTally` now keeps the counts in 1,024 transients at most, each holding the hashes that fall to it and when each ends, and a row lasts no longer than its last count. A request costs two writes or four. With an object cache nothing changes. A table would be simpler and is Zach's to ask for (D-112).
 - **The route's query count is held** (auditor 8): the same warm and cold for a step of 30 parts and of 60, the limit's own writes left out since their number moves with the second.
-- **Each row's buttons and fold are named with the row** (auditor 9), by `aria-labelledby` on the button and the row's legend: "Move up Slot: Trucks".
+- **Each row's buttons and fold are named with the row** (auditor 9), by `aria-labelledby` on the button and the row's legend: "Move up Slot: Trucks". Revised by D-120: the buttons carry the legend's words as hidden text.
 - **`composer api:check` holds the route's arguments, the error codes and what each ability takes** (spec reviewer 1). `Rest\StateRoute::arguments()` is the route's arguments, read by `tools/api-surface.php` as the abilities' schemas are.
 - **A site on 0.3.1 gains the table** (spec reviewer 2): `MigrationTest` starts from that release's version and states. No code changed.
 
@@ -1585,3 +1585,16 @@ Left for Zach, since each is his under CLAUDE.md: the route's prices where tax d
 
 **Status:** Accepted.
 
+
+### D-120 · A row's buttons are named with hidden text, and a percentage is read with one cast · 2026-11-11
+
+Two failures of the audit's second full run, both in what D-119 and the settings added.
+
+- **The buttons.** D-119 named each row's Move up and Move down with `aria-labelledby` on the button and the row's legend. In Firefox, the page crashed when axe read the Build tab after a row had moved ("Error: frame.evaluate: Page crashed", `firefox-desktop` and `firefox-phone`). It crashed the same with the button named from a span inside it and the legend, so the reference to the legend is the cause, not the button naming itself. The buttons now hold the legend's words in a `screen-reader-text` span, as WordPress's own list tables name their row actions: the name is the same, "Move up Slot: Trucks", and nothing is looked up when a row moves. The fold keeps `aria-labelledby`: it crashed nothing, and a `summary` is not moved by a press.
+- **The percentage.** `BuildTerms::discountFrom()` cast the whole part and the places apart and added them. Take either cast away and PHP adds the numeric strings to the same number, so no test could tell, and only static analysis caught the two mutants (D-063 allows none unlisted). It now joins the two strings and casts once; without that cast the method returns a string and every case fails.
+
+**Red runs.** `build-tab.spec.ts` "a slot's row moves by its buttons from the keyboard, and the kit keeps the order", Firefox: "Error: frame.evaluate: Page crashed". `composer infection`: "Caught by static analysis and by no test: CastInt src/Domain/Kit/BuildTerms.php, 2 (allowed 0), at line(s) 124, 124."
+
+**Deliberate breaks.** With `aria-labelledby` back on the buttons, the Firefox test crashes as above. `BuildTabTest::test_each_rows_buttons_and_fold_are_named_with_the_row` holds the markup, and fails when a button is named from the legend again.
+
+**Status:** Accepted.

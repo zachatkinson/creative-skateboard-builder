@@ -121,7 +121,7 @@ final readonly class BuildTerms {
 		if ( ! is_string( $value ) || 1 !== preg_match( self::PERCENT, $value, $found ) ) {
 			return null;
 		}
-		return (int) $found['whole'] * 100 + (int) str_pad( $found['places'] ?? '', 2, '0' );
+		return (int) ( $found['whole'] . str_pad( $found['places'] ?? '', 2, '0' ) );
 	}
 
 	/**
