@@ -491,3 +491,22 @@ The server keeps it so, whichever cart or plugin makes the change:
 | `cbuild_build_incomplete` | 0.5.0 | A notice | A build in the cart had lost its kit's line or one of its parts, and the rest of it was removed. |
 
 A kit's line raised past what the shop has of a part is refused as `cbuild_build_refused`, with a `part_short` problem for each such part.
+
+### Order item keys
+
+Both checkouts write them, on `woocommerce_checkout_create_order_line_item`. They are kept on uninstall, with the shop's orders.
+
+| Key | Since | On | What it holds |
+| --- | --- | --- | --- |
+| `_cbuild_id` | 0.5.0 | Every item of a build | The build's identifier, the `id` of the cart's `cbuild`. Two builds on one order have two. |
+| `_cbuild_role` | 0.5.0 | Every item of a build | `kit` or `part`. |
+| `_cbuild_parent` | 0.5.0 | A part's item | Its kit's order item ID. |
+| `_cbuild_children` | 0.5.0 | The kit's item | Its parts' order item IDs, in step order. |
+| `_cbuild_slot` | 0.5.0 | A part's item | The key of the slot it fills. |
+| `_cbuild_snapshot` | 0.5.0 | The kit's item | The build as sold: `schema_version` (1), `kit`, `assembly` and `picks`, slot key to `label` (the slot's, as the shopper read it), `name` (the part's), `part` (its product ID), `quantity` (how many one build takes) and `specs` (spec key to value, as the index held them). |
+
+The kit's item also carries two lines without an underscore, which WooCommerce shows wherever it shows an item's meta: Assembly (Yes or No) and Build (each slot's label, part and quantity). Their names and values are written in the shop's language as the order is placed.
+
+`_cbuild_parent` and `_cbuild_children` are written once the order's items are saved: on `woocommerce_checkout_order_created` for the classic checkout, and on `woocommerce_store_api_checkout_update_order_meta` and `woocommerce_store_api_checkout_order_processed` for the Store API's. Read a build by them after those, not in `woocommerce_checkout_create_order_line_item`.
+
+The plugin's keys are added to `woocommerce_hidden_order_itemmeta`, so the order screen neither lists them nor offers them for editing. On `woocommerce_order_item_name` a part's name is given as its slot's label and its name.

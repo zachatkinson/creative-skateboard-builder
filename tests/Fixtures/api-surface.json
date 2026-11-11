@@ -66,6 +66,14 @@
         "cbuild_parent",
         "cbuild_slot"
     ],
+    "order_item_keys": [
+        "_cbuild_children",
+        "_cbuild_id",
+        "_cbuild_parent",
+        "_cbuild_role",
+        "_cbuild_slot",
+        "_cbuild_snapshot"
+    ],
     "settings_keys": [
         "attribute_mapping",
         "build_discount",

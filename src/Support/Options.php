@@ -94,6 +94,23 @@ final class Options {
 	public const CART_SLOT     = 'cbuild_slot';
 
 	/**
+	 * Order item meta (spec: Data model, Order items). Hidden from customers by their underscore, and kept with the
+	 * shop's order records for good: a key is never renamed.
+	 */
+	public const ORDER_BUILD    = '_cbuild_id';
+	public const ORDER_ROLE     = '_cbuild_role';
+	public const ORDER_PARENT   = '_cbuild_parent';
+	public const ORDER_CHILDREN = '_cbuild_children';
+	public const ORDER_SLOT     = '_cbuild_slot';
+	public const ORDER_SNAPSHOT = '_cbuild_snapshot';
+
+	/**
+	 * What `_cbuild_role` holds: the kit's item, or a part's.
+	 */
+	public const ROLE_KIT  = 'kit';
+	public const ROLE_PART = 'part';
+
+	/**
 	 * Product meta: a part's own specs, a value per spec key.
 	 *
 	 * @since 0.3.0
@@ -264,6 +281,17 @@ final class Options {
 	 */
 	public static function cartKeys(): array {
 		return array( self::CART_BUILD, self::CART_CHILDREN, self::CART_PARENT, self::CART_SLOT );
+	}
+
+	/**
+	 * Every key the plugin puts on an order item.
+	 *
+	 * @since 0.5.0
+	 *
+	 * @return list<string>
+	 */
+	public static function orderItemKeys(): array {
+		return array( self::ORDER_BUILD, self::ORDER_ROLE, self::ORDER_PARENT, self::ORDER_CHILDREN, self::ORDER_SLOT, self::ORDER_SNAPSHOT );
 	}
 
 	/**

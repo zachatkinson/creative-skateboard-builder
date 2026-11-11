@@ -13,7 +13,7 @@
  *                         defines for others to read;
  *   options, jobs, meta,
  *   product types, cart
- *   item keys             Support\Options;
+ *   and order item keys   Support\Options;
  *   tables                Support\Tables;
  *   site transients       Support\Options::siteTransients();
  *   REST routes           register_rest_route( 'cbuild/v1', ... );
@@ -237,6 +237,7 @@ $cbuild_surface = array(
 	'post_types'        => cbuild_api_list( $cbuild_options, 'postTypes' ),
 	'product_types'     => cbuild_api_list( $cbuild_options, 'productTypes' ),
 	'cart_item_keys'    => cbuild_api_list( $cbuild_options, 'cartKeys' ),
+	'order_item_keys'   => cbuild_api_list( $cbuild_options, 'orderItemKeys' ),
 	'settings_keys'     => cbuild_api_list( $cbuild_options, 'settingsKeys' ),
 	'rest_routes'       => array_map( static fn( string $r ): string => 'cbuild/v1/' . ltrim( $r, '/' ), cbuild_api_matches( $cbuild_php, "/register_rest_route\\(\\s*(?:self::NAMESPACE|'cbuild\\/v1')\\s*,\\s*'([^']+)'/" ) ),
 	'rest_error_codes'  => cbuild_api_matches( array_merge( cbuild_api_files( $cbuild_root . '/src/Rest', '.php' ), cbuild_api_files( $cbuild_root . '/src/Abilities', '.php' ) ), "/(?:new WP_Error\\(\\s*|'code'\\s*=>\\s*)'(cbuild_[a-z0-9_]+)'/" ),

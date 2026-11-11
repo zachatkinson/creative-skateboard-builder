@@ -150,6 +150,35 @@ final class BuildCart {
 	}
 
 	/**
+	 * A build as it is sold, for the order to keep: each slot's part, how many of it one build takes, and the
+	 * part's specs as the shop has them at that moment. A part the shop can no longer read is kept with no specs.
+	 *
+	 * @since 0.5.0
+	 *
+	 * @param Build $build The build.
+	 * @return array{schema_version: int, kit: int, assembly: bool, picks: array<string, array{part: int, quantity: int, specs: array<string, string>}>}
+	 */
+	public function snapshot( Build $build ): array {
+		$slots = $this->kits->kit( $build->kit )?->slots;
+		$picks = array();
+		foreach ( $build->picks as $key => $part ) {
+			$slot          = $slots?->get( $key );
+			$read          = null === $slot ? null : $this->kits->picked( $slot, $part );
+			$picks[ $key ] = array(
+				'part'     => $part,
+				'quantity' => $build->quantities[ $key ],
+				'specs'    => null === $read ? array() : $read->specs->toIndex(),
+			);
+		}
+		return array(
+			'schema_version' => Build::VERSION,
+			'kit'            => $build->kit,
+			'assembly'       => $build->assembly,
+			'picks'          => $picks,
+		);
+	}
+
+	/**
 	 * What a part of a build is charged at: the shop's price for it, less the build discount of the shop's
 	 * settings, rounded half up to the minor unit as the builder's total rounds it.
 	 *

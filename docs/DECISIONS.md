@@ -1759,3 +1759,24 @@ Milestone 5's third step. `Cart\PriceHooks` reads WooCommerce's objects; the two
 **Deliberate breaks** are in the commit's message.
 
 **Status:** Accepted.
+
+### D-131 · A build on the order · 2026-11-11
+
+Milestone 5's orders step. `Order\OrderHooks` writes; what is written of the parts' specs is `Service\BuildCart::snapshot()`.
+
+- **One hook serves both checkouts.** `woocommerce_checkout_create_order_line_item` (`includes/class-wc-checkout.php:612`) is fired by `WC_Checkout::create_order_line_items()`, which the Store API's `OrderController::update_line_items_from_cart()` calls too (`src/StoreApi/Utilities/OrderController.php:845`). Confirmed in the source, as the spec says.
+- **The tie is by the build's identifier, not by cart keys.** The spec says the cart keys are turned into order item IDs once the order is saved. An order item does not keep its cart key, so each item is given `_cbuild_id`, the build's UUID, as it is made, and once the items have IDs the parts with a kit's identifier are that kit's. Nothing is held in memory between the two hooks, so it is right whichever request finishes the order.
+- **When the tie is made.** `woocommerce_checkout_order_created` (`includes/class-wc-checkout.php:522`) for the classic checkout. For the Store API, `woocommerce_store_api_checkout_update_order_meta` (`src/StoreApi/Routes/V1/Checkout.php:871`) and `woocommerce_store_api_checkout_order_processed` (`:708`).
+- **The Store API makes an order's items more than once.** Since WooCommerce 10.8 the draft is made when the order is placed (`Checkout.php:807`), and kept where the payment is refused. On the next try every line item is removed and made again, with new IDs. The tie is therefore made on each of the hooks above, from the items as they are then; `OrderTest` refuses a payment, changes the cart and places the order, and the build is tied to the new items.
+- **Asking again saves nothing.** An item is saved only where its `_cbuild_parent` or `_cbuild_children` differs from what is right, so a hook that fires twice costs a read.
+- **`_cbuild_parent` is stored as the ID's digits.** `WC_Data::update_meta_data()` takes a string or an array, and item meta reads back from the database as a string in any case.
+- **The snapshot holds each slot's label and each part's name** beside the spec's picks and specs. The order's emails and the assembly ticket are read long after, when a slot may be renamed or a product deleted, and the snapshot is what they can still trust. The label is the one `cbuild_slot_label` gave the shopper.
+- **A part the shop can no longer read at that moment** is kept in the snapshot with no specs. The cart's check has already stopped an order for such a build; this is for a plugin that places an order past it, and it must not be the reason an order fails.
+- **The two visible lines are written in the shop's language as the order is placed,** names and values both, as WooCommerce stores a variation's attributes: an order is a record of what the customer was shown.
+- **The order screen.** It lists every item meta key not named in `woocommerce_hidden_order_itemmeta` (`src/Internal/Utilities/OrderItemMetaUtil.php:30`), underscore or not, and offers each for editing. The plugin's six are added there; the snapshot is an array, and would print as nothing a manager could read or safely change.
+- **A part's name** is given with its slot on `woocommerce_order_item_name` (`templates/order/order-details-item.php:33`, `templates/emails/email-order-items.php:92`, `includes/admin/meta-boxes/views/html-order-item.php:30`). Grouping the items on those pages, and the ticket, are milestone 8's.
+- **Stock is WooCommerce's.** Each part is an ordinary item of its product: reduced when the order is held or paid, given back when it fails (`includes/wc-stock-functions.php:162`, since 11.0), and restocked by a refund. The kit's item manages no stock. `OrderTest` walks all three and the plugin has no code for any.
+
+**Red run.** Before `Order\OrderHooks`: "OrderTest::test_the_classic_checkout_writes_the_build_to_the_order: Failed asserting that actual size 0 matches expected size 1." **Deliberate breaks** are in the commit's message.
+
+**Status:** Accepted.

@@ -328,6 +328,22 @@ final class BuildCartTest extends TestCase {
 		self::assertFalse( $this->builds->couponTakes( true, true, true, false ) );
 	}
 
+	public function test_the_order_keeps_each_part_with_its_specs_as_sold(): void {
+		$build    = new Build( 'a', self::KIT, array( 'deck' => 103, 'trucks' => 149 ), array( 'deck' => 1, 'trucks' => 2 ), true );
+		$snapshot = $this->builds->snapshot( $build );
+		self::assertSame( array( 'schema_version', 'kit', 'assembly', 'picks' ), array_keys( $snapshot ) );
+		self::assertSame( array( 1, self::KIT, true ), array( $snapshot['schema_version'], $snapshot['kit'], $snapshot['assembly'] ) );
+		self::assertSame( array( 'deck', 'trucks' ), array_keys( $snapshot['picks'] ) );
+		self::assertSame( array( 149, 2 ), array( $snapshot['picks']['trucks']['part'], $snapshot['picks']['trucks']['quantity'] ) );
+		self::assertSame( Shop::parts()['deck'][2]->specs->toIndex(), $snapshot['picks']['deck']['specs'] );
+		self::assertNotSame( array(), $snapshot['picks']['deck']['specs'] );
+
+		$this->kits->now[149] = false;
+		self::assertSame( array( 'part' => 149, 'quantity' => 2, 'specs' => array() ), $this->builds->snapshot( $build )['picks']['trucks'], 'a part the shop no longer sells' );
+		unset( $this->kits->kits[ self::KIT ] );
+		self::assertSame( array( 'part' => 103, 'quantity' => 1, 'specs' => array() ), $this->builds->snapshot( $build )['picks']['deck'], 'a kit that no longer reads' );
+	}
+
 	public function test_a_stored_build_reads_back_and_anything_else_does_not(): void {
 		$build = new Build( 'build-1', self::KIT, array( 'deck' => 103 ), array( 'deck' => 1 ), true );
 		self::assertEquals( $build, Build::read( $build->toArray() ) );
