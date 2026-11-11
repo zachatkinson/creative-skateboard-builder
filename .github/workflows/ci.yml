@@ -293,10 +293,26 @@ jobs:
         with:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ steps.browsers.outputs.version }}-${{ steps.browsers.outputs.projects == '' && 'every' || 'two' }}
-      - run: npx playwright install --with-deps ${{ steps.browsers.outputs.engines }}
+      # apt can hang for as long as the job has when the runner cannot reach Ubuntu's mirrors: two jobs sat here for 15
+      # and 19 minutes on 11 November 2026 (D-123). Each try is stopped after a few minutes, and there are three.
+      - name: Playwright's browsers and their system packages (three tries, five minutes each)
         if: (matrix.leg == 'newest' || matrix.leg == 'oldest') && steps.playwright-cache.outputs.cache-hit != 'true'
-      - run: npx playwright install-deps ${{ steps.browsers.outputs.engines }}
+        run: |
+          for try in 1 2 3; do
+            if timeout 300 npx playwright install --with-deps ${{ steps.browsers.outputs.engines }}; then exit 0; fi
+            echo "::warning::Try ${try} of Playwright's install did not finish."
+            sleep 30
+          done
+          exit 1
+      - name: The system packages Playwright's cached browsers need (three tries, three minutes each)
         if: (matrix.leg == 'newest' || matrix.leg == 'oldest') && steps.playwright-cache.outputs.cache-hit == 'true'
+        run: |
+          for try in 1 2 3; do
+            if timeout 180 npx playwright install-deps ${{ steps.browsers.outputs.engines }}; then exit 0; fi
+            echo "::warning::Try ${try} of Playwright's system packages did not finish."
+            sleep 30
+          done
+          exit 1
       - run: npm run test:e2e -- ${{ steps.browsers.outputs.projects }}
         if: matrix.leg == 'newest' || matrix.leg == 'oldest'
       - name: Lighthouse CI (LCP, CLS, TBT, SEO on the mobile profile)

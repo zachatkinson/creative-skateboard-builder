@@ -92,12 +92,14 @@ A kit of seven slots over 2,000 simple products: 500 trucks and 250 in each othe
 | --- | --- | --- | --- | --- |
 | Cold: WordPress's cache emptied before each request, as on a site with no persistent object cache | 58 ms | 56 ms | 66 ms | 42 |
 | Warm: the cache as the last request left it | 41 ms | 35 ms | 45 ms | 15 |
-| The first request after one part moves, cache emptied, 20 requests | 71 ms | | 73 ms | |
+| The first request after one part moves, cache emptied, 40 requests since D-123 (the figures are of 20) | 71 ms | | 73 ms | |
 | With no row kept: the first request in a price context | 470 ms, one request | | | 100 |
 
 The first three are inside the 80 ms budget and held to it. They hold because a request loads no product to learn a slot's parts: what a build needs of each part is a row of the plugin's own table, `cbuild_parts`, and a part that moves has its row deleted and is the only one read from the shop again (D-116). Before that, the same run took 489 ms at p95, 440 ms of it loading 2,000 products.
 
 The last row is outside the budget and is not held to it: it is what one request pays the first time a kit is asked for in a price context (a currency, a language, a set of tax rates), and again after a reindex or a brand or attribute term is edited, which empty the table. The benchmark prints it on every run so that it is known.
+
+The figures move with the machine. On 11 November 2026 the same Mac, busier, measured 67 to 70 ms cold at p95 and 71 ms after a part moves, for this code and for the commit the table was taken from alike; GitHub's hosted runner measured 66 ms cold, 46 ms warm and 81 ms after a part moves on a sample of 20, which failed the run (D-123). The budget is held on every run, so its headroom on a shared runner is about 14 ms.
 
 An earlier design of this milestone, never released, kept each slot's list in a transient: 53 ms cold, but 435 ms on the first request after any one product moved. The table costs 5 ms cold and takes that request to 71 ms.
 

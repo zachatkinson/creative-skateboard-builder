@@ -1631,3 +1631,14 @@ One blocker, one should-fix and four minors, on pull request #30. Each fix has a
 **Deliberate breaks.** With the sort commented out, `composer api:check` fails on this Mac as it did in CI. With the end field ignored, the capability checks removed and the fold's attribute taken out, the three `BuildTabTest` cases fail as above. With the route's check moved back after the state, the route's case fails as above.
 
 **Status:** Accepted.
+
+### D-123 · The second full CI run of milestone 4: apt that hangs, and a benchmark decided by one slow request · 2026-11-11
+
+Neither is a fault of the plugin's code; both cost billed minutes.
+
+- **Playwright's system packages are installed in tries that end.** On run 43057146618 the newest and oldest legs sat on `npx playwright install-deps` for 15 and 19 minutes, and again on the re-run: the runners could not resolve Ubuntu's mirrors ("Temporary failure resolving 'azure.archive.ubuntu.com'", and the same for `archive.ubuntu.com` and `security.ubuntu.com`), and apt waits for as long as the job has. From outside, the Azure mirror failed for a while and the other two answered throughout. Each of the two install steps now runs up to three times, each try stopped by `timeout` after three minutes (five where the browsers are downloaded too). A hang costs nine minutes at most, not the job's sixty, and a short outage is ridden out. Pointing apt at the main mirror, which Zach found suggested, is not added: the runners failed to resolve that one as well. It stays on issue #32 with caching the packages.
+- **The benchmark's request after a part moves is measured 40 times, as the cold and warm runs are.** On the re-run the newest leg failed with "The state route, after one part moves. Failed asserting that 81.024766 is less than 80.0." The cold and warm runs passed at 65.8 and 45.6 ms. That case took 20 samples, so its 95th percentile was the second slowest request, and two slow ones on a shared runner decided it; cold and warm take 40. It takes 40 now, from an address of its own, since the three runs together are more than one address may ask in a minute, which the first try at this found out with a 429. It also prints its median and its queries. The budget is not moved: 80 ms at p95.
+- **Checked before settling on that:** whether the code had slowed. It had not. The route as it was before D-122's change, and the whole tree at the commit `docs/BENCHMARK.md`'s figures came from, both measure the same on this Mac today (cold median 68 ms) as the current code. The Mac is slower today than when the table was taken, which the benchmark's page now says.
+- **For Zach:** the budget is held on GitHub's shared runners with about 14 ms to spare when cold. If it fails there again on a run where the code has not changed, how a time budget is held on hardware nobody controls is his to decide; it is not decided here.
+
+**Status:** Accepted.

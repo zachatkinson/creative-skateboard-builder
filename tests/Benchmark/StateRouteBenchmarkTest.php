@@ -186,13 +186,21 @@ final class StateRouteBenchmarkTest extends IntegrationTestCase {
 		}
 
 		// A part moves, as an order's stock does: its row alone is read again, inside the budget (D-116).
+		// Another visitor's address: the three runs together are more requests than one address may make in a minute.
+		$_SERVER['REMOTE_ADDR'] = '203.0.113.8';
 		$times = array();
-		foreach ( array_slice( $ids['trucks'], 0, 20 ) as $truck ) {
+		$moved = array();
+		// As many requests as the two runs above, so that its 95th percentile is the same statistic as theirs: of 20, it
+		// was the second slowest, and one slow request on a shared runner decided it (D-123).
+		foreach ( array_slice( $ids['trucks'], 0, self::REQUESTS ) as $truck ) {
 			wc_update_product_stock( $truck, 3, 'set' );
 			wp_cache_flush();
-			$times[] = $ask( $ids['deck'][0] )[0];
+			[ $took, $asked ] = $ask( $ids['deck'][0] );
+			$times[]          = $took;
+			$moved[]          = $asked;
 		}
-		self::say( sprintf( 'state route, the first request after one part moves: p95 %.1f ms, slowest %.1f ms', self::p95( $times ), max( $times ) ) );
+		sort( $times );
+		self::say( sprintf( 'state route, the first request after one part moves: p95 %.1f ms, median %.1f ms, slowest %.1f ms, %d queries at most', self::p95( $times ), $times[ (int) ( count( $times ) / 2 ) ], max( $times ), max( $moved ) ) );
 		self::assertLessThan( self::BUDGET, self::p95( $times ), 'The state route, after one part moves.' );
 
 		// Not held to the budget, and printed so that it is known: the first request in a price context no one has
