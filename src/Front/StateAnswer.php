@@ -31,6 +31,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  *   on lists them.
  * - **24 at a time** (spec: Performance), of those offered and of those hidden. Parts the shop can supply come before
  *   those it cannot, each in the engine's own order, and the part the step counts is always among them.
+ * - **The owner's own words through their filters:** `cbuild_slot_label`, `cbuild_preset_label` and `cbuild_kit_text`.
  * - **Cards for those and no others,** asked for in one call: the options listed, the parts the total counts, and the
  *   parts a change list names.
  *
@@ -68,7 +69,7 @@ final class StateAnswer {
 		$labels  = array();
 		$current = null;
 		foreach ( $state->steps as $step ) {
-			$labels[ $step->slot->key ] = $step->slot->label;
+			$labels[ $step->slot->key ] = self::label( $step->slot->label, $step->slot->key, $state->id );
 			if ( $step->slot->key === $state->step ) {
 				$current = $step;
 			}
@@ -131,8 +132,8 @@ final class StateAnswer {
 			}
 			$steps[] = array(
 				'slot'        => $step->slot->key,
-				'label'       => $step->slot->label,
-				'help'        => $step->slot->help,
+				'label'       => $labels[ $step->slot->key ],
+				'help'        => self::text( $step->slot->help, 'slot_help', $state->id, $step->slot->key ),
 				'required'    => $step->slot->required,
 				'units'       => $step->slot->units,
 				'picked'      => $step->picked?->part->id,
@@ -184,10 +185,28 @@ final class StateAnswer {
 			}
 		}
 
+		$presets = array();
+		foreach ( $state->kit->presets as $at => $preset ) {
+			$picks = array();
+			foreach ( $preset->picks as $slot => $part ) {
+				$picks[] = compact( 'slot', 'part' );
+			}
+			$presets[] = array(
+				'name'        => self::preset( $preset->name, $at, $state->id ),
+				'description' => self::text( $preset->description, 'preset_description', $state->id, (string) $at ),
+				'picks'       => $picks,
+			);
+		}
+
 		return array(
 			'kit'      => $state->id,
 			'step'     => $state->step,
 			'ready'    => $state->ready(),
+			'texts'    => array(
+				'lead_time'      => self::text( $state->kit->assembly->leadTime, 'lead_time', $state->id ),
+				'returns_notice' => self::text( $state->kit->assembly->returnsNotice, 'returns_notice', $state->id ),
+			),
+			'presets'  => $presets,
 			'steps'    => $steps,
 			'options'  => array_map( static fn( Option $shown ): array => $option( $shown, $current ), $offered ),
 			'hidden'   => array_map( static fn( Option $shown ): array => $option( $shown, $current ), $hidden ),
@@ -203,6 +222,75 @@ final class StateAnswer {
 				'total'    => $money( $state->quote->total ),
 			),
 		);
+	}
+
+	/**
+	 * A slot's label, as another plugin would have it said (spec: French and other languages). An answer that is no
+	 * text leaves the owner's words as they are, here and in the two methods below.
+	 *
+	 * @param string $label The owner's label.
+	 * @param string $slot  The slot's key.
+	 * @param int    $kit   The kit product's ID.
+	 */
+	private static function label( string $label, string $slot, int $kit ): string {
+		/**
+		 * Filter a slot's label as a shopper reads it. The label is the shop owner's own words, so no translation file
+		 * holds it: a translation plugin answers here.
+		 *
+		 * @since 0.4.0
+		 *
+		 * @param string $label The label the owner typed.
+		 * @param string $slot  The slot's key, such as trucks.
+		 * @param int    $kit   The kit product's ID.
+		 */
+		$said = apply_filters( 'cbuild_slot_label', $label, $slot, $kit );
+		return is_string( $said ) ? $said : $label;
+	}
+
+	/**
+	 * A preset's name, as another plugin would have it said.
+	 *
+	 * @param string $name     The owner's name for it.
+	 * @param int    $position Where the preset stands among the kit's, from 0.
+	 * @param int    $kit      The kit product's ID.
+	 */
+	private static function preset( string $name, int $position, int $kit ): string {
+		/**
+		 * Filter a preset's name as a shopper reads it.
+		 *
+		 * @since 0.4.0
+		 *
+		 * @param string $name     The name the owner typed.
+		 * @param int    $position Where the preset stands among the kit's, from 0.
+		 * @param int    $kit      The kit product's ID.
+		 */
+		$said = apply_filters( 'cbuild_preset_label', $name, $position, $kit );
+		return is_string( $said ) ? $said : $name;
+	}
+
+	/**
+	 * Another of the owner's texts, as another plugin would have it said.
+	 *
+	 * @param string $text  The owner's words.
+	 * @param string $field Which text it is.
+	 * @param int    $kit   The kit product's ID.
+	 * @param string $of    The slot's key or the preset's position, for a text that belongs to one.
+	 */
+	private static function text( string $text, string $field, int $kit, string $of = '' ): string {
+		/**
+		 * Filter one of a kit's texts as a shopper reads it: a slot's help, a preset's description, the lead time or
+		 * the returns notice.
+		 *
+		 * @since 0.4.0
+		 *
+		 * @param string $text  The text the owner typed.
+		 * @param string $field Which text: `slot_help`, `preset_description`, `lead_time` or `returns_notice`.
+		 * @param int    $kit   The kit product's ID.
+		 * @param string $of    A slot's key for `slot_help`, a preset's position from 0 for `preset_description`, and
+		 *                      an empty string otherwise.
+		 */
+		$said = apply_filters( 'cbuild_kit_text', $text, $field, $kit, $of );
+		return is_string( $said ) ? $said : $text;
 	}
 
 	/**

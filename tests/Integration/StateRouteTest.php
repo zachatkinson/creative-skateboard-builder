@@ -93,7 +93,34 @@ final class StateRouteTest extends IntegrationTestCase {
 		$slots                        = KitDocuments::slots();
 		$slots['slots'][0]['sources'] = array( 'categories' => array( $decks ) );
 		$slots['slots'][1]['sources'] = array( 'categories' => array( $trucks ) );
-		$this->kit                    = KitFactory::kit( 'Complete', array( Options::META_KIT_SLOTS => $slots ) )->get_id();
+		$slots['slots'][1]['help']    = 'Sold in pairs.';
+		$street                       = array_fill_keys( array( 'wheels', 'bearings', 'hardware', 'grip' ), $this->parts['deck 8.0'] );
+		$this->kit                    = KitFactory::kit(
+			'Complete',
+			array(
+				Options::META_KIT_SLOTS    => $slots,
+				Options::META_KIT_PRESETS  => array(
+					'schema_version' => 1,
+					'presets'        => array(
+						array(
+							'name'        => 'Street',
+							'description' => 'For ledges.',
+							'picks'       => array(
+								'deck'   => $this->parts['deck 8.0'],
+								'trucks' => $this->parts['truck 139'],
+							) + $street,
+						),
+					),
+				),
+				Options::META_KIT_ASSEMBLY => array(
+					'schema_version' => 1,
+					'default_on'     => false,
+					'fee'            => '15',
+					'lead_time'      => 'Two working days.',
+					'returns_notice' => 'An assembled board goes back whole.',
+				),
+			)
+		)->get_id();
 	}
 
 	public function tear_down(): void {
@@ -528,5 +555,103 @@ final class StateRouteTest extends IntegrationTestCase {
 				self::assertGreaterThan( time(), $expires );
 			}
 		}
+	}
+
+	public function test_a_plugin_that_answers_for_the_owners_words_changes_what_the_route_says(): void {
+		$plain = $this->answer();
+		self::assertSame( 'Trucks', $plain['steps'][1]['label'] );
+		self::assertSame( 'Sold in pairs.', $plain['steps'][1]['help'] );
+		self::assertSame( 'Street', $plain['presets'][0]['name'] );
+		self::assertSame( 'For ledges.', $plain['presets'][0]['description'] );
+		self::assertSame( 'Two working days.', $plain['texts']['lead_time'] );
+		self::assertSame( 'An assembled board goes back whole.', $plain['texts']['returns_notice'] );
+
+		$kit = $this->kit;
+		add_filter( 'cbuild_slot_label', static fn( string $label, string $slot, int $id ): string => 'trucks' === $slot && $kit === $id ? 'Trucks (paire)' : $label, 10, 3 );
+		add_filter( 'cbuild_preset_label', static fn( string $name, int $position, int $id ): string => 0 === $position && $kit === $id ? 'Rue' : $name, 10, 3 );
+		add_filter(
+			'cbuild_kit_text',
+			static fn( string $text, string $field, int $id, string $of ): string => array(
+				'slot_help trucks'     => 'Vendus en paires.',
+				'preset_description 0' => 'Pour les rebords.',
+				'lead_time '           => 'Deux jours ouvrables.',
+				'returns_notice '      => 'Une planche assemblée revient entière.',
+			)[ "{$field} {$of}" ] ?? $text,
+			10,
+			4
+		);
+
+		$said = $this->answer();
+		self::assertSame( 'Deck', $said['steps'][0]['label'], 'A label the plugin did not answer for is the owner\'s.' );
+		self::assertSame( 'Trucks (paire)', $said['steps'][1]['label'] );
+		self::assertSame( 'Vendus en paires.', $said['steps'][1]['help'] );
+		self::assertSame( 'Rue', $said['presets'][0]['name'] );
+		self::assertSame( 'Pour les rebords.', $said['presets'][0]['description'] );
+		self::assertSame( 'Deux jours ouvrables.', $said['texts']['lead_time'] );
+		self::assertSame( 'Une planche assemblée revient entière.', $said['texts']['returns_notice'] );
+		self::assertContains( 'Trucks (paire): nothing is chosen yet.', array_column( $said['problems'], 'message' ) );
+	}
+
+	public function test_a_plugin_that_rules_a_part_out_takes_it_from_the_route(): void {
+		$query = array(
+			'picks' => array( 'deck' => $this->parts['deck 8.5'] ),
+			'step'  => 'trucks',
+		);
+		$with  = $this->answer( $query );
+		self::assertSame( array( $this->parts['truck 149'] ), array_column( $with['options'], 'id' ) );
+		self::assertSame( $this->parts['truck 149'], $with['steps'][1]['recommended'] );
+
+		$out   = $this->parts['truck 149'];
+		$asked = array();
+		add_filter(
+			'cbuild_part_available',
+			static function ( bool $available, int $id, $product ) use ( $out, &$asked ): bool {
+				$asked[ $id ] = $product instanceof \WC_Product && $id === $product->get_id();
+				return $out === $id ? false : $available;
+			},
+			10,
+			3
+		);
+
+		$without = $this->answer( $query );
+		self::assertSame( array(), $without['options'] );
+		self::assertNull( $without['steps'][1]['recommended'] );
+		self::assertSame( 0, $without['steps'][1]['offered'] );
+		self::assertSame( array( $this->parts['truck 139'] ), array_column( $without['hidden'], 'id' ), 'The other trucks are still the slot\'s.' );
+		self::assertSame( array( $this->parts['deck 8.0'], $this->parts['deck 8.5'] ), array_column( $this->answer()['options'], 'id' ) );
+		self::assertTrue( $asked[ $out ], 'Asked with the part\'s ID and its product.' );
+
+		// Picked all the same, it is refused as any product that is not the slot's.
+		$picked = $this->answer( array( 'picks' => array( 'trucks' => $out ) ) );
+		self::assertSame( 'part_not_in_slot', $picked['refused'][0]['code'] );
+	}
+
+	public function test_a_plugin_that_prices_some_shoppers_apart_says_so_and_each_gets_their_own_card(): void {
+		$deck  = $this->parts['deck 8.0'];
+		$price = fn(): string => $this->answer()['options'][0]['card']['price'];
+		self::assertSame( '$60.00', $price() );
+
+		// A dealer's price, from a plugin that says nothing of it to the builder: the card kept is the one shown.
+		$dealer  = false;
+		$cheaper = static function ( $amount, $product ) use ( &$dealer, $deck ) {
+			return $dealer && $deck === $product->get_id() ? '45' : $amount;
+		};
+		add_filter( 'woocommerce_product_get_price', $cheaper, 10, 2 );
+		$dealer = true;
+		self::assertSame( '$60.00', $price(), 'Kept: nothing told the builder this shopper is priced apart.' );
+
+		// The plugin adds what tells its shoppers apart, and each kind has a card of its own.
+		add_filter(
+			'cbuild_price_context',
+			static function ( array $context ) use ( &$dealer ): array {
+				$context[] = $dealer ? 'dealer' : 'retail';
+				return $context;
+			}
+		);
+		self::assertSame( '$45.00', $price() );
+		$dealer = false;
+		self::assertSame( '$60.00', $price() );
+		$dealer = true;
+		self::assertSame( '$45.00', $price() );
 	}
 }

@@ -205,18 +205,27 @@ final class WooPartCards implements PartCards {
 				$rates[ $class ] = WC_Tax::get_rates( $class );
 			}
 		}
-		return md5(
-			(string) wp_json_encode(
-				array(
-					get_woocommerce_currency(),
-					wc_get_price_decimals(),
-					determine_locale(),
-					get_option( 'woocommerce_tax_display_shop' ),
-					wc_prices_include_tax(),
-					$rates,
-				)
-			)
+		$context = array(
+			get_woocommerce_currency(),
+			wc_get_price_decimals(),
+			determine_locale(),
+			get_option( 'woocommerce_tax_display_shop' ),
+			wc_prices_include_tax(),
+			$rates,
 		);
+		/**
+		 * Filter what a part's price depends on beside the part itself. A card is kept for each context a part is
+		 * asked in, so a plugin that shows some shoppers another price, a dealer's for one, adds what tells them
+		 * apart: a role, a price list's ID. Add only what the price depends on, since each new value is another card
+		 * to keep, and never anything that names a person. An answer that is no array leaves the context as it is.
+		 *
+		 * @since 0.4.0
+		 *
+		 * @param array<mixed> $context The currency, its decimals, the language, the tax display, whether prices are
+		 *                              entered with tax, and the tax rates that apply.
+		 */
+		$said = apply_filters( 'cbuild_price_context', $context );
+		return md5( (string) wp_json_encode( is_array( $said ) ? $said : $context ) );
 	}
 
 	/**

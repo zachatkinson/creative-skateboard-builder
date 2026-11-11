@@ -402,7 +402,29 @@ final class WooKits implements Kits {
 			&& 'publish' === $owner->get_status()
 			&& 'hidden' !== $owner->get_catalog_visibility()
 			&& '' === $owner->get_post_password()
-			&& $part->is_purchasable();
+			&& $part->is_purchasable()
+			&& self::available( $part );
+	}
+
+	/**
+	 * Whether no plugin rules the part out (spec: Pricing, stock, assembly and returns).
+	 *
+	 * @param WC_Product $part A part a shopper could be shown and could buy.
+	 */
+	private static function available( WC_Product $part ): bool {
+		/**
+		 * Filter whether a product or a variation may be a part of a build. A plugin that knows something of a part
+		 * WooCommerce does not, such as stock held elsewhere, rules it out here, and the builder then neither offers
+		 * nor sells it in any kit. It is asked only of a part a shopper could be shown and could buy, and anything but
+		 * false leaves the part in.
+		 *
+		 * @since 0.4.0
+		 *
+		 * @param bool       $available Whether the part may be used. Default true.
+		 * @param int        $id        The product's or the variation's ID.
+		 * @param WC_Product $part      The product or the variation.
+		 */
+		return false !== apply_filters( 'cbuild_part_available', true, $part->get_id(), $part );
 	}
 
 	/**

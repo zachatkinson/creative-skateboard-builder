@@ -1465,3 +1465,19 @@ Zach's answer on 10 November 2026 to whether `Rest/StateRoute.php`, `Adapter/Cac
 - **The rule is unchanged,** and adding to the list still needs Zach.
 
 **Status:** Accepted.
+
+### D-114 · The five filters · 2026-11-10
+
+`docs/SPEC.md` (Pricing, stock, assembly and returns; French and other languages; Performance) names five filters and what each is for, and leaves their arguments to the build.
+
+- **`cbuild_part_available` takes a part out; it does not mark it sold out.** `( bool $available, int $id, WC_Product $part )`, asked in `Adapter\WooKits` where a slot's parts are found, after WooCommerce's own tests (published, visible, purchasable), so it is asked only of a part that would otherwise be offered. A part ruled out is no candidate of any slot: it is not offered, not recommended, not a preset's valid pick, and a request that names it gets `part_not_in_slot`, as for any product that is not the slot's. The other reading, a part shown as sold out, would have the card say "In stock" in WooCommerce's words beside an option that cannot be picked; a plugin that wants a part shown as sold out sets its stock status, which WooCommerce and the builder both read. It has no kit or slot argument: a part's sources are read per slot, and a plugin that knows a part is unavailable knows it of the part. For Zach at the review.
+- **`cbuild_price_context` filters the list that is hashed,** `( array $context )`, in `Adapter\WooPartCards`. `StateRouteTest` shows why it is needed: a plugin that filters `woocommerce_product_get_price` for some shoppers and says nothing here has its shoppers shown the card kept for the others. `docs/HOOKS.md` says so, and says to add nothing that names a person: the context is hashed and the hash is all that is kept, but a context per person would also be a card per person.
+- **The owner's words: three filters, one field name.** `cbuild_slot_label( $label, $slot, $kit )` and `cbuild_preset_label( $name, $position, $kit )` are the two the spec names for labels. `cbuild_kit_text( $text, $field, $kit, $of )` takes the rest: a slot's help, a preset's description, the lead time and the returns notice, told apart by `$field`. A preset has no key, so it is named by its position, which the Build tab's order sets.
+- **An answer of the wrong type is ignored** and the owner's words stand, so a plugin's mistake does not put "Array" or nothing in front of a shopper. An answer is not escaped or cut: the route's answer is plain text and the page escapes it.
+- **The answer gained `texts` and `presets`.** The filters "the answer runs through" needed the words to be in the answer, and the page in milestone 6 needs both. A preset is its name, its description and its picks; its picture, its total and whether it holds a sold-out part are the page's to ask for.
+- **A label a plugin answers is the label everywhere in the answer:** the step's, the change list's, and the one a problem's sentence names its slot by. Each slot's label is asked for once an answer.
+- **Unit tests answer a filter** through `$GLOBALS['cbuild_test_filters']`, which the `apply_filters()` shim in `tests/Support/wp-shims.php` reads, so `Front\StateAnswer` stays in the mutation run with its filters: 190 of 190 mutants killed in `Front`.
+
+**Red run.** `StateAnswerTest::test_the_owners_own_words_are_in_the_answer_as_typed`, "InvalidDocument: presets_slot_not_filled": the test's presets left required slots empty, which the domain refuses. Deliberate breaks: with `cbuild_part_available` not asked, `StateRouteTest::test_a_plugin_that_rules_a_part_out_takes_it_from_the_route` fails, "Failed asserting that two arrays are identical"; with the context's answer not used, `test_a_plugin_that_prices_some_shoppers_apart_says_so_and_each_gets_their_own_card` fails, "Failed asserting that two strings are identical."
+
+**Status:** Accepted.

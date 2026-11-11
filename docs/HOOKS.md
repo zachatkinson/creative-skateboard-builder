@@ -386,7 +386,7 @@ It reads and changes nothing. Its arguments travel in the query:
 
 | Schema | Since | What the document holds |
 | --- | --- | --- |
-| `schema/state.json` | 0.4.0 | The route's answer (draft 4, with `definitions`): `kit`, `step`, `ready`, the `steps` (each slot's label, its pick, the part it starts on, how many parts it offers and hides, and the hidden ones counted by reason, each with a sentence), the current step's `options` and `hidden` parts (24 of each at most, each with its fit, its messages and its card), the picks that were `refused`, the `problems` that keep the build from the cart, the `changes` and the `total`. `npm run types` writes `assets/src/types/state.d.ts` from it. |
+| `schema/state.json` | 0.4.0 | The route's answer (draft 4, with `definitions`): `kit`, `step`, `ready`, the kit's `texts` (lead time and returns notice) and `presets`, the `steps` (each slot's label, its pick, the part it starts on, how many parts it offers and hides, and the hidden ones counted by reason, each with a sentence), the current step's `options` and `hidden` parts (24 of each at most, each with its fit, its messages and its card), the picks that were `refused`, the `problems` that keep the build from the cart, the `changes` and the `total`. `npm run types` writes `assets/src/types/state.d.ts` from it. |
 
 What the answer holds beside the schema's own descriptions:
 
@@ -404,4 +404,18 @@ Every answer of the route, a refusal included, carries `Cache-Control: no-store`
 | `cbuild_kit_not_found` | 0.4.0 | 404 | There is no such kit, or it is one a visitor may not see: a draft, a private kit or one behind a password. The answer is the same for all of them and for everyone. |
 | `cbuild_rate_limited` | 0.4.0 | 429 | The address has asked more often this minute than the setting `rate_limit` allows. `Retry-After` gives the seconds left of the minute. |
 | `cbuild_no_price` | 0.4.0 | 500 | The shop's currency has more decimals than a build can be priced in: more than eight. |
+
+### Filters
+
+Each is applied wherever the builder reads the thing it names, so the state route's answer, and from later milestones the page and the cart, all follow a plugin's answer.
+
+| Filter | Since | Arguments | What a plugin answers |
+| --- | --- | --- | --- |
+| `cbuild_part_available` | 0.4.0 | `bool $available` (true), `int $id`, `WC_Product $part` | Whether a product or a variation may be a part of a build. `false` rules it out: no kit offers it, and one picked all the same is refused as `part_not_in_slot`. Asked only of a part a shopper could be shown and could buy. Anything but `false` leaves the part in. |
+| `cbuild_price_context` | 0.4.0 | `array $context` | What a part's price depends on beside the part: the currency, its decimals, the language, the tax display, whether prices are entered with tax, and the tax rates that apply. A card is kept per context, so a plugin that shows some shoppers another price adds what tells them apart, such as a role or a price list's ID. Without it, a shopper may be shown the price kept for another. Add nothing that names a person. An answer that is no array is ignored. |
+| `cbuild_slot_label` | 0.4.0 | `string $label`, `string $slot`, `int $kit` | A slot's label as a shopper reads it, in place of the one the owner typed. `$slot` is the slot's key. The label answered is also the one a problem's sentence names the slot by. |
+| `cbuild_preset_label` | 0.4.0 | `string $name`, `int $position`, `int $kit` | A preset's name. `$position` is where the preset stands among the kit's, from 0. |
+| `cbuild_kit_text` | 0.4.0 | `string $text`, `string $field`, `int $kit`, `string $of` | Another of the kit's texts. `$field` is `slot_help` (`$of` is the slot's key), `preset_description` (`$of` is the preset's position), `lead_time` or `returns_notice` (`$of` is empty). |
+
+The last three are for the owner's own words, which no translation file holds: a translation plugin answers them. An answer that is not a string leaves the owner's words as they are. The plugin does not escape or cut what a filter answers; the answer is plain text, and the page that prints it escapes it.
 

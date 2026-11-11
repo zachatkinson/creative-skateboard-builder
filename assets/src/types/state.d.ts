@@ -17,6 +17,43 @@ export interface CbuildState {
 	 */
 	ready: boolean;
 	/**
+	 * The kit's own texts, as the owner typed them or as a plugin answered the filter cbuild_kit_text.
+	 */
+	texts: {
+		/**
+		 * How long assembly takes, or an empty string.
+		 */
+		lead_time: string;
+		/**
+		 * What the shop says of returning an assembled build, or an empty string.
+		 */
+		returns_notice: string;
+	};
+	/**
+	 * The kit's ready builds, six at most.
+	 *
+	 * Items: A preset.
+	 */
+	presets: {
+		/**
+		 * Its name.
+		 */
+		name: string;
+		/**
+		 * A line on who it is for, or an empty string.
+		 */
+		description: string;
+		/**
+		 * A part for each slot it fills.
+		 *
+		 * Items: A pick.
+		 */
+		picks: {
+			slot: string;
+			part: number;
+		}[];
+	}[];
+	/**
 	 * The kit's slots, in step order.
 	 *
 	 * Items: A step.

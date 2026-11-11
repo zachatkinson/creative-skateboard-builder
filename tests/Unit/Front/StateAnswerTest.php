@@ -15,6 +15,7 @@ use CreativeBranding\SkateboardBuilder\Domain\Kit\SlotKey;
 use CreativeBranding\SkateboardBuilder\Front\StateAnswer;
 use CreativeBranding\SkateboardBuilder\Service\BuildState;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Domain\Builds;
+use CreativeBranding\SkateboardBuilder\Tests\Support\Domain\KitDocuments;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Domain\Parts;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Domain\Shop;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\FakeMoney;
@@ -31,11 +32,40 @@ final class StateAnswerTest extends TestCase {
 
 	private const int KIT = 77;
 
+	private const array STREET = array(
+		SlotKey::DECK     => 101,
+		SlotKey::TRUCKS   => 139,
+		SlotKey::WHEELS   => 301,
+		SlotKey::BEARINGS => 501,
+		SlotKey::HARDWARE => 601,
+		SlotKey::GRIP     => 701,
+	);
+
+	private const array PARK = array( SlotKey::DECK => 103, SlotKey::TRUCKS => 149, SlotKey::WHEELS => 302 ) + self::STREET;
+
+	/**
+	 * Picks as the answer lists them.
+	 *
+	 * @param array<string, int> $picks Slot key to part ID.
+	 * @return list<array{slot: string, part: int}>
+	 */
+	private static function listed( array $picks ): array {
+		$listed = array();
+		foreach ( $picks as $slot => $part ) {
+			$listed[] = compact( 'slot', 'part' );
+		}
+		return $listed;
+	}
+
 	private InMemoryKits $kits;
 
 	private InMemoryShopSettings $settings;
 
 	private InMemoryPartCards $cards;
+
+	protected function tearDown(): void {
+		unset( $GLOBALS['cbuild_test_filters'] );
+	}
 
 	protected function setUp(): void {
 		$this->kits     = new InMemoryKits();
@@ -90,7 +120,7 @@ final class StateAnswerTest extends TestCase {
 	public function test_with_nothing_picked_the_first_step_lists_its_parts_each_with_its_card(): void {
 		$answer = $this->answer();
 
-		self::assertSame( array( 'kit', 'step', 'ready', 'steps', 'options', 'hidden', 'refused', 'problems', 'changes', 'total' ), array_keys( $answer ) );
+		self::assertSame( array( 'kit', 'step', 'ready', 'texts', 'presets', 'steps', 'options', 'hidden', 'refused', 'problems', 'changes', 'total' ), array_keys( $answer ) );
 		self::assertSame( self::KIT, $answer['kit'] );
 		self::assertSame( SlotKey::DECK, $answer['step'] );
 		self::assertFalse( $answer['ready'] );
@@ -144,6 +174,154 @@ final class StateAnswerTest extends TestCase {
 			$answer['total']
 		);
 		self::assertSame( array( array( 101, 102, 103 ) ), $this->cards->asked, 'One call, for the step on show and for no other.' );
+	}
+
+	/**
+	 * A kit with words of the owner's own: help on the trucks, two presets, a lead time and a returns notice.
+	 */
+	private function worded(): void {
+		$slots                     = KitDocuments::slots();
+		$slots['slots'][1]['help'] = 'Sold in pairs.';
+		$this->kits->add(
+			self::KIT,
+			KitDocuments::kit(
+				$slots,
+				null,
+				array(
+					'schema_version' => 1,
+					'presets'        => array(
+						array(
+							'name'        => 'Street',
+							'description' => 'For ledges and stairs.',
+							'picks'       => self::STREET,
+						),
+						array(
+							'name'  => 'Park',
+							'picks' => self::PARK,
+						),
+					),
+				),
+				array(
+					'schema_version' => 1,
+					'default_on'     => false,
+					'fee'            => '15',
+					'lead_time'      => 'Two working days.',
+					'returns_notice' => 'An assembled board goes back whole.',
+				)
+			),
+			Shop::parts()
+		);
+	}
+
+	public function test_the_owners_own_words_are_in_the_answer_as_typed(): void {
+		$bare = $this->answer();
+		self::assertSame(
+			array(
+				'lead_time'      => '',
+				'returns_notice' => '',
+			),
+			$bare['texts']
+		);
+		self::assertSame( array(), $bare['presets'] );
+
+		$this->worded();
+		$answer = $this->answer();
+		self::assertSame(
+			array(
+				'lead_time'      => 'Two working days.',
+				'returns_notice' => 'An assembled board goes back whole.',
+			),
+			$answer['texts']
+		);
+		self::assertSame(
+			array(
+				array(
+					'name'        => 'Street',
+					'description' => 'For ledges and stairs.',
+					'picks'       => self::listed( self::STREET ),
+				),
+				array(
+					'name'        => 'Park',
+					'description' => '',
+					'picks'       => self::listed( self::PARK ),
+				),
+			),
+			$answer['presets']
+		);
+		self::assertSame( 'Sold in pairs.', self::step( $answer, SlotKey::TRUCKS )['help'] );
+	}
+
+	public function test_a_plugins_answer_to_each_filter_is_what_the_answer_says(): void {
+		$this->worded();
+		$asked                           = array();
+		$GLOBALS['cbuild_test_filters'] = array(
+			'cbuild_slot_label'   => static function ( string $label, string $slot, int $kit ) use ( &$asked ): string {
+				$asked[] = array( 'cbuild_slot_label', $label, $slot, $kit );
+				return "[fr] {$label}";
+			},
+			'cbuild_preset_label' => static function ( string $name, int $position, int $kit ) use ( &$asked ): string {
+				$asked[] = array( 'cbuild_preset_label', $name, $position, $kit );
+				return "[fr] {$name}";
+			},
+			'cbuild_kit_text'     => static function ( string $text, string $field, int $kit, string $of ) use ( &$asked ): string {
+				$asked[] = array( 'cbuild_kit_text', $text, $field, $kit, $of );
+				return "[fr] {$field} {$of}";
+			},
+		);
+		$answer = $this->answer(
+			array(
+				SlotKey::DECK   => 103,
+				SlotKey::TRUCKS => 139,
+				'sail'          => 5,
+			),
+			null,
+			array(
+				SlotKey::DECK   => 101,
+				SlotKey::TRUCKS => 139,
+			)
+		);
+
+		self::assertSame( array( '[fr] Deck', '[fr] Trucks', '[fr] Wheels', '[fr] Risers', '[fr] Bearings', '[fr] Hardware', '[fr] Grip' ), array_column( $answer['steps'], 'label' ) );
+		self::assertSame( '[fr] slot_help trucks', self::step( $answer, SlotKey::TRUCKS )['help'] );
+		self::assertSame( '[fr] slot_help deck', self::step( $answer, SlotKey::DECK )['help'] );
+		self::assertSame( array( '[fr] Street', '[fr] Park' ), array_column( $answer['presets'], 'name' ) );
+		self::assertSame( array( '[fr] preset_description 0', '[fr] preset_description 1' ), array_column( $answer['presets'], 'description' ) );
+		self::assertSame(
+			array(
+				'lead_time'      => '[fr] lead_time ',
+				'returns_notice' => '[fr] returns_notice ',
+			),
+			$answer['texts']
+		);
+		// The label a plugin gave is the one every sentence and the change list name the slot by.
+		self::assertSame( '[fr] Trucks', $answer['changes']['changes'][0]['label'] );
+		self::assertContains( '[fr] Trucks: the part chosen does not fit the rest of the build.', array_column( $answer['problems'], 'message' ) );
+		self::assertSame( 'This kit has no slot called "sail".', $answer['refused'][0]['message'] );
+
+		self::assertContains( array( 'cbuild_slot_label', 'Trucks', SlotKey::TRUCKS, self::KIT ), $asked );
+		self::assertContains( array( 'cbuild_preset_label', 'Park', 1, self::KIT ), $asked );
+		self::assertContains( array( 'cbuild_kit_text', 'Sold in pairs.', 'slot_help', self::KIT, SlotKey::TRUCKS ), $asked );
+		self::assertContains( array( 'cbuild_kit_text', 'For ledges and stairs.', 'preset_description', self::KIT, '0' ), $asked );
+		self::assertContains( array( 'cbuild_kit_text', 'Two working days.', 'lead_time', self::KIT, '' ), $asked );
+		self::assertContains( array( 'cbuild_kit_text', 'An assembled board goes back whole.', 'returns_notice', self::KIT, '' ), $asked );
+		self::assertCount( 7, array_filter( $asked, static fn( array $call ): bool => 'cbuild_slot_label' === $call[0] ), 'Each label is asked for once.' );
+	}
+
+	public function test_an_answer_to_a_filter_that_is_no_text_leaves_the_owners_words(): void {
+		$this->worded();
+		$GLOBALS['cbuild_test_filters'] = array(
+			'cbuild_slot_label'   => static fn(): ?string => null,
+			'cbuild_preset_label' => static fn(): array => array( 'Street' ),
+			'cbuild_kit_text'     => static fn(): bool => false,
+		);
+		$answer                          = $this->answer();
+
+		self::assertSame( 'Trucks', self::step( $answer, SlotKey::TRUCKS )['label'] );
+		self::assertSame( 'Sold in pairs.', self::step( $answer, SlotKey::TRUCKS )['help'] );
+		self::assertSame( 'Street', $answer['presets'][0]['name'] );
+		self::assertSame( 'For ledges and stairs.', $answer['presets'][0]['description'] );
+		self::assertSame( 'Two working days.', $answer['texts']['lead_time'] );
+		self::assertSame( 'An assembled board goes back whole.', $answer['texts']['returns_notice'] );
 	}
 
 	public function test_a_later_step_lists_what_fits_hides_the_rest_with_why_and_marks_the_part_it_starts_on(): void {
