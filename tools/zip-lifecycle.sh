@@ -56,7 +56,7 @@ wp plugin install "wp-content/plugins/$slug/tmp/$copy.zip" --activate | tail -n 
 installed="$(read_state)"
 # Activation asks for every part to be read again (D-082): the reindex's state is one more option, and its job the one
 # action, waiting or already run.
-[ "$installed" = "$schema|2|2|1|$errors" ] || [ "$installed" = "$schema|2|3|1|$errors" ] || fail "after the install: $installed (version|tables|options|actions|errors)"
+[ "$installed" = "$schema|3|2|1|$errors" ] || [ "$installed" = "$schema|3|3|1|$errors" ] || fail "after the install: $installed (version|tables|options|actions|errors)"
 echo "   version|tables|options|actions|errors: $installed"
 
 echo "3. Install the same zip over itself."

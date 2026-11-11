@@ -72,6 +72,33 @@ final class KitProduct extends WC_Product {
 	}
 
 	/**
+	 * Hidden, whatever is asked for.
+	 *
+	 * @since 0.4.0
+	 *
+	 * @param string $visibility The visibility asked for, which a kit does not take.
+	 */
+	public function set_catalog_visibility( $visibility ): void {
+		unset( $visibility );
+		parent::set_catalog_visibility( 'hidden' );
+	}
+
+	/**
+	 * Save, with the visibility always among what changed. WooCommerce writes the two
+	 * visibility terms on an update only when visibility is one of the product's changes (WooCommerce 11.2.2,
+	 * includes/data-stores/class-wc-product-data-store-cpt.php:385 and :1039), and a product made a kit on the
+	 * product screen, by an import or by the REST API is an update of a post whose terms say visible.
+	 *
+	 * @since 0.4.0
+	 */
+	public function save(): int {
+		// Set as a change outright: the setter records one only where the value read differs, and what is read of a
+		// kit is already hidden, whatever its terms say.
+		$this->changes['catalog_visibility'] = 'hidden';
+		return (int) parent::save();
+	}
+
+	/**
 	 * Not purchasable as a product: the builder puts a kit in the cart with its parts, and nothing else may.
 	 * Milestone 5 answers this filter for the build it is adding.
 	 *

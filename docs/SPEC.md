@@ -211,7 +211,7 @@ WooCommerce keeps doing what it does: products, prices, stock, the cart, the che
 - **Adding to the cart** posts the build to the Store API's `cart/add-item` route with the build as item data, then sends WooCommerce's `wc-blocks_added_to_cart` event, so the Cart block and the Mini-Cart update as they would for any product. Without JavaScript it posts to WooCommerce's own add-to-cart handler. Either way the server validates the whole build (slots, rules, stock), adds the kit as the parent line and a child line per part.
 - **In the cart,** children follow their parent: same build quantity, removed together, never changed alone. The Cart block shows them grouped through Store API data and its JavaScript filters, the Mini-Cart through each part's item data and a CSS class, and a classic cart or checkout (Shop Kit's) through WooCommerce's PHP filters.
 - **At checkout and after,** each line becomes an order item carrying the build's keys. Emails, the account pages and the admin show the build grouped. WooCommerce reduces and restores stock part by part. The admin's order screen prints the assembly ticket.
-- **Stock** is read from WooCommerce when the builder asks. Creative Stockroom already keeps a printed deck's stock right in WooCommerce, so the builder needs no Stockroom code; a filter lets any plugin rule a part out.
+- **Stock** is read from WooCommerce when the builder asks. (Since 0.4.0 the state route reads it from the parts table, a row no more than two hours old and deleted when WooCommerce says the part moved; the cart reads WooCommerce itself. D-116, for Zach.) Creative Stockroom already keeps a printed deck's stock right in WooCommerce, so the builder needs no Stockroom code; a filter lets any plugin rule a part out.
 - **Specs** live in an index table, rebuilt in the background (Action Scheduler) whenever a part, its attributes or a spec table change.
 - **The picture** is laid out by the domain from the parts' specs and drawn twice from that one layout: as layers in the page, and as one composed image, made in the background, for the cart, the emails and share cards.
 - **Abilities.** The same engine answers WordPress's Abilities API (check a build, price a build, run the Catalogue check), so the shop's own tools and AI assistants get the answers the builder gives, under the same permissions.
@@ -232,7 +232,7 @@ The browser never decides fit or price. The server checks a build as the shopper
 
 ## Data model
 
-Two tables, product meta on the kit and the parts, and keys on cart and order items. Everything the plugin stores is either the owner's settings or rebuildable from WooCommerce.
+Three tables (two until 0.4.0, D-116), product meta on the kit and the parts, and keys on cart and order items. Everything the plugin stores is either the owner's settings or rebuildable from WooCommerce.
 
 **The kit**, a product of type `cbuild_kit` (class `KitProduct extends WC_Product`). It is virtual (the parts ship), can't be bought outside the builder, and its price is the assembly fee, read from its assembly settings rather than WooCommerce's price fields and set to $0 by the cart when the shopper turns assembly off. Its settings are product meta, each a JSON document carrying a `schema_version` and validated against a JSON Schema in the plugin's `schema/` folder, which ships with it. Validation runs at the edge through WordPress's own `rest_validate_value_from_schema()`, with no library added, and the domain's value objects check their own invariants:
 
@@ -500,7 +500,7 @@ A build is a parent line (the kit) with a child line per part, the model Woo's o
 **Stock**
 
 - The plugin never writes stock. Reservation, reduction, restoring stock on a failed or cancelled order ([advisory](https://developer.woocommerce.com/2026/07/17/failed-order-stock-update/)) and restocking on a refund all run per line, in WooCommerce ([reduce](https://hooks.wbcomdesigns.com/?p=33660), [reserve](https://wp-kama.com/plugin/woocommerce/function/ReserveStock::reserve_stock_for_order), [restock](https://wp-kama.com/plugin/woocommerce/function/wc_restock_refunded_items)).
-- What the builder offers is worked out when it's asked, never synced. Imports and bulk edits that skip WooCommerce's functions can't leave it stale.
+- What the builder offers is worked out when it's asked, never synced. Imports and bulk edits that skip WooCommerce's functions can't leave it stale. (Since 0.4.0, D-116: the state route's options come from the parts table, so a change that fires no WooCommerce hook shows within two hours, or at once after `cbuild_parts_changed`. What goes to the cart is read from WooCommerce. For Zach.)
 - Creative Stockroom keeps a printed deck's stock right in WooCommerce, so it needs nothing from the builder. The `cbuild_part_available` filter lets any plugin rule a part out.
 - If a part sells out between the builder and the checkout, WooCommerce's own checks stop the order, and the cart line's Edit build link takes the shopper back to swap it.
 

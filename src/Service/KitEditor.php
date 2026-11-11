@@ -72,6 +72,14 @@ final class KitEditor {
 	public const NO_SLOTS = 'presets_without_slots';
 
 	/**
+	 * The slots sent would be saved beside presets that are not being saved with them, and a stored preset names
+	 * a slot they leave out, or leaves empty one a build must now have.
+	 *
+	 * @since 0.4.0
+	 */
+	public const LEAVE_PRESETS = 'slots_leave_presets';
+
+	/**
 	 * A preset names a part its slot does not take, or one the rules block beside the preset's other parts.
 	 *
 	 * @since 0.4.0
@@ -163,6 +171,19 @@ final class KitEditor {
 				$found = $this->accepted( $presets, $inForce, $parts );
 			}
 			$problems = array( ...$problems, ...$this->held( self::PRESETS, $presets, $found ) );
+		}
+
+		// Slots that are to be saved beside presets that are not: the presets that stay are the stored ones, and
+		// the pair must still read, or the kit is one no shopper can open.
+		$slotsRefused   = in_array( self::SLOTS, array_column( $problems, 'document' ), true );
+		$presetsRefused = in_array( self::PRESETS, array_column( $problems, 'document' ), true );
+		$staying        = $stored[ self::PRESETS ] ?? null;
+		if ( isset( $built[ self::SLOTS ] ) && ! $slotsRefused && null !== $staying && ( $presetsRefused || ! isset( $built[ self::PRESETS ] ) ) ) {
+			try {
+				Kit::fromDocuments( $built[ self::SLOTS ], $inForce[ self::RULES ] ?? RuleSettings::DEFAULTS, $staying, self::NO_ASSEMBLY );
+			} catch ( InvalidDocument ) {
+				$problems[] = self::problem( self::SLOTS, self::LEAVE_PRESETS, 'slots' );
+			}
 		}
 
 		$documents = array();

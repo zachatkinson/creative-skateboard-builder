@@ -77,18 +77,18 @@ final class BuildTab {
 	 * heading 34 pixels high, and the list of what was not saved.
 	 */
 	private const STYLES = '.cbuild-kit fieldset{margin:0 12px 12px;padding:0 0 8px;border:1px solid #c3c4c7}'
-		. '.cbuild-kit legend{float:none;width:auto;margin:0 0 0 8px;padding:0 4px;font-weight:600}'
+		. '.cbuild-kit legend{float:none;width:auto;margin:0;margin-inline-start:8px;padding:0 4px;font-weight:600}'
 		. '.cbuild-kit h3{margin:0;padding:12px}'
 		. '.cbuild-kit p.form-field{margin:0;padding:6px 12px!important}'
 		. '.cbuild-kit p.form-field label{float:none;display:block;width:auto;margin:0 0 4px}'
-		. '.cbuild-kit p.form-field input.checkbox{float:none;margin:0 6px 0 0}'
+		. '.cbuild-kit p.form-field input.checkbox{float:none;margin:0;margin-inline-end:6px}'
 		. '.cbuild-kit p.form-field input.checkbox+label{display:inline}'
 		. '.cbuild-kit p.form-field .short,.cbuild-kit p.form-field .select2-container{float:none;width:100%!important;max-width:30em;box-sizing:border-box}'
 		. '.cbuild-kit p.form-field .description{display:block;clear:both;margin:4px 0 0}'
 		. '.cbuild-kit-moves{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0;padding:8px 12px}'
 		. '.cbuild-kit-moves .button{min-height:30px}'
 		. '.cbuild-kit-handle{cursor:move;padding:6px}'
-		. '.cbuild-kit-problems{margin:0 12px 12px;padding:8px 12px;border-left:4px solid #d63638;background:#fcf0f1}'
+		. '.cbuild-kit-problems{margin:0 12px 12px;padding:8px 12px;border-inline-start:4px solid #d63638;background:#fcf0f1}'
 		. '.cbuild-kit summary{padding:8px 12px;cursor:pointer;font-weight:600}';
 
 	/**

@@ -397,7 +397,16 @@ final class StateRouteTest extends IntegrationTestCase {
 		}
 
 		// Another plugin's route, and one of this plugin's own that is not the state route, are left as they are.
-		wp_set_current_user( self::factory()->user->create( array( 'role' => 'administrator' ) ) );
+		// The other route is registered here, not left to whichever test ran before, and on a network Site Health
+		// is the super admin's.
+		$this->service( \CreativeBranding\SkateboardBuilder\Health\SiteHealth::class )->register();
+		// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- WordPress's own, to build the routes.
+		do_action( 'rest_api_init', rest_get_server() );
+		$admin = self::factory()->user->create( array( 'role' => 'administrator' ) );
+		wp_set_current_user( $admin );
+		if ( is_multisite() ) {
+			grant_super_admin( $admin );
+		}
 		foreach ( array( '/wp/v2/types', '/cbuild/v1/site-health/catalogue-check' ) as $route ) {
 			$request  = new WP_REST_Request( 'GET', $route );
 			$response = apply_filters( 'rest_post_dispatch', rest_ensure_response( rest_get_server()->dispatch( $request ) ), rest_get_server(), $request );
@@ -537,6 +546,48 @@ final class StateRouteTest extends IntegrationTestCase {
 		self::assertContains( 429, $this->statuses( 25, array( 'X-Forwarded-For' => '192.0.2.77, 198.51.100.200' ) ), 'One visitor behind the proxy, whatever they put first in the list.' );
 	}
 
+	// The auditor's should-fix 8, milestone 4: the plan promised a query count on the route, and only the benchmark's
+	// time would have noticed a query for each option.
+	public function test_the_route_asks_the_same_number_of_queries_however_many_parts_a_step_has(): void {
+		$this->terms( 100000 );
+		$decks = (int) wp_get_object_terms( $this->parts['deck 8.0'], 'product_cat', array( 'fields' => 'ids' ) )[0];
+		$count = function ( bool $cold ): int {
+			// Once for whatever is read the first time a part is met, then the request that is counted.
+			$this->ask();
+			if ( $cold ) {
+				// As on a site with no persistent object cache: nothing of the last request is in memory.
+				wp_cache_flush();
+			}
+			// All but the limit's own count, which is two writes or four by whether its row's end moved a second on.
+			$asked = 0;
+			$watch = static function ( string $query ) use ( &$asked ): string {
+				if ( ! str_contains( $query, 'cbuild_rate_' ) ) {
+					++$asked;
+				}
+				return $query;
+			};
+			add_filter( 'query', $watch );
+			self::assertSame( 200, $this->ask()->get_status() );
+			remove_filter( 'query', $watch );
+			return $asked;
+		};
+		$more = function ( int $upTo ) use ( $decks ): void {
+			for ( $at = count( $this->parts ); $at < $upTo; $at++ ) {
+				$this->parts[ 'deck ' . $at ] = $this->part( 'Deck ' . $at, '65', array( 'deck_width' => '8.2500' ), $decks );
+			}
+		};
+
+		// More parts than a step lists, and then twice as many.
+		$more( 30 );
+		$warm = $count( false );
+		$cold = $count( true );
+		$more( 60 );
+		self::assertSame( $warm, $count( false ), 'warm' );
+		self::assertSame( $cold, $count( true ), 'cold' );
+		self::assertLessThanOrEqual( 15, $warm, 'warm' );
+		self::assertLessThanOrEqual( 60, $cold, 'cold' );
+	}
+
 	public function test_nothing_kept_for_the_limit_names_an_address(): void {
 		global $wpdb;
 		$this->terms( 10 );
@@ -551,7 +602,15 @@ final class StateRouteTest extends IntegrationTestCase {
 			$kept = $wpdb->get_col( $wpdb->prepare( "SELECT option_name FROM {$wpdb->options} WHERE option_name LIKE %s", $wpdb->esc_like( '_transient_cbuild_rate_' ) . '%' ) );
 			self::assertNotSame( array(), $kept );
 			foreach ( $kept as $name ) {
-				self::assertMatchesRegularExpression( '/\A_transient_cbuild_rate_[0-9a-f]{40}\z/', $name );
+				// One of a fixed number of rows (D-119). What it holds is a count and its end for each key, and a key
+				// is 40 characters of a keyed hash.
+				self::assertMatchesRegularExpression( '/\A_transient_cbuild_rate_[0-9]{1,4}\z/', $name );
+				$held = get_transient( substr( $name, strlen( '_transient_' ) ) );
+				self::assertIsArray( $held );
+				foreach ( $held as $key => $entry ) {
+					self::assertMatchesRegularExpression( '/\A[0-9a-f]{40}\z/', (string) $key );
+					self::assertSame( array( 3, true ), array( $entry[0], is_int( $entry[1] ) ) );
+				}
 				$expires = (int) get_option( '_transient_timeout_' . substr( $name, strlen( '_transient_' ) ) );
 				self::assertLessThanOrEqual( time() + 120, $expires, 'Gone within two minutes.' );
 				self::assertGreaterThan( time(), $expires );

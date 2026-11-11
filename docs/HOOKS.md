@@ -297,6 +297,7 @@ What WooCommerce > Builder > Catalogue check lists, each a `Service\CheckFinding
 | `reindex_failed` | 0.3.0 | The shop | Reading every part again stopped after its failures. |
 | `import_failed` | 0.3.0 | The shop | The last specs import stopped before its end. |
 | `jobs_failed` | 0.3.0 | The shop | Actions of the group `creative-skateboard-builder` are marked failed in Action Scheduler. `values` holds how many, counted to 100. |
+| `kit_unread` | 0.4.0 | A kit | The kit product's settings do not read, so the builder cannot open it: a document its schema refuses, or presets and slots that no longer agree. The screen links to the kit's Build tab. |
 | `slot_empty` | 0.3.0 | A kit and a slot | The slot has no parts. |
 | `slot_out_of_stock` | 0.3.0 | A kit and a slot | The slot has parts and none in stock. |
 | `spec_missing` | 0.3.0 | A kit, a slot, a part and a spec | A rule needs the spec, the part lacks it, and the part is not offered. Said once per part and spec. |
@@ -349,8 +350,6 @@ Two direct tests and one asynchronous test on Tools > Site Health, and a section
 The Info tab's section `creative-skateboard-builder` lists the plugin's version, its database version, which source wins, how many attributes are mapped, the index's state and the count of failed jobs. None of it is marked private, and none of it is about a person.
 
 ## Milestone 4: kits (0.4.0)
-
-The rest of this milestone's items are added here as each lands.
 
 ### Product types
 
@@ -412,7 +411,7 @@ Each is applied wherever the builder reads the thing it names, so the state rout
 
 | Filter | Since | Arguments | What a plugin answers |
 | --- | --- | --- | --- |
-| `cbuild_part_available` | 0.4.0 | `bool $available` (true), `int $id`, `WC_Product $part` | Whether a product or a variation may be a part of a build. `false` rules it out: no kit offers it, and one picked all the same is refused as `part_not_in_slot`. Asked only of a part a shopper could be shown and could buy. Anything but `false` leaves the part in. The answer is kept with the slot's parts for up to an hour, or until a product, a price or a stock count moves: a plugin whose answer changes without one of those does `cbuild_parts_changed`. |
+| `cbuild_part_available` | 0.4.0 | `bool $available` (true), `int $id`, `WC_Product $part` | Whether a product or a variation may be a part of a build. `false` rules it out: no kit offers it, and one picked all the same is refused as `part_not_in_slot`. Asked only of a part a shopper could be shown and could buy. Anything but `false` leaves the part in. The answer is kept in the part's row of `cbuild_parts` for one to two hours, or until the product, its price, its stock or its terms move: a plugin whose answer changes without one of those does `cbuild_parts_changed`. |
 | `cbuild_price_context` | 0.4.0 | `array $context` | What a part's price depends on beside the part: the currency, its decimals, the language, the tax display, whether prices are entered with tax, and the tax rates that apply. A card is kept per context, and so is each slot's list of parts, so a plugin that shows some shoppers another price adds what tells them apart, such as a role or a price list's ID. Without it, a shopper may be shown the price kept for another. Add nothing that names a person. An answer that is no array is ignored. |
 | `cbuild_slot_label` | 0.4.0 | `string $label`, `string $slot`, `int $kit` | A slot's label as a shopper reads it, in place of the one the owner typed. `$slot` is the slot's key. The label answered is also the one a problem's sentence names the slot by. |
 | `cbuild_preset_label` | 0.4.0 | `string $name`, `int $position`, `int $kit` | A preset's name. `$position` is where the preset stands among the kit's, from 0. |
@@ -435,5 +434,5 @@ In the category `creative-skateboard-builder`, which the Catalogue check's abili
 | `creative-skateboard-builder/check-build` | 0.4.0 | Whoever may run an ability | `kit`, the kit product's ID; `picks`, an object of slot key to part ID, 20 at most; `assembly`, a boolean. Only `kit` is required. | `kit`, `ready`, `refused` and `problems`, as the state route's answer holds them: whether the build may go to the cart, and each thing in the way with its `code`, `slot`, `part`, `message` and the rules' `messages`. |
 | `creative-skateboard-builder/price-build` | 0.4.0 | Whoever may run an ability | The same. | `kit` and `total`, as the state route's answer holds it: `lines` (each with `slot`, `part`, `name`, `quantity`, `price`, `charged` and `total`), `parts`, `saved`, `assembly`, `fee` and `total`. Each amount is `amount`, in whole minor units, and `text`. |
 
-Both are annotated read-only and idempotent and shown in REST, so WordPress serves each at `GET /wp-abilities/v1/abilities/<name>/run` to a signed-in user and refuses a `POST` with 405. They ask the state route's own service and give parts of its answer, so the two cannot disagree: a slot with no pick is counted with the part the builder would start it on, as the route counts it. A kit a visitor may not see is `cbuild_kit_not_found` to everyone, as it is on the route. Input that is not the schema's is refused by WordPress as `ability_invalid_input`; a slot key the kit lacks is not refused, and comes back in `refused` as `slot_unknown`. Neither is counted against the route's rate limit.
+Both are annotated read-only and idempotent and shown in REST, so WordPress serves each at `GET /wp-abilities/v1/abilities/<name>/run`. Each answers to a signed-in user alone, over REST and when run in PHP (D-118), and refuses a `POST` with 405. They ask the state route's own service and give parts of its answer, so the two cannot disagree: a slot with no pick is counted with the part the builder would start it on, as the route counts it. A kit a visitor may not see is `cbuild_kit_not_found` to everyone, as it is on the route. Input that is not the schema's is refused by WordPress as `ability_invalid_input`; a slot key the kit lacks is not refused, and comes back in `refused` as `slot_unknown`. Neither is counted against the route's rate limit.
 

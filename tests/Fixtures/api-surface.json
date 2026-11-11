@@ -73,6 +73,11 @@
         "cbuild/v1/kits/(?P<id>[1-9][0-9]{0,17})/state",
         "cbuild/v1/site-health/catalogue-check"
     ],
+    "rest_error_codes": [
+        "cbuild_kit_not_found",
+        "cbuild_no_price",
+        "cbuild_rate_limited"
+    ],
     "abilities": [
         "creative-skateboard-builder/catalogue-check",
         "creative-skateboard-builder/check-build",
@@ -95,6 +100,9 @@
         "ReindexCommand::__invoke": "[--background]",
         "SpecsCommand::export": "[<file>]",
         "SpecsCommand::import": "<file> [--dry-run] [--key=<key>] [--format=<format>]"
+    },
+    "rest_route_args": {
+        "cbuild/v1/kits/(?P<id>[1-9][0-9]{0,17})/state": "assembly id locale picks previous step 7fd031a8dc206365359f866e566c2931d1a260be5fd2c0d961f7825b94034ffe"
     },
     "csv_columns": [
         "id",
@@ -124,9 +132,9 @@
         "set_size"
     ],
     "ability_schemas": {
-        "creative-skateboard-builder/price-build": "b14d5f69629e2fb06a9e4a745c321096cb651776172d9119776e0628f0241010",
-        "creative-skateboard-builder/check-build": "2bca2dfc761a407fde21959d3b64b65b70070d8bc0679b592293a218c62892e4",
-        "creative-skateboard-builder/catalogue-check": "1b575457b21b9b14ca9cdd3567b86b165b04408f9de0875e2afd11121bfe4853"
+        "creative-skateboard-builder/price-build": "0be91102bbbf7ed7d603814a0e1eb223722a9a312af9dde63e066a3859d46613",
+        "creative-skateboard-builder/check-build": "f17f046dc3d1e98e2d2fa042e821420cffc92b336d2b39d080a69994c730236d",
+        "creative-skateboard-builder/catalogue-check": "3419ea03a7f81096029e2247d2914dc5a7132729e9c34b442d4e911a49e15c32"
     },
     "schemas": [
         "schema/kit-assembly.json",

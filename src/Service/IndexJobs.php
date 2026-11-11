@@ -10,6 +10,7 @@ declare( strict_types=1 );
 namespace CreativeBranding\SkateboardBuilder\Service;
 
 use CreativeBranding\SkateboardBuilder\Port\Clock;
+use CreativeBranding\SkateboardBuilder\Port\Kits;
 use CreativeBranding\SkateboardBuilder\Port\Logger;
 use CreativeBranding\SkateboardBuilder\Port\PartCatalogue;
 use CreativeBranding\SkateboardBuilder\Port\Queue;
@@ -68,6 +69,7 @@ final class IndexJobs implements Reindex {
 	 * @param ShopSettings  $settings  The mapping.
 	 * @param Clock         $clock     The time.
 	 * @param Logger        $logger    Where failures go.
+	 * @param Kits          $kits      Told of the parts a batch indexed.
 	 */
 	public function __construct(
 		private SpecIndexer $indexer,
@@ -77,7 +79,8 @@ final class IndexJobs implements Reindex {
 		private ReindexStore $store,
 		private ShopSettings $settings,
 		private Clock $clock,
-		private Logger $logger
+		private Logger $logger,
+		private Kits $kits
 	) {}
 
 	/**
@@ -167,6 +170,9 @@ final class IndexJobs implements Reindex {
 			}
 			if ( array() !== $parts ) {
 				$this->indexer->index( ...$parts );
+				// What a build is told of these parts holds their specs as the index had them. Theirs alone: the
+				// rest of the shop's parts stay as they are while the reindex runs.
+				$this->kits->forget( ...array_values( $parts ) );
 			}
 		} catch ( Throwable $failure ) {
 			$this->logger->log(
@@ -265,6 +271,9 @@ final class IndexJobs implements Reindex {
 			}
 			if ( array() !== $parts ) {
 				$this->indexer->index( ...$parts );
+				// What a build is told of these parts holds their specs as the index had them. Theirs alone: the
+				// rest of the shop's parts stay as they are while the reindex runs.
+				$this->kits->forget( ...array_values( $parts ) );
 			}
 		} catch ( Throwable $failure ) {
 			$failed = ( $this->state() ?? $state )->failed( $failure->getMessage() );

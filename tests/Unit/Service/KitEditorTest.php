@@ -627,6 +627,46 @@ final class KitEditorTest extends TestCase {
 		self::assertSame( array( self::RULES, self::ASSEMBLY, self::PRESETS ), array_keys( $this->editor->draft( $sent, $new )->documents ) );
 	}
 
+	// The auditor's should-fix 3, milestone 4: the slots were saved on their own while the presets sent with them were
+	// refused, and the stored presets and the new slots then made a kit that does not read, which no shopper can open.
+	public function test_slots_that_the_presets_left_in_force_cannot_live_with_are_not_saved(): void {
+		$with            = self::sent();
+		$with['presets'] = array( self::preset() );
+		$first           = $this->editor->draft( $with, self::stored() );
+		self::assertSame( array(), $first->problems );
+		$stored = array_merge( self::stored(), $first->documents );
+
+		// The risers' slot, which the stored preset leaves empty, is now one a build must have.
+		$sent = $with;
+		foreach ( $sent['slots'] as $at => $slot ) {
+			if ( 'risers' === $slot['key'] ) {
+				$sent['slots'][ $at ]['required'] = '1';
+			}
+		}
+		$draft = $this->editor->draft( $sent, $stored );
+		self::assertSame( array( 'presets presets_slot_not_filled presets[0].picks.risers', 'slots slots_leave_presets slots' ), self::problems( $draft ) );
+		self::assertArrayNotHasKey( self::SLOTS, $draft->documents );
+		self::assertArrayHasKey( self::SLOTS, $draft->refused );
+
+		// The same slots with the presets not sent at all.
+		unset( $sent['presets'] );
+		$draft = $this->editor->draft( $sent, $stored );
+		self::assertSame( array( 'slots slots_leave_presets slots' ), self::problems( $draft ) );
+		self::assertArrayNotHasKey( self::SLOTS, $draft->documents );
+
+		// And with the preset put right in the same save, both are saved.
+		$sent['presets'] = array( self::preset( array( 'risers' => '400' ) ) );
+		$this->kits->found['4'] ??= array();
+		$draft                   = $this->editor->draft( $sent, $stored );
+		self::assertNotContains( 'slots slots_leave_presets slots', self::problems( $draft ) );
+
+		// Slots the stored presets can live with are saved as before.
+		$sent = self::sent();
+		unset( $sent['presets'] );
+		$sent['slots'][0]['label'] = 'Board';
+		self::assertSame( array(), $this->editor->draft( $sent, $stored )->problems );
+	}
+
 	public function test_a_new_kit_with_refused_rules_holds_its_presets_to_the_usual_rules(): void {
 		$new                             = array_fill_keys( array( self::SLOTS, self::RULES, self::PRESETS, self::ASSEMBLY ), null );
 		$this->kits->found['1'][]        = Builds::deck( '7.75', 102 );

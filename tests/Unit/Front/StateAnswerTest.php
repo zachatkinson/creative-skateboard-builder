@@ -19,6 +19,7 @@ use CreativeBranding\SkateboardBuilder\Tests\Support\Domain\KitDocuments;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Domain\Parts;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Domain\Shop;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\FakeMoney;
+use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\FakeLogger;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\InMemoryKits;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\InMemoryPartCards;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\InMemoryShopSettings;
@@ -61,6 +62,8 @@ final class StateAnswerTest extends TestCase {
 
 	private InMemoryShopSettings $settings;
 
+	private FakeLogger $logger;
+
 	private InMemoryPartCards $cards;
 
 	protected function tearDown(): void {
@@ -70,6 +73,7 @@ final class StateAnswerTest extends TestCase {
 	protected function setUp(): void {
 		$this->kits     = new InMemoryKits();
 		$this->settings = new InMemoryShopSettings();
+		$this->logger   = new FakeLogger();
 		$this->cards    = new InMemoryPartCards();
 		$this->kits->add( self::KIT, Shop::kit(), Shop::parts() );
 	}
@@ -82,7 +86,7 @@ final class StateAnswerTest extends TestCase {
 	 * @return array<string, mixed>
 	 */
 	private function answer( array $picks = array(), ?string $step = null, ?array $previous = null, ?bool $assembly = null ): array {
-		$state = ( new BuildState( $this->kits, $this->settings ) )->of( self::KIT, $picks, $previous, $step, $assembly );
+		$state = ( new BuildState( $this->kits, $this->settings, $this->logger ) )->of( self::KIT, $picks, $previous, $step, $assembly );
 		self::assertNotNull( $state );
 		return ( new StateAnswer( $this->cards, new FakeMoney(), $this->kits ) )->of( $state );
 	}

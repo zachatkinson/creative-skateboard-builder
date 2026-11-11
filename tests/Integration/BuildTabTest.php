@@ -61,7 +61,9 @@ final class BuildTabTest extends IntegrationTestCase {
 	 * @param \WC_Product $product The product on the screen.
 	 */
 	private function panel( \WC_Product $product ): string {
-		wp_cache_flush();
+		// As a later request: nothing of the product in memory. Not a flush of the whole cache, which on a site with a
+		// persistent one would take what the person typed with it.
+		clean_post_cache( $product->get_id() );
 		$GLOBALS['product_object'] = wc_get_product( $product->get_id() );
 		ob_start();
 		$this->hooks()->panel();
@@ -152,7 +154,7 @@ final class BuildTabTest extends IntegrationTestCase {
 	 * @return array<string, array<string, mixed>|null>
 	 */
 	private static function stored( int $id ): array {
-		wp_cache_flush();
+		clean_post_cache( $id );
 		$kit = wc_get_product( $id );
 		self::assertInstanceOf( KitProduct::class, $kit );
 		return $kit->documents();
@@ -209,8 +211,8 @@ final class BuildTabTest extends IntegrationTestCase {
 		self::assertMatchesRegularExpression( '/name="cbuild_kit\[slots\]\[2\]\[units\]"\s+value="4"/', $panel, 'four wheels' );
 		self::assertMatchesRegularExpression( '/name="cbuild_kit\[rules\]\[r1\]\[axle_fit\]"\s+value="0\.25"/', $panel );
 		self::assertMatchesRegularExpression( '/name="cbuild_kit\[rules\]\[r3\]\[risers\]\[1\]\[riser\]"\s+value="0\.5"/', $panel );
-		self::assertSame( 6, substr_count( $panel, '<legend>Preset ' ), 'up to six presets' );
-		self::assertStringContainsString( '<legend>New slot</legend>', $panel );
+		self::assertSame( 6, preg_match_all( '/<legend id="[^"]+">Preset /', $panel ), 'up to six presets' );
+		self::assertMatchesRegularExpression( '/<legend id="[^"]+">New slot<\/legend>/', $panel );
 		self::assertStringContainsString( 'R7. Quantities', $panel );
 		self::assertStringContainsString( 'R8. Wheelbase and deck length', $panel );
 		self::assertStringNotContainsString( 'aria-invalid', $panel );
@@ -494,6 +496,18 @@ final class BuildTabTest extends IntegrationTestCase {
 		self::assertSame( array( 'products' => array( $deck->get_id() ) ), $stored[ Options::META_KIT_SLOTS ]['slots'][0]['sources'] );
 		$panel = $this->panel( $kit );
 		self::assertMatchesRegularExpression( '/id="cbuild-kit-slots-0-sources-products"[^>]*multiple="multiple"[^>]*>\s*<option value="' . $deck->get_id() . '" selected="selected">/', $panel );
+	}
+
+	// The auditor's should-fix 9, milestone 4: every row's buttons were "Move up" and "Move down", and every fold
+	// "Settings", so a list of the tab's controls named none of them apart.
+	public function test_each_rows_buttons_and_fold_are_named_with_the_row(): void {
+		$this->as( 'shop_manager' );
+		$panel = $this->panel( KitFactory::kit() );
+		foreach ( array( 'up', 'down', 'fold' ) as $control ) {
+			self::assertSame( 1, preg_match_all( '/id="cbuild-kit-slots-1-' . $control . '"\s+aria-labelledby="cbuild-kit-slots-1-' . $control . ' cbuild-kit-slots-1-legend"/', $panel ), $control );
+		}
+		self::assertSame( 1, preg_match_all( '/<legend id="cbuild-kit-slots-1-legend">Slot: Trucks<\/legend>/', $panel ) );
+		self::assertSame( 0, preg_match_all( '/<(?:button|summary)(?![^>]*aria-labelledby)[^>]*(?:data-cbuild-move|id="cbuild-kit-(?:slots|presets)-\d+-fold")/', $panel ), 'none is left with the bare name' );
 	}
 
 	public function test_a_slot_is_removed_when_ticked_and_the_rows_keep_the_order_they_are_sent_in(): void {

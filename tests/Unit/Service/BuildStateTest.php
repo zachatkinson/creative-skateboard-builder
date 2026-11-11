@@ -28,6 +28,7 @@ use CreativeBranding\SkateboardBuilder\Tests\Support\Domain\Catalogue;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Domain\KitDocuments;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Domain\Parts;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Domain\Shop;
+use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\FakeLogger;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\InMemoryKits;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\InMemoryShopSettings;
 use PHPUnit\Framework\TestCase;
@@ -44,12 +45,15 @@ final class BuildStateTest extends TestCase {
 
 	private InMemoryShopSettings $settings;
 
+	private FakeLogger $logger;
+
 	private BuildState $state;
 
 	protected function setUp(): void {
 		$this->kits     = new InMemoryKits();
 		$this->settings = new InMemoryShopSettings();
-		$this->state    = new BuildState( $this->kits, $this->settings );
+		$this->logger   = new FakeLogger();
+		$this->state    = new BuildState( $this->kits, $this->settings, $this->logger );
 		$this->kits->add( self::KIT, self::kit(), self::shop() );
 	}
 
@@ -152,6 +156,38 @@ final class BuildStateTest extends TestCase {
 	public function test_a_kit_the_shop_does_not_have_has_no_state(): void {
 		self::assertNull( $this->state->of( 78, array() ) );
 		self::assertNull( $this->state->of( 0, self::COMPLETE ) );
+	}
+
+	// The auditor's should-fix 11, milestone 4: a published kit that stopped reading, and a build that could not be
+	// priced, said nothing to the owner anywhere.
+	public function test_a_kit_that_does_not_read_and_a_build_with_no_price_are_logged_once_with_the_kit_and_no_pick(): void {
+		$this->state->of( 78, self::COMPLETE );
+		$this->state->of( 78, self::COMPLETE );
+		$this->state->of( 79, array() );
+		self::assertSame(
+			array(
+				array( 'warning', array( 'kit' => 78 ) ),
+				array( 'warning', array( 'kit' => 79 ) ),
+			),
+			array_map( static fn( array $line ): array => array( $line['level'], $line['context'] ), $this->logger->lines )
+		);
+		self::assertSame( array( 'kit_unread_78', 'kit_unread_79' ), array_keys( $this->logger->keys ) );
+		self::assertStringContainsString( 'Build tab', $this->logger->lines[0]['message'] );
+
+		// A currency with more decimals than money is counted in, and a build the shop assembles.
+		$this->logger->lines  = array();
+		$this->kits->decimals = 99;
+		foreach ( array( 1, 2 ) as $time ) {
+			try {
+				$this->state->of( self::KIT, self::COMPLETE, null, null, true );
+				self::fail( 'priced' );
+			} catch ( \CreativeBranding\SkateboardBuilder\Domain\Kit\InvalidMoney ) {
+				self::assertCount( 1, $this->logger->lines, 'time ' . $time );
+			}
+		}
+		self::assertSame( array( 'error', array( 'kit' => self::KIT ) ), array( $this->logger->lines[0]['level'], $this->logger->lines[0]['context'] ) );
+		self::assertArrayHasKey( 'no_price_' . self::KIT, $this->logger->keys );
+		self::assertStringContainsString( 'currency', $this->logger->lines[0]['message'] );
 	}
 
 	public function test_with_nothing_picked_every_deck_is_offered_and_nothing_is_picked_for_the_shopper(): void {

@@ -210,16 +210,17 @@ final class WooPartCardsTest extends IntegrationTestCase {
 
 		// Deleted: nothing is kept of it.
 		wp_delete_post( $deck, true );
-		self::assertFalse( wp_cache_get( 'card_' . $deck, Options::CACHE_GROUP ) );
 		self::assertSame( array(), $this->cards()->cards( array( $deck ) ) );
+		self::assertFalse( wp_cache_get( 'card_' . $deck, Options::CACHE_GROUP ) );
 	}
 
 	public function test_the_hooks_are_the_ones_woocommerce_fires(): void {
 		$hooks = $this->service( CardHooks::class );
 		$hooks->register();
-		foreach ( array( 'woocommerce_update_product', 'woocommerce_update_product_variation', 'woocommerce_product_set_stock', 'woocommerce_variation_set_stock', 'woocommerce_product_set_stock_status', 'woocommerce_variation_set_stock_status', 'wc_after_products_starting_sales', 'wc_after_products_ending_sales', 'deleted_post' ) as $hook ) {
+		foreach ( array( 'woocommerce_update_product', 'woocommerce_update_product_variation', 'woocommerce_product_set_stock', 'woocommerce_variation_set_stock', 'woocommerce_product_set_stock_status', 'woocommerce_variation_set_stock_status', 'wc_after_products_starting_sales', 'wc_after_products_ending_sales' ) as $hook ) {
 			self::assertSame( 10, has_action( $hook, array( $hooks, 'moved' ) ), $hook );
 		}
+		self::assertSame( 10, has_action( 'deleted_post', array( $hooks, 'deleted' ) ) );
 		// What a hook hands over that names no product forgets nothing and fails nothing.
 		$hooks->moved( null );
 		$hooks->moved( 'draft' );

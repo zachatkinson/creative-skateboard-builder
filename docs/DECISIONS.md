@@ -1524,7 +1524,10 @@ The first answer kept each slot's list in a transient (commit `ae04b23`). It hel
 
 **Deliberate break.** With `Hooks\CardHooks` deleting no row, the tests of `PartsTableTest` that move a part fail, the first `test_one_part_that_moves_is_read_again_and_no_other`: "the one that moved. Failed asserting that two arrays are identical." Among the rest, "a price is saved": "Failed asserting that 6000 is identical to 7500."
 
-**Status:** Accepted. The table is Zach's word of 10 November; the `specs` column is for him at the review.
+- **What the spec said and what this changes** (the spec reviewer's should-fix 4). Spec, How it fits: "Stock is read from WooCommerce when the builder asks." Spec, Stock: "What the builder offers is worked out when it's asked, never synced. Imports and bulk edits that skip WooCommerce's functions can't leave it stale." With the table, what the state route offers comes from rows: a change WooCommerce announces deletes the row at once, and one it does not (a price or a stock count written straight to the database) shows within two hours, or at once after `cbuild_parts_changed`. What is charged and what goes to the cart is read from WooCommerce itself (issue #26). Zach said yes to the table; he has not been asked about these two sentences, and the spec now carries a note beside each. For Zach at the review.
+- **Rows are deleted once a request** (D-119).
+
+**Status:** Accepted. The table is Zach's word of 10 November; the `specs` column, the first request in a price context being outside the budget, and the spec's two sentences on stock are for him at the review.
 
 ### D-117 · axe's target-size is quarantined in a variation's Part specs, and the headings are measured there instead · 2026-11-10
 
@@ -1542,4 +1545,43 @@ Issue #22 stays open in milestone 4's list until the cause is found and the rule
 **Deliberate break.** With the padding above and below a heading taken out of the panel's rule, the measurement fails in chromium-phone: "Expected: >= 24. Received: 18.1875".
 
 **Status:** Accepted. For Zach at the review: the quarantine, and whether it may stand past this milestone.
+
+### D-118 · The audit's two blockers: a kit made on the product screen is hidden, and an ability needs someone signed in · 2026-11-10
+
+Both were found by the auditor reading the source wp-env installed, and both were confirmed by a test that failed before anything was changed.
+
+- **A kit is hidden by every save.** D-100 overrode the kit's `get_catalog_visibility()`, and WooCommerce's data store writes the two visibility terms from it. But on an update it writes them only when visibility is among the product's changes (WooCommerce 11.2.2, `includes/data-stores/class-wc-product-data-store-cpt.php:1039`), and what is read of a kit is already hidden, so no setter records a change. A product made a kit on the product screen, the only way an owner has, kept the terms of a visible product and stayed in the catalogue, in search and in feeds at its assembly fee. `Adapter\KitProduct::save()` now puts visibility among the changes outright, and `set_catalog_visibility()` takes nothing but hidden. D-100's tests made their kits with `new KitProduct()`, a create, which WooCommerce forces the terms for; the new test builds the kit on an existing post, as `WC_Meta_Box_Product_Data::save()` does (`includes/admin/meta-boxes/class-wc-meta-box-product-data.php:337`).
+- **The two build abilities answer to someone signed in.** D-115 left them open (`__return_true`) and said WordPress serves an ability over REST "to a signed-in user". It does not: the run route asks the ability's own callback and nothing else (WordPress 7.1.4, `wp-includes/rest-api/endpoints/class-wp-rest-abilities-v1-run-controller.php:143`). So a visitor could ask `check-build` and `price-build` as often as they liked, which is the state route with no limit. The callback is now `is_user_logged_in`, which makes D-115's sentence true. Code on the site that runs an ability with no user is refused as well; the other road, leaving them open and counting them against the route's limit, is Zach's to choose at the review. Creative Reviews' read-only abilities are open in the same way (`creative-reviews-for-woocommerce/src/Abilities/Abilities.php:119`); that is another repository's, and is for Zach.
+
+Three of the audit run's failures were the tests' or the tools' own, fixed with these: `StateRouteTest` leaned on a route another test had registered and on Site Health being an administrator's, which on a network it is not; `BuildTabTest` flushed the whole object cache between a save and the next screen, which on a site with a persistent one takes what the person typed with it; `tools/zip-lifecycle.sh` expected two tables after an install. `tools/infection.sh` gives Infection 1 GB, since 128 MB ran out printing a class of a thousand lines.
+
+**Red runs.** `KitHiddenTest::test_a_product_made_a_kit_on_the_product_screen_is_hidden_by_that_save`: "exclude-from-catalog. Failed asserting that false is true." `BuildAbilitiesTest::test_a_visitor_who_is_not_signed_in_runs_neither`: "Failed asserting that 200 is identical to 401."
+
+**Deliberate breaks.** With `KitProduct::save()` taken out, the first fails as above. With the callback `__return_true` again, the second fails as above.
+
+**Status:** Accepted. Signed in or counted is for Zach at the review.
+
+### D-119 · The audit's should-fixes of milestone 4 · 2026-11-10
+
+Found by the `auditor` and `spec-reviewer` agents on the diff, each held by a test.
+
+- **A product's save deletes its rows once, and another post costs nothing** (auditor 6). `Hooks\CardHooks` deleted rows on every `set_object_terms` and `deleted_post`, of any post type: a select and a delete for each taxonomy a product's save sets, and two queries a taxonomy for a page or a post. `Adapter\WooKits::forget()` and `Adapter\WooPartCards::forget()` now only note the IDs, and `settle()` deletes once, on `shutdown` or before the same request reads a row or a card. The hooks look at the post's type first.
+- **A batch of the reindex deletes its own parts' rows** (auditor 7). `CardHooks` emptied the whole table after every batch of 100, so between two batches every request read the whole shop again, 470 ms at 2,000 parts. `Service\IndexJobs` now tells `Port\Kits` of the parts each batch indexed, from the queue and from WP-CLI alike. A brand or attribute term edited still empties the table.
+- **Slots are not saved beside presets they break** (auditor 3). The Build tab saved the slots while the presets sent with them were refused, and the stored presets and the new slots made a kit that did not read: a 404 to every shopper, and a notice that said only that the presets were not saved. `Service\KitEditor` holds slots that would be saved without their presets against the presets that stay, and refuses them with the new code `slots_leave_presets`.
+- **A kit that does not read is said** (auditor 11, spec reviewer 3). The Catalogue check lists it under the new code `kit_unread`, with a link to its Build tab. `Service\BuildState` writes a line to the log when a caller asks for a kit that does not read, and when a build cannot be priced, each at most once an hour (`Port\Logger::hourly()`, a transient `cbuild_logged_<what>`), with the kit's ID and nothing of the request. Site Health is not told; the check and the log are. For Zach if he wants a Site Health test as well.
+- **The limit's counts take 1,024 rows at most** (auditor 4). Without a persistent object cache each address and minute was a transient of its own, never read again, so two rows of the options table stayed for each until WordPress's daily clean, and addresses that keep changing filled the table. `Adapter\CacheTally` now keeps the counts in 1,024 transients at most, each holding the hashes that fall to it and when each ends, and a row lasts no longer than its last count. A request costs two writes or four. With an object cache nothing changes. A table would be simpler and is Zach's to ask for (D-112).
+- **The route's query count is held** (auditor 8): the same warm and cold for a step of 30 parts and of 60, the limit's own writes left out since their number moves with the second.
+- **Each row's buttons and fold are named with the row** (auditor 9), by `aria-labelledby` on the button and the row's legend: "Move up Slot: Trucks".
+- **`composer api:check` holds the route's arguments, the error codes and what each ability takes** (spec reviewer 1). `Rest\StateRoute::arguments()` is the route's arguments, read by `tools/api-surface.php` as the abilities' schemas are.
+- **A site on 0.3.1 gains the table** (spec reviewer 2): `MigrationTest` starts from that release's version and states. No code changed.
+
+Left for Zach, since each is his under CLAUDE.md: the route's prices where tax depends on where the shopper is (auditor 5), and the first request in a price context being outside the budget (spec reviewer 5). Both are in the review.
+
+**Red runs and deliberate breaks.**
+- `KitEditorTest::test_slots_that_the_presets_left_in_force_cannot_live_with_are_not_saved`, before the fix: the problems lacked "slots slots_leave_presets slots".
+- `PartsTableTest::test_a_products_save_deletes_its_rows_once_and_another_posts_terms_cost_nothing`, with `forget()` deleting at once: "nothing while the request runs. Failed asserting that two arrays are identical."
+- `CacheTallyTest::test_each_key_is_counted_on_its_own_and_the_rows_are_bounded_however_many_keys`, with a row for each key: "Failed asserting that 3002 is equal to 1024 or is less than 1024."
+- `IndexJobsTest`, `BuildStateTest`, `CatalogueCheckTest`, `BuildTabTest` and `StateRouteTest` each gained a case written with its fix; mutation testing holds the three services' cases.
+
+**Status:** Accepted.
 

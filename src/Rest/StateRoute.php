@@ -13,6 +13,8 @@ use Closure;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\InvalidMoney;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Slots;
 use CreativeBranding\SkateboardBuilder\Front\StateAnswer;
+use CreativeBranding\SkateboardBuilder\Front\Words;
+use CreativeBranding\SkateboardBuilder\Domain\Fit\Problem;
 use CreativeBranding\SkateboardBuilder\Hookable;
 use CreativeBranding\SkateboardBuilder\Port\Kits;
 use CreativeBranding\SkateboardBuilder\Service\BuildState;
@@ -87,6 +89,27 @@ final class StateRoute implements Hookable {
 	 * @since 0.4.0
 	 */
 	public function routes(): void {
+		register_rest_route(
+			self::NAMESPACE,
+			'/kits/(?P<id>[1-9][0-9]{0,17})/state',
+			array(
+				'methods'             => 'GET',
+				'callback'            => array( $this, 'state' ),
+				// Public on purpose: it shows what the kit's page shows, to whoever can see that page.
+				'permission_callback' => '__return_true',
+				'args'                => self::arguments(),
+			)
+		);
+	}
+
+	/**
+	 * The route's arguments, each with its schema. Public API: `composer api:check` holds their names and schemas.
+	 *
+	 * @since 0.4.0
+	 *
+	 * @return array<string, array<string, mixed>>
+	 */
+	public static function arguments(): array {
 		$picks = array(
 			'type'                 => 'object',
 			'maxProperties'        => Slots::MAX,
@@ -98,39 +121,29 @@ final class StateRoute implements Hookable {
 			),
 			'additionalProperties' => false,
 		);
-		register_rest_route(
-			self::NAMESPACE,
-			'/kits/(?P<id>[1-9][0-9]{0,17})/state',
-			array(
-				'methods'             => 'GET',
-				'callback'            => array( $this, 'state' ),
-				// Public on purpose: it shows what the kit's page shows, to whoever can see that page.
-				'permission_callback' => '__return_true',
-				'args'                => array(
-					'id'       => array(
-						'description' => __( 'The kit product\'s ID.', 'creative-skateboard-builder' ),
-						'type'        => 'integer',
-						'minimum'     => 1,
-						'required'    => true,
-					),
-					'picks'    => array( 'description' => __( 'The picks: each of the kit\'s slot keys to a part\'s ID.', 'creative-skateboard-builder' ) ) + $picks,
-					'previous' => array( 'description' => __( 'The picks as they were before the last change, for the change list.', 'creative-skateboard-builder' ) ) + $picks,
-					'step'     => array(
-						'description' => __( 'The key of the slot whose options are listed.', 'creative-skateboard-builder' ),
-						'type'        => 'string',
-						'pattern'     => self::KEY,
-					),
-					'assembly' => array(
-						'description' => __( 'Whether the shop assembles the build. Left out, the kit\'s own default.', 'creative-skateboard-builder' ),
-						'type'        => 'boolean',
-					),
-					'locale'   => array(
-						'description' => __( 'The language to answer in, when the site has it installed.', 'creative-skateboard-builder' ),
-						'type'        => 'string',
-						'pattern'     => self::LOCALE,
-					),
-				),
-			)
+		return array(
+			'id'       => array(
+				'description' => __( 'The kit product\'s ID.', 'creative-skateboard-builder' ),
+				'type'        => 'integer',
+				'minimum'     => 1,
+				'required'    => true,
+			),
+			'picks'    => array( 'description' => __( 'The picks: each of the kit\'s slot keys to a part\'s ID.', 'creative-skateboard-builder' ) ) + $picks,
+			'previous' => array( 'description' => __( 'The picks as they were before the last change, for the change list.', 'creative-skateboard-builder' ) ) + $picks,
+			'step'     => array(
+				'description' => __( 'The key of the slot whose options are listed.', 'creative-skateboard-builder' ),
+				'type'        => 'string',
+				'pattern'     => self::KEY,
+			),
+			'assembly' => array(
+				'description' => __( 'Whether the shop assembles the build. Left out, the kit\'s own default.', 'creative-skateboard-builder' ),
+				'type'        => 'boolean',
+			),
+			'locale'   => array(
+				'description' => __( 'The language to answer in, when the site has it installed.', 'creative-skateboard-builder' ),
+				'type'        => 'string',
+				'pattern'     => self::LOCALE,
+			),
 		);
 	}
 
@@ -204,8 +217,7 @@ final class StateRoute implements Hookable {
 			if ( null === $state->kit->slots->get( (string) $key ) ) {
 				return new WP_Error(
 					'rest_invalid_param',
-					/* translators: %s: a slot's key, as the request sent it. */
-					sprintf( __( 'This kit has no slot called "%s".', 'creative-skateboard-builder' ), (string) $key ),
+					Words::problem( Problem::SlotUnknown, (string) $key ),
 					array( 'status' => 400 )
 				);
 			}

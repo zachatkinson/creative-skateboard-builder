@@ -59,6 +59,13 @@ final class WooPartCards implements PartCards {
 	private const array TYPES = array( 'product', 'product_variation' );
 
 	/**
+	 * The products whose cards are to be forgotten when the request ends, by ID.
+	 *
+	 * @var array<int, int>
+	 */
+	private array $moved = array();
+
+	/**
 	 * Constructor.
 	 *
 	 * @since 0.4.0
@@ -80,6 +87,7 @@ final class WooPartCards implements PartCards {
 		if ( array() === $ids ) {
 			return array();
 		}
+		$this->settle();
 		_prime_post_caches( $ids, false, false );
 		$posts   = array();
 		$parents = array();
@@ -153,7 +161,25 @@ final class WooPartCards implements PartCards {
 	 * @param int ...$ids Products' and variations' IDs.
 	 */
 	public function forget( int ...$ids ): void {
-		$ids = array_values( array_unique( array_filter( $ids, static fn( int $id ): bool => $id > 0 ) ) );
+		foreach ( $ids as $id ) {
+			if ( $id > 0 ) {
+				$this->moved[ $id ] = $id;
+			}
+		}
+		if ( array() !== $this->moved && false === has_action( 'shutdown', array( $this, 'settle' ) ) ) {
+			add_action( 'shutdown', array( $this, 'settle' ), 10, 0 );
+		}
+	}
+
+	/**
+	 * Forget the cards of what moved in this request, in one go: a product's save tells of it several times, and
+	 * its variations are looked for once. Run when the request ends, and before this request reads a card.
+	 *
+	 * @since 0.4.0
+	 */
+	public function settle(): void {
+		$ids         = array_values( $this->moved );
+		$this->moved = array();
 		if ( array() === $ids ) {
 			return;
 		}

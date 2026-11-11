@@ -122,6 +122,7 @@ final class SentencesTest extends TestCase {
 				'0 background jobs of the builder have failed.',
 			),
 			'a slot with no parts'                   => array( $finding( 'slot_empty', 'trucks' ), 'The slot "trucks" has no parts.' ),
+			'a kit that does not read'               => array( new CheckFinding( 'kit_unread', kit: 9 ), 'The builder cannot read this kit\'s settings, so no shopper can open it. Open its Build tab, put right what it names, and save.' ),
 			'a slot with nothing in stock'           => array( $finding( 'slot_out_of_stock', 'wheels' ), 'The slot "wheels" has nothing in stock.' ),
 			'a spec missing'                         => array(
 				$finding( 'spec_missing', 'trucks', 'axle_width' ),
@@ -264,6 +265,7 @@ final class SentencesTest extends TestCase {
 			'rules_out_of_order'          => 'The Trucks slot, Units per build: this must not be less than the figure before it.',
 			'presets_unknown_slot'        => 'The Trucks slot, Units per build: the kit has no such slot now. Clear the part, or keep the slot.',
 			'presets_slot_not_filled'     => 'The Trucks slot, Units per build: choose a part. A build must have one.',
+			'slots_leave_presets'         => 'The slots were not saved. A preset the kit already has names a slot these leave out, or leaves empty one a build must now have. Put that preset right, or remove it, in the same save.',
 			'presets_without_slots'       => 'Presets need the kit\'s slots. Put the slots right and save, then add the presets.',
 			'preset_part_not_in_slot'     => 'The Trucks slot, Units per build: Indy 144 is not a part the Trucks slot takes, or it cannot be bought now.',
 			'preset_part_blocked'         => 'The Trucks slot, Units per build: Indy 144 does not fit the other parts of "Street". Rule R1 does not let them go together.',

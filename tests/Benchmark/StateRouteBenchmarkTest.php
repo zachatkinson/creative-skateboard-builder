@@ -22,8 +22,8 @@ use WP_REST_Request;
 /**
  * Spec, Quality bar: p95 server time for the state route under 80 ms with 500 candidate parts. Spec, Testing: on a
  * generated catalogue of 2,000 parts with 500 candidates in one slot, cold and warm (docs/BENCHMARK.md). Run by
- * `composer test:benchmark:integration`, with Xdebug off; `composer test:integration:object-cache` gives the same
- * run a persistent object cache.
+ * `composer test:benchmark:integration`, with Xdebug off. It is not yet run with a persistent object cache: that leg
+ * runs `tests/Integration` alone, and the benchmark's own is owed (the review's For Zach).
  *
  * Cold is a request that starts with an empty object cache, as every request does on a site with no persistent
  * one; warm is a request that finds the cache as the last left it. Both find a row kept of each part (D-116).

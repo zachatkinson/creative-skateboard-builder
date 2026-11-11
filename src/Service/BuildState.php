@@ -18,11 +18,13 @@ use CreativeBranding\SkateboardBuilder\Domain\Fit\Option;
 use CreativeBranding\SkateboardBuilder\Domain\Fit\Problem;
 use CreativeBranding\SkateboardBuilder\Domain\Fit\Recommender;
 use CreativeBranding\SkateboardBuilder\Domain\Fit\SlotOptions;
+use CreativeBranding\SkateboardBuilder\Domain\Kit\InvalidMoney;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Kit;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Part;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Picks;
 use CreativeBranding\SkateboardBuilder\Domain\Pricing\Pricer;
 use CreativeBranding\SkateboardBuilder\Port\Kits;
+use CreativeBranding\SkateboardBuilder\Port\Logger;
 use CreativeBranding\SkateboardBuilder\Port\ShopSettings;
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -48,8 +50,9 @@ final class BuildState {
 	 *
 	 * @param Kits         $kits     The shop's kits and each slot's parts.
 	 * @param ShopSettings $settings The shop's settings, for the build discount.
+	 * @param Logger       $logger   Where a kit that does not read, and a build that cannot be priced, are written.
 	 */
-	public function __construct( private Kits $kits, private ShopSettings $settings ) {}
+	public function __construct( private Kits $kits, private ShopSettings $settings, private Logger $logger ) {}
 
 	/**
 	 * The state of a build of a kit, or null when the shop has no such kit.
@@ -62,10 +65,15 @@ final class BuildState {
 	 * @param string|null       $step     The key of the step the shopper is on; null, or a slot the kit lacks, is the
 	 *                                    first step with nothing picked.
 	 * @param bool|null         $assembly Whether the shop assembles the build; null is the kit's own default.
+	 *
+	 * @throws InvalidMoney When the build cannot be priced in the shop's currency settings. It is logged first.
 	 */
 	public function of( int $id, array $picks, ?array $previous = null, ?string $step = null, ?bool $assembly = null ): ?State {
 		$kit = $this->kits->kit( $id );
 		if ( null === $kit ) {
+			// The callers ask only for a kit a visitor may see, so this one is published and its settings do not
+			// read: no shopper can open it, and nothing else tells the owner.
+			$this->logger->hourly( 'kit_unread_' . $id, Logger::WARNING, 'A kit\'s settings do not read, so the builder cannot open it. Save its Build tab; the Catalogue check lists it.', array( 'kit' => $id ) );
 			return null;
 		}
 		$engine     = FitEngine::standard();
@@ -105,8 +113,13 @@ final class BuildState {
 		}
 
 		$validation = ( new BuildValidator( $engine ) )->validate( $kit, $counted, array_map( 'array_keys', $parts ) );
-		$quote      = ( new Pricer() )->quote( $kit, $validation->build, $assembly ?? $kit->assembly->defaultOn, $this->settings->terms()->discount, $this->kits->decimals() );
-		$keys       = $kit->slots->keys();
+		try {
+			$quote = ( new Pricer() )->quote( $kit, $validation->build, $assembly ?? $kit->assembly->defaultOn, $this->settings->terms()->discount, $this->kits->decimals() );
+		} catch ( InvalidMoney $unpriced ) {
+			$this->logger->hourly( 'no_price_' . $id, Logger::ERROR, 'A build could not be priced in the shop\'s currency settings.', array( 'kit' => $id ) );
+			throw $unpriced;
+		}
+		$keys = $kit->slots->keys();
 		return new State(
 			$id,
 			$kit,

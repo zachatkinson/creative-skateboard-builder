@@ -46,6 +46,8 @@ final class BuildAbilitiesTest extends IntegrationTestCase {
 
 	public function set_up(): void {
 		parent::set_up();
+		// An ability is run by someone signed in; a subscriber sees of a kit what a visitor does.
+		wp_set_current_user( self::factory()->user->create( array( 'role' => 'subscriber' ) ) );
 		// What keeps each slot's kept parts current (D-116).
 		$this->service( \CreativeBranding\SkateboardBuilder\Hooks\CardHooks::class )->register();
 		$_SERVER['REMOTE_ADDR'] = '203.0.113.7';
@@ -251,6 +253,22 @@ final class BuildAbilitiesTest extends IntegrationTestCase {
 				self::assertWPError( $answer );
 				self::assertSame( 'cbuild_kit_not_found', $answer->get_error_code() );
 			}
+		}
+	}
+
+	// The auditor's blocker 2, milestone 4: WordPress's run route asks only the ability's own callback, so an open
+	// one was the state route again with no limit, for anyone.
+	public function test_a_visitor_who_is_not_signed_in_runs_neither(): void {
+		// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- WordPress's own, to build the routes.
+		do_action( 'rest_api_init', rest_get_server() );
+		wp_set_current_user( 0 );
+		foreach ( array( CheckBuildAbility::NAME, PriceBuildAbility::NAME ) as $name ) {
+			$request = new WP_REST_Request( 'GET', '/wp-abilities/v1/abilities/' . $name . '/run' );
+			$request->set_query_params( array( 'input' => array( 'kit' => $this->kit ) ) );
+			$answer = rest_get_server()->dispatch( $request );
+			self::assertSame( 401, $answer->get_status(), (string) wp_json_encode( $answer->get_data() ) );
+			self::assertArrayNotHasKey( 'kit', (array) $answer->get_data() );
+			self::assertWPError( self::ability( $name )->execute( array( 'kit' => $this->kit ) ) );
 		}
 	}
 

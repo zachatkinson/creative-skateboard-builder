@@ -9,6 +9,7 @@ declare( strict_types=1 );
 
 namespace CreativeBranding\SkateboardBuilder\Tests\Integration;
 
+use CreativeBranding\SkateboardBuilder\Support\Options;
 use CreativeBranding\SkateboardBuilder\Tests\Support\IntegrationTestCase;
 use CreativeBranding\SkateboardBuilder\Tests\Support\KitFactory;
 
@@ -80,6 +81,45 @@ final class KitHiddenTest extends IntegrationTestCase {
 			self::assertTrue( has_term( $term, 'product_visibility', $this->kit ), $term . ' after a save as visible' );
 		}
 		self::assertFalse( has_term( 'exclude-from-catalog', 'product_visibility', $this->part ) );
+	}
+
+	// The auditor's blocker 1, milestone 4: WooCommerce writes the visibility terms on an update only when visibility is
+	// among the product's changes, and the product screen sends the visibility it read, so nothing changed.
+	public function test_a_product_made_a_kit_on_the_product_screen_is_hidden_by_that_save(): void {
+		$simple = new \WC_Product_Simple();
+		$simple->set_name( 'About to be a kit' );
+		$simple->set_status( 'publish' );
+		$simple->set_regular_price( '10' );
+		$simple->save();
+		$id = $simple->get_id();
+		self::assertFalse( has_term( 'exclude-from-catalog', 'product_visibility', $id ) );
+
+		// As WC_Meta_Box_Product_Data::save() does (WooCommerce 11.2.2,
+		// includes/admin/meta-boxes/class-wc-meta-box-product-data.php:337): the type's class on the existing post, the
+		// screen's fields set, WooCommerce's action, and a save.
+		$this->service( \CreativeBranding\SkateboardBuilder\Hooks\KitHooks::class )->register();
+		$class = \WC_Product_Factory::get_product_classname( $id, Options::PRODUCT_TYPE_KIT );
+		$kit   = new $class( $id );
+		self::assertInstanceOf( \CreativeBranding\SkateboardBuilder\Adapter\KitProduct::class, $kit );
+		$kit->set_props( array( 'catalog_visibility' => 'visible' ) );
+		// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- WooCommerce's own, as its screen does it.
+		do_action( 'woocommerce_admin_process_product_object', $kit );
+		$kit->save();
+
+		wp_cache_flush();
+		foreach ( array( 'exclude-from-catalog', 'exclude-from-search' ) as $term ) {
+			self::assertTrue( has_term( $term, 'product_visibility', $id ), $term );
+		}
+		self::assertNotContains(
+			$id,
+			wc_get_products(
+				array(
+					'visibility' => 'catalog',
+					'return'     => 'ids',
+					'limit'      => -1,
+				)
+			)
+		);
 	}
 
 	public function test_the_catalogue_and_woocommerces_product_queries_leave_it_out(): void {

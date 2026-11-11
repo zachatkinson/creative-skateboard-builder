@@ -130,6 +130,41 @@ final class MigrationTest extends IntegrationTestCase {
 		self::assertSame( MigrationRegistry::VERSION, get_option( Options::DB_VERSION ) );
 	}
 
+	// The spec reviewer's should-fix 2, milestone 4: the first table added after a release, and nothing started from
+	// that release's state to show it arriving. 0.3.1 left schema version 2, its three migrations done, and two tables.
+	public function test_a_site_on_0_3_1_gains_the_parts_table_and_nothing_else_is_run_again(): void {
+		global $wpdb;
+		$parts = Tables::parts();
+		$this->withRealTables(
+			function () use ( $wpdb, $parts ): void {
+				delete_option( Options::DB_VERSION );
+				delete_option( Options::MIGRATIONS );
+				self::assertSame( RunResult::Finished, $this->service( MigrationRunner::class )->run() );
+
+				// As 0.3.1 left the site.
+				$wpdb->query( 'DROP TABLE IF EXISTS ' . $parts ); // phpcs:ignore
+				$states = get_option( Options::MIGRATIONS );
+				self::assertIsArray( $states );
+				self::assertSame( array( 'schema_1', 'noop_1', 'spec_tables_1', 'schema_2' ), array_keys( $states ) );
+				$before = array_diff_key( $states, array( 'schema_2' => true ) );
+				update_option( Options::MIGRATIONS, $before, false );
+				update_option( Options::DB_VERSION, '2', true );
+				self::assertNull( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $parts ) ) );
+
+				$runner = $this->service( MigrationRunner::class );
+				self::assertTrue( $runner->needed(), 'behind' );
+				self::assertSame( RunResult::Finished, $runner->run() );
+				self::assertSame( $parts, $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $parts ) ) );
+				self::assertSame( '3', get_option( Options::DB_VERSION ) );
+				$after = get_option( Options::MIGRATIONS );
+				self::assertIsArray( $after );
+				self::assertSame( $before, array_diff_key( $after, array( 'schema_2' => true ) ), 'the three it had run are as they were' );
+				self::assertSame( MigrationStatus::Done, MigrationState::fromArray( 'schema_2', $after['schema_2'] ?? null )->status );
+				self::assertFalse( $runner->needed() );
+			}
+		);
+	}
+
 	public function test_a_lock_row_holding_junk_is_not_taken_over(): void {
 		global $wpdb;
 		$wpdb->insert( $wpdb->options, array( 'option_name' => Options::MIGRATION_LOCK, 'option_value' => 'not a time', 'autoload' => 'off' ) );

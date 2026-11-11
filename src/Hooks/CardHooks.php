@@ -54,6 +54,11 @@ if ( ! defined( 'ABSPATH' ) ) {
 final class CardHooks implements Hookable {
 
 	/**
+	 * The post types a part has.
+	 */
+	private const array TYPES = array( 'product', 'product_variation' );
+
+	/**
 	 * Constructor.
 	 *
 	 * @since 0.4.0
@@ -78,16 +83,17 @@ final class CardHooks implements Hookable {
 			'woocommerce_variation_set_stock_status',
 			'wc_after_products_starting_sales',
 			'wc_after_products_ending_sales',
-			'deleted_post',
 		) as $moved ) {
 			add_action( $moved, array( $this, 'moved' ), 10, 1 );
 		}
-		foreach ( array( 'woocommerce_new_product', 'woocommerce_new_product_variation', 'set_object_terms' ) as $kept ) {
+		add_action( 'deleted_post', array( $this, 'deleted' ), 10, 2 );
+		foreach ( array( 'woocommerce_new_product', 'woocommerce_new_product_variation' ) as $kept ) {
 			add_action( $kept, array( $this, 'changed' ), 10, 1 );
 		}
-		// After the jobs themselves, which Hooks\IndexHooks runs at 10: a row holds its part's specs as the index had them.
+		add_action( 'set_object_terms', array( $this, 'terms' ), 10, 1 );
+		// After the job itself, which Hooks\IndexHooks runs at 10: a row holds its part's specs as the index had them.
+		// A batch of the reindex tells of its own parts (`Service\IndexJobs`).
 		add_action( Options::JOB_INDEX_PART, array( $this, 'changed' ), 20, 1 );
-		add_action( Options::JOB_REINDEX, array( $this, 'changed' ), 20, 0 );
 		add_action( 'edited_term', array( $this, 'term' ), 10, 3 );
 		add_action( 'delete_term', array( $this, 'term' ), 10, 3 );
 		add_action( 'transition_post_status', array( $this, 'status' ), 10, 3 );
@@ -132,6 +138,36 @@ final class CardHooks implements Hookable {
 	}
 
 	/**
+	 * A post was deleted for good: a product's or a variation's takes its card and its rows with it. Any other
+	 * post costs nothing.
+	 *
+	 * @since 0.4.0
+	 *
+	 * @param mixed $id   The post's ID.
+	 * @param mixed $post The post as it was.
+	 */
+	public function deleted( mixed $id, mixed $post ): void {
+		if ( $post instanceof WP_Post && in_array( $post->post_type, self::TYPES, true ) ) {
+			$this->moved( $id );
+		}
+	}
+
+	/**
+	 * An object's terms were set: a product's or a variation's decide which slots it fills. WordPress says so of
+	 * every post, once for each taxonomy, and any other post costs nothing.
+	 *
+	 * @since 0.4.0
+	 *
+	 * @param mixed $id The object's ID.
+	 */
+	public function terms( mixed $id ): void {
+		$id = Cast::int( $id );
+		if ( in_array( get_post_type( $id ), self::TYPES, true ) ) {
+			( $this->kits )()->forget( $id );
+		}
+	}
+
+	/**
 	 * A term was edited or deleted.
 	 *
 	 * @since 0.4.0
@@ -155,7 +191,7 @@ final class CardHooks implements Hookable {
 	 * @param mixed $post   The post.
 	 */
 	public function status( mixed $now, mixed $before, mixed $post ): void {
-		if ( $now !== $before && $post instanceof WP_Post && in_array( $post->post_type, array( 'product', 'product_variation' ), true ) ) {
+		if ( $now !== $before && $post instanceof WP_Post && in_array( $post->post_type, self::TYPES, true ) ) {
 			( $this->kits )()->forget( $post->ID );
 		}
 	}

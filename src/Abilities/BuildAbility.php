@@ -72,8 +72,10 @@ abstract class BuildAbility implements Hookable {
 	final protected function common(): array {
 		return array(
 			'category'            => CatalogueCheckAbility::CATEGORY,
-			// Open on purpose, as the state route is: it gives what the kit's page shows.
-			'permission_callback' => '__return_true',
+			// Whoever is signed in. WordPress's run route asks nothing but this (WordPress 7.1.4,
+			// wp-includes/rest-api/endpoints/class-wp-rest-abilities-v1-run-controller.php:143), and the answer
+			// is the state route's, which is counted for each address: open, this would be that route uncounted.
+			'permission_callback' => 'is_user_logged_in',
 			'execute_callback'    => array( $this, 'run' ),
 			'input_schema'        => self::inputSchema(),
 			'meta'                => array(

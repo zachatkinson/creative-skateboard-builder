@@ -65,6 +65,20 @@ final class WooKits implements Kits {
 	private const string BRAND = 'product_brand';
 
 	/**
+	 * The products whose rows are to be deleted when the request ends, by ID.
+	 *
+	 * @var array<int, int>
+	 */
+	private array $moved = array();
+
+	/**
+	 * Whether every row is to be deleted when the request ends.
+	 *
+	 * @var bool
+	 */
+	private bool $every = false;
+
+	/**
 	 * Constructor.
 	 *
 	 * @since 0.4.0
@@ -180,6 +194,7 @@ final class WooKits implements Kits {
 		if ( array() === $ids ) {
 			return array();
 		}
+		$this->settle();
 		$context = WooPartCards::context();
 		$now     = $this->clock->now()->getTimestamp();
 		$kept    = $this->facts->of( $context, ...$ids );
@@ -219,17 +234,38 @@ final class WooKits implements Kits {
 	 */
 	public function forget( int ...$ids ): void {
 		if ( array() === $ids ) {
-			$this->facts->forgetAll();
-			return;
+			$this->every = true;
 		}
-		// A variation the table has not met yet still changes what its parent's row answers for.
 		foreach ( $ids as $id ) {
+			$this->moved[ $id ] = $id;
+			// A variation the table has not met yet still changes what its parent's row answers for.
 			$parent = Cast::int( wp_get_post_parent_id( $id ) );
 			if ( $parent > 0 ) {
-				$ids[] = $parent;
+				$this->moved[ $parent ] = $parent;
 			}
 		}
-		$this->facts->forget( ...array_values( array_unique( $ids ) ) );
+		if ( false === has_action( 'shutdown', array( $this, 'settle' ) ) ) {
+			add_action( 'shutdown', array( $this, 'settle' ), 10, 0 );
+		}
+	}
+
+	/**
+	 * Delete the rows of what moved in this request, in one go: a product's save tells of the same product a dozen
+	 * times over, once for each taxonomy it sets, and a row is deleted once. Run when the request ends, and before
+	 * this request reads a row.
+	 *
+	 * @since 0.4.0
+	 */
+	public function settle(): void {
+		$moved       = array_values( $this->moved );
+		$every       = $this->every;
+		$this->moved = array();
+		$this->every = false;
+		if ( $every ) {
+			$this->facts->forgetAll();
+		} elseif ( array() !== $moved ) {
+			$this->facts->forget( ...$moved );
+		}
 	}
 
 	/**
@@ -242,7 +278,7 @@ final class WooKits implements Kits {
 	 */
 	public function termMoved( string $taxonomy ): void {
 		if ( self::BRAND === $taxonomy || str_starts_with( $taxonomy, 'pa_' ) ) {
-			$this->facts->forgetAll();
+			$this->forget();
 		}
 	}
 

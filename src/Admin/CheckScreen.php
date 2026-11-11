@@ -138,8 +138,15 @@ final class CheckScreen {
 				$about = __( 'Background work', 'creative-skateboard-builder' );
 				$link  = admin_url( 'admin.php?page=wc-status&tab=action-scheduler&status=failed' );
 			}
+			$kit = 0 === $finding->kit ? '' : ( $kits[ $finding->kit ]['name'] ?? '' );
+			if ( 0 !== $finding->kit && '' === $kit ) {
+				// A kit that does not read has no name among those that do: its product's, and a link to its Build tab.
+				$kit   = get_the_title( $finding->kit );
+				$about = __( 'The kit\'s Build tab', 'creative-skateboard-builder' );
+				$link  = (string) get_edit_post_link( $finding->kit, 'raw' ) . '#cbuild_build';
+			}
 			$rows[] = array(
-				'kit'   => 0 === $finding->kit ? '' : ( $kits[ $finding->kit ]['name'] ?? (string) $finding->kit ),
+				'kit'   => $kit,
 				'about' => $about,
 				'link'  => $link,
 				'says'  => Sentences::finding( $finding ),

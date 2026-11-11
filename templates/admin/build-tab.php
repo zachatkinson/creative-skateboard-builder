@@ -48,18 +48,24 @@ if ( ! defined( 'ABSPATH' ) ) {
 				<?php foreach ( $cbuild_section['groups'] as $cbuild_group ) : ?>
 					<fieldset id="<?php echo esc_attr( $cbuild_group['id'] ); ?>"<?php echo $cbuild_group['moves'] ? ' class="cbuild-kit-row"' : ''; ?>>
 						<?php if ( '' !== $cbuild_group['legend'] ) : ?>
-							<legend><?php echo esc_html( $cbuild_group['legend'] ); ?></legend>
+							<legend id="<?php echo esc_attr( $cbuild_group['id'] . '-legend' ); ?>"><?php echo esc_html( $cbuild_group['legend'] ); ?></legend>
 						<?php endif; ?>
 						<?php if ( $cbuild_group['moves'] ) : ?>
 							<p class="cbuild-kit-moves">
 								<span class="cbuild-kit-handle dashicons dashicons-menu" aria-hidden="true"></span>
-								<button type="button" class="button" data-cbuild-move="up"><?php esc_html_e( 'Move up', 'creative-skateboard-builder' ); ?></button>
-								<button type="button" class="button" data-cbuild-move="down"><?php esc_html_e( 'Move down', 'creative-skateboard-builder' ); ?></button>
+								<?php // Each button is named with its row: "Move up Slot: Trucks", not "Move up" seven times over. ?>
+								<button type="button" class="button" data-cbuild-move="up" id="<?php echo esc_attr( $cbuild_group['id'] . '-up' ); ?>" aria-labelledby="<?php echo esc_attr( $cbuild_group['id'] . '-up ' . $cbuild_group['id'] . '-legend' ); ?>"><?php esc_html_e( 'Move up', 'creative-skateboard-builder' ); ?></button>
+								<button type="button" class="button" data-cbuild-move="down" id="<?php echo esc_attr( $cbuild_group['id'] . '-down' ); ?>" aria-labelledby="<?php echo esc_attr( $cbuild_group['id'] . '-down ' . $cbuild_group['id'] . '-legend' ); ?>"><?php esc_html_e( 'Move down', 'creative-skateboard-builder' ); ?></button>
 							</p>
 						<?php endif; ?>
 						<?php if ( '' !== $cbuild_group['fold'] ) : ?>
 							<details class="cbuild-kit-fold"<?php echo $cbuild_group['open'] ? ' open' : ''; ?>>
-								<summary><?php echo esc_html( $cbuild_group['fold'] ); ?></summary>
+								<summary
+									id="<?php echo esc_attr( $cbuild_group['id'] . '-fold' ); ?>"
+									<?php if ( '' !== $cbuild_group['legend'] ) : ?>
+										aria-labelledby="<?php echo esc_attr( $cbuild_group['id'] . '-fold ' . $cbuild_group['id'] . '-legend' ); ?>"
+									<?php endif; ?>
+								><?php echo esc_html( $cbuild_group['fold'] ); ?></summary>
 						<?php endif; ?>
 						<?php
 						foreach ( array( $cbuild_group['fields'], $cbuild_group['more'] ) as $cbuild_at => $cbuild_fields ) :

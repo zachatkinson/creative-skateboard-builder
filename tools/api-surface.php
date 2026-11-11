@@ -234,6 +234,7 @@ $cbuild_surface = array(
 	'product_types'     => cbuild_api_list( $cbuild_options, 'productTypes' ),
 	'settings_keys'     => cbuild_api_list( $cbuild_options, 'settingsKeys' ),
 	'rest_routes'       => array_map( static fn( string $r ): string => 'cbuild/v1/' . ltrim( $r, '/' ), cbuild_api_matches( $cbuild_php, "/register_rest_route\\(\\s*(?:self::NAMESPACE|'cbuild\\/v1')\\s*,\\s*'([^']+)'/" ) ),
+	'rest_error_codes'  => cbuild_api_matches( array_merge( cbuild_api_files( $cbuild_root . '/src/Rest', '.php' ), cbuild_api_files( $cbuild_root . '/src/Abilities', '.php' ) ), "/(?:new WP_Error\\(\\s*|'code'\\s*=>\\s*)'(cbuild_[a-z0-9_]+)'/" ),
 	'abilities'         => cbuild_api_matches( $cbuild_php, "/wp_register_ability\\(\\s*'([^']+)'/" ),
 	'cli_commands'      => cbuild_api_matches( $cbuild_php, "/WP_CLI::add_command\\(\\s*'([^']+)'/" ),
 	'blocks'            => $cbuild_blocks,
@@ -297,11 +298,36 @@ if ( is_file( $cbuild_root . '/src/Service/SpecSheet.php' ) ) {
 		if ( array() === $cbuild_ability_names || ! method_exists( $cbuild_ability_class, 'outputSchema' ) ) {
 			continue;
 		}
-		$cbuild_ability_schema = $cbuild_ability_class::outputSchema();
+		// What an ability takes is held with what it gives: renaming an input breaks a caller as surely.
+		$cbuild_ability_schema = array(
+			'input'  => method_exists( $cbuild_ability_class, 'inputSchema' ) ? $cbuild_ability_class::inputSchema() : null,
+			'output' => $cbuild_ability_class::outputSchema(),
+		);
 		$cbuild_sort( $cbuild_ability_schema );
 		$cbuild_abilities[ $cbuild_ability_names[0] ] = hash( 'sha256', json_encode( $cbuild_ability_schema, JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR ) );
 	}
 }
+// Each route's arguments: their names, and a digest of their schemas with the descriptions left out, so a reworded
+// description changes nothing and a renamed argument, a new bound or a pattern does.
+$cbuild_route_args = array();
+foreach ( cbuild_api_files( $cbuild_root . '/src/Rest', '.php' ) as $cbuild_route_file ) {
+	$cbuild_route_class = 'CreativeBranding\\SkateboardBuilder\\Rest\\' . basename( $cbuild_route_file, '.php' );
+	$cbuild_route_paths = cbuild_api_matches( array( $cbuild_route_file ), "/register_rest_route\\(\\s*(?:self::NAMESPACE|'cbuild\\/v1')\\s*,\\s*'([^']+)'/" );
+	if ( array() === $cbuild_route_paths || ! is_file( $cbuild_root . '/vendor/autoload.php' ) || ! method_exists( $cbuild_route_class, 'arguments' ) ) {
+		continue;
+	}
+	$cbuild_route_schema = array_map(
+		static function ( array $argument ): array {
+			unset( $argument['description'] );
+			return $argument;
+		},
+		$cbuild_route_class::arguments()
+	);
+	$cbuild_sort( $cbuild_route_schema );
+	$cbuild_route_args[ 'cbuild/v1/' . ltrim( $cbuild_route_paths[0], '/' ) ] = implode( ' ', array_keys( $cbuild_route_schema ) ) . ' ' . hash( 'sha256', json_encode( $cbuild_route_schema, JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR ) );
+}
+$cbuild_surface['rest_route_args'] = $cbuild_route_args;
+
 $cbuild_surface['csv_columns']     = $cbuild_columns;
 $cbuild_surface['ability_schemas'] = $cbuild_abilities;
 
@@ -384,7 +410,7 @@ $cbuild_surface['refusal_codes']  = $cbuild_refusal_codes;
 
 // Groups that describe another group's items, or whose values are too plain a word to look for in the docs, and are
 // held by the snapshot alone.
-$cbuild_details = array( 'schema_digests', 'spec_kinds', 'severities', 'sources', 'message_values', 'cli_synopses', 'csv_columns', 'ability_schemas' );
+$cbuild_details = array( 'schema_digests', 'spec_kinds', 'severities', 'sources', 'message_values', 'cli_synopses', 'csv_columns', 'ability_schemas', 'rest_route_args' );
 
 $cbuild_json     = json_encode( $cbuild_surface, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR ) . "\n";
 $cbuild_snapshot = $cbuild_root . '/tests/Fixtures/api-surface.json';

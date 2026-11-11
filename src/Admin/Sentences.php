@@ -71,6 +71,8 @@ final class Sentences {
 			case CatalogueCheck::JOBS_FAILED:
 				/* translators: %s: a number of jobs. */
 				return sprintf( _n( '%s background job of the builder has failed.', '%s background jobs of the builder have failed.', (int) ( $values['count'] ?? '0' ), 'creative-skateboard-builder' ), number_format_i18n( (int) ( $values['count'] ?? '0' ) ) );
+			case CatalogueCheck::KIT_UNREAD:
+				return __( 'The builder cannot read this kit\'s settings, so no shopper can open it. Open its Build tab, put right what it names, and save.', 'creative-skateboard-builder' );
 			case CatalogueCheck::SLOT_EMPTY:
 				/* translators: %s: a slot's key, such as trucks. */
 				return sprintf( __( 'The slot "%s" has no parts.', 'creative-skateboard-builder' ), $finding->slot );
@@ -203,6 +205,7 @@ final class Sentences {
 			DocumentError::UnknownSlot->value => sprintf( __( '%s: the kit has no such slot now. Clear the part, or keep the slot.', 'creative-skateboard-builder' ), $field ),
 			/* translators: %s: a field's name. */
 			DocumentError::SlotNotFilled->value => sprintf( __( '%s: choose a part. A build must have one.', 'creative-skateboard-builder' ), $field ),
+			KitEditor::LEAVE_PRESETS => __( 'The slots were not saved. A preset the kit already has names a slot these leave out, or leaves empty one a build must now have. Put that preset right, or remove it, in the same save.', 'creative-skateboard-builder' ),
 			KitEditor::NO_SLOTS => __( 'Presets need the kit\'s slots. Put the slots right and save, then add the presets.', 'creative-skateboard-builder' ),
 			/* translators: 1: a field's name. 2: a product's name. 3: a slot's label. */
 			KitEditor::NOT_IN_SLOT => sprintf( __( '%1$s: %2$s is not a part the %3$s slot takes, or it cannot be bought now.', 'creative-skateboard-builder' ), $field, $part, $slot ),

@@ -76,8 +76,15 @@ final class InMemoryKits implements Kits {
 	}
 
 	public function ids(): array {
-		return array_keys( $this->kits );
+		return array( ...array_keys( $this->kits ), ...$this->unread );
 	}
+
+	/**
+	 * Kit products whose documents do not read.
+	 *
+	 * @var list<int>
+	 */
+	public array $unread = array();
 
 	/**
 	 * The slots each product is said to fill.

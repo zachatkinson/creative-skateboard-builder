@@ -147,6 +147,10 @@ test.describe( 'The Build tab', () => {
 				`input[id$="-label"][value="${ before[ last ] }"]`
 			),
 		} );
+		// Each row's buttons carry the row's name, so a list of the tab's buttons tells them apart.
+		await expect(
+			page.getByRole( 'button', { name: /^Move up Slot: / } )
+		).toHaveCount( before.length );
 		const up = row.getByRole( 'button', { name: 'Move up' } );
 		const down = row.getByRole( 'button', { name: 'Move down' } );
 

@@ -8,7 +8,7 @@ cd "$(dirname "$0")/.."
 # shellcheck source=tools/domain-present.sh
 source tools/domain-present.sh
 mkdir -p tmp
-infection="${CBUILD_INFECTION:-php -d xdebug.mode=off vendor/bin/infection}"
+infection="${CBUILD_INFECTION:-php -d xdebug.mode=off -d memory_limit=1G vendor/bin/infection}"
 report="${CBUILD_INFECTION_REPORT:-tmp/infection-domain.json}"
 # Infection's "max" is every core but one, which is one thread on a runner with two. CI names its own count (D-107).
 threads="${CBUILD_INFECTION_THREADS:-max}"
