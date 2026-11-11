@@ -97,7 +97,7 @@ final class ContainerTest extends TestCase {
 		$container = new Container();
 		$container->set( MigrationStore::class, new InMemoryMigrationStore() );
 		$hookables = $container->hookablesFor( Scope::Everywhere );
-		self::assertCount( 6, $hookables, 'the install\'s, the index\'s, the spec tables\', the import\'s, the kit\'s and the ability\'s' );
+		self::assertCount( 7, $hookables, 'the install\'s, the index\'s, the cards\', the spec tables\', the import\'s, the kit\'s and the ability\'s' );
 		self::assertContainsOnlyInstancesOf( Hookable::class, $hookables );
 	}
 
@@ -114,7 +114,7 @@ final class ContainerTest extends TestCase {
 	// Claude in Cowork's review of milestone 3, minor 9: mutation testing left the plugin's own scopes unpinned.
 	public function test_each_scope_builds_its_own_hookables_and_no_others(): void {
 		$scopes = array(
-			'Everywhere' => array( 'Hooks\\InstallHooks', 'Hooks\\IndexHooks', 'Hooks\\SpecTableHooks', 'Hooks\\ImportHooks', 'Hooks\\KitHooks', 'Abilities\\CatalogueCheckAbility' ),
+			'Everywhere' => array( 'Hooks\\InstallHooks', 'Hooks\\IndexHooks', 'Hooks\\CardHooks', 'Hooks\\SpecTableHooks', 'Hooks\\ImportHooks', 'Hooks\\KitHooks', 'Abilities\\CatalogueCheckAbility' ),
 			'Admin'      => array( 'Admin\\SettingsHooks', 'Admin\\PartSpecsHooks', 'Admin\\BuildTabHooks', 'Admin\\BuilderHooks', 'Health\\SiteHealth' ),
 			'Cli'        => array( 'Hooks\\CliHooks', 'Health\\SiteHealth' ),
 			'Cron'       => array( 'Health\\SiteHealth' ),

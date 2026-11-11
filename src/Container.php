@@ -45,6 +45,7 @@ final class Container {
 			Port\ImportStore::class     => Adapter\OptionImportStore::class,
 			Port\Uploads::class         => Adapter\RequestUploads::class,
 			Port\Kits::class            => Adapter\WooKits::class,
+			Port\PartCards::class       => Adapter\WooPartCards::class,
 			Port\DocumentSchemas::class => Adapter\KitSchemas::class,
 			Port\Files::class           => Adapter\DiskFiles::class,
 			Port\Reindex::class         => Service\IndexJobs::class,
@@ -142,6 +143,14 @@ final class Container {
 					}
 				);
 			},
+			// The cards are built when something a card shows moves.
+			Hooks\CardHooks::class                      => static function ( Container $c ): object {
+				return new Hooks\CardHooks(
+					static function () use ( $c ): Port\PartCards {
+						return $c->get( Port\PartCards::class );
+					}
+				);
+			},
 			Hooks\SpecTableHooks::class                 => static function ( Container $c ): object {
 				return new Hooks\SpecTableHooks(
 					static function () use ( $c ): Service\IndexJobs {
@@ -195,6 +204,8 @@ final class Container {
 			Hooks\InstallHooks::class              => array( Scope::Everywhere ),
 			// A product is saved, and a job runs, on any kind of request.
 			Hooks\IndexHooks::class                => array( Scope::Everywhere ),
+			// A product is saved, sold or restocked on any kind of request.
+			Hooks\CardHooks::class                 => array( Scope::Everywhere ),
 			// A post type is registered on every request, and a table is saved from any.
 			Hooks\SpecTableHooks::class            => array( Scope::Everywhere ),
 			// The import's job runs wherever the queue does.
