@@ -303,6 +303,31 @@ final class BuildCartTest extends TestCase {
 		self::assertSame( 0, $this->builds->fee( $with ), 'a fee with no such minor unit' );
 	}
 
+	public function test_a_part_is_charged_the_shops_price_less_the_build_discount(): void {
+		self::assertSame( 7000, $this->builds->charged( 7000 ), 'no discount unless the shop sets one' );
+		$this->settings->terms = BuildTerms::read( array( BuildTerms::DISCOUNT => '7.5' ) );
+		self::assertSame( 6475, $this->builds->charged( 7000 ) );
+		self::assertSame( 924, $this->builds->charged( 999 ), '924.075, to the minor unit' );
+		self::assertSame( 19, $this->builds->charged( 20 ), '18.5, half up' );
+	}
+
+	public function test_a_coupon_reaches_a_part_through_its_kit_and_a_fixed_one_where_the_setting_says(): void {
+		// Not a fixed product coupon: fixed, part, kit, left out.
+		self::assertTrue( $this->builds->couponTakes( false, true, false, false ), 'one for the part itself' );
+		self::assertTrue( $this->builds->couponTakes( false, false, true, false ), 'one for the kit' );
+		self::assertFalse( $this->builds->couponTakes( false, false, false, false ) );
+		self::assertFalse( $this->builds->couponTakes( false, true, true, true ), 'the kit left out takes its parts with it' );
+
+		self::assertFalse( $this->builds->couponTakes( true, true, true, false ), 'a fixed product coupon stays on the kit\'s line' );
+		$this->settings->terms = BuildTerms::read( array( BuildTerms::COUPONS => BuildTerms::ON_PARTS ) );
+		self::assertTrue( $this->builds->couponTakes( true, false, true, false ), 'unless the shop sends it to the parts' );
+		self::assertTrue( $this->builds->couponTakes( true, true, false, false ) );
+		self::assertFalse( $this->builds->couponTakes( true, false, false, false ) );
+		self::assertFalse( $this->builds->couponTakes( true, true, true, true ) );
+		$this->settings->terms = BuildTerms::read( array( BuildTerms::COUPONS => BuildTerms::ON_KIT ) );
+		self::assertFalse( $this->builds->couponTakes( true, true, true, false ) );
+	}
+
 	public function test_a_stored_build_reads_back_and_anything_else_does_not(): void {
 		$build = new Build( 'build-1', self::KIT, array( 'deck' => 103 ), array( 'deck' => 1 ), true );
 		self::assertEquals( $build, Build::read( $build->toArray() ) );

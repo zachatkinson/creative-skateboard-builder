@@ -1741,3 +1741,21 @@ Milestone 5's second step. `Service\BuildLines` holds the rules, and `Cart\LineH
 **Red run.** With `Cart\LineHooks` registered: "CartAddTest::test_the_store_api_adds_the_kit_with_its_build_and_a_line_for_each_part: Failed asserting that actual size 0 matches expected size 1." at `tests/Integration/CartAddTest.php:38`, and two more of that class. **Deliberate breaks** are in the commit's message.
 
 **Status:** Accepted.
+
+### D-130 · What a build costs in the cart, and what a coupon reaches · 2026-11-11
+
+Milestone 5's third step. `Cart\PriceHooks` reads WooCommerce's objects; the two rules are `Service\BuildCart::charged()` and `::couponTakes()`.
+
+- **The discount is taken on `woocommerce_before_calculate_totals`** (`includes/class-wc-cart.php:1605`), as the spec says, at priority 999. The price discounted is the one the line's product gives then, so a sale price, and a price another plugin sets on the line at an ordinary priority, are what it comes off.
+- **It is taken once.** WooCommerce works the totals out many times in a request on the same product objects, and a price set on one stays set. The class remembers, per object, the price it found and the price it gave: where the object still says what it was given, the discount is worked from what was found. Where it says anything else, someone has priced it again, and that is the price discounted.
+- **Rounding is the domain's:** `Pricer::discounted()`, half up to the minor unit, on the unit price, which is how the builder's total takes it.
+- **The price struck through.** The classic cart and the Mini-Cart's template get the part's own price before the discounted one, through `woocommerce_cart_item_price` (`templates/cart/cart.php:140`), shown with or without tax as the cart shows prices. The Store API gives a line's `prices.regular_price` beside its `prices.price`, and the blocks strike the first through themselves. For a part that is also on sale the blocks strike its regular price, not its sale price: the spec says its own price, and the figure charged is right in both.
+- **What "coupons follow the parent" is read as.** A part's line is taken by a coupon that would take the part as a product of its own, or that takes the kit. So a coupon for the kit alone reaches every part, and a coupon for decks still reaches a deck in a build. A coupon that names the kit as excluded, or a category the kit is in, reaches none of the build's lines. This is how Product Bundles has a bundled item inherit from its container. The other reading, that a part answers only as its kit does, would stop a shopper's coupon for a brand from working once the part is in a build. For Zach at the review.
+- **A fixed product coupon is the exception,** as the spec says: with `fixed_coupons` at `kit` no part's line takes it, whatever it names, so its amount comes off the kit's line once for each build; at `parts` it follows the rule above, and comes off each part too. Where assembly is free the kit's line costs nothing, and WooCommerce takes nothing off nothing: under `kit` such a coupon then discounts nothing of the build.
+- **A fixed cart coupon is WooCommerce's to spread,** over every line, as on any cart.
+- **The count** (D-009) subtracts each part's line whose kit's line is in the cart with a build, on `woocommerce_cart_contents_count` (`includes/class-wc-cart.php:738`), which the Store API's `items_count` reads.
+- **Tax needs nothing of the plugin.** Each part is its own line and product, so WooCommerce taxes it in its own class on its discounted price, and the fee in the kit's.
+
+**Deliberate breaks** are in the commit's message.
+
+**Status:** Accepted.

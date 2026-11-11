@@ -14,6 +14,7 @@ use CreativeBranding\SkateboardBuilder\Domain\Fit\BuildValidator;
 use CreativeBranding\SkateboardBuilder\Domain\Fit\FitEngine;
 use CreativeBranding\SkateboardBuilder\Domain\Fit\Option;
 use CreativeBranding\SkateboardBuilder\Domain\Fit\Problem;
+use CreativeBranding\SkateboardBuilder\Domain\Kit\BuildTerms;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\InvalidMoney;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Kit;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Picks;
@@ -146,6 +147,37 @@ final class BuildCart {
 		}
 		$this->cart->setChildren( $key, $children );
 		return null;
+	}
+
+	/**
+	 * What a part of a build is charged at: the shop's price for it, less the build discount of the shop's
+	 * settings, rounded half up to the minor unit as the builder's total rounds it.
+	 *
+	 * @since 0.5.0
+	 *
+	 * @param int $price The shop's price, in minor units.
+	 */
+	public function charged( int $price ): int {
+		return Pricer::discounted( $price, $this->settings->terms()->discount );
+	}
+
+	/**
+	 * Whether a coupon takes a part of a build. The part answers with its kit: a coupon that leaves the kit out
+	 * leaves its parts out; a fixed product coupon stays on the kit's line unless the shop's setting sends it to
+	 * the parts; any other takes a part it would take alone, or whose kit it takes.
+	 *
+	 * @since 0.5.0
+	 *
+	 * @param bool $fixed Whether it is a fixed product coupon, whose amount comes off each item.
+	 * @param bool $part  Whether it takes the part as a product of its own.
+	 * @param bool $kit   Whether it takes the kit.
+	 * @param bool $left  Whether it names the kit, or a category of the kit's, as left out.
+	 */
+	public function couponTakes( bool $fixed, bool $part, bool $kit, bool $left ): bool {
+		if ( $left || ( $fixed && BuildTerms::ON_PARTS !== $this->settings->terms()->fixedCoupons ) ) {
+			return false;
+		}
+		return $part || $kit;
 	}
 
 	/**

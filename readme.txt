@@ -44,6 +44,9 @@ Yes. Activating it for the network installs it on every site, and a site added l
 * A kit added to a cart with no build is refused, whichever way it arrives.
 * A build in the cart stays together: its quantity sets its parts', removing any line removes the build, and Undo brings all of it back.
 * Before an order is placed, each build is checked again against your stock and your parts' specs.
+* The build discount setting now comes off each part of a build in the cart, with the part's own price struck through.
+* A coupon for a kit reaches its parts. A fixed product coupon lands on the kit's line, or on each part too if you choose that in the settings.
+* The cart's count shows a build as one item.
 * The cart charges each part at the price your shop holds at that moment.
 * An order no longer queues background work for each product it sells.
 

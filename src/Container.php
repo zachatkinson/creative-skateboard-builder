@@ -193,6 +193,13 @@ final class Container {
 					$c->get( Cart\Refusals::class )
 				);
 			},
+			Cart\PriceHooks::class                      => static function ( Container $c ): object {
+				return new Cart\PriceHooks(
+					static function () use ( $c ): Service\BuildCart {
+						return $c->get( Service\BuildCart::class );
+					}
+				);
+			},
 			Cart\Refusals::class                        => static function ( Container $c ): object {
 				return new Cart\Refusals(
 					static function () use ( $c ): Port\Kits {
@@ -293,6 +300,7 @@ final class Container {
 			// A build is added from a page, the Store API or admin-ajax, and the cart is read on all three.
 			Cart\CartHooks::class                  => array( Scope::Everywhere ),
 			Cart\LineHooks::class                  => array( Scope::Everywhere ),
+			Cart\PriceHooks::class                 => array( Scope::Everywhere ),
 			// WooCommerce's settings screen.
 			Admin\SettingsHooks::class             => array( Scope::Admin ),
 			Admin\PartSpecsHooks::class            => array( Scope::Admin ),

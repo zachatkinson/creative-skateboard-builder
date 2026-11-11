@@ -481,6 +481,10 @@ The server keeps it so, whichever cart or plugin makes the change:
 - **The Store API's limits.** A part's line has `quantity_limits.editable` false. A kit's line's `quantity_limits.maximum` is no more than its scarcest part allows, beside what the cart's other lines hold of that part, and never less than 1.
 - **The check before paying.** On `woocommerce_check_cart_items`, which the cart page, both checkouts and every Store API cart response run, a build that has lost a line is removed with what is left of it, and each whole build is judged again as the shop is then. What is found is an error notice, which stops the order; the Store API lists it under the cart's `errors`.
 
+- **Prices.** The kit's line is priced at the assembly fee or nothing, and each part's line at the shop's price less the setting `build_discount`, on `woocommerce_before_calculate_totals` at priority 999. A plugin that sets a line's price does so at an earlier priority, and the discount is taken from its price.
+- **Coupons.** On `woocommerce_coupon_is_valid_for_product`, a part's line answers with its kit's: see `fixed_coupons` in `docs/SETTINGS.md`.
+- **The count.** `woocommerce_cart_contents_count` leaves the parts' lines out, so a build counts as its kit's line does.
+
 | Code | Since | Status | When |
 | --- | --- | --- | --- |
 | `cbuild_part_locked` | 0.5.0 | 400 | A part's line's quantity was set alone. The classic cart's Update cart says the same in a notice. |
