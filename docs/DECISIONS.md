@@ -1688,3 +1688,21 @@ Issue #32, which Zach agreed to try on 11 November 2026 ("sure your suggestion s
 
 **Status:** Accepted.
 
+### D-127 · A save that moves no source of the index queues no job · 2026-11-11
+
+Issue #21, from Claude in Cowork's review of milestone 3: once builds are bought, every order line saves its product, and every save queued `cbuild_index_part` to read the three sources and write the same rows back.
+
+- **What a stock change fires, in WooCommerce 11.2.2.** `wc_update_product_stock()` writes the count with a query of its own and then saves the product (`includes/wc-stock-functions.php:58` to `:64`). The save has nothing changed, or `stock_status` alone when the last one sells, and `woocommerce_update_product` fires all the same, with the ID and the product and no word of what changed (`includes/data-stores/class-wc-product-data-store-cpt.php:398`; a variation's at `class-wc-product-variation-data-store-cpt.php:279`).
+- **So what a save changes is noted before it, and asked after.** `Service\SavedSources` is told, within the request:
+  - by `woocommerce_before_product_object_save` (`includes/abstracts/abstract-wc-product.php:1559`), the properties the save changes;
+  - by `added_post_meta`, `updated_post_meta` and `deleted_post_meta` (WordPress 7.1.4, `wp-includes/meta.php:168`, `:353`, `:550`), a write of `_cbuild_specs` or `_cbuild_spec_table`, which a product's changes do not list;
+  - by `set_object_terms` (`wp-includes/taxonomy.php:3007`), an attribute's terms changed past WooCommerce and followed by a save.
+- **The job is skipped only when nothing but selling moved:** every changed property is one of `stock_quantity`, `stock_status`, `total_sales` and `date_modified`, no spec document was written, and no `pa_` taxonomy's terms changed. Anything else queues the job as before: a property not on that list, whatever it is; a save nothing was noted of; a new product. The list names what is beside the point, not what is a source, so a property WooCommerce adds later errs towards the job.
+- **A save that changes nothing queues nothing either,** which is what an order's save is. One test saved a variable product unchanged to queue its job; it now renames it first.
+- **The cost on a request that saves no product:** the three meta hooks and the terms hook each compare a string and return. Nothing is built for them, and nothing is kept for a post that is never asked about but the two flags.
+- **The parts table is not touched by this.** Its rows are dropped by `Hooks\CardHooks` when stock or price moves (D-116), as before.
+
+**Red run.** "IndexJobsTest::test_a_stock_change_queues_no_job_and_a_change_to_a_source_still_does: stock reduced as an order reduces it. Failed asserting that two arrays are identical." at `tests/Integration/IndexJobsTest.php:119`, with one job waiting for the part. **Deliberate break:** `IndexJobs::updated()` queuing whatever the save changed fails the same line, and the unit test's "stock alone".
+
+**Status:** Accepted.
+

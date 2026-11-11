@@ -17,6 +17,7 @@ use CreativeBranding\SkateboardBuilder\Domain\Spec\Reading;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\SpecKey;
 use CreativeBranding\SkateboardBuilder\Service\IndexJobs;
 use CreativeBranding\SkateboardBuilder\Service\ReindexState;
+use CreativeBranding\SkateboardBuilder\Service\SavedSources;
 use CreativeBranding\SkateboardBuilder\Service\SpecIndexer;
 use CreativeBranding\SkateboardBuilder\Support\Options;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\FakeClock;
@@ -54,6 +55,8 @@ final class IndexJobsTest extends TestCase {
 
 	private InMemoryKits $kits;
 
+	private SavedSources $saved;
+
 	private IndexJobs $jobs;
 
 	protected function setUp(): void {
@@ -66,6 +69,7 @@ final class IndexJobsTest extends TestCase {
 		$this->clock     = new FakeClock();
 		$this->logger    = new FakeLogger();
 		$this->kits      = new InMemoryKits();
+		$this->saved     = new SavedSources( array( '_cbuild_specs' ) );
 		$this->jobs      = new IndexJobs(
 			new SpecIndexer( $this->index, $this->settings, $this->clock, $this->source ),
 			$this->index,
@@ -75,7 +79,8 @@ final class IndexJobsTest extends TestCase {
 			$this->settings,
 			$this->clock,
 			$this->logger,
-			$this->kits
+			$this->kits,
+			$this->saved
 		);
 	}
 
@@ -132,6 +137,25 @@ final class IndexJobsTest extends TestCase {
 		self::assertSame( array(), $this->index->rows );
 	}
 
+	// Issue #21.
+	public function test_a_save_that_moved_no_source_queues_nothing_and_any_other_queues_the_part(): void {
+		$this->saved->saving( 7, array( 'stock_status' ) );
+		$this->jobs->updated( 7 );
+		self::assertSame( array(), $this->queue->distinct, 'stock alone' );
+
+		$this->saved->saving( 7, array( 'attributes' ) );
+		$this->jobs->updated( 7 );
+		$this->jobs->updated( 8 );
+		self::assertSame(
+			array(
+				array( 'cbuild_index_part', array( 'part' => 7 ) ),
+				array( 'cbuild_index_part', array( 'part' => 8 ) ),
+			),
+			$this->queue->distinct,
+			'a source, and a save nothing is known of'
+		);
+	}
+
 	public function test_a_parts_job_indexes_it_and_twice_is_the_same(): void {
 		$this->parts( 7 );
 		$this->jobs->indexPart( 7 );
@@ -178,7 +202,7 @@ final class IndexJobsTest extends TestCase {
 				throw new RuntimeException( 'the database went away' );
 			}
 		};
-		$jobs    = new IndexJobs( new SpecIndexer( $this->index, $this->settings, $this->clock, $failing ), $this->index, $this->catalogue, $this->queue, $this->store, $this->settings, $this->clock, $this->logger, $this->kits );
+		$jobs    = new IndexJobs( new SpecIndexer( $this->index, $this->settings, $this->clock, $failing ), $this->index, $this->catalogue, $this->queue, $this->store, $this->settings, $this->clock, $this->logger, $this->kits, $this->saved );
 		$this->catalogue->products[7] = array( 7 );
 		$now                          = $this->clock->now()->getTimestamp();
 
@@ -261,7 +285,7 @@ final class IndexJobsTest extends TestCase {
 
 		// The process dies: the same batch runs again when the queue retries the action, and the place is still there.
 		$halfway     = $this->index->rows;
-		$fresh       = new IndexJobs( new SpecIndexer( $this->index, $this->settings, $this->clock, $this->source ), $this->index, $this->catalogue, $this->queue, $this->store, $this->settings, $this->clock, $this->logger, $this->kits );
+		$fresh       = new IndexJobs( new SpecIndexer( $this->index, $this->settings, $this->clock, $this->source ), $this->index, $this->catalogue, $this->queue, $this->store, $this->settings, $this->clock, $this->logger, $this->kits, $this->saved );
 		$fresh->runReindex();
 		self::assertSame( 2, $fresh->state()?->position );
 		self::assertSame( array_keys( $halfway ), range( 1, 100 ) );
@@ -346,7 +370,7 @@ final class IndexJobsTest extends TestCase {
 				return array_fill_keys( $partIds, array() );
 			}
 		};
-		$jobs         = new IndexJobs( new SpecIndexer( $this->index, $this->settings, $this->clock, $asking ), $this->index, $this->catalogue, $this->queue, $this->store, $this->settings, $this->clock, $this->logger, $this->kits );
+		$jobs         = new IndexJobs( new SpecIndexer( $this->index, $this->settings, $this->clock, $asking ), $this->index, $this->catalogue, $this->queue, $this->store, $this->settings, $this->clock, $this->logger, $this->kits, $this->saved );
 		$asking->jobs = $jobs;
 		$this->queue->running['cbuild_reindex'] = true;
 		unset( $this->queue->pending['cbuild_reindex'] );
@@ -382,7 +406,7 @@ final class IndexJobsTest extends TestCase {
 				throw new RuntimeException( 'the database went away' );
 			}
 		};
-		$jobs    = new IndexJobs( new SpecIndexer( $this->index, $this->settings, $this->clock, $failing ), $this->index, $this->catalogue, $this->queue, $this->store, $this->settings, $this->clock, $this->logger, $this->kits );
+		$jobs    = new IndexJobs( new SpecIndexer( $this->index, $this->settings, $this->clock, $failing ), $this->index, $this->catalogue, $this->queue, $this->store, $this->settings, $this->clock, $this->logger, $this->kits, $this->saved );
 		$state   = $jobs->reindexNow();
 		self::assertSame( 1, $state?->failures );
 		self::assertTrue( $state->isRunning() );
@@ -476,7 +500,7 @@ final class IndexJobsTest extends TestCase {
 				throw new RuntimeException( 'gone' );
 			}
 		};
-		$jobs           = new IndexJobs( new SpecIndexer( $this->index, $this->settings, $this->clock, $deleting ), $this->index, $this->catalogue, $this->queue, $this->store, $this->settings, $this->clock, $this->logger, $this->kits );
+		$jobs           = new IndexJobs( new SpecIndexer( $this->index, $this->settings, $this->clock, $deleting ), $this->index, $this->catalogue, $this->queue, $this->store, $this->settings, $this->clock, $this->logger, $this->kits, $this->saved );
 		$deleting->jobs = $jobs;
 		$jobs->runReindex();
 		$state = $jobs->state();

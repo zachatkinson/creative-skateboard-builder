@@ -170,8 +170,12 @@ final class Container {
 				return new Hooks\IndexHooks(
 					static function () use ( $c ): Service\IndexJobs {
 						return $c->get( Service\IndexJobs::class );
-					}
+					},
+					$c->get( Service\SavedSources::class )
 				);
+			},
+			Service\SavedSources::class                 => static function (): object {
+				return new Service\SavedSources( array( Support\Options::META_SPECS, Support\Options::META_SPEC_TABLE ) );
 			},
 			// The state route's services are built when the route is asked, not whenever the REST API starts.
 			Rest\StateRoute::class                      => static function ( Container $c ): object {

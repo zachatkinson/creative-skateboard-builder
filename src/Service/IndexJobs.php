@@ -70,6 +70,7 @@ final class IndexJobs implements Reindex {
 	 * @param Clock         $clock     The time.
 	 * @param Logger        $logger    Where failures go.
 	 * @param Kits          $kits      Told of the parts a batch indexed.
+	 * @param SavedSources  $saved     What each save changed.
 	 */
 	public function __construct(
 		private SpecIndexer $indexer,
@@ -80,8 +81,23 @@ final class IndexJobs implements Reindex {
 		private ShopSettings $settings,
 		private Clock $clock,
 		private Logger $logger,
-		private Kits $kits
+		private Kits $kits,
+		private SavedSources $saved
 	) {}
+
+	/**
+	 * A product or variation was saved over what was stored: queue its job, unless the save moved no source of the
+	 * index. An order's stock change is such a save, one for every line (issue #21).
+	 *
+	 * @since 0.5.0
+	 *
+	 * @param int $id The product's or variation's ID.
+	 */
+	public function updated( int $id ): void {
+		if ( $this->saved->moved( $id ) ) {
+			$this->changed( $id );
+		}
+	}
 
 	/**
 	 * A product or variation was saved: queue its job. Nothing is read here, so a save costs one queue check. A
