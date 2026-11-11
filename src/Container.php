@@ -125,6 +125,33 @@ final class Container {
 					}
 				);
 			},
+			// A build's services are built when an ability is run.
+			Abilities\CheckBuildAbility::class          => static function ( Container $c ): object {
+				return new Abilities\CheckBuildAbility(
+					static function () use ( $c ): Port\Kits {
+						return $c->get( Port\Kits::class );
+					},
+					static function () use ( $c ): Service\BuildState {
+						return $c->get( Service\BuildState::class );
+					},
+					static function () use ( $c ): Front\StateAnswer {
+						return $c->get( Front\StateAnswer::class );
+					}
+				);
+			},
+			Abilities\PriceBuildAbility::class          => static function ( Container $c ): object {
+				return new Abilities\PriceBuildAbility(
+					static function () use ( $c ): Port\Kits {
+						return $c->get( Port\Kits::class );
+					},
+					static function () use ( $c ): Service\BuildState {
+						return $c->get( Service\BuildState::class );
+					},
+					static function () use ( $c ): Front\StateAnswer {
+						return $c->get( Front\StateAnswer::class );
+					}
+				);
+			},
 			// The kit's class is an adapter's, which a Hookable may not name.
 			Hooks\KitHooks::class                       => static function ( Container $c ): object {
 				return new Hooks\KitHooks(
@@ -242,6 +269,8 @@ final class Container {
 			Rest\StateRoute::class                 => array( Scope::Rest ),
 			// WordPress builds its abilities when something first asks for one, on any kind of request.
 			Abilities\CatalogueCheckAbility::class => array( Scope::Everywhere ),
+			Abilities\CheckBuildAbility::class     => array( Scope::Everywhere ),
+			Abilities\PriceBuildAbility::class     => array( Scope::Everywhere ),
 		);
 	}
 

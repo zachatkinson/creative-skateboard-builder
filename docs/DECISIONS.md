@@ -1481,3 +1481,18 @@ Zach's answer on 10 November 2026 to whether `Rest/StateRoute.php`, `Adapter/Cac
 **Red run.** `StateAnswerTest::test_the_owners_own_words_are_in_the_answer_as_typed`, "InvalidDocument: presets_slot_not_filled": the test's presets left required slots empty, which the domain refuses. Deliberate breaks: with `cbuild_part_available` not asked, `StateRouteTest::test_a_plugin_that_rules_a_part_out_takes_it_from_the_route` fails, "Failed asserting that two arrays are identical"; with the context's answer not used, `test_a_plugin_that_prices_some_shoppers_apart_says_so_and_each_gets_their_own_card` fails, "Failed asserting that two strings are identical."
 
 **Status:** Accepted.
+
+### D-115 · The abilities that check and price a build · 2026-11-10
+
+`docs/ROADMAP.md` (milestone 4): "read-only and give the route's answers, as Creative Reviews registers its own". `Abilities\CheckBuildAbility` and `Abilities\PriceBuildAbility`, over `Abilities\BuildAbility`.
+
+- **Parts of the route's answer, by the route's classes.** Each asks `Service\BuildState` and has `Front\StateAnswer` write the answer, then keeps the keys it is for: `kit`, `ready`, `refused` and `problems`, or `kit` and `total`. Nothing is worked out a second time, so there is nothing to drift. `BuildAbilitiesTest` holds each to the route for five builds, each with assembly on, off and left out.
+- **Open to whoever may run an ability** (`__return_true`), as Creative Reviews' read-only abilities are (`creative-reviews-for-woocommerce/src/Abilities/Abilities.php:119`) and as the route is open to whoever asks. WordPress serves an ability over REST to a signed-in user alone. What it says is what the kit's page says, and a kit a visitor may not see is `cbuild_kit_not_found` to everyone, an administrator included, through the same `Port\Kits::isPublic()`. The deliberate break below is why that check is in the ability and not left to the service: the service reads drafts.
+- **No rate limit.** An ability is run by code on the site or by a signed-in user through WordPress's own route; the limit is for the route anyone can reach. For Zach at the review, with the limit's other questions.
+- **One class to an ability.** `composer api:check` reads each ability's `outputSchema()` from the class that registers it, so the two are two classes over a shared one. The output schemas are written out in PHP, with no `$ref`, since WordPress holds an ability's answer against its schema with a validator that reads none; `BuildAbilitiesTest` shows an answer with a blocked pair and a refused pick passing.
+- **A slot key the kit lacks is not a refusal here,** where it is a 400 on the route: an ability's input schema is fixed when it is registered and knows no kit, and the answer's `refused` already says `slot_unknown`.
+- **Both stay out of the mutation run** with the rest of `Abilities`, which the list has held since D-087.
+
+**Deliberate breaks.** With the public check taken out, `BuildAbilitiesTest::test_a_kit_a_visitor_may_not_see_is_not_there_for_an_ability_either` fails, "Failed asserting that Array (...) is an instance of class \"WP_Error\""; with `assembly` not passed on, `test_what_an_ability_says_of_a_build_is_what_the_state_route_says_of_it` fails, "Failed asserting that two arrays are identical." The tests passed on their first run, so there is no red run to quote beside these.
+
+**Status:** Accepted.

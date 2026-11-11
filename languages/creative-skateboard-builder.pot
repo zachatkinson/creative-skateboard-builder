@@ -9,7 +9,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-11-11T01:07:19+00:00\n"
+"POT-Creation-Date: 2026-11-11T01:19:00+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: creative-skateboard-builder\n"
@@ -45,6 +45,31 @@ msgstr ""
 msgid "Creative Skateboard Builder: run \"composer install\" before activating the plugin."
 msgstr ""
 
+#: src/Abilities/BuildAbility.php:104
+#: src/Rest/StateRoute.php:111
+msgid "The kit product's ID."
+msgstr ""
+
+#: src/Abilities/BuildAbility.php:108
+#: src/Rest/StateRoute.php:116
+msgid "The picks: each of the kit's slot keys to a part's ID."
+msgstr ""
+
+#: src/Abilities/BuildAbility.php:117
+#: src/Rest/StateRoute.php:124
+msgid "Whether the shop assembles the build. Left out, the kit's own default."
+msgstr ""
+
+#: src/Abilities/BuildAbility.php:136
+#: src/Rest/StateRoute.php:188
+msgid "There is no such kit."
+msgstr ""
+
+#: src/Abilities/BuildAbility.php:143
+#: src/Rest/StateRoute.php:198
+msgid "This build cannot be priced in the shop's currency settings."
+msgstr ""
+
 #: src/Abilities/CatalogueCheckAbility.php:66
 msgid "The skateboard builder: what keeps a part out of it, and what a build fits and costs."
 msgstr ""
@@ -63,6 +88,62 @@ msgstr ""
 
 #: src/Abilities/CatalogueCheckAbility.php:122
 msgid "The findings, the first 500 where there are more."
+msgstr ""
+
+#: src/Abilities/CheckBuildAbility.php:42
+msgid "Check a build"
+msgstr ""
+
+#: src/Abilities/CheckBuildAbility.php:43
+msgid "Says whether a build of a kit may go to the cart: every required slot filled, each part one of its slot's, in stock, and fitting the others. What is wrong is listed with its code and a sentence. A slot with no pick is checked with the part the builder would start it on."
+msgstr ""
+
+#: src/Abilities/CheckBuildAbility.php:88
+msgid "Whether the build may go to the cart."
+msgstr ""
+
+#: src/Abilities/CheckBuildAbility.php:90
+msgid "The picks given that were not taken."
+msgstr ""
+
+#: src/Abilities/CheckBuildAbility.php:91
+msgid "What keeps the build from the cart. Empty when it is ready."
+msgstr ""
+
+#: src/Abilities/PriceBuildAbility.php:42
+msgid "Price a build"
+msgstr ""
+
+#: src/Abilities/PriceBuildAbility.php:43
+msgid "Gives what a build of a kit costs: a line for each part with its quantity and price, what the build discount takes off, the assembly fee and the total. Each amount comes in whole minor units and as the shop writes its prices. A slot with no pick is priced with the part the builder would start it on."
+msgstr ""
+
+#: src/Abilities/PriceBuildAbility.php:77
+msgid "What the build costs."
+msgstr ""
+
+#: src/Abilities/PriceBuildAbility.php:81
+msgid "A line for each part, in step order."
+msgstr ""
+
+#: src/Abilities/PriceBuildAbility.php:97
+msgid "The parts together, after the build discount."
+msgstr ""
+
+#: src/Abilities/PriceBuildAbility.php:98
+msgid "What the build discount takes off."
+msgstr ""
+
+#: src/Abilities/PriceBuildAbility.php:101
+msgid "Whether the shop assembles the build."
+msgstr ""
+
+#: src/Abilities/PriceBuildAbility.php:103
+msgid "The assembly fee."
+msgstr ""
+
+#: src/Abilities/PriceBuildAbility.php:104
+msgid "The parts and the fee."
 msgstr ""
 
 #: src/Admin/BuilderHooks.php:69
@@ -1871,14 +1952,6 @@ msgstr ""
 msgid "Spec table"
 msgstr ""
 
-#: src/Rest/StateRoute.php:111
-msgid "The kit product's ID."
-msgstr ""
-
-#: src/Rest/StateRoute.php:116
-msgid "The picks: each of the kit's slot keys to a part's ID."
-msgstr ""
-
 #: src/Rest/StateRoute.php:117
 msgid "The picks as they were before the last change, for the change list."
 msgstr ""
@@ -1887,24 +1960,12 @@ msgstr ""
 msgid "The key of the slot whose options are listed."
 msgstr ""
 
-#: src/Rest/StateRoute.php:124
-msgid "Whether the shop assembles the build. Left out, the kit's own default."
-msgstr ""
-
 #: src/Rest/StateRoute.php:128
 msgid "The language to answer in, when the site has it installed."
 msgstr ""
 
 #: src/Rest/StateRoute.php:160
 msgid "Too many requests. Try again in a minute."
-msgstr ""
-
-#: src/Rest/StateRoute.php:188
-msgid "There is no such kit."
-msgstr ""
-
-#: src/Rest/StateRoute.php:198
-msgid "This build cannot be priced in the shop's currency settings."
 msgstr ""
 
 #. translators: 1: the PHP version the plugin needs, 2: the WordPress version, 3: the WooCommerce version.

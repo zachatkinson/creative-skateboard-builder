@@ -70,7 +70,9 @@
         "cbuild/v1/site-health/catalogue-check"
     ],
     "abilities": [
-        "creative-skateboard-builder/catalogue-check"
+        "creative-skateboard-builder/catalogue-check",
+        "creative-skateboard-builder/check-build",
+        "creative-skateboard-builder/price-build"
     ],
     "cli_commands": [
         "cbuild check",
@@ -118,6 +120,8 @@
         "set_size"
     ],
     "ability_schemas": {
+        "creative-skateboard-builder/price-build": "b14d5f69629e2fb06a9e4a745c321096cb651776172d9119776e0628f0241010",
+        "creative-skateboard-builder/check-build": "2bca2dfc761a407fde21959d3b64b65b70070d8bc0679b592293a218c62892e4",
         "creative-skateboard-builder/catalogue-check": "1b575457b21b9b14ca9cdd3567b86b165b04408f9de0875e2afd11121bfe4853"
     },
     "schemas": [
