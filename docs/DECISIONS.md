@@ -1598,3 +1598,13 @@ Two failures of the audit's second full run, both in what D-119 and the settings
 **Deliberate breaks.** With `aria-labelledby` back on the buttons, the Firefox test crashes as above. `BuildTabTest::test_each_rows_buttons_and_fold_are_named_with_the_row` holds the markup, and fails when a button is named from the legend again.
 
 **Status:** Accepted.
+
+### D-121 · Zach's answers of 11 November 2026, on the audit's three questions · 2026-11-11
+
+Asked before the pull request opened, since each is his under `CLAUDE.md`.
+
+- **The two build abilities stay signed in** (D-118). "thats fine as is. keep it signed in". The other road, open and counted against the route's limit, is not taken.
+- **Tax by where the shopper is, is deferred to milestone 5** (auditor 5, a should-fix). "defer is gine". Until then the state route prices for the shop's base address where a shop's tax depends on the shopper's. Milestone 5's cart knows the customer, and the route reads the same one then. An issue in milestone 5's list holds it.
+- **The first request in a price context, 470 ms against the 80 ms budget** (spec reviewer 5). "whatever is best practice". The practice is that no visitor pays to fill a cache: the rows are read in the background and a request finds them there. That is owed before the first shopper's request, which is milestone 6's builder, so 0.4.0 ships as measured and an issue in milestone 6's list has the reindex job fill the default price context's rows. The benchmark holds every other request to the budget now, and will hold this one when the job fills it. This reading of "best practice" is mine.
+
+**Status:** Accepted.
