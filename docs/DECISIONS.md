@@ -1657,3 +1657,34 @@ Zach was asked how CI should hold the budget, as D-123 left to him, and chose on
 **Red run.** CI run 43069596131, as above. **Deliberate break:** with the cold count set to 41, "The state route's queries, cold. Failed asserting that 42 is equal to 41 or is less than 41."
 
 **Status:** Accepted.
+
+### D-125 · StrykerJS copies only what its tests read, and the admin scripts' mutants are killed · 2026-11-11
+
+Issue #31, which Zach agreed on 11 November 2026 as milestone 5's first commit ("makes sense, lets go with your plan.").
+
+- **The sandbox leaves out what Vitest never reads:** Composer's packages, `tmp`, `docs`, `build`, `languages`, `test-results` and the PHP and browser test folders (`ignorePatterns`). The warnings about PHP_CodeSniffer's HTML fixtures are gone, and a run takes 23 seconds where it took 36.
+- **`tools/mutate-js.sh` unsets `GITHUB_STEP_SUMMARY`.** Vitest 5.1's GitHub reporter writes a job summary on every run, and Stryker runs Vitest once a mutant, so the summary page held a red report per killed mutant. The clean suite's report, from `npm run check`, is the one that stays.
+- **The score is 99.65 %, from 92.78 %,** against the floor of 90: 282 killed, 3 timed out, 1 survived. Twenty survivors and the one uncovered mutant are gone, by tests where the mutant was a different program and by simpler code where it was not:
+  - tests for the frame-later `settle()` in both scripts, `preventScroll: true`, the rows counted without what else a list holds, the name said without the space around it, a row whose other button is gone, the `^` of the address pattern, the tab's own prefix as where `find()` stops, `wp` loaded without `a11y`, a window with no frames, and each script starting itself when the page loads it. `groups()` had survived because every earlier test left its listener on the same document; its test now starts the script on a page of its own;
+  - a group is opened by `group.open = true`, not `setAttribute( 'open', '' )`, which any string satisfied; the groups a field is folded into are found by `contains()`, not by walking parents through a guard that never tripped; and `move()` reads the list's data without asking whether a parent element is an HTML one, which it always is.
+- **One mutant is the same program, and stays:** `assets/src/admin/part-specs.ts:131`, `field( hash ) ?? ''` with any other string that is no element's ID. Both ask the page for an element it does not have.
+- **`ignoreStatic` is still not set.** It would take 71 mutants out of the score to save part of 23 seconds.
+
+**Red run.** `bash tools/mutate-js.sh` before the tests: 20 survived and 1 not covered, among them "[Survived] CallExpression assets/src/admin/build-tab.ts:91:2 - settle( doc.defaultView, control );" and "[Survived] CallExpression assets/src/admin/part-specs.ts:190:2 - groups( win.document );".
+
+**Status:** Accepted.
+
+### D-126 · CI does not cache wp-env's folder or apt's packages, and apt falls back to Ubuntu's own mirror · 2026-11-11
+
+Issue #32, which Zach agreed to try on 11 November 2026 ("sure your suggestion sounds good"), to keep only if it saved time.
+
+- **`~/.wp-env` is not cached, and no run was spent finding out.** wp-env 12's own source says what a restored folder would do (`node_modules/@wordpress/env/lib/runtime/docker/index.js:105` and `:203`, `lib/download-sources.js:103`):
+  - restored with its `wp-env-cache.json`, the configuration's hash matches, so wp-env skips the downloads and also skips installing WordPress, on a runner whose database is new. The site would not be there;
+  - restored without that file, wp-env downloads every zip again and replaces each folder, so the cache saves nothing and costs its restore and its save of several hundred megabytes a leg.
+  The step's time (about 90 seconds for one site, 175 for two, in run 43074042593) is the Docker images, the zips and the installs, and none of them can be kept by a cache of that folder. Caching the images was ruled out on the issue already.
+- **apt's packages are not cached.** `npx playwright install-deps` asks apt for whatever the runner's image lacks that week, and apt needs its index from the mirrors before it will install anything, which is the step that hung. A cache of `.deb` files would be keyed on an image that changes weekly, and the action that does it is a tool these docs do not name.
+- **After a try fails, apt is pointed at `archive.ubuntu.com`.** The hosted runners use Azure's mirror; on 11 November it failed from outside while Ubuntu's own answered. The line Zach found runs only between tries, so a healthy run is as it was, and a run where Azure's mirror alone is down gets its second try from the other. D-123's tries and timeouts stay.
+- **Not shown by a forced failure,** as the issue asked: that would cost a full run to watch one line of `sed`. It is read on the first run where a try fails, and the warning says so.
+
+**Status:** Accepted.
+

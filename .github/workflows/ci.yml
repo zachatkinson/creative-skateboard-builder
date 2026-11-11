@@ -305,6 +305,8 @@ jobs:
           for try in 1 2 3; do
             if timeout 300 npx playwright install --with-deps ${{ steps.browsers.outputs.engines }}; then exit 0; fi
             echo "::warning::Try ${try} of Playwright's install did not finish."
+            # Only after a try has failed: the hosted runners use Azure's mirror, and Ubuntu's own may answer when it does not (D-126).
+            grep -rl azure.archive.ubuntu.com /etc/apt | xargs -r sudo sed -i 's/azure\.archive\.ubuntu\.com/archive.ubuntu.com/g' || true
             sleep 30
           done
           exit 1
@@ -314,6 +316,8 @@ jobs:
           for try in 1 2 3; do
             if timeout 180 npx playwright install-deps ${{ steps.browsers.outputs.engines }}; then exit 0; fi
             echo "::warning::Try ${try} of Playwright's system packages did not finish."
+            # Only after a try has failed: the hosted runners use Azure's mirror, and Ubuntu's own may answer when it does not (D-126).
+            grep -rl azure.archive.ubuntu.com /etc/apt | xargs -r sudo sed -i 's/azure\.archive\.ubuntu\.com/archive.ubuntu.com/g' || true
             sleep 30
           done
           exit 1

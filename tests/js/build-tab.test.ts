@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
 	edges,
 	field,
@@ -118,7 +118,23 @@ describe( 'field', () => {
 	} );
 } );
 
+describe( 'field, of an address with more before it', () => {
+	it( 'reads nothing: the ID is the whole of the address', () => {
+		expect( field( '#general#cbuild-kit-slots-1-units' ) ).toBeNull();
+	} );
+} );
+
 describe( 'find', () => {
+	it( "stops at the tab's own prefix, whatever else on the page is named like it", () => {
+		screen();
+		document.body.insertAdjacentHTML(
+			'beforeend',
+			'<div id="cbuild-kit"></div><div id="cbuild"></div><div id="cbuil"></div>'
+		);
+		expect( find( document, 'cbuild-kit-nowhere-1' ) ).toBeNull();
+		expect( find( document, 'cbuild-kit' ) ).toBeNull();
+	} );
+
 	it( 'finds a field by its ID', () => {
 		screen();
 		expect( find( document, 'cbuild-kit-slots-1-units' )?.id ).toBe(
@@ -217,6 +233,30 @@ describe( 'open', () => {
 		expect( tab ).toHaveBeenCalledTimes( 1 );
 	} );
 
+	it( 'moves focus without a scroll of its own, and brings the field back a frame later if the page moved', () => {
+		screen();
+		const target = document.getElementById(
+			'cbuild-kit-slots-1-units'
+		) as HTMLElement;
+		const focused = vi.spyOn( target, 'focus' );
+		target.getBoundingClientRect = () =>
+			( { top: -300, bottom: -270 } ) as DOMRect;
+		const frames: Array< () => void > = [];
+		const view = document.defaultView as Window;
+		const real = view.requestAnimationFrame;
+		view.requestAnimationFrame = ( run: FrameRequestCallback ) =>
+			frames.push( () => run( 0 ) );
+
+		open( document, '#cbuild-kit-slots-1-units' );
+		view.requestAnimationFrame = real;
+
+		expect( focused ).toHaveBeenCalledWith( { preventScroll: true } );
+		expect( target.scrollIntoView ).toHaveBeenCalledTimes( 1 );
+		expect( frames ).toHaveLength( 1 );
+		frames[ 0 ]?.();
+		expect( target.scrollIntoView ).toHaveBeenCalledTimes( 2 );
+	} );
+
 	it( 'works on a screen with no tabs', () => {
 		screen();
 		document.querySelector( '.wc-tabs' )?.remove();
@@ -300,6 +340,47 @@ describe( 'move', () => {
 		move( press( 2, 'down' ), speak );
 		expect( order() ).toEqual( [ 'Deck', 'Trucks', 'Wheels' ] );
 		expect( speak ).not.toHaveBeenCalled();
+	} );
+
+	it( 'counts the rows alone, whatever else the list holds', () => {
+		const { list } = screen();
+		list.insertAdjacentHTML(
+			'afterbegin',
+			'<p>Drag a slot to move it.</p>'
+		);
+		list.insertAdjacentHTML( 'beforeend', '<p>Add a slot below.</p>' );
+		edges( list );
+		expect( disabled() ).toEqual( [
+			'cbuild-kit-slots-0:up',
+			'cbuild-kit-slots-2:down',
+		] );
+		const speak = vi.fn();
+		move( press( 2, 'up' ), speak );
+		expect( speak ).toHaveBeenCalledWith( 'Wheels is now slot 2 of 3.' );
+	} );
+
+	it( 'says a name without the space around it, and survives a row whose other button is gone', () => {
+		screen();
+		const speak = vi.fn();
+		const legend = document.querySelector(
+			'#cbuild-kit-slots-1 legend'
+		) as HTMLElement;
+		legend.textContent = '\n\t\tSlot: Trucks\n\t';
+		(
+			document.getElementById(
+				'cbuild-kit-slots-1-label'
+			) as HTMLInputElement
+		 ).value = '';
+		document
+			.querySelector(
+				'#cbuild-kit-slots-1 button[data-cbuild-move="down"]'
+			)
+			?.remove();
+		expect( () => move( press( 1, 'up' ), speak ) ).not.toThrow();
+		expect( speak ).toHaveBeenCalledWith(
+			'Slot: Trucks is now slot 1 of 3.'
+		);
+		expect( order() ).toEqual( [ '', 'Deck', 'Wheels' ] );
 	} );
 
 	it( 'names a row with no label by its legend, and says nothing where the page gives no words', () => {
@@ -461,6 +542,14 @@ describe( 'start', () => {
 		expect( order() ).toEqual( [ 'Deck', 'Wheels', 'Trucks' ] );
 	} );
 
+	it( 'speaks nothing where wp is loaded without a11y', () => {
+		screen();
+		const { window: view } = win( '', { wp: {} } );
+		expect( () => start( view ) ).not.toThrow();
+		press( 2, 'up' ).click();
+		expect( order() ).toEqual( [ 'Deck', 'Wheels', 'Trucks' ] );
+	} );
+
 	it( 'waits for the page where it is still loading', () => {
 		screen();
 		const heard: Record< string, () => void > = {};
@@ -476,5 +565,23 @@ describe( 'start', () => {
 		start( view );
 		expect( Object.keys( heard ) ).toEqual( [ 'DOMContentLoaded' ] );
 		expect( () => heard.DOMContentLoaded?.() ).not.toThrow();
+	} );
+} );
+
+describe( 'the script, when the page loads it', () => {
+	afterEach( () => {
+		window.location.hash = '';
+	} );
+
+	it( 'starts itself on the window', async () => {
+		screen();
+		window.location.hash = '#cbuild-kit-slots-2-label';
+		vi.resetModules();
+		await import( '../../assets/src/admin/build-tab' );
+		expect( focus()?.id ).toBe( 'cbuild-kit-slots-2-label' );
+		expect( disabled() ).toEqual( [
+			'cbuild-kit-slots-0:up',
+			'cbuild-kit-slots-2:down',
+		] );
 	} );
 } );

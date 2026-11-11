@@ -11,6 +11,23 @@ export default {
 	reporters: [ 'clear-text', 'progress', 'html' ],
 	htmlReporter: { fileName: 'tmp/stryker/index.html' },
 	tempDirName: '.stryker-tmp',
+	// What the tests never read is not copied into the sandbox: Composer's packages alone are most of the tree, and
+	// PHP_CodeSniffer's HTML fixtures in them drew a warning each (issue #31).
+	ignorePatterns: [
+		'vendor',
+		'tmp',
+		'docs',
+		'build',
+		'languages',
+		'test-results',
+		'tools/integration/vendor',
+		'tests/Unit',
+		'tests/Integration',
+		'tests/Benchmark',
+		'tests/Fixtures',
+		'tests/Support',
+		'tests/e2e',
+	],
 	thresholds: { high: 95, low: 90, break: 90 },
 	coverageAnalysis: 'perTest',
 };

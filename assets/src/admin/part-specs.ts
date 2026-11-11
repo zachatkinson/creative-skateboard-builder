@@ -134,7 +134,7 @@ export function open( doc: Document, hash: string, $: Query ): void {
 		const group = own.closest( 'details' );
 		if ( group ) {
 			// Open, and its fields enabled before focus moves to one: a closed group's are disabled (issue #23).
-			group.setAttribute( 'open', '' );
+			group.open = true;
 			enable( group );
 		}
 		own.scrollIntoView( { block: 'center' } );
