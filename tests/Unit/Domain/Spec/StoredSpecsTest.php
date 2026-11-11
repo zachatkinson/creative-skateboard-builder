@@ -95,4 +95,43 @@ final class StoredSpecsTest extends TestCase {
 			self::assertSame( $none, StoredSpecs::named( $stored ) );
 		}
 	}
+
+	public function test_what_a_part_is_to_hold_is_kept_and_nothing_is_kept_for_nothing(): void {
+		$fields = array( 'width' => '8.25' );
+		$named  = array(
+			'table' => 12,
+			'size'  => '149',
+		);
+
+		self::assertSame(
+			array(
+				'fields' => $fields,
+				'named'  => $named,
+			),
+			StoredSpecs::kept( $fields, 12, '149' )
+		);
+		self::assertSame(
+			array(
+				'fields' => null,
+				'named'  => null,
+			),
+			StoredSpecs::kept( array(), 0, '' )
+		);
+		self::assertSame(
+			array(
+				'table' => 12,
+				'size'  => '',
+			),
+			StoredSpecs::kept( array(), 12, '' )['named'],
+			'a chart with no size yet is kept'
+		);
+		self::assertSame(
+			array(
+				'table' => 0,
+				'size'  => '149',
+			),
+			StoredSpecs::kept( array(), 0, '149' )['named'],
+			'and so is a size with no chart'
+		);
+	}
 }

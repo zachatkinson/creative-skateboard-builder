@@ -51,9 +51,10 @@ final class CatalogueCheck {
 	public const JOBS_FAILED    = 'jobs_failed';
 
 	/**
-	 * What it finds in a kit: a slot with no parts or none in stock, a part that lacks a spec a rule needs, a part
+	 * What it finds in a kit: settings that do not read (since 0.4.0), a slot with no parts or none in stock, a part that lacks a spec a rule needs, a part
 	 * a rule had to assume something of, and a preset that can no longer be bought as it is.
 	 */
+	public const KIT_UNREAD    = 'kit_unread';
 	public const SLOT_EMPTY    = 'slot_empty';
 	public const SLOT_NO_STOCK = 'slot_out_of_stock';
 	public const SPEC_MISSING  = 'spec_missing';
@@ -100,7 +101,14 @@ final class CatalogueCheck {
 	 */
 	public function run(): array {
 		$found = $this->work();
-		foreach ( $this->kits->all() as $id => $kit ) {
+		$kits  = $this->kits->all();
+		// A kit product that is not among those that read: no shopper can open it, and it has no slot to check.
+		foreach ( $this->kits->ids() as $id ) {
+			if ( ! isset( $kits[ $id ] ) ) {
+				$found[] = new CheckFinding( self::KIT_UNREAD, kit: $id );
+			}
+		}
+		foreach ( $kits as $id => $kit ) {
 			$found = array( ...$found, ...$this->kit( $id, $kit['kit'] ) );
 		}
 		$page = 0;

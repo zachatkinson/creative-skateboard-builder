@@ -9,6 +9,7 @@ declare( strict_types=1 );
 
 namespace CreativeBranding\SkateboardBuilder\Service;
 
+use CreativeBranding\SkateboardBuilder\Domain\Spec\StoredSpecs;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\Origin;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\Reading;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\SpecKey;
@@ -50,8 +51,8 @@ final class SpecTableEditor {
 	public const NAME_MISSING   = 'name_missing';
 	public const NAME_LONG      = 'name_long';
 	public const NAME_TAKEN     = 'name_taken';
-	public const TABLE_MISSING  = 'table_missing';
-	public const SIZE_MISSING   = 'size_missing';
+	public const TABLE_MISSING  = StoredSpecs::TABLE_MISSING;
+	public const SIZE_MISSING   = StoredSpecs::SIZE_MISSING;
 	public const SIZE_LONG      = 'size_long';
 	public const SIZE_DUPLICATE = 'size_duplicate';
 	public const SOURCE_LONG    = 'source_long';
@@ -76,7 +77,7 @@ final class SpecTableEditor {
 	 * @param string $name The maker's name.
 	 */
 	public function add( string $name ): TableDraft {
-		$problem = $this->nameRefused( trim( $name ), 0 );
+		$problem = $this->nameRefused( trim( $name ) );
 		if ( null !== $problem ) {
 			return new TableDraft( 0, array( $problem ) );
 		}
@@ -192,7 +193,7 @@ final class SpecTableEditor {
 	 * @param int    $id   The chart the name is for, 0 for a new one.
 	 * @return array{row: int, field: string, code: string}|null
 	 */
-	private function nameRefused( string $name, int $id ): ?array {
+	private function nameRefused( string $name, ?int $id = null ): ?array {
 		if ( '' === $name ) {
 			return self::problem( 0, self::NAME, self::NAME_MISSING );
 		}

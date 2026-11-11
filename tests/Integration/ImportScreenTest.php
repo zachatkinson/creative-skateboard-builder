@@ -171,7 +171,7 @@ final class ImportScreenTest extends IntegrationTestCase {
 	public function test_the_page_has_a_tab_for_the_charts_and_one_for_the_import_and_the_job_runs_anywhere(): void {
 		$built = static fn( array $scopes ): array => array_map( 'get_class', ( new \CreativeBranding\SkateboardBuilder\Container() )->hookablesFor( ...$scopes ) );
 		self::assertContains( ImportHooks::class, $built( Scope::atBoot( false, false, false ) ) );
-		self::assertSame( 10, has_action( Options::JOB_IMPORT, array( $this->service( SpecImport::class ), 'run' ) ) );
+		self::assertSame( 10, has_action( Options::JOB_IMPORT, array( $this->service( ImportHooks::class ), 'run' ) ) );
 
 		$this->as( 'shop_manager' );
 		$hooks = $this->service( BuilderHooks::class );

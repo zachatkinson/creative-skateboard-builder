@@ -61,7 +61,7 @@ final class ContainerTest extends TestCase {
 	public function test_the_registry_is_built_from_its_classes(): void {
 		$registry = ( new Container() )->get( MigrationRegistry::class );
 		$keys     = $registry->keys();
-		self::assertSame( array( 'schema_1', 'noop_1', 'spec_tables_1' ), $keys );
+		self::assertSame( array( 'schema_1', 'noop_1', 'spec_tables_1', 'schema_2' ), $keys );
 	}
 
 	public function test_an_unknown_service_throws(): void {
@@ -97,18 +97,28 @@ final class ContainerTest extends TestCase {
 		$container = new Container();
 		$container->set( MigrationStore::class, new InMemoryMigrationStore() );
 		$hookables = $container->hookablesFor( Scope::Everywhere );
-		self::assertCount( 5, $hookables, 'the install\'s, the index\'s, the spec tables\', the import\'s and the ability\'s' );
+		self::assertCount( 9, $hookables, 'the install\'s, the index\'s, the cards\', the spec tables\', the import\'s, the kit\'s and the three abilities\'' );
 		self::assertContainsOnlyInstancesOf( Hookable::class, $hookables );
+	}
+
+	// Issue #19: a request that saves no part and runs no job built the index's and the import's services all the same.
+	public function test_a_request_builds_the_jobs_services_only_when_one_of_their_hooks_fires(): void {
+		$container = new Container();
+		$container->set( MigrationStore::class, new InMemoryMigrationStore() );
+		$container->hookablesFor( Scope::Everywhere );
+		foreach ( array( \CreativeBranding\SkateboardBuilder\Service\IndexJobs::class, \CreativeBranding\SkateboardBuilder\Service\SpecImport::class, \CreativeBranding\SkateboardBuilder\Service\SpecIndexer::class, \CreativeBranding\SkateboardBuilder\Port\SpecIndex::class, \CreativeBranding\SkateboardBuilder\Port\PartSpecs::class ) as $service ) {
+			self::assertFalse( $container->has( $service ), $service );
+		}
 	}
 
 	// Claude in Cowork's review of milestone 3, minor 9: mutation testing left the plugin's own scopes unpinned.
 	public function test_each_scope_builds_its_own_hookables_and_no_others(): void {
 		$scopes = array(
-			'Everywhere' => array( 'Hooks\\InstallHooks', 'Hooks\\IndexHooks', 'Hooks\\SpecTableHooks', 'Hooks\\ImportHooks', 'Abilities\\CatalogueCheckAbility' ),
-			'Admin'      => array( 'Admin\\SettingsHooks', 'Admin\\PartSpecsHooks', 'Admin\\BuilderHooks', 'Health\\SiteHealth' ),
+			'Everywhere' => array( 'Hooks\\InstallHooks', 'Hooks\\IndexHooks', 'Hooks\\CardHooks', 'Hooks\\SpecTableHooks', 'Hooks\\ImportHooks', 'Hooks\\KitHooks', 'Abilities\\CatalogueCheckAbility', 'Abilities\\CheckBuildAbility', 'Abilities\\PriceBuildAbility' ),
+			'Admin'      => array( 'Admin\\SettingsHooks', 'Admin\\PartSpecsHooks', 'Admin\\BuildTabHooks', 'Admin\\BuilderHooks', 'Health\\SiteHealth' ),
 			'Cli'        => array( 'Hooks\\CliHooks', 'Health\\SiteHealth' ),
 			'Cron'       => array( 'Health\\SiteHealth' ),
-			'Rest'       => array( 'Health\\SiteHealth' ),
+			'Rest'       => array( 'Health\\SiteHealth', 'Rest\\StateRoute' ),
 			'Storefront' => array(),
 		);
 		self::assertSame( array_column( Scope::cases(), 'name' ), array_keys( $scopes ), 'every scope' );

@@ -17,7 +17,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * Removes everything the plugin made: the two tables (saved builds with them), the spec tables, every option and transient, the
+ * Removes everything the plugin made: the three tables (saved builds with them), the spec tables, every option and transient, the
  * scheduled actions, the object-cache group and the network's cached update manifest. Per site on a network. Never
  * touches products or orders: order item meta is part of the shop's records (spec: Uninstall).
  */

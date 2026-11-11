@@ -39,4 +39,17 @@ interface Logger {
 	 * @param array<string, mixed> $context Values worth keeping beside it.
 	 */
 	public function log( string $level, string $message, array $context = array() ): void;
+
+	/**
+	 * Write one line, at most once an hour for a key: for a failure every request would meet again, which would
+	 * otherwise fill the log with the one line.
+	 *
+	 * @since 0.4.0
+	 *
+	 * @param string               $key     What failed, such as `kit_unread_12`: letters, digits and underscores.
+	 * @param string               $level   One of the level constants.
+	 * @param string               $message The line.
+	 * @param array<string, mixed> $context Values worth keeping beside it.
+	 */
+	public function hourly( string $key, string $level, string $message, array $context = array() ): void;
 }

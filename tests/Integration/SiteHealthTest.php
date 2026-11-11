@@ -232,7 +232,8 @@ final class SiteHealthTest extends IntegrationTestCase {
 		self::assertSame( get_option( Options::DB_VERSION ), $section['fields']['schema']['value'] );
 		self::assertSame( 'table, field, attribute', $section['fields']['order']['debug'] );
 		self::assertSame( 0, $section['fields']['mapping']['value'] );
-		self::assertSame( 'index_current', $section['fields']['index']['value'] );
+		self::assertSame( 'Up to date', $section['fields']['index']['value'], 'words on the page' );
+		self::assertSame( 'index_current', $section['fields']['index']['debug'], 'the code in what is copied' );
 		self::assertSame( 0, $section['fields']['failedJobs']['value'] );
 	}
 }

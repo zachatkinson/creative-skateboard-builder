@@ -7,7 +7,7 @@
 
 declare( strict_types=1 );
 
-define( 'CBUILD_VERSION', '0.3.1' );
+define( 'CBUILD_VERSION', '0.4.0' );
 define( 'CBUILD_FILE', __DIR__ . '/../creative-skateboard-builder.php' );
 define( 'CBUILD_PATH', __DIR__ . '/../' );
 define( 'CBUILD_URL', 'https://example.com/wp-content/plugins/creative-skateboard-builder/' );

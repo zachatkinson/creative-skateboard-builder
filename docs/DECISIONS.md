@@ -1167,6 +1167,119 @@ Zach on 10 November 2026, of the review's sixth question: "if this is best pract
 
 **Status:** Accepted. Revises D-082's "the button covers it".
 
+### D-096 · A save under a running reindex is not treated as a delete · 2026-11-10
+
+The milestone 3 audit noted that a delete during the reindex's catalogue pass asks for a second pass and a save does not (issue #19). They stay unlike, on purpose.
+
+- **A delete moves a page.** The catalogue pass walks the shop's products a page at a time, so a product removed from a page already walked pulls one from the next page back into it, and that one would be missed. The second pass picks it up.
+- **A save moves nothing.** The product keeps its place, and the save's own job indexes it. Whichever of the job and the pass runs last writes the same rows.
+- **Telling the reindex of every save would cost a read on each save,** where a save now costs one queue check, and WooCommerce saves a product each time its stock changes. A busy shop could also keep a reindex passing again for as long as it sells.
+- **Test:** `IndexJobsTest::test_a_save_under_a_running_reindex_queues_its_own_job_and_asks_for_no_second_pass` holds it. It passed when written, since it pins what the code already did.
+
+**Status:** Accepted.
+
+### D-097 · Decimals are read by the domain's parser, not `wc_format_decimal()` · 2026-11-10
+
+`docs/SPEC.md` (Part specs) and `docs/STANDARDS.md` say a field's decimal is read with `wc_format_decimal()`. The plugin does not call it. Milestone 3's plan noted the difference in its table of installed source, and the audit asked for it here (issue #19).
+
+- **`wc_format_decimal()` cannot read a fraction or say what was wrong.** It strips what it does not know and returns a number (WooCommerce 11.2.2, `includes/wc-formatting-functions.php:290`): run in the integration site on 10 November 2026, `8 1/4` comes back as `814` and `wide` as an empty string, with no reason for either. The spec asks for 8.25, 8,25 and 8 1/4 to be the same, and for a refused value to be named.
+- **The domain's parser takes the shop's separator as an argument:** `wc_get_price_decimal_separator()` (`includes/wc-formatting-functions.php:557`), the same setting `wc_format_decimal()` reads. So the shop's separator is honoured, the domain stays free of WordPress, and one parser reads the panel, the charts, the import and the command line.
+- **Each field is still sanitised first** with `sanitize_text_field()`.
+- `PartSpecsPanelTest`, `SpecTablesScreenTest` and `ImportScreenTest` each save with the separator set to a comma.
+
+**Status:** Accepted. A difference from `docs/SPEC.md`'s wording, not from what it asks for.
+
+### D-098 · The rest of issue #19's minors · 2026-11-10
+
+Milestone 3's audit listed thirteen minors as the first work of milestone 4.
+
+- **The settings screen** prints a problem with the order under the order alone, and the mapping's own problems in one element with one id.
+- **The Info tab** shows the index's state in words, with the code as its `debug` value, which is what Site Health copies to the clipboard. The ability's schema descriptions are translated.
+- **`SpecImport::summary()`** sorts a plan's rows once, for the screen, the command line and the job.
+- **`Domain\Spec\StoredSpecs::kept()`** says what a part's meta holds, and both writers store that. The product screen writes into the product WooCommerce is about to save and the import loads its own, so they stay two callers of one rule. `StoredSpecs::TABLE_MISSING` and `SIZE_MISSING` are the one home of those two codes.
+- **The API snapshot** also holds Site Health's test ids, each command's arguments and flags, the CSV's columns and a digest of each ability's output schema. The last three are held by the snapshot alone: their words are too plain to look for in `docs/HOOKS.md`. With `[--dry-run]` renamed in the command's doc comment, `composer api:check` fails on `cli_synopses`.
+- **A value the Part specs tab refuses** is named in a notice that is a link to its field. The screen's script opens the tab and the field's group and moves focus there, on load and when the address changes. A variation's notice leads to the variation, since its fields are loaded later and numbered by their place on the page.
+- **The index's and the import's services** are built when a part is saved or a job runs. `Hooks\CliHooks` still takes its commands built: WP-CLI reads a command's arguments from the object's doc comments when it is added, and the scope is the command line alone.
+- **The EXPLAIN test** hears the repository's own queries as they run, `rowsOf()` among them. With `rowsOf()` reading by a column that has no index: "Failed asserting that null is identical to 'PRIMARY'".
+- **The benchmark** runs the check on a catalogue with 200 findings and reads a 2,000-row file matched by SKU (`docs/BENCHMARK.md`).
+- **A foreground reindex** leaving its queued action was fixed in milestone 3 by `reindexNow()`.
+- **The charts' screen's permission test** sends every action as every role that may not.
+
+**Status:** Accepted.
+
+### D-099 · The kit product type · 2026-11-10
+
+`docs/SPEC.md` (Data model) gives the type, `cbuild_kit`, its class, `KitProduct extends WC_Product`, and its four documents. What it leaves open:
+
+- **The class is `Adapter\KitProduct`.** It is WooCommerce's object, so it belongs with the adapters. `Hooks\KitHooks` answers `product_type_selector` and `woocommerce_product_class` and is handed the class's name by the container, since a Hookable may not name an adapter.
+- **No data store of its own.** WooCommerce looks for `product-cbuild_kit` and falls back to the product store (WooCommerce 11.2.2, `includes/class-wc-data-store.php:84`).
+- **Each document is JSON text in its meta,** as the spec says, and not a PHP array. WooCommerce's CRUD slashes a string before WordPress unslashes it and does not slash an array, so a backslash in a label survives as text and would be lost in an array. `KitProductTest` saves one.
+- **`document()` gives null for anything that is not a JSON object** and checks nothing more. The schema and the domain check a document where it is used (`Adapter\WooKits`, the Build tab), so there is one place that decides a document is good.
+- **The price to `view` is the fee; to `edit` it is empty.** WooCommerce's data store writes what `edit` gives (`includes/data-stores/class-wc-product-data-store-cpt.php:790`), so a price an importer or the REST API sets on a kit never reaches `_price` or `_regular_price`. That is what makes a kit unsellable with the plugin off, and `KitProductTest` removes the type's filters and asks WooCommerce. With `edit` answering as WooCommerce's own: "Failed asserting that two strings are identical."
+- **`is_purchasable()` is false, through WooCommerce's own filter,** so milestone 5 can answer it for the build it is adding and nothing else can add a kit.
+- **The type's name in the list is "Builder kit".** No shop's word is in it.
+- **Uninstall removes the four documents with the plugin's other meta** and leaves the products, which WooCommerce then reads as simple products with no price.
+- **The plugin's version is 0.4.0 from this commit,** since the type is the milestone's first public item (D-062).
+
+**Status:** Accepted.
+
+### D-100 · How a kit stays out of search · 2026-11-10
+
+`docs/SPEC.md` (SEO and sharing): the kit is kept out of the catalogue, search results, feeds and the sitemaps, and prints no product markup.
+
+- **A kit's catalogue visibility is always `hidden`,** to `view` and to `edit` (`Adapter\KitProduct::get_catalog_visibility()`). WooCommerce's data store writes the terms `exclude-from-catalog` and `exclude-from-search` from it (WooCommerce 11.2.2, `includes/data-stores/class-wc-product-data-store-cpt.php:1061`), and its catalogue pages, its search, WordPress's site search, its feeds, `wc_get_products()` and the Store API all read those terms (`includes/class-wc-query.php:421` and `:937`). So one fact hides the kit everywhere WooCommerce lists products, and a kit set to visible on the product screen, by an import or over REST is saved hidden all the same.
+- **"Feeds" is WooCommerce's product feeds,** a category's and the shop's, which run the same query. A feed plugin that builds its own list reads the visibility terms, which are set.
+- **WordPress's sitemap does not read visibility,** so `wp_sitemaps_posts_query_args` (WordPress 7.1.4, `wp-includes/sitemaps/providers/class-wp-sitemaps-posts.php:238`) adds a condition to the products' query: not of the type `cbuild_kit`. A condition another plugin added stays.
+- **No markup:** `woocommerce_structured_data_product` (`includes/class-wc-structured-data.php:545`) answers an empty array for a kit, and WooCommerce prints nothing for markup with no type. Without it a kit would print an offer at its assembly fee.
+- **The two rules that are not WooCommerce's are `Service\KitVisibility`,** plain PHP, unit-tested and mutated.
+- **The test site's theme gives products no archive,** so `KitHiddenTest` asks for a product category's page and its feed, which WooCommerce queries as it does the shop's.
+- **Deliberate break:** with the visibility WooCommerce's own and the two filters removed, all six of `KitHiddenTest` fail ("Tests: 6, Assertions: 12, Failures: 6").
+- **Yoast's sitemap** is D-102's.
+
+**Status:** Accepted.
+
+
+### D-101 · Which products fill a slot · 2026-11-10
+
+`docs/SPEC.md` (Data model) gives a slot its sources: categories, brands, products and attribute values, as IDs. It does not say how they combine, nor which of the products found is a part. `Adapter\WooKits` decides both, and `WooKitsTest` holds each line.
+
+- **Categories, brands and attributes narrow each other.** A product is found when it is in one of the slot's categories, and of one of its brands, and has one of the values of each attribute, for whichever of the three the slot gives. "Decks" with the brand "Rascals" is the Rascals decks, which is what an owner who picks both means; either alone is all of it. A category holds its sub-categories, as WooCommerce's own queries have it.
+- **A named product is added,** whatever it is in, and is not narrowed. It is how an owner adds the one part the terms miss.
+- **A variable product stands for its variations.** A variation that sets an attribute to one value is held to that value when the slot asks for values of that attribute; one that takes any value is kept. A named variable product gives all of its variations, and a variation can be named by itself.
+- **A part is what a shopper could be shown and could buy:** published (and its parent), not hidden from the catalogue, without a password, with a price, and not a kit. WooCommerce's `is_purchasable()` lets a person who may edit a product buy it unpublished (WooCommerce 11.2.2, `includes/abstracts/abstract-wc-product.php:1777`), so the status is checked here and who is asking changes nothing: the public route and the owner's check read the same list.
+- **A part that is sold out is still a part,** marked so. The builder shows it as gone, and the check's "nothing in stock" rule needs to see it.
+- **The price is what the shop shows for one,** `wc_get_price_to_display()`, in the currency's minor units, so tax is in or out as the shop's settings have it. The count in stock is given when the shop counts it and does not sell on backorder; otherwise there is no cap to hold a build to (issue #14).
+- **A part's brand is its `product_brand` term's slug,** its parent's for a variation, and the first by name when a product has several.
+- **A slot holds 2,000 parts at most** and a shop's list 200 kits, each in ID order, so a request's work is bounded whatever the catalogue.
+- **A kit is listed when each document passes its schema and the four agree** (`Adapter\KitSchemas`, then `Kit::fromDocuments()`). One that does not is left out of `all()` and is still in `ids()`, which is every kit product not in the bin: what hides kits must hide a broken one too. A draft is a kit, so its owner can check it before it is published.
+- **`slotsOf()` asks the same question of one product without the query,** and without the shopper's conditions: the Part specs panel opens the group a product's slot needs before the product is published (issue #16). The panel reads the kits once for a screen of variations; with them read for each: "Failed asserting that 3 is identical to 1."
+- **`Adapter\NoKits` is gone,** and the Catalogue check's kit rules now run on the shop's kits (issue #17).
+
+**For Zach's eye:** the first line is a choice an owner will feel. The other reading, categories or brands, would make "Decks" with "Rascals" every deck and every Rascals product.
+
+**Status:** Accepted.
+
+### D-102 · Yoast SEO's sitemap, and the leg that tests it · 2026-11-10
+
+Zach on 10 November 2026, of the plan's question: "sure put free yoast in the test site if we need it".
+
+- **Yoast builds its sitemap from its own query** and never asks WordPress's, so D-100's condition does not reach it. `wpseo_exclude_from_sitemap_by_post_ids` (Yoast SEO 28.8, `inc/sitemaps/class-post-type-sitemap-provider.php:296`) takes the IDs to leave out; `Service\KitVisibility::excluded()` adds every kit product's, from `Port\Kits::ids()`. The kits are read when a sitemap is built and not before. Yoast compares the IDs strictly, so they are whole numbers.
+- **The test needs Yoast itself.** `tools/yoast.sh up` downloads Yoast SEO 28.8 from WordPress.org into the integration site's plugins, its zip checked against a pinned SHA-256, and `down` removes it. It is never activated in the site: the suite's bootstrap loads it when `CBUILD_YOAST=1`, and fails if the flag is set without it. `composer test:integration:yoast` does all three and runs `KitYoastTest` alone.
+- **In CI it is a seventh, short run of the variants leg** (`tools/integration-variants.sh`), a few seconds on a site that is already up, so it costs no job (D-040). In the ordinary run the test is skipped and says why.
+- **Deliberate break:** with the filter unhooked, "Failed asserting that an array does not contain 'http://localhost:8899/?product=complete-skateboard'."
+- **Yoast is the one SEO plugin tested.** Another that builds its own sitemap needs its own filter; `Port\Kits::ids()` is there for it.
+
+**Status:** Accepted.
+
+### D-103 · Zach's answers of 10 November 2026, on three questions · 2026-11-10
+
+Asked: whether issue #23 ships as 0.3.1 or with milestone 4; whether three adapters may be left out of the unit suite's mutation run; and D-101's reading of a slot's sources. Zach: "1 and 2 do to best practice 3 is perfect already."
+
+- **Issue #23 ships as 0.3.1.** A fault that drops other plugins' fields on a shop today is fixed where shops are, and does not wait for a milestone that is steps from done. The fix is made on a branch from `main`, released from there, and merged into milestone 4's branch. What needs kits (no panel on a product that fills no slot) is milestone 4's.
+- **`Adapter\KitProduct`, `Adapter\KitSchemas` and `Adapter\WooKits` are left out of `infection.json5`,** by D-087's rule: the first is WooCommerce's product object, the second does its work through `rest_validate_value_from_schema()`, the third through WooCommerce's product queries and WordPress's terms. Each is proven in wp-env (`KitProductTest`, `KitHiddenTest`, `KitSchemasTest`, `WooKitsTest`), with its deliberate breaks in D-099 to D-102. `Service\KitVisibility`, which is plain PHP, is mutated.
+- **D-101's first line stands:** a slot's categories, brands and attributes narrow each other.
+
+**Status:** Accepted.
 
 ### D-104 · 0.3.1: a closed group of Part specs sends nothing · 2026-11-10
 
@@ -1180,5 +1293,367 @@ Claude in Cowork, checking 0.3.0 on a shop on 10 November 2026, found four produ
 - **The jump to a variation's fields** is checked a frame later: if what has focus is outside the viewport, it is scrolled to the middle. Cowork saw the page end 200 px low once, on a first load.
 - **Red runs:** `PartSpecsPanelTest::test_a_closed_group_sends_nothing_so_a_part_with_no_specs_adds_no_field_to_the_form`, "Failed asserting that two arrays are identical"; the script's tests, "TypeError: groups is not a function", 11 failing.
 - **Deliberate break:** with the fields drawn enabled, the browser test that reads what the form sends: "Expected - 1, Received + 65".
+
+**Status:** Accepted.
+
+### D-105 · No Part specs fields on a product no kit takes · 2026-11-10
+
+The second half of Claude in Cowork's note on issue #23: "draw no panel where a product can't be a part". It needs kits, so it is milestone 4's, on top of 0.3.1's fix (D-104).
+
+- **Where the shop has kits and none takes a product, a variation draws no fields at all,** and the product's tab holds one sentence in their place: what it means and how to make the product a part. The tab itself stays, so nobody looks for it in vain and the Catalogue check's links still land.
+- **"Takes" is `Port\Kits::slotsOf()`** (D-101): named by a slot, or in what its categories, brands and attributes find, published or not.
+- **A product that holds a value all the same keeps its fields,** as does one with a value in use from an attribute or a chart: what is stored must be seen to be cleared.
+- **Before the shop's first kit every product has its fields,** closed and sending nothing (D-104). There is no telling yet which will be parts, and specs are often filled in first.
+- **The cost of the rule:** a product is put in a slot's category, saved, and then filled in. The sentence says so.
+- **Red run:** `PartSpecsPanelTest::test_a_product_no_kit_takes_has_no_fields_and_its_tab_says_why`, "a variation draws nothing. Failed asserting that two strings are identical."
+
+**Status:** Accepted.
+
+### D-106 · What the Build tab's save does with what it is sent · 2026-11-10
+
+`docs/SPEC.md` (Admin, The kit's Build tab): each setting is checked against its schema, one that fails isn't saved, the rest saves, and each problem is named with a link to its field. Presets are saved only when the rules accept them. `Service\KitEditor` is that, in plain PHP with no WordPress in it, so the tab and anything else that edits a kit share it and its tests mutate it (225 of 226 mutants killed; the one left is a guard no build reaches). What the spec leaves open:
+
+- **The domain reads a document first, then its schema.** The plan had the schema first. The domain says which field and why (`slots[2].units`, `document_wrong_type`); WordPress's validator says less. A document is saved only when both accept it, so the schema is still the gate, and `document_schema` is the code for one only the schema refuses. `KitSchemasTest` holds the two in agreement.
+- **Each wrong slot and each wrong preset is named,** a problem a row. What is wrong with the rows together (the deck not first, the risers after the hardware, a key twice, too many) is named once every row reads. The rules and assembly name the first thing wrong.
+- **What was typed in a refused document is kept** in the draft, as the document built from it, so the tab can show it again with the problem beside its field. The measure nobody could read is there as typed.
+- **A slot's key.** A row that carries a key the stored kit has keeps it, whatever its label becomes. Any other row is new, and a key the form made up is not taken. A new slot is one of the eight the rules read (deck, trucks, wheels, risers, bearings, hardware, grip, spacers), chosen by name, or another, whose key is made from its label once: lower-case letters, digits and underscores, 32 at most, numbered when another slot has it. The spec has every key made from its label; a French shop's "Planche" would then be a slot no rule reads, and the deck would have no fit at all.
+- **A switch that is not sent is off,** as a box left empty is. R7 and R8 have no switch: R7 is the engine's own and a kit cannot turn it off (D-056), and R8 is a note.
+- **Measures take the shop's decimal separator and fractions,** as the Part specs fields do, and are written with a point and no zeros they do not need. The fee takes the separator or a point.
+- **Presets are held to the slots and rules that will be stored once the save is done:** those sent where they read, else those stored. A new kit whose slots were refused has nothing to hold a preset to, and says so (`presets_without_slots`); one whose rules were refused is held to the usual rules.
+- **A preset is refused when it names a part its slot does not take, leaves a required slot empty, names a slot the kit lacks, or holds a part the rules block.** One refused, none saved, since the document is one setting.
+- **A part that is sold out does not refuse a preset.** Stock comes and goes; the Catalogue check lists it and the builder handles it (the roadmap's milestone 6).
+- **A misfit is said once,** of the part picked later. The validator names it from both sides, the deck and the trucks that do not fit it.
+- **R7 at save is a note, not a refusal** (D-062): in each slot that takes more than one unit, how many parts have no set size. A kit is set up before every part is filled in. Slots that take one unit are not asked for their parts.
+- **The slots' parts come from `Port\Kits::parts()`,** which takes sources that are not stored yet, and each slot is asked once a save.
+- **The documents have names here** (`slots`, `rules`, `presets`, `assembly`), which the schemas' port shares. Where each is stored is `Support\Options`', which a service may not use.
+
+**Status:** Accepted.
+
+### D-107 · The mutation job's time limit is 25 minutes · 2026-11-10
+
+On `main`, `composer infection` mutates everything, which took 11 minutes on 0.3.0's merge and 14 on 0.3.1's, on the same code but for one template and a script. StrykerJS, `npm ci` and the release dry run follow it. The job's limit was 15 minutes, so on 0.3.1's merge (run 42911035398) it was cancelled with nothing wrong, CI ended cancelled, and `release.yml` skipped the release until the job was run again.
+
+- **The limit is 25 minutes.** A limit is there to stop a job that hangs, not one that is slow on a busy runner. GitHub bills what a job uses, not its limit (D-040), so this costs nothing on a run that passes.
+- **CI gives Infection every core the runner has** (`CBUILD_INFECTION_THREADS`, from `nproc`). `tools/infection.sh` asked for `--threads=max`, which Infection 0.35.10 reads as every core but one (`src/Resource/Processor/CpuCoresCountProvider.php`, `RESERVED_CPUS`), and the job's log on `main` reads "Threads: 1" for both runs: 5 minutes 34 seconds outside the domain and 2 minutes 41 inside it. Away from CI the script still asks for `max`, so a laptop keeps a core.
+- **No floor moves.** The scores asked for are as they were.
+- **A pull request's run is not touched by this:** it mutates its changed lines and takes two to three minutes.
+
+**Status:** Accepted.
+
+### D-108 · The Build tab's screen · 2026-11-10
+
+`docs/SPEC.md` (Admin, The kit's Build tab). `Admin\BuildTab` draws the tab and hands what is sent to `Service\KitEditor` (D-106); `templates/admin/build-tab.php` is its one template, and `assets/src/admin/build-tab.ts` its script.
+
+- **Only a kit's screen holds the fields.** WooCommerce prints every tab's panel on every product's screen and shows the ones the type takes. The tab's fields on a simple product would be some 150 more for its form to send, which is issue #23 again. Another product's panel holds one sentence, and its fields arrive once it is saved as a kit.
+- **Saved by who may manage the shop** (`manage_woocommerce`, the spec's capability for setting up kits), checked in the save as well as by WooCommerce, which checks `woocommerce_meta_nonce` before it fires the hook (11.2.2, `includes/admin/class-wc-admin-meta-boxes.php:228`). Someone who may only edit products can save the kit's name and leaves its settings as they were.
+- **Every value is plain text:** `sanitize_text_field()`, and `sanitize_textarea_field()` for the two that take lines (a slot's help and the returns notice). The documents hold no markup, and the builder escapes them when it prints them.
+- **One way to store a document.** `Support\StoredKit` reads and writes a kit's documents on a product through its CRUD. `Adapter\KitProduct` uses it, and so does the tab, which may not reach into the adapters (deptrac).
+- **A new kit starts from a complete's seven parts** (deck 1, trucks 2, wheels 4, risers 2 and optional, bearings 8, hardware 8, grip 1) and the seeded rules. Nothing is stored until the kit is saved. The shop's own defaults for new kits are the settings page's, later in this milestone.
+- **A slot is added by typing a label into the empty row at the end, and removed by a box on its row.** Neither needs a script, and neither builds markup in the browser. Six presets are always drawn, the empty ones folded shut, and the riser suggestions end with two spare rows.
+- **Rows move by Move up and Move down, and by dragging** their handle (jQuery UI's sortable, which WooCommerce's product screen loads). The rows are sent in the order they stand in. After a move, focus stays on the button pressed, or goes to the row's other button at an end; the button with nowhere to go is switched off; and `wp.a11y.speak` says where the row now is, in a sentence the page carries (WCAG 2.5.7, 2.4.3, 4.1.3).
+- **A refused section is shown once more as it was typed,** to the person who typed it, with each wrong field marked (`aria-invalid`) and tied to its sentence (`aria-describedby`), and the section's problems listed above it. It is kept in a transient named for the kit and the user, `cbuild_kit_draft_<kit>_<user>`, until the tab is next drawn and an hour at most. A reload after that shows the stored kit. Kept longer, it would stand over what someone else had saved since.
+- **A notice's link names its field by the document's own path:** `slots[2].units` is `#cbuild-kit-slots-2-units`. The script opens the tab and every folded group the field is in, and moves focus to it. A path deeper than a field (one ID in a list) leads to the field, and one with no field of its own to its row or its section.
+- **Labels stand above their fields.** WooCommerce floats a label into a column 150 pixels wide, which "With no range: the axle warns within (in)" does not fit, less so at phone width or in French. Each slot's settings and each preset fold shut unless they hold something wrong, so the tab is some 5,600 pixels tall and not 11,000.
+- **The rules report one thing at a time for the rules and assembly** (D-106), so a second wrong measure is met on the next save.
+- **A preset's part that lacks a spec is said as that,** not as a misfit: "lacks a spec that rule R6 reads".
+- **WooCommerce's search fields are left out of axe's region in the browser test.** The spec asks for them ("picked with WooCommerce's own search fields"): `wc-category-search`, `wc-taxonomy-term-search` and `wc-product-search`, each returning IDs (11.2.2, `assets/js/admin/wc-enhanced-select.js:250`, `:473`, `:539`). Their widget, selectWoo, fails two axe rules in its own markup: `aria-allowed-attr` on its box and `aria-input-field-name` on a single choice. That markup is WooCommerce's, on every product screen, and not the plugin's to rewrite. The `select` each stands for is the plugin's, has its label, and is checked. Native lists of each slot's parts would pass, at up to 2,000 options a list. Zach, 10 November 2026: "widget out of axe region is fine for now, we can always revisit later if needed."
+- **Red runs.** `BuildTabTest::test_a_section_that_fails_is_not_saved_the_rest_is_and_each_problem_links_to_its_field`, "Failed asserting that two arrays are identical", and `build-tab.spec.ts`, "a slot's row moves by its buttons", "expect(locator).toBeFocused() failed".
+
+**Status:** Accepted.
+
+### D-109 · The rest of the settings: the terms a build is sold on · 2026-11-10
+
+`docs/SPEC.md` (Admin, Settings; Cart; Security, The state route). Five keys join `cbuild_settings`: `build_discount`, `fixed_coupons`, `rate_limit`, `trusted_proxy_header` and `kit_defaults`. `Domain\Kit\BuildTerms` reads them, `Service\SettingsEditor` checks what the screen sends, and `Port\ShopSettings::terms()` hands them to whatever needs one.
+
+- **One value object, read leniently.** As with the mapping and the order (D-069, D-073), whatever the option holds reads as a valid setting, each key on its own: a discount of `100` reads as none and leaves the rate beside it as it is. The screen is strict, and the schema (`schema/settings.json`) holds anything else that writes the option to the same shape; a test checks that what the schema refuses, the reader does not take.
+- **The discount is text, a percentage with a point and up to two decimals, 0 to 99.99,** and the domain holds it in basis points, which is what `Pricer::quote()` takes. JSON's floats never carry it, as with a kit's fee and its lengths. 100 is refused: a build is not given away by a setting.
+- **`fixed_coupons` is `kit` or `parts`,** the spec's default first: a fixed product discount coupon lands on the kit's line alone. Milestone 5's cart reads it and the discount. They are stored and public from here, as the plan said, so the screen is whole in one milestone; until 0.5.0 they change nothing a shopper pays, and the screen says so.
+- **The rate limit is a whole number from 10 to 6000 a minute, 120 by default** (the spec's). Below 10, a visitor who changes a pick every few seconds would be stopped; 6000 is a hundred a second from one address, past which a limit is no limit. A shop that wants none is not offered it: the route is public.
+- **The proxy header is a header's name and nothing else:** a letter, then up to 63 letters, digits and hyphens, as typed in a server's configuration (`X-Forwarded-For`), not as PHP names it (`HTTP_X_FORWARDED_FOR`). Empty, the default, reads `REMOTE_ADDR`. The screen warns that a header a visitor can send themselves lets them past the limit. The route, later in this milestone, turns the name into the server variable and takes one address from it.
+- **`kit_defaults` holds `assembly`, an assembly document,** checked by the same `Assembly::fromDocument()` a kit's own is, and by the same schema properties, which a test holds equal to `schema/kit-assembly.json`'s. The spec's "defaults for new kits" could also cover the slots and the rules. Those start from a complete's seven parts and the seeded rules (D-108), which a shop changes per kit; assembly is the one a shop sets once, since its fee, lead time and returns notice are the shop's policy. The key is an object so that more can join it without a new key.
+- **A new kit's Build tab shows the shop's assembly defaults** until the kit is saved with its own. Nothing is copied into a kit until then, and a kit that has its own keeps it when the setting changes.
+- **Saved with the mapping and the order, or not at all,** in one write (`ShopSettings::save()` takes the terms as an optional third argument). A caller that sends no terms leaves them as they are.
+- **Saving the terms reads no part again.** They feed no spec, and `indexedFrom()` compares only what the index is built from.
+- **Each field is a row of WooCommerce's settings table,** drawn by one template (`templates/admin/settings-terms.php`), with its problem beside it. The rate is a text field with `inputmode="numeric"` and not a number field, whose value changes on a scroll and which reports nothing typed when it holds a letter.
+- **Red runs.** `SettingsEditorTest::test_fields_left_empty_are_no_discount_no_header_and_no_fee`, "Call to undefined method ...InMemoryShopSettings::terms()", and `SettingsPageTest::test_the_terms_draw_what_is_saved_with_the_shops_separator_and_every_control_named`, "discount: for one control. Failed asserting that 0 is identical to 1."
+
+**Status:** Accepted.
+
+### D-110 · The state service, and a part's stock count held against the build · 2026-11-10
+
+`docs/SPEC.md` (How it fits; How rules run; Security). `Service\BuildState::of()` puts a build's state together, and the state route and both abilities, later in this milestone, call nothing else. Issue #14's second half is in the domain.
+
+- **One service, which decides nothing.** It looks each pick up among its slot's own parts, as `Port\Kits::candidates()` found them, and asks the domain for the rest: `FitEngine::options()` for each slot, `Recommender`, `ChangePlanner`, `BuildValidator` and `Pricer`. Its answer, `Service\State`, holds codes, IDs and amounts in minor units. The words, the names and the photos are the edge's.
+- **A pick is an ID, and an ID that is not one of its slot's parts is refused** with the validator's own codes, `part_not_in_slot` or `slot_unknown`, and is not counted, priced or described: the state says nothing of a draft, a private product or one outside the slot. A pick that is not a whole number above 0 is refused without its value.
+- **The build the steps count is the picks and the recommendations.** The spec has each later slot start on its recommendation and the total count it from the start (P9), so a slot is held against the picks before it and, where one of those slots has no pick, against the part it starts on: the wheels are held against the trucks the builder shows as chosen. The validator and the pricer are given that same build, so "ready" and the total are of what the shopper sees.
+- **A slot starts on a part once every slot the kit requires before it has one.** That is the spec's "after the deck", said without naming the deck: the recommender never picks a deck, so nothing starts until the shopper picks one. A required slot with nothing to start on stops the slots after it from starting, since they would be held against a build with a hole in it. An optional slot gets a part only when the build asks for one, as the recommender has it.
+- **The change list is for the first pick, in step order, that differs from the picks sent as `previous`,** planned from the build as it was. A list that breaks nothing is not returned. The state beside a change list is of the picks as sent, the later ones blocked: nothing changes until the shopper accepts (P8).
+- **The step is the one asked for when the kit has it;** otherwise the first with nothing picked, or the last when every slot has a pick.
+- **Assembly is the shopper's choice where one is sent, and the kit's default where none is.** The discount is the shop's (D-109), and the fee is in the decimals `Port\Kits::decimals()` gives, which are the ones the parts' prices are in. That method is on the kits' port and its adapter, which already reads `wc_get_price_decimals()` for each part's price, so no adapter is added for one function.
+- **Issue #14, the second half.** `Part::covers()` and `Option::available()` hold a part's stock count against the quantity a build takes of it (a slot's units over the part's set size, R7). A part the shop holds too few of is not recommended, is not the closest fit in a change list, and the validator refuses it with a code of its own, `part_short`, so the edge can say "1 left, and a build takes 2" and not "sold out". A part that is out of stock is `part_sold_out` as before, said once. A shop that does not count a part, or takes backorders on it, holds enough: the adapter gives no count for it. The number of builds in a cart line is milestone 5's to multiply by.
+- **Every kit is read to find one.** `Kits::all()` reads each kit's four documents; a shop has a handful. The benchmark at 500 candidates, later in this milestone, says whether one kit needs a reader of its own.
+- **Red runs.** `PicksTest::test_a_part_covers_a_quantity_when_it_is_in_stock_and_the_shop_holds_as_many_or_does_not_count`, "Call to undefined method ...Part::covers()"; `BuildValidatorTest::test_a_part_the_shop_holds_too_few_of_stops_the_build`, "Failed asserting that two arrays are identical"; The service's tests were written with it. Its deliberate break: with a recommendation left out of the build the steps count, four of `BuildStateTest`'s tests fail, the first `test_once_the_deck_is_picked_each_later_slot_shows_what_fits_hides_the_rest_with_why_and_starts_on_a_part`, "Failed asserting that two variables reference the same object".
+
+**Status:** Accepted.
+
+### D-111 · Card data, and how long it is kept · 2026-11-10
+
+`docs/SPEC.md` (Vocabulary, Option; The builder, Cards; Performance). `Port\PartCards` gives what a card shows of a part, and `Adapter\WooPartCards` reads it from WooCommerce and keeps it. The state route, later in this milestone, asks for the cards of the options a step shows and of nothing else.
+
+- **What a card holds:** the name as plain text, the product page's address, the price of one as the shop formats it (`wc_get_price_to_display()` through `wc_price()`, 11.2.2 `includes/wc-product-functions.php:1696`), the availability in the shop's own words and its class (`WC_Product::get_availability()`, which follows the shop's stock display format, `wc_format_stock_for_display()` at `includes/wc-formatting-functions.php:1323`: a shop that hides its counts has them hidden here), and the photo at the catalogue's size with its `srcset` and `sizes`. Fit, and the price as a change from the current pick, are the engine's and the route's.
+- **The name is decoded.** WordPress stores a title with its entities written out (`&amp;`). The card's name is plain text, and whatever prints it escapes it once.
+- **The photo has no alt text of its own.** It stands beside the part's name in the same card, so a description would be read twice. The attachment's alt text is not read.
+- **A variation with no photo shows its parent's,** as WooCommerce does.
+- **Kept per part, an hour at most, in the `cbuild` group** (D-066): scalars and arrays alone, an expiry on every entry, a miss answered from the database, and no flush. The key is the part's ID, `card_<id>`. The entry holds the last change of the part's post and of its parent's, so a part saved by anything at all is read again, and a card for each price context it has been asked in, four at most.
+- **A price context is what a price and its words depend on beside the part:** the currency and its decimals, the language, whether prices are shown with tax, and the tax rates that apply to this visitor, hashed. The rates stand in for the visitor's address, so no address reaches the cache, and visitors charged the same rates share a card. `cbuild_price_context`, with the filters later in this milestone, lets a plugin that prices by role or by currency add to it.
+- **The hooks forget a card at once,** since a stock count moves without the product's post being saved: `woocommerce_update_product` and its variation's, the two `set_stock` and the two `set_stock_status` hooks, `wc_after_products_starting_sales` and `wc_after_products_ending_sales`, and `deleted_post`. `Hooks\CardHooks` names each with its file and line. Forgetting a product forgets its variations too, up to 1,000 of them.
+- **The plan said "keyed by the part's last change and a price context".** The last change is in the entry and not in the key, so that a hook can forget a part without knowing every context it was asked in; the effect is the same, and a stale entry is never read.
+- **What the hour is for:** a change nothing announces, such as a photo replaced in the media library or a tax rate edited. It shows within the hour.
+- **Cost.** A step's 24 cards cost fewer queries than parts when nothing is kept (the posts primed in one, the products loaded in one), and none when all are kept, which `WooPartCardsTest` counts.
+- **Red run.** `WooPartCardsTest`'s first run, before the name was decoded: `test_a_card_is_the_parts_name_page_price_stock_and_photo_as_the_shop_shows_them`, "Failed asserting that two strings are identical." Deliberate break: with `woocommerce_product_set_stock` left out of the hooks, `test_the_hooks_are_the_ones_woocommerce_fires` fails, "Failed asserting that false is identical to 10."
+
+**Status:** Accepted.
+
+### D-112 · The state route, its answer and its rate limit · 2026-11-10
+
+`docs/SPEC.md` (How it fits; Security; French and other languages; Performance). `Rest\StateRoute` registers `GET cbuild/v1/kits/<id>/state`. It holds no rule of its own: `Service\BuildState` works the state out (D-110), `Front\StateAnswer` writes it down as `schema/state.json` describes, `Front\Words` turns each code into a sentence, and `Service\RateLimit` counts.
+
+**The answer**
+
+- **One step's options.** Every step says its pick, the part it starts on, and how many parts it offers and hides, counted by reason. Only the step asked for lists its parts, so an answer's size and its card reads follow one slot and not the kit.
+- **24 at a time** (spec: Performance), of the parts offered and of those hidden. Parts the shop can supply come before those it cannot (spec: Sold out), each in the engine's order, and the part the step counts is listed wherever it stands. The spec's Show more and its filters come with the page in milestone 6, as arguments added to the five the spec names; nothing here has to change for them.
+- **Cards in one call,** for the parts listed, the parts the total counts and the parts a change list names, each once. A part whose product has gone since the index read it keeps its place with no card.
+- **A card's price is plain text,** which changes D-111: `Adapter\WooPartCards` kept `wc_price()`'s markup. The route's answer is data, the Interactivity API binds text and not markup, and the page that prints a price escapes it. `Port\Money` writes the total's amounts the same way, through `wc_price()` with its markup taken off, so the symbol, its side and the separators stay the shop's.
+- **Money is an amount and a text:** whole minor units for anything that reckons, and the shop's own writing for anything that shows.
+- **The sentences name the parts by what they are** ("the trucks' axle", "the deck"), never "this part", so one sentence is right whichever of the pair is the option on show: a shopper who goes back to change the deck sees decks judged against the trucks. For the same reason a hidden count's sentence carries no figure: "9 parts hidden: the trucks would be too narrow for the deck." The spec's example, "9 trucks hidden: too narrow for 8.5″", needs the slot's label made plural and put in lower case, which no language rule the plugin has can do to a label a shop typed. This is a difference from the spec's wording and is in the review for Zach.
+- **Bolts and risers are fractions** where they are a whole number of eighths of an inch (1¼ in), and everything else is a decimal, as the spec's Numbers and units asks. A whole number and its fraction are written together as a numeral, with no pattern for a translator: PHPCS refuses a translatable string that is placeholders alone.
+- **The schema uses `definitions` and `$ref`** for an option, a card, a message, a problem and an amount, each of which the answer holds in several places. WordPress's validator reads no `$ref` (`wp-includes/rest-api.php`, `rest_validate_value_from_schema()`), so `StateRouteTest` writes each reference out before it validates an answer. The kit's documents have none, and are still validated as they are.
+- **Fit labels** ("Fits your 8.25″ deck") and the price as a change from the current pick are the page's, in milestone 6, and will be fields added to an option.
+
+**What the route takes and refuses**
+
+- **The arguments' schema is WordPress's to check:** `picks` and `previous` are objects whose keys match a slot key's pattern and whose values are whole numbers above 0, 20 at most (`maxProperties` and `patternProperties`, `wp-includes/rest-api.php:2180` to `2182`); `step` is a slot key, `assembly` a boolean and `locale` a locale's name. The kit's ID is 1 to 18 digits in the route itself, so a number PHP cannot hold is no route.
+- **Then the kit's own slots.** A schema written ahead knows no kit, so the callback refuses a key the kit lacks with WordPress's `rest_invalid_param` and a 400, in `picks`, `previous` or `step`. "No more picks than the kit has slots" follows: each key is one of the kit's, and a query cannot repeat a key. The service still answers such a key with `slot_unknown` in `refused`, for the page in milestone 6, which opens build links made before a slot was removed.
+- **A part that is not one of its slot's** is not a refusal of the request: the answer comes with the pick in `refused`, and says nothing of the product.
+- **A kit a visitor may not see** is a 404 in the same words as no kit at all: a draft, a private kit, one behind a password, a product that is no kit, and a kit whose documents do not read. `Port\Kits::isPublic()` is new for this; `Service\BuildState` reads any kit that is not in the bin, which the Catalogue check needs. An administrator gets the same 404: the route has one answer for everyone, so nothing it says depends on who asks, and no cache or log holds a draft's parts.
+- **`no-store` and `noindex` on every answer,** a refusal included, through `rest_post_dispatch`, since WordPress makes the 400 for a bad argument before the callback runs.
+- **The language** is switched to after the limit is passed and switched back in a `finally`. `switch_to_locale()` refuses a language the site has not installed (`wp-includes/class-wp-locale-switcher.php:81`), which is the spec's rule, so the route adds no check of its own.
+
+**The rate limit**
+
+- **A fixed window of a minute.** The count is kept under 40 characters of `hash_hmac( 'sha256', "<minute>|<address>", wp_salt( 'nonce' ) )`. With the minute in the hash the name is new each minute, so nothing links one minute's requests to the next, and with the site's secret as the key the name cannot be made, or checked against a guessed address, by anyone without it. It is kept two minutes, so it outlives its own minute on a server whose clock differs from the cache's and no longer.
+- **Where it is kept:** an entry of the `cbuild` group where the site has a persistent object cache (`wp_cache_add()` with the expiry, then `wp_cache_incr()`, which a cache does in one step), and a transient otherwise. A transient is read and then written, so two requests at the same instant may count as one; the limit is a brake on a script and not a meter. A table of the plugin's own was weighed and left: it would be a table added after milestone 1 for a number that lives two minutes. The transient is a write to the options table on each request of the route, which the benchmark in this milestone measures. For Zach at the review.
+- **The address** is `REMOTE_ADDR`, read as an address or not at all, unless the shop names a header. Of a header that lists several, the last is read: a proxy appends the address it saw, so the last is the one the shop's own proxy wrote and the ones before it are the visitor's to make up. Reading the first would let anyone past the limit with a header of their own. Behind two proxies the last is the outer proxy, and every visitor shares one count: `docs/SETTINGS.md` says to name the header the outer one sets (`CF-Connecting-IP`).
+- **An IPv6 address counts as its /64,** the block one visitor is given; counted singly, one visitor has 18 quintillion counts. An IPv4 address written as IPv6 counts as the IPv4 address.
+- **Counted first.** The count is the first thing the callback does, so a request over the limit reads no kit and no part: it costs the count. A request WordPress refuses for its arguments is not counted, and costs less than the count would.
+- **Everyone is counted,** signed in or not: the builder's script asks once per pick, debounced, and 120 a minute is two a second.
+- **The 429** has the shape of any REST error (`code`, `message`, `data.status`) and `Retry-After` with the seconds left of the minute. Its sentence is in the site's language: the language asked for is not switched to until the limit is passed.
+
+**Tests.** `RateLimitTest`, `WordsTest` and `StateAnswerTest` run without WordPress and are mutated: 225 of 225 mutants killed in `Service\RateLimit` and `Front`. `StateRouteTest` runs in wp-env: every answer is validated against the schema, and the schema is shown to refuse an answer that is not its own. `Rest\StateRoute`, `Adapter\CacheTally` and `Adapter\ShopMoney` cannot run without WordPress; whether they join `infection.json5`'s list is Zach's to say (D-038, D-087).
+
+**Red run.** `StateRouteTest`'s first run: `test_the_answer_is_in_the_language_asked_for_when_the_site_has_it_and_the_sites_own_otherwise`, "Failed asserting that two arrays are identical", with `en_US` beside `fr_CA`: the 404's sentence was made before the switch, which moved the switch to where it is. Deliberate breaks, three at once: with the public check, the limit and the `no-store` header each taken out, `test_a_kit_a_visitor_may_not_see_is_answered_as_one_that_is_not_there` fails ("Failed asserting that 200 is identical to 404", on the draft), as do `test_every_answer_of_the_route_is_kept_out_of_caches_and_out_of_search` ("Failed asserting that null is identical to 'no-store'"), `test_an_address_over_the_limit_is_told_to_wait_and_another_address_is_not`, `test_a_request_over_the_limit_reads_no_kit` and `test_the_address_is_the_connections_own_unless_the_shop_names_a_header` ("Failed asserting that an array contains 429").
+
+**Status:** Accepted.
+
+### D-113 · Five more classes left out of the mutation run · 2026-11-10
+
+Zach's answer on 10 November 2026 to whether `Rest/StateRoute.php`, `Adapter/CacheTally.php`, `Adapter/ShopMoney.php`, `Adapter/WooPartCards.php` and `Admin/BuildTab.php` may join `infection.json5`'s list (D-038): "for whats still open: do whatever is best practice". The practice is D-087's rule, applied as it stands: a class is left out only when it cannot run without WordPress or WooCommerce loaded.
+
+- **All five meet it.** The route takes WordPress's REST request and gives its response, and switches its locale. `CacheTally` is the object cache and transients. `ShopMoney` is `wc_price()`. `WooPartCards` reads WooCommerce's products and the object cache. `BuildTab` is a wp-admin screen, as the five screens already on the list are.
+- **Each is proven in wp-env** by the integration suite, with a deliberate break on record: the route's three in D-112 and the cards' in D-111. The Build tab had none on record, so one was run for this decision: with its capability check taken out, `BuildTabTest::test_only_who_may_manage_the_shop_saves_a_kit` fails, "Failed asserting that two arrays are identical." `CacheTally` and `ShopMoney` are reached through the route's tests: the limit's 429s, the transient's name and expiry, and the total's "$97.00".
+- **What needs no WordPress stays in the run:** `Service\RateLimit`, `Front\Words` and `Front\StateAnswer`, where the route's logic is, at 225 of 225 mutants killed. The route was written thin so that this is where the list ends.
+- **The rule is unchanged,** and adding to the list still needs Zach.
+
+**Status:** Accepted.
+
+### D-114 · The five filters · 2026-11-10
+
+`docs/SPEC.md` (Pricing, stock, assembly and returns; French and other languages; Performance) names five filters and what each is for, and leaves their arguments to the build.
+
+- **`cbuild_part_available` takes a part out; it does not mark it sold out.** `( bool $available, int $id, WC_Product $part )`, asked in `Adapter\WooKits` where a slot's parts are found, after WooCommerce's own tests (published, visible, purchasable), so it is asked only of a part that would otherwise be offered. A part ruled out is no candidate of any slot: it is not offered, not recommended, not a preset's valid pick, and a request that names it gets `part_not_in_slot`, as for any product that is not the slot's. The other reading, a part shown as sold out, would have the card say "In stock" in WooCommerce's words beside an option that cannot be picked; a plugin that wants a part shown as sold out sets its stock status, which WooCommerce and the builder both read. It has no kit or slot argument: a part's sources are read per slot, and a plugin that knows a part is unavailable knows it of the part. For Zach at the review.
+- **`cbuild_price_context` filters the list that is hashed,** `( array $context )`, in `Adapter\WooPartCards`. `StateRouteTest` shows why it is needed: a plugin that filters `woocommerce_product_get_price` for some shoppers and says nothing here has its shoppers shown the card kept for the others. `docs/HOOKS.md` says so, and says to add nothing that names a person: the context is hashed and the hash is all that is kept, but a context per person would also be a card per person.
+- **The owner's words: three filters, one field name.** `cbuild_slot_label( $label, $slot, $kit )` and `cbuild_preset_label( $name, $position, $kit )` are the two the spec names for labels. `cbuild_kit_text( $text, $field, $kit, $of )` takes the rest: a slot's help, a preset's description, the lead time and the returns notice, told apart by `$field`. A preset has no key, so it is named by its position, which the Build tab's order sets.
+- **An answer of the wrong type is ignored** and the owner's words stand, so a plugin's mistake does not put "Array" or nothing in front of a shopper. An answer is not escaped or cut: the route's answer is plain text and the page escapes it.
+- **The answer gained `texts` and `presets`.** The filters "the answer runs through" needed the words to be in the answer, and the page in milestone 6 needs both. A preset is its name, its description and its picks; its picture, its total and whether it holds a sold-out part are the page's to ask for.
+- **A label a plugin answers is the label everywhere in the answer:** the step's, the change list's, and the one a problem's sentence names its slot by. Each slot's label is asked for once an answer.
+- **Unit tests answer a filter** through `$GLOBALS['cbuild_test_filters']`, which the `apply_filters()` shim in `tests/Support/wp-shims.php` reads, so `Front\StateAnswer` stays in the mutation run with its filters: 190 of 190 mutants killed in `Front`.
+
+**Red run.** `StateAnswerTest::test_the_owners_own_words_are_in_the_answer_as_typed`, "InvalidDocument: presets_slot_not_filled": the test's presets left required slots empty, which the domain refuses. Deliberate breaks: with `cbuild_part_available` not asked, `StateRouteTest::test_a_plugin_that_rules_a_part_out_takes_it_from_the_route` fails, "Failed asserting that two arrays are identical"; with the context's answer not used, `test_a_plugin_that_prices_some_shoppers_apart_says_so_and_each_gets_their_own_card` fails, "Failed asserting that two strings are identical."
+
+**Status:** Accepted.
+
+### D-115 · The abilities that check and price a build · 2026-11-10
+
+`docs/ROADMAP.md` (milestone 4): "read-only and give the route's answers, as Creative Reviews registers its own". `Abilities\CheckBuildAbility` and `Abilities\PriceBuildAbility`, over `Abilities\BuildAbility`.
+
+- **Parts of the route's answer, by the route's classes.** Each asks `Service\BuildState` and has `Front\StateAnswer` write the answer, then keeps the keys it is for: `kit`, `ready`, `refused` and `problems`, or `kit` and `total`. Nothing is worked out a second time, so there is nothing to drift. `BuildAbilitiesTest` holds each to the route for five builds, each with assembly on, off and left out.
+- **Open to whoever may run an ability** (`__return_true`), as Creative Reviews' read-only abilities are (`creative-reviews-for-woocommerce/src/Abilities/Abilities.php:119`) and as the route is open to whoever asks. WordPress serves an ability over REST to a signed-in user alone. What it says is what the kit's page says, and a kit a visitor may not see is `cbuild_kit_not_found` to everyone, an administrator included, through the same `Port\Kits::isPublic()`. The deliberate break below is why that check is in the ability and not left to the service: the service reads drafts.
+- **No rate limit.** An ability is run by code on the site or by a signed-in user through WordPress's own route; the limit is for the route anyone can reach. For Zach at the review, with the limit's other questions.
+- **One class to an ability.** `composer api:check` reads each ability's `outputSchema()` from the class that registers it, so the two are two classes over a shared one. The output schemas are written out in PHP, with no `$ref`, since WordPress holds an ability's answer against its schema with a validator that reads none; `BuildAbilitiesTest` shows an answer with a blocked pair and a refused pick passing.
+- **A slot key the kit lacks is not a refusal here,** where it is a 400 on the route: an ability's input schema is fixed when it is registered and knows no kit, and the answer's `refused` already says `slot_unknown`.
+- **Both stay out of the mutation run** with the rest of `Abilities`, which the list has held since D-087.
+
+**Deliberate breaks.** With the public check taken out, `BuildAbilitiesTest::test_a_kit_a_visitor_may_not_see_is_not_there_for_an_ability_either` fails, "Failed asserting that Array (...) is an instance of class \"WP_Error\""; with `assembly` not passed on, `test_what_an_ability_says_of_a_build_is_what_the_state_route_says_of_it` fails, "Failed asserting that two arrays are identical." The tests passed on their first run, so there is no red run to quote beside these.
+
+**Status:** Accepted.
+
+### D-116 · What the builder needs of a part is kept in a table of its own · 2026-11-10
+
+The spec's budget is 80 ms at p95 for the state route with 500 candidate parts, held "without a persistent object cache". The first run of `StateRouteBenchmarkTest` (2,000 parts in a kit, 500 of them trucks) took 489 ms at p95. Timed piece by piece, 440 ms of it was `Adapter\WooKits::parts()` loading every candidate of every slot as a WooCommerce product, to learn whether it may be sold, its price and its stock. No budget holds while a request loads 2,000 products, with or without an object cache: with every product already cached, 500 still took 106 ms.
+
+The first answer kept each slot's list in a transient (commit `ae04b23`). It held the budget, but one change to one product threw every list away, and the next request read all 2,000 products again: 435 ms. Asked which of leaving it, refreshing in the background or a table was best practice, I recommended the table; Zach said "yes, add the table", and "go" to the shape shown (CLAUDE.md: a table after milestone 1 needs him). The transient lists, `Service\PartRows` and the option `cbuild_parts_mark` are gone; none was ever released.
+
+- **The table, `{prefix}cbuild_parts`.** One row per product or variation and price context: its parent, whether it may be sold, its brand, the price of one as the shop shows it in minor units, whether it is in stock, how many the shop holds where it counts them, a variation's own attribute values, its specs as the index held them, and when it was read. Keyed on the part and the context, indexed on the parent and the context. Made by the migration `schema_2`; the schema's version is 3.
+- **One column more than Zach saw: `specs`.** The shape he said "go" to had no specs; they were to come from the index on each request. Reading and building 2,000 parts' specs from the index was 8 ms and a second query, and the cold run stood at 88 ms. With the specs in the row it is one read. They are a copy of the index's, written when the row is, and the index's own jobs forget the row. For Zach at the review.
+- **`read_at` is UTC seconds, not a `datetime`.** The Clock's timestamp goes in and comes out as it is, with no conversion in SQL that the database's time zone could shift.
+- **A request reads rows, and only what is missing or old from the shop.** `Port\Kits::offered()` finds a slot's product IDs by term (`get_objects_in_term()`, with a hierarchical term's children), reads their rows and their variations' in `Repository\PartFactsRepository`, and reads from WooCommerce only the IDs with no row or an old one, writing those back. A product that moved costs the next request that one product.
+- **What is found by term is not yet known to be sold.** The term lookup returns drafts and hidden products too. Each gets a row all the same, marked unsellable, and so does an ID that is no product at all, so it is not asked of the shop again on every request.
+- **A row is believed for an hour, and up to an hour more.** Its age limit is an hour plus as many minutes as the ID leaves when divided by 60, so a catalogue read at once does not fall due at once. A change nothing announces (a price changed straight in the database) shows within that time.
+- **Kept per price context,** the one a card is kept under (D-111, `WooPartCards::context()` for both): the currency, the language, the tax display and the tax rates that apply, and whatever a plugin adds with `cbuild_price_context`. No address and no user is in it. The first request in a new context reads every part of the kit once: 470 ms at 2,000 parts, on one request, per context. The benchmark prints it and does not hold it to the budget.
+- **What deletes rows** (`Hooks\CardHooks`), each found in the source wp-env installed, with the files and lines in the class: everything that already forgets a card (a product or variation saved, its stock or stock status set, a sale starting or ending, a post deleted); a product or variation made; a product's terms set; a product's status moving by any road (`transition_post_status`); the index written by its job. Each deletes the rows of that product, its parent and its variations, in every context. A brand or attribute term edited or deleted, and a whole reindex, empty the table: a term's slug is in every row that names it.
+- **`cbuild_parts_changed` is new public API,** an action a plugin does when its answer to `cbuild_part_available` changes, or a price it sets, with no product saved. With a list of IDs it deletes those parts' rows; with none, all. `composer api:check` lists the actions the plugin listens for (`listened_actions`), beside those it does.
+- **The recommender takes options already worked out.** `Domain\Fit\Recommender::among()` is `recommend()` without the engine's second pass over the slot, which `BuildState` had already made.
+- **One kit is read, not the shop's list.** `Kits::kit()` reads the kit asked for; `BuildState` read all of them, up to 200, to find one.
+- **The Catalogue check, the Build tab and a kit's save still read the shop itself** (`Kits::parts()`). They are the owner's, asked for by hand, and must show what is there now.
+- **For milestone 5.** Adding to the cart must read the parts picked from WooCommerce itself, not from rows: seven products, loaded once, and the price charged is then the price of that moment. An issue in milestone 5's list says so.
+- **No class joins the mutation run's exclusions.** The repository is in `src/Repository`, out by D-087's rule since milestone 3, and `Adapter\WooKits` since D-103; both are held by `PartsTableTest` in the integration site. `BuildState`, `CardHooks` and the recommender are mutated, and every mutant is killed.
+
+**Measured** (Apple M1 Max, wp-env, Xdebug off, no persistent object cache): cold, p95 58 ms and 42 queries; warm, p95 41 ms and 15 queries; the first request after one part moves, p95 71 ms. docs/BENCHMARK.md has the run.
+
+**Red run.** `StateRouteBenchmarkTest::test_the_state_route_answers_within_80_ms_at_p95_with_500_candidates_in_a_slot`: "The state route, cold. Failed asserting that 489.333745 is less than 80.0."
+
+**Deliberate break.** With `Hooks\CardHooks` deleting no row, the tests of `PartsTableTest` that move a part fail, the first `test_one_part_that_moves_is_read_again_and_no_other`: "the one that moved. Failed asserting that two arrays are identical." Among the rest, "a price is saved": "Failed asserting that 6000 is identical to 7500."
+
+- **What the spec said and what this changes** (the spec reviewer's should-fix 4). Spec, How it fits: "Stock is read from WooCommerce when the builder asks." Spec, Stock: "What the builder offers is worked out when it's asked, never synced. Imports and bulk edits that skip WooCommerce's functions can't leave it stale." With the table, what the state route offers comes from rows: a change WooCommerce announces deletes the row at once, and one it does not (a price or a stock count written straight to the database) shows within two hours, or at once after `cbuild_parts_changed`. What is charged and what goes to the cart is read from WooCommerce itself (issue #26). Zach said yes to the table; he has not been asked about these two sentences, and the spec now carries a note beside each. For Zach at the review.
+- **Rows are deleted once a request** (D-119).
+
+**Status:** Accepted. The table is Zach's word of 10 November; the `specs` column, the first request in a price context being outside the budget, and the spec's two sentences on stock are for him at the review.
+
+### D-117 · axe's target-size is quarantined in a variation's Part specs, and the headings are measured there instead · 2026-11-10
+
+Issue #22. `part-specs.spec.ts`, "a variation names its size in a maker's chart", has failed twice on axe's `target-size` for the Deck group's heading: in CI on `main`'s merge of milestone 3 (webkit-phone, "smallest space is 261.2px by 20.6px") and once locally in a full two-project run (chromium-phone, "281px by 23px"). Both name as covering it the row's attribute select, which is about 1,000 px above it in the settled page, and the next group's heading, which starts where it ends. The heading is 34 px high.
+
+Tried, and none showed it: the test alone, 12 times; three full two-project runs; jQuery's animations slowed to 6 s; the row's box clipped 20 px into the heading, as a slide would leave it; a scan at eight moments of the row's slide; a scan while the page scrolls. So it is not the layout as a shopkeeper meets it, and I cannot yet say what it is.
+
+CLAUDE.md: a flaky test is fixed or quarantined with an issue the same day. Quarantined, as narrowly as it goes:
+
+- `target-size` alone is left out of axe's two scans of a variation's Part specs. Every other rule still runs there, and `target-size` still runs on the product's own Part specs tab and everywhere else.
+- In its place the test measures what the rule is for: every group heading in the variation at least 24 px by 24 px, and none overlapping the one before.
+
+Issue #22 stays open in milestone 4's list until the cause is found and the rule is back.
+
+**Deliberate break.** With the padding above and below a heading taken out of the panel's rule, the measurement fails in chromium-phone: "Expected: >= 24. Received: 18.1875".
+
+**Status:** Accepted. For Zach at the review: the quarantine, and whether it may stand past this milestone.
+
+### D-118 · The audit's two blockers: a kit made on the product screen is hidden, and an ability needs someone signed in · 2026-11-10
+
+Both were found by the auditor reading the source wp-env installed, and both were confirmed by a test that failed before anything was changed.
+
+- **A kit is hidden by every save.** D-100 overrode the kit's `get_catalog_visibility()`, and WooCommerce's data store writes the two visibility terms from it. But on an update it writes them only when visibility is among the product's changes (WooCommerce 11.2.2, `includes/data-stores/class-wc-product-data-store-cpt.php:1039`), and what is read of a kit is already hidden, so no setter records a change. A product made a kit on the product screen, the only way an owner has, kept the terms of a visible product and stayed in the catalogue, in search and in feeds at its assembly fee. `Adapter\KitProduct::save()` now puts visibility among the changes outright, and `set_catalog_visibility()` takes nothing but hidden. D-100's tests made their kits with `new KitProduct()`, a create, which WooCommerce forces the terms for; the new test builds the kit on an existing post, as `WC_Meta_Box_Product_Data::save()` does (`includes/admin/meta-boxes/class-wc-meta-box-product-data.php:337`).
+- **The two build abilities answer to someone signed in.** D-115 left them open (`__return_true`) and said WordPress serves an ability over REST "to a signed-in user". It does not: the run route asks the ability's own callback and nothing else (WordPress 7.1.4, `wp-includes/rest-api/endpoints/class-wp-rest-abilities-v1-run-controller.php:143`). So a visitor could ask `check-build` and `price-build` as often as they liked, which is the state route with no limit. The callback is now `is_user_logged_in`, which makes D-115's sentence true. Code on the site that runs an ability with no user is refused as well; the other road, leaving them open and counting them against the route's limit, is Zach's to choose at the review. Creative Reviews' read-only abilities are open in the same way (`creative-reviews-for-woocommerce/src/Abilities/Abilities.php:119`); that is another repository's, and is for Zach.
+
+Three of the audit run's failures were the tests' or the tools' own, fixed with these: `StateRouteTest` leaned on a route another test had registered and on Site Health being an administrator's, which on a network it is not; `BuildTabTest` flushed the whole object cache between a save and the next screen, which on a site with a persistent one takes what the person typed with it; `tools/zip-lifecycle.sh` expected two tables after an install. `tools/infection.sh` gives Infection 1 GB, since 128 MB ran out printing a class of a thousand lines.
+
+**Red runs.** `KitHiddenTest::test_a_product_made_a_kit_on_the_product_screen_is_hidden_by_that_save`: "exclude-from-catalog. Failed asserting that false is true." `BuildAbilitiesTest::test_a_visitor_who_is_not_signed_in_runs_neither`: "Failed asserting that 200 is identical to 401."
+
+**Deliberate breaks.** With `KitProduct::save()` taken out, the first fails as above. With the callback `__return_true` again, the second fails as above.
+
+**Status:** Accepted. Signed in or counted is for Zach at the review.
+
+### D-119 · The audit's should-fixes of milestone 4 · 2026-11-10
+
+Found by the `auditor` and `spec-reviewer` agents on the diff, each held by a test.
+
+- **A product's save deletes its rows once, and another post costs nothing** (auditor 6). `Hooks\CardHooks` deleted rows on every `set_object_terms` and `deleted_post`, of any post type: a select and a delete for each taxonomy a product's save sets, and two queries a taxonomy for a page or a post. `Adapter\WooKits::forget()` and `Adapter\WooPartCards::forget()` now only note the IDs, and `settle()` deletes once, on `shutdown` or before the same request reads a row or a card. The hooks look at the post's type first.
+- **A batch of the reindex deletes its own parts' rows** (auditor 7). `CardHooks` emptied the whole table after every batch of 100, so between two batches every request read the whole shop again, 470 ms at 2,000 parts. `Service\IndexJobs` now tells `Port\Kits` of the parts each batch indexed, from the queue and from WP-CLI alike. A brand or attribute term edited still empties the table.
+- **Slots are not saved beside presets they break** (auditor 3). The Build tab saved the slots while the presets sent with them were refused, and the stored presets and the new slots made a kit that did not read: a 404 to every shopper, and a notice that said only that the presets were not saved. `Service\KitEditor` holds slots that would be saved without their presets against the presets that stay, and refuses them with the new code `slots_leave_presets`.
+- **A kit that does not read is said** (auditor 11, spec reviewer 3). The Catalogue check lists it under the new code `kit_unread`, with a link to its Build tab. `Service\BuildState` writes a line to the log when a caller asks for a kit that does not read, and when a build cannot be priced, each at most once an hour (`Port\Logger::hourly()`, a transient `cbuild_logged_<what>`), with the kit's ID and nothing of the request. Site Health is not told; the check and the log are. For Zach if he wants a Site Health test as well.
+- **The limit's counts take 1,024 rows at most** (auditor 4). Without a persistent object cache each address and minute was a transient of its own, never read again, so two rows of the options table stayed for each until WordPress's daily clean, and addresses that keep changing filled the table. `Adapter\CacheTally` now keeps the counts in 1,024 transients at most, each holding the hashes that fall to it and when each ends, and a row lasts no longer than its last count. A request costs two writes or four. With an object cache nothing changes. A table would be simpler and is Zach's to ask for (D-112).
+- **The route's query count is held** (auditor 8): the same warm and cold for a step of 30 parts and of 60, the limit's own writes left out since their number moves with the second.
+- **Each row's buttons and fold are named with the row** (auditor 9), by `aria-labelledby` on the button and the row's legend: "Move up Slot: Trucks". Revised by D-120: the buttons carry the legend's words as hidden text.
+- **`composer api:check` holds the route's arguments, the error codes and what each ability takes** (spec reviewer 1). `Rest\StateRoute::arguments()` is the route's arguments, read by `tools/api-surface.php` as the abilities' schemas are.
+- **A site on 0.3.1 gains the table** (spec reviewer 2): `MigrationTest` starts from that release's version and states. No code changed.
+
+Left for Zach, since each is his under CLAUDE.md: the route's prices where tax depends on where the shopper is (auditor 5), and the first request in a price context being outside the budget (spec reviewer 5). Both are in the review.
+
+**Red runs and deliberate breaks.**
+- `KitEditorTest::test_slots_that_the_presets_left_in_force_cannot_live_with_are_not_saved`, before the fix: the problems lacked "slots slots_leave_presets slots".
+- `PartsTableTest::test_a_products_save_deletes_its_rows_once_and_another_posts_terms_cost_nothing`, with `forget()` deleting at once: "nothing while the request runs. Failed asserting that two arrays are identical."
+- `CacheTallyTest::test_each_key_is_counted_on_its_own_and_the_rows_are_bounded_however_many_keys`, with a row for each key: "Failed asserting that 3002 is equal to 1024 or is less than 1024."
+- `IndexJobsTest`, `BuildStateTest`, `CatalogueCheckTest`, `BuildTabTest` and `StateRouteTest` each gained a case written with its fix; mutation testing holds the three services' cases.
+
+**Status:** Accepted.
+
+
+### D-120 · A row's buttons are named with hidden text, and a percentage is read with one cast · 2026-11-11
+
+Two failures of the audit's second full run, both in what D-119 and the settings added.
+
+- **The buttons.** D-119 named each row's Move up and Move down with `aria-labelledby` on the button and the row's legend. In Firefox, the page crashed when axe read the Build tab after a row had moved ("Error: frame.evaluate: Page crashed", `firefox-desktop` and `firefox-phone`). It crashed the same with the button named from a span inside it and the legend, so the reference to the legend is the cause, not the button naming itself. The buttons now hold the legend's words in a `screen-reader-text` span, as WordPress's own list tables name their row actions: the name is the same, "Move up Slot: Trucks", and nothing is looked up when a row moves. The fold keeps `aria-labelledby`: it crashed nothing, and a `summary` is not moved by a press.
+- **The percentage.** `BuildTerms::discountFrom()` cast the whole part and the places apart and added them. Take either cast away and PHP adds the numeric strings to the same number, so no test could tell, and only static analysis caught the two mutants (D-063 allows none unlisted). It now joins the two strings and casts once; without that cast the method returns a string and every case fails.
+
+**Red runs.** `build-tab.spec.ts` "a slot's row moves by its buttons from the keyboard, and the kit keeps the order", Firefox: "Error: frame.evaluate: Page crashed". `composer infection`: "Caught by static analysis and by no test: CastInt src/Domain/Kit/BuildTerms.php, 2 (allowed 0), at line(s) 124, 124."
+
+**Deliberate breaks.** With `aria-labelledby` back on the buttons, the Firefox test crashes as above. `BuildTabTest::test_each_rows_buttons_and_fold_are_named_with_the_row` holds the markup, and fails when a button is named from the legend again.
+
+**Status:** Accepted.
+
+### D-121 · Zach's answers of 11 November 2026, on the audit's three questions · 2026-11-11
+
+Asked before the pull request opened, since each is his under `CLAUDE.md`.
+
+- **The two build abilities stay signed in** (D-118). "thats fine as is. keep it signed in". The other road, open and counted against the route's limit, is not taken.
+- **Tax by where the shopper is, is deferred to milestone 5** (auditor 5, a should-fix). "defer is gine". Until then the state route prices for the shop's base address where a shop's tax depends on the shopper's. Milestone 5's cart knows the customer, and the route reads the same one then. An issue in milestone 5's list holds it.
+- **The first request in a price context, 470 ms against the 80 ms budget** (spec reviewer 5). "whatever is best practice". The practice is that no visitor pays to fill a cache: the rows are read in the background and a request finds them there. That is owed before the first shopper's request, which is milestone 6's builder, so 0.4.0 ships as measured and an issue in milestone 6's list has the reindex job fill the default price context's rows. The benchmark holds every other request to the budget now, and will hold this one when the job fills it. This reading of "best practice" is mine.
+
+**Status:** Accepted.
+
+### D-122 · Claude in Cowork's review of milestone 4's pull request · 2026-11-11
+
+One blocker, one should-fix and four minors, on pull request #30. Each fix has a test that failed without it.
+
+- **The API snapshot is read in one order on every disk** (blocker). `tools/api-surface.php` listed a directory's files in the disk's order, which APFS and CI's ext4 give differently, and `ability_schemas` is compared in order: the first full CI run failed on the order alone, with every hash the same. The list is sorted, and the snapshot rewritten in that order. Since the job stopped there, the dependency audits, the benchmarks and the PHP 7.4 parse had not run on the commit; the merge waits for a full run with them green.
+- **A Build tab post that was cut short saves nothing** (should-fix). PHP keeps the first `max_input_vars` fields of a form and drops the rest with no error (D-104), and `Service\KitEditor` reads a field that is not sent as a choice: a rule off, a slot or a preset gone. The panel's last field is now a hidden one, `cbuild_kit[end]`, and a post that arrives without it is refused whole: nothing is written, a notice says only part of the form reached the server and names `max_input_vars`, and what did arrive is kept for an hour as a refused section is, so the tab shows it as typed. D-104 fixed the Part specs panel in the plugin and did not ask a host to raise the limit; here the fields are the kit itself, so there is nothing to leave out, and the notice names the setting because that is the one thing that lets the save through.
+- **A slot the kit does not have is refused before the state is worked out** (minor 1). `Rest\StateRoute` reads the kit, checks the keys named and answers 400; the state service is not built for it. A kit that does not read is still left to the service, which logs it (D-119).
+- **The Build tab is drawn for who can save it** (minor 2): neither the tab nor its panel for a user without `manage_woocommerce`, who could edit the product and see fields that saved nothing.
+- **Each slot's Attribute values fold is named with its row** (minor 3), by `aria-labelledby` as the slot's own fold is. The buttons keep their hidden text (D-120).
+- **`docs/SPEC.md`'s truck table under R1 is the seeds'** (minor 4): each maker's own chart, as D-093 seeded them, with Thunder's 181 and the ranges of its 143 and 161. Cowork said this needed no answer from Zach.
+- **Noted, not changed:** a read of the parts table that races a save can write its row after the save's delete. The row is then as old as that read, and the two-hour age the rows are read with bounds it, as it bounds D-116's other gaps.
+
+**Red runs.**
+- CI run 42969051989, `composer api:check`: "The public API differs from tests/Fixtures/api-surface.json", on `ability_schemas` alone.
+- `BuildTabTest::test_a_post_cut_short_saves_nothing_says_why_and_keeps_what_arrived`: "nothing is saved. Failed asserting that two arrays are identical."
+- `BuildTabTest::test_the_tab_is_drawn_only_for_who_can_save_it`: "Failed asserting that an array does not have the key 'cbuild_build'."
+- `BuildTabTest::test_each_rows_buttons_and_fold_are_named_with_the_row`: "more. Failed asserting that 0 is identical to 1."
+- `StateRouteTest::test_a_slot_the_kit_does_not_have_is_refused_before_the_state_is_worked_out`: "LogicException: The state was worked out for a slot the kit does not have."
+
+**Deliberate breaks.** With the sort commented out, `composer api:check` fails on this Mac as it did in CI. With the end field ignored, the capability checks removed and the fold's attribute taken out, the three `BuildTabTest` cases fail as above. With the route's check moved back after the state, the route's case fails as above.
+
+**Status:** Accepted.
+
+### D-123 · The second full CI run of milestone 4: apt that hangs, and a benchmark decided by one slow request · 2026-11-11
+
+Neither is a fault of the plugin's code; both cost billed minutes.
+
+- **Playwright's system packages are installed in tries that end.** On run 43057146618 the newest and oldest legs sat on `npx playwright install-deps` for 15 and 19 minutes, and again on the re-run: the runners could not resolve Ubuntu's mirrors ("Temporary failure resolving 'azure.archive.ubuntu.com'", and the same for `archive.ubuntu.com` and `security.ubuntu.com`), and apt waits for as long as the job has. From outside, the Azure mirror failed for a while and the other two answered throughout. Each of the two install steps now runs up to three times, each try stopped by `timeout` after three minutes (five where the browsers are downloaded too). A hang costs nine minutes at most, not the job's sixty, and a short outage is ridden out. Pointing apt at the main mirror, which Zach found suggested, is not added: the runners failed to resolve that one as well. It stays on issue #32 with caching the packages.
+- **The benchmark's request after a part moves is measured 40 times, as the cold and warm runs are.** On the re-run the newest leg failed with "The state route, after one part moves. Failed asserting that 81.024766 is less than 80.0." The cold and warm runs passed at 65.8 and 45.6 ms. That case took 20 samples, so its 95th percentile was the second slowest request, and two slow ones on a shared runner decided it; cold and warm take 40. It takes 40 now, from an address of its own, since the three runs together are more than one address may ask in a minute, which the first try at this found out with a 429. It also prints its median and its queries. The budget is not moved: 80 ms at p95.
+- **Checked before settling on that:** whether the code had slowed. It had not. The route as it was before D-122's change, and the whole tree at the commit `docs/BENCHMARK.md`'s figures came from, both measure the same on this Mac today (cold median 68 ms) as the current code. The Mac is slower today than when the table was taken, which the benchmark's page now says.
+- **For Zach:** the budget is held on GitHub's shared runners with about 14 ms to spare when cold. If it fails there again on a run where the code has not changed, how a time budget is held on hardware nobody controls is his to decide; it is not decided here.
+
+**Status:** Accepted.
+
+### D-124 · The state route's time budget is held on a known machine, and CI holds its queries · 2026-11-11
+
+The third full CI run of milestone 4 failed where the second had passed: "The state route, cold. Failed asserting that 83.695002 is less than 80.0", median 73 ms. The run before it, of the same code, measured 65.8 ms at p95 and a median of 60. GitHub's shared runners moved by a fifth in an hour, and a budget with 14 ms to spare fails on that at random, each time for the price of a run.
+
+Zach was asked how CI should hold the budget, as D-123 left to him, and chose on 11 November 2026: "Split it (Recommended)".
+
+- **The queries are held everywhere:** 42 at most for a cold request, 15 warm, 37 after a part moves. They do not move with the machine, and a change that makes the route slower by doing more work shows in them.
+- **In CI the time is held to 120 ms,** which a gross slowdown still fails. `ci.yml` sets `CBUILD_BENCHMARK_SHARED=1` on the benchmark's step, `tools/benchmark-integration.sh` passes it into the container, and the test reads it.
+- **The 80 ms budget is held on the Mac the figures in `docs/BENCHMARK.md` come from,** by `composer test:benchmark:integration` in `/audit-milestone`'s local run before each milestone's pull request, and its numbers go into the review. The skill's list now names the command.
+- **Nothing else moves.** The spec's budget is 80 ms. The fit engine's benchmark and milestone 3's are as they were.
+
+**Red run.** CI run 43069596131, as above. **Deliberate break:** with the cold count set to 41, "The state route's queries, cold. Failed asserting that 42 is equal to 41 or is less than 41."
 
 **Status:** Accepted.

@@ -55,12 +55,13 @@ Per site. All three are removed on uninstall.
 
 ### Tables
 
-Per site, each named with the site's table prefix first (`wp_cbuild_specs` on a default install). The columns are in the spec's Data model and in `Install\Schema`. Read them if you must; write them only through the plugin. Both are dropped on uninstall and when a network site is deleted.
+Per site, each named with the site's table prefix first (`wp_cbuild_specs` on a default install). The columns are in the spec's Data model and in `Install\Schema`. Read them if you must; write them only through the plugin. All are dropped on uninstall and when a network site is deleted.
 
 | Table | Since | What it holds |
 | --- | --- | --- |
 | `cbuild_specs` | 0.1.0 | One row per part and spec: the index the fit engine reads. Empty until milestone 3. |
 | `cbuild_builds` | 0.1.0 | Saved builds. Empty until milestone 8. |
+| `cbuild_parts` | 0.4.0 | What a build needs to know of each part, one row per product or variation and price context: whether it may be sold, its brand, price, stock, a variation's attribute values and its specs. Derived from the shop: a row is deleted when its part moves and read again when next asked for, so a row is never the place to change a part. To have rows read again, do `cbuild_parts_changed`. |
 
 ### Scheduled actions
 
@@ -91,7 +92,7 @@ A kit is four JSON documents. Each has a JSON Schema (draft 4) in the plugin's `
 | `schema/kit-presets.json` | 0.2.0 | Up to six presets: a name, a description and a part for each slot it fills. |
 | `schema/kit-assembly.json` | 0.2.0 | Whether assembly is on by default, its fee as a decimal string in the shop's currency, the lead time and the returns notice. |
 
-| `schema/settings.json` | 0.3.0 | Not a kit document: the shape of the option `cbuild_settings` as the plugin writes it. `attribute_mapping` is up to 50 lines, each an `attribute` of 1 to 190 characters, a `spec` that is a spec key and a `unit` of `in`, `mm` or empty; `source_order` is `table`, `field` and `attribute`, each once. Other keys are allowed, so a later version's settings pass. It has no `schema_version`: a key that is missing or malformed reads as its default. |
+| `schema/settings.json` | 0.3.0 | Not a kit document: the shape of the option `cbuild_settings` as the plugin writes it. `attribute_mapping` is up to 50 lines, each an `attribute` of 1 to 190 characters, a `spec` that is a spec key and a `unit` of `in`, `mm` or empty; `source_order` is `table`, `field` and `attribute`, each once. From 0.4.0 it also holds the five keys that version adds, listed under Settings keys with their ranges: the discount as text, the coupon's place, the rate as a whole number, the header's name, and a new kit's assembly as `schema/kit-assembly.json` has it. Other keys are allowed, so a later version's settings pass. It has no `schema_version`: a key that is missing or malformed reads as its default. |
 
 A schema says what shape a document has. Five things it cannot say are checked when the document is read: slot keys are unique, the deck is the first slot, the risers come before the hardware, R1's `axle_warn` is at least its `axle_fit`, and each row of R3's riser table reaches further than the one before. A preset must also fill every required slot and name only slots the kit has.
 
@@ -165,6 +166,7 @@ Before a build is sold, the validator checks the whole of it and answers with wh
 | `slot_empty` | 0.2.0 | A slot the kit requires is empty. |
 | `part_not_in_slot` | 0.2.0 | The part is not one of the slot's parts. |
 | `part_sold_out` | 0.2.0 | The part cannot be bought now. |
+| `part_short` | 0.4.0 | The part is in stock, but the shop holds fewer than the build takes of it: one truck left, sold singly, where a build takes two. |
 | `part_blocked` | 0.2.0 | The part does not fit the rest of the build. Its findings say why. |
 
 A build that only warns has no problem and can go to the cart.
@@ -239,6 +241,11 @@ In the option `cbuild_settings`. [SETTINGS.md](SETTINGS.md) has each key's defau
 | --- | --- | --- |
 | `attribute_mapping` | 0.3.0 | Which attribute feeds which spec, and the unit its values are in. |
 | `source_order` | 0.3.0 | Which source wins where two disagree. |
+| `build_discount` | 0.4.0 | The percentage taken off each part of a build, as text with a point and up to two decimals: `7.5`. `0` is none, and it is always below 100. |
+| `fixed_coupons` | 0.4.0 | Where a fixed product discount coupon that takes the kit lands: `kit` or `parts`. |
+| `rate_limit` | 0.4.0 | How many times a minute one address may ask the state route: 10 to 6000. |
+| `trusted_proxy_header` | 0.4.0 | The request header a trusted proxy names the visitor's address in: a header's name of up to 64 letters, digits and hyphens, starting with a letter. Empty reads `REMOTE_ADDR`. |
+| `kit_defaults` | 0.4.0 | What a new kit starts from: `assembly`, an assembly document. |
 
 ### Options
 
@@ -290,6 +297,7 @@ What WooCommerce > Builder > Catalogue check lists, each a `Service\CheckFinding
 | `reindex_failed` | 0.3.0 | The shop | Reading every part again stopped after its failures. |
 | `import_failed` | 0.3.0 | The shop | The last specs import stopped before its end. |
 | `jobs_failed` | 0.3.0 | The shop | Actions of the group `creative-skateboard-builder` are marked failed in Action Scheduler. `values` holds how many, counted to 100. |
+| `kit_unread` | 0.4.0 | A kit | The kit product's settings do not read, so the builder cannot open it: a document its schema refuses, or presets and slots that no longer agree. The screen links to the kit's Build tab. |
 | `slot_empty` | 0.3.0 | A kit and a slot | The slot has no parts. |
 | `slot_out_of_stock` | 0.3.0 | A kit and a slot | The slot has parts and none in stock. |
 | `spec_missing` | 0.3.0 | A kit, a slot, a part and a spec | A rule needs the spec, the part lacks it, and the part is not offered. Said once per part and spec. |
@@ -340,3 +348,91 @@ Two direct tests and one asynchronous test on Tools > Site Health, and a section
 | `cbuild/v1/site-health/catalogue-check` | 0.3.0 | `GET` | `view_site_health_checks`, as WordPress's own Site Health routes | The `cbuild_catalogue` test's result, in the shape Site Health takes: `label`, `status` (`good` or `recommended`), `badge` (`label`, `color`), `description`, `actions` and `test`. It reads and changes nothing, and is for Site Health's page; another caller wants the ability above, which gives the findings. |
 
 The Info tab's section `creative-skateboard-builder` lists the plugin's version, its database version, which source wins, how many attributes are mapped, the index's state and the count of failed jobs. None of it is marked private, and none of it is about a person.
+
+## Milestone 4: kits (0.4.0)
+
+### Product types
+
+| Type | Since | What it is |
+| --- | --- | --- |
+| `cbuild_kit` | 0.4.0 | A kit: the product a shopper builds from parts. Virtual. `is_purchasable()` is false, so nothing but the builder puts one in a cart. Its price to whoever shows it is the assembly fee from `_cbuild_assembly`; WooCommerce's price fields stay empty, and a price set on a kit is not kept. With the plugin switched off WooCommerce reads a kit as a simple product with no price, which it does not sell. |
+
+### Kit meta
+
+Each is on a kit product, as JSON text, and is the document its schema describes (Document schemas, above). Read one with `json_decode( $product->get_meta( $key ), true )`. A document is checked against its schema and then by the plugin before it is used, so one written by hand that fails either is treated as missing.
+
+| Key | Since | Schema | What it holds |
+| --- | --- | --- | --- |
+| `_cbuild_slots` | 0.4.0 | `schema/kit-slots.json` | The slots, in step order. |
+| `_cbuild_rules` | 0.4.0 | `schema/kit-rules.json` | Which rules run for the kit, and their settings. |
+| `_cbuild_presets` | 0.4.0 | `schema/kit-presets.json` | Up to six ready builds. |
+| `_cbuild_assembly` | 0.4.0 | `schema/kit-assembly.json` | Assembly: on or off to start, the fee, the lead time and the returns notice. |
+
+### The state route
+
+| Route | Since | Method | Who | Answers |
+| --- | --- | --- | --- | --- |
+| `cbuild/v1/kits/(?P<id>[1-9][0-9]{0,17})/state` | 0.4.0 | `GET` | Anyone: it shows what the kit's page shows | The state of a build of the kit `<id>`: the document `schema/state.json` describes. |
+
+It reads and changes nothing. Its arguments travel in the query:
+
+| Argument | Since | What it takes |
+| --- | --- | --- |
+| `picks[<slot key>]` | 0.4.0 | A part's ID for a slot of the kit: a whole number above 0. Up to 20, and each key one of the kit's own. |
+| `previous[<slot key>]` | 0.4.0 | The picks as they were before the last one changed. With it, the answer's `changes` says what the change does to the picks after it. |
+| `step` | 0.4.0 | The key of the slot whose options are listed. Left out, the first slot with nothing picked. |
+| `assembly` | 0.4.0 | `true` or `false`. Left out, the kit's own default. |
+| `locale` | 0.4.0 | The language to answer in, such as `fr_CA`. The answer is in it when the site has it installed, and in the site's own otherwise. |
+
+| Schema | Since | What the document holds |
+| --- | --- | --- |
+| `schema/state.json` | 0.4.0 | The route's answer (draft 4, with `definitions`): `kit`, `step`, `ready`, the kit's `texts` (lead time and returns notice) and `presets`, the `steps` (each slot's label, its pick, the part it starts on, how many parts it offers and hides, and the hidden ones counted by reason, each with a sentence), the current step's `options` and `hidden` parts (24 of each at most, each with its fit, its messages and its card), the picks that were `refused`, the `problems` that keep the build from the cart, the `changes` and the `total`. `npm run types` writes `assets/src/types/state.d.ts` from it. |
+
+What the answer holds beside the schema's own descriptions:
+
+- **Codes and sentences.** A message carries its rule, its message code and its severity (Findings and message codes, above) with the sentence beside them, and a problem its code (Build problems, above) with its sentence. The sentences are in the language of the answer and are not public API: read the codes.
+- **Money** is an `amount` in whole minor units and a `text`, the amount as the shop writes its prices, in plain text.
+- **A card** is what the shop shows of a part: its name, its page, the price of one, its availability in the shop's stock display format, and its photo. All of it is plain text for the page to escape.
+- **A step lists 24 options,** those the shop can supply first, and always the part the step counts. `steps[].offered` and `steps[].hidden` say how many there are in all.
+- **Fields are added** in minor versions, and none is renamed or removed within a major one.
+
+Every answer of the route, a refusal included, carries `Cache-Control: no-store` and `X-Robots-Tag: noindex`. Its refusals are REST errors, each with `code`, `message` and `data.status`:
+
+| Code | Since | Status | When |
+| --- | --- | --- | --- |
+| `rest_invalid_param` | 0.4.0 | 400 | An argument is not what the table above takes, or names a slot the kit does not have. WordPress's own code. |
+| `cbuild_kit_not_found` | 0.4.0 | 404 | There is no such kit, or it is one a visitor may not see: a draft, a private kit or one behind a password. The answer is the same for all of them and for everyone. |
+| `cbuild_rate_limited` | 0.4.0 | 429 | The address has asked more often this minute than the setting `rate_limit` allows. `Retry-After` gives the seconds left of the minute. |
+| `cbuild_no_price` | 0.4.0 | 500 | The shop's currency has more decimals than a build can be priced in: more than eight. |
+
+### Filters
+
+Each is applied wherever the builder reads the thing it names, so the state route's answer, and from later milestones the page and the cart, all follow a plugin's answer.
+
+| Filter | Since | Arguments | What a plugin answers |
+| --- | --- | --- | --- |
+| `cbuild_part_available` | 0.4.0 | `bool $available` (true), `int $id`, `WC_Product $part` | Whether a product or a variation may be a part of a build. `false` rules it out: no kit offers it, and one picked all the same is refused as `part_not_in_slot`. Asked only of a part a shopper could be shown and could buy. Anything but `false` leaves the part in. The answer is kept in the part's row of `cbuild_parts` for one to two hours, or until the product, its price, its stock or its terms move: a plugin whose answer changes without one of those does `cbuild_parts_changed`. |
+| `cbuild_price_context` | 0.4.0 | `array $context` | What a part's price depends on beside the part: the currency, its decimals, the language, the tax display, whether prices are entered with tax, and the tax rates that apply. A card is kept per context, and so is each slot's list of parts, so a plugin that shows some shoppers another price adds what tells them apart, such as a role or a price list's ID. Without it, a shopper may be shown the price kept for another. Add nothing that names a person. An answer that is no array is ignored. |
+| `cbuild_slot_label` | 0.4.0 | `string $label`, `string $slot`, `int $kit` | A slot's label as a shopper reads it, in place of the one the owner typed. `$slot` is the slot's key. The label answered is also the one a problem's sentence names the slot by. |
+| `cbuild_preset_label` | 0.4.0 | `string $name`, `int $position`, `int $kit` | A preset's name. `$position` is where the preset stands among the kit's, from 0. |
+| `cbuild_kit_text` | 0.4.0 | `string $text`, `string $field`, `int $kit`, `string $of` | Another of the kit's texts. `$field` is `slot_help` (`$of` is the slot's key), `preset_description` (`$of` is the preset's position), `lead_time` or `returns_notice` (`$of` is empty). |
+
+The last three are for the owner's own words, which no translation file holds: a translation plugin answers them. An answer that is not a string leaves the owner's words as they are. The plugin does not escape or cut what a filter answers; the answer is plain text, and the page that prints it escapes it.
+
+### Actions the plugin listens for
+
+| Action | Since | Arguments | When a plugin does it |
+| --- | --- | --- | --- |
+| `cbuild_parts_changed` | 0.4.0 | `int[] $ids` (optional) | Something the builder keeps of a part changed and WooCommerce was not told: the plugin's answer to `cbuild_part_available`, or a price it sets with no product saved. `do_action( 'cbuild_parts_changed', array( 12, 34 ) )` and the next request reads those products, and their variations, from the shop again; with no IDs, every part. A product saved, a stock count set, a sale starting or ending and a term edited need no such word: the builder hears those itself. |
+
+### Abilities
+
+In the category `creative-skateboard-builder`, which the Catalogue check's ability made in 0.3.0.
+
+| Ability | Since | Who | Input | Output |
+| --- | --- | --- | --- | --- |
+| `creative-skateboard-builder/check-build` | 0.4.0 | Whoever may run an ability | `kit`, the kit product's ID; `picks`, an object of slot key to part ID, 20 at most; `assembly`, a boolean. Only `kit` is required. | `kit`, `ready`, `refused` and `problems`, as the state route's answer holds them: whether the build may go to the cart, and each thing in the way with its `code`, `slot`, `part`, `message` and the rules' `messages`. |
+| `creative-skateboard-builder/price-build` | 0.4.0 | Whoever may run an ability | The same. | `kit` and `total`, as the state route's answer holds it: `lines` (each with `slot`, `part`, `name`, `quantity`, `price`, `charged` and `total`), `parts`, `saved`, `assembly`, `fee` and `total`. Each amount is `amount`, in whole minor units, and `text`. |
+
+Both are annotated read-only and idempotent and shown in REST, so WordPress serves each at `GET /wp-abilities/v1/abilities/<name>/run`. Each answers to a signed-in user alone, over REST and when run in PHP (D-118), and refuses a `POST` with 405. They ask the state route's own service and give parts of its answer, so the two cannot disagree: a slot with no pick is counted with the part the builder would start it on, as the route counts it. A kit a visitor may not see is `cbuild_kit_not_found` to everyone, as it is on the route. Input that is not the schema's is refused by WordPress as `ability_invalid_input`; a slot key the kit lacks is not refused, and comes back in `refused` as `slot_unknown`. Neither is counted against the route's rate limit.
+

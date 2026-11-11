@@ -153,7 +153,7 @@ final class SpecImport {
 			foreach ( $rows as $row ) {
 				$skus[] = self::key( $row[ $map['columns'][ $key ] ] ?? '', $key );
 			}
-			$found = $this->parts->bySku( ...array_values( array_unique( array_filter( $skus, static fn( string $sku ): bool => '' !== $sku ) ) ) );
+			$found = $this->parts->bySku( ...array_unique( array_filter( $skus, static fn( string $sku ): bool => '' !== $sku ) ) );
 		}
 		$now   = $this->clock->now()->getTimestamp();
 		$state = new ImportState( ImportState::WAITING, hash( 'sha256', $now . '|' . $text ), $key, $separator, $now, $map['columns'], $rows, count( $rows ), by: $by, found: $found );
@@ -380,22 +380,13 @@ final class SpecImport {
 		}
 		$now = $this->clock->now()->getTimestamp();
 		try {
-			$changed = 0;
-			$same    = 0;
-			$refused = array();
-			$plan    = $this->plan( $state, $state->cursor, self::BATCH );
-			foreach ( $plan as $row ) {
-				if ( array() !== $row['problems'] ) {
-					foreach ( $row['problems'] as $problem ) {
-						$refused[] = array( 'row' => $row['row'] ) + $problem;
-					}
-				} elseif ( array() === $row['changes'] ) {
-					++$same;
-				} else {
-					$this->parts->write( $row['part'], $row['fields'], $row['table'], $row['size'] );
-					++$changed;
-				}
+			$summary = self::summary( $this->plan( $state, $state->cursor, self::BATCH ) );
+			foreach ( $summary['changed'] as $row ) {
+				$this->parts->write( $row['part'], $row['fields'], $row['table'], $row['size'] );
 			}
+			$changed = count( $summary['changed'] );
+			$same    = $summary['same'];
+			$refused = $summary['refused'];
 		} catch ( Throwable $failure ) {
 			$failed = $state->failed( $now );
 			$this->store->save( $failed->toArray() );
@@ -419,6 +410,41 @@ final class SpecImport {
 			// Plain, not unique: this action is still running, and the unique check counts it.
 			$this->queue->enqueue( self::JOB );
 		}
+	}
+
+	/**
+	 * A plan's rows sorted once: the rows that change a part, how many change nothing, and each problem with its row.
+	 * A row with a problem is refused whole, whatever else it would change.
+	 *
+	 * @since 0.4.0
+	 *
+	 * @param list<array{row: int, part: int, name: string, sku: string, fields: array<string, string>, table: int, size: string, changes: list<array{key: string, from: string, to: string}>, problems: list<array{key: string, code: string, text: string}>}> $plan Rows, as `plan()` gives them.
+	 * @return array{changed: list<array{row: int, part: int, name: string, sku: string, fields: array<string, string>, table: int, size: string, changes: list<array{key: string, from: string, to: string}>, problems: list<array{key: string, code: string, text: string}>}>, same: int, refused: list<array{row: int, key: string, code: string, text: string}>, rows: int}
+	 *         `rows` is how many rows the problems are about.
+	 */
+	public static function summary( array $plan ): array {
+		$changed = array();
+		$same    = 0;
+		$refused = array();
+		$rows    = 0;
+		foreach ( $plan as $row ) {
+			if ( array() !== $row['problems'] ) {
+				++$rows;
+				foreach ( $row['problems'] as $problem ) {
+					$refused[] = array( 'row' => $row['row'] ) + $problem;
+				}
+			} elseif ( array() === $row['changes'] ) {
+				++$same;
+			} else {
+				$changed[] = $row;
+			}
+		}
+		return array(
+			'changed' => $changed,
+			'same'    => $same,
+			'refused' => $refused,
+			'rows'    => $rows,
+		);
 	}
 
 	/**

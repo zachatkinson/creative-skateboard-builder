@@ -17,6 +17,7 @@ use CreativeBranding\SkateboardBuilder\Domain\Spec\SpecKey;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\SpecKind;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\StoredSpecs;
 use CreativeBranding\SkateboardBuilder\Port\SpecSource;
+use CreativeBranding\SkateboardBuilder\Port\Kits;
 use CreativeBranding\SkateboardBuilder\Port\SpecTables;
 use CreativeBranding\SkateboardBuilder\Service\SpecIndexer;
 use CreativeBranding\SkateboardBuilder\Service\SpecWriter;
@@ -83,6 +84,31 @@ final class PartSpecsPanel {
 	private ?array $tables = null;
 
 	/**
+	 * The prefix of each control's ID in the product's panel. The screen's script opens a field an address names by it.
+	 */
+	private const FIELDS = 'cbuild-spec';
+
+	/**
+	 * The slot whose parts need each group, by the group's first spec. Sets are any part's.
+	 */
+	private const array SLOTS = array(
+		'deck_width'      => 'deck',
+		'axle_width'      => 'trucks',
+		'wheel_diameter'  => 'wheels',
+		'riser_thickness' => 'risers',
+		'bolt_length'     => 'hardware',
+		'bearing_bore'    => 'bearings',
+		'grip_width'      => 'grip',
+	);
+
+	/**
+	 * The shop's kits, once read.
+	 *
+	 * @var list<\CreativeBranding\SkateboardBuilder\Domain\Kit\Kit>|null
+	 */
+	private ?array $read = null;
+
+	/**
 	 * Constructor.
 	 *
 	 * @since 0.3.0
@@ -90,8 +116,9 @@ final class PartSpecsPanel {
 	 * @param SpecWriter  $writer  Checks what is typed.
 	 * @param SpecIndexer $indexer Says which value is in use, and from where.
 	 * @param SpecTables  $charts  The makers' charts.
+	 * @param Kits        $kits    The kits, for the slot a product fills.
 	 */
-	public function __construct( private SpecWriter $writer, private SpecIndexer $indexer, private SpecTables $charts ) {}
+	public function __construct( private SpecWriter $writer, private SpecIndexer $indexer, private SpecTables $charts, private Kits $kits ) {}
 
 	/**
 	 * Style the groups' headings, and open the tab a link names.
@@ -136,7 +163,7 @@ final class PartSpecsPanel {
 		if ( ! $product_object instanceof WC_Product ) {
 			return;
 		}
-		$groups = $this->groups( $product_object, 'cbuild-spec', 'cbuild_specs', 'cbuild_spec_table' );
+		$groups = $this->groups( $product_object, self::FIELDS, 'cbuild_specs', 'cbuild_spec_table' );
 		$whole  = true;
 		include CBUILD_PATH . 'templates/admin/part-specs.php';
 	}
@@ -154,8 +181,11 @@ final class PartSpecsPanel {
 		if ( ! $product instanceof WC_Product || ! is_int( $loop ) ) {
 			return;
 		}
-		$groups = $this->groups( $product, 'cbuild-spec-' . $loop, 'cbuild_variation_specs[' . $loop . ']', 'cbuild_variation_spec_table[' . $loop . ']' );
-		$whole  = false;
+		$groups = $this->groups( $product, self::FIELDS . '-' . $loop, 'cbuild_variation_specs[' . $loop . ']', 'cbuild_variation_spec_table[' . $loop . ']' );
+		if ( array() === $groups ) {
+			return;
+		}
+		$whole = false;
 		include CBUILD_PATH . 'templates/admin/part-specs.php';
 	}
 
@@ -228,21 +258,16 @@ final class PartSpecsPanel {
 			StoredSpecs::named( $product->get_meta( Options::META_SPEC_TABLE, true ) )
 		);
 
-		if ( array() === $draft->fields ) {
-			$product->delete_meta_data( Options::META_SPECS );
-		} else {
-			$product->update_meta_data( Options::META_SPECS, $draft->fields );
-		}
-		if ( 0 === $draft->table && '' === $draft->size ) {
-			$product->delete_meta_data( Options::META_SPEC_TABLE );
-		} else {
-			$product->update_meta_data(
-				Options::META_SPEC_TABLE,
-				array(
-					'table' => $draft->table,
-					'size'  => $draft->size,
-				)
-			);
+		$kept = StoredSpecs::kept( $draft->fields, $draft->table, $draft->size );
+		foreach ( array(
+			Options::META_SPECS      => $kept['fields'],
+			Options::META_SPEC_TABLE => $kept['named'],
+		) as $key => $value ) {
+			if ( null === $value ) {
+				$product->delete_meta_data( $key );
+			} else {
+				$product->update_meta_data( $key, $value );
+			}
 		}
 
 		foreach ( $draft->problems as $problem ) {
@@ -251,8 +276,11 @@ final class PartSpecsPanel {
 				/* translators: 1: a variation's ID. 2: a sentence saying what was not saved. */
 				$text = sprintf( __( 'Variation #%1$d: %2$s', 'creative-skateboard-builder' ), $product->get_id(), $text );
 			}
+			// Each notice is a link to its field, which the screen's script opens and moves focus to. A variation's
+			// row is loaded later and numbered by its place on the page, so its notice leads to the variation.
+			$field = $product->is_type( 'variation' ) ? 'cbuild_variation_' . $product->get_id() : self::field( self::FIELDS, $problem['key'] );
 			// WooCommerce prints its notices through wp_kses_post(), and what was typed is in this one.
-			WC_Admin_Meta_Boxes::add_error( esc_html( $text ) );
+			WC_Admin_Meta_Boxes::add_error( sprintf( '<a href="#%s">%s</a>', esc_attr( $field ), esc_html( $text ) ) );
 		}
 	}
 
@@ -280,18 +308,20 @@ final class PartSpecsPanel {
 	 * @param string     $id      The prefix of each control's ID.
 	 * @param string     $name    The name the fields are sent under.
 	 * @param string     $chart   The name the chart field is sent under.
-	 * @return list<array{label: string, open: bool, fields: list<array{id: string, name: string, label: string, value: string, note: string, options: array<int|string, string>|null, charts: array<string, array<string, string>>}>}>
+	 * @return list<array{label: string, open: bool, fields: list<array{id: string, name: string, label: string, value: string, note: string, options: array<int|string, string>|null, charts: array<string, array<string, string>>}>}> None when no kit takes the product and it holds nothing.
 	 */
 	private function groups( WC_Product $product, string $id, string $name, string $chart ): array {
 		$own    = StoredSpecs::fields( $product->get_meta( Options::META_SPECS, true ) );
 		$notes  = $this->inUse( $product );
 		$groups = array();
+		$slots  = $this->slots( $product->get_id() );
 		foreach ( self::layout() as $label => $keys ) {
 			$fields = array();
-			$open   = false;
+			// The group a kit's slot needs of this part is open (issue #16), and so is one with a value.
+			$open = in_array( self::SLOTS[ $keys[0]->value ] ?? '', $slots, true );
 			if ( in_array( SpecKey::AxleWidth, $keys, true ) ) {
-				$fields[] = $this->chartField( $product, $id . '-chart', $chart );
-				$open     = '' !== $fields[0]['value'];
+				$fields[] = $this->chartField( $product, self::field( $id, SpecWriter::TABLE ), $chart );
+				$open     = $open || '' !== $fields[0]['value'];
 			}
 			foreach ( $keys as $key ) {
 				$value   = $own[ $key->value ] ?? '';
@@ -311,7 +341,7 @@ final class PartSpecsPanel {
 				}
 				$open     = $open || '' !== $value || isset( $notes[ $key->value ] );
 				$fields[] = array(
-					'id'      => $id . '-' . str_replace( '_', '-', $key->value ),
+					'id'      => self::field( $id, $key->value ),
 					'name'    => $name . '[' . $key->value . ']',
 					'label'   => Labels::field( $key ),
 					'value'   => $value,
@@ -326,12 +356,29 @@ final class PartSpecsPanel {
 				'fields' => $fields,
 			);
 		}
+		// Where the shop has kits and none takes this product, the builder needs nothing of it: no fields, unless
+		// it holds a value all the same, which must be seen to be cleared (issue #23). Before the first kit there
+		// is no telling, and every product has its fields.
+		if ( array() !== $this->read && array() === $slots && ! in_array( true, array_column( $groups, 'open' ), true ) ) {
+			return array();
+		}
 		return $groups;
 	}
 
 	/**
+	 * The slots, in any kit, that take this product. The kits are read once for a screen of variations.
+	 *
+	 * @param int $product The product's or variation's ID.
+	 * @return list<string>
+	 */
+	private function slots( int $product ): array {
+		$this->read ??= array_values( array_column( $this->kits->all(), 'kit' ) );
+		return $this->kits->slotsOf( $product, ...$this->read );
+	}
+
+	/**
 	 * The specs in the order the panel shows them, under the kind of part each belongs to. Every group is shown on
-	 * every part until milestone 4, when a kit's slots say which specs a part needs.
+	 * every part, and the one its kit slot needs is open (SLOTS).
 	 *
 	 * @return array<string, list<SpecKey>>
 	 */
@@ -450,6 +497,16 @@ final class PartSpecsPanel {
 	private function tables(): array {
 		$this->tables ??= $this->charts->all();
 		return $this->tables;
+	}
+
+	/**
+	 * A control's ID: the prefix, then the spec key with hyphens, or `chart` for the maker's chart.
+	 *
+	 * @param string $prefix The prefix of the product's or the variation's controls.
+	 * @param string $key    The spec key, or `SpecWriter::TABLE`.
+	 */
+	private static function field( string $prefix, string $key ): string {
+		return $prefix . '-' . ( SpecWriter::TABLE === $key ? 'chart' : str_replace( '_', '-', $key ) );
 	}
 
 	/**

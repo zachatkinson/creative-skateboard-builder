@@ -195,6 +195,18 @@ final class SpecImportTest extends TestCase {
 		self::assertSame( 0, $plan[1]['part'] );
 	}
 
+	// Issue #25: a batch read every product the file names, not its own rows'.
+	public function test_a_batch_matched_by_sku_reads_the_products_of_its_own_rows_alone(): void {
+		$this->import->read( "sku,deck_width\nDK-7750,8\nTR-149,8\n", 'sku' );
+		$state = $this->import->state();
+		self::assertNotNull( $state );
+		$this->parts->reads = array();
+		$first              = $this->import->plan( $state, 0, 1 );
+		$second             = $this->import->plan( $state, 1, 1 );
+		self::assertSame( array( array( 7 ), array( 9 ) ), $this->parts->reads );
+		self::assertSame( array( 7, 9 ), array( $first[0]['part'], $second[0]['part'] ) );
+	}
+
 	public function test_which_product_a_sku_names_is_asked_once_and_checked_on_each_use(): void {
 		$this->import->read( "sku,deck_width\nDK-7750,8\n,8\nDK-7750,9\nNOPE,8\nTR-149,8\n", 'sku' );
 		self::assertSame( array( array( 'DK-7750', 'NOPE', 'TR-149' ) ), $this->parts->asked, 'each SKU once, and no blank one' );
@@ -435,6 +447,47 @@ final class SpecImportTest extends TestCase {
 		yield 'all three' => array( "sku,sku,name\nA,A,B\n", array( SpecImport::KEY_COLUMN, SpecImport::COLUMN_TWICE, SpecImport::NO_SPECS ) );
 		yield 'too many rows' => array( "id,deck_width\n" . str_repeat( "7,8\n", SpecImport::MAX_ROWS + 1 ), array( SpecImport::ROWS_MANY ) );
 		yield 'too big' => array( "id,deck_width\n7,8\n" . str_repeat( ' ', SpecImport::MAX_BYTES ), array( SpecImport::FILE_BIG ) );
+	}
+
+	public function test_a_plans_rows_are_sorted_once_and_a_row_with_a_problem_is_refused_whole(): void {
+		$row  = static fn( int $at, array $changes, array $problems ): array => array(
+			'row'      => $at,
+			'part'     => $at * 10,
+			'name'     => '',
+			'sku'      => '',
+			'fields'   => array(),
+			'table'    => 0,
+			'size'     => '',
+			'changes'  => $changes,
+			'problems' => $problems,
+		);
+		$to   = array(
+			'key'  => 'width',
+			'from' => '8',
+			'to'   => '8.25',
+		);
+		$bad  = static fn( string $key ): array => array(
+			'key'  => $key,
+			'code' => 'not_a_number',
+			'text' => 'x',
+		);
+		$plan = array( $row( 2, array( $to ), array() ), $row( 3, array(), array() ), $row( 4, array( $to ), array( $bad( 'width' ), $bad( 'length' ) ) ), $row( 5, array(), array() ) );
+
+		$summary = SpecImport::summary( $plan );
+
+		self::assertSame( array( $plan[0] ), $summary['changed'] );
+		self::assertSame( 2, $summary['same'] );
+		self::assertSame( array( array( 'row' => 4 ) + $bad( 'width' ), array( 'row' => 4 ) + $bad( 'length' ) ), $summary['refused'] );
+		self::assertSame( 1, $summary['rows'] );
+		self::assertSame(
+			array(
+				'changed' => array(),
+				'same'    => 0,
+				'refused' => array(),
+				'rows'    => 0,
+			),
+			SpecImport::summary( array() )
+		);
 	}
 
 	#[\PHPUnit\Framework\Attributes\DataProvider( 'refusedFiles' )]

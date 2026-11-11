@@ -26,9 +26,11 @@ if ( ! defined( 'ABSPATH' ) ) {
 			<?php esc_html_e( 'Read a spec from a product attribute your shop already fills in: the deck\'s width from the Width attribute, for one. Choose one of the shop\'s attributes from the list, which names each as WooCommerce stores it (pa_width), or type the name of an attribute a product has of its own. A variation with no value of its own takes its parent\'s. The unit is what a value with no unit is in. To remove a line, clear its attribute and its spec. Save to add more lines.', 'creative-skateboard-builder' ); ?>
 		</p>
 		<?php if ( isset( $problems[0] ) ) : ?>
-			<?php foreach ( $problems[0] as $cbuild_problem ) : ?>
-				<div class="notice notice-error inline" id="cbuild-mapping-problem"><p><?php echo esc_html( $cbuild_problem ); ?></p></div>
-			<?php endforeach; ?>
+			<div class="notice notice-error inline" id="cbuild-mapping-problem">
+				<?php foreach ( $problems[0] as $cbuild_problem ) : ?>
+					<p><?php echo esc_html( $cbuild_problem ); ?></p>
+				<?php endforeach; ?>
+			</div>
 		<?php endif; ?>
 		<datalist id="cbuild-attributes">
 			<?php foreach ( $attributes as $cbuild_name => $cbuild_label ) : ?>

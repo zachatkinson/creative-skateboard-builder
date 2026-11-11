@@ -35,7 +35,9 @@ if ( ! function_exists( 'esc_html__' ) ) {
 }
 if ( ! function_exists( 'apply_filters' ) ) {
 	function apply_filters( string $hook, $value, ...$args ) {
-		return $value;
+		// A unit test answers a filter by putting a callable under the hook's name.
+		$answer = $GLOBALS['cbuild_test_filters'][ $hook ] ?? null;
+		return is_callable( $answer ) ? $answer( $value, ...$args ) : $value;
 	}
 }
 if ( ! defined( 'HOUR_IN_SECONDS' ) ) {

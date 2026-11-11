@@ -77,6 +77,8 @@ final class UninstallTest extends IntegrationTestCase {
 		self::assertTrue( as_has_scheduled_action( Options::JOB_REINDEX, null, Options::QUEUE_GROUP ) );
 		set_transient( Options::TRANSIENT_PREFIX . 'notice_1', 'x', HOUR_IN_SECONDS );
 		set_transient( Options::TRANSIENT_PREFIX . 'forever', 'x' );
+		// A section of a kit's Build tab that was not saved, kept for the user who typed it (D-108).
+		set_transient( Options::TRANSIENT_PREFIX . 'kit_draft_12_1', array( 'refused' => array() ), HOUR_IN_SECONDS );
 		set_site_transient( Options::UPDATE_MANIFEST, array( 'data' => null ), HOUR_IN_SECONDS );
 		wp_cache_set( 'fit:1', array( 1 ), Options::CACHE_GROUP );
 		$wpdb->insert( Tables::specs(), array( 'part_id' => 1, 'spec' => 'width', 'number' => '8.25', 'source' => 'attribute', 'indexed_at' => '2026-11-09 00:00:00' ) );
@@ -148,7 +150,7 @@ final class UninstallTest extends IntegrationTestCase {
 		$seed = self::wpEval( 'echo as_enqueue_async_action( "' . Options::JOB_MIGRATE . '", array(), "' . Options::QUEUE_GROUP . '", true ) > 0 ? "queued" : "not queued";' );
 		self::assertSame( 'queued', $seed['out'], $seed['err'] );
 		$count = 'global $wpdb; echo (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$wpdb->prefix}actionscheduler_actions a INNER JOIN {$wpdb->prefix}actionscheduler_groups g ON g.group_id = a.group_id WHERE g.slug = \'' . Options::QUEUE_GROUP . '\'" ), "|", (int) $wpdb->get_var( "SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME LIKE \'{$wpdb->prefix}cbuild_%\'" ), "|", (string) get_option( "' . Options::DB_VERSION . '", "none" );';
-		self::assertSame( '1|2|' . MigrationRegistry::VERSION, self::wpEval( $count )['out'], 'one action, two tables, the version before' );
+		self::assertSame( '1|3|' . MigrationRegistry::VERSION, self::wpEval( $count )['out'], 'one action, three tables, the version before' );
 		try {
 			$off = self::wp( 'plugin', 'deactivate', 'creative-skateboard-builder' );
 			self::assertSame( 0, $off['code'], $off['err'] );
@@ -160,7 +162,7 @@ final class UninstallTest extends IntegrationTestCase {
 			self::wp( 'plugin', 'activate', 'creative-skateboard-builder' );
 		}
 		// Activation asks for every part to be read again (D-082): the one action is that job.
-		self::assertSame( '1|2|' . MigrationRegistry::VERSION, self::wpEval( $count )['out'], 'reactivated: the tables and the version are back, and the reindex waits' );
+		self::assertSame( '1|3|' . MigrationRegistry::VERSION, self::wpEval( $count )['out'], 'reactivated: the tables and the version are back, and the reindex waits' );
 		self::assertSame( Options::JOB_REINDEX, self::wpEval( 'global $wpdb; echo $wpdb->get_var( "SELECT a.hook FROM {$wpdb->prefix}actionscheduler_actions a INNER JOIN {$wpdb->prefix}actionscheduler_groups g ON g.group_id = a.group_id WHERE g.slug = \'' . Options::QUEUE_GROUP . '\'" );' )['out'] );
 		self::wpEval( '\\CreativeBranding\\SkateboardBuilder\\Install\\Uninstaller::deleteJobs(); delete_option( "' . Options::REINDEX . '" );' );
 	}

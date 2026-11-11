@@ -74,11 +74,6 @@ final class CatalogueCheckAbility implements Hookable {
 	 * @since 0.3.0
 	 */
 	public function ability(): void {
-		$text = array( 'type' => 'string' );
-		$id   = array(
-			'type'    => 'integer',
-			'minimum' => 0,
-		);
 		wp_register_ability(
 			'creative-skateboard-builder/catalogue-check',
 			array(
@@ -87,40 +82,7 @@ final class CatalogueCheckAbility implements Hookable {
 				'category'            => self::CATEGORY,
 				'permission_callback' => array( self::class, 'allowed' ),
 				'execute_callback'    => array( $this, 'run' ),
-				'output_schema'       => array(
-					'type'                 => 'object',
-					'properties'           => array(
-						'count'    => array(
-							'type'        => 'integer',
-							'minimum'     => 0,
-							'description' => 'How many things the check found.',
-						),
-						'findings' => array(
-							'type'        => 'array',
-							'maxItems'    => self::MOST,
-							'description' => 'The findings, the first 500 where there are more.',
-							'items'       => array(
-								'type'                 => 'object',
-								'properties'           => array(
-									'code'    => $text,
-									'part'    => $id,
-									'kit'     => $id,
-									'slot'    => $text,
-									'spec'    => $text,
-									'values'  => array(
-										'type' => 'object',
-										'additionalProperties' => $text,
-									),
-									'message' => $text,
-								),
-								'required'             => array( 'code', 'part', 'kit', 'slot', 'spec', 'values', 'message' ),
-								'additionalProperties' => false,
-							),
-						),
-					),
-					'required'             => array( 'count', 'findings' ),
-					'additionalProperties' => false,
-				),
+				'output_schema'       => self::outputSchema(),
 				'meta'                => array(
 					'annotations'  => array(
 						'readonly'    => true,
@@ -130,6 +92,55 @@ final class CatalogueCheckAbility implements Hookable {
 					'show_in_rest' => true,
 				),
 			)
+		);
+	}
+
+	/**
+	 * What the ability answers with, its descriptions in the language of whoever asks.
+	 *
+	 * @since 0.4.0
+	 *
+	 * @return array<string, mixed>
+	 */
+	public static function outputSchema(): array {
+		$text = array( 'type' => 'string' );
+		$id   = array(
+			'type'    => 'integer',
+			'minimum' => 0,
+		);
+		return array(
+			'type'                 => 'object',
+			'properties'           => array(
+				'count'    => array(
+					'type'        => 'integer',
+					'minimum'     => 0,
+					'description' => __( 'How many things the check found.', 'creative-skateboard-builder' ),
+				),
+				'findings' => array(
+					'type'        => 'array',
+					'maxItems'    => self::MOST,
+					'description' => __( 'The findings, the first 500 where there are more.', 'creative-skateboard-builder' ),
+					'items'       => array(
+						'type'                 => 'object',
+						'properties'           => array(
+							'code'    => $text,
+							'part'    => $id,
+							'kit'     => $id,
+							'slot'    => $text,
+							'spec'    => $text,
+							'values'  => array(
+								'type'                 => 'object',
+								'additionalProperties' => $text,
+							),
+							'message' => $text,
+						),
+						'required'             => array( 'code', 'part', 'kit', 'slot', 'spec', 'values', 'message' ),
+						'additionalProperties' => false,
+					),
+				),
+			),
+			'required'             => array( 'count', 'findings' ),
+			'additionalProperties' => false,
 		);
 	}
 

@@ -25,7 +25,7 @@ final class MigrationRegistry {
 	/**
 	 * The schema version `cbuild_db_version` holds once every migration below is done.
 	 */
-	public const VERSION = '2';
+	public const VERSION = '3';
 
 	/**
 	 * The migrations, oldest first.
@@ -36,6 +36,7 @@ final class MigrationRegistry {
 		SchemaMigration::class,
 		NoopMigration::class,
 		SpecTablesMigration::class,
+		PartsTableMigration::class,
 	);
 
 	/**

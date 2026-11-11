@@ -15,6 +15,7 @@ use CreativeBranding\SkateboardBuilder\Domain\Spec\HolePattern;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\Origin;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\SpecKey;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\SpecKind;
+use CreativeBranding\SkateboardBuilder\Service\Health;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -88,6 +89,23 @@ final class Labels {
 			Origin::Attribute->value => __( 'A mapped attribute', 'creative-skateboard-builder' ),
 		);
 		return $labels[ $origin->value ] ?? $origin->value;
+	}
+
+	/**
+	 * The specs index's state, for Site Health's Info tab. A code this version does not know is shown as it is.
+	 *
+	 * @since 0.4.0
+	 *
+	 * @param string $code One of `Service\Health`'s index codes.
+	 */
+	public static function index( string $code ): string {
+		$labels = array(
+			Health::INDEX_CURRENT  => __( 'Up to date', 'creative-skateboard-builder' ),
+			Health::INDEX_BUILDING => __( 'Being rebuilt', 'creative-skateboard-builder' ),
+			Health::INDEX_STALLED  => __( 'Stopped part way', 'creative-skateboard-builder' ),
+			Health::INDEX_FAILED   => __( 'Not rebuilt: it stopped after its failures', 'creative-skateboard-builder' ),
+		);
+		return $labels[ $code ] ?? $code;
 	}
 
 	/**

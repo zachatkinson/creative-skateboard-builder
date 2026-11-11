@@ -13,11 +13,14 @@ use CreativeBranding\SkateboardBuilder\Admin\PartSpecsHooks;
 use CreativeBranding\SkateboardBuilder\Admin\PartSpecsPanel;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\SpecKey;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\SpecTable;
+use CreativeBranding\SkateboardBuilder\Port\Kits;
 use CreativeBranding\SkateboardBuilder\Port\SpecTables;
 use CreativeBranding\SkateboardBuilder\Scope;
 use CreativeBranding\SkateboardBuilder\Service\SpecIndexer;
 use CreativeBranding\SkateboardBuilder\Service\SpecWriter;
 use CreativeBranding\SkateboardBuilder\Support\Options;
+use CreativeBranding\SkateboardBuilder\Tests\Support\Domain\KitDocuments;
+use CreativeBranding\SkateboardBuilder\Tests\Support\KitFactory;
 use CreativeBranding\SkateboardBuilder\Tests\Support\IntegrationTestCase;
 
 /**
@@ -48,7 +51,7 @@ final class PartSpecsPanelTest extends IntegrationTestCase {
 	 */
 	private function hooks(): PartSpecsHooks {
 		if ( null === $this->hooks ) {
-			$panel       = new PartSpecsPanel( $this->service( SpecWriter::class ), $this->service( SpecIndexer::class ), $this->service( SpecTables::class ) );
+			$panel       = new PartSpecsPanel( $this->service( SpecWriter::class ), $this->service( SpecIndexer::class ), $this->service( SpecTables::class ), $this->service( Kits::class ) );
 			$this->hooks = new PartSpecsHooks( static fn(): PartSpecsPanel => $panel );
 		}
 		return $this->hooks;
@@ -386,10 +389,15 @@ final class PartSpecsPanelTest extends IntegrationTestCase {
 				return array_fill_keys( $partIds, array() );
 			}
 		};
+		$kits     = new \CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\InMemoryKits();
+		$kits->add( 5, KitDocuments::kit(), array() );
+		// The kit takes each of them, so each has its fields.
+		$kits->slotsOf = array_fill_keys( array( ...$ids, $parent->get_id() ), array( 'trucks' ) );
 		$panel    = new PartSpecsPanel(
 			$this->service( SpecWriter::class ),
 			new SpecIndexer( $this->service( \CreativeBranding\SkateboardBuilder\Port\SpecIndex::class ), $this->service( \CreativeBranding\SkateboardBuilder\Port\ShopSettings::class ), $this->service( \CreativeBranding\SkateboardBuilder\Port\Clock::class ), $counting ),
-			$this->service( SpecTables::class )
+			$this->service( SpecTables::class ),
+			$kits
 		);
 		ob_start();
 		foreach ( $ids as $loop => $id ) {
@@ -398,6 +406,7 @@ final class PartSpecsPanelTest extends IntegrationTestCase {
 		$drawn = (string) ob_get_clean();
 		self::assertSame( 3, substr_count( $drawn, '<fieldset class="cbuild-part-specs">' ) );
 		self::assertSame( array( $ids ), $counting->asked, 'the page\'s variations together, once' );
+		self::assertSame( 1, $kits->read, 'and the kits once' );
 
 		// The product's own panel asks for the product alone, and a save asks again.
 		$GLOBALS['product_object'] = wc_get_product( $parent->get_id() );
@@ -495,12 +504,12 @@ final class PartSpecsPanelTest extends IntegrationTestCase {
 		self::assertSame( '', $saved->get_meta( Options::META_SPEC_TABLE, true ) );
 		self::assertSame(
 			array(
-				'Deck width was not saved: &quot;wide&quot; is not a measurement. Type a number, or a fraction such as 8 1/4.',
-				'Number in a set was not saved: &quot;0&quot; must be more than zero.',
-				'The maker&#039;s chart was not saved: the chart has no size 169 now. Choose again.',
+				'<a href="#cbuild-spec-deck-width">Deck width was not saved: &quot;wide&quot; is not a measurement. Type a number, or a fraction such as 8 1/4.</a>',
+				'<a href="#cbuild-spec-set-size">Number in a set was not saved: &quot;0&quot; must be more than zero.</a>',
+				'<a href="#cbuild-spec-chart">The maker&#039;s chart was not saved: the chart has no size 169 now. Choose again.</a>',
 			),
 			\WC_Admin_Meta_Boxes::$meta_box_errors,
-			'each escaped, since WooCommerce prints its notices as HTML'
+			'each escaped, since WooCommerce prints its notices as HTML, and each a link to its field (#19)'
 		);
 	}
 
@@ -524,7 +533,7 @@ final class PartSpecsPanelTest extends IntegrationTestCase {
 			$saved->get_meta( Options::META_SPECS, true )
 		);
 		self::assertSame(
-			array( 'Narrowest deck and Widest deck were not saved: the narrowest, 8.6 in, is wider than the widest, 8.375 in.' ),
+			array( '<a href="#cbuild-spec-deck-min">Narrowest deck and Widest deck were not saved: the narrowest, 8.6 in, is wider than the widest, 8.375 in.</a>' ),
 			\WC_Admin_Meta_Boxes::$meta_box_errors
 		);
 	}
@@ -554,7 +563,7 @@ final class PartSpecsPanelTest extends IntegrationTestCase {
 		);
 		$gone = $this->send( $product, array(), ( $chart + 999 ) . ':149' );
 		self::assertSame( $chart, $gone->get_meta( Options::META_SPEC_TABLE, true )['table'] );
-		self::assertSame( array( 'The maker&#039;s chart was not saved: that chart is no longer there. Choose again.' ), \WC_Admin_Meta_Boxes::$meta_box_errors );
+		self::assertSame( array( '<a href="#cbuild-spec-chart">The maker&#039;s chart was not saved: that chart is no longer there. Choose again.</a>' ), \WC_Admin_Meta_Boxes::$meta_box_errors );
 	}
 
 	public function test_who_cannot_edit_products_saves_nothing_and_a_save_without_the_fields_changes_nothing(): void {
@@ -615,9 +624,47 @@ final class PartSpecsPanelTest extends IntegrationTestCase {
 			$saved->get_meta( Options::META_SPEC_TABLE, true )
 		);
 		self::assertSame(
-			array( 'Variation #' . $variation->get_id() . ': Truck height was not saved: &quot;tall&quot; is not a measurement. Type a number, or a fraction such as 8 1/4.' ),
+			array( '<a href="#cbuild_variation_' . $variation->get_id() . '">Variation #' . $variation->get_id() . ': Truck height was not saved: &quot;tall&quot; is not a measurement. Type a number, or a fraction such as 8 1/4.</a>' ),
 			\WC_Admin_Meta_Boxes::$meta_box_errors
 		);
+	}
+
+	/**
+	 * Issue #16: before kits, the panel could not know which specs a product needs, and opened a group only where
+	 * the part had a value.
+	 */
+	public function test_the_group_a_products_kit_slot_needs_is_open_and_the_rest_stay_closed(): void {
+		$trucks = self::factory()->term->create(
+			array(
+				'taxonomy' => 'product_cat',
+				'name'     => 'Trucks',
+			)
+		);
+		$slots  = KitDocuments::slots();
+		$slots['slots'][1]['sources'] = array( 'categories' => array( $trucks ) );
+		$draft                        = self::simple();
+		$draft->set_status( 'draft' );
+		$draft->save();
+		$slots['slots'][6]['sources'] = array( 'products' => array( $draft->get_id() ) );
+		KitFactory::kit( 'Complete', array( Options::META_KIT_SLOTS => $slots ) );
+
+		$simple = self::simple();
+		wp_set_object_terms( $simple->get_id(), array( $trucks ), 'product_cat' );
+		$panel = $this->panel( $simple );
+		self::assertSame( 1, substr_count( $panel, '<details open>' ) );
+		self::assertMatchesRegularExpression( '#<details open>\s*<summary>Trucks</summary>#', $panel );
+
+		// A part not yet published is filled in before it is: the slot that names it opens its group.
+		self::assertMatchesRegularExpression( '#<details open>\s*<summary>Grip tape</summary>#', $this->panel( $draft ) );
+
+		// A variation is in what its parent is in.
+		list( $parent, $variation ) = self::variable();
+		self::assertSame( 0, substr_count( $this->fields( $variation ), '<details open>' ), 'in no kit\'s slot, nothing opens' );
+		wp_set_object_terms( $parent->get_id(), array( $trucks ), 'product_cat' );
+		$this->hooks = null;
+		$fields      = $this->fields( $variation );
+		self::assertSame( 1, substr_count( $fields, '<details open>' ) );
+		self::assertMatchesRegularExpression( '#<details open>\s*<summary>Trucks</summary>#', $fields );
 	}
 
 	/**
@@ -675,5 +722,47 @@ final class PartSpecsPanelTest extends IntegrationTestCase {
 			),
 			$saved->get_meta( Options::META_SPECS, true )
 		);
+	}
+
+	/**
+	 * Issue #23, the part that needs kits: where the shop has kits and none takes a product, the builder needs
+	 * nothing of it, and its screen is left alone.
+	 */
+	public function test_a_product_no_kit_takes_has_no_fields_and_its_tab_says_why(): void {
+		$trucks                       = self::factory()->term->create(
+			array(
+				'taxonomy' => 'product_cat',
+				'name'     => 'Trucks',
+			)
+		);
+		$slots                        = KitDocuments::slots();
+		$slots['slots'][1]['sources'] = array( 'categories' => array( $trucks ) );
+		KitFactory::kit( 'Complete', array( Options::META_KIT_SLOTS => $slots ) );
+
+		// A shirt and its sizes: no kit takes them.
+		list( $shirt, $size ) = self::variable();
+		self::assertSame( '', $this->fields( $size ), 'a variation draws nothing' );
+		$panel = $this->panel( $shirt );
+		self::assertStringContainsString( 'id="cbuild_part_specs"', $panel, 'the tab still has its panel' );
+		self::assertStringContainsString( 'No kit takes this product, so the builder needs nothing of it. To make it a part, put it in a category or brand that a kit&#039;s slot takes, or name it in a slot, then save. Its fields appear here.', $panel );
+		self::assertSame( 0, substr_count( $panel, '<details' ) );
+		self::assertSame( array(), self::sent( $panel ) );
+
+		// One that holds specs all the same keeps its fields, so they can be seen and cleared.
+		$size->update_meta_data( Options::META_SPECS, array( 'wheel_diameter' => '54.0000' ) );
+		$size->save();
+		$this->hooks = null;
+		self::assertSame( 8, substr_count( $this->fields( $size ), '<details' ) );
+
+		// A part of a kit is drawn as ever.
+		wp_set_object_terms( $shirt->get_id(), array( $trucks ), 'product_cat' );
+		$this->hooks = null;
+		self::assertSame( 8, substr_count( $this->panel( $shirt ), '<details' ) );
+	}
+
+	public function test_a_shop_with_no_kit_yet_draws_every_products_fields(): void {
+		list( $parent, $variation ) = self::variable();
+		self::assertSame( 8, substr_count( $this->fields( $variation ), '<details' ) );
+		self::assertSame( 8, substr_count( $this->panel( $parent ), '<details' ) );
 	}
 }

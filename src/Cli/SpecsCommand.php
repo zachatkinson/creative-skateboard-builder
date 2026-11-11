@@ -149,24 +149,14 @@ final class SpecsCommand {
 		}
 
 		if ( $dry ) {
-			$changed = 0;
-			$same    = 0;
-			$refused = array();
-			foreach ( $this->import->plan( $state, 0, $state->total ) as $row ) {
-				if ( array() !== $row['problems'] ) {
-					foreach ( $row['problems'] as $problem ) {
-						$refused[] = array( 'row' => $row['row'] ) + $problem;
-					}
-				} elseif ( array() === $row['changes'] ) {
-					++$same;
-				} else {
-					++$changed;
-				}
-			}
+			$summary = SpecImport::summary( $this->import->plan( $state, 0, $state->total ) );
+			$changed = count( $summary['changed'] );
+			$same    = $summary['same'];
+			$refused = $summary['refused'];
 			$this->import->discard();
 			self::listRefused( $refused, $format );
 			/* translators: 1: parts the file would change. 2: parts it would leave as they are. 3: rows that cannot be read. */
-			$said = sprintf( __( 'Dry run: %1$s would change, %2$s would stay as they are, %3$s cannot be read. Nothing was written.', 'creative-skateboard-builder' ), number_format_i18n( $changed ), number_format_i18n( $same ), number_format_i18n( self::rows( $refused ) ) );
+			$said = sprintf( __( 'Dry run: %1$s would change, %2$s would stay as they are, %3$s cannot be read. Nothing was written.', 'creative-skateboard-builder' ), number_format_i18n( $changed ), number_format_i18n( $same ), number_format_i18n( $summary['rows'] ) );
 			self::finish( $said, array() === $refused );
 			return;
 		}

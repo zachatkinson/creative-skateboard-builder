@@ -1,6 +1,6 @@
 <?php
 /**
- * Uninstall: removes the two tables, every option and transient, the scheduled actions and the object-cache group, on
+ * Uninstall: removes the three tables, every option and transient, the scheduled actions and the object-cache group, on
  * every site of a network, and the network's cached update manifest. Deactivation leaves all of it in place. Order
  * item meta is kept: it is part of the shop's records (spec: Uninstall).
  *

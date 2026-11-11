@@ -4,6 +4,8 @@
  * field out of sight.
  *
  * - `#cbuild_part_specs` opens the Part specs tab.
+ * - `#cbuild-spec-<key>` opens the Part specs tab and the group the field is in, and moves to the field, as the
+ *   notice for a value that was not saved does.
  * - `#cbuild_variation_<id>` opens the Variations tab, then the variation once WooCommerce has loaded it, and
  *   scrolls to its fields. A variation on a later page is left to WooCommerce's own paging.
  *
@@ -33,6 +35,10 @@ export interface Query {
 	( element: Element ): Collection;
 	( ready: () => void ): unknown;
 }
+
+import { settle } from './settle';
+
+export { settle };
 
 const PANEL = 'cbuild_part_specs';
 const VARIATIONS = 'variable_product_options';
@@ -81,31 +87,6 @@ export function groups( doc: Document ): void {
 }
 
 /**
- * A frame after a jump, brings what has focus back into view if the page has moved under it: a notice above that
- * WordPress moves or removes once the page is ready shifts everything below.
- *
- * @param view   The window, or as much of it as this needs.
- * @param target What focus moved to.
- */
-export function settle(
-	view: {
-		innerHeight: number;
-		requestAnimationFrame?: ( run: () => void ) => unknown;
-	} | null,
-	target: Element | null
-): void {
-	if ( ! view || ! target ) {
-		return;
-	}
-	view.requestAnimationFrame?.( () => {
-		const box = target.getBoundingClientRect();
-		if ( box.top < 0 || box.bottom > view.innerHeight ) {
-			target.scrollIntoView( { block: 'center' } );
-		}
-	} );
-}
-
-/**
  * What an address names: the panel, a variation's ID, or nothing of ours.
  *
  * @param hash The address's fragment, with its #.
@@ -115,6 +96,15 @@ export function named( hash: string ): 'panel' | string | null {
 		return 'panel';
 	}
 	return hash.match( /^#cbuild_variation_(\d+)$/ )?.[ 1 ] ?? null;
+}
+
+/**
+ * The field of the product's panel an address names, by its ID, or nothing.
+ *
+ * @param hash The address's fragment, with its #.
+ */
+export function field( hash: string ): string | null {
+	return hash.match( /^#(cbuild-spec-[a-z]+(?:-[a-z]+)*)$/ )?.[ 1 ] ?? null;
 }
 
 /**
@@ -138,6 +128,20 @@ export function open( doc: Document, hash: string, $: Query ): void {
 			.querySelector< HTMLElement >( `ul.wc-tabs a[href="#${ id }"]` )
 			?.click();
 
+	const own = doc.getElementById( field( hash ) ?? '' );
+	if ( own ) {
+		tab( PANEL );
+		const group = own.closest( 'details' );
+		if ( group ) {
+			// Open, and its fields enabled before focus moves to one: a closed group's are disabled (issue #23).
+			group.setAttribute( 'open', '' );
+			enable( group );
+		}
+		own.scrollIntoView( { block: 'center' } );
+		own.focus( { preventScroll: true } );
+		settle( doc.defaultView, own );
+		return;
+	}
 	const part = named( hash );
 	if ( part === null ) {
 		return;
@@ -177,7 +181,8 @@ export function open( doc: Document, hash: string, $: Query ): void {
 }
 
 /**
- * Waits for the page, then opens what its address names. Does nothing where jQuery is not loaded.
+ * Waits for the page, then opens what its address names, and again each time the address changes, as it does when
+ * a notice's link is followed. Does nothing where jQuery is not loaded.
  *
  * @param win The window.
  */
@@ -187,7 +192,9 @@ export function start( win: Window & { jQuery?: Query } ): void {
 	if ( ! $ ) {
 		return;
 	}
-	$( () => open( win.document, win.location.hash, $ ) );
+	const now = () => open( win.document, win.location.hash, $ );
+	$( now );
+	win.addEventListener( 'hashchange', now );
 }
 
 start( window );

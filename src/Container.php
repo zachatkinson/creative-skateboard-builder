@@ -32,21 +32,26 @@ final class Container {
 	 */
 	private static function bindings(): array {
 		return array(
-			Port\Clock::class          => Adapter\SystemClock::class,
-			Port\Logger::class         => Adapter\WooCommerceLogger::class,
-			Port\Queue::class          => Adapter\ActionSchedulerQueue::class,
-			Port\MigrationStore::class => Repository\MigrationRepository::class,
-			Port\SpecIndex::class      => Repository\SpecIndexRepository::class,
-			Port\ShopSettings::class   => Adapter\OptionShopSettings::class,
-			Port\PartCatalogue::class  => Adapter\WooPartCatalogue::class,
-			Port\ReindexStore::class   => Adapter\OptionReindexStore::class,
-			Port\SpecTables::class     => Adapter\PostSpecTables::class,
-			Port\PartSpecs::class      => Adapter\WooPartSpecs::class,
-			Port\ImportStore::class    => Adapter\OptionImportStore::class,
-			Port\Uploads::class        => Adapter\RequestUploads::class,
-			Port\Kits::class           => Adapter\NoKits::class,
-			Port\Files::class          => Adapter\DiskFiles::class,
-			Port\Reindex::class        => Service\IndexJobs::class,
+			Port\Clock::class           => Adapter\SystemClock::class,
+			Port\Logger::class          => Adapter\WooCommerceLogger::class,
+			Port\Queue::class           => Adapter\ActionSchedulerQueue::class,
+			Port\MigrationStore::class  => Repository\MigrationRepository::class,
+			Port\SpecIndex::class       => Repository\SpecIndexRepository::class,
+			Port\ShopSettings::class    => Adapter\OptionShopSettings::class,
+			Port\PartCatalogue::class   => Adapter\WooPartCatalogue::class,
+			Port\ReindexStore::class    => Adapter\OptionReindexStore::class,
+			Port\SpecTables::class      => Adapter\PostSpecTables::class,
+			Port\PartSpecs::class       => Adapter\WooPartSpecs::class,
+			Port\ImportStore::class     => Adapter\OptionImportStore::class,
+			Port\Uploads::class         => Adapter\RequestUploads::class,
+			Port\Kits::class            => Adapter\WooKits::class,
+			Port\PartCards::class       => Adapter\WooPartCards::class,
+			Port\PartFacts::class       => Repository\PartFactsRepository::class,
+			Port\Tally::class           => Adapter\CacheTally::class,
+			Port\Money::class           => Adapter\ShopMoney::class,
+			Port\DocumentSchemas::class => Adapter\KitSchemas::class,
+			Port\Files::class           => Adapter\DiskFiles::class,
+			Port\Reindex::class         => Service\IndexJobs::class,
 		);
 	}
 
@@ -121,11 +126,106 @@ final class Container {
 					}
 				);
 			},
+			// A build's services are built when an ability is run.
+			Abilities\CheckBuildAbility::class          => static function ( Container $c ): object {
+				return new Abilities\CheckBuildAbility(
+					static function () use ( $c ): Port\Kits {
+						return $c->get( Port\Kits::class );
+					},
+					static function () use ( $c ): Service\BuildState {
+						return $c->get( Service\BuildState::class );
+					},
+					static function () use ( $c ): Front\StateAnswer {
+						return $c->get( Front\StateAnswer::class );
+					}
+				);
+			},
+			Abilities\PriceBuildAbility::class          => static function ( Container $c ): object {
+				return new Abilities\PriceBuildAbility(
+					static function () use ( $c ): Port\Kits {
+						return $c->get( Port\Kits::class );
+					},
+					static function () use ( $c ): Service\BuildState {
+						return $c->get( Service\BuildState::class );
+					},
+					static function () use ( $c ): Front\StateAnswer {
+						return $c->get( Front\StateAnswer::class );
+					}
+				);
+			},
+			// The kit's class is an adapter's, which a Hookable may not name.
+			Hooks\KitHooks::class                       => static function ( Container $c ): object {
+				return new Hooks\KitHooks(
+					Adapter\KitProduct::class,
+					new Service\KitVisibility(
+						Support\Options::PRODUCT_TYPE_KIT,
+						static function () use ( $c ): array {
+							return $c->get( Port\Kits::class )->ids();
+						}
+					)
+				);
+			},
+			// The jobs and the import are built when a part is saved or a job runs, not on every request.
+			Hooks\IndexHooks::class                     => static function ( Container $c ): object {
+				return new Hooks\IndexHooks(
+					static function () use ( $c ): Service\IndexJobs {
+						return $c->get( Service\IndexJobs::class );
+					}
+				);
+			},
+			// The state route's services are built when the route is asked, not whenever the REST API starts.
+			Rest\StateRoute::class                      => static function ( Container $c ): object {
+				return new Rest\StateRoute(
+					$c->get( Port\Kits::class ),
+					static function () use ( $c ): Service\BuildState {
+						return $c->get( Service\BuildState::class );
+					},
+					static function () use ( $c ): Front\StateAnswer {
+						return $c->get( Front\StateAnswer::class );
+					},
+					static function () use ( $c ): Service\RateLimit {
+						return $c->get( Service\RateLimit::class );
+					}
+				);
+			},
+			// The cards are built when something a card shows moves.
+			Hooks\CardHooks::class                      => static function ( Container $c ): object {
+				return new Hooks\CardHooks(
+					static function () use ( $c ): Port\PartCards {
+						return $c->get( Port\PartCards::class );
+					},
+					static function () use ( $c ): Port\Kits {
+						return $c->get( Port\Kits::class );
+					}
+				);
+			},
+			Hooks\SpecTableHooks::class                 => static function ( Container $c ): object {
+				return new Hooks\SpecTableHooks(
+					static function () use ( $c ): Service\IndexJobs {
+						return $c->get( Service\IndexJobs::class );
+					}
+				);
+			},
+			Hooks\ImportHooks::class                    => static function ( Container $c ): object {
+				return new Hooks\ImportHooks(
+					static function () use ( $c ): Service\SpecImport {
+						return $c->get( Service\SpecImport::class );
+					}
+				);
+			},
 			// The panel reads the sources, so it is built when one of its hooks fires.
 			Admin\PartSpecsHooks::class                 => static function ( Container $c ): object {
 				return new Admin\PartSpecsHooks(
 					static function () use ( $c ): Admin\PartSpecsPanel {
 						return $c->get( Admin\PartSpecsPanel::class );
+					}
+				);
+			},
+			// The tab reads the kit and its parts, so it is built when one of its hooks fires.
+			Admin\BuildTabHooks::class                  => static function ( Container $c ): object {
+				return new Admin\BuildTabHooks(
+					static function () use ( $c ): Admin\BuildTab {
+						return $c->get( Admin\BuildTab::class );
 					}
 				);
 			},
@@ -152,20 +252,29 @@ final class Container {
 			Hooks\InstallHooks::class              => array( Scope::Everywhere ),
 			// A product is saved, and a job runs, on any kind of request.
 			Hooks\IndexHooks::class                => array( Scope::Everywhere ),
+			// A product is saved, sold or restocked on any kind of request.
+			Hooks\CardHooks::class                 => array( Scope::Everywhere ),
 			// A post type is registered on every request, and a table is saved from any.
 			Hooks\SpecTableHooks::class            => array( Scope::Everywhere ),
 			// The import's job runs wherever the queue does.
 			Hooks\ImportHooks::class               => array( Scope::Everywhere ),
+			// WooCommerce builds a product from its type's class wherever one is read.
+			Hooks\KitHooks::class                  => array( Scope::Everywhere ),
 			// WooCommerce's settings screen.
 			Admin\SettingsHooks::class             => array( Scope::Admin ),
 			Admin\PartSpecsHooks::class            => array( Scope::Admin ),
+			Admin\BuildTabHooks::class             => array( Scope::Admin ),
 			Admin\BuilderHooks::class              => array( Scope::Admin ),
 			Hooks\CliHooks::class                  => array( Scope::Cli ),
 			// Site Health's page and Info tab are wp-admin's; its weekly check runs in cron, and WP-CLI can ask too. The
 			// page asks for the Catalogue check's test over REST.
 			Health\SiteHealth::class               => array( Scope::Admin, Scope::Cron, Scope::Cli, Scope::Rest ),
+			// The state route, which the builder's script asks.
+			Rest\StateRoute::class                 => array( Scope::Rest ),
 			// WordPress builds its abilities when something first asks for one, on any kind of request.
 			Abilities\CatalogueCheckAbility::class => array( Scope::Everywhere ),
+			Abilities\CheckBuildAbility::class     => array( Scope::Everywhere ),
+			Abilities\PriceBuildAbility::class     => array( Scope::Everywhere ),
 		);
 	}
 
@@ -184,9 +293,9 @@ final class Container {
 	private array $hookableClasses;
 
 	/**
-	 * The Hookable classes already handed out.
+	 * The Hookable classes already handed out, each under its own name.
 	 *
-	 * @var array<class-string<Hookable>, true>
+	 * @var array<class-string<Hookable>, class-string<Hookable>>
 	 */
 	private array $handedOut = array();
 
@@ -270,7 +379,7 @@ final class Container {
 			if ( isset( $this->handedOut[ $id ] ) || array() === array_intersect( array_column( $fires, 'name' ), array_column( $scopes, 'name' ) ) ) {
 				continue;
 			}
-			$this->handedOut[ $id ] = true;
+			$this->handedOut[ $id ] = $id;
 			$out[]                  = $this->get( $id );
 		}
 		return $out;

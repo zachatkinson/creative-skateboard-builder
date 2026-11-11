@@ -4,7 +4,7 @@ Tags: woocommerce, skateboard, product builder, configurator, bundle
 Requires at least: 7.0
 Tested up to: 7.1
 Requires PHP: 8.5
-Stable tag: 0.3.1
+Stable tag: 0.4.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -14,7 +14,7 @@ Sells complete skateboards built from parts the shop stocks, with fit checked fr
 
 Creative Skateboard Builder lets a shopper put a complete skateboard together from the decks, trucks, wheels, bearings, hardware and grip a WooCommerce shop already sells. It checks that the parts fit from each part's specs, draws a picture of the build, keeps the total in view, and gives each part its own line in the cart and on the order, so stock, tax and refunds work as they do for any other product.
 
-This is version 0.3.1. It holds the foundation (the plugin's two tables, its upgrade steps and its update check), the rules that decide which parts fit together and what a build costs, and the first of the work that reads each part's specs from the shop's products. The builder itself arrives in later versions, and nothing a shopper or shop owner sees changes yet.
+This is version 0.4.0. It holds the foundation (the plugin's three tables, its upgrade steps and its update check), the rules that decide which parts fit together and what a build costs, the work that reads each part's specs from the shop's products, and the Builder kit product a shop owner sets a build up on. The builder a shopper uses arrives in later versions, and nothing a shopper sees changes yet.
 
 The plugin needs WooCommerce 11.2 or newer, WordPress 7.0 or newer and PHP 8.5 or newer. Below any of them it does nothing and says so on the Plugins screen.
 
@@ -31,13 +31,28 @@ Nothing about the shop or its shoppers. The plugin makes two kinds of request, b
 
 = What does deleting the plugin remove? =
 
-Everything the plugin made: its two tables, its options and transients, and its scheduled actions. Products and orders are never touched, and the build details on past orders stay, because they are part of the shop's records.
+Everything the plugin made: its three tables, its options and transients, and its scheduled actions. Products and orders are never touched, and the build details on past orders stay, because they are part of the shop's records.
 
 = Does it work on a multisite network? =
 
 Yes. Activating it for the network installs it on every site, and a site added later installs itself the first time an administrator opens its dashboard.
 
 == Changelog ==
+
+= 0.4.0 =
+* A new product type, Builder kit: the product a shopper will build from parts. It cannot be bought as an ordinary product, and it holds no price of its own.
+* A Build tab on a kit: its slots and what may fill each, the fit rules, up to six ready builds, and assembly with its fee. What cannot be saved is named with a link to its field, and the rest is saved.
+* Five new settings: a build discount, where a fixed coupon lands, how often one address may ask for a build, a trusted proxy header, and what a new kit starts with.
+* The builder's own address for a build's state, which the builder page will ask in a later version: which parts fit, why others do not, and what the build costs. It is read-only and limited for each address.
+* Two abilities for signed-in tools, to check a build and to price one.
+* Other plugins can rule a part out, price some shoppers apart, and translate a kit's own words.
+* The Catalogue check lists a kit whose settings can no longer be read.
+* A kit stays out of your catalogue, search results, feeds and sitemaps, Yoast SEO's among them.
+* The Catalogue check now reads your kits: a slot with no parts or nothing in stock, a part missing a spec its slot needs, a ready build that no longer fits.
+* The Part specs tab opens the group of fields a product's slot needs.
+* A product that no kit takes no longer shows Part specs fields in its variations.
+* When a value on the Part specs tab is not saved, the notice is now a link that takes you to its field.
+* Site Health's Info tab shows the state of the specs index in words.
 
 = 0.3.1 =
 * Fixed: the Part specs fields no longer add to what a product's edit form sends unless their group is open. On a host that limits a form to 1,000 fields, a product with many variations could go over the limit when updated, and other plugins' settings on that product, its short description or its slug could go unsaved.

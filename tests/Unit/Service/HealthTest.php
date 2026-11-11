@@ -142,6 +142,7 @@ final class HealthTest extends TestCase {
 		$this->health->jobs();
 		self::assertSame( 250, $this->queue->since, 'from when it finished, not when it started' );
 		self::assertSame( 0, Health::since( null ) );
+		self::assertSame( 0, Health::since( new ReindexState( ReindexState::DONE, 3, 300, 100 ) ), 'done, with no time kept for it' );
 	}
 
 	public function test_an_import_that_stopped_or_lost_its_job_is_said_and_one_at_work_is_not(): void {

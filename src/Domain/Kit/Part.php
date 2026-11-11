@@ -41,4 +41,16 @@ final readonly class Part {
 			throw $refused;
 		}
 	}
+
+	/**
+	 * Whether a build can take this many of it now: it is in stock, and the shop holds as many where it counts them
+	 * (issue #14).
+	 *
+	 * @since 0.4.0
+	 *
+	 * @param int $quantity How many the build takes.
+	 */
+	public function covers( int $quantity ): bool {
+		return $this->inStock && ( null === $this->stock || $this->stock >= $quantity );
+	}
 }

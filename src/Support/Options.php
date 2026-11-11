@@ -78,6 +78,11 @@ final class Options {
 	 */
 	public const SETTING_ATTRIBUTE_MAPPING = 'attribute_mapping';
 	public const SETTING_SOURCE_ORDER      = 'source_order';
+	public const SETTING_BUILD_DISCOUNT    = 'build_discount';
+	public const SETTING_FIXED_COUPONS     = 'fixed_coupons';
+	public const SETTING_RATE_LIMIT        = 'rate_limit';
+	public const SETTING_PROXY_HEADER      = 'trusted_proxy_header';
+	public const SETTING_KIT_DEFAULTS      = 'kit_defaults';
 
 	/**
 	 * Product meta: a part's own specs, a value per spec key.
@@ -92,6 +97,23 @@ final class Options {
 	 * @since 0.3.0
 	 */
 	public const META_SPEC_TABLE = '_cbuild_spec_table';
+
+	/**
+	 * The kit's product type.
+	 *
+	 * @since 0.4.0
+	 */
+	public const PRODUCT_TYPE_KIT = 'cbuild_kit';
+
+	/**
+	 * A kit's meta: its four documents, each as JSON text (docs/HOOKS.md, Document schemas).
+	 *
+	 * @since 0.4.0
+	 */
+	public const META_KIT_SLOTS    = '_cbuild_slots';
+	public const META_KIT_RULES    = '_cbuild_rules';
+	public const META_KIT_PRESETS  = '_cbuild_presets';
+	public const META_KIT_ASSEMBLY = '_cbuild_assembly';
 
 	/**
 	 * The spec tables' post type.
@@ -194,7 +216,45 @@ final class Options {
 	 * @return string[]
 	 */
 	public static function metaKeys(): array {
-		return array( self::META_SPECS, self::META_SPEC_TABLE, self::META_TABLE_ROWS, self::META_TABLE_SEED );
+		return array( self::META_SPECS, self::META_SPEC_TABLE, self::META_TABLE_ROWS, self::META_TABLE_SEED, ...self::kitDocuments() );
+	}
+
+	/**
+	 * The meta keys of a kit's four documents.
+	 *
+	 * @since 0.4.0
+	 *
+	 * @return list<string>
+	 */
+	public static function kitDocuments(): array {
+		return array( self::META_KIT_SLOTS, self::META_KIT_RULES, self::META_KIT_PRESETS, self::META_KIT_ASSEMBLY );
+	}
+
+	/**
+	 * A kit's documents' meta keys, by the name the kit's services and schemas know each by.
+	 *
+	 * @since 0.4.0
+	 *
+	 * @return array<string, string>
+	 */
+	public static function kitDocumentNames(): array {
+		return array(
+			'slots'    => self::META_KIT_SLOTS,
+			'rules'    => self::META_KIT_RULES,
+			'presets'  => self::META_KIT_PRESETS,
+			'assembly' => self::META_KIT_ASSEMBLY,
+		);
+	}
+
+	/**
+	 * Every product type the plugin adds.
+	 *
+	 * @since 0.4.0
+	 *
+	 * @return list<string>
+	 */
+	public static function productTypes(): array {
+		return array( self::PRODUCT_TYPE_KIT );
 	}
 
 	/**
@@ -216,6 +276,6 @@ final class Options {
 	 * @return string[]
 	 */
 	public static function settingsKeys(): array {
-		return array( self::SETTING_ATTRIBUTE_MAPPING, self::SETTING_SOURCE_ORDER );
+		return array( self::SETTING_ATTRIBUTE_MAPPING, self::SETTING_SOURCE_ORDER, self::SETTING_BUILD_DISCOUNT, self::SETTING_FIXED_COUPONS, self::SETTING_RATE_LIMIT, self::SETTING_PROXY_HEADER, self::SETTING_KIT_DEFAULTS );
 	}
 }

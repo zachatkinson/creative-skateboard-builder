@@ -66,6 +66,7 @@
 		"test:integration:hpos-sync": "CBUILD_HPOS=sync bash tools/integration.sh",
 		"test:integration:multisite": "CBUILD_MULTISITE=1 bash tools/integration.sh",
 		"test:integration:object-cache": "bash tools/integration-object-cache.sh",
+		"test:integration:yoast": "bash tools/integration-yoast.sh",
 		"infection": "bash tools/infection.sh",
 		"api:check": "@php tools/api-surface.php --check",
 		"api:snapshot": "@php tools/api-surface.php --write",

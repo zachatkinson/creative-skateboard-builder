@@ -46,6 +46,40 @@ A save that changes something indexes every part again, in the background. A sav
 
 Code that writes the option itself is held to the same shape: `schema/settings.json` ([HOOKS.md](HOOKS.md)).
 
+## Milestone 4 (0.4.0)
+
+Five more keys of `cbuild_settings`, on the same screen and saved with the rest: one wrong field and nothing is stored. Each reads as its default when it is missing or malformed.
+
+| Key | Default | Who can change it | What it does |
+| --- | --- | --- | --- |
+| `build_discount` | `0` (none) | `manage_woocommerce` | A percentage taken off each part of a build, as text with a point and up to two decimals: `7.5`. From 0 to 99.99. The cart reads it from 0.5.0; until then it changes nothing a shopper pays. |
+| `fixed_coupons` | `kit` | `manage_woocommerce` | Where a fixed product discount coupon that takes the kit lands. `kit`: on the kit's line alone. `parts`: on the kit's line and on every part of the build, so its amount comes off each. The cart reads it from 0.5.0. |
+| `rate_limit` | `120` | `manage_woocommerce` | How many times a minute one address may ask the builder's state route. A whole number from 10 to 6000. An address over the limit is answered with 429 and told how long to wait. |
+| `trusted_proxy_header` | Empty | `manage_woocommerce` | The request header the visitor's address is read from, for a shop behind a proxy or a content delivery network: `X-Forwarded-For`, `CF-Connecting-IP`. A header's name of up to 64 letters, digits and hyphens, starting with a letter. Empty reads `REMOTE_ADDR`. Name one only when every request reaches the shop through that proxy: where a visitor can send the header themselves, they can get past the limit. Where the header lists several addresses, the last is read: it is the one the shop's own proxy wrote, and the ones before it are whatever the visitor sent. Behind two proxies in a row, name the header the outer one sets with the visitor's address alone, such as `CF-Connecting-IP`. A header that holds no address falls back to `REMOTE_ADDR`. An IPv6 address is counted by its /64. |
+| `kit_defaults` | No assembly by default, no fee, no lead time, no returns notice | `manage_woocommerce` | What a new kit starts from. It holds `assembly`, an assembly document as `schema/kit-assembly.json` has it: `default_on`, `fee` (text with a point and up to four decimals), `lead_time` (200 characters at most) and `returns_notice` (1,000 at most). A new kit's Build tab shows these until the kit is saved with its own; a kit that has its own keeps them. |
+
+### The screen
+
+Three groups follow Part specs:
+
+- **Builds.** The build discount (%), and the list that says where a fixed product discount coupon applies.
+- **Visitors.** Requests a minute from one address, and the trusted proxy header.
+- **New kits.** Whether assembly is chosen when a build starts, the fee, the lead time and the returns notice.
+
+The discount and the fee are typed with the shop's decimal separator or a point, and shown with the shop's. A discount or a fee left empty is none. What the screen refuses:
+
+| Problem | What the screen says |
+| --- | --- |
+| A discount that is not a percentage from 0 to 99.99 with up to two decimals | Enter a percentage below 100 with up to two decimals, or 0 for none. |
+| A coupon choice that is not in the list | Choose where the coupon applies from the list. |
+| A rate that is not a whole number from 10 to 6000 | Enter a whole number from 10 to 6000. |
+| A header that is not a header's name | Enter the header's name alone, such as X-Forwarded-For: letters, digits and hyphens, starting with a letter, 64 characters at most. |
+| A fee that is not an amount with up to four decimals | Enter an amount with up to four decimals, or 0 for none. |
+| A lead time over 200 characters | The lead time is too long. Use 200 characters or fewer. |
+| A returns notice over 1,000 characters | The returns notice is too long. Use 1,000 characters or fewer. |
+
+Saving these alone reads no part again: they feed no spec.
+
 ## Options beside the settings
 
 The plugin keeps seven options of its own, which no screen edits: `cbuild_db_version`, `cbuild_migrations`, `cbuild_migration_lock` and, from 0.3.0, `cbuild_reindex_state`, `cbuild_reindex_owed`, `cbuild_import_state` and `cbuild_import_rows`. [HOOKS.md](HOOKS.md) says what each holds, and [PRIVACY.md](PRIVACY.md) lists everything stored.

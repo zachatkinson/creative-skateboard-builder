@@ -37,4 +37,18 @@ final class FakeLogger implements Logger {
 			'context' => $context,
 		);
 	}
+
+	/**
+	 * The keys a line was written for this hour.
+	 *
+	 * @var array<string, true>
+	 */
+	public array $keys = array();
+
+	public function hourly( string $key, string $level, string $message, array $context = array() ): void {
+		if ( ! isset( $this->keys[ $key ] ) ) {
+			$this->keys[ $key ] = true;
+			$this->log( $level, $message, $context );
+		}
+	}
 }

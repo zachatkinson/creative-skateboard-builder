@@ -6,7 +6,7 @@ The spec's budgets are tests: a build fails when one is missed. The numbers from
 
 | What | Budget | Measured by | From |
 | --- | --- | --- | --- |
-| The state route's server time, p95, 500 candidate parts in a slot | Under 80 ms | `composer test:benchmark` and the integration suite | Milestone 4 |
+| The state route's server time, p95, 500 candidate parts in a slot | Under 80 ms | `composer test:benchmark:integration` (`StateRouteBenchmarkTest`) | Milestone 4 |
 | Adding a 7-part build to the cart | Under 300 ms | The integration suite | Milestone 5 |
 | The fit engine with 500 candidates | The slowest slot under 40 ms, half the state route's budget; four times the candidates in under six times the time | `composer test:benchmark` (`FitEngineBenchmarkTest`) | Milestone 2 |
 | Rebuilding the specs index for 2,000 parts | Recorded; in jobs of 100, each under 10 s and 400 queries | `composer test:benchmark:integration` (`SpecsBenchmarkTest`) | Milestone 3 |
@@ -82,3 +82,25 @@ The query counts are one a product and a page's own. That one is WooCommerce rea
 
 The test's limits were each broken on purpose and seen to fail: see `docs/reviews/M3.md`.
 
+## v0.4.0
+
+Machine: Apple M1 Max, PHP 8.5.12 in wp-env on OrbStack, WordPress 7.1.4, WooCommerce 11.2.2, wp-env's own database server, Xdebug off, no persistent object cache. 10 November 2026.
+
+A kit of seven slots over 2,000 simple products: 500 trucks and 250 in each other slot, every one with its slot's specs. The request picks a deck and asks for the trucks step, so all 500 trucks are judged, some offered and the rest hidden with why, and 24 cards are read. 40 requests a run, over seven decks.
+
+| The state route | p95 | Median | Slowest | Queries at most |
+| --- | --- | --- | --- | --- |
+| Cold: WordPress's cache emptied before each request, as on a site with no persistent object cache | 58 ms | 56 ms | 66 ms | 42 |
+| Warm: the cache as the last request left it | 41 ms | 35 ms | 45 ms | 15 |
+| The first request after one part moves, cache emptied, 40 requests since D-123 (the figures are of 20) | 71 ms | | 73 ms | |
+| With no row kept: the first request in a price context | 470 ms, one request | | | 100 |
+
+The first three are inside the 80 ms budget and held to it. They hold because a request loads no product to learn a slot's parts: what a build needs of each part is a row of the plugin's own table, `cbuild_parts`, and a part that moves has its row deleted and is the only one read from the shop again (D-116). Before that, the same run took 489 ms at p95, 440 ms of it loading 2,000 products.
+
+The last row is outside the budget and is not held to it: it is what one request pays the first time a kit is asked for in a price context (a currency, a language, a set of tax rates), and again after a reindex or a brand or attribute term is edited, which empty the table. The benchmark prints it on every run so that it is known.
+
+The figures move with the machine. On 11 November 2026 the same Mac, busier, measured 67 to 70 ms cold at p95 and 71 ms after a part moves, for this code and for the commit the table was taken from alike; GitHub's hosted runner measured 66 ms cold, 46 ms warm and 81 ms after a part moves on a sample of 20, which failed the run (D-123). The next run of the same commit there measured 84 ms cold. Since D-124 the 80 ms budget is held where the machine is known, in the audit's local run before each milestone's pull request, and CI holds the query counts (42 cold, 15 warm, 37 after a part moves) and a ceiling of 120 ms.
+
+An earlier design of this milestone, never released, kept each slot's list in a transient: 53 ms cold, but 435 ms on the first request after any one product moved. The table costs 5 ms cold and takes that request to 71 ms.
+
+Of the cold 58 ms, the fit engine takes about 20 ms for all seven slots, finding the slots' parts and reading their rows and the kit about 15 ms, and the 24 cards about 20 ms, since without a persistent object cache each card's product is loaded on every request.

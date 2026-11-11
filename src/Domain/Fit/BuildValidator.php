@@ -18,7 +18,7 @@ use function in_array;
 
 /**
  * What the cart, the checkout and a build link ask before a build is sold: is every pick for a slot the kit has, is
- * every required slot filled, is each part one of its slot's parts, in stock, and does the whole fit. Fit is the
+ * every required slot filled, is each part one of its slot's parts, in stock in the quantity the build takes, and does the whole fit. Fit is the
  * engine's answer about the whole build, nothing else is decided here, and nothing the browser said is taken on
  * trust: the picks are parts the server looked up, and the slots' parts are the server's too (spec: Security).
  */
@@ -64,6 +64,8 @@ final readonly class BuildValidator {
 			}
 			if ( ! $option->part->inStock ) {
 				$problems[] = new BuildProblem( Problem::PartSoldOut, $slot->key, $option->part->id );
+			} elseif ( ! $option->available() ) {
+				$problems[] = new BuildProblem( Problem::PartShort, $slot->key, $option->part->id );
 			}
 			if ( Severity::Block === $option->severity ) {
 				$problems[] = new BuildProblem(

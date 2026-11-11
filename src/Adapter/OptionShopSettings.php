@@ -9,6 +9,7 @@ declare( strict_types=1 );
 
 namespace CreativeBranding\SkateboardBuilder\Adapter;
 
+use CreativeBranding\SkateboardBuilder\Domain\Kit\BuildTerms;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\AttributeMap;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\SourceOrder;
 use CreativeBranding\SkateboardBuilder\Port\ShopSettings;
@@ -45,7 +46,54 @@ final class OptionShopSettings implements ShopSettings {
 	 * @return list<AttributeMap>
 	 */
 	public function attributeMapping(): array {
-		$lines   = $this->stored()[ Options::SETTING_ATTRIBUTE_MAPPING ] ?? null;
+		return self::mapping( $this->stored() );
+	}
+
+	/**
+	 * The terms every build is sold on.
+	 *
+	 * @since 0.4.0
+	 */
+	public function terms(): BuildTerms {
+		return BuildTerms::read( $this->stored() );
+	}
+
+	/**
+	 * What of a stored settings value the index is built from.
+	 *
+	 * @since 0.4.0
+	 *
+	 * @param mixed $stored The option's value, or anything else when there was none.
+	 * @return array{0: list<array<string, string>>, 1: list<string>}
+	 */
+	public function indexedFrom( mixed $stored ): array {
+		return self::indexed( $stored );
+	}
+
+	/**
+	 * The same, without a shop: the unit tests' settings read a stored value through it.
+	 *
+	 * @since 0.4.0
+	 *
+	 * @param mixed $stored The option's value.
+	 * @return array{0: list<array<string, string>>, 1: list<string>}
+	 */
+	public static function indexed( mixed $stored ): array {
+		$stored = is_array( $stored ) ? $stored : array();
+		return array(
+			array_map( static fn( AttributeMap $map ): array => $map->toArray(), self::mapping( $stored ) ),
+			SourceOrder::read( $stored[ Options::SETTING_SOURCE_ORDER ] ?? null )->names(),
+		);
+	}
+
+	/**
+	 * The mapping's lines that read, from the option.
+	 *
+	 * @param array<mixed> $stored The option.
+	 * @return list<AttributeMap>
+	 */
+	private static function mapping( array $stored ): array {
+		$lines   = $stored[ Options::SETTING_ATTRIBUTE_MAPPING ] ?? null;
 		$mapping = array();
 		foreach ( is_array( $lines ) ? $lines : array() as $line ) {
 			$map = AttributeMap::read( $line );
@@ -57,19 +105,25 @@ final class OptionShopSettings implements ShopSettings {
 	}
 
 	/**
-	 * Save both, leaving the option's other keys as they are. What is stored is checked against
-	 * `schema/settings.json` first: the screen's own checks should have caught anything it refuses.
+	 * Save the mapping and the order, and the terms where they are given, leaving the option's other keys as they
+	 * are. What is stored is checked against `schema/settings.json` first: the screen's own checks should have
+	 * caught anything it refuses.
 	 *
 	 * @since 0.3.0
+	 * @since 0.4.0 Takes the terms.
 	 *
 	 * @param list<AttributeMap> $mapping The mapping.
 	 * @param SourceOrder        $order   Which source wins.
+	 * @param BuildTerms|null    $terms   The terms, or null to leave them as they are.
 	 * @throws PluginException When the schema refuses the document.
 	 */
-	public function save( array $mapping, SourceOrder $order ): void {
+	public function save( array $mapping, SourceOrder $order, ?BuildTerms $terms = null ): void {
 		$stored                                       = $this->stored();
 		$stored[ Options::SETTING_ATTRIBUTE_MAPPING ] = array_map( static fn( AttributeMap $map ): array => $map->toArray(), $mapping );
 		$stored[ Options::SETTING_SOURCE_ORDER ]      = $order->names();
+		if ( null !== $terms ) {
+			$stored = $terms->toArray() + $stored;
+		}
 
 		$schema = wp_json_file_decode( CBUILD_PATH . 'schema/settings.json', array( 'associative' => true ) );
 		$valid  = is_array( $schema ) ? rest_validate_value_from_schema( $stored, $schema, Options::SETTINGS ) : false;

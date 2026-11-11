@@ -2,6 +2,44 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html). One entry per milestone; `v1.0.0` closes milestone 9.
 
+## [0.4.0] - 2026-11-11
+
+### Added
+
+- The product type `cbuild_kit`, a kit: virtual, not purchasable as a product, its price the assembly fee and never in WooCommerce's price fields, so a kit is not sold with the plugin switched off.
+- A kit stays out of the catalogue, search results, product feeds, WordPress's sitemap and Yoast SEO's, and prints no product markup. Its catalogue visibility is always hidden.
+- The shop's kits are read from its kit products, and a slot's parts from its sources: the products in its categories, of its brands and with its attribute values, and any it names, each variable product as its variations. A part is one a shopper could be shown and could buy (D-101).
+- The Catalogue check's kit rules run on the shop's kits: a slot with no parts or nothing in stock, a part missing a spec its slot needs, a preset that no longer fits.
+- The Build tab on a kit's product screen: its slots (label, help, required, units, the categories, brands, products and attribute values that may fill it, a default part), the rules R1 to R6 with their settings, up to six presets and the assembly settings. A section that fails its checks is not saved while the rest is, each problem is a notice that links to its field, and the tab shows the section once more as it was typed. Rows move by Move up and Move down as well as by dragging. Saved by who may manage the shop (D-106, D-108).
+- Five more keys of the option `cbuild_settings`, set at WooCommerce > Settings > Builder and saved with the rest or not at all: `build_discount` and `fixed_coupons`, which the cart reads from 0.5.0; `rate_limit` and `trusted_proxy_header`, for the state route; and `kit_defaults`, the assembly settings a new kit's Build tab starts from (D-109).
+- A part's stock count is held against what a build takes of it. A part the shop holds too few of is not recommended and is not the closest fit in a change list, and the validator refuses it with the new problem code `part_short` (#14).
+- What a part's card shows (its name, page, price, availability and photo, as the shop shows them) is kept in the object cache per part for an hour at most, and read again when the part is saved, restocked, sold, put on or taken off sale, or deleted (D-111).
+- The state route, `GET cbuild/v1/kits/<id>/state` (registered as `cbuild/v1/kits/(?P<id>[1-9][0-9]{0,17})/state`), with the arguments `picks`, `previous`, `step`, `assembly` and `locale`: the state of a build of a kit, as `schema/state.json` describes it. Each step's pick, the part it starts on and how many parts it offers and hides and why; the current step's options, 24 at most, each with its fit, its reasons as sentences and its card; the picks refused; what keeps the build from the cart; the change list when a change breaks a later pick; and the total with the assembly fee and the build discount. Public and read-only, answered `no-store`, in the language asked for when the site has it. A kit that is not there, or that a visitor may not see, is a 404 `cbuild_kit_not_found`; a build the shop's currency settings cannot price is a 500 `cbuild_no_price`. A kit that is not published is answered as one that is not there (`cbuild_kit_not_found`).
+- The state route's rate limit: the setting `rate_limit` a minute for each address, then 429 `cbuild_rate_limited` with `Retry-After`. What is counted is a salted hash of the address and the minute, kept two minutes at most; the address is stored nowhere (D-112).
+- Five filters. `cbuild_part_available` lets a plugin rule a part out of every kit. `cbuild_price_context` lets a plugin that prices some shoppers apart say what tells them apart, so each is shown a card of their own. `cbuild_slot_label`, `cbuild_preset_label` and `cbuild_kit_text` let a translation plugin answer for the owner's own words: a slot's label and help, a preset's name and description, the lead time and the returns notice. The state route's answer carries the kit's texts and presets (D-114).
+- Two abilities, `creative-skateboard-builder/check-build` and `creative-skateboard-builder/price-build`: read-only, in the plugin's category, they take a kit and its picks and give a signed-in user the state route's own answer to whether the build may go to the cart and to what it costs (D-115, D-118).
+- The state route answers within its budget on a large catalogue: 58 ms at p95 with 2,000 parts in a kit and 500 in the step, on a site with no persistent object cache. What a build needs of each part is kept in a table, `cbuild_parts`, a row per part and price context. A row is deleted when its product, price, stock, terms or specs move, and the next request reads that one part from the shop again (D-116).
+- The Catalogue check lists a kit whose settings do not read, under the code `kit_unread`, and the log says so at most once an hour. The Build tab does not save slots beside presets they would break (`slots_leave_presets`). Each row's Move up, Move down and fold are named with the row.
+- Without a persistent object cache the rate limit's counts take 1,024 rows of the options table at most (D-119).
+- A Build tab save that reaches the server cut short, as PHP's `max_input_vars` cuts a long form with no error, saves nothing of the tab, says so in a notice and keeps what arrived as typed (D-122). The tab is drawn only for a user who may save it.
+- The action `cbuild_parts_changed`, which a plugin does when its answer to `cbuild_part_available` changes, or a price it sets, with no product saved. It takes the parts' IDs, or none for all of them. The migration `schema_2` makes the table.
+- A kit's four documents as product meta, each as JSON text: `_cbuild_slots`, `_cbuild_rules`, `_cbuild_presets` and `_cbuild_assembly`. Their schemas have been public since 0.2.0.
+
+### Changed
+
+- A card's price is plain text, as its name is, and no longer WooCommerce's markup: the route's answer is data, and the page that prints it escapes it (D-112).
+- A settings save asks for a reindex only when the attribute mapping or the order of the sources changed.
+- A value the Part specs tab does not save is named in a notice that is a link to its field: following it opens the tab and the field's group and moves focus to the field. A variation's notice leads to the variation.
+- Site Health's Info tab shows the index's state in words, and copies its code. The ability's schema descriptions are translated.
+- The settings screen shows a problem with the order of the sources under the order alone.
+- The Part specs tab opens the group a product's kit slot needs, as well as any group with a value.
+- Where the shop has kits and none takes a product, its variations draw no Part specs fields and its tab says how to make it a part (D-105).
+- `composer test:integration:yoast` runs the tests that need Yoast SEO, with Yoast SEO 28.8 put in the integration site for the run (D-102).
+- The index's and the import's services are built when a part is saved or a job runs, not on every request.
+- CI's mutation job may take 25 minutes, up from 15, which a full run on `main` reached, and runs Infection on every core of its runner, where it had run on one (D-107).
+- `composer api:check` also holds each route's arguments with their schemas, the routes' and abilities' error codes, and what each ability takes beside what it gives.
+- `composer api:check` also holds Site Health's test ids, each WP-CLI command's arguments and flags, the CSV's columns and each ability's output schema.
+
 ## [0.3.1] - 2026-11-10
 
 ### Fixed

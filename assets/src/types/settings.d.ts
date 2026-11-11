@@ -50,5 +50,52 @@ export interface CbuildSettings {
 	 * @maxItems 3
 	 */
 	source_order?: ('table' | 'field' | 'attribute')[];
+	/**
+	 * The percentage taken off each part of a build, written with a point and up to two places. 0 is none; it is always below 100.
+	 */
+	build_discount?: string;
+	/**
+	 * Where a fixed-product coupon that takes the kit lands: on the kit's line alone, or on every part as well.
+	 */
+	fixed_coupons?: 'kit' | 'parts';
+	/**
+	 * How many times a minute one address may ask the state route.
+	 */
+	rate_limit?: number;
+	/**
+	 * The request header a proxy the shop trusts names the visitor's address in, such as X-Forwarded-For. Empty reads REMOTE_ADDR.
+	 */
+	trusted_proxy_header?: string;
+	/**
+	 * What a new kit starts from.
+	 */
+	kit_defaults?: {
+		/**
+		 * The assembly settings a new kit's Build tab starts from, as schema/kit-assembly.json has them.
+		 */
+		assembly?: {
+			/**
+			 * The document's version. Version 1 is the only one so far.
+			 */
+			schema_version: 1;
+			/**
+			 * Whether a build starts with assembly on.
+			 */
+			default_on: boolean;
+			/**
+			 * The assembly fee in the shop's currency, as a decimal in text: 15 or 15.50. 0 is free.
+			 */
+			fee: string;
+			/**
+			 * The lead time, in the owner's words.
+			 */
+			lead_time?: string;
+			/**
+			 * The returns notice shown before checkout.
+			 */
+			returns_notice?: string;
+		};
+		[k: string]: unknown;
+	};
 	[k: string]: unknown;
 }

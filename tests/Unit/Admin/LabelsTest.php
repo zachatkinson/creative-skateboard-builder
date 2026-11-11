@@ -14,6 +14,7 @@ use CreativeBranding\SkateboardBuilder\Domain\Measure\Unit;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\Origin;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\SpecKey;
 use PHPUnit\Framework\Attributes\DataProvider;
+use CreativeBranding\SkateboardBuilder\Service\Health;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -115,5 +116,14 @@ final class LabelsTest extends TestCase {
 		self::assertSame( '10.05', Labels::typed( '10.050' ) );
 		self::assertSame( '0.125', Labels::typed( '0.125' ) );
 		self::assertSame( '', Labels::typed( '' ) );
+	}
+
+	// Issue #19: Site Health's Info tab showed the code.
+	public function test_the_indexs_state_has_words_and_an_unknown_one_is_shown_as_it_is(): void {
+		self::assertSame( 'Up to date', Labels::index( Health::INDEX_CURRENT ) );
+		self::assertSame( 'Being rebuilt', Labels::index( Health::INDEX_BUILDING ) );
+		self::assertSame( 'Stopped part way', Labels::index( Health::INDEX_STALLED ) );
+		self::assertSame( 'Not rebuilt: it stopped after its failures', Labels::index( Health::INDEX_FAILED ) );
+		self::assertSame( 'index_new', Labels::index( 'index_new' ) );
 	}
 }

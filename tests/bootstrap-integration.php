@@ -78,6 +78,15 @@ tests_add_filter(
 			exit( 1 );
 		}
 		require $wc;
+		// The Yoast leg: tools/yoast.sh put the pinned plugin in the site (D-102). A flag without it would prove nothing.
+		if ( '1' === getenv( 'CBUILD_YOAST' ) ) {
+			$yoast = WP_PLUGIN_DIR . '/wordpress-seo/wp-seo.php';
+			if ( ! file_exists( $yoast ) ) {
+				fwrite( STDERR, "CBUILD_YOAST=1 needs Yoast SEO: run composer test:integration:yoast.\n" );
+				exit( 1 );
+			}
+			require $yoast;
+		}
 		require $cbuild_plugin_dir . '/creative-skateboard-builder.php';
 	}
 );

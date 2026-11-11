@@ -158,7 +158,9 @@ jobs:
     needs: scope
     if: needs.scope.outputs.full == 'true'
     runs-on: ubuntu-26.04
-    timeout-minutes: 15
+    # Everything on main takes Infection 11 to 14 minutes on this runner, and Stryker and the dry run two more. At
+    # 15 the job was cancelled on 0.3.1's merge with nothing wrong, and the release waited on a second run (D-107).
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
@@ -178,6 +180,10 @@ jobs:
         env:
           BASE: ${{ github.base_ref }}
         run: |
+          # Every core the runner has: nothing else runs beside it here, and Infection's own "max" keeps one back,
+          # which left one thread and an 8 to 14 minute run on main (D-107).
+          CBUILD_INFECTION_THREADS="$(nproc)"
+          export CBUILD_INFECTION_THREADS
           if [ "${GITHUB_EVENT_NAME}" = pull_request ]; then
             bash tools/infection.sh --git-diff-lines "--git-diff-base=origin/${BASE}" --ignore-msi-with-no-mutations
           else
@@ -205,7 +211,8 @@ jobs:
   # The matrix (docs/AUDIT.md: The platform; D-004, D-040): the newest and oldest WordPress and WooCommerce pairs on
   # PHP 8.5, each with the browser projects, Plugin Check and the zip's lifecycle; and one leg that runs the
   # integration suite six more times on one wp-env (tools/integration-variants.sh): MySQL 8.4 and MariaDB 10.11 as
-  # their own database servers, HPOS off and syncing, a persistent object cache, and multisite.
+  # their own database servers, HPOS off and syncing, a persistent object cache, and multisite, and then the tests that
+  # need Yoast SEO, alone (D-102).
   integration:
     name: Integration, Plugin Check, browser (${{ matrix.leg }})
     needs: scope
@@ -254,10 +261,14 @@ jobs:
       - run: composer test:integration
         if: matrix.leg == 'oldest'
       # Seconds on a site that is already up: 2,000 parts indexed, exported, checked and dry-run, each inside a request.
-      - name: The specs benchmark at 2,000 parts (Xdebug off)
+      # A shared runner's speed moved by a fifth between two runs of one commit, so here the state route is held to its
+      # query counts and a ceiling of 120 ms; its 80 ms budget is held where the machine is known (D-124).
+      - name: The benchmarks at 2,000 parts (Xdebug off)
         if: matrix.leg == 'newest'
+        env:
+          CBUILD_BENCHMARK_SHARED: '1'
         run: composer test:benchmark:integration
-      - name: The six variants (two database servers, HPOS off and syncing, object cache, multisite)
+      - name: The six variants (two database servers, HPOS off and syncing, object cache, multisite) and the Yoast tests
         if: matrix.leg == 'variants'
         run: bash tools/integration-variants.sh
       - run: npm run plugin-check
@@ -286,10 +297,26 @@ jobs:
         with:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ steps.browsers.outputs.version }}-${{ steps.browsers.outputs.projects == '' && 'every' || 'two' }}
-      - run: npx playwright install --with-deps ${{ steps.browsers.outputs.engines }}
+      # apt can hang for as long as the job has when the runner cannot reach Ubuntu's mirrors: two jobs sat here for 15
+      # and 19 minutes on 11 November 2026 (D-123). Each try is stopped after a few minutes, and there are three.
+      - name: Playwright's browsers and their system packages (three tries, five minutes each)
         if: (matrix.leg == 'newest' || matrix.leg == 'oldest') && steps.playwright-cache.outputs.cache-hit != 'true'
-      - run: npx playwright install-deps ${{ steps.browsers.outputs.engines }}
+        run: |
+          for try in 1 2 3; do
+            if timeout 300 npx playwright install --with-deps ${{ steps.browsers.outputs.engines }}; then exit 0; fi
+            echo "::warning::Try ${try} of Playwright's install did not finish."
+            sleep 30
+          done
+          exit 1
+      - name: The system packages Playwright's cached browsers need (three tries, three minutes each)
         if: (matrix.leg == 'newest' || matrix.leg == 'oldest') && steps.playwright-cache.outputs.cache-hit == 'true'
+        run: |
+          for try in 1 2 3; do
+            if timeout 180 npx playwright install-deps ${{ steps.browsers.outputs.engines }}; then exit 0; fi
+            echo "::warning::Try ${try} of Playwright's system packages did not finish."
+            sleep 30
+          done
+          exit 1
       - run: npm run test:e2e -- ${{ steps.browsers.outputs.projects }}
         if: matrix.leg == 'newest' || matrix.leg == 'oldest'
       - name: Lighthouse CI (LCP, CLS, TBT, SEO on the mobile profile)

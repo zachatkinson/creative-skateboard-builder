@@ -21,6 +21,7 @@ use CreativeBranding\SkateboardBuilder\Domain\Rule\Severity;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Domain\Builds;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Domain\KitDocuments;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Domain\Parts;
+use CreativeBranding\SkateboardBuilder\Domain\Spec\SpecKey;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -239,6 +240,16 @@ final class ChangePlannerTest extends TestCase {
 			array( SlotKey::TRUCKS => array( self::truck( 1, '8.25', 'independent', 2999, false ), self::truck( 2, '8.75', 'thunder', 9999 ) ) )
 		);
 		self::assertSame( 2, $list->changes[0]->closest?->part->id );
+	}
+
+	public function test_closest_is_one_the_shop_holds_enough_of(): void {
+		// The nearest truck is sold singly with one left, and the build takes two (issue #14).
+		$before = Builds::complete( array( SlotKey::DECK => Builds::deck( '8.25' ), SlotKey::TRUCKS => Builds::truck( '144' ) ) );
+		$near   = self::truck( 1, '8.5' );
+		$single = static fn( int $stock ): Part => new Part( 1, 'independent', $near->specs->with( SpecKey::SetSize, 1 ), 2999, true, $stock );
+		$far    = self::truck( 2, '8.75', 'thunder', 9999 );
+		self::assertSame( 2, self::plan( $before, SlotKey::DECK, Builds::deck( '8.5', 101 ), array( SlotKey::TRUCKS => array( $single( 1 ), $far ) ) )->changes[0]->closest?->part->id );
+		self::assertSame( 1, self::plan( $before, SlotKey::DECK, Builds::deck( '8.5', 101 ), array( SlotKey::TRUCKS => array( $single( 2 ), $far ) ) )->changes[0]->closest?->part->id );
 	}
 
 	public function test_a_part_with_no_figure_on_the_slots_spec_is_the_furthest(): void {

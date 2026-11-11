@@ -21,6 +21,7 @@ use CreativeBranding\SkateboardBuilder\Service\SpecIndexer;
 use CreativeBranding\SkateboardBuilder\Support\Options;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\FakeClock;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\FakeLogger;
+use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\InMemoryKits;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\FakeQueue;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\InMemoryPartCatalogue;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\InMemoryReindexStore;
@@ -51,6 +52,8 @@ final class IndexJobsTest extends TestCase {
 
 	private FakeLogger $logger;
 
+	private InMemoryKits $kits;
+
 	private IndexJobs $jobs;
 
 	protected function setUp(): void {
@@ -62,6 +65,7 @@ final class IndexJobsTest extends TestCase {
 		$this->settings  = new InMemoryShopSettings();
 		$this->clock     = new FakeClock();
 		$this->logger    = new FakeLogger();
+		$this->kits      = new InMemoryKits();
 		$this->jobs      = new IndexJobs(
 			new SpecIndexer( $this->index, $this->settings, $this->clock, $this->source ),
 			$this->index,
@@ -70,7 +74,8 @@ final class IndexJobsTest extends TestCase {
 			$this->store,
 			$this->settings,
 			$this->clock,
-			$this->logger
+			$this->logger,
+			$this->kits
 		);
 	}
 
@@ -173,7 +178,7 @@ final class IndexJobsTest extends TestCase {
 				throw new RuntimeException( 'the database went away' );
 			}
 		};
-		$jobs    = new IndexJobs( new SpecIndexer( $this->index, $this->settings, $this->clock, $failing ), $this->index, $this->catalogue, $this->queue, $this->store, $this->settings, $this->clock, $this->logger );
+		$jobs    = new IndexJobs( new SpecIndexer( $this->index, $this->settings, $this->clock, $failing ), $this->index, $this->catalogue, $this->queue, $this->store, $this->settings, $this->clock, $this->logger, $this->kits );
 		$this->catalogue->products[7] = array( 7 );
 		$now                          = $this->clock->now()->getTimestamp();
 
@@ -232,6 +237,9 @@ final class IndexJobsTest extends TestCase {
 		self::assertSame( array( 100, 100, 50 ), array_map( 'count', $this->source->asked ), 'the stale row is dropped without a read' );
 		self::assertEquals( new ReindexState( ReindexState::DONE, 0, 251, $started, $started + 30 ), $this->jobs->state() );
 		self::assertSame( 3, $this->queue->plain['cbuild_reindex'], 'each batch but the last queues the next, plainly' );
+		// The auditor's should-fix 7, milestone 4: each batch emptied the whole parts table, so every request between
+		// two batches read the whole shop again. A batch tells of the parts it indexed and of no other.
+		self::assertSame( array( range( 1, 100 ), range( 101, 200 ), range( 201, 250 ) ), $this->kits->forgotten );
 	}
 
 	public function test_a_full_last_page_is_followed_by_an_empty_one(): void {
@@ -253,7 +261,7 @@ final class IndexJobsTest extends TestCase {
 
 		// The process dies: the same batch runs again when the queue retries the action, and the place is still there.
 		$halfway     = $this->index->rows;
-		$fresh       = new IndexJobs( new SpecIndexer( $this->index, $this->settings, $this->clock, $this->source ), $this->index, $this->catalogue, $this->queue, $this->store, $this->settings, $this->clock, $this->logger );
+		$fresh       = new IndexJobs( new SpecIndexer( $this->index, $this->settings, $this->clock, $this->source ), $this->index, $this->catalogue, $this->queue, $this->store, $this->settings, $this->clock, $this->logger, $this->kits );
 		$fresh->runReindex();
 		self::assertSame( 2, $fresh->state()?->position );
 		self::assertSame( array_keys( $halfway ), range( 1, 100 ) );
@@ -282,6 +290,22 @@ final class IndexJobsTest extends TestCase {
 		self::assertNull( $this->jobs->state() );
 		$this->jobs->runReindex();
 		self::assertSame( $saves, $this->store->saves );
+	}
+
+	// Issue #19, D-096: a save is not a delete. It moves no page, and its own job indexes the part.
+	public function test_a_save_under_a_running_reindex_queues_its_own_job_and_asks_for_no_second_pass(): void {
+		$this->parts( ...range( 1, 150 ) );
+		$this->jobs->requestReindex();
+		unset( $this->queue->pending['cbuild_reindex'] );
+		$this->jobs->runReindex();
+		$this->jobs->runReindex();
+		self::assertSame( ReindexState::CATALOGUE, $this->jobs->state()?->phase );
+		$saves = $this->store->saves;
+
+		$this->jobs->changed( 50 );
+
+		self::assertFalse( $this->jobs->state()?->again );
+		self::assertSame( $saves, $this->store->saves, 'the reindex is not told' );
 	}
 
 	public function test_a_delete_under_a_running_reindex_makes_it_pass_once_more(): void {
@@ -322,7 +346,7 @@ final class IndexJobsTest extends TestCase {
 				return array_fill_keys( $partIds, array() );
 			}
 		};
-		$jobs         = new IndexJobs( new SpecIndexer( $this->index, $this->settings, $this->clock, $asking ), $this->index, $this->catalogue, $this->queue, $this->store, $this->settings, $this->clock, $this->logger );
+		$jobs         = new IndexJobs( new SpecIndexer( $this->index, $this->settings, $this->clock, $asking ), $this->index, $this->catalogue, $this->queue, $this->store, $this->settings, $this->clock, $this->logger, $this->kits );
 		$asking->jobs = $jobs;
 		$this->queue->running['cbuild_reindex'] = true;
 		unset( $this->queue->pending['cbuild_reindex'] );
@@ -358,7 +382,7 @@ final class IndexJobsTest extends TestCase {
 				throw new RuntimeException( 'the database went away' );
 			}
 		};
-		$jobs    = new IndexJobs( new SpecIndexer( $this->index, $this->settings, $this->clock, $failing ), $this->index, $this->catalogue, $this->queue, $this->store, $this->settings, $this->clock, $this->logger );
+		$jobs    = new IndexJobs( new SpecIndexer( $this->index, $this->settings, $this->clock, $failing ), $this->index, $this->catalogue, $this->queue, $this->store, $this->settings, $this->clock, $this->logger, $this->kits );
 		$state   = $jobs->reindexNow();
 		self::assertSame( 1, $state?->failures );
 		self::assertTrue( $state->isRunning() );
@@ -386,6 +410,21 @@ final class IndexJobsTest extends TestCase {
 		self::assertSame( array( 6, 7, 9 ), $rows, 'after the pass over the rows alone' );
 		self::assertSame( ReindexState::CATALOGUE, $this->jobs->state()?->phase );
 		self::assertSame( 3, $this->jobs->state()->parts, 'the three rows it went through' );
+	}
+
+	// Issue #25: two rows that stand for the same parts now had each of them read twice in one batch.
+	public function test_the_first_pass_reads_a_part_two_rows_stand_for_once(): void {
+		$this->parts( 5, 8, 9 );
+		$this->jobs->reindexNow();
+		$this->parts( 6, 7 );
+		$this->catalogue->products[5] = array( 6, 7 );
+		$this->catalogue->products[8] = array( 6, 7 );
+
+		$this->jobs->requestReindex();
+		unset( $this->queue->pending['cbuild_reindex'] );
+		$this->source->asked = array();
+		$this->jobs->runReindex();
+		self::assertSame( array( array( 6, 7, 9 ) ), $this->source->asked );
 	}
 
 	public function test_a_batch_that_fails_keeps_its_place_and_is_tried_again_then_stops(): void {
@@ -437,7 +476,7 @@ final class IndexJobsTest extends TestCase {
 				throw new RuntimeException( 'gone' );
 			}
 		};
-		$jobs           = new IndexJobs( new SpecIndexer( $this->index, $this->settings, $this->clock, $deleting ), $this->index, $this->catalogue, $this->queue, $this->store, $this->settings, $this->clock, $this->logger );
+		$jobs           = new IndexJobs( new SpecIndexer( $this->index, $this->settings, $this->clock, $deleting ), $this->index, $this->catalogue, $this->queue, $this->store, $this->settings, $this->clock, $this->logger, $this->kits );
 		$deleting->jobs = $jobs;
 		$jobs->runReindex();
 		$state = $jobs->state();
@@ -476,5 +515,33 @@ final class IndexJobsTest extends TestCase {
 		self::assertNull( $this->jobs->state() );
 		$this->jobs->termChanged( 'pa_width' );
 		self::assertSame( 1, $this->jobs->state()?->run );
+	}
+
+	// Issue #20: milestone 4 adds keys the index does not read to the option the mapping and the order are in.
+	public function test_a_settings_save_reindexes_only_when_the_mapping_or_the_order_changed(): void {
+		$line  = array( 'attribute' => 'pa_width', 'spec' => 'deck_width', 'unit' => 'in' );
+		$saved = array(
+			'attribute_mapping' => array( $line ),
+			'source_order'      => array( 'table', 'field', 'attribute' ),
+		);
+		$this->jobs->settingsChanged( $saved, $saved + array( 'rate_limit' => 60 ) );
+		$this->jobs->settingsChanged( $saved + array( 'rate_limit' => 60 ), $saved + array( 'rate_limit' => 120 ) );
+		self::assertNull( $this->jobs->state(), 'a key the index does not read' );
+		// What reads the same is the same: the default order left out or written, a line the reader drops.
+		$this->jobs->settingsChanged( array( 'attribute_mapping' => array( $line ) ), $saved );
+		$this->jobs->settingsChanged( $saved, array( 'attribute_mapping' => array( $line, array( 'attribute' => '', 'spec' => 'deck_width' ) ) ) );
+		$this->jobs->settingsChanged( 'not settings', array() );
+		$this->jobs->settingsChanged( array(), null );
+		self::assertNull( $this->jobs->state() );
+
+		$this->jobs->settingsChanged( $saved, array( 'source_order' => array( 'field', 'table', 'attribute' ) ) + $saved );
+		self::assertSame( 1, $this->jobs->state()?->run, 'the order' );
+		$this->jobs->settingsChanged( $saved, array( 'attribute_mapping' => array( array( 'unit' => 'mm' ) + $line ) ) + $saved );
+		self::assertSame( 2, $this->jobs->state()?->run, 'a line\'s unit' );
+		$this->jobs->settingsChanged( $saved, array( 'attribute_mapping' => array() ) + $saved );
+		self::assertSame( 3, $this->jobs->state()?->run, 'a line removed' );
+		$this->jobs->settingsChanged( array(), $saved );
+		self::assertSame( 4, $this->jobs->state()?->run, 'the settings saved for the first time, with a mapping' );
+		self::assertTrue( $this->queue->isPending( IndexJobs::JOB_REINDEX ) );
 	}
 }

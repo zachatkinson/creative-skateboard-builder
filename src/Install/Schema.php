@@ -61,6 +61,7 @@ final class Schema {
 	/**
 	 * The full CREATE TABLE set as one string, dbDelta style. The specs index: one row per part and spec, the value
 	 * as a number or a short text, where it came from and when. Saved builds: a customer's picks under a UUID.
+	 * Parts, from 0.4.0: one row per part and price context, what the shop says of it beside its specs (D-116).
 	 *
 	 * @since 0.1.0
 	 */
@@ -69,6 +70,7 @@ final class Schema {
 		$charset = $wpdb->get_charset_collate();
 		$specs   = Tables::specs();
 		$builds  = Tables::builds();
+		$parts   = Tables::parts();
 
 		return "
 CREATE TABLE {$specs} (
@@ -96,6 +98,21 @@ CREATE TABLE {$builds} (
   PRIMARY KEY  (id),
   UNIQUE KEY uuid (uuid),
   KEY user_id (user_id)
+) {$charset};
+CREATE TABLE {$parts} (
+  part_id bigint(20) unsigned NOT NULL,
+  context char(32) NOT NULL,
+  parent_id bigint(20) unsigned NOT NULL DEFAULT 0,
+  sellable tinyint(1) NOT NULL DEFAULT 0,
+  brand varchar(200) NOT NULL DEFAULT '',
+  price bigint(20) unsigned NOT NULL DEFAULT 0,
+  in_stock tinyint(1) NOT NULL DEFAULT 0,
+  stock int(11) NULL,
+  attributes text NULL,
+  specs text NULL,
+  read_at bigint(20) unsigned NOT NULL DEFAULT 0,
+  PRIMARY KEY  (part_id,context),
+  KEY parent_id (parent_id,context)
 ) {$charset};
 ";
 	}

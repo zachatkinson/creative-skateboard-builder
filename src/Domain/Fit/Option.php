@@ -49,4 +49,13 @@ final readonly class Option {
 	public function reason(): ?Finding {
 		return Finding::blocking( $this->findings )[0] ?? null;
 	}
+
+	/**
+	 * Whether the shop holds what a build takes of it: its quantity, or one where it gives no set size.
+	 *
+	 * @since 0.4.0
+	 */
+	public function available(): bool {
+		return $this->part->covers( $this->quantity ?? 1 );
+	}
 }

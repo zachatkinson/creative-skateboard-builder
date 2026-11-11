@@ -383,7 +383,7 @@ final class SpecSourcesTest extends IntegrationTestCase {
 			self::assertSame( array(), $settings->attributeMapping() );
 		}
 		self::assertContains( Options::SETTINGS, Options::names(), 'uninstall removes it' );
-		self::assertSame( array( 'attribute_mapping', 'source_order' ), Options::settingsKeys() );
+		self::assertSame( array( 'attribute_mapping', 'source_order', 'build_discount', 'fixed_coupons', 'rate_limit', 'trusted_proxy_header', 'kit_defaults' ), Options::settingsKeys() );
 		self::assertContains( '_cbuild_specs', Options::metaKeys() );
 	}
 

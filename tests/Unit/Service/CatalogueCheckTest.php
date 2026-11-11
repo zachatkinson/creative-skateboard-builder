@@ -156,6 +156,14 @@ final class CatalogueCheckTest extends TestCase {
 		self::assertCount( 4, $lines );
 	}
 
+	// The auditor's should-fix 11 and the spec reviewer's 3, milestone 4: a kit whose settings stopped reading was left
+	// out of the check, so nothing told the owner that no shopper could open it.
+	public function test_a_kit_whose_settings_do_not_read_is_listed(): void {
+		$this->kits->add( 5, KitDocuments::kit(), self::stocked() );
+		$this->kits->unread = array( 9, 12 );
+		self::assertSame( array( 'kit_unread part=0 kit=9', 'kit_unread part=0 kit=12' ), self::lines( $this->check->run() ) );
+	}
+
 	public function test_a_slot_with_no_parts_or_none_in_stock_is_listed(): void {
 		$parts             = self::stocked();
 		$parts['grip']     = array();

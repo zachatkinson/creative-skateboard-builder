@@ -76,6 +76,75 @@
 					"attribute"
 				]
 			}
+		},
+		"build_discount": {
+			"description": "The percentage taken off each part of a build, written with a point and up to two places. 0 is none; it is always below 100.",
+			"type": "string",
+			"pattern": "^[0-9]{1,2}(\\.[0-9]{1,2})?(?!\\n)$"
+		},
+		"fixed_coupons": {
+			"description": "Where a fixed-product coupon that takes the kit lands: on the kit's line alone, or on every part as well.",
+			"type": "string",
+			"enum": [
+				"kit",
+				"parts"
+			]
+		},
+		"rate_limit": {
+			"description": "How many times a minute one address may ask the state route.",
+			"type": "integer",
+			"minimum": 10,
+			"maximum": 6000
+		},
+		"trusted_proxy_header": {
+			"description": "The request header a proxy the shop trusts names the visitor's address in, such as X-Forwarded-For. Empty reads REMOTE_ADDR.",
+			"type": "string",
+			"pattern": "^([A-Za-z][A-Za-z0-9-]{0,63})?(?!\\n)$"
+		},
+		"kit_defaults": {
+			"description": "What a new kit starts from.",
+			"type": "object",
+			"additionalProperties": true,
+			"properties": {
+				"assembly": {
+					"type": "object",
+					"additionalProperties": false,
+					"required": [
+						"schema_version",
+						"default_on",
+						"fee"
+					],
+					"properties": {
+						"schema_version": {
+							"description": "The document's version. Version 1 is the only one so far.",
+							"type": "integer",
+							"enum": [
+								1
+							]
+						},
+						"default_on": {
+							"description": "Whether a build starts with assembly on.",
+							"type": "boolean"
+						},
+						"fee": {
+							"description": "The assembly fee in the shop's currency, as a decimal in text: 15 or 15.50. 0 is free.",
+							"type": "string",
+							"pattern": "^[0-9]{1,9}(\\.[0-9]{1,4})?(?!\\n)$"
+						},
+						"lead_time": {
+							"description": "The lead time, in the owner's words.",
+							"type": "string",
+							"maxLength": 200
+						},
+						"returns_notice": {
+							"description": "The returns notice shown before checkout.",
+							"type": "string",
+							"maxLength": 1000
+						}
+					},
+					"description": "The assembly settings a new kit's Build tab starts from, as schema/kit-assembly.json has them."
+				}
+			}
 		}
 	}
 }

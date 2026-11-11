@@ -9,6 +9,7 @@ declare( strict_types=1 );
 
 namespace CreativeBranding\SkateboardBuilder\Hooks;
 
+use Closure;
 use CreativeBranding\SkateboardBuilder\Hookable;
 use CreativeBranding\SkateboardBuilder\Service\IndexJobs;
 use CreativeBranding\SkateboardBuilder\Support\Options;
@@ -34,9 +35,9 @@ final class SpecTableHooks implements Hookable {
 	 *
 	 * @since 0.3.0
 	 *
-	 * @param IndexJobs $jobs The jobs.
+	 * @param Closure(): IndexJobs $jobs Builds the jobs, when one of the hooks fires.
 	 */
-	public function __construct( private IndexJobs $jobs ) {}
+	public function __construct( private Closure $jobs ) {}
 
 	/**
 	 * Attach hooks.
@@ -98,7 +99,7 @@ final class SpecTableHooks implements Hookable {
 		unset( $id );
 		// An auto-draft is the editor opening, not a table.
 		if ( Options::POST_TYPE_SPEC_TABLE === $post->post_type && 'auto-draft' !== $post->post_status ) {
-			$this->jobs->requestReindex();
+			( $this->jobs )()->requestReindex();
 		}
 	}
 
@@ -113,7 +114,7 @@ final class SpecTableHooks implements Hookable {
 	public function deleted( int $id, WP_Post $post ): void {
 		unset( $id );
 		if ( Options::POST_TYPE_SPEC_TABLE === $post->post_type ) {
-			$this->jobs->requestReindex();
+			( $this->jobs )()->requestReindex();
 		}
 	}
 }

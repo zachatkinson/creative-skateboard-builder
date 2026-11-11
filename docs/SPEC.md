@@ -211,7 +211,7 @@ WooCommerce keeps doing what it does: products, prices, stock, the cart, the che
 - **Adding to the cart** posts the build to the Store API's `cart/add-item` route with the build as item data, then sends WooCommerce's `wc-blocks_added_to_cart` event, so the Cart block and the Mini-Cart update as they would for any product. Without JavaScript it posts to WooCommerce's own add-to-cart handler. Either way the server validates the whole build (slots, rules, stock), adds the kit as the parent line and a child line per part.
 - **In the cart,** children follow their parent: same build quantity, removed together, never changed alone. The Cart block shows them grouped through Store API data and its JavaScript filters, the Mini-Cart through each part's item data and a CSS class, and a classic cart or checkout (Shop Kit's) through WooCommerce's PHP filters.
 - **At checkout and after,** each line becomes an order item carrying the build's keys. Emails, the account pages and the admin show the build grouped. WooCommerce reduces and restores stock part by part. The admin's order screen prints the assembly ticket.
-- **Stock** is read from WooCommerce when the builder asks. Creative Stockroom already keeps a printed deck's stock right in WooCommerce, so the builder needs no Stockroom code; a filter lets any plugin rule a part out.
+- **Stock** is read from WooCommerce when the builder asks. (Since 0.4.0 the state route reads it from the parts table, a row no more than two hours old and deleted when WooCommerce says the part moved; the cart reads WooCommerce itself. D-116, for Zach.) Creative Stockroom already keeps a printed deck's stock right in WooCommerce, so the builder needs no Stockroom code; a filter lets any plugin rule a part out.
 - **Specs** live in an index table, rebuilt in the background (Action Scheduler) whenever a part, its attributes or a spec table change.
 - **The picture** is laid out by the domain from the parts' specs and drawn twice from that one layout: as layers in the page, and as one composed image, made in the background, for the cart, the emails and share cards.
 - **Abilities.** The same engine answers WordPress's Abilities API (check a build, price a build, run the Catalogue check), so the shop's own tools and AI assistants get the answers the builder gives, under the same permissions.
@@ -232,7 +232,7 @@ The browser never decides fit or price. The server checks a build as the shopper
 
 ## Data model
 
-Two tables, product meta on the kit and the parts, and keys on cart and order items. Everything the plugin stores is either the owner's settings or rebuildable from WooCommerce.
+Three tables (two until 0.4.0, D-116), product meta on the kit and the parts, and keys on cart and order items. Everything the plugin stores is either the owner's settings or rebuildable from WooCommerce.
 
 **The kit**, a product of type `cbuild_kit` (class `KitProduct extends WC_Product`). It is virtual (the parts ship), can't be bought outside the builder, and its price is the assembly fee, read from its assembly settings rather than WooCommerce's price fields and set to $0 by the cart when the shopper turns assembly off. Its settings are product meta, each a JSON document carrying a `schema_version` and validated against a JSON Schema in the plugin's `schema/` folder, which ships with it. Validation runs at the edge through WordPress's own `rest_validate_value_from_schema()`, with no library added, and the domain's value objects check their own invariants:
 
@@ -249,6 +249,8 @@ Two tables, product meta on the kit and the parts, and keys on cart and order it
 **The specs index**, table `{prefix}cbuild_specs`: one row per part and spec, with the value as a number (`DECIMAL(10,4)`) or a short text, where it came from, and when. Keyed on the part and the spec, indexed on spec and value so a slot's candidates come back in one query. Derived: rebuilt in the background from the three sources, never edited.
 
 **Saved builds**, table `{prefix}cbuild_builds`: id, a UUID, the customer's user id, the kit, the picks as JSON, assembly on or off, a name the customer gives it, created and updated times. Indexed on the user. Shared links aren't stored: the picks travel in the URL as ids and are validated again on every use.
+
+**Parts as a build reads them**, table `{prefix}cbuild_parts` (added in milestone 4, D-116): one row per product or variation and price context, with its parent, whether it may be sold, its brand, its price in minor units, whether it is in stock and how many, a variation's attribute values and its specs as JSON, and when it was read as UTC seconds. Keyed on the part and the context, indexed on the parent and the context. Derived: a row is deleted when its part moves and read from WooCommerce again by the next request that needs it, and no row is believed for more than two hours.
 
 **Cart items.** The parent carries `cbuild` (the build's UUID, the kit, the picks, assembly) and `cbuild_children` (the child cart keys). Each child carries `cbuild_parent` (the parent's cart key) and `cbuild_slot`. The UUID keeps two identical builds from merging into one line, which the Store API would otherwise do.
 
@@ -278,22 +280,23 @@ Eight numbered rules, each with its source: six fit tests between two slots (R1 
 - Axle widths are compared, never size numbers. Indy 149 and Thunder 149 are both 8.5 in, while Thunder 151 matches Indy 159.
 - Tests: an 8.0 in deck with Indy 139 fits. An 8.5 in deck with Indy 144 is blocked by Independent's own range of 8.2 to 8.375 in, though one retailer gives 8.0 to 8.5.
 
-Seed spec tables. Independent's figures come from its own site; Thunder's and Venture's from retailers, since Thunder's chart is an image and Venture publishes none.
+Seed spec tables. Each maker's figures come from its own size chart, read on 10 November 2026: Independent's from its site, Thunder's and Venture's from the chart each publishes as images (D-093).
 
-| Axle | Independent, with its deck range | Thunder | Venture, with deck range |
+| Axle | Independent, with its deck range | Thunder, with its deck range | Venture, with its deck range |
 | --- | --- | --- | --- |
 | 6.9 in | 109: 6.25–7.6 |  |  |
-| 7.0 in |  | 143 |  |
-| 7.6 in | 129: 7.4–7.8 | 145: 7.38–8.0 | 5.0: up to 7.9 |
-| 8.0 in | 139: 7.8–8.2 | 147: 7.75–8.25 | 5.2: 7.9–8.1 |
-| 8.25 in | 144: 8.2–8.375 | 148: 8.0–8.5 | 5.6: 8.1–8.3 |
+| 7.125 in |  | 143: up to 7.4 |  |
+| 7.6 in | 129: 7.4–7.8 |  |  |
+| 7.62 in |  | 145: 7.4–7.9 | 5.0: up to 7.9 |
+| 8.0 in | 139: 7.8–8.2 | 147: 7.9–8.12 | 5.2: 7.9–8.1 |
+| 8.25 in | 144: 8.2–8.375 | 148: 8.12–8.38 | 5.6: 8.1–8.3 |
 | 8.375 in | 146: 8.125–8.625 |  |  |
-| 8.5 in | 149: 8.375–8.6 | 149: 8.25–8.75 | 5.8: 8.4–8.6 |
+| 8.5 in | 149: 8.375–8.6 | 149: 8.38–8.62 | 5.8: 8.4–8.6 |
 | 8.625 in | 151: 8.375–8.875 |  |  |
-| 8.75 in | 159: 8.6–9.0 | 151: 8.5–9.0 | 6.1: 8.62 and up |
+| 8.75 in | 159: 8.6–9.0 | 151: 8.62–8.85 | 6.1: 8.62 and up |
 | 9.0 in | 166: 8.5–9.5 |  |  |
-| 9.125 in | 169: 9.0–9.5 | 161 |  |
-| 10.0 in | 215: 9.5–10.5 |  |  |
+| 9.125 in | 169: 9.0–9.5 | 161: 8.9–9.5 |  |
+| 10.0 in | 215: 9.5–10.5 | 181: 9.5 and up |  |
 
 **R2. Mounting holes (block).**
 
@@ -498,7 +501,7 @@ A build is a parent line (the kit) with a child line per part, the model Woo's o
 **Stock**
 
 - The plugin never writes stock. Reservation, reduction, restoring stock on a failed or cancelled order ([advisory](https://developer.woocommerce.com/2026/07/17/failed-order-stock-update/)) and restocking on a refund all run per line, in WooCommerce ([reduce](https://hooks.wbcomdesigns.com/?p=33660), [reserve](https://wp-kama.com/plugin/woocommerce/function/ReserveStock::reserve_stock_for_order), [restock](https://wp-kama.com/plugin/woocommerce/function/wc_restock_refunded_items)).
-- What the builder offers is worked out when it's asked, never synced. Imports and bulk edits that skip WooCommerce's functions can't leave it stale.
+- What the builder offers is worked out when it's asked, never synced. Imports and bulk edits that skip WooCommerce's functions can't leave it stale. (Since 0.4.0, D-116: the state route's options come from the parts table, so a change that fires no WooCommerce hook shows within two hours, or at once after `cbuild_parts_changed`. What goes to the cart is read from WooCommerce. For Zach.)
 - Creative Stockroom keeps a printed deck's stock right in WooCommerce, so it needs nothing from the builder. The `cbuild_part_available` filter lets any plugin rule a part out.
 - If a part sells out between the builder and the checkout, WooCommerce's own checks stop the order, and the cart line's Edit build link takes the shopper back to swap it.
 
@@ -823,7 +826,7 @@ Opened 22 October 2026. WooCommerce's source is cited from mirrors (wp-kama.com 
 
 **Fit rules**
 
-- R1: [Independent's trucks](https://independenttrucks.com/trucks); Thunder's sizes from [Tactics](https://www.tactics.com/thunder/hollow-lights-skateboard-trucks/polished-hollow-lights-ii-148) and [Warehouse](https://www.warehouseskateboards.com/thunder-skateboard-trucks), since [Thunder's own chart](https://www.thundertrucks.com/sizing/) is images only; Venture's from [Rollersnakes](https://us.rollersnakes.com/pages/venture-skateboard-trucks-size-guide-chart) and [Stil](https://stil-laden.com/en/pages/venture-trucks-size-chart); the tolerance from [Warehouse's trucks step](https://www.warehouseskateboards.com/skateboard-trucks?bac=1) and [Skate Warehouse's trucks guide](https://www.skatewarehouse.com/news/articles/skateboard_trucks_buying_guide.html); the disagreeing range from [NHS](https://nhsskatedirect.com/products/stage-11-polished-standard-skateboard-trucks-independent).
+- R1: [Independent's trucks](https://independenttrucks.com/trucks); Thunder's from [its own chart](https://www.thundertrucks.com/sizing/) and Venture's from [its own](https://venturetrucks.net/sizes/), each published as images (D-093); the tolerance from [Warehouse's trucks step](https://www.warehouseskateboards.com/skateboard-trucks?bac=1) and [Skate Warehouse's trucks guide](https://www.skatewarehouse.com/news/articles/skateboard_trucks_buying_guide.html); the disagreeing range from [NHS](https://nhsskatedirect.com/products/stage-11-polished-standard-skateboard-trucks-independent).
 - R2: [Riding Boards](https://www.ridingboards.com/?p=2738) for the patterns; [NHS's Indy 215](https://nhsskatedirect.com/products/stage-11-215-polished-skateboard-trucks-independent) for six-hole baseplates.
 - R3: [NHS's Indy Mid](https://nhsskatedirect.com/products/polished-mid-independent-skateboard-trucks); [Warehouse's wheels step](https://www.warehouseskateboards.com/skateboard-wheels?bac=1); [Thunder's truck styles](https://www.thundertrucks.com/truck-styles/); [Skate Warehouse UK](https://www.skatewarehouse.co.uk/news/low-vs-high-skateboard-trucks/); [Hammer's guide](https://www.hammertoronto.com/pages/beginner-guide-to-choosing-a-skateboard) for the riser table; [SkatePro's risers](https://www.skatepro.ca/c390.htm); [Switch](https://www.switchnow.ca/pages/skateboard-buying-guide).
 - R4: [Warehouse's hardware guide](https://www.warehouseskateboards.com/help/Skateboard-Hardware-Buying-Guide) and [SkatePro's](https://www.skatepro.com/en-us/a798.htm).
