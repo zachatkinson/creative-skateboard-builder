@@ -37,6 +37,28 @@ final class StateRouteBenchmarkTest extends IntegrationTestCase {
 	private const REQUESTS = 40;
 
 	/**
+	 * What a run on a machine nobody chose is held to instead (D-124): GitHub's shared runners moved by a fifth
+	 * between two runs of the same code, so there the time catches a gross slowdown and the queries hold the rest.
+	 */
+	private const SHARED = 120.0;
+
+	/**
+	 * The queries a request may ask, by run. These do not move with the machine.
+	 */
+	private const QUERIES = array(
+		'cold'  => 42,
+		'warm'  => 15,
+		'moved' => 37,
+	);
+
+	/**
+	 * The time a request is held to here: the budget, or the shared runner's ceiling where the run says it is on one.
+	 */
+	private static function limit(): float {
+		return '1' === getenv( 'CBUILD_BENCHMARK_SHARED' ) ? self::SHARED : self::BUDGET;
+	}
+
+	/**
 	 * How many parts each slot has: 2,000 in all, 500 of them trucks.
 	 */
 	private const PARTS = array(
@@ -182,7 +204,8 @@ final class StateRouteBenchmarkTest extends IntegrationTestCase {
 			$p95 = self::p95( $times );
 			sort( $times );
 			self::say( sprintf( 'state route, %s, 500 candidates in the step, 2,000 parts in the kit: p95 %.1f ms, median %.1f ms, slowest %.1f ms, %d queries at most', $run, $p95, $times[ (int) ( count( $times ) / 2 ) ], max( $times ), max( $queries ) ) );
-			self::assertLessThan( self::BUDGET, $p95, "The state route, {$run}." );
+			self::assertLessThanOrEqual( self::QUERIES[ $run ], max( $queries ), "The state route's queries, {$run}." );
+			self::assertLessThan( self::limit(), $p95, "The state route, {$run}." );
 		}
 
 		// A part moves, as an order's stock does: its row alone is read again, inside the budget (D-116).
@@ -201,7 +224,8 @@ final class StateRouteBenchmarkTest extends IntegrationTestCase {
 		}
 		sort( $times );
 		self::say( sprintf( 'state route, the first request after one part moves: p95 %.1f ms, median %.1f ms, slowest %.1f ms, %d queries at most', self::p95( $times ), $times[ (int) ( count( $times ) / 2 ) ], max( $times ), max( $moved ) ) );
-		self::assertLessThan( self::BUDGET, self::p95( $times ), 'The state route, after one part moves.' );
+		self::assertLessThanOrEqual( self::QUERIES['moved'], max( $moved ), 'The state route\'s queries, after one part moves.' );
+		self::assertLessThan( self::limit(), self::p95( $times ), 'The state route, after one part moves.' );
 
 		// Not held to the budget, and printed so that it is known: the first request in a price context no one has
 		// asked in, or after a plugin says every part changed, reads every part from the shop.
@@ -210,7 +234,7 @@ final class StateRouteBenchmarkTest extends IntegrationTestCase {
 		[ $took, $asked ] = $ask( $ids['deck'][0] );
 		self::say( sprintf( 'state route, with nothing kept, 2,000 parts read from the shop: %.1f ms, %d queries', $took, $asked ) );
 		wp_cache_flush();
-		self::assertLessThan( self::BUDGET, $ask( $ids['deck'][0] )[0], 'The request after it.' );
+		self::assertLessThan( self::limit(), $ask( $ids['deck'][0] )[0], 'The request after it.' );
 		unset( $_SERVER['REMOTE_ADDR'] );
 	}
 }

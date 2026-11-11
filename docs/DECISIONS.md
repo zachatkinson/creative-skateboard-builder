@@ -1642,3 +1642,18 @@ Neither is a fault of the plugin's code; both cost billed minutes.
 - **For Zach:** the budget is held on GitHub's shared runners with about 14 ms to spare when cold. If it fails there again on a run where the code has not changed, how a time budget is held on hardware nobody controls is his to decide; it is not decided here.
 
 **Status:** Accepted.
+
+### D-124 · The state route's time budget is held on a known machine, and CI holds its queries · 2026-11-11
+
+The third full CI run of milestone 4 failed where the second had passed: "The state route, cold. Failed asserting that 83.695002 is less than 80.0", median 73 ms. The run before it, of the same code, measured 65.8 ms at p95 and a median of 60. GitHub's shared runners moved by a fifth in an hour, and a budget with 14 ms to spare fails on that at random, each time for the price of a run.
+
+Zach was asked how CI should hold the budget, as D-123 left to him, and chose on 11 November 2026: "Split it (Recommended)".
+
+- **The queries are held everywhere:** 42 at most for a cold request, 15 warm, 37 after a part moves. They do not move with the machine, and a change that makes the route slower by doing more work shows in them.
+- **In CI the time is held to 120 ms,** which a gross slowdown still fails. `ci.yml` sets `CBUILD_BENCHMARK_SHARED=1` on the benchmark's step, `tools/benchmark-integration.sh` passes it into the container, and the test reads it.
+- **The 80 ms budget is held on the Mac the figures in `docs/BENCHMARK.md` come from,** by `composer test:benchmark:integration` in `/audit-milestone`'s local run before each milestone's pull request, and its numbers go into the review. The skill's list now names the command.
+- **Nothing else moves.** The spec's budget is 80 ms. The fit engine's benchmark and milestone 3's are as they were.
+
+**Red run.** CI run 43069596131, as above. **Deliberate break:** with the cold count set to 41, "The state route's queries, cold. Failed asserting that 42 is equal to 41 or is less than 41."
+
+**Status:** Accepted.

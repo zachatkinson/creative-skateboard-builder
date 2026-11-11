@@ -261,8 +261,12 @@ jobs:
       - run: composer test:integration
         if: matrix.leg == 'oldest'
       # Seconds on a site that is already up: 2,000 parts indexed, exported, checked and dry-run, each inside a request.
-      - name: The specs benchmark at 2,000 parts (Xdebug off)
+      # A shared runner's speed moved by a fifth between two runs of one commit, so here the state route is held to its
+      # query counts and a ceiling of 120 ms; its 80 ms budget is held where the machine is known (D-124).
+      - name: The benchmarks at 2,000 parts (Xdebug off)
         if: matrix.leg == 'newest'
+        env:
+          CBUILD_BENCHMARK_SHARED: '1'
         run: composer test:benchmark:integration
       - name: The six variants (two database servers, HPOS off and syncing, object cache, multisite) and the Yoast tests
         if: matrix.leg == 'variants'
