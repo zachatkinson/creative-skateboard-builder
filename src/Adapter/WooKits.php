@@ -185,6 +185,18 @@ final class WooKits implements Kits {
 	}
 
 	/**
+	 * Whether a visitor may see this kit: it is a kit, published, and has no password.
+	 *
+	 * @since 0.4.0
+	 *
+	 * @param int $kit A product's ID.
+	 */
+	public function isPublic( int $kit ): bool {
+		$product = $this->products->load( $kit )[ $kit ] ?? null;
+		return $product instanceof KitProduct && 'publish' === $product->get_status() && '' === $product->get_post_password();
+	}
+
+	/**
 	 * A kit product's kit, or null when it is no kit, a document is refused by its schema, or the four disagree.
 	 *
 	 * @param WC_Product $product A product.

@@ -368,3 +368,40 @@ Each is on a kit product, as JSON text, and is the document its schema describes
 | `_cbuild_presets` | 0.4.0 | `schema/kit-presets.json` | Up to six ready builds. |
 | `_cbuild_assembly` | 0.4.0 | `schema/kit-assembly.json` | Assembly: on or off to start, the fee, the lead time and the returns notice. |
 
+### The state route
+
+| Route | Since | Method | Who | Answers |
+| --- | --- | --- | --- | --- |
+| `cbuild/v1/kits/(?P<id>[1-9][0-9]{0,17})/state` | 0.4.0 | `GET` | Anyone: it shows what the kit's page shows | The state of a build of the kit `<id>`: the document `schema/state.json` describes. |
+
+It reads and changes nothing. Its arguments travel in the query:
+
+| Argument | Since | What it takes |
+| --- | --- | --- |
+| `picks[<slot key>]` | 0.4.0 | A part's ID for a slot of the kit: a whole number above 0. Up to 20, and each key one of the kit's own. |
+| `previous[<slot key>]` | 0.4.0 | The picks as they were before the last one changed. With it, the answer's `changes` says what the change does to the picks after it. |
+| `step` | 0.4.0 | The key of the slot whose options are listed. Left out, the first slot with nothing picked. |
+| `assembly` | 0.4.0 | `true` or `false`. Left out, the kit's own default. |
+| `locale` | 0.4.0 | The language to answer in, such as `fr_CA`. The answer is in it when the site has it installed, and in the site's own otherwise. |
+
+| Schema | Since | What the document holds |
+| --- | --- | --- |
+| `schema/state.json` | 0.4.0 | The route's answer (draft 4, with `definitions`): `kit`, `step`, `ready`, the `steps` (each slot's label, its pick, the part it starts on, how many parts it offers and hides, and the hidden ones counted by reason, each with a sentence), the current step's `options` and `hidden` parts (24 of each at most, each with its fit, its messages and its card), the picks that were `refused`, the `problems` that keep the build from the cart, the `changes` and the `total`. `npm run types` writes `assets/src/types/state.d.ts` from it. |
+
+What the answer holds beside the schema's own descriptions:
+
+- **Codes and sentences.** A message carries its rule, its message code and its severity (Findings and message codes, above) with the sentence beside them, and a problem its code (Build problems, above) with its sentence. The sentences are in the language of the answer and are not public API: read the codes.
+- **Money** is an `amount` in whole minor units and a `text`, the amount as the shop writes its prices, in plain text.
+- **A card** is what the shop shows of a part: its name, its page, the price of one, its availability in the shop's stock display format, and its photo. All of it is plain text for the page to escape.
+- **A step lists 24 options,** those the shop can supply first, and always the part the step counts. `steps[].offered` and `steps[].hidden` say how many there are in all.
+- **Fields are added** in minor versions, and none is renamed or removed within a major one.
+
+Every answer of the route, a refusal included, carries `Cache-Control: no-store` and `X-Robots-Tag: noindex`. Its refusals are REST errors, each with `code`, `message` and `data.status`:
+
+| Code | Since | Status | When |
+| --- | --- | --- | --- |
+| `rest_invalid_param` | 0.4.0 | 400 | An argument is not what the table above takes, or names a slot the kit does not have. WordPress's own code. |
+| `cbuild_kit_not_found` | 0.4.0 | 404 | There is no such kit, or it is one a visitor may not see: a draft, a private kit or one behind a password. The answer is the same for all of them and for everyone. |
+| `cbuild_rate_limited` | 0.4.0 | 429 | The address has asked more often this minute than the setting `rate_limit` allows. `Retry-After` gives the seconds left of the minute. |
+| `cbuild_no_price` | 0.4.0 | 500 | The shop's currency has more decimals than a build can be priced in: more than eight. |
+

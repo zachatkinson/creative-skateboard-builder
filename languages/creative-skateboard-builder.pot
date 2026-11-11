@@ -9,7 +9,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-11-10T23:41:16+00:00\n"
+"POT-Creation-Date: 2026-11-11T00:50:30+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: creative-skateboard-builder\n"
@@ -745,6 +745,7 @@ msgstr ""
 
 #. translators: %s: a number of inches.
 #: src/Admin/Labels.php:164
+#: src/Front/Words.php:73
 #, php-format
 msgctxt "inches"
 msgid "%s in"
@@ -752,6 +753,7 @@ msgstr ""
 
 #. translators: %s: a number of millimetres.
 #: src/Admin/Labels.php:167
+#: src/Front/Words.php:76
 #, php-format
 msgctxt "millimetres"
 msgid "%s mm"
@@ -1462,6 +1464,253 @@ msgstr ""
 msgid "The file has no %s column. Add one, or match parts by the other with --key."
 msgstr ""
 
+#. translators: %s: a spec's name, such as Deck width.
+#: src/Front/Words.php:100
+#, php-format
+msgid "%s is not filled in for this part, so its fit cannot be checked."
+msgstr ""
+
+#. translators: 1: the narrowest deck the trucks take. 2: the widest. 3: the deck's width.
+#: src/Front/Words.php:105
+#, php-format
+msgid "The trucks are made for decks from %1$s to %2$s wide. The deck is %3$s."
+msgstr ""
+
+#. translators: 1: the narrowest deck the trucks take. 2: the deck's width.
+#: src/Front/Words.php:109
+#, php-format
+msgid "The trucks are made for decks %1$s wide and over. The deck is %2$s."
+msgstr ""
+
+#. translators: 1: the widest deck the trucks take. 2: the deck's width.
+#: src/Front/Words.php:112
+#, php-format
+msgid "The trucks are made for decks up to %1$s wide. The deck is %2$s."
+msgstr ""
+
+#. translators: 1: the axle's width. 2: how much narrower it is. 3: the deck's width.
+#: src/Front/Words.php:115
+#, php-format
+msgid "The trucks' axle is %1$s, which is %2$s narrower than the %3$s deck."
+msgstr ""
+
+#. translators: 1: the axle's width. 2: how much wider it is. 3: the deck's width.
+#: src/Front/Words.php:118
+#, php-format
+msgid "The trucks' axle is %1$s, which is %2$s wider than the %3$s deck."
+msgstr ""
+
+#. translators: 1: the deck's hole pattern, such as New school. 2: the baseplate's.
+#: src/Front/Words.php:121
+#, php-format
+msgid "The deck's hole pattern is %1$s and the trucks' baseplate is %2$s."
+msgstr ""
+
+#. translators: %s: a hole pattern, such as New school.
+#: src/Front/Words.php:124
+#, php-format
+msgid "The deck gives no hole pattern, so the usual one is taken: %s."
+msgstr ""
+
+#. translators: 1: the wheels' diameter. 2: how far over the trucks' limit they are. 3: the limit. 4: a riser's thickness.
+#: src/Front/Words.php:127
+#, php-format
+msgid "Wheels of %1$s are %2$s over what the trucks clear, which is %3$s. A riser of %4$s or thicker makes the room."
+msgstr ""
+
+#. translators: 1: the wheels' diameter. 2: how far over the trucks' limit they are. 3: the limit.
+#: src/Front/Words.php:130
+#, php-format
+msgid "Wheels of %1$s are %2$s over what the trucks clear, which is %3$s. That is more than a riser makes up for."
+msgstr ""
+
+#. translators: 1: the trucks' height, such as Low. 2: a wheel diameter.
+#: src/Front/Words.php:133
+#, php-format
+msgid "The trucks give no largest wheel, so the usual one for their height (%1$s) is taken: %2$s."
+msgstr ""
+
+#. translators: 1: the bolts' length. 2: a riser's thickness. 3: the shortest bolts that reach.
+#: src/Front/Words.php:137
+#, php-format
+msgid "Bolts of %1$s are too short with a %2$s riser. Use %3$s or longer."
+msgstr ""
+
+#. translators: 1: the bolts' length. 2: the shortest bolts that reach.
+#: src/Front/Words.php:140
+#, php-format
+msgid "Bolts of %1$s are too short. Use %2$s or longer."
+msgstr ""
+
+#. translators: 1: the bolts' length. 2: a riser's thickness. 3: the usual length.
+#: src/Front/Words.php:144
+#, php-format
+msgid "Bolts of %1$s are longer than a %2$s riser needs. The usual length is %3$s."
+msgstr ""
+
+#. translators: 1: the bolts' length. 2: the usual length.
+#: src/Front/Words.php:147
+#, php-format
+msgid "Bolts of %1$s are longer than a board with no riser needs. The usual length is %2$s."
+msgstr ""
+
+#. translators: 1: the bearings' bore. 2: the axle's diameter.
+#: src/Front/Words.php:150
+#, php-format
+msgid "The bearings' bore is %1$s and the trucks' axle is %2$s."
+msgstr ""
+
+#. translators: %s: an axle's diameter.
+#: src/Front/Words.php:153
+#, php-format
+msgid "The trucks give no axle size, so the usual one is taken: %s."
+msgstr ""
+
+#: src/Front/Words.php:155
+msgid "The bearings have spacers built in, so they take no others."
+msgstr ""
+
+#. translators: 1: the grip's width. 2: the deck's width.
+#: src/Front/Words.php:158
+#, php-format
+msgid "The grip is %1$s wide and the deck is %2$s."
+msgstr ""
+
+#. translators: 1: the grip's length. 2: the deck's length.
+#: src/Front/Words.php:161
+#, php-format
+msgid "The grip is %1$s long and the deck is %2$s."
+msgstr ""
+
+#: src/Front/Words.php:163
+msgid "The deck gives no length, so the grip's length is not checked."
+msgstr ""
+
+#. translators: %s: a number of parts.
+#: src/Front/Words.php:181
+#, php-format
+msgid "%s part hidden: a spec its fit is checked by is not filled in."
+msgid_plural "%s parts hidden: a spec their fit is checked by is not filled in."
+msgstr[0] ""
+msgstr[1] ""
+
+#. translators: %s: a number of parts.
+#: src/Front/Words.php:185
+#, php-format
+msgid "%s part hidden: the trucks are made for another width of deck."
+msgid_plural "%s parts hidden: the trucks are made for another width of deck."
+msgstr[0] ""
+msgstr[1] ""
+
+#. translators: %s: a number of parts.
+#: src/Front/Words.php:188
+#, php-format
+msgid "%s part hidden: the trucks would be too narrow for the deck."
+msgid_plural "%s parts hidden: the trucks would be too narrow for the deck."
+msgstr[0] ""
+msgstr[1] ""
+
+#. translators: %s: a number of parts.
+#: src/Front/Words.php:191
+#, php-format
+msgid "%s part hidden: the trucks would be too wide for the deck."
+msgid_plural "%s parts hidden: the trucks would be too wide for the deck."
+msgstr[0] ""
+msgstr[1] ""
+
+#. translators: %s: a number of parts.
+#: src/Front/Words.php:194
+#, php-format
+msgid "%s part hidden: the mounting holes would not line up."
+msgid_plural "%s parts hidden: the mounting holes would not line up."
+msgstr[0] ""
+msgstr[1] ""
+
+#. translators: %s: a number of parts.
+#: src/Front/Words.php:197
+#, php-format
+msgid "%s part hidden: the bolts would be too short."
+msgid_plural "%s parts hidden: the bolts would be too short."
+msgstr[0] ""
+msgstr[1] ""
+
+#. translators: %s: a number of parts.
+#: src/Front/Words.php:200
+#, php-format
+msgid "%s part hidden: the bearings would not fit the axle."
+msgid_plural "%s parts hidden: the bearings would not fit the axle."
+msgstr[0] ""
+msgstr[1] ""
+
+#. translators: %s: a number of parts.
+#: src/Front/Words.php:203
+#, php-format
+msgid "%s part hidden: the bearings have spacers built in."
+msgid_plural "%s parts hidden: the bearings have spacers built in."
+msgstr[0] ""
+msgstr[1] ""
+
+#. translators: %s: a number of parts.
+#: src/Front/Words.php:206
+#, php-format
+msgid "%s part hidden: the grip would be narrower than the deck."
+msgid_plural "%s parts hidden: the grip would be narrower than the deck."
+msgstr[0] ""
+msgstr[1] ""
+
+#. translators: %s: a number of parts.
+#: src/Front/Words.php:209
+#, php-format
+msgid "%s part hidden: the grip would be shorter than the deck."
+msgid_plural "%s parts hidden: the grip would be shorter than the deck."
+msgstr[0] ""
+msgstr[1] ""
+
+#. translators: %s: a number of parts.
+#: src/Front/Words.php:212
+#, php-format
+msgid "%s part hidden: it does not fit the rest of the build."
+msgid_plural "%s parts hidden: they do not fit the rest of the build."
+msgstr[0] ""
+msgstr[1] ""
+
+#. translators: %s: a slot's key, as the request sent it.
+#: src/Front/Words.php:228
+#: src/Rest/StateRoute.php:208
+#, php-format
+msgid "This kit has no slot called \"%s\"."
+msgstr ""
+
+#. translators: %s: a slot's label, such as Trucks.
+#: src/Front/Words.php:231
+#, php-format
+msgid "%s: nothing is chosen yet."
+msgstr ""
+
+#. translators: %s: a slot's label, such as Trucks.
+#: src/Front/Words.php:234
+#, php-format
+msgid "%s: the part chosen is not one this kit offers here."
+msgstr ""
+
+#. translators: %s: a slot's label, such as Trucks.
+#: src/Front/Words.php:237
+#, php-format
+msgid "%s: the part chosen is sold out."
+msgstr ""
+
+#. translators: %s: a slot's label, such as Trucks.
+#: src/Front/Words.php:240
+#, php-format
+msgid "%s: the shop has fewer of the part chosen than a build takes."
+msgstr ""
+
+#. translators: %s: a slot's label, such as Trucks.
+#: src/Front/Words.php:243
+#, php-format
+msgid "%s: the part chosen does not fit the rest of the build."
+msgstr ""
+
 #: src/Health/SiteHealth.php:106
 msgid "The skateboard builder's specs index"
 msgstr ""
@@ -1620,6 +1869,42 @@ msgstr ""
 
 #: src/Hooks/SpecTableHooks.php:70
 msgid "Spec table"
+msgstr ""
+
+#: src/Rest/StateRoute.php:111
+msgid "The kit product's ID."
+msgstr ""
+
+#: src/Rest/StateRoute.php:116
+msgid "The picks: each of the kit's slot keys to a part's ID."
+msgstr ""
+
+#: src/Rest/StateRoute.php:117
+msgid "The picks as they were before the last change, for the change list."
+msgstr ""
+
+#: src/Rest/StateRoute.php:119
+msgid "The key of the slot whose options are listed."
+msgstr ""
+
+#: src/Rest/StateRoute.php:124
+msgid "Whether the shop assembles the build. Left out, the kit's own default."
+msgstr ""
+
+#: src/Rest/StateRoute.php:128
+msgid "The language to answer in, when the site has it installed."
+msgstr ""
+
+#: src/Rest/StateRoute.php:160
+msgid "Too many requests. Try again in a minute."
+msgstr ""
+
+#: src/Rest/StateRoute.php:188
+msgid "There is no such kit."
+msgstr ""
+
+#: src/Rest/StateRoute.php:198
+msgid "This build cannot be priced in the shop's currency settings."
 msgstr ""
 
 #. translators: 1: the PHP version the plugin needs, 2: the WordPress version, 3: the WooCommerce version.

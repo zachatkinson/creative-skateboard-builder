@@ -243,7 +243,7 @@ final class WooPartCards implements PartCards {
 			// WordPress stores a title with its entities written out. A card's name is plain text, which the edge escapes.
 			'name'        => html_entity_decode( wp_strip_all_tags( $product->get_name() ), ENT_QUOTES, 'UTF-8' ),
 			'url'         => $product->get_permalink(),
-			'price'       => wc_price( Cast::float( wc_get_price_to_display( $product ) ) ),
+			'price'       => ShopMoney::plain( wc_price( Cast::float( wc_get_price_to_display( $product ) ) ) ),
 			'stock'       => $availability['availability'],
 			'stock_class' => $availability['class'],
 			'image'       => $image,

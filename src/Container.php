@@ -46,6 +46,8 @@ final class Container {
 			Port\Uploads::class         => Adapter\RequestUploads::class,
 			Port\Kits::class            => Adapter\WooKits::class,
 			Port\PartCards::class       => Adapter\WooPartCards::class,
+			Port\Tally::class           => Adapter\CacheTally::class,
+			Port\Money::class           => Adapter\ShopMoney::class,
 			Port\DocumentSchemas::class => Adapter\KitSchemas::class,
 			Port\Files::class           => Adapter\DiskFiles::class,
 			Port\Reindex::class         => Service\IndexJobs::class,
@@ -143,6 +145,21 @@ final class Container {
 					}
 				);
 			},
+			// The state route's services are built when the route is asked, not whenever the REST API starts.
+			Rest\StateRoute::class                      => static function ( Container $c ): object {
+				return new Rest\StateRoute(
+					$c->get( Port\Kits::class ),
+					static function () use ( $c ): Service\BuildState {
+						return $c->get( Service\BuildState::class );
+					},
+					static function () use ( $c ): Front\StateAnswer {
+						return $c->get( Front\StateAnswer::class );
+					},
+					static function () use ( $c ): Service\RateLimit {
+						return $c->get( Service\RateLimit::class );
+					}
+				);
+			},
 			// The cards are built when something a card shows moves.
 			Hooks\CardHooks::class                      => static function ( Container $c ): object {
 				return new Hooks\CardHooks(
@@ -221,6 +238,8 @@ final class Container {
 			// Site Health's page and Info tab are wp-admin's; its weekly check runs in cron, and WP-CLI can ask too. The
 			// page asks for the Catalogue check's test over REST.
 			Health\SiteHealth::class               => array( Scope::Admin, Scope::Cron, Scope::Cli, Scope::Rest ),
+			// The state route, which the builder's script asks.
+			Rest\StateRoute::class                 => array( Scope::Rest ),
 			// WordPress builds its abilities when something first asks for one, on any kind of request.
 			Abilities\CatalogueCheckAbility::class => array( Scope::Everywhere ),
 		);

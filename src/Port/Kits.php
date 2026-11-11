@@ -78,6 +78,15 @@ interface Kits {
 	public function slotsOf( int $product, Kit ...$kits ): array;
 
 	/**
+	 * Whether a visitor may see this kit: it is a kit, published, and has no password.
+	 *
+	 * @since 0.4.0
+	 *
+	 * @param int $kit A product's ID.
+	 */
+	public function isPublic( int $kit ): bool;
+
+	/**
 	 * How many decimals the shop's prices have: the minor units every part's price is in.
 	 *
 	 * @since 0.4.0

@@ -1,0 +1,545 @@
+{
+	"$schema": "http://json-schema.org/draft-04/schema#",
+	"title": "cbuild_state",
+	"description": "The answer of GET cbuild/v1/kits/<id>/state: the state of a build of a kit. Fields are added in minor versions and never renamed or removed within a major one.",
+	"type": "object",
+	"additionalProperties": false,
+	"required": [
+		"kit",
+		"step",
+		"ready",
+		"steps",
+		"options",
+		"hidden",
+		"refused",
+		"problems",
+		"changes",
+		"total"
+	],
+	"properties": {
+		"kit": {
+			"description": "The kit product's ID.",
+			"type": "integer",
+			"minimum": 1
+		},
+		"step": {
+			"description": "The key of the slot whose options are listed: the one asked for, or the first with nothing picked.",
+			"type": "string",
+			"pattern": "^[a-z][a-z0-9_]{0,31}(?!\\n)$"
+		},
+		"ready": {
+			"description": "Whether the build may go to the cart.",
+			"type": "boolean"
+		},
+		"steps": {
+			"description": "The kit's slots, in step order.",
+			"type": "array",
+			"items": {
+				"description": "A step.",
+				"type": "object",
+				"additionalProperties": false,
+				"required": [
+					"slot",
+					"label",
+					"help",
+					"required",
+					"units",
+					"picked",
+					"recommended",
+					"offered",
+					"hidden",
+					"groups"
+				],
+				"properties": {
+					"slot": {
+						"description": "The slot's key.",
+						"type": "string",
+						"pattern": "^[a-z][a-z0-9_]{0,31}(?!\\n)$"
+					},
+					"label": {
+						"description": "The slot's label.",
+						"type": "string"
+					},
+					"help": {
+						"description": "The slot's help text, or an empty string.",
+						"type": "string"
+					},
+					"required": {
+						"description": "Whether a build needs a part here.",
+						"type": "boolean"
+					},
+					"units": {
+						"description": "How many units of the part a build takes.",
+						"type": "integer",
+						"minimum": 1
+					},
+					"picked": {
+						"description": "The ID of the part picked, or null.",
+						"type": [ "integer", "null" ]
+					},
+					"recommended": {
+						"description": "The ID of the part the step starts on while nothing is picked, or null. The total counts it.",
+						"type": [ "integer", "null" ]
+					},
+					"offered": {
+						"description": "How many parts the slot offers.",
+						"type": "integer",
+						"minimum": 0
+					},
+					"hidden": {
+						"description": "How many parts the slot hides because they do not fit.",
+						"type": "integer",
+						"minimum": 0
+					},
+					"groups": {
+						"description": "The hidden parts, counted by reason.",
+						"type": "array",
+						"items": {
+							"description": "A reason.",
+							"type": "object",
+							"additionalProperties": false,
+							"required": [ "rule", "code", "count", "message" ],
+							"properties": {
+								"rule": {
+									"description": "The rule: r1 to r7.",
+									"type": "string",
+									"pattern": "^r[1-9](?!\\n)$"
+								},
+								"code": {
+									"description": "The reason's message code.",
+									"type": "string"
+								},
+								"count": {
+									"description": "How many parts it hides.",
+									"type": "integer",
+									"minimum": 1
+								},
+								"message": {
+									"description": "The count and the reason as a sentence.",
+									"type": "string"
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"options": {
+			"description": "The parts the current step offers: the first 24, those the shop can supply first, and the part the step counts.",
+			"type": "array",
+			"items": {
+				"$ref": "#/definitions/option"
+			}
+		},
+		"hidden": {
+			"description": "The parts the current step hides, each with why: the first 24, and the pick when it is one of them.",
+			"type": "array",
+			"items": {
+				"$ref": "#/definitions/option"
+			}
+		},
+		"refused": {
+			"description": "The picks sent that were not taken.",
+			"type": "array",
+			"items": {
+				"$ref": "#/definitions/problem"
+			}
+		},
+		"problems": {
+			"description": "What keeps the build from the cart. Empty when ready is true.",
+			"type": "array",
+			"items": {
+				"$ref": "#/definitions/problem"
+			}
+		},
+		"changes": {
+			"description": "What the last change does to the picks after it, when previous was sent and a later pick no longer fits; otherwise null.",
+			"type": [ "object", "null" ],
+			"additionalProperties": false,
+			"required": [ "kept", "proposed", "changes" ],
+			"properties": {
+				"kept": {
+					"description": "The keys of the slots whose picks stay.",
+					"type": "array",
+					"items": {
+						"type": "string",
+						"pattern": "^[a-z][a-z0-9_]{0,31}(?!\\n)$"
+					}
+				},
+				"proposed": {
+					"description": "The build if the shopper takes the changes: a pick per slot, in step order. A slot with no part that fits has none.",
+					"type": "array",
+					"items": {
+						"description": "A pick.",
+						"type": "object",
+						"additionalProperties": false,
+						"required": [ "slot", "part" ],
+						"properties": {
+							"slot": {
+								"type": "string",
+								"pattern": "^[a-z][a-z0-9_]{0,31}(?!\\n)$"
+							},
+							"part": {
+								"type": "integer",
+								"minimum": 1
+							}
+						}
+					}
+				},
+				"changes": {
+					"description": "The picks that no longer fit, in step order.",
+					"type": "array",
+					"items": {
+						"description": "A change.",
+						"type": "object",
+						"additionalProperties": false,
+						"required": [
+							"slot",
+							"label",
+							"was",
+							"name",
+							"messages",
+							"closest"
+						],
+						"properties": {
+							"slot": {
+								"description": "The slot's key.",
+								"type": "string",
+								"pattern": "^[a-z][a-z0-9_]{0,31}(?!\\n)$"
+							},
+							"label": {
+								"description": "The slot's label.",
+								"type": "string"
+							},
+							"was": {
+								"description": "The ID of the part picked.",
+								"type": "integer",
+								"minimum": 1
+							},
+							"name": {
+								"description": "Its name, or an empty string when the product has gone.",
+								"type": "string"
+							},
+							"messages": {
+								"description": "Why it no longer fits.",
+								"type": "array",
+								"items": {
+									"$ref": "#/definitions/message"
+								}
+							},
+							"closest": {
+								"description": "The closest part that fits and is in stock, or null when there is none.",
+								"oneOf": [
+									{
+										"$ref": "#/definitions/option"
+									},
+									{
+										"type": "null"
+									}
+								]
+							}
+						}
+					}
+				}
+			}
+		},
+		"total": {
+			"description": "What the build costs so far.",
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"lines",
+				"parts",
+				"saved",
+				"assembly",
+				"fee",
+				"total"
+			],
+			"properties": {
+				"lines": {
+					"description": "A line per part the build counts, in step order.",
+					"type": "array",
+					"items": {
+						"description": "A line.",
+						"type": "object",
+						"additionalProperties": false,
+						"required": [
+							"slot",
+							"part",
+							"name",
+							"quantity",
+							"price",
+							"charged",
+							"total"
+						],
+						"properties": {
+							"slot": {
+								"description": "The slot's key.",
+								"type": "string",
+								"pattern": "^[a-z][a-z0-9_]{0,31}(?!\\n)$"
+							},
+							"part": {
+								"description": "The part's ID.",
+								"type": "integer",
+								"minimum": 1
+							},
+							"name": {
+								"description": "The part's name, or an empty string when the product has gone.",
+								"type": "string"
+							},
+							"quantity": {
+								"description": "How many of the part the build takes.",
+								"type": "integer",
+								"minimum": 1
+							},
+							"price": {
+								"description": "The part's own price for one.",
+								"$ref": "#/definitions/money"
+							},
+							"charged": {
+								"description": "What one is charged at, with the build discount off.",
+								"$ref": "#/definitions/money"
+							},
+							"total": {
+								"description": "What the line comes to.",
+								"$ref": "#/definitions/money"
+							}
+						}
+					}
+				},
+				"parts": {
+					"description": "The parts' lines together.",
+					"$ref": "#/definitions/money"
+				},
+				"saved": {
+					"description": "What the build discount takes off.",
+					"$ref": "#/definitions/money"
+				},
+				"assembly": {
+					"description": "Whether the shop assembles the build.",
+					"type": "boolean"
+				},
+				"fee": {
+					"description": "The assembly fee: nothing when assembly is off or free.",
+					"$ref": "#/definitions/money"
+				},
+				"total": {
+					"description": "The parts and the fee.",
+					"$ref": "#/definitions/money"
+				}
+			}
+		}
+	},
+	"definitions": {
+		"money": {
+			"description": "An amount in the shop's currency.",
+			"type": "object",
+			"additionalProperties": false,
+			"required": [ "amount", "text" ],
+			"properties": {
+				"amount": {
+					"description": "The amount in whole minor units: cents, where the currency has two decimals.",
+					"type": "integer"
+				},
+				"text": {
+					"description": "The amount as the shop writes its prices, in plain text.",
+					"type": "string"
+				}
+			}
+		},
+		"message": {
+			"description": "What a rule found.",
+			"type": "object",
+			"additionalProperties": false,
+			"required": [ "rule", "code", "severity", "text" ],
+			"properties": {
+				"rule": {
+					"description": "The rule: r1 to r7.",
+					"type": "string",
+					"pattern": "^r[1-9](?!\\n)$"
+				},
+				"code": {
+					"description": "The finding's code, one of the message codes in docs/HOOKS.md.",
+					"type": "string"
+				},
+				"severity": {
+					"description": "How bad: a note on a part that fits, a warning, or a block.",
+					"type": "string",
+					"enum": [ "fits", "warn", "block" ]
+				},
+				"text": {
+					"description": "The finding as a sentence, in the language of the answer.",
+					"type": "string"
+				}
+			}
+		},
+		"card": {
+			"description": "What a card shows of a part.",
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"name",
+				"url",
+				"price",
+				"stock",
+				"stock_class",
+				"image"
+			],
+			"properties": {
+				"name": {
+					"description": "The part's name, in plain text.",
+					"type": "string"
+				},
+				"url": {
+					"description": "The address of the part's own page.",
+					"type": "string"
+				},
+				"price": {
+					"description": "The price of one as the shop shows it, in plain text.",
+					"type": "string"
+				},
+				"stock": {
+					"description": "The shop's own words for the part's availability, in the shop's stock display format. Empty where the shop says nothing of a part in stock.",
+					"type": "string"
+				},
+				"stock_class": {
+					"description": "WooCommerce's class for the availability: in-stock, out-of-stock or available-on-backorder.",
+					"type": "string"
+				},
+				"image": {
+					"description": "The part's photo at the catalogue's size, or null when it has none.",
+					"type": [ "object", "null" ],
+					"additionalProperties": false,
+					"required": [ "src", "width", "height", "srcset", "sizes" ],
+					"properties": {
+						"src": {
+							"type": "string"
+						},
+						"width": {
+							"type": "integer"
+						},
+						"height": {
+							"type": "integer"
+						},
+						"srcset": {
+							"type": "string"
+						},
+						"sizes": {
+							"type": "string"
+						}
+					}
+				}
+			}
+		},
+		"option": {
+			"description": "A part as a slot holds it.",
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"id",
+				"brand",
+				"fit",
+				"in_stock",
+				"available",
+				"quantity",
+				"picked",
+				"recommended",
+				"messages",
+				"card"
+			],
+			"properties": {
+				"id": {
+					"description": "The part's ID: a product's or a variation's.",
+					"type": "integer",
+					"minimum": 1
+				},
+				"brand": {
+					"description": "The part's brand, or an empty string.",
+					"type": "string"
+				},
+				"fit": {
+					"description": "How the part fits the picks before it: the worst of its messages.",
+					"type": "string",
+					"enum": [ "fits", "warn", "block" ]
+				},
+				"in_stock": {
+					"description": "Whether the shop has the part.",
+					"type": "boolean"
+				},
+				"available": {
+					"description": "Whether the shop has as many as a build takes.",
+					"type": "boolean"
+				},
+				"quantity": {
+					"description": "How many of the part a build takes, or null when the part gives no set size.",
+					"type": [ "integer", "null" ]
+				},
+				"picked": {
+					"description": "Whether it is the step's pick.",
+					"type": "boolean"
+				},
+				"recommended": {
+					"description": "Whether it is the part the step starts on.",
+					"type": "boolean"
+				},
+				"messages": {
+					"description": "What the rules found of it, notes included.",
+					"type": "array",
+					"items": {
+						"$ref": "#/definitions/message"
+					}
+				},
+				"card": {
+					"description": "What its card shows, or null when the product has gone since the index read it.",
+					"oneOf": [
+						{
+							"$ref": "#/definitions/card"
+						},
+						{
+							"type": "null"
+						}
+					]
+				}
+			}
+		},
+		"problem": {
+			"description": "A pick not taken, or something that keeps the build from the cart.",
+			"type": "object",
+			"additionalProperties": false,
+			"required": [ "code", "slot", "part", "message", "messages" ],
+			"properties": {
+				"code": {
+					"description": "The problem's code, one of the problem codes in docs/HOOKS.md.",
+					"type": "string",
+					"enum": [
+						"slot_unknown",
+						"slot_empty",
+						"part_not_in_slot",
+						"part_sold_out",
+						"part_short",
+						"part_blocked"
+					]
+				},
+				"slot": {
+					"description": "The slot's key, as sent where the kit has no such slot.",
+					"type": "string"
+				},
+				"part": {
+					"description": "The part's ID, or null where there is none to name.",
+					"type": [ "integer", "null" ]
+				},
+				"message": {
+					"description": "The problem as a sentence, in the language of the answer.",
+					"type": "string"
+				},
+				"messages": {
+					"description": "For a part the rules block, what they found.",
+					"type": "array",
+					"items": {
+						"$ref": "#/definitions/message"
+					}
+				}
+			}
+		}
+	}
+}

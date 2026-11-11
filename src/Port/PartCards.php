@@ -29,7 +29,7 @@ interface PartCards {
 	 *
 	 * @param list<int> $ids Parts' IDs.
 	 * @return array<int, array{name: string, url: string, price: string, stock: string, stock_class: string, image: array{src: string, width: int, height: int, srcset: string, sizes: string}|null}>
-	 *         `name` is plain text; `price` is the price of one as the shop formats it, in HTML; `stock` is the shop's own words for the
+	 *         `name` is plain text; `price` is the price of one as the shop formats it, in plain text; `stock` is the shop's own words for the
 	 *         part's availability, empty where the shop says nothing of a part in stock.
 	 */
 	public function cards( array $ids ): array;

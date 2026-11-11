@@ -51,6 +51,13 @@ final class WooPartCardsTest extends IntegrationTestCase {
 	}
 
 	/**
+	 * An amount as the shop writes it, in plain text.
+	 */
+	private static function price( float $amount ): string {
+		return html_entity_decode( wp_strip_all_tags( wc_price( $amount ) ), ENT_QUOTES, 'UTF-8' );
+	}
+
+	/**
 	 * A photo in the media library.
 	 */
 	private static function photo(): int {
@@ -87,7 +94,8 @@ final class WooPartCardsTest extends IntegrationTestCase {
 		self::assertSame( array( 'name', 'url', 'price', 'stock', 'stock_class', 'image' ), array_keys( $card ) );
 		self::assertSame( 'Rascals "8.25" & deck', $card['name'], 'plain text, where WordPress stores &amp;: the edge escapes it once' );
 		self::assertSame( get_permalink( $deck ), $card['url'] );
-		self::assertSame( wc_price( 44.5 ), $card['price'], 'the price of one as the shop shows it' );
+		self::assertSame( self::price( 44.5 ), $card['price'], 'the price of one as the shop shows it' );
+		self::assertSame( '$44.50', $card['price'], 'plain text: no markup, and the symbol itself' );
 		self::assertSame( '3 in stock', $card['stock'] );
 		self::assertSame( 'in-stock', $card['stock_class'] );
 		self::assertNotNull( $card['image'] );
@@ -100,7 +108,7 @@ final class WooPartCardsTest extends IntegrationTestCase {
 
 		self::assertNull( $cards[ $plain ]['image'], 'a part with no photo' );
 		self::assertSame( '', $cards[ $plain ]['stock'], 'the shop says nothing of a part it does not count' );
-		self::assertSame( wc_price( 50 ), $cards[ $plain ]['price'] );
+		self::assertSame( self::price( 50 ), $cards[ $plain ]['price'] );
 		self::assertSame( 'Out of stock', $cards[ $gone ]['stock'] );
 		self::assertSame( 'out-of-stock', $cards[ $gone ]['stock_class'] );
 
@@ -129,7 +137,7 @@ final class WooPartCardsTest extends IntegrationTestCase {
 
 		$card = $this->cards()->cards( array( $id ) )[ $id ];
 		self::assertStringStartsWith( 'Team deck', $card['name'] );
-		self::assertSame( wc_price( 61 ), $card['price'] );
+		self::assertSame( self::price( 61 ), $card['price'] );
 		self::assertSame( wp_get_attachment_image_src( $photo, 'woocommerce_thumbnail' )[0], $card['image']['src'] ?? null, 'its parent\'s photo' );
 
 		// The parent is renamed: its variation's card is read again, by the hook and by the parent's last change.
@@ -141,10 +149,10 @@ final class WooPartCardsTest extends IntegrationTestCase {
 
 	public function test_a_card_is_kept_and_read_again_when_its_part_is_forgotten(): void {
 		$deck = self::product( 'Kept' );
-		self::assertSame( wc_price( 50 ), $this->cards()->cards( array( $deck ) )[ $deck ]['price'] );
+		self::assertSame( self::price( 50 ), $this->cards()->cards( array( $deck ) )[ $deck ]['price'] );
 
 		self::quietly( $deck, '75' );
-		self::assertSame( wc_price( 50 ), $this->cards()->cards( array( $deck ) )[ $deck ]['price'], 'kept: the product is not read a second time' );
+		self::assertSame( self::price( 50 ), $this->cards()->cards( array( $deck ) )[ $deck ]['price'], 'kept: the product is not read a second time' );
 		$entry = wp_cache_get( 'card_' . $deck, Options::CACHE_GROUP );
 		self::assertIsArray( $entry );
 		self::assertSame( array( 'stamp', 'cards' ), array_keys( $entry ) );
@@ -152,7 +160,7 @@ final class WooPartCardsTest extends IntegrationTestCase {
 		self::assertSame( wp_json_encode( $entry ), wp_json_encode( json_decode( (string) wp_json_encode( $entry ), true ) ), 'scalars and arrays of them alone' );
 
 		$this->cards()->forget( $deck, 0, -1 );
-		self::assertSame( wc_price( 75 ), $this->cards()->cards( array( $deck ) )[ $deck ]['price'] );
+		self::assertSame( self::price( 75 ), $this->cards()->cards( array( $deck ) )[ $deck ]['price'] );
 		$this->cards()->forget();
 	}
 
@@ -164,7 +172,7 @@ final class WooPartCardsTest extends IntegrationTestCase {
 		// Saved a minute later by something that fires none of WooCommerce's hooks.
 		$wpdb->update( $wpdb->posts, array( 'post_modified_gmt' => gmdate( 'Y-m-d H:i:s', time() + 60 ) ), array( 'ID' => $deck ) );
 		clean_post_cache( $deck );
-		self::assertSame( wc_price( 75 ), $this->cards()->cards( array( $deck ) )[ $deck ]['price'] );
+		self::assertSame( self::price( 75 ), $this->cards()->cards( array( $deck ) )[ $deck ]['price'] );
 	}
 
 	public function test_each_thing_that_moves_a_price_or_stock_forgets_the_card(): void {
@@ -183,15 +191,15 @@ final class WooPartCardsTest extends IntegrationTestCase {
 		$product = wc_get_product( $deck );
 		$product->set_regular_price( '60' );
 		$product->save();
-		self::assertSame( wc_price( 60 ), $price(), 'woocommerce_update_product' );
+		self::assertSame( self::price( 60 ), $price(), 'woocommerce_update_product' );
 
 		// A sale starts and ends on schedule: each is told with the IDs, after the prices are written.
 		foreach ( array( 'wc_after_products_starting_sales' => '40', 'wc_after_products_ending_sales' => '60' ) as $hook => $now ) {
 			$price();
 			self::quietly( $deck, $now );
-			self::assertNotSame( wc_price( (float) $now ), $price(), 'kept until the hook' );
+			self::assertNotSame( self::price( (float) $now ), $price(), 'kept until the hook' );
 			do_action( $hook, array( $deck ) );
-			self::assertSame( wc_price( (float) $now ), $price(), $hook );
+			self::assertSame( self::price( (float) $now ), $price(), $hook );
 		}
 
 		// The stock status alone.
@@ -256,10 +264,10 @@ final class WooPartCardsTest extends IntegrationTestCase {
 
 		$at( 'CA', 'ON', 'K1A 0B1' );
 		$ontario = $this->cards()->cards( array( $deck ) )[ $deck ]['price'];
-		self::assertSame( wc_price( 56.5 ), $ontario );
+		self::assertSame( self::price( 56.5 ), $ontario );
 		remove_all_filters( 'woocommerce_customer_taxable_address' );
 		$at( 'CA', 'AB', 'T5J 0N3' );
-		self::assertSame( wc_price( 50 ), $this->cards()->cards( array( $deck ) )[ $deck ]['price'], 'no rate in Alberta: a card of its own' );
+		self::assertSame( self::price( 50 ), $this->cards()->cards( array( $deck ) )[ $deck ]['price'], 'no rate in Alberta: a card of its own' );
 
 		$kept = (string) wp_json_encode( wp_cache_get( 'card_' . $deck, Options::CACHE_GROUP ) );
 		foreach ( array( 'K1A', 'T5J', 'Springfield' ) as $address ) {

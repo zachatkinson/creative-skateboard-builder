@@ -70,6 +70,17 @@ final class InMemoryKits implements Kits {
 	public array $found = array();
 
 	/**
+	 * The kits a visitor may not see.
+	 *
+	 * @var list<int>
+	 */
+	public array $hidden = array();
+
+	public function isPublic( int $kit ): bool {
+		return isset( $this->kits[ $kit ] ) && ! in_array( $kit, $this->hidden, true );
+	}
+
+	/**
 	 * The sources parts were asked for, each time, by their categories.
 	 *
 	 * @var list<string>

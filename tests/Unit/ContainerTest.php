@@ -118,7 +118,7 @@ final class ContainerTest extends TestCase {
 			'Admin'      => array( 'Admin\\SettingsHooks', 'Admin\\PartSpecsHooks', 'Admin\\BuildTabHooks', 'Admin\\BuilderHooks', 'Health\\SiteHealth' ),
 			'Cli'        => array( 'Hooks\\CliHooks', 'Health\\SiteHealth' ),
 			'Cron'       => array( 'Health\\SiteHealth' ),
-			'Rest'       => array( 'Health\\SiteHealth' ),
+			'Rest'       => array( 'Health\\SiteHealth', 'Rest\\StateRoute' ),
 			'Storefront' => array(),
 		);
 		self::assertSame( array_column( Scope::cases(), 'name' ), array_keys( $scopes ), 'every scope' );
