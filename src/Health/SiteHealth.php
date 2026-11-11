@@ -13,11 +13,13 @@ use Closure;
 use CreativeBranding\SkateboardBuilder\Admin\CheckScreen;
 use CreativeBranding\SkateboardBuilder\Admin\ImportScreen;
 use CreativeBranding\SkateboardBuilder\Admin\Labels;
+use CreativeBranding\SkateboardBuilder\Domain\Kit\BuildTerms;
 use CreativeBranding\SkateboardBuilder\Hookable;
 use CreativeBranding\SkateboardBuilder\Port\MigrationStore;
 use CreativeBranding\SkateboardBuilder\Port\ShopSettings;
 use CreativeBranding\SkateboardBuilder\Service\CatalogueCheck;
 use CreativeBranding\SkateboardBuilder\Service\Health;
+use CreativeBranding\SkateboardBuilder\Support\Cast;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -221,6 +223,8 @@ final class SiteHealth implements Hookable {
 		foreach ( $settings->sourceOrder()->origins as $origin ) {
 			$order[] = Labels::source( $origin );
 		}
+		$terms                 = $settings->terms();
+		$written               = $terms->toArray();
 		$index                 = ( $this->health )()->index();
 		$jobs                  = ( $this->health )()->jobs();
 		$info[ self::SECTION ] = array(
@@ -242,6 +246,30 @@ final class SiteHealth implements Hookable {
 				'mapping'    => array(
 					'label' => __( 'Attributes mapped to specs', 'creative-skateboard-builder' ),
 					'value' => count( $settings->attributeMapping() ),
+				),
+				'discount'   => array(
+					'label' => __( 'Build discount (%)', 'creative-skateboard-builder' ),
+					'value' => Cast::str( $written[ BuildTerms::DISCOUNT ] ),
+				),
+				'coupons'    => array(
+					'label' => __( 'A fixed product discount coupon applies to', 'creative-skateboard-builder' ),
+					'value' => BuildTerms::ON_PARTS === $terms->fixedCoupons ? __( 'The kit and every part', 'creative-skateboard-builder' ) : __( 'The kit alone', 'creative-skateboard-builder' ),
+					'debug' => $terms->fixedCoupons,
+				),
+				'rate'       => array(
+					'label' => __( 'Requests a minute from one address', 'creative-skateboard-builder' ),
+					'value' => $terms->rateLimit,
+				),
+				// A header's name, never an address.
+				'proxy'      => array(
+					'label' => __( 'Trusted proxy header', 'creative-skateboard-builder' ),
+					'value' => '' === $terms->proxyHeader ? __( 'None', 'creative-skateboard-builder' ) : $terms->proxyHeader,
+					'debug' => $terms->proxyHeader,
+				),
+				'assembly'   => array(
+					'label' => __( 'A new kit starts with assembly chosen', 'creative-skateboard-builder' ),
+					'value' => true === ( $terms->assembly['default_on'] ?? false ) ? __( 'Yes', 'creative-skateboard-builder' ) : __( 'No', 'creative-skateboard-builder' ),
+					'debug' => true === ( $terms->assembly['default_on'] ?? false ),
 				),
 				'index'      => array(
 					'label' => __( 'Specs index', 'creative-skateboard-builder' ),

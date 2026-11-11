@@ -9,7 +9,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-11-11T22:17:37+00:00\n"
+"POT-Creation-Date: 2026-11-11T23:22:57+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: creative-skateboard-builder\n"
@@ -17,7 +17,7 @@ msgstr ""
 #. Plugin Name of the plugin
 #: creative-skateboard-builder.php
 #: src/Abilities/CatalogueCheckAbility.php:65
-#: src/Health/SiteHealth.php:227
+#: src/Health/SiteHealth.php:231
 msgid "Creative Skateboard Builder"
 msgstr ""
 
@@ -46,27 +46,27 @@ msgid "Creative Skateboard Builder: run \"composer install\" before activating t
 msgstr ""
 
 #: src/Abilities/BuildAbility.php:106
-#: src/Rest/StateRoute.php:126
+#: src/Rest/StateRoute.php:128
 msgid "The kit product's ID."
 msgstr ""
 
 #: src/Abilities/BuildAbility.php:110
-#: src/Rest/StateRoute.php:131
+#: src/Rest/StateRoute.php:133
 msgid "The picks: each of the kit's slot keys to a part's ID."
 msgstr ""
 
 #: src/Abilities/BuildAbility.php:119
-#: src/Rest/StateRoute.php:139
+#: src/Rest/StateRoute.php:141
 msgid "Whether the shop assembles the build. Left out, the kit's own default."
 msgstr ""
 
 #: src/Abilities/BuildAbility.php:138
-#: src/Rest/StateRoute.php:201
+#: src/Rest/StateRoute.php:203
 msgid "There is no such kit."
 msgstr ""
 
 #: src/Abilities/BuildAbility.php:145
-#: src/Rest/StateRoute.php:223
+#: src/Rest/StateRoute.php:227
 msgid "This build cannot be priced in the shop's currency settings."
 msgstr ""
 
@@ -300,6 +300,7 @@ msgstr ""
 #: src/Admin/BuildTab.php:476
 #: src/Admin/BuildTab.php:655
 #: src/Admin/PartSpecsPanel.php:417
+#: src/Health/SiteHealth.php:266
 msgid "None"
 msgstr ""
 
@@ -852,12 +853,14 @@ msgstr ""
 
 #: src/Admin/Labels.php:170
 #: src/Admin/PartSpecsPanel.php:331
+#: src/Health/SiteHealth.php:271
 #: src/Order/OrderHooks.php:221
 msgid "Yes"
 msgstr ""
 
 #: src/Admin/Labels.php:170
 #: src/Admin/PartSpecsPanel.php:332
+#: src/Health/SiteHealth.php:271
 #: src/Order/OrderHooks.php:221
 msgid "No"
 msgstr ""
@@ -1292,6 +1295,7 @@ msgid "What the assembly settings of a new kit start from. A kit that is already
 msgstr ""
 
 #: src/Admin/SettingsPage.php:201
+#: src/Health/SiteHealth.php:251
 msgid "Build discount (%)"
 msgstr ""
 
@@ -1300,6 +1304,7 @@ msgid "A percentage taken off each part of a build. 0 for none. Below 100, with 
 msgstr ""
 
 #: src/Admin/SettingsPage.php:209
+#: src/Health/SiteHealth.php:255
 msgid "A fixed product discount coupon applies to"
 msgstr ""
 
@@ -1308,14 +1313,17 @@ msgid "A coupon that takes a fixed amount off a product, where the kit is one of
 msgstr ""
 
 #: src/Admin/SettingsPage.php:214
+#: src/Health/SiteHealth.php:256
 msgid "The kit alone"
 msgstr ""
 
 #: src/Admin/SettingsPage.php:215
+#: src/Health/SiteHealth.php:256
 msgid "The kit and every part"
 msgstr ""
 
 #: src/Admin/SettingsPage.php:220
+#: src/Health/SiteHealth.php:260
 msgid "Requests a minute from one address"
 msgstr ""
 
@@ -1324,6 +1332,7 @@ msgid "A whole number from 10 to 6000. An address that asks more often is told t
 msgstr ""
 
 #: src/Admin/SettingsPage.php:229
+#: src/Health/SiteHealth.php:265
 msgid "Trusted proxy header"
 msgstr ""
 
@@ -1876,114 +1885,114 @@ msgstr ""
 msgid "%s: the part chosen does not fit the rest of the build."
 msgstr ""
 
-#: src/Health/SiteHealth.php:106
+#: src/Health/SiteHealth.php:108
 msgid "The skateboard builder's specs index"
 msgstr ""
 
-#: src/Health/SiteHealth.php:110
+#: src/Health/SiteHealth.php:112
 msgid "The skateboard builder's background jobs"
 msgstr ""
 
-#: src/Health/SiteHealth.php:116
+#: src/Health/SiteHealth.php:118
 msgid "The skateboard builder's Catalogue check"
 msgstr ""
 
-#: src/Health/SiteHealth.php:135
-#: src/Health/SiteHealth.php:183
-#: src/Health/SiteHealth.php:204
+#: src/Health/SiteHealth.php:137
+#: src/Health/SiteHealth.php:185
+#: src/Health/SiteHealth.php:206
 msgid "Open the Catalogue check"
 msgstr ""
 
-#: src/Health/SiteHealth.php:138
+#: src/Health/SiteHealth.php:140
 msgid "The skateboard builder's specs index was not rebuilt"
 msgstr ""
 
-#: src/Health/SiteHealth.php:139
+#: src/Health/SiteHealth.php:141
 msgid "Reading every part again stopped after five failures, so some parts are still indexed with what they held before. Start it again with \"Read every part again\" on the Catalogue check. WooCommerce > Status > Logs has the reason, under creative-skateboard-builder."
 msgstr ""
 
-#: src/Health/SiteHealth.php:142
+#: src/Health/SiteHealth.php:144
 msgid "The skateboard builder's specs index stopped part way"
 msgstr ""
 
 #. translators: %s: a number of parts.
-#: src/Health/SiteHealth.php:144
+#: src/Health/SiteHealth.php:146
 #, php-format
 msgid "Reading every part again got as far as %s parts and has no job waiting to go on. Start it again with \"Read every part again\" on the Catalogue check."
 msgstr ""
 
-#: src/Health/SiteHealth.php:147
+#: src/Health/SiteHealth.php:149
 msgid "The skateboard builder's specs index is being rebuilt"
 msgstr ""
 
 #. translators: %s: a number of parts.
-#: src/Health/SiteHealth.php:149
+#: src/Health/SiteHealth.php:151
 #, php-format
 msgid "Every part is being read again in the background, 100 at a time: %s so far. Parts keep what they held until they are reached."
 msgstr ""
 
-#: src/Health/SiteHealth.php:153
+#: src/Health/SiteHealth.php:155
 msgid "The skateboard builder's specs index is up to date"
 msgstr ""
 
-#: src/Health/SiteHealth.php:154
+#: src/Health/SiteHealth.php:156
 msgid "The index holds each part's specs, and a part is read again in the background whenever it is saved."
 msgstr ""
 
-#: src/Health/SiteHealth.php:169
+#: src/Health/SiteHealth.php:171
 msgid "Open Import and export"
 msgstr ""
 
-#: src/Health/SiteHealth.php:171
+#: src/Health/SiteHealth.php:173
 msgid "The skateboard builder's last specs import stopped before its end"
 msgstr ""
 
-#: src/Health/SiteHealth.php:171
+#: src/Health/SiteHealth.php:173
 msgid "A batch of the import failed four times, so the parts after it were not written. Import the file again: a part already written takes the same values. WooCommerce > Status > Logs has the reason, under creative-skateboard-builder."
 msgstr ""
 
-#: src/Health/SiteHealth.php:174
+#: src/Health/SiteHealth.php:176
 msgid "The skateboard builder's specs import has no job left to run it"
 msgstr ""
 
-#: src/Health/SiteHealth.php:174
+#: src/Health/SiteHealth.php:176
 msgid "An import is part way through and nothing is queued to go on, as happens when the plugin is switched off while one runs. Opening Import and export starts it again from where it stopped."
 msgstr ""
 
-#: src/Health/SiteHealth.php:177
+#: src/Health/SiteHealth.php:179
 msgid "No background job of the skateboard builder has failed"
 msgstr ""
 
-#: src/Health/SiteHealth.php:177
+#: src/Health/SiteHealth.php:179
 msgid "The builder indexes parts and writes imports in the background. A job that fails is tried again, and shows here if it still fails."
 msgstr ""
 
 #. translators: %s: a number of jobs.
-#: src/Health/SiteHealth.php:180
+#: src/Health/SiteHealth.php:182
 #, php-format
 msgid "%s background job of the skateboard builder has failed"
 msgid_plural "%s background jobs of the skateboard builder have failed"
 msgstr[0] ""
 msgstr[1] ""
 
-#: src/Health/SiteHealth.php:181
+#: src/Health/SiteHealth.php:183
 msgid "A part whose job failed may be indexed with what it held before. The Catalogue check lists what needs fixing, and WooCommerce > Status > Logs has each failure's reason, under creative-skateboard-builder."
 msgstr ""
 
-#: src/Health/SiteHealth.php:182
+#: src/Health/SiteHealth.php:184
 msgid "See the failed jobs"
 msgstr ""
 
-#: src/Health/SiteHealth.php:198
+#: src/Health/SiteHealth.php:200
 msgid "The skateboard builder's Catalogue check found nothing to fix"
 msgstr ""
 
-#: src/Health/SiteHealth.php:198
+#: src/Health/SiteHealth.php:200
 msgid "The check reads every part and lists sources that disagree and values that cannot be read. It found none."
 msgstr ""
 
 #. translators: %s: a number of findings.
-#: src/Health/SiteHealth.php:201
+#: src/Health/SiteHealth.php:203
 #, php-format
 msgid "The skateboard builder's Catalogue check found %s thing to fix"
 msgid_plural "The skateboard builder's Catalogue check found %s things to fix"
@@ -1991,40 +2000,44 @@ msgstr[0] ""
 msgstr[1] ""
 
 #. translators: %s: a number of parts.
-#: src/Health/SiteHealth.php:203
+#: src/Health/SiteHealth.php:205
 #, php-format
 msgid "What it found is in %s part. Until it is fixed, a part may be left out of the builder or offered by the wrong figure. The check lists each finding with a link to where it is fixed."
 msgid_plural "What it found is in %s parts. Until it is fixed, a part may be left out of the builder or offered by the wrong figure. The check lists each finding with a link to where it is fixed."
 msgstr[0] ""
 msgstr[1] ""
 
-#: src/Health/SiteHealth.php:230
+#: src/Health/SiteHealth.php:234
 msgid "Version"
 msgstr ""
 
-#: src/Health/SiteHealth.php:234
+#: src/Health/SiteHealth.php:238
 msgid "Database version"
 msgstr ""
 
-#: src/Health/SiteHealth.php:238
+#: src/Health/SiteHealth.php:242
 #: templates/admin/settings-order.php:20
 #: templates/admin/settings-order.php:23
 msgid "Which source wins"
 msgstr ""
 
-#: src/Health/SiteHealth.php:243
+#: src/Health/SiteHealth.php:247
 msgid "Attributes mapped to specs"
 msgstr ""
 
-#: src/Health/SiteHealth.php:247
-msgid "Specs index"
-msgstr ""
-
-#: src/Health/SiteHealth.php:252
-msgid "Failed background jobs"
+#: src/Health/SiteHealth.php:270
+msgid "A new kit starts with assembly chosen"
 msgstr ""
 
 #: src/Health/SiteHealth.php:275
+msgid "Specs index"
+msgstr ""
+
+#: src/Health/SiteHealth.php:280
+msgid "Failed background jobs"
+msgstr ""
+
+#: src/Health/SiteHealth.php:303
 msgid "Skateboard builder"
 msgstr ""
 
@@ -2042,19 +2055,19 @@ msgstr ""
 msgid "%1$s: %2$s × %3$d"
 msgstr ""
 
-#: src/Rest/StateRoute.php:132
+#: src/Rest/StateRoute.php:134
 msgid "The picks as they were before the last change, for the change list."
 msgstr ""
 
-#: src/Rest/StateRoute.php:134
+#: src/Rest/StateRoute.php:136
 msgid "The key of the slot whose options are listed."
 msgstr ""
 
-#: src/Rest/StateRoute.php:143
+#: src/Rest/StateRoute.php:145
 msgid "The language to answer in, when the site has it installed."
 msgstr ""
 
-#: src/Rest/StateRoute.php:173
+#: src/Rest/StateRoute.php:175
 msgid "Too many requests. Try again in a minute."
 msgstr ""
 
