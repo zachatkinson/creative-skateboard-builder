@@ -34,7 +34,7 @@ final class TablesTest extends TestCase {
 	}
 
 	public function test_the_tables_in_creation_order(): void {
-		self::assertSame( array( 'specs', 'builds' ), Tables::all() );
+		self::assertSame( array( 'specs', 'builds', 'parts' ), Tables::all() );
 	}
 
 	public function test_a_name_carries_the_site_prefix_then_the_plugin_prefix(): void {

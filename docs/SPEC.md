@@ -250,6 +250,8 @@ Two tables, product meta on the kit and the parts, and keys on cart and order it
 
 **Saved builds**, table `{prefix}cbuild_builds`: id, a UUID, the customer's user id, the kit, the picks as JSON, assembly on or off, a name the customer gives it, created and updated times. Indexed on the user. Shared links aren't stored: the picks travel in the URL as ids and are validated again on every use.
 
+**Parts as a build reads them**, table `{prefix}cbuild_parts` (added in milestone 4, D-116): one row per product or variation and price context, with its parent, whether it may be sold, its brand, its price in minor units, whether it is in stock and how many, a variation's attribute values and its specs as JSON, and when it was read as UTC seconds. Keyed on the part and the context, indexed on the parent and the context. Derived: a row is deleted when its part moves and read from WooCommerce again by the next request that needs it, and no row is believed for more than two hours.
+
 **Cart items.** The parent carries `cbuild` (the build's UUID, the kit, the picks, assembly) and `cbuild_children` (the child cart keys). Each child carries `cbuild_parent` (the parent's cart key) and `cbuild_slot`. The UUID keeps two identical builds from merging into one line, which the Store API would otherwise do.
 
 **Order items.** Hidden keys: `_cbuild_id`, `_cbuild_role` (kit or part), `_cbuild_parent`, `_cbuild_children`, `_cbuild_slot`, and on the parent `_cbuild_snapshot`, the picks with each part's specs at the time of purchase. Visible on the parent, for the customer and the workshop: Assembly (yes or no) and the build in a line.

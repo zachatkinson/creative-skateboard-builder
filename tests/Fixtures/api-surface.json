@@ -24,7 +24,6 @@
         "cbuild_import_state",
         "cbuild_migration_lock",
         "cbuild_migrations",
-        "cbuild_parts_mark",
         "cbuild_reindex_owed",
         "cbuild_reindex_state",
         "cbuild_settings"
@@ -34,6 +33,7 @@
     ],
     "tables": [
         "cbuild_builds",
+        "cbuild_parts",
         "cbuild_specs"
     ],
     "scheduled_actions": [

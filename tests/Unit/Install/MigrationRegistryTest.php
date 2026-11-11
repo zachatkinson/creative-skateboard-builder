@@ -43,8 +43,9 @@ final class MigrationRegistryTest extends TestCase {
 	}
 
 	public function test_the_shipped_list_is_in_the_order_it_shipped(): void {
-		self::assertSame( array( SchemaMigration::class, NoopMigration::class, \CreativeBranding\SkateboardBuilder\Install\Migrations\SpecTablesMigration::class ), MigrationRegistry::CLASSES );
-		self::assertSame( '2', MigrationRegistry::VERSION );
+		self::assertSame( array( SchemaMigration::class, NoopMigration::class, \CreativeBranding\SkateboardBuilder\Install\Migrations\SpecTablesMigration::class, \CreativeBranding\SkateboardBuilder\Install\Migrations\PartsTableMigration::class ), MigrationRegistry::CLASSES );
+		self::assertSame( '3', MigrationRegistry::VERSION );
+		self::assertSame( 'schema_2', ( new \CreativeBranding\SkateboardBuilder\Install\Migrations\PartsTableMigration() )->key() );
 	}
 
 	public function test_the_noop_migration_does_nothing_and_is_done(): void {
@@ -59,6 +60,7 @@ final class MigrationRegistryTest extends TestCase {
 		$versionAfter = array(
 			2 => '1',
 			3 => '2',
+			4 => '3',
 		);
 		self::assertArrayHasKey( count( MigrationRegistry::CLASSES ), $versionAfter, 'a migration was added: raise MigrationRegistry::VERSION and add the pair here' );
 		self::assertSame( $versionAfter[ count( MigrationRegistry::CLASSES ) ], MigrationRegistry::VERSION );

@@ -21,7 +21,6 @@ use CreativeBranding\SkateboardBuilder\Domain\Rule\MessageCode;
 use CreativeBranding\SkateboardBuilder\Domain\Rule\RuleId;
 use CreativeBranding\SkateboardBuilder\Domain\Rule\Severity;
 use CreativeBranding\SkateboardBuilder\Service\BuildState;
-use CreativeBranding\SkateboardBuilder\Service\PartRows;
 use CreativeBranding\SkateboardBuilder\Service\State;
 use CreativeBranding\SkateboardBuilder\Service\StateStep;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Domain\Builds;
@@ -54,42 +53,11 @@ final class BuildStateTest extends TestCase {
 		$this->kits->add( self::KIT, self::kit(), self::shop() );
 	}
 
-	// D-116: reading a slot's parts loads every product its sources find, so they are read once and kept.
-	public function test_each_slots_parts_are_read_from_the_shop_once_and_kept(): void {
-		$slots = count( self::kit()->slots->keys() );
-		$first = $this->of( array( 'deck' => 101 ) );
-		self::assertSame( $slots, $this->kits->found_parts );
-		self::assertCount( $slots, $this->kits->kept );
-		self::assertSame( PartRows::of( self::shop()['trucks'] ), $this->kits->kept[ self::KIT . '|trucks' ] );
-		$again = $this->of( array( 'deck' => 101 ) );
-		self::assertSame( $slots, $this->kits->found_parts, 'the second answer loads no product' );
-		self::assertEquals( $first, $again, 'and is the same answer' );
-	}
-
-	public function test_what_is_kept_is_what_the_answer_is_made_of(): void {
-		$this->of();
-		$shop = self::shop();
-		$this->kits->kept[ self::KIT . '|deck' ] = PartRows::of( array( self::priced( $shop['deck'][0], 12345 ) ) );
-		$state = $this->of();
-		self::assertSame( array( $shop['deck'][0]->id ), self::ids( array( ...self::step( $state, 'deck' )->options->offered, ...self::step( $state, 'deck' )->options->hidden ) ) );
-		self::assertSame( 12345, self::step( $state, 'deck' )->options->offered[0]->part->price );
-	}
-
-	public function test_a_kept_list_that_does_not_read_is_read_from_the_shop_again_and_kept_over(): void {
-		$first = $this->of();
-		$asked = $this->kits->found_parts;
-		$this->kits->kept[ self::KIT . '|trucks' ] = array( array( 'not', 'a', 'part' ) );
-		self::assertEquals( $first, $this->of() );
-		self::assertSame( $asked + 1, $this->kits->found_parts, 'that slot alone' );
-		self::assertSame( PartRows::of( self::shop()['trucks'] ), $this->kits->kept[ self::KIT . '|trucks' ] );
-	}
-
-	public function test_forgotten_lists_are_read_again(): void {
-		$this->of();
-		$asked = $this->kits->found_parts;
-		$this->kits->forget();
-		$this->of();
-		self::assertSame( 2 * $asked, $this->kits->found_parts );
+	// D-116: reading a slot's parts from the shop loads every product, so a build's state asks for what is kept.
+	public function test_each_slots_parts_come_from_what_is_kept_of_them_once_a_slot(): void {
+		$this->of( array( 'deck' => 101 ) );
+		self::assertSame( count( self::kit()->slots->keys() ), $this->kits->offered );
+		self::assertSame( array(), $this->kits->asked, 'and never by reading the shop' );
 	}
 
 	public function test_one_kit_is_read_and_not_the_shops_whole_list(): void {

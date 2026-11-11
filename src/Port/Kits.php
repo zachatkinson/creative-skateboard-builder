@@ -11,6 +11,7 @@ namespace CreativeBranding\SkateboardBuilder\Port;
 
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Kit;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Part;
+use CreativeBranding\SkateboardBuilder\Domain\Kit\Slot;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\SlotSources;
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -64,37 +65,6 @@ interface Kits {
 	public function candidates( int $kit, string $slot ): array;
 
 	/**
-	 * What was last kept of a slot's parts with keep(), as it was given, or null: nothing is kept, an hour has
-	 * passed, something a part's place in a slot depends on moved since (forget()), or the visitor is shown other
-	 * prices than the one it was kept for. What comes back is what a cache handed over, to be read as such.
-	 *
-	 * @since 0.4.0
-	 *
-	 * @param int    $kit  The kit product's ID.
-	 * @param string $slot The slot's key.
-	 */
-	public function kept( int $kit, string $slot ): mixed;
-
-	/**
-	 * Keep a slot's parts for an hour at most, for the prices this visitor is shown, as of the moment kept() was
-	 * asked: when something moved since, what is kept is never read, since it may be older than the move.
-	 *
-	 * @since 0.4.0
-	 *
-	 * @param int                $kit   The kit product's ID.
-	 * @param string             $slot  The slot's key.
-	 * @param list<array<mixed>> $parts The parts, as scalars and arrays of them.
-	 */
-	public function keep( int $kit, string $slot, array $parts ): void;
-
-	/**
-	 * Forget every slot's kept parts: a product, a price, a stock count, a term or a spec moved.
-	 *
-	 * @since 0.4.0
-	 */
-	public function forget(): void;
-
-	/**
 	 * The parts these sources find, as candidates() finds a stored slot's: for sources that are not stored yet, as
 	 * when a kit is being saved.
 	 *
@@ -104,6 +74,37 @@ interface Kits {
 	 * @return list<Part>
 	 */
 	public function parts( SlotSources $sources ): array;
+
+	/**
+	 * The parts that can fill one of a kit's slots, as candidates() finds them, from what is kept of each part: a product is read from
+	 * the shop only when nothing is kept of it, so a request with a budget can ask (D-116). What is kept is for the
+	 * prices this visitor is shown, and is at most two hours old where the shop was not told of a change.
+	 *
+	 * @since 0.4.0
+	 *
+	 * @param int  $kit  The kit product's ID.
+	 * @param Slot $slot One of its slots, as kit() gave it: its sources are not read again.
+	 * @return list<Part>
+	 */
+	public function offered( int $kit, Slot $slot ): array;
+
+	/**
+	 * Forget what is kept of these products and variations, or of every one when none is named.
+	 *
+	 * @since 0.4.0
+	 *
+	 * @param int ...$ids Products' and variations' IDs.
+	 */
+	public function forget( int ...$ids ): void;
+
+	/**
+	 * A term of this taxonomy was edited or deleted: forget what is kept that it is written into.
+	 *
+	 * @since 0.4.0
+	 *
+	 * @param string $taxonomy The taxonomy.
+	 */
+	public function termMoved( string $taxonomy ): void;
 
 	/**
 	 * The keys of the slots, in these kits, whose sources take a product or variation, whether or not a shopper

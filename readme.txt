@@ -31,7 +31,7 @@ Nothing about the shop or its shoppers. The plugin makes two kinds of request, b
 
 = What does deleting the plugin remove? =
 
-Everything the plugin made: its two tables, its options and transients, and its scheduled actions. Products and orders are never touched, and the build details on past orders stay, because they are part of the shop's records.
+Everything the plugin made: its three tables, its options and transients, and its scheduled actions. Products and orders are never touched, and the build details on past orders stay, because they are part of the shop's records.
 
 = Does it work on a multisite network? =
 

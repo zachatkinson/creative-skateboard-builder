@@ -55,12 +55,13 @@ Per site. All three are removed on uninstall.
 
 ### Tables
 
-Per site, each named with the site's table prefix first (`wp_cbuild_specs` on a default install). The columns are in the spec's Data model and in `Install\Schema`. Read them if you must; write them only through the plugin. Both are dropped on uninstall and when a network site is deleted.
+Per site, each named with the site's table prefix first (`wp_cbuild_specs` on a default install). The columns are in the spec's Data model and in `Install\Schema`. Read them if you must; write them only through the plugin. All are dropped on uninstall and when a network site is deleted.
 
 | Table | Since | What it holds |
 | --- | --- | --- |
 | `cbuild_specs` | 0.1.0 | One row per part and spec: the index the fit engine reads. Empty until milestone 3. |
 | `cbuild_builds` | 0.1.0 | Saved builds. Empty until milestone 8. |
+| `cbuild_parts` | 0.4.0 | What a build needs to know of each part, one row per product or variation and price context: whether it may be sold, its brand, price, stock, a variation's attribute values and its specs. Derived from the shop: a row is deleted when its part moves and read again when next asked for, so a row is never the place to change a part. To have rows read again, do `cbuild_parts_changed`. |
 
 ### Scheduled actions
 
@@ -254,7 +255,6 @@ In the option `cbuild_settings`. [SETTINGS.md](SETTINGS.md) has each key's defau
 | `cbuild_reindex_state` | 0.3.0 | Where the reindex is: its phase (`rows`, `catalogue`, `done` or `failed`), its place in that phase, how many parts it has indexed, when it started and finished in UTC seconds, whether it must pass once more, its failures in a row with the last error's message, and which request it is, counted from 1. Not autoloaded. Read it, never write it. |
 | `cbuild_reindex_owed` | 0.3.0 | Present, with the value `1`, while a reindex is owed: the plugin was activated on a site that had no queue, as when WooCommerce is missing. The first request that finds the queue asks for the reindex and removes the option. Autoloaded. Read it, never write it. |
 | `cbuild_import_state` | 0.3.0 | The specs import in hand: its status (`waiting`, `running`, `done` or `failed`), a token naming it, the column rows are matched by (`id` or `sku`), the shop's decimal separator when the file was read, where each column sits, whether its rows are held (`has_rows`, while it waits and runs), how many rows there were and how many are done, the parts changed, the rows that changed nothing, each row refused with its column, a code and what the cell held, its failures in a row, and while it waits the ID of the user who sent the file. Not autoloaded. Read it, never write it. |
-| `cbuild_parts_mark` | 0.4.0 | A random mark that every kept list of a slot's parts carries. The plugin writes a new one when a product, a price, a stock count, a term or a spec moves, and a list kept under another mark is read from the shop again. Not autoloaded. Nothing reads it but the plugin. |
 | `cbuild_import_rows` | 0.3.0 | The rows of the specs import in hand, kept apart so a batch does not write them again: the import's token, the rows read from the file, and the product each SKU matched when the file was read (for an import by SKU). Written once when a file is read, and removed when the import ends, is put away or is replaced. Not autoloaded. Read it, never write it. |
 
 ### Scheduled actions
@@ -424,7 +424,7 @@ The last three are for the owner's own words, which no translation file holds: a
 
 | Action | Since | Arguments | When a plugin does it |
 | --- | --- | --- | --- |
-| `cbuild_parts_changed` | 0.4.0 | None | Something the builder keeps of a part changed and WooCommerce was not told: the plugin's answer to `cbuild_part_available`, or a price it sets with no product saved. `do_action( 'cbuild_parts_changed' )` and the next request reads every slot's parts from the shop again. A product saved, a stock count set, a sale starting or ending and a term edited need no such word: the builder hears those itself. |
+| `cbuild_parts_changed` | 0.4.0 | `int[] $ids` (optional) | Something the builder keeps of a part changed and WooCommerce was not told: the plugin's answer to `cbuild_part_available`, or a price it sets with no product saved. `do_action( 'cbuild_parts_changed', array( 12, 34 ) )` and the next request reads those products, and their variations, from the shop again; with no IDs, every part. A product saved, a stock count set, a sale starting or ending and a term edited need no such word: the builder hears those itself. |
 
 ### Abilities
 

@@ -26,7 +26,7 @@ use WP_REST_Request;
  * run a persistent object cache.
  *
  * Cold is a request that starts with an empty object cache, as every request does on a site with no persistent
- * one; warm is a request that finds the cache as the last left it. Both find each slot's parts kept (D-116).
+ * one; warm is a request that finds the cache as the last left it. Both find a row kept of each part (D-116).
  */
 final class StateRouteBenchmarkTest extends IntegrationTestCase {
 
@@ -119,6 +119,7 @@ final class StateRouteBenchmarkTest extends IntegrationTestCase {
 		$_SERVER['REMOTE_ADDR'] = '203.0.113.7';
 		rest_get_server();
 		$this->service( StateRoute::class )->register();
+		$this->service( \CreativeBranding\SkateboardBuilder\Hooks\CardHooks::class )->register();
 		// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- WordPress's own, to build the routes.
 		do_action( 'rest_api_init', rest_get_server() );
 
@@ -184,12 +185,22 @@ final class StateRouteBenchmarkTest extends IntegrationTestCase {
 			self::assertLessThan( self::BUDGET, $p95, "The state route, {$run}." );
 		}
 
-		// Not held to the budget, and printed so that it is known (D-116): the one request after a product, a price,
-		// a stock count or a spec moves reads every slot's parts from the shop again. The next is within the budget.
+		// A part moves, as an order's stock does: its row alone is read again, inside the budget (D-116).
+		$times = array();
+		foreach ( array_slice( $ids['trucks'], 0, 20 ) as $truck ) {
+			wc_update_product_stock( $truck, 3, 'set' );
+			wp_cache_flush();
+			$times[] = $ask( $ids['deck'][0] )[0];
+		}
+		self::say( sprintf( 'state route, the first request after one part moves: p95 %.1f ms, slowest %.1f ms', self::p95( $times ), max( $times ) ) );
+		self::assertLessThan( self::BUDGET, self::p95( $times ), 'The state route, after one part moves.' );
+
+		// Not held to the budget, and printed so that it is known: the first request in a price context no one has
+		// asked in, or after a plugin says every part changed, reads every part from the shop.
 		$this->service( Kits::class )->forget();
 		wp_cache_flush();
 		[ $took, $asked ] = $ask( $ids['deck'][0] );
-		self::say( sprintf( 'state route, the first request after a part moves, 2,000 parts read again: %.1f ms, %d queries', $took, $asked ) );
+		self::say( sprintf( 'state route, with nothing kept, 2,000 parts read from the shop: %.1f ms, %d queries', $took, $asked ) );
 		wp_cache_flush();
 		self::assertLessThan( self::BUDGET, $ask( $ids['deck'][0] )[0], 'The request after it.' );
 		unset( $_SERVER['REMOTE_ADDR'] );

@@ -10,13 +10,16 @@ declare( strict_types=1 );
 namespace CreativeBranding\SkateboardBuilder\Adapter;
 
 use CreativeBranding\SkateboardBuilder\Domain\Kit\InvalidDocument;
-use CreativeBranding\SkateboardBuilder\Domain\Kit\InvalidPart;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Kit;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Part;
+use CreativeBranding\SkateboardBuilder\Domain\Kit\Slot;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\SlotSources;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\Specs;
+use CreativeBranding\SkateboardBuilder\Port\Clock;
 use CreativeBranding\SkateboardBuilder\Port\DocumentSchemas;
 use CreativeBranding\SkateboardBuilder\Port\Kits;
+use CreativeBranding\SkateboardBuilder\Port\PartFact;
+use CreativeBranding\SkateboardBuilder\Port\PartFacts;
 use CreativeBranding\SkateboardBuilder\Port\SpecIndex;
 use CreativeBranding\SkateboardBuilder\Support\Cast;
 use CreativeBranding\SkateboardBuilder\Support\Options;
@@ -62,13 +65,6 @@ final class WooKits implements Kits {
 	private const string BRAND = 'product_brand';
 
 	/**
-	 * The mark each kept list was read under, by its transient's name.
-	 *
-	 * @var array<string, string>
-	 */
-	private array $marks = array();
-
-	/**
 	 * Constructor.
 	 *
 	 * @since 0.4.0
@@ -76,8 +72,10 @@ final class WooKits implements Kits {
 	 * @param Products        $products Loads products in batches.
 	 * @param DocumentSchemas $schemas  The documents' schemas.
 	 * @param SpecIndex       $index    The parts' specs.
+	 * @param PartFacts       $facts    What is kept of each part.
+	 * @param Clock           $clock    The time.
 	 */
-	public function __construct( private Products $products, private DocumentSchemas $schemas, private SpecIndex $index ) {}
+	public function __construct( private Products $products, private DocumentSchemas $schemas, private SpecIndex $index, private PartFacts $facts, private Clock $clock ) {}
 
 	/**
 	 * Every kit whose documents read, by the kit product's ID.
@@ -150,65 +148,8 @@ final class WooKits implements Kits {
 	}
 
 	/**
-	 * What was last kept of a slot's parts, or null (D-116). A transient, so it is a row of the options table on a
-	 * site with no persistent object cache, and an entry of the cache on a site with one.
-	 *
-	 * @since 0.4.0
-	 *
-	 * @param int    $kit  The kit product's ID.
-	 * @param string $slot The slot's key.
-	 */
-	public function kept( int $kit, string $slot ): mixed {
-		$name                 = self::keptAs( $kit, $slot );
-		$mark                 = Cast::str( get_option( Options::PARTS_MARK, '' ) );
-		$this->marks[ $name ] = $mark;
-		$kept                 = get_transient( $name );
-		return is_array( $kept ) && ( $kept['mark'] ?? null ) === $mark ? ( $kept['parts'] ?? null ) : null;
-	}
-
-	/**
-	 * Keep a slot's parts under the mark kept() read, and never under the mark as it is now: when something moved
-	 * while the parts were being read, they are kept under a mark nothing is read by. One who never asked what was
-	 * kept keeps nothing.
-	 *
-	 * @since 0.4.0
-	 *
-	 * @param int                $kit   The kit product's ID.
-	 * @param string             $slot  The slot's key.
-	 * @param list<array<mixed>> $parts The parts, as scalars and arrays of them.
-	 */
-	public function keep( int $kit, string $slot, array $parts ): void {
-		$name = self::keptAs( $kit, $slot );
-		$mark = $this->marks[ $name ] ?? null;
-		if ( null === $mark ) {
-			return;
-		}
-		// phpcs:ignore WordPressVIPMinimum.Performance.LowExpiryCacheTime -- an hour, as a part's card (docs/STANDARDS.md).
-		set_transient( $name, compact( 'mark', 'parts' ), HOUR_IN_SECONDS );
-	}
-
-	/**
-	 * Forget every slot's kept parts, by changing the mark they were kept under. A new mark each time and never a
-	 * count, so two changes at once cannot come to the same one.
-	 *
-	 * @since 0.4.0
-	 */
-	public function forget(): void {
-		update_option( Options::PARTS_MARK, wp_generate_uuid4(), false );
-	}
-
-	/**
-	 * The transient a slot's parts are kept in, for the prices this visitor is shown.
-	 *
-	 * @param int    $kit  The kit product's ID.
-	 * @param string $slot The slot's key.
-	 */
-	private static function keptAs( int $kit, string $slot ): string {
-		return Options::TRANSIENT_PREFIX . 'parts_' . $kit . '_' . substr( md5( $slot . '|' . WooPartCards::context() ), 0, 16 );
-	}
-
-	/**
-	 * The parts these sources find.
+	 * The parts these sources find, read from the shop now: every product loaded. For the owner's own screens and
+	 * checks, which must show what is there.
 	 *
 	 * @since 0.4.0
 	 *
@@ -216,47 +157,184 @@ final class WooKits implements Kits {
 	 * @return list<Part>
 	 */
 	public function parts( SlotSources $sources ): array {
-		// What the sources find, and what they name: a named product is not narrowed.
-		$found  = $this->products->load( ...$this->found( $sources ) );
-		$named  = $this->products->load( ...$sources->products );
-		$chosen = array();
-		foreach ( array( $this->variationsOf( $found, $sources->attributes ), $this->variationsOf( $named, array() ) ) as $group ) {
-			foreach ( $group as $id => $part ) {
-				$chosen[ $id ] = $part;
-			}
-		}
-		$parents = $this->products->parentsOf( $chosen ) + $found + $named;
-		$chosen  = array_filter(
-			$chosen,
-			static fn( WC_Product $part ): bool => self::offered( $part, $part->is_type( 'variation' ) ? ( $parents[ $part->get_parent_id() ] ?? null ) : $part )
-		);
-		ksort( $chosen );
-		$chosen = array_slice( $chosen, 0, self::MAX_PARTS, true );
-		if ( array() === $chosen ) {
+		$found = $this->found( $sources );
+		return $this->chosen( $sources, $found, $this->shopSays( $this->clock->now()->getTimestamp(), ...$found, ...$sources->products ) );
+	}
+
+	/**
+	 * A slot's parts, from the parts table (D-116): a product is loaded only when the table holds
+	 * no row for it in this visitor's price context, or the row is past its hour. Which products the sources find
+	 * is asked of the shop each time, in a query that loads none.
+	 *
+	 * @since 0.4.0
+	 *
+	 * @param int  $kit  The kit product's ID.
+	 * @param Slot $slot One of its slots.
+	 * @return list<Part>
+	 */
+	public function offered( int $kit, Slot $slot ): array {
+		unset( $kit );
+		$sources = $slot->sources;
+		$found   = $this->found( $sources );
+		$ids     = array_values( array_unique( array( ...$found, ...$sources->products ) ) );
+		if ( array() === $ids ) {
 			return array();
 		}
+		$context = WooPartCards::context();
+		$now     = $this->clock->now()->getTimestamp();
+		$kept    = $this->facts->of( $context, ...$ids );
+		$missing = array();
+		foreach ( $ids as $id ) {
+			if ( ! isset( $kept[ $id ] ) || self::stale( $kept[ $id ], $now ) ) {
+				$missing[ $id ] = $id;
+			}
+		}
+		if ( array() !== $missing ) {
+			$read = $this->shopSays( $now, ...array_values( $missing ) );
+			$this->facts->replace( $context, array_values( $missing ), array_values( $read ) );
+			// What was kept of them and of their variations gives way to what was read.
+			$kept = array_filter( $kept, static fn( PartFact $fact ): bool => ! isset( $missing[ $fact->id ] ) && ! isset( $missing[ $fact->of ] ) ) + $read;
+		}
+		return $this->chosen( $sources, $found, $kept );
+	}
 
-		$specs  = $this->index->specsOf( ...array_keys( $chosen ) );
-		$owners = array();
-		foreach ( $chosen as $id => $part ) {
+	/**
+	 * How long a row is believed: an hour, and up to an hour more by the part's ID, so that rows read together do
+	 * not all go out of date together. What WooCommerce is told of is forgotten at once (`Hooks\CardHooks`); this
+	 * is for what it is not told of.
+	 *
+	 * @param PartFact $fact A row.
+	 * @param int      $now  The time, a UTC timestamp.
+	 */
+	private static function stale( PartFact $fact, int $now ): bool {
+		return $now - $fact->readAt >= HOUR_IN_SECONDS + ( $fact->id % 60 ) * MINUTE_IN_SECONDS;
+	}
+
+	/**
+	 * Forget what is kept of these products, or of every product when none is named.
+	 *
+	 * @since 0.4.0
+	 *
+	 * @param int ...$ids Products' and variations' IDs.
+	 */
+	public function forget( int ...$ids ): void {
+		if ( array() === $ids ) {
+			$this->facts->forgetAll();
+			return;
+		}
+		// A variation the table has not met yet still changes what its parent's row answers for.
+		foreach ( $ids as $id ) {
+			$parent = Cast::int( wp_get_post_parent_id( $id ) );
+			if ( $parent > 0 ) {
+				$ids[] = $parent;
+			}
+		}
+		$this->facts->forget( ...array_values( array_unique( $ids ) ) );
+	}
+
+	/**
+	 * A term was edited or deleted. A brand's slug is in each row and a variation's attribute values are too;
+	 * which products a category holds is asked of the shop each time, and needs nothing forgotten.
+	 *
+	 * @since 0.4.0
+	 *
+	 * @param string $taxonomy The term's taxonomy.
+	 */
+	public function termMoved( string $taxonomy ): void {
+		if ( self::BRAND === $taxonomy || str_starts_with( $taxonomy, 'pa_' ) ) {
+			$this->facts->forgetAll();
+		}
+	}
+
+	/**
+	 * What the shop says now of these products and, for a variable product, of each of its variations: every one
+	 * loaded. A product that is not there is said to be no part, so that it is not looked for on every request.
+	 *
+	 * @param int $now    The time, a UTC timestamp.
+	 * @param int ...$ids Products' and variations' IDs.
+	 * @return array<int, PartFact> By ID.
+	 */
+	private function shopSays( int $now, int ...$ids ): array {
+		$products = $this->products->load( ...$ids );
+		$children = array();
+		foreach ( $products as $product ) {
+			if ( $product->is_type( 'variable' ) ) {
+				$children = array_merge( $children, Cast::ints( $product->get_children() ) );
+			}
+		}
+		$all     = $products + $this->products->load( ...$children );
+		$parents = $this->products->parentsOf( $all ) + $all;
+		$owners  = array();
+		foreach ( $all as $id => $part ) {
 			$owners[ $id ] = $part->is_type( 'variation' ) ? $part->get_parent_id() : $id;
 		}
 		$brands = $this->brands( ...array_values( $owners ) );
-		$parts  = array();
-		foreach ( $chosen as $id => $part ) {
-			try {
-				$parts[] = new Part(
-					$id,
-					$brands[ $owners[ $id ] ] ?? '',
-					$specs[ $id ] ?? Specs::none(),
-					self::minor( $part ),
-					$part->is_in_stock(),
-					self::stock( $part )
-				);
-			} catch ( InvalidPart ) {
-				// A price below nothing, which a filter can give: no part.
-				continue;
+		$specs  = array() === $all ? array() : $this->index->specsOf( ...array_keys( $all ) );
+		$facts  = array();
+		foreach ( $ids as $id ) {
+			$facts[ $id ] = new PartFact( $id, 0, false, '', 0, false, null, array(), array(), $now );
+		}
+		foreach ( $all as $id => $part ) {
+			$variation = $part->is_type( 'variation' );
+			$price     = self::minor( $part );
+			$own       = array();
+			foreach ( $variation ? Cast::map( $part->get_attributes() ) : array() as $taxonomy => $value ) {
+				$own[ (string) $taxonomy ] = Cast::str( $value );
 			}
+			$facts[ $id ] = new PartFact(
+				$id,
+				$variation ? $part->get_parent_id() : 0,
+				// A price below nothing, which a filter can give: no part.
+				$price >= 0 && self::sellable( $part, $variation ? ( $parents[ $part->get_parent_id() ] ?? null ) : $part ),
+				$brands[ $owners[ $id ] ] ?? '',
+				max( 0, $price ),
+				$part->is_in_stock(),
+				self::stock( $part ),
+				$own,
+				isset( $specs[ $id ] ) ? $specs[ $id ]->toIndex() : array(),
+				$now
+			);
+		}
+		return $facts;
+	}
+
+	/**
+	 * The parts among what is known of the products the sources find and name: each variable product's variations
+	 * in its place, those of a found product held to the attribute values asked for, and only what a shopper
+	 * could be shown and could buy.
+	 *
+	 * @param SlotSources          $sources The slot's sources.
+	 * @param list<int>            $found   The products its categories, brands and attributes find.
+	 * @param array<int, PartFact> $facts   What is known of them, of the products named and of their variations.
+	 * @return list<Part>
+	 */
+	private function chosen( SlotSources $sources, array $found, array $facts ): array {
+		$variations = array();
+		foreach ( $facts as $fact ) {
+			if ( $fact->of > 0 ) {
+				$variations[ $fact->of ][] = $fact;
+			}
+		}
+		$chosen = array();
+		// What the sources find, and then what they name: a named product is not narrowed.
+		foreach ( array( array( $found, $sources->attributes ), array( $sources->products, array() ) ) as [ $ids, $attributes ] ) {
+			foreach ( $ids as $id ) {
+				foreach ( $variations[ $id ] ?? array() as $variation ) {
+					if ( self::holdsTo( $variation->attributes, $attributes ) ) {
+						$chosen[ $variation->id ] = $variation;
+					}
+				}
+				if ( isset( $facts[ $id ] ) ) {
+					$chosen[ $id ] = $facts[ $id ];
+				}
+			}
+		}
+		$chosen = array_filter( $chosen, static fn( PartFact $fact ): bool => $fact->sellable );
+		ksort( $chosen );
+		$chosen = array_slice( $chosen, 0, self::MAX_PARTS, true );
+		$parts  = array();
+		foreach ( $chosen as $id => $fact ) {
+			$parts[] = new Part( $id, $fact->brand, Specs::fromIndex( $fact->specs ), $fact->price, $fact->inStock, $fact->stock );
 		}
 		return $parts;
 	}
@@ -301,40 +379,31 @@ final class WooKits implements Kits {
 	}
 
 	/**
-	 * The published products in the sources' categories, of their brands and with their attribute values.
+	 * The products in the sources' categories, of their brands and with their attribute values, whatever their
+	 * status: whether one may be sold is said of each product itself. A category holds what its sub-categories
+	 * hold. One read of the term relationships for each taxonomy, which loads no product and no post (D-116).
 	 *
 	 * @param SlotSources $sources A slot's sources.
 	 * @return list<int>
 	 */
 	private function found( SlotSources $sources ): array {
-		$narrow = self::narrowing( $sources );
-		if ( array() === $narrow ) {
-			return array();
-		}
-		$query = array( 'relation' => 'AND' );
-		foreach ( $narrow as $one ) {
+		$found = null;
+		foreach ( self::narrowing( $sources ) as $one ) {
 			if ( ! taxonomy_exists( $one['taxonomy'] ) ) {
 				return array();
 			}
-			$query[] = array(
-				'taxonomy' => $one['taxonomy'],
-				'field'    => 'term_id',
-				'terms'    => $one['terms'],
-				'operator' => 'IN',
-			);
+			$terms = $one['terms'];
+			if ( is_taxonomy_hierarchical( $one['taxonomy'] ) ) {
+				foreach ( $one['terms'] as $term ) {
+					$terms = array_merge( $terms, Cast::ints( get_term_children( $term, $one['taxonomy'] ) ) );
+				}
+			}
+			$in    = Cast::ints( get_objects_in_term( array_values( array_unique( $terms ) ), $one['taxonomy'] ) );
+			$found = null === $found ? $in : array_intersect( $found, $in );
 		}
-		$found = wc_get_products(
-			array(
-				'status'    => 'publish',
-				'limit'     => self::MAX_PARTS,
-				'orderby'   => 'ID',
-				'order'     => 'ASC',
-				'return'    => 'ids',
-				// phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_tax_query -- A slot's sources are terms; the answer is cached with the kit's card data.
-				'tax_query' => array( $query ),
-			)
-		);
-		return array_values( Cast::ints( $found ) );
+		$found = array_values( array_unique( $found ?? array() ) );
+		sort( $found );
+		return array_slice( $found, 0, self::MAX_PARTS );
 	}
 
 	/**
@@ -378,13 +447,17 @@ final class WooKits implements Kits {
 			return array();
 		}
 		$owner = $part->is_type( 'variation' ) ? $part->get_parent_id() : $product;
+		$own   = array();
+		foreach ( $part->is_type( 'variation' ) ? Cast::map( $part->get_attributes() ) : array() as $taxonomy => $value ) {
+			$own[ (string) $taxonomy ] = Cast::str( $value );
+		}
 		$terms = array();
 		$keys  = array();
 		foreach ( $kits as $kit ) {
 			foreach ( $kit->slots->all() as $slot ) {
 				$sources = $slot->sources;
 				$narrow  = self::narrowing( $sources );
-				$takes   = array() !== $narrow && self::holdsTo( $part, $sources->attributes );
+				$takes   = array() !== $narrow && self::holdsTo( $own, $sources->attributes );
 				foreach ( $narrow as $one ) {
 					$terms[ $one['taxonomy'] ] ??= self::termsOf( $owner, $one['taxonomy'] );
 					$takes                       = $takes && array() !== array_intersect( $one['terms'], $terms[ $one['taxonomy'] ] );
@@ -416,44 +489,15 @@ final class WooKits implements Kits {
 	}
 
 	/**
-	 * These products as parts: each variable product's variations in its place, a variation that names one value
-	 * of an attribute kept only when the value is among the terms asked for.
+	 * Whether a variation's own values are among those asked for. One that takes any value of an attribute is, and
+	 * so is a product that is no variation, which has no values of its own.
 	 *
-	 * @param array<int, WC_Product>                          $products   Products, by ID.
-	 * @param list<array{taxonomy: string, terms: list<int>}> $attributes The attribute values asked for.
-	 * @return array<int, WC_Product>
-	 */
-	private function variationsOf( array $products, array $attributes ): array {
-		$parts    = array();
-		$children = array();
-		foreach ( $products as $id => $product ) {
-			if ( $product->is_type( 'variable' ) ) {
-				$children = array_merge( $children, Cast::ints( $product->get_children() ) );
-			} else {
-				$parts[ $id ] = $product;
-			}
-		}
-		foreach ( $this->products->load( ...$children ) as $id => $variation ) {
-			if ( self::holdsTo( $variation, $attributes ) ) {
-				$parts[ $id ] = $variation;
-			}
-		}
-		return $parts;
-	}
-
-	/**
-	 * Whether a variation's own values are among those asked for. One that takes any value of an attribute is.
-	 *
-	 * @param WC_Product                                      $variation  A variation.
+	 * @param array<string, string>                           $own        The variation's own values, by taxonomy.
 	 * @param list<array{taxonomy: string, terms: list<int>}> $attributes The attribute values asked for.
 	 */
-	private static function holdsTo( WC_Product $variation, array $attributes ): bool {
-		if ( ! $variation->is_type( 'variation' ) ) {
-			return true;
-		}
-		$own = Cast::map( $variation->get_attributes() );
+	private static function holdsTo( array $own, array $attributes ): bool {
 		foreach ( $attributes as $attribute ) {
-			$slug = Cast::str( $own[ $attribute['taxonomy'] ] ?? '' );
+			$slug = $own[ $attribute['taxonomy'] ] ?? '';
 			if ( '' === $slug || array() === $attribute['terms'] ) {
 				continue;
 			}
@@ -472,7 +516,7 @@ final class WooKits implements Kits {
 	 * @param WC_Product      $part  The part.
 	 * @param WC_Product|null $owner The part itself, or a variation's parent.
 	 */
-	private static function offered( WC_Product $part, ?WC_Product $owner ): bool {
+	private static function sellable( WC_Product $part, ?WC_Product $owner ): bool {
 		return null !== $owner
 			&& ! in_array( $part->get_type(), array( 'variable', Options::PRODUCT_TYPE_KIT ), true )
 			&& 'publish' === $part->get_status()

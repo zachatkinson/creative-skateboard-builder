@@ -217,7 +217,7 @@ final class WooPartCards implements PartCards {
 		);
 		/**
 		 * Filter what a part's price depends on beside the part itself. A card is kept for each context a part is
-		 * asked in, and so is each slot's list of parts, so a plugin that shows some shoppers another price, a
+		 * asked in, and so is each part's row of the parts table, so a plugin that shows some shoppers another price, a
 		 * dealer's for one, adds what tells them apart: a role, a price list's ID. Add only what the price depends
 		 * on, since each new value is another copy to keep, and never anything that names a person. An answer that
 		 * is no array leaves the context as it is.

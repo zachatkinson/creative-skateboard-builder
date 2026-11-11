@@ -61,7 +61,7 @@ final class ContainerTest extends TestCase {
 	public function test_the_registry_is_built_from_its_classes(): void {
 		$registry = ( new Container() )->get( MigrationRegistry::class );
 		$keys     = $registry->keys();
-		self::assertSame( array( 'schema_1', 'noop_1', 'spec_tables_1' ), $keys );
+		self::assertSame( array( 'schema_1', 'noop_1', 'spec_tables_1', 'schema_2' ), $keys );
 	}
 
 	public function test_an_unknown_service_throws(): void {

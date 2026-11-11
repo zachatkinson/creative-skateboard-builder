@@ -64,6 +64,21 @@ final readonly class Recommender {
 	 * @param list<Part> $candidates The slot's parts, as the server found them.
 	 */
 	public function recommend( Kit $kit, string $slot, Picks $picks, array $candidates ): ?Option {
+		return $this->among( $kit, $slot, $picks, $this->engine->options( $kit, $slot, $picks, $candidates ) );
+	}
+
+	/**
+	 * The part a slot starts on, among options the engine has already worked out for these picks: for a caller
+	 * that holds them, so that no slot is judged twice.
+	 *
+	 * @since 0.4.0
+	 *
+	 * @param Kit         $kit     The kit.
+	 * @param string      $slot    The slot's key.
+	 * @param Picks       $picks   The picks before it.
+	 * @param SlotOptions $options The slot's options for those picks.
+	 */
+	public function among( Kit $kit, string $slot, Picks $picks, SlotOptions $options ): ?Option {
 		$about = $kit->slots->get( $slot );
 		if ( null === $about || SlotKey::DECK === $slot ) {
 			return null;
@@ -73,7 +88,7 @@ final readonly class Recommender {
 			return null;
 		}
 		$fitting = array();
-		foreach ( $this->engine->options( $kit, $slot, $picks, $candidates )->offered as $option ) {
+		foreach ( $options->offered as $option ) {
 			if ( Severity::Fits === $option->severity && $option->available() ) {
 				if ( $about->defaultPart === $option->part->id ) {
 					return $option;
@@ -81,9 +96,12 @@ final readonly class Recommender {
 				$fitting[] = $option;
 			}
 		}
+		// Every one of the slot's parts is among those offered or those hidden.
 		$prices = array();
-		foreach ( $candidates as $part ) {
-			$prices[] = $part->price;
+		foreach ( array( $options->offered, $options->hidden ) as $list ) {
+			foreach ( $list as $option ) {
+				$prices[] = $option->part->price;
+			}
 		}
 		sort( $prices );
 		$wanted  = self::wanted( $asking );

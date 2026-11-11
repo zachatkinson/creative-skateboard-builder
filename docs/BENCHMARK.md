@@ -90,12 +90,15 @@ A kit of seven slots over 2,000 simple products: 500 trucks and 250 in each othe
 
 | The state route | p95 | Median | Slowest | Queries at most |
 | --- | --- | --- | --- | --- |
-| Cold: WordPress's cache emptied before each request, as on a site with no persistent object cache | 53 ms | 51 ms | 70 ms | 36 |
-| Warm: the cache as the last request left it | 37 ms | 33 ms | 44 ms | 8 |
-| The first request after a product, a price, a stock count or a spec moves | 435 ms, one request | | | 123 |
+| Cold: WordPress's cache emptied before each request, as on a site with no persistent object cache | 58 ms | 56 ms | 66 ms | 42 |
+| Warm: the cache as the last request left it | 41 ms | 35 ms | 45 ms | 15 |
+| The first request after one part moves, cache emptied, 20 requests | 71 ms | | 73 ms | |
+| With no row kept: the first request in a price context | 470 ms, one request | | | 100 |
 
-Both runs are inside the 80 ms budget. They hold because a request loads no product to learn a slot's parts: each slot's list is kept for an hour at most and forgotten when something in it moves (D-116). Before that, the same run took 489 ms at p95, 440 ms of it loading 2,000 products.
+The first three are inside the 80 ms budget and held to it. They hold because a request loads no product to learn a slot's parts: what a build needs of each part is a row of the plugin's own table, `cbuild_parts`, and a part that moves has its row deleted and is the only one read from the shop again (D-116). Before that, the same run took 489 ms at p95, 440 ms of it loading 2,000 products.
 
-The last row is outside the budget and is not held to it: it is what one request pays after a change, to read every slot again. The benchmark prints it on every run so that it is known, and holds the request after it to the budget. What to do about it is for Zach (D-116).
+The last row is outside the budget and is not held to it: it is what one request pays the first time a kit is asked for in a price context (a currency, a language, a set of tax rates), and again after a reindex or a brand or attribute term is edited, which empty the table. The benchmark prints it on every run so that it is known.
 
-Of the cold 53 ms, the fit engine takes about 21 ms for all seven slots, reading the kept lists and the kit about 10 ms, and the 24 cards about 20 ms, since without a persistent object cache each card's product is loaded on every request.
+An earlier design of this milestone, never released, kept each slot's list in a transient: 53 ms cold, but 435 ms on the first request after any one product moved. The table costs 5 ms cold and takes that request to 71 ms.
+
+Of the cold 58 ms, the fit engine takes about 20 ms for all seven slots, finding the slots' parts and reading their rows and the kit about 15 ms, and the 24 cards about 20 ms, since without a persistent object cache each card's product is loaded on every request.

@@ -5,6 +5,7 @@ namespace CreativeBranding\SkateboardBuilder\Tests\Support\Fakes;
 
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Kit;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Part;
+use CreativeBranding\SkateboardBuilder\Domain\Kit\Slot;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\SlotSources;
 use CreativeBranding\SkateboardBuilder\Port\Kits;
 
@@ -35,8 +36,6 @@ final class InMemoryKits implements Kits {
 	public function add( int $id, Kit $kit, array $parts, string $name = 'Complete' ): void {
 		$this->kits[ $id ]  = compact( 'name', 'kit' );
 		$this->parts[ $id ] = $parts;
-		// The shop changed, and its hooks said so.
-		$this->kept = array();
 	}
 
 	/**
@@ -55,29 +54,25 @@ final class InMemoryKits implements Kits {
 	}
 
 	/**
-	 * What keep() was given, by kit and slot.
-	 *
-	 * @var array<string, mixed>
+	 * How many times offered() was asked, and what forget() and termMoved() were given.
 	 */
-	public array $kept = array();
+	public int $offered = 0;
 
-	/**
-	 * How many times candidates() was asked, and forget().
-	 */
-	public int $found_parts = 0;
-	public int $forgotten   = 0;
+	public array $forgotten = array();
 
-	public function kept( int $kit, string $slot ): mixed {
-		return $this->kept[ $kit . '|' . $slot ] ?? null;
+	public array $terms = array();
+
+	public function offered( int $kit, Slot $slot ): array {
+		++$this->offered;
+		return $this->parts[ $kit ][ $slot->key ] ?? array();
 	}
 
-	public function keep( int $kit, string $slot, array $parts ): void {
-		$this->kept[ $kit . '|' . $slot ] = $parts;
+	public function forget( int ...$ids ): void {
+		$this->forgotten[] = $ids;
 	}
 
-	public function forget(): void {
-		++$this->forgotten;
-		$this->kept = array();
+	public function termMoved( string $taxonomy ): void {
+		$this->terms[] = $taxonomy;
 	}
 
 	public function ids(): array {
@@ -126,7 +121,6 @@ final class InMemoryKits implements Kits {
 	}
 
 	public function candidates( int $kit, string $slot ): array {
-		++$this->found_parts;
 		return $this->parts[ $kit ][ $slot ] ?? array();
 	}
 

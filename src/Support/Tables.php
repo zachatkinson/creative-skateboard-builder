@@ -20,6 +20,7 @@ final class Tables {
 
 	public const SPECS  = 'specs';
 	public const BUILDS = 'builds';
+	public const PARTS  = 'parts';
 
 	public const PREFIX = 'cbuild_';
 
@@ -31,7 +32,7 @@ final class Tables {
 	 * @return string[]
 	 */
 	public static function all(): array {
-		return array( self::SPECS, self::BUILDS );
+		return array( self::SPECS, self::BUILDS, self::PARTS );
 	}
 
 	/**
@@ -62,5 +63,14 @@ final class Tables {
 	 */
 	public static function builds(): string {
 		return self::name( self::BUILDS );
+	}
+
+	/**
+	 * What is kept of each part (D-116).
+	 *
+	 * @since 0.4.0
+	 */
+	public static function parts(): string {
+		return self::name( self::PARTS );
 	}
 }
