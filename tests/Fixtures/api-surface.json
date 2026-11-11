@@ -60,6 +60,12 @@
     "product_types": [
         "cbuild_kit"
     ],
+    "cart_item_keys": [
+        "cbuild",
+        "cbuild_children",
+        "cbuild_parent",
+        "cbuild_slot"
+    ],
     "settings_keys": [
         "attribute_mapping",
         "build_discount",
@@ -294,5 +300,12 @@
         "part_price_negative",
         "discount_out_of_range",
         "price_decimals_over_eight"
+    ],
+    "cart_refusals": [
+        "cbuild_build_refused",
+        "cbuild_kit_not_found",
+        "cbuild_no_build",
+        "cbuild_no_price",
+        "cbuild_not_added"
     ]
 }

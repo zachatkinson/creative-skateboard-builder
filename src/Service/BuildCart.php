@@ -148,6 +148,23 @@ final class BuildCart {
 	}
 
 	/**
+	 * What the kit's line of a build costs, in minor units: the kit's assembly fee where the shop assembles the
+	 * build, and nothing where it does not, or where the kit no longer reads or its fee has no minor unit.
+	 *
+	 * @since 0.5.0
+	 *
+	 * @param Build $build The build.
+	 */
+	public function fee( Build $build ): int {
+		$kit = $build->assembly ? $this->kits->kit( $build->kit ) : null;
+		try {
+			return $kit?->assembly->fee( $this->kits->decimals() ) ?? 0;
+		} catch ( InvalidMoney ) {
+			return 0;
+		}
+	}
+
+	/**
 	 * Check a build whose kit reads.
 	 *
 	 * @param int                    $id       The kit product's ID.

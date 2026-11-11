@@ -228,11 +228,13 @@ final class StateAnswer {
 	 * A slot's label, as another plugin would have it said (spec: French and other languages). An answer that is no
 	 * text leaves the owner's words as they are, here and in the two methods below.
 	 *
+	 * @since 0.5.0 Public, for the cart's sentences.
+	 *
 	 * @param string $label The owner's label.
 	 * @param string $slot  The slot's key.
 	 * @param int    $kit   The kit product's ID.
 	 */
-	private static function label( string $label, string $slot, int $kit ): string {
+	public static function label( string $label, string $slot, int $kit ): string {
 		/**
 		 * Filter a slot's label as a shopper reads it. The label is the shop owner's own words, so no translation file
 		 * holds it: a translation plugin answers here.

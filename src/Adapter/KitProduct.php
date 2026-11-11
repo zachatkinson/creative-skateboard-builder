@@ -120,7 +120,12 @@ final class KitProduct extends WC_Product {
 	 * @param string $context What the value is for: `view` or `edit`.
 	 */
 	public function get_price( $context = 'view' ): string {
-		return 'edit' === $context ? '' : $this->fee();
+		if ( 'edit' === $context ) {
+			return '';
+		}
+		// A cart line's product is priced by the cart for its build: the fee, or nothing without assembly.
+		$set = $this->get_changes()['price'] ?? null;
+		return is_scalar( $set ) ? (string) $set : $this->fee();
 	}
 
 	/**

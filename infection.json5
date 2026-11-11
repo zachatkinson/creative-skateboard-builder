@@ -50,7 +50,7 @@
 			"Adapter/WooCommerceLogger.php",
 			// SQL through $wpdb, and the classes that only add hooks.
 			"Repository",
-			"Hooks",
+			"Hooks/",
 			"Plugin.php",
 			"Hookable.php",
 			// Activation, the schema and uninstall: dbDelta, $wpdb and the request WordPress is serving.

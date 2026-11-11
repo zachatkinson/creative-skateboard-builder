@@ -12,7 +12,8 @@
  *   constants             CBUILD_* constants: those a site may define (checked with defined()) and those the plugin
  *                         defines for others to read;
  *   options, jobs, meta,
- *   product types         Support\Options;
+ *   product types, cart
+ *   item keys             Support\Options;
  *   tables                Support\Tables;
  *   site transients       Support\Options::siteTransients();
  *   REST routes           register_rest_route( 'cbuild/v1', ... );
@@ -31,7 +32,8 @@
  *   build problems        Domain\Fit\Problem's cases: why the validator refuses a build;
  *   rule ids              Domain\Rule\RuleId's cases, with the names of the values each message code carries;
  *   refusal codes         the cases of the domain's five error enums: why a document, a spec, a measure, a part or a
- *                         sum was refused.
+ *                         sum was refused;
+ *   cart refusals         Service\CartRefusal's cases: why a build is not added to the cart.
  *
  * @package CreativeBranding\SkateboardBuilder
  */
@@ -234,6 +236,7 @@ $cbuild_surface = array(
 	'meta_keys'         => cbuild_api_list( $cbuild_options, 'metaKeys' ),
 	'post_types'        => cbuild_api_list( $cbuild_options, 'postTypes' ),
 	'product_types'     => cbuild_api_list( $cbuild_options, 'productTypes' ),
+	'cart_item_keys'    => cbuild_api_list( $cbuild_options, 'cartKeys' ),
 	'settings_keys'     => cbuild_api_list( $cbuild_options, 'settingsKeys' ),
 	'rest_routes'       => array_map( static fn( string $r ): string => 'cbuild/v1/' . ltrim( $r, '/' ), cbuild_api_matches( $cbuild_php, "/register_rest_route\\(\\s*(?:self::NAMESPACE|'cbuild\\/v1')\\s*,\\s*'([^']+)'/" ) ),
 	'rest_error_codes'  => cbuild_api_matches( array_merge( cbuild_api_files( $cbuild_root . '/src/Rest', '.php' ), cbuild_api_files( $cbuild_root . '/src/Abilities', '.php' ) ), "/(?:new WP_Error\\(\\s*|'code'\\s*=>\\s*)'(cbuild_[a-z0-9_]+)'/" ),
@@ -409,6 +412,14 @@ if ( is_file( $cbuild_root . '/src/Domain/Rule/RuleId.php' ) ) {
 $cbuild_surface['rule_ids']       = $cbuild_rule_ids;
 $cbuild_surface['message_values'] = $cbuild_value_names;
 $cbuild_surface['refusal_codes']  = $cbuild_refusal_codes;
+
+// Why the cart refuses a build: the codes the Store API answers with.
+$cbuild_cart_refusals = array();
+if ( null !== cbuild_api_class( $cbuild_root, 'CreativeBranding\\SkateboardBuilder\\Service\\CartRefusal' ) ) {
+	$cbuild_cart_refusals = array_column( CreativeBranding\SkateboardBuilder\Service\CartRefusal::cases(), 'value' );
+	sort( $cbuild_cart_refusals );
+}
+$cbuild_surface['cart_refusals'] = $cbuild_cart_refusals;
 
 // Groups that describe another group's items, or whose values are too plain a word to look for in the docs, and are
 // held by the snapshot alone.

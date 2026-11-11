@@ -288,6 +288,21 @@ final class BuildCartTest extends TestCase {
 		self::assertFalse( $this->builds->admits( self::KIT ) );
 	}
 
+	public function test_the_kits_line_costs_the_assembly_fee_and_nothing_without_assembly(): void {
+		$fee = Shop::kit()->assembly->fee( 2 );
+		self::assertGreaterThan( 0, $fee, 'the fixture kit charges for assembly' );
+		$with    = new Build( 'a', self::KIT, self::PICKS, self::QUANTITIES, true );
+		$without = new Build( 'b', self::KIT, self::PICKS, self::QUANTITIES, false );
+		self::assertSame( $fee, $this->builds->fee( $with ) );
+		self::assertSame( 0, $this->builds->fee( $without ) );
+		self::assertSame( 0, $this->builds->fee( new Build( 'c', 9, self::PICKS, self::QUANTITIES, true ) ), 'a kit that no longer reads' );
+
+		$this->kits->decimals = 0;
+		self::assertSame( Shop::kit()->assembly->fee( 0 ), $this->builds->fee( $with ), "in the shop's own minor units" );
+		$this->kits->decimals = 9;
+		self::assertSame( 0, $this->builds->fee( $with ), 'a fee with no such minor unit' );
+	}
+
 	public function test_a_stored_build_reads_back_and_anything_else_does_not(): void {
 		$build = new Build( 'build-1', self::KIT, array( 'deck' => 103 ), array( 'deck' => 1 ), true );
 		self::assertEquals( $build, Build::read( $build->toArray() ) );

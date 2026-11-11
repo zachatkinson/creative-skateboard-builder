@@ -2,6 +2,20 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html). One entry per milestone; `v1.0.0` closes milestone 9.
 
+## [Unreleased]
+
+### Added
+
+- A build goes to the cart as a kit's line with a line for each part, by the Store API's `cart/add-item` and by WooCommerce's own add-to-cart form alike. Each sends the kit's ID with a `cbuild` parameter: `picks`, slot key to part ID, and `assembly`, which may be left out for the kit's default. Nothing else of the request is used: each part is read from WooCommerce as it is then, checked against its slot and the kit's rules, and counted across every line the cart already holds (#26, D-128).
+- Four cart item keys. A kit's line carries `cbuild`, the build (`schema_version`, `id`, `kit`, `picks`, `quantities`, `assembly`), and `cbuild_children`, its parts' cart keys. A part's line carries `cbuild_parent`, its kit's cart key, and `cbuild_slot`, the slot it fills.
+- A kit's line costs the kit's assembly fee where the build is assembled, and nothing where it is not. A kit may be bought only with a build taken in the same request: one added bare, by any route, is refused.
+- The cart's refusals, each a code the Store API answers with and a sentence the form shows as a notice: `cbuild_no_build`, `cbuild_kit_not_found`, `cbuild_build_refused` (with each problem's `code`, `slot` and `part` under `problems`), `cbuild_no_price` and `cbuild_not_added`, when WooCommerce will not add one of the parts and so nothing of the build stays.
+
+### Changed
+
+- A product save that changes only its stock, its stock status or its sales count queues no `cbuild_index_part` job, so an order no longer queues one for each line. A save that changes nothing queues none either (#21, D-127).
+- StrykerJS copies only what its tests read, and the admin scripts' surviving mutants are killed (#31, D-125). After a failed try, CI's browser install points apt at Ubuntu's own mirror (#32, D-126).
+
 ## [0.4.0] - 2026-11-11
 
 ### Added

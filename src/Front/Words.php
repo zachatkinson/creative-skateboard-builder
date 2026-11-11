@@ -16,6 +16,7 @@ use CreativeBranding\SkateboardBuilder\Domain\Measure\Unit;
 use CreativeBranding\SkateboardBuilder\Domain\Rule\Finding;
 use CreativeBranding\SkateboardBuilder\Domain\Rule\MessageCode;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\SpecKey;
+use CreativeBranding\SkateboardBuilder\Service\CartRefusal;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -210,6 +211,28 @@ final class Words {
 			default:
 				/* translators: %s: a number of parts. */
 				return sprintf( _n( '%s part hidden: it does not fit the rest of the build.', '%s parts hidden: they do not fit the rest of the build.', $count, 'creative-skateboard-builder' ), $number );
+		}
+	}
+
+	/**
+	 * Why the cart refuses a build for a reason that is not one of the build's own problems, as a sentence.
+	 *
+	 * @since 0.5.0
+	 *
+	 * @param CartRefusal $refusal The refusal.
+	 */
+	public static function refusal( CartRefusal $refusal ): string {
+		switch ( $refusal ) {
+			case CartRefusal::NoBuild:
+				return __( 'Choose the parts for this build first, then add it to the cart.', 'creative-skateboard-builder' );
+			case CartRefusal::KitNotFound:
+				return __( 'This build is no longer sold. Nothing was added to the cart.', 'creative-skateboard-builder' );
+			case CartRefusal::BuildRefused:
+				return __( 'This build cannot be sold as it is. Nothing was added to the cart.', 'creative-skateboard-builder' );
+			case CartRefusal::NoPrice:
+				return __( 'This build cannot be priced at the moment. Nothing was added to the cart.', 'creative-skateboard-builder' );
+			case CartRefusal::NotAdded:
+				return __( 'One of the parts could not be added, so nothing of the build was. Check the parts and add the build again.', 'creative-skateboard-builder' );
 		}
 	}
 

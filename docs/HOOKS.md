@@ -436,3 +436,38 @@ In the category `creative-skateboard-builder`, which the Catalogue check's abili
 
 Both are annotated read-only and idempotent and shown in REST, so WordPress serves each at `GET /wp-abilities/v1/abilities/<name>/run`. Each answers to a signed-in user alone, over REST and when run in PHP (D-118), and refuses a `POST` with 405. They ask the state route's own service and give parts of its answer, so the two cannot disagree: a slot with no pick is counted with the part the builder would start it on, as the route counts it. A kit a visitor may not see is `cbuild_kit_not_found` to everyone, as it is on the route. Input that is not the schema's is refused by WordPress as `ability_invalid_input`; a slot key the kit lacks is not refused, and comes back in `refused` as `slot_unknown`. Neither is counted against the route's rate limit.
 
+## Milestone 5: cart and checkout (0.5.0)
+
+### Adding a build
+
+A build is added by the kit's ID and one more parameter, `cbuild` (0.5.0), on either route:
+
+- the Store API's `POST /wc/store/v1/cart/add-item`, beside `id` and `quantity`, as JSON: `"cbuild": { "picks": { "deck": 103, "trucks": 149 }, "assembly": true }`;
+- WooCommerce's add-to-cart form, as fields: `cbuild[picks][deck]=103`, `cbuild[assembly]=1`, posted with `add-to-cart=<kit>`.
+
+`picks` is slot key to part ID. `assembly` may be left out, and is then the kit's own default. `quantity` is how many of the build. Nothing else is read: no price, no quantity of a part and no line of the cart comes from the request. Each part is read from WooCommerce at that moment, so the cart charges what the shop holds even where the builder was shown an older price.
+
+A kit added with no `cbuild` is refused by every route, `WC_Cart::add_to_cart()` called in PHP among them: `is_purchasable()` is true for a kit only between its build being taken and its parts being added, in the same request.
+
+### Cart item keys
+
+| Key | Since | On | What it holds |
+| --- | --- | --- | --- |
+| `cbuild` | 0.5.0 | The kit's line | The build: `schema_version` (1), `id` (a UUID, which keeps two builds alike on two lines), `kit` (the kit product's ID), `picks` (slot key to part ID), `quantities` (slot key to how many of the part one build takes) and `assembly`. A line whose `cbuild` does not read this way is not sold. |
+| `cbuild_children` | 0.5.0 | The kit's line | Its parts' cart keys, in step order. |
+| `cbuild_parent` | 0.5.0 | A part's line | Its kit's cart key. |
+| `cbuild_slot` | 0.5.0 | A part's line | The key of the slot it fills. |
+
+Read them, and do not write them: the plugin puts a build together and takes it apart as one. A part's line is an ordinary line of that product, at the shop's price and quantity `quantities[slot]` times the kit's line's. The kit's line is priced at the assembly fee, or at nothing without assembly.
+
+### Why a build is not added
+
+The Store API answers with the code, and the form shows the sentence as an error notice.
+
+| Code | Since | Status | When |
+| --- | --- | --- | --- |
+| `cbuild_no_build` | 0.5.0 | 400 | A kit arrived with no `cbuild`, or with one that holds no `picks`. |
+| `cbuild_kit_not_found` | 0.4.0 | 404 | The shop has no such kit, or it is one a visitor may not see. From 0.5.0 the cart answers with it as the state route does. |
+| `cbuild_build_refused` | 0.5.0 | 400 | The build has problems. The answer's `data.problems` lists each as `code` (Build problems, above), `slot` and `part`; the form shows a notice for each. |
+| `cbuild_no_price` | 0.4.0 | 400 from the cart | The shop's currency has more decimals than a build can be priced in. |
+| `cbuild_not_added` | 0.5.0 | 400 | WooCommerce would not add one of the parts, so the kit's line and every part already added were taken out again. |

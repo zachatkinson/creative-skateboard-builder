@@ -85,6 +85,15 @@ final class Options {
 	public const SETTING_KIT_DEFAULTS      = 'kit_defaults';
 
 	/**
+	 * The keys a cart line carries (spec: Data model, Cart items): a kit's line holds the build and its parts'
+	 * cart keys, and a part's line its kit's cart key and the slot it fills.
+	 */
+	public const CART_BUILD    = 'cbuild';
+	public const CART_CHILDREN = 'cbuild_children';
+	public const CART_PARENT   = 'cbuild_parent';
+	public const CART_SLOT     = 'cbuild_slot';
+
+	/**
 	 * Product meta: a part's own specs, a value per spec key.
 	 *
 	 * @since 0.3.0
@@ -244,6 +253,17 @@ final class Options {
 			'presets'  => self::META_KIT_PRESETS,
 			'assembly' => self::META_KIT_ASSEMBLY,
 		);
+	}
+
+	/**
+	 * Every key the plugin puts on a cart line.
+	 *
+	 * @since 0.5.0
+	 *
+	 * @return list<string>
+	 */
+	public static function cartKeys(): array {
+		return array( self::CART_BUILD, self::CART_CHILDREN, self::CART_PARENT, self::CART_SLOT );
 	}
 
 	/**
