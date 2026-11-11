@@ -242,6 +242,9 @@ final class Container {
 					},
 					static function () use ( $c ): Service\RateLimit {
 						return $c->get( Service\RateLimit::class );
+					},
+					static function () use ( $c ): Port\Cart {
+						return $c->get( Port\Cart::class );
 					}
 				);
 			},

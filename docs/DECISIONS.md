@@ -1829,3 +1829,16 @@ Milestone 5's steps 10 and 11.
 **Red runs and deliberate breaks** are in the commit's message.
 
 **Status:** Accepted.
+
+### D-135 · The state route prices for the shopper the cart will charge (#27) · 2026-11-11
+
+- **What was wrong.** WooCommerce loads a customer for a page and for the Store API, and for no other REST request (`includes/class-woocommerce.php:347`). So on `cbuild/v1/kits/<id>/state` there was none, `WC_Tax::get_tax_location()` (`includes/class-wc-tax.php:469`) fell back to the shop's default address, and a shop that shows prices with tax, taxed by where the shopper is, showed a shopper abroad a total the cart then changed. The auditor found it in milestone 4, and Zach deferred it to this one (D-121).
+- **The fix.** The route calls `wc_load_cart()` before it prices, through `Port\Cart::shopper()`, where no customer is loaded. It is WooCommerce's own function for this (`includes/wc-core-functions.php:2539`). The price context already keys what is kept by the tax rates that apply (D-111, D-116), so nothing else changes: shoppers charged the same rates share rows and cards, and no address is kept.
+- **A visitor nobody knows** has no session cookie. WooCommerce makes a session object for the request, stores nothing for it and sets no cookie, and the price is the shop's default as before. `CartPriceTest` counts the sessions table before and after.
+- **The route was never cacheable** (`Cache-Control: no-store`, D-112), so answering by the session costs no cache.
+- **Not done: the two build abilities.** `check-build` and `price-build` answer a signed-in user through the Abilities API, also with no customer loaded, and still price for the shop's default address. They are read by tools and not shown beside a cart, and loading a cart session there, where the caller may be WP-CLI or an agent, is a choice of its own. Listed for the review.
+- **Its cost is not in the benchmark:** the benchmark dispatches in a process that has a customer already. The route's query ceilings are unchanged (42, 15, 37).
+
+**Red run and deliberate break** are in the commit's message.
+
+**Status:** Accepted.

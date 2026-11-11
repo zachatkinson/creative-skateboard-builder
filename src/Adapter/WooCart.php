@@ -14,6 +14,7 @@ use CreativeBranding\SkateboardBuilder\Port\CartLine;
 use CreativeBranding\SkateboardBuilder\Support\Cast;
 use CreativeBranding\SkateboardBuilder\Support\Options;
 use WC_Cart;
+use WC_Customer;
 use WC_Product;
 use WC_Product_Variation;
 
@@ -133,6 +134,19 @@ final class WooCart implements Cart {
 		$cart = self::cart();
 		if ( null !== $cart && isset( $cart->cart_contents[ $key ] ) ) {
 			$cart->cart_contents[ $key ][ Options::CART_CHILDREN ] = $children;
+		}
+	}
+
+	/**
+	 * Make the shopper known where WooCommerce has loaded no customer: it loads one for a page and for the Store
+	 * API, and for no other REST request (includes/class-woocommerce.php:347). `wc_load_cart()` is WooCommerce's own
+	 * way to ask for it there (includes/wc-core-functions.php:2539). It reads the session's cookie and sets none.
+	 *
+	 * @since 0.5.0
+	 */
+	public function shopper(): void {
+		if ( ! ( get_object_vars( WC() )['customer'] ?? null ) instanceof WC_Customer ) {
+			wc_load_cart();
 		}
 	}
 

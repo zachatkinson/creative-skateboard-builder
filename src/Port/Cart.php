@@ -79,4 +79,13 @@ interface Cart {
 	 * @param list<string> $children Its parts' cart keys.
 	 */
 	public function setChildren( string $key, array $children ): void;
+
+	/**
+	 * Make the shopper known to a request WooCommerce loads no customer for, as a route of the plugin's own is
+	 * (issue #27): a price shown with tax is then worked out for where the shopper is, as the cart will charge it.
+	 * Nothing is done where the shopper is known already.
+	 *
+	 * @since 0.5.0
+	 */
+	public function shopper(): void;
 }

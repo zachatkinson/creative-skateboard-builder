@@ -255,6 +255,72 @@ final class CartPriceTest extends CartTestCase {
 		self::assertCount( 8, $cart['items'], 'every line is still there: the kit, its six parts and the decks' );
 	}
 
+	/**
+	 * Issue #27: where tax depends on where the shopper is, the builder's total is the cart's.
+	 */
+	public function test_the_route_prices_for_the_shopper_the_cart_will_charge(): void {
+		update_option( 'woocommerce_calc_taxes', 'yes' );
+		update_option( 'woocommerce_tax_based_on', 'shipping' );
+		update_option( 'woocommerce_prices_include_tax', 'no' );
+		update_option( 'woocommerce_tax_display_shop', 'incl' );
+		update_option( 'woocommerce_tax_display_cart', 'incl' );
+		$base = WC()->countries->get_base_country();
+		foreach ( array( $base => '10.0000', 'FR' === $base ? 'DE' : 'FR' => '20.0000' ) as $country => $rate ) {
+			WC_Tax::_insert_tax_rate(
+				array(
+					'tax_rate_country' => $country,
+					'tax_rate'         => $rate,
+					'tax_rate_name'    => 'Tax ' . $country,
+					'tax_rate_class'   => '',
+				)
+			);
+		}
+		$abroad  = 'FR' === $base ? 'DE' : 'FR';
+		$shopper = self::factory()->user->create( array( 'user_email' => 'shopper+27@example.com' ) );
+		update_user_meta( $shopper, 'billing_country', $abroad );
+		update_user_meta( $shopper, 'shipping_country', $abroad );
+		wp_set_current_user( $shopper );
+
+		// A request to the plugin's own route is not the Store API's, and WooCommerce loads no customer for it
+		// (includes/class-woocommerce.php:347). The process's own customer is put back whatever happens: the cart
+		// and the session are left as they are, since every later test shares them.
+		global $wpdb;
+		$sessions = static fn(): int => (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$wpdb->prefix}woocommerce_sessions" ); // phpcs:ignore
+		$kept     = $sessions();
+		$own      = WC()->customer;
+		$request  = new WP_REST_Request( 'GET', '/cbuild/v1/kits/' . $this->kit . '/state' );
+		$request->set_query_params(
+			array(
+				'picks'    => $this->picks(),
+				'assembly' => false,
+			)
+		);
+		try {
+			WC()->customer = null;
+			$state         = rest_get_server()->dispatch( $request );
+			self::assertSame( 200, $state->get_status() );
+			self::assertSame( 21960, $state->get_data()['total']['total']['amount'], '183 and the 20 % of where the shopper is, not the 10 % of where the shop is' );
+
+			// The cart, for the same shopper.
+			$this->added();
+			WC()->cart->calculate_totals();
+			self::assertSame( '219.60', number_format( (float) WC()->cart->get_total( 'edit' ), 2, '.', '' ), 'which is what the cart charges' );
+			WC()->cart->empty_cart();
+
+			// A visitor nobody knows is priced for the shop's own address, and nothing is kept of the asking.
+			wp_set_current_user( 0 );
+			WC()->customer = null;
+			$guest         = rest_get_server()->dispatch( $request );
+			self::assertSame( 20130, $guest->get_data()['total']['total']['amount'] );
+			// What WooCommerce does as the request ends, done here.
+			WC()->customer->save();
+			WC()->session->save_data();
+			self::assertSame( $kept, $sessions(), 'no session is stored for a visitor who only asked' );
+		} finally {
+			WC()->customer = $own;
+		}
+	}
+
 	public function test_each_part_is_taxed_in_its_own_class_however_prices_are_shown(): void {
 		update_option( 'woocommerce_calc_taxes', 'yes' );
 		update_option( 'woocommerce_tax_based_on', 'base' );
