@@ -123,6 +123,26 @@ final class BuildValidatorTest extends TestCase {
 		self::assertSame( array( array( 'part_sold_out', SlotKey::WHEELS, 300 ) ), self::rows( $validation ) );
 	}
 
+	public function test_a_part_the_shop_holds_too_few_of_stops_the_build(): void {
+		// Trucks sold singly: the build takes two (issue #14).
+		$single = static fn( ?int $stock, bool $inStock = true ): Part => new Part( 149, 'independent', Parts::indy( '149', array( 'baseplate' => 'new_school', 'max_wheel' => '56', 'axle_diameter' => '8', 'set_size' => 1 ) )->specs, 2999, $inStock, $stock );
+		$with   = static fn( Part $trucks ): array => self::rows( self::validate( Builds::complete( array( SlotKey::TRUCKS => $trucks ) ) ) );
+		self::assertSame( array( array( 'part_short', SlotKey::TRUCKS, 149 ) ), $with( $single( 1 ) ) );
+		self::assertSame( array(), $with( $single( 2 ) ), 'as many as the build takes' );
+		self::assertSame( array(), $with( $single( null ) ), 'a shop that does not count' );
+		self::assertSame( array( array( 'part_sold_out', SlotKey::TRUCKS, 149 ) ), $with( $single( 0, false ) ), 'sold out is said once, as that' );
+
+		// A pair of trucks: the build takes one of it.
+		$pair = new Part( 149, 'independent', Builds::truck( '149' )->specs, 5999, true, 1 );
+		self::assertSame( array(), $with( $pair ) );
+
+		// A part with no set size has no quantity to hold the count against, and is refused for that.
+		$unsized = new Part( 149, 'independent', Parts::indy( '149', array( 'baseplate' => 'new_school', 'max_wheel' => '56', 'axle_diameter' => '8' ) )->specs, 2999, true, 1 );
+		self::assertSame( array( array( 'part_blocked', SlotKey::TRUCKS, 149 ) ), $with( $unsized ) );
+		$none = new Part( 149, 'independent', Parts::indy( '149', array( 'baseplate' => 'new_school', 'max_wheel' => '56', 'axle_diameter' => '8' ) )->specs, 2999, true, 0 );
+		self::assertSame( array( array( 'part_short', SlotKey::TRUCKS, 149 ), array( 'part_blocked', SlotKey::TRUCKS, 149 ) ), $with( $none ), 'held against one, where there is none' );
+	}
+
 	public function test_a_pair_that_does_not_fit_is_refused_on_both_its_slots_with_the_reasons(): void {
 		$validation = self::validate( Builds::complete( array( SlotKey::TRUCKS => Parts::indy( '139', array( 'baseplate' => 'new_school', 'set_size' => 2 ) ) ) ) );
 		self::assertSame( array( array( 'part_blocked', SlotKey::DECK, 100 ), array( 'part_blocked', SlotKey::TRUCKS, 139 ) ), self::rows( $validation ) );
@@ -204,7 +224,7 @@ final class BuildValidatorTest extends TestCase {
 	}
 
 	public function test_the_problems_are_keys_not_words(): void {
-		self::assertSame( array( 'slot_unknown', 'slot_empty', 'part_not_in_slot', 'part_sold_out', 'part_blocked' ), array_column( Problem::cases(), 'value' ) );
+		self::assertSame( array( 'slot_unknown', 'slot_empty', 'part_not_in_slot', 'part_sold_out', 'part_short', 'part_blocked' ), array_column( Problem::cases(), 'value' ) );
 	}
 
 	public function test_a_problem_holds_what_it_was_given(): void {

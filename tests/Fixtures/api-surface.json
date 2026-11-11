@@ -213,6 +213,7 @@
         "slot_empty",
         "part_not_in_slot",
         "part_sold_out",
+        "part_short",
         "part_blocked"
     ],
     "rule_ids": [

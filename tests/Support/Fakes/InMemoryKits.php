@@ -84,4 +84,10 @@ final class InMemoryKits implements Kits {
 	public function candidates( int $kit, string $slot ): array {
 		return $this->parts[ $kit ][ $slot ] ?? array();
 	}
+
+	public int $decimals = 2;
+
+	public function decimals(): int {
+		return $this->decimals;
+	}
 }

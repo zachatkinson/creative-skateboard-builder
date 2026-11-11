@@ -121,7 +121,7 @@ final readonly class ChangePlanner {
 		$closest = null;
 		$best    = array();
 		foreach ( $options->offered as $option ) {
-			if ( ! $option->part->inStock ) {
+			if ( ! $option->available() ) {
 				continue;
 			}
 			$has  = null === $spec ? null : $option->part->specs->measure( $spec );

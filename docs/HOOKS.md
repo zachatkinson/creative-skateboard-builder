@@ -165,6 +165,7 @@ Before a build is sold, the validator checks the whole of it and answers with wh
 | `slot_empty` | 0.2.0 | A slot the kit requires is empty. |
 | `part_not_in_slot` | 0.2.0 | The part is not one of the slot's parts. |
 | `part_sold_out` | 0.2.0 | The part cannot be bought now. |
+| `part_short` | 0.4.0 | The part is in stock, but the shop holds fewer than the build takes of it: one truck left, sold singly, where a build takes two. |
 | `part_blocked` | 0.2.0 | The part does not fit the rest of the build. Its findings say why. |
 
 A build that only warns has no problem and can go to the cart.

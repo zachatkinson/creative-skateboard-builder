@@ -27,6 +27,9 @@ enum Problem: string {
 	// The part cannot be bought now.
 	case PartSoldOut = 'part_sold_out';
 
+	// The part is in stock, but the shop holds fewer than the build takes of it.
+	case PartShort = 'part_short';
+
 	// The part does not fit the rest of the build.
 	case PartBlocked = 'part_blocked';
 }

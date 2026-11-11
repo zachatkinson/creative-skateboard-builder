@@ -83,6 +83,15 @@ final class RecommenderTest extends TestCase {
 		self::assertSame( 1, self::recommend( self::kit( array( SlotKey::TRUCKS => 1 ) ), SlotKey::TRUCKS, self::deckPicked(), $trucks ) );
 	}
 
+	public function test_a_part_the_shop_holds_too_few_of_is_not_recommended(): void {
+		// Sold singly, a build takes two; the shop holds one of the default and two of another (issue #14).
+		$single = static fn( int $id, int $price, ?int $stock ): Part => new Part( $id, 'thunder', Parts::of( array( 'axle_width' => '8.5', 'baseplate' => 'new_school', 'max_wheel' => '56', 'axle_diameter' => '8', 'set_size' => 1 ) )->specs, $price, true, $stock );
+		$kit    = self::kit( array( SlotKey::TRUCKS => 1 ) );
+		self::assertSame( 2, self::recommend( $kit, SlotKey::TRUCKS, self::deckPicked(), array( $single( 1, 2000, 1 ), $single( 2, 9000, 2 ) ) ), 'not the default, of which one is left' );
+		self::assertSame( 1, self::recommend( $kit, SlotKey::TRUCKS, self::deckPicked(), array( $single( 1, 2000, 2 ), $single( 2, 9000, 2 ) ) ) );
+		self::assertNull( self::recommend( self::kit(), SlotKey::TRUCKS, self::deckPicked(), array( $single( 1, 2000, 1 ) ) ), 'nor as the nearest the middle' );
+	}
+
 	public function test_the_recommendation_comes_as_the_slot_offers_it(): void {
 		$option = ( new Recommender( FitEngine::standard() ) )->recommend( self::kit(), SlotKey::TRUCKS, self::deckPicked(), array( self::truck( 1, 2000 ) ) );
 		self::assertSame( Severity::Fits, $option?->severity );

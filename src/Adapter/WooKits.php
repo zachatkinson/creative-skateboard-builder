@@ -440,4 +440,13 @@ final class WooKits implements Kits {
 		}
 		return max( 0, Cast::int( $part->get_stock_quantity() ) );
 	}
+
+	/**
+	 * How many decimals the shop's prices have.
+	 *
+	 * @since 0.4.0
+	 */
+	public function decimals(): int {
+		return wc_get_price_decimals();
+	}
 }

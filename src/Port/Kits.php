@@ -76,4 +76,11 @@ interface Kits {
 	 * @return list<string>
 	 */
 	public function slotsOf( int $product, Kit ...$kits ): array;
+
+	/**
+	 * How many decimals the shop's prices have: the minor units every part's price is in.
+	 *
+	 * @since 0.4.0
+	 */
+	public function decimals(): int;
 }

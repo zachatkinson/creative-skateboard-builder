@@ -323,6 +323,15 @@ final class WooKitsTest extends IntegrationTestCase {
 	/**
 	 * Issue #17: the check's kit rules were tested on kits made from documents, and found nothing in a shop.
 	 */
+	public function test_the_prices_decimals_are_the_shops(): void {
+		self::assertSame( wc_get_price_decimals(), $this->kits()->decimals() );
+		update_option( 'woocommerce_price_num_decimals', 0 );
+		self::assertSame( 0, $this->kits()->decimals(), 'a currency with none' );
+		update_option( 'woocommerce_price_num_decimals', 3 );
+		self::assertSame( 3, $this->kits()->decimals() );
+		delete_option( 'woocommerce_price_num_decimals' );
+	}
+
 	public function test_the_catalogue_check_reads_a_real_kit_and_its_real_parts(): void {
 		$decks  = self::term( 'product_cat', 'Decks' );
 		$trucks = self::term( 'product_cat', 'Trucks' );

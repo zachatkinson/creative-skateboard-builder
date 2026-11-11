@@ -74,7 +74,7 @@ final readonly class Recommender {
 		}
 		$fitting = array();
 		foreach ( $this->engine->options( $kit, $slot, $picks, $candidates )->offered as $option ) {
-			if ( Severity::Fits === $option->severity && $option->part->inStock ) {
+			if ( Severity::Fits === $option->severity && $option->available() ) {
 				if ( $about->defaultPart === $option->part->id ) {
 					return $option;
 				}

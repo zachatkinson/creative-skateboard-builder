@@ -102,4 +102,14 @@ final class PicksTest extends TestCase {
 		self::assertSame( array(), $picks->only( array() )->slots() );
 		self::assertCount( 3, $picks->slots() );
 	}
+
+	public function test_a_part_covers_a_quantity_when_it_is_in_stock_and_the_shop_holds_as_many_or_does_not_count(): void {
+		$part = static fn( bool $inStock, ?int $stock ): Part => new Part( 1, '', Specs::none(), 1000, $inStock, $stock );
+		self::assertTrue( $part( true, null )->covers( 99 ), 'a shop that does not count holds enough' );
+		self::assertTrue( $part( true, 2 )->covers( 2 ) );
+		self::assertTrue( $part( true, 2 )->covers( 1 ) );
+		self::assertFalse( $part( true, 1 )->covers( 2 ), 'one left, and the build takes two (issue #14)' );
+		self::assertFalse( $part( false, null )->covers( 1 ), 'sold out covers nothing' );
+		self::assertFalse( $part( false, 5 )->covers( 1 ), 'whatever its count says' );
+	}
 }
