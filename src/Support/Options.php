@@ -284,6 +284,17 @@ final class Options {
 	}
 
 	/**
+	 * Every field the Store API gives of a cart item under the plugin's namespace in `extensions`.
+	 *
+	 * @since 0.5.0
+	 *
+	 * @return list<string>
+	 */
+	public static function cartItemFields(): array {
+		return array( 'role', 'build', 'parent', 'slot', 'name' );
+	}
+
+	/**
 	 * Every key the plugin puts on an order item.
 	 *
 	 * @since 0.5.0

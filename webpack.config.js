@@ -12,6 +12,9 @@ const [
 ] = require( '@wordpress/scripts/config/webpack.config' );
 
 const ADMIN = {
+	// The Cart and Checkout blocks' line filters and the carts' styles (milestone 5): a classic script too, since
+	// WooCommerce's `wc.blocksCheckout` is one.
+	'cart/lines': path.resolve( __dirname, 'assets/src/cart/lines.ts' ),
 	'admin/part-specs': path.resolve(
 		__dirname,
 		'assets/src/admin/part-specs.ts'

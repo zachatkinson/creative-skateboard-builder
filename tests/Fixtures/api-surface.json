@@ -74,6 +74,13 @@
         "_cbuild_slot",
         "_cbuild_snapshot"
     ],
+    "cart_item_fields": [
+        "build",
+        "name",
+        "parent",
+        "role",
+        "slot"
+    ],
     "settings_keys": [
         "attribute_mapping",
         "build_discount",

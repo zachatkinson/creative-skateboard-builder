@@ -492,6 +492,24 @@ The server keeps it so, whichever cart or plugin makes the change:
 
 A kit's line raised past what the shop has of a part is refused as `cbuild_build_refused`, with a `part_short` problem for each such part.
 
+### A build shown in the carts
+
+**The Store API.** Each cart item carries the plugin's data under `extensions`, in the namespace `creative-skateboard-builder`, registered with `woocommerce_store_api_register_endpoint_data()` on the cart item's schema. Every field is a string, and empty where it does not apply.
+
+| Field | Since | What it holds |
+| --- | --- | --- |
+| `role` | 0.5.0 | `kit`, `part`, or empty for a line of no build. |
+| `build` | 0.5.0 | The build's identifier, on the kit's line and each part's. |
+| `parent` | 0.5.0 | On a part, its kit's cart item key. |
+| `slot` | 0.5.0 | On a part, the key of the slot it fills. |
+| `name` | 0.5.0 | On a part, its name with its slot's label, as the shop's language writes it. |
+
+**Item data.** A part's line has one more entry in `woocommerce_get_item_data`, and so in the Store API's `item_data`: Part of, with the kit's name and the slot's label. Its `raw_key` is `cbuild_slot`, and its `display` wraps the words in `<span class="cbuild-part">`. A theme or a cart drawer that prints a line's item data can group a build's parts by that class, as the Mini-Cart's styles do.
+
+**Classes.** In the Cart and Checkout blocks and a classic cart or checkout, a kit's row has the class `cbuild-kit` and a part's `cbuild-part`. In a classic cart a part's quantity is a number in `<span class="cbuild-quantity">`.
+
+**What the plugin loads.** A few style rules in the page, under the handle `cbuild-cart`, with the Mini-Cart, the Cart or Checkout block, or a classic cart or checkout page. With the Cart or Checkout block, also the script `cbuild-cart`, which answers `cartItemClass`, `itemName` and `showRemoveItemLink` in the namespace above and needs `wc-blocks-checkout`. Both only where the cart holds a build as the page is drawn.
+
 ### Order item keys
 
 Both checkouts write them, on `woocommerce_checkout_create_order_line_item`. They are kept on uninstall, with the shop's orders.
