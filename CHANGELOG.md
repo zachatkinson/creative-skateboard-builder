@@ -21,6 +21,7 @@ All notable changes to this project are documented here. The format follows [Kee
 - The state route answers within its budget on a large catalogue: 58 ms at p95 with 2,000 parts in a kit and 500 in the step, on a site with no persistent object cache. What a build needs of each part is kept in a table, `cbuild_parts`, a row per part and price context. A row is deleted when its product, price, stock, terms or specs move, and the next request reads that one part from the shop again (D-116).
 - The Catalogue check lists a kit whose settings do not read, under the code `kit_unread`, and the log says so at most once an hour. The Build tab does not save slots beside presets they would break (`slots_leave_presets`). Each row's Move up, Move down and fold are named with the row.
 - Without a persistent object cache the rate limit's counts take 1,024 rows of the options table at most (D-119).
+- A Build tab save that reaches the server cut short, as PHP's `max_input_vars` cuts a long form with no error, saves nothing of the tab, says so in a notice and keeps what arrived as typed (D-122). The tab is drawn only for a user who may save it.
 - The action `cbuild_parts_changed`, which a plugin does when its answer to `cbuild_part_available` changes, or a price it sets, with no product saved. It takes the parts' IDs, or none for all of them. The migration `schema_2` makes the table.
 - A kit's four documents as product meta, each as JSON text: `_cbuild_slots`, `_cbuild_rules`, `_cbuild_presets` and `_cbuild_assembly`. Their schemas have been public since 0.2.0.
 

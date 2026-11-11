@@ -1608,3 +1608,26 @@ Asked before the pull request opened, since each is his under `CLAUDE.md`.
 - **The first request in a price context, 470 ms against the 80 ms budget** (spec reviewer 5). "whatever is best practice". The practice is that no visitor pays to fill a cache: the rows are read in the background and a request finds them there. That is owed before the first shopper's request, which is milestone 6's builder, so 0.4.0 ships as measured and an issue in milestone 6's list has the reindex job fill the default price context's rows. The benchmark holds every other request to the budget now, and will hold this one when the job fills it. This reading of "best practice" is mine.
 
 **Status:** Accepted.
+
+### D-122 · Claude in Cowork's review of milestone 4's pull request · 2026-11-11
+
+One blocker, one should-fix and four minors, on pull request #30. Each fix has a test that failed without it.
+
+- **The API snapshot is read in one order on every disk** (blocker). `tools/api-surface.php` listed a directory's files in the disk's order, which APFS and CI's ext4 give differently, and `ability_schemas` is compared in order: the first full CI run failed on the order alone, with every hash the same. The list is sorted, and the snapshot rewritten in that order. Since the job stopped there, the dependency audits, the benchmarks and the PHP 7.4 parse had not run on the commit; the merge waits for a full run with them green.
+- **A Build tab post that was cut short saves nothing** (should-fix). PHP keeps the first `max_input_vars` fields of a form and drops the rest with no error (D-104), and `Service\KitEditor` reads a field that is not sent as a choice: a rule off, a slot or a preset gone. The panel's last field is now a hidden one, `cbuild_kit[end]`, and a post that arrives without it is refused whole: nothing is written, a notice says only part of the form reached the server and names `max_input_vars`, and what did arrive is kept for an hour as a refused section is, so the tab shows it as typed. D-104 fixed the Part specs panel in the plugin and did not ask a host to raise the limit; here the fields are the kit itself, so there is nothing to leave out, and the notice names the setting because that is the one thing that lets the save through.
+- **A slot the kit does not have is refused before the state is worked out** (minor 1). `Rest\StateRoute` reads the kit, checks the keys named and answers 400; the state service is not built for it. A kit that does not read is still left to the service, which logs it (D-119).
+- **The Build tab is drawn for who can save it** (minor 2): neither the tab nor its panel for a user without `manage_woocommerce`, who could edit the product and see fields that saved nothing.
+- **Each slot's Attribute values fold is named with its row** (minor 3), by `aria-labelledby` as the slot's own fold is. The buttons keep their hidden text (D-120).
+- **`docs/SPEC.md`'s truck table under R1 is the seeds'** (minor 4): each maker's own chart, as D-093 seeded them, with Thunder's 181 and the ranges of its 143 and 161. Cowork said this needed no answer from Zach.
+- **Noted, not changed:** a read of the parts table that races a save can write its row after the save's delete. The row is then as old as that read, and the two-hour age the rows are read with bounds it, as it bounds D-116's other gaps.
+
+**Red runs.**
+- CI run 42969051989, `composer api:check`: "The public API differs from tests/Fixtures/api-surface.json", on `ability_schemas` alone.
+- `BuildTabTest::test_a_post_cut_short_saves_nothing_says_why_and_keeps_what_arrived`: "nothing is saved. Failed asserting that two arrays are identical."
+- `BuildTabTest::test_the_tab_is_drawn_only_for_who_can_save_it`: "Failed asserting that an array does not have the key 'cbuild_build'."
+- `BuildTabTest::test_each_rows_buttons_and_fold_are_named_with_the_row`: "more. Failed asserting that 0 is identical to 1."
+- `StateRouteTest::test_a_slot_the_kit_does_not_have_is_refused_before_the_state_is_worked_out`: "LogicException: The state was worked out for a slot the kit does not have."
+
+**Deliberate breaks.** With the sort commented out, `composer api:check` fails on this Mac as it did in CI. With the end field ignored, the capability checks removed and the fold's attribute taken out, the three `BuildTabTest` cases fail as above. With the route's check moved back after the state, the route's case fails as above.
+
+**Status:** Accepted.

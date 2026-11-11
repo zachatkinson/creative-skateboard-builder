@@ -84,6 +84,8 @@ function cbuild_api_files( string $dir, string $suffix ): array {
 			$out[] = (string) $file;
 		}
 	}
+	// The disk's order is not the same on every file system (APFS and ext4 differ), and the snapshot is compared in order.
+	sort( $out, SORT_STRING );
 	return $out;
 }
 

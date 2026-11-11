@@ -4,6 +4,7 @@
  *
  * @package CreativeBranding\SkateboardBuilder
  *
+ * @var string $marker The name of the panel's last field.
  * @var list<array{id: string, title: string, intro: string, refused: bool, problems: list<array{error: string, field: string, text: string}>, groups: list<array{id: string, legend: string, moves: bool, fold: string, open: bool, fields: list<array<string, mixed>>, more: list<array<string, mixed>>}>}> $sections The tab's sections. None on a product that is not a kit.
  */
 
@@ -76,7 +77,12 @@ if ( ! defined( 'ABSPATH' ) ) {
 							?>
 							<?php if ( 1 === $cbuild_at ) : ?>
 								<details<?php echo array() === $cbuild_chosen ? '' : ' open'; ?>>
-									<summary><?php esc_html_e( 'Attribute values', 'creative-skateboard-builder' ); ?></summary>
+									<summary
+										id="<?php echo esc_attr( $cbuild_group['id'] . '-more' ); ?>"
+										<?php if ( '' !== $cbuild_group['legend'] ) : ?>
+											aria-labelledby="<?php echo esc_attr( $cbuild_group['id'] . '-more ' . $cbuild_group['id'] . '-legend' ); ?>"
+										<?php endif; ?>
+									><?php esc_html_e( 'Attribute values', 'creative-skateboard-builder' ); ?></summary>
 							<?php endif; ?>
 							<?php foreach ( $cbuild_fields as $cbuild_field ) : ?>
 								<?php
@@ -197,4 +203,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 			</div>
 		</div>
 	<?php endforeach; ?>
+	<?php if ( array() !== $sections ) : ?>
+		<?php // The last field of the panel: a post that arrives without it was cut short, and is not saved. ?>
+		<input type="hidden" name="<?php echo esc_attr( $marker ); ?>" value="1" />
+	<?php endif; ?>
 </div>

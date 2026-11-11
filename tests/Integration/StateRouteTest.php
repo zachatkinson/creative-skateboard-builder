@@ -11,7 +11,11 @@ namespace CreativeBranding\SkateboardBuilder\Tests\Integration;
 
 use CreativeBranding\SkateboardBuilder\Domain\Kit\BuildTerms;
 use CreativeBranding\SkateboardBuilder\Port\ShopSettings;
+use CreativeBranding\SkateboardBuilder\Front\StateAnswer;
+use CreativeBranding\SkateboardBuilder\Port\Kits;
 use CreativeBranding\SkateboardBuilder\Rest\StateRoute;
+use CreativeBranding\SkateboardBuilder\Service\BuildState;
+use CreativeBranding\SkateboardBuilder\Service\RateLimit;
 use CreativeBranding\SkateboardBuilder\Service\SpecIndexer;
 use CreativeBranding\SkateboardBuilder\Support\Options;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Domain\KitDocuments;
@@ -358,6 +362,30 @@ final class StateRouteTest extends IntegrationTestCase {
 		$many = $this->ask( array( 'picks' => array_fill_keys( array_map( static fn( int $n ): string => "slot_{$n}", range( 1, 20 ) ), '5' ) ) );
 		self::assertSame( 400, $many->get_status() );
 		self::assertSame( 'This kit has no slot called "slot_1".', self::body( $many )['message'] );
+	}
+
+	// Claude in Cowork's review of milestone 4, minor 1: the whole state was worked out before the slot was refused.
+	public function test_a_slot_the_kit_does_not_have_is_refused_before_the_state_is_worked_out(): void {
+		$route = new StateRoute(
+			$this->service( Kits::class ),
+			static function (): BuildState {
+				throw new \LogicException( 'The state was worked out for a slot the kit does not have.' );
+			},
+			fn (): StateAnswer => $this->service( StateAnswer::class ),
+			fn (): RateLimit => $this->service( RateLimit::class )
+		);
+		foreach ( array(
+			array( 'picks' => array( 'sail' => '5' ) ),
+			array( 'previous' => array( 'sail' => '5' ) ),
+			array( 'step' => 'sail' ),
+		) as $query ) {
+			$request = new WP_REST_Request( 'GET', '/cbuild/v1/kits/' . $this->kit . '/state' );
+			$request->set_url_params( array( 'id' => (string) $this->kit ) );
+			$request->set_query_params( $query );
+			$answer = $route->state( $request );
+			self::assertInstanceOf( \WP_Error::class, $answer, (string) wp_json_encode( $query ) );
+			self::assertSame( 'rest_invalid_param', $answer->get_error_code() );
+		}
 	}
 
 	public function test_a_kit_a_visitor_may_not_see_is_answered_as_one_that_is_not_there(): void {

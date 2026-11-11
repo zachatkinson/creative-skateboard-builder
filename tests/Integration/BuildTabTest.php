@@ -140,9 +140,10 @@ final class BuildTabTest extends IntegrationTestCase {
 	 *
 	 * @param \WC_Product          $product The product being saved.
 	 * @param array<string, mixed> $sent    The tab's fields.
+	 * @param bool                 $whole   Whether the panel's last field arrived.
 	 */
-	private function send( \WC_Product $product, array $sent ): void {
-		$_POST[ BuildTab::FIELD ] = wp_slash( $sent );
+	private function send( \WC_Product $product, array $sent, bool $whole = true ): void {
+		$_POST[ BuildTab::FIELD ] = wp_slash( $whole ? $sent + array( BuildTab::END => '1' ) : $sent );
 		$this->hooks()->save( $product );
 		$product->save();
 	}
@@ -170,6 +171,7 @@ final class BuildTabTest extends IntegrationTestCase {
 	}
 
 	public function test_the_tab_is_on_the_product_data_box_and_shows_on_kits_alone(): void {
+		$this->as( 'shop_manager' );
 		$this->hooks()->register();
 		$tabs = apply_filters( 'woocommerce_product_data_tabs', array() );
 		self::assertSame( 'Build', $tabs[ BuildTab::PANEL ]['label'] );
@@ -500,8 +502,57 @@ final class BuildTabTest extends IntegrationTestCase {
 
 	// The auditor's should-fix 9, milestone 4: every row's buttons were "Move up" and "Move down", and every fold
 	// "Settings", so a list of the tab's controls named none of them apart.
+	// Claude in Cowork's review of milestone 4, should-fix 1: PHP drops the fields past max_input_vars with no error,
+	// and a field that is not sent read as a choice.
+	public function test_a_post_cut_short_saves_nothing_says_why_and_keeps_what_arrived(): void {
+		$this->as( 'shop_manager' );
+		$kit    = KitFactory::kit();
+		$before = self::stored( $kit->get_id() );
+		self::assertSame( 1, preg_match_all( '/<input type="hidden" name="cbuild_kit\[end\]" value="1" \/>\s*<\/div>\s*$/', $this->panel( $kit ) ), 'the last field of the panel' );
+
+		// Cut after the second slot: five slots, every rule, the presets and assembly never arrived.
+		$sent          = self::form();
+		$sent['slots'] = array_slice( $sent['slots'], 0, 2 );
+		unset( $sent['rules'], $sent['presets'], $sent['assembly'] );
+		$this->send( $kit, $sent, false );
+
+		self::assertSame( $before, self::stored( $kit->get_id() ), 'nothing is saved' );
+		$notices = implode( ' ', \WC_Admin_Meta_Boxes::$meta_box_errors );
+		self::assertStringContainsString( 'max_input_vars', $notices );
+		self::assertStringContainsString( 'href="#cbuild_build"', $notices );
+		$panel = $this->panel( $kit );
+		self::assertStringContainsString( 'Not saved. This is what you typed', $panel );
+		self::assertStringContainsString( 'max_input_vars', $panel );
+
+		// Whole, the same form saves.
+		\WC_Admin_Meta_Boxes::$meta_box_errors = array();
+		$whole                    = self::form();
+		$whole['assembly']['fee'] = '31';
+		$this->send( $kit, $whole );
+		self::assertSame( '31', self::stored( $kit->get_id() )[ Options::META_KIT_ASSEMBLY ]['fee'] );
+	}
+
+	// Minor 2 of the same review: the tab was drawn for anyone who may edit the product and saved for a manager alone.
+	public function test_the_tab_is_drawn_only_for_who_can_save_it(): void {
+		$kit  = KitFactory::kit();
+		$user = new \WP_User( $this->as( 'author' ) );
+		$user->add_cap( 'edit_products' );
+		$user->add_cap( 'edit_others_products' );
+		self::assertArrayNotHasKey( BuildTab::PANEL, $this->hooks()->tab( array() ) );
+		self::assertSame( '', $this->panel( $kit ) );
+		$this->as( 'shop_manager' );
+		self::assertArrayHasKey( BuildTab::PANEL, $this->hooks()->tab( array() ) );
+		self::assertStringContainsString( 'id="cbuild_build"', $this->panel( $kit ) );
+	}
+
 	public function test_each_rows_buttons_and_fold_are_named_with_the_row(): void {
 		$this->as( 'shop_manager' );
+		// A slot has its attribute fold once the shop has an attribute. The row is rolled back after the test; the
+		// taxonomy registered in this process is not, and WooCommerce refuses a slug whose taxonomy is registered.
+		if ( 0 === wc_attribute_taxonomy_id_by_name( 'pa_cbuildfold' ) ) {
+			unregister_taxonomy( 'pa_cbuildfold' );
+			self::assertIsInt( wc_create_attribute( array( 'name' => 'Fold', 'slug' => 'cbuildfold' ) ) );
+		}
 		$panel = $this->panel( KitFactory::kit() );
 		// The buttons carry the row's name as hidden text, not by aria-labelledby: Firefox's page crashed under axe when a
 		// button named from the legend had been moved (D-120).
@@ -509,6 +560,8 @@ final class BuildTabTest extends IntegrationTestCase {
 			self::assertSame( 1, preg_match_all( '/id="cbuild-kit-slots-1-' . $control . '">' . $name . ' <span class="screen-reader-text">Slot: Trucks<\/span><\/button>/', $panel ), $control );
 		}
 		self::assertSame( 1, preg_match_all( '/id="cbuild-kit-slots-1-fold"\s+aria-labelledby="cbuild-kit-slots-1-fold cbuild-kit-slots-1-legend"/', $panel ), 'fold' );
+		// Minor 3 of Claude in Cowork's review: the fold of a slot's attribute values had the same name in every row.
+		self::assertSame( 1, preg_match_all( '/id="cbuild-kit-slots-1-more"\s+aria-labelledby="cbuild-kit-slots-1-more cbuild-kit-slots-1-legend"/', $panel ), 'more' );
 		self::assertSame( 1, preg_match_all( '/<legend id="cbuild-kit-slots-1-legend">Slot: Trucks<\/legend>/', $panel ) );
 		self::assertSame( 0, preg_match_all( '/<button[^>]*data-cbuild-move[^>]*>[^<]*<\/button>/', $panel ), 'no button is left with the bare name' );
 		self::assertSame( 0, preg_match_all( '/<button[^>]*data-cbuild-move[^>]*aria-labelledby/', $panel ), 'and none is named from the legend' );

@@ -57,6 +57,13 @@ final class BuildTab {
 	public const FIELD = 'cbuild_kit';
 
 	/**
+	 * The panel's last field. PHP keeps the first `max_input_vars` fields of a form and drops the rest with no error,
+	 * and a field that is not sent reads as a choice: a rule off, a slot or a preset gone. A post without this one was
+	 * cut short, and none of it is saved (Claude in Cowork's review of milestone 4, D-122).
+	 */
+	public const END = 'end';
+
+	/**
 	 * The prefix of every control's ID. After it come the document's name and the field's path in the document, so
 	 * a problem's path leads to its field.
 	 */
@@ -147,6 +154,10 @@ final class BuildTab {
 	 * @return array<mixed>
 	 */
 	public function tab( array $tabs ): array {
+		// Drawn for who can save it: the save below takes nothing from anyone else.
+		if ( ! current_user_can( 'manage_woocommerce' ) ) {
+			return $tabs;
+		}
 		$tabs[ self::PANEL ] = array(
 			'label'    => __( 'Build', 'creative-skateboard-builder' ),
 			'target'   => self::PANEL,
@@ -163,9 +174,10 @@ final class BuildTab {
 	 */
 	public function panel(): void {
 		global $product_object;
-		if ( ! $product_object instanceof WC_Product ) {
+		if ( ! $product_object instanceof WC_Product || ! current_user_can( 'manage_woocommerce' ) ) {
 			return;
 		}
+		$marker   = self::FIELD . '[' . self::END . ']';
 		$sections = $product_object->is_type( Options::PRODUCT_TYPE_KIT ) ? $this->sections( $product_object ) : array();
 		include CBUILD_PATH . 'templates/admin/build-tab.php';
 	}
@@ -194,9 +206,36 @@ final class BuildTab {
 			$sent['slots'] = array_filter( $sent['slots'], static fn( mixed $row ): bool => ! is_array( $row ) || '' === ( $row['remove'] ?? '' ) );
 		}
 
+		$whole = '1' === ( $sent[ self::END ] ?? '' );
+		unset( $sent[ self::END ] );
+
 		$stored = StoredKit::named( $product );
 		$draft  = $this->editor->draft( $sent, $stored, wc_get_price_decimal_separator() );
-		$keys   = Options::kitDocumentNames();
+		if ( ! $whole ) {
+			// Cut short on its way here: nothing is saved, and what did arrive is kept as typed.
+			$text     = __( 'The Build tab was not saved, since only part of this product\'s form reached the server. PHP\'s max_input_vars setting caps how many fields one save may send. Ask the host to raise it, then save again.', 'creative-skateboard-builder' );
+			$typed    = array_replace( $draft->documents, $draft->refused );
+			$problems = array();
+			foreach ( array_keys( $typed ) as $name ) {
+				$problems[] = array(
+					'document' => $name,
+					'field'    => self::IDS . '-' . $name,
+					'error'    => self::IDS . '-error-cut-' . $name,
+					'text'     => $text,
+				);
+			}
+			self::notice( self::PANEL, $text );
+			set_transient(
+				self::kept( $product->get_id() ),
+				array(
+					'refused'  => $typed,
+					'problems' => $problems,
+				),
+				self::KEPT
+			);
+			return;
+		}
+		$keys = Options::kitDocumentNames();
 		foreach ( $draft->documents as $name => $document ) {
 			StoredKit::write( $product, $keys[ $name ], $document );
 		}

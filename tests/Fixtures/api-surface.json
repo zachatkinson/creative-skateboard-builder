@@ -132,9 +132,9 @@
         "set_size"
     ],
     "ability_schemas": {
-        "creative-skateboard-builder/price-build": "0be91102bbbf7ed7d603814a0e1eb223722a9a312af9dde63e066a3859d46613",
+        "creative-skateboard-builder/catalogue-check": "3419ea03a7f81096029e2247d2914dc5a7132729e9c34b442d4e911a49e15c32",
         "creative-skateboard-builder/check-build": "f17f046dc3d1e98e2d2fa042e821420cffc92b336d2b39d080a69994c730236d",
-        "creative-skateboard-builder/catalogue-check": "3419ea03a7f81096029e2247d2914dc5a7132729e9c34b442d4e911a49e15c32"
+        "creative-skateboard-builder/price-build": "0be91102bbbf7ed7d603814a0e1eb223722a9a312af9dde63e066a3859d46613"
     },
     "schemas": [
         "schema/kit-assembly.json",

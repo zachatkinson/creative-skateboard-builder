@@ -280,22 +280,23 @@ Eight numbered rules, each with its source: six fit tests between two slots (R1 
 - Axle widths are compared, never size numbers. Indy 149 and Thunder 149 are both 8.5 in, while Thunder 151 matches Indy 159.
 - Tests: an 8.0 in deck with Indy 139 fits. An 8.5 in deck with Indy 144 is blocked by Independent's own range of 8.2 to 8.375 in, though one retailer gives 8.0 to 8.5.
 
-Seed spec tables. Independent's figures come from its own site; Thunder's and Venture's from retailers, since Thunder's chart is an image and Venture publishes none.
+Seed spec tables. Each maker's figures come from its own size chart, read on 10 November 2026: Independent's from its site, Thunder's and Venture's from the chart each publishes as images (D-093).
 
-| Axle | Independent, with its deck range | Thunder | Venture, with deck range |
+| Axle | Independent, with its deck range | Thunder, with its deck range | Venture, with its deck range |
 | --- | --- | --- | --- |
 | 6.9 in | 109: 6.25–7.6 |  |  |
-| 7.0 in |  | 143 |  |
-| 7.6 in | 129: 7.4–7.8 | 145: 7.38–8.0 | 5.0: up to 7.9 |
-| 8.0 in | 139: 7.8–8.2 | 147: 7.75–8.25 | 5.2: 7.9–8.1 |
-| 8.25 in | 144: 8.2–8.375 | 148: 8.0–8.5 | 5.6: 8.1–8.3 |
+| 7.125 in |  | 143: up to 7.4 |  |
+| 7.6 in | 129: 7.4–7.8 |  |  |
+| 7.62 in |  | 145: 7.4–7.9 | 5.0: up to 7.9 |
+| 8.0 in | 139: 7.8–8.2 | 147: 7.9–8.12 | 5.2: 7.9–8.1 |
+| 8.25 in | 144: 8.2–8.375 | 148: 8.12–8.38 | 5.6: 8.1–8.3 |
 | 8.375 in | 146: 8.125–8.625 |  |  |
-| 8.5 in | 149: 8.375–8.6 | 149: 8.25–8.75 | 5.8: 8.4–8.6 |
+| 8.5 in | 149: 8.375–8.6 | 149: 8.38–8.62 | 5.8: 8.4–8.6 |
 | 8.625 in | 151: 8.375–8.875 |  |  |
-| 8.75 in | 159: 8.6–9.0 | 151: 8.5–9.0 | 6.1: 8.62 and up |
+| 8.75 in | 159: 8.6–9.0 | 151: 8.62–8.85 | 6.1: 8.62 and up |
 | 9.0 in | 166: 8.5–9.5 |  |  |
-| 9.125 in | 169: 9.0–9.5 | 161 |  |
-| 10.0 in | 215: 9.5–10.5 |  |  |
+| 9.125 in | 169: 9.0–9.5 | 161: 8.9–9.5 |  |
+| 10.0 in | 215: 9.5–10.5 | 181: 9.5 and up |  |
 
 **R2. Mounting holes (block).**
 
@@ -825,7 +826,7 @@ Opened 22 October 2026. WooCommerce's source is cited from mirrors (wp-kama.com 
 
 **Fit rules**
 
-- R1: [Independent's trucks](https://independenttrucks.com/trucks); Thunder's sizes from [Tactics](https://www.tactics.com/thunder/hollow-lights-skateboard-trucks/polished-hollow-lights-ii-148) and [Warehouse](https://www.warehouseskateboards.com/thunder-skateboard-trucks), since [Thunder's own chart](https://www.thundertrucks.com/sizing/) is images only; Venture's from [Rollersnakes](https://us.rollersnakes.com/pages/venture-skateboard-trucks-size-guide-chart) and [Stil](https://stil-laden.com/en/pages/venture-trucks-size-chart); the tolerance from [Warehouse's trucks step](https://www.warehouseskateboards.com/skateboard-trucks?bac=1) and [Skate Warehouse's trucks guide](https://www.skatewarehouse.com/news/articles/skateboard_trucks_buying_guide.html); the disagreeing range from [NHS](https://nhsskatedirect.com/products/stage-11-polished-standard-skateboard-trucks-independent).
+- R1: [Independent's trucks](https://independenttrucks.com/trucks); Thunder's from [its own chart](https://www.thundertrucks.com/sizing/) and Venture's from [its own](https://venturetrucks.net/sizes/), each published as images (D-093); the tolerance from [Warehouse's trucks step](https://www.warehouseskateboards.com/skateboard-trucks?bac=1) and [Skate Warehouse's trucks guide](https://www.skatewarehouse.com/news/articles/skateboard_trucks_buying_guide.html); the disagreeing range from [NHS](https://nhsskatedirect.com/products/stage-11-polished-standard-skateboard-trucks-independent).
 - R2: [Riding Boards](https://www.ridingboards.com/?p=2738) for the patterns; [NHS's Indy 215](https://nhsskatedirect.com/products/stage-11-215-polished-skateboard-trucks-independent) for six-hole baseplates.
 - R3: [NHS's Indy Mid](https://nhsskatedirect.com/products/polished-mid-independent-skateboard-trucks); [Warehouse's wheels step](https://www.warehouseskateboards.com/skateboard-wheels?bac=1); [Thunder's truck styles](https://www.thundertrucks.com/truck-styles/); [Skate Warehouse UK](https://www.skatewarehouse.co.uk/news/low-vs-high-skateboard-trucks/); [Hammer's guide](https://www.hammertoronto.com/pages/beginner-guide-to-choosing-a-skateboard) for the riser table; [SkatePro's risers](https://www.skatepro.ca/c390.htm); [Switch](https://www.switchnow.ca/pages/skateboard-buying-guide).
 - R4: [Warehouse's hardware guide](https://www.warehouseskateboards.com/help/Skateboard-Hardware-Buying-Guide) and [SkatePro's](https://www.skatepro.com/en-us/a798.htm).

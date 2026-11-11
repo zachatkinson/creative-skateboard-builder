@@ -205,6 +205,18 @@ final class StateRoute implements Hookable {
 		$picks    = Cast::map( $request['picks'] );
 		$previous = null === $request['previous'] ? null : Cast::map( $request['previous'] );
 		$step     = null === $request['step'] ? null : Cast::str( $request['step'] );
+		// A slot the kit does not have is refused before anything is worked out: the kit alone is read for it. A kit
+		// that does not read is left to the state service, which logs it.
+		$kit = $this->kits->kit( $id );
+		foreach ( array_merge( array_keys( $picks ), array_keys( $previous ?? array() ), null === $step ? array() : array( $step ) ) as $key ) {
+			if ( null !== $kit && null === $kit->slots->get( (string) $key ) ) {
+				return new WP_Error(
+					'rest_invalid_param',
+					Words::problem( Problem::SlotUnknown, (string) $key ),
+					array( 'status' => 400 )
+				);
+			}
+		}
 		try {
 			$state = ( $this->state )()->of( $id, $picks, $previous, $step, null === $request['assembly'] ? null : Cast::bool( $request['assembly'] ) );
 		} catch ( InvalidMoney ) {
@@ -212,15 +224,6 @@ final class StateRoute implements Hookable {
 		}
 		if ( null === $state ) {
 			return $missing;
-		}
-		foreach ( array_merge( array_keys( $picks ), array_keys( $previous ?? array() ), null === $step ? array() : array( $step ) ) as $key ) {
-			if ( null === $state->kit->slots->get( (string) $key ) ) {
-				return new WP_Error(
-					'rest_invalid_param',
-					Words::problem( Problem::SlotUnknown, (string) $key ),
-					array( 'status' => 400 )
-				);
-			}
 		}
 		return new WP_REST_Response( ( $this->writer )()->of( $state ) );
 	}
