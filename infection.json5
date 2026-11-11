@@ -19,10 +19,13 @@
 			"Admin/SpecTablesScreen.php",
 			"Admin/ImportScreen.php",
 			"Admin/CheckScreen.php",
+			"Admin/BuildTab.php",
 			// WP-CLI commands, the Abilities API and Site Health: each is a registration and WordPress's own objects.
 			"Cli",
 			"Abilities",
 			"Health/SiteHealth.php",
+			// The state route: WordPress's REST request and response, and its locale switcher.
+			"Rest/StateRoute.php",
 			// Adapters: WooCommerce's products, WordPress's options, posts, uploads, filesystem and the queue.
 			"Adapter/ActionSchedulerQueue.php",
 			"Adapter/AttributeSpecSource.php",
@@ -40,6 +43,10 @@
 			"Adapter/WooPartCatalogue.php",
 			"Adapter/WooPartSpecs.php",
 			"Adapter/WooKits.php",
+			"Adapter/WooPartCards.php",
+			// The object cache and transients, and wc_price().
+			"Adapter/CacheTally.php",
+			"Adapter/ShopMoney.php",
 			"Adapter/WooCommerceLogger.php",
 			// SQL through $wpdb, and the classes that only add hooks.
 			"Repository",

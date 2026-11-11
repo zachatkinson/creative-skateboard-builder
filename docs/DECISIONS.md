@@ -1454,3 +1454,14 @@ On `main`, `composer infection` mutates everything, which took 11 minutes on 0.3
 **Red run.** `StateRouteTest`'s first run: `test_the_answer_is_in_the_language_asked_for_when_the_site_has_it_and_the_sites_own_otherwise`, "Failed asserting that two arrays are identical", with `en_US` beside `fr_CA`: the 404's sentence was made before the switch, which moved the switch to where it is. Deliberate breaks, three at once: with the public check, the limit and the `no-store` header each taken out, `test_a_kit_a_visitor_may_not_see_is_answered_as_one_that_is_not_there` fails ("Failed asserting that 200 is identical to 404", on the draft), as do `test_every_answer_of_the_route_is_kept_out_of_caches_and_out_of_search` ("Failed asserting that null is identical to 'no-store'"), `test_an_address_over_the_limit_is_told_to_wait_and_another_address_is_not`, `test_a_request_over_the_limit_reads_no_kit` and `test_the_address_is_the_connections_own_unless_the_shop_names_a_header` ("Failed asserting that an array contains 429").
 
 **Status:** Accepted.
+
+### D-113 · Five more classes left out of the mutation run · 2026-11-10
+
+Zach's answer on 10 November 2026 to whether `Rest/StateRoute.php`, `Adapter/CacheTally.php`, `Adapter/ShopMoney.php`, `Adapter/WooPartCards.php` and `Admin/BuildTab.php` may join `infection.json5`'s list (D-038): "for whats still open: do whatever is best practice". The practice is D-087's rule, applied as it stands: a class is left out only when it cannot run without WordPress or WooCommerce loaded.
+
+- **All five meet it.** The route takes WordPress's REST request and gives its response, and switches its locale. `CacheTally` is the object cache and transients. `ShopMoney` is `wc_price()`. `WooPartCards` reads WooCommerce's products and the object cache. `BuildTab` is a wp-admin screen, as the five screens already on the list are.
+- **Each is proven in wp-env** by the integration suite, with a deliberate break on record: the route's three in D-112 and the cards' in D-111. The Build tab had none on record, so one was run for this decision: with its capability check taken out, `BuildTabTest::test_only_who_may_manage_the_shop_saves_a_kit` fails, "Failed asserting that two arrays are identical." `CacheTally` and `ShopMoney` are reached through the route's tests: the limit's 429s, the transient's name and expiry, and the total's "$97.00".
+- **What needs no WordPress stays in the run:** `Service\RateLimit`, `Front\Words` and `Front\StateAnswer`, where the route's logic is, at 225 of 225 mutants killed. The route was written thin so that this is where the list ends.
+- **The rule is unchanged,** and adding to the list still needs Zach.
+
+**Status:** Accepted.
