@@ -471,3 +471,19 @@ The Store API answers with the code, and the form shows the sentence as an error
 | `cbuild_build_refused` | 0.5.0 | 400 | The build has problems. The answer's `data.problems` lists each as `code` (Build problems, above), `slot` and `part`; the form shows a notice for each. |
 | `cbuild_no_price` | 0.4.0 | 400 from the cart | The shop's currency has more decimals than a build can be priced in. |
 | `cbuild_not_added` | 0.5.0 | 400 | WooCommerce would not add one of the parts, so the kit's line and every part already added were taken out again. |
+
+### A build in the cart stays whole
+
+The server keeps it so, whichever cart or plugin makes the change:
+
+- **Quantity.** Setting the kit's line's quantity sets each part's line to `quantities[slot]` times it, before the totals are worked out. A part's line set alone goes back.
+- **Removal.** Removing any line of a build removes all of it. Putting one back, as the classic cart's Undo does, puts all of it back, or none where a line can no longer be restored.
+- **The Store API's limits.** A part's line has `quantity_limits.editable` false. A kit's line's `quantity_limits.maximum` is no more than its scarcest part allows, beside what the cart's other lines hold of that part, and never less than 1.
+- **The check before paying.** On `woocommerce_check_cart_items`, which the cart page, both checkouts and every Store API cart response run, a build that has lost a line is removed with what is left of it, and each whole build is judged again as the shop is then. What is found is an error notice, which stops the order; the Store API lists it under the cart's `errors`.
+
+| Code | Since | Status | When |
+| --- | --- | --- | --- |
+| `cbuild_part_locked` | 0.5.0 | 400 | A part's line's quantity was set alone. The classic cart's Update cart says the same in a notice. |
+| `cbuild_build_incomplete` | 0.5.0 | A notice | A build in the cart had lost its kit's line or one of its parts, and the rest of it was removed. |
+
+A kit's line raised past what the shop has of a part is refused as `cbuild_build_refused`, with a `part_short` problem for each such part.

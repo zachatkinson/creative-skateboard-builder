@@ -1723,3 +1723,21 @@ Milestone 5's first step: the keys' shapes, and where each route's request is ju
 **Red run.** "CartAddTest::test_a_part_woocommerce_will_not_add_takes_the_whole_build_out_and_fails_the_add: Failed asserting that 500 is identical to 400." at `tests/Integration/CartAddTest.php:337`: the refusal was a plain exception wherever `WC()->is_store_api_request()` was false. **Deliberate breaks** are in the commit's message.
 
 **Status:** Accepted.
+
+### D-129 · How a build in the cart is kept whole · 2026-11-11
+
+Milestone 5's second step. `Service\BuildLines` holds the rules, and `Cart\LineHooks` tells it of each change and holds none.
+
+- **The parts follow the kit's line on `woocommerce_after_cart_item_quantity_update`, not on `woocommerce_cart_item_set_quantity`,** which the spec names. In WooCommerce 11.2.2 `WC_Cart::set_quantity()` fires the first, works out the totals, and then fires the second (`includes/class-wc-cart.php:1562`, `:1565`, `:1576`). On the second the totals would be worked out before the parts moved, and again after. On the first they are right the first time.
+- **A part's line set alone is set back,** whatever set it. The carts are also told not to offer it: `woocommerce_store_api_product_quantity_editable` is false for a part (`src/StoreApi/Utilities/QuantityLimits.php:309`), and `woocommerce_store_api_cart_item_quantity_validation` (`:211`, since 11.2.0) and `woocommerce_update_cart_validation` (`includes/class-wc-form-handler.php:859`) refuse it as `cbuild_part_locked`. A part set to the quantity it must already have is let through, since the classic cart posts every line.
+- **A kit's line's maximum is at least 1.** Where a part is sold out the limit is none, and a maximum of none would have the Store API cut the line's quantity to nothing with no word of why. The check below says why instead.
+- **Removal goes by who names the kit's line, not by its list.** Every line whose `cbuild_parent` is the kit's key goes, so a build whose `cbuild_children` has drifted still leaves nothing behind. The hook is `woocommerce_remove_cart_item` (`includes/class-wc-cart.php:1509`), while the line is still there to be read.
+- **Undo restores the build or nothing.** On `woocommerce_cart_item_restored` (`:1536`) the kit's line and each part are restored from what the cart removed in the session; if the build is not whole after, what came back is removed again. A restored kit's line is priced again on `woocommerce_restore_cart_item` (`:1532`), since WooCommerce reads its product afresh.
+- **The service's own changes fire the same hooks,** so it answers none while one of its changes is under way. The flag is cleared in a `finally`: a cart that throws part way through does not leave the next change unanswered.
+- **`woocommerce_check_cart_items` runs more often than the spec supposes.** Beside the cart page and both checkouts, the Store API runs it for every cart response, to fill the cart's `errors` (`src/StoreApi/Utilities/CartController.php:531`, from `CartSchema::get_item_response()`). So a build is judged again on each of those: its kit read, each part read from WooCommerce, the validator run. A cart with no build in it is passed by after one look at each line's keys. The cost is measured with the add's benchmark, later in this milestone.
+- **A build that has come apart is removed; one that is whole and no longer sellable stays.** The first cannot be mended by the shopper. The second can, from the builder, and the spec keeps it for the Edit build link. Both are error notices, so neither is paid for unseen: the classic checkout stops on any error notice, and the Store API's checkout answers 409 with them.
+- **A bug this step found in the last.** `Adapter\WooCart::lines()` read `cbuild_children` with a helper that keeps only string keys, so every kit's line was read as having no parts. Nothing asked until the cart was looked over, which then took every build for a broken one.
+
+**Red run.** With `Cart\LineHooks` registered: "CartAddTest::test_the_store_api_adds_the_kit_with_its_build_and_a_line_for_each_part: Failed asserting that actual size 0 matches expected size 1." at `tests/Integration/CartAddTest.php:38`, and two more of that class. **Deliberate breaks** are in the commit's message.
+
+**Status:** Accepted.

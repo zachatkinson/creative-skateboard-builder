@@ -35,4 +35,10 @@ enum CartRefusal: string {
 
 	/** WooCommerce would not add one of the build's parts, so none of the build was added. */
 	case NotAdded = 'cbuild_not_added';
+
+	/** A part's quantity was changed alone: it follows its build's. */
+	case PartLocked = 'cbuild_part_locked';
+
+	/** A build in the cart had lost its kit's line or one of its parts, and what was left of it was removed. */
+	case BuildIncomplete = 'cbuild_build_incomplete';
 }

@@ -40,20 +40,14 @@ final class WooCart implements Cart {
 	public function lines(): array {
 		$lines = array();
 		foreach ( self::cart()?->get_cart() ?? array() as $key => $item ) {
-			$item     = Cast::map( $item );
-			$key      = (string) $key;
-			$children = array();
-			foreach ( Cast::map( $item[ Options::CART_CHILDREN ] ?? null ) as $child ) {
-				if ( is_string( $child ) ) {
-					$children[] = $child;
-				}
-			}
+			$item          = Cast::map( $item );
+			$key           = (string) $key;
 			$lines[ $key ] = new CartLine(
 				$key,
 				Cast::int( $item['variation_id'] ?? 0 ) > 0 ? Cast::int( $item['variation_id'] ) : Cast::int( $item['product_id'] ?? 0 ),
 				Cast::int( $item['quantity'] ?? 0 ),
 				$item[ Options::CART_BUILD ] ?? null,
-				$children,
+				Cast::strings( $item[ Options::CART_CHILDREN ] ?? null ),
 				Cast::str( $item[ Options::CART_PARENT ] ?? '' ),
 				Cast::str( $item[ Options::CART_SLOT ] ?? '' )
 			);
@@ -100,6 +94,17 @@ final class WooCart implements Cart {
 	 */
 	public function remove( string $key ): void {
 		self::cart()?->remove_cart_item( $key );
+	}
+
+	/**
+	 * Put back a line the cart removed in this session.
+	 *
+	 * @since 0.5.0
+	 *
+	 * @param string $key The line's cart key.
+	 */
+	public function restore( string $key ): void {
+		self::cart()?->restore_cart_item( $key );
 	}
 
 	/**

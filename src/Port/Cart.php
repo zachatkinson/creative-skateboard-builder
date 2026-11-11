@@ -52,6 +52,15 @@ interface Cart {
 	public function remove( string $key ): void;
 
 	/**
+	 * Put back a line the cart removed in this session, as its Undo does.
+	 *
+	 * @since 0.5.0
+	 *
+	 * @param string $key The line's cart key.
+	 */
+	public function restore( string $key ): void;
+
+	/**
 	 * Set how many a line holds.
 	 *
 	 * @since 0.5.0

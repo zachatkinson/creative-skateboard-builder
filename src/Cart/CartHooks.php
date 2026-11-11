@@ -11,15 +11,13 @@ namespace CreativeBranding\SkateboardBuilder\Cart;
 
 use Automattic\WooCommerce\StoreApi\Exceptions\RouteException;
 use Closure;
-use CreativeBranding\SkateboardBuilder\Front\StateAnswer;
 use CreativeBranding\SkateboardBuilder\Front\Words;
 use CreativeBranding\SkateboardBuilder\Hookable;
-use CreativeBranding\SkateboardBuilder\Port\Kits;
 use CreativeBranding\SkateboardBuilder\Service\Build;
 use CreativeBranding\SkateboardBuilder\Service\BuildCart;
 use CreativeBranding\SkateboardBuilder\Service\CartRefusal;
-use CreativeBranding\SkateboardBuilder\Service\Verdict;
 use CreativeBranding\SkateboardBuilder\Support\Options;
+use WC_Cart;
 use WC_Product;
 use WP_REST_Request;
 
@@ -55,9 +53,9 @@ final class CartHooks implements Hookable {
 	 * @since 0.5.0
 	 *
 	 * @param Closure(): BuildCart $builds Builds the service, when a kit is on its way to the cart or in it.
-	 * @param Closure(): Kits      $kits   The shop's kits, for a slot's label in a refusal.
+	 * @param Refusals             $refusals Puts a refusal in words.
 	 */
-	public function __construct( private Closure $builds, private Closure $kits ) {}
+	public function __construct( private Closure $builds, private Refusals $refusals ) {}
 
 	/**
 	 * Attach hooks.
@@ -80,6 +78,8 @@ final class CartHooks implements Hookable {
 		add_filter( 'woocommerce_get_cart_item_from_session', array( $this, 'priced' ), 10, 1 );
 		// includes/class-wc-cart.php:1484, src/StoreApi/Utilities/CartController.php:217. Before the totals, at 20.
 		add_action( 'woocommerce_add_to_cart', array( $this, 'added' ), 10, 1 );
+		// includes/class-wc-cart.php:1532: a line put back by the cart's Undo has a product read afresh.
+		add_action( 'woocommerce_restore_cart_item', array( $this, 'restoring' ), 10, 2 );
 	}
 
 	/**
@@ -102,17 +102,10 @@ final class CartHooks implements Hookable {
 		if ( null === $verdict->build ) {
 			$refused = new RouteException(
 				esc_html( $verdict->refusal->value ?? CartRefusal::NoBuild->value ),
-				esc_html( $this->sentences( $id, $verdict )[0] ),
+				esc_html( $this->refusals->sentences( $id, $verdict )[0] ),
 				CartRefusal::KitNotFound === $verdict->refusal ? 404 : 400,
 				array(
-					'problems' => array_map(
-						static fn( $problem ): array => array(
-							'code' => $problem->code->value,
-							'slot' => $problem->slot,
-							'part' => $problem->part,
-						),
-						$verdict->problems 
-					),
+					'problems' => Refusals::problems( $verdict ),
 				) // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- codes, slot keys and IDs, sent as JSON.
 			);
 			throw $refused;
@@ -151,7 +144,7 @@ final class CartHooks implements Hookable {
 		if ( null !== $verdict->build ) {
 			return true;
 		}
-		foreach ( $this->sentences( $id, $verdict ) as $sentence ) {
+		foreach ( $this->refusals->sentences( $id, $verdict ) as $sentence ) {
 			wc_add_notice( esc_html( $sentence ), 'error' );
 		}
 		return false;
@@ -234,6 +227,20 @@ final class CartHooks implements Hookable {
 	}
 
 	/**
+	 * A removed line is being put back: a kit's product is priced again.
+	 *
+	 * @since 0.5.0
+	 *
+	 * @param mixed $key  The line's cart key.
+	 * @param mixed $cart The cart.
+	 */
+	public function restoring( mixed $key, mixed $cart ): void {
+		if ( $cart instanceof WC_Cart && is_string( $key ) ) {
+			$this->priced( $cart->get_cart_item( $key ) );
+		}
+	}
+
+	/**
 	 * A line was added: a kit's gets its parts. When they cannot all be added nothing of the build stays, and the
 	 * add fails in the way of the route it came by: WooCommerce's cart turns an exception into its notice and a
 	 * failed add, and the Store API answers with the error.
@@ -253,23 +260,6 @@ final class CartHooks implements Hookable {
 		// other, whose message becomes the notice.
 		$refused = new RouteException( esc_html( $refusal->value ), esc_html( Words::refusal( $refusal ) ), 400 );
 		throw $refused;
-	}
-
-	/**
-	 * Why a build is refused, as sentences: each thing wrong with the build, or the one reason.
-	 *
-	 * @param int     $kit     The kit product's ID.
-	 * @param Verdict $verdict What was said of the build.
-	 * @return non-empty-list<string>
-	 */
-	private function sentences( int $kit, Verdict $verdict ): array {
-		$sentences = array();
-		$slots     = array() === $verdict->problems ? null : ( $this->kits )()->kit( $kit )?->slots;
-		foreach ( $verdict->problems as $problem ) {
-			$slot        = $slots?->get( $problem->slot );
-			$sentences[] = Words::problem( $problem->code, null === $slot ? $problem->slot : StateAnswer::label( $slot->label, $slot->key, $kit ) );
-		}
-		return array() === $sentences ? array( Words::refusal( $verdict->refusal ?? CartRefusal::NoBuild ) ) : $sentences;
 	}
 
 	/**

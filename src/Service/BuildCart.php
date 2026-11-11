@@ -12,6 +12,7 @@ namespace CreativeBranding\SkateboardBuilder\Service;
 use CreativeBranding\SkateboardBuilder\Domain\Fit\BuildProblem;
 use CreativeBranding\SkateboardBuilder\Domain\Fit\BuildValidator;
 use CreativeBranding\SkateboardBuilder\Domain\Fit\FitEngine;
+use CreativeBranding\SkateboardBuilder\Domain\Fit\Option;
 use CreativeBranding\SkateboardBuilder\Domain\Fit\Problem;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\InvalidMoney;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Kit;
@@ -148,6 +149,24 @@ final class BuildCart {
 	}
 
 	/**
+	 * Judge again a build whose lines are in the cart, as the shop is now: its kit, each part and the stock, with
+	 * the cart's lines counted as they stand. Nothing is taken and nothing changes.
+	 *
+	 * @since 0.5.0
+	 *
+	 * @param Build $build The build.
+	 * @return Verdict|null Why it can no longer be bought, or null when it can.
+	 */
+	public function recheck( Build $build ): ?Verdict {
+		$kit = $this->kits->isPublic( $build->kit ) ? $this->kits->kit( $build->kit ) : null;
+		if ( null === $kit ) {
+			return Verdict::refused( CartRefusal::KitNotFound );
+		}
+		$problems = $this->examine( $kit, $build->picks, 0 )[0];
+		return array() === $problems ? null : Verdict::refused( CartRefusal::BuildRefused, $problems );
+	}
+
+	/**
 	 * What the kit's line of a build costs, in minor units: the kit's assembly fee where the shop assembles the
 	 * build, and nothing where it does not, or where the kit no longer reads or its fee has no minor unit.
 	 *
@@ -174,6 +193,31 @@ final class BuildCart {
 	 * @param int                    $quantity How many of the build, one or more.
 	 */
 	private function judge( int $id, Kit $kit, array $asked, bool $assembly, int $quantity ): Verdict {
+		[ $problems, $ids, $quantities, $options ] = $this->examine( $kit, $asked, $quantity );
+		if ( array() !== $problems ) {
+			return Verdict::refused( CartRefusal::BuildRefused, $problems );
+		}
+		try {
+			( new Pricer() )->quote( $kit, $options, $assembly, $this->settings->terms()->discount, $this->kits->decimals() );
+		} catch ( InvalidMoney ) {
+			return Verdict::refused( CartRefusal::NoPrice );
+		}
+		$build                            = new Build( $this->uuids->next(), $id, $ids, $quantities, $assembly );
+		$this->taken[ $id ][ $build->id ] = $build;
+		return Verdict::taken( $build );
+	}
+
+	/**
+	 * What is wrong with a set of picks, as the shop is now, and what the build takes.
+	 *
+	 * @param Kit                    $kit   The kit.
+	 * @param array<int|string, int> $asked The picks: slot key to part ID, 0 where what was sent is no ID.
+	 * @param int                    $more  How many of the build are to be added to what the cart holds: none for a
+	 *                                      build whose lines are in the cart already.
+	 * @return array{list<BuildProblem>, array<string, int>, array<string, int>, array<string, Option>}
+	 *         The problems; each slot's part; how many of it one build takes; the build's options.
+	 */
+	private function examine( Kit $kit, array $asked, int $more ): array {
 		$picks    = Picks::none();
 		$found    = array();
 		$problems = array();
@@ -193,7 +237,7 @@ final class BuildCart {
 		$problems   = array( ...$problems, ...$validation->problems );
 
 		// Each part is counted across the cart: what this build takes of it, in every slot and for every copy of
-		// the build, beside what the cart's lines already hold.
+		// the build to be added, beside what the cart's lines already hold.
 		$needed = array();
 		foreach ( $this->cart->lines() as $line ) {
 			$needed[ $line->part ] = ( $needed[ $line->part ] ?? 0 ) + $line->quantity;
@@ -204,7 +248,7 @@ final class BuildCart {
 			if ( null !== $option->quantity ) {
 				$ids[ $slot ]                = $option->part->id;
 				$quantities[ $slot ]         = $option->quantity;
-				$needed[ $option->part->id ] = ( $needed[ $option->part->id ] ?? 0 ) + $option->quantity * $quantity;
+				$needed[ $option->part->id ] = ( $needed[ $option->part->id ] ?? 0 ) + $option->quantity * $more;
 			}
 		}
 		foreach ( $ids as $slot => $part ) {
@@ -214,17 +258,7 @@ final class BuildCart {
 				$problems[] = new BuildProblem( Problem::PartShort, $slot, $part );
 			}
 		}
-		if ( array() !== $problems ) {
-			return Verdict::refused( CartRefusal::BuildRefused, $problems );
-		}
-		try {
-			( new Pricer() )->quote( $kit, $validation->build, $assembly, $this->settings->terms()->discount, $this->kits->decimals() );
-		} catch ( InvalidMoney ) {
-			return Verdict::refused( CartRefusal::NoPrice );
-		}
-		$build                            = new Build( $this->uuids->next(), $id, $ids, $quantities, $assembly );
-		$this->taken[ $id ][ $build->id ] = $build;
-		return Verdict::taken( $build );
+		return array( $problems, $ids, $quantities, $validation->build );
 	}
 
 	/**

@@ -10,6 +10,8 @@ All notable changes to this project are documented here. The format follows [Kee
 - Four cart item keys. A kit's line carries `cbuild`, the build (`schema_version`, `id`, `kit`, `picks`, `quantities`, `assembly`), and `cbuild_children`, its parts' cart keys. A part's line carries `cbuild_parent`, its kit's cart key, and `cbuild_slot`, the slot it fills.
 - A kit's line costs the kit's assembly fee where the build is assembled, and nothing where it is not. A kit may be bought only with a build taken in the same request: one added bare, by any route, is refused.
 - The cart's refusals, each a code the Store API answers with and a sentence the form shows as a notice: `cbuild_no_build`, `cbuild_kit_not_found`, `cbuild_build_refused` (with each problem's `code`, `slot` and `part` under `problems`), `cbuild_no_price` and `cbuild_not_added`, when WooCommerce will not add one of the parts and so nothing of the build stays.
+- A build in the cart stays whole, by every route. The kit's line's quantity sets its parts'; a part's line set alone goes back, and is refused as `cbuild_part_locked` by the Store API and the classic cart's Update cart. Removing any line removes the build, and the cart's Undo brings all of it back. In the Store API a part's quantity is not editable, and a kit's line's maximum is what its scarcest part allows (D-129).
+- The cart is looked over wherever WooCommerce checks it: a build that has lost a line is removed and said as `cbuild_build_incomplete`, and a build the shop would no longer sell as it is, for a part sold out, a spec changed or the kit taken down, stops the order with a notice for each problem.
 
 ### Changed
 

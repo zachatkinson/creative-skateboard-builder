@@ -42,6 +42,8 @@ Yes. Activating it for the network installs it on every site, and a site added l
 = 0.5.0 =
 * A build can be added to the cart: the kit with a line for each part, each at your shop's own price, with the assembly fee on the kit's line. More of this version's work is listed here as it lands.
 * A kit added to a cart with no build is refused, whichever way it arrives.
+* A build in the cart stays together: its quantity sets its parts', removing any line removes the build, and Undo brings all of it back.
+* Before an order is placed, each build is checked again against your stock and your parts' specs.
 * The cart charges each part at the price your shop holds at that moment.
 * An order no longer queues background work for each product it sells.
 

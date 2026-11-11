@@ -96,7 +96,7 @@ final class Cast {
 	 * @since 0.1.0
 	 *
 	 * @param mixed $value Value.
-	 * @return string[]
+	 * @return list<string>
 	 */
 	public static function strings( mixed $value ): array {
 		$out = array();

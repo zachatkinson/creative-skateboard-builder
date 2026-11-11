@@ -9,7 +9,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-11-11T20:16:15+00:00\n"
+"POT-Creation-Date: 2026-11-11T20:45:32+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: creative-skateboard-builder\n"
@@ -1791,38 +1791,46 @@ msgstr ""
 msgid "One of the parts could not be added, so nothing of the build was. Check the parts and add the build again."
 msgstr ""
 
+#: src/Front/Words.php:237
+msgid "A part of a build comes in the quantity the build needs. Change the quantity of the build instead."
+msgstr ""
+
+#: src/Front/Words.php:239
+msgid "A build in your cart had lost one of its parts and was removed. Add the build again."
+msgstr ""
+
 #. translators: %s: a slot's key, as the request sent it.
-#: src/Front/Words.php:251
+#: src/Front/Words.php:255
 #, php-format
 msgid "This kit has no slot called \"%s\"."
 msgstr ""
 
 #. translators: %s: a slot's label, such as Trucks.
-#: src/Front/Words.php:254
+#: src/Front/Words.php:258
 #, php-format
 msgid "%s: nothing is chosen yet."
 msgstr ""
 
 #. translators: %s: a slot's label, such as Trucks.
-#: src/Front/Words.php:257
+#: src/Front/Words.php:261
 #, php-format
 msgid "%s: the part chosen is not one this kit offers here."
 msgstr ""
 
 #. translators: %s: a slot's label, such as Trucks.
-#: src/Front/Words.php:260
+#: src/Front/Words.php:264
 #, php-format
 msgid "%s: the part chosen is sold out."
 msgstr ""
 
 #. translators: %s: a slot's label, such as Trucks.
-#: src/Front/Words.php:263
+#: src/Front/Words.php:267
 #, php-format
 msgid "%s: the shop has fewer of the part chosen than a build takes."
 msgstr ""
 
 #. translators: %s: a slot's label, such as Trucks.
-#: src/Front/Words.php:266
+#: src/Front/Words.php:270
 #, php-format
 msgid "%s: the part chosen does not fit the rest of the build."
 msgstr ""

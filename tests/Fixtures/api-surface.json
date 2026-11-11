@@ -302,10 +302,12 @@
         "price_decimals_over_eight"
     ],
     "cart_refusals": [
+        "cbuild_build_incomplete",
         "cbuild_build_refused",
         "cbuild_kit_not_found",
         "cbuild_no_build",
         "cbuild_no_price",
-        "cbuild_not_added"
+        "cbuild_not_added",
+        "cbuild_part_locked"
     ]
 }

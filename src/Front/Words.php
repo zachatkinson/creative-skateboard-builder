@@ -233,6 +233,10 @@ final class Words {
 				return __( 'This build cannot be priced at the moment. Nothing was added to the cart.', 'creative-skateboard-builder' );
 			case CartRefusal::NotAdded:
 				return __( 'One of the parts could not be added, so nothing of the build was. Check the parts and add the build again.', 'creative-skateboard-builder' );
+			case CartRefusal::PartLocked:
+				return __( 'A part of a build comes in the quantity the build needs. Change the quantity of the build instead.', 'creative-skateboard-builder' );
+			case CartRefusal::BuildIncomplete:
+				return __( 'A build in your cart had lost one of its parts and was removed. Add the build again.', 'creative-skateboard-builder' );
 		}
 	}
 
