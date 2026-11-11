@@ -52,6 +52,8 @@ final class StateRouteTest extends IntegrationTestCase {
 
 	public function set_up(): void {
 		parent::set_up();
+		// What keeps each slot's kept parts current (D-116).
+		$this->service( \CreativeBranding\SkateboardBuilder\Hooks\CardHooks::class )->register();
 		$_SERVER['REMOTE_ADDR'] = '203.0.113.7';
 		// WordPress's test case puts the hooks back as they were after each test, and the plugin adds its own once.
 		rest_get_server();
@@ -612,6 +614,11 @@ final class StateRouteTest extends IntegrationTestCase {
 			10,
 			3
 		);
+
+		// A slot's parts are kept for an hour (D-116), so a plugin whose answer changes says so.
+		self::assertSame( $with, $this->answer( $query ) );
+		self::assertSame( array(), $asked );
+		do_action( 'cbuild_parts_changed' ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- The plugin's own prefix.
 
 		$without = $this->answer( $query );
 		self::assertSame( array(), $without['options'] );

@@ -34,6 +34,15 @@ interface Kits {
 	public function all(): array;
 
 	/**
+	 * One kit, or null when the product is no kit or its documents do not read. A request for one kit reads one.
+	 *
+	 * @since 0.4.0
+	 *
+	 * @param int $id The kit product's ID.
+	 */
+	public function kit( int $id ): ?Kit;
+
+	/**
 	 * Every kit product's ID, whatever its documents hold, for what must leave each one out of a listing.
 	 *
 	 * @since 0.4.0
@@ -53,6 +62,37 @@ interface Kits {
 	 * @return list<Part>
 	 */
 	public function candidates( int $kit, string $slot ): array;
+
+	/**
+	 * What was last kept of a slot's parts with keep(), as it was given, or null: nothing is kept, an hour has
+	 * passed, something a part's place in a slot depends on moved since (forget()), or the visitor is shown other
+	 * prices than the one it was kept for. What comes back is what a cache handed over, to be read as such.
+	 *
+	 * @since 0.4.0
+	 *
+	 * @param int    $kit  The kit product's ID.
+	 * @param string $slot The slot's key.
+	 */
+	public function kept( int $kit, string $slot ): mixed;
+
+	/**
+	 * Keep a slot's parts for an hour at most, for the prices this visitor is shown, as of the moment kept() was
+	 * asked: when something moved since, what is kept is never read, since it may be older than the move.
+	 *
+	 * @since 0.4.0
+	 *
+	 * @param int                $kit   The kit product's ID.
+	 * @param string             $slot  The slot's key.
+	 * @param list<array<mixed>> $parts The parts, as scalars and arrays of them.
+	 */
+	public function keep( int $kit, string $slot, array $parts ): void;
+
+	/**
+	 * Forget every slot's kept parts: a product, a price, a stock count, a term or a spec moved.
+	 *
+	 * @since 0.4.0
+	 */
+	public function forget(): void;
 
 	/**
 	 * The parts these sources find, as candidates() finds a stored slot's: for sources that are not stored yet, as

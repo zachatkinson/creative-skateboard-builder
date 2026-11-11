@@ -196,9 +196,11 @@ final class WooPartCards implements PartCards {
 	/**
 	 * What a price and its words depend on beside the part: the currency and its decimals, the language, whether
 	 * prices are shown with tax, and the tax rates that apply to this visitor. The rates stand in for where the
-	 * visitor is, so no address is kept, and visitors charged the same rates share a card.
+	 * visitor is, so no address is kept, and visitors charged the same rates share what is kept.
+	 *
+	 * @since 0.4.0
 	 */
-	private static function context(): string {
+	public static function context(): string {
 		$rates = array();
 		if ( wc_tax_enabled() ) {
 			foreach ( array_merge( array( '' ), WC_Tax::get_tax_class_slugs() ) as $class ) {
@@ -215,9 +217,10 @@ final class WooPartCards implements PartCards {
 		);
 		/**
 		 * Filter what a part's price depends on beside the part itself. A card is kept for each context a part is
-		 * asked in, so a plugin that shows some shoppers another price, a dealer's for one, adds what tells them
-		 * apart: a role, a price list's ID. Add only what the price depends on, since each new value is another card
-		 * to keep, and never anything that names a person. An answer that is no array leaves the context as it is.
+		 * asked in, and so is each slot's list of parts, so a plugin that shows some shoppers another price, a
+		 * dealer's for one, adds what tells them apart: a role, a price list's ID. Add only what the price depends
+		 * on, since each new value is another copy to keep, and never anything that names a person. An answer that
+		 * is no array leaves the context as it is.
 		 *
 		 * @since 0.4.0
 		 *

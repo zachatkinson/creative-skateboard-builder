@@ -46,6 +46,8 @@ final class BuildAbilitiesTest extends IntegrationTestCase {
 
 	public function set_up(): void {
 		parent::set_up();
+		// What keeps each slot's kept parts current (D-116).
+		$this->service( \CreativeBranding\SkateboardBuilder\Hooks\CardHooks::class )->register();
 		$_SERVER['REMOTE_ADDR'] = '203.0.113.7';
 		rest_get_server();
 		$this->service( StateRoute::class )->register();

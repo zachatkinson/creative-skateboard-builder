@@ -154,6 +154,14 @@ final class Options {
 	public const REINDEX_OWED = 'cbuild_reindex_owed';
 
 	/**
+	 * What every kept list of a slot's parts carries, and what changes when any of them goes out of date (D-116).
+	 * Not autoloaded: only a request that reads a build's state asks for it.
+	 *
+	 * @since 0.4.0
+	 */
+	public const PARTS_MARK = 'cbuild_parts_mark';
+
+	/**
 	 * The job that writes a confirmed specs import, 100 rows at a time.
 	 *
 	 * @since 0.3.0
@@ -183,7 +191,7 @@ final class Options {
 	 * @return string[]
 	 */
 	public static function names(): array {
-		return array( self::DB_VERSION, self::MIGRATIONS, self::MIGRATION_LOCK, self::SETTINGS, self::REINDEX, self::REINDEX_OWED, self::IMPORT, self::IMPORT_ROWS );
+		return array( self::DB_VERSION, self::MIGRATIONS, self::MIGRATION_LOCK, self::SETTINGS, self::REINDEX, self::REINDEX_OWED, self::IMPORT, self::IMPORT_ROWS, self::PARTS_MARK );
 	}
 
 	/**

@@ -192,6 +192,9 @@ final class Container {
 				return new Hooks\CardHooks(
 					static function () use ( $c ): Port\PartCards {
 						return $c->get( Port\PartCards::class );
+					},
+					static function () use ( $c ): Port\Kits {
+						return $c->get( Port\Kits::class );
 					}
 				);
 			},

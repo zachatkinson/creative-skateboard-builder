@@ -32,7 +32,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * The one place a build's state is put together (spec: How it fits; Quality bar, DRY and SOLID): the state route and
  * both abilities ask here, so they cannot disagree. It looks the picks up among each slot's own parts, as the server
- * found them, and asks the domain for everything else: fit, the hidden counts, the recommendations, the change list,
+ * found them (kept for an hour at most, and forgotten when a product, a price, a stock count or a spec moves), and asks the domain for everything else: fit, the hidden counts, the recommendations, the change list,
  * the validation and the price. It decides nothing about fit or price itself, and takes nothing the caller says on
  * trust: a pick is an ID, and an ID that is not one of its slot's parts is refused and says nothing of the product
  * it names (spec: Security).
@@ -64,7 +64,7 @@ final class BuildState {
 	 * @param bool|null         $assembly Whether the shop assembles the build; null is the kit's own default.
 	 */
 	public function of( int $id, array $picks, ?array $previous = null, ?string $step = null, ?bool $assembly = null ): ?State {
-		$kit = $this->kits->all()[ $id ]['kit'] ?? null;
+		$kit = $this->kits->kit( $id );
 		if ( null === $kit ) {
 			return null;
 		}
@@ -72,7 +72,7 @@ final class BuildState {
 		$candidates = array();
 		$parts      = array();
 		foreach ( $kit->slots->keys() as $slot ) {
-			$candidates[ $slot ] = $this->kits->candidates( $id, $slot );
+			$candidates[ $slot ] = $this->parts( $id, $slot );
 			$parts[ $slot ]      = array();
 			foreach ( $candidates[ $slot ] as $part ) {
 				$parts[ $slot ][ $part->id ] = $part;
@@ -116,6 +116,23 @@ final class BuildState {
 			null === $previous ? null : self::changes( $engine, $kit, $picked, self::found( $previous, $parts ), $candidates ),
 			$quote
 		);
+	}
+
+	/**
+	 * A slot's parts: those kept, or read from the shop and then kept (D-116). Reading them loads every product
+	 * the slot's sources find, which no request with a budget can do each time (spec: Performance).
+	 *
+	 * @param int    $kit  The kit product's ID.
+	 * @param string $slot The slot's key.
+	 * @return list<Part>
+	 */
+	private function parts( int $kit, string $slot ): array {
+		$parts = PartRows::read( $this->kits->kept( $kit, $slot ) );
+		if ( null === $parts ) {
+			$parts = $this->kits->candidates( $kit, $slot );
+			$this->kits->keep( $kit, $slot, PartRows::of( $parts ) );
+		}
+		return $parts;
 	}
 
 	/**

@@ -35,6 +35,8 @@ final class InMemoryKits implements Kits {
 	public function add( int $id, Kit $kit, array $parts, string $name = 'Complete' ): void {
 		$this->kits[ $id ]  = compact( 'name', 'kit' );
 		$this->parts[ $id ] = $parts;
+		// The shop changed, and its hooks said so.
+		$this->kept = array();
 	}
 
 	/**
@@ -45,6 +47,37 @@ final class InMemoryKits implements Kits {
 	public function all(): array {
 		++$this->read;
 		return $this->kits;
+	}
+
+	public function kit( int $id ): ?Kit {
+		++$this->read;
+		return $this->kits[ $id ]['kit'] ?? null;
+	}
+
+	/**
+	 * What keep() was given, by kit and slot.
+	 *
+	 * @var array<string, mixed>
+	 */
+	public array $kept = array();
+
+	/**
+	 * How many times candidates() was asked, and forget().
+	 */
+	public int $found_parts = 0;
+	public int $forgotten   = 0;
+
+	public function kept( int $kit, string $slot ): mixed {
+		return $this->kept[ $kit . '|' . $slot ] ?? null;
+	}
+
+	public function keep( int $kit, string $slot, array $parts ): void {
+		$this->kept[ $kit . '|' . $slot ] = $parts;
+	}
+
+	public function forget(): void {
+		++$this->forgotten;
+		$this->kept = array();
 	}
 
 	public function ids(): array {
@@ -93,6 +126,7 @@ final class InMemoryKits implements Kits {
 	}
 
 	public function candidates( int $kit, string $slot ): array {
+		++$this->found_parts;
 		return $this->parts[ $kit ][ $slot ] ?? array();
 	}
 

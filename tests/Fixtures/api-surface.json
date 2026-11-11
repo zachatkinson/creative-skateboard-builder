@@ -8,6 +8,9 @@
         "cbuild_updates_enabled"
     ],
     "actions": [],
+    "listened_actions": [
+        "cbuild_parts_changed"
+    ],
     "constants": [
         "CBUILD_DISABLE_UPDATES",
         "CBUILD_FILE",
@@ -21,6 +24,7 @@
         "cbuild_import_state",
         "cbuild_migration_lock",
         "cbuild_migrations",
+        "cbuild_parts_mark",
         "cbuild_reindex_owed",
         "cbuild_reindex_state",
         "cbuild_settings"

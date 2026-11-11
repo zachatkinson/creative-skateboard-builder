@@ -7,6 +7,8 @@
  *
  * What it reads, and from where:
  *   filters and actions   apply_filters()/do_action() of a cbuild_* hook, anywhere the plugin ships;
+ *   actions listened for  add_action() of a cbuild_* hook named in the call itself: one another plugin does, and the
+ *                         plugin acts on. Its own jobs' hooks are named by Support\Options and listed with them;
  *   constants             CBUILD_* constants: those a site may define (checked with defined()) and those the plugin
  *                         defines for others to read;
  *   options, jobs, meta,
@@ -219,6 +221,7 @@ sort( $cbuild_tables_list );
 $cbuild_surface = array(
 	'filters'           => cbuild_api_matches( $cbuild_php, "/apply_filters(?:_deprecated|_ref_array)?\\(\\s*'(cbuild_[a-z0-9_]+)'/" ),
 	'actions'           => cbuild_api_matches( $cbuild_php, "/do_action(?:_deprecated|_ref_array)?\\(\\s*'(cbuild_[a-z0-9_]+)'/" ),
+	'listened_actions'  => cbuild_api_matches( $cbuild_php, "/add_action\\(\\s*'(cbuild_[a-z0-9_]+)'/" ),
 	'constants'         => cbuild_api_matches( $cbuild_php, "/defined?\\(\\s*'(CBUILD_[A-Z0-9_]+)'/" ),
 	'options'           => cbuild_api_list( $cbuild_options, 'names' ),
 	'site_transients'   => cbuild_api_list( $cbuild_options, 'siteTransients' ),
@@ -239,7 +242,7 @@ $cbuild_surface = array(
 
 // The kit's document schemas. The digest is of the decoded document with its keys sorted, so re-indenting a file
 // changes nothing and changing a bound, a pattern or a property does.
-$cbuild_sort = static function ( array &$node ) use ( &$cbuild_sort ): void {
+$cbuild_sort    = static function ( array &$node ) use ( &$cbuild_sort ): void {
 	if ( ! array_is_list( $node ) ) {
 		ksort( $node );
 	}

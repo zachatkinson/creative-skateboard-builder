@@ -62,6 +62,13 @@ final class WooKits implements Kits {
 	private const string BRAND = 'product_brand';
 
 	/**
+	 * The mark each kept list was read under, by its transient's name.
+	 *
+	 * @var array<string, string>
+	 */
+	private array $marks = array();
+
+	/**
 	 * Constructor.
 	 *
 	 * @since 0.4.0
@@ -92,6 +99,18 @@ final class WooKits implements Kits {
 		}
 		ksort( $kits );
 		return $kits;
+	}
+
+	/**
+	 * One kit, or null when the product is no kit or its documents do not read.
+	 *
+	 * @since 0.4.0
+	 *
+	 * @param int $id The kit product's ID.
+	 */
+	public function kit( int $id ): ?Kit {
+		$product = $this->products->load( $id )[ $id ] ?? null;
+		return null === $product ? null : $this->read( $product );
 	}
 
 	/**
@@ -128,6 +147,64 @@ final class WooKits implements Kits {
 		$product = $this->products->load( $kit )[ $kit ] ?? null;
 		$sources = null === $product ? null : $this->read( $product )?->slots->get( $slot )?->sources;
 		return null === $sources ? array() : $this->parts( $sources );
+	}
+
+	/**
+	 * What was last kept of a slot's parts, or null (D-116). A transient, so it is a row of the options table on a
+	 * site with no persistent object cache, and an entry of the cache on a site with one.
+	 *
+	 * @since 0.4.0
+	 *
+	 * @param int    $kit  The kit product's ID.
+	 * @param string $slot The slot's key.
+	 */
+	public function kept( int $kit, string $slot ): mixed {
+		$name                 = self::keptAs( $kit, $slot );
+		$mark                 = Cast::str( get_option( Options::PARTS_MARK, '' ) );
+		$this->marks[ $name ] = $mark;
+		$kept                 = get_transient( $name );
+		return is_array( $kept ) && ( $kept['mark'] ?? null ) === $mark ? ( $kept['parts'] ?? null ) : null;
+	}
+
+	/**
+	 * Keep a slot's parts under the mark kept() read, and never under the mark as it is now: when something moved
+	 * while the parts were being read, they are kept under a mark nothing is read by. One who never asked what was
+	 * kept keeps nothing.
+	 *
+	 * @since 0.4.0
+	 *
+	 * @param int                $kit   The kit product's ID.
+	 * @param string             $slot  The slot's key.
+	 * @param list<array<mixed>> $parts The parts, as scalars and arrays of them.
+	 */
+	public function keep( int $kit, string $slot, array $parts ): void {
+		$name = self::keptAs( $kit, $slot );
+		$mark = $this->marks[ $name ] ?? null;
+		if ( null === $mark ) {
+			return;
+		}
+		// phpcs:ignore WordPressVIPMinimum.Performance.LowExpiryCacheTime -- an hour, as a part's card (docs/STANDARDS.md).
+		set_transient( $name, compact( 'mark', 'parts' ), HOUR_IN_SECONDS );
+	}
+
+	/**
+	 * Forget every slot's kept parts, by changing the mark they were kept under. A new mark each time and never a
+	 * count, so two changes at once cannot come to the same one.
+	 *
+	 * @since 0.4.0
+	 */
+	public function forget(): void {
+		update_option( Options::PARTS_MARK, wp_generate_uuid4(), false );
+	}
+
+	/**
+	 * The transient a slot's parts are kept in, for the prices this visitor is shown.
+	 *
+	 * @param int    $kit  The kit product's ID.
+	 * @param string $slot The slot's key.
+	 */
+	private static function keptAs( int $kit, string $slot ): string {
+		return Options::TRANSIENT_PREFIX . 'parts_' . $kit . '_' . substr( md5( $slot . '|' . WooPartCards::context() ), 0, 16 );
 	}
 
 	/**
