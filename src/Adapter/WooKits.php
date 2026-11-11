@@ -226,22 +226,28 @@ final class WooKits implements Kits {
 	}
 
 	/**
-	 * One part as the shop has it now, read from WooCommerce and not from what is kept (issue #26).
+	 * A build's parts as the shop has them now, read from WooCommerce and not from what is kept (issue #26), in
+	 * one reading of the shop for them all (D-134).
 	 *
 	 * @since 0.5.0
 	 *
-	 * @param Slot $slot One of a kit's slots.
-	 * @param int  $id   A product's or variation's ID.
+	 * @param array<int|string, array{Slot, int}> $asked By any key: one of a kit's slots, and a product's or
+	 *                                               variation's ID.
+	 * @return array<int|string, Part> By the same keys; a key is left out when the ID is not one of its slot's parts.
 	 */
-	public function picked( Slot $slot, int $id ): ?Part {
-		$read = $this->shopSays( $this->clock->now()->getTimestamp(), $id );
-		// The one product alone, with the slot's own rule for which of the shop's products are its parts.
-		foreach ( $this->chosen( $slot->sources, $this->found( $slot->sources ), array( $id => $read[ $id ] ) ) as $part ) {
-			if ( $id === $part->id ) {
-				return $part;
+	public function picked( array $asked ): array {
+		$ids   = array_values( array_unique( array_column( $asked, 1 ) ) );
+		$read  = array() === $ids ? array() : $this->shopSays( $this->clock->now()->getTimestamp(), ...$ids );
+		$parts = array();
+		foreach ( $asked as $key => [ $slot, $id ] ) {
+			// The one product alone, with the slot's own rule for which of the shop's products are its parts.
+			foreach ( $this->chosen( $slot->sources, $this->found( $slot->sources ), array( $id => $read[ $id ] ) ) as $part ) {
+				if ( $id === $part->id ) {
+					$parts[ $key ] = $part;
+				}
 			}
 		}
-		return null;
+		return $parts;
 	}
 
 	/**

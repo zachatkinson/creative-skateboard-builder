@@ -7,7 +7,8 @@ The spec's budgets are tests: a build fails when one is missed. The numbers from
 | What | Budget | Measured by | From |
 | --- | --- | --- | --- |
 | The state route's server time, p95, 500 candidate parts in a slot | Under 80 ms | `composer test:benchmark:integration` (`StateRouteBenchmarkTest`) | Milestone 4 |
-| Adding a 7-part build to the cart | Under 300 ms | The integration suite | Milestone 5 |
+| Adding a 7-part build to the cart, p95, by the Store API | Under 300 ms, and 54 queries | `composer test:benchmark:integration` (`CartBenchmarkTest`) | Milestone 5 |
+| A Store API cart read with a 7-part build in it | Recorded; 30 queries, and the add's 300 ms | `composer test:benchmark:integration` (`CartBenchmarkTest`) | Milestone 5 |
 | The fit engine with 500 candidates | The slowest slot under 40 ms, half the state route's budget; four times the candidates in under six times the time | `composer test:benchmark` (`FitEngineBenchmarkTest`) | Milestone 2 |
 | Rebuilding the specs index for 2,000 parts | Recorded; in jobs of 100, each under 10 s and 400 queries | `composer test:benchmark:integration` (`SpecsBenchmarkTest`) | Milestone 3 |
 | The specs export, the Catalogue check, a 5,000-row import read and shown, and each job of 100 import writes, at 2,000 parts | Each under 10 s, a third of PHP's usual limit for a request, and one query a product | `composer test:benchmark:integration` | Milestone 3 |
@@ -104,3 +105,21 @@ The figures move with the machine. On 11 November 2026 the same Mac, busier, mea
 An earlier design of this milestone, never released, kept each slot's list in a transient: 53 ms cold, but 435 ms on the first request after any one product moved. The table costs 5 ms cold and takes that request to 71 ms.
 
 Of the cold 58 ms, the fit engine takes about 20 ms for all seven slots, finding the slots' parts and reading their rows and the kit about 15 ms, and the 24 cards about 20 ms, since without a persistent object cache each card's product is loaded on every request.
+
+## v0.5.0
+
+Machine: Apple M1 Max, PHP 8.5.12 in wp-env on OrbStack, WordPress 7.1.4, WooCommerce 11.2.2, wp-env's own database server, Xdebug off, no persistent object cache. 11 November 2026.
+
+A kit of seven slots and a build with a part in each but the risers, trucks twice: a kit's line and six parts' lines. 40 requests a run through the Store API, WordPress's cache emptied before each.
+
+| The cart | p95 | Median | Slowest | Queries at most |
+| --- | --- | --- | --- | --- |
+| Adding the build (`POST /wc/store/v1/cart/add-item`) | 26 ms | 25 ms | 44 ms | 54 |
+| Reading a cart with the build in it (`GET /wc/store/v1/cart`) | 21 ms | | | 30 |
+| Reading a cart of the same seven products with no build | 4 ms | | | 10 |
+
+The add is inside the 300 ms budget and held to it, with 450 ms as CI's ceiling and the query counts held everywhere (D-134).
+
+The difference between the last two rows is what the plugin does on every cart response while a build is in the cart: the kit's line's quantity limit and the check that the build is still one the shop would sell (D-129). It reads the build's parts from WooCommerce each time and keeps nothing.
+
+The first run measured 132 queries for the add and 84 for the read, at 37 ms and 31 ms: each part was read from the shop by itself. A build's parts are now read together (D-134).

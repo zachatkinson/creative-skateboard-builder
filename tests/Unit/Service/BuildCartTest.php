@@ -103,6 +103,7 @@ final class BuildCartTest extends TestCase {
 		self::assertSame( array(), $verdict->problems );
 		self::assertEquals( new Build( 'build-1', self::KIT, self::PICKS, self::QUANTITIES, false ), $verdict->build );
 		self::assertSame( array_values( self::PICKS ), $this->kits->picked, 'each pick is read from the shop itself, once' );
+		self::assertSame( 1, $this->kits->readings, 'and all in one reading of the shop, not one for each part' );
 		self::assertSame( 0, $this->kits->offered, 'and never from what is kept of the slots\' parts' );
 	}
 
@@ -331,6 +332,7 @@ final class BuildCartTest extends TestCase {
 	public function test_the_order_keeps_each_part_with_its_specs_as_sold(): void {
 		$build    = new Build( 'a', self::KIT, array( 'deck' => 103, 'trucks' => 149 ), array( 'deck' => 1, 'trucks' => 2 ), true );
 		$snapshot = $this->builds->snapshot( $build );
+		self::assertSame( 1, $this->kits->readings, 'the parts are read in one reading of the shop' );
 		self::assertSame( array( 'schema_version', 'kit', 'assembly', 'picks' ), array_keys( $snapshot ) );
 		self::assertSame( array( 1, self::KIT, true ), array( $snapshot['schema_version'], $snapshot['kit'], $snapshot['assembly'] ) );
 		self::assertSame( array( 'deck', 'trucks' ), array_keys( $snapshot['picks'] ) );

@@ -89,16 +89,19 @@ interface Kits {
 	public function offered( int $kit, Slot $slot ): array;
 
 	/**
-	 * One part as the shop has it now, read from WooCommerce itself and not from what is kept of it, for a build
-	 * on its way to the cart (issue #26): its price, its stock and its specs as they are at this moment. Null
-	 * when it is not one of the slot's parts, or not one a shopper could be shown and could buy.
+	 * A build's parts as the shop has them now, read from WooCommerce itself and not from what is kept of them,
+	 * for a build on its way to the cart or in it (issue #26): each one's price, stock and specs as they are at
+	 * this moment. They are read together, so a build of seven parts costs what one part does and not seven times
+	 * that (D-134). A slot is left out of the answer when its ID is not one of the slot's parts, or not one a
+	 * shopper could be shown and could buy.
 	 *
 	 * @since 0.5.0
 	 *
-	 * @param Slot $slot One of a kit's slots, as kit() gave it.
-	 * @param int  $id   A product's or variation's ID.
+	 * @param array<int|string, array{Slot, int}> $asked By any key: one of a kit's slots, as kit() gave it, and a
+	 *                                               product's or variation's ID.
+	 * @return array<int|string, Part> By the same keys.
 	 */
-	public function picked( Slot $slot, int $id ): ?Part;
+	public function picked( array $asked ): array;
 
 	/**
 	 * Forget what is kept of these products and variations, or of every one when none is named.

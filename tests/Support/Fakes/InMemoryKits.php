@@ -145,17 +145,26 @@ final class InMemoryKits implements Kits {
 	 */
 	public array $picked = array();
 
-	public function picked( Slot $slot, int $id ): ?Part {
-		$this->picked[] = $id;
-		foreach ( $this->parts as $slots ) {
-			foreach ( $slots[ $slot->key ] ?? array() as $part ) {
-				if ( $id === $part->id ) {
-					return ( $this->now[ $id ] ?? $part ) ?: null;
+	public function picked( array $asked ): array {
+		++$this->readings;
+		$answer = array();
+		foreach ( $asked as $key => [ $slot, $id ] ) {
+			$this->picked[] = $id;
+			foreach ( $this->parts as $slots ) {
+				foreach ( $slots[ $slot->key ] ?? array() as $part ) {
+					if ( $id === $part->id && ! isset( $answer[ $key ] ) && false !== ( $this->now[ $id ] ?? $part ) ) {
+						$answer[ $key ] = $this->now[ $id ] ?? $part;
+					}
 				}
 			}
 		}
-		return null;
+		return $answer;
 	}
+
+	/**
+	 * How many times the shop was read for a build's parts.
+	 */
+	public int $readings = 0;
 
 	public int $decimals = 2;
 

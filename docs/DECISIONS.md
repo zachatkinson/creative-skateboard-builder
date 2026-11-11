@@ -1818,3 +1818,14 @@ Milestone 5's steps 10 and 11.
 **Red runs and deliberate breaks** are in the commit's message.
 
 **Status:** Accepted.
+
+### D-134 · The cart takes what the route offers, and what a build costs a cart request · 2026-11-11
+
+- **The invariant goes through the real cart.** Milestone 2 proved in the domain that what the engine offers the validator accepts. `CartInvariantTest` proves it through WooCommerce: 70 real products made from a generated catalogue, the public state route asked what it offers at each step, and the Store API's add asked to take it. Thirty seeded walks end in a build the cart takes; thirty more put one part the route had ruled out into a build, and the cart refuses each with the route's own reason. The seed is in each failure's message.
+- **The add's budget.** The spec gives adding a 7-part build 300 ms. `CartBenchmarkTest` times 40 adds by the Store API, each from an empty object cache, and holds the 95th to it. On CI's shared runner the ceiling is 450 ms and the query count holds the rest, as the state route's does (D-124).
+- **A build's parts are read together.** The first run of the benchmark showed what the time hid: 132 queries for an add and 84 for a cart read with a build in it, against 10 for the same seven products with no build. Each part was read from the shop alone (`Kits::picked( Slot, int )`), and a cart read asks for a build's parts three times: twice for the kit's line's quantity limit and once for the check before paying (D-129). `picked()` now takes a build's slots and IDs and reads them in one go. An add asks 54 queries and a cart read 30, and both are ceilings in the benchmark. Nothing is kept between requests or within one: issue #26's reason for reading the shop itself stands, and stock can move inside a request that places an order.
+- **What the check on every cart response costs** (owed by D-129): about 17 ms and 20 queries more than the same cart with no build, on the machine in `docs/BENCHMARK.md`, with no persistent object cache. Seven of the 20 are each slot's "which products are in these categories", which a shop's object cache answers.
+
+**Red runs and deliberate breaks** are in the commit's message.
+
+**Status:** Accepted.

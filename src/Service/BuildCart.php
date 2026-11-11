@@ -160,14 +160,20 @@ final class BuildCart {
 	 */
 	public function snapshot( Build $build ): array {
 		$slots = $this->kits->kit( $build->kit )?->slots;
+		$asked = array();
+		foreach ( $build->picks as $key => $part ) {
+			$slot = $slots?->get( $key );
+			if ( null !== $slot ) {
+				$asked[ $key ] = array( $slot, $part );
+			}
+		}
+		$read  = $this->kits->picked( $asked );
 		$picks = array();
 		foreach ( $build->picks as $key => $part ) {
-			$slot          = $slots?->get( $key );
-			$read          = null === $slot ? null : $this->kits->picked( $slot, $part );
 			$picks[ $key ] = array(
 				'part'     => $part,
 				'quantity' => $build->quantities[ $key ],
-				'specs'    => null === $read ? array() : $read->specs->toIndex(),
+				'specs'    => isset( $read[ $key ] ) ? $read[ $key ]->specs->toIndex() : array(),
 			);
 		}
 		return array(
@@ -282,13 +288,20 @@ final class BuildCart {
 		$picks    = Picks::none();
 		$found    = array();
 		$problems = array();
+		$named    = array();
 		foreach ( $asked as $key => $part ) {
 			// PHP keeps a key of digits as a number, whatever it was sent as.
+			$slot = $kit->slots->get( (string) $key );
+			if ( null !== $slot && 0 !== $part ) {
+				$named[ $key ] = array( $slot, $part );
+			}
+		}
+		$parts = $this->kits->picked( $named );
+		foreach ( $asked as $key => $part ) {
 			$key  = (string) $key;
-			$slot = $kit->slots->get( $key );
-			$read = null === $slot || 0 === $part ? null : $this->kits->picked( $slot, $part );
+			$read = $parts[ $key ] ?? null;
 			if ( null === $read ) {
-				$problems[] = new BuildProblem( null === $slot ? Problem::SlotUnknown : Problem::PartNotInSlot, $key, 0 === $part ? null : $part );
+				$problems[] = new BuildProblem( null === $kit->slots->get( $key ) ? Problem::SlotUnknown : Problem::PartNotInSlot, $key, 0 === $part ? null : $part );
 				continue;
 			}
 			$picks         = $picks->with( $key, $read );

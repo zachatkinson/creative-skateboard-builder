@@ -229,10 +229,16 @@ final class BuildLines {
 		foreach ( $build->picks as $slot => $part ) {
 			$each[ $part ] = ( $each[ $part ] ?? 0 ) + $build->quantities[ $slot ];
 		}
+		$asked = array();
 		foreach ( $build->picks as $slot => $part ) {
 			$found = $slots->get( $slot );
-			$read  = null === $found ? null : $this->kits->picked( $found, $part );
-			$stock = null === $read ? null : $read->stock;
+			if ( null !== $found ) {
+				$asked[ $slot ] = array( $found, $part );
+			}
+		}
+		$read = $this->kits->picked( $asked );
+		foreach ( $build->picks as $slot => $part ) {
+			$stock = ( $read[ $slot ] ?? null )?->stock;
 			if ( null === $stock ) {
 				continue;
 			}

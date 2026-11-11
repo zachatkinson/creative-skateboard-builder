@@ -234,7 +234,9 @@ final class BuildLinesTest extends TestCase {
 		$this->kits->now[103] = Shop::priced( Shop::parts()['deck'][2], 7000, true, 5 );
 		$this->kits->now[302] = Shop::priced( Shop::parts()['wheels'][1], 3200, true, 9 );
 		$key                  = $this->build( 2 );
+		$read                 = $this->kits->readings;
 		self::assertSame( 5, $this->lines->limit( $key ), 'five decks' );
+		self::assertSame( 1, $this->kits->readings - $read, 'the build\'s parts are read in one reading of the shop' );
 
 		$loose = $this->cart->put( 103, 1 );
 		$this->cart->put( 103, 1 );
