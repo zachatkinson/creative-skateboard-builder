@@ -48,6 +48,8 @@ Yes. Activating it for the network installs it on every site, and a site added l
 * A coupon for a kit reaches its parts. A fixed product coupon lands on the kit's line, or on each part too if you choose that in the settings.
 * The cart's count shows a build as one item.
 * A build is shown as one group in the Cart and Checkout blocks, the Mini-Cart and a classic cart or checkout: each part sits under its kit, says which slot it fills, and cannot be changed or removed alone.
+* A build you assemble ships as one package, even where another plugin splits a cart into several.
+* Apple Pay and Google Pay buttons from WooCommerce Stripe Gateway and WooPayments are kept off a kit's page, where they could not add a build.
 * An order keeps each build together: the kit's line shows whether it is assembled and lists its parts, each part's line says which slot it fills, and the parts' specs are kept with the order as they were when it was placed.
 * The cart charges each part at the price your shop holds at that moment.
 * An order no longer queues background work for each product it sells.

@@ -163,7 +163,8 @@ final class OrderTest extends CartTestCase {
 		self::assertMatchesRegularExpression( '/^[0-9a-f-]{36}$/', $kit->get_meta( '_cbuild_id' ) );
 
 		$snapshot = $kit->get_meta( '_cbuild_snapshot' );
-		self::assertSame( array( 'schema_version', 'kit', 'assembly', 'picks' ), array_keys( $snapshot ) );
+		self::assertSame( array( 'schema_version', 'kit', 'assembly', 'picks', 'lead_time', 'returns_notice' ), array_keys( $snapshot ) );
+		self::assertSame( array( '', '' ), array( $snapshot['lead_time'], $snapshot['returns_notice'] ), 'the kit has neither' );
 		self::assertSame( array( 1, $this->kit, $assembly ), array( $snapshot['schema_version'], $snapshot['kit'], $snapshot['assembly'] ) );
 		self::assertSame(
 			array(
@@ -218,6 +219,34 @@ final class OrderTest extends CartTestCase {
 				self::assertSame( array(), array_filter( array_map( static fn( string $key ): mixed => $item->get_meta( $key ), Options::orderItemKeys() ) ), 'a product on its own gets no key' );
 			}
 		}
+	}
+
+	public function test_an_assembled_builds_order_keeps_the_lead_time_and_the_returns_notice_as_the_shopper_read_them(): void {
+		$kit = wc_get_product( $this->kit );
+		$kit->setDocument(
+			Options::META_KIT_ASSEMBLY,
+			array(
+				'schema_version' => 1,
+				'default_on'     => false,
+				'fee'            => '15',
+				'lead_time'      => 'Two business days',
+				'returns_notice' => 'An assembled board cannot be returned.',
+			)
+		);
+		$kit->save();
+		add_filter( 'cbuild_kit_text', static fn( string $text, string $field ): string => 'lead_time' === $field ? $text . ' (shop)' : $text, 10, 2 );
+		$this->added( true );
+		$this->added( false );
+		$builds = self::told( $this->classic() );
+		remove_all_filters( 'cbuild_kit_text' );
+
+		$assembled = $builds[0]['item']->get_meta( '_cbuild_snapshot' );
+		self::assertTrue( $assembled['assembly'] );
+		self::assertSame( 'Two business days (shop)', $assembled['lead_time'] );
+		self::assertSame( 'An assembled board cannot be returned.', $assembled['returns_notice'] );
+		$loose = $builds[1]['item']->get_meta( '_cbuild_snapshot' );
+		self::assertFalse( $loose['assembly'] );
+		self::assertSame( array( '', '' ), array( $loose['lead_time'], $loose['returns_notice'] ), 'neither is said of a build the shop does not assemble' );
 	}
 
 	public function test_two_builds_on_an_order_are_each_tied_to_their_own_parts(): void {

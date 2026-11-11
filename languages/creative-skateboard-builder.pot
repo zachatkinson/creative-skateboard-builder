@@ -9,7 +9,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-11-11T21:48:08+00:00\n"
+"POT-Creation-Date: 2026-11-11T22:17:37+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: creative-skateboard-builder\n"
@@ -172,7 +172,7 @@ msgid "Builder"
 msgstr ""
 
 #: src/Admin/BuildTab.php:162
-#: src/Order/OrderHooks.php:213
+#: src/Order/OrderHooks.php:222
 msgid "Build"
 msgstr ""
 
@@ -217,7 +217,7 @@ msgstr ""
 
 #: src/Admin/BuildTab.php:344
 #: src/Admin/BuildTab.php:910
-#: src/Order/OrderHooks.php:212
+#: src/Order/OrderHooks.php:221
 msgid "Assembly"
 msgstr ""
 
@@ -852,13 +852,13 @@ msgstr ""
 
 #: src/Admin/Labels.php:170
 #: src/Admin/PartSpecsPanel.php:331
-#: src/Order/OrderHooks.php:212
+#: src/Order/OrderHooks.php:221
 msgid "Yes"
 msgstr ""
 
 #: src/Admin/Labels.php:170
 #: src/Admin/PartSpecsPanel.php:332
-#: src/Order/OrderHooks.php:212
+#: src/Order/OrderHooks.php:221
 msgid "No"
 msgstr ""
 
@@ -1488,37 +1488,37 @@ msgid "%1$s: \"%2$s\" is not a value it takes."
 msgstr ""
 
 #. translators: 1: a kit's name, such as Build a complete; 2: a slot's label, such as Deck.
-#: src/Cart/ShowHooks.php:180
+#: src/Cart/ShowHooks.php:181
 #, php-format
 msgid "%1$s (%2$s)"
 msgstr ""
 
-#: src/Cart/ShowHooks.php:182
+#: src/Cart/ShowHooks.php:183
 msgid "Part of"
 msgstr ""
 
-#: src/Cart/ShowHooks.php:310
+#: src/Cart/ShowHooks.php:311
 msgid "The line's part in a build: kit, part, or empty for a line of no build."
 msgstr ""
 
-#: src/Cart/ShowHooks.php:311
+#: src/Cart/ShowHooks.php:312
 msgid "The build's identifier."
 msgstr ""
 
-#: src/Cart/ShowHooks.php:312
+#: src/Cart/ShowHooks.php:313
 msgid "For a part, its kit's cart item key."
 msgstr ""
 
-#: src/Cart/ShowHooks.php:313
+#: src/Cart/ShowHooks.php:314
 msgid "For a part, the key of the slot it fills."
 msgstr ""
 
-#: src/Cart/ShowHooks.php:314
+#: src/Cart/ShowHooks.php:315
 msgid "For a part, its name with its slot's label."
 msgstr ""
 
 #. translators: 1: a slot's label, such as Deck; 2: the product's name, which may be a link.
-#: src/Cart/ShowHooks.php:334
+#: src/Cart/ShowHooks.php:335
 #: src/Order/OrderHooks.php:174
 #, php-format
 msgid "%1$s: %2$s"
@@ -2037,7 +2037,7 @@ msgid "Spec table"
 msgstr ""
 
 #. translators: 1: a slot's label, such as Trucks; 2: the part's name; 3: how many of it a build takes.
-#: src/Order/OrderHooks.php:207
+#: src/Order/OrderHooks.php:216
 #, php-format
 msgid "%1$s: %2$s × %3$d"
 msgstr ""

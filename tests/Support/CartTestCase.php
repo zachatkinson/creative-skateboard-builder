@@ -10,8 +10,10 @@ declare( strict_types=1 );
 namespace CreativeBranding\SkateboardBuilder\Tests\Support;
 
 use CreativeBranding\SkateboardBuilder\Cart\CartHooks;
+use CreativeBranding\SkateboardBuilder\Cart\ExpressHooks;
 use CreativeBranding\SkateboardBuilder\Cart\LineHooks;
 use CreativeBranding\SkateboardBuilder\Cart\PriceHooks;
+use CreativeBranding\SkateboardBuilder\Cart\ShipHooks;
 use CreativeBranding\SkateboardBuilder\Cart\ShowHooks;
 use CreativeBranding\SkateboardBuilder\Hooks\CardHooks;
 use CreativeBranding\SkateboardBuilder\Order\OrderHooks;
@@ -60,6 +62,8 @@ abstract class CartTestCase extends IntegrationTestCase {
 		$this->service( PriceHooks::class )->register();
 		$this->service( OrderHooks::class )->register();
 		$this->service( ShowHooks::class )->register();
+		$this->service( ShipHooks::class )->register();
+		$this->service( ExpressHooks::class )->register();
 		add_filter( 'woocommerce_store_api_disable_nonce_check', '__return_true' );
 		rest_get_server();
 		// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- WordPress's own, to build the routes.

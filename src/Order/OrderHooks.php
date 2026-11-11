@@ -184,8 +184,17 @@ final class OrderHooks implements Hookable {
 	 */
 	private function kit( WC_Order_Item_Product $item, Build $build, array $values, array $cart ): void {
 		$snapshot = ( $this->builds )()->snapshot( $build );
-		$slots    = ( $this->kits )()->kit( $build->kit )?->slots;
-		$names    = array();
+		$kit      = ( $this->kits )()->kit( $build->kit );
+		$slots    = $kit?->slots;
+		// The owner's words on an assembled build, as the shopper read them, for the order's emails (milestone 8).
+		$words = array(
+			'lead_time'      => $kit?->assembly->leadTime ?? '',
+			'returns_notice' => $kit?->assembly->returnsNotice ?? '',
+		);
+		foreach ( $words as $field => $text ) {
+			$snapshot[ $field ] = $build->assembly && '' !== $text ? StateAnswer::text( $text, $field, $build->kit ) : '';
+		}
+		$names = array();
 		foreach ( is_array( $values[ Options::CART_CHILDREN ] ?? null ) ? $values[ Options::CART_CHILDREN ] : array() as $child ) {
 			$line    = is_string( $child ) ? ( $cart[ $child ] ?? array() ) : array();
 			$product = $line['data'] ?? null;

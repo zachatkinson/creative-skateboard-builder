@@ -510,6 +510,20 @@ A kit's line raised past what the shop has of a part is refused as `cbuild_build
 
 **What the plugin loads.** A few style rules in the page, under the handle `cbuild-cart`, with the Mini-Cart, the Cart or Checkout block, or a classic cart or checkout page. With the Cart or Checkout block, also the script `cbuild-cart`, which answers `cartItemClass`, `itemName` and `showRemoveItemLink` in the namespace above and needs `wc-blocks-checkout`. Both only where the cart holds a build as the page is drawn.
 
+### Shipping, express pay and delivery
+
+| Filter | Since | Arguments | What it decides |
+| --- | --- | --- | --- |
+| `cbuild_build_in_one_package` | 0.5.0 | `bool $together`, `int $kit`, `bool $assembly` | Whether a build's parts are put back in one shipping package where the shop's code has split the cart into several. By default `$assembly`: a build the shop assembles ships as one board. Asked only where `woocommerce_cart_shipping_packages` holds more than one package, at priority 100. |
+| `cbuild_arrival_estimate` | 0.5.0 | `string $estimate`, `array $context` | When a build arrives, in words for the line under the builder's total. The plugin has no answer of its own: `$estimate` is empty, and an empty answer shows nothing. |
+| `cbuild_delivery_line` | 0.5.0 | `string $line`, `array $context` | What a build's shipping costs, or how far it is from free shipping, in words for the same line. With an empty answer the builder words it from WooCommerce's shipping zones (from 0.6.0). |
+
+`$context` is the same for both: `kit` (the kit product's ID), `assembly` (bool), `lead_time` (the kit's lead time in the owner's words, after `cbuild_kit_text`, and empty for a build that is not assembled), `total` (the build's total in whole minor units) and `decimals` (how many decimals that is). An answer is shown as plain text: tags are stripped. The builder's summary shows both from 0.6.0.
+
+The kit is virtual, so it is in no shipping package, and each part ships as the product it is.
+
+**Express pay.** The plugin answers four filters of two payment plugins, so that neither offers Apple Pay or Google Pay on a kit's page: `wc_stripe_hide_payment_request_on_product_page` (true for a kit) and `wc_stripe_payment_request_supported_types` of WooCommerce Stripe Gateway, and `wcpay_payment_request_is_product_supported` (false for a kit) and `wcpay_payment_request_supported_types` of WooPayments. A kit that reaches the cart with no build is refused whichever way it comes.
+
 ### Order item keys
 
 Both checkouts write them, on `woocommerce_checkout_create_order_line_item`. They are kept on uninstall, with the shop's orders.
@@ -521,7 +535,7 @@ Both checkouts write them, on `woocommerce_checkout_create_order_line_item`. The
 | `_cbuild_parent` | 0.5.0 | A part's item | Its kit's order item ID. |
 | `_cbuild_children` | 0.5.0 | The kit's item | Its parts' order item IDs, in step order. |
 | `_cbuild_slot` | 0.5.0 | A part's item | The key of the slot it fills. |
-| `_cbuild_snapshot` | 0.5.0 | The kit's item | The build as sold: `schema_version` (1), `kit`, `assembly` and `picks`, slot key to `label` (the slot's, as the shopper read it), `name` (the part's), `part` (its product ID), `quantity` (how many one build takes) and `specs` (spec key to value, as the index held them). |
+| `_cbuild_snapshot` | 0.5.0 | The kit's item | The build as sold: `schema_version` (1), `kit`, `assembly` and `picks`, slot key to `label` (the slot's, as the shopper read it), `name` (the part's), `part` (its product ID), `quantity` (how many one build takes) and `specs` (spec key to value, as the index held them). Then `lead_time` and `returns_notice`, the kit's own as the shopper read them, each empty for a build the shop does not assemble. |
 
 The kit's item also carries two lines without an underscore, which WooCommerce shows wherever it shows an item's meta: Assembly (Yes or No) and Build (each slot's label, part and quantity). Their names and values are written in the shop's language as the order is placed.
 

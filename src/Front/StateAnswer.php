@@ -278,7 +278,7 @@ final class StateAnswer {
 	 * @param int    $kit   The kit product's ID.
 	 * @param string $of    The slot's key or the preset's position, for a text that belongs to one.
 	 */
-	private static function text( string $text, string $field, int $kit, string $of = '' ): string {
+	public static function text( string $text, string $field, int $kit, string $of = '' ): string {
 		/**
 		 * Filter one of a kit's texts as a shopper reads it: a slot's help, a preset's description, the lead time or
 		 * the returns notice.
