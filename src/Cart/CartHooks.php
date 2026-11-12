@@ -76,6 +76,8 @@ final class CartHooks implements Hookable {
 		// includes/class-wc-cart.php:1457, src/StoreApi/Utilities/CartController.php:171; includes/class-wc-cart-session.php.
 		add_filter( 'woocommerce_add_cart_item', array( $this, 'priced' ), 10, 1 );
 		add_filter( 'woocommerce_get_cart_item_from_session', array( $this, 'priced' ), 10, 1 );
+		// includes/class-wc-cart-session.php:713: a line Order again writes, which no add prices.
+		add_filter( 'woocommerce_add_order_again_cart_item', array( $this, 'priced' ), 10, 1 );
 		// includes/class-wc-cart.php:1484, src/StoreApi/Utilities/CartController.php:217. Before the totals, at 20.
 		add_action( 'woocommerce_add_to_cart', array( $this, 'added' ), 10, 1 );
 		// includes/class-wc-cart.php:1532: a line put back by the cart's Undo has a product read afresh.

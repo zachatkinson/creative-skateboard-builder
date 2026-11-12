@@ -60,6 +60,9 @@ final class PriceHooks implements Hookable {
 	public function register(): void {
 		// includes/class-wc-cart.php:1605. Late, so a price another plugin sets on the line is the one discounted.
 		add_action( 'woocommerce_before_calculate_totals', array( $this, 'price' ), 999, 1 );
+		// includes/class-wc-cart-session.php:300. A cart read back from the session works its totals out again only
+		// when it changed, and what is shown before then, the classic mini-cart on every page, is each line's price.
+		add_action( 'woocommerce_cart_loaded_from_session', array( $this, 'price' ), 999, 1 );
 		// includes/class-wc-coupon.php:1023 and :1060.
 		add_filter( 'woocommerce_coupon_is_valid_for_product', array( $this, 'coupon' ), 10, 4 );
 		// templates/cart/cart.php:140, templates/cart/mini-cart.php:53.
@@ -112,7 +115,6 @@ final class PriceHooks implements Hookable {
 	 * @param mixed $values  The cart item, or an order's item.
 	 */
 	public function coupon( mixed $valid, mixed $product = null, mixed $coupon = null, mixed $values = null ): mixed {
-		unset( $product );
 		$parent = is_array( $values ) ? ( $values[ Options::CART_PARENT ] ?? null ) : null;
 		$line   = is_string( $parent ) ? WC()->cart->get_cart_item( $parent ) : array();
 		$kit    = $line['data'] ?? null;
@@ -121,7 +123,21 @@ final class PriceHooks implements Hookable {
 		}
 		$left = in_array( $kit->get_id(), $coupon->get_excluded_product_ids(), true )
 			|| array() !== array_intersect( $kit->get_category_ids(), $coupon->get_excluded_product_categories() );
-		return ( $this->builds )()->couponTakes( $coupon->is_type( 'fixed_product' ), true === $valid, $coupon->is_valid_for_product( $kit, $line ), $left );
+		return ( $this->builds )()->couponTakes( $coupon->is_type( 'fixed_product' ), true === $valid, $coupon->is_valid_for_product( $kit, $line ), $left, $product instanceof WC_Product && self::barred( $coupon, $product ) );
+	}
+
+	/**
+	 * Whether a coupon leaves a product out by name: its ID or its parent's, a category of its own, or its being
+	 * on sale where the coupon is not for sale items (includes/class-wc-coupon.php:1045 to :1058).
+	 *
+	 * @param WC_Coupon  $coupon  The coupon.
+	 * @param WC_Product $product The product.
+	 */
+	private static function barred( WC_Coupon $coupon, WC_Product $product ): bool {
+		$owner = $product->get_parent_id() > 0 ? $product->get_parent_id() : $product->get_id();
+		return array() !== array_intersect( array( $product->get_id(), $owner ), $coupon->get_excluded_product_ids() )
+			|| array() !== array_intersect( wc_get_product_cat_ids( $owner ), $coupon->get_excluded_product_categories() )
+			|| ( $coupon->get_exclude_sale_items() && $product->is_on_sale() );
 	}
 
 	/**

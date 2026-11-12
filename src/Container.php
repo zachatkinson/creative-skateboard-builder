@@ -193,6 +193,13 @@ final class Container {
 					$c->get( Cart\Refusals::class )
 				);
 			},
+			Cart\AgainHooks::class                      => static function ( Container $c ): object {
+				return new Cart\AgainHooks(
+					static function () use ( $c ): Service\BuildCart {
+						return $c->get( Service\BuildCart::class );
+					}
+				);
+			},
 			Cart\PriceHooks::class                      => static function ( Container $c ): object {
 				return new Cart\PriceHooks(
 					static function () use ( $c ): Service\BuildCart {
@@ -327,6 +334,7 @@ final class Container {
 			Cart\ShowHooks::class                  => array( Scope::Everywhere ),
 			Cart\ShipHooks::class                  => array( Scope::Everywhere ),
 			Cart\ExpressHooks::class               => array( Scope::Everywhere ),
+			Cart\AgainHooks::class                 => array( Scope::Everywhere ),
 			// Both checkouts make the order, and its items are named on pages, in emails and in wp-admin.
 			Order\OrderHooks::class                => array( Scope::Everywhere ),
 			// WooCommerce's settings screen.

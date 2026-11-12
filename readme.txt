@@ -40,12 +40,14 @@ Yes. Activating it for the network installs it on every site, and a site added l
 == Changelog ==
 
 = 0.5.0 =
-* A build can be added to the cart: the kit with a line for each part, each at your shop's own price, with the assembly fee on the kit's line. More of this version's work is listed here as it lands.
+* A build can be added to the cart: the kit with a line for each part, each at your shop's own price, with the assembly fee on the kit's line.
 * A kit added to a cart with no build is refused, whichever way it arrives.
 * A build in the cart stays together: its quantity sets its parts', removing any line removes the build, and Undo brings all of it back.
 * Before an order is placed, each build is checked again against your stock and your parts' specs.
 * The build discount setting now comes off each part of a build in the cart, with the part's own price struck through.
 * A coupon for a kit reaches its parts. A fixed product coupon lands on the kit's line, or on each part too if you choose that in the settings.
+* A coupon that leaves a product, a category or sale items out still leaves that part out when it is in a build.
+* Order again on an order with a build puts the build back whole, checked against your stock and specs as they are now, or leaves it out and says so.
 * The cart's count shows a build as one item.
 * A build is shown as one group in the Cart and Checkout blocks, the Mini-Cart and a classic cart or checkout: each part sits under its kit, says which slot it fills, and cannot be changed or removed alone.
 * A build you assemble ships as one package, even where another plugin splits a cart into several.

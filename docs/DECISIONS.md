@@ -1863,3 +1863,24 @@ Issue #29 lists ten minors from milestone 4's review. What was done with each:
 **#25**: three mutants are left, each the same program as the original as far as can be shown (a cast of an array key PHP makes a number again, one row more read past the row that already says too many, and the branch for a server without mbstring). They are inside the floor and go to Zach at the review.
 
 **Status:** Accepted.
+
+### D-137 · The reviews of milestone 5: Zach's four answers, and the cart's four fixes · 2026-11-11
+
+The spec reviewer found 4 should-fix and 4 minor, and the auditor 9 and 12, with no blocker. Zach answered four questions on 11 November 2026:
+
+1. **Order again puts a build back whole.** WooCommerce's button refused the kit and left each part in the cart as a line of its own (failure W9), and the spec says nothing of it.
+2. **The two build abilities price for the signed-in user as the route does** (D-135's open item).
+3. **The hook classes that hold no logic are named in the mutation exclusions,** under D-087's rule, once their price, tie and snapshot logic is in services (D-128's question, D-038).
+4. **The add's benchmark keeps 450 ms as CI's ceiling,** as the state route's (D-124, D-134).
+
+What this commit does:
+
+- **Order again.** WooCommerce fills the cart from an order's items itself and writes the lines without adding them (`includes/class-wc-cart-session.php:632` to `:731`), so no add hook runs. `Cart\AgainHooks` answers three of its hooks. On `woocommerce_order_again_cart_item_data` the kit's build is judged again by `BuildCart::consider()` from what the order's snapshot asks for (`Service\BuildAgain::asked()`), as the shop is now, and given a new identifier; each part's line is marked with its build. On `woocommerce_add_to_cart_validation` a line of a refused build is left out. On `woocommerce_ordered_again`, which hands over the cart's lines by reference, `BuildAgain::whole()` says which builds have a line for every slot: those have their lines tied to one another, and every line of any other is taken out, since WooCommerce leaves a sold-out or deleted product out by itself. The shopper is told once. The marker `cbuild_again` is on a line only while WooCommerce fills the cart and is never stored. WooCommerce's own count of items it could not add stays true.
+- **A coupon's own exclusions.** D-130 let a coupon that takes the kit take its parts. A coupon for the whole cart takes the kit, so one that left out decks, a category or sale items took them all the same once they were in a build. `couponTakes()` has a fifth fact, whether the coupon leaves the part itself out, read as WooCommerce reads it (`includes/class-wc-coupon.php:1045` to `:1058`). D-130's reading otherwise stands, and is still Zach's at the review.
+- **The classic mini-cart's prices.** A cart read back from the session works its totals out again only when it changed (`class-wc-cart-session.php:302`), so each part showed at the shop's full price beside a subtotal with the discount in it. The price is given on `woocommerce_cart_loaded_from_session` as well.
+- **The check's sentences.** A build that stops the order is in the cart, so nothing is said of adding. The first notice names the kit and what to do; the problems follow. The Edit link is milestone 6's, and the sentence will offer it then.
+- **Three browser tests found WooCommerce's own Save button and saved notice by their English words.** The local site has since been given WooCommerce's French and Hebrew language packs, and the tests failed in `fr-ca` and `rtl` there, though not in CI's fresh site. They find both by their markup now, and the terms test starts from a shop's defaults whatever an earlier run left.
+
+**Red runs and deliberate breaks** are in the commit's message.
+
+**Status:** Accepted.

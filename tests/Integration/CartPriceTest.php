@@ -204,6 +204,82 @@ final class CartPriceTest extends CartTestCase {
 		self::assertSame( '26.80', number_format( (float) WC()->cart->get_discount_total(), 2, '.', '' ) );
 	}
 
+	/**
+	 * The auditor's finding 9 on milestone 5: a cart read back from the session works its totals out again only
+	 * when it changed, so on every page but the cart and the checkout the classic mini-cart showed each part at
+	 * the shop's full price beside a subtotal that had the discount in it.
+	 */
+	public function test_a_cart_read_from_the_session_shows_each_part_at_what_it_is_charged(): void {
+		self::settings( array( 'build_discount' => '10' ) );
+		$key = $this->added();
+		WC()->cart->calculate_totals();
+		WC()->cart->set_session();
+		$child = WC()->cart->get_cart()[ $key ][ Options::CART_CHILDREN ][0];
+
+		// The next page: the cart is read from the session, and nothing in it has changed.
+		$counted = did_action( 'woocommerce_before_calculate_totals' );
+		WC()->cart->set_cart_contents( array() );
+		WC()->cart->get_cart_from_session();
+		self::assertSame( $counted, did_action( 'woocommerce_before_calculate_totals' ), 'the totals were not worked out again' );
+		$deck = WC()->cart->get_cart()[ $child ];
+		self::assertSame( '63.00', $deck['data']->get_price() );
+		$cell = apply_filters( 'woocommerce_cart_item_price', WC()->cart->get_product_price( $deck['data'] ), $deck, $child );
+		self::assertMatchesRegularExpression( '#<del[^>]*>.*70\.00.*</del>.*<ins[^>]*>.*63\.00.*</ins>#s', $cell );
+	}
+
+	/**
+	 * The auditor's finding 5 on milestone 5: a coupon for the whole cart that leaves a product out took that
+	 * product all the same once it was a part of a build, since the coupon takes the kit.
+	 */
+	public function test_a_coupon_that_leaves_a_part_out_leaves_it_out_of_a_build_too(): void {
+		$wheels = wc_get_product( $this->parts['wheels'] );
+		$wheels->set_regular_price( '40' );
+		$wheels->set_sale_price( '32' );
+		$wheels->save();
+		$this->added( true );
+		$every = array(
+			'kit'      => 1.5,
+			'deck'     => 7.0,
+			'trucks'   => 5.4,
+			'wheels'   => 3.2,
+			'bearings' => 1.5,
+			'hardware' => 0.4,
+			'grip'     => 0.8,
+		);
+		$decks = (int) current( wc_get_product( $this->parts['deck'] )->get_category_ids() );
+		foreach ( array(
+			'the deck by its ID'       => array( array( 'excluded_product_ids' => array( $this->parts['deck'] ) ), 'deck' ),
+			'the deck by its category' => array( array( 'excluded_product_categories' => array( $decks ) ), 'deck' ),
+			'what is on sale'          => array( array( 'exclude_sale_items' => true ), 'wheels' ),
+		) as $what => [ $props, $left ] ) {
+			self::coupon( 'percent', '10', $props );
+			self::assertSame( array_diff_key( $every, array( $left => 0 ) ), self::discounts(), $what );
+			WC()->cart->remove_coupons();
+		}
+	}
+
+	/**
+	 * Spec, Tests that must pass: each coupon type with the coupon setting both ways. Where a fixed product coupon
+	 * lands changes nothing for the other types.
+	 */
+	public function test_a_percentage_and_a_fixed_cart_coupon_are_the_same_with_the_setting_either_way(): void {
+		$this->added( true );
+		$seen = array();
+		foreach ( array( 'kit', 'parts' ) as $setting ) {
+			self::settings( array( 'fixed_coupons' => $setting ) );
+			self::coupon( 'percent', '10', array( 'product_ids' => array( $this->kit ) ) );
+			$seen[ $setting ]['percent'] = self::discounts();
+			WC()->cart->remove_coupons();
+			self::coupon( 'fixed_cart', '26.80' );
+			$seen[ $setting ]['fixed_cart']       = self::discounts();
+			$seen[ $setting ]['fixed_cart_total'] = number_format( (float) WC()->cart->get_discount_total(), 2, '.', '' );
+			WC()->cart->remove_coupons();
+		}
+		self::assertSame( $seen['kit'], $seen['parts'] );
+		self::assertSame( 19.8, round( array_sum( $seen['kit']['percent'] ), 2 ), 'ten per cent of the fee and the parts' );
+		self::assertSame( '26.80', $seen['kit']['fixed_cart_total'] );
+	}
+
 	public function test_a_fixed_product_coupon_lands_where_the_setting_says(): void {
 		$this->added( true, 2 );
 		WC()->cart->add_to_cart( $this->parts['deck'], 1 );

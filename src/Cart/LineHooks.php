@@ -17,6 +17,7 @@ use CreativeBranding\SkateboardBuilder\Service\BuildLines;
 use CreativeBranding\SkateboardBuilder\Service\CartRefusal;
 use CreativeBranding\SkateboardBuilder\Support\Options;
 use WP_Error;
+use WC_Product;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -211,7 +212,8 @@ final class LineHooks implements Hookable {
 			wc_add_notice( esc_html( Words::refusal( CartRefusal::BuildIncomplete ) ), 'error' );
 		}
 		foreach ( $tidied->refused as $key => $verdict ) {
-			foreach ( $this->refusals->sentences( self::kit( $cart[ $key ] ?? null ), $verdict ) as $sentence ) {
+			$product = $cart[ $key ]['data'] ?? null;
+			foreach ( $this->refusals->held( self::kit( $cart[ $key ] ?? null ), $product instanceof WC_Product ? $product->get_name() : '', $verdict ) as $sentence ) {
 				wc_add_notice( esc_html( $sentence ), 'error' );
 			}
 		}

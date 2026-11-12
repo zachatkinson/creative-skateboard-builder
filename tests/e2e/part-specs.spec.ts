@@ -153,10 +153,10 @@ test.describe( 'The Part specs panel', () => {
 			} );
 		};
 		const save = async () => {
-			await page.getByRole( 'button', { name: 'Save changes' } ).click();
-			await expect(
-				page.getByRole( 'button', { name: 'Save changes' } )
-			).toBeDisabled();
+			// WooCommerce's own button, by its class: its name is WooCommerce's to translate.
+			const button = page.locator( 'button.save-variation-changes' );
+			await button.click();
+			await expect( button ).toBeDisabled();
 		};
 
 		await login( page );

@@ -199,17 +199,20 @@ final class BuildCart {
 	/**
 	 * Whether a coupon takes a part of a build. The part answers with its kit: a coupon that leaves the kit out
 	 * leaves its parts out; a fixed product coupon stays on the kit's line unless the shop's setting sends it to
-	 * the parts; any other takes a part it would take alone, or whose kit it takes.
+	 * the parts; any other takes a part it would take alone, or whose kit it takes. A part the coupon itself
+	 * leaves out, by its ID, its category or its being on sale, stays left out: being in a build earns it nothing
+	 * the shop's coupon denies it.
 	 *
 	 * @since 0.5.0
 	 *
-	 * @param bool $fixed Whether it is a fixed product coupon, whose amount comes off each item.
-	 * @param bool $part  Whether it takes the part as a product of its own.
-	 * @param bool $kit   Whether it takes the kit.
-	 * @param bool $left  Whether it names the kit, or a category of the kit's, as left out.
+	 * @param bool $fixed  Whether it is a fixed product coupon, whose amount comes off each item.
+	 * @param bool $part   Whether it takes the part as a product of its own.
+	 * @param bool $kit    Whether it takes the kit.
+	 * @param bool $left   Whether it names the kit, or a category of the kit's, as left out.
+	 * @param bool $barred Whether it leaves the part itself out.
 	 */
-	public function couponTakes( bool $fixed, bool $part, bool $kit, bool $left ): bool {
-		if ( $left || ( $fixed && BuildTerms::ON_PARTS !== $this->settings->terms()->fixedCoupons ) ) {
+	public function couponTakes( bool $fixed, bool $part, bool $kit, bool $left, bool $barred ): bool {
+		if ( $left || $barred || ( $fixed && BuildTerms::ON_PARTS !== $this->settings->terms()->fixedCoupons ) ) {
 			return false;
 		}
 		return $part || $kit;

@@ -57,6 +57,33 @@ final class Refusals {
 	}
 
 	/**
+	 * Why a build that is in the cart stops the order, as sentences: the first names the build and says what to
+	 * do, and the rest say what is wrong with it. Nothing is said of adding: the build is in the cart and stays
+	 * there until the shopper removes it.
+	 *
+	 * @since 0.5.0
+	 *
+	 * @param int     $kit     The kit product's ID.
+	 * @param string  $name    The kit's name, as the cart's line shows it.
+	 * @param Verdict $verdict What was said of the build.
+	 * @return non-empty-list<string>
+	 */
+	public function held( int $kit, string $name, Verdict $verdict ): array {
+		if ( array() === $verdict->problems ) {
+			return array(
+				CartRefusal::KitNotFound === $verdict->refusal
+					/* translators: %s: a kit's name, such as Build a complete. */
+					? sprintf( __( '%s is no longer sold. Remove it from your cart to check out.', 'creative-skateboard-builder' ), $name )
+					/* translators: %s: a kit's name, such as Build a complete. */
+					: sprintf( __( '%s cannot be bought as it is now. Remove it from your cart to check out.', 'creative-skateboard-builder' ), $name ),
+			);
+		}
+		/* translators: %s: a kit's name, such as Build a complete. */
+		$lead = sprintf( __( '%s cannot be bought as it is now. Remove it from your cart to check out, then build it again.', 'creative-skateboard-builder' ), $name );
+		return array( $lead, ...$this->sentences( $kit, $verdict ) );
+	}
+
+	/**
 	 * A refusal's problems as the Store API sends them: each one's code, slot and part.
 	 *
 	 * @since 0.5.0

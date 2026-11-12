@@ -313,20 +313,22 @@ final class BuildCartTest extends TestCase {
 	}
 
 	public function test_a_coupon_reaches_a_part_through_its_kit_and_a_fixed_one_where_the_setting_says(): void {
-		// Not a fixed product coupon: fixed, part, kit, left out.
-		self::assertTrue( $this->builds->couponTakes( false, true, false, false ), 'one for the part itself' );
-		self::assertTrue( $this->builds->couponTakes( false, false, true, false ), 'one for the kit' );
-		self::assertFalse( $this->builds->couponTakes( false, false, false, false ) );
-		self::assertFalse( $this->builds->couponTakes( false, true, true, true ), 'the kit left out takes its parts with it' );
+		// Not a fixed product coupon: fixed, part, kit, the kit left out, the part itself left out.
+		self::assertTrue( $this->builds->couponTakes( false, true, false, false, false ), 'one for the part itself' );
+		self::assertTrue( $this->builds->couponTakes( false, false, true, false, false ), 'one for the kit' );
+		self::assertFalse( $this->builds->couponTakes( false, false, false, false, false ) );
+		self::assertFalse( $this->builds->couponTakes( false, true, true, true, false ), 'the kit left out takes its parts with it' );
+		self::assertFalse( $this->builds->couponTakes( false, false, true, false, true ), 'a part the coupon leaves out is left out, though the coupon takes its kit' );
 
-		self::assertFalse( $this->builds->couponTakes( true, true, true, false ), 'a fixed product coupon stays on the kit\'s line' );
+		self::assertFalse( $this->builds->couponTakes( true, true, true, false, false ), 'a fixed product coupon stays on the kit\'s line' );
 		$this->settings->terms = BuildTerms::read( array( BuildTerms::COUPONS => BuildTerms::ON_PARTS ) );
-		self::assertTrue( $this->builds->couponTakes( true, false, true, false ), 'unless the shop sends it to the parts' );
-		self::assertTrue( $this->builds->couponTakes( true, true, false, false ) );
-		self::assertFalse( $this->builds->couponTakes( true, false, false, false ) );
-		self::assertFalse( $this->builds->couponTakes( true, true, true, true ) );
+		self::assertTrue( $this->builds->couponTakes( true, false, true, false, false ), 'unless the shop sends it to the parts' );
+		self::assertTrue( $this->builds->couponTakes( true, true, false, false, false ) );
+		self::assertFalse( $this->builds->couponTakes( true, false, false, false, false ) );
+		self::assertFalse( $this->builds->couponTakes( true, true, true, true, false ) );
+		self::assertFalse( $this->builds->couponTakes( true, false, true, false, true ), 'and so is one a fixed product coupon leaves out' );
 		$this->settings->terms = BuildTerms::read( array( BuildTerms::COUPONS => BuildTerms::ON_KIT ) );
-		self::assertFalse( $this->builds->couponTakes( true, true, true, false ) );
+		self::assertFalse( $this->builds->couponTakes( true, true, true, false, false ) );
 	}
 
 	public function test_the_order_keeps_each_part_with_its_specs_as_sold(): void {

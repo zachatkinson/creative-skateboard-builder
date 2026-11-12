@@ -97,7 +97,7 @@ final class ContainerTest extends TestCase {
 		$container = new Container();
 		$container->set( MigrationStore::class, new InMemoryMigrationStore() );
 		$hookables = $container->hookablesFor( Scope::Everywhere );
-		self::assertCount( 16, $hookables, 'the install\'s, the index\'s, the cards\', the spec tables\', the import\'s, the kit\'s, the cart\'s six, the order\'s and the three abilities\'' );
+		self::assertCount( 17, $hookables, 'the install\'s, the index\'s, the cards\', the spec tables\', the import\'s, the kit\'s, the cart\'s seven, the order\'s and the three abilities\'' );
 		self::assertContainsOnlyInstancesOf( Hookable::class, $hookables );
 	}
 
@@ -114,7 +114,7 @@ final class ContainerTest extends TestCase {
 	// Claude in Cowork's review of milestone 3, minor 9: mutation testing left the plugin's own scopes unpinned.
 	public function test_each_scope_builds_its_own_hookables_and_no_others(): void {
 		$scopes = array(
-			'Everywhere' => array( 'Hooks\\InstallHooks', 'Hooks\\IndexHooks', 'Hooks\\CardHooks', 'Hooks\\SpecTableHooks', 'Hooks\\ImportHooks', 'Hooks\\KitHooks', 'Cart\\CartHooks', 'Cart\\LineHooks', 'Cart\\PriceHooks', 'Cart\\ShowHooks', 'Cart\\ShipHooks', 'Cart\\ExpressHooks', 'Order\\OrderHooks', 'Abilities\\CatalogueCheckAbility', 'Abilities\\CheckBuildAbility', 'Abilities\\PriceBuildAbility' ),
+			'Everywhere' => array( 'Hooks\\InstallHooks', 'Hooks\\IndexHooks', 'Hooks\\CardHooks', 'Hooks\\SpecTableHooks', 'Hooks\\ImportHooks', 'Hooks\\KitHooks', 'Cart\\CartHooks', 'Cart\\LineHooks', 'Cart\\PriceHooks', 'Cart\\ShowHooks', 'Cart\\ShipHooks', 'Cart\\ExpressHooks', 'Cart\\AgainHooks', 'Order\\OrderHooks', 'Abilities\\CatalogueCheckAbility', 'Abilities\\CheckBuildAbility', 'Abilities\\PriceBuildAbility' ),
 			'Admin'      => array( 'Admin\\SettingsHooks', 'Admin\\PartSpecsHooks', 'Admin\\BuildTabHooks', 'Admin\\BuilderHooks', 'Health\\SiteHealth' ),
 			'Cli'        => array( 'Hooks\\CliHooks', 'Health\\SiteHealth' ),
 			'Cron'       => array( 'Health\\SiteHealth' ),
