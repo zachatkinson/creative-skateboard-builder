@@ -17,6 +17,7 @@ use CreativeBranding\SkateboardBuilder\Domain\Kit\BuildTerms;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Kit;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Part;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\SlotKey;
+use CreativeBranding\SkateboardBuilder\Domain\Kit\Slots;
 use CreativeBranding\SkateboardBuilder\Domain\Rule\MessageCode;
 use CreativeBranding\SkateboardBuilder\Domain\Rule\RuleId;
 use CreativeBranding\SkateboardBuilder\Domain\Rule\Severity;
@@ -377,6 +378,15 @@ final class BuildStateTest extends TestCase {
 		self::assertSame( SlotKey::GRIP, $this->of( self::COMPLETE + array( SlotKey::RISERS => 401 ) )->step, 'with every slot picked, the last' );
 	}
 
+	public function test_the_review_is_a_step_whatever_the_build_holds(): void {
+		self::assertSame( 'review', State::REVIEW );
+		self::assertSame( State::REVIEW, $this->of( self::COMPLETE, null, State::REVIEW )->step );
+		$blank = $this->of( array(), null, State::REVIEW );
+		self::assertSame( State::REVIEW, $blank->step, 'The review of a build that is not ready says what it lacks.' );
+		self::assertFalse( $blank->ready() );
+		self::assertArrayHasKey( State::REVIEW, Slots::KEPT, 'No slot may take the word.' );
+	}
+
 	public function test_the_total_is_the_parts_the_fee_when_the_shop_assembles_and_the_build_discount(): void {
 		$parts = 7000 + 5400 + 3200 + 1500 + 400 + 800;
 		$state = $this->of( self::COMPLETE );
@@ -401,6 +411,9 @@ final class BuildStateTest extends TestCase {
 		$this->settings->terms = BuildTerms::read( array( 'build_discount' => '10' ) );
 		$state                 = $this->of( self::COMPLETE );
 		self::assertSame( 6300, $state->quote->lines[0]->charged );
+		self::assertSame( 1000, $state->discount, 'The state says what it was priced with, for a card to price a part the same way.' );
+		$this->settings->terms = BuildTerms::read( array() );
+		self::assertSame( 0, $this->of()->discount );
 		self::assertSame( $parts - intdiv( $parts, 10 ), $state->quote->parts );
 		self::assertSame( intdiv( $parts, 10 ), $state->quote->saved );
 		self::assertSame( 1500, $state->quote->fee );

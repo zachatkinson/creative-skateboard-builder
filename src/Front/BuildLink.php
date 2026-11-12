@@ -11,6 +11,7 @@ namespace CreativeBranding\SkateboardBuilder\Front;
 
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Fields;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Slots;
+use CreativeBranding\SkateboardBuilder\Service\State;
 
 /**
  * A build as the query parameters of a page: `cbuild[<slot key>]=<part ID>`, with `cbuild[step]`,
@@ -40,7 +41,7 @@ final readonly class BuildLink {
 	 *
 	 * @since 0.6.0
 	 */
-	public const string REVIEW = 'review';
+	public const string REVIEW = State::REVIEW;
 
 	/**
 	 * How many options a step lists to begin with, and how many more each Show more adds.

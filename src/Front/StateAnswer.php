@@ -11,7 +11,12 @@ namespace CreativeBranding\SkateboardBuilder\Front;
 
 use CreativeBranding\SkateboardBuilder\Domain\Fit\BuildProblem;
 use CreativeBranding\SkateboardBuilder\Domain\Fit\Option;
+use CreativeBranding\SkateboardBuilder\Domain\Kit\Part;
+use CreativeBranding\SkateboardBuilder\Domain\Kit\SlotKey;
+use CreativeBranding\SkateboardBuilder\Domain\Measure\Measure;
+use CreativeBranding\SkateboardBuilder\Domain\Pricing\Pricer;
 use CreativeBranding\SkateboardBuilder\Domain\Rule\Finding;
+use CreativeBranding\SkateboardBuilder\Domain\Spec\SpecKey;
 use CreativeBranding\SkateboardBuilder\Port\Kits;
 use CreativeBranding\SkateboardBuilder\Port\Money;
 use CreativeBranding\SkateboardBuilder\Port\PartCards;
@@ -29,11 +34,16 @@ if ( ! defined( 'ABSPATH' ) ) {
  *
  * - **One step's options.** Every step says how many parts it offers and hides and why; only the step the shopper is
  *   on lists them.
- * - **24 at a time** (spec: Performance), of those offered and of those hidden. Parts the shop can supply come before
- *   those it cannot, each in the engine's own order, and the part the step counts is always among them.
+ * - **24 at a time** (spec: Performance), of those offered and of those hidden, and 24 more each time the address
+ *   asks. Parts the shop can supply come before those it cannot, each in the engine's own order, and the part the
+ *   step counts is always among them.
+ * - **The step's filters** (spec: A step): the brands and the sizes among the parts offered, and those alone listed
+ *   where the address names one.
  * - **The owner's own words through their filters:** `cbuild_slot_label`, `cbuild_preset_label` and `cbuild_kit_text`.
  * - **Cards for those and no others,** asked for in one call: the options listed, the parts the total counts, and the
  *   parts a change list names.
+ * - **What is in the box** (spec: The picture): each part the total counts, labelled, and the build in a sentence.
+ * - **What others add under the total:** the delivery line's two filters, and `cbuild_summary_notes`.
  *
  * @since 0.4.0
  */
@@ -47,35 +57,88 @@ final class StateAnswer {
 	public const int SHOWN = 24;
 
 	/**
+	 * How many lines other plugins may put under the total.
+	 *
+	 * @since 0.6.0
+	 */
+	public const int NOTES = 6;
+
+	/**
+	 * The spec a slot's parts are sized by, as a shopper names a size: a deck by its width, wheels by their
+	 * diameter. A slot with a key of the owner's own has none.
+	 */
+	private const array SIZES = array(
+		SlotKey::DECK     => SpecKey::DeckWidth,
+		SlotKey::TRUCKS   => SpecKey::AxleWidth,
+		SlotKey::WHEELS   => SpecKey::WheelDiameter,
+		SlotKey::RISERS   => SpecKey::RiserThickness,
+		SlotKey::HARDWARE => SpecKey::BoltLength,
+	);
+
+	/**
 	 * Constructor.
 	 *
 	 * @since 0.4.0
+	 * @since 0.6.0 Takes what the shop says of delivery.
 	 *
-	 * @param PartCards $cards What a card shows of a part.
-	 * @param Money     $money Writes an amount as the shop does.
-	 * @param Kits      $kits  The shop's kits, for the currency's decimals.
+	 * @param PartCards $cards    What a card shows of a part.
+	 * @param Money     $money    Writes an amount as the shop does.
+	 * @param Kits      $kits     The shop's kits, for the currency's decimals.
+	 * @param Delivery  $delivery What the shop says of a build's delivery.
 	 */
-	public function __construct( private PartCards $cards, private Money $money, private Kits $kits ) {}
+	public function __construct( private PartCards $cards, private Money $money, private Kits $kits, private Delivery $delivery ) {}
 
 	/**
 	 * The answer.
 	 *
 	 * @since 0.4.0
+	 * @since 0.6.0 Takes the address, for the step's filters and how many options it lists.
 	 *
-	 * @param State $state The build's state.
+	 * @param State          $state The build's state.
+	 * @param BuildLink|null $link  The address the build was asked at, or null for one that says nothing.
 	 * @return array<string, mixed>
 	 */
-	public function of( State $state ): array {
+	public function of( State $state, ?BuildLink $link = null ): array {
+		$link  ??= new BuildLink();
 		$labels  = array();
 		$current = null;
+		$counted = array();
 		foreach ( $state->steps as $step ) {
 			$labels[ $step->slot->key ] = self::label( $step->slot->label, $step->slot->key, $state->id );
 			if ( $step->slot->key === $state->step ) {
 				$current = $step;
 			}
+			$counts = $step->counted();
+			if ( null !== $counts ) {
+				$counted[ $step->slot->key ] = $counts->part;
+			}
 		}
-		$offered = null === $current ? array() : self::shown( $current->options->offered, $current->counted() );
-		$hidden  = null === $current ? array() : self::shown( $current->options->hidden, $current->picked );
+		$page     = max( self::SHOWN, $link->shown );
+		$all      = null === $current ? array() : $current->options->offered;
+		$matching = array();
+		foreach ( $all as $shown ) {
+			$size = self::size( $state->step, $shown->part )['value'] ?? null;
+			if ( in_array( $link->brand, array( '', $shown->part->brand ), true ) && in_array( $link->size, array( '', $size ), true ) ) {
+				$matching[] = $shown;
+			}
+		}
+		// The part the step counts is one of those offered, or a pick that is hidden: it is listed with its own kind.
+		$counts  = $current?->counted();
+		$kept    = null === $current || null === $counts ? null : $current->options->offer( $counts->part->id );
+		$offered = self::shown( $matching, $kept, $page );
+		$hidden  = null === $current ? array() : self::shown( $current->options->hidden, null === $kept ? $counts : null, $page );
+		$more    = count( $matching ) > $page && $page < BuildLink::MOST ? min( BuildLink::MOST, $page + self::SHOWN ) : null;
+
+		// The brands' names, in one call: those of the step's parts, for its filter, and of the parts the total counts.
+		$slugs = array();
+		foreach ( $all as $shown ) {
+			$slugs[] = $shown->part->brand;
+		}
+		foreach ( $counted as $part ) {
+			$slugs[] = $part->brand;
+		}
+		$slugs  = array_values( array_diff( array_unique( $slugs ), array( '' ) ) );
+		$brands = array() === $slugs ? array() : $this->cards->brands( $slugs );
 
 		// Every part the answer names, for one call to the cards.
 		$ids = array();
@@ -99,9 +162,27 @@ final class StateAnswer {
 			'amount' => $amount,
 			'text'   => $this->money->text( $amount, $decimals ),
 		);
-		$option   = static fn( Option $option, ?StateStep $step ): array => array(
+		$delta    = function ( Option $option, ?StateStep $step ) use ( $state, $decimals ): array {
+			$change = Pricer::change( $option, $step?->counted(), $state->discount );
+			$amount = $change ?? 0;
+			$kind   = 'none';
+			if ( null !== $change ) {
+				$kind = $amount < 0 ? 'less' : ( 0 === $amount ? 'free' : 'more' );
+				if ( $option->part->id === $step?->counted()?->part->id ) {
+					$kind = 'included';
+				}
+			}
+			return array(
+				'kind'   => $kind,
+				'amount' => $amount,
+				'text'   => Words::delta( $kind, $this->money->text( abs( $amount ), $decimals ) ),
+			);
+		};
+		$option   = static fn( Option $option, string $slot, ?StateStep $step ): array => array(
 			'id'          => $option->part->id,
 			'brand'       => $option->part->brand,
+			'size'        => self::size( $slot, $option->part ),
+			'delta'       => $delta( $option, $step ),
 			'fit'         => $option->severity->value,
 			'in_stock'    => $option->part->inStock,
 			'available'   => $option->available(),
@@ -180,7 +261,7 @@ final class StateAnswer {
 					'was'      => $change->was->id,
 					'name'     => $cards[ $change->was->id ]['name'] ?? '',
 					'messages' => self::messages( $change->findings ),
-					'closest'  => null === $change->closest ? null : $option( $change->closest, null ),
+					'closest'  => null === $change->closest ? null : $option( $change->closest, $change->slot, null ),
 				);
 			}
 		}
@@ -208,8 +289,11 @@ final class StateAnswer {
 			),
 			'presets'  => $presets,
 			'steps'    => $steps,
-			'options'  => array_map( static fn( Option $shown ): array => $option( $shown, $current ), $offered ),
-			'hidden'   => array_map( static fn( Option $shown ): array => $option( $shown, $current ), $hidden ),
+			'options'  => array_map( static fn( Option $shown ): array => $option( $shown, $state->step, $current ), $offered ),
+			'hidden'   => array_map( static fn( Option $shown ): array => $option( $shown, $state->step, $current ), $hidden ),
+			'filters'  => self::filters( $state->step, $all, $brands, $link ),
+			'matching' => count( $matching ),
+			'more'     => $more,
 			'refused'  => array_map( $problem, $state->refused ),
 			'problems' => array_map( $problem, $state->validation->problems ),
 			'changes'  => $changes,
@@ -221,7 +305,172 @@ final class StateAnswer {
 				'fee'      => $money( $state->quote->fee ),
 				'total'    => $money( $state->quote->total ),
 			),
+			'picture'  => self::picture( $state, $counted, $labels, $brands, $cards ),
+			'delivery' => $this->delivery->said( $state->id, $state->quote->assembly, $state->quote->total, $decimals ),
+			'notes'    => self::notes( $state, $decimals ),
 		);
+	}
+
+	/**
+	 * A part's size as its slot's parts are sized, or null where the slot has no such spec or the part does not
+	 * give it.
+	 *
+	 * @param string $slot The slot's key.
+	 * @param Part   $part The part.
+	 * @return array{value: string, text: string, measure: Measure}|null `value` is how the address names the size, as
+	 *         `8.25in` or `54mm`; `text` is how a person reads it.
+	 */
+	private static function sized( string $slot, Part $part ): ?array {
+		$key     = self::SIZES[ $slot ] ?? null;
+		$measure = null === $key ? null : $part->specs->measure( $key );
+		if ( null === $measure ) {
+			return null;
+		}
+		return array(
+			'value'   => rtrim( rtrim( $measure->decimal(), '0' ), '.' ) . $measure->unit->value,
+			// Bolts and risers are said in fractions (spec: Numbers and units).
+			'text'    => Words::measure( $measure, SpecKey::RiserThickness === $key || SpecKey::BoltLength === $key ),
+			'measure' => $measure,
+		);
+	}
+
+	/**
+	 * A part's size, as the answer carries it.
+	 *
+	 * @param string $slot The slot's key.
+	 * @param Part   $part The part.
+	 * @return array{value: string, text: string}|null
+	 */
+	private static function size( string $slot, Part $part ): ?array {
+		$sized = self::sized( $slot, $part );
+		return null === $sized ? null : array(
+			'value' => $sized['value'],
+			'text'  => $sized['text'],
+		);
+	}
+
+	/**
+	 * The step's filters: the brands and the sizes among the parts it offers, each with how many parts have it. A
+	 * list of one says nothing a shopper could choose by, so it is empty.
+	 *
+	 * @param string                $slot    The step's slot.
+	 * @param list<Option>          $offered Every part the step offers.
+	 * @param array<string, string> $names   Brands' names, by slug.
+	 * @param BuildLink             $link    The address, for the filters set.
+	 * @return array{brands: list<array{value: string, label: string, count: int, selected: bool}>, sizes: list<array{value: string, label: string, count: int, selected: bool}>}
+	 */
+	private static function filters( string $slot, array $offered, array $names, BuildLink $link ): array {
+		$brands   = array();
+		$sizes    = array();
+		$measures = array();
+		foreach ( $offered as $option ) {
+			$brand = $option->part->brand;
+			if ( '' !== $brand ) {
+				$brands[ $brand ] ??= array(
+					'value'    => $brand,
+					'label'    => $names[ $brand ] ?? $brand,
+					'count'    => 0,
+					'selected' => $brand === $link->brand,
+				);
+				++$brands[ $brand ]['count'];
+			}
+			$sized = self::sized( $slot, $option->part );
+			if ( null !== $sized ) {
+				$sizes[ $sized['value'] ] ??= array(
+					'value'    => $sized['value'],
+					'label'    => $sized['text'],
+					'count'    => 0,
+					'selected' => $sized['value'] === $link->size,
+				);
+				++$sizes[ $sized['value'] ]['count'];
+				$measures[ $sized['value'] ] = $sized['measure'];
+			}
+		}
+		// A sort numbers a list again from nothing.
+		usort( $brands, static fn( array $one, array $other ): int => strnatcasecmp( $one['label'], $other['label'] ) );
+		usort( $sizes, static fn( array $one, array $other ): int => $measures[ $one['value'] ]->compare( $measures[ $other['value'] ] ) );
+		return array(
+			'brands' => count( $brands ) > 1 ? $brands : array(),
+			'sizes'  => count( $sizes ) > 1 ? $sizes : array(),
+		);
+	}
+
+	/**
+	 * What is in the box: each part the total counts, labelled with its slot, its brand and its size, with its photo,
+	 * and the build in one sentence.
+	 *
+	 * @param State                                                                                                                                                                                   $state   The build's state.
+	 * @param array<string, Part>                                                                                                                                                                     $counted The part each slot counts, by slot.
+	 * @param array<string, string>                                                                                                                                                                   $labels  The slots' labels.
+	 * @param array<string, string>                                                                                                                                                                   $brands  Brands' names, by slug.
+	 * @param array<int, array{name: string, url: string, price: string, stock: string, stock_class: string, image: array{src: string, width: int, height: int, srcset: string, sizes: string}|null}> $cards The cards.
+	 * @return array{items: list<array<string, mixed>>, description: string}
+	 */
+	private static function picture( State $state, array $counted, array $labels, array $brands, array $cards ): array {
+		$items = array();
+		$names = array();
+		foreach ( $state->quote->lines as $line ) {
+			$part    = $counted[ $line->slot ];
+			$name    = $cards[ $line->part ]['name'] ?? '';
+			$items[] = array(
+				'slot'  => $line->slot,
+				'part'  => $line->part,
+				'label' => Words::boxed( $labels[ $line->slot ], $brands[ $part->brand ] ?? '', self::size( $line->slot, $part )['text'] ?? '' ),
+				'name'  => $name,
+				'image' => $cards[ $line->part ]['image'] ?? null,
+			);
+			if ( '' !== $name ) {
+				$names[] = $name;
+			}
+		}
+		return array(
+			'items'       => $items,
+			'description' => Words::built( $names ),
+		);
+	}
+
+	/**
+	 * The lines other plugins put under the total (spec: The total), as plain text.
+	 *
+	 * @param State $state    The build's state.
+	 * @param int   $decimals How many decimals the minor unit is.
+	 * @return list<string>
+	 */
+	private static function notes( State $state, int $decimals ): array {
+		$parts = array();
+		foreach ( $state->quote->lines as $line ) {
+			$parts[ $line->slot ] = $line->part;
+		}
+		/**
+		 * Filter the lines shown under a build's total in the builder: the points a build earns, or a word to a
+		 * signed-in dealer. Each is a sentence in the language of the request, shown as plain text, and the builder
+		 * shows the first six. The answer is not cached, and it is given on every pick, so it has to be quick.
+		 *
+		 * @since 0.6.0
+		 *
+		 * @param list<string>                                                                          $notes   The lines so far: none.
+		 * @param array{kit: int, parts: array<string, int>, assembly: bool, total: int, decimals: int} $context The kit product's ID; the parts the total counts, slot key to part ID; whether the shop assembles the build; and the build's total in whole minor units, with how many decimals that is.
+		 */
+		$said  = apply_filters(
+			'cbuild_summary_notes',
+			array(),
+			array(
+				'kit'      => $state->id,
+				'parts'    => $parts,
+				'assembly' => $state->quote->assembly,
+				'total'    => $state->quote->total,
+				'decimals' => $decimals,
+			)
+		);
+		$notes = array();
+		foreach ( is_array( $said ) ? $said : array() as $note ) {
+			// WordPress trims what it strips.
+			$note = is_string( $note ) ? wp_strip_all_tags( $note ) : '';
+			if ( '' !== $note ) {
+				$notes[] = $note;
+			}
+		}
+		return array_slice( $notes, 0, self::NOTES );
 	}
 
 	/**
@@ -296,14 +545,15 @@ final class StateAnswer {
 	}
 
 	/**
-	 * The options a list shows: those the shop can supply before those it cannot, the first 24, and the one the step
-	 * counts whether or not it is among them.
+	 * The options a list shows: those the shop can supply before those it cannot, the first page of them, and the
+	 * one the step counts where the page does not hold it: it stands later, or a filter leaves it out.
 	 *
 	 * @param list<Option> $options The list, in the engine's order.
-	 * @param Option|null  $counted The option the step counts.
+	 * @param Option|null  $counted The option the step counts, when it is one of the list's kind.
+	 * @param int          $page    How many a page is.
 	 * @return list<Option>
 	 */
-	private static function shown( array $options, ?Option $counted ): array {
+	private static function shown( array $options, ?Option $counted, int $page ): array {
 		$here = array();
 		$gone = array();
 		foreach ( $options as $option ) {
@@ -314,11 +564,9 @@ final class StateAnswer {
 			}
 		}
 		$all   = array_merge( $here, $gone );
-		$shown = array_slice( $all, 0, self::SHOWN );
-		foreach ( array_slice( $all, self::SHOWN ) as $option ) {
-			if ( $option->part->id === $counted?->part->id ) {
-				$shown[] = $option;
-			}
+		$shown = array_slice( $all, 0, $page );
+		if ( null !== $counted && ! in_array( $counted->part->id, array_map( static fn( Option $option ): int => $option->part->id, $shown ), true ) ) {
+			$shown[] = $counted;
 		}
 		return $shown;
 	}

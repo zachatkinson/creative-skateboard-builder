@@ -1976,3 +1976,21 @@ The budget is unchanged. Changing it, or what it is measured against, stays Zach
 - **The version is 0.6.0** from this commit, the first with something public.
 
 **Status:** Accepted.
+
+### D-143 · What the state answer gains for the builder: a card's price change, sizes, filters, the box and the notes · 2026-11-12
+
+The builder's template shows nothing the server did not work out. This is what the answer lacked for it.
+
+- **The price on a card is the change to the total** (spec: A step, P4), against the part the step counts now, which is the pick or the recommendation. It is what the build charges: the build discount off each price, rounded as a line's is, times as many as the build takes. The domain works it out (`Pricer::change()`), so the card and the cart cannot differ.
+- **The four words.** `Included` is the part the total already counts, and only that part. `Free` is any other part that costs no more, a part priced at nothing among them. `+$12.00` and `−$5.00` are the rest, the second with a minus sign. The spec gives the three words and no rule for them; this is the reading that never shows two parts as included. A part with no set size has no quantity, so no price in a build, and says nothing.
+- **With nothing counted, the change is the whole price,** written `+$60.00`. A deck is never picked for the shopper, so the deck step starts this way.
+- **A size is the spec a shopper names a part by:** a deck's width, a truck's axle, a wheel's diameter, a riser's thickness, a bolt's length, each by its slot's usual key. Bearings, grip and spacers have none, and neither has a slot keyed with a word of the owner's. The filter's value is the number and its unit (`8.25in`), which the address can carry.
+- **Filters are of the parts the step offers,** and their counts do not move when one is set, so a shopper sees what the other values hold. A list of one value is no filter. The part the step counts stays listed when a filter leaves it out: it is the checked radio, and a form that did not hold it would drop the pick.
+- **Brands are read by name in one query,** with WordPress's `suppress_filter`. Without it WooCommerce's `wc_change_term_counts` (`includes/wc-term-functions.php:640`) read each term's meta and wrote the transient `wc_term_counts` from a visitor's GET: seven queries, two of them writes. The test holds it to one.
+- **The review is a step** (`State::REVIEW`), honoured whatever the build holds. A build that is not ready shows what it lacks there.
+- **The picture is the box for now** (milestone 6): the parts the total counts, each with its photo and its label. The sentence lists their names with WordPress's own list pattern (`%l`), so a language orders and joins them its own way.
+- **`cbuild_summary_notes`** takes sentences and gives six at most, as plain text. The route's answers are `no-store`, so a note about the signed-in customer is never served to another.
+- **The published schema stops closing its objects.** The spec says a response only gains fields, and a shop's code that checked an answer against 0.5.0's schema would have refused 0.6.0's. The plugin's own contract test adds the closing back before it validates, so a field the schema does not describe still fails. This is the answer I suggested to the plan's one question; turning it back is one line in the test and seventeen in the schema.
+- **Not yet here:** the delivery line worded from WooCommerce's shipping zones where no plugin answers (the plan's step 10), and the route's own arguments for the filters, which arrive with the template that sends them.
+
+**Status:** Accepted. The schema's opening is Zach's to turn back at the review.

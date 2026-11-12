@@ -387,7 +387,7 @@ It reads and changes nothing. Its arguments travel in the query:
 
 | Schema | Since | What the document holds |
 | --- | --- | --- |
-| `schema/state.json` | 0.4.0 | The route's answer (draft 4, with `definitions`): `kit`, `step`, `ready`, the kit's `texts` (lead time and returns notice) and `presets`, the `steps` (each slot's label, its pick, the part it starts on, how many parts it offers and hides, and the hidden ones counted by reason, each with a sentence), the current step's `options` and `hidden` parts (24 of each at most, each with its fit, its messages and its card), the picks that were `refused`, the `problems` that keep the build from the cart, the `changes` and the `total`. `npm run types` writes `assets/src/types/state.d.ts` from it. |
+| `schema/state.json` | 0.4.0 | The route's answer (draft 4, with `definitions`): `kit`, `step`, `ready`, the kit's `texts` (lead time and returns notice) and `presets`, the `steps` (each slot's label, its pick, the part it starts on, how many parts it offers and hides, and the hidden ones counted by reason, each with a sentence), the current step's `options` and `hidden` parts (24 of each at most, each with its fit, its messages and its card), the picks that were `refused`, the `problems` that keep the build from the cart, the `changes` and the `total`. From 0.6.0 it also holds the step's `filters`, `matching` and `more`, the `picture`, `delivery` and `notes`, and each option's `size` and `delta` (Milestone 6, below), and closes no object. `npm run types` writes `assets/src/types/state.d.ts` from it. |
 
 What the answer holds beside the schema's own descriptions:
 
@@ -568,4 +568,27 @@ The plugin writes a link in one order: the kit's slots in step order, then the s
 No slot is keyed `step`, `assembly`, `preset` or `review`; a slots document with one is refused as `document_bad_key`.
 
 Keys that start with an underscore are the builder's own forms' and are not part of a shared link. They may change in any release: `_was` (the picks before a change, slot key to part ID), `_brand` and `_size` (the step's filters), `_shown` (how many options the step lists) and `_replace` (the build in the cart an add takes the place of). A slot's key starts with a letter, so none can be one.
+
+### What the state route's answer gains
+
+`schema/state.json` describes each. None of 0.4.0's fields changed or went.
+
+| Field | Since | What it holds |
+| --- | --- | --- |
+| `step` | 0.6.0 | May now be `review`, the step after the last slot's. It lists no options. |
+| `options[].size`, `hidden[].size` | 0.6.0 | The part's size as its slot's parts are sized, as `value` (`8.25in`, `54mm`) and `text`, or null. A deck is sized by its width, trucks by their axle, wheels by their diameter, risers by their thickness and bolts by their length. A slot with a key of the owner's own has no size. |
+| `options[].delta`, `hidden[].delta` | 0.6.0 | What taking the part does to the total, against the part the step counts now: `kind` (`more`, `less`, `free`, `included` or `none`), `amount` in minor units, and `text` as the card says it (`+$12.00`, `−$5.00`, `Free`, `Included`). It is what the build charges, the build discount taken off, for as many as the build takes. |
+| `filters` | 0.6.0 | `brands` and `sizes`: each value the current step's offered parts have, with its `label`, how many parts have it (`count`) and whether the list is filtered by it (`selected`). A list with fewer than two values is empty. |
+| `matching`, `more` | 0.6.0 | How many of the step's offered parts the filters let through, and how many to ask for to list the next 24, or null when all are listed. |
+| `picture` | 0.6.0 | `items`, one for each part the total counts (`slot`, `part`, `label` such as `Wheels: Retna, 54 mm`, `name`, `image`), and `description`, the build in one sentence. |
+| `delivery` | 0.6.0 | `arrival` and `line`: what `cbuild_arrival_estimate` and `cbuild_delivery_line` answer, in plain text, each empty where nothing is said. |
+| `notes` | 0.6.0 | What `cbuild_summary_notes` answers: six lines at most, in plain text. |
+
+The published schema no longer closes its objects (`additionalProperties`), so a reader that checks an answer against one release's schema accepts the fields a later release adds. The plugin's own test still fails on any field the schema does not describe.
+
+### Filters
+
+| Filter | Since | Arguments | What it does |
+| --- | --- | --- | --- |
+| `cbuild_summary_notes` | 0.6.0 | `array $notes`, `array $context` | Lines under a build's total in the builder: the points a build earns, or a word to a signed-in dealer. `$notes` starts empty. `$context` holds `kit` (the kit product's ID), `parts` (the parts the total counts, slot key to part ID), `assembly`, and `total` in whole minor units with its `decimals`. Answer with a list of sentences in the request's language. Each is shown as plain text, the first six are kept, and anything that is no text is dropped. The answer is asked for on every pick and is never cached, so it has to be quick. Name no person in a line that a shared screen could show. |
 

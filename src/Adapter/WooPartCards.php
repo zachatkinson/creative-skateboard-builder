@@ -16,6 +16,7 @@ use WC_Product;
 use WC_Tax;
 use WP_Post;
 use WP_Query;
+use WP_Term;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -151,6 +152,43 @@ final class WooPartCards implements PartCards {
 			}
 		}
 		return $ordered;
+	}
+
+	/**
+	 * The shop's names for these brands, by slug: one query, of WooCommerce's brand taxonomy, whose terms WordPress
+	 * keeps.
+	 *
+	 * @since 0.6.0
+	 *
+	 * @param list<string> $slugs Brands' slugs.
+	 * @return array<string, string>
+	 */
+	public function brands( array $slugs ): array {
+		$slugs = array_values( array_unique( array_filter( $slugs, static fn( string $slug ): bool => '' !== $slug ) ) );
+		if ( array() === $slugs ) {
+			return array();
+		}
+		$terms = get_terms(
+			array(
+				'taxonomy'               => 'product_brand',
+				'slug'                   => $slugs,
+				'hide_empty'             => false,
+				// The names alone are read: no order, and none of the terms' meta. Nor WooCommerce's filter of the
+				// terms a shopper's page lists, which counts each term's products and writes a transient: the
+				// argument is the one get_term_by() passes (wp-includes/taxonomy.php:1129, :1364).
+				'orderby'                => 'none',
+				'update_term_meta_cache' => false,
+				'suppress_filter'        => true,
+			)
+		);
+		$names = array();
+		foreach ( is_array( $terms ) ? $terms : array() as $term ) {
+			if ( $term instanceof WP_Term ) {
+				// A term's name is stored with its entities written out, as a title is.
+				$names[ $term->slug ] = html_entity_decode( wp_strip_all_tags( $term->name ), ENT_QUOTES, 'UTF-8' );
+			}
+		}
+		return $names;
 	}
 
 	/**

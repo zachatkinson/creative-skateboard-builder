@@ -35,6 +35,16 @@ interface PartCards {
 	public function cards( array $ids ): array;
 
 	/**
+	 * The shop's names for these brands, by slug, in plain text. A slug the shop has no brand for has none.
+	 *
+	 * @since 0.6.0
+	 *
+	 * @param list<string> $slugs Brands' slugs, as a part holds its brand.
+	 * @return array<string, string>
+	 */
+	public function brands( array $slugs ): array;
+
+	/**
 	 * Forget what is kept of these products and of their variations, so their cards are read again.
 	 *
 	 * @since 0.4.0

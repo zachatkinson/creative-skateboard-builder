@@ -270,4 +270,67 @@ final class Words {
 				return sprintf( __( '%s: the part chosen does not fit the rest of the build.', 'creative-skateboard-builder' ), $label );
 		}
 	}
+
+	/**
+	 * What taking a part does to the total, as its card says it (spec: A step, P4): "+$12.00", "−$5.00", "Free" for
+	 * a part that costs nothing more, and "Included" for the part the total counts already.
+	 *
+	 * @since 0.6.0
+	 *
+	 * @param string $kind   Which: `more`, `less`, `free` or `included`. Anything else has no words.
+	 * @param string $amount How much, without a sign, as the shop writes money.
+	 */
+	public static function delta( string $kind, string $amount ): string {
+		switch ( $kind ) {
+			case 'more':
+				/* translators: %s: an amount of money, such as $12.00. The plus sign says it is added to the total. */
+				return sprintf( _x( '+%s', 'added to the total', 'creative-skateboard-builder' ), $amount );
+			case 'less':
+				/* translators: %s: an amount of money, such as $5.00. The minus sign says it comes off the total. */
+				return sprintf( _x( '−%s', 'taken off the total', 'creative-skateboard-builder' ), $amount );
+			case 'free':
+				return _x( 'Free', 'a part that adds nothing to the total', 'creative-skateboard-builder' );
+			case 'included':
+				return _x( 'Included', 'a part the total counts already', 'creative-skateboard-builder' );
+			default:
+				return '';
+		}
+	}
+
+	/**
+	 * A part's label in the picture of what is in the box (spec: The picture): its slot, then its brand and its
+	 * size where it has them, as "Wheels: Retna, 54 mm".
+	 *
+	 * @since 0.6.0
+	 *
+	 * @param string $label The slot's label.
+	 * @param string $brand The brand's name, or empty.
+	 * @param string $size  The part's size as a person reads it, or empty.
+	 */
+	public static function boxed( string $label, string $brand, string $size ): string {
+		if ( '' !== $brand && '' !== $size ) {
+			/* translators: 1: a slot's label, such as Wheels. 2: a brand's name. 3: a size, such as 54 mm. */
+			return sprintf( __( '%1$s: %2$s, %3$s', 'creative-skateboard-builder' ), $label, $brand, $size );
+		}
+		if ( '' === $brand && '' === $size ) {
+			return $label;
+		}
+		/* translators: 1: a slot's label, such as Wheels. 2: a brand's name, or a size such as 54 mm. */
+		return sprintf( __( '%1$s: %2$s', 'creative-skateboard-builder' ), $label, '' === $brand ? $size : $brand );
+	}
+
+	/**
+	 * The build in a sentence, for whoever cannot see its picture (spec: The picture, a written description).
+	 *
+	 * @since 0.6.0
+	 *
+	 * @param list<string> $parts Each part's name, in step order.
+	 */
+	public static function built( array $parts ): string {
+		if ( array() === $parts ) {
+			return __( 'Nothing is chosen yet.', 'creative-skateboard-builder' );
+		}
+		/* translators: %l: the names of the parts chosen, as a list. */
+		return wp_sprintf( __( 'The build so far: %l.', 'creative-skateboard-builder' ), $parts );
+	}
 }

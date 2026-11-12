@@ -12,6 +12,8 @@ namespace CreativeBranding\SkateboardBuilder\Tests\Unit\Front;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\BuildTerms;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Part;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\SlotKey;
+use CreativeBranding\SkateboardBuilder\Front\BuildLink;
+use CreativeBranding\SkateboardBuilder\Front\Delivery;
 use CreativeBranding\SkateboardBuilder\Front\StateAnswer;
 use CreativeBranding\SkateboardBuilder\Service\BuildState;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Domain\Builds;
@@ -85,10 +87,10 @@ final class StateAnswerTest extends TestCase {
 	 * @param array<mixed>|null $previous The picks before.
 	 * @return array<string, mixed>
 	 */
-	private function answer( array $picks = array(), ?string $step = null, ?array $previous = null, ?bool $assembly = null ): array {
+	private function answer( array $picks = array(), ?string $step = null, ?array $previous = null, ?bool $assembly = null, ?BuildLink $link = null ): array {
 		$state = ( new BuildState( $this->kits, $this->settings, $this->logger ) )->of( self::KIT, $picks, $previous, $step, $assembly );
 		self::assertNotNull( $state );
-		return ( new StateAnswer( $this->cards, new FakeMoney(), $this->kits ) )->of( $state );
+		return ( new StateAnswer( $this->cards, new FakeMoney(), $this->kits, new Delivery( $this->kits ) ) )->of( $state, $link );
 	}
 
 	/**
@@ -124,7 +126,7 @@ final class StateAnswerTest extends TestCase {
 	public function test_with_nothing_picked_the_first_step_lists_its_parts_each_with_its_card(): void {
 		$answer = $this->answer();
 
-		self::assertSame( array( 'kit', 'step', 'ready', 'texts', 'presets', 'steps', 'options', 'hidden', 'refused', 'problems', 'changes', 'total' ), array_keys( $answer ) );
+		self::assertSame( array( 'kit', 'step', 'ready', 'texts', 'presets', 'steps', 'options', 'hidden', 'filters', 'matching', 'more', 'refused', 'problems', 'changes', 'total', 'picture', 'delivery', 'notes' ), array_keys( $answer ) );
 		self::assertSame( self::KIT, $answer['kit'] );
 		self::assertSame( SlotKey::DECK, $answer['step'] );
 		self::assertFalse( $answer['ready'] );
@@ -134,6 +136,15 @@ final class StateAnswerTest extends TestCase {
 			array(
 				'id'          => 101,
 				'brand'       => Builds::deck( '8.0', 101 )->brand,
+				'size'        => array(
+					'value' => '8in',
+					'text'  => '8 in',
+				),
+				'delta'       => array(
+					'kind'   => 'more',
+					'amount' => 6000,
+					'text'   => '+$60.00',
+				),
 				'fit'         => 'fits',
 				'in_stock'    => true,
 				'available'   => true,
@@ -647,5 +658,395 @@ final class StateAnswerTest extends TestCase {
 		$this->cards->missing = array( 139 );
 		$changed              = $this->answer( array( SlotKey::TRUCKS => 139 ) + $now, null, array( SlotKey::DECK => 101 ) + array( SlotKey::TRUCKS => 139 ) + $now );
 		self::assertSame( '', $changed['changes']['changes'][0]['name'] );
+	}
+
+	/**
+	 * An option's price change, by its part.
+	 *
+	 * @param array<string, mixed> $answer The answer.
+	 * @return array<int, array{kind: string, amount: int, text: string}>
+	 */
+	private static function deltas( array $answer ): array {
+		return array_column( $answer['options'], 'delta', 'id' );
+	}
+
+	public function test_a_card_says_what_its_part_adds_to_the_total_or_takes_off_it(): void {
+		$picked = self::deltas( $this->answer( array( SlotKey::DECK => 102 ), SlotKey::DECK ) );
+		self::assertSame(
+			array(
+				'kind'   => 'less',
+				'amount' => -500,
+				'text'   => '−$5.00',
+			),
+			$picked[101]
+		);
+		self::assertSame(
+			array(
+				'kind'   => 'included',
+				'amount' => 0,
+				'text'   => 'Included',
+			),
+			$picked[102]
+		);
+		self::assertSame(
+			array(
+				'kind'   => 'more',
+				'amount' => 500,
+				'text'   => '+$5.00',
+			),
+			$picked[103]
+		);
+	}
+
+	public function test_a_part_at_the_price_of_the_one_counted_is_free_and_only_the_one_counted_is_included(): void {
+		$parts                    = Shop::parts();
+		$parts[ SlotKey::DECK ][] = Shop::priced( Builds::deck( '8.25', 104 ), 6500 );
+		$parts[ SlotKey::DECK ][] = Shop::priced( Builds::deck( '8.25', 105 ), 0 );
+		$this->kits->add( self::KIT, Shop::kit(), $parts );
+
+		$picked = self::deltas( $this->answer( array( SlotKey::DECK => 102 ), SlotKey::DECK ) );
+		self::assertSame( 'included', $picked[102]['kind'] );
+		self::assertSame(
+			array(
+				'kind'   => 'free',
+				'amount' => 0,
+				'text'   => 'Free',
+			),
+			$picked[104]
+		);
+
+		$blank = self::deltas( $this->answer() );
+		self::assertSame( 'free', $blank[105]['kind'], 'With nothing counted, a part that costs nothing is free, and none is included.' );
+		self::assertSame( 'more', $blank[102]['kind'] );
+	}
+
+	public function test_the_change_is_in_what_the_build_charges_for_as_many_as_it_takes(): void {
+		$this->settings->terms = BuildTerms::read( array( BuildTerms::DISCOUNT => '10' ) );
+		// The trucks step starts on its recommendation, which the total counts: each other pair is priced against it.
+		$answer  = $this->answer( array( SlotKey::DECK => 103 ), SlotKey::TRUCKS );
+		$counted = self::step( $answer, SlotKey::TRUCKS )['recommended'];
+		self::assertSame( 149, $counted );
+		self::assertSame( 'included', self::deltas( $answer )[149]['kind'] );
+		// The trucks that do not fit say theirs too. 169 is 56.00 against 54.00, and 139 is 50.00, each less 10 %.
+		$hidden = array_column( $answer['hidden'], 'delta', 'id' );
+		self::assertSame(
+			array(
+				'kind'   => 'more',
+				'amount' => 180,
+				'text'   => '+$1.80',
+			),
+			$hidden[169]
+		);
+		self::assertSame(
+			array(
+				'kind'   => 'less',
+				'amount' => -360,
+				'text'   => '−$3.60',
+			),
+			$hidden[139]
+		);
+	}
+
+	public function test_a_part_with_no_set_size_has_no_price_in_a_build_and_says_nothing(): void {
+		$parts                      = Shop::parts();
+		$loose                      = Parts::indy( '149', array( 'baseplate' => 'new_school', 'max_wheel' => '56', 'axle_diameter' => '8' ) );
+		$parts[ SlotKey::TRUCKS ][] = new Part( 150, $loose->brand, $loose->specs, 5400, true );
+		$this->kits->add( self::KIT, Shop::kit(), $parts );
+
+		$answer = $this->answer( array( SlotKey::DECK => 103 ), SlotKey::TRUCKS );
+		$all    = array_column( array_merge( $answer['options'], $answer['hidden'] ), null, 'id' );
+		self::assertNull( $all[150]['quantity'] );
+		self::assertSame(
+			array(
+				'kind'   => 'none',
+				'amount' => 0,
+				'text'   => '',
+			),
+			$all[150]['delta']
+		);
+	}
+
+	public function test_a_part_is_sized_as_its_slots_parts_are_and_bolts_and_risers_in_fractions(): void {
+		$picks = array(
+			SlotKey::DECK   => 103,
+			SlotKey::TRUCKS => 149,
+			SlotKey::WHEELS => 303,
+		);
+		$size  = fn( string $step ): mixed => $this->answer( $picks, $step )['options'][0]['size'];
+		$fits  = array( SlotKey::WHEELS => 302 ) + $picks;
+
+		self::assertSame( '54mm', $this->answer( $picks, SlotKey::WHEELS )['options'][1]['size']['value'] );
+		self::assertSame( '54 mm', $this->answer( $picks, SlotKey::WHEELS )['options'][1]['size']['text'] );
+		self::assertSame(
+			array(
+				'value' => '0.125in',
+				'text'  => '⅛ in',
+			),
+			$size( SlotKey::RISERS )
+		);
+		self::assertSame(
+			array(
+				'value' => '1in',
+				'text'  => '1 in',
+			),
+			$this->answer( $fits, SlotKey::HARDWARE )['options'][0]['size']
+		);
+		self::assertNull( $size( SlotKey::BEARINGS ), 'Bearings have no size a shopper chooses by.' );
+		self::assertNull( $size( SlotKey::GRIP ) );
+	}
+
+	/**
+	 * A shop whose decks are of two brands, with one of no brand and one whose brand the shop has since deleted.
+	 */
+	private function branded(): void {
+		$parts                  = Shop::parts();
+		$deck                   = static fn( string $width, int $id, string $brand ): Part => new Part( $id, $brand, Builds::deck( $width )->specs, 6000, true );
+		$parts[ SlotKey::DECK ] = array(
+			$deck( '8.5', 111, 'zero' ),
+			$deck( '8.0', 112, 'baker' ),
+			$deck( '8.25', 113, 'baker' ),
+			$deck( '8.25', 114, '' ),
+			$deck( '8.0', 115, 'gone' ),
+		);
+		$this->kits->add( self::KIT, Shop::kit(), $parts );
+	}
+
+	public function test_the_filters_list_the_brands_by_name_and_the_sizes_in_order_each_with_its_count(): void {
+		$this->branded();
+		$answer = $this->answer();
+
+		self::assertSame(
+			array(
+				array(
+					'value'    => 'baker',
+					'label'    => 'Baker',
+					'count'    => 2,
+					'selected' => false,
+				),
+				array(
+					'value'    => 'gone',
+					'label'    => 'gone',
+					'count'    => 1,
+					'selected' => false,
+				),
+				array(
+					'value'    => 'zero',
+					'label'    => 'Zero',
+					'count'    => 1,
+					'selected' => false,
+				),
+			),
+			$answer['filters']['brands']
+		);
+		self::assertSame( array( '8in', '8.25in', '8.5in' ), array_column( $answer['filters']['sizes'], 'value' ) );
+		self::assertSame( array( array( 'zero', 'baker', 'gone' ) ), $this->cards->brandsAsked, 'Each brand once, and the part with none asks for none.' );
+		self::assertSame( array( 0, 1, 2 ), array_keys( $answer['filters']['brands'] ) );
+		self::assertSame( array( 0, 1, 2 ), array_keys( $answer['filters']['sizes'] ) );
+		self::assertSame( array( '8 in', '8.25 in', '8.5 in' ), array_column( $answer['filters']['sizes'], 'label' ) );
+		self::assertSame( array( 2, 2, 1 ), array_column( $answer['filters']['sizes'], 'count' ) );
+		self::assertSame( 5, $answer['matching'] );
+		self::assertNull( $answer['more'] );
+	}
+
+	public function test_a_filter_lists_the_parts_that_match_and_the_filters_still_offer_the_rest(): void {
+		$this->branded();
+
+		$baker = $this->answer( array(), null, null, null, new BuildLink( brand: 'baker' ) );
+		self::assertSame( array( 112, 113 ), self::ids( $baker['options'] ) );
+		self::assertSame( 2, $baker['matching'] );
+		self::assertSame( array( true, false, false ), array_column( $baker['filters']['brands'], 'selected' ) );
+		self::assertSame( array( 2, 1, 1 ), array_column( $baker['filters']['brands'], 'count' ), 'The counts are of every part the step offers.' );
+		self::assertSame( 5, $baker['steps'][0]['offered'] );
+
+		$wide = $this->answer( array(), null, null, null, new BuildLink( size: '8.25in' ) );
+		self::assertSame( array( 113, 114 ), self::ids( $wide['options'] ) );
+		self::assertSame( array( false, true, false ), array_column( $wide['filters']['sizes'], 'selected' ) );
+
+		$both = $this->answer( array(), null, null, null, new BuildLink( brand: 'baker', size: '8.25in' ) );
+		self::assertSame( array( 113 ), self::ids( $both['options'] ) );
+
+		$none = $this->answer( array(), null, null, null, new BuildLink( brand: 'zero', size: '8in' ) );
+		self::assertSame( array(), $none['options'] );
+		self::assertSame( 0, $none['matching'] );
+	}
+
+	public function test_the_part_the_step_counts_is_listed_though_a_filter_leaves_it_out(): void {
+		$this->branded();
+		$answer = $this->answer( array( SlotKey::DECK => 111 ), SlotKey::DECK, null, null, new BuildLink( brand: 'baker' ) );
+		self::assertSame( array( 112, 113, 111 ), self::ids( $answer['options'] ) );
+		self::assertSame( 2, $answer['matching'] );
+	}
+
+	public function test_a_list_of_one_brand_or_one_size_is_no_filter(): void {
+		$answer = $this->answer( array( SlotKey::DECK => 103 ), SlotKey::TRUCKS );
+		self::assertSame(
+			array(
+				'brands' => array(),
+				'sizes'  => array(),
+			),
+			$answer['filters'],
+			'One truck fits, so there is one brand and one size.'
+		);
+		self::assertSame( array( array( 'independent' ) ), $this->cards->brandsAsked );
+		$wheels = $this->answer( array( SlotKey::DECK => 103, SlotKey::TRUCKS => 149 ), SlotKey::WHEELS );
+		self::assertSame( array(), $wheels['filters']['brands'] );
+		self::assertNotSame( array(), $wheels['filters']['sizes'] );
+
+		$bearings = $this->answer( self::STREET, SlotKey::BEARINGS );
+		self::assertSame(
+			array(
+				'brands' => array(),
+				'sizes'  => array(),
+			),
+			$bearings['filters']
+		);
+		$this->cards = new InMemoryPartCards();
+		$this->answer();
+		self::assertSame( array(), $this->cards->brandsAsked, 'No brand, no question.' );
+	}
+
+	public function test_show_more_lists_24_more_each_time_and_says_whether_more_remain(): void {
+		$this->decks( 60 );
+
+		$first = $this->answer();
+		self::assertCount( 24, $first['options'] );
+		self::assertSame( 60, $first['matching'] );
+		self::assertSame( 48, $first['more'], 'The number the address carries for the next page.' );
+
+		$second = $this->answer( array(), null, null, null, new BuildLink( shown: 48 ) );
+		self::assertSame( range( 1001, 1048 ), self::ids( $second['options'] ) );
+		self::assertSame( 72, $second['more'] );
+
+		$last = $this->answer( array(), null, null, null, new BuildLink( shown: 72 ) );
+		self::assertCount( 60, $last['options'] );
+		self::assertNull( $last['more'] );
+
+		$this->decks( 48 );
+		self::assertNull( $this->answer( array(), null, null, null, new BuildLink( shown: 48 ) )['more'], 'Exactly a page leaves none.' );
+		self::assertSame( 48, $this->answer()['more'] );
+	}
+
+	public function test_the_most_an_address_may_ask_for_is_the_last_page(): void {
+		$this->decks( BuildLink::MOST + 30 );
+		$near = $this->answer( array(), null, null, null, new BuildLink( shown: BuildLink::MOST - 10 ) );
+		self::assertSame( BuildLink::MOST, $near['more'] );
+		$most = $this->answer( array(), null, null, null, new BuildLink( shown: BuildLink::MOST ) );
+		self::assertCount( BuildLink::MOST, $most['options'] );
+		self::assertNull( $most['more'] );
+	}
+
+	public function test_the_picture_shows_what_is_in_the_box_each_part_labelled_and_says_the_build_in_a_sentence(): void {
+		$blank = $this->answer();
+		self::assertSame(
+			array(
+				'items'       => array(),
+				'description' => 'Nothing is chosen yet.',
+			),
+			$blank['picture']
+		);
+
+		$answer = $this->answer(
+			array(
+				SlotKey::DECK   => 103,
+				SlotKey::TRUCKS => 149,
+			),
+			SlotKey::WHEELS
+		);
+		self::assertSame(
+			array(
+				'slot'  => SlotKey::DECK,
+				'part'  => 103,
+				'label' => 'Deck: 8.5 in',
+				'name'  => 'Part 103',
+				'image' => InMemoryPartCards::card( 103 )['image'],
+			),
+			$answer['picture']['items'][0]
+		);
+		self::assertSame( 'Trucks: Independent, 8.5 in', $answer['picture']['items'][1]['label'] );
+		self::assertSame( array_column( $answer['total']['lines'], 'part' ), array_column( $answer['picture']['items'], 'part' ), 'The parts the total counts, the recommendations among them.' );
+		self::assertSame( 'Bearings', $answer['picture']['items'][3]['label'], 'A part with no brand and no size is labelled with its slot.' );
+		self::assertStringStartsWith( 'The build so far: Part 103, Part 149, ', $answer['picture']['description'] );
+		self::assertStringEndsWith( ' and Part 701.', $answer['picture']['description'] );
+	}
+
+	public function test_a_part_whose_product_has_gone_is_in_the_box_with_no_name_and_out_of_the_sentence(): void {
+		$this->cards->missing = array( 103 );
+		$answer               = $this->answer( array( SlotKey::DECK => 103 ), SlotKey::DECK );
+		self::assertSame( '', $answer['picture']['items'][0]['name'] );
+		self::assertNull( $answer['picture']['items'][0]['image'] );
+		self::assertStringStartsWith( 'The build so far: Part 149', $answer['picture']['description'] );
+	}
+
+	public function test_delivery_says_what_the_two_filters_answer_and_nothing_where_none_does(): void {
+		self::assertSame(
+			array(
+				'arrival' => '',
+				'line'    => '',
+			),
+			$this->answer()['delivery']
+		);
+
+		$seen                           = array();
+		$GLOBALS['cbuild_test_filters'] = array(
+			'cbuild_arrival_estimate' => static function ( string $said, array $context ) use ( &$seen ): string {
+				$seen = $context;
+				return 'Arrives by Thu, Nov 19, <b>assembled</b>';
+			},
+			'cbuild_delivery_line'    => static fn(): string => 'Spend $41.00 more for free shipping to Ontario.',
+		);
+		$answer                         = $this->answer( array( SlotKey::DECK => 103 ), null, null, true );
+		self::assertSame(
+			array(
+				'arrival' => 'Arrives by Thu, Nov 19, assembled',
+				'line'    => 'Spend $41.00 more for free shipping to Ontario.',
+			),
+			$answer['delivery']
+		);
+		self::assertSame( self::KIT, $seen['kit'] );
+		self::assertTrue( $seen['assembly'] );
+		self::assertSame( $answer['total']['total']['amount'], $seen['total'] );
+		self::assertSame( 2, $seen['decimals'] );
+	}
+
+	public function test_other_plugins_lines_under_the_total_are_plain_text_and_six_at_most(): void {
+		self::assertSame( array(), $this->answer()['notes'] );
+
+		$seen                           = array();
+		$GLOBALS['cbuild_test_filters'] = array(
+			'cbuild_summary_notes' => static function ( array $notes, array $context ) use ( &$seen ): array {
+				$seen = $context;
+				return array( 'This build earns <strong>180</strong> points.', '', 7, ' ', 'Two.', 'Three.', 'Four.', 'Five.', 'Six.', 'Seven.' );
+			},
+		);
+		$answer                         = $this->answer( array( SlotKey::DECK => 103 ), SlotKey::DECK );
+		self::assertSame( array( 'This build earns 180 points.', 'Two.', 'Three.', 'Four.', 'Five.', 'Six.' ), $answer['notes'] );
+		self::assertSame( self::KIT, $seen['kit'] );
+		self::assertSame( array_column( $answer['total']['lines'], 'part', 'slot' ), $seen['parts'] );
+		self::assertSame( 103, $seen['parts'][ SlotKey::DECK ] );
+		self::assertFalse( $seen['assembly'] );
+		self::assertSame( $answer['total']['total']['amount'], $seen['total'] );
+		self::assertSame( 2, $seen['decimals'] );
+
+		$GLOBALS['cbuild_test_filters'] = array( 'cbuild_summary_notes' => static fn(): string => 'Not a list.' );
+		self::assertSame( array(), $this->answer()['notes'] );
+	}
+
+	public function test_the_review_is_a_step_that_lists_no_options_and_keeps_the_build(): void {
+		$answer = $this->answer( self::STREET, BuildLink::REVIEW );
+		self::assertSame( 'review', $answer['step'] );
+		self::assertSame( array(), $answer['options'] );
+		self::assertSame( array(), $answer['hidden'] );
+		self::assertSame( 0, $answer['matching'] );
+		self::assertNull( $answer['more'] );
+		self::assertSame(
+			array(
+				'brands' => array(),
+				'sizes'  => array(),
+			),
+			$answer['filters']
+		);
+		self::assertTrue( $answer['ready'] );
+		self::assertCount( 6, $answer['total']['lines'] );
+		self::assertCount( 6, $answer['picture']['items'] );
 	}
 }

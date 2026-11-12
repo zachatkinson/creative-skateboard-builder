@@ -63,6 +63,24 @@ final readonly class Pricer {
 	}
 
 	/**
+	 * What taking one option in place of another adds to a build's parts, in minor units: below nothing where it
+	 * takes off. Null for a part with no set size, which has no quantity and so no price in a build.
+	 *
+	 * @since 0.6.0
+	 *
+	 * @param Option      $to       The option taken.
+	 * @param Option|null $from     The option the build counts in its slot now, or null where it counts none.
+	 * @param int         $discount The build discount in basis points.
+	 */
+	public static function change( Option $to, ?Option $from, int $discount ): ?int {
+		if ( null === $to->quantity ) {
+			return null;
+		}
+		$counted = null === $from ? 0 : ( $from->quantity ?? 0 ) * self::discounted( $from->part->price, $discount );
+		return $to->quantity * self::discounted( $to->part->price, $discount ) - $counted;
+	}
+
+	/**
 	 * A price with a discount off, rounded half up to the minor unit.
 	 *
 	 * @since 0.2.0

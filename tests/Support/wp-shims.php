@@ -86,3 +86,18 @@ if ( ! function_exists( 'wc_get_price_decimal_separator' ) ) {
 		return $GLOBALS['cbuild_test_decimal'] ?? '.';
 	}
 }
+
+// What the builder's answer reaches for: a text with its markup taken out, and a list as a sentence writes one.
+if ( ! function_exists( 'wp_strip_all_tags' ) ) {
+	function wp_strip_all_tags( string $text ): string {
+		return trim( strip_tags( $text ) );
+	}
+}
+if ( ! function_exists( 'wp_sprintf' ) ) {
+	function wp_sprintf( string $pattern, ...$args ): string {
+		$list = is_array( $args[0] ?? null ) ? array_values( $args[0] ) : array();
+		$last = array_pop( $list );
+		$said = array() === $list ? (string) $last : implode( ', ', $list ) . ' and ' . $last;
+		return str_replace( '%l', $said, $pattern );
+	}
+}

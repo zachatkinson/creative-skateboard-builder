@@ -282,4 +282,25 @@ final class WordsTest extends TestCase {
 	public function test_every_refusal_has_a_sentence_of_its_own_under_its_own_code(): void {
 		self::assertSame( array_column( CartRefusal::cases(), 'value' ), array_keys( iterator_to_array( self::refusals() ) ) );
 	}
+
+	public function test_a_price_change_is_said_with_its_sign_or_as_free_or_included(): void {
+		self::assertSame( '+$12.00', Words::delta( 'more', '$12.00' ) );
+		self::assertSame( '−$5.00', Words::delta( 'less', '$5.00' ), 'A minus sign, not a hyphen.' );
+		self::assertSame( 'Free', Words::delta( 'free', '$0.00' ) );
+		self::assertSame( 'Included', Words::delta( 'included', '$0.00' ) );
+		self::assertSame( '', Words::delta( 'none', '$0.00' ) );
+	}
+
+	public function test_a_part_in_the_box_is_labelled_with_its_slot_and_what_it_has_of_a_brand_and_a_size(): void {
+		self::assertSame( 'Wheels: Retna, 54 mm', Words::boxed( 'Wheels', 'Retna', '54 mm' ) );
+		self::assertSame( 'Wheels: Retna', Words::boxed( 'Wheels', 'Retna', '' ) );
+		self::assertSame( 'Wheels: 54 mm', Words::boxed( 'Wheels', '', '54 mm' ) );
+		self::assertSame( 'Wheels', Words::boxed( 'Wheels', '', '' ) );
+	}
+
+	public function test_the_build_is_said_in_one_sentence_or_as_nothing_chosen(): void {
+		self::assertSame( 'Nothing is chosen yet.', Words::built( array() ) );
+		self::assertSame( 'The build so far: A deck.', Words::built( array( 'A deck' ) ) );
+		self::assertSame( 'The build so far: A deck, Trucks and Wheels.', Words::built( array( 'A deck', 'Trucks', 'Wheels' ) ) );
+	}
 }

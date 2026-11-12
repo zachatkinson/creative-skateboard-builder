@@ -8,8 +8,12 @@ All notable changes to this project are documented here. The format follows [Kee
 
 - The build link's format, read and written by `Front\BuildLink`: `cbuild[<slot key>]=<part ID>`, `cbuild[step]` (a slot's key, or `review`), `cbuild[assembly]` (`1` or `0`) and `cbuild[preset]` (0 to 5). Written in the kit's slot order, so one build has one address. The builder's own forms add keys that start with an underscore, which are not part of a shared link: `_was`, `_brand`, `_size`, `_shown` and `_replace` (D-142).
 
+- The state route's answer gains fields, and loses none. Each option says its `size` and its `delta`, what taking it does to the total: `+$12.00`, `−$5.00`, `Free` for a part that costs no more, and `Included` for the part the total counts. The current step has its `filters` (brands and sizes, each with a count), how many parts match (`matching`) and how many to ask for to list the next 24 (`more`). `picture` lists what is in the box, each part labelled with its slot, brand and size, with the build in one sentence. `delivery` carries what `cbuild_arrival_estimate` and `cbuild_delivery_line` answer. `step` may be `review` (D-143).
+- The filter `cbuild_summary_notes`: lines other plugins put under a build's total, six at most, as plain text.
+
 ### Changed
 
+- `schema/state.json` no longer closes its objects, so a reader that checks an answer against it accepts the fields a later release adds (D-143).
 - A slots document with a slot keyed `step`, `assembly`, `preset` or `review` is refused as `document_bad_key`: a build link keeps those words for itself (D-142).
 
 - The job that indexes a part, and each batch of a reindex, writes that part's row of the parts table itself, for the prices a visitor nothing is known of is shown. The first request after a reindex of 2,000 parts answered in about 490 ms and 101 queries; it answers in 58 ms and 37, inside the route's budget and held to it (#28, D-140).

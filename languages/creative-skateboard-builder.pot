@@ -2,14 +2,14 @@
 # This file is distributed under the GPL-2.0-or-later.
 msgid ""
 msgstr ""
-"Project-Id-Version: Creative Skateboard Builder 0.5.0\n"
+"Project-Id-Version: Creative Skateboard Builder 0.6.0\n"
 "Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/creative-skateboard-builder\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-11-12T03:43:48+00:00\n"
+"POT-Creation-Date: 2026-11-12T06:38:30+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: creative-skateboard-builder\n"
@@ -1549,7 +1549,9 @@ msgid "For a part, its name with its slot's label."
 msgstr ""
 
 #. translators: 1: a slot's label, such as Deck; 2: the product's name, which may be a link.
+#. translators: 1: a slot's label, such as Wheels. 2: a brand's name, or a size such as 54 mm.
 #: src/Cart/ShowHooks.php:365
+#: src/Front/Words.php:319
 #: src/Order/OrderHooks.php:199
 #, php-format
 msgid "%1$s: %2$s"
@@ -1905,6 +1907,45 @@ msgstr ""
 #: src/Front/Words.php:270
 #, php-format
 msgid "%s: the part chosen does not fit the rest of the build."
+msgstr ""
+
+#. translators: %s: an amount of money, such as $12.00. The plus sign says it is added to the total.
+#: src/Front/Words.php:287
+#, php-format
+msgctxt "added to the total"
+msgid "+%s"
+msgstr ""
+
+#. translators: %s: an amount of money, such as $5.00. The minus sign says it comes off the total.
+#: src/Front/Words.php:290
+#, php-format
+msgctxt "taken off the total"
+msgid "−%s"
+msgstr ""
+
+#: src/Front/Words.php:292
+msgctxt "a part that adds nothing to the total"
+msgid "Free"
+msgstr ""
+
+#: src/Front/Words.php:294
+msgctxt "a part the total counts already"
+msgid "Included"
+msgstr ""
+
+#. translators: 1: a slot's label, such as Wheels. 2: a brand's name. 3: a size, such as 54 mm.
+#: src/Front/Words.php:313
+#, php-format
+msgid "%1$s: %2$s, %3$s"
+msgstr ""
+
+#: src/Front/Words.php:331
+msgid "Nothing is chosen yet."
+msgstr ""
+
+#. translators: %l: the names of the parts chosen, as a list.
+#: src/Front/Words.php:334
+msgid "The build so far: %l."
 msgstr ""
 
 #: src/Health/SiteHealth.php:108

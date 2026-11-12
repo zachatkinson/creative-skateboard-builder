@@ -62,8 +62,8 @@ final class BuildState {
 	 * @param int               $id       The kit product's ID.
 	 * @param array<mixed>      $picks    The picks: slot key to part ID.
 	 * @param array<mixed>|null $previous The picks as they were before the last one changed, for the change list.
-	 * @param string|null       $step     The key of the step the shopper is on; null, or a slot the kit lacks, is the
-	 *                                    first step with nothing picked.
+	 * @param string|null       $step     The step the shopper is on: a slot's key, or the review. Null, or a slot the
+	 *                                    kit lacks, is the first step with nothing picked.
 	 * @param bool|null         $assembly Whether the shop assembles the build; null is the kit's own default.
 	 *
 	 * @throws InvalidMoney When the build cannot be priced in the shop's currency settings. It is logged first.
@@ -113,8 +113,9 @@ final class BuildState {
 		}
 
 		$validation = ( new BuildValidator( $engine ) )->validate( $kit, $counted, array_map( 'array_keys', $parts ) );
+		$discount   = $this->settings->terms()->discount;
 		try {
-			$quote = ( new Pricer() )->quote( $kit, $validation->build, $assembly ?? $kit->assembly->defaultOn, $this->settings->terms()->discount, $this->kits->decimals() );
+			$quote = ( new Pricer() )->quote( $kit, $validation->build, $assembly ?? $kit->assembly->defaultOn, $discount, $this->kits->decimals() );
 		} catch ( InvalidMoney $unpriced ) {
 			$this->logger->hourly( 'no_price_' . $id, Logger::ERROR, 'A build could not be priced in the shop\'s currency settings.', array( 'kit' => $id ) );
 			throw $unpriced;
@@ -124,11 +125,12 @@ final class BuildState {
 			$id,
 			$kit,
 			$steps,
-			null !== $step && null !== $kit->slots->get( $step ) ? $step : ( $first ?? $keys[ count( $keys ) - 1 ] ),
+			null !== $step && ( State::REVIEW === $step || null !== $kit->slots->get( $step ) ) ? $step : ( $first ?? $keys[ count( $keys ) - 1 ] ),
 			$refused,
 			$validation,
 			null === $previous ? null : self::changes( $engine, $kit, $picked, self::found( $previous, $parts ), $candidates ),
-			$quote
+			$quote,
+			$discount
 		);
 	}
 

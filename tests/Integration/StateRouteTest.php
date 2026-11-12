@@ -184,7 +184,9 @@ final class StateRouteTest extends IntegrationTestCase {
 	}
 
 	/**
-	 * `schema/state.json` with each `$ref` written out, which WordPress's validator needs.
+	 * `schema/state.json` with each `$ref` written out, which WordPress's validator needs, and made strict: the
+	 * published schema lets a field it does not describe through, since the answer gains fields, and here every
+	 * object takes its own properties alone, so a field the schema does not describe fails the test.
 	 *
 	 * @return array<string, mixed>
 	 */
@@ -204,7 +206,12 @@ final class StateRouteTest extends IntegrationTestCase {
 					unset( $rest['$ref'] );
 					return $resolve( $rest + $definitions[ $name ] );
 				}
-				return array_map( $resolve, $node );
+				$node = array_map( $resolve, $node );
+				if ( isset( $node['properties'] ) && is_array( $node['properties'] ) && isset( $node['type'] ) ) {
+					self::assertArrayNotHasKey( 'additionalProperties', $node, 'The published schema closes no object.' );
+					$node['additionalProperties'] = false;
+				}
+				return $node;
 			};
 			unset( $schema['definitions'] );
 			self::$schema = $resolve( $schema );
