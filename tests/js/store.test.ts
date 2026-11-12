@@ -15,7 +15,11 @@ interface Actions {
 }
 
 interface Defined {
-	state: { view: Record< string, unknown >; pending: boolean };
+	state: {
+		view: Record< string, unknown >;
+		pending: boolean;
+		status: string;
+	};
 	actions: Actions;
 }
 
@@ -25,7 +29,20 @@ const ENDPOINT = window.location.origin + '/wp-json/cbuild/v1/kits/7/state';
 const START = {
 	url: window.location.origin + '/?page_id=25',
 	step: { slot: 'deck' },
+	title: 'Step 1 of 7: Deck',
+	status: '',
+	isChanges: false,
+	errors: { shown: false },
 };
+const NEXT = {
+	url: window.location.origin + '/?next',
+	step: { slot: 'trucks' },
+	title: 'Step 2 of 7: Trucks',
+	status: 'A deck with trucks. Total: $97.00.',
+	isChanges: false,
+	errors: { shown: false },
+};
+const TITLE = { before: '', after: ' - Build a complete - Shop' };
 
 function answer( view: unknown, status = 200 ): Response {
 	return new Response( JSON.stringify( { view } ), {
@@ -70,15 +87,18 @@ let reply: () => Response | Promise< Response >;
 beforeEach( () => {
 	vi.useFakeTimers();
 	reset();
-	setConfig( NAME, { endpoint: ENDPOINT, page: 25, locale: 'fr_CA' } );
+	setConfig( NAME, {
+		endpoint: ENDPOINT,
+		page: 25,
+		locale: 'fr_CA',
+		title: TITLE,
+	} );
 	state.view = START;
 	state.pending = false;
+	state.status = '';
+	document.title = 'Build a complete - Shop';
 	fetched = [];
-	reply = () =>
-		answer( {
-			url: window.location.origin + '/?next',
-			step: { slot: 'trucks' },
-		} );
+	reply = () => answer( NEXT );
 	vi.stubGlobal( 'fetch', ( input: string ) => {
 		fetched.push( new URL( input ) );
 		return Promise.resolve().then( reply );
@@ -122,10 +142,7 @@ describe( 'the store', () => {
 			[ 'locale', 'fr_CA' ],
 		] );
 		await settle();
-		expect( state.view ).toEqual( {
-			url: window.location.origin + '/?next',
-			step: { slot: 'trucks' },
-		} );
+		expect( state.view ).toEqual( NEXT );
 		expect( state.pending ).toBe( false );
 		expect( pushed ).toHaveBeenCalledWith(
 			null,
@@ -345,10 +362,7 @@ describe( 'the store', () => {
 		actions.back();
 		expect( fetched[ 0 ]!.searchParams.get( 'cbuild[deck]' ) ).toBe( '11' );
 		await settle();
-		expect( state.view ).toEqual( {
-			url: window.location.origin + '/?next',
-			step: { slot: 'trucks' },
-		} );
+		expect( state.view ).toEqual( NEXT );
 		expect( pushed ).not.toHaveBeenCalled();
 		expect( replaced ).not.toHaveBeenCalled();
 	} );
@@ -389,6 +403,134 @@ describe( 'the store', () => {
 		await settle();
 		expect( fetched ).toHaveLength( 0 );
 		expect( reloaded ).toHaveBeenCalledOnce();
+	} );
+
+	/**
+	 * The builder's markup, its init callback run on it.
+	 */
+	function builder(): HTMLElement {
+		document.body.innerHTML = `
+			<div class="cbuild">
+				<div class="cbuild-errors" tabindex="-1"></div>
+				<h2 class="cbuild__heading" tabindex="-1">Step</h2>
+				<h3 class="cbuild-changes__heading" tabindex="-1">Changes</h3>
+				<a href="/?cbuild%5Bstep%5D=trucks">Next</a>
+			</div>`;
+		const div = document.querySelector< HTMLElement >( '.cbuild' )!;
+		setElement( div );
+		(
+			defined.definition as { callbacks: { init: () => void } }
+		 ).callbacks.init();
+		setElement( document.querySelector( 'a' ) );
+		return div;
+	}
+
+	async function move(): Promise< void > {
+		actions.follow(
+			new MouseEvent( 'click', { cancelable: true, button: 0 } )
+		);
+		await settle();
+	}
+
+	it( "puts focus on the new step's heading once the page shows it, and says the step in the title", async () => {
+		const div = builder();
+		await move();
+		expect( document.title ).toBe(
+			'Step 2 of 7: Trucks - Build a complete - Shop'
+		);
+		expect(
+			state.status,
+			'the heading is read; the region says nothing'
+		).toBe( '' );
+		expect( div.ownerDocument.activeElement ).not.toBe(
+			div.querySelector( '.cbuild__heading' )
+		);
+		vi.advanceTimersToNextFrame();
+		expect( div.ownerDocument.activeElement ).toBe(
+			div.querySelector( '.cbuild__heading' )
+		);
+	} );
+
+	it( 'puts focus on the error summary when one is shown', async () => {
+		const div = builder();
+		reply = () =>
+			answer( {
+				...NEXT,
+				title: 'Error: Step 1 of 7: Deck',
+				errors: { shown: true },
+			} );
+		await move();
+		vi.advanceTimersToNextFrame();
+		expect( div.ownerDocument.activeElement ).toBe(
+			div.querySelector( '.cbuild-errors' )
+		);
+		expect( document.title ).toBe(
+			'Error: Step 1 of 7: Deck - Build a complete - Shop'
+		);
+	} );
+
+	it( "puts focus on the change panel's heading, and says how many parts changed", async () => {
+		const div = builder();
+		reply = () =>
+			answer( {
+				...NEXT,
+				isChanges: true,
+				status: '2 parts no longer fit.',
+			} );
+		await move();
+		vi.advanceTimersToNextFrame();
+		expect( div.ownerDocument.activeElement ).toBe(
+			div.querySelector( '.cbuild-changes__heading' )
+		);
+		expect( state.status ).toBe( '2 parts no longer fit.' );
+	} );
+
+	it( 'says the build and its total after a pick, and leaves focus and the title alone', async () => {
+		const { radio } = form();
+		document.body.insertAdjacentHTML(
+			'afterbegin',
+			'<h2 class="cbuild__heading" tabindex="-1">Step</h2>'
+		);
+		setElement( document.body );
+		(
+			defined.definition as { callbacks: { init: () => void } }
+		 ).callbacks.init();
+		radio.focus();
+		actions.pick( { target: radio } as unknown as Event );
+		vi.advanceTimersByTime( WAIT );
+		await settle();
+		vi.advanceTimersToNextFrame();
+		expect( state.status ).toBe( 'A deck with trucks. Total: $97.00.' );
+		expect( document.title ).toBe( 'Build a complete - Shop' );
+		expect( radio.ownerDocument.activeElement ).toBe( radio );
+	} );
+
+	it( 'says the step alone in the title when the page gave no title, and moves no focus with no builder found', async () => {
+		setConfig( NAME, { endpoint: ENDPOINT } );
+		document.body.innerHTML =
+			'<a href="/?cbuild%5Bstep%5D=trucks">Next</a>';
+		setElement( document.querySelector( 'a' ) );
+		await move();
+		vi.advanceTimersToNextFrame();
+		expect( document.title ).toBe( 'Step 2 of 7: Trucks' );
+		expect( document.body.ownerDocument.activeElement ).toBe(
+			document.body
+		);
+	} );
+
+	it( 'moves no focus, and throws nothing, when the builder has nothing to focus', async () => {
+		document.body.innerHTML =
+			'<div class="cbuild"><a href="/?cbuild%5Bstep%5D=trucks">Next</a></div>';
+		setElement( document.querySelector< HTMLElement >( '.cbuild' ) );
+		(
+			defined.definition as { callbacks: { init: () => void } }
+		 ).callbacks.init();
+		setElement( document.querySelector( 'a' ) );
+		await move();
+		expect( () => vi.advanceTimersToNextFrame() ).not.toThrow();
+		expect( document.body.ownerDocument.activeElement ).toBe(
+			document.body
+		);
 	} );
 
 	it( 'reads a config with nothing in it as no page and no language', () => {

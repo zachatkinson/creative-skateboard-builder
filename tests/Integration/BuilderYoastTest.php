@@ -88,6 +88,24 @@ final class BuilderYoastTest extends IntegrationTestCase {
 		self::assertStringContainsString( '<meta property="og:url" content="' . get_permalink( $page ) . '"', $built );
 	}
 
+	public function test_yoasts_title_keeps_its_own_with_the_builders_step_before_it_once(): void {
+		$kit  = KitFactory::kit( 'Complete' )->get_id();
+		$page = self::factory()->post->create(
+			array(
+				'post_type'    => 'page',
+				'post_status'  => 'publish',
+				'post_title'   => 'Build a complete',
+				'post_content' => '<!-- wp:creative-skateboard-builder/builder {"kit":' . $kit . '} /-->',
+			)
+		);
+		$clean = $this->head( $page );
+		self::assertMatchesRegularExpression( '#<title>Build a complete - Test Blog</title>#', $clean, 'Yoast\'s own, for the clean page' );
+		$built = $this->head( $page, array( 'step' => 'deck' ) );
+		self::assertMatchesRegularExpression( '#<title>Step 1 of \d+: Deck - Build a complete - Test Blog</title>#', $built );
+		// A theme with title-tag support asks WordPress, whose filter Yoast answers by asking WordPress again.
+		self::assertMatchesRegularExpression( '#^Step 1 of \d+: Deck - Build a complete - Test Blog$#', wp_get_document_title() );
+	}
+
 	public function test_yoasts_own_robots_tag_says_noindex_where_wordpress_prints_none(): void {
 		// A theme or plugin that takes wp_robots out of the head leaves the robots tag to Yoast's own presenter
 		// (`src/integrations/front-end-integration.php:432`).

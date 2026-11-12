@@ -14,6 +14,7 @@ use CreativeBranding\SkateboardBuilder\Support\Cast;
 use CreativeBranding\SkateboardBuilder\Support\Options;
 use Closure;
 use WC_Product;
+use WP_Post;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -71,6 +72,38 @@ final class PageHooks implements Hookable {
 		// src/Blocks/BlockTypes/AddToCartForm.php:227. Each fires `woocommerce_<type>_add_to_cart`.
 		add_action( 'woocommerce_' . Options::PRODUCT_TYPE_KIT . '_add_to_cart', array( $this, 'kitPage' ), 10, 0 );
 		add_action( 'template_redirect', array( $this, 'toBuilder' ), 10, 0 );
+		// After an SEO plugin's own, such as Yoast SEO's at 15, whose title it keeps (D-149).
+		add_filter( 'pre_get_document_title', array( $this, 'title' ), 20, 1 );
+	}
+
+	/**
+	 * The page's title on a page with a build in its address: the builder's step before the page's own. The clean
+	 * page keeps its own, for search.
+	 *
+	 * @since 0.6.0
+	 *
+	 * @param mixed $title The title an SEO plugin has written, or an empty string for WordPress's own.
+	 * @return mixed
+	 */
+	public function title( mixed $title ): mixed {
+		$sent = BuilderPage::sent();
+		if ( PageTitle::asking() || ! is_array( $sent ) || array() === $sent || ! is_singular() ) {
+			return $title;
+		}
+		$post = get_queried_object();
+		if ( ! $post instanceof WP_Post ) {
+			return $title;
+		}
+		$kit = Options::PRODUCT_TYPE_KIT === \WC_Product_Factory::get_product_type( $post->ID ) ? $post->ID : PageTitle::kit( parse_blocks( $post->post_content ) );
+		if ( $kit < 1 ) {
+			return $title;
+		}
+		$step = $this->page()->title( $kit, BuilderPage::requested(), (string) get_permalink( $post ) );
+		if ( null === $step || '' === $step ) {
+			return $title;
+		}
+		$around = PageTitle::around( PageTitle::base() );
+		return esc_html( $around['before'] . $step . $around['after'] );
 	}
 
 	/**

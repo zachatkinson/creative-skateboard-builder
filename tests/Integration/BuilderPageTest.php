@@ -11,6 +11,7 @@ namespace CreativeBranding\SkateboardBuilder\Tests\Integration;
 
 use CreativeBranding\SkateboardBuilder\Front\Builder;
 use CreativeBranding\SkateboardBuilder\Front\BuilderPage;
+use CreativeBranding\SkateboardBuilder\Front\PageTitle;
 use CreativeBranding\SkateboardBuilder\Front\BuildLink;
 use CreativeBranding\SkateboardBuilder\Front\BuilderUrl;
 use CreativeBranding\SkateboardBuilder\Front\PageHooks;
@@ -200,6 +201,7 @@ final class BuilderPageTest extends IntegrationTestCase {
 				'endpoint' => rest_url( 'cbuild/v1/kits/' . $this->kit . '/state' ),
 				'page'     => $this->kit,
 				'locale'   => determine_locale(),
+				'title'    => PageTitle::around( PageTitle::base() ),
 			),
 			wp_interactivity_config( BuilderPage::STORE )
 		);
@@ -235,6 +237,72 @@ final class BuilderPageTest extends IntegrationTestCase {
 		self::assertNotNull( $errors );
 		self::assertFalse( $errors->hasAttribute( 'hidden' ) );
 		self::assertSame( 'Deck: nothing is chosen yet.', self::text( $dom, '//div[contains(@class,"cbuild-errors")]//a' ) );
+	}
+
+	public function test_a_page_with_a_build_says_its_step_first_in_its_title_and_the_clean_page_keeps_its_own(): void {
+		$page = self::factory()->post->create(
+			array(
+				'post_type'    => 'page',
+				'post_status'  => 'publish',
+				'post_title'   => 'Build a complete',
+				'post_content' => '<!-- wp:group --><div><!-- wp:creative-skateboard-builder/builder {"kit":' . $this->kit . '} /--></div><!-- /wp:group -->',
+			)
+		);
+		$this->go_to( (string) get_permalink( $page ) );
+		$clean = wp_get_document_title();
+		self::assertStringStartsWith( 'Build a complete', $clean, 'the clean page is the one search engines index' );
+
+		$_GET[ BuildLink::PARAM ] = array( 'deck' => (string) $this->parts['deck 8.5'] );
+		self::assertSame( 'Build a complete – Test Blog', PageTitle::base(), 'the page\'s own title, as text' );
+		self::assertSame( 'Step 2 of 7: Trucks - Build a complete – Test Blog', wp_get_document_title() );
+
+		$_GET[ BuildLink::PARAM ] = array( 'step' => 'review' );
+		self::assertSame( 'Error: Step 1 of 7: Deck - Build a complete – Test Blog', wp_get_document_title(), 'an error summary is shown' );
+	}
+
+	public function test_a_kits_page_with_a_build_says_its_step_and_a_page_with_no_builder_or_a_hidden_kit_does_not(): void {
+		$this->go_to( (string) get_permalink( $this->kit ) );
+		$_GET[ BuildLink::PARAM ] = array( 'deck' => (string) $this->parts['deck 8.5'] );
+		self::assertStringStartsWith( 'Step 2 of 7: Trucks - ', wp_get_document_title() );
+
+		$plain = self::factory()->post->create(
+			array(
+				'post_type'   => 'page',
+				'post_status' => 'publish',
+				'post_title'  => 'About',
+			)
+		);
+		$this->go_to( (string) get_permalink( $plain ) );
+		$_GET[ BuildLink::PARAM ] = array( 'deck' => (string) $this->parts['deck 8.5'] );
+		self::assertSame( 'About &#8211; Test Blog', wp_get_document_title() );
+
+		$hidden = self::factory()->post->create(
+			array(
+				'post_type'    => 'page',
+				'post_status'  => 'publish',
+				'post_title'   => 'Hidden kit',
+				'post_content' => '<!-- wp:creative-skateboard-builder/builder {"kit":' . $this->kit . '} /-->',
+			)
+		);
+		wp_update_post(
+			array(
+				'ID'          => $this->kit,
+				'post_status' => 'draft',
+			)
+		);
+		$this->go_to( (string) get_permalink( $hidden ) );
+		$_GET[ BuildLink::PARAM ] = array( 'deck' => (string) $this->parts['deck 8.5'] );
+		self::assertSame( 'Hidden kit &#8211; Test Blog', wp_get_document_title() );
+	}
+
+	public function test_the_store_is_told_what_goes_around_each_step_in_the_title(): void {
+		self::assertSame(
+			array(
+				'before' => '',
+				'after'  => ' - Build a complete – Test Blog',
+			),
+			PageTitle::around( 'Build a complete – Test Blog' )
+		);
 	}
 
 	public function test_a_kit_a_visitor_may_not_see_renders_nothing_and_a_page_renders_one_builder(): void {

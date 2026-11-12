@@ -11,6 +11,7 @@ namespace CreativeBranding\SkateboardBuilder\Front;
 
 use CreativeBranding\SkateboardBuilder\Port\Kits;
 use CreativeBranding\SkateboardBuilder\Port\Logger;
+use CreativeBranding\SkateboardBuilder\Support\Cast;
 use Throwable;
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -56,6 +57,14 @@ final class BuilderPage {
 	private bool $rendered = false;
 
 	/**
+	 * What the builder shows, by kit, address and base, worked out once a request: the page's title asks before the
+	 * builder renders.
+	 *
+	 * @var array<string, array{view: array<string, mixed>}|null>
+	 */
+	private array $shown = array();
+
+	/**
 	 * Constructor.
 	 *
 	 * @since 0.6.0
@@ -84,7 +93,7 @@ final class BuilderPage {
 		$this->rendered = true;
 		$level          = ob_get_level();
 		try {
-			$shown = $this->builder->show( $kit, $link, $base );
+			$shown = $this->shown( $kit, $link, $base );
 			if ( null === $shown ) {
 				return '';
 			}
@@ -97,13 +106,16 @@ final class BuilderPage {
 					'pending' => false,
 				)
 			);
-			// Where the store asks for the next view: the state route, for this page, in its language (D-148).
+			// Where the store asks for the next view: the state route, for this page, in its language (D-148), and the
+			// page's title around the step.
 			wp_interactivity_config(
 				self::STORE,
 				array(
 					'endpoint' => rest_url( 'cbuild/v1/kits/' . $kit . '/state' ),
 					'page'     => is_singular() ? get_queried_object_id() : 0,
 					'locale'   => determine_locale(),
+					// What goes around each step in the page's title (D-149).
+					'title'    => PageTitle::around( PageTitle::base() ),
 				)
 			);
 			// The block's own render enqueues it; the kit's page has no block.
@@ -133,6 +145,46 @@ final class BuilderPage {
 			}
 			return $html;
 		}
+	}
+
+	/**
+	 * The page's title for a builder's step, "Error:" first where one is shown, or null where the builder shows nothing
+	 * (D-149). A failure is the render's to log and say.
+	 *
+	 * @since 0.6.0
+	 *
+	 * @param int       $kit  The kit product's ID.
+	 * @param BuildLink $link The build in the address.
+	 * @param string    $base The address of the page the builder is on, with no build in it.
+	 */
+	public function title( int $kit, BuildLink $link, string $base ): ?string {
+		if ( ! $this->kits->isPublic( $kit ) ) {
+			return null;
+		}
+		try {
+			$shown = $this->shown( $kit, $link, $base );
+		} catch ( Throwable ) {
+			return null;
+		}
+		return null === $shown ? null : Cast::str( $shown['view']['title'] ?? null );
+	}
+
+	/**
+	 * What the builder shows, once a request for each kit, address and base.
+	 *
+	 * @param int       $kit  The kit.
+	 * @param BuildLink $link The address.
+	 * @param string    $base The page.
+	 * @return array{view: array<string, mixed>}|null
+	 *
+	 * @throws \CreativeBranding\SkateboardBuilder\Domain\Kit\InvalidMoney When the build cannot be priced.
+	 */
+	private function shown( int $kit, BuildLink $link, string $base ): ?array {
+		$key = $kit . "\n" . $base . "\n" . wp_json_encode( get_object_vars( $link ) );
+		if ( ! array_key_exists( $key, $this->shown ) ) {
+			$this->shown[ $key ] = $this->builder->show( $kit, $link, $base );
+		}
+		return $this->shown[ $key ];
 	}
 
 	/**

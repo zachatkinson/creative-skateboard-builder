@@ -2068,3 +2068,15 @@ Zach chose, on 12 November 2026, between the server sending the view, a TypeScri
 
 **Status:** Accepted.
 
+### D-149 · Focus, the status region and the page's title after each move · 2026-11-12
+
+Milestone 6's step 7, against the spec's Keyboard and screen readers: "Focus moves to the new step's heading on each change. The page title and the heading both say the step"; fit changes, the description and the total "announced through a polite status region that's in the page from the start, once per pick"; a blocking problem "shows an error summary that takes focus ... and the page title gets "Error:" first"; and, for the change panel, "Focus moves to the panel's heading, and the status region says how many parts changed".
+
+- **Focus after a step change,** a link or Back: the error summary where it is shown, the change panel's heading where the panel is, and the step's heading otherwise. Each has `tabindex="-1"`. Focus moves in the frame after the view is set, once the Interactivity API has drawn it. A pick moves no focus: the shopper is on the radio.
+- **The status region** says the view's `status` after a pick, the build in one sentence and its total, and after the change panel opens, how many parts changed. After any other step change it is emptied, since the focused heading is read and saying the step twice is noise. The region is in the server's markup from the start, empty.
+- **The page's title** is the step before the page's own, through one translatable pattern, `%1$s - %2$s`, so that a language may order them its own way. The view's `title` already says "Error:" first. The server writes it through `pre_get_document_title` at 20, after an SEO plugin's at 15, for a page with a build in its address, and the store after each move, with what goes before and after the step given through `wp_interactivity_config()`. The clean page keeps its own title: it is the one search engines index, and its title is the shop's to write.
+- **Its own title, asked once.** The builder asks WordPress for the page's own title with its hook standing aside (`Front\PageTitle::base()`). Yoast SEO 28.8 answers WordPress's filter by asking WordPress again (`src/integrations/front-end-integration.php:282`, `src/presenters/title-presenter.php:40`), so the hook runs inside itself. It builds the title from the page's own each time and never from what it is handed, so the step is said once; `BuilderYoastTest` asks both ways.
+- **One view a request.** `BuilderPage` works the view out once for each kit, address and page, so the title, asked for in the head, and the builder, rendered in the body, are the same and cost one state.
+
+**Status:** Accepted.
+

@@ -42,7 +42,8 @@ export interface Deps {
 	/** The page's language. */
 	locale: string;
 	fetch: ( input: string, init?: RequestInit ) => Promise< Response >;
-	show: ( view: View ) => void;
+	/** Shows a view, told how the move that brought it treats history: a pick replaces, a step pushes. */
+	show: ( view: View, history: Move[ 'history' ] ) => void;
 	pending: ( on: boolean ) => void;
 	push: ( url: string ) => void;
 	replace: ( url: string ) => void;
@@ -129,7 +130,7 @@ export class Navigator {
 				move.fallback();
 				return;
 			}
-			this.deps.show( view );
+			this.deps.show( view, move.history );
 			if ( 'push' === move.history ) {
 				this.deps.push( view.url );
 			} else if ( 'replace' === move.history ) {

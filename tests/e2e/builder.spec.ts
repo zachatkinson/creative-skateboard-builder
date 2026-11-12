@@ -443,6 +443,53 @@ test.describe( 'The builder with JavaScript', () => {
 		expect( build( page ) ).toEqual( [ 'cbuild[deck]', 'cbuild[step]' ] );
 	} );
 
+	test( "puts focus on each new step's heading, says the step in the title, and says each pick once", async ( {
+		page,
+	} ) => {
+		const status = page.locator( '.cbuild' ).getByRole( 'status' );
+		await expect( status ).toHaveText( '' );
+		await page
+			.getByRole( 'radio', { name: 'Choose Builder test deck 8.25' } )
+			.check();
+		await expect(
+			status,
+			'the build and its total, after the pick'
+		).toContainText( 'Total:' );
+		await expect(
+			page,
+			'the page keeps its own title after a pick'
+		).toHaveTitle( /^Build a complete/ );
+
+		await page.getByRole( 'button', { name: 'Next: Trucks' } ).click();
+		await expect( heading( page ) ).toHaveText( 'Step 2 of 7: Trucks' );
+		await expect( heading( page ) ).toBeFocused();
+		await expect( page ).toHaveTitle( /^Step 2 of 7: Trucks - / );
+		await expect(
+			status,
+			'the heading is read; the region says nothing'
+		).toHaveText( '' );
+
+		await page.goBack();
+		await expect( heading( page ) ).toBeFocused();
+		await expect( page ).toHaveTitle( /^Step 1 of 7: Deck - / );
+	} );
+
+	test( 'puts focus on the error summary when a step is asked for past an empty one, and says Error first', async ( {
+		page,
+	} ) => {
+		await page.getByRole( 'button', { name: 'Next: Trucks' } ).click();
+		const summary = page.locator( '.cbuild-errors' );
+		await expect( summary ).toBeVisible();
+		await expect( summary ).toBeFocused();
+		await expect( page ).toHaveTitle( /^Error: Step 1 of 7: Deck - / );
+		await expect(
+			summary.getByRole( 'link', {
+				name: 'Deck: nothing is chosen yet.',
+			} )
+		).toBeVisible();
+		expect( await stayed( page ) ).toBe( true );
+	} );
+
 	test( 'keeps its store private', async ( { page } ) => {
 		const read = await page.evaluate( async () => {
 			const name = '@wordpress/interactivity';

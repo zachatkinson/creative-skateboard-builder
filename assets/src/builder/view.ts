@@ -11,6 +11,9 @@
  * - **A link** on the builder (Back, a step done, Change, an error) asks the route for its address. A link opened in
  *   another tab or window is left to the browser.
  * - **Back and Forward** ask the route for the address the browser is now at.
+ * - **After a step changes,** focus goes to what the shopper reads first: the error summary, the change panel's
+ *   heading, or the step's heading; the page's title says the step (D-149). **After a pick,** the status region says
+ *   the build and its total, once (spec: Keyboard and screen readers).
  */
 import { getConfig, getElement, store } from '@wordpress/interactivity';
 import { Navigator, type Move, type View } from './navigate';
@@ -21,18 +24,70 @@ interface Config {
 	endpoint: string;
 	page: number;
 	locale: string;
+	title: { before: string; after: string };
 }
 
 interface Shown extends View {
 	step: { slot: string };
+	title: string;
+	status: string;
+	isChanges: boolean;
+	errors: { shown: boolean };
 }
 
 interface State {
 	view: Shown;
 	pending: boolean;
+	status: string;
 }
 
 let navigator: Navigator | undefined;
+
+/**
+ * The builder's own element, as its init callback found it.
+ */
+let root: HTMLElement | null = null;
+
+/**
+ * What the shopper reads first after a step changes, by the template's classes.
+ *
+ * @param view The view now shown.
+ */
+function first( view: Shown ): string {
+	if ( view.errors.shown ) {
+		return '.cbuild-errors';
+	}
+	return view.isChanges ? '.cbuild-changes__heading' : '.cbuild__heading';
+}
+
+/**
+ * Says a view: the status region after a pick; after a step, the page's title, and focus once the page shows it.
+ *
+ * @param state   The store's state.
+ * @param view    The view now shown.
+ * @param history How the move treats history.
+ * @param config  The page's config.
+ */
+function say(
+	state: State,
+	view: Shown,
+	history: Move[ 'history' ],
+	config: Partial< Config >
+): void {
+	if ( 'replace' === history ) {
+		state.status = view.status;
+		return;
+	}
+	// The change panel says how many parts changed; a step is read from its heading, so the region says nothing.
+	state.status = view.isChanges ? view.status : '';
+	const around = config.title ?? { before: '', after: '' };
+	document.title = around.before + view.title + around.after;
+	const target = first( view );
+	// The page shows the new view once the Interactivity API has rendered it, before the next frame.
+	window.requestAnimationFrame( () => {
+		root?.querySelector< HTMLElement >( target )?.focus();
+	} );
+}
 
 /**
  * What the builder does without JavaScript's help, named so that a test can see it done.
@@ -57,8 +112,9 @@ function nav( state: State ): Navigator {
 			page: Number( config.page ?? 0 ),
 			locale: String( config.locale ?? '' ),
 			fetch: ( input, init ) => window.fetch( input, init ),
-			show: ( view ) => {
+			show: ( view, history ) => {
 				state.view = view as Shown;
+				say( state, view as Shown, history, config );
 			},
 			pending: ( on ) => {
 				state.pending = on;
@@ -75,6 +131,7 @@ function nav( state: State ): Navigator {
  */
 export function reset(): void {
 	navigator = undefined;
+	root = null;
 }
 
 /**
@@ -112,7 +169,12 @@ function send( form: HTMLFormElement, submitter?: HTMLElement | null ): void {
 const { state } = store(
 	NAME,
 	{
-		state: { pending: false } as State,
+		state: { pending: false, status: '' } as State,
+		callbacks: {
+			init(): void {
+				root = getElement().ref;
+			},
+		},
 		actions: {
 			submit( event: SubmitEvent ): void {
 				const form = getElement().ref;
