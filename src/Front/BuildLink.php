@@ -20,7 +20,9 @@ use CreativeBranding\SkateboardBuilder\Service\State;
  *
  * What the builder's own forms need beside those four travels under keys that start with an underscore, which no
  * slot's key can (D-142): `_was`, the picks before a change, slot key to part ID; `_brand` and `_size`, the step's
- * filters; `_shown`, how many options the step lists; `_replace`, the build in the cart an add takes the place of.
+ * filters; `_shown`, how many options the step lists; `_on`, the step whose form was sent, so that a filter or Show
+ * pressed in it stays on it and no other step takes them (D-150); `_replace`, the build in the cart an add takes the
+ * place of.
  *
  * Nothing sent is trusted. A link is read into IDs, keys and flags, and what is not one of those is left out. Which
  * parts a slot may hold, and whether an ID is a part at all, is the state's to say.
@@ -94,8 +96,13 @@ final readonly class BuildLink {
 	 * @param mixed $sent The parameter's value, unslashed.
 	 */
 	public static function read( mixed $sent ): self {
-		$sent     = is_array( $sent ) ? $sent : array();
-		$step     = $sent['step'] ?? null;
+		$sent = is_array( $sent ) ? $sent : array();
+		$on   = $sent['_on'] ?? null;
+		$on   = is_string( $on ) && Fields::isKey( $on ) ? $on : null;
+		$step = $sent['step'] ?? $on;
+		$step = is_string( $step ) && Fields::isKey( $step ) ? $step : null;
+		// A step's filters and Show more are that step's: Next, sent from the same form, leaves them behind.
+		$own      = null === $on || $on === $step;
 		$assembly = $sent['assembly'] ?? null;
 		$preset   = self::number( $sent['preset'] ?? null );
 		$was      = self::ids( $sent['_was'] ?? null );
@@ -103,12 +110,12 @@ final readonly class BuildLink {
 		return new self(
 			self::ids( $sent ),
 			array() === $was ? null : $was,
-			is_string( $step ) && Fields::isKey( $step ) ? $step : null,
+			$step,
 			'1' === $assembly || '0' === $assembly ? '1' === $assembly : null,
 			null !== $preset && $preset < 6 ? $preset : null,
-			self::matching( $sent['_brand'] ?? null, '/\A[a-z0-9_%-]{1,200}\z/' ),
-			self::matching( $sent['_size'] ?? null, '/\A[a-z0-9._-]{1,32}\z/' ),
-			null === $shown || $shown <= self::PAGE ? 0 : min( self::MOST, $shown ),
+			$own ? self::matching( $sent['_brand'] ?? null, '/\A[a-z0-9_%-]{1,200}\z/' ) : '',
+			$own ? self::matching( $sent['_size'] ?? null, '/\A[a-z0-9._-]{1,32}\z/' ) : '',
+			! $own || null === $shown || $shown <= self::PAGE ? 0 : min( self::MOST, $shown ),
 			self::matching( $sent['_replace'] ?? null, '/\A[a-f0-9-]{1,64}\z/' ),
 			self::left( $sent )
 		);

@@ -62,6 +62,37 @@ final class BuildLinkTest extends TestCase {
 		self::assertSame( 0, BuildLink::read( array( 'preset' => '0' ) )->preset );
 	}
 
+	public function test_a_filter_sent_from_a_step_stays_on_that_step_and_goes_no_further(): void {
+		$filtered = BuildLink::read(
+			array(
+				'deck'   => '12',
+				'_on'    => 'trucks',
+				'_brand' => 'independent',
+				'_size'  => '8.5in',
+				'_shown' => '48',
+			)
+		);
+		self::assertSame( 'trucks', $filtered->step, 'a filter pressed keeps the shopper on the step its form is' );
+		self::assertSame( array( 'independent', '8.5in', 48 ), array( $filtered->brand, $filtered->size, $filtered->shown ) );
+
+		$next = BuildLink::read(
+			array(
+				'deck'   => '12',
+				'_on'    => 'trucks',
+				'_size'  => '8.5in',
+				'_shown' => '48',
+				'step'   => 'wheels',
+			)
+		);
+		self::assertSame( 'wheels', $next->step );
+		self::assertSame( array( '', '', 0 ), array( $next->brand, $next->size, $next->shown ), "the trucks' filters are not the wheels'" );
+
+		$same = BuildLink::read( array( '_on' => 'trucks', '_size' => '8.5in', 'step' => 'trucks' ) );
+		self::assertSame( '8.5in', $same->size );
+		self::assertNull( BuildLink::read( array( '_on' => 'Trucks!' ) )->step, 'a step that is no key is no step' );
+		self::assertSame( '8.5in', BuildLink::read( array( '_size' => '8.5in', 'step' => 'trucks' ) )->size, 'an address the server wrote' );
+	}
+
 	public function test_a_link_is_written_in_slot_order_so_one_build_has_one_address(): void {
 		$sent = array(
 			'_shown'   => '48',

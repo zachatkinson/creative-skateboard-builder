@@ -161,7 +161,7 @@ final class BuilderTest extends TestCase {
 		);
 		self::assertSame( array(), $step['before'] );
 		self::assertSame( array(), $step['after'] );
-		self::assertSame( array(), $step['tail'] );
+		self::assertSame( array( array( 'name' => 'cbuild[_on]', 'value' => 'deck' ) ), $step['tail'], 'the step its widths are pressed on' );
 
 		$card = $step['options'][0];
 		self::assertSame( 'cbuild-77-101', $card['input'] );
@@ -345,6 +345,24 @@ final class BuilderTest extends TestCase {
 				'after'     => array(),
 				'tail'      => array(),
 				'options'   => array(),
+				'hidden'    => array(
+					'shown'   => false,
+					'summary' => '',
+					'groups'  => array(),
+					'items'   => array(),
+				),
+				'filters'   => array(
+					'shown'   => false,
+					'heading' => 'Filter the parts',
+					'groups'  => array(),
+				),
+				'more'      => array(
+					'shown' => false,
+					'name'  => 'cbuild[_shown]',
+					'value' => '',
+					'text'  => '',
+					'count' => '0 of 0 parts shown',
+				),
 				'empty'     => false,
 				'emptyText' => '',
 				'leave'     => array(
@@ -649,6 +667,114 @@ final class BuilderTest extends TestCase {
 		self::assertSame( array(), $changes['items'] );
 		self::assertSame( array(), $changes['use']['fields'] );
 		self::assertSame( array(), $changes['undo']['fields'] );
+	}
+
+	public function test_parts_that_do_not_fit_are_out_of_the_list_but_not_out_of_sight(): void {
+		$hidden = $this->show( new BuildLink( array( SlotKey::DECK => 101 ), null, SlotKey::TRUCKS ) )['view']['step']['hidden'];
+
+		self::assertTrue( $hidden['shown'] );
+		self::assertSame( '3 parts hidden: the trucks are made for another width of deck.', $hidden['summary'], 'one reason: its own sentence' );
+		self::assertSame( array(), $hidden['groups'], 'one reason is said once, in the summary' );
+		self::assertSame( array( 144, 149, 169 ), array_column( $hidden['items'], 'id' ) );
+		self::assertSame(
+			array(
+				'id'      => 144,
+				'name'    => 'Part 144',
+				'url'     => 'https://shop.test/?p=144',
+				'reasons' => array( array( 'text' => 'The trucks are made for decks from 8.2 in to 8.375 in wide. The deck is 8 in.' ) ),
+			),
+			$hidden['items'][0]
+		);
+
+		$none = $this->show( new BuildLink( array(), null, SlotKey::DECK ) )['view']['step']['hidden'];
+		self::assertFalse( $none['shown'], 'no deck is hidden' );
+		self::assertSame( '', $none['summary'] );
+		self::assertSame( array(), $none['items'] );
+	}
+
+	public function test_parts_hidden_for_more_than_one_reason_are_counted_with_each_reason_listed(): void {
+		$parts                    = Shop::parts();
+		$parts[ SlotKey::TRUCKS ] = array_merge( $parts[ SlotKey::TRUCKS ], array( Shop::priced( Parts::of( array( 'axle_width' => '8.0', 'deck_min' => '7.8', 'deck_max' => '8.2', 'baseplate' => 'old_school', 'max_wheel' => '56', 'axle_diameter' => '8', 'set_size' => 2 ), 150, 2999, 'independent' ), 5000 ) ) );
+		$this->kits->add( self::KIT, Shop::kit(), $parts );
+		$hidden = $this->show( new BuildLink( array( SlotKey::DECK => 101 ), null, SlotKey::TRUCKS ) )['view']['step']['hidden'];
+
+		self::assertSame( '4 parts hidden: they do not fit the parts before this step.', $hidden['summary'] );
+		self::assertCount( 2, $hidden['groups'] );
+		self::assertSame( '3 parts hidden: the trucks are made for another width of deck.', $hidden['groups'][0]['text'] );
+	}
+
+	public function test_a_long_list_has_filters_as_buttons_in_the_steps_form_and_the_deck_starts_with_a_width(): void {
+		$step = $this->show( new BuildLink( array(), null, SlotKey::DECK ) )['view']['step'];
+
+		self::assertTrue( $step['filters']['shown'] );
+		self::assertSame( 'Filter the parts', $step['filters']['heading'] );
+		self::assertSame( array( 'size' ), array_column( $step['filters']['groups'], 'key' ), 'the decks have no brands to choose by' );
+		$sizes = $step['filters']['groups'][0];
+		self::assertSame( 'Width', $sizes['legend'], 'a deck is sized by its width' );
+		self::assertSame( 'cbuild[_size]', $sizes['name'] );
+		self::assertSame(
+			array(
+				'value'   => '8in',
+				'text'    => '8 in (1)',
+				'pressed' => 'false',
+			),
+			$sizes['options'][0]
+		);
+		self::assertSame(
+			array(
+				'shown' => false,
+				'text'  => 'Any width',
+			),
+			$sizes['clear']
+		);
+		self::assertSame( array( 'name' => 'cbuild[_on]', 'value' => 'deck' ), $step['tail'][0], 'a filter keeps the shopper on the step; Next leaves it behind' );
+
+		$step = $this->show( new BuildLink( array(), null, SlotKey::DECK, size: '8.25in' ) )['view']['step'];
+		$sizes = $step['filters']['groups'][0];
+		self::assertSame( 'true', $sizes['options'][1]['pressed'] );
+		self::assertTrue( $sizes['clear']['shown'] );
+		self::assertSame( array( 102 ), array_column( $step['options'], 'id' ) );
+		self::assertContains( array( 'name' => 'cbuild[_size]', 'value' => '8.25in' ), $step['tail'], 'Show more keeps the filter' );
+		self::assertSame( '1 of 1 part shown', $step['more']['count'] );
+	}
+
+	public function test_a_step_with_one_size_and_one_brand_has_no_filters(): void {
+		$step = $this->show( new BuildLink( array( SlotKey::DECK => 101 ), null, SlotKey::TRUCKS ) )['view']['step'];
+		self::assertFalse( $step['filters']['shown'] );
+		self::assertSame( array(), $step['filters']['groups'] );
+		self::assertFalse( $step['more']['shown'] );
+		self::assertNotContains( 'cbuild[_on]', array_column( $step['tail'], 'name' ), 'a step with nothing to filter keeps its address clean' );
+	}
+
+	public function test_a_step_lists_24_at_a_time_with_a_button_for_the_next(): void {
+		$parts                    = Shop::parts();
+		$parts[ SlotKey::GRIP ]   = array();
+		foreach ( range( 1, 30 ) as $n ) {
+			$parts[ SlotKey::GRIP ][] = Shop::priced( Parts::of( array( 'grip_width' => '9', 'grip_length' => '33', 'set_size' => 1 ), 7000 + $n, 1000, 0 === $n % 2 ? 'mob' : 'jessup' ), 1000 + $n );
+		}
+		$this->kits->add( self::KIT, Shop::kit(), $parts );
+		$link = new BuildLink( array( SlotKey::DECK => 101 ), null, SlotKey::GRIP );
+		$step = $this->show( $link )['view']['step'];
+
+		self::assertCount( 24, $step['options'] );
+		self::assertSame(
+			array(
+				'shown' => true,
+				'name'  => 'cbuild[_shown]',
+				'value' => '30',
+				'text'  => 'Show 6 more',
+				'count' => '24 of 30 parts shown',
+			),
+			$step['more']
+		);
+		self::assertSame( array( 'brand' ), array_column( $step['filters']['groups'], 'key' ) );
+		self::assertSame( 'Brand', $step['filters']['groups'][0]['legend'] );
+		self::assertSame( 'Any brand', $step['filters']['groups'][0]['clear']['text'] );
+
+		$all = $this->show( new BuildLink( array( SlotKey::DECK => 101 ), null, SlotKey::GRIP, shown: 30 ) )['view']['step'];
+		self::assertCount( 30, $all['options'] );
+		self::assertFalse( $all['more']['shown'] );
+		self::assertSame( '30 of 30 parts shown', $all['more']['count'] );
 	}
 
 	public function test_filters_and_more_parts_stay_only_on_the_step_they_were_asked_on(): void {

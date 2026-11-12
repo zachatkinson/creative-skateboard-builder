@@ -109,8 +109,13 @@ test.describe( 'The builder without JavaScript', () => {
 			.check();
 		await next( page, 'Next: Trucks' );
 		await expect( heading( page ) ).toHaveText( 'Step 2 of 7: Trucks' );
-		// The kit's own setting decides assembly until the shopper changes it, so the address leaves it out.
-		expect( build( page ) ).toEqual( [ 'cbuild[deck]', 'cbuild[step]' ] );
+		// The kit's own setting decides assembly until the shopper changes it, so the address leaves it out. The
+		// browser writes what the form sent, the step it was on among it (D-150).
+		expect( build( page ) ).toEqual( [
+			'cbuild[_on]',
+			'cbuild[deck]',
+			'cbuild[step]',
+		] );
 		const trucks = page.getByRole( 'radio', {
 			name: 'Choose Builder test trucks 139',
 		} );
@@ -280,6 +285,76 @@ test.describe( 'The builder without JavaScript', () => {
 		).toBeVisible();
 	} );
 
+	test( 'a width pressed lists only its decks and stays on the step, and Any width lists them all again', async ( {
+		page,
+	} ) => {
+		await page.goto( fixture().page );
+		const filters = page.getByRole( 'group', { name: 'Width' } );
+		await answered( page, () =>
+			filters.getByRole( 'button', { name: '8.25 in (1)' } ).click()
+		);
+		await expect( heading( page ) ).toHaveText( 'Step 1 of 7: Deck' );
+		await expect(
+			page.getByRole( 'radio', { name: /^Choose Builder test deck/ } )
+		).toHaveCount( 1 );
+		await expect(
+			filters.getByRole( 'button', { name: '8.25 in (1)' } )
+		).toHaveAttribute( 'aria-pressed', 'true' );
+		await expect( page.getByText( '1 of 1 part shown' ) ).toBeVisible();
+
+		await answered( page, () =>
+			filters.getByRole( 'button', { name: 'Any width' } ).click()
+		);
+		await expect(
+			page.getByRole( 'radio', { name: /^Choose Builder test deck/ } )
+		).toHaveCount( 3 );
+		await expect(
+			filters.getByRole( 'button', { name: 'Any width' } )
+		).toBeHidden();
+	} );
+
+	test( "a deck's width filter stays on the deck step and Next leaves it behind", async ( {
+		page,
+	} ) => {
+		await page.goto( fixture().page );
+		await answered( page, () =>
+			page
+				.getByRole( 'group', { name: 'Width' } )
+				.getByRole( 'button', { name: '8 in (1)' } )
+				.click()
+		);
+		await page
+			.getByRole( 'radio', { name: 'Choose Builder test deck 8.0' } )
+			.check();
+		await next( page, 'Next: Trucks' );
+		await expect( heading( page ) ).toHaveText( 'Step 2 of 7: Trucks' );
+		await expect(
+			page.getByRole( 'radio', {
+				name: 'Choose Builder test trucks 139',
+			} )
+		).toBeChecked();
+		await expect(
+			page.locator( 'input[type="hidden"][name="cbuild[_size]"]' ),
+			"the trucks' step does not carry the deck's width on"
+		).toHaveCount( 0 );
+		await expect(
+			page
+				.getByRole( 'group', { name: 'Axle width' } )
+				.getByRole( 'button', { pressed: true } )
+		).toHaveCount( 0 );
+	} );
+
+	test( 'parts that do not fit are named under a disclosure with the reason', async ( {
+		page,
+	} ) => {
+		await page.goto( linkTo( { deck: id( 'builder-test-deck-8-5' ) } ) );
+		const hidden = page.locator( '.cbuild-hidden' );
+		await expect( hidden ).toBeVisible();
+		await expect( hidden.locator( 'summary' ) ).toContainText( 'hidden' );
+		await hidden.locator( 'summary' ).click();
+		await expect( hidden.getByRole( 'link' ).first() ).toBeVisible();
+	} );
+
 	test( "the kit's own page shows the same builder", async ( { page } ) => {
 		await page.goto( '/product/builder-test-kit/' );
 		await expect( heading( page ) ).toHaveText( 'Step 1 of 7: Deck' );
@@ -440,7 +515,11 @@ test.describe( 'The builder with JavaScript', () => {
 			await stayed( page ),
 			'the page was loaded, as without JavaScript'
 		).toBe( false );
-		expect( build( page ) ).toEqual( [ 'cbuild[deck]', 'cbuild[step]' ] );
+		expect( build( page ) ).toEqual( [
+			'cbuild[_on]',
+			'cbuild[deck]',
+			'cbuild[step]',
+		] );
 	} );
 
 	test( "puts focus on each new step's heading, says the step in the title, and says each pick once", async ( {
@@ -487,6 +566,21 @@ test.describe( 'The builder with JavaScript', () => {
 				name: 'Deck: nothing is chosen yet.',
 			} )
 		).toBeVisible();
+		expect( await stayed( page ) ).toBe( true );
+	} );
+
+	test( 'filters the step without loading the page', async ( { page } ) => {
+		const filters = page.getByRole( 'group', { name: 'Width' } );
+		await filters.getByRole( 'button', { name: '8.25 in (1)' } ).click();
+		await expect(
+			page.getByRole( 'radio', { name: /^Choose Builder test deck/ } )
+		).toHaveCount( 1 );
+		await expect(
+			filters.getByRole( 'button', { name: '8.25 in (1)' } )
+		).toHaveAttribute( 'aria-pressed', 'true' );
+		expect(
+			new URL( page.url() ).searchParams.get( 'cbuild[_size]' )
+		).toBe( '8.25in' );
 		expect( await stayed( page ) ).toBe( true );
 	} );
 

@@ -149,7 +149,12 @@ final class BuilderPageTest extends IntegrationTestCase {
 	 */
 	private static function dom( string $html ): DOMXPath {
 		$document = new DOMDocument();
-		$shown    = (string) preg_replace( '#<template\b.*?</template>#s', '', $html );
+		// The innermost template first, until none is left: a template can hold another (a list in a list).
+		$shown = $html;
+		do {
+			$before = $shown;
+			$shown  = (string) preg_replace( '#<template\b(?:(?!<template\b).)*?</template>#s', '', $shown );
+		} while ( $shown !== $before );
 		self::assertTrue( $document->loadHTML( '<?xml encoding="utf-8"?><body>' . $shown . '</body>', LIBXML_NOERROR ) );
 		return new DOMXPath( $document );
 	}
@@ -227,6 +232,43 @@ final class BuilderPageTest extends IntegrationTestCase {
 		self::assertSame( 'Back: Deck', trim( $back->textContent ) );
 		self::assertSame( add_query_arg( array( 'cbuild' => array( 'deck' => $this->parts['deck 8.5'], 'step' => 'deck' ) ), get_permalink( $this->kit ) ), html_entity_decode( $back->getAttribute( 'href' ) ) );
 		self::assertSame( 'nofollow', $back->getAttribute( 'rel' ) );
+	}
+
+	public function test_parts_that_do_not_fit_are_listed_under_a_disclosure_with_their_reasons(): void {
+		$dom = self::dom( $this->kitPage( array( 'deck' => (string) $this->parts['deck 8.5'] ) ) );
+
+		$details = $dom->query( '//details[contains(@class,"cbuild-hidden")]' )->item( 0 );
+		self::assertNotNull( $details );
+		self::assertFalse( $details->hasAttribute( 'hidden' ) );
+		self::assertSame( '1 part hidden: the trucks are made for another width of deck.', self::text( $dom, '//details[contains(@class,"cbuild-hidden")]/summary' ) );
+		self::assertSame( 'Truck 139', self::text( $dom, '//li[contains(@class,"cbuild-hidden__part")]/a' ) );
+		self::assertSame( get_permalink( $this->parts['truck 139'] ), $dom->query( '//li[contains(@class,"cbuild-hidden__part")]/a' )->item( 0 )->getAttribute( 'href' ) );
+		self::assertStringContainsString( 'The deck is 8.5 in.', self::text( $dom, '//ul[contains(@class,"cbuild-hidden__reasons")]/li' ) );
+	}
+
+	public function test_the_deck_step_has_a_button_for_each_width_in_its_form(): void {
+		$dom  = self::dom( $this->kitPage( array() ) );
+		$path = '//details[contains(@class,"cbuild-filters")]';
+		self::assertFalse( $dom->query( $path )->item( 0 )->hasAttribute( 'hidden' ) );
+		self::assertSame( 'Width', self::text( $dom, $path . '//legend' ) );
+		$buttons = $dom->query( $path . '//button[contains(@class,"cbuild-filters__option")]' );
+		self::assertSame( array( '8in', '8.5in' ), array_map( static fn( $button ) => $button->getAttribute( 'value' ), iterator_to_array( $buttons ) ) );
+		self::assertSame( 'cbuild[_size]', $buttons->item( 1 )->getAttribute( 'name' ) );
+		self::assertSame( 'false', $buttons->item( 1 )->getAttribute( 'aria-pressed' ) );
+		self::assertTrue( $dom->query( $path . '//button[contains(@class,"cbuild-filters__clear")]' )->item( 0 )->hasAttribute( 'hidden' ) );
+	}
+
+	public function test_a_width_pressed_in_the_step_lists_only_its_decks_and_keeps_the_step(): void {
+		$path   = '//details[contains(@class,"cbuild-filters")]';
+		$dom    = self::dom( $this->kitPage( array( '_on' => 'deck', '_size' => '8.5in' ) ) );
+		$radios = $dom->query( '//input[@name="cbuild[deck]"][not(@value="0")]' );
+		self::assertSame( array( (string) $this->parts['deck 8.5'] ), array_map( static fn( $radio ) => $radio->getAttribute( 'value' ), iterator_to_array( $radios ) ) );
+		self::assertSame( 'true', $dom->query( $path . '//button[@value="8.5in"]' )->item( 0 )->getAttribute( 'aria-pressed' ) );
+		self::assertFalse( $dom->query( $path . '//button[contains(@class,"cbuild-filters__clear")]' )->item( 0 )->hasAttribute( 'hidden' ) );
+		self::assertNotNull( $dom->query( '//input[@type="hidden"][@name="cbuild[_size]"][@value="8.5in"]' )->item( 0 ), 'the filter stays on through a pick' );
+		self::assertNotNull( $dom->query( '//input[@type="hidden"][@name="cbuild[_on]"][@value="deck"]' )->item( 0 ), 'the step its form is on' );
+		self::assertSame( '1 of 1 part shown', self::text( $dom, '//span[contains(@class,"cbuild-step__count")]' ) );
+		self::assertTrue( $dom->query( '//button[contains(@class,"cbuild-step__show")]' )->item( 0 )->hasAttribute( 'hidden' ) );
 	}
 
 	public function test_a_step_past_one_the_build_leaves_empty_stays_there_and_says_why(): void {

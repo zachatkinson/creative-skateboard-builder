@@ -279,6 +279,9 @@ final class BuilderView {
 			'after'     => array(),
 			'tail'      => array(),
 			'options'   => array(),
+			'hidden'    => self::hidden( array(), array() ),
+			'filters'   => self::filters( array(), '' ),
+			'more'      => self::more( array(), 0 ),
 			'empty'     => false,
 			'emptyText' => '',
 			'leave'     => array(
@@ -298,6 +301,151 @@ final class BuilderView {
 				'text'  => '',
 			),
 			'stepName'  => '',
+		);
+	}
+
+	/**
+	 * The parts a step keeps out of its list, out of the list but not out of sight (spec: A step, "Nothing vanishes
+	 * silently"): how many and why, said in one line, and each part with its reasons.
+	 *
+	 * @param array<string, mixed> $answer The state's answer.
+	 * @param array<string, mixed> $step   The answer's step.
+	 * @return array{shown: bool, summary: string, groups: list<array{text: string}>, items: list<array<string, mixed>>}
+	 */
+	private static function hidden( array $answer, array $step ): array {
+		$groups = array();
+		foreach ( Cast::items( $step['groups'] ?? null ) as $group ) {
+			$groups[] = array( 'text' => Cast::str( Cast::map( $group )['message'] ?? null ) );
+		}
+		$count = Cast::int( $step['hidden'] ?? null );
+		$items = array();
+		foreach ( Cast::items( $answer['hidden'] ?? null ) as $part ) {
+			$part    = Cast::map( $part );
+			$card    = Cast::map( $part['card'] ?? null );
+			$reasons = array();
+			foreach ( Cast::items( $part['messages'] ?? null ) as $message ) {
+				$reasons[] = array( 'text' => Cast::str( Cast::map( $message )['text'] ?? null ) );
+			}
+			$items[] = array(
+				'id'      => Cast::int( $part['id'] ?? null ),
+				'name'    => Cast::str( $card['name'] ?? null ),
+				'url'     => Cast::str( $card['url'] ?? null ),
+				'reasons' => $reasons,
+			);
+		}
+		if ( 1 === count( $groups ) ) {
+			// One reason is said once: its own sentence is the summary.
+			return array(
+				'shown'   => true,
+				'summary' => $groups[0]['text'],
+				'groups'  => array(),
+				'items'   => $items,
+			);
+		}
+		return array(
+			'shown'   => $count > 0,
+			'summary' => $count > 0
+				/* translators: %s: a number of parts. */
+				? sprintf( _n( '%s part hidden: it does not fit the parts before this step.', '%s parts hidden: they do not fit the parts before this step.', $count, 'creative-skateboard-builder' ), number_format_i18n( $count ) )
+				: '',
+			'groups'  => $groups,
+			'items'   => $items,
+		);
+	}
+
+	/**
+	 * A step's filters (spec: A step, "Long lists get filters (brand, size) above them"): a button in the step's form
+	 * for each brand and each size its parts have, with how many, and one to clear each. The deck's sizes come first:
+	 * a shopper with no deck in mind starts with a width.
+	 *
+	 * @param array<string, mixed> $answer The state's answer.
+	 * @param string               $slot   The step's slot.
+	 * @return array{shown: bool, heading: string, groups: list<array<string, mixed>>}
+	 */
+	private static function filters( array $answer, string $slot ): array {
+		$filters = Cast::map( $answer['filters'] ?? null );
+		$brand   = array(
+			'key'    => 'brand',
+			'legend' => __( 'Brand', 'creative-skateboard-builder' ),
+			'name'   => BuildLink::PARAM . '[_brand]',
+			'any'    => __( 'Any brand', 'creative-skateboard-builder' ),
+			'values' => Cast::items( $filters['brands'] ?? null ),
+		);
+		$size    = array(
+			'key'    => 'size',
+			'legend' => match ( $slot ) {
+				SlotKey::DECK     => __( 'Width', 'creative-skateboard-builder' ),
+				SlotKey::TRUCKS   => __( 'Axle width', 'creative-skateboard-builder' ),
+				SlotKey::WHEELS   => __( 'Diameter', 'creative-skateboard-builder' ),
+				SlotKey::RISERS   => __( 'Thickness', 'creative-skateboard-builder' ),
+				SlotKey::HARDWARE => __( 'Length', 'creative-skateboard-builder' ),
+				default           => __( 'Size', 'creative-skateboard-builder' ),
+			},
+			'name'   => BuildLink::PARAM . '[_size]',
+			'any'    => match ( $slot ) {
+				SlotKey::DECK => __( 'Any width', 'creative-skateboard-builder' ),
+				default       => __( 'Any size', 'creative-skateboard-builder' ),
+			},
+			'values' => Cast::items( $filters['sizes'] ?? null ),
+		);
+		$groups = array();
+		foreach ( SlotKey::DECK === $slot ? array( $size, $brand ) : array( $brand, $size ) as $group ) {
+			if ( array() === $group['values'] ) {
+				continue;
+			}
+			$options  = array();
+			$selected = false;
+			foreach ( $group['values'] as $value ) {
+				$value     = Cast::map( $value );
+				$pressed   = Cast::bool( $value['selected'] ?? null );
+				$selected  = $selected || $pressed;
+				$options[] = array(
+					'value'   => Cast::str( $value['value'] ?? null ),
+					/* translators: 1: a brand or a size, such as Independent or 8.25 in. 2: how many parts have it. */
+					'text'    => sprintf( __( '%1$s (%2$s)', 'creative-skateboard-builder' ), Cast::str( $value['label'] ?? null ), number_format_i18n( Cast::int( $value['count'] ?? null ) ) ),
+					'pressed' => $pressed ? 'true' : 'false',
+				);
+			}
+			$groups[] = array(
+				'key'     => $group['key'],
+				'legend'  => $group['legend'],
+				'name'    => $group['name'],
+				'options' => $options,
+				'clear'   => array(
+					'shown' => $selected,
+					'text'  => $group['any'],
+				),
+			);
+		}
+		return array(
+			'shown'   => array() !== $groups,
+			'heading' => __( 'Filter the parts', 'creative-skateboard-builder' ),
+			'groups'  => $groups,
+		);
+	}
+
+	/**
+	 * Show more (spec: Performance, "A slot shows 24 options at a time, with Show more"): a button in the step's form
+	 * that asks for the next 24, and how many are shown of how many match.
+	 *
+	 * @param array<string, mixed> $answer The state's answer.
+	 * @param int                  $listed How many options the step lists.
+	 * @return array{shown: bool, name: string, value: string, text: string, count: string}
+	 */
+	private static function more( array $answer, int $listed ): array {
+		$matching = Cast::int( $answer['matching'] ?? null );
+		$more     = $answer['more'] ?? null;
+		// The answer asks for the next page whole; the button says, and asks for, only what is left.
+		$more = null === $more ? null : min( Cast::int( $more ), $matching );
+		$next = null === $more ? 0 : $more - $listed;
+		return array(
+			'shown' => null !== $more,
+			'name'  => BuildLink::PARAM . '[_shown]',
+			'value' => null === $more ? '' : (string) $more,
+			/* translators: %s: how many more parts the button lists. */
+			'text'  => null === $more ? '' : sprintf( __( 'Show %s more', 'creative-skateboard-builder' ), number_format_i18n( $next ) ),
+			/* translators: 1: how many parts are listed. 2: how many match. */
+			'count' => sprintf( _n( '%1$s of %2$s part shown', '%1$s of %2$s parts shown', $matching, 'creative-skateboard-builder' ), number_format_i18n( $listed ), number_format_i18n( $matching ) ),
 		);
 	}
 
@@ -366,7 +514,26 @@ final class BuilderView {
 		$line     = Cast::map( $lines[ $slot ] ?? null );
 		$before   = $state->kit->slots->before( $slot );
 		$after    = $state->kit->slots->after( $slot );
-		$tail     = array();
+		// Where the step has filters or Show more, the step the form is on, so that they keep the shopper on it and Next,
+		// which names the next, leaves them behind (D-150).
+		$tail = array();
+		if ( self::filters( $answer, $slot )['shown'] || null !== ( $answer['more'] ?? null ) ) {
+			$tail[] = array(
+				'name'  => BuildLink::PARAM . '[_on]',
+				'value' => $slot,
+			);
+		}
+		foreach ( array(
+			'_brand' => $link->brand,
+			'_size'  => $link->size,
+		) as $key => $value ) {
+			if ( '' !== $value ) {
+				$tail[] = array(
+					'name'  => BuildLink::PARAM . '[' . $key . ']',
+					'value' => $value,
+				);
+			}
+		}
 		if ( null !== $link->assembly ) {
 			$tail[] = array(
 				'name'  => BuildLink::PARAM . '[assembly]',
@@ -400,6 +567,9 @@ final class BuilderView {
 			'after'     => self::fields( BuildLink::PARAM, $link->picks, $link->none, $after ),
 			'tail'      => $tail,
 			'options'   => $options,
+			'hidden'    => self::hidden( $answer, $step ),
+			'filters'   => self::filters( $answer, $slot ),
+			'more'      => self::more( $answer, count( $options ) ),
 			'empty'     => array() === $options,
 			'emptyText' => '' === $link->brand && '' === $link->size
 				? __( 'Nothing the shop has fits the parts before this step.', 'creative-skateboard-builder' )

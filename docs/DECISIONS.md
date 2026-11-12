@@ -2080,3 +2080,16 @@ Milestone 6's step 7, against the spec's Keyboard and screen readers: "Focus mov
 
 **Status:** Accepted.
 
+
+### D-150 · Filters, Show more and the hidden parts are buttons and a disclosure in the step's own form · 2026-11-12
+
+Milestone 6's step 8, against the spec's A step ("Long lists get filters (brand, size) above them"; parts that don't fit are "hidden behind a disclosure that says how many and why") and Performance ("A slot shows 24 options at a time, with Show more").
+
+- **Buttons in the step's form,** not links or a form of their own. A filter, its clear and Show more are submit buttons named `cbuild[_brand]`, `cbuild[_size]` and `cbuild[_shown]`, so a pick the shopper has made and not yet sent travels with them, without JavaScript as with it. Each pressed filter is a hidden field too, so a pick or Show more keeps it. A filter starts the list again at 24.
+- **`_on`, the step the form is on.** A step with filters or Show more carries `cbuild[_on]`, its own slot. Pressed alone, a filter lands on that step; with Next, which names the next step as `cbuild[step]`, the link drops the filters and Show more, so a deck's width never filters the trucks. A hidden `cbuild[step]` would have done the first, but the form would then send `step` twice and leave the second for the server to pick, and it would still carry the filters on. A step with neither leaves `_on` out, so its address stays as it was. An address the server writes has no `_on`: its filters are the step's it names.
+- **Which filters.** A group shows only where the step's parts have two values or more of it. The deck's widths come first ("Start with a width"); every other step lists brands, then its size, named for its slot (axle width, diameter, thickness, length). Each button says how many parts it lists and is `aria-pressed` where it is on; its group's clear shows only while one is.
+- **Show more** asks for the next 24, and says only what is left: the answer's `more` asks for a whole page, and the button is capped at how many match. The count beside it says how many are listed of how many match.
+- **The hidden parts** are a `<details>` under the list: one reason said in its summary where every hidden part shares it, or the count with each reason listed; then each part, linked to its page, with what about it does not fit.
+- **One render a request.** `BuilderPageTest`'s pages are rendered once a test: the Interactivity API keeps one state a request and merges a second render's lists into the first's, which a real page, with one builder, never does.
+
+**Status:** Accepted.
