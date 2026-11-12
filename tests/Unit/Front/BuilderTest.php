@@ -697,6 +697,7 @@ final class BuilderTest extends TestCase {
 		self::assertTrue( $review['ready'] );
 		self::assertSame( 'Add to cart', $review['add'] );
 		self::assertSame( 'The build is in your cart.', $review['added'], 'Said once an add without a page load is done (D-155).' );
+		self::assertSame( array( 'Link to this build', 'Copy link', 'Link copied.' ), array( $review['share'], $review['copy'], $review['copied'] ), 'The link is the view\'s own address (D-156).' );
 		self::assertSame( array( 'deck', 'trucks', 'wheels', 'bearings', 'hardware', 'grip' ), array_column( $review['items'], 'key' ) );
 		self::assertSame(
 			array(

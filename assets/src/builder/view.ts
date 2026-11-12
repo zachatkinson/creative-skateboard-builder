@@ -19,6 +19,8 @@
  * - **Two events** on the builder's element, bubbling, for a shop's own analytics under its own consent (spec:
  *   Privacy): `cbuild:pick`, with the kit, the slot and the part, and `cbuild:added`, with the kit, its picks and
  *   assembly. They carry IDs alone.
+ * - **Copy link** writes the build's own address to the clipboard and says so. It is offered only where the browser
+ *   has a clipboard to write to; the address is in the page as a field either way, and a refused copy selects it.
  */
 import { getConfig, getElement, store } from '@wordpress/interactivity';
 import { Navigator, type Move, type View } from './navigate';
@@ -37,7 +39,7 @@ interface Config {
 interface Shown extends View {
 	kit: number;
 	step: { slot: string };
-	review: { added: string };
+	review: { added: string; copied: string };
 	title: string;
 	status: string;
 	isChanges: boolean;
@@ -49,6 +51,7 @@ interface State {
 	pending: boolean;
 	status: string;
 	added: boolean;
+	canCopy: boolean;
 }
 
 let navigator: Navigator | undefined;
@@ -190,10 +193,17 @@ function send( form: HTMLFormElement, submitter?: HTMLElement | null ): void {
 const { state } = store(
 	NAME,
 	{
-		state: { pending: false, status: '', added: false } as State,
+		state: {
+			pending: false,
+			status: '',
+			added: false,
+			canCopy: false,
+		} as State,
 		callbacks: {
 			init(): void {
 				root = getElement().ref;
+				state.canCopy =
+					'function' === typeof window.navigator.clipboard?.writeText;
 			},
 		},
 		actions: {
@@ -285,6 +295,21 @@ const { state } = store(
 						'.cbuild-review__added'
 					)?.focus();
 				} );
+			},
+			async copy(): Promise< void > {
+				try {
+					await window.navigator.clipboard.writeText(
+						state.view.url
+					);
+					state.status = state.view.review.copied;
+				} catch {
+					// Refused, as a browser may without a secure page or the shopper's leave: the shopper copies it.
+					const link = root?.querySelector< HTMLInputElement >(
+						'.cbuild-share__link'
+					);
+					link?.focus();
+					link?.select();
+				}
 			},
 			follow( event: MouseEvent ): void {
 				const link = getElement().ref;

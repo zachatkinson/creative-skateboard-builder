@@ -214,6 +214,7 @@ final class BuilderPageTest extends IntegrationTestCase {
 		);
 		self::assertFalse( wp_interactivity_state( BuilderPage::STORE )['pending'] );
 		self::assertFalse( wp_interactivity_state( BuilderPage::STORE )['added'], 'Nothing is added on load.' );
+		self::assertFalse( wp_interactivity_state( BuilderPage::STORE )['canCopy'], 'The store says whether the browser can copy.' );
 		self::assertContains( BuilderPage::MODULE, wp_script_modules()->get_queue(), 'the kit\'s page has no block to load it' );
 		self::assertNotNull( wp_script_modules()->get_registered( BuilderPage::MODULE ), 'the block registers it, from build/builder/view.js' );
 	}
@@ -253,6 +254,24 @@ final class BuilderPageTest extends IntegrationTestCase {
 		$dom = self::dom( $this->kitPage( array() ) );
 		self::assertSame( 1, $dom->query( '//form[@id="' . BuilderView::STEP_FORM . '"][contains(@class,"cbuild-step")]' )->length );
 		self::assertSame( 1, $dom->query( '//form[@id="' . BuilderView::REVIEW_FORM . '"][contains(@class,"cbuild-review__form")]' )->length );
+	}
+
+	public function test_the_review_holds_the_builds_link_to_copy_with_or_without_javascript(): void {
+		$dom  = self::dom( $this->kitPage( array() ) );
+		$link = $dom->query( '//input[contains(@class,"cbuild-share__link")]' )->item( 0 );
+		self::assertNotNull( $link );
+		self::assertTrue( $link->hasAttribute( 'readonly' ) );
+		self::assertSame( 'url', $link->getAttribute( 'type' ) );
+		$url = wp_interactivity_state( BuilderPage::STORE )['view']['url'];
+		self::assertStringContainsString( 'cbuild%5Bstep%5D=', $url );
+		self::assertSame( $url, $link->getAttribute( 'value' ), 'The view\'s own address, the build in it.' );
+		$label = $dom->query( '//label[@for="' . $link->getAttribute( 'id' ) . '"]' )->item( 0 );
+		self::assertSame( 'Link to this build', trim( (string) $label?->textContent ) );
+		$copy = $dom->query( '//button[contains(@class,"cbuild-share__copy")]' )->item( 0 );
+		self::assertSame( 'Copy link', trim( (string) $copy->textContent ) );
+		self::assertSame( 'button', $copy->getAttribute( 'type' ) );
+		self::assertSame( 'actions.copy', $copy->getAttribute( 'data-wp-on--click' ) );
+		self::assertTrue( $copy->hasAttribute( 'hidden' ), 'Without JavaScript the button would do nothing.' );
 	}
 
 	public function test_the_review_adds_through_the_store_and_says_so_with_a_link_to_the_cart(): void {

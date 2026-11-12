@@ -418,6 +418,30 @@ test.describe( 'The builder without JavaScript', () => {
 		).toBeDisabled();
 	} );
 
+	test( "the review holds the build's link to copy, and no button that would do nothing", async ( {
+		page,
+	} ) => {
+		await page.goto( fixture().page );
+		await answered( page, () =>
+			page
+				.locator( '.cbuild-presets' )
+				.getByRole( 'button', { name: 'Start from Street' } )
+				.click()
+		);
+		const review = page.locator( '.cbuild-review' );
+		const link = review.getByLabel( 'Link to this build' );
+		await expect( link ).toHaveValue( page.url() );
+		await expect( link ).toHaveAttribute( 'readonly', '' );
+		await expect(
+			review.getByRole( 'button', { name: 'Copy link' } )
+		).toBeHidden();
+		// The link opens the same build for anyone, signed in or not (P12).
+		const other = await page.context().browser()!.newPage();
+		await other.goto( await link.inputValue() );
+		await expect( other.locator( '.cbuild-review' ) ).toBeVisible();
+		await other.close();
+	} );
+
 	test( "the kit's own page shows the same builder", async ( { page } ) => {
 		await page.goto( '/product/builder-test-kit/' );
 		await expect( heading( page ) ).toHaveText( 'Step 1 of 7: Deck' );
@@ -825,6 +849,37 @@ test.describe( 'The builder with JavaScript', () => {
 		await expect(
 			page.locator( 'main .wc-block-mini-cart__badge' )
 		).toHaveText( '1', { timeout: 20_000 } );
+	} );
+
+	test( "copies the build's link and says so", async ( {
+		page,
+		context,
+		browserName,
+	} ) => {
+		await page
+			.locator( '.cbuild-presets' )
+			.getByRole( 'button', { name: 'Start from Street' } )
+			.click();
+		await expect( heading( page ) ).toHaveText( 'Step 7 of 7: Review' );
+		if ( 'chromium' === browserName ) {
+			await context.grantPermissions( [
+				'clipboard-read',
+				'clipboard-write',
+			] );
+		}
+		await page
+			.locator( '.cbuild-review' )
+			.getByRole( 'button', { name: 'Copy link' } )
+			.click();
+		await expect(
+			page.locator( '.cbuild' ).getByRole( 'status' )
+		).toHaveText( 'Link copied.' );
+		if ( 'chromium' === browserName ) {
+			// Only Chromium lets a test read the clipboard back.
+			expect(
+				await page.evaluate( () => navigator.clipboard.readText() )
+			).toBe( page.url() );
+		}
 	} );
 
 	test( 'keeps its store private', async ( { page } ) => {

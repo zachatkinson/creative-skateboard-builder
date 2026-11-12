@@ -2146,3 +2146,14 @@ Milestone 6's step 12a, against the spec's Review and add to cart ("With JavaScr
 - **The events.** `cbuild:pick` and `cbuild:added` go on the builder's own element and bubble, with IDs alone (docs/HOOKS.md, DOM events). The plugin listens to neither and sends nothing anywhere.
 
 **Status:** Accepted.
+
+### D-156 · Copy link: the build's own address in a field, and a button where the browser can copy · 2026-11-12
+
+Milestone 6's step 12b, against the spec's Review and add to cart ("Copy link makes a build link, shareable without an account", P12) and How a build travels.
+
+- **The link is the view's own address,** the one the page's history holds: the kit's builder page with the build in `cbuild[…]` and the step. It names parts by ID and nothing of the shopper (spec: Share links), and opens the same build for anyone, signed in or not. Nothing is stored to make it.
+- **A field without JavaScript, a button with it.** A button that copies needs the Clipboard API, so without JavaScript it would do nothing. The review therefore always holds the link in a read-only field labelled "Link to this build", which any shopper can select and copy; the Copy link button beside it is `hidden` until the store finds `navigator.clipboard.writeText`. A copy says "Link copied." in the status region.
+- **A refused copy** (no secure page, or a browser that asks the shopper first and is told no) focuses the field and selects the link, so the shopper's own copy takes it.
+- **Not the Web Share API.** `navigator.share` would be a second way to do the one thing the spec asks for, Copy link, with its own support to test on each engine. A shop that wants a share sheet can add one beside the field.
+
+**Status:** Accepted.

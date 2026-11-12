@@ -10,6 +10,7 @@ import { WAIT } from '../../assets/src/builder/navigate';
 interface Actions {
 	submit: ( event: SubmitEvent ) => void;
 	add: ( event: SubmitEvent ) => Promise< void >;
+	copy: () => Promise< void >;
 	pick: ( event: Event ) => void;
 	follow: ( event: MouseEvent ) => void;
 	back: () => void;
@@ -21,6 +22,7 @@ interface Defined {
 		pending: boolean;
 		status: string;
 		added: boolean;
+		canCopy: boolean;
 	};
 	actions: Actions;
 }
@@ -50,7 +52,10 @@ const REVIEW = {
 	...START,
 	url: window.location.origin + '/?review',
 	step: { slot: 'review' },
-	review: { added: 'The build is in your cart.' },
+	review: {
+		added: 'The build is in your cart.',
+		copied: 'Link copied.',
+	},
 };
 
 function answer( view: unknown, status = 200 ): Response {
@@ -732,5 +737,62 @@ describe( 'adding to the cart', () => {
 		actions.pick( { target: radio } as unknown as Event );
 		root.ownerDocument.removeEventListener( 'cbuild:pick', picked );
 		expect( detail ).toEqual( { kit: 7, slot: 'deck', part: 12 } );
+	} );
+} );
+
+describe( 'copying the build link', () => {
+	function share( writeText?: ( text: string ) => Promise< void > ): {
+		link: HTMLInputElement;
+	} {
+		Object.defineProperty( navigator, 'clipboard', {
+			value: undefined === writeText ? undefined : { writeText },
+			configurable: true,
+		} );
+		document.body.innerHTML = `
+			<div class="cbuild">
+				<input class="cbuild-share__link" readonly value="${ REVIEW.url }">
+				<button type="button">Copy link</button>
+			</div>`;
+		setElement( document.querySelector< HTMLElement >( '.cbuild' )! );
+		(
+			defined.definition as { callbacks: { init: () => void } }
+		 ).callbacks.init();
+		state.view = REVIEW;
+		state.status = '';
+		return { link: document.querySelector( 'input' )! };
+	}
+
+	afterEach( () => {
+		Object.defineProperty( navigator, 'clipboard', {
+			value: undefined,
+			configurable: true,
+		} );
+	} );
+
+	it( 'offers Copy link only where the browser has a clipboard to write to', () => {
+		share();
+		expect( state.canCopy ).toBe( false );
+		share( () => Promise.resolve() );
+		expect( state.canCopy ).toBe( true );
+	} );
+
+	it( "copies the build's own address and says so", async () => {
+		const copied: string[] = [];
+		share( ( text ) => {
+			copied.push( text );
+			return Promise.resolve();
+		} );
+		await actions.copy();
+		expect( copied ).toEqual( [ REVIEW.url ] );
+		expect( state.status ).toBe( 'Link copied.' );
+	} );
+
+	it( 'selects the link for the shopper to copy when the browser refuses', async () => {
+		const { link } = share( () => Promise.reject( new Error( 'denied' ) ) );
+		await actions.copy();
+		expect( state.status ).toBe( '' );
+		expect( link.ownerDocument.activeElement ).toBe( link );
+		expect( link.selectionStart ).toBe( 0 );
+		expect( link.selectionEnd ).toBe( REVIEW.url.length );
 	} );
 } );

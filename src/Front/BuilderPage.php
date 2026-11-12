@@ -106,6 +106,8 @@ final class BuilderPage {
 					'pending' => false,
 					// Set by the store once Add to cart has put the build in the cart without a page load (D-155).
 					'added'   => false,
+					// Set by the store where the browser has a clipboard to write to (D-156).
+					'canCopy' => false,
 				)
 			);
 			// Where the store asks for the next view: the state route, for this page, in its language (D-148), and the

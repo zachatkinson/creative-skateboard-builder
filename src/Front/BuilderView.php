@@ -1013,6 +1013,10 @@ final class BuilderView {
 			'add'        => __( 'Add to cart', 'creative-skateboard-builder' ),
 			// Said, and focused, once an add without a page load is done (D-155).
 			'added'      => __( 'The build is in your cart.', 'creative-skateboard-builder' ),
+			// The build's link is the view's own address, which needs no account to open (P12, D-156).
+			'share'      => __( 'Link to this build', 'creative-skateboard-builder' ),
+			'copy'       => __( 'Copy link', 'creative-skateboard-builder' ),
+			'copied'     => __( 'Link copied.', 'creative-skateboard-builder' ),
 		);
 	}
 }
