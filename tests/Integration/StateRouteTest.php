@@ -372,7 +372,8 @@ final class StateRouteTest extends IntegrationTestCase {
 				throw new \LogicException( 'The state was worked out for a slot the kit does not have.' );
 			},
 			fn (): StateAnswer => $this->service( StateAnswer::class ),
-			fn (): RateLimit => $this->service( RateLimit::class )
+			fn (): RateLimit => $this->service( RateLimit::class ),
+			fn (): \CreativeBranding\SkateboardBuilder\Port\Cart => $this->service( \CreativeBranding\SkateboardBuilder\Port\Cart::class )
 		);
 		foreach ( array(
 			array( 'picks' => array( 'sail' => '5' ) ),

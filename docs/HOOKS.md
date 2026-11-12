@@ -93,6 +93,7 @@ A kit is four JSON documents. Each has a JSON Schema (draft 4) in the plugin's `
 | `schema/kit-assembly.json` | 0.2.0 | Whether assembly is on by default, its fee as a decimal string in the shop's currency, the lead time and the returns notice. |
 
 | `schema/settings.json` | 0.3.0 | Not a kit document: the shape of the option `cbuild_settings` as the plugin writes it. `attribute_mapping` is up to 50 lines, each an `attribute` of 1 to 190 characters, a `spec` that is a spec key and a `unit` of `in`, `mm` or empty; `source_order` is `table`, `field` and `attribute`, each once. From 0.4.0 it also holds the five keys that version adds, listed under Settings keys with their ranges: the discount as text, the coupon's place, the rate as a whole number, the header's name, and a new kit's assembly as `schema/kit-assembly.json` has it. Other keys are allowed, so a later version's settings pass. It has no `schema_version`: a key that is missing or malformed reads as its default. |
+| `schema/order-snapshot.json` | 0.5.0 | Not a kit document: the order item meta `_cbuild_snapshot`, a build as it was sold. See Order item keys. |
 
 A schema says what shape a document has. Five things it cannot say are checked when the document is read: slot keys are unique, the deck is the first slot, the risers come before the hardware, R1's `axle_warn` is at least its `axle_fit`, and each row of R3's riser table reaches further than the one before. A preset must also fill every required slot and name only slots the kit has.
 
@@ -434,5 +435,117 @@ In the category `creative-skateboard-builder`, which the Catalogue check's abili
 | `creative-skateboard-builder/check-build` | 0.4.0 | Whoever may run an ability | `kit`, the kit product's ID; `picks`, an object of slot key to part ID, 20 at most; `assembly`, a boolean. Only `kit` is required. | `kit`, `ready`, `refused` and `problems`, as the state route's answer holds them: whether the build may go to the cart, and each thing in the way with its `code`, `slot`, `part`, `message` and the rules' `messages`. |
 | `creative-skateboard-builder/price-build` | 0.4.0 | Whoever may run an ability | The same. | `kit` and `total`, as the state route's answer holds it: `lines` (each with `slot`, `part`, `name`, `quantity`, `price`, `charged` and `total`), `parts`, `saved`, `assembly`, `fee` and `total`. Each amount is `amount`, in whole minor units, and `text`. |
 
-Both are annotated read-only and idempotent and shown in REST, so WordPress serves each at `GET /wp-abilities/v1/abilities/<name>/run`. Each answers to a signed-in user alone, over REST and when run in PHP (D-118), and refuses a `POST` with 405. They ask the state route's own service and give parts of its answer, so the two cannot disagree: a slot with no pick is counted with the part the builder would start it on, as the route counts it. A kit a visitor may not see is `cbuild_kit_not_found` to everyone, as it is on the route. Input that is not the schema's is refused by WordPress as `ability_invalid_input`; a slot key the kit lacks is not refused, and comes back in `refused` as `slot_unknown`. Neither is counted against the route's rate limit.
+Both are annotated read-only and idempotent and shown in REST, so WordPress serves each at `GET /wp-abilities/v1/abilities/<name>/run`. Each answers to a signed-in user alone, over REST and when run in PHP (D-118), and refuses a `POST` with 405. They ask the state route's own service, for the shopper WooCommerce knows the signed-in user as (from 0.5.0, D-138), and give parts of its answer, so the two cannot disagree: a slot with no pick is counted with the part the builder would start it on, as the route counts it. A kit a visitor may not see is `cbuild_kit_not_found` to everyone, as it is on the route. Input that is not the schema's is refused by WordPress as `ability_invalid_input`; a slot key the kit lacks is not refused, and comes back in `refused` as `slot_unknown`. Neither is counted against the route's rate limit.
 
+## Milestone 5: cart and checkout (0.5.0)
+
+### Adding a build
+
+A build is added by the kit's ID and one more parameter, `cbuild` (0.5.0), on either route:
+
+- the Store API's `POST /wc/store/v1/cart/add-item`, beside `id` and `quantity`, as JSON: `"cbuild": { "picks": { "deck": 103, "trucks": 149 }, "assembly": true }`;
+- WooCommerce's add-to-cart form, as fields: `cbuild[picks][deck]=103`, `cbuild[assembly]=1`, posted with `add-to-cart=<kit>`.
+
+`picks` is slot key to part ID. `assembly` may be left out, and is then the kit's own default. `quantity` is how many of the build. Nothing else is read: no price, no quantity of a part and no line of the cart comes from the request. Each part is read from WooCommerce at that moment, so the cart charges what the shop holds even where the builder was shown an older price.
+
+A kit added with no `cbuild` is refused by every route, `WC_Cart::add_to_cart()` called in PHP among them: `is_purchasable()` is true for a kit only between its build being taken and its parts being added, in the same request.
+
+### Cart item keys
+
+| Key | Since | On | What it holds |
+| --- | --- | --- | --- |
+| `cbuild` | 0.5.0 | The kit's line | The build: `schema_version` (1), `id` (a UUID, which keeps two builds alike on two lines), `kit` (the kit product's ID), `picks` (slot key to part ID), `quantities` (slot key to how many of the part one build takes) and `assembly`. A line whose `cbuild` does not read this way is not sold. |
+| `cbuild_children` | 0.5.0 | The kit's line | Its parts' cart keys, in step order. |
+| `cbuild_parent` | 0.5.0 | A part's line | Its kit's cart key. |
+| `cbuild_slot` | 0.5.0 | A part's line | The key of the slot it fills. |
+
+Read them, and do not write them: the plugin puts a build together and takes it apart as one. A part's line is an ordinary line of that product, at the shop's price and quantity `quantities[slot]` times the kit's line's. The kit's line is priced at the assembly fee, or at nothing without assembly.
+
+### Why a build is not added
+
+The Store API answers with the code, and the form shows the sentence as an error notice.
+
+| Code | Since | Status | When |
+| --- | --- | --- | --- |
+| `cbuild_no_build` | 0.5.0 | 400 | A kit arrived with no `cbuild`, or with one that holds no `picks`. |
+| `cbuild_kit_not_found` | 0.4.0 | 404 | The shop has no such kit, or it is one a visitor may not see. From 0.5.0 the cart answers with it as the state route does. |
+| `cbuild_build_refused` | 0.5.0 | 400 | The build has problems. The answer's `data.problems` lists each as `code` (Build problems, above), `slot` and `part`; the form shows a notice for each. |
+| `cbuild_no_price` | 0.4.0 | 400 from the cart | The shop's currency has more decimals than a build can be priced in. |
+| `cbuild_not_added` | 0.5.0 | 400 | WooCommerce would not add one of the parts, so the kit's line and every part already added were taken out again. |
+
+### A build in the cart stays whole
+
+The server keeps it so, whichever cart or plugin makes the change:
+
+- **Quantity.** Setting the kit's line's quantity sets each part's line to `quantities[slot]` times it, before the totals are worked out. A part's line set alone goes back.
+- **Removal.** Removing any line of a build removes all of it. Putting one back, as the classic cart's Undo does, puts all of it back, or none where a line can no longer be restored.
+- **The Store API's limits.** A part's line has `quantity_limits.editable` false. A kit's line's `quantity_limits.maximum` is no more than its scarcest part allows, beside what the cart's other lines hold of that part, and never less than 1.
+- **The check before paying.** On `woocommerce_check_cart_items`, which the cart page, both checkouts and every Store API cart response run, a build that has lost a line is removed with what is left of it, and each whole build is judged again as the shop is then. What is found is an error notice, which stops the order; the Store API lists it under the cart's `errors`.
+
+- **Prices.** The kit's line is priced at the assembly fee or nothing, and each part's line at the shop's price less the setting `build_discount`, on `woocommerce_before_calculate_totals` at priority 999. A plugin that sets a line's price does so at an earlier priority, and the discount is taken from its price.
+- **Coupons.** On `woocommerce_coupon_is_valid_for_product`, a part's line answers with its kit's: see `fixed_coupons` in `docs/SETTINGS.md`.
+- **The count.** `woocommerce_cart_contents_count` leaves the parts' lines out, so a build counts as its kit's line does.
+
+| Code | Since | Status | When |
+| --- | --- | --- | --- |
+| `cbuild_part_locked` | 0.5.0 | 400 | A part's line's quantity was set alone. The classic cart's Update cart says the same in a notice. |
+| `cbuild_build_incomplete` | 0.5.0 | A notice | A build in the cart had lost its kit's line or one of its parts, and the rest of it was removed. |
+
+A kit's line raised past what the shop has of a part is refused as `cbuild_build_refused`, with a `part_short` problem for each such part.
+
+### A build shown in the carts
+
+**The Store API.** Each cart item carries the plugin's data under `extensions`, in the namespace `creative-skateboard-builder`, registered with `woocommerce_store_api_register_endpoint_data()` on the cart item's schema. Every field is a string, and empty where it does not apply.
+
+| Field | Since | What it holds |
+| --- | --- | --- |
+| `role` | 0.5.0 | `kit`, `part`, or empty for a line of no build. |
+| `build` | 0.5.0 | The build's identifier, on the kit's line and each part's. |
+| `parent` | 0.5.0 | On a part, its kit's cart item key. |
+| `slot` | 0.5.0 | On a part, the key of the slot it fills. |
+| `name` | 0.5.0 | On a part, its name with its slot's label, as the shop's language writes it. |
+
+**The parent key.** Where WooCommerce's Store API gives a cart item a `parent_item_key` (11.3.0 and later), a part's is its kit's cart item key, answered on `woocommerce_store_api_cart_item_parent_item_key`. The kit's line and a line of no build are left as WooCommerce or another plugin answered. WooCommerce counts a product's quantity in the cart from lines with no parent, so a part in a build is not counted as that product bought alone.
+
+**Item data.** A part's line has one more entry in `woocommerce_get_item_data`, and so in the Store API's `item_data`: Part of, with the kit's name and the slot's label. Its `raw_key` is `cbuild_slot`, and its `display` wraps the words in `<span class="cbuild-part">`. A theme or a cart drawer that prints a line's item data can group a build's parts by that class, as the Mini-Cart's styles do.
+
+**Classes.** In the Cart and Checkout blocks and a classic cart or checkout, a kit's row has the class `cbuild-kit` and a part's `cbuild-part`. In a classic cart a part's quantity is a number in `<span class="cbuild-quantity">`.
+
+**What the plugin loads.** A few style rules in the page, under the handle `cbuild-cart`, with the Mini-Cart, the Cart or Checkout block, or a classic cart or checkout page. With the Cart or Checkout block, also the script `cbuild-cart`, which answers `cartItemClass`, `itemName` and `showRemoveItemLink` in the namespace above and needs `wc-blocks-checkout`. Both only where the cart holds a build as the page is drawn.
+
+### Shipping, express pay and delivery
+
+| Filter | Since | Arguments | What it decides |
+| --- | --- | --- | --- |
+| `cbuild_build_in_one_package` | 0.5.0 | `bool $together`, `int $kit`, `bool $assembly` | Whether a build's parts are put back in one shipping package where the shop's code has split the cart into several. By default `$assembly`: a build the shop assembles ships as one board. Asked only where `woocommerce_cart_shipping_packages` holds more than one package, at priority 100. |
+| `cbuild_arrival_estimate` | 0.5.0 | `string $estimate`, `array $context` | When a build arrives, in words for the line under the builder's total. The plugin has no answer of its own: `$estimate` is empty, and an empty answer shows nothing. |
+| `cbuild_delivery_line` | 0.5.0 | `string $line`, `array $context` | What a build's shipping costs, or how far it is from free shipping, in words for the same line. With an empty answer the builder words it from WooCommerce's shipping zones (from 0.6.0). |
+
+`$context` is the same for both: `kit` (the kit product's ID), `assembly` (bool), `lead_time` (the kit's lead time in the owner's words, after `cbuild_kit_text`, and empty for a build that is not assembled), `total` (the build's total in whole minor units) and `decimals` (how many decimals that is). An answer is shown as plain text: tags are stripped. The builder's summary shows both from 0.6.0.
+
+The kit is virtual, so it is in no shipping package, and each part ships as the product it is.
+
+**Express pay.** The plugin answers four filters of two payment plugins, so that neither offers Apple Pay or Google Pay on a kit's page: `wc_stripe_hide_payment_request_on_product_page` (true for a kit) and `wc_stripe_payment_request_supported_types` of WooCommerce Stripe Gateway, and `wcpay_payment_request_is_product_supported` (false for a kit) and `wcpay_payment_request_supported_types` of WooPayments. A kit that reaches the cart with no build is refused whichever way it comes.
+
+### Order item keys
+
+Both checkouts write them, on `woocommerce_checkout_create_order_line_item`. They are kept on uninstall, with the shop's orders.
+
+| Key | Since | On | What it holds |
+| --- | --- | --- | --- |
+| `_cbuild_id` | 0.5.0 | Every item of a build | The build's identifier, the `id` of the cart's `cbuild`. Two builds on one order have two. |
+| `_cbuild_role` | 0.5.0 | Every item of a build | `kit` or `part`. |
+| `_cbuild_parent` | 0.5.0 | A part's item | Its kit's order item ID. |
+| `_cbuild_children` | 0.5.0 | The kit's item | Its parts' order item IDs, in step order. |
+| `_cbuild_slot` | 0.5.0 | A part's item | The key of the slot it fills. |
+| `_cbuild_snapshot` | 0.5.0 | The kit's item | The build as sold, the document `schema/order-snapshot.json` describes, with a version of its own that moves only when this document does: `schema_version` (1), `kit`, `assembly` and `picks`, slot key to `label` (the slot's, as the shopper read it), `name` (the part's), `sku` (the part's SKU when it was sold, empty where it had none), `part` (its product ID), `quantity` (how many one build takes) and `specs` (spec key to value, as the index held them). Then `lead_time` and `returns_notice`, the kit's own as the shopper read them, each empty for a build the shop does not assemble. |
+
+The kit's item also carries two lines without an underscore, which WooCommerce shows wherever it shows an item's meta: Assembly (Yes or No) and Build (each slot's label, part and quantity). Their names and values are written in the shop's language as the order is placed. They are for people to read. Code reads `_cbuild_snapshot`, and never those two: their keys are translated words, so they differ from one shop's language to the next and on one shop when its language changes.
+
+`_cbuild_id` is what ties a build: every item with the same one is the same build, and it survives anything that gives the items new IDs. `_cbuild_parent` and `_cbuild_children` are worked out from it and hold order item IDs, so code that copies or remakes an order's items (a renewal, a duplicate, a refund's lines) ties them again from `_cbuild_id` and `_cbuild_role` and does not carry the two over.
+
+`_cbuild_parent` and `_cbuild_children` are written once the order's items are saved: on `woocommerce_checkout_order_created` for the classic checkout, and on `woocommerce_store_api_checkout_update_order_meta` and `woocommerce_store_api_checkout_order_processed` for the Store API's. Read a build by them after those, not in `woocommerce_checkout_create_order_line_item`.
+
+The plugin's keys are added to `woocommerce_hidden_order_itemmeta`, so the order screen neither lists them nor offers them for editing. On `woocommerce_order_item_name` a part's name is given as its slot's label and its name.
+
+**A kit added by hand.** The order screen's Add products refuses a kit, on `woocommerce_ajax_add_order_item_validation`, with the error code `cbuild_kit_by_hand` and a sentence that says to add its parts instead: a kit's line with no build behind it would have none of the keys above. Code that makes an order's items itself (`WC_Order::add_product()`) is not stopped, so anything that reads a build treats a kit's item with no `_cbuild_id` as a line of no build.

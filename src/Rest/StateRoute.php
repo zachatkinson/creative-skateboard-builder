@@ -16,6 +16,7 @@ use CreativeBranding\SkateboardBuilder\Front\StateAnswer;
 use CreativeBranding\SkateboardBuilder\Front\Words;
 use CreativeBranding\SkateboardBuilder\Domain\Fit\Problem;
 use CreativeBranding\SkateboardBuilder\Hookable;
+use CreativeBranding\SkateboardBuilder\Port\Cart;
 use CreativeBranding\SkateboardBuilder\Port\Kits;
 use CreativeBranding\SkateboardBuilder\Service\BuildState;
 use CreativeBranding\SkateboardBuilder\Service\RateLimit;
@@ -70,8 +71,9 @@ final class StateRoute implements Hookable {
 	 * @param Closure(): BuildState  $state  Works a build's state out.
 	 * @param Closure(): StateAnswer $writer Writes it down.
 	 * @param Closure(): RateLimit   $limit  The rate limit.
+	 * @param Closure(): Cart        $cart   The cart, for the shopper it knows.
 	 */
-	public function __construct( private Kits $kits, private Closure $state, private Closure $writer, private Closure $limit ) {}
+	public function __construct( private Kits $kits, private Closure $state, private Closure $writer, private Closure $limit, private Closure $cart ) {}
 
 	/**
 	 * Add the hooks.
@@ -202,6 +204,8 @@ final class StateRoute implements Hookable {
 		if ( ! $this->kits->isPublic( $id ) ) {
 			return $missing;
 		}
+		// The prices are for the shopper the cart will charge, where tax goes by where they are (issue #27).
+		( $this->cart )()->shopper();
 		$picks    = Cast::map( $request['picks'] );
 		$previous = null === $request['previous'] ? null : Cast::map( $request['previous'] );
 		$step     = null === $request['step'] ? null : Cast::str( $request['step'] );

@@ -311,6 +311,15 @@ final class StateAnswerTest extends TestCase {
 		self::assertCount( 7, array_filter( $asked, static fn( array $call ): bool => 'cbuild_slot_label' === $call[0] ), 'Each label is asked for once.' );
 	}
 
+	// The order's snapshot and the delivery line ask for the owner's words the same way (milestone 5).
+	public function test_a_kits_text_may_be_asked_for_by_itself(): void {
+		self::assertSame( 'Ships in a week', StateAnswer::text( 'Ships in a week', 'lead_time', 77 ) );
+		$GLOBALS['cbuild_test_filters']['cbuild_kit_text'] = static fn( string $text, string $field, int $kit, string $of ): string => "{$text}|{$field}|{$kit}|{$of}";
+		self::assertSame( 'Ships in a week|lead_time|77|', StateAnswer::text( 'Ships in a week', 'lead_time', 77 ) );
+		$GLOBALS['cbuild_test_filters']['cbuild_kit_text'] = static fn(): int => 7;
+		self::assertSame( 'Ships in a week', StateAnswer::text( 'Ships in a week', 'lead_time', 77 ) );
+	}
+
 	public function test_an_answer_to_a_filter_that_is_no_text_leaves_the_owners_words(): void {
 		$this->worded();
 		$GLOBALS['cbuild_test_filters'] = array(

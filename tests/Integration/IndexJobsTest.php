@@ -106,6 +106,69 @@ final class IndexJobsTest extends IntegrationTestCase {
 		self::assertSame( array( $deck->get_id() => array() ), $this->indexed( $deck->get_id() ) );
 	}
 
+	// Issue #21: once builds are bought, every order line would queue a job that writes the same rows back.
+	public function test_a_stock_change_queues_no_job_and_a_change_to_a_source_still_does(): void {
+		$deck = self::deck();
+		$deck->set_manage_stock( true );
+		$deck->set_stock_quantity( 5 );
+		$deck->save();
+		$id = $deck->get_id();
+		self::work();
+
+		wc_update_product_stock( $id, 1, 'decrease' );
+		self::assertSame( array(), self::waiting( Options::JOB_INDEX_PART ), 'stock reduced as an order reduces it' );
+
+		$order = wc_create_order();
+		$order->add_product( wc_get_product( $id ), 2 );
+		$order->save();
+		wc_reduce_stock_levels( $order->get_id() );
+		self::assertSame( 2, wc_get_product( $id )->get_stock_quantity() );
+		self::assertSame( array(), self::waiting( Options::JOB_INDEX_PART ), 'an order' );
+
+		wc_update_product_stock( $id, 0, 'set' );
+		self::assertSame( 'outofstock', wc_get_product( $id )->get_stock_status() );
+		self::assertSame( array(), self::waiting( Options::JOB_INDEX_PART ), 'the last one sold, which changes its status and its visibility term' );
+
+		$job   = array( array( 'part' => $id ) );
+		$fresh = wc_get_product( $id );
+		$fresh->update_meta_data( Options::META_SPECS, array( 'deck_width' => '8.2500' ) );
+		$fresh->save();
+		self::assertSame( $job, self::waiting( Options::JOB_INDEX_PART ), 'a spec' );
+		self::work();
+		self::assertSame( array( $id => array( 'deck_width=8.2500' ) ), $this->indexed( $id ) );
+
+		$fresh = wc_get_product( $id );
+		$fresh->update_meta_data( Options::META_SPEC_TABLE, array( 'table' => 1, 'size' => '149' ) );
+		$fresh->save();
+		self::assertSame( $job, self::waiting( Options::JOB_INDEX_PART ), "the maker's chart it names" );
+		self::work();
+
+		$fresh = wc_get_product( $id );
+		$fresh->delete_meta_data( Options::META_SPEC_TABLE );
+		$fresh->save();
+		self::assertSame( $job, self::waiting( Options::JOB_INDEX_PART ), 'the chart taken away' );
+		self::work();
+
+		$attribute = new \WC_Product_Attribute();
+		$attribute->set_name( 'Width' );
+		$attribute->set_options( array( '8.25' ) );
+		$fresh = wc_get_product( $id );
+		$fresh->set_attributes( array( $attribute ) );
+		$fresh->save();
+		self::assertSame( $job, self::waiting( Options::JOB_INDEX_PART ), 'an attribute' );
+		self::work();
+
+		register_taxonomy( 'pa_cbuild_test_width', array( 'product' ) );
+		wp_set_object_terms( $id, array( '8.5' ), 'pa_cbuild_test_width' );
+		wc_get_product( $id )->save();
+		unregister_taxonomy( 'pa_cbuild_test_width' );
+		self::assertSame( $job, self::waiting( Options::JOB_INDEX_PART ), "an attribute's terms set past WooCommerce, then a save" );
+		self::work();
+
+		wc_get_product( $id )->save();
+		self::assertSame( array(), self::waiting( Options::JOB_INDEX_PART ), 'a save that changes nothing' );
+	}
+
 	public function test_two_parts_saved_together_both_get_a_job_and_the_jobs_index_them(): void {
 		$first  = self::deck( '8.0000' );
 		$second = self::deck( '8.2500' );
@@ -162,6 +225,8 @@ final class IndexJobsTest extends IntegrationTestCase {
 	public function test_a_variable_products_job_indexes_its_variations_and_a_deleted_products_removes_its_rows(): void {
 		[ $parent, $variations ] = self::variable( '8.0000', '8.2500' );
 		$this->service( Queue::class )->cancelAll( Options::JOB_INDEX_PART );
+		// A save that changes something: one that changes nothing queues no job (issue #21).
+		$parent->set_name( 'Deck, renamed' );
 		$parent->save();
 		self::assertSame( array( array( 'part' => $parent->get_id() ) ), self::waiting( Options::JOB_INDEX_PART ) );
 		self::work();

@@ -22,7 +22,9 @@ function field( page: Page, line: number, label: string ) {
 
 async function save( page: Page ) {
 	await answered( page, () =>
-		page.getByRole( 'button', { name: 'Save changes' } ).click()
+		// WooCommerce's own button, by its class: its name is WooCommerce's to translate, where the site has
+		// WooCommerce's language pack.
+		page.locator( 'button.woocommerce-save-button' ).click()
 	);
 }
 
@@ -82,7 +84,8 @@ test.describe( 'WooCommerce > Settings > Builder', () => {
 		await page.getByLabel( 'Third' ).selectOption( 'attribute' );
 		await save( page );
 		await expect(
-			page.getByText( 'Your settings have been saved.' )
+			// WooCommerce's own notice, whatever language it says it in.
+			page.locator( '#message.updated' )
 		).toBeVisible();
 
 		// Saved, and three blank lines follow the one kept.
@@ -140,6 +143,19 @@ test.describe( 'WooCommerce > Settings > Builder', () => {
 		const discount = page.getByLabel( 'Build discount (%)' );
 		const rate = page.getByLabel( 'Requests a minute from one address' );
 		const lead = page.getByLabel( 'Lead time' );
+		// What a new shop has, whatever an earlier run that stopped part way left stored.
+		const coupons = page.getByLabel(
+			'A fixed product discount coupon applies to'
+		);
+		// WooCommerce enables its save button on a change; one field is touched so it always is.
+		await discount.pressSequentially( 'x' );
+		await discount.fill( '0' );
+		await rate.fill( '120' );
+		await lead.fill( '' );
+		await coupons.selectOption( 'kit' );
+		await save( page );
+		await page.goto( TAB );
+		await expect( discount ).toHaveValue( '0' );
 		await expect( rate ).toHaveAccessibleDescription( /from 10 to 6000/ );
 
 		// By keyboard alone: a discount, then a rate below the least, then a lead time.
@@ -181,7 +197,8 @@ test.describe( 'WooCommerce > Settings > Builder', () => {
 			.selectOption( 'parts' );
 		await save( page );
 		await expect(
-			page.getByText( 'Your settings have been saved.' )
+			// WooCommerce's own notice, whatever language it says it in.
+			page.locator( '#message.updated' )
 		).toBeVisible();
 		await page.goto( TAB );
 		await expect( discount ).toHaveValue( '7.5' );

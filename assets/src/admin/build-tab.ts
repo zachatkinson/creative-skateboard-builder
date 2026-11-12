@@ -67,21 +67,20 @@ export function find( doc: Document, id: string ): HTMLElement | null {
  * @param hash The address's fragment, with its #.
  */
 export function open( doc: Document, hash: string ): void {
-	const found = find( doc, field( hash ) ?? '' );
+	const id = field( hash );
+	const found = id ? find( doc, id ) : null;
 	if ( ! found ) {
 		return;
 	}
 	doc.querySelector< HTMLElement >(
 		`ul.wc-tabs a[href="#${ PANEL }"]`
 	)?.click();
-	// Every group the field is folded into, the innermost first.
-	for (
-		let group = found.closest( 'details' );
-		group;
-		group = group.parentElement?.closest( 'details' ) ?? null
-	) {
-		group.setAttribute( 'open', '' );
-	}
+	// Every group the field is folded into, and no other.
+	doc.querySelectorAll( 'details' ).forEach( ( group ) => {
+		if ( group.contains( found ) ) {
+			group.open = true;
+		}
+	} );
 	// A row or a section takes no focus itself, so its first control does.
 	const control = found.matches( CONTROLS )
 		? found
@@ -155,7 +154,7 @@ export function move( pressed: HTMLButtonElement, speak?: Speak ): void {
 	// A button that is switched off cannot hold focus, so the row's other one takes it.
 	( pressed.disabled ? button( row, up ? 'down' : 'up' ) : pressed )?.focus();
 
-	const said = list instanceof HTMLElement ? list.dataset.cbuildMoved : '';
+	const said = list.dataset.cbuildMoved;
 	if ( said && speak ) {
 		const label =
 			row.querySelector< HTMLInputElement >( 'input[id$="-label"]' )

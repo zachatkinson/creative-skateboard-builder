@@ -7,4 +7,7 @@ if [ -z "$(find assets/src -name '*.ts' ! -name '*.d.ts' 2>/dev/null | head -n 1
 	echo "assets/src has no TypeScript yet; the StrykerJS run is skipped."
 	exit 0
 fi
+# Vitest's GitHub reporter writes a job summary each time it runs, and Stryker runs it once per mutant: a run left a
+# report of "failures" per killed mutant on the summary page (issue #31). Stryker's own report is the one to read.
+unset GITHUB_STEP_SUMMARY
 exec npx stryker run stryker.config.mjs

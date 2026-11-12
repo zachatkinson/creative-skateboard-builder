@@ -268,7 +268,7 @@ The commands are in `CLAUDE.md`. The fast gates run on every commit through `ver
 
 **The platform.**
 
-- The floors are PHP 8.5, WordPress 7.0 and WooCommerce 11.2. The matrix tests the oldest pair (7.0 with 11.2.0) and the newest (7.1.4 with 11.2.2), on MySQL 8.4 and MariaDB 10.11, each run as its own database server for the leg, as Creative Search's `tools/matrix-db.sh` does. MySQL 8.0 and MariaDB 10.6 reached end of life in 2026.
+- The floors are PHP 8.5, WordPress 7.0 and WooCommerce 11.2. The matrix tests the oldest pair (7.0 with 11.2.0) and the newest (7.1.4 with 11.3.0, D-139), on MySQL 8.4 and MariaDB 10.11, each run as its own database server for the leg, as Creative Search's `tools/matrix-db.sh` does. MySQL 8.0 and MariaDB 10.6 reached end of life in 2026.
 - HPOS is tested on, off and syncing; the Cart and Checkout blocks and a classic checkout; the Interactivity API Mini-Cart.
 - Themes: Kadence, Storefront and Twenty Twenty-Five.
 - Page caches, and a persistent object cache: the leg runs on a Redis server with Redis Object Cache's drop-in, so two processes share it (`tools/object-cache.sh`, D-066).

@@ -52,6 +52,8 @@ final class Container {
 			Port\DocumentSchemas::class => Adapter\KitSchemas::class,
 			Port\Files::class           => Adapter\DiskFiles::class,
 			Port\Reindex::class         => Service\IndexJobs::class,
+			Port\Cart::class            => Adapter\WooCart::class,
+			Port\Uuids::class           => Adapter\WpUuids::class,
 		);
 	}
 
@@ -137,6 +139,9 @@ final class Container {
 					},
 					static function () use ( $c ): Front\StateAnswer {
 						return $c->get( Front\StateAnswer::class );
+					},
+					static function () use ( $c ): Port\Cart {
+						return $c->get( Port\Cart::class );
 					}
 				);
 			},
@@ -150,6 +155,9 @@ final class Container {
 					},
 					static function () use ( $c ): Front\StateAnswer {
 						return $c->get( Front\StateAnswer::class );
+					},
+					static function () use ( $c ): Port\Cart {
+						return $c->get( Port\Cart::class );
 					}
 				);
 			},
@@ -170,8 +178,70 @@ final class Container {
 				return new Hooks\IndexHooks(
 					static function () use ( $c ): Service\IndexJobs {
 						return $c->get( Service\IndexJobs::class );
+					},
+					$c->get( Service\SavedSources::class )
+				);
+			},
+			// The cart's service is built when a kit is on its way to the cart or in it.
+			Cart\CartHooks::class                       => static function ( Container $c ): object {
+				return new Cart\CartHooks(
+					static function () use ( $c ): Service\BuildCart {
+						return $c->get( Service\BuildCart::class );
+					},
+					$c->get( Cart\Refusals::class )
+				);
+			},
+			Cart\LineHooks::class                       => static function ( Container $c ): object {
+				return new Cart\LineHooks(
+					static function () use ( $c ): Service\BuildLines {
+						return $c->get( Service\BuildLines::class );
+					},
+					$c->get( Cart\Refusals::class )
+				);
+			},
+			Cart\AgainHooks::class                      => static function ( Container $c ): object {
+				return new Cart\AgainHooks(
+					static function () use ( $c ): Service\BuildCart {
+						return $c->get( Service\BuildCart::class );
 					}
 				);
+			},
+			Cart\PriceHooks::class                      => static function ( Container $c ): object {
+				return new Cart\PriceHooks(
+					static function () use ( $c ): Service\BuildCart {
+						return $c->get( Service\BuildCart::class );
+					}
+				);
+			},
+			Order\OrderHooks::class                     => static function ( Container $c ): object {
+				return new Order\OrderHooks(
+					static function () use ( $c ): Service\OrderBuilds {
+						return $c->get( Service\OrderBuilds::class );
+					},
+					static function () use ( $c ): Port\Kits {
+						return $c->get( Port\Kits::class );
+					}
+				);
+			},
+			Front\Delivery::class                       => static function ( Container $c ): object {
+				return new Front\Delivery( $c->get( Port\Kits::class ) );
+			},
+			Cart\ShowHooks::class                       => static function ( Container $c ): object {
+				return new Cart\ShowHooks(
+					static function () use ( $c ): Port\Kits {
+						return $c->get( Port\Kits::class );
+					}
+				);
+			},
+			Cart\Refusals::class                        => static function ( Container $c ): object {
+				return new Cart\Refusals(
+					static function () use ( $c ): Port\Kits {
+						return $c->get( Port\Kits::class );
+					}
+				);
+			},
+			Service\SavedSources::class                 => static function (): object {
+				return new Service\SavedSources( array( Support\Options::META_SPECS, Support\Options::META_SPEC_TABLE ) );
 			},
 			// The state route's services are built when the route is asked, not whenever the REST API starts.
 			Rest\StateRoute::class                      => static function ( Container $c ): object {
@@ -185,6 +255,9 @@ final class Container {
 					},
 					static function () use ( $c ): Service\RateLimit {
 						return $c->get( Service\RateLimit::class );
+					},
+					static function () use ( $c ): Port\Cart {
+						return $c->get( Port\Cart::class );
 					}
 				);
 			},
@@ -260,6 +333,16 @@ final class Container {
 			Hooks\ImportHooks::class               => array( Scope::Everywhere ),
 			// WooCommerce builds a product from its type's class wherever one is read.
 			Hooks\KitHooks::class                  => array( Scope::Everywhere ),
+			// A build is added from a page, the Store API or admin-ajax, and the cart is read on all three.
+			Cart\CartHooks::class                  => array( Scope::Everywhere ),
+			Cart\LineHooks::class                  => array( Scope::Everywhere ),
+			Cart\PriceHooks::class                 => array( Scope::Everywhere ),
+			Cart\ShowHooks::class                  => array( Scope::Everywhere ),
+			Cart\ShipHooks::class                  => array( Scope::Everywhere ),
+			Cart\ExpressHooks::class               => array( Scope::Everywhere ),
+			Cart\AgainHooks::class                 => array( Scope::Everywhere ),
+			// Both checkouts make the order, and its items are named on pages, in emails and in wp-admin.
+			Order\OrderHooks::class                => array( Scope::Everywhere ),
 			// WooCommerce's settings screen.
 			Admin\SettingsHooks::class             => array( Scope::Admin ),
 			Admin\PartSpecsHooks::class            => array( Scope::Admin ),

@@ -7,7 +7,8 @@ The spec's budgets are tests: a build fails when one is missed. The numbers from
 | What | Budget | Measured by | From |
 | --- | --- | --- | --- |
 | The state route's server time, p95, 500 candidate parts in a slot | Under 80 ms | `composer test:benchmark:integration` (`StateRouteBenchmarkTest`) | Milestone 4 |
-| Adding a 7-part build to the cart | Under 300 ms | The integration suite | Milestone 5 |
+| Adding a 7-part build to the cart, p95, by the Store API | Under 300 ms, and 54 queries | `composer test:benchmark:integration` (`CartBenchmarkTest`) | Milestone 5 |
+| A Store API cart read with a 7-part build in it | Recorded; 30 queries, and the add's 300 ms | `composer test:benchmark:integration` (`CartBenchmarkTest`) | Milestone 5 |
 | The fit engine with 500 candidates | The slowest slot under 40 ms, half the state route's budget; four times the candidates in under six times the time | `composer test:benchmark` (`FitEngineBenchmarkTest`) | Milestone 2 |
 | Rebuilding the specs index for 2,000 parts | Recorded; in jobs of 100, each under 10 s and 400 queries | `composer test:benchmark:integration` (`SpecsBenchmarkTest`) | Milestone 3 |
 | The specs export, the Catalogue check, a 5,000-row import read and shown, and each job of 100 import writes, at 2,000 parts | Each under 10 s, a third of PHP's usual limit for a request, and one query a product | `composer test:benchmark:integration` | Milestone 3 |
@@ -104,3 +105,34 @@ The figures move with the machine. On 11 November 2026 the same Mac, busier, mea
 An earlier design of this milestone, never released, kept each slot's list in a transient: 53 ms cold, but 435 ms on the first request after any one product moved. The table costs 5 ms cold and takes that request to 71 ms.
 
 Of the cold 58 ms, the fit engine takes about 20 ms for all seven slots, finding the slots' parts and reading their rows and the kit about 15 ms, and the 24 cards about 20 ms, since without a persistent object cache each card's product is loaded on every request.
+
+## v0.5.0
+
+Machine: Apple M1 Max, PHP 8.5.12 in wp-env on OrbStack, WordPress 7.1.4, WooCommerce 11.2.2, wp-env's own database server, Xdebug off, no persistent object cache. 11 November 2026.
+
+A kit of seven slots and a build with a part in each, trucks twice: a kit's line and seven parts' lines. 40 requests a run through the Store API, WordPress's cache emptied before each.
+
+| The cart | p95 | Median | Slowest | Queries at most |
+| --- | --- | --- | --- | --- |
+| Adding the build (`POST /wc/store/v1/cart/add-item`) | 26 ms | 25 ms | 44 ms | 54 |
+| Reading a cart with the build in it (`GET /wc/store/v1/cart`) | 21 ms | | | 30 |
+| Reading a cart of the same seven products with no build | 4 ms | | | 10 |
+
+The add is inside the 300 ms budget and held to it, with 450 ms as CI's ceiling and the query counts held everywhere (D-134).
+
+The difference between the last two rows is what the plugin does on every cart response while a build is in the cart: the kit's line's quantity limit and the check that the build is still one the shop would sell (D-129). It reads the build's parts from WooCommerce each time and keeps nothing.
+
+The first run measured 132 queries for the add and 84 for the read, at 37 ms and 31 ms: each part was read from the shop by itself. A build's parts are now read together (D-134).
+
+The state route, for a visitor whose session holds that build, on this small kit and with the cache emptied before each request:
+
+| The state route | p95 | Queries at most |
+| --- | --- | --- |
+| A request that starts with no customer, as every request to the route does | 8 ms | 38 |
+| The same with the shopper already known | 8 ms | 37 |
+
+The one query is WooCommerce reading the session. The route makes no cart, so the build in the session is not read (D-138), and the difference is held at one query.
+
+That query is paid only where a price the shop shows can depend on the shopper's address: prices shown with tax, or entered with tax and adjusted for where the shopper is. On any other shop the session is not read at all (D-139), and the measurement sets the shop to show prices with tax so that it is.
+
+Measured again on WooCommerce 11.3.0, the newest leg from D-139, on the same machine and day: adding the build p95 26 ms and 54 queries at most; a cart read with the build in it 21 ms and 30 queries, beside 3 ms and 10; the state route 44 queries with the session read and 43 without. Nothing moved. Where a shop's default customer address is Geolocate, a guest's first request also pays WooCommerce's GeoIP lookup, which this does not measure; milestone 6's plan does.

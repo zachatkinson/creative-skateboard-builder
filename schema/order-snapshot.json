@@ -1,0 +1,93 @@
+{
+	"$schema": "http://json-schema.org/draft-04/schema#",
+	"title": "cbuild_snapshot",
+	"description": "A build as it was sold, stored in the _cbuild_snapshot meta of the kit's order item and kept for as long as the order is.",
+	"type": "object",
+	"additionalProperties": false,
+	"required": [
+		"schema_version",
+		"kit",
+		"assembly",
+		"picks",
+		"lead_time",
+		"returns_notice"
+	],
+	"properties": {
+		"schema_version": {
+			"description": "The document's version. Version 1 is the only one so far.",
+			"type": "integer",
+			"enum": [
+				1
+			]
+		},
+		"kit": {
+			"description": "The kit product's ID.",
+			"type": "integer",
+			"minimum": 1
+		},
+		"assembly": {
+			"description": "Whether the shop assembles the build.",
+			"type": "boolean"
+		},
+		"picks": {
+			"description": "Each slot's part, by the slot's key, in step order.",
+			"type": "object",
+			"minProperties": 1,
+			"maxProperties": 20,
+			"additionalProperties": false,
+			"patternProperties": {
+				"^[a-z][a-z0-9_]{0,31}(?!\\n)$": {
+					"type": "object",
+					"additionalProperties": false,
+					"required": [
+						"label",
+						"name",
+						"sku",
+						"part",
+						"quantity",
+						"specs"
+					],
+					"properties": {
+						"label": {
+							"description": "The slot's label, as the shopper read it.",
+							"type": "string"
+						},
+						"name": {
+							"description": "The part's name when it was sold.",
+							"type": "string"
+						},
+						"sku": {
+							"description": "The part's SKU when it was sold. Empty where it had none.",
+							"type": "string"
+						},
+						"part": {
+							"description": "The part's product or variation ID.",
+							"type": "integer",
+							"minimum": 1
+						},
+						"quantity": {
+							"description": "How many of the part one build takes.",
+							"type": "integer",
+							"minimum": 1
+						},
+						"specs": {
+							"description": "The part's specs when it was sold, spec key to value as the index held them. Empty for a part the shop could no longer read.",
+							"type": "object",
+							"additionalProperties": {
+								"type": "string"
+							}
+						}
+					}
+				}
+			}
+		},
+		"lead_time": {
+			"description": "The kit's lead time, as the shopper read it. Empty for a build the shop does not assemble.",
+			"type": "string"
+		},
+		"returns_notice": {
+			"description": "The kit's returns notice, as the shopper read it. Empty for a build the shop does not assemble.",
+			"type": "string"
+		}
+	}
+}

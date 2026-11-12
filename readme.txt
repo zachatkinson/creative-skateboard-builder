@@ -4,7 +4,7 @@ Tags: woocommerce, skateboard, product builder, configurator, bundle
 Requires at least: 7.0
 Tested up to: 7.1
 Requires PHP: 8.5
-Stable tag: 0.4.0
+Stable tag: 0.5.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -14,7 +14,7 @@ Sells complete skateboards built from parts the shop stocks, with fit checked fr
 
 Creative Skateboard Builder lets a shopper put a complete skateboard together from the decks, trucks, wheels, bearings, hardware and grip a WooCommerce shop already sells. It checks that the parts fit from each part's specs, draws a picture of the build, keeps the total in view, and gives each part its own line in the cart and on the order, so stock, tax and refunds work as they do for any other product.
 
-This is version 0.4.0. It holds the foundation (the plugin's three tables, its upgrade steps and its update check), the rules that decide which parts fit together and what a build costs, the work that reads each part's specs from the shop's products, and the Builder kit product a shop owner sets a build up on. The builder a shopper uses arrives in later versions, and nothing a shopper sees changes yet.
+This is version 0.5.0. It holds the foundation (the plugin's three tables, its upgrade steps and its update check), the rules that decide which parts fit together and what a build costs, the work that reads each part's specs from the shop's products, and the Builder kit product a shop owner sets a build up on. The builder a shopper uses arrives in later versions, and nothing a shopper sees changes yet.
 
 The plugin needs WooCommerce 11.2 or newer, WordPress 7.0 or newer and PHP 8.5 or newer. Below any of them it does nothing and says so on the Plugins screen.
 
@@ -38,6 +38,29 @@ Everything the plugin made: its three tables, its options and transients, and it
 Yes. Activating it for the network installs it on every site, and a site added later installs itself the first time an administrator opens its dashboard.
 
 == Changelog ==
+
+= 0.5.0 =
+* A build can be added to the cart: the kit with a line for each part, each at your shop's own price, with the assembly fee on the kit's line.
+* A kit added to a cart with no build is refused, whichever way it arrives.
+* A build in the cart stays together: its quantity sets its parts', removing any line removes the build, and Undo brings all of it back.
+* Before an order is placed, each build is checked again against your stock and your parts' specs.
+* The build discount setting now comes off each part of a build in the cart, with the part's own price struck through.
+* A coupon for a kit reaches its parts. A fixed product coupon lands on the kit's line, or on each part too if you choose that in the settings.
+* A coupon that leaves a product, a category or sale items out still leaves that part out when it is in a build.
+* Order again on an order with a build puts the build back whole, checked against your stock and specs as they are now, or leaves it out and says so.
+* The cart's count shows a build as one item.
+* A build is shown as one group in the Cart and Checkout blocks, the Mini-Cart and a classic cart or checkout: each part sits under its kit, says which slot it fills, and cannot be changed or removed alone.
+* A build you assemble ships as one package, even where another plugin splits a cart into several.
+* Apple Pay and Google Pay buttons from WooCommerce Stripe Gateway and WooPayments are kept off a kit's page, where they could not add a build.
+* An order keeps each build together: the kit's line shows whether it is assembled and lists its parts, each part's line says which slot it fills, and the parts' specs are kept with the order as they were when it was placed.
+* The cart charges each part at the price your shop holds at that moment.
+* The builder's prices include tax for the shopper's own address, where your shop shows prices with tax.
+* The classic mini-cart widget indents a build's parts under its kit.
+* An order no longer queues background work for each product it sells.
+* A coupon added or removed on an order's screen treats a build as the cart did.
+* An order keeps each part's SKU as it was when the build was sold.
+* A kit cannot be added to an order by hand from the order's screen. Add its parts instead.
+* On a shop that shows prices without tax, every shopper is priced from one stored set of parts, whatever their address.
 
 = 0.4.0 =
 * A new product type, Builder kit: the product a shopper will build from parts. It cannot be bought as an ordinary product, and it holds no price of its own.

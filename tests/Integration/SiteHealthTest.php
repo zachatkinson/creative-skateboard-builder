@@ -49,7 +49,9 @@ final class SiteHealthTest extends IntegrationTestCase {
 		self::assertSame( 'core', $ids[0] );
 		// WooCommerce adds its own between.
 		self::assertSame( array( 'cbuild_index', 'cbuild_jobs' ), array_slice( $ids, -2 ) );
-		self::assertSame( array( 'cbuild_catalogue' ), array_keys( $tests['async'] ) );
+		// WooCommerce 11.3.0 adds an async test of its own before it (D-139).
+		self::assertSame( array( 'cbuild_catalogue' ), array_slice( array_keys( $tests['async'] ), -1 ) );
+		self::assertSame( array(), array_values( array_filter( array_keys( $tests['async'] ), static fn ( string $id ): bool => str_starts_with( $id, 'cbuild_' ) && 'cbuild_catalogue' !== $id ) ) );
 		self::assertSame( 'The skateboard builder\'s specs index', $tests['direct']['cbuild_index']['label'] );
 		self::assertIsCallable( $tests['direct']['cbuild_index']['test'] );
 		self::assertIsCallable( $tests['direct']['cbuild_jobs']['test'] );
@@ -227,7 +229,13 @@ final class SiteHealthTest extends IntegrationTestCase {
 		$section = $info['creative-skateboard-builder'];
 		self::assertSame( 'Creative Skateboard Builder', $section['label'] );
 		self::assertArrayNotHasKey( 'private', $section );
-		self::assertSame( array( 'version', 'schema', 'order', 'mapping', 'index', 'failedJobs' ), array_keys( $section['fields'] ) );
+		self::assertSame( array( 'version', 'schema', 'order', 'mapping', 'discount', 'coupons', 'rate', 'proxy', 'assembly', 'index', 'failedJobs' ), array_keys( $section['fields'] ) );
+		// Issue #29: the five settings of 0.4.0, at their defaults.
+		self::assertSame( '0', $section['fields']['discount']['value'] );
+		self::assertSame( array( 'The kit alone', 'kit' ), array( $section['fields']['coupons']['value'], $section['fields']['coupons']['debug'] ) );
+		self::assertSame( 120, $section['fields']['rate']['value'] );
+		self::assertSame( array( 'None', '' ), array( $section['fields']['proxy']['value'], $section['fields']['proxy']['debug'] ) );
+		self::assertSame( array( 'No', false ), array( $section['fields']['assembly']['value'], $section['fields']['assembly']['debug'] ) );
 		self::assertSame( CBUILD_VERSION, $section['fields']['version']['value'] );
 		self::assertSame( get_option( Options::DB_VERSION ), $section['fields']['schema']['value'] );
 		self::assertSame( 'table, field, attribute', $section['fields']['order']['debug'] );

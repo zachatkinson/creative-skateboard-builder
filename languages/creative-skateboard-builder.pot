@@ -2,14 +2,14 @@
 # This file is distributed under the GPL-2.0-or-later.
 msgid ""
 msgstr ""
-"Project-Id-Version: Creative Skateboard Builder 0.4.0\n"
+"Project-Id-Version: Creative Skateboard Builder 0.5.0\n"
 "Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/creative-skateboard-builder\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-11-11T16:07:20+00:00\n"
+"POT-Creation-Date: 2026-11-12T03:43:48+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: creative-skateboard-builder\n"
@@ -17,7 +17,7 @@ msgstr ""
 #. Plugin Name of the plugin
 #: creative-skateboard-builder.php
 #: src/Abilities/CatalogueCheckAbility.php:65
-#: src/Health/SiteHealth.php:227
+#: src/Health/SiteHealth.php:231
 msgid "Creative Skateboard Builder"
 msgstr ""
 
@@ -45,28 +45,28 @@ msgstr ""
 msgid "Creative Skateboard Builder: run \"composer install\" before activating the plugin."
 msgstr ""
 
-#: src/Abilities/BuildAbility.php:106
-#: src/Rest/StateRoute.php:126
+#: src/Abilities/BuildAbility.php:108
+#: src/Rest/StateRoute.php:128
 msgid "The kit product's ID."
 msgstr ""
 
-#: src/Abilities/BuildAbility.php:110
-#: src/Rest/StateRoute.php:131
+#: src/Abilities/BuildAbility.php:112
+#: src/Rest/StateRoute.php:133
 msgid "The picks: each of the kit's slot keys to a part's ID."
 msgstr ""
 
-#: src/Abilities/BuildAbility.php:119
-#: src/Rest/StateRoute.php:139
+#: src/Abilities/BuildAbility.php:121
+#: src/Rest/StateRoute.php:141
 msgid "Whether the shop assembles the build. Left out, the kit's own default."
 msgstr ""
 
-#: src/Abilities/BuildAbility.php:138
-#: src/Rest/StateRoute.php:201
+#: src/Abilities/BuildAbility.php:140
+#: src/Rest/StateRoute.php:203
 msgid "There is no such kit."
 msgstr ""
 
-#: src/Abilities/BuildAbility.php:145
-#: src/Rest/StateRoute.php:223
+#: src/Abilities/BuildAbility.php:149
+#: src/Rest/StateRoute.php:227
 msgid "This build cannot be priced in the shop's currency settings."
 msgstr ""
 
@@ -172,6 +172,7 @@ msgid "Builder"
 msgstr ""
 
 #: src/Admin/BuildTab.php:162
+#: src/Order/OrderHooks.php:250
 msgid "Build"
 msgstr ""
 
@@ -216,6 +217,7 @@ msgstr ""
 
 #: src/Admin/BuildTab.php:344
 #: src/Admin/BuildTab.php:910
+#: src/Order/OrderHooks.php:249
 msgid "Assembly"
 msgstr ""
 
@@ -298,6 +300,7 @@ msgstr ""
 #: src/Admin/BuildTab.php:476
 #: src/Admin/BuildTab.php:655
 #: src/Admin/PartSpecsPanel.php:417
+#: src/Health/SiteHealth.php:266
 msgid "None"
 msgstr ""
 
@@ -834,7 +837,7 @@ msgstr ""
 
 #. translators: %s: a number of inches.
 #: src/Admin/Labels.php:164
-#: src/Front/Words.php:73
+#: src/Front/Words.php:74
 #, php-format
 msgctxt "inches"
 msgid "%s in"
@@ -842,7 +845,7 @@ msgstr ""
 
 #. translators: %s: a number of millimetres.
 #: src/Admin/Labels.php:167
-#: src/Front/Words.php:76
+#: src/Front/Words.php:77
 #, php-format
 msgctxt "millimetres"
 msgid "%s mm"
@@ -850,11 +853,15 @@ msgstr ""
 
 #: src/Admin/Labels.php:170
 #: src/Admin/PartSpecsPanel.php:331
+#: src/Health/SiteHealth.php:271
+#: src/Order/OrderHooks.php:249
 msgid "Yes"
 msgstr ""
 
 #: src/Admin/Labels.php:170
 #: src/Admin/PartSpecsPanel.php:332
+#: src/Health/SiteHealth.php:271
+#: src/Order/OrderHooks.php:249
 msgid "No"
 msgstr ""
 
@@ -1288,6 +1295,7 @@ msgid "What the assembly settings of a new kit start from. A kit that is already
 msgstr ""
 
 #: src/Admin/SettingsPage.php:201
+#: src/Health/SiteHealth.php:251
 msgid "Build discount (%)"
 msgstr ""
 
@@ -1296,6 +1304,7 @@ msgid "A percentage taken off each part of a build. 0 for none. Below 100, with 
 msgstr ""
 
 #: src/Admin/SettingsPage.php:209
+#: src/Health/SiteHealth.php:255
 msgid "A fixed product discount coupon applies to"
 msgstr ""
 
@@ -1304,14 +1313,17 @@ msgid "A coupon that takes a fixed amount off a product, where the kit is one of
 msgstr ""
 
 #: src/Admin/SettingsPage.php:214
+#: src/Health/SiteHealth.php:256
 msgid "The kit alone"
 msgstr ""
 
 #: src/Admin/SettingsPage.php:215
+#: src/Health/SiteHealth.php:256
 msgid "The kit and every part"
 msgstr ""
 
 #: src/Admin/SettingsPage.php:220
+#: src/Health/SiteHealth.php:260
 msgid "Requests a minute from one address"
 msgstr ""
 
@@ -1320,6 +1332,7 @@ msgid "A whole number from 10 to 6000. An address that asks more often is told t
 msgstr ""
 
 #: src/Admin/SettingsPage.php:229
+#: src/Health/SiteHealth.php:265
 msgid "Trusted proxy header"
 msgstr ""
 
@@ -1483,6 +1496,65 @@ msgstr ""
 msgid "%1$s: \"%2$s\" is not a value it takes."
 msgstr ""
 
+#: src/Cart/AgainHooks.php:168
+msgid "A build from that order cannot be bought as it was, so none of it was added. Build it again to order it."
+msgstr ""
+
+#. translators: %s: a kit's name, such as Build a complete.
+#: src/Cart/Refusals.php:76
+#, php-format
+msgid "%s is no longer sold. Remove it from your cart to check out."
+msgstr ""
+
+#. translators: %s: a kit's name, such as Build a complete.
+#: src/Cart/Refusals.php:78
+#, php-format
+msgid "%s cannot be bought as it is now. Remove it from your cart to check out."
+msgstr ""
+
+#. translators: %s: a kit's name, such as Build a complete.
+#: src/Cart/Refusals.php:82
+#, php-format
+msgid "%s cannot be bought as it is now. Remove it from your cart to check out, then build it again."
+msgstr ""
+
+#. translators: 1: a kit's name, such as Build a complete; 2: a slot's label, such as Deck.
+#: src/Cart/ShowHooks.php:196
+#, php-format
+msgid "%1$s (%2$s)"
+msgstr ""
+
+#: src/Cart/ShowHooks.php:198
+msgid "Part of"
+msgstr ""
+
+#: src/Cart/ShowHooks.php:341
+msgid "The line's part in a build: kit, part, or empty for a line of no build."
+msgstr ""
+
+#: src/Cart/ShowHooks.php:342
+msgid "The build's identifier."
+msgstr ""
+
+#: src/Cart/ShowHooks.php:343
+msgid "For a part, its kit's cart item key."
+msgstr ""
+
+#: src/Cart/ShowHooks.php:344
+msgid "For a part, the key of the slot it fills."
+msgstr ""
+
+#: src/Cart/ShowHooks.php:345
+msgid "For a part, its name with its slot's label."
+msgstr ""
+
+#. translators: 1: a slot's label, such as Deck; 2: the product's name, which may be a link.
+#: src/Cart/ShowHooks.php:365
+#: src/Order/OrderHooks.php:199
+#, php-format
+msgid "%1$s: %2$s"
+msgstr ""
+
 #: src/Cli/CheckCommand.php:87
 #: templates/admin/check.php:42
 msgid "The check found nothing to fix."
@@ -1562,129 +1634,129 @@ msgid "The file has no %s column. Add one, or match parts by the other with --ke
 msgstr ""
 
 #. translators: %s: a spec's name, such as Deck width.
-#: src/Front/Words.php:100
+#: src/Front/Words.php:101
 #, php-format
 msgid "%s is not filled in for this part, so its fit cannot be checked."
 msgstr ""
 
 #. translators: 1: the narrowest deck the trucks take. 2: the widest. 3: the deck's width.
-#: src/Front/Words.php:105
+#: src/Front/Words.php:106
 #, php-format
 msgid "The trucks are made for decks from %1$s to %2$s wide. The deck is %3$s."
 msgstr ""
 
 #. translators: 1: the narrowest deck the trucks take. 2: the deck's width.
-#: src/Front/Words.php:109
+#: src/Front/Words.php:110
 #, php-format
 msgid "The trucks are made for decks %1$s wide and over. The deck is %2$s."
 msgstr ""
 
 #. translators: 1: the widest deck the trucks take. 2: the deck's width.
-#: src/Front/Words.php:112
+#: src/Front/Words.php:113
 #, php-format
 msgid "The trucks are made for decks up to %1$s wide. The deck is %2$s."
 msgstr ""
 
 #. translators: 1: the axle's width. 2: how much narrower it is. 3: the deck's width.
-#: src/Front/Words.php:115
+#: src/Front/Words.php:116
 #, php-format
 msgid "The trucks' axle is %1$s, which is %2$s narrower than the %3$s deck."
 msgstr ""
 
 #. translators: 1: the axle's width. 2: how much wider it is. 3: the deck's width.
-#: src/Front/Words.php:118
+#: src/Front/Words.php:119
 #, php-format
 msgid "The trucks' axle is %1$s, which is %2$s wider than the %3$s deck."
 msgstr ""
 
 #. translators: 1: the deck's hole pattern, such as New school. 2: the baseplate's.
-#: src/Front/Words.php:121
+#: src/Front/Words.php:122
 #, php-format
 msgid "The deck's hole pattern is %1$s and the trucks' baseplate is %2$s."
 msgstr ""
 
 #. translators: %s: a hole pattern, such as New school.
-#: src/Front/Words.php:124
+#: src/Front/Words.php:125
 #, php-format
 msgid "The deck gives no hole pattern, so the usual one is taken: %s."
 msgstr ""
 
 #. translators: 1: the wheels' diameter. 2: how far over the trucks' limit they are. 3: the limit. 4: a riser's thickness.
-#: src/Front/Words.php:127
+#: src/Front/Words.php:128
 #, php-format
 msgid "Wheels of %1$s are %2$s over what the trucks clear, which is %3$s. A riser of %4$s or thicker makes the room."
 msgstr ""
 
 #. translators: 1: the wheels' diameter. 2: how far over the trucks' limit they are. 3: the limit.
-#: src/Front/Words.php:130
+#: src/Front/Words.php:131
 #, php-format
 msgid "Wheels of %1$s are %2$s over what the trucks clear, which is %3$s. That is more than a riser makes up for."
 msgstr ""
 
 #. translators: 1: the trucks' height, such as Low. 2: a wheel diameter.
-#: src/Front/Words.php:133
+#: src/Front/Words.php:134
 #, php-format
 msgid "The trucks give no largest wheel, so the usual one for their height (%1$s) is taken: %2$s."
 msgstr ""
 
 #. translators: 1: the bolts' length. 2: a riser's thickness. 3: the shortest bolts that reach.
-#: src/Front/Words.php:137
+#: src/Front/Words.php:138
 #, php-format
 msgid "Bolts of %1$s are too short with a %2$s riser. Use %3$s or longer."
 msgstr ""
 
 #. translators: 1: the bolts' length. 2: the shortest bolts that reach.
-#: src/Front/Words.php:140
+#: src/Front/Words.php:141
 #, php-format
 msgid "Bolts of %1$s are too short. Use %2$s or longer."
 msgstr ""
 
 #. translators: 1: the bolts' length. 2: a riser's thickness. 3: the usual length.
-#: src/Front/Words.php:144
+#: src/Front/Words.php:145
 #, php-format
 msgid "Bolts of %1$s are longer than a %2$s riser needs. The usual length is %3$s."
 msgstr ""
 
 #. translators: 1: the bolts' length. 2: the usual length.
-#: src/Front/Words.php:147
+#: src/Front/Words.php:148
 #, php-format
 msgid "Bolts of %1$s are longer than a board with no riser needs. The usual length is %2$s."
 msgstr ""
 
 #. translators: 1: the bearings' bore. 2: the axle's diameter.
-#: src/Front/Words.php:150
+#: src/Front/Words.php:151
 #, php-format
 msgid "The bearings' bore is %1$s and the trucks' axle is %2$s."
 msgstr ""
 
 #. translators: %s: an axle's diameter.
-#: src/Front/Words.php:153
+#: src/Front/Words.php:154
 #, php-format
 msgid "The trucks give no axle size, so the usual one is taken: %s."
 msgstr ""
 
-#: src/Front/Words.php:155
+#: src/Front/Words.php:156
 msgid "The bearings have spacers built in, so they take no others."
 msgstr ""
 
 #. translators: 1: the grip's width. 2: the deck's width.
-#: src/Front/Words.php:158
+#: src/Front/Words.php:159
 #, php-format
 msgid "The grip is %1$s wide and the deck is %2$s."
 msgstr ""
 
 #. translators: 1: the grip's length. 2: the deck's length.
-#: src/Front/Words.php:161
+#: src/Front/Words.php:162
 #, php-format
 msgid "The grip is %1$s long and the deck is %2$s."
 msgstr ""
 
-#: src/Front/Words.php:163
+#: src/Front/Words.php:164
 msgid "The deck gives no length, so the grip's length is not checked."
 msgstr ""
 
 #. translators: %s: a number of parts.
-#: src/Front/Words.php:181
+#: src/Front/Words.php:182
 #, php-format
 msgid "%s part hidden: a spec its fit is checked by is not filled in."
 msgid_plural "%s parts hidden: a spec their fit is checked by is not filled in."
@@ -1692,7 +1764,7 @@ msgstr[0] ""
 msgstr[1] ""
 
 #. translators: %s: a number of parts.
-#: src/Front/Words.php:185
+#: src/Front/Words.php:186
 #, php-format
 msgid "%s part hidden: the trucks are made for another width of deck."
 msgid_plural "%s parts hidden: the trucks are made for another width of deck."
@@ -1700,7 +1772,7 @@ msgstr[0] ""
 msgstr[1] ""
 
 #. translators: %s: a number of parts.
-#: src/Front/Words.php:188
+#: src/Front/Words.php:189
 #, php-format
 msgid "%s part hidden: the trucks would be too narrow for the deck."
 msgid_plural "%s parts hidden: the trucks would be too narrow for the deck."
@@ -1708,7 +1780,7 @@ msgstr[0] ""
 msgstr[1] ""
 
 #. translators: %s: a number of parts.
-#: src/Front/Words.php:191
+#: src/Front/Words.php:192
 #, php-format
 msgid "%s part hidden: the trucks would be too wide for the deck."
 msgid_plural "%s parts hidden: the trucks would be too wide for the deck."
@@ -1716,7 +1788,7 @@ msgstr[0] ""
 msgstr[1] ""
 
 #. translators: %s: a number of parts.
-#: src/Front/Words.php:194
+#: src/Front/Words.php:195
 #, php-format
 msgid "%s part hidden: the mounting holes would not line up."
 msgid_plural "%s parts hidden: the mounting holes would not line up."
@@ -1724,7 +1796,7 @@ msgstr[0] ""
 msgstr[1] ""
 
 #. translators: %s: a number of parts.
-#: src/Front/Words.php:197
+#: src/Front/Words.php:198
 #, php-format
 msgid "%s part hidden: the bolts would be too short."
 msgid_plural "%s parts hidden: the bolts would be too short."
@@ -1732,7 +1804,7 @@ msgstr[0] ""
 msgstr[1] ""
 
 #. translators: %s: a number of parts.
-#: src/Front/Words.php:200
+#: src/Front/Words.php:201
 #, php-format
 msgid "%s part hidden: the bearings would not fit the axle."
 msgid_plural "%s parts hidden: the bearings would not fit the axle."
@@ -1740,7 +1812,7 @@ msgstr[0] ""
 msgstr[1] ""
 
 #. translators: %s: a number of parts.
-#: src/Front/Words.php:203
+#: src/Front/Words.php:204
 #, php-format
 msgid "%s part hidden: the bearings have spacers built in."
 msgid_plural "%s parts hidden: the bearings have spacers built in."
@@ -1748,7 +1820,7 @@ msgstr[0] ""
 msgstr[1] ""
 
 #. translators: %s: a number of parts.
-#: src/Front/Words.php:206
+#: src/Front/Words.php:207
 #, php-format
 msgid "%s part hidden: the grip would be narrower than the deck."
 msgid_plural "%s parts hidden: the grip would be narrower than the deck."
@@ -1756,7 +1828,7 @@ msgstr[0] ""
 msgstr[1] ""
 
 #. translators: %s: a number of parts.
-#: src/Front/Words.php:209
+#: src/Front/Words.php:210
 #, php-format
 msgid "%s part hidden: the grip would be shorter than the deck."
 msgid_plural "%s parts hidden: the grip would be shorter than the deck."
@@ -1764,157 +1836,185 @@ msgstr[0] ""
 msgstr[1] ""
 
 #. translators: %s: a number of parts.
-#: src/Front/Words.php:212
+#: src/Front/Words.php:213
 #, php-format
 msgid "%s part hidden: it does not fit the rest of the build."
 msgid_plural "%s parts hidden: they do not fit the rest of the build."
 msgstr[0] ""
 msgstr[1] ""
 
+#: src/Front/Words.php:227
+msgid "Choose the parts for this build first, then add it to the cart."
+msgstr ""
+
+#: src/Front/Words.php:229
+msgid "This build is no longer sold. Nothing was added to the cart."
+msgstr ""
+
+#: src/Front/Words.php:231
+msgid "This build cannot be sold as it is. Nothing was added to the cart."
+msgstr ""
+
+#: src/Front/Words.php:233
+msgid "This build cannot be priced at the moment. Nothing was added to the cart."
+msgstr ""
+
+#: src/Front/Words.php:235
+msgid "One of the parts could not be added, so nothing of the build was. Check the parts and add the build again."
+msgstr ""
+
+#: src/Front/Words.php:237
+msgid "A part of a build comes in the quantity the build needs. Change the quantity of the build instead."
+msgstr ""
+
+#: src/Front/Words.php:239
+msgid "A build in your cart had lost one of its parts and was removed. Add the build again."
+msgstr ""
+
 #. translators: %s: a slot's key, as the request sent it.
-#: src/Front/Words.php:228
+#: src/Front/Words.php:255
 #, php-format
 msgid "This kit has no slot called \"%s\"."
 msgstr ""
 
 #. translators: %s: a slot's label, such as Trucks.
-#: src/Front/Words.php:231
+#: src/Front/Words.php:258
 #, php-format
 msgid "%s: nothing is chosen yet."
 msgstr ""
 
 #. translators: %s: a slot's label, such as Trucks.
-#: src/Front/Words.php:234
+#: src/Front/Words.php:261
 #, php-format
 msgid "%s: the part chosen is not one this kit offers here."
 msgstr ""
 
 #. translators: %s: a slot's label, such as Trucks.
-#: src/Front/Words.php:237
+#: src/Front/Words.php:264
 #, php-format
 msgid "%s: the part chosen is sold out."
 msgstr ""
 
 #. translators: %s: a slot's label, such as Trucks.
-#: src/Front/Words.php:240
+#: src/Front/Words.php:267
 #, php-format
 msgid "%s: the shop has fewer of the part chosen than a build takes."
 msgstr ""
 
 #. translators: %s: a slot's label, such as Trucks.
-#: src/Front/Words.php:243
+#: src/Front/Words.php:270
 #, php-format
 msgid "%s: the part chosen does not fit the rest of the build."
 msgstr ""
 
-#: src/Health/SiteHealth.php:106
+#: src/Health/SiteHealth.php:108
 msgid "The skateboard builder's specs index"
 msgstr ""
 
-#: src/Health/SiteHealth.php:110
+#: src/Health/SiteHealth.php:112
 msgid "The skateboard builder's background jobs"
 msgstr ""
 
-#: src/Health/SiteHealth.php:116
+#: src/Health/SiteHealth.php:118
 msgid "The skateboard builder's Catalogue check"
 msgstr ""
 
-#: src/Health/SiteHealth.php:135
-#: src/Health/SiteHealth.php:183
-#: src/Health/SiteHealth.php:204
+#: src/Health/SiteHealth.php:137
+#: src/Health/SiteHealth.php:185
+#: src/Health/SiteHealth.php:206
 msgid "Open the Catalogue check"
 msgstr ""
 
-#: src/Health/SiteHealth.php:138
+#: src/Health/SiteHealth.php:140
 msgid "The skateboard builder's specs index was not rebuilt"
 msgstr ""
 
-#: src/Health/SiteHealth.php:139
+#: src/Health/SiteHealth.php:141
 msgid "Reading every part again stopped after five failures, so some parts are still indexed with what they held before. Start it again with \"Read every part again\" on the Catalogue check. WooCommerce > Status > Logs has the reason, under creative-skateboard-builder."
 msgstr ""
 
-#: src/Health/SiteHealth.php:142
+#: src/Health/SiteHealth.php:144
 msgid "The skateboard builder's specs index stopped part way"
 msgstr ""
 
 #. translators: %s: a number of parts.
-#: src/Health/SiteHealth.php:144
+#: src/Health/SiteHealth.php:146
 #, php-format
 msgid "Reading every part again got as far as %s parts and has no job waiting to go on. Start it again with \"Read every part again\" on the Catalogue check."
 msgstr ""
 
-#: src/Health/SiteHealth.php:147
+#: src/Health/SiteHealth.php:149
 msgid "The skateboard builder's specs index is being rebuilt"
 msgstr ""
 
 #. translators: %s: a number of parts.
-#: src/Health/SiteHealth.php:149
+#: src/Health/SiteHealth.php:151
 #, php-format
 msgid "Every part is being read again in the background, 100 at a time: %s so far. Parts keep what they held until they are reached."
 msgstr ""
 
-#: src/Health/SiteHealth.php:153
+#: src/Health/SiteHealth.php:155
 msgid "The skateboard builder's specs index is up to date"
 msgstr ""
 
-#: src/Health/SiteHealth.php:154
+#: src/Health/SiteHealth.php:156
 msgid "The index holds each part's specs, and a part is read again in the background whenever it is saved."
 msgstr ""
 
-#: src/Health/SiteHealth.php:169
+#: src/Health/SiteHealth.php:171
 msgid "Open Import and export"
 msgstr ""
 
-#: src/Health/SiteHealth.php:171
+#: src/Health/SiteHealth.php:173
 msgid "The skateboard builder's last specs import stopped before its end"
 msgstr ""
 
-#: src/Health/SiteHealth.php:171
+#: src/Health/SiteHealth.php:173
 msgid "A batch of the import failed four times, so the parts after it were not written. Import the file again: a part already written takes the same values. WooCommerce > Status > Logs has the reason, under creative-skateboard-builder."
 msgstr ""
 
-#: src/Health/SiteHealth.php:174
+#: src/Health/SiteHealth.php:176
 msgid "The skateboard builder's specs import has no job left to run it"
 msgstr ""
 
-#: src/Health/SiteHealth.php:174
+#: src/Health/SiteHealth.php:176
 msgid "An import is part way through and nothing is queued to go on, as happens when the plugin is switched off while one runs. Opening Import and export starts it again from where it stopped."
 msgstr ""
 
-#: src/Health/SiteHealth.php:177
+#: src/Health/SiteHealth.php:179
 msgid "No background job of the skateboard builder has failed"
 msgstr ""
 
-#: src/Health/SiteHealth.php:177
+#: src/Health/SiteHealth.php:179
 msgid "The builder indexes parts and writes imports in the background. A job that fails is tried again, and shows here if it still fails."
 msgstr ""
 
 #. translators: %s: a number of jobs.
-#: src/Health/SiteHealth.php:180
+#: src/Health/SiteHealth.php:182
 #, php-format
 msgid "%s background job of the skateboard builder has failed"
 msgid_plural "%s background jobs of the skateboard builder have failed"
 msgstr[0] ""
 msgstr[1] ""
 
-#: src/Health/SiteHealth.php:181
+#: src/Health/SiteHealth.php:183
 msgid "A part whose job failed may be indexed with what it held before. The Catalogue check lists what needs fixing, and WooCommerce > Status > Logs has each failure's reason, under creative-skateboard-builder."
 msgstr ""
 
-#: src/Health/SiteHealth.php:182
+#: src/Health/SiteHealth.php:184
 msgid "See the failed jobs"
 msgstr ""
 
-#: src/Health/SiteHealth.php:198
+#: src/Health/SiteHealth.php:200
 msgid "The skateboard builder's Catalogue check found nothing to fix"
 msgstr ""
 
-#: src/Health/SiteHealth.php:198
+#: src/Health/SiteHealth.php:200
 msgid "The check reads every part and lists sources that disagree and values that cannot be read. It found none."
 msgstr ""
 
 #. translators: %s: a number of findings.
-#: src/Health/SiteHealth.php:201
+#: src/Health/SiteHealth.php:203
 #, php-format
 msgid "The skateboard builder's Catalogue check found %s thing to fix"
 msgid_plural "The skateboard builder's Catalogue check found %s things to fix"
@@ -1922,40 +2022,44 @@ msgstr[0] ""
 msgstr[1] ""
 
 #. translators: %s: a number of parts.
-#: src/Health/SiteHealth.php:203
+#: src/Health/SiteHealth.php:205
 #, php-format
 msgid "What it found is in %s part. Until it is fixed, a part may be left out of the builder or offered by the wrong figure. The check lists each finding with a link to where it is fixed."
 msgid_plural "What it found is in %s parts. Until it is fixed, a part may be left out of the builder or offered by the wrong figure. The check lists each finding with a link to where it is fixed."
 msgstr[0] ""
 msgstr[1] ""
 
-#: src/Health/SiteHealth.php:230
+#: src/Health/SiteHealth.php:234
 msgid "Version"
 msgstr ""
 
-#: src/Health/SiteHealth.php:234
+#: src/Health/SiteHealth.php:238
 msgid "Database version"
 msgstr ""
 
-#: src/Health/SiteHealth.php:238
+#: src/Health/SiteHealth.php:242
 #: templates/admin/settings-order.php:20
 #: templates/admin/settings-order.php:23
 msgid "Which source wins"
 msgstr ""
 
-#: src/Health/SiteHealth.php:243
+#: src/Health/SiteHealth.php:247
 msgid "Attributes mapped to specs"
 msgstr ""
 
-#: src/Health/SiteHealth.php:247
-msgid "Specs index"
-msgstr ""
-
-#: src/Health/SiteHealth.php:252
-msgid "Failed background jobs"
+#: src/Health/SiteHealth.php:270
+msgid "A new kit starts with assembly chosen"
 msgstr ""
 
 #: src/Health/SiteHealth.php:275
+msgid "Specs index"
+msgstr ""
+
+#: src/Health/SiteHealth.php:280
+msgid "Failed background jobs"
+msgstr ""
+
+#: src/Health/SiteHealth.php:303
 msgid "Skateboard builder"
 msgstr ""
 
@@ -1967,19 +2071,31 @@ msgstr ""
 msgid "Spec table"
 msgstr ""
 
-#: src/Rest/StateRoute.php:132
-msgid "The picks as they were before the last change, for the change list."
+#. translators: %s: the kit's name.
+#: src/Order/OrderHooks.php:88
+#, php-format
+msgid "%s is put together in the builder, so it cannot be added to an order here. Add its parts instead."
+msgstr ""
+
+#. translators: 1: a slot's label, such as Trucks; 2: the part's name; 3: how many of it a build takes.
+#: src/Order/OrderHooks.php:244
+#, php-format
+msgid "%1$s: %2$s × %3$s"
 msgstr ""
 
 #: src/Rest/StateRoute.php:134
+msgid "The picks as they were before the last change, for the change list."
+msgstr ""
+
+#: src/Rest/StateRoute.php:136
 msgid "The key of the slot whose options are listed."
 msgstr ""
 
-#: src/Rest/StateRoute.php:143
+#: src/Rest/StateRoute.php:145
 msgid "The language to answer in, when the site has it installed."
 msgstr ""
 
-#: src/Rest/StateRoute.php:173
+#: src/Rest/StateRoute.php:175
 msgid "Too many requests. Try again in a minute."
 msgstr ""
 

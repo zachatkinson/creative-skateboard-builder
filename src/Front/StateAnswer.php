@@ -228,11 +228,13 @@ final class StateAnswer {
 	 * A slot's label, as another plugin would have it said (spec: French and other languages). An answer that is no
 	 * text leaves the owner's words as they are, here and in the two methods below.
 	 *
+	 * @since 0.5.0 Public, for the cart's sentences.
+	 *
 	 * @param string $label The owner's label.
 	 * @param string $slot  The slot's key.
 	 * @param int    $kit   The kit product's ID.
 	 */
-	private static function label( string $label, string $slot, int $kit ): string {
+	public static function label( string $label, string $slot, int $kit ): string {
 		/**
 		 * Filter a slot's label as a shopper reads it. The label is the shop owner's own words, so no translation file
 		 * holds it: a translation plugin answers here.
@@ -276,7 +278,7 @@ final class StateAnswer {
 	 * @param int    $kit   The kit product's ID.
 	 * @param string $of    The slot's key or the preset's position, for a text that belongs to one.
 	 */
-	private static function text( string $text, string $field, int $kit, string $of = '' ): string {
+	public static function text( string $text, string $field, int $kit, string $of = '' ): string {
 		/**
 		 * Filter one of a kit's texts as a shopper reads it: a slot's help, a preset's description, the lead time or
 		 * the returns notice.

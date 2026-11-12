@@ -531,6 +531,36 @@ describe( 'a closed group', () => {
 		toggle( 'deck', true );
 		expect( disabled( 'width' ) ).toBe( false );
 	} );
+
+	// A page no other test has started the script on, so the listener is this start's own.
+	it( 'is listened for by each start, on the page it is given', () => {
+		const page = document.implementation.createHTMLDocument( '' );
+		page.body.innerHTML =
+			'<div class="cbuild-part-specs"><details id="deck"><input id="width" disabled></details></div>';
+		const group = page.getElementById( 'deck' ) as HTMLDetailsElement;
+		const width = page.getElementById( 'width' ) as HTMLInputElement;
+		group.open = true;
+		group.dispatchEvent( new Event( 'toggle' ) );
+		expect( width.disabled ).toBe( true );
+		start( {
+			document: page,
+			location: { hash: '' },
+		} as unknown as Window );
+		group.dispatchEvent( new Event( 'toggle' ) );
+		expect( width.disabled ).toBe( false );
+	} );
+
+	it( 'is listened for from the moment the page loads the script', async () => {
+		const heard = vi.spyOn( document, 'addEventListener' );
+		vi.resetModules();
+		await import( '../../assets/src/admin/part-specs' );
+		expect( heard ).toHaveBeenCalledWith(
+			'toggle',
+			expect.any( Function ),
+			true
+		);
+		heard.mockRestore();
+	} );
 } );
 
 // Issue #23, seen once: the page moved after the jump, and the focused summary ended up above the viewport.
@@ -578,6 +608,33 @@ describe( 'what was scrolled to', () => {
 		const win = view( 800 );
 		expect( () => settle( win, null ) ).not.toThrow();
 		expect( win.frames ).toEqual( [] );
+	} );
+
+	it( 'is the field, when the address names one', () => {
+		screen();
+		const frames: Array< () => void > = [];
+		const own = document.getElementById(
+			'cbuild-spec-deck-width'
+		) as HTMLElement;
+		own.getBoundingClientRect = () =>
+			( { top: -300, bottom: -270 } ) as DOMRect;
+		const win = document.defaultView as Window;
+		const real = win.requestAnimationFrame;
+		win.requestAnimationFrame = ( run: FrameRequestCallback ) =>
+			frames.push( () => run( 0 ) );
+		const { $ } = jQuery();
+		open( document, '#cbuild-spec-deck-width', $ );
+		win.requestAnimationFrame = real;
+		scrolled.length = 0;
+		frames[ 0 ]?.();
+		expect( scrolled ).toEqual( [ [ own, { block: 'center' } ] ] );
+	} );
+
+	it( 'is left as it is where the window has no frames to wait for', () => {
+		expect( () =>
+			settle( { innerHeight: 800 }, at( -200, -170 ) )
+		).not.toThrow();
+		expect( scrolled ).toEqual( [] );
 	} );
 
 	it( 'is the control focus moved to, when the address names the panel', () => {

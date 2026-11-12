@@ -1657,3 +1657,280 @@ Zach was asked how CI should hold the budget, as D-123 left to him, and chose on
 **Red run.** CI run 43069596131, as above. **Deliberate break:** with the cold count set to 41, "The state route's queries, cold. Failed asserting that 42 is equal to 41 or is less than 41."
 
 **Status:** Accepted.
+
+### D-125 · StrykerJS copies only what its tests read, and the admin scripts' mutants are killed · 2026-11-11
+
+Issue #31, which Zach agreed on 11 November 2026 as milestone 5's first commit ("makes sense, lets go with your plan.").
+
+- **The sandbox leaves out what Vitest never reads:** Composer's packages, `tmp`, `docs`, `build`, `languages`, `test-results` and the PHP and browser test folders (`ignorePatterns`). The warnings about PHP_CodeSniffer's HTML fixtures are gone, and a run takes 23 seconds where it took 36.
+- **`tools/mutate-js.sh` unsets `GITHUB_STEP_SUMMARY`.** Vitest 5.1's GitHub reporter writes a job summary on every run, and Stryker runs Vitest once a mutant, so the summary page held a red report per killed mutant. The clean suite's report, from `npm run check`, is the one that stays.
+- **The score is 99.65 %, from 92.78 %,** against the floor of 90: 282 killed, 3 timed out, 1 survived. Twenty survivors and the one uncovered mutant are gone, by tests where the mutant was a different program and by simpler code where it was not:
+  - tests for the frame-later `settle()` in both scripts, `preventScroll: true`, the rows counted without what else a list holds, the name said without the space around it, a row whose other button is gone, the `^` of the address pattern, the tab's own prefix as where `find()` stops, `wp` loaded without `a11y`, a window with no frames, and each script starting itself when the page loads it. `groups()` had survived because every earlier test left its listener on the same document; its test now starts the script on a page of its own;
+  - a group is opened by `group.open = true`, not `setAttribute( 'open', '' )`, which any string satisfied; the groups a field is folded into are found by `contains()`, not by walking parents through a guard that never tripped; and `move()` reads the list's data without asking whether a parent element is an HTML one, which it always is.
+- **One mutant is the same program, and stays:** `assets/src/admin/part-specs.ts:131`, `field( hash ) ?? ''` with any other string that is no element's ID. Both ask the page for an element it does not have.
+- **`ignoreStatic` is still not set.** It would take 71 mutants out of the score to save part of 23 seconds.
+
+**Red run.** `bash tools/mutate-js.sh` before the tests: 20 survived and 1 not covered, among them "[Survived] CallExpression assets/src/admin/build-tab.ts:91:2 - settle( doc.defaultView, control );" and "[Survived] CallExpression assets/src/admin/part-specs.ts:190:2 - groups( win.document );".
+
+**Status:** Accepted.
+
+### D-126 · CI does not cache wp-env's folder or apt's packages, and apt falls back to Ubuntu's own mirror · 2026-11-11
+
+Issue #32, which Zach agreed to try on 11 November 2026 ("sure your suggestion sounds good"), to keep only if it saved time.
+
+- **`~/.wp-env` is not cached, and no run was spent finding out.** wp-env 12's own source says what a restored folder would do (`node_modules/@wordpress/env/lib/runtime/docker/index.js:105` and `:203`, `lib/download-sources.js:103`):
+  - restored with its `wp-env-cache.json`, the configuration's hash matches, so wp-env skips the downloads and also skips installing WordPress, on a runner whose database is new. The site would not be there;
+  - restored without that file, wp-env downloads every zip again and replaces each folder, so the cache saves nothing and costs its restore and its save of several hundred megabytes a leg.
+  The step's time (about 90 seconds for one site, 175 for two, in run 43074042593) is the Docker images, the zips and the installs, and none of them can be kept by a cache of that folder. Caching the images was ruled out on the issue already.
+- **apt's packages are not cached.** `npx playwright install-deps` asks apt for whatever the runner's image lacks that week, and apt needs its index from the mirrors before it will install anything, which is the step that hung. A cache of `.deb` files would be keyed on an image that changes weekly, and the action that does it is a tool these docs do not name.
+- **After a try fails, apt is pointed at `archive.ubuntu.com`.** The hosted runners use Azure's mirror; on 11 November it failed from outside while Ubuntu's own answered. The line Zach found runs only between tries, so a healthy run is as it was, and a run where Azure's mirror alone is down gets its second try from the other. D-123's tries and timeouts stay.
+- **Not shown by a forced failure,** as the issue asked: that would cost a full run to watch one line of `sed`. It is read on the first run where a try fails, and the warning says so.
+
+**Status:** Accepted.
+
+### D-127 · A save that moves no source of the index queues no job · 2026-11-11
+
+Issue #21, from Claude in Cowork's review of milestone 3: once builds are bought, every order line saves its product, and every save queued `cbuild_index_part` to read the three sources and write the same rows back.
+
+- **What a stock change fires, in WooCommerce 11.2.2.** `wc_update_product_stock()` writes the count with a query of its own and then saves the product (`includes/wc-stock-functions.php:58` to `:64`). The save has nothing changed, or `stock_status` alone when the last one sells, and `woocommerce_update_product` fires all the same, with the ID and the product and no word of what changed (`includes/data-stores/class-wc-product-data-store-cpt.php:398`; a variation's at `class-wc-product-variation-data-store-cpt.php:279`).
+- **So what a save changes is noted before it, and asked after.** `Service\SavedSources` is told, within the request:
+  - by `woocommerce_before_product_object_save` (`includes/abstracts/abstract-wc-product.php:1559`), the properties the save changes;
+  - by `added_post_meta`, `updated_post_meta` and `deleted_post_meta` (WordPress 7.1.4, `wp-includes/meta.php:168`, `:353`, `:550`), a write of `_cbuild_specs` or `_cbuild_spec_table`, which a product's changes do not list;
+  - by `set_object_terms` (`wp-includes/taxonomy.php:3007`), an attribute's terms changed past WooCommerce and followed by a save.
+- **The job is skipped only when nothing but selling moved:** every changed property is one of `stock_quantity`, `stock_status`, `total_sales` and `date_modified`, no spec document was written, and no `pa_` taxonomy's terms changed. Anything else queues the job as before: a property not on that list, whatever it is; a save nothing was noted of; a new product. The list names what is beside the point, not what is a source, so a property WooCommerce adds later errs towards the job.
+- **A save that changes nothing queues nothing either,** which is what an order's save is. One test saved a variable product unchanged to queue its job; it now renames it first.
+- **The cost on a request that saves no product:** the three meta hooks and the terms hook each compare a string and return. Nothing is built for them, and nothing is kept for a post that is never asked about but the two flags.
+- **The parts table is not touched by this.** Its rows are dropped by `Hooks\CardHooks` when stock or price moves (D-116), as before.
+
+**Red run.** "IndexJobsTest::test_a_stock_change_queues_no_job_and_a_change_to_a_source_still_does: stock reduced as an order reduces it. Failed asserting that two arrays are identical." at `tests/Integration/IndexJobsTest.php:119`, with one job waiting for the part. **Deliberate break:** `IndexJobs::updated()` queuing whatever the save changed fails the same line, and the unit test's "stock alone".
+
+**Status:** Accepted.
+
+### D-128 · How a build reaches the cart · 2026-11-11
+
+Milestone 5's first step: the keys' shapes, and where each route's request is judged. One service, `Service\BuildCart`, answers every hook, so the Store API and the form cannot disagree.
+
+- **The cart item keys are the spec's, and `cbuild` holds two things more.** `schema_version`, as every document the plugin stores has, so a line an older or a newer version wrote is recognised and not sold on a guess. And `quantities`, slot key to how many of the part one build takes, fixed when the build is judged: the parts' lines are added from it, and the parent's quantity will multiply it, without the kit being read and the fit engine run again for a number already decided.
+- **The Store API's build is judged in `woocommerce_store_api_add_to_cart_data`, not in the two validation hooks the spec names.** In WooCommerce 11.2.2 the cart controller checks `is_purchasable()` before it applies either (`src/StoreApi/Utilities/CartController.php:273`), and a kit is not purchasable. `woocommerce_store_api_add_to_cart_data` is applied with the request before the controller is called (`src/StoreApi/Routes/V1/CartAddItem.php:118`), so the build is judged there, a refusal is the route's own `RouteException` with the code, and a build that is taken goes into the line's `cart_item_data`. `woocommerce_add_to_cart_validation` still runs after, and passes a kit whose build was taken that way.
+- **The form's build is judged in `woocommerce_add_to_cart_validation`,** as the spec says (`includes/class-wc-form-handler.php:1088`), and attached in `woocommerce_add_cart_item_data` (`includes/class-wc-cart.php:1331`). Both ask the service, which answers the second from what it said to the first, so a build is judged once and gets one identifier.
+- **A kit is purchasable only while a build of it is taken and its parts are not yet added.** `woocommerce_is_purchasable` answers true for a kit in that window, and for the product object of a cart line the cart has priced. Outside it a kit is refused by WooCommerce itself, whoever adds it: another plugin's `WC_Cart::add_to_cart()`, an express button, a link with `?add-to-cart=`. A line that comes back from the session is asked through `woocommerce_cart_item_is_purchasable` (`includes/class-wc-cart-session.php:198`): a kit's line with a `cbuild` that reads.
+- **A kit's line that arrives with a `cbuild` the service did not take in that request is removed** when `woocommerce_add_to_cart` fires. The key is public and anyone can write one; only the service's own verdict counts.
+- **The parts are added on `woocommerce_add_to_cart`** at priority 10, before WooCommerce's own totals at 20 (`includes/class-wc-cart.php:133`), which save the session with `cbuild_children` in place. If WooCommerce will not add one, every line of the build is taken out and the add fails with `cbuild_not_added`: a `RouteException`, which the Store API answers with and which `WC_Cart::add_to_cart()` turns into its notice, being an `Exception` (`:1484` is inside its `try`).
+- **The form's `cbuild` field is read without a nonce.** WooCommerce's add-to-cart form carries none, for a page cache's sake, and the field holds only IDs, each of which is checked against the shop. It is read from the post alone: a build is never added by a link.
+- **The kit's line is priced by `set_price()` on the line's product object,** on `woocommerce_add_cart_item` and `woocommerce_get_cart_item_from_session`, at the assembly fee or nothing. The kit product's own price is not changed, and a kit read anywhere else still shows its fee.
+- **Mutation testing.** `Cart\CartHooks`, `Adapter\WooCart` and `Adapter\WpUuids` cannot run without WooCommerce and WordPress, and the integration suite proves them (`CartAddTest`). The pattern `Hooks` in `infection.json5` had matched `Cart/CartHooks.php` by its name; it is now `Hooks/`, the folder it was written for. Whether the three are named in the list is Zach's (D-038), and is asked at the review. Infection makes no mutant in a file no unit test loads, so the floor is the same either way.
+
+**Red run.** "CartAddTest::test_a_part_woocommerce_will_not_add_takes_the_whole_build_out_and_fails_the_add: Failed asserting that 500 is identical to 400." at `tests/Integration/CartAddTest.php:337`: the refusal was a plain exception wherever `WC()->is_store_api_request()` was false. **Deliberate breaks** are in the commit's message.
+
+**Status:** Accepted.
+
+### D-129 · How a build in the cart is kept whole · 2026-11-11
+
+Milestone 5's second step. `Service\BuildLines` holds the rules, and `Cart\LineHooks` tells it of each change and holds none.
+
+- **The parts follow the kit's line on `woocommerce_after_cart_item_quantity_update`, not on `woocommerce_cart_item_set_quantity`,** which the spec names. In WooCommerce 11.2.2 `WC_Cart::set_quantity()` fires the first, works out the totals, and then fires the second (`includes/class-wc-cart.php:1562`, `:1565`, `:1576`). On the second the totals would be worked out before the parts moved, and again after. On the first they are right the first time.
+- **A part's line set alone is set back,** whatever set it. The carts are also told not to offer it: `woocommerce_store_api_product_quantity_editable` is false for a part (`src/StoreApi/Utilities/QuantityLimits.php:309`), and `woocommerce_store_api_cart_item_quantity_validation` (`:211`, since 11.2.0) and `woocommerce_update_cart_validation` (`includes/class-wc-form-handler.php:859`) refuse it as `cbuild_part_locked`. A part set to the quantity it must already have is let through, since the classic cart posts every line.
+- **A kit's line's maximum is at least 1.** Where a part is sold out the limit is none, and a maximum of none would have the Store API cut the line's quantity to nothing with no word of why. The check below says why instead.
+- **Removal goes by who names the kit's line, not by its list.** Every line whose `cbuild_parent` is the kit's key goes, so a build whose `cbuild_children` has drifted still leaves nothing behind. The hook is `woocommerce_remove_cart_item` (`includes/class-wc-cart.php:1509`), while the line is still there to be read.
+- **Undo restores the build or nothing.** On `woocommerce_cart_item_restored` (`:1536`) the kit's line and each part are restored from what the cart removed in the session; if the build is not whole after, what came back is removed again. A restored kit's line is priced again on `woocommerce_restore_cart_item` (`:1532`), since WooCommerce reads its product afresh.
+- **The service's own changes fire the same hooks,** so it answers none while one of its changes is under way. The flag is cleared in a `finally`: a cart that throws part way through does not leave the next change unanswered.
+- **`woocommerce_check_cart_items` runs more often than the spec supposes.** Beside the cart page and both checkouts, the Store API runs it for every cart response, to fill the cart's `errors` (`src/StoreApi/Utilities/CartController.php:531`, from `CartSchema::get_item_response()`). So a build is judged again on each of those: its kit read, each part read from WooCommerce, the validator run. A cart with no build in it is passed by after one look at each line's keys. The cost is measured with the add's benchmark, later in this milestone.
+- **A build that has come apart is removed; one that is whole and no longer sellable stays.** The first cannot be mended by the shopper. The second can, from the builder, and the spec keeps it for the Edit build link. Both are error notices, so neither is paid for unseen: the classic checkout stops on any error notice, and the Store API's checkout answers 409 with them.
+- **A bug this step found in the last.** `Adapter\WooCart::lines()` read `cbuild_children` with a helper that keeps only string keys, so every kit's line was read as having no parts. Nothing asked until the cart was looked over, which then took every build for a broken one.
+
+**Red run.** With `Cart\LineHooks` registered: "CartAddTest::test_the_store_api_adds_the_kit_with_its_build_and_a_line_for_each_part: Failed asserting that actual size 0 matches expected size 1." at `tests/Integration/CartAddTest.php:38`, and two more of that class. **Deliberate breaks** are in the commit's message.
+
+**Status:** Accepted.
+
+### D-130 · What a build costs in the cart, and what a coupon reaches · 2026-11-11
+
+Milestone 5's third step. `Cart\PriceHooks` reads WooCommerce's objects; the two rules are `Service\BuildCart::charged()` and `::couponTakes()`.
+
+- **The discount is taken on `woocommerce_before_calculate_totals`** (`includes/class-wc-cart.php:1605`), as the spec says, at priority 999. The price discounted is the one the line's product gives then, so a sale price, and a price another plugin sets on the line at an ordinary priority, are what it comes off.
+- **It is taken once.** WooCommerce works the totals out many times in a request on the same product objects, and a price set on one stays set. The class remembers, per object, the price it found and the price it gave: where the object still says what it was given, the discount is worked from what was found. Where it says anything else, someone has priced it again, and that is the price discounted.
+- **Rounding is the domain's:** `Pricer::discounted()`, half up to the minor unit, on the unit price, which is how the builder's total takes it.
+- **The price struck through.** The classic cart and the Mini-Cart's template get the part's own price before the discounted one, through `woocommerce_cart_item_price` (`templates/cart/cart.php:140`), shown with or without tax as the cart shows prices. The Store API gives a line's `prices.regular_price` beside its `prices.price`, and the blocks strike the first through themselves. For a part that is also on sale the blocks strike its regular price, not its sale price: the spec says its own price, and the figure charged is right in both.
+- **What "coupons follow the parent" is read as.** A part's line is taken by a coupon that would take the part as a product of its own, or that takes the kit. So a coupon for the kit alone reaches every part, and a coupon for decks still reaches a deck in a build. A coupon that names the kit as excluded, or a category the kit is in, reaches none of the build's lines. This is how Product Bundles has a bundled item inherit from its container. The other reading, that a part answers only as its kit does, would stop a shopper's coupon for a brand from working once the part is in a build. For Zach at the review.
+- **A fixed product coupon is the exception,** as the spec says: with `fixed_coupons` at `kit` no part's line takes it, whatever it names, so its amount comes off the kit's line once for each build; at `parts` it follows the rule above, and comes off each part too. Where assembly is free the kit's line costs nothing, and WooCommerce takes nothing off nothing: under `kit` such a coupon then discounts nothing of the build.
+- **A fixed cart coupon is WooCommerce's to spread,** over every line, as on any cart.
+- **The count** (D-009) subtracts each part's line whose kit's line is in the cart with a build, on `woocommerce_cart_contents_count` (`includes/class-wc-cart.php:738`), which the Store API's `items_count` reads.
+- **Tax needs nothing of the plugin.** Each part is its own line and product, so WooCommerce taxes it in its own class on its discounted price, and the fee in the kit's.
+
+**Deliberate breaks** are in the commit's message.
+
+**Status:** Accepted.
+
+### D-131 · A build on the order · 2026-11-11
+
+Milestone 5's orders step. `Order\OrderHooks` writes; what is written of the parts' specs is `Service\BuildCart::snapshot()`.
+
+- **One hook serves both checkouts.** `woocommerce_checkout_create_order_line_item` (`includes/class-wc-checkout.php:612`) is fired by `WC_Checkout::create_order_line_items()`, which the Store API's `OrderController::update_line_items_from_cart()` calls too (`src/StoreApi/Utilities/OrderController.php:845`). Confirmed in the source, as the spec says.
+- **The tie is by the build's identifier, not by cart keys.** The spec says the cart keys are turned into order item IDs once the order is saved. An order item does not keep its cart key, so each item is given `_cbuild_id`, the build's UUID, as it is made, and once the items have IDs the parts with a kit's identifier are that kit's. Nothing is held in memory between the two hooks, so it is right whichever request finishes the order.
+- **When the tie is made.** `woocommerce_checkout_order_created` (`includes/class-wc-checkout.php:522`) for the classic checkout. For the Store API, `woocommerce_store_api_checkout_update_order_meta` (`src/StoreApi/Routes/V1/Checkout.php:871`) and `woocommerce_store_api_checkout_order_processed` (`:708`).
+- **The Store API makes an order's items more than once.** Since WooCommerce 10.8 the draft is made when the order is placed (`Checkout.php:807`), and kept where the payment is refused. On the next try every line item is removed and made again, with new IDs. The tie is therefore made on each of the hooks above, from the items as they are then; `OrderTest` refuses a payment, changes the cart and places the order, and the build is tied to the new items.
+- **Asking again saves nothing.** An item is saved only where its `_cbuild_parent` or `_cbuild_children` differs from what is right, so a hook that fires twice costs a read.
+- **`_cbuild_parent` is stored as the ID's digits.** `WC_Data::update_meta_data()` takes a string or an array, and item meta reads back from the database as a string in any case.
+- **The snapshot holds each slot's label and each part's name** beside the spec's picks and specs. The order's emails and the assembly ticket are read long after, when a slot may be renamed or a product deleted, and the snapshot is what they can still trust. The label is the one `cbuild_slot_label` gave the shopper.
+- **A part the shop can no longer read at that moment** is kept in the snapshot with no specs. The cart's check has already stopped an order for such a build; this is for a plugin that places an order past it, and it must not be the reason an order fails.
+- **The two visible lines are written in the shop's language as the order is placed,** names and values both, as WooCommerce stores a variation's attributes: an order is a record of what the customer was shown.
+- **The order screen.** It lists every item meta key not named in `woocommerce_hidden_order_itemmeta` (`src/Internal/Utilities/OrderItemMetaUtil.php:30`), underscore or not, and offers each for editing. The plugin's six are added there; the snapshot is an array, and would print as nothing a manager could read or safely change.
+- **A part's name** is given with its slot on `woocommerce_order_item_name` (`templates/order/order-details-item.php:33`, `templates/emails/email-order-items.php:92`, `includes/admin/meta-boxes/views/html-order-item.php:30`). Grouping the items on those pages, and the ticket, are milestone 8's.
+- **Stock is WooCommerce's.** Each part is an ordinary item of its product: reduced when the order is held or paid, given back when it fails (`includes/wc-stock-functions.php:162`, since 11.0), and restocked by a refund. The kit's item manages no stock. `OrderTest` walks all three and the plugin has no code for any.
+
+**Red run.** Before `Order\OrderHooks`: "OrderTest::test_the_classic_checkout_writes_the_build_to_the_order: Failed asserting that actual size 0 matches expected size 1." **Deliberate breaks** are in the commit's message.
+
+**Status:** Accepted.
+
+### D-132 · A build shown in the three carts, and what a page pays for it · 2026-11-11
+
+Milestone 5's display step. `Cart\ShowHooks` gives each cart what it reads; nothing in it keeps a build whole, which is `Cart\LineHooks`'s work on the server (D-129).
+
+- **The Cart and Checkout blocks** read `role`, `build`, `parent`, `slot` and `name` from the Store API's `extensions`, and `assets/src/cart/lines.ts` hands them to `registerCheckoutFilters`. The script decides nothing and builds no markup: a part's name with its slot's label is composed on the server, so no string is translated in JavaScript.
+- **A locked quantity is WooCommerce's to draw.** With `quantity_limits.editable` false the Cart block shows the number in a field nobody can change and no buttons; the Mini-Cart hides the buttons and makes the field read-only (`src/Blocks/BlockTypes/MiniCartProductsTableBlock.php:179`, `:191`, `:200`). The spec says the Mini-Cart "hides and locks" the quantity: it hides the buttons and locks the field. A classic cart gets the number alone, through `woocommerce_cart_item_quantity`.
+- **The Mini-Cart prints a line's `display`, or its `value`, as HTML** (`assets/client/blocks/woocommerce/mini-cart.js`), cut to 15 words. The class comes through the Store API's `wp_kses_post` whole, and the browser test finds it in the drawer.
+- **The drawer does not open by itself here.** The spec records that on the demo it opened on `wc-blocks_added_to_cart`. Whether it does is the Mini-Cart block's own setting, off by default, so the browser test waits for the count to follow the event and then opens the drawer as a shopper would.
+- **The indent is a clear border.** The first try set a padding, and on Storefront that made a part's cell narrower than its kit's: the theme's own padding was the larger, and the plugin's replaced it. A transparent border at the start of the cell adds to whatever the theme has. The browser tests compare a part's cell with its kit's in each cart, and failed on the padding.
+- **The styles go in the page, not in a file.** Four selectors and one declaration. Many a shop has the Mini-Cart in its header, so a file would be a request on every page.
+- **Nothing reaches a page whose cart holds no build.** The smoke test of milestone 1 holds every shop page to nothing of the plugin's, and the spec's Performance section says nothing loads on pages without a builder. A build gets into a cart from the builder's page alone, which brings its own styles in milestone 6; on any other page the cart is known as the page is drawn. So the styles, and the Cart block's script, are added only where the cart holds a build then. The smoke test is unchanged and passes.
+- **What that costs.** A shop whose page cache serves one stored page to shoppers with and without a cart would show a build's parts unindented in the Mini-Cart. WooCommerce sets `woocommerce_items_in_cart` so that caches pass such shoppers by, and the build is whole and locked either way: the server does that.
+- **The script comes with the Cart or Checkout block alone,** on `render_block_woocommerce/cart` and `/checkout`. It needs `wc-blocks-checkout`, which those blocks load anyway; a classic cart page never gets it (D-010).
+- **The Mini-Cart's test adds a second build without leaving the page.** The first is in the cart as the page is drawn, as it is for a shopper coming from the builder. The read the event asks for is held six seconds, as Skatehouse's own test holds it, and the count and the drawer follow.
+- **A race the test had, fixed the day it showed.** One right-to-left run sent the event before the Mini-Cart's script had begun to listen, and the count stayed at 1. The count on the page is the server's, so it is no sign the script is ready. The test now sends the event until it is heard; the held read is still one. For milestone 6: the builder sends the event after a shopper's click, long after the page has started, so it does not meet this.
+- **A classic cart is tested on Storefront without switching the site's theme.** A must-use plugin in `tests/e2e/mu-plugins` gives a browser that sends its cookie Storefront and two shortcode pages as the shop's cart and checkout, for that request alone, so the other projects' tests run beside it on the block theme. It is a test fixture and is in no zip.
+- **A fixture this step corrected.** The Build tab's test kit holds slots alone, and a kit with no rules or presets document does not read: the state route answers 404 for it. Nothing asked until a kit had to be bought. The cart's fixture kit holds all four documents.
+
+**Red run.** With `Cart\ShowHooks` out of the container's hooks: "CartShowTest::test_the_store_api_says_what_each_line_is_of_a_build: Undefined property: stdClass::$creative-skateboard-builder" at `tests/Integration/CartShowTest.php:76`, and two more of that class. **Deliberate breaks** are in the commit's message.
+
+**Status:** Accepted.
+
+### D-133 · Shipping, express pay and the delivery filters · 2026-11-11
+
+Milestone 5's steps 10 and 11.
+
+- **A kit's line at nothing needs no code to ship.** The kit is virtual (D-099), so `WC_Cart::get_items_needing_shipping()` leaves it out of every package, and no shipping method is handed a line that costs nothing. `CartShippingTest` takes a build with free assembly through flat rate, free shipping and local pickup, and places the order. The spec's worry is a carrier's plugin that reads the cart itself; that cannot run in CI, and is Claude in Cowork's to check on the demo, as the plan said.
+- **One package, by default for a build the shop assembles.** The spec says a filter "can keep a build in one package for shops that split packages", and leaves the default open. An assembled build leaves the shop as one board, so its parts in two packages would be priced as two shipments that are never made. A build that is not assembled is loose parts, and a shop that splits packages (by vendor, by warehouse) has its reasons for where each goes. So the default is the build's `assembly`, and `cbuild_build_in_one_package` changes it either way. For Zach at the review.
+- **How they are put together.** `Service\BuildPackages` moves a build's parts into the package that holds the first of them in step order, works out again the cost of each package it touched, and drops one a move emptied. It makes no package and leaves every other key of one alone. It runs at priority 100, after a shop's own split, and only where there is more than one package.
+- **Express pay.** Neither plugin is in wp-env, so each one's public source was read on 11 November 2026 (`develop` branch): WooCommerce Stripe Gateway's `includes/payment-methods/class-wc-stripe-express-checkout-helper.php` (`should_show_ece_on_product_pages()` applies `wc_stripe_hide_payment_request_on_product_page( $hide, $post )`; `supported_product_types()` applies `wc_stripe_payment_request_supported_types`) and WooPayments' `includes/express-checkout/class-wc-payments-express-checkout-button-helper.php` (`is_product_supported()` applies `wcpay_payment_request_is_product_supported( $is_supported, $product )`; `supported_product_types()` applies `wcpay_payment_request_supported_types`). Both list the product types their buttons take, and a kit's type is in neither list, so the buttons are already not offered on a kit's page. The plugin answers the four filters all the same, for a shop whose code adds the type. The tests apply each filter as the plugin does; the buttons themselves are Claude in Cowork's to check on the demo.
+- **The delivery filters' shape.** The spec names `cbuild_arrival_estimate` and `cbuild_delivery_line` and not their arguments. Each is given an empty string and one array: the kit, whether the build is assembled, the lead time in the owner's words, and the total in minor units with its decimals. An array, so that a later milestone can add to it without changing the filter's arity. The shopper's address is not in it: the plugin that answers knows its own customer, and the builder holds no address. An answer is shown as plain text.
+- **They are asked by `Front\Delivery`, which nothing calls yet.** The plan put the filters in this milestone and their line in milestone 6's summary. The state route's answer and its schema are unchanged in 0.5.0.
+- **The lead time and the returns notice go on the order,** in the kit's item's snapshot, as the shopper read them (after `cbuild_kit_text`) and only for a build the shop assembles, since both are about assembly. Milestone 8's emails read them there, whatever the kit says by then.
+
+**Red runs and deliberate breaks** are in the commit's message.
+
+**Status:** Accepted.
+
+### D-134 · The cart takes what the route offers, and what a build costs a cart request · 2026-11-11
+
+- **The invariant goes through the real cart.** Milestone 2 proved in the domain that what the engine offers the validator accepts. `CartInvariantTest` proves it through WooCommerce: 70 real products made from a generated catalogue, the public state route asked what it offers at each step, and the Store API's add asked to take it. Thirty seeded walks end in a build the cart takes; thirty more put one part the route had ruled out into a build, and the cart refuses each with the route's own reason. The seed is in each failure's message.
+- **The add's budget.** The spec gives adding a 7-part build 300 ms. `CartBenchmarkTest` times 40 adds by the Store API, each from an empty object cache, and holds the 95th to it. On CI's shared runner the ceiling is 450 ms and the query count holds the rest, as the state route's does (D-124).
+- **A build's parts are read together.** The first run of the benchmark showed what the time hid: 132 queries for an add and 84 for a cart read with a build in it, against 10 for the same seven products with no build. Each part was read from the shop alone (`Kits::picked( Slot, int )`), and a cart read asks for a build's parts three times: twice for the kit's line's quantity limit and once for the check before paying (D-129). `picked()` now takes a build's slots and IDs and reads them in one go. An add asks 54 queries and a cart read 30, and both are ceilings in the benchmark. Nothing is kept between requests or within one: issue #26's reason for reading the shop itself stands, and stock can move inside a request that places an order.
+- **What the check on every cart response costs** (owed by D-129): about 17 ms and 20 queries more than the same cart with no build, on the machine in `docs/BENCHMARK.md`, with no persistent object cache. Seven of the 20 are each slot's "which products are in these categories", which a shop's object cache answers.
+
+**Red runs and deliberate breaks** are in the commit's message.
+
+**Status:** Accepted.
+
+### D-135 · The state route prices for the shopper the cart will charge (#27) · 2026-11-11
+
+- **What was wrong.** WooCommerce loads a customer for a page and for the Store API, and for no other REST request (`includes/class-woocommerce.php:347`). So on `cbuild/v1/kits/<id>/state` there was none, `WC_Tax::get_tax_location()` (`includes/class-wc-tax.php:469`) fell back to the shop's default address, and a shop that shows prices with tax, taxed by where the shopper is, showed a shopper abroad a total the cart then changed. The auditor found it in milestone 4, and Zach deferred it to this one (D-121).
+- **The fix.** The route calls `wc_load_cart()` before it prices, through `Port\Cart::shopper()`, where no customer is loaded. It is WooCommerce's own function for this (`includes/wc-core-functions.php:2539`). The price context already keys what is kept by the tax rates that apply (D-111, D-116), so nothing else changes: shoppers charged the same rates share rows and cards, and no address is kept.
+- **A visitor nobody knows** has no session cookie. WooCommerce makes a session object for the request, stores nothing for it and sets no cookie, and the price is the shop's default as before. `CartPriceTest` counts the sessions table before and after.
+- **The route was never cacheable** (`Cache-Control: no-store`, D-112), so answering by the session costs no cache.
+- **Not done: the two build abilities.** `check-build` and `price-build` answer a signed-in user through the Abilities API, also with no customer loaded, and still price for the shop's default address. They are read by tools and not shown beside a cart, and loading a cart session there, where the caller may be WP-CLI or an agent, is a choice of its own. Listed for the review.
+- **Its cost is not in the benchmark:** the benchmark dispatches in a process that has a customer already. The route's query ceilings are unchanged (42, 15, 37).
+
+**Red run and deliberate break** are in the commit's message.
+
+**Status:** Accepted.
+
+### D-136 · Milestone 4's listed minors, and the issues carried into the audit (#29, #22, #25) · 2026-11-11
+
+Issue #29 lists ten minors from milestone 4's review. What was done with each:
+
+- **Site Health's Info section does not list the five new settings.** Fixed: the section lists them, the proxy header by its name, which is never an address. `SiteHealthTest` failed first on the section's keys.
+- **Two adapters reach a service's constant across a layer.** Already gone: no file under `src/Adapter` names a class of `src/Service`.
+- **`get_objects_in_term()` asked with no bound.** Stays. The function takes no limit, and a bound put on it by another query would cut a category's products at an arbitrary one before the slot's own rule chose among them. The cart no longer pays for it seven times three on a read (D-134); the state route reads it once a slot.
+- **Two `!important` in the Build tab's styles.** Stay: the padding answers a rule of WooCommerce's that is itself `!important` (`.woocommerce_options_panel p.form-field`), and the width answers the width select2 writes on its container's own `style`. Nothing less wins over either.
+- **The schema's `additionalProperties: false`.** Stays until the builder's script reads the answer in milestone 6: the strict schema is what makes the generated types exact and the route's tests catch a key nobody declared. Whether to loosen it before 1.0 is a question for that milestone's plan.
+- **`ready: true` when a refused pick was replaced by the default.** Stays: the schema says `problems` is empty exactly when `ready` is true, and the answer names the replaced pick under `refused`. What the builder shows a shopper whose pick was replaced is milestone 6's.
+- **Rows of a price context nobody asks for again, and a password set by `wp_update_post()` alone.** Stay, bounded by the two hours a row is read within, as the review said.
+- **`Admin\BuildTab` is over 1,000 lines.** Stays. Its tests hold its behaviour, and the split is a change with no behaviour to test; it is better made beside the next change to the tab than alone in a cart milestone.
+- **The route's benchmark on a persistent object cache.** Not run; the integration suite runs on Redis (`composer test:integration:object-cache`), the benchmark does not yet.
+- **The change list has no undo.** Milestone 6's, as listed.
+
+**#22** (axe's `target-size` on a variation's Part specs, seen twice under load) stays quarantined as D-117 left it: the rule is left out of two scans and the test measures the headings itself. The cause is still not found.
+
+**#25**: three mutants are left, each the same program as the original as far as can be shown (a cast of an array key PHP makes a number again, one row more read past the row that already says too many, and the branch for a server without mbstring). They are inside the floor and go to Zach at the review.
+
+**Status:** Accepted.
+
+### D-137 · The reviews of milestone 5: Zach's four answers, and the cart's four fixes · 2026-11-11
+
+The spec reviewer found 4 should-fix and 4 minor, and the auditor 9 and 12, with no blocker. Zach answered four questions on 11 November 2026:
+
+1. **Order again puts a build back whole.** WooCommerce's button refused the kit and left each part in the cart as a line of its own (failure W9), and the spec says nothing of it.
+2. **The two build abilities price for the signed-in user as the route does** (D-135's open item).
+3. **The hook classes that hold no logic are named in the mutation exclusions,** under D-087's rule, once their price, tie and snapshot logic is in services (D-128's question, D-038).
+4. **The add's benchmark keeps 450 ms as CI's ceiling,** as the state route's (D-124, D-134).
+
+What this commit does:
+
+- **Order again.** WooCommerce fills the cart from an order's items itself and writes the lines without adding them (`includes/class-wc-cart-session.php:632` to `:731`), so no add hook runs. `Cart\AgainHooks` answers three of its hooks. On `woocommerce_order_again_cart_item_data` the kit's build is judged again by `BuildCart::consider()` from what the order's snapshot asks for (`Service\BuildAgain::asked()`), as the shop is now, and given a new identifier; each part's line is marked with its build. On `woocommerce_add_to_cart_validation` a line of a refused build is left out. On `woocommerce_ordered_again`, which hands over the cart's lines by reference, `BuildAgain::whole()` says which builds have a line for every slot: those have their lines tied to one another, and every line of any other is taken out, since WooCommerce leaves a sold-out or deleted product out by itself. The shopper is told once. The marker `cbuild_again` is on a line only while WooCommerce fills the cart and is never stored. WooCommerce's own count of items it could not add stays true.
+- **A coupon's own exclusions.** D-130 let a coupon that takes the kit take its parts. A coupon for the whole cart takes the kit, so one that left out decks, a category or sale items took them all the same once they were in a build. `couponTakes()` has a fifth fact, whether the coupon leaves the part itself out, read as WooCommerce reads it (`includes/class-wc-coupon.php:1045` to `:1058`). D-130's reading otherwise stands, and is still Zach's at the review.
+- **The classic mini-cart's prices.** A cart read back from the session works its totals out again only when it changed (`class-wc-cart-session.php:302`), so each part showed at the shop's full price beside a subtotal with the discount in it. The price is given on `woocommerce_cart_loaded_from_session` as well.
+- **The check's sentences.** A build that stops the order is in the cart, so nothing is said of adding. The first notice names the kit and what to do; the problems follow. The Edit link is milestone 6's, and the sentence will offer it then.
+- **Three browser tests found WooCommerce's own Save button and saved notice by their English words.** The local site has since been given WooCommerce's French and Hebrew language packs, and the tests failed in `fr-ca` and `rtl` there, though not in CI's fresh site. They find both by their markup now, and the terms test starts from a shop's defaults whatever an earlier run left.
+
+**Red runs and deliberate breaks** are in the commit's message.
+
+**Status:** Accepted.
+
+### D-138 · The reviews of milestone 5, the rest: logic in services, the snapshot's schema, the shopper with no cart · 2026-11-11
+
+The second batch of the reviews' findings (D-137 has the first, and Zach's four answers).
+
+- **The hook classes hold no logic, and are named.** `infection.json5` left out anything with "Hooks" in its path, which took `Cart\*Hooks` and `Order\OrderHooks` with it unsaid. The entry is now `Hooks/`, the directory. What those classes decided moved into services, each at 100 % MSI: a line's price asked for more than once (`BuildCart::repriced()`), an order's ties and its snapshot (`Service\OrderBuilds`). Under Zach's third answer the eight hook classes, `Adapter\WooCart`, `Adapter\WpUuids` and `Front\Delivery` are then named in the exclusions with their reasons: each takes WooCommerce's cart, products, coupons, order items or packages, or does its work through WordPress's functions (D-087, D-038). `Cart\Refusals` needs only the translation functions, so it is not left out: `RefusalsTest` mutates it at 100 %.
+- **The order's snapshot has a schema and a version of its own.** `schema/order-snapshot.json` describes `_cbuild_snapshot`, `OrderTest` validates a real order's against it, and `OrderBuilds::SNAPSHOT_VERSION` is 1. It was the cart's build's version before, so a change to the cart's shape would have renumbered every order's record.
+- **The abilities price as the route does** (Zach's second answer). `Abilities\BuildAbility` asks for the shopper before it asks the state's service, so `price-build` and the route give a signed-in user the same total where tax goes by address. D-135's "Not done" is done.
+- **The shopper is found without a cart.** D-135 called `wc_load_cart()`. That makes a `WC_Cart`, and a cart reads itself from the session when the request shuts down, to set its cookies (`includes/class-wc-cart-session.php:95` and `:400`); PHP runs that before it sends the answer. Every state request of a shopper with a build in the cart would have paid for reading and checking that cart, on the route the 80 ms budget is about. `Adapter\WooCart::shopper()` now makes the session and the customer as `wc_load_cart()` does (`includes/class-woocommerce.php:1228` and `:1245`) and no cart, and does not queue the customer's save, since the route changes nothing of them. Held by `CartPriceTest::test_the_route_finds_the_shopper_and_makes_no_cart_for_the_request` and by a benchmark: finding the shopper costs the one query that reads the session (38 against 37).
+- **Refusals are tested by code and by sentence, by both routes:** an unpublished kit's 404, each of `slot_unknown`, `part_not_in_slot`, `part_short` and `part_blocked`, `cbuild_no_price`, and WooCommerce's ajax add. The Store API's message is HTML, as WooCommerce's own are, so a quotation mark in it is an entity; the Cart block decodes it.
+- **Axe reads the three carts and the classic checkout's table** in every project with a script. With scripts off the server draws the same classic tables, and axe, a script, cannot run.
+- **The classic mini-cart widget.** Its rows have a filter of their own, `woocommerce_mini_cart_item_class`, which the plugin now answers as it answers the cart's, with the styles enqueued where the widget is drawn.
+- **Composer's scripts have 30 minutes.** The integration suite with coverage passed Composer's default of 300 seconds at 402 tests and was stopped mid-run with every test so far passing. `composer.json` sets `process-timeout` to 1800; each CI job keeps its own limit in minutes.
+- **Minors.** A part's quantity in the order's Build line goes through `number_format_i18n()`. An order item made with no cart reads none. `ContainerTest` holds the two meta keys the index follows. `docs/BENCHMARK.md` says seven parts.
+
+Listed, not done:
+
+- **The kit's line has the kit's own thumbnail.** The deck's photo there, with the fallback where a deck has none, is milestone 7's: the build's picture is drawn then, and the cart's line takes it.
+- **A cart with two builds** is held by `CartInvariantTest` and has no query ceiling of its own; the read's ceiling is for one build, and each build adds its parts' one reading (D-134).
+- **A build added from a page with no build in the cart** has its styles from the next page on (D-132). The builder page is milestone 6's, and its plan carries this.
+- **The state schema's `additionalProperties: false`** is asked in milestone 6's plan.
+
+**Red runs and deliberate breaks** are in the commit's message and the review's findings table.
+
+**Status:** Accepted.
+
+### D-139 · Claude in Cowork's review of pull request #33: WooCommerce 11.3.0, the address only where a price needs it, a coupon on the order, the SKU · 2026-11-11
+
+Claude in Cowork read pull request #33 at `916d82e`: no blocker, four should-fixes and five minors. All nine are done.
+
+- **The newest leg is WooCommerce 11.3.0** (S1). The demo updated itself to 11.3.0, and CI's newest leg was 11.2.2, so the cart was tested on neither version a shop runs it on today. `.wp-env.json` and `.wp-env.tests.json` pin 11.3.0, and D-004's "newest" reads 7.1.4 with 11.3.0 from here. The oldest leg stays 7.0 with 11.2.0, and the floor stays 11.2. `php-stubs/woocommerce-stubs` and `tools/phpstan-bootstrap.php`'s `WC_VERSION` stay at 11.2.2: static analysis reads the floor's API, which is the one the code may rely on.
+- **A part's line names its parent to the Store API** (S1). WooCommerce 11.3.0 gives a cart item a `parent_item_key`, answered by the filter `woocommerce_store_api_cart_item_parent_item_key` (`src/StoreApi/Schemas/V1/CartItemSchema.php:132`), and counts a product's quantity in the cart from lines with no parent. `Cart\ShowHooks::parent()` answers a part's `cbuild_parent` and leaves every other line as it came. On 11.2 the filter is never asked.
+- **The address reaches a price only where a shown price can depend on it** (S2). D-135 put the rates for the shopper's address in the price context on every shop with tax on. On a shop that enters and shows prices without tax, as the demo does with 17 standard rates over 13 provinces and territories, that kept up to 13 sets of the same rows and read the session for nothing. `Adapter\WooPartCards::byAddress()` is true where prices are shown with tax, or entered with tax while `woocommerce_adjust_non_base_location_prices` is answered false (`includes/wc-product-functions.php:1575`). Only then does the context hold the shopper's rates, and only then does `Adapter\WooCart::shopper()` make the session and the customer. Otherwise the context holds the shop's base rates, the same for everyone.
+- **A coupon worked out again on the order follows the kit** (S3). `WC_Discounts` hands `woocommerce_coupon_is_valid_for_product` a `WC_Order_Item_Product` where it works from an order (`includes/class-wc-discounts.php:115`), as it does when a manager adds or removes a coupon (`includes/abstracts/abstract-wc-order.php:1705`, `:1915`). `Cart\PriceHooks::coupon()` read the cart's keys alone, so on an order a kit-only coupon's share came off the parts and the total moved after payment. It now finds a part's kit by the order item's `_cbuild_parent`, or by `_cbuild_id` and `_cbuild_role` where the tie is not yet written, and answers as it does in the cart.
+- **The snapshot keeps each part's SKU** (S4): `sku` on each pick, a string, empty where the part had none, required by `schema/order-snapshot.json`. The snapshot's version stays 1: no released version wrote one, since 0.5.0 is the first.
+- **Picks are capped before anything is read** (M1). `Service\BuildCart::consider()` refuses more picks than `Slots::MAX`, and a key that is not a slot key by `Fields::isKey()`, before the kit or any product is read.
+- **Words for people, the snapshot for code** (M2), and **`_cbuild_id` is the tie** (M5): both said in `docs/HOOKS.md`. Milestone 8 ties copied items again from `_cbuild_id` and `_cbuild_role`.
+- **Shipping packages keep their keys** (M3). `Service\BuildPackages::together()` renumbered the packages it returned. WooCommerce keeps the method chosen for a package under the package's key (`chosen_shipping_methods`), so a package after one a move emptied would have taken the emptied one's method.
+- **A kit cannot be added to an order by hand** (M4), the first of the two roads the review offered. `Order\OrderHooks::byHand()` answers `woocommerce_ajax_add_order_item_validation` (`includes/class-wc-ajax.php:1292`) with the code `cbuild_kit_by_hand` and a sentence. `WC_Order::add_product()` called by other code has no such filter, so milestone 8's Build box and ticket still read a kit's item with no `_cbuild_id` as a line of no build; its plan carries that.
+
+Carried from the review, not for this milestone:
+
+- **PayPal Payments' buttons on a kit's page** are looked at in milestone 6, with the builder's page (the review read 4.2.2).
+- **Geolocation.** Where the shop's default customer address is Geolocate and a shown price goes by address, a guest's first state request costs WooCommerce's GeoIP lookup, which the benchmark does not include. Milestone 6's plan measures it.
+
+Zach's, answered apart from this: the coupon edges (D-130), the package default (D-133), and how the demo takes WooCommerce's updates.
+
+**Red runs and deliberate breaks** are in the commit's message and the review's table.
+
+**Status:** Accepted.

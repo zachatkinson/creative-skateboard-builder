@@ -2,6 +2,49 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html). One entry per milestone; `v1.0.0` closes milestone 9.
 
+## [0.5.0] - 2026-11-11
+
+### Added
+
+- A build goes to the cart as a kit's line with a line for each part, by the Store API's `cart/add-item` and by WooCommerce's own add-to-cart form alike. Each sends the kit's ID with a `cbuild` parameter: `picks`, slot key to part ID, and `assembly`, which may be left out for the kit's default. Nothing else of the request is used: each part is read from WooCommerce as it is then, checked against its slot and the kit's rules, and counted across every line the cart already holds (#26, D-128).
+- Four cart item keys. A kit's line carries `cbuild`, the build (`schema_version`, `id`, `kit`, `picks`, `quantities`, `assembly`), and `cbuild_children`, its parts' cart keys. A part's line carries `cbuild_parent`, its kit's cart key, and `cbuild_slot`, the slot it fills.
+- A kit's line costs the kit's assembly fee where the build is assembled, and nothing where it is not. A kit may be bought only with a build taken in the same request: one added bare, by any route, is refused.
+- The cart's refusals, each a code the Store API answers with and a sentence the form shows as a notice: `cbuild_no_build`, `cbuild_kit_not_found`, `cbuild_build_refused` (with each problem's `code`, `slot` and `part` under `problems`), `cbuild_no_price` and `cbuild_not_added`, when WooCommerce will not add one of the parts and so nothing of the build stays.
+- A build in the cart stays whole, by every route. The kit's line's quantity sets its parts'; a part's line set alone goes back, and is refused as `cbuild_part_locked` by the Store API and the classic cart's Update cart. Removing any line removes the build, and the cart's Undo brings all of it back. In the Store API a part's quantity is not editable, and a kit's line's maximum is what its scarcest part allows (D-129).
+- Prices in the cart. Each part is charged at the shop's own price, less the setting `build_discount` where the shop has one, taken once and never off the assembly fee or a line outside the build; the classic cart shows the part's own price struck through, and the Store API gives both. Each line keeps its own tax class (D-130).
+- Coupons. A coupon that takes the kit takes its parts, and one that leaves the kit out leaves them out. A fixed product coupon lands on the kit's line alone, or on each part too where the setting `fixed_coupons` is `parts`.
+- A coupon's own exclusions hold for a part in a build: a part the coupon leaves out by its ID, its category or its being on sale is left out, though the coupon takes its kit (D-137).
+- WooCommerce's Order again, on an order with a build, puts the build back whole: the kit's build is judged again from the order's snapshot as the shop is now and given a new identifier, and its lines are tied to one another. A build the shop would no longer sell, or one WooCommerce left a line out of, is not put back at all, and one notice says so (D-137).
+- A cart read back from the session shows each part at what it is charged, so the classic mini-cart's lines add up to its subtotal on every page (D-137).
+- A build in the cart that stops the order is named, with what to do, before what is wrong with it: "… cannot be bought as it is now. Remove it from your cart to check out, then build it again." A kit taken down says "… is no longer sold. Remove it from your cart to check out." (D-137).
+- The schema `schema/order-snapshot.json`, for the order item meta `_cbuild_snapshot`, whose `schema_version` is its own and no longer the cart's build's (D-138).
+- The classic mini-cart widget gives a build's rows the classes `cbuild-kit` and `cbuild-part`, by `woocommerce_mini_cart_item_class`, and indents a part's (D-138).
+- The cart's count counts a build once, as its kit's line, in `WC_Cart::get_cart_contents_count()` and the Store API's `items_count`.
+- A build is shown grouped in all three carts. The Store API gives each cart item `role`, `build`, `parent`, `slot` and `name` under `extensions`, in the namespace `creative-skateboard-builder`, and a small script on a page with the Cart or Checkout block gives them to WooCommerce's `cartItemClass`, `itemName` and `showRemoveItemLink` filters. A part's line carries item data, Part of, with the class `cbuild-part` and the raw key `cbuild_slot`, which is what the Mini-Cart groups by. A classic cart and checkout are drawn through `woocommerce_cart_item_name`, `_class`, `_quantity` and `_remove_link`: a kit's row has the class `cbuild-kit` and a part's `cbuild-part`. The styles and the script reach a page only where the cart already holds a build (D-132).
+- Shipping. The kit is virtual and is in no package, so a kit's line at nothing goes through any shipping method. Where a shop's code splits the cart into several packages, a build the shop assembles has its parts put back in one; the filter `cbuild_build_in_one_package` decides otherwise for either kind of build (D-133).
+- No express pay on a kit's page: the plugin answers WooCommerce Stripe Gateway's and WooPayments' filters for hiding their buttons there.
+- Two filters for the line under the builder's total, shown from 0.6.0: `cbuild_arrival_estimate` and `cbuild_delivery_line`, each given the kit, whether the build is assembled, the lead time and the total.
+- A build is written to the order by both checkouts. Six hidden order item keys: `_cbuild_id`, the build's identifier, on every item of it; `_cbuild_role`, `kit` or `part`; `_cbuild_parent`, on a part, its kit's item ID; `_cbuild_children`, on the kit's item, its parts' item IDs in step order; `_cbuild_slot`, on a part, the slot it fills; and `_cbuild_snapshot`, on the kit's item, each slot's label, part, name, quantity and specs as sold, with the kit's lead time and returns notice where the build is assembled. The kit's item also shows the customer and the workshop two lines: Assembly, and the build with each slot's part and quantity. A part is named with its slot wherever an order lists its items, and the order screen neither lists nor edits the hidden keys. Stock is WooCommerce's, part by part (D-131).
+- A part's line names its kit's line as its parent to the Store API, by `woocommerce_store_api_cart_item_parent_item_key`, where WooCommerce has that key (11.3.0 and later). A line of no build is left as it was (D-139).
+- Each pick of `_cbuild_snapshot` keeps `sku`, the part's SKU as it was sold, empty where it had none (D-139).
+- A coupon added to or removed from an order with a build, on the order's screen, follows the kit to its parts as it did in the cart, so the order's total does not move for a coupon the shopper already had (D-139).
+- The order screen's Add products refuses a kit, with the code `cbuild_kit_by_hand` and a sentence that says to add its parts (D-139).
+- An add with more picks than a kit can have slots, or a slot key no kit could hold, is refused as `cbuild_build_refused` before the kit or any product is read (D-139).
+- The cart is looked over wherever WooCommerce checks it: a build that has lost a line is removed and said as `cbuild_build_incomplete`, and a build the shop would no longer sell as it is, for a part sold out, a spec changed or the kit taken down, stops the order with a notice for each problem.
+
+### Changed
+
+- Site Health's Info section lists the build discount, where a fixed product coupon lands, the state route's rate limit, the trusted proxy header's name and whether a new kit starts with assembly chosen (#29).
+- The state route prices for the shopper WooCommerce knows, by its own session, so where tax goes by the shopper's address the builder's total is the cart's. A visitor with no session is priced for the shop's default address as before, and is given no session by asking (#27, D-135). The route makes no cart for the request, so a shopper's cart is not read to answer it (D-138).
+- The abilities `check-build` and `price-build` price for the signed-in user as the state route does (D-137, D-138).
+- The shopper's address reaches a price only where a price the shop shows can depend on it: prices shown with tax, or entered with tax and adjusted for where the shopper is. On any other shop every shopper shares one price context, the session is not read for the state route, and the parts table keeps one set of rows (D-139).
+- A build's parts gathered into one shipping package leave every package under the key it came with, so a shipping method chosen for a package stays that package's (D-139).
+- The newest versions the suites run on are WordPress 7.1.4 with WooCommerce 11.3.0 (D-139).
+- Mutation testing names the cart's and the order's hook classes among those it leaves out, now that what they decided is in services it does not leave out (D-138).
+- A build's parts are read from the shop together, in the cart and at the checkout: adding a 7-part build asks 54 queries where it asked 132, and a cart read with a build in it 30 where it asked 84 (D-134).
+- A product save that changes only its stock, its stock status or its sales count queues no `cbuild_index_part` job, so an order no longer queues one for each line. A save that changes nothing queues none either (#21, D-127).
+- StrykerJS copies only what its tests read, and the admin scripts' surviving mutants are killed (#31, D-125). After a failed try, CI's browser install points apt at Ubuntu's own mirror (#32, D-126).
+
 ## [0.4.0] - 2026-11-11
 
 ### Added

@@ -131,6 +131,41 @@ final class InMemoryKits implements Kits {
 		return $this->parts[ $kit ][ $slot ] ?? array();
 	}
 
+	/**
+	 * What the shop says of a part now, where that differs from what is kept: a part, or false for one that is gone.
+	 *
+	 * @var array<int, Part|false>
+	 */
+	public array $now = array();
+
+	/**
+	 * The parts read from the shop itself.
+	 *
+	 * @var list<int>
+	 */
+	public array $picked = array();
+
+	public function picked( array $asked ): array {
+		++$this->readings;
+		$answer = array();
+		foreach ( $asked as $key => [ $slot, $id ] ) {
+			$this->picked[] = $id;
+			foreach ( $this->parts as $slots ) {
+				foreach ( $slots[ $slot->key ] ?? array() as $part ) {
+					if ( $id === $part->id && ! isset( $answer[ $key ] ) && false !== ( $this->now[ $id ] ?? $part ) ) {
+						$answer[ $key ] = $this->now[ $id ] ?? $part;
+					}
+				}
+			}
+		}
+		return $answer;
+	}
+
+	/**
+	 * How many times the shop was read for a build's parts.
+	 */
+	public int $readings = 0;
+
 	public int $decimals = 2;
 
 	public function decimals(): int {

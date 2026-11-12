@@ -85,6 +85,32 @@ final class Options {
 	public const SETTING_KIT_DEFAULTS      = 'kit_defaults';
 
 	/**
+	 * The keys a cart line carries (spec: Data model, Cart items): a kit's line holds the build and its parts'
+	 * cart keys, and a part's line its kit's cart key and the slot it fills.
+	 */
+	public const CART_BUILD    = 'cbuild';
+	public const CART_CHILDREN = 'cbuild_children';
+	public const CART_PARENT   = 'cbuild_parent';
+	public const CART_SLOT     = 'cbuild_slot';
+
+	/**
+	 * Order item meta (spec: Data model, Order items). Hidden from customers by their underscore, and kept with the
+	 * shop's order records for good: a key is never renamed.
+	 */
+	public const ORDER_BUILD    = '_cbuild_id';
+	public const ORDER_ROLE     = '_cbuild_role';
+	public const ORDER_PARENT   = '_cbuild_parent';
+	public const ORDER_CHILDREN = '_cbuild_children';
+	public const ORDER_SLOT     = '_cbuild_slot';
+	public const ORDER_SNAPSHOT = '_cbuild_snapshot';
+
+	/**
+	 * What `_cbuild_role` holds: the kit's item, or a part's.
+	 */
+	public const ROLE_KIT  = 'kit';
+	public const ROLE_PART = 'part';
+
+	/**
 	 * Product meta: a part's own specs, a value per spec key.
 	 *
 	 * @since 0.3.0
@@ -244,6 +270,39 @@ final class Options {
 			'presets'  => self::META_KIT_PRESETS,
 			'assembly' => self::META_KIT_ASSEMBLY,
 		);
+	}
+
+	/**
+	 * Every key the plugin puts on a cart line.
+	 *
+	 * @since 0.5.0
+	 *
+	 * @return list<string>
+	 */
+	public static function cartKeys(): array {
+		return array( self::CART_BUILD, self::CART_CHILDREN, self::CART_PARENT, self::CART_SLOT );
+	}
+
+	/**
+	 * Every field the Store API gives of a cart item under the plugin's namespace in `extensions`.
+	 *
+	 * @since 0.5.0
+	 *
+	 * @return list<string>
+	 */
+	public static function cartItemFields(): array {
+		return array( 'role', 'build', 'parent', 'slot', 'name' );
+	}
+
+	/**
+	 * Every key the plugin puts on an order item.
+	 *
+	 * @since 0.5.0
+	 *
+	 * @return list<string>
+	 */
+	public static function orderItemKeys(): array {
+		return array( self::ORDER_BUILD, self::ORDER_ROLE, self::ORDER_PARENT, self::ORDER_CHILDREN, self::ORDER_SLOT, self::ORDER_SNAPSHOT );
 	}
 
 	/**

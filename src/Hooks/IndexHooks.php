@@ -12,7 +12,9 @@ namespace CreativeBranding\SkateboardBuilder\Hooks;
 use Closure;
 use CreativeBranding\SkateboardBuilder\Hookable;
 use CreativeBranding\SkateboardBuilder\Service\IndexJobs;
+use CreativeBranding\SkateboardBuilder\Service\SavedSources;
 use CreativeBranding\SkateboardBuilder\Support\Options;
+use WC_Product;
 use WP_Post;
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -36,9 +38,11 @@ final class IndexHooks implements Hookable {
 	 *
 	 * @since 0.3.0
 	 *
-	 * @param Closure(): IndexJobs $jobs Builds the jobs, when one of the hooks fires.
+	 * @param Closure(): IndexJobs $jobs  Builds the jobs, when one of the hooks fires.
+	 * @param SavedSources         $saved Notes what each save changes. It is told of every post's meta and terms,
+	 *                                    so it is built with the hooks and builds nothing itself.
 	 */
-	public function __construct( private Closure $jobs ) {}
+	public function __construct( private Closure $jobs, private SavedSources $saved ) {}
 
 	/**
 	 * Attach hooks.
@@ -46,9 +50,17 @@ final class IndexHooks implements Hookable {
 	 * @since 0.3.0
 	 */
 	public function register(): void {
-		foreach ( array( 'woocommerce_new_product', 'woocommerce_update_product', 'woocommerce_new_product_variation', 'woocommerce_update_product_variation' ) as $saved ) {
-			add_action( $saved, array( $this, 'changed' ), 10, 1 );
+		foreach ( array( 'woocommerce_new_product', 'woocommerce_new_product_variation' ) as $made ) {
+			add_action( $made, array( $this, 'changed' ), 10, 1 );
 		}
+		foreach ( array( 'woocommerce_update_product', 'woocommerce_update_product_variation' ) as $saved ) {
+			add_action( $saved, array( $this, 'updated' ), 10, 1 );
+		}
+		add_action( 'woocommerce_before_product_object_save', array( $this, 'saving' ), 10, 1 );
+		foreach ( array( 'added_post_meta', 'updated_post_meta', 'deleted_post_meta' ) as $written ) {
+			add_action( $written, array( $this, 'meta' ), 10, 3 );
+		}
+		add_action( 'set_object_terms', array( $this, 'terms' ), 10, 6 );
 		add_action( 'deleted_post', array( $this, 'deleted' ), 10, 2 );
 		add_action( 'edited_term', array( $this, 'termEdited' ), 10, 3 );
 		add_action( 'delete_term', array( $this, 'termEdited' ), 10, 3 );
@@ -59,7 +71,7 @@ final class IndexHooks implements Hookable {
 	}
 
 	/**
-	 * A product or a variation was saved.
+	 * A product or a variation was made.
 	 *
 	 * @since 0.4.0
 	 *
@@ -67,6 +79,65 @@ final class IndexHooks implements Hookable {
 	 */
 	public function changed( int $id ): void {
 		( $this->jobs )()->changed( $id );
+	}
+
+	/**
+	 * A product or a variation was saved over what was stored.
+	 *
+	 * @since 0.5.0
+	 *
+	 * @param int $id Its ID.
+	 */
+	public function updated( int $id ): void {
+		( $this->jobs )()->updated( $id );
+	}
+
+	/**
+	 * A product or a variation is about to be saved (WooCommerce 11.2.2,
+	 * includes/abstracts/abstract-wc-product.php:1559, after its properties are validated).
+	 *
+	 * @since 0.5.0
+	 *
+	 * @param WC_Product $product The product, with what the save changes.
+	 */
+	public function saving( WC_Product $product ): void {
+		$this->saved->saving( $product->get_id(), array_keys( $product->get_changes() ) );
+	}
+
+	/**
+	 * A post's meta was added, changed or deleted (WordPress 7.1.4, wp-includes/meta.php). The first argument is
+	 * one meta ID, or a list of them for a delete.
+	 *
+	 * @since 0.5.0
+	 *
+	 * @param mixed $meta The meta ID or IDs.
+	 * @param mixed $id   The post's ID.
+	 * @param mixed $key  The meta key.
+	 */
+	public function meta( mixed $meta, mixed $id, mixed $key ): void {
+		unset( $meta );
+		if ( is_numeric( $id ) && is_string( $key ) ) {
+			$this->saved->meta( (int) $id, $key );
+		}
+	}
+
+	/**
+	 * A post's terms were set (WordPress 7.1.4, wp-includes/taxonomy.php).
+	 *
+	 * @since 0.5.0
+	 *
+	 * @param mixed $id       The post's ID.
+	 * @param mixed $terms    The terms asked for.
+	 * @param mixed $now      The term taxonomy IDs it has now.
+	 * @param mixed $taxonomy The taxonomy.
+	 * @param mixed $append   Whether they were added to what was there.
+	 * @param mixed $before   The term taxonomy IDs it had.
+	 */
+	public function terms( mixed $id, mixed $terms, mixed $now, mixed $taxonomy, mixed $append, mixed $before ): void {
+		unset( $terms, $append );
+		if ( is_numeric( $id ) && is_string( $taxonomy ) && is_array( $now ) && is_array( $before ) ) {
+			$this->saved->terms( (int) $id, $taxonomy, array_map( 'intval', array_filter( $now, 'is_numeric' ) ), array_map( 'intval', array_filter( $before, 'is_numeric' ) ) );
+		}
 	}
 
 	/**
