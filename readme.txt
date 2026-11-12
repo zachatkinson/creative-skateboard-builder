@@ -4,7 +4,7 @@ Tags: woocommerce, skateboard, product builder, configurator, bundle
 Requires at least: 7.0
 Tested up to: 7.1
 Requires PHP: 8.5
-Stable tag: 0.5.0
+Stable tag: 0.6.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -14,7 +14,7 @@ Sells complete skateboards built from parts the shop stocks, with fit checked fr
 
 Creative Skateboard Builder lets a shopper put a complete skateboard together from the decks, trucks, wheels, bearings, hardware and grip a WooCommerce shop already sells. It checks that the parts fit from each part's specs, draws a picture of the build, keeps the total in view, and gives each part its own line in the cart and on the order, so stock, tax and refunds work as they do for any other product.
 
-This is version 0.5.0. It holds the foundation (the plugin's three tables, its upgrade steps and its update check), the rules that decide which parts fit together and what a build costs, the work that reads each part's specs from the shop's products, and the Builder kit product a shop owner sets a build up on. The builder a shopper uses arrives in later versions, and nothing a shopper sees changes yet.
+This is version 0.6.0. It holds the foundation (the plugin's three tables, its upgrade steps and its update check), the rules that decide which parts fit together and what a build costs, the work that reads each part's specs from the shop's products, and the Builder kit product a shop owner sets a build up on. The builder a shopper uses arrives in later versions, and nothing a shopper sees changes yet.
 
 The plugin needs WooCommerce 11.2 or newer, WordPress 7.0 or newer and PHP 8.5 or newer. Below any of them it does nothing and says so on the Plugins screen.
 
@@ -38,6 +38,10 @@ Everything the plugin made: its three tables, its options and transients, and it
 Yes. Activating it for the network installs it on every site, and a site added later installs itself the first time an administrator opens its dashboard.
 
 == Changelog ==
+
+= 0.6.0 =
+* After your parts are read again in the background, the first shopper to open the builder no longer waits for them.
+* A slot can no longer be keyed step, assembly, preset or review. A build's link uses those words for itself.
 
 = 0.5.0 =
 * A build can be added to the cart: the kit with a line for each part, each at your shop's own price, with the assembly fee on the kit's line.

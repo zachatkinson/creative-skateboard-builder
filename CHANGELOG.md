@@ -4,7 +4,13 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [0.6.0] - Unreleased
 
+### Added
+
+- The build link's format, read and written by `Front\BuildLink`: `cbuild[<slot key>]=<part ID>`, `cbuild[step]` (a slot's key, or `review`), `cbuild[assembly]` (`1` or `0`) and `cbuild[preset]` (0 to 5). Written in the kit's slot order, so one build has one address. The builder's own forms add keys that start with an underscore, which are not part of a shared link: `_was`, `_brand`, `_size`, `_shown` and `_replace` (D-142).
+
 ### Changed
+
+- A slots document with a slot keyed `step`, `assembly`, `preset` or `review` is refused as `document_bad_key`: a build link keeps those words for itself (D-142).
 
 - The job that indexes a part, and each batch of a reindex, writes that part's row of the parts table itself, for the prices a visitor nothing is known of is shown. The first request after a reindex of 2,000 parts answered in about 490 ms and 101 queries; it answers in 58 ms and 37, inside the route's budget and held to it (#28, D-140).
 

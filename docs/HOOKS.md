@@ -549,3 +549,23 @@ The kit's item also carries two lines without an underscore, which WooCommerce s
 The plugin's keys are added to `woocommerce_hidden_order_itemmeta`, so the order screen neither lists them nor offers them for editing. On `woocommerce_order_item_name` a part's name is given as its slot's label and its name.
 
 **A kit added by hand.** The order screen's Add products refuses a kit, on `woocommerce_ajax_add_order_item_validation`, with the error code `cbuild_kit_by_hand` and a sentence that says to add its parts instead: a kit's line with no build behind it would have none of the keys above. Code that makes an order's items itself (`WC_Order::add_product()`) is not stopped, so anything that reads a build treats a kit's item with no `_cbuild_id` as a line of no build.
+
+## Milestone 6: the builder (0.6.0)
+
+### The build link
+
+A build is the query parameters of the page its builder is on, all under `cbuild`. A link made by any 1.x release opens in every later one.
+
+| Parameter | Since | What it holds |
+| --- | --- | --- |
+| `cbuild[<slot key>]` | 0.6.0 | The part picked for the slot: a product's or a variation's ID, as digits. |
+| `cbuild[step]` | 0.6.0 | The step shown: a slot's key, or `review`. |
+| `cbuild[assembly]` | 0.6.0 | `1` for a build the shop assembles, `0` for one it does not. Left out, the kit's own setting decides. |
+| `cbuild[preset]` | 0.6.0 | Which of the kit's presets the build began as, counted from 0. |
+
+The plugin writes a link in one order: the kit's slots in step order, then the step, assembly and the preset. It reads them in any order. An ID is checked each time a link is opened: that it is a part, that it may fill its slot, that it is in stock and that the rules accept it. A link carries nothing else, and never a price.
+
+No slot is keyed `step`, `assembly`, `preset` or `review`; a slots document with one is refused as `document_bad_key`.
+
+Keys that start with an underscore are the builder's own forms' and are not part of a shared link. They may change in any release: `_was` (the picks before a change, slot key to part ID), `_brand` and `_size` (the step's filters), `_shown` (how many options the step lists) and `_replace` (the build in the cart an add takes the place of). A slot's key starts with a letter, so none can be one.
+

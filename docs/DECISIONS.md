@@ -1963,3 +1963,16 @@ Issue #7, owed before the builder page exists. Measured on 12 November 2026 with
 The budget is unchanged. Changing it, or what it is measured against, stays Zach's.
 
 **Status:** Accepted.
+
+### D-142 · The build link: the spec's four parameters, the builder's own under an underscore, and four words no slot is keyed with · 2026-11-12
+
+`Front\BuildLink` reads and writes a build as query parameters. It is the one place that does, for the page, the no-JavaScript forms, the browser's history, Copy link and the cart's Edit build.
+
+- **The spec's format is the public one:** `cbuild[<slot key>]`, `cbuild[step]`, `cbuild[assembly]` and `cbuild[preset]`.
+- **What the forms need beside it goes under keys that start with an underscore:** `_was`, `_brand`, `_size`, `_shown` and `_replace`. A slot's key starts with a letter (`Fields::isKey()`), so these can never be read as a pick, and new ones can be added without touching any kit. They are documented as the builder's own and are left out of a shared link (`BuildLink::shared()`), which carries part IDs, the step and assembly, as the spec's Privacy section has it.
+- **`step`, `assembly`, `preset` and `review` are refused as slot keys** (`Slots::KEPT`, `document_bad_key`). The spec's three share the picks' own array, and the review is a step that is no slot's. Without this a kit with a slot keyed `step` would have links no one could read. A kit saved by 0.4.0 or 0.5.0 with such a key would stop reading; none exists outside a test site, and the eight keys the rules know are not among them.
+- **One build, one address.** A link is written in the kit's slot order whatever order it arrived in, an ID only as PHP writes a whole number (`012` and `1e1` are no IDs), and a slot the kit does not have is left out.
+- **It decides nothing.** A link is read into IDs, keys and flags, capped at the most slots a kit can have. Whether an ID is a part of its slot is the state's to say, each time the link is opened.
+- **The version is 0.6.0** from this commit, the first with something public.
+
+**Status:** Accepted.

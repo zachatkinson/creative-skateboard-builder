@@ -26,6 +26,19 @@ final readonly class Slots {
 	public const int MAX = 20;
 
 	/**
+	 * The words no slot is keyed with: a build link carries its step, assembly and its preset beside its picks,
+	 * under these names, and its step may be the review. By word, so that asking is one lookup.
+	 *
+	 * @since 0.6.0
+	 */
+	public const array KEPT = array(
+		'step'     => true,
+		'assembly' => true,
+		'preset'   => true,
+		'review'   => true,
+	);
+
+	/**
 	 * Constructor.
 	 *
 	 * @param array<string, Slot> $slots The slots by key, in order.
