@@ -1232,6 +1232,56 @@ test.describe( 'The phone bar', () => {
 		} );
 	}
 
+	for ( const theme of [ 'storefront', 'kadence', 'twentytwentyfive' ] ) {
+		test( `stays at the foot of the screen on ${ theme }, with nothing of the theme's over it`, async ( {
+			page,
+			context,
+			baseURL,
+		} ) => {
+			await context.addCookies( [
+				{
+					name: 'cbuild_e2e_theme',
+					value: theme,
+					url: baseURL || 'http://localhost:8898',
+				},
+			] );
+			await page.setViewportSize( PHONE );
+			await page.goto( fixture().page );
+			await expect( page.locator( '.cbuild-bar' ) ).toBeVisible();
+			// Halfway down the builder, with the builder above and below the screen.
+			await page.locator( '.cbuild' ).evaluate( ( root ) => {
+				const box = root.getBoundingClientRect();
+				window.scrollTo(
+					0,
+					window.scrollY + box.top + box.height / 2 - innerHeight / 2
+				);
+			} );
+			await expect
+				.poll( () =>
+					page.locator( '.cbuild-bar' ).evaluate( ( bar ) => {
+						const box = bar.getBoundingClientRect();
+						const onScreen =
+							box.top >= 0 && box.bottom <= innerHeight + 1;
+						const points = [ 0.25, 0.5, 0.75 ].flatMap( ( x ) =>
+							[ 0.2, 0.8 ].map( ( y ) =>
+								document.elementFromPoint(
+									box.left + box.width * x,
+									box.top + box.height * y
+								)
+							)
+						);
+						return {
+							onScreen,
+							covered: points.filter(
+								( node ) => ! node || ! bar.contains( node )
+							).length,
+						};
+					} )
+				)
+				.toEqual( { onScreen: true, covered: 0 } );
+		} );
+	}
+
 	test( 'opens the parts list above itself, and its button moves the build on', async ( {
 		page,
 	} ) => {

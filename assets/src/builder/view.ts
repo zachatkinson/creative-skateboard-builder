@@ -24,6 +24,7 @@
  *   has a clipboard to write to; the address is in the page as a field either way, and a refused copy selects it.
  */
 import { getConfig, getElement, store } from '@wordpress/interactivity';
+import { fit } from './bar';
 import { Navigator, type Move, type View } from './navigate';
 import { add, body } from './cart';
 
@@ -228,6 +229,9 @@ const { state } = store(
 				root = getElement().ref;
 				state.canCopy =
 					'function' === typeof window.navigator.clipboard?.writeText;
+				if ( root ) {
+					fit( root );
+				}
 			},
 		},
 		actions: {
@@ -319,6 +323,14 @@ const { state } = store(
 						'.cbuild-review__added'
 					)?.focus();
 				} );
+			},
+			/**
+			 * The screen changed: fit the phone bar into the theme again (D-163).
+			 */
+			fit(): void {
+				if ( root ) {
+					fit( root );
+				}
 			},
 			reveal( event: FocusEvent ): void {
 				const target = event.target;

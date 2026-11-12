@@ -635,7 +635,7 @@
  */
 :where(.cbuild-bar) {
 	position: sticky;
-	inset-block-end: 0;
+	inset-block-end: var(--cbuild-bar-offset, 0px);
 	z-index: 10;
 	align-items: center;
 	gap: var(--cbuild-gap-small);
@@ -708,9 +708,9 @@
  */
 @media (max-width: 47.99rem) {
 	:root:has(.cbuild .cbuild-bar:not([hidden])) {
-		scroll-padding-block-end: calc(
-			var(--cbuild-bar-height, 4.25rem) + 0.5rem
-		);
+		// The bar, and any bar of the theme's own below it (D-163), on one line for Stylelint.
+		// prettier-ignore
+		scroll-padding-block-end: calc(var(--cbuild-bar-height, 4.25rem) + var(--cbuild-bar-offset, 0px) + 0.5rem);
 	}
 }
 

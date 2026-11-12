@@ -645,6 +645,8 @@ The builder's stylesheet is the Builder block's `style` (`build/builder/style-in
 
 Nothing moves where the shopper asks for reduced motion.
 
+On a phone the bar sits above any bar the theme fixes to the foot of the screen: with JavaScript the builder measures it and sets `--cbuild-bar-offset` on the page's root, which the bar's place and the page's scroll padding read. A theme may set it itself. Where an ancestor of the builder has `overflow: hidden`, which would keep the bar from sticking, the builder gives it `overflow: clip` in its place, and a plain block `display: flow-root` (D-163).
+
 ### DOM events
 
 The builder sends two events on its own element (`.cbuild`), with JavaScript only. Each bubbles, so a listener on the document hears every builder on the page. They are for a shop's own analytics, under the shop's own consent: the plugin sends nothing anywhere itself, and each carries IDs alone, never a name, a price or anything of the shopper. A listener cannot change what the builder does.
