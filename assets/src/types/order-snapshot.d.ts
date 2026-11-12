@@ -34,6 +34,10 @@ export interface CbuildSnapshot {
 			 */
 			name: string;
 			/**
+			 * The part's SKU when it was sold. Empty where it had none.
+			 */
+			sku: string;
+			/**
 			 * The part's product or variation ID.
 			 */
 			part: number;

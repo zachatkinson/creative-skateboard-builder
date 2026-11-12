@@ -15,9 +15,11 @@ use CreativeBranding\SkateboardBuilder\Domain\Fit\FitEngine;
 use CreativeBranding\SkateboardBuilder\Domain\Fit\Option;
 use CreativeBranding\SkateboardBuilder\Domain\Fit\Problem;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\BuildTerms;
+use CreativeBranding\SkateboardBuilder\Domain\Kit\Fields;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\InvalidMoney;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Kit;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Picks;
+use CreativeBranding\SkateboardBuilder\Domain\Kit\Slots;
 use CreativeBranding\SkateboardBuilder\Domain\Pricing\Pricer;
 use CreativeBranding\SkateboardBuilder\Port\Cart;
 use CreativeBranding\SkateboardBuilder\Port\Kits;
@@ -52,7 +54,7 @@ final class BuildCart {
 	/**
 	 * The build last offered, and what was said of it, so that the hooks that ask twice are answered once.
 	 *
-	 * @var array{array{int, array<int|string, int>, bool, int}, Verdict}|null
+	 * @var array{array{int, array<string, int>, bool, int}, Verdict}|null
 	 */
 	private ?array $said = null;
 
@@ -83,13 +85,21 @@ final class BuildCart {
 		if ( ! is_array( $request ) || ! is_array( $picks ) ) {
 			return Verdict::refused( CartRefusal::NoBuild );
 		}
-		$read = $this->kits->isPublic( $kit ) ? $this->kits->kit( $kit ) : null;
-		if ( null === $read ) {
-			return Verdict::refused( CartRefusal::KitNotFound );
+		// A request's body is not bounded as a form's fields are: more picks than a kit can have slots, or a key no
+		// slot could have, is refused before the kit or a part is read, and nothing of it is said back.
+		if ( count( $picks ) > Slots::MAX ) {
+			return Verdict::refused( CartRefusal::BuildRefused );
 		}
 		$asked = array();
 		foreach ( $picks as $slot => $id ) {
+			if ( ! is_string( $slot ) || ! Fields::isKey( $slot ) ) {
+				return Verdict::refused( CartRefusal::BuildRefused );
+			}
 			$asked[ $slot ] = self::id( $id );
+		}
+		$read = $this->kits->isPublic( $kit ) ? $this->kits->kit( $kit ) : null;
+		if ( null === $read ) {
+			return Verdict::refused( CartRefusal::KitNotFound );
 		}
 		$assembly = array_key_exists( 'assembly', $request ) ? self::flag( $request['assembly'] ) : $read->assembly->defaultOn;
 		$asking   = array( $kit, $asked, $assembly, $quantity );
@@ -241,11 +251,11 @@ final class BuildCart {
 	/**
 	 * Check a build whose kit reads.
 	 *
-	 * @param int                    $id       The kit product's ID.
-	 * @param Kit                    $kit      The kit.
-	 * @param array<int|string, int> $asked The picks: slot key to part ID, 0 where what was sent is no ID.
-	 * @param bool                   $assembly Whether the shop assembles it.
-	 * @param int                    $quantity How many of the build, one or more.
+	 * @param int                $id       The kit product's ID.
+	 * @param Kit                $kit      The kit.
+	 * @param array<string, int> $asked The picks: slot key to part ID, 0 where what was sent is no ID.
+	 * @param bool               $assembly Whether the shop assembles it.
+	 * @param int                $quantity How many of the build, one or more.
 	 */
 	private function judge( int $id, Kit $kit, array $asked, bool $assembly, int $quantity ): Verdict {
 		[ $problems, $ids, $quantities, $options ] = $this->examine( $kit, $asked, $quantity );
@@ -265,9 +275,11 @@ final class BuildCart {
 	/**
 	 * What is wrong with a set of picks, as the shop is now, and what the build takes.
 	 *
-	 * @param Kit                    $kit   The kit.
-	 * @param array<int|string, int> $asked The picks: slot key to part ID, 0 where what was sent is no ID.
-	 * @param int                    $more  How many of the build are to be added to what the cart holds: none for a
+	 * @param Kit                $kit   The kit.
+	 * @param array<string, int> $asked The picks: slot key to part ID, 0 where what was sent is no ID. Each key
+	 *                                  is a string: a request's are checked as slot keys before this, and a
+	 *                                  stored build's are read as strings (D-139).
+	 * @param int                $more  How many of the build are to be added to what the cart holds: none for a
 	 *                                      build whose lines are in the cart already.
 	 * @return array{list<BuildProblem>, array<string, int>, array<string, int>, array<string, Option>}
 	 *         The problems; each slot's part; how many of it one build takes; the build's options.
@@ -278,15 +290,13 @@ final class BuildCart {
 		$problems = array();
 		$named    = array();
 		foreach ( $asked as $key => $part ) {
-			// PHP keeps a key of digits as a number, whatever it was sent as.
-			$slot = $kit->slots->get( (string) $key );
+			$slot = $kit->slots->get( $key );
 			if ( null !== $slot && 0 !== $part ) {
 				$named[ $key ] = array( $slot, $part );
 			}
 		}
 		$parts = $this->kits->picked( $named );
 		foreach ( $asked as $key => $part ) {
-			$key  = (string) $key;
 			$read = $parts[ $key ] ?? null;
 			if ( null === $read ) {
 				$problems[] = new BuildProblem( null === $kit->slots->get( $key ) ? Problem::SlotUnknown : Problem::PartNotInSlot, $key, 0 === $part ? null : $part );

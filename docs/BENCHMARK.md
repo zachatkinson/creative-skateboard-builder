@@ -132,3 +132,7 @@ The state route, for a visitor whose session holds that build, on this small kit
 | The same with the shopper already known | 8 ms | 37 |
 
 The one query is WooCommerce reading the session. The route makes no cart, so the build in the session is not read (D-138), and the difference is held at one query.
+
+That query is paid only where a price the shop shows can depend on the shopper's address: prices shown with tax, or entered with tax and adjusted for where the shopper is. On any other shop the session is not read at all (D-139), and the measurement sets the shop to show prices with tax so that it is.
+
+Measured again on WooCommerce 11.3.0, the newest leg from D-139, on the same machine and day: adding the build p95 26 ms and 54 queries at most; a cart read with the build in it 21 ms and 30 queries, beside 3 ms and 10; the state route 44 queries with the session read and 43 without. Nothing moved. Where a shop's default customer address is Geolocate, a guest's first request also pays WooCommerce's GeoIP lookup, which this does not measure; milestone 6's plan does.

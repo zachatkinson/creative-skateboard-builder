@@ -142,10 +142,12 @@ final class CartShippingTest extends CartTestCase {
 		WC()->cart->calculate_totals();
 
 		$packages = WC()->cart->get_shipping_packages();
-		self::assertCount( 2, $packages );
+		// The split made seven packages, 0 to 6. The build is gathered in its first part's, and the wax's keeps
+		// its own key, so a method chosen for it stays its (D-139).
+		self::assertSame( array( 0, 6 ), array_keys( $packages ) );
 		self::assertCount( 6, $packages[0]['contents'] );
 		self::assertSame( 183.0, (float) $packages[0]['contents_cost'] );
-		self::assertSame( array( $wax->get_id() ), array_column( $packages[1]['contents'], 'product_id' ) );
+		self::assertSame( array( $wax->get_id() ), array_column( $packages[6]['contents'], 'product_id' ) );
 
 		$asked = array();
 		add_filter(

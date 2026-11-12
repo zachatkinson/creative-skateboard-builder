@@ -505,6 +505,8 @@ A kit's line raised past what the shop has of a part is refused as `cbuild_build
 | `slot` | 0.5.0 | On a part, the key of the slot it fills. |
 | `name` | 0.5.0 | On a part, its name with its slot's label, as the shop's language writes it. |
 
+**The parent key.** Where WooCommerce's Store API gives a cart item a `parent_item_key` (11.3.0 and later), a part's is its kit's cart item key, answered on `woocommerce_store_api_cart_item_parent_item_key`. The kit's line and a line of no build are left as WooCommerce or another plugin answered. WooCommerce counts a product's quantity in the cart from lines with no parent, so a part in a build is not counted as that product bought alone.
+
 **Item data.** A part's line has one more entry in `woocommerce_get_item_data`, and so in the Store API's `item_data`: Part of, with the kit's name and the slot's label. Its `raw_key` is `cbuild_slot`, and its `display` wraps the words in `<span class="cbuild-part">`. A theme or a cart drawer that prints a line's item data can group a build's parts by that class, as the Mini-Cart's styles do.
 
 **Classes.** In the Cart and Checkout blocks and a classic cart or checkout, a kit's row has the class `cbuild-kit` and a part's `cbuild-part`. In a classic cart a part's quantity is a number in `<span class="cbuild-quantity">`.
@@ -536,10 +538,14 @@ Both checkouts write them, on `woocommerce_checkout_create_order_line_item`. The
 | `_cbuild_parent` | 0.5.0 | A part's item | Its kit's order item ID. |
 | `_cbuild_children` | 0.5.0 | The kit's item | Its parts' order item IDs, in step order. |
 | `_cbuild_slot` | 0.5.0 | A part's item | The key of the slot it fills. |
-| `_cbuild_snapshot` | 0.5.0 | The kit's item | The build as sold, the document `schema/order-snapshot.json` describes, with a version of its own that moves only when this document does: `schema_version` (1), `kit`, `assembly` and `picks`, slot key to `label` (the slot's, as the shopper read it), `name` (the part's), `part` (its product ID), `quantity` (how many one build takes) and `specs` (spec key to value, as the index held them). Then `lead_time` and `returns_notice`, the kit's own as the shopper read them, each empty for a build the shop does not assemble. |
+| `_cbuild_snapshot` | 0.5.0 | The kit's item | The build as sold, the document `schema/order-snapshot.json` describes, with a version of its own that moves only when this document does: `schema_version` (1), `kit`, `assembly` and `picks`, slot key to `label` (the slot's, as the shopper read it), `name` (the part's), `sku` (the part's SKU when it was sold, empty where it had none), `part` (its product ID), `quantity` (how many one build takes) and `specs` (spec key to value, as the index held them). Then `lead_time` and `returns_notice`, the kit's own as the shopper read them, each empty for a build the shop does not assemble. |
 
-The kit's item also carries two lines without an underscore, which WooCommerce shows wherever it shows an item's meta: Assembly (Yes or No) and Build (each slot's label, part and quantity). Their names and values are written in the shop's language as the order is placed.
+The kit's item also carries two lines without an underscore, which WooCommerce shows wherever it shows an item's meta: Assembly (Yes or No) and Build (each slot's label, part and quantity). Their names and values are written in the shop's language as the order is placed. They are for people to read. Code reads `_cbuild_snapshot`, and never those two: their keys are translated words, so they differ from one shop's language to the next and on one shop when its language changes.
+
+`_cbuild_id` is what ties a build: every item with the same one is the same build, and it survives anything that gives the items new IDs. `_cbuild_parent` and `_cbuild_children` are worked out from it and hold order item IDs, so code that copies or remakes an order's items (a renewal, a duplicate, a refund's lines) ties them again from `_cbuild_id` and `_cbuild_role` and does not carry the two over.
 
 `_cbuild_parent` and `_cbuild_children` are written once the order's items are saved: on `woocommerce_checkout_order_created` for the classic checkout, and on `woocommerce_store_api_checkout_update_order_meta` and `woocommerce_store_api_checkout_order_processed` for the Store API's. Read a build by them after those, not in `woocommerce_checkout_create_order_line_item`.
 
 The plugin's keys are added to `woocommerce_hidden_order_itemmeta`, so the order screen neither lists them nor offers them for editing. On `woocommerce_order_item_name` a part's name is given as its slot's label and its name.
+
+**A kit added by hand.** The order screen's Add products refuses a kit, on `woocommerce_ajax_add_order_item_validation`, with the error code `cbuild_kit_by_hand` and a sentence that says to add its parts instead: a kit's line with no build behind it would have none of the keys above. Code that makes an order's items itself (`WC_Order::add_product()`) is not stopped, so anything that reads a build treats a kit's item with no `_cbuild_id` as a line of no build.

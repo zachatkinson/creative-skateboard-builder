@@ -167,6 +167,9 @@ final class CartBenchmarkTest extends CartTestCase {
 	// request that had neither. What that costs a visitor whose session holds a build is held here: the one query
 	// that reads the session, and no cart (D-138).
 	public function test_the_state_route_reads_a_shoppers_session_for_what_is_printed_and_never_their_cart(): void {
+		// A shop whose shown prices go by where the shopper is: any other asks for no shopper at all (D-139).
+		update_option( 'woocommerce_calc_taxes', 'yes' );
+		update_option( 'woocommerce_tax_display_shop', 'incl' );
 		self::timed( $this->adding(), 201 );
 		$session = WC()->session;
 		self::assertInstanceOf( WC_Session_Handler::class, $session );

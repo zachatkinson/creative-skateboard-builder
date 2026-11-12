@@ -57,6 +57,10 @@ Yes. Activating it for the network installs it on every site, and a site added l
 * The builder's prices include tax for the shopper's own address, where your shop shows prices with tax.
 * The classic mini-cart widget indents a build's parts under its kit.
 * An order no longer queues background work for each product it sells.
+* A coupon added or removed on an order's screen treats a build as the cart did.
+* An order keeps each part's SKU as it was when the build was sold.
+* A kit cannot be added to an order by hand from the order's screen. Add its parts instead.
+* On a shop that shows prices without tax, every shopper is priced from one stored set of parts, whatever their address.
 
 = 0.4.0 =
 * A new product type, Builder kit: the product a shopper will build from parts. It cannot be bought as an ordinary product, and it holds no price of its own.

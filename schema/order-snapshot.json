@@ -42,6 +42,7 @@
 					"required": [
 						"label",
 						"name",
+						"sku",
 						"part",
 						"quantity",
 						"specs"
@@ -53,6 +54,10 @@
 						},
 						"name": {
 							"description": "The part's name when it was sold.",
+							"type": "string"
+						},
+						"sku": {
+							"description": "The part's SKU when it was sold. Empty where it had none.",
 							"type": "string"
 						},
 						"part": {

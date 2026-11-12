@@ -43,23 +43,23 @@ final class OrderBuildsTest extends TestCase {
 
 	public function test_the_snapshot_keeps_each_part_as_sold_in_the_builds_order(): void {
 		$build    = new Build( 'a', self::KIT, array( 'deck' => 103, 'trucks' => 149 ), array( 'deck' => 1, 'trucks' => 2 ), true );
-		$snapshot = $this->orders->snapshot( $build, array( 'deck' => 'Deck', 'trucks' => 'Trucks' ), array( 'trucks' => 'Stage 11', 'deck' => 'Eight and a half' ), 'Two days', 'No returns once gripped' );
+		$snapshot = $this->orders->snapshot( $build, array( 'deck' => 'Deck', 'trucks' => 'Trucks' ), array( 'trucks' => 'Stage 11', 'deck' => 'Eight and a half' ), array( 'trucks' => 'IND-149' ), 'Two days', 'No returns once gripped' );
 		self::assertSame( 1, $this->kits->readings, 'the parts are read in one reading of the shop' );
 		self::assertSame( array( 'schema_version', 'kit', 'assembly', 'picks', 'lead_time', 'returns_notice' ), array_keys( $snapshot ) );
 		self::assertSame( array( OrderBuilds::SNAPSHOT_VERSION, self::KIT, true ), array( $snapshot['schema_version'], $snapshot['kit'], $snapshot['assembly'] ) );
 		self::assertSame( 1, OrderBuilds::SNAPSHOT_VERSION );
 		self::assertSame( array( 'Two days', 'No returns once gripped' ), array( $snapshot['lead_time'], $snapshot['returns_notice'] ) );
 		self::assertSame( array( 'deck', 'trucks' ), array_keys( $snapshot['picks'] ) );
-		self::assertSame( array( 'label', 'name', 'part', 'quantity', 'specs' ), array_keys( $snapshot['picks']['trucks'] ) );
-		self::assertSame( array( 'Trucks', 'Stage 11', 149, 2 ), array_slice( array_values( $snapshot['picks']['trucks'] ), 0, 4 ) );
-		self::assertSame( array( 'Deck', 'Eight and a half', 103, 1 ), array_slice( array_values( $snapshot['picks']['deck'] ), 0, 4 ) );
+		self::assertSame( array( 'label', 'name', 'sku', 'part', 'quantity', 'specs' ), array_keys( $snapshot['picks']['trucks'] ) );
+		self::assertSame( array( 'Trucks', 'Stage 11', 'IND-149', 149, 2 ), array_slice( array_values( $snapshot['picks']['trucks'] ), 0, 5 ) );
+		self::assertSame( array( 'Deck', 'Eight and a half', '', 103, 1 ), array_slice( array_values( $snapshot['picks']['deck'] ), 0, 5 ) );
 		self::assertSame( Shop::parts()['deck'][2]->specs->toIndex(), $snapshot['picks']['deck']['specs'] );
 		self::assertNotSame( array(), $snapshot['picks']['deck']['specs'] );
 	}
 
 	public function test_the_owners_words_are_kept_for_an_assembled_build_alone(): void {
 		$loose    = new Build( 'a', self::KIT, array( 'deck' => 103 ), array( 'deck' => 1 ), false );
-		$snapshot = $this->orders->snapshot( $loose, array(), array(), 'Two days', 'No returns once gripped' );
+		$snapshot = $this->orders->snapshot( $loose, array(), array(), array(), 'Two days', 'No returns once gripped' );
 		self::assertFalse( $snapshot['assembly'] );
 		self::assertSame( array( '', '' ), array( $snapshot['lead_time'], $snapshot['returns_notice'] ) );
 		self::assertSame( array( 'deck', '' ), array( $snapshot['picks']['deck']['label'], $snapshot['picks']['deck']['name'] ), 'a slot nobody labelled is kept by its key, and a part nobody named with no name' );
@@ -68,13 +68,13 @@ final class OrderBuildsTest extends TestCase {
 	public function test_a_part_or_a_kit_the_shop_no_longer_reads_is_kept_with_no_specs(): void {
 		$build                = new Build( 'a', self::KIT, array( 'deck' => 103, 'trucks' => 149 ), array( 'deck' => 1, 'trucks' => 2 ), true );
 		$this->kits->now[149] = false;
-		$snapshot             = $this->orders->snapshot( $build, array(), array(), '', '' );
+		$snapshot             = $this->orders->snapshot( $build, array(), array(), array(), '', '' );
 		self::assertSame( array( 149, 2, array() ), array( $snapshot['picks']['trucks']['part'], $snapshot['picks']['trucks']['quantity'], $snapshot['picks']['trucks']['specs'] ), 'a part the shop no longer sells' );
 		self::assertNotSame( array(), $snapshot['picks']['deck']['specs'] );
 
 		unset( $this->kits->kits[ self::KIT ] );
 		$picked   = count( $this->kits->picked );
-		$snapshot = $this->orders->snapshot( $build, array(), array(), '', '' );
+		$snapshot = $this->orders->snapshot( $build, array(), array(), array(), '', '' );
 		self::assertSame( array( 103, 1, array() ), array( $snapshot['picks']['deck']['part'], $snapshot['picks']['deck']['quantity'], $snapshot['picks']['deck']['specs'] ), 'a kit that no longer reads' );
 		self::assertCount( $picked, $this->kits->picked, 'and no part is asked of the shop for a slot nobody knows' );
 	}

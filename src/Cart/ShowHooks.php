@@ -87,6 +87,9 @@ final class ShowHooks implements Hookable {
 		} else {
 			add_action( 'woocommerce_blocks_loaded', array( $this, 'extend' ), 10, 0 );
 		}
+		// WooCommerce 11.3.0, src/StoreApi/Schemas/V1/CartItemSchema.php:132: a Store API cart item's parent line. A
+		// filter nobody applies costs nothing on 11.2.
+		add_filter( 'woocommerce_store_api_cart_item_parent_item_key', array( $this, 'parent' ), 10, 2 );
 		// Only where the cart holds a build: the styles go in the page with a cart, and the script comes with the
 		// Cart or Checkout block alone, whose own script it needs (D-010, D-132).
 		add_action( 'wp_enqueue_scripts', array( $this, 'classic' ), 10, 0 );
@@ -214,6 +217,20 @@ final class ShowHooks implements Hookable {
 			return $name;
 		}
 		return self::named( esc_html( $told['label'] ), $name );
+	}
+
+	/**
+	 * A Store API cart item's parent line, from WooCommerce 11.3.0: a part's is its kit's line. Any other line is
+	 * given back as it came. WooCommerce itself drops a key that names no line in the cart.
+	 *
+	 * @since 0.5.0
+	 *
+	 * @param mixed $key  The parent's cart key so far.
+	 * @param mixed $item The cart item.
+	 */
+	public function parent( mixed $key, mixed $item = null ): mixed {
+		$kit = is_array( $item ) ? ( $item[ Options::CART_PARENT ] ?? null ) : null;
+		return is_string( $kit ) && '' !== $kit ? $kit : $key;
 	}
 
 	/**

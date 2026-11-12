@@ -13,9 +13,12 @@ use Closure;
 use CreativeBranding\SkateboardBuilder\Hookable;
 use CreativeBranding\SkateboardBuilder\Service\Build;
 use CreativeBranding\SkateboardBuilder\Service\BuildCart;
+use CreativeBranding\SkateboardBuilder\Support\Cast;
 use CreativeBranding\SkateboardBuilder\Support\Options;
 use WC_Cart;
 use WC_Coupon;
+use WC_Order;
+use WC_Order_Item_Product;
 use WC_Product;
 use WeakMap;
 
@@ -109,15 +112,46 @@ final class PriceHooks implements Hookable {
 	 * @param mixed $values  The cart item, or an order's item.
 	 */
 	public function coupon( mixed $valid, mixed $product = null, mixed $coupon = null, mixed $values = null ): mixed {
-		$parent = is_array( $values ) ? ( $values[ Options::CART_PARENT ] ?? null ) : null;
-		$line   = is_string( $parent ) ? WC()->cart->get_cart_item( $parent ) : array();
-		$kit    = $line['data'] ?? null;
-		if ( ! $coupon instanceof WC_Coupon || ! $kit instanceof WC_Product || null === Build::read( $line[ Options::CART_BUILD ] ?? null ) ) {
+		if ( $values instanceof WC_Order_Item_Product ) {
+			// An order's coupons worked out again, when a manager adds or removes one: the kit is the part's kit's
+			// item (includes/class-wc-discounts.php:115, includes/abstracts/abstract-wc-order.php:1950).
+			// WC_Coupon::is_valid_for_product() is declared to take a cart item's array, so the kit's own answer is
+			// asked with none.
+			$kit  = self::kitItem( $values )?->get_product();
+			$line = array();
+		} else {
+			$parent = is_array( $values ) ? ( $values[ Options::CART_PARENT ] ?? null ) : null;
+			$held   = get_object_vars( WC() )['cart'] ?? null;
+			$line   = is_string( $parent ) && $held instanceof WC_Cart ? $held->get_cart_item( $parent ) : array();
+			$kit    = null === Build::read( $line[ Options::CART_BUILD ] ?? null ) ? null : ( $line['data'] ?? null );
+		}
+		if ( ! $coupon instanceof WC_Coupon || ! $kit instanceof WC_Product ) {
 			return $valid;
 		}
 		$left = in_array( $kit->get_id(), $coupon->get_excluded_product_ids(), true )
 			|| array() !== array_intersect( $kit->get_category_ids(), $coupon->get_excluded_product_categories() );
 		return ( $this->builds )()->couponTakes( $coupon->is_type( 'fixed_product' ), true === $valid, $coupon->is_valid_for_product( $kit, $line ), $left, $product instanceof WC_Product && self::barred( $coupon, $product ) );
+	}
+
+	/**
+	 * The kit's item of a part's item on an order: the one its `_cbuild_parent` names, or, where that item has
+	 * gone, the kit's item of the same build.
+	 *
+	 * @param WC_Order_Item_Product $item The order item.
+	 */
+	private static function kitItem( WC_Order_Item_Product $item ): ?WC_Order_Item_Product {
+		$order = Options::ROLE_PART === $item->get_meta( Options::ORDER_ROLE ) ? $item->get_order() : null;
+		if ( ! $order instanceof WC_Order ) {
+			return null;
+		}
+		$named = $order->get_item( Cast::int( $item->get_meta( Options::ORDER_PARENT ) ) );
+		$build = $item->get_meta( Options::ORDER_BUILD );
+		foreach ( array_merge( array( $named ), array_values( $order->get_items() ) ) as $other ) {
+			if ( $other instanceof WC_Order_Item_Product && Options::ROLE_KIT === $other->get_meta( Options::ORDER_ROLE ) && $build === $other->get_meta( Options::ORDER_BUILD ) ) {
+				return $other;
+			}
+		}
+		return null;
 	}
 
 	/**

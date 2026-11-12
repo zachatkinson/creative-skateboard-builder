@@ -11,9 +11,11 @@ namespace CreativeBranding\SkateboardBuilder\Tests\Integration;
 
 use CreativeBranding\SkateboardBuilder\Support\Options;
 use CreativeBranding\SkateboardBuilder\Tests\Support\CartTestCase;
+use WC_Coupon;
 use WC_Order;
 use WC_Order_Item_Product;
 use WC_Product_Simple;
+use WP_Error;
 use WP_REST_Request;
 
 /**
@@ -30,6 +32,10 @@ final class OrderTest extends CartTestCase {
 		update_option( 'woocommerce_ship_to_countries', 'disabled' );
 		update_option( 'woocommerce_cheque_settings', array( 'enabled' => 'yes' ) );
 		WC()->payment_gateways()->init();
+		// One part with a SKU, for the snapshot; the rest have none.
+		$trucks = wc_get_product( $this->parts['trucks'] );
+		$trucks->set_sku( 'TRK-149' );
+		$trucks->save();
 	}
 
 	public function tear_down(): void {
@@ -178,12 +184,14 @@ final class OrderTest extends CartTestCase {
 			array(
 				'label'    => 'Trucks',
 				'name'     => 'Trucks',
+				'sku'      => 'TRK-149',
 				'part'     => $this->parts['trucks'],
 				'quantity' => 2,
 			),
 			array_diff_key( $snapshot['picks']['trucks'], array( 'specs' => 0 ) )
 		);
 		self::assertSame( '8.5000', $snapshot['picks']['trucks']['specs']['axle_width'], 'the specs as sold' );
+		self::assertSame( '', $snapshot['picks']['deck']['sku'], 'a part with no SKU' );
 
 		$shown = array();
 		foreach ( $kit->get_formatted_meta_data() as $meta ) {
@@ -326,6 +334,64 @@ final class OrderTest extends CartTestCase {
 		);
 		self::assertNotWPError( $refund );
 		self::assertSame( 8, $stock(), 'a refund of one build\'s trucks restocks two' );
+	}
+
+	// Claude in Cowork's review of milestone 5, S3: WooCommerce works an order's coupons out again when a manager
+	// adds or removes one (includes/abstracts/abstract-wc-order.php:1705, :1915 and :1950), and asks the same
+	// filter with the order's item where the cart gave its line (includes/class-wc-discounts.php:115).
+	public function test_a_coupon_worked_out_again_on_the_order_still_follows_the_kit_to_its_parts(): void {
+		$coupon = new WC_Coupon();
+		$coupon->set_code( 'kitonly' );
+		$coupon->set_discount_type( 'percent' );
+		$coupon->set_amount( 10 );
+		$coupon->set_product_ids( array( $this->kit ) );
+		$coupon->save();
+		$this->added( true );
+		self::assertTrue( WC()->cart->apply_coupon( 'kitonly' ) );
+		WC()->cart->calculate_totals();
+		$order  = $this->classic();
+		$shares = static function ( WC_Order $order ): array {
+			$shares = array();
+			foreach ( $order->get_items() as $item ) {
+				$shares[ $item->get_name() ] = number_format( (float) $item->get_subtotal() - (float) $item->get_total(), 2 );
+			}
+			return $shares;
+		};
+		$placed = $shares( $order );
+		self::assertSame( '19.80', number_format( (float) $order->get_discount_total(), 2 ), 'a tenth of the 183 of parts and the 15 of assembly' );
+		self::assertSame( '7.00', $placed['Deck'] );
+
+		$order->recalculate_coupons();
+		self::assertSame( $placed, $shares( $order ), 'each line keeps its share' );
+		self::assertSame( '19.80', number_format( (float) $order->get_discount_total(), 2 ) );
+
+		// A part the coupon leaves out by name stays out on the order as in the cart (D-137).
+		$coupon->set_excluded_product_ids( array( $this->parts['deck'] ) );
+		$coupon->save();
+		$order->recalculate_coupons();
+		self::assertSame( '0.00', $shares( $order )['Deck'] );
+		self::assertSame( '12.80', number_format( (float) $order->get_discount_total(), 2 ) );
+	}
+
+	public function test_a_kit_cannot_be_added_to_an_order_by_hand_and_any_other_product_can(): void {
+		$order = wc_create_order();
+		$kit   = wc_get_product( $this->kit );
+		// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- WooCommerce's own, as its order screen applies it.
+		$error = apply_filters( 'woocommerce_ajax_add_order_item_validation', new WP_Error(), $kit, $order, 1 );
+		self::assertInstanceOf( WP_Error::class, $error );
+		self::assertSame( 'cbuild_kit_by_hand', $error->get_error_code() );
+		self::assertSame( 'Complete is put together in the builder, so it cannot be added to an order here. Add its parts instead.', $error->get_error_message() );
+
+		$deck = wc_get_product( $this->picks()['deck'] );
+		// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- WooCommerce's own, as its order screen applies it.
+		$other = apply_filters( 'woocommerce_ajax_add_order_item_validation', new WP_Error(), $deck, $order, 1 );
+		self::assertInstanceOf( WP_Error::class, $other );
+		self::assertSame( '', $other->get_error_code() );
+
+		// Another plugin's refusal, made first, stands.
+		$first = new WP_Error( 'theirs', 'No.' );
+		// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- WooCommerce's own, as its order screen applies it.
+		self::assertSame( array( 'theirs', 'cbuild_kit_by_hand' ), apply_filters( 'woocommerce_ajax_add_order_item_validation', $first, $kit, $order, 1 )->get_error_codes() );
 	}
 
 	public function test_the_order_screen_neither_lists_nor_edits_the_plugins_keys(): void {

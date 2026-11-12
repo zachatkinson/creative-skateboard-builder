@@ -149,7 +149,8 @@ final class WooCart implements Cart {
 	 * @since 0.5.0
 	 */
 	public function shopper(): void {
-		if ( ( get_object_vars( WC() )['customer'] ?? null ) instanceof WC_Customer ) {
+		// Nobody is asked for where no shown price depends on where they are (Cowork's review of milestone 5, D-139).
+		if ( ( get_object_vars( WC() )['customer'] ?? null ) instanceof WC_Customer || ! WooPartCards::byAddress() ) {
 			return;
 		}
 		WC()->initialize_session();

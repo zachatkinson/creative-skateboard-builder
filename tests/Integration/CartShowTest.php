@@ -107,6 +107,20 @@ final class CartShowTest extends CartTestCase {
 			$told[ $lines['plain'][0] ][0]
 		);
 
+		// WooCommerce 11.3.0 gives each Store API cart item a `parent_item_key`, by a filter
+		// (src/StoreApi/Schemas/V1/CartItemSchema.php:132): a part's is its kit's line. The filter is asked here as
+		// WooCommerce asks it, so the oldest leg, which has no such field, holds the answer too.
+		// phpcs:disable WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- WooCommerce's own.
+		self::assertSame( $lines['kit'][0], apply_filters( 'woocommerce_store_api_cart_item_parent_item_key', null, $lines['trucks'][1], $lines['trucks'][0] ) );
+		self::assertNull( apply_filters( 'woocommerce_store_api_cart_item_parent_item_key', null, $lines['kit'][1], $lines['kit'][0] ) );
+		self::assertSame( 'another', apply_filters( 'woocommerce_store_api_cart_item_parent_item_key', 'another', $lines['plain'][1], $lines['plain'][0] ), 'a line of no build is given back as it came' );
+		// phpcs:enable
+		foreach ( $cart['items'] as $item ) {
+			if ( array_key_exists( 'parent_item_key', $item ) ) {
+				self::assertSame( $lines['trucks'][0] === $item['key'] ? $lines['kit'][0] : ( in_array( $item['key'], array( $lines['kit'][0], $lines['plain'][0] ), true ) ? null : $lines['kit'][0] ), $item['parent_item_key'], 'and the Store API says so' );
+			}
+		}
+
 		self::assertSame( array(), $told[ $lines['kit'][0] ][1] );
 		self::assertSame( array(), $told[ $lines['plain'][0] ][1] );
 		self::assertSame(

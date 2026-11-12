@@ -21,6 +21,7 @@ use WC_Cart;
 use WC_Order;
 use WC_Order_Item_Product;
 use WC_Product;
+use WP_Error;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -67,6 +68,26 @@ final class OrderHooks implements Hookable {
 		// src/Internal/Utilities/OrderItemMetaUtil.php:30: the order screen lists every key but these, underscore
 		// or not, and lets a manager edit what it lists.
 		add_filter( 'woocommerce_hidden_order_itemmeta', array( $this, 'hidden' ) );
+		// includes/class-wc-ajax.php:1292: a manager adds a product to an order on the order's screen. A kit added
+		// there would be a kit's line with no build behind it (D-139).
+		add_filter( 'woocommerce_ajax_add_order_item_validation', array( $this, 'byHand' ), 10, 2 );
+	}
+
+	/**
+	 * A kit is refused on the order screen's Add products: its line means nothing without its build.
+	 *
+	 * @since 0.5.0
+	 *
+	 * @param mixed $error   WooCommerce's error, empty unless something refused the product already.
+	 * @param mixed $product The product being added.
+	 * @return mixed The error, with the plugin's reason on it for a kit.
+	 */
+	public function byHand( mixed $error, mixed $product = null ): mixed {
+		if ( $error instanceof WP_Error && $product instanceof WC_Product && $product->is_type( Options::PRODUCT_TYPE_KIT ) ) {
+			/* translators: %s: the kit's name. */
+			$error->add( 'cbuild_kit_by_hand', sprintf( __( '%s is put together in the builder, so it cannot be added to an order here. Add its parts instead.', 'creative-skateboard-builder' ), $product->get_name() ) );
+		}
+		return $error;
 	}
 
 	/**
@@ -190,6 +211,7 @@ final class OrderHooks implements Hookable {
 		$kit    = ( $this->kits )()->kit( $build->kit );
 		$labels = array();
 		$names  = array();
+		$skus   = array();
 		foreach ( array_keys( $build->picks ) as $key ) {
 			$slot = $kit?->slots->get( $key );
 			if ( null !== $slot ) {
@@ -202,6 +224,7 @@ final class OrderHooks implements Hookable {
 			$slot    = $line[ Options::CART_SLOT ] ?? null;
 			if ( $product instanceof WC_Product && is_string( $slot ) ) {
 				$names[ $slot ] = $product->get_name();
+				$skus[ $slot ]  = $product->get_sku();
 			}
 		}
 		// The owner's words on an assembled build, as the shopper read them, for the order's emails (milestone 8).
@@ -211,6 +234,7 @@ final class OrderHooks implements Hookable {
 			$build,
 			$labels,
 			$names,
+			$skus,
 			'' === $lead ? '' : StateAnswer::text( $lead, 'lead_time', $build->kit ),
 			'' === $notice ? '' : StateAnswer::text( $notice, 'returns_notice', $build->kit )
 		);

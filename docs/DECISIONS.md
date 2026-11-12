@@ -1909,3 +1909,28 @@ Listed, not done:
 **Red runs and deliberate breaks** are in the commit's message and the review's findings table.
 
 **Status:** Accepted.
+
+### D-139 · Claude in Cowork's review of pull request #33: WooCommerce 11.3.0, the address only where a price needs it, a coupon on the order, the SKU · 2026-11-11
+
+Claude in Cowork read pull request #33 at `916d82e`: no blocker, four should-fixes and five minors. All nine are done.
+
+- **The newest leg is WooCommerce 11.3.0** (S1). The demo updated itself to 11.3.0, and CI's newest leg was 11.2.2, so the cart was tested on neither version a shop runs it on today. `.wp-env.json` and `.wp-env.tests.json` pin 11.3.0, and D-004's "newest" reads 7.1.4 with 11.3.0 from here. The oldest leg stays 7.0 with 11.2.0, and the floor stays 11.2. `php-stubs/woocommerce-stubs` and `tools/phpstan-bootstrap.php`'s `WC_VERSION` stay at 11.2.2: static analysis reads the floor's API, which is the one the code may rely on.
+- **A part's line names its parent to the Store API** (S1). WooCommerce 11.3.0 gives a cart item a `parent_item_key`, answered by the filter `woocommerce_store_api_cart_item_parent_item_key` (`src/StoreApi/Schemas/V1/CartItemSchema.php:132`), and counts a product's quantity in the cart from lines with no parent. `Cart\ShowHooks::parent()` answers a part's `cbuild_parent` and leaves every other line as it came. On 11.2 the filter is never asked.
+- **The address reaches a price only where a shown price can depend on it** (S2). D-135 put the rates for the shopper's address in the price context on every shop with tax on. On a shop that enters and shows prices without tax, as the demo does with 17 standard rates over 13 provinces and territories, that kept up to 13 sets of the same rows and read the session for nothing. `Adapter\WooPartCards::byAddress()` is true where prices are shown with tax, or entered with tax while `woocommerce_adjust_non_base_location_prices` is answered false (`includes/wc-product-functions.php:1575`). Only then does the context hold the shopper's rates, and only then does `Adapter\WooCart::shopper()` make the session and the customer. Otherwise the context holds the shop's base rates, the same for everyone.
+- **A coupon worked out again on the order follows the kit** (S3). `WC_Discounts` hands `woocommerce_coupon_is_valid_for_product` a `WC_Order_Item_Product` where it works from an order (`includes/class-wc-discounts.php:115`), as it does when a manager adds or removes a coupon (`includes/abstracts/abstract-wc-order.php:1705`, `:1915`). `Cart\PriceHooks::coupon()` read the cart's keys alone, so on an order a kit-only coupon's share came off the parts and the total moved after payment. It now finds a part's kit by the order item's `_cbuild_parent`, or by `_cbuild_id` and `_cbuild_role` where the tie is not yet written, and answers as it does in the cart.
+- **The snapshot keeps each part's SKU** (S4): `sku` on each pick, a string, empty where the part had none, required by `schema/order-snapshot.json`. The snapshot's version stays 1: no released version wrote one, since 0.5.0 is the first.
+- **Picks are capped before anything is read** (M1). `Service\BuildCart::consider()` refuses more picks than `Slots::MAX`, and a key that is not a slot key by `Fields::isKey()`, before the kit or any product is read.
+- **Words for people, the snapshot for code** (M2), and **`_cbuild_id` is the tie** (M5): both said in `docs/HOOKS.md`. Milestone 8 ties copied items again from `_cbuild_id` and `_cbuild_role`.
+- **Shipping packages keep their keys** (M3). `Service\BuildPackages::together()` renumbered the packages it returned. WooCommerce keeps the method chosen for a package under the package's key (`chosen_shipping_methods`), so a package after one a move emptied would have taken the emptied one's method.
+- **A kit cannot be added to an order by hand** (M4), the first of the two roads the review offered. `Order\OrderHooks::byHand()` answers `woocommerce_ajax_add_order_item_validation` (`includes/class-wc-ajax.php:1292`) with the code `cbuild_kit_by_hand` and a sentence. `WC_Order::add_product()` called by other code has no such filter, so milestone 8's Build box and ticket still read a kit's item with no `_cbuild_id` as a line of no build; its plan carries that.
+
+Carried from the review, not for this milestone:
+
+- **PayPal Payments' buttons on a kit's page** are looked at in milestone 6, with the builder's page (the review read 4.2.2).
+- **Geolocation.** Where the shop's default customer address is Geolocate and a shown price goes by address, a guest's first state request costs WooCommerce's GeoIP lookup, which the benchmark does not include. Milestone 6's plan measures it.
+
+Zach's, answered apart from this: the coupon edges (D-130), the package default (D-133), and how the demo takes WooCommerce's updates.
+
+**Red runs and deliberate breaks** are in the commit's message and the review's table.
+
+**Status:** Accepted.

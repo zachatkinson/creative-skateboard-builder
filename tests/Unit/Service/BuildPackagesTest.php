@@ -53,13 +53,20 @@ final class BuildPackagesTest extends TestCase {
 		$out      = BuildPackages::together( $packages, array( array( 'deck', 'trucks', 'wheels' ) ) );
 
 		self::assertCount( 2, $out, 'the package a move emptied is gone' );
-		self::assertSame( array( 0, 1 ), array_keys( $out ) );
-		self::assertSame( array( 'wax' ), array_keys( $out[0]['contents'] ) );
-		self::assertSame( 3.0, $out[0]['contents_cost'] );
-		self::assertSame( array( 'deck', 'trucks', 'wheels' ), array_keys( $out[1]['contents'] ) );
-		self::assertSame( 156.5, $out[1]['contents_cost'] );
-		self::assertSame( 'home', $out[1]['destination'], 'the rest of a package is left as it was' );
-		self::assertSame( array( 'line_total' => 54 ), $out[1]['contents']['trucks'] );
+		// WooCommerce keeps the shipping method chosen for a package under the package's key, so each package
+		// that stays keeps its own (Claude in Cowork's review of milestone 5, M3).
+		self::assertSame( array( 'a', 'b' ), array_keys( $out ) );
+		self::assertSame( array( 'wax' ), array_keys( $out['a']['contents'] ) );
+		self::assertSame( 3.0, $out['a']['contents_cost'] );
+		self::assertSame( array( 'deck', 'trucks', 'wheels' ), array_keys( $out['b']['contents'] ) );
+		self::assertSame( 156.5, $out['b']['contents_cost'] );
+		self::assertSame( 'home', $out['b']['destination'], 'the rest of a package is left as it was' );
+		self::assertSame( array( 'line_total' => 54 ), $out['b']['contents']['trucks'] );
+
+		// Numbered as WooCommerce's own are: the package after one a move emptied keeps its number.
+		$numbered = BuildPackages::together( array_values( array( self::package( array( 'trucks' => 54 ) ), self::package( array( 'deck' => 70 ) ), self::package( array( 'wax' => 3 ) ) ) ), array( array( 'deck', 'trucks' ) ) );
+		self::assertSame( array( 1, 2 ), array_keys( $numbered ) );
+		self::assertSame( array( 'wax' ), array_keys( $numbered[2]['contents'] ) );
 	}
 
 	public function test_two_builds_are_each_kept_together_and_apart_from_each_other(): void {
@@ -88,8 +95,8 @@ final class BuildPackagesTest extends TestCase {
 			array( array( 'deck', 'gone', 'trucks' ) )
 		);
 		self::assertCount( 2, $out, 'the emptied package is dropped and the one after it kept' );
-		self::assertSame( array( 'deck', 'trucks' ), array_keys( $out[0]['contents'] ) );
-		self::assertSame( array( 'wax' ), array_keys( $out[1]['contents'] ) );
+		self::assertSame( array( 'deck', 'trucks' ), array_keys( $out[1]['contents'] ) );
+		self::assertSame( array( 'wax' ), array_keys( $out[2]['contents'] ) );
 	}
 
 	public function test_a_package_no_move_touched_keeps_the_cost_it_came_with(): void {

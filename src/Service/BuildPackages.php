@@ -32,7 +32,7 @@ final class BuildPackages {
 	 *
 	 * @param array<array-key, mixed> $packages The packages.
 	 * @param list<list<string>>      $builds   For each build to keep together, its parts' cart keys in step order.
-	 * @return array<array-key, mixed> The packages, with none left empty by a move.
+	 * @return array<array-key, mixed> The packages, each under the key it came with, and none left empty by a move.
 	 */
 	public static function together( array $packages, array $builds ): array {
 		$contents = array();
@@ -61,13 +61,10 @@ final class BuildPackages {
 				}
 			}
 		}
-		if ( array() === $touched ) {
-			return $packages;
-		}
 		$kept = array();
 		foreach ( $packages as $at => $package ) {
 			if ( ! in_array( $at, $touched, true ) || ! is_array( $package ) ) {
-				$kept[] = $package;
+				$kept[ $at ] = $package;
 				continue;
 			}
 			if ( array() === $contents[ $at ] ) {
@@ -75,7 +72,7 @@ final class BuildPackages {
 			}
 			$package['contents']      = $contents[ $at ];
 			$package['contents_cost'] = self::cost( $contents[ $at ] );
-			$kept[]                   = $package;
+			$kept[ $at ]              = $package;
 		}
 		return $kept;
 	}

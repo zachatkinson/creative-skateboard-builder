@@ -38,21 +38,24 @@ final class OrderBuilds {
 	public function __construct( private Kits $kits ) {}
 
 	/**
-	 * A build as it is sold, for the order to keep: each slot's label and part, the part's name, how many of it one
-	 * build takes and its specs as the shop has them at that moment, and the owner's words on an assembled build
+	 * A build as it is sold, for the order to keep: each slot's label and part, the part's name and SKU, how many of
+	 * it one build takes and its specs as the shop has them at that moment, and the owner's words on an assembled build
 	 * as the shopper read them. A part the shop can no longer read is kept with no specs, and a slot nobody gave a
-	 * label or a name is kept by its key and with no name.
+	 * label or a name is kept by its key and with no name. WooCommerce keeps no SKU on an order item and reads the
+	 * product's own, which a later edit changes and a deleted product loses, so the SKU the assembly ticket prints is
+	 * kept here (milestone 8).
 	 *
 	 * @since 0.5.0
 	 *
 	 * @param Build                 $build  The build.
 	 * @param array<string, string> $labels Each slot's label, by its key.
 	 * @param array<string, string> $names  Each slot's part's name, by the slot's key.
+	 * @param array<string, string> $skus   Each slot's part's SKU, by the slot's key; none where the part has none.
 	 * @param string                $lead   The kit's lead time, as the shopper read it.
 	 * @param string                $notice The kit's returns notice, as the shopper read it.
-	 * @return array{schema_version: int, kit: int, assembly: bool, picks: array<string, array{label: string, name: string, part: int, quantity: int, specs: array<string, string>}>, lead_time: string, returns_notice: string}
+	 * @return array{schema_version: int, kit: int, assembly: bool, picks: array<string, array{label: string, name: string, sku: string, part: int, quantity: int, specs: array<string, string>}>, lead_time: string, returns_notice: string}
 	 */
-	public function snapshot( Build $build, array $labels, array $names, string $lead, string $notice ): array {
+	public function snapshot( Build $build, array $labels, array $names, array $skus, string $lead, string $notice ): array {
 		$slots = $this->kits->kit( $build->kit )?->slots;
 		$asked = array();
 		foreach ( $build->picks as $key => $part ) {
@@ -67,6 +70,7 @@ final class OrderBuilds {
 			$picks[ $key ] = array(
 				'label'    => $labels[ $key ] ?? $key,
 				'name'     => $names[ $key ] ?? '',
+				'sku'      => $skus[ $key ] ?? '',
 				'part'     => $part,
 				'quantity' => $build->quantities[ $key ],
 				'specs'    => isset( $read[ $key ] ) ? $read[ $key ]->specs->toIndex() : array(),

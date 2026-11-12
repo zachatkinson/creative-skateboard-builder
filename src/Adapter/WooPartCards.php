@@ -220,17 +220,39 @@ final class WooPartCards implements PartCards {
 	}
 
 	/**
+	 * Whether a price the shop shows can depend on where the shopper is: it is shown with tax, or it is entered
+	 * with tax and a shop's code has said the shop's own rates are not what comes off it
+	 * (`woocommerce_adjust_non_base_location_prices`, includes/wc-product-functions.php:1575). A shop that enters
+	 * and shows prices without tax shows every shopper the same price, whatever its rates.
+	 *
+	 * @since 0.5.0
+	 */
+	public static function byAddress(): bool {
+		if ( ! wc_tax_enabled() ) {
+			return false;
+		}
+		if ( 'incl' === get_option( 'woocommerce_tax_display_shop' ) ) {
+			return true;
+		}
+		// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- WooCommerce's own, asked as it asks it.
+		return wc_prices_include_tax() && true !== apply_filters( 'woocommerce_adjust_non_base_location_prices', true );
+	}
+
+	/**
 	 * What a price and its words depend on beside the part: the currency and its decimals, the language, whether
-	 * prices are shown with tax, and the tax rates that apply to this visitor. The rates stand in for where the
-	 * visitor is, so no address is kept, and visitors charged the same rates share what is kept.
+	 * prices are shown with tax, and the tax rates a shown price is worked out with. Those are the rates where the
+	 * visitor is only where a shown price can depend on that (`byAddress()`), and the shop's own otherwise, so a
+	 * shop that shows prices without tax keeps one context however many rates it has. The rates stand in for where
+	 * the visitor is, so no address is kept, and visitors charged the same rates share what is kept.
 	 *
 	 * @since 0.4.0
 	 */
 	public static function context(): string {
 		$rates = array();
 		if ( wc_tax_enabled() ) {
+			$there = self::byAddress();
 			foreach ( array_merge( array( '' ), WC_Tax::get_tax_class_slugs() ) as $class ) {
-				$rates[ $class ] = WC_Tax::get_rates( $class );
+				$rates[ $class ] = $there ? WC_Tax::get_rates( $class ) : WC_Tax::get_base_tax_rates( $class );
 			}
 		}
 		$context = array(

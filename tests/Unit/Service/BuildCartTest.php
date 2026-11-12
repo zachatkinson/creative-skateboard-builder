@@ -150,13 +150,12 @@ final class BuildCartTest extends TestCase {
 	}
 
 	public function test_a_build_with_something_wrong_is_refused_with_each_thing(): void {
-		$verdict = $this->consider( array( 'deck' => 302, 'wheels' => null, 'tail' => 9, 7 => 8 ) );
+		$verdict = $this->consider( array( 'deck' => 302, 'wheels' => null, 'tail' => 9 ) );
 		self::assertSame( CartRefusal::BuildRefused, $verdict->refusal );
 		self::assertNull( $verdict->build );
 		$problems = self::problems( $verdict );
 		self::assertContains( array( 'part_not_in_slot', 'deck', 302 ), $problems, 'a wheel is not a deck, though the shop sells it' );
 		self::assertContains( array( 'slot_unknown', 'tail', 9 ), $problems );
-		self::assertContains( array( 'slot_unknown', '7', 8 ), $problems, 'a slot sent as a number is a key all the same' );
 		self::assertContains( array( 'slot_empty', 'wheels', null ), $problems );
 		self::assertFalse( $this->builds->admits( self::KIT ) );
 
@@ -193,6 +192,25 @@ final class BuildCartTest extends TestCase {
 		$this->kits->now[103] = Shop::priced( Shop::parts()['deck'][2], 7000, true, 0 );
 		$this->cart->lines    = array();
 		self::assertSame( array( array( 'part_short', 'deck', 103 ) ), self::problems( $this->consider() ), 'said once, by the validator, where one build alone is too many' );
+	}
+
+	// Claude in Cowork's review of milestone 5, M1: the Store API reads JSON, which no max_input_vars bounds.
+	public function test_more_picks_than_a_kit_can_have_slots_or_a_key_no_slot_could_have_is_refused_before_anything_is_read(): void {
+		$many = array();
+		for ( $n = 0; $n <= 20; $n++ ) {
+			$many[ 'slot_' . $n ] = 103;
+		}
+		$read = array( $this->kits->read, $this->kits->readings );
+		foreach ( array( $many, array( 'Deck <b>' => 103 ), array( 0 => 103 ), array( str_repeat( 'a', 33 ) => 103 ) ) as $picks ) {
+			$verdict = $this->builds->consider( self::KIT, array( 'picks' => $picks ), 1 );
+			self::assertSame( CartRefusal::BuildRefused, $verdict->refusal );
+			self::assertSame( array(), $verdict->problems, 'and nothing of what was sent is said back' );
+		}
+		self::assertSame( $read, array( $this->kits->read, $this->kits->readings ), 'neither the kit nor a part is read' );
+		array_pop( $many );
+		self::assertCount( 20, $many );
+		$unknown = array_filter( self::problems( $this->builds->consider( self::KIT, array( 'picks' => $many ), 1 ) ), static fn( array $problem ): bool => 'slot_unknown' === $problem[0] );
+		self::assertCount( 20, $unknown, 'twenty keys that could be slots are each judged' );
 	}
 
 	public function test_a_build_the_shops_settings_cannot_price_is_refused(): void {

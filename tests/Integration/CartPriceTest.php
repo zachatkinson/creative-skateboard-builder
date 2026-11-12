@@ -9,6 +9,7 @@ declare( strict_types=1 );
 
 namespace CreativeBranding\SkateboardBuilder\Tests\Integration;
 
+use CreativeBranding\SkateboardBuilder\Adapter\WooPartCards;
 use CreativeBranding\SkateboardBuilder\Support\Options;
 use CreativeBranding\SkateboardBuilder\Tests\Support\CartTestCase;
 use WC_Coupon;
@@ -335,10 +336,64 @@ final class CartPriceTest extends CartTestCase {
 	/**
 	 * Issue #27: where tax depends on where the shopper is, the builder's total is the cart's.
 	 */
+	// Claude in Cowork's review of milestone 5, S2: the demo shows prices without tax and has 17 rates over 13
+	// provinces. No price it shows depends on where the shopper is, so no province may have a context of its own:
+	// each context is its own rows of the parts table and its own first read.
+	public function test_where_no_shown_price_goes_by_address_every_shopper_shares_one_price_context(): void {
+		update_option( 'woocommerce_calc_taxes', 'yes' );
+		update_option( 'woocommerce_prices_include_tax', 'no' );
+		update_option( 'woocommerce_tax_display_shop', 'excl' );
+		$base   = WC()->countries->get_base_country();
+		$abroad = 'FR' === $base ? 'DE' : 'FR';
+		foreach ( array( $base => '10.0000', $abroad => '20.0000' ) as $country => $rate ) {
+			WC_Tax::_insert_tax_rate(
+				array(
+					'tax_rate_country' => $country,
+					'tax_rate'         => $rate,
+					'tax_rate_name'    => 'Tax ' . $country,
+					'tax_rate_class'   => '',
+				)
+			);
+		}
+		$own = WC()->customer;
+		$in  = static function ( string $country ): string {
+			$shopper = new WC_Customer( 0, true );
+			$shopper->set_billing_country( $country );
+			$shopper->set_shipping_country( $country );
+			WC()->customer = $shopper;
+			return WooPartCards::context();
+		};
+		$request = new WP_REST_Request( 'GET', '/cbuild/v1/kits/' . $this->kit . '/state' );
+		$request->set_query_params( array( 'picks' => $this->picks() ) );
+		try {
+			self::assertSame( $in( $base ), $in( $abroad ), 'prices entered and shown without tax' );
+			WC()->customer = null;
+			self::assertSame( 200, rest_get_server()->dispatch( $request )->get_status() );
+			self::assertNull( WC()->customer, 'and the route asks for no shopper it has no use for' );
+
+			update_option( 'woocommerce_tax_display_shop', 'incl' );
+			self::assertNotSame( $in( $base ), $in( $abroad ), 'shown with tax, a price goes by the rates where the shopper is' );
+
+			// Entered with tax and shown without: WooCommerce takes the shop's own rates off, wherever the shopper
+			// is, unless a shop's code says prices are not adjusted (includes/wc-product-functions.php).
+			update_option( 'woocommerce_prices_include_tax', 'yes' );
+			update_option( 'woocommerce_tax_display_shop', 'excl' );
+			self::assertSame( $in( $base ), $in( $abroad ) );
+			add_filter( 'woocommerce_adjust_non_base_location_prices', '__return_false' );
+			self::assertNotSame( $in( $base ), $in( $abroad ) );
+		} finally {
+			remove_filter( 'woocommerce_adjust_non_base_location_prices', '__return_false' );
+			WC()->customer = $own;
+		}
+	}
+
 	// The audit's finding, milestone 5: WooCommerce's cart reads itself from the session when the request shuts
 	// down (includes/class-wc-cart-session.php:95 and :400), before PHP sends the answer. A cart made for the
 	// route would have every state request of a shopper with a build in the cart pay for reading that cart.
 	public function test_the_route_finds_the_shopper_and_makes_no_cart_for_the_request(): void {
+		// A shop whose shown prices go by where the shopper is: any other asks for no shopper at all (D-139).
+		update_option( 'woocommerce_calc_taxes', 'yes' );
+		update_option( 'woocommerce_tax_display_shop', 'incl' );
 		$kept    = array( WC()->customer, WC()->cart, WC()->session );
 		$request = new WP_REST_Request( 'GET', '/cbuild/v1/kits/' . $this->kit . '/state' );
 		$request->set_query_params( array( 'picks' => $this->picks() ) );

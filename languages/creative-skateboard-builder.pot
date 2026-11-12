@@ -9,7 +9,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-11-12T01:24:06+00:00\n"
+"POT-Creation-Date: 2026-11-12T03:43:48+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: creative-skateboard-builder\n"
@@ -172,7 +172,7 @@ msgid "Builder"
 msgstr ""
 
 #: src/Admin/BuildTab.php:162
-#: src/Order/OrderHooks.php:226
+#: src/Order/OrderHooks.php:250
 msgid "Build"
 msgstr ""
 
@@ -217,7 +217,7 @@ msgstr ""
 
 #: src/Admin/BuildTab.php:344
 #: src/Admin/BuildTab.php:910
-#: src/Order/OrderHooks.php:225
+#: src/Order/OrderHooks.php:249
 msgid "Assembly"
 msgstr ""
 
@@ -854,14 +854,14 @@ msgstr ""
 #: src/Admin/Labels.php:170
 #: src/Admin/PartSpecsPanel.php:331
 #: src/Health/SiteHealth.php:271
-#: src/Order/OrderHooks.php:225
+#: src/Order/OrderHooks.php:249
 msgid "Yes"
 msgstr ""
 
 #: src/Admin/Labels.php:170
 #: src/Admin/PartSpecsPanel.php:332
 #: src/Health/SiteHealth.php:271
-#: src/Order/OrderHooks.php:225
+#: src/Order/OrderHooks.php:249
 msgid "No"
 msgstr ""
 
@@ -1519,38 +1519,38 @@ msgid "%s cannot be bought as it is now. Remove it from your cart to check out, 
 msgstr ""
 
 #. translators: 1: a kit's name, such as Build a complete; 2: a slot's label, such as Deck.
-#: src/Cart/ShowHooks.php:193
+#: src/Cart/ShowHooks.php:196
 #, php-format
 msgid "%1$s (%2$s)"
 msgstr ""
 
-#: src/Cart/ShowHooks.php:195
+#: src/Cart/ShowHooks.php:198
 msgid "Part of"
 msgstr ""
 
-#: src/Cart/ShowHooks.php:324
+#: src/Cart/ShowHooks.php:341
 msgid "The line's part in a build: kit, part, or empty for a line of no build."
 msgstr ""
 
-#: src/Cart/ShowHooks.php:325
+#: src/Cart/ShowHooks.php:342
 msgid "The build's identifier."
 msgstr ""
 
-#: src/Cart/ShowHooks.php:326
+#: src/Cart/ShowHooks.php:343
 msgid "For a part, its kit's cart item key."
 msgstr ""
 
-#: src/Cart/ShowHooks.php:327
+#: src/Cart/ShowHooks.php:344
 msgid "For a part, the key of the slot it fills."
 msgstr ""
 
-#: src/Cart/ShowHooks.php:328
+#: src/Cart/ShowHooks.php:345
 msgid "For a part, its name with its slot's label."
 msgstr ""
 
 #. translators: 1: a slot's label, such as Deck; 2: the product's name, which may be a link.
-#: src/Cart/ShowHooks.php:348
-#: src/Order/OrderHooks.php:178
+#: src/Cart/ShowHooks.php:365
+#: src/Order/OrderHooks.php:199
 #, php-format
 msgid "%1$s: %2$s"
 msgstr ""
@@ -2071,8 +2071,14 @@ msgstr ""
 msgid "Spec table"
 msgstr ""
 
+#. translators: %s: the kit's name.
+#: src/Order/OrderHooks.php:88
+#, php-format
+msgid "%s is put together in the builder, so it cannot be added to an order here. Add its parts instead."
+msgstr ""
+
 #. translators: 1: a slot's label, such as Trucks; 2: the part's name; 3: how many of it a build takes.
-#: src/Order/OrderHooks.php:220
+#: src/Order/OrderHooks.php:244
 #, php-format
 msgid "%1$s: %2$s × %3$s"
 msgstr ""
