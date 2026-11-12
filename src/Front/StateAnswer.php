@@ -150,6 +150,13 @@ final class StateAnswer {
 		foreach ( $state->quote->lines as $line ) {
 			$ids[] = $line->part;
 		}
+		foreach ( $state->presets as $preset ) {
+			foreach ( array_merge( $preset->refused, $preset->validation->problems ) as $kept ) {
+				if ( null !== $kept->part ) {
+					$ids[] = $kept->part;
+				}
+			}
+		}
 		foreach ( $state->changes->changes ?? array() as $change ) {
 			$ids[] = $change->was->id;
 			if ( null !== $change->closest ) {
@@ -272,10 +279,16 @@ final class StateAnswer {
 			foreach ( $preset->picks as $slot => $part ) {
 				$picks[] = compact( 'slot', 'part' );
 			}
+			$built     = $state->presets[ $at ] ?? null;
+			$kept      = null === $built ? array() : array_merge( $built->refused, $built->validation->problems );
 			$presets[] = array(
 				'name'        => self::preset( $preset->name, $at, $state->id ),
 				'description' => self::text( $preset->description, 'preset_description', $state->id, (string) $at ),
 				'picks'       => $picks,
+				'total'       => $money( $built->quote->total ?? 0 ),
+				'ready'       => array() === $kept,
+				// What keeps it from the cart, each part named for its tile (spec: Presets).
+				'problems'    => array_map( static fn( BuildProblem $kept ): array => $problem( $kept ) + array( 'name' => $cards[ $kept->part ?? 0 ]['name'] ?? '' ), $kept ),
 			);
 		}
 

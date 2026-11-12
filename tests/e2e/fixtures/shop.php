@@ -283,11 +283,37 @@ $cbuild_kit->setDocument(
 	)
 );
 $cbuild_kit->setDocument( '_cbuild_rules', CreativeBranding\SkateboardBuilder\Domain\Kit\RuleSettings::DEFAULTS );
+// Two presets: Street, all in stock, and Cruiser, whose wheels are the part sold out.
 $cbuild_kit->setDocument(
 	'_cbuild_presets',
 	array(
 		'schema_version' => 1,
-		'presets'        => array(),
+		'presets'        => array(
+			array(
+				'name'        => 'Street',
+				'description' => 'For ledges and stairs.',
+				'picks'       => array(
+					'deck'     => $cbuild_parts['builder-test-deck-8-0'],
+					'trucks'   => $cbuild_parts['builder-test-trucks-139'],
+					'wheels'   => $cbuild_parts['builder-test-wheels-52'],
+					'bearings' => $cbuild_parts['builder-test-bearings'],
+					'hardware' => $cbuild_parts['builder-test-bolts-1'],
+					'grip'     => $cbuild_parts['builder-test-grip'],
+				),
+			),
+			array(
+				'name'        => 'Cruiser',
+				'description' => 'For getting about town.',
+				'picks'       => array(
+					'deck'     => $cbuild_parts['builder-test-deck-8-5'],
+					'trucks'   => $cbuild_parts['builder-test-trucks-149'],
+					'wheels'   => $cbuild_parts['builder-test-wheels-56'],
+					'bearings' => $cbuild_parts['builder-test-bearings'],
+					'hardware' => $cbuild_parts['builder-test-bolts-1'],
+					'grip'     => $cbuild_parts['builder-test-grip'],
+				),
+			),
+		),
 	)
 );
 $cbuild_kit->setDocument(

@@ -272,6 +272,29 @@ final class Words {
 	}
 
 	/**
+	 * A problem with the part it is about named, where it has one (spec: A step, Sold out: "A preset or link that
+	 * holds one names it"). A problem about no part says what `problem()` says.
+	 *
+	 * @since 0.6.0
+	 *
+	 * @param Problem $problem The problem.
+	 * @param string  $label   The slot's label, such as Wheels.
+	 * @param string  $name    The part's name, or empty.
+	 */
+	public static function named( Problem $problem, string $label, string $name ): string {
+		if ( '' === $name ) {
+			return self::problem( $problem, $label );
+		}
+		return match ( $problem ) {
+			/* translators: 1: a slot's label, such as Wheels. 2: a part's name. */
+			Problem::PartSoldOut => sprintf( __( '%1$s: %2$s is sold out.', 'creative-skateboard-builder' ), $label, $name ),
+			/* translators: 1: a slot's label, such as Wheels. 2: a part's name. */
+			Problem::PartShort   => sprintf( __( '%1$s: the shop has fewer of %2$s than a build takes.', 'creative-skateboard-builder' ), $label, $name ),
+			default              => self::problem( $problem, $label ),
+		};
+	}
+
+	/**
 	 * What taking a part does to the total, as its card says it (spec: A step, P4): "+$12.00", "−$5.00", "Free" for
 	 * a part that costs nothing more, and "Included" for the part the total counts already.
 	 *

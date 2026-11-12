@@ -50,6 +50,7 @@ final readonly class State {
 	 * @param ChangeList|null    $changes    What a changed pick does to the later ones, when it breaks any.
 	 * @param Quote              $quote      What the build costs so far.
 	 * @param int                $discount   The build discount the quote was made with, in basis points.
+	 * @param list<PresetState>  $presets    Each of the kit's presets as a build, in the kit's order.
 	 */
 	public function __construct(
 		public int $id,
@@ -60,7 +61,8 @@ final readonly class State {
 		public Validation $validation,
 		public ?ChangeList $changes,
 		public Quote $quote,
-		public int $discount
+		public int $discount,
+		public array $presets = array()
 	) {}
 
 	/**
@@ -71,7 +73,7 @@ final readonly class State {
 	 * @param string $step A slot's key, or the review.
 	 */
 	public function at( string $step ): self {
-		return new self( $this->id, $this->kit, $this->steps, $step, $this->refused, $this->validation, $this->changes, $this->quote, $this->discount );
+		return new self( $this->id, $this->kit, $this->steps, $step, $this->refused, $this->validation, $this->changes, $this->quote, $this->discount, $this->presets );
 	}
 
 	/**

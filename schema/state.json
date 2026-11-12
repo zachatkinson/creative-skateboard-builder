@@ -59,7 +59,14 @@
 			"items": {
 				"description": "A preset.",
 				"type": "object",
-				"required": [ "name", "description", "picks" ],
+				"required": [
+					"name",
+					"description",
+					"picks",
+					"total",
+					"ready",
+					"problems"
+				],
 				"properties": {
 					"name": {
 						"description": "Its name.",
@@ -86,6 +93,21 @@
 									"minimum": 1
 								}
 							}
+						}
+					},
+					"total": {
+						"description": "What the build it starts costs, at the kit's own assembly setting. From 0.6.0.",
+						"$ref": "#/definitions/money"
+					},
+					"ready": {
+						"description": "Whether the build it starts can go to the cart as it stands. From 0.6.0.",
+						"type": "boolean"
+					},
+					"problems": {
+						"description": "What keeps it from the cart, such as a sold-out part, each part named. From 0.6.0.",
+						"type": "array",
+						"items": {
+							"$ref": "#/definitions/presetProblem"
 						}
 					}
 				}
@@ -779,6 +801,55 @@
 				"selected": {
 					"description": "Whether the list is filtered by it.",
 					"type": "boolean"
+				}
+			}
+		},
+		"presetProblem": {
+			"description": "What keeps a preset's build from the cart: a problem, with the name of the part it is about.",
+			"type": "object",
+			"required": [
+				"code",
+				"slot",
+				"part",
+				"message",
+				"messages",
+				"name"
+			],
+			"properties": {
+				"code": {
+					"description": "The problem's code, one of the problem codes in docs/HOOKS.md.",
+					"type": "string",
+					"enum": [
+						"slot_unknown",
+						"slot_empty",
+						"part_not_in_slot",
+						"part_sold_out",
+						"part_short",
+						"part_blocked"
+					]
+				},
+				"slot": {
+					"description": "The slot's key, as sent where the kit has no such slot.",
+					"type": "string"
+				},
+				"part": {
+					"description": "The part's ID, or null where there is none to name.",
+					"type": [ "integer", "null" ]
+				},
+				"message": {
+					"description": "The problem as a sentence, in the language of the answer.",
+					"type": "string"
+				},
+				"messages": {
+					"description": "For a part the rules block, what they found.",
+					"type": "array",
+					"items": {
+						"$ref": "#/definitions/message"
+					}
+				},
+				"name": {
+					"description": "The part's name, or an empty string.",
+					"type": "string"
 				}
 			}
 		}

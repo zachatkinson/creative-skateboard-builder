@@ -22,9 +22,11 @@ final class Shop {
 	/**
 	 * The usual kit, with a fee of 15.00 for assembly, off by default.
 	 *
-	 * @param array<string, int> $defaults The default part by slot key.
+	 * @param array<string, int>                     $defaults The default part by slot key.
+	 * @param bool                                   $on       Whether the shop assembles by default.
+	 * @param list<array<string, mixed>>             $presets  Its presets: name, description and picks.
 	 */
-	public static function kit( array $defaults = array(), bool $on = false ): Kit {
+	public static function kit( array $defaults = array(), bool $on = false, array $presets = array() ): Kit {
 		$slots = KitDocuments::slots();
 		foreach ( $slots['slots'] as $at => $slot ) {
 			if ( isset( $defaults[ $slot['key'] ] ) ) {
@@ -34,7 +36,10 @@ final class Shop {
 		return KitDocuments::kit(
 			$slots,
 			null,
-			null,
+			array(
+				'schema_version' => 1,
+				'presets'        => $presets,
+			),
 			array(
 				'schema_version' => 1,
 				'default_on'     => $on,

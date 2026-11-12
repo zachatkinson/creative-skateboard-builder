@@ -9,6 +9,7 @@ declare( strict_types=1 );
 
 namespace CreativeBranding\SkateboardBuilder\Tests\Unit\Front;
 
+use CreativeBranding\SkateboardBuilder\Domain\Kit\Part;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\SlotKey;
 use CreativeBranding\SkateboardBuilder\Front\Builder;
 use CreativeBranding\SkateboardBuilder\Front\BuilderView;
@@ -92,6 +93,100 @@ final class BuilderTest extends TestCase {
 			);
 		}
 		return $fields;
+	}
+
+	/**
+	 * A preset whose wheels the shop has sold out of; Street is all in stock.
+	 */
+	private const array PARK = array( SlotKey::DECK => 103, SlotKey::TRUCKS => 149, SlotKey::WHEELS => 302 ) + self::STREET;
+
+	private function presets(): void {
+		$parts                    = Shop::parts();
+		$parts[ SlotKey::WHEELS ] = array_map( static fn( Part $part ): Part => 302 === $part->id ? Shop::priced( $part, $part->price, false, 0 ) : $part, $parts[ SlotKey::WHEELS ] );
+		$this->kits->add(
+			self::KIT,
+			Shop::kit(
+				presets: array(
+					array(
+						'name'        => 'Street',
+						'description' => 'For ledges and stairs.',
+						'picks'       => self::STREET,
+					),
+					array(
+						'name'  => 'Park',
+						'picks' => self::PARK,
+					),
+				)
+			),
+			$parts
+		);
+	}
+
+	// Spec, Presets: "Up to six tiles at the start ... Each shows its picture, its total and a line on who it's for",
+	// and "A preset holding a sold-out part says so on its tile". Spec, Search: presets are buttons in GET forms.
+	public function test_a_blank_build_starts_with_a_tile_for_each_preset_that_starts_its_build_at_the_review(): void {
+		$this->presets();
+		$presets = $this->show( new BuildLink() )['view']['presets'];
+		self::assertTrue( $presets['shown'] );
+		self::assertSame( 'Start from a ready build', $presets['heading'] );
+		self::assertCount( 2, $presets['tiles'] );
+
+		$street = $presets['tiles'][0];
+		self::assertSame( 'Street', $street['name'] );
+		self::assertSame( 'For ledges and stairs.', $street['description'] );
+		self::assertTrue( $street['hasDescription'] );
+		self::assertSame( $this->show( new BuildLink( self::STREET ) )['answer']['total']['total']['text'], $street['total'] );
+		self::assertSame( array(), $street['notes'] );
+		self::assertSame(
+			self::fields(
+				array(
+					'deck'     => '101',
+					'trucks'   => '139',
+					'wheels'   => '301',
+					'bearings' => '501',
+					'hardware' => '601',
+					'grip'     => '701',
+					'step'     => 'review',
+					'preset'   => '0',
+				)
+			),
+			$street['fields'],
+			'IDs, the review and which preset, as the build link writes them'
+		);
+		self::assertSame( 'Start from Street', $street['button'], 'each button has a name of its own (P11)' );
+
+		$park = $presets['tiles'][1];
+		self::assertFalse( $park['hasDescription'] );
+		self::assertSame( array( array( 'text' => 'Wheels: Part 302 is sold out.' ) ), $park['notes'] );
+		self::assertSame( 'Start from Park', $park['button'] );
+		self::assertContains( array( 'name' => 'cbuild[preset]', 'value' => '1' ), $park['fields'] );
+
+		self::assertFalse( $this->show( new BuildLink( array( SlotKey::DECK => 101 ) ) )['view']['presets']['shown'], 'a build begun has no tiles' );
+		self::assertTrue( $this->show( new BuildLink( array(), null, SlotKey::DECK, null, null, '', '8.5in' ) )['view']['presets']['shown'], 'the first step, a width pressed' );
+		self::assertTrue( $this->show( new BuildLink( array(), null, BuildLink::REVIEW ) )['view']['presets']['shown'], 'a review asked for with nothing picked stops at the start' );
+		self::assertFalse( $this->show( new BuildLink( array(), null, null, null, 0 ) )['view']['presets']['shown'], 'a build that began as a preset' );
+		$this->kits->add( self::KIT, Shop::kit(), Shop::parts() );
+		self::assertSame(
+			array(
+				'shown'   => false,
+				'heading' => 'Start from a ready build',
+				'tiles'   => array(),
+			),
+			$this->show( new BuildLink() )['view']['presets'],
+			'a kit with no presets has none'
+		);
+	}
+
+	// Spec, A step, Sold out: "A preset or link that holds one names it, and the build can't go to the cart until
+	// it's swapped".
+	public function test_a_sold_out_part_a_preset_brings_is_named_at_the_review_and_keeps_the_build_from_the_cart(): void {
+		$this->presets();
+		$view = $this->show( new BuildLink( self::PARK, null, BuildLink::REVIEW, null, 1 ) )['view'];
+		self::assertTrue( $view['isReview'] );
+		self::assertSame( array( 'Wheels: Part 302 is sold out.' ), array_column( $view['errors']['items'], 'text' ) );
+		self::assertSame( self::url( array( 'deck' => '103', 'trucks' => '149', 'wheels' => '302', 'bearings' => '501', 'hardware' => '601', 'grip' => '701', 'step' => 'wheels', 'preset' => '1' ) ), $view['errors']['items'][0]['url'], 'to the step that swaps it' );
+		self::assertFalse( $view['review']['ready'] );
+		self::assertFalse( $view['presets']['shown'] );
 	}
 
 	public function test_a_kit_the_shop_does_not_have_shows_nothing(): void {

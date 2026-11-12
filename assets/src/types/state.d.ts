@@ -52,6 +52,15 @@ export interface CbuildState {
 			slot: string;
 			part: number;
 		}[];
+		total: Money;
+		/**
+		 * Whether the build it starts can go to the cart as it stands. From 0.6.0.
+		 */
+		ready: boolean;
+		/**
+		 * What keeps it from the cart, such as a sold-out part, each part named. From 0.6.0.
+		 */
+		problems: PresetProblem[];
 	}[];
 	/**
 	 * The kit's slots, in step order.
@@ -231,18 +240,18 @@ export interface CbuildState {
 			 * How many of the part the build takes.
 			 */
 			quantity: number;
-			price: Money;
-			charged: Money1;
-			total: Money2;
+			price: Money1;
+			charged: Money2;
+			total: Money3;
 		}[];
-		parts: Money3;
-		saved: Money4;
+		parts: Money4;
+		saved: Money5;
 		/**
 		 * Whether the shop assembles the build.
 		 */
 		assembly: boolean;
-		fee: Money5;
-		total: Money6;
+		fee: Money6;
+		total: Money7;
 	};
 	/**
 	 * What is in the box: each part the total counts, in step order.
@@ -302,6 +311,69 @@ export interface CbuildState {
 	 * Only in an answer to a build link (the cbuild argument): what the builder's template draws for it, as the page's first render has it. The builder's own, and no part of the public API: it may change in any release.
 	 */
 	view?: {};
+}
+/**
+ * What the build it starts costs, at the kit's own assembly setting. From 0.6.0.
+ */
+export interface Money {
+	/**
+	 * The amount in whole minor units: cents, where the currency has two decimals.
+	 */
+	amount: number;
+	/**
+	 * The amount as the shop writes its prices, in plain text.
+	 */
+	text: string;
+}
+/**
+ * What keeps a preset's build from the cart: a problem, with the name of the part it is about.
+ */
+export interface PresetProblem {
+	/**
+	 * The problem's code, one of the problem codes in docs/HOOKS.md.
+	 */
+	code: 'slot_unknown' | 'slot_empty' | 'part_not_in_slot' | 'part_sold_out' | 'part_short' | 'part_blocked';
+	/**
+	 * The slot's key, as sent where the kit has no such slot.
+	 */
+	slot: string;
+	/**
+	 * The part's ID, or null where there is none to name.
+	 */
+	part: number | null;
+	/**
+	 * The problem as a sentence, in the language of the answer.
+	 */
+	message: string;
+	/**
+	 * For a part the rules block, what they found.
+	 */
+	messages: Message[];
+	/**
+	 * The part's name, or an empty string.
+	 */
+	name: string;
+}
+/**
+ * What a rule found.
+ */
+export interface Message {
+	/**
+	 * The rule: r1 to r7.
+	 */
+	rule: string;
+	/**
+	 * The finding's code, one of the message codes in docs/HOOKS.md.
+	 */
+	code: string;
+	/**
+	 * How bad: a note on a part that fits, a warning, or a block.
+	 */
+	severity: 'fits' | 'warn' | 'block';
+	/**
+	 * The finding as a sentence, in the language of the answer.
+	 */
+	text: string;
 }
 /**
  * A part as a slot holds it.
@@ -377,27 +449,6 @@ export interface Option {
 	 * What its card shows, or null when the product has gone since the index read it.
 	 */
 	card: Card | null;
-}
-/**
- * What a rule found.
- */
-export interface Message {
-	/**
-	 * The rule: r1 to r7.
-	 */
-	rule: string;
-	/**
-	 * The finding's code, one of the message codes in docs/HOOKS.md.
-	 */
-	code: string;
-	/**
-	 * How bad: a note on a part that fits, a warning, or a block.
-	 */
-	severity: 'fits' | 'warn' | 'block';
-	/**
-	 * The finding as a sentence, in the language of the answer.
-	 */
-	text: string;
 }
 /**
  * What a card shows of a part.
@@ -487,7 +538,7 @@ export interface Problem {
 /**
  * The part's own price for one.
  */
-export interface Money {
+export interface Money1 {
 	/**
 	 * The amount in whole minor units: cents, where the currency has two decimals.
 	 */
@@ -500,7 +551,7 @@ export interface Money {
 /**
  * What one is charged at, with the build discount off.
  */
-export interface Money1 {
+export interface Money2 {
 	/**
 	 * The amount in whole minor units: cents, where the currency has two decimals.
 	 */
@@ -513,7 +564,7 @@ export interface Money1 {
 /**
  * What the line comes to.
  */
-export interface Money2 {
+export interface Money3 {
 	/**
 	 * The amount in whole minor units: cents, where the currency has two decimals.
 	 */
@@ -526,7 +577,7 @@ export interface Money2 {
 /**
  * The parts' lines together.
  */
-export interface Money3 {
+export interface Money4 {
 	/**
 	 * The amount in whole minor units: cents, where the currency has two decimals.
 	 */
@@ -539,7 +590,7 @@ export interface Money3 {
 /**
  * What the build discount takes off.
  */
-export interface Money4 {
+export interface Money5 {
 	/**
 	 * The amount in whole minor units: cents, where the currency has two decimals.
 	 */
@@ -552,7 +603,7 @@ export interface Money4 {
 /**
  * The assembly fee: nothing when assembly is off or free.
  */
-export interface Money5 {
+export interface Money6 {
 	/**
 	 * The amount in whole minor units: cents, where the currency has two decimals.
 	 */
@@ -565,7 +616,7 @@ export interface Money5 {
 /**
  * The parts and the fee.
  */
-export interface Money6 {
+export interface Money7 {
 	/**
 	 * The amount in whole minor units: cents, where the currency has two decimals.
 	 */

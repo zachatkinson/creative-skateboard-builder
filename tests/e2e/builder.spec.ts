@@ -355,6 +355,51 @@ test.describe( 'The builder without JavaScript', () => {
 		await expect( hidden.getByRole( 'link' ).first() ).toBeVisible();
 	} );
 
+	test( 'a preset tile starts its build at the review, and one with a sold-out part names it and keeps it from the cart', async ( {
+		page,
+	} ) => {
+		await page.goto( fixture().page );
+		const tiles = page.locator( '.cbuild-presets' );
+		await expect(
+			tiles.getByRole( 'heading', { name: 'Start from a ready build' } )
+		).toBeVisible();
+		await expect(
+			tiles.getByText( 'Wheels: Builder test wheels 56 is sold out.' )
+		).toBeVisible();
+
+		await answered( page, () =>
+			tiles.getByRole( 'button', { name: 'Start from Street' } ).click()
+		);
+		await expect( heading( page ) ).toHaveText( 'Step 7 of 7: Review' );
+		await expect( page.locator( '.cbuild-errors' ) ).toBeHidden();
+		await expect(
+			page
+				.locator( '.cbuild-review' )
+				.getByRole( 'button', { name: 'Add to cart' } )
+		).toBeEnabled();
+		expect(
+			new URL( page.url() ).searchParams.get( 'cbuild[preset]' )
+		).toBe( '0' );
+		await expect( page.locator( '.cbuild-presets' ) ).toBeHidden();
+
+		await page.goto( fixture().page );
+		await answered( page, () =>
+			page
+				.locator( '.cbuild-presets' )
+				.getByRole( 'button', { name: 'Start from Cruiser' } )
+				.click()
+		);
+		await expect( heading( page ) ).toHaveText( 'Step 7 of 7: Review' );
+		await expect( page.locator( '.cbuild-errors' ) ).toContainText(
+			'Wheels: Builder test wheels 56 is sold out.'
+		);
+		await expect(
+			page
+				.locator( '.cbuild-review' )
+				.getByRole( 'button', { name: 'Add to cart' } )
+		).toBeDisabled();
+	} );
+
 	test( "the kit's own page shows the same builder", async ( { page } ) => {
 		await page.goto( '/product/builder-test-kit/' );
 		await expect( heading( page ) ).toHaveText( 'Step 1 of 7: Deck' );
@@ -581,6 +626,22 @@ test.describe( 'The builder with JavaScript', () => {
 		expect(
 			new URL( page.url() ).searchParams.get( 'cbuild[_size]' )
 		).toBe( '8.25in' );
+		expect( await stayed( page ) ).toBe( true );
+	} );
+
+	test( 'starts from a preset without loading the page', async ( {
+		page,
+	} ) => {
+		await page
+			.locator( '.cbuild-presets' )
+			.getByRole( 'button', { name: 'Start from Street' } )
+			.click();
+		await expect( heading( page ) ).toHaveText( 'Step 7 of 7: Review' );
+		await expect( heading( page ) ).toBeFocused();
+		await expect( page.locator( '.cbuild-presets' ) ).toBeHidden();
+		expect(
+			new URL( page.url() ).searchParams.get( 'cbuild[preset]' )
+		).toBe( '0' );
 		expect( await stayed( page ) ).toBe( true );
 	} );
 

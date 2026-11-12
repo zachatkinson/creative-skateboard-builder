@@ -10,6 +10,7 @@ declare( strict_types=1 );
 namespace CreativeBranding\SkateboardBuilder\Front;
 
 use CreativeBranding\SkateboardBuilder\Domain\Fit\BuildProblem;
+use CreativeBranding\SkateboardBuilder\Domain\Fit\Problem;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\SlotKey;
 use CreativeBranding\SkateboardBuilder\Service\State;
 use CreativeBranding\SkateboardBuilder\Support\Cast;
@@ -95,8 +96,10 @@ final class BuilderView {
 			foreach ( Cast::items( $answer['problems'] ?? null ) as $problem ) {
 				$problem  = Cast::map( $problem );
 				$slot     = Cast::str( $problem['slot'] ?? null );
+				$code     = Problem::tryFrom( Cast::str( $problem['code'] ?? null ) );
 				$errors[] = array(
-					'text' => Cast::str( $problem['message'] ?? null ),
+					// A part the build holds is named: one a preset or a link brought may be one the shopper never saw.
+					'text' => null === $code ? Cast::str( $problem['message'] ?? null ) : Words::named( $code, $label( $slot ), Cast::str( $lines[ $slot ]['name'] ?? null ) ),
 					'url'  => $url( $link->at( in_array( $slot, $steps, true ) ? $slot : $state->step ) ),
 				);
 			}
@@ -145,6 +148,7 @@ final class BuilderView {
 				'items'   => $errors,
 			),
 			'progress'  => $progress,
+			'presets'   => self::presets( $answer, $link, $state, $label ),
 			'step'      => $review ? self::none() : $this->step( $state, $answer, $link, $url, $steps, $counted, $lines, $about ),
 			'changes'   => $this->changes( $state, $changes, $link, $lines, $label ),
 			'summary'   => $this->summary( $state, $answer, $link, $url, $lines, $label ),
@@ -164,6 +168,65 @@ final class BuilderView {
 				),
 			),
 			'review'    => $this->review( $state, $answer, $link, $url, $steps, $counted, $lines, $label ),
+		);
+	}
+
+	/**
+	 * The preset tiles (spec: Presets): on a build not yet begun, one for each of the kit's presets, with its total,
+	 * a line on who it is for, and any part that keeps it from the cart named. Each is a GET form whose button starts
+	 * the build at the review (spec: Search, "Picks, filters, Show more and presets are buttons in GET forms"), its
+	 * fields the preset's part IDs as a build link writes them, each checked again when it arrives.
+	 *
+	 * @param array<string, mixed>    $answer The state's answer.
+	 * @param BuildLink               $link   The address.
+	 * @param State                   $state  The build's state.
+	 * @param callable(string):string $label  A slot's label.
+	 * @return array{shown: bool, heading: string, tiles: list<array<string, mixed>>}
+	 */
+	private static function presets( array $answer, BuildLink $link, State $state, callable $label ): array {
+		$tiles = array();
+		// At the start alone: on the first step, with nothing picked. A build begun is the shopper's own.
+		$first = $state->kit->slots->keys()[0] ?? '';
+		if ( array() === $link->picks && null === $link->preset && $first === $state->step ) {
+			foreach ( Cast::items( $answer['presets'] ?? null ) as $at => $preset ) {
+				$preset = Cast::map( $preset );
+				$picks  = array();
+				foreach ( Cast::items( $preset['picks'] ?? null ) as $pick ) {
+					$pick                                        = Cast::map( $pick );
+					$picks[ Cast::str( $pick['slot'] ?? null ) ] = Cast::int( $pick['part'] ?? null );
+				}
+				$fields = array();
+				foreach ( ( new BuildLink( $picks, null, State::REVIEW, null, $at ) )->query( $state->kit->slots ) as $key => $value ) {
+					$fields[] = array(
+						'name'  => BuildLink::PARAM . '[' . $key . ']',
+						'value' => Cast::str( $value ),
+					);
+				}
+				$notes = array();
+				foreach ( Cast::items( $preset['problems'] ?? null ) as $problem ) {
+					$problem = Cast::map( $problem );
+					$code    = Problem::tryFrom( Cast::str( $problem['code'] ?? null ) );
+					$slot    = Cast::str( $problem['slot'] ?? null );
+					$notes[] = array( 'text' => null === $code ? Cast::str( $problem['message'] ?? null ) : Words::named( $code, $label( $slot ), Cast::str( $problem['name'] ?? null ) ) );
+				}
+				$name        = Cast::str( $preset['name'] ?? null );
+				$description = Cast::str( $preset['description'] ?? null );
+				$tiles[]     = array(
+					'name'           => $name,
+					'description'    => $description,
+					'hasDescription' => '' !== $description,
+					'total'          => Cast::str( Cast::map( $preset['total'] ?? null )['text'] ?? null ),
+					'notes'          => $notes,
+					'fields'         => $fields,
+					/* translators: %s: a preset's name, such as Street. */
+					'button'         => sprintf( __( 'Start from %s', 'creative-skateboard-builder' ), $name ),
+				);
+			}
+		}
+		return array(
+			'shown'   => array() !== $tiles,
+			'heading' => __( 'Start from a ready build', 'creative-skateboard-builder' ),
+			'tiles'   => $tiles,
 		);
 	}
 

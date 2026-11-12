@@ -2093,3 +2093,16 @@ Milestone 6's step 8, against the spec's A step ("Long lists get filters (brand,
 - **One render a request.** `BuilderPageTest`'s pages are rendered once a test: the Interactivity API keeps one state a request and merges a second render's lists into the first's, which a real page, with one builder, never does.
 
 **Status:** Accepted.
+
+### D-151 · Preset tiles: each preset worked out by the one engine, and a sold-out part named · 2026-11-12
+
+Milestone 6's step 8, against the spec's Presets ("Up to six tiles at the start ... Each shows its picture, its total and a line on who it's for"; "A preset holding a sold-out part says so on its tile") and A step, Sold out ("A preset or link that holds one names it, and the build can't go to the cart until it's swapped").
+
+- **One engine.** `BuildState` checks and prices each of the kit's presets as a build of its own (`Service\PresetState`), with the validator and the pricer every build goes through, the kit's own assembly setting, and the parts the state has already read. No second price is worked out anywhere. With six presets and 2,000 parts, the state route's p95 went from 68.2 to 70.2 ms cold and stayed at 47 ms warm, with no query more (`StateRouteBenchmarkTest` now holds six).
+- **The answer** gives each preset its `total`, whether it is `ready`, and its `problems` in the build's own shape with the part's `name`. A part the shop no longer offers in its slot is a problem too, `part_not_in_slot`. `schema/state.json` writes that problem as a definition of its own, `presetProblem`, since WordPress's validator takes no `allOf` (`wp-includes/rest-api.php:2251`).
+- **Tiles at the start alone:** on the first step with nothing picked, which a review asked for with nothing picked stops at too. A build begun, or one that began as a preset, is the shopper's own.
+- **A tile is a GET form** whose fields are the preset's part IDs, `step=review` and `preset`, as a build link writes them, so a preset starts on the review, where the whole build and its total are, and every part is checked again on arrival. Its button is "Start from Street", a name of its own (P11).
+- **A sold-out part is named,** on the tile and in the review's error summary, as "Wheels: Builder test wheels 56 is sold out." (`Words::named()`), with the error's link to its step; the review's Add to cart stays disabled until it is swapped. A problem about no part keeps its sentence.
+- **The tile's picture** waits for step 11, where the picture is drawn; the tile holds the total, the line and any note until then.
+
+**Status:** Accepted.

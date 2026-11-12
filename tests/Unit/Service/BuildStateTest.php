@@ -370,6 +370,47 @@ final class BuildStateTest extends TestCase {
 		self::assertSame( array( 302 ), self::ids( self::step( $state, SlotKey::WHEELS )->options->offered ), 'a sold-out part is offered, marked so' );
 	}
 
+	// Spec, Presets: each tile shows its total, and "A preset holding a sold-out part says so on its tile".
+	public function test_each_preset_is_priced_and_checked_as_a_build_of_its_own_from_the_parts_already_read(): void {
+		$shop                    = self::shop();
+		$shop[ SlotKey::WHEELS ] = array( self::priced( Builds::wheel( '54', 302 ), 3200, false, 0 ) );
+		$presets                 = array(
+			'schema_version' => 1,
+			'presets'        => array(
+				array(
+					'name'  => 'Street',
+					'picks' => self::COMPLETE,
+				),
+				array(
+					'name'  => 'Gone',
+					'picks' => array( SlotKey::DECK => 999 ) + self::COMPLETE,
+				),
+			),
+		);
+		$assembly = array(
+			'schema_version' => 1,
+			'default_on'     => false,
+			'fee'            => '15',
+			'lead_time'      => '',
+			'returns_notice' => '',
+		);
+		$this->kits->add( self::KIT, KitDocuments::kit( null, null, $presets, $assembly ), $shop );
+		$this->kits->offered = 0;
+
+		$state = $this->of( array( SlotKey::DECK => 101 ) );
+		self::assertSame( count( self::kit()->slots->keys() ), $this->kits->offered, "each slot's parts read once, for the build and its presets" );
+		self::assertCount( 2, $state->presets );
+
+		$street = $state->presets[0];
+		$build  = $this->of( self::COMPLETE );
+		self::assertSame( $build->quote->total, $street->quote->total, 'the same total as the build it starts' );
+		self::assertSame( array( array( 'part_sold_out', 'wheels', 302 ) ), self::rows( $street->validation->problems ) );
+		self::assertSame( array(), $street->refused );
+
+		$gone = $state->presets[1];
+		self::assertSame( array( array( 'part_not_in_slot', 'deck', 999 ) ), self::rows( $gone->refused ), 'a part the shop no longer offers there' );
+	}
+
 	public function test_the_step_is_the_one_asked_for_when_the_kit_has_it(): void {
 		self::assertSame( SlotKey::GRIP, $this->of( array(), null, SlotKey::GRIP )->step );
 		self::assertSame( SlotKey::DECK, $this->of( self::COMPLETE, null, SlotKey::DECK )->step );

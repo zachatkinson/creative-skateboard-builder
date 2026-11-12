@@ -16,6 +16,7 @@ defined( 'ABSPATH' ) || exit;
 	<div class="cbuild__layout">
 		<div class="cbuild__main">
 			<?php require __DIR__ . '/picture.php'; ?>
+			<?php require __DIR__ . '/presets.php'; ?>
 			<?php require __DIR__ . '/step.php'; ?>
 			<?php require __DIR__ . '/changes.php'; ?>
 			<?php require __DIR__ . '/review.php'; ?>

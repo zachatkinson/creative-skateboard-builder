@@ -165,7 +165,30 @@ final class StateRouteBenchmarkTest extends IntegrationTestCase {
 				$ids[ $slot['key'] ][] = $product->get_id();
 			}
 		}
-		$kit = KitFactory::kit( 'Complete', array( Options::META_KIT_SLOTS => $slots ) )->get_id();
+		// The most presets a kit has, six, each worked out as a build on every answer (D-151).
+		$presets = array();
+		for ( $n = 0; $n < 6; $n++ ) {
+			$picks = array();
+			foreach ( $ids as $slot => $parts ) {
+				if ( 'risers' !== $slot ) {
+					$picks[ $slot ] = $parts[ $n ];
+				}
+			}
+			$presets[] = array(
+				'name'  => 'Preset ' . $n,
+				'picks' => $picks,
+			);
+		}
+		$kit = KitFactory::kit(
+			'Complete',
+			array(
+				Options::META_KIT_SLOTS   => $slots,
+				Options::META_KIT_PRESETS => array(
+					'schema_version' => 1,
+					'presets'        => $presets,
+				),
+			)
+		)->get_id();
 		self::assertSame( 2000, array_sum( array_map( 'count', $ids ) ) );
 
 		$ask = static function ( int $deck ) use ( $kit ): array {
@@ -191,6 +214,8 @@ final class StateRouteBenchmarkTest extends IntegrationTestCase {
 		self::assertGreaterThan( 24, $first['steps'][1]['hidden'] );
 		self::assertCount( 24, $first['options'] );
 		self::assertNotNull( $first['options'][0]['card'] );
+		self::assertCount( 6, $first['presets'] );
+		self::assertGreaterThan( 0, $first['presets'][0]['total']['amount'] );
 
 		foreach ( array( 'cold' => true, 'warm' => false ) as $run => $flush ) {
 			$times   = array();

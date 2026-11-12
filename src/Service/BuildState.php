@@ -115,10 +115,21 @@ final class BuildState {
 			$started = $started && ( null !== $part || ! $slot->required );
 		}
 
-		$validation = ( new BuildValidator( $engine ) )->validate( $kit, $counted, array_map( 'array_keys', $parts ) );
+		$validator  = new BuildValidator( $engine );
+		$ids        = array_map( 'array_keys', $parts );
+		$validation = $validator->validate( $kit, $counted, $ids );
 		$discount   = $this->settings->terms()->discount;
+		$decimals   = $this->kits->decimals();
+		$pricer     = new Pricer();
+		$presets    = array();
 		try {
-			$quote = ( new Pricer() )->quote( $kit, $validation->build, $assembly ?? $kit->assembly->defaultOn, $discount, $this->kits->decimals() );
+			$quote = $pricer->quote( $kit, $validation->build, $assembly ?? $kit->assembly->defaultOn, $discount, $decimals );
+			// Each preset as the build it starts: its tile's total and what keeps it from the cart.
+			foreach ( $kit->presets as $preset ) {
+				$left      = array();
+				$checked   = $validator->validate( $kit, self::found( $preset->picks, $parts, $left ), $ids );
+				$presets[] = new PresetState( $checked, $pricer->quote( $kit, $checked->build, $kit->assembly->defaultOn, $discount, $decimals ), $left );
+			}
 		} catch ( InvalidMoney $unpriced ) {
 			$this->logger->hourly( 'no_price_' . $id, Logger::ERROR, 'A build could not be priced in the shop\'s currency settings.', array( 'kit' => $id ) );
 			throw $unpriced;
@@ -133,7 +144,8 @@ final class BuildState {
 			$validation,
 			null === $previous ? null : self::changes( $engine, $kit, $picked, self::found( $previous, $parts ), $candidates ),
 			$quote,
-			$discount
+			$discount,
+			$presets
 		);
 	}
 

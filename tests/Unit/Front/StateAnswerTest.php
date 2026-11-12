@@ -261,9 +261,30 @@ final class StateAnswerTest extends TestCase {
 					'picks'       => self::listed( self::PARK ),
 				),
 			),
-			$answer['presets']
+			array_map( static fn( array $preset ): array => array_intersect_key( $preset, array_flip( array( 'name', 'description', 'picks' ) ) ), $answer['presets'] ),
+			'its total and readiness are tested on their own'
 		);
 		self::assertSame( 'Sold in pairs.', self::step( $answer, SlotKey::TRUCKS )['help'] );
+	}
+
+	// Spec, Presets: each tile shows its total, and one holding a sold-out part says so.
+	public function test_each_preset_says_its_total_and_names_what_keeps_it_from_the_cart(): void {
+		$this->worded();
+		$parts                    = Shop::parts();
+		$parts[ SlotKey::WHEELS ] = array_map( static fn( Part $part ): Part => 302 === $part->id ? Shop::priced( $part, $part->price, false, 0 ) : $part, $parts[ SlotKey::WHEELS ] );
+		$this->kits->add( self::KIT, $this->kits->kit( self::KIT ), $parts );
+
+		$answer = $this->answer();
+		$street = $answer['presets'][0];
+		self::assertSame( $this->answer( self::STREET )['total']['total'], $street['total'], "the total of the build it starts, at the kit's own assembly setting" );
+		self::assertTrue( $street['ready'] );
+		self::assertSame( array(), $street['problems'] );
+
+		$park = $answer['presets'][1];
+		self::assertFalse( $park['ready'] );
+		self::assertSame( array( array( 'part_sold_out', 'wheels', 302 ) ), array_map( static fn( array $problem ): array => array( $problem['code'], $problem['slot'], $problem['part'] ), $park['problems'] ) );
+		self::assertSame( 'Part 302', $park['problems'][0]['name'], 'the part named, for its tile' );
+		self::assertNotSame( '', $park['problems'][0]['message'] );
 	}
 
 	public function test_a_plugins_answer_to_each_filter_is_what_the_answer_says(): void {
