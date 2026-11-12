@@ -168,7 +168,9 @@ foreach ( array(
 		)
 	);
 }
-update_option( 'cbuild_e2e_classic_pages', array( 'cart' => $cbuild_pages['cart-test-classic-cart'], 'checkout' => $cbuild_pages['cart-test-classic-checkout'] ) );
+// Not under the plugin's prefix: the zip's lifecycle counts every `cbuild_` option as the plugin's own, to be gone on uninstall.
+delete_option( 'cbuild_e2e_classic_pages' );
+update_option( 'e2e_classic_pages_for_cbuild', array( 'cart' => $cbuild_pages['cart-test-classic-cart'], 'checkout' => $cbuild_pages['cart-test-classic-checkout'] ) );
 
 // An order can be placed: an offline payment method, and a shipping method wherever the shopper is.
 update_option( 'woocommerce_cheque_settings', array( 'enabled' => 'yes' ) + (array) get_option( 'woocommerce_cheque_settings', array() ) );

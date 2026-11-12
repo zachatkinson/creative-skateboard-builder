@@ -18,7 +18,7 @@ if ( isset( $_COOKIE['cbuild_e2e_classic'] ) ) {
 		add_filter(
 			'woocommerce_get_' . $cbuild_e2e_page . '_page_id',
 			static function ( $id ) use ( $cbuild_e2e_page ) {
-				$pages = (array) get_option( 'cbuild_e2e_classic_pages', array() );
+				$pages = (array) get_option( 'e2e_classic_pages_for_cbuild', array() );
 				return isset( $pages[ $cbuild_e2e_page ] ) ? (int) $pages[ $cbuild_e2e_page ] : $id;
 			}
 		);
