@@ -17,6 +17,7 @@ use CreativeBranding\SkateboardBuilder\Domain\Rule\RuleId;
 use CreativeBranding\SkateboardBuilder\Domain\Rule\Severity;
 use CreativeBranding\SkateboardBuilder\Domain\Rule\Source;
 use CreativeBranding\SkateboardBuilder\Front\Words;
+use CreativeBranding\SkateboardBuilder\Service\CartRefusal;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
@@ -258,5 +259,27 @@ final class WordsTest extends TestCase {
 
 	public function test_every_problem_has_a_sentence_of_its_own(): void {
 		self::assertCount( count( Problem::cases() ), iterator_to_array( self::problems() ) );
+	}
+
+	/**
+	 * @return iterable<string, array{CartRefusal, string}>
+	 */
+	public static function refusals(): iterable {
+		yield 'cbuild_no_build' => array( CartRefusal::NoBuild, 'Choose the parts for this build first, then add it to the cart.' );
+		yield 'cbuild_kit_not_found' => array( CartRefusal::KitNotFound, 'This build is no longer sold. Nothing was added to the cart.' );
+		yield 'cbuild_build_refused' => array( CartRefusal::BuildRefused, 'This build cannot be sold as it is. Nothing was added to the cart.' );
+		yield 'cbuild_no_price' => array( CartRefusal::NoPrice, 'This build cannot be priced at the moment. Nothing was added to the cart.' );
+		yield 'cbuild_not_added' => array( CartRefusal::NotAdded, 'One of the parts could not be added, so nothing of the build was. Check the parts and add the build again.' );
+		yield 'cbuild_part_locked' => array( CartRefusal::PartLocked, 'A part of a build comes in the quantity the build needs. Change the quantity of the build instead.' );
+		yield 'cbuild_build_incomplete' => array( CartRefusal::BuildIncomplete, 'A build in your cart had lost one of its parts and was removed. Add the build again.' );
+	}
+
+	#[DataProvider( 'refusals' )]
+	public function test_a_refusal_says_what_was_not_done( CartRefusal $refusal, string $sentence ): void {
+		self::assertSame( $sentence, Words::refusal( $refusal ) );
+	}
+
+	public function test_every_refusal_has_a_sentence_of_its_own_under_its_own_code(): void {
+		self::assertSame( array_column( CartRefusal::cases(), 'value' ), array_keys( iterator_to_array( self::refusals() ) ) );
 	}
 }

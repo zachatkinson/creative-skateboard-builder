@@ -14,9 +14,10 @@ use CreativeBranding\SkateboardBuilder\Front\StateAnswer;
 use CreativeBranding\SkateboardBuilder\Hookable;
 use CreativeBranding\SkateboardBuilder\Port\Kits;
 use CreativeBranding\SkateboardBuilder\Service\Build;
-use CreativeBranding\SkateboardBuilder\Service\BuildCart;
+use CreativeBranding\SkateboardBuilder\Service\OrderBuilds;
 use CreativeBranding\SkateboardBuilder\Support\Cast;
 use CreativeBranding\SkateboardBuilder\Support\Options;
+use WC_Cart;
 use WC_Order;
 use WC_Order_Item_Product;
 use WC_Product;
@@ -41,10 +42,10 @@ final class OrderHooks implements Hookable {
 	 *
 	 * @since 0.5.0
 	 *
-	 * @param Closure(): BuildCart $builds Builds the service, when an order has a build in it.
-	 * @param Closure(): Kits      $kits   The shop's kits, for a slot's label.
+	 * @param Closure(): OrderBuilds $orders Builds the service, when an order has a build in it.
+	 * @param Closure(): Kits        $kits   The shop's kits, for a slot's label and the owner's words.
 	 */
-	public function __construct( private Closure $builds, private Closure $kits ) {}
+	public function __construct( private Closure $orders, private Closure $kits ) {}
 
 	/**
 	 * Attach hooks.
@@ -94,15 +95,21 @@ final class OrderHooks implements Hookable {
 		if ( ! $item instanceof WC_Order_Item_Product || ! is_array( $values ) ) {
 			return;
 		}
-		$cart  = WC()->cart->get_cart();
-		$build = Build::read( $values[ Options::CART_BUILD ] ?? null );
+		$build  = Build::read( $values[ Options::CART_BUILD ] ?? null );
+		$parent = $values[ Options::CART_PARENT ] ?? null;
+		if ( null === $build && ! is_string( $parent ) ) {
+			return;
+		}
+		// Only now the cart, and as it is: a plugin may make an order's items with no cart at all, and WooCommerce
+		// declares a cart where the property is null.
+		$held = get_object_vars( WC() )['cart'] ?? null;
+		$cart = $held instanceof WC_Cart ? $held->get_cart() : array();
 		if ( null !== $build ) {
 			$this->kit( $item, $build, $values, $cart );
 			return;
 		}
-		$parent = $values[ Options::CART_PARENT ] ?? null;
-		$slot   = $values[ Options::CART_SLOT ] ?? null;
-		$of     = is_string( $parent ) ? Build::read( $cart[ $parent ][ Options::CART_BUILD ] ?? null ) : null;
+		$slot = $values[ Options::CART_SLOT ] ?? null;
+		$of   = is_string( $parent ) ? Build::read( $cart[ $parent ][ Options::CART_BUILD ] ?? null ) : null;
 		if ( null !== $of && is_string( $slot ) ) {
 			$item->update_meta_data( Options::ORDER_BUILD, $of->id );
 			$item->update_meta_data( Options::ORDER_ROLE, Options::ROLE_PART );
@@ -123,31 +130,28 @@ final class OrderHooks implements Hookable {
 		if ( ! $order instanceof WC_Order ) {
 			return;
 		}
-		$kits  = array();
-		$parts = array();
+		$items = array();
+		$found = array();
 		foreach ( $order->get_items() as $id => $item ) {
 			$build = $item->get_meta( Options::ORDER_BUILD );
-			if ( ! is_string( $build ) || '' === $build ) {
-				continue;
-			}
-			if ( Options::ROLE_KIT === $item->get_meta( Options::ORDER_ROLE ) ) {
-				$kits[ $build ] = $item;
-			} else {
-				$parts[ $build ][ $id ] = $item;
+			if ( is_string( $build ) && '' !== $build ) {
+				$found[ $id ] = $item;
+				$items[ $id ] = array(
+					'build'    => $build,
+					'kit'      => Options::ROLE_KIT === $item->get_meta( Options::ORDER_ROLE ),
+					'parent'   => Cast::int( $item->get_meta( Options::ORDER_PARENT ) ),
+					'children' => $item->get_meta( Options::ORDER_CHILDREN ),
+				);
 			}
 		}
-		foreach ( $kits as $build => $kit ) {
-			$children = array_keys( $parts[ $build ] ?? array() );
-			foreach ( $parts[ $build ] ?? array() as $part ) {
-				if ( Cast::int( $part->get_meta( Options::ORDER_PARENT ) ) !== $kit->get_id() ) {
-					$part->update_meta_data( Options::ORDER_PARENT, (string) $kit->get_id() );
-					$part->save();
-				}
-			}
-			if ( $kit->get_meta( Options::ORDER_CHILDREN ) !== $children ) {
-				$kit->update_meta_data( Options::ORDER_CHILDREN, $children );
-				$kit->save();
-			}
+		$ties = OrderBuilds::ties( $items );
+		foreach ( $ties['parents'] as $part => $kit ) {
+			$found[ $part ]->update_meta_data( Options::ORDER_PARENT, (string) $kit );
+			$found[ $part ]->save();
+		}
+		foreach ( $ties['children'] as $kit => $children ) {
+			$found[ $kit ]->update_meta_data( Options::ORDER_CHILDREN, $children );
+			$found[ $kit ]->save();
 		}
 	}
 
@@ -183,18 +187,15 @@ final class OrderHooks implements Hookable {
 	 * @param array<string, array<string, mixed>> $cart   The cart's lines.
 	 */
 	private function kit( WC_Order_Item_Product $item, Build $build, array $values, array $cart ): void {
-		$snapshot = ( $this->builds )()->snapshot( $build );
-		$kit      = ( $this->kits )()->kit( $build->kit );
-		$slots    = $kit?->slots;
-		// The owner's words on an assembled build, as the shopper read them, for the order's emails (milestone 8).
-		$words = array(
-			'lead_time'      => $kit?->assembly->leadTime ?? '',
-			'returns_notice' => $kit?->assembly->returnsNotice ?? '',
-		);
-		foreach ( $words as $field => $text ) {
-			$snapshot[ $field ] = $build->assembly && '' !== $text ? StateAnswer::text( $text, $field, $build->kit ) : '';
+		$kit    = ( $this->kits )()->kit( $build->kit );
+		$labels = array();
+		$names  = array();
+		foreach ( array_keys( $build->picks ) as $key ) {
+			$slot = $kit?->slots->get( $key );
+			if ( null !== $slot ) {
+				$labels[ $key ] = StateAnswer::label( $slot->label, $slot->key, $build->kit );
+			}
 		}
-		$names = array();
 		foreach ( is_array( $values[ Options::CART_CHILDREN ] ?? null ) ? $values[ Options::CART_CHILDREN ] : array() as $child ) {
 			$line    = is_string( $child ) ? ( $cart[ $child ] ?? array() ) : array();
 			$product = $line['data'] ?? null;
@@ -203,17 +204,20 @@ final class OrderHooks implements Hookable {
 				$names[ $slot ] = $product->get_name();
 			}
 		}
-		$told = array();
-		foreach ( $snapshot['picks'] as $key => $pick ) {
-			$slot                      = $slots?->get( $key );
-			$label                     = null === $slot ? $key : StateAnswer::label( $slot->label, $slot->key, $build->kit );
-			$name                      = $names[ $key ] ?? '';
-			$snapshot['picks'][ $key ] = array(
-				'label' => $label,
-				'name'  => $name,
-			) + $pick;
+		// The owner's words on an assembled build, as the shopper read them, for the order's emails (milestone 8).
+		$lead     = $kit?->assembly->leadTime ?? '';
+		$notice   = $kit?->assembly->returnsNotice ?? '';
+		$snapshot = ( $this->orders )()->snapshot(
+			$build,
+			$labels,
+			$names,
+			'' === $lead ? '' : StateAnswer::text( $lead, 'lead_time', $build->kit ),
+			'' === $notice ? '' : StateAnswer::text( $notice, 'returns_notice', $build->kit )
+		);
+		$told     = array();
+		foreach ( $snapshot['picks'] as $pick ) {
 			/* translators: 1: a slot's label, such as Trucks; 2: the part's name; 3: how many of it a build takes. */
-			$told[] = sprintf( __( '%1$s: %2$s × %3$d', 'creative-skateboard-builder' ), $label, $name, $pick['quantity'] );
+			$told[] = sprintf( __( '%1$s: %2$s × %3$s', 'creative-skateboard-builder' ), $pick['label'], $pick['name'], number_format_i18n( $pick['quantity'] ) );
 		}
 		$item->update_meta_data( Options::ORDER_BUILD, $build->id );
 		$item->update_meta_data( Options::ORDER_ROLE, Options::ROLE_KIT );

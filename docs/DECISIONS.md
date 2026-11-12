@@ -1884,3 +1884,28 @@ What this commit does:
 **Red runs and deliberate breaks** are in the commit's message.
 
 **Status:** Accepted.
+
+### D-138 · The reviews of milestone 5, the rest: logic in services, the snapshot's schema, the shopper with no cart · 2026-11-11
+
+The second batch of the reviews' findings (D-137 has the first, and Zach's four answers).
+
+- **The hook classes hold no logic, and are named.** `infection.json5` left out anything with "Hooks" in its path, which took `Cart\*Hooks` and `Order\OrderHooks` with it unsaid. The entry is now `Hooks/`, the directory. What those classes decided moved into services, each at 100 % MSI: a line's price asked for more than once (`BuildCart::repriced()`), an order's ties and its snapshot (`Service\OrderBuilds`). Under Zach's third answer the eight hook classes, `Adapter\WooCart`, `Adapter\WpUuids` and `Front\Delivery` are then named in the exclusions with their reasons: each takes WooCommerce's cart, products, coupons, order items or packages, or does its work through WordPress's functions (D-087, D-038). `Cart\Refusals` needs only the translation functions, so it is not left out: `RefusalsTest` mutates it at 100 %.
+- **The order's snapshot has a schema and a version of its own.** `schema/order-snapshot.json` describes `_cbuild_snapshot`, `OrderTest` validates a real order's against it, and `OrderBuilds::SNAPSHOT_VERSION` is 1. It was the cart's build's version before, so a change to the cart's shape would have renumbered every order's record.
+- **The abilities price as the route does** (Zach's second answer). `Abilities\BuildAbility` asks for the shopper before it asks the state's service, so `price-build` and the route give a signed-in user the same total where tax goes by address. D-135's "Not done" is done.
+- **The shopper is found without a cart.** D-135 called `wc_load_cart()`. That makes a `WC_Cart`, and a cart reads itself from the session when the request shuts down, to set its cookies (`includes/class-wc-cart-session.php:95` and `:400`); PHP runs that before it sends the answer. Every state request of a shopper with a build in the cart would have paid for reading and checking that cart, on the route the 80 ms budget is about. `Adapter\WooCart::shopper()` now makes the session and the customer as `wc_load_cart()` does (`includes/class-woocommerce.php:1228` and `:1245`) and no cart, and does not queue the customer's save, since the route changes nothing of them. Held by `CartPriceTest::test_the_route_finds_the_shopper_and_makes_no_cart_for_the_request` and by a benchmark: finding the shopper costs the one query that reads the session (38 against 37).
+- **Refusals are tested by code and by sentence, by both routes:** an unpublished kit's 404, each of `slot_unknown`, `part_not_in_slot`, `part_short` and `part_blocked`, `cbuild_no_price`, and WooCommerce's ajax add. The Store API's message is HTML, as WooCommerce's own are, so a quotation mark in it is an entity; the Cart block decodes it.
+- **Axe reads the three carts and the classic checkout's table** in every project with a script. With scripts off the server draws the same classic tables, and axe, a script, cannot run.
+- **The classic mini-cart widget.** Its rows have a filter of their own, `woocommerce_mini_cart_item_class`, which the plugin now answers as it answers the cart's, with the styles enqueued where the widget is drawn.
+- **Composer's scripts have 30 minutes.** The integration suite with coverage passed Composer's default of 300 seconds at 402 tests and was stopped mid-run with every test so far passing. `composer.json` sets `process-timeout` to 1800; each CI job keeps its own limit in minutes.
+- **Minors.** A part's quantity in the order's Build line goes through `number_format_i18n()`. An order item made with no cart reads none. `ContainerTest` holds the two meta keys the index follows. `docs/BENCHMARK.md` says seven parts.
+
+Listed, not done:
+
+- **The kit's line has the kit's own thumbnail.** The deck's photo there, with the fallback where a deck has none, is milestone 7's: the build's picture is drawn then, and the cart's line takes it.
+- **A cart with two builds** is held by `CartInvariantTest` and has no query ceiling of its own; the read's ceiling is for one build, and each build adds its parts' one reading (D-134).
+- **A build added from a page with no build in the cart** has its styles from the next page on (D-132). The builder page is milestone 6's, and its plan carries this.
+- **The state schema's `additionalProperties: false`** is asked in milestone 6's plan.
+
+**Red runs and deliberate breaks** are in the commit's message and the review's findings table.
+
+**Status:** Accepted.

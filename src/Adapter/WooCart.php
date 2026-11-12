@@ -139,15 +139,21 @@ final class WooCart implements Cart {
 
 	/**
 	 * Make the shopper known where WooCommerce has loaded no customer: it loads one for a page and for the Store
-	 * API, and for no other REST request (includes/class-woocommerce.php:347). `wc_load_cart()` is WooCommerce's own
-	 * way to ask for it there (includes/wc-core-functions.php:2539). It reads the session's cookie and sets none.
+	 * API, and for no other REST request (includes/class-woocommerce.php:347). The session and the customer are
+	 * made as `wc_load_cart()` makes them (includes/class-woocommerce.php:1228 and :1245), and the cart is not: a
+	 * cart reads itself from the session as the request shuts down, before the answer is sent
+	 * (includes/class-wc-cart-session.php:95 and :400), and a request that only reads prices would pay for every
+	 * line in it (D-138). Nor is the customer saved at shutdown, as nothing here changes them. The session's
+	 * cookie is read and none is set.
 	 *
 	 * @since 0.5.0
 	 */
 	public function shopper(): void {
-		if ( ! ( get_object_vars( WC() )['customer'] ?? null ) instanceof WC_Customer ) {
-			wc_load_cart();
+		if ( ( get_object_vars( WC() )['customer'] ?? null ) instanceof WC_Customer ) {
+			return;
 		}
+		WC()->initialize_session();
+		WC()->customer = new WC_Customer( get_current_user_id(), true );
 	}
 
 	/**

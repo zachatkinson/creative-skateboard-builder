@@ -10,6 +10,9 @@ declare( strict_types=1 );
 namespace CreativeBranding\SkateboardBuilder\Tests\Benchmark;
 
 use CreativeBranding\SkateboardBuilder\Tests\Support\CartTestCase;
+use ReflectionMethod;
+use ReflectionProperty;
+use WC_Session_Handler;
 use WP_REST_Request;
 
 /**
@@ -40,8 +43,9 @@ final class CartBenchmarkTest extends CartTestCase {
 	 * The queries a request may ask. These do not move with the machine.
 	 */
 	private const QUERIES = array(
-		'add'  => 54,
-		'read' => 30,
+		'add'     => 54,
+		'read'    => 30,
+		'session' => 1,
 	);
 
 	/**
@@ -157,5 +161,65 @@ final class CartBenchmarkTest extends CartTestCase {
 		);
 		self::assertLessThanOrEqual( self::QUERIES['read'], max( array_column( $build, 1 ) ), 'The queries of a read with a build in the cart.' );
 		self::assertLessThan( self::limit(), self::p95( $times ), 'Reading a cart with a build in it.' );
+	}
+
+	// Issue #27, D-135: the state route asks WooCommerce for the shopper, which starts a session and a cart on a
+	// request that had neither. What that costs a visitor whose session holds a build is held here: the one query
+	// that reads the session, and no cart (D-138).
+	public function test_the_state_route_reads_a_shoppers_session_for_what_is_printed_and_never_their_cart(): void {
+		self::timed( $this->adding(), 201 );
+		$session = WC()->session;
+		self::assertInstanceOf( WC_Session_Handler::class, $session );
+		// The cookie WooCommerce would have sent this guest, made as it makes it
+		// (includes/class-wc-session-handler.php:342): the test's output has gone, so no header can be.
+		$read    = static fn( string $name ): mixed => ( new ReflectionProperty( WC_Session_Handler::class, $name ) )->getValue( $session );
+		$signed  = $session->get_customer_id() . '|' . $read( '_session_expiration' );
+		$cookie  = $read( '_cookie' );
+		$hash    = ( new ReflectionMethod( WC_Session_Handler::class, 'hash' ) )->invoke( $session, $signed );
+		$_COOKIE[ $cookie ] = $signed . '|' . $read( '_session_expiring' ) . '|' . $hash;
+		WC()->cart->set_session();
+		$session->save_data();
+
+		$state = function (): WP_REST_Request {
+			$request = new WP_REST_Request( 'GET', '/cbuild/v1/kits/' . $this->kit . '/state' );
+			$request->set_query_params( array( 'picks' => $this->picks() ) );
+			return $request;
+		};
+		// The parts' rows are kept by the first request after the fixture's saves (D-116), which is not what is measured.
+		self::timed( $state(), 200 );
+		$kept = array( WC()->customer, WC()->cart, WC()->session );
+		$with = array();
+		$bare = array();
+		$read = did_action( 'woocommerce_cart_loaded_from_session' );
+		try {
+			for ( $n = 0; $n < self::REQUESTS; $n++ ) {
+				// As a request to the plugin's route starts: no customer, no session and no cart
+				// (includes/class-woocommerce.php:347).
+				WC()->customer = null;
+				WC()->cart     = null;
+				WC()->session  = null;
+				$with[]        = self::timed( $state(), 200 );
+				self::assertInstanceOf( WC_Session_Handler::class, WC()->session );
+				self::assertSame( $session->get_customer_id(), WC()->session->get_customer_id(), 'the session is the visitor\'s own' );
+				// The same request with the shopper known already, which is what the route cost before it asked.
+				$bare[] = self::timed( $state(), 200 );
+			}
+			self::assertSame( $read, did_action( 'woocommerce_cart_loaded_from_session' ), 'the cart in the session is never read: the route asks for the shopper alone' );
+				self::assertNull( WC()->cart, 'no cart is made, so none is read when the request shuts down' );
+		} finally {
+			unset( $_COOKIE[ $cookie ] );
+			[ WC()->customer, WC()->cart, WC()->session ] = $kept;
+		}
+		$more = max( array_column( $with, 1 ) ) - max( array_column( $bare, 1 ) );
+		self::say(
+			sprintf(
+				'state route, a visitor whose session holds a 7-part build: p95 %.1f ms, %d queries at most; the same with the shopper already known: p95 %.1f ms, %d queries at most',
+				self::p95( array_column( $with, 0 ) ),
+				max( array_column( $with, 1 ) ),
+				self::p95( array_column( $bare, 0 ) ),
+				max( array_column( $bare, 1 ) )
+			)
+		);
+		self::assertLessThanOrEqual( self::QUERIES['session'], $more, 'The queries that finding the shopper adds to the state route.' );
 	}
 }

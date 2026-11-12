@@ -164,6 +164,14 @@ final class OrderTest extends CartTestCase {
 
 		$snapshot = $kit->get_meta( '_cbuild_snapshot' );
 		self::assertSame( array( 'schema_version', 'kit', 'assembly', 'picks', 'lead_time', 'returns_notice' ), array_keys( $snapshot ) );
+		// The auditor's finding 6 on milestone 5: the document kept for as long as the order is has its schema.
+		$schema = json_decode( (string) file_get_contents( dirname( __DIR__, 2 ) . '/schema/order-snapshot.json' ), true );
+		self::assertIsArray( $schema );
+		$valid = rest_validate_value_from_schema( $snapshot, $schema, '_cbuild_snapshot' );
+		self::assertTrue( $valid, is_wp_error( $valid ) ? $valid->get_error_message() : '' );
+		$wrong = $snapshot;
+		unset( $wrong['picks']['deck']['label'] );
+		self::assertWPError( rest_validate_value_from_schema( $wrong, $schema, '_cbuild_snapshot' ), 'and the schema refuses what is not one' );
 		self::assertSame( array( '', '' ), array( $snapshot['lead_time'], $snapshot['returns_notice'] ), 'the kit has neither' );
 		self::assertSame( array( 1, $this->kit, $assembly ), array( $snapshot['schema_version'], $snapshot['kit'], $snapshot['assembly'] ) );
 		self::assertSame(

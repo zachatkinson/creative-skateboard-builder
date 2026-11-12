@@ -54,7 +54,7 @@ final class ShowHooks implements Hookable {
 	 * cell where a padding of the plugin's would replace it. They go in the page: the Mini-Cart is in many a shop's header, and a file would
 	 * be one more request on every page (spec: Performance, nothing loads on pages without a builder).
 	 */
-	private const STYLES = '.wc-block-cart-items__row.cbuild-part>:first-child,.wc-block-cart-items__row:has(.cbuild-part)>:first-child,.woocommerce-cart-form__cart-item.cbuild-part>.product-name,.woocommerce-checkout-review-order-table .cbuild-part>.product-name{border-inline-start:1.5em solid transparent}';
+	private const STYLES = '.wc-block-cart-items__row.cbuild-part>:first-child,.wc-block-cart-items__row:has(.cbuild-part)>:first-child,.woocommerce-cart-form__cart-item.cbuild-part>.product-name,.woocommerce-checkout-review-order-table .cbuild-part>.product-name,.woocommerce-mini-cart-item.cbuild-part{border-inline-start:1.5em solid transparent}';
 
 	/**
 	 * Constructor.
@@ -76,6 +76,9 @@ final class ShowHooks implements Hookable {
 		// templates/cart/cart.php:65, :68, :166 and :73; templates/checkout/review-order.php:46 and :55.
 		add_filter( 'woocommerce_cart_item_name', array( $this, 'name' ), 10, 2 );
 		add_filter( 'woocommerce_cart_item_class', array( $this, 'row' ), 10, 2 );
+		// The classic mini-cart widget: templates/cart/mini-cart.php:56 and :26.
+		add_filter( 'woocommerce_mini_cart_item_class', array( $this, 'row' ), 10, 2 );
+		add_action( 'woocommerce_before_mini_cart', array( $this, 'widget' ), 10, 0 );
 		add_filter( 'woocommerce_cart_item_quantity', array( $this, 'quantity' ), 10, 3 );
 		add_filter( 'woocommerce_cart_item_remove_link', array( $this, 'remove' ), 10, 2 );
 		// WooCommerce fires this as it loads, which may be before or after the plugin's hooks are attached.
@@ -101,6 +104,15 @@ final class ShowHooks implements Hookable {
 		if ( is_cart() || is_checkout() ) {
 			$this->assets( false );
 		}
+	}
+
+	/**
+	 * The classic mini-cart widget is on the page: the styles, printed with the footer's.
+	 *
+	 * @since 0.5.0
+	 */
+	public function widget(): void {
+		$this->assets( false );
 	}
 
 	/**
@@ -205,7 +217,8 @@ final class ShowHooks implements Hookable {
 	}
 
 	/**
-	 * A line's row in a classic cart: a class for a kit's line and one for a part's.
+	 * A line's row in a classic cart and in the classic mini-cart widget: a class for a kit's line and one for a
+	 * part's.
 	 *
 	 * @since 0.5.0
 	 *

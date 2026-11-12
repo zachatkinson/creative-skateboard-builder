@@ -9,7 +9,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-11-12T00:46:25+00:00\n"
+"POT-Creation-Date: 2026-11-12T01:24:06+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: creative-skateboard-builder\n"
@@ -45,27 +45,27 @@ msgstr ""
 msgid "Creative Skateboard Builder: run \"composer install\" before activating the plugin."
 msgstr ""
 
-#: src/Abilities/BuildAbility.php:106
+#: src/Abilities/BuildAbility.php:108
 #: src/Rest/StateRoute.php:128
 msgid "The kit product's ID."
 msgstr ""
 
-#: src/Abilities/BuildAbility.php:110
+#: src/Abilities/BuildAbility.php:112
 #: src/Rest/StateRoute.php:133
 msgid "The picks: each of the kit's slot keys to a part's ID."
 msgstr ""
 
-#: src/Abilities/BuildAbility.php:119
+#: src/Abilities/BuildAbility.php:121
 #: src/Rest/StateRoute.php:141
 msgid "Whether the shop assembles the build. Left out, the kit's own default."
 msgstr ""
 
-#: src/Abilities/BuildAbility.php:138
+#: src/Abilities/BuildAbility.php:140
 #: src/Rest/StateRoute.php:203
 msgid "There is no such kit."
 msgstr ""
 
-#: src/Abilities/BuildAbility.php:145
+#: src/Abilities/BuildAbility.php:149
 #: src/Rest/StateRoute.php:227
 msgid "This build cannot be priced in the shop's currency settings."
 msgstr ""
@@ -172,7 +172,7 @@ msgid "Builder"
 msgstr ""
 
 #: src/Admin/BuildTab.php:162
-#: src/Order/OrderHooks.php:222
+#: src/Order/OrderHooks.php:226
 msgid "Build"
 msgstr ""
 
@@ -217,7 +217,7 @@ msgstr ""
 
 #: src/Admin/BuildTab.php:344
 #: src/Admin/BuildTab.php:910
-#: src/Order/OrderHooks.php:221
+#: src/Order/OrderHooks.php:225
 msgid "Assembly"
 msgstr ""
 
@@ -854,14 +854,14 @@ msgstr ""
 #: src/Admin/Labels.php:170
 #: src/Admin/PartSpecsPanel.php:331
 #: src/Health/SiteHealth.php:271
-#: src/Order/OrderHooks.php:221
+#: src/Order/OrderHooks.php:225
 msgid "Yes"
 msgstr ""
 
 #: src/Admin/Labels.php:170
 #: src/Admin/PartSpecsPanel.php:332
 #: src/Health/SiteHealth.php:271
-#: src/Order/OrderHooks.php:221
+#: src/Order/OrderHooks.php:225
 msgid "No"
 msgstr ""
 
@@ -1519,38 +1519,38 @@ msgid "%s cannot be bought as it is now. Remove it from your cart to check out, 
 msgstr ""
 
 #. translators: 1: a kit's name, such as Build a complete; 2: a slot's label, such as Deck.
-#: src/Cart/ShowHooks.php:181
+#: src/Cart/ShowHooks.php:193
 #, php-format
 msgid "%1$s (%2$s)"
 msgstr ""
 
-#: src/Cart/ShowHooks.php:183
+#: src/Cart/ShowHooks.php:195
 msgid "Part of"
 msgstr ""
 
-#: src/Cart/ShowHooks.php:311
+#: src/Cart/ShowHooks.php:324
 msgid "The line's part in a build: kit, part, or empty for a line of no build."
 msgstr ""
 
-#: src/Cart/ShowHooks.php:312
+#: src/Cart/ShowHooks.php:325
 msgid "The build's identifier."
 msgstr ""
 
-#: src/Cart/ShowHooks.php:313
+#: src/Cart/ShowHooks.php:326
 msgid "For a part, its kit's cart item key."
 msgstr ""
 
-#: src/Cart/ShowHooks.php:314
+#: src/Cart/ShowHooks.php:327
 msgid "For a part, the key of the slot it fills."
 msgstr ""
 
-#: src/Cart/ShowHooks.php:315
+#: src/Cart/ShowHooks.php:328
 msgid "For a part, its name with its slot's label."
 msgstr ""
 
 #. translators: 1: a slot's label, such as Deck; 2: the product's name, which may be a link.
-#: src/Cart/ShowHooks.php:335
-#: src/Order/OrderHooks.php:174
+#: src/Cart/ShowHooks.php:348
+#: src/Order/OrderHooks.php:178
 #, php-format
 msgid "%1$s: %2$s"
 msgstr ""
@@ -2072,9 +2072,9 @@ msgid "Spec table"
 msgstr ""
 
 #. translators: 1: a slot's label, such as Trucks; 2: the part's name; 3: how many of it a build takes.
-#: src/Order/OrderHooks.php:216
+#: src/Order/OrderHooks.php:220
 #, php-format
-msgid "%1$s: %2$s × %3$d"
+msgid "%1$s: %2$s × %3$s"
 msgstr ""
 
 #: src/Rest/StateRoute.php:134

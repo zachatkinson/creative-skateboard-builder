@@ -13,6 +13,7 @@ use CreativeBranding\SkateboardBuilder\Support\Options;
 use CreativeBranding\SkateboardBuilder\Tests\Support\CartTestCase;
 use WC_Coupon;
 use WC_Product_Simple;
+use WC_Customer;
 use WC_Tax;
 use WP_REST_Request;
 
@@ -334,6 +335,27 @@ final class CartPriceTest extends CartTestCase {
 	/**
 	 * Issue #27: where tax depends on where the shopper is, the builder's total is the cart's.
 	 */
+	// The audit's finding, milestone 5: WooCommerce's cart reads itself from the session when the request shuts
+	// down (includes/class-wc-cart-session.php:95 and :400), before PHP sends the answer. A cart made for the
+	// route would have every state request of a shopper with a build in the cart pay for reading that cart.
+	public function test_the_route_finds_the_shopper_and_makes_no_cart_for_the_request(): void {
+		$kept    = array( WC()->customer, WC()->cart, WC()->session );
+		$request = new WP_REST_Request( 'GET', '/cbuild/v1/kits/' . $this->kit . '/state' );
+		$request->set_query_params( array( 'picks' => $this->picks() ) );
+		try {
+			// As a request to the plugin's route starts (includes/class-woocommerce.php:347).
+			WC()->customer = null;
+			WC()->cart     = null;
+			WC()->session  = null;
+			self::assertSame( 200, rest_get_server()->dispatch( $request )->get_status() );
+			self::assertInstanceOf( WC_Customer::class, WC()->customer, 'the shopper is known' );
+			self::assertNull( WC()->cart, 'and no cart is made' );
+			self::assertFalse( has_action( 'shutdown', array( WC()->customer, 'save' ) ), 'nor is the customer saved: the route changes nothing of them' );
+		} finally {
+			[ WC()->customer, WC()->cart, WC()->session ] = $kept;
+		}
+	}
+
 	public function test_the_route_prices_for_the_shopper_the_cart_will_charge(): void {
 		update_option( 'woocommerce_calc_taxes', 'yes' );
 		update_option( 'woocommerce_tax_based_on', 'shipping' );
@@ -376,6 +398,21 @@ final class CartPriceTest extends CartTestCase {
 			$state         = rest_get_server()->dispatch( $request );
 			self::assertSame( 200, $state->get_status() );
 			self::assertSame( 21960, $state->get_data()['total']['total']['amount'], '183 and the 20 % of where the shopper is, not the 10 % of where the shop is' );
+
+			// The price-build ability, for the same shopper (Zach's answer of 11 November 2026, D-137): what an
+			// ability says of a build is what the route says of it.
+			WC()->customer = null;
+			$ability       = wp_get_ability( 'creative-skateboard-builder/price-build' );
+			self::assertNotNull( $ability );
+			$priced = $ability->execute(
+				array(
+					'kit'      => $this->kit,
+					'picks'    => $this->picks(),
+					'assembly' => false,
+				)
+			);
+			self::assertIsArray( $priced, is_wp_error( $priced ) ? $priced->get_error_message() : '' );
+			self::assertSame( 21960, $priced['total']['total']['amount'] );
 
 			// The cart, for the same shopper.
 			$this->added();

@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { test, expect, Page } from './support/test';
+import { axe } from './support/axe';
 
 /**
  * Milestone 5: a build in the three carts (spec: Cart, checkout and orders, Showing it). The builder that sends a
@@ -95,6 +96,7 @@ test.describe( 'A build in the Cart block', () => {
 				);
 			} );
 		expect( await indent( trucks ) ).toBeGreaterThan( await indent( kit ) );
+		await axe( page, 'a build in the Cart block', '.wc-block-cart-items' );
 
 		// The kit's line has the one quantity and the one remove link, and takes the build with it.
 		await expect(
@@ -193,6 +195,12 @@ test.describe( 'A build in the Mini-Cart', () => {
 			trucks.locator( '.wc-block-components-quantity-selector__input' )
 		).not.toBeEditable();
 
+		await axe(
+			page,
+			'a build in the Mini-Cart',
+			'.wc-block-mini-cart__drawer .wc-block-cart-items'
+		);
+
 		// A part keeps its remove link here, and removing it removes its build and leaves the other whole.
 		await trucks.locator( '.wc-block-cart-item__remove-link' ).click();
 		await expect( rows ).toHaveCount( 7 );
@@ -213,6 +221,7 @@ test.describe( 'A build in a classic cart and checkout', () => {
 
 	test( 'is grouped and locked, and is placed as an order with an offline method', async ( {
 		page,
+		javaScriptEnabled,
 	} ) => {
 		await page.goto( '/cart-test-classic-cart/' );
 		await add( page );
@@ -251,6 +260,14 @@ test.describe( 'A build in a classic cart and checkout', () => {
 		);
 		await expect( rows.first().locator( 'a.remove' ) ).toHaveCount( 1 );
 		await expect( rows.first().locator( 'input.qty' ) ).toHaveCount( 1 );
+		// The server draws the same table with scripts off; axe is a script, so it reads it where one runs.
+		if ( javaScriptEnabled ) {
+			await axe(
+				page,
+				'a build in a classic cart',
+				'.woocommerce-cart-form'
+			);
+		}
 
 		await page.goto( '/cart-test-classic-checkout/' );
 		await expect(
@@ -272,6 +289,14 @@ test.describe( 'A build in a classic cart and checkout', () => {
 		).toBeGreaterThan(
 			await indent( review.first().locator( 'td.product-name' ) )
 		);
+		// The server draws the same table with scripts off; axe is a script, so it reads it where one runs.
+		if ( javaScriptEnabled ) {
+			await axe(
+				page,
+				'a build in the classic checkout',
+				'.woocommerce-checkout-review-order-table'
+			);
+		}
 		for ( const [ field, value ] of Object.entries( {
 			billing_first_name: 'Sam',
 			billing_last_name: 'Shopper',

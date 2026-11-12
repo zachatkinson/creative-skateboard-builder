@@ -150,41 +150,6 @@ final class BuildCart {
 	}
 
 	/**
-	 * A build as it is sold, for the order to keep: each slot's part, how many of it one build takes, and the
-	 * part's specs as the shop has them at that moment. A part the shop can no longer read is kept with no specs.
-	 *
-	 * @since 0.5.0
-	 *
-	 * @param Build $build The build.
-	 * @return array{schema_version: int, kit: int, assembly: bool, picks: array<string, array{part: int, quantity: int, specs: array<string, string>}>}
-	 */
-	public function snapshot( Build $build ): array {
-		$slots = $this->kits->kit( $build->kit )?->slots;
-		$asked = array();
-		foreach ( $build->picks as $key => $part ) {
-			$slot = $slots?->get( $key );
-			if ( null !== $slot ) {
-				$asked[ $key ] = array( $slot, $part );
-			}
-		}
-		$read  = $this->kits->picked( $asked );
-		$picks = array();
-		foreach ( $build->picks as $key => $part ) {
-			$picks[ $key ] = array(
-				'part'     => $part,
-				'quantity' => $build->quantities[ $key ],
-				'specs'    => isset( $read[ $key ] ) ? $read[ $key ]->specs->toIndex() : array(),
-			);
-		}
-		return array(
-			'schema_version' => Build::VERSION,
-			'kit'            => $build->kit,
-			'assembly'       => $build->assembly,
-			'picks'          => $picks,
-		);
-	}
-
-	/**
 	 * What a part of a build is charged at: the shop's price for it, less the build discount of the shop's
 	 * settings, rounded half up to the minor unit as the builder's total rounds it.
 	 *
@@ -194,6 +159,26 @@ final class BuildCart {
 	 */
 	public function charged( int $price ): int {
 		return Pricer::discounted( $price, $this->settings->terms()->discount );
+	}
+
+	/**
+	 * A part's line's price, each time the cart's totals are worked out. The price the shop asks is what the
+	 * line's product says, unless that is the price this gave it the last time: then it is the price asked then, so
+	 * the discount comes off once however often the totals are worked out.
+	 *
+	 * @since 0.5.0
+	 *
+	 * @param string                     $now      The price the line's product says now.
+	 * @param array{string, string}|null $given    The price asked and the price given the last time, or null.
+	 * @param int                        $decimals The currency's decimals.
+	 * @return array{string, string|null} The price asked, and the price to give the line: null where the two are
+	 *                                    the same.
+	 */
+	public function repriced( string $now, ?array $given, int $decimals ): array {
+		$asked   = null !== $given && $given[1] === $now ? $given[0] : $now;
+		$minor   = (int) round( (float) $asked * 10 ** $decimals );
+		$charged = $this->charged( $minor );
+		return array( $asked, $charged === $minor ? null : number_format( $charged / 10 ** $decimals, $decimals, '.', '' ) );
 	}
 
 	/**

@@ -312,6 +312,26 @@ final class BuildCartTest extends TestCase {
 		self::assertSame( 19, $this->builds->charged( 20 ), '18.5, half up' );
 	}
 
+	// The auditor's finding 1 on milestone 5: this arithmetic was in the hook, where no unit test or mutant reached it.
+	public function test_a_lines_price_is_the_shops_less_the_discount_taken_once_however_often_it_is_asked(): void {
+		self::assertSame( array( '70', null ), $this->builds->repriced( '70', null, 2 ), 'no discount: the price asked, and nothing to give' );
+		self::assertSame( array( '80', null ), $this->builds->repriced( '70', array( '80', '70' ), 2 ), 'a discount the shop has taken away: the price asked comes back' );
+
+		$this->settings->terms = BuildTerms::read( array( BuildTerms::DISCOUNT => '10' ) );
+		self::assertSame( array( '70', '63.00' ), $this->builds->repriced( '70', null, 2 ) );
+		self::assertSame( array( '70', '63.00' ), $this->builds->repriced( '63.00', array( '70', '63.00' ), 2 ), 'asked again: the discount comes off the price asked, not off what was given' );
+		self::assertSame( array( '63.00', '56.70' ), $this->builds->repriced( '63.00', null, 2 ), 'a price nobody gave is the shop\'s own' );
+		self::assertSame( array( '75', '67.50' ), $this->builds->repriced( '75', array( '70', '63.00' ), 2 ), 'the shop\'s price moved since: the new one is the one asked' );
+		self::assertSame( array( '9.99', '8.99' ), $this->builds->repriced( '9.99', null, 2 ), '8.991, to the minor unit' );
+		self::assertSame( array( '0.15', '0.14' ), $this->builds->repriced( '0.15', null, 2 ), '13.5, half up' );
+		self::assertSame( array( '1234.5', '1111.050' ), $this->builds->repriced( '1234.5', null, 3 ), 'in the currency\'s own decimals, with no thousands mark' );
+		self::assertSame( array( '700', '630' ), $this->builds->repriced( '700', null, 0 ) );
+		self::assertSame( array( '0', null ), $this->builds->repriced( '0', null, 2 ), 'nothing off nothing' );
+		self::assertSame( array( '19.999', '18.00' ), $this->builds->repriced( '19.999', null, 2 ), 'a price finer than the currency is rounded before the discount' );
+		self::assertSame( array( '19.991', '17.99' ), $this->builds->repriced( '19.991', null, 2 ), 'to the nearest, down as well as up' );
+		self::assertSame( array( '', null ), $this->builds->repriced( '', null, 2 ), 'a product with no price is given none' );
+	}
+
 	public function test_a_coupon_reaches_a_part_through_its_kit_and_a_fixed_one_where_the_setting_says(): void {
 		// Not a fixed product coupon: fixed, part, kit, the kit left out, the part itself left out.
 		self::assertTrue( $this->builds->couponTakes( false, true, false, false, false ), 'one for the part itself' );
@@ -329,23 +349,6 @@ final class BuildCartTest extends TestCase {
 		self::assertFalse( $this->builds->couponTakes( true, false, true, false, true ), 'and so is one a fixed product coupon leaves out' );
 		$this->settings->terms = BuildTerms::read( array( BuildTerms::COUPONS => BuildTerms::ON_KIT ) );
 		self::assertFalse( $this->builds->couponTakes( true, true, true, false, false ) );
-	}
-
-	public function test_the_order_keeps_each_part_with_its_specs_as_sold(): void {
-		$build    = new Build( 'a', self::KIT, array( 'deck' => 103, 'trucks' => 149 ), array( 'deck' => 1, 'trucks' => 2 ), true );
-		$snapshot = $this->builds->snapshot( $build );
-		self::assertSame( 1, $this->kits->readings, 'the parts are read in one reading of the shop' );
-		self::assertSame( array( 'schema_version', 'kit', 'assembly', 'picks' ), array_keys( $snapshot ) );
-		self::assertSame( array( 1, self::KIT, true ), array( $snapshot['schema_version'], $snapshot['kit'], $snapshot['assembly'] ) );
-		self::assertSame( array( 'deck', 'trucks' ), array_keys( $snapshot['picks'] ) );
-		self::assertSame( array( 149, 2 ), array( $snapshot['picks']['trucks']['part'], $snapshot['picks']['trucks']['quantity'] ) );
-		self::assertSame( Shop::parts()['deck'][2]->specs->toIndex(), $snapshot['picks']['deck']['specs'] );
-		self::assertNotSame( array(), $snapshot['picks']['deck']['specs'] );
-
-		$this->kits->now[149] = false;
-		self::assertSame( array( 'part' => 149, 'quantity' => 2, 'specs' => array() ), $this->builds->snapshot( $build )['picks']['trucks'], 'a part the shop no longer sells' );
-		unset( $this->kits->kits[ self::KIT ] );
-		self::assertSame( array( 'part' => 103, 'quantity' => 1, 'specs' => array() ), $this->builds->snapshot( $build )['picks']['deck'], 'a kit that no longer reads' );
 	}
 
 	public function test_a_stored_build_reads_back_and_anything_else_does_not(): void {

@@ -110,7 +110,7 @@ Of the cold 58 ms, the fit engine takes about 20 ms for all seven slots, finding
 
 Machine: Apple M1 Max, PHP 8.5.12 in wp-env on OrbStack, WordPress 7.1.4, WooCommerce 11.2.2, wp-env's own database server, Xdebug off, no persistent object cache. 11 November 2026.
 
-A kit of seven slots and a build with a part in each but the risers, trucks twice: a kit's line and six parts' lines. 40 requests a run through the Store API, WordPress's cache emptied before each.
+A kit of seven slots and a build with a part in each, trucks twice: a kit's line and seven parts' lines. 40 requests a run through the Store API, WordPress's cache emptied before each.
 
 | The cart | p95 | Median | Slowest | Queries at most |
 | --- | --- | --- | --- | --- |
@@ -123,3 +123,12 @@ The add is inside the 300 ms budget and held to it, with 450 ms as CI's ceiling 
 The difference between the last two rows is what the plugin does on every cart response while a build is in the cart: the kit's line's quantity limit and the check that the build is still one the shop would sell (D-129). It reads the build's parts from WooCommerce each time and keeps nothing.
 
 The first run measured 132 queries for the add and 84 for the read, at 37 ms and 31 ms: each part was read from the shop by itself. A build's parts are now read together (D-134).
+
+The state route, for a visitor whose session holds that build, on this small kit and with the cache emptied before each request:
+
+| The state route | p95 | Queries at most |
+| --- | --- | --- |
+| A request that starts with no customer, as every request to the route does | 8 ms | 38 |
+| The same with the shopper already known | 8 ms | 37 |
+
+The one query is WooCommerce reading the session. The route makes no cart, so the build in the session is not read (D-138), and the difference is held at one query.

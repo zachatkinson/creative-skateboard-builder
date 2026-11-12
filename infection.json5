@@ -48,6 +48,21 @@
 			"Adapter/CacheTally.php",
 			"Adapter/ShopMoney.php",
 			"Adapter/WooCommerceLogger.php",
+			// The cart and the order (Zach, 11 November 2026, D-137 and D-138): each takes WooCommerce's cart, its
+			// products, its coupons, its order items or its shipping packages, and says what a service decided.
+			// The deciding is in Service\BuildCart, BuildLines, BuildAgain and OrderBuilds, which are mutated.
+			"Cart/AgainHooks.php",
+			"Cart/CartHooks.php",
+			"Cart/ExpressHooks.php",
+			"Cart/LineHooks.php",
+			"Cart/PriceHooks.php",
+			"Cart/ShipHooks.php",
+			"Cart/ShowHooks.php",
+			"Order/OrderHooks.php",
+			"Adapter/WooCart.php",
+			// wp_generate_uuid4(), and the delivery line's two filters with wp_strip_all_tags().
+			"Adapter/WpUuids.php",
+			"Front/Delivery.php",
 			// SQL through $wpdb, and the classes that only add hooks.
 			"Repository",
 			"Hooks/",

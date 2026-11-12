@@ -54,6 +54,8 @@ Yes. Activating it for the network installs it on every site, and a site added l
 * Apple Pay and Google Pay buttons from WooCommerce Stripe Gateway and WooPayments are kept off a kit's page, where they could not add a build.
 * An order keeps each build together: the kit's line shows whether it is assembled and lists its parts, each part's line says which slot it fills, and the parts' specs are kept with the order as they were when it was placed.
 * The cart charges each part at the price your shop holds at that moment.
+* The builder's prices include tax for the shopper's own address, where your shop shows prices with tax.
+* The classic mini-cart widget indents a build's parts under its kit.
 * An order no longer queues background work for each product it sells.
 
 = 0.4.0 =

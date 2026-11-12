@@ -38,6 +38,16 @@ final class ContainerTest extends TestCase {
 		self::assertSame( $clock, $container->get( Clock::class ), 'built once' );
 	}
 
+	// D-127: a save that writes either of a part's two documents may have moved a source, and no other meta does.
+	public function test_the_saves_the_index_follows_are_those_of_a_parts_two_documents(): void {
+		$saved = ( new Container() )->get( \CreativeBranding\SkateboardBuilder\Service\SavedSources::class );
+		foreach ( array( '_cbuild_specs' => true, '_cbuild_spec_table' => true, '_stock' => false ) as $key => $moves ) {
+			$saved->saving( 7, array( 'stock_quantity' ) );
+			$saved->meta( 7, $key );
+			self::assertSame( $moves, $saved->moved( 7 ), $key );
+		}
+	}
+
 	public function test_set_replaces_a_service_and_has_reports_it(): void {
 		$container = new Container();
 		self::assertFalse( $container->has( Clock::class ) );

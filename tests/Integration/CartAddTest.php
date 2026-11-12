@@ -9,10 +9,15 @@ declare( strict_types=1 );
 
 namespace CreativeBranding\SkateboardBuilder\Tests\Integration;
 
+use Closure;
 use CreativeBranding\SkateboardBuilder\Service\Build;
 use CreativeBranding\SkateboardBuilder\Service\BuildState;
+use CreativeBranding\SkateboardBuilder\Service\SpecIndexer;
 use CreativeBranding\SkateboardBuilder\Support\Options;
 use CreativeBranding\SkateboardBuilder\Tests\Support\CartTestCase;
+use RuntimeException;
+use WC_AJAX;
+use WC_Product_Simple;
 
 /**
  * Spec, Cart, checkout and orders, Adding a build: the same three steps whichever way it arrives, the Store API
@@ -134,8 +139,129 @@ final class CartAddTest extends CartTestCase {
 				'cbuild' => array( 'picks' => $this->picks() ),
 			)
 		);
-		self::assertContains( $response->get_status(), array( 400, 404 ) );
+		self::assertSame( 404, $response->get_status() );
+		self::assertSame( 'cbuild_kit_not_found', $response->get_data()['code'] );
+		self::assertSame( 'This build is no longer sold. Nothing was added to the cart.', $response->get_data()['message'] );
 		self::assertSame( array(), WC()->cart->get_cart() );
+
+		$this->form( array( 'picks' => $this->picks() ) );
+		self::assertSame( array(), WC()->cart->get_cart() );
+		self::assertSame( array(), wc_get_notices( 'success' ) );
+	}
+
+	/**
+	 * Each way a pick is refused, by both routes: the code a script reads and the sentence a shopper does.
+	 *
+	 * @return iterable<string, array{string, string, string}>
+	 */
+	public static function refused(): iterable {
+		yield 'slot_unknown' => array( 'slot_unknown', 'nose', 'This kit has no slot called "nose".' );
+		yield 'part_not_in_slot' => array( 'part_not_in_slot', 'deck', 'Deck: the part chosen is not one this kit offers here.' );
+		yield 'part_short' => array( 'part_short', 'trucks', 'Trucks: the shop has fewer of the part chosen than a build takes.' );
+		yield 'part_blocked' => array( 'part_blocked', 'deck', 'Deck: the part chosen does not fit the rest of the build.' );
+	}
+
+	/**
+	 * @dataProvider refused
+	 */
+	public function test_each_refusal_of_a_pick_carries_its_code_and_its_sentence_by_both_routes( string $code, string $slot, string $sentence ): void {
+		$picks = $this->picks();
+		switch ( $code ) {
+			case 'slot_unknown':
+				$picks['nose'] = $this->parts['deck'];
+				break;
+			case 'part_not_in_slot':
+				$picks['deck'] = $this->parts['wheels'];
+				break;
+			case 'part_short':
+				$trucks = wc_get_product( $this->parts['trucks'] );
+				$trucks->set_manage_stock( true );
+				$trucks->set_stock_quantity( 1 );
+				$trucks->save();
+				break;
+			case 'part_blocked':
+				$wide = new WC_Product_Simple();
+				$wide->set_name( 'Wide trucks' );
+				$wide->set_status( 'publish' );
+				$wide->set_regular_price( '30' );
+				$wide->update_meta_data( Options::META_SPECS, array( 'axle_width' => '10.0000', 'deck_min' => '9.7500', 'deck_max' => '10.2500', 'baseplate' => 'new_school', 'max_wheel' => '60.0000', 'axle_diameter' => '8.0000', 'set_size' => '1' ) );
+				$wide->save();
+				wp_set_object_terms( $wide->get_id(), wp_get_object_terms( $this->parts['trucks'], 'product_cat', array( 'fields' => 'ids' ) ), 'product_cat' );
+				$this->service( SpecIndexer::class )->index( $wide->get_id() );
+				$picks['trucks'] = $wide->get_id();
+				break;
+		}
+
+		$response = $this->store(
+			array(
+				'id'     => $this->kit,
+				'cbuild' => array( 'picks' => $picks ),
+			)
+		);
+		self::assertSame( 400, $response->get_status() );
+		$data = $response->get_data();
+		self::assertSame( 'cbuild_build_refused', $data['code'] );
+		// The Store API's messages are HTML, as WooCommerce's own are: the Cart block decodes them.
+		self::assertSame( esc_html( $sentence ), $data['message'] );
+		self::assertContains( array( $code, $slot ), array_map( static fn( array $problem ): array => array( $problem['code'], $problem['slot'] ), $data['data']['problems'] ) );
+		self::assertSame( array(), WC()->cart->get_cart() );
+
+		$this->form( array( 'picks' => $picks ) );
+		self::assertContains( esc_html( $sentence ), self::errors(), 'a notice is HTML too' );
+		self::assertSame( array(), WC()->cart->get_cart() );
+		self::assertSame( array(), wc_get_notices( 'success' ) );
+	}
+
+	public function test_a_build_the_shop_can_no_longer_price_is_refused_by_both_routes(): void {
+		// A shop set to more decimals than a price can be kept in: the fee has no such minor unit.
+		update_option( 'woocommerce_price_num_decimals', '9' );
+		$build = array(
+			'picks'    => $this->picks(),
+			'assembly' => true,
+		);
+
+		$response = $this->store(
+			array(
+				'id'     => $this->kit,
+				'cbuild' => $build,
+			)
+		);
+		self::assertSame( 400, $response->get_status() );
+		self::assertSame( 'cbuild_no_price', $response->get_data()['code'] );
+		self::assertSame( 'This build cannot be priced at the moment. Nothing was added to the cart.', $response->get_data()['message'] );
+
+		$this->form( $build );
+		self::assertSame( array( 'This build cannot be priced at the moment. Nothing was added to the cart.' ), self::errors() );
+		self::assertSame( array(), WC()->cart->get_cart() );
+	}
+
+	public function test_woocommerces_ajax_add_refuses_a_kit_as_the_form_does(): void {
+		$_POST['product_id'] = (string) $this->kit;
+		add_filter( 'wp_doing_ajax', '__return_true' );
+		$thrower = static fn(): Closure => static function (): never {
+			throw new RuntimeException( 'sent' );
+		};
+		add_filter( 'wp_die_ajax_handler', $thrower );
+		ob_start();
+		try {
+			WC_AJAX::add_to_cart();
+			self::fail( 'the answer was not sent' );
+		} catch ( RuntimeException $sent ) {
+			self::assertSame( 'sent', $sent->getMessage() );
+		} finally {
+			while ( ob_get_level() > 1 ) {
+				$answer = (string) ob_get_clean();
+				if ( '' !== $answer ) {
+					$said = $answer;
+				}
+			}
+			remove_filter( 'wp_doing_ajax', '__return_true' );
+			remove_filter( 'wp_die_ajax_handler', $thrower );
+			unset( $_POST['product_id'] );
+		}
+		self::assertTrue( json_decode( $said ?? '', true )['error'] ?? null, 'WooCommerce says the add failed' );
+		self::assertSame( array(), WC()->cart->get_cart() );
+		self::assertSame( array( 'Choose the parts for this build first, then add it to the cart.' ), self::errors() );
 	}
 
 	// Issue #26: a price changed where no hook fires. The builder shows what is kept; the cart charges what is.

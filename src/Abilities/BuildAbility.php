@@ -14,6 +14,7 @@ use CreativeBranding\SkateboardBuilder\Domain\Kit\InvalidMoney;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Slots;
 use CreativeBranding\SkateboardBuilder\Front\StateAnswer;
 use CreativeBranding\SkateboardBuilder\Hookable;
+use CreativeBranding\SkateboardBuilder\Port\Cart;
 use CreativeBranding\SkateboardBuilder\Port\Kits;
 use CreativeBranding\SkateboardBuilder\Service\BuildState;
 use CreativeBranding\SkateboardBuilder\Support\Cast;
@@ -43,8 +44,9 @@ abstract class BuildAbility implements Hookable {
 	 * @param Closure(): Kits        $kits   The shop's kits.
 	 * @param Closure(): BuildState  $state  Works a build's state out.
 	 * @param Closure(): StateAnswer $writer Writes it down.
+	 * @param Closure(): Cart        $cart   The cart, for the shopper it knows.
 	 */
-	final public function __construct( private Closure $kits, private Closure $state, private Closure $writer ) {}
+	final public function __construct( private Closure $kits, private Closure $state, private Closure $writer, private Closure $cart ) {}
 
 	/**
 	 * Attach hooks.
@@ -139,6 +141,8 @@ abstract class BuildAbility implements Hookable {
 		if ( ! ( $this->kits )()->isPublic( $id ) ) {
 			return $missing;
 		}
+		// The prices are for whoever asks, as the state route's are (D-135, D-137).
+		( $this->cart )()->shopper();
 		try {
 			$state = ( $this->state )()->of( $id, Cast::map( $input['picks'] ?? array() ), null, null, isset( $input['assembly'] ) ? Cast::bool( $input['assembly'] ) : null );
 		} catch ( InvalidMoney ) {

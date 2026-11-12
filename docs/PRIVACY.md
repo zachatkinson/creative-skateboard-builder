@@ -4,7 +4,7 @@ Everything the plugin stores, why, for how long, who sees it, and how it is expo
 
 The plugin sets no cookie of its own, sends nothing about a shopper anywhere, and loads nothing from another host.
 
-From 0.5.0 the state route reads WooCommerce's own session cookie, where the browser sends one, so that a price shown with tax is worked out for the address WooCommerce already holds for that shopper, as the cart will charge it. The plugin reads the address through WooCommerce's tax rates alone and keeps none of it: what is kept of a price is filed under the rates that apply, never under an address. A visitor with no session is given none by asking (`CartPriceTest`).
+From 0.5.0 the state route reads WooCommerce's own session cookie, where the browser sends one, so that a price shown with tax is worked out for the address WooCommerce already holds for that shopper, as the cart will charge it. The plugin reads the address through WooCommerce's tax rates alone and keeps none of it: what is kept of a price is filed under the rates that apply, never under an address. A visitor with no session is given none by asking, and no cart is made or read for the request (`CartPriceTest`). From 0.5.0 the two build abilities read the signed-in user's address the same way.
 
 ## Personal data
 

@@ -86,15 +86,9 @@ final class PriceHooks implements Hookable {
 			if ( ! $product instanceof WC_Product || ! isset( $kit[ Options::CART_BUILD ] ) ) {
 				continue;
 			}
-			$decimals = wc_get_price_decimals();
-			$now      = (string) $product->get_price();
-			$was      = $this->given[ $product ] ?? null;
-			// The price the shop asks: what the line's product says, unless that is what this class gave it.
-			$asked   = null !== $was && $was[1] === $now ? $was[0] : $now;
-			$minor   = (int) round( (float) $asked * 10 ** $decimals );
-			$charged = ( $this->builds )()->charged( $minor );
-			$product->set_price( $charged === $minor ? $asked : wc_format_decimal( $charged / 10 ** $decimals, $decimals ) );
-			if ( $charged === $minor ) {
+			[ $asked, $price ] = ( $this->builds )()->repriced( (string) $product->get_price(), $this->given[ $product ] ?? null, wc_get_price_decimals() );
+			$product->set_price( $price ?? $asked );
+			if ( null === $price ) {
 				unset( $this->given[ $product ] );
 			} else {
 				$this->given[ $product ] = array( $asked, (string) $product->get_price() );

@@ -143,6 +143,16 @@ final class CartShowTest extends CartTestCase {
 		self::assertSame( 'cart_item cbuild-part', apply_filters( 'woocommerce_cart_item_class', 'cart_item', $trucks[1], $trucks[0] ) );
 		self::assertSame( 'cart_item cbuild-kit', apply_filters( 'woocommerce_cart_item_class', 'cart_item', $kit[1], $kit[0] ) );
 		self::assertSame( 'cart_item', apply_filters( 'woocommerce_cart_item_class', 'cart_item', $plain[1], $plain[0] ) );
+		// The classic mini-cart widget's rows, which have a filter of their own (templates/cart/mini-cart.php:56).
+		self::assertSame( 'mini_cart_item cbuild-part', apply_filters( 'woocommerce_mini_cart_item_class', 'mini_cart_item', $trucks[1], $trucks[0] ) );
+		self::assertSame( 'mini_cart_item cbuild-kit', apply_filters( 'woocommerce_mini_cart_item_class', 'mini_cart_item', $kit[1], $kit[0] ) );
+		self::assertSame( 'mini_cart_item', apply_filters( 'woocommerce_mini_cart_item_class', 'mini_cart_item', $plain[1], $plain[0] ) );
+		wp_dequeue_style( 'cbuild-cart' );
+		ob_start();
+		do_action( 'woocommerce_before_mini_cart' );
+		ob_end_clean();
+		self::assertTrue( wp_style_is( 'cbuild-cart', 'enqueued' ), 'and the styles that indent them go with the widget' );
+		self::assertStringContainsString( '.woocommerce-mini-cart-item.cbuild-part', implode( '', (array) wp_styles()->get_data( 'cbuild-cart', 'after' ) ) );
 
 		self::assertSame( '<span class="cbuild-quantity">2</span>', apply_filters( 'woocommerce_cart_item_quantity', '<input>', $trucks[0], $trucks[1] ) );
 		self::assertSame( '<input>', apply_filters( 'woocommerce_cart_item_quantity', '<input>', $kit[0], $kit[1] ) );

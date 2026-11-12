@@ -165,6 +165,7 @@ final class OrderAgainTest extends CartTestCase {
 		self::assertSame( array( 'loose' => 1 ), self::lines(), 'the deck bought beside the build, and none of the build' );
 		$errors = self::errors();
 		self::assertContains( 'A build from that order cannot be bought as it was, so none of it was added. Build it again to order it.', $errors );
+		self::assertSame( array(), preg_grep( '/Choose the parts/', $errors ), 'and the kit is left out without the notice of a kit added bare' );
 	}
 
 	public function test_a_build_with_a_part_woocommerce_leaves_out_is_not_put_back_in_pieces(): void {
