@@ -8,7 +8,7 @@
 
 defined( 'ABSPATH' ) || exit;
 ?>
-<form class="cbuild-step" method="get" data-wp-on--submit="actions.submit" data-wp-on--change="actions.pick" data-wp-bind--action="state.view.action" data-wp-bind--hidden="!state.view.isStep">
+<form class="cbuild-step" id="cbuild-step-form" method="get" data-wp-on--submit="actions.submit" data-wp-on--change="actions.pick" data-wp-bind--action="state.view.action" data-wp-bind--hidden="!state.view.isStep">
 	<template data-wp-each--field="state.view.carry">
 		<input type="hidden" data-wp-bind--name="context.field.name" data-wp-bind--value="context.field.value">
 	</template>

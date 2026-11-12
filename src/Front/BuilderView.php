@@ -35,6 +35,20 @@ if ( ! defined( 'ABSPATH' ) ) {
 final class BuilderView {
 
 	/**
+	 * The step's form's ID, by which the phone bar's button sends it. A page holds one builder.
+	 *
+	 * @since 0.6.0
+	 */
+	public const string STEP_FORM = 'cbuild-step-form';
+
+	/**
+	 * The review's form's ID, as the step's.
+	 *
+	 * @since 0.6.0
+	 */
+	public const string REVIEW_FORM = 'cbuild-review-form';
+
+	/**
 	 * The document.
 	 *
 	 * @since 0.6.0
@@ -129,6 +143,9 @@ final class BuilderView {
 			: sprintf( __( '%1$s Total: %2$s.', 'creative-skateboard-builder' ), Cast::str( $picture['description'] ?? null ), $sum );
 
 		[ $action, $carry ] = self::form( $base );
+		$step               = $review ? self::none() : $this->step( $state, $answer, $link, $url, $steps, $counted, $lines, $about );
+		$summary            = $this->summary( $state, $answer, $link, $url, $lines, $label );
+		$shown              = $this->review( $state, $answer, $link, $url, $steps, $counted, $lines, $label );
 		return array(
 			'kit'       => $state->id,
 			'url'       => $url( $link ),
@@ -149,9 +166,10 @@ final class BuilderView {
 			),
 			'progress'  => $progress,
 			'presets'   => self::presets( $answer, $link, $state, $label ),
-			'step'      => $review ? self::none() : $this->step( $state, $answer, $link, $url, $steps, $counted, $lines, $about ),
+			'step'      => $step,
 			'changes'   => $this->changes( $state, $changes, $link, $lines, $label ),
-			'summary'   => $this->summary( $state, $answer, $link, $url, $lines, $label ),
+			'summary'   => $summary,
+			'bar'       => self::bar( $summary, $step, $shown, $review, $panel ),
 			'picture'   => array(
 				'heading'     => __( 'What is in the box', 'creative-skateboard-builder' ),
 				'description' => Cast::str( $picture['description'] ?? null ),
@@ -167,7 +185,38 @@ final class BuilderView {
 					Cast::items( $picture['items'] ?? null )
 				),
 			),
-			'review'    => $this->review( $state, $answer, $link, $url, $steps, $counted, $lines, $label ),
+			'review'    => $shown,
+		);
+	}
+
+	/**
+	 * The phone bar (spec: The total, W7): the total, which opens the parts list, and the button that moves the build
+	 * on, the step's Next or the review's Add to cart. The button belongs to its form by the form's ID, so it sends that
+	 * form with JavaScript or without. The change panel asks for Use these or Undo in its own forms, so the bar has no
+	 * button there.
+	 *
+	 * @param array<string, mixed> $summary The summary.
+	 * @param array<string, mixed> $step    The step.
+	 * @param array<string, mixed> $shown   The review.
+	 * @param bool                 $review  Whether the review is shown.
+	 * @param bool                 $panel   Whether the change panel is shown.
+	 * @return array{shown: bool, total: string, parts: string, next: array{shown: bool, text: string, form: string, name: string, value: string, disabled: bool}}
+	 */
+	private static function bar( array $summary, array $step, array $shown, bool $review, bool $panel ): array {
+		$next = Cast::map( $step['next'] ?? null );
+		return array(
+			'shown' => true,
+			/* translators: %s: the build's total, such as $184.00. */
+			'total' => sprintf( __( 'Total: %s', 'creative-skateboard-builder' ), Cast::str( $summary['total'] ?? null ) ),
+			'parts' => __( 'The parts', 'creative-skateboard-builder' ),
+			'next'  => array(
+				'shown'    => ! $panel,
+				'text'     => $review ? Cast::str( $shown['add'] ?? null ) : Cast::str( $next['text'] ?? null ),
+				'form'     => $review ? self::REVIEW_FORM : self::STEP_FORM,
+				'name'     => $review ? '' : Cast::str( $step['stepName'] ?? null ),
+				'value'    => $review ? '' : Cast::str( $next['value'] ?? null ),
+				'disabled' => $review && ! Cast::bool( $shown['ready'] ?? null ),
+			),
 		);
 	}
 

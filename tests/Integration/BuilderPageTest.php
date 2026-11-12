@@ -13,6 +13,7 @@ use CreativeBranding\SkateboardBuilder\Front\Builder;
 use CreativeBranding\SkateboardBuilder\Front\BuilderPage;
 use CreativeBranding\SkateboardBuilder\Front\PageTitle;
 use CreativeBranding\SkateboardBuilder\Front\BuildLink;
+use CreativeBranding\SkateboardBuilder\Front\BuilderView;
 use CreativeBranding\SkateboardBuilder\Front\BuilderUrl;
 use CreativeBranding\SkateboardBuilder\Front\PageHooks;
 use CreativeBranding\SkateboardBuilder\Port\Kits;
@@ -244,6 +245,12 @@ final class BuilderPageTest extends IntegrationTestCase {
 		self::assertSame( 'Truck 139', self::text( $dom, '//li[contains(@class,"cbuild-hidden__part")]/a' ) );
 		self::assertSame( get_permalink( $this->parts['truck 139'] ), $dom->query( '//li[contains(@class,"cbuild-hidden__part")]/a' )->item( 0 )->getAttribute( 'href' ) );
 		self::assertStringContainsString( 'The deck is 8.5 in.', self::text( $dom, '//ul[contains(@class,"cbuild-hidden__reasons")]/li' ) );
+	}
+
+	public function test_the_step_and_the_review_have_the_forms_the_phone_bar_sends_by_their_ids(): void {
+		$dom = self::dom( $this->kitPage( array() ) );
+		self::assertSame( 1, $dom->query( '//form[@id="' . BuilderView::STEP_FORM . '"][contains(@class,"cbuild-step")]' )->length );
+		self::assertSame( 1, $dom->query( '//form[@id="' . BuilderView::REVIEW_FORM . '"][contains(@class,"cbuild-review__form")]' )->length );
 	}
 
 	public function test_the_deck_step_has_a_button_for_each_width_in_its_form(): void {

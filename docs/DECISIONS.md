@@ -2116,3 +2116,12 @@ Milestone 6's step 9, against the spec's A change that breaks later picks ("Focu
 - **Use these and Undo** are the panel's GET forms, sent through the store as any step's form is, and move focus to the step they land on.
 
 **Status:** Accepted.
+
+### D-153 · The phone bar's view now, its markup with the styles · 2026-11-12
+
+Milestone 6's step 10, against the spec's The total ("On phones it's a bar at the bottom: a small picture of the board, the total, and the next step on its button ... It never covers the control in focus", W7). The summary, the delivery line and the notes came with steps 3 and 4; what step 10 adds is the bar.
+
+- **The view** (`bar`): the total, the parts list's label, and the button that moves the build on, the step's own Next or the review's Add to cart, disabled where the build cannot go to the cart, with no button on the change panel, whose Use these and Undo are forms of their own. The button names its form by ID (`BuilderView::STEP_FORM`, `REVIEW_FORM`), which the step's and the review's forms now carry, so it sends the same form with JavaScript or without.
+- **The markup waits for the styles, in step 13.** The bar is the summary shown another way at another width: beside the steps on a desktop, at the foot of the screen on a phone. Without the stylesheet that hides one of the two at each width, every page would show the total twice and two buttons with one name, which a screen reader hears and P11 forbids. So the bar's template, the stylesheet that places it, the rule that keeps it off the control in focus (`scroll-padding-bottom`) and its tests at phone width land together. The small picture on it is step 11's.
+
+**Status:** Accepted.

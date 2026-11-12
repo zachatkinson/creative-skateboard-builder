@@ -189,6 +189,48 @@ final class BuilderTest extends TestCase {
 		self::assertFalse( $view['presets']['shown'] );
 	}
 
+	// Spec, The total: "On phones it's a bar at the bottom: a small picture of the board, the total, and the next
+	// step on its button ("Next: Wheels"). Tapping the total opens the parts list above the bar" (W7).
+	public function test_the_phone_bar_holds_the_total_the_parts_and_the_next_step_on_its_button(): void {
+		$view = $this->show( new BuildLink( array( SlotKey::DECK => 101 ) ) )['view'];
+		self::assertSame(
+			array(
+				'shown' => true,
+				'total' => 'Total: ' . $view['summary']['total'],
+				'parts' => 'The parts',
+				'next'  => array(
+					'shown'    => true,
+					'text'     => 'Next: Wheels',
+					'form'     => 'cbuild-step-form',
+					'name'     => 'cbuild[step]',
+					'value'    => 'wheels',
+					'disabled' => false,
+				),
+			),
+			$view['bar']
+		);
+		self::assertSame( $view['step']['next']['text'], $view['bar']['next']['text'], "the step's own Next, sent from its form" );
+
+		$review = $this->show( new BuildLink( self::STREET, null, BuildLink::REVIEW ) )['view']['bar']['next'];
+		self::assertSame(
+			array(
+				'shown'    => true,
+				'text'     => 'Add to cart',
+				'form'     => 'cbuild-review-form',
+				'name'     => '',
+				'value'    => '',
+				'disabled' => false,
+			),
+			$review
+		);
+		self::assertTrue( $this->show( new BuildLink( array( SlotKey::DECK => 103, SlotKey::TRUCKS => 139 ), null, BuildLink::REVIEW ) )['view']['bar']['next']['disabled'], 'a build that cannot go to the cart' );
+
+		$was   = array( SlotKey::DECK => 101, SlotKey::TRUCKS => 139, SlotKey::WHEELS => 301 );
+		$panel = $this->show( new BuildLink( array( SlotKey::DECK => 103 ) + $was, $was, SlotKey::TRUCKS ) )['view']['bar'];
+		self::assertTrue( $panel['shown'] );
+		self::assertFalse( $panel['next']['shown'], 'the panel asks for Use these or Undo, in its own forms' );
+	}
+
 	public function test_a_kit_the_shop_does_not_have_shows_nothing(): void {
 		self::assertNull( $this->builder()->show( 5, new BuildLink(), self::BASE ) );
 	}
