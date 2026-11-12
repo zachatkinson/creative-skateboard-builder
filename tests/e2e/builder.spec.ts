@@ -902,3 +902,121 @@ test.describe( 'The builder with JavaScript', () => {
 		expect( read ).toMatch( /private store|lock/i );
 	} );
 } );
+
+test.describe( "The builder's styles", () => {
+	/**
+	 * Whether anything in the builder is wider than the builder, or than the page.
+	 *
+	 * @param page The page.
+	 */
+	const overflows = ( page: Page ) =>
+		page.locator( '.cbuild' ).evaluate( ( root ) => {
+			const wide: string[] = [];
+			const edge = root.getBoundingClientRect().right + 1;
+			for ( const node of root.querySelectorAll< HTMLElement >( '*' ) ) {
+				const box = node.getBoundingClientRect();
+				if ( box.width > 0 && box.right > edge ) {
+					wide.push( node.className || node.tagName );
+				}
+			}
+			if ( root.scrollWidth > root.clientWidth + 1 ) {
+				wide.push( 'the builder scrolls sideways' );
+			}
+			return wide;
+		} );
+
+	test( 'reflows at 320 CSS pixels with nothing scrolling sideways', async ( {
+		page,
+	} ) => {
+		await page.setViewportSize( { width: 320, height: 640 } );
+		await page.goto( fixture().page );
+		expect( await overflows( page ) ).toEqual( [] );
+		await page
+			.locator( '.cbuild-presets' )
+			.getByRole( 'button', { name: 'Start from Street' } )
+			.click();
+		await expect( heading( page ) ).toHaveText( 'Step 7 of 7: Review' );
+		expect( await overflows( page ) ).toEqual( [] );
+	} );
+
+	test( 'gives every control a target of at least 24 by 24 CSS pixels', async ( {
+		page,
+	} ) => {
+		await page.goto( fixture().page );
+		const small = await page.locator( '.cbuild' ).evaluate( ( root ) => {
+			const found: string[] = [];
+			for ( const node of root.querySelectorAll< HTMLElement >(
+				'button, input:not([type="hidden"]), summary, .cbuild-progress__link, .cbuild-card__page'
+			) ) {
+				const box = node.getBoundingClientRect();
+				if ( box.width > 0 && ( box.width < 24 || box.height < 24 ) ) {
+					found.push(
+						`${ node.className || node.tagName } ${ box.width }x${ box.height }`
+					);
+				}
+			}
+			return found;
+		} );
+		expect( small ).toEqual( [] );
+	} );
+
+	test( 'keeps every word in view with the text spacing WCAG 1.4.12 asks a page to take', async ( {
+		page,
+		javaScriptEnabled,
+	} ) => {
+		test.skip(
+			! javaScriptEnabled,
+			'The spacing is put in by a script; the styles are the same without one.'
+		);
+		await page.goto( fixture().page );
+		await page.addStyleTag( {
+			content:
+				'.cbuild * { line-height: 1.5 !important; letter-spacing: 0.12em !important; word-spacing: 0.16em !important; } .cbuild p { margin-block-end: 2em !important; }',
+		} );
+		expect( await overflows( page ) ).toEqual( [] );
+		const clipped = await page.locator( '.cbuild' ).evaluate( ( root ) => {
+			const found: string[] = [];
+			for ( const node of root.querySelectorAll< HTMLElement >(
+				'button, label, legend, .cbuild-card__name'
+			) ) {
+				if (
+					node.getBoundingClientRect().width > 0 &&
+					( node.scrollHeight > node.clientHeight + 1 ||
+						node.scrollWidth > node.clientWidth + 1 )
+				) {
+					found.push( node.className || node.tagName );
+				}
+			}
+			return found;
+		} );
+		expect( clipped ).toEqual( [] );
+	} );
+
+	test( 'says the chosen card and the focus by a border and an outline in forced colours', async ( {
+		page,
+		browserName,
+	} ) => {
+		test.skip(
+			'chromium' !== browserName,
+			'Only Chromium lets a test turn forced colours on.'
+		);
+		await page.emulateMedia( { forcedColors: 'active' } );
+		await page.goto( fixture().page );
+		const cards = page.locator( '.cbuild-card' );
+		await cards.first().locator( 'label' ).click();
+		const width = ( index: number ) =>
+			cards
+				.nth( index )
+				.evaluate( ( card ) =>
+					parseFloat( getComputedStyle( card ).borderTopWidth )
+				);
+		expect( await width( 0 ) ).toBeGreaterThanOrEqual( 3 );
+		expect( await width( 1 ) ).toBeLessThan( 3 );
+		// Next in either direction of text; ArrowRight is the previous radio right to left.
+		await page.keyboard.press( 'ArrowDown' );
+		const ring = await cards
+			.nth( 1 )
+			.evaluate( ( card ) => getComputedStyle( card ).outlineStyle );
+		expect( ring ).toBe( 'solid' );
+	} );
+} );

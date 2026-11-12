@@ -1,7 +1,7 @@
 /**
  * The asset budgets (docs/AUDIT.md: Performance): the builder's script under 15 kB and its styles under 10 kB,
  * compressed with Brotli as the shop's server would send them. Every .js and .css under build/ is measured; the
- * builder's own bundle is build/builder/view.js and its styles build/builder/style-view.css (milestone 6). The
+ * builder's own bundle is build/builder/view.js and its styles build/builder/style-index.css (D-159). The
  * admin's script, build/admin/part-specs.js, is held to the same budget (D-086).
  */
 import { readdirSync, readFileSync, statSync } from 'node:fs';

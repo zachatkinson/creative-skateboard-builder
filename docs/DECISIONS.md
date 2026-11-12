@@ -2179,3 +2179,17 @@ Milestone 6's step 12d, closing what D-132 left for this milestone ("A build add
 - **Front calls Cart directly.** Both are in deptrac's hooks layer, so no new hook or public API is needed for it.
 
 **Status:** Accepted.
+
+### D-159 · The builder's stylesheet, and how a theme restyles it · 2026-11-12
+
+Milestone 6's step 13, its first part, against docs/STANDARDS.md's CSS rules and the plan's accessibility line (forced colours, reflow, text spacing, targets).
+
+- **Where it is built and loaded.** `assets/src/builder/style.scss`, imported by the block's editor script, which wp-scripts extracts to `build/builder/style-index.css` with its right-to-left twin. block.json names it as the block's `style`, so WordPress loads it wherever the block renders, and in the editor's preview. The kit's own page has no block, so `BuilderPage` enqueues the same handle. The budget tool's comment named `style-view.css`, which a script module's build would only make with a stylesheet imported by the module itself; it measures every stylesheet either way. 1,871 B compressed, of 10 kB.
+- **Stylelint's class pattern.** `@wordpress/stylelint-config` allows only hyphenated classes, and the standards ask for BEM. `.stylelintrc.json` now allows BEM under `cbuild-` (and WordPress's own `screen-reader-text`) and nothing else, which is narrower than the rule it replaces: a class of another prefix is now an error. Its two blank-line rules take Stylelint's own `first-nested` exception, since Prettier, which owns formatting here, takes out the blank line before the first rule of a block and the two would otherwise never agree.
+- **Two rules outside `:where()`.** `.cbuild [hidden] { display: none }`, because every piece the builder hides is hidden by the attribute and a `display` of the builder's or a theme's would show it; and `.cbuild .screen-reader-text`, so the status region stays off screen in a theme that defines no such class.
+- **Colour without knowing the theme.** Every colour is the theme's preset or the text's own colour mixed with transparency, so the builder reads on a dark theme as on a light one without a dark mode of its own. The one colour of its own, the red of a part that does not fit, is only ever a border beside words that say so, so its contrast on a dark ground costs nothing.
+- **Targets.** Buttons are at least 2.75rem (44 px) each way; radios and the links that act as controls at least 1.5rem (24 px), WCAG 2.2's 2.5.8. A link inside a sentence is exempt and left as text.
+- **The custom properties are public.** Sixteen `--cbuild-*` properties, listed in docs/HOOKS.md. The API surface tool now reads every `--cbuild-*` a stylesheet defines, so one cannot be renamed or dropped without the snapshot, HOOKS and the changelog. Motion's two come with motion.
+- **What the tests hold.** The target and forced-colour tests fail on the page without the stylesheet; the reflow and text-spacing tests pass on the bare page and hold the styles to not breaking it. Forced colours run in Chromium only, the one engine Playwright can put in that mode.
+
+**Status:** Accepted.

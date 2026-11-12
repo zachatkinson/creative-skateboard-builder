@@ -122,6 +122,24 @@
         "cbuild:added",
         "cbuild:pick"
     ],
+    "css_properties": [
+        "--cbuild-accent",
+        "--cbuild-card-width",
+        "--cbuild-control",
+        "--cbuild-focus",
+        "--cbuild-gap",
+        "--cbuild-gap-small",
+        "--cbuild-line",
+        "--cbuild-muted",
+        "--cbuild-on-accent",
+        "--cbuild-radius",
+        "--cbuild-small",
+        "--cbuild-summary-width",
+        "--cbuild-surface",
+        "--cbuild-target",
+        "--cbuild-text",
+        "--cbuild-wrong"
+    ],
     "site_health_tests": [
         "cbuild_catalogue",
         "cbuild_index",

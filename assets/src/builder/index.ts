@@ -15,6 +15,8 @@ import ServerSideRender from '@wordpress/server-side-render';
 import apiFetch from '@wordpress/api-fetch';
 import { addQueryArgs } from '@wordpress/url';
 import { __ } from '@wordpress/i18n';
+// The builder's styles, built to style-index.css: block.json's `style`, on the page and in the editor's preview.
+import './style.scss';
 
 const NAME = 'creative-skateboard-builder/builder';
 

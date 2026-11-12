@@ -1,3 +1,26 @@
 {
-	"extends": "@wordpress/stylelint-config/scss"
+	"extends": "@wordpress/stylelint-config/scss",
+	"rules": {
+		"selector-class-pattern": [
+			"^(cbuild(-[a-z0-9]+)*(__[a-z0-9]+(-[a-z0-9]+)*)?(--[a-z0-9]+(-[a-z0-9]+)*)?|screen-reader-text)$",
+			{
+				"message": "Classes are BEM under the cbuild- prefix (docs/STANDARDS.md: CSS; D-159)",
+				"resolveNestedSelectors": true
+			}
+		],
+		"rule-empty-line-before": [
+			"always-multi-line",
+			{
+				"except": [ "first-nested" ],
+				"ignore": [ "after-comment" ]
+			}
+		],
+		"comment-empty-line-before": [
+			"always",
+			{
+				"except": [ "first-nested" ],
+				"ignore": [ "stylelint-commands" ]
+			}
+		]
+	}
 }

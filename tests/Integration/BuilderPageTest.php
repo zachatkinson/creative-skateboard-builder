@@ -104,6 +104,7 @@ final class BuilderPageTest extends IntegrationTestCase {
 		remove_all_filters( 'cbuild_part_classes' );
 		remove_all_filters( 'cbuild_builder_url' );
 		wp_dequeue_style( ShowHooks::HANDLE );
+		wp_dequeue_style( BuilderPage::STYLE );
 		parent::tear_down();
 	}
 
@@ -218,6 +219,8 @@ final class BuilderPageTest extends IntegrationTestCase {
 		self::assertFalse( wp_interactivity_state( BuilderPage::STORE )['added'], 'Nothing is added on load.' );
 		self::assertFalse( wp_interactivity_state( BuilderPage::STORE )['canCopy'], 'The store says whether the browser can copy.' );
 		self::assertContains( BuilderPage::MODULE, wp_script_modules()->get_queue(), 'the kit\'s page has no block to load it' );
+		self::assertTrue( wp_style_is( BuilderPage::STYLE ), 'nor its styles (D-159)' );
+		self::assertStringEndsWith( 'build/builder/style-index.css', (string) wp_styles()->registered[ BuilderPage::STYLE ]->src, 'the block\'s own stylesheet, from its block.json' );
 		self::assertNotNull( wp_script_modules()->get_registered( BuilderPage::MODULE ), 'the block registers it, from build/builder/view.js' );
 	}
 

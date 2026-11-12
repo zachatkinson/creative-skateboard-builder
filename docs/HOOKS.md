@@ -615,6 +615,29 @@ From 0.6.0, `cbuild` on either route of Adding a build (0.5.0, above) takes `rep
 
 Each kit's line in the cart has one item data entry from 0.6.0, `raw_key` `cbuild_edit`, keyed "Build", whose `display` is a link with the class `cbuild-edit`. The link is the kit's builder, where `cbuild_builder_url` says it is, at the review, with the build's parts and assembly and `cbuild[_replace]`, the build's `id`. The Cart and Checkout blocks, the Mini-Cart and a classic cart all print it.
 
+### Styling the builder
+
+The builder's stylesheet is the Builder block's `style` (`build/builder/style-index.css`, handle `creative-skateboard-builder-builder-style`), loaded wherever a builder renders, on a kit's own page as in the block. Its rules sit inside `:where()`, so a theme overrides any of them with a single class; only `.cbuild [hidden]` and `.cbuild .screen-reader-text` are outside it. Its classes are BEM under the `cbuild-` prefix, on the builder's root `.cbuild`, and its templates are not for overriding (docs/STANDARDS.md). A theme restyles it most simply by setting these on `.cbuild` (D-159):
+
+| Property | Since | What it sets | Falls back to |
+| --- | --- | --- | --- |
+| `--cbuild-text` | 0.6.0 | The builder's text | the text's own colour |
+| `--cbuild-muted` | 0.6.0 | Secondary text: help, counts, notes | the text at 72 % |
+| `--cbuild-line` | 0.6.0 | Borders and rules | the text at 28 % |
+| `--cbuild-surface` | 0.6.0 | A card's and the summary's ground | the text at 5 % |
+| `--cbuild-accent` | 0.6.0 | The chosen card, a pressed filter, the primary button | `--wp--preset--color--contrast`, then the text |
+| `--cbuild-on-accent` | 0.6.0 | Text on the accent | `--wp--preset--color--base`, then `Canvas` |
+| `--cbuild-focus` | 0.6.0 | The focus ring | `--wp--preset--color--contrast`, then the text |
+| `--cbuild-wrong` | 0.6.0 | The edge of the error summary and of a part that does not fit; never text | `--wp--preset--color--vivid-red`, then `#b32d2e` |
+| `--cbuild-radius` | 0.6.0 | Corners | `0.5rem` |
+| `--cbuild-gap` | 0.6.0 | Space between the builder's pieces | `--wp--preset--spacing--40`, then `1.5rem` |
+| `--cbuild-gap-small` | 0.6.0 | Space inside them | `--wp--preset--spacing--20`, then `0.5rem` |
+| `--cbuild-target` | 0.6.0 | The least height and width of a button | `2.75rem` |
+| `--cbuild-control` | 0.6.0 | A radio's size, and the least height of a link that is a control | `1.5rem` |
+| `--cbuild-small` | 0.6.0 | Small text | `--wp--preset--font-size--small`, then `0.875rem` |
+| `--cbuild-card-width` | 0.6.0 | The narrowest a part's card is before the cards wrap | `13rem` |
+| `--cbuild-summary-width` | 0.6.0 | The summary's width beside the steps, from a builder 48rem wide | `19rem` |
+
 ### DOM events
 
 The builder sends two events on its own element (`.cbuild`), with JavaScript only. Each bubbles, so a listener on the document hears every builder on the page. They are for a shop's own analytics, under the shop's own consent: the plugin sends nothing anywhere itself, and each carries IDs alone, never a name, a price or anything of the shopper. A listener cannot change what the builder does.

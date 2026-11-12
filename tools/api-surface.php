@@ -26,6 +26,7 @@
  *   ability schemas       each ability's output schema, by a digest as the document schemas are;
  *   blocks                block.json under assets/src;
  *   DOM events            'cbuild:*' strings under assets/src;
+ *   CSS custom properties each `--cbuild-*` the builder's stylesheets define, which a theme sets to restyle it;
  *   document schemas      schema/*.json, each by its path, and each one's content by a digest of its decoded JSON, so
  *                         a schema cannot change shape without the snapshot changing with it;
  *   spec keys             Domain\Spec\SpecKey's cases, with each one's kind and unit;
@@ -247,6 +248,7 @@ $cbuild_surface = array(
 	'cli_commands'      => cbuild_api_matches( $cbuild_php, "/WP_CLI::add_command\\(\\s*'([^']+)'/" ),
 	'blocks'            => $cbuild_blocks,
 	'dom_events'        => cbuild_api_matches( $cbuild_assets, "/'(cbuild:[a-z0-9-]+)'/" ),
+	'css_properties'    => cbuild_api_matches( cbuild_api_files( $cbuild_root . '/assets/src', '.scss' ), '/^\s*(--cbuild-[a-z0-9-]+):/m' ),
 );
 
 // The kit's document schemas. The digest is of the decoded document with its keys sorted, so re-indenting a file

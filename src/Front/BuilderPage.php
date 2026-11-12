@@ -51,6 +51,13 @@ final class BuilderPage {
 	public const string MODULE = 'creative-skateboard-builder-builder-view-script-module';
 
 	/**
+	 * The builder's stylesheet, as WordPress names the Builder block's `style` (D-159).
+	 *
+	 * @since 0.6.0
+	 */
+	public const string STYLE = 'creative-skateboard-builder-builder-style';
+
+	/**
 	 * Whether a builder has rendered on this page.
 	 *
 	 * @var bool
@@ -127,6 +134,7 @@ final class BuilderPage {
 			);
 			// The block's own render enqueues it; the kit's page has no block.
 			wp_enqueue_script_module( self::MODULE );
+			wp_enqueue_style( self::STYLE );
 			// A build added here without a page load shows in the page's Mini-Cart, grouped (D-158).
 			ShowHooks::styles();
 			ob_start();
