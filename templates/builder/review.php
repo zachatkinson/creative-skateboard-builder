@@ -35,7 +35,7 @@ defined( 'ABSPATH' ) || exit;
 	</form>
 	<div class="cbuild-share">
 		<label class="cbuild-share__label" for="cbuild-share-link" data-wp-text="state.view.review.share"></label>
-		<input class="cbuild-share__link" id="cbuild-share-link" type="url" readonly data-wp-bind--value="state.view.url">
+		<input class="cbuild-share__link" id="cbuild-share-link" type="url" readonly data-wp-bind--value="state.view.review.link">
 		<button class="cbuild-button cbuild-share__copy" type="button" data-wp-bind--hidden="!state.canCopy" data-wp-on--click="actions.copy" data-wp-text="state.view.review.copy"></button>
 	</div>
 	<p class="cbuild-review__added" tabindex="-1" data-wp-bind--hidden="!state.added">

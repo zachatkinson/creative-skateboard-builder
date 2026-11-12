@@ -994,6 +994,13 @@ final class BuilderView {
 				),
 			)
 		);
+		if ( '' !== $link->replace ) {
+			// From Edit build: the add takes the place of the build in the cart it came from (D-157).
+			$fields[] = array(
+				'name'  => BuildLink::PARAM . '[replace]',
+				'value' => $link->replace,
+			);
+		}
 		return array(
 			'heading'    => __( 'Check your build', 'creative-skateboard-builder' ),
 			'items'      => $items,
@@ -1013,7 +1020,9 @@ final class BuilderView {
 			'add'        => __( 'Add to cart', 'creative-skateboard-builder' ),
 			// Said, and focused, once an add without a page load is done (D-155).
 			'added'      => __( 'The build is in your cart.', 'creative-skateboard-builder' ),
-			// The build's link is the view's own address, which needs no account to open (P12, D-156).
+			// The build's link needs no account to open (P12, D-156). It names the parts, the step, assembly and
+			// the preset, and nothing of the shopper's cart or the builder's own keys (spec: Share links; D-157).
+			'link'       => $url( new BuildLink( $link->picks, null, State::REVIEW, $link->assembly, $link->preset, none: $link->none ) ),
 			'share'      => __( 'Link to this build', 'creative-skateboard-builder' ),
 			'copy'       => __( 'Copy link', 'creative-skateboard-builder' ),
 			'copied'     => __( 'Link copied.', 'creative-skateboard-builder' ),

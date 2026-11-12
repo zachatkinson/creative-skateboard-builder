@@ -10,6 +10,8 @@ declare( strict_types=1 );
 namespace CreativeBranding\SkateboardBuilder\Cart;
 
 use Closure;
+use CreativeBranding\SkateboardBuilder\Front\BuilderUrl;
+use CreativeBranding\SkateboardBuilder\Front\BuildLink;
 use CreativeBranding\SkateboardBuilder\Front\StateAnswer;
 use CreativeBranding\SkateboardBuilder\Hookable;
 use CreativeBranding\SkateboardBuilder\Port\Kits;
@@ -189,8 +191,11 @@ final class ShowHooks implements Hookable {
 	 */
 	public function data( mixed $data, mixed $item = null ): mixed {
 		$told = is_array( $data ) && is_array( $item ) ? $this->told( $item ) : null;
-		if ( null === $told || Options::ROLE_PART !== $told['role'] || ! is_array( $data ) ) {
+		if ( null === $told || ! is_array( $data ) || ! is_array( $item ) ) {
 			return $data;
+		}
+		if ( Options::ROLE_KIT === $told['role'] ) {
+			return $this->edit( $data, $item );
 		}
 		/* translators: 1: a kit's name, such as Build a complete; 2: a slot's label, such as Deck. */
 		$value  = sprintf( __( '%1$s (%2$s)', 'creative-skateboard-builder' ), $told['kit'], $told['label'] );
@@ -199,6 +204,35 @@ final class ShowHooks implements Hookable {
 			'value'   => $value,
 			'display' => '<span class="cbuild-part">' . esc_html( $value ) . '</span>',
 			'raw_key' => Options::CART_SLOT,
+		);
+		return $data;
+	}
+
+	/**
+	 * A kit's line: Edit build, which opens its builder at the review with the build in its address and the build
+	 * it replaces, so that the add there takes this one's place (spec: Review and add to cart; D-157). The Cart and
+	 * Checkout blocks and the Mini-Cart print a line's item data through `sanitizeHTML`, which keeps a link
+	 * (WooCommerce 11.3.0, assets/client/blocks/cart.js and mini-cart-contents.js), as a classic cart does through
+	 * `wp_kses_post` (templates/cart/cart-item-data.php:24).
+	 *
+	 * @param array<mixed>        $data The line's item data so far.
+	 * @param array<mixed, mixed> $item The cart item.
+	 * @return array<mixed>
+	 */
+	private function edit( array $data, array $item ): array {
+		$build = Build::read( $item[ Options::CART_BUILD ] ?? null );
+		$kit   = null === $build ? null : ( $this->kits )()->kit( $build->kit );
+		if ( null === $build || null === $kit ) {
+			return $data;
+		}
+		$query  = ( new BuildLink( $build->picks, null, BuildLink::REVIEW, $build->assembly, replace: $build->id ) )->query( $kit->slots );
+		$url    = add_query_arg( array( BuildLink::PARAM => urlencode_deep( $query ) ), BuilderUrl::of( $build->kit ) );
+		$value  = __( 'Edit build', 'creative-skateboard-builder' );
+		$data[] = array(
+			'key'     => __( 'Build', 'creative-skateboard-builder' ),
+			'value'   => $value,
+			'display' => '<a class="cbuild-edit" href="' . esc_url( $url ) . '">' . esc_html( $value ) . '</a>',
+			'raw_key' => 'cbuild_edit',
 		);
 		return $data;
 	}

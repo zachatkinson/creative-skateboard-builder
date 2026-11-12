@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { test, expect, Page } from './support/test';
+import { test, expect, Page, type Locator } from './support/test';
 import { axe } from './support/axe';
 
 /**
@@ -42,6 +42,26 @@ async function add( page: Page, quantity = 1 ) {
 }
 
 const JS_OFF = 'no-js';
+
+/**
+ * A kit's line has Edit build, which opens its builder at the review with the build it replaces (D-157); a part's
+ * line has none.
+ *
+ * @param kit  The kit's line.
+ * @param part One of its parts' lines.
+ */
+async function editable( kit: Locator, part: Locator ) {
+	const edit = kit.getByRole( 'link', { name: 'Edit build' } );
+	await expect( edit ).toHaveCount( 1 );
+	const href = new URL( ( await edit.getAttribute( 'href' ) ) ?? '' );
+	expect( href.searchParams.get( 'cbuild[step]' ) ).toBe( 'review' );
+	expect( href.searchParams.get( 'cbuild[_replace]' ) ).toMatch(
+		/^[a-f0-9-]{36}$/
+	);
+	await expect(
+		part.getByRole( 'link', { name: 'Edit build' } )
+	).toHaveCount( 0 );
+}
 
 test.describe( 'A build in the Cart block', () => {
 	test.beforeEach( ( {}, info ) => {
@@ -96,6 +116,7 @@ test.describe( 'A build in the Cart block', () => {
 				);
 			} );
 		expect( await indent( trucks ) ).toBeGreaterThan( await indent( kit ) );
+		await editable( kit, trucks );
 		await axe( page, 'a build in the Cart block', '.wc-block-cart-items' );
 
 		// The kit's line has the one quantity and the one remove link, and takes the build with it.
@@ -181,6 +202,7 @@ test.describe( 'A build in the Mini-Cart', () => {
 				);
 			} );
 		expect( await indent( trucks ) ).toBeGreaterThan( await indent( kit ) );
+		await editable( kit, trucks );
 		// A part's quantity is a number nobody can change: its buttons are hidden and its field is locked
 		// (src/Blocks/BlockTypes/MiniCartProductsTableBlock.php:179, :191 and :200).
 		await expect(
@@ -260,6 +282,7 @@ test.describe( 'A build in a classic cart and checkout', () => {
 		);
 		await expect( rows.first().locator( 'a.remove' ) ).toHaveCount( 1 );
 		await expect( rows.first().locator( 'input.qty' ) ).toHaveCount( 1 );
+		await editable( rows.first(), trucks );
 		// The server draws the same table with scripts off; axe is a script, so it reads it where one runs.
 		if ( javaScriptEnabled ) {
 			await axe(
@@ -326,5 +349,41 @@ test.describe( 'A build in a classic cart and checkout', () => {
 		await expect( order ).toContainText(
 			'Deck: Cart test deck × 1, Trucks: Cart test trucks × 2'
 		);
+	} );
+
+	test( "Edit build reopens the builder at the review, and its add takes the build's place", async ( {
+		page,
+		javaScriptEnabled,
+	} ) => {
+		await page.goto( '/cart-test-classic-cart/' );
+		await add( page );
+		await page.goto( '/cart-test-classic-cart/' );
+		await page
+			.locator( 'tr.cbuild-kit' )
+			.getByRole( 'link', { name: 'Edit build' } )
+			.click();
+		await expect( page.locator( 'h2.cbuild__heading' ) ).toHaveText(
+			'Step 7 of 7: Review'
+		);
+		const review = page.locator( '.cbuild-review' );
+		await expect(
+			review.locator( 'input[name="cbuild[replace]"]' )
+		).toHaveCount( 1 );
+		await expect(
+			review.getByLabel( 'Link to this build' )
+		).not.toHaveValue( /_replace/ );
+		await review.getByRole( 'button', { name: 'Add to cart' } ).click();
+		if ( javaScriptEnabled ) {
+			await expect(
+				page.locator( '.cbuild-review__added' )
+			).toBeFocused();
+		} else {
+			await page.waitForLoadState( 'load' );
+		}
+		await page.goto( '/cart-test-classic-cart/' );
+		await expect( page.locator( 'tr.cbuild-kit' ) ).toHaveCount( 1 );
+		await expect(
+			page.locator( 'tr.woocommerce-cart-form__cart-item' )
+		).toHaveCount( 7 );
 	} );
 } );

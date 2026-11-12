@@ -121,7 +121,7 @@ final class CartShowTest extends CartTestCase {
 			}
 		}
 
-		self::assertSame( array(), $told[ $lines['kit'][0] ][1] );
+		self::assertSame( array( 'Build' ), array_column( $told[ $lines['kit'][0] ][1], 'key' ), 'the kit\'s line has Edit build, below' );
 		self::assertSame( array(), $told[ $lines['plain'][0] ][1] );
 		self::assertSame(
 			array(
@@ -181,7 +181,37 @@ final class CartShowTest extends CartTestCase {
 		$data = wc_get_formatted_cart_item_data( $trucks[1] );
 		self::assertStringContainsString( 'Part of', $data );
 		self::assertStringContainsString( '<span class="cbuild-part">Complete (Trucks)</span>', $data );
-		self::assertSame( '', wc_get_formatted_cart_item_data( $kit[1] ) );
+		self::assertStringContainsString( '>Edit build</a>', wc_get_formatted_cart_item_data( $kit[1] ) );
+		self::assertSame( '', wc_get_formatted_cart_item_data( $plain[1] ) );
+	}
+
+	public function test_a_kits_line_has_an_edit_build_link_that_reopens_the_builder_to_replace_it(): void {
+		[ 'kit' => $kit ] = $this->lines();
+		$build            = $kit[1][ Options::CART_BUILD ];
+		$data             = apply_filters( 'woocommerce_get_item_data', array(), $kit[1] ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- WooCommerce's own.
+		self::assertCount( 1, $data );
+		self::assertSame( array( 'Build', 'Edit build', 'cbuild_edit' ), array( $data[0]['key'], $data[0]['value'], $data[0]['raw_key'] ) );
+		self::assertSame( 1, preg_match( '#\A<a class="cbuild-edit" href="([^"]+)">Edit build</a>\z#', $data[0]['display'], $found ) );
+		$href = html_entity_decode( $found[1] );
+		self::assertStringStartsWith( get_permalink( $this->kit ) . ( str_contains( (string) get_permalink( $this->kit ), '?' ) ? '&' : '?' ), $href, 'the kit\'s builder, where cbuild_builder_url says it is' );
+		parse_str( (string) wp_parse_url( $href, PHP_URL_QUERY ), $query );
+		self::assertSame(
+			array_map( 'strval', $build['picks'] ) + array(
+				'step'     => 'review',
+				'assembly' => $build['assembly'] ? '1' : '0',
+				'_replace' => $build['id'],
+			),
+			$query['cbuild'],
+			'The build at the review, with the build it replaces (D-157).'
+		);
+
+		// Where the builder is on another page of the site, the link goes there.
+		$page = self::factory()->post->create( array( 'post_type' => 'page' ) );
+		$to   = static fn(): string => (string) get_permalink( $page );
+		add_filter( 'cbuild_builder_url', $to );
+		$data = apply_filters( 'woocommerce_get_item_data', array(), $kit[1] ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- as above.
+		remove_filter( 'cbuild_builder_url', $to );
+		self::assertStringContainsString( 'href="' . esc_url( get_permalink( $page ) ), $data[0]['display'] );
 	}
 
 	public function test_a_cart_with_no_build_brings_nothing_of_the_plugin_to_the_page(): void {

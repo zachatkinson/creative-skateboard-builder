@@ -2157,3 +2157,15 @@ Milestone 6's step 12b, against the spec's Review and add to cart ("Copy link ma
 - **Not the Web Share API.** `navigator.share` would be a second way to do the one thing the spec asks for, Copy link, with its own support to test on each engine. A shop that wants a share sheet can add one beside the field.
 
 **Status:** Accepted.
+
+### D-157 · Edit build: a link on the kit's line, and an add that replaces · 2026-11-12
+
+Milestone 6's step 12c, against the spec's Review and add to cart ("After adding, the cart line carries an "Edit build" link that reopens the builder. Saving there replaces the build in the cart") and the plan's risk line ("Edit build replaces by adding first").
+
+- **One link for three carts.** The kit's line gets one item data entry whose `display` is the link. Checked in WooCommerce 11.3.0: the Store API passes each item data value through `wp_kses_post` (`src/StoreApi/Schemas/V1/CartItemSchema.php:258`); the Cart and Checkout blocks and the Mini-Cart print it through `sanitizeHTML` with `a`, `href` and `class` allowed (`assets/client/blocks/cart.js`, `mini-cart-contents.js`); a classic cart prints it through `wp_kses_post( wpautop() )` (`templates/cart/cart-item-data.php:24`). No script and no template override.
+- **What the link holds.** The kit's builder (`BuilderUrl::of`, so `cbuild_builder_url` holds), at the review, with the build's part IDs, assembly, and `_replace`, the build's own `id`, a random UUID that names nothing outside the shopper's own cart. The review's form sends it on as `cbuild[replace]`, by the Store API with JavaScript and by WooCommerce's handler without.
+- **Add first, then take out.** `BuildCart` remembers which build a build taken in the request replaces, and takes the old one out (its parts, then its kit's line) only after every part of the new one is in the cart. A build the cart refuses, or a part WooCommerce will not add, leaves the old build as it was: the shopper never ends up with neither. A `replace` naming nothing in this cart takes nothing out, so a forged one can do no more than an add can.
+- **The shared link drops the builder's own keys.** Step 12b's field held the view's own address, which, on a page opened from Edit build, carries `_replace`, and on any page may carry `_was`, `_brand`, `_size` and `_shown`. The spec's Share links "carry part IDs, the step and assembly on or off, never a customer, an order or a saved build's ID". The review's `link` is now made from the picks, the review, assembly and the preset alone, and Copy link copies it.
+- **Quantity.** The edited build goes in at the quantity the review sends, which is 1. A shopper who had 3 of a build and edits it has 1 after; the cart's own quantity field sets it back. Carrying the quantity through the link is for Zach to decide; this is what stands until he does.
+
+**Status:** Accepted.

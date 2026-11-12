@@ -2,7 +2,7 @@ import { test as base } from '@playwright/test';
 import type { Page } from '@playwright/test';
 
 export { expect } from '@playwright/test';
-export type { Page } from '@playwright/test';
+export type { Locator, Page } from '@playwright/test';
 
 /**
  * Playwright's test, with every request to the shop under test marked `X-Creative-Test: 1`, as the agency's other

@@ -55,6 +55,7 @@ const REVIEW = {
 	review: {
 		added: 'The build is in your cart.',
 		copied: 'Link copied.',
+		link: window.location.origin + '/?cbuild%5Bstep%5D=review',
 	},
 };
 
@@ -750,7 +751,7 @@ describe( 'copying the build link', () => {
 		} );
 		document.body.innerHTML = `
 			<div class="cbuild">
-				<input class="cbuild-share__link" readonly value="${ REVIEW.url }">
+				<input class="cbuild-share__link" readonly value="${ REVIEW.review.link }">
 				<button type="button">Copy link</button>
 			</div>`;
 		setElement( document.querySelector< HTMLElement >( '.cbuild' )! );
@@ -776,14 +777,14 @@ describe( 'copying the build link', () => {
 		expect( state.canCopy ).toBe( true );
 	} );
 
-	it( "copies the build's own address and says so", async () => {
+	it( "copies the build's shared link, not the page's own address, and says so", async () => {
 		const copied: string[] = [];
 		share( ( text ) => {
 			copied.push( text );
 			return Promise.resolve();
 		} );
 		await actions.copy();
-		expect( copied ).toEqual( [ REVIEW.url ] );
+		expect( copied ).toEqual( [ REVIEW.review.link ] );
 		expect( state.status ).toBe( 'Link copied.' );
 	} );
 
@@ -793,6 +794,6 @@ describe( 'copying the build link', () => {
 		expect( state.status ).toBe( '' );
 		expect( link.ownerDocument.activeElement ).toBe( link );
 		expect( link.selectionStart ).toBe( 0 );
-		expect( link.selectionEnd ).toBe( REVIEW.url.length );
+		expect( link.selectionEnd ).toBe( REVIEW.review.link.length );
 	} );
 } );

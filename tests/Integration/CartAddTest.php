@@ -87,6 +87,72 @@ final class CartAddTest extends CartTestCase {
 		self::assertSame( array( 1, 1 ), array_column( $builds, 'quantity' ) );
 	}
 
+	public function test_edit_builds_add_takes_the_place_of_the_build_it_came_from_by_both_routes(): void {
+		$add = fn( array $build ) => $this->store(
+			array(
+				'id'     => $this->kit,
+				'cbuild' => $build,
+			)
+		);
+		self::assertSame( 201, $add( array( 'picks' => $this->picks() ) )->get_status() );
+		self::assertSame( 201, $add( array( 'picks' => $this->picks() ) )->get_status() );
+		[ $first, $second ] = array_column( self::builds(), 'build' );
+
+		$response = $add(
+			array(
+				'picks'    => $this->picks(),
+				'assembly' => true,
+				'replace'  => $first->id,
+			)
+		);
+		self::assertSame( 201, $response->get_status() );
+		$builds = array_column( self::builds(), 'build' );
+		self::assertCount( 2, $builds, 'the first is gone, its parts with it' );
+		self::assertCount( 14, WC()->cart->get_cart() );
+		self::assertSame( $second->id, $builds[0]->id, 'the other build stays' );
+		self::assertTrue( $builds[1]->assembly, 'and the edited one is in its place' );
+		self::assertSame( 14, count( $response->get_data()['items'] ), 'the Store API\'s answer is the cart after the swap' );
+
+		$this->form(
+			array(
+				'picks'   => $this->picks(),
+				'replace' => $builds[1]->id,
+			)
+		);
+		$after = array_column( self::builds(), 'build' );
+		self::assertCount( 2, $after, 'the form replaces as the Store API does' );
+		self::assertFalse( $after[1]->assembly );
+		self::assertNotSame( $builds[1]->id, $after[1]->id );
+	}
+
+	public function test_an_edited_build_the_cart_refuses_leaves_the_one_it_came_from_in_the_cart(): void {
+		self::assertSame(
+			201,
+			$this->store(
+				array(
+					'id'     => $this->kit,
+					'cbuild' => array( 'picks' => $this->picks() ),
+				)
+			)->get_status()
+		);
+		$before = WC()->cart->get_cart();
+		$old    = self::builds()[0]['build'];
+		$sold   = wc_get_product( $this->parts['wheels'] );
+		$sold->set_stock_status( 'outofstock' );
+		$sold->save();
+		$response = $this->store(
+			array(
+				'id'     => $this->kit,
+				'cbuild' => array(
+					'picks'   => $this->picks(),
+					'replace' => $old->id,
+				),
+			)
+		);
+		self::assertSame( 400, $response->get_status() );
+		self::assertSame( array_keys( $before ), array_keys( WC()->cart->get_cart() ), 'nothing taken out, nothing added' );
+	}
+
 	public function test_a_kit_with_no_build_is_refused_by_every_route(): void {
 		$response = $this->store( array( 'id' => $this->kit ) );
 		self::assertSame( 400, $response->get_status() );

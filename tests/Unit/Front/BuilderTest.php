@@ -668,6 +668,24 @@ final class BuilderTest extends TestCase {
 		self::assertSame( 'Step 4 of 7: Bearings', $shown['view']['heading'] );
 	}
 
+	public function test_edit_builds_review_sends_the_build_it_replaces_and_its_shared_link_does_not(): void {
+		$review = $this->show( new BuildLink( self::STREET, array( 'deck' => 101 ), State::REVIEW, true, 0, 'Acme', '8in', 48, 'abc-123' ) )['view']['review'];
+		self::assertContains(
+			array(
+				'name'  => 'cbuild[replace]',
+				'value' => 'abc-123',
+			),
+			$review['fields'],
+			'The add takes the place of the build in the cart Edit build came from (D-157).'
+		);
+		self::assertSame(
+			self::url( array_map( 'strval', self::STREET ) + array( 'step' => 'review', 'assembly' => '1', 'preset' => '0' ) ),
+			$review['link'],
+			'A shared link names parts, the step, assembly and the preset, and nothing of the shopper\'s cart or the builder\'s own (spec: Share links).'
+		);
+		self::assertNotContains( 'cbuild[replace]', array_column( $this->show( new BuildLink( self::STREET, null, State::REVIEW ) )['view']['review']['fields'], 'name' ) );
+	}
+
 	public function test_the_review_names_every_step_and_posts_the_build_to_the_carts_own_handler(): void {
 		$view = $this->show( new BuildLink( self::STREET, null, State::REVIEW ), 'https://shop.test/?page_id=5&lang=fr' )['view'];
 

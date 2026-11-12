@@ -59,6 +59,13 @@ final class BuildCart {
 	private ?array $said = null;
 
 	/**
+	 * The build each build taken in this request replaces, by the new build's ID: Edit build's add (D-157).
+	 *
+	 * @var array<string, string>
+	 */
+	private array $replacing = array();
+
+	/**
 	 * Constructor.
 	 *
 	 * @since 0.5.0
@@ -76,8 +83,9 @@ final class BuildCart {
 	 * @since 0.5.0
 	 *
 	 * @param int   $kit      The kit product's ID.
-	 * @param mixed $request  What was sent with it: `picks`, slot key to part ID, and `assembly`, which may be left
-	 *                        out for the kit's own default.
+	 * @param mixed $request  What was sent with it: `picks`, slot key to part ID; `assembly`, which may be left
+	 *                        out for the kit's own default; and `replace`, from Edit build, the ID of the build in
+	 *                        the cart this one takes the place of once all of it is added (D-157).
 	 * @param int   $quantity How many of the build.
 	 */
 	public function consider( int $kit, mixed $request, int $quantity ): Verdict {
@@ -105,6 +113,10 @@ final class BuildCart {
 		$asking   = array( $kit, $asked, $assembly, $quantity );
 		if ( null === $this->said || $asking !== $this->said[0] ) {
 			$this->said = array( $asking, $this->judge( $kit, $read, $asked, $assembly, max( 1, $quantity ) ) );
+		}
+		$replace = $request['replace'] ?? null;
+		if ( null !== $this->said[1]->build && is_string( $replace ) && 1 === preg_match( '/\A[a-z0-9-]{1,64}\z/', $replace ) ) {
+			$this->replacing[ $this->said[1]->build->id ] = $replace;
 		}
 		return $this->said[1];
 	}
@@ -156,7 +168,31 @@ final class BuildCart {
 			$children[] = $child;
 		}
 		$this->cart->setChildren( $key, $children );
+		$this->replace( $key, $this->replacing[ $build->id ] ?? '' );
+		unset( $this->replacing[ $build->id ] );
 		return null;
+	}
+
+	/**
+	 * Edit build's add is whole in the cart: the build it replaces is taken out, its parts and its kit's line. Only
+	 * now, so that a build the cart would not take leaves the one before it as it was. A build that is no longer
+	 * in the cart, or never was, leaves nothing to take out (D-157).
+	 *
+	 * @param string $key     The new kit's line.
+	 * @param string $replace The ID of the build it replaces, or empty.
+	 */
+	private function replace( string $key, string $replace ): void {
+		if ( '' === $replace ) {
+			return;
+		}
+		foreach ( $this->cart->lines() as $other => $line ) {
+			if ( $other !== $key && Build::read( $line->build )?->id === $replace ) {
+				foreach ( array( ...$line->children, $other ) as $gone ) {
+					$this->cart->remove( $gone );
+				}
+				return;
+			}
+		}
 	}
 
 	/**

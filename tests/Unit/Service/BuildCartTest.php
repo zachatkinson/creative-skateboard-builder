@@ -307,6 +307,59 @@ final class BuildCartTest extends TestCase {
 		self::assertFalse( $this->builds->admits( self::KIT ) );
 	}
 
+	/**
+	 * A build added, its kit's line and its parts', as a shopper would have it in the cart before Edit build.
+	 *
+	 * @return array{string, Build}
+	 */
+	private function inCart( array $with = array() ): array {
+		$build = $this->consider( $with )->build;
+		self::assertNotNull( $build );
+		$key = $this->cart->put( self::KIT, 1, $build->toArray() );
+		self::assertNull( $this->builds->attach( $key ) );
+		return array( $key, $build );
+	}
+
+	public function test_an_edited_build_is_added_first_and_then_the_one_it_replaces_is_taken_out(): void {
+		$loose               = $this->cart->put( 103 );
+		[ $kept ]            = $this->inCart();
+		[ $old, $was ]       = $this->inCart();
+		$new                 = $this->consider( array( 'wheels' => 301 ), array( 'replace' => $was->id ) )->build;
+		self::assertNotNull( $new );
+		$key = $this->cart->put( self::KIT, 1, $new->toArray() );
+		self::assertNull( $this->builds->attach( $key ) );
+
+		$lines = $this->cart->lines();
+		self::assertArrayNotHasKey( $old, $lines, 'the kit\'s line it replaces is gone' );
+		self::assertCount( 1 + 7 + 7, $lines, 'and its parts with it; the other build and the loose line stay' );
+		self::assertArrayHasKey( $loose, $lines );
+		self::assertArrayHasKey( $kept, $lines );
+		self::assertSame( 301, $lines[ $lines[ $key ]->children[2] ]->part, 'the new build has its own wheels' );
+	}
+
+	public function test_a_replace_that_names_no_build_in_the_cart_or_is_no_identifier_takes_nothing_out(): void {
+		[ $old ] = $this->inCart();
+		foreach ( array( 'build-404', '../line-1', array( 'build-1' ), 7 ) as $replace ) {
+			$new = $this->consider( array(), array( 'replace' => $replace ) )->build;
+			self::assertNotNull( $new );
+			self::assertNull( $this->builds->attach( $this->cart->put( self::KIT, 1, $new->toArray() ) ) );
+			self::assertArrayHasKey( $old, $this->cart->lines(), var_export( $replace, true ) );
+		}
+		self::assertCount( 5 * 7, $this->cart->lines() );
+	}
+
+	public function test_an_edited_build_the_cart_will_not_take_leaves_the_one_it_replaces_as_it_was(): void {
+		[ $old, $was ] = $this->inCart();
+		$before        = $this->cart->lines();
+		$new           = $this->consider( array( 'wheels' => 301 ), array( 'replace' => $was->id ) )->build;
+		self::assertNotNull( $new );
+		$key                 = $this->cart->put( self::KIT, 1, $new->toArray() );
+		$this->cart->refuses = array( 301 );
+		self::assertSame( CartRefusal::NotAdded, $this->builds->attach( $key ) );
+		self::assertSame( $before, $this->cart->lines() );
+		self::assertArrayHasKey( $old, $this->cart->lines() );
+	}
+
 	public function test_the_kits_line_costs_the_assembly_fee_and_nothing_without_assembly(): void {
 		$fee = Shop::kit()->assembly->fee( 2 );
 		self::assertGreaterThan( 0, $fee, 'the fixture kit charges for assembly' );

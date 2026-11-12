@@ -262,9 +262,9 @@ final class BuilderPageTest extends IntegrationTestCase {
 		self::assertNotNull( $link );
 		self::assertTrue( $link->hasAttribute( 'readonly' ) );
 		self::assertSame( 'url', $link->getAttribute( 'type' ) );
-		$url = wp_interactivity_state( BuilderPage::STORE )['view']['url'];
-		self::assertStringContainsString( 'cbuild%5Bstep%5D=', $url );
-		self::assertSame( $url, $link->getAttribute( 'value' ), 'The view\'s own address, the build in it.' );
+		$url = wp_interactivity_state( BuilderPage::STORE )['view']['review']['link'];
+		self::assertStringContainsString( 'cbuild%5Bstep%5D=review', $url );
+		self::assertSame( $url, $link->getAttribute( 'value' ), 'The review\'s shared link (D-157).' );
 		$label = $dom->query( '//label[@for="' . $link->getAttribute( 'id' ) . '"]' )->item( 0 );
 		self::assertSame( 'Link to this build', trim( (string) $label?->textContent ) );
 		$copy = $dom->query( '//button[contains(@class,"cbuild-share__copy")]' )->item( 0 );
