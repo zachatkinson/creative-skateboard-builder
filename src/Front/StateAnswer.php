@@ -150,6 +150,13 @@ final class StateAnswer {
 		foreach ( $state->quote->lines as $line ) {
 			$ids[] = $line->part;
 		}
+		foreach ( $state->kit->presets as $preset ) {
+			// Its first slot's part, for the tile's picture.
+			$first = array_values( $preset->picks )[0] ?? null;
+			if ( null !== $first ) {
+				$ids[] = $first;
+			}
+		}
 		foreach ( $state->presets as $preset ) {
 			foreach ( array_merge( $preset->refused, $preset->validation->problems ) as $kept ) {
 				if ( null !== $kept->part ) {
@@ -285,6 +292,7 @@ final class StateAnswer {
 				'name'        => self::preset( $preset->name, $at, $state->id ),
 				'description' => self::text( $preset->description, 'preset_description', $state->id, (string) $at ),
 				'picks'       => $picks,
+				'image'       => $cards[ array_values( $preset->picks )[0] ?? 0 ]['image'] ?? null,
 				'total'       => $money( $built->quote->total ?? 0 ),
 				'ready'       => array() === $kept,
 				// What keeps it from the cart, each part named for its tile (spec: Presets).

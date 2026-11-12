@@ -154,6 +154,9 @@ final class BuilderTest extends TestCase {
 			'IDs, the review and which preset, as the build link writes them'
 		);
 		self::assertSame( 'Start from Street', $street['button'], 'each button has a name of its own (P11)' );
+		self::assertTrue( $street['hasImage'] );
+		self::assertSame( 'https://shop.test/101.jpg', $street['src'] );
+		self::assertSame( 'https://shop.test/103.jpg', $presets['tiles'][1]['src'] );
 
 		$park = $presets['tiles'][1];
 		self::assertFalse( $park['hasDescription'] );
@@ -408,6 +411,9 @@ final class BuilderTest extends TestCase {
 		self::assertSame( 'deck', $view['picture']['items'][0]['key'] );
 		self::assertSame( 'Deck: 8.5 in', $view['picture']['items'][0]['label'] );
 		self::assertSame( 'Part 103', $view['picture']['items'][0]['name'] );
+		// Spec, The picture: the deck is the page's largest paint, and the rest wait to be scrolled to.
+		self::assertSame( array( 'eager', 'high' ), array( $view['picture']['items'][0]['loading'], $view['picture']['items'][0]['priority'] ) );
+		self::assertSame( array( 'lazy', 'auto' ), array( $view['picture']['items'][1]['loading'], $view['picture']['items'][1]['priority'] ) );
 	}
 
 	public function test_a_part_that_does_not_fit_says_so_and_one_the_shop_cannot_supply_stays_chosen_while_the_build_holds_it(): void {
@@ -561,6 +567,25 @@ final class BuilderTest extends TestCase {
 		self::assertCount( 1, $view['step']['options'][0]['notes'] );
 		self::assertNotSame( '', $view['step']['options'][0]['notes'][0]['text'] );
 		self::assertSame( array( array( 'text' => 'Ships in a box.' ), array( 'text' => 'Free stickers.' ) ), $view['summary']['notes'] );
+	}
+
+	// Spec, Review and add to cart: "It also shows assembly on or off with its fee and lead time, the arrival date,
+	// the total, and the returns notice the owner writes, all before Add to cart."
+	public function test_the_review_says_assembly_the_arrival_and_the_total_before_add_to_cart(): void {
+		$GLOBALS['cbuild_test_filters']['cbuild_arrival_estimate'] = static fn(): string => 'Arrives by Thu, Nov 19, assembled';
+		$view = $this->show( new BuildLink( self::STREET, null, BuildLink::REVIEW, true ) )['view'];
+		$summary = $view['summary'];
+		self::assertSame( $summary['assembly'], $view['review']['assembly'] );
+		self::assertSame( 'Assembly: $15.00', $view['review']['assembly'] );
+		self::assertSame( 'Total: ' . $summary['total'], $view['review']['total'] );
+		self::assertTrue( $view['review']['hasArrival'] );
+		self::assertSame( 'Arrives by Thu, Nov 19, assembled', $view['review']['arrival'] );
+
+		unset( $GLOBALS['cbuild_test_filters'] );
+		$review = $this->show( new BuildLink( self::STREET, null, BuildLink::REVIEW, false ) )['view']['review'];
+		self::assertSame( 'Assembly: not added', $review['assembly'] );
+		self::assertFalse( $review['hasArrival'] );
+		self::assertSame( '', $review['arrival'] );
 	}
 
 	public function test_a_later_step_fits_against_the_deck_and_not_another_part(): void {

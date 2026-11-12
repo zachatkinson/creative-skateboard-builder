@@ -52,6 +52,10 @@ export interface CbuildState {
 			slot: string;
 			part: number;
 		}[];
+		/**
+		 * Its picture: for now its first slot's part's photo at the catalogue's size, or null when it has none. From 0.6.0.
+		 */
+		image: Photo | null;
 		total: Money;
 		/**
 		 * Whether the build it starts can go to the cart as it stands. From 0.6.0.
@@ -313,6 +317,16 @@ export interface CbuildState {
 	view?: {};
 }
 /**
+ * A photo at the catalogue's size.
+ */
+export interface Photo {
+	src: string;
+	width: number;
+	height: number;
+	srcset: string;
+	sizes: string;
+}
+/**
  * What the build it starts costs, at the kit's own assembly setting. From 0.6.0.
  */
 export interface Money {
@@ -478,16 +492,6 @@ export interface Card {
 	 * The part's photo at the catalogue's size, or null when it has none.
 	 */
 	image: Photo | null;
-}
-/**
- * A photo at the catalogue's size.
- */
-export interface Photo {
-	src: string;
-	width: number;
-	height: number;
-	srcset: string;
-	sizes: string;
 }
 /**
  * A value a filter offers.

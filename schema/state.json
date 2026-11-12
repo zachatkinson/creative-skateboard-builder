@@ -65,7 +65,8 @@
 					"picks",
 					"total",
 					"ready",
-					"problems"
+					"problems",
+					"image"
 				],
 				"properties": {
 					"name": {
@@ -94,6 +95,17 @@
 								}
 							}
 						}
+					},
+					"image": {
+						"description": "Its picture: for now its first slot's part's photo at the catalogue's size, or null when it has none. From 0.6.0.",
+						"oneOf": [
+							{
+								"$ref": "#/definitions/photo"
+							},
+							{
+								"type": "null"
+							}
+						]
 					},
 					"total": {
 						"description": "What the build it starts costs, at the kit's own assembly setting. From 0.6.0.",

@@ -2125,3 +2125,13 @@ Milestone 6's step 10, against the spec's The total ("On phones it's a bar at th
 - **The markup waits for the styles, in step 13.** The bar is the summary shown another way at another width: beside the steps on a desktop, at the foot of the screen on a phone. Without the stylesheet that hides one of the two at each width, every page would show the total twice and two buttons with one name, which a screen reader hears and P11 forbids. So the bar's template, the stylesheet that places it, the rule that keeps it off the control in focus (`scroll-padding-bottom`) and its tests at phone width land together. The small picture on it is step 11's.
 
 **Status:** Accepted.
+
+### D-154 · The review says everything before Add to cart, and the picture's first photo is the largest paint · 2026-11-12
+
+Milestone 6's step 11, against the spec's Review and add to cart ("assembly on or off with its fee and lead time, the arrival date, the total, and the returns notice the owner writes, all before Add to cart") and The picture ("The largest paint ... an explicit size, `fetchpriority="high"`").
+
+- **The review** says assembly with its fee, its lead time, the arrival date where the shop answers `cbuild_arrival_estimate`, the total and the returns notice, in that order, all before Add to cart. Each is the summary's own sentence, so the two cannot disagree. The summary still sits beside the steps; in the page's order it comes after the review, which is why the review says them itself.
+- **The picture, for now,** is milestone 6's labelled "What is in the box" layout. Its first photo, the deck's, loads at once with `fetchpriority="high"` and its size given; the rest load lazily. Milestone 7's deck layer takes over as the largest paint.
+- **A preset's tile** shows its first slot's part's photo, the deck's, lazily, from the one cards call the answer already makes (the answer's `image` on each preset, `null` where the part has none). Milestone 7 draws each preset's board instead. This closes what D-151 left for this step.
+
+**Status:** Accepted.

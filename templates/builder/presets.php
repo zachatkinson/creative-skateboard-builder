@@ -1,7 +1,8 @@
 <?php
 /**
  * The preset tiles (spec: Presets): at the start, one GET form a preset, its button starting the build at the review.
- * Each tile says its total, who it is for, and any part that keeps it from the cart.
+ * Each tile shows its picture, for now its deck's photo, and says its total, who it is for, and any part that keeps it
+ * from the cart.
  *
  * @package CreativeBranding\SkateboardBuilder
  */
@@ -20,6 +21,7 @@ defined( 'ABSPATH' ) || exit;
 					<template data-wp-each--field="context.tile.fields">
 						<input type="hidden" data-wp-bind--name="context.field.name" data-wp-bind--value="context.field.value">
 					</template>
+					<img class="cbuild-preset__photo" alt="" loading="lazy" decoding="async" data-wp-bind--hidden="!context.tile.hasImage" data-wp-bind--src="context.tile.src" data-wp-bind--srcset="context.tile.srcset" data-wp-bind--sizes="context.tile.sizes" data-wp-bind--width="context.tile.width" data-wp-bind--height="context.tile.height">
 					<p class="cbuild-preset__name" data-wp-text="context.tile.name"></p>
 					<p class="cbuild-preset__description" data-wp-bind--hidden="!context.tile.hasDescription" data-wp-text="context.tile.description"></p>
 					<p class="cbuild-preset__total" data-wp-text="context.tile.total"></p>

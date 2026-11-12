@@ -372,10 +372,28 @@ test.describe( 'The builder without JavaScript', () => {
 		);
 		await expect( heading( page ) ).toHaveText( 'Step 7 of 7: Review' );
 		await expect( page.locator( '.cbuild-errors' ) ).toBeHidden();
+		const review = page.locator( '.cbuild-review' );
+		await expect( review.locator( '.cbuild-review__assembly' ) ).toHaveText(
+			'Assembly: $15.00'
+		);
+		await expect( review.locator( '.cbuild-review__total' ) ).toHaveText(
+			'Total: $182.00'
+		);
+		// All before Add to cart, in the page's order (spec: Review and add to cart).
+		expect(
+			await review.evaluate( ( section ) =>
+				[
+					...section.querySelectorAll(
+						'.cbuild-review__total, button[type="submit"]'
+					),
+				].map( ( node ) => node.className )
+			)
+		).toEqual( [
+			'cbuild-review__total',
+			'cbuild-button cbuild-button--primary',
+		] );
 		await expect(
-			page
-				.locator( '.cbuild-review' )
-				.getByRole( 'button', { name: 'Add to cart' } )
+			review.getByRole( 'button', { name: 'Add to cart' } )
 		).toBeEnabled();
 		expect(
 			new URL( page.url() ).searchParams.get( 'cbuild[preset]' )

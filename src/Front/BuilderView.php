@@ -145,7 +145,7 @@ final class BuilderView {
 		[ $action, $carry ] = self::form( $base );
 		$step               = $review ? self::none() : $this->step( $state, $answer, $link, $url, $steps, $counted, $lines, $about );
 		$summary            = $this->summary( $state, $answer, $link, $url, $lines, $label );
-		$shown              = $this->review( $state, $answer, $link, $url, $steps, $counted, $lines, $label );
+		$shown              = $this->review( $state, $answer, $link, $url, $steps, $counted, $lines, $label, $summary );
 		return array(
 			'kit'       => $state->id,
 			'url'       => $url( $link ),
@@ -174,15 +174,19 @@ final class BuilderView {
 				'heading'     => __( 'What is in the box', 'creative-skateboard-builder' ),
 				'description' => Cast::str( $picture['description'] ?? null ),
 				'items'       => array_map(
-					static function ( mixed $item ): array {
+					static function ( mixed $item, int $at ): array {
 						$item = Cast::map( $item );
 						return array(
-							'key'   => Cast::str( $item['slot'] ?? null ),
-							'label' => Cast::str( $item['label'] ?? null ),
-							'name'  => Cast::str( $item['name'] ?? null ),
+							'key'      => Cast::str( $item['slot'] ?? null ),
+							'label'    => Cast::str( $item['label'] ?? null ),
+							'name'     => Cast::str( $item['name'] ?? null ),
+							// The first, the deck, is the page's largest paint (spec: The picture); the rest wait.
+							'loading'  => 0 === $at ? 'eager' : 'lazy',
+							'priority' => 0 === $at ? 'high' : 'auto',
 						) + self::image( $item['image'] ?? null );
 					},
-					Cast::items( $picture['items'] ?? null )
+					Cast::items( $picture['items'] ?? null ),
+					array_keys( Cast::items( $picture['items'] ?? null ) )
 				),
 			),
 			'review'    => $shown,
@@ -260,7 +264,7 @@ final class BuilderView {
 				}
 				$name        = Cast::str( $preset['name'] ?? null );
 				$description = Cast::str( $preset['description'] ?? null );
-				$tiles[]     = array(
+				$tiles[]     = self::image( $preset['image'] ?? null ) + array(
 					'name'           => $name,
 					'description'    => $description,
 					'hasDescription' => '' !== $description,
@@ -947,9 +951,11 @@ final class BuilderView {
 	 * @param array<string, int>                  $counted The part the total counts in each slot.
 	 * @param array<string, array<string, mixed>> $lines   The total's lines, by slot.
 	 * @param callable(string): string            $label   A slot's label.
+	 * @param array<string, mixed>                $summary The summary, whose assembly, arrival and total the review says
+	 *                                                     again before Add to cart.
 	 * @return array<string, mixed>
 	 */
-	private function review( State $state, array $answer, BuildLink $link, callable $url, array $steps, array $counted, array $lines, callable $label ): array {
+	private function review( State $state, array $answer, BuildLink $link, callable $url, array $steps, array $counted, array $lines, callable $label, array $summary ): array {
 		$wrong = array();
 		foreach ( Cast::items( $answer['problems'] ?? null ) as $problem ) {
 			$problem                                      = Cast::map( $problem );
@@ -989,16 +995,22 @@ final class BuilderView {
 			)
 		);
 		return array(
-			'heading'   => __( 'Check your build', 'creative-skateboard-builder' ),
-			'items'     => $items,
-			'hasLead'   => '' !== $lead,
-			'lead'      => $lead,
-			'hasNotice' => '' !== $notice,
-			'notice'    => $notice,
-			'ready'     => Cast::bool( $answer['ready'] ?? null ),
-			'action'    => $url( $link ),
-			'fields'    => $fields,
-			'add'       => __( 'Add to cart', 'creative-skateboard-builder' ),
+			'heading'    => __( 'Check your build', 'creative-skateboard-builder' ),
+			'items'      => $items,
+			// All before Add to cart (spec: Review and add to cart), in the summary's own words.
+			'assembly'   => Cast::str( $summary['assembly'] ?? null ),
+			'hasArrival' => Cast::bool( $summary['hasArrival'] ?? null ),
+			'arrival'    => Cast::str( $summary['arrival'] ?? null ),
+			/* translators: %s: the build's total, such as $184.00. */
+			'total'      => sprintf( __( 'Total: %s', 'creative-skateboard-builder' ), Cast::str( $summary['total'] ?? null ) ),
+			'hasLead'    => '' !== $lead,
+			'lead'       => $lead,
+			'hasNotice'  => '' !== $notice,
+			'notice'     => $notice,
+			'ready'      => Cast::bool( $answer['ready'] ?? null ),
+			'action'     => $url( $link ),
+			'fields'     => $fields,
+			'add'        => __( 'Add to cart', 'creative-skateboard-builder' ),
 		);
 	}
 }

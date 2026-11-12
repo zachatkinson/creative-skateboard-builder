@@ -279,6 +279,8 @@ final class StateAnswerTest extends TestCase {
 		self::assertSame( $this->answer( self::STREET )['total']['total'], $street['total'], "the total of the build it starts, at the kit's own assembly setting" );
 		self::assertTrue( $street['ready'] );
 		self::assertSame( array(), $street['problems'] );
+		self::assertSame( InMemoryPartCards::card( 101 )['image'], $street['image'], "its picture, for now its deck's photo" );
+		self::assertSame( InMemoryPartCards::card( 103 )['image'], $answer['presets'][1]['image'] );
 
 		$park = $answer['presets'][1];
 		self::assertFalse( $park['ready'] );
