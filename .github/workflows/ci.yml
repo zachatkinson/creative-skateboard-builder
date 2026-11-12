@@ -276,7 +276,7 @@ jobs:
       - name: The zip installs, upgrades over itself and uninstalls clean
         if: matrix.leg == 'newest' || matrix.leg == 'oldest'
         run: npm run zip-lifecycle
-      # Newest runs every browser project, the visual snapshots among them; oldest, which is there for the WordPress
+      # Newest runs every browser project, and the visual snapshots after them; oldest, which is there for the WordPress
       # and WooCommerce versions, one desktop and one phone engine, and so does a draft's newest (D-085). The browsers
       # are cached by Playwright's version and the engines; the system packages they need are installed each time.
       - name: The browser projects for the leg
@@ -323,6 +323,11 @@ jobs:
           exit 1
       - run: npm run test:e2e -- ${{ steps.browsers.outputs.projects }}
         if: matrix.leg == 'newest' || matrix.leg == 'oldest'
+      # In Playwright's own Linux image, as locally, so the baselines are one machine's pictures (D-162). Only where
+      # every browser project runs: a draft's newest leg and the oldest leg leave it out, as they leave out the engines.
+      - name: The visual snapshots (three themes, light and dark), in Playwright's container
+        if: matrix.leg == 'newest' && needs.scope.outputs.browsers == 'every'
+        run: bash tools/visual.sh
       - name: Lighthouse CI (LCP, CLS, TBT, SEO on the mobile profile)
         if: matrix.leg == 'newest'
         run: npm run lhci

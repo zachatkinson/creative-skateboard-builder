@@ -28,9 +28,25 @@
 	--cbuild-card-width: 13rem;
 	--cbuild-summary-width: 19rem;
 	--cbuild-ground: var(--wp--preset--color--base, Canvas);
+	--cbuild-on-ground: var(--wp--preset--color--contrast, CanvasText);
 	--cbuild-bar-height: 4.25rem;
 	--cbuild-duration: 200ms;
 	--cbuild-ease: cubic-bezier(0.2, 0, 0, 1);
+}
+
+/*
+ * The phone bar's ground, where the theme names no base colour (a classic theme): the colour that contrasts with the
+ * builder's own text, so a dark theme's bar is dark and a light one's light, and its words are the builder's. Where
+ * the browser cannot work that out, `Canvas` and `CanvasText`, a pair that always reads (D-162).
+ */
+@supports (color: contrast-color(red)) {
+	.cbuild {
+		--cbuild-ground: var(
+			--wp--preset--color--base,
+			contrast-color(currentcolor)
+		);
+		--cbuild-on-ground: var(--wp--preset--color--contrast, currentcolor);
+	}
 }
 
 /* Outside `:where()`: a theme's `display` must not show what the builder hides. */
@@ -629,6 +645,7 @@
 	padding: var(--cbuild-gap-small);
 	border-block-start: 1px solid var(--cbuild-line);
 	background: var(--cbuild-ground);
+	color: var(--cbuild-on-ground);
 }
 
 :where(.cbuild-bar__picture) {
@@ -677,6 +694,7 @@
 	padding: var(--cbuild-gap);
 	border-block-start: 1px solid var(--cbuild-line);
 	background: var(--cbuild-ground);
+	color: var(--cbuild-on-ground);
 }
 
 :where(.cbuild-bar__next) {

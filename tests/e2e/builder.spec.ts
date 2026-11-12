@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { test, expect, answered, Page } from './support/test';
+import { axe } from './support/axe';
 
 /**
  * Milestone 6, without JavaScript (spec: The builder, Without JavaScript and Ways in): each step is a GET form whose
@@ -1200,6 +1201,36 @@ test.describe( 'The phone bar', () => {
 		await expect( bar ).toBeHidden();
 		await expect( page.locator( '.cbuild-summary' ) ).toBeVisible();
 	} );
+
+	for ( const theme of [ 'storefront', 'kadence', 'twentytwentyfive' ] ) {
+		test( `keeps its words readable on ${ theme }'s dark colours, and its open parts list too`, async ( {
+			page,
+			context,
+			baseURL,
+		} ) => {
+			// The e2e theme mu-plugin answers these for this request alone (D-162).
+			const url = baseURL || 'http://localhost:8898';
+			await context.addCookies( [
+				{ name: 'cbuild_e2e_theme', value: theme, url },
+				{ name: 'cbuild_e2e_scheme', value: 'dark', url },
+			] );
+			await page.setViewportSize( PHONE );
+			await page.goto( fixture().page );
+			const bar = page.locator( '.cbuild-bar' );
+			await expect( bar ).toBeVisible();
+			await axe(
+				page,
+				`the phone bar on ${ theme }, dark`,
+				'.cbuild-bar'
+			);
+			await bar.locator( 'summary' ).click();
+			await axe(
+				page,
+				`the phone bar's parts list on ${ theme }, dark`,
+				'.cbuild-bar'
+			);
+		} );
+	}
 
 	test( 'opens the parts list above itself, and its button moves the build on', async ( {
 		page,

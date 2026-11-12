@@ -617,7 +617,7 @@ Each kit's line in the cart has one item data entry from 0.6.0, `raw_key` `cbuil
 
 ### Styling the builder
 
-The builder's stylesheet is the Builder block's `style` (`build/builder/style-index.css`, handle `creative-skateboard-builder-builder-style`), loaded wherever a builder renders, on a kit's own page as in the block. Its rules sit inside `:where()`, so a theme overrides any of them with a single class; only `.cbuild [hidden]` and `.cbuild .screen-reader-text` are outside it. Its classes are BEM under the `cbuild-` prefix, on the builder's root `.cbuild`, and its templates are not for overriding (docs/STANDARDS.md). A theme restyles it most simply by setting these on `.cbuild` (D-159, D-160, D-161):
+The builder's stylesheet is the Builder block's `style` (`build/builder/style-index.css`, handle `creative-skateboard-builder-builder-style`), loaded wherever a builder renders, on a kit's own page as in the block. Its rules sit inside `:where()`, so a theme overrides any of them with a single class; only `.cbuild [hidden]` and `.cbuild .screen-reader-text` are outside it. Its classes are BEM under the `cbuild-` prefix, on the builder's root `.cbuild`, and its templates are not for overriding (docs/STANDARDS.md). A theme restyles it most simply by setting these on `.cbuild` (D-159 to D-162):
 
 | Property | Since | What it sets | Falls back to |
 | --- | --- | --- | --- |
@@ -637,7 +637,8 @@ The builder's stylesheet is the Builder block's `style` (`build/builder/style-in
 | `--cbuild-small` | 0.6.0 | Small text | `--wp--preset--font-size--small`, then `0.875rem` |
 | `--cbuild-card-width` | 0.6.0 | The narrowest a part's card is before the cards wrap | `13rem` |
 | `--cbuild-summary-width` | 0.6.0 | The summary's width beside the steps, from a builder 48rem wide | `19rem` |
-| `--cbuild-ground` | 0.6.0 | The phone bar's ground, and its parts list's | `--wp--preset--color--base`, then `Canvas` |
+| `--cbuild-ground` | 0.6.0 | The phone bar's ground, and its parts list's | `--wp--preset--color--base`, then the colour that contrasts with the builder's text (`contrast-color()`), else `Canvas` |
+| `--cbuild-on-ground` | 0.6.0 | Words on the phone bar's ground | `--wp--preset--color--contrast`, then the builder's text where the browser can pick a ground that contrasts with it, else `CanvasText` |
 | `--cbuild-bar-height` | 0.6.0 | The phone bar's least height, which focus is kept clear of | `4.25rem` |
 | `--cbuild-duration` | 0.6.0 | How long each movement lasts: the chosen card settling, a part arriving in the picture, a step crossing over. The step's crossing is the page's view transition, which reads it on `:root`, so set it there too | `200ms` |
 | `--cbuild-ease` | 0.6.0 | How each movement eases, read as `--cbuild-duration` is | `cubic-bezier(0.2, 0, 0, 1)` |

@@ -136,6 +136,7 @@
         "--cbuild-line",
         "--cbuild-muted",
         "--cbuild-on-accent",
+        "--cbuild-on-ground",
         "--cbuild-radius",
         "--cbuild-small",
         "--cbuild-summary-width",
