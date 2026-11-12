@@ -5,8 +5,8 @@ import { test, expect, answered, Page } from './support/test';
 /**
  * Milestone 6, without JavaScript (spec: The builder, Without JavaScript and Ways in): each step is a GET form whose
  * picks travel in the address, the change panel and the review are steps of their own, and Add to cart posts to
- * WooCommerce's own handler. Every way in lands where the spec says. The flow with JavaScript is the store's, tested
- * from the plan's step 6; until then the page is the same with it on, so these run in the no-js project alone.
+ * WooCommerce's own handler. Every way in lands where the spec says. These run in the no-js project; with
+ * JavaScript, the store takes each move through the state route without loading the page (D-148), tested after them.
  */
 
 interface Fixture {
@@ -81,7 +81,7 @@ test.describe( 'The builder without JavaScript', () => {
 	test.beforeEach( ( {}, info ) => {
 		test.skip(
 			info.project.name !== 'no-js',
-			"The flow with JavaScript is the store's, from the plan's step 6."
+			'With JavaScript, the store moves the builder: the tests after these.'
 		);
 	} );
 
@@ -286,5 +286,176 @@ test.describe( 'The builder without JavaScript', () => {
 		await expect(
 			page.getByRole( 'radio', { name: /^Choose Builder test deck/ } )
 		).toHaveCount( 3 );
+	} );
+} );
+
+/**
+ * Whether a request is the state route's.
+ *
+ * @param url The request's address.
+ */
+const isRoute = ( url: URL | string ): boolean =>
+	/cbuild(%2F|\/)v1(%2F|\/)kits(%2F|\/)\d+(%2F|\/)state/.test(
+		String( url )
+	);
+
+/**
+ * Marks the page, so that a test can tell whether it was loaded again.
+ *
+ * @param page The page.
+ */
+async function mark( page: Page ) {
+	await page.evaluate( () => {
+		( window as unknown as { cbuildStayed: boolean } ).cbuildStayed = true;
+	} );
+}
+
+/**
+ * Whether the page marked is the one still shown.
+ *
+ * @param page The page.
+ */
+const stayed = ( page: Page ): Promise< boolean > =>
+	page.evaluate(
+		() =>
+			( window as unknown as { cbuildStayed?: boolean } ).cbuildStayed ===
+			true
+	);
+
+test.describe( 'The builder with JavaScript', () => {
+	test.beforeEach( async ( { page }, info ) => {
+		test.skip(
+			info.project.name === 'no-js',
+			'The store needs JavaScript; the tests above run without it.'
+		);
+		await page.goto( fixture().page );
+		await page.waitForLoadState( 'load' );
+		await mark( page );
+	} );
+
+	test( 'moves from step to step without loading the page, and Back and Forward show the steps again', async ( {
+		page,
+	} ) => {
+		await page
+			.getByRole( 'radio', { name: 'Choose Builder test deck 8.0' } )
+			.check();
+		// The pick's own answer puts it in the page's address, so that Back comes back to it.
+		await expect
+			.poll( () => build( page ) )
+			.toEqual( [ 'cbuild[deck]', 'cbuild[step]' ] );
+		await expect( page.locator( '.cbuild' ) ).toHaveAttribute(
+			'aria-busy',
+			'false'
+		);
+		await page.getByRole( 'button', { name: 'Next: Trucks' } ).click();
+		await expect( heading( page ) ).toHaveText( 'Step 2 of 7: Trucks' );
+		expect( await stayed( page ), 'no page was loaded' ).toBe( true );
+		expect( build( page ) ).toEqual( [ 'cbuild[deck]', 'cbuild[step]' ] );
+		await expect(
+			page.getByRole( 'radio', {
+				name: 'Choose Builder test trucks 139',
+			} )
+		).toBeChecked();
+
+		await page.goBack();
+		await expect( heading( page ) ).toHaveText( 'Step 1 of 7: Deck' );
+		await expect(
+			page.getByRole( 'radio', { name: 'Choose Builder test deck 8.0' } )
+		).toBeChecked();
+		await page.goForward();
+		await expect( heading( page ) ).toHaveText( 'Step 2 of 7: Trucks' );
+		expect( await stayed( page ) ).toBe( true );
+
+		await page
+			.getByRole( 'link', { name: 'Back', exact: false } )
+			.first()
+			.click();
+		await expect( heading( page ) ).toHaveText( 'Step 1 of 7: Deck' );
+		expect( await stayed( page ) ).toBe( true );
+	} );
+
+	test( 'asks the route once for picks made in quick succession, and paints each pick before it answers', async ( {
+		page,
+	} ) => {
+		const asked: URL[] = [];
+		page.on( 'request', ( request ) => {
+			if ( isRoute( request.url() ) ) {
+				asked.push( new URL( request.url() ) );
+			}
+		} );
+		let release: () => void = () => undefined;
+		const held = new Promise< void >( ( done ) => {
+			release = done;
+		} );
+		await page.route( isRoute, async ( route ) => {
+			await held;
+			await route.continue();
+		} );
+		const first = page.getByRole( 'radio', {
+			name: 'Choose Builder test deck 8.0',
+		} );
+		const second = page.getByRole( 'radio', {
+			name: 'Choose Builder test deck 8.25',
+		} );
+		await first.check();
+		await second.check();
+		await expect(
+			second,
+			'painted while the route has not answered'
+		).toBeChecked();
+		await expect( page.locator( '.cbuild' ) ).toHaveAttribute(
+			'aria-busy',
+			'true'
+		);
+		await expect.poll( () => asked.length ).toBe( 1 );
+		release();
+		await expect( page.locator( '.cbuild' ) ).toHaveAttribute(
+			'aria-busy',
+			'false'
+		);
+		expect( asked ).toHaveLength( 1 );
+		expect( asked[ 0 ]!.searchParams.get( 'cbuild[deck]' ) ).toBe(
+			String( id( 'builder-test-deck-8-25' ) )
+		);
+		expect( asked[ 0 ]!.searchParams.get( 'cbuild[step]' ) ).toBe( 'deck' );
+		await expect( second ).toBeChecked();
+		expect( new URL( page.url() ).searchParams.get( 'cbuild[deck]' ) ).toBe(
+			String( id( 'builder-test-deck-8-25' ) )
+		);
+		expect( await stayed( page ) ).toBe( true );
+	} );
+
+	test( 'sends the form when the state route fails, and the server shows the next step', async ( {
+		page,
+	} ) => {
+		await page.route( isRoute, ( route ) => route.abort() );
+		await page
+			.getByRole( 'radio', { name: 'Choose Builder test deck 8.0' } )
+			.check();
+		await answered( page, () =>
+			page.getByRole( 'button', { name: 'Next: Trucks' } ).click()
+		);
+		await expect( heading( page ) ).toHaveText( 'Step 2 of 7: Trucks' );
+		expect(
+			await stayed( page ),
+			'the page was loaded, as without JavaScript'
+		).toBe( false );
+		expect( build( page ) ).toEqual( [ 'cbuild[deck]', 'cbuild[step]' ] );
+	} );
+
+	test( 'keeps its store private', async ( { page } ) => {
+		const read = await page.evaluate( async () => {
+			const name = '@wordpress/interactivity';
+			const api = ( await import( /* @vite-ignore */ name ) ) as {
+				store: ( namespace: string ) => unknown;
+			};
+			try {
+				api.store( 'creative-skateboard-builder' );
+				return 'read';
+			} catch ( error ) {
+				return String( error );
+			}
+		} );
+		expect( read ).toMatch( /private store|lock/i );
 	} );
 } );

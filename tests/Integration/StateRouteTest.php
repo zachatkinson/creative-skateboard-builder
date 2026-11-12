@@ -20,6 +20,10 @@ use CreativeBranding\SkateboardBuilder\Service\SpecIndexer;
 use CreativeBranding\SkateboardBuilder\Support\Options;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Domain\KitDocuments;
 use CreativeBranding\SkateboardBuilder\Tests\Support\IntegrationTestCase;
+use CreativeBranding\SkateboardBuilder\Front\Builder;
+use CreativeBranding\SkateboardBuilder\Front\BuilderUrl;
+use CreativeBranding\SkateboardBuilder\Front\BuildLink;
+use CreativeBranding\SkateboardBuilder\Plugin;
 use CreativeBranding\SkateboardBuilder\Tests\Support\KitFactory;
 use WC_Product_Simple;
 use WP_Locale_Switcher;
@@ -240,7 +244,7 @@ final class StateRouteTest extends IntegrationTestCase {
 		self::assertArrayHasKey( $route, $routes );
 		self::assertSame( array( 'GET' => true ), $routes[ $route ][0]['methods'] );
 		self::assertSame( '__return_true', $routes[ $route ][0]['permission_callback'], 'Said, not left out: WordPress warns of a route with none.' );
-		self::assertSame( array( 'id', 'picks', 'previous', 'step', 'assembly', 'locale' ), array_keys( $routes[ $route ][0]['args'] ) );
+		self::assertSame( array( 'id', 'picks', 'previous', 'step', 'assembly', 'locale', 'cbuild', 'page' ), array_keys( $routes[ $route ][0]['args'] ) );
 
 		wp_set_current_user( 0 );
 		self::assertSame( 200, $this->ask()->get_status() );
@@ -306,6 +310,107 @@ final class StateRouteTest extends IntegrationTestCase {
 		$assembled = $this->answer( array( 'assembly' => 'true' ) );
 		self::assertTrue( $assembled['total']['assembly'] );
 		self::assertFalse( $this->answer( array( 'assembly' => 'false' ) )['total']['assembly'] );
+	}
+
+	public function test_a_build_link_is_answered_with_the_view_the_page_would_show(): void {
+		$deck = $this->parts['deck 8.5'];
+		$page = self::factory()->post->create(
+			array(
+				'post_type'    => 'page',
+				'post_status'  => 'publish',
+				'post_content' => '<!-- wp:creative-skateboard-builder/builder {"kit":' . $this->kit . '} /-->',
+			)
+		);
+		$build = array(
+			'deck' => (string) $deck,
+			'step' => 'trucks',
+		);
+
+		$answer = $this->answer(
+			array(
+				'cbuild' => $build,
+				'page'   => $page,
+			)
+		);
+		$view = function ( string $base ) use ( $build ): mixed {
+			$shown = Plugin::container()->get( Builder::class )->show( $this->kit, BuildLink::read( $build ), $base );
+			self::assertNotNull( $shown );
+			return json_decode( (string) wp_json_encode( $shown['view'] ), true );
+		};
+		self::assertSame( 'trucks', $answer['step'] );
+		self::assertSame( $view( (string) get_permalink( $page ) ), $answer['view'], 'the page\'s own view, for the page it is on' );
+		self::assertContains( array( 'name' => 'page_id', 'value' => (string) $page ), $answer['view']['carry'], 'its forms go back to that page' );
+
+		// A page that holds no builder is not where the builder is: its links go to the kit's builder.
+		$plain = self::factory()->post->create( array( 'post_status' => 'publish' ) );
+		$there = $this->answer(
+			array(
+				'cbuild' => $build,
+				'page'   => $plain,
+			)
+		);
+		self::assertSame( $view( BuilderUrl::of( $this->kit ) ), $there['view'] );
+		self::assertSame( $view( BuilderUrl::of( $this->kit ) ), $this->answer( array( 'cbuild' => $build ) )['view'] );
+		// Nor is a page whose block sells another kit.
+		$other = self::factory()->post->create(
+			array(
+				'post_type'    => 'page',
+				'post_status'  => 'publish',
+				'post_content' => '<!-- wp:group --><div><!-- wp:creative-skateboard-builder/builder {"kit":' . ( $this->kit + 1000 ) . '} /--></div><!-- /wp:group -->',
+			)
+		);
+		self::assertSame(
+			$view( BuilderUrl::of( $this->kit ) ),
+			$this->answer(
+				array(
+					'cbuild' => $build,
+					'page'   => $other,
+				)
+			)['view']
+		);
+		// A block inside another is found.
+		$nested = self::factory()->post->create(
+			array(
+				'post_type'    => 'page',
+				'post_status'  => 'publish',
+				'post_content' => '<!-- wp:group --><div><!-- wp:creative-skateboard-builder/builder {"kit":' . $this->kit . '} /--></div><!-- /wp:group -->',
+			)
+		);
+		self::assertSame(
+			$view( (string) get_permalink( $nested ) ),
+			$this->answer(
+				array(
+					'cbuild' => $build,
+					'page'   => $nested,
+				)
+			)['view']
+		);
+
+		self::assertArrayNotHasKey( 'view', $this->answer( array( 'picks' => array( 'deck' => $deck ) ) ), 'asked by its five arguments, the answer is 0.4.0\'s' );
+	}
+
+	public function test_a_build_link_takes_the_place_of_the_five_arguments_and_is_refused_beside_them(): void {
+		foreach ( array( 'picks', 'previous', 'step', 'assembly' ) as $argument ) {
+			$query = array(
+				'cbuild'  => array( 'deck' => (string) $this->parts['deck 8.5'] ),
+				$argument => 'step' === $argument ? 'deck' : ( 'assembly' === $argument ? 'true' : array( 'deck' => $this->parts['deck 8.0'] ) ),
+			);
+			$response = $this->ask( $query );
+			self::assertSame( 400, $response->get_status(), $argument );
+			self::assertSame( 'rest_invalid_param', $response->get_data()['code'] ?? null, $argument );
+		}
+	}
+
+	public function test_an_empty_build_link_is_the_clean_page_with_its_view(): void {
+		$answer = $this->answer( array( 'cbuild' => '' ) );
+		self::assertSame( 'deck', $answer['step'] );
+		self::assertArrayHasKey( 'view', $answer );
+	}
+
+	public function test_a_build_link_the_kit_cannot_read_is_still_answered(): void {
+		$answer = $this->answer( array( 'cbuild' => array( 'nope' => 'x', 'deck' => '999999' ) ) );
+		self::assertSame( 'deck', $answer['step'], 'a link is read as the page reads it: what is no part of it is dropped' );
+		self::assertArrayHasKey( 'view', $answer );
 	}
 
 	public function test_the_schema_refuses_an_answer_that_is_not_its_own(): void {
@@ -380,7 +485,8 @@ final class StateRouteTest extends IntegrationTestCase {
 			},
 			fn (): StateAnswer => $this->service( StateAnswer::class ),
 			fn (): RateLimit => $this->service( RateLimit::class ),
-			fn (): \CreativeBranding\SkateboardBuilder\Port\Cart => $this->service( \CreativeBranding\SkateboardBuilder\Port\Cart::class )
+			fn (): \CreativeBranding\SkateboardBuilder\Port\Cart => $this->service( \CreativeBranding\SkateboardBuilder\Port\Cart::class ),
+			fn (): Builder => $this->service( Builder::class )
 		);
 		foreach ( array(
 			array( 'picks' => array( 'sail' => '5' ) ),

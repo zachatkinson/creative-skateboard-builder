@@ -1,8 +1,37 @@
 /**
- * The few WordPress packages the block's editor uses. WordPress loads each on the editor's page; the build names
- * them as dependencies and bundles none (`@wordpress/dependency-extraction-webpack-plugin`), so no package is
- * installed for them and these declarations stand in for their types.
+ * The few WordPress packages the block's editor and the builder's store use. WordPress loads each on the page; the
+ * build names them as dependencies and bundles none (`@wordpress/dependency-extraction-webpack-plugin`), so no package
+ * is installed for them and these declarations stand in for their types. In Vitest, `@wordpress/interactivity` is the
+ * double in tests/js/support.
  */
+declare module '@wordpress/interactivity' {
+	/**
+	 * Define a store, or add to one.
+	 *
+	 * @param namespace    The store's name.
+	 * @param definition   Its state, actions and callbacks.
+	 * @param options      How it is defined.
+	 * @param options.lock True for a private store that no other code can read.
+	 */
+	export function store< T extends object >(
+		namespace: string,
+		definition: T,
+		options?: { lock?: boolean | string }
+	): T;
+	/**
+	 * What the server gave a store through `wp_interactivity_config()`.
+	 *
+	 * @param namespace The store's name.
+	 */
+	export function getConfig( namespace?: string ): Record< string, unknown >;
+	/**
+	 * The element whose directive is running.
+	 */
+	export function getElement(): {
+		ref: HTMLElement | null;
+		attributes: Record< string, unknown >;
+	};
+}
 declare module '@wordpress/blocks' {
 	/**
 	 * Register a block type with its editor.

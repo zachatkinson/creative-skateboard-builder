@@ -42,6 +42,13 @@ final class BuilderPage {
 	public const string STORE = 'creative-skateboard-builder';
 
 	/**
+	 * The store's script module, as WordPress names the Builder block's `viewScriptModule`.
+	 *
+	 * @since 0.6.0
+	 */
+	public const string MODULE = 'creative-skateboard-builder-builder-view-script-module';
+
+	/**
 	 * Whether a builder has rendered on this page.
 	 *
 	 * @var bool
@@ -84,11 +91,23 @@ final class BuilderPage {
 			wp_interactivity_state(
 				self::STORE,
 				array(
-					'view'   => $shown['view'],
+					'view'    => $shown['view'],
 					// Said by the store after a pick, never on load: the page has just been read out.
-					'status' => '',
+					'status'  => '',
+					'pending' => false,
 				)
 			);
+			// Where the store asks for the next view: the state route, for this page, in its language (D-148).
+			wp_interactivity_config(
+				self::STORE,
+				array(
+					'endpoint' => rest_url( 'cbuild/v1/kits/' . $kit . '/state' ),
+					'page'     => is_singular() ? get_queried_object_id() : 0,
+					'locale'   => determine_locale(),
+				)
+			);
+			// The block's own render enqueues it; the kit's page has no block.
+			wp_enqueue_script_module( self::MODULE );
 			ob_start();
 			require CBUILD_PATH . 'templates/builder/builder.php';
 			$html = (string) ob_get_clean();

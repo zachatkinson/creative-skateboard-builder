@@ -33,7 +33,7 @@ defined( 'ABSPATH' ) || exit;
 		</ul>
 	</div>
 	<div class="cbuild-changes__actions">
-		<form class="cbuild-changes__use" method="get" data-wp-bind--action="state.view.action">
+		<form class="cbuild-changes__use" method="get" data-wp-on--submit="actions.submit" data-wp-bind--action="state.view.action">
 			<template data-wp-each--field="state.view.carry">
 				<input type="hidden" data-wp-bind--name="context.field.name" data-wp-bind--value="context.field.value">
 			</template>
@@ -42,7 +42,7 @@ defined( 'ABSPATH' ) || exit;
 			</template>
 			<button class="cbuild-button cbuild-button--primary" type="submit" data-wp-text="state.view.changes.use.text"></button>
 		</form>
-		<form class="cbuild-changes__undo" method="get" data-wp-bind--action="state.view.action">
+		<form class="cbuild-changes__undo" method="get" data-wp-on--submit="actions.submit" data-wp-bind--action="state.view.action">
 			<template data-wp-each--field="state.view.carry">
 				<input type="hidden" data-wp-bind--name="context.field.name" data-wp-bind--value="context.field.value">
 			</template>

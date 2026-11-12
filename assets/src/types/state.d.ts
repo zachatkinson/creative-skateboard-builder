@@ -298,6 +298,10 @@ export interface CbuildState {
 	 * @maxItems 6
 	 */
 	notes: string[];
+	/**
+	 * Only in an answer to a build link (the cbuild argument): what the builder's template draws for it, as the page's first render has it. The builder's own, and no part of the public API: it may change in any release.
+	 */
+	view?: {};
 }
 /**
  * A part as a slot holds it.

@@ -192,6 +192,22 @@ final class BuilderPageTest extends IntegrationTestCase {
 		self::assertNotNull( $dom->query( '//section[contains(@class,"cbuild-changes")][@hidden]' )->item( 0 ) );
 	}
 
+	public function test_the_kits_page_gives_the_store_its_route_page_and_language_and_loads_it(): void {
+		$this->go_to( (string) get_permalink( $this->kit ) );
+		$this->kitPage();
+		self::assertSame(
+			array(
+				'endpoint' => rest_url( 'cbuild/v1/kits/' . $this->kit . '/state' ),
+				'page'     => $this->kit,
+				'locale'   => determine_locale(),
+			),
+			wp_interactivity_config( BuilderPage::STORE )
+		);
+		self::assertFalse( wp_interactivity_state( BuilderPage::STORE )['pending'] );
+		self::assertContains( BuilderPage::MODULE, wp_script_modules()->get_queue(), 'the kit\'s page has no block to load it' );
+		self::assertNotNull( wp_script_modules()->get_registered( BuilderPage::MODULE ), 'the block registers it, from build/builder/view.js' );
+	}
+
 	public function test_a_build_link_opens_on_its_step_with_its_picks_carried_and_the_recommendation_checked(): void {
 		$dom = self::dom( $this->kitPage( array( 'deck' => (string) $this->parts['deck 8.5'] ) ) );
 

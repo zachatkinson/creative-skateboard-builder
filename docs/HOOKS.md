@@ -384,6 +384,8 @@ It reads and changes nothing. Its arguments travel in the query:
 | `step` | 0.4.0 | The key of the slot whose options are listed. Left out, the first slot with nothing picked. |
 | `assembly` | 0.4.0 | `true` or `false`. Left out, the kit's own default. |
 | `locale` | 0.4.0 | The language to answer in, such as `fr_CA`. The answer is in it when the site has it installed, and in the site's own otherwise. |
+| `cbuild[…]` | 0.6.0 | A build link, as a page's address holds it (The build link, under Milestone 6). It takes the place of `picks`, `previous`, `step` and `assembly`, and sent beside any of them is refused as `rest_invalid_param`. The answer is what the builder's page shows for the link, with `view` added. `cbuild=` with nothing in it is the clean page. |
+| `page` | 0.6.0 | With `cbuild`: the ID of the post the builder is on, for the addresses in `view`. A post a visitor may not see, or one whose Builder block is not this kit's, is not used, and the addresses go to where the kit's builder is (`cbuild_builder_url`). |
 
 | Schema | Since | What the document holds |
 | --- | --- | --- |
@@ -583,6 +585,7 @@ Keys that start with an underscore are the builder's own forms' and are not part
 | `picture` | 0.6.0 | `items`, one for each part the total counts (`slot`, `part`, `label` such as `Wheels: Retna, 54 mm`, `size` such as `54 mm` or empty, `name`, `image`), and `description`, the build in one sentence. |
 | `delivery` | 0.6.0 | `arrival` and `line`: what `cbuild_arrival_estimate` and `cbuild_delivery_line` answer, in plain text, each empty where nothing is said. |
 | `notes` | 0.6.0 | What `cbuild_summary_notes` answers: six lines at most, in plain text. |
+| `view` | 0.6.0 | Only in an answer to `cbuild`: what the builder's template draws, as the page's first render has it. It is the builder's own and no part of this API: it may change in any release. |
 
 The published schema no longer closes its objects (`additionalProperties`), so a reader that checks an answer against one release's schema accepts the fields a later release adds. The plugin's own test still fails on any field the schema does not describe.
 
@@ -592,7 +595,7 @@ The published schema no longer closes its objects (`additionalProperties`), so a
 | --- | --- | --- |
 | `creative-skateboard-builder/builder` | 0.6.0 | The builder for one kit, on any page or post. Its one attribute, `kit` (integer, default `0`), is the kit product's ID. A kit that is a draft, private or password-protected, a product that is no kit, and `0` render nothing. The block can be used once in a post (`supports.multiple: false`), and a page shows one builder: the first one rendered, the kit's own page included. |
 
-The kit's own product page shows the same builder where WooCommerce asks a product type for its add-to-cart area (`woocommerce_cbuild_kit_add_to_cart`), in a classic theme and in the Add to Cart form block. Where `cbuild_builder_url` names another page, the kit's page sends a visitor there instead, with the build in their address, by a 302. Both are rendered on the server, and the template's markup and the store's state are the builder's own: they may change in any release, and are no part of this API.
+The kit's own product page shows the same builder where WooCommerce asks a product type for its add-to-cart area (`woocommerce_cbuild_kit_add_to_cart`), in a classic theme and in the Add to Cart form block. Where `cbuild_builder_url` names another page, the kit's page sends a visitor there instead, with the build in their address, by a 302. Both are rendered on the server, and the template's markup and the store's state are the builder's own: they may change in any release, and are no part of this API. With JavaScript, the store asks the state route for each move with `cbuild` and `page`, and shows the answer's `view` without loading the page. The store, `creative-skateboard-builder`, is private and locked: no other script can read or change it (D-148).
 
 A page that holds a builder and carries a `cbuild` query, whatever it holds, says `noindex, follow` through `wp_robots`, and through `wpseo_robots_array` where Yoast SEO prints its own robots tag. Its canonical through `get_canonical_url` is the page without `cbuild`, so a canonical another filter wrote with the build in it is made clean. Yoast SEO prints no canonical on a noindex page, and its `og:url` is the clean page. An SEO plugin that reads neither filter is asked to do the same through its own (D-147).
 

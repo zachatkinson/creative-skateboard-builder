@@ -15,6 +15,8 @@ All notable changes to this project are documented here. The format follows [Kee
 - The filter `cbuild_part_classes`: classes another plugin adds to a part's card, after the builder's own.
 - The filter `cbuild_builder_url`: the page a kit's builder is on. Where it names another page on the site, the kit's own page sends a visitor there with their build (D-146).
 - Each item of the answer's `picture` says the part's `size`, or an empty string.
+- The builder's store, private and locked: with JavaScript, a step's form, a pick, a link on the builder and Back each ask the state route and show its answer without loading the page. A pick is the shopper's own radio, painted at once, and the route is asked once, 150 ms after the last pick. A request a later one overtakes is aborted and its answer dropped. A step is a history entry at the address the server writes, and a pick replaces it. When the route fails, the form is sent, the link followed or the page reloaded, as without JavaScript (D-148).
+- The state route takes `cbuild`, a build link (`cbuild[…]`) as a page's address holds it, with `page`, the post the builder is on. Its answer is what the page shows for the link, with the builder's own `view` added (D-148).
 - A page holding a builder with a build in its address says `noindex, follow`, and its canonical is the page without the build, through WordPress's filters and Yoast SEO's; with Yoast, which prints no canonical on a noindex page, its `og:url` is the clean page (D-147).
 
 ### Changed

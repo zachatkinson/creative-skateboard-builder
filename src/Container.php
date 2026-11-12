@@ -266,6 +266,9 @@ final class Container {
 					},
 					static function () use ( $c ): Port\Cart {
 						return $c->get( Port\Cart::class );
+					},
+					static function () use ( $c ): Front\Builder {
+						return $c->get( Front\Builder::class );
 					}
 				);
 			},

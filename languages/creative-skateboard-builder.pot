@@ -9,7 +9,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-11-12T15:30:06+00:00\n"
+"POT-Creation-Date: 2026-11-12T16:28:34+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: creative-skateboard-builder\n"
@@ -46,27 +46,29 @@ msgid "Creative Skateboard Builder: run \"composer install\" before activating t
 msgstr ""
 
 #: src/Abilities/BuildAbility.php:108
-#: src/Rest/StateRoute.php:128
+#: src/Rest/StateRoute.php:133
 msgid "The kit product's ID."
 msgstr ""
 
 #: src/Abilities/BuildAbility.php:112
-#: src/Rest/StateRoute.php:133
+#: src/Rest/StateRoute.php:138
 msgid "The picks: each of the kit's slot keys to a part's ID."
 msgstr ""
 
 #: src/Abilities/BuildAbility.php:121
-#: src/Rest/StateRoute.php:141
+#: src/Rest/StateRoute.php:146
 msgid "Whether the shop assembles the build. Left out, the kit's own default."
 msgstr ""
 
 #: src/Abilities/BuildAbility.php:140
-#: src/Rest/StateRoute.php:203
+#: src/Rest/StateRoute.php:218
+#: src/Rest/StateRoute.php:277
 msgid "There is no such kit."
 msgstr ""
 
 #: src/Abilities/BuildAbility.php:149
-#: src/Rest/StateRoute.php:227
+#: src/Rest/StateRoute.php:245
+#: src/Rest/StateRoute.php:274
 msgid "This build cannot be priced in the shop's currency settings."
 msgstr ""
 
@@ -1639,12 +1641,12 @@ msgstr ""
 msgid "The file has no %s column. Add one, or match parts by the other with --key."
 msgstr ""
 
-#: src/Front/BuilderPage.php:109
+#: src/Front/BuilderPage.php:128
 msgid "This builder isn't available right now."
 msgstr ""
 
 #. translators: %s: why the builder could not be shown, as the error said it.
-#: src/Front/BuilderPage.php:113
+#: src/Front/BuilderPage.php:132
 #, php-format
 msgid "Shown to shop managers only: %s"
 msgstr ""
@@ -2353,20 +2355,34 @@ msgstr ""
 msgid "%1$s: %2$s × %3$s"
 msgstr ""
 
-#: src/Rest/StateRoute.php:134
+#: src/Rest/StateRoute.php:139
 msgid "The picks as they were before the last change, for the change list."
 msgstr ""
 
-#: src/Rest/StateRoute.php:136
+#: src/Rest/StateRoute.php:141
 msgid "The key of the slot whose options are listed."
 msgstr ""
 
-#: src/Rest/StateRoute.php:145
+#: src/Rest/StateRoute.php:150
 msgid "The language to answer in, when the site has it installed."
 msgstr ""
 
-#: src/Rest/StateRoute.php:175
+#: src/Rest/StateRoute.php:155
+msgid "A build link, as a page's address holds it. It takes the place of picks, previous, step and assembly, and the answer gains the view the page would show."
+msgstr ""
+
+#: src/Rest/StateRoute.php:160
+msgid "The ID of the post the builder is on, for the view's links. A post that holds no builder for the kit is not used."
+msgstr ""
+
+#: src/Rest/StateRoute.php:190
 msgid "Too many requests. Try again in a minute."
+msgstr ""
+
+#. translators: %s: the argument's name, such as picks.
+#: src/Rest/StateRoute.php:266
+#, php-format
+msgid "A build link takes the place of %s: send one or the other."
 msgstr ""
 
 #. translators: 1: the PHP version the plugin needs, 2: the WordPress version, 3: the WooCommerce version.

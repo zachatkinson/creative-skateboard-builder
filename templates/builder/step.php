@@ -8,7 +8,7 @@
 
 defined( 'ABSPATH' ) || exit;
 ?>
-<form class="cbuild-step" method="get" data-wp-bind--action="state.view.action" data-wp-bind--hidden="!state.view.isStep">
+<form class="cbuild-step" method="get" data-wp-on--submit="actions.submit" data-wp-on--change="actions.pick" data-wp-bind--action="state.view.action" data-wp-bind--hidden="!state.view.isStep">
 	<template data-wp-each--field="state.view.carry">
 		<input type="hidden" data-wp-bind--name="context.field.name" data-wp-bind--value="context.field.value">
 	</template>
@@ -53,7 +53,7 @@ defined( 'ABSPATH' ) || exit;
 		</p>
 	</fieldset>
 	<div class="cbuild-step__nav">
-		<a class="cbuild-step__back" rel="nofollow" data-wp-bind--hidden="!state.view.step.back.shown" data-wp-bind--href="state.view.step.back.url" data-wp-text="state.view.step.back.text"></a>
+		<a class="cbuild-step__back" rel="nofollow" data-wp-on--click="actions.follow" data-wp-bind--hidden="!state.view.step.back.shown" data-wp-bind--href="state.view.step.back.url" data-wp-text="state.view.step.back.text"></a>
 		<button class="cbuild-step__next" type="submit" data-wp-bind--name="state.view.step.stepName" data-wp-bind--value="state.view.step.next.value" data-wp-text="state.view.step.next.text"></button>
 	</div>
 </form>

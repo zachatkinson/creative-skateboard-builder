@@ -2053,3 +2053,18 @@ Milestone 6's step 5, against the spec's SEO and sharing ("A page carrying them 
 
 **Status:** Accepted.
 
+### D-148 · The store shows the server's view: the state route takes a build link and answers with what the page would draw · 2026-11-12
+
+Milestone 6's step 6. The spec has the store call the state route with its five arguments and "the same template the server rendered re-renders from that answer" (How it fits; Upgrades and the public API). Two things stood in the way. The template draws a view, `Front\BuilderView`'s 700 lines and 47 strings, not the answer. And a build link holds more than the five arguments carry: a slot left empty by choice, the step's filters, how many options are shown, a preset and the review.
+
+Zach chose, on 12 November 2026, between the server sending the view, a TypeScript copy of the view with a test that the two agree, and the script handling picks alone with page loads for the rest. **The server sends the view.**
+
+- **Two arguments, added.** `cbuild[…]` is the build link exactly as a page's address holds it, read by `Front\BuildLink::read()` as the page reads it, so the route and the no-JavaScript form cannot read one link two ways. It takes the place of `picks`, `previous`, `step` and `assembly`, and beside any of them is refused, so that no request says two builds. `page` is the post the builder is on: used for the view's addresses when a visitor may see it and its Builder block, at any depth, sells this kit, and otherwise the addresses go to `cbuild_builder_url`'s page. An ID from the browser is checked as every ID is; it never names a page the visitor could not open.
+- **The answer** is `Front\Builder::show()`'s, the one the page's first render uses, with `view` added. So the first render and every later one come from one service, as the plan has it. `view` is described in `schema/state.json` as an object and marked the builder's own, liable to change in any release; the five arguments' answer is 0.4.0's and has none. The route's arguments and rate limit are as before.
+- **The store** (`assets/src/builder/view.ts`) is locked and holds the view and whether a request is out. Its moves are in `navigate.ts`, which Vitest tests with no WordPress: a pick waits 150 ms for the next (spec: Performance), a step change asks at once and cancels a waiting pick, a request a later one overtakes is aborted and its answer dropped, and anything but a view is a failure. A failure does what the page does without JavaScript: the form is sent with the button pressed in it, the link followed, or, after Back, the page reloaded (spec: Resilience).
+- **History.** A step change is an entry at the address the answer says the view is at, which the server may have moved to another step (risers, a required slot). A pick replaces the current entry. Back and Forward ask for the address the browser is at and make none. A pick the shopper moves on from within 150 ms is not written into the entry they leave.
+- **No strings.** Every word is in the view. The script is 2.9 kB before compression, and `@wordpress/interactivity` is WordPress's own module.
+- **The block** names the store as its `viewScriptModule`; the kit's own page, which has no block, enqueues the same module. `wp_interactivity_config()` gives the store the route's address, the page and the page's language.
+
+**Status:** Accepted.
+

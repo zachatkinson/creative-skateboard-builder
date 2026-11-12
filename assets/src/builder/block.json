@@ -32,5 +32,6 @@
 			"fontSize": true
 		}
 	},
-	"editorScript": "file:./index.js"
+	"editorScript": "file:./index.js",
+	"viewScriptModule": "file:./view.js"
 }

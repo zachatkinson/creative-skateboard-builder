@@ -16,7 +16,7 @@ defined( 'ABSPATH' ) || exit;
 				<span class="cbuild-review__slot" data-wp-text="context.item.label"></span>
 				<span class="cbuild-review__name" data-wp-text="context.item.name"></span>
 				<span class="cbuild-review__fit" data-wp-text="context.item.fit"></span>
-				<a class="cbuild-review__change" rel="nofollow" data-wp-bind--href="context.item.url" data-wp-text="context.item.change"></a>
+				<a class="cbuild-review__change" rel="nofollow" data-wp-on--click="actions.follow" data-wp-bind--href="context.item.url" data-wp-text="context.item.change"></a>
 			</li>
 		</template>
 	</ul>

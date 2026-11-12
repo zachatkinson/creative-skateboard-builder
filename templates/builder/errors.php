@@ -12,7 +12,7 @@ defined( 'ABSPATH' ) || exit;
 	<h3 class="cbuild-errors__heading" data-wp-text="state.view.errors.heading"></h3>
 	<ul class="cbuild-errors__list">
 		<template data-wp-each--error="state.view.errors.items">
-			<li><a data-wp-bind--href="context.error.url" data-wp-text="context.error.text"></a></li>
+			<li><a data-wp-on--click="actions.follow" data-wp-bind--href="context.error.url" data-wp-text="context.error.text"></a></li>
 		</template>
 	</ul>
 </div>

@@ -19,7 +19,7 @@ defined( 'ABSPATH' ) || exit;
 			</div>
 		</template>
 	</dl>
-	<p class="cbuild-summary__assembly"><span data-wp-text="state.view.summary.assembly"></span> <a rel="nofollow" data-wp-bind--href="state.view.summary.toggle.url" data-wp-text="state.view.summary.toggle.text"></a></p>
+	<p class="cbuild-summary__assembly"><span data-wp-text="state.view.summary.assembly"></span> <a rel="nofollow" data-wp-on--click="actions.follow" data-wp-bind--href="state.view.summary.toggle.url" data-wp-text="state.view.summary.toggle.text"></a></p>
 	<p class="cbuild-summary__saved" data-wp-bind--hidden="!state.view.summary.hasSaved" data-wp-text="state.view.summary.saved"></p>
 	<p class="cbuild-summary__total"><span data-wp-text="state.view.summary.totalLabel"></span> <strong data-wp-text="state.view.summary.total"></strong></p>
 	<p class="cbuild-summary__ships" data-wp-bind--hidden="!state.view.summary.hasShips" data-wp-text="state.view.summary.ships"></p>
