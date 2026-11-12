@@ -176,6 +176,7 @@ final class IndexJobsTest extends TestCase {
 		$this->jobs->indexPart( 20 );
 		self::assertSame( array( 21, 22 ), array_keys( $this->index->rows ) );
 		self::assertSame( array( array( 21, 22 ) ), $this->source->asked, 'one batch for the variations' );
+		self::assertSame( array( array( 21, 22 ) ), $this->kits->forgotten, 'and what a build is told of them is read again' );
 	}
 
 	public function test_a_deleted_products_job_removes_its_rows(): void {

@@ -78,6 +78,8 @@ final class KitVisibilityTest extends TestCase {
 		self::assertSame( array( 3, 7, 9 ), $visibility->excluded( array( 3, 7 ) ), 'each once, as the whole numbers Yoast compares' );
 		self::assertSame( array( 7, 9 ), $visibility->excluded( array() ) );
 		self::assertSame( array( 7, 9 ), $visibility->excluded( null ), 'another plugin\'s answer that is no list' );
-		self::assertSame( array( 12, 7, 9 ), $visibility->excluded( array( '12', 'x', 0 ) ) );
+		self::assertSame( array( 12, 7, 9 ), $visibility->excluded( array( 'x', '12', 0 ) ), 'and what is no number stops nothing after it' );
+		self::assertSame( array( 7, 9 ), $visibility->excluded( array( '0.5', '-3' ) ), 'a number that is no post\'s ID is left out, not kept as 0' );
+		self::assertSame( array( 4, 5, 7, 9 ), $visibility->excluded( array( 'a' => 4, 0 => 5 ) ), 'whatever the keys it came under' );
 	}
 }

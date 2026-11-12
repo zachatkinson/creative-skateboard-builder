@@ -216,7 +216,7 @@ final readonly class ImportState {
 		$found = array();
 		foreach ( is_array( $data['found'] ?? null ) ? $data['found'] : array() as $sku => $id ) {
 			if ( is_int( $id ) && $id > 0 ) {
-				$found[ (string) $sku ] = $id;
+				$found[ $sku ] = $id;
 			}
 		}
 		return new self(
