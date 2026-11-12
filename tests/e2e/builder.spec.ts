@@ -753,6 +753,80 @@ test.describe( 'The builder with JavaScript', () => {
 		expect( await stayed( page ) ).toBe( true );
 	} );
 
+	test( 'adds the build without loading the page, tells the carts and the shop, and says so', async ( {
+		page,
+	} ) => {
+		await page.evaluate( () => {
+			const heard = window as unknown as { cbuildHeard: unknown[] };
+			heard.cbuildHeard = [];
+			document.body.addEventListener( 'wc-blocks_added_to_cart', () =>
+				heard.cbuildHeard.push( 'wc-blocks_added_to_cart' )
+			);
+			document.addEventListener( 'cbuild:added', ( event ) =>
+				heard.cbuildHeard.push( ( event as CustomEvent ).detail )
+			);
+		} );
+		await page
+			.locator( '.cbuild-presets' )
+			.getByRole( 'button', { name: 'Start from Street' } )
+			.click();
+		await expect( heading( page ) ).toHaveText( 'Step 7 of 7: Review' );
+		// What the event is to say: the review form's own fields.
+		const sent = await page
+			.locator( '#cbuild-review-form' )
+			.evaluate( ( form ) => {
+				const picks: Record< string, number > = {};
+				let assembly = false;
+				for ( const [ name, value ] of new FormData(
+					form as HTMLFormElement
+				) ) {
+					const slot = /^cbuild\[picks\]\[(\w+)\]$/.exec( name );
+					if ( null !== slot ) {
+						picks[ slot[ 1 ]! ] = Number( value );
+					} else if ( 'cbuild[assembly]' === name ) {
+						assembly = '1' === value;
+					}
+				}
+				return { picks, assembly };
+			} );
+		expect( Object.keys( sent.picks ) ).toHaveLength( 6 );
+		const added = page.waitForResponse(
+			( response ) =>
+				/wc(%2F|\/)store(%2F|\/)v1(%2F|\/)cart(%2F|\/)add-item/.test(
+					response.url()
+				) && response.request().method() === 'POST'
+		);
+		await page
+			.locator( '.cbuild-review' )
+			.getByRole( 'button', { name: 'Add to cart' } )
+			.click();
+		expect( ( await added ).status() ).toBe( 201 );
+		const said = page.locator( '.cbuild-review__added' );
+		await expect( said ).toBeFocused();
+		await expect( said ).toContainText( 'The build is in your cart.' );
+		await expect(
+			said.getByRole( 'link', { name: 'View cart' } )
+		).toBeVisible();
+		await expect(
+			page.locator( '.cbuild' ).getByRole( 'status' )
+		).toHaveText( 'The build is in your cart.' );
+		expect( await stayed( page ) ).toBe( true );
+		const heard = await page.evaluate(
+			() =>
+				( window as unknown as { cbuildHeard: unknown[] } ).cbuildHeard
+		);
+		expect( heard[ 0 ] ).toBe( 'wc-blocks_added_to_cart' );
+		expect( heard[ 1 ] ).toEqual( {
+			kit: fixture().kit,
+			...sent,
+		} );
+		// The cart has the build: one count per build (D-009).
+		await page.goto( '/cart-test-mini-cart/' );
+		await expect(
+			page.locator( 'main .wc-block-mini-cart__badge' )
+		).toHaveText( '1', { timeout: 20_000 } );
+	} );
+
 	test( 'keeps its store private', async ( { page } ) => {
 		const read = await page.evaluate( async () => {
 			const name = '@wordpress/interactivity';

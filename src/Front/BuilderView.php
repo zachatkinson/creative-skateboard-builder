@@ -1011,6 +1011,8 @@ final class BuilderView {
 			'action'     => $url( $link ),
 			'fields'     => $fields,
 			'add'        => __( 'Add to cart', 'creative-skateboard-builder' ),
+			// Said, and focused, once an add without a page load is done (D-155).
+			'added'      => __( 'The build is in your cart.', 'creative-skateboard-builder' ),
 		);
 	}
 }

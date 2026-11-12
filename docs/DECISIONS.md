@@ -2135,3 +2135,14 @@ Milestone 6's step 11, against the spec's Review and add to cart ("assembly on o
 - **A preset's tile** shows its first slot's part's photo, the deck's, lazily, from the one cards call the answer already makes (the answer's `image` on each preset, `null` where the part has none). Milestone 7 draws each preset's board instead. This closes what D-151 left for this step.
 
 **Status:** Accepted.
+
+### D-155 · Add to cart through the Store API, with its nonce asked for at the add · 2026-11-12
+
+Milestone 6's step 12a, against the spec's Review and add to cart ("With JavaScript, Add to cart uses the Store API's `cart/add-item` and then sends `wc-blocks_added_to_cart`, so the Mini-Cart updates") and Privacy (the DOM events "a shop's own analytics can listen to, under the shop's own consent").
+
+- **The nonce.** The Store API takes a write only with a `Nonce` header made for the session (`wc_store_api`, `src/StoreApi/Routes/V1/AbstractCartRoute.php:326-349`). A nonce printed in the page would be stale on any page a cache keeps, and the builder's pages are exactly the ones a shop caches. So the add first reads the cart (`GET wc/store/v1/cart`), whose answer carries a fresh `Nonce` header (`:179`), and posts with it. One extra request at the moment the shopper adds, which no cache can spoil.
+- **Anything but a line added falls back.** A cart read or an add that fails, a missing nonce, or a network error sends the review's form as it is sent without JavaScript, to WooCommerce's own handler, which adds the build or says why as a notice. The shopper never sees a failure the server did not explain.
+- **What the page does after.** It sends `wc-blocks_added_to_cart` on `document.body`, bubbling and cancelable, as WooCommerce's own add buttons do; the Mini-Cart listens on the document (`src/Blocks/BlockTypes/MiniCart.php:404`, `:407`). It then says "The build is in your cart." in the status region, shows the same sentence with a link to the cart under the review, and moves focus there. The next view the builder shows forgets the add.
+- **The events.** `cbuild:pick` and `cbuild:added` go on the builder's own element and bubble, with IDs alone (docs/HOOKS.md, DOM events). The plugin listens to neither and sends nothing anywhere.
+
+**Status:** Accepted.

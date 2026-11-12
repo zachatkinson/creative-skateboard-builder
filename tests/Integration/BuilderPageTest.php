@@ -204,6 +204,7 @@ final class BuilderPageTest extends IntegrationTestCase {
 		$this->kitPage();
 		self::assertSame(
 			array(
+				'cart'     => rest_url( 'wc/store/v1/cart' ),
 				'endpoint' => rest_url( 'cbuild/v1/kits/' . $this->kit . '/state' ),
 				'page'     => $this->kit,
 				'locale'   => determine_locale(),
@@ -212,6 +213,7 @@ final class BuilderPageTest extends IntegrationTestCase {
 			wp_interactivity_config( BuilderPage::STORE )
 		);
 		self::assertFalse( wp_interactivity_state( BuilderPage::STORE )['pending'] );
+		self::assertFalse( wp_interactivity_state( BuilderPage::STORE )['added'], 'Nothing is added on load.' );
 		self::assertContains( BuilderPage::MODULE, wp_script_modules()->get_queue(), 'the kit\'s page has no block to load it' );
 		self::assertNotNull( wp_script_modules()->get_registered( BuilderPage::MODULE ), 'the block registers it, from build/builder/view.js' );
 	}
@@ -251,6 +253,20 @@ final class BuilderPageTest extends IntegrationTestCase {
 		$dom = self::dom( $this->kitPage( array() ) );
 		self::assertSame( 1, $dom->query( '//form[@id="' . BuilderView::STEP_FORM . '"][contains(@class,"cbuild-step")]' )->length );
 		self::assertSame( 1, $dom->query( '//form[@id="' . BuilderView::REVIEW_FORM . '"][contains(@class,"cbuild-review__form")]' )->length );
+	}
+
+	public function test_the_review_adds_through_the_store_and_says_so_with_a_link_to_the_cart(): void {
+		$dom  = self::dom( $this->kitPage( array() ) );
+		$form = $dom->query( '//form[@id="' . BuilderView::REVIEW_FORM . '"]' )->item( 0 );
+		self::assertSame( 'actions.add', $form->getAttribute( 'data-wp-on--submit' ), 'With JavaScript, the Store API adds the build (D-155).' );
+		self::assertSame( 'post', $form->getAttribute( 'method' ), 'Without it, WooCommerce\'s own handler does.' );
+		$added = $dom->query( '//p[contains(@class,"cbuild-review__added")]' )->item( 0 );
+		self::assertNotNull( $added );
+		self::assertTrue( $added->hasAttribute( 'hidden' ), 'Nothing is added on load.' );
+		self::assertSame( '-1', $added->getAttribute( 'tabindex' ), 'Focus goes to it once the build is added.' );
+		self::assertSame( 'The build is in your cart.', self::text( $dom, '//p[contains(@class,"cbuild-review__added")]/span' ) );
+		self::assertSame( wc_get_cart_url(), $dom->query( '//p[contains(@class,"cbuild-review__added")]/a' )->item( 0 )->getAttribute( 'href' ) );
+		self::assertSame( 'View cart', self::text( $dom, '//p[contains(@class,"cbuild-review__added")]/a' ) );
 	}
 
 	public function test_the_deck_step_has_a_button_for_each_width_in_its_form(): void {

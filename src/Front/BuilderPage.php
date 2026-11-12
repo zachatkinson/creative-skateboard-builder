@@ -104,6 +104,8 @@ final class BuilderPage {
 					// Said by the store after a pick, never on load: the page has just been read out.
 					'status'  => '',
 					'pending' => false,
+					// Set by the store once Add to cart has put the build in the cart without a page load (D-155).
+					'added'   => false,
 				)
 			);
 			// Where the store asks for the next view: the state route, for this page, in its language (D-148), and the
@@ -111,6 +113,8 @@ final class BuilderPage {
 			wp_interactivity_config(
 				self::STORE,
 				array(
+					// Where Add to cart sends the build with JavaScript: the Store API's cart (D-155).
+					'cart'     => rest_url( 'wc/store/v1/cart' ),
 					'endpoint' => rest_url( 'cbuild/v1/kits/' . $kit . '/state' ),
 					'page'     => is_singular() ? get_queried_object_id() : 0,
 					'locale'   => determine_locale(),

@@ -607,3 +607,14 @@ A page that holds a builder and carries a `cbuild` query, whatever it holds, say
 | `cbuild_part_classes` | 0.6.0 | `array $classes`, `int $part`, `string $slot`, `int $kit` | Classes to add to a part's card in the builder, such as `is-staff-pick`. `$classes` starts empty. Each answer is made safe for a class attribute and put after the builder's own, which are kept whatever the answer; an answer that is no list adds nothing. `$part` is a product's or a variation's ID. |
 | `cbuild_summary_notes` | 0.6.0 | `array $notes`, `array $context` | Lines under a build's total in the builder: the points a build earns, or a word to a signed-in dealer. `$notes` starts empty. `$context` holds `kit` (the kit product's ID), `parts` (the parts the total counts, slot key to part ID), `assembly`, and `total` in whole minor units with its `decimals`. Answer with a list of sentences in the request's language. Each is shown as plain text, the first six are kept, and anything that is no text is dropped. The answer is asked for on every pick and is never cached, so it has to be quick. Name no person in a line that a shared screen could show. |
 
+### DOM events
+
+The builder sends two events on its own element (`.cbuild`), with JavaScript only. Each bubbles, so a listener on the document hears every builder on the page. They are for a shop's own analytics, under the shop's own consent: the plugin sends nothing anywhere itself, and each carries IDs alone, never a name, a price or anything of the shopper. A listener cannot change what the builder does.
+
+| Event | Since | `detail` | When |
+| --- | --- | --- | --- |
+| `cbuild:pick` | 0.6.0 | `{ kit: number, slot: string, part: number }`: the kit product's ID, the slot's key, and the part's ID, `0` for a slot left empty by choice. | The shopper picks a part, at once, before the state route answers. A pick the route then refuses is still sent. |
+| `cbuild:added` | 0.6.0 | `{ kit: number, picks: { [slot: string]: number }, assembly: boolean }`: the kit's ID, the build's parts by slot, and whether it is assembled. | The Store API has added the build to the cart. An add that falls back to WooCommerce's own handler loads the page, and sends nothing. |
+
+The builder also sends WooCommerce's own `wc-blocks_added_to_cart` on `document.body` after an add, on which the Mini-Cart reads the cart again (D-155). It is WooCommerce's event, not part of this plugin's API.
+

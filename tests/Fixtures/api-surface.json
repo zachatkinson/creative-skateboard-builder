@@ -118,7 +118,10 @@
     "blocks": [
         "creative-skateboard-builder/builder"
     ],
-    "dom_events": [],
+    "dom_events": [
+        "cbuild:added",
+        "cbuild:pick"
+    ],
     "site_health_tests": [
         "cbuild_catalogue",
         "cbuild_index",

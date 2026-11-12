@@ -14,13 +14,20 @@
  * - **After a step changes,** focus goes to what the shopper reads first: the error summary, the change panel's
  *   heading, or the step's heading; the page's title says the step (D-149). **After a pick,** the status region says
  *   the build and its total, once (spec: Keyboard and screen readers).
+ * - **Add to cart** posts the build to the Store API, then tells the carts (`wc-blocks_added_to_cart`, on which the
+ *   Mini-Cart refreshes) and says so; without the Store API, the form goes to WooCommerce's own handler (D-155).
+ * - **Two events** on the builder's element, bubbling, for a shop's own analytics under its own consent (spec:
+ *   Privacy): `cbuild:pick`, with the kit, the slot and the part, and `cbuild:added`, with the kit, its picks and
+ *   assembly. They carry IDs alone.
  */
 import { getConfig, getElement, store } from '@wordpress/interactivity';
 import { Navigator, type Move, type View } from './navigate';
+import { add, body } from './cart';
 
 export const NAME = 'creative-skateboard-builder';
 
 interface Config {
+	cart: string;
 	endpoint: string;
 	page: number;
 	locale: string;
@@ -28,7 +35,9 @@ interface Config {
 }
 
 interface Shown extends View {
+	kit: number;
 	step: { slot: string };
+	review: { added: string };
 	title: string;
 	status: string;
 	isChanges: boolean;
@@ -39,6 +48,7 @@ interface State {
 	view: Shown;
 	pending: boolean;
 	status: string;
+	added: boolean;
 }
 
 let navigator: Navigator | undefined;
@@ -123,6 +133,7 @@ function nav( state: State ): Navigator {
 						? 'push'
 						: history;
 				state.view = shown;
+				state.added = false;
 				say( state, shown, turned, config );
 				return turned;
 			},
@@ -179,7 +190,7 @@ function send( form: HTMLFormElement, submitter?: HTMLElement | null ): void {
 const { state } = store(
 	NAME,
 	{
-		state: { pending: false, status: '' } as State,
+		state: { pending: false, status: '', added: false } as State,
 		callbacks: {
 			init(): void {
 				root = getElement().ref;
@@ -208,6 +219,16 @@ const { state } = store(
 				) {
 					return;
 				}
+				root?.dispatchEvent(
+					new CustomEvent( 'cbuild:pick', {
+						bubbles: true,
+						detail: {
+							kit: state.view.kit,
+							slot: state.view.step.slot,
+							part: Number( input.value ),
+						},
+					} )
+				);
 				nav( state ).pick( {
 					fields: [
 						...fields( input.form ),
@@ -216,6 +237,53 @@ const { state } = store(
 					history: 'replace',
 					// The radio stays picked, and the form's Next sends it.
 					fallback: () => undefined,
+				} );
+			},
+			async add( event: SubmitEvent ): Promise< void > {
+				const form = getElement().ref;
+				if ( ! ( form instanceof HTMLFormElement ) ) {
+					return;
+				}
+				event.preventDefault();
+				const sent = fields( form, event.submitter );
+				const config = getConfig( NAME ) as Partial< Config >;
+				state.pending = true;
+				const added = await add(
+					{
+						cart: String( config.cart ?? '' ),
+						fetch: ( input, init ) => window.fetch( input, init ),
+					},
+					sent
+				);
+				state.pending = false;
+				if ( ! added ) {
+					send( form, event.submitter );
+					return;
+				}
+				const item = body( sent );
+				// The Mini-Cart listens on the document, as for any product added (D-155).
+				form.ownerDocument.body.dispatchEvent(
+					new CustomEvent( 'wc-blocks_added_to_cart', {
+						bubbles: true,
+						cancelable: true,
+					} )
+				);
+				root?.dispatchEvent(
+					new CustomEvent( 'cbuild:added', {
+						bubbles: true,
+						detail: {
+							kit: item.id,
+							picks: item.cbuild.picks,
+							assembly: item.cbuild.assembly ?? false,
+						},
+					} )
+				);
+				state.added = true;
+				state.status = state.view.review.added;
+				window.requestAnimationFrame( () => {
+					root?.querySelector< HTMLElement >(
+						'.cbuild-review__added'
+					)?.focus();
 				} );
 			},
 			follow( event: MouseEvent ): void {

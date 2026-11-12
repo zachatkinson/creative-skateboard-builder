@@ -2,7 +2,7 @@
 /**
  * The review (spec: Review and add to cart): the build by slot with a fit tick and a Change link each; assembly with
  * its fee and lead time, the arrival date, the total and the returns notice, all before Add to cart, which posts to
- * WooCommerce's own handler.
+ * WooCommerce's own handler. With JavaScript, the store adds it through the Store API and says so here (D-155).
  *
  * @package CreativeBranding\SkateboardBuilder
  */
@@ -26,10 +26,14 @@ defined( 'ABSPATH' ) || exit;
 	<p class="cbuild-review__arrival" data-wp-bind--hidden="!state.view.review.hasArrival" data-wp-text="state.view.review.arrival"></p>
 	<p class="cbuild-review__total" data-wp-text="state.view.review.total"></p>
 	<p class="cbuild-review__notice" data-wp-bind--hidden="!state.view.review.hasNotice" data-wp-text="state.view.review.notice"></p>
-	<form class="cbuild-review__form" id="cbuild-review-form" method="post" data-wp-bind--action="state.view.review.action">
+	<form class="cbuild-review__form" id="cbuild-review-form" method="post" data-wp-on--submit="actions.add" data-wp-bind--action="state.view.review.action">
 		<template data-wp-each--field="state.view.review.fields">
 			<input type="hidden" data-wp-bind--name="context.field.name" data-wp-bind--value="context.field.value">
 		</template>
 		<button class="cbuild-button cbuild-button--primary" type="submit" data-wp-bind--disabled="!state.view.review.ready" data-wp-text="state.view.review.add"></button>
 	</form>
+	<p class="cbuild-review__added" tabindex="-1" data-wp-bind--hidden="!state.added">
+		<span data-wp-text="state.view.review.added"></span>
+		<a href="<?php echo esc_url( wc_get_cart_url() ); ?>"><?php esc_html_e( 'View cart', 'creative-skateboard-builder' ); ?></a>
+	</p>
 </section>

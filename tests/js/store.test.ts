@@ -9,6 +9,7 @@ import { WAIT } from '../../assets/src/builder/navigate';
 
 interface Actions {
 	submit: ( event: SubmitEvent ) => void;
+	add: ( event: SubmitEvent ) => Promise< void >;
 	pick: ( event: Event ) => void;
 	follow: ( event: MouseEvent ) => void;
 	back: () => void;
@@ -19,6 +20,7 @@ interface Defined {
 		view: Record< string, unknown >;
 		pending: boolean;
 		status: string;
+		added: boolean;
 	};
 	actions: Actions;
 }
@@ -43,6 +45,13 @@ const NEXT = {
 	errors: { shown: false },
 };
 const TITLE = { before: '', after: ' - Build a complete - Shop' };
+const CART = window.location.origin + '/wp-json/wc/store/v1/cart';
+const REVIEW = {
+	...START,
+	url: window.location.origin + '/?review',
+	step: { slot: 'review' },
+	review: { added: 'The build is in your cart.' },
+};
 
 function answer( view: unknown, status = 200 ): Response {
 	return new Response( JSON.stringify( { view } ), {
@@ -88,6 +97,7 @@ beforeEach( () => {
 	vi.useFakeTimers();
 	reset();
 	setConfig( NAME, {
+		cart: CART,
 		endpoint: ENDPOINT,
 		page: 25,
 		locale: 'fr_CA',
@@ -96,6 +106,7 @@ beforeEach( () => {
 	state.view = START;
 	state.pending = false;
 	state.status = '';
+	state.added = false;
 	document.title = 'Build a complete - Shop';
 	fetched = [];
 	reply = () => answer( NEXT );
@@ -577,5 +588,149 @@ describe( 'the store', () => {
 		actions.back();
 		expect( fetched[ 0 ]!.searchParams.get( 'page' ) ).toBe( '0' );
 		expect( fetched[ 0 ]!.searchParams.get( 'locale' ) ).toBe( '' );
+	} );
+} );
+
+describe( 'adding to the cart', () => {
+	function review(): { root: HTMLElement; sheet: HTMLFormElement } {
+		document.body.innerHTML = `
+			<div class="cbuild">
+				<form method="post" action="/?review">
+					<input type="hidden" name="add-to-cart" value="7">
+					<input type="hidden" name="cbuild[picks][deck]" value="101">
+					<input type="hidden" name="cbuild[assembly]" value="1">
+					<button type="submit">Add to cart</button>
+				</form>
+				<p class="cbuild-review__added" tabindex="-1"></p>
+			</div>`;
+		const root = document.querySelector< HTMLElement >( '.cbuild' )!;
+		setElement( root );
+		(
+			defined.definition as { callbacks: { init: () => void } }
+		 ).callbacks.init();
+		const sheet = document.querySelector( 'form' )!;
+		setElement( sheet );
+		state.view = REVIEW;
+		return { root, sheet };
+	}
+
+	function cart( added: number ): string[] {
+		const asked: string[] = [];
+		vi.stubGlobal( 'fetch', ( input: string, init?: RequestInit ) => {
+			asked.push( ( init?.method ?? 'GET' ) + ' ' + input );
+			return Promise.resolve(
+				input === CART
+					? new Response( '{}', { headers: { Nonce: 'n' } } )
+					: new Response( '{}', { status: added } )
+			);
+		} );
+		return asked;
+	}
+
+	it( 'posts the build to the Store API, tells the carts, says so, and sends the builder its own event', async () => {
+		const { root, sheet } = review();
+		const asked = cart( 201 );
+		const told: string[] = [];
+		const carts = ( event: Event ) =>
+			told.push( 'carts:' + String( event.bubbles ) );
+		let detail: unknown;
+		const builder = ( event: Event ) => {
+			told.push(
+				'builder:' + String( ( event.target as Element ).className )
+			);
+			detail = ( event as CustomEvent ).detail;
+		};
+		root.ownerDocument.addEventListener( 'wc-blocks_added_to_cart', carts );
+		root.ownerDocument.addEventListener( 'cbuild:added', builder );
+		const submitted = vi.spyOn( browser, 'submit' );
+		const event = new SubmitEvent( 'submit', { cancelable: true } );
+		await actions.add( event );
+		vi.advanceTimersToNextFrame();
+		root.ownerDocument.removeEventListener(
+			'wc-blocks_added_to_cart',
+			carts
+		);
+		root.ownerDocument.removeEventListener( 'cbuild:added', builder );
+
+		expect( event.defaultPrevented ).toBe( true );
+		expect( asked ).toEqual( [
+			'GET ' + CART,
+			'POST ' + CART + '/add-item',
+		] );
+		expect( told ).toEqual( [ 'carts:true', 'builder:cbuild' ] );
+		expect( detail ).toEqual( {
+			kit: 7,
+			picks: { deck: 101 },
+			assembly: true,
+		} );
+		expect( state.added ).toBe( true );
+		expect( state.status ).toBe( 'The build is in your cart.' );
+		expect( state.pending ).toBe( false );
+		expect( submitted ).not.toHaveBeenCalled();
+		expect( root.ownerDocument.activeElement ).toBe(
+			root.querySelector( '.cbuild-review__added' )
+		);
+		expect( sheet.isConnected ).toBe( true );
+	} );
+
+	it( "sends the form to WooCommerce's own handler when the add fails, and says nothing was added", async () => {
+		const { root, sheet } = review();
+		cart( 400 );
+		const submitted = vi
+			.spyOn( browser, 'submit' )
+			.mockImplementation( () => undefined );
+		const told: string[] = [];
+		const builder = () => told.push( 'added' );
+		root.ownerDocument.addEventListener( 'cbuild:added', builder );
+		await actions.add( new SubmitEvent( 'submit', { cancelable: true } ) );
+		root.ownerDocument.removeEventListener( 'cbuild:added', builder );
+		expect( submitted ).toHaveBeenCalledWith( sheet );
+		expect( state.added ).toBe( false );
+		expect( state.pending ).toBe( false );
+		expect( told ).toEqual( [] );
+	} );
+
+	it( 'leaves a submit on anything but a form alone', async () => {
+		const { root } = review();
+		setElement( root.querySelector( 'p' ) );
+		const event = new SubmitEvent( 'submit', { cancelable: true } );
+		await actions.add( event );
+		expect( event.defaultPrevented ).toBe( false );
+	} );
+
+	it( 'forgets an add once the view moves on', async () => {
+		review();
+		cart( 201 );
+		await actions.add( new SubmitEvent( 'submit', { cancelable: true } ) );
+		expect( state.added ).toBe( true );
+		vi.stubGlobal( 'fetch', () => Promise.resolve( answer( NEXT ) ) );
+		const { radio } = form();
+		actions.pick( { target: radio } as unknown as Event );
+		vi.advanceTimersByTime( WAIT );
+		await settle();
+		expect( state.added ).toBe( false );
+	} );
+
+	it( 'sends the builder an event for each pick, with the kit, the slot and the part', () => {
+		const { radio } = form();
+		document.body.insertAdjacentHTML(
+			'afterbegin',
+			'<div class="cbuild"></div>'
+		);
+		const root = document.querySelector< HTMLElement >( '.cbuild' )!;
+		root.appendChild( radio.form! );
+		setElement( root );
+		(
+			defined.definition as { callbacks: { init: () => void } }
+		 ).callbacks.init();
+		state.view = { ...START, kit: 7 };
+		let detail: unknown;
+		const picked = ( event: Event ) => {
+			detail = ( event as CustomEvent ).detail;
+		};
+		root.ownerDocument.addEventListener( 'cbuild:pick', picked );
+		actions.pick( { target: radio } as unknown as Event );
+		root.ownerDocument.removeEventListener( 'cbuild:pick', picked );
+		expect( detail ).toEqual( { kit: 7, slot: 'deck', part: 12 } );
 	} );
 } );
