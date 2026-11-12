@@ -1947,3 +1947,19 @@ Issue #28, from the spec-reviewer on milestone 4, with Zach's answer of 11 Novem
 **Red runs:** `IndexJobsTest::test_a_variable_products_job_indexes_its_variations_and_not_itself` and `PartsTableTest::test_the_job_that_indexes_a_part_writes_its_row_and_the_next_visitor_loads_no_product`, each "Failed asserting that two arrays are identical." With the delete left to the request's end, the second fails the same way.
 
 **Status:** Accepted.
+
+### D-141 · Where the test shop's front page spends its largest paint, and what the builder page is measured on (#7) · 2026-11-12
+
+Issue #7, owed before the builder page exists. Measured on 12 November 2026 with `npm run lhci` (Lighthouse 13.6.0, mobile profile, three runs, WordPress 7.1.4, WooCommerce 11.3.0, Twenty Twenty-Five, the plugin active).
+
+- **The numbers.** Largest paint 2,283, 2,290 and 2,323 ms; first paint 2,203 to 2,260 ms; the server's answer 103 to 216 ms; blocking time 0.
+- **The largest paint is text,** the site title in the footer (`h2.wp-block-site-title`), painted with the first paint. Nothing on the page is fetched for it.
+- **What delays it is the first paint, and that is the simulated network.** Lighthouse's phone has 150 ms of latency and 1.6 Mbit/s. Before anything paints, the page waits for what blocks rendering: jQuery and jQuery Migrate in the head (36 kB, which WooCommerce's classic scripts ask for), `woocommerce.css` and `woocommerce-smallscreen.css` (14 kB, of which the page uses under 1 %), and six more small stylesheets of WooCommerce's blocks and the theme. 31 requests and 205 kB in all, 54 kB of it the theme's font. Lighthouse puts about a second of the 2.1 s on the blocking requests.
+- **None of it is the plugin's, and none of it is wp-env's.** A shop on Twenty Twenty-Five with WooCommerce would measure the same on this profile. It is the theme's and WooCommerce's, and a shop's own theme and caching decide it. So the budget is about what the builder adds to a baseline the plugin does not set.
+- **What the builder may add.** About 200 ms before 2,500. The builder's styles must not block: they are small and in the page. Its script is a module, which never blocks. The picture's first photo becomes the largest paint, so it is in the HTML with its size, `fetchpriority="high"` and no lazy loading, where the browser finds it while the blocking requests are still loading, and it is held under what that connection carries in the time (about 30 kB).
+- **What the builder page is measured on:** a page holding the Builder block on Twenty Twenty-Five, at its clean address, with a kit whose parts have photos, made by the browser fixture. The kit's own page is measured by the browser tests, not by Lighthouse.
+- **Five runs, not three,** from the commit that points Lighthouse at the builder page. The three runs here are 40 ms apart, but D-032 saw one in three over the budget on a busy machine, and a median of five does not move with one slow run. It costs CI about a minute.
+
+The budget is unchanged. Changing it, or what it is measured against, stays Zach's.
+
+**Status:** Accepted.
