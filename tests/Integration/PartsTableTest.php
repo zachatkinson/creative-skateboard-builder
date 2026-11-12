@@ -14,6 +14,7 @@ use CreativeBranding\SkateboardBuilder\Hooks\CardHooks;
 use CreativeBranding\SkateboardBuilder\Hooks\IndexHooks;
 use CreativeBranding\SkateboardBuilder\Port\Kits;
 use CreativeBranding\SkateboardBuilder\Service\BuildState;
+use CreativeBranding\SkateboardBuilder\Service\IndexJobs;
 use CreativeBranding\SkateboardBuilder\Adapter\WooPartCards;
 use CreativeBranding\SkateboardBuilder\Port\PartFact;
 use CreativeBranding\SkateboardBuilder\Port\PartFacts;
@@ -121,6 +122,34 @@ final class PartsTableTest extends IntegrationTestCase {
 			10,
 			2
 		);
+	}
+
+	// Issue #28: the first request after a part was indexed read it from the shop, 470 ms at 2,000 parts. The job
+	// that indexed it writes its row, for the prices a visitor nothing is known of is shown.
+	public function test_the_job_that_indexes_a_part_writes_its_row_and_the_next_visitor_loads_no_product(): void {
+		$loose = new WC_Product_Simple();
+		$loose->set_name( 'No slot has this' );
+		$loose->set_status( 'publish' );
+		$loose->set_regular_price( '5' );
+		$loose->save();
+		self::assertSame( array(), $this->rows( $this->deck, $loose->get_id() ) );
+
+		$this->service( IndexJobs::class )->indexPart( $this->deck );
+		$this->service( IndexJobs::class )->indexPart( $loose->get_id() );
+		$rows = $this->rows( $this->deck, $loose->get_id() );
+		self::assertSame( array( $this->deck ), array_keys( $rows ), 'a product no kit could offer is given no row' );
+		self::assertSame( 6000, $rows[ $this->deck ]->price );
+
+		$this->watch();
+		self::assertSame( array( $this->deck ), array_keys( $this->decks() ) );
+		self::assertSame( array(), $this->read, 'the visitor reads rows' );
+
+		// Indexed again after its price moved: the row is the new one, not one a request has to mend.
+		$product = wc_get_product( $this->deck );
+		$product->set_regular_price( '65' );
+		$product->save();
+		$this->service( IndexJobs::class )->indexPart( $this->deck );
+		self::assertSame( 6500, $this->rows( $this->deck )[ $this->deck ]->price );
 	}
 
 	public function test_a_part_is_a_row_once_a_builds_state_has_asked_for_it(): void {

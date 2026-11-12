@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html). One entry per milestone; `v1.0.0` closes milestone 9.
 
+## [0.6.0] - Unreleased
+
+### Changed
+
+- The job that indexes a part, and each batch of a reindex, writes that part's row of the parts table itself, for the prices a visitor nothing is known of is shown. The first request after a reindex of 2,000 parts answered in about 490 ms and 101 queries; it answers in 58 ms and 37, inside the route's budget and held to it (#28, D-140).
+
 ## [0.5.0] - 2026-11-11
 
 ### Added

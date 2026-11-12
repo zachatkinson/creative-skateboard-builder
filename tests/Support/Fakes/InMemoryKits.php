@@ -71,6 +71,14 @@ final class InMemoryKits implements Kits {
 		$this->forgotten[] = $ids;
 	}
 
+	public array $warmed = array();
+
+	public function warm( int ...$ids ): void {
+		// Kept as the order of the calls: a row is written after the old one is forgotten.
+		\PHPUnit\Framework\Assert::assertNotSame( array(), $this->forgotten );
+		$this->warmed[] = $ids;
+	}
+
 	public function termMoved( string $taxonomy ): void {
 		$this->terms[] = $taxonomy;
 	}

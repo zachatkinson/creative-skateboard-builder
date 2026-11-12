@@ -177,6 +177,8 @@ final class IndexJobsTest extends TestCase {
 		self::assertSame( array( 21, 22 ), array_keys( $this->index->rows ) );
 		self::assertSame( array( array( 21, 22 ) ), $this->source->asked, 'one batch for the variations' );
 		self::assertSame( array( array( 21, 22 ) ), $this->kits->forgotten, 'and what a build is told of them is read again' );
+		// Issue #28: by the job, so that no visitor's request reads the shop for them.
+		self::assertSame( array( array( 21, 22 ) ), $this->kits->warmed );
 	}
 
 	public function test_a_deleted_products_job_removes_its_rows(): void {
@@ -265,6 +267,8 @@ final class IndexJobsTest extends TestCase {
 		// The auditor's should-fix 7, milestone 4: each batch emptied the whole parts table, so every request between
 		// two batches read the whole shop again. A batch tells of the parts it indexed and of no other.
 		self::assertSame( array( range( 1, 100 ), range( 101, 200 ), range( 201, 250 ) ), $this->kits->forgotten );
+		// Issue #28: and writes their rows again itself, a batch at a time.
+		self::assertSame( array( range( 1, 100 ), range( 101, 200 ), range( 201, 250 ) ), $this->kits->warmed );
 	}
 
 	public function test_a_full_last_page_is_followed_by_an_empty_one(): void {

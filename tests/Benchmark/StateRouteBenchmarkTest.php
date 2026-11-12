@@ -9,8 +9,11 @@ declare( strict_types=1 );
 
 namespace CreativeBranding\SkateboardBuilder\Tests\Benchmark;
 
+use CreativeBranding\SkateboardBuilder\Adapter\WooKits;
 use CreativeBranding\SkateboardBuilder\Port\Kits;
 use CreativeBranding\SkateboardBuilder\Rest\StateRoute;
+use CreativeBranding\SkateboardBuilder\Service\IndexJobs;
+use CreativeBranding\SkateboardBuilder\Service\ReindexState;
 use CreativeBranding\SkateboardBuilder\Service\SpecIndexer;
 use CreativeBranding\SkateboardBuilder\Support\Options;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Domain\KitDocuments;
@@ -235,6 +238,30 @@ final class StateRouteBenchmarkTest extends IntegrationTestCase {
 		self::say( sprintf( 'state route, with nothing kept, 2,000 parts read from the shop: %.1f ms, %d queries', $took, $asked ) );
 		wp_cache_flush();
 		self::assertLessThan( self::limit(), $ask( $ids['deck'][0] )[0], 'The request after it.' );
+
+		// Issue #28: a reindex forgets every part's row, a batch at a time, and writes each batch's rows again itself.
+		// The first request after it is held as any other is: it reads rows, and loads no product for a slot's parts.
+		$jobs = $this->service( IndexJobs::class );
+		$jobs->requestReindex();
+		$batches = array();
+		do {
+			wp_cache_flush();
+			$start     = hrtime( true );
+			$jobs->runReindex();
+			$batches[] = ( hrtime( true ) - $start ) / 1e6;
+			$state     = $jobs->state();
+		} while ( null !== $state && $state->isRunning() );
+		self::assertSame( ReindexState::DONE, $state?->phase );
+		// As the request the batch ran in ends.
+		$kits = $this->service( Kits::class );
+		self::assertInstanceOf( WooKits::class, $kits );
+		$kits->settle();
+		wp_cache_flush();
+		[ $took, $asked ] = $ask( $ids['deck'][0] );
+		self::say( sprintf( 'state route, the first request after a reindex of 2,000 parts: %.1f ms, %d queries; the reindex wrote the rows in %d batches, %.2f s in all, a batch %.0f ms at its slowest', $took, $asked, count( $batches ), array_sum( $batches ) / 1000, max( $batches ) ) );
+		self::assertLessThanOrEqual( self::QUERIES['cold'], $asked, 'The state route\'s queries, first after a reindex.' );
+		self::assertLessThan( self::limit(), $took, 'The state route, first after a reindex.' );
+		self::assertLessThan( 1000, max( $batches ), 'a batch is one request of the queue\'s' );
 		unset( $_SERVER['REMOTE_ADDR'] );
 	}
 }

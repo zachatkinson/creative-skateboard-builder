@@ -136,3 +136,20 @@ The one query is WooCommerce reading the session. The route makes no cart, so th
 That query is paid only where a price the shop shows can depend on the shopper's address: prices shown with tax, or entered with tax and adjusted for where the shopper is. On any other shop the session is not read at all (D-139), and the measurement sets the shop to show prices with tax so that it is.
 
 Measured again on WooCommerce 11.3.0, the newest leg from D-139, on the same machine and day: adding the build p95 26 ms and 54 queries at most; a cart read with the build in it 21 ms and 30 queries, beside 3 ms and 10; the state route 44 queries with the session read and 43 without. Nothing moved. Where a shop's default customer address is Geolocate, a guest's first request also pays WooCommerce's GeoIP lookup, which this does not measure; milestone 6's plan does.
+
+## v0.6.0
+
+Machine: Apple M1 Max, PHP 8.5.12 in wp-env on OrbStack, WordPress 7.1.4, WooCommerce 11.3.0, wp-env's own database server, Xdebug off, no persistent object cache. 12 November 2026.
+
+The kit and catalogue of v0.4.0: seven slots over 2,000 simple products, 500 of them trucks.
+
+| The state route | Time | Queries |
+| --- | --- | --- |
+| The first request after a reindex of 2,000 parts, cache emptied | 58 ms | 37 |
+| With no row kept at all: after a plugin says every part changed, or in a price context no one has asked in | 493 ms | 101 |
+
+Until 0.6.0 the first row was the second: a reindex emptied the parts table a batch at a time, and the next visitor's request read every part from the shop. Each batch now writes the rows of the parts it indexed, in the background (issue #28, D-140), and the first request after it is held to the 80 ms budget and to the cold run's 42 queries.
+
+The reindex pays for it: 2,000 parts in 42 batches took 3.85 s in all, a batch 130 ms at its slowest, where the index alone takes 0.84 s with no kit to write rows for. A batch is still well inside one request of the queue's.
+
+The second row stays outside the budget and is printed, not held. It is now paid only after `cbuild_parts_changed` is fired with no part named, and by the first visitor shown other prices than the shop's default: another language, another currency, or, where a shown price goes by address, other tax rates.

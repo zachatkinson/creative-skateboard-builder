@@ -1934,3 +1934,16 @@ Zach's, answered apart from this: the coupon edges (D-130), the package default 
 **Red runs and deliberate breaks** are in the commit's message and the review's table.
 
 **Status:** Accepted.
+
+### D-140 · The index job writes the parts table's rows, so no visitor pays for a reindex (#28) · 2026-11-12
+
+Issue #28, from the spec-reviewer on milestone 4, with Zach's answer of 11 November read in D-121: no visitor pays to fill a cache.
+
+- **`Port\Kits::warm()`.** After a part's own job or a batch of the reindex has indexed its parts and forgotten their rows, it reads those products from the shop and writes their rows. `Adapter\WooKits::warm()` passes over a product no kit's slot could offer, so a shop with 10,000 products and 300 parts writes 300 rows.
+- **For the job's own price context,** which is the shop's default: a background request has no shopper, so the currency, the language and the tax rates are the shop's. A visitor shown other prices (another language, a currency plugin's, other rates where a shown price goes by address) still pays once for their context. That is one request in each context, and writing every context from the job would mean knowing them all, which only a visit tells.
+- **Deleted first, then written.** The rows forgotten in the request are deleted at once, for every context, before the new ones are written. Left to the request's end, as `forget()` leaves them, the delete would take the new rows with it.
+- **Held by the benchmark.** The first request after a reindex of 2,000 parts is held to the budget and to the cold run's queries: 58 ms and 37, where it was about 490 ms and 101. The reindex goes from 0.84 s to 3.85 s in all, in the background, a batch 130 ms at its slowest (`docs/BENCHMARK.md`).
+
+**Red runs:** `IndexJobsTest::test_a_variable_products_job_indexes_its_variations_and_not_itself` and `PartsTableTest::test_the_job_that_indexes_a_part_writes_its_row_and_the_next_visitor_loads_no_product`, each "Failed asserting that two arrays are identical." With the delete left to the request's end, the second fails the same way.
+
+**Status:** Accepted.

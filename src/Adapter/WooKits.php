@@ -275,6 +275,41 @@ final class WooKits implements Kits {
 	}
 
 	/**
+	 * Read these from the shop and keep their rows, in the price context of the request this runs in: a background
+	 * job's, which has no shopper, so the shop's own language and the prices a visitor nothing is known of is shown
+	 * (issue #28). A row is a product's, with its variations', so a variation stands for its parent. Only what
+	 * some kit's slot could offer is read. What moved in this request is deleted first, for every context, so the
+	 * rows written here are not deleted with it when the request ends.
+	 *
+	 * @since 0.6.0
+	 *
+	 * @param int ...$ids Products' and variations' IDs.
+	 */
+	public function warm( int ...$ids ): void {
+		$owners = array();
+		foreach ( $ids as $id ) {
+			$parent                                = Cast::int( wp_get_post_parent_id( $id ) );
+			$owners[ $parent > 0 ? $parent : $id ] = true;
+		}
+		$wanted = array();
+		foreach ( $this->all() as $read ) {
+			foreach ( $read['kit']->slots->all() as $slot ) {
+				foreach ( array( ...$this->found( $slot->sources ), ...$slot->sources->products ) as $id ) {
+					if ( isset( $owners[ $id ] ) ) {
+						$wanted[ $id ] = $id;
+					}
+				}
+			}
+		}
+		if ( array() === $wanted ) {
+			return;
+		}
+		$this->settle();
+		$wanted = array_values( $wanted );
+		$this->facts->replace( WooPartCards::context(), $wanted, array_values( $this->shopSays( $this->clock->now()->getTimestamp(), ...$wanted ) ) );
+	}
+
+	/**
 	 * Delete the rows of what moved in this request, in one go: a product's save tells of the same product a dozen
 	 * times over, once for each taxonomy it sets, and a row is deleted once. Run when the request ends, and before
 	 * this request reads a row.
