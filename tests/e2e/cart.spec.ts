@@ -269,14 +269,22 @@ test.describe( 'A build in a classic cart and checkout', () => {
 			);
 		}
 
+		// With its script on, the checkout draws its table again once it has asked the server for the totals. Heard
+		// from before the page is asked for, so the answer cannot come first (issue #35).
+		const redrawn = javaScriptEnabled
+			? page.waitForResponse( /wc-ajax=update_order_review/ )
+			: Promise.resolve( null );
 		await page.goto( '/cart-test-classic-checkout/' );
+		await redrawn;
+		// And WooCommerce lifts the cover it laid over the table once the new one is in place.
+		await expect(
+			page.locator( '.woocommerce-checkout .blockUI' )
+		).toHaveCount( 0 );
 		await expect(
 			page.locator(
 				'.woocommerce-checkout-review-order-table tr.cbuild-part'
 			)
 		).toHaveCount( 6 );
-		// With its script on, the checkout draws its table again once it has asked the server for the totals.
-		await page.waitForLoadState( 'networkidle' );
 		const review = page.locator(
 			'.woocommerce-checkout-review-order-table tbody tr'
 		);
