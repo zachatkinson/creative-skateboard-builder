@@ -11,6 +11,7 @@ interface Actions {
 	submit: ( event: SubmitEvent ) => void;
 	add: ( event: SubmitEvent ) => Promise< void >;
 	copy: () => Promise< void >;
+	reveal: ( event: FocusEvent ) => void;
 	pick: ( event: Event ) => void;
 	follow: ( event: MouseEvent ) => void;
 	back: () => void;
@@ -795,5 +796,54 @@ describe( 'copying the build link', () => {
 		expect( link.ownerDocument.activeElement ).toBe( link );
 		expect( link.selectionStart ).toBe( 0 );
 		expect( link.selectionEnd ).toBe( REVIEW.review.link.length );
+	} );
+} );
+
+describe( 'keeping focus clear of the phone bar', () => {
+	function page( barTop: number ): {
+		below: HTMLButtonElement;
+		scrolled: string[];
+	} {
+		document.body.innerHTML = `
+			<div class="cbuild">
+				<button class="below">Next</button>
+				<div class="cbuild-bar"><button class="in-bar">Next</button></div>
+			</div>`;
+		setElement( document.querySelector< HTMLElement >( '.cbuild' )! );
+		(
+			defined.definition as { callbacks: { init: () => void } }
+		 ).callbacks.init();
+		const scrolled: string[] = [];
+		const box = ( top: number, bottom: number ) => () =>
+			( { top, bottom } ) as DOMRect;
+		const bar = document.querySelector< HTMLElement >( '.cbuild-bar' )!;
+		bar.getBoundingClientRect = box( barTop, barTop + 68 );
+		bar.getClientRects = () =>
+			( barTop < 0 ? [] : [ {} ] ) as unknown as DOMRectList;
+		const below = document.querySelector< HTMLButtonElement >( '.below' )!;
+		below.getBoundingClientRect = box( 600, 644 );
+		below.scrollIntoView = ( options ) =>
+			scrolled.push( JSON.stringify( options ) );
+		return { below, scrolled };
+	}
+
+	it( 'brings a control the bar covers into view above it', () => {
+		const { below, scrolled } = page( 632 );
+		actions.reveal( { target: below } as unknown as FocusEvent );
+		expect( scrolled ).toEqual( [ '{"block":"nearest"}' ] );
+	} );
+
+	it( 'leaves a control the bar does not cover, the bar itself, and a page with no bar alone', () => {
+		let { below, scrolled } = page( 650 );
+		actions.reveal( { target: below } as unknown as FocusEvent );
+		expect( scrolled ).toEqual( [] );
+		( { below, scrolled } = page( -1 ) );
+		actions.reveal( { target: below } as unknown as FocusEvent );
+		// The bar is not shown at this width.
+		expect( scrolled ).toEqual( [] );
+		const inBar = document.querySelector( '.in-bar' )!;
+		actions.reveal( { target: inBar } as unknown as FocusEvent );
+		actions.reveal( { target: document } as unknown as FocusEvent );
+		expect( scrolled ).toEqual( [] );
 	} );
 } );

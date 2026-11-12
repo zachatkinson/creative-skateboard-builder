@@ -8,7 +8,7 @@
 
 defined( 'ABSPATH' ) || exit;
 ?>
-<figure class="cbuild-picture">
+<figure class="cbuild-picture" id="cbuild-picture" tabindex="-1">
 	<ul class="cbuild-picture__items" data-wp-bind--aria-label="state.view.picture.heading">
 		<template data-wp-each--item="state.view.picture.items" data-wp-each-key="context.item.key">
 			<li class="cbuild-picture__item">

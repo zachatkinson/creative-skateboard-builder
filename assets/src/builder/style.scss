@@ -27,11 +27,39 @@
 	--cbuild-small: var(--wp--preset--font-size--small, 0.875rem);
 	--cbuild-card-width: 13rem;
 	--cbuild-summary-width: 19rem;
+	--cbuild-ground: var(--wp--preset--color--base, Canvas);
+	--cbuild-bar-height: 4.25rem;
 }
 
 /* Outside `:where()`: a theme's `display` must not show what the builder hides. */
 .cbuild [hidden] {
 	display: none;
+}
+
+/*
+ * The phone bar or the summary, never both: each is the total, so a page with both would show and read it twice
+ * (D-153). The bar follows the screen's width, as a bar at the foot of the screen does; outside `:where()`, so a
+ * theme's `display` on a `div` or an `aside` cannot bring back the one this width hides.
+ */
+.cbuild .cbuild-bar {
+	display: none;
+}
+
+@media (max-width: 47.99rem) {
+	/* A phone: the bar, and focus kept clear of it. */
+	.cbuild .cbuild-bar:not([hidden]) {
+		display: flex;
+	}
+
+	.cbuild .cbuild-summary {
+		display: none;
+	}
+
+	/* The bar's button is the step's Next and the review's Add to cart here: one control of each name (P11). */
+	.cbuild .cbuild-step__next,
+	.cbuild .cbuild-review__form [type="submit"] {
+		display: none;
+	}
 }
 
 .cbuild .screen-reader-text {
@@ -580,5 +608,88 @@
 	:where(.cbuild) :where(:focus-visible),
 	:where(.cbuild-card:has(> .cbuild-card__control:focus-visible)) {
 		outline-color: Highlight;
+	}
+}
+
+/*
+ * The phone bar: at the foot of the screen while the builder is on it, and no further. Sticky, not fixed, so it
+ * stops where the builder ends and never covers the theme's footer.
+ */
+:where(.cbuild-bar) {
+	position: sticky;
+	inset-block-end: 0;
+	z-index: 10;
+	align-items: center;
+	gap: var(--cbuild-gap-small);
+	box-sizing: border-box;
+	min-block-size: var(--cbuild-bar-height);
+	margin-block-start: var(--cbuild-gap);
+	padding: var(--cbuild-gap-small);
+	border-block-start: 1px solid var(--cbuild-line);
+	background: var(--cbuild-ground);
+}
+
+:where(.cbuild-bar__picture) {
+	flex: none;
+	display: block;
+	inline-size: var(--cbuild-target);
+	block-size: var(--cbuild-target);
+}
+
+:where(.cbuild-bar__photo) {
+	inline-size: 100%;
+	block-size: 100%;
+	object-fit: contain;
+}
+
+:where(.cbuild-bar__parts) {
+	flex: 1 1 auto;
+	min-inline-size: 0;
+}
+
+:where(.cbuild-bar__total) {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0 var(--cbuild-gap-small);
+	min-block-size: var(--cbuild-target);
+	cursor: pointer;
+	font-weight: 600;
+}
+
+:where(.cbuild-bar__more) {
+	color: var(--cbuild-muted);
+	font-size: var(--cbuild-small);
+	font-weight: 400;
+}
+
+/* The parts list opens above the bar, so the bar and its button stay where the thumb is (W7). */
+:where(.cbuild-bar__lines) {
+	position: absolute;
+	inset-block-end: 100%;
+	inset-inline: 0;
+	display: grid;
+	gap: 0.25rem;
+	max-block-size: 60vh;
+	overflow-y: auto;
+	padding: var(--cbuild-gap);
+	border-block-start: 1px solid var(--cbuild-line);
+	background: var(--cbuild-ground);
+}
+
+:where(.cbuild-bar__next) {
+	flex: none;
+}
+
+/*
+ * Focus never goes under the bar (spec: The total, "It never covers the control in focus"; WCAG 2.4.11). A browser
+ * scrolls a focused control into view only when it is outside the scrolling box's padding, so the padding is the
+ * page's: the one rule outside the builder's root, and only while a bar is shown (D-160).
+ */
+@media (max-width: 47.99rem) {
+	:root:has(.cbuild .cbuild-bar:not([hidden])) {
+		scroll-padding-block-end: calc(
+			var(--cbuild-bar-height, 4.25rem) + 0.5rem
+		);
 	}
 }

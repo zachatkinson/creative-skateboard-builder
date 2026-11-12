@@ -824,8 +824,9 @@ test.describe( 'The builder with JavaScript', () => {
 					response.url()
 				) && response.request().method() === 'POST'
 		);
+		// The review's own, or the phone bar's where the review's is hidden: one at each width (P11).
 		await page
-			.locator( '.cbuild-review' )
+			.locator( '.cbuild' )
 			.getByRole( 'button', { name: 'Add to cart' } )
 			.click();
 		expect( ( await added ).status() ).toBe( 201 );
@@ -1019,4 +1020,139 @@ test.describe( "The builder's styles", () => {
 			.evaluate( ( card ) => getComputedStyle( card ).outlineStyle );
 		expect( ring ).toBe( 'solid' );
 	} );
+} );
+
+test.describe( 'The phone bar', () => {
+	const PHONE = { width: 390, height: 700 };
+
+	test( 'takes the place of the summary on a phone, and the summary has the desktop', async ( {
+		page,
+	} ) => {
+		await page.setViewportSize( PHONE );
+		await page.goto( fixture().page );
+		const bar = page.locator( '.cbuild-bar' );
+		await expect( bar ).toBeVisible();
+		await expect( page.locator( '.cbuild-summary' ) ).toBeHidden();
+		await page.setViewportSize( { width: 1280, height: 800 } );
+		await expect( bar ).toBeHidden();
+		await expect( page.locator( '.cbuild-summary' ) ).toBeVisible();
+	} );
+
+	test( 'opens the parts list above itself, and its button moves the build on', async ( {
+		page,
+	} ) => {
+		await page.setViewportSize( PHONE );
+		await page.goto( fixture().page );
+		const bar = page.locator( '.cbuild-bar' );
+		await page.locator( '.cbuild-card label' ).first().click();
+		await bar.locator( 'summary' ).click();
+		const lines = bar.locator( '.cbuild-bar__lines' );
+		await expect( lines ).toBeVisible();
+		const [ list, own ] = await Promise.all( [
+			lines.boundingBox(),
+			bar.boundingBox(),
+		] );
+		expect( list!.y + list!.height ).toBeLessThanOrEqual( own!.y + 1 );
+		// With JavaScript the store moves the step without a page load, and without it the form is sent.
+		await bar.getByRole( 'button', { name: 'Next: Trucks' } ).click();
+		await expect( heading( page ) ).toHaveText( 'Step 2 of 7: Trucks' );
+	} );
+
+	test( 'never covers the control in focus', async ( { page } ) => {
+		await page.setViewportSize( PHONE );
+		await page.goto( fixture().page );
+		const bar = page.locator( '.cbuild-bar' );
+		await page.locator( '.cbuild__heading' ).focus();
+		const covered: string[] = [];
+		for ( let tab = 0; tab < 40; tab++ ) {
+			await page.keyboard.press( 'Tab' );
+			const seen = await page.evaluate( () => {
+				const own = document.querySelector( '.cbuild-bar' );
+				const focused = own?.ownerDocument
+					.activeElement as HTMLElement | null;
+				if (
+					! focused?.closest( '.cbuild' ) ||
+					! own ||
+					own.contains( focused )
+				) {
+					return null;
+				}
+				const box = focused.getBoundingClientRect();
+				const top = own.getBoundingClientRect().top;
+				return box.bottom > top + 1
+					? `${ focused.className || focused.tagName } ${ box.bottom } > ${ top }`
+					: '';
+			} );
+			if ( null === seen ) {
+				continue;
+			}
+			if ( '' !== seen ) {
+				covered.push( seen );
+			}
+		}
+		expect( covered ).toEqual( [] );
+		await expect( bar ).toBeVisible();
+	} );
+
+	test( "stops where the builder ends, and never covers the theme's footer", async ( {
+		page,
+	} ) => {
+		await page.setViewportSize( PHONE );
+		await page.goto( fixture().page );
+		await page.evaluate( () =>
+			window.scrollTo( 0, document.documentElement.scrollHeight )
+		);
+		const [ bar, root ] = await Promise.all( [
+			page.locator( '.cbuild-bar' ).boundingBox(),
+			page.locator( '.cbuild' ).boundingBox(),
+		] );
+		expect( bar!.y + bar!.height ).toBeLessThanOrEqual(
+			root!.y + root!.height + 1
+		);
+	} );
+} );
+
+test.describe( 'Every control a name of its own (P11)', () => {
+	for ( const [ width, height ] of [
+		[ 390, 700 ],
+		[ 1280, 800 ],
+	] as const ) {
+		test( `at ${ width } pixels, on a step and at the review`, async ( {
+			page,
+		} ) => {
+			await page.setViewportSize( { width, height } );
+			await page.goto( fixture().page );
+			const names = () =>
+				page
+					.locator( '.cbuild' )
+					.getByRole( 'button' )
+					.evaluateAll( ( buttons ) =>
+						buttons
+							.filter(
+								( button ) =>
+									( button as HTMLElement ).getClientRects()
+										.length > 0
+							)
+							.map( ( button ) =>
+								(
+									button.getAttribute( 'aria-label' ) ??
+									button.textContent ??
+									''
+								).trim()
+							)
+					);
+			const twice = ( list: string[] ) =>
+				list.filter( ( name, at ) => list.indexOf( name ) !== at );
+			expect( twice( await names() ) ).toEqual( [] );
+			await page
+				.locator( '.cbuild-presets' )
+				.getByRole( 'button', { name: 'Start from Street' } )
+				.click();
+			await expect( heading( page ) ).toHaveText( 'Step 7 of 7: Review' );
+			expect( twice( await names() ) ).toEqual( [] );
+			await expect(
+				page.getByRole( 'button', { name: 'Add to cart' } )
+			).toHaveCount( 1 );
+		} );
+	}
 } );

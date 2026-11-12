@@ -372,7 +372,11 @@ test.describe( 'A build in a classic cart and checkout', () => {
 		await expect(
 			review.getByLabel( 'Link to this build' )
 		).not.toHaveValue( /_replace/ );
-		await review.getByRole( 'button', { name: 'Add to cart' } ).click();
+		// The review's own, or the phone bar's where the review's is hidden (P11).
+		await page
+			.locator( '.cbuild' )
+			.getByRole( 'button', { name: 'Add to cart' } )
+			.click();
 		if ( javaScriptEnabled ) {
 			await expect(
 				page.locator( '.cbuild-review__added' )

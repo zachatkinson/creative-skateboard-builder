@@ -8,7 +8,7 @@
 
 defined( 'ABSPATH' ) || exit;
 ?>
-<div class="cbuild" data-wp-interactive="creative-skateboard-builder" data-wp-bind--data-kit="state.view.kit" data-wp-bind--aria-busy="state.pending" data-wp-on-window--popstate="actions.back" data-wp-init="callbacks.init">
+<div class="cbuild" data-wp-interactive="creative-skateboard-builder" data-wp-bind--data-kit="state.view.kit" data-wp-bind--aria-busy="state.pending" data-wp-on-window--popstate="actions.back" data-wp-on--focusin="actions.reveal" data-wp-init="callbacks.init">
 	<p class="cbuild__status screen-reader-text" role="status" aria-live="polite" data-wp-text="state.status"></p>
 	<?php require __DIR__ . '/errors.php'; ?>
 	<?php require __DIR__ . '/progress.php'; ?>
@@ -23,4 +23,5 @@ defined( 'ABSPATH' ) || exit;
 		</div>
 		<?php require __DIR__ . '/summary.php'; ?>
 	</div>
+	<?php require __DIR__ . '/bar.php'; ?>
 </div>

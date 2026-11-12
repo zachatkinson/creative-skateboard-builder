@@ -169,7 +169,7 @@ final class BuilderView {
 			'step'      => $step,
 			'changes'   => $this->changes( $state, $changes, $link, $lines, $label ),
 			'summary'   => $summary,
-			'bar'       => self::bar( $summary, $step, $shown, $review, $panel ),
+			'bar'       => self::bar( $summary, $step, $shown, $review, $panel, Cast::map( Cast::items( $picture['items'] ?? null )[0] ?? null )['image'] ?? null ),
 			'picture'   => array(
 				'heading'     => __( 'What is in the box', 'creative-skateboard-builder' ),
 				'description' => Cast::str( $picture['description'] ?? null ),
@@ -204,17 +204,24 @@ final class BuilderView {
 	 * @param array<string, mixed> $shown   The review.
 	 * @param bool                 $review  Whether the review is shown.
 	 * @param bool                 $panel   Whether the change panel is shown.
-	 * @return array{shown: bool, total: string, parts: string, next: array{shown: bool, text: string, form: string, name: string, value: string, disabled: bool}}
+	 * @param mixed                $photo   The picture's first photo, if it has one.
+	 * @return array{shown: bool, photo: array{hasImage: bool, src: string, srcset: string, sizes: string, width: int, height: int}, picture: string, total: string, parts: string, next: array{shown: bool, onStep: bool, onReview: bool, text: string, form: string, name: string, value: string, disabled: bool}}
 	 */
-	private static function bar( array $summary, array $step, array $shown, bool $review, bool $panel ): array {
+	private static function bar( array $summary, array $step, array $shown, bool $review, bool $panel, mixed $photo ): array {
 		$next = Cast::map( $step['next'] ?? null );
 		return array(
-			'shown' => true,
+			'shown'   => true,
+			// A small picture of the board: for now the picture's first photo, the deck's, which links to the picture.
+			'photo'   => self::image( $photo ),
+			'picture' => __( 'See the picture', 'creative-skateboard-builder' ),
 			/* translators: %s: the build's total, such as $184.00. */
-			'total' => sprintf( __( 'Total: %s', 'creative-skateboard-builder' ), Cast::str( $summary['total'] ?? null ) ),
-			'parts' => __( 'The parts', 'creative-skateboard-builder' ),
-			'next'  => array(
+			'total'   => sprintf( __( 'Total: %s', 'creative-skateboard-builder' ), Cast::str( $summary['total'] ?? null ) ),
+			'parts'   => __( 'The parts', 'creative-skateboard-builder' ),
+			'next'    => array(
 				'shown'    => ! $panel,
+				// Which of the bar's two buttons: a button's form is its own, set once, so each form has one.
+				'onStep'   => ! $panel && ! $review,
+				'onReview' => ! $panel && $review,
 				'text'     => $review ? Cast::str( $shown['add'] ?? null ) : Cast::str( $next['text'] ?? null ),
 				'form'     => $review ? self::REVIEW_FORM : self::STEP_FORM,
 				'name'     => $review ? '' : Cast::str( $step['stepName'] ?? null ),

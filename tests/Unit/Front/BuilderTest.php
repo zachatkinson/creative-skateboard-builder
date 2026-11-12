@@ -203,6 +203,8 @@ final class BuilderTest extends TestCase {
 				'parts' => 'The parts',
 				'next'  => array(
 					'shown'    => true,
+					'onStep'   => true,
+					'onReview' => false,
 					'text'     => 'Next: Wheels',
 					'form'     => 'cbuild-step-form',
 					'name'     => 'cbuild[step]',
@@ -210,14 +212,21 @@ final class BuilderTest extends TestCase {
 					'disabled' => false,
 				),
 			),
-			$view['bar']
+			array_diff_key( $view['bar'], array_flip( array( 'photo', 'picture' ) ) )
 		);
 		self::assertSame( $view['step']['next']['text'], $view['bar']['next']['text'], "the step's own Next, sent from its form" );
+		$photo = array_intersect_key( $view['picture']['items'][0], $view['bar']['photo'] );
+		self::assertSame( $photo, $view['bar']['photo'], 'a small picture of the board: for now, the first part\'s photo' );
+		self::assertTrue( $view['bar']['photo']['hasImage'] );
+		self::assertSame( 'See the picture', $view['bar']['picture'] );
+		self::assertFalse( $this->show( new BuildLink() )['view']['bar']['photo']['hasImage'], 'nothing picked, no photo' );
 
 		$review = $this->show( new BuildLink( self::STREET, null, BuildLink::REVIEW ) )['view']['bar']['next'];
 		self::assertSame(
 			array(
 				'shown'    => true,
+				'onStep'   => false,
+				'onReview' => true,
 				'text'     => 'Add to cart',
 				'form'     => 'cbuild-review-form',
 				'name'     => '',
@@ -232,6 +241,7 @@ final class BuilderTest extends TestCase {
 		$panel = $this->show( new BuildLink( array( SlotKey::DECK => 103 ) + $was, $was, SlotKey::TRUCKS ) )['view']['bar'];
 		self::assertTrue( $panel['shown'] );
 		self::assertFalse( $panel['next']['shown'], 'the panel asks for Use these or Undo, in its own forms' );
+		self::assertFalse( $panel['next']['onStep'] || $panel['next']['onReview'], 'so neither of the bar\'s buttons is shown' );
 	}
 
 	public function test_a_kit_the_shop_does_not_have_shows_nothing(): void {

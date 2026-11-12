@@ -287,6 +287,21 @@ final class BuilderPageTest extends IntegrationTestCase {
 		self::assertStringContainsString( '.woocommerce-mini-cart-item.cbuild-part', implode( '', (array) wp_styles()->get_data( ShowHooks::HANDLE, 'after' ) ) );
 	}
 
+	public function test_the_phone_bar_sends_the_steps_form_and_links_to_the_picture(): void {
+		$dom  = self::dom( $this->kitPage( array( 'deck' => (string) $this->parts['deck 8.5'] ) ) );
+		$bar  = '//div[contains(@class,"cbuild-bar")]';
+		$next = $dom->query( $bar . '//button[@form="' . BuilderView::STEP_FORM . '"]' )->item( 0 );
+		self::assertNotNull( $next );
+		self::assertFalse( $next->hasAttribute( 'hidden' ) );
+		self::assertSame( 'Next: Wheels', trim( $next->textContent ) );
+		self::assertSame( array( 'cbuild[step]', 'wheels' ), array( $next->getAttribute( 'name' ), $next->getAttribute( 'value' ) ), 'the step\'s own Next, from outside its form' );
+		self::assertTrue( $dom->query( $bar . '//button[@form="' . BuilderView::REVIEW_FORM . '"]' )->item( 0 )->hasAttribute( 'hidden' ), 'Add to cart waits for the review' );
+		self::assertSame( '#cbuild-picture', $dom->query( $bar . '//a[contains(@class,"cbuild-bar__picture")]' )->item( 0 )->getAttribute( 'href' ) );
+		self::assertSame( 1, $dom->query( '//figure[@id="cbuild-picture"][@tabindex="-1"]' )->length, 'and the picture takes focus when the link is followed' );
+		self::assertStringStartsWith( 'Total: ', self::text( $dom, $bar . '//summary' ) );
+		self::assertSame( count( wp_interactivity_state( BuilderPage::STORE )['view']['summary']['rows'] ), $dom->query( $bar . '//dl[contains(@class,"cbuild-bar__lines")]/div' )->length, 'the summary\'s rows, in the parts list the total opens' );
+	}
+
 	public function test_the_review_adds_through_the_store_and_says_so_with_a_link_to_the_cart(): void {
 		$dom  = self::dom( $this->kitPage( array() ) );
 		$form = $dom->query( '//form[@id="' . BuilderView::REVIEW_FORM . '"]' )->item( 0 );

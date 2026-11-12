@@ -2193,3 +2193,17 @@ Milestone 6's step 13, its first part, against docs/STANDARDS.md's CSS rules and
 - **What the tests hold.** The target and forced-colour tests fail on the page without the stylesheet; the reflow and text-spacing tests pass on the bare page and hold the styles to not breaking it. Forced colours run in Chromium only, the one engine Playwright can put in that mode.
 
 **Status:** Accepted.
+
+### D-160 · The phone bar: sticky, one of each button, and focus kept clear · 2026-11-12
+
+Milestone 6's step 13, its second part, against the spec's The total ("On phones it's a bar at the bottom: a small picture of the board, the total, and the next step on its button ... It never covers the control in focus"), W7 and P11. D-153 made the bar's view and left its markup for the styles.
+
+- **Sticky, not fixed.** The bar is the builder's last element, `position: sticky` at the foot of the screen. It stays in reach while the shopper is in the builder and stops where the builder ends, so it never sits over the theme's footer or its links, which a fixed bar would cover for the rest of the page.
+- **Which shows follows the screen, not the builder.** The bar shows below a screen 48rem wide, and the summary beside the steps everywhere else, each hidden by a rule outside `:where()`, so a theme's `display` on a `div` or an `aside` cannot show both. A bar is a thing of the screen's foot, so it follows the screen; the layout of the cards still follows the builder's own width.
+- **One button of each name (P11).** On a phone the step's own Next and the review's Add to cart are hidden, and the bar's are the only ones; a test holds every visible button in the builder to a name of its own at both widths. The bar has two buttons, one per form, because a button's `form` is set by its attribute and cannot be bound; the view says which is shown (`onStep`, `onReview`).
+- **The small picture** is, for now, the picture's first photo, which links to the picture (`#cbuild-picture`, which takes focus). Milestone 7 draws the board.
+- **The parts list** is a disclosure on the total, opening above the bar, from the summary's own rows, so it works without JavaScript and leaves the bar's button where the thumb is.
+- **Focus kept clear: the page's padding.** The first try gave the builder's controls a `scroll-margin`, and the browser test found a preset's button 11 px under the bar: a browser scrolls a focused control only when it is outside the scrolling box's padding, so the padding has to be the page's. `:root:has(.cbuild .cbuild-bar:not([hidden]))` gets `scroll-padding-block-end` below 48rem: the one rule outside the builder's root, which the spec's own words require, and only while a bar is shown. The bar is `border-box`, so its height is the property's and the padding clears it.
+- **And the script, for Firefox.** Firefox scrolls a focused control only once it leaves the screen, whatever the padding, so a button partly under the bar stayed there. The store's `reveal`, on `focusin`, scrolls a control the bar overlaps into view, which honours the padding. Without JavaScript in Firefox a control can be partly under the bar: WCAG 2.4.11 (not entirely hidden) still holds there, the spec's stricter "never covers" does not. Chromium and WebKit need no script.
+
+**Status:** Accepted.

@@ -124,11 +124,13 @@
     ],
     "css_properties": [
         "--cbuild-accent",
+        "--cbuild-bar-height",
         "--cbuild-card-width",
         "--cbuild-control",
         "--cbuild-focus",
         "--cbuild-gap",
         "--cbuild-gap-small",
+        "--cbuild-ground",
         "--cbuild-line",
         "--cbuild-muted",
         "--cbuild-on-accent",

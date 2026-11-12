@@ -19,6 +19,7 @@
  * - **Two events** on the builder's element, bubbling, for a shop's own analytics under its own consent (spec:
  *   Privacy): `cbuild:pick`, with the kit, the slot and the part, and `cbuild:added`, with the kit, its picks and
  *   assembly. They carry IDs alone.
+ * - **The phone bar** never covers the control in focus: one the bar overlaps is scrolled clear of it (D-160).
  * - **Copy link** writes the build's shared link to the clipboard and says so. It is offered only where the browser
  *   has a clipboard to write to; the address is in the page as a field either way, and a refused copy selects it.
  */
@@ -295,6 +296,26 @@ const { state } = store(
 						'.cbuild-review__added'
 					)?.focus();
 				} );
+			},
+			reveal( event: FocusEvent ): void {
+				const target = event.target;
+				const bar = root?.querySelector< HTMLElement >( '.cbuild-bar' );
+				if (
+					! ( target instanceof HTMLElement ) ||
+					! bar ||
+					0 === bar.getClientRects().length ||
+					bar.contains( target )
+				) {
+					return;
+				}
+				// A browser that scrolls a focused control only when it leaves the screen (Firefox) leaves it under the
+				// bar; scrolling it into view honours the page's scroll padding, which clears the bar (D-160).
+				if (
+					target.getBoundingClientRect().bottom >
+					bar.getBoundingClientRect().top
+				) {
+					target.scrollIntoView( { block: 'nearest' } );
+				}
 			},
 			async copy(): Promise< void > {
 				try {
