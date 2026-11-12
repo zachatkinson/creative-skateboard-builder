@@ -2207,3 +2207,17 @@ Milestone 6's step 13, its second part, against the spec's The total ("On phones
 - **And the script, for Firefox.** Firefox scrolls a focused control only once it leaves the screen, whatever the padding, so a button partly under the bar stayed there. The store's `reveal`, on `focusin`, scrolls a control the bar overlaps into view, which honours the padding. Without JavaScript in Firefox a control can be partly under the bar: WCAG 2.4.11 (not entirely hidden) still holds there, the spec's stricter "never covers" does not. Chromium and WebKit need no script.
 
 **Status:** Accepted.
+
+### D-161 · Motion: three movements, the browser's view transition, nothing under reduced motion · 2026-11-12
+
+Milestone 6's step 13, its third part, against the spec's Motion (150 to 250 ms, easing out, `transform` and `opacity` only, nothing that blocks a tap or loops, nothing under reduced motion).
+
+- **Three movements, no more.** The chosen card settles (scale 0.97 to its size), a part new to the picture slides up into place, and a step crosses over to the next. Each is 200 ms by default, with a decelerating curve, `cubic-bezier(0.2, 0, 0, 1)`, as the two custom properties `--cbuild-duration` and `--cbuild-ease`.
+- **The browser's view transition, not a script's animation.** The store's `show` wraps the change of view in `document.startViewTransition` where the browser has it and the shopper allows motion, and changes the view at once otherwise, so a browser without the API loses nothing but the crossing. The update waits one task for the Interactivity API's render, which runs on a microtask, before the browser takes the new picture. Each picture item is `view-transition-name: match-element` with the class `cbuild-part`, so a part kept moves with the view and a new one arrives by `cbuild-arrive`.
+- **Timing on the page's root.** The view transition's pseudo-elements hang off `:root`, not `.cbuild`, so their rules read the two properties with the same values as fallbacks. A theme that changes them sets them on `:root` too; HOOKS says so.
+- **Nothing in the way of a tap.** `::view-transition` takes no pointer events, so a tap during a crossing reaches the page beneath.
+- **Under reduced motion,** every rule is inside `@media (prefers-reduced-motion: no-preference)`, and the store asks `matchMedia` before starting a transition. A browser test watches the page frame by frame and finds no animation and no transition.
+- **The `transform` and `opacity` rule** is held by the browser test for the builder's own keyframes. The browser's own view transition groups animate their box's size as well as its place; between the old and new view the boxes are the same size, so only `transform` changes, but the test does not hold the browser's keyframes to the rule. It does hold every animation, the browser's included, to 150 to 250 ms and one iteration.
+- **The card settles on load as well** when a card is checked as the page opens (a build link): one 200 ms settle, which the spec's bounds allow, and simpler than marking the shopper's own pick.
+
+**Status:** Accepted.

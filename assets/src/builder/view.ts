@@ -114,6 +114,27 @@ export const browser = {
 };
 
 /**
+ * Show a change of view: crossed over with a view transition where the browser has one and the shopper allows
+ * motion, at once otherwise (spec: Motion; D-161). The transition waits for the Interactivity API's render, which
+ * runs on a microtask, before it takes the new picture; the stylesheet sets its timing.
+ *
+ * @param change What changes the view.
+ */
+function motion( change: () => void ): void {
+	if (
+		'function' !== typeof document.startViewTransition ||
+		window.matchMedia?.( '(prefers-reduced-motion: reduce)' ).matches
+	) {
+		change();
+		return;
+	}
+	document.startViewTransition( () => {
+		change();
+		return new Promise< void >( ( done ) => window.setTimeout( done ) );
+	} );
+}
+
+/**
  * The navigator, made on first use from the page's config.
  *
  * @param state The store's state.
@@ -136,9 +157,11 @@ function nav( state: State ): Navigator {
 					! state.view.isChanges
 						? 'push'
 						: history;
-				state.view = shown;
-				state.added = false;
-				say( state, shown, turned, config );
+				motion( () => {
+					state.view = shown;
+					state.added = false;
+					say( state, shown, turned, config );
+				} );
 				return turned;
 			},
 			pending: ( on ) => {

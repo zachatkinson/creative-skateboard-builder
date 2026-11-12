@@ -1022,6 +1022,169 @@ test.describe( "The builder's styles", () => {
 	} );
 } );
 
+test.describe( 'Motion', () => {
+	type Seen = {
+		name: string;
+		duration: number;
+		iterations: number;
+		properties: string[];
+		pseudo: string;
+	};
+
+	/**
+	 * Watch the page for a second: every animation it runs, frame by frame, and each view transition started.
+	 *
+	 * @param page The page.
+	 */
+	const watch = ( page: Page ) =>
+		page.evaluate( () => {
+			const record = window as unknown as {
+				seen: Map< Animation, unknown >;
+				transitions: number;
+				watched: boolean;
+			};
+			record.seen = new Map();
+			record.transitions = 0;
+			record.watched = false;
+			const start = document.startViewTransition?.bind( document );
+			if ( start ) {
+				document.startViewTransition = ( ( update: () => void ) => {
+					record.transitions++;
+					return start( update );
+				} ) as typeof document.startViewTransition;
+			}
+			const until = performance.now() + 1500;
+			const frame = () => {
+				for ( const animation of document.getAnimations() ) {
+					const effect = animation.effect as KeyframeEffect | null;
+					record.seen.set( animation, {
+						name: ( animation as CSSAnimation ).animationName ?? '',
+						duration: Number(
+							effect?.getComputedTiming().duration ?? 0
+						),
+						iterations: Number(
+							effect?.getComputedTiming().iterations ?? 0
+						),
+						properties: [
+							...new Set(
+								( effect?.getKeyframes() ?? [] ).flatMap(
+									( keyframe ) =>
+										Object.keys( keyframe ).filter(
+											( key ) =>
+												! [
+													'offset',
+													'computedOffset',
+													'easing',
+													'composite',
+												].includes( key )
+										)
+								)
+							),
+						],
+						pseudo: effect?.pseudoElement ?? '',
+					} );
+				}
+				if ( performance.now() < until ) {
+					window.requestAnimationFrame( frame );
+				} else {
+					record.watched = true;
+				}
+			};
+			window.requestAnimationFrame( frame );
+		} );
+
+	const seen = async ( page: Page ) => {
+		await expect
+			.poll( () =>
+				page.evaluate(
+					() => ( window as unknown as { watched: boolean } ).watched
+				)
+			)
+			.toBe( true );
+		return page.evaluate( () => {
+			const record = window as unknown as {
+				seen: Map< Animation, Seen >;
+				transitions: number;
+			};
+			return {
+				animations: [ ...record.seen.values() ],
+				transitions: record.transitions,
+			};
+		} );
+	};
+
+	const pickAndStep = async ( page: Page ) => {
+		await page
+			.getByRole( 'radio', { name: 'Choose Builder test deck 8.0' } )
+			.check();
+		await expect( page.locator( '.cbuild' ) ).toHaveAttribute(
+			'aria-busy',
+			'false'
+		);
+		await page
+			.locator( '.cbuild' )
+			.getByRole( 'button', { name: 'Next: Trucks' } )
+			.first()
+			.click();
+		await expect( heading( page ) ).toHaveText( 'Step 2 of 7: Trucks' );
+	};
+
+	test.beforeEach( async ( { page }, info ) => {
+		test.skip(
+			info.project.name === 'no-js',
+			"The view transition is the store's; the card settles the same without it."
+		);
+		await page.goto( fixture().page );
+		await page.waitForLoadState( 'load' );
+	} );
+
+	test( 'settles the chosen card and crosses steps over within 150 to 250 ms, moving only transform and opacity', async ( {
+		page,
+	} ) => {
+		await page.emulateMedia( { reducedMotion: 'no-preference' } );
+		await watch( page );
+		await pickAndStep( page );
+		const { animations, transitions } = await seen( page );
+
+		expect( animations.map( ( animation ) => animation.name ) ).toContain(
+			'cbuild-settle'
+		);
+		if (
+			await page.evaluate(
+				() => 'function' === typeof document.startViewTransition
+			)
+		) {
+			expect( transitions, 'the step crossed over' ).toBeGreaterThan( 0 );
+		}
+		for ( const animation of animations ) {
+			const what = `${ animation.name } ${ animation.pseudo }`;
+			expect( animation.duration, what ).toBeGreaterThanOrEqual( 150 );
+			expect( animation.duration, what ).toBeLessThanOrEqual( 250 );
+			expect( animation.iterations, what ).toBe( 1 );
+			if ( animation.name.startsWith( 'cbuild-' ) ) {
+				expect(
+					animation.properties.filter(
+						( property ) =>
+							! [ 'transform', 'opacity' ].includes( property )
+					),
+					what
+				).toEqual( [] );
+			}
+		}
+	} );
+
+	test( 'moves nothing where the shopper asks for reduced motion', async ( {
+		page,
+	} ) => {
+		await page.emulateMedia( { reducedMotion: 'reduce' } );
+		await watch( page );
+		await pickAndStep( page );
+		const { animations, transitions } = await seen( page );
+		expect( animations ).toEqual( [] );
+		expect( transitions ).toBe( 0 );
+	} );
+} );
+
 test.describe( 'The phone bar', () => {
 	const PHONE = { width: 390, height: 700 };
 

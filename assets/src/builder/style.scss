@@ -29,6 +29,8 @@
 	--cbuild-summary-width: 19rem;
 	--cbuild-ground: var(--wp--preset--color--base, Canvas);
 	--cbuild-bar-height: 4.25rem;
+	--cbuild-duration: 200ms;
+	--cbuild-ease: cubic-bezier(0.2, 0, 0, 1);
 }
 
 /* Outside `:where()`: a theme's `display` must not show what the builder hides. */
@@ -691,5 +693,59 @@
 		scroll-padding-block-end: calc(
 			var(--cbuild-bar-height, 4.25rem) + 0.5rem
 		);
+	}
+}
+
+/*
+ * Motion (spec: Motion; D-161). Three movements, each 150 to 250 ms, easing out, moving `transform` and `opacity`
+ * alone, none looping and none in the way of a tap: the chosen card settles, a part slides into the picture, and a
+ * step crosses over to the next. Nothing moves where the shopper asks for reduced motion, or where the browser has no
+ * view transitions (the store then shows the view at once).
+ *
+ * The view transition's pseudo-elements hang off the page's root, not the builder's, so their timing reads
+ * `--cbuild-duration` and `--cbuild-ease` with the same values as fallbacks: a theme that changes them sets them on
+ * `:root` as well as on `.cbuild`.
+ */
+@media (prefers-reduced-motion: no-preference) {
+	:where(.cbuild-card:has(> .cbuild-card__control:checked)) {
+		animation: cbuild-settle var(--cbuild-duration) var(--cbuild-ease);
+	}
+
+	:where(.cbuild-picture__item) {
+		view-transition-class: cbuild-part;
+		view-transition-name: match-element;
+	}
+
+	::view-transition-group(*),
+	::view-transition-old(*),
+	::view-transition-new(*) {
+		animation-duration: var(--cbuild-duration, 200ms);
+		animation-timing-function: var(
+			--cbuild-ease,
+			cubic-bezier(0.2, 0, 0, 1)
+		);
+	}
+
+	/* A part new to the picture slides up into its place. */
+	::view-transition-new(*.cbuild-part):only-child {
+		animation-name: cbuild-arrive;
+	}
+
+	/* The page under a transition still takes taps. */
+	::view-transition {
+		pointer-events: none;
+	}
+}
+
+@keyframes cbuild-settle {
+	from {
+		transform: scale(0.97);
+	}
+}
+
+@keyframes cbuild-arrive {
+	from {
+		opacity: 0;
+		transform: translateY(0.5rem);
 	}
 }

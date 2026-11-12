@@ -127,6 +127,8 @@
         "--cbuild-bar-height",
         "--cbuild-card-width",
         "--cbuild-control",
+        "--cbuild-duration",
+        "--cbuild-ease",
         "--cbuild-focus",
         "--cbuild-gap",
         "--cbuild-gap-small",

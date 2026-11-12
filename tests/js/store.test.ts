@@ -847,3 +847,59 @@ describe( 'keeping focus clear of the phone bar', () => {
 		expect( scrolled ).toEqual( [] );
 	} );
 } );
+
+describe( 'motion', () => {
+	function motion( reduce: boolean, api: boolean ): Array< () => void > {
+		const transitions: Array< () => void > = [];
+		vi.stubGlobal( 'matchMedia', ( query: string ) => ( {
+			matches: reduce && query === '(prefers-reduced-motion: reduce)',
+		} ) );
+		Object.defineProperty( document, 'startViewTransition', {
+			value: api
+				? ( update: () => void ) => {
+						transitions.push( update );
+						update();
+						return { finished: Promise.resolve() };
+					}
+				: undefined,
+			configurable: true,
+		} );
+		return transitions;
+	}
+
+	afterEach( () => {
+		Object.defineProperty( document, 'startViewTransition', {
+			value: undefined,
+			configurable: true,
+		} );
+	} );
+
+	async function step(): Promise< void > {
+		const { form: sheet, next } = form();
+		setElement( sheet );
+		actions.submit(
+			new SubmitEvent( 'submit', { submitter: next, cancelable: true } )
+		);
+		await settle();
+	}
+
+	it( 'crosses over to the next view with a view transition where the browser has one', async () => {
+		const transitions = motion( false, true );
+		await step();
+		expect( transitions ).toHaveLength( 1 );
+		expect( state.view ).toEqual( NEXT );
+	} );
+
+	it( 'shows the next view at once under reduced motion', async () => {
+		const transitions = motion( true, true );
+		await step();
+		expect( transitions ).toHaveLength( 0 );
+		expect( state.view ).toEqual( NEXT );
+	} );
+
+	it( 'shows the next view at once where the browser has no view transitions', async () => {
+		motion( false, false );
+		await step();
+		expect( state.view ).toEqual( NEXT );
+	} );
+} );
