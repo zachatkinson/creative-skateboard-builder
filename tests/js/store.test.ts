@@ -485,6 +485,45 @@ describe( 'the store', () => {
 		expect( state.status ).toBe( '2 parts no longer fit.' );
 	} );
 
+	it( "takes a pick that opens the change panel as a step: a new entry, the panel's heading focused, the title", async () => {
+		const { radio } = form();
+		document.body.insertAdjacentHTML(
+			'afterbegin',
+			'<h2 class="cbuild-changes__heading" tabindex="-1">Changes</h2>'
+		);
+		setElement( document.body );
+		(
+			defined.definition as { callbacks: { init: () => void } }
+		 ).callbacks.init();
+		const pushed = vi.spyOn( window.history, 'pushState' );
+		const replaced = vi.spyOn( window.history, 'replaceState' );
+		const panel = {
+			...START,
+			url: window.location.origin + '/?changes',
+			title: 'Step 1 of 7: Deck',
+			isChanges: true,
+			status: '1 part no longer fits.',
+		};
+		reply = () => answer( panel );
+		actions.pick( { target: radio } as unknown as Event );
+		vi.advanceTimersByTime( WAIT );
+		await settle();
+		vi.advanceTimersToNextFrame();
+		expect( pushed ).toHaveBeenCalledWith( null, '', panel.url );
+		expect( replaced ).not.toHaveBeenCalled();
+		expect( radio.ownerDocument.activeElement ).toBe(
+			document.querySelector( '.cbuild-changes__heading' )
+		);
+		expect( document.title ).toBe( 'Step 1 of 7: Deck' + TITLE.after );
+		expect( state.status ).toBe( '1 part no longer fits.' );
+
+		// A pick on a panel already shown, were there one, stays a pick.
+		actions.pick( { target: radio } as unknown as Event );
+		vi.advanceTimersByTime( WAIT );
+		await settle();
+		expect( replaced ).toHaveBeenCalledWith( null, '', panel.url );
+	} );
+
 	it( 'says the build and its total after a pick, and leaves focus and the title alone', async () => {
 		const { radio } = form();
 		document.body.insertAdjacentHTML(

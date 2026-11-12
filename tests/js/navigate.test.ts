@@ -6,7 +6,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
 	Navigator,
+	WAIT,
 	type Deps,
+	type Move,
 	type View,
 } from '../../assets/src/builder/navigate';
 
@@ -33,6 +35,8 @@ interface Harness {
 	asked: URL[];
 	inits: Array< RequestInit | undefined >;
 	reply: ( response: Response | Error ) => void;
+	/** How the store treats history for a view, where it says otherwise than the move. */
+	turn?: ( view: View ) => Move[ 'history' ];
 }
 
 /**
@@ -79,7 +83,10 @@ function harness( endpoint = ENDPOINT ): Harness {
 					);
 				} );
 			},
-			show: ( v ) => h.shown.push( v ),
+			show: ( v, history ) => {
+				h.shown.push( v );
+				return h.turn ? h.turn( v ) : history;
+			},
 			pending: ( on ) => h.pending.push( on ),
 			push: ( url ) => h.pushed.push( url ),
 			replace: ( url ) => h.replaced.push( url ),
@@ -166,6 +173,32 @@ describe( 'Navigator', () => {
 		expect( h.replaced ).toEqual( [] );
 		expect( h.pending ).toEqual( [ true, false ] );
 		expect( h.fallbacks ).toEqual( [] );
+	} );
+
+	it( 'makes a new entry for a view the store says is a step of its own, though a pick brought it', async () => {
+		const h = harness();
+		h.turn = ( v ) => ( v.url.includes( 'changes' ) ? 'push' : 'replace' );
+		const navigator = new Navigator( h.deps );
+		navigator.pick( {
+			fields: STEP,
+			history: 'replace',
+			fallback: () => undefined,
+		} );
+		vi.advanceTimersByTime( WAIT );
+		h.reply( answer( { view: view( 'https://shop.example/?changes' ) } ) );
+		await settle();
+		expect( h.pushed ).toEqual( [ 'https://shop.example/?changes' ] );
+		expect( h.replaced ).toEqual( [] );
+
+		navigator.pick( {
+			fields: STEP,
+			history: 'replace',
+			fallback: () => undefined,
+		} );
+		vi.advanceTimersByTime( WAIT );
+		h.reply( answer( { view: view( 'https://shop.example/?deck' ) } ) );
+		await settle();
+		expect( h.replaced ).toEqual( [ 'https://shop.example/?deck' ] );
 	} );
 
 	it( 'takes the address from the answer, which may have landed on another step than the one asked', async () => {

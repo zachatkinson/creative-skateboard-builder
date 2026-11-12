@@ -629,6 +629,96 @@ test.describe( 'The builder with JavaScript', () => {
 		expect( await stayed( page ) ).toBe( true );
 	} );
 
+	test( 'a wider deck opens the change panel with focus on its heading, and Use these and Undo stay on the page', async ( {
+		page,
+	} ) => {
+		await page.goto(
+			linkTo( {
+				deck: id( 'builder-test-deck-8-0' ),
+				trucks: id( 'builder-test-trucks-139' ),
+				step: 'deck',
+			} )
+		);
+		await page.waitForLoadState( 'load' );
+		await mark( page );
+		await page
+			.getByRole( 'radio', { name: 'Choose Builder test deck 8.5' } )
+			.check();
+		await page.getByRole( 'button', { name: 'Next: Trucks' } ).click();
+
+		const panel = page.locator( '.cbuild-changes' );
+		const title = panel.getByRole( 'heading', {
+			name: 'This change affects parts you chose',
+		} );
+		await expect( title ).toBeVisible();
+		await expect( title ).toBeFocused();
+		await expect( page.locator( '.cbuild [role="status"]' ) ).toHaveText(
+			'1 part no longer fits.'
+		);
+		await expect(
+			panel.getByText( 'Closest fit: Builder test trucks 149' )
+		).toBeVisible();
+		await expect( page.locator( '.cbuild-step' ) ).toBeHidden();
+
+		await panel.getByRole( 'button', { name: 'Use these' } ).click();
+		await expect( heading( page ) ).toHaveText( 'Step 2 of 7: Trucks' );
+		await expect( heading( page ) ).toBeFocused();
+		await expect(
+			page.getByRole( 'radio', {
+				name: 'Choose Builder test trucks 149',
+			} )
+		).toBeChecked();
+		await expect
+			.poll( () =>
+				new URL( page.url() ).searchParams.get( 'cbuild[deck]' )
+			)
+			.toBe( String( id( 'builder-test-deck-8-5' ) ) );
+
+		await page.goBack();
+		await expect( title ).toBeVisible();
+		await panel.getByRole( 'button', { name: 'Undo' } ).click();
+		await expect( heading( page ) ).toHaveText( 'Step 1 of 7: Deck' );
+		await expect(
+			page.getByRole( 'radio', { name: 'Choose Builder test deck 8.0' } )
+		).toBeChecked();
+		expect( await stayed( page ) ).toBe( true );
+	} );
+
+	test( 'a wider deck picked and left opens the change panel as a step of its own, which Back leaves', async ( {
+		page,
+	} ) => {
+		await page.goto(
+			linkTo( {
+				deck: id( 'builder-test-deck-8-0' ),
+				trucks: id( 'builder-test-trucks-139' ),
+				step: 'deck',
+			} )
+		);
+		await page.waitForLoadState( 'load' );
+		await mark( page );
+		const before = page.url();
+		await page
+			.getByRole( 'radio', { name: 'Choose Builder test deck 8.5' } )
+			.check();
+
+		const title = page.locator( '.cbuild-changes' ).getByRole( 'heading', {
+			name: 'This change affects parts you chose',
+		} );
+		await expect( title ).toBeFocused();
+		await expect( page ).toHaveTitle( /^Step 1 of 7: Deck - / );
+		await expect( page.locator( '.cbuild [role="status"]' ) ).toHaveText(
+			'1 part no longer fits.'
+		);
+
+		await page.goBack();
+		await expect( page.locator( '.cbuild-step' ) ).toBeVisible();
+		await expect(
+			page.getByRole( 'radio', { name: 'Choose Builder test deck 8.0' } )
+		).toBeChecked();
+		expect( page.url() ).toBe( before );
+		expect( await stayed( page ) ).toBe( true );
+	} );
+
 	test( 'starts from a preset without loading the page', async ( {
 		page,
 	} ) => {

@@ -113,8 +113,18 @@ function nav( state: State ): Navigator {
 			locale: String( config.locale ?? '' ),
 			fetch: ( input, init ) => window.fetch( input, init ),
 			show: ( view, history ) => {
-				state.view = view as Shown;
-				say( state, view as Shown, history, config );
+				const shown = view as Shown;
+				// A pick that opens the change panel is a step: an entry of its own, which Back leaves for the step
+				// the pick was made on, with focus on the panel's heading, as Next would have it (D-152).
+				const turned =
+					'replace' === history &&
+					shown.isChanges &&
+					! state.view.isChanges
+						? 'push'
+						: history;
+				state.view = shown;
+				say( state, shown, turned, config );
+				return turned;
 			},
 			pending: ( on ) => {
 				state.pending = on;

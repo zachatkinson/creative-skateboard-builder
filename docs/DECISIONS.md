@@ -2106,3 +2106,13 @@ Milestone 6's step 8, against the spec's Presets ("Up to six tiles at the start 
 - **The tile's picture** waits for step 11, where the picture is drawn; the tile holds the total, the line and any note until then.
 
 **Status:** Accepted.
+
+### D-152 · A pick that opens the change panel is a step: its own history entry, focus on the panel's heading · 2026-11-12
+
+Milestone 6's step 9, against the spec's A change that breaks later picks ("Focus moves to the panel's heading, and the status region says how many parts changed") and History ("each step change adds a history entry").
+
+- **What went wrong.** With JavaScript, a pick is sent to the route once the shopper pauses (D-148). A wider deck answered with the change panel then, before Next: the panel took the place of the step under the radio the shopper was on, so focus fell to the page's body, the title still said the step, and the panel took the deck step's history entry, so Back skipped past the step.
+- **The store says what a view is.** The navigator still decides nothing about the view (it reads its address alone), but `show` now answers how history treats the view as shown. The store turns a pick whose answer opens the panel, where none was shown, into a step: a new entry, the title, and focus on the panel's heading once it is drawn. Back leaves the panel for the deck step as the shopper left it, as it does without JavaScript, where the panel comes from Next. A pick on a panel already shown stays a pick.
+- **Use these and Undo** are the panel's GET forms, sent through the store as any step's form is, and move focus to the step they land on.
+
+**Status:** Accepted.

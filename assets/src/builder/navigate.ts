@@ -8,7 +8,8 @@
  * - **The last request wins.** A request a later one overtakes is aborted, and its answer, should it arrive, dropped.
  * - **Anything but a view is a failure,** and the form or link does what it does without JavaScript.
  * - **History.** A step change is a new entry, a pick replaces the current one, and going back makes none. The address
- *   is the one the answer says the view is at, which the server may have moved to another step.
+ *   is the one the answer says the view is at, which the server may have moved to another step. The store, shown the
+ *   view, may say it is a step of its own though a pick brought it: the change panel (D-152).
  */
 
 /**
@@ -42,8 +43,11 @@ export interface Deps {
 	/** The page's language. */
 	locale: string;
 	fetch: ( input: string, init?: RequestInit ) => Promise< Response >;
-	/** Shows a view, told how the move that brought it treats history: a pick replaces, a step pushes. */
-	show: ( view: View, history: Move[ 'history' ] ) => void;
+	/**
+	 * Shows a view, told how the move that brought it treats history: a pick replaces, a step pushes. Answers how
+	 * history treats the view as shown, which is the move's unless the view is a step of its own.
+	 */
+	show: ( view: View, history: Move[ 'history' ] ) => Move[ 'history' ];
 	pending: ( on: boolean ) => void;
 	push: ( url: string ) => void;
 	replace: ( url: string ) => void;
@@ -130,10 +134,10 @@ export class Navigator {
 				move.fallback();
 				return;
 			}
-			this.deps.show( view, move.history );
-			if ( 'push' === move.history ) {
+			const history = this.deps.show( view, move.history );
+			if ( 'push' === history ) {
 				this.deps.push( view.url );
-			} else if ( 'replace' === move.history ) {
+			} else if ( 'replace' === history ) {
 				this.deps.replace( view.url );
 			}
 		} );
