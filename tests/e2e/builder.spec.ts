@@ -795,6 +795,10 @@ test.describe( 'The builder with JavaScript', () => {
 			.getByRole( 'button', { name: 'Start from Street' } )
 			.click();
 		await expect( heading( page ) ).toHaveText( 'Step 7 of 7: Review' );
+		// The cart is empty, and the page has the styles a build in its Mini-Cart is grouped by (D-132, D-158).
+		await expect(
+			page.locator( 'style#cbuild-cart-inline-css' )
+		).toHaveCount( 1 );
 		// What the event is to say: the review form's own fields.
 		const sent = await page
 			.locator( '#cbuild-review-form' )

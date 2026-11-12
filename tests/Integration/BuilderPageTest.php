@@ -9,6 +9,7 @@ declare( strict_types=1 );
 
 namespace CreativeBranding\SkateboardBuilder\Tests\Integration;
 
+use CreativeBranding\SkateboardBuilder\Cart\ShowHooks;
 use CreativeBranding\SkateboardBuilder\Front\Builder;
 use CreativeBranding\SkateboardBuilder\Front\BuilderPage;
 use CreativeBranding\SkateboardBuilder\Front\PageTitle;
@@ -102,6 +103,7 @@ final class BuilderPageTest extends IntegrationTestCase {
 		unset( $_GET[ BuildLink::PARAM ], $GLOBALS['product'] );
 		remove_all_filters( 'cbuild_part_classes' );
 		remove_all_filters( 'cbuild_builder_url' );
+		wp_dequeue_style( ShowHooks::HANDLE );
 		parent::tear_down();
 	}
 
@@ -272,6 +274,14 @@ final class BuilderPageTest extends IntegrationTestCase {
 		self::assertSame( 'button', $copy->getAttribute( 'type' ) );
 		self::assertSame( 'actions.copy', $copy->getAttribute( 'data-wp-on--click' ) );
 		self::assertTrue( $copy->hasAttribute( 'hidden' ), 'Without JavaScript the button would do nothing.' );
+	}
+
+	public function test_a_builder_brings_the_carts_line_styles_for_a_first_add_without_a_page_load(): void {
+		self::assertSame( array(), WC()->cart->get_cart(), 'a shopper with nothing in the cart yet' );
+		self::assertFalse( wp_style_is( ShowHooks::HANDLE ) );
+		$this->kitPage( array() );
+		self::assertTrue( wp_style_is( ShowHooks::HANDLE ), 'the Mini-Cart on this page will show a build added here (D-132, D-158)' );
+		self::assertStringContainsString( '.woocommerce-mini-cart-item.cbuild-part', implode( '', (array) wp_styles()->get_data( ShowHooks::HANDLE, 'after' ) ) );
 	}
 
 	public function test_the_review_adds_through_the_store_and_says_so_with_a_link_to_the_cart(): void {

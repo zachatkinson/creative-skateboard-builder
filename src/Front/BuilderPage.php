@@ -9,6 +9,7 @@ declare( strict_types=1 );
 
 namespace CreativeBranding\SkateboardBuilder\Front;
 
+use CreativeBranding\SkateboardBuilder\Cart\ShowHooks;
 use CreativeBranding\SkateboardBuilder\Port\Kits;
 use CreativeBranding\SkateboardBuilder\Port\Logger;
 use CreativeBranding\SkateboardBuilder\Support\Cast;
@@ -126,6 +127,8 @@ final class BuilderPage {
 			);
 			// The block's own render enqueues it; the kit's page has no block.
 			wp_enqueue_script_module( self::MODULE );
+			// A build added here without a page load shows in the page's Mini-Cart, grouped (D-158).
+			ShowHooks::styles();
 			ob_start();
 			require CBUILD_PATH . 'templates/builder/builder.php';
 			$html = (string) ob_get_clean();

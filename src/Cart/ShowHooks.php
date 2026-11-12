@@ -160,6 +160,21 @@ final class ShowHooks implements Hookable {
 	}
 
 	/**
+	 * Put the styles that group a build in the carts in the page, once. The builder's page asks for them whatever
+	 * the cart holds: a build added there without a page load shows in the page's Mini-Cart (D-132, D-158).
+	 *
+	 * @since 0.6.0
+	 */
+	public static function styles(): void {
+		if ( ! wp_style_is( self::HANDLE, 'registered' ) ) {
+			// A handle with no file: WordPress prints what is added to it and asks for nothing.
+			wp_register_style( self::HANDLE, false, array(), CBUILD_VERSION );
+			wp_add_inline_style( self::HANDLE, self::STYLES );
+		}
+		wp_enqueue_style( self::HANDLE );
+	}
+
+	/**
 	 * Put the styles in the page, once, and load the script where it is wanted. A checkout that was never built
 	 * has no script; the server keeps a build whole without it, and the zip is checked for it.
 	 *
@@ -169,12 +184,7 @@ final class ShowHooks implements Hookable {
 		if ( ! $this->holds() ) {
 			return;
 		}
-		if ( ! wp_style_is( self::HANDLE, 'registered' ) ) {
-			// A handle with no file: WordPress prints what is added to it and asks for nothing.
-			wp_register_style( self::HANDLE, false, array(), CBUILD_VERSION );
-			wp_add_inline_style( self::HANDLE, self::STYLES );
-		}
-		wp_enqueue_style( self::HANDLE );
+		self::styles();
 		$built = $script && is_readable( CBUILD_PATH . self::BUILT . '.asset.php' ) ? require CBUILD_PATH . self::BUILT . '.asset.php' : null;
 		if ( is_array( $built ) && is_string( $built['version'] ?? null ) ) {
 			wp_enqueue_script( self::HANDLE, CBUILD_URL . self::BUILT . '.js', array( 'wc-blocks-checkout' ), $built['version'], array( 'in_footer' => true ) );

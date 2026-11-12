@@ -2169,3 +2169,13 @@ Milestone 6's step 12c, against the spec's Review and add to cart ("After adding
 - **Quantity.** The edited build goes in at the quantity the review sends, which is 1. A shopper who had 3 of a build and edits it has 1 after; the cart's own quantity field sets it back. Carrying the quantity through the link is for Zach to decide; this is what stands until he does.
 
 **Status:** Accepted.
+
+### D-158 · The builder's page brings the carts' line styles · 2026-11-12
+
+Milestone 6's step 12d, closing what D-132 left for this milestone ("A build added from a page with no build in the cart has its styles from the next page on").
+
+- **The gap.** `Cart\ShowHooks` puts its few inline rules in a page only when the cart holds a build as the page is drawn, so that a shop page gets nothing of the plugin's (spec: Performance). With step 12a, a shopper's first build reaches the cart from the builder's page without a page load, and the Mini-Cart in that page's header would draw its parts unindented until the next page.
+- **The fix.** The builder's page asks for the styles whenever it renders a builder, through `ShowHooks::styles()`, the same handle with no file and the same rules. It is one `<style>` element of about 300 bytes, on pages that already load the builder's own script and styles; a page without a builder still gets nothing, and the smoke test that holds it to that is unchanged.
+- **Front calls Cart directly.** Both are in deptrac's hooks layer, so no new hook or public API is needed for it.
+
+**Status:** Accepted.

@@ -30,6 +30,7 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Changed
 
+- A page with a builder carries the carts' line styles whatever the cart holds, so a first build added there without a page load is grouped in the page's Mini-Cart. Before, they came with the next page (D-132, D-158).
 - `schema/state.json` no longer closes its objects, so a reader that checks an answer against it accepts the fields a later release adds (D-143).
 - A slots document with a slot keyed `step`, `assembly`, `preset` or `review` is refused as `document_bad_key`: a build link keeps those words for itself (D-142).
 
