@@ -65,6 +65,7 @@ final class BuildLinkTest extends TestCase {
 	public function test_a_link_is_written_in_slot_order_so_one_build_has_one_address(): void {
 		$sent = array(
 			'_shown'   => '48',
+			'preset'   => '3',
 			'assembly' => '0',
 			'wheels'   => '31',
 			'step'     => 'bearings',
@@ -84,6 +85,7 @@ final class BuildLinkTest extends TestCase {
 			'wheels'   => '31',
 			'step'     => 'bearings',
 			'assembly' => '0',
+			'preset'   => '3',
 			'_was'     => array(
 				'deck'   => '12',
 				'wheels' => '30',
@@ -117,9 +119,9 @@ final class BuildLinkTest extends TestCase {
 	 * @return iterable<string, array{array<mixed>, array<string, mixed>}>
 	 */
 	public static function untrusted(): iterable {
-		yield 'an ID that is no whole number above nothing' => array(
+		yield 'an ID that is no whole number' => array(
 			array(
-				'deck'     => '0',
+				'deck'     => '-0',
 				'trucks'   => '-4',
 				'wheels'   => '1e3',
 				'bearings' => '012',
@@ -196,5 +198,61 @@ final class BuildLinkTest extends TestCase {
 		self::assertSame( array( 'deck' => '12', 'trucks' => '21', 'step' => 'trucks', '_was' => array( 'deck' => '11' ), '_brand' => 'thunder', '_shown' => '48' ), $link->after( array( 'deck' => 11 ) )->query( self::slots() ) );
 		self::assertSame( array( 'deck' => '12', 'trucks' => '21', 'step' => 'trucks', '_brand' => 'thunder', '_shown' => '48', '_replace' => 'abc-1' ), $link->replacing( 'abc-1' )->query( self::slots() ) );
 		self::assertSame( array( 'deck' => '12', 'trucks' => '21', 'step' => 'trucks' ), $link->after( array( 'deck' => 11 ) )->replacing( 'abc-1' )->shared()->query( self::slots() ), 'what is shared is the build and its step, as the spec has it, and nothing of the visit' );
+	}
+
+	public function test_a_slot_sent_as_nothing_is_left_empty_by_choice_and_written_back_in_its_place(): void {
+		$link = BuildLink::read(
+			array(
+				'risers' => '0',
+				'deck'   => '12',
+				'wheels' => 0,
+				'step'   => '0',
+				'Deck'   => '0',
+				'_was'   => array( 'trucks' => '0' ),
+			)
+		);
+		self::assertSame( array( 'risers', 'wheels' ), $link->none, 'A slot\'s key alone, and never one of the words the address keeps.' );
+		self::assertSame( array( 'deck' => 12 ), $link->picks );
+		self::assertNull( $link->was );
+		self::assertFalse( BuildLink::read( array( 'risers' => '0' ) )->isClean() );
+		self::assertSame( array(), BuildLink::read( array( 'risers' => '00' ) )->none );
+		self::assertSame(
+			array(
+				'deck'   => '12',
+				'wheels' => '0',
+				'risers' => '0',
+			),
+			$link->query( self::slots() ),
+			'In the slots\' order, among the picks.'
+		);
+		self::assertSame( array(), ( new BuildLink( none: array( 'stickers' ) ) )->query( self::slots() ), 'A slot the kit lacks is left out.' );
+		self::assertSame( array( 'risers' => '7' ), ( new BuildLink( array( 'risers' => 7 ), none: array( 'risers' ) ) )->query( self::slots() ), 'A pick stands before a leave.' );
+	}
+
+	public function test_leaving_a_slot_takes_its_pick_out_and_picking_takes_it_back(): void {
+		$link = ( new BuildLink( array( 'deck' => 12, 'risers' => 41 ), step: 'risers', assembly: true, preset: 1, brand: 'a', size: '8in', shown: 48, replace: 'ab' ) )->leave( 'risers' );
+		self::assertSame( array( 'deck' => 12 ), $link->picks );
+		self::assertSame( array( 'risers' ), $link->none );
+		self::assertSame( array( 'risers', true, 1, 'a', '8in', 48, 'ab' ), array( $link->step, $link->assembly, $link->preset, $link->brand, $link->size, $link->shown, $link->replace ) );
+		self::assertSame( array( 'risers', 'wheels' ), $link->leave( 'wheels' )->none );
+		self::assertSame( array( 'risers' ), $link->leave( 'risers' )->none, 'Once.' );
+
+		$both = $link->leave( 'wheels' );
+		self::assertSame( array( 'wheels' ), $both->pick( 'risers', 42 )->none );
+		self::assertSame( array( 'wheels' ), $both->pick( 'risers', null )->none, 'Taken out is not left by choice.' );
+		self::assertSame( array( 0 ), array_keys( $both->pick( 'risers', null )->none ) );
+
+		// Every other change keeps what was left, a shared link too: it is part of the build.
+		foreach ( array( $both->at( 'deck' ), $both->filtered( 'b', '' ), $both->showing( 72 ), $both->assembled( false ), $both->after( array( 'deck' => 11 ) ), $both->replacing( 'cd' ), $both->shared() ) as $made ) {
+			self::assertSame( array( 'risers', 'wheels' ), $made->none );
+		}
+	}
+
+	public function test_no_more_slots_are_left_than_a_kit_can_have(): void {
+		$sent = array();
+		for ( $n = 0; $n < Slots::MAX + 5; $n++ ) {
+			$sent[ 'slot_' . $n ] = '0';
+		}
+		self::assertCount( Slots::MAX, BuildLink::read( $sent )->none );
 	}
 }

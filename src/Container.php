@@ -243,6 +243,14 @@ final class Container {
 			Service\SavedSources::class                 => static function (): object {
 				return new Service\SavedSources( array( Support\Options::META_SPECS, Support\Options::META_SPEC_TABLE ) );
 			},
+			// The builder's services are built when a page shows a builder, not on every request.
+			Front\PageHooks::class                      => static function ( Container $c ): object {
+				return new Front\PageHooks(
+					static function () use ( $c ): Front\BuilderPage {
+						return $c->get( Front\BuilderPage::class );
+					}
+				);
+			},
 			// The state route's services are built when the route is asked, not whenever the REST API starts.
 			Rest\StateRoute::class                      => static function ( Container $c ): object {
 				return new Rest\StateRoute(
@@ -354,6 +362,8 @@ final class Container {
 			Health\SiteHealth::class               => array( Scope::Admin, Scope::Cron, Scope::Cli, Scope::Rest ),
 			// The state route, which the builder's script asks.
 			Rest\StateRoute::class                 => array( Scope::Rest ),
+			// The block is registered on every request, the editor's and the REST renderer's among them.
+			Front\PageHooks::class                 => array( Scope::Everywhere ),
 			// WordPress builds its abilities when something first asks for one, on any kind of request.
 			Abilities\CatalogueCheckAbility::class => array( Scope::Everywhere ),
 			Abilities\CheckBuildAbility::class     => array( Scope::Everywhere ),

@@ -425,6 +425,7 @@
 							"slot",
 							"part",
 							"label",
+							"size",
 							"name",
 							"image"
 						],
@@ -440,6 +441,10 @@
 							},
 							"label": {
 								"description": "The slot's label, with the part's brand and size where it has them: `Wheels: Retna, 54 mm`.",
+								"type": "string"
+							},
+							"size": {
+								"description": "The part's size as a person reads it, such as `8.5 in`, or an empty string for a slot that has none.",
 								"type": "string"
 							},
 							"name": {

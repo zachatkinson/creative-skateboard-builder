@@ -28,8 +28,13 @@ if [ -n "$dotfiles" ]; then
 	exit 1
 fi
 # Every script the plugin enqueues from build/ is in the zip, built: a zip without one would lose it silently (D-086).
+# A path that ends in a slash is a block's directory, registered from its block.json (D-144).
 for built in $(grep -rhoE "'build/[a-z0-9/-]+'" src | tr -d "'" | sort -u); do
-	for file in "$built.js" "$built.asset.php"; do
+	files="$built.js $built.asset.php"
+	case "$built" in
+		*/) files="${built}block.json ${built}index.js ${built}index.asset.php" ;;
+	esac
+	for file in $files; do
 		if [ ! -s "$stage/$file" ]; then
 			echo "The zip would ship without $file, which src/ loads. Run npm run build and look at its output." >&2
 			exit 1

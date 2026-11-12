@@ -125,4 +125,17 @@ final class Cast {
 		}
 		return $out;
 	}
+
+	/**
+	 * An array's values, in order and renumbered, as a list is read; anything else is empty. A list read through
+	 * map() is empty, since a list's keys are numbers.
+	 *
+	 * @since 0.6.0
+	 *
+	 * @param mixed $value Value.
+	 * @return list<mixed>
+	 */
+	public static function items( mixed $value ): array {
+		return is_array( $value ) ? array_values( $value ) : array();
+	}
 }

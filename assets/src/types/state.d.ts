@@ -262,6 +262,10 @@ export interface CbuildState {
 			 */
 			label: string;
 			/**
+			 * The part's size as a person reads it, such as `8.5 in`, or an empty string for a slot that has none.
+			 */
+			size: string;
+			/**
 			 * The part's name, or an empty string when the product has gone.
 			 */
 			name: string;

@@ -65,10 +65,12 @@ final class BuildState {
 	 * @param string|null       $step     The step the shopper is on: a slot's key, or the review. Null, or a slot the
 	 *                                    kit lacks, is the first step with nothing picked.
 	 * @param bool|null         $assembly Whether the shop assembles the build; null is the kit's own default.
+	 * @param list<string>      $left     The slots the shopper chose to leave empty, by key. One the kit does not
+	 *                                    require starts on no part; one it requires starts as any other does.
 	 *
 	 * @throws InvalidMoney When the build cannot be priced in the shop's currency settings. It is logged first.
 	 */
-	public function of( int $id, array $picks, ?array $previous = null, ?string $step = null, ?bool $assembly = null ): ?State {
+	public function of( int $id, array $picks, ?array $previous = null, ?string $step = null, ?bool $assembly = null, array $left = array() ): ?State {
 		$kit = $this->kits->kit( $id );
 		if ( null === $kit ) {
 			// The callers ask only for a kit a visitor may see, so this one is published and its settings do not
@@ -99,7 +101,8 @@ final class BuildState {
 		foreach ( $kit->slots->all() as $slot ) {
 			$options     = $engine->options( $kit, $slot->key, $counted, $candidates[ $slot->key ] );
 			$part        = $picked->part( $slot->key );
-			$recommended = null === $part && $started ? $recommender->among( $kit, $slot->key, $counted, $options ) : null;
+			$starts      = null === $part && $started && ( $slot->required || ! in_array( $slot->key, $left, true ) );
+			$recommended = $starts ? $recommender->among( $kit, $slot->key, $counted, $options ) : null;
 			$steps[]     = new StateStep( $slot, $options, null === $part ? null : self::option( $options, $part->id ), $recommended );
 			$part      ??= $recommended?->part;
 			if ( null !== $part ) {

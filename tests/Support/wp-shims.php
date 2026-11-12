@@ -101,3 +101,10 @@ if ( ! function_exists( 'wp_sprintf' ) ) {
 		return str_replace( '%l', $said, $pattern );
 	}
 }
+if ( ! function_exists( 'sanitize_html_class' ) ) {
+	// WordPress's: percent-encoded octets out, then anything but A-Z, a-z, 0-9, _ and -.
+	function sanitize_html_class( string $classname, string $fallback = '' ): string {
+		$sanitized = (string) preg_replace( '/[^A-Za-z0-9_-]/', '', (string) preg_replace( '|%[a-fA-F0-9][a-fA-F0-9]|', '', $classname ) );
+		return '' === $sanitized && '' !== $fallback ? sanitize_html_class( $fallback ) : $sanitized;
+	}
+}

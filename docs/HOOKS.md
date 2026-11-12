@@ -558,7 +558,7 @@ A build is the query parameters of the page its builder is on, all under `cbuild
 
 | Parameter | Since | What it holds |
 | --- | --- | --- |
-| `cbuild[<slot key>]` | 0.6.0 | The part picked for the slot: a product's or a variation's ID, as digits. |
+| `cbuild[<slot key>]` | 0.6.0 | The part picked for the slot: a product's or a variation's ID, as digits. `0` leaves a slot the kit does not require empty by choice, so that it does not start on a part. |
 | `cbuild[step]` | 0.6.0 | The step shown: a slot's key, or `review`. |
 | `cbuild[assembly]` | 0.6.0 | `1` for a build the shop assembles, `0` for one it does not. Left out, the kit's own setting decides. |
 | `cbuild[preset]` | 0.6.0 | Which of the kit's presets the build began as, counted from 0. |
@@ -580,15 +580,24 @@ Keys that start with an underscore are the builder's own forms' and are not part
 | `options[].delta`, `hidden[].delta` | 0.6.0 | What taking the part does to the total, against the part the step counts now: `kind` (`more`, `less`, `free`, `included` or `none`), `amount` in minor units, and `text` as the card says it (`+$12.00`, `−$5.00`, `Free`, `Included`). It is what the build charges, the build discount taken off, for as many as the build takes. |
 | `filters` | 0.6.0 | `brands` and `sizes`: each value the current step's offered parts have, with its `label`, how many parts have it (`count`) and whether the list is filtered by it (`selected`). A list with fewer than two values is empty. |
 | `matching`, `more` | 0.6.0 | How many of the step's offered parts the filters let through, and how many to ask for to list the next 24, or null when all are listed. |
-| `picture` | 0.6.0 | `items`, one for each part the total counts (`slot`, `part`, `label` such as `Wheels: Retna, 54 mm`, `name`, `image`), and `description`, the build in one sentence. |
+| `picture` | 0.6.0 | `items`, one for each part the total counts (`slot`, `part`, `label` such as `Wheels: Retna, 54 mm`, `size` such as `54 mm` or empty, `name`, `image`), and `description`, the build in one sentence. |
 | `delivery` | 0.6.0 | `arrival` and `line`: what `cbuild_arrival_estimate` and `cbuild_delivery_line` answer, in plain text, each empty where nothing is said. |
 | `notes` | 0.6.0 | What `cbuild_summary_notes` answers: six lines at most, in plain text. |
 
 The published schema no longer closes its objects (`additionalProperties`), so a reader that checks an answer against one release's schema accepts the fields a later release adds. The plugin's own test still fails on any field the schema does not describe.
 
+### The Builder block
+
+| Block | Since | What it is |
+| --- | --- | --- |
+| `creative-skateboard-builder/builder` | 0.6.0 | The builder for one kit, on any page or post. Its one attribute, `kit` (integer, default `0`), is the kit product's ID. A kit that is a draft, private or password-protected, a product that is no kit, and `0` render nothing. The block can be used once in a post (`supports.multiple: false`), and a page shows one builder: the first one rendered, the kit's own page included. |
+
+The kit's own product page shows the same builder where WooCommerce asks a product type for its add-to-cart area (`woocommerce_cbuild_kit_add_to_cart`), in a classic theme and in the Add to Cart form block. Both are rendered on the server, and the template's markup and the store's state are the builder's own: they may change in any release, and are no part of this API.
+
 ### Filters
 
 | Filter | Since | Arguments | What it does |
 | --- | --- | --- | --- |
+| `cbuild_part_classes` | 0.6.0 | `array $classes`, `int $part`, `string $slot`, `int $kit` | Classes to add to a part's card in the builder, such as `is-staff-pick`. `$classes` starts empty. Each answer is made safe for a class attribute and put after the builder's own, which are kept whatever the answer; an answer that is no list adds nothing. `$part` is a product's or a variation's ID. |
 | `cbuild_summary_notes` | 0.6.0 | `array $notes`, `array $context` | Lines under a build's total in the builder: the points a build earns, or a word to a signed-in dealer. `$notes` starts empty. `$context` holds `kit` (the kit product's ID), `parts` (the parts the total counts, slot key to part ID), `assembly`, and `total` in whole minor units with its `decimals`. Answer with a list of sentences in the request's language. Each is shown as plain text, the first six are kept, and anything that is no text is dropped. The answer is asked for on every pick and is never cached, so it has to be quick. Name no person in a line that a shared screen could show. |
 

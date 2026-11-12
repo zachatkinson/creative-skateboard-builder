@@ -103,6 +103,13 @@ final class CastTest extends TestCase {
 		self::assertSame( array(), Cast::strings( null ) );
 	}
 
+	public function test_items_reads_a_list_in_order_whatever_its_keys_and_anything_else_as_empty(): void {
+		self::assertSame( array( 'a', 'b' ), Cast::items( array( 'a', 'b' ) ) );
+		self::assertSame( array( 1, 2 ), Cast::items( array( 'x' => 1, 7 => 2 ) ) );
+		self::assertSame( array(), Cast::items( 'a' ) );
+		self::assertSame( array(), Cast::items( null ) );
+	}
+
 	public function test_map_keeps_string_keys_only(): void {
 		self::assertSame( array( 'a' => 1 ), Cast::map( array( 'a' => 1, 0 => 'dropped' ) ) );
 		self::assertSame(

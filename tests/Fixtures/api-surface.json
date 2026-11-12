@@ -5,6 +5,7 @@
         "cbuild_delivery_line",
         "cbuild_kit_text",
         "cbuild_part_available",
+        "cbuild_part_classes",
         "cbuild_preset_label",
         "cbuild_price_context",
         "cbuild_slot_label",
@@ -113,7 +114,9 @@
         "cbuild reindex",
         "cbuild specs"
     ],
-    "blocks": [],
+    "blocks": [
+        "creative-skateboard-builder/builder"
+    ],
     "dom_events": [],
     "site_health_tests": [
         "cbuild_catalogue",
@@ -177,7 +180,7 @@
         "schema/kit-slots.json": "7c383e3f551b517328d9d195c01e15f9f5dad1a1263a20fa4ff2188592bb820c",
         "schema/order-snapshot.json": "78cc2355e3468a3f4ff06aa8c609594f21ab961dbcf06ca54bb2b4b2e1b18030",
         "schema/settings.json": "ac3d69970a5331c5d2ec28df62593d7f1de714dce2a3d45352b20f09bf4f3232",
-        "schema/state.json": "e5bcbdfd161db4d00d9b28e9f64efc46db3b3241212fe4623f7e6477a4c87ed9"
+        "schema/state.json": "3e05f355adf73dc98f55b4e022f4cc42ff33461ec50ae32daeaeaf0e6db0c671"
     },
     "spec_keys": [
         "deck_width",

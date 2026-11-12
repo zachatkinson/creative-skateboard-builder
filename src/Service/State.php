@@ -64,6 +64,17 @@ final readonly class State {
 	) {}
 
 	/**
+	 * The same build, with the shopper on another step.
+	 *
+	 * @since 0.6.0
+	 *
+	 * @param string $step A slot's key, or the review.
+	 */
+	public function at( string $step ): self {
+		return new self( $this->id, $this->kit, $this->steps, $step, $this->refused, $this->validation, $this->changes, $this->quote, $this->discount );
+	}
+
+	/**
 	 * Whether the build can go to the cart as it stands.
 	 *
 	 * @since 0.4.0

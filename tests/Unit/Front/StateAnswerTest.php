@@ -957,12 +957,14 @@ final class StateAnswerTest extends TestCase {
 				'slot'  => SlotKey::DECK,
 				'part'  => 103,
 				'label' => 'Deck: 8.5 in',
+				'size'  => '8.5 in',
 				'name'  => 'Part 103',
 				'image' => InMemoryPartCards::card( 103 )['image'],
 			),
 			$answer['picture']['items'][0]
 		);
 		self::assertSame( 'Trucks: Independent, 8.5 in', $answer['picture']['items'][1]['label'] );
+		self::assertSame( '', $answer['picture']['items'][3]['size'], 'Bearings have no size of their own.' );
 		self::assertSame( array_column( $answer['total']['lines'], 'part' ), array_column( $answer['picture']['items'], 'part' ), 'The parts the total counts, the recommendations among them.' );
 		self::assertSame( 'Bearings', $answer['picture']['items'][3]['label'], 'A part with no brand and no size is labelled with its slot.' );
 		self::assertStringStartsWith( 'The build so far: Part 103, Part 149, ', $answer['picture']['description'] );

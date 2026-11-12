@@ -1,0 +1,36 @@
+{
+	"$schema": "https://schemas.wp.org/trunk/block.json",
+	"apiVersion": 3,
+	"name": "creative-skateboard-builder/builder",
+	"version": "0.6.0",
+	"title": "Skateboard builder",
+	"category": "woocommerce",
+	"icon": "hammer",
+	"description": "A kit's builder: the shopper picks each part, sees what fits and the total, and adds the build to the cart.",
+	"keywords": [ "kit", "complete", "skateboard" ],
+	"textdomain": "creative-skateboard-builder",
+	"attributes": {
+		"kit": {
+			"type": "integer",
+			"default": 0
+		}
+	},
+	"supports": {
+		"html": false,
+		"multiple": false,
+		"interactivity": true,
+		"align": [ "wide", "full" ],
+		"spacing": {
+			"margin": true,
+			"padding": true
+		},
+		"color": {
+			"background": true,
+			"text": true
+		},
+		"typography": {
+			"fontSize": true
+		}
+	},
+	"editorScript": "file:./index.js"
+}

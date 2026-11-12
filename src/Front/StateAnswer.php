@@ -412,10 +412,12 @@ final class StateAnswer {
 		foreach ( $state->quote->lines as $line ) {
 			$part    = $counted[ $line->slot ];
 			$name    = $cards[ $line->part ]['name'] ?? '';
+			$size    = self::size( $line->slot, $part )['text'] ?? '';
 			$items[] = array(
 				'slot'  => $line->slot,
 				'part'  => $line->part,
-				'label' => Words::boxed( $labels[ $line->slot ], $brands[ $part->brand ] ?? '', self::size( $line->slot, $part )['text'] ?? '' ),
+				'label' => Words::boxed( $labels[ $line->slot ], $brands[ $part->brand ] ?? '', $size ),
+				'size'  => $size,
 				'name'  => $name,
 				'image' => $cards[ $line->part ]['image'] ?? null,
 			);

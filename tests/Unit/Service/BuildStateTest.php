@@ -378,6 +378,42 @@ final class BuildStateTest extends TestCase {
 		self::assertSame( SlotKey::GRIP, $this->of( self::COMPLETE + array( SlotKey::RISERS => 401 ) )->step, 'with every slot picked, the last' );
 	}
 
+	public function test_a_slot_left_empty_by_choice_starts_on_no_part_unless_the_kit_requires_it(): void {
+		// 58 mm wheels on trucks that take 56: the build asks for risers, and the slot starts on a pair.
+		$picks = array(
+			SlotKey::DECK   => 103,
+			SlotKey::TRUCKS => 149,
+			SlotKey::WHEELS => 303,
+		);
+		$asked = $this->state->of( self::KIT, $picks );
+		self::assertNotNull( $asked );
+		self::assertNotNull( self::step( $asked, SlotKey::RISERS )->recommended );
+		self::assertContains( SlotKey::RISERS, array_column( $asked->quote->lines, 'slot' ) );
+
+		$left = $this->state->of( self::KIT, $picks, null, null, null, array( SlotKey::RISERS, SlotKey::BEARINGS ) );
+		self::assertNotNull( $left );
+		self::assertNull( self::step( $left, SlotKey::RISERS )->recommended, 'No risers.' );
+		self::assertNotContains( SlotKey::RISERS, array_column( $left->quote->lines, 'slot' ) );
+		self::assertSame( 501, self::step( $left, SlotKey::BEARINGS )->recommended?->part->id, 'A slot the kit requires cannot be left.' );
+		self::assertNotNull( self::step( $left, SlotKey::HARDWARE )->recommended, 'And the slots after it start as they would.' );
+
+		$picked = $this->state->of( self::KIT, $picks + array( SlotKey::RISERS => 401 ), null, null, null, array( SlotKey::RISERS ) );
+		self::assertSame( 401, self::step( $picked ?? $asked, SlotKey::RISERS )->picked?->part->id, 'A pick stands.' );
+	}
+
+	public function test_a_state_moves_to_another_step_and_is_otherwise_the_same(): void {
+		$this->settings->terms = BuildTerms::read( array( 'build_discount' => '10' ) );
+		$state                 = $this->of( array( SlotKey::DECK => 103, 'stickers' => 1 ), array( SlotKey::DECK => 101 ), SlotKey::DECK );
+		$moved                 = $state->at( State::REVIEW );
+		self::assertSame( State::REVIEW, $moved->step );
+		self::assertSame( SlotKey::DECK, $state->step );
+		foreach ( array( 'id', 'kit', 'steps', 'refused', 'validation', 'changes', 'quote', 'discount' ) as $held ) {
+			self::assertSame( $state->$held, $moved->$held, $held );
+		}
+		self::assertNotSame( array(), $moved->refused );
+		self::assertSame( 1000, $moved->discount );
+	}
+
 	public function test_the_review_is_a_step_whatever_the_build_holds(): void {
 		self::assertSame( 'review', State::REVIEW );
 		self::assertSame( State::REVIEW, $this->of( self::COMPLETE, null, State::REVIEW )->step );

@@ -71,6 +71,7 @@ final readonly class BuildLink {
 	 * @param string                  $size     The step's size filter, or empty.
 	 * @param int                     $shown    How many options the step lists, or 0 for the first page.
 	 * @param string                  $replace  The identifier of the build in the cart this one replaces, or empty.
+	 * @param list<string>            $none     The slots the shopper chose to leave empty, by key: "No risers".
 	 */
 	public function __construct(
 		public array $picks = array(),
@@ -81,7 +82,8 @@ final readonly class BuildLink {
 		public string $brand = '',
 		public string $size = '',
 		public int $shown = 0,
-		public string $replace = ''
+		public string $replace = '',
+		public array $none = array()
 	) {}
 
 	/**
@@ -107,7 +109,8 @@ final readonly class BuildLink {
 			self::matching( $sent['_brand'] ?? null, '/\A[a-z0-9_%-]{1,200}\z/' ),
 			self::matching( $sent['_size'] ?? null, '/\A[a-z0-9._-]{1,32}\z/' ),
 			null === $shown || $shown <= self::PAGE ? 0 : min( self::MOST, $shown ),
-			self::matching( $sent['_replace'] ?? null, '/\A[a-f0-9-]{1,64}\z/' )
+			self::matching( $sent['_replace'] ?? null, '/\A[a-f0-9-]{1,64}\z/' ),
+			self::left( $sent )
 		);
 	}
 
@@ -118,7 +121,7 @@ final readonly class BuildLink {
 	 */
 	public function isClean(): bool {
 		return array() === $this->picks && null === $this->was && null === $this->step && null === $this->assembly && null === $this->preset
-			&& '' === $this->brand && '' === $this->size && 0 === $this->shown && '' === $this->replace;
+			&& '' === $this->brand && '' === $this->size && 0 === $this->shown && '' === $this->replace && array() === $this->none;
 	}
 
 	/**
@@ -137,6 +140,8 @@ final readonly class BuildLink {
 		foreach ( $slots->keys() as $key ) {
 			if ( isset( $this->picks[ $key ] ) ) {
 				$query[ $key ] = (string) $this->picks[ $key ];
+			} elseif ( in_array( $key, $this->none, true ) ) {
+				$query[ $key ] = '0';
 			}
 			if ( isset( $this->was[ $key ] ) ) {
 				$was[ $key ] = (string) $this->was[ $key ];
@@ -170,7 +175,7 @@ final readonly class BuildLink {
 	}
 
 	/**
-	 * The link with a slot's pick set, or taken out.
+	 * The link with a slot's pick set, or taken out. Either way the slot is no longer one the shopper left empty.
 	 *
 	 * @since 0.6.0
 	 *
@@ -183,7 +188,19 @@ final readonly class BuildLink {
 		if ( null !== $part ) {
 			$picks[ $slot ] = $part;
 		}
-		return new self( $picks, $this->was, $this->step, $this->assembly, $this->preset, $this->brand, $this->size, $this->shown, $this->replace );
+		return new self( $picks, $this->was, $this->step, $this->assembly, $this->preset, $this->brand, $this->size, $this->shown, $this->replace, array_values( array_diff( $this->none, array( $slot ) ) ) );
+	}
+
+	/**
+	 * The link with a slot left empty by choice: its pick taken out, and no part started on in its place.
+	 *
+	 * @since 0.6.0
+	 *
+	 * @param string $slot The slot's key.
+	 */
+	public function leave( string $slot ): self {
+		$left = $this->pick( $slot, null );
+		return new self( $left->picks, $left->was, $left->step, $left->assembly, $left->preset, $left->brand, $left->size, $left->shown, $left->replace, array_merge( $left->none, array( $slot ) ) );
 	}
 
 	/**
@@ -194,7 +211,7 @@ final readonly class BuildLink {
 	 * @param string $step The step: a slot's key or the review.
 	 */
 	public function at( string $step ): self {
-		return new self( $this->picks, null, $step, $this->assembly, $this->preset, '', '', 0, $this->replace );
+		return new self( $this->picks, null, $step, $this->assembly, $this->preset, '', '', 0, $this->replace, $this->none );
 	}
 
 	/**
@@ -206,7 +223,7 @@ final readonly class BuildLink {
 	 * @param string $size  The size, or empty.
 	 */
 	public function filtered( string $brand, string $size ): self {
-		return new self( $this->picks, $this->was, $this->step, $this->assembly, $this->preset, $brand, $size, 0, $this->replace );
+		return new self( $this->picks, $this->was, $this->step, $this->assembly, $this->preset, $brand, $size, 0, $this->replace, $this->none );
 	}
 
 	/**
@@ -217,7 +234,7 @@ final readonly class BuildLink {
 	 * @param int $shown How many.
 	 */
 	public function showing( int $shown ): self {
-		return new self( $this->picks, $this->was, $this->step, $this->assembly, $this->preset, $this->brand, $this->size, $shown, $this->replace );
+		return new self( $this->picks, $this->was, $this->step, $this->assembly, $this->preset, $this->brand, $this->size, $shown, $this->replace, $this->none );
 	}
 
 	/**
@@ -228,7 +245,7 @@ final readonly class BuildLink {
 	 * @param bool $assembly Whether the shop assembles the build.
 	 */
 	public function assembled( bool $assembly ): self {
-		return new self( $this->picks, $this->was, $this->step, $assembly, $this->preset, $this->brand, $this->size, $this->shown, $this->replace );
+		return new self( $this->picks, $this->was, $this->step, $assembly, $this->preset, $this->brand, $this->size, $this->shown, $this->replace, $this->none );
 	}
 
 	/**
@@ -239,7 +256,7 @@ final readonly class BuildLink {
 	 * @param array<string, int> $was The picks before the change.
 	 */
 	public function after( array $was ): self {
-		return new self( $this->picks, $was, $this->step, $this->assembly, $this->preset, $this->brand, $this->size, $this->shown, $this->replace );
+		return new self( $this->picks, $was, $this->step, $this->assembly, $this->preset, $this->brand, $this->size, $this->shown, $this->replace, $this->none );
 	}
 
 	/**
@@ -250,7 +267,7 @@ final readonly class BuildLink {
 	 * @param string $build The build's identifier.
 	 */
 	public function replacing( string $build ): self {
-		return new self( $this->picks, $this->was, $this->step, $this->assembly, $this->preset, $this->brand, $this->size, $this->shown, $build );
+		return new self( $this->picks, $this->was, $this->step, $this->assembly, $this->preset, $this->brand, $this->size, $this->shown, $build, $this->none );
 	}
 
 	/**
@@ -260,7 +277,7 @@ final readonly class BuildLink {
 	 * @since 0.6.0
 	 */
 	public function shared(): self {
-		return new self( $this->picks, null, $this->step, $this->assembly );
+		return new self( $this->picks, null, $this->step, $this->assembly, none: $this->none );
 	}
 
 	/**
@@ -279,6 +296,22 @@ final readonly class BuildLink {
 			}
 		}
 		return $ids;
+	}
+
+	/**
+	 * The slots sent as `0`: left empty by choice. No more than a kit can have slots.
+	 *
+	 * @param array<mixed> $sent What was sent.
+	 * @return list<string>
+	 */
+	private static function left( array $sent ): array {
+		$left = array();
+		foreach ( $sent as $key => $value ) {
+			if ( 0 === self::number( $value ) && is_string( $key ) && Fields::isKey( $key ) && ! isset( Slots::KEPT[ $key ] ) && count( $left ) < Slots::MAX ) {
+				$left[] = $key;
+			}
+		}
+		return $left;
 	}
 
 	/**

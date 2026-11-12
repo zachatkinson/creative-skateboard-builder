@@ -1994,3 +1994,22 @@ The builder's template shows nothing the server did not work out. This is what t
 - **Not yet here:** the delivery line worded from WooCommerce's shipping zones where no plugin answers (the plan's step 10), and the route's own arguments for the filters, which arrive with the template that sends them.
 
 **Status:** Accepted. The schema's opening is Zach's to turn back at the review.
+
+### D-144 · The builder on the server: one renderer for the kit's page and the block, one per page, and the view as the builder's own · 2026-11-12
+
+`Front\BuilderPage` renders the builder; `Front\Builder` decides what an address shows; `Front\BuilderView` words it for the template. The kit's page and the Builder block both call the renderer.
+
+- **The kit's page shows the builder where WooCommerce asks a product type for its add-to-cart area:** `woocommerce_cbuild_kit_add_to_cart`, fired by `woocommerce_template_single_add_to_cart()` (WooCommerce 11.3.0, `includes/wc-template-functions.php:2174`) and by the Add to Cart form block (`src/Blocks/BlockTypes/AddToCartForm.php:227`). One hook covers classic and block themes.
+- **The block's render is a callback, not block.json's `render` file.** `register_block_type()` merges its arguments over the metadata, so the callback is the renderer's own method. A render file would have to fetch the renderer from a global, and the plugin has no service locator (STANDARDS). The block declares `supports.interactivity`, so WordPress processes its directives after the render; the kit's page processes its own with `wp_interactivity_process_directives()`.
+- **One builder a page.** The store's state is the page's, so a second builder would show the first one's build. The block says `multiple: false`, and the renderer renders only the first one asked for, the kit's page included.
+- **The view is the builder's own document.** Every sentence, address and yes or no the template binds is worked out once, in PHP, so the template holds no rule and the script will hold no word. The template's fixed words are in the view too, so the store can re-render a step from the route's answer alone. Its fields may change in any release; what other code may rely on is the route's answer (HOOKS).
+- **`0` in a build link means a slot left empty by choice.** A slot the kit does not require starts on the part that fits best, so without a word for "none" a shopper who cleared the risers would have them back on the next page. The link writes `0` only for a slot with no pick, and a required slot ignores it.
+- **Risers are a step only when they matter:** when the kit requires them or the build holds some. A shopper is not asked about a part most builds go without; the wheels step's notes and the change panel say when a wheel wants one. Asked for a step that is no step, the builder shows the next one.
+- **A step past a required slot with nothing in it stops there,** with the reason linked in the error summary and `Error:` in the title (W8). A slot with nothing counted is one where nothing the shop has fits, so going on would hide why the cart is out of reach.
+- **The renderer is a boundary** (spec: Resilience). What a render throws is logged with the kit and the message, never the request, and the shopper reads one sentence in the builder's place. The buffers the template opened are closed, so no half builder reaches the page.
+- **A request that shows no builder builds none of its services.** `PageHooks` takes a closure for the renderer, as the state route does, and `ContainerTest` holds the builder's services to that.
+- **A list in an answer is read as a list.** The view read the answer through `Cast::map()`, which keeps string keys only, so every list in it read as empty: the steps' labels fell back to their keys, and the total's lines, the picture and the problems were missing. The page's integration test caught it; `Cast::items()` reads a list.
+- **0.5.0 is not published.** Its tag's CI run failed on the Firefox wait that #35 fixes, so `release.yml` held it. Zach chose to let 0.6.0 carry 0.5.0's changes rather than tag a 0.5.1 (#35).
+
+**Status:** Accepted.
+
