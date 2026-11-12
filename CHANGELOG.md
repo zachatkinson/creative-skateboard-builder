@@ -15,6 +15,7 @@ All notable changes to this project are documented here. The format follows [Kee
 - The filter `cbuild_part_classes`: classes another plugin adds to a part's card, after the builder's own.
 - The filter `cbuild_builder_url`: the page a kit's builder is on. Where it names another page on the site, the kit's own page sends a visitor there with their build (D-146).
 - Each item of the answer's `picture` says the part's `size`, or an empty string.
+- A page holding a builder with a build in its address says `noindex, follow`, and its canonical is the page without the build, through WordPress's filters and Yoast SEO's; with Yoast, which prints no canonical on a noindex page, its `og:url` is the clean page (D-147).
 
 ### Changed
 

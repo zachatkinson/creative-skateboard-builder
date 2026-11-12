@@ -2036,3 +2036,20 @@ Milestone 6's step 4 walked the flow end to end in a browser with JavaScript off
 **For Zach.** `Front\BuilderPage`, `Front\PageHooks` and `Front\BuilderUrl` run only with WordPress loaded (the Interactivity API, `register_block_type()`, `template_redirect`, `wp_validate_redirect()`), so no unit test reaches them and Infection, which mutates covered code only, generates no mutant for them. They are proven by `BuilderPageTest` in wp-env, each fix with a deliberate break in its commit. Listing them in `infection.json5`'s excludes beside `Front/Delivery.php` says so where the floor is read. That narrows the floor's reach, which is Zach's (D-038, D-128): he left it to best practice on 12 November 2026, and they are listed, with why, as every other class that needs WordPress is (D-087).
 
 **Status:** Accepted.
+
+### D-147 · A build in the address: robots and the canonical through WordPress's filters and Yoast's, and no canonical where Yoast prints none · 2026-11-12
+
+Milestone 6's step 5, against the spec's SEO and sharing ("A page carrying them gets `noindex, follow` through `wp_robots` and a canonical link to the clean page"). `Front\SeoHooks`, in the Storefront scope, does it.
+
+- **Which pages.** A singular page holding a builder: a kit's own page, or a post with the Builder block. A `cbuild` query is enough, whatever it holds, since an address that reads as no build is still not the clean page. A page with no builder is left alone.
+- **WordPress.** `wp_robots` at 20 drops `index` and `nofollow` and sets `noindex` and `follow`. `get_canonical_url` at 20 takes `cbuild` out. WordPress's own canonical is the permalink with no query already, so this cleans one another filter wrote with the build in it.
+- **Yoast SEO 28.8, read in the zip `tools/yoast.sh` pins.** It merges its robots into `wp_robots` at `PHP_INT_MAX - 10` (`src/integrations/front-end/wp-robots-integration.php`). Where a theme or plugin takes `wp_robots` out of the head, it prints its own tag (`src/integrations/front-end-integration.php:432`) from `wpseo_robots_array` (`src/presentations/indexable-presentation.php:373`), so the plugin answers that filter too. Taking the answer away fails both of `BuilderYoastTest`'s tests.
+- **No `wpseo_canonical`.** Yoast prints no canonical on a page whose robots say `noindex` (`src/presenters/canonical-presenter.php:38`), before its filter is asked, so a hook there would never run on a build's page. Yoast does this so the two never disagree, and Google reads `noindex` with a canonical as mixed signals. The plugin keeps Yoast's behaviour rather than printing a link tag of its own beside Yoast's head. The spec's canonical is met without Yoast, and with it the page is out of the index and its `og:url`, which a shared build's card reads, is the clean page.
+- **The test visits several pages in one request.** Yoast keeps the current page's tags for the request (`src/memoizers/meta-tags-context-memoizer.php:167`), so `BuilderYoastTest` clears that between visits. Before it did, the build's page read the clean page's tags, and a deliberate break of either Yoast hook passed; with it, the break fails.
+
+**For Zach.** With Yoast active, a build's page has no canonical link, where the spec asks for one to the clean page. It has `noindex, follow` and the clean `og:url`. This follows Yoast and Google's guidance; printing one would put a second head tag beside Yoast's.
+
+`Front\SeoHooks` runs only with WordPress loaded, so Infection generates no mutant for it, as for D-146's three. Listing it in `infection.json5`'s excludes beside them narrows the floor's reach, which is Zach's (D-038): he left it to best practice on 12 November 2026, and it is listed, with why, as D-087 has every class that needs WordPress.
+
+**Status:** Accepted.
+

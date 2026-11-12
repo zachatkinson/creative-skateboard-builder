@@ -69,6 +69,9 @@
 			"Front/BuilderPage.php",
 			"Front/PageHooks.php",
 			"Front/BuilderUrl.php",
+			// Robots and the canonical: wp_robots, is_singular(), the queried post and has_block(). Proven by
+			// BuilderSeoTest and BuilderYoastTest (Zach, 12 November 2026, D-147).
+			"Front/SeoHooks.php",
 			// SQL through $wpdb, and the classes that only add hooks.
 			"Repository",
 			"Hooks/",

@@ -364,6 +364,8 @@ final class Container {
 			Rest\StateRoute::class                 => array( Scope::Rest ),
 			// The block is registered on every request, the editor's and the REST renderer's among them.
 			Front\PageHooks::class                 => array( Scope::Everywhere ),
+			// Robots and the canonical are printed in the head of a page the site shows a visitor.
+			Front\SeoHooks::class                  => array( Scope::Storefront ),
 			// WordPress builds its abilities when something first asks for one, on any kind of request.
 			Abilities\CatalogueCheckAbility::class => array( Scope::Everywhere ),
 			Abilities\CheckBuildAbility::class     => array( Scope::Everywhere ),
