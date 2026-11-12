@@ -25,7 +25,8 @@ if ( ! defined( 'ABSPATH' ) ) {
  * - **One builder a page.** The store's state is the page's, so a second builder would show the first's build. Only
  *   the first renders; the block says so in its `supports` too.
  * - **A boundary** (spec: Resilience). Whatever the render throws is logged with the kit and nothing of the request,
- *   and the shopper reads one sentence in place of the builder. The rest of the page is the theme's and stands.
+ *   and the shopper reads one sentence in place of the builder. A shop manager also reads why. The rest of the page is
+ *   the theme's and stands.
  * - **Nothing for a kit a visitor may not see:** a draft, a private or a password-protected kit renders nothing, as
  *   the state route answers it as not there.
  *
@@ -105,7 +106,13 @@ final class BuilderPage {
 					'error' => $failure->getMessage(),
 				)
 			);
-			return '<p class="cbuild-failed">' . esc_html__( 'The builder could not be shown. Reload the page, or try again later.', 'creative-skateboard-builder' ) . '</p>';
+			$html = '<p class="cbuild-failed">' . esc_html__( 'This builder isn\'t available right now.', 'creative-skateboard-builder' ) . '</p>';
+			if ( current_user_can( 'manage_woocommerce' ) ) {
+				// A signed-in page is not served from a page cache, so no visitor is shown this.
+				/* translators: %s: why the builder could not be shown, as the error said it. */
+				$html .= '<p class="cbuild-failed__why">' . esc_html( sprintf( __( 'Shown to shop managers only: %s', 'creative-skateboard-builder' ), $failure->getMessage() ) ) . '</p>';
+			}
+			return $html;
 		}
 	}
 
@@ -116,8 +123,17 @@ final class BuilderPage {
 	 * @since 0.6.0
 	 */
 	public static function requested(): BuildLink {
-		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- as above.
-		$sent = isset( $_GET[ BuildLink::PARAM ] ) ? map_deep( wp_unslash( $_GET[ BuildLink::PARAM ] ), 'sanitize_text_field' ) : null;
-		return BuildLink::read( $sent );
+		return BuildLink::read( self::sent() );
+	}
+
+	/**
+	 * What this request sent under `cbuild`, as text, unread: for a page that passes a build on to the builder's own,
+	 * which reads it there.
+	 *
+	 * @since 0.6.0
+	 */
+	public static function sent(): mixed {
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- as requested() says.
+		return isset( $_GET[ BuildLink::PARAM ] ) ? map_deep( wp_unslash( $_GET[ BuildLink::PARAM ] ), 'sanitize_text_field' ) : null;
 	}
 }

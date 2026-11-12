@@ -70,6 +70,42 @@ final class PageHooks implements Hookable {
 		// WooCommerce 11.3.0: includes/wc-template-functions.php:2174, and the Add to Cart form block at
 		// src/Blocks/BlockTypes/AddToCartForm.php:227. Each fires `woocommerce_<type>_add_to_cart`.
 		add_action( 'woocommerce_' . Options::PRODUCT_TYPE_KIT . '_add_to_cart', array( $this, 'kitPage' ), 10, 0 );
+		add_action( 'template_redirect', array( $this, 'toBuilder' ), 10, 0 );
+	}
+
+	/**
+	 * Send a visitor on a kit's page to the page its builder is on, with the build they came with (D-008, D-146).
+	 *
+	 * @since 0.6.0
+	 */
+	public function toBuilder(): void {
+		$to = $this->elsewhere();
+		// A 302: the shop may move its builder, and a browser that kept a 301 would not follow.
+		if ( null !== $to && wp_safe_redirect( $to, 302, 'Creative Skateboard Builder' ) ) {
+			exit;
+		}
+	}
+
+	/**
+	 * Where a visitor on a kit's page goes instead, or null where the builder is on the page they are on.
+	 *
+	 * @since 0.6.0
+	 */
+	public function elsewhere(): ?string {
+		if ( ! is_singular( 'product' ) ) {
+			return null;
+		}
+		$kit     = get_queried_object_id();
+		$product = wc_get_product( $kit );
+		if ( ! $product instanceof WC_Product || Options::PRODUCT_TYPE_KIT !== $product->get_type() ) {
+			return null;
+		}
+		$url = BuilderUrl::of( $kit );
+		if ( (string) get_permalink( $kit ) === $url ) {
+			return null;
+		}
+		$sent = BuilderPage::sent();
+		return is_array( $sent ) && array() !== $sent ? add_query_arg( array( BuildLink::PARAM => urlencode_deep( $sent ) ), $url ) : $url;
 	}
 
 	/**

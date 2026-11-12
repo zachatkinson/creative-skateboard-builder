@@ -13,6 +13,7 @@ use CreativeBranding\SkateboardBuilder\Domain\Fit\BuildProblem;
 use CreativeBranding\SkateboardBuilder\Domain\Fit\Problem;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\InvalidMoney;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\SlotKey;
+use CreativeBranding\SkateboardBuilder\Domain\Rule\MessageCode;
 use CreativeBranding\SkateboardBuilder\Service\BuildState;
 use CreativeBranding\SkateboardBuilder\Service\State;
 use CreativeBranding\SkateboardBuilder\Service\StateStep;
@@ -74,8 +75,15 @@ final class Builder {
 			// Risers are the one slot that can be no step, so the slot after it is one.
 			$step = $state->kit->slots->after( $step )[0] ?? State::REVIEW;
 		}
+		$unseen = self::risersNeeded( $state ) && ! isset( $link->picks[ SlotKey::RISERS ] ) && ! in_array( SlotKey::RISERS, $link->none, true );
 		foreach ( $state->steps as $about ) {
 			if ( $about->slot->key === $step ) {
+				break;
+			}
+			if ( SlotKey::RISERS === $about->slot->key && $unseen ) {
+				// The wheels just made risers a step, after the page's Next had named the step past it: the shopper sees
+				// the riser the build now counts before going on. Its form sends the pick, or No risers.
+				$step = SlotKey::RISERS;
 				break;
 			}
 			if ( $about->slot->required && null === $about->counted() ) {
@@ -104,8 +112,9 @@ final class Builder {
 	}
 
 	/**
-	 * The slots that are steps, in step order: every slot but a risers slot the kit does not require while the
-	 * build neither asks for risers nor holds any.
+	 * The slots that are steps, in step order: every slot but a risers slot the kit does not require, while the build
+	 * holds no risers and its wheels need none (spec: A step, risers only when needed). Wheels that need risers keep
+	 * the step with "No risers" chosen, so a shopper who left them out can still see why and change it.
 	 *
 	 * @since 0.6.0
 	 *
@@ -113,13 +122,30 @@ final class Builder {
 	 * @return list<string>
 	 */
 	public static function steps( State $state ): array {
-		$steps = array();
+		$steps  = array();
+		$needed = self::risersNeeded( $state );
 		foreach ( $state->steps as $step ) {
-			if ( ! self::skipped( $step ) ) {
+			if ( $needed || ! self::skipped( $step ) ) {
 				$steps[] = $step->slot->key;
 			}
 		}
 		return $steps;
+	}
+
+	/**
+	 * Whether a part the build counts says the wheels need a riser under its trucks.
+	 *
+	 * @param State $state The build's state.
+	 */
+	private static function risersNeeded( State $state ): bool {
+		foreach ( $state->steps as $step ) {
+			foreach ( $step->counted()->findings ?? array() as $finding ) {
+				if ( MessageCode::WheelNeedsRiser === $finding->code ) {
+					return true;
+				}
+			}
+		}
+		return false;
 	}
 
 	/**

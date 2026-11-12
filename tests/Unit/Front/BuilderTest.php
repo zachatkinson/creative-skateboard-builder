@@ -77,6 +77,23 @@ final class BuilderTest extends TestCase {
 		return $base . '?' . http_build_query( array( 'cbuild' => $query ) );
 	}
 
+	/**
+	 * A build's part of the query as the hidden fields of a form.
+	 *
+	 * @param array<string, string> $query The build's part of the query.
+	 * @return list<array{name: string, value: string}>
+	 */
+	private static function fields( array $query ): array {
+		$fields = array();
+		foreach ( $query as $key => $value ) {
+			$fields[] = array(
+				'name'  => 'cbuild[' . $key . ']',
+				'value' => $value,
+			);
+		}
+		return $fields;
+	}
+
 	public function test_a_kit_the_shop_does_not_have_shows_nothing(): void {
 		self::assertNull( $this->builder()->show( 5, new BuildLink(), self::BASE ) );
 	}
@@ -417,8 +434,8 @@ final class BuilderTest extends TestCase {
 	public function test_undo_goes_back_to_the_first_step_that_changed(): void {
 		$was  = array( SlotKey::DECK => 101, SlotKey::TRUCKS => 139, SlotKey::WHEELS => 301 );
 		$now  = array( SlotKey::DECK => 103, SlotKey::TRUCKS => 139, SlotKey::WHEELS => 302 );
-		$undo = $this->show( new BuildLink( $now, $was, SlotKey::WHEELS ) )['view']['changes']['undo']['url'];
-		self::assertSame( self::url( array( 'deck' => '101', 'trucks' => '139', 'wheels' => '301', 'step' => 'deck' ) ), $undo );
+		$undo = $this->show( new BuildLink( $now, $was, SlotKey::WHEELS ) )['view']['changes']['undo']['fields'];
+		self::assertSame( self::fields( array( 'deck' => '101', 'trucks' => '139', 'wheels' => '301', 'step' => 'deck' ) ), $undo );
 	}
 
 	public function test_a_page_address_with_odd_queries_keeps_them_as_fields(): void {
@@ -433,6 +450,36 @@ final class BuilderTest extends TestCase {
 			),
 			$view['carry']
 		);
+	}
+
+	public function test_wheels_that_need_risers_keep_the_risers_step_even_with_no_risers_chosen(): void {
+		$picks = array(
+			SlotKey::DECK   => 101,
+			SlotKey::WHEELS => 303,
+		);
+		$state = $this->show( new BuildLink( $picks, null, SlotKey::WHEELS ) )['state'];
+		self::assertContains( SlotKey::RISERS, Builder::steps( $state ), '58 mm wheels want a riser under these trucks, so one is recommended.' );
+
+		$view = $this->show( new BuildLink( $picks, null, SlotKey::RISERS, none: array( SlotKey::RISERS ) ) )['view'];
+		self::assertSame( 'Step 4 of 8: Risers', $view['heading'], 'Left out, they are still asked about while the wheels need them.' );
+		self::assertTrue( $view['step']['leave']['checked'] );
+		self::assertSame( 'No risers', $view['step']['leave']['label'] );
+	}
+
+	public function test_wheels_that_now_need_risers_stop_on_the_risers_step_before_going_past_it(): void {
+		$picks = array(
+			SlotKey::DECK   => 101,
+			SlotKey::TRUCKS => 139,
+			SlotKey::WHEELS => 303,
+		);
+		$shown = $this->show( new BuildLink( $picks, null, SlotKey::BEARINGS ) );
+		self::assertSame( SlotKey::RISERS, $shown['state']->step, 'The wheels step\'s Next said Bearings before 58 mm wheels made risers a step.' );
+		self::assertSame( 'Step 4 of 8: Risers', $shown['view']['heading'] );
+		self::assertFalse( $shown['view']['errors']['shown'], 'Nothing is wrong: a riser is recommended, to be seen.' );
+
+		self::assertSame( SlotKey::BEARINGS, $this->show( new BuildLink( $picks + array( SlotKey::RISERS => 402 ), null, SlotKey::BEARINGS ) )['state']->step, 'Seen and kept, they let the shopper on.' );
+		self::assertSame( SlotKey::BEARINGS, $this->show( new BuildLink( $picks, null, SlotKey::BEARINGS, none: array( SlotKey::RISERS ) ) )['state']->step, 'So does No risers.' );
+		self::assertSame( SlotKey::WHEELS, $this->show( new BuildLink( $picks, null, SlotKey::WHEELS ) )['state']->step, 'A step before them is shown as asked.' );
 	}
 
 	public function test_a_step_that_is_no_step_gives_way_to_the_next_and_the_last_to_the_review(): void {
@@ -571,9 +618,9 @@ final class BuilderTest extends TestCase {
 		self::assertSame( 'Trucks: Part 139 no longer fits.', $changes['items'][0]['text'] );
 		self::assertSame( 'The trucks are made for decks from 7.8 in to 8.2 in wide. The deck is 8.5 in.', $changes['items'][0]['reasons'][0]['text'] );
 		self::assertSame( 'Closest fit: Part 149', $changes['items'][0]['closest'] );
-		self::assertSame( self::url( array( 'deck' => '103', 'trucks' => '149', 'wheels' => '301', 'step' => 'trucks' ) ), $changes['use']['url'] );
+		self::assertSame( self::fields( array( 'deck' => '103', 'trucks' => '149', 'wheels' => '301', 'step' => 'trucks' ) ), $changes['use']['fields'], 'A button in a GET form, as every change of state is (spec: SEO and sharing).' );
 		self::assertSame( 'Use these', $changes['use']['text'] );
-		self::assertSame( self::url( array( 'deck' => '101', 'trucks' => '139', 'wheels' => '301', 'step' => 'deck' ) ), $changes['undo']['url'], 'Undo goes back to the step that changed.' );
+		self::assertSame( self::fields( array( 'deck' => '101', 'trucks' => '139', 'wheels' => '301', 'step' => 'deck' ) ), $changes['undo']['fields'], 'Undo goes back to the step that changed.' );
 		self::assertSame( 'Undo', $changes['undo']['text'] );
 		self::assertSame( self::url( array( 'deck' => '103', 'trucks' => '139', 'wheels' => '301', 'step' => 'trucks', '_was' => array( 'deck' => '101', 'trucks' => '139', 'wheels' => '301' ) ) ), $view['url'], 'The address keeps what the picks were while the change is explained.' );
 	}
@@ -589,12 +636,19 @@ final class BuilderTest extends TestCase {
 		self::assertSame( '', $rows[4]['count'] );
 	}
 
+	public function test_use_these_keeps_assembly_and_the_preset_and_drops_the_picks_before(): void {
+		$was  = array( SlotKey::DECK => 101, SlotKey::TRUCKS => 139 );
+		$now  = array( SlotKey::DECK => 103 ) + $was;
+		$link = new BuildLink( $now, $was, SlotKey::TRUCKS, false, 2 );
+		self::assertSame( self::fields( array( 'deck' => '103', 'trucks' => '149', 'step' => 'trucks', 'assembly' => '0', 'preset' => '2' ) ), $this->show( $link )['view']['changes']['use']['fields'] );
+	}
+
 	public function test_with_no_change_the_panel_has_nowhere_to_go(): void {
 		$changes = $this->show( new BuildLink( array( SlotKey::DECK => 101 ) ) )['view']['changes'];
 		self::assertFalse( $changes['hasKept'] );
 		self::assertSame( array(), $changes['items'] );
-		self::assertSame( '', $changes['use']['url'] );
-		self::assertSame( '', $changes['undo']['url'] );
+		self::assertSame( array(), $changes['use']['fields'] );
+		self::assertSame( array(), $changes['undo']['fields'] );
 	}
 
 	public function test_filters_and_more_parts_stay_only_on_the_step_they_were_asked_on(): void {

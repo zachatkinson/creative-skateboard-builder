@@ -63,6 +63,12 @@
 			// wp_generate_uuid4(), and the delivery line's two filters with wp_strip_all_tags().
 			"Adapter/WpUuids.php",
 			"Front/Delivery.php",
+			// The builder's page (Zach, 12 November 2026, D-146): the Interactivity API and the template, the block's
+			// registration and template_redirect, and wp_validate_redirect(). Each is proven by BuilderPageTest in wp-env.
+			// What the builder shows is decided in Front\Builder and BuilderView, which are mutated.
+			"Front/BuilderPage.php",
+			"Front/PageHooks.php",
+			"Front/BuilderUrl.php",
 			// SQL through $wpdb, and the classes that only add hooks.
 			"Repository",
 			"Hooks/",

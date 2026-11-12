@@ -12,6 +12,7 @@ namespace CreativeBranding\SkateboardBuilder\Tests\Integration;
 use CreativeBranding\SkateboardBuilder\Front\Builder;
 use CreativeBranding\SkateboardBuilder\Front\BuilderPage;
 use CreativeBranding\SkateboardBuilder\Front\BuildLink;
+use CreativeBranding\SkateboardBuilder\Front\BuilderUrl;
 use CreativeBranding\SkateboardBuilder\Front\PageHooks;
 use CreativeBranding\SkateboardBuilder\Port\Kits;
 use CreativeBranding\SkateboardBuilder\Port\Logger;
@@ -98,6 +99,7 @@ final class BuilderPageTest extends IntegrationTestCase {
 	public function tear_down(): void {
 		unset( $_GET[ BuildLink::PARAM ], $GLOBALS['product'] );
 		remove_all_filters( 'cbuild_part_classes' );
+		remove_all_filters( 'cbuild_builder_url' );
 		parent::tear_down();
 	}
 
@@ -231,7 +233,7 @@ final class BuilderPageTest extends IntegrationTestCase {
 		self::assertSame( '', $this->page()->render( $this->parts['deck 8.0'], new BuildLink(), '' ), 'A product that is no kit.' );
 	}
 
-	public function test_a_render_that_fails_says_one_sentence_closes_its_buffer_and_is_logged_with_the_kit(): void {
+	public function test_a_render_that_fails_says_the_builder_is_not_available_closes_its_buffer_and_is_logged_with_the_kit(): void {
 		add_filter(
 			'cbuild_part_classes',
 			static function (): array {
@@ -242,7 +244,7 @@ final class BuilderPageTest extends IntegrationTestCase {
 		$level  = ob_get_level();
 		$html   = $this->page( $logger )->render( $this->kit, new BuildLink(), get_permalink( $this->kit ) );
 
-		self::assertSame( '<p class="cbuild-failed">The builder could not be shown. Reload the page, or try again later.</p>', $html );
+		self::assertSame( '<p class="cbuild-failed">This builder isn&#039;t available right now.</p>', $html, 'Spec, Resilience: the shopper reads one sentence, and no reason.' );
 		self::assertSame( $level, ob_get_level() );
 		self::assertSame(
 			array(
@@ -258,6 +260,60 @@ final class BuilderPageTest extends IntegrationTestCase {
 			$logger->lines,
 			'The kit and the error, and nothing of the request.'
 		);
+	}
+
+	public function test_a_shop_manager_reads_why_a_render_failed_escaped(): void {
+		add_filter(
+			'cbuild_part_classes',
+			static function (): array {
+				throw new RuntimeException( 'A plugin broke <b>here</b>.' );
+			}
+		);
+		wp_set_current_user( self::factory()->user->create( array( 'role' => 'shop_manager' ) ) );
+		$html = $this->page( new FakeLogger() )->render( $this->kit, new BuildLink(), get_permalink( $this->kit ) );
+
+		self::assertSame(
+			'<p class="cbuild-failed">This builder isn&#039;t available right now.</p>'
+			. '<p class="cbuild-failed__why">Shown to shop managers only: A plugin broke &lt;b&gt;here&lt;/b&gt;.</p>',
+			$html
+		);
+	}
+
+	public function test_a_kits_builder_is_on_its_own_page_unless_the_shop_names_another_on_the_site(): void {
+		self::assertSame( get_permalink( $this->kit ), BuilderUrl::of( $this->kit ) );
+
+		$page = self::factory()->post->create( array( 'post_type' => 'page' ) );
+		add_filter( 'cbuild_builder_url', static fn( mixed $url, int $kit ): mixed => $kit > 0 ? get_permalink( $page ) : $url, 10, 2 );
+		self::assertSame( get_permalink( $page ), BuilderUrl::of( $this->kit ) );
+
+		remove_all_filters( 'cbuild_builder_url' );
+		add_filter( 'cbuild_builder_url', static fn(): string => 'https://elsewhere.example/build/' );
+		self::assertSame( get_permalink( $this->kit ), BuilderUrl::of( $this->kit ), 'Another site is no answer: the link would send a shopper off the shop.' );
+
+		remove_all_filters( 'cbuild_builder_url' );
+		add_filter( 'cbuild_builder_url', static fn(): int => 5 );
+		self::assertSame( get_permalink( $this->kit ), BuilderUrl::of( $this->kit ), 'An answer that is no address is none.' );
+	}
+
+	public function test_the_kits_page_sends_a_visitor_to_the_builders_page_with_the_build(): void {
+		$hooks = new PageHooks( fn(): BuilderPage => $this->page() );
+		$this->go_to( get_permalink( $this->kit ) );
+		self::assertNull( $hooks->elsewhere(), 'The builder is on the kit\'s page.' );
+
+		$page = self::factory()->post->create( array( 'post_type' => 'page' ) );
+		add_filter( 'cbuild_builder_url', static fn(): string => (string) get_permalink( $page ) );
+		$_GET[ BuildLink::PARAM ] = array(
+			'deck' => (string) $this->parts['deck 8.5'],
+			'step' => 'trucks',
+		);
+		self::assertSame(
+			add_query_arg( array( 'cbuild' => array( 'deck' => (string) $this->parts['deck 8.5'], 'step' => 'trucks' ) ), (string) get_permalink( $page ) ),
+			$hooks->elsewhere()
+		);
+
+		$this->go_to( get_permalink( $this->parts['deck 8.0'] ) );
+		self::assertNull( $hooks->elsewhere(), 'A product that is no kit stays where it is.' );
+		remove_all_filters( 'cbuild_builder_url' );
 	}
 
 	public function test_the_block_renders_the_same_builder_through_wordpress_and_nothing_without_a_kit(): void {

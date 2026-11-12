@@ -2,6 +2,7 @@
     "filters": [
         "cbuild_arrival_estimate",
         "cbuild_build_in_one_package",
+        "cbuild_builder_url",
         "cbuild_delivery_line",
         "cbuild_kit_text",
         "cbuild_part_available",

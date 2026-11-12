@@ -1,7 +1,7 @@
 <?php
 /**
  * The change panel (spec: A change that breaks later picks): what is kept, what no longer fits and its closest fit,
- * with Use these and Undo. Without JavaScript it is a step of its own.
+ * with Use these and Undo, each a button in a GET form. Without JavaScript it is a step of its own.
  *
  * @package CreativeBranding\SkateboardBuilder
  */
@@ -32,8 +32,24 @@ defined( 'ABSPATH' ) || exit;
 			</template>
 		</ul>
 	</div>
-	<p class="cbuild-changes__actions">
-		<a class="cbuild-button cbuild-button--primary" rel="nofollow" data-wp-bind--href="state.view.changes.use.url" data-wp-text="state.view.changes.use.text"></a>
-		<a class="cbuild-button" rel="nofollow" data-wp-bind--href="state.view.changes.undo.url" data-wp-text="state.view.changes.undo.text"></a>
-	</p>
+	<div class="cbuild-changes__actions">
+		<form class="cbuild-changes__use" method="get" data-wp-bind--action="state.view.action">
+			<template data-wp-each--field="state.view.carry">
+				<input type="hidden" data-wp-bind--name="context.field.name" data-wp-bind--value="context.field.value">
+			</template>
+			<template data-wp-each--field="state.view.changes.use.fields">
+				<input type="hidden" data-wp-bind--name="context.field.name" data-wp-bind--value="context.field.value">
+			</template>
+			<button class="cbuild-button cbuild-button--primary" type="submit" data-wp-text="state.view.changes.use.text"></button>
+		</form>
+		<form class="cbuild-changes__undo" method="get" data-wp-bind--action="state.view.action">
+			<template data-wp-each--field="state.view.carry">
+				<input type="hidden" data-wp-bind--name="context.field.name" data-wp-bind--value="context.field.value">
+			</template>
+			<template data-wp-each--field="state.view.changes.undo.fields">
+				<input type="hidden" data-wp-bind--name="context.field.name" data-wp-bind--value="context.field.value">
+			</template>
+			<button class="cbuild-button" type="submit" data-wp-text="state.view.changes.undo.text"></button>
+		</form>
+	</div>
 </section>

@@ -146,7 +146,7 @@ final class BuilderView {
 			),
 			'progress'  => $progress,
 			'step'      => $review ? self::none() : $this->step( $state, $answer, $link, $url, $steps, $counted, $lines, $about ),
-			'changes'   => $this->changes( $state, $changes, $link, $url, $lines, $label ),
+			'changes'   => $this->changes( $state, $changes, $link, $lines, $label ),
 			'summary'   => $this->summary( $state, $answer, $link, $url, $lines, $label ),
 			'picture'   => array(
 				'heading'     => __( 'What is in the box', 'creative-skateboard-builder' ),
@@ -239,6 +239,24 @@ final class BuilderView {
 					'value' => (string) ( $picks[ $key ] ?? 0 ),
 				);
 			}
+		}
+		return $fields;
+	}
+
+	/**
+	 * A build's query as a form's hidden fields. Use these and Undo carry no picks before a change, so every value is
+	 * text.
+	 *
+	 * @param array<string, mixed> $query The build's query.
+	 * @return list<array{name: string, value: string}>
+	 */
+	private static function flat( array $query ): array {
+		$fields = array();
+		foreach ( $query as $key => $value ) {
+			$fields[] = array(
+				'name'  => BuildLink::PARAM . '[' . $key . ']',
+				'value' => Cast::str( $value ),
+			);
 		}
 		return $fields;
 	}
@@ -503,12 +521,11 @@ final class BuilderView {
 	 * @param State                               $state   The build's state.
 	 * @param array<string, mixed>                $changes The answer's change list, or none.
 	 * @param BuildLink                           $link    The address of what is shown.
-	 * @param callable(BuildLink): string         $url     Makes an address.
 	 * @param array<string, array<string, mixed>> $lines   The total's lines, by slot.
 	 * @param callable(string): string            $label   A slot's label.
 	 * @return array<string, mixed>
 	 */
-	private function changes( State $state, array $changes, BuildLink $link, callable $url, array $lines, callable $label ): array {
+	private function changes( State $state, array $changes, BuildLink $link, array $lines, callable $label ): array {
 		$kept  = array();
 		$items = array();
 		foreach ( Cast::strings( $changes['kept'] ?? null ) as $slot ) {
@@ -549,6 +566,7 @@ final class BuilderView {
 		}
 		$use  = new BuildLink( $proposed, null, $link->step, $link->assembly, $link->preset, replace: $link->replace, none: $link->none );
 		$undo = new BuildLink( $was, null, $changed, $link->assembly, $link->preset, replace: $link->replace, none: $link->none );
+		$none = array() === $changes;
 		return array(
 			'heading'  => __( 'This change affects parts you chose', 'creative-skateboard-builder' ),
 			'keptHead' => __( 'Kept', 'creative-skateboard-builder' ),
@@ -556,13 +574,14 @@ final class BuilderView {
 			'kept'     => $kept,
 			'goneHead' => __( 'No longer fits', 'creative-skateboard-builder' ),
 			'items'    => $items,
+			// Buttons in GET forms, not links (spec: Without JavaScript; SEO and sharing): a crawler never enters a state.
 			'use'      => array(
-				'url'  => array() === $changes ? '' : $url( $use ),
-				'text' => __( 'Use these', 'creative-skateboard-builder' ),
+				'fields' => $none ? array() : self::flat( $use->query( $state->kit->slots ) ),
+				'text'   => __( 'Use these', 'creative-skateboard-builder' ),
 			),
 			'undo'     => array(
-				'url'  => array() === $changes ? '' : $url( $undo ),
-				'text' => __( 'Undo', 'creative-skateboard-builder' ),
+				'fields' => $none ? array() : self::flat( $undo->query( $state->kit->slots ) ),
+				'text'   => __( 'Undo', 'creative-skateboard-builder' ),
 			),
 		);
 	}
