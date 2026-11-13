@@ -12,8 +12,10 @@ namespace CreativeBranding\SkateboardBuilder\Tests\Unit\Domain\Rule;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Picks;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\RuleSettings;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\SlotKey;
+use CreativeBranding\SkateboardBuilder\Domain\Rule\DeckWidthRule;
 use CreativeBranding\SkateboardBuilder\Domain\Rule\Finding;
 use CreativeBranding\SkateboardBuilder\Domain\Rule\MessageCode;
+use CreativeBranding\SkateboardBuilder\Domain\Rule\MountingRule;
 use CreativeBranding\SkateboardBuilder\Domain\Rule\RuleId;
 use CreativeBranding\SkateboardBuilder\Domain\Rule\RuleSet;
 use CreativeBranding\SkateboardBuilder\Domain\Rule\Severity;
@@ -108,6 +110,13 @@ final class RuleSetTest extends TestCase {
 		self::assertNull( $set->reading( SlotKey::GRIP, RuleSettings::fromDocument( $document ) ), 'grip, with R6 off' );
 		self::assertSame( array( SlotKey::TRUCKS ), $set->reading( SlotKey::DECK, RuleSettings::fromDocument( $document ) ) );
 		self::assertNull( ( new RuleSet( array() ) )->reading( SlotKey::DECK, $on ), 'a set of no rules reads nothing' );
+	}
+
+	public function test_the_deck_width_and_mounting_rules_each_read_the_deck_with_the_trucks_alone(): void {
+		// R1 and R2 read the same two slots, so in the standard set either one hides the other's list.
+		$on = RuleSettings::defaults();
+		self::assertSame( array( SlotKey::DECK ), ( new RuleSet( array( new DeckWidthRule() ) ) )->reading( SlotKey::TRUCKS, $on ), 'R1' );
+		self::assertSame( array( SlotKey::DECK ), ( new RuleSet( array( new MountingRule() ) ) )->reading( SlotKey::TRUCKS, $on ), 'R2' );
 	}
 
 	public function test_a_set_of_no_rules_finds_nothing(): void {
