@@ -22,11 +22,13 @@ final readonly class SlotOptions {
 	 *
 	 * @since 0.2.0
 	 *
-	 * @param string       $slot    The slot's key.
-	 * @param list<Option> $offered The options that fit, with or without a warning.
-	 * @param list<Option> $hidden  The options that are blocked.
+	 * @param string            $slot    The slot's key.
+	 * @param list<Option>      $offered The options that fit, with or without a warning.
+	 * @param list<Option>      $hidden  The options that are blocked.
+	 * @param list<string>|null $against The picks before the slot its options were checked against, by slot key; null
+	 *                                   where no rule the kit has on reads the slot (since 0.6.0).
 	 */
-	public function __construct( public string $slot, public array $offered, public array $hidden ) {}
+	public function __construct( public string $slot, public array $offered, public array $hidden, public ?array $against = array() ) {}
 
 	/**
 	 * The hidden options grouped by rule and then by reason, each in the order it is first met. An option with nothing

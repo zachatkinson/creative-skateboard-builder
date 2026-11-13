@@ -24,7 +24,7 @@ defined( 'ABSPATH' ) || exit;
 					<img class="cbuild-preset__photo" alt="" loading="lazy" decoding="async" data-wp-bind--hidden="!context.tile.hasImage" data-wp-bind--src="context.tile.src" data-wp-bind--srcset="context.tile.srcset" data-wp-bind--sizes="context.tile.sizes" data-wp-bind--width="context.tile.width" data-wp-bind--height="context.tile.height">
 					<p class="cbuild-preset__name" data-wp-text="context.tile.name"></p>
 					<p class="cbuild-preset__description" data-wp-bind--hidden="!context.tile.hasDescription" data-wp-text="context.tile.description"></p>
-					<p class="cbuild-preset__total" data-wp-text="context.tile.total"></p>
+					<p class="cbuild-preset__total" data-wp-bind--hidden="!context.tile.hasTotal" data-wp-text="context.tile.total"></p>
 					<ul class="cbuild-preset__notes">
 						<template data-wp-each--note="context.tile.notes">
 							<li data-wp-text="context.note.text"></li>

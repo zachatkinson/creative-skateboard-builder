@@ -200,6 +200,7 @@ final class BuilderPageTest extends IntegrationTestCase {
 		self::assertSame( 1, $dom->query( '//*[@role="status"]' )->length, 'The status region is in the page from the start.' );
 		self::assertNotNull( $dom->query( '//section[contains(@class,"cbuild-review")][@hidden]' )->item( 0 ), 'The review is not this step.' );
 		self::assertNotNull( $dom->query( '//section[contains(@class,"cbuild-changes")][@hidden]' )->item( 0 ) );
+		self::assertNotNull( $dom->query( '//figcaption[contains(@class,"cbuild-picture__description")][@hidden]' )->item( 0 ), 'With nothing chosen, the summary says so alone (Cowork minor 15).' );
 	}
 
 	public function test_the_kits_page_gives_the_store_its_route_page_and_language_and_loads_it(): void {
@@ -234,8 +235,8 @@ final class BuilderPageTest extends IntegrationTestCase {
 		$checked = $dom->query( '//input[@type="radio" and @name="cbuild[trucks]" and @checked]' );
 		self::assertSame( 1, $checked->length );
 		self::assertSame( (string) $this->parts['truck 149'], $checked->item( 0 )->getAttribute( 'value' ), 'The step starts on what fits, and the form sends it.' );
-		self::assertSame( 'Recommended for your 8.5 in deck', self::text( $dom, '//li[contains(@class,"cbuild-card--chosen")]//span[@class="cbuild-card__recommended"]' ) );
-		self::assertSame( 'Fits your 8.5 in deck', self::text( $dom, '//li[contains(@class,"cbuild-card--chosen")]//span[contains(@class,"cbuild-card__fit")]' ) );
+		self::assertSame( 'Recommended for your 8.5″ deck', self::text( $dom, '//li[contains(@class,"cbuild-card--chosen")]//span[@class="cbuild-card__recommended"]' ) );
+		self::assertSame( 'Fits your 8.5″ deck', self::text( $dom, '//li[contains(@class,"cbuild-card--chosen")]//span[contains(@class,"cbuild-card__fit")]' ) );
 		$back = $dom->query( '//a[contains(@class,"cbuild-step__back")]' )->item( 0 );
 		self::assertNotNull( $back );
 		self::assertSame( 'Back: Deck', trim( $back->textContent ) );
@@ -288,8 +289,8 @@ final class BuilderPageTest extends IntegrationTestCase {
 		$chosen = $dom->query( '//li[contains(@class,"cbuild-card--chosen")]/input' )->item( 0 );
 		self::assertNotNull( $chosen );
 		$about = trim( (string) preg_replace( '/\s+/', ' ', self::text( $dom, '//*[@id="' . $chosen->getAttribute( 'id' ) . '-about"]' ) ) );
-		self::assertStringContainsString( 'Fits your 8.5 in deck', $about );
-		self::assertStringContainsString( 'Recommended for your 8.5 in deck', $about );
+		self::assertStringContainsString( 'Fits your 8.5″ deck', $about );
+		self::assertStringContainsString( 'Recommended for your 8.5″ deck', $about );
 		self::assertStringStartsWith( 'Included', $about, 'its price, first' );
 	}
 
@@ -302,7 +303,7 @@ final class BuilderPageTest extends IntegrationTestCase {
 		self::assertSame( '1 part hidden: the trucks are made for another width of deck.', self::text( $dom, '//details[contains(@class,"cbuild-hidden")]/summary' ) );
 		self::assertSame( 'Truck 139', self::text( $dom, '//li[contains(@class,"cbuild-hidden__part")]/a' ) );
 		self::assertSame( get_permalink( $this->parts['truck 139'] ), $dom->query( '//li[contains(@class,"cbuild-hidden__part")]/a' )->item( 0 )->getAttribute( 'href' ) );
-		self::assertStringContainsString( 'The deck is 8.5 in.', self::text( $dom, '//ul[contains(@class,"cbuild-hidden__reasons")]/li' ) );
+		self::assertStringContainsString( 'The deck is 8.5″.', self::text( $dom, '//ul[contains(@class,"cbuild-hidden__reasons")]/li' ) );
 	}
 
 	public function test_the_step_and_the_review_have_the_forms_the_phone_bar_sends_by_their_ids(): void {

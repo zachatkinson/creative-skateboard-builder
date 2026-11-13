@@ -39,26 +39,26 @@ final class WordsTest extends TestCase {
 	 * @return iterable<string, array{Measure, bool, string}>
 	 */
 	public static function measures(): iterable {
-		yield 'a deck, as a decimal' => array( self::in( '8.25' ), false, '8.25 in' );
-		yield 'a deck, to three places' => array( self::in( '8.375' ), false, '8.375 in' );
-		yield 'a whole number of inches' => array( self::in( '9' ), false, '9 in' );
-		yield 'one place' => array( self::in( '8.5' ), false, '8.5 in' );
-		yield 'four places' => array( self::in( '8.0625' ), false, '8.0625 in' );
-		yield 'a small part of an inch' => array( self::in( '0.0625' ), false, '0.0625 in' );
-		yield 'wheels' => array( self::mm( '54' ), false, '54 mm' );
-		yield 'half a millimetre' => array( self::mm( '1.5' ), false, '1.5 mm' );
-		yield 'bolts, as a fraction' => array( self::in( '1.25' ), true, '1¼ in' );
-		yield 'bolts of a whole inch' => array( self::in( '1' ), true, '1 in' );
-		yield 'a riser under an inch' => array( self::in( '0.125' ), true, '⅛ in' );
-		yield 'seven eighths' => array( self::in( '0.875' ), true, '⅞ in' );
-		yield 'each eighth has its sign' => array( self::in( '2.625' ), true, '2⅝ in' );
-		yield 'a great many inches and a quarter' => array( self::in( '10000.25' ), true, '10,000¼ in' );
-		yield 'three eighths' => array( self::in( '1.375' ), true, '1⅜ in' );
-		yield 'a half' => array( self::in( '1.5' ), true, '1½ in' );
-		yield 'three quarters' => array( self::in( '1.75' ), true, '1¾ in' );
-		yield 'not a whole number of eighths stays a decimal' => array( self::in( '1.1' ), true, '1.1 in' );
-		yield 'millimetres are never fractions' => array( self::mm( '3.25' ), true, '3.25 mm' );
-		yield 'nothing' => array( self::in( '0' ), true, '0 in' );
+		yield 'a deck, as a decimal' => array( self::in( '8.25' ), false, '8.25″' );
+		yield 'a deck, to three places' => array( self::in( '8.375' ), false, '8.375″' );
+		yield 'a whole number of inches' => array( self::in( '9' ), false, '9″' );
+		yield 'one place' => array( self::in( '8.5' ), false, '8.5″' );
+		yield 'four places' => array( self::in( '8.0625' ), false, '8.0625″' );
+		yield 'a small part of an inch' => array( self::in( '0.0625' ), false, '0.0625″' );
+		yield 'wheels' => array( self::mm( '54' ), false, "54\u{00A0}mm" );
+		yield 'half a millimetre' => array( self::mm( '1.5' ), false, "1.5\u{00A0}mm" );
+		yield 'bolts, as a fraction' => array( self::in( '1.25' ), true, '1¼″' );
+		yield 'bolts of a whole inch' => array( self::in( '1' ), true, '1″' );
+		yield 'a riser under an inch' => array( self::in( '0.125' ), true, '⅛″' );
+		yield 'seven eighths' => array( self::in( '0.875' ), true, '⅞″' );
+		yield 'each eighth has its sign' => array( self::in( '2.625' ), true, '2⅝″' );
+		yield 'a great many inches and a quarter' => array( self::in( '10000.25' ), true, '10,000¼″' );
+		yield 'three eighths' => array( self::in( '1.375' ), true, '1⅜″' );
+		yield 'a half' => array( self::in( '1.5' ), true, '1½″' );
+		yield 'three quarters' => array( self::in( '1.75' ), true, '1¾″' );
+		yield 'not a whole number of eighths stays a decimal' => array( self::in( '1.1' ), true, '1.1″' );
+		yield 'millimetres are never fractions' => array( self::mm( '3.25' ), true, "3.25\u{00A0}mm" );
+		yield 'nothing' => array( self::in( '0' ), true, '0″' );
 	}
 
 	#[DataProvider( 'measures' )]
@@ -67,7 +67,7 @@ final class WordsTest extends TestCase {
 	}
 
 	public function test_a_measure_is_a_decimal_unless_its_kind_is_said_in_fractions(): void {
-		self::assertSame( '1.25 in', Words::measure( self::in( '1.25' ) ) );
+		self::assertSame( '1.25″', Words::measure( self::in( '1.25' ) ) );
 	}
 
 	/**
@@ -82,7 +82,7 @@ final class WordsTest extends TestCase {
 				'deck_min'   => self::in( '8' ),
 				'deck_max'   => self::in( '8.5' ),
 			),
-			'The trucks are made for decks from 8 in to 8.5 in wide. The deck is 7.75 in.',
+			'The trucks are made for decks from 8″ to 8.5″ wide. The deck is 7.75″.',
 		);
 		yield 'a deck below a range with no top' => array(
 			MessageCode::DeckBelowRange,
@@ -90,7 +90,7 @@ final class WordsTest extends TestCase {
 				'deck_width' => self::in( '7.75' ),
 				'deck_min'   => self::in( '8' ),
 			),
-			'The trucks are made for decks 8 in wide and over. The deck is 7.75 in.',
+			'The trucks are made for decks 8″ wide and over. The deck is 7.75″.',
 		);
 		yield 'a deck above the range' => array(
 			MessageCode::DeckAboveRange,
@@ -99,7 +99,7 @@ final class WordsTest extends TestCase {
 				'deck_min'   => self::in( '8' ),
 				'deck_max'   => self::in( '8.5' ),
 			),
-			'The trucks are made for decks from 8 in to 8.5 in wide. The deck is 9 in.',
+			'The trucks are made for decks from 8″ to 8.5″ wide. The deck is 9″.',
 		);
 		yield 'a deck above a range with no bottom' => array(
 			MessageCode::DeckAboveRange,
@@ -107,7 +107,7 @@ final class WordsTest extends TestCase {
 				'deck_width' => self::in( '9' ),
 				'deck_max'   => self::in( '8.5' ),
 			),
-			'The trucks are made for decks up to 8.5 in wide. The deck is 9 in.',
+			'The trucks are made for decks up to 8.5″ wide. The deck is 9″.',
 		);
 		yield 'a range whose bottom is nothing has no bottom' => array(
 			MessageCode::DeckAboveRange,
@@ -116,15 +116,15 @@ final class WordsTest extends TestCase {
 				'deck_min'   => self::in( '0' ),
 				'deck_max'   => self::in( '8.5' ),
 			),
-			'The trucks are made for decks up to 8.5 in wide. The deck is 9 in.',
+			'The trucks are made for decks up to 8.5″ wide. The deck is 9″.',
 		);
 		$axle = array(
 			'deck_width' => self::in( '8.5' ),
 			'axle_width' => self::in( '8' ),
 			'gap'        => self::in( '0.5' ),
 		);
-		yield 'a narrower axle' => array( MessageCode::AxleNarrower, $axle, 'The trucks\' axle is 8 in, which is 0.5 in narrower than the 8.5 in deck.' );
-		yield 'a wider axle' => array( MessageCode::AxleWider, $axle, 'The trucks\' axle is 8 in, which is 0.5 in wider than the 8.5 in deck.' );
+		yield 'a narrower axle' => array( MessageCode::AxleNarrower, $axle, 'The trucks\' axle is 8″, which is 0.5″ narrower than the 8.5″ deck.' );
+		yield 'a wider axle' => array( MessageCode::AxleWider, $axle, 'The trucks\' axle is 8″, which is 0.5″ wider than the 8.5″ deck.' );
 		yield 'hole patterns' => array(
 			MessageCode::PatternMismatch,
 			array(
@@ -139,15 +139,15 @@ final class WordsTest extends TestCase {
 			'limit'          => self::mm( '56' ),
 			'over'           => self::mm( '2' ),
 		);
-		yield 'wheels that need a riser' => array( MessageCode::WheelNeedsRiser, $wheels + array( 'riser' => self::in( '0.25' ) ), 'Wheels of 58 mm are 2 mm over what the trucks clear, which is 56 mm. A riser of ¼ in or thicker makes the room.' );
-		yield 'wheels no riser makes room for' => array( MessageCode::WheelNoRiser, $wheels, 'Wheels of 58 mm are 2 mm over what the trucks clear, which is 56 mm. That is more than a riser makes up for.' );
+		yield 'wheels that need a riser' => array( MessageCode::WheelNeedsRiser, $wheels + array( 'riser' => self::in( '0.25' ) ), 'Wheels of 58 mm are 2 mm over what the trucks clear, which is 56 mm. A riser of ¼″ or thicker makes the room.' );
+		yield 'wheels no riser makes room for' => array( MessageCode::WheelNoRiser, $wheels, 'Wheels of 58 mm are 2 mm over what the trucks clear, which is 56 mm. That is more than a riser makes up for.' );
 		yield 'a limit from the height' => array(
 			MessageCode::LimitFromClass,
 			array(
 				'height_class' => 'low',
 				'limit'        => self::mm( '53' ),
 			),
-			'The trucks give no largest wheel, so the usual one for their height (Low) is taken: 53 mm.',
+			'The trucks give no largest wheel, so the usual one for their height (Low) is taken: 53 mm.',
 		);
 		$bolts = array(
 			'bolt_length'     => self::in( '0.875' ),
@@ -156,19 +156,19 @@ final class WordsTest extends TestCase {
 			'riser_thickness' => self::in( '0.25' ),
 		);
 		$bare  = array( 'riser_thickness' => self::in( '0' ) ) + $bolts;
-		yield 'bolts too short for a riser' => array( MessageCode::BoltsTooShort, $bolts, 'Bolts of ⅞ in are too short with a ¼ in riser. Use 1⅛ in or longer.' );
-		yield 'bolts too short with no riser' => array( MessageCode::BoltsTooShort, $bare, 'Bolts of ⅞ in are too short. Use 1⅛ in or longer.' );
-		yield 'bolts too long for a riser' => array( MessageCode::BoltsTooLong, $bolts, 'Bolts of ⅞ in are longer than a ¼ in riser needs. The usual length is 1¼ in.' );
-		yield 'bolts too long with no riser' => array( MessageCode::BoltsTooLong, $bare, 'Bolts of ⅞ in are longer than a board with no riser needs. The usual length is 1¼ in.' );
+		yield 'bolts too short for a riser' => array( MessageCode::BoltsTooShort, $bolts, 'Bolts of ⅞″ are too short with a ¼″ riser. Use 1⅛″ or longer.' );
+		yield 'bolts too short with no riser' => array( MessageCode::BoltsTooShort, $bare, 'Bolts of ⅞″ are too short. Use 1⅛″ or longer.' );
+		yield 'bolts too long for a riser' => array( MessageCode::BoltsTooLong, $bolts, 'Bolts of ⅞″ are longer than a ¼″ riser needs. The usual length is 1¼″.' );
+		yield 'bolts too long with no riser' => array( MessageCode::BoltsTooLong, $bare, 'Bolts of ⅞″ are longer than a board with no riser needs. The usual length is 1¼″.' );
 		yield 'a bore' => array(
 			MessageCode::BoreMismatch,
 			array(
 				'bearing_bore'  => self::mm( '10' ),
 				'axle_diameter' => self::mm( '8' ),
 			),
-			'The bearings\' bore is 10 mm and the trucks\' axle is 8 mm.',
+			'The bearings\' bore is 10 mm and the trucks\' axle is 8 mm.',
 		);
-		yield 'an axle taken' => array( MessageCode::AxleAssumed, array( 'axle_diameter' => self::mm( '8' ) ), 'The trucks give no axle size, so the usual one is taken: 8 mm.' );
+		yield 'an axle taken' => array( MessageCode::AxleAssumed, array( 'axle_diameter' => self::mm( '8' ) ), 'The trucks give no axle size, so the usual one is taken: 8 mm.' );
 		yield 'spacers built in' => array( MessageCode::SpacersBuiltIn, array(), 'The bearings have spacers built in, so they take no others.' );
 		yield 'grip too narrow' => array(
 			MessageCode::GripTooNarrow,
@@ -176,7 +176,7 @@ final class WordsTest extends TestCase {
 				'grip_width' => self::in( '8' ),
 				'deck_width' => self::in( '8.5' ),
 			),
-			'The grip is 8 in wide and the deck is 8.5 in.',
+			'The grip is 8″ wide and the deck is 8.5″.',
 		);
 		yield 'grip too short' => array(
 			MessageCode::GripTooShort,
@@ -184,7 +184,7 @@ final class WordsTest extends TestCase {
 				'grip_length' => self::in( '31' ),
 				'deck_length' => self::in( '32.125' ),
 			),
-			'The grip is 31 in long and the deck is 32.125 in.',
+			'The grip is 31″ long and the deck is 32.125″.',
 		);
 		yield 'a length not checked' => array( MessageCode::LengthUnchecked, array(), 'The deck gives no length, so the grip\'s length is not checked.' );
 	}
@@ -283,24 +283,39 @@ final class WordsTest extends TestCase {
 		self::assertSame( array_column( CartRefusal::cases(), 'value' ), array_keys( iterator_to_array( self::refusals() ) ) );
 	}
 
-	public function test_a_price_change_is_said_with_its_sign_or_as_free_or_included(): void {
+	public function test_a_price_change_is_said_with_its_sign_or_as_the_same_price_or_included(): void {
 		self::assertSame( '+$12.00', Words::delta( 'more', '$12.00' ) );
 		self::assertSame( '−$5.00', Words::delta( 'less', '$5.00' ), 'A minus sign, not a hyphen.' );
-		self::assertSame( 'Free', Words::delta( 'free', '$0.00' ) );
+		// Cowork's review, should-fix 8 (Zach: "Same price"): Free read as no charge.
+		self::assertSame( 'Same price', Words::delta( 'free', '$0.00' ) );
 		self::assertSame( 'Included', Words::delta( 'included', '$0.00' ) );
 		self::assertSame( '', Words::delta( 'none', '$0.00' ) );
 	}
 
 	public function test_a_part_in_the_box_is_labelled_with_its_slot_and_what_it_has_of_a_brand_and_a_size(): void {
-		self::assertSame( 'Wheels: Retna, 54 mm', Words::boxed( 'Wheels', 'Retna', '54 mm' ) );
+		self::assertSame( 'Wheels: Retna, 54 mm', Words::boxed( 'Wheels', 'Retna', '54 mm' ) );
 		self::assertSame( 'Wheels: Retna', Words::boxed( 'Wheels', 'Retna', '' ) );
-		self::assertSame( 'Wheels: 54 mm', Words::boxed( 'Wheels', '', '54 mm' ) );
+		self::assertSame( 'Wheels: 54 mm', Words::boxed( 'Wheels', '', '54 mm' ) );
 		self::assertSame( 'Wheels', Words::boxed( 'Wheels', '', '' ) );
 	}
 
 	public function test_the_build_is_said_in_one_sentence_or_as_nothing_chosen(): void {
 		self::assertSame( 'Nothing is chosen yet.', Words::built( array() ) );
-		self::assertSame( 'The build so far: A deck.', Words::built( array( 'A deck' ) ) );
-		self::assertSame( 'The build so far: A deck, Trucks and Wheels.', Words::built( array( 'A deck', 'Trucks', 'Wheels' ) ) );
+		self::assertSame( 'The build so far: Deck: A deck.', Words::built( array( array( 'Deck', 'A deck' ) ) ) );
+		// Cowork's review, minor 15: names hold commas of their own, so each part is said by its slot.
+		self::assertSame(
+			'The build so far: Deck: Philly\'s, Rascals - 8.00″; Trucks: Test trucks 139; Wheels: Blotto, Blue (54mm, 101A).',
+			Words::built( array( array( 'Deck', 'Philly\'s, Rascals - 8.00″' ), array( 'Trucks', 'Test trucks 139' ), array( 'Wheels', 'Blotto, Blue (54mm, 101A)' ) ) )
+		);
+	}
+
+	public function test_a_slots_label_starts_small_inside_a_sentence_unless_it_is_written_in_capitals(): void {
+		// Cowork's review, minors 5 and 14: "Change Deck", "Fits your Trucks".
+		self::assertSame( 'deck', Words::inSentence( 'Deck' ) );
+		self::assertSame( 'grip tape', Words::inSentence( 'Grip tape' ) );
+		self::assertSame( 'HZRD', Words::inSentence( 'HZRD' ), 'A name in capitals is kept.' );
+		self::assertSame( 'X', Words::inSentence( 'X' ) );
+		self::assertSame( 'éclat', Words::inSentence( 'Éclat' ) );
+		self::assertSame( '', Words::inSentence( '' ) );
 	}
 }

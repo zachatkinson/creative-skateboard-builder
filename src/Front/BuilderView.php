@@ -173,6 +173,8 @@ final class BuilderView {
 			'picture'   => array(
 				'heading'     => __( 'What is in the box', 'creative-skateboard-builder' ),
 				'description' => Cast::str( $picture['description'] ?? null ),
+				// With nothing picked, the summary says so; the picture keeps quiet rather than say it twice.
+				'captioned'   => array() !== Cast::items( $picture['items'] ?? null ),
 				'items'       => array_map(
 					static function ( mixed $item, int $at ) use ( $state ): array {
 						$item = Cast::map( $item );
@@ -220,7 +222,9 @@ final class BuilderView {
 			'picture' => __( 'See the picture', 'creative-skateboard-builder' ),
 			/* translators: %s: the build's total, such as $184.00. */
 			'total'   => sprintf( __( 'Total: %s', 'creative-skateboard-builder' ), Cast::str( $summary['total'] ?? null ) ),
-			'parts'   => __( 'The parts', 'creative-skateboard-builder' ),
+			// The disclosure says what it does, open or shut (Cowork minor 18); the stylesheet shows the one that applies.
+			'parts'   => __( 'Show the parts', 'creative-skateboard-builder' ),
+			'hide'    => __( 'Hide the parts', 'creative-skateboard-builder' ),
 			'next'    => array(
 				'shown'    => ! $panel,
 				// Which of the bar's two buttons: a button's form is its own, set once, so each form has one.
@@ -266,13 +270,21 @@ final class BuilderView {
 						'value' => Cast::str( $value ),
 					);
 				}
+				// One line a slot: a part refused comes first and leaves its slot empty, which says the same again.
 				$notes = array();
+				$whole = true;
 				foreach ( Cast::items( $preset['problems'] ?? null ) as $problem ) {
 					$problem = Cast::map( $problem );
 					$code    = Problem::tryFrom( Cast::str( $problem['code'] ?? null ) );
 					$slot    = Cast::str( $problem['slot'] ?? null );
-					$notes[] = array( 'text' => null === $code ? Cast::str( $problem['message'] ?? null ) : Words::named( $code, $label( $slot ), Cast::str( $problem['name'] ?? null ) ) );
+					// A slot left without its part leaves the build short of it, and its total short with it.
+					$whole = $whole && Problem::SlotEmpty !== $code && Problem::PartNotInSlot !== $code;
+					if ( isset( $notes[ $slot ] ) ) {
+						continue;
+					}
+					$notes[ $slot ] = array( 'text' => null === $code ? Cast::str( $problem['message'] ?? null ) : Words::named( $code, $label( $slot ), Cast::str( $problem['name'] ?? null ) ) );
 				}
+				$notes       = array_values( $notes );
 				$name        = Cast::str( $preset['name'] ?? null );
 				$description = Cast::str( $preset['description'] ?? null );
 				$tiles[]     = self::image( $preset['image'] ?? null ) + array(
@@ -280,6 +292,7 @@ final class BuilderView {
 					'description'    => $description,
 					'hasDescription' => '' !== $description,
 					'total'          => Cast::str( Cast::map( $preset['total'] ?? null )['text'] ?? null ),
+					'hasTotal'       => $whole,
 					'notes'          => $notes,
 					'fields'         => $fields,
 					/* translators: %s: a preset's name, such as Street. */
@@ -601,6 +614,8 @@ final class BuilderView {
 		$place = array_flip( $steps )[ $slot ];
 		$next  = $steps[ $place + 1 ] ?? State::REVIEW;
 		$width = SlotKey::DECK === $slot ? '' : self::deckWidth( $answer );
+		// What the step's parts were checked against, as a phrase: "8.25″ deck", or "trucks and risers".
+		$against = self::against( Cast::strings( $step['against'] ?? null ), $width, static fn( string $key ): string => Cast::str( Cast::map( $about[ $key ] ?? null )['label'] ?? $key ) );
 
 		$options = array();
 		foreach ( Cast::items( $answer['options'] ?? null ) as $option ) {
@@ -610,11 +625,17 @@ final class BuilderView {
 			$title     = Cast::str( $card['name'] ?? null );
 			$checked   = ( $counted[ $slot ] ?? null ) === $id;
 			$available = Cast::bool( $option['available'] ?? null );
+			$fit       = Cast::str( $option['fit'] ?? null );
 			$notes     = array();
 			foreach ( Cast::items( $option['messages'] ?? null ) as $message ) {
-				$notes[] = array( 'text' => Cast::str( Cast::map( $message )['text'] ?? null ) );
+				$message = Cast::map( $message );
+				// A spec the owner left out and the rule assumed is the owner's to fix, and the catalogue check says so. A
+				// card that fits keeps quiet about it; one that warns or is blocked says it, since it may be the reason.
+				if ( 'fits' === $fit && 'fits' === Cast::str( $message['severity'] ?? null ) ) {
+					continue;
+				}
+				$notes[] = array( 'text' => Cast::str( $message['text'] ?? null ) );
 			}
-			$fit       = Cast::str( $option['fit'] ?? null );
 			$input     = 'cbuild-' . $state->id . '-' . $id;
 			$options[] = array(
 				'id'            => $id,
@@ -639,11 +660,11 @@ final class BuilderView {
 				'delta'         => Cast::str( Cast::map( $option['delta'] ?? null )['text'] ?? null ),
 				'stock'         => Cast::str( $card['stock'] ?? null ),
 				'stockClass'    => 'cbuild-card__stock cbuild-card__stock--' . sanitize_html_class( Cast::str( $card['stock_class'] ?? null ) ),
-				'fit'           => self::fit( $fit, $width ),
+				'fit'           => self::fit( $fit, $against ),
 				'fitClass'      => 'cbuild-card__fit cbuild-card__fit--' . sanitize_html_class( $fit ),
 				'notes'         => $notes,
 				'recommended'   => Cast::bool( $option['recommended'] ?? null ),
-				'recommendedAs' => self::recommended( $width ),
+				'recommendedAs' => self::recommended( $against ),
 				'classes'       => self::classes( $state->id, $slot, $id, $fit, $available, $checked ),
 			) + self::image( $card['image'] ?? null );
 		}
@@ -751,37 +772,54 @@ final class BuilderView {
 	}
 
 	/**
-	 * A card's fit label (spec: A step). A part that fits says so against the deck; one that warns or is blocked
-	 * says so shortly, and its notes say why.
+	 * What a step's parts were checked against, as a phrase for its labels: the deck by its width, as "8.25″ deck",
+	 * and other slots by their labels inside a sentence, as "trucks and risers". Empty where the parts were checked
+	 * against nothing picked before them (Cowork's review, should-fix 5).
 	 *
-	 * @param string $fit   The option's fit: `fits`, `warn` or `block`.
-	 * @param string $width The deck's width, or empty.
+	 * @param list<string>             $slots The slots' keys.
+	 * @param string                   $width The deck's width, or empty.
+	 * @param callable(string): string $label A slot's label.
 	 */
-	private static function fit( string $fit, string $width ): string {
+	private static function against( array $slots, string $width, callable $label ): string {
+		if ( array( SlotKey::DECK ) === $slots && '' !== $width ) {
+			/* translators: %s: a deck's width, such as 8.25″. */
+			return sprintf( __( '%s deck', 'creative-skateboard-builder' ), $width );
+		}
+		return wp_sprintf( '%l', array_map( static fn( string $slot ): string => Words::inSentence( $label( $slot ) ), $slots ) );
+	}
+
+	/**
+	 * A card's fit label (spec: A step). A part that fits says what it was checked against, and nothing where it was
+	 * checked against nothing; one that warns or is blocked says so shortly, and its notes say why.
+	 *
+	 * @param string $fit     The option's fit: `fits`, `warn` or `block`.
+	 * @param string $against What it was checked against, as a phrase, or empty.
+	 */
+	private static function fit( string $fit, string $against ): string {
 		if ( 'warn' === $fit ) {
 			return __( 'Fits, with a note', 'creative-skateboard-builder' );
 		}
 		if ( 'block' === $fit ) {
 			return __( 'Does not fit', 'creative-skateboard-builder' );
 		}
-		if ( '' === $width ) {
+		if ( '' === $against ) {
 			return '';
 		}
-		/* translators: %s: a deck's width, such as 8.25 in. */
-		return sprintf( __( 'Fits your %s deck', 'creative-skateboard-builder' ), $width );
+		/* translators: %s: what the part was checked against, such as "8.25″ deck" or "trucks and risers". */
+		return sprintf( __( 'Fits your %s', 'creative-skateboard-builder' ), $against );
 	}
 
 	/**
 	 * The label of the part a step starts on (spec: A step, P9).
 	 *
-	 * @param string $width The deck's width, or empty.
+	 * @param string $against What the step's parts were checked against, as a phrase, or empty.
 	 */
-	private static function recommended( string $width ): string {
-		if ( '' === $width ) {
+	private static function recommended( string $against ): string {
+		if ( '' === $against ) {
 			return __( 'Recommended', 'creative-skateboard-builder' );
 		}
-		/* translators: %s: a deck's width, such as 8.25 in. */
-		return sprintf( __( 'Recommended for your %s deck', 'creative-skateboard-builder' ), $width );
+		/* translators: %s: what the part was checked against, such as "8.25″ deck" or "trucks and risers". */
+		return sprintf( __( 'Recommended for your %s', 'creative-skateboard-builder' ), $against );
 	}
 
 	/**
@@ -1010,12 +1048,14 @@ final class BuilderView {
 				'fit'     => $wrong[ $slot ] ?? ( isset( $counted[ $slot ] ) ? __( 'Fits', 'creative-skateboard-builder' ) : '' ),
 				'url'     => $url( $link->at( $slot ) ),
 				/* translators: %s: a slot's label, such as Trucks. */
-				'change'  => sprintf( __( 'Change %s', 'creative-skateboard-builder' ), $label( $slot ) ),
+				'change'  => sprintf( __( 'Change %s', 'creative-skateboard-builder' ), Words::inSentence( $label( $slot ) ) ),
 			);
 		}
-		$texts  = Cast::map( $answer['texts'] ?? null );
-		$on     = Cast::bool( Cast::map( $answer['total'] ?? null )['assembly'] ?? null );
-		$lead   = $on ? Cast::str( $texts['lead_time'] ?? null ) : '';
+		$texts = Cast::map( $answer['texts'] ?? null );
+		$on    = Cast::bool( Cast::map( $answer['total'] ?? null )['assembly'] ?? null );
+		$lead  = $on ? Cast::str( $texts['lead_time'] ?? null ) : '';
+		/* translators: %s: how long the shop takes to put a build together, in the owner's words, such as 2 business days. */
+		$lead   = '' === $lead ? '' : sprintf( __( 'Assembly time: %s', 'creative-skateboard-builder' ), $lead );
 		$notice = Cast::str( $texts['returns_notice'] ?? null );
 		$fields = array(
 			array(

@@ -146,7 +146,7 @@ test.describe( 'The builder without JavaScript', () => {
 		} );
 		await expect( trucks ).toBeChecked();
 		await expect(
-			page.getByText( 'Recommended for your 8 in deck' )
+			page.getByText( 'Recommended for your 8″ deck' )
 		).toBeVisible();
 
 		await next( page, 'Next: Wheels' );
@@ -163,7 +163,7 @@ test.describe( 'The builder without JavaScript', () => {
 		await next( page, 'Next: Bearings' );
 		await expect(
 			heading( page ),
-			'58 mm wheels want a riser under these trucks, so the risers step appears.'
+			'58 mm wheels want a riser under these trucks, so the risers step appears.'
 		).toHaveText( 'Step 4 of 8: Risers' );
 		await expect(
 			page.getByRole( 'radio', {
@@ -191,7 +191,7 @@ test.describe( 'The builder without JavaScript', () => {
 			review.getByText( 'An assembled board comes back as parts.' )
 		).toBeVisible();
 		await expect(
-			review.getByRole( 'link', { name: 'Change Trucks' } )
+			review.getByRole( 'link', { name: 'Change trucks' } )
 		).toHaveAttribute( 'rel', 'nofollow' );
 
 		await answered( page, () =>
@@ -277,14 +277,14 @@ test.describe( 'The builder without JavaScript', () => {
 		await page.goto( fixture().page );
 		const filters = page.getByRole( 'group', { name: 'Width' } );
 		await answered( page, () =>
-			filters.getByRole( 'button', { name: '8.25 in (1)' } ).click()
+			filters.getByRole( 'button', { name: '8.25″ (1)' } ).click()
 		);
 		await expect( heading( page ) ).toHaveText( 'Step 1 of 7: Deck' );
 		await expect(
 			page.getByRole( 'radio', { name: /^Choose Builder test deck/ } )
 		).toHaveCount( 1 );
 		await expect(
-			filters.getByRole( 'button', { name: '8.25 in (1)' } )
+			filters.getByRole( 'button', { name: '8.25″ (1)' } )
 		).toHaveAttribute( 'aria-pressed', 'true' );
 		await expect( page.getByText( '1 of 1 part shown' ) ).toBeVisible();
 
@@ -306,7 +306,7 @@ test.describe( 'The builder without JavaScript', () => {
 		await answered( page, () =>
 			page
 				.getByRole( 'group', { name: 'Width' } )
-				.getByRole( 'button', { name: '8 in (1)' } )
+				.getByRole( 'button', { name: '8″ (1)' } )
 				.click()
 		);
 		await page
@@ -524,10 +524,7 @@ test.describe( 'Every way in by a link', () => {
 		await expect(
 			// French writes the width with a decimal comma.
 			page.getByText(
-				inLocale(
-					info.project.name,
-					'Recommended for your 8.5 in deck'
-				)
+				inLocale( info.project.name, 'Recommended for your 8.5″ deck' )
 			)
 		).toBeVisible();
 	} );
@@ -664,7 +661,7 @@ test.describe( 'The builder with JavaScript', () => {
 				name: 'Choose Builder test trucks 139',
 			} )
 		).toHaveAccessibleDescription(
-			/Fits your 8(\.0)? in deck.*Recommended for your 8(\.0)? in deck/
+			/Fits your 8(\.0)?″ deck.*Recommended for your 8(\.0)?″ deck/
 		);
 	} );
 
@@ -881,7 +878,7 @@ test.describe( 'The builder with JavaScript', () => {
 		await openFilters( page );
 		const filters = page.getByRole( 'group', { name: 'Width' } );
 		// French writes the width with a decimal comma.
-		const width = inLocale( info.project.name, '8.25 in (1)' );
+		const width = inLocale( info.project.name, '8.25″ (1)' );
 		await filters.getByRole( 'button', { name: width } ).click();
 		await expect(
 			page.getByRole( 'radio', { name: /^Choose Builder test deck/ } )
@@ -901,7 +898,7 @@ test.describe( 'The builder with JavaScript', () => {
 		await openFilters( page );
 		const filters = page.getByRole( 'group', { name: 'Width' } );
 		const width = filters.getByRole( 'button', {
-			name: inLocale( info.project.name, '8.25 in (1)' ),
+			name: inLocale( info.project.name, '8.25″ (1)' ),
 		} );
 		await width.focus();
 		await page.keyboard.press( 'Enter' );
@@ -1312,7 +1309,7 @@ test.describe( 'The builder with JavaScript', () => {
 		const filters = page.getByRole( 'group', { name: 'Width' } );
 		await filters
 			.getByRole( 'button', {
-				name: inLocale( info.project.name, '8.25 in (1)' ),
+				name: inLocale( info.project.name, '8.25″ (1)' ),
 			} )
 			.click();
 		await expect(
@@ -1823,6 +1820,16 @@ test.describe( 'The phone bar', () => {
 		const bar = page.locator( '.cbuild-bar' );
 		await expect( bar ).toBeVisible();
 		await expect( page.locator( '.cbuild-summary' ) ).toBeHidden();
+		// Cowork's review, minor 18: the disclosure says what it does, open and shut.
+		const summary = bar.locator( 'summary' );
+		await expect( summary ).toHaveText( /Show the parts$/, {
+			useInnerText: true,
+		} );
+		await summary.click();
+		await expect( summary ).toHaveText( /Hide the parts$/, {
+			useInnerText: true,
+		} );
+		await summary.click();
 		await page.setViewportSize( { width: 1280, height: 800 } );
 		await expect( bar ).toBeHidden();
 		await expect( page.locator( '.cbuild-summary' ) ).toBeVisible();

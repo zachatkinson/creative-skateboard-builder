@@ -236,6 +236,8 @@ final class StateAnswer {
 				'offered'     => count( $step->options->offered ),
 				'hidden'      => count( $step->options->hidden ),
 				'groups'      => $groups,
+				// The picks before the step its options were checked against; null where no rule reads the slot.
+				'against'     => $step->options->against,
 			);
 		}
 
@@ -443,7 +445,7 @@ final class StateAnswer {
 				'image' => $cards[ $line->part ]['image'] ?? null,
 			);
 			if ( '' !== $name ) {
-				$names[] = $name;
+				$names[] = array( $labels[ $line->slot ], $name );
 			}
 		}
 		return array(

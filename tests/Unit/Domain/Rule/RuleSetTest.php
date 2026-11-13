@@ -92,6 +92,24 @@ final class RuleSetTest extends TestCase {
 		}
 	}
 
+	public function test_a_slot_is_read_with_the_slots_its_rules_read_and_by_none_where_its_rules_are_off(): void {
+		// Cowork's review, should-fix 5: a card's fit label names what the part was checked against.
+		$on  = RuleSettings::defaults();
+		$set = RuleSet::standard();
+		self::assertSame( array( SlotKey::TRUCKS, SlotKey::GRIP ), $set->reading( SlotKey::DECK, $on ) );
+		self::assertSame( array( SlotKey::DECK, SlotKey::WHEELS, SlotKey::RISERS, SlotKey::BEARINGS, SlotKey::SPACERS ), $set->reading( SlotKey::TRUCKS, $on ) );
+		self::assertSame( array( SlotKey::TRUCKS, SlotKey::RISERS ), $set->reading( SlotKey::WHEELS, $on ) );
+		self::assertSame( array( SlotKey::RISERS ), $set->reading( SlotKey::HARDWARE, $on ) );
+		self::assertSame( array( SlotKey::DECK ), $set->reading( SlotKey::GRIP, $on ) );
+		self::assertNull( $set->reading( 'stickers', $on ), 'a slot no rule reads' );
+
+		$document                               = RuleSettings::DEFAULTS;
+		$document[ RuleId::R6->value ]['enabled'] = false;
+		self::assertNull( $set->reading( SlotKey::GRIP, RuleSettings::fromDocument( $document ) ), 'grip, with R6 off' );
+		self::assertSame( array( SlotKey::TRUCKS ), $set->reading( SlotKey::DECK, RuleSettings::fromDocument( $document ) ) );
+		self::assertNull( ( new RuleSet( array() ) )->reading( SlotKey::DECK, $on ), 'a set of no rules reads nothing' );
+	}
+
 	public function test_a_set_of_no_rules_finds_nothing(): void {
 		self::assertSame( array(), ( new RuleSet( array() ) )->check( self::wrong(), RuleSettings::defaults() ) );
 	}

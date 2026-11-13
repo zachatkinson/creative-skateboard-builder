@@ -193,6 +193,13 @@ final class RecommenderTest extends TestCase {
 				return RuleId::R3;
 			}
 
+			/**
+			 * @return list<string>
+			 */
+			public function slots(): array {
+				return array( SlotKey::WHEELS, SlotKey::RISERS );
+			}
+
 			public function check( Picks $picks, RuleSettings $settings ): array {
 				$found = array();
 				foreach ( null === $picks->part( SlotKey::RISERS ) && null !== $picks->part( SlotKey::WHEELS ) ? $this->findings : array() as [ $code, $riser ] ) {

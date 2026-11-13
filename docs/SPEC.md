@@ -366,7 +366,7 @@ One step per slot, in the kit's order, then a review. The deck comes first, ever
 - **History.** With JavaScript, each step change adds a history entry carrying the same URL the no-JavaScript form makes. The browser's Back and Forward move between steps with every pick kept, and a reload opens the same step. Baymard found [59% of sites break at least one thing shoppers expect of Back](https://baymard.com/research-articles/back-button-expectations) (2020).
 - **Cards.** Each option is a card with a native radio button and:
   - a photo and the name;
-  - the price as a change from the current pick ("+$12.00", "Free" or "Included", P4);
+  - the price as a change from the current pick ("+$12.00", "Same price" or "Included", P4);
   - stock;
   - a fit label ("Fits your 8.25″ deck").
 

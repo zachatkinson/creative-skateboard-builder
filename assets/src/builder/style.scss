@@ -704,6 +704,13 @@
 	font-weight: 400;
 }
 
+/* "Show the parts" while the list is shut and "Hide the parts" while it is open. Not under :where(), so that a
+   theme's own rule for a span does not show both. */
+.cbuild-bar__parts[open] .cbuild-bar__more--show,
+.cbuild-bar__parts:not([open]) .cbuild-bar__more--hide {
+	display: none;
+}
+
 /* The parts list opens above the bar, so the bar and its button stay where the thumb is (W7). */
 :where(.cbuild-bar__lines) {
 	position: absolute;

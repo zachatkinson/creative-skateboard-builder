@@ -182,6 +182,44 @@ final class BuilderTest extends TestCase {
 		);
 	}
 
+	public function test_a_preset_whose_part_is_no_longer_offered_says_so_once_by_name_and_shows_no_total(): void {
+		// Cowork's review, minor 16: the tile said "Trucks: the part chosen is not one this kit offers here. Trucks:
+		// nothing is chosen yet." and a total for a build that lacks its trucks.
+		$parts                    = Shop::parts();
+		$parts[ SlotKey::TRUCKS ] = array_values( array_filter( $parts[ SlotKey::TRUCKS ], static fn( Part $part ): bool => 139 !== $part->id ) );
+		$this->kits->add(
+			self::KIT,
+			Shop::kit(
+				presets: array(
+					array(
+						'name'  => 'Street',
+						'picks' => self::STREET,
+					),
+				)
+			),
+			$parts
+		);
+		$tile = $this->show( new BuildLink() )['view']['presets']['tiles'][0];
+
+		self::assertSame( array( array( 'text' => 'Trucks: Part 139 is no longer offered here.' ) ), $tile['notes'] );
+		self::assertFalse( $tile['hasTotal'] );
+
+		$this->presets();
+		self::assertTrue( $this->show( new BuildLink() )['view']['presets']['tiles'][1]['hasTotal'], 'a sold-out part leaves the build whole, so its total stands' );
+	}
+
+	public function test_the_picture_says_nothing_under_it_at_a_blank_start_where_the_summary_says_it(): void {
+		// Cowork's review, minor 15: "Nothing is chosen yet." showed twice, under the picture and in the summary.
+		$this->kits->add( self::KIT, Shop::kit(), Shop::parts() );
+		$blank = $this->show( new BuildLink() )['view'];
+		self::assertFalse( $blank['picture']['captioned'] );
+		self::assertTrue( $blank['summary']['empty'] );
+
+		$begun = $this->show( new BuildLink( array( SlotKey::DECK => 101 ), null, SlotKey::TRUCKS ) )['view'];
+		self::assertTrue( $begun['picture']['captioned'] );
+		self::assertStringStartsWith( 'The build so far: Deck: ', $begun['picture']['description'] );
+	}
+
 	// Spec, A step, Sold out: "A preset or link that holds one names it, and the build can't go to the cart until
 	// it's swapped".
 	public function test_a_sold_out_part_a_preset_brings_is_named_at_the_review_and_keeps_the_build_from_the_cart(): void {
@@ -202,7 +240,8 @@ final class BuilderTest extends TestCase {
 			array(
 				'shown' => true,
 				'total' => 'Total: ' . $view['summary']['total'],
-				'parts' => 'The parts',
+				'parts' => 'Show the parts',
+				'hide'  => 'Hide the parts',
 				'next'  => array(
 					'shown'    => true,
 					'onStep'   => true,
@@ -414,10 +453,10 @@ final class BuilderTest extends TestCase {
 
 		$chosen = array_values( array_filter( $step['options'], static fn( array $card ): bool => $card['checked'] ) );
 		self::assertCount( 1, $chosen );
-		self::assertSame( 149, $chosen[0]['id'], 'The step starts on the trucks that fit an 8.5 in deck.' );
+		self::assertSame( 149, $chosen[0]['id'], 'The step starts on the trucks that fit an 8.5″ deck.' );
 		self::assertTrue( $chosen[0]['recommended'] );
-		self::assertSame( 'Recommended for your 8.5 in deck', $chosen[0]['recommendedAs'] );
-		self::assertSame( 'Fits your 8.5 in deck', $chosen[0]['fit'] );
+		self::assertSame( 'Recommended for your 8.5″ deck', $chosen[0]['recommendedAs'] );
+		self::assertSame( 'Fits your 8.5″ deck', $chosen[0]['fit'] );
 		self::assertSame( 'cbuild-card cbuild-card--fits cbuild-card--chosen', $chosen[0]['classes'] );
 
 		self::assertSame( array( 'deck', 'trucks', 'wheels', 'bearings', 'hardware', 'grip' ), array_column( $view['summary']['rows'], 'key' ), 'Each slot that starts on a part is counted.' );
@@ -425,7 +464,7 @@ final class BuilderTest extends TestCase {
 		self::assertSame( 'Assembly: $15.00', $view['summary']['assembly'] );
 		self::assertSame( 'Remove assembly', $view['summary']['toggle']['text'] );
 		self::assertSame( 'deck', $view['picture']['items'][0]['key'] );
-		self::assertSame( 'Deck: 8.5 in', $view['picture']['items'][0]['label'] );
+		self::assertSame( 'Deck: 8.5″', $view['picture']['items'][0]['label'] );
 		self::assertSame( 'Part 103', $view['picture']['items'][0]['name'] );
 		// Spec, The picture: the deck is the page's largest paint, and the rest wait to be scrolled to.
 		self::assertSame( array( 'eager', 'high' ), array( $view['picture']['items'][0]['loading'], $view['picture']['items'][0]['priority'] ) );
@@ -438,11 +477,11 @@ final class BuilderTest extends TestCase {
 		$this->kits->add( self::KIT, Shop::kit(), $parts );
 		$step = $this->show( new BuildLink( array( SlotKey::DECK => 101, SlotKey::TRUCKS => 139 ), null, SlotKey::TRUCKS ) )['view']['step'];
 
-		self::assertSame( array( 139 ), array_column( $step['options'], 'id' ), 'The 149s do not fit an 8 in deck, so they are hidden.' );
+		self::assertSame( array( 139 ), array_column( $step['options'], 'id' ), 'The 149s do not fit an 8″ deck, so they are hidden.' );
 		self::assertTrue( $step['options'][0]['soldOut'] );
 		self::assertFalse( $step['options'][0]['disabled'], 'The build holds it, so the form still sends it.' );
 		self::assertSame( 'cbuild-card cbuild-card--fits cbuild-card--sold-out cbuild-card--chosen', $step['options'][0]['classes'] );
-		self::assertSame( 'Fits your 8 in deck', $step['options'][0]['fit'] );
+		self::assertSame( 'Fits your 8″ deck', $step['options'][0]['fit'] );
 
 		$parts[ SlotKey::DECK ] = array( Shop::priced( $parts[ SlotKey::DECK ][0], 6000, false ), $parts[ SlotKey::DECK ][1] );
 		$this->kits->add( self::KIT, Shop::kit(), $parts );
@@ -451,6 +490,17 @@ final class BuilderTest extends TestCase {
 		self::assertTrue( $step['options'][1]['disabled'], 'One the build does not hold cannot be picked.' );
 		self::assertFalse( $step['options'][1]['checked'] );
 		self::assertFalse( $step['options'][0]['disabled'] );
+	}
+
+	public function test_a_cards_fit_label_names_what_the_part_was_checked_against(): void {
+		// Cowork's review, should-fix 5: wheels said "Fits your 8 in deck" though the trucks are what they are read with.
+		$this->kits->add( self::KIT, Shop::kit(), Shop::parts() );
+		$step = $this->show( new BuildLink( array( SlotKey::DECK => 101, SlotKey::TRUCKS => 139 ), null, SlotKey::WHEELS ) )['view']['step'];
+		self::assertSame( 'Fits your trucks', $step['options'][0]['fit'] );
+		self::assertSame( 'Recommended for your trucks', $step['options'][0]['recommendedAs'] );
+
+		$deck = $this->show( new BuildLink( array(), null, SlotKey::DECK ) )['view']['step'];
+		self::assertSame( '', $deck['options'][0]['fit'], 'the deck is checked against nothing before it' );
 	}
 
 	public function test_a_review_asked_for_with_no_deck_stops_on_the_deck_and_links_to_it(): void {
@@ -581,9 +631,15 @@ final class BuilderTest extends TestCase {
 		$GLOBALS['cbuild_test_filters']['cbuild_summary_notes'] = static fn(): array => array( 'Ships in a box.', 'Free stickers.' );
 		$view = $this->show( new BuildLink( array( SlotKey::DECK => 103 ), null, SlotKey::TRUCKS ) )['view'];
 
-		self::assertCount( 1, $view['step']['options'][0]['notes'] );
-		self::assertNotSame( '', $view['step']['options'][0]['notes'][0]['text'] );
+		// Cowork's review, should-fix 4: the trucks give no largest wheel, which is the owner's to fix (the catalogue
+		// check says so), not a note on a card that fits.
+		self::assertSame( array(), $view['step']['options'][0]['notes'], 'a card that fits says nothing of what was assumed' );
 		self::assertSame( array( array( 'text' => 'Ships in a box.' ), array( 'text' => 'Free stickers.' ) ), $view['summary']['notes'] );
+
+		$wheels = $this->show( new BuildLink( array( SlotKey::DECK => 103, SlotKey::TRUCKS => 149 ), null, SlotKey::WHEELS ) )['view']['step']['options'];
+		$warned = array_values( array_filter( $wheels, static fn( array $card ): bool => 303 === $card['id'] ) )[0];
+		self::assertStringContainsString( 'cbuild-card--warn', $warned['classes'] );
+		self::assertSame( array( array( 'text' => "Wheels of 58\u{00A0}mm are 2\u{00A0}mm over what the trucks clear, which is 56\u{00A0}mm. A riser of ¼″ or thicker makes the room." ) ), $warned['notes'], 'a card that warns keeps its notes' );
 	}
 
 	// Spec, Review and add to cart: "It also shows assembly on or off with its fee and lead time, the arrival date,
@@ -605,11 +661,12 @@ final class BuilderTest extends TestCase {
 		self::assertSame( '', $review['arrival'] );
 	}
 
-	public function test_a_later_step_fits_against_the_deck_and_not_another_part(): void {
+	public function test_a_later_step_fits_against_the_parts_its_rules_read(): void {
+		// The trucks the step started on count, and the wheels are read with them (Cowork's review, should-fix 5).
 		$cards = $this->show( new BuildLink( array( SlotKey::DECK => 101 ), null, SlotKey::WHEELS ) )['view']['step']['options'];
-		self::assertSame( 'Fits your 8 in deck', $cards[0]['fit'] );
+		self::assertSame( 'Fits your trucks', $cards[0]['fit'] );
 		self::assertSame( 303, $cards[2]['id'] );
-		self::assertSame( 'Fits, with a note', $cards[2]['fit'], '58 mm wheels want a riser under these trucks.' );
+		self::assertSame( 'Fits, with a note', $cards[2]['fit'], '58 mm wheels want a riser under these trucks.' );
 		self::assertSame( 'cbuild-card__fit cbuild-card__fit--warn', $cards[2]['fitClass'] );
 	}
 
@@ -655,7 +712,7 @@ final class BuilderTest extends TestCase {
 			SlotKey::WHEELS => 303,
 		);
 		$state = $this->show( new BuildLink( $picks, null, SlotKey::WHEELS ) )['state'];
-		self::assertContains( SlotKey::RISERS, Builder::steps( $state ), '58 mm wheels want a riser under these trucks, so one is recommended.' );
+		self::assertContains( SlotKey::RISERS, Builder::steps( $state ), '58 mm wheels want a riser under these trucks, so one is recommended.' );
 
 		$view = $this->show( new BuildLink( $picks, null, SlotKey::RISERS, none: array( SlotKey::RISERS ) ) )['view'];
 		self::assertSame( 'Step 4 of 8: Risers', $view['heading'], 'Left out, they are still asked about while the wheels need them.' );
@@ -670,7 +727,7 @@ final class BuilderTest extends TestCase {
 			SlotKey::WHEELS => 303,
 		);
 		$shown = $this->show( new BuildLink( $picks, null, SlotKey::BEARINGS ) );
-		self::assertSame( SlotKey::RISERS, $shown['state']->step, 'The wheels step\'s Next said Bearings before 58 mm wheels made risers a step.' );
+		self::assertSame( SlotKey::RISERS, $shown['state']->step, 'The wheels step\'s Next said Bearings before 58 mm wheels made risers a step.' );
 		self::assertSame( 'Step 4 of 8: Risers', $shown['view']['heading'] );
 		self::assertFalse( $shown['view']['errors']['shown'], 'Nothing is wrong: a riser is recommended, to be seen.' );
 
@@ -745,7 +802,7 @@ final class BuilderTest extends TestCase {
 				'fits'    => true,
 				'fit'     => 'Fits',
 				'url'     => 'https://shop.test/?page_id=5&lang=fr&' . http_build_query( array( 'cbuild' => array_map( 'strval', self::STREET ) + array( 'step' => 'trucks' ) ) ),
-				'change'  => 'Change Trucks',
+				'change'  => 'Change trucks',
 			),
 			$review['items'][1]
 		);
@@ -809,7 +866,7 @@ final class BuilderTest extends TestCase {
 
 		self::assertSame( 'Assembly: free', $view['summary']['assembly'] );
 		self::assertTrue( $view['review']['hasLead'] );
-		self::assertSame( 'Two days', $view['review']['lead'] );
+		self::assertSame( 'Assembly time: Two days', $view['review']['lead'], 'what takes two days is said (Cowork minor 17)' );
 		self::assertTrue( $view['review']['hasNotice'] );
 		self::assertSame( 'Assembled builds come back as parts.', $view['review']['notice'] );
 		self::assertFalse( $view['review']['ready'] );
@@ -837,7 +894,7 @@ final class BuilderTest extends TestCase {
 		self::assertSame( array( array( 'text' => 'Wheels: Part 301' ) ), $changes['kept'] );
 		self::assertSame( 'trucks', $changes['items'][0]['key'] );
 		self::assertSame( 'Trucks: Part 139 no longer fits.', $changes['items'][0]['text'] );
-		self::assertSame( 'The trucks are made for decks from 7.8 in to 8.2 in wide. The deck is 8.5 in.', $changes['items'][0]['reasons'][0]['text'] );
+		self::assertSame( 'The trucks are made for decks from 7.8″ to 8.2″ wide. The deck is 8.5″.', $changes['items'][0]['reasons'][0]['text'] );
 		self::assertSame( 'Closest fit: Part 149', $changes['items'][0]['closest'] );
 		self::assertSame( self::fields( array( 'deck' => '103', 'trucks' => '149', 'wheels' => '301', 'step' => 'trucks' ) ), $changes['use']['fields'], 'A button in a GET form, as every change of state is (spec: SEO and sharing).' );
 		self::assertSame( 'Use these', $changes['use']['text'] );
@@ -884,7 +941,7 @@ final class BuilderTest extends TestCase {
 				'id'      => 144,
 				'name'    => 'Part 144',
 				'url'     => 'https://shop.test/?p=144',
-				'reasons' => array( array( 'text' => 'The trucks are made for decks from 8.2 in to 8.375 in wide. The deck is 8 in.' ) ),
+				'reasons' => array( array( 'text' => 'The trucks are made for decks from 8.2″ to 8.375″ wide. The deck is 8″.' ) ),
 			),
 			$hidden['items'][0]
 		);
@@ -919,7 +976,7 @@ final class BuilderTest extends TestCase {
 		self::assertSame(
 			array(
 				'value'   => '8in',
-				'text'    => '8 in (1)',
+				'text'    => '8″ (1)',
 				'pressed' => 'false',
 			),
 			$sizes['options'][0]
@@ -996,7 +1053,7 @@ final class BuilderTest extends TestCase {
 		$this->kits->add( self::KIT, Shop::kit(), $parts );
 
 		$step = $this->show( new BuildLink( array( SlotKey::DECK => 101 ), null, SlotKey::TRUCKS ) )['view']['step'];
-		self::assertTrue( $step['empty'], 'The 169s do not fit an 8 in deck.' );
+		self::assertTrue( $step['empty'], 'The 169s do not fit an 8″ deck.' );
 		self::assertFalse( $step['hasLead'], 'Only the deck step says to start with a width.' );
 		self::assertSame( 'Nothing the shop has fits the parts before this step.', $step['emptyText'] );
 

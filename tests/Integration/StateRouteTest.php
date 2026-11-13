@@ -284,7 +284,7 @@ final class StateRouteTest extends IntegrationTestCase {
 		self::assertSame( 'trucks', $picked['step'] );
 		self::assertSame( array( $this->parts['truck 149'] ), array_column( $picked['options'], 'id' ) );
 		self::assertSame( array( $narrow ), array_column( $picked['hidden'], 'id' ) );
-		self::assertSame( 'The trucks are made for decks from 7.8 in to 8.2 in wide. The deck is 8.5 in.', $picked['hidden'][0]['messages'][0]['text'] );
+		self::assertSame( 'The trucks are made for decks from 7.8″ to 8.2″ wide. The deck is 8.5″.', $picked['hidden'][0]['messages'][0]['text'] );
 		self::assertSame( '1 part hidden: the trucks are made for another width of deck.', $picked['steps'][1]['groups'][0]['message'] );
 		self::assertSame( array( 'amount' => 7000, 'text' => '$70.00' ), $picked['total']['lines'][0]['price'] );
 		self::assertSame( 'Deck 8.5', $picked['total']['lines'][0]['name'] );

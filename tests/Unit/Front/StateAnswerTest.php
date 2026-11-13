@@ -140,7 +140,7 @@ final class StateAnswerTest extends TestCase {
 				'brand'       => Builds::deck( '8.0', 101 )->brand,
 				'size'        => array(
 					'value' => '8in',
-					'text'  => '8 in',
+					'text'  => '8″',
 				),
 				'delta'       => array(
 					'kind'   => 'more',
@@ -170,6 +170,7 @@ final class StateAnswerTest extends TestCase {
 				'offered'     => 3,
 				'hidden'      => 0,
 				'groups'      => array(),
+				'against'     => array(),
 			),
 			$answer['steps'][0]
 		);
@@ -389,7 +390,7 @@ final class StateAnswerTest extends TestCase {
 					'rule'     => 'r1',
 					'code'     => 'deck_above_range',
 					'severity' => 'block',
-					'text'     => 'The trucks are made for decks from 7.8 in to 8.2 in wide. The deck is 8.5 in.',
+					'text'     => 'The trucks are made for decks from 7.8″ to 8.2″ wide. The deck is 8.5″.',
 				),
 			),
 			$answer['hidden'][0]['messages']
@@ -544,7 +545,7 @@ final class StateAnswerTest extends TestCase {
 		self::assertSame( 'Trucks', $change['label'] );
 		self::assertSame( 139, $change['was'] );
 		self::assertSame( 'Part 139', $change['name'] );
-		self::assertSame( 'The trucks are made for decks from 7.8 in to 8.2 in wide. The deck is 8.5 in.', $change['messages'][0]['text'] );
+		self::assertSame( 'The trucks are made for decks from 7.8″ to 8.2″ wide. The deck is 8.5″.', $change['messages'][0]['text'] );
 		self::assertSame( 149, $change['closest']['id'] );
 		self::assertSame( InMemoryPartCards::card( 149 ), $change['closest']['card'] );
 		self::assertFalse( $change['closest']['picked'] );
@@ -589,7 +590,7 @@ final class StateAnswerTest extends TestCase {
 	}
 
 	/**
-	 * A shop with many decks: IDs 1001 up, all 8.5 in, the ones named sold out.
+	 * A shop with many decks: IDs 1001 up, all 8.5″, the ones named sold out.
 	 *
 	 * @param list<int> $soldOut The decks the shop has none of.
 	 */
@@ -723,7 +724,7 @@ final class StateAnswerTest extends TestCase {
 		);
 	}
 
-	public function test_a_part_at_the_price_of_the_one_counted_is_free_and_only_the_one_counted_is_included(): void {
+	public function test_a_part_at_the_price_of_the_one_counted_is_the_same_price_and_only_the_one_counted_is_included(): void {
 		$parts                    = Shop::parts();
 		$parts[ SlotKey::DECK ][] = Shop::priced( Builds::deck( '8.25', 104 ), 6500 );
 		$parts[ SlotKey::DECK ][] = Shop::priced( Builds::deck( '8.25', 105 ), 0 );
@@ -735,7 +736,7 @@ final class StateAnswerTest extends TestCase {
 			array(
 				'kind'   => 'free',
 				'amount' => 0,
-				'text'   => 'Free',
+				'text'   => 'Same price',
 			),
 			$picked[104]
 		);
@@ -801,18 +802,18 @@ final class StateAnswerTest extends TestCase {
 		$fits  = array( SlotKey::WHEELS => 302 ) + $picks;
 
 		self::assertSame( '54mm', $this->answer( $picks, SlotKey::WHEELS )['options'][1]['size']['value'] );
-		self::assertSame( '54 mm', $this->answer( $picks, SlotKey::WHEELS )['options'][1]['size']['text'] );
+		self::assertSame( '54 mm', $this->answer( $picks, SlotKey::WHEELS )['options'][1]['size']['text'] );
 		self::assertSame(
 			array(
 				'value' => '0.125in',
-				'text'  => '⅛ in',
+				'text'  => '⅛″',
 			),
 			$size( SlotKey::RISERS )
 		);
 		self::assertSame(
 			array(
 				'value' => '1in',
-				'text'  => '1 in',
+				'text'  => '1″',
 			),
 			$this->answer( $fits, SlotKey::HARDWARE )['options'][0]['size']
 		);
@@ -867,7 +868,7 @@ final class StateAnswerTest extends TestCase {
 		self::assertSame( array( array( 'zero', 'baker', 'gone' ) ), $this->cards->brandsAsked, 'Each brand once, and the part with none asks for none.' );
 		self::assertSame( array( 0, 1, 2 ), array_keys( $answer['filters']['brands'] ) );
 		self::assertSame( array( 0, 1, 2 ), array_keys( $answer['filters']['sizes'] ) );
-		self::assertSame( array( '8 in', '8.25 in', '8.5 in' ), array_column( $answer['filters']['sizes'], 'label' ) );
+		self::assertSame( array( '8″', '8.25″', '8.5″' ), array_column( $answer['filters']['sizes'], 'label' ) );
 		self::assertSame( array( 2, 2, 1 ), array_column( $answer['filters']['sizes'], 'count' ) );
 		self::assertSame( 5, $answer['matching'] );
 		self::assertNull( $answer['more'] );
@@ -981,19 +982,19 @@ final class StateAnswerTest extends TestCase {
 			array(
 				'slot'  => SlotKey::DECK,
 				'part'  => 103,
-				'label' => 'Deck: 8.5 in',
-				'size'  => '8.5 in',
+				'label' => 'Deck: 8.5″',
+				'size'  => '8.5″',
 				'name'  => 'Part 103',
 				'image' => InMemoryPartCards::card( 103 )['image'],
 			),
 			$answer['picture']['items'][0]
 		);
-		self::assertSame( 'Trucks: Independent, 8.5 in', $answer['picture']['items'][1]['label'] );
+		self::assertSame( 'Trucks: Independent, 8.5″', $answer['picture']['items'][1]['label'] );
 		self::assertSame( '', $answer['picture']['items'][3]['size'], 'Bearings have no size of their own.' );
 		self::assertSame( array_column( $answer['total']['lines'], 'part' ), array_column( $answer['picture']['items'], 'part' ), 'The parts the total counts, the recommendations among them.' );
 		self::assertSame( 'Bearings', $answer['picture']['items'][3]['label'], 'A part with no brand and no size is labelled with its slot.' );
-		self::assertStringStartsWith( 'The build so far: Part 103, Part 149, ', $answer['picture']['description'] );
-		self::assertStringEndsWith( ' and Part 701.', $answer['picture']['description'] );
+		self::assertStringStartsWith( 'The build so far: Deck: Part 103; Trucks: Part 149; ', $answer['picture']['description'] );
+		self::assertStringEndsWith( '; Grip: Part 701.', $answer['picture']['description'] );
 	}
 
 	public function test_a_part_whose_product_has_gone_is_in_the_box_with_no_name_and_out_of_the_sentence(): void {
@@ -1001,7 +1002,7 @@ final class StateAnswerTest extends TestCase {
 		$answer               = $this->answer( array( SlotKey::DECK => 103 ), SlotKey::DECK );
 		self::assertSame( '', $answer['picture']['items'][0]['name'] );
 		self::assertNull( $answer['picture']['items'][0]['image'] );
-		self::assertStringStartsWith( 'The build so far: Part 149', $answer['picture']['description'] );
+		self::assertStringStartsWith( 'The build so far: Trucks: Part 149', $answer['picture']['description'] );
 	}
 
 	public function test_delivery_says_what_the_two_filters_answer_and_nothing_where_none_does(): void {

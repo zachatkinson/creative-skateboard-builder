@@ -16,7 +16,7 @@ defined( 'ABSPATH' ) || exit;
 		<span class="screen-reader-text" data-wp-text="state.view.bar.picture"></span>
 	</a>
 	<details class="cbuild-bar__parts">
-		<summary class="cbuild-bar__total"><span data-wp-text="state.view.bar.total"></span> <span class="cbuild-bar__more" data-wp-text="state.view.bar.parts"></span></summary>
+		<summary class="cbuild-bar__total"><span data-wp-text="state.view.bar.total"></span> <span class="cbuild-bar__more cbuild-bar__more--show" data-wp-text="state.view.bar.parts"></span><span class="cbuild-bar__more cbuild-bar__more--hide" data-wp-text="state.view.bar.hide"></span></summary>
 		<dl class="cbuild-bar__lines">
 			<template data-wp-each--row="state.view.summary.rows" data-wp-each-key="context.row.key">
 				<div class="cbuild-summary__line">

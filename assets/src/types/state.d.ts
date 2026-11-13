@@ -131,6 +131,10 @@ export interface CbuildState {
 			 */
 			message: string;
 		}[];
+		/**
+		 * The picks before the step that its parts were checked against, by slot key, or null where no rule the kit has on reads the slot.
+		 */
+		against: string[] | null;
 	}[];
 	/**
 	 * The parts the current step offers: the first 24, those the shop can supply first, and the part the step counts.
@@ -470,7 +474,7 @@ export interface Option {
 	 */
 	delta: {
 		/**
-		 * `more` or `less` than the part counted; `free`, for no more; `included`, for the part counted itself; `none`, for a part that gives no set size and so has no price in a build.
+		 * `more` or `less` than the part counted; `free`, for the same price; `included`, for the part counted itself; `none`, for a part that gives no set size and so has no price in a build.
 		 */
 		kind: 'more' | 'less' | 'free' | 'included' | 'none';
 		/**
@@ -478,7 +482,7 @@ export interface Option {
 		 */
 		amount: number;
 		/**
-		 * The change as its card says it: `+$12.00`, `−$5.00`, `Free`, `Included`, or an empty string.
+		 * The change as its card says it: `+$12.00`, `−$5.00`, `Same price`, `Included`, or an empty string.
 		 */
 		text: string;
 	};

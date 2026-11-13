@@ -141,7 +141,8 @@
 					"recommended",
 					"offered",
 					"hidden",
-					"groups"
+					"groups",
+					"against"
 				],
 				"properties": {
 					"slot": {
@@ -211,6 +212,15 @@
 									"type": "string"
 								}
 							}
+						}
+					},
+					"against": {
+						"description": "The picks before the step that its parts were checked against, by slot key, or null where no rule the kit has on reads the slot.",
+						"type": [ "array", "null" ],
+						"items": {
+							"description": "A slot's key.",
+							"type": "string",
+							"pattern": "^[a-z][a-z0-9_]{0,31}(?!\\n)$"
 						}
 					}
 				}
@@ -700,7 +710,7 @@
 					"required": [ "kind", "amount", "text" ],
 					"properties": {
 						"kind": {
-							"description": "`more` or `less` than the part counted; `free`, for no more; `included`, for the part counted itself; `none`, for a part that gives no set size and so has no price in a build.",
+							"description": "`more` or `less` than the part counted; `free`, for the same price; `included`, for the part counted itself; `none`, for a part that gives no set size and so has no price in a build.",
 							"type": "string",
 							"enum": [
 								"more",
@@ -715,7 +725,7 @@
 							"type": "integer"
 						},
 						"text": {
-							"description": "The change as its card says it: `+$12.00`, `−$5.00`, `Free`, `Included`, or an empty string.",
+							"description": "The change as its card says it: `+$12.00`, `−$5.00`, `Same price`, `Included`, or an empty string.",
 							"type": "string"
 						}
 					}

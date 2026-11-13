@@ -17,5 +17,5 @@ defined( 'ABSPATH' ) || exit;
 			</li>
 		</template>
 	</ul>
-	<figcaption class="cbuild-picture__description" data-wp-text="state.view.picture.description"></figcaption>
+	<figcaption class="cbuild-picture__description" data-wp-bind--hidden="!state.view.picture.captioned" data-wp-text="state.view.picture.description"></figcaption>
 </figure>

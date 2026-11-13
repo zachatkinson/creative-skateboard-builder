@@ -117,7 +117,8 @@ final readonly class FitEngine {
 				$offered[] = $option;
 			}
 		}
-		return new SlotOptions( $slot, $offered, $hidden );
+		$read = $this->rules->reading( $slot, $kit->rules );
+		return new SlotOptions( $slot, $offered, $hidden, null === $read ? null : array_values( array_intersect( $read, $earlier->slots() ) ) );
 	}
 
 	/**

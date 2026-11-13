@@ -32,6 +32,17 @@ final readonly class MountingRule implements Rule {
 	}
 
 	/**
+	 * The slots the rule reads.
+	 *
+	 * @since 0.6.0
+	 *
+	 * @return list<string>
+	 */
+	public function slots(): array {
+		return array( SlotKey::DECK, SlotKey::TRUCKS );
+	}
+
+	/**
 	 * What the rule finds in these picks.
 	 *
 	 * @since 0.2.0

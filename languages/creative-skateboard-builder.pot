@@ -9,7 +9,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-11-13T09:46:46+00:00\n"
+"POT-Creation-Date: 2026-11-13T18:55:57+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: creative-skateboard-builder\n"
@@ -174,7 +174,7 @@ msgid "Builder"
 msgstr ""
 
 #: src/Admin/BuildTab.php:162
-#: src/Cart/ShowHooks.php:245
+#: src/Cart/ShowHooks.php:273
 #: src/Order/OrderHooks.php:250
 msgid "Build"
 msgstr ""
@@ -192,7 +192,7 @@ msgstr[0] ""
 msgstr[1] ""
 
 #: src/Admin/BuildTab.php:329
-#: src/Admin/BuildTab.php:907
+#: src/Admin/BuildTab.php:917
 msgid "Slots"
 msgstr ""
 
@@ -201,7 +201,7 @@ msgid "The parts a build is made of, in the order the builder asks for them. The
 msgstr ""
 
 #: src/Admin/BuildTab.php:334
-#: src/Admin/BuildTab.php:908
+#: src/Admin/BuildTab.php:918
 msgid "Rules"
 msgstr ""
 
@@ -210,7 +210,7 @@ msgid "What the builder checks before it offers a part. A rule that is off check
 msgstr ""
 
 #: src/Admin/BuildTab.php:339
-#: src/Admin/BuildTab.php:909
+#: src/Admin/BuildTab.php:919
 msgid "Presets"
 msgstr ""
 
@@ -219,7 +219,7 @@ msgid "Up to six builds a shopper can start from. Each is saved only when its pa
 msgstr ""
 
 #: src/Admin/BuildTab.php:344
-#: src/Admin/BuildTab.php:910
+#: src/Admin/BuildTab.php:920
 #: src/Order/OrderHooks.php:249
 msgid "Assembly"
 msgstr ""
@@ -233,7 +233,7 @@ msgid "Something else"
 msgstr ""
 
 #: src/Admin/BuildTab.php:387
-#: src/Admin/BuildTab.php:838
+#: src/Admin/BuildTab.php:848
 msgid "Kind of part"
 msgstr ""
 
@@ -242,7 +242,7 @@ msgid "The rules check a deck, trucks, wheels and the rest by their kind. A kit 
 msgstr ""
 
 #: src/Admin/BuildTab.php:399
-#: src/Admin/BuildTab.php:839
+#: src/Admin/BuildTab.php:849
 msgid "Label"
 msgstr ""
 
@@ -251,7 +251,7 @@ msgid "Type a label to add a slot. Left empty, nothing is added."
 msgstr ""
 
 #: src/Admin/BuildTab.php:407
-#: src/Admin/BuildTab.php:840
+#: src/Admin/BuildTab.php:850
 msgid "Help text"
 msgstr ""
 
@@ -260,7 +260,7 @@ msgid "A build must have one"
 msgstr ""
 
 #: src/Admin/BuildTab.php:412
-#: src/Admin/BuildTab.php:841
+#: src/Admin/BuildTab.php:851
 msgid "Units per build"
 msgstr ""
 
@@ -269,7 +269,7 @@ msgid "How many a build takes: 2 trucks, 4 wheels, 8 bearings. The builder adds 
 msgstr ""
 
 #: src/Admin/BuildTab.php:420
-#: src/Admin/BuildTab.php:843
+#: src/Admin/BuildTab.php:853
 msgid "Categories"
 msgstr ""
 
@@ -278,7 +278,7 @@ msgid "Search for a category"
 msgstr ""
 
 #: src/Admin/BuildTab.php:436
-#: src/Admin/BuildTab.php:844
+#: src/Admin/BuildTab.php:854
 msgid "Brands"
 msgstr ""
 
@@ -287,7 +287,7 @@ msgid "Search for a brand"
 msgstr ""
 
 #: src/Admin/BuildTab.php:453
-#: src/Admin/BuildTab.php:845
+#: src/Admin/BuildTab.php:855
 msgid "Products"
 msgstr ""
 
@@ -296,15 +296,15 @@ msgid "Search for a product"
 msgstr ""
 
 #: src/Admin/BuildTab.php:468
-#: src/Admin/BuildTab.php:842
+#: src/Admin/BuildTab.php:852
 msgid "Default part"
 msgstr ""
 
 #: src/Admin/BuildTab.php:476
 #: src/Admin/BuildTab.php:655
 #: src/Admin/PartSpecsPanel.php:417
-#: src/Front/BuilderView.php:718
-#: src/Front/BuilderView.php:1008
+#: src/Front/BuilderView.php:739
+#: src/Front/BuilderView.php:1046
 #: src/Health/SiteHealth.php:266
 msgid "None"
 msgstr ""
@@ -443,18 +443,18 @@ msgid "No rule. These change how a board turns, not whether its parts fit. The b
 msgstr ""
 
 #: src/Admin/BuildTab.php:635
-#: src/Admin/BuildTab.php:847
+#: src/Admin/BuildTab.php:857
 msgid "Name"
 msgstr ""
 
 #: src/Admin/BuildTab.php:636
-#: src/Admin/BuildTab.php:848
+#: src/Admin/BuildTab.php:858
 msgid "Description"
 msgstr ""
 
 #. translators: %d: a preset's number, 1 to 6.
 #: src/Admin/BuildTab.php:663
-#: src/Admin/BuildTab.php:870
+#: src/Admin/BuildTab.php:880
 #, php-format
 msgid "Preset %d"
 msgstr ""
@@ -481,147 +481,152 @@ msgstr ""
 msgid "Charged once for a build that is put together. 0 for none."
 msgstr ""
 
-#: src/Admin/BuildTab.php:694
-#: src/Admin/BuildTab.php:850
+#: src/Admin/BuildTab.php:697
+#: src/Admin/BuildTab.php:860
 #: src/Admin/SettingsPage.php:253
 msgid "Lead time"
 msgstr ""
 
-#: src/Admin/BuildTab.php:695
-#: src/Admin/BuildTab.php:851
+#: src/Admin/BuildTab.php:702
+#: src/Admin/SettingsPage.php:256
+msgid "How long putting a build together takes, such as 2 business days. The review says it after \"Assembly time:\"."
+msgstr ""
+
+#: src/Admin/BuildTab.php:705
+#: src/Admin/BuildTab.php:861
 #: src/Admin/SettingsPage.php:261
 msgid "Returns notice"
 msgstr ""
 
-#: src/Admin/BuildTab.php:796
+#: src/Admin/BuildTab.php:806
 #: src/Admin/PartSpecsPanel.php:387
 msgid "Deck"
 msgstr ""
 
-#: src/Admin/BuildTab.php:797
+#: src/Admin/BuildTab.php:807
 #: src/Admin/PartSpecsPanel.php:388
 msgid "Trucks"
 msgstr ""
 
-#: src/Admin/BuildTab.php:798
+#: src/Admin/BuildTab.php:808
 #: src/Admin/PartSpecsPanel.php:389
 msgid "Wheels"
 msgstr ""
 
-#: src/Admin/BuildTab.php:799
+#: src/Admin/BuildTab.php:809
 #: src/Admin/PartSpecsPanel.php:390
 msgid "Risers"
 msgstr ""
 
-#: src/Admin/BuildTab.php:800
+#: src/Admin/BuildTab.php:810
 #: src/Admin/PartSpecsPanel.php:392
 msgid "Bearings"
 msgstr ""
 
-#: src/Admin/BuildTab.php:801
+#: src/Admin/BuildTab.php:811
 #: src/Admin/PartSpecsPanel.php:391
 msgid "Hardware"
 msgstr ""
 
-#: src/Admin/BuildTab.php:802
+#: src/Admin/BuildTab.php:812
 #: src/Admin/PartSpecsPanel.php:393
 msgid "Grip tape"
 msgstr ""
 
-#: src/Admin/BuildTab.php:803
+#: src/Admin/BuildTab.php:813
 msgid "Spacers"
 msgstr ""
 
-#: src/Admin/BuildTab.php:846
+#: src/Admin/BuildTab.php:856
 #: templates/admin/build-tab.php:85
 msgid "Attribute values"
 msgstr ""
 
-#: src/Admin/BuildTab.php:849
+#: src/Admin/BuildTab.php:859
 msgid "Fee"
 msgstr ""
 
-#: src/Admin/BuildTab.php:852
+#: src/Admin/BuildTab.php:862
 msgid "Allowed outside the maker's deck range"
 msgstr ""
 
-#: src/Admin/BuildTab.php:853
+#: src/Admin/BuildTab.php:863
 msgid "The axle fits within"
 msgstr ""
 
-#: src/Admin/BuildTab.php:854
+#: src/Admin/BuildTab.php:864
 msgid "The axle warns within"
 msgstr ""
 
-#: src/Admin/BuildTab.php:855
+#: src/Admin/BuildTab.php:865
 msgid "Largest wheel on a low truck"
 msgstr ""
 
-#: src/Admin/BuildTab.php:856
+#: src/Admin/BuildTab.php:866
 msgid "Largest wheel on a mid truck"
 msgstr ""
 
-#: src/Admin/BuildTab.php:857
+#: src/Admin/BuildTab.php:867
 msgid "Largest wheel on a high truck"
 msgstr ""
 
-#: src/Admin/BuildTab.php:858
+#: src/Admin/BuildTab.php:868
 msgid "Wheel over the limit by up to"
 msgstr ""
 
-#: src/Admin/BuildTab.php:859
+#: src/Admin/BuildTab.php:869
 msgid "The riser to suggest"
 msgstr ""
 
 #. translators: 1: a preset's number. 2: a field's label, such as Name, or a slot's, such as Trucks.
-#: src/Admin/BuildTab.php:873
+#: src/Admin/BuildTab.php:883
 #, php-format
 msgid "Preset %1$d, %2$s"
 msgstr ""
 
 #. translators: %d: a slot's place in the list.
-#: src/Admin/BuildTab.php:880
+#: src/Admin/BuildTab.php:890
 #, php-format
 msgid "Slot %d"
 msgstr ""
 
 #. translators: 1: a slot's place in the list. 2: a field's label, such as Units per build.
-#: src/Admin/BuildTab.php:883
+#: src/Admin/BuildTab.php:893
 #, php-format
 msgid "Slot %1$d, %2$s"
 msgstr ""
 
 #. translators: %s: a slot's label, such as Trucks.
-#: src/Admin/BuildTab.php:887
+#: src/Admin/BuildTab.php:897
 #, php-format
 msgid "The %s slot"
 msgstr ""
 
 #. translators: 1: a slot's label, such as Trucks. 2: a field's label, such as Units per build.
-#: src/Admin/BuildTab.php:890
+#: src/Admin/BuildTab.php:900
 #, php-format
 msgid "The %1$s slot, %2$s"
 msgstr ""
 
 #. translators: 1: a rule's number, such as R1. 2: a setting's label.
-#: src/Admin/BuildTab.php:895
+#: src/Admin/BuildTab.php:905
 #, php-format
 msgid "%1$s, %2$s"
 msgstr ""
 
-#: src/Admin/BuildTab.php:921
+#: src/Admin/BuildTab.php:931
 msgid "The kit's slots were not saved. The Build tab shows them as you typed them, with what to put right."
 msgstr ""
 
-#: src/Admin/BuildTab.php:922
+#: src/Admin/BuildTab.php:932
 msgid "The kit's rules were not saved. The Build tab shows them as you typed them, with what to put right."
 msgstr ""
 
-#: src/Admin/BuildTab.php:923
+#: src/Admin/BuildTab.php:933
 msgid "The kit's presets were not saved. The Build tab shows them as you typed them, with what to put right."
 msgstr ""
 
-#: src/Admin/BuildTab.php:924
+#: src/Admin/BuildTab.php:934
 msgid "The kit's assembly settings were not saved. The Build tab shows them as you typed them, with what to put right."
 msgstr ""
 
@@ -700,7 +705,7 @@ msgid "Deck hole pattern"
 msgstr ""
 
 #: src/Admin/Labels.php:45
-#: src/Front/BuilderView.php:505
+#: src/Front/BuilderView.php:518
 msgid "Axle width"
 msgstr ""
 
@@ -843,7 +848,6 @@ msgstr ""
 
 #. translators: %s: a number of inches.
 #: src/Admin/Labels.php:164
-#: src/Front/Words.php:74
 #, php-format
 msgctxt "inches"
 msgid "%s in"
@@ -851,7 +855,6 @@ msgstr ""
 
 #. translators: %s: a number of millimetres.
 #: src/Admin/Labels.php:167
-#: src/Front/Words.php:77
 #, php-format
 msgctxt "millimetres"
 msgid "%s mm"
@@ -1281,7 +1284,7 @@ msgid "Builds"
 msgstr ""
 
 #: src/Admin/SettingsPage.php:115
-msgid "What every build is sold on. The cart reads these from the next version on."
+msgid "What every build is sold on."
 msgstr ""
 
 #: src/Admin/SettingsPage.php:128
@@ -1526,52 +1529,54 @@ msgstr ""
 
 #. translators: 1: a kit's name, such as Build a complete; 2: a slot's label, such as Deck.
 #. translators: 1: a brand or a size, such as Independent or 8.25 in. 2: how many parts have it.
-#: src/Cart/ShowHooks.php:211
-#: src/Front/BuilderView.php:533
+#: src/Cart/ShowHooks.php:239
+#: src/Front/BuilderView.php:546
 #, php-format
 msgid "%1$s (%2$s)"
 msgstr ""
 
-#: src/Cart/ShowHooks.php:213
+#: src/Cart/ShowHooks.php:241
 msgid "Part of"
 msgstr ""
 
-#: src/Cart/ShowHooks.php:240
+#: src/Cart/ShowHooks.php:268
 msgid "Edit build"
 msgstr ""
 
 #. translators: %s: the kit's name, such as Street complete.
-#: src/Cart/ShowHooks.php:243
+#: src/Cart/ShowHooks.php:271
 #, php-format
 msgid "Edit build: %s"
 msgstr ""
 
-#: src/Cart/ShowHooks.php:392
+#: src/Cart/ShowHooks.php:420
 msgid "The line's part in a build: kit, part, or empty for a line of no build."
 msgstr ""
 
-#: src/Cart/ShowHooks.php:393
+#: src/Cart/ShowHooks.php:421
 msgid "The build's identifier."
 msgstr ""
 
-#: src/Cart/ShowHooks.php:394
+#: src/Cart/ShowHooks.php:422
 msgid "For a part, its kit's cart item key."
 msgstr ""
 
-#: src/Cart/ShowHooks.php:395
+#: src/Cart/ShowHooks.php:423
 msgid "For a part, the key of the slot it fills."
 msgstr ""
 
-#: src/Cart/ShowHooks.php:396
+#: src/Cart/ShowHooks.php:424
 msgid "For a part, its name with its slot's label."
 msgstr ""
 
 #. translators: 1: a slot's label, such as Deck; 2: the product's name, which may be a link.
 #. translators: 1: a slot's label, such as Bearings. 2: a part's name.
 #. translators: 1: a slot's label, such as Wheels. 2: a brand's name, or a size such as 54 mm.
-#: src/Cart/ShowHooks.php:416
-#: src/Front/BuilderView.php:856
-#: src/Front/Words.php:342
+#. translators: 1: a slot's label, such as Deck. 2: the part's name.
+#: src/Cart/ShowHooks.php:444
+#: src/Front/BuilderView.php:894
+#: src/Front/Words.php:347
+#: src/Front/Words.php:365
 #: src/Order/OrderHooks.php:199
 #, php-format
 msgid "%1$s: %2$s"
@@ -1668,7 +1673,7 @@ msgstr ""
 #. translators: %s: the next step's name, such as Wheels.
 #: src/Front/BuilderView.php:91
 #: src/Front/BuilderView.php:127
-#: src/Front/BuilderView.php:732
+#: src/Front/BuilderView.php:753
 msgid "Review"
 msgstr ""
 
@@ -1706,100 +1711,104 @@ msgstr ""
 msgid "What is in the box"
 msgstr ""
 
-#: src/Front/BuilderView.php:220
+#: src/Front/BuilderView.php:222
 msgid "See the picture"
 msgstr ""
 
 #. translators: %s: the build's total, such as $184.00.
-#: src/Front/BuilderView.php:222
-#: src/Front/BuilderView.php:1051
+#: src/Front/BuilderView.php:224
+#: src/Front/BuilderView.php:1091
 #, php-format
 msgid "Total: %s"
 msgstr ""
 
-#: src/Front/BuilderView.php:223
-msgid "The parts"
+#: src/Front/BuilderView.php:226
+msgid "Show the parts"
+msgstr ""
+
+#: src/Front/BuilderView.php:227
+msgid "Hide the parts"
 msgstr ""
 
 #. translators: %s: a preset's name, such as Street.
-#: src/Front/BuilderView.php:286
+#: src/Front/BuilderView.php:299
 #, php-format
 msgid "Start from %s"
 msgstr ""
 
-#: src/Front/BuilderView.php:292
+#: src/Front/BuilderView.php:305
 msgid "Start from a ready build"
 msgstr ""
 
-#: src/Front/BuilderView.php:305
+#: src/Front/BuilderView.php:318
 msgid "Done"
 msgstr ""
 
-#: src/Front/BuilderView.php:306
+#: src/Front/BuilderView.php:319
 msgid "Current step"
 msgstr ""
 
-#: src/Front/BuilderView.php:307
+#: src/Front/BuilderView.php:320
 msgid "To come"
 msgstr ""
 
 #. translators: %s: a number of parts.
-#: src/Front/BuilderView.php:476
+#: src/Front/BuilderView.php:489
 #, php-format
 msgid "%s part hidden: it does not fit the parts before this step."
 msgid_plural "%s parts hidden: they do not fit the parts before this step."
 msgstr[0] ""
 msgstr[1] ""
 
-#: src/Front/BuilderView.php:496
+#: src/Front/BuilderView.php:509
 msgid "Brand"
 msgstr ""
 
-#: src/Front/BuilderView.php:498
+#: src/Front/BuilderView.php:511
 msgid "Any brand"
 msgstr ""
 
-#: src/Front/BuilderView.php:504
+#: src/Front/BuilderView.php:517
 msgid "Width"
 msgstr ""
 
-#: src/Front/BuilderView.php:506
+#: src/Front/BuilderView.php:519
 msgid "Diameter"
 msgstr ""
 
-#: src/Front/BuilderView.php:507
+#: src/Front/BuilderView.php:520
 msgid "Thickness"
 msgstr ""
 
-#: src/Front/BuilderView.php:508
+#: src/Front/BuilderView.php:521
 msgid "Length"
 msgstr ""
 
-#: src/Front/BuilderView.php:509
+#: src/Front/BuilderView.php:522
 #: templates/admin/spec-table.php:96
 msgid "Size"
 msgstr ""
 
-#: src/Front/BuilderView.php:513
+#: src/Front/BuilderView.php:526
 msgid "Any width"
 msgstr ""
 
-#: src/Front/BuilderView.php:514
+#: src/Front/BuilderView.php:527
 msgid "Any size"
 msgstr ""
 
-#: src/Front/BuilderView.php:554
+#: src/Front/BuilderView.php:567
 msgid "Filter the parts"
 msgstr ""
 
 #. translators: %s: how many more parts the button lists.
-#: src/Front/BuilderView.php:578
+#: src/Front/BuilderView.php:591
 #, php-format
 msgid "Show %s more"
 msgstr ""
 
 #. translators: 1: how many parts are listed. 2: how many match.
-#: src/Front/BuilderView.php:580
+#: src/Front/BuilderView.php:593
 #, php-format
 msgid "%1$s of %2$s part shown"
 msgid_plural "%1$s of %2$s parts shown"
@@ -1807,183 +1816,195 @@ msgstr[0] ""
 msgstr[1] ""
 
 #. translators: %s: a part's name.
-#: src/Front/BuilderView.php:630
+#: src/Front/BuilderView.php:651
 #, php-format
 msgid "Choose %s"
 msgstr ""
 
 #. translators: %s: a part's name.
-#: src/Front/BuilderView.php:638
+#: src/Front/BuilderView.php:659
 #, php-format
 msgid "See the page for %s"
 msgstr ""
 
-#: src/Front/BuilderView.php:701
+#: src/Front/BuilderView.php:722
 msgid "Start with a width. Every later step offers only what fits the deck you choose."
 msgstr ""
 
-#: src/Front/BuilderView.php:713
+#: src/Front/BuilderView.php:734
 msgid "Nothing the shop has fits the parts before this step."
 msgstr ""
 
-#: src/Front/BuilderView.php:714
+#: src/Front/BuilderView.php:735
 msgid "No part matches these filters."
 msgstr ""
 
-#: src/Front/BuilderView.php:718
+#: src/Front/BuilderView.php:739
 msgid "No risers"
 msgstr ""
 
 #. translators: %s: a step's name, such as Deck.
-#: src/Front/BuilderView.php:727
+#: src/Front/BuilderView.php:748
 #, php-format
 msgid "Back: %s"
 msgstr ""
 
 #. translators: %s: the next step's name, such as Wheels.
-#: src/Front/BuilderView.php:732
+#: src/Front/BuilderView.php:753
 #, php-format
 msgid "Next: %s"
 msgstr ""
 
-#: src/Front/BuilderView.php:762
+#. translators: %s: a deck's width, such as 8.25″.
+#: src/Front/BuilderView.php:786
+#, php-format
+msgid "%s deck"
+msgstr ""
+
+#: src/Front/BuilderView.php:800
 msgid "Fits, with a note"
 msgstr ""
 
-#: src/Front/BuilderView.php:765
+#: src/Front/BuilderView.php:803
 msgid "Does not fit"
 msgstr ""
 
-#. translators: %s: a deck's width, such as 8.25 in.
-#: src/Front/BuilderView.php:771
+#. translators: %s: what the part was checked against, such as "8.25″ deck" or "trucks and risers".
+#: src/Front/BuilderView.php:809
 #, php-format
-msgid "Fits your %s deck"
+msgid "Fits your %s"
 msgstr ""
 
-#: src/Front/BuilderView.php:781
+#: src/Front/BuilderView.php:819
 msgid "Recommended"
 msgstr ""
 
-#. translators: %s: a deck's width, such as 8.25 in.
-#: src/Front/BuilderView.php:784
+#. translators: %s: what the part was checked against, such as "8.25″ deck" or "trucks and risers".
+#: src/Front/BuilderView.php:822
 #, php-format
-msgid "Recommended for your %s deck"
+msgid "Recommended for your %s"
 msgstr ""
 
 #. translators: 1: a slot's label, such as Trucks. 2: a part's name.
-#: src/Front/BuilderView.php:868
+#: src/Front/BuilderView.php:906
 #, php-format
 msgid "%1$s: %2$s no longer fits."
 msgstr ""
 
-#: src/Front/BuilderView.php:871
+#: src/Front/BuilderView.php:909
 msgid "Nothing the shop has fits here, so this slot would be left for you to choose again."
 msgstr ""
 
 #. translators: %s: a part's name.
-#: src/Front/BuilderView.php:873
+#: src/Front/BuilderView.php:911
 #, php-format
 msgid "Closest fit: %s"
 msgstr ""
 
-#: src/Front/BuilderView.php:894
+#: src/Front/BuilderView.php:932
 msgid "This change affects parts you chose"
 msgstr ""
 
-#: src/Front/BuilderView.php:895
+#: src/Front/BuilderView.php:933
 msgid "Kept"
 msgstr ""
 
-#: src/Front/BuilderView.php:898
+#: src/Front/BuilderView.php:936
 msgid "No longer fits"
 msgstr ""
 
-#: src/Front/BuilderView.php:903
+#: src/Front/BuilderView.php:941
 msgid "Use these"
 msgstr ""
 
-#: src/Front/BuilderView.php:907
+#: src/Front/BuilderView.php:945
 msgid "Undo"
 msgstr ""
 
 #. translators: %s: how many of a part a build takes.
-#: src/Front/BuilderView.php:938
+#: src/Front/BuilderView.php:976
 #, php-format
 msgid "× %s"
 msgstr ""
 
-#: src/Front/BuilderView.php:946
+#: src/Front/BuilderView.php:984
 msgid "Assembly: not added"
 msgstr ""
 
-#: src/Front/BuilderView.php:949
+#: src/Front/BuilderView.php:987
 msgid "Assembly: free"
 msgstr ""
 
 #. translators: %s: the assembly fee, such as $15.00.
-#: src/Front/BuilderView.php:951
+#: src/Front/BuilderView.php:989
 #, php-format
 msgid "Assembly: %s"
 msgstr ""
 
-#: src/Front/BuilderView.php:956
+#: src/Front/BuilderView.php:994
 msgid "Your build"
 msgstr ""
 
-#: src/Front/BuilderView.php:959
-#: src/Front/Words.php:354
+#: src/Front/BuilderView.php:997
+#: src/Front/Words.php:360
 msgid "Nothing is chosen yet."
 msgstr ""
 
-#: src/Front/BuilderView.php:963
+#: src/Front/BuilderView.php:1001
 msgid "Remove assembly"
 msgstr ""
 
-#: src/Front/BuilderView.php:963
+#: src/Front/BuilderView.php:1001
 msgid "Add assembly"
 msgstr ""
 
 #. translators: %s: an amount of money, such as $12.00.
-#: src/Front/BuilderView.php:967
+#: src/Front/BuilderView.php:1005
 #, php-format
 msgid "Build discount: %s"
 msgstr ""
 
-#: src/Front/BuilderView.php:968
+#: src/Front/BuilderView.php:1006
 msgid "Total"
 msgstr ""
 
-#: src/Front/BuilderView.php:1010
+#: src/Front/BuilderView.php:1048
 msgid "Fits"
 msgstr ""
 
 #. translators: %s: a slot's label, such as Trucks.
-#: src/Front/BuilderView.php:1013
+#: src/Front/BuilderView.php:1051
 #, php-format
 msgid "Change %s"
 msgstr ""
 
-#: src/Front/BuilderView.php:1044
+#. translators: %s: how long the shop takes to put a build together, in the owner's words, such as 2 business days.
+#: src/Front/BuilderView.php:1058
+#, php-format
+msgid "Assembly time: %s"
+msgstr ""
+
+#: src/Front/BuilderView.php:1084
 msgid "Check your build"
 msgstr ""
 
-#: src/Front/BuilderView.php:1059
+#: src/Front/BuilderView.php:1099
 msgid "Add to cart"
 msgstr ""
 
-#: src/Front/BuilderView.php:1061
+#: src/Front/BuilderView.php:1101
 msgid "The build is in your cart."
 msgstr ""
 
-#: src/Front/BuilderView.php:1065
+#: src/Front/BuilderView.php:1105
 msgid "Link to this build"
 msgstr ""
 
-#: src/Front/BuilderView.php:1066
+#: src/Front/BuilderView.php:1106
 msgid "Copy link"
 msgstr ""
 
-#: src/Front/BuilderView.php:1067
+#: src/Front/BuilderView.php:1107
 msgid "Link copied."
 msgstr ""
 
@@ -2011,130 +2032,144 @@ msgstr ""
 msgid "Shipping to %1$s: %2$s."
 msgstr ""
 
+#. translators: %s: a number of inches. The double prime is the inch sign; French writes "%s po", with a no-break space.
+#: src/Front/Words.php:76
+#, php-format
+msgctxt "inches"
+msgid "%s″"
+msgstr ""
+
+#. translators: %s: a number of millimetres. The space before mm is a no-break space.
+#: src/Front/Words.php:79
+#, php-format
+msgctxt "millimetres"
+msgid "%s\\u{00A0}mm"
+msgstr ""
+
 #. translators: %s: a spec's name, such as Deck width.
-#: src/Front/Words.php:101
+#: src/Front/Words.php:103
 #, php-format
 msgid "%s is not filled in for this part, so its fit cannot be checked."
 msgstr ""
 
 #. translators: 1: the narrowest deck the trucks take. 2: the widest. 3: the deck's width.
-#: src/Front/Words.php:106
+#: src/Front/Words.php:108
 #, php-format
 msgid "The trucks are made for decks from %1$s to %2$s wide. The deck is %3$s."
 msgstr ""
 
 #. translators: 1: the narrowest deck the trucks take. 2: the deck's width.
-#: src/Front/Words.php:110
+#: src/Front/Words.php:112
 #, php-format
 msgid "The trucks are made for decks %1$s wide and over. The deck is %2$s."
 msgstr ""
 
 #. translators: 1: the widest deck the trucks take. 2: the deck's width.
-#: src/Front/Words.php:113
+#: src/Front/Words.php:115
 #, php-format
 msgid "The trucks are made for decks up to %1$s wide. The deck is %2$s."
 msgstr ""
 
 #. translators: 1: the axle's width. 2: how much narrower it is. 3: the deck's width.
-#: src/Front/Words.php:116
+#: src/Front/Words.php:118
 #, php-format
 msgid "The trucks' axle is %1$s, which is %2$s narrower than the %3$s deck."
 msgstr ""
 
 #. translators: 1: the axle's width. 2: how much wider it is. 3: the deck's width.
-#: src/Front/Words.php:119
+#: src/Front/Words.php:121
 #, php-format
 msgid "The trucks' axle is %1$s, which is %2$s wider than the %3$s deck."
 msgstr ""
 
 #. translators: 1: the deck's hole pattern, such as New school. 2: the baseplate's.
-#: src/Front/Words.php:122
+#: src/Front/Words.php:124
 #, php-format
 msgid "The deck's hole pattern is %1$s and the trucks' baseplate is %2$s."
 msgstr ""
 
 #. translators: %s: a hole pattern, such as New school.
-#: src/Front/Words.php:125
+#: src/Front/Words.php:127
 #, php-format
 msgid "The deck gives no hole pattern, so the usual one is taken: %s."
 msgstr ""
 
 #. translators: 1: the wheels' diameter. 2: how far over the trucks' limit they are. 3: the limit. 4: a riser's thickness.
-#: src/Front/Words.php:128
+#: src/Front/Words.php:130
 #, php-format
 msgid "Wheels of %1$s are %2$s over what the trucks clear, which is %3$s. A riser of %4$s or thicker makes the room."
 msgstr ""
 
 #. translators: 1: the wheels' diameter. 2: how far over the trucks' limit they are. 3: the limit.
-#: src/Front/Words.php:131
+#: src/Front/Words.php:133
 #, php-format
 msgid "Wheels of %1$s are %2$s over what the trucks clear, which is %3$s. That is more than a riser makes up for."
 msgstr ""
 
 #. translators: 1: the trucks' height, such as Low. 2: a wheel diameter.
-#: src/Front/Words.php:134
+#: src/Front/Words.php:136
 #, php-format
 msgid "The trucks give no largest wheel, so the usual one for their height (%1$s) is taken: %2$s."
 msgstr ""
 
 #. translators: 1: the bolts' length. 2: a riser's thickness. 3: the shortest bolts that reach.
-#: src/Front/Words.php:138
+#: src/Front/Words.php:140
 #, php-format
 msgid "Bolts of %1$s are too short with a %2$s riser. Use %3$s or longer."
 msgstr ""
 
 #. translators: 1: the bolts' length. 2: the shortest bolts that reach.
-#: src/Front/Words.php:141
+#: src/Front/Words.php:143
 #, php-format
 msgid "Bolts of %1$s are too short. Use %2$s or longer."
 msgstr ""
 
 #. translators: 1: the bolts' length. 2: a riser's thickness. 3: the usual length.
-#: src/Front/Words.php:145
+#: src/Front/Words.php:147
 #, php-format
 msgid "Bolts of %1$s are longer than a %2$s riser needs. The usual length is %3$s."
 msgstr ""
 
 #. translators: 1: the bolts' length. 2: the usual length.
-#: src/Front/Words.php:148
+#: src/Front/Words.php:150
 #, php-format
 msgid "Bolts of %1$s are longer than a board with no riser needs. The usual length is %2$s."
 msgstr ""
 
 #. translators: 1: the bearings' bore. 2: the axle's diameter.
-#: src/Front/Words.php:151
+#: src/Front/Words.php:153
 #, php-format
 msgid "The bearings' bore is %1$s and the trucks' axle is %2$s."
 msgstr ""
 
 #. translators: %s: an axle's diameter.
-#: src/Front/Words.php:154
+#: src/Front/Words.php:156
 #, php-format
 msgid "The trucks give no axle size, so the usual one is taken: %s."
 msgstr ""
 
-#: src/Front/Words.php:156
+#: src/Front/Words.php:158
 msgid "The bearings have spacers built in, so they take no others."
 msgstr ""
 
 #. translators: 1: the grip's width. 2: the deck's width.
-#: src/Front/Words.php:159
+#: src/Front/Words.php:161
 #, php-format
 msgid "The grip is %1$s wide and the deck is %2$s."
 msgstr ""
 
 #. translators: 1: the grip's length. 2: the deck's length.
-#: src/Front/Words.php:162
+#: src/Front/Words.php:164
 #, php-format
 msgid "The grip is %1$s long and the deck is %2$s."
 msgstr ""
 
-#: src/Front/Words.php:164
+#: src/Front/Words.php:166
 msgid "The deck gives no length, so the grip's length is not checked."
 msgstr ""
 
 #. translators: %s: a number of parts.
-#: src/Front/Words.php:182
+#: src/Front/Words.php:184
 #, php-format
 msgid "%s part hidden: a spec its fit is checked by is not filled in."
 msgid_plural "%s parts hidden: a spec their fit is checked by is not filled in."
@@ -2142,7 +2177,7 @@ msgstr[0] ""
 msgstr[1] ""
 
 #. translators: %s: a number of parts.
-#: src/Front/Words.php:186
+#: src/Front/Words.php:188
 #, php-format
 msgid "%s part hidden: the trucks are made for another width of deck."
 msgid_plural "%s parts hidden: the trucks are made for another width of deck."
@@ -2150,7 +2185,7 @@ msgstr[0] ""
 msgstr[1] ""
 
 #. translators: %s: a number of parts.
-#: src/Front/Words.php:189
+#: src/Front/Words.php:191
 #, php-format
 msgid "%s part hidden: the trucks would be too narrow for the deck."
 msgid_plural "%s parts hidden: the trucks would be too narrow for the deck."
@@ -2158,7 +2193,7 @@ msgstr[0] ""
 msgstr[1] ""
 
 #. translators: %s: a number of parts.
-#: src/Front/Words.php:192
+#: src/Front/Words.php:194
 #, php-format
 msgid "%s part hidden: the trucks would be too wide for the deck."
 msgid_plural "%s parts hidden: the trucks would be too wide for the deck."
@@ -2166,7 +2201,7 @@ msgstr[0] ""
 msgstr[1] ""
 
 #. translators: %s: a number of parts.
-#: src/Front/Words.php:195
+#: src/Front/Words.php:197
 #, php-format
 msgid "%s part hidden: the mounting holes would not line up."
 msgid_plural "%s parts hidden: the mounting holes would not line up."
@@ -2174,7 +2209,7 @@ msgstr[0] ""
 msgstr[1] ""
 
 #. translators: %s: a number of parts.
-#: src/Front/Words.php:198
+#: src/Front/Words.php:200
 #, php-format
 msgid "%s part hidden: the bolts would be too short."
 msgid_plural "%s parts hidden: the bolts would be too short."
@@ -2182,7 +2217,7 @@ msgstr[0] ""
 msgstr[1] ""
 
 #. translators: %s: a number of parts.
-#: src/Front/Words.php:201
+#: src/Front/Words.php:203
 #, php-format
 msgid "%s part hidden: the bearings would not fit the axle."
 msgid_plural "%s parts hidden: the bearings would not fit the axle."
@@ -2190,7 +2225,7 @@ msgstr[0] ""
 msgstr[1] ""
 
 #. translators: %s: a number of parts.
-#: src/Front/Words.php:204
+#: src/Front/Words.php:206
 #, php-format
 msgid "%s part hidden: the bearings have spacers built in."
 msgid_plural "%s parts hidden: the bearings have spacers built in."
@@ -2198,7 +2233,7 @@ msgstr[0] ""
 msgstr[1] ""
 
 #. translators: %s: a number of parts.
-#: src/Front/Words.php:207
+#: src/Front/Words.php:209
 #, php-format
 msgid "%s part hidden: the grip would be narrower than the deck."
 msgid_plural "%s parts hidden: the grip would be narrower than the deck."
@@ -2206,7 +2241,7 @@ msgstr[0] ""
 msgstr[1] ""
 
 #. translators: %s: a number of parts.
-#: src/Front/Words.php:210
+#: src/Front/Words.php:212
 #, php-format
 msgid "%s part hidden: the grip would be shorter than the deck."
 msgid_plural "%s parts hidden: the grip would be shorter than the deck."
@@ -2214,122 +2249,141 @@ msgstr[0] ""
 msgstr[1] ""
 
 #. translators: %s: a number of parts.
-#: src/Front/Words.php:213
+#: src/Front/Words.php:215
 #, php-format
 msgid "%s part hidden: it does not fit the rest of the build."
 msgid_plural "%s parts hidden: they do not fit the rest of the build."
 msgstr[0] ""
 msgstr[1] ""
 
-#: src/Front/Words.php:227
+#: src/Front/Words.php:229
 msgid "Choose the parts for this build first, then add it to the cart."
 msgstr ""
 
-#: src/Front/Words.php:229
+#: src/Front/Words.php:231
 msgid "This build is no longer sold. Nothing was added to the cart."
 msgstr ""
 
-#: src/Front/Words.php:231
+#: src/Front/Words.php:233
 msgid "This build cannot be sold as it is. Nothing was added to the cart."
 msgstr ""
 
-#: src/Front/Words.php:233
+#: src/Front/Words.php:235
 msgid "This build cannot be priced at the moment. Nothing was added to the cart."
 msgstr ""
 
-#: src/Front/Words.php:235
+#: src/Front/Words.php:237
 msgid "One of the parts could not be added, so nothing of the build was. Check the parts and add the build again."
 msgstr ""
 
-#: src/Front/Words.php:237
+#: src/Front/Words.php:239
 msgid "A part of a build comes in the quantity the build needs. Change the quantity of the build instead."
 msgstr ""
 
-#: src/Front/Words.php:239
+#: src/Front/Words.php:241
 msgid "A build in your cart had lost one of its parts and was removed. Add the build again."
 msgstr ""
 
 #. translators: %s: a slot's key, as the request sent it.
-#: src/Front/Words.php:255
+#: src/Front/Words.php:257
 #, php-format
 msgid "This kit has no slot called \"%s\"."
 msgstr ""
 
 #. translators: %s: a slot's label, such as Trucks.
-#: src/Front/Words.php:258
+#: src/Front/Words.php:260
 #, php-format
 msgid "%s: nothing is chosen yet."
 msgstr ""
 
 #. translators: %s: a slot's label, such as Trucks.
-#: src/Front/Words.php:261
+#: src/Front/Words.php:263
 #, php-format
 msgid "%s: the part chosen is not one this kit offers here."
 msgstr ""
 
 #. translators: %s: a slot's label, such as Trucks.
-#: src/Front/Words.php:264
+#: src/Front/Words.php:266
 #, php-format
 msgid "%s: the part chosen is sold out."
 msgstr ""
 
 #. translators: %s: a slot's label, such as Trucks.
-#: src/Front/Words.php:267
+#: src/Front/Words.php:269
 #, php-format
 msgid "%s: the shop has fewer of the part chosen than a build takes."
 msgstr ""
 
 #. translators: %s: a slot's label, such as Trucks.
-#: src/Front/Words.php:270
+#: src/Front/Words.php:272
 #, php-format
 msgid "%s: the part chosen does not fit the rest of the build."
 msgstr ""
 
 #. translators: 1: a slot's label, such as Wheels. 2: a part's name.
-#: src/Front/Words.php:290
+#: src/Front/Words.php:292
 #, php-format
 msgid "%1$s: %2$s is sold out."
 msgstr ""
 
 #. translators: 1: a slot's label, such as Wheels. 2: a part's name.
-#: src/Front/Words.php:292
+#: src/Front/Words.php:294
 #, php-format
 msgid "%1$s: the shop has fewer of %2$s than a build takes."
 msgstr ""
 
+#. translators: 1: a slot's label, such as Trucks. 2: a part's name.
+#: src/Front/Words.php:296
+#, php-format
+msgid "%1$s: %2$s is no longer offered here."
+msgstr ""
+
 #. translators: %s: an amount of money, such as $12.00. The plus sign says it is added to the total.
-#: src/Front/Words.php:310
+#: src/Front/Words.php:314
 #, php-format
 msgctxt "added to the total"
 msgid "+%s"
 msgstr ""
 
 #. translators: %s: an amount of money, such as $5.00. The minus sign says it comes off the total.
-#: src/Front/Words.php:313
+#: src/Front/Words.php:317
 #, php-format
 msgctxt "taken off the total"
 msgid "−%s"
 msgstr ""
 
-#: src/Front/Words.php:315
-msgctxt "a part that adds nothing to the total"
-msgid "Free"
+#: src/Front/Words.php:320
+msgctxt "a part that costs the same as the one picked"
+msgid "Same price"
 msgstr ""
 
-#: src/Front/Words.php:317
+#: src/Front/Words.php:322
 msgctxt "a part the total counts already"
 msgid "Included"
 msgstr ""
 
 #. translators: 1: a slot's label, such as Wheels. 2: a brand's name. 3: a size, such as 54 mm.
-#: src/Front/Words.php:336
+#: src/Front/Words.php:341
 #, php-format
 msgid "%1$s: %2$s, %3$s"
 msgstr ""
 
-#. translators: %l: the names of the parts chosen, as a list.
-#: src/Front/Words.php:357
-msgid "The build so far: %l."
+#. translators: Between two parts of the build, as in "Deck: …; Trucks: …".
+#: src/Front/Words.php:368
+msgctxt "between the parts of a build"
+msgid "; "
+msgstr ""
+
+#. translators: %s: each part of the build, by its slot, as "Deck: …; Trucks: …".
+#: src/Front/Words.php:370
+#, php-format
+msgid "The build so far: %s."
+msgstr ""
+
+#. translators: Leave as "lowercase" where a slot's label, such as Grip tape, starts with a small letter inside a sentence, as in English and French. Write anything else, such as "keep", where it keeps its capital, as in German.
+#: src/Front/Words.php:383
+msgctxt "a slot label inside a sentence"
+msgid "lowercase"
 msgstr ""
 
 #: src/Health/SiteHealth.php:108
