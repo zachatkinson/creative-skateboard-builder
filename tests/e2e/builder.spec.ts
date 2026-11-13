@@ -254,45 +254,6 @@ test.describe( 'The builder without JavaScript', () => {
 		).toBeChecked();
 	} );
 
-	test( "a deck's link opens on the trucks with the deck picked", async ( {
-		page,
-	} ) => {
-		await page.goto( linkTo( { deck: id( 'builder-test-deck-8-5' ) } ) );
-		await expect( heading( page ) ).toHaveText( 'Step 2 of 7: Trucks' );
-		await expect(
-			page.getByRole( 'radio', {
-				name: 'Choose Builder test trucks 149',
-			} )
-		).toBeChecked();
-		await expect(
-			page.getByText( 'Recommended for your 8.5 in deck' )
-		).toBeVisible();
-	} );
-
-	test( 'a build link in any order opens its step, and a part the kit cannot take is named', async ( {
-		page,
-	} ) => {
-		await page.goto(
-			linkTo( {
-				step: 'review',
-				grip: id( 'builder-test-grip' ),
-				wheels: id( 'builder-test-wheels-54' ),
-				deck: id( 'builder-test-deck-8-25' ),
-				trucks: id( 'builder-test-deck-8-0' ),
-			} )
-		);
-		const errors = page.locator( '.cbuild-errors' );
-		await expect( errors ).toBeVisible();
-		await expect( errors.getByRole( 'link' ).first() ).toBeVisible();
-		await expect( heading( page ) ).toHaveText( 'Step 7 of 7: Review' );
-		await expect(
-			page
-				.locator( '.cbuild-review' )
-				.getByText( 'Builder test trucks 144' ),
-			'The trucks start on what fits the deck.'
-		).toBeVisible();
-	} );
-
 	test( 'a width pressed lists only its decks and stays on the step, and Any width lists them all again', async ( {
 		page,
 	} ) => {
@@ -491,6 +452,49 @@ const stayed = ( page: Page ): Promise< boolean > =>
 			( window as unknown as { cbuildStayed?: boolean } ).cbuildStayed ===
 			true
 	);
+
+// Audit, spec review S2: the roadmap's "every way in built so far" on every engine and width, with JavaScript and
+// without. A link is opened with page.goto alone, so the store has nothing to do until the shopper moves.
+test.describe( 'Every way in by a link', () => {
+	test( "a deck's link opens on the trucks with the deck picked", async ( {
+		page,
+	} ) => {
+		await page.goto( linkTo( { deck: id( 'builder-test-deck-8-5' ) } ) );
+		await expect( heading( page ) ).toHaveText( 'Step 2 of 7: Trucks' );
+		await expect(
+			page.getByRole( 'radio', {
+				name: 'Choose Builder test trucks 149',
+			} )
+		).toBeChecked();
+		await expect(
+			page.getByText( 'Recommended for your 8.5 in deck' )
+		).toBeVisible();
+	} );
+
+	test( 'a build link in any order opens its step, and a part the kit cannot take is named', async ( {
+		page,
+	} ) => {
+		await page.goto(
+			linkTo( {
+				step: 'review',
+				grip: id( 'builder-test-grip' ),
+				wheels: id( 'builder-test-wheels-54' ),
+				deck: id( 'builder-test-deck-8-25' ),
+				trucks: id( 'builder-test-deck-8-0' ),
+			} )
+		);
+		const errors = page.locator( '.cbuild-errors' );
+		await expect( errors ).toBeVisible();
+		await expect( errors.getByRole( 'link' ).first() ).toBeVisible();
+		await expect( heading( page ) ).toHaveText( 'Step 7 of 7: Review' );
+		await expect(
+			page
+				.locator( '.cbuild-review' )
+				.getByText( 'Builder test trucks 144' ),
+			'The trucks start on what fits the deck.'
+		).toBeVisible();
+	} );
+} );
 
 test.describe( 'The builder with JavaScript', () => {
 	test.beforeEach( async ( { page }, info ) => {
@@ -894,6 +898,31 @@ test.describe( 'The builder with JavaScript', () => {
 		).toBeChecked();
 		expect( page.url() ).toBe( before );
 		expect( await stayed( page ) ).toBe( true );
+	} );
+
+	test( 'a preset with a sold-out part names it on its tile and at the review, and keeps it from the cart', async ( {
+		page,
+	} ) => {
+		const tiles = page.locator( '.cbuild-presets' );
+		await expect(
+			tiles.getByText( 'Wheels: Builder test wheels 56 is sold out.' )
+		).toBeVisible();
+		await tiles
+			.getByRole( 'button', { name: 'Start from Cruiser' } )
+			.click();
+		await expect( heading( page ) ).toHaveText( 'Step 7 of 7: Review' );
+		expect( await stayed( page ), 'the store drew the review' ).toBe(
+			true
+		);
+		await expect( page.locator( '.cbuild-errors' ) ).toContainText(
+			'Wheels: Builder test wheels 56 is sold out.'
+		);
+		// The review's own, or the phone bar's where the review's is hidden: one at each width (P11).
+		await expect(
+			page
+				.locator( '.cbuild' )
+				.getByRole( 'button', { name: 'Add to cart' } )
+		).toBeDisabled();
 	} );
 
 	test( 'starts from a preset without loading the page', async ( {
