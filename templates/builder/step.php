@@ -41,16 +41,18 @@ defined( 'ABSPATH' ) || exit;
 		<ul class="cbuild-cards">
 			<template data-wp-each--option="state.view.step.options" data-wp-each-key="context.option.id">
 				<li data-wp-bind--class="context.option.classes">
-					<input class="cbuild-card__control" type="radio" data-wp-bind--id="context.option.input" data-wp-bind--name="state.view.step.name" data-wp-bind--value="context.option.value" data-wp-bind--checked="context.option.checked" data-wp-bind--disabled="context.option.disabled" data-wp-bind--aria-label="context.option.choose">
+					<input class="cbuild-card__control" type="radio" data-wp-bind--id="context.option.input" data-wp-bind--name="state.view.step.name" data-wp-bind--value="context.option.value" data-wp-bind--checked="context.option.checked" data-wp-bind--disabled="context.option.disabled" data-wp-bind--aria-label="context.option.choose" data-wp-bind--aria-describedby="context.option.describedby">
 					<label class="cbuild-card__body" data-wp-bind--for="context.option.input">
 						<img class="cbuild-card__photo" alt="" loading="lazy" decoding="async" data-wp-bind--hidden="!context.option.hasImage" data-wp-bind--src="context.option.src" data-wp-bind--srcset="context.option.srcset" data-wp-bind--sizes="context.option.sizes" data-wp-bind--width="context.option.width" data-wp-bind--height="context.option.height">
 						<span class="cbuild-card__name" data-wp-text="context.option.name"></span>
-						<span class="cbuild-card__delta" data-wp-text="context.option.delta"></span>
-						<span data-wp-bind--class="context.option.stockClass" data-wp-text="context.option.stock"></span>
-						<span data-wp-bind--class="context.option.fitClass" data-wp-text="context.option.fit"></span>
-						<span class="cbuild-card__recommended" data-wp-bind--hidden="!context.option.recommended" data-wp-text="context.option.recommendedAs"></span>
+						<span class="cbuild-card__about" data-wp-bind--id="context.option.about">
+							<span class="cbuild-card__delta" data-wp-text="context.option.delta"></span>
+							<span data-wp-bind--class="context.option.stockClass" data-wp-text="context.option.stock"></span>
+							<span data-wp-bind--class="context.option.fitClass" data-wp-text="context.option.fit"></span>
+							<span class="cbuild-card__recommended" data-wp-bind--hidden="!context.option.recommended" data-wp-text="context.option.recommendedAs"></span>
+						</span>
 					</label>
-					<ul class="cbuild-card__notes">
+					<ul class="cbuild-card__notes" data-wp-bind--id="context.option.notesId">
 						<template data-wp-each--note="context.option.notes">
 							<li data-wp-text="context.note.text"></li>
 						</template>

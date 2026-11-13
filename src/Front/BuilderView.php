@@ -606,9 +606,15 @@ final class BuilderView {
 				$notes[] = array( 'text' => Cast::str( Cast::map( $message )['text'] ?? null ) );
 			}
 			$fit       = Cast::str( $option['fit'] ?? null );
+			$input     = 'cbuild-' . $state->id . '-' . $id;
 			$options[] = array(
 				'id'            => $id,
-				'input'         => 'cbuild-' . $state->id . '-' . $id,
+				'input'         => $input,
+				// The radio is named by its part alone; what else the card says describes it, so that a screen reader
+				// says the price, stock, fit and notes after the name (spec: Accessibility).
+				'about'         => $input . '-about',
+				'notesId'       => $input . '-notes',
+				'describedby'   => $input . '-about ' . $input . '-notes',
 				'value'         => (string) $id,
 				'name'          => $title,
 				/* translators: %s: a part's name. */

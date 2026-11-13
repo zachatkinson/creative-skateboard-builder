@@ -338,6 +338,13 @@
 	cursor: pointer;
 }
 
+// The card's details, which describe its radio: a grid of its own, not display: contents, which older Safari left
+// out of the accessibility tree.
+:where(.cbuild-card__about) {
+	display: grid;
+	gap: 0.25rem;
+}
+
 :where(.cbuild-card__photo) {
 	inline-size: 100%;
 	aspect-ratio: 1;

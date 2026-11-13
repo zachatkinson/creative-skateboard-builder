@@ -318,6 +318,7 @@ final class BuilderTest extends TestCase {
 
 		$card = $step['options'][0];
 		self::assertSame( 'cbuild-77-101', $card['input'] );
+		self::assertSame( array( 'cbuild-77-101-about', 'cbuild-77-101-notes', 'cbuild-77-101-about cbuild-77-101-notes' ), array( $card['about'], $card['notesId'], $card['describedby'] ), 'The radio is described by the rest of its card.' );
 		self::assertSame( '101', $card['value'] );
 		self::assertSame( 'Part 101', $card['name'] );
 		self::assertSame( 'Choose Part 101', $card['choose'] );

@@ -243,6 +243,25 @@ final class BuilderPageTest extends IntegrationTestCase {
 		self::assertSame( 'nofollow', $back->getAttribute( 'rel' ) );
 	}
 
+	public function test_each_cards_radio_is_described_by_its_price_stock_fit_recommendation_and_notes(): void {
+		$dom    = self::dom( $this->kitPage( array( 'deck' => (string) $this->parts['deck 8.5'] ) ) );
+		$radios = $dom->query( '//li[contains(@class,"cbuild-card")]/input[@type="radio"]' );
+		self::assertGreaterThan( 0, $radios->length );
+		foreach ( $radios as $radio ) {
+			$ids = preg_split( '/\s+/', trim( $radio->getAttribute( 'aria-describedby' ) ), -1, PREG_SPLIT_NO_EMPTY );
+			self::assertSame( array( $radio->getAttribute( 'id' ) . '-about', $radio->getAttribute( 'id' ) . '-notes' ), $ids, 'The name says the part; the description says the rest (spec: Accessibility).' );
+			foreach ( $ids as $id ) {
+				self::assertSame( 1, $dom->query( '//*[@id="' . $id . '"]' )->length, $id );
+			}
+		}
+		$chosen = $dom->query( '//li[contains(@class,"cbuild-card--chosen")]/input' )->item( 0 );
+		self::assertNotNull( $chosen );
+		$about = trim( (string) preg_replace( '/\s+/', ' ', self::text( $dom, '//*[@id="' . $chosen->getAttribute( 'id' ) . '-about"]' ) ) );
+		self::assertStringContainsString( 'Fits your 8.5 in deck', $about );
+		self::assertStringContainsString( 'Recommended for your 8.5 in deck', $about );
+		self::assertStringStartsWith( 'Included', $about, 'its price, first' );
+	}
+
 	public function test_parts_that_do_not_fit_are_listed_under_a_disclosure_with_their_reasons(): void {
 		$dom = self::dom( $this->kitPage( array( 'deck' => (string) $this->parts['deck 8.5'] ) ) );
 

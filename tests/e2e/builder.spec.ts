@@ -544,6 +544,27 @@ test.describe( 'The builder with JavaScript', () => {
 		expect( await stayed( page ) ).toBe( true );
 	} );
 
+	test( "describes each card's radio by the rest of its card, on a step the store drew (Accessibility)", async ( {
+		page,
+	} ) => {
+		await expect(
+			page.getByRole( 'radio', { name: 'Choose Builder test deck 8.0' } )
+		).toHaveAccessibleDescription( /\+\$\d/ );
+		await page
+			.getByRole( 'radio', { name: 'Choose Builder test deck 8.0' } )
+			.check();
+		await page.getByRole( 'button', { name: 'Next: Trucks' } ).click();
+		await expect( heading( page ) ).toHaveText( 'Step 2 of 7: Trucks' );
+		expect( await stayed( page ), 'the store drew the step' ).toBe( true );
+		await expect(
+			page.getByRole( 'radio', {
+				name: 'Choose Builder test trucks 139',
+			} )
+		).toHaveAccessibleDescription(
+			/Fits your 8(\.0)? in deck.*Recommended for your 8(\.0)? in deck/
+		);
+	} );
+
 	test( 'asks the route once for picks made in quick succession, and paints each pick before it answers', async ( {
 		page,
 	} ) => {
