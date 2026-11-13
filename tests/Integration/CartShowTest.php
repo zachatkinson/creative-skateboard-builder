@@ -191,7 +191,9 @@ final class CartShowTest extends CartTestCase {
 		$data             = apply_filters( 'woocommerce_get_item_data', array(), $kit[1] ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- WooCommerce's own.
 		self::assertCount( 1, $data );
 		self::assertSame( array( 'Build', 'Edit build', 'cbuild_edit' ), array( $data[0]['key'], $data[0]['value'], $data[0]['raw_key'] ) );
-		self::assertSame( 1, preg_match( '#\A<a class="cbuild-edit" href="([^"]+)">Edit build</a>\z#', $data[0]['display'], $found ) );
+		self::assertSame( 1, preg_match( '#\A<a class="cbuild-edit" href="([^"]+)" aria-label="([^"]+)">Edit build</a>\z#', $data[0]['display'], $found ) );
+		// Two builds in a cart give two links: each is named for its kit, beginning with the words it shows (W8, P11).
+		self::assertSame( 'Edit build: ' . esc_attr( wc_get_product( $this->kit )->get_name() ), $found[2] );
 		$href = html_entity_decode( $found[1] );
 		self::assertStringStartsWith( get_permalink( $this->kit ) . ( str_contains( (string) get_permalink( $this->kit ), '?' ) ? '&' : '?' ), $href, 'the kit\'s builder, where cbuild_builder_url says it is' );
 		parse_str( (string) wp_parse_url( $href, PHP_URL_QUERY ), $query );

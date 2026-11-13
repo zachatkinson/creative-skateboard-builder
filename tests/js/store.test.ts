@@ -5,7 +5,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { setConfig, setElement, stores } from './support/interactivity';
 import { NAME, browser, reset } from '../../assets/src/builder/view';
-import { WAIT } from '../../assets/src/builder/navigate';
+import { SLOW, WAIT } from '../../assets/src/builder/navigate';
 
 interface Actions {
 	submit: ( event: SubmitEvent ) => void;
@@ -147,6 +147,10 @@ describe( 'the store', () => {
 		} );
 		actions.submit( event );
 		expect( event.defaultPrevented ).toBe( true );
+		expect( state.pending, 'not before the shopper has waited' ).toBe(
+			false
+		);
+		vi.advanceTimersByTime( SLOW );
 		expect( state.pending ).toBe( true );
 		expect( fetched ).toHaveLength( 1 );
 		expect( fetched[ 0 ]!.origin + fetched[ 0 ]!.pathname ).toBe(
@@ -235,7 +239,7 @@ describe( 'the store', () => {
 		const replaced = vi.spyOn( window.history, 'replaceState' );
 		radio.dispatchEvent( new Event( 'change', { bubbles: true } ) );
 		actions.pick( { target: radio } as unknown as Event );
-		expect( state.pending ).toBe( true );
+		expect( state.pending ).toBe( false );
 		vi.advanceTimersByTime( WAIT );
 		expect( fetched ).toHaveLength( 1 );
 		expect( [ ...fetched[ 0 ]!.searchParams ] ).toEqual( [
@@ -590,10 +594,11 @@ describe( 'the store', () => {
 		);
 	} );
 
-	it( 'reads a config with nothing in it as no page and no language', () => {
+	it( 'reads a config with nothing in it as no page and no language, and asks for no page', () => {
 		setConfig( NAME, { endpoint: ENDPOINT } );
 		actions.back();
-		expect( fetched[ 0 ]!.searchParams.get( 'page' ) ).toBe( '0' );
+		// A builder on an archive or a template has no post: the route takes a page of 1 or more, and would refuse 0.
+		expect( fetched[ 0 ]!.searchParams.has( 'page' ) ).toBe( false );
 		expect( fetched[ 0 ]!.searchParams.get( 'locale' ) ).toBe( '' );
 	} );
 } );
@@ -671,13 +676,29 @@ describe( 'adding to the cart', () => {
 			assembly: true,
 		} );
 		expect( state.added ).toBe( true );
-		expect( state.status ).toBe( 'The build is in your cart.' );
+		// Said once: focus moves to the notice, which a screen reader reads, so the status says nothing more.
+		expect( state.status ).toBe( '' );
 		expect( state.pending ).toBe( false );
 		expect( submitted ).not.toHaveBeenCalled();
 		expect( root.ownerDocument.activeElement ).toBe(
 			root.querySelector( '.cbuild-review__added' )
 		);
 		expect( sheet.isConnected ).toBe( true );
+	} );
+
+	it( 'adds the build once when Add to cart is pressed again while it adds', async () => {
+		review();
+		const asked = cart( 201 );
+		const first = new SubmitEvent( 'submit', { cancelable: true } );
+		const again = new SubmitEvent( 'submit', { cancelable: true } );
+		const adding = actions.add( first );
+		await actions.add( again );
+		await adding;
+
+		expect( again.defaultPrevented ).toBe( true );
+		expect(
+			asked.filter( ( line ) => line.endsWith( '/add-item' ) )
+		).toHaveLength( 1 );
 	} );
 
 	it( "sends the form to WooCommerce's own handler when the add fails, and says nothing was added", async () => {

@@ -146,7 +146,9 @@ final class BuilderPage {
 			while ( ob_get_level() > $level ) {
 				ob_end_clean();
 			}
-			$this->logger->log(
+			// Once an hour a kit: a broken builder on a busy page would otherwise write a line on every view.
+			$this->logger->hourly(
+				'render_' . $kit,
 				Logger::ERROR,
 				'The builder could not be shown.',
 				array(

@@ -6,6 +6,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
 	Navigator,
+	SLOW,
 	WAIT,
 	type Deps,
 	type Move,
@@ -155,6 +156,36 @@ describe( 'Navigator', () => {
 		expect( asked.searchParams.get( 'cbuild[deck]' ) ).toBe( '12' );
 	} );
 
+	it( 'says it is waiting only once an answer has kept the shopper 300 ms, and never for a quick one (spec: Resilience)', async () => {
+		expect( SLOW ).toBe( 300 );
+		const slow = harness();
+		new Navigator( slow.deps ).pick( {
+			fields: STEP,
+			history: 'replace',
+			fallback: () => undefined,
+		} );
+		vi.advanceTimersByTime( SLOW - 1 );
+		expect( slow.pending, 'counted from the pick' ).toEqual( [] );
+		vi.advanceTimersByTime( 1 );
+		expect( slow.pending ).toEqual( [ true ] );
+		slow.reply( answer( { view: view( 'https://shop.example/?slow' ) } ) );
+		await settle();
+		expect( slow.pending ).toEqual( [ true, false ] );
+
+		const quick = harness();
+		new Navigator( quick.deps ).go( {
+			fields: STEP,
+			history: 'push',
+			fallback: () => undefined,
+		} );
+		quick.reply(
+			answer( { view: view( 'https://shop.example/?quick' ) } )
+		);
+		await settle();
+		vi.advanceTimersByTime( SLOW );
+		expect( quick.pending, 'no flicker' ).not.toContain( true );
+	} );
+
 	it( 'shows the answer and makes the step a history entry at the address the form would have made', async () => {
 		const h = harness();
 		new Navigator( h.deps ).go( {
@@ -162,7 +193,10 @@ describe( 'Navigator', () => {
 			history: 'push',
 			fallback: () => h.fallbacks.push( 'form' ),
 		} );
-		expect( h.pending ).toEqual( [ true ] );
+		expect(
+			h.pending,
+			'nothing said before the shopper has waited'
+		).toEqual( [] );
 		const next = view(
 			'https://shop.example/?page_id=25&cbuild%5Bdeck%5D=12&cbuild%5Bstep%5D=trucks'
 		);
@@ -171,7 +205,7 @@ describe( 'Navigator', () => {
 		expect( h.shown ).toEqual( [ next ] );
 		expect( h.pushed ).toEqual( [ next.url ] );
 		expect( h.replaced ).toEqual( [] );
-		expect( h.pending ).toEqual( [ true, false ] );
+		expect( h.pending ).toEqual( [ false ] );
 		expect( h.fallbacks ).toEqual( [] );
 	} );
 
@@ -233,7 +267,9 @@ describe( 'Navigator', () => {
 		pick( '11' );
 		vi.advanceTimersByTime( 149 );
 		expect( h.asked ).toHaveLength( 0 );
-		expect( h.pending ).toEqual( [ true, true ] );
+		expect( h.pending, 'one wait, from the first pick' ).toEqual( [] );
+		vi.advanceTimersByTime( 51 );
+		expect( h.pending ).toEqual( [ true ] );
 		vi.advanceTimersByTime( 1 );
 		expect( h.asked ).toHaveLength( 1 );
 		expect( h.asked[ 0 ]!.searchParams.get( 'cbuild[deck]' ) ).toBe( '11' );
@@ -363,7 +399,7 @@ describe( 'Navigator', () => {
 		expect( h.fallbacks ).toEqual( [ 'form' ] );
 		expect( h.shown ).toEqual( [] );
 		expect( h.pushed ).toEqual( [] );
-		expect( h.pending ).toEqual( [ true, false ] );
+		expect( h.pending ).toEqual( [ false ] );
 	} );
 
 	it( 'shows the build the address holds when the shopper goes back, making no new entry', async () => {

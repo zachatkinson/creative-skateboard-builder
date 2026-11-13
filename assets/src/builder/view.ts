@@ -64,6 +64,11 @@ let navigator: Navigator | undefined;
 let root: HTMLElement | null = null;
 
 /**
+ * Whether an add is on its way: a second press while it is would put a second build in the cart.
+ */
+let adding = false;
+
+/**
  * What the shopper reads first after a step changes, by the template's classes.
  *
  * @param view The view now shown.
@@ -283,6 +288,10 @@ const { state } = store(
 					return;
 				}
 				event.preventDefault();
+				if ( adding ) {
+					return;
+				}
+				adding = true;
 				const sent = fields( form, event.submitter );
 				const config = getConfig( NAME ) as Partial< Config >;
 				state.pending = true;
@@ -294,6 +303,7 @@ const { state } = store(
 					sent
 				);
 				state.pending = false;
+				adding = false;
 				if ( ! added ) {
 					send( form, event.submitter );
 					return;
@@ -317,7 +327,7 @@ const { state } = store(
 					} )
 				);
 				state.added = true;
-				state.status = state.view.review.added;
+				// Said once: the notice takes focus and is read, so the status says nothing more.
 				window.requestAnimationFrame( () => {
 					root?.querySelector< HTMLElement >(
 						'.cbuild-review__added'

@@ -56,6 +56,9 @@ export interface Deps {
 /** How long a pick waits for the next before the route is asked. */
 export const WAIT = 150;
 
+/** How long the shopper waits for an answer before the builder says it is on its way: a quick one never flickers. */
+export const SLOW = 300;
+
 const PARAM = 'cbuild';
 
 /**
@@ -80,7 +83,10 @@ export function route(
 		// The clean page: a build link that says nothing, so that the answer still carries the view.
 		url.searchParams.append( PARAM, '' );
 	}
-	url.searchParams.append( 'page', String( deps.page ) );
+	// A builder on an archive or a template has no post: the route takes none then, and would refuse 0.
+	if ( deps.page > 0 ) {
+		url.searchParams.append( 'page', String( deps.page ) );
+	}
 	url.searchParams.append( 'locale', deps.locale );
 	return url.toString();
 }
@@ -97,6 +103,7 @@ function viewOf( body: unknown ): View | null {
 
 export class Navigator {
 	private timer: ReturnType< typeof setTimeout > | undefined;
+	private slow: ReturnType< typeof setTimeout > | undefined;
 	private asking: AbortController | undefined;
 
 	constructor( private readonly deps: Deps ) {}
@@ -108,7 +115,7 @@ export class Navigator {
 	 */
 	pick( move: Move ): void {
 		clearTimeout( this.timer );
-		this.deps.pending( true );
+		this.waiting();
 		// The fields are read now: the form may change before the wait is over.
 		const fields = [ ...move.fields ];
 		this.timer = setTimeout( () => this.go( { ...move, fields } ), WAIT );
@@ -124,11 +131,13 @@ export class Navigator {
 		this.asking?.abort();
 		const asking = new AbortController();
 		this.asking = asking;
-		this.deps.pending( true );
+		this.waiting();
 		void this.ask( move, asking.signal ).then( ( view ) => {
 			if ( asking !== this.asking ) {
 				return;
 			}
+			clearTimeout( this.slow );
+			this.slow = undefined;
 			this.deps.pending( false );
 			if ( null === view ) {
 				move.fallback();
@@ -141,6 +150,15 @@ export class Navigator {
 				this.deps.replace( view.url );
 			}
 		} );
+	}
+
+	/**
+	 * The shopper is waiting from now, unless already: the pending state shows once they have waited SLOW.
+	 */
+	private waiting(): void {
+		if ( undefined === this.slow ) {
+			this.slow = setTimeout( () => this.deps.pending( true ), SLOW );
+		}
 	}
 
 	/**

@@ -235,13 +235,17 @@ final class ShowHooks implements Hookable {
 		if ( null === $build || null === $kit ) {
 			return $data;
 		}
-		$query  = ( new BuildLink( $build->picks, null, BuildLink::REVIEW, $build->assembly, replace: $build->id ) )->query( $kit->slots );
-		$url    = add_query_arg( array( BuildLink::PARAM => urlencode_deep( $query ) ), BuilderUrl::of( $build->kit ) );
-		$value  = __( 'Edit build', 'creative-skateboard-builder' );
+		$query = ( new BuildLink( $build->picks, null, BuildLink::REVIEW, $build->assembly, replace: $build->id ) )->query( $kit->slots );
+		$url   = add_query_arg( array( BuildLink::PARAM => urlencode_deep( $query ) ), BuilderUrl::of( $build->kit ) );
+		$value = __( 'Edit build', 'creative-skateboard-builder' );
+		$line  = $item['data'] ?? null;
+		/* translators: %s: the kit's name, such as Street complete. */
+		$name   = sprintf( __( 'Edit build: %s', 'creative-skateboard-builder' ), $line instanceof WC_Product ? $line->get_name() : '' );
 		$data[] = array(
 			'key'     => __( 'Build', 'creative-skateboard-builder' ),
 			'value'   => $value,
-			'display' => '<a class="cbuild-edit" href="' . esc_url( $url ) . '">' . esc_html( $value ) . '</a>',
+			// Named for its kit, so two builds in a cart give two links a screen reader tells apart (W8, P11).
+			'display' => '<a class="cbuild-edit" href="' . esc_url( $url ) . '" aria-label="' . esc_attr( $name ) . '">' . esc_html( $value ) . '</a>',
 			'raw_key' => 'cbuild_edit',
 		);
 		return $data;

@@ -297,6 +297,7 @@ final class BuilderPageTest extends IntegrationTestCase {
 		self::assertSame( array( 'cbuild[step]', 'wheels' ), array( $next->getAttribute( 'name' ), $next->getAttribute( 'value' ) ), 'the step\'s own Next, from outside its form' );
 		self::assertTrue( $dom->query( $bar . '//button[@form="' . BuilderView::REVIEW_FORM . '"]' )->item( 0 )->hasAttribute( 'hidden' ), 'Add to cart waits for the review' );
 		self::assertSame( '#cbuild-picture', $dom->query( $bar . '//a[contains(@class,"cbuild-bar__picture")]' )->item( 0 )->getAttribute( 'href' ) );
+		self::assertSame( '48px', $dom->query( $bar . '//img[contains(@class,"cbuild-bar__photo")]' )->item( 0 )->getAttribute( 'sizes' ), 'a 48 px picture, so a phone takes the smallest of its sources, not the widest' );
 		self::assertSame( 1, $dom->query( '//figure[@id="cbuild-picture"][@tabindex="-1"]' )->length, 'and the picture takes focus when the link is followed' );
 		self::assertStringStartsWith( 'Total: ', self::text( $dom, $bar . '//summary' ) );
 		self::assertSame( count( wp_interactivity_state( BuilderPage::STORE )['view']['summary']['rows'] ), $dom->query( $bar . '//dl[contains(@class,"cbuild-bar__lines")]/div' )->length, 'the summary\'s rows, in the parts list the total opens' );
@@ -349,6 +350,25 @@ final class BuilderPageTest extends IntegrationTestCase {
 		self::assertNotNull( $errors );
 		self::assertFalse( $errors->hasAttribute( 'hidden' ) );
 		self::assertSame( 'Deck: nothing is chosen yet.', self::text( $dom, '//div[contains(@class,"cbuild-errors")]//a' ) );
+	}
+
+	public function test_every_link_into_a_state_carries_nofollow_on_every_state(): void {
+		$states = array(
+			'the blank start'   => array(),
+			'a step'            => array( 'deck' => (string) $this->parts['deck 8.5'] ),
+			'the error summary' => array( 'step' => 'review' ),
+			'the review'        => array(
+				'deck' => (string) $this->parts['deck 8.5'],
+				'step' => 'review',
+			),
+		);
+		foreach ( $states as $state => $build ) {
+			$links = self::dom( $this->kitPage( $build ) )->query( '//div[contains(concat(" ",@class," ")," cbuild ")]//a[contains(@href,"cbuild%5B") or contains(@href,"cbuild[")]' );
+			self::assertGreaterThan( 0, $links->length, $state . ' has links into states to check.' );
+			foreach ( $links as $link ) {
+				self::assertSame( 'nofollow', $link->getAttribute( 'rel' ), $state . ': ' . trim( $link->textContent ) . ' leads into a state, so crawlers are asked not to follow it (spec: SEO and sharing).' );
+			}
+		}
 	}
 
 	public function test_a_page_with_a_build_says_its_step_first_in_its_title_and_the_clean_page_keeps_its_own(): void {
@@ -456,6 +476,9 @@ final class BuilderPageTest extends IntegrationTestCase {
 			$logger->lines,
 			'The kit and the error, and nothing of the request.'
 		);
+		$this->page( $logger )->render( $this->kit, new BuildLink(), get_permalink( $this->kit ) );
+		self::assertCount( 1, $logger->lines, 'A broken builder on a busy page is logged once an hour, not on every view.' );
+		self::assertSame( array( 'render_' . $this->kit => true ), $logger->keys );
 	}
 
 	public function test_a_shop_manager_reads_why_a_render_failed_escaped(): void {

@@ -595,6 +595,42 @@ test.describe( 'The builder with JavaScript', () => {
 		expect( await stayed( page ) ).toBe( true );
 	} );
 
+	test( 'shows the pending state only once an answer has kept the shopper waiting 300 ms (Resilience)', async ( {
+		page,
+	} ) => {
+		let release: () => void = () => undefined;
+		const held = new Promise< void >( ( done ) => {
+			release = done;
+		} );
+		await page.route( isRoute, async ( route ) => {
+			await held;
+			await route.continue();
+		} );
+		const total = page.locator( '.cbuild-summary__total' );
+		await page
+			.getByRole( 'radio', { name: 'Choose Builder test deck 8.0' } )
+			.check();
+		// Read in the page, so that the test's own round trips do not move the moments.
+		const seen = await total.evaluate( ( element ) => {
+			const opacity = () => getComputedStyle( element ).opacity;
+			const at = ( ms: number ) =>
+				new Promise< string >( ( done ) =>
+					setTimeout( () => done( opacity() ), ms )
+				);
+			return Promise.all( [ at( 50 ), at( 600 ) ] );
+		} );
+		release();
+		expect( seen, 'no flicker for a quick answer, then dimmed' ).toEqual( [
+			'1',
+			'0.6',
+		] );
+		await expect( page.locator( '.cbuild' ) ).toHaveAttribute(
+			'aria-busy',
+			'false'
+		);
+		await expect( total ).toHaveCSS( 'opacity', '1' );
+	} );
+
 	test( 'sends the form when the state route fails, and the server shows the next step', async ( {
 		page,
 	} ) => {
@@ -848,9 +884,10 @@ test.describe( 'The builder with JavaScript', () => {
 		await expect(
 			said.getByRole( 'link', { name: 'View cart' } )
 		).toBeVisible();
+		// Said once, by the notice that takes focus: the status says nothing more.
 		await expect(
 			page.locator( '.cbuild' ).getByRole( 'status' )
-		).toHaveText( 'The build is in your cart.' );
+		).toHaveText( '' );
 		expect( await stayed( page ) ).toBe( true );
 		const heard = await page.evaluate(
 			() =>
