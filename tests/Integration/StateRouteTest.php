@@ -313,6 +313,8 @@ final class StateRouteTest extends IntegrationTestCase {
 	}
 
 	public function test_a_build_link_is_answered_with_the_view_the_page_would_show(): void {
+		// Plain permalinks, where a form must carry the page's own ID: a multisite's site may have others.
+		$this->set_permalink_structure( '' );
 		$deck = $this->parts['deck 8.5'];
 		$page = self::factory()->post->create(
 			array(

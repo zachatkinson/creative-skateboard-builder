@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { test, expect, answered, Page } from './support/test';
+import { test, expect, answered, inLocale, Page } from './support/test';
 import { axe } from './support/axe';
 
 /**
@@ -657,14 +657,18 @@ test.describe( 'The builder with JavaScript', () => {
 		expect( await stayed( page ) ).toBe( true );
 	} );
 
-	test( 'filters the step without loading the page', async ( { page } ) => {
+	test( 'filters the step without loading the page', async ( {
+		page,
+	}, info ) => {
 		const filters = page.getByRole( 'group', { name: 'Width' } );
-		await filters.getByRole( 'button', { name: '8.25 in (1)' } ).click();
+		// French writes the width with a decimal comma.
+		const width = inLocale( info.project.name, '8.25 in (1)' );
+		await filters.getByRole( 'button', { name: width } ).click();
 		await expect(
 			page.getByRole( 'radio', { name: /^Choose Builder test deck/ } )
 		).toHaveCount( 1 );
 		await expect(
-			filters.getByRole( 'button', { name: '8.25 in (1)' } )
+			filters.getByRole( 'button', { name: width } )
 		).toHaveAttribute( 'aria-pressed', 'true' );
 		expect(
 			new URL( page.url() ).searchParams.get( 'cbuild[_size]' )
@@ -1264,7 +1268,11 @@ test.describe( 'The phone bar', () => {
 			page,
 			context,
 			baseURL,
-		} ) => {
+		}, info ) => {
+			test.skip(
+				info.project.name === 'no-js',
+				"axe runs as a script in the page; the bar's colours are its stylesheet's, the same with JavaScript."
+			);
 			// The e2e theme mu-plugin answers these for this request alone (D-162).
 			const url = baseURL || 'http://localhost:8898';
 			await context.addCookies( [
@@ -1294,7 +1302,11 @@ test.describe( 'The phone bar', () => {
 			page,
 			context,
 			baseURL,
-		} ) => {
+		}, info ) => {
+			test.skip(
+				info.project.name === 'no-js' && theme === 'storefront',
+				"Storefront's hidden overflow is undone by the builder's script; without it the bar stays at the builder's end (D-163)."
+			);
 			await context.addCookies( [
 				{
 					name: 'cbuild_e2e_theme',
