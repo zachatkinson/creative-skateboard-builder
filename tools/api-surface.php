@@ -213,13 +213,18 @@ $cbuild_options = cbuild_api_class( $cbuild_root, 'CreativeBranding\\SkateboardB
 $cbuild_tables  = cbuild_api_class( $cbuild_root, 'CreativeBranding\\SkateboardBuilder\\Support\\Tables' );
 $cbuild_assets  = array_merge( cbuild_api_files( $cbuild_root . '/assets/src', '.ts' ), cbuild_api_files( $cbuild_root . '/assets/src', '.js' ) );
 $cbuild_blocks  = array();
+// Each block's attributes as its block.json gives them, by the block's name: a post saved with one keeps its
+// attributes, so a rename or a new type is a change to the public API (audit 17, milestone 6).
+$cbuild_block_attributes = array();
 foreach ( cbuild_api_files( $cbuild_root . '/assets/src', 'block.json' ) as $cbuild_block_file ) {
 	$cbuild_block = json_decode( (string) file_get_contents( $cbuild_block_file ), true );
 	if ( is_array( $cbuild_block ) && isset( $cbuild_block['name'] ) && is_string( $cbuild_block['name'] ) ) {
-		$cbuild_blocks[] = $cbuild_block['name'];
+		$cbuild_blocks[]                                   = $cbuild_block['name'];
+		$cbuild_block_attributes[ $cbuild_block['name'] ] = is_array( $cbuild_block['attributes'] ?? null ) ? $cbuild_block['attributes'] : array();
 	}
 }
 sort( $cbuild_blocks );
+ksort( $cbuild_block_attributes );
 
 $cbuild_tables_list = array_map( static fn( string $t ): string => cbuild_api_const( $cbuild_tables, 'PREFIX' ) . $t, cbuild_api_list( $cbuild_tables, 'all' ) );
 sort( $cbuild_tables_list );
@@ -247,8 +252,14 @@ $cbuild_surface = array(
 	'abilities'         => cbuild_api_matches( $cbuild_php, "/wp_register_ability\\(\\s*'([^']+)'/" ),
 	'cli_commands'      => cbuild_api_matches( $cbuild_php, "/WP_CLI::add_command\\(\\s*'([^']+)'/" ),
 	'blocks'            => $cbuild_blocks,
+	'block_attributes'  => $cbuild_block_attributes,
+	// The build link's parameters a shared link may carry, as BuildLink writes them; a slot's own key is the kit's.
+	// The builder's own keys start with an underscore and may change in any release.
+	'link_params'       => array_map( static fn( string $key ): string => 'cbuild[' . $key . ']', cbuild_api_matches( array( $cbuild_root . '/src/Front/BuildLink.php' ), "/\\\$query\\['([a-z][a-z0-9_]*)'\\]\\s*=/" ) ),
+	'css_classes'       => cbuild_api_list( $cbuild_options, 'cssClasses' ),
 	'dom_events'        => cbuild_api_matches( $cbuild_assets, "/'(cbuild:[a-z0-9-]+)'/" ),
-	'css_properties'    => cbuild_api_matches( cbuild_api_files( $cbuild_root . '/assets/src', '.scss' ), '/^\s*(--cbuild-[a-z0-9-]+):/m' ),
+	// Defined in the stylesheets, read there with var(), or set by the script: a theme may set any of them.
+	'css_properties'    => cbuild_api_matches( array_merge( cbuild_api_files( $cbuild_root . '/assets/src', '.scss' ), $cbuild_assets ), '/(?:^\s*|var\(|Property\(\s*\')(--cbuild-[a-z0-9-]+)/m' ),
 );
 
 // The kit's document schemas. The digest is of the decoded document with its keys sorted, so re-indenting a file
@@ -428,7 +439,7 @@ $cbuild_surface['cart_refusals'] = $cbuild_cart_refusals;
 
 // Groups that describe another group's items, or whose values are too plain a word to look for in the docs, and are
 // held by the snapshot alone.
-$cbuild_details = array( 'schema_digests', 'spec_kinds', 'severities', 'sources', 'message_values', 'cli_synopses', 'csv_columns', 'ability_schemas', 'rest_route_args', 'cart_item_fields' );
+$cbuild_details = array( 'block_attributes', 'schema_digests', 'spec_kinds', 'severities', 'sources', 'message_values', 'cli_synopses', 'csv_columns', 'ability_schemas', 'rest_route_args', 'cart_item_fields' );
 
 $cbuild_json     = json_encode( $cbuild_surface, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR ) . "\n";
 $cbuild_snapshot = $cbuild_root . '/tests/Fixtures/api-surface.json';

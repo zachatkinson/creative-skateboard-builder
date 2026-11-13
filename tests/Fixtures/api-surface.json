@@ -118,6 +118,25 @@
     "blocks": [
         "creative-skateboard-builder/builder"
     ],
+    "block_attributes": {
+        "creative-skateboard-builder/builder": {
+            "kit": {
+                "type": "integer",
+                "default": 0
+            }
+        }
+    },
+    "link_params": [
+        "cbuild[assembly]",
+        "cbuild[preset]",
+        "cbuild[step]"
+    ],
+    "css_classes": [
+        "cbuild-edit",
+        "cbuild-kit",
+        "cbuild-part",
+        "cbuild-quantity"
+    ],
     "dom_events": [
         "cbuild:added",
         "cbuild:pick"
@@ -125,6 +144,7 @@
     "css_properties": [
         "--cbuild-accent",
         "--cbuild-bar-height",
+        "--cbuild-bar-offset",
         "--cbuild-card-width",
         "--cbuild-control",
         "--cbuild-duration",

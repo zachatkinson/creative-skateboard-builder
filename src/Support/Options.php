@@ -94,6 +94,16 @@ final class Options {
 	public const CART_SLOT     = 'cbuild_slot';
 
 	/**
+	 * The classes the plugin puts in a shop's carts, which a theme or a cart drawer may style or group by
+	 * (docs/HOOKS.md, Cart): a kit's row, a part's row and its item data, a part's quantity in a classic cart, and a
+	 * kit's Edit build link. The script for the Cart and Checkout blocks writes the first two as `cbuild-<role>`.
+	 */
+	public const CLASS_KIT      = 'cbuild-kit';
+	public const CLASS_PART     = 'cbuild-part';
+	public const CLASS_QUANTITY = 'cbuild-quantity';
+	public const CLASS_EDIT     = 'cbuild-edit';
+
+	/**
 	 * Order item meta (spec: Data model, Order items). Hidden from customers by their underscore, and kept with the
 	 * shop's order records for good: a key is never renamed.
 	 */
@@ -270,6 +280,17 @@ final class Options {
 			'presets'  => self::META_KIT_PRESETS,
 			'assembly' => self::META_KIT_ASSEMBLY,
 		);
+	}
+
+	/**
+	 * Every class the plugin puts in a shop's carts.
+	 *
+	 * @since 0.6.0
+	 *
+	 * @return list<string>
+	 */
+	public static function cssClasses(): array {
+		return array( self::CLASS_KIT, self::CLASS_PART, self::CLASS_QUANTITY, self::CLASS_EDIT );
 	}
 
 	/**

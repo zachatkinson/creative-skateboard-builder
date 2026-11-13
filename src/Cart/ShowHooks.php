@@ -212,7 +212,7 @@ final class ShowHooks implements Hookable {
 		$data[] = array(
 			'key'     => __( 'Part of', 'creative-skateboard-builder' ),
 			'value'   => $value,
-			'display' => '<span class="cbuild-part">' . esc_html( $value ) . '</span>',
+			'display' => '<span class="' . Options::CLASS_PART . '">' . esc_html( $value ) . '</span>',
 			'raw_key' => Options::CART_SLOT,
 		);
 		return $data;
@@ -245,7 +245,7 @@ final class ShowHooks implements Hookable {
 			'key'     => __( 'Build', 'creative-skateboard-builder' ),
 			'value'   => $value,
 			// Named for its kit, so two builds in a cart give two links a screen reader tells apart (W8, P11).
-			'display' => '<a class="cbuild-edit" href="' . esc_url( $url ) . '" aria-label="' . esc_attr( $name ) . '">' . esc_html( $value ) . '</a>',
+			'display' => '<a class="' . Options::CLASS_EDIT . '" href="' . esc_url( $url ) . '" aria-label="' . esc_attr( $name ) . '">' . esc_html( $value ) . '</a>',
 			'raw_key' => 'cbuild_edit',
 		);
 		return $data;
@@ -292,7 +292,10 @@ final class ShowHooks implements Hookable {
 	 */
 	public function row( mixed $classes, mixed $item = null ): mixed {
 		$told = is_string( $classes ) && is_array( $item ) ? $this->told( $item ) : null;
-		return null === $told || ! is_string( $classes ) ? $classes : $classes . ' cbuild-' . $told['role'];
+		if ( null === $told || ! is_string( $classes ) ) {
+			return $classes;
+		}
+		return $classes . ' ' . ( Options::ROLE_KIT === $told['role'] ? Options::CLASS_KIT : Options::CLASS_PART );
 	}
 
 	/**
@@ -310,7 +313,7 @@ final class ShowHooks implements Hookable {
 		if ( null === $told || Options::ROLE_PART !== $told['role'] ) {
 			return $field;
 		}
-		return '<span class="cbuild-quantity">' . esc_html( number_format_i18n( Cast::int( $item['quantity'] ?? 0 ) ) ) . '</span>';
+		return '<span class="' . Options::CLASS_QUANTITY . '">' . esc_html( number_format_i18n( Cast::int( $item['quantity'] ?? 0 ) ) ) . '</span>';
 	}
 
 	/**

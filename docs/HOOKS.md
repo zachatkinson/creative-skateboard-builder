@@ -511,7 +511,14 @@ A kit's line raised past what the shop has of a part is refused as `cbuild_build
 
 **Item data.** A part's line has one more entry in `woocommerce_get_item_data`, and so in the Store API's `item_data`: Part of, with the kit's name and the slot's label. Its `raw_key` is `cbuild_slot`, and its `display` wraps the words in `<span class="cbuild-part">`. A theme or a cart drawer that prints a line's item data can group a build's parts by that class, as the Mini-Cart's styles do.
 
-**Classes.** In the Cart and Checkout blocks and a classic cart or checkout, a kit's row has the class `cbuild-kit` and a part's `cbuild-part`. In a classic cart a part's quantity is a number in `<span class="cbuild-quantity">`.
+**Classes.** A theme or a cart drawer may style these or group a build's lines by them:
+
+| Class | Since | Where |
+| --- | --- | --- |
+| `cbuild-kit` | 0.5.0 | A kit's row, in the Cart and Checkout blocks and a classic cart, checkout or mini-cart widget. |
+| `cbuild-part` | 0.5.0 | A part's row in the same places, and the Part of words in its item data. |
+| `cbuild-quantity` | 0.5.0 | In a classic cart, the `<span>` holding a part's quantity, a number with no field. |
+| `cbuild-edit` | 0.6.0 | A kit's Edit build link, in its item data. |
 
 **What the plugin loads.** A few style rules in the page, under the handle `cbuild-cart`, with the Mini-Cart, the Cart or Checkout block, or a classic cart or checkout page. With the Cart or Checkout block, also the script `cbuild-cart`, which answers `cartItemClass`, `itemName` and `showRemoveItemLink` in the namespace above and needs `wc-blocks-checkout`. Both only where the cart holds a build as the page is drawn.
 
@@ -641,6 +648,7 @@ The builder's stylesheet is the Builder block's `style` (`build/builder/style-in
 | `--cbuild-on-ground` | 0.6.0 | Words on the phone bar's ground | `--wp--preset--color--contrast`, then the builder's text where the browser can pick a ground that contrasts with it, else `CanvasText` |
 | `--cbuild-bar-height` | 0.6.0 | The phone bar's least height, which focus is kept clear of | `4.25rem` |
 | `--cbuild-duration` | 0.6.0 | How long each movement lasts: the chosen card settling, a part arriving in the picture, a step crossing over. The step's crossing is the page's view transition, which reads it on `:root`, so set it there too | `200ms` |
+| `--cbuild-bar-offset` | 0.6.0 | How far above the foot of the screen the phone bar sits, set on the page's root (below) | `0px` |
 | `--cbuild-ease` | 0.6.0 | How each movement eases, read as `--cbuild-duration` is | `cubic-bezier(0.2, 0, 0, 1)` |
 
 Nothing moves where the shopper asks for reduced motion.
