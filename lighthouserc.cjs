@@ -1,10 +1,14 @@
 /**
  * Lighthouse CI on the builder page in wp-env, median of three on the mobile profile (docs/AUDIT.md: Performance).
- * Until the Builder block ships (milestone 6) the page is the shop's front page with the plugin active, so the
- * budgets are already measured and a regression from the plugin's presence alone would show.
- * tools/lhci.sh runs it with minified assets and the shop open, as a shop serves the page (D-032).
+ * tools/lhci.sh points it at the shop fixture's builder page, a blank start with its presets and the first step's
+ * parts; run alone, it reads the front page. It runs it with minified assets and the shop open, as a shop serves
+ * the page (D-032), twice (D-165): on Twenty Twenty-Five, whose own web font moves the page as it arrives, with layout
+ * shift a warning; then on Kadence, which uses the system's fonts, with every limit an error, so the gate measures
+ * what the builder adds. The theme is asked for by the e2e theme mu-plugin's cookie.
  */
 const url = process.env.CBUILD_LHCI_URL || 'http://localhost:8898/';
+const theme = process.env.CBUILD_LHCI_THEME || '';
+const shift = 'warn' === process.env.CBUILD_LHCI_SHIFT ? 'warn' : 'error';
 
 module.exports = {
 	ci: {
@@ -15,6 +19,13 @@ module.exports = {
 				preset: 'perf',
 				onlyCategories: [ 'performance', 'seo' ],
 				chromeFlags: '--no-sandbox --headless=new',
+				...( theme
+					? {
+							extraHeaders: {
+								Cookie: `cbuild_e2e_theme=${ theme }`,
+							},
+						}
+					: {} ),
 			},
 		},
 		assert: {
@@ -24,7 +35,7 @@ module.exports = {
 					{ maxNumericValue: 2500, aggregationMethod: 'median' },
 				],
 				'cumulative-layout-shift': [
-					'error',
+					shift,
 					{ maxNumericValue: 0.1, aggregationMethod: 'median' },
 				],
 				'total-blocking-time': [
@@ -39,7 +50,7 @@ module.exports = {
 		},
 		upload: {
 			target: 'filesystem',
-			outputDir: 'tmp/lhci',
+			outputDir: theme ? `tmp/lhci/${ theme }` : 'tmp/lhci',
 		},
 	},
 };
