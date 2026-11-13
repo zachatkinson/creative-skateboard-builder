@@ -701,7 +701,8 @@ final class BuilderView {
 				'shown'   => ! $required,
 				'id'      => 'cbuild-' . $state->id . '-' . $slot . '-none',
 				'label'   => SlotKey::RISERS === $slot ? __( 'No risers', 'creative-skateboard-builder' ) : __( 'None', 'creative-skateboard-builder' ),
-				'checked' => ! isset( $counted[ $slot ] ),
+				// Checked only where it is offered: a hidden one would be the group's checked radio, and Safari tabs to that alone.
+				'checked' => ! $required && ! isset( $counted[ $slot ] ),
 				'delta'   => Words::delta( isset( $counted[ $slot ] ) ? 'less' : 'included', Cast::str( $line['amount'] ?? null ) ),
 			),
 			'back'      => array(

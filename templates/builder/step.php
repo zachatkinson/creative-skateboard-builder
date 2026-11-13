@@ -64,7 +64,7 @@ defined( 'ABSPATH' ) || exit;
 			<button class="cbuild-step__show" type="submit" data-wp-bind--hidden="!state.view.step.more.shown" data-wp-bind--name="state.view.step.more.name" data-wp-bind--value="state.view.step.more.value" data-wp-text="state.view.step.more.text"></button>
 		</p>
 		<p class="cbuild-step__leave" data-wp-bind--hidden="!state.view.step.leave.shown">
-			<input type="radio" value="0" data-wp-bind--id="state.view.step.leave.id" data-wp-bind--name="state.view.step.name" data-wp-bind--checked="state.view.step.leave.checked">
+			<input type="radio" value="0" data-wp-bind--id="state.view.step.leave.id" data-wp-bind--name="state.view.step.name" data-wp-bind--checked="state.view.step.leave.checked" data-wp-bind--disabled="!state.view.step.leave.shown">
 			<label data-wp-bind--for="state.view.step.leave.id"><span data-wp-text="state.view.step.leave.label"></span> <span class="cbuild-card__delta" data-wp-text="state.view.step.leave.delta"></span></label>
 		</p>
 		<details class="cbuild-hidden" data-wp-bind--hidden="!state.view.step.hidden.shown">

@@ -293,7 +293,8 @@ final class BuilderTest extends TestCase {
 		self::assertSame( array( 101, 102, 103 ), array_column( $step['options'], 'id' ) );
 		self::assertFalse( $step['empty'] );
 		self::assertFalse( $step['leave']['shown'], 'A deck is required.' );
-		self::assertTrue( $step['leave']['checked'] );
+		// A hidden None checked would be the group's checked radio: Safari's Tab then reaches no card at all.
+		self::assertFalse( $step['leave']['checked'], 'A step that offers no None has none checked.' );
 		self::assertSame( 'cbuild-77-deck-none', $step['leave']['id'] );
 		self::assertSame( 'None', $step['leave']['label'] );
 		self::assertSame(

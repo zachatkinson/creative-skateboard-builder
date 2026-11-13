@@ -1,6 +1,13 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { test, expect, answered, inLocale, Page } from './support/test';
+import {
+	test,
+	expect,
+	answered,
+	inLocale,
+	Page,
+	type Locator,
+} from './support/test';
 import { axe } from './support/axe';
 
 /**
@@ -963,6 +970,204 @@ test.describe( 'The builder with JavaScript', () => {
 			}
 		} );
 		expect( read ).toMatch( /private store|lock/i );
+	} );
+
+	test( 'passes axe on every state it shows (Accessibility: axe on every state)', async ( {
+		page,
+	}, info ) => {
+		const region = '.cbuild';
+		const check = ( state: string ) =>
+			axe( page, `${ info.project.name }: ${ state }`, region );
+
+		// The blank start: presets, the filters and the deck step.
+		await check( 'the blank start' );
+
+		// Filtered.
+		const filters = page.getByRole( 'group', { name: 'Width' } );
+		await filters
+			.getByRole( 'button', {
+				name: inLocale( info.project.name, '8.25 in (1)' ),
+			} )
+			.click();
+		await expect(
+			page.getByRole( 'radio', { name: /^Choose Builder test deck/ } )
+		).toHaveCount( 1 );
+		await check( 'a filtered step' );
+
+		// The error summary, asked past an empty step.
+		await page.goto( fixture().page );
+		await page
+			.locator( '.cbuild' )
+			.getByRole( 'button', { name: 'Next: Trucks' } )
+			.first()
+			.click();
+		await expect( page.locator( '.cbuild-errors' ) ).toBeFocused();
+		// Playwright's Firefox crashes in axe on this state once the store has drawn it, though the same state served
+		// passes there and passes in the other engines (issue #36, D-167).
+		if ( info.project.name.startsWith( 'firefox' ) ) {
+			test.info().annotations.push( {
+				type: 'quarantined',
+				description: 'axe on the error summary in Firefox: issue #36',
+			} );
+		} else {
+			await check( 'the error summary' );
+		}
+
+		// A later step, with the parts that do not fit under their disclosure, open.
+		await page.goto( linkTo( { deck: id( 'builder-test-deck-8-5' ) } ) );
+		const hidden = page.locator( '.cbuild-hidden' );
+		await hidden.locator( 'summary' ).click();
+		await expect( hidden.getByRole( 'link' ).first() ).toBeVisible();
+		await check( 'a step with picks and its hidden parts open' );
+
+		// The change panel.
+		await page.goto(
+			linkTo( {
+				deck: id( 'builder-test-deck-8-0' ),
+				trucks: id( 'builder-test-trucks-139' ),
+				step: 'deck',
+			} )
+		);
+		await page
+			.getByRole( 'radio', { name: 'Choose Builder test deck 8.5' } )
+			.check();
+		await page
+			.locator( '.cbuild' )
+			.getByRole( 'button', { name: 'Next: Trucks' } )
+			.first()
+			.click();
+		await expect(
+			page.locator( '.cbuild-changes' ).getByRole( 'heading', {
+				name: 'This change affects parts you chose',
+			} )
+		).toBeVisible();
+		await check( 'the change panel' );
+
+		// The review, from a preset, and the build added.
+		await page.goto( fixture().page );
+		await page
+			.locator( '.cbuild-presets' )
+			.getByRole( 'button', { name: 'Start from Street' } )
+			.click();
+		await expect( heading( page ) ).toHaveText( 'Step 7 of 7: Review' );
+		await check( 'the review' );
+		await page
+			.locator( '.cbuild' )
+			.getByRole( 'button', { name: 'Add to cart' } )
+			.first()
+			.click();
+		await expect( page.locator( '.cbuild-review__added' ) ).toBeVisible();
+		await check( 'the build added' );
+	} );
+} );
+
+test.describe( 'The keyboard alone', () => {
+	test.beforeEach( async ( { context, baseURL } ) => {
+		// The shop's cart and checkout pages are the classic ones, a form a page the keyboard walks without a script.
+		await context.addCookies( [
+			{
+				name: 'cbuild_e2e_classic',
+				value: '1',
+				url: baseURL || 'http://localhost:8898',
+			},
+		] );
+	} );
+
+	test( 'builds a board from a blank page and places its order (Accessibility: a keyboard-only build)', async ( {
+		page,
+		browserName,
+	} ) => {
+		// WebKit leaves links out of Tab's order unless Option is held, as Safari does.
+		const tab = browserName === 'webkit' ? 'Alt+Tab' : 'Tab';
+		const reach = async ( target: Locator, limit = 300 ) => {
+			for ( let i = 0; i < limit; i++ ) {
+				// A form sent without a script loads the next page; Tab waits for it, as a shopper would.
+				await page.waitForLoadState( 'load' );
+				const there = await target
+					.evaluateAll( ( found ) =>
+						found.some(
+							( element ) =>
+								element === element.ownerDocument.activeElement
+						)
+					)
+					.catch( () => false );
+				if ( there ) {
+					return;
+				}
+				await page.keyboard.press( tab );
+			}
+			throw new Error( `Tab never reached ${ String( target ) }.` );
+		};
+		const press = async ( target: Locator, key = 'Enter' ) => {
+			await reach( target );
+			await page.keyboard.press( key );
+		};
+
+		await page.goto( fixture().page );
+		await expect( heading( page ) ).toHaveText( 'Step 1 of 7: Deck' );
+		const decks = page.getByRole( 'radio', {
+			name: /^Choose Builder test deck/,
+		} );
+		await press( decks, 'Space' );
+		await expect( decks.and( page.locator( ':checked' ) ) ).toHaveCount(
+			1
+		);
+
+		const builder = page.locator( '.cbuild' );
+		for ( let step = 0; step < 12; step++ ) {
+			const now = ( await heading( page ).textContent() ) ?? '';
+			if ( now.endsWith( ': Review' ) ) {
+				break;
+			}
+			await press( builder.getByRole( 'button', { name: /^Next: / } ) );
+			await expect( heading( page ) ).not.toHaveText( now );
+		}
+		await expect( heading( page ) ).toHaveText( /: Review$/ );
+
+		await press( builder.getByRole( 'button', { name: 'Add to cart' } ) );
+		await press(
+			// The builder's own link with a script; without one, WooCommerce's notice over the page has it.
+			page.getByRole( 'link', { name: /^View cart/ } )
+		);
+		await expect( page ).toHaveURL( /cart-test-classic-cart/ );
+		// By its class: its words are WooCommerce's, in the shop's language.
+		await press( page.locator( 'a.checkout-button' ) );
+		await expect( page ).toHaveURL( /cart-test-classic-checkout/ );
+
+		for ( const [ field, value ] of Object.entries( {
+			billing_first_name: 'Sam',
+			billing_last_name: 'Shopper',
+			billing_address_1: '1 Test Street',
+			billing_city: 'Testville',
+			billing_postcode: '90210',
+			billing_phone: '5550100',
+			billing_email: 'shopper+2@example.com',
+		} ) ) {
+			// WooCommerce covers the form while it works the totals out again; a shopper waits for it.
+			await expect(
+				page.locator( '.woocommerce-checkout .blockUI' )
+			).toHaveCount( 0 );
+			const input = page.locator( `#${ field }` );
+			await reach( input );
+			await expect( input ).toBeFocused();
+			// At a person's pace: selectWoo opens the country's list a moment after Tab passes it, and at machine speed
+			// the keys land in its search instead.
+			await page.keyboard.type( value, { delay: 30 } );
+			await expect( input ).toHaveValue( value );
+		}
+		await expect(
+			page.locator( '.woocommerce-checkout .blockUI' )
+		).toHaveCount( 0 );
+		const cheque = page.locator( '#payment_method_cheque' );
+		if ( ! ( await cheque.isChecked() ) ) {
+			await press( cheque, 'Space' );
+		}
+		await press( page.locator( '#place_order' ) );
+
+		await page.waitForURL( /order-received/ );
+		await expect(
+			page.locator( '.woocommerce-table--order-details' )
+		).toContainText( 'Builder test kit' );
 	} );
 } );
 

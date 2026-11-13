@@ -2281,3 +2281,13 @@ The audit of milestone 6 (both reviews, blocker): the spec's The total says "Wit
 D-143's "not yet here" is answered by this.
 
 **Status:** Accepted.
+
+### D-167 · axe on the error summary quarantined in Firefox · 2026-11-12
+
+The audit of milestone 6 (blocker): axe was to read every state the builder shows. In Playwright 1.65's Firefox, at desktop and phone width, the page crashes (`frame.evaluate: Page crashed`) when axe reads the error summary the store has drawn: Next pressed on an empty deck step.
+
+- **Not the builder's markup.** The same state served by the server passes axe in Firefox. Chromium and WebKit pass axe on the drawn state with no violations. The presets' markup in the two differs only in the order of the attributes the Interactivity API wrote on the inputs it re-created.
+- **What was ruled out.** Motion (the same under reduced motion), the scroll and the viewport (the same in view, and 2400 px tall), and the browser's own calls axe makes on the button it crashes over (`elementsFromPoint`, `getClientRects`, a range's rects, computed style), none of which crash alone. Six rules crash it each alone, all over `.cbuild-preset__start`.
+- **The quarantine.** Firefox skips axe on that one state, with an annotation. Every other state, in every engine, and that state in Chromium and WebKit, is still read. Issue #36 holds it, to close when a Playwright or axe-core release no longer crashes.
+
+**Status:** Accepted.
