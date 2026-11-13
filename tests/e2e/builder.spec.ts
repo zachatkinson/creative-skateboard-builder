@@ -1186,6 +1186,58 @@ test.describe( 'The builder with JavaScript', () => {
 		expect( Math.max( 0, ...durations ) ).toBeLessThanOrEqual( 100 );
 	} );
 
+	// Audit, spec review S5. The Quality bar's Privacy: "no cookie of the plugin's own; no request to another host",
+	// held by the browser suite as well as the integration suite.
+	test( 'asks no other host and sets no cookie of its own, from a blank page to the cart (Privacy)', async ( {
+		page,
+		context,
+	} ) => {
+		await context.clearCookies();
+		const origin = new URL( fixture().page ).origin;
+		const hosts = new Set< string >();
+		page.on( 'request', ( request ) => {
+			const url = new URL( request.url() );
+			if ( url.protocol.startsWith( 'http' ) ) {
+				hosts.add( url.origin );
+			}
+		} );
+		await page.goto( fixture().page );
+		await page.waitForLoadState( 'load' );
+		await page
+			.getByRole( 'radio', { name: 'Choose Builder test deck 8.0' } )
+			.check();
+		await page.getByRole( 'button', { name: 'Next: Trucks' } ).click();
+		await expect( heading( page ) ).toHaveText( 'Step 2 of 7: Trucks' );
+		await page.goto( fixture().page );
+		await page
+			.locator( '.cbuild-presets' )
+			.getByRole( 'button', { name: 'Start from Street' } )
+			.click();
+		await expect( heading( page ) ).toHaveText( 'Step 7 of 7: Review' );
+		await page
+			.locator( '.cbuild' )
+			.getByRole( 'button', { name: 'Add to cart' } )
+			.click();
+		await expect( page.locator( '.cbuild-review__added' ) ).toContainText(
+			'The build is in your cart.'
+		);
+
+		expect( [ ...hosts ] ).toEqual( [ origin ] );
+		// WordPress's and WooCommerce's own, which the cart needs; none is the plugin's.
+		const theirs =
+			/^(wp_woocommerce_session_|woocommerce_items_in_cart$|woocommerce_cart_hash$|wordpress_test_cookie$|sbjs_)/;
+		const names = ( await context.cookies() ).map(
+			( cookie ) => cookie.name
+		);
+		expect(
+			names.filter( ( name ) => ! theirs.test( name ) ),
+			names.join( ', ' )
+		).toEqual( [] );
+		expect(
+			names.filter( ( name ) => /cbuild|skateboard/i.test( name ) )
+		).toEqual( [] );
+	} );
+
 	test( 'keeps its store private', async ( { page } ) => {
 		const read = await page.evaluate( async () => {
 			const name = '@wordpress/interactivity';
