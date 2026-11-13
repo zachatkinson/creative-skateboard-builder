@@ -312,9 +312,60 @@ export interface CbuildState {
 	 */
 	notes: string[];
 	/**
-	 * Only in an answer to a build link (the cbuild argument): what the builder's template draws for it, as the page's first render has it. The builder's own, and no part of the public API: it may change in any release.
+	 * Only in an answer to a build link (the cbuild argument): what the builder's template draws for it, as the page's first render has it. The builder's own, and no part of the public API: it may change in any release. The fields the store's script reads are described, so its types are generated from here; the rest are the templates'.
 	 */
-	view?: {};
+	view?: {
+		/**
+		 * The view's own address, which the store puts in the page's.
+		 */
+		url: string;
+		/**
+		 * The kit product's ID.
+		 */
+		kit: number;
+		/**
+		 * The step's heading, which the store puts in the page's title.
+		 */
+		title: string;
+		/**
+		 * What the status region says of the view.
+		 */
+		status: string;
+		/**
+		 * Whether the change panel is shown.
+		 */
+		isChanges: boolean;
+		errors: {
+			/**
+			 * Whether the error summary is shown.
+			 */
+			shown: boolean;
+			[k: string]: unknown;
+		};
+		step: {
+			/**
+			 * The step's slot, or empty at the review.
+			 */
+			slot: string;
+			/**
+			 * The step's listed parts.
+			 */
+			options: {}[];
+			[k: string]: unknown;
+		};
+		review: {
+			/**
+			 * The build's shared link.
+			 */
+			link: string;
+			/**
+			 * What the status says once the link is copied.
+			 */
+			copied: string;
+			[k: string]: unknown;
+		};
+		[k: string]: unknown;
+	};
 }
 /**
  * A photo at the catalogue's size.

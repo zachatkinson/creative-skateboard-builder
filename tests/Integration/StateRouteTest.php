@@ -212,8 +212,12 @@ final class StateRouteTest extends IntegrationTestCase {
 				}
 				$node = array_map( $resolve, $node );
 				if ( isset( $node['properties'] ) && is_array( $node['properties'] ) && isset( $node['type'] ) ) {
-					self::assertArrayNotHasKey( 'additionalProperties', $node, 'The published schema closes no object.' );
-					$node['additionalProperties'] = false;
+					self::assertNotFalse( $node['additionalProperties'] ?? null, 'The published schema closes no object.' );
+					// Closed here, so an answer with a field the schema does not describe fails; but for the view, which
+					// says it is open: only the fields the store reads are described, the rest are the templates' (S9).
+					if ( true !== ( $node['additionalProperties'] ?? null ) ) {
+						$node['additionalProperties'] = false;
+					}
 				}
 				return $node;
 			};
