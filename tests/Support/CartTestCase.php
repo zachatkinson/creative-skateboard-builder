@@ -156,7 +156,7 @@ abstract class CartTestCase extends IntegrationTestCase {
 	/**
 	 * The cart's lines as the plugin's keys tell them: each kit's line with its build, and its parts by slot.
 	 *
-	 * @return list<array{build: Build, quantity: int, price: string, parts: array<string, array{int, int}>}>
+	 * @return list<array{key: string, build: Build, quantity: int, price: string, parts: array<string, array{int, int}>}>
 	 */
 	protected static function builds(): array {
 		$cart   = WC()->cart->get_cart();
@@ -172,6 +172,7 @@ abstract class CartTestCase extends IntegrationTestCase {
 				$parts[ $cart[ $child ][ Options::CART_SLOT ] ] = array( $cart[ $child ]['product_id'], $cart[ $child ]['quantity'] );
 			}
 			$builds[] = array(
+				'key'      => $key,
 				'build'    => $build,
 				'quantity' => $item['quantity'],
 				'price'    => $item['data']->get_price(),

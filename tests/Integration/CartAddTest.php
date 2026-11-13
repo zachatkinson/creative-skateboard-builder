@@ -125,6 +125,115 @@ final class CartAddTest extends CartTestCase {
 		self::assertNotSame( $builds[1]->id, $after[1]->id );
 	}
 
+	public function test_an_edited_build_keeps_the_quantity_the_cart_held_of_the_one_it_replaces_by_both_routes(): void {
+		$body = array(
+			'id'     => $this->kit,
+			'cbuild' => array( 'picks' => $this->picks() ),
+		);
+		self::assertSame( 201, $this->store( $body )->get_status() );
+		$old = self::builds()[0];
+		WC()->cart->set_quantity( $old['key'], 3 );
+
+		$response = $this->store(
+			array(
+				'id'     => $this->kit,
+				'cbuild' => array(
+					'picks'    => $this->picks(),
+					'assembly' => true,
+					'replace'  => $old['build']->id,
+				),
+			)
+		);
+		self::assertSame( 201, $response->get_status(), (string) wp_json_encode( $response->get_data() ) );
+		$builds = self::builds();
+		self::assertCount( 1, $builds );
+		self::assertSame( 3, $builds[0]['quantity'], 'the review sends 1; the cart held 3, and keeps 3 (D-157)' );
+		foreach ( $builds[0]['parts'] as $slot => [ , $quantity ] ) {
+			self::assertSame( 3 * $builds[0]['build']->quantities[ $slot ], $quantity, "each part at what three builds take of it: $slot" );
+		}
+
+		$this->form(
+			array(
+				'picks'   => $this->picks(),
+				'replace' => $builds[0]['build']->id,
+			)
+		);
+		self::assertSame( array(), self::errors() );
+		$after = self::builds();
+		self::assertCount( 1, $after );
+		self::assertSame( 3, $after[0]['quantity'], 'the form keeps it as the Store API does' );
+	}
+
+	public function test_an_edited_build_whose_parts_the_old_one_holds_the_last_of_is_taken(): void {
+		self::assertSame(
+			201,
+			$this->store(
+				array(
+					'id'     => $this->kit,
+					'cbuild' => array( 'picks' => $this->picks() ),
+				)
+			)->get_status()
+		);
+		$old = self::builds()[0];
+		WC()->cart->set_quantity( $old['key'], 2 );
+		$deck = wc_get_product( $this->parts['deck'] );
+		$deck->set_manage_stock( true );
+		$deck->set_stock_quantity( 2 );
+		$deck->save();
+
+		$response = $this->store(
+			array(
+				'id'     => $this->kit,
+				'cbuild' => array(
+					'picks'    => $this->picks(),
+					'assembly' => true,
+					'replace'  => $old['build']->id,
+				),
+			)
+		);
+		self::assertSame( 201, $response->get_status(), 'the two decks the old build holds are the new one\'s once it goes: ' . wp_json_encode( $response->get_data() ) );
+		$builds = self::builds();
+		self::assertCount( 1, $builds );
+		self::assertTrue( $builds[0]['build']->assembly );
+		self::assertSame( 2, $builds[0]['quantity'] );
+	}
+
+	public function test_an_edited_build_with_a_part_woocommerce_will_not_add_puts_the_old_one_back_whole(): void {
+		self::assertSame(
+			201,
+			$this->store(
+				array(
+					'id'     => $this->kit,
+					'cbuild' => array( 'picks' => $this->picks() ),
+				)
+			)->get_status()
+		);
+		$old = self::builds()[0];
+		WC()->cart->set_quantity( $old['key'], 2 );
+		$before = self::builds();
+		$wheels = $this->parts['wheels'];
+		add_action(
+			'woocommerce_add_to_cart',
+			static function () use ( $wheels ): void {
+				add_filter( 'woocommerce_is_purchasable', static fn( $purchasable, $product ) => $wheels === $product->get_id() ? false : $purchasable, 99, 2 );
+			},
+			5
+		);
+
+		$response = $this->store(
+			array(
+				'id'     => $this->kit,
+				'cbuild' => array(
+					'picks'   => $this->picks(),
+					'replace' => $old['build']->id,
+				),
+			)
+		);
+		remove_all_filters( 'woocommerce_is_purchasable', 99 );
+		self::assertSame( 'cbuild_not_added', $response->get_data()['code'] ?? null );
+		self::assertEquals( $before, self::builds(), 'the old build, its parts and its quantity, as they were' );
+	}
+
 	public function test_an_edited_build_the_cart_refuses_leaves_the_one_it_came_from_in_the_cart(): void {
 		self::assertSame(
 			201,

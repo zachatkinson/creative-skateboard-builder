@@ -320,7 +320,7 @@ final class BuildCartTest extends TestCase {
 		return array( $key, $build );
 	}
 
-	public function test_an_edited_build_is_added_first_and_then_the_one_it_replaces_is_taken_out(): void {
+	public function test_an_edited_build_takes_the_place_of_the_one_it_replaces(): void {
 		$loose               = $this->cart->put( 103 );
 		[ $kept ]            = $this->inCart();
 		[ $old, $was ]       = $this->inCart();
@@ -356,7 +356,10 @@ final class BuildCartTest extends TestCase {
 		$key                 = $this->cart->put( self::KIT, 1, $new->toArray() );
 		$this->cart->refuses = array( 301 );
 		self::assertSame( CartRefusal::NotAdded, $this->builds->attach( $key ) );
-		self::assertSame( $before, $this->cart->lines() );
+		$after = $this->cart->lines();
+		ksort( $before );
+		ksort( $after );
+		self::assertSame( $before, $after, 'every line as it was; put back at the end, as the cart\'s Undo puts a line back (D-157)' );
 		self::assertArrayHasKey( $old, $this->cart->lines() );
 	}
 
