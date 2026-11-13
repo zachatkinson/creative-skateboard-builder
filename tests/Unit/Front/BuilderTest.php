@@ -459,7 +459,7 @@ final class BuilderTest extends TestCase {
 		self::assertSame( 'Step 1 of 7: Deck', $view['heading'] );
 		self::assertSame( 'Error: Step 1 of 7: Deck', $view['title'] );
 		self::assertTrue( $view['errors']['shown'] );
-		self::assertSame( 'This build needs a look before it can go on', $view['errors']['heading'] );
+		self::assertSame( 'Fix these before going on', $view['errors']['heading'], 'The heading says what to do; each item names its problem (audit minor 27).' );
 		self::assertSame(
 			array(
 				array(

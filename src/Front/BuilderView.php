@@ -161,7 +161,7 @@ final class BuilderView {
 			'status'    => $status,
 			'errors'    => array(
 				'shown'   => array() !== $errors,
-				'heading' => __( 'This build needs a look before it can go on', 'creative-skateboard-builder' ),
+				'heading' => __( 'Fix these before going on', 'creative-skateboard-builder' ),
 				'items'   => $errors,
 			),
 			'progress'  => $progress,
