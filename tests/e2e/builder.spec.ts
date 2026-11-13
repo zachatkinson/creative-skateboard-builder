@@ -613,6 +613,11 @@ test.describe( 'The builder with JavaScript', () => {
 		await page
 			.getByRole( 'radio', { name: 'Choose Builder test deck 8.0' } )
 			.check();
+		// As a shopper would, Next is pressed once the pick's answer has redrawn the bar: pressed as it landed, the
+		// bar grew under a slow runner's click and the click missed.
+		await expect
+			.poll( () => build( page ) )
+			.toEqual( [ 'cbuild[deck]', 'cbuild[step]' ] );
 		await page.getByRole( 'button', { name: 'Next: Trucks' } ).click();
 		await expect( heading( page ) ).toHaveText( 'Step 2 of 7: Trucks' );
 		expect( await stayed( page ), 'the store moved' ).toBe( true );
@@ -933,6 +938,14 @@ test.describe( 'The builder with JavaScript', () => {
 		);
 		await page.waitForLoadState( 'load' );
 		await mark( page );
+		// The pick's own answer opens the panel too (D-152), and "Use these" then stays at the deck. Held, the pick is
+		// overtaken by Next, as a quick shopper's press does; unheld, on a slow runner the pick's panel came first and
+		// hid the button the click was waiting for.
+		// The pick asks for the step it is on; Next, from the same form, for the next.
+		const picking = ( url: URL ) =>
+			url.pathname.endsWith( '/state' ) &&
+			url.searchParams.get( 'cbuild[step]' ) === 'deck';
+		await page.route( picking, () => undefined );
 		await page
 			.getByRole( 'radio', { name: 'Choose Builder test deck 8.5' } )
 			.check();
@@ -943,6 +956,7 @@ test.describe( 'The builder with JavaScript', () => {
 			name: 'This change affects parts you chose',
 		} );
 		await expect( title ).toBeVisible();
+		await page.unroute( picking );
 		await expect( title ).toBeFocused();
 		await expect( page.locator( '.cbuild [role="status"]' ) ).toHaveText(
 			'1 part no longer fits.'
@@ -1451,6 +1465,13 @@ test.describe( 'The keyboard alone', () => {
 		await expect( heading( page ) ).toHaveText( /: Review$/ );
 
 		await press( builder.getByRole( 'button', { name: 'Add to cart' } ) );
+		if ( test.info().project.name !== 'no-js' ) {
+			// A shopper waits for the confirmation before moving on; the add's notice then has focus, so the next Tab
+			// reaches its link. Tabbing on during the request walks focus out of the builder, where the add leaves it.
+			await expect(
+				builder.locator( '.cbuild-review__added' )
+			).toBeFocused();
+		}
 		await press(
 			// The builder's own link with a script; without one, WooCommerce's notice over the page has it.
 			page.getByRole( 'link', { name: /^View cart/ } )
@@ -1850,7 +1871,8 @@ test.describe( "A kit's own page", () => {
 					)
 					.filter( { hasText: '$' } )
 			).toHaveCount( 0 );
-			// The steps and the summary side by side, as on a wide builder anywhere.
+			// The steps and the summary side by side, as on a wide builder anywhere: the summary after the steps, to
+			// their right, or to their left in a right-to-left language.
 			const steps = await page
 				.locator( '.cbuild-step' )
 				.first()
@@ -1859,9 +1881,17 @@ test.describe( "A kit's own page", () => {
 				.locator( '.cbuild-summary' )
 				.first()
 				.boundingBox();
-			expect( summary?.x ?? 0 ).toBeGreaterThan(
-				( steps?.x ?? 0 ) + ( steps?.width ?? 0 ) / 2
+			const centre = ( box: typeof steps ) =>
+				( box?.x ?? 0 ) + ( box?.width ?? 0 ) / 2;
+			const rtl = await page.evaluate(
+				() =>
+					getComputedStyle( document.documentElement ).direction ===
+					'rtl'
 			);
+			expect(
+				( centre( summary ) - centre( steps ) ) * ( rtl ? -1 : 1 ),
+				'the summary beside the steps, after them'
+			).toBeGreaterThan( ( steps?.width ?? 0 ) / 2 );
 		} );
 	}
 
