@@ -37,6 +37,16 @@ final class PageHooks implements Hookable {
 	public const string BLOCK = 'creative-skateboard-builder/builder';
 
 	/**
+	 * A kit's own page (D-174). The server leaves out a classic template's gallery, and these widen its summary
+	 * column; a block template's gallery column is hidden and the builder's widened. Each rule outweighs the theme's
+	 * own column rule, and a block column's width is an inline style, which only `!important` outweighs. They are
+	 * the theme's and WooCommerce's classes, so they go with the kit's page alone, not in the builder's stylesheet.
+	 */
+	private const KIT_PAGE = 'body.cbuild-kit-page div.product div.summary.entry-summary{float:none;clear:both;inline-size:auto;max-inline-size:none;margin-inline:0}'
+		. '.cbuild-kit-page .wp-block-columns:has(.cbuild)>.wp-block-column:has(.wp-block-woocommerce-product-image-gallery){display:none}'
+		. '.cbuild-kit-page .wp-block-columns:has(.cbuild)>.wp-block-column:has(.cbuild){flex-basis:100%!important}';
+
+	/**
 	 * The renderer, once made.
 	 *
 	 * @var BuilderPage|null
@@ -73,6 +83,8 @@ final class PageHooks implements Hookable {
 		// src/Blocks/BlockTypes/AddToCartForm.php:227. Each fires `woocommerce_<type>_add_to_cart`.
 		add_action( 'woocommerce_' . Options::PRODUCT_TYPE_KIT . '_add_to_cart', array( $this, 'kitPage' ), 10, 0 );
 		add_action( 'template_redirect', array( $this, 'toBuilder' ), 10, 0 );
+		// Once the query is known and before the template: the kit's own page makes room for its builder.
+		add_action( 'wp', array( $this, 'kitLayout' ), 10, 0 );
 		// After an SEO plugin's own, such as Yoast SEO's at 15, whose title it keeps (D-149).
 		add_filter( 'pre_get_document_title', array( $this, 'title' ), 20, 1 );
 	}
@@ -105,6 +117,46 @@ final class PageHooks implements Hookable {
 		}
 		$around = PageTitle::around( PageTitle::base() );
 		return esc_html( $around['before'] . $step . $around['after'] );
+	}
+
+	/**
+	 * A kit's own page, where its builder is: the builder takes the content's width (Cowork's review, should-fix 2,
+	 * D-174). A kit has no photo of its own, so a classic template's gallery and sale badge go, and the price under
+	 * its title, which is the assembly fee and read as the board's (should-fix 3). The body class lets the page's
+	 * styles widen the summary column, or a block template's column, and the builder's stylesheet goes in the head
+	 * with them, so that nothing moves as the builder arrives.
+	 *
+	 * @since 0.6.0
+	 */
+	public function kitLayout(): void {
+		if ( ! is_singular( 'product' ) ) {
+			return;
+		}
+		$kit = $this->place->kit( get_queried_object_id(), 'product' );
+		if ( $kit < 1 || null !== $this->elsewhere() ) {
+			return;
+		}
+		// WooCommerce 11.3.0, includes/wc-template-hooks.php:40, :127 and :153.
+		remove_action( 'woocommerce_before_single_product_summary', 'woocommerce_show_product_sale_flash', 10 );
+		remove_action( 'woocommerce_before_single_product_summary', 'woocommerce_show_product_images', 20 );
+		remove_action( 'woocommerce_single_product_summary', 'woocommerce_template_single_price', 10 );
+		add_filter(
+			'body_class',
+			static function ( mixed $classes ): mixed {
+				return is_array( $classes ) ? array( ...$classes, 'cbuild-kit-page' ) : $classes;
+			}
+		);
+		// A block template prints the price through the Product Price block, which asks the product the same.
+		add_filter(
+			'woocommerce_get_price_html',
+			static function ( mixed $html, mixed $product = null ) use ( $kit ): mixed {
+				return $product instanceof WC_Product && $kit === $product->get_id() ? '' : $html;
+			},
+			10,
+			2
+		);
+		wp_enqueue_style( BuilderPage::STYLE );
+		wp_add_inline_style( BuilderPage::STYLE, self::KIT_PAGE );
 	}
 
 	/**

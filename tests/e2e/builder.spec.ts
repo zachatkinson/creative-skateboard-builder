@@ -1809,6 +1809,86 @@ test.describe( 'Motion', () => {
 	} );
 } );
 
+// Cowork's review, should-fix 2, 3 and 9, minor 23 (D-174): on a classic theme's product template the builder had
+// the summary column beside the gallery's placeholder, the assembly fee stood under the kit's title as its price, and
+// under Kadence the filters' drawer heading showed on a desktop and the filters took its primary button colour.
+test.describe( "A kit's own page", () => {
+	for ( const theme of [ 'kadence', 'storefront', 'twentytwentyfive' ] ) {
+		test( `gives the builder the content's width on ${ theme }, with no gallery and no price under the title`, async ( {
+			page,
+			context,
+			baseURL,
+		} ) => {
+			const url = baseURL || 'http://localhost:8898';
+			await context.addCookies( [
+				{ name: 'cbuild_e2e_theme', value: theme, url },
+			] );
+			await page.setViewportSize( { width: 1280, height: 900 } );
+			await page.goto( '/product/cart-test-kit/' );
+			const builder = page.locator( '.cbuild' ).first();
+			await expect( builder ).toBeVisible();
+			const width = ( await builder.boundingBox() )?.width ?? 0;
+			// The theme's main column, which on Storefront sits beside its sidebar.
+			const main =
+				( await page.locator( 'main' ).first().boundingBox() )?.width ??
+				0;
+			expect(
+				width,
+				'the builder has the content, not a column of it'
+			).toBeGreaterThan( main * 0.85 );
+			await expect(
+				page
+					.locator(
+						'.woocommerce-product-gallery, .wp-block-woocommerce-product-image-gallery'
+					)
+					.filter( { visible: true } )
+			).toHaveCount( 0 );
+			await expect(
+				page
+					.locator(
+						'.summary > .price, .wp-block-column:has(.cbuild) .wp-block-woocommerce-product-price'
+					)
+					.filter( { hasText: '$' } )
+			).toHaveCount( 0 );
+			// The steps and the summary side by side, as on a wide builder anywhere.
+			const steps = await page
+				.locator( '.cbuild-step' )
+				.first()
+				.boundingBox();
+			const summary = await page
+				.locator( '.cbuild-summary' )
+				.first()
+				.boundingBox();
+			expect( summary?.x ?? 0 ).toBeGreaterThan(
+				( steps?.x ?? 0 ) + ( steps?.width ?? 0 ) / 2
+			);
+		} );
+	}
+
+	test( "keeps the filters' drawer heading out of a desktop, and draws the filters second to Next, under Kadence", async ( {
+		page,
+		context,
+		baseURL,
+	} ) => {
+		const url = baseURL || 'http://localhost:8898';
+		await context.addCookies( [
+			{ name: 'cbuild_e2e_theme', value: 'kadence', url },
+		] );
+		await page.setViewportSize( { width: 1280, height: 900 } );
+		await page.goto( fixture().page );
+		await expect( page.locator( '.cbuild-filters__heading' ) ).toBeHidden();
+		const filter = page.locator( '.cbuild-filters__option' ).first();
+		await expect( filter ).toBeVisible();
+		const action = page.locator( '.cbuild-step__next' ).first();
+		const ground = ( locator: typeof filter ) =>
+			locator.evaluate(
+				( element ) => getComputedStyle( element ).backgroundColor
+			);
+		expect( await ground( filter ) ).toBe( 'rgba(0, 0, 0, 0)' );
+		expect( await ground( action ) ).not.toBe( 'rgba(0, 0, 0, 0)' );
+	} );
+} );
+
 test.describe( 'The phone bar', () => {
 	const PHONE = { width: 390, height: 700 };
 

@@ -619,6 +619,43 @@ final class BuilderPageTest extends IntegrationTestCase {
 		self::assertSame( get_permalink( $this->kit ), BuilderUrl::of( $this->kit ), 'An answer that is no address is none.' );
 	}
 
+	public function test_a_kits_own_page_gives_the_builder_the_width_with_no_gallery_and_no_price_under_its_title(): void {
+		// Cowork's review, should-fix 2 and 3: on a classic theme the builder had the summary column beside the
+		// gallery's placeholder, and the assembly fee stood under the kit's title as the board's price.
+		$hooks = new PageHooks( fn(): BuilderPage => $this->page(), $this->service( \CreativeBranding\SkateboardBuilder\Front\BuilderPlace::class ) );
+		$this->go_to( get_permalink( $this->kit ) );
+		$hooks->kitLayout();
+
+		self::assertFalse( has_action( 'woocommerce_before_single_product_summary', 'woocommerce_show_product_images' ) );
+		self::assertFalse( has_action( 'woocommerce_before_single_product_summary', 'woocommerce_show_product_sale_flash' ) );
+		self::assertFalse( has_action( 'woocommerce_single_product_summary', 'woocommerce_template_single_price' ) );
+		self::assertContains( 'cbuild-kit-page', get_body_class() );
+		// phpcs:disable WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- WooCommerce's own.
+		self::assertSame( '', apply_filters( 'woocommerce_get_price_html', '<span>$15.00</span>', wc_get_product( $this->kit ) ), 'a block theme\'s price block asks the same' );
+		self::assertSame( '<span>$9</span>', apply_filters( 'woocommerce_get_price_html', '<span>$9</span>', wc_get_product( $this->parts['deck 8.0'] ) ), 'a part in the related products keeps its price' );
+		// phpcs:enable
+		self::assertTrue( wp_style_is( BuilderPage::STYLE, 'enqueued' ), 'the layout is in the head, so nothing moves as the builder arrives' );
+		self::assertStringContainsString( 'body.cbuild-kit-page div.product div.summary', implode( '', (array) wp_styles()->get_data( BuilderPage::STYLE, 'after' ) ) );
+
+		remove_all_actions( 'body_class' );
+		add_action( 'woocommerce_before_single_product_summary', 'woocommerce_show_product_images', 20 );
+		add_action( 'woocommerce_before_single_product_summary', 'woocommerce_show_product_sale_flash', 10 );
+		add_action( 'woocommerce_single_product_summary', 'woocommerce_template_single_price', 10 );
+		remove_all_filters( 'woocommerce_get_price_html' );
+		wp_dequeue_style( BuilderPage::STYLE );
+		$this->go_to( get_permalink( $this->parts['deck 8.0'] ) );
+		$hooks->kitLayout();
+		self::assertSame( 20, has_action( 'woocommerce_before_single_product_summary', 'woocommerce_show_product_images' ), 'a product that is no kit keeps its page' );
+		self::assertNotContains( 'cbuild-kit-page', get_body_class() );
+
+		$page = self::factory()->post->create( array( 'post_type' => 'page' ) );
+		add_filter( 'cbuild_builder_url', static fn(): string => (string) get_permalink( $page ) );
+		$this->go_to( get_permalink( $this->kit ) );
+		$hooks->kitLayout();
+		remove_all_filters( 'cbuild_builder_url' );
+		self::assertSame( 20, has_action( 'woocommerce_before_single_product_summary', 'woocommerce_show_product_images' ), 'nor does a kit whose builder is elsewhere' );
+	}
+
 	public function test_the_kits_page_sends_a_visitor_to_the_builders_page_with_the_build(): void {
 		$hooks = new PageHooks( fn(): BuilderPage => $this->page(), $this->service( \CreativeBranding\SkateboardBuilder\Front\BuilderPlace::class ) );
 		$this->go_to( get_permalink( $this->kit ) );
