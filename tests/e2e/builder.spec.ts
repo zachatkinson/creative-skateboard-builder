@@ -746,18 +746,23 @@ test.describe( 'The builder with JavaScript', () => {
 			await route.continue();
 		} );
 		const total = page.locator( '.cbuild-summary__total' );
-		await page
-			.getByRole( 'radio', { name: 'Choose Builder test deck 8.0' } )
-			.check();
-		// Read in the page, so that the test's own round trips do not move the moments.
-		const seen = await total.evaluate( ( element ) => {
-			const opacity = () => getComputedStyle( element ).opacity;
+		const deck = page.getByRole( 'radio', {
+			name: 'Choose Builder test deck 8.0',
+		} );
+		await expect( deck ).toBeVisible();
+		// Picked and read in the page, so that the test's own round trips do not move the moments: a slow runner's
+		// took longer than 300 ms between a check() and the first reading, which then saw the pending state.
+		const seen = await deck.evaluate( ( input, selector ) => {
+			const element = document.querySelector( selector );
+			const opacity = () =>
+				element ? getComputedStyle( element ).opacity : '';
 			const at = ( ms: number ) =>
 				new Promise< string >( ( done ) =>
 					setTimeout( () => done( opacity() ), ms )
 				);
+			( input as HTMLInputElement ).click();
 			return Promise.all( [ at( 50 ), at( 600 ) ] );
-		} );
+		}, '.cbuild-summary__total' );
 		release();
 		expect( seen, 'no flicker for a quick answer, then dimmed' ).toEqual( [
 			'1',
