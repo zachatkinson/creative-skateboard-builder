@@ -760,6 +760,17 @@ final class BuilderTest extends TestCase {
 		$link = new BuildLink( self::STREET, array( 'deck' => 101 ), State::REVIEW, true, 0, 'Acme', '8in', 48, 'abc-123' );
 		self::assertSame( self::url( $link->shared()->query( Shop::kit()->slots ) ), $review['link'], 'One rule for what a shared link holds: BuildLink::shared() (audit 15).' );
 		self::assertNotContains( 'cbuild[replace]', array_column( $this->show( new BuildLink( self::STREET, null, State::REVIEW ) )['view']['review']['fields'], 'name' ) );
+
+		// Cowork's review, should-fix 7: the spec's "Saving there replaces the build", in the words. The bar's
+		// button is the review's.
+		$view = $this->show( $link )['view'];
+		self::assertSame( 'Save changes', $view['review']['add'] );
+		self::assertSame( 'Save changes', $view['bar']['next']['text'] );
+		self::assertTrue( $view['review']['replacing'] );
+		self::assertSame( 'Saving replaces the build in your cart.', $view['review']['replaces'] );
+		self::assertSame( 'Your cart has the changed build.', $view['review']['added'] );
+		$fresh = $this->show( new BuildLink( self::STREET, null, State::REVIEW ) )['view']['review'];
+		self::assertSame( array( 'Add to cart', false, 'The build is in your cart.' ), array( $fresh['add'], $fresh['replacing'], $fresh['added'] ) );
 	}
 
 	public function test_the_review_names_every_step_and_posts_the_build_to_the_carts_own_handler(): void {

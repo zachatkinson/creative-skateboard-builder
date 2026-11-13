@@ -21,7 +21,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 interface KitMeta {
 
 	/**
-	 * Every kit product's ID: all but those in the bin and those WordPress made and nobody saved.
+	 * Every kit product's ID, those in the bin too, but not those WordPress made and nobody saved.
 	 *
 	 * @since 0.6.0
 	 *

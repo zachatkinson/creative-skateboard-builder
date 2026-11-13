@@ -366,6 +366,10 @@ export interface CbuildState {
 			 * What the status says once the link is copied.
 			 */
 			copied: string;
+			/**
+			 * What the builder says once the build is in the cart.
+			 */
+			added: string;
 			[k: string]: unknown;
 		};
 		[k: string]: unknown;

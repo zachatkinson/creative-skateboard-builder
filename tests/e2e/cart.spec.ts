@@ -446,15 +446,22 @@ test.describe( 'A build in a classic cart and checkout', () => {
 		await expect(
 			review.getByLabel( 'Link to this build' )
 		).not.toHaveValue( /_replace/ );
+		// It says the build in the cart is replaced, and its button saves (Cowork should-fix 7).
+		await expect( review ).toContainText(
+			'Saving replaces the build in your cart.'
+		);
 		// The review's own, or the phone bar's where the review's is hidden (P11).
 		await page
 			.locator( '.cbuild' )
-			.getByRole( 'button', { name: 'Add to cart' } )
+			.getByRole( 'button', { name: 'Save changes' } )
 			.click();
 		if ( javaScriptEnabled ) {
 			await expect(
 				page.locator( '.cbuild-review__added' )
 			).toBeFocused();
+			await expect(
+				page.locator( '.cbuild-review__added' )
+			).toContainText( 'Your cart has the changed build.' );
 		} else {
 			await page.waitForLoadState( 'load' );
 		}

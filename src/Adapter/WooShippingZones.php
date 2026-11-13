@@ -47,7 +47,14 @@ final class WooShippingZones implements ShippingZones {
 			return null;
 		}
 		$country = $customer->get_shipping_country();
-		$held    = $customer->has_calculated_shipping() || ( $customer->get_id() > 0 && '' !== $customer->get_shipping_country( 'edit' ) );
+		// Held: worked out by a classic cart's calculator or checkout; saved to an account; or typed through the Store
+		// API (the Cart block's calculator, the Checkout block, the Mini-Cart), which marks nothing as worked out but
+		// gives a postcode or a city, where WooCommerce's default fills the country and state alone (WooCommerce
+		// 11.3.0, includes/data-stores/class-wc-customer-data-store-session.php:164; Cowork's review, should-fix 6).
+		$held = $customer->has_calculated_shipping()
+			|| ( $customer->get_id() > 0 && '' !== $customer->get_shipping_country( 'edit' ) )
+			|| '' !== $customer->get_shipping_postcode( 'edit' )
+			|| '' !== $customer->get_shipping_city( 'edit' );
 		if ( ! $held || '' === $country ) {
 			return null;
 		}

@@ -2363,3 +2363,64 @@ Cowork's review, blocker 1. On the demo (Kadence, WooCommerce 11.3.0) the Cart b
 - **Tests.** builder `cart.spec.ts`, "is grouped on its first drawing under Kadence, the plugin's script before the block's": `lines.js` before `wc-cart-block-frontend` in the page, and the first drawing read once with no waiting. **Red run:** "Expected: < 85, Received: 86", the script after the block's. `CartShowTest` asks WooCommerce's registry for both blocks' script handles. **Deliberate break:** with the cart's registration unhooked, "cart_block · Failed asserting that two arrays are identical."
 
 **Status:** Accepted.
+
+### D-174 · A kit's own page gives its builder the content's width · 2026-11-13
+
+Cowork's review, should-fix 2 and 3. On a classic theme's product template the builder rendered in `woocommerce_cbuild_kit_add_to_cart`, inside the summary column beside the gallery's placeholder: 591 px of Kadence's 1,280, 416 of Storefront's 786 beside its sidebar, 618 of Twenty Twenty-Five's 1,280. The summary sat under the steps, and the assembly fee stood under the kit's title as if it were the board's price.
+
+- **On `wp`, where the builder is on the kit's own page** (`PageHooks::kitLayout()`): a classic template's gallery, sale badge and price come off their hooks (WooCommerce 11.3.0, `includes/wc-template-hooks.php:40`, `:127` and `:153`); the kit's price HTML is empty, which a block template's Product Price block asks as well; the body has `cbuild-kit-page`; and the builder's stylesheet goes in the head, so nothing moves as the builder arrives.
+- **Inline rules with the kit's page alone.** They widen a classic template's summary column, or hide a block template's gallery column and widen the builder's (a block column's width is an inline style, which only `!important` outweighs). They name the theme's and WooCommerce's classes, which the builder's stylesheet does not (D-159), so they ride on its handle as inline styles, as the carts' do (D-132).
+- **Only the kit's own price.** A part in the related products keeps its price, and a kit in a listing keeps WooCommerce's: the spec says nothing of listings, and Zach's answer was the kit's page.
+- **Tests.** `BuilderPageTest`, "a kit's own page gives the builder the width…": the hooks, the body class, the price and the style in the head, and none of it on a product that is no kit or a kit whose builder is elsewhere. `builder.spec.ts`, "A kit's own page", on Kadence, Storefront and Twenty Twenty-Five at 1,280 px: the builder wider than 85 % of the theme's main column, no gallery, no price under the title, the summary beside the steps. **Red run:** "Expected: > 1088, Received: 591.359375" at `builder.spec.ts:1838`, and Storefront's and Twenty Twenty-Five's as above.
+
+**Status:** Accepted.
+
+### D-175 · A card's fit label names what its part was checked against · 2026-11-13
+
+Cowork's review, should-fix 5. Every step's cards said "Fits your 8 in deck", though wheels and hardware are checked against the trucks and risers, and grip tape on the demo by nothing (R6 off).
+
+- **Each rule says the slots it reads** (`Rule::slots()`), and `RuleSet::reading()` gives a slot's other slots under the rules a kit has on, or null where none reads it. The engine keeps those picked before the step, and the state route says them as each step's `against` (0.6.0, `docs/HOOKS.md`).
+- **The label.** "Fits your 8.25″ deck" where the deck alone was read; "Fits your trucks", "Fits your trucks and risers" (WordPress's list format) otherwise; nothing where no rule read the part, and "Recommended" alone there.
+- **A slot's label inside a sentence** starts small unless it is written in capitals ("Change trucks", "Fits your ABEC bearings"). A translation that wants the label as typed says so by translating "lowercase" (context: a slot label inside a sentence) as anything else.
+- **Tests.** `RuleSetTest`, `FitEngineTest`, `BuilderTest::test_a_cards_fit_label_names_what_the_part_was_checked_against`, `WordsTest`. **Red run** in the commit (28ecb7c).
+
+**Status:** Accepted.
+
+### D-176 · A card says nothing of what a rule assumed, unless it does not fit · 2026-11-13
+
+Cowork's review, should-fix 4. "The deck gives no hole pattern, so the usual one is taken" stood on every deck, and two more on every truck: gaps in the owner's data, shown to shoppers.
+
+- **A card that fits drops findings of severity fits**, which are the rules' assumptions (R2's pattern, R3's largest wheel by height, R5's axle, R6's unchecked length). The catalogue check already lists each for the owner (`CatalogueCheck::ASSUMED`).
+- **A card that warns or is blocked keeps every note,** since an assumption may be its reason. A finding belongs to the slot it reads, so R3's assumed largest wheel stands on the trucks' card, not on the wheels' it warns: the wheels' card says the clearance in figures ("2 mm over what the trucks clear, which is 56 mm").
+
+**Status:** Accepted.
+
+### D-177 · A kit's line says what its amount is · 2026-11-13
+
+Cowork's review, should-fix 3, as Zach answered it: "say what the amount is ('Assembly: free', 'Assembly: $15.00') instead of a bare price".
+
+- **Item data, in every cart.** A kit's line has "Assembly" first (`raw_key` `cbuild_assembly`): the fee as the cart shows prices, "free", or "not added", in `<span class="cbuild-assembly">`. Then Edit build, now with an empty key, so the blocks print the link alone; a classic cart's colon is hidden (Cowork's review, minor 12).
+- **The bare price goes.** WooCommerce's checkout filters cannot say "free": a price format must hold `<price/>`. So the blocks' price and total on a row holding `.cbuild-assembly` are hidden by the carts' inline styles, beginning as WooCommerce's own rule does so as to outweigh it, and a classic cart's `woocommerce_cart_item_price` and `woocommerce_cart_item_subtotal` give nothing for a kit.
+- **The order.** `woocommerce_order_formatted_line_subtotal` gives "Assembly: …" for a kit's line, which the order received page, the emails and My account print. The admin order screen prints its own price, beside the order's "Assembly: Yes".
+- **"Part of" without its slot where the name has it** (minor 11): the slot is a span of its own, hidden on a row whose name begins with it. The Mini-Cart's rows run no line filter, keep no such class, and keep the slot.
+
+**Status:** Accepted.
+
+### D-178 · An address typed through the Store API is held · 2026-11-13
+
+Cowork's review, should-fix 6. The delivery line counted an address as held when `has_calculated_shipping()` was set, which only a classic cart's calculator and checkout set (WooCommerce 11.3.0, `includes/shortcodes/class-wc-shortcode-cart.php:54`, `includes/class-wc-ajax.php:476`). The Store API's `cart/update-customer`, behind the Cart block's calculator, the Checkout block and the Mini-Cart, sets nothing, so a guest on a shop with the Checkout block never saw the line.
+
+- **Held also where the session has a shipping postcode or city.** WooCommerce's default location fills the country and state alone (`includes/data-stores/class-wc-customer-data-store-session.php:164`), so either is the shopper's own. A country and province alone, typed in a calculator that asks for no more, still count as the shop's default: the line is not said rather than guessed.
+- **Nothing more stored.** It reads the customer WooCommerce holds, as before (`docs/PRIVACY.md`).
+- **Tests.** `DeliveryTest::test_an_address_typed_through_the_store_api_is_held_as_the_classic_calculator_s_is`, through `cart/update-customer`. **Red run:** "Failed asserting that two strings are identical", '' for "Free shipping to Ontario.".
+
+**Status:** Accepted.
+
+### D-179 · A migration of kits' documents reads kits in the bin · 2026-11-13
+
+Cowork's review, minor 21. `reserved_slot_keys_1` (D-169) listed kits without the bin. One restored after the upgrade kept its reserved key, was never renamed, since the migration does not run again, and stopped reading.
+
+- **`KitMeta::ids()` is every kit but WordPress's auto-drafts,** the bin included: the port serves migrations. The kits a shop has, which `Kits` answers with, are `WooKitMeta::live()`, without the bin as before.
+- **Tests.** `MigrationTest`, the 0.5.0 site's kit put in the bin before the run and restored after. **Red run:** `'review'` for `'review_slot'` at `MigrationTest.php:225`.
+
+**Status:** Accepted.

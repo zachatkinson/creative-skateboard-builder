@@ -27,6 +27,7 @@ defined( 'ABSPATH' ) || exit;
 	<p class="cbuild-review__arrival" data-wp-bind--hidden="!state.view.review.hasArrival" data-wp-text="state.view.review.arrival"></p>
 	<p class="cbuild-review__total" data-wp-text="state.view.review.total"></p>
 	<p class="cbuild-review__notice" data-wp-bind--hidden="!state.view.review.hasNotice" data-wp-text="state.view.review.notice"></p>
+	<p class="cbuild-review__replaces" data-wp-bind--hidden="!state.view.review.replacing" data-wp-text="state.view.review.replaces"></p>
 	<form class="cbuild-review__form" id="cbuild-review-form" method="post" data-wp-on--submit="actions.add" data-wp-bind--action="state.view.review.action">
 		<template data-wp-each--field="state.view.review.fields">
 			<input type="hidden" data-wp-bind--name="context.field.name" data-wp-bind--value="context.field.value">

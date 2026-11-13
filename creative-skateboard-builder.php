@@ -15,7 +15,7 @@
  * Domain Path:       /languages
  * Update URI:        https://raw.githubusercontent.com/zachatkinson/creative-releases/main/creative-skateboard-builder/info.json
  * WC requires at least: 11.2
- * WC tested up to:   11.2
+ * WC tested up to:   11.3
  *
  * Bootstrap only: headers, constants, the floors check, the autoloader and the hooks into src/. This file must parse
  * on PHP 7.4, the oldest PHP WordPress 7.0 runs on, so a host below the floor sees the notice and no parse error

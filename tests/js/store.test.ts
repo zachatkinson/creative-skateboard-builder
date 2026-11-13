@@ -749,6 +749,28 @@ describe( 'adding to the cart', () => {
 		expect( sheet.isConnected ).toBe( true );
 	} );
 
+	it( 'leaves focus to a cart drawer that opened on the add, and says the add instead', async () => {
+		// Cowork's review, minor 10: the Mini-Cart's drawer, set to open on an add, takes focus, and the builder's
+		// move to its notice was lost, so a screen reader never heard it.
+		const { root } = review();
+		cart( 201 );
+		const drawer = document.createElement( 'button' );
+		document.body.append( drawer );
+		const opens = () => drawer.focus();
+		root.ownerDocument.addEventListener( 'wc-blocks_added_to_cart', opens );
+		await actions.add( new SubmitEvent( 'submit', { cancelable: true } ) );
+		vi.advanceTimersToNextFrame();
+		root.ownerDocument.removeEventListener(
+			'wc-blocks_added_to_cart',
+			opens
+		);
+
+		expect( root.ownerDocument.activeElement ).toBe( drawer );
+		expect( state.added ).toBe( true );
+		expect( state.status ).toBe( REVIEW.review.added );
+		drawer.remove();
+	} );
+
 	it( 'adds the build once when Add to cart is pressed again while it adds', async () => {
 		review();
 		const asked = cart( 201 );

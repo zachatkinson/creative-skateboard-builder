@@ -565,10 +565,11 @@
 				},
 				"review": {
 					"type": "object",
-					"required": ["link", "copied"],
+					"required": ["link", "copied", "added"],
 					"properties": {
 						"link": { "description": "The build's shared link.", "type": "string" },
-						"copied": { "description": "What the status says once the link is copied.", "type": "string" }
+						"copied": { "description": "What the status says once the link is copied.", "type": "string" },
+						"added": { "description": "What the builder says once the build is in the cart.", "type": "string" }
 					},
 					"additionalProperties": true
 				}

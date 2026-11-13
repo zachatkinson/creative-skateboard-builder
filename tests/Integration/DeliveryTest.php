@@ -32,6 +32,8 @@ final class DeliveryTest extends CartTestCase {
 			$zone->delete();
 		}
 		WC()->customer->set_calculated_shipping( false );
+		WC()->customer->set_shipping_postcode( '' );
+		WC()->customer->set_shipping_city( '' );
 		update_option( 'woocommerce_tax_display_cart', 'excl' );
 		parent::tear_down();
 	}
@@ -139,6 +141,31 @@ final class DeliveryTest extends CartTestCase {
 			WC()->customer = $customer;
 			WC()->session  = $session;
 		}
+	}
+
+	public function test_an_address_typed_through_the_store_api_is_held_as_the_classic_calculator_s_is(): void {
+		// Cowork's review, should-fix 6: the Cart block's calculator, the Checkout block and the Mini-Cart send the
+		// address through `cart/update-customer`, which never marks shipping as worked out, so a guest on a shop
+		// with the Checkout block never saw the line. WooCommerce's default fills the country and state alone
+		// (WC_Customer_Data_Store_Session::set_defaults()), so a postcode or a city is the shopper's own.
+		$this->zone( 'ON', array( 'free_shipping' => array( 'requires' => '' ) ) );
+		$request = new \WP_REST_Request( 'POST', '/wc/store/v1/cart/update-customer' );
+		$request->set_header( 'Content-Type', 'application/json' );
+		$request->set_body(
+			(string) wp_json_encode(
+				array(
+					'shipping_address' => array(
+						'country'  => 'CA',
+						'state'    => 'ON',
+						'postcode' => 'M5V 2T6',
+						'city'     => 'Toronto',
+					),
+				)
+			)
+		);
+		self::assertSame( 200, rest_get_server()->dispatch( $request )->get_status() );
+		self::assertFalse( WC()->customer->has_calculated_shipping(), 'as WooCommerce leaves it' );
+		self::assertSame( 'Free shipping to Ontario.', $this->line( 18200 ) );
 	}
 
 	public function test_with_nobody_answering_and_no_address_there_is_nothing_to_show(): void {

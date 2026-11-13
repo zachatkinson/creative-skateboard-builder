@@ -211,10 +211,15 @@ final class MigrationTest extends IntegrationTestCase {
 		self::assertIsArray( $states );
 		update_option( Options::MIGRATIONS, array_diff_key( $states, array( 'reserved_slot_keys_1' => true ) ), false );
 		update_option( Options::DB_VERSION, '3', true );
+		// In the bin as the upgrade runs: restored later, it would keep its reserved key and stop reading, since the
+		// migration does not run again (Cowork's review, minor 21).
+		wp_trash_post( $kit );
 		$runner = $this->service( MigrationRunner::class );
 		self::assertTrue( $runner->needed() );
 		self::assertSame( RunResult::Finished, $runner->run() );
 		self::assertSame( '4', get_option( Options::DB_VERSION ) );
+		wp_untrash_post( $kit );
+		wp_publish_post( $kit );
 
 		$stored = json_decode( (string) get_post_meta( $kit, Options::META_KIT_SLOTS, true ), true );
 		self::assertSame( 'review_slot', $stored['slots'][ $risers ]['key'] );

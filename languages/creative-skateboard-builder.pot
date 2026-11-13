@@ -9,7 +9,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-11-13T19:40:47+00:00\n"
+"POT-Creation-Date: 2026-11-13T20:06:24+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: creative-skateboard-builder\n"
@@ -1724,7 +1724,7 @@ msgstr ""
 
 #. translators: %s: the build's total, such as $184.00.
 #: src/Front/BuilderView.php:224
-#: src/Front/BuilderView.php:1091
+#: src/Front/BuilderView.php:1092
 #, php-format
 msgid "Total: %s"
 msgstr ""
@@ -2000,27 +2000,39 @@ msgstr ""
 msgid "Assembly time: %s"
 msgstr ""
 
-#: src/Front/BuilderView.php:1084
+#: src/Front/BuilderView.php:1085
 msgid "Check your build"
 msgstr ""
 
-#: src/Front/BuilderView.php:1099
+#: src/Front/BuilderView.php:1102
+msgid "Save changes"
+msgstr ""
+
+#: src/Front/BuilderView.php:1102
 msgid "Add to cart"
 msgstr ""
 
-#: src/Front/BuilderView.php:1101
-msgid "The build is in your cart."
-msgstr ""
-
-#: src/Front/BuilderView.php:1105
-msgid "Link to this build"
+#: src/Front/BuilderView.php:1104
+msgid "Saving replaces the build in your cart."
 msgstr ""
 
 #: src/Front/BuilderView.php:1106
+msgid "Your cart has the changed build."
+msgstr ""
+
+#: src/Front/BuilderView.php:1106
+msgid "The build is in your cart."
+msgstr ""
+
+#: src/Front/BuilderView.php:1110
+msgid "Link to this build"
+msgstr ""
+
+#: src/Front/BuilderView.php:1111
 msgid "Copy link"
 msgstr ""
 
-#: src/Front/BuilderView.php:1107
+#: src/Front/BuilderView.php:1112
 msgid "Link copied."
 msgstr ""
 
@@ -3018,7 +3030,7 @@ msgstr ""
 msgid "Steps"
 msgstr ""
 
-#: templates/builder/review.php:43
+#: templates/builder/review.php:44
 msgid "View cart"
 msgstr ""
 

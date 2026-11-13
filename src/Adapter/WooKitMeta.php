@@ -28,18 +28,40 @@ if ( ! defined( 'ABSPATH' ) ) {
 final class WooKitMeta implements KitMeta {
 
 	/**
-	 * Every kit product's ID: all but those in the bin and those WordPress made and nobody saved. Kits answers
-	 * with these too.
+	 * Every kit product's ID, those in the bin too, but not those WordPress made and nobody saved: a kit restored
+	 * from the bin after a migration would otherwise keep what the migration changed (Cowork's review, minor 21).
 	 *
 	 * @since 0.6.0
 	 *
 	 * @return list<int>
 	 */
 	public function ids(): array {
+		return self::query( array( 'auto-draft' ) );
+	}
+
+	/**
+	 * Every kit product's ID but those in the bin and those WordPress made and nobody saved: the kits a shop has.
+	 * Kits answers with these.
+	 *
+	 * @since 0.6.0
+	 *
+	 * @return list<int>
+	 */
+	public static function live(): array {
+		return self::query( array( 'trash', 'auto-draft' ) );
+	}
+
+	/**
+	 * Every kit product's ID in any status but those left out, by ID.
+	 *
+	 * @param list<string> $without The statuses left out.
+	 * @return list<int>
+	 */
+	private static function query( array $without ): array {
 		$found = wc_get_products(
 			array(
 				'type'    => Options::PRODUCT_TYPE_KIT,
-				'status'  => array_values( array_diff( array_keys( get_post_stati() ), array( 'trash', 'auto-draft' ) ) ),
+				'status'  => array_values( array_diff( array_keys( get_post_stati() ), $without ) ),
 				'limit'   => WooKits::MAX_KITS,
 				'orderby' => 'ID',
 				'order'   => 'ASC',

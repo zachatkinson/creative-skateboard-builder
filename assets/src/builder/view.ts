@@ -377,8 +377,19 @@ const { state } = store(
 					} )
 				);
 				state.added = true;
-				// Said once: the notice takes focus and is read, so the status says nothing more.
+				// Said once: the notice takes focus and is read, so the status says nothing more. Where a cart drawer
+				// opened on the add and took focus (the Mini-Cart may), focus stays there and the status says it
+				// (Cowork's review, minor 10).
 				window.requestAnimationFrame( () => {
+					const focused = form.ownerDocument.activeElement;
+					if (
+						focused &&
+						focused !== form.ownerDocument.body &&
+						! root?.contains( focused )
+					) {
+						state.status = state.view.review.added;
+						return;
+					}
 					root?.querySelector< HTMLElement >(
 						'.cbuild-review__added'
 					)?.focus();

@@ -133,7 +133,7 @@ final class WooKits implements Kits {
 	 * @return list<int>
 	 */
 	public function ids(): array {
-		return ( new WooKitMeta() )->ids();
+		return WooKitMeta::live();
 	}
 
 	/**

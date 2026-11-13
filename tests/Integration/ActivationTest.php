@@ -276,7 +276,12 @@ final class ActivationTest extends IntegrationTestCase {
 			)
 		);
 		self::assertSame( Requirements::WOOCOMMERCE, $wc['requires'] );
-		self::assertSame( '11.2', $wc['tested'] );
+		// The newest WooCommerce the suites run on, which wp-env pins and D-145 moves each milestone (Cowork's review,
+		// minor 20: the header said 11.2 while CI's newest leg and the demo ran 11.3.0).
+		$env = json_decode( (string) file_get_contents( dirname( CBUILD_FILE ) . '/.wp-env.json' ), true );
+		self::assertIsArray( $env );
+		self::assertSame( 1, preg_match( '#woocommerce\.(\d+\.\d+)\.\d+\.zip#', (string) wp_json_encode( $env ), $pinned ) );
+		self::assertSame( $pinned[1], $wc['tested'] );
 	}
 
 	public function test_the_installed_woocommerce_meets_the_floor(): void {

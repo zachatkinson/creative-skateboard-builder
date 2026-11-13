@@ -1055,16 +1055,16 @@ final class BuilderView {
 		$on    = Cast::bool( Cast::map( $answer['total'] ?? null )['assembly'] ?? null );
 		$lead  = $on ? Cast::str( $texts['lead_time'] ?? null ) : '';
 		/* translators: %s: how long the shop takes to put a build together, in the owner's words, such as 2 business days. */
-		$lead   = '' === $lead ? '' : sprintf( __( 'Assembly time: %s', 'creative-skateboard-builder' ), $lead );
-		$notice = Cast::str( $texts['returns_notice'] ?? null );
-		$fields = array(
+		$lead      = '' === $lead ? '' : sprintf( __( 'Assembly time: %s', 'creative-skateboard-builder' ), $lead );
+		$notice    = Cast::str( $texts['returns_notice'] ?? null );
+		$fields    = array(
 			array(
 				'name'  => 'add-to-cart',
 				'value' => (string) $state->id,
 			),
 		);
-		$fields = array_merge( $fields, self::fields( BuildLink::PARAM . '[picks]', $counted, array(), $state->kit->slots->keys() ) );
-		$fields = array_merge(
+		$fields    = array_merge( $fields, self::fields( BuildLink::PARAM . '[picks]', $counted, array(), $state->kit->slots->keys() ) );
+		$fields    = array_merge(
 			$fields,
 			array(
 				array(
@@ -1073,7 +1073,8 @@ final class BuilderView {
 				),
 			)
 		);
-		if ( '' !== $link->replace ) {
+		$replacing = '' !== $link->replace;
+		if ( $replacing ) {
 			// From Edit build: the add takes the place of the build in the cart it came from (D-157).
 			$fields[] = array(
 				'name'  => BuildLink::PARAM . '[replace]',
@@ -1096,9 +1097,13 @@ final class BuilderView {
 			'ready'      => Cast::bool( $answer['ready'] ?? null ),
 			'action'     => $url( $link ),
 			'fields'     => $fields,
-			'add'        => __( 'Add to cart', 'creative-skateboard-builder' ),
+			// From Edit build the add takes the place of the build in the cart, and says so (spec: Review and add to
+			// cart, "Saving there replaces the build"; Cowork's review, should-fix 7).
+			'add'        => $replacing ? __( 'Save changes', 'creative-skateboard-builder' ) : __( 'Add to cart', 'creative-skateboard-builder' ),
+			'replacing'  => $replacing,
+			'replaces'   => __( 'Saving replaces the build in your cart.', 'creative-skateboard-builder' ),
 			// Said, and focused, once an add without a page load is done (D-155).
-			'added'      => __( 'The build is in your cart.', 'creative-skateboard-builder' ),
+			'added'      => $replacing ? __( 'Your cart has the changed build.', 'creative-skateboard-builder' ) : __( 'The build is in your cart.', 'creative-skateboard-builder' ),
 			// The build's link needs no account to open (P12, D-156). It is BuildLink::shared(): the parts, the step
 			// and assembly, and nothing of the shopper's cart or the builder's own keys (spec: Share links; D-157).
 			'link'       => $url( $link->shared()->at( State::REVIEW ) ),
