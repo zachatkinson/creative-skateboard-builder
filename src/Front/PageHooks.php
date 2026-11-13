@@ -50,8 +50,9 @@ final class PageHooks implements Hookable {
 	 *
 	 * @param Closure(): BuilderPage $page Makes the renderer, the first time a page asks for a builder: a request that
 	 *                                     shows none builds none of its services.
+	 * @param BuilderPlace           $place Which kit a page shows.
 	 */
-	public function __construct( private Closure $page ) {}
+	public function __construct( private Closure $page, private BuilderPlace $place ) {}
 
 	/**
 	 * The renderer, made once.
@@ -94,7 +95,7 @@ final class PageHooks implements Hookable {
 		if ( ! $post instanceof WP_Post ) {
 			return $title;
 		}
-		$kit = Options::PRODUCT_TYPE_KIT === \WC_Product_Factory::get_product_type( $post->ID ) ? $post->ID : PageTitle::kit( parse_blocks( $post->post_content ) );
+		$kit = $this->place->kit( $post->ID, $post->post_type );
 		if ( $kit < 1 ) {
 			return $title;
 		}
@@ -128,9 +129,8 @@ final class PageHooks implements Hookable {
 		if ( ! is_singular( 'product' ) ) {
 			return null;
 		}
-		$kit     = get_queried_object_id();
-		$product = wc_get_product( $kit );
-		if ( ! $product instanceof WC_Product || Options::PRODUCT_TYPE_KIT !== $product->get_type() ) {
+		$kit = $this->place->kit( get_queried_object_id(), 'product' );
+		if ( $kit < 1 ) {
 			return null;
 		}
 		$url = BuilderUrl::of( $kit );

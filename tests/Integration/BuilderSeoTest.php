@@ -9,6 +9,7 @@ declare( strict_types=1 );
 
 namespace CreativeBranding\SkateboardBuilder\Tests\Integration;
 
+use CreativeBranding\SkateboardBuilder\Front\BuilderPlace;
 use CreativeBranding\SkateboardBuilder\Front\BuildLink;
 use CreativeBranding\SkateboardBuilder\Front\SeoHooks;
 use CreativeBranding\SkateboardBuilder\Tests\Support\IntegrationTestCase;
@@ -45,7 +46,7 @@ final class BuilderSeoTest extends IntegrationTestCase {
 				'post_content' => '<!-- wp:creative-skateboard-builder/builder {"kit":' . $this->kit . '} /-->',
 			)
 		);
-		( new SeoHooks() )->register();
+		( new SeoHooks( $this->service( BuilderPlace::class ) ) )->register();
 	}
 
 	public function tear_down(): void {
@@ -115,6 +116,28 @@ final class BuilderSeoTest extends IntegrationTestCase {
 	public function test_a_kits_own_page_with_a_build_is_noindex_too(): void {
 		$this->visit( $this->kit, array( 'deck' => '12' ) );
 		self::assertStringContainsString( 'noindex, follow', self::robots() );
+	}
+
+	// Audit 16, milestone 6: has_block() does not look inside a synced pattern, so a builder put there was indexed in
+	// every state.
+	public function test_a_builder_inside_a_synced_pattern_is_a_state_too(): void {
+		$pattern = self::factory()->post->create(
+			array(
+				'post_type'    => 'wp_block',
+				'post_status'  => 'publish',
+				'post_content' => '<!-- wp:group --><div class="wp-block-group"><!-- wp:creative-skateboard-builder/builder {"kit":' . $this->kit . '} /--></div><!-- /wp:group -->',
+			)
+		);
+		$page    = self::factory()->post->create(
+			array(
+				'post_type'    => 'page',
+				'post_status'  => 'publish',
+				'post_content' => '<!-- wp:block {"ref":' . $pattern . '} /-->',
+			)
+		);
+		$this->visit( $page, array( 'deck' => '12' ) );
+		self::assertStringContainsString( 'noindex, follow', self::robots() );
+		self::assertSame( '<link rel="canonical" href="' . get_permalink( $page ) . '" />' . "\n", self::canonical() );
 	}
 
 	public function test_a_page_without_a_builder_is_left_alone_whatever_its_address(): void {

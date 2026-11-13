@@ -13,9 +13,9 @@ use Closure;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\InvalidMoney;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Slots;
 use CreativeBranding\SkateboardBuilder\Front\Builder;
+use CreativeBranding\SkateboardBuilder\Front\BuilderPlace;
 use CreativeBranding\SkateboardBuilder\Front\BuilderUrl;
 use CreativeBranding\SkateboardBuilder\Front\BuildLink;
-use CreativeBranding\SkateboardBuilder\Front\PageHooks;
 use CreativeBranding\SkateboardBuilder\Front\StateAnswer;
 use CreativeBranding\SkateboardBuilder\Front\Words;
 use CreativeBranding\SkateboardBuilder\Domain\Fit\Problem;
@@ -77,8 +77,9 @@ final class StateRoute implements Hookable {
 	 * @param Closure(): RateLimit   $limit  The rate limit.
 	 * @param Closure(): Cart        $cart   The cart, for the shopper it knows.
 	 * @param Closure(): Builder     $builder What the builder shows, for a build link.
+	 * @param BuilderPlace           $place   Which page holds which kit's builder.
 	 */
-	public function __construct( private Kits $kits, private Closure $state, private Closure $writer, private Closure $limit, private Closure $cart, private Closure $builder ) {}
+	public function __construct( private Kits $kits, private Closure $state, private Closure $writer, private Closure $limit, private Closure $cart, private Closure $builder, private BuilderPlace $place ) {}
 
 	/**
 	 * Add the hooks.
@@ -269,7 +270,7 @@ final class StateRoute implements Hookable {
 			}
 		}
 		try {
-			$shown = ( $this->builder )()->show( $id, BuildLink::read( $request['cbuild'] ), self::base( $id, Cast::int( $request['page'] ) ) );
+			$shown = ( $this->builder )()->show( $id, BuildLink::read( $request['cbuild'] ), $this->base( $id, Cast::int( $request['page'] ) ) );
 		} catch ( InvalidMoney ) {
 			return new WP_Error( 'cbuild_no_price', __( 'This build cannot be priced in the shop\'s currency settings.', 'creative-skateboard-builder' ), array( 'status' => 500 ) );
 		}
@@ -286,34 +287,12 @@ final class StateRoute implements Hookable {
 	 * @param int $kit  The kit.
 	 * @param int $page The post the request names, or 0.
 	 */
-	private static function base( int $kit, int $page ): string {
+	private function base( int $kit, int $page ): string {
 		$post = $page > 0 && $kit !== $page ? get_post( $page ) : null;
-		if ( null !== $post && is_post_publicly_viewable( $post ) && ! post_password_required( $post ) && self::holds( parse_blocks( $post->post_content ), $kit ) ) {
+		if ( null !== $post && is_post_publicly_viewable( $post ) && ! post_password_required( $post ) && $this->place->holds( $post->ID, $kit ) ) {
 			return (string) get_permalink( $post );
 		}
 		return BuilderUrl::of( $kit );
-	}
-
-	/**
-	 * Whether blocks, or the blocks inside them, hold the kit's Builder block.
-	 *
-	 * @param array<mixed> $blocks Parsed blocks.
-	 * @param int          $kit    The kit.
-	 */
-	private static function holds( array $blocks, int $kit ): bool {
-		foreach ( $blocks as $block ) {
-			if ( ! is_array( $block ) ) {
-				continue;
-			}
-			$attributes = Cast::map( $block['attrs'] ?? null );
-			if ( PageHooks::BLOCK === ( $block['blockName'] ?? null ) && Cast::int( $attributes['kit'] ?? 0 ) === $kit ) {
-				return true;
-			}
-			if ( self::holds( Cast::items( $block['innerBlocks'] ?? null ), $kit ) ) {
-				return true;
-			}
-		}
-		return false;
 	}
 
 	/**

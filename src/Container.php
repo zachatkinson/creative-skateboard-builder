@@ -55,6 +55,7 @@ final class Container {
 			Port\Reindex::class         => Service\IndexJobs::class,
 			Port\Cart::class            => Adapter\WooCart::class,
 			Port\Uuids::class           => Adapter\WpUuids::class,
+			Port\BuilderPosts::class    => Adapter\WpBuilderPosts::class,
 		);
 	}
 
@@ -249,7 +250,8 @@ final class Container {
 				return new Front\PageHooks(
 					static function () use ( $c ): Front\BuilderPage {
 						return $c->get( Front\BuilderPage::class );
-					}
+					},
+					$c->get( Front\BuilderPlace::class )
 				);
 			},
 			// The state route's services are built when the route is asked, not whenever the REST API starts.
@@ -270,7 +272,8 @@ final class Container {
 					},
 					static function () use ( $c ): Front\Builder {
 						return $c->get( Front\Builder::class );
-					}
+					},
+					$c->get( Front\BuilderPlace::class )
 				);
 			},
 			// The cards are built when something a card shows moves.

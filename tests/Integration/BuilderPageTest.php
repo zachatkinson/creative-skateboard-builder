@@ -142,7 +142,7 @@ final class BuilderPageTest extends IntegrationTestCase {
 			$_GET[ BuildLink::PARAM ] = $sent;
 		}
 		$GLOBALS['product'] = wc_get_product( $this->kit );
-		$hooks              = new PageHooks( fn(): BuilderPage => $this->page() );
+		$hooks              = new PageHooks( fn(): BuilderPage => $this->page(), $this->service( \CreativeBranding\SkateboardBuilder\Front\BuilderPlace::class ) );
 		ob_start();
 		$hooks->kitPage();
 		return (string) ob_get_clean();
@@ -565,7 +565,7 @@ final class BuilderPageTest extends IntegrationTestCase {
 	}
 
 	public function test_the_kits_page_sends_a_visitor_to_the_builders_page_with_the_build(): void {
-		$hooks = new PageHooks( fn(): BuilderPage => $this->page() );
+		$hooks = new PageHooks( fn(): BuilderPage => $this->page(), $this->service( \CreativeBranding\SkateboardBuilder\Front\BuilderPlace::class ) );
 		$this->go_to( get_permalink( $this->kit ) );
 		self::assertNull( $hooks->elsewhere(), 'The builder is on the kit\'s page.' );
 
@@ -595,13 +595,13 @@ final class BuilderPageTest extends IntegrationTestCase {
 
 		// A block of its own, with a renderer of its own, as a request has.
 		unregister_block_type( PageHooks::BLOCK );
-		( new PageHooks( fn(): BuilderPage => $this->page() ) )->block();
+		( new PageHooks( fn(): BuilderPage => $this->page(), $this->service( \CreativeBranding\SkateboardBuilder\Front\BuilderPlace::class ) ) )->block();
 		$html = do_blocks( '<!-- wp:creative-skateboard-builder/builder {"kit":' . $this->kit . '} /-->' );
 		self::assertSame( 'Step 1 of 7: Deck', self::text( self::dom( $html ), '//h2[contains(@class,"cbuild__heading")]' ), 'Its directives processed by WordPress.' );
 		self::assertSame( 3, self::dom( $html )->query( '//input[@type="radio" and @name="cbuild[deck]"]' )->length, 'Each deck and None, once: the directives were processed once.' );
 
 		unregister_block_type( PageHooks::BLOCK );
-		( new PageHooks( fn(): BuilderPage => $this->page() ) )->block();
+		( new PageHooks( fn(): BuilderPage => $this->page(), $this->service( \CreativeBranding\SkateboardBuilder\Front\BuilderPlace::class ) ) )->block();
 		self::assertSame( '', trim( do_blocks( '<!-- wp:creative-skateboard-builder/builder /-->' ) ) );
 	}
 }

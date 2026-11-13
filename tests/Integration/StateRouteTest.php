@@ -488,7 +488,8 @@ final class StateRouteTest extends IntegrationTestCase {
 			fn (): StateAnswer => $this->service( StateAnswer::class ),
 			fn (): RateLimit => $this->service( RateLimit::class ),
 			fn (): \CreativeBranding\SkateboardBuilder\Port\Cart => $this->service( \CreativeBranding\SkateboardBuilder\Port\Cart::class ),
-			fn (): Builder => $this->service( Builder::class )
+			fn (): Builder => $this->service( Builder::class ),
+			$this->service( \CreativeBranding\SkateboardBuilder\Front\BuilderPlace::class )
 		);
 		foreach ( array(
 			array( 'picks' => array( 'sail' => '5' ) ),

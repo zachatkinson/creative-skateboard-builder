@@ -30,7 +30,7 @@ final class BuilderYoastTest extends IntegrationTestCase {
 		// Yoast saves no indexable outside production (`src/helpers/indexable-helper.php:210`), and then reads one with
 		// no ID, which PHP 8.5 deprecates. A shop runs in production; the test site says it does.
 		add_filter( 'Yoast\\WP\\SEO\\should_index_indexables', '__return_true' );
-		( new SeoHooks() )->register();
+		( new SeoHooks( $this->service( \CreativeBranding\SkateboardBuilder\Front\BuilderPlace::class ) ) )->register();
 	}
 
 	public function tear_down(): void {

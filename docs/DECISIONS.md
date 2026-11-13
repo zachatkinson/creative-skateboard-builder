@@ -2291,3 +2291,14 @@ The audit of milestone 6 (blocker): axe was to read every state the builder show
 - **The quarantine.** Firefox skips axe on that one state, with an annotation. Every other state, in every engine, and that state in Chromium and WebKit, is still read. Issue #36 holds it, to close when a Playwright or axe-core release no longer crashes.
 
 **Status:** Accepted.
+
+### D-168 · One answer to which kit a page shows · 2026-11-13
+
+Milestone 6's audit, should-fix 14 and minor 16. The page's title (`PageHooks::title`), its robots and canonical (`SeoHooks::isState`), the redirect from a kit's page (`PageHooks::elsewhere`) and the state route's links (`StateRoute::base`) each decided for themselves whether a page held a builder, three ways: `PageTitle::kit`, `StateRoute::holds` and `has_block()`. None looked inside a synced pattern, so a builder put in one was indexed in every state, and the logic sat in hooks that Infection leaves out.
+
+- **One service.** `Front\BuilderPlace` answers which kit a post shows (`kit()`) and whether a post holds a kit's builder (`holds()`). The hooks call it in one line. It reads posts through a port, `Port\BuilderPosts` (`Adapter\WpBuilderPosts`: `get_post()`, `parse_blocks()`, WooCommerce's product type), so Infection mutates it; every mutant is killed.
+- **What a page shows.** A product shows its kit when it is a kit, and nothing otherwise, whatever its description holds. Any other post shows the kit of its first Builder block, at any depth and inside a synced pattern (`core/block`'s `ref`), and a pattern that holds itself, or two that hold each other, are each read once. A first Builder block that names no kit shows none, as it renders none: `has_block()` called such a page a state, which it no longer is.
+- **Left out.** A builder placed in a block theme's template, not in the post, is not found: a template is not the post's content, and reading the theme's templates on every request is not worth the case. The kit's own page is the builder's place by default (D-008).
+- **Not public.** `PageTitle::kit` was internal and is gone; its cases are `BuilderPlaceTest`'s.
+
+**Status:** Accepted.

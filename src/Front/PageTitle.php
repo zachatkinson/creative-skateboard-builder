@@ -9,8 +9,6 @@ declare( strict_types=1 );
 
 namespace CreativeBranding\SkateboardBuilder\Front;
 
-use CreativeBranding\SkateboardBuilder\Support\Cast;
-
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
@@ -73,26 +71,5 @@ final class PageTitle {
 			'before' => $parts[0],
 			'after'  => $parts[1] ?? '',
 		);
-	}
-
-	/**
-	 * The kit of the first Builder block in blocks, or the blocks inside them, or 0.
-	 *
-	 * @since 0.6.0
-	 *
-	 * @param array<mixed> $blocks Parsed blocks.
-	 */
-	public static function kit( array $blocks ): int {
-		foreach ( $blocks as $block ) {
-			$block = Cast::map( $block );
-			if ( PageHooks::BLOCK === ( $block['blockName'] ?? null ) ) {
-				return Cast::int( Cast::map( $block['attrs'] ?? null )['kit'] ?? null );
-			}
-			$inner = self::kit( Cast::items( $block['innerBlocks'] ?? null ) );
-			if ( $inner > 0 ) {
-				return $inner;
-			}
-		}
-		return 0;
 	}
 }

@@ -10,7 +10,6 @@ declare( strict_types=1 );
 namespace CreativeBranding\SkateboardBuilder\Front;
 
 use CreativeBranding\SkateboardBuilder\Hookable;
-use CreativeBranding\SkateboardBuilder\Support\Options;
 use WP_Post;
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -36,6 +35,15 @@ if ( ! defined( 'ABSPATH' ) ) {
 final class SeoHooks implements Hookable {
 
 	/**
+	 * Constructor.
+	 *
+	 * @since 0.6.0
+	 *
+	 * @param BuilderPlace $place Which kit a page shows.
+	 */
+	public function __construct( private BuilderPlace $place ) {}
+
+	/**
 	 * Attach hooks.
 	 *
 	 * @since 0.6.0
@@ -55,7 +63,7 @@ final class SeoHooks implements Hookable {
 	 * @return mixed The directives.
 	 */
 	public function robots( mixed $robots ): mixed {
-		if ( ! is_array( $robots ) || ! self::isState() ) {
+		if ( ! is_array( $robots ) || ! $this->isState() ) {
 			return $robots;
 		}
 		unset( $robots['index'], $robots['nofollow'] );
@@ -73,7 +81,7 @@ final class SeoHooks implements Hookable {
 	 * @return mixed The directives.
 	 */
 	public function yoastRobots( mixed $robots ): mixed {
-		if ( ! is_array( $robots ) || ! self::isState() ) {
+		if ( ! is_array( $robots ) || ! $this->isState() ) {
 			return $robots;
 		}
 		$robots['index']  = 'noindex';
@@ -90,24 +98,18 @@ final class SeoHooks implements Hookable {
 	 * @return mixed The canonical.
 	 */
 	public function canonical( mixed $url ): mixed {
-		return is_string( $url ) && '' !== $url && self::isState() ? remove_query_arg( BuildLink::PARAM, $url ) : $url;
+		return is_string( $url ) && '' !== $url && $this->isState() ? remove_query_arg( BuildLink::PARAM, $url ) : $url;
 	}
 
 	/**
 	 * Whether this request is a page holding a builder, with a build in its address.
 	 */
-	private static function isState(): bool {
+	private function isState(): bool {
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- whether a query is there; nothing is read from it.
 		if ( ! isset( $_GET[ BuildLink::PARAM ] ) || ! is_singular() ) {
 			return false;
 		}
 		$post = get_queried_object();
-		if ( ! $post instanceof WP_Post ) {
-			return false;
-		}
-		if ( 'product' === $post->post_type ) {
-			return Options::PRODUCT_TYPE_KIT === \WC_Product_Factory::get_product_type( $post->ID );
-		}
-		return has_block( PageHooks::BLOCK, $post );
+		return $post instanceof WP_Post && $this->place->kit( $post->ID, $post->post_type ) > 0;
 	}
 }
