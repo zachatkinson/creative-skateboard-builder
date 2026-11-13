@@ -243,6 +243,37 @@ final class BuilderPageTest extends IntegrationTestCase {
 		self::assertSame( 'nofollow', $back->getAttribute( 'rel' ) );
 	}
 
+	// Audit 13, milestone 6: the plan's risk 8 promised a query count on the page's render, as the route has one.
+	public function test_the_page_renders_with_the_same_number_of_queries_however_many_parts_a_step_has(): void {
+		$decks = (int) wp_get_object_terms( $this->parts['deck 8.0'], 'product_cat', array( 'fields' => 'ids' ) )[0];
+		$count = function ( bool $cold ): int {
+			// Once for whatever is read the first time a part is met, then the render that is counted.
+			$this->kitPage();
+			if ( $cold ) {
+				wp_cache_flush();
+			}
+			$GLOBALS['wp_interactivity'] = new WP_Interactivity_API();
+			$before                      = get_num_queries();
+			$this->kitPage();
+			return get_num_queries() - $before;
+		};
+		$more  = function ( int $upTo ) use ( $decks ): void {
+			for ( $at = count( $this->parts ); $at < $upTo; $at++ ) {
+				$this->parts[ 'deck ' . $at ] = $this->part( 'Deck ' . $at, '65', array( 'deck_width' => '8.2500' ), $decks );
+			}
+		};
+
+		// More decks than a step lists, and then twice as many.
+		$more( 30 );
+		$warm = $count( false );
+		$cold = $count( true );
+		$more( 60 );
+		self::assertSame( $warm, $count( false ), 'warm' );
+		self::assertSame( $cold, $count( true ), 'cold' );
+		self::assertLessThanOrEqual( 15, $warm, 'warm, as the state route' );
+		self::assertLessThanOrEqual( 60, $cold, 'cold, as the state route' );
+	}
+
 	public function test_each_cards_radio_is_described_by_its_price_stock_fit_recommendation_and_notes(): void {
 		$dom    = self::dom( $this->kitPage( array( 'deck' => (string) $this->parts['deck 8.5'] ) ) );
 		$radios = $dom->query( '//li[contains(@class,"cbuild-card")]/input[@type="radio"]' );

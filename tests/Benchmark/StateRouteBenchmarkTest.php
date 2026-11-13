@@ -191,10 +191,18 @@ final class StateRouteBenchmarkTest extends IntegrationTestCase {
 		)->get_id();
 		self::assertSame( 2000, array_sum( array_map( 'count', $ids ) ) );
 
-		$ask = static function ( int $deck ) use ( $kit ): array {
+		// A move asks as the store does (audit 13, milestone 6): the build's own fields and the page, which add the
+		// view, its brand lookup, the presets and the page's blocks. The rest ask with picks alone.
+		$ask = static function ( int $deck, bool $move = false ) use ( $kit ): array {
 			$request = new WP_REST_Request( 'GET', "/cbuild/v1/kits/{$kit}/state" );
 			$request->set_query_params(
-				array(
+				$move ? array(
+					'cbuild' => array(
+						'deck' => (string) $deck,
+						'step' => 'trucks',
+					),
+					'page'   => $kit,
+				) : array(
 					'picks' => array( 'deck' => $deck ),
 					'step'  => 'trucks',
 				)
@@ -217,23 +225,30 @@ final class StateRouteBenchmarkTest extends IntegrationTestCase {
 		self::assertCount( 6, $first['presets'] );
 		self::assertGreaterThan( 0, $first['presets'][0]['total']['amount'] );
 
-		foreach ( array( 'cold' => true, 'warm' => false ) as $run => $flush ) {
-			$times   = array();
-			$queries = array();
-			for ( $request = 0; $request < self::REQUESTS; $request++ ) {
-				if ( $flush ) {
-					// A request on a site with no persistent object cache starts with nothing kept.
-					wp_cache_flush();
+		$view = $ask( $ids['deck'][0], true )[2];
+		self::assertSame( 'Step 2 of 7: Trucks', $view['view']['title'] ?? null, 'a move answers with the view' );
+		foreach ( array( false, true ) as $move ) {
+			// Each shape from an address of its own: the two runs are as many requests as one address may make in a minute.
+			$_SERVER['REMOTE_ADDR'] = $move ? '203.0.113.9' : '203.0.113.7';
+			foreach ( array( 'cold' => true, 'warm' => false ) as $run => $flush ) {
+				$times   = array();
+				$queries = array();
+				for ( $request = 0; $request < self::REQUESTS; $request++ ) {
+					if ( $flush ) {
+						// A request on a site with no persistent object cache starts with nothing kept.
+						wp_cache_flush();
+					}
+					[ $took, $asked ] = $ask( $ids['deck'][ $request % 7 ], $move );
+					$times[]          = $took;
+					$queries[]        = $asked;
 				}
-				[ $took, $asked ] = $ask( $ids['deck'][ $request % 7 ] );
-				$times[]          = $took;
-				$queries[]        = $asked;
+				$p95 = self::p95( $times );
+				sort( $times );
+				$name = ( $move ? 'a move, ' : '' ) . $run;
+				self::say( sprintf( 'state route, %s, 500 candidates in the step, 2,000 parts in the kit: p95 %.1f ms, median %.1f ms, slowest %.1f ms, %d queries at most', $name, $p95, $times[ (int) ( count( $times ) / 2 ) ], max( $times ), max( $queries ) ) );
+				self::assertLessThanOrEqual( self::QUERIES[ $run ], max( $queries ), "The state route's queries, {$name}." );
+				self::assertLessThan( self::limit(), $p95, "The state route, {$name}." );
 			}
-			$p95 = self::p95( $times );
-			sort( $times );
-			self::say( sprintf( 'state route, %s, 500 candidates in the step, 2,000 parts in the kit: p95 %.1f ms, median %.1f ms, slowest %.1f ms, %d queries at most', $run, $p95, $times[ (int) ( count( $times ) / 2 ) ], max( $times ), max( $queries ) ) );
-			self::assertLessThanOrEqual( self::QUERIES[ $run ], max( $queries ), "The state route's queries, {$run}." );
-			self::assertLessThan( self::limit(), $p95, "The state route, {$run}." );
 		}
 
 		// A part moves, as an order's stock does: its row alone is read again, inside the budget (D-116).

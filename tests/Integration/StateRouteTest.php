@@ -695,9 +695,9 @@ final class StateRouteTest extends IntegrationTestCase {
 	public function test_the_route_asks_the_same_number_of_queries_however_many_parts_a_step_has(): void {
 		$this->terms( 100000 );
 		$decks = (int) wp_get_object_terms( $this->parts['deck 8.0'], 'product_cat', array( 'fields' => 'ids' ) )[0];
-		$count = function ( bool $cold ): int {
+		$count = function ( bool $cold, array $query = array() ): int {
 			// Once for whatever is read the first time a part is met, then the request that is counted.
-			$this->ask();
+			$this->ask( $query );
 			if ( $cold ) {
 				// As on a site with no persistent object cache: nothing of the last request is in memory.
 				wp_cache_flush();
@@ -711,10 +711,19 @@ final class StateRouteTest extends IntegrationTestCase {
 				return $query;
 			};
 			add_filter( 'query', $watch );
-			self::assertSame( 200, $this->ask()->get_status() );
+			self::assertSame( 200, $this->ask( $query )->get_status() );
 			remove_filter( 'query', $watch );
 			return $asked;
 		};
+		// What the store sends on every move: the build's own fields and the page, which add the view, its brand
+		// lookup, the presets and the page's blocks (audit 13, milestone 6).
+		$moved = fn( bool $cold ): int => $count(
+			$cold,
+			array(
+				'cbuild' => array( 'step' => 'deck' ),
+				'page'   => $this->kit,
+			)
+		);
 		$more = function ( int $upTo ) use ( $decks ): void {
 			for ( $at = count( $this->parts ); $at < $upTo; $at++ ) {
 				$this->parts[ 'deck ' . $at ] = $this->part( 'Deck ' . $at, '65', array( 'deck_width' => '8.2500' ), $decks );
@@ -723,13 +732,19 @@ final class StateRouteTest extends IntegrationTestCase {
 
 		// More parts than a step lists, and then twice as many.
 		$more( 30 );
-		$warm = $count( false );
-		$cold = $count( true );
+		$warm      = $count( false );
+		$cold      = $count( true );
+		$movedWarm = $moved( false );
+		$movedCold = $moved( true );
 		$more( 60 );
 		self::assertSame( $warm, $count( false ), 'warm' );
 		self::assertSame( $cold, $count( true ), 'cold' );
+		self::assertSame( $movedWarm, $moved( false ), 'a move, warm' );
+		self::assertSame( $movedCold, $moved( true ), 'a move, cold' );
 		self::assertLessThanOrEqual( 15, $warm, 'warm' );
 		self::assertLessThanOrEqual( 60, $cold, 'cold' );
+		self::assertLessThanOrEqual( 15, $movedWarm, 'a move, warm' );
+		self::assertLessThanOrEqual( 60, $movedCold, 'a move, cold' );
 	}
 
 	/**
