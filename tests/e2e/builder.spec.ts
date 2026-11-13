@@ -691,8 +691,21 @@ test.describe( 'The builder with JavaScript', () => {
 		const second = page.getByRole( 'radio', {
 			name: 'Choose Builder test deck 8.25',
 		} );
-		await first.check();
-		await second.check();
+		// Both picks in one task, as a quick shopper's land inside the store's wait: two checks from the test can fall
+		// further apart than that on a slow runner, and the store rightly asks twice (CI run 43417214571, webkit-phone).
+		await page.evaluate(
+			( values ) => {
+				for ( const value of values ) {
+					document
+						.querySelector< HTMLInputElement >(
+							`.cbuild input[type="radio"][value="${ value }"]`
+						)
+						?.click();
+				}
+			},
+			[ id( 'builder-test-deck-8-0' ), id( 'builder-test-deck-8-25' ) ]
+		);
+		await expect( first ).not.toBeChecked();
 		await expect(
 			second,
 			'painted while the route has not answered'
@@ -1339,13 +1352,16 @@ test.describe( 'The builder with JavaScript', () => {
 				step: 'deck',
 			} )
 		);
+		// The store running before the pick, and one Next button named, as the change panel's own test does: on a slow
+		// runner the first found was the bar's, which the footer covered and the store then hid (CI run 43417214571,
+		// webkit-phone).
+		await page.waitForLoadState( 'load' );
 		await page
 			.getByRole( 'radio', { name: 'Choose Builder test deck 8.5' } )
 			.check();
 		await page
 			.locator( '.cbuild' )
 			.getByRole( 'button', { name: 'Next: Trucks' } )
-			.first()
 			.click();
 		await expect(
 			page.locator( '.cbuild-changes' ).getByRole( 'heading', {
