@@ -123,6 +123,26 @@ final class KitProductTest extends IntegrationTestCase {
 		wc_clear_notices();
 	}
 
+	/**
+	 * PayPal Payments draws its buttons, Apple Pay's and Google Pay's under them, and its Pay Later message on a
+	 * product's page unless this filter says no (4.2.2, modules/ppcp-wc-gateway/src/Helper/ProductPaymentSupportTrait.php:33).
+	 * It does not ask whether the product can be bought, so on a kit's page each would offer the kit alone, and fail
+	 * (D-164).
+	 */
+	public function test_express_payment_buttons_are_not_offered_on_a_kits_page(): void {
+		$filter = 'woocommerce_paypal_payments_product_supports_payment_request_button';
+		$kit    = self::fresh( self::kit()->get_id() );
+		self::assertFalse( apply_filters( $filter, true, $kit ), 'a kit' );
+
+		$part = new \WC_Product_Simple();
+		$part->set_name( 'A part' );
+		$part->set_regular_price( '10' );
+		$part->save();
+		self::assertTrue( apply_filters( $filter, true, $part ), 'any other product as PayPal had it' );
+		self::assertFalse( apply_filters( $filter, false, $part ), 'and PayPal\'s own no stands' );
+		self::assertSame( 'kept', apply_filters( $filter, 'kept', 'not a product' ), 'what is not a product is passed on' );
+	}
+
 	public function test_its_price_is_the_assembly_fee_and_woocommerces_price_fields_stay_empty(): void {
 		$assembly        = KitDocuments::assembly();
 		$assembly['fee'] = '15.50';

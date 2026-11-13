@@ -888,6 +888,63 @@ test.describe( 'The builder with JavaScript', () => {
 		}
 	} );
 
+	test( 'paints a pick within 100 ms on a CPU slowed four times (Quality bar)', async ( {
+		page,
+	}, info ) => {
+		test.skip(
+			! info.project.name.startsWith( 'chromium' ),
+			'Only Chromium can slow its CPU (DevTools protocol).'
+		);
+		const devtools = await page.context().newCDPSession( page );
+		await devtools.send( 'Emulation.setCPUThrottlingRate', { rate: 4 } );
+		// From the input to the next paint, as the browser measures an interaction (Event Timing): the handlers, the
+		// store's pick and the chosen card painted. An interaction under 16 ms is not reported at all.
+		await page.evaluate( () => {
+			const seen = window as unknown as { interactions: number[] };
+			seen.interactions = [];
+			new PerformanceObserver( ( list ) => {
+				for ( const entry of list.getEntries() as PerformanceEventTiming[] ) {
+					if ( entry.interactionId ) {
+						seen.interactions.push( entry.duration );
+					}
+				}
+			} ).observe( {
+				type: 'event',
+				durationThreshold: 16,
+				buffered: true,
+			} as PerformanceObserverInit );
+		} );
+		for ( const name of [
+			'Choose Builder test deck 8.0',
+			'Choose Builder test deck 8.25',
+			'Choose Builder test deck 8.5',
+		] ) {
+			await page.getByRole( 'radio', { name } ).click();
+			await expect( page.getByRole( 'radio', { name } ) ).toBeChecked();
+			await expect( page.locator( '.cbuild' ) ).toHaveAttribute(
+				'aria-busy',
+				'false'
+			);
+		}
+		// The observer reports on the frame after; give it two.
+		await page.evaluate(
+			() =>
+				new Promise( ( done ) =>
+					requestAnimationFrame( () => requestAnimationFrame( done ) )
+				)
+		);
+		const durations = await page.evaluate(
+			() =>
+				( window as unknown as { interactions: number[] } ).interactions
+		);
+		await devtools.send( 'Emulation.setCPUThrottlingRate', { rate: 1 } );
+		test.info().annotations.push( {
+			type: 'interactions (ms)',
+			description: durations.join( ', ' ) || 'all under 16',
+		} );
+		expect( Math.max( 0, ...durations ) ).toBeLessThanOrEqual( 100 );
+	} );
+
 	test( 'keeps its store private', async ( { page } ) => {
 		const read = await page.evaluate( async () => {
 			const name = '@wordpress/interactivity';

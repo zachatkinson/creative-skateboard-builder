@@ -730,6 +730,83 @@ final class StateRouteTest extends IntegrationTestCase {
 		self::assertLessThanOrEqual( 60, $cold, 'cold' );
 	}
 
+	/**
+	 * A guest on a shop that geolocates its customers, with prices shown by address: what the route costs beside
+	 * WooCommerce's own lookup (D-139, D-164). WooCommerce geolocates a shopper from MaxMind's database, through
+	 * `woocommerce_geolocate_ip`, or a CDN's country header, never from a country service
+	 * (`wc_get_customer_geolocation()` asks with no API fallback). Without either, it asks services for the server's
+	 * own public address, one after another with 2 seconds each, and keeps the answer a day for that guest's address.
+	 * Those services are answered here, with no network.
+	 */
+	public function test_a_guests_geolocation_is_woocommerces_own_lookup_once_and_kept_after(): void {
+		$options = array( 'woocommerce_calc_taxes', 'woocommerce_tax_display_shop', 'woocommerce_default_customer_address' );
+		$was     = array_map( 'get_option', array_combine( $options, $options ) );
+		$wc      = array( WC()->customer, WC()->session );
+		update_option( 'woocommerce_calc_taxes', 'yes' );
+		update_option( 'woocommerce_default_customer_address', 'geolocation' );
+		$_SERVER['REMOTE_ADDR'] = '203.0.113.7';
+		$asked                  = array();
+		$answer                 = static function ( $preempt, array $args, string $url ) use ( &$asked ): array {
+			$asked[] = (string) wp_parse_url( $url, PHP_URL_HOST );
+			return array(
+				'headers'  => array(),
+				'body'     => '198.51.100.20',
+				'response' => array(
+					'code'    => 200,
+					'message' => 'OK',
+				),
+				'cookies'  => array(),
+			);
+		};
+		add_filter( 'pre_http_request', $answer, 10, 3 );
+		// Each ask a request of its own: no customer or session carried from the last.
+		$fresh = static function (): void {
+			WC()->customer = null;
+			WC()->session  = null;
+		};
+		$timed = function () use ( $fresh ): float {
+			$fresh();
+			$started = hrtime( true );
+			self::assertSame( 200, $this->ask()->get_status() );
+			return ( hrtime( true ) - $started ) / 1e6;
+		};
+		$services = array( 'api64.ipify.org', 'ipecho.net', 'ident.me', 'tnedi.me' );
+		try {
+			// Prices shown without tax go by no address: nobody is looked up.
+			update_option( 'woocommerce_tax_display_shop', 'excl' );
+			$timed();
+			self::assertSame( array(), $asked, 'no address needed, no lookup' );
+
+			// Shown with tax, and no MaxMind database: the first request asks one service, as any page would.
+			update_option( 'woocommerce_tax_display_shop', 'incl' );
+			delete_transient( 'external_ip_address_203.0.113.7' );
+			$first = $timed();
+			self::assertCount( 1, $asked );
+			self::assertContains( $asked[0], $services );
+
+			$asked = array();
+			$next  = $timed();
+			self::assertSame( array(), $asked, "the next: the address WooCommerce kept for this guest's" );
+
+			// With MaxMind's database, which answers WooCommerce's own filter: nothing goes out.
+			delete_transient( 'external_ip_address_203.0.113.7' );
+			$maxmind = static fn (): string => 'CA';
+			add_filter( 'woocommerce_geolocate_ip', $maxmind );
+			$local = $timed();
+			remove_filter( 'woocommerce_geolocate_ip', $maxmind );
+			self::assertSame( array(), $asked, 'MaxMind: no request' );
+			fwrite( STDERR, sprintf( "\nGeolocation: a guest's first request %.1f ms with the service answering at once, the next %.1f ms, with MaxMind %.1f ms.\n", $first, $next, $local ) );
+		} finally {
+			remove_filter( 'pre_http_request', $answer, 10 );
+			delete_transient( 'external_ip_address_203.0.113.7' );
+			foreach ( $was as $option => $value ) {
+				update_option( $option, $value );
+			}
+			// The tests after this one find WooCommerce's customer and session as they were.
+			[ WC()->customer, WC()->session ] = $wc;
+		}
+	}
+
 	public function test_nothing_kept_for_the_limit_names_an_address(): void {
 		global $wpdb;
 		$this->terms( 10 );
