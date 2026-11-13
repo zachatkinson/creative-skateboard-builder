@@ -14,7 +14,7 @@ defined( 'ABSPATH' ) || exit;
 	<h3 class="cbuild-review__heading" data-wp-text="state.view.review.heading"></h3>
 	<ul class="cbuild-review__items">
 		<template data-wp-each--item="state.view.review.items" data-wp-each-key="context.item.key">
-			<li class="cbuild-review__item" data-wp-class--cbuild-review__item--wrong="!context.item.fits">
+			<li data-wp-bind--class="context.item.classes">
 				<span class="cbuild-review__slot" data-wp-text="context.item.label"></span>
 				<span class="cbuild-review__name" data-wp-text="context.item.name"></span>
 				<span class="cbuild-review__fit" data-wp-text="context.item.fit"></span>

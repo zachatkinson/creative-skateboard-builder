@@ -169,15 +169,16 @@ final class BuilderView {
 			'step'      => $step,
 			'changes'   => $this->changes( $state, $changes, $link, $lines, $label ),
 			'summary'   => $summary,
-			'bar'       => self::bar( $summary, $step, $shown, $review, $panel, Cast::map( Cast::items( $picture['items'] ?? null )[0] ?? null )['image'] ?? null ),
+			'bar'       => self::bar( $summary, $step, $shown, $review, $panel, Cast::map( Cast::items( $picture['items'] ?? null )[0] ?? null ), $state->id ),
 			'picture'   => array(
 				'heading'     => __( 'What is in the box', 'creative-skateboard-builder' ),
 				'description' => Cast::str( $picture['description'] ?? null ),
 				'items'       => array_map(
-					static function ( mixed $item, int $at ): array {
+					static function ( mixed $item, int $at ) use ( $state ): array {
 						$item = Cast::map( $item );
 						return array(
 							'key'      => Cast::str( $item['slot'] ?? null ),
+							'classes'  => self::flagged( array( 'cbuild-picture__item' ), $state->id, Cast::str( $item['slot'] ?? null ), Cast::int( $item['part'] ?? null ) ),
 							'label'    => Cast::str( $item['label'] ?? null ),
 							'name'     => Cast::str( $item['name'] ?? null ),
 							// The first, the deck, is the page's largest paint (spec: The picture); the rest wait.
@@ -204,15 +205,18 @@ final class BuilderView {
 	 * @param array<string, mixed> $shown   The review.
 	 * @param bool                 $review  Whether the review is shown.
 	 * @param bool                 $panel   Whether the change panel is shown.
-	 * @param mixed                $photo   The picture's first photo, if it has one.
-	 * @return array{shown: bool, photo: array{hasImage: bool, src: string, srcset: string, sizes: string, width: int, height: int}, picture: string, total: string, parts: string, next: array{shown: bool, onStep: bool, onReview: bool, text: string, form: string, name: string, value: string, disabled: bool}}
+	 * @param array<string, mixed> $first   The picture's first part, if it has one: its slot, its ID and its photo.
+	 * @param int                  $kit     The kit product's ID.
+	 * @return array{shown: bool, photo: array{hasImage: bool, src: string, srcset: string, sizes: string, width: int, height: int, classes: string}, picture: string, total: string, parts: string, next: array{shown: bool, onStep: bool, onReview: bool, text: string, form: string, name: string, value: string, disabled: bool}}
 	 */
-	private static function bar( array $summary, array $step, array $shown, bool $review, bool $panel, mixed $photo ): array {
+	private static function bar( array $summary, array $step, array $shown, bool $review, bool $panel, array $first, int $kit ): array {
 		$next = Cast::map( $step['next'] ?? null );
 		return array(
 			'shown'   => true,
 			// A small picture of the board: for now the picture's first photo, the deck's, which links to the picture.
-			'photo'   => self::image( $photo ),
+			'photo'   => self::image( $first['image'] ?? null ) + array(
+				'classes' => self::flagged( array( 'cbuild-bar__photo' ), $kit, Cast::str( $first['slot'] ?? null ), Cast::int( $first['part'] ?? null ) ),
+			),
 			'picture' => __( 'See the picture', 'creative-skateboard-builder' ),
 			/* translators: %s: the build's total, such as $184.00. */
 			'total'   => sprintf( __( 'Total: %s', 'creative-skateboard-builder' ), Cast::str( $summary['total'] ?? null ) ),
@@ -798,9 +802,23 @@ final class BuilderView {
 		if ( $checked ) {
 			$classes[] = 'cbuild-card--chosen';
 		}
+		return self::flagged( $classes, $kit, $slot, $part );
+	}
+
+	/**
+	 * A part's own classes with what another plugin adds after them (spec: "A flagged part blurs on its card in a step,
+	 * in the parts picture and in the review"): the same answer wherever the part is shown.
+	 *
+	 * @param list<string> $classes The builder's own classes, kept whatever the answer.
+	 * @param int          $kit     The kit product's ID.
+	 * @param string       $slot    The slot's key.
+	 * @param int          $part    The part's ID: a product's or a variation's.
+	 */
+	private static function flagged( array $classes, int $kit, string $slot, int $part ): string {
 		/**
-		 * Filter the classes of a part's card in the builder. The builder's own come first and are kept whatever
-		 * the answer: what is added is made safe for a class attribute and put after them.
+		 * Filter the classes of a part in the builder: its card in a step, its place in the picture and the bar's
+		 * photo, and its line in the review. The builder's own come first and are kept whatever the answer: what is
+		 * added is made safe for a class attribute and put after them.
 		 *
 		 * @since 0.6.0
 		 *
@@ -982,15 +1000,17 @@ final class BuilderView {
 		}
 		$items = array();
 		foreach ( $steps as $slot ) {
+			$own     = isset( $wrong[ $slot ] ) ? array( 'cbuild-review__item', 'cbuild-review__item--wrong' ) : array( 'cbuild-review__item' );
 			$items[] = array(
-				'key'    => $slot,
-				'label'  => $label( $slot ),
-				'name'   => isset( $counted[ $slot ] ) ? Cast::str( $lines[ $slot ]['name'] ?? null ) : __( 'None', 'creative-skateboard-builder' ),
-				'fits'   => ! isset( $wrong[ $slot ] ),
-				'fit'    => $wrong[ $slot ] ?? ( isset( $counted[ $slot ] ) ? __( 'Fits', 'creative-skateboard-builder' ) : '' ),
-				'url'    => $url( $link->at( $slot ) ),
+				'key'     => $slot,
+				'classes' => isset( $counted[ $slot ] ) ? self::flagged( $own, $state->id, $slot, $counted[ $slot ] ) : implode( ' ', $own ),
+				'label'   => $label( $slot ),
+				'name'    => isset( $counted[ $slot ] ) ? Cast::str( $lines[ $slot ]['name'] ?? null ) : __( 'None', 'creative-skateboard-builder' ),
+				'fits'    => ! isset( $wrong[ $slot ] ),
+				'fit'     => $wrong[ $slot ] ?? ( isset( $counted[ $slot ] ) ? __( 'Fits', 'creative-skateboard-builder' ) : '' ),
+				'url'     => $url( $link->at( $slot ) ),
 				/* translators: %s: a slot's label, such as Trucks. */
-				'change' => sprintf( __( 'Change %s', 'creative-skateboard-builder' ), $label( $slot ) ),
+				'change'  => sprintf( __( 'Change %s', 'creative-skateboard-builder' ), $label( $slot ) ),
 			);
 		}
 		$texts  = Cast::map( $answer['texts'] ?? null );

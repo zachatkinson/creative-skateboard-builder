@@ -405,6 +405,25 @@ final class BuilderPageTest extends IntegrationTestCase {
 		self::assertSame( 'Deck: nothing is chosen yet.', self::text( $dom, '//div[contains(@class,"cbuild-errors")]//a' ) );
 	}
 
+	// Audit, spec review S8: "A flagged part blurs on its card in a step, in the parts picture and in the review."
+	public function test_another_plugins_classes_are_on_the_part_in_the_picture_the_bar_and_the_review_as_served(): void {
+		$deck = $this->parts['deck 8.5'];
+		add_filter( 'cbuild_part_classes', static fn( array $classes, int $part ): array => $deck === $part ? array( 'is-flagged' ) : $classes, 10, 2 );
+		$dom = self::dom(
+			$this->kitPage(
+				array(
+					'deck' => (string) $deck,
+					'step' => 'review',
+				)
+			)
+		);
+		self::assertSame( 'cbuild-picture__item is-flagged', $dom->query( '//ul[contains(@class,"cbuild-picture__items")]/li' )->item( 0 )->getAttribute( 'class' ) );
+		self::assertSame( 'cbuild-bar__photo is-flagged', $dom->query( '//a[contains(@class,"cbuild-bar__picture")]/img' )->item( 0 )->getAttribute( 'class' ) );
+		$review = $dom->query( '//ul[contains(@class,"cbuild-review__items")]/li' );
+		self::assertSame( 'cbuild-review__item is-flagged', $review->item( 0 )->getAttribute( 'class' ), 'the deck' );
+		self::assertStringNotContainsString( 'is-flagged', $review->item( 1 )->getAttribute( 'class' ), 'the trucks' );
+	}
+
 	public function test_every_link_into_a_state_carries_nofollow_on_every_state(): void {
 		$states = array(
 			'the blank start'   => array(),

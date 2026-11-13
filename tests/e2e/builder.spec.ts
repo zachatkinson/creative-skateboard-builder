@@ -416,7 +416,10 @@ test.describe( 'The builder without JavaScript', () => {
 		);
 		const review = page.locator( '.cbuild-review' );
 		const link = review.getByLabel( 'Link to this build' );
-		await expect( link ).toHaveValue( page.url() );
+		// The page's address, but for the preset it started from: a shared link carries no preset (audit 15).
+		const shared = new URL( page.url() );
+		shared.searchParams.delete( 'cbuild[preset]' );
+		await expect( link ).toHaveValue( shared.toString() );
 		await expect( link ).toHaveAttribute( 'readonly', '' );
 		await expect(
 			review.getByRole( 'button', { name: 'Copy link' } )

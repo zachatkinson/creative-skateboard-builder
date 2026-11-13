@@ -217,8 +217,10 @@ final class BuilderTest extends TestCase {
 			array_diff_key( $view['bar'], array_flip( array( 'photo', 'picture' ) ) )
 		);
 		self::assertSame( $view['step']['next']['text'], $view['bar']['next']['text'], "the step's own Next, sent from its form" );
-		$photo = array_intersect_key( $view['picture']['items'][0], $view['bar']['photo'] );
-		self::assertSame( $photo, $view['bar']['photo'], 'a small picture of the board: for now, the first part\'s photo' );
+		$bar   = array_diff_key( $view['bar']['photo'], array( 'classes' => true ) );
+		$photo = array_intersect_key( $view['picture']['items'][0], $bar );
+		self::assertSame( $photo, $bar, 'a small picture of the board: for now, the first part\'s photo' );
+		self::assertSame( 'cbuild-bar__photo', $view['bar']['photo']['classes'] );
 		self::assertTrue( $view['bar']['photo']['hasImage'] );
 		self::assertSame( 'See the picture', $view['bar']['picture'] );
 		self::assertFalse( $this->show( new BuildLink() )['view']['bar']['photo']['hasImage'], 'nothing picked, no photo' );
@@ -736,13 +738,14 @@ final class BuilderTest extends TestCase {
 		self::assertSame( array( 'deck', 'trucks', 'wheels', 'bearings', 'hardware', 'grip' ), array_column( $review['items'], 'key' ) );
 		self::assertSame(
 			array(
-				'key'    => 'trucks',
-				'label'  => 'Trucks',
-				'name'   => 'Part 139',
-				'fits'   => true,
-				'fit'    => 'Fits',
-				'url'    => 'https://shop.test/?page_id=5&lang=fr&' . http_build_query( array( 'cbuild' => array_map( 'strval', self::STREET ) + array( 'step' => 'trucks' ) ) ),
-				'change' => 'Change Trucks',
+				'key'     => 'trucks',
+				'classes' => 'cbuild-review__item',
+				'label'   => 'Trucks',
+				'name'    => 'Part 139',
+				'fits'    => true,
+				'fit'     => 'Fits',
+				'url'     => 'https://shop.test/?page_id=5&lang=fr&' . http_build_query( array( 'cbuild' => array_map( 'strval', self::STREET ) + array( 'step' => 'trucks' ) ) ),
+				'change'  => 'Change Trucks',
 			),
 			$review['items'][1]
 		);
@@ -811,6 +814,7 @@ final class BuilderTest extends TestCase {
 		self::assertSame( 'Assembled builds come back as parts.', $view['review']['notice'] );
 		self::assertFalse( $view['review']['ready'] );
 		self::assertSame( array( false, false, true ), array_column( array_slice( $view['review']['items'], 0, 3 ), 'fits' ) );
+		self::assertSame( array( 'cbuild-review__item cbuild-review__item--wrong', 'cbuild-review__item cbuild-review__item--wrong', 'cbuild-review__item' ), array_column( array_slice( $view['review']['items'], 0, 3 ), 'classes' ), 'marked so the styles can say so' );
 		self::assertSame( 'Trucks: the part chosen does not fit the rest of the build.', $view['review']['items'][1]['fit'] );
 		self::assertSame( 'cbuild[assembly]', end( $view['review']['fields'] )['name'] );
 		self::assertSame( '1', end( $view['review']['fields'] )['value'] );
@@ -1018,5 +1022,21 @@ final class BuilderTest extends TestCase {
 
 		$GLOBALS['cbuild_test_filters']['cbuild_part_classes'] = static fn(): string => 'is-staff-pick';
 		self::assertSame( 'cbuild-card cbuild-card--fits', $this->show( new BuildLink() )['view']['step']['options'][0]['classes'], 'An answer that is no list adds nothing.' );
+	}
+
+	// Audit, spec review S8. The spec: "A flagged part blurs on its card in a step, in the parts picture and in the
+	// review", by cbuild_part_classes: the same answer reaches every place the part is shown.
+	public function test_another_plugins_classes_reach_the_part_in_the_picture_the_bar_and_the_review(): void {
+		$GLOBALS['cbuild_test_filters']['cbuild_part_classes'] = static function ( array $classes, int $part, string $slot, int $kit ): array {
+			return 101 === $part && SlotKey::DECK === $slot && self::KIT === $kit ? array( 'is-flagged', 'bad class"' ) : array();
+		};
+		$view = $this->show( new BuildLink( self::STREET, null, State::REVIEW ) )['view'];
+
+		self::assertSame( 'cbuild-picture__item is-flagged badclass', $view['picture']['items'][0]['classes'] );
+		self::assertSame( 'cbuild-picture__item', $view['picture']['items'][1]['classes'] );
+		self::assertSame( 'cbuild-bar__photo is-flagged badclass', $view['bar']['photo']['classes'] );
+		$review = array_column( $view['review']['items'], 'classes', 'key' );
+		self::assertSame( 'cbuild-review__item is-flagged badclass', $review[ SlotKey::DECK ] );
+		self::assertSame( 'cbuild-review__item', $review[ SlotKey::TRUCKS ] );
 	}
 }
