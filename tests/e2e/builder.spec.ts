@@ -544,6 +544,44 @@ test.describe( 'The builder with JavaScript', () => {
 		expect( await stayed( page ) ).toBe( true );
 	} );
 
+	// Audit 22, milestone 6: the roadmap's "Back, Forward and reload"; SPEC History: a reload opens the same step.
+	test( 'a reload at a step the store reached opens the same step with the same picks', async ( {
+		page,
+	} ) => {
+		await page
+			.getByRole( 'radio', { name: 'Choose Builder test deck 8.0' } )
+			.check();
+		await page.getByRole( 'button', { name: 'Next: Trucks' } ).click();
+		await expect( heading( page ) ).toHaveText( 'Step 2 of 7: Trucks' );
+		expect( await stayed( page ), 'the store moved' ).toBe( true );
+		const address = page.url();
+
+		await page.reload();
+		await page.waitForLoadState( 'load' );
+		expect( await stayed( page ), 'the page was loaded again' ).toBe(
+			false
+		);
+		expect( page.url() ).toBe( address );
+		await expect( heading( page ) ).toHaveText( 'Step 2 of 7: Trucks' );
+		await expect(
+			page.getByRole( 'radio', {
+				name: 'Choose Builder test trucks 139',
+			} )
+		).toBeChecked();
+
+		// The store takes over the reloaded page: Back is drawn, not loaded, and the deck is still picked.
+		await mark( page );
+		await page
+			.getByRole( 'link', { name: 'Back', exact: false } )
+			.first()
+			.click();
+		await expect( heading( page ) ).toHaveText( 'Step 1 of 7: Deck' );
+		await expect(
+			page.getByRole( 'radio', { name: 'Choose Builder test deck 8.0' } )
+		).toBeChecked();
+		expect( await stayed( page ) ).toBe( true );
+	} );
+
 	test( "describes each card's radio by the rest of its card, on a step the store drew (Accessibility)", async ( {
 		page,
 	} ) => {
