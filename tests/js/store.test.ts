@@ -184,45 +184,59 @@ describe( 'the store', () => {
 			new SubmitEvent( 'submit', { submitter: next, cancelable: true } )
 		);
 		await settle();
-		expect( sent ).toHaveBeenCalledWith( step );
-		expect( [ ...new FormData( step ) ] ).toContainEqual( [
-			'cbuild[step]',
-			'trucks',
-		] );
-		expect(
-			step.querySelector< HTMLInputElement >(
-				'input[name="cbuild[step]"]'
-			)?.type
-		).toBe( 'hidden' );
-		expect( state.view ).toBe( START );
-	} );
-
-	it( 'adds no field for a button with no name when it sends the form', async () => {
-		const { form: step, next } = form();
-		next.removeAttribute( 'name' );
-		setElement( step );
-		reply = () => answer( null, 500 );
-		const sent = vi
-			.spyOn( browser, 'submit' )
-			.mockImplementation( () => undefined );
-		actions.submit(
-			new SubmitEvent( 'submit', { submitter: next, cancelable: true } )
-		);
-		await settle();
-		expect( sent ).toHaveBeenCalledOnce();
+		// The button travels as the browser sends it, so no field is made for it (audit, spec review S11).
+		expect( sent ).toHaveBeenCalledWith( step, next );
 		expect( step.querySelectorAll( 'input[type=hidden]' ) ).toHaveLength(
 			2
 		);
+		expect( state.view ).toBe( START );
 	} );
 
-	it( 'sends a form through its own submit, which runs no handler', () => {
+	it( 'sends a form through the browser with the button pressed, and its own handlers stand aside while it does', () => {
+		const { form: step, next } = form();
+		setElement( step );
+		const seen: boolean[] = [];
+		const request = vi
+			.spyOn( HTMLFormElement.prototype, 'requestSubmit' )
+			.mockImplementation( function ( this: HTMLFormElement ) {
+				// What the browser does: the submit event, then the request unless a handler stops it.
+				for ( const handler of [ actions.submit, actions.add ] ) {
+					const event = new SubmitEvent( 'submit', {
+						submitter: next,
+						cancelable: true,
+					} );
+					void handler( event );
+					seen.push( event.defaultPrevented );
+				}
+			} );
+		browser.submit( step, next );
+		expect( request ).toHaveBeenCalledOnce();
+		expect( request.mock.contexts[ 0 ] ).toBe( step );
+		expect( request.mock.calls[ 0 ] ).toEqual( [ next ] );
+		expect( seen ).toEqual( [ false, false ] );
+		expect( fetched ).toHaveLength( 0 );
+
+		// Once sent, the handlers are the store's again.
+		const after = new SubmitEvent( 'submit', {
+			submitter: next,
+			cancelable: true,
+		} );
+		actions.submit( after );
+		expect( after.defaultPrevented ).toBe( true );
+	} );
+
+	it( 'sends a form with no button pressed, or one that is not its own, by the form alone', () => {
 		const { form: step } = form();
-		const submit = vi
-			.spyOn( HTMLFormElement.prototype, 'submit' )
+		const request = vi
+			.spyOn( HTMLFormElement.prototype, 'requestSubmit' )
 			.mockImplementation( () => undefined );
-		browser.submit( step );
-		expect( submit ).toHaveBeenCalledOnce();
-		expect( submit.mock.contexts[ 0 ] ).toBe( step );
+		browser.submit( step, null );
+		const stranger = document.createElement( 'button' );
+		browser.submit( step, stranger );
+		expect( request.mock.calls ).toEqual( [
+			[ undefined ],
+			[ undefined ],
+		] );
 	} );
 
 	it( 'leaves a submit on anything but a form alone', () => {
@@ -761,7 +775,7 @@ describe( 'adding to the cart', () => {
 		root.ownerDocument.addEventListener( 'cbuild:added', builder );
 		await actions.add( new SubmitEvent( 'submit', { cancelable: true } ) );
 		root.ownerDocument.removeEventListener( 'cbuild:added', builder );
-		expect( submitted ).toHaveBeenCalledWith( sheet );
+		expect( submitted ).toHaveBeenCalledWith( sheet, null );
 		expect( state.added ).toBe( false );
 		expect( state.pending ).toBe( false );
 		expect( told ).toEqual( [] );

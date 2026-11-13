@@ -133,13 +133,38 @@ function say(
 }
 
 /**
+ * Whether the browser is sending a form the store let go: its submit handlers then leave the event alone.
+ */
+let leaving = false;
+
+/**
  * What the builder does without JavaScript's help, named so that a test can see it done.
  */
 export const browser = {
 	assign: ( url: string ): void => window.location.assign( url ),
 	reload: (): void => window.location.reload(),
-	submit: ( form: HTMLFormElement ): void =>
-		HTMLFormElement.prototype.submit.call( form ),
+	/**
+	 * Send a form as the browser would without JavaScript, the button pressed among its fields: the browser's own
+	 * submit, which the store's handlers stand aside for, so no field is made to carry the button (no markup is
+	 * built in the script).
+	 *
+	 * @param form      The form.
+	 * @param submitter The button pressed, if any: sent only where it is the form's own.
+	 */
+	submit: ( form: HTMLFormElement, submitter?: HTMLElement | null ): void => {
+		const own =
+			( submitter instanceof HTMLButtonElement ||
+				submitter instanceof HTMLInputElement ) &&
+			submitter.form === form
+				? submitter
+				: undefined;
+		leaving = true;
+		try {
+			form.requestSubmit( own );
+		} finally {
+			leaving = false;
+		}
+	},
 };
 
 /**
@@ -234,14 +259,7 @@ function fields(
  * @param submitter The button pressed, if any.
  */
 function send( form: HTMLFormElement, submitter?: HTMLElement | null ): void {
-	if ( submitter instanceof HTMLButtonElement && '' !== submitter.name ) {
-		const pressed = form.ownerDocument.createElement( 'input' );
-		pressed.type = 'hidden';
-		pressed.name = submitter.name;
-		pressed.value = submitter.value;
-		form.appendChild( pressed );
-	}
-	browser.submit( form );
+	browser.submit( form, submitter ?? null );
 }
 
 const { state } = store(
@@ -266,7 +284,7 @@ const { state } = store(
 		actions: {
 			submit( event: SubmitEvent ): void {
 				const form = getElement().ref;
-				if ( ! ( form instanceof HTMLFormElement ) ) {
+				if ( leaving || ! ( form instanceof HTMLFormElement ) ) {
 					return;
 				}
 				event.preventDefault();
@@ -308,7 +326,7 @@ const { state } = store(
 			},
 			async add( event: SubmitEvent ): Promise< void > {
 				const form = getElement().ref;
-				if ( ! ( form instanceof HTMLFormElement ) ) {
+				if ( leaving || ! ( form instanceof HTMLFormElement ) ) {
 					return;
 				}
 				event.preventDefault();

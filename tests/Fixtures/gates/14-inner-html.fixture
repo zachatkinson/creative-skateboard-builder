@@ -1,0 +1,2 @@
+const list = root.querySelector( 'ul' );
+list!.innerHTML = item;
