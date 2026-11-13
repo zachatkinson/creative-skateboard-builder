@@ -14,7 +14,7 @@ Sells complete skateboards built from parts the shop stocks, with fit checked fr
 
 Creative Skateboard Builder lets a shopper put a complete skateboard together from the decks, trucks, wheels, bearings, hardware and grip a WooCommerce shop already sells. It checks that the parts fit from each part's specs, draws a picture of the build, keeps the total in view, and gives each part its own line in the cart and on the order, so stock, tax and refunds work as they do for any other product.
 
-This is version 0.6.0. It holds the foundation (the plugin's three tables, its upgrade steps and its update check), the rules that decide which parts fit together and what a build costs, the work that reads each part's specs from the shop's products, and the Builder kit product a shop owner sets a build up on. The builder a shopper uses arrives in later versions, and nothing a shopper sees changes yet.
+This is version 0.6.0, the first a shopper sees. A kit's page shows the builder in place of the add-to-cart form, and the Builder block puts it on any other page. The shopper goes one step a slot, sees only the parts that fit what they picked, can start from one of your presets, and reaches a review with the total, a link to the build and Add to cart. It works with a keyboard and a screen reader, on a phone, and without JavaScript. A composed picture of the finished board, and saved builds, arrive in later versions.
 
 The plugin needs WooCommerce 11.2 or newer, WordPress 7.0 or newer and PHP 8.5 or newer. Below any of them it does nothing and says so on the Plugins screen.
 
@@ -40,6 +40,15 @@ Yes. Activating it for the network installs it on every site, and a site added l
 == Changelog ==
 
 = 0.6.0 =
+* The builder: a kit's page shows it in place of the add-to-cart form, one step a slot, with the parts that fit, the total kept in view, and a review that adds the build to the cart.
+* The Builder block shows a kit's builder on any page or post, and a filter can send a kit's page to it.
+* Presets: a shopper can start from any of a kit's presets. One holding a sold-out part says so on its tile.
+* A part that no longer fits after an earlier pick changes is named in a panel, with Use these and Undo.
+* Width and brand filters, and Show more on a step with many parts.
+* On a phone, a bar at the foot of the screen keeps the total and the next step in reach.
+* Each build in the cart has an Edit build link that opens the builder at the review. Adding there takes the old build's place at the same quantity.
+* A line under the total says what shipping costs or how far the build is from free shipping, worded from your shipping zones for a shopper whose address the shop holds, or by another plugin.
+* Each step has an address of its own, so Back and Forward work, and the review has a link to the build to share. Search engines index the clean page only.
 * After your parts are read again in the background, the first shopper to open the builder no longer waits for them.
 * A slot can no longer be keyed step, assembly, preset or review. A build's link uses those words for itself.
 
