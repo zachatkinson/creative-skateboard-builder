@@ -1298,6 +1298,8 @@ test.describe( 'The builder with JavaScript', () => {
 	test( 'passes axe on every state it shows (Accessibility: axe on every state)', async ( {
 		page,
 	}, info ) => {
+		// Axe on a dozen states: over the 60 s a test has on a slow WebKit runner (CI run 43461092467).
+		test.slow();
 		const region = '.cbuild';
 		const check = ( state: string ) =>
 			axe( page, `${ info.project.name }: ${ state }`, region );

@@ -210,11 +210,21 @@ function nav( state: State ): Navigator {
 						? 'push'
 						: history;
 				const before = state.view;
-				motion( () => {
+				const change = () => {
 					state.view = shown;
 					state.added = false;
 					say( state, shown, turned, config, before );
-				} );
+				};
+				// Only a new step crosses over (spec: Motion): a transition takes the screen's taps while it
+				// runs, so one for a view on the same step would lose a Next tapped straight after a pick.
+				if (
+					shown.step.slot !== before.step.slot ||
+					shown.isChanges !== before.isChanges
+				) {
+					motion( change );
+				} else {
+					change();
+				}
 				return turned;
 			},
 			pending: ( on ) => {

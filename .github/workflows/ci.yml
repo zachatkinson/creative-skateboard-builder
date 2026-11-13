@@ -217,9 +217,9 @@ jobs:
     name: Integration, Plugin Check, browser (${{ matrix.leg }})
     needs: scope
     runs-on: ubuntu-26.04
-    # Every browser project is some 35 minutes of the newest leg on this runner, after 12 of setup and gates (D-085);
-    # the other legs, and a draft's newest, are done in half an hour or something is wrong.
-    timeout-minutes: ${{ matrix.leg == 'newest' && needs.scope.outputs.browsers == 'every' && 60 || 30 }}
+    # Every browser project is 648 tests and some 55 minutes of the newest leg on a slow runner, after 13 of setup and
+    # gates (D-085); the other legs, and a draft's newest, are done in half an hour or something is wrong.
+    timeout-minutes: ${{ matrix.leg == 'newest' && needs.scope.outputs.browsers == 'every' && 90 || 30 }}
     strategy:
       fail-fast: false
       matrix:

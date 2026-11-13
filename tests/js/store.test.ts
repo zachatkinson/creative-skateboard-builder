@@ -974,6 +974,28 @@ describe( 'motion', () => {
 		expect( state.view ).toEqual( NEXT );
 	} );
 
+	// A transition takes the screen's taps while it runs, so one for a pick that stays on its step lost a Next
+	// tapped straight after (CI run 43461092467, webkit-phone). The change panel is a step of its own (D-152).
+	it( 'shows a view on the same step at once, and crosses over to the change panel', async () => {
+		const transitions = motion( false, true );
+		const { radio } = form();
+		reply = () => answer( { ...START, status: 'A deck. Total: $90.00.' } );
+		actions.pick( { target: radio } as unknown as Event );
+		vi.advanceTimersByTime( WAIT );
+		await settle();
+		expect( state.view ).toMatchObject( {
+			status: 'A deck. Total: $90.00.',
+		} );
+		expect( transitions ).toHaveLength( 0 );
+
+		reply = () => answer( { ...START, isChanges: true } );
+		actions.pick( { target: radio } as unknown as Event );
+		vi.advanceTimersByTime( WAIT );
+		await settle();
+		expect( state.view ).toMatchObject( { isChanges: true } );
+		expect( transitions ).toHaveLength( 1 );
+	} );
+
 	it( 'shows the next view at once under reduced motion', async () => {
 		const transitions = motion( true, true );
 		await step();

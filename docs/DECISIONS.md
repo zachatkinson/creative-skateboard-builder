@@ -2342,3 +2342,13 @@ Zach chose on 13 November 2026: "allow for the runners speed".
 **Red run.** CI run 43417214571, as above. **Deliberate break:** the scale capped at 0.8, the route's limit 64 ms: "The state route, cold. Failed asserting that 71.108169 is less than 64.0." The scale's ends were run too: a Mac figure of 2.0 gave the cap, 2.5 and 200 ms, and of 14.1 gave 1 and 80 ms, both passing.
 
 **Status:** Accepted.
+
+### D-172 · Only a new step crosses over · 2026-11-13
+
+CI run 43461092467 failed on WebKit at a phone's width: "Motion › settles the chosen card and crosses steps over" picked a deck, pressed the bar's Next: Trucks, and was still on "Step 1 of 7: Deck" five seconds later. Every view the route answered was drawn inside a view transition (D-161), the pick's own answer too, and while a transition runs the browser sends the screen's taps to its overlay, not the page. A shopper who tapped Next as the pick's answer came back lost the tap.
+
+- **The spec's motion is the step crossing over.** The store now starts a transition only when the view's step changes, or the change panel opens or closes (a step of its own, D-152). A pick, a filter, the assembly switch and Show more, which stay on the step, are drawn at once. The card's settle is the stylesheet's and runs as before.
+- **Tests.** `store.test.ts`, "shows a view on the same step at once, and crosses over to the change panel". **Red run:** "expected [ [Function] ] to have a length of +0 but got 1" at `store.test.ts:989`. **Deliberate break:** without the change panel's condition, "expected [] to have a length of 1 but got +0" at `store.test.ts:996`.
+- **The same run** also showed the newest leg's 648 browser tests need more than its 60 minutes on a slow runner (cancelled at test 505 of 648, 44 minutes in), so its limit is 90; and the axe test's dozen states take more than a test's 60 seconds on WebKit there, so it is marked slow.
+
+**Status:** Accepted.
