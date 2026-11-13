@@ -694,7 +694,7 @@ test.describe( 'The builder with JavaScript', () => {
 		await expect( total ).toHaveCSS( 'opacity', '1' );
 	} );
 
-	test( 'sends the form when the state route fails, and the server shows the next step', async ( {
+	test( 'sends the form when the state route fails, the server shows the next step, and the build still reaches the cart', async ( {
 		page,
 	} ) => {
 		await page.route( isRoute, ( route ) => route.abort() );
@@ -714,6 +714,44 @@ test.describe( 'The builder with JavaScript', () => {
 			'cbuild[deck]',
 			'cbuild[step]',
 		] );
+
+		// Audit, spec review S3: the roadmap's "the state route forced to fail, and the build still finishes".
+		await next( page, 'Next: Wheels' );
+		await page
+			.getByRole( 'radio', { name: 'Choose Builder test wheels 58' } )
+			.check();
+		await next( page, 'Next: Bearings' );
+		await expect( heading( page ) ).toHaveText( 'Step 4 of 8: Risers' );
+		await next( page, 'Next: Bearings' );
+		await next( page, 'Next: Hardware' );
+		await next( page, 'Next: Grip tape' );
+		await next( page, 'Next: Review' );
+		await expect( heading( page ) ).toHaveText( 'Step 8 of 8: Review' );
+		// The review's own, or the phone bar's where the review's is hidden: one at each width (P11).
+		await page
+			.locator( '.cbuild' )
+			.getByRole( 'button', { name: 'Add to cart' } )
+			.click();
+		await expect
+			.poll( async () => {
+				const cart = await (
+					await page.request.get( '/wp-json/wc/store/v1/cart' )
+				).json();
+				return cart.items.map(
+					( item: { name: string } ) => item.name
+				);
+			} )
+			.toEqual(
+				expect.arrayContaining( [
+					'Builder test kit',
+					'Builder test deck 8.0',
+					'Builder test trucks 139',
+					'Builder test wheels 58',
+					'Builder test risers 1/4',
+					'Builder test bearings',
+					'Builder test grip',
+				] )
+			);
 	} );
 
 	test( "puts focus on each new step's heading, says the step in the title, and says each pick once", async ( {
