@@ -411,6 +411,41 @@ test.describe( 'The builder without JavaScript', () => {
 		await other.close();
 	} );
 
+	// Audit, spec review S4: the spec's browser test of "the SEO tags on the clean page and on a build link".
+	test( 'the clean page is indexable with its own canonical, and a build link is noindex, follow with the clean one', async ( {
+		page,
+	} ) => {
+		const clean = fixture().page;
+		const robots = page.locator( 'meta[name="robots"]' );
+		const canonical = page.locator( 'link[rel="canonical"]' );
+
+		await page.goto( clean );
+		await expect( heading( page ) ).toHaveText( 'Step 1 of 7: Deck' );
+		expect(
+			( await robots.getAttribute( 'content' ).catch( () => '' ) ) ?? ''
+		).not.toContain( 'noindex' );
+		await expect( canonical ).toHaveCount( 1 );
+		await expect( canonical ).toHaveAttribute( 'href', clean );
+
+		await page.goto(
+			linkTo( { deck: id( 'builder-test-deck-8-0' ), step: 'trucks' } )
+		);
+		await expect( heading( page ) ).toHaveText( 'Step 2 of 7: Trucks' );
+		await expect( robots ).toHaveAttribute( 'content', /noindex, follow/ );
+		await expect( canonical ).toHaveCount( 1 );
+		await expect( canonical ).toHaveAttribute( 'href', clean );
+		// The links into states the page holds are nofollow: the done steps and Back.
+		const into = page.locator(
+			'.cbuild a[href*="cbuild%5B"], .cbuild a[href*="cbuild["]'
+		);
+		expect( await into.count() ).toBeGreaterThan( 0 );
+		for ( const rel of await into.evaluateAll( ( links ) =>
+			links.map( ( link ) => link.getAttribute( 'rel' ) ?? '' )
+		) ) {
+			expect( rel ).toContain( 'nofollow' );
+		}
+	} );
+
 	test( "the kit's own page shows the same builder", async ( { page } ) => {
 		await page.goto( '/product/builder-test-kit/' );
 		await expect( heading( page ) ).toHaveText( 'Step 1 of 7: Deck' );
