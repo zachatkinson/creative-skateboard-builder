@@ -740,6 +740,34 @@ test.describe( 'The builder with JavaScript', () => {
 		expect( await stayed( page ) ).toBe( true );
 	} );
 
+	test( 'keeps focus on a filter and on the assembly switch, and says the new total (Accessibility)', async ( {
+		page,
+	}, info ) => {
+		const filters = page.getByRole( 'group', { name: 'Width' } );
+		const width = filters.getByRole( 'button', {
+			name: inLocale( info.project.name, '8.25 in (1)' ),
+		} );
+		await width.focus();
+		await page.keyboard.press( 'Enter' );
+		await expect( width ).toHaveAttribute( 'aria-pressed', 'true' );
+		await expect( width, 'the shopper keeps their place' ).toBeFocused();
+
+		const toggle = page.locator( '.cbuild-summary__assembly a' );
+		test.skip(
+			! ( await toggle.isVisible() ),
+			"On a phone the bar takes the summary's place, and has no switch."
+		);
+		const before = await toggle.textContent();
+		await toggle.focus();
+		await page.keyboard.press( 'Enter' );
+		await expect( toggle ).not.toHaveText( before ?? '' );
+		await expect( toggle ).toBeFocused();
+		await expect(
+			page.locator( '.cbuild' ).getByRole( 'status' )
+		).toContainText( /\d/ );
+		expect( await stayed( page ) ).toBe( true );
+	} );
+
 	test( 'a wider deck opens the change panel with focus on its heading, and Use these and Undo stay on the page', async ( {
 		page,
 	} ) => {

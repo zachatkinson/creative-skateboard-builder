@@ -13,7 +13,8 @@
  * - **Back and Forward** ask the route for the address the browser is now at.
  * - **After a step changes,** focus goes to what the shopper reads first: the error summary, the change panel's
  *   heading, or the step's heading; the page's title says the step (D-149). **After a pick,** the status region says
- *   the build and its total, once (spec: Keyboard and screen readers).
+ *   the build and its total, once (spec: Keyboard and screen readers). **A move that stays on the step** (assembly,
+ *   a filter) keeps focus on the control used and says the total; after Show more, focus goes to the first new card.
  * - **Add to cart** posts the build to the Store API, then tells the carts (`wc-blocks_added_to_cart`, on which the
  *   Mini-Cart refreshes) and says so; without the Store API, the form goes to WooCommerce's own handler (D-155).
  * - **Two events** on the builder's element, bubbling, for a shop's own analytics under its own consent (spec:
@@ -40,7 +41,7 @@ interface Config {
 
 interface Shown extends View {
 	kit: number;
-	step: { slot: string };
+	step: { slot: string; options?: unknown[] };
 	review: { added: string; copied: string; link: string };
 	title: string;
 	status: string;
@@ -81,21 +82,43 @@ function first( view: Shown ): string {
 }
 
 /**
- * Says a view: the status region after a pick; after a step, the page's title, and focus once the page shows it.
+ * Says a view: the status region after a pick; after a step, the page's title, and focus once the page shows it. A
+ * move that stays on the step (assembly, a filter, Show more) is no step: focus stays on the control used and the
+ * region says the total, and after Show more focus goes to the first new card (spec: Keyboard and screen readers).
  *
  * @param state   The store's state.
  * @param view    The view now shown.
  * @param history How the move treats history.
  * @param config  The page's config.
+ * @param before  The view it takes the place of.
  */
 function say(
 	state: State,
 	view: Shown,
 	history: Move[ 'history' ],
-	config: Partial< Config >
+	config: Partial< Config >,
+	before: Shown
 ): void {
 	if ( 'replace' === history ) {
 		state.status = view.status;
+		return;
+	}
+	const stays =
+		! view.isChanges &&
+		! before.isChanges &&
+		! view.errors.shown &&
+		view.step.slot === before.step.slot;
+	if ( stays ) {
+		const shown = before.step.options?.length ?? 0;
+		const more = ( view.step.options?.length ?? 0 ) > shown;
+		state.status = more ? '' : view.status;
+		if ( more ) {
+			window.requestAnimationFrame( () => {
+				root?.querySelector< HTMLElement >(
+					`.cbuild-cards > li:nth-child(${ shown + 1 }) input`
+				)?.focus();
+			} );
+		}
 		return;
 	}
 	// The change panel says how many parts changed; a step is read from its heading, so the region says nothing.
@@ -163,10 +186,11 @@ function nav( state: State ): Navigator {
 					! state.view.isChanges
 						? 'push'
 						: history;
+				const before = state.view;
 				motion( () => {
 					state.view = shown;
 					state.added = false;
-					say( state, shown, turned, config );
+					say( state, shown, turned, config, before );
 				} );
 				return turned;
 			},

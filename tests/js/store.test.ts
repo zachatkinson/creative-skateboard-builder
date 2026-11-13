@@ -566,6 +566,55 @@ describe( 'the store', () => {
 		expect( radio.ownerDocument.activeElement ).toBe( radio );
 	} );
 
+	it( 'keeps focus on the control used and says the total after a move that stays on the step (assembly, a filter)', async () => {
+		const div = builder();
+		const used = div.querySelector( 'a' )!;
+		used.focus();
+		reply = () =>
+			answer( {
+				...START,
+				url: window.location.origin + '/?assembly',
+				status: 'A deck, assembled. Total: $85.00.',
+			} );
+		await move();
+		vi.advanceTimersToNextFrame();
+		expect(
+			div.ownerDocument.activeElement,
+			'the shopper keeps their place'
+		).toBe( used );
+		expect( state.status ).toBe( 'A deck, assembled. Total: $85.00.' );
+	} );
+
+	it( 'puts focus on the first new card after Show more', async () => {
+		const div = builder();
+		div.insertAdjacentHTML(
+			'beforeend',
+			'<ul class="cbuild-cards"><li><input type="radio" name="cbuild[deck]" value="1"></li><li><input type="radio" name="cbuild[deck]" value="2"></li></ul>'
+		);
+		state.view = { ...START, step: { slot: 'deck', options: [ {}, {} ] } };
+		reply = () =>
+			answer( {
+				...START,
+				url: window.location.origin + '/?more',
+				step: { slot: 'deck', options: [ {}, {}, {}, {} ] },
+				status: 'A deck. Total: $70.00.',
+			} );
+		await move();
+		// The page draws the new cards before the next frame.
+		div.querySelector( '.cbuild-cards' )!.insertAdjacentHTML(
+			'beforeend',
+			'<li><input type="radio" name="cbuild[deck]" value="3"></li><li><input type="radio" name="cbuild[deck]" value="4"></li>'
+		);
+		vi.advanceTimersToNextFrame();
+		expect( div.ownerDocument.activeElement ).toBe(
+			div.querySelector( 'input[value="3"]' )
+		);
+		expect(
+			state.status,
+			'the card is read; the total has not changed'
+		).toBe( '' );
+	} );
+
 	it( 'says the step alone in the title when the page gave no title, and moves no focus with no builder found', async () => {
 		setConfig( NAME, { endpoint: ENDPOINT } );
 		document.body.innerHTML =
