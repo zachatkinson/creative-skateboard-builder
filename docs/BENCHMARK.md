@@ -139,17 +139,36 @@ Measured again on WooCommerce 11.3.0, the newest leg from D-139, on the same mac
 
 ## v0.6.0
 
-Machine: Apple M1 Max, PHP 8.5.12 in wp-env on OrbStack, WordPress 7.1.4, WooCommerce 11.3.0, wp-env's own database server, Xdebug off, no persistent object cache. 12 November 2026.
+Machine: Apple M1 Max, PHP 8.5.12 in wp-env on OrbStack, WordPress 7.1.4, WooCommerce 11.3.0, wp-env's own database server, Xdebug off, no persistent object cache. Measured 12 November 2026, and again on 13 November after the audit's fixes; the table is the second run.
 
 The kit and catalogue of v0.4.0: seven slots over 2,000 simple products, 500 of them trucks.
 
-| The state route | Time | Queries |
+| The state route, 500 candidates in the step | p95 | Median | Queries at most | Budget |
+| --- | --- | --- | --- | --- |
+| Cold | 59.4 ms | 58.2 ms | 42 | 80 ms |
+| Warm | 43.7 ms | 38.2 ms | 15 | 80 ms |
+| A move to the next step, cold (the builder's own request, new in 0.6.0) | 63.1 ms | 58.8 ms | 37 | 80 ms |
+| A move to the next step, warm | 40.3 ms | 38.4 ms | 15 | 80 ms |
+| The first request after one part moves | 61.1 ms | 57.7 ms | 37 | 80 ms |
+| The first request after a reindex of 2,000 parts, cache emptied | 55.4 ms | | 37 | 80 ms |
+| With no row kept at all: after a plugin says every part changed, or in a price context no one has asked in | 469 ms | | 101 | Printed, not held |
+
+A move's slowest single request was 90.7 ms, a cold one; the budget is the p95's. Adding the build to the cart by the Store API measured p95 24.3 ms and 54 queries, and a cart read with the build in it 18.4 ms and 30, the same as 0.5.0's.
+
+| The builder page | Result | Budget |
 | --- | --- | --- |
-| The first request after a reindex of 2,000 parts, cache emptied | 58 ms | 37 |
-| With no row kept at all: after a plugin says every part changed, or in a price context no one has asked in | 493 ms | 101 |
+| The store's script (`build/builder/view.js`), Brotli 11 | 2,581 B | 15,360 B |
+| The block's editor script (`build/builder/index.js`) | 1,177 B | 15,360 B |
+| The styles (`build/builder/style-index.css`, and its RTL twin) | 2,445 B | 10,240 B |
+| LCP, Kadence, mobile profile, median of three | 1.96 s | 2.5 s |
+| CLS, Kadence | 0.000 | Under 0.1 |
+| TBT, Kadence | 0 ms | Under 200 ms |
+| Lighthouse SEO, both themes | 0.92 | 0.9 or more |
+| LCP and CLS, Twenty Twenty-Five, reported (D-165) | 2.28 s and 0.133 | Not held: the shift is the theme's web font |
+| A pick's own selected state painted, 4× slowed CPU | Under 100 ms in Chromium, desktop and phone (only Chromium can slow its CPU) | 100 ms |
 
 Until 0.6.0 the first row was the second: a reindex emptied the parts table a batch at a time, and the next visitor's request read every part from the shop. Each batch now writes the rows of the parts it indexed, in the background (issue #28, D-140), and the first request after it is held to the 80 ms budget and to the cold run's 42 queries.
 
-The reindex pays for it: 2,000 parts in 42 batches took 3.85 s in all, a batch 130 ms at its slowest, where the index alone takes 0.84 s with no kit to write rows for. A batch is still well inside one request of the queue's.
+The reindex pays for it: 2,000 parts in 42 batches took 3.54 s in all, a batch 110 ms at its slowest (3.85 s and 130 ms on 12 November), where the index alone takes 0.84 s with no kit to write rows for. A batch is still well inside one request of the queue's.
 
 The second row stays outside the budget and is printed, not held. It is now paid only after `cbuild_parts_changed` is fired with no part named, and by the first visitor shown other prices than the shop's default: another language, another currency, or, where a shown price goes by address, other tax rates.
