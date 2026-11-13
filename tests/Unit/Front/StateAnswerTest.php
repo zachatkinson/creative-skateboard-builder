@@ -14,6 +14,7 @@ use CreativeBranding\SkateboardBuilder\Domain\Kit\Part;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\SlotKey;
 use CreativeBranding\SkateboardBuilder\Front\BuildLink;
 use CreativeBranding\SkateboardBuilder\Front\Delivery;
+use CreativeBranding\SkateboardBuilder\Front\ShippingWords;
 use CreativeBranding\SkateboardBuilder\Front\StateAnswer;
 use CreativeBranding\SkateboardBuilder\Service\BuildState;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Domain\Builds;
@@ -22,6 +23,7 @@ use CreativeBranding\SkateboardBuilder\Tests\Support\Domain\Parts;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Domain\Shop;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\FakeMoney;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\FakeLogger;
+use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\FakeShippingZones;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\InMemoryKits;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\InMemoryPartCards;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\InMemoryShopSettings;
@@ -90,7 +92,7 @@ final class StateAnswerTest extends TestCase {
 	private function answer( array $picks = array(), ?string $step = null, ?array $previous = null, ?bool $assembly = null, ?BuildLink $link = null ): array {
 		$state = ( new BuildState( $this->kits, $this->settings, $this->logger ) )->of( self::KIT, $picks, $previous, $step, $assembly );
 		self::assertNotNull( $state );
-		return ( new StateAnswer( $this->cards, new FakeMoney(), $this->kits, new Delivery( $this->kits ) ) )->of( $state, $link );
+		return ( new StateAnswer( $this->cards, new FakeMoney(), $this->kits, new Delivery( $this->kits, new FakeShippingZones(), new ShippingWords( new FakeMoney() ) ) ) )->of( $state, $link );
 	}
 
 	/**

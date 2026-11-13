@@ -2267,3 +2267,17 @@ Zach's answer, 12 November 2026: "Kadence gates". Until milestone 6 Lighthouse r
 - **No limit moved.** The four limits are the Quality bar's, unchanged; what changed is the theme the gate is read on, so a theme's font is not counted as the builder's.
 
 **Status:** Accepted.
+
+### D-166 · The delivery line worded from WooCommerce's shipping zones, for an address the shop holds · 2026-11-12
+
+The audit of milestone 6 (both reviews, blocker): the spec's The total says "With no answer, the builder words the line itself from WooCommerce's shipping zones", D-143 left it "not yet here", and nothing picked it up, while `docs/HOOKS.md` said it was done.
+
+- **Only where nobody answers.** `Front\Delivery::said()` asks `cbuild_delivery_line` first, as before; an empty answer is worded by `Front\ShippingWords` from `Port\ShippingZones`, whose adapter is `Adapter\WooShippingZones`. Creative Checkout's answer, on Skatehouse, stays the line.
+- **The shopper's held address, never a guess.** A signed-in customer's saved shipping country, or a session customer who has worked out shipping (`WC_Customer::has_calculated_shipping()`). WooCommerce's default location for a guest is the shop's own or a geolocated one, and "Shipping to Ontario" for a shopper in Alberta would be a cost that is wrong, so it is not said. A guest with no session is given none: no session, no customer, no lookup for a line nobody asked for.
+- **The words.** Free shipping that asks nothing, or a build at or past its least amount: "Free shipping to Ontario." Short of it: "Spend $18.00 more for free shipping to Ontario.", the spec's own example. Otherwise the zone's cheapest flat rate: "Shipping to Alberta: $15.50." The place is the province or state as WooCommerce names it, else the country; amounts through the Money port.
+- **Only what a shopper would pay as set.** Free shipping that asks for a coupon is not said, since the builder cannot know of one. A flat rate whose cost is a formula (`10 + [qty]`) is not said. A taxable flat rate is not said where the cart shows prices with tax, since the amount set is not what is paid. The least amount is compared with the build's total, where WooCommerce compares the cart's subtotal: for a cart holding only the build they agree, and with more in the cart free shipping comes sooner than said, never later.
+- **Tests.** `ShippingWordsTest` holds the wording; `DeliveryTest` holds the zones, the held address, the guest with no session, a plugin's answer and the rates not said. Without the fix the first failed: `'Spend $18.00 more for free shipping to Ontario.'` expected, `''` given.
+
+D-143's "not yet here" is answered by this.
+
+**Status:** Accepted.

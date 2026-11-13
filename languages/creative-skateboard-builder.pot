@@ -9,7 +9,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-11-12T21:59:39+00:00\n"
+"POT-Creation-Date: 2026-11-13T01:24:32+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: creative-skateboard-builder\n"
@@ -1987,6 +1987,24 @@ msgstr ""
 msgid "%1$s - %2$s"
 msgstr ""
 
+#. translators: %s: the province, state or country the build ships to.
+#: src/Front/ShippingWords.php:51
+#, php-format
+msgid "Free shipping to %s."
+msgstr ""
+
+#. translators: 1: how much more the order needs, such as $18.00; 2: the province, state or country.
+#: src/Front/ShippingWords.php:56
+#, php-format
+msgid "Spend %1$s more for free shipping to %2$s."
+msgstr ""
+
+#. translators: 1: the province, state or country; 2: what shipping costs, such as $12.00.
+#: src/Front/ShippingWords.php:64
+#, php-format
+msgid "Shipping to %1$s: %2$s."
+msgstr ""
+
 #. translators: %s: a spec's name, such as Deck width.
 #: src/Front/Words.php:101
 #, php-format
@@ -2465,7 +2483,7 @@ msgstr ""
 msgid "Skateboard builder"
 msgstr ""
 
-#: src/Hooks/KitHooks.php:64
+#: src/Hooks/KitHooks.php:82
 msgid "Builder kit"
 msgstr ""
 

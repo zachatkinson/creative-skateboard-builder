@@ -15,6 +15,7 @@ use CreativeBranding\SkateboardBuilder\Front\Builder;
 use CreativeBranding\SkateboardBuilder\Front\BuilderView;
 use CreativeBranding\SkateboardBuilder\Front\BuildLink;
 use CreativeBranding\SkateboardBuilder\Front\Delivery;
+use CreativeBranding\SkateboardBuilder\Front\ShippingWords;
 use CreativeBranding\SkateboardBuilder\Front\StateAnswer;
 use CreativeBranding\SkateboardBuilder\Service\BuildState;
 use CreativeBranding\SkateboardBuilder\Service\State;
@@ -23,6 +24,7 @@ use CreativeBranding\SkateboardBuilder\Tests\Support\Domain\Parts;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Domain\Shop;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\FakeLogger;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\FakeMoney;
+use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\FakeShippingZones;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\InMemoryKits;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\InMemoryPartCards;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\InMemoryShopSettings;
@@ -57,7 +59,7 @@ final class BuilderTest extends TestCase {
 	private function builder(): Builder {
 		return new Builder(
 			new BuildState( $this->kits, new InMemoryShopSettings(), new FakeLogger() ),
-			new StateAnswer( new InMemoryPartCards(), new FakeMoney(), $this->kits, new Delivery( $this->kits ) ),
+			new StateAnswer( new InMemoryPartCards(), new FakeMoney(), $this->kits, new Delivery( $this->kits, new FakeShippingZones(), new ShippingWords( new FakeMoney() ) ) ),
 			new BuilderView()
 		);
 	}
