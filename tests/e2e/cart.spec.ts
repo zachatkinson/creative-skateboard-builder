@@ -126,6 +126,57 @@ test.describe( 'A build in the Cart block', () => {
 		await kit.locator( '.wc-block-cart-item__remove-link' ).click();
 		await expect( rows ).toHaveCount( 0 );
 	} );
+
+	// Cowork's review, blocker 1: on the demo the Cart block drew before the plugin's script had registered its
+	// filters, and nothing drew it again, so no build was grouped. Here the script is held back, as a slow or
+	// uncached one would be, and the block's first drawing is read once, with no waiting for a later one.
+	test( "is grouped on its first drawing under Kadence, the plugin's script before the block's", async ( {
+		page,
+		context,
+		baseURL,
+	} ) => {
+		await context.addCookies( [
+			{
+				name: 'cbuild_e2e_theme',
+				value: 'kadence',
+				url: baseURL || 'http://localhost:8898',
+			},
+		] );
+		await page.goto( '/cart/' );
+		await add( page );
+		await page.route( /\/build\/cart\/lines\.js/, async ( route ) => {
+			await new Promise( ( done ) => setTimeout( done, 1500 ) );
+			await route.continue();
+		} );
+		await page.goto( '/cart/' );
+
+		const order = await page.evaluate( () =>
+			[ ...document.querySelectorAll( 'script[id]' ) ].map(
+				( script ) => script.id
+			)
+		);
+		expect( order ).toContain( 'cbuild-cart-js' );
+		expect( order.indexOf( 'cbuild-cart-js' ) ).toBeLessThan(
+			order.indexOf( 'wc-cart-block-frontend-js' )
+		);
+
+		await expect( page.locator( '.wc-block-cart-items__row' ) ).toHaveCount(
+			7
+		);
+		expect(
+			await page.evaluate( () => ( {
+				kits: document.querySelectorAll(
+					'.wc-block-cart-items__row.cbuild-kit'
+				).length,
+				parts: document.querySelectorAll(
+					'.wc-block-cart-items__row.cbuild-part'
+				).length,
+				removes: document.querySelectorAll(
+					'.wc-block-cart-item__remove-link'
+				).length,
+			} ) )
+		).toEqual( { kits: 1, parts: 6, removes: 1 } );
+	} );
 } );
 
 test.describe( 'A build in the Mini-Cart', () => {

@@ -9,6 +9,7 @@ declare( strict_types=1 );
 
 namespace CreativeBranding\SkateboardBuilder\Cart;
 
+use Automattic\WooCommerce\Blocks\Integrations\IntegrationRegistry;
 use Closure;
 use CreativeBranding\SkateboardBuilder\Front\BuilderUrl;
 use CreativeBranding\SkateboardBuilder\Front\BuildLink;
@@ -93,11 +94,46 @@ final class ShowHooks implements Hookable {
 		// filter nobody applies costs nothing on 11.2.
 		add_filter( 'woocommerce_store_api_cart_item_parent_item_key', array( $this, 'parent' ), 10, 2 );
 		// Only where the cart holds a build: the styles go in the page with a cart, and the script comes with the
-		// Cart or Checkout block alone, whose own script it needs (D-010, D-132).
+		// Cart or Checkout block alone, whose own script waits for it (D-010, D-132, D-173). WooCommerce 11.3.0,
+		// src/Blocks/Integrations/IntegrationRegistry.php:51, fires these as it registers each block.
+		add_action( 'woocommerce_blocks_cart_block_registration', array( $this, 'integrate' ), 10, 1 );
+		add_action( 'woocommerce_blocks_checkout_block_registration', array( $this, 'integrate' ), 10, 1 );
+		add_action( 'wp_enqueue_scripts', array( $this, 'lines' ), 1, 0 );
 		add_action( 'wp_enqueue_scripts', array( $this, 'classic' ), 10, 0 );
 		add_filter( 'render_block_woocommerce/mini-cart', array( $this, 'styled' ), 10, 1 );
 		add_filter( 'render_block_woocommerce/cart', array( $this, 'scripted' ), 10, 1 );
 		add_filter( 'render_block_woocommerce/checkout', array( $this, 'scripted' ), 10, 1 );
+	}
+
+	/**
+	 * The Cart or Checkout block is being registered: the script that groups a build becomes a dependency of the
+	 * block's own (D-173).
+	 *
+	 * @since 0.6.0
+	 *
+	 * @param mixed $registry WooCommerce's IntegrationRegistry for the block.
+	 */
+	public function integrate( mixed $registry ): void {
+		if ( $registry instanceof IntegrationRegistry && ! $registry->is_registered( 'creative-skateboard-builder' ) ) {
+			$registry->register( new LinesIntegration() );
+		}
+	}
+
+	/**
+	 * Where the cart holds a build, the integration's handle gets the script's file; elsewhere it stays a handle with
+	 * none, which prints nothing.
+	 *
+	 * @since 0.6.0
+	 */
+	public function lines(): void {
+		if ( ! $this->holds() ) {
+			return;
+		}
+		$built = is_readable( CBUILD_PATH . self::BUILT . '.asset.php' ) ? require CBUILD_PATH . self::BUILT . '.asset.php' : null;
+		if ( is_array( $built ) && is_string( $built['version'] ?? null ) ) {
+			wp_deregister_script( self::HANDLE );
+			wp_register_script( self::HANDLE, CBUILD_URL . self::BUILT . '.js', array( 'wc-blocks-checkout' ), $built['version'], array( 'in_footer' => true ) );
+		}
 	}
 
 	/**
@@ -107,7 +143,7 @@ final class ShowHooks implements Hookable {
 	 */
 	public function classic(): void {
 		if ( is_cart() || is_checkout() ) {
-			$this->assets( false );
+			$this->assets();
 		}
 	}
 
@@ -117,7 +153,7 @@ final class ShowHooks implements Hookable {
 	 * @since 0.5.0
 	 */
 	public function widget(): void {
-		$this->assets( false );
+		$this->assets();
 	}
 
 	/**
@@ -128,19 +164,19 @@ final class ShowHooks implements Hookable {
 	 * @param mixed $html The block, which is given back as it came.
 	 */
 	public function styled( mixed $html ): mixed {
-		$this->assets( false );
+		$this->assets();
 		return $html;
 	}
 
 	/**
-	 * The Cart or Checkout block is on the page: the styles, and the script that answers its line filters.
+	 * The Cart or Checkout block is on the page: the styles. Its script brings the plugin's (D-173).
 	 *
 	 * @since 0.5.0
 	 *
 	 * @param mixed $html The block, which is given back as it came.
 	 */
 	public function scripted( mixed $html ): mixed {
-		$this->assets( true );
+		$this->assets();
 		return $html;
 	}
 
@@ -175,19 +211,11 @@ final class ShowHooks implements Hookable {
 	}
 
 	/**
-	 * Put the styles in the page, once, and load the script where it is wanted. A checkout that was never built
-	 * has no script; the server keeps a build whole without it, and the zip is checked for it.
-	 *
-	 * @param bool $script Whether the script is wanted too.
+	 * Put the styles in the page, once, where the cart holds a build.
 	 */
-	private function assets( bool $script ): void {
-		if ( ! $this->holds() ) {
-			return;
-		}
-		self::styles();
-		$built = $script && is_readable( CBUILD_PATH . self::BUILT . '.asset.php' ) ? require CBUILD_PATH . self::BUILT . '.asset.php' : null;
-		if ( is_array( $built ) && is_string( $built['version'] ?? null ) ) {
-			wp_enqueue_script( self::HANDLE, CBUILD_URL . self::BUILT . '.js', array( 'wc-blocks-checkout' ), $built['version'], array( 'in_footer' => true ) );
+	private function assets(): void {
+		if ( $this->holds() ) {
+			self::styles();
 		}
 	}
 

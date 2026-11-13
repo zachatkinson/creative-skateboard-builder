@@ -9,6 +9,8 @@ declare( strict_types=1 );
 
 namespace CreativeBranding\SkateboardBuilder\Tests\Integration;
 
+use Automattic\WooCommerce\Blocks\Integrations\IntegrationRegistry;
+use CreativeBranding\SkateboardBuilder\Cart\LinesIntegration;
 use CreativeBranding\SkateboardBuilder\Cart\ShowHooks;
 use CreativeBranding\SkateboardBuilder\Support\Options;
 use CreativeBranding\SkateboardBuilder\Tests\Support\CartTestCase;
@@ -45,6 +47,9 @@ final class CartShowTest extends CartTestCase {
 	public function tear_down(): void {
 		wp_dequeue_style( ShowHooks::HANDLE );
 		wp_dequeue_script( ShowHooks::HANDLE );
+		// The handle as the integration registered it, with no file, for the next test.
+		wp_deregister_script( ShowHooks::HANDLE );
+		( new LinesIntegration() )->initialize();
 		parent::tear_down();
 	}
 
@@ -225,7 +230,8 @@ final class CartShowTest extends CartTestCase {
 		apply_filters( 'render_block_woocommerce/checkout', '<div></div>' );
 		// phpcs:enable
 		self::assertFalse( wp_style_is( ShowHooks::HANDLE ) );
-		self::assertFalse( wp_script_is( ShowHooks::HANDLE ) );
+		$this->show()->lines();
+		self::assertFalse( wp_scripts()->registered[ ShowHooks::HANDLE ]->src, 'the blocks wait on a handle that prints nothing' );
 	}
 
 	public function test_a_part_whose_kits_line_is_gone_is_shown_as_any_product(): void {
@@ -236,7 +242,7 @@ final class CartShowTest extends CartTestCase {
 		self::assertSame( '', wc_get_formatted_cart_item_data( $orphan ) );
 	}
 
-	public function test_the_styles_go_in_the_page_with_a_cart_and_the_script_comes_with_the_cart_block_alone(): void {
+	public function test_the_styles_go_in_the_page_with_a_cart_and_the_script_comes_before_the_blocks_own(): void {
 		self::assertFalse( wp_style_is( ShowHooks::HANDLE ), 'nothing before a cart is on the page' );
 		// phpcs:disable WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- WordPress's own, as it applies them to a block.
 		self::assertSame( '<div></div>', apply_filters( 'render_block_woocommerce/mini-cart', '<div></div>' ) );
@@ -253,9 +259,26 @@ final class CartShowTest extends CartTestCase {
 		// phpcs:enable
 		self::assertTrue( wp_style_is( ShowHooks::HANDLE ) );
 		self::assertCount( 1, wp_styles()->get_data( ShowHooks::HANDLE, 'after' ), 'the styles are put in the page once' );
-		self::assertTrue( wp_script_is( ShowHooks::HANDLE ) );
-		self::assertStringEndsWith( 'build/cart/lines.js', strtok( wp_scripts()->registered[ ShowHooks::HANDLE ]->src, '?' ) );
+
+		// Cowork's review, blocker 1: the script is a dependency of each block's own, so it runs before the block
+		// draws (D-173), and it has its file where the cart holds a build.
+		// WooCommerce makes these the block's script's dependencies (src/Blocks/BlockTypes/AbstractBlock.php:211-215).
+		foreach ( array( 'cart_block', 'checkout_block' ) as $block ) {
+			$registry = new IntegrationRegistry();
+			$registry->initialize( $block );
+			self::assertSame( array( ShowHooks::HANDLE ), array_values( $registry->get_all_registered_script_handles() ), $block );
+		}
+		self::assertTrue( wp_script_is( ShowHooks::HANDLE, 'registered' ) );
+		$this->show()->lines();
+		self::assertStringEndsWith( 'build/cart/lines.js', strtok( (string) wp_scripts()->registered[ ShowHooks::HANDLE ]->src, '?' ) );
 		self::assertSame( array( 'wc-blocks-checkout' ), wp_scripts()->registered[ ShowHooks::HANDLE ]->deps );
 		self::assertTrue( (bool) wp_scripts()->get_data( ShowHooks::HANDLE, 'group' ), 'in the footer' );
+	}
+
+	/**
+	 * The hooks' service, as the plugin built it.
+	 */
+	private function show(): ShowHooks {
+		return $this->service( ShowHooks::class );
 	}
 }

@@ -2352,3 +2352,14 @@ CI run 43461092467 failed on WebKit at a phone's width: "Motion › settles the 
 - **The same run** also showed the newest leg's 648 browser tests need more than its 60 minutes on a slow runner (cancelled at test 505 of 648, 44 minutes in), so its limit is 90; and the axe test's dozen states take more than a test's 60 seconds on WebKit there, so it is marked slow.
 
 **Status:** Accepted.
+
+### D-173 · The Cart and Checkout blocks wait for the script that groups a build · 2026-11-13
+
+Cowork's review, blocker 1. On the demo (Kadence, WooCommerce 11.3.0) the Cart block drew before `lines.js` had registered its line filters, on every fresh load: no row was grouped, each part kept a remove button, and pressing one took out the whole build. The page printed `wc-cart-block-frontend` before `cbuild-cart`, since the plugin enqueued its script from `render_block_woocommerce/cart`, after the block had enqueued its own. The block reads the filters on its first drawing and is not drawn again until the cart changes.
+
+- **WooCommerce's integration registry.** An extension registers an integration on `woocommerce_blocks_cart_block_registration` and `woocommerce_blocks_checkout_block_registration` (`src/Blocks/Integrations/IntegrationRegistry.php:51`), and WooCommerce makes its scripts dependencies of the block's frontend script (`src/Blocks/BlockTypes/AbstractBlock.php:211-215`). `Cart\LinesIntegration` is that integration, so the browser runs `lines.js` before the block's script whatever the theme or the network.
+- **Nothing on a page whose cart holds no build.** The integration registers the handle with no file. `ShowHooks::lines()`, at `wp_enqueue_scripts`, gives it the file where the cart holds a build; elsewhere the block waits on a handle that prints nothing (D-010, D-132).
+- **Why the browser test passed.** In wp-env the Cart block draws only once the page has loaded, after every footer script has run, so the order never showed: with `lines.js` held back 1.5 s, the old code still grouped the build, under Kadence and Twenty Twenty-Five, with `SCRIPT_DEBUG` on and off. What on the demo draws the block sooner was not found here.
+- **Tests.** builder `cart.spec.ts`, "is grouped on its first drawing under Kadence, the plugin's script before the block's": `lines.js` before `wc-cart-block-frontend` in the page, and the first drawing read once with no waiting. **Red run:** "Expected: < 85, Received: 86", the script after the block's. `CartShowTest` asks WooCommerce's registry for both blocks' script handles. **Deliberate break:** with the cart's registration unhooked, "cart_block · Failed asserting that two arrays are identical."
+
+**Status:** Accepted.
