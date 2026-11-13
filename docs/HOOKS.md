@@ -509,7 +509,7 @@ A kit's line raised past what the shop has of a part is refused as `cbuild_build
 
 **The parent key.** Where WooCommerce's Store API gives a cart item a `parent_item_key` (11.3.0 and later), a part's is its kit's cart item key, answered on `woocommerce_store_api_cart_item_parent_item_key`. The kit's line and a line of no build are left as WooCommerce or another plugin answered. WooCommerce counts a product's quantity in the cart from lines with no parent, so a part in a build is not counted as that product bought alone.
 
-**Item data.** A part's line has one more entry in `woocommerce_get_item_data`, and so in the Store API's `item_data`: Part of, with the kit's name and the slot's label. Its `raw_key` is `cbuild_slot`, and its `display` wraps the words in `<span class="cbuild-part">`. A theme or a cart drawer that prints a line's item data can group a build's parts by that class, as the Mini-Cart's styles do.
+**Item data.** A part's line has one more entry in `woocommerce_get_item_data`, and so in the Store API's `item_data`: Part of, with the kit's name and the slot's label. Its `raw_key` is `cbuild_slot`, and its `display` wraps the words in `<span class="cbuild-part">`. From 0.6.0 the slot's label, in brackets, has a `<span class="cbuild-part__slot">` of its own inside it, which the plugin's styles hide on a row whose name already starts with the slot; the Mini-Cart's rows, which run no line filter, keep it. A theme or a cart drawer that prints a line's item data can group a build's parts by that class, as the Mini-Cart's styles do.
 
 **Classes.** A theme or a cart drawer may style these or group a build's lines by them:
 
@@ -519,6 +519,8 @@ A kit's line raised past what the shop has of a part is refused as `cbuild_build
 | `cbuild-part` | 0.5.0 | A part's row in the same places, and the Part of words in its item data. |
 | `cbuild-quantity` | 0.5.0 | In a classic cart, the `<span>` holding a part's quantity, a number with no field. |
 | `cbuild-edit` | 0.6.0 | A kit's Edit build link, in its item data. |
+| `cbuild-assembly` | 0.6.0 | The `<span>` holding what a kit's line charges for assembly, in its item data. The plugin's styles hide the line's own price and total in the Cart and Checkout blocks and the Mini-Cart by it. |
+| `cbuild-part__slot` | 0.6.0 | The slot's label in a part's Part of words. |
 
 **What the plugin loads.** A few style rules in the page, under the handle `cbuild-cart`, with the Mini-Cart, the Cart or Checkout block, or a classic cart or checkout page. With the Cart or Checkout block, also the script `cbuild-cart`, which answers `cartItemClass`, `itemName` and `showRemoveItemLink` in the namespace above and needs `wc-blocks-checkout`. Both only where the cart holds a build as the page is drawn.
 
@@ -621,7 +623,7 @@ From 0.6.0, `cbuild` on either route of Adding a build (0.5.0, above) takes `rep
 
 ### Edit build on a kit's line
 
-Each kit's line in the cart has one item data entry from 0.6.0, `raw_key` `cbuild_edit`, keyed "Build", whose `display` is a link with the class `cbuild-edit`. The link is the kit's builder, where `cbuild_builder_url` says it is, at the review, with the build's parts and assembly and `cbuild[_replace]`, the build's `id`. The Cart and Checkout blocks, the Mini-Cart and a classic cart all print it.
+Each kit's line in the cart has two item data entries from 0.6.0. The first, `raw_key` `cbuild_assembly`, keyed "Assembly", says what the line charges: the fee as the cart shows prices, "free", or "not added" for a build the shop does not assemble; a classic cart prints no price or subtotal on the kit's line, and an order's line subtotal says "Assembly: …" in the same words. The second, `raw_key` `cbuild_edit`, has an empty key, so the blocks print the link alone, and its `display` is a link with the class `cbuild-edit`. The link is the kit's builder, where `cbuild_builder_url` says it is, at the review, with the build's parts and assembly and `cbuild[_replace]`, the build's `id`. The Cart and Checkout blocks, the Mini-Cart and a classic cart all print it.
 
 ### Styling the builder
 

@@ -126,14 +126,14 @@ final class CartShowTest extends CartTestCase {
 			}
 		}
 
-		self::assertSame( array( 'Build' ), array_column( $told[ $lines['kit'][0] ][1], 'key' ), 'the kit\'s line has Edit build, below' );
+		self::assertSame( array( 'Assembly', '' ), array_column( $told[ $lines['kit'][0] ][1], 'key' ), 'the kit\'s line says what its amount is, and has Edit build with no label (Cowork 3, 12)' );
 		self::assertSame( array(), $told[ $lines['plain'][0] ][1] );
 		self::assertSame(
 			array(
 				array(
 					'key'     => 'Part of',
 					'value'   => 'Complete (Trucks)',
-					'display' => '<span class="cbuild-part">Complete (Trucks)</span>',
+					'display' => '<span class="cbuild-part">Complete<span class="cbuild-part__slot"> (Trucks)</span></span>',
 					'raw_key' => 'cbuild_slot',
 				),
 			),
@@ -185,7 +185,13 @@ final class CartShowTest extends CartTestCase {
 
 		$data = wc_get_formatted_cart_item_data( $trucks[1] );
 		self::assertStringContainsString( 'Part of', $data );
-		self::assertStringContainsString( '<span class="cbuild-part">Complete (Trucks)</span>', $data );
+		self::assertStringContainsString( '<span class="cbuild-part">Complete<span class="cbuild-part__slot"> (Trucks)</span></span>', $data );
+		// A row whose name says its slot hides it after the kit's name (Cowork minor 11); the Mini-Cart's, which
+		// runs no line filter, keeps it.
+		$styles = implode( '', (array) wp_styles()->get_data( 'cbuild-cart', 'after' ) );
+		self::assertStringContainsString( '.wc-block-cart-items__row.cbuild-part .cbuild-part__slot', $styles );
+		self::assertStringContainsString( '.woocommerce-cart-form__cart-item.cbuild-part .cbuild-part__slot', $styles );
+		self::assertStringNotContainsString( '.wc-block-mini-cart', $styles );
 		self::assertStringContainsString( '>Edit build</a>', wc_get_formatted_cart_item_data( $kit[1] ) );
 		self::assertSame( '', wc_get_formatted_cart_item_data( $plain[1] ) );
 	}
@@ -194,9 +200,10 @@ final class CartShowTest extends CartTestCase {
 		[ 'kit' => $kit ] = $this->lines();
 		$build            = $kit[1][ Options::CART_BUILD ];
 		$data             = apply_filters( 'woocommerce_get_item_data', array(), $kit[1] ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- WooCommerce's own.
-		self::assertCount( 1, $data );
-		self::assertSame( array( 'Build', 'Edit build', 'cbuild_edit' ), array( $data[0]['key'], $data[0]['value'], $data[0]['raw_key'] ) );
-		self::assertSame( 1, preg_match( '#\A<a class="cbuild-edit" href="([^"]+)" aria-label="([^"]+)">Edit build</a>\z#', $data[0]['display'], $found ) );
+		self::assertCount( 2, $data );
+		// The link alone, with no "Build:" before it (Cowork minor 12).
+		self::assertSame( array( '', 'Edit build', 'cbuild_edit' ), array( $data[1]['key'], $data[1]['value'], $data[1]['raw_key'] ) );
+		self::assertSame( 1, preg_match( '#\A<a class="cbuild-edit" href="([^"]+)" aria-label="([^"]+)">Edit build</a>\z#', $data[1]['display'], $found ) );
 		// Two builds in a cart give two links: each is named for its kit, beginning with the words it shows (W8, P11).
 		self::assertSame( 'Edit build: ' . esc_attr( wc_get_product( $this->kit )->get_name() ), $found[2] );
 		$href = html_entity_decode( $found[1] );
@@ -218,7 +225,37 @@ final class CartShowTest extends CartTestCase {
 		add_filter( 'cbuild_builder_url', $to );
 		$data = apply_filters( 'woocommerce_get_item_data', array(), $kit[1] ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- as above.
 		remove_filter( 'cbuild_builder_url', $to );
-		self::assertStringContainsString( 'href="' . esc_url( get_permalink( $page ) ), $data[0]['display'] );
+		self::assertStringContainsString( 'href="' . esc_url( get_permalink( $page ) ), $data[1]['display'] );
+	}
+
+	public function test_a_kits_line_says_what_its_amount_is_in_place_of_a_bare_price(): void {
+		// Cowork's review, should-fix 3, as Zach answered it: "Assembly: free", "Assembly: $15.00", not "$0.00".
+		[ 'kit' => $kit, 'trucks' => $trucks ] = $this->lines();
+		$words = static function ( array $item ): array {
+			$data = apply_filters( 'woocommerce_get_item_data', array(), $item ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- WooCommerce's own.
+			return array( $data[0]['key'], $data[0]['value'], $data[0]['display'] );
+		};
+		self::assertSame( array( 'Assembly', 'not added', '<span class="cbuild-assembly">not added</span>' ), $words( $kit[1] ) );
+
+		$assembled                                  = $kit[1];
+		$assembled[ Options::CART_BUILD ]['assembly'] = true;
+		$assembled['data']                          = clone $kit[1]['data'];
+		$assembled['data']->set_price( '15' );
+		self::assertSame( array( 'Assembly', '$15.00', '<span class="cbuild-assembly">' . wc_price( 15 ) . '</span>' ), $words( $assembled ) );
+		$assembled['data']->set_price( '0' );
+		self::assertSame( array( 'Assembly', 'free', '<span class="cbuild-assembly">free</span>' ), $words( $assembled ) );
+
+		// phpcs:disable WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- WooCommerce's own, as its templates apply them.
+		self::assertSame( '', apply_filters( 'woocommerce_cart_item_price', '<span>$0.00</span>', $kit[1], $kit[0] ), 'a classic cart prints no bare price on the kit\'s line' );
+		self::assertSame( '', apply_filters( 'woocommerce_cart_item_subtotal', '<span>$0.00</span>', $kit[1], $kit[0] ) );
+		self::assertSame( '<span>$9</span>', apply_filters( 'woocommerce_cart_item_price', '<span>$9</span>', $trucks[1], $trucks[0] ), 'a part keeps its own' );
+		self::assertSame( '<span>$9</span>', apply_filters( 'woocommerce_cart_item_subtotal', '<span>$9</span>', $trucks[1], $trucks[0] ) );
+		// phpcs:enable
+		ShowHooks::styles();
+		$styles = implode( '', (array) wp_styles()->get_data( 'cbuild-cart', 'after' ) );
+		self::assertStringContainsString( 'table.wc-block-cart-items .wc-block-cart-items__row:has(.cbuild-assembly) .wc-block-cart-item__prices', $styles, 'nor do the blocks' );
+		self::assertStringContainsString( '.wc-block-components-order-summary-item:has(.cbuild-assembly) .wc-block-components-order-summary-item__total-price', $styles );
+		self::assertStringContainsString( '.cbuild-kit .variation dt.variation-', $styles, 'nor a classic cart a colon before Edit build' );
 	}
 
 	public function test_a_cart_with_no_build_brings_nothing_of_the_plugin_to_the_page(): void {

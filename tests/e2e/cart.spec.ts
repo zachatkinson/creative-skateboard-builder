@@ -103,9 +103,22 @@ test.describe( 'A build in the Cart block', () => {
 		await expect(
 			trucks.locator( '.wc-block-components-quantity-selector__button' )
 		).toHaveCount( 0 );
+		// The name says the slot, so "Part of" does not say it again (Cowork minor 11).
 		await expect( trucks.locator( '.cbuild-part' ) ).toHaveText(
-			'Cart test kit (Trucks)'
+			'Cart test kit',
+			{ useInnerText: true }
 		);
+		// The kit's line says what its amount is, with no bare price beside the board's name, and Edit build has
+		// no label before it (Cowork should-fix 3, minor 12).
+		await expect( kit.locator( '.cbuild-assembly' ) ).toBeVisible();
+		await expect( kit ).toContainText( /Assembly: (free|not added|\$\d)/ );
+		await expect(
+			kit.locator( '.wc-block-cart-item__total' )
+		).toBeHidden();
+		await expect(
+			kit.locator( '.wc-block-cart-item__prices' )
+		).toBeHidden();
+		await expect( kit ).not.toContainText( 'Build:' );
 		// The part is indented under its kit, on whichever side the language starts.
 		const indent = ( row: typeof kit ) =>
 			row.locator( '> :first-child' ).evaluate( ( cell ) => {
@@ -240,10 +253,20 @@ test.describe( 'A build in the Mini-Cart', () => {
 		);
 		await expect( parts ).toHaveCount( 12 );
 		const trucks = parts.filter( { hasText: 'Cart test trucks' } ).first();
+		// No line filter runs here, so the part's name does not say its slot and "Part of" does (Cowork minor 11).
 		await expect( trucks.locator( '.cbuild-part' ) ).toHaveText(
-			'Cart test kit (Trucks)'
+			'Cart test kit (Trucks)',
+			{ useInnerText: true }
 		);
 		const kit = rows.filter( { hasText: 'Cart test kit' } ).first();
+		// The kit's line says what its amount is, with no bare price beside the board's name (Cowork should-fix 3).
+		await expect( kit.locator( '.cbuild-assembly' ) ).toBeVisible();
+		await expect(
+			kit.locator( '.wc-block-cart-item__total' )
+		).toBeHidden();
+		await expect(
+			kit.locator( '.wc-block-cart-item__prices' )
+		).toBeHidden();
 		const indent = ( row: typeof kit ) =>
 			row.locator( '> :first-child' ).evaluate( ( cell ) => {
 				const style = getComputedStyle( cell );

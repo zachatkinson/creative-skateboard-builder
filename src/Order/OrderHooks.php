@@ -65,6 +65,9 @@ final class OrderHooks implements Hookable {
 		// templates/order/order-details-item.php:33, templates/emails/email-order-items.php:92 and :176,
 		// includes/admin/meta-boxes/views/html-order-item.php:30.
 		add_filter( 'woocommerce_order_item_name', array( $this, 'name' ), 10, 2 );
+		// includes/class-wc-order.php's get_formatted_line_subtotal(), which the order received page, the emails and
+		// My account print a line's subtotal by.
+		add_filter( 'woocommerce_order_formatted_line_subtotal', array( $this, 'subtotal' ), 10, 2 );
 		// src/Internal/Utilities/OrderItemMetaUtil.php:30: the order screen lists every key but these, underscore
 		// or not, and lets a manager edit what it lists.
 		add_filter( 'woocommerce_hidden_order_itemmeta', array( $this, 'hidden' ) );
@@ -174,6 +177,30 @@ final class OrderHooks implements Hookable {
 			$found[ $kit ]->update_meta_data( Options::ORDER_CHILDREN, $children );
 			$found[ $kit ]->save();
 		}
+	}
+
+	/**
+	 * A kit's subtotal on an order, said with what it is for: "Assembly: $15.00", "Assembly: free" or "Assembly: not
+	 * added" (Cowork's review, should-fix 3). Any other line is given back as it came.
+	 *
+	 * @since 0.6.0
+	 *
+	 * @param mixed $subtotal The line's subtotal, as WooCommerce formatted it.
+	 * @param mixed $item     The order item.
+	 */
+	public function subtotal( mixed $subtotal, mixed $item = null ): mixed {
+		if ( ! is_string( $subtotal ) || ! $item instanceof WC_Order_Item_Product || Options::ROLE_KIT !== $item->get_meta( Options::ORDER_ROLE ) ) {
+			return $subtotal;
+		}
+		$snapshot = Cast::map( $item->get_meta( Options::ORDER_SNAPSHOT ) );
+		if ( true !== ( $snapshot['assembly'] ?? null ) ) {
+			return esc_html__( 'Assembly: not added', 'creative-skateboard-builder' );
+		}
+		if ( (float) $item->get_subtotal() <= 0 ) {
+			return esc_html__( 'Assembly: free', 'creative-skateboard-builder' );
+		}
+		/* translators: %s: the assembly fee, such as $15.00. */
+		return sprintf( esc_html__( 'Assembly: %s', 'creative-skateboard-builder' ), $subtotal );
 	}
 
 	/**

@@ -265,6 +265,35 @@ final class OrderTest extends CartTestCase {
 		self::assertSame( array( '', '' ), array( $loose['lead_time'], $loose['returns_notice'] ), 'neither is said of a build the shop does not assemble' );
 	}
 
+	public function test_a_kits_line_on_the_order_says_what_its_amount_is_in_place_of_a_bare_price(): void {
+		// Cowork's review, should-fix 3, as Zach answered it: the order received page, the emails and My account
+		// print a line's subtotal through WC_Order::get_formatted_line_subtotal().
+		$this->added( true );
+		$this->added( false );
+		$order  = $this->classic();
+		$builds = self::told( $order );
+		self::assertSame( 1, preg_match( '#\AAssembly: <span class="woocommerce-Price-amount amount">.*15\.00.*</span>\z#s', $order->get_formatted_line_subtotal( $builds[0]['item'] ) ), $order->get_formatted_line_subtotal( $builds[0]['item'] ) );
+		self::assertSame( 'Assembly: not added', $order->get_formatted_line_subtotal( $builds[1]['item'] ) );
+		self::assertStringNotContainsString( 'Assembly', $order->get_formatted_line_subtotal( $builds[0]['parts']['trucks'] ), 'a part keeps its own' );
+
+		$kit = wc_get_product( $this->kit );
+		$kit->setDocument(
+			Options::META_KIT_ASSEMBLY,
+			array(
+				'schema_version' => 1,
+				'default_on'     => false,
+				'fee'            => '0',
+				'lead_time'      => '',
+				'returns_notice' => '',
+			)
+		);
+		$kit->save();
+		WC()->cart->empty_cart();
+		$this->added( true );
+		$order = $this->classic();
+		self::assertSame( 'Assembly: free', $order->get_formatted_line_subtotal( self::told( $order )[0]['item'] ) );
+	}
+
 	public function test_two_builds_on_an_order_are_each_tied_to_their_own_parts(): void {
 		$this->added();
 		$this->added( true, 2 );

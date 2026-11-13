@@ -57,7 +57,14 @@ final class ShowHooks implements Hookable {
 	 * cell where a padding of the plugin's would replace it. They go in the page: the Mini-Cart is in many a shop's header, and a file would
 	 * be one more request on every page (spec: Performance, nothing loads on pages without a builder).
 	 */
-	private const STYLES = '.wc-block-cart-items__row.cbuild-part>:first-child,.wc-block-cart-items__row:has(.cbuild-part)>:first-child,.woocommerce-cart-form__cart-item.cbuild-part>.product-name,.woocommerce-checkout-review-order-table .cbuild-part>.product-name,.woocommerce-mini-cart-item.cbuild-part{border-inline-start:1.5em solid transparent}';
+	private const STYLES = '.wc-block-cart-items__row.cbuild-part>:first-child,.wc-block-cart-items__row:has(.cbuild-part)>:first-child,.woocommerce-cart-form__cart-item.cbuild-part>.product-name,.woocommerce-checkout-review-order-table .cbuild-part>.product-name,.woocommerce-mini-cart-item.cbuild-part{border-inline-start:1.5em solid transparent}'
+		// A kit's line says its amount after "Assembly", so its bare price goes (Cowork's review, should-fix 3).
+		. 'table.wc-block-cart-items .wc-block-cart-items__row:has(.cbuild-assembly) .wc-block-cart-item__prices,table.wc-block-cart-items .wc-block-cart-items__row:has(.cbuild-assembly) .wc-block-cart-item__total,.wc-block-components-order-summary-item:has(.cbuild-assembly) .wc-block-components-order-summary-item__individual-prices,.wc-block-components-order-summary-item:has(.cbuild-assembly) .wc-block-components-order-summary-item__total-price{display:none}'
+		// Edit build has no label: a classic cart still prints its colon (templates/cart/cart-item-data.php:23).
+		. '.cbuild-kit .variation dt.variation-{display:none}'
+		// Where a part's name starts with its slot, "Part of" does not say it again; the Mini-Cart's row, which runs
+		// no line filter, has no class and keeps it.
+		. '.wc-block-cart-items__row.cbuild-part .cbuild-part__slot,.wc-block-components-order-summary-item.cbuild-part .cbuild-part__slot,.woocommerce-cart-form__cart-item.cbuild-part .cbuild-part__slot,.woocommerce-checkout-review-order-table .cbuild-part .cbuild-part__slot,.woocommerce-mini-cart-item.cbuild-part .cbuild-part__slot{display:none}';
 
 	/**
 	 * Constructor.
@@ -84,6 +91,9 @@ final class ShowHooks implements Hookable {
 		add_action( 'woocommerce_before_mini_cart', array( $this, 'widget' ), 10, 0 );
 		add_filter( 'woocommerce_cart_item_quantity', array( $this, 'quantity' ), 10, 3 );
 		add_filter( 'woocommerce_cart_item_remove_link', array( $this, 'remove' ), 10, 2 );
+		// templates/cart/cart.php:96 and :114; templates/checkout/review-order.php:52.
+		add_filter( 'woocommerce_cart_item_price', array( $this, 'price' ), 10, 2 );
+		add_filter( 'woocommerce_cart_item_subtotal', array( $this, 'price' ), 10, 2 );
 		// WooCommerce fires this as it loads, which may be before or after the plugin's hooks are attached.
 		if ( did_action( 'woocommerce_blocks_loaded' ) > 0 ) {
 			$this->extend();
@@ -235,12 +245,13 @@ final class ShowHooks implements Hookable {
 		if ( Options::ROLE_KIT === $told['role'] ) {
 			return $this->edit( $data, $item );
 		}
-		/* translators: 1: a kit's name, such as Build a complete; 2: a slot's label, such as Deck. */
-		$value  = sprintf( __( '%1$s (%2$s)', 'creative-skateboard-builder' ), $told['kit'], $told['label'] );
+		/* translators: %s: a slot's label, such as Deck, in brackets after the kit's name. */
+		$slot   = sprintf( _x( '(%s)', 'the slot a part fills, after its kit', 'creative-skateboard-builder' ), $told['label'] );
 		$data[] = array(
 			'key'     => __( 'Part of', 'creative-skateboard-builder' ),
-			'value'   => $value,
-			'display' => '<span class="' . Options::CLASS_PART . '">' . esc_html( $value ) . '</span>',
+			'value'   => $told['kit'] . ' ' . $slot,
+			// The slot in a span of its own, which a row whose name starts with it hides.
+			'display' => '<span class="' . Options::CLASS_PART . '">' . esc_html( $told['kit'] ) . '<span class="cbuild-part__slot"> ' . esc_html( $slot ) . '</span></span>',
 			'raw_key' => Options::CART_SLOT,
 		);
 		return $data;
@@ -269,14 +280,51 @@ final class ShowHooks implements Hookable {
 		$line  = $item['data'] ?? null;
 		/* translators: %s: the kit's name, such as Street complete. */
 		$name   = sprintf( __( 'Edit build: %s', 'creative-skateboard-builder' ), $line instanceof WC_Product ? $line->get_name() : '' );
+		$data[] = self::assembly( $build->assembly, $line );
 		$data[] = array(
-			'key'     => __( 'Build', 'creative-skateboard-builder' ),
+			// No label: the link says what it does (Cowork's review, minor 12).
+			'key'     => '',
 			'value'   => $value,
 			// Named for its kit, so two builds in a cart give two links a screen reader tells apart (W8, P11).
 			'display' => '<a class="' . Options::CLASS_EDIT . '" href="' . esc_url( $url ) . '" aria-label="' . esc_attr( $name ) . '">' . esc_html( $value ) . '</a>',
 			'raw_key' => 'cbuild_edit',
 		);
 		return $data;
+	}
+
+	/**
+	 * What a kit's line charges, said with what it is for: "Assembly: $15.00", "Assembly: free" or "Assembly: not
+	 * added". The line's bare price is hidden in every cart, since beside a board's name it read as the board's.
+	 *
+	 * @param bool  $on   Whether the build is assembled.
+	 * @param mixed $line The line's product, priced for the build.
+	 * @return array{key: string, value: string, display: string, raw_key: string}
+	 */
+	private static function assembly( bool $on, mixed $line ): array {
+		$html = esc_html__( 'not added', 'creative-skateboard-builder' );
+		if ( $on ) {
+			$html = $line instanceof WC_Product && (float) $line->get_price() > 0 ? WC()->cart->get_product_price( $line ) : esc_html__( 'free', 'creative-skateboard-builder' );
+		}
+		return array(
+			'key'     => __( 'Assembly', 'creative-skateboard-builder' ),
+			'value'   => html_entity_decode( wp_strip_all_tags( $html ), ENT_QUOTES, 'UTF-8' ),
+			'display' => '<span class="cbuild-assembly">' . $html . '</span>',
+			'raw_key' => 'cbuild_assembly',
+		);
+	}
+
+	/**
+	 * A kit's price and subtotal in a classic cart and checkout: none. Its item data says the amount after
+	 * "Assembly".
+	 *
+	 * @since 0.6.0
+	 *
+	 * @param mixed $html The price.
+	 * @param mixed $item The cart item.
+	 */
+	public function price( mixed $html, mixed $item = null ): mixed {
+		$told = is_array( $item ) ? $this->told( $item ) : null;
+		return null !== $told && Options::ROLE_KIT === $told['role'] ? '' : $html;
 	}
 
 	/**

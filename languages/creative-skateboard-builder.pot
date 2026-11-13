@@ -9,7 +9,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-11-13T18:55:57+00:00\n"
+"POT-Creation-Date: 2026-11-13T19:19:52+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: creative-skateboard-builder\n"
@@ -174,8 +174,7 @@ msgid "Builder"
 msgstr ""
 
 #: src/Admin/BuildTab.php:162
-#: src/Cart/ShowHooks.php:273
-#: src/Order/OrderHooks.php:250
+#: src/Order/OrderHooks.php:277
 msgid "Build"
 msgstr ""
 
@@ -220,7 +219,8 @@ msgstr ""
 
 #: src/Admin/BuildTab.php:344
 #: src/Admin/BuildTab.php:920
-#: src/Order/OrderHooks.php:249
+#: src/Cart/ShowHooks.php:309
+#: src/Order/OrderHooks.php:276
 msgid "Assembly"
 msgstr ""
 
@@ -863,14 +863,14 @@ msgstr ""
 #: src/Admin/Labels.php:170
 #: src/Admin/PartSpecsPanel.php:331
 #: src/Health/SiteHealth.php:271
-#: src/Order/OrderHooks.php:249
+#: src/Order/OrderHooks.php:276
 msgid "Yes"
 msgstr ""
 
 #: src/Admin/Labels.php:170
 #: src/Admin/PartSpecsPanel.php:332
 #: src/Health/SiteHealth.php:271
-#: src/Order/OrderHooks.php:249
+#: src/Order/OrderHooks.php:276
 msgid "No"
 msgstr ""
 
@@ -1527,45 +1527,52 @@ msgstr ""
 msgid "%s cannot be bought as it is now. Remove it from your cart to check out, then build it again."
 msgstr ""
 
-#. translators: 1: a kit's name, such as Build a complete; 2: a slot's label, such as Deck.
-#. translators: 1: a brand or a size, such as Independent or 8.25 in. 2: how many parts have it.
-#: src/Cart/ShowHooks.php:239
-#: src/Front/BuilderView.php:546
+#. translators: %s: a slot's label, such as Deck, in brackets after the kit's name.
+#: src/Cart/ShowHooks.php:249
 #, php-format
-msgid "%1$s (%2$s)"
+msgctxt "the slot a part fills, after its kit"
+msgid "(%s)"
 msgstr ""
 
-#: src/Cart/ShowHooks.php:241
+#: src/Cart/ShowHooks.php:251
 msgid "Part of"
 msgstr ""
 
-#: src/Cart/ShowHooks.php:268
+#: src/Cart/ShowHooks.php:279
 msgid "Edit build"
 msgstr ""
 
 #. translators: %s: the kit's name, such as Street complete.
-#: src/Cart/ShowHooks.php:271
+#: src/Cart/ShowHooks.php:282
 #, php-format
 msgid "Edit build: %s"
 msgstr ""
 
-#: src/Cart/ShowHooks.php:420
+#: src/Cart/ShowHooks.php:304
+msgid "not added"
+msgstr ""
+
+#: src/Cart/ShowHooks.php:306
+msgid "free"
+msgstr ""
+
+#: src/Cart/ShowHooks.php:468
 msgid "The line's part in a build: kit, part, or empty for a line of no build."
 msgstr ""
 
-#: src/Cart/ShowHooks.php:421
+#: src/Cart/ShowHooks.php:469
 msgid "The build's identifier."
 msgstr ""
 
-#: src/Cart/ShowHooks.php:422
+#: src/Cart/ShowHooks.php:470
 msgid "For a part, its kit's cart item key."
 msgstr ""
 
-#: src/Cart/ShowHooks.php:423
+#: src/Cart/ShowHooks.php:471
 msgid "For a part, the key of the slot it fills."
 msgstr ""
 
-#: src/Cart/ShowHooks.php:424
+#: src/Cart/ShowHooks.php:472
 msgid "For a part, its name with its slot's label."
 msgstr ""
 
@@ -1573,11 +1580,11 @@ msgstr ""
 #. translators: 1: a slot's label, such as Bearings. 2: a part's name.
 #. translators: 1: a slot's label, such as Wheels. 2: a brand's name, or a size such as 54 mm.
 #. translators: 1: a slot's label, such as Deck. 2: the part's name.
-#: src/Cart/ShowHooks.php:444
+#: src/Cart/ShowHooks.php:492
 #: src/Front/BuilderView.php:894
 #: src/Front/Words.php:347
 #: src/Front/Words.php:365
-#: src/Order/OrderHooks.php:199
+#: src/Order/OrderHooks.php:226
 #, php-format
 msgid "%1$s: %2$s"
 msgstr ""
@@ -1797,6 +1804,12 @@ msgstr ""
 msgid "Any size"
 msgstr ""
 
+#. translators: 1: a brand or a size, such as Independent or 8.25 in. 2: how many parts have it.
+#: src/Front/BuilderView.php:546
+#, php-format
+msgid "%1$s (%2$s)"
+msgstr ""
+
 #: src/Front/BuilderView.php:567
 msgid "Filter the parts"
 msgstr ""
@@ -1928,15 +1941,18 @@ msgid "× %s"
 msgstr ""
 
 #: src/Front/BuilderView.php:984
+#: src/Order/OrderHooks.php:197
 msgid "Assembly: not added"
 msgstr ""
 
 #: src/Front/BuilderView.php:987
+#: src/Order/OrderHooks.php:200
 msgid "Assembly: free"
 msgstr ""
 
 #. translators: %s: the assembly fee, such as $15.00.
 #: src/Front/BuilderView.php:989
+#: src/Order/OrderHooks.php:203
 #, php-format
 msgid "Assembly: %s"
 msgstr ""
@@ -2552,13 +2568,13 @@ msgid "Spec table"
 msgstr ""
 
 #. translators: %s: the kit's name.
-#: src/Order/OrderHooks.php:88
+#: src/Order/OrderHooks.php:91
 #, php-format
 msgid "%s is put together in the builder, so it cannot be added to an order here. Add its parts instead."
 msgstr ""
 
 #. translators: 1: a slot's label, such as Trucks; 2: the part's name; 3: how many of it a build takes.
-#: src/Order/OrderHooks.php:244
+#: src/Order/OrderHooks.php:271
 #, php-format
 msgid "%1$s: %2$s × %3$s"
 msgstr ""
