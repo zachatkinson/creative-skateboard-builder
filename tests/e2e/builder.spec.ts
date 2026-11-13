@@ -513,7 +513,7 @@ const stayed = ( page: Page ): Promise< boolean > =>
 test.describe( 'Every way in by a link', () => {
 	test( "a deck's link opens on the trucks with the deck picked", async ( {
 		page,
-	} ) => {
+	}, info ) => {
 		await page.goto( linkTo( { deck: id( 'builder-test-deck-8-5' ) } ) );
 		await expect( heading( page ) ).toHaveText( 'Step 2 of 7: Trucks' );
 		await expect(
@@ -522,7 +522,13 @@ test.describe( 'Every way in by a link', () => {
 			} )
 		).toBeChecked();
 		await expect(
-			page.getByText( 'Recommended for your 8.5 in deck' )
+			// French writes the width with a decimal comma.
+			page.getByText(
+				inLocale(
+					info.project.name,
+					'Recommended for your 8.5 in deck'
+				)
+			)
 		).toBeVisible();
 	} );
 
