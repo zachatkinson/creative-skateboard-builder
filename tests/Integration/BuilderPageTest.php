@@ -424,6 +424,38 @@ final class BuilderPageTest extends IntegrationTestCase {
 		self::assertStringNotContainsString( 'is-flagged', $review->item( 1 )->getAttribute( 'class' ), 'the trucks' );
 	}
 
+	// Audit, spec review S12 (plan risk 3): markup sent through every text the builder shows is text, never a tag.
+	public function test_markup_in_every_text_the_builder_shows_is_printed_as_text(): void {
+		$evil = '<img src=x onerror=alert(1)>';
+		foreach ( array( 'cbuild_slot_label', 'cbuild_preset_label', 'cbuild_kit_text', 'cbuild_arrival_estimate', 'cbuild_delivery_line' ) as $filter ) {
+			add_filter( $filter, static fn(): string => $evil );
+		}
+		add_filter( 'cbuild_summary_notes', static fn(): array => array( $evil ) );
+		$deck = wc_get_product( $this->parts['deck 8.5'] );
+		$deck->set_name( $evil );
+		$deck->save();
+		do_action( 'cbuild_parts_changed', array( $this->parts['deck 8.5'] ) );
+
+		$states = array(
+			'the blank start' => array(),
+			'a step'          => array(
+				'deck' => (string) $this->parts['deck 8.5'],
+				'step' => 'trucks',
+			),
+			'the review'      => array(
+				'deck'     => (string) $this->parts['deck 8.5'],
+				'assembly' => '1',
+				'step'     => 'review',
+			),
+		);
+		foreach ( $states as $state => $build ) {
+			$html = $this->kitPage( $build );
+			self::assertStringNotContainsStringIgnoringCase( '<img src=x', $html, $state . ': no tag of the answer is live.' );
+			self::assertSame( 0, self::dom( $html )->query( '//*[@onerror]' )->length, $state );
+			self::assertStringContainsString( '&lt;img src=x onerror=alert(1)&gt;', $html, $state . ': the answer is still shown, as text.' );
+		}
+	}
+
 	public function test_every_link_into_a_state_carries_nofollow_on_every_state(): void {
 		$states = array(
 			'the blank start'   => array(),
