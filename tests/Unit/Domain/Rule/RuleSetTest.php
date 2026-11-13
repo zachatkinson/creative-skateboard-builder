@@ -16,6 +16,7 @@ use CreativeBranding\SkateboardBuilder\Domain\Rule\DeckWidthRule;
 use CreativeBranding\SkateboardBuilder\Domain\Rule\Finding;
 use CreativeBranding\SkateboardBuilder\Domain\Rule\MessageCode;
 use CreativeBranding\SkateboardBuilder\Domain\Rule\MountingRule;
+use CreativeBranding\SkateboardBuilder\Domain\Rule\Rule;
 use CreativeBranding\SkateboardBuilder\Domain\Rule\RuleId;
 use CreativeBranding\SkateboardBuilder\Domain\Rule\RuleSet;
 use CreativeBranding\SkateboardBuilder\Domain\Rule\Severity;
@@ -117,6 +118,28 @@ final class RuleSetTest extends TestCase {
 		$on = RuleSettings::defaults();
 		self::assertSame( array( SlotKey::DECK ), ( new RuleSet( array( new DeckWidthRule() ) ) )->reading( SlotKey::TRUCKS, $on ), 'R1' );
 		self::assertSame( array( SlotKey::DECK ), ( new RuleSet( array( new MountingRule() ) ) )->reading( SlotKey::TRUCKS, $on ), 'R2' );
+	}
+
+	public function test_a_slot_read_again_by_a_later_rule_with_a_new_one_is_still_a_list(): void {
+		// No two of the six rules overlap this way; a seventh may. The list starts again at 0, or the state route's JSON
+		// would carry an object.
+		$wider = new class() implements Rule {
+			public function id(): RuleId {
+				return RuleId::R3;
+			}
+
+			/** @return list<string> */
+			public function slots(): array {
+				return array( SlotKey::TRUCKS, SlotKey::DECK, SlotKey::WHEELS );
+			}
+
+			/** @return list<Finding> */
+			public function check( Picks $picks, RuleSettings $settings ): array {
+				return array();
+			}
+		};
+		$set = new RuleSet( array( new DeckWidthRule(), $wider ) );
+		self::assertSame( array( SlotKey::DECK, SlotKey::WHEELS ), $set->reading( SlotKey::TRUCKS, RuleSettings::defaults() ) );
 	}
 
 	public function test_a_set_of_no_rules_finds_nothing(): void {
