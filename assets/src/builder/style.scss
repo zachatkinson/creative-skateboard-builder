@@ -283,6 +283,21 @@
 	font-weight: 600;
 }
 
+/* A drawer on a phone (spec: A step), closed until opened or a filter is pressed. Wider than a phone its content
+   shows, open or not, and the drawer's own heading goes (audit 21, milestone 6). The phone is the screen's width,
+   as for the bar, not the builder's. */
+@media (min-width: 48rem) {
+	:where(.cbuild-filters)::details-content {
+		content-visibility: visible;
+		display: block;
+		block-size: auto;
+	}
+
+	:where(.cbuild-filters__heading) {
+		display: none;
+	}
+}
+
 :where(.cbuild-filters__group) {
 	display: flex;
 	flex-wrap: wrap;

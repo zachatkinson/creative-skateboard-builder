@@ -2315,3 +2315,15 @@ Milestone 6's audit, should-fix 19. 0.6.0 refuses a slots document with a slot k
 - **Not `Port\Kits`.** The runner is built on every request, so a migration's dependencies are too; Kits would build the index's services with it, which issue #19's test holds no request does. `KitMeta` answers the kits' IDs itself, and `WooKits::ids()` asks it, so one query says which products are kits.
 
 **Status:** Accepted.
+
+### D-170 · The filters are a drawer on a phone · 2026-11-13
+
+Milestone 6's audit, should-fix 21 (spec review S6). The spec's A step: "Long lists get filters (brand, size) above them, and in a drawer on phones." The filters were a `<details>` rendered `open` at every width.
+
+- **One element, two widths.** The `<details class="cbuild-filters">` is rendered closed, its summary "Filter the parts" the drawer's handle. From 48rem of the screen's width, `::details-content` is shown open or not and the summary is hidden, so a wider screen sees the filters above the list as before. Chromium, WebKit and Firefox in Playwright all support `::details-content`; a browser without it shows the closed drawer, which still works.
+- **The screen, not the builder.** A phone is the screen's width, as for the phone bar (D-163). The builder's own width lays out the summary beside the steps, but a builder in a theme's 645px content column on a desktop is not a phone, and hiding its filters there would only add a click.
+- **Open while a filter is pressed.** The view's `filters.open` is true when any filter is pressed, bound with `data-wp-bind--open`, so a phone shopper who pressed one, with or without JavaScript, sees which. A drawer the shopper opens stays open across the store's redraws, since the bound value does not change.
+- **Tests.** `BuilderTest` (open only when pressed), `BuilderPageTest` (closed with nothing pressed, open with a width pressed), and builder.spec at 390px (one row high, opens on its summary) and at 1280px (the filters shown, no summary), in every engine. The tests that press a filter open the drawer first where it is shown.
+
+**Status:** Accepted.
+

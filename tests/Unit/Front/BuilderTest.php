@@ -510,6 +510,7 @@ final class BuilderTest extends TestCase {
 				),
 				'filters'   => array(
 					'shown'   => false,
+					'open'    => false,
 					'heading' => 'Filter the parts',
 					'groups'  => array(),
 				),
@@ -905,6 +906,7 @@ final class BuilderTest extends TestCase {
 		$step = $this->show( new BuildLink( array(), null, SlotKey::DECK ) )['view']['step'];
 
 		self::assertTrue( $step['filters']['shown'] );
+		self::assertFalse( $step['filters']['open'], 'a drawer on phones, closed with nothing pressed (audit 21)' );
 		self::assertSame( 'Filter the parts', $step['filters']['heading'] );
 		self::assertSame( array( 'size' ), array_column( $step['filters']['groups'], 'key' ), 'the decks have no brands to choose by' );
 		$sizes = $step['filters']['groups'][0];
@@ -931,6 +933,7 @@ final class BuilderTest extends TestCase {
 		$sizes = $step['filters']['groups'][0];
 		self::assertSame( 'true', $sizes['options'][1]['pressed'] );
 		self::assertTrue( $sizes['clear']['shown'] );
+		self::assertTrue( $step['filters']['open'], 'open while a filter is pressed' );
 		self::assertSame( array( 102 ), array_column( $step['options'], 'id' ) );
 		self::assertContains( array( 'name' => 'cbuild[_size]', 'value' => '8.25in' ), $step['tail'], 'Show more keeps the filter' );
 		self::assertSame( '1 of 1 part shown', $step['more']['count'] );

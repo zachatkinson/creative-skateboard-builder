@@ -66,6 +66,23 @@ const heading = ( page: Page ) =>
 	page.getByRole( 'heading', { level: 2, name: /^Step \d+ of \d+:/ } );
 
 /**
+ * Opens the filters' drawer where it is one: on a phone, closed until a filter is pressed (audit 21).
+ *
+ * @param page The page.
+ */
+async function openFilters( page: Page ) {
+	const drawer = page.locator( '.cbuild-filters' );
+	if (
+		( await drawer.locator( 'summary' ).isVisible() ) &&
+		! ( await drawer.evaluate(
+			( details ) => ( details as HTMLDetailsElement ).open
+		) )
+	) {
+		await drawer.locator( 'summary' ).click();
+	}
+}
+
+/**
  * Sends a step's form with its Next button, and waits for the step the server answers with.
  *
  * @param page The page.
@@ -839,6 +856,7 @@ test.describe( 'The builder with JavaScript', () => {
 	test( 'filters the step without loading the page', async ( {
 		page,
 	}, info ) => {
+		await openFilters( page );
 		const filters = page.getByRole( 'group', { name: 'Width' } );
 		// French writes the width with a decimal comma.
 		const width = inLocale( info.project.name, '8.25 in (1)' );
@@ -858,6 +876,7 @@ test.describe( 'The builder with JavaScript', () => {
 	test( 'keeps focus on a filter and on the assembly switch, and says the new total (Accessibility)', async ( {
 		page,
 	}, info ) => {
+		await openFilters( page );
 		const filters = page.getByRole( 'group', { name: 'Width' } );
 		const width = filters.getByRole( 'button', {
 			name: inLocale( info.project.name, '8.25 in (1)' ),
@@ -1265,6 +1284,7 @@ test.describe( 'The builder with JavaScript', () => {
 		await check( 'the blank start' );
 
 		// Filtered.
+		await openFilters( page );
 		const filters = page.getByRole( 'group', { name: 'Width' } );
 		await filters
 			.getByRole( 'button', {
@@ -1474,6 +1494,37 @@ test.describe( "The builder's styles", () => {
 			}
 			return wide;
 		} );
+
+	// Audit 21, milestone 6. The spec's A step: filters above long lists, "and in a drawer on phones".
+	test( 'puts the filters in a closed drawer one row high on a phone, and shows them wider', async ( {
+		page,
+	} ) => {
+		const filters = page.locator( '.cbuild-filters' );
+		const width = filters.locator( '.cbuild-filters__option' ).first();
+		const drawer = filters.locator( 'summary' );
+
+		await page.setViewportSize( { width: 390, height: 844 } );
+		await page.goto( linkTo( { step: 'deck' } ) );
+		await expect( heading( page ) ).toHaveText( 'Step 1 of 7: Deck' );
+		await expect( drawer ).toBeVisible();
+		await expect( drawer ).toHaveText( 'Filter the parts' );
+		await expect( width ).toBeHidden();
+		// Closed, the drawer is one row, and the parts' list follows it.
+		const box = await filters.boundingBox();
+		const summary = await drawer.boundingBox();
+		expect( box?.height ).toBe( summary?.height );
+		expect( box?.height ).toBeLessThanOrEqual( 48 );
+		await drawer.click();
+		await expect( width ).toBeVisible();
+
+		await page.setViewportSize( { width: 1280, height: 900 } );
+		await page.goto( linkTo( { step: 'deck' } ) );
+		await expect( width ).toBeVisible();
+		await expect(
+			drawer,
+			'no drawer to open where there is room'
+		).toBeHidden();
+	} );
 
 	test( 'reflows at 320 CSS pixels with nothing scrolling sideways', async ( {
 		page,

@@ -371,6 +371,8 @@ final class BuilderPageTest extends IntegrationTestCase {
 		$dom  = self::dom( $this->kitPage( array() ) );
 		$path = '//details[contains(@class,"cbuild-filters")]';
 		self::assertFalse( $dom->query( $path )->item( 0 )->hasAttribute( 'hidden' ) );
+		// Audit 21, milestone 6: a drawer on phones, closed until a filter is pressed; wider, the styles show it.
+		self::assertFalse( $dom->query( $path )->item( 0 )->hasAttribute( 'open' ), 'closed with nothing pressed' );
 		self::assertSame( 'Width', self::text( $dom, $path . '//legend' ) );
 		$buttons = $dom->query( $path . '//button[contains(@class,"cbuild-filters__option")]' );
 		self::assertSame( array( '8in', '8.5in' ), array_map( static fn( $button ) => $button->getAttribute( 'value' ), iterator_to_array( $buttons ) ) );
@@ -385,6 +387,7 @@ final class BuilderPageTest extends IntegrationTestCase {
 		$radios = $dom->query( '//input[@name="cbuild[deck]"][not(@value="0")]' );
 		self::assertSame( array( (string) $this->parts['deck 8.5'] ), array_map( static fn( $radio ) => $radio->getAttribute( 'value' ), iterator_to_array( $radios ) ) );
 		self::assertSame( 'true', $dom->query( $path . '//button[@value="8.5in"]' )->item( 0 )->getAttribute( 'aria-pressed' ) );
+		self::assertTrue( $dom->query( $path )->item( 0 )->hasAttribute( 'open' ), 'open while a filter is pressed, so the shopper sees which' );
 		self::assertFalse( $dom->query( $path . '//button[contains(@class,"cbuild-filters__clear")]' )->item( 0 )->hasAttribute( 'hidden' ) );
 		self::assertNotNull( $dom->query( '//input[@type="hidden"][@name="cbuild[_size]"][@value="8.5in"]' )->item( 0 ), 'the filter stays on through a pick' );
 		self::assertNotNull( $dom->query( '//input[@type="hidden"][@name="cbuild[_on]"][@value="deck"]' )->item( 0 ), 'the step its form is on' );

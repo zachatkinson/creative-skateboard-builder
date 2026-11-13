@@ -21,7 +21,7 @@ defined( 'ABSPATH' ) || exit;
 	<template data-wp-each--field="state.view.step.tail">
 		<input type="hidden" data-wp-bind--name="context.field.name" data-wp-bind--value="context.field.value">
 	</template>
-	<details class="cbuild-filters" open data-wp-bind--hidden="!state.view.step.filters.shown">
+	<details class="cbuild-filters" data-wp-bind--open="state.view.step.filters.open" data-wp-bind--hidden="!state.view.step.filters.shown">
 		<summary class="cbuild-filters__heading" data-wp-text="state.view.step.filters.heading"></summary>
 		<template data-wp-each--group="state.view.step.filters.groups" data-wp-each-key="context.group.key">
 			<fieldset class="cbuild-filters__group">

@@ -483,7 +483,7 @@ final class BuilderView {
 	 *
 	 * @param array<string, mixed> $answer The state's answer.
 	 * @param string               $slot   The step's slot.
-	 * @return array{shown: bool, heading: string, groups: list<array<string, mixed>>}
+	 * @return array{shown: bool, open: bool, heading: string, groups: list<array<string, mixed>>}
 	 */
 	private static function filters( array $answer, string $slot ): array {
 		$filters = Cast::map( $answer['filters'] ?? null );
@@ -512,6 +512,7 @@ final class BuilderView {
 			'values' => Cast::items( $filters['sizes'] ?? null ),
 		);
 		$groups = array();
+		$open   = false;
 		foreach ( SlotKey::DECK === $slot ? array( $size, $brand ) : array( $brand, $size ) as $group ) {
 			if ( array() === $group['values'] ) {
 				continue;
@@ -529,6 +530,7 @@ final class BuilderView {
 					'pressed' => $pressed ? 'true' : 'false',
 				);
 			}
+			$open     = $open || $selected;
 			$groups[] = array(
 				'key'     => $group['key'],
 				'legend'  => $group['legend'],
@@ -542,6 +544,9 @@ final class BuilderView {
 		}
 		return array(
 			'shown'   => array() !== $groups,
+			// A drawer on phones (spec: A step), closed until a filter is pressed, so the shopper sees which; wider,
+			// the styles show its content whether it is open or not (audit 21).
+			'open'    => $open,
 			'heading' => __( 'Filter the parts', 'creative-skateboard-builder' ),
 			'groups'  => $groups,
 		);
