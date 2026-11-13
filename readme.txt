@@ -50,7 +50,7 @@ Yes. Activating it for the network installs it on every site, and a site added l
 * A line under the total says what shipping costs or how far the build is from free shipping, worded from your shipping zones for a shopper whose address the shop holds, or by another plugin.
 * Each step has an address of its own, so Back and Forward work, and the review has a link to the build to share. Search engines index the clean page only.
 * After your parts are read again in the background, the first shopper to open the builder no longer waits for them.
-* A slot can no longer be keyed step, assembly, preset or review. A build's link uses those words for itself.
+* A slot can no longer be keyed step, assembly, preset or review. A build's link uses those words for itself. The upgrade renames such a slot in a kit you saved before, to review_slot for instance, keeps its label, and notes the kit in WooCommerce's log.
 
 = 0.5.0 =
 * A build can be added to the cart: the kit with a line for each part, each at your shop's own price, with the assembly fee on the kit's line.

@@ -2302,3 +2302,16 @@ Milestone 6's audit, should-fix 14 and minor 16. The page's title (`PageHooks::t
 - **Not public.** `PageTitle::kit` was internal and is gone; its cases are `BuilderPlaceTest`'s.
 
 **Status:** Accepted.
+
+### D-169 · A kit's slot keyed with a word the build link keeps is renamed on upgrade · 2026-11-13
+
+Milestone 6's audit, should-fix 19. 0.6.0 refuses a slots document with a slot keyed `step`, `assembly`, `preset` or `review` (D-142), which 0.4.0 and 0.5.0 accepted. A kit saved with one would stop reading on upgrade: its page would show "This builder isn't available right now" until a manager found and changed the key.
+
+- **A migration, `reserved_slot_keys_1`.** Schema version 4. For every kit (`Port\KitMeta::ids()`, all but the bin and auto-drafts), each such key becomes `<key>_slot`, counted on (`_slot_2`, `_slot_3`) where that is taken, in the slots and in each preset's picks. The label the shopper reads is kept. The renaming is `Install\Migrations\ReservedSlotKeys`, beside the migration since the Install layer may not depend on Service, and mutated; the migration reads and writes through `Port\KitMeta` (`Adapter\WooKitMeta`, through `StoredKit` and the product's CRUD, so WooCommerce's caches are cleared as a save clears them). A second run renames nothing.
+- **Content, not a key.** AUDIT.md says settings and meta keys are never renamed in place; none is. The meta keys stay; a value inside one changes, as an editor's save would.
+- **Rolling back.** 0.5.0 reads a slot keyed `review_slot`, so rolling back one minor release leaves a working shop.
+- **What else held the old key.** A build in a cart picked under the old key is judged again when the cart is checked, as every build is against the kit as it now is (`BuildLines::tidy()`), and refused there with the cart's notice if it no longer passes. An order keeps what it held, as history. A shared link with the old key fills nothing for that slot, as a link to a part no longer offered does.
+- **Said.** Each kit renamed is logged once, as a warning: the kit's ID and what became what. PRIVACY.md has the row.
+- **Not `Port\Kits`.** The runner is built on every request, so a migration's dependencies are too; Kits would build the index's services with it, which issue #19's test holds no request does. `KitMeta` answers the kits' IDs itself, and `WooKits::ids()` asks it, so one query says which products are kits.
+
+**Status:** Accepted.

@@ -41,7 +41,7 @@ All notable changes to this project are documented here. The format follows [Kee
 
 - A page with a builder carries the carts' line styles whatever the cart holds, so a first build added there without a page load is grouped in the page's Mini-Cart. Before, they came with the next page (D-132, D-158).
 - `schema/state.json` no longer closes its objects, so a reader that checks an answer against it accepts the fields a later release adds (D-143).
-- A slots document with a slot keyed `step`, `assembly`, `preset` or `review` is refused as `document_bad_key`: a build link keeps those words for itself (D-142).
+- A slots document with a slot keyed `step`, `assembly`, `preset` or `review` is refused as `document_bad_key`: a build link keeps those words for itself (D-142). An upgrade renames such a slot in a kit saved by 0.4.0 or 0.5.0 `<key>_slot`, in its slots and its presets' picks, keeps its label, and logs the kit (schema version 4, D-169).
 
 - The job that indexes a part, and each batch of a reindex, writes that part's row of the parts table itself, for the prices a visitor nothing is known of is shown. The first request after a reindex of 2,000 parts answered in about 490 ms and 101 queries; it answers in 58 ms and 37, inside the route's budget and held to it (#28, D-140).
 

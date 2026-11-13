@@ -133,17 +133,7 @@ final class WooKits implements Kits {
 	 * @return list<int>
 	 */
 	public function ids(): array {
-		$found = wc_get_products(
-			array(
-				'type'    => Options::PRODUCT_TYPE_KIT,
-				'status'  => array_values( array_diff( array_keys( get_post_stati() ), array( 'trash', 'auto-draft' ) ) ),
-				'limit'   => self::MAX_KITS,
-				'orderby' => 'ID',
-				'order'   => 'ASC',
-				'return'  => 'ids',
-			)
-		);
-		return array_values( Cast::ints( $found ) );
+		return ( new WooKitMeta() )->ids();
 	}
 
 	/**

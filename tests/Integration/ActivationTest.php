@@ -63,7 +63,7 @@ final class ActivationTest extends IntegrationTestCase {
 		self::assertArrayHasKey( Options::DB_VERSION, wp_load_alloptions( true ), 'the version is autoloaded: read on every request' );
 		$states = get_option( Options::MIGRATIONS );
 		self::assertIsArray( $states );
-		self::assertSame( array( 'schema_1', 'noop_1', 'spec_tables_1', 'schema_2' ), array_keys( $states ), 'in order' );
+		self::assertSame( array( 'schema_1', 'noop_1', 'spec_tables_1', 'schema_2', 'reserved_slot_keys_1' ), array_keys( $states ), 'in order' );
 		foreach ( $states as $key => $state ) {
 			self::assertSame( 'done', $state['status'], $key );
 			self::assertSame( 1, $state['attempts'], $key );

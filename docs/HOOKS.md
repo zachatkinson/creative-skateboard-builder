@@ -574,7 +574,7 @@ A build is the query parameters of the page its builder is on, all under `cbuild
 
 The plugin writes a link in one order: the kit's slots in step order, then the step, assembly and the preset. It reads them in any order. An ID is checked each time a link is opened: that it is a part, that it may fill its slot, that it is in stock and that the rules accept it. A link carries nothing else, and never a price.
 
-No slot is keyed `step`, `assembly`, `preset` or `review`; a slots document with one is refused as `document_bad_key`.
+No slot is keyed `step`, `assembly`, `preset` or `review`; a slots document with one is refused as `document_bad_key`. A kit saved by 0.4.0 or 0.5.0 with one has it renamed `<key>_slot` on upgrade (D-169).
 
 Keys that start with an underscore are the builder's own forms' and are not part of a shared link. They may change in any release: `_was` (the picks before a change, slot key to part ID), `_brand` and `_size` (the step's filters), `_shown` (how many options the step lists), `_on` (the step whose form was sent: its filters and Show more count only on it) and `_replace` (the build in the cart an add takes the place of). A slot's key starts with a letter, so none can be one.
 

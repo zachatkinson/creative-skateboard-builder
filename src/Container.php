@@ -56,6 +56,7 @@ final class Container {
 			Port\Cart::class            => Adapter\WooCart::class,
 			Port\Uuids::class           => Adapter\WpUuids::class,
 			Port\BuilderPosts::class    => Adapter\WpBuilderPosts::class,
+			Port\KitMeta::class         => Adapter\WooKitMeta::class,
 		);
 	}
 
