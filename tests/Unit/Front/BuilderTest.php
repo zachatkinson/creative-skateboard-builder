@@ -693,10 +693,12 @@ final class BuilderTest extends TestCase {
 			'The add takes the place of the build in the cart Edit build came from (D-157).'
 		);
 		self::assertSame(
-			self::url( array_map( 'strval', self::STREET ) + array( 'step' => 'review', 'assembly' => '1', 'preset' => '0' ) ),
+			self::url( array_map( 'strval', self::STREET ) + array( 'step' => 'review', 'assembly' => '1' ) ),
 			$review['link'],
-			'A shared link names parts, the step, assembly and the preset, and nothing of the shopper\'s cart or the builder\'s own (spec: Share links).'
+			'A shared link names parts, the step and assembly, and nothing of the shopper\'s cart, the builder\'s own or the preset (spec: Share links).'
 		);
+		$link = new BuildLink( self::STREET, array( 'deck' => 101 ), State::REVIEW, true, 0, 'Acme', '8in', 48, 'abc-123' );
+		self::assertSame( self::url( $link->shared()->query( Shop::kit()->slots ) ), $review['link'], 'One rule for what a shared link holds: BuildLink::shared() (audit 15).' );
 		self::assertNotContains( 'cbuild[replace]', array_column( $this->show( new BuildLink( self::STREET, null, State::REVIEW ) )['view']['review']['fields'], 'name' ) );
 	}
 

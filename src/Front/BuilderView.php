@@ -1034,9 +1034,9 @@ final class BuilderView {
 			'add'        => __( 'Add to cart', 'creative-skateboard-builder' ),
 			// Said, and focused, once an add without a page load is done (D-155).
 			'added'      => __( 'The build is in your cart.', 'creative-skateboard-builder' ),
-			// The build's link needs no account to open (P12, D-156). It names the parts, the step, assembly and
-			// the preset, and nothing of the shopper's cart or the builder's own keys (spec: Share links; D-157).
-			'link'       => $url( new BuildLink( $link->picks, null, State::REVIEW, $link->assembly, $link->preset, none: $link->none ) ),
+			// The build's link needs no account to open (P12, D-156). It is BuildLink::shared(): the parts, the step
+			// and assembly, and nothing of the shopper's cart or the builder's own keys (spec: Share links; D-157).
+			'link'       => $url( $link->shared()->at( State::REVIEW ) ),
 			'share'      => __( 'Link to this build', 'creative-skateboard-builder' ),
 			'copy'       => __( 'Copy link', 'creative-skateboard-builder' ),
 			'copied'     => __( 'Link copied.', 'creative-skateboard-builder' ),

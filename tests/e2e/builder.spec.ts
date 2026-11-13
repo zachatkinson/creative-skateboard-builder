@@ -978,10 +978,14 @@ test.describe( 'The builder with JavaScript', () => {
 			page.locator( '.cbuild' ).getByRole( 'status' )
 		).toHaveText( 'Link copied.' );
 		if ( 'chromium' === browserName ) {
-			// Only Chromium lets a test read the clipboard back.
+			// Only Chromium lets a test read the clipboard back. The page's own address, but for the preset it was
+			// started from, which a shared link leaves out (BuildLink::shared(), audit 15).
+			const shared = new URL( page.url() );
+			expect( shared.searchParams.has( 'cbuild[preset]' ) ).toBe( true );
+			shared.searchParams.delete( 'cbuild[preset]' );
 			expect(
 				await page.evaluate( () => navigator.clipboard.readText() )
-			).toBe( page.url() );
+			).toBe( shared.toString() );
 		}
 	} );
 
