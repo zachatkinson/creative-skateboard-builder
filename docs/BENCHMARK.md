@@ -100,7 +100,7 @@ The first three are inside the 80 ms budget and held to it. They hold because a 
 
 The last row is outside the budget and is not held to it: it is what one request pays the first time a kit is asked for in a price context (a currency, a language, a set of tax rates), and again after a reindex or a brand or attribute term is edited, which empty the table. The benchmark prints it on every run so that it is known.
 
-The figures move with the machine. On 11 November 2026 the same Mac, busier, measured 67 to 70 ms cold at p95 and 71 ms after a part moves, for this code and for the commit the table was taken from alike; GitHub's hosted runner measured 66 ms cold, 46 ms warm and 81 ms after a part moves on a sample of 20, which failed the run (D-123). The next run of the same commit there measured 84 ms cold. Since D-124 the 80 ms budget is held where the machine is known, in the audit's local run before each milestone's pull request, and CI holds the query counts (42 cold, 15 warm, 37 after a part moves) and a ceiling of 120 ms.
+The figures move with the machine. On 11 November 2026 the same Mac, busier, measured 67 to 70 ms cold at p95 and 71 ms after a part moves, for this code and for the commit the table was taken from alike; GitHub's hosted runner measured 66 ms cold, 46 ms warm and 81 ms after a part moves on a sample of 20, which failed the run (D-123). The next run of the same commit there measured 84 ms cold. Since D-124 the 80 ms budget is held where the machine is known, in the audit's local run before each milestone's pull request, and CI holds the query counts (42 cold, 15 warm, 37 after a part moves). Since D-171 CI holds the time to the budget scaled by how much slower than this Mac the runner does a fixed piece of work (7.05 ms here), between 1 and 2.5 times; each run prints the runner's figure and the limit it gives.
 
 An earlier design of this milestone, never released, kept each slot's list in a transient: 53 ms cold, but 435 ms on the first request after any one product moved. The table costs 5 ms cold and takes that request to 71 ms.
 
@@ -118,7 +118,7 @@ A kit of seven slots and a build with a part in each, trucks twice: a kit's line
 | Reading a cart with the build in it (`GET /wc/store/v1/cart`) | 21 ms | | | 30 |
 | Reading a cart of the same seven products with no build | 4 ms | | | 10 |
 
-The add is inside the 300 ms budget and held to it, with 450 ms as CI's ceiling and the query counts held everywhere (D-134).
+The add is inside the 300 ms budget and held to it, scaled by the runner's speed in CI (D-171), and the query counts held everywhere (D-134).
 
 The difference between the last two rows is what the plugin does on every cart response while a build is in the cart: the kit's line's quantity limit and the check that the build is still one the shop would sell (D-129). It reads the build's parts from WooCommerce each time and keeps nothing.
 

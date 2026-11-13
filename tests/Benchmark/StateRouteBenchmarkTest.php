@@ -19,6 +19,7 @@ use CreativeBranding\SkateboardBuilder\Support\Options;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Domain\KitDocuments;
 use CreativeBranding\SkateboardBuilder\Tests\Support\IntegrationTestCase;
 use CreativeBranding\SkateboardBuilder\Tests\Support\KitFactory;
+use CreativeBranding\SkateboardBuilder\Tests\Support\RunnerSpeed;
 use WC_Product_Simple;
 use WP_REST_Request;
 
@@ -40,12 +41,6 @@ final class StateRouteBenchmarkTest extends IntegrationTestCase {
 	private const REQUESTS = 40;
 
 	/**
-	 * What a run on a machine nobody chose is held to instead (D-124): GitHub's shared runners moved by a fifth
-	 * between two runs of the same code, so there the time catches a gross slowdown and the queries hold the rest.
-	 */
-	private const SHARED = 120.0;
-
-	/**
 	 * The queries a request may ask, by run. These do not move with the machine.
 	 */
 	private const QUERIES = array(
@@ -55,10 +50,10 @@ final class StateRouteBenchmarkTest extends IntegrationTestCase {
 	);
 
 	/**
-	 * The time a request is held to here: the budget, or the shared runner's ceiling where the run says it is on one.
+	 * The time a request is held to here: the budget, scaled by the runner's speed on a shared runner (D-124, D-171).
 	 */
 	private static function limit(): float {
-		return '1' === getenv( 'CBUILD_BENCHMARK_SHARED' ) ? self::SHARED : self::BUDGET;
+		return RunnerSpeed::limit( self::BUDGET );
 	}
 
 	/**
@@ -141,6 +136,7 @@ final class StateRouteBenchmarkTest extends IntegrationTestCase {
 	}
 
 	public function test_the_state_route_answers_within_80_ms_at_p95_with_500_candidates_in_a_slot(): void {
+		self::say( RunnerSpeed::line( self::BUDGET ) );
 		$_SERVER['REMOTE_ADDR'] = '203.0.113.7';
 		rest_get_server();
 		$this->service( StateRoute::class )->register();

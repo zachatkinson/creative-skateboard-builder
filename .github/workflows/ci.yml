@@ -261,8 +261,8 @@ jobs:
       - run: composer test:integration
         if: matrix.leg == 'oldest'
       # Seconds on a site that is already up: 2,000 parts indexed, exported, checked and dry-run, each inside a request.
-      # A shared runner's speed moved by a fifth between two runs of one commit, so here the state route is held to its
-      # query counts and a ceiling of 120 ms; its 80 ms budget is held where the machine is known (D-124).
+      # A shared runner's speed moves from run to run, so here the budgets are scaled by how much slower than the Mac the
+      # runner does a fixed piece of work, at most 2.5 times, and the query counts are held as anywhere (D-124, D-171).
       - name: The benchmarks at 2,000 parts (Xdebug off)
         if: matrix.leg == 'newest'
         env:

@@ -10,6 +10,7 @@ declare( strict_types=1 );
 namespace CreativeBranding\SkateboardBuilder\Tests\Benchmark;
 
 use CreativeBranding\SkateboardBuilder\Tests\Support\CartTestCase;
+use CreativeBranding\SkateboardBuilder\Tests\Support\RunnerSpeed;
 use ReflectionMethod;
 use ReflectionProperty;
 use WC_Session_Handler;
@@ -27,16 +28,15 @@ use WP_REST_Request;
  * build in it is judged again there. It is printed beside the same read of a cart with no build in it, and its
  * queries are held.
  *
- * As the state route's (D-124), the time is held to the budget on the machine the figures come from, and to a
- * ceiling on a shared runner; the queries are held everywhere.
+ * As the state route's (D-124, D-171), the time is held to the budget on the machine the figures come from, and to
+ * the budget scaled by the runner's speed on a shared runner; the queries are held everywhere.
  */
 final class CartBenchmarkTest extends CartTestCase {
 
 	/**
-	 * The budget and the shared runner's ceiling, in milliseconds, and how many requests each run times.
+	 * The budget, in milliseconds, and how many requests each run times.
 	 */
 	private const BUDGET   = 300.0;
-	private const SHARED   = 450.0;
 	private const REQUESTS = 40;
 
 	/**
@@ -52,7 +52,7 @@ final class CartBenchmarkTest extends CartTestCase {
 	 * The time an add is held to here.
 	 */
 	private static function limit(): float {
-		return '1' === getenv( 'CBUILD_BENCHMARK_SHARED' ) ? self::SHARED : self::BUDGET;
+		return RunnerSpeed::limit( self::BUDGET );
 	}
 
 	/**
@@ -113,6 +113,7 @@ final class CartBenchmarkTest extends CartTestCase {
 	}
 
 	public function test_adding_a_seven_part_build_is_inside_the_budget(): void {
+		self::say( RunnerSpeed::line( self::BUDGET ) );
 		self::assertCount( 7, $this->parts );
 		$times   = array();
 		$queries = array();

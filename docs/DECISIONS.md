@@ -2327,3 +2327,18 @@ Milestone 6's audit, should-fix 21 (spec review S6). The spec's A step: "Long li
 
 **Status:** Accepted.
 
+### D-171 · CI's benchmark limits are the budgets scaled by the runner's speed · 2026-11-13
+
+Issue #38. CI run 43417214571 failed the state route's fixed CI ceiling: "The state route, cold. Failed asserting that 125.526158 is less than 120.0." The runner was slow throughout, not the route: against milestone 5's green run (43153512247), the cold median went from 81.8 to 113.8 ms, and the export, the check and the dry run, which milestone 6 did not change, ran about 40 % slower too. A fixed ceiling fails on a slow runner at random, each time for the price of a run.
+
+Zach chose on 13 November 2026: "allow for the runners speed".
+
+- **The runner is timed first.** `Tests\Support\RunnerSpeed` times a fixed piece of work of the route's kind (2,000 rows built, sorted and JSON-encoded, and 120 prepared reads of the database), 21 times after two that warm it, and takes the median. On the Mac the figures in `docs/BENCHMARK.md` come from it is 7.05 ms (five runs, 6.81 to 7.37 ms).
+- **The limit is the budget times the runner's scale,** its median over the Mac's, kept between 1 and 2.5. The state route is held to 80 ms times that, and the Store API's add and cart read to 300 ms times that. This replaces D-124's 120 ms and D-134's 450 ms.
+- **Only where `CBUILD_BENCHMARK_SHARED=1`,** which CI sets. On the Mac the budgets hold as they are, as D-124 set.
+- **Why a cap.** At 2.5 the state route's limit is 200 ms. A runner slower than that, or a change that slows the route by more than the runner's own slowness, still fails, and the query counts are held everywhere as before.
+- **Said.** Each run prints the runner's figure, the Mac's, the scale and the limit, beside the benchmarks' own lines.
+
+**Red run.** CI run 43417214571, as above. **Deliberate break:** the scale capped at 0.8, the route's limit 64 ms: "The state route, cold. Failed asserting that 71.108169 is less than 64.0." The scale's ends were run too: a Mac figure of 2.0 gave the cap, 2.5 and 200 ms, and of 14.1 gave 1 and 80 ms, both passing.
+
+**Status:** Accepted.
