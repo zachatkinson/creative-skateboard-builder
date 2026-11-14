@@ -112,7 +112,13 @@ for ( const theme of THEMES ) {
 					await still( on, size.width );
 					await expect( builder ).toHaveScreenshot(
 						`${ theme }-${ scheme }-${ size.name }-review.png`,
-						{ animations: 'disabled', caret: 'hide' }
+						{
+							animations: 'disabled',
+							caret: 'hide',
+							// The link names the parts by their IDs, which are the site's own: a baseline made on one site
+							// failed on CI's where the field is wide enough to show them (CI run 43531285881, Kadence).
+							mask: [ on.locator( '.cbuild-share__link' ) ],
+						}
 					);
 				} );
 			}
