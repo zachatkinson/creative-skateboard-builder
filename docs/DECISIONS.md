@@ -407,7 +407,7 @@ The repository is private, so GitHub bills every job to the whole minute. The sa
 A pull request marked as a draft runs what a narrow one runs (D-036): the secrets scan, the standards, the unit tests, the audits, the benchmarks and the newest leg with every browser project. Marking it ready for review starts the full run: the oldest leg, the six variants, mutation testing and the release dry run. A push to `main` always runs everything.
 
 **Why:** Zach agreed on 9 November 2026, to save billed minutes (D-040): about 12 a push while the work is in progress instead of 28. GitHub does not merge a draft, so nothing reaches `main` without the full run, and a release still waits for `main`'s own.
-**Status:** Accepted. Revised by D-085: a draft's newest leg runs two browser projects, not every one.
+**Status:** Accepted. Revised by D-085: a draft's newest leg runs two browser projects, not every one. Revised by D-188: main skips what a full run has passed on the same code.
 
 ### D-042 · Work owed lives in GitHub's issues; the plan stays in the roadmap · 2026-11-09
 
@@ -2508,3 +2508,22 @@ CI run 43546483925 failed the state route's benchmark, "Failed asserting that 82
 - **Tests.** `RunnerSpeedTest`, a unit test with the timer given. **Red run:** the re-timing left out, `test_a_runner_that_slows_after_it_was_first_timed_is_held_to_its_slower_figure`, "Failed asserting that 80.0 matches expected 120.0." at `RunnerSpeedTest.php:61`.
 
 **Status:** Accepted.
+
+### D-188 · CI runs each state of the code once · 2026-11-14
+
+Zach, on 14 November 2026: "fix all this CI shit, we dont want to be wasteful on our spend". Releasing 0.6.0 billed three wasted runs on code the pull request's full run (43561646902) had already passed:
+
+- **A pull request's late run cancelled main's.** A docs-only push to m6-builder (b5c0bed) started its pull request run after the merge. GitHub gave it `refs/heads/main`, so it took main's concurrency queue and, as a pull request run, cancelled the merge's push run (43610439862) 90 seconds in. It then ran every gate on main as a pull request run, which `release.yml` does not count.
+- **The re-run timed out.** Main's run, attempt 2, hit the newest leg's 90 minutes with every test that ran passing: the browser suite had taken 70 minutes on a slow runner, against 44.7 on the pull request's. Attempt 3 ran the leg a third time.
+- **The same code ran twice.** The docs push re-ran a full run, since `paths-ignore` reads a pull request's whole diff, and main's push re-ran everything the pull request had passed. `tools/ci-code-hash.sh` gives 5b32bbc, b5c0bed and the merge 499113c the same hash.
+
+What changes:
+
+- **A pull request's queue is its number** (`ci-pr-<n>`), never its ref, so no pull request run shares main's queue.
+- **A pull request that is no longer open runs nothing heavy.** The scope job asks the API; if the call fails, the run counts the pull request as open.
+- **The code a full run passed is not run again.** The code's hash covers every file but what `paths-ignore` leaves out (docs/, Markdown, LICENSE), by mode, contents and path. A full run uploads the marker `passed-code-<hash>` (kept 30 days). A later run whose hash has a marker from this repository's `ci.yml`, in a run that ended in success, runs the scope job with the secrets scan, the standards, the unit tests, the benchmarks and the JavaScript checks, and skips the three legs and mutation testing. Anything the scope job cannot read runs everything. A merge reaches main with the same hash only when main has not moved since the pull request's run, since that run tests the pull request merged into main.
+- **The newest leg has 120 minutes,** when every browser project runs. A minute not used is not billed, and a slow runner no longer throws away 90.
+- **Tests.** `tools/ci-code-hash-selftest.sh`, in `composer gates`, with 11 cases in a throwaway repository. **Red run:** the hash told to leave out `tests/` as well, "ci-code-hash: a new file kept the hash, so CI would skip code it never ran."
+
+**Why:** A full run bills about 3 hours across its jobs, and a release paid for up to three of them on code already passed. A release still waits for main's own run to pass, which still holds the secrets scan and the standards; what it no longer repeats is what a run on the same code already proved. It revises D-041: a push to main runs everything but what a full run has passed on the same code.
+**Status:** Accepted. Closes issue #41.

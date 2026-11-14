@@ -54,7 +54,8 @@
 		"gates": [
 			"bash tools/gates.sh",
 			"bash tools/gates-selftest.sh",
-			"bash tools/release-plan-selftest.sh"
+			"bash tools/release-plan-selftest.sh",
+			"bash tools/ci-code-hash-selftest.sh"
 		],
 		"test:unit": "phpunit -c phpunit.xml.dist --testsuite unit --exclude-group benchmark",
 		"test:coverage": "bash tools/coverage.sh",
