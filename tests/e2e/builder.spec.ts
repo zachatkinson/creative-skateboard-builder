@@ -2312,11 +2312,18 @@ test.describe( 'The phone bar', () => {
 
 	test( 'opens the parts list above itself, and its button moves the build on', async ( {
 		page,
+		javaScriptEnabled,
 	} ) => {
 		await page.setViewportSize( PHONE );
 		await page.goto( fixture().page );
 		const bar = page.locator( '.cbuild-bar' );
 		await page.locator( '.cbuild-card label' ).first().click();
+		// The shopper opens the list on the page the pick's answer drew, as `settled()` says: a tap pressed as the
+		// answer scrolled the page under the bar was lost in WebKit (CI run 43554697648). The two tests after this
+		// one hold the list open across the answer.
+		if ( javaScriptEnabled ) {
+			await settled( page );
+		}
 		await bar.locator( 'summary' ).click();
 		const lines = bar.locator( '.cbuild-bar__lines' );
 		await expect( lines ).toBeVisible();
@@ -2328,6 +2335,67 @@ test.describe( 'The phone bar', () => {
 		// With JavaScript the store moves the step without a page load, and without it the form is sent.
 		await bar.getByRole( 'button', { name: 'Next: Trucks' } ).click();
 		await expect( heading( page ) ).toHaveText( 'Step 2 of 7: Trucks' );
+	} );
+
+	test( 'keeps the parts list open when a pick is answered after it opens', async ( {
+		page,
+		javaScriptEnabled,
+	} ) => {
+		test.skip(
+			! javaScriptEnabled,
+			'Without JavaScript a pick is answered by a page load.'
+		);
+		await page.setViewportSize( PHONE );
+		let release = (): void => {};
+		const held = new Promise< void >( ( done ) => ( release = done ) );
+		await page.route( /\/cbuild\/v1\/kits\/\d+\/state/, async ( route ) => {
+			await held;
+			await route.continue();
+		} );
+		await page.goto( fixture().page );
+		const bar = page.locator( '.cbuild-bar' );
+		await page.locator( '.cbuild-card label' ).first().click();
+		await page.waitForRequest( /\/cbuild\/v1\/kits\/\d+\/state/ );
+		await bar.locator( 'summary' ).click();
+		const lines = bar.locator( '.cbuild-bar__lines' );
+		await expect( lines ).toBeVisible();
+		const reply = page.waitForResponse( /\/cbuild\/v1\/kits\/\d+\/state/ );
+		release();
+		await reply;
+		await settled( page );
+		await expect( lines ).toBeVisible();
+	} );
+
+	test( 'opens the parts list on a press held while a pick is answered', async ( {
+		page,
+		javaScriptEnabled,
+	} ) => {
+		test.skip(
+			! javaScriptEnabled,
+			'Without JavaScript a pick is answered by a page load.'
+		);
+		await page.setViewportSize( PHONE );
+		let release = (): void => {};
+		const held = new Promise< void >( ( done ) => ( release = done ) );
+		await page.route( /\/cbuild\/v1\/kits\/\d+\/state/, async ( route ) => {
+			await held;
+			await route.continue();
+		} );
+		await page.goto( fixture().page );
+		await page.locator( '.cbuild-card label' ).first().click();
+		await page.waitForRequest( /\/cbuild\/v1\/kits\/\d+\/state/ );
+		const total = await page.locator( '.cbuild-bar summary' ).boundingBox();
+		await page.mouse.move(
+			( total?.x ?? 0 ) + ( total?.width ?? 0 ) / 2,
+			( total?.y ?? 0 ) + ( total?.height ?? 0 ) / 2
+		);
+		await page.mouse.down();
+		const reply = page.waitForResponse( /\/cbuild\/v1\/kits\/\d+\/state/ );
+		release();
+		await reply;
+		await settled( page );
+		await page.mouse.up();
+		await expect( page.locator( '.cbuild-bar__lines' ) ).toBeVisible();
 	} );
 
 	test( 'never covers the control in focus', async ( { page } ) => {
