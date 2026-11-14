@@ -319,7 +319,10 @@
 .cbuild .cbuild-filters__option,
 .cbuild .cbuild-filters__option:hover,
 .cbuild .cbuild-filters__option:focus,
-.cbuild .cbuild-filters__option:visited {
+.cbuild .cbuild-filters__option:visited,
+.cbuild .cbuild-summary__toggle button,
+.cbuild .cbuild-summary__toggle button:hover,
+.cbuild .cbuild-summary__toggle button:focus {
 	border: 1px solid var(--cbuild-line);
 	background: transparent;
 	box-shadow: none;
@@ -328,7 +331,8 @@
 	font-weight: 400;
 }
 
-.cbuild .cbuild-filters__option:hover {
+.cbuild .cbuild-filters__option:hover,
+.cbuild .cbuild-summary__toggle button:hover {
 	border-color: var(--cbuild-text);
 }
 
@@ -450,6 +454,10 @@
 }
 
 /* The picture, for now: what is in the box. */
+:where(.cbuild-picture__heading) {
+	margin: 0 0 var(--cbuild-gap-small);
+}
+
 :where(.cbuild-picture__items) {
 	display: grid;
 	grid-template-columns: repeat(auto-fill, minmax(min(100%, 7rem), 1fr));
@@ -616,6 +624,18 @@
 	:where(dd) {
 		font-variant-numeric: tabular-nums;
 		white-space: nowrap;
+	}
+}
+
+:where(.cbuild-summary__assembly) {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--cbuild-gap-small);
+
+	:where(form) {
+		margin: 0;
 	}
 }
 

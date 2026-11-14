@@ -201,6 +201,19 @@ final class BuilderPageTest extends IntegrationTestCase {
 		self::assertNotNull( $dom->query( '//section[contains(@class,"cbuild-review")][@hidden]' )->item( 0 ), 'The review is not this step.' );
 		self::assertNotNull( $dom->query( '//section[contains(@class,"cbuild-changes")][@hidden]' )->item( 0 ) );
 		self::assertNotNull( $dom->query( '//figcaption[contains(@class,"cbuild-picture__description")][@hidden]' )->item( 0 ), 'With nothing chosen, the summary says so alone (Cowork minor 15).' );
+		self::assertNotNull( $dom->query( '//figure[@id="cbuild-picture"]//*[contains(@class,"cbuild-picture__heading")][@hidden]' )->item( 0 ), 'and the picture has no heading over nothing.' );
+	}
+
+	public function test_the_picture_is_named_by_a_heading_a_sighted_shopper_reads_too(): void {
+		$dom    = self::dom( $this->kitPage( array( 'deck' => (string) $this->parts['deck 8.5'] ) ) );
+		$figure = $dom->query( '//figure[@id="cbuild-picture"]' )->item( 0 );
+		self::assertInstanceOf( \DOMElement::class, $figure );
+		// Milestone 6's audit 27: the heading was an aria-label on the list, which only a screen reader heard.
+		$heading = $dom->query( './/h3[contains(@class,"cbuild-picture__heading")][not(@hidden)]', $figure )->item( 0 );
+		self::assertInstanceOf( \DOMElement::class, $heading, 'A visible heading in the figure.' );
+		self::assertSame( 'What is in the box', trim( $heading->textContent ) );
+		self::assertSame( $heading->getAttribute( 'id' ), $figure->getAttribute( 'aria-labelledby' ), 'It names the figure.' );
+		self::assertSame( 0, $dom->query( './/*[@aria-label]', $figure )->length, 'No name only a screen reader hears.' );
 	}
 
 	public function test_the_kits_page_gives_the_store_its_route_page_and_language_and_loads_it(): void {
@@ -472,6 +485,45 @@ final class BuilderPageTest extends IntegrationTestCase {
 			self::assertGreaterThan( 0, $links->length, $state . ' has links into states to check.' );
 			foreach ( $links as $link ) {
 				self::assertSame( 'nofollow', $link->getAttribute( 'rel' ), $state . ': ' . trim( $link->textContent ) . ' leads into a state, so crawlers are asked not to follow it (spec: SEO and sharing).' );
+			}
+		}
+	}
+
+	public function test_the_assembly_switch_is_a_button_in_a_get_form_on_every_state(): void {
+		$states = array(
+			'the blank start' => array(),
+			'a step'          => array(
+				'deck' => (string) $this->parts['deck 8.5'],
+				'step' => 'trucks',
+			),
+			'the step it sends a build short of a part back to' => array(
+				'deck' => (string) $this->parts['deck 8.5'],
+				'step' => 'review',
+			),
+		);
+		$shown = array(
+			'a step' => 'trucks',
+			'the step it sends a build short of a part back to' => 'wheels',
+		);
+		foreach ( $states as $state => $build ) {
+			$dom = self::dom( $this->kitPage( $build ) );
+			// Spec, SEO and sharing: builder state is reached by forms, not links (milestone 6's audit 29).
+			self::assertSame( 0, $dom->query( '//*[contains(@class,"cbuild-summary__assembly")]//a' )->length, $state . ': the switch is no link.' );
+			$forms = $dom->query( '//form[contains(@class,"cbuild-summary__toggle")][@method="get"]' );
+			self::assertSame( 1, $forms->length, $state . ': one GET form.' );
+			$form = $forms->item( 0 );
+			self::assertInstanceOf( \DOMElement::class, $form );
+			$button = $dom->query( './/button[@type="submit"]', $form );
+			self::assertSame( 1, $button->length, $state . ': with its button.' );
+			$names = array();
+			foreach ( $dom->query( './/input[@type="hidden"]', $form ) as $field ) {
+				if ( $field instanceof \DOMElement ) {
+					$names[ $field->getAttribute( 'name' ) ] = $field->getAttribute( 'value' );
+				}
+			}
+			self::assertSame( '0', $names['cbuild[assembly]'] ?? null, $state . ': it takes off the assembly the kit starts with.' );
+			if ( isset( $shown[ $state ] ) ) {
+				self::assertSame( $shown[ $state ], $names['cbuild[step]'] ?? null, $state . ': it stays on the step shown.' );
 			}
 		}
 	}

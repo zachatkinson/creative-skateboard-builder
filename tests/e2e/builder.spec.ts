@@ -124,6 +124,24 @@ test.describe( 'The builder without JavaScript', () => {
 		);
 	} );
 
+	// Milestone 6's audit 29: the assembly switch was a link into a state. It is a button in a GET form, so a crawler
+	// never follows it (spec: SEO and sharing), and the step stays where it was.
+	test( 'switches assembly with a button in a form, on the step it is on', async ( {
+		page,
+	} ) => {
+		await page.goto( fixture().page );
+		await expect( heading( page ) ).toHaveText( 'Step 1 of 7: Deck' );
+		const assembly = page.locator( '.cbuild-summary__assembly' );
+		await expect( assembly.locator( 'a' ) ).toHaveCount( 0 );
+		const before = ( await assembly.textContent() ) ?? '';
+		await assembly.getByRole( 'button' ).click();
+		await expect( heading( page ) ).toHaveText( 'Step 1 of 7: Deck' );
+		expect(
+			new URL( page.url() ).searchParams.has( 'cbuild[assembly]' )
+		).toBe( true );
+		await expect( assembly ).not.toHaveText( before );
+	} );
+
 	test( 'goes from a blank page to the cart, one GET form a step', async ( {
 		page,
 	} ) => {
@@ -930,7 +948,7 @@ test.describe( 'The builder with JavaScript', () => {
 		await expect( width ).toHaveAttribute( 'aria-pressed', 'true' );
 		await expect( width, 'the shopper keeps their place' ).toBeFocused();
 
-		const toggle = page.locator( '.cbuild-summary__assembly a' );
+		const toggle = page.locator( '.cbuild-summary__toggle button' );
 		test.skip(
 			! ( await toggle.isVisible() ),
 			"On a phone the bar takes the summary's place, and has no switch."

@@ -996,9 +996,10 @@ final class BuilderView {
 			'empty'      => array() === $rows,
 			'emptyText'  => __( 'Nothing is chosen yet.', 'creative-skateboard-builder' ),
 			'assembly'   => $assembly,
+			// A button in a GET form, not a link (spec: SEO and sharing): a crawler never enters a state.
 			'toggle'     => array(
-				'url'  => $url( $link->assembled( ! $on ) ),
-				'text' => $on ? __( 'Remove assembly', 'creative-skateboard-builder' ) : __( 'Add assembly', 'creative-skateboard-builder' ),
+				'fields' => self::flat( $link->assembled( ! $on )->query( $state->kit->slots ) ),
+				'text'   => $on ? __( 'Remove assembly', 'creative-skateboard-builder' ) : __( 'Add assembly', 'creative-skateboard-builder' ),
 			),
 			'hasSaved'   => Cast::int( $saved['amount'] ?? null ) > 0,
 			/* translators: %s: an amount of money, such as $12.00. */

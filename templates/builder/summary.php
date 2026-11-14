@@ -19,7 +19,18 @@ defined( 'ABSPATH' ) || exit;
 			</div>
 		</template>
 	</dl>
-	<p class="cbuild-summary__assembly"><span data-wp-text="state.view.summary.assembly"></span> <a rel="nofollow" data-wp-on--click="actions.follow" data-wp-bind--href="state.view.summary.toggle.url" data-wp-text="state.view.summary.toggle.text"></a></p>
+	<div class="cbuild-summary__assembly">
+		<span data-wp-text="state.view.summary.assembly"></span>
+		<form class="cbuild-summary__toggle" method="get" data-wp-on--submit="actions.submit" data-wp-bind--action="state.view.action">
+			<template data-wp-each--field="state.view.carry">
+				<input type="hidden" data-wp-bind--name="context.field.name" data-wp-bind--value="context.field.value">
+			</template>
+			<template data-wp-each--field="state.view.summary.toggle.fields">
+				<input type="hidden" data-wp-bind--name="context.field.name" data-wp-bind--value="context.field.value">
+			</template>
+			<button type="submit" data-wp-text="state.view.summary.toggle.text"></button>
+		</form>
+	</div>
 	<p class="cbuild-summary__saved" data-wp-bind--hidden="!state.view.summary.hasSaved" data-wp-text="state.view.summary.saved"></p>
 	<p class="cbuild-summary__total"><span data-wp-text="state.view.summary.totalLabel"></span> <strong data-wp-text="state.view.summary.total"></strong></p>
 	<p class="cbuild-summary__ships" data-wp-bind--hidden="!state.view.summary.hasShips" data-wp-text="state.view.summary.ships"></p>

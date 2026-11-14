@@ -384,7 +384,9 @@ final class BuilderTest extends TestCase {
 		self::assertSame( array(), $view['summary']['rows'] );
 		self::assertSame( 'Assembly: not added', $view['summary']['assembly'] );
 		self::assertSame( 'Add assembly', $view['summary']['toggle']['text'] );
-		self::assertSame( self::url( array( 'step' => 'deck', 'assembly' => '1' ) ), $view['summary']['toggle']['url'] );
+		// A button in a GET form, as every way into a state is (spec: SEO and sharing; milestone 6's audit 29).
+		self::assertSame( self::fields( array( 'step' => 'deck', 'assembly' => '1' ) ), $view['summary']['toggle']['fields'] );
+		self::assertArrayNotHasKey( 'url', $view['summary']['toggle'], 'No link into a state for a crawler to follow.' );
 		self::assertSame( '$0.00', $view['summary']['total'] );
 		self::assertFalse( $view['summary']['hasSaved'] );
 		self::assertFalse( $view['summary']['hasShips'] );
