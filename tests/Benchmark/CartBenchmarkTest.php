@@ -52,7 +52,9 @@ final class CartBenchmarkTest extends CartTestCase {
 	 * The time an add is held to here.
 	 */
 	private static function limit(): float {
-		return RunnerSpeed::limit( self::BUDGET );
+		$limit = RunnerSpeed::limit( self::BUDGET );
+		self::say( RunnerSpeed::line( self::BUDGET ) );
+		return $limit;
 	}
 
 	/**

@@ -2497,3 +2497,14 @@ Cowork's recheck, N6, which asked for the total and the label on one line, with 
 - **Tests.** `builder.spec.ts`, "The phone bar", on each theme. **Red run:** on Storefront and Kadence the summary was a `list-item`, with its marker, and the label broke over two lines.
 
 **Status:** Accepted.
+
+### D-187 · The runner is timed again for each limit · 2026-11-13
+
+CI run 43546483925 failed the state route's benchmark, "Failed asserting that 82.638688 is less than 80.0.", on a commit that does not touch the route. The runner timed the fixed work at 6.96 ms before the benchmarks, so the limit was the budget itself, and then slowed: against the run before it (43538269312), the route's cold median went from 52.5 to 75.7 ms, and the export and the check, untouched, from 0.37 to 0.42 s and 0.50 to 0.64 s. On this Mac the route's p95 was 60.2 ms, as `docs/BENCHMARK.md` has it. D-171 timed the runner once, so it missed a runner that slows after.
+
+- **Timed again each time a limit is asked for,** right after the series the limit holds, on a shared runner alone. The runner's figure is the slowest median so far, so a runner that speeds up again does not tighten the limit under a series it ran slowly.
+- **Nothing else moves.** The budgets, the cap of 2.5 and the query counts are D-171's. A change that slows the route more than the runner slows still fails.
+- **Said.** Each limit prints the runner's line it was worked out from, beside the series it holds.
+- **Tests.** `RunnerSpeedTest`, a unit test with the timer given. **Red run:** the re-timing left out, `test_a_runner_that_slows_after_it_was_first_timed_is_held_to_its_slower_figure`, "Failed asserting that 80.0 matches expected 120.0." at `RunnerSpeedTest.php:61`.
+
+**Status:** Accepted.

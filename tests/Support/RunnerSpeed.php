@@ -9,6 +9,8 @@ declare( strict_types=1 );
 
 namespace CreativeBranding\SkateboardBuilder\Tests\Support;
 
+use Closure;
+
 /**
  * D-171: on a shared runner a benchmark's budget is scaled by how much slower the runner is than the Mac the
  * figures in docs/BENCHMARK.md come from. The runner's speed is timed on a fixed piece of work of the route's kind
@@ -17,6 +19,9 @@ namespace CreativeBranding\SkateboardBuilder\Tests\Support;
  *
  * The scale never goes below 1, so a fast runner holds the budget itself, and never above MOST, so a runner slow
  * past that, or code slow past it, still fails.
+ *
+ * D-187: a shared runner can slow after it is timed, so on one the work is timed again each time a limit is asked
+ * for, right after the series it holds, and the slowest timing so far is the runner's (CI run 43546483925).
  */
 final class RunnerSpeed {
 
@@ -36,11 +41,28 @@ final class RunnerSpeed {
 	private const ROUNDS = 21;
 
 	/**
-	 * The work's median here, once timed.
+	 * The work's slowest median here so far.
 	 *
 	 * @var float|null
 	 */
 	private static ?float $took = null;
+
+	/**
+	 * What times the work once, in milliseconds, where a test gives one; otherwise the work itself is timed.
+	 *
+	 * @var (Closure(): float)|null
+	 */
+	private static ?Closure $timer = null;
+
+	/**
+	 * Sets what times the work, and forgets the timings so far. For the class's own tests.
+	 *
+	 * @param (Closure(): float)|null $timer What times the work once, or null for the work itself.
+	 */
+	public static function timeWith( ?Closure $timer ): void {
+		self::$timer = $timer;
+		self::$took  = null;
+	}
 
 	/**
 	 * Whether the run says it is on a shared runner.
@@ -50,21 +72,29 @@ final class RunnerSpeed {
 	}
 
 	/**
-	 * The work's median here, in milliseconds.
+	 * The work's slowest median here so far, in milliseconds, timed once if it has not been.
 	 */
 	public static function took(): float {
-		if ( null === self::$took ) {
+		return self::$took ?? self::again();
+	}
+
+	/**
+	 * Times the work again and keeps the slower of that and the timings before it.
+	 */
+	public static function again(): float {
+		$timer = self::$timer ?? static function (): float {
+			$start = hrtime( true );
 			self::work();
-			self::work();
-			$times = array();
-			for ( $round = 0; $round < self::ROUNDS; $round++ ) {
-				$start   = hrtime( true );
-				self::work();
-				$times[] = ( hrtime( true ) - $start ) / 1e6;
-			}
-			sort( $times );
-			self::$took = $times[ intdiv( self::ROUNDS, 2 ) ];
+			return ( hrtime( true ) - $start ) / 1e6;
+		};
+		$timer();
+		$timer();
+		$times = array();
+		for ( $round = 0; $round < self::ROUNDS; $round++ ) {
+			$times[] = $timer();
 		}
+		sort( $times );
+		self::$took = max( self::$took ?? 0.0, $times[ intdiv( self::ROUNDS, 2 ) ] );
 		return self::$took;
 	}
 
@@ -81,11 +111,16 @@ final class RunnerSpeed {
 	 * @param float $budget The budget, in milliseconds, as the spec or docs/BENCHMARK.md sets it.
 	 */
 	public static function limit( float $budget ): float {
-		return self::shared() ? $budget * self::scale() : $budget;
+		if ( ! self::shared() ) {
+			return $budget;
+		}
+		self::again();
+		return $budget * self::scale();
 	}
 
 	/**
-	 * A line for the run's log: the work's time here and on the Mac, and the limit it gives.
+	 * A line for the run's log: the work's slowest time here so far and on the Mac, and the limit it gives. It times
+	 * nothing new.
 	 *
 	 * @param float $budget The budget, in milliseconds.
 	 */
@@ -96,7 +131,7 @@ final class RunnerSpeed {
 			self::REFERENCE,
 			self::scale(),
 			$budget,
-			self::limit( $budget ),
+			self::shared() ? $budget * self::scale() : $budget,
 			self::shared() ? '' : ' (not a shared runner, so not scaled)'
 		);
 	}

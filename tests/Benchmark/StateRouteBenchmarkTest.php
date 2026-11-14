@@ -53,7 +53,9 @@ final class StateRouteBenchmarkTest extends IntegrationTestCase {
 	 * The time a request is held to here: the budget, scaled by the runner's speed on a shared runner (D-124, D-171).
 	 */
 	private static function limit(): float {
-		return RunnerSpeed::limit( self::BUDGET );
+		$limit = RunnerSpeed::limit( self::BUDGET );
+		self::say( RunnerSpeed::line( self::BUDGET ) );
+		return $limit;
 	}
 
 	/**
