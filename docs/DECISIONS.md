@@ -2476,6 +2476,7 @@ Cowork's recheck, finding 2, as Zach answered it: handle Shop Kit's product temp
 - **Two rules in the kit page's inline styles.** In a Kadence row (`.kt-row-column-wrap`) that holds the builder, the column holding Shop Kit's gallery block (`.wp-block-kadence-wootemplate-blocks-gallery`) is hidden, and the column holding the builder spans the row. `:has()` finds both; a browser without it shows the template as before.
 - **Shop Kit is a commercial theme.** The test's fixture, `tests/e2e/fixtures/shop-kit-product.php`, is the markup Cowork quoted under Kadence, chosen by a cookie in the browser tests' mu-plugin. If Shop Kit changes its classes, the demo shows it, not the fixture.
 - **Tests.** `builder.spec.ts`, "A kit's own page", desktop and phone. **Red run:** the gallery block `toBeHidden()`, "Received: visible", at both widths.
+- **The buy box's auto margins (14 November 2026).** Cowork's check of 0.6.0 on the demo (item 2): the template gives the buy box `max-width: 560px` and auto margins, which shrink a grid item to its content and centre it, so the builder had 592 of the row's 1,290 px. The builder's column also takes `margin-inline: 0`, as Cowork tried on the demo. The fixture gains the template's rule. **Red run:** "the builder has the row", "Expected: > 1225.5, Received: 174.859375" on a desktop and "Expected: > 391.4" on a phone.
 
 **Status:** Accepted.
 

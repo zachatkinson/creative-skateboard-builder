@@ -8,6 +8,10 @@ All notable changes to this project are documented here. The format follows [Kee
 
 - CI runs each state of the code once: a push to main, or a pull request's push of docs alone, skips the legs and mutation testing when a full run has passed on the same code. A pull request's runs queue by its number, so one that starts after the merge cannot cancel main's, and runs nothing heavy. The newest leg has 120 minutes (D-188).
 
+### Fixed
+
+- Under Shop Kit's product template on a desktop, the builder spans the row instead of a centred column the width of the template's buy box (Claude in Cowork's check of 0.6.0, D-184).
+
 ## [0.6.0] - 2026-11-14
 
 ### Added
