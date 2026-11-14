@@ -1,4 +1,4 @@
-import { test, expect, Page } from './support/test';
+import { test, expect, settled, Page } from './support/test';
 import { axe } from './support/axe';
 import { login } from './support/login';
 
@@ -60,7 +60,7 @@ test.describe( 'Creative Skateboard Builder, milestone 1', () => {
 		const screen = await page.context().newPage();
 		const errors = collectConsoleErrors( screen );
 		await screen.goto( '/wp-admin/plugins.php' );
-		await screen.waitForLoadState( 'networkidle' );
+		await settled( screen );
 		const row = screen.locator(
 			'tr[data-slug="creative-skateboard-builder"]'
 		);
@@ -115,7 +115,7 @@ test.describe( 'Creative Skateboard Builder, milestone 1', () => {
 			await expect(
 				page.locator( 'meta[name="woo-coming-soon-page"]' )
 			).toHaveCount( 0 );
-			await page.waitForLoadState( 'networkidle' );
+			await settled( page );
 			const head = await page.locator( 'head' ).innerHTML();
 			expect( head ).not.toContain( 'cbuild' );
 			// By element, since wp-env titles the site after the folder, which is the plugin's slug.

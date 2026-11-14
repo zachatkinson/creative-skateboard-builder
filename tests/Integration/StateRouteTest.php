@@ -20,6 +20,10 @@ use CreativeBranding\SkateboardBuilder\Service\SpecIndexer;
 use CreativeBranding\SkateboardBuilder\Support\Options;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Domain\KitDocuments;
 use CreativeBranding\SkateboardBuilder\Tests\Support\IntegrationTestCase;
+use CreativeBranding\SkateboardBuilder\Front\Builder;
+use CreativeBranding\SkateboardBuilder\Front\BuilderUrl;
+use CreativeBranding\SkateboardBuilder\Front\BuildLink;
+use CreativeBranding\SkateboardBuilder\Plugin;
 use CreativeBranding\SkateboardBuilder\Tests\Support\KitFactory;
 use WC_Product_Simple;
 use WP_Locale_Switcher;
@@ -184,7 +188,9 @@ final class StateRouteTest extends IntegrationTestCase {
 	}
 
 	/**
-	 * `schema/state.json` with each `$ref` written out, which WordPress's validator needs.
+	 * `schema/state.json` with each `$ref` written out, which WordPress's validator needs, and made strict: the
+	 * published schema lets a field it does not describe through, since the answer gains fields, and here every
+	 * object takes its own properties alone, so a field the schema does not describe fails the test.
 	 *
 	 * @return array<string, mixed>
 	 */
@@ -204,7 +210,16 @@ final class StateRouteTest extends IntegrationTestCase {
 					unset( $rest['$ref'] );
 					return $resolve( $rest + $definitions[ $name ] );
 				}
-				return array_map( $resolve, $node );
+				$node = array_map( $resolve, $node );
+				if ( isset( $node['properties'] ) && is_array( $node['properties'] ) && isset( $node['type'] ) ) {
+					self::assertNotFalse( $node['additionalProperties'] ?? null, 'The published schema closes no object.' );
+					// Closed here, so an answer with a field the schema does not describe fails; but for the view, which
+					// says it is open: only the fields the store reads are described, the rest are the templates' (S9).
+					if ( true !== ( $node['additionalProperties'] ?? null ) ) {
+						$node['additionalProperties'] = false;
+					}
+				}
+				return $node;
 			};
 			unset( $schema['definitions'] );
 			self::$schema = $resolve( $schema );
@@ -233,7 +248,7 @@ final class StateRouteTest extends IntegrationTestCase {
 		self::assertArrayHasKey( $route, $routes );
 		self::assertSame( array( 'GET' => true ), $routes[ $route ][0]['methods'] );
 		self::assertSame( '__return_true', $routes[ $route ][0]['permission_callback'], 'Said, not left out: WordPress warns of a route with none.' );
-		self::assertSame( array( 'id', 'picks', 'previous', 'step', 'assembly', 'locale' ), array_keys( $routes[ $route ][0]['args'] ) );
+		self::assertSame( array( 'id', 'picks', 'previous', 'step', 'assembly', 'locale', 'cbuild', 'page' ), array_keys( $routes[ $route ][0]['args'] ) );
 
 		wp_set_current_user( 0 );
 		self::assertSame( 200, $this->ask()->get_status() );
@@ -269,7 +284,7 @@ final class StateRouteTest extends IntegrationTestCase {
 		self::assertSame( 'trucks', $picked['step'] );
 		self::assertSame( array( $this->parts['truck 149'] ), array_column( $picked['options'], 'id' ) );
 		self::assertSame( array( $narrow ), array_column( $picked['hidden'], 'id' ) );
-		self::assertSame( 'The trucks are made for decks from 7.8 in to 8.2 in wide. The deck is 8.5 in.', $picked['hidden'][0]['messages'][0]['text'] );
+		self::assertSame( 'The trucks are made for decks from 7.8″ to 8.2″ wide. The deck is 8.5″.', $picked['hidden'][0]['messages'][0]['text'] );
 		self::assertSame( '1 part hidden: the trucks are made for another width of deck.', $picked['steps'][1]['groups'][0]['message'] );
 		self::assertSame( array( 'amount' => 7000, 'text' => '$70.00' ), $picked['total']['lines'][0]['price'] );
 		self::assertSame( 'Deck 8.5', $picked['total']['lines'][0]['name'] );
@@ -299,6 +314,109 @@ final class StateRouteTest extends IntegrationTestCase {
 		$assembled = $this->answer( array( 'assembly' => 'true' ) );
 		self::assertTrue( $assembled['total']['assembly'] );
 		self::assertFalse( $this->answer( array( 'assembly' => 'false' ) )['total']['assembly'] );
+	}
+
+	public function test_a_build_link_is_answered_with_the_view_the_page_would_show(): void {
+		// Plain permalinks, where a form must carry the page's own ID: a multisite's site may have others.
+		$this->set_permalink_structure( '' );
+		$deck = $this->parts['deck 8.5'];
+		$page = self::factory()->post->create(
+			array(
+				'post_type'    => 'page',
+				'post_status'  => 'publish',
+				'post_content' => '<!-- wp:creative-skateboard-builder/builder {"kit":' . $this->kit . '} /-->',
+			)
+		);
+		$build = array(
+			'deck' => (string) $deck,
+			'step' => 'trucks',
+		);
+
+		$answer = $this->answer(
+			array(
+				'cbuild' => $build,
+				'page'   => $page,
+			)
+		);
+		$view = function ( string $base ) use ( $build ): mixed {
+			$shown = Plugin::container()->get( Builder::class )->show( $this->kit, BuildLink::read( $build ), $base );
+			self::assertNotNull( $shown );
+			return json_decode( (string) wp_json_encode( $shown['view'] ), true );
+		};
+		self::assertSame( 'trucks', $answer['step'] );
+		self::assertSame( $view( (string) get_permalink( $page ) ), $answer['view'], 'the page\'s own view, for the page it is on' );
+		self::assertContains( array( 'name' => 'page_id', 'value' => (string) $page ), $answer['view']['carry'], 'its forms go back to that page' );
+
+		// A page that holds no builder is not where the builder is: its links go to the kit's builder.
+		$plain = self::factory()->post->create( array( 'post_status' => 'publish' ) );
+		$there = $this->answer(
+			array(
+				'cbuild' => $build,
+				'page'   => $plain,
+			)
+		);
+		self::assertSame( $view( BuilderUrl::of( $this->kit ) ), $there['view'] );
+		self::assertSame( $view( BuilderUrl::of( $this->kit ) ), $this->answer( array( 'cbuild' => $build ) )['view'] );
+		// Nor is a page whose block sells another kit.
+		$other = self::factory()->post->create(
+			array(
+				'post_type'    => 'page',
+				'post_status'  => 'publish',
+				'post_content' => '<!-- wp:group --><div><!-- wp:creative-skateboard-builder/builder {"kit":' . ( $this->kit + 1000 ) . '} /--></div><!-- /wp:group -->',
+			)
+		);
+		self::assertSame(
+			$view( BuilderUrl::of( $this->kit ) ),
+			$this->answer(
+				array(
+					'cbuild' => $build,
+					'page'   => $other,
+				)
+			)['view']
+		);
+		// A block inside another is found.
+		$nested = self::factory()->post->create(
+			array(
+				'post_type'    => 'page',
+				'post_status'  => 'publish',
+				'post_content' => '<!-- wp:group --><div><!-- wp:creative-skateboard-builder/builder {"kit":' . $this->kit . '} /--></div><!-- /wp:group -->',
+			)
+		);
+		self::assertSame(
+			$view( (string) get_permalink( $nested ) ),
+			$this->answer(
+				array(
+					'cbuild' => $build,
+					'page'   => $nested,
+				)
+			)['view']
+		);
+
+		self::assertArrayNotHasKey( 'view', $this->answer( array( 'picks' => array( 'deck' => $deck ) ) ), 'asked by its five arguments, the answer is 0.4.0\'s' );
+	}
+
+	public function test_a_build_link_takes_the_place_of_the_five_arguments_and_is_refused_beside_them(): void {
+		foreach ( array( 'picks', 'previous', 'step', 'assembly' ) as $argument ) {
+			$query = array(
+				'cbuild'  => array( 'deck' => (string) $this->parts['deck 8.5'] ),
+				$argument => 'step' === $argument ? 'deck' : ( 'assembly' === $argument ? 'true' : array( 'deck' => $this->parts['deck 8.0'] ) ),
+			);
+			$response = $this->ask( $query );
+			self::assertSame( 400, $response->get_status(), $argument );
+			self::assertSame( 'rest_invalid_param', $response->get_data()['code'] ?? null, $argument );
+		}
+	}
+
+	public function test_an_empty_build_link_is_the_clean_page_with_its_view(): void {
+		$answer = $this->answer( array( 'cbuild' => '' ) );
+		self::assertSame( 'deck', $answer['step'] );
+		self::assertArrayHasKey( 'view', $answer );
+	}
+
+	public function test_a_build_link_the_kit_cannot_read_is_still_answered(): void {
+		$answer = $this->answer( array( 'cbuild' => array( 'nope' => 'x', 'deck' => '999999' ) ) );
+		self::assertSame( 'deck', $answer['step'], 'a link is read as the page reads it: what is no part of it is dropped' );
+		self::assertArrayHasKey( 'view', $answer );
 	}
 
 	public function test_the_schema_refuses_an_answer_that_is_not_its_own(): void {
@@ -373,7 +491,9 @@ final class StateRouteTest extends IntegrationTestCase {
 			},
 			fn (): StateAnswer => $this->service( StateAnswer::class ),
 			fn (): RateLimit => $this->service( RateLimit::class ),
-			fn (): \CreativeBranding\SkateboardBuilder\Port\Cart => $this->service( \CreativeBranding\SkateboardBuilder\Port\Cart::class )
+			fn (): \CreativeBranding\SkateboardBuilder\Port\Cart => $this->service( \CreativeBranding\SkateboardBuilder\Port\Cart::class ),
+			fn (): Builder => $this->service( Builder::class ),
+			$this->service( \CreativeBranding\SkateboardBuilder\Front\BuilderPlace::class )
 		);
 		foreach ( array(
 			array( 'picks' => array( 'sail' => '5' ) ),
@@ -580,9 +700,9 @@ final class StateRouteTest extends IntegrationTestCase {
 	public function test_the_route_asks_the_same_number_of_queries_however_many_parts_a_step_has(): void {
 		$this->terms( 100000 );
 		$decks = (int) wp_get_object_terms( $this->parts['deck 8.0'], 'product_cat', array( 'fields' => 'ids' ) )[0];
-		$count = function ( bool $cold ): int {
+		$count = function ( bool $cold, array $query = array() ): int {
 			// Once for whatever is read the first time a part is met, then the request that is counted.
-			$this->ask();
+			$this->ask( $query );
 			if ( $cold ) {
 				// As on a site with no persistent object cache: nothing of the last request is in memory.
 				wp_cache_flush();
@@ -596,10 +716,19 @@ final class StateRouteTest extends IntegrationTestCase {
 				return $query;
 			};
 			add_filter( 'query', $watch );
-			self::assertSame( 200, $this->ask()->get_status() );
+			self::assertSame( 200, $this->ask( $query )->get_status() );
 			remove_filter( 'query', $watch );
 			return $asked;
 		};
+		// What the store sends on every move: the build's own fields and the page, which add the view, its brand
+		// lookup, the presets and the page's blocks (audit 13, milestone 6).
+		$moved = fn( bool $cold ): int => $count(
+			$cold,
+			array(
+				'cbuild' => array( 'step' => 'deck' ),
+				'page'   => $this->kit,
+			)
+		);
 		$more = function ( int $upTo ) use ( $decks ): void {
 			for ( $at = count( $this->parts ); $at < $upTo; $at++ ) {
 				$this->parts[ 'deck ' . $at ] = $this->part( 'Deck ' . $at, '65', array( 'deck_width' => '8.2500' ), $decks );
@@ -608,13 +737,96 @@ final class StateRouteTest extends IntegrationTestCase {
 
 		// More parts than a step lists, and then twice as many.
 		$more( 30 );
-		$warm = $count( false );
-		$cold = $count( true );
+		$warm      = $count( false );
+		$cold      = $count( true );
+		$movedWarm = $moved( false );
+		$movedCold = $moved( true );
 		$more( 60 );
 		self::assertSame( $warm, $count( false ), 'warm' );
 		self::assertSame( $cold, $count( true ), 'cold' );
+		self::assertSame( $movedWarm, $moved( false ), 'a move, warm' );
+		self::assertSame( $movedCold, $moved( true ), 'a move, cold' );
 		self::assertLessThanOrEqual( 15, $warm, 'warm' );
 		self::assertLessThanOrEqual( 60, $cold, 'cold' );
+		self::assertLessThanOrEqual( 15, $movedWarm, 'a move, warm' );
+		self::assertLessThanOrEqual( 60, $movedCold, 'a move, cold' );
+	}
+
+	/**
+	 * A guest on a shop that geolocates its customers, with prices shown by address: what the route costs beside
+	 * WooCommerce's own lookup (D-139, D-164). WooCommerce geolocates a shopper from MaxMind's database, through
+	 * `woocommerce_geolocate_ip`, or a CDN's country header, never from a country service
+	 * (`wc_get_customer_geolocation()` asks with no API fallback). Without either, it asks services for the server's
+	 * own public address, one after another with 2 seconds each, and keeps the answer a day for that guest's address.
+	 * Those services are answered here, with no network.
+	 */
+	public function test_a_guests_geolocation_is_woocommerces_own_lookup_once_and_kept_after(): void {
+		$options = array( 'woocommerce_calc_taxes', 'woocommerce_tax_display_shop', 'woocommerce_default_customer_address' );
+		$was     = array_map( 'get_option', array_combine( $options, $options ) );
+		$wc      = array( WC()->customer, WC()->session );
+		update_option( 'woocommerce_calc_taxes', 'yes' );
+		update_option( 'woocommerce_default_customer_address', 'geolocation' );
+		$_SERVER['REMOTE_ADDR'] = '203.0.113.7';
+		$asked                  = array();
+		$answer                 = static function ( $preempt, array $args, string $url ) use ( &$asked ): array {
+			$asked[] = (string) wp_parse_url( $url, PHP_URL_HOST );
+			return array(
+				'headers'  => array(),
+				'body'     => '198.51.100.20',
+				'response' => array(
+					'code'    => 200,
+					'message' => 'OK',
+				),
+				'cookies'  => array(),
+			);
+		};
+		add_filter( 'pre_http_request', $answer, 10, 3 );
+		// Each ask a request of its own: no customer or session carried from the last.
+		$fresh = static function (): void {
+			WC()->customer = null;
+			WC()->session  = null;
+		};
+		$timed = function () use ( $fresh ): float {
+			$fresh();
+			$started = hrtime( true );
+			self::assertSame( 200, $this->ask()->get_status() );
+			return ( hrtime( true ) - $started ) / 1e6;
+		};
+		$services = array( 'api64.ipify.org', 'ipecho.net', 'ident.me', 'tnedi.me' );
+		try {
+			// Prices shown without tax go by no address: nobody is looked up.
+			update_option( 'woocommerce_tax_display_shop', 'excl' );
+			$timed();
+			self::assertSame( array(), $asked, 'no address needed, no lookup' );
+
+			// Shown with tax, and no MaxMind database: the first request asks one service, as any page would.
+			update_option( 'woocommerce_tax_display_shop', 'incl' );
+			delete_transient( 'external_ip_address_203.0.113.7' );
+			$first = $timed();
+			self::assertCount( 1, $asked );
+			self::assertContains( $asked[0], $services );
+
+			$asked = array();
+			$next  = $timed();
+			self::assertSame( array(), $asked, "the next: the address WooCommerce kept for this guest's" );
+
+			// With MaxMind's database, which answers WooCommerce's own filter: nothing goes out.
+			delete_transient( 'external_ip_address_203.0.113.7' );
+			$maxmind = static fn (): string => 'CA';
+			add_filter( 'woocommerce_geolocate_ip', $maxmind );
+			$local = $timed();
+			remove_filter( 'woocommerce_geolocate_ip', $maxmind );
+			self::assertSame( array(), $asked, 'MaxMind: no request' );
+			fwrite( STDERR, sprintf( "\nGeolocation: a guest's first request %.1f ms with the service answering at once, the next %.1f ms, with MaxMind %.1f ms.\n", $first, $next, $local ) );
+		} finally {
+			remove_filter( 'pre_http_request', $answer, 10 );
+			delete_transient( 'external_ip_address_203.0.113.7' );
+			foreach ( $was as $option => $value ) {
+				update_option( $option, $value );
+			}
+			// The tests after this one find WooCommerce's customer and session as they were.
+			[ WC()->customer, WC()->session ] = $wc;
+		}
 	}
 
 	public function test_nothing_kept_for_the_limit_names_an_address(): void {

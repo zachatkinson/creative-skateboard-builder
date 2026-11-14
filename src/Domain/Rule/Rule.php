@@ -36,4 +36,14 @@ interface Rule {
 	 * @return list<Finding>
 	 */
 	public function check( Picks $picks, RuleSettings $settings ): array;
+
+	/**
+	 * The slots the rule reads, so that a step can say what its parts were checked against (Cowork's review,
+	 * should-fix 5).
+	 *
+	 * @since 0.6.0
+	 *
+	 * @return list<string>
+	 */
+	public function slots(): array;
 }

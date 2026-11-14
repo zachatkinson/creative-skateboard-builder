@@ -654,6 +654,13 @@ final class KitEditorTest extends TestCase {
 		self::assertSame( array( 'slots slots_leave_presets slots' ), self::problems( $draft ) );
 		self::assertArrayNotHasKey( self::SLOTS, $draft->documents );
 
+		// Slots refused for themselves are said once, as what is wrong with them, and not again for the presets.
+		$bad                    = $sent;
+		$bad['slots'][0]['key'] = 'Not A Key';
+		$told                   = self::problems( $this->editor->draft( $bad, $stored ) );
+		self::assertNotSame( array(), $told );
+		self::assertNotContains( 'slots slots_leave_presets slots', $told );
+
 		// And with the preset put right in the same save, both are saved.
 		$sent['presets'] = array( self::preset( array( 'risers' => '400' ) ) );
 		$this->kits->found['4'] ??= array();

@@ -6,7 +6,7 @@ import type { FullConfig } from '@playwright/test';
 import { SESSION } from './login';
 
 /**
- * Once before every spec: the plugin active on the browser site with the default theme. The shop
+ * Once before every spec: the plugin active on the browser site with the default theme (tools/e2e-site.sh). The shop
  * fixture opens the shop to visitors and makes one product; milestone 6 adds a kit and its parts to it.
  *
  * Then the administrator is logged in once, over HTTP, and the session's cookies are kept for `login()` to give to
@@ -16,21 +16,12 @@ import { SESSION } from './login';
  * @param config Playwright's configuration, for the site's address.
  */
 export default async function globalSetup( config: FullConfig ) {
-	const run = ( command: string ) =>
-		execSync( `npx wp-env run cli -- wp ${ command }`, {
+	// Inside tools/visual.sh's container there is no wp-env: the script has made the site ready on the host.
+	if ( '1' !== process.env.CBUILD_E2E_SITE_READY ) {
+		execSync( 'bash tools/e2e-site.sh', {
 			stdio: [ 'ignore', 'ignore', 'inherit' ],
 		} );
-	// Activate only what is not active: WP-CLI warns about the rest, and a warning nobody needs hides one that matters.
-	const ensure = ( kind: 'plugin' | 'theme', slug: string ) =>
-		execSync(
-			`npx wp-env run cli -- sh -c "wp ${ kind } is-active ${ slug } || wp ${ kind } activate ${ slug }"`,
-			{ stdio: [ 'ignore', 'ignore', 'inherit' ] }
-		);
-	ensure( 'plugin', 'creative-skateboard-builder' );
-	ensure( 'theme', 'twentytwentyfive' );
-	run(
-		'eval-file wp-content/plugins/creative-skateboard-builder/tests/e2e/fixtures/shop.php'
-	);
+	}
 
 	const baseURL =
 		config.projects[ 0 ]?.use.baseURL || 'http://localhost:8898';

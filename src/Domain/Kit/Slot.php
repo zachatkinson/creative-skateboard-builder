@@ -58,8 +58,14 @@ final readonly class Slot {
 	 * @throws InvalidDocument When a field is missing, of the wrong type or out of range.
 	 */
 	public static function fromFields( Fields $fields ): self {
+		$key = $fields->key( 'key' );
+		if ( isset( Slots::KEPT[ $key ] ) ) {
+			// A build link keeps these words for itself (D-142).
+			$refused = InvalidDocument::because( DocumentError::BadKey, $fields->path( 'key' ) );
+			throw $refused;
+		}
 		return new self(
-			$fields->key( 'key' ),
+			$key,
 			$fields->text( 'label', self::MAX_LABEL ),
 			$fields->textOrEmpty( 'help', self::MAX_HELP ),
 			$fields->flag( 'required' ),

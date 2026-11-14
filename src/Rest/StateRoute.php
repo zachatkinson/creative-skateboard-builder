@@ -12,6 +12,10 @@ namespace CreativeBranding\SkateboardBuilder\Rest;
 use Closure;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\InvalidMoney;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Slots;
+use CreativeBranding\SkateboardBuilder\Front\Builder;
+use CreativeBranding\SkateboardBuilder\Front\BuilderPlace;
+use CreativeBranding\SkateboardBuilder\Front\BuilderUrl;
+use CreativeBranding\SkateboardBuilder\Front\BuildLink;
 use CreativeBranding\SkateboardBuilder\Front\StateAnswer;
 use CreativeBranding\SkateboardBuilder\Front\Words;
 use CreativeBranding\SkateboardBuilder\Domain\Fit\Problem;
@@ -72,8 +76,10 @@ final class StateRoute implements Hookable {
 	 * @param Closure(): StateAnswer $writer Writes it down.
 	 * @param Closure(): RateLimit   $limit  The rate limit.
 	 * @param Closure(): Cart        $cart   The cart, for the shopper it knows.
+	 * @param Closure(): Builder     $builder What the builder shows, for a build link.
+	 * @param BuilderPlace           $place   Which page holds which kit's builder.
 	 */
-	public function __construct( private Kits $kits, private Closure $state, private Closure $writer, private Closure $limit, private Closure $cart ) {}
+	public function __construct( private Kits $kits, private Closure $state, private Closure $writer, private Closure $limit, private Closure $cart, private Closure $builder, private BuilderPlace $place ) {}
 
 	/**
 	 * Add the hooks.
@@ -146,6 +152,16 @@ final class StateRoute implements Hookable {
 				'type'        => 'string',
 				'pattern'     => self::LOCALE,
 			),
+			'cbuild'   => array(
+				'description'   => __( 'A build link, as a page\'s address holds it. It takes the place of picks, previous, step and assembly, and the answer gains the view the page would show.', 'creative-skateboard-builder' ),
+				'type'          => 'object',
+				'maxProperties' => 64,
+			),
+			'page'     => array(
+				'description' => __( 'The ID of the post the builder is on, for the view\'s links. A post that holds no builder for the kit is not used.', 'creative-skateboard-builder' ),
+				'type'        => 'integer',
+				'minimum'     => 1,
+			),
 		);
 	}
 
@@ -206,6 +222,9 @@ final class StateRoute implements Hookable {
 		}
 		// The prices are for the shopper the cart will charge, where tax goes by where they are (issue #27).
 		( $this->cart )()->shopper();
+		if ( null !== $request['cbuild'] ) {
+			return $this->link( $id, $request );
+		}
 		$picks    = Cast::map( $request['picks'] );
 		$previous = null === $request['previous'] ? null : Cast::map( $request['previous'] );
 		$step     = null === $request['step'] ? null : Cast::str( $request['step'] );
@@ -230,6 +249,50 @@ final class StateRoute implements Hookable {
 			return $missing;
 		}
 		return new WP_REST_Response( ( $this->writer )()->of( $state ) );
+	}
+
+	/**
+	 * The answer to a build link: what the page would show for it, the view among it (D-148).
+	 *
+	 * @param int                                   $id      The kit, which a visitor may see.
+	 * @param WP_REST_Request<array<string, mixed>> $request The request.
+	 * @return WP_REST_Response|WP_Error
+	 */
+	private function link( int $id, WP_REST_Request $request ) {
+		foreach ( array( 'picks', 'previous', 'step', 'assembly' ) as $argument ) {
+			if ( null !== $request[ $argument ] ) {
+				return new WP_Error(
+					'rest_invalid_param',
+					/* translators: %s: the argument's name, such as picks. */
+					sprintf( __( 'A build link takes the place of %s: send one or the other.', 'creative-skateboard-builder' ), $argument ),
+					array( 'status' => 400 )
+				);
+			}
+		}
+		try {
+			$shown = ( $this->builder )()->show( $id, BuildLink::read( $request['cbuild'] ), $this->base( $id, Cast::int( $request['page'] ) ) );
+		} catch ( InvalidMoney ) {
+			return new WP_Error( 'cbuild_no_price', __( 'This build cannot be priced in the shop\'s currency settings.', 'creative-skateboard-builder' ), array( 'status' => 500 ) );
+		}
+		if ( null === $shown ) {
+			return new WP_Error( 'cbuild_kit_not_found', __( 'There is no such kit.', 'creative-skateboard-builder' ), array( 'status' => 404 ) );
+		}
+		return new WP_REST_Response( $shown['answer'] + array( 'view' => $shown['view'] ) );
+	}
+
+	/**
+	 * The address of the page the builder is on, with no build in it: the post named, where a visitor may see it and
+	 * it holds the kit's Builder block, and otherwise where the kit's builder is.
+	 *
+	 * @param int $kit  The kit.
+	 * @param int $page The post the request names, or 0.
+	 */
+	private function base( int $kit, int $page ): string {
+		$post = $page > 0 && $kit !== $page ? get_post( $page ) : null;
+		if ( null !== $post && is_post_publicly_viewable( $post ) && ! post_password_required( $post ) && $this->place->holds( $post->ID, $kit ) ) {
+			return (string) get_permalink( $post );
+		}
+		return BuilderUrl::of( $kit );
 	}
 
 	/**

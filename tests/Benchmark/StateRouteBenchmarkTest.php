@@ -9,13 +9,17 @@ declare( strict_types=1 );
 
 namespace CreativeBranding\SkateboardBuilder\Tests\Benchmark;
 
+use CreativeBranding\SkateboardBuilder\Adapter\WooKits;
 use CreativeBranding\SkateboardBuilder\Port\Kits;
 use CreativeBranding\SkateboardBuilder\Rest\StateRoute;
+use CreativeBranding\SkateboardBuilder\Service\IndexJobs;
+use CreativeBranding\SkateboardBuilder\Service\ReindexState;
 use CreativeBranding\SkateboardBuilder\Service\SpecIndexer;
 use CreativeBranding\SkateboardBuilder\Support\Options;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Domain\KitDocuments;
 use CreativeBranding\SkateboardBuilder\Tests\Support\IntegrationTestCase;
 use CreativeBranding\SkateboardBuilder\Tests\Support\KitFactory;
+use CreativeBranding\SkateboardBuilder\Tests\Support\RunnerSpeed;
 use WC_Product_Simple;
 use WP_REST_Request;
 
@@ -37,12 +41,6 @@ final class StateRouteBenchmarkTest extends IntegrationTestCase {
 	private const REQUESTS = 40;
 
 	/**
-	 * What a run on a machine nobody chose is held to instead (D-124): GitHub's shared runners moved by a fifth
-	 * between two runs of the same code, so there the time catches a gross slowdown and the queries hold the rest.
-	 */
-	private const SHARED = 120.0;
-
-	/**
 	 * The queries a request may ask, by run. These do not move with the machine.
 	 */
 	private const QUERIES = array(
@@ -52,10 +50,12 @@ final class StateRouteBenchmarkTest extends IntegrationTestCase {
 	);
 
 	/**
-	 * The time a request is held to here: the budget, or the shared runner's ceiling where the run says it is on one.
+	 * The time a request is held to here: the budget, scaled by the runner's speed on a shared runner (D-124, D-171).
 	 */
 	private static function limit(): float {
-		return '1' === getenv( 'CBUILD_BENCHMARK_SHARED' ) ? self::SHARED : self::BUDGET;
+		$limit = RunnerSpeed::limit( self::BUDGET );
+		self::say( RunnerSpeed::line( self::BUDGET ) );
+		return $limit;
 	}
 
 	/**
@@ -138,6 +138,7 @@ final class StateRouteBenchmarkTest extends IntegrationTestCase {
 	}
 
 	public function test_the_state_route_answers_within_80_ms_at_p95_with_500_candidates_in_a_slot(): void {
+		self::say( RunnerSpeed::line( self::BUDGET ) );
 		$_SERVER['REMOTE_ADDR'] = '203.0.113.7';
 		rest_get_server();
 		$this->service( StateRoute::class )->register();
@@ -162,13 +163,44 @@ final class StateRouteBenchmarkTest extends IntegrationTestCase {
 				$ids[ $slot['key'] ][] = $product->get_id();
 			}
 		}
-		$kit = KitFactory::kit( 'Complete', array( Options::META_KIT_SLOTS => $slots ) )->get_id();
+		// The most presets a kit has, six, each worked out as a build on every answer (D-151).
+		$presets = array();
+		for ( $n = 0; $n < 6; $n++ ) {
+			$picks = array();
+			foreach ( $ids as $slot => $parts ) {
+				if ( 'risers' !== $slot ) {
+					$picks[ $slot ] = $parts[ $n ];
+				}
+			}
+			$presets[] = array(
+				'name'  => 'Preset ' . $n,
+				'picks' => $picks,
+			);
+		}
+		$kit = KitFactory::kit(
+			'Complete',
+			array(
+				Options::META_KIT_SLOTS   => $slots,
+				Options::META_KIT_PRESETS => array(
+					'schema_version' => 1,
+					'presets'        => $presets,
+				),
+			)
+		)->get_id();
 		self::assertSame( 2000, array_sum( array_map( 'count', $ids ) ) );
 
-		$ask = static function ( int $deck ) use ( $kit ): array {
+		// A move asks as the store does (audit 13, milestone 6): the build's own fields and the page, which add the
+		// view, its brand lookup, the presets and the page's blocks. The rest ask with picks alone.
+		$ask = static function ( int $deck, bool $move = false ) use ( $kit ): array {
 			$request = new WP_REST_Request( 'GET', "/cbuild/v1/kits/{$kit}/state" );
 			$request->set_query_params(
-				array(
+				$move ? array(
+					'cbuild' => array(
+						'deck' => (string) $deck,
+						'step' => 'trucks',
+					),
+					'page'   => $kit,
+				) : array(
 					'picks' => array( 'deck' => $deck ),
 					'step'  => 'trucks',
 				)
@@ -188,24 +220,33 @@ final class StateRouteBenchmarkTest extends IntegrationTestCase {
 		self::assertGreaterThan( 24, $first['steps'][1]['hidden'] );
 		self::assertCount( 24, $first['options'] );
 		self::assertNotNull( $first['options'][0]['card'] );
+		self::assertCount( 6, $first['presets'] );
+		self::assertGreaterThan( 0, $first['presets'][0]['total']['amount'] );
 
-		foreach ( array( 'cold' => true, 'warm' => false ) as $run => $flush ) {
-			$times   = array();
-			$queries = array();
-			for ( $request = 0; $request < self::REQUESTS; $request++ ) {
-				if ( $flush ) {
-					// A request on a site with no persistent object cache starts with nothing kept.
-					wp_cache_flush();
+		$view = $ask( $ids['deck'][0], true )[2];
+		self::assertSame( 'Step 2 of 7: Trucks', $view['view']['title'] ?? null, 'a move answers with the view' );
+		foreach ( array( false, true ) as $move ) {
+			// Each shape from an address of its own: the two runs are as many requests as one address may make in a minute.
+			$_SERVER['REMOTE_ADDR'] = $move ? '203.0.113.9' : '203.0.113.7';
+			foreach ( array( 'cold' => true, 'warm' => false ) as $run => $flush ) {
+				$times   = array();
+				$queries = array();
+				for ( $request = 0; $request < self::REQUESTS; $request++ ) {
+					if ( $flush ) {
+						// A request on a site with no persistent object cache starts with nothing kept.
+						wp_cache_flush();
+					}
+					[ $took, $asked ] = $ask( $ids['deck'][ $request % 7 ], $move );
+					$times[]          = $took;
+					$queries[]        = $asked;
 				}
-				[ $took, $asked ] = $ask( $ids['deck'][ $request % 7 ] );
-				$times[]          = $took;
-				$queries[]        = $asked;
+				$p95 = self::p95( $times );
+				sort( $times );
+				$name = ( $move ? 'a move, ' : '' ) . $run;
+				self::say( sprintf( 'state route, %s, 500 candidates in the step, 2,000 parts in the kit: p95 %.1f ms, median %.1f ms, slowest %.1f ms, %d queries at most', $name, $p95, $times[ (int) ( count( $times ) / 2 ) ], max( $times ), max( $queries ) ) );
+				self::assertLessThanOrEqual( self::QUERIES[ $run ], max( $queries ), "The state route's queries, {$name}." );
+				self::assertLessThan( self::limit(), $p95, "The state route, {$name}." );
 			}
-			$p95 = self::p95( $times );
-			sort( $times );
-			self::say( sprintf( 'state route, %s, 500 candidates in the step, 2,000 parts in the kit: p95 %.1f ms, median %.1f ms, slowest %.1f ms, %d queries at most', $run, $p95, $times[ (int) ( count( $times ) / 2 ) ], max( $times ), max( $queries ) ) );
-			self::assertLessThanOrEqual( self::QUERIES[ $run ], max( $queries ), "The state route's queries, {$run}." );
-			self::assertLessThan( self::limit(), $p95, "The state route, {$run}." );
 		}
 
 		// A part moves, as an order's stock does: its row alone is read again, inside the budget (D-116).
@@ -235,6 +276,30 @@ final class StateRouteBenchmarkTest extends IntegrationTestCase {
 		self::say( sprintf( 'state route, with nothing kept, 2,000 parts read from the shop: %.1f ms, %d queries', $took, $asked ) );
 		wp_cache_flush();
 		self::assertLessThan( self::limit(), $ask( $ids['deck'][0] )[0], 'The request after it.' );
+
+		// Issue #28: a reindex forgets every part's row, a batch at a time, and writes each batch's rows again itself.
+		// The first request after it is held as any other is: it reads rows, and loads no product for a slot's parts.
+		$jobs = $this->service( IndexJobs::class );
+		$jobs->requestReindex();
+		$batches = array();
+		do {
+			wp_cache_flush();
+			$start     = hrtime( true );
+			$jobs->runReindex();
+			$batches[] = ( hrtime( true ) - $start ) / 1e6;
+			$state     = $jobs->state();
+		} while ( null !== $state && $state->isRunning() );
+		self::assertSame( ReindexState::DONE, $state?->phase );
+		// As the request the batch ran in ends.
+		$kits = $this->service( Kits::class );
+		self::assertInstanceOf( WooKits::class, $kits );
+		$kits->settle();
+		wp_cache_flush();
+		[ $took, $asked ] = $ask( $ids['deck'][0] );
+		self::say( sprintf( 'state route, the first request after a reindex of 2,000 parts: %.1f ms, %d queries; the reindex wrote the rows in %d batches, %.2f s in all, a batch %.0f ms at its slowest', $took, $asked, count( $batches ), array_sum( $batches ) / 1000, max( $batches ) ) );
+		self::assertLessThanOrEqual( self::QUERIES['cold'], $asked, 'The state route\'s queries, first after a reindex.' );
+		self::assertLessThan( self::limit(), $took, 'The state route, first after a reindex.' );
+		self::assertLessThan( 1000, max( $batches ), 'a batch is one request of the queue\'s' );
 		unset( $_SERVER['REMOTE_ADDR'] );
 	}
 }

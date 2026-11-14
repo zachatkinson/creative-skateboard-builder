@@ -31,6 +31,13 @@ final class InMemoryPartCards implements PartCards {
 	public array $asked = array();
 
 	/**
+	 * Each call's brands.
+	 *
+	 * @var list<list<string>>
+	 */
+	public array $brandsAsked = array();
+
+	/**
 	 * The parts forgotten.
 	 *
 	 * @var list<int>
@@ -68,6 +75,20 @@ final class InMemoryPartCards implements PartCards {
 				'sizes'  => '',
 			),
 		);
+	}
+
+	/**
+	 * A name for every brand but `gone`: the slug with a capital.
+	 */
+	public function brands( array $slugs ): array {
+		$this->brandsAsked[] = $slugs;
+		$names               = array();
+		foreach ( $slugs as $slug ) {
+			if ( 'gone' !== $slug ) {
+				$names[ $slug ] = ucfirst( $slug );
+			}
+		}
+		return $names;
 	}
 
 	public function forget( int ...$ids ): void {

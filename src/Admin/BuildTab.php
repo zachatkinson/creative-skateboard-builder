@@ -691,7 +691,17 @@ final class BuildTab {
 					$this->field( $id . '-default_on', $name . '[default_on]', __( 'Assembly is chosen when a build starts', 'creative-skateboard-builder' ), 'checkbox', true === ( $document['default_on'] ?? false ) ? '1' : '' ),
 					/* translators: %s: the shop's currency symbol. */
 					$this->field( $id . '-fee', $name . '[fee]', sprintf( __( 'Fee (%s)', 'creative-skateboard-builder' ), html_entity_decode( get_woocommerce_currency_symbol(), ENT_QUOTES, 'UTF-8' ) ), 'text', self::measure( $document['fee'] ?? '' ), array( 'note' => __( 'Charged once for a build that is put together. 0 for none.', 'creative-skateboard-builder' ) ) ),
-					$this->field( $id . '-lead_time', $name . '[lead_time]', __( 'Lead time', 'creative-skateboard-builder' ), 'text', self::text( $document, 'lead_time' ), array( 'max' => Assembly::MAX_LEAD_TIME ) ),
+					$this->field(
+						$id . '-lead_time',
+						$name . '[lead_time]',
+						__( 'Lead time', 'creative-skateboard-builder' ),
+						'text',
+						self::text( $document, 'lead_time' ),
+						array(
+							'max'  => Assembly::MAX_LEAD_TIME,
+							'note' => __( 'How long putting a build together takes, such as 2 business days. The review says it after "Assembly time:".', 'creative-skateboard-builder' ),
+						)
+					),
 					$this->field( $id . '-returns_notice', $name . '[returns_notice]', __( 'Returns notice', 'creative-skateboard-builder' ), 'textarea', self::text( $document, 'returns_notice' ), array( 'max' => Assembly::MAX_RETURNS_NOTICE ) ),
 				),
 				'more'   => array(),

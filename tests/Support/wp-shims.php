@@ -86,3 +86,25 @@ if ( ! function_exists( 'wc_get_price_decimal_separator' ) ) {
 		return $GLOBALS['cbuild_test_decimal'] ?? '.';
 	}
 }
+
+// What the builder's answer reaches for: a text with its markup taken out, and a list as a sentence writes one.
+if ( ! function_exists( 'wp_strip_all_tags' ) ) {
+	function wp_strip_all_tags( string $text ): string {
+		return trim( strip_tags( $text ) );
+	}
+}
+if ( ! function_exists( 'wp_sprintf' ) ) {
+	function wp_sprintf( string $pattern, ...$args ): string {
+		$list = is_array( $args[0] ?? null ) ? array_values( $args[0] ) : array();
+		$last = array_pop( $list );
+		$said = array() === $list ? (string) $last : implode( ', ', $list ) . ' and ' . $last;
+		return str_replace( '%l', $said, $pattern );
+	}
+}
+if ( ! function_exists( 'sanitize_html_class' ) ) {
+	// WordPress's: percent-encoded octets out, then anything but A-Z, a-z, 0-9, _ and -.
+	function sanitize_html_class( string $classname, string $fallback = '' ): string {
+		$sanitized = (string) preg_replace( '/[^A-Za-z0-9_-]/', '', (string) preg_replace( '|%[a-fA-F0-9][a-fA-F0-9]|', '', $classname ) );
+		return '' === $sanitized && '' !== $fallback ? sanitize_html_class( $fallback ) : $sanitized;
+	}
+}

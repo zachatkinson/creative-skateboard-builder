@@ -49,11 +49,14 @@ final class Container {
 			Port\PartFacts::class       => Repository\PartFactsRepository::class,
 			Port\Tally::class           => Adapter\CacheTally::class,
 			Port\Money::class           => Adapter\ShopMoney::class,
+			Port\ShippingZones::class   => Adapter\WooShippingZones::class,
 			Port\DocumentSchemas::class => Adapter\KitSchemas::class,
 			Port\Files::class           => Adapter\DiskFiles::class,
 			Port\Reindex::class         => Service\IndexJobs::class,
 			Port\Cart::class            => Adapter\WooCart::class,
 			Port\Uuids::class           => Adapter\WpUuids::class,
+			Port\BuilderPosts::class    => Adapter\WpBuilderPosts::class,
+			Port\KitMeta::class         => Adapter\WooKitMeta::class,
 		);
 	}
 
@@ -224,7 +227,7 @@ final class Container {
 				);
 			},
 			Front\Delivery::class                       => static function ( Container $c ): object {
-				return new Front\Delivery( $c->get( Port\Kits::class ) );
+				return new Front\Delivery( $c->get( Port\Kits::class ), $c->get( Port\ShippingZones::class ), new Front\ShippingWords( $c->get( Port\Money::class ) ) );
 			},
 			Cart\ShowHooks::class                       => static function ( Container $c ): object {
 				return new Cart\ShowHooks(
@@ -243,6 +246,15 @@ final class Container {
 			Service\SavedSources::class                 => static function (): object {
 				return new Service\SavedSources( array( Support\Options::META_SPECS, Support\Options::META_SPEC_TABLE ) );
 			},
+			// The builder's services are built when a page shows a builder, not on every request.
+			Front\PageHooks::class                      => static function ( Container $c ): object {
+				return new Front\PageHooks(
+					static function () use ( $c ): Front\BuilderPage {
+						return $c->get( Front\BuilderPage::class );
+					},
+					$c->get( Front\BuilderPlace::class )
+				);
+			},
 			// The state route's services are built when the route is asked, not whenever the REST API starts.
 			Rest\StateRoute::class                      => static function ( Container $c ): object {
 				return new Rest\StateRoute(
@@ -258,7 +270,11 @@ final class Container {
 					},
 					static function () use ( $c ): Port\Cart {
 						return $c->get( Port\Cart::class );
-					}
+					},
+					static function () use ( $c ): Front\Builder {
+						return $c->get( Front\Builder::class );
+					},
+					$c->get( Front\BuilderPlace::class )
 				);
 			},
 			// The cards are built when something a card shows moves.
@@ -354,6 +370,10 @@ final class Container {
 			Health\SiteHealth::class               => array( Scope::Admin, Scope::Cron, Scope::Cli, Scope::Rest ),
 			// The state route, which the builder's script asks.
 			Rest\StateRoute::class                 => array( Scope::Rest ),
+			// The block is registered on every request, the editor's and the REST renderer's among them.
+			Front\PageHooks::class                 => array( Scope::Everywhere ),
+			// Robots and the canonical are printed in the head of a page the site shows a visitor.
+			Front\SeoHooks::class                  => array( Scope::Storefront ),
 			// WordPress builds its abilities when something first asks for one, on any kind of request.
 			Abilities\CatalogueCheckAbility::class => array( Scope::Everywhere ),
 			Abilities\CheckBuildAbility::class     => array( Scope::Everywhere ),

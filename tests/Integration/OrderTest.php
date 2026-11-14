@@ -193,14 +193,17 @@ final class OrderTest extends CartTestCase {
 		self::assertSame( '8.5000', $snapshot['picks']['trucks']['specs']['axle_width'], 'the specs as sold' );
 		self::assertSame( '', $snapshot['picks']['deck']['sku'], 'a part with no SKU' );
 
-		$shown = array();
-		foreach ( $kit->get_formatted_meta_data() as $meta ) {
-			$shown[ $meta->key ] = wp_strip_all_tags( $meta->value );
-		}
-		self::assertSame( array( 'Assembly', 'Build' ), array_keys( $shown ), 'the customer reads these two and no key of the plugin\'s' );
-		self::assertSame( $assembly ? 'Yes' : 'No', $shown['Assembly'] );
+		// Claude in Cowork's recheck, N2 and N4: the order received page, My account and the emails list a line's meta
+		// through wc_display_item_meta() (includes/wc-template-functions.php:4165), where the kit's line said its
+		// assembly twice, and listed the parts its own lines list below it. Its total says the assembly.
+		self::assertSame( array(), $kit->get_formatted_meta_data(), 'the customer reads neither, and no key of the plugin\'s' );
+		$shown = self::screen( $kit );
+		self::assertSame( array( 'Assembly', 'Build' ), array_keys( $shown ), 'the order screen keeps both for the workshop' );
+		// N3, as Zach answered it: the order screen words the assembly as everywhere else.
+		self::assertSame( $assembly ? wc_price( 15 ) : 'not added', $shown['Assembly'], 'the kit\'s fee is $15.00' );
 		self::assertSame( 'Deck: Deck × 1, Trucks: Trucks × 2, Wheels: Wheels × 1, Bearings: Bearings × 1, Hardware: Hardware × 1, Grip: Grip × 1', $shown['Build'] );
 		self::assertSame( array(), $parts['deck']->get_formatted_meta_data(), 'a part shows nothing of the plugin\'s' );
+		self::assertSame( array(), self::screen( $parts['deck'] ), 'nor on the order screen' );
 	}
 
 	public function test_the_classic_checkout_writes_the_build_to_the_order(): void {
@@ -263,6 +266,58 @@ final class OrderTest extends CartTestCase {
 		$loose = $builds[1]['item']->get_meta( '_cbuild_snapshot' );
 		self::assertFalse( $loose['assembly'] );
 		self::assertSame( array( '', '' ), array( $loose['lead_time'], $loose['returns_notice'] ), 'neither is said of a build the shop does not assemble' );
+	}
+
+	public function test_a_kits_line_on_the_order_says_what_its_amount_is_in_place_of_a_bare_price(): void {
+		// Cowork's review, should-fix 3, as Zach answered it: the order received page, the emails and My account
+		// print a line's subtotal through WC_Order::get_formatted_line_subtotal().
+		$this->added( true );
+		$this->added( false );
+		$order  = $this->classic();
+		$builds = self::told( $order );
+		self::assertSame( 1, preg_match( '#\AAssembly: <span class="woocommerce-Price-amount amount">.*15\.00.*</span>\z#s', $order->get_formatted_line_subtotal( $builds[0]['item'] ) ), $order->get_formatted_line_subtotal( $builds[0]['item'] ) );
+		self::assertSame( 'Assembly: not added', $order->get_formatted_line_subtotal( $builds[1]['item'] ) );
+		self::assertStringNotContainsString( 'Assembly', $order->get_formatted_line_subtotal( $builds[0]['parts']['trucks'] ), 'a part keeps its own' );
+		self::assertSame( 1, preg_match( '#\A<span class="woocommerce-Price-amount amount">.*15\.00.*</span>\z#s', self::screen( $builds[0]['item'] )['Assembly'] ), 'and the order screen says the fee after Assembly' );
+		self::assertSame( 'not added', self::screen( $builds[1]['item'] )['Assembly'] );
+
+		$kit = wc_get_product( $this->kit );
+		$kit->setDocument(
+			Options::META_KIT_ASSEMBLY,
+			array(
+				'schema_version' => 1,
+				'default_on'     => false,
+				'fee'            => '0',
+				'lead_time'      => '',
+				'returns_notice' => '',
+			)
+		);
+		$kit->save();
+		WC()->cart->empty_cart();
+		$this->added( true );
+		$order = $this->classic();
+		self::assertSame( 'Assembly: free', $order->get_formatted_line_subtotal( self::told( $order )[0]['item'] ) );
+		self::assertSame( 'free', self::screen( self::told( $order )[0]['item'] )['Assembly'] );
+	}
+
+	/**
+	 * What the order screen lists of an item, by key: what includes/admin/meta-boxes/views/html-order-item-meta.php:16
+	 * asks for, less the keys it hides.
+	 *
+	 * @param WC_Order_Item_Product $item The order item.
+	 * @return array<string, string>
+	 */
+	private static function screen( WC_Order_Item_Product $item ): array {
+		// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- WooCommerce's own, as its order screen applies it.
+		$hidden = apply_filters( 'woocommerce_hidden_order_itemmeta', array() );
+		$shown  = array();
+		foreach ( $item->get_all_formatted_meta_data( '' ) as $meta ) {
+			if ( ! in_array( $meta->key, $hidden, true ) ) {
+				// Less the paragraph wpautop() puts a value in (includes/class-wc-order-item.php:374).
+				$shown[ $meta->key ] = trim( (string) preg_replace( '#</?p>#', '', $meta->display_value ) );
+			}
+		}
+		return $shown;
 	}
 
 	public function test_two_builds_on_an_order_are_each_tied_to_their_own_parts(): void {

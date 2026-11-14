@@ -217,9 +217,9 @@ jobs:
     name: Integration, Plugin Check, browser (${{ matrix.leg }})
     needs: scope
     runs-on: ubuntu-26.04
-    # Every browser project is some 35 minutes of the newest leg on this runner, after 12 of setup and gates (D-085);
-    # the other legs, and a draft's newest, are done in half an hour or something is wrong.
-    timeout-minutes: ${{ matrix.leg == 'newest' && needs.scope.outputs.browsers == 'every' && 60 || 30 }}
+    # Every browser project is 648 tests and some 55 minutes of the newest leg on a slow runner, after 13 of setup and
+    # gates (D-085); the other legs, and a draft's newest, are done in half an hour or something is wrong.
+    timeout-minutes: ${{ matrix.leg == 'newest' && needs.scope.outputs.browsers == 'every' && 90 || 30 }}
     strategy:
       fail-fast: false
       matrix:
@@ -261,8 +261,8 @@ jobs:
       - run: composer test:integration
         if: matrix.leg == 'oldest'
       # Seconds on a site that is already up: 2,000 parts indexed, exported, checked and dry-run, each inside a request.
-      # A shared runner's speed moved by a fifth between two runs of one commit, so here the state route is held to its
-      # query counts and a ceiling of 120 ms; its 80 ms budget is held where the machine is known (D-124).
+      # A shared runner's speed moves from run to run, so here the budgets are scaled by how much slower than the Mac the
+      # runner does a fixed piece of work, at most 2.5 times, and the query counts are held as anywhere (D-124, D-171).
       - name: The benchmarks at 2,000 parts (Xdebug off)
         if: matrix.leg == 'newest'
         env:
@@ -276,7 +276,7 @@ jobs:
       - name: The zip installs, upgrades over itself and uninstalls clean
         if: matrix.leg == 'newest' || matrix.leg == 'oldest'
         run: npm run zip-lifecycle
-      # Newest runs every browser project, the visual snapshots among them; oldest, which is there for the WordPress
+      # Newest runs every browser project, and the visual snapshots after them; oldest, which is there for the WordPress
       # and WooCommerce versions, one desktop and one phone engine, and so does a draft's newest (D-085). The browsers
       # are cached by Playwright's version and the engines; the system packages they need are installed each time.
       - name: The browser projects for the leg
@@ -323,6 +323,11 @@ jobs:
           exit 1
       - run: npm run test:e2e -- ${{ steps.browsers.outputs.projects }}
         if: matrix.leg == 'newest' || matrix.leg == 'oldest'
+      # In Playwright's own Linux image, as locally, so the baselines are one machine's pictures (D-162). Only where
+      # every browser project runs: a draft's newest leg and the oldest leg leave it out, as they leave out the engines.
+      - name: The visual snapshots (three themes, light and dark), in Playwright's container
+        if: matrix.leg == 'newest' && needs.scope.outputs.browsers == 'every'
+        run: bash tools/visual.sh
       - name: Lighthouse CI (LCP, CLS, TBT, SEO on the mobile profile)
         if: matrix.leg == 'newest'
         run: npm run lhci

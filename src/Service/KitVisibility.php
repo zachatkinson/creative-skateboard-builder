@@ -51,9 +51,15 @@ final class KitVisibility {
 	 */
 	public function excluded( mixed $ids ): array {
 		$out = array();
-		foreach ( array_merge( is_array( $ids ) ? array_values( $ids ) : array(), ( $this->kits )() ) as $id ) {
-			if ( is_numeric( $id ) && (int) $id > 0 ) {
-				$out[ (int) $id ] = (int) $id;
+		foreach ( array( is_array( $ids ) ? $ids : array(), ( $this->kits )() ) as $list ) {
+			foreach ( $list as $id ) {
+				if ( ! is_numeric( $id ) ) {
+					continue;
+				}
+				$whole = (int) $id;
+				if ( $whole > 0 ) {
+					$out[ $whole ] = $whole;
+				}
 			}
 		}
 		return array_values( $out );

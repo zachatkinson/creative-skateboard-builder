@@ -1,9 +1,8 @@
 {
 	"$schema": "http://json-schema.org/draft-04/schema#",
 	"title": "cbuild_state",
-	"description": "The answer of GET cbuild/v1/kits/<id>/state: the state of a build of a kit. Fields are added in minor versions and never renamed or removed within a major one.",
+	"description": "The answer of GET cbuild/v1/kits/<id>/state: the state of a build of a kit. Fields are added in minor versions and never renamed or removed within a major one, so a reader lets through a field it does not know.",
 	"type": "object",
-	"additionalProperties": false,
 	"required": [
 		"kit",
 		"step",
@@ -13,10 +12,16 @@
 		"steps",
 		"options",
 		"hidden",
+		"filters",
+		"matching",
+		"more",
 		"refused",
 		"problems",
 		"changes",
-		"total"
+		"total",
+		"picture",
+		"delivery",
+		"notes"
 	],
 	"properties": {
 		"kit": {
@@ -25,7 +30,7 @@
 			"minimum": 1
 		},
 		"step": {
-			"description": "The key of the slot whose options are listed: the one asked for, or the first with nothing picked.",
+			"description": "The step whose options are listed: the key of the slot asked for, or of the first with nothing picked; or `review`, for the step after the last slot's, which lists none.",
 			"type": "string",
 			"pattern": "^[a-z][a-z0-9_]{0,31}(?!\\n)$"
 		},
@@ -36,7 +41,6 @@
 		"texts": {
 			"description": "The kit's own texts, as the owner typed them or as a plugin answered the filter cbuild_kit_text.",
 			"type": "object",
-			"additionalProperties": false,
 			"required": [ "lead_time", "returns_notice" ],
 			"properties": {
 				"lead_time": {
@@ -55,8 +59,15 @@
 			"items": {
 				"description": "A preset.",
 				"type": "object",
-				"additionalProperties": false,
-				"required": [ "name", "description", "picks" ],
+				"required": [
+					"name",
+					"description",
+					"picks",
+					"total",
+					"ready",
+					"problems",
+					"image"
+				],
 				"properties": {
 					"name": {
 						"description": "Its name.",
@@ -72,7 +83,6 @@
 						"items": {
 							"description": "A pick.",
 							"type": "object",
-							"additionalProperties": false,
 							"required": [ "slot", "part" ],
 							"properties": {
 								"slot": {
@@ -85,6 +95,32 @@
 								}
 							}
 						}
+					},
+					"image": {
+						"description": "Its picture: for now its first slot's part's photo at the catalogue's size, or null when it has none. From 0.6.0.",
+						"oneOf": [
+							{
+								"$ref": "#/definitions/photo"
+							},
+							{
+								"type": "null"
+							}
+						]
+					},
+					"total": {
+						"description": "What the build it starts costs, at the kit's own assembly setting. From 0.6.0.",
+						"$ref": "#/definitions/money"
+					},
+					"ready": {
+						"description": "Whether the build it starts can go to the cart as it stands. From 0.6.0.",
+						"type": "boolean"
+					},
+					"problems": {
+						"description": "What keeps it from the cart, such as a sold-out part, each part named. From 0.6.0.",
+						"type": "array",
+						"items": {
+							"$ref": "#/definitions/presetProblem"
+						}
 					}
 				}
 			}
@@ -95,7 +131,6 @@
 			"items": {
 				"description": "A step.",
 				"type": "object",
-				"additionalProperties": false,
 				"required": [
 					"slot",
 					"label",
@@ -106,7 +141,8 @@
 					"recommended",
 					"offered",
 					"hidden",
-					"groups"
+					"groups",
+					"against"
 				],
 				"properties": {
 					"slot": {
@@ -155,7 +191,6 @@
 						"items": {
 							"description": "A reason.",
 							"type": "object",
-							"additionalProperties": false,
 							"required": [ "rule", "code", "count", "message" ],
 							"properties": {
 								"rule": {
@@ -178,6 +213,15 @@
 								}
 							}
 						}
+					},
+					"against": {
+						"description": "The picks before the step that its parts were checked against, by slot key, or null where no rule the kit has on reads the slot.",
+						"type": [ "array", "null" ],
+						"items": {
+							"description": "A slot's key.",
+							"type": "string",
+							"pattern": "^[a-z][a-z0-9_]{0,31}(?!\\n)$"
+						}
 					}
 				}
 			}
@@ -196,6 +240,36 @@
 				"$ref": "#/definitions/option"
 			}
 		},
+		"filters": {
+			"description": "What the current step's options can be filtered by. A list is empty where the parts offered have fewer than two values.",
+			"type": "object",
+			"required": [ "brands", "sizes" ],
+			"properties": {
+				"brands": {
+					"description": "The brands, by name.",
+					"type": "array",
+					"items": {
+						"$ref": "#/definitions/choice"
+					}
+				},
+				"sizes": {
+					"description": "The sizes, smallest first.",
+					"type": "array",
+					"items": {
+						"$ref": "#/definitions/choice"
+					}
+				}
+			}
+		},
+		"matching": {
+			"description": "How many of the parts the current step offers the filters let through.",
+			"type": "integer",
+			"minimum": 0
+		},
+		"more": {
+			"description": "How many options to ask for to list the next 24, or null when every one that matches is listed.",
+			"type": [ "integer", "null" ]
+		},
 		"refused": {
 			"description": "The picks sent that were not taken.",
 			"type": "array",
@@ -213,7 +287,6 @@
 		"changes": {
 			"description": "What the last change does to the picks after it, when previous was sent and a later pick no longer fits; otherwise null.",
 			"type": [ "object", "null" ],
-			"additionalProperties": false,
 			"required": [ "kept", "proposed", "changes" ],
 			"properties": {
 				"kept": {
@@ -230,7 +303,6 @@
 					"items": {
 						"description": "A pick.",
 						"type": "object",
-						"additionalProperties": false,
 						"required": [ "slot", "part" ],
 						"properties": {
 							"slot": {
@@ -250,7 +322,6 @@
 					"items": {
 						"description": "A change.",
 						"type": "object",
-						"additionalProperties": false,
 						"required": [
 							"slot",
 							"label",
@@ -304,7 +375,6 @@
 		"total": {
 			"description": "What the build costs so far.",
 			"type": "object",
-			"additionalProperties": false,
 			"required": [
 				"lines",
 				"parts",
@@ -320,7 +390,6 @@
 					"items": {
 						"description": "A line.",
 						"type": "object",
-						"additionalProperties": false,
 						"required": [
 							"slot",
 							"part",
@@ -386,13 +455,132 @@
 					"$ref": "#/definitions/money"
 				}
 			}
+		},
+		"picture": {
+			"description": "What is in the box: each part the total counts, in step order.",
+			"type": "object",
+			"required": [ "items", "description" ],
+			"properties": {
+				"items": {
+					"type": "array",
+					"items": {
+						"type": "object",
+						"required": [
+							"slot",
+							"part",
+							"label",
+							"size",
+							"name",
+							"image"
+						],
+						"properties": {
+							"slot": {
+								"description": "The slot's key.",
+								"type": "string"
+							},
+							"part": {
+								"description": "The part's ID.",
+								"type": "integer",
+								"minimum": 1
+							},
+							"label": {
+								"description": "The slot's label, with the part's brand and size where it has them: `Wheels: Retna, 54 mm`.",
+								"type": "string"
+							},
+							"size": {
+								"description": "The part's size as a person reads it, such as `8.5 in`, or an empty string for a slot that has none.",
+								"type": "string"
+							},
+							"name": {
+								"description": "The part's name, or an empty string when the product has gone.",
+								"type": "string"
+							},
+							"image": {
+								"description": "The part's photo, or null when it has none.",
+								"oneOf": [
+									{
+										"$ref": "#/definitions/photo"
+									},
+									{
+										"type": "null"
+									}
+								]
+							}
+						}
+					}
+				},
+				"description": {
+					"description": "The build in one sentence, for whoever cannot see the picture.",
+					"type": "string"
+				}
+			}
+		},
+		"delivery": {
+			"description": "What the shop says of the build's delivery, each in plain text and empty where nothing is said.",
+			"type": "object",
+			"required": [ "arrival", "line" ],
+			"properties": {
+				"arrival": {
+					"description": "When the build arrives.",
+					"type": "string"
+				},
+				"line": {
+					"description": "What its shipping costs, or how far it is from free shipping.",
+					"type": "string"
+				}
+			}
+		},
+		"notes": {
+			"description": "Lines other plugins put under the total, in plain text: six at most.",
+			"type": "array",
+			"maxItems": 6,
+			"items": {
+				"type": "string"
+			}
+		},
+		"view": {
+			"description": "Only in an answer to a build link (the cbuild argument): what the builder's template draws for it, as the page's first render has it. The builder's own, and no part of the public API: it may change in any release. The fields the store's script reads are described, so its types are generated from here; the rest are the templates'.",
+			"type": "object",
+			"required": ["url", "kit", "title", "status", "isChanges", "errors", "step", "review"],
+			"properties": {
+				"url": { "description": "The view's own address, which the store puts in the page's.", "type": "string" },
+				"kit": { "description": "The kit product's ID.", "type": "integer" },
+				"title": { "description": "The step's heading, which the store puts in the page's title.", "type": "string" },
+				"status": { "description": "What the status region says of the view.", "type": "string" },
+				"isChanges": { "description": "Whether the change panel is shown.", "type": "boolean" },
+				"errors": {
+					"type": "object",
+					"required": ["shown"],
+					"properties": { "shown": { "description": "Whether the error summary is shown.", "type": "boolean" } },
+					"additionalProperties": true
+				},
+				"step": {
+					"type": "object",
+					"required": ["slot", "options"],
+					"properties": {
+						"slot": { "description": "The step's slot, or empty at the review.", "type": "string" },
+						"options": { "description": "The step's listed parts.", "type": "array", "items": { "type": "object" } }
+					},
+					"additionalProperties": true
+				},
+				"review": {
+					"type": "object",
+					"required": ["link", "copied", "added"],
+					"properties": {
+						"link": { "description": "The build's shared link.", "type": "string" },
+						"copied": { "description": "What the status says once the link is copied.", "type": "string" },
+						"added": { "description": "What the builder says once the build is in the cart.", "type": "string" }
+					},
+					"additionalProperties": true
+				}
+			},
+			"additionalProperties": true
 		}
 	},
 	"definitions": {
 		"money": {
 			"description": "An amount in the shop's currency.",
 			"type": "object",
-			"additionalProperties": false,
 			"required": [ "amount", "text" ],
 			"properties": {
 				"amount": {
@@ -408,7 +596,6 @@
 		"message": {
 			"description": "What a rule found.",
 			"type": "object",
-			"additionalProperties": false,
 			"required": [ "rule", "code", "severity", "text" ],
 			"properties": {
 				"rule": {
@@ -434,7 +621,6 @@
 		"card": {
 			"description": "What a card shows of a part.",
 			"type": "object",
-			"additionalProperties": false,
 			"required": [
 				"name",
 				"url",
@@ -466,36 +652,25 @@
 				},
 				"image": {
 					"description": "The part's photo at the catalogue's size, or null when it has none.",
-					"type": [ "object", "null" ],
-					"additionalProperties": false,
-					"required": [ "src", "width", "height", "srcset", "sizes" ],
-					"properties": {
-						"src": {
-							"type": "string"
+					"oneOf": [
+						{
+							"$ref": "#/definitions/photo"
 						},
-						"width": {
-							"type": "integer"
-						},
-						"height": {
-							"type": "integer"
-						},
-						"srcset": {
-							"type": "string"
-						},
-						"sizes": {
-							"type": "string"
+						{
+							"type": "null"
 						}
-					}
+					]
 				}
 			}
 		},
 		"option": {
 			"description": "A part as a slot holds it.",
 			"type": "object",
-			"additionalProperties": false,
 			"required": [
 				"id",
 				"brand",
+				"size",
+				"delta",
 				"fit",
 				"in_stock",
 				"available",
@@ -512,8 +687,49 @@
 					"minimum": 1
 				},
 				"brand": {
-					"description": "The part's brand, or an empty string.",
+					"description": "The slug of the part's brand, or an empty string.",
 					"type": "string"
+				},
+				"size": {
+					"description": "The part's size, as its slot's parts are sized (a deck by its width, trucks by their axle, wheels by their diameter, risers by their thickness, bolts by their length), or null where the slot has no such size or the part does not give it.",
+					"type": [ "object", "null" ],
+					"required": [ "value", "text" ],
+					"properties": {
+						"value": {
+							"description": "The size as the size filter names it: `8.25in`, `54mm`.",
+							"type": "string"
+						},
+						"text": {
+							"description": "The size as a person reads it.",
+							"type": "string"
+						}
+					}
+				},
+				"delta": {
+					"description": "What taking the part does to the total, against the part the step counts now: what the build charges for as many as it takes.",
+					"type": "object",
+					"required": [ "kind", "amount", "text" ],
+					"properties": {
+						"kind": {
+							"description": "`more` or `less` than the part counted; `free`, for the same price; `included`, for the part counted itself; `none`, for a part that gives no set size and so has no price in a build.",
+							"type": "string",
+							"enum": [
+								"more",
+								"less",
+								"free",
+								"included",
+								"none"
+							]
+						},
+						"amount": {
+							"description": "The change in the shop's minor units, below nothing where it comes off.",
+							"type": "integer"
+						},
+						"text": {
+							"description": "The change as its card says it: `+$12.00`, `−$5.00`, `Same price`, `Included`, or an empty string.",
+							"type": "string"
+						}
+					}
 				},
 				"fit": {
 					"description": "How the part fits the picks before it: the worst of its messages.",
@@ -563,7 +779,6 @@
 		"problem": {
 			"description": "A pick not taken, or something that keeps the build from the cart.",
 			"type": "object",
-			"additionalProperties": false,
 			"required": [ "code", "slot", "part", "message", "messages" ],
 			"properties": {
 				"code": {
@@ -596,6 +811,101 @@
 					"items": {
 						"$ref": "#/definitions/message"
 					}
+				}
+			}
+		},
+		"photo": {
+			"description": "A photo at the catalogue's size.",
+			"type": "object",
+			"required": [ "src", "width", "height", "srcset", "sizes" ],
+			"properties": {
+				"src": {
+					"type": "string"
+				},
+				"width": {
+					"type": "integer"
+				},
+				"height": {
+					"type": "integer"
+				},
+				"srcset": {
+					"type": "string"
+				},
+				"sizes": {
+					"type": "string"
+				}
+			}
+		},
+		"choice": {
+			"description": "A value a filter offers.",
+			"type": "object",
+			"required": [ "value", "label", "count", "selected" ],
+			"properties": {
+				"value": {
+					"description": "The value as the filter names it.",
+					"type": "string"
+				},
+				"label": {
+					"description": "The value as a person reads it.",
+					"type": "string"
+				},
+				"count": {
+					"description": "How many of the parts the step offers have it.",
+					"type": "integer",
+					"minimum": 1
+				},
+				"selected": {
+					"description": "Whether the list is filtered by it.",
+					"type": "boolean"
+				}
+			}
+		},
+		"presetProblem": {
+			"description": "What keeps a preset's build from the cart: a problem, with the name of the part it is about.",
+			"type": "object",
+			"required": [
+				"code",
+				"slot",
+				"part",
+				"message",
+				"messages",
+				"name"
+			],
+			"properties": {
+				"code": {
+					"description": "The problem's code, one of the problem codes in docs/HOOKS.md.",
+					"type": "string",
+					"enum": [
+						"slot_unknown",
+						"slot_empty",
+						"part_not_in_slot",
+						"part_sold_out",
+						"part_short",
+						"part_blocked"
+					]
+				},
+				"slot": {
+					"description": "The slot's key, as sent where the kit has no such slot.",
+					"type": "string"
+				},
+				"part": {
+					"description": "The part's ID, or null where there is none to name.",
+					"type": [ "integer", "null" ]
+				},
+				"message": {
+					"description": "The problem as a sentence, in the language of the answer.",
+					"type": "string"
+				},
+				"messages": {
+					"description": "For a part the rules block, what they found.",
+					"type": "array",
+					"items": {
+						"$ref": "#/definitions/message"
+					}
+				},
+				"name": {
+					"description": "The part's name, or an empty string.",
+					"type": "string"
 				}
 			}
 		}

@@ -63,6 +63,19 @@
 			// wp_generate_uuid4(), and the delivery line's two filters with wp_strip_all_tags().
 			"Adapter/WpUuids.php",
 			"Front/Delivery.php",
+			// The builder's page (Zach, 12 November 2026, D-146): the Interactivity API and the template, the block's
+			// registration and template_redirect, and wp_validate_redirect(). Each is proven by BuilderPageTest in wp-env.
+			// What the builder shows is decided in Front\Builder and BuilderView, which are mutated.
+			"Front/BuilderPage.php",
+			"Front/PageHooks.php",
+			"Front/BuilderUrl.php",
+			// get_post(), parse_blocks() and WooCommerce's product type. Which kit a page shows is decided in
+			// Front\BuilderPlace, which is mutated (audit 14, milestone 6).
+			"Adapter/WpBuilderPosts.php",
+			// Robots and the canonical: wp_robots, is_singular() and the queried post; which kit it shows is
+			// Front\BuilderPlace's. Proven by
+			// BuilderSeoTest and BuilderYoastTest (Zach, 12 November 2026, D-147).
+			"Front/SeoHooks.php",
 			// SQL through $wpdb, and the classes that only add hooks.
 			"Repository",
 			"Hooks/",

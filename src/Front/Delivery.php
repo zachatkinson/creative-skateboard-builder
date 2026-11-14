@@ -10,6 +10,7 @@ declare( strict_types=1 );
 namespace CreativeBranding\SkateboardBuilder\Front;
 
 use CreativeBranding\SkateboardBuilder\Port\Kits;
+use CreativeBranding\SkateboardBuilder\Port\ShippingZones;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -30,9 +31,13 @@ final class Delivery {
 	 *
 	 * @since 0.5.0
 	 *
-	 * @param Kits $kits The shop's kits, for the lead time.
+	 * @since 0.6.0 Takes the shop's shipping zones, and their words, for the line nobody answers.
+	 *
+	 * @param Kits          $kits  The shop's kits, for the lead time.
+	 * @param ShippingZones $zones What the shop charges to ship to the shopper's address.
+	 * @param ShippingWords $words The line, worded from those.
 	 */
-	public function __construct( private Kits $kits ) {}
+	public function __construct( private Kits $kits, private ShippingZones $zones, private ShippingWords $words ) {}
 
 	/**
 	 * What the shop says of a build's delivery, as plain text.
@@ -74,9 +79,11 @@ final class Delivery {
 		 * @param array{kit: int, assembly: bool, lead_time: string, total: int, decimals: int} $context As `cbuild_arrival_estimate` is given.
 		 */
 		$line = apply_filters( 'cbuild_delivery_line', '', $context );
+		$line = is_string( $line ) ? trim( wp_strip_all_tags( $line ) ) : '';
 		return array(
 			'arrival' => is_string( $arrival ) ? trim( wp_strip_all_tags( $arrival ) ) : '',
-			'line'    => is_string( $line ) ? trim( wp_strip_all_tags( $line ) ) : '',
+			// With no answer, the builder words it from the shop's shipping zones (D-166).
+			'line'    => '' === $line ? $this->words->line( $this->zones->rates(), $total ) : $line,
 		);
 	}
 }

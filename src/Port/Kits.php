@@ -113,6 +113,17 @@ interface Kits {
 	public function forget( int ...$ids ): void;
 
 	/**
+	 * Read these products and variations from the shop now and keep what a build is told of them, for the prices
+	 * a visitor nothing is known of is shown: the background job's work, so that no visitor's request does it
+	 * (issue #28). A product no kit's slot could offer is passed over.
+	 *
+	 * @since 0.6.0
+	 *
+	 * @param int ...$ids Products' and variations' IDs.
+	 */
+	public function warm( int ...$ids ): void;
+
+	/**
 	 * A term of this taxonomy was edited or deleted: forget what is kept that it is written into.
 	 *
 	 * @since 0.4.0

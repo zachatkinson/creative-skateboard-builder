@@ -9,7 +9,10 @@ declare( strict_types=1 );
 
 namespace CreativeBranding\SkateboardBuilder\Cart;
 
+use Automattic\WooCommerce\Blocks\Integrations\IntegrationRegistry;
 use Closure;
+use CreativeBranding\SkateboardBuilder\Front\BuilderUrl;
+use CreativeBranding\SkateboardBuilder\Front\BuildLink;
 use CreativeBranding\SkateboardBuilder\Front\StateAnswer;
 use CreativeBranding\SkateboardBuilder\Hookable;
 use CreativeBranding\SkateboardBuilder\Port\Kits;
@@ -54,7 +57,12 @@ final class ShowHooks implements Hookable {
 	 * cell where a padding of the plugin's would replace it. They go in the page: the Mini-Cart is in many a shop's header, and a file would
 	 * be one more request on every page (spec: Performance, nothing loads on pages without a builder).
 	 */
-	private const STYLES = '.wc-block-cart-items__row.cbuild-part>:first-child,.wc-block-cart-items__row:has(.cbuild-part)>:first-child,.woocommerce-cart-form__cart-item.cbuild-part>.product-name,.woocommerce-checkout-review-order-table .cbuild-part>.product-name,.woocommerce-mini-cart-item.cbuild-part{border-inline-start:1.5em solid transparent}';
+	private const STYLES = '.wc-block-cart-items__row.cbuild-part>:first-child,.wc-block-cart-items__row:has(.cbuild-part)>:first-child,.woocommerce-cart-form__cart-item.cbuild-part>.product-name,.woocommerce-checkout-review-order-table .cbuild-part>.product-name,.woocommerce-mini-cart-item.cbuild-part{border-inline-start:1.5em solid transparent}'
+		// A kit's line says its amount after "Assembly", so its bare price goes (Cowork's review, should-fix 3).
+		. 'table.wc-block-cart-items .wc-block-cart-items__row:has(.cbuild-assembly) .wc-block-cart-item__prices,table.wc-block-cart-items .wc-block-cart-items__row:has(.cbuild-assembly) .wc-block-cart-item__total,.wc-block-components-order-summary-item:has(.cbuild-assembly) .wc-block-components-order-summary-item__individual-prices,.wc-block-components-order-summary-item:has(.cbuild-assembly) .wc-block-components-order-summary-item__total-price{display:none}'
+		// Where a part's name starts with its slot, "Part of" does not say it again; the Mini-Cart's row, which runs
+		// no line filter, has no class and keeps it.
+		. '.wc-block-cart-items__row.cbuild-part .cbuild-part__slot,.wc-block-components-order-summary-item.cbuild-part .cbuild-part__slot,.woocommerce-cart-form__cart-item.cbuild-part .cbuild-part__slot,.woocommerce-checkout-review-order-table .cbuild-part .cbuild-part__slot,.woocommerce-mini-cart-item.cbuild-part .cbuild-part__slot{display:none}';
 
 	/**
 	 * Constructor.
@@ -81,6 +89,9 @@ final class ShowHooks implements Hookable {
 		add_action( 'woocommerce_before_mini_cart', array( $this, 'widget' ), 10, 0 );
 		add_filter( 'woocommerce_cart_item_quantity', array( $this, 'quantity' ), 10, 3 );
 		add_filter( 'woocommerce_cart_item_remove_link', array( $this, 'remove' ), 10, 2 );
+		// templates/cart/cart.php:96 and :114; templates/checkout/review-order.php:52.
+		add_filter( 'woocommerce_cart_item_price', array( $this, 'price' ), 10, 2 );
+		add_filter( 'woocommerce_cart_item_subtotal', array( $this, 'price' ), 10, 2 );
 		// WooCommerce fires this as it loads, which may be before or after the plugin's hooks are attached.
 		if ( did_action( 'woocommerce_blocks_loaded' ) > 0 ) {
 			$this->extend();
@@ -91,11 +102,47 @@ final class ShowHooks implements Hookable {
 		// filter nobody applies costs nothing on 11.2.
 		add_filter( 'woocommerce_store_api_cart_item_parent_item_key', array( $this, 'parent' ), 10, 2 );
 		// Only where the cart holds a build: the styles go in the page with a cart, and the script comes with the
-		// Cart or Checkout block alone, whose own script it needs (D-010, D-132).
+		// Cart or Checkout block alone, whose own script waits for it (D-010, D-132, D-173). WooCommerce 11.3.0,
+		// src/Blocks/Integrations/IntegrationRegistry.php:51, fires these as it registers each block.
+		add_action( 'woocommerce_blocks_cart_block_registration', array( $this, 'integrate' ), 10, 1 );
+		add_action( 'woocommerce_blocks_checkout_block_registration', array( $this, 'integrate' ), 10, 1 );
+		add_action( 'wp_enqueue_scripts', array( $this, 'lines' ), 1, 0 );
 		add_action( 'wp_enqueue_scripts', array( $this, 'classic' ), 10, 0 );
 		add_filter( 'render_block_woocommerce/mini-cart', array( $this, 'styled' ), 10, 1 );
 		add_filter( 'render_block_woocommerce/cart', array( $this, 'scripted' ), 10, 1 );
 		add_filter( 'render_block_woocommerce/checkout', array( $this, 'scripted' ), 10, 1 );
+	}
+
+	/**
+	 * The Cart or Checkout block is being registered: the script that groups a build becomes a dependency of the
+	 * block's own (D-173).
+	 *
+	 * @since 0.6.0
+	 *
+	 * @param mixed $registry WooCommerce's IntegrationRegistry for the block.
+	 */
+	public function integrate( mixed $registry ): void {
+		if ( $registry instanceof IntegrationRegistry && ! $registry->is_registered( 'creative-skateboard-builder' ) ) {
+			$registry->register( new LinesIntegration() );
+		}
+	}
+
+	/**
+	 * Where the cart holds a build, the integration's handle gets the script's file; elsewhere it stays a handle with
+	 * none, which prints nothing.
+	 *
+	 * @since 0.6.0
+	 */
+	public function lines(): void {
+		if ( ! $this->holds() ) {
+			return;
+		}
+		$built = is_readable( CBUILD_PATH . self::BUILT . '.asset.php' ) ? require CBUILD_PATH . self::BUILT . '.asset.php' : null;
+		if ( is_array( $built ) && is_string( $built['version'] ?? null ) ) {
+			wp_deregister_script( self::HANDLE );
+			// WordPress's hooks, for the filter on the block's removal notices, and its data, for the notice said instead.
+			wp_register_script( self::HANDLE, CBUILD_URL . self::BUILT . '.js', array( 'wc-blocks-checkout', 'wp-hooks', 'wp-data' ), $built['version'], array( 'in_footer' => true ) );
+		}
 	}
 
 	/**
@@ -105,7 +152,7 @@ final class ShowHooks implements Hookable {
 	 */
 	public function classic(): void {
 		if ( is_cart() || is_checkout() ) {
-			$this->assets( false );
+			$this->assets();
 		}
 	}
 
@@ -115,7 +162,7 @@ final class ShowHooks implements Hookable {
 	 * @since 0.5.0
 	 */
 	public function widget(): void {
-		$this->assets( false );
+		$this->assets();
 	}
 
 	/**
@@ -126,19 +173,19 @@ final class ShowHooks implements Hookable {
 	 * @param mixed $html The block, which is given back as it came.
 	 */
 	public function styled( mixed $html ): mixed {
-		$this->assets( false );
+		$this->assets();
 		return $html;
 	}
 
 	/**
-	 * The Cart or Checkout block is on the page: the styles, and the script that answers its line filters.
+	 * The Cart or Checkout block is on the page: the styles. Its script brings the plugin's (D-173).
 	 *
 	 * @since 0.5.0
 	 *
 	 * @param mixed $html The block, which is given back as it came.
 	 */
 	public function scripted( mixed $html ): mixed {
-		$this->assets( true );
+		$this->assets();
 		return $html;
 	}
 
@@ -158,24 +205,26 @@ final class ShowHooks implements Hookable {
 	}
 
 	/**
-	 * Put the styles in the page, once, and load the script where it is wanted. A checkout that was never built
-	 * has no script; the server keeps a build whole without it, and the zip is checked for it.
+	 * Put the styles that group a build in the carts in the page, once. The builder's page asks for them whatever
+	 * the cart holds: a build added there without a page load shows in the page's Mini-Cart (D-132, D-158).
 	 *
-	 * @param bool $script Whether the script is wanted too.
+	 * @since 0.6.0
 	 */
-	private function assets( bool $script ): void {
-		if ( ! $this->holds() ) {
-			return;
-		}
+	public static function styles(): void {
 		if ( ! wp_style_is( self::HANDLE, 'registered' ) ) {
 			// A handle with no file: WordPress prints what is added to it and asks for nothing.
 			wp_register_style( self::HANDLE, false, array(), CBUILD_VERSION );
 			wp_add_inline_style( self::HANDLE, self::STYLES );
 		}
 		wp_enqueue_style( self::HANDLE );
-		$built = $script && is_readable( CBUILD_PATH . self::BUILT . '.asset.php' ) ? require CBUILD_PATH . self::BUILT . '.asset.php' : null;
-		if ( is_array( $built ) && is_string( $built['version'] ?? null ) ) {
-			wp_enqueue_script( self::HANDLE, CBUILD_URL . self::BUILT . '.js', array( 'wc-blocks-checkout' ), $built['version'], array( 'in_footer' => true ) );
+	}
+
+	/**
+	 * Put the styles in the page, once, where the cart holds a build.
+	 */
+	private function assets(): void {
+		if ( $this->holds() ) {
+			self::styles();
 		}
 	}
 
@@ -189,18 +238,110 @@ final class ShowHooks implements Hookable {
 	 */
 	public function data( mixed $data, mixed $item = null ): mixed {
 		$told = is_array( $data ) && is_array( $item ) ? $this->told( $item ) : null;
-		if ( null === $told || Options::ROLE_PART !== $told['role'] || ! is_array( $data ) ) {
+		if ( null === $told || ! is_array( $data ) || ! is_array( $item ) ) {
 			return $data;
 		}
-		/* translators: 1: a kit's name, such as Build a complete; 2: a slot's label, such as Deck. */
-		$value  = sprintf( __( '%1$s (%2$s)', 'creative-skateboard-builder' ), $told['kit'], $told['label'] );
+		if ( Options::ROLE_KIT === $told['role'] ) {
+			return $this->edit( $data, $item );
+		}
+		/* translators: %s: a slot's label, such as Deck, in brackets after the kit's name. */
+		$slot   = sprintf( _x( '(%s)', 'the slot a part fills, after its kit', 'creative-skateboard-builder' ), $told['label'] );
 		$data[] = array(
 			'key'     => __( 'Part of', 'creative-skateboard-builder' ),
-			'value'   => $value,
-			'display' => '<span class="cbuild-part">' . esc_html( $value ) . '</span>',
+			'value'   => $told['kit'] . ' ' . $slot,
+			// The slot in a span of its own, which a row whose name starts with it hides.
+			'display' => '<span class="' . Options::CLASS_PART . '">' . esc_html( $told['kit'] ) . '<span class="cbuild-part__slot"> ' . esc_html( $slot ) . '</span></span>',
 			'raw_key' => Options::CART_SLOT,
 		);
 		return $data;
+	}
+
+	/**
+	 * A kit's line: Edit build, which opens its builder at the review with the build in its address and the build
+	 * it replaces, so that the add there takes this one's place (spec: Review and add to cart; D-157). The Cart and
+	 * Checkout blocks and the Mini-Cart print a line's item data through `sanitizeHTML`, which keeps a link
+	 * (WooCommerce 11.3.0, assets/client/blocks/cart.js and mini-cart-contents.js), as a classic cart does through
+	 * `wp_kses_post` (templates/cart/cart-item-data.php:24).
+	 *
+	 * @param array<mixed>        $data The line's item data so far.
+	 * @param array<mixed, mixed> $item The cart item.
+	 * @return array<mixed>
+	 */
+	private function edit( array $data, array $item ): array {
+		$build = Build::read( $item[ Options::CART_BUILD ] ?? null );
+		$kit   = null === $build ? null : ( $this->kits )()->kit( $build->kit );
+		if ( null === $build || null === $kit ) {
+			return $data;
+		}
+		$query = ( new BuildLink( $build->picks, null, BuildLink::REVIEW, $build->assembly, replace: $build->id ) )->query( $kit->slots );
+		$url   = add_query_arg( array( BuildLink::PARAM => urlencode_deep( $query ) ), BuilderUrl::of( $build->kit ) );
+		$value = __( 'Edit build', 'creative-skateboard-builder' );
+		$line  = $item['data'] ?? null;
+		/* translators: %s: the kit's name, such as Street complete. */
+		$name     = sprintf( __( 'Edit build: %s', 'creative-skateboard-builder' ), $line instanceof WC_Product ? $line->get_name() : '' );
+		$assembly = self::assembly( $build->assembly, $line );
+		// Named for its kit, so two builds in a cart give two links a screen reader tells apart (W8, P11).
+		$link = '<a class="' . Options::CLASS_EDIT . '" href="' . esc_url( $url ) . '" aria-label="' . esc_attr( $name ) . '">' . esc_html( $value ) . '</a>';
+		// The blocks print an entry with no label as its value alone: the link stands after the assembly with no
+		// "Build:" before it (Cowork's review, minor 12). A classic cart prints every entry as "label: value", and
+		// Shop Kit's checkout joins them inline, so one with no label left a colon of its own (Cowork's recheck, N1):
+		// there the link goes after the assembly in one entry. WooCommerce drops an entry marked hidden from a classic
+		// cart (includes/wc-template-functions.php:4599), and the Store API takes `hidden` from its own key, which the
+		// blocks honour (src/StoreApi/Schemas/V1/CartItemSchema.php:255; D-180).
+		$blocks = array(
+			'hidden'                                   => true,
+			'__experimental_woocommerce_blocks_hidden' => false,
+		);
+		$data[] = $assembly + $blocks;
+		$data[] = array(
+			'key'     => '',
+			'value'   => $value,
+			'display' => $link,
+			'raw_key' => 'cbuild_edit',
+		) + $blocks;
+		$data[] = array(
+			'key'                                      => $assembly['key'],
+			'value'                                    => $assembly['value'],
+			'display'                                  => $assembly['display'] . ' ' . $link,
+			'raw_key'                                  => 'cbuild_assembly_edit',
+			'__experimental_woocommerce_blocks_hidden' => true,
+		);
+		return $data;
+	}
+
+	/**
+	 * What a kit's line charges, said with what it is for: "Assembly: $15.00", "Assembly: free" or "Assembly: not
+	 * added". The line's bare price is hidden in every cart, since beside a board's name it read as the board's.
+	 *
+	 * @param bool  $on   Whether the build is assembled.
+	 * @param mixed $line The line's product, priced for the build.
+	 * @return array{key: string, value: string, display: string, raw_key: string}
+	 */
+	private static function assembly( bool $on, mixed $line ): array {
+		$html = esc_html__( 'not added', 'creative-skateboard-builder' );
+		if ( $on ) {
+			$html = $line instanceof WC_Product && (float) $line->get_price() > 0 ? WC()->cart->get_product_price( $line ) : esc_html__( 'free', 'creative-skateboard-builder' );
+		}
+		return array(
+			'key'     => __( 'Assembly', 'creative-skateboard-builder' ),
+			'value'   => html_entity_decode( wp_strip_all_tags( $html ), ENT_QUOTES, 'UTF-8' ),
+			'display' => '<span class="cbuild-assembly">' . $html . '</span>',
+			'raw_key' => 'cbuild_assembly',
+		);
+	}
+
+	/**
+	 * A kit's price and subtotal in a classic cart and checkout: none. Its item data says the amount after
+	 * "Assembly".
+	 *
+	 * @since 0.6.0
+	 *
+	 * @param mixed $html The price.
+	 * @param mixed $item The cart item.
+	 */
+	public function price( mixed $html, mixed $item = null ): mixed {
+		$told = is_array( $item ) ? $this->told( $item ) : null;
+		return null !== $told && Options::ROLE_KIT === $told['role'] ? '' : $html;
 	}
 
 	/**
@@ -244,7 +385,10 @@ final class ShowHooks implements Hookable {
 	 */
 	public function row( mixed $classes, mixed $item = null ): mixed {
 		$told = is_string( $classes ) && is_array( $item ) ? $this->told( $item ) : null;
-		return null === $told || ! is_string( $classes ) ? $classes : $classes . ' cbuild-' . $told['role'];
+		if ( null === $told || ! is_string( $classes ) ) {
+			return $classes;
+		}
+		return $classes . ' ' . ( Options::ROLE_KIT === $told['role'] ? Options::CLASS_KIT : Options::CLASS_PART );
 	}
 
 	/**
@@ -262,7 +406,7 @@ final class ShowHooks implements Hookable {
 		if ( null === $told || Options::ROLE_PART !== $told['role'] ) {
 			return $field;
 		}
-		return '<span class="cbuild-quantity">' . esc_html( number_format_i18n( Cast::int( $item['quantity'] ?? 0 ) ) ) . '</span>';
+		return '<span class="' . Options::CLASS_QUANTITY . '">' . esc_html( number_format_i18n( Cast::int( $item['quantity'] ?? 0 ) ) ) . '</span>';
 	}
 
 	/**
@@ -305,26 +449,32 @@ final class ShowHooks implements Hookable {
 	 * @since 0.5.0
 	 *
 	 * @param mixed $item The cart item.
-	 * @return array{role: string, build: string, parent: string, slot: string, name: string}
+	 * @return array{role: string, build: string, parent: string, slot: string, name: string, removed: string}
 	 */
 	public function extension( mixed $item = null ): array {
 		$told    = is_array( $item ) ? $this->told( $item ) : null;
 		$product = is_array( $item ) ? ( $item['data'] ?? null ) : null;
 		if ( null === $told ) {
 			return array(
-				'role'   => '',
-				'build'  => '',
-				'parent' => '',
-				'slot'   => '',
-				'name'   => '',
+				'role'    => '',
+				'build'   => '',
+				'parent'  => '',
+				'slot'    => '',
+				'name'    => '',
+				'removed' => '',
 			);
 		}
+		$part = Options::ROLE_PART === $told['role'];
 		return array(
-			'role'   => $told['role'],
-			'build'  => $told['build'],
-			'parent' => $told['parent'],
-			'slot'   => $told['slot'],
-			'name'   => Options::ROLE_PART === $told['role'] && $product instanceof WC_Product ? wp_kses_post( self::named( esc_html( $told['label'] ), $product->get_title() ) ) : '',
+			'role'    => $told['role'],
+			'build'   => $told['build'],
+			'parent'  => $told['parent'],
+			'slot'    => $told['slot'],
+			'name'    => $part && $product instanceof WC_Product ? wp_kses_post( self::named( esc_html( $told['label'] ), $product->get_title() ) ) : '',
+			// What the Cart block says once for the build, in place of a notice for each part: the kit's line, which the
+			// shopper removed, gets none of WooCommerce's, and its parts each had one (Cowork's recheck, N5; D-182).
+			/* translators: %s: the kit's name, such as Street complete. */
+			'removed' => $part && '' !== $told['kit'] ? sprintf( __( '%s was removed from your cart.', 'creative-skateboard-builder' ), $told['kit'] ) : '',
 		);
 	}
 
@@ -338,11 +488,12 @@ final class ShowHooks implements Hookable {
 	public static function schema(): array {
 		$schema = array();
 		foreach ( array(
-			'role'   => __( 'The line\'s part in a build: kit, part, or empty for a line of no build.', 'creative-skateboard-builder' ),
-			'build'  => __( 'The build\'s identifier.', 'creative-skateboard-builder' ),
-			'parent' => __( 'For a part, its kit\'s cart item key.', 'creative-skateboard-builder' ),
-			'slot'   => __( 'For a part, the key of the slot it fills.', 'creative-skateboard-builder' ),
-			'name'   => __( 'For a part, its name with its slot\'s label.', 'creative-skateboard-builder' ),
+			'role'    => __( 'The line\'s part in a build: kit, part, or empty for a line of no build.', 'creative-skateboard-builder' ),
+			'build'   => __( 'The build\'s identifier.', 'creative-skateboard-builder' ),
+			'parent'  => __( 'For a part, its kit\'s cart item key.', 'creative-skateboard-builder' ),
+			'slot'    => __( 'For a part, the key of the slot it fills.', 'creative-skateboard-builder' ),
+			'name'    => __( 'For a part, its name with its slot\'s label.', 'creative-skateboard-builder' ),
+			'removed' => __( 'For a part, what the cart says when its build is removed.', 'creative-skateboard-builder' ),
 		) as $key => $description ) {
 			$schema[ $key ] = array(
 				'description' => $description,

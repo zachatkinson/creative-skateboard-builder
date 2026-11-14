@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { test, expect, Page } from './support/test';
+import { test, expect, Page, type Locator } from './support/test';
 import { axe } from './support/axe';
 
 /**
@@ -43,6 +43,26 @@ async function add( page: Page, quantity = 1 ) {
 
 const JS_OFF = 'no-js';
 
+/**
+ * A kit's line has Edit build, which opens its builder at the review with the build it replaces (D-157); a part's
+ * line has none.
+ *
+ * @param kit  The kit's line.
+ * @param part One of its parts' lines.
+ */
+async function editable( kit: Locator, part: Locator ) {
+	const edit = kit.getByRole( 'link', { name: 'Edit build' } );
+	await expect( edit ).toHaveCount( 1 );
+	const href = new URL( ( await edit.getAttribute( 'href' ) ) ?? '' );
+	expect( href.searchParams.get( 'cbuild[step]' ) ).toBe( 'review' );
+	expect( href.searchParams.get( 'cbuild[_replace]' ) ).toMatch(
+		/^[a-f0-9-]{36}$/
+	);
+	await expect(
+		part.getByRole( 'link', { name: 'Edit build' } )
+	).toHaveCount( 0 );
+}
+
 test.describe( 'A build in the Cart block', () => {
 	test.beforeEach( ( {}, info ) => {
 		test.skip(
@@ -83,9 +103,22 @@ test.describe( 'A build in the Cart block', () => {
 		await expect(
 			trucks.locator( '.wc-block-components-quantity-selector__button' )
 		).toHaveCount( 0 );
+		// The name says the slot, so "Part of" does not say it again (Cowork minor 11).
 		await expect( trucks.locator( '.cbuild-part' ) ).toHaveText(
-			'Cart test kit (Trucks)'
+			'Cart test kit',
+			{ useInnerText: true }
 		);
+		// The kit's line says what its amount is, with no bare price beside the board's name, and Edit build has
+		// no label before it (Cowork should-fix 3, minor 12).
+		await expect( kit.locator( '.cbuild-assembly' ) ).toBeVisible();
+		await expect( kit ).toContainText( /Assembly: (free|not added|\$\d)/ );
+		await expect(
+			kit.locator( '.wc-block-cart-item__total' )
+		).toBeHidden();
+		await expect(
+			kit.locator( '.wc-block-cart-item__prices' )
+		).toBeHidden();
+		await expect( kit ).not.toContainText( 'Build:' );
 		// The part is indented under its kit, on whichever side the language starts.
 		const indent = ( row: typeof kit ) =>
 			row.locator( '> :first-child' ).evaluate( ( cell ) => {
@@ -96,6 +129,7 @@ test.describe( 'A build in the Cart block', () => {
 				);
 			} );
 		expect( await indent( trucks ) ).toBeGreaterThan( await indent( kit ) );
+		await editable( kit, trucks );
 		await axe( page, 'a build in the Cart block', '.wc-block-cart-items' );
 
 		// The kit's line has the one quantity and the one remove link, and takes the build with it.
@@ -104,6 +138,65 @@ test.describe( 'A build in the Cart block', () => {
 		).toBeEditable();
 		await kit.locator( '.wc-block-cart-item__remove-link' ).click();
 		await expect( rows ).toHaveCount( 0 );
+		// Claude in Cowork's recheck, N5: the block said each part was removed, and nothing of the build. One notice
+		// now names the kit.
+		const notices = page.locator( '.wc-block-components-notice-snackbar' );
+		await expect( notices ).toHaveText( [
+			'Cart test kit was removed from your cart.',
+		] );
+		await page.waitForTimeout( 500 );
+		await expect( notices, 'and none comes after it' ).toHaveCount( 1 );
+	} );
+
+	// Cowork's review, blocker 1: on the demo the Cart block drew before the plugin's script had registered its
+	// filters, and nothing drew it again, so no build was grouped. Here the script is held back, as a slow or
+	// uncached one would be, and the block's first drawing is read once, with no waiting for a later one.
+	test( "is grouped on its first drawing under Kadence, the plugin's script before the block's", async ( {
+		page,
+		context,
+		baseURL,
+	} ) => {
+		await context.addCookies( [
+			{
+				name: 'cbuild_e2e_theme',
+				value: 'kadence',
+				url: baseURL || 'http://localhost:8898',
+			},
+		] );
+		await page.goto( '/cart/' );
+		await add( page );
+		await page.route( /\/build\/cart\/lines\.js/, async ( route ) => {
+			await new Promise( ( done ) => setTimeout( done, 1500 ) );
+			await route.continue();
+		} );
+		await page.goto( '/cart/' );
+
+		const order = await page.evaluate( () =>
+			[ ...document.querySelectorAll( 'script[id]' ) ].map(
+				( script ) => script.id
+			)
+		);
+		expect( order ).toContain( 'cbuild-cart-js' );
+		expect( order.indexOf( 'cbuild-cart-js' ) ).toBeLessThan(
+			order.indexOf( 'wc-cart-block-frontend-js' )
+		);
+
+		await expect( page.locator( '.wc-block-cart-items__row' ) ).toHaveCount(
+			7
+		);
+		expect(
+			await page.evaluate( () => ( {
+				kits: document.querySelectorAll(
+					'.wc-block-cart-items__row.cbuild-kit'
+				).length,
+				parts: document.querySelectorAll(
+					'.wc-block-cart-items__row.cbuild-part'
+				).length,
+				removes: document.querySelectorAll(
+					'.wc-block-cart-item__remove-link'
+				).length,
+			} ) )
+		).toEqual( { kits: 1, parts: 6, removes: 1 } );
 	} );
 } );
 
@@ -168,10 +261,26 @@ test.describe( 'A build in the Mini-Cart', () => {
 		);
 		await expect( parts ).toHaveCount( 12 );
 		const trucks = parts.filter( { hasText: 'Cart test trucks' } ).first();
+		// No line filter runs here, so the part's name does not say its slot and "Part of" does (Cowork minor 11).
 		await expect( trucks.locator( '.cbuild-part' ) ).toHaveText(
-			'Cart test kit (Trucks)'
+			'Cart test kit (Trucks)',
+			{ useInnerText: true }
 		);
 		const kit = rows.filter( { hasText: 'Cart test kit' } ).first();
+		// The kit's line says what its amount is, with no bare price beside the board's name (Cowork should-fix 3).
+		// The one shown: the line's data also has the entry a classic cart prints, which the blocks hide (D-180).
+		await expect(
+			kit.locator( '.cbuild-assembly' ).filter( { visible: true } )
+		).toHaveCount( 1 );
+		await expect(
+			kit.locator( '.cbuild-edit' ).filter( { visible: true } )
+		).toHaveCount( 1 );
+		await expect(
+			kit.locator( '.wc-block-cart-item__total' )
+		).toBeHidden();
+		await expect(
+			kit.locator( '.wc-block-cart-item__prices' )
+		).toBeHidden();
 		const indent = ( row: typeof kit ) =>
 			row.locator( '> :first-child' ).evaluate( ( cell ) => {
 				const style = getComputedStyle( cell );
@@ -181,6 +290,7 @@ test.describe( 'A build in the Mini-Cart', () => {
 				);
 			} );
 		expect( await indent( trucks ) ).toBeGreaterThan( await indent( kit ) );
+		await editable( kit, trucks );
 		// A part's quantity is a number nobody can change: its buttons are hidden and its field is locked
 		// (src/Blocks/BlockTypes/MiniCartProductsTableBlock.php:179, :191 and :200).
 		await expect(
@@ -260,6 +370,7 @@ test.describe( 'A build in a classic cart and checkout', () => {
 		);
 		await expect( rows.first().locator( 'a.remove' ) ).toHaveCount( 1 );
 		await expect( rows.first().locator( 'input.qty' ) ).toHaveCount( 1 );
+		await editable( rows.first(), trucks );
 		// The server draws the same table with scripts off; axe is a script, so it reads it where one runs.
 		if ( javaScriptEnabled ) {
 			await axe(
@@ -269,14 +380,22 @@ test.describe( 'A build in a classic cart and checkout', () => {
 			);
 		}
 
+		// With its script on, the checkout draws its table again once it has asked the server for the totals. Heard
+		// from before the page is asked for, so the answer cannot come first (issue #35).
+		const redrawn = javaScriptEnabled
+			? page.waitForResponse( /wc-ajax=update_order_review/ )
+			: Promise.resolve( null );
 		await page.goto( '/cart-test-classic-checkout/' );
+		await redrawn;
+		// And WooCommerce lifts the cover it laid over the table once the new one is in place.
+		await expect(
+			page.locator( '.woocommerce-checkout .blockUI' )
+		).toHaveCount( 0 );
 		await expect(
 			page.locator(
 				'.woocommerce-checkout-review-order-table tr.cbuild-part'
 			)
 		).toHaveCount( 6 );
-		// With its script on, the checkout draws its table again once it has asked the server for the totals.
-		await page.waitForLoadState( 'networkidle' );
 		const review = page.locator(
 			'.woocommerce-checkout-review-order-table tbody tr'
 		);
@@ -314,9 +433,63 @@ test.describe( 'A build in a classic cart and checkout', () => {
 		await page.waitForURL( /order-received/ );
 		const order = page.locator( '.woocommerce-table--order-details' );
 		await expect( order ).toContainText( 'Trucks: Cart test trucks' );
-		await expect( order ).toContainText( 'Assembly' );
-		await expect( order ).toContainText(
-			'Deck: Cart test deck × 1, Trucks: Cart test trucks × 2'
+		// Claude in Cowork's recheck, N2 and N4: the kit's line says its assembly once, in its total, and does not
+		// list its parts again above their own lines.
+		const kit = order
+			.locator( 'tr' )
+			.filter( { hasText: 'Cart test kit' } )
+			.first();
+		await expect( kit ).toContainText( /Assembly: (free|not added|\$)/ );
+		expect( ( await kit.innerText() ).match( /Assembly/g ) ).toHaveLength(
+			1
 		);
+		await expect( order ).not.toContainText( 'Cart test deck × 1, Trucks' );
+	} );
+
+	test( "Edit build reopens the builder at the review, and its add takes the build's place", async ( {
+		page,
+		javaScriptEnabled,
+	} ) => {
+		await page.goto( '/cart-test-classic-cart/' );
+		await add( page );
+		await page.goto( '/cart-test-classic-cart/' );
+		await page
+			.locator( 'tr.cbuild-kit' )
+			.getByRole( 'link', { name: 'Edit build' } )
+			.click();
+		await expect( page.locator( 'h2.cbuild__heading' ) ).toHaveText(
+			'Step 7 of 7: Review'
+		);
+		const review = page.locator( '.cbuild-review' );
+		await expect(
+			review.locator( 'input[name="cbuild[replace]"]' )
+		).toHaveCount( 1 );
+		await expect(
+			review.getByLabel( 'Link to this build' )
+		).not.toHaveValue( /_replace/ );
+		// It says the build in the cart is replaced, and its button saves (Cowork should-fix 7).
+		await expect( review ).toContainText(
+			'Saving replaces the build in your cart.'
+		);
+		// The review's own, or the phone bar's where the review's is hidden (P11).
+		await page
+			.locator( '.cbuild' )
+			.getByRole( 'button', { name: 'Save changes' } )
+			.click();
+		if ( javaScriptEnabled ) {
+			await expect(
+				page.locator( '.cbuild-review__added' )
+			).toBeFocused();
+			await expect(
+				page.locator( '.cbuild-review__added' )
+			).toContainText( 'Your cart has the changed build.' );
+		} else {
+			await page.waitForLoadState( 'load' );
+		}
+		await page.goto( '/cart-test-classic-cart/' );
+		await expect( page.locator( 'tr.cbuild-kit' ) ).toHaveCount( 1 );
+		await expect(
+			page.locator( 'tr.woocommerce-cart-form__cart-item' )
+		).toHaveCount( 7 );
 	} );
 } );

@@ -2,7 +2,7 @@ import { test as base } from '@playwright/test';
 import type { Page } from '@playwright/test';
 
 export { expect } from '@playwright/test';
-export type { Page } from '@playwright/test';
+export type { Locator, Page } from '@playwright/test';
 
 /**
  * Playwright's test, with every request to the shop under test marked `X-Creative-Test: 1`, as the agency's other
@@ -48,4 +48,26 @@ export function inLocale( project: string, text: string ): string {
  */
 export async function answered( page: Page, send: () => Promise< void > ) {
 	await Promise.all( [ page.waitForEvent( 'load' ), send() ] );
+}
+
+/**
+ * Waits until the page has loaded and has fetched nothing more for half a second, by the page's own resource timing.
+ * It stands where `waitForLoadState( 'networkidle' )` stood: under Firefox that wait never ended on the cart and the
+ * checkout, though every request had been answered within a second (issue #35, CI, 12 November 2026).
+ *
+ * @param page The page.
+ */
+export async function settled( page: Page ) {
+	await page.waitForLoadState( 'load' );
+	const fetched = () =>
+		page.evaluate(
+			() => performance.getEntriesByType( 'resource' ).length
+		);
+	let before = -1;
+	let now = await fetched();
+	while ( now !== before ) {
+		before = now;
+		await page.waitForTimeout( 500 );
+		now = await fetched();
+	}
 }

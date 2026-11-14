@@ -17,6 +17,7 @@ use CreativeBranding\SkateboardBuilder\Domain\Kit\BuildTerms;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Kit;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Part;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\SlotKey;
+use CreativeBranding\SkateboardBuilder\Domain\Kit\Slots;
 use CreativeBranding\SkateboardBuilder\Domain\Rule\MessageCode;
 use CreativeBranding\SkateboardBuilder\Domain\Rule\RuleId;
 use CreativeBranding\SkateboardBuilder\Domain\Rule\Severity;
@@ -369,12 +370,98 @@ final class BuildStateTest extends TestCase {
 		self::assertSame( array( 302 ), self::ids( self::step( $state, SlotKey::WHEELS )->options->offered ), 'a sold-out part is offered, marked so' );
 	}
 
+	// Spec, Presets: each tile shows its total, and "A preset holding a sold-out part says so on its tile".
+	public function test_each_preset_is_priced_and_checked_as_a_build_of_its_own_from_the_parts_already_read(): void {
+		$shop                    = self::shop();
+		$shop[ SlotKey::WHEELS ] = array( self::priced( Builds::wheel( '54', 302 ), 3200, false, 0 ) );
+		$presets                 = array(
+			'schema_version' => 1,
+			'presets'        => array(
+				array(
+					'name'  => 'Street',
+					'picks' => self::COMPLETE,
+				),
+				array(
+					'name'  => 'Gone',
+					'picks' => array( SlotKey::DECK => 999 ) + self::COMPLETE,
+				),
+			),
+		);
+		$assembly = array(
+			'schema_version' => 1,
+			'default_on'     => false,
+			'fee'            => '15',
+			'lead_time'      => '',
+			'returns_notice' => '',
+		);
+		$this->kits->add( self::KIT, KitDocuments::kit( null, null, $presets, $assembly ), $shop );
+		$this->kits->offered = 0;
+
+		$state = $this->of( array( SlotKey::DECK => 101 ) );
+		self::assertSame( count( self::kit()->slots->keys() ), $this->kits->offered, "each slot's parts read once, for the build and its presets" );
+		self::assertCount( 2, $state->presets );
+
+		$street = $state->presets[0];
+		$build  = $this->of( self::COMPLETE );
+		self::assertSame( $build->quote->total, $street->quote->total, 'the same total as the build it starts' );
+		self::assertSame( array( array( 'part_sold_out', 'wheels', 302 ) ), self::rows( $street->validation->problems ) );
+		self::assertSame( array(), $street->refused );
+
+		$gone = $state->presets[1];
+		self::assertSame( array( array( 'part_not_in_slot', 'deck', 999 ) ), self::rows( $gone->refused ), 'a part the shop no longer offers there' );
+	}
+
 	public function test_the_step_is_the_one_asked_for_when_the_kit_has_it(): void {
 		self::assertSame( SlotKey::GRIP, $this->of( array(), null, SlotKey::GRIP )->step );
 		self::assertSame( SlotKey::DECK, $this->of( self::COMPLETE, null, SlotKey::DECK )->step );
 		self::assertSame( SlotKey::DECK, $this->of( array(), null, 'stickers' )->step, 'a slot the kit lacks is no step' );
 		self::assertSame( SlotKey::DECK, $this->of( array(), null, '' )->step );
 		self::assertSame( SlotKey::GRIP, $this->of( self::COMPLETE + array( SlotKey::RISERS => 401 ) )->step, 'with every slot picked, the last' );
+	}
+
+	public function test_a_slot_left_empty_by_choice_starts_on_no_part_unless_the_kit_requires_it(): void {
+		// 58 mm wheels on trucks that take 56: the build asks for risers, and the slot starts on a pair.
+		$picks = array(
+			SlotKey::DECK   => 103,
+			SlotKey::TRUCKS => 149,
+			SlotKey::WHEELS => 303,
+		);
+		$asked = $this->state->of( self::KIT, $picks );
+		self::assertNotNull( $asked );
+		self::assertNotNull( self::step( $asked, SlotKey::RISERS )->recommended );
+		self::assertContains( SlotKey::RISERS, array_column( $asked->quote->lines, 'slot' ) );
+
+		$left = $this->state->of( self::KIT, $picks, null, null, null, array( SlotKey::RISERS, SlotKey::BEARINGS ) );
+		self::assertNotNull( $left );
+		self::assertNull( self::step( $left, SlotKey::RISERS )->recommended, 'No risers.' );
+		self::assertNotContains( SlotKey::RISERS, array_column( $left->quote->lines, 'slot' ) );
+		self::assertSame( 501, self::step( $left, SlotKey::BEARINGS )->recommended?->part->id, 'A slot the kit requires cannot be left.' );
+		self::assertNotNull( self::step( $left, SlotKey::HARDWARE )->recommended, 'And the slots after it start as they would.' );
+
+		$picked = $this->state->of( self::KIT, $picks + array( SlotKey::RISERS => 401 ), null, null, null, array( SlotKey::RISERS ) );
+		self::assertSame( 401, self::step( $picked ?? $asked, SlotKey::RISERS )->picked?->part->id, 'A pick stands.' );
+	}
+
+	public function test_a_state_moves_to_another_step_and_is_otherwise_the_same(): void {
+		$this->settings->terms = BuildTerms::read( array( 'build_discount' => '10' ) );
+		$state                 = $this->of( array( SlotKey::DECK => 103, 'stickers' => 1 ), array( SlotKey::DECK => 101 ), SlotKey::DECK );
+		$moved                 = $state->at( State::REVIEW );
+		self::assertSame( State::REVIEW, $moved->step );
+		self::assertSame( SlotKey::DECK, $state->step );
+		foreach ( array( 'id', 'kit', 'steps', 'refused', 'validation', 'changes', 'quote', 'discount' ) as $held ) {
+			self::assertSame( $state->$held, $moved->$held, $held );
+		}
+		self::assertNotSame( array(), $moved->refused );
+		self::assertSame( 1000, $moved->discount );
+	}
+
+	public function test_the_review_is_a_step_whatever_the_build_holds(): void {
+		self::assertSame( 'review', State::REVIEW );
+		self::assertSame( State::REVIEW, $this->of( self::COMPLETE, null, State::REVIEW )->step );
+		$blank = $this->of( array(), null, State::REVIEW );
+		self::assertSame( State::REVIEW, $blank->step, 'The review of a build that is not ready says what it lacks.' );
+		self::assertFalse( $blank->ready() );
+		self::assertArrayHasKey( State::REVIEW, Slots::KEPT, 'No slot may take the word.' );
 	}
 
 	public function test_the_total_is_the_parts_the_fee_when_the_shop_assembles_and_the_build_discount(): void {
@@ -401,6 +488,9 @@ final class BuildStateTest extends TestCase {
 		$this->settings->terms = BuildTerms::read( array( 'build_discount' => '10' ) );
 		$state                 = $this->of( self::COMPLETE );
 		self::assertSame( 6300, $state->quote->lines[0]->charged );
+		self::assertSame( 1000, $state->discount, 'The state says what it was priced with, for a card to price a part the same way.' );
+		$this->settings->terms = BuildTerms::read( array() );
+		self::assertSame( 0, $this->of()->discount );
 		self::assertSame( $parts - intdiv( $parts, 10 ), $state->quote->parts );
 		self::assertSame( intdiv( $parts, 10 ), $state->quote->saved );
 		self::assertSame( 1500, $state->quote->fee );

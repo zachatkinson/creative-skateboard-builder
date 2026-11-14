@@ -12,6 +12,8 @@
 #  10. release.yml running the release dry run without installing Composer's and npm's packages first (D-048).
 #  11. A string literal with words in it in src/Domain: the domain answers in codes (D-062).
 #  12. An exception of PHP's own made in src/Domain: its refusals are typed, with a reason code (D-062).
+#  14. Markup built in the builder's front scripts: every piece is a server template (CLAUDE.md: Markup).
+#  15. A string literal with words in it in the builder's front scripts: every word the shopper reads is the server's.
 # Gate 1 also covers string-built SQL (1b) and the database's clock in a statement (1c). Every gate has snippets it
 # must reject in tests/Fixtures/gates/, run by tools/gates-selftest.sh.
 # Run: composer gates
@@ -104,6 +106,26 @@ if [ -d src/Domain ]; then
 	hits="$(php "$tools/gate-domain-declares.php" src/Domain)"
 	if [ -n "$hits" ]; then
 		echo "Gate 13: a statement that runs at the top of a file in src/Domain:"; echo "$hits"; status=1
+	fi
+fi
+
+# 14 and 15. The builder's front scripts: assets/src/builder, but the editor's block (index.ts, whose words go
+#     through __()) and the type declarations. Comments are left out.
+front=()
+if [ -d assets/src/builder ]; then
+	while IFS= read -r file; do front+=( "$file" ); done < <(find assets/src/builder -name '*.ts' ! -name '*.d.ts' ! -name '*.test.ts' ! -name 'index.ts' | sort)
+fi
+if [ "${#front[@]}" -gt 0 ]; then
+	# 14. No markup is built in JavaScript: one template per piece, rendered by the server and re-rendered by the store.
+	hits="$(grep -nHE 'innerHTML|outerHTML|insertAdjacentHTML|document\.write|createElement(NS)?\(|DOMParser|createContextualFragment|parseHTMLUnsafe|setHTMLUnsafe|['"'"'"`]\s*<[a-zA-Z/!]' "${front[@]}" | grep -vE '^[^:]+:[0-9]+:\s*(\*|//|/\*)' || true)"
+	if [ -n "$hits" ]; then
+		echo "Gate 14: markup built in the builder's script; put it in a template:"; echo "$hits"; status=1
+	fi
+	# 15. No words in the store: two words or more in a string literal are text the shopper would read, which the
+	#     server gives, translated, in the view.
+	hits="$(grep -nHE '['"'"'"`][a-zA-Z]{2,}( [a-zA-Z]{2,})+[.?:,]?['"'"'"`]' "${front[@]}" | grep -vE '^[^:]+:[0-9]+:\s*(\*|//|/\*)' || true)"
+	if [ -n "$hits" ]; then
+		echo "Gate 15: words in the builder's script; the view gives them, translated:"; echo "$hits"; status=1
 	fi
 fi
 

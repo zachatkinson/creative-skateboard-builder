@@ -49,6 +49,24 @@ final class KitHooks implements Hookable {
 		add_filter( 'wpseo_exclude_from_sitemap_by_post_ids', array( $this->visibility, 'excluded' ), 10, 1 );
 		// WooCommerce 11.2.2, includes/class-wc-structured-data.php:545.
 		add_filter( 'woocommerce_structured_data_product', array( $this, 'markup' ), 10, 2 );
+		// PayPal Payments 4.2.2, modules/ppcp-wc-gateway/src/Helper/ProductPaymentSupportTrait.php:33. It fires only
+		// where PayPal Payments is.
+		add_filter( 'woocommerce_paypal_payments_product_supports_payment_request_button', array( $this, 'express' ), 10, 2 );
+	}
+
+	/**
+	 * No express payment buttons, and no Pay Later message, on a kit's page (D-164). PayPal Payments offers them on a
+	 * product's page whenever its type is not external or grouped and it is in stock, without asking whether it can be
+	 * bought; each would offer the kit alone, which the cart refuses. A kit is bought through its builder.
+	 *
+	 * @since 0.6.0
+	 *
+	 * @param mixed $offer   Whether PayPal Payments would offer them.
+	 * @param mixed $product The product on view.
+	 * @return mixed
+	 */
+	public function express( mixed $offer, mixed $product ): mixed {
+		return $product instanceof WC_Product && $product->is_type( Options::PRODUCT_TYPE_KIT ) ? false : $offer;
 	}
 
 	/**

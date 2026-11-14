@@ -188,7 +188,9 @@ final class IndexJobs implements Reindex {
 				$this->indexer->index( ...$parts );
 				// What a build is told of these parts holds their specs as the index had them. Theirs alone: the
 				// rest of the shop's parts stay as they are while the reindex runs.
-				$this->kits->forget( ...array_values( $parts ) );
+				$this->kits->forget( ...$parts );
+				// And written again here, in the background, so that no visitor's request reads the shop for them.
+				$this->kits->warm( ...$parts );
 			}
 		} catch ( Throwable $failure ) {
 			$this->logger->log(
@@ -289,7 +291,9 @@ final class IndexJobs implements Reindex {
 				$this->indexer->index( ...$parts );
 				// What a build is told of these parts holds their specs as the index had them. Theirs alone: the
 				// rest of the shop's parts stay as they are while the reindex runs.
-				$this->kits->forget( ...array_values( $parts ) );
+				$this->kits->forget( ...$parts );
+				// And written again here, in the background, so that no visitor's request reads the shop for them.
+				$this->kits->warm( ...$parts );
 			}
 		} catch ( Throwable $failure ) {
 			$failed = ( $this->state() ?? $state )->failed( $failure->getMessage() );

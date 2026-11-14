@@ -194,6 +194,22 @@ final class FitEngineTest extends TestCase {
 		self::assertSame( array( MessageCode::WheelNeedsRiser ), array_column( $wheels->offered[1]->findings, 'code' ) );
 	}
 
+	public function test_a_steps_options_say_which_earlier_picks_they_were_checked_against(): void {
+		// Cowork's review, should-fix 5: wheels are checked against the trucks, not the deck.
+		$picks  = Builds::complete();
+		$engine = FitEngine::standard();
+		self::assertSame( array(), $engine->options( KitDocuments::kit(), SlotKey::DECK, $picks, array() )->against, 'the deck: nothing before it' );
+		self::assertSame( array( SlotKey::DECK ), $engine->options( KitDocuments::kit(), SlotKey::TRUCKS, $picks, array() )->against );
+		self::assertSame( array( SlotKey::TRUCKS ), $engine->options( KitDocuments::kit(), SlotKey::WHEELS, $picks->without( SlotKey::RISERS ), array() )->against, 'no riser picked' );
+		self::assertSame( array( SlotKey::DECK ), $engine->options( KitDocuments::kit(), SlotKey::GRIP, $picks, array() )->against );
+		// Bearings are read with the spacers, a later step, and the trucks: the list starts again at 0, or the state
+		// route's JSON would carry an object.
+		self::assertSame( array( SlotKey::TRUCKS ), $engine->options( KitDocuments::kit(), SlotKey::BEARINGS, $picks, array() )->against, 'bearings: the spacers come after' );
+		$document                              = KitDocuments::rules();
+		$document[ RuleId::R6->value ]['enabled'] = false;
+		self::assertNull( $engine->options( KitDocuments::kit( null, $document ), SlotKey::GRIP, $picks, array() )->against, 'grip, with R6 off: no rule reads it' );
+	}
+
 	public function test_p2_the_risers_step_shows_which_riser_clears_the_wheels(): void {
 		$picks   = Builds::complete( array( SlotKey::WHEELS => Builds::wheel( '58' ), SlotKey::HARDWARE => Builds::bolts( '7/8' ) ) );
 		$options = FitEngine::standard()->options( KitDocuments::kit(), SlotKey::RISERS, $picks, array( Builds::riser( '1/8', 401 ), Builds::riser( '1/4', 402 ) ) );

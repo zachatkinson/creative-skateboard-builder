@@ -222,4 +222,34 @@ final class PricerTest extends TestCase {
 		self::assertSame( 1398, $quote->saved );
 		self::assertSame( 14091, $quote->total );
 	}
+
+	public function test_taking_a_part_adds_what_it_is_charged_at_for_as_many_as_the_build_takes(): void {
+		$part = Parts::of( array(), 1, 1999 );
+
+		self::assertSame( 1999, Pricer::change( new Option( $part, array(), 1 ), null, 0 ), 'With none counted, the whole of it.' );
+		self::assertSame( 4 * 1799, Pricer::change( new Option( $part, array(), 4 ), null, 1000 ), 'Each discounted, then times the quantity.' );
+	}
+
+	public function test_taking_a_part_in_place_of_another_adds_the_difference_or_takes_it_off(): void {
+		$cheap = new Option( Parts::of( array(), 1, 1000 ), array(), 2 );
+		$dear  = new Option( Parts::of( array(), 2, 1250 ), array(), 2 );
+		$one   = new Option( Parts::of( array(), 3, 2000 ), array(), 1 );
+
+		self::assertSame( 500, Pricer::change( $dear, $cheap, 0 ) );
+		self::assertSame( -500, Pricer::change( $cheap, $dear, 0 ) );
+		self::assertSame( 0, Pricer::change( $cheap, $cheap, 0 ) );
+		self::assertSame( 0, Pricer::change( $one, $cheap, 0 ), 'One at 20.00 for two at 10.00: each side by its own quantity.' );
+		self::assertSame( 450, Pricer::change( $dear, $cheap, 1000 ), 'Two at 11.25 for two at 9.00.' );
+		// 3.33 and 6.67 at 50 % off are 1.67 and 3.34: each price is rounded, as a line's is, and then they are taken apart.
+		self::assertSame( 167, Pricer::change( new Option( Parts::of( array(), 4, 667 ), array(), 1 ), new Option( Parts::of( array(), 5, 333 ), array(), 1 ), 5000 ) );
+	}
+
+	public function test_a_part_with_no_set_size_changes_nothing_and_one_counted_without_a_quantity_counts_for_nothing(): void {
+		$sized = new Option( Parts::of( array(), 1, 1000 ), array(), 2 );
+		$loose = new Option( Parts::of( array(), 2, 1250 ), array(), null );
+
+		self::assertNull( Pricer::change( $loose, $sized, 0 ) );
+		self::assertNull( Pricer::change( $loose, null, 0 ) );
+		self::assertSame( 2000, Pricer::change( $sized, $loose, 0 ) );
+	}
 }

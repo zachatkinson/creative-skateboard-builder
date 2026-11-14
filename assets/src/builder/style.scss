@@ -1,0 +1,831 @@
+/**
+ * The builder's styles (docs/STANDARDS.md: CSS; spec: The builder; D-159).
+ *
+ * - Every colour, size and font is a `--cbuild-*` property that falls back to the theme's presets, then to the
+ *   text's own colour, so the builder takes a theme's palette, dark or light, without being told which.
+ * - Base rules sit inside `:where()`, so a theme overrides any of them with one class. The two rules outside it are
+ *   the ones a theme must not undo by accident: `[hidden]` hides, and the screen-reader text stays off screen.
+ * - Logical properties throughout, so a right-to-left page mirrors the layout and nothing else.
+ * - The layout follows the builder's own width (container queries), so it works in a narrow column as at full width.
+ */
+
+/* What the builder is drawn with. A theme sets any of these on `.cbuild` to restyle it. */
+.cbuild {
+	--cbuild-text: currentcolor;
+	--cbuild-muted: color-mix(in srgb, currentcolor 72%, transparent);
+	--cbuild-line: color-mix(in srgb, currentcolor 28%, transparent);
+	--cbuild-surface: color-mix(in srgb, currentcolor 5%, transparent);
+	--cbuild-accent: var(--wp--preset--color--contrast, currentcolor);
+	--cbuild-on-accent: var(--wp--preset--color--base, Canvas);
+	--cbuild-focus: var(--wp--preset--color--contrast, currentcolor);
+	--cbuild-wrong: var(--wp--preset--color--vivid-red, #b32d2e);
+	--cbuild-radius: 0.5rem;
+	--cbuild-gap: var(--wp--preset--spacing--40, 1.5rem);
+	--cbuild-gap-small: var(--wp--preset--spacing--20, 0.5rem);
+	--cbuild-target: 2.75rem;
+	--cbuild-control: 1.5rem;
+	--cbuild-small: var(--wp--preset--font-size--small, 0.875rem);
+	--cbuild-card-width: 13rem;
+	--cbuild-summary-width: 19rem;
+	--cbuild-ground: var(--wp--preset--color--base, Canvas);
+	--cbuild-on-ground: var(--wp--preset--color--contrast, CanvasText);
+	--cbuild-bar-height: 4.25rem;
+	--cbuild-duration: 200ms;
+	--cbuild-ease: cubic-bezier(0.2, 0, 0, 1);
+}
+
+/*
+ * The phone bar's ground, where the theme names no base colour (a classic theme): the colour that contrasts with the
+ * builder's own text, so a dark theme's bar is dark and a light one's light, and its words are the builder's. Where
+ * the browser cannot work that out, `Canvas` and `CanvasText`, a pair that always reads (D-162).
+ */
+@supports (color: contrast-color(red)) {
+	.cbuild {
+		--cbuild-ground: var(
+			--wp--preset--color--base,
+			contrast-color(currentcolor)
+		);
+		--cbuild-on-ground: var(--wp--preset--color--contrast, currentcolor);
+	}
+}
+
+/* Outside `:where()`: a theme's `display` must not show what the builder hides. */
+.cbuild [hidden] {
+	display: none;
+}
+
+/*
+ * The phone bar or the summary, never both: each is the total, so a page with both would show and read it twice
+ * (D-153). The bar follows the screen's width, as a bar at the foot of the screen does; outside `:where()`, so a
+ * theme's `display` on a `div` or an `aside` cannot bring back the one this width hides.
+ */
+.cbuild .cbuild-bar {
+	display: none;
+}
+
+@media (max-width: 47.99rem) {
+	/* A phone: the bar, and focus kept clear of it. */
+	.cbuild .cbuild-bar:not([hidden]) {
+		display: flex;
+	}
+
+	.cbuild .cbuild-summary {
+		display: none;
+	}
+
+	/* The bar's button is the step's Next and the review's Add to cart here: one control of each name (P11). */
+	.cbuild .cbuild-step__next,
+	.cbuild .cbuild-review__form [type="submit"] {
+		display: none;
+	}
+}
+
+.cbuild .screen-reader-text {
+	position: absolute;
+	inline-size: 1px;
+	block-size: 1px;
+	overflow: hidden;
+	clip-path: inset(50%);
+	white-space: nowrap;
+	overflow-wrap: normal;
+}
+
+:where(.cbuild) {
+	container: cbuild / inline-size;
+	color: var(--cbuild-text);
+	overflow-wrap: anywhere;
+
+	:where(ul, ol, dl, dd, p, fieldset, figure) {
+		margin: 0;
+		padding: 0;
+	}
+
+	:where(ul, ol) {
+		list-style: none;
+	}
+
+	:where(fieldset) {
+		border: 0;
+		min-inline-size: 0;
+	}
+
+	:where(legend, h2, h3) {
+		padding: 0;
+		font-weight: 600;
+	}
+
+	:where(img) {
+		display: block;
+		max-inline-size: 100%;
+		block-size: auto;
+	}
+
+	:where(:focus-visible) {
+		outline: 2px solid var(--cbuild-focus);
+		outline-offset: 2px;
+	}
+
+	:where(a) {
+		color: inherit;
+		text-underline-offset: 0.15em;
+	}
+}
+
+/* The frame: the steps and, beside them on a wide builder, the summary. */
+:where(.cbuild__layout) {
+	display: grid;
+	gap: var(--cbuild-gap);
+	margin-block-start: var(--cbuild-gap);
+}
+
+:where(.cbuild__main) {
+	display: grid;
+	gap: var(--cbuild-gap);
+	min-inline-size: 0;
+	align-content: start;
+}
+
+:where(.cbuild__heading) {
+	margin-block: var(--cbuild-gap-small) 0;
+}
+
+@container cbuild (min-width: 48rem) {
+	/* A wide builder: the summary beside the steps, and in view as they scroll. */
+	:where(.cbuild__layout) {
+		grid-template-columns: minmax(0, 1fr) var(--cbuild-summary-width);
+		align-items: start;
+	}
+
+	:where(.cbuild-summary) {
+		position: sticky;
+		inset-block-start: var(--cbuild-gap);
+	}
+}
+
+/* Buttons: the step's Next and Back, Add to cart, the filters, Show more, Use these and Undo, Copy link. */
+:where(.cbuild) :where(button, .cbuild-button) {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: var(--cbuild-gap-small);
+	min-block-size: var(--cbuild-target);
+	min-inline-size: var(--cbuild-target);
+	padding-block: 0.5rem;
+	padding-inline: 1rem;
+	border: 1px solid var(--cbuild-line);
+	border-radius: var(--cbuild-radius);
+	background: transparent;
+	color: inherit;
+	font: inherit;
+	line-height: 1.3;
+	cursor: pointer;
+}
+
+:where(.cbuild) :where(button:disabled) {
+	cursor: not-allowed;
+	opacity: 0.55;
+}
+
+:where(.cbuild-button--primary, .cbuild-step__next) {
+	border-color: var(--cbuild-accent);
+	background: var(--cbuild-accent);
+	color: var(--cbuild-on-accent);
+	font-weight: 600;
+}
+
+/* Where the shopper is. */
+:where(.cbuild-progress__list) {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--cbuild-gap-small) var(--cbuild-gap);
+	counter-reset: cbuild-step;
+	font-size: var(--cbuild-small);
+}
+
+:where(.cbuild-progress__step) {
+	display: flex;
+	align-items: center;
+	min-block-size: var(--cbuild-control);
+	color: var(--cbuild-muted);
+}
+
+:where(.cbuild-progress__link) {
+	display: inline-flex;
+	align-items: center;
+	min-block-size: var(--cbuild-control);
+	color: var(--cbuild-text);
+}
+
+:where(.cbuild-progress__step--current) {
+	color: var(--cbuild-text);
+	font-weight: 600;
+}
+
+/* The error summary. */
+:where(.cbuild-errors) {
+	padding: var(--cbuild-gap-small) var(--cbuild-gap);
+	border: 2px solid var(--cbuild-wrong);
+	border-inline-start-width: 0.5rem;
+	border-radius: var(--cbuild-radius);
+}
+
+:where(.cbuild-errors__list) {
+	display: grid;
+	gap: 0.25rem;
+	margin-block-start: var(--cbuild-gap-small);
+}
+
+/* A step. */
+:where(.cbuild-step, .cbuild-step__fieldset) {
+	display: grid;
+	gap: var(--cbuild-gap);
+}
+
+:where(.cbuild-step__legend) {
+	margin-block-end: var(--cbuild-gap-small);
+	font-size: 1.125em;
+}
+
+:where(
+	.cbuild-step__lead,
+	.cbuild-step__help,
+	.cbuild-step__empty,
+	.cbuild-step__count
+) {
+	color: var(--cbuild-muted);
+}
+
+:where(.cbuild-step__nav, .cbuild-step__more, .cbuild-changes__actions) {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--cbuild-gap-small);
+}
+
+:where(.cbuild-step__leave) {
+	display: flex;
+	align-items: center;
+	gap: var(--cbuild-gap-small);
+	min-block-size: var(--cbuild-target);
+}
+
+:where(.cbuild) :where(input[type="radio"]) {
+	inline-size: var(--cbuild-control);
+	block-size: var(--cbuild-control);
+	margin: 0;
+	accent-color: var(--cbuild-accent);
+}
+
+/* The filters. */
+:where(.cbuild-filters__heading) {
+	min-block-size: var(--cbuild-control);
+	cursor: pointer;
+	font-weight: 600;
+}
+
+/* A drawer on a phone (spec: A step), closed until opened or a filter is pressed. Wider than a phone its content
+   shows, open or not, and the drawer's own heading goes (audit 21, milestone 6). The phone is the screen's width,
+   as for the bar, not the builder's. */
+@media (min-width: 48rem) {
+	:where(.cbuild-filters)::details-content {
+		content-visibility: visible;
+		display: block;
+		block-size: auto;
+	}
+
+	/* Not under :where(): a theme's own rule for a summary, such as Kadence's, would show it (Cowork's review,
+	   should-fix 9). */
+	.cbuild .cbuild-filters__heading {
+		display: none;
+	}
+}
+
+:where(.cbuild-filters__group) {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--cbuild-gap-small);
+	margin-block-start: var(--cbuild-gap-small);
+
+	:where(legend) {
+		inline-size: 100%;
+		margin-block-end: 0.25rem;
+		font-size: var(--cbuild-small);
+	}
+}
+
+/* The filters are toggles, drawn second to the step's one action whatever a theme does to a button: Kadence's
+   gave them its primary colour (Cowork's review, minor 23). Pressed, a filter keeps a thick border in the accent. */
+.cbuild .cbuild-filters__option,
+.cbuild .cbuild-filters__option:hover,
+.cbuild .cbuild-filters__option:focus,
+.cbuild .cbuild-filters__option:visited {
+	border: 1px solid var(--cbuild-line);
+	background: transparent;
+	box-shadow: none;
+	color: var(--cbuild-text);
+	font-size: inherit;
+	font-weight: 400;
+}
+
+.cbuild .cbuild-filters__option:hover {
+	border-color: var(--cbuild-text);
+}
+
+.cbuild .cbuild-filters__option[aria-pressed="true"] {
+	border-color: var(--cbuild-accent);
+	box-shadow: inset 0 0 0 1px var(--cbuild-accent);
+	font-weight: 600;
+}
+
+/* The cards: a native radio each, and its label the whole card. */
+:where(.cbuild-cards) {
+	display: grid;
+	grid-template-columns: repeat(
+		auto-fill,
+		minmax(min(100%, var(--cbuild-card-width)), 1fr)
+	);
+	gap: var(--cbuild-gap-small);
+}
+
+:where(.cbuild-card) {
+	position: relative;
+	display: grid;
+	align-content: start;
+	gap: var(--cbuild-gap-small);
+	padding: var(--cbuild-gap-small);
+	border: 1px solid var(--cbuild-line);
+	border-radius: var(--cbuild-radius);
+	background: var(--cbuild-surface);
+}
+
+:where(.cbuild-card__control) {
+	position: absolute;
+	inset-block-start: calc(var(--cbuild-gap-small) + 0.25rem);
+	inset-inline-start: calc(var(--cbuild-gap-small) + 0.25rem);
+	z-index: 1;
+}
+
+:where(.cbuild-card__body) {
+	display: grid;
+	gap: 0.25rem;
+	padding-block-start: calc(var(--cbuild-control) + var(--cbuild-gap-small));
+	cursor: pointer;
+}
+
+// The card's details, which describe its radio: a grid of its own, not display: contents, which older Safari left
+// out of the accessibility tree.
+:where(.cbuild-card__about) {
+	display: grid;
+	gap: 0.25rem;
+}
+
+:where(.cbuild-card__photo) {
+	inline-size: 100%;
+	aspect-ratio: 1;
+	object-fit: contain;
+	border-radius: calc(var(--cbuild-radius) / 2);
+}
+
+:where(.cbuild-card__name) {
+	font-weight: 600;
+}
+
+:where(.cbuild-card__delta) {
+	font-variant-numeric: tabular-nums;
+}
+
+:where(
+	.cbuild-card__stock,
+	.cbuild-card__fit,
+	.cbuild-card__recommended,
+	.cbuild-card__notes
+) {
+	color: var(--cbuild-muted);
+	font-size: var(--cbuild-small);
+}
+
+:where(.cbuild-card__page) {
+	font-size: var(--cbuild-small);
+}
+
+/* Chosen: the radio checked, as the shopper's own pick paints it before the server answers. */
+:where(
+	.cbuild-card--chosen,
+	.cbuild-card:has(> .cbuild-card__control:checked)
+) {
+	border-color: var(--cbuild-accent);
+	box-shadow: inset 0 0 0 1px var(--cbuild-accent);
+}
+
+/* A card's focus ring is the card's: the radio inside it is what has focus. */
+:where(.cbuild-card:has(> .cbuild-card__control:focus-visible)) {
+	outline: 2px solid var(--cbuild-focus);
+	outline-offset: 2px;
+}
+
+:where(.cbuild-card--sold-out) :where(.cbuild-card__body) {
+	cursor: not-allowed;
+}
+
+:where(.cbuild-card--sold-out) :where(.cbuild-card__photo) {
+	opacity: 0.5;
+}
+
+/* The parts that do not fit. */
+:where(.cbuild-hidden__summary) {
+	min-block-size: var(--cbuild-control);
+	cursor: pointer;
+}
+
+:where(.cbuild-hidden__groups, .cbuild-hidden__parts) {
+	display: grid;
+	gap: 0.25rem;
+	margin-block-start: var(--cbuild-gap-small);
+}
+
+:where(.cbuild-hidden__reasons) {
+	color: var(--cbuild-muted);
+	font-size: var(--cbuild-small);
+}
+
+/* The picture, for now: what is in the box. */
+:where(.cbuild-picture__items) {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(min(100%, 7rem), 1fr));
+	gap: var(--cbuild-gap-small);
+}
+
+:where(.cbuild-picture__item) {
+	display: grid;
+	gap: 0.25rem;
+	align-content: start;
+	font-size: var(--cbuild-small);
+}
+
+:where(.cbuild-picture__photo) {
+	inline-size: 100%;
+	aspect-ratio: 1;
+	object-fit: contain;
+}
+
+:where(.cbuild-picture__description) {
+	margin-block-start: var(--cbuild-gap-small);
+	color: var(--cbuild-muted);
+}
+
+/* The presets. */
+:where(.cbuild-presets) {
+	display: grid;
+	gap: var(--cbuild-gap-small);
+}
+
+:where(.cbuild-presets__tiles) {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(min(100%, 15rem), 1fr));
+	gap: var(--cbuild-gap-small);
+}
+
+:where(.cbuild-preset) {
+	display: grid;
+	align-content: start;
+	gap: var(--cbuild-gap-small);
+	padding: var(--cbuild-gap-small);
+	border: 1px solid var(--cbuild-line);
+	border-radius: var(--cbuild-radius);
+}
+
+:where(.cbuild-preset__photo) {
+	inline-size: 100%;
+	aspect-ratio: 4 / 3;
+	object-fit: contain;
+}
+
+:where(.cbuild-preset__name, .cbuild-preset__total) {
+	font-weight: 600;
+}
+
+:where(.cbuild-preset__description, .cbuild-preset__notes) {
+	color: var(--cbuild-muted);
+	font-size: var(--cbuild-small);
+}
+
+/* The change panel and the review. */
+:where(.cbuild-changes, .cbuild-review) {
+	display: grid;
+	gap: var(--cbuild-gap);
+}
+
+:where(.cbuild-changes__kept, .cbuild-changes__gone, .cbuild-review__items) {
+	display: grid;
+	gap: var(--cbuild-gap-small);
+}
+
+:where(.cbuild-changes__reasons) {
+	color: var(--cbuild-muted);
+	font-size: var(--cbuild-small);
+}
+
+:where(.cbuild-review__item) {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: baseline;
+	gap: 0.25rem var(--cbuild-gap-small);
+	padding-block: var(--cbuild-gap-small);
+	border-block-end: 1px solid var(--cbuild-line);
+}
+
+:where(.cbuild-review__slot) {
+	flex: 0 0 8rem;
+	color: var(--cbuild-muted);
+}
+
+:where(.cbuild-review__name) {
+	flex: 1 1 10rem;
+	font-weight: 600;
+}
+
+:where(.cbuild-review__change) {
+	display: inline-flex;
+	align-items: center;
+	min-block-size: var(--cbuild-control);
+}
+
+:where(.cbuild-review__item--wrong) {
+	border-inline-start: 0.25rem solid var(--cbuild-wrong);
+	padding-inline-start: var(--cbuild-gap-small);
+}
+
+:where(.cbuild-review__total) {
+	font-size: 1.25em;
+	font-weight: 600;
+}
+
+:where(.cbuild-review__lead, .cbuild-review__arrival, .cbuild-review__notice) {
+	color: var(--cbuild-muted);
+}
+
+:where(.cbuild-share) {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--cbuild-gap-small);
+}
+
+:where(.cbuild-share__label) {
+	inline-size: 100%;
+	font-size: var(--cbuild-small);
+}
+
+:where(.cbuild-share__link) {
+	flex: 1 1 12rem;
+	min-inline-size: 0;
+	min-block-size: var(--cbuild-target);
+	padding-inline: var(--cbuild-gap-small);
+	border: 1px solid var(--cbuild-line);
+	border-radius: var(--cbuild-radius);
+	background: transparent;
+	color: inherit;
+	font: inherit;
+}
+
+/* The summary. */
+:where(.cbuild-summary) {
+	display: grid;
+	gap: var(--cbuild-gap-small);
+	padding: var(--cbuild-gap);
+	border: 1px solid var(--cbuild-line);
+	border-radius: var(--cbuild-radius);
+	background: var(--cbuild-surface);
+}
+
+:where(.cbuild-summary__heading) {
+	margin: 0;
+}
+
+:where(.cbuild-summary__lines) {
+	display: grid;
+	gap: 0.25rem;
+}
+
+:where(.cbuild-summary__line) {
+	display: flex;
+	justify-content: space-between;
+	gap: var(--cbuild-gap-small);
+
+	:where(dd) {
+		font-variant-numeric: tabular-nums;
+		white-space: nowrap;
+	}
+}
+
+:where(.cbuild-summary__name, .cbuild-summary__count) {
+	color: var(--cbuild-muted);
+}
+
+:where(.cbuild-summary__total) {
+	display: flex;
+	justify-content: space-between;
+	padding-block-start: var(--cbuild-gap-small);
+	border-block-start: 1px solid var(--cbuild-line);
+	font-size: 1.125em;
+}
+
+:where(
+	.cbuild-summary__ships,
+	.cbuild-summary__arrival,
+	.cbuild-summary__notes,
+	.cbuild-summary__saved
+) {
+	color: var(--cbuild-muted);
+	font-size: var(--cbuild-small);
+}
+
+/* Waiting for the server: the shopper's own pick is painted, and the rest says it is on its way. */
+:where(.cbuild[aria-busy="true"])
+	:where(.cbuild-summary__total, .cbuild-picture__description) {
+	opacity: 0.6;
+}
+
+/*
+ * Forced colours: the system's palette replaces every colour, so what a colour said is said by a border instead.
+ * The chosen card and a pressed filter keep a thicker border in the system's highlight.
+ */
+@media (forced-colors: active) {
+	/* Chosen: a border, not a colour. */
+	:where(
+		.cbuild-card--chosen,
+		.cbuild-card:has(> .cbuild-card__control:checked),
+		.cbuild-filters__option[aria-pressed="true"]
+	) {
+		border: 3px solid Highlight;
+	}
+
+	:where(.cbuild-button--primary, .cbuild-step__next) {
+		border: 2px solid ButtonText;
+	}
+
+	:where(.cbuild) :where(:focus-visible),
+	:where(.cbuild-card:has(> .cbuild-card__control:focus-visible)) {
+		outline-color: Highlight;
+	}
+}
+
+/*
+ * The phone bar: at the foot of the screen while the builder is on it, and no further. Sticky, not fixed, so it
+ * stops where the builder ends and never covers the theme's footer.
+ */
+:where(.cbuild-bar) {
+	position: sticky;
+	inset-block-end: var(--cbuild-bar-offset, 0px);
+	z-index: 10;
+	align-items: center;
+	gap: var(--cbuild-gap-small);
+	box-sizing: border-box;
+	min-block-size: var(--cbuild-bar-height);
+	margin-block-start: var(--cbuild-gap);
+	padding: var(--cbuild-gap-small);
+	border-block-start: 1px solid var(--cbuild-line);
+	background: var(--cbuild-ground);
+	color: var(--cbuild-on-ground);
+}
+
+:where(.cbuild-bar__picture) {
+	flex: none;
+	display: block;
+	inline-size: var(--cbuild-target);
+	block-size: var(--cbuild-target);
+}
+
+:where(.cbuild-bar__photo) {
+	inline-size: 100%;
+	block-size: 100%;
+	object-fit: contain;
+}
+
+:where(.cbuild-bar__parts) {
+	flex: 1 1 auto;
+	min-inline-size: 0;
+}
+
+:where(.cbuild-bar__total) {
+	min-block-size: var(--cbuild-target);
+	cursor: pointer;
+	font-weight: 600;
+}
+
+/* The total, and "Show the parts" whole under it (Cowork's recheck, N6). Not under :where(): Kadence's and
+   Storefront's rules for a summary make it a list item, with the theme's marker beside it, and at 412 pixels the
+   words broke over two lines. On a line of its own the bar is as high whatever the total is, so Next stays put as a
+   pick widens it. */
+.cbuild .cbuild-bar__total {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	justify-content: center;
+	list-style: none;
+}
+
+.cbuild .cbuild-bar__total::-webkit-details-marker {
+	display: none;
+}
+
+:where(.cbuild-bar__more) {
+	color: var(--cbuild-muted);
+	font-size: var(--cbuild-small);
+	font-weight: 400;
+	white-space: nowrap;
+}
+
+/* "Show the parts" while the list is shut and "Hide the parts" while it is open. Not under :where(), so that a
+   theme's own rule for a span does not show both. */
+.cbuild-bar__parts[open] .cbuild-bar__more--show,
+.cbuild-bar__parts:not([open]) .cbuild-bar__more--hide {
+	display: none;
+}
+
+/* The parts list opens above the bar, so the bar and its button stay where the thumb is (W7). */
+:where(.cbuild-bar__lines) {
+	position: absolute;
+	inset-block-end: 100%;
+	inset-inline: 0;
+	display: grid;
+	gap: 0.25rem;
+	max-block-size: 60vh;
+	overflow-y: auto;
+	padding: var(--cbuild-gap);
+	border-block-start: 1px solid var(--cbuild-line);
+	background: var(--cbuild-ground);
+	color: var(--cbuild-on-ground);
+}
+
+:where(.cbuild-bar__next) {
+	flex: none;
+}
+
+/*
+ * Focus never goes under the bar (spec: The total, "It never covers the control in focus"; WCAG 2.4.11). A browser
+ * scrolls a focused control into view only when it is outside the scrolling box's padding, so the padding is the
+ * page's: the one rule outside the builder's root, and only while a bar is shown (D-160).
+ */
+@media (max-width: 47.99rem) {
+	:root:has(.cbuild .cbuild-bar:not([hidden])) {
+		// The bar, and any bar of the theme's own below it (D-163), on one line for Stylelint.
+		// prettier-ignore
+		scroll-padding-block-end: calc(var(--cbuild-bar-height, 4.25rem) + var(--cbuild-bar-offset, 0px) + 0.5rem);
+	}
+}
+
+/*
+ * Motion (spec: Motion; D-161). Three movements, each 150 to 250 ms, easing out, moving `transform` and `opacity`
+ * alone, none looping and none in the way of a tap: the chosen card settles, a part slides into the picture, and a
+ * step crosses over to the next. Nothing moves where the shopper asks for reduced motion, or where the browser has no
+ * view transitions (the store then shows the view at once).
+ *
+ * The view transition's pseudo-elements hang off the page's root, not the builder's, so their timing reads
+ * `--cbuild-duration` and `--cbuild-ease` with the same values as fallbacks: a theme that changes them sets them on
+ * `:root` as well as on `.cbuild`.
+ */
+@media (prefers-reduced-motion: no-preference) {
+	:where(.cbuild-card:has(> .cbuild-card__control:checked)) {
+		animation: cbuild-settle var(--cbuild-duration) var(--cbuild-ease);
+	}
+
+	:where(.cbuild-picture__item) {
+		view-transition-class: cbuild-part;
+		view-transition-name: match-element;
+	}
+
+	::view-transition-group(*),
+	::view-transition-old(*),
+	::view-transition-new(*) {
+		animation-duration: var(--cbuild-duration, 200ms);
+		animation-timing-function: var(
+			--cbuild-ease,
+			cubic-bezier(0.2, 0, 0, 1)
+		);
+	}
+
+	/* A part new to the picture slides up into its place. */
+	::view-transition-new(*.cbuild-part):only-child {
+		animation-name: cbuild-arrive;
+	}
+
+	/* The page under a transition still takes taps. */
+	::view-transition {
+		pointer-events: none;
+	}
+}
+
+@keyframes cbuild-settle {
+	from {
+		transform: scale(0.97);
+	}
+}
+
+@keyframes cbuild-arrive {
+	from {
+		opacity: 0;
+		transform: translateY(0.5rem);
+	}
+}

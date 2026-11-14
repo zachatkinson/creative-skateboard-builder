@@ -37,6 +37,17 @@ final readonly class BearingRule implements Rule {
 	}
 
 	/**
+	 * The slots the rule reads.
+	 *
+	 * @since 0.6.0
+	 *
+	 * @return list<string>
+	 */
+	public function slots(): array {
+		return array( SlotKey::BEARINGS, SlotKey::SPACERS, SlotKey::TRUCKS );
+	}
+
+	/**
 	 * What the rule finds in these picks.
 	 *
 	 * @since 0.2.0

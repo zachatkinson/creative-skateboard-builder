@@ -2,12 +2,15 @@
     "filters": [
         "cbuild_arrival_estimate",
         "cbuild_build_in_one_package",
+        "cbuild_builder_url",
         "cbuild_delivery_line",
         "cbuild_kit_text",
         "cbuild_part_available",
+        "cbuild_part_classes",
         "cbuild_preset_label",
         "cbuild_price_context",
         "cbuild_slot_label",
+        "cbuild_summary_notes",
         "cbuild_updates_enabled"
     ],
     "actions": [],
@@ -81,6 +84,7 @@
         "build",
         "name",
         "parent",
+        "removed",
         "role",
         "slot"
     ],
@@ -112,8 +116,56 @@
         "cbuild reindex",
         "cbuild specs"
     ],
-    "blocks": [],
-    "dom_events": [],
+    "blocks": [
+        "creative-skateboard-builder/builder"
+    ],
+    "block_attributes": {
+        "creative-skateboard-builder/builder": {
+            "kit": {
+                "type": "integer",
+                "default": 0
+            }
+        }
+    },
+    "link_params": [
+        "cbuild[assembly]",
+        "cbuild[preset]",
+        "cbuild[step]"
+    ],
+    "css_classes": [
+        "cbuild-edit",
+        "cbuild-kit",
+        "cbuild-part",
+        "cbuild-quantity"
+    ],
+    "dom_events": [
+        "cbuild:added",
+        "cbuild:pick"
+    ],
+    "css_properties": [
+        "--cbuild-accent",
+        "--cbuild-bar-height",
+        "--cbuild-bar-offset",
+        "--cbuild-card-width",
+        "--cbuild-control",
+        "--cbuild-duration",
+        "--cbuild-ease",
+        "--cbuild-focus",
+        "--cbuild-gap",
+        "--cbuild-gap-small",
+        "--cbuild-ground",
+        "--cbuild-line",
+        "--cbuild-muted",
+        "--cbuild-on-accent",
+        "--cbuild-on-ground",
+        "--cbuild-radius",
+        "--cbuild-small",
+        "--cbuild-summary-width",
+        "--cbuild-surface",
+        "--cbuild-target",
+        "--cbuild-text",
+        "--cbuild-wrong"
+    ],
     "site_health_tests": [
         "cbuild_catalogue",
         "cbuild_index",
@@ -126,7 +178,7 @@
         "SpecsCommand::import": "<file> [--dry-run] [--key=<key>] [--format=<format>]"
     },
     "rest_route_args": {
-        "cbuild/v1/kits/(?P<id>[1-9][0-9]{0,17})/state": "assembly id locale picks previous step 7fd031a8dc206365359f866e566c2931d1a260be5fd2c0d961f7825b94034ffe"
+        "cbuild/v1/kits/(?P<id>[1-9][0-9]{0,17})/state": "assembly cbuild id locale page picks previous step 7c45d7e282c57fa6854208f739f8791f9c128fbceffefa79592e01bea9823eb2"
     },
     "csv_columns": [
         "id",
@@ -176,7 +228,7 @@
         "schema/kit-slots.json": "7c383e3f551b517328d9d195c01e15f9f5dad1a1263a20fa4ff2188592bb820c",
         "schema/order-snapshot.json": "78cc2355e3468a3f4ff06aa8c609594f21ab961dbcf06ca54bb2b4b2e1b18030",
         "schema/settings.json": "ac3d69970a5331c5d2ec28df62593d7f1de714dce2a3d45352b20f09bf4f3232",
-        "schema/state.json": "5231869b44f2543cb2205444119e77e422c3946e7966b9a9a0daa8c316b763e8"
+        "schema/state.json": "a6634840ea609e655a9640f4cf2de98901880103b2ea5eeca9de882ee3916c3b"
     },
     "spec_keys": [
         "deck_width",

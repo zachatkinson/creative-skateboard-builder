@@ -12,6 +12,8 @@ namespace CreativeBranding\SkateboardBuilder\Domain\Rule;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Picks;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\RuleSettings;
 
+use function in_array;
+
 /**
  * Every fit rule behind one question: what do the rules a kit has switched on find in these picks. The engine, the
  * change list, the recommender and the cart's validator all ask it here, so there is one place that decides fit
@@ -54,5 +56,26 @@ final readonly class RuleSet {
 			}
 		}
 		return $findings;
+	}
+
+	/**
+	 * The other slots a slot is read with by the rules the kit has on, in the rules' order, or null where no rule
+	 * on reads the slot.
+	 *
+	 * @since 0.6.0
+	 *
+	 * @param string       $slot     The slot's key.
+	 * @param RuleSettings $settings The kit's rule settings.
+	 * @return list<string>|null
+	 */
+	public function reading( string $slot, RuleSettings $settings ): ?array {
+		$read = null;
+		foreach ( $this->rules as $rule ) {
+			$slots = $rule->slots();
+			if ( $settings->enabled( $rule->id() ) && in_array( $slot, $slots, true ) ) {
+				$read = array_values( array_unique( array( ...( $read ?? array() ), ...array_diff( $slots, array( $slot ) ) ) ) );
+			}
+		}
+		return $read;
 	}
 }

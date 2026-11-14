@@ -112,7 +112,7 @@ final class SettingsPage extends WC_Settings_Page {
 			array(
 				'title' => __( 'Builds', 'creative-skateboard-builder' ),
 				'type'  => 'title',
-				'desc'  => __( 'What every build is sold on. The cart reads these from the next version on.', 'creative-skateboard-builder' ),
+				'desc'  => __( 'What every build is sold on.', 'creative-skateboard-builder' ),
 				'id'    => 'cbuild_pricing_settings',
 			),
 			array(
@@ -253,7 +253,7 @@ final class SettingsPage extends WC_Settings_Page {
 				'label' => __( 'Lead time', 'creative-skateboard-builder' ),
 				'type'  => 'text',
 				'value' => $shown['lead_time'] ?? '',
-				'note'  => '',
+				'note'  => __( 'How long putting a build together takes, such as 2 business days. The review says it after "Assembly time:".', 'creative-skateboard-builder' ),
 				'max'   => Assembly::MAX_LEAD_TIME,
 			),
 			'returns_notice' => array(

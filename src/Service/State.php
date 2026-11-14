@@ -29,6 +29,13 @@ if ( ! defined( 'ABSPATH' ) ) {
 final readonly class State {
 
 	/**
+	 * The step after the last slot's: the review. No slot may take the word for its key (`Slots::KEPT`).
+	 *
+	 * @since 0.6.0
+	 */
+	public const string REVIEW = 'review';
+
+	/**
 	 * Constructor.
 	 *
 	 * @since 0.4.0
@@ -36,12 +43,14 @@ final readonly class State {
 	 * @param int                $id         The kit product's ID.
 	 * @param Kit                $kit        The kit.
 	 * @param list<StateStep>    $steps      The steps, in step order.
-	 * @param string             $step       The key of the step the shopper is on.
+	 * @param string             $step       The step the shopper is on: a slot's key, or the review.
 	 * @param list<BuildProblem> $refused    The picks that were sent and not taken: for a slot the kit lacks, or a
 	 *                                       part that is not one of its slot's. Nothing else is said of them.
 	 * @param Validation         $validation What the validator finds of the build the steps count.
 	 * @param ChangeList|null    $changes    What a changed pick does to the later ones, when it breaks any.
 	 * @param Quote              $quote      What the build costs so far.
+	 * @param int                $discount   The build discount the quote was made with, in basis points.
+	 * @param list<PresetState>  $presets    Each of the kit's presets as a build, in the kit's order.
 	 */
 	public function __construct(
 		public int $id,
@@ -51,8 +60,21 @@ final readonly class State {
 		public array $refused,
 		public Validation $validation,
 		public ?ChangeList $changes,
-		public Quote $quote
+		public Quote $quote,
+		public int $discount,
+		public array $presets = array()
 	) {}
+
+	/**
+	 * The same build, with the shopper on another step.
+	 *
+	 * @since 0.6.0
+	 *
+	 * @param string $step A slot's key, or the review.
+	 */
+	public function at( string $step ): self {
+		return new self( $this->id, $this->kit, $this->steps, $step, $this->refused, $this->validation, $this->changes, $this->quote, $this->discount, $this->presets );
+	}
 
 	/**
 	 * Whether the build can go to the cart as it stands.

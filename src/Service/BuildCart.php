@@ -54,9 +54,16 @@ final class BuildCart {
 	/**
 	 * The build last offered, and what was said of it, so that the hooks that ask twice are answered once.
 	 *
-	 * @var array{array{int, array<string, int>, bool, int}, Verdict}|null
+	 * @var array{array{int, array<string, int>, bool, int, string}, Verdict}|null
 	 */
 	private ?array $said = null;
+
+	/**
+	 * The build each build taken in this request replaces, by the new build's ID: Edit build's add (D-157).
+	 *
+	 * @var array<string, string>
+	 */
+	private array $replacing = array();
 
 	/**
 	 * Constructor.
@@ -76,8 +83,9 @@ final class BuildCart {
 	 * @since 0.5.0
 	 *
 	 * @param int   $kit      The kit product's ID.
-	 * @param mixed $request  What was sent with it: `picks`, slot key to part ID, and `assembly`, which may be left
-	 *                        out for the kit's own default.
+	 * @param mixed $request  What was sent with it: `picks`, slot key to part ID; `assembly`, which may be left
+	 *                        out for the kit's own default; and `replace`, from Edit build, the ID of the build in
+	 *                        the cart this one takes the place of once all of it is added (D-157).
 	 * @param int   $quantity How many of the build.
 	 */
 	public function consider( int $kit, mixed $request, int $quantity ): Verdict {
@@ -102,9 +110,17 @@ final class BuildCart {
 			return Verdict::refused( CartRefusal::KitNotFound );
 		}
 		$assembly = array_key_exists( 'assembly', $request ) ? self::flag( $request['assembly'] ) : $read->assembly->defaultOn;
-		$asking   = array( $kit, $asked, $assembly, $quantity );
+		$replace  = $request['replace'] ?? null;
+		$replace  = is_string( $replace ) && 1 === preg_match( '/\A[a-z0-9-]{1,64}\z/', $replace ) ? $replace : '';
+		$asking   = array( $kit, $asked, $assembly, $quantity, $replace );
 		if ( null === $this->said || $asking !== $this->said[0] ) {
-			$this->said = array( $asking, $this->judge( $kit, $read, $asked, $assembly, max( 1, $quantity ) ) );
+			// Edit build's add keeps the quantity the cart holds of the build it replaces, and is counted against the
+			// shop's stock without that build's lines, which go once it is in (D-157).
+			$held       = $this->held( $replace );
+			$this->said = array( $asking, $this->judge( $kit, $read, $asked, $assembly, max( 1, $quantity, $held[1] ), $held[0] ) );
+		}
+		if ( null !== $this->said[1]->build && '' !== $replace ) {
+			$this->replacing[ $this->said[1]->build->id ] = $replace;
 		}
 		return $this->said[1];
 	}
@@ -144,19 +160,53 @@ final class BuildCart {
 		unset( $this->taken[ $build->kit ][ $build->id ] );
 		$this->said = null;
 
+		// Edit build's add takes the build it replaces out first, so that WooCommerce's own stock check does not
+		// count it beside the new one, and puts it back as it was when the new one cannot all go in: the shopper
+		// never ends up with neither. The new one keeps the quantity the cart held of it (D-157).
+		[ $old, $held ] = $this->held( $this->replacing[ $build->id ] ?? '' );
+		unset( $this->replacing[ $build->id ] );
+		foreach ( $old as $gone ) {
+			$this->cart->remove( $gone );
+		}
 		$children = array();
 		foreach ( $build->picks as $slot => $part ) {
 			$child = $this->cart->add( $part, $build->quantities[ $slot ] * $line->quantity, $key, $slot );
 			if ( null === $child ) {
-				foreach ( array( ...$children, $key ) as $added ) {
+				foreach ( array( ...array_values( $children ), $key ) as $added ) {
 					$this->cart->remove( $added );
+				}
+				foreach ( $old as $back ) {
+					$this->cart->restore( $back );
 				}
 				return CartRefusal::NotAdded;
 			}
-			$children[] = $child;
+			$children[ $slot ] = $child;
 		}
-		$this->cart->setChildren( $key, $children );
+		$this->cart->setChildren( $key, array_values( $children ) );
+		if ( $held > $line->quantity ) {
+			$this->cart->setQuantity( $key, $held );
+			foreach ( $children as $slot => $child ) {
+				$this->cart->setQuantity( $child, $build->quantities[ $slot ] * $held );
+			}
+		}
 		return null;
+	}
+
+	/**
+	 * The lines of the build in the cart with this ID, and how many of it the cart holds: none where no build has it.
+	 *
+	 * @param string $id A build's ID, or empty.
+	 * @return array{list<string>, int}
+	 */
+	private function held( string $id ): array {
+		if ( '' !== $id ) {
+			foreach ( $this->cart->lines() as $key => $line ) {
+				if ( Build::read( $line->build )?->id === $id ) {
+					return array( array( ...$line->children, $key ), $line->quantity );
+				}
+			}
+		}
+		return array( array(), 0 );
 	}
 
 	/**
@@ -256,9 +306,10 @@ final class BuildCart {
 	 * @param array<string, int> $asked The picks: slot key to part ID, 0 where what was sent is no ID.
 	 * @param bool               $assembly Whether the shop assembles it.
 	 * @param int                $quantity How many of the build, one or more.
+	 * @param list<string>       $leaving  The cart's lines that go once it is in: the build it replaces.
 	 */
-	private function judge( int $id, Kit $kit, array $asked, bool $assembly, int $quantity ): Verdict {
-		[ $problems, $ids, $quantities, $options ] = $this->examine( $kit, $asked, $quantity );
+	private function judge( int $id, Kit $kit, array $asked, bool $assembly, int $quantity, array $leaving ): Verdict {
+		[ $problems, $ids, $quantities, $options ] = $this->examine( $kit, $asked, $quantity, $leaving );
 		if ( array() !== $problems ) {
 			return Verdict::refused( CartRefusal::BuildRefused, $problems );
 		}
@@ -281,10 +332,11 @@ final class BuildCart {
 	 *                                  stored build's are read as strings (D-139).
 	 * @param int                $more  How many of the build are to be added to what the cart holds: none for a
 	 *                                      build whose lines are in the cart already.
+	 * @param list<string>       $leaving The cart's lines not counted: those that go once the build is in.
 	 * @return array{list<BuildProblem>, array<string, int>, array<string, int>, array<string, Option>}
 	 *         The problems; each slot's part; how many of it one build takes; the build's options.
 	 */
-	private function examine( Kit $kit, array $asked, int $more ): array {
+	private function examine( Kit $kit, array $asked, int $more, array $leaving = array() ): array {
 		$picks    = Picks::none();
 		$found    = array();
 		$problems = array();
@@ -311,7 +363,7 @@ final class BuildCart {
 		// Each part is counted across the cart: what this build takes of it, in every slot and for every copy of
 		// the build to be added, beside what the cart's lines already hold.
 		$needed = array();
-		foreach ( $this->cart->lines() as $line ) {
+		foreach ( array_diff_key( $this->cart->lines(), array_flip( $leaving ) ) as $line ) {
 			$needed[ $line->part ] = ( $needed[ $line->part ] ?? 0 ) + $line->quantity;
 		}
 		$ids        = array();

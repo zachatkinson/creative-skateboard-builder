@@ -13,8 +13,11 @@ use CreativeBranding\SkateboardBuilder\Install\Migrations\Cursor;
 use CreativeBranding\SkateboardBuilder\Install\Migrations\Migration;
 use CreativeBranding\SkateboardBuilder\Install\Migrations\MigrationRegistry;
 use CreativeBranding\SkateboardBuilder\Install\Migrations\MigrationRunner;
+use CreativeBranding\SkateboardBuilder\Install\Migrations\ReservedSlotKeysMigration;
 use CreativeBranding\SkateboardBuilder\Install\Migrations\RunResult;
 use CreativeBranding\SkateboardBuilder\Port\Clock;
+use CreativeBranding\SkateboardBuilder\Port\KitMeta;
+use CreativeBranding\SkateboardBuilder\Port\Kits;
 use CreativeBranding\SkateboardBuilder\Port\Logger;
 use CreativeBranding\SkateboardBuilder\Port\Queue;
 use CreativeBranding\SkateboardBuilder\Repository\MigrationRepository;
@@ -25,6 +28,8 @@ use CreativeBranding\SkateboardBuilder\Support\Tables;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\BatchMigration;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\ThrowingMigration;
 use CreativeBranding\SkateboardBuilder\Tests\Support\IntegrationTestCase;
+use CreativeBranding\SkateboardBuilder\Tests\Support\Domain\KitDocuments;
+use CreativeBranding\SkateboardBuilder\Tests\Support\KitFactory;
 
 /**
  * The repository's lock and versions as rows (D-021), and the runner over the real store, clock, queue and log: a
@@ -145,8 +150,12 @@ final class MigrationTest extends IntegrationTestCase {
 				$wpdb->query( 'DROP TABLE IF EXISTS ' . $parts ); // phpcs:ignore
 				$states = get_option( Options::MIGRATIONS );
 				self::assertIsArray( $states );
-				self::assertSame( array( 'schema_1', 'noop_1', 'spec_tables_1', 'schema_2' ), array_keys( $states ) );
-				$before = array_diff_key( $states, array( 'schema_2' => true ) );
+				self::assertSame( array( 'schema_1', 'noop_1', 'spec_tables_1', 'schema_2', 'reserved_slot_keys_1' ), array_keys( $states ) );
+				$later  = array(
+					'schema_2'             => true,
+					'reserved_slot_keys_1' => true,
+				);
+				$before = array_diff_key( $states, $later );
 				update_option( Options::MIGRATIONS, $before, false );
 				update_option( Options::DB_VERSION, '2', true );
 				self::assertNull( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $parts ) ) );
@@ -155,14 +164,86 @@ final class MigrationTest extends IntegrationTestCase {
 				self::assertTrue( $runner->needed(), 'behind' );
 				self::assertSame( RunResult::Finished, $runner->run() );
 				self::assertSame( $parts, $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $parts ) ) );
-				self::assertSame( '3', get_option( Options::DB_VERSION ) );
+				self::assertSame( MigrationRegistry::VERSION, get_option( Options::DB_VERSION ) );
 				$after = get_option( Options::MIGRATIONS );
 				self::assertIsArray( $after );
-				self::assertSame( $before, array_diff_key( $after, array( 'schema_2' => true ) ), 'the three it had run are as they were' );
+				self::assertSame( $before, array_diff_key( $after, $later ), 'the three it had run are as they were' );
 				self::assertSame( MigrationStatus::Done, MigrationState::fromArray( 'schema_2', $after['schema_2'] ?? null )->status );
 				self::assertFalse( $runner->needed() );
 			}
 		);
+	}
+
+	// Audit 19, milestone 6 (D-169): 0.6.0 refuses a slot keyed with a word the build link keeps for itself, which a
+	// kit saved by 0.5.0 may hold. 0.5.0 left schema version 3 with its four migrations done.
+	public function test_a_site_on_0_5_0_with_a_slot_keyed_review_has_it_renamed_and_the_kit_reads(): void {
+		$kit   = KitFactory::kit( 'Complete' )->get_id();
+		$slots = KitDocuments::slots();
+		$keys  = array_column( $slots['slots'], 'key' );
+		$risers  = (int) array_search( 'risers', $keys, true );
+		$slots['slots'][ $risers ]['key'] = 'review';
+		$presets                        = array(
+			'schema_version' => 1,
+			'presets'        => array(
+				array(
+					'name'        => 'Street',
+					'description' => 'A street build.',
+					'picks'       => array(
+						'deck'     => 11,
+						'trucks'   => 21,
+						'wheels'   => 31,
+						'review'   => 12,
+						'bearings' => 41,
+						'hardware' => 51,
+						'grip'     => 61,
+					),
+				),
+			),
+		);
+		// As 0.5.0 saved it, which read it: JSON in the meta, written past 0.6.0's schema.
+		update_post_meta( $kit, Options::META_KIT_SLOTS, wp_slash( (string) wp_json_encode( $slots ) ) );
+		update_post_meta( $kit, Options::META_KIT_PRESETS, wp_slash( (string) wp_json_encode( $presets ) ) );
+		wc_delete_product_transients( $kit );
+		$this->service( Kits::class )->forget();
+		self::assertNull( $this->service( Kits::class )->kit( $kit ), 'as 0.6.0 reads it before the migration' );
+
+		$states = get_option( Options::MIGRATIONS );
+		self::assertIsArray( $states );
+		update_option( Options::MIGRATIONS, array_diff_key( $states, array( 'reserved_slot_keys_1' => true ) ), false );
+		update_option( Options::DB_VERSION, '3', true );
+		// In the bin as the upgrade runs: restored later, it would keep its reserved key and stop reading, since the
+		// migration does not run again (Cowork's review, minor 21).
+		wp_trash_post( $kit );
+		$runner = $this->service( MigrationRunner::class );
+		self::assertTrue( $runner->needed() );
+		self::assertSame( RunResult::Finished, $runner->run() );
+		self::assertSame( '4', get_option( Options::DB_VERSION ) );
+		wp_untrash_post( $kit );
+		wp_publish_post( $kit );
+
+		$stored = json_decode( (string) get_post_meta( $kit, Options::META_KIT_SLOTS, true ), true );
+		self::assertSame( 'review_slot', $stored['slots'][ $risers ]['key'] );
+		self::assertSame( $slots['slots'][ $risers ]['label'], $stored['slots'][ $risers ]['label'] );
+		self::assertSame(
+			array(
+				'deck'        => 11,
+				'trucks'      => 21,
+				'wheels'      => 31,
+				'review_slot' => 12,
+				'bearings'    => 41,
+				'hardware'    => 51,
+				'grip'        => 61,
+			),
+			json_decode( (string) get_post_meta( $kit, Options::META_KIT_PRESETS, true ), true )['presets'][0]['picks']
+		);
+		$this->service( Kits::class )->forget();
+		$read = $this->service( Kits::class )->kit( $kit );
+		self::assertNotNull( $read, 'the kit reads' );
+		self::assertNotNull( $read->slots->get( 'review_slot' ) );
+
+		// Run again, as a second request might: nothing more is renamed.
+		( new ReservedSlotKeysMigration( $this->service( KitMeta::class ), $this->service( Logger::class ) ) )->run( Cursor::start() );
+		self::assertSame( $stored, json_decode( (string) get_post_meta( $kit, Options::META_KIT_SLOTS, true ), true ) );
 	}
 
 	public function test_a_lock_row_holding_junk_is_not_taken_over(): void {

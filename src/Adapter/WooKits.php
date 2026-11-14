@@ -133,17 +133,7 @@ final class WooKits implements Kits {
 	 * @return list<int>
 	 */
 	public function ids(): array {
-		$found = wc_get_products(
-			array(
-				'type'    => Options::PRODUCT_TYPE_KIT,
-				'status'  => array_values( array_diff( array_keys( get_post_stati() ), array( 'trash', 'auto-draft' ) ) ),
-				'limit'   => self::MAX_KITS,
-				'orderby' => 'ID',
-				'order'   => 'ASC',
-				'return'  => 'ids',
-			)
-		);
-		return array_values( Cast::ints( $found ) );
+		return WooKitMeta::live();
 	}
 
 	/**
@@ -272,6 +262,41 @@ final class WooKits implements Kits {
 		if ( false === has_action( 'shutdown', array( $this, 'settle' ) ) ) {
 			add_action( 'shutdown', array( $this, 'settle' ), 10, 0 );
 		}
+	}
+
+	/**
+	 * Read these from the shop and keep their rows, in the price context of the request this runs in: a background
+	 * job's, which has no shopper, so the shop's own language and the prices a visitor nothing is known of is shown
+	 * (issue #28). A row is a product's, with its variations', so a variation stands for its parent. Only what
+	 * some kit's slot could offer is read. What moved in this request is deleted first, for every context, so the
+	 * rows written here are not deleted with it when the request ends.
+	 *
+	 * @since 0.6.0
+	 *
+	 * @param int ...$ids Products' and variations' IDs.
+	 */
+	public function warm( int ...$ids ): void {
+		$owners = array();
+		foreach ( $ids as $id ) {
+			$parent                                = Cast::int( wp_get_post_parent_id( $id ) );
+			$owners[ $parent > 0 ? $parent : $id ] = true;
+		}
+		$wanted = array();
+		foreach ( $this->all() as $read ) {
+			foreach ( $read['kit']->slots->all() as $slot ) {
+				foreach ( array( ...$this->found( $slot->sources ), ...$slot->sources->products ) as $id ) {
+					if ( isset( $owners[ $id ] ) ) {
+						$wanted[ $id ] = $id;
+					}
+				}
+			}
+		}
+		if ( array() === $wanted ) {
+			return;
+		}
+		$this->settle();
+		$wanted = array_values( $wanted );
+		$this->facts->replace( WooPartCards::context(), $wanted, array_values( $this->shopSays( $this->clock->now()->getTimestamp(), ...$wanted ) ) );
 	}
 
 	/**

@@ -1750,7 +1750,7 @@ Milestone 5's third step. `Cart\PriceHooks` reads WooCommerce's objects; the two
 - **It is taken once.** WooCommerce works the totals out many times in a request on the same product objects, and a price set on one stays set. The class remembers, per object, the price it found and the price it gave: where the object still says what it was given, the discount is worked from what was found. Where it says anything else, someone has priced it again, and that is the price discounted.
 - **Rounding is the domain's:** `Pricer::discounted()`, half up to the minor unit, on the unit price, which is how the builder's total takes it.
 - **The price struck through.** The classic cart and the Mini-Cart's template get the part's own price before the discounted one, through `woocommerce_cart_item_price` (`templates/cart/cart.php:140`), shown with or without tax as the cart shows prices. The Store API gives a line's `prices.regular_price` beside its `prices.price`, and the blocks strike the first through themselves. For a part that is also on sale the blocks strike its regular price, not its sale price: the spec says its own price, and the figure charged is right in both.
-- **What "coupons follow the parent" is read as.** A part's line is taken by a coupon that would take the part as a product of its own, or that takes the kit. So a coupon for the kit alone reaches every part, and a coupon for decks still reaches a deck in a build. A coupon that names the kit as excluded, or a category the kit is in, reaches none of the build's lines. This is how Product Bundles has a bundled item inherit from its container. The other reading, that a part answers only as its kit does, would stop a shopper's coupon for a brand from working once the part is in a build. For Zach at the review.
+- **What "coupons follow the parent" is read as.** A part's line is taken by a coupon that would take the part as a product of its own, or that takes the kit. So a coupon for the kit alone reaches every part, and a coupon for decks still reaches a deck in a build. A coupon that names the kit as excluded, or a category the kit is in, reaches none of the build's lines. This is how Product Bundles has a bundled item inherit from its container. The other reading, that a part answers only as its kit does, would stop a shopper's coupon for a brand from working once the part is in a build. Zach kept this reading on 12 November 2026.
 - **A fixed product coupon is the exception,** as the spec says: with `fixed_coupons` at `kit` no part's line takes it, whatever it names, so its amount comes off the kit's line once for each build; at `parts` it follows the rule above, and comes off each part too. Where assembly is free the kit's line costs nothing, and WooCommerce takes nothing off nothing: under `kit` such a coupon then discounts nothing of the build.
 - **A fixed cart coupon is WooCommerce's to spread,** over every line, as on any cart.
 - **The count** (D-009) subtracts each part's line whose kit's line is in the cart with a build, on `woocommerce_cart_contents_count` (`includes/class-wc-cart.php:738`), which the Store API's `items_count` reads.
@@ -1808,7 +1808,7 @@ Milestone 5's display step. `Cart\ShowHooks` gives each cart what it reads; noth
 Milestone 5's steps 10 and 11.
 
 - **A kit's line at nothing needs no code to ship.** The kit is virtual (D-099), so `WC_Cart::get_items_needing_shipping()` leaves it out of every package, and no shipping method is handed a line that costs nothing. `CartShippingTest` takes a build with free assembly through flat rate, free shipping and local pickup, and places the order. The spec's worry is a carrier's plugin that reads the cart itself; that cannot run in CI, and is Claude in Cowork's to check on the demo, as the plan said.
-- **One package, by default for a build the shop assembles.** The spec says a filter "can keep a build in one package for shops that split packages", and leaves the default open. An assembled build leaves the shop as one board, so its parts in two packages would be priced as two shipments that are never made. A build that is not assembled is loose parts, and a shop that splits packages (by vendor, by warehouse) has its reasons for where each goes. So the default is the build's `assembly`, and `cbuild_build_in_one_package` changes it either way. For Zach at the review.
+- **One package, by default for a build the shop assembles.** The spec says a filter "can keep a build in one package for shops that split packages", and leaves the default open. An assembled build leaves the shop as one board, so its parts in two packages would be priced as two shipments that are never made. A build that is not assembled is loose parts, and a shop that splits packages (by vendor, by warehouse) has its reasons for where each goes. So the default is the build's `assembly`, and `cbuild_build_in_one_package` changes it either way. Zach kept this default on 12 November 2026.
 - **How they are put together.** `Service\BuildPackages` moves a build's parts into the package that holds the first of them in step order, works out again the cost of each package it touched, and drops one a move emptied. It makes no package and leaves every other key of one alone. It runs at priority 100, after a shop's own split, and only where there is more than one package.
 - **Express pay.** Neither plugin is in wp-env, so each one's public source was read on 11 November 2026 (`develop` branch): WooCommerce Stripe Gateway's `includes/payment-methods/class-wc-stripe-express-checkout-helper.php` (`should_show_ece_on_product_pages()` applies `wc_stripe_hide_payment_request_on_product_page( $hide, $post )`; `supported_product_types()` applies `wc_stripe_payment_request_supported_types`) and WooPayments' `includes/express-checkout/class-wc-payments-express-checkout-button-helper.php` (`is_product_supported()` applies `wcpay_payment_request_is_product_supported( $is_supported, $product )`; `supported_product_types()` applies `wcpay_payment_request_supported_types`). Both list the product types their buttons take, and a kit's type is in neither list, so the buttons are already not offered on a kit's page. The plugin answers the four filters all the same, for a shop whose code adds the type. The tests apply each filter as the plugin does; the buttons themselves are Claude in Cowork's to check on the demo.
 - **The delivery filters' shape.** The spec names `cbuild_arrival_estimate` and `cbuild_delivery_line` and not their arguments. Each is given an empty string and one array: the kit, whether the build is assembled, the lead time in the owner's words, and the total in minor units with its decimals. An array, so that a later milestone can add to it without changing the filter's arity. The shopper's address is not in it: the plugin that answers knows its own customer, and the builder holds no address. An answer is shown as plain text.
@@ -1932,5 +1932,579 @@ Carried from the review, not for this milestone:
 Zach's, answered apart from this: the coupon edges (D-130), the package default (D-133), and how the demo takes WooCommerce's updates.
 
 **Red runs and deliberate breaks** are in the commit's message and the review's table.
+
+**Status:** Accepted.
+
+### D-140 · The index job writes the parts table's rows, so no visitor pays for a reindex (#28) · 2026-11-12
+
+Issue #28, from the spec-reviewer on milestone 4, with Zach's answer of 11 November read in D-121: no visitor pays to fill a cache.
+
+- **`Port\Kits::warm()`.** After a part's own job or a batch of the reindex has indexed its parts and forgotten their rows, it reads those products from the shop and writes their rows. `Adapter\WooKits::warm()` passes over a product no kit's slot could offer, so a shop with 10,000 products and 300 parts writes 300 rows.
+- **For the job's own price context,** which is the shop's default: a background request has no shopper, so the currency, the language and the tax rates are the shop's. A visitor shown other prices (another language, a currency plugin's, other rates where a shown price goes by address) still pays once for their context. That is one request in each context, and writing every context from the job would mean knowing them all, which only a visit tells.
+- **Deleted first, then written.** The rows forgotten in the request are deleted at once, for every context, before the new ones are written. Left to the request's end, as `forget()` leaves them, the delete would take the new rows with it.
+- **Held by the benchmark.** The first request after a reindex of 2,000 parts is held to the budget and to the cold run's queries: 58 ms and 37, where it was about 490 ms and 101. The reindex goes from 0.84 s to 3.85 s in all, in the background, a batch 130 ms at its slowest (`docs/BENCHMARK.md`).
+
+**Red runs:** `IndexJobsTest::test_a_variable_products_job_indexes_its_variations_and_not_itself` and `PartsTableTest::test_the_job_that_indexes_a_part_writes_its_row_and_the_next_visitor_loads_no_product`, each "Failed asserting that two arrays are identical." With the delete left to the request's end, the second fails the same way.
+
+**Status:** Accepted.
+
+### D-141 · Where the test shop's front page spends its largest paint, and what the builder page is measured on (#7) · 2026-11-12
+
+Issue #7, owed before the builder page exists. Measured on 12 November 2026 with `npm run lhci` (Lighthouse 13.6.0, mobile profile, three runs, WordPress 7.1.4, WooCommerce 11.3.0, Twenty Twenty-Five, the plugin active).
+
+- **The numbers.** Largest paint 2,283, 2,290 and 2,323 ms; first paint 2,203 to 2,260 ms; the server's answer 103 to 216 ms; blocking time 0.
+- **The largest paint is text,** the site title in the footer (`h2.wp-block-site-title`), painted with the first paint. Nothing on the page is fetched for it.
+- **What delays it is the first paint, and that is the simulated network.** Lighthouse's phone has 150 ms of latency and 1.6 Mbit/s. Before anything paints, the page waits for what blocks rendering: jQuery and jQuery Migrate in the head (36 kB, which WooCommerce's classic scripts ask for), `woocommerce.css` and `woocommerce-smallscreen.css` (14 kB, of which the page uses under 1 %), and six more small stylesheets of WooCommerce's blocks and the theme. 31 requests and 205 kB in all, 54 kB of it the theme's font. Lighthouse puts about a second of the 2.1 s on the blocking requests.
+- **None of it is the plugin's, and none of it is wp-env's.** A shop on Twenty Twenty-Five with WooCommerce would measure the same on this profile. It is the theme's and WooCommerce's, and a shop's own theme and caching decide it. So the budget is about what the builder adds to a baseline the plugin does not set.
+- **What the builder may add.** About 200 ms before 2,500. The builder's styles must not block: they are small and in the page. Its script is a module, which never blocks. The picture's first photo becomes the largest paint, so it is in the HTML with its size, `fetchpriority="high"` and no lazy loading, where the browser finds it while the blocking requests are still loading, and it is held under what that connection carries in the time (about 30 kB).
+- **What the builder page is measured on:** a page holding the Builder block on Twenty Twenty-Five, at its clean address, with a kit whose parts have photos, made by the browser fixture. The kit's own page is measured by the browser tests, not by Lighthouse.
+- **Five runs, not three,** from the commit that points Lighthouse at the builder page. The three runs here are 40 ms apart, but D-032 saw one in three over the budget on a busy machine, and a median of five does not move with one slow run. It costs CI about a minute.
+
+The budget is unchanged. Changing it, or what it is measured against, stays Zach's.
+
+**Status:** Accepted.
+
+### D-142 · The build link: the spec's four parameters, the builder's own under an underscore, and four words no slot is keyed with · 2026-11-12
+
+`Front\BuildLink` reads and writes a build as query parameters. It is the one place that does, for the page, the no-JavaScript forms, the browser's history, Copy link and the cart's Edit build.
+
+- **The spec's format is the public one:** `cbuild[<slot key>]`, `cbuild[step]`, `cbuild[assembly]` and `cbuild[preset]`.
+- **What the forms need beside it goes under keys that start with an underscore:** `_was`, `_brand`, `_size`, `_shown` and `_replace`. A slot's key starts with a letter (`Fields::isKey()`), so these can never be read as a pick, and new ones can be added without touching any kit. They are documented as the builder's own and are left out of a shared link (`BuildLink::shared()`), which carries part IDs, the step and assembly, as the spec's Privacy section has it.
+- **`step`, `assembly`, `preset` and `review` are refused as slot keys** (`Slots::KEPT`, `document_bad_key`). The spec's three share the picks' own array, and the review is a step that is no slot's. Without this a kit with a slot keyed `step` would have links no one could read. A kit saved by 0.4.0 or 0.5.0 with such a key would stop reading; none exists outside a test site, and the eight keys the rules know are not among them.
+- **One build, one address.** A link is written in the kit's slot order whatever order it arrived in, an ID only as PHP writes a whole number (`012` and `1e1` are no IDs), and a slot the kit does not have is left out.
+- **It decides nothing.** A link is read into IDs, keys and flags, capped at the most slots a kit can have. Whether an ID is a part of its slot is the state's to say, each time the link is opened.
+- **The version is 0.6.0** from this commit, the first with something public.
+
+**Status:** Accepted.
+
+### D-143 · What the state answer gains for the builder: a card's price change, sizes, filters, the box and the notes · 2026-11-12
+
+The builder's template shows nothing the server did not work out. This is what the answer lacked for it.
+
+- **The price on a card is the change to the total** (spec: A step, P4), against the part the step counts now, which is the pick or the recommendation. It is what the build charges: the build discount off each price, rounded as a line's is, times as many as the build takes. The domain works it out (`Pricer::change()`), so the card and the cart cannot differ.
+- **The four words.** `Included` is the part the total already counts, and only that part. `Free` is any other part that costs no more, a part priced at nothing among them. `+$12.00` and `−$5.00` are the rest, the second with a minus sign. The spec gives the three words and no rule for them; this is the reading that never shows two parts as included. A part with no set size has no quantity, so no price in a build, and says nothing.
+- **With nothing counted, the change is the whole price,** written `+$60.00`. A deck is never picked for the shopper, so the deck step starts this way.
+- **A size is the spec a shopper names a part by:** a deck's width, a truck's axle, a wheel's diameter, a riser's thickness, a bolt's length, each by its slot's usual key. Bearings, grip and spacers have none, and neither has a slot keyed with a word of the owner's. The filter's value is the number and its unit (`8.25in`), which the address can carry.
+- **Filters are of the parts the step offers,** and their counts do not move when one is set, so a shopper sees what the other values hold. A list of one value is no filter. The part the step counts stays listed when a filter leaves it out: it is the checked radio, and a form that did not hold it would drop the pick.
+- **Brands are read by name in one query,** with WordPress's `suppress_filter`. Without it WooCommerce's `wc_change_term_counts` (`includes/wc-term-functions.php:640`) read each term's meta and wrote the transient `wc_term_counts` from a visitor's GET: seven queries, two of them writes. The test holds it to one.
+- **The review is a step** (`State::REVIEW`), honoured whatever the build holds. A build that is not ready shows what it lacks there.
+- **The picture is the box for now** (milestone 6): the parts the total counts, each with its photo and its label. The sentence lists their names with WordPress's own list pattern (`%l`), so a language orders and joins them its own way.
+- **`cbuild_summary_notes`** takes sentences and gives six at most, as plain text. The route's answers are `no-store`, so a note about the signed-in customer is never served to another.
+- **The published schema stops closing its objects.** The spec says a response only gains fields, and a shop's code that checked an answer against 0.5.0's schema would have refused 0.6.0's. The plugin's own contract test adds the closing back before it validates, so a field the schema does not describe still fails. This is the answer I suggested to the plan's one question; turning it back is one line in the test and seventeen in the schema.
+- **Not yet here:** the delivery line worded from WooCommerce's shipping zones where no plugin answers (the plan's step 10), and the route's own arguments for the filters, which arrive with the template that sends them.
+
+**Status:** Accepted. Zach kept the schema open on 12 November 2026.
+
+### D-144 · The builder on the server: one renderer for the kit's page and the block, one per page, and the view as the builder's own · 2026-11-12
+
+`Front\BuilderPage` renders the builder; `Front\Builder` decides what an address shows; `Front\BuilderView` words it for the template. The kit's page and the Builder block both call the renderer.
+
+- **The kit's page shows the builder where WooCommerce asks a product type for its add-to-cart area:** `woocommerce_cbuild_kit_add_to_cart`, fired by `woocommerce_template_single_add_to_cart()` (WooCommerce 11.3.0, `includes/wc-template-functions.php:2174`) and by the Add to Cart form block (`src/Blocks/BlockTypes/AddToCartForm.php:227`). One hook covers classic and block themes.
+- **The block's render is a callback, not block.json's `render` file.** `register_block_type()` merges its arguments over the metadata, so the callback is the renderer's own method. A render file would have to fetch the renderer from a global, and the plugin has no service locator (STANDARDS). The block declares `supports.interactivity`, so WordPress processes its directives after the render; the kit's page processes its own with `wp_interactivity_process_directives()`.
+- **One builder a page.** The store's state is the page's, so a second builder would show the first one's build. The block says `multiple: false`, and the renderer renders only the first one asked for, the kit's page included.
+- **The view is the builder's own document.** Every sentence, address and yes or no the template binds is worked out once, in PHP, so the template holds no rule and the script will hold no word. The template's fixed words are in the view too, so the store can re-render a step from the route's answer alone. Its fields may change in any release; what other code may rely on is the route's answer (HOOKS).
+- **`0` in a build link means a slot left empty by choice.** A slot the kit does not require starts on the part that fits best, so without a word for "none" a shopper who cleared the risers would have them back on the next page. The link writes `0` only for a slot with no pick, and a required slot ignores it.
+- **Risers are a step only when they matter:** when the kit requires them, the build holds some, or the wheels need them. A shopper is not asked about a part most builds go without. Asked for a step that is no step, the builder shows the next one. (As amended by D-146: step 3 left out the wheels.)
+- **A step past a required slot with nothing in it stops there,** with the reason linked in the error summary and `Error:` in the title (W8). A slot with nothing counted is one where nothing the shop has fits, so going on would hide why the cart is out of reach.
+- **The renderer is a boundary** (spec: Resilience). What a render throws is logged with the kit and the message, never the request, and the shopper reads one sentence in the builder's place (the spec's, from D-146). The buffers the template opened are closed, so no half builder reaches the page.
+- **A request that shows no builder builds none of its services.** `PageHooks` takes a closure for the renderer, as the state route does, and `ContainerTest` holds the builder's services to that.
+- **A list in an answer is read as a list.** The view read the answer through `Cast::map()`, which keeps string keys only, so every list in it read as empty: the steps' labels fell back to their keys, and the total's lines, the picture and the problems were missing. The page's integration test caught it; `Cast::items()` reads a list.
+- **0.5.0 is not published.** Its tag's CI run failed on the Firefox wait that #35 fixes, so `release.yml` held it. Zach chose to let 0.6.0 carry 0.5.0's changes rather than tag a 0.5.1 (#35).
+
+**Status:** Accepted.
+
+### D-145 · The demo takes WooCommerce's updates as they come, and the test sites follow · 2026-11-12
+
+Milestone 5's review found the demo on WooCommerce 11.3.0 while the newest test leg was 11.2.2, and 11.3.0 changed what a Store API cart item says (M5, S1). Zach answered how the demo takes updates: automatically.
+
+- **The test sites follow the demo, not the other way.** `.wp-env.json` and `.wp-env.tests.json` pin the newest WooCommerce release, and the oldest leg the one before it (`npm run env:oldest`). When WooCommerce ships a release, the pins move to it in the next milestone's first commit, with its integration and browser suites run, before any code leans on it. A release that changes something the plugin reads is a fix of its own, as 0.3.1 was.
+- **Where a release lands mid-milestone,** the plan's step that checks hooks in the source (`/plan-milestone`, step 3) is run again against it.
+- **Dependabot's alert on `deepmerge`** (a dev dependency under `@wordpress/scripts`, no fixed release) stays open until a fix ships, Zach's answer of the same day. The weekly canary reports it; nothing that ships reaches it.
+
+**Status:** Accepted.
+
+### D-146 · The no-JavaScript flow against the spec: risers when the wheels need them, Use these and Undo as buttons, the builder's address, and the failure's words · 2026-11-12
+
+Milestone 6's step 4 walked the flow end to end in a browser with JavaScript off (`tests/e2e/builder.spec.ts`), against the spec's Ways in and Without JavaScript. Four things in step 3 did not match it.
+
+- **Risers when the wheels need them** (spec: A step, "The risers step appears only when the wheels need risers, with 'No risers' as a choice"). Step 3 showed risers when the kit required them or the build held some. The state recommends a riser when the wheels need one, so that held while the shopper kept the riser, but a shopper who chose No risers lost the step, and the reason with it. The step now stays while a part the build counts carries `wheel_needs_riser`.
+- **Wheels that now need risers stop on that step.** The wheels step is drawn before its pick, so its Next named Bearings. Picking 58 mm wheels made risers a step, and the form went past it: the browser test reached the cart with a riser the shopper never saw. A step asked for past risers now lands on risers while the wheels need them and the shopper has neither picked them nor chosen No risers. Sending that step's form puts its choice in the address, and the shopper goes on. It is no error: a riser is recommended, to be seen.
+- **Use these and Undo are buttons** (spec: Without JavaScript, "with both as buttons"; SEO and sharing, every change of state a button in a GET form). They were links with `nofollow`. Each is now a form with the build as hidden fields, the page's own query carried as the step's form carries it. The progress list's and the review's Change links stay links with `nofollow`, as the spec has them.
+- **`cbuild_builder_url`** (the plan's public API; D-008). `Front\BuilderUrl::of()` is the kit's own page unless the shop answers with another address on the site; an address on another host, or no address, is ignored (`wp_validate_redirect()`), so the filter cannot become an open redirect. Where it names another page, the kit's page sends the visitor there on `template_redirect` with the `cbuild` query they came with, by a 302, so a shop can move its builder without browsers holding the old answer. A deck's "Make it a complete" link is that address with the deck in it, which HOOKS writes out; Skatehouse Core 2.x places it.
+- **The failure's words are the spec's:** "This builder isn't available right now." A user with `manage_woocommerce` also reads the error's message, escaped, under it ("An admin sees why"). A signed-in page is not served from a page cache, so no visitor is shown it.
+
+**For Zach.** `Front\BuilderPage`, `Front\PageHooks` and `Front\BuilderUrl` run only with WordPress loaded (the Interactivity API, `register_block_type()`, `template_redirect`, `wp_validate_redirect()`), so no unit test reaches them and Infection, which mutates covered code only, generates no mutant for them. They are proven by `BuilderPageTest` in wp-env, each fix with a deliberate break in its commit. Listing them in `infection.json5`'s excludes beside `Front/Delivery.php` says so where the floor is read. That narrows the floor's reach, which is Zach's (D-038, D-128): he left it to best practice on 12 November 2026, and they are listed, with why, as every other class that needs WordPress is (D-087).
+
+**Status:** Accepted.
+
+### D-147 · A build in the address: robots and the canonical through WordPress's filters and Yoast's, and no canonical where Yoast prints none · 2026-11-12
+
+Milestone 6's step 5, against the spec's SEO and sharing ("A page carrying them gets `noindex, follow` through `wp_robots` and a canonical link to the clean page"). `Front\SeoHooks`, in the Storefront scope, does it.
+
+- **Which pages.** A singular page holding a builder: a kit's own page, or a post with the Builder block. A `cbuild` query is enough, whatever it holds, since an address that reads as no build is still not the clean page. A page with no builder is left alone.
+- **WordPress.** `wp_robots` at 20 drops `index` and `nofollow` and sets `noindex` and `follow`. `get_canonical_url` at 20 takes `cbuild` out. WordPress's own canonical is the permalink with no query already, so this cleans one another filter wrote with the build in it.
+- **Yoast SEO 28.8, read in the zip `tools/yoast.sh` pins.** It merges its robots into `wp_robots` at `PHP_INT_MAX - 10` (`src/integrations/front-end/wp-robots-integration.php`). Where a theme or plugin takes `wp_robots` out of the head, it prints its own tag (`src/integrations/front-end-integration.php:432`) from `wpseo_robots_array` (`src/presentations/indexable-presentation.php:373`), so the plugin answers that filter too. Taking the answer away fails both of `BuilderYoastTest`'s tests.
+- **No `wpseo_canonical`.** Yoast prints no canonical on a page whose robots say `noindex` (`src/presenters/canonical-presenter.php:38`), before its filter is asked, so a hook there would never run on a build's page. Yoast does this so the two never disagree, and Google reads `noindex` with a canonical as mixed signals. The plugin keeps Yoast's behaviour rather than printing a link tag of its own beside Yoast's head. The spec's canonical is met without Yoast, and with it the page is out of the index and its `og:url`, which a shared build's card reads, is the clean page.
+- **The test visits several pages in one request.** Yoast keeps the current page's tags for the request (`src/memoizers/meta-tags-context-memoizer.php:167`), so `BuilderYoastTest` clears that between visits. Before it did, the build's page read the clean page's tags, and a deliberate break of either Yoast hook passed; with it, the break fails.
+
+**For Zach.** With Yoast active, a build's page has no canonical link, where the spec asks for one to the clean page. It has `noindex, follow` and the clean `og:url`. This follows Yoast and Google's guidance; printing one would put a second head tag beside Yoast's.
+
+`Front\SeoHooks` runs only with WordPress loaded, so Infection generates no mutant for it, as for D-146's three. Listing it in `infection.json5`'s excludes beside them narrows the floor's reach, which is Zach's (D-038): he left it to best practice on 12 November 2026, and it is listed, with why, as D-087 has every class that needs WordPress.
+
+**Status:** Accepted.
+
+### D-148 · The store shows the server's view: the state route takes a build link and answers with what the page would draw · 2026-11-12
+
+Milestone 6's step 6. The spec has the store call the state route with its five arguments and "the same template the server rendered re-renders from that answer" (How it fits; Upgrades and the public API). Two things stood in the way. The template draws a view, `Front\BuilderView`'s 700 lines and 47 strings, not the answer. And a build link holds more than the five arguments carry: a slot left empty by choice, the step's filters, how many options are shown, a preset and the review.
+
+Zach chose, on 12 November 2026, between the server sending the view, a TypeScript copy of the view with a test that the two agree, and the script handling picks alone with page loads for the rest. **The server sends the view.**
+
+- **Two arguments, added.** `cbuild[…]` is the build link exactly as a page's address holds it, read by `Front\BuildLink::read()` as the page reads it, so the route and the no-JavaScript form cannot read one link two ways. It takes the place of `picks`, `previous`, `step` and `assembly`, and beside any of them is refused, so that no request says two builds. `page` is the post the builder is on: used for the view's addresses when a visitor may see it and its Builder block, at any depth, sells this kit, and otherwise the addresses go to `cbuild_builder_url`'s page. An ID from the browser is checked as every ID is; it never names a page the visitor could not open.
+- **The answer** is `Front\Builder::show()`'s, the one the page's first render uses, with `view` added. So the first render and every later one come from one service, as the plan has it. `view` is described in `schema/state.json` as an object and marked the builder's own, liable to change in any release; the five arguments' answer is 0.4.0's and has none. The route's arguments and rate limit are as before.
+- **The store** (`assets/src/builder/view.ts`) is locked and holds the view and whether a request is out. Its moves are in `navigate.ts`, which Vitest tests with no WordPress: a pick waits 150 ms for the next (spec: Performance), a step change asks at once and cancels a waiting pick, a request a later one overtakes is aborted and its answer dropped, and anything but a view is a failure. A failure does what the page does without JavaScript: the form is sent with the button pressed in it, the link followed, or, after Back, the page reloaded (spec: Resilience).
+- **History.** A step change is an entry at the address the answer says the view is at, which the server may have moved to another step (risers, a required slot). A pick replaces the current entry. Back and Forward ask for the address the browser is at and make none. A pick the shopper moves on from within 150 ms is not written into the entry they leave.
+- **No strings.** Every word is in the view. The script is 2.9 kB before compression, and `@wordpress/interactivity` is WordPress's own module.
+- **The block** names the store as its `viewScriptModule`; the kit's own page, which has no block, enqueues the same module. `wp_interactivity_config()` gives the store the route's address, the page and the page's language.
+
+**Status:** Accepted.
+
+### D-149 · Focus, the status region and the page's title after each move · 2026-11-12
+
+Milestone 6's step 7, against the spec's Keyboard and screen readers: "Focus moves to the new step's heading on each change. The page title and the heading both say the step"; fit changes, the description and the total "announced through a polite status region that's in the page from the start, once per pick"; a blocking problem "shows an error summary that takes focus ... and the page title gets "Error:" first"; and, for the change panel, "Focus moves to the panel's heading, and the status region says how many parts changed".
+
+- **Focus after a step change,** a link or Back: the error summary where it is shown, the change panel's heading where the panel is, and the step's heading otherwise. Each has `tabindex="-1"`. Focus moves in the frame after the view is set, once the Interactivity API has drawn it. A pick moves no focus: the shopper is on the radio.
+- **The status region** says the view's `status` after a pick, the build in one sentence and its total, and after the change panel opens, how many parts changed. After any other step change it is emptied, since the focused heading is read and saying the step twice is noise. The region is in the server's markup from the start, empty.
+- **The page's title** is the step before the page's own, through one translatable pattern, `%1$s - %2$s`, so that a language may order them its own way. The view's `title` already says "Error:" first. The server writes it through `pre_get_document_title` at 20, after an SEO plugin's at 15, for a page with a build in its address, and the store after each move, with what goes before and after the step given through `wp_interactivity_config()`. The clean page keeps its own title: it is the one search engines index, and its title is the shop's to write.
+- **Its own title, asked once.** The builder asks WordPress for the page's own title with its hook standing aside (`Front\PageTitle::base()`). Yoast SEO 28.8 answers WordPress's filter by asking WordPress again (`src/integrations/front-end-integration.php:282`, `src/presenters/title-presenter.php:40`), so the hook runs inside itself. It builds the title from the page's own each time and never from what it is handed, so the step is said once; `BuilderYoastTest` asks both ways.
+- **One view a request.** `BuilderPage` works the view out once for each kit, address and page, so the title, asked for in the head, and the builder, rendered in the body, are the same and cost one state.
+
+**Status:** Accepted.
+
+
+### D-150 · Filters, Show more and the hidden parts are buttons and a disclosure in the step's own form · 2026-11-12
+
+Milestone 6's step 8, against the spec's A step ("Long lists get filters (brand, size) above them"; parts that don't fit are "hidden behind a disclosure that says how many and why") and Performance ("A slot shows 24 options at a time, with Show more").
+
+- **Buttons in the step's form,** not links or a form of their own. A filter, its clear and Show more are submit buttons named `cbuild[_brand]`, `cbuild[_size]` and `cbuild[_shown]`, so a pick the shopper has made and not yet sent travels with them, without JavaScript as with it. Each pressed filter is a hidden field too, so a pick or Show more keeps it. A filter starts the list again at 24.
+- **`_on`, the step the form is on.** A step with filters or Show more carries `cbuild[_on]`, its own slot. Pressed alone, a filter lands on that step; with Next, which names the next step as `cbuild[step]`, the link drops the filters and Show more, so a deck's width never filters the trucks. A hidden `cbuild[step]` would have done the first, but the form would then send `step` twice and leave the second for the server to pick, and it would still carry the filters on. A step with neither leaves `_on` out, so its address stays as it was. An address the server writes has no `_on`: its filters are the step's it names.
+- **Which filters.** A group shows only where the step's parts have two values or more of it. The deck's widths come first ("Start with a width"); every other step lists brands, then its size, named for its slot (axle width, diameter, thickness, length). Each button says how many parts it lists and is `aria-pressed` where it is on; its group's clear shows only while one is.
+- **Show more** asks for the next 24, and says only what is left: the answer's `more` asks for a whole page, and the button is capped at how many match. The count beside it says how many are listed of how many match.
+- **The hidden parts** are a `<details>` under the list: one reason said in its summary where every hidden part shares it, or the count with each reason listed; then each part, linked to its page, with what about it does not fit.
+- **One render a request.** `BuilderPageTest`'s pages are rendered once a test: the Interactivity API keeps one state a request and merges a second render's lists into the first's, which a real page, with one builder, never does.
+
+**Status:** Accepted.
+
+### D-151 · Preset tiles: each preset worked out by the one engine, and a sold-out part named · 2026-11-12
+
+Milestone 6's step 8, against the spec's Presets ("Up to six tiles at the start ... Each shows its picture, its total and a line on who it's for"; "A preset holding a sold-out part says so on its tile") and A step, Sold out ("A preset or link that holds one names it, and the build can't go to the cart until it's swapped").
+
+- **One engine.** `BuildState` checks and prices each of the kit's presets as a build of its own (`Service\PresetState`), with the validator and the pricer every build goes through, the kit's own assembly setting, and the parts the state has already read. No second price is worked out anywhere. With six presets and 2,000 parts, the state route's p95 went from 68.2 to 70.2 ms cold and stayed at 47 ms warm, with no query more (`StateRouteBenchmarkTest` now holds six).
+- **The answer** gives each preset its `total`, whether it is `ready`, and its `problems` in the build's own shape with the part's `name`. A part the shop no longer offers in its slot is a problem too, `part_not_in_slot`. `schema/state.json` writes that problem as a definition of its own, `presetProblem`, since WordPress's validator takes no `allOf` (`wp-includes/rest-api.php:2251`).
+- **Tiles at the start alone:** on the first step with nothing picked, which a review asked for with nothing picked stops at too. A build begun, or one that began as a preset, is the shopper's own.
+- **A tile is a GET form** whose fields are the preset's part IDs, `step=review` and `preset`, as a build link writes them, so a preset starts on the review, where the whole build and its total are, and every part is checked again on arrival. Its button is "Start from Street", a name of its own (P11).
+- **A sold-out part is named,** on the tile and in the review's error summary, as "Wheels: Builder test wheels 56 is sold out." (`Words::named()`), with the error's link to its step; the review's Add to cart stays disabled until it is swapped. A problem about no part keeps its sentence.
+- **The tile's picture** waits for step 11, where the picture is drawn; the tile holds the total, the line and any note until then.
+
+**Status:** Accepted.
+
+### D-152 · A pick that opens the change panel is a step: its own history entry, focus on the panel's heading · 2026-11-12
+
+Milestone 6's step 9, against the spec's A change that breaks later picks ("Focus moves to the panel's heading, and the status region says how many parts changed") and History ("each step change adds a history entry").
+
+- **What went wrong.** With JavaScript, a pick is sent to the route once the shopper pauses (D-148). A wider deck answered with the change panel then, before Next: the panel took the place of the step under the radio the shopper was on, so focus fell to the page's body, the title still said the step, and the panel took the deck step's history entry, so Back skipped past the step.
+- **The store says what a view is.** The navigator still decides nothing about the view (it reads its address alone), but `show` now answers how history treats the view as shown. The store turns a pick whose answer opens the panel, where none was shown, into a step: a new entry, the title, and focus on the panel's heading once it is drawn. Back leaves the panel for the deck step as the shopper left it, as it does without JavaScript, where the panel comes from Next. A pick on a panel already shown stays a pick.
+- **Use these and Undo** are the panel's GET forms, sent through the store as any step's form is, and move focus to the step they land on.
+
+**Status:** Accepted.
+
+### D-153 · The phone bar's view now, its markup with the styles · 2026-11-12
+
+Milestone 6's step 10, against the spec's The total ("On phones it's a bar at the bottom: a small picture of the board, the total, and the next step on its button ... It never covers the control in focus", W7). The summary, the delivery line and the notes came with steps 3 and 4; what step 10 adds is the bar.
+
+- **The view** (`bar`): the total, the parts list's label, and the button that moves the build on, the step's own Next or the review's Add to cart, disabled where the build cannot go to the cart, with no button on the change panel, whose Use these and Undo are forms of their own. The button names its form by ID (`BuilderView::STEP_FORM`, `REVIEW_FORM`), which the step's and the review's forms now carry, so it sends the same form with JavaScript or without.
+- **The markup waits for the styles, in step 13.** The bar is the summary shown another way at another width: beside the steps on a desktop, at the foot of the screen on a phone. Without the stylesheet that hides one of the two at each width, every page would show the total twice and two buttons with one name, which a screen reader hears and P11 forbids. So the bar's template, the stylesheet that places it, the rule that keeps it off the control in focus (`scroll-padding-bottom`) and its tests at phone width land together. The small picture on it is step 11's.
+
+**Status:** Accepted.
+
+### D-154 · The review says everything before Add to cart, and the picture's first photo is the largest paint · 2026-11-12
+
+Milestone 6's step 11, against the spec's Review and add to cart ("assembly on or off with its fee and lead time, the arrival date, the total, and the returns notice the owner writes, all before Add to cart") and The picture ("The largest paint ... an explicit size, `fetchpriority="high"`").
+
+- **The review** says assembly with its fee, its lead time, the arrival date where the shop answers `cbuild_arrival_estimate`, the total and the returns notice, in that order, all before Add to cart. Each is the summary's own sentence, so the two cannot disagree. The summary still sits beside the steps; in the page's order it comes after the review, which is why the review says them itself.
+- **The picture, for now,** is milestone 6's labelled "What is in the box" layout. Its first photo, the deck's, loads at once with `fetchpriority="high"` and its size given; the rest load lazily. Milestone 7's deck layer takes over as the largest paint.
+- **A preset's tile** shows its first slot's part's photo, the deck's, lazily, from the one cards call the answer already makes (the answer's `image` on each preset, `null` where the part has none). Milestone 7 draws each preset's board instead. This closes what D-151 left for this step.
+
+**Status:** Accepted.
+
+### D-155 · Add to cart through the Store API, with its nonce asked for at the add · 2026-11-12
+
+Milestone 6's step 12a, against the spec's Review and add to cart ("With JavaScript, Add to cart uses the Store API's `cart/add-item` and then sends `wc-blocks_added_to_cart`, so the Mini-Cart updates") and Privacy (the DOM events "a shop's own analytics can listen to, under the shop's own consent").
+
+- **The nonce.** The Store API takes a write only with a `Nonce` header made for the session (`wc_store_api`, `src/StoreApi/Routes/V1/AbstractCartRoute.php:326-349`). A nonce printed in the page would be stale on any page a cache keeps, and the builder's pages are exactly the ones a shop caches. So the add first reads the cart (`GET wc/store/v1/cart`), whose answer carries a fresh `Nonce` header (`:179`), and posts with it. One extra request at the moment the shopper adds, which no cache can spoil.
+- **Anything but a line added falls back.** A cart read or an add that fails, a missing nonce, or a network error sends the review's form as it is sent without JavaScript, to WooCommerce's own handler, which adds the build or says why as a notice. The shopper never sees a failure the server did not explain.
+- **What the page does after.** It sends `wc-blocks_added_to_cart` on `document.body`, bubbling and cancelable, as WooCommerce's own add buttons do; the Mini-Cart listens on the document (`src/Blocks/BlockTypes/MiniCart.php:404`, `:407`). It then says "The build is in your cart." in the status region, shows the same sentence with a link to the cart under the review, and moves focus there. The next view the builder shows forgets the add.
+- **The events.** `cbuild:pick` and `cbuild:added` go on the builder's own element and bubble, with IDs alone (docs/HOOKS.md, DOM events). The plugin listens to neither and sends nothing anywhere.
+
+**Status:** Accepted.
+
+### D-156 · Copy link: the build's own address in a field, and a button where the browser can copy · 2026-11-12
+
+Milestone 6's step 12b, against the spec's Review and add to cart ("Copy link makes a build link, shareable without an account", P12) and How a build travels.
+
+- **The link is the view's own address,** the one the page's history holds: the kit's builder page with the build in `cbuild[…]` and the step. It names parts by ID and nothing of the shopper (spec: Share links), and opens the same build for anyone, signed in or not. Nothing is stored to make it.
+- **A field without JavaScript, a button with it.** A button that copies needs the Clipboard API, so without JavaScript it would do nothing. The review therefore always holds the link in a read-only field labelled "Link to this build", which any shopper can select and copy; the Copy link button beside it is `hidden` until the store finds `navigator.clipboard.writeText`. A copy says "Link copied." in the status region.
+- **A refused copy** (no secure page, or a browser that asks the shopper first and is told no) focuses the field and selects the link, so the shopper's own copy takes it.
+- **Not the Web Share API.** `navigator.share` would be a second way to do the one thing the spec asks for, Copy link, with its own support to test on each engine. A shop that wants a share sheet can add one beside the field.
+
+**Status:** Accepted.
+
+### D-157 · Edit build: a link on the kit's line, and an add that replaces · 2026-11-12
+
+Milestone 6's step 12c, against the spec's Review and add to cart ("After adding, the cart line carries an "Edit build" link that reopens the builder. Saving there replaces the build in the cart") and the plan's risk line ("Edit build replaces by adding first").
+
+- **One link for three carts.** The kit's line gets one item data entry whose `display` is the link. Checked in WooCommerce 11.3.0: the Store API passes each item data value through `wp_kses_post` (`src/StoreApi/Schemas/V1/CartItemSchema.php:258`); the Cart and Checkout blocks and the Mini-Cart print it through `sanitizeHTML` with `a`, `href` and `class` allowed (`assets/client/blocks/cart.js`, `mini-cart-contents.js`); a classic cart prints it through `wp_kses_post( wpautop() )` (`templates/cart/cart-item-data.php:24`). No script and no template override.
+- **What the link holds.** The kit's builder (`BuilderUrl::of`, so `cbuild_builder_url` holds), at the review, with the build's part IDs, assembly, and `_replace`, the build's own `id`, a random UUID that names nothing outside the shopper's own cart. The review's form sends it on as `cbuild[replace]`, by the Store API with JavaScript and by WooCommerce's handler without.
+- **Take out, add, or put back.** `BuildCart` remembers which build a build taken in the request replaces. The build is judged with the old one's lines left out of the stock count, since they go once it is in. When its kit's line is added, the old build's lines are taken out first, so WooCommerce's own stock check (`WC_Cart::add_to_cart()`, which counts the cart's lines) does not count them beside the new parts: a build holding the last of a part can still be edited. A part WooCommerce will not add takes the new build out and puts the old one back with the cart's own restore, as it was, at the end of the cart, where WooCommerce's Undo puts a line back (`WC_Cart::restore_cart_item()`). A build the cart refuses never reaches the cart. The shopper never ends up with neither. A `replace` naming nothing in this cart takes nothing out, so a forged one can do no more than an add can.
+- **The shared link drops the builder's own keys.** Step 12b's field held the view's own address, which, on a page opened from Edit build, carries `_replace`, and on any page may carry `_was`, `_brand`, `_size` and `_shown`. The spec's Share links "carry part IDs, the step and assembly on or off, never a customer, an order or a saved build's ID". The review's `link` is now `BuildLink::shared()` at the review: the picks, the step and assembly alone, and Copy link copies it. The milestone's audit (should-fix 15) found the review writing its own, which kept the preset that `shared()` drops; the spec's list has no preset, and a preset in a link only keeps the tiles hidden, which a link with picks does anyway, so the one rule is `shared()`'s.
+- **Quantity, Zach's answer.** The edited build keeps the quantity the cart held of the build it replaces: a shopper who had 3 and swaps the wheels has 3 after. It is read from the cart on the server, by the build's ID, not carried in the link, so the link stays as it is, a shared one gives nobody a quantity, and nothing sent sets it. The 3 are judged against the shop's stock as any add is; too few refuses the edit and leaves the old build. A request asking for more than the cart held is taken at the larger. Zach chose best practice ("if thats best practice make it so"): an edit in the cart should not undo a choice the shopper made there.
+
+**Status:** Accepted.
+
+### D-158 · The builder's page brings the carts' line styles · 2026-11-12
+
+Milestone 6's step 12d, closing what D-132 left for this milestone ("A build added from a page with no build in the cart has its styles from the next page on").
+
+- **The gap.** `Cart\ShowHooks` puts its few inline rules in a page only when the cart holds a build as the page is drawn, so that a shop page gets nothing of the plugin's (spec: Performance). With step 12a, a shopper's first build reaches the cart from the builder's page without a page load, and the Mini-Cart in that page's header would draw its parts unindented until the next page.
+- **The fix.** The builder's page asks for the styles whenever it renders a builder, through `ShowHooks::styles()`, the same handle with no file and the same rules. It is one `<style>` element of about 300 bytes, on pages that already load the builder's own script and styles; a page without a builder still gets nothing, and the smoke test that holds it to that is unchanged.
+- **Front calls Cart directly.** Both are in deptrac's hooks layer, so no new hook or public API is needed for it.
+
+**Status:** Accepted.
+
+### D-159 · The builder's stylesheet, and how a theme restyles it · 2026-11-12
+
+Milestone 6's step 13, its first part, against docs/STANDARDS.md's CSS rules and the plan's accessibility line (forced colours, reflow, text spacing, targets).
+
+- **Where it is built and loaded.** `assets/src/builder/style.scss`, imported by the block's editor script, which wp-scripts extracts to `build/builder/style-index.css` with its right-to-left twin. block.json names it as the block's `style`, so WordPress loads it wherever the block renders, and in the editor's preview. The kit's own page has no block, so `BuilderPage` enqueues the same handle. The budget tool's comment named `style-view.css`, which a script module's build would only make with a stylesheet imported by the module itself; it measures every stylesheet either way. 1,871 B compressed, of 10 kB.
+- **Stylelint's class pattern.** `@wordpress/stylelint-config` allows only hyphenated classes, and the standards ask for BEM. `.stylelintrc.json` now allows BEM under `cbuild-` (and WordPress's own `screen-reader-text`) and nothing else, which is narrower than the rule it replaces: a class of another prefix is now an error. Its two blank-line rules take Stylelint's own `first-nested` exception, since Prettier, which owns formatting here, takes out the blank line before the first rule of a block and the two would otherwise never agree.
+- **Two rules outside `:where()`.** `.cbuild [hidden] { display: none }`, because every piece the builder hides is hidden by the attribute and a `display` of the builder's or a theme's would show it; and `.cbuild .screen-reader-text`, so the status region stays off screen in a theme that defines no such class.
+- **Colour without knowing the theme.** Every colour is the theme's preset or the text's own colour mixed with transparency, so the builder reads on a dark theme as on a light one without a dark mode of its own. The one colour of its own, the red of a part that does not fit, is only ever a border beside words that say so, so its contrast on a dark ground costs nothing.
+- **Targets.** Buttons are at least 2.75rem (44 px) each way; radios and the links that act as controls at least 1.5rem (24 px), WCAG 2.2's 2.5.8. A link inside a sentence is exempt and left as text.
+- **The custom properties are public.** Sixteen `--cbuild-*` properties, listed in docs/HOOKS.md. The API surface tool now reads every `--cbuild-*` a stylesheet defines, so one cannot be renamed or dropped without the snapshot, HOOKS and the changelog. Motion's two come with motion.
+- **What the tests hold.** The target and forced-colour tests fail on the page without the stylesheet; the reflow and text-spacing tests pass on the bare page and hold the styles to not breaking it. Forced colours run in Chromium only, the one engine Playwright can put in that mode.
+
+**Status:** Accepted.
+
+### D-160 · The phone bar: sticky, one of each button, and focus kept clear · 2026-11-12
+
+Milestone 6's step 13, its second part, against the spec's The total ("On phones it's a bar at the bottom: a small picture of the board, the total, and the next step on its button ... It never covers the control in focus"), W7 and P11. D-153 made the bar's view and left its markup for the styles.
+
+- **Sticky, not fixed.** The bar is the builder's last element, `position: sticky` at the foot of the screen. It stays in reach while the shopper is in the builder and stops where the builder ends, so it never sits over the theme's footer or its links, which a fixed bar would cover for the rest of the page.
+- **Which shows follows the screen, not the builder.** The bar shows below a screen 48rem wide, and the summary beside the steps everywhere else, each hidden by a rule outside `:where()`, so a theme's `display` on a `div` or an `aside` cannot show both. A bar is a thing of the screen's foot, so it follows the screen; the layout of the cards still follows the builder's own width.
+- **One button of each name (P11).** On a phone the step's own Next and the review's Add to cart are hidden, and the bar's are the only ones; a test holds every visible button in the builder to a name of its own at both widths. The bar has two buttons, one per form, because a button's `form` is set by its attribute and cannot be bound; the view says which is shown (`onStep`, `onReview`).
+- **The small picture** is, for now, the picture's first photo, which links to the picture (`#cbuild-picture`, which takes focus). Milestone 7 draws the board.
+- **The parts list** is a disclosure on the total, opening above the bar, from the summary's own rows, so it works without JavaScript and leaves the bar's button where the thumb is.
+- **Focus kept clear: the page's padding.** The first try gave the builder's controls a `scroll-margin`, and the browser test found a preset's button 11 px under the bar: a browser scrolls a focused control only when it is outside the scrolling box's padding, so the padding has to be the page's. `:root:has(.cbuild .cbuild-bar:not([hidden]))` gets `scroll-padding-block-end` below 48rem: the one rule outside the builder's root, which the spec's own words require, and only while a bar is shown. The bar is `border-box`, so its height is the property's and the padding clears it.
+- **And the script, for Firefox.** Firefox scrolls a focused control only once it leaves the screen, whatever the padding, so a button partly under the bar stayed there. The store's `reveal`, on `focusin`, scrolls a control the bar overlaps into view, which honours the padding. Without JavaScript in Firefox a control can be partly under the bar: WCAG 2.4.11 (not entirely hidden) still holds there, the spec's stricter "never covers" does not. Chromium and WebKit need no script.
+
+**Status:** Accepted.
+
+### D-161 · Motion: three movements, the browser's view transition, nothing under reduced motion · 2026-11-12
+
+Milestone 6's step 13, its third part, against the spec's Motion (150 to 250 ms, easing out, `transform` and `opacity` only, nothing that blocks a tap or loops, nothing under reduced motion).
+
+- **Three movements, no more.** The chosen card settles (scale 0.97 to its size), a part new to the picture slides up into place, and a step crosses over to the next. Each is 200 ms by default, with a decelerating curve, `cubic-bezier(0.2, 0, 0, 1)`, as the two custom properties `--cbuild-duration` and `--cbuild-ease`.
+- **The browser's view transition, not a script's animation.** The store's `show` wraps the change of view in `document.startViewTransition` where the browser has it and the shopper allows motion, and changes the view at once otherwise, so a browser without the API loses nothing but the crossing. The update waits one task for the Interactivity API's render, which runs on a microtask, before the browser takes the new picture. Each picture item is `view-transition-name: match-element` with the class `cbuild-part`, so a part kept moves with the view and a new one arrives by `cbuild-arrive`.
+- **Timing on the page's root.** The view transition's pseudo-elements hang off `:root`, not `.cbuild`, so their rules read the two properties with the same values as fallbacks. A theme that changes them sets them on `:root` too; HOOKS says so.
+- **Nothing in the way of a tap.** `::view-transition` takes no pointer events, so a tap during a crossing reaches the page beneath.
+- **Under reduced motion,** every rule is inside `@media (prefers-reduced-motion: no-preference)`, and the store asks `matchMedia` before starting a transition. A browser test watches the page frame by frame and finds no animation and no transition.
+- **The `transform` and `opacity` rule** is held by the browser test for the builder's own keyframes. The browser's own view transition groups animate their box's size as well as its place; between the old and new view the boxes are the same size, so only `transform` changes, but the test does not hold the browser's keyframes to the rule. It does hold every animation, the browser's included, to 150 to 250 ms and one iteration.
+- **The card settles on load as well** when a card is checked as the page opens (a build link): one 200 ms settle, which the spec's bounds allow, and simpler than marking the shopper's own pick.
+
+**Status:** Accepted.
+
+### D-162 · Visual snapshots in Playwright's container, three themes by cookie, and the bar's ground on a dark classic theme · 2026-11-12
+
+Milestone 6's step 13, its last part, against docs/AUDIT.md ("Visual snapshots of the builder's main states on Kadence, Storefront and Twenty Twenty-Five, in dark and light ... Run in CI's Linux container only; baselines change only on purpose") and the roadmap's Snapshots line.
+
+- **Playwright's own image, locally and in CI.** `tools/visual.sh` runs the `visual` project in `mcr.microsoft.com/playwright:v<version>-noble`, the version read from the installed `@playwright/test`, on the host's network, so it reaches wp-env's site. A baseline made on a Mac is then the picture CI takes: the same Chromium, fonts and renderer. A run on the bare runner or on macOS would compare different fonts. The `visual` project exists only where the script sets `CBUILD_VISUAL`, so `npm run test:e2e` never runs it by accident. CI runs the script on the newest leg where every browser project runs. Pulling the image costs about a minute there.
+- **The site made ready on the host.** The container has no wp-env, so the plugin, the default theme and the shop's fixture moved from Playwright's global setup into `tools/e2e-site.sh`. The global setup calls it, and the script calls it before the container starts and tells the container's setup to skip it (`CBUILD_E2E_SITE_READY`).
+- **Three themes without switching the site's.** A test mu-plugin, `cbuild-e2e-theme.php`, reads two cookies for that request alone: the theme (through the `stylesheet` and `template` filters) and dark colours. Dark is each theme's own: Twenty Twenty-Five's Evening style; a dark palette through Kadence's `kadence_palette_option` (`inc/components/options/component.php:5015`); and dark defaults through Storefront's `storefront_setting_default_values`, since Storefront answers each `theme_mod_` itself with its defaults where the site set none (`inc/customizer/class-storefront-customizer.php:90`). Cookies, not a header, because a header on a cross-origin request forces a preflight (tests/e2e/support/test.ts).
+- **What is pictured.** The builder's own box with the theme's ground behind it, at its start and at a full build's review, at 1280 and 390 pixels: 24 pictures. The viewport is made as tall as the page first, because a box taller than the screen is pictured in pieces and a theme's fixed bar is drawn into the middle of it. Motion is reduced, fonts loaded and photos decoded first. A second run against the first baselines matched all 24.
+- **What they found: the bar's ground.** On Storefront's and Kadence's dark colours the phone bar was white with the theme's light text on it, and its total all but unreadable. `--cbuild-ground` fell back to `Canvas`, which is white unless the page declares a dark `color-scheme`, which classic themes do not. Where the theme names no base colour, the ground is now `contrast-color(currentcolor)`, so a dark theme's bar is dark, and the bar's words are `--cbuild-on-ground`, the builder's own text. Chromium, WebKit and Firefox at the versions Playwright 1.65 runs support `contrast-color()`. A browser that does not gets `Canvas` and `CanvasText` together, behind `@supports`, which always read. A browser test runs axe's contrast rule on the bar, closed and open, on all three themes' dark colours.
+
+**Status:** Accepted.
+
+### D-163 · The phone bar among a theme's layout: overflow that stops a sticky box, and a theme's own bar at the foot · 2026-11-12
+
+Found by step 13's snapshots (D-162) and then measured on Storefront at 390 pixels: halfway down the builder, the bar's top was at 2,004 px on a 700 px screen, and every point of it was under something else.
+
+- **Why it did not stick.** Storefront gives `body` and `.site` `overflow-x: hidden`. A box with `hidden` on one axis is a scroll container, its other axis computed to `auto`, even when it never scrolls, and a sticky box sticks within its nearest scroll container. `.site` grows with the page, so the bar stayed at the builder's end.
+- **The fix, in the store, for any theme.** On start and on each resize, while the bar is shown, each ancestor of the builder whose computed overflow is `hidden` on an axis gets `clip` on that axis, inline. `clip` clips the same and is not a scroll container, so the bar sticks. `hidden` also made a block formatting context, which `clip` does not, so a box whose display is `block` gets `flow-root`, which is the same box with that context: floats it held stay held. A box that scrolls (`auto`, `scroll`) and the page's root are left alone.
+- **Not in the stylesheet.** CSS cannot ask what an ancestor's overflow is, and `clip` on every ancestor would cut what a theme lets out sideways on purpose, such as Twenty Twenty-Five's full-width blocks, which reach past their parent with negative margins.
+- **A theme's own bar at the foot.** Once the builder's bar stuck, Storefront's handheld bar, `position: fixed` at the bottom with a z-index of 9999, covered it. The store measures the tallest fixed box outside the builder that reaches the screen's bottom edge and is under half the screen tall, and sets its height as `--cbuild-bar-offset` on the page's root. The bar's `inset-block-end` and the page's scroll padding read it, so the bar and the control in focus clear both bars. A theme may set the property itself.
+- **Without JavaScript,** on a theme like Storefront the bar stays at the builder's end, and its buttons are there to reach. The spec's "bar at the bottom" then holds only with JavaScript on such a theme.
+- **Tests.** A browser test scrolls halfway down the builder on each theme and holds the bar wholly on screen with nothing of the theme's over it. It failed on Storefront before the fix (`onScreen: false`, `covered: 6`), and again (`covered: 6`) with the measurement broken on purpose. Vitest covers the module's cases.
+
+**Status:** Accepted.
+
+### D-164 · Step 14: the pick's paint on a slowed CPU, a guest's geolocation measured, and no express buttons on a kit's page · 2026-11-12
+
+Milestone 6's step 14, with the two items D-139 carried from milestone 5's review. Lighthouse on the builder page is decided apart, with Zach (see the review).
+
+- **A pick painted within 100 ms on a CPU slowed four times** (Quality bar). A Chromium test slows the CPU four times through the DevTools protocol and reads the browser's own Event Timing entries, from the input to the next paint, for three picks in a row. On this Mac: the first pick 80 ms at 1280 pixels and 48 ms at 390, the next two under 16 ms, which the browser does not report. The handlers take about 5 ms of the first pick; the rest is the first restyle and paint after the change, with motion on or off. The limit is the spec's, held in CI too: a runner slower than this Mac that fails it is a finding, not a flaky test.
+- **A guest's geolocation** (D-139). WooCommerce geolocates a shopper with no API fallback (`wc_get_customer_geolocation()`, `includes/wc-core-functions.php:1189`): from MaxMind's database through `woocommerce_geolocate_ip`, or a CDN's country header. Without either it asks up to four services for the server's own public address, one after another with a 2-second timeout each (`includes/class-wc-geolocation.php:116`), and keeps the answer a day under the guest's address. The route makes the customer only where a shown price depends on the address (D-139), and an integration test holds what follows, with the services answered locally: prices shown without tax, no request; with tax and no MaxMind, one request on a guest's first, none on the next; with MaxMind, none. That one request is what any page of such a shop costs the same guest; it lands on the state route only where the page itself was served from a page cache, so PHP did not run for it. A real service's time is the service's and was not measured here.
+- **No express buttons on a kit's page.** PayPal Payments 4.2.2 draws its buttons on a product's page at `woocommerce_single_product_summary` (priority 31), with Apple Pay's and Google Pay's under them on its own render action, and its Pay Later message, unless `woocommerce_paypal_payments_product_supports_payment_request_button` says no (`modules/ppcp-wc-gateway/src/Helper/ProductPaymentSupportTrait.php:33`). It asks whether the product is external or grouped and in stock, not whether it can be bought, so each offered the kit alone. Its add then calls `WC()->cart->add_to_cart()` directly (`modules/ppcp-order-endpoints/src/Helper/CartProductsHelper.php`), which the cart refuses for a kit (D-128; `CartAddTest` holds it), so a shopper met a button that failed and a "Pay in 4" on the assembly fee. `KitHooks::express()` answers no for a kit and passes every other answer on. Read from the released source; the buttons themselves need a connected PayPal account, which CI cannot have, so Claude in Cowork's review is asked to look at a kit's page on a shop that has one. Other express buttons (WooPayments, Stripe) were not part of the review's ask and are not looked at here.
+
+**Status:** Accepted.
+
+### D-165 · Lighthouse gates the builder page under Kadence, and reports it under Twenty Twenty-Five · 2026-11-12
+
+Zach's answer, 12 November 2026: "Kadence gates". Until milestone 6 Lighthouse read the shop's front page, since there was no builder to read (D-032). Pointed at the shop fixture's builder page, Twenty Twenty-Five failed its layout shift, 0.133 against 0.1, and the one shift's cause was "Web font loaded": the theme's own Manrope, arriving after the first paint on Lighthouse's slowed network, moves the whole content group. With the font files blocked the same page shifted 0.000. Under Kadence, which uses the system's fonts, it shifted 0.000; under Storefront 0.016, with an LCP of 3.06 s on one run, since Storefront loads its fonts from Google.
+
+- **Two runs, by the e2e theme mu-plugin's cookie** (D-162), each a median of three on the mobile profile. This replaces D-141's five runs of one page: two themes at three each make six runs in all, so the gate's own median is of three (audit of milestone 6, minor M4). Twenty Twenty-Five runs first, with layout shift a warning and LCP, TBT and SEO errors. Kadence runs second, with all four errors: it is the gate, and it measures what the builder adds to a page.
+- **The page is the fixture's builder page,** a blank start with its presets and the deck step's parts, which `tools/lhci.sh` reads from `tmp/e2e-builder.json` after making the site ready (`tools/e2e-site.sh`). `CBUILD_LHCI_URL` still points it elsewhere.
+- **Measured on 12 November 2026** (medians): Twenty Twenty-Five LCP 2.32 s, CLS 0.133, TBT 0 ms, SEO 0.92; Kadence LCP 2.00 s, CLS 0.000, TBT 4 ms, SEO 0.92.
+- **No limit moved.** The four limits are the Quality bar's, unchanged; what changed is the theme the gate is read on, so a theme's font is not counted as the builder's.
+
+**Status:** Accepted.
+
+### D-166 · The delivery line worded from WooCommerce's shipping zones, for an address the shop holds · 2026-11-12
+
+The audit of milestone 6 (both reviews, blocker): the spec's The total says "With no answer, the builder words the line itself from WooCommerce's shipping zones", D-143 left it "not yet here", and nothing picked it up, while `docs/HOOKS.md` said it was done.
+
+- **Only where nobody answers.** `Front\Delivery::said()` asks `cbuild_delivery_line` first, as before; an empty answer is worded by `Front\ShippingWords` from `Port\ShippingZones`, whose adapter is `Adapter\WooShippingZones`. Creative Checkout's answer, on Skatehouse, stays the line.
+- **The shopper's held address, never a guess.** A signed-in customer's saved shipping country, or a session customer who has worked out shipping (`WC_Customer::has_calculated_shipping()`). WooCommerce's default location for a guest is the shop's own or a geolocated one, and "Shipping to Ontario" for a shopper in Alberta would be a cost that is wrong, so it is not said. A guest with no session is given none: no session, no customer, no lookup for a line nobody asked for.
+- **The words.** Free shipping that asks nothing, or a build at or past its least amount: "Free shipping to Ontario." Short of it: "Spend $18.00 more for free shipping to Ontario.", the spec's own example. Otherwise the zone's cheapest flat rate: "Shipping to Alberta: $15.50." The place is the province or state as WooCommerce names it, else the country; amounts through the Money port.
+- **Only what a shopper would pay as set.** Free shipping that asks for a coupon is not said, since the builder cannot know of one. A flat rate whose cost is a formula (`10 + [qty]`) is not said. A taxable flat rate is not said where the cart shows prices with tax, since the amount set is not what is paid. The least amount is compared with the build's total, where WooCommerce compares the cart's subtotal: for a cart holding only the build they agree, and with more in the cart free shipping comes sooner than said, never later.
+- **Tests.** `ShippingWordsTest` holds the wording; `DeliveryTest` holds the zones, the held address, the guest with no session, a plugin's answer and the rates not said. Without the fix the first failed: `'Spend $18.00 more for free shipping to Ontario.'` expected, `''` given.
+
+D-143's "not yet here" is answered by this.
+
+**Status:** Accepted.
+
+### D-167 · axe on the error summary quarantined in Firefox · 2026-11-12
+
+The audit of milestone 6 (blocker): axe was to read every state the builder shows. In Playwright 1.65's Firefox, at desktop and phone width, the page crashes (`frame.evaluate: Page crashed`) when axe reads the error summary the store has drawn: Next pressed on an empty deck step.
+
+- **Not the builder's markup.** The same state served by the server passes axe in Firefox. Chromium and WebKit pass axe on the drawn state with no violations. The presets' markup in the two differs only in the order of the attributes the Interactivity API wrote on the inputs it re-created.
+- **What was ruled out.** Motion (the same under reduced motion), the scroll and the viewport (the same in view, and 2400 px tall), and the browser's own calls axe makes on the button it crashes over (`elementsFromPoint`, `getClientRects`, a range's rects, computed style), none of which crash alone. Six rules crash it each alone, all over `.cbuild-preset__start`.
+- **The quarantine.** Firefox skips axe on that one state, with an annotation. Every other state, in every engine, and that state in Chromium and WebKit, is still read. Issue #36 holds it, to close when a Playwright or axe-core release no longer crashes.
+
+**Status:** Accepted.
+
+### D-168 · One answer to which kit a page shows · 2026-11-13
+
+Milestone 6's audit, should-fix 14 and minor 16. The page's title (`PageHooks::title`), its robots and canonical (`SeoHooks::isState`), the redirect from a kit's page (`PageHooks::elsewhere`) and the state route's links (`StateRoute::base`) each decided for themselves whether a page held a builder, three ways: `PageTitle::kit`, `StateRoute::holds` and `has_block()`. None looked inside a synced pattern, so a builder put in one was indexed in every state, and the logic sat in hooks that Infection leaves out.
+
+- **One service.** `Front\BuilderPlace` answers which kit a post shows (`kit()`) and whether a post holds a kit's builder (`holds()`). The hooks call it in one line. It reads posts through a port, `Port\BuilderPosts` (`Adapter\WpBuilderPosts`: `get_post()`, `parse_blocks()`, WooCommerce's product type), so Infection mutates it; every mutant is killed.
+- **What a page shows.** A product shows its kit when it is a kit, and nothing otherwise, whatever its description holds. Any other post shows the kit of its first Builder block, at any depth and inside a synced pattern (`core/block`'s `ref`), and a pattern that holds itself, or two that hold each other, are each read once. A first Builder block that names no kit shows none, as it renders none: `has_block()` called such a page a state, which it no longer is.
+- **Left out.** A builder placed in a block theme's template, not in the post, is not found: a template is not the post's content, and reading the theme's templates on every request is not worth the case. The kit's own page is the builder's place by default (D-008).
+- **Not public.** `PageTitle::kit` was internal and is gone; its cases are `BuilderPlaceTest`'s.
+
+**Status:** Accepted.
+
+### D-169 · A kit's slot keyed with a word the build link keeps is renamed on upgrade · 2026-11-13
+
+Milestone 6's audit, should-fix 19. 0.6.0 refuses a slots document with a slot keyed `step`, `assembly`, `preset` or `review` (D-142), which 0.4.0 and 0.5.0 accepted. A kit saved with one would stop reading on upgrade: its page would show "This builder isn't available right now" until a manager found and changed the key.
+
+- **A migration, `reserved_slot_keys_1`.** Schema version 4. For every kit (`Port\KitMeta::ids()`, all but the bin and auto-drafts), each such key becomes `<key>_slot`, counted on (`_slot_2`, `_slot_3`) where that is taken, in the slots and in each preset's picks. The label the shopper reads is kept. The renaming is `Install\Migrations\ReservedSlotKeys`, beside the migration since the Install layer may not depend on Service, and mutated; the migration reads and writes through `Port\KitMeta` (`Adapter\WooKitMeta`, through `StoredKit` and the product's CRUD, so WooCommerce's caches are cleared as a save clears them). A second run renames nothing.
+- **Content, not a key.** AUDIT.md says settings and meta keys are never renamed in place; none is. The meta keys stay; a value inside one changes, as an editor's save would.
+- **Rolling back.** 0.5.0 reads a slot keyed `review_slot`, so rolling back one minor release leaves a working shop.
+- **What else held the old key.** A build in a cart picked under the old key is judged again when the cart is checked, as every build is against the kit as it now is (`BuildLines::tidy()`), and refused there with the cart's notice if it no longer passes. An order keeps what it held, as history. A shared link with the old key fills nothing for that slot, as a link to a part no longer offered does.
+- **Said.** Each kit renamed is logged once, as a warning: the kit's ID and what became what. PRIVACY.md has the row.
+- **Not `Port\Kits`.** The runner is built on every request, so a migration's dependencies are too; Kits would build the index's services with it, which issue #19's test holds no request does. `KitMeta` answers the kits' IDs itself, and `WooKits::ids()` asks it, so one query says which products are kits.
+
+**Status:** Accepted.
+
+### D-170 · The filters are a drawer on a phone · 2026-11-13
+
+Milestone 6's audit, should-fix 21 (spec review S6). The spec's A step: "Long lists get filters (brand, size) above them, and in a drawer on phones." The filters were a `<details>` rendered `open` at every width.
+
+- **One element, two widths.** The `<details class="cbuild-filters">` is rendered closed, its summary "Filter the parts" the drawer's handle. From 48rem of the screen's width, `::details-content` is shown open or not and the summary is hidden, so a wider screen sees the filters above the list as before. Chromium, WebKit and Firefox in Playwright all support `::details-content`; a browser without it shows the closed drawer, which still works.
+- **The screen, not the builder.** A phone is the screen's width, as for the phone bar (D-163). The builder's own width lays out the summary beside the steps, but a builder in a theme's 645px content column on a desktop is not a phone, and hiding its filters there would only add a click.
+- **Open while a filter is pressed.** The view's `filters.open` is true when any filter is pressed, bound with `data-wp-bind--open`, so a phone shopper who pressed one, with or without JavaScript, sees which. A drawer the shopper opens stays open across the store's redraws, since the bound value does not change.
+- **Tests.** `BuilderTest` (open only when pressed), `BuilderPageTest` (closed with nothing pressed, open with a width pressed), and builder.spec at 390px (one row high, opens on its summary) and at 1280px (the filters shown, no summary), in every engine. The tests that press a filter open the drawer first where it is shown.
+
+**Status:** Accepted.
+
+### D-171 · CI's benchmark limits are the budgets scaled by the runner's speed · 2026-11-13
+
+Issue #38. CI run 43417214571 failed the state route's fixed CI ceiling: "The state route, cold. Failed asserting that 125.526158 is less than 120.0." The runner was slow throughout, not the route: against milestone 5's green run (43153512247), the cold median went from 81.8 to 113.8 ms, and the export, the check and the dry run, which milestone 6 did not change, ran about 40 % slower too. A fixed ceiling fails on a slow runner at random, each time for the price of a run.
+
+Zach chose on 13 November 2026: "allow for the runners speed".
+
+- **The runner is timed first.** `Tests\Support\RunnerSpeed` times a fixed piece of work of the route's kind (2,000 rows built, sorted and JSON-encoded, and 120 prepared reads of the database), 21 times after two that warm it, and takes the median. On the Mac the figures in `docs/BENCHMARK.md` come from it is 7.05 ms (five runs, 6.81 to 7.37 ms).
+- **The limit is the budget times the runner's scale,** its median over the Mac's, kept between 1 and 2.5. The state route is held to 80 ms times that, and the Store API's add and cart read to 300 ms times that. This replaces D-124's 120 ms and D-134's 450 ms.
+- **Only where `CBUILD_BENCHMARK_SHARED=1`,** which CI sets. On the Mac the budgets hold as they are, as D-124 set.
+- **Why a cap.** At 2.5 the state route's limit is 200 ms. A runner slower than that, or a change that slows the route by more than the runner's own slowness, still fails, and the query counts are held everywhere as before.
+- **Said.** Each run prints the runner's figure, the Mac's, the scale and the limit, beside the benchmarks' own lines.
+
+**Red run.** CI run 43417214571, as above. **Deliberate break:** the scale capped at 0.8, the route's limit 64 ms: "The state route, cold. Failed asserting that 71.108169 is less than 64.0." The scale's ends were run too: a Mac figure of 2.0 gave the cap, 2.5 and 200 ms, and of 14.1 gave 1 and 80 ms, both passing.
+
+**Status:** Accepted.
+
+### D-172 · Only a new step crosses over · 2026-11-13
+
+CI run 43461092467 failed on WebKit at a phone's width: "Motion › settles the chosen card and crosses steps over" picked a deck, pressed the bar's Next: Trucks, and was still on "Step 1 of 7: Deck" five seconds later. Every view the route answered was drawn inside a view transition (D-161), the pick's own answer too, and while a transition runs the browser sends the screen's taps to its overlay, not the page. A shopper who tapped Next as the pick's answer came back lost the tap.
+
+- **The spec's motion is the step crossing over.** The store now starts a transition only when the view's step changes, or the change panel opens or closes (a step of its own, D-152). A pick, a filter, the assembly switch and Show more, which stay on the step, are drawn at once. The card's settle is the stylesheet's and runs as before.
+- **Tests.** `store.test.ts`, "shows a view on the same step at once, and crosses over to the change panel". **Red run:** "expected [ [Function] ] to have a length of +0 but got 1" at `store.test.ts:989`. **Deliberate break:** without the change panel's condition, "expected [] to have a length of 1 but got +0" at `store.test.ts:996`.
+- **The same run** also showed the newest leg's 648 browser tests need more than its 60 minutes on a slow runner (cancelled at test 505 of 648, 44 minutes in), so its limit is 90; and the axe test's dozen states take more than a test's 60 seconds on WebKit there, so it is marked slow.
+
+**Status:** Accepted.
+
+### D-173 · The Cart and Checkout blocks wait for the script that groups a build · 2026-11-13
+
+Cowork's review, blocker 1. On the demo (Kadence, WooCommerce 11.3.0) the Cart block drew before `lines.js` had registered its line filters, on every fresh load: no row was grouped, each part kept a remove button, and pressing one took out the whole build. The page printed `wc-cart-block-frontend` before `cbuild-cart`, since the plugin enqueued its script from `render_block_woocommerce/cart`, after the block had enqueued its own. The block reads the filters on its first drawing and is not drawn again until the cart changes.
+
+- **WooCommerce's integration registry.** An extension registers an integration on `woocommerce_blocks_cart_block_registration` and `woocommerce_blocks_checkout_block_registration` (`src/Blocks/Integrations/IntegrationRegistry.php:51`), and WooCommerce makes its scripts dependencies of the block's frontend script (`src/Blocks/BlockTypes/AbstractBlock.php:211-215`). `Cart\LinesIntegration` is that integration, so the browser runs `lines.js` before the block's script whatever the theme or the network.
+- **Nothing on a page whose cart holds no build.** The integration registers the handle with no file. `ShowHooks::lines()`, at `wp_enqueue_scripts`, gives it the file where the cart holds a build; elsewhere the block waits on a handle that prints nothing (D-010, D-132).
+- **Why the browser test passed.** In wp-env the Cart block draws only once the page has loaded, after every footer script has run, so the order never showed: with `lines.js` held back 1.5 s, the old code still grouped the build, under Kadence and Twenty Twenty-Five, with `SCRIPT_DEBUG` on and off. What on the demo draws the block sooner was not found here.
+- **Tests.** builder `cart.spec.ts`, "is grouped on its first drawing under Kadence, the plugin's script before the block's": `lines.js` before `wc-cart-block-frontend` in the page, and the first drawing read once with no waiting. **Red run:** "Expected: < 85, Received: 86", the script after the block's. `CartShowTest` asks WooCommerce's registry for both blocks' script handles. **Deliberate break:** with the cart's registration unhooked, "cart_block · Failed asserting that two arrays are identical."
+
+**Status:** Accepted.
+
+### D-174 · A kit's own page gives its builder the content's width · 2026-11-13
+
+Cowork's review, should-fix 2 and 3. On a classic theme's product template the builder rendered in `woocommerce_cbuild_kit_add_to_cart`, inside the summary column beside the gallery's placeholder: 591 px of Kadence's 1,280, 416 of Storefront's 786 beside its sidebar, 618 of Twenty Twenty-Five's 1,280. The summary sat under the steps, and the assembly fee stood under the kit's title as if it were the board's price.
+
+- **On `wp`, where the builder is on the kit's own page** (`PageHooks::kitLayout()`): a classic template's gallery, sale badge and price come off their hooks (WooCommerce 11.3.0, `includes/wc-template-hooks.php:40`, `:127` and `:153`); the kit's price HTML is empty, which a block template's Product Price block asks as well; the body has `cbuild-kit-page`; and the builder's stylesheet goes in the head, so nothing moves as the builder arrives.
+- **Inline rules with the kit's page alone.** They widen a classic template's summary column, or hide a block template's gallery column and widen the builder's (a block column's width is an inline style, which only `!important` outweighs). They name the theme's and WooCommerce's classes, which the builder's stylesheet does not (D-159), so they ride on its handle as inline styles, as the carts' do (D-132).
+- **Only the kit's own price.** A part in the related products keeps its price, and a kit in a listing keeps WooCommerce's: the spec says nothing of listings, and Zach's answer was the kit's page.
+- **Tests.** `BuilderPageTest`, "a kit's own page gives the builder the width…": the hooks, the body class, the price and the style in the head, and none of it on a product that is no kit or a kit whose builder is elsewhere. `builder.spec.ts`, "A kit's own page", on Kadence, Storefront and Twenty Twenty-Five at 1,280 px: the builder wider than 85 % of the theme's main column, no gallery, no price under the title, the summary beside the steps. **Red run:** "Expected: > 1088, Received: 591.359375" at `builder.spec.ts:1838`, and Storefront's and Twenty Twenty-Five's as above.
+
+**Status:** Accepted.
+
+### D-175 · A card's fit label names what its part was checked against · 2026-11-13
+
+Cowork's review, should-fix 5. Every step's cards said "Fits your 8 in deck", though wheels and hardware are checked against the trucks and risers, and grip tape on the demo by nothing (R6 off).
+
+- **Each rule says the slots it reads** (`Rule::slots()`), and `RuleSet::reading()` gives a slot's other slots under the rules a kit has on, or null where none reads it. The engine keeps those picked before the step, and the state route says them as each step's `against` (0.6.0, `docs/HOOKS.md`).
+- **The label.** "Fits your 8.25″ deck" where the deck alone was read; "Fits your trucks", "Fits your trucks and risers" (WordPress's list format) otherwise; nothing where no rule read the part, and "Recommended" alone there.
+- **A slot's label inside a sentence** starts small unless it is written in capitals ("Change trucks", "Fits your ABEC bearings"). A translation that wants the label as typed says so by translating "lowercase" (context: a slot label inside a sentence) as anything else.
+- **Tests.** `RuleSetTest`, `FitEngineTest`, `BuilderTest::test_a_cards_fit_label_names_what_the_part_was_checked_against`, `WordsTest`. **Red run** in the commit (28ecb7c).
+
+**Status:** Accepted.
+
+### D-176 · A card says nothing of what a rule assumed, unless it does not fit · 2026-11-13
+
+Cowork's review, should-fix 4. "The deck gives no hole pattern, so the usual one is taken" stood on every deck, and two more on every truck: gaps in the owner's data, shown to shoppers.
+
+- **A card that fits drops findings of severity fits**, which are the rules' assumptions (R2's pattern, R3's largest wheel by height, R5's axle, R6's unchecked length). The catalogue check already lists each for the owner (`CatalogueCheck::ASSUMED`).
+- **A card that warns or is blocked keeps every note,** since an assumption may be its reason. A finding belongs to the slot it reads, so R3's assumed largest wheel stands on the trucks' card, not on the wheels' it warns: the wheels' card says the clearance in figures ("2 mm over what the trucks clear, which is 56 mm").
+
+**Status:** Accepted.
+
+### D-177 · A kit's line says what its amount is · 2026-11-13
+
+Cowork's review, should-fix 3, as Zach answered it: "say what the amount is ('Assembly: free', 'Assembly: $15.00') instead of a bare price".
+
+- **Item data, in every cart.** A kit's line has "Assembly" first (`raw_key` `cbuild_assembly`): the fee as the cart shows prices, "free", or "not added", in `<span class="cbuild-assembly">`. Then Edit build, now with an empty key, so the blocks print the link alone; a classic cart's colon is hidden (Cowork's review, minor 12).
+- **The bare price goes.** WooCommerce's checkout filters cannot say "free": a price format must hold `<price/>`. So the blocks' price and total on a row holding `.cbuild-assembly` are hidden by the carts' inline styles, beginning as WooCommerce's own rule does so as to outweigh it, and a classic cart's `woocommerce_cart_item_price` and `woocommerce_cart_item_subtotal` give nothing for a kit.
+- **The order.** `woocommerce_order_formatted_line_subtotal` gives "Assembly: …" for a kit's line, which the order received page, the emails and My account print. The admin order screen prints its own price, beside the order's "Assembly: Yes".
+- **"Part of" without its slot where the name has it** (minor 11): the slot is a span of its own, hidden on a row whose name begins with it. The Mini-Cart's rows run no line filter, keep no such class, and keep the slot.
+
+**Status:** Accepted.
+
+### D-178 · An address typed through the Store API is held · 2026-11-13
+
+Cowork's review, should-fix 6. The delivery line counted an address as held when `has_calculated_shipping()` was set, which only a classic cart's calculator and checkout set (WooCommerce 11.3.0, `includes/shortcodes/class-wc-shortcode-cart.php:54`, `includes/class-wc-ajax.php:476`). The Store API's `cart/update-customer`, behind the Cart block's calculator, the Checkout block and the Mini-Cart, sets nothing, so a guest on a shop with the Checkout block never saw the line.
+
+- **Held also where the session has a shipping postcode or city.** WooCommerce's default location fills the country and state alone (`includes/data-stores/class-wc-customer-data-store-session.php:164`), so either is the shopper's own. A country and province alone, typed in a calculator that asks for no more, still count as the shop's default: the line is not said rather than guessed.
+- **Nothing more stored.** It reads the customer WooCommerce holds, as before (`docs/PRIVACY.md`).
+- **Tests.** `DeliveryTest::test_an_address_typed_through_the_store_api_is_held_as_the_classic_calculator_s_is`, through `cart/update-customer`. **Red run:** "Failed asserting that two strings are identical", '' for "Free shipping to Ontario.".
+
+**Status:** Accepted.
+
+### D-179 · A migration of kits' documents reads kits in the bin · 2026-11-13
+
+Cowork's review, minor 21. `reserved_slot_keys_1` (D-169) listed kits without the bin. One restored after the upgrade kept its reserved key, was never renamed, since the migration does not run again, and stopped reading.
+
+- **`KitMeta::ids()` is every kit but WordPress's auto-drafts,** the bin included: the port serves migrations. The kits a shop has, which `Kits` answers with, are `WooKitMeta::live()`, without the bin as before.
+- **Tests.** `MigrationTest`, the 0.5.0 site's kit put in the bin before the run and restored after. **Red run:** `'review'` for `'review_slot'` at `MigrationTest.php:225`.
+
+**Status:** Accepted.
+
+### D-180 · A kit's item data is printed one way for the blocks and another for a classic list · 2026-11-13
+
+Cowork's recheck, N1. Edit build had an empty key so the blocks print the link alone (D-177). A list of item data that is not WooCommerce's `dl.variation`, such as Shop Kit's checkout, which joins entries with "·", printed "Assembly: not added · : Edit build".
+
+- **Two entries for the blocks, one for the rest.** The Assembly entry and the key-less Edit build entry are `hidden` to `wc_get_formatted_cart_item_data()` (WooCommerce 11.3.0, `includes/wc-template-functions.php:4599`) and shown to the Store API, which reads `__experimental_woocommerce_blocks_hidden` (`src/StoreApi/Schemas/V1/CartItemSchema.php:255`). One more entry, hidden from the Store API, gives a classic list "Assembly" with the value and the link after it, so any theme's markup prints "Assembly: not added Edit build" with no empty key.
+- **The colon rule goes.** D-177's style hiding a classic list's empty `dt` has nothing to hide.
+- **The key is experimental.** WooCommerce names it so; if a release renames it, `CartShowTest` fails on the Store API's keys before a shop sees two links.
+- **Tests.** `CartShowTest::test_a_classic_cart_prints_the_kits_link_after_its_assembly_with_no_entry_of_no_label`. **Red run:** "Failed asserting that 0 is identical to 1.": no list printed the link after the assembly.
+
+**Status:** Accepted.
+
+### D-181 · An order shows a kit's assembly and build to the shop, not to the customer · 2026-11-13
+
+Cowork's recheck, N2, N3 and N4, with Zach's answer to N3: word the admin's meta "Assembly: free", "Assembly: $15.00", "Assembly: not added"; the cost and total columns stay as WooCommerce prints them.
+
+- **`woocommerce_order_item_get_formatted_meta_data`** (`includes/class-wc-order-item.php:377`). On the customer's views (order received, My account, the emails), a kit's line drops its "Assembly" and "Build" entries: its total already says "Assembly: …" (D-177) and its parts are the lines below it. The order screen keeps both, with Assembly's value "not added", "free" or the fee through `wc_price()` in the order's currency.
+- **Telling the screen from the customer.** The order screen asks for every key, the underscored ones too (`includes/admin/meta-boxes/views/html-order-item-meta.php:16`); `wc_display_item_meta()` asks without them (`includes/wc-template-functions.php:4165`). Where the list holds the line's `_cbuild_role`, it is the screen. A plugin that asks for every key on a customer's page sees what the shop sees, which is what it asked for.
+- **The keys are words.** The meta was written under "Assembly" and "Build" in the language the order was placed in, so a key matches the English word or the word in the language the shop has now. An order placed in a language the shop has since left keeps its meta as written.
+- **Tests.** `OrderTest`: the customer's meta is empty and the screen's says "not added", "free" or the fee. **Red run:** the customer's list held "Assembly" and "Build".
+
+**Status:** Accepted.
+
+### D-182 · Removing a build says so once · 2026-11-13
+
+Cowork's recheck, N5. The Cart block said "… was removed from your cart." for each part a build's removal takes with it, and nothing of the build: WooCommerce skips the notice for the line the shopper removed, and sends the others through the `woocommerce_show_cart_item_removed_notice` filter (`assets/client/blocks/wc-blocks-data.js`, WooCommerce 11.3.0).
+
+- **The cart's script answers the filter.** For a part, it shows no notice of its own and, once per build, one snackbar the server worded: "Cart test kit was removed from your cart.", spoken. Any other line keeps WooCommerce's answer.
+- **The words come from the server.** Each line's Store API extension data gains `removed`: for a part, the sentence for its build; for anything else, empty. The browser builds no sentence (CLAUDE.md, Strings) and this is a field added to the public API (`docs/HOOKS.md`).
+- **The Mini-Cart.** Its iAPI drawer shows no removal notices, so nothing changes there.
+- **Tests.** `cart.spec.ts`, the Cart block's removal; `cart-lines.test.ts`. **Red run:** five snackbars, each naming a part.
+
+**Status:** Accepted.
+
+### D-183 · The add is said the same way whichever takes focus first · 2026-11-13
+
+Cowork's recheck, finding 10. The builder looked one frame after an add for focus outside it. On the demo the Mini-Cart's drawer opened a beat later (`includes/blocks/MiniCart.php:406` opens it on `wc-blocks_added_to_cart`, and its focus waits for its own render), so the builder moved focus to its notice, the drawer took it 5 ms after, and nothing was said.
+
+- **Focus is the drawer's where it took it,** and the status region says the add.
+- **Otherwise focus goes to the notice and the builder watches for 2 seconds** (`SETTLE`). If something outside the builder takes focus in that time, the status region says the add, so the words are not lost with the notice. After it, nothing more is said.
+- **"Outside" excludes the builder's ancestors.** Storefront's `#content` takes focus on a click in WebKit; it holds the builder, and is not a drawer.
+- **Tests.** `store.test.ts`, and `builder.spec.ts` with the Mini-Cart's drawer opening at once and 150 ms after the add. **Red run:** "Expected: "The build is in your cart." Received: """ with the drawer opening a beat after, and in `store.test.ts` the notice kept focus the page around the builder took.
+
+**Status:** Accepted.
+
+### D-184 · A kit's page under Shop Kit's product template · 2026-11-13
+
+Cowork's recheck, finding 2, as Zach answered it: handle Shop Kit's product template in the plugin, keyed on its block classes, never the row's ID.
+
+- **Two rules in the kit page's inline styles.** In a Kadence row (`.kt-row-column-wrap`) that holds the builder, the column holding Shop Kit's gallery block (`.wp-block-kadence-wootemplate-blocks-gallery`) is hidden, and the column holding the builder spans the row. `:has()` finds both; a browser without it shows the template as before.
+- **Shop Kit is a commercial theme.** The test's fixture, `tests/e2e/fixtures/shop-kit-product.php`, is the markup Cowork quoted under Kadence, chosen by a cookie in the browser tests' mu-plugin. If Shop Kit changes its classes, the demo shows it, not the fixture.
+- **Tests.** `builder.spec.ts`, "A kit's own page", desktop and phone. **Red run:** the gallery block `toBeHidden()`, "Received: visible", at both widths.
+
+**Status:** Accepted.
+
+### D-185 · A pick keeps the control in use where it was · 2026-11-13
+
+CI run 43520699158 and the same press on the demo in Safari. The first deck's answer adds the summary's lines and the change of a step's own view moved Next by up to 192 pixels while it was pressed. WebKit drops a click whose press and release land on different places, and has no scroll anchoring of its own.
+
+- **The builder anchors the view itself.** Before a step's view changes in place, it reads where the control with focus in the builder is, or else the part picked; after the change is drawn and before it is painted, it scrolls the window by however far that moved, a pixel or more. A move to another step is left to its own focus and motion (D-149, D-161).
+- **Every engine does it,** so a browser's own anchoring, where it has some, finds nothing left to move.
+- **Tests.** `builder.spec.ts`, the first deck's answer arriving under a press of Next; `store.test.ts`. **Red run:** Next moved 192 pixels on chromium-desktop and 91 on chromium-phone and webkit-desktop, where 2 is allowed.
+
+**Status:** Accepted.
+
+### D-186 · The phone bar says "Show the parts" under its total · 2026-11-13
+
+Cowork's recheck, N6, which asked for the total and the label on one line, with no theme marker. At 412 pixels under Kadence, the bar's total and its label need 203 pixels of the 185 the photo and Add to cart leave them, so one line would wrap or shrink the text.
+
+- **The label sits whole under the total,** never broken, and the bar keeps its height with or without a build. The summary is a flex column, which drops the marker browsers and themes give a `summary`, and WebKit's own marker is hidden.
+- **Tests.** `builder.spec.ts`, "The phone bar", on each theme. **Red run:** on Storefront and Kadence the summary was a `list-item`, with its marker, and the label broke over two lines.
+
+**Status:** Accepted.
+
+### D-187 · The runner is timed again for each limit · 2026-11-13
+
+CI run 43546483925 failed the state route's benchmark, "Failed asserting that 82.638688 is less than 80.0.", on a commit that does not touch the route. The runner timed the fixed work at 6.96 ms before the benchmarks, so the limit was the budget itself, and then slowed: against the run before it (43538269312), the route's cold median went from 52.5 to 75.7 ms, and the export and the check, untouched, from 0.37 to 0.42 s and 0.50 to 0.64 s. On this Mac the route's p95 was 60.2 ms, as `docs/BENCHMARK.md` has it. D-171 timed the runner once, so it missed a runner that slows after.
+
+- **Timed again each time a limit is asked for,** right after the series the limit holds, on a shared runner alone. The runner's figure is the slowest median so far, so a runner that speeds up again does not tighten the limit under a series it ran slowly.
+- **Nothing else moves.** The budgets, the cap of 2.5 and the query counts are D-171's. A change that slows the route more than the runner slows still fails.
+- **Said.** Each limit prints the runner's line it was worked out from, beside the series it holds.
+- **Tests.** `RunnerSpeedTest`, a unit test with the timer given. **Red run:** the re-timing left out, `test_a_runner_that_slows_after_it_was_first_timed_is_held_to_its_slower_figure`, "Failed asserting that 80.0 matches expected 120.0." at `RunnerSpeedTest.php:61`.
 
 **Status:** Accepted.

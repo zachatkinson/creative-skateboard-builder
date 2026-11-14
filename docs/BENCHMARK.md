@@ -100,7 +100,7 @@ The first three are inside the 80 ms budget and held to it. They hold because a 
 
 The last row is outside the budget and is not held to it: it is what one request pays the first time a kit is asked for in a price context (a currency, a language, a set of tax rates), and again after a reindex or a brand or attribute term is edited, which empty the table. The benchmark prints it on every run so that it is known.
 
-The figures move with the machine. On 11 November 2026 the same Mac, busier, measured 67 to 70 ms cold at p95 and 71 ms after a part moves, for this code and for the commit the table was taken from alike; GitHub's hosted runner measured 66 ms cold, 46 ms warm and 81 ms after a part moves on a sample of 20, which failed the run (D-123). The next run of the same commit there measured 84 ms cold. Since D-124 the 80 ms budget is held where the machine is known, in the audit's local run before each milestone's pull request, and CI holds the query counts (42 cold, 15 warm, 37 after a part moves) and a ceiling of 120 ms.
+The figures move with the machine. On 11 November 2026 the same Mac, busier, measured 67 to 70 ms cold at p95 and 71 ms after a part moves, for this code and for the commit the table was taken from alike; GitHub's hosted runner measured 66 ms cold, 46 ms warm and 81 ms after a part moves on a sample of 20, which failed the run (D-123). The next run of the same commit there measured 84 ms cold. Since D-124 the 80 ms budget is held where the machine is known, in the audit's local run before each milestone's pull request, and CI holds the query counts (42 cold, 15 warm, 37 after a part moves). Since D-171 CI holds the time to the budget scaled by how much slower than this Mac the runner does a fixed piece of work (7.05 ms here), between 1 and 2.5 times; each run prints the runner's figure and the limit it gives.
 
 An earlier design of this milestone, never released, kept each slot's list in a transient: 53 ms cold, but 435 ms on the first request after any one product moved. The table costs 5 ms cold and takes that request to 71 ms.
 
@@ -118,7 +118,7 @@ A kit of seven slots and a build with a part in each, trucks twice: a kit's line
 | Reading a cart with the build in it (`GET /wc/store/v1/cart`) | 21 ms | | | 30 |
 | Reading a cart of the same seven products with no build | 4 ms | | | 10 |
 
-The add is inside the 300 ms budget and held to it, with 450 ms as CI's ceiling and the query counts held everywhere (D-134).
+The add is inside the 300 ms budget and held to it, scaled by the runner's speed in CI (D-171), and the query counts held everywhere (D-134).
 
 The difference between the last two rows is what the plugin does on every cart response while a build is in the cart: the kit's line's quantity limit and the check that the build is still one the shop would sell (D-129). It reads the build's parts from WooCommerce each time and keeps nothing.
 
@@ -136,3 +136,39 @@ The one query is WooCommerce reading the session. The route makes no cart, so th
 That query is paid only where a price the shop shows can depend on the shopper's address: prices shown with tax, or entered with tax and adjusted for where the shopper is. On any other shop the session is not read at all (D-139), and the measurement sets the shop to show prices with tax so that it is.
 
 Measured again on WooCommerce 11.3.0, the newest leg from D-139, on the same machine and day: adding the build p95 26 ms and 54 queries at most; a cart read with the build in it 21 ms and 30 queries, beside 3 ms and 10; the state route 44 queries with the session read and 43 without. Nothing moved. Where a shop's default customer address is Geolocate, a guest's first request also pays WooCommerce's GeoIP lookup, which this does not measure; milestone 6's plan does.
+
+## v0.6.0
+
+Machine: Apple M1 Max, PHP 8.5.12 in wp-env on OrbStack, WordPress 7.1.4, WooCommerce 11.3.0, wp-env's own database server, Xdebug off, no persistent object cache. Measured 12 November 2026, and again on 13 November after the audit's fixes; the table is the second run.
+
+The kit and catalogue of v0.4.0: seven slots over 2,000 simple products, 500 of them trucks.
+
+| The state route, 500 candidates in the step | p95 | Median | Queries at most | Budget |
+| --- | --- | --- | --- | --- |
+| Cold | 59.4 ms | 58.2 ms | 42 | 80 ms |
+| Warm | 43.7 ms | 38.2 ms | 15 | 80 ms |
+| A move to the next step, cold (the builder's own request, new in 0.6.0) | 63.1 ms | 58.8 ms | 37 | 80 ms |
+| A move to the next step, warm | 40.3 ms | 38.4 ms | 15 | 80 ms |
+| The first request after one part moves | 61.1 ms | 57.7 ms | 37 | 80 ms |
+| The first request after a reindex of 2,000 parts, cache emptied | 55.4 ms | | 37 | 80 ms |
+| With no row kept at all: after a plugin says every part changed, or in a price context no one has asked in | 469 ms | | 101 | Printed, not held |
+
+A move's slowest single request was 90.7 ms, a cold one; the budget is the p95's. Adding the build to the cart by the Store API measured p95 24.3 ms and 54 queries, and a cart read with the build in it 18.4 ms and 30, the same as 0.5.0's.
+
+| The builder page | Result | Budget |
+| --- | --- | --- |
+| The store's script (`build/builder/view.js`), Brotli 11 | 2,581 B | 15,360 B |
+| The block's editor script (`build/builder/index.js`) | 1,177 B | 15,360 B |
+| The styles (`build/builder/style-index.css`, and its RTL twin) | 2,445 B | 10,240 B |
+| LCP, Kadence, mobile profile, median of three | 1.96 s | 2.5 s |
+| CLS, Kadence | 0.000 | Under 0.1 |
+| TBT, Kadence | 0 ms | Under 200 ms |
+| Lighthouse SEO, both themes | 0.92 | 0.9 or more |
+| LCP and CLS, Twenty Twenty-Five, reported (D-165) | 2.28 s and 0.133 | Not held: the shift is the theme's web font |
+| A pick's own selected state painted, 4× slowed CPU | Under 100 ms in Chromium, desktop and phone (only Chromium can slow its CPU) | 100 ms |
+
+Until 0.6.0 the first row was the second: a reindex emptied the parts table a batch at a time, and the next visitor's request read every part from the shop. Each batch now writes the rows of the parts it indexed, in the background (issue #28, D-140), and the first request after it is held to the 80 ms budget and to the cold run's 42 queries.
+
+The reindex pays for it: 2,000 parts in 42 batches took 3.54 s in all, a batch 110 ms at its slowest (3.85 s and 130 ms on 12 November), where the index alone takes 0.84 s with no kit to write rows for. A batch is still well inside one request of the queue's.
+
+The second row stays outside the budget and is printed, not held. It is now paid only after `cbuild_parts_changed` is fired with no part named, and by the first visitor shown other prices than the shop's default: another language, another currency, or, where a shown price goes by address, other tax rates.

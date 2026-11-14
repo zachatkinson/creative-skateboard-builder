@@ -1,0 +1,229 @@
+<?php
+/**
+ * The builder, rendered on the server.
+ *
+ * @package CreativeBranding\SkateboardBuilder
+ */
+
+declare( strict_types=1 );
+
+namespace CreativeBranding\SkateboardBuilder\Front;
+
+use CreativeBranding\SkateboardBuilder\Cart\ShowHooks;
+use CreativeBranding\SkateboardBuilder\Port\Kits;
+use CreativeBranding\SkateboardBuilder\Port\Logger;
+use CreativeBranding\SkateboardBuilder\Support\Cast;
+use Throwable;
+
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
+/**
+ * The one renderer the kit's page and the Builder block both call (spec: The builder, ways in; Speed: the first step
+ * and the picture are rendered on the server). It reads the build from the address, asks the flow what to show,
+ * hands the view to the Interactivity API as the store's state, and renders the template with its directives.
+ *
+ * - **One builder a page.** The store's state is the page's, so a second builder would show the first's build. Only
+ *   the first renders; the block says so in its `supports` too.
+ * - **A boundary** (spec: Resilience). Whatever the render throws is logged with the kit and nothing of the request,
+ *   and the shopper reads one sentence in place of the builder. A shop manager also reads why. The rest of the page is
+ *   the theme's and stands.
+ * - **Nothing for a kit a visitor may not see:** a draft, a private or a password-protected kit renders nothing, as
+ *   the state route answers it as not there.
+ *
+ * @since 0.6.0
+ */
+final class BuilderPage {
+
+	/**
+	 * The store's namespace.
+	 *
+	 * @since 0.6.0
+	 */
+	public const string STORE = 'creative-skateboard-builder';
+
+	/**
+	 * The store's script module, as WordPress names the Builder block's `viewScriptModule`.
+	 *
+	 * @since 0.6.0
+	 */
+	public const string MODULE = 'creative-skateboard-builder-builder-view-script-module';
+
+	/**
+	 * The builder's stylesheet, as WordPress names the Builder block's `style` (D-159).
+	 *
+	 * @since 0.6.0
+	 */
+	public const string STYLE = 'creative-skateboard-builder-builder-style';
+
+	/**
+	 * Whether a builder has rendered on this page.
+	 *
+	 * @var bool
+	 */
+	private bool $rendered = false;
+
+	/**
+	 * What the builder shows, by kit, address and base, worked out once a request: the page's title asks before the
+	 * builder renders.
+	 *
+	 * @var array<string, array{view: array<string, mixed>}|null>
+	 */
+	private array $shown = array();
+
+	/**
+	 * Constructor.
+	 *
+	 * @since 0.6.0
+	 *
+	 * @param Builder $builder The flow.
+	 * @param Kits    $kits    The shop's kits, for whether a visitor may see one.
+	 * @param Logger  $logger  Where a render that failed is written.
+	 */
+	public function __construct( private Builder $builder, private Kits $kits, private Logger $logger ) {}
+
+	/**
+	 * The builder's markup for a kit, or an empty string where there is none to show.
+	 *
+	 * @since 0.6.0
+	 *
+	 * @param int       $kit     The kit product's ID.
+	 * @param BuildLink $link    The build in the address.
+	 * @param string    $base    The address of the page the builder is on, with no build in it.
+	 * @param bool      $process Whether to process the directives here. A block's are processed by WordPress
+	 *                           once the block has rendered, as for any interactive block.
+	 */
+	public function render( int $kit, BuildLink $link, string $base, bool $process = true ): string {
+		if ( $this->rendered || ! $this->kits->isPublic( $kit ) ) {
+			return '';
+		}
+		$this->rendered = true;
+		$level          = ob_get_level();
+		try {
+			$shown = $this->shown( $kit, $link, $base );
+			if ( null === $shown ) {
+				return '';
+			}
+			wp_interactivity_state(
+				self::STORE,
+				array(
+					'view'    => $shown['view'],
+					// Said by the store after a pick, never on load: the page has just been read out.
+					'status'  => '',
+					'pending' => false,
+					// Set by the store once Add to cart has put the build in the cart without a page load (D-155).
+					'added'   => false,
+					// Set by the store where the browser has a clipboard to write to (D-156).
+					'canCopy' => false,
+				)
+			);
+			// Where the store asks for the next view: the state route, for this page, in its language (D-148), and the
+			// page's title around the step.
+			wp_interactivity_config(
+				self::STORE,
+				array(
+					// Where Add to cart sends the build with JavaScript: the Store API's cart (D-155).
+					'cart'     => rest_url( 'wc/store/v1/cart' ),
+					'endpoint' => rest_url( 'cbuild/v1/kits/' . $kit . '/state' ),
+					'page'     => is_singular() ? get_queried_object_id() : 0,
+					'locale'   => determine_locale(),
+					// What goes around each step in the page's title (D-149).
+					'title'    => PageTitle::around( PageTitle::base() ),
+				)
+			);
+			// The block's own render enqueues it; the kit's page has no block.
+			wp_enqueue_script_module( self::MODULE );
+			wp_enqueue_style( self::STYLE );
+			// A build added here without a page load shows in the page's Mini-Cart, grouped (D-158).
+			ShowHooks::styles();
+			ob_start();
+			require CBUILD_PATH . 'templates/builder/builder.php';
+			$html = (string) ob_get_clean();
+			return $process ? wp_interactivity_process_directives( $html ) : $html;
+		} catch ( Throwable $failure ) {
+			// A template that threw leaves its buffer open, holding half a builder.
+			while ( ob_get_level() > $level ) {
+				ob_end_clean();
+			}
+			// Once an hour a kit: a broken builder on a busy page would otherwise write a line on every view.
+			$this->logger->hourly(
+				'render_' . $kit,
+				Logger::ERROR,
+				'The builder could not be shown.',
+				array(
+					'kit'   => $kit,
+					'error' => $failure->getMessage(),
+				)
+			);
+			$html = '<p class="cbuild-failed">' . esc_html__( 'This builder isn\'t available right now.', 'creative-skateboard-builder' ) . '</p>';
+			if ( current_user_can( 'manage_woocommerce' ) ) {
+				// A signed-in page is not served from a page cache, so no visitor is shown this.
+				/* translators: %s: why the builder could not be shown, as the error said it. */
+				$html .= '<p class="cbuild-failed__why">' . esc_html( sprintf( __( 'Shown to shop managers only: %s', 'creative-skateboard-builder' ), $failure->getMessage() ) ) . '</p>';
+			}
+			return $html;
+		}
+	}
+
+	/**
+	 * The page's title for a builder's step, "Error:" first where one is shown, or null where the builder shows nothing
+	 * (D-149). A failure is the render's to log and say.
+	 *
+	 * @since 0.6.0
+	 *
+	 * @param int       $kit  The kit product's ID.
+	 * @param BuildLink $link The build in the address.
+	 * @param string    $base The address of the page the builder is on, with no build in it.
+	 */
+	public function title( int $kit, BuildLink $link, string $base ): ?string {
+		if ( ! $this->kits->isPublic( $kit ) ) {
+			return null;
+		}
+		try {
+			$shown = $this->shown( $kit, $link, $base );
+		} catch ( Throwable ) {
+			return null;
+		}
+		return null === $shown ? null : Cast::str( $shown['view']['title'] ?? null );
+	}
+
+	/**
+	 * What the builder shows, once a request for each kit, address and base.
+	 *
+	 * @param int       $kit  The kit.
+	 * @param BuildLink $link The address.
+	 * @param string    $base The page.
+	 * @return array{view: array<string, mixed>}|null
+	 *
+	 * @throws \CreativeBranding\SkateboardBuilder\Domain\Kit\InvalidMoney When the build cannot be priced.
+	 */
+	private function shown( int $kit, BuildLink $link, string $base ): ?array {
+		$key = $kit . "\n" . $base . "\n" . wp_json_encode( get_object_vars( $link ) );
+		if ( ! array_key_exists( $key, $this->shown ) ) {
+			$this->shown[ $key ] = $this->builder->show( $kit, $link, $base );
+		}
+		return $this->shown[ $key ];
+	}
+
+	/**
+	 * The build in the address of this request. A GET's query is read and nothing is changed by it, so no nonce is
+	 * asked for: a build link is shared, and each ID in it is checked by the state before anything is shown.
+	 *
+	 * @since 0.6.0
+	 */
+	public static function requested(): BuildLink {
+		return BuildLink::read( self::sent() );
+	}
+
+	/**
+	 * What this request sent under `cbuild`, as text, unread: for a page that passes a build on to the builder's own,
+	 * which reads it there.
+	 *
+	 * @since 0.6.0
+	 */
+	public static function sent(): mixed {
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- as requested() says.
+		return isset( $_GET[ BuildLink::PARAM ] ) ? map_deep( wp_unslash( $_GET[ BuildLink::PARAM ] ), 'sanitize_text_field' ) : null;
+	}
+}

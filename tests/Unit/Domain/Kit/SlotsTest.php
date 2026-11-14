@@ -181,6 +181,11 @@ final class SlotsTest extends TestCase {
 			'slots[5].key',
 		);
 		yield 'a key that is not one' => array( $bend( 2, 'key', 'Wheels' ), DocumentError::BadKey, 'slots[2].key' );
+		// A build link carries cbuild[step], cbuild[assembly] and cbuild[preset] beside its picks, and its step may be
+		// the review: a slot keyed with one of the four would be read as that (D-142).
+		foreach ( array( 'step', 'assembly', 'preset', 'review' ) as $word ) {
+			yield "a key the build link keeps for itself: {$word}" => array( $bend( 2, 'key', $word ), DocumentError::BadKey, 'slots[2].key' );
+		}
 		yield 'no key' => array( $drop( 2, 'key' ), DocumentError::Missing, 'slots[2].key' );
 		yield 'no label' => array( $drop( 1, 'label' ), DocumentError::Missing, 'slots[1].label' );
 		yield 'a label that is a number' => array( $bend( 1, 'label', 7 ), DocumentError::WrongType, 'slots[1].label' );

@@ -5,8 +5,9 @@ import { defineConfig, devices } from '@playwright/test';
 
 /**
  * Three engines at desktop and phone widths, then JavaScript off, fr_CA, right to left and the visual snapshots
- * (docs/AUDIT.md: Browser tests). CI runs every project; `visual` runs only in CI's Linux container, so its
- * baselines stay stable. Locally `npx playwright test --project=chromium-desktop` is enough.
+ * (docs/AUDIT.md: Browser tests). CI runs every project; `visual` runs only in the Playwright Linux container
+ * (`bash tools/visual.sh`, in CI and locally alike), so its baselines stay stable. Locally
+ * `npx playwright test --project=chromium-desktop` is enough.
  *
  * fr-ca and rtl send a header the mu-plugin in tests/e2e/mu-plugins/cbuild-e2e-locale.php reads to switch the site's locale for
  * that request alone, so the same specs run in each.
@@ -108,10 +109,16 @@ export default defineConfig( {
 				extraHTTPHeaders: { 'x-cbuild-e2e-locale': 'he_IL' },
 			},
 		},
-		{
-			name: 'visual',
-			testMatch: visual,
-			use: { ...devices[ 'Desktop Chrome' ] },
-		},
+		// Only inside tools/visual.sh's Linux container, which sets CBUILD_VISUAL: the baselines are its fonts' and
+		// its Chromium's, so a run on a Mac or on the bare runner would compare against pictures it cannot make (D-162).
+		...( '1' === process.env.CBUILD_VISUAL
+			? [
+					{
+						name: 'visual',
+						testMatch: visual,
+						use: { ...devices[ 'Desktop Chrome' ] },
+					},
+				]
+			: [] ),
 	],
 } );

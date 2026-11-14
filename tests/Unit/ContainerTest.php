@@ -71,7 +71,7 @@ final class ContainerTest extends TestCase {
 	public function test_the_registry_is_built_from_its_classes(): void {
 		$registry = ( new Container() )->get( MigrationRegistry::class );
 		$keys     = $registry->keys();
-		self::assertSame( array( 'schema_1', 'noop_1', 'spec_tables_1', 'schema_2' ), $keys );
+		self::assertSame( array( 'schema_1', 'noop_1', 'spec_tables_1', 'schema_2', 'reserved_slot_keys_1' ), $keys );
 	}
 
 	public function test_an_unknown_service_throws(): void {
@@ -107,7 +107,7 @@ final class ContainerTest extends TestCase {
 		$container = new Container();
 		$container->set( MigrationStore::class, new InMemoryMigrationStore() );
 		$hookables = $container->hookablesFor( Scope::Everywhere );
-		self::assertCount( 17, $hookables, 'the install\'s, the index\'s, the cards\', the spec tables\', the import\'s, the kit\'s, the cart\'s seven, the order\'s and the three abilities\'' );
+		self::assertCount( 18, $hookables, 'the install\'s, the index\'s, the cards\', the spec tables\', the import\'s, the kit\'s, the cart\'s seven, the order\'s, the builder\'s and the three abilities\'' );
 		self::assertContainsOnlyInstancesOf( Hookable::class, $hookables );
 	}
 
@@ -116,7 +116,7 @@ final class ContainerTest extends TestCase {
 		$container = new Container();
 		$container->set( MigrationStore::class, new InMemoryMigrationStore() );
 		$container->hookablesFor( Scope::Everywhere );
-		foreach ( array( \CreativeBranding\SkateboardBuilder\Service\IndexJobs::class, \CreativeBranding\SkateboardBuilder\Service\SpecImport::class, \CreativeBranding\SkateboardBuilder\Service\SpecIndexer::class, \CreativeBranding\SkateboardBuilder\Port\SpecIndex::class, \CreativeBranding\SkateboardBuilder\Port\PartSpecs::class ) as $service ) {
+		foreach ( array( \CreativeBranding\SkateboardBuilder\Service\IndexJobs::class, \CreativeBranding\SkateboardBuilder\Service\SpecImport::class, \CreativeBranding\SkateboardBuilder\Service\SpecIndexer::class, \CreativeBranding\SkateboardBuilder\Port\SpecIndex::class, \CreativeBranding\SkateboardBuilder\Port\PartSpecs::class, \CreativeBranding\SkateboardBuilder\Front\BuilderPage::class, \CreativeBranding\SkateboardBuilder\Front\Builder::class ) as $service ) {
 			self::assertFalse( $container->has( $service ), $service );
 		}
 	}
@@ -124,12 +124,12 @@ final class ContainerTest extends TestCase {
 	// Claude in Cowork's review of milestone 3, minor 9: mutation testing left the plugin's own scopes unpinned.
 	public function test_each_scope_builds_its_own_hookables_and_no_others(): void {
 		$scopes = array(
-			'Everywhere' => array( 'Hooks\\InstallHooks', 'Hooks\\IndexHooks', 'Hooks\\CardHooks', 'Hooks\\SpecTableHooks', 'Hooks\\ImportHooks', 'Hooks\\KitHooks', 'Cart\\CartHooks', 'Cart\\LineHooks', 'Cart\\PriceHooks', 'Cart\\ShowHooks', 'Cart\\ShipHooks', 'Cart\\ExpressHooks', 'Cart\\AgainHooks', 'Order\\OrderHooks', 'Abilities\\CatalogueCheckAbility', 'Abilities\\CheckBuildAbility', 'Abilities\\PriceBuildAbility' ),
+			'Everywhere' => array( 'Hooks\\InstallHooks', 'Hooks\\IndexHooks', 'Hooks\\CardHooks', 'Hooks\\SpecTableHooks', 'Hooks\\ImportHooks', 'Hooks\\KitHooks', 'Cart\\CartHooks', 'Cart\\LineHooks', 'Cart\\PriceHooks', 'Cart\\ShowHooks', 'Cart\\ShipHooks', 'Cart\\ExpressHooks', 'Cart\\AgainHooks', 'Order\\OrderHooks', 'Front\\PageHooks', 'Abilities\\CatalogueCheckAbility', 'Abilities\\CheckBuildAbility', 'Abilities\\PriceBuildAbility' ),
 			'Admin'      => array( 'Admin\\SettingsHooks', 'Admin\\PartSpecsHooks', 'Admin\\BuildTabHooks', 'Admin\\BuilderHooks', 'Health\\SiteHealth' ),
 			'Cli'        => array( 'Hooks\\CliHooks', 'Health\\SiteHealth' ),
 			'Cron'       => array( 'Health\\SiteHealth' ),
 			'Rest'       => array( 'Health\\SiteHealth', 'Rest\\StateRoute' ),
-			'Storefront' => array(),
+			'Storefront' => array( 'Front\\SeoHooks' ),
 		);
 		self::assertSame( array_column( Scope::cases(), 'name' ), array_keys( $scopes ), 'every scope' );
 		foreach ( Scope::cases() as $scope ) {

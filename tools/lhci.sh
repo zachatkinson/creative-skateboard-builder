@@ -13,4 +13,9 @@ restore() {
 trap restore EXIT
 wp config set SCRIPT_DEBUG false --raw >/dev/null
 wp option update woocommerce_coming_soon no >/dev/null
-npx lhci autorun --config=lighthouserc.cjs "$@"
+# The builder's page, with the shop's fixture kit on it, unless another page is asked for.
+bash tools/e2e-site.sh
+export CBUILD_LHCI_URL="${CBUILD_LHCI_URL:-$(node -p "require('./tmp/e2e-builder.json').page")}"
+# Twenty Twenty-Five's font moves the page as it arrives, so its layout shift is reported; Kadence gates (D-165).
+CBUILD_LHCI_THEME=twentytwentyfive CBUILD_LHCI_SHIFT=warn npx lhci autorun --config=lighthouserc.cjs "$@"
+CBUILD_LHCI_THEME=kadence npx lhci autorun --config=lighthouserc.cjs "$@"

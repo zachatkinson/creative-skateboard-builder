@@ -319,4 +319,35 @@ final class WooPartCardsTest extends IntegrationTestCase {
 		self::assertCount( 24, $this->cards()->cards( $ids ) );
 		self::assertSame( 0, $wpdb->num_queries - $before, 'kept' );
 	}
+
+	public function test_brands_are_named_as_the_shop_names_them_in_one_query_and_a_slug_with_no_brand_has_none(): void {
+		global $wpdb;
+		wp_insert_term( 'Baker &amp; Sons <b>Co</b>', 'product_brand', array( 'slug' => 'baker' ) );
+		wp_insert_term( 'Zero', 'product_brand', array( 'slug' => 'zero' ) );
+		wp_insert_term( 'Baker', 'product_cat', array( 'slug' => 'retna' ) );
+
+		$seen = array();
+		$spy  = static function ( string $sql ) use ( &$seen ): string {
+			$seen[] = $sql;
+			return $sql;
+		};
+		add_filter( 'query', $spy );
+		$before = $wpdb->num_queries;
+		self::assertSame(
+			array(
+				'baker' => 'Baker & Sons Co',
+				'zero'  => 'Zero',
+			),
+			$this->cards()->brands( array( 'zero', 'baker', 'retna', '', 'baker' ) ),
+			'Plain text, and a category of the same slug is no brand.'
+		);
+		remove_filter( 'query', $spy );
+		self::assertSame( 1, $wpdb->num_queries - $before, implode( "\n", $seen ) );
+		self::assertStringStartsWith( 'SELECT', ltrim( $seen[0] ), 'And nothing is written: WooCommerce counts no term for it.' );
+
+		$before = $wpdb->num_queries;
+		self::assertSame( array(), $this->cards()->brands( array() ) );
+		self::assertSame( array(), $this->cards()->brands( array( '' ) ) );
+		self::assertSame( 0, $wpdb->num_queries - $before, 'No brand, no query.' );
+	}
 }

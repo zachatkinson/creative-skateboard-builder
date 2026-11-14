@@ -87,6 +87,181 @@ final class CartAddTest extends CartTestCase {
 		self::assertSame( array( 1, 1 ), array_column( $builds, 'quantity' ) );
 	}
 
+	public function test_edit_builds_add_takes_the_place_of_the_build_it_came_from_by_both_routes(): void {
+		$add = fn( array $build ) => $this->store(
+			array(
+				'id'     => $this->kit,
+				'cbuild' => $build,
+			)
+		);
+		self::assertSame( 201, $add( array( 'picks' => $this->picks() ) )->get_status() );
+		self::assertSame( 201, $add( array( 'picks' => $this->picks() ) )->get_status() );
+		[ $first, $second ] = array_column( self::builds(), 'build' );
+
+		$response = $add(
+			array(
+				'picks'    => $this->picks(),
+				'assembly' => true,
+				'replace'  => $first->id,
+			)
+		);
+		self::assertSame( 201, $response->get_status() );
+		$builds = array_column( self::builds(), 'build' );
+		self::assertCount( 2, $builds, 'the first is gone, its parts with it' );
+		self::assertCount( 14, WC()->cart->get_cart() );
+		self::assertSame( $second->id, $builds[0]->id, 'the other build stays' );
+		self::assertTrue( $builds[1]->assembly, 'and the edited one is in its place' );
+		self::assertSame( 14, count( $response->get_data()['items'] ), 'the Store API\'s answer is the cart after the swap' );
+
+		$this->form(
+			array(
+				'picks'   => $this->picks(),
+				'replace' => $builds[1]->id,
+			)
+		);
+		$after = array_column( self::builds(), 'build' );
+		self::assertCount( 2, $after, 'the form replaces as the Store API does' );
+		self::assertFalse( $after[1]->assembly );
+		self::assertNotSame( $builds[1]->id, $after[1]->id );
+	}
+
+	public function test_an_edited_build_keeps_the_quantity_the_cart_held_of_the_one_it_replaces_by_both_routes(): void {
+		$body = array(
+			'id'     => $this->kit,
+			'cbuild' => array( 'picks' => $this->picks() ),
+		);
+		self::assertSame( 201, $this->store( $body )->get_status() );
+		$old = self::builds()[0];
+		WC()->cart->set_quantity( $old['key'], 3 );
+
+		$response = $this->store(
+			array(
+				'id'     => $this->kit,
+				'cbuild' => array(
+					'picks'    => $this->picks(),
+					'assembly' => true,
+					'replace'  => $old['build']->id,
+				),
+			)
+		);
+		self::assertSame( 201, $response->get_status(), (string) wp_json_encode( $response->get_data() ) );
+		$builds = self::builds();
+		self::assertCount( 1, $builds );
+		self::assertSame( 3, $builds[0]['quantity'], 'the review sends 1; the cart held 3, and keeps 3 (D-157)' );
+		foreach ( $builds[0]['parts'] as $slot => [ , $quantity ] ) {
+			self::assertSame( 3 * $builds[0]['build']->quantities[ $slot ], $quantity, "each part at what three builds take of it: $slot" );
+		}
+
+		$this->form(
+			array(
+				'picks'   => $this->picks(),
+				'replace' => $builds[0]['build']->id,
+			)
+		);
+		self::assertSame( array(), self::errors() );
+		$after = self::builds();
+		self::assertCount( 1, $after );
+		self::assertSame( 3, $after[0]['quantity'], 'the form keeps it as the Store API does' );
+	}
+
+	public function test_an_edited_build_whose_parts_the_old_one_holds_the_last_of_is_taken(): void {
+		self::assertSame(
+			201,
+			$this->store(
+				array(
+					'id'     => $this->kit,
+					'cbuild' => array( 'picks' => $this->picks() ),
+				)
+			)->get_status()
+		);
+		$old = self::builds()[0];
+		WC()->cart->set_quantity( $old['key'], 2 );
+		$deck = wc_get_product( $this->parts['deck'] );
+		$deck->set_manage_stock( true );
+		$deck->set_stock_quantity( 2 );
+		$deck->save();
+
+		$response = $this->store(
+			array(
+				'id'     => $this->kit,
+				'cbuild' => array(
+					'picks'    => $this->picks(),
+					'assembly' => true,
+					'replace'  => $old['build']->id,
+				),
+			)
+		);
+		self::assertSame( 201, $response->get_status(), 'the two decks the old build holds are the new one\'s once it goes: ' . wp_json_encode( $response->get_data() ) );
+		$builds = self::builds();
+		self::assertCount( 1, $builds );
+		self::assertTrue( $builds[0]['build']->assembly );
+		self::assertSame( 2, $builds[0]['quantity'] );
+	}
+
+	public function test_an_edited_build_with_a_part_woocommerce_will_not_add_puts_the_old_one_back_whole(): void {
+		self::assertSame(
+			201,
+			$this->store(
+				array(
+					'id'     => $this->kit,
+					'cbuild' => array( 'picks' => $this->picks() ),
+				)
+			)->get_status()
+		);
+		$old = self::builds()[0];
+		WC()->cart->set_quantity( $old['key'], 2 );
+		$before = self::builds();
+		$wheels = $this->parts['wheels'];
+		add_action(
+			'woocommerce_add_to_cart',
+			static function () use ( $wheels ): void {
+				add_filter( 'woocommerce_is_purchasable', static fn( $purchasable, $product ) => $wheels === $product->get_id() ? false : $purchasable, 99, 2 );
+			},
+			5
+		);
+
+		$response = $this->store(
+			array(
+				'id'     => $this->kit,
+				'cbuild' => array(
+					'picks'   => $this->picks(),
+					'replace' => $old['build']->id,
+				),
+			)
+		);
+		remove_all_filters( 'woocommerce_is_purchasable', 99 );
+		self::assertSame( 'cbuild_not_added', $response->get_data()['code'] ?? null );
+		self::assertEquals( $before, self::builds(), 'the old build, its parts and its quantity, as they were' );
+	}
+
+	public function test_an_edited_build_the_cart_refuses_leaves_the_one_it_came_from_in_the_cart(): void {
+		self::assertSame(
+			201,
+			$this->store(
+				array(
+					'id'     => $this->kit,
+					'cbuild' => array( 'picks' => $this->picks() ),
+				)
+			)->get_status()
+		);
+		$before = WC()->cart->get_cart();
+		$old    = self::builds()[0]['build'];
+		$sold   = wc_get_product( $this->parts['wheels'] );
+		$sold->set_stock_status( 'outofstock' );
+		$sold->save();
+		$response = $this->store(
+			array(
+				'id'     => $this->kit,
+				'cbuild' => array(
+					'picks'   => $this->picks(),
+					'replace' => $old->id,
+				),
+			)
+		);
+		self::assertSame( 400, $response->get_status() );
+		self::assertSame( array_keys( $before ), array_keys( WC()->cart->get_cart() ), 'nothing taken out, nothing added' );
+	}
+
 	public function test_a_kit_with_no_build_is_refused_by_every_route(): void {
 		$response = $this->store( array( 'id' => $this->kit ) );
 		self::assertSame( 400, $response->get_status() );

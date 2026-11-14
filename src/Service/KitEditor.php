@@ -180,7 +180,8 @@ final class KitEditor {
 		$staying        = $stored[ self::PRESETS ] ?? null;
 		if ( isset( $built[ self::SLOTS ] ) && ! $slotsRefused && null !== $staying && ( $presetsRefused || ! isset( $built[ self::PRESETS ] ) ) ) {
 			try {
-				Kit::fromDocuments( $built[ self::SLOTS ], $inForce[ self::RULES ] ?? RuleSettings::DEFAULTS, $staying, self::NO_ASSEMBLY );
+				// The slots and the presets alone are in question, so the rules are the defaults, which always read.
+				Kit::fromDocuments( $built[ self::SLOTS ], RuleSettings::DEFAULTS, $staying, self::NO_ASSEMBLY );
 			} catch ( InvalidDocument ) {
 				$problems[] = self::problem( self::SLOTS, self::LEAVE_PRESETS, 'slots' );
 			}
@@ -324,9 +325,7 @@ final class KitEditor {
 			// once, of the part picked later, as the builder's steps would meet it.
 			$misfits = array();
 			foreach ( $validator->validate( $kit, $picks, $ids )->problems as $problem ) {
-				if ( Problem::PartBlocked !== $problem->code || null === $problem->part ) {
-					continue;
-				}
+				// A blocked part alone has findings, and it always names its part.
 				foreach ( $problem->findings as $finding ) {
 					// A message belongs to one rule, so it names the misfit.
 					$misfits[ $finding->code->value ] = self::problem(
@@ -616,10 +615,10 @@ final class KitEditor {
 	 *
 	 * @param string $preset The preset's name.
 	 * @param string $slot   The slot's key.
-	 * @param int    $part   The part's ID.
+	 * @param ?int   $part   The part's ID; none where the problem names no part.
 	 * @return array{preset: string, slot: string, part: string}
 	 */
-	private static function named( string $preset, string $slot, int $part ): array {
+	private static function named( string $preset, string $slot, ?int $part ): array {
 		return array(
 			'preset' => $preset,
 			'slot'   => $slot,

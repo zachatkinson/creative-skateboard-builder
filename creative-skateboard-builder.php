@@ -3,7 +3,7 @@
  * Plugin Name:       Creative Skateboard Builder
  * Plugin URI:        https://creativebranding.ca
  * Description:       Sells complete skateboards built from parts the shop stocks, with fit checked from specs and each part on its own cart and order line.
- * Version:           0.5.0
+ * Version:           0.6.0
  * Requires at least: 7.0
  * Requires PHP:      8.5
  * Requires Plugins:  woocommerce
@@ -15,7 +15,7 @@
  * Domain Path:       /languages
  * Update URI:        https://raw.githubusercontent.com/zachatkinson/creative-releases/main/creative-skateboard-builder/info.json
  * WC requires at least: 11.2
- * WC tested up to:   11.2
+ * WC tested up to:   11.3
  *
  * Bootstrap only: headers, constants, the floors check, the autoloader and the hooks into src/. This file must parse
  * on PHP 7.4, the oldest PHP WordPress 7.0 runs on, so a host below the floor sees the notice and no parse error
@@ -30,7 +30,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'CBUILD_VERSION', '0.5.0' );
+define( 'CBUILD_VERSION', '0.6.0' );
 define( 'CBUILD_FILE', __FILE__ );
 define( 'CBUILD_PATH', plugin_dir_path( __FILE__ ) );
 define( 'CBUILD_URL', plugin_dir_url( __FILE__ ) );

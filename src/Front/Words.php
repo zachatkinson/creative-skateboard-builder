@@ -69,12 +69,14 @@ final class Words {
 		} else {
 			$number = number_format_i18n( $measure->tenThousandths / 10000, strlen( rtrim( sprintf( '%04d', $rest ), '0' ) ) );
 		}
+		// Cowork's review, minor 13: the spec's and the shop's notation, the inch sign against the number, and a
+		// no-break space before a unit's word, so that the number and its unit never wrap apart.
 		if ( Unit::Inch === $measure->unit ) {
-			/* translators: %s: a number of inches. */
-			return sprintf( _x( '%s in', 'inches', 'creative-skateboard-builder' ), $number );
+			/* translators: %s: a number of inches. The double prime is the inch sign; French writes "%s po", with a no-break space. */
+			return sprintf( _x( '%s″', 'inches', 'creative-skateboard-builder' ), $number );
 		}
-		/* translators: %s: a number of millimetres. */
-		return sprintf( _x( '%s mm', 'millimetres', 'creative-skateboard-builder' ), $number );
+		/* translators: %s: a number of millimetres. The space before mm is a no-break space. */
+		return sprintf( _x( "%s\u{00A0}mm", 'millimetres', 'creative-skateboard-builder' ), $number );
 	}
 
 	/**
@@ -269,5 +271,122 @@ final class Words {
 				/* translators: %s: a slot's label, such as Trucks. */
 				return sprintf( __( '%s: the part chosen does not fit the rest of the build.', 'creative-skateboard-builder' ), $label );
 		}
+	}
+
+	/**
+	 * A problem with the part it is about named, where it has one (spec: A step, Sold out: "A preset or link that
+	 * holds one names it"). A problem about no part says what `problem()` says.
+	 *
+	 * @since 0.6.0
+	 *
+	 * @param Problem $problem The problem.
+	 * @param string  $label   The slot's label, such as Wheels.
+	 * @param string  $name    The part's name, or empty.
+	 */
+	public static function named( Problem $problem, string $label, string $name ): string {
+		if ( '' === $name ) {
+			return self::problem( $problem, $label );
+		}
+		return match ( $problem ) {
+			/* translators: 1: a slot's label, such as Wheels. 2: a part's name. */
+			Problem::PartSoldOut   => sprintf( __( '%1$s: %2$s is sold out.', 'creative-skateboard-builder' ), $label, $name ),
+			/* translators: 1: a slot's label, such as Wheels. 2: a part's name. */
+			Problem::PartShort     => sprintf( __( '%1$s: the shop has fewer of %2$s than a build takes.', 'creative-skateboard-builder' ), $label, $name ),
+			/* translators: 1: a slot's label, such as Trucks. 2: a part's name. */
+			Problem::PartNotInSlot => sprintf( __( '%1$s: %2$s is no longer offered here.', 'creative-skateboard-builder' ), $label, $name ),
+			default                => self::problem( $problem, $label ),
+		};
+	}
+
+	/**
+	 * What taking a part does to the total, as its card says it (spec: A step, P4): "+$12.00", "−$5.00", "Same price"
+	 * for a part that costs no more and no less, and "Included" for the part the total counts already.
+	 *
+	 * @since 0.6.0
+	 *
+	 * @param string $kind   Which: `more`, `less`, `free` or `included`. Anything else has no words.
+	 * @param string $amount How much, without a sign, as the shop writes money.
+	 */
+	public static function delta( string $kind, string $amount ): string {
+		switch ( $kind ) {
+			case 'more':
+				/* translators: %s: an amount of money, such as $12.00. The plus sign says it is added to the total. */
+				return sprintf( _x( '+%s', 'added to the total', 'creative-skateboard-builder' ), $amount );
+			case 'less':
+				/* translators: %s: an amount of money, such as $5.00. The minus sign says it comes off the total. */
+				return sprintf( _x( '−%s', 'taken off the total', 'creative-skateboard-builder' ), $amount );
+			case 'free':
+				// Cowork's review, should-fix 8: "Free" read as no charge (P4, as Zach changed it).
+				return _x( 'Same price', 'a part that costs the same as the one picked', 'creative-skateboard-builder' );
+			case 'included':
+				return _x( 'Included', 'a part the total counts already', 'creative-skateboard-builder' );
+			default:
+				return '';
+		}
+	}
+
+	/**
+	 * A part's label in the picture of what is in the box (spec: The picture): its slot, then its brand and its
+	 * size where it has them, as "Wheels: Retna, 54 mm".
+	 *
+	 * @since 0.6.0
+	 *
+	 * @param string $label The slot's label.
+	 * @param string $brand The brand's name, or empty.
+	 * @param string $size  The part's size as a person reads it, or empty.
+	 */
+	public static function boxed( string $label, string $brand, string $size ): string {
+		if ( '' !== $brand && '' !== $size ) {
+			/* translators: 1: a slot's label, such as Wheels. 2: a brand's name. 3: a size, such as 54 mm. */
+			return sprintf( __( '%1$s: %2$s, %3$s', 'creative-skateboard-builder' ), $label, $brand, $size );
+		}
+		if ( '' === $brand && '' === $size ) {
+			return $label;
+		}
+		/* translators: 1: a slot's label, such as Wheels. 2: a brand's name, or a size such as 54 mm. */
+		return sprintf( __( '%1$s: %2$s', 'creative-skateboard-builder' ), $label, '' === $brand ? $size : $brand );
+	}
+
+	/**
+	 * The build in a sentence, for whoever cannot see its picture (spec: The picture, a written description). Each
+	 * part is said by its slot, since a part's name may hold commas of its own (Cowork's review, minor 15).
+	 *
+	 * @since 0.6.0
+	 *
+	 * @param list<array{0: string, 1: string}> $parts Each part's slot label and name, in step order.
+	 */
+	public static function built( array $parts ): string {
+		if ( array() === $parts ) {
+			return __( 'Nothing is chosen yet.', 'creative-skateboard-builder' );
+		}
+		$said = array();
+		foreach ( $parts as [ $label, $name ] ) {
+			/* translators: 1: a slot's label, such as Deck. 2: the part's name. */
+			$said[] = sprintf( __( '%1$s: %2$s', 'creative-skateboard-builder' ), $label, $name );
+		}
+		/* translators: Between two parts of the build, as in "Deck: …; Trucks: …". */
+		$between = _x( '; ', 'between the parts of a build', 'creative-skateboard-builder' );
+		/* translators: %s: each part of the build, by its slot, as "Deck: …; Trucks: …". */
+		return sprintf( __( 'The build so far: %s.', 'creative-skateboard-builder' ), implode( $between, $said ) );
+	}
+
+	/**
+	 * A slot's label inside a sentence, as "Change deck": its first letter small, unless the label is written in
+	 * capitals, as a brand's may be, or the language keeps a noun's capital (Cowork's review, minors 5 and 14).
+	 *
+	 * @since 0.6.0
+	 *
+	 * @param string $label The slot's label, as the shop wrote it.
+	 */
+	public static function inSentence( string $label ): string {
+		/* translators: Leave as "lowercase" where a slot's label, such as Grip tape, starts with a small letter inside a sentence, as in English and French. Write anything else, such as "keep", where it keeps its capital, as in German. */
+		if ( 'lowercase' !== _x( 'lowercase', 'a slot label inside a sentence', 'creative-skateboard-builder' ) ) {
+			return $label;
+		}
+		$second = mb_substr( $label, 1, 1 );
+		if ( '' === $second || mb_strtoupper( $second ) === $second ) {
+			return $label;
+		}
+		return mb_strtolower( mb_substr( $label, 0, 1 ) ) . mb_substr( $label, 1 );
 	}
 }

@@ -28,6 +28,8 @@ for ( const schema of schemas ) {
 		// A list with a cap stays a list: the default writes every length up to maxItems out as a tuple, and a
 		// cap of 500 ids becomes megabytes of type.
 		ignoreMinAndMaxItems: true,
+		// The state's schema closes no object, since the answer gains fields. The types name the fields there are.
+		additionalProperties: false,
 		style: { useTabs: true, singleQuote: true },
 	} );
 	writeFileSync( join( 'assets/src/types', `${ name }.d.ts` ), ts );

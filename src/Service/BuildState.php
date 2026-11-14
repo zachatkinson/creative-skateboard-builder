@@ -62,13 +62,15 @@ final class BuildState {
 	 * @param int               $id       The kit product's ID.
 	 * @param array<mixed>      $picks    The picks: slot key to part ID.
 	 * @param array<mixed>|null $previous The picks as they were before the last one changed, for the change list.
-	 * @param string|null       $step     The key of the step the shopper is on; null, or a slot the kit lacks, is the
-	 *                                    first step with nothing picked.
+	 * @param string|null       $step     The step the shopper is on: a slot's key, or the review. Null, or a slot the
+	 *                                    kit lacks, is the first step with nothing picked.
 	 * @param bool|null         $assembly Whether the shop assembles the build; null is the kit's own default.
+	 * @param list<string>      $left     The slots the shopper chose to leave empty, by key. One the kit does not
+	 *                                    require starts on no part; one it requires starts as any other does.
 	 *
 	 * @throws InvalidMoney When the build cannot be priced in the shop's currency settings. It is logged first.
 	 */
-	public function of( int $id, array $picks, ?array $previous = null, ?string $step = null, ?bool $assembly = null ): ?State {
+	public function of( int $id, array $picks, ?array $previous = null, ?string $step = null, ?bool $assembly = null, array $left = array() ): ?State {
 		$kit = $this->kits->kit( $id );
 		if ( null === $kit ) {
 			// The callers ask only for a kit a visitor may see, so this one is published and its settings do not
@@ -99,7 +101,8 @@ final class BuildState {
 		foreach ( $kit->slots->all() as $slot ) {
 			$options     = $engine->options( $kit, $slot->key, $counted, $candidates[ $slot->key ] );
 			$part        = $picked->part( $slot->key );
-			$recommended = null === $part && $started ? $recommender->among( $kit, $slot->key, $counted, $options ) : null;
+			$starts      = null === $part && $started && ( $slot->required || ! in_array( $slot->key, $left, true ) );
+			$recommended = $starts ? $recommender->among( $kit, $slot->key, $counted, $options ) : null;
 			$steps[]     = new StateStep( $slot, $options, null === $part ? null : self::option( $options, $part->id ), $recommended );
 			$part      ??= $recommended?->part;
 			if ( null !== $part ) {
@@ -112,9 +115,21 @@ final class BuildState {
 			$started = $started && ( null !== $part || ! $slot->required );
 		}
 
-		$validation = ( new BuildValidator( $engine ) )->validate( $kit, $counted, array_map( 'array_keys', $parts ) );
+		$validator  = new BuildValidator( $engine );
+		$ids        = array_map( 'array_keys', $parts );
+		$validation = $validator->validate( $kit, $counted, $ids );
+		$discount   = $this->settings->terms()->discount;
+		$decimals   = $this->kits->decimals();
+		$pricer     = new Pricer();
+		$presets    = array();
 		try {
-			$quote = ( new Pricer() )->quote( $kit, $validation->build, $assembly ?? $kit->assembly->defaultOn, $this->settings->terms()->discount, $this->kits->decimals() );
+			$quote = $pricer->quote( $kit, $validation->build, $assembly ?? $kit->assembly->defaultOn, $discount, $decimals );
+			// Each preset as the build it starts: its tile's total and what keeps it from the cart.
+			foreach ( $kit->presets as $preset ) {
+				$left      = array();
+				$checked   = $validator->validate( $kit, self::found( $preset->picks, $parts, $left ), $ids );
+				$presets[] = new PresetState( $checked, $pricer->quote( $kit, $checked->build, $kit->assembly->defaultOn, $discount, $decimals ), $left );
+			}
 		} catch ( InvalidMoney $unpriced ) {
 			$this->logger->hourly( 'no_price_' . $id, Logger::ERROR, 'A build could not be priced in the shop\'s currency settings.', array( 'kit' => $id ) );
 			throw $unpriced;
@@ -124,11 +139,13 @@ final class BuildState {
 			$id,
 			$kit,
 			$steps,
-			null !== $step && null !== $kit->slots->get( $step ) ? $step : ( $first ?? $keys[ count( $keys ) - 1 ] ),
+			null !== $step && ( State::REVIEW === $step || null !== $kit->slots->get( $step ) ) ? $step : ( $first ?? $keys[ count( $keys ) - 1 ] ),
 			$refused,
 			$validation,
 			null === $previous ? null : self::changes( $engine, $kit, $picked, self::found( $previous, $parts ), $candidates ),
-			$quote
+			$quote,
+			$discount,
+			$presets
 		);
 	}
 
