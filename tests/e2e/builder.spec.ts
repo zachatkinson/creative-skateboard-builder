@@ -102,6 +102,19 @@ const build = ( page: Page ): string[] =>
 		key.startsWith( 'cbuild[' )
 	);
 
+/**
+ * Wait for the first deck's pick to be answered, as a shopper sees the page settle before pressing Next. The answer
+ * starts every later slot on its recommendation (spec: The builder), so the picture comes in and the presets go, and
+ * Next moves: on a slow runner a click pressed before it and let go after was lost (CI run 43520699158, WebKit).
+ *
+ * @param page The page.
+ */
+async function settled( page: Page ): Promise< void > {
+	await expect
+		.poll( () => build( page ) )
+		.toEqual( [ 'cbuild[deck]', 'cbuild[step]' ] );
+}
+
 test.describe( 'The builder without JavaScript', () => {
 	test.beforeEach( ( {}, info ) => {
 		test.skip(
@@ -658,6 +671,7 @@ test.describe( 'The builder with JavaScript', () => {
 		await page
 			.getByRole( 'radio', { name: 'Choose Builder test deck 8.0' } )
 			.check();
+		await settled( page );
 		await page.getByRole( 'button', { name: 'Next: Trucks' } ).click();
 		await expect( heading( page ) ).toHaveText( 'Step 2 of 7: Trucks' );
 		expect( await stayed( page ), 'the store drew the step' ).toBe( true );
@@ -1263,6 +1277,7 @@ test.describe( 'The builder with JavaScript', () => {
 		await page
 			.getByRole( 'radio', { name: 'Choose Builder test deck 8.0' } )
 			.check();
+		await settled( page );
 		await page.getByRole( 'button', { name: 'Next: Trucks' } ).click();
 		await expect( heading( page ) ).toHaveText( 'Step 2 of 7: Trucks' );
 		await page.goto( fixture().page );
@@ -1374,6 +1389,12 @@ test.describe( 'The builder with JavaScript', () => {
 		// runner the first found was the bar's, which the footer covered and the store then hid (CI run 43417214571,
 		// webkit-phone).
 		await page.waitForLoadState( 'load' );
+		// The pick's own answer opens the panel and hides the bar's Next (D-152): held, as the change panel's own test
+		// holds it, Next overtakes it (CI run 43520699158, webkit-phone).
+		const picking = ( url: URL ) =>
+			url.pathname.endsWith( '/state' ) &&
+			url.searchParams.get( 'cbuild[step]' ) === 'deck';
+		await page.route( picking, () => undefined );
 		await page
 			.getByRole( 'radio', { name: 'Choose Builder test deck 8.5' } )
 			.check();
@@ -1386,6 +1407,7 @@ test.describe( 'The builder with JavaScript', () => {
 				name: 'This change affects parts you chose',
 			} )
 		).toBeVisible();
+		await page.unroute( picking );
 		await check( 'the change panel' );
 
 		// The review, from a preset, and the build added.
@@ -1767,6 +1789,7 @@ test.describe( 'Motion', () => {
 		await page
 			.getByRole( 'radio', { name: 'Choose Builder test deck 8.0' } )
 			.check();
+		await settled( page );
 		await expect( page.locator( '.cbuild' ) ).toHaveAttribute(
 			'aria-busy',
 			'false'
