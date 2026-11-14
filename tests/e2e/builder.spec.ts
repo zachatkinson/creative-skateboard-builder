@@ -2102,12 +2102,11 @@ test.describe( "A kit's own page", () => {
 					.locator( '.cbuild-summary' )
 					.first()
 					.boundingBox();
+				// Beside them on either side, as a right-to-left page has it on the left: it starts above their foot.
 				expect(
-					summary?.x ?? 0,
+					summary?.y ?? 99999,
 					'the summary beside the steps, not under them'
-				).toBeGreaterThan(
-					( steps?.x ?? 0 ) + ( steps?.width ?? 0 ) / 2
-				);
+				).toBeLessThan( ( steps?.y ?? 0 ) + ( steps?.height ?? 0 ) );
 			}
 		} );
 	}
@@ -2170,6 +2169,7 @@ test.describe( 'The phone bar', () => {
 			page,
 			context,
 			baseURL,
+			javaScriptEnabled,
 		} ) => {
 			await context.addCookies( [
 				{
@@ -2208,6 +2208,10 @@ test.describe( 'The phone bar', () => {
 			);
 			expect( before.lines, '"Show the parts" on one line' ).toBe( 1 );
 			expect( before.under, 'under the total' ).toBe( true );
+			// Without JavaScript a pick changes the total with the next page, which draws the bar afresh.
+			if ( ! javaScriptEnabled ) {
+				return;
+			}
 			await page
 				.getByRole( 'radio', { name: 'Choose Builder test deck 8.0' } )
 				.check();
