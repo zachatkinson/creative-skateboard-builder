@@ -2424,3 +2424,76 @@ Cowork's review, minor 21. `reserved_slot_keys_1` (D-169) listed kits without th
 - **Tests.** `MigrationTest`, the 0.5.0 site's kit put in the bin before the run and restored after. **Red run:** `'review'` for `'review_slot'` at `MigrationTest.php:225`.
 
 **Status:** Accepted.
+
+### D-180 · A kit's item data is printed one way for the blocks and another for a classic list · 2026-11-13
+
+Cowork's recheck, N1. Edit build had an empty key so the blocks print the link alone (D-177). A list of item data that is not WooCommerce's `dl.variation`, such as Shop Kit's checkout, which joins entries with "·", printed "Assembly: not added · : Edit build".
+
+- **Two entries for the blocks, one for the rest.** The Assembly entry and the key-less Edit build entry are `hidden` to `wc_get_formatted_cart_item_data()` (WooCommerce 11.3.0, `includes/wc-template-functions.php:4599`) and shown to the Store API, which reads `__experimental_woocommerce_blocks_hidden` (`src/StoreApi/Schemas/V1/CartItemSchema.php:255`). One more entry, hidden from the Store API, gives a classic list "Assembly" with the value and the link after it, so any theme's markup prints "Assembly: not added Edit build" with no empty key.
+- **The colon rule goes.** D-177's style hiding a classic list's empty `dt` has nothing to hide.
+- **The key is experimental.** WooCommerce names it so; if a release renames it, `CartShowTest` fails on the Store API's keys before a shop sees two links.
+- **Tests.** `CartShowTest::test_a_classic_cart_prints_the_kits_link_after_its_assembly_with_no_entry_of_no_label`. **Red run:** "Failed asserting that 0 is identical to 1.": no list printed the link after the assembly.
+
+**Status:** Accepted.
+
+### D-181 · An order shows a kit's assembly and build to the shop, not to the customer · 2026-11-13
+
+Cowork's recheck, N2, N3 and N4, with Zach's answer to N3: word the admin's meta "Assembly: free", "Assembly: $15.00", "Assembly: not added"; the cost and total columns stay as WooCommerce prints them.
+
+- **`woocommerce_order_item_get_formatted_meta_data`** (`includes/class-wc-order-item.php:377`). On the customer's views (order received, My account, the emails), a kit's line drops its "Assembly" and "Build" entries: its total already says "Assembly: …" (D-177) and its parts are the lines below it. The order screen keeps both, with Assembly's value "not added", "free" or the fee through `wc_price()` in the order's currency.
+- **Telling the screen from the customer.** The order screen asks for every key, the underscored ones too (`includes/admin/meta-boxes/views/html-order-item-meta.php:16`); `wc_display_item_meta()` asks without them (`includes/wc-template-functions.php:4165`). Where the list holds the line's `_cbuild_role`, it is the screen. A plugin that asks for every key on a customer's page sees what the shop sees, which is what it asked for.
+- **The keys are words.** The meta was written under "Assembly" and "Build" in the language the order was placed in, so a key matches the English word or the word in the language the shop has now. An order placed in a language the shop has since left keeps its meta as written.
+- **Tests.** `OrderTest`: the customer's meta is empty and the screen's says "not added", "free" or the fee. **Red run:** the customer's list held "Assembly" and "Build".
+
+**Status:** Accepted.
+
+### D-182 · Removing a build says so once · 2026-11-13
+
+Cowork's recheck, N5. The Cart block said "… was removed from your cart." for each part a build's removal takes with it, and nothing of the build: WooCommerce skips the notice for the line the shopper removed, and sends the others through the `woocommerce_show_cart_item_removed_notice` filter (`assets/client/blocks/wc-blocks-data.js`, WooCommerce 11.3.0).
+
+- **The cart's script answers the filter.** For a part, it shows no notice of its own and, once per build, one snackbar the server worded: "Cart test kit was removed from your cart.", spoken. Any other line keeps WooCommerce's answer.
+- **The words come from the server.** Each line's Store API extension data gains `removed`: for a part, the sentence for its build; for anything else, empty. The browser builds no sentence (CLAUDE.md, Strings) and this is a field added to the public API (`docs/HOOKS.md`).
+- **The Mini-Cart.** Its iAPI drawer shows no removal notices, so nothing changes there.
+- **Tests.** `cart.spec.ts`, the Cart block's removal; `cart-lines.test.ts`. **Red run:** five snackbars, each naming a part.
+
+**Status:** Accepted.
+
+### D-183 · The add is said the same way whichever takes focus first · 2026-11-13
+
+Cowork's recheck, finding 10. The builder looked one frame after an add for focus outside it. On the demo the Mini-Cart's drawer opened a beat later (`includes/blocks/MiniCart.php:406` opens it on `wc-blocks_added_to_cart`, and its focus waits for its own render), so the builder moved focus to its notice, the drawer took it 5 ms after, and nothing was said.
+
+- **Focus is the drawer's where it took it,** and the status region says the add.
+- **Otherwise focus goes to the notice and the builder watches for 2 seconds** (`SETTLE`). If something outside the builder takes focus in that time, the status region says the add, so the words are not lost with the notice. After it, nothing more is said.
+- **"Outside" excludes the builder's ancestors.** Storefront's `#content` takes focus on a click in WebKit; it holds the builder, and is not a drawer.
+- **Tests.** `store.test.ts`, and `builder.spec.ts` with the Mini-Cart's drawer opening at once and 150 ms after the add. **Red run:** "Expected: "The build is in your cart." Received: """ with the drawer opening a beat after, and in `store.test.ts` the notice kept focus the page around the builder took.
+
+**Status:** Accepted.
+
+### D-184 · A kit's page under Shop Kit's product template · 2026-11-13
+
+Cowork's recheck, finding 2, as Zach answered it: handle Shop Kit's product template in the plugin, keyed on its block classes, never the row's ID.
+
+- **Two rules in the kit page's inline styles.** In a Kadence row (`.kt-row-column-wrap`) that holds the builder, the column holding Shop Kit's gallery block (`.wp-block-kadence-wootemplate-blocks-gallery`) is hidden, and the column holding the builder spans the row. `:has()` finds both; a browser without it shows the template as before.
+- **Shop Kit is a commercial theme.** The test's fixture, `tests/e2e/fixtures/shop-kit-product.php`, is the markup Cowork quoted under Kadence, chosen by a cookie in the browser tests' mu-plugin. If Shop Kit changes its classes, the demo shows it, not the fixture.
+- **Tests.** `builder.spec.ts`, "A kit's own page", desktop and phone. **Red run:** the gallery block `toBeHidden()`, "Received: visible", at both widths.
+
+**Status:** Accepted.
+
+### D-185 · A pick keeps the control in use where it was · 2026-11-13
+
+CI run 43520699158 and the same press on the demo in Safari. The first deck's answer adds the summary's lines and the change of a step's own view moved Next by up to 192 pixels while it was pressed. WebKit drops a click whose press and release land on different places, and has no scroll anchoring of its own.
+
+- **The builder anchors the view itself.** Before a step's view changes in place, it reads where the control with focus in the builder is, or else the part picked; after the change is drawn and before it is painted, it scrolls the window by however far that moved, a pixel or more. A move to another step is left to its own focus and motion (D-149, D-161).
+- **Every engine does it,** so a browser's own anchoring, where it has some, finds nothing left to move.
+- **Tests.** `builder.spec.ts`, the first deck's answer arriving under a press of Next; `store.test.ts`. **Red run:** Next moved 192 pixels on chromium-desktop and 91 on chromium-phone and webkit-desktop, where 2 is allowed.
+
+**Status:** Accepted.
+
+### D-186 · The phone bar says "Show the parts" under its total · 2026-11-13
+
+Cowork's recheck, N6, which asked for the total and the label on one line, with no theme marker. At 412 pixels under Kadence, the bar's total and its label need 203 pixels of the 185 the photo and Add to cart leave them, so one line would wrap or shrink the text.
+
+- **The label sits whole under the total,** never broken, and the bar keeps its height with or without a build. The summary is a flex column, which drops the marker browsers and themes give a `summary`, and WebKit's own marker is hidden.
+- **Tests.** `builder.spec.ts`, "The phone bar", on each theme. **Red run:** on Storefront and Kadence the summary was a `list-item`, with its marker, and the label broke over two lines.
+
+**Status:** Accepted.
