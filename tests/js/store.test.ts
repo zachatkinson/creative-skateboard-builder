@@ -4,7 +4,7 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { setConfig, setElement, stores } from './support/interactivity';
-import { NAME, browser, reset } from '../../assets/src/builder/view';
+import { NAME, SETTLE, browser, reset } from '../../assets/src/builder/view';
 import { SLOW, WAIT } from '../../assets/src/builder/navigate';
 
 interface Actions {
@@ -771,6 +771,73 @@ describe( 'adding to the cart', () => {
 		drawer.remove();
 	} );
 
+	it( 'says the add the same way when the drawer opens a beat after the notice took focus', async () => {
+		// Claude in Cowork's recheck, finding 10: on the demo the drawer took focus 5 ms after the notice, and nothing
+		// was said.
+		const { root } = review();
+		cart( 201 );
+		const drawer = document.createElement( 'button' );
+		document.body.append( drawer );
+		const opens = () => window.setTimeout( () => drawer.focus(), 100 );
+		root.ownerDocument.addEventListener( 'wc-blocks_added_to_cart', opens );
+		await actions.add( new SubmitEvent( 'submit', { cancelable: true } ) );
+		vi.advanceTimersToNextFrame();
+		root.ownerDocument.removeEventListener(
+			'wc-blocks_added_to_cart',
+			opens
+		);
+		expect( root.ownerDocument.activeElement ).toBe(
+			root.querySelector( '.cbuild-review__added' )
+		);
+		expect( state.status ).toBe( '' );
+
+		vi.advanceTimersByTime( 100 );
+		expect( root.ownerDocument.activeElement ).toBe( drawer );
+		expect( state.status ).toBe( REVIEW.review.added );
+		drawer.remove();
+	} );
+
+	it( 'says nothing more once the add has settled, wherever the shopper moves focus after', async () => {
+		const { root } = review();
+		cart( 201 );
+		const elsewhere = document.createElement( 'button' );
+		document.body.append( elsewhere );
+		await actions.add( new SubmitEvent( 'submit', { cancelable: true } ) );
+		vi.advanceTimersToNextFrame();
+		vi.advanceTimersByTime( SETTLE );
+		elsewhere.focus();
+		expect( state.status ).toBe( '' );
+		expect( root.contains( root.ownerDocument.activeElement ) ).toBe(
+			false
+		);
+		elsewhere.remove();
+	} );
+
+	it( 'puts focus on the notice where the page around the builder took it, as a theme may on a click', async () => {
+		// Storefront under WebKit focuses its content's wrapper, which holds the builder: no drawer opened.
+		const { root } = review();
+		cart( 201 );
+		const wrapper = document.createElement( 'div' );
+		wrapper.tabIndex = -1;
+		root.before( wrapper );
+		wrapper.append( root );
+		const focuses = () => wrapper.focus();
+		root.ownerDocument.addEventListener(
+			'wc-blocks_added_to_cart',
+			focuses
+		);
+		await actions.add( new SubmitEvent( 'submit', { cancelable: true } ) );
+		vi.advanceTimersToNextFrame();
+		root.ownerDocument.removeEventListener(
+			'wc-blocks_added_to_cart',
+			focuses
+		);
+		expect( root.ownerDocument.activeElement ).toBe(
+			root.querySelector( '.cbuild-review__added' )
+		);
+		expect( state.status ).toBe( '' );
+	} );
+
 	it( 'adds the build once when Add to cart is pressed again while it adds', async () => {
 		review();
 		const asked = cart( 201 );
@@ -1029,5 +1096,118 @@ describe( 'motion', () => {
 		motion( false, false );
 		await step();
 		expect( state.view ).toEqual( NEXT );
+	} );
+} );
+
+// CI run 43520699158: the first deck's answer moved Next by 166 pixels, and WebKit dropped a press it came during
+// (D-185).
+describe( 'keeping the control in use where it was', () => {
+	function builder(): {
+		radio: HTMLInputElement;
+		filter: HTMLButtonElement;
+	} {
+		document.body.innerHTML = `
+			<div class="cbuild">
+				<button type="button">8.0</button>
+				<form class="cbuild-step" method="get" action="/">
+					<input type="hidden" name="page_id" value="25">
+					<input type="radio" name="cbuild[deck]" value="11">
+					<input type="radio" name="cbuild[deck]" value="12" checked>
+				</form>
+			</div>`;
+		const root = document.querySelector< HTMLElement >( '.cbuild' )!;
+		setElement( root );
+		(
+			defined.definition as { callbacks: { init: () => void } }
+		 ).callbacks.init();
+		return {
+			radio: root.querySelectorAll< HTMLInputElement >(
+				'input[type=radio]'
+			)[ 1 ]!,
+			filter: root.querySelector( 'button' )!,
+		};
+	}
+
+	function at( element: Element, tops: number[] ): void {
+		let asked = 0;
+		element.getBoundingClientRect = () =>
+			( {
+				top: tops[ Math.min( asked++, tops.length - 1 ) ],
+			} ) as DOMRect;
+	}
+
+	async function pick( radio: HTMLInputElement ): Promise< void > {
+		reply = () => answer( { ...START, status: 'A deck.' } );
+		actions.pick( { target: radio } as unknown as Event );
+		vi.advanceTimersByTime( WAIT );
+		await settle();
+	}
+
+	let scrolled: ReturnType< typeof vi.fn >;
+	beforeEach( () => {
+		scrolled = vi.fn();
+		vi.stubGlobal( 'scrollBy', scrolled );
+	} );
+
+	it( 'scrolls the page by what the view moved the part picked, once it is drawn and before it is painted', async () => {
+		const { radio } = builder();
+		at( radio, [ 300, 134 ] );
+		await pick( radio );
+		expect( state.view ).toMatchObject( { status: 'A deck.' } );
+		expect( scrolled ).not.toHaveBeenCalled();
+		vi.advanceTimersToNextFrame();
+		expect( scrolled ).toHaveBeenCalledExactlyOnceWith( 0, -166 );
+	} );
+
+	it( 'keeps the control with focus in the builder where it was, ahead of the part picked', async () => {
+		const { radio, filter } = builder();
+		filter.focus();
+		at( filter, [ 100, 160 ] );
+		at( radio, [ 300, 0 ] );
+		await pick( radio );
+		vi.advanceTimersToNextFrame();
+		expect( scrolled ).toHaveBeenCalledExactlyOnceWith( 0, 60 );
+	} );
+
+	it( 'scrolls by a pixel, and by nothing for less', async () => {
+		const { radio } = builder();
+		at( radio, [ 300, 299 ] );
+		await pick( radio );
+		vi.advanceTimersToNextFrame();
+		expect( scrolled ).toHaveBeenCalledExactlyOnceWith( 0, -1 );
+
+		scrolled.mockClear();
+		at( radio, [ 300, 300.5 ] );
+		await pick( radio );
+		vi.advanceTimersToNextFrame();
+		expect( scrolled ).not.toHaveBeenCalled();
+	} );
+
+	it( 'scrolls nothing for a control the view took off the page, or with nothing picked or focused', async () => {
+		const { radio } = builder();
+		at( radio, [ 300, 0 ] );
+		await pick( radio );
+		radio.remove();
+		vi.advanceTimersToNextFrame();
+		expect( scrolled ).not.toHaveBeenCalled();
+
+		const again = builder().radio;
+		again.checked = false;
+		await pick( again );
+		vi.advanceTimersToNextFrame();
+		expect( scrolled ).not.toHaveBeenCalled();
+	} );
+
+	it( 'leaves a move to another step to its own focus and motion', async () => {
+		const { radio } = builder();
+		at( radio, [ 300, 0 ] );
+		const sheet = document.querySelector( 'form' )!;
+		setElement( sheet );
+		reply = () => answer( NEXT );
+		actions.submit( new SubmitEvent( 'submit', { cancelable: true } ) );
+		await settle();
+		vi.advanceTimersToNextFrame();
+		expect( state.view ).toEqual( NEXT );
+		expect( scrolled ).not.toHaveBeenCalled();
 	} );
 } );

@@ -131,6 +131,64 @@ function say(
 }
 
 /**
+ * How long after an add a cart drawer that opens on it may still take focus, in milliseconds. The Mini-Cart opens on
+ * the add's event and moves focus into its drawer once it has drawn it, which may come after the builder's next
+ * frame (Cowork's recheck, finding 10; D-183).
+ */
+export const SETTLE = 2000;
+
+/**
+ * Whether focus is somewhere a drawer or another part of the page took it: not the page itself, not in the builder,
+ * and not an element the builder is inside, which a theme may focus on a click (Storefront's content, in WebKit).
+ *
+ * @param focused The element with focus.
+ * @param page    The page.
+ */
+function taken( focused: Element | null, page: Document ): boolean {
+	return (
+		null !== focused &&
+		focused !== page.body &&
+		null !== root &&
+		! root.contains( focused ) &&
+		! focused.contains( root )
+	);
+}
+
+/**
+ * Say an add once, the same way whichever comes first, the builder's next frame or a cart drawer that opens on the
+ * add and takes focus (Cowork's review, minor 10; recheck, finding 10). With no drawer, the notice takes focus and is
+ * read, and the status says nothing more. Where a drawer has focus, or takes it within SETTLE, focus is left there
+ * and the status says the add.
+ *
+ * @param state The store's state.
+ * @param page  The page.
+ */
+function told( state: State, page: Document ): void {
+	const announce = (): void => {
+		state.status = state.view.review.added;
+	};
+	window.requestAnimationFrame( () => {
+		if ( taken( page.activeElement, page ) ) {
+			announce();
+			return;
+		}
+		root?.querySelector< HTMLElement >( '.cbuild-review__added' )?.focus();
+		const watch = ( event: FocusEvent ): void => {
+			if ( taken( event.target as Element | null, page ) ) {
+				stop();
+				announce();
+			}
+		};
+		const stop = (): void => {
+			window.clearTimeout( timer );
+			page.removeEventListener( 'focusin', watch );
+		};
+		const timer = window.setTimeout( stop, SETTLE );
+		page.addEventListener( 'focusin', watch );
+	} );
+}
+
+/**
  * Whether the browser is sending a form the store let go: its submit handlers then leave the event alone.
  */
 let leaving = false;
@@ -187,6 +245,41 @@ function motion( change: () => void ): void {
 }
 
 /**
+ * Show a view on the same step with the control the shopper is on where it was on the screen: the one with focus in
+ * the builder, or else the part picked on the step, as WebKit gives a pressed radio no focus. The first deck's answer
+ * starts every later slot on its recommendation, so the picture comes in and the presets go above the step, and Next
+ * moved by 166 pixels; WebKit drops a press that starts on a button and ends off it, so a Next pressed as the answer
+ * came was lost (CI run 43520699158). The page is scrolled by what the view moved the control, once the Interactivity
+ * API has drawn it and before the browser paints, as a browser's own scroll anchoring does where it has one (D-185).
+ *
+ * @param change What changes the view.
+ */
+function steady( change: () => void ): void {
+	const focused = root?.ownerDocument.activeElement;
+	const anchor =
+		focused instanceof HTMLElement &&
+		focused !== root &&
+		root?.contains( focused )
+			? focused
+			: root?.querySelector< HTMLElement >(
+					'.cbuild-step input[type="radio"]:checked'
+				);
+	const before = anchor?.getBoundingClientRect().top;
+	change();
+	if ( ! anchor || undefined === before ) {
+		return;
+	}
+	window.requestAnimationFrame( () => {
+		const moved = anchor.isConnected
+			? anchor.getBoundingClientRect().top - before
+			: 0;
+		if ( Math.abs( moved ) >= 1 ) {
+			window.scrollBy( 0, moved );
+		}
+	} );
+}
+
+/**
  * The navigator, made on first use from the page's config.
  *
  * @param state The store's state.
@@ -223,7 +316,7 @@ function nav( state: State ): Navigator {
 				) {
 					motion( change );
 				} else {
-					change();
+					steady( change );
 				}
 				return turned;
 			},
@@ -342,6 +435,7 @@ const { state } = store(
 					return;
 				}
 				adding = true;
+				state.status = '';
 				const sent = fields( form, event.submitter );
 				const config = getConfig( NAME ) as Partial< Config >;
 				state.pending = true;
@@ -377,23 +471,7 @@ const { state } = store(
 					} )
 				);
 				state.added = true;
-				// Said once: the notice takes focus and is read, so the status says nothing more. Where a cart drawer
-				// opened on the add and took focus (the Mini-Cart may), focus stays there and the status says it
-				// (Cowork's review, minor 10).
-				window.requestAnimationFrame( () => {
-					const focused = form.ownerDocument.activeElement;
-					if (
-						focused &&
-						focused !== form.ownerDocument.body &&
-						! root?.contains( focused )
-					) {
-						state.status = state.view.review.added;
-						return;
-					}
-					root?.querySelector< HTMLElement >(
-						'.cbuild-review__added'
-					)?.focus();
-				} );
+				told( state, form.ownerDocument );
 			},
 			/**
 			 * The screen changed: fit the phone bar into the theme again (D-163).

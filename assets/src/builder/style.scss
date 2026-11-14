@@ -709,19 +709,32 @@
 }
 
 :where(.cbuild-bar__total) {
-	display: flex;
-	flex-wrap: wrap;
-	align-items: center;
-	gap: 0 var(--cbuild-gap-small);
 	min-block-size: var(--cbuild-target);
 	cursor: pointer;
 	font-weight: 600;
+}
+
+/* The total, and "Show the parts" whole under it (Cowork's recheck, N6). Not under :where(): Kadence's and
+   Storefront's rules for a summary make it a list item, with the theme's marker beside it, and at 412 pixels the
+   words broke over two lines. On a line of its own the bar is as high whatever the total is, so Next stays put as a
+   pick widens it. */
+.cbuild .cbuild-bar__total {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	justify-content: center;
+	list-style: none;
+}
+
+.cbuild .cbuild-bar__total::-webkit-details-marker {
+	display: none;
 }
 
 :where(.cbuild-bar__more) {
 	color: var(--cbuild-muted);
 	font-size: var(--cbuild-small);
 	font-weight: 400;
+	white-space: nowrap;
 }
 
 /* "Show the parts" while the list is shut and "Hide the parts" while it is open. Not under :where(), so that a

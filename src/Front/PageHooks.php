@@ -44,7 +44,11 @@ final class PageHooks implements Hookable {
 	 */
 	private const KIT_PAGE = 'body.cbuild-kit-page div.product div.summary.entry-summary{float:none;clear:both;inline-size:auto;max-inline-size:none;margin-inline:0}'
 		. '.cbuild-kit-page .wp-block-columns:has(.cbuild)>.wp-block-column:has(.wp-block-woocommerce-product-image-gallery){display:none}'
-		. '.cbuild-kit-page .wp-block-columns:has(.cbuild)>.wp-block-column:has(.cbuild){flex-basis:100%!important}';
+		. '.cbuild-kit-page .wp-block-columns:has(.cbuild)>.wp-block-column:has(.cbuild){flex-basis:100%!important}'
+		// Kadence Shop Kit's product template: a Kadence Blocks row, by its blocks' classes and never the row's own ID,
+		// which is the template's (Cowork's recheck, finding 2; D-184).
+		. '.cbuild-kit-page .kt-row-column-wrap:has(.cbuild)>.wp-block-kadence-column:has(.wp-block-kadence-wootemplate-blocks-gallery){display:none}'
+		. '.cbuild-kit-page .kt-row-column-wrap:has(.cbuild)>.wp-block-kadence-column:has(.cbuild){grid-column:1/-1;flex-basis:100%;max-inline-size:none}';
 
 	/**
 	 * The renderer, once made.

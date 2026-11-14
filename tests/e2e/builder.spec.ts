@@ -20,6 +20,7 @@ import { axe } from './support/axe';
 interface Fixture {
 	kit: number;
 	page: string;
+	drawer: string;
 	parts: Record< string, number >;
 }
 
@@ -1165,6 +1166,131 @@ test.describe( 'The builder with JavaScript', () => {
 		).toHaveText( '1', { timeout: 20_000 } );
 	} );
 
+	// CI run 43520699158: the first deck's answer starts every later slot on its recommendation, so the picture comes
+	// in and the presets go, and Next moved by 166 pixels on a desktop. WebKit drops a press that starts on a button
+	// and ends off it, so a shopper's Next pressed as the answer came was lost. The page now keeps the picked card,
+	// and Next under it, where they were (D-185). The answer is held here until the press starts.
+	test( "keeps Next under a press the first deck's answer arrives during, and the press goes through", async ( {
+		page,
+	} ) => {
+		let release: () => void = () => undefined;
+		const pressed = new Promise< void >( ( done ) => ( release = done ) );
+		await page.exposeFunction( 'cbuildPressed', () => release() );
+		await page.route(
+			( url ) =>
+				url.pathname.endsWith( '/state' ) &&
+				url.searchParams.get( 'cbuild[step]' ) === 'deck',
+			async ( route ) => {
+				const answer = await route.fetch();
+				await Promise.race( [
+					pressed,
+					new Promise( ( done ) => setTimeout( done, 3000 ) ),
+				] );
+				await route.fulfill( { response: answer } );
+			}
+		);
+		await page.goto( fixture().page );
+		await page.waitForLoadState( 'load' );
+		const button = page
+			.locator( '.cbuild' )
+			.getByRole( 'button', { name: 'Next: Trucks' } )
+			.filter( { visible: true } );
+		await button.evaluate( ( element ) =>
+			element.ownerDocument.addEventListener(
+				'pointerdown',
+				( event ) => {
+					if ( element.contains( event.target as Node ) ) {
+						(
+							window as unknown as { cbuildPressed: () => void }
+						 ).cbuildPressed();
+					}
+				},
+				true
+			)
+		);
+		const card = page.getByRole( 'radio', {
+			name: 'Choose Builder test deck 8.0',
+		} );
+		await card.check();
+		await button.scrollIntoViewIfNeeded();
+		const box = ( await button.boundingBox() )!;
+		await page.mouse.move( box.x + box.width / 2, box.y + box.height / 2 );
+		await page.mouse.down();
+		// The answer lands while the button is held, as a shopper's press takes a tenth of a second or more.
+		await expect.poll( () => build( page ) ).toContain( 'cbuild[deck]' );
+		await page.waitForTimeout( 100 );
+		const moved = ( await button.boundingBox() )!;
+		expect(
+			Math.abs( moved.y - box.y ),
+			'Next where it was under the press'
+		).toBeLessThan( 2 );
+		await page.mouse.up();
+		await expect( heading( page ) ).toHaveText( 'Step 2 of 7: Trucks' );
+	} );
+
+	// Claude in Cowork's recheck, finding 10: on the demo the Mini-Cart's drawer opened on the add and took focus a
+	// beat after the builder had moved it to its notice, and nothing was said. Whichever comes first, focus is left in
+	// the drawer and the status says the add.
+	for ( const order of [ 'first', 'a beat after' ] ) {
+		test( `says the add once when the Mini-Cart's drawer opens ${ order }, and leaves focus in it`, async ( {
+			page,
+		} ) => {
+			await page.goto( fixture().drawer );
+			await page.waitForLoadState( 'load' );
+			if ( order !== 'first' ) {
+				// The add's event reaches the Mini-Cart 150 ms late, as the demo's drawer opened after the builder's frame.
+				await page.evaluate( () => {
+					let held = false;
+					window.addEventListener(
+						'wc-blocks_added_to_cart',
+						( event ) => {
+							if ( held ) {
+								return;
+							}
+							held = true;
+							event.stopImmediatePropagation();
+							window.setTimeout(
+								() =>
+									document.body.dispatchEvent(
+										new CustomEvent(
+											'wc-blocks_added_to_cart',
+											{ bubbles: true, cancelable: true }
+										)
+									),
+								150
+							);
+						},
+						{ capture: true }
+					);
+				} );
+			}
+			await page
+				.locator( '.cbuild-presets' )
+				.getByRole( 'button', { name: 'Start from Street' } )
+				.click();
+			await expect( heading( page ) ).toHaveText( 'Step 7 of 7: Review' );
+			await page
+				.locator( '.cbuild' )
+				.getByRole( 'button', { name: 'Add to cart' } )
+				.click();
+			const drawer = page.locator( '.wc-block-mini-cart__drawer' );
+			await expect( drawer ).toBeVisible();
+			await expect
+				.poll( () =>
+					drawer.evaluate( ( element ) =>
+						element.contains( element.ownerDocument.activeElement )
+					)
+				)
+				.toBe( true );
+			await expect(
+				page.locator( '.cbuild' ).getByRole( 'status' )
+			).toHaveText( 'The build is in your cart.' );
+			await expect(
+				page.locator( '.cbuild-review__added' )
+			).toBeVisible();
+		} );
+	}
+
 	test( "copies the build's link and says so", async ( {
 		page,
 		context,
@@ -1923,6 +2049,62 @@ test.describe( "A kit's own page", () => {
 		} );
 	}
 
+	// Claude in Cowork's recheck, finding 2: under Kadence Shop Kit's product template the gallery's placeholder was
+	// still drawn and the builder had the row's second column. As Zach answered it, the plugin hides the column that
+	// holds Shop Kit's gallery block and lets the one that holds the builder span the row, by Shop Kit's block classes
+	// and never the row's own ID (tests/e2e/fixtures/shop-kit-product.php has the markup the report quotes).
+	for ( const size of [
+		{ name: 'desktop', width: 1440, height: 900 },
+		{ name: 'phone', width: 412, height: 900 },
+	] ) {
+		test( `gives the builder the row under Shop Kit's product template, with no gallery, on a ${ size.name }`, async ( {
+			page,
+			context,
+			baseURL,
+		} ) => {
+			const url = baseURL || 'http://localhost:8898';
+			await context.addCookies( [
+				{ name: 'cbuild_e2e_theme', value: 'kadence', url },
+				{ name: 'cbuild_e2e_template', value: 'shop-kit', url },
+			] );
+			await page.setViewportSize( size );
+			await page.goto( '/product/cart-test-kit/' );
+			const row = page.locator( '.kt-row-column-wrap' );
+			await expect( row ).toHaveCount( 1 );
+			await expect(
+				page.locator( '.wp-block-kadence-wootemplate-blocks-gallery' )
+			).toBeHidden();
+			const builder = page.locator( '.cbuild' ).first();
+			await expect( builder ).toBeVisible();
+			const width = ( await builder.boundingBox() )?.width ?? 0;
+			const across = ( await row.boundingBox() )?.width ?? 0;
+			expect( width, 'the builder has the row' ).toBeGreaterThan(
+				across * 0.95
+			);
+			// The title, then the builder: nothing of the gallery's above them.
+			const title = await page.locator( '#buy-box h1' ).boundingBox();
+			expect( title?.y ?? 9999 ).toBeLessThan(
+				( ( await row.boundingBox() )?.y ?? 0 ) + 10
+			);
+			if ( size.name === 'desktop' ) {
+				const steps = await page
+					.locator( '.cbuild-step' )
+					.first()
+					.boundingBox();
+				const summary = await page
+					.locator( '.cbuild-summary' )
+					.first()
+					.boundingBox();
+				expect(
+					summary?.x ?? 0,
+					'the summary beside the steps, not under them'
+				).toBeGreaterThan(
+					( steps?.x ?? 0 ) + ( steps?.width ?? 0 ) / 2
+				);
+			}
+		} );
+	}
+
 	test( "keeps the filters' drawer heading out of a desktop, and draws the filters second to Next, under Kadence", async ( {
 		page,
 		context,
@@ -1973,7 +2155,63 @@ test.describe( 'The phone bar', () => {
 		await expect( page.locator( '.cbuild-summary' ) ).toBeVisible();
 	} );
 
+	// Claude in Cowork's recheck, N6: at 412 pixels under Kadence, "Show the parts" broke over two lines beside the
+	// total, and the theme's marker for a disclosure showed beside it. Under the total, whole, it also leaves the bar
+	// as high whatever the total is, so Next stays where it was as a pick widens it.
 	for ( const theme of [ 'storefront', 'kadence', 'twentytwentyfive' ] ) {
+		test( `says "Show the parts" whole under the total on ${ theme }, with no marker, and keeps its height`, async ( {
+			page,
+			context,
+			baseURL,
+		} ) => {
+			await context.addCookies( [
+				{
+					name: 'cbuild_e2e_theme',
+					value: theme,
+					url: baseURL || 'http://localhost:8898',
+				},
+			] );
+			await page.setViewportSize( { width: 412, height: 900 } );
+			await page.goto( fixture().page );
+			const bar = page.locator( '.cbuild-bar' );
+			const total = bar.locator( 'summary' );
+			await expect( total ).toBeVisible();
+			const read = () =>
+				total.evaluate( ( summary ) => {
+					const more = summary.querySelector(
+						'.cbuild-bar__more--show'
+					)!;
+					const sum = summary.firstElementChild!;
+					return {
+						display: getComputedStyle( summary ).display,
+						lines: more.getClientRects().length,
+						under:
+							more.getBoundingClientRect().top >=
+							sum.getBoundingClientRect().bottom - 1,
+						height: Math.round(
+							summary
+								.closest( '.cbuild-bar' )!
+								.getBoundingClientRect().height
+						),
+					};
+				} );
+			const before = await read();
+			expect( before.display, 'no list item, so no marker' ).not.toBe(
+				'list-item'
+			);
+			expect( before.lines, '"Show the parts" on one line' ).toBe( 1 );
+			expect( before.under, 'under the total' ).toBe( true );
+			await page
+				.getByRole( 'radio', { name: 'Choose Builder test deck 8.0' } )
+				.check();
+			await settled( page );
+			await expect( total ).not.toContainText( '$15.00' );
+			expect(
+				( await read() ).height,
+				'as high with a wider total'
+			).toBe( before.height );
+		} );
+
 		test( `keeps its words readable on ${ theme }'s dark colours, and its open parts list too`, async ( {
 			page,
 			context,

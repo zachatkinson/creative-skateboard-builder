@@ -338,14 +338,27 @@ $cbuild_page = (int) wp_insert_post(
 		'post_content' => '<!-- wp:paragraph --><p>Pick a deck, and every later step offers only what fits it.</p><!-- /wp:paragraph -->' . "\n" . '<!-- wp:creative-skateboard-builder/builder {"kit":' . $cbuild_kit->get_id() . '} /-->',
 	)
 );
+// The builder with a Mini-Cart that opens its drawer on an add, as the demo's header has it (Cowork's recheck, 10).
+$cbuild_drawer = get_page_by_path( 'builder-drawer-test-page' );
+$cbuild_drawer = (int) wp_insert_post(
+	array(
+		'ID'           => $cbuild_drawer instanceof WP_Post ? $cbuild_drawer->ID : 0,
+		'post_type'    => 'page',
+		'post_status'  => 'publish',
+		'post_name'    => 'builder-drawer-test-page',
+		'post_title'   => 'Build a complete, with a drawer',
+		'post_content' => '<!-- wp:woocommerce/mini-cart {"addToCartBehaviour":"open_drawer"} /-->' . "\n" . '<!-- wp:creative-skateboard-builder/builder {"kit":' . $cbuild_kit->get_id() . '} /-->',
+	)
+);
 // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents -- a test fixture, writing where the tests read.
 file_put_contents(
 	CBUILD_PATH . 'tmp/e2e-builder.json',
 	(string) wp_json_encode(
 		array(
-			'kit'   => $cbuild_kit->get_id(),
-			'page'  => (string) get_permalink( $cbuild_page ),
-			'parts' => $cbuild_parts,
+			'kit'    => $cbuild_kit->get_id(),
+			'page'   => (string) get_permalink( $cbuild_page ),
+			'drawer' => (string) get_permalink( $cbuild_drawer ),
+			'parts'  => $cbuild_parts,
 		)
 	)
 );
