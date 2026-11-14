@@ -1569,6 +1569,7 @@ test.describe( 'The keyboard alone', () => {
 	test( 'builds a board from a blank page and places its order (Accessibility: a keyboard-only build)', async ( {
 		page,
 		browserName,
+		javaScriptEnabled,
 	} ) => {
 		// WebKit leaves links out of Tab's order unless Option is held, as Safari does.
 		const tab = browserName === 'webkit' ? 'Alt+Tab' : 'Tab';
@@ -1614,6 +1615,12 @@ test.describe( 'The keyboard alone', () => {
 			}
 			await press( builder.getByRole( 'button', { name: /^Next: / } ) );
 			await expect( heading( page ) ).not.toHaveText( now );
+			// With JavaScript the builder moves focus to the new step's heading once it has drawn it (D-149). Tab
+			// before that starts from the Next just pressed, which the phone bar keeps, and Enter then lands on the
+			// heading as focus moves (CI run 43549190222, webkit-phone).
+			if ( javaScriptEnabled ) {
+				await expect( heading( page ) ).toBeFocused();
+			}
 		}
 		await expect( heading( page ) ).toHaveText( /: Review$/ );
 
