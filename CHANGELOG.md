@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html). One entry per milestone; `v1.0.0` closes milestone 9.
 
+## [0.7.0] - Unreleased
+
+### Changed
+
+- CI runs each state of the code once: a push to main, or a pull request's push of docs alone, skips the legs and mutation testing when a full run has passed on the same code. A pull request's runs queue by its number, so one that starts after the merge cannot cancel main's, and runs nothing heavy. The newest leg has 120 minutes (D-188).
+
 ## [0.6.0] - 2026-11-14
 
 ### Added

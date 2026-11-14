@@ -1,7 +1,7 @@
 name: CI
 
-# Every gate on every push to main and every pull request (docs/AUDIT.md: CI gates). A change to the docs alone runs
-# nothing. A version tag runs nothing either: release.yml publishes once this workflow has passed on the tagged
+# Every gate on every push to main and every pull request (docs/AUDIT.md: CI gates), once for each state of the code: a
+# full run that passed is not repeated on the same code (D-188). A change to the docs alone runs nothing. A version tag runs nothing either: release.yml publishes once this workflow has passed on the tagged
 # commit's push to main. Every action is pinned to a commit SHA (docs/STANDARDS.md: CI hygiene).
 on:
   push:
@@ -16,30 +16,41 @@ permissions:
   contents: read
 
 # A new push to a pull request cancels the run it replaces; each push to main keeps its own run, which a release
-# waits for.
+# waits for. A pull request's queue is its number, never its ref: a run that starts after the merge is given
+# refs/heads/main, and in main's queue it cancelled the merge's own run (CI run 43610439862, issue #41; D-188).
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ci-${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   # A draft pull request, and one that touches only the browser tests, runs the standards, the unit tests and the
   # newest leg, not the other legs, mutation testing or the release dry run. A change to a workflow takes the full
-  # run: it is what can break the other legs, and Dependabot's bumps of the actions are such changes (D-043). Main always runs everything;
-  # a release waits for it.
+  # run: it is what can break the other legs, and Dependabot's bumps of the actions are such changes (D-043). Main runs
+  # everything but what a full run has passed on the same code (D-188); a release waits for it.
   # The secrets scan rides in the same job: both need the history and neither takes ten seconds, and every job is
   # billed to the whole minute (D-040). A secret found stops the jobs that wait for this one.
+  #
+  # The code a full run has passed is not run again (D-188). The code is every file but the ones `paths-ignore` leaves
+  # out (docs/, Markdown, LICENSE), hashed by their paths and contents. A full run uploads a marker named for that hash;
+  # a later run whose code hashes the same, and whose marker's run passed, runs the standards and the unit tests and
+  # skips the legs and mutation testing. That is a push to main of a merge whose pull request passed on the same main,
+  # and a pull request's push of docs alone after a full run. A pull request that is no longer open runs nothing heavy:
+  # its run started after the merge (issue #41).
   scope:
     name: What this change runs, and the secrets scan (gitleaks)
     runs-on: ubuntu-26.04
     timeout-minutes: 10
     # gitleaks lists the pull request's commits to scan them, which the workflow's contents-only token may not do.
+    # The markers are other runs' artifacts, and their runs' conclusions, which need actions: read.
     permissions:
       contents: read
       pull-requests: read
+      actions: read
     outputs:
       full: ${{ steps.scope.outputs.full }}
       browsers: ${{ steps.scope.outputs.browsers }}
       legs: ${{ steps.scope.outputs.legs }}
+      heavy: ${{ steps.scope.outputs.heavy }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
@@ -49,6 +60,8 @@ jobs:
         env:
           BASE: ${{ github.base_ref }}
           DRAFT: ${{ github.event.pull_request.draft }}
+          PR: ${{ github.event.pull_request.number }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           full=true
           browsers=every
@@ -75,6 +88,33 @@ jobs:
           fi
           echo "browsers=$browsers" >> "$GITHUB_OUTPUT"
           echo "Full run: $full; browser projects: $browsers"
+          code="$(bash tools/ci-code-hash.sh)"
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+          heavy=true
+          state=open
+          if [ "${GITHUB_EVENT_NAME}" = pull_request ]; then
+            # Open unless the API says otherwise: a call that fails runs everything, never less.
+            state="$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR}" --jq .state 2>/dev/null || echo open)"
+          fi
+          if [ "$state" != open ]; then
+            echo "Pull request #${PR} is no longer open: this run started after it closed, and runs nothing heavy."
+            heavy=false
+          elif passed="$(bash tools/ci-code-passed.sh "$code")"; then
+            echo "This code (${code}) passed the full run ${passed}: the legs and mutation testing are not run again."
+            heavy=false
+          fi
+          echo "heavy=$heavy" >> "$GITHUB_OUTPUT"
+          # A marker only from a run that does all of it: its run's conclusion says whether it passed.
+          if [ "$heavy" = true ] && [ "$full" = true ] && [ "$browsers" = every ]; then
+            echo "marker=true" >> "$GITHUB_OUTPUT"
+            mkdir -p tmp && echo "$code" > tmp/code-hash.txt
+          fi
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        if: steps.scope.outputs.marker == 'true'
+        with:
+          name: passed-code-${{ steps.scope.outputs.code }}
+          path: tmp/code-hash.txt
+          retention-days: 30
       - uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
         env:
           GITHUB_TOKEN: ${{ github.token }}
@@ -156,7 +196,7 @@ jobs:
   mutation:
     name: Mutation testing (Infection and StrykerJS), and the release dry run
     needs: scope
-    if: needs.scope.outputs.full == 'true'
+    if: needs.scope.outputs.full == 'true' && needs.scope.outputs.heavy == 'true'
     runs-on: ubuntu-26.04
     # Everything on main takes Infection 11 to 14 minutes on this runner, and Stryker and the dry run two more. At
     # 15 the job was cancelled on 0.3.1's merge with nothing wrong, and the release waited on a second run (D-107).
@@ -216,10 +256,13 @@ jobs:
   integration:
     name: Integration, Plugin Check, browser (${{ matrix.leg }})
     needs: scope
+    if: needs.scope.outputs.heavy == 'true'
     runs-on: ubuntu-26.04
-    # Every browser project is 648 tests and some 55 minutes of the newest leg on a slow runner, after 13 of setup and
-    # gates (D-085); the other legs, and a draft's newest, are done in half an hour or something is wrong.
-    timeout-minutes: ${{ matrix.leg == 'newest' && needs.scope.outputs.browsers == 'every' && 90 || 30 }}
+    # Every browser project is some 790 tests: 45 minutes of the newest leg on a quick runner and 70 on a slow one,
+    # after 20 of setup and gates. At 90 the merge of 0.6.0 was cancelled with every test passing, and was run again
+    # (CI run 43610439862, D-188); a minute not used is not billed. The other legs, and a draft's newest, are done in
+    # half an hour or something is wrong.
+    timeout-minutes: ${{ matrix.leg == 'newest' && needs.scope.outputs.browsers == 'every' && 120 || 30 }}
     strategy:
       fail-fast: false
       matrix:
