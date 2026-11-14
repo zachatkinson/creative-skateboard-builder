@@ -506,6 +506,7 @@ A kit's line raised past what the shop has of a part is refused as `cbuild_build
 | `parent` | 0.5.0 | On a part, its kit's cart item key. |
 | `slot` | 0.5.0 | On a part, the key of the slot it fills. |
 | `name` | 0.5.0 | On a part, its name with its slot's label, as the shop's language writes it. |
+| `removed` | 0.6.0 | On a part, what the Cart block says once when its build is removed, such as "Street complete was removed from your cart.", in place of WooCommerce's notice for each part. |
 
 **The parent key.** Where WooCommerce's Store API gives a cart item a `parent_item_key` (11.3.0 and later), a part's is its kit's cart item key, answered on `woocommerce_store_api_cart_item_parent_item_key`. The kit's line and a line of no build are left as WooCommerce or another plugin answered. WooCommerce counts a product's quantity in the cart from lines with no parent, so a part in a build is not counted as that product bought alone.
 

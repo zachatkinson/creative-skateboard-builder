@@ -312,7 +312,7 @@ final class Options {
 	 * @return list<string>
 	 */
 	public static function cartItemFields(): array {
-		return array( 'role', 'build', 'parent', 'slot', 'name' );
+		return array( 'role', 'build', 'parent', 'slot', 'name', 'removed' );
 	}
 
 	/**

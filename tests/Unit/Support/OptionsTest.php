@@ -43,7 +43,7 @@ final class OptionsTest extends TestCase {
 		self::assertSame( array( '_cbuild_slots', '_cbuild_rules', '_cbuild_presets', '_cbuild_assembly' ), Options::kitDocuments() );
 		self::assertSame( array( 'cbuild_kit' ), Options::productTypes() );
 		self::assertSame( array( 'cbuild', 'cbuild_children', 'cbuild_parent', 'cbuild_slot' ), Options::cartKeys() );
-		self::assertSame( array( 'role', 'build', 'parent', 'slot', 'name' ), Options::cartItemFields() );
+		self::assertSame( array( 'role', 'build', 'parent', 'slot', 'name', 'removed' ), Options::cartItemFields() );
 		self::assertSame( array( '_cbuild_id', '_cbuild_role', '_cbuild_parent', '_cbuild_children', '_cbuild_slot', '_cbuild_snapshot' ), Options::orderItemKeys() );
 		self::assertLessThanOrEqual( 32, strlen( Options::PRODUCT_TYPE_KIT ), 'a term\'s slug, well inside its 200 characters' );
 		self::assertSame( array( 'cbuild_spec_table' ), Options::postTypes() );

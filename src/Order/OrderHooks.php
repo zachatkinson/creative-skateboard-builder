@@ -22,6 +22,7 @@ use WC_Order;
 use WC_Order_Item_Product;
 use WC_Product;
 use WP_Error;
+use stdClass;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -68,6 +69,9 @@ final class OrderHooks implements Hookable {
 		// includes/class-wc-order.php's get_formatted_line_subtotal(), which the order received page, the emails and
 		// My account print a line's subtotal by.
 		add_filter( 'woocommerce_order_formatted_line_subtotal', array( $this, 'subtotal' ), 10, 2 );
+		// includes/class-wc-order-item.php:377: what the order screen, and wc_display_item_meta() for the customer,
+		// list of a line.
+		add_filter( 'woocommerce_order_item_get_formatted_meta_data', array( $this, 'meta' ), 10, 2 );
 		// src/Internal/Utilities/OrderItemMetaUtil.php:30: the order screen lists every key but these, underscore
 		// or not, and lets a manager edit what it lists.
 		add_filter( 'woocommerce_hidden_order_itemmeta', array( $this, 'hidden' ) );
@@ -192,15 +196,76 @@ final class OrderHooks implements Hookable {
 		if ( ! is_string( $subtotal ) || ! $item instanceof WC_Order_Item_Product || Options::ROLE_KIT !== $item->get_meta( Options::ORDER_ROLE ) ) {
 			return $subtotal;
 		}
+		return match ( self::assembled( $item ) ) {
+			'none'  => esc_html__( 'Assembly: not added', 'creative-skateboard-builder' ),
+			'free'  => esc_html__( 'Assembly: free', 'creative-skateboard-builder' ),
+			/* translators: %s: the assembly fee, such as $15.00. */
+			default => sprintf( esc_html__( 'Assembly: %s', 'creative-skateboard-builder' ), $subtotal ),
+		};
+	}
+
+	/**
+	 * What a kit's line lists of its meta (Cowork's recheck, N2 to N4). The customer, on the order received page, in
+	 * My account and in the emails, reads neither the assembly, which the line's total says, nor the build, whose
+	 * parts are the lines below it. The order screen keeps both for the workshop, with the assembly worded as
+	 * everywhere else: "free", "$15.00" or "not added". The order screen asks for every key, the plugin's underscored
+	 * ones too (includes/admin/meta-boxes/views/html-order-item-meta.php:16), where wc_display_item_meta() leaves
+	 * those out (includes/wc-template-functions.php:4165): that is how the two are told apart (D-181).
+	 *
+	 * @since 0.6.0
+	 *
+	 * @param mixed $listed The line's meta, as WooCommerce formatted it, by meta ID.
+	 * @param mixed $item   The order item.
+	 */
+	public function meta( mixed $listed, mixed $item = null ): mixed {
+		if ( ! is_array( $listed ) || ! $item instanceof WC_Order_Item_Product || Options::ROLE_KIT !== $item->get_meta( Options::ORDER_ROLE ) ) {
+			return $listed;
+		}
+		$keys   = array_map( static fn( mixed $meta ): string => is_object( $meta ) && isset( $meta->key ) ? Cast::str( $meta->key ) : '', $listed );
+		$screen = in_array( Options::ORDER_ROLE, $keys, true );
+		foreach ( $listed as $id => $meta ) {
+			$key = $keys[ $id ];
+			if ( ! $screen && ( self::named( $key, 'Assembly' ) || self::named( $key, 'Build' ) ) ) {
+				unset( $listed[ $id ] );
+			} elseif ( $screen && self::named( $key, 'Assembly' ) && $meta instanceof stdClass ) {
+				$order               = $item->get_order();
+				$meta->display_value = match ( self::assembled( $item ) ) {
+					'none'  => esc_html__( 'not added', 'creative-skateboard-builder' ),
+					'free'  => esc_html__( 'free', 'creative-skateboard-builder' ),
+					default => wc_price( (float) $item->get_subtotal(), array( 'currency' => $order instanceof WC_Order ? $order->get_currency() : '' ) ),
+				};
+			}
+		}
+		return $listed;
+	}
+
+	/**
+	 * Whether a meta key is one the plugin wrote to a kit's line: the word as the shop's language has it now, or as
+	 * written in English. The key is the word in the language the order was placed in (D-181).
+	 *
+	 * @param string $key  The meta key.
+	 * @param string $word Assembly or Build.
+	 */
+	private static function named( string $key, string $word ): bool {
+		$words = array(
+			'Assembly' => __( 'Assembly', 'creative-skateboard-builder' ),
+			'Build'    => __( 'Build', 'creative-skateboard-builder' ),
+		);
+		return in_array( $key, array( $word, $words[ $word ] ?? $word ), true );
+	}
+
+	/**
+	 * What a kit's line charges for: not added, free, or a fee.
+	 *
+	 * @param WC_Order_Item_Product $item The kit's order item.
+	 * @return 'none'|'free'|'fee'
+	 */
+	private static function assembled( WC_Order_Item_Product $item ): string {
 		$snapshot = Cast::map( $item->get_meta( Options::ORDER_SNAPSHOT ) );
 		if ( true !== ( $snapshot['assembly'] ?? null ) ) {
-			return esc_html__( 'Assembly: not added', 'creative-skateboard-builder' );
+			return 'none';
 		}
-		if ( (float) $item->get_subtotal() <= 0 ) {
-			return esc_html__( 'Assembly: free', 'creative-skateboard-builder' );
-		}
-		/* translators: %s: the assembly fee, such as $15.00. */
-		return sprintf( esc_html__( 'Assembly: %s', 'creative-skateboard-builder' ), $subtotal );
+		return (float) $item->get_subtotal() <= 0 ? 'free' : 'fee';
 	}
 
 	/**

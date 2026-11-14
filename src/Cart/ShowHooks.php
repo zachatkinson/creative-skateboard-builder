@@ -60,8 +60,6 @@ final class ShowHooks implements Hookable {
 	private const STYLES = '.wc-block-cart-items__row.cbuild-part>:first-child,.wc-block-cart-items__row:has(.cbuild-part)>:first-child,.woocommerce-cart-form__cart-item.cbuild-part>.product-name,.woocommerce-checkout-review-order-table .cbuild-part>.product-name,.woocommerce-mini-cart-item.cbuild-part{border-inline-start:1.5em solid transparent}'
 		// A kit's line says its amount after "Assembly", so its bare price goes (Cowork's review, should-fix 3).
 		. 'table.wc-block-cart-items .wc-block-cart-items__row:has(.cbuild-assembly) .wc-block-cart-item__prices,table.wc-block-cart-items .wc-block-cart-items__row:has(.cbuild-assembly) .wc-block-cart-item__total,.wc-block-components-order-summary-item:has(.cbuild-assembly) .wc-block-components-order-summary-item__individual-prices,.wc-block-components-order-summary-item:has(.cbuild-assembly) .wc-block-components-order-summary-item__total-price{display:none}'
-		// Edit build has no label: a classic cart still prints its colon (templates/cart/cart-item-data.php:23).
-		. '.cbuild-kit .variation dt.variation-{display:none}'
 		// Where a part's name starts with its slot, "Part of" does not say it again; the Mini-Cart's row, which runs
 		// no line filter, has no class and keeps it.
 		. '.wc-block-cart-items__row.cbuild-part .cbuild-part__slot,.wc-block-components-order-summary-item.cbuild-part .cbuild-part__slot,.woocommerce-cart-form__cart-item.cbuild-part .cbuild-part__slot,.woocommerce-checkout-review-order-table .cbuild-part .cbuild-part__slot,.woocommerce-mini-cart-item.cbuild-part .cbuild-part__slot{display:none}';
@@ -142,7 +140,8 @@ final class ShowHooks implements Hookable {
 		$built = is_readable( CBUILD_PATH . self::BUILT . '.asset.php' ) ? require CBUILD_PATH . self::BUILT . '.asset.php' : null;
 		if ( is_array( $built ) && is_string( $built['version'] ?? null ) ) {
 			wp_deregister_script( self::HANDLE );
-			wp_register_script( self::HANDLE, CBUILD_URL . self::BUILT . '.js', array( 'wc-blocks-checkout' ), $built['version'], array( 'in_footer' => true ) );
+			// WordPress's hooks, for the filter on the block's removal notices, and its data, for the notice said instead.
+			wp_register_script( self::HANDLE, CBUILD_URL . self::BUILT . '.js', array( 'wc-blocks-checkout', 'wp-hooks', 'wp-data' ), $built['version'], array( 'in_footer' => true ) );
 		}
 	}
 
@@ -279,15 +278,33 @@ final class ShowHooks implements Hookable {
 		$value = __( 'Edit build', 'creative-skateboard-builder' );
 		$line  = $item['data'] ?? null;
 		/* translators: %s: the kit's name, such as Street complete. */
-		$name   = sprintf( __( 'Edit build: %s', 'creative-skateboard-builder' ), $line instanceof WC_Product ? $line->get_name() : '' );
-		$data[] = self::assembly( $build->assembly, $line );
+		$name     = sprintf( __( 'Edit build: %s', 'creative-skateboard-builder' ), $line instanceof WC_Product ? $line->get_name() : '' );
+		$assembly = self::assembly( $build->assembly, $line );
+		// Named for its kit, so two builds in a cart give two links a screen reader tells apart (W8, P11).
+		$link = '<a class="' . Options::CLASS_EDIT . '" href="' . esc_url( $url ) . '" aria-label="' . esc_attr( $name ) . '">' . esc_html( $value ) . '</a>';
+		// The blocks print an entry with no label as its value alone: the link stands after the assembly with no
+		// "Build:" before it (Cowork's review, minor 12). A classic cart prints every entry as "label: value", and
+		// Shop Kit's checkout joins them inline, so one with no label left a colon of its own (Cowork's recheck, N1):
+		// there the link goes after the assembly in one entry. WooCommerce drops an entry marked hidden from a classic
+		// cart (includes/wc-template-functions.php:4599), and the Store API takes `hidden` from its own key, which the
+		// blocks honour (src/StoreApi/Schemas/V1/CartItemSchema.php:255; D-180).
+		$blocks = array(
+			'hidden'                                   => true,
+			'__experimental_woocommerce_blocks_hidden' => false,
+		);
+		$data[] = $assembly + $blocks;
 		$data[] = array(
-			// No label: the link says what it does (Cowork's review, minor 12).
 			'key'     => '',
 			'value'   => $value,
-			// Named for its kit, so two builds in a cart give two links a screen reader tells apart (W8, P11).
-			'display' => '<a class="' . Options::CLASS_EDIT . '" href="' . esc_url( $url ) . '" aria-label="' . esc_attr( $name ) . '">' . esc_html( $value ) . '</a>',
+			'display' => $link,
 			'raw_key' => 'cbuild_edit',
+		) + $blocks;
+		$data[] = array(
+			'key'                                      => $assembly['key'],
+			'value'                                    => $assembly['value'],
+			'display'                                  => $assembly['display'] . ' ' . $link,
+			'raw_key'                                  => 'cbuild_assembly_edit',
+			'__experimental_woocommerce_blocks_hidden' => true,
 		);
 		return $data;
 	}
@@ -432,26 +449,32 @@ final class ShowHooks implements Hookable {
 	 * @since 0.5.0
 	 *
 	 * @param mixed $item The cart item.
-	 * @return array{role: string, build: string, parent: string, slot: string, name: string}
+	 * @return array{role: string, build: string, parent: string, slot: string, name: string, removed: string}
 	 */
 	public function extension( mixed $item = null ): array {
 		$told    = is_array( $item ) ? $this->told( $item ) : null;
 		$product = is_array( $item ) ? ( $item['data'] ?? null ) : null;
 		if ( null === $told ) {
 			return array(
-				'role'   => '',
-				'build'  => '',
-				'parent' => '',
-				'slot'   => '',
-				'name'   => '',
+				'role'    => '',
+				'build'   => '',
+				'parent'  => '',
+				'slot'    => '',
+				'name'    => '',
+				'removed' => '',
 			);
 		}
+		$part = Options::ROLE_PART === $told['role'];
 		return array(
-			'role'   => $told['role'],
-			'build'  => $told['build'],
-			'parent' => $told['parent'],
-			'slot'   => $told['slot'],
-			'name'   => Options::ROLE_PART === $told['role'] && $product instanceof WC_Product ? wp_kses_post( self::named( esc_html( $told['label'] ), $product->get_title() ) ) : '',
+			'role'    => $told['role'],
+			'build'   => $told['build'],
+			'parent'  => $told['parent'],
+			'slot'    => $told['slot'],
+			'name'    => $part && $product instanceof WC_Product ? wp_kses_post( self::named( esc_html( $told['label'] ), $product->get_title() ) ) : '',
+			// What the Cart block says once for the build, in place of a notice for each part: the kit's line, which the
+			// shopper removed, gets none of WooCommerce's, and its parts each had one (Cowork's recheck, N5; D-182).
+			/* translators: %s: the kit's name, such as Street complete. */
+			'removed' => $part && '' !== $told['kit'] ? sprintf( __( '%s was removed from your cart.', 'creative-skateboard-builder' ), $told['kit'] ) : '',
 		);
 	}
 
@@ -465,11 +488,12 @@ final class ShowHooks implements Hookable {
 	public static function schema(): array {
 		$schema = array();
 		foreach ( array(
-			'role'   => __( 'The line\'s part in a build: kit, part, or empty for a line of no build.', 'creative-skateboard-builder' ),
-			'build'  => __( 'The build\'s identifier.', 'creative-skateboard-builder' ),
-			'parent' => __( 'For a part, its kit\'s cart item key.', 'creative-skateboard-builder' ),
-			'slot'   => __( 'For a part, the key of the slot it fills.', 'creative-skateboard-builder' ),
-			'name'   => __( 'For a part, its name with its slot\'s label.', 'creative-skateboard-builder' ),
+			'role'    => __( 'The line\'s part in a build: kit, part, or empty for a line of no build.', 'creative-skateboard-builder' ),
+			'build'   => __( 'The build\'s identifier.', 'creative-skateboard-builder' ),
+			'parent'  => __( 'For a part, its kit\'s cart item key.', 'creative-skateboard-builder' ),
+			'slot'    => __( 'For a part, the key of the slot it fills.', 'creative-skateboard-builder' ),
+			'name'    => __( 'For a part, its name with its slot\'s label.', 'creative-skateboard-builder' ),
+			'removed' => __( 'For a part, what the cart says when its build is removed.', 'creative-skateboard-builder' ),
 		) as $key => $description ) {
 			$schema[ $key ] = array(
 				'description' => $description,

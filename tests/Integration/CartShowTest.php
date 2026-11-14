@@ -86,8 +86,9 @@ final class CartShowTest extends CartTestCase {
 				'role'   => 'kit',
 				'build'  => $build,
 				'parent' => '',
-				'slot'   => '',
-				'name'   => '',
+				'slot'    => '',
+				'name'    => '',
+				'removed' => '',
 			),
 			$told[ $lines['kit'][0] ][0]
 		);
@@ -97,7 +98,9 @@ final class CartShowTest extends CartTestCase {
 				'build'  => $build,
 				'parent' => $lines['kit'][0],
 				'slot'   => 'trucks',
-				'name'   => 'Trucks: Trucks',
+				'name'    => 'Trucks: Trucks',
+				// Claude in Cowork's recheck, N5: the Cart block says this once for the build, for no part.
+				'removed' => 'Complete was removed from your cart.',
 			),
 			$told[ $lines['trucks'][0] ][0]
 		);
@@ -106,8 +109,9 @@ final class CartShowTest extends CartTestCase {
 				'role'   => '',
 				'build'  => '',
 				'parent' => '',
-				'slot'   => '',
-				'name'   => '',
+				'slot'    => '',
+				'name'    => '',
+				'removed' => '',
 			),
 			$told[ $lines['plain'][0] ][0]
 		);
@@ -126,7 +130,8 @@ final class CartShowTest extends CartTestCase {
 			}
 		}
 
-		self::assertSame( array( 'Assembly', '' ), array_column( $told[ $lines['kit'][0] ][1], 'key' ), 'the kit\'s line says what its amount is, and has Edit build with no label (Cowork 3, 12)' );
+		$shown = array_values( array_filter( $told[ $lines['kit'][0] ][1], static fn( array $data ): bool => ! $data['hidden'] ) );
+		self::assertSame( array( 'Assembly', '' ), array_column( $shown, 'key' ), 'the kit\'s line says what its amount is, and has Edit build with no label (Cowork 3, 12)' );
 		self::assertSame( array(), $told[ $lines['plain'][0] ][1] );
 		self::assertSame(
 			array(
@@ -200,7 +205,8 @@ final class CartShowTest extends CartTestCase {
 		[ 'kit' => $kit ] = $this->lines();
 		$build            = $kit[1][ Options::CART_BUILD ];
 		$data             = apply_filters( 'woocommerce_get_item_data', array(), $kit[1] ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- WooCommerce's own.
-		self::assertCount( 2, $data );
+		self::assertCount( 3, $data, 'the assembly and the link for the blocks, and the two in one for a classic cart' );
+		self::assertSame( $data[1]['display'], substr( $data[2]['display'], - strlen( $data[1]['display'] ) ), 'the same link in both' );
 		// The link alone, with no "Build:" before it (Cowork minor 12).
 		self::assertSame( array( '', 'Edit build', 'cbuild_edit' ), array( $data[1]['key'], $data[1]['value'], $data[1]['raw_key'] ) );
 		self::assertSame( 1, preg_match( '#\A<a class="cbuild-edit" href="([^"]+)" aria-label="([^"]+)">Edit build</a>\z#', $data[1]['display'], $found ) );
@@ -226,6 +232,28 @@ final class CartShowTest extends CartTestCase {
 		$data = apply_filters( 'woocommerce_get_item_data', array(), $kit[1] ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- as above.
 		remove_filter( 'cbuild_builder_url', $to );
 		self::assertStringContainsString( 'href="' . esc_url( get_permalink( $page ) ), $data[1]['display'] );
+	}
+
+	public function test_a_classic_cart_prints_the_kits_link_after_its_assembly_with_no_entry_of_no_label(): void {
+		// Claude in Cowork's recheck, N1: Shop Kit's checkout prints a line's data inline, each entry as "label: value"
+		// joined by "·", so the link's entry, which has no label, read "Assembly: not added · : Edit build". However a
+		// classic cart prints the data, one entry says the assembly and has the link after it.
+		[ 'kit' => $kit ] = $this->lines();
+		$flat             = wc_get_formatted_cart_item_data( $kit[1], true );
+		self::assertSame( 1, preg_match( '#\AAssembly: <span class="cbuild-assembly">not added</span> <a class="cbuild-edit" href="[^"]+" aria-label="[^"]+">Edit build</a>\n\z#', $flat ), $flat );
+		$listed = wc_get_formatted_cart_item_data( $kit[1] );
+		self::assertSame( 1, substr_count( $listed, '<dt' ), 'one entry in a classic cart, so no colon stands alone' );
+		self::assertStringContainsString( '>Edit build</a>', $listed );
+
+		// The blocks keep the link as an entry of its own after the assembly's, which they print with no label.
+		$cart = rest_get_server()->dispatch( new WP_REST_Request( 'GET', '/wc/store/v1/cart' ) )->get_data();
+		foreach ( $cart['items'] as $item ) {
+			if ( $item['key'] === $this->lines()['kit'][0] ) {
+				$shown = array_values( array_filter( $item['item_data'], static fn( array $data ): bool => ! $data['hidden'] ) );
+				self::assertSame( array( 'Assembly', '' ), array_column( $shown, 'key' ) );
+				self::assertSame( array( 'not added', 'Edit build' ), array_column( $shown, 'value' ) );
+			}
+		}
 	}
 
 	public function test_a_kits_line_says_what_its_amount_is_in_place_of_a_bare_price(): void {
@@ -255,7 +283,7 @@ final class CartShowTest extends CartTestCase {
 		$styles = implode( '', (array) wp_styles()->get_data( 'cbuild-cart', 'after' ) );
 		self::assertStringContainsString( 'table.wc-block-cart-items .wc-block-cart-items__row:has(.cbuild-assembly) .wc-block-cart-item__prices', $styles, 'nor do the blocks' );
 		self::assertStringContainsString( '.wc-block-components-order-summary-item:has(.cbuild-assembly) .wc-block-components-order-summary-item__total-price', $styles );
-		self::assertStringContainsString( '.cbuild-kit .variation dt.variation-', $styles, 'nor a classic cart a colon before Edit build' );
+		self::assertStringNotContainsString( 'dt.variation-', $styles, 'a classic cart has no entry with no label, so no colon to hide (Cowork\'s recheck, N1)' );
 	}
 
 	public function test_a_cart_with_no_build_brings_nothing_of_the_plugin_to_the_page(): void {
@@ -308,7 +336,7 @@ final class CartShowTest extends CartTestCase {
 		self::assertTrue( wp_script_is( ShowHooks::HANDLE, 'registered' ) );
 		$this->show()->lines();
 		self::assertStringEndsWith( 'build/cart/lines.js', strtok( (string) wp_scripts()->registered[ ShowHooks::HANDLE ]->src, '?' ) );
-		self::assertSame( array( 'wc-blocks-checkout' ), wp_scripts()->registered[ ShowHooks::HANDLE ]->deps );
+		self::assertSame( array( 'wc-blocks-checkout', 'wp-hooks', 'wp-data' ), wp_scripts()->registered[ ShowHooks::HANDLE ]->deps, 'and WordPress\'s hooks and data, for the removal notice (Cowork\'s recheck, N5)' );
 		self::assertTrue( (bool) wp_scripts()->get_data( ShowHooks::HANDLE, 'group' ), 'in the footer' );
 	}
 

@@ -138,6 +138,14 @@ test.describe( 'A build in the Cart block', () => {
 		).toBeEditable();
 		await kit.locator( '.wc-block-cart-item__remove-link' ).click();
 		await expect( rows ).toHaveCount( 0 );
+		// Claude in Cowork's recheck, N5: the block said each part was removed, and nothing of the build. One notice
+		// now names the kit.
+		const notices = page.locator( '.wc-block-components-notice-snackbar' );
+		await expect( notices ).toHaveText( [
+			'Cart test kit was removed from your cart.',
+		] );
+		await page.waitForTimeout( 500 );
+		await expect( notices, 'and none comes after it' ).toHaveCount( 1 );
 	} );
 
 	// Cowork's review, blocker 1: on the demo the Cart block drew before the plugin's script had registered its
@@ -260,7 +268,13 @@ test.describe( 'A build in the Mini-Cart', () => {
 		);
 		const kit = rows.filter( { hasText: 'Cart test kit' } ).first();
 		// The kit's line says what its amount is, with no bare price beside the board's name (Cowork should-fix 3).
-		await expect( kit.locator( '.cbuild-assembly' ) ).toBeVisible();
+		// The one shown: the line's data also has the entry a classic cart prints, which the blocks hide (D-180).
+		await expect(
+			kit.locator( '.cbuild-assembly' ).filter( { visible: true } )
+		).toHaveCount( 1 );
+		await expect(
+			kit.locator( '.cbuild-edit' ).filter( { visible: true } )
+		).toHaveCount( 1 );
 		await expect(
 			kit.locator( '.wc-block-cart-item__total' )
 		).toBeHidden();
@@ -419,10 +433,17 @@ test.describe( 'A build in a classic cart and checkout', () => {
 		await page.waitForURL( /order-received/ );
 		const order = page.locator( '.woocommerce-table--order-details' );
 		await expect( order ).toContainText( 'Trucks: Cart test trucks' );
-		await expect( order ).toContainText( 'Assembly' );
-		await expect( order ).toContainText(
-			'Deck: Cart test deck × 1, Trucks: Cart test trucks × 2'
+		// Claude in Cowork's recheck, N2 and N4: the kit's line says its assembly once, in its total, and does not
+		// list its parts again above their own lines.
+		const kit = order
+			.locator( 'tr' )
+			.filter( { hasText: 'Cart test kit' } )
+			.first();
+		await expect( kit ).toContainText( /Assembly: (free|not added|\$)/ );
+		expect( ( await kit.innerText() ).match( /Assembly/g ) ).toHaveLength(
+			1
 		);
+		await expect( order ).not.toContainText( 'Cart test deck × 1, Trucks' );
 	} );
 
 	test( "Edit build reopens the builder at the review, and its add takes the build's place", async ( {
