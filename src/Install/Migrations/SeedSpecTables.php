@@ -29,6 +29,43 @@ final class SeedSpecTables {
 	private const VENTURE     = 'Venture, https://venturetrucks.net/sizes/';
 
 	/**
+	 * Where Independent's baseplates were read, and when: its own shop's product pages (NHS makes Independent), since
+	 * its size chart gives no holes (issue #39, D-189). Thunder's and Venture's sites give none.
+	 */
+	private const PLATES_READ = 'baseplate 2026-11-14: ';
+
+	private const STAGE_11 = 'https://nhsskatedirect.com/products/stage-11-polished-standard-skateboard-trucks-independent';
+	private const STAGE_4  = 'https://nhsskatedirect.com/products/stage-4-polished-skateboard-trucks-independent';
+	private const INDY_215 = 'https://nhsskatedirect.com/products/polished-215-standard-independent-skateboard-trucks';
+
+	/**
+	 * Each seed's baseplates, by size, with the page each was read from. The Stage 11 page says "Baseplate Pattern 4
+	 * Holes", and that its 159 and 169 have "6 hole universal baseplate with old and new school mounting pattern"; the
+	 * Stage 4 page, "6 hole, universal baseplate with old and new school mounting patterns" for its 136, 146, 151, 166
+	 * and 215; the 215's page, the same. A 4-hole plate is read as new school, on Zach's answer (14 Nov): Independent
+	 * names old school only on its 6-hole plates.
+	 *
+	 * A size that is a whole number, such as 139, is an integer key, as PHP keeps it; it is looked up by the row's text.
+	 *
+	 * @var array<string, array<int|string, array{0: string, 1: string}>>
+	 */
+	public const BASEPLATES = array(
+		'independent' => array(
+			'109' => array( 'new_school', self::STAGE_11 ),
+			'129' => array( 'new_school', self::STAGE_11 ),
+			'139' => array( 'new_school', self::STAGE_11 ),
+			'144' => array( 'new_school', self::STAGE_11 ),
+			'146' => array( 'both', self::STAGE_4 ),
+			'149' => array( 'new_school', self::STAGE_11 ),
+			'151' => array( 'both', self::STAGE_4 ),
+			'159' => array( 'both', self::STAGE_11 ),
+			'166' => array( 'both', self::STAGE_4 ),
+			'169' => array( 'both', self::STAGE_11 ),
+			'215' => array( 'both', self::INDY_215 ),
+		),
+	);
+
+	/**
 	 * Each seed's rows: the size, the axle, the narrowest deck, the widest deck, the source, the day read. '' where
 	 * the maker gives none.
 	 *
@@ -88,13 +125,19 @@ final class SeedSpecTables {
 		foreach ( self::SEEDS as $seed => $chart ) {
 			$rows = array();
 			foreach ( $chart['rows'] as [ $size, $axle, $min, $max, $source, $readOn ] ) {
+				$specs = array(
+					'axle_width' => $axle,
+					'deck_min'   => $min,
+					'deck_max'   => $max,
+				);
+				$plate = self::BASEPLATES[ $seed ][ $size ] ?? null;
+				if ( null !== $plate ) {
+					$specs['baseplate'] = $plate[0];
+					$source             = self::plateSource( $source, $plate[1] );
+				}
 				$rows[] = array(
 					'size'    => $size,
-					'specs'   => array(
-						'axle_width' => $axle,
-						'deck_min'   => $min,
-						'deck_max'   => $max,
-					),
+					'specs'   => $specs,
 					'source'  => $source,
 					'read_on' => $readOn,
 				);
@@ -105,5 +148,17 @@ final class SeedSpecTables {
 			);
 		}
 		return $seeds;
+	}
+
+	/**
+	 * A row's source with the page its baseplate was read from after it.
+	 *
+	 * @since 0.7.0
+	 *
+	 * @param string $source The row's source.
+	 * @param string $page   The baseplate's page.
+	 */
+	public static function plateSource( string $source, string $page ): string {
+		return $source . '; ' . self::PLATES_READ . $page;
 	}
 }

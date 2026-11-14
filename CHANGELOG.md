@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Changed
 
+- The seeded Independent chart gives each size's baseplate, from Independent's own pages: the 146, 151, 159, 166, 169 and 215 take both patterns, and the 109, 129, 139, 144 and 149 new school. A chart made before 0.7.0 has its empty baseplates filled on upgrade, never a value the shop typed, and the log says which sizes. Thunder's and Venture's pages give no holes, so their charts still leave the baseplate to the shop (issue #39, D-189).
+
 - CI runs each state of the code once: a push to main, or a pull request's push of docs alone, skips the legs and mutation testing when a full run has passed on the same code. A pull request's runs queue by its number, so one that starts after the merge cannot cancel main's, and runs nothing heavy. The newest leg has 120 minutes (D-188).
 
 ### Fixed

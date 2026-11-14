@@ -15,6 +15,7 @@ use CreativeBranding\SkateboardBuilder\Domain\Spec\Reading;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\SpecTable;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\Unread;
 use CreativeBranding\SkateboardBuilder\Install\Migrations\Cursor;
+use CreativeBranding\SkateboardBuilder\Install\Migrations\SeedBaseplatesMigration;
 use CreativeBranding\SkateboardBuilder\Install\Migrations\SeedSpecTables;
 use CreativeBranding\SkateboardBuilder\Install\Migrations\SpecTablesMigration;
 use CreativeBranding\SkateboardBuilder\Port\Queue;
@@ -325,6 +326,35 @@ final class SpecTablesTest extends IntegrationTestCase {
 		self::assertSame( ReindexState::ROWS, $jobs->state()?->phase, 'deleted for good' );
 		self::work();
 		self::assertSame( 'none', $width() );
+	}
+
+	public function test_an_upgrade_gives_a_chart_seeded_before_0_7_0_its_baseplates_and_a_truck_that_names_it_reads_them(): void {
+		// Issue #39: Independent's chart as 0.6.0 made it, with no baseplate, and one the shop typed on the 159.
+		$rows = array();
+		foreach ( SeedSpecTables::all()['independent']['table']->toArray() as $row ) {
+			unset( $row['specs']['baseplate'] );
+			$row['source'] = 'Independent, https://independenttrucks.com/trucks';
+			if ( '159' === $row['size'] ) {
+				$row['specs']['baseplate'] = 'new_school';
+			}
+			$rows[] = $row;
+		}
+		$tables = $this->service( SpecTables::class );
+		$indy   = $tables->create( 'Independent', SpecTable::read( $rows ), 'independent' );
+		$truck  = self::truck( array( 'table' => $indy, 'size' => '139' ) );
+		$six    = self::truck( array( 'table' => $indy, 'size' => '159' ) );
+		self::work();
+		$index = $this->service( SpecIndex::class );
+		$plate = static fn( \WC_Product $part ): string => ( $index->specsOf( $part->get_id() )[ $part->get_id() ] ?? null )?->toIndex()['baseplate'] ?? 'none';
+		self::assertSame( 'none', $plate( $truck ), 'R2 refuses it: the baseplate is not known' );
+
+		self::assertTrue( $this->service( SeedBaseplatesMigration::class )->run( Cursor::start() )->done );
+		self::assertSame( ReindexState::ROWS, $this->service( IndexJobs::class )->state()?->phase, 'the save asks for a reindex' );
+		self::work();
+		self::assertSame( 'new_school', $plate( $truck ), 'the maker\'s figure reaches the truck' );
+		self::assertSame( 'new_school', $plate( $six ), 'the shop\'s own value is kept' );
+		self::assertSame( 'both', $tables->seeded( 'independent' )['table']->row( '215' )?->values['baseplate'] ?? null );
+		self::assertSame( $indy, $tables->seeded( 'independent' )['id'] ?? null );
 	}
 
 	public function test_another_posts_save_or_an_editor_opening_asks_for_nothing(): void {

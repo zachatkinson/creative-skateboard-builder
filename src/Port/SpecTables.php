@@ -55,6 +55,16 @@ interface SpecTables {
 	public function hasSeed( string $seed ): bool;
 
 	/**
+	 * The table made from this seed, in whatever state the shop left it, or null when there is none.
+	 *
+	 * @since 0.7.0
+	 *
+	 * @param string $seed The seed's name.
+	 * @return array{id: int, name: string, table: SpecTable}|null
+	 */
+	public function seeded( string $seed ): ?array;
+
+	/**
 	 * Every table that feeds the index, by ID, in the order of their names.
 	 *
 	 * @since 0.3.0

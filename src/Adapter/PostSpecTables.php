@@ -98,21 +98,42 @@ final class PostSpecTables implements SpecTables {
 	 * @param string $seed The seed's name.
 	 */
 	public function hasSeed( string $seed ): bool {
+		return null !== $this->seeded( $seed );
+	}
+
+	/**
+	 * The table made from this seed, in use, a draft or in the bin, or null when there is none. The first made, should
+	 * a shop have copied the seed's meta onto another.
+	 *
+	 * @since 0.7.0
+	 *
+	 * @param string $seed The seed's name.
+	 * @return array{id: int, name: string, table: SpecTable}|null
+	 */
+	public function seeded( string $seed ): ?array {
 		$found = new WP_Query(
 			array(
 				'post_type'      => Options::POST_TYPE_SPEC_TABLE,
 				'post_status'    => array_keys( get_post_stati() ),
 				'posts_per_page' => 1,
-				'fields'         => 'ids',
 				'no_found_rows'  => true,
-				'orderby'        => 'none',
-				// phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key -- Three times, in the migration that makes the seed tables; a shop keeps a handful of tables.
+				'orderby'        => 'ID',
+				'order'          => 'ASC',
+				// phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key -- Once for each seed, in the migrations that make and fill the seed tables; a shop keeps a handful of tables.
 				'meta_key'       => Options::META_TABLE_SEED,
 				// phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_value -- As above.
 				'meta_value'     => $seed,
 			)
 		);
-		return array() !== $found->posts;
+		$post  = is_array( $found->posts ) ? ( $found->posts[0] ?? null ) : null;
+		if ( ! $post instanceof WP_Post ) {
+			return null;
+		}
+		return array(
+			'id'    => $post->ID,
+			'name'  => $post->post_title,
+			'table' => SpecTable::read( get_post_meta( $post->ID, Options::META_TABLE_ROWS, true ) ),
+		);
 	}
 
 	/**

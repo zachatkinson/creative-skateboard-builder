@@ -150,10 +150,11 @@ final class MigrationTest extends IntegrationTestCase {
 				$wpdb->query( 'DROP TABLE IF EXISTS ' . $parts ); // phpcs:ignore
 				$states = get_option( Options::MIGRATIONS );
 				self::assertIsArray( $states );
-				self::assertSame( array( 'schema_1', 'noop_1', 'spec_tables_1', 'schema_2', 'reserved_slot_keys_1' ), array_keys( $states ) );
+				self::assertSame( array( 'schema_1', 'noop_1', 'spec_tables_1', 'schema_2', 'reserved_slot_keys_1', 'spec_tables_2' ), array_keys( $states ) );
 				$later  = array(
 					'schema_2'             => true,
 					'reserved_slot_keys_1' => true,
+					'spec_tables_2'        => true,
 				);
 				$before = array_diff_key( $states, $later );
 				update_option( Options::MIGRATIONS, $before, false );
@@ -209,7 +210,17 @@ final class MigrationTest extends IntegrationTestCase {
 
 		$states = get_option( Options::MIGRATIONS );
 		self::assertIsArray( $states );
-		update_option( Options::MIGRATIONS, array_diff_key( $states, array( 'reserved_slot_keys_1' => true ) ), false );
+		update_option(
+			Options::MIGRATIONS,
+			array_diff_key(
+				$states,
+				array(
+					'reserved_slot_keys_1' => true,
+					'spec_tables_2'        => true,
+				)
+			),
+			false
+		);
 		update_option( Options::DB_VERSION, '3', true );
 		// In the bin as the upgrade runs: restored later, it would keep its reserved key and stop reading, since the
 		// migration does not run again (Cowork's review, minor 21).
@@ -217,7 +228,7 @@ final class MigrationTest extends IntegrationTestCase {
 		$runner = $this->service( MigrationRunner::class );
 		self::assertTrue( $runner->needed() );
 		self::assertSame( RunResult::Finished, $runner->run() );
-		self::assertSame( '4', get_option( Options::DB_VERSION ) );
+		self::assertSame( MigrationRegistry::VERSION, get_option( Options::DB_VERSION ) );
 		wp_untrash_post( $kit );
 		wp_publish_post( $kit );
 

@@ -2528,3 +2528,19 @@ What changes:
 
 **Why:** A full run bills about 3 hours across its jobs, and a release paid for up to three of them on code already passed. A release still waits for main's own run to pass, which still holds the secrets scan and the standards; what it no longer repeats is what a run on the same code already proved. It revises D-041: a push to main runs everything but what a full run has passed on the same code.
 **Status:** Accepted. Closes issue #41.
+
+### D-189 · The seeded charts' baseplates, from the makers' own pages · 2026-11-14
+
+Issue #39, from Claude in Cowork's review of 0.6.0-rc.1 (minor 22). R2 reads a truck's baseplate, and the seeded charts gave none, so every truck read from a chart alone was refused until the owner typed one. Zach, on 13 November: the makers' figures, not a guess, "both" only where the maker says so, and a size the maker gives none for stays empty.
+
+- **What the makers say, read on 14 November 2026.** None of the three size charts gives holes. Independent's own shop, NHS Skate Direct (NHS makes Independent; the spec already cites it for the 215), does:
+  - [Stage 11](https://nhsskatedirect.com/products/stage-11-polished-standard-skateboard-trucks-independent): "Baseplate Pattern 4 Holes", and "159 and 169 models feature 6 hole universal baseplate with old and new school mounting pattern."
+  - [Stage 4](https://nhsskatedirect.com/products/stage-4-polished-skateboard-trucks-independent), sizes 136, 146, 151, 166 and 215: "6 hole, universal baseplate with old and new school mounting patterns."
+  - [The 215](https://nhsskatedirect.com/products/polished-215-standard-independent-skateboard-trucks): "215s feature 6 hole universal baseplate with old and new school mounting pattern."
+  - Thunder's sizing and truck styles pages and Venture's sizes and home pages say nothing of holes.
+- **"4 Holes" is new school.** Zach, on 14 November, asked whether a pattern the maker counts but does not name may be read: yes. Independent names old school only on its 6-hole plates, so its 4-hole plate is new school. So: 109, 129, 139, 144 and 149 new school; 146, 151, 159, 166, 169 and 215 both. Thunder and Venture stay empty, and the Catalogue check still names a truck with no baseplate.
+- **Where each was read.** A row's source gains "; baseplate 2026-11-14: " and the page. The row's day stays the size chart's.
+- **An upgrade, `spec_tables_2`.** Schema version 5. For each seed with baseplates, the chart made from it (`Port\SpecTables::seeded()`, in use, a draft or in the bin): each size the seed names whose row holds no baseplate gains it and its source. A value the shop typed, and a size it added or renamed, are left. A chart with something filled is saved once, which queues the reindex (D-140's job), and the log says which sizes with the table's ID. Run again, it finds nothing.
+- **Tests.** `SeedBaseplatesMigrationTest` (unit); `SpecTablesTest::test_an_upgrade_gives_a_chart_seeded_before_0_7_0_its_baseplates_and_a_truck_that_names_it_reads_them`, where the indexed truck goes from no baseplate to new school. **Red run:** the class missing, and the seeds' baseplates "Failed asserting that two arrays are identical." **Deliberate break:** the guard on a typed value removed, "a value the shop typed is kept", "Failed asserting that two strings are identical." at `SeedBaseplatesMigrationTest.php:96`.
+
+**Status:** Accepted. Closes issue #39.
