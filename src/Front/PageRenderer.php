@@ -10,8 +10,8 @@ declare( strict_types=1 );
 namespace CreativeBranding\SkateboardBuilder\Front;
 
 use CreativeBranding\SkateboardBuilder\Domain\Picture\Layout;
-use CreativeBranding\SkateboardBuilder\Service\LayerArt;
-use CreativeBranding\SkateboardBuilder\Service\PictureRenderer;
+use CreativeBranding\SkateboardBuilder\Domain\Picture\LayerArt;
+use CreativeBranding\SkateboardBuilder\Port\PictureRenderer;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -48,8 +48,8 @@ final class PageRenderer implements PictureRenderer {
 			$layers[] = array(
 				'slot'   => $layer->slot,
 				'part'   => $layer->part,
-				'x'      => intdiv( $layout->width - $layer->width, 2 ) + $layer->x,
-				'y'      => intdiv( $layout->height - $layer->height, 2 ) - $layer->y,
+				'x'      => $layout->corner( $layer )[0],
+				'y'      => $layout->corner( $layer )[1],
 				'width'  => $layer->width,
 				'height' => $layer->height,
 				'image'  => array(

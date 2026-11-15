@@ -7,8 +7,9 @@
 
 declare( strict_types=1 );
 
-namespace CreativeBranding\SkateboardBuilder\Service;
+namespace CreativeBranding\SkateboardBuilder\Port;
 
+use CreativeBranding\SkateboardBuilder\Domain\Picture\LayerArt;
 use CreativeBranding\SkateboardBuilder\Domain\Picture\Layout;
 
 if ( ! defined( 'ABSPATH' ) ) {

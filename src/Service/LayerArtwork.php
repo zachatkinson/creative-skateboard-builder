@@ -10,6 +10,7 @@ declare( strict_types=1 );
 namespace CreativeBranding\SkateboardBuilder\Service;
 
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Part;
+use CreativeBranding\SkateboardBuilder\Domain\Picture\LayerArt;
 use CreativeBranding\SkateboardBuilder\Domain\Picture\Layout;
 use CreativeBranding\SkateboardBuilder\Domain\Picture\Renditions;
 use CreativeBranding\SkateboardBuilder\Port\LayerImages;

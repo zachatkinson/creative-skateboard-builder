@@ -13,7 +13,7 @@ use CreativeBranding\SkateboardBuilder\Domain\Kit\SlotKey;
 use CreativeBranding\SkateboardBuilder\Domain\Picture\Layer;
 use CreativeBranding\SkateboardBuilder\Domain\Picture\Layout;
 use CreativeBranding\SkateboardBuilder\Front\PageRenderer;
-use CreativeBranding\SkateboardBuilder\Service\LayerArt;
+use CreativeBranding\SkateboardBuilder\Domain\Picture\LayerArt;
 use PHPUnit\Framework\TestCase;
 
 /**

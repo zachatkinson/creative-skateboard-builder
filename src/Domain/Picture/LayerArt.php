@@ -7,11 +7,7 @@
 
 declare( strict_types=1 );
 
-namespace CreativeBranding\SkateboardBuilder\Service;
-
-if ( ! defined( 'ABSPATH' ) ) {
-	exit;
-}
+namespace CreativeBranding\SkateboardBuilder\Domain\Picture;
 
 /**
  * The image in the Media Library, its pixels, and the renditions of it that are made (D-194, D-195).

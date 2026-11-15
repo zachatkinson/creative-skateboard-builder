@@ -16,6 +16,7 @@ All notable changes to this project are documented here. The format follows [Kee
 - The picture draws the board: each part with a layer image stacked to scale from the domain's layout, in the kit's layer order, as a `<picture>` with its AVIF and WebP renditions and its own file until they are made. The deck's layer is fetched first. A part with no layer image keeps its labelled photo under the board, and the phone bar's small picture is the same board. A pick swaps a layer in place, with the view transition a part already had, and the build is said once (D-195).
 - The state route's `picture` gains `width`, `height` and `layers`, and each item `drawn`. Nothing is taken away.
 - The custom property `--cbuild-board-size` a theme may set, and `--cbuild-board-ratio`, `--cbuild-layer-x`, `--cbuild-layer-y`, `--cbuild-layer-width` and `--cbuild-layer-height`, which the builder sets on the board and its layers.
+- The composer draws the picture's layout as one image, a JPEG or a WebP on a white ground, with GD, or with Imagick where GD cannot. GD and Imagick agree to within a mean of 0.25 and at most 48 out of 255 per channel on the same layout (measured: 0.0492 and 40). The files go in `uploads/creative-skateboard-builder/pictures/`, named by a hash of what is drawn, and never in the Media Library (D-196).
 
 ### Changed
 

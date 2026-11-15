@@ -2629,3 +2629,20 @@ Spec, Data model: `_cbuild_picture`, "the slots' layer order, and any anchor the
 **Tests.** `PageRendererTest`, `LayerArtworkTest`, `StateAnswerTest` and `BuilderTest` (unit), `BuilderPageTest` (the served markup: the nested `<picture>`, `<source>` and `<img>`, the hidden photos, the bar), and the browser's swap in Chromium, WebKit and Firefox. **Red run:** "Error: Class "CreativeBranding\SkateboardBuilder\Front\PageRenderer" not found" and "Error: Class "CreativeBranding\SkateboardBuilder\Service\LayerArtwork" not found". **Deliberate break:** each layer keyed by its part, "the same layer, swapped in place", "Expected: true, Received: false" at builder.spec.ts:949.
 
 **Status:** Accepted.
+
+## D-196: The composer: a drawing in the domain, drawn by GD or Imagick
+
+**Context.** The plan: "GD by default, and Imagick when the host has it. JPEG for email and WebP everywhere else." "Kept in `uploads/creative-skateboard-builder/pictures/`, named by a hash of the layers, the layout's version and the size." "GD and Imagick agree within a tolerance, measured per channel on the same layout. The figure is set from the first comparison and recorded." Deptrac lets an adapter reach the domain and the ports, not the services.
+
+**Decision.**
+
+- **`Port\PictureRenderer` and `Domain\Picture\LayerArt`** move from the services, so an adapter could implement the one interface. The composed renderer, `Service\ComposedRenderer`, gives a `Domain\Picture\Composition`: the drawing, worked out before any library is called. Its placements are pure arithmetic, so they are tested to the pixel without an image, and `ComposedRendererTest` holds them to the page's layout.
+- **The drawing.** The board fitted inside a margin of 4 % of the canvas's shorter side, nose up and centred; each layer image fitted into its layer's rectangle and centred in it, as the page's `object-fit: contain` does; a part with no art is not drawn. `Layout::corner()` gives a layer's corner to both renderers.
+- **The name** is the first 32 hex digits of a SHA-256 of the drawing's version (`Composition::VERSION`, 1), the canvas and every placement with its image's file address, then the type's extension. The same build is one file for everyone; another file in the Media Library, another size or another layout is another name; nothing a visitor sends is in it.
+- **A canvas** is a JPEG or a WebP with pixels (`InvalidCanvas` with a code otherwise), on a white ground: a transparent WebP shows black in some places a share card goes.
+- **`WpPictureFiles`** tries GD first, as WordPress's default editor for these types, and Imagick where GD cannot read PNG and WebP or write the type; a host with neither draws nothing, which Site Health will say. Each layer is read from its own file, resampled into its rectangle with its transparency over the ground, and the picture written at quality 82 under a temporary name, then moved into place, so a half-written file is never served. A layer whose file is gone leaves the picture undrawn: a picture missing a part would show a build the shopper did not choose.
+- **The tolerance.** The first comparison, on a deck and a wheel at 1200 by 630, differed by a mean of 0.0492 out of 255 per channel and 40 at the worst pixel, along the edges, where each library resamples its own way. The test allows 0.25 and 48.
+
+**Tests.** `CompositionTest` (unit: placements, margins, shapes, names, the canvas), `ComposedRendererTest` (both renderers on one layout), `PictureFilesTest` (integration: each library, each type, the colours where they should be, the tolerance, made once, nothing for an empty drawing, a missing layer or no library, no temporary file left). **Red run:** "Error: Class "CreativeBranding\SkateboardBuilder\Domain\Picture\Composition" not found". **Deliberate break:** GD's canvas without alpha blending, "the deck image's transparent edge shows the ground: gd image/jpeg", "Failed asserting that two arrays are equal." at PictureFilesTest.php:119.
+
+**Status:** Accepted.

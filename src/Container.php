@@ -59,6 +59,7 @@ final class Container {
 			Port\KitMeta::class         => Adapter\WooKitMeta::class,
 			Port\LayerImages::class     => Adapter\WpLayerImages::class,
 			Port\LayerRenditions::class => Adapter\WpLayerRenditions::class,
+			Port\PictureFiles::class    => Adapter\WpPictureFiles::class,
 		);
 	}
 

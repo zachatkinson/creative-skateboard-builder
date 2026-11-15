@@ -149,6 +149,18 @@ final readonly class Layout {
 	}
 
 	/**
+	 * A layer's top left corner from the board's, the nose at the top: where a renderer draws it from.
+	 *
+	 * @since 0.7.0
+	 *
+	 * @param Layer $layer One of this layout's layers.
+	 * @return array{int, int} Across and down.
+	 */
+	public function corner( Layer $layer ): array {
+		return array( intdiv( $this->width - $layer->width, 2 ) + $layer->x, intdiv( $this->height - $layer->height, 2 ) - $layer->y );
+	}
+
+	/**
 	 * The size one part of a slot is drawn at, alone: across and along, as `of()` draws it on a usual 32 in deck with
 	 * new school holes. Null where the picture does not draw the slot, or the part lacks the spec its size comes from.
 	 * The Layer image field checks an image against it (D-190).
