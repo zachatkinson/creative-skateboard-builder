@@ -13,10 +13,13 @@ use CreativeBranding\SkateboardBuilder\Domain\Fit\BuildValidator;
 use CreativeBranding\SkateboardBuilder\Domain\Fit\FitEngine;
 use CreativeBranding\SkateboardBuilder\Domain\Fit\Problem;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Kit;
+use CreativeBranding\SkateboardBuilder\Domain\Kit\Part;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Picks;
+use CreativeBranding\SkateboardBuilder\Domain\Kit\SlotKey;
 use CreativeBranding\SkateboardBuilder\Domain\Rule\MessageCode;
 use CreativeBranding\SkateboardBuilder\Port\ImportStore;
 use CreativeBranding\SkateboardBuilder\Port\Kits;
+use CreativeBranding\SkateboardBuilder\Port\LayerImages;
 use CreativeBranding\SkateboardBuilder\Port\PartCatalogue;
 use CreativeBranding\SkateboardBuilder\Port\Queue;
 use CreativeBranding\SkateboardBuilder\Port\ReindexStore;
@@ -62,6 +65,16 @@ final class CatalogueCheck {
 	public const PRESET        = 'preset_broken';
 
 	/**
+	 * A part of a slot the picture draws has no layer image, so the picture shows its labelled photo (since 0.7.0).
+	 */
+	public const LAYER_MISSING = 'layer_missing';
+
+	/**
+	 * The slots the picture draws a layer for (Domain\Picture\Layout).
+	 */
+	private const DRAWN = array( SlotKey::DECK, SlotKey::GRIP, SlotKey::TRUCKS, SlotKey::WHEELS );
+
+	/**
 	 * The engine's notes that mean a rule went without a spec and assumed the usual, each with the spec to fill in.
 	 */
 	private const NOTES = array(
@@ -82,6 +95,7 @@ final class CatalogueCheck {
 	 * @param ReindexStore  $reindex   Where the reindex is.
 	 * @param ImportStore   $import    The import in hand.
 	 * @param Queue         $queue     The background queue.
+	 * @param LayerImages   $layers    The parts' layer images (from 0.7.0).
 	 */
 	public function __construct(
 		private Kits $kits,
@@ -89,7 +103,8 @@ final class CatalogueCheck {
 		private SpecIndexer $indexer,
 		private ReindexStore $reindex,
 		private ImportStore $import,
-		private Queue $queue
+		private Queue $queue,
+		private LayerImages $layers
 	) {}
 
 	/**
@@ -97,11 +112,14 @@ final class CatalogueCheck {
 	 *
 	 * @since 0.3.0
 	 *
-	 * @return list<CheckFinding> Background work first, then each kit, then each part by ID. None when all is well.
+	 * @return list<CheckFinding> Background work first, then each kit, then each part by ID, then the parts the
+	 *                            picture lacks a layer image of, which a new shop has many of and which stop no sale
+	 *                            (D-193). None when all is well.
 	 */
 	public function run(): array {
-		$found = $this->work();
-		$kits  = $this->kits->all();
+		$found  = $this->work();
+		$layers = array();
+		$kits   = $this->kits->all();
 		// A kit product that is not among those that read: no shopper can open it, and it has no slot to check.
 		foreach ( $this->kits->ids() as $id ) {
 			if ( ! isset( $kits[ $id ] ) ) {
@@ -109,7 +127,8 @@ final class CatalogueCheck {
 			}
 		}
 		foreach ( $kits as $id => $kit ) {
-			$found = array( ...$found, ...$this->kit( $id, $kit['kit'] ) );
+			$found  = array( ...$found, ...$this->kit( $id, $kit['kit'] ) );
+			$layers = array( ...$layers, ...$this->layers( $id, $kit['kit'] ) );
 		}
 		$page = 0;
 		do {
@@ -119,6 +138,30 @@ final class CatalogueCheck {
 			}
 			$full = count( $ids ) >= self::BATCH;
 		} while ( $full );
+		return array( ...$found, ...$layers );
+	}
+
+	/**
+	 * The parts of a kit's drawn slots that have no layer image, in the slots' order.
+	 *
+	 * @param int $id  The kit product's ID.
+	 * @param Kit $kit The kit.
+	 * @return list<CheckFinding>
+	 */
+	private function layers( int $id, Kit $kit ): array {
+		$found = array();
+		foreach ( $kit->slots->all() as $slot ) {
+			if ( ! in_array( $slot->key, self::DRAWN, true ) ) {
+				continue;
+			}
+			$parts   = array_map( static fn( Part $part ): int => $part->id, $this->kits->candidates( $id, $slot->key ) );
+			$layered = $this->layers->layered( ...$parts );
+			foreach ( $parts as $part ) {
+				if ( ! in_array( $part, $layered, true ) ) {
+					$found[] = new CheckFinding( self::LAYER_MISSING, $part, $id, $slot->key );
+				}
+			}
+		}
 		return $found;
 	}
 

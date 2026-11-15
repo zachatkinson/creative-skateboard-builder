@@ -85,6 +85,9 @@ final class Sentences {
 			case CatalogueCheck::ASSUMED:
 				/* translators: %s: a spec's name. */
 				return sprintf( __( '%s is not filled in, so the builder assumes the usual one.', 'creative-skateboard-builder' ), $spec );
+			case CatalogueCheck::LAYER_MISSING:
+				/* translators: %s: a slot's key, such as trucks. */
+				return sprintf( __( 'It has no layer image, so the picture shows its labelled photo in the slot "%s". Add one on its Part specs, under Picture.', 'creative-skateboard-builder' ), $finding->slot );
 			case CatalogueCheck::PRESET:
 				$problems = array(
 					/* translators: 1: a preset's name. 2: a slot's key. */

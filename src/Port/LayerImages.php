@@ -31,4 +31,15 @@ interface LayerImages {
 	 * @return ImageFacts|null Null when it is not an image in the Media Library, or its file cannot be read.
 	 */
 	public function facts( int $attachment ): ?ImageFacts;
+
+	/**
+	 * The parts among these that have a layer image, their own or their parent product's, that is still an image in
+	 * the Media Library.
+	 *
+	 * @since 0.7.0
+	 *
+	 * @param int ...$parts Product or variation IDs.
+	 * @return list<int> In the order asked.
+	 */
+	public function layered( int ...$parts ): array;
 }

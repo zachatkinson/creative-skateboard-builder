@@ -306,6 +306,7 @@ What WooCommerce > Builder > Catalogue check lists, each a `Service\CheckFinding
 | `spec_missing` | 0.3.0 | A kit, a slot, a part and a spec | A rule needs the spec, the part lacks it, and the part is not offered. Said once per part and spec. |
 | `spec_assumed` | 0.3.0 | A kit, a slot, a part and a spec | A rule went without the spec and assumed the usual: the hole pattern, the axle's diameter, the deck's length, or the wheel a truck clears. |
 | `preset_broken` | 0.3.0 | A kit, a slot and a part | A preset names a part that is gone from its slot, is sold out, or no longer fits the preset's other parts. `values` holds the preset's name and the build problem's code. |
+| `layer_missing` | 0.7.0 | A kit, a slot and a part | A part of a slot the picture draws (deck, grip, trucks, wheels) has no layer image of its own or its parent's, or its image is no longer in the Media Library, so the picture shows its labelled photo. Listed after every other finding. The screen links to the part's Layer image field. |
 
 The kit codes are found once the shop has a kit, which milestone 4 builds: until then `Port\Kits` answers with none, and the screen says so.
 

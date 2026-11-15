@@ -130,7 +130,8 @@ final class CheckScreen {
 				$owner = 0 === $product->get_parent_id() ? $product->get_id() : $product->get_parent_id();
 				$about = '' === $product->get_sku() ? $product->get_name() : $product->get_name() . ' (' . $product->get_sku() . ')';
 				// The product's screen opens the tab, or the variation, the address names (PartSpecsPanel).
-				$link = (string) get_edit_post_link( $owner, 'raw' ) . ( $owner === $product->get_id() ? '#cbuild_part_specs' : '#cbuild_variation_' . $product->get_id() );
+				$field = CatalogueCheck::LAYER_MISSING === $finding->code ? '#cbuild-spec-layer' : '#cbuild_part_specs';
+				$link  = (string) get_edit_post_link( $owner, 'raw' ) . ( $owner === $product->get_id() ? $field : '#cbuild_variation_' . $product->get_id() );
 			} elseif ( 0 !== $finding->part ) {
 				/* translators: %s: a product's ID. */
 				$about = sprintf( __( 'Product %s', 'creative-skateboard-builder' ), (string) $finding->part );

@@ -2578,3 +2578,19 @@ Spec, Data model: `_cbuild_picture`, "the slots' layer order, and any anchor the
 - **Tests.** `PictureSettingsTest` (unit: the document, the order and anchor in the layout, the kit), `KitSchemasTest` (the schema beside the domain), `BuildTabTest` (the section, its save and its refusal), `WooKitsTest` and `KitProductTest` (read, refused, round trip). **Red run:** "Error: Class "CreativeBranding\SkateboardBuilder\Domain\Picture\PictureSettings" not found". **Deliberate break:** `WooKits` asking the schema about a missing picture document, "a draft is a kit being made ready; one in the bin is not", "Failed asserting that two arrays are identical." in `WooKitsTest::test_every_kit_whose_documents_read_is_listed_by_id_with_its_name`: every kit saved before 0.7.0 would stop reading.
 
 **Status:** Accepted.
+
+## D-193: The Catalogue check lists the drawn slots' parts with no layer image, last
+
+**Context.** Spec, Admin, Milestone 7: the picture shows a part's labelled photo where it has no layer image, and the shop should be told which parts those are. The check already lists what keeps a part from being offered or a preset from fitting.
+
+**Decision.**
+
+- **One finding per kit, slot and part,** `layer_missing`, for the slots the picture draws: deck, grip, trucks and wheels. A part offered in two kits is listed under each, as every other part finding is, so the rows read by kit.
+- **Listed after every other finding.** A missing layer still sells; a missing spec or a broken preset does not. The list is cut at `CheckScreen::SHOWN`, so what stops a sale is never cut for what only looks plainer.
+- **What counts as an image.** The part's own `_cbuild_layer`, else for a variation its parent's, and only while `wp_attachment_is_image()` says the attachment is still an image. One deleted from the Media Library is none.
+- **The link** goes to `#cbuild-spec-layer` on a simple product and to the variation's row on a variation.
+- **One read per kit's candidates.** `LayerImages::layered()` takes every candidate's ID at once.
+
+**Tests.** `CatalogueCheckTest::test_the_parts_of_the_slots_the_picture_draws_with_no_layer_image_are_listed_last` (unit) and `CheckScreenTest::test_a_drawn_slots_part_with_no_layer_image_is_listed_with_a_link_to_its_layer_field` (own image, none, a deleted one, a parent's, the link, the order). **Red run:** "Failed asserting that two arrays are identical." in the unit test, before the check had the findings. **Deliberate break:** the adapter without the parent fallback, "Failed asserting that 3 is identical to 2." at CheckScreenTest.php:279: a variation that takes its parent's image would be listed.
+
+**Status:** Accepted.

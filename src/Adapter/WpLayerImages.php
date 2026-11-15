@@ -11,8 +11,11 @@ namespace CreativeBranding\SkateboardBuilder\Adapter;
 
 use CreativeBranding\SkateboardBuilder\Domain\Picture\ImageFacts;
 use CreativeBranding\SkateboardBuilder\Port\LayerImages;
+use CreativeBranding\SkateboardBuilder\Support\Cast;
+use CreativeBranding\SkateboardBuilder\Support\Options;
 use Imagick;
 use ImagickException;
+use WC_Product;
 use WP_Post;
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -134,5 +137,32 @@ final class WpLayerImages implements LayerImages {
 		} catch ( ImagickException ) {
 			return null;
 		}
+	}
+
+	/**
+	 * The parts among these that have a layer image, their own or their parent's, still an image in the Media Library.
+	 *
+	 * @since 0.7.0
+	 *
+	 * @param int ...$parts Product or variation IDs.
+	 * @return list<int>
+	 */
+	public function layered( int ...$parts ): array {
+		$layered = array();
+		foreach ( $parts as $id ) {
+			$product = wc_get_product( $id );
+			if ( ! $product instanceof WC_Product ) {
+				continue;
+			}
+			$image = Cast::int( $product->get_meta( Options::META_LAYER, true ) );
+			if ( 0 === $image && $product->is_type( 'variation' ) ) {
+				$parent = wc_get_product( $product->get_parent_id() );
+				$image  = $parent instanceof WC_Product ? Cast::int( $parent->get_meta( Options::META_LAYER, true ) ) : 0;
+			}
+			if ( $image > 0 && wp_attachment_is_image( $image ) ) {
+				$layered[] = $id;
+			}
+		}
+		return $layered;
 	}
 }
