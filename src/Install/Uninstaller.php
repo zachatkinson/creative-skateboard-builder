@@ -95,11 +95,30 @@ final class Uninstaller {
 		}
 
 		self::deleteJobs();
+		self::deleteUploads();
 
 		// Not every object cache can flush one group; where it cannot, the plugin's entries expire on their own.
 		if ( wp_cache_supports( 'flush_group' ) ) {
 			wp_cache_flush_group( Options::CACHE_GROUP );
 		}
+	}
+
+	/**
+	 * Delete the plugin's folder in this site's uploads folder: the layers' renditions and the composed pictures
+	 * (spec: Uninstall). Nothing in it is in the Media Library, and nothing else is in it. WordPress's direct
+	 * filesystem is used whatever the site's filesystem method: the folder is the web server's own uploads.
+	 *
+	 * @since 0.7.0
+	 */
+	public static function deleteUploads(): void {
+		$uploads = wp_get_upload_dir();
+		$base    = $uploads['basedir'] ?? '';
+		if ( ! is_string( $base ) || '' === $base || ! is_dir( $base . '/' . Options::UPLOADS_FOLDER ) ) {
+			return;
+		}
+		require_once ABSPATH . 'wp-admin/includes/class-wp-filesystem-base.php';
+		require_once ABSPATH . 'wp-admin/includes/class-wp-filesystem-direct.php';
+		( new \WP_Filesystem_Direct( null ) )->rmdir( $base . '/' . Options::UPLOADS_FOLDER, true );
 	}
 
 	/**

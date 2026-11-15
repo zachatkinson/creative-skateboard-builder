@@ -16,6 +16,8 @@ use CreativeBranding\SkateboardBuilder\Service\ComposedPictures;
 use CreativeBranding\SkateboardBuilder\Service\LayerArtwork;
 use CreativeBranding\SkateboardBuilder\Support\Options;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Domain\Shop;
+use CreativeBranding\SkateboardBuilder\Service\Health;
+use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\FakeClock;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\FakeLogger;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\FakeQueue;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\InMemoryKits;
@@ -33,6 +35,8 @@ use PHPUnit\Framework\TestCase;
 final class ComposedPicturesTest extends TestCase {
 
 	private const int KIT = 77;
+
+	private const int NOW = 1_800_000_000;
 
 	private const array STREET = array(
 		SlotKey::DECK     => 101,
@@ -67,7 +71,8 @@ final class ComposedPicturesTest extends TestCase {
 			new BuildState( $kits, new InMemoryShopSettings(), new FakeLogger() ),
 			new LayerArtwork( $this->layers, new InMemoryLayerRenditions() ),
 			$this->files,
-			$this->queue
+			$this->queue,
+			new FakeClock( self::NOW )
 		);
 	}
 
@@ -134,5 +139,34 @@ final class ComposedPicturesTest extends TestCase {
 		$this->files->library      = null;
 		self::assertSame( 0, $this->pictures->compose( self::KIT, self::STREET ) );
 		self::assertNull( $this->pictures->url( self::KIT, self::STREET, ComposedPictures::SHARE ) );
+	}
+
+	public function test_the_first_picture_starts_the_daily_pruning_and_a_build_with_none_does_not(): void {
+		$this->layers->attachments = array();
+		$this->pictures->compose( self::KIT, self::STREET );
+		self::assertSame( array(), $this->queue->recurring, 'nothing drawn, nothing to prune' );
+
+		$this->layers->attachments = array( 101 => 10 );
+		$this->pictures->compose( self::KIT, self::STREET );
+		self::assertSame( array( Options::JOB_PRUNE_PICTURES => array( self::NOW + 86400, 86400 ) ), $this->queue->recurring, 'a day from now, then daily' );
+		self::assertSame( Options::JOB_PRUNE_PICTURES, ComposedPictures::PRUNE );
+	}
+
+	public function test_a_picture_handed_out_is_marked_used_and_the_pruning_keeps_thirty_days_under_200_mb(): void {
+		$this->pictures->compose( self::KIT, self::STREET );
+		self::assertSame( array(), $this->files->used, 'drawing is not showing' );
+		$url = (string) $this->pictures->url( self::KIT, self::STREET, ComposedPictures::CART );
+		self::assertSame( array( basename( $url ) => self::NOW ), $this->files->used );
+
+		self::assertSame( 2, $this->pictures->prune() );
+		self::assertSame( array( array( self::NOW - 30 * 86400, 200 * 1024 * 1024 ) ), $this->files->pruned );
+	}
+
+	public function test_site_health_hears_of_a_host_with_no_library_or_a_folder_it_cannot_write(): void {
+		self::assertSame( array( 'status' => Health::GOOD, 'code' => ComposedPictures::HEALTH_FINE ), $this->pictures->health() );
+		$this->files->writable = false;
+		self::assertSame( array( 'status' => Health::RECOMMENDED, 'code' => ComposedPictures::HEALTH_UNWRITABLE ), $this->pictures->health() );
+		$this->files->library = null;
+		self::assertSame( array( 'status' => Health::RECOMMENDED, 'code' => ComposedPictures::HEALTH_NO_LIBRARY ), $this->pictures->health(), 'no library says so first: nothing could be drawn anyway' );
 	}
 }

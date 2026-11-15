@@ -270,6 +270,7 @@ Action Scheduler, in the group `creative-skateboard-builder`. Each can run twice
 | `cbuild_reindex` | 0.3.0 | None | Indexes every part again, 100 at a time from a saved place, and queues itself until done: first the parts the index already holds, so rows of a deleted product go, then the shop's products and variations by ID. Asked for when the settings are saved or a term of a mapped attribute is edited. A product deleted while it runs makes it pass once more. A failed batch keeps its place and is tried again after 1, 2, 4 and 8 minutes; the fifth failure in a row stops it. |
 | `cbuild_import` | 0.3.0 | None | Writes a confirmed specs import, 100 rows at a time from a saved place, and queues itself until done. Each row is checked again against what the shop holds when the batch runs. A failed batch keeps its place and is tried again after 1, 2 and 4 minutes; the fourth failure in a row stops the import, with the parts before it written. |
 | `cbuild_compose_picture` | 0.7.0 | `kit`, the kit's ID; `picks`, the part's ID for each slot filled, in step order | Draws one build's composed pictures: 480 by 480 WebP for the cart, 1200 by 630 WebP for a share card and 600 by 600 JPEG for the emails, each once, in `uploads/creative-skateboard-builder/pictures/`. Asked for by a kit's add to the cart, Edit build's among them. The build is worked out again when it runs, and one that does not pass validation, or where a recommendation would fill a slot the build left, gets none. One waits per build at a time, and while 50 builds wait nothing more is asked for (D-197). |
+| `cbuild_prune_pictures` | 0.7.0 | None | Daily, from a day after the first composed picture: deletes the pictures not shown for 30 days, a file left part-written with them, then the oldest of the rest until the folder holds 200 MB at most. Handing out a picture's address marks it shown, at most once a day (D-198). |
 
 ### The specs sheet
 
@@ -336,13 +337,14 @@ It is annotated read-only and idempotent and shown in REST, so WordPress serves 
 
 ### Site Health
 
-Two direct tests and one asynchronous test on Tools > Site Health, and a section on its Info tab.
+Three direct tests and one asynchronous test on Tools > Site Health, and a section on its Info tab.
 
 | Test | Since | Good | Recommended | Critical |
 | --- | --- | --- | --- | --- |
 | `cbuild_index` | 0.3.0 | No reindex has been asked for, the last one finished, or one is under way with its job waiting or running. | A reindex is under way and has no job: it stopped part way. | A reindex stopped after five failures. |
 | `cbuild_jobs` | 0.3.0 | No action of the group `creative-skateboard-builder` is marked failed. | One or more is, with links to the failed actions and the Catalogue check. | Never. |
-| `cbuild_catalogue` | 0.3.0 | The Catalogue check finds nothing in any part or kit. | It finds something: the result counts the findings and the parts they are in, and links to the check. Background work that failed is left to the two tests above. | Never. |
+| `cbuild_pictures` | 0.7.0 | GD or Imagick can read PNG and WebP and write WebP and JPEG, and the uploads folder can be written. | Neither library can, so carts, share cards and emails show the deck's photo; or the uploads folder cannot be written. | Never. |
+| `cbuild_catalogue` | 0.3.0 | The Catalogue check finds nothing in any part or kit. | It finds something: the result counts the findings and the parts they are in, and links to the check. Background work that failed is left to the first two tests above. | Never. |
 
 `cbuild_catalogue` reads every part, so it is asynchronous: the page asks for it once it has drawn, and WordPress's weekly check calls it directly.
 

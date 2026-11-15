@@ -34,7 +34,7 @@ final class OptionsTest extends TestCase {
 	}
 
 	public function test_the_jobs_are_the_ones_deactivation_cancels(): void {
-		self::assertSame( array( 'cbuild_migrate', 'cbuild_index_part', 'cbuild_reindex', 'cbuild_import', 'cbuild_compose_picture' ), Options::jobs() );
+		self::assertSame( array( 'cbuild_migrate', 'cbuild_index_part', 'cbuild_reindex', 'cbuild_import', 'cbuild_compose_picture', 'cbuild_prune_pictures' ), Options::jobs() );
 		self::assertSame( 'cbuild_migrate', Options::JOB_MIGRATE );
 	}
 

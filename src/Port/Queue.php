@@ -113,4 +113,15 @@ interface Queue {
 	 * @param int    $upTo The most to count.
 	 */
 	public function pending( string $hook, int $upTo ): int;
+
+	/**
+	 * Run an action again and again, a set time apart, unless it is already scheduled.
+	 *
+	 * @since 0.7.0
+	 *
+	 * @param int    $first    When it first runs, as a UTC timestamp.
+	 * @param int    $interval The seconds between runs.
+	 * @param string $hook     The action.
+	 */
+	public function recurringUnique( int $first, int $interval, string $hook ): void;
 }

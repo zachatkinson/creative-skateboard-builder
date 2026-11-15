@@ -18,6 +18,7 @@ use CreativeBranding\SkateboardBuilder\Hookable;
 use CreativeBranding\SkateboardBuilder\Port\MigrationStore;
 use CreativeBranding\SkateboardBuilder\Port\ShopSettings;
 use CreativeBranding\SkateboardBuilder\Service\CatalogueCheck;
+use CreativeBranding\SkateboardBuilder\Service\ComposedPictures;
 use CreativeBranding\SkateboardBuilder\Service\Health;
 use CreativeBranding\SkateboardBuilder\Support\Cast;
 
@@ -26,9 +27,10 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * Three tests on Tools > Site Health and a section on its Info tab with the plugin's versions and settings. Two are
- * direct: the specs index up to date, and no failed background job, each a saved place read and failed actions
- * counted. The third runs the Catalogue check, which reads every part, so it is asynchronous: the page asks for it
+ * Four tests on Tools > Site Health and a section on its Info tab with the plugin's versions and settings. Three are
+ * direct: the specs index up to date and no failed background job, each a saved place read and failed actions
+ * counted; and whether composed pictures can be drawn and saved, from the host's libraries and the uploads folder
+ * (D-198). The fourth runs the Catalogue check, which reads every part, so it is asynchronous: the page asks for it
  * over REST once it has drawn, and WordPress's weekly check calls it (D-094). Nothing here is about a person.
  *
  * @since 0.3.0
@@ -41,6 +43,7 @@ final class SiteHealth implements Hookable {
 	public const TEST_INDEX     = 'cbuild_index';
 	public const TEST_JOBS      = 'cbuild_jobs';
 	public const TEST_CATALOGUE = 'cbuild_catalogue';
+	public const TEST_PICTURES  = 'cbuild_pictures';
 	public const SECTION        = 'creative-skateboard-builder';
 
 	/**
@@ -54,12 +57,13 @@ final class SiteHealth implements Hookable {
 	 *
 	 * @since 0.3.0
 	 *
-	 * @param Closure(): Health         $health     Builds the verdicts, when a test runs.
-	 * @param Closure(): ShopSettings   $settings   Builds the settings, when the Info tab is drawn.
-	 * @param Closure(): MigrationStore $migrations Builds the schema's version, when the Info tab is drawn.
-	 * @param Closure(): CatalogueCheck $check      Builds the Catalogue check, when its test runs.
+	 * @param Closure(): Health           $health     Builds the verdicts, when a test runs.
+	 * @param Closure(): ShopSettings     $settings   Builds the settings, when the Info tab is drawn.
+	 * @param Closure(): MigrationStore   $migrations Builds the schema's version, when the Info tab is drawn.
+	 * @param Closure(): CatalogueCheck   $check      Builds the Catalogue check, when its test runs.
+	 * @param Closure(): ComposedPictures $pictures Builds the composed pictures' service, when its test runs.
 	 */
-	public function __construct( private Closure $health, private Closure $settings, private Closure $migrations, private Closure $check ) {}
+	public function __construct( private Closure $health, private Closure $settings, private Closure $migrations, private Closure $check, private Closure $pictures ) {}
 
 	/**
 	 * Attach hooks.
@@ -92,7 +96,7 @@ final class SiteHealth implements Hookable {
 	}
 
 	/**
-	 * Add the tests. Two are direct: each is an option read and one indexed query. The Catalogue check is not.
+	 * Add the tests. Three are direct: an option read and one indexed query each, or the host's libraries and a folder. The Catalogue check is not.
 	 *
 	 * @since 0.3.0
 	 *
@@ -111,6 +115,10 @@ final class SiteHealth implements Hookable {
 		$direct[ self::TEST_JOBS ]     = array(
 			'label' => __( 'The skateboard builder\'s background jobs', 'creative-skateboard-builder' ),
 			'test'  => array( $this, 'jobs' ),
+		);
+		$direct[ self::TEST_PICTURES ] = array(
+			'label' => __( 'The skateboard builder\'s composed pictures', 'creative-skateboard-builder' ),
+			'test'  => array( $this, 'pictures' ),
 		);
 		$tests['direct']               = $direct;
 		$async                         = is_array( $tests['async'] ?? null ) ? $tests['async'] : array();
@@ -184,6 +192,24 @@ final class SiteHealth implements Hookable {
 		$actions = sprintf( '<a href="%s">%s</a>', esc_url( admin_url( 'admin.php?page=wc-status&tab=action-scheduler&status=failed' ) ), esc_html__( 'See the failed jobs', 'creative-skateboard-builder' ) )
 			. ' | ' . sprintf( '<a href="%s">%s</a>', esc_url( CheckScreen::url() ), esc_html__( 'Open the Catalogue check', 'creative-skateboard-builder' ) );
 		return self::result( self::TEST_JOBS, $verdict['status'], $label, $says, $actions );
+	}
+
+	/**
+	 * The test of the composed pictures: whether this host can draw them and keep them (D-198).
+	 *
+	 * @since 0.7.0
+	 *
+	 * @return array{label: string, status: string, badge: array{label: string, color: string}, description: string, actions: string, test: string}
+	 */
+	public function pictures(): array {
+		$verdict = ( $this->pictures )()->health();
+		if ( ComposedPictures::HEALTH_NO_LIBRARY === $verdict['code'] ) {
+			return self::result( self::TEST_PICTURES, $verdict['status'], __( 'The skateboard builder cannot compose pictures on this server', 'creative-skateboard-builder' ), __( 'PHP has neither GD nor Imagick able to read PNG and WebP and write WebP and JPEG, so carts, share cards and emails show the deck\'s photo instead of the built board. The page\'s own picture is not affected. Your host can turn on GD or Imagick with WebP.', 'creative-skateboard-builder' ), '' );
+		}
+		if ( ComposedPictures::HEALTH_UNWRITABLE === $verdict['code'] ) {
+			return self::result( self::TEST_PICTURES, $verdict['status'], __( 'The skateboard builder cannot save composed pictures', 'creative-skateboard-builder' ), __( 'The uploads folder cannot be written, so carts, share cards and emails show the deck\'s photo instead of the built board. Your host can make wp-content/uploads writable by the web server.', 'creative-skateboard-builder' ), '' );
+		}
+		return self::result( self::TEST_PICTURES, $verdict['status'], __( 'The skateboard builder can compose pictures', 'creative-skateboard-builder' ), __( 'Each build added to a cart gets pictures of the built board for the cart, share cards and emails, made in the background. Pictures not shown for 30 days are deleted.', 'creative-skateboard-builder' ), '' );
 	}
 
 	/**

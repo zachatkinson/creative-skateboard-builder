@@ -218,6 +218,20 @@ final class Options {
 	public const JOB_COMPOSE_PICTURE = 'cbuild_compose_picture';
 
 	/**
+	 * The daily job that deletes composed pictures unused for 30 days and keeps their folder under its cap.
+	 *
+	 * @since 0.7.0
+	 */
+	public const JOB_PRUNE_PICTURES = 'cbuild_prune_pictures';
+
+	/**
+	 * The plugin's folder in the uploads folder: the layers' renditions and the composed pictures. Uninstall removes it.
+	 *
+	 * @since 0.7.0
+	 */
+	public const UPLOADS_FOLDER = 'creative-skateboard-builder';
+
+	/**
 	 * The specs import in hand: where it is, its place and its counts, and what it did after. Not autoloaded.
 	 *
 	 * @since 0.3.0
@@ -262,7 +276,7 @@ final class Options {
 	 * @return string[]
 	 */
 	public static function jobs(): array {
-		return array( self::JOB_MIGRATE, self::JOB_INDEX_PART, self::JOB_REINDEX, self::JOB_IMPORT, self::JOB_COMPOSE_PICTURE );
+		return array( self::JOB_MIGRATE, self::JOB_INDEX_PART, self::JOB_REINDEX, self::JOB_IMPORT, self::JOB_COMPOSE_PICTURE, self::JOB_PRUNE_PICTURES );
 	}
 
 	/**

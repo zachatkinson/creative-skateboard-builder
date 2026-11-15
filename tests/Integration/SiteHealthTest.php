@@ -10,6 +10,17 @@ declare( strict_types=1 );
 namespace CreativeBranding\SkateboardBuilder\Tests\Integration;
 
 use CreativeBranding\SkateboardBuilder\Admin\CheckScreen;
+use CreativeBranding\SkateboardBuilder\Adapter\WpPictureFiles;
+use CreativeBranding\SkateboardBuilder\Port\Clock;
+use CreativeBranding\SkateboardBuilder\Port\Kits;
+use CreativeBranding\SkateboardBuilder\Port\MigrationStore;
+use CreativeBranding\SkateboardBuilder\Port\Queue;
+use CreativeBranding\SkateboardBuilder\Port\ShopSettings;
+use CreativeBranding\SkateboardBuilder\Service\BuildState;
+use CreativeBranding\SkateboardBuilder\Service\CatalogueCheck;
+use CreativeBranding\SkateboardBuilder\Service\ComposedPictures;
+use CreativeBranding\SkateboardBuilder\Service\Health;
+use CreativeBranding\SkateboardBuilder\Service\LayerArtwork;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\SpecTable;
 use CreativeBranding\SkateboardBuilder\Health\SiteHealth;
 use CreativeBranding\SkateboardBuilder\Port\ImportStore;
@@ -43,18 +54,19 @@ final class SiteHealthTest extends IntegrationTestCase {
 		return (array) apply_filters( 'site_status_tests', array( 'direct' => array( 'core' => array( 'label' => 'Core' ) ), 'async' => array() ) );
 	}
 
-	public function test_site_health_gains_two_direct_tests_and_keeps_its_own(): void {
+	public function test_site_health_gains_three_direct_tests_and_keeps_its_own(): void {
 		$tests = $this->tests();
 		$ids = array_keys( $tests['direct'] );
 		self::assertSame( 'core', $ids[0] );
 		// WooCommerce adds its own between.
-		self::assertSame( array( 'cbuild_index', 'cbuild_jobs' ), array_slice( $ids, -2 ) );
+		self::assertSame( array( 'cbuild_index', 'cbuild_jobs', 'cbuild_pictures' ), array_slice( $ids, -3 ) );
 		// WooCommerce 11.3.0 adds an async test of its own before it (D-139).
 		self::assertSame( array( 'cbuild_catalogue' ), array_slice( array_keys( $tests['async'] ), -1 ) );
 		self::assertSame( array(), array_values( array_filter( array_keys( $tests['async'] ), static fn ( string $id ): bool => str_starts_with( $id, 'cbuild_' ) && 'cbuild_catalogue' !== $id ) ) );
 		self::assertSame( 'The skateboard builder\'s specs index', $tests['direct']['cbuild_index']['label'] );
 		self::assertIsCallable( $tests['direct']['cbuild_index']['test'] );
 		self::assertIsCallable( $tests['direct']['cbuild_jobs']['test'] );
+		self::assertIsCallable( $tests['direct']['cbuild_pictures']['test'] );
 		// What another plugin broke is handed on as it came.
 		self::assertSame( 'broken', $this->service( SiteHealth::class )->tests( 'broken' ) );
 		self::assertSame( 'broken', $this->service( SiteHealth::class )->info( 'broken' ) );
@@ -111,6 +123,34 @@ final class SiteHealthTest extends IntegrationTestCase {
 		self::assertSame( '1 background job of the skateboard builder has failed', $result['label'] );
 		self::assertStringContainsString( 'page=wc-status&#038;tab=action-scheduler&#038;status=failed">See the failed jobs</a>', $result['actions'] );
 		self::assertStringContainsString( 'page=cbuild&#038;tab=check">Open the Catalogue check</a>', $result['actions'] );
+	}
+
+	// Plan, milestone 7: "A host with neither image library makes no composed picture. It shows the deck's photo and
+	// says so in Site Health" (D-198).
+	public function test_a_host_that_cannot_draw_or_save_pictures_hears_of_it(): void {
+		$pictures = $this->tests()['direct']['cbuild_pictures']['test'];
+		$result   = $pictures();
+		self::assertSame( array( 'good', 'cbuild_pictures', 'The skateboard builder can compose pictures' ), array( $result['status'], $result['test'], $result['label'] ), 'wp-env has GD and Imagick' );
+
+		$with = fn ( WpPictureFiles $files ): SiteHealth => new SiteHealth(
+			fn (): Health => $this->service( Health::class ),
+			fn (): ShopSettings => $this->service( ShopSettings::class ),
+			fn (): MigrationStore => $this->service( MigrationStore::class ),
+			fn (): CatalogueCheck => $this->service( CatalogueCheck::class ),
+			fn (): ComposedPictures => new ComposedPictures( $this->service( Kits::class ), $this->service( BuildState::class ), $this->service( LayerArtwork::class ), $files, $this->service( Queue::class ), $this->service( Clock::class ) )
+		);
+		$none = $with( new WpPictureFiles( array() ) )->pictures();
+		self::assertSame( array( 'recommended', 'The skateboard builder cannot compose pictures on this server' ), array( $none['status'], $none['label'] ) );
+		self::assertStringContainsString( 'neither GD nor Imagick', $none['description'] );
+
+		$uploads = static fn ( array $dirs ): array => array( 'basedir' => '/proc/cbuild-not-writable', 'baseurl' => 'https://example.com/none' ) + $dirs;
+		add_filter( 'upload_dir', $uploads );
+		try {
+			$locked = $with( new WpPictureFiles() )->pictures();
+		} finally {
+			remove_filter( 'upload_dir', $uploads );
+		}
+		self::assertSame( array( 'recommended', 'The skateboard builder cannot save composed pictures' ), array( $locked['status'], $locked['label'] ) );
 	}
 
 	public function test_an_import_that_stopped_or_lost_its_job_reaches_site_health(): void {

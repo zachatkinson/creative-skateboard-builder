@@ -33,6 +33,7 @@ final class PictureJobTest extends CartTestCase {
 
 	public function tear_down(): void {
 		as_unschedule_all_actions( Options::JOB_COMPOSE_PICTURE, array(), Options::QUEUE_GROUP );
+		as_unschedule_all_actions( Options::JOB_PRUNE_PICTURES, array(), Options::QUEUE_GROUP );
 		foreach ( (array) glob( wp_get_upload_dir()['basedir'] . '/' . WpPictureFiles::FOLDER . '/*' ) as $file ) {
 			wp_delete_file( (string) $file );
 		}
@@ -70,6 +71,11 @@ final class PictureJobTest extends CartTestCase {
 
 		self::work();
 		self::assertCount( 3, self::files(), 'one for the cart, one for a share card and one for the emails' );
+		$prune = as_get_scheduled_actions( array( 'hook' => Options::JOB_PRUNE_PICTURES, 'group' => Options::QUEUE_GROUP, 'status' => \ActionScheduler_Store::STATUS_PENDING ) );
+		self::assertCount( 1, $prune, 'the first picture starts the daily pruning' );
+		$schedule = reset( $prune )->get_schedule();
+		self::assertInstanceOf( \ActionScheduler_IntervalSchedule::class, $schedule );
+		self::assertSame( 86400, $schedule->get_recurrence() );
 		$pictures = $this->service( ComposedPictures::class );
 		foreach ( array_keys( ComposedPictures::CANVASES ) as $use ) {
 			$url = (string) $pictures->url( $this->kit, $this->picks(), $use );

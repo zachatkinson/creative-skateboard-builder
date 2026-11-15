@@ -11,6 +11,7 @@ namespace CreativeBranding\SkateboardBuilder\Adapter;
 
 use CreativeBranding\SkateboardBuilder\Domain\Picture\Renditions;
 use CreativeBranding\SkateboardBuilder\Port\LayerRenditions;
+use CreativeBranding\SkateboardBuilder\Support\Options;
 use CreativeBranding\SkateboardBuilder\Support\Cast;
 use WP_Image_Editor;
 
@@ -33,7 +34,7 @@ final class WpLayerRenditions implements LayerRenditions {
 	/**
 	 * The folder in the uploads folder.
 	 */
-	public const FOLDER = 'creative-skateboard-builder/layers';
+	public const FOLDER = Options::UPLOADS_FOLDER . '/layers';
 
 	/**
 	 * Make what is not made yet.

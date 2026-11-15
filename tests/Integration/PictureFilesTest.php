@@ -167,4 +167,54 @@ final class PictureFilesTest extends IntegrationTestCase {
 		self::assertNull( $files->url( $gone->name() ) );
 		self::assertSame( array( $path ), (array) glob( wp_get_upload_dir()['basedir'] . '/' . WpPictureFiles::FOLDER . '/*' ), 'no temporary file is left' );
 	}
+
+	/**
+	 * A file in the pictures' folder, last changed at a moment.
+	 *
+	 * @param string $name  Its name.
+	 * @param int    $bytes Its size.
+	 * @param int    $then  The moment.
+	 */
+	private static function file( string $name, int $bytes, int $then ): string {
+		$dir = wp_get_upload_dir()['basedir'] . '/' . WpPictureFiles::FOLDER;
+		wp_mkdir_p( $dir );
+		file_put_contents( $dir . '/' . $name, str_repeat( 'x', $bytes ) ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents -- A fixture of a known size.
+		touch( $dir . '/' . $name, $then );
+		return $dir . '/' . $name;
+	}
+
+	// Spec, Options and jobs: "`cbuild_prune_pictures` (daily: composed images unused for 30 days, and the folder kept
+	// under its size cap)". Plan: "The folder's cap is pruned oldest first" (D-198).
+	public function test_pruning_deletes_what_was_not_shown_for_thirty_days_then_the_oldest_down_to_the_cap(): void {
+		$now   = 1_800_000_000;
+		$day   = 86400;
+		$month = $now - 30 * $day;
+		self::file( 'a.webp', 100, $month - 1 );
+		self::file( 'b.webp.k3j9x0q1.tmp', 100, $month - $day );
+		self::file( 'c.webp', 100, $now - 10 * $day );
+		self::file( 'd.jpg', 100, $now - 5 * $day );
+		self::file( 'e.webp', 100, $now - $day );
+		self::file( 'f.webp', 100, $month );
+		clearstatcache();
+		$files = new WpPictureFiles();
+		self::assertSame( 4, $files->prune( $month, 250 ), 'a and the half-written file, unused for 30 days; then f and c, the oldest, to get under 250 bytes' );
+		self::assertSame( array( 'd.jpg', 'e.webp' ), array_map( 'basename', array_map( 'strval', (array) glob( wp_get_upload_dir()['basedir'] . '/' . WpPictureFiles::FOLDER . '/*' ) ) ) );
+		self::assertSame( 0, $files->prune( $month, 250 ), 'nothing more to do' );
+	}
+
+	public function test_a_picture_shown_is_touched_at_most_once_a_day_and_the_folder_is_writable(): void {
+		$now   = 1_800_000_000;
+		$old   = self::file( 'old.webp', 10, $now - 2 * 86400 );
+		$fresh = self::file( 'fresh.webp', 10, $now - 3600 );
+		$files = new WpPictureFiles();
+		$files->used( 'old.webp', $now );
+		$files->used( 'fresh.webp', $now );
+		$files->used( '../../../wp-config.php', $now );
+		$files->used( 'never-made.webp', $now );
+		clearstatcache();
+		self::assertSame( $now, filemtime( $old ) );
+		self::assertSame( $now - 3600, filemtime( $fresh ), 'shown within the day: not written again' );
+		self::assertFileDoesNotExist( dirname( $old ) . '/never-made.webp' );
+		self::assertTrue( $files->writable() );
+	}
 }

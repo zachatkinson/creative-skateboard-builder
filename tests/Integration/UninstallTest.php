@@ -95,8 +95,18 @@ final class UninstallTest extends IntegrationTestCase {
 		self::assertGreaterThan( 0, $pending );
 		self::assertGreaterThan( 0, self::actionRows()['logs'] );
 
+		$uploads = wp_get_upload_dir()['basedir'];
+		foreach ( array( 'layers/abc-105x407.webp', 'pictures/0123456789abcdef0123456789abcdef.jpg' ) as $made ) {
+			wp_mkdir_p( dirname( $uploads . '/' . Options::UPLOADS_FOLDER . '/' . $made ) );
+			file_put_contents( $uploads . '/' . Options::UPLOADS_FOLDER . '/' . $made, 'x' ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents -- A file the plugin would have made.
+		}
+		file_put_contents( $uploads . '/cbuild-shop-own.txt', 'x' ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents -- The shop's own upload beside it.
+
 		$this->withRealTables( static fn() => Uninstaller::run() );
 
+		self::assertDirectoryDoesNotExist( $uploads . '/' . Options::UPLOADS_FOLDER, 'the layers\' renditions and the composed pictures left behind' );
+		self::assertFileExists( $uploads . '/cbuild-shop-own.txt', 'the shop\'s uploads are never touched' );
+		wp_delete_file( $uploads . '/cbuild-shop-own.txt' );
 		foreach ( Tables::all() as $table ) {
 			self::assertNull( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', Tables::name( $table ) ) ), Tables::name( $table ) . ' still exists' );
 		}

@@ -51,4 +51,33 @@ interface PictureFiles {
 	 * @param string $type The composed picture's MIME type.
 	 */
 	public function library( string $type ): ?string;
+
+	/**
+	 * Note that a picture was shown, so pruning keeps it. A file is touched at most once a day.
+	 *
+	 * @since 0.7.0
+	 *
+	 * @param string $name A composition's name.
+	 * @param int    $now  The moment, a UTC timestamp.
+	 */
+	public function used( string $name, int $now ): void;
+
+	/**
+	 * Delete the pictures last used before a moment, then the oldest of the rest until the folder holds no more than
+	 * a size. A file left part-written goes with the unused.
+	 *
+	 * @since 0.7.0
+	 *
+	 * @param int $before    The moment, a UTC timestamp.
+	 * @param int $mostBytes The most the folder may hold.
+	 * @return int How many files were deleted.
+	 */
+	public function prune( int $before, int $mostBytes ): int;
+
+	/**
+	 * Whether pictures can be written: the folder, or the uploads folder it would be made in, is writable.
+	 *
+	 * @since 0.7.0
+	 */
+	public function writable(): bool;
 }

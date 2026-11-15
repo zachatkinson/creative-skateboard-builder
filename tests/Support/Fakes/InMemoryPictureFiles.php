@@ -50,4 +50,36 @@ final class InMemoryPictureFiles implements PictureFiles {
 	public function library( string $type ): ?string {
 		return $this->library;
 	}
+
+	/**
+	 * What used() was told, by name: the moment.
+	 *
+	 * @var array<string, int>
+	 */
+	public array $used = array();
+
+	/**
+	 * What prune() was asked: the moment and the size.
+	 *
+	 * @var list<array{int, int}>
+	 */
+	public array $pruned = array();
+
+	/**
+	 * Whether the folder can be written.
+	 */
+	public bool $writable = true;
+
+	public function used( string $name, int $now ): void {
+		$this->used[ $name ] = $now;
+	}
+
+	public function prune( int $before, int $mostBytes ): int {
+		$this->pruned[] = array( $before, $mostBytes );
+		return 2;
+	}
+
+	public function writable(): bool {
+		return $this->writable;
+	}
 }

@@ -12,6 +12,7 @@ namespace CreativeBranding\SkateboardBuilder\Adapter;
 use CreativeBranding\SkateboardBuilder\Domain\Picture\Composition;
 use CreativeBranding\SkateboardBuilder\Domain\Picture\Placement;
 use CreativeBranding\SkateboardBuilder\Port\PictureFiles;
+use CreativeBranding\SkateboardBuilder\Support\Options;
 use GdImage;
 use Imagick;
 use ImagickException;
@@ -37,7 +38,7 @@ final class WpPictureFiles implements PictureFiles {
 	/**
 	 * The folder in the uploads folder.
 	 */
-	public const FOLDER = 'creative-skateboard-builder/pictures';
+	public const FOLDER = Options::UPLOADS_FOLDER . '/pictures';
 
 	/**
 	 * The libraries, in the order tried.
@@ -48,6 +49,11 @@ final class WpPictureFiles implements PictureFiles {
 	 * The quality of the JPEGs and WebPs written.
 	 */
 	public const QUALITY = 82;
+
+	/**
+	 * How long a shown picture goes untouched: its file's time is a day's measure of when it was last used.
+	 */
+	private const TOUCHED = 86400;
 
 	/**
 	 * The types a layer image may be, which a library must read.
@@ -112,6 +118,83 @@ final class WpPictureFiles implements PictureFiles {
 	public function url( string $name ): ?string {
 		$folder = self::folder();
 		return null !== $folder && file_exists( $folder['dir'] . '/' . $name ) ? $folder['url'] . '/' . $name : null;
+	}
+
+	/**
+	 * Note that a picture was shown, at most once a day.
+	 *
+	 * @since 0.7.0
+	 *
+	 * @param string $name A composition's name.
+	 * @param int    $now  The moment, a UTC timestamp.
+	 */
+	public function used( string $name, int $now ): void {
+		$folder = self::folder();
+		$path   = null === $folder ? '' : $folder['dir'] . '/' . basename( $name );
+		$then   = '' !== $path && file_exists( $path ) ? filemtime( $path ) : false;
+		if ( false !== $then && $then < $now - self::TOUCHED ) {
+			// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_touch, WordPressVIPMinimum.Functions.RestrictedFunctions.file_ops_touch -- The path is in wp_get_upload_dir()'s folder, the plugin's own.
+			touch( $path, $now );
+		}
+	}
+
+	/**
+	 * Delete the pictures last used before a moment, then the oldest of the rest until the folder holds no more than
+	 * a size.
+	 *
+	 * @since 0.7.0
+	 *
+	 * @param int $before    The moment, a UTC timestamp.
+	 * @param int $mostBytes The most the folder may hold.
+	 */
+	public function prune( int $before, int $mostBytes ): int {
+		$folder = self::folder();
+		if ( null === $folder || ! is_dir( $folder['dir'] ) ) {
+			return 0;
+		}
+		$kept = array();
+		$gone = 0;
+		foreach ( (array) glob( $folder['dir'] . '/*' ) as $path ) {
+			$path = (string) $path;
+			$then = is_file( $path ) ? filemtime( $path ) : false;
+			if ( false === $then ) {
+				continue;
+			}
+			if ( $then < $before ) {
+				wp_delete_file( $path );
+				++$gone;
+				continue;
+			}
+			$kept[] = array( $then, $path, (int) filesize( $path ) );
+		}
+		sort( $kept );
+		$total = array_sum( array_column( $kept, 2 ) );
+		foreach ( $kept as [ , $path, $bytes ] ) {
+			if ( $total <= $mostBytes ) {
+				break;
+			}
+			wp_delete_file( $path );
+			$total -= $bytes;
+			++$gone;
+		}
+		return $gone;
+	}
+
+	/**
+	 * Whether pictures can be written.
+	 *
+	 * @since 0.7.0
+	 */
+	public function writable(): bool {
+		$folder = self::folder();
+		if ( null === $folder ) {
+			return false;
+		}
+		$dir = $folder['dir'];
+		while ( ! is_dir( $dir ) && dirname( $dir ) !== $dir ) {
+			$dir = dirname( $dir );
+		}
+		return wp_is_writable( $dir );
 	}
 
 	/**

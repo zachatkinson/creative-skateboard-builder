@@ -204,4 +204,20 @@ final class ActionSchedulerQueue implements Queue {
 			)
 		);
 	}
+
+	/**
+	 * Run an action again and again, a set time apart, unless it is already scheduled. Action Scheduler's unique flag
+	 * finds one pending or running (WooCommerce 11.3.0, packages/action-scheduler/functions.php:122).
+	 *
+	 * @since 0.7.0
+	 *
+	 * @param int    $first    When it first runs, as a UTC timestamp.
+	 * @param int    $interval The seconds between runs.
+	 * @param string $hook     The action.
+	 */
+	public function recurringUnique( int $first, int $interval, string $hook ): void {
+		if ( function_exists( 'as_schedule_recurring_action' ) ) {
+			as_schedule_recurring_action( $first, $interval, $hook, array(), Options::QUEUE_GROUP, true );
+		}
+	}
 }

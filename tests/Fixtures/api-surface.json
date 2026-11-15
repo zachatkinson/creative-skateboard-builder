@@ -47,6 +47,7 @@
         "cbuild_import",
         "cbuild_index_part",
         "cbuild_migrate",
+        "cbuild_prune_pictures",
         "cbuild_reindex"
     ],
     "queue_group": "creative-skateboard-builder",
@@ -178,7 +179,8 @@
     "site_health_tests": [
         "cbuild_catalogue",
         "cbuild_index",
-        "cbuild_jobs"
+        "cbuild_jobs",
+        "cbuild_pictures"
     ],
     "cli_synopses": {
         "CheckCommand::__invoke": "[--format=<format>]",

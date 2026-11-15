@@ -123,6 +123,9 @@ final class Container {
 					},
 					static function () use ( $c ): Service\CatalogueCheck {
 						return $c->get( Service\CatalogueCheck::class );
+					},
+					static function () use ( $c ): Service\ComposedPictures {
+						return $c->get( Service\ComposedPictures::class );
 					}
 				);
 			},

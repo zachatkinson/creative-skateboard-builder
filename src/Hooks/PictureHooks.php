@@ -47,6 +47,7 @@ final class PictureHooks implements Hookable {
 	public function register(): void {
 		add_action( 'woocommerce_add_to_cart', array( $this, 'added' ), 20, 6 );
 		add_action( Options::JOB_COMPOSE_PICTURE, array( $this, 'compose' ), 10, 2 );
+		add_action( Options::JOB_PRUNE_PICTURES, array( $this, 'prune' ), 10, 0 );
 	}
 
 	/**
@@ -83,5 +84,14 @@ final class PictureHooks implements Hookable {
 		if ( is_int( $kit ) && is_array( $picks ) ) {
 			( $this->pictures )()->compose( $kit, $picks );
 		}
+	}
+
+	/**
+	 * The daily job that prunes the pictures.
+	 *
+	 * @since 0.7.0
+	 */
+	public function prune(): void {
+		( $this->pictures )()->prune();
 	}
 }

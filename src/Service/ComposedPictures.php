@@ -13,6 +13,7 @@ use CreativeBranding\SkateboardBuilder\Domain\Kit\Picks;
 use CreativeBranding\SkateboardBuilder\Domain\Picture\Canvas;
 use CreativeBranding\SkateboardBuilder\Domain\Picture\Composition;
 use CreativeBranding\SkateboardBuilder\Domain\Picture\Layout;
+use CreativeBranding\SkateboardBuilder\Port\Clock;
 use CreativeBranding\SkateboardBuilder\Port\Kits;
 use CreativeBranding\SkateboardBuilder\Port\PictureFiles;
 use CreativeBranding\SkateboardBuilder\Port\Queue;
@@ -39,6 +40,43 @@ final class ComposedPictures {
 	 * @since 0.7.0
 	 */
 	public const string JOB = 'cbuild_compose_picture';
+
+	/**
+	 * The daily job that prunes the pictures. `Options::JOB_PRUNE_PICTURES` names the same action for the hooks.
+	 *
+	 * @since 0.7.0
+	 */
+	public const string PRUNE = 'cbuild_prune_pictures';
+
+	/**
+	 * A day, in seconds: how often the pruning runs.
+	 *
+	 * @since 0.7.0
+	 */
+	public const int DAY = 86400;
+
+	/**
+	 * How long a picture is kept after it was last shown, in days (spec: Options and jobs).
+	 *
+	 * @since 0.7.0
+	 */
+	public const int KEPT_DAYS = 30;
+
+	/**
+	 * The most the pictures' folder may hold, in bytes: 200 MB, about a thousand builds' three pictures (D-198).
+	 *
+	 * @since 0.7.0
+	 */
+	public const int MOST_BYTES = 200 * 1024 * 1024;
+
+	/**
+	 * What the pictures' test finds: pictures can be made, the host has no library, or the folder cannot be written.
+	 *
+	 * @since 0.7.0
+	 */
+	public const string HEALTH_FINE       = 'pictures_fine';
+	public const string HEALTH_NO_LIBRARY = 'pictures_no_library';
+	public const string HEALTH_UNWRITABLE = 'pictures_unwritable';
 
 	/**
 	 * The cart's thumbnail.
@@ -90,13 +128,15 @@ final class ComposedPictures {
 	 * @param LayerArtwork $artwork The parts' layer images.
 	 * @param PictureFiles $files   The pictures' files.
 	 * @param Queue        $queue   Where the job waits.
+	 * @param Clock        $clock   The time.
 	 */
 	public function __construct(
 		private Kits $kits,
 		private BuildState $states,
 		private LayerArtwork $artwork,
 		private PictureFiles $files,
-		private Queue $queue
+		private Queue $queue,
+		private Clock $clock
 	) {}
 
 	/**
@@ -139,6 +179,11 @@ final class ComposedPictures {
 		foreach ( $this->compositions( $kit, $picks ) as $composition ) {
 			$there += $this->files->draw( $composition ) ? 1 : 0;
 		}
+		if ( $there > 0 ) {
+			// The pruning starts with the first picture, and runs daily from then; deactivation unschedules it.
+			$now = $this->clock->now()->getTimestamp();
+			$this->queue->recurringUnique( $now + self::DAY, self::DAY, self::PRUNE );
+		}
 		return $there;
 	}
 
@@ -156,7 +201,45 @@ final class ComposedPictures {
 	 */
 	public function url( int $kit, array $picks, string $purpose ): ?string {
 		$composition = $this->compositions( $kit, $picks )[ $purpose ] ?? null;
-		return null === $composition ? null : $this->files->url( $composition->name() );
+		$url         = null === $composition ? null : $this->files->url( $composition->name() );
+		if ( null !== $composition && null !== $url ) {
+			$this->files->used( $composition->name(), $this->clock->now()->getTimestamp() );
+		}
+		return $url;
+	}
+
+	/**
+	 * The daily job: delete the pictures not shown for KEPT_DAYS, then the oldest until the folder is under its cap.
+	 *
+	 * @since 0.7.0
+	 *
+	 * @return int How many files were deleted.
+	 */
+	public function prune(): int {
+		return $this->files->prune( $this->clock->now()->getTimestamp() - self::KEPT_DAYS * self::DAY, self::MOST_BYTES );
+	}
+
+	/**
+	 * Whether this host can make pictures, for Site Health.
+	 *
+	 * @since 0.7.0
+	 *
+	 * @return array{status: string, code: string}
+	 */
+	public function health(): array {
+		$code = self::HEALTH_FINE;
+		foreach ( self::CANVASES as [ , , $type ] ) {
+			if ( null === $this->files->library( $type ) ) {
+				$code = self::HEALTH_NO_LIBRARY;
+			}
+		}
+		if ( self::HEALTH_FINE === $code && ! $this->files->writable() ) {
+			$code = self::HEALTH_UNWRITABLE;
+		}
+		return array(
+			'status' => self::HEALTH_FINE === $code ? Health::GOOD : Health::RECOMMENDED,
+			'code'   => $code,
+		);
 	}
 
 	/**
