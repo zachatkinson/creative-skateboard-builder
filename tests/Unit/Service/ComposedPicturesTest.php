@@ -53,10 +53,13 @@ final class ComposedPicturesTest extends TestCase {
 
 	private InMemoryPictureFiles $files;
 
+	private InMemoryKits $kits;
+
 	private ComposedPictures $pictures;
 
 	protected function setUp(): void {
-		$kits = new InMemoryKits();
+		$kits       = new InMemoryKits();
+		$this->kits = $kits;
 		$kits->add( self::KIT, Shop::kit(), Shop::parts() );
 		$this->queue               = new FakeQueue();
 		$this->layers              = new InMemoryLayerImages();
@@ -107,6 +110,11 @@ final class ComposedPicturesTest extends TestCase {
 			self::assertStringStartsWith( 'https://example.com/pictures/', (string) $this->pictures->url( self::KIT, self::STREET, $use ), $use );
 		}
 		self::assertNull( $this->pictures->url( self::KIT, self::STREET, 'poster' ), 'a use there is none of' );
+
+		$offered  = $this->kits->offered;
+		$readings = $this->kits->readings;
+		$this->pictures->url( self::KIT, self::STREET, ComposedPictures::CART );
+		self::assertSame( array( $offered, $readings + 1 ), array( $this->kits->offered, $this->kits->readings ), 'the cart\'s question reads the build\'s parts once and runs no fit' );
 
 		$names = array_keys( $this->files->drawn );
 		self::assertSame( 3, $this->pictures->compose( self::KIT, self::STREET ) );

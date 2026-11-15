@@ -517,6 +517,8 @@ A kit's line raised past what the shop has of a part is refused as `cbuild_build
 
 **The parent key.** Where WooCommerce's Store API gives a cart item a `parent_item_key` (11.3.0 and later), a part's is its kit's cart item key, answered on `woocommerce_store_api_cart_item_parent_item_key`. The kit's line and a line of no build are left as WooCommerce or another plugin answered. WooCommerce counts a product's quantity in the cart from lines with no parent, so a part in a build is not counted as that product bought alone.
 
+**The kit's thumbnail.** From 0.7.0 a kit's line shows its build's composed picture, 480 by 480, once the `cbuild_compose_picture` job has made it, and the deck's product photo until then, both with the kit's name as their alt text. In the Store API this is the line's `images`, answered on `woocommerce_store_api_cart_item_images`: one image, whose `id` is 0 for the composed picture, which is in no Media Library, and the deck's attachment for its photo. In a classic cart and the mini-cart widget it is `woocommerce_cart_item_thumbnail`, an `<img>` with the class `cbuild-cart-picture` for the composed picture. A part's line, and a line of no build, are left as WooCommerce or another plugin answered.
+
 **Item data.** A part's line has one more entry in `woocommerce_get_item_data`, and so in the Store API's `item_data`: Part of, with the kit's name and the slot's label. Its `raw_key` is `cbuild_slot`, and its `display` wraps the words in `<span class="cbuild-part">`. From 0.6.0 the slot's label, in brackets, has a `<span class="cbuild-part__slot">` of its own inside it, which the plugin's styles hide on a row whose name already starts with the slot; the Mini-Cart's rows, which run no line filter, keep it. A theme or a cart drawer that prints a line's item data can group a build's parts by that class, as the Mini-Cart's styles do.
 
 **Classes.** A theme or a cart drawer may style these or group a build's lines by them:
@@ -529,6 +531,7 @@ A kit's line raised past what the shop has of a part is refused as `cbuild_build
 | `cbuild-edit` | 0.6.0 | A kit's Edit build link, in its item data. |
 | `cbuild-assembly` | 0.6.0 | The `<span>` holding what a kit's line charges for assembly, in its item data. The plugin's styles hide the line's own price and total in the Cart and Checkout blocks and the Mini-Cart by it. |
 | `cbuild-part__slot` | 0.6.0 | The slot's label in a part's Part of words. |
+| `cbuild-cart-picture` | 0.7.0 | A kit's composed picture, as a classic cart's or the mini-cart widget's thumbnail. |
 
 **What the plugin loads.** A few style rules in the page, under the handle `cbuild-cart`, with the Mini-Cart, the Cart or Checkout block, or a classic cart or checkout page. With the Cart or Checkout block, also the script `cbuild-cart`, which answers `cartItemClass`, `itemName` and `showRemoveItemLink` in the namespace above and needs `wc-blocks-checkout`. Both only where the cart holds a build as the page is drawn.
 

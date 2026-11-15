@@ -21,6 +21,7 @@ All notable changes to this project are documented here. The format follows [Kee
 - The Action Scheduler action `cbuild_prune_pictures` runs daily from the first composed picture. It deletes pictures not shown for 30 days, then the oldest until the folder holds 200 MB at most (D-198).
 - The Site Health test `cbuild_pictures` says when the server has neither GD nor Imagick able to make the composed pictures, or cannot write the uploads folder, and that carts, share cards and emails then show the deck's photo (D-198).
 - Uninstall removes `uploads/creative-skateboard-builder/`, with the layers' renditions and the composed pictures in it.
+- A kit's line in every cart shows the build's composed picture once it is made, and the deck's photo until then, through the Store API's cart item images and `woocommerce_cart_item_thumbnail`. The class `cbuild-cart-picture` marks the composed picture in a classic cart. The parts keep their own photos (D-199).
 
 ### Changed
 

@@ -9,6 +9,8 @@ declare( strict_types=1 );
 
 namespace CreativeBranding\SkateboardBuilder\Service;
 
+use CreativeBranding\SkateboardBuilder\Domain\Kit\Kit;
+use CreativeBranding\SkateboardBuilder\Domain\Kit\Part;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Picks;
 use CreativeBranding\SkateboardBuilder\Domain\Picture\Canvas;
 use CreativeBranding\SkateboardBuilder\Domain\Picture\Composition;
@@ -189,18 +191,39 @@ final class ComposedPictures {
 
 	/**
 	 * The address of a build's picture for one use, or null while it is not made, or where nothing of it is drawn.
+	 * It reads the build's parts from the shop and lays them out, and runs no fit: a file of the name is there only
+	 * where the job drew it, for a build that passed validation, with these parts' images in these places. So the
+	 * cart, which asks for each of its builds on every view, pays for the parts it already reads and a file's check.
 	 *
 	 * @since 0.7.0
 	 *
-	 * @param int          $kit   The kit product's ID.
-	 * @param array<mixed> $picks The part's ID for each slot filled.
-	 * @param string       $purpose One of CART, SHARE and EMAIL.
-	 *
-	 * @throws \CreativeBranding\SkateboardBuilder\Domain\Kit\InvalidMoney When the build cannot be priced in the
-	 *                                                                         shop's currency settings.
+	 * @param int                $kit     The kit product's ID.
+	 * @param array<string, int> $picks   The part's ID for each slot filled.
+	 * @param string             $purpose One of CART, SHARE and EMAIL.
 	 */
 	public function url( int $kit, array $picks, string $purpose ): ?string {
-		$composition = $this->compositions( $kit, $picks )[ $purpose ] ?? null;
+		$found = $this->kits->kit( $kit );
+		if ( null === $found || array() === $picks || ! isset( self::CANVASES[ $purpose ] ) ) {
+			return null;
+		}
+		$asked = array();
+		foreach ( $picks as $slot => $part ) {
+			$filled = $found->slots->get( $slot );
+			if ( null === $filled ) {
+				return null;
+			}
+			$asked[ $slot ] = array( $filled, $part );
+		}
+		$read  = $this->kits->picked( $asked );
+		$parts = array();
+		foreach ( $picks as $slot => $part ) {
+			if ( ! isset( $read[ $slot ] ) ) {
+				// A part the shop no longer sells: no picture of the build is found.
+				return null;
+			}
+			$parts[ $slot ] = $read[ $slot ];
+		}
+		$composition = $this->drawings( $found, $parts, array( $purpose => self::CANVASES[ $purpose ] ) )[ $purpose ] ?? null;
 		$url         = null === $composition ? null : $this->files->url( $composition->name() );
 		if ( null !== $composition && null !== $url ) {
 			$this->files->used( $composition->name(), $this->clock->now()->getTimestamp() );
@@ -270,14 +293,26 @@ final class ComposedPictures {
 			// A recommendation filled a slot the build left: the picture would show a part the shopper did not choose.
 			return array();
 		}
+		return $this->drawings( $state->kit, $counted, self::CANVASES );
+	}
+
+	/**
+	 * A build's drawings on some canvases, leaving out an empty one.
+	 *
+	 * @param Kit                                    $kit      The kit.
+	 * @param array<string, Part>                    $parts    The build's parts, by slot in step order.
+	 * @param array<string, array{int, int, string}> $canvases By use, as CANVASES.
+	 * @return array<string, Composition>
+	 */
+	private function drawings( Kit $kit, array $parts, array $canvases ): array {
 		$built = Picks::none();
-		foreach ( $counted as $slot => $part ) {
+		foreach ( $parts as $slot => $part ) {
 			$built = $built->with( $slot, $part );
 		}
-		$layout = Layout::of( $built, $state->kit->picture );
-		$art    = $this->artwork->of( $layout, $counted );
+		$layout = Layout::of( $built, $kit->picture );
+		$art    = $this->artwork->of( $layout, $parts );
 		$drawn  = array();
-		foreach ( self::CANVASES as $use => [ $width, $height, $type ] ) {
+		foreach ( $canvases as $use => [ $width, $height, $type ] ) {
 			$composition = ( new ComposedRenderer( new Canvas( $width, $height, $type ) ) )->render( $layout, $art );
 			if ( ! $composition->isEmpty() ) {
 				$drawn[ $use ] = $composition;
