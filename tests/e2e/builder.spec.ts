@@ -899,6 +899,70 @@ test.describe( 'The builder with JavaScript', () => {
 		await expect( page ).toHaveTitle( /^Step 1 of 7: Deck - / );
 	} );
 
+	test( "swaps the deck's layer in place on a pick, says the build once, and shows a labelled photo for a part with no layer image (D-195)", async ( {
+		page,
+	} ) => {
+		const picture = page.locator( '#cbuild-picture' );
+		const deck = picture.locator( '.cbuild-board__layer--deck' );
+		const status = page.locator( '.cbuild' ).getByRole( 'status' );
+		const boxed = picture
+			.locator( '.cbuild-picture__item' )
+			.filter( { hasText: 'Deck: ' } );
+		await page
+			.getByRole( 'radio', { name: 'Choose Builder test deck 8.0' } )
+			.check();
+		await expect( deck ).toHaveCount( 1 );
+		await expect( deck.locator( 'img' ) ).toHaveAttribute(
+			'src',
+			/builder-test-deck-8-0-layer/
+		);
+		await expect( deck.locator( 'img' ) ).toHaveAttribute(
+			'fetchpriority',
+			'high'
+		);
+		await expect(
+			deck.locator( 'source[type="image/avif"]' )
+		).toHaveAttribute( 'srcset', / 407w$/ );
+		await expect( boxed ).toHaveCount( 1 );
+		await expect(
+			boxed,
+			'the deck is drawn, so its labelled photo is not shown'
+		).toBeHidden();
+		await deck.evaluate( ( element ) => {
+			( element as HTMLElement & { kept?: boolean } ).kept = true;
+		} );
+
+		await page
+			.getByRole( 'radio', { name: 'Choose Builder test deck 8.5' } )
+			.check();
+		await expect( deck.locator( 'img' ) ).toHaveAttribute(
+			'src',
+			/builder-test-deck-8-5-layer/
+		);
+		expect(
+			await deck.evaluate(
+				( element ) =>
+					( element as HTMLElement & { kept?: boolean } ).kept ===
+					true
+			),
+			'the same layer, swapped in place'
+		).toBe( true );
+		await expect( status ).toContainText( 'Builder test deck 8.5' );
+		expect(
+			( await status.textContent() )?.split( 'The build so far' ).length,
+			'the build said once'
+		).toBe( 2 );
+
+		await page
+			.getByRole( 'radio', { name: 'Choose Builder test deck 8.25' } )
+			.check();
+		await expect(
+			deck,
+			'the 8.25 in deck has no layer image; the wheels the total counts still do'
+		).toHaveCount( 0 );
+		await expect( boxed, 'its labelled photo instead' ).toBeVisible();
+	} );
+
 	test( 'puts focus on the error summary when a step is asked for past an empty one, and says Error first', async ( {
 		page,
 	} ) => {

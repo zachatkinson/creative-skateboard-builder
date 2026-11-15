@@ -33,6 +33,17 @@ interface LayerImages {
 	public function facts( int $attachment ): ?ImageFacts;
 
 	/**
+	 * An image's own file as the Media Library serves it, with its pixels: what the page shows until its renditions
+	 * are made. It reads the attachment's stored details, not its file.
+	 *
+	 * @since 0.7.0
+	 *
+	 * @param int $attachment The attachment's ID.
+	 * @return array{url: string, width: int, height: int}|null Null when it is not an image in the Media Library.
+	 */
+	public function image( int $attachment ): ?array;
+
+	/**
 	 * A part's layer image: its own, or a variation's parent product's, while it is still an image in the Media
 	 * Library.
 	 *

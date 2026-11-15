@@ -148,6 +148,8 @@
         "--cbuild-accent",
         "--cbuild-bar-height",
         "--cbuild-bar-offset",
+        "--cbuild-board-ratio",
+        "--cbuild-board-size",
         "--cbuild-card-width",
         "--cbuild-control",
         "--cbuild-duration",
@@ -156,6 +158,10 @@
         "--cbuild-gap",
         "--cbuild-gap-small",
         "--cbuild-ground",
+        "--cbuild-layer-height",
+        "--cbuild-layer-width",
+        "--cbuild-layer-x",
+        "--cbuild-layer-y",
         "--cbuild-line",
         "--cbuild-muted",
         "--cbuild-on-accent",
@@ -232,7 +238,7 @@
         "schema/kit-slots.json": "7c383e3f551b517328d9d195c01e15f9f5dad1a1263a20fa4ff2188592bb820c",
         "schema/order-snapshot.json": "78cc2355e3468a3f4ff06aa8c609594f21ab961dbcf06ca54bb2b4b2e1b18030",
         "schema/settings.json": "ac3d69970a5331c5d2ec28df62593d7f1de714dce2a3d45352b20f09bf4f3232",
-        "schema/state.json": "a6634840ea609e655a9640f4cf2de98901880103b2ea5eeca9de882ee3916c3b"
+        "schema/state.json": "c37a4137c97ca3ce9f59852a353c712f56f5cd29e5ed3e8fb1717fa0a3f8527c"
     },
     "spec_keys": [
         "deck_width",

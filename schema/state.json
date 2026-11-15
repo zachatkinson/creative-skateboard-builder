@@ -457,9 +457,9 @@
 			}
 		},
 		"picture": {
-			"description": "What is in the box: each part the total counts, in step order.",
+			"description": "What is in the box: each part the total counts, in step order. From 0.7.0, the board as well: the layers of the parts with a layer image, placed in the layout's units, ten-thousandths of a millimetre, with the nose at the top.",
 			"type": "object",
-			"required": [ "items", "description" ],
+			"required": [ "items", "description", "width", "height", "layers" ],
 			"properties": {
 				"items": {
 					"type": "array",
@@ -471,7 +471,8 @@
 							"label",
 							"size",
 							"name",
-							"image"
+							"image",
+							"drawn"
 						],
 						"properties": {
 							"slot": {
@@ -505,6 +506,10 @@
 										"type": "null"
 									}
 								]
+							},
+							"drawn": {
+								"description": "Whether the board draws the part, which then has no labelled photo (0.7.0).",
+								"type": "boolean"
 							}
 						}
 					}
@@ -512,6 +517,94 @@
 				"description": {
 					"description": "The build in one sentence, for whoever cannot see the picture.",
 					"type": "string"
+				},
+				"width": {
+					"description": "The board across, wheels included, or 0 until a deck with a width is picked.",
+					"type": "integer",
+					"minimum": 0
+				},
+				"height": {
+					"description": "The board along, or 0 until a deck with a width is picked.",
+					"type": "integer",
+					"minimum": 0
+				},
+				"layers": {
+					"description": "The board's layers from the bottom of the stack: one for each truck and each wheel.",
+					"type": "array",
+					"items": {
+						"type": "object",
+						"required": [ "slot", "part", "x", "y", "width", "height", "image" ],
+						"properties": {
+							"slot": {
+								"description": "The slot's key.",
+								"type": "string"
+							},
+							"part": {
+								"description": "The part's ID.",
+								"type": "integer",
+								"minimum": 1
+							},
+							"x": {
+								"description": "The layer's left edge from the board's.",
+								"type": "integer"
+							},
+							"y": {
+								"description": "The layer's top edge from the board's, the nose's end.",
+								"type": "integer"
+							},
+							"width": {
+								"description": "The layer across.",
+								"type": "integer",
+								"minimum": 1
+							},
+							"height": {
+								"description": "The layer along.",
+								"type": "integer",
+								"minimum": 1
+							},
+							"image": {
+								"description": "The part's layer image: its own file, and the renditions made of it.",
+								"type": "object",
+								"required": [ "src", "width", "height", "sources" ],
+								"properties": {
+									"src": {
+										"description": "The image's own file.",
+										"type": "string",
+										"format": "uri"
+									},
+									"width": {
+										"description": "Its pixels across.",
+										"type": "integer",
+										"minimum": 1
+									},
+									"height": {
+										"description": "Its pixels along.",
+										"type": "integer",
+										"minimum": 1
+									},
+									"sources": {
+										"description": "The renditions made, a `srcset` for each type, AVIF first; none until they are made.",
+										"type": "array",
+										"items": {
+											"type": "object",
+											"required": [ "type", "srcset" ],
+											"properties": {
+												"type": {
+													"description": "The MIME type.",
+													"type": "string",
+													"enum": [ "image/avif", "image/webp" ]
+												},
+												"srcset": {
+													"description": "Its files with their widths, smallest first.",
+													"type": "string"
+												}
+											}
+										}
+									}
+								}
+							}
+						}
+					}
 				}
 			}
 		},

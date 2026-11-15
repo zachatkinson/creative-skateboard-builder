@@ -170,4 +170,24 @@ final class WpLayerImages implements LayerImages {
 		}
 		return $image > 0 && wp_attachment_is_image( $image ) ? $image : null;
 	}
+
+	/**
+	 * An image's own file.
+	 *
+	 * @since 0.7.0
+	 *
+	 * @param int $attachment The attachment's ID.
+	 * @return array{url: string, width: int, height: int}|null
+	 */
+	public function image( int $attachment ): ?array {
+		$source = wp_attachment_is_image( $attachment ) ? wp_get_attachment_image_src( $attachment, 'full' ) : false;
+		if ( ! is_array( $source ) || $source[1] < 1 || $source[2] < 1 ) {
+			return null;
+		}
+		return array(
+			'url'    => $source[0],
+			'width'  => $source[1],
+			'height' => $source[2],
+		);
+	}
 }

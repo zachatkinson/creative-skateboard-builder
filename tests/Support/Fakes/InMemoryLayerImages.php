@@ -49,4 +49,13 @@ final class InMemoryLayerImages implements LayerImages {
 	public function attachment( int $part ): ?int {
 		return $this->attachments[ $part ] ?? null;
 	}
+
+	public function image( int $attachment ): ?array {
+		$facts = $this->images[ $attachment ] ?? null;
+		return null === $facts ? null : array(
+			'url'    => 'https://example.com/layer-' . $attachment . '.png',
+			'width'  => $facts->width,
+			'height' => $facts->height,
+		);
+	}
 }

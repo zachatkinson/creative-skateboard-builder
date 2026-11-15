@@ -9,6 +9,8 @@ declare( strict_types=1 );
 
 namespace CreativeBranding\SkateboardBuilder\Tests\Integration;
 
+use CreativeBranding\SkateboardBuilder\Tests\Support\LayerFiles;
+use CreativeBranding\SkateboardBuilder\Service\PartRenditions;
 use CreativeBranding\SkateboardBuilder\Cart\ShowHooks;
 use CreativeBranding\SkateboardBuilder\Front\Builder;
 use CreativeBranding\SkateboardBuilder\Front\BuilderPage;
@@ -103,6 +105,9 @@ final class BuilderPageTest extends IntegrationTestCase {
 		unset( $_GET[ BuildLink::PARAM ], $GLOBALS['product'] );
 		remove_all_filters( 'cbuild_part_classes' );
 		remove_all_filters( 'cbuild_builder_url' );
+		foreach ( (array) glob( wp_get_upload_dir()['basedir'] . '/creative-skateboard-builder/layers/*' ) as $file ) {
+			wp_delete_file( (string) $file );
+		}
 		wp_dequeue_style( ShowHooks::HANDLE );
 		wp_dequeue_style( BuilderPage::STYLE );
 		parent::tear_down();
@@ -214,6 +219,44 @@ final class BuilderPageTest extends IntegrationTestCase {
 		self::assertSame( 'What is in the box', trim( $heading->textContent ) );
 		self::assertSame( $heading->getAttribute( 'id' ), $figure->getAttribute( 'aria-labelledby' ), 'It names the figure.' );
 		self::assertSame( 0, $dom->query( './/*[@aria-label]', $figure )->length, 'No name only a screen reader hears.' );
+	}
+
+	// Spec, The picture: "Each part that has a layer image is drawn to scale"; "A part without a layer image keeps
+	// milestone 6's labelled photo within the same picture" (plan); the deck layer is the largest paint (D-195).
+	public function test_the_board_is_served_as_layers_with_their_renditions_and_the_rest_keep_their_photos(): void {
+		foreach ( array( 'deck 8.5' => array( 432, 1626 ), 'truck 149' => array( 432, 160 ) ) as $part => $pixels ) {
+			$product = wc_get_product( $this->parts[ $part ] );
+			$product->update_meta_data( Options::META_LAYER, (string) LayerFiles::attachment( ...$pixels ) );
+			$product->save();
+		}
+		$this->service( PartRenditions::class )->make( $this->parts['deck 8.5'] );
+
+		$html = $this->kitPage(
+			array(
+				'deck'   => (string) $this->parts['deck 8.5'],
+				'trucks' => (string) $this->parts['truck 149'],
+				'step'   => 'wheels',
+			)
+		);
+		$dom  = self::dom( $html );
+		$layers = $dom->query( '//figure[@id="cbuild-picture"]/div[contains(@class,"cbuild-board")]/picture' );
+		self::assertSame( 3, $layers->length, 'a deck and two trucks' );
+		self::assertSame( 'cbuild-board__layer cbuild-board__layer--deck', $layers->item( 0 )->getAttribute( 'class' ) );
+		self::assertSame( '--cbuild-layer-x:0%;--cbuild-layer-y:0%;--cbuild-layer-width:100%;--cbuild-layer-height:100%', $layers->item( 0 )->getAttribute( 'style' ) );
+		// libxml reads HTML 4, where a source is not void, so it nests the second in the first: descendants, then.
+		$sources = $dom->query( './/source', $layers->item( 0 ) );
+		self::assertSame( array( 'image/avif', 'image/webp' ), array( $sources->item( 0 )->getAttribute( 'type' ), $sources->item( 1 )->getAttribute( 'type' ) ) );
+		self::assertMatchesRegularExpression( '#/creative-skateboard-builder/layers/[0-9a-f]{20}-108x407\.avif 108w, .+ 216w, .+ 432w$#', $sources->item( 0 )->getAttribute( 'srcset' ) );
+		self::assertStringStartsWith( '(min-height: 960px) ', $sources->item( 0 )->getAttribute( 'sizes' ) );
+		$deck = $dom->query( './/img', $layers->item( 0 ) )->item( 0 );
+		self::assertSame( array( 'high', 'eager', '', '432', '1626' ), array( $deck->getAttribute( 'fetchpriority' ), $deck->getAttribute( 'loading' ), $deck->getAttribute( 'alt' ), $deck->getAttribute( 'width' ), $deck->getAttribute( 'height' ) ) );
+		self::assertSame( 0, $dom->query( './/source', $layers->item( 1 ) )->length, 'the trucks\' renditions are not made: the master alone' );
+		self::assertStringEndsWith( '.png', $dom->query( './/img', $layers->item( 1 ) )->item( 0 )->getAttribute( 'src' ) );
+
+		$hidden = $dom->query( '//ul[@class="cbuild-picture__items"]/li[@hidden]' );
+		self::assertSame( 2, $hidden->length, 'the deck and the trucks are drawn, so their labelled photos are not shown' );
+		self::assertSame( 3, $dom->query( '//div[contains(@class,"cbuild-bar")]//span[contains(@class,"cbuild-board--bar")]/picture' )->length, 'the bar shows the same board' );
+		self::assertNotNull( $dom->query( '//div[contains(@class,"cbuild-bar")]//img[contains(@class,"cbuild-bar__photo") and @hidden]' )->item( 0 ) );
 	}
 
 	public function test_the_kits_page_gives_the_store_its_route_page_and_language_and_loads_it(): void {

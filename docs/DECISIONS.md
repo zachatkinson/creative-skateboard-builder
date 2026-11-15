@@ -2610,3 +2610,22 @@ Spec, Data model: `_cbuild_picture`, "the slots' layer order, and any anchor the
 **Tests.** `RenditionsTest` (unit: the sizes), `IndexJobsTest` (unit: the job asks for them, and not for a part with no image or a slot not drawn; integration: a layer saved alone queues the job), `LayerRenditionsTest` (integration: both types, the sizes, transparent corners, made once, new names for a new file, a filter's file removed, an ordinary upload's sizes as WordPress makes them, a missing file makes nothing). **Red run:** "Error: Class "CreativeBranding\SkateboardBuilder\Domain\Picture\Renditions" not found" in `RenditionsTest`; without `_cbuild_layer` among the sources, "Failed asserting that two arrays are identical." at IndexJobsTest.php:155. **Deliberate break:** keeping the file a filter made, "Failed asserting that two arrays are identical." at LayerRenditionsTest.php:95.
 
 **Status:** Accepted.
+
+## D-195: One renderer interface, the page's renderer, and the board in the page
+
+**Context.** The plan: "The renderer interface, with two renderers that draw the domain's Layout (D-060)"; "The picture becomes layered `<picture>` elements, each with an explicit size and AVIF and WebP sources. The deck layer is `fetchpriority="high"`. Each layer carries `cbuild_part_classes`. A pick swaps one layer in place with a view transition, and the description is said once. A part without a layer image keeps milestone 6's labelled photo within the same picture. The phone bar's small picture becomes the board."
+
+**Decision.**
+
+- **`Service\PictureRenderer`,** generic in what it gives, takes a `Layout` and the art of the parts with a layer image (`LayerArt`: the image's own file, its pixels and the renditions made). It is `@internal` and has no filter: a filter nobody calls is API to keep forever, so it waits for the 3D module. `Front\PageRenderer` gives each layer with art its top left corner from the board's, nose at the top, in the layout's units; the composer of step 8 is the second.
+- **`Service\LayerArtwork`** finds each drawn part's art: its own layer image or its parent's (`LayerImages::attachment()`), the image's stored size (`LayerImages::image()`, which reads the attachment's details, never its file), and the renditions its job made at the size its slot draws it. Nothing is made in a request; a part whose renditions are not made yet is drawn from its own file, with no `<source>`.
+- **The route's answer** lays out the parts the total counts with the kit's picture settings, so the recommendations are drawn as they are counted. Its `picture` gains `width`, `height` and `layers`, and each item `drawn`; nothing is taken away, and the store needed no change: it shows the server's view (D-148).
+- **The view** places each layer as a share of the board (`--cbuild-layer-x` and the rest), so the stylesheet sets one size, `--cbuild-board-size`, at most 36rem tall and 60vh below that. A layer's `sizes` is its share of the board's height times that size, written as `(min-height: 960px) Npx, Mvh`, with no `calc()` for a browser to misread. In the bar the board is 44 px tall, `--cbuild-target`.
+- **The deck is fetched first** (`fetchpriority="high"`) and every layer eagerly, as the spec's "the picture's first layers" asks; the bar's are lazy.
+- **A layer is keyed by its slot and its place in the slot** (`deck-1`, `trucks-2`), not by its part, so a pick changes the image of the element already there and the view transition `match-element` gives it moves it. The build is said once, by the status region, as in milestone 6; the layers are `alt=""` inside the figure the sentence describes.
+- **A board is the same board in either direction:** it is `direction: ltr`, so its logical edges are its left and top, and the labels around it still follow the page.
+- **A part the board draws has no labelled photo;** every other part keeps its photo, so the box still lists every part the total counts.
+
+**Tests.** `PageRendererTest`, `LayerArtworkTest`, `StateAnswerTest` and `BuilderTest` (unit), `BuilderPageTest` (the served markup: the nested `<picture>`, `<source>` and `<img>`, the hidden photos, the bar), and the browser's swap in Chromium, WebKit and Firefox. **Red run:** "Error: Class "CreativeBranding\SkateboardBuilder\Front\PageRenderer" not found" and "Error: Class "CreativeBranding\SkateboardBuilder\Service\LayerArtwork" not found". **Deliberate break:** each layer keyed by its part, "the same layer, swapped in place", "Expected: true, Received: false" at builder.spec.ts:949.
+
+**Status:** Accepted.

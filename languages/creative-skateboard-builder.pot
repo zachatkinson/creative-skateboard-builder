@@ -9,7 +9,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-11-15T02:46:36+00:00\n"
+"POT-Creation-Date: 2026-11-15T16:59:30+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: creative-skateboard-builder\n"
@@ -314,9 +314,9 @@ msgstr ""
 
 #: src/Admin/BuildTab.php:486
 #: src/Admin/BuildTab.php:665
-#: src/Admin/PartSpecsPanel.php:570
-#: src/Front/BuilderView.php:739
-#: src/Front/BuilderView.php:1047
+#: src/Admin/PartSpecsPanel.php:566
+#: src/Front/BuilderView.php:829
+#: src/Front/BuilderView.php:1137
 #: src/Health/SiteHealth.php:266
 msgid "None"
 msgstr ""
@@ -529,37 +529,37 @@ msgid "Where the picture puts the trucks on a deck whose wheelbase is not in its
 msgstr ""
 
 #: src/Admin/BuildTab.php:883
-#: src/Admin/PartSpecsPanel.php:540
+#: src/Admin/PartSpecsPanel.php:536
 msgid "Deck"
 msgstr ""
 
 #: src/Admin/BuildTab.php:884
-#: src/Admin/PartSpecsPanel.php:541
+#: src/Admin/PartSpecsPanel.php:537
 msgid "Trucks"
 msgstr ""
 
 #: src/Admin/BuildTab.php:885
-#: src/Admin/PartSpecsPanel.php:542
+#: src/Admin/PartSpecsPanel.php:538
 msgid "Wheels"
 msgstr ""
 
 #: src/Admin/BuildTab.php:886
-#: src/Admin/PartSpecsPanel.php:543
+#: src/Admin/PartSpecsPanel.php:539
 msgid "Risers"
 msgstr ""
 
 #: src/Admin/BuildTab.php:887
-#: src/Admin/PartSpecsPanel.php:545
+#: src/Admin/PartSpecsPanel.php:541
 msgid "Bearings"
 msgstr ""
 
 #: src/Admin/BuildTab.php:888
-#: src/Admin/PartSpecsPanel.php:544
+#: src/Admin/PartSpecsPanel.php:540
 msgid "Hardware"
 msgstr ""
 
 #: src/Admin/BuildTab.php:889
-#: src/Admin/PartSpecsPanel.php:546
+#: src/Admin/PartSpecsPanel.php:542
 msgid "Grip tape"
 msgstr ""
 
@@ -743,7 +743,7 @@ msgid "Deck hole pattern"
 msgstr ""
 
 #: src/Admin/Labels.php:45
-#: src/Front/BuilderView.php:518
+#: src/Front/BuilderView.php:608
 msgid "Axle width"
 msgstr ""
 
@@ -899,175 +899,175 @@ msgid "%s mm"
 msgstr ""
 
 #: src/Admin/Labels.php:170
-#: src/Admin/PartSpecsPanel.php:484
+#: src/Admin/PartSpecsPanel.php:480
 #: src/Health/SiteHealth.php:271
 #: src/Order/OrderHooks.php:341
 msgid "Yes"
 msgstr ""
 
 #: src/Admin/Labels.php:170
-#: src/Admin/PartSpecsPanel.php:485
+#: src/Admin/PartSpecsPanel.php:481
 #: src/Health/SiteHealth.php:271
 #: src/Order/OrderHooks.php:341
 msgid "No"
 msgstr ""
 
-#: src/Admin/PartSpecsPanel.php:170
+#: src/Admin/PartSpecsPanel.php:166
 #: src/Admin/SettingsPage.php:95
 #: templates/admin/part-specs.php:28
 msgid "Part specs"
 msgstr ""
 
 #. translators: 1: a variation's ID. 2: a sentence saying what was not saved.
-#: src/Admin/PartSpecsPanel.php:305
-#: src/Admin/PartSpecsPanel.php:350
+#: src/Admin/PartSpecsPanel.php:301
+#: src/Admin/PartSpecsPanel.php:346
 #, php-format
 msgid "Variation #%1$d: %2$s"
 msgstr ""
 
 #. translators: %s: what was typed in the Layer image field.
-#: src/Admin/PartSpecsPanel.php:336
+#: src/Admin/PartSpecsPanel.php:332
 #, php-format
 msgid "Layer image was not saved: \"%s\" is not the ID of an image in the Media Library."
 msgstr ""
 
 #. translators: %s: a file's media type, such as image/jpeg.
-#: src/Admin/PartSpecsPanel.php:368
+#: src/Admin/PartSpecsPanel.php:364
 #, php-format
 msgid "Layer image was not saved: it is %s, and a layer must be a PNG or WebP with a transparent background."
 msgstr ""
 
-#: src/Admin/PartSpecsPanel.php:369
+#: src/Admin/PartSpecsPanel.php:365
 msgid "Layer image was not saved: its corners are not transparent. Export the cut-out with a transparent background."
 msgstr ""
 
 #. translators: 1: a number of pixels. 2: another.
-#: src/Admin/PartSpecsPanel.php:371
+#: src/Admin/PartSpecsPanel.php:367
 #, php-format
 msgid "Layer image was not saved: it is too small for the size the picture draws this part. It needs at least %1$s pixels across or %2$s along."
 msgstr ""
 
-#: src/Admin/PartSpecsPanel.php:407
+#: src/Admin/PartSpecsPanel.php:403
 msgid "The part's cut-out on a transparent background, a PNG or WebP from the Media Library. Choose one, or type its attachment ID. Left empty, the variation takes its parent product's, or the picture shows its labelled photo."
 msgstr ""
 
-#: src/Admin/PartSpecsPanel.php:408
+#: src/Admin/PartSpecsPanel.php:404
 msgid "The part's cut-out on a transparent background, a PNG or WebP from the Media Library. Choose one, or type its attachment ID. Left empty, the picture shows the part's labelled photo."
 msgstr ""
 
 #. translators: %d: an attachment's ID.
-#: src/Admin/PartSpecsPanel.php:415
+#: src/Admin/PartSpecsPanel.php:411
 #, php-format
 msgid "In use: image #%d, from the parent product."
 msgstr ""
 
 #. translators: 1: a part's width in millimetres. 2: its length. 3: a number of pixels. 4: another.
-#: src/Admin/PartSpecsPanel.php:422
+#: src/Admin/PartSpecsPanel.php:418
 #, php-format
 msgid "Drawn %1$s by %2$s mm, nose up. The image needs at least %3$s pixels across or %4$s along."
 msgstr ""
 
-#: src/Admin/PartSpecsPanel.php:435
+#: src/Admin/PartSpecsPanel.php:431
 msgid "Choose an image"
 msgstr ""
 
-#: src/Admin/PartSpecsPanel.php:436
+#: src/Admin/PartSpecsPanel.php:432
 #: templates/admin/part-specs.php:96
 msgid "Layer image"
 msgstr ""
 
-#: src/Admin/PartSpecsPanel.php:547
+#: src/Admin/PartSpecsPanel.php:543
 msgid "Sold in sets"
 msgstr ""
 
-#: src/Admin/PartSpecsPanel.php:573
+#: src/Admin/PartSpecsPanel.php:569
 msgid "Leave as it is"
 msgstr ""
 
-#: src/Admin/PartSpecsPanel.php:579
+#: src/Admin/PartSpecsPanel.php:575
 msgid "Maker's chart and size"
 msgstr ""
 
-#: src/Admin/PartSpecsPanel.php:581
+#: src/Admin/PartSpecsPanel.php:577
 msgid "A truck that names its size in a chart takes that row's figures."
 msgstr ""
 
 #. translators: 1: a spec's value with its unit, such as 32 in. 2: a product attribute's name, such as Length.
-#: src/Admin/PartSpecsPanel.php:630
+#: src/Admin/PartSpecsPanel.php:626
 #, php-format
 msgid "In use: %1$s, from the parent product's %2$s attribute."
 msgstr ""
 
 #. translators: 1: a spec's value with its unit, such as 8.25 in. 2: a product attribute's name, such as Width.
-#: src/Admin/PartSpecsPanel.php:633
+#: src/Admin/PartSpecsPanel.php:629
 #, php-format
 msgid "In use: %1$s, from the %2$s attribute."
 msgstr ""
 
 #. translators: 1: a spec's value with its unit, such as 8.5 in. 2: a truck maker's name, such as Independent. 3: a size in the maker's chart, such as 149.
-#: src/Admin/PartSpecsPanel.php:639
+#: src/Admin/PartSpecsPanel.php:635
 #, php-format
 msgid "In use: %1$s, from %2$s's chart, size %3$s."
 msgstr ""
 
 #. translators: %s: a spec's value with its unit, such as 8.25 in.
-#: src/Admin/PartSpecsPanel.php:642
+#: src/Admin/PartSpecsPanel.php:638
 #, php-format
 msgid "In use: %s, from the parent product."
 msgstr ""
 
 #. translators: %s: the size that was chosen.
-#: src/Admin/PartSpecsPanel.php:676
+#: src/Admin/PartSpecsPanel.php:672
 #, php-format
 msgid "The maker's chart was not saved: the chart has no size %s now. Choose again."
 msgstr ""
 
-#: src/Admin/PartSpecsPanel.php:677
+#: src/Admin/PartSpecsPanel.php:673
 msgid "The maker's chart was not saved: that chart is no longer there. Choose again."
 msgstr ""
 
-#: src/Admin/PartSpecsPanel.php:678
+#: src/Admin/PartSpecsPanel.php:674
 msgid "The maker's chart was not saved. Choose again."
 msgstr ""
 
 #. translators: 1: a deck's width with its unit, such as 8.6 in. 2: another, such as 8.375 in.
-#: src/Admin/PartSpecsPanel.php:685
+#: src/Admin/PartSpecsPanel.php:681
 #, php-format
 msgid "Narrowest deck and Widest deck were not saved: the narrowest, %1$s, is wider than the widest, %2$s."
 msgstr ""
 
 #. translators: 1: a spec's name. 2: what was typed.
-#: src/Admin/PartSpecsPanel.php:687
+#: src/Admin/PartSpecsPanel.php:683
 #, php-format
 msgid "%1$s was not saved: \"%2$s\" is not a measurement. Type a number, or a fraction such as 8 1/4."
 msgstr ""
 
 #. translators: 1: a spec's name. 2: what was typed.
-#: src/Admin/PartSpecsPanel.php:689
+#: src/Admin/PartSpecsPanel.php:685
 #, php-format
 msgid "%1$s was not saved: the fraction in \"%2$s\" divides by zero."
 msgstr ""
 
 #. translators: 1: a spec's name. 2: what was typed.
-#: src/Admin/PartSpecsPanel.php:691
+#: src/Admin/PartSpecsPanel.php:687
 #, php-format
 msgid "%1$s was not saved: \"%2$s\" is below zero."
 msgstr ""
 
 #. translators: 1: a spec's name. 2: what was typed.
-#: src/Admin/PartSpecsPanel.php:693
+#: src/Admin/PartSpecsPanel.php:689
 #, php-format
 msgid "%1$s was not saved: \"%2$s\" must be more than zero."
 msgstr ""
 
 #. translators: 1: a spec's name. 2: what was typed.
-#: src/Admin/PartSpecsPanel.php:695
+#: src/Admin/PartSpecsPanel.php:691
 #, php-format
 msgid "%1$s was not saved: \"%2$s\" is too large a number."
 msgstr ""
 
 #. translators: 1: a spec's name. 2: what was typed.
-#: src/Admin/PartSpecsPanel.php:697
+#: src/Admin/PartSpecsPanel.php:693
 #, php-format
 msgid "%1$s was not saved: \"%2$s\" is not a value it takes."
 msgstr ""
@@ -1695,7 +1695,7 @@ msgstr ""
 #. translators: 1: a slot's label, such as Wheels. 2: a brand's name, or a size such as 54 mm.
 #. translators: 1: a slot's label, such as Deck. 2: the part's name.
 #: src/Cart/ShowHooks.php:516
-#: src/Front/BuilderView.php:894
+#: src/Front/BuilderView.php:984
 #: src/Front/Words.php:347
 #: src/Front/Words.php:365
 #: src/Order/OrderHooks.php:291
@@ -1792,20 +1792,20 @@ msgid "Shown to shop managers only: %s"
 msgstr ""
 
 #. translators: %s: the next step's name, such as Wheels.
-#: src/Front/BuilderView.php:91
-#: src/Front/BuilderView.php:127
-#: src/Front/BuilderView.php:753
+#: src/Front/BuilderView.php:106
+#: src/Front/BuilderView.php:142
+#: src/Front/BuilderView.php:843
 msgid "Review"
 msgstr ""
 
 #. translators: 1: the step's number. 2: how many steps there are. 3: the step's name, such as Trucks.
-#: src/Front/BuilderView.php:93
+#: src/Front/BuilderView.php:108
 #, php-format
 msgid "Step %1$s of %2$s: %3$s"
 msgstr ""
 
 #. translators: %s: a number of parts.
-#: src/Front/BuilderView.php:141
+#: src/Front/BuilderView.php:156
 #, php-format
 msgid "%s part no longer fits."
 msgid_plural "%s parts no longer fit."
@@ -1813,129 +1813,129 @@ msgstr[0] ""
 msgstr[1] ""
 
 #. translators: 1: the build in a sentence. 2: the build's total, such as $184.00.
-#: src/Front/BuilderView.php:143
+#: src/Front/BuilderView.php:158
 #, php-format
 msgid "%1$s Total: %2$s."
 msgstr ""
 
 #. translators: %s: the page's heading, such as "Step 2 of 7: Trucks".
-#: src/Front/BuilderView.php:157
+#: src/Front/BuilderView.php:172
 #, php-format
 msgid "Error: %s"
 msgstr ""
 
-#: src/Front/BuilderView.php:164
+#: src/Front/BuilderView.php:179
 msgid "Fix these before going on"
 msgstr ""
 
-#: src/Front/BuilderView.php:174
+#: src/Front/BuilderView.php:189
 msgid "What is in the box"
 msgstr ""
 
-#: src/Front/BuilderView.php:222
+#: src/Front/BuilderView.php:245
 msgid "See the picture"
 msgstr ""
 
 #. translators: %s: the build's total, such as $184.00.
-#: src/Front/BuilderView.php:224
-#: src/Front/BuilderView.php:1093
+#: src/Front/BuilderView.php:247
+#: src/Front/BuilderView.php:1183
 #, php-format
 msgid "Total: %s"
 msgstr ""
 
-#: src/Front/BuilderView.php:226
+#: src/Front/BuilderView.php:249
 msgid "Show the parts"
 msgstr ""
 
-#: src/Front/BuilderView.php:227
+#: src/Front/BuilderView.php:250
 msgid "Hide the parts"
 msgstr ""
 
 #. translators: %s: a preset's name, such as Street.
-#: src/Front/BuilderView.php:299
+#: src/Front/BuilderView.php:322
 #, php-format
 msgid "Start from %s"
 msgstr ""
 
-#: src/Front/BuilderView.php:305
+#: src/Front/BuilderView.php:328
 msgid "Start from a ready build"
 msgstr ""
 
-#: src/Front/BuilderView.php:318
+#: src/Front/BuilderView.php:341
 msgid "Done"
 msgstr ""
 
-#: src/Front/BuilderView.php:319
+#: src/Front/BuilderView.php:342
 msgid "Current step"
 msgstr ""
 
-#: src/Front/BuilderView.php:320
+#: src/Front/BuilderView.php:343
 msgid "To come"
 msgstr ""
 
 #. translators: %s: a number of parts.
-#: src/Front/BuilderView.php:489
+#: src/Front/BuilderView.php:579
 #, php-format
 msgid "%s part hidden: it does not fit the parts before this step."
 msgid_plural "%s parts hidden: they do not fit the parts before this step."
 msgstr[0] ""
 msgstr[1] ""
 
-#: src/Front/BuilderView.php:509
+#: src/Front/BuilderView.php:599
 msgid "Brand"
 msgstr ""
 
-#: src/Front/BuilderView.php:511
+#: src/Front/BuilderView.php:601
 msgid "Any brand"
 msgstr ""
 
-#: src/Front/BuilderView.php:517
+#: src/Front/BuilderView.php:607
 msgid "Width"
 msgstr ""
 
-#: src/Front/BuilderView.php:519
+#: src/Front/BuilderView.php:609
 msgid "Diameter"
 msgstr ""
 
-#: src/Front/BuilderView.php:520
+#: src/Front/BuilderView.php:610
 msgid "Thickness"
 msgstr ""
 
-#: src/Front/BuilderView.php:521
+#: src/Front/BuilderView.php:611
 msgid "Length"
 msgstr ""
 
-#: src/Front/BuilderView.php:522
+#: src/Front/BuilderView.php:612
 #: templates/admin/spec-table.php:96
 msgid "Size"
 msgstr ""
 
-#: src/Front/BuilderView.php:526
+#: src/Front/BuilderView.php:616
 msgid "Any width"
 msgstr ""
 
-#: src/Front/BuilderView.php:527
+#: src/Front/BuilderView.php:617
 msgid "Any size"
 msgstr ""
 
 #. translators: 1: a brand or a size, such as Independent or 8.25 in. 2: how many parts have it.
-#: src/Front/BuilderView.php:546
+#: src/Front/BuilderView.php:636
 #, php-format
 msgid "%1$s (%2$s)"
 msgstr ""
 
-#: src/Front/BuilderView.php:567
+#: src/Front/BuilderView.php:657
 msgid "Filter the parts"
 msgstr ""
 
 #. translators: %s: how many more parts the button lists.
-#: src/Front/BuilderView.php:591
+#: src/Front/BuilderView.php:681
 #, php-format
 msgid "Show %s more"
 msgstr ""
 
 #. translators: 1: how many parts are listed. 2: how many match.
-#: src/Front/BuilderView.php:593
+#: src/Front/BuilderView.php:683
 #, php-format
 msgid "%1$s of %2$s part shown"
 msgid_plural "%1$s of %2$s parts shown"
@@ -1943,210 +1943,210 @@ msgstr[0] ""
 msgstr[1] ""
 
 #. translators: %s: a part's name.
-#: src/Front/BuilderView.php:651
+#: src/Front/BuilderView.php:741
 #, php-format
 msgid "Choose %s"
 msgstr ""
 
 #. translators: %s: a part's name.
-#: src/Front/BuilderView.php:659
+#: src/Front/BuilderView.php:749
 #, php-format
 msgid "See the page for %s"
 msgstr ""
 
-#: src/Front/BuilderView.php:722
+#: src/Front/BuilderView.php:812
 msgid "Start with a width. Every later step offers only what fits the deck you choose."
 msgstr ""
 
-#: src/Front/BuilderView.php:734
+#: src/Front/BuilderView.php:824
 msgid "Nothing the shop has fits the parts before this step."
 msgstr ""
 
-#: src/Front/BuilderView.php:735
+#: src/Front/BuilderView.php:825
 msgid "No part matches these filters."
 msgstr ""
 
-#: src/Front/BuilderView.php:739
+#: src/Front/BuilderView.php:829
 msgid "No risers"
 msgstr ""
 
 #. translators: %s: a step's name, such as Deck.
-#: src/Front/BuilderView.php:748
+#: src/Front/BuilderView.php:838
 #, php-format
 msgid "Back: %s"
 msgstr ""
 
 #. translators: %s: the next step's name, such as Wheels.
-#: src/Front/BuilderView.php:753
+#: src/Front/BuilderView.php:843
 #, php-format
 msgid "Next: %s"
 msgstr ""
 
 #. translators: %s: a deck's width, such as 8.25″.
-#: src/Front/BuilderView.php:786
+#: src/Front/BuilderView.php:876
 #, php-format
 msgid "%s deck"
 msgstr ""
 
-#: src/Front/BuilderView.php:800
+#: src/Front/BuilderView.php:890
 msgid "Fits, with a note"
 msgstr ""
 
-#: src/Front/BuilderView.php:803
+#: src/Front/BuilderView.php:893
 msgid "Does not fit"
 msgstr ""
 
 #. translators: %s: what the part was checked against, such as "8.25″ deck" or "trucks and risers".
-#: src/Front/BuilderView.php:809
+#: src/Front/BuilderView.php:899
 #, php-format
 msgid "Fits your %s"
 msgstr ""
 
-#: src/Front/BuilderView.php:819
+#: src/Front/BuilderView.php:909
 msgid "Recommended"
 msgstr ""
 
 #. translators: %s: what the part was checked against, such as "8.25″ deck" or "trucks and risers".
-#: src/Front/BuilderView.php:822
+#: src/Front/BuilderView.php:912
 #, php-format
 msgid "Recommended for your %s"
 msgstr ""
 
 #. translators: 1: a slot's label, such as Trucks. 2: a part's name.
-#: src/Front/BuilderView.php:906
+#: src/Front/BuilderView.php:996
 #, php-format
 msgid "%1$s: %2$s no longer fits."
 msgstr ""
 
-#: src/Front/BuilderView.php:909
+#: src/Front/BuilderView.php:999
 msgid "Nothing the shop has fits here, so this slot would be left for you to choose again."
 msgstr ""
 
 #. translators: %s: a part's name.
-#: src/Front/BuilderView.php:911
+#: src/Front/BuilderView.php:1001
 #, php-format
 msgid "Closest fit: %s"
 msgstr ""
 
-#: src/Front/BuilderView.php:932
+#: src/Front/BuilderView.php:1022
 msgid "This change affects parts you chose"
 msgstr ""
 
-#: src/Front/BuilderView.php:933
+#: src/Front/BuilderView.php:1023
 msgid "Kept"
 msgstr ""
 
-#: src/Front/BuilderView.php:936
+#: src/Front/BuilderView.php:1026
 msgid "No longer fits"
 msgstr ""
 
-#: src/Front/BuilderView.php:941
+#: src/Front/BuilderView.php:1031
 msgid "Use these"
 msgstr ""
 
-#: src/Front/BuilderView.php:945
+#: src/Front/BuilderView.php:1035
 msgid "Undo"
 msgstr ""
 
 #. translators: %s: how many of a part a build takes.
-#: src/Front/BuilderView.php:976
+#: src/Front/BuilderView.php:1066
 #, php-format
 msgid "× %s"
 msgstr ""
 
-#: src/Front/BuilderView.php:984
+#: src/Front/BuilderView.php:1074
 #: src/Order/OrderHooks.php:200
 msgid "Assembly: not added"
 msgstr ""
 
-#: src/Front/BuilderView.php:987
+#: src/Front/BuilderView.php:1077
 #: src/Order/OrderHooks.php:201
 msgid "Assembly: free"
 msgstr ""
 
 #. translators: %s: the assembly fee, such as $15.00.
-#: src/Front/BuilderView.php:989
+#: src/Front/BuilderView.php:1079
 #: src/Order/OrderHooks.php:203
 #, php-format
 msgid "Assembly: %s"
 msgstr ""
 
-#: src/Front/BuilderView.php:994
+#: src/Front/BuilderView.php:1084
 msgid "Your build"
 msgstr ""
 
-#: src/Front/BuilderView.php:997
+#: src/Front/BuilderView.php:1087
 #: src/Front/Words.php:360
 msgid "Nothing is chosen yet."
 msgstr ""
 
-#: src/Front/BuilderView.php:1002
+#: src/Front/BuilderView.php:1092
 msgid "Remove assembly"
 msgstr ""
 
-#: src/Front/BuilderView.php:1002
+#: src/Front/BuilderView.php:1092
 msgid "Add assembly"
 msgstr ""
 
 #. translators: %s: an amount of money, such as $12.00.
-#: src/Front/BuilderView.php:1006
+#: src/Front/BuilderView.php:1096
 #, php-format
 msgid "Build discount: %s"
 msgstr ""
 
-#: src/Front/BuilderView.php:1007
+#: src/Front/BuilderView.php:1097
 msgid "Total"
 msgstr ""
 
-#: src/Front/BuilderView.php:1049
+#: src/Front/BuilderView.php:1139
 msgid "Fits"
 msgstr ""
 
 #. translators: %s: a slot's label, such as Trucks.
-#: src/Front/BuilderView.php:1052
+#: src/Front/BuilderView.php:1142
 #, php-format
 msgid "Change %s"
 msgstr ""
 
 #. translators: %s: how long the shop takes to put a build together, in the owner's words, such as 2 business days.
-#: src/Front/BuilderView.php:1059
+#: src/Front/BuilderView.php:1149
 #, php-format
 msgid "Assembly time: %s"
 msgstr ""
 
-#: src/Front/BuilderView.php:1086
+#: src/Front/BuilderView.php:1176
 msgid "Check your build"
 msgstr ""
 
-#: src/Front/BuilderView.php:1103
+#: src/Front/BuilderView.php:1193
 msgid "Save changes"
 msgstr ""
 
-#: src/Front/BuilderView.php:1103
+#: src/Front/BuilderView.php:1193
 msgid "Add to cart"
 msgstr ""
 
-#: src/Front/BuilderView.php:1105
+#: src/Front/BuilderView.php:1195
 msgid "Saving replaces the build in your cart."
 msgstr ""
 
-#: src/Front/BuilderView.php:1107
+#: src/Front/BuilderView.php:1197
 msgid "Your cart has the changed build."
 msgstr ""
 
-#: src/Front/BuilderView.php:1107
+#: src/Front/BuilderView.php:1197
 msgid "The build is in your cart."
 msgstr ""
 
-#: src/Front/BuilderView.php:1111
+#: src/Front/BuilderView.php:1201
 msgid "Link to this build"
 msgstr ""
 
-#: src/Front/BuilderView.php:1112
+#: src/Front/BuilderView.php:1202
 msgid "Copy link"
 msgstr ""
 
-#: src/Front/BuilderView.php:1113
+#: src/Front/BuilderView.php:1203
 msgid "Link copied."
 msgstr ""
 

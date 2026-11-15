@@ -453,7 +453,45 @@
 	font-size: var(--cbuild-small);
 }
 
-/* The picture, for now: what is in the box. */
+/*
+ * The picture: the board, drawn to scale from the layout (D-195), then what is in the box. The view places each layer
+ * as a share of the board, so the board sets one size: at most 36rem tall, and 60% of the window below that, which
+ * the layers' `sizes` assume. A board is the same board in either direction, so it is laid out left to right whatever
+ * the page's, and its layers' logical edges are its left and top.
+ */
+:where(.cbuild-board) {
+	--cbuild-board-size: min(60vh, 36rem);
+
+	position: relative;
+	display: block;
+	direction: ltr;
+	block-size: var(--cbuild-board-size);
+	aspect-ratio: var(--cbuild-board-ratio, 1 / 4);
+	margin-inline: auto;
+	margin-block-end: var(--cbuild-gap-small);
+}
+
+:where(.cbuild-board--bar) {
+	--cbuild-board-size: 100%;
+
+	margin-block-end: 0;
+}
+
+:where(.cbuild-board__layer) {
+	position: absolute;
+	inset-block-start: var(--cbuild-layer-y);
+	inset-inline-start: var(--cbuild-layer-x);
+	inline-size: var(--cbuild-layer-width);
+	block-size: var(--cbuild-layer-height);
+}
+
+:where(.cbuild-board__image) {
+	display: block;
+	inline-size: 100%;
+	block-size: 100%;
+	object-fit: contain;
+}
+
 :where(.cbuild-picture__heading) {
 	margin: 0 0 var(--cbuild-gap-small);
 }
@@ -811,7 +849,7 @@
 		animation: cbuild-settle var(--cbuild-duration) var(--cbuild-ease);
 	}
 
-	:where(.cbuild-picture__item) {
+	:where(.cbuild-picture__item, .cbuild-board__layer) {
 		view-transition-class: cbuild-part;
 		view-transition-name: match-element;
 	}

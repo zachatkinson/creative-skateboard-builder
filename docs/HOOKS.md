@@ -598,6 +598,7 @@ Keys that start with an underscore are the builder's own forms' and are not part
 | `filters` | 0.6.0 | `brands` and `sizes`: each value the current step's offered parts have, with its `label`, how many parts have it (`count`) and whether the list is filtered by it (`selected`). A list with fewer than two values is empty. |
 | `matching`, `more` | 0.6.0 | How many of the step's offered parts the filters let through, and how many to ask for to list the next 24, or null when all are listed. |
 | `picture` | 0.6.0 | `items`, one for each part the total counts (`slot`, `part`, `label` such as `Wheels: Retna, 54 mm`, `size` such as `54 mm` or empty, `name`, `image`), and `description`, the build in one sentence. |
+| `picture` | 0.7.0 | Gains `width` and `height`, the board in ten-thousandths of a millimetre or 0 before a deck with a width is picked, and `layers`, the board from the bottom of the stack, one for each truck and wheel: each layer's `slot`, `part`, its left edge `x` and top edge `y` from the board's with the nose at the top, its `width` and `height`, and its `image` (`src`, the layer image's own file, its pixels, and `sources`, a `type` and `srcset` for each of AVIF and WebP whose renditions are made). Each of `items` gains `drawn`: whether the board draws the part, which the builder then shows no labelled photo for. Nothing is taken away (D-195). |
 | `delivery` | 0.6.0 | `arrival` and `line`: what `cbuild_arrival_estimate` and `cbuild_delivery_line` answer, in plain text, each empty where nothing is said. |
 | `notes` | 0.6.0 | What `cbuild_summary_notes` answers: six lines at most, in plain text. |
 | `view` | 0.6.0 | Only in an answer to `cbuild`: what the builder's template draws, as the page's first render has it. It is the builder's own and no part of this API: it may change in any release. |
@@ -619,7 +620,7 @@ A page that holds a builder and carries a `cbuild` query, whatever it holds, say
 | Filter | Since | Arguments | What it does |
 | --- | --- | --- | --- |
 | `cbuild_builder_url` | 0.6.0 | `string $url`, `int $kit` | Where a kit's builder is: the address of the page its Builder block is on, with no build in it. `$url` starts as the kit's own page. An address on another host, or an answer that is no address, is ignored. A deck's "Make it a complete" link is this address with `cbuild[<deck slot key>]=<deck ID>` added (The build link, above): it opens on the step after the deck, with the deck picked. |
-| `cbuild_part_classes` | 0.6.0 | `array $classes`, `int $part`, `string $slot`, `int $kit` | Classes to add to a part wherever the builder shows it, such as `is-flagged`: its card in a step, its place in the picture (`cbuild-picture__item`), the bar's photo (`cbuild-bar__photo`) and its line in the review (`cbuild-review__item`), so one answer can blur a part in every place. `$classes` starts empty. Each answer is made safe for a class attribute and put after the builder's own, which are kept whatever the answer; an answer that is no list adds nothing. `$part` is a product's or a variation's ID. |
+| `cbuild_part_classes` | 0.6.0 | `array $classes`, `int $part`, `string $slot`, `int $kit` | Classes to add to a part wherever the builder shows it, such as `is-flagged`: its card in a step, its place in the picture (`cbuild-picture__item`, and from 0.7.0 its layer on the board, `cbuild-board__layer`, in the picture and in the bar), the bar's photo (`cbuild-bar__photo`) and its line in the review (`cbuild-review__item`), so one answer can blur a part in every place. `$classes` starts empty. Each answer is made safe for a class attribute and put after the builder's own, which are kept whatever the answer; an answer that is no list adds nothing. `$part` is a product's or a variation's ID. |
 | `cbuild_summary_notes` | 0.6.0 | `array $notes`, `array $context` | Lines under a build's total in the builder: the points a build earns, or a word to a signed-in dealer. `$notes` starts empty. `$context` holds `kit` (the kit product's ID), `parts` (the parts the total counts, slot key to part ID), `assembly`, and `total` in whole minor units with its `decimals`. Answer with a list of sentences in the request's language. Each is shown as plain text, the first six are kept, and anything that is no text is dropped. The answer is asked for on every pick and is never cached, so it has to be quick. Name no person in a line that a shared screen could show. |
 
 ### Adding a build: `replace`
@@ -658,6 +659,17 @@ The builder's stylesheet is the Builder block's `style` (`build/builder/style-in
 | `--cbuild-duration` | 0.6.0 | How long each movement lasts: the chosen card settling, a part arriving in the picture, a step crossing over. The step's crossing is the page's view transition, which reads it on `:root`, so set it there too | `200ms` |
 | `--cbuild-bar-offset` | 0.6.0 | How far above the foot of the screen the phone bar sits, set on the page's root (below) | `0px` |
 | `--cbuild-ease` | 0.6.0 | How each movement eases, read as `--cbuild-duration` is | `cubic-bezier(0.2, 0, 0, 1)` |
+| `--cbuild-board-size` | 0.7.0 | The board's height in the picture. The layers' `sizes` assume the default, so a board drawn much larger may fetch a smaller rendition than the screen could use | `min(60vh, 36rem)` |
+
+From 0.7.0 the builder sets these on the board and its layers, for a theme's rules to read; a theme does not set them (D-195):
+
+| Property | Since | What it holds |
+| --- | --- | --- |
+| `--cbuild-board-ratio` | 0.7.0 | On `.cbuild-board`: the board's width over its height, as `aspect-ratio` takes it |
+| `--cbuild-layer-x` | 0.7.0 | On `.cbuild-board__layer`: its left edge, as a share of the board's width |
+| `--cbuild-layer-y` | 0.7.0 | Its top edge, as a share of the board's height, the nose at the top |
+| `--cbuild-layer-width` | 0.7.0 | Its width, as a share of the board's |
+| `--cbuild-layer-height` | 0.7.0 | Its height, as a share of the board's |
 
 Nothing moves where the shopper asks for reduced motion.
 
