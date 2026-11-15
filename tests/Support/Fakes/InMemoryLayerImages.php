@@ -31,11 +31,22 @@ final class InMemoryLayerImages implements LayerImages {
 	 */
 	public ?array $layered = null;
 
+	/**
+	 * Each part's layer image, by part.
+	 *
+	 * @var array<int, int>
+	 */
+	public array $attachments = array();
+
 	public function facts( int $attachment ): ?ImageFacts {
 		return $this->images[ $attachment ] ?? null;
 	}
 
 	public function layered( int ...$parts ): array {
 		return null === $this->layered ? $parts : array_values( array_intersect( $parts, $this->layered ) );
+	}
+
+	public function attachment( int $part ): ?int {
+		return $this->attachments[ $part ] ?? null;
 	}
 }

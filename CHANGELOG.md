@@ -12,6 +12,7 @@ All notable changes to this project are documented here. The format follows [Kee
 - The kit meta `_cbuild_picture` and its schema `schema/kit-picture.json`: the picture's layer order and where the trucks sit on a deck that gives no wheelbase. A kit saved before 0.7.0 has none and is drawn as before (D-192).
 - The Build tab's Picture section: a layer, from 1 at the bottom, for each of the kit's slots the picture draws (deck, grip, trucks and wheels), and the wheelbase to use where a deck gives none, from 10 to 20 in. Equal layers keep the order the slots are listed in. A wheelbase outside that range is not saved, and the notice says the range.
 - The Catalogue check's finding `layer_missing`: for each kit, a part of a slot the picture draws (deck, grip, trucks and wheels) with no layer image of its own or its parent's, or one no longer in the Media Library. These come after every other finding, and each links to the part's Layer image field (D-193).
+- Each part's layer image is made again as AVIF and WebP at half a pixel, one pixel and two pixels to the millimetre of the size the picture draws it, fitted and never enlarged, in `uploads/creative-skateboard-builder/layers/`. The part's index job makes them in the background, and a save that changes its layer image queues that job. WordPress's handling of the shop's other uploads is not changed (D-194).
 
 ### Changed
 

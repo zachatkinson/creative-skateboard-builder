@@ -58,6 +58,7 @@ final class Container {
 			Port\BuilderPosts::class    => Adapter\WpBuilderPosts::class,
 			Port\KitMeta::class         => Adapter\WooKitMeta::class,
 			Port\LayerImages::class     => Adapter\WpLayerImages::class,
+			Port\LayerRenditions::class => Adapter\WpLayerRenditions::class,
 		);
 	}
 
@@ -245,7 +246,7 @@ final class Container {
 				);
 			},
 			Service\SavedSources::class                 => static function (): object {
-				return new Service\SavedSources( array( Support\Options::META_SPECS, Support\Options::META_SPEC_TABLE ) );
+				return new Service\SavedSources( array( Support\Options::META_SPECS, Support\Options::META_SPEC_TABLE, Support\Options::META_LAYER ) );
 			},
 			// The builder's services are built when a page shows a builder, not on every request.
 			Front\PageHooks::class                      => static function ( Container $c ): object {

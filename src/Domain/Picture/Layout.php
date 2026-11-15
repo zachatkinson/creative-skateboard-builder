@@ -32,6 +32,11 @@ use function usort;
 final readonly class Layout {
 
 	/**
+	 * The slots the picture draws, in the order it stacks them when the kit sets none.
+	 */
+	public const array DRAWN = array( SlotKey::DECK, SlotKey::GRIP, SlotKey::TRUCKS, SlotKey::WHEELS );
+
+	/**
 	 * The length of a deck that gives none: 32 in.
 	 */
 	private const int USUAL_LENGTH = 320000;

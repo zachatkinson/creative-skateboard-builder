@@ -33,6 +33,17 @@ interface LayerImages {
 	public function facts( int $attachment ): ?ImageFacts;
 
 	/**
+	 * A part's layer image: its own, or a variation's parent product's, while it is still an image in the Media
+	 * Library.
+	 *
+	 * @since 0.7.0
+	 *
+	 * @param int $part A product's or variation's ID.
+	 * @return int|null The attachment's ID, or null when it has none.
+	 */
+	public function attachment( int $part ): ?int;
+
+	/**
 	 * The parts among these that have a layer image, their own or their parent product's, that is still an image in
 	 * the Media Library.
 	 *

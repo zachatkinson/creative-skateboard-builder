@@ -17,6 +17,7 @@ use CreativeBranding\SkateboardBuilder\Domain\Kit\Part;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Picks;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\SlotKey;
 use CreativeBranding\SkateboardBuilder\Domain\Rule\MessageCode;
+use CreativeBranding\SkateboardBuilder\Domain\Picture\Layout;
 use CreativeBranding\SkateboardBuilder\Port\ImportStore;
 use CreativeBranding\SkateboardBuilder\Port\Kits;
 use CreativeBranding\SkateboardBuilder\Port\LayerImages;
@@ -69,10 +70,6 @@ final class CatalogueCheck {
 	 */
 	public const LAYER_MISSING = 'layer_missing';
 
-	/**
-	 * The slots the picture draws a layer for (Domain\Picture\Layout).
-	 */
-	private const DRAWN = array( SlotKey::DECK, SlotKey::GRIP, SlotKey::TRUCKS, SlotKey::WHEELS );
 
 	/**
 	 * The engine's notes that mean a rule went without a spec and assumed the usual, each with the spec to fill in.
@@ -151,7 +148,7 @@ final class CatalogueCheck {
 	private function layers( int $id, Kit $kit ): array {
 		$found = array();
 		foreach ( $kit->slots->all() as $slot ) {
-			if ( ! in_array( $slot->key, self::DRAWN, true ) ) {
+			if ( ! in_array( $slot->key, Layout::DRAWN, true ) ) {
 				continue;
 			}
 			$parts   = array_map( static fn( Part $part ): int => $part->id, $this->kits->candidates( $id, $slot->key ) );

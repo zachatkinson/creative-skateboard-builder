@@ -2594,3 +2594,19 @@ Spec, Data model: `_cbuild_picture`, "the slots' layer order, and any anchor the
 **Tests.** `CatalogueCheckTest::test_the_parts_of_the_slots_the_picture_draws_with_no_layer_image_are_listed_last` (unit) and `CheckScreenTest::test_a_drawn_slots_part_with_no_layer_image_is_listed_with_a_link_to_its_layer_field` (own image, none, a deleted one, a parent's, the link, the order). **Red run:** "Failed asserting that two arrays are identical." in the unit test, before the check had the findings. **Deliberate break:** the adapter without the parent fallback, "Failed asserting that 3 is identical to 2." at CheckScreenTest.php:279: a variation that takes its parent's image would be listed.
 
 **Status:** Accepted.
+
+## D-194: The layer images' renditions are the plugin's files, made in the part's index job
+
+**Context.** The plan: "The plugin makes its AVIF and WebP renditions at the sizes the picture shows, without changing how WordPress handles the shop's other uploads." A layer image is a master at two pixels to the millimetre or more (D-190); a phone's picture needs a quarter of that.
+
+**Decision.**
+
+- **Three sizes.** The part's box at half a pixel, one pixel and two pixels to the millimetre, the image fitted into each and never enlarged (`Domain\Picture\Renditions`). An image too small for a size is made at its own size once. The page's `srcset` offers them and the browser picks.
+- **Two types,** AVIF then WebP, each through the editor `wp_get_image_editor()` chooses for the master's type and the rendition's (wp-includes/media.php:4354; GD for AVIF and Imagick for WebP in wp-env). A type no editor writes is passed over. A file an `image_editor_output_format` filter turned into another type is removed, so the names never lie. No filter of WordPress's is changed, which would change every upload in the shop.
+- **Named by a hash** of the attachment's ID, its file's name and its size in bytes, then the pixels, in `uploads/creative-skateboard-builder/layers/`. An image edited or replaced in the Media Library has a new file, so new names; the old files go with the prune (step 8).
+- **Made in the part's index job,** `cbuild_index_part`, after its specs are indexed, since the specs give the box. `_cbuild_layer` joins the meta that queues the job (`SavedSources`), so a save that changes only the layer image queues it. A variable product's job covers its variations, which take its image. No new job, and no page request makes one: a page shows the master until they exist (step 7).
+- **The slots** are those of any kit that offers the part, among the four the picture draws. `Layout::DRAWN` now names them once, for the check, the panel and this.
+
+**Tests.** `RenditionsTest` (unit: the sizes), `IndexJobsTest` (unit: the job asks for them, and not for a part with no image or a slot not drawn; integration: a layer saved alone queues the job), `LayerRenditionsTest` (integration: both types, the sizes, transparent corners, made once, new names for a new file, a filter's file removed, an ordinary upload's sizes as WordPress makes them, a missing file makes nothing). **Red run:** "Error: Class "CreativeBranding\SkateboardBuilder\Domain\Picture\Renditions" not found" in `RenditionsTest`; without `_cbuild_layer` among the sources, "Failed asserting that two arrays are identical." at IndexJobsTest.php:155. **Deliberate break:** keeping the file a filter made, "Failed asserting that two arrays are identical." at LayerRenditionsTest.php:95.
+
+**Status:** Accepted.

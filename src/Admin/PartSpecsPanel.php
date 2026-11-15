@@ -67,10 +67,6 @@ final class PartSpecsPanel {
 	 */
 	public const PREVIEW = 0.5;
 
-	/**
-	 * The slots the picture draws a layer for, in the order the size is looked for (Layout::drawn()).
-	 */
-	private const DRAWN = array( 'deck', 'trucks', 'wheels', 'grip' );
 
 	/**
 	 * The panel's only script, built from assets/src/admin/part-specs.ts: WooCommerce's product screen opens no tab
@@ -379,7 +375,7 @@ final class PartSpecsPanel {
 	 * @return array{int, int}|null Null when it fills no such slot, or lacks the spec the size comes from.
 	 */
 	private function size( WC_Product $product ): ?array {
-		$slots = array_values( array_intersect( self::DRAWN, $this->slots( $product->get_id() ) ) );
+		$slots = array_values( array_intersect( Layout::DRAWN, $this->slots( $product->get_id() ) ) );
 		if ( array() === $slots || $product->get_id() <= 0 ) {
 			return null;
 		}
@@ -427,7 +423,7 @@ final class PartSpecsPanel {
 			'name'    => $name,
 			'value'   => 0 === $own ? '' : (string) $own,
 			// Open where the picture draws the part, or it has an image: the same rule as the specs' groups (issue #16).
-			'open'    => 0 !== $own || array() !== array_intersect( self::DRAWN, $this->slots( $product->get_id() ) ),
+			'open'    => 0 !== $own || array() !== array_intersect( Layout::DRAWN, $this->slots( $product->get_id() ) ),
 			'note'    => $note,
 			'src'     => is_string( $src ) ? $src : '',
 			'box'     => null === $size ? null : array( (int) ceil( $size[0] / 10000 * self::PREVIEW ), (int) ceil( $size[1] / 10000 * self::PREVIEW ) ),

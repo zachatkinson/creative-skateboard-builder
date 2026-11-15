@@ -148,21 +148,26 @@ final class WpLayerImages implements LayerImages {
 	 * @return list<int>
 	 */
 	public function layered( int ...$parts ): array {
-		$layered = array();
-		foreach ( $parts as $id ) {
-			$product = wc_get_product( $id );
-			if ( ! $product instanceof WC_Product ) {
-				continue;
-			}
-			$image = Cast::int( $product->get_meta( Options::META_LAYER, true ) );
-			if ( 0 === $image && $product->is_type( 'variation' ) ) {
-				$parent = wc_get_product( $product->get_parent_id() );
-				$image  = $parent instanceof WC_Product ? Cast::int( $parent->get_meta( Options::META_LAYER, true ) ) : 0;
-			}
-			if ( $image > 0 && wp_attachment_is_image( $image ) ) {
-				$layered[] = $id;
-			}
+		return array_values( array_filter( $parts, fn( int $part ): bool => null !== $this->attachment( $part ) ) );
+	}
+
+	/**
+	 * A part's layer image.
+	 *
+	 * @since 0.7.0
+	 *
+	 * @param int $part A product's or variation's ID.
+	 */
+	public function attachment( int $part ): ?int {
+		$product = wc_get_product( $part );
+		if ( ! $product instanceof WC_Product ) {
+			return null;
 		}
-		return $layered;
+		$image = Cast::int( $product->get_meta( Options::META_LAYER, true ) );
+		if ( 0 === $image && $product->is_type( 'variation' ) ) {
+			$parent = wc_get_product( $product->get_parent_id() );
+			$image  = $parent instanceof WC_Product ? Cast::int( $parent->get_meta( Options::META_LAYER, true ) ) : 0;
+		}
+		return $image > 0 && wp_attachment_is_image( $image ) ? $image : null;
 	}
 }

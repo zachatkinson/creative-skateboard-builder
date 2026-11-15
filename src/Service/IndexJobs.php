@@ -61,16 +61,17 @@ final class IndexJobs implements Reindex {
 	 *
 	 * @since 0.3.0
 	 *
-	 * @param SpecIndexer   $indexer   Reads the sources and writes the index.
-	 * @param SpecIndex     $index     The index.
-	 * @param PartCatalogue $catalogue The shop's parts.
-	 * @param Queue         $queue     The background queue.
-	 * @param ReindexStore  $store     The reindex's place.
-	 * @param ShopSettings  $settings  The mapping.
-	 * @param Clock         $clock     The time.
-	 * @param Logger        $logger    Where failures go.
-	 * @param Kits          $kits      Told of the parts a batch indexed.
-	 * @param SavedSources  $saved     What each save changed.
+	 * @param SpecIndexer    $indexer   Reads the sources and writes the index.
+	 * @param SpecIndex      $index     The index.
+	 * @param PartCatalogue  $catalogue The shop's parts.
+	 * @param Queue          $queue     The background queue.
+	 * @param ReindexStore   $store     The reindex's place.
+	 * @param ShopSettings   $settings  The mapping.
+	 * @param Clock          $clock     The time.
+	 * @param Logger         $logger    Where failures go.
+	 * @param Kits           $kits      Told of the parts a batch indexed.
+	 * @param SavedSources   $saved     What each save changed.
+	 * @param PartRenditions $renditions Makes the parts' layer images at the picture's sizes.
 	 */
 	public function __construct(
 		private SpecIndexer $indexer,
@@ -82,7 +83,8 @@ final class IndexJobs implements Reindex {
 		private Clock $clock,
 		private Logger $logger,
 		private Kits $kits,
-		private SavedSources $saved
+		private SavedSources $saved,
+		private PartRenditions $renditions
 	) {}
 
 	/**
@@ -191,6 +193,8 @@ final class IndexJobs implements Reindex {
 				$this->kits->forget( ...$parts );
 				// And written again here, in the background, so that no visitor's request reads the shop for them.
 				$this->kits->warm( ...$parts );
+				// And the layer images at the sizes the picture now draws these parts at (D-194).
+				$this->renditions->make( ...$parts );
 			}
 		} catch ( Throwable $failure ) {
 			$this->logger->log(
