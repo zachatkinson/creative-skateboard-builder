@@ -135,6 +135,13 @@ final class Options {
 	public const META_SPEC_TABLE = '_cbuild_spec_table';
 
 	/**
+	 * Product meta: a part's layer image for the picture, an attachment's ID (spec: Data model; D-190).
+	 *
+	 * @since 0.7.0
+	 */
+	public const META_LAYER = '_cbuild_layer';
+
+	/**
 	 * The kit's product type.
 	 *
 	 * @since 0.4.0
@@ -252,7 +259,7 @@ final class Options {
 	 * @return string[]
 	 */
 	public static function metaKeys(): array {
-		return array( self::META_SPECS, self::META_SPEC_TABLE, self::META_TABLE_ROWS, self::META_TABLE_SEED, ...self::kitDocuments() );
+		return array( self::META_SPECS, self::META_SPEC_TABLE, self::META_LAYER, self::META_TABLE_ROWS, self::META_TABLE_SEED, ...self::kitDocuments() );
 	}
 
 	/**

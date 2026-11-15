@@ -14,6 +14,7 @@ use CreativeBranding\SkateboardBuilder\Admin\PartSpecsPanel;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\SpecKey;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\SpecTable;
 use CreativeBranding\SkateboardBuilder\Port\Kits;
+use CreativeBranding\SkateboardBuilder\Port\LayerImages;
 use CreativeBranding\SkateboardBuilder\Port\SpecTables;
 use CreativeBranding\SkateboardBuilder\Scope;
 use CreativeBranding\SkateboardBuilder\Service\SpecIndexer;
@@ -51,7 +52,7 @@ final class PartSpecsPanelTest extends IntegrationTestCase {
 	 */
 	private function hooks(): PartSpecsHooks {
 		if ( null === $this->hooks ) {
-			$panel       = new PartSpecsPanel( $this->service( SpecWriter::class ), $this->service( SpecIndexer::class ), $this->service( SpecTables::class ), $this->service( Kits::class ) );
+			$panel       = new PartSpecsPanel( $this->service( SpecWriter::class ), $this->service( SpecIndexer::class ), $this->service( SpecTables::class ), $this->service( Kits::class ), $this->service( LayerImages::class ) );
 			$this->hooks = new PartSpecsHooks( static fn(): PartSpecsPanel => $panel );
 		}
 		return $this->hooks;
@@ -201,13 +202,15 @@ final class PartSpecsPanelTest extends IntegrationTestCase {
 		set_current_screen( 'product' );
 		$this->hooks()->styles();
 		self::assertStringContainsString( '.cbuild-part-specs summary{padding:8px 12px;', $added(), 'a target 34 pixels high' );
+		self::assertStringContainsString( '.cbuild-layer__box{box-sizing:content-box;border:1px dashed #757575;background:repeating-conic-gradient(', $added(), 'the layer\'s preview, on a chequer' );
 		// The Catalogue check's links open the tab, or the variation, they name: the built script, in the footer,
 		// after the last of WooCommerce's product scripts, with the build's own version (D-086).
 		self::assertTrue( wp_script_is( 'cbuild-part-specs', 'enqueued' ) );
 		$script = wp_scripts()->registered['cbuild-part-specs'];
 		$built  = require CBUILD_PATH . 'build/admin/part-specs.asset.php';
 		self::assertSame( CBUILD_URL . 'build/admin/part-specs.js', $script->src );
-		self::assertSame( array( 'jquery', 'wc-admin-variation-meta-boxes' ), $script->deps );
+		self::assertSame( array( 'jquery', 'wc-admin-variation-meta-boxes', 'media-views' ), $script->deps, 'the Layer image field\'s button opens the media modal (0.7.0)' );
+		self::assertTrue( did_action( 'wp_enqueue_media' ) > 0, 'with its templates and settings' );
 		self::assertSame( $built['version'], $script->ver );
 		self::assertMatchesRegularExpression( '/^[0-9a-f]{20}$/', $script->ver );
 		self::assertSame( 1, $script->extra['group'], 'in the footer' );
@@ -257,7 +260,7 @@ final class PartSpecsPanelTest extends IntegrationTestCase {
 		self::assertStringContainsString( '<option value="0"  selected=\'selected\'>No</option>', $panel );
 		self::assertSame( 4, substr_count( $panel, '<option value="">Not set</option>' ), 'three choices and one flag' );
 
-		self::assertSame( 8, substr_count( $panel, '<details' ), 'a group per kind of part' );
+		self::assertSame( 9, substr_count( $panel, '<details' ), 'a group per kind of part, and the Picture (0.7.0)' );
 		self::assertSame( 3, substr_count( $panel, '<details open>' ), 'open where the part has a value: deck, bearings and sets' );
 		self::assertStringNotContainsString( '<fieldset', $panel, 'the tab names its panel; WooCommerce lays out a fieldset\'s labels differently' );
 		self::assertStringContainsString( '<optgroup label="Independent">', $panel );
@@ -397,7 +400,8 @@ final class PartSpecsPanelTest extends IntegrationTestCase {
 			$this->service( SpecWriter::class ),
 			new SpecIndexer( $this->service( \CreativeBranding\SkateboardBuilder\Port\SpecIndex::class ), $this->service( \CreativeBranding\SkateboardBuilder\Port\ShopSettings::class ), $this->service( \CreativeBranding\SkateboardBuilder\Port\Clock::class ), $counting ),
 			$this->service( SpecTables::class ),
-			$kits
+			$kits,
+			$this->service( LayerImages::class )
 		);
 		ob_start();
 		foreach ( $ids as $loop => $id ) {
@@ -692,7 +696,7 @@ final class PartSpecsPanelTest extends IntegrationTestCase {
 		list( $parent, $variation ) = self::variable();
 		self::assertSame( array(), self::sent( $this->fields( $variation ) ), 'a variation with no specs' );
 		self::assertSame( array(), self::sent( $this->panel( $parent ) ), 'and its parent' );
-		self::assertSame( 21, substr_count( $this->fields( $variation ), ' disabled' ), 'every field is still drawn' );
+		self::assertSame( 22, substr_count( $this->fields( $variation ), ' disabled' ), 'every field is still drawn: 21 specs and the layer image' );
 
 		$variation->update_meta_data( Options::META_SPECS, array( 'wheel_diameter' => '54.0000' ) );
 		$variation->save();
@@ -752,17 +756,17 @@ final class PartSpecsPanelTest extends IntegrationTestCase {
 		$size->update_meta_data( Options::META_SPECS, array( 'wheel_diameter' => '54.0000' ) );
 		$size->save();
 		$this->hooks = null;
-		self::assertSame( 8, substr_count( $this->fields( $size ), '<details' ) );
+		self::assertSame( 9, substr_count( $this->fields( $size ), '<details' ), 'eight of specs and the Picture' );
 
 		// A part of a kit is drawn as ever.
 		wp_set_object_terms( $shirt->get_id(), array( $trucks ), 'product_cat' );
 		$this->hooks = null;
-		self::assertSame( 8, substr_count( $this->panel( $shirt ), '<details' ) );
+		self::assertSame( 9, substr_count( $this->panel( $shirt ), '<details' ) );
 	}
 
 	public function test_a_shop_with_no_kit_yet_draws_every_products_fields(): void {
 		list( $parent, $variation ) = self::variable();
-		self::assertSame( 8, substr_count( $this->fields( $variation ), '<details' ) );
-		self::assertSame( 8, substr_count( $this->panel( $parent ), '<details' ) );
+		self::assertSame( 9, substr_count( $this->fields( $variation ), '<details' ) );
+		self::assertSame( 9, substr_count( $this->panel( $parent ), '<details' ) );
 	}
 }

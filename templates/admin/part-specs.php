@@ -6,6 +6,7 @@
  *
  * @var list<array{label: string, open: bool, fields: list<array{id: string, name: string, label: string, value: string, note: string, options: array<int|string, string>|null, charts: array<string, array<string, string>>}>}> $groups The groups of fields. None on the tab of a product no kit takes.
  * @var bool $whole Whether this is the tab's panel (true) or a variation's fields (false).
+ * @var array{id: string, name: string, value: string, open: bool, note: string, src: string, box: array{int, int}|null, caption: string, choose: string, title: string}|null $layer The Layer image field (from 0.7.0). None where the panel has no groups.
  */
 
 declare( strict_types=1 );
@@ -87,6 +88,38 @@ $cbuild_row = $whole ? 'form-field' : 'form-row form-row-full';
 			<?php endforeach; ?>
 		</details>
 	<?php endforeach; ?>
+	<?php if ( null !== $layer ) : ?>
+		<?php // The button opens WordPress's media modal; without the script the field takes an attachment's ID, and the button stays hidden. ?>
+		<details class="cbuild-layer"<?php echo $layer['open'] ? ' open' : ''; ?>>
+			<summary><?php esc_html_e( 'Picture', 'creative-skateboard-builder' ); ?></summary>
+			<p class="<?php echo esc_attr( $cbuild_row ); ?>">
+				<label for="<?php echo esc_attr( $layer['id'] ); ?>"><?php esc_html_e( 'Layer image', 'creative-skateboard-builder' ); ?></label>
+				<input
+					type="text"
+					inputmode="numeric"
+					class="short cbuild-layer__id"
+					id="<?php echo esc_attr( $layer['id'] ); ?>"
+					name="<?php echo esc_attr( $layer['name'] ); ?>"
+					value="<?php echo esc_attr( $layer['value'] ); ?>"
+					autocomplete="off"
+					aria-describedby="<?php echo esc_attr( $layer['id'] . '-note' ); ?>"
+					<?php disabled( ! $layer['open'] ); ?>
+				/>
+				<button type="button" class="button cbuild-layer__choose" data-cbuild-layer="<?php echo esc_attr( $layer['id'] ); ?>" data-cbuild-title="<?php echo esc_attr( $layer['title'] ); ?>" hidden><?php echo esc_html( $layer['choose'] ); ?></button>
+				<span class="description" id="<?php echo esc_attr( $layer['id'] . '-note' ); ?>"><?php echo esc_html( $layer['note'] ); ?></span>
+			</p>
+			<?php if ( null !== $layer['box'] || '' !== $layer['src'] ) : ?>
+				<figure class="cbuild-layer__preview" id="<?php echo esc_attr( $layer['id'] . '-preview' ); ?>">
+					<div class="cbuild-layer__box"<?php echo null === $layer['box'] ? '' : ' style="' . esc_attr( sprintf( 'inline-size:%dpx;block-size:%dpx', $layer['box'][0], $layer['box'][1] ) ) . '"'; ?>>
+						<img alt="" src="<?php echo esc_url( $layer['src'] ); ?>"<?php echo '' === $layer['src'] ? ' hidden' : ''; ?>>
+					</div>
+					<?php if ( '' !== $layer['caption'] ) : ?>
+						<figcaption class="description"><?php echo esc_html( $layer['caption'] ); ?></figcaption>
+					<?php endif; ?>
+				</figure>
+			<?php endif; ?>
+		</details>
+	<?php endif; ?>
 <?php if ( $whole ) : ?>
 </div>
 	</div>

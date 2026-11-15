@@ -16,6 +16,7 @@ use CreativeBranding\SkateboardBuilder\Domain\Measure\Measure;
 use CreativeBranding\SkateboardBuilder\Domain\Measure\Unit;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\HolePattern;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\SpecKey;
+use CreativeBranding\SkateboardBuilder\Domain\Spec\Specs;
 
 use function intdiv;
 use function max;
@@ -137,6 +138,37 @@ final readonly class Layout {
 			array( ...$layers, ...self::trucks( $trucks, $out, $across, $spacing ), ...self::wheels( $wheels, $out, $across ) ),
 			$assumed
 		);
+	}
+
+	/**
+	 * The size one part of a slot is drawn at, alone: across and along, as `of()` draws it on a usual 32 in deck with
+	 * new school holes. Null where the picture does not draw the slot, or the part lacks the spec its size comes from.
+	 * The Layer image field checks an image against it (D-190).
+	 *
+	 * @since 0.7.0
+	 *
+	 * @param string $slot  The slot's key.
+	 * @param Specs  $specs The part's specs.
+	 * @return array{int, int}|null
+	 */
+	public static function drawn( string $slot, Specs $specs ): ?array {
+		$usual = self::mm( Measure::inches( self::USUAL_LENGTH ) );
+		switch ( $slot ) {
+			case SlotKey::DECK:
+				$width  = $specs->measure( SpecKey::DeckWidth );
+				$length = $specs->measure( SpecKey::DeckLength );
+				return null === $width ? null : array( self::mm( $width ), null === $length ? $usual : self::mm( $length ) );
+			case SlotKey::GRIP:
+				return array( self::GRIP_STRIP, $usual );
+			case SlotKey::TRUCKS:
+				$axle = $specs->measure( SpecKey::AxleWidth );
+				return null === $axle ? null : array( self::mm( $axle ), self::HOLE_SPACING + self::BASEPLATE_MARGIN );
+			case SlotKey::WHEELS:
+				$diameter = $specs->measure( SpecKey::WheelDiameter );
+				$round    = null === $diameter ? self::USUAL_WHEEL : self::mm( $diameter );
+				return array( intdiv( $round * 3, 5 ), $round );
+		}
+		return null;
 	}
 
 	/**

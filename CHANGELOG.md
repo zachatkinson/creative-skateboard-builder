@@ -4,6 +4,11 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [0.7.0] - Unreleased
 
+### Added
+
+- The product meta `_cbuild_layer`: a part's layer image for the picture, an attachment ID, on simple products and variations. A variation with none takes its parent's (D-190).
+- The Part specs panel's Picture group holds the Layer image field. With WordPress's media modal, Choose an image offers PNG and WebP; without it the field takes an attachment's ID. The image is shown on a chequer in a box the size the picture draws the part at, half a pixel to the millimetre, with that size and the pixels it needs. A save refuses a file that is not a PNG or WebP, one whose corners are not transparent, and one with fewer than two pixels to the millimetre both across and along, says why in WooCommerce's notice, and keeps what the part had (D-190).
+
 ### Changed
 
 - The seeded Independent chart gives each size's baseplate, from Independent's own pages: the 146, 151, 159, 166, 169 and 215 take both patterns, and the 109, 129, 139, 144 and 149 new school. A chart made before 0.7.0 has its empty baseplates filled on upgrade, never a value the shop typed, and the log says which sizes. Thunder's and Venture's pages give no holes, so their charts still leave the baseplate to the shop (issue #39, D-189).

@@ -3,12 +3,13 @@ import {
 	enable,
 	field,
 	groups,
+	layers,
 	named,
 	open,
 	settle,
 	start,
 } from '../../assets/src/admin/part-specs';
-import type { Query } from '../../assets/src/admin/part-specs';
+import type { Chosen, Media, Query } from '../../assets/src/admin/part-specs';
 
 /**
  * The product screen's script (D-083, D-086): the Catalogue check's links open the tab or the variation they name.
@@ -653,5 +654,142 @@ describe( 'what was scrolled to', () => {
 		frames[ 0 ]?.();
 		win.requestAnimationFrame = real;
 		expect( scrolled ).toEqual( [ [ first, { block: 'center' } ] ] );
+	} );
+} );
+
+// Spec, Admin, Milestone 7: the Layer image field takes an image from the Media Library.
+describe( 'the Layer image field', () => {
+	function markup( preview = true ): string {
+		return `<div class="cbuild-part-specs"><details class="cbuild-layer">
+			<input id="cbuild-spec-layer" name="cbuild_layer" value="" disabled>
+			<button type="button" class="cbuild-layer__choose" data-cbuild-layer="cbuild-spec-layer" data-cbuild-title="Layer image" hidden>Choose an image</button>
+			${
+				preview
+					? '<figure id="cbuild-spec-layer-preview"><div><img alt="" src="" hidden></div></figure>'
+					: ''
+			}
+		</details></div>`;
+	}
+
+	function modal( chosen: Chosen | undefined ) {
+		const asked: Parameters< Media >[] = [];
+		const opened = vi.fn();
+		let select: () => void = () => undefined;
+		const media: Media = ( options ) => {
+			asked.push( [ options ] );
+			return {
+				on: ( _event, heard ) => {
+					select = heard;
+				},
+				open: opened,
+				state: () => ( {
+					get: () => ( {
+						first: () =>
+							chosen ? { toJSON: () => chosen } : undefined,
+					} ),
+				} ),
+			};
+		};
+		return { media, asked, opened, select: () => select() };
+	}
+
+	beforeEach( () => {
+		document.body.innerHTML = '';
+	} );
+
+	it( 'leaves the button hidden where the page has no media modal, so the ID is typed', () => {
+		document.body.innerHTML = markup();
+		layers( document, undefined );
+		expect(
+			document.querySelector< HTMLButtonElement >(
+				'.cbuild-layer__choose'
+			)?.hidden
+		).toBe( true );
+	} );
+
+	it( 'shows the button and opens the modal for PNG and WebP alone', () => {
+		document.body.innerHTML = markup();
+		const { media, asked, opened } = modal( undefined );
+		layers( document, media );
+		const button = document.querySelector< HTMLButtonElement >(
+			'.cbuild-layer__choose'
+		);
+		expect( button?.hidden ).toBe( false );
+		button?.click();
+		expect( asked ).toEqual( [
+			[
+				{
+					title: 'Layer image',
+					multiple: false,
+					library: { type: [ 'image/png', 'image/webp' ] },
+				},
+			],
+		] );
+		expect( opened ).toHaveBeenCalledOnce();
+	} );
+
+	it( 'fills the field and the preview with the image chosen, and says the field changed', () => {
+		document.body.innerHTML = markup();
+		const { media, select } = modal( {
+			id: 42,
+			url: 'https://example.com/deck.png',
+		} );
+		layers( document, media );
+		const input =
+			document.querySelector< HTMLInputElement >( '#cbuild-spec-layer' );
+		const changed = vi.fn();
+		input?.addEventListener( 'change', changed );
+		document
+			.querySelector< HTMLButtonElement >( '.cbuild-layer__choose' )
+			?.click();
+		select();
+		expect( input?.value ).toBe( '42' );
+		expect( input?.disabled ).toBe( false );
+		expect( changed ).toHaveBeenCalledOnce();
+		const image = document.querySelector( 'img' );
+		expect( image?.getAttribute( 'src' ) ).toBe(
+			'https://example.com/deck.png'
+		);
+		expect( image?.hidden ).toBe( false );
+	} );
+
+	it( 'changes nothing when the modal closes with nothing chosen, and fills a field with no preview', () => {
+		document.body.innerHTML = markup( false );
+		const none = modal( undefined );
+		layers( document, none.media );
+		const input =
+			document.querySelector< HTMLInputElement >( '#cbuild-spec-layer' );
+		document
+			.querySelector< HTMLButtonElement >( '.cbuild-layer__choose' )
+			?.click();
+		none.select();
+		expect( input?.value ).toBe( '' );
+
+		document.body.innerHTML = markup( false );
+		const one = modal( { id: 7, url: 'https://example.com/w.webp' } );
+		layers( document, one.media );
+		document
+			.querySelector< HTMLButtonElement >( '.cbuild-layer__choose' )
+			?.click();
+		one.select();
+		expect(
+			document.querySelector< HTMLInputElement >( '#cbuild-spec-layer' )
+				?.value
+		).toBe( '7' );
+	} );
+
+	it( 'shows the button of a variation that arrives later, and ignores other clicks', async () => {
+		const { media, opened } = modal( undefined );
+		layers( document, media );
+		document.body.insertAdjacentHTML( 'beforeend', markup() );
+		await Promise.resolve();
+		const button = document.querySelector< HTMLButtonElement >(
+			'.cbuild-layer__choose'
+		);
+		expect( button?.hidden ).toBe( false );
+		document.querySelector( 'input' )?.click();
+		button?.setAttribute( 'data-cbuild-layer', 'nowhere' );
+		button?.click();
+		expect( opened ).not.toHaveBeenCalled();
 	} );
 } );

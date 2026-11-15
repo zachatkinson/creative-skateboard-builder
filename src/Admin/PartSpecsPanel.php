@@ -10,14 +10,19 @@ declare( strict_types=1 );
 namespace CreativeBranding\SkateboardBuilder\Admin;
 
 use CreativeBranding\SkateboardBuilder\Domain\Measure\MeasureError;
+use CreativeBranding\SkateboardBuilder\Domain\Picture\LayerError;
+use CreativeBranding\SkateboardBuilder\Domain\Picture\LayerImage;
+use CreativeBranding\SkateboardBuilder\Domain\Picture\Layout;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\Origin;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\Reading;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\SpecError;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\SpecKey;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\SpecKind;
+use CreativeBranding\SkateboardBuilder\Domain\Spec\Specs;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\StoredSpecs;
 use CreativeBranding\SkateboardBuilder\Port\SpecSource;
 use CreativeBranding\SkateboardBuilder\Port\Kits;
+use CreativeBranding\SkateboardBuilder\Port\LayerImages;
 use CreativeBranding\SkateboardBuilder\Port\SpecTables;
 use CreativeBranding\SkateboardBuilder\Service\SpecIndexer;
 use CreativeBranding\SkateboardBuilder\Service\SpecWriter;
@@ -51,7 +56,21 @@ final class PartSpecsPanel {
 	 * The panel's only styles: a group's heading is a target 34 pixels high, past the 24 WCAG 2.2 asks for, where
 	 * the browser's own is 18. Added to WooCommerce's admin style sheet, so the plugin ships no file for one rule.
 	 */
-	private const STYLES = '.cbuild-part-specs summary{padding:8px 12px;cursor:pointer;font-weight:600}';
+	private const STYLES = '.cbuild-part-specs summary{padding:8px 12px;cursor:pointer;font-weight:600}'
+		// The layer's preview: the part's box at the template's scale, on a chequer that shows what is transparent.
+		. '.cbuild-layer__preview{margin:0 12px 12px;display:flex;flex-direction:column;gap:6px}'
+		. '.cbuild-layer__box{box-sizing:content-box;border:1px dashed #757575;background:repeating-conic-gradient(#ddd 0 25%,#fff 0 50%) 0 0/16px 16px}'
+		. '.cbuild-layer__box img{display:block;inline-size:100%;block-size:100%;object-fit:contain}';
+
+	/**
+	 * The preview's scale: pixels on the screen to the millimetre of the part, so a 32 in deck is drawn 406 pixels long.
+	 */
+	public const PREVIEW = 0.5;
+
+	/**
+	 * The slots the picture draws a layer for, in the order the size is looked for (Layout::drawn()).
+	 */
+	private const DRAWN = array( 'deck', 'trucks', 'wheels', 'grip' );
 
 	/**
 	 * The panel's only script, built from assets/src/admin/part-specs.ts: WooCommerce's product screen opens no tab
@@ -117,8 +136,9 @@ final class PartSpecsPanel {
 	 * @param SpecIndexer $indexer Says which value is in use, and from where.
 	 * @param SpecTables  $charts  The makers' charts.
 	 * @param Kits        $kits    The kits, for the slot a product fills.
+	 * @param LayerImages $images  The Media Library's images, for the Layer image field (from 0.7.0).
 	 */
-	public function __construct( private SpecWriter $writer, private SpecIndexer $indexer, private SpecTables $charts, private Kits $kits ) {}
+	public function __construct( private SpecWriter $writer, private SpecIndexer $indexer, private SpecTables $charts, private Kits $kits, private LayerImages $images ) {}
 
 	/**
 	 * Style the groups' headings, and open the tab a link names.
@@ -132,7 +152,9 @@ final class PartSpecsPanel {
 		if ( ! is_array( $built ) || ! is_string( $built['version'] ?? null ) ) {
 			return;
 		}
-		wp_enqueue_script( self::SCRIPT, CBUILD_URL . self::BUILT . '.js', array( 'jquery', 'wc-admin-variation-meta-boxes' ), $built['version'], array( 'in_footer' => true ) );
+		// The Layer image field's button opens the media modal, whose scripts come before this one (from 0.7.0).
+		wp_enqueue_media();
+		wp_enqueue_script( self::SCRIPT, CBUILD_URL . self::BUILT . '.js', array( 'jquery', 'wc-admin-variation-meta-boxes', 'media-views' ), $built['version'], array( 'in_footer' => true ) );
 	}
 
 	/**
@@ -164,6 +186,7 @@ final class PartSpecsPanel {
 			return;
 		}
 		$groups = $this->groups( $product_object, self::FIELDS, 'cbuild_specs', 'cbuild_spec_table' );
+		$layer  = array() === $groups ? null : $this->layer( $product_object, self::FIELDS, 'cbuild_layer' );
 		$whole  = true;
 		include CBUILD_PATH . 'templates/admin/part-specs.php';
 	}
@@ -185,6 +208,7 @@ final class PartSpecsPanel {
 		if ( array() === $groups ) {
 			return;
 		}
+		$layer = $this->layer( $product, self::FIELDS . '-' . $loop, 'cbuild_variation_layer[' . $loop . ']' );
 		$whole = false;
 		include CBUILD_PATH . 'templates/admin/part-specs.php';
 	}
@@ -206,10 +230,12 @@ final class PartSpecsPanel {
 		// phpcs:disable WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Each value is sanitised in store().
 		$sent  = isset( $_POST['cbuild_specs'] ) && is_array( $_POST['cbuild_specs'] ) ? wp_unslash( $_POST['cbuild_specs'] ) : null;
 		$chart = isset( $_POST['cbuild_spec_table'] ) ? wp_unslash( $_POST['cbuild_spec_table'] ) : null;
+		$layer = isset( $_POST['cbuild_layer'] ) ? wp_unslash( $_POST['cbuild_layer'] ) : null;
 		// phpcs:enable
 		if ( null !== $sent ) {
 			$this->store( $product, $sent, $chart );
 		}
+		$this->storeLayer( $product, $layer );
 	}
 
 	/**
@@ -230,10 +256,12 @@ final class PartSpecsPanel {
 		// phpcs:disable WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Each value is sanitised in store().
 		$rows   = isset( $_POST['cbuild_variation_specs'] ) && is_array( $_POST['cbuild_variation_specs'] ) ? wp_unslash( $_POST['cbuild_variation_specs'] ) : array();
 		$charts = isset( $_POST['cbuild_variation_spec_table'] ) && is_array( $_POST['cbuild_variation_spec_table'] ) ? wp_unslash( $_POST['cbuild_variation_spec_table'] ) : array();
+		$layers = isset( $_POST['cbuild_variation_layer'] ) && is_array( $_POST['cbuild_variation_layer'] ) ? wp_unslash( $_POST['cbuild_variation_layer'] ) : array();
 		// phpcs:enable
 		if ( isset( $rows[ $loop ] ) && is_array( $rows[ $loop ] ) ) {
 			$this->store( $variation, $rows[ $loop ], $charts[ $loop ] ?? null );
 		}
+		$this->storeLayer( $variation, $layers[ $loop ] ?? null );
 	}
 
 	/**
@@ -282,6 +310,131 @@ final class PartSpecsPanel {
 			// WooCommerce prints its notices through wp_kses_post(), and what was typed is in this one.
 			WC_Admin_Meta_Boxes::add_error( sprintf( '<a href="#%s">%s</a>', esc_attr( $field ), esc_html( $text ) ) );
 		}
+	}
+
+	/**
+	 * Check the Layer image field and put what passes on the product; say what did not. Empty clears it. A field not
+	 * sent, as from a group left closed, changes nothing.
+	 *
+	 * @param WC_Product $product The product or variation about to be saved.
+	 * @param mixed      $sent    The field, unslashed.
+	 */
+	private function storeLayer( WC_Product $product, mixed $sent ): void {
+		if ( ! is_string( $sent ) ) {
+			return;
+		}
+		$text = trim( sanitize_text_field( $sent ) );
+		if ( '' === $text ) {
+			$product->delete_meta_data( Options::META_LAYER );
+			return;
+		}
+		$id    = ctype_digit( $text ) ? (int) $text : 0;
+		$facts = $id > 0 ? $this->images->facts( $id ) : null;
+		$texts = array();
+		if ( null === $facts ) {
+			/* translators: %s: what was typed in the Layer image field. */
+			$texts[] = sprintf( __( 'Layer image was not saved: "%s" is not the ID of an image in the Media Library.', 'creative-skateboard-builder' ), $text );
+		} else {
+			$size = $this->size( $product );
+			foreach ( LayerImage::problems( $facts, $size ) as $problem ) {
+				$texts[] = self::layerProblem( $problem, $facts->type, $size );
+			}
+		}
+		if ( array() === $texts ) {
+			$product->update_meta_data( Options::META_LAYER, (string) $id );
+			return;
+		}
+		foreach ( $texts as $words ) {
+			if ( $product->is_type( 'variation' ) ) {
+				/* translators: 1: a variation's ID. 2: a sentence saying what was not saved. */
+				$words = sprintf( __( 'Variation #%1$d: %2$s', 'creative-skateboard-builder' ), $product->get_id(), $words );
+			}
+			$field = $product->is_type( 'variation' ) ? 'cbuild_variation_' . $product->get_id() : self::field( self::FIELDS, 'layer' );
+			WC_Admin_Meta_Boxes::add_error( sprintf( '<a href="#%s">%s</a>', esc_attr( $field ), esc_html( $words ) ) );
+		}
+	}
+
+	/**
+	 * What was wrong with a layer image, as a sentence.
+	 *
+	 * @param LayerError           $problem The problem.
+	 * @param string               $type    The image's media type.
+	 * @param array{int, int}|null $size    The part's size, where the picture draws it.
+	 */
+	private static function layerProblem( LayerError $problem, string $type, ?array $size ): string {
+		$needs = LayerImage::needs( $size ?? array( 0, 0 ) );
+		return match ( $problem ) {
+			/* translators: %s: a file's media type, such as image/jpeg. */
+			LayerError::NotPngOrWebp => sprintf( __( 'Layer image was not saved: it is %s, and a layer must be a PNG or WebP with a transparent background.', 'creative-skateboard-builder' ), $type ),
+			LayerError::Opaque => __( 'Layer image was not saved: its corners are not transparent. Export the cut-out with a transparent background.', 'creative-skateboard-builder' ),
+			/* translators: 1: a number of pixels. 2: another. */
+			LayerError::TooSmall => sprintf( __( 'Layer image was not saved: it is too small for the size the picture draws this part. It needs at least %1$s pixels across or %2$s along.', 'creative-skateboard-builder' ), number_format_i18n( $needs[0] ), number_format_i18n( $needs[1] ) ),
+		};
+	}
+
+	/**
+	 * The size the picture draws a part at, from the first slot it fills that the picture draws and the specs in use.
+	 *
+	 * @param WC_Product $product The product or variation.
+	 * @return array{int, int}|null Null when it fills no such slot, or lacks the spec the size comes from.
+	 */
+	private function size( WC_Product $product ): ?array {
+		$slots = array_values( array_intersect( self::DRAWN, $this->slots( $product->get_id() ) ) );
+		if ( array() === $slots || $product->get_id() <= 0 ) {
+			return null;
+		}
+		$this->sourced[ $product->get_id() ] ??= $this->indexer->resolve( $product->get_id() )[ $product->get_id() ];
+		$texts                                 = array();
+		foreach ( $this->sourced[ $product->get_id() ]->resolution->rows() as $row ) {
+			$texts[ $row->key->value ] = $row->text;
+		}
+		return Layout::drawn( $slots[0], Specs::fromIndex( $texts ) );
+	}
+
+	/**
+	 * The Layer image field for one product: its value, whether its group is open, its note and its preview.
+	 *
+	 * @param WC_Product $product The product or variation.
+	 * @param string     $prefix  The prefix of the product's or the variation's controls.
+	 * @param string     $name    The name it is sent under.
+	 * @return array{id: string, name: string, value: string, open: bool, note: string, src: string, box: array{int, int}|null, caption: string, choose: string, title: string}
+	 */
+	private function layer( WC_Product $product, string $prefix, string $name ): array {
+		$own   = max( 0, Cast::int( $product->get_meta( Options::META_LAYER, true ) ) );
+		$size  = $this->size( $product );
+		$shown = $own;
+		$note  = $product->is_type( 'variation' )
+			? __( 'The part\'s cut-out on a transparent background, a PNG or WebP from the Media Library. Choose one, or type its attachment ID. Left empty, the variation takes its parent product\'s, or the picture shows its labelled photo.', 'creative-skateboard-builder' )
+			: __( 'The part\'s cut-out on a transparent background, a PNG or WebP from the Media Library. Choose one, or type its attachment ID. Left empty, the picture shows the part\'s labelled photo.', 'creative-skateboard-builder' );
+		if ( 0 === $own && $product->is_type( 'variation' ) ) {
+			$whole  = wc_get_product( $product->get_parent_id() );
+			$parent = $whole instanceof WC_Product ? max( 0, Cast::int( $whole->get_meta( Options::META_LAYER, true ) ) ) : 0;
+			if ( $parent > 0 ) {
+				$shown = $parent;
+				/* translators: %d: an attachment's ID. */
+				$note .= ' ' . sprintf( __( 'In use: image #%d, from the parent product.', 'creative-skateboard-builder' ), $parent );
+			}
+		}
+		$caption = '';
+		if ( null !== $size ) {
+			$needs = LayerImage::needs( $size );
+			/* translators: 1: a part's width in millimetres. 2: its length. 3: a number of pixels. 4: another. */
+			$caption = sprintf( __( 'Drawn %1$s by %2$s mm, nose up. The image needs at least %3$s pixels across or %4$s along.', 'creative-skateboard-builder' ), wc_format_localized_decimal( (string) round( $size[0] / 10000, 1 ) ), wc_format_localized_decimal( (string) round( $size[1] / 10000, 1 ) ), number_format_i18n( $needs[0] ), number_format_i18n( $needs[1] ) );
+		}
+		$src = $shown > 0 ? wp_get_attachment_image_url( $shown, 'full' ) : false;
+		return array(
+			'id'      => self::field( $prefix, 'layer' ),
+			'name'    => $name,
+			'value'   => 0 === $own ? '' : (string) $own,
+			// Open where the picture draws the part, or it has an image: the same rule as the specs' groups (issue #16).
+			'open'    => 0 !== $own || array() !== array_intersect( self::DRAWN, $this->slots( $product->get_id() ) ),
+			'note'    => $note,
+			'src'     => is_string( $src ) ? $src : '',
+			'box'     => null === $size ? null : array( (int) ceil( $size[0] / 10000 * self::PREVIEW ), (int) ceil( $size[1] / 10000 * self::PREVIEW ) ),
+			'caption' => $caption,
+			'choose'  => __( 'Choose an image', 'creative-skateboard-builder' ),
+			'title'   => __( 'Layer image', 'creative-skateboard-builder' ),
+		);
 	}
 
 	/**

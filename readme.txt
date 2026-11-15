@@ -4,7 +4,7 @@ Tags: woocommerce, skateboard, product builder, configurator, bundle
 Requires at least: 7.0
 Tested up to: 7.1
 Requires PHP: 8.5
-Stable tag: 0.6.0
+Stable tag: 0.7.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -38,6 +38,10 @@ Everything the plugin made: its three tables, its options and transients, and it
 Yes. Activating it for the network installs it on every site, and a site added later installs itself the first time an administrator opens its dashboard.
 
 == Changelog ==
+
+= 0.7.0 =
+* Each part's Part specs panel has a Picture group with a Layer image field: a transparent PNG or WebP from the Media Library, shown at the size the picture draws the part. An image that is not transparent, is too small, or is another kind of file is refused, and the notice says why.
+* The seeded Independent truck chart gives each size's baseplate, from Independent's own pages. An upgrade fills the baseplates your copy of the chart leaves empty, and keeps any you typed.
 
 = 0.6.0 =
 * The builder: a kit's page shows it in place of the add-to-cart form, one step a slot, with the parts that fit, the total kept in view, and a review that adds the build to the cart.

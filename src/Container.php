@@ -57,6 +57,7 @@ final class Container {
 			Port\Uuids::class           => Adapter\WpUuids::class,
 			Port\BuilderPosts::class    => Adapter\WpBuilderPosts::class,
 			Port\KitMeta::class         => Adapter\WooKitMeta::class,
+			Port\LayerImages::class     => Adapter\WpLayerImages::class,
 		);
 	}
 
