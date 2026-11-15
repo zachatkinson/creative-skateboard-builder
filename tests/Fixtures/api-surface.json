@@ -53,6 +53,7 @@
     "meta_keys": [
         "_cbuild_assembly",
         "_cbuild_layer",
+        "_cbuild_picture",
         "_cbuild_presets",
         "_cbuild_rows",
         "_cbuild_rules",
@@ -215,6 +216,7 @@
     },
     "schemas": [
         "schema/kit-assembly.json",
+        "schema/kit-picture.json",
         "schema/kit-presets.json",
         "schema/kit-rules.json",
         "schema/kit-slots.json",
@@ -224,6 +226,7 @@
     ],
     "schema_digests": {
         "schema/kit-assembly.json": "bb1b0dd6abb55ba95679de5d5fe4b7dfee4e92c6e0209777039dbcb9fb14e9ae",
+        "schema/kit-picture.json": "f5a644b1f0082bd93867dbc8ac74342730c47a8008128c32380a80485f9ef939",
         "schema/kit-presets.json": "2ee5a43c535aebfba283373e1848e2a9570bdc52faa04e8a7704df0f89c35e26",
         "schema/kit-rules.json": "79f9a5c998a63c1ceee8ec7877096515dabd9e75c6116257874e1d4418242c45",
         "schema/kit-slots.json": "7c383e3f551b517328d9d195c01e15f9f5dad1a1263a20fa4ff2188592bb820c",

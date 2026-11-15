@@ -12,6 +12,7 @@ namespace CreativeBranding\SkateboardBuilder\Tests\Integration;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Assembly;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\InvalidDocument;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Kit;
+use CreativeBranding\SkateboardBuilder\Domain\Picture\PictureSettings;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\RuleSettings;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Slots;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Domain\KitDocuments;
@@ -72,7 +73,7 @@ final class KitSchemasTest extends IntegrationTestCase {
 	}
 
 	public function test_the_schemas_are_draft_4_objects_that_allow_nothing_extra(): void {
-		foreach ( array( 'kit-slots', 'kit-rules', 'kit-presets', 'kit-assembly' ) as $name ) {
+		foreach ( array( 'kit-slots', 'kit-rules', 'kit-presets', 'kit-assembly', 'kit-picture' ) as $name ) {
 			$schema = self::schema( $name );
 			$this->assertSame( 'http://json-schema.org/draft-04/schema#', $schema['$schema'], $name );
 			$this->assertSame( 'object', $schema['type'], $name );
@@ -111,7 +112,19 @@ final class KitSchemasTest extends IntegrationTestCase {
 		$this->assertTrue( self::accepts( $assembly, 'kit-assembly' ) );
 		$this->assertTrue( self::accepts( KitDocuments::assembly(), 'kit-assembly' ) );
 
-		$kit = Kit::fromDocuments( $slots, RuleSettings::DEFAULTS, self::presets(), $assembly );
+		$picture = array(
+			'schema_version' => 1,
+			'order'          => array( 'grip', 'deck', 'wheels', 'trucks' ),
+			'wheelbase'      => '14.25',
+		);
+		$this->assertTrue( self::accepts( $picture, 'kit-picture' ) );
+		$this->assertTrue( self::accepts( array( 'schema_version' => 1 ), 'kit-picture' ), 'a picture document with nothing set' );
+		$this->assertTrue( self::accepts( array( 'schema_version' => 1, 'order' => array(), 'wheelbase' => '' ), 'kit-picture' ), 'as the Build tab writes nothing set' );
+		$this->assertTrue( self::accepts( array( 'schema_version' => 1, 'wheelbase' => '20' ), 'kit-picture' ) );
+		$this->assertTrue( self::accepts( array( 'schema_version' => 1, 'wheelbase' => '10.0001' ), 'kit-picture' ) );
+
+		$kit = Kit::fromDocuments( $slots, RuleSettings::DEFAULTS, self::presets(), $assembly, $picture );
+		$this->assertSame( array( 'grip', 'deck', 'wheels', 'trucks' ), $kit->picture->order );
 		$this->assertSame( 812, $kit->slots->get( 'trucks' )->defaultPart );
 		$this->assertSame( 1550, $kit->assembly->fee( 2 ) );
 	}
@@ -156,6 +169,14 @@ final class KitSchemasTest extends IntegrationTestCase {
 			'assembly with a signed fee'     => array( 'kit-assembly', array( 'fee' => '-15' ) + KitDocuments::assembly() ),
 			'assembly with no default'       => array( 'kit-assembly', $without( KitDocuments::assembly(), 'default_on' ) ),
 			'assembly with a list for words' => array( 'kit-assembly', array( 'lead_time' => array() ) + KitDocuments::assembly() ),
+			'a picture of another version'   => array( 'kit-picture', array( 'schema_version' => 2 ) ),
+			'an order with a bad key'        => array( 'kit-picture', array( 'schema_version' => 1, 'order' => array( 'Grip Tape' ) ) ),
+			'an order naming a slot twice'   => array( 'kit-picture', array( 'schema_version' => 1, 'order' => array( 'deck', 'deck' ) ) ),
+			'an order of 21 slots'           => array( 'kit-picture', array( 'schema_version' => 1, 'order' => array_map( static fn( int $n ): string => 'slot_' . $n, range( 1, 21 ) ) ) ),
+			'a wheelbase as a fraction'      => array( 'kit-picture', array( 'schema_version' => 1, 'wheelbase' => '14 1/4' ) ),
+			'a wheelbase of 9 in'            => array( 'kit-picture', array( 'schema_version' => 1, 'wheelbase' => '9.5' ) ),
+			'a wheelbase past 20 in'         => array( 'kit-picture', array( 'schema_version' => 1, 'wheelbase' => '20.5' ) ),
+			'a wheelbase as a number'        => array( 'kit-picture', array( 'schema_version' => 1, 'wheelbase' => 14 ) ),
 		);
 	}
 
@@ -178,6 +199,9 @@ final class KitSchemasTest extends IntegrationTestCase {
 					break;
 				case 'kit-presets':
 					KitDocuments::kit( null, null, $document );
+					break;
+				case 'kit-picture':
+					PictureSettings::fromDocument( $document );
 					break;
 				default:
 					Assembly::fromDocument( $document );
@@ -202,7 +226,14 @@ final class KitSchemasTest extends IntegrationTestCase {
 		$disordered                 = RuleSettings::DEFAULTS;
 		$disordered['r3']['risers'] = array_reverse( $disordered['r3']['risers'] );
 		$this->assertTrue( self::accepts( $disordered, 'kit-rules' ) );
-		foreach ( array( array( Slots::class, $repeated ), array( Slots::class, $reversed ), array( Slots::class, $bolts_first ), array( RuleSettings::class, $disordered ) ) as [ $reader, $document ] ) {
+		// WordPress reads text where a schema has a list as a list of its comma-separated parts (rest_is_array(),
+		// wp-includes/rest-api.php:1631, through wp_parse_list()); a document is JSON, and the domain wants the list.
+		$text = array(
+			'schema_version' => 1,
+			'order'          => 'deck',
+		);
+		$this->assertTrue( self::accepts( $text, 'kit-picture' ) );
+		foreach ( array( array( Slots::class, $repeated ), array( Slots::class, $reversed ), array( Slots::class, $bolts_first ), array( RuleSettings::class, $disordered ), array( PictureSettings::class, $text ) ) as [ $reader, $document ] ) {
 			try {
 				$reader::fromDocument( $document );
 				$this->fail( 'the domain accepted it' );

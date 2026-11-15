@@ -91,6 +91,7 @@ A kit is four JSON documents. Each has a JSON Schema (draft 4) in the plugin's `
 | `schema/kit-rules.json` | 0.2.0 | Each fit rule, R1 to R6, on or off, with R1's tolerances, R3's limits by height class and its riser table, and whether R6 checks a deck's length. Measures are decimal strings in the rule's unit, with no unit mark. |
 | `schema/kit-presets.json` | 0.2.0 | Up to six presets: a name, a description and a part for each slot it fills. |
 | `schema/kit-assembly.json` | 0.2.0 | Whether assembly is on by default, its fee as a decimal string in the shop's currency, the lead time and the returns notice. |
+| `schema/kit-picture.json` | 0.7.0 | The picture's settings: the field order, slot keys from the bottom of the stack, each once, 20 at most; and the field wheelbase, where the trucks sit on a deck that gives none, inches as a decimal string from 10 to 20, or empty. A slot the order leaves out is drawn after it in the usual order (deck, grip, trucks, wheels), and a key the kit has no slot for is passed over. Unlike the other four, a kit may have none: it is drawn in the usual order with the wheelbase guessed from the deck's shape (D-192). |
 
 | `schema/settings.json` | 0.3.0 | Not a kit document: the shape of the option `cbuild_settings` as the plugin writes it. `attribute_mapping` is up to 50 lines, each an `attribute` of 1 to 190 characters, a `spec` that is a spec key and a `unit` of `in`, `mm` or empty; `source_order` is `table`, `field` and `attribute`, each once. From 0.4.0 it also holds the five keys that version adds, listed under Settings keys with their ranges: the discount as text, the coupon's place, the rate as a whole number, the header's name, and a new kit's assembly as `schema/kit-assembly.json` has it. Other keys are allowed, so a later version's settings pass. It has no `schema_version`: a key that is missing or malformed reads as its default. |
 | `schema/order-snapshot.json` | 0.5.0 | Not a kit document: the order item meta `_cbuild_snapshot`, a build as it was sold. See Order item keys. |
@@ -369,6 +370,7 @@ Each is on a kit product, as JSON text, and is the document its schema describes
 | `_cbuild_rules` | 0.4.0 | `schema/kit-rules.json` | Which rules run for the kit, and their settings. |
 | `_cbuild_presets` | 0.4.0 | `schema/kit-presets.json` | Up to six ready builds. |
 | `_cbuild_assembly` | 0.4.0 | `schema/kit-assembly.json` | Assembly: on or off to start, the fee, the lead time and the returns notice. |
+| `_cbuild_picture` | 0.7.0 | `schema/kit-picture.json` | The picture: the layer order and the trucks' anchor on a deck with no wheelbase. A kit may have none. |
 
 ### The state route
 

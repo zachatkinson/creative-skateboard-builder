@@ -30,7 +30,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 /**
  * A kit's slots, rules, presets and assembly settings, on a tab of its product data box (spec: Admin, The kit's
- * Build tab). The tab sends fields, `Service\KitEditor` makes them the kit's four documents and says what is wrong,
+ * Build tab). The tab sends fields, `Service\KitEditor` makes them the kit's documents and says what is wrong,
  * and what passes goes onto the product WooCommerce is about to write, so it is stored with the same save. A section
  * that is refused is not saved: the notices name each problem with a link to its field, and the tab shows the section
  * once more as it was typed.
@@ -68,6 +68,11 @@ final class BuildTab {
 	 * a problem's path leads to its field.
 	 */
 	private const IDS = 'cbuild-kit';
+
+	/**
+	 * The slots the picture draws, in the usual order from the bottom (Domain\Picture\Layout).
+	 */
+	private const DRAWN = array( SlotKey::DECK, SlotKey::GRIP, SlotKey::TRUCKS, SlotKey::WHEELS );
 
 	/**
 	 * The tab's script, built from assets/src/admin/build-tab.ts: it moves a slot's row and opens the field a
@@ -344,6 +349,11 @@ final class BuildTab {
 				__( 'Assembly', 'creative-skateboard-builder' ),
 				__( 'What the shop charges to put a build together, and what the shopper is told of it.', 'creative-skateboard-builder' ),
 				$this->assembly( $shown[ KitEditor::ASSEMBLY ] ),
+			),
+			KitEditor::PICTURE  => array(
+				__( 'Picture', 'creative-skateboard-builder' ),
+				__( 'How the picture of a build stacks its parts, seen from underneath with the nose up. Layer 1 is drawn first, at the bottom. A part with no layer image shows its labelled photo instead.', 'creative-skateboard-builder' ),
+				$this->picture( $shown[ KitEditor::PICTURE ], $shown[ KitEditor::SLOTS ] ),
 			),
 		) as $name => $section ) {
 			$sections[] = array(
@@ -710,6 +720,70 @@ final class BuildTab {
 	}
 
 	/**
+	 * The picture settings: a layer for each slot the picture draws, and where the trucks sit on a deck that gives
+	 * no wheelbase (D-192).
+	 *
+	 * @param array<mixed> $document The picture document to show.
+	 * @param array<mixed> $slots    The slots document to show.
+	 * @return list<array{id: string, legend: string, moves: bool, fold: string, open: bool, fields: list<array<string, mixed>>, more: list<array<string, mixed>>}>
+	 */
+	private function picture( array $document, array $slots ): array {
+		$id     = self::IDS . '-picture';
+		$name   = self::FIELD . '[picture]';
+		$drawn  = array();
+		$labels = array();
+		foreach ( self::rows( $slots, 'slots' ) as $row ) {
+			$key = self::text( $row, 'key' );
+			if ( in_array( $key, self::DRAWN, true ) ) {
+				$drawn[]        = $key;
+				$labels[ $key ] = '' === self::text( $row, 'label' ) ? $key : self::text( $row, 'label' );
+			}
+		}
+		// The order in force: the document's, then the slots it leaves out in the usual order.
+		$order = is_array( $document['order'] ?? null ) ? array_values( array_intersect( array_filter( $document['order'], 'is_string' ), $drawn ) ) : array();
+		foreach ( self::DRAWN as $key ) {
+			if ( in_array( $key, $drawn, true ) && ! in_array( $key, $order, true ) ) {
+				$order[] = $key;
+			}
+		}
+		$numbers = array();
+		foreach ( range( 1, max( 1, count( $order ) ) ) as $number ) {
+			$numbers[ (string) $number ] = 1 === $number ? __( '1, the bottom', 'creative-skateboard-builder' ) : number_format_i18n( $number );
+		}
+		$fields = array();
+		foreach ( $order as $at => $key ) {
+			$fields[] = $this->field(
+				$id . '-layers-' . $key,
+				$name . '[layers][' . $key . ']',
+				/* translators: %s: a slot's label, such as Trucks. */
+				sprintf( __( '%s layer', 'creative-skateboard-builder' ), $labels[ $key ] ?? $key ),
+				'select',
+				(string) ( $at + 1 ),
+				array( 'options' => $numbers )
+			);
+		}
+		$fields[] = $this->field(
+			$id . '-wheelbase',
+			$name . '[wheelbase]',
+			__( 'Wheelbase where a deck gives none (in)', 'creative-skateboard-builder' ),
+			'text',
+			self::measure( is_string( $document['wheelbase'] ?? null ) ? $document['wheelbase'] : '' ),
+			array( 'note' => __( 'Where the picture puts the trucks on a deck whose wheelbase is not in its specs, from 10 to 20 in. Leave it empty for the usual on a deck of its width and length.', 'creative-skateboard-builder' ) )
+		);
+		return array(
+			array(
+				'id'     => $id . '-fields',
+				'legend' => '',
+				'moves'  => false,
+				'fold'   => '',
+				'open'   => true,
+				'fields' => $fields,
+				'more'   => array(),
+			),
+		);
+	}
+
+	/**
 	 * A field as the template draws it.
 	 *
 	 * @param string                    $id    The control's ID.
@@ -771,6 +845,9 @@ final class BuildTab {
 		}
 		if ( KitEditor::ASSEMBLY === $name ) {
 			return $this->settings->terms()->assembly;
+		}
+		if ( KitEditor::PICTURE === $name ) {
+			return array( 'schema_version' => 1 );
 		}
 		if ( KitEditor::SLOTS !== $name ) {
 			return array();
@@ -867,6 +944,7 @@ final class BuildTab {
 			'limits.high'        => __( 'Largest wheel on a high truck', 'creative-skateboard-builder' ),
 			'over'               => __( 'Wheel over the limit by up to', 'creative-skateboard-builder' ),
 			'riser'              => __( 'The riser to suggest', 'creative-skateboard-builder' ),
+			'wheelbase'          => __( 'Wheelbase where a deck gives none', 'creative-skateboard-builder' ),
 		);
 		$found  = array();
 		if ( 1 === preg_match( '/\A(slots|presets)\[(\d+)\]\.?(.*)\z/', $path, $found ) ) {
@@ -917,6 +995,7 @@ final class BuildTab {
 			KitEditor::SLOTS   => __( 'Slots', 'creative-skateboard-builder' ),
 			KitEditor::RULES   => __( 'Rules', 'creative-skateboard-builder' ),
 			KitEditor::PRESETS => __( 'Presets', 'creative-skateboard-builder' ),
+			KitEditor::PICTURE => __( 'Picture', 'creative-skateboard-builder' ),
 			default            => __( 'Assembly', 'creative-skateboard-builder' ),
 		};
 	}
@@ -931,6 +1010,7 @@ final class BuildTab {
 			KitEditor::SLOTS   => __( 'The kit\'s slots were not saved. The Build tab shows them as you typed them, with what to put right.', 'creative-skateboard-builder' ),
 			KitEditor::RULES   => __( 'The kit\'s rules were not saved. The Build tab shows them as you typed them, with what to put right.', 'creative-skateboard-builder' ),
 			KitEditor::PRESETS => __( 'The kit\'s presets were not saved. The Build tab shows them as you typed them, with what to put right.', 'creative-skateboard-builder' ),
+			KitEditor::PICTURE => __( 'The kit\'s picture settings were not saved. The Build tab shows them as you typed them, with what to put right.', 'creative-skateboard-builder' ),
 			default            => __( 'The kit\'s assembly settings were not saved. The Build tab shows them as you typed them, with what to put right.', 'creative-skateboard-builder' ),
 		};
 	}

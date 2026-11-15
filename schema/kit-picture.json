@@ -1,0 +1,34 @@
+{
+	"$schema": "http://json-schema.org/draft-04/schema#",
+	"title": "cbuild_picture",
+	"description": "A kit's picture settings, stored in the _cbuild_picture product meta. A kit with none draws the layers in the usual order and guesses a missing wheelbase from the deck's shape.",
+	"type": "object",
+	"additionalProperties": false,
+	"required": [
+		"schema_version"
+	],
+	"properties": {
+		"schema_version": {
+			"description": "The document's version. Version 1 is the only one so far.",
+			"type": "integer",
+			"enum": [
+				1
+			]
+		},
+		"order": {
+			"description": "Slot keys from the bottom of the picture's stack to the top, each once. A slot left out is drawn after these in the usual order: deck, grip, trucks, wheels. A key the kit has no slot for is passed over.",
+			"type": "array",
+			"maxItems": 20,
+			"uniqueItems": true,
+			"items": {
+				"type": "string",
+				"pattern": "^[a-z][a-z0-9_]{0,31}(?!\\n)$"
+			}
+		},
+		"wheelbase": {
+			"description": "Where the trucks sit on a deck that gives no wheelbase: inches between the inner holes, as a decimal in text from 10 to 20. Empty or left out, the usual for the deck's shape.",
+			"type": "string",
+			"pattern": "^(1[0-9](\\.[0-9]{1,4})?|20(\\.0{1,4})?)?(?!\\n)$"
+		}
+	}
+}

@@ -50,12 +50,18 @@ final class KitProductTest extends IntegrationTestCase {
 		self::assertSame( 'cbuild_kit', \WC_Product_Factory::get_product_type( $id ) );
 	}
 
-	public function test_a_kit_saves_and_loads_its_four_documents_through_crud(): void {
+	public function test_a_kit_saves_and_loads_its_documents_through_crud(): void {
 		$kit                        = self::kit();
 		$slots                      = KitDocuments::slots();
 		$slots['slots'][0]['label'] = 'Deck \\ 8" «large» \'wide\' <b>';
 		$slots['slots'][0]['help']  = "Two lines\nand a tab\there";
+		$picture                    = array(
+			'schema_version' => 1,
+			'order'          => array( 'grip', 'deck' ),
+			'wheelbase'      => '14.25',
+		);
 		$kit->setDocument( Options::META_KIT_SLOTS, $slots );
+		$kit->setDocument( Options::META_KIT_PICTURE, $picture );
 		$kit->save();
 
 		$read = self::fresh( $kit->get_id() );
@@ -66,6 +72,7 @@ final class KitProductTest extends IntegrationTestCase {
 				Options::META_KIT_RULES    => KitDocuments::rules(),
 				Options::META_KIT_PRESETS  => KitDocuments::presets(),
 				Options::META_KIT_ASSEMBLY => KitDocuments::assembly(),
+				Options::META_KIT_PICTURE  => $picture,
 			),
 			$read->documents(),
 			'every character comes back, a backslash and a quote among them'
@@ -73,7 +80,7 @@ final class KitProductTest extends IntegrationTestCase {
 		self::assertSame( $slots, $read->document( Options::META_KIT_SLOTS ) );
 
 		// Each is JSON text in the product's meta, as the spec has it.
-		foreach ( array( Options::META_KIT_SLOTS, Options::META_KIT_RULES, Options::META_KIT_PRESETS, Options::META_KIT_ASSEMBLY ) as $key ) {
+		foreach ( Options::kitDocuments() as $key ) {
 			$stored = get_post_meta( $kit->get_id(), $key, true );
 			self::assertIsString( $stored, $key );
 			self::assertSame( $read->document( $key ), json_decode( $stored, true ), $key );
@@ -98,6 +105,7 @@ final class KitProductTest extends IntegrationTestCase {
 				Options::META_KIT_RULES    => null,
 				Options::META_KIT_PRESETS  => null,
 				Options::META_KIT_ASSEMBLY => null,
+				Options::META_KIT_PICTURE  => null,
 			),
 			$read->documents()
 		);

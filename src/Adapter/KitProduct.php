@@ -25,7 +25,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  * in WooCommerce's price fields: with the plugin switched off, WooCommerce reads a kit as a simple product with
  * no price, which it will not sell (spec: Security, performance and compatibility).
  *
- * Its four documents are product meta, each as JSON text, read and written through the product's own CRUD.
+ * Its documents are product meta, each as JSON text, read and written through the product's own CRUD.
  * Nothing here checks a document: the edge checks each against its schema, and the domain builds from it.
  *
  * WooCommerce finds the product's data store by the type's name and falls back to the product store
@@ -164,7 +164,7 @@ final class KitProduct extends WC_Product {
 	}
 
 	/**
-	 * The kit's four documents, by meta key.
+	 * The kit's documents, by meta key.
 	 *
 	 * @since 0.4.0
 	 *
@@ -179,7 +179,7 @@ final class KitProduct extends WC_Product {
 	}
 
 	/**
-	 * Put a document on the kit, to be stored when the kit is saved. A key that is not one of the four is left.
+	 * Put a document on the kit, to be stored when the kit is saved. A key that is not one of its documents is left.
 	 *
 	 * @since 0.4.0
 	 *

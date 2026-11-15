@@ -117,18 +117,23 @@ final class WooKitsTest extends IntegrationTestCase {
 		$presets['presets'][0]['picks']['sails'] = 9;
 		$lost                = KitFactory::kit( 'Lost slot', array( Options::META_KIT_PRESETS => $presets ) );
 		$empty               = KitFactory::kit( 'No slots', array( Options::META_KIT_SLOTS => null ) );
+		// From 0.7.0: a picture document is read where there is one, and refused like any other by its schema.
+		$drawn               = KitFactory::kit( 'Drawn', array( Options::META_KIT_PICTURE => array( 'schema_version' => 1, 'order' => array( 'grip', 'deck' ) ) ) );
+		$smudged             = KitFactory::kit( 'Smudged', array( Options::META_KIT_PICTURE => array( 'schema_version' => 1, 'wheelbase' => '30' ) ) );
 		$binned              = KitFactory::kit( 'Binned' );
 		wp_trash_post( $binned->get_id() );
 		$this->part( 'Not a kit' );
 
 		$all = $this->kits()->all();
-		self::assertSame( array( $ready->get_id(), $draft->get_id(), $whole->get_id() ), array_keys( $all ), 'a draft is a kit being made ready; one in the bin is not' );
+		self::assertSame( array( $ready->get_id(), $draft->get_id(), $whole->get_id(), $drawn->get_id() ), array_keys( $all ), 'a draft is a kit being made ready; one in the bin is not' );
+		self::assertSame( array(), $all[ $ready->get_id() ]['kit']->picture->order, 'a kit with no picture document is read' );
+		self::assertSame( array( 'grip', 'deck' ), $all[ $drawn->get_id() ]['kit']->picture->order );
 		self::assertSame( 'Complete skateboard', $all[ $ready->get_id() ]['name'] );
 		self::assertSame( array( 'deck', 'trucks', 'wheels', 'risers', 'bearings', 'hardware', 'grip' ), array_map( static fn( $slot ): string => $slot->key, $all[ $ready->get_id() ]['kit']->slots->all() ) );
 
 		$ids = $this->kits()->ids();
 		sort( $ids );
-		self::assertSame( array( $ready->get_id(), $draft->get_id(), $unknown->get_id(), $whole->get_id(), $lost->get_id(), $empty->get_id() ), $ids, 'every kit product, whatever its documents hold' );
+		self::assertSame( array( $ready->get_id(), $draft->get_id(), $unknown->get_id(), $whole->get_id(), $lost->get_id(), $empty->get_id(), $drawn->get_id(), $smudged->get_id() ), $ids, 'every kit product, whatever its documents hold' );
 	}
 
 	public function test_a_slot_takes_the_parts_in_its_categories(): void {

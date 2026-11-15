@@ -16,7 +16,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * Each of a kit's four documents is JSON text in one of the product's meta keys. The kit's own class and the Build
+ * Each of a kit's documents is JSON text in one of the product's meta keys. The kit's own class and the Build
  * tab both read and write them here, through the product's CRUD, so there is one way a document is stored.
  *
  * @since 0.4.0
@@ -47,7 +47,7 @@ final class StoredKit {
 	}
 
 	/**
-	 * The four documents by the name the kit's services know each by.
+	 * The documents by the name the kit's services know each by.
 	 *
 	 * @since 0.4.0
 	 *

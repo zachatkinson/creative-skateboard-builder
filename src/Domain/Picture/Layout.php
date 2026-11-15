@@ -20,6 +20,7 @@ use CreativeBranding\SkateboardBuilder\Domain\Spec\Specs;
 
 use function intdiv;
 use function max;
+use function usort;
 
 /**
  * The board laid out from its parts' specs, seen from underneath with the nose up: the deck by its width and length,
@@ -88,13 +89,15 @@ final readonly class Layout {
 	public function __construct( public int $width, public int $height, public array $layers, public array $assumed ) {}
 
 	/**
-	 * The layout of the picks so far. Nothing is laid out until a deck with a width is picked.
+	 * The layout of the picks so far. Nothing is laid out until a deck with a width is picked. From 0.7.0 the kit's
+	 * picture settings stack the layers in its order and anchor the trucks on a deck that gives no wheelbase.
 	 *
 	 * @since 0.2.0
 	 *
-	 * @param Picks $picks The picks.
+	 * @param Picks                $picks    The picks.
+	 * @param PictureSettings|null $settings The kit's picture settings; none, the usual order and no anchor.
 	 */
-	public static function of( Picks $picks ): self {
+	public static function of( Picks $picks, ?PictureSettings $settings = null ): self {
 		$deck  = $picks->part( SlotKey::DECK );
 		$width = $deck?->specs->measure( SpecKey::DeckWidth );
 		if ( null === $deck || null === $width ) {
@@ -105,7 +108,7 @@ final readonly class Layout {
 		$base    = $deck->specs->measure( SpecKey::Wheelbase );
 		if ( null === $base ) {
 			$assumed[] = SpecKey::Wheelbase;
-			$base      = self::usualWheelbase( $width, $length );
+			$base      = $settings->wheelbase ?? self::usualWheelbase( $width, $length );
 		}
 		if ( null === $length ) {
 			$assumed[] = SpecKey::DeckLength;
@@ -131,13 +134,13 @@ final readonly class Layout {
 		$across  = self::mm( $axle ?? $width );
 		$spacing = HolePattern::OldSchool->value === $deck->specs->choice( SpecKey::HolePattern ) ? self::OLD_SCHOOL_SPACING : self::HOLE_SPACING;
 		// The wheelbase runs between the inner holes, so a truck's middle is half a spacing further out.
-		$out = intdiv( self::mm( $base ) + $spacing, 2 );
-		return new self(
-			max( $wide, $across ),
-			$long,
-			array( ...$layers, ...self::trucks( $trucks, $out, $across, $spacing ), ...self::wheels( $wheels, $out, $across ) ),
-			$assumed
-		);
+		$out    = intdiv( self::mm( $base ) + $spacing, 2 );
+		$layers = array( ...$layers, ...self::trucks( $trucks, $out, $across, $spacing ), ...self::wheels( $wheels, $out, $across ) );
+		if ( null !== $settings ) {
+			// usort() keeps equal ranks in the order they came in (PHP 8.0), so a slot's own layers stay in theirs.
+			usort( $layers, static fn( Layer $a, Layer $b ): int => $settings->rank( $a->slot ) <=> $settings->rank( $b->slot ) );
+		}
+		return new self( max( $wide, $across ), $long, $layers, $assumed );
 	}
 
 	/**

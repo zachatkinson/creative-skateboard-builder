@@ -438,7 +438,7 @@ final class WooKits implements Kits {
 	}
 
 	/**
-	 * A kit product's kit, or null when it is no kit, a document is refused by its schema, or the four disagree.
+	 * A kit product's kit, or null when it is no kit, a document is refused by its schema, or they disagree.
 	 *
 	 * @param WC_Product $product A product.
 	 */
@@ -448,7 +448,8 @@ final class WooKits implements Kits {
 		}
 		$documents = $product->documents();
 		foreach ( Options::kitDocumentNames() as $name => $key ) {
-			if ( null !== $this->schemas->refusal( $name, $documents[ $key ] ) ) {
+			// A kit saved before 0.7.0 has no picture document, and is drawn as it always was (D-192).
+			if ( ( Options::META_KIT_PICTURE !== $key || null !== $documents[ $key ] ) && null !== $this->schemas->refusal( $name, $documents[ $key ] ) ) {
 				return null;
 			}
 		}
@@ -457,7 +458,8 @@ final class WooKits implements Kits {
 				$documents[ Options::META_KIT_SLOTS ],
 				$documents[ Options::META_KIT_RULES ],
 				$documents[ Options::META_KIT_PRESETS ],
-				$documents[ Options::META_KIT_ASSEMBLY ]
+				$documents[ Options::META_KIT_ASSEMBLY ],
+				$documents[ Options::META_KIT_PICTURE ]
 			);
 		} catch ( InvalidDocument ) {
 			return null;
