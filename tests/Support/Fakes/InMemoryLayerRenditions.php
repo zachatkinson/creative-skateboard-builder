@@ -44,4 +44,16 @@ final class InMemoryLayerRenditions implements LayerRenditions {
 		}
 		return $sources;
 	}
+
+	/**
+	 * What was forgotten, in order.
+	 *
+	 * @var list<int>
+	 */
+	public array $forgotten = array();
+
+	public function forget( int $attachment ): void {
+		$this->forgotten[] = $attachment;
+		$this->made        = array_values( array_filter( $this->made, static fn( array $made ): bool => $made[0] !== $attachment ) );
+	}
 }

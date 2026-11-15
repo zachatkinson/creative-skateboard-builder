@@ -48,6 +48,17 @@ final class PartRenditions {
 	) {}
 
 	/**
+	 * An image was deleted from the Media Library: remove its renditions, whichever parts it was the layer of.
+	 *
+	 * @since 0.7.0
+	 *
+	 * @param int $attachment The image's attachment ID.
+	 */
+	public function forget( int $attachment ): void {
+		$this->renditions->forget( $attachment );
+	}
+
+	/**
 	 * Make what these parts' layer images lack.
 	 *
 	 * @since 0.7.0

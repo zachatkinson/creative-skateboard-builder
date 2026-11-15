@@ -43,4 +43,13 @@ interface LayerRenditions {
 	 * @return array<string, list<array{url: string, width: int, height: int}>> By MIME type, in `Renditions::TYPES`'s order.
 	 */
 	public function sources( int $attachment, array $sizes ): array;
+
+	/**
+	 * Remove every rendition of an image, as when it is deleted from the Media Library.
+	 *
+	 * @since 0.7.0
+	 *
+	 * @param int $attachment The image's attachment ID.
+	 */
+	public function forget( int $attachment ): void;
 }

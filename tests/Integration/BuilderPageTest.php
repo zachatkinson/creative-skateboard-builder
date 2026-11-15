@@ -246,7 +246,7 @@ final class BuilderPageTest extends IntegrationTestCase {
 		// libxml reads HTML 4, where a source is not void, so it nests the second in the first: descendants, then.
 		$sources = $dom->query( './/source', $layers->item( 0 ) );
 		self::assertSame( array( 'image/avif', 'image/webp' ), array( $sources->item( 0 )->getAttribute( 'type' ), $sources->item( 1 )->getAttribute( 'type' ) ) );
-		self::assertMatchesRegularExpression( '#/creative-skateboard-builder/layers/[0-9a-f]{20}-108x407\.avif 108w, .+ 216w, .+ 432w$#', $sources->item( 0 )->getAttribute( 'srcset' ) );
+		self::assertMatchesRegularExpression( '#/creative-skateboard-builder/layers/[0-9]+-[0-9a-f]{20}-108x407\.avif 108w, .+ 216w, .+ 432w$#', $sources->item( 0 )->getAttribute( 'srcset' ) );
 		self::assertStringStartsWith( '(min-height: 960px) ', $sources->item( 0 )->getAttribute( 'sizes' ) );
 		$deck = $dom->query( './/img', $layers->item( 0 ) )->item( 0 );
 		self::assertSame( array( 'high', 'eager', '', '432', '1626' ), array( $deck->getAttribute( 'fetchpriority' ), $deck->getAttribute( 'loading' ), $deck->getAttribute( 'alt' ), $deck->getAttribute( 'width' ), $deck->getAttribute( 'height' ) ) );

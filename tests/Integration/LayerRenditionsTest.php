@@ -86,6 +86,27 @@ final class LayerRenditionsTest extends IntegrationTestCase {
 		} )() );
 	}
 
+	public function test_a_new_file_takes_the_old_files_renditions_away_and_a_deleted_image_takes_all_of_its(): void {
+		$image  = LayerFiles::attachment( 420, 1626 );
+		$other  = LayerFiles::attachment( 420, 1626 );
+		$folder = wp_get_upload_dir()['basedir'] . '/' . WpLayerRenditions::FOLDER;
+		$this->renditions()->make( $image, self::SIZES );
+		$this->renditions()->make( $other, self::SIZES );
+		$old = (array) glob( $folder . '/' . $image . '-*' );
+		self::assertCount( 6, $old, 'three sizes in two types, named for their image' );
+
+		// D-194: "An image edited or replaced in the Media Library has a new file, so new names; the old files go."
+		update_attached_file( $image, LayerFiles::draw( 420, 1626, true, 'png', 0xd1242f ) );
+		$this->renditions()->make( $image, self::SIZES );
+		$now = (array) glob( $folder . '/' . $image . '-*' );
+		self::assertCount( 6, $now, 'the new file\'s renditions, and the old file\'s gone' );
+		self::assertSame( array(), array_intersect( $old, $now ) );
+
+		wp_delete_attachment( $image, true );
+		self::assertSame( array(), (array) glob( $folder . '/' . $image . '-*' ), 'an image deleted from the Media Library takes its renditions' );
+		self::assertCount( 6, (array) glob( $folder . '/' . $other . '-*' ), 'and leaves another image\'s' );
+	}
+
 	public function test_a_type_a_filter_turns_into_another_is_not_kept_and_the_shops_uploads_are_as_wordpress_makes_them(): void {
 		$image = LayerFiles::attachment( 420, 1626 );
 		add_filter( 'image_editor_output_format', static fn( array $formats ): array => array( 'image/avif' => 'image/jpeg' ) + $formats );

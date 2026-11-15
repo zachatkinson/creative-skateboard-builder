@@ -116,7 +116,9 @@ final class IndexJobs implements Reindex {
 
 	/**
 	 * A post was deleted: when it was a product or a variation, queue its job, which will find nothing and remove
-	 * its rows. A reindex walking the shop's pages is told, since a page just moved under it.
+	 * its rows. A reindex walking the shop's pages is told, since a page just moved under it. An image deleted from
+	 * the Media Library takes its layer renditions with it (D-194, WordPress 7.1.4's `wp_delete_attachment()`
+	 * fires `deleted_post`, wp-includes/post.php:6904).
 	 *
 	 * @since 0.3.0
 	 *
@@ -124,6 +126,10 @@ final class IndexJobs implements Reindex {
 	 * @param string $postType Its type.
 	 */
 	public function removed( int $id, string $postType ): void {
+		if ( 'attachment' === $postType ) {
+			$this->renditions->forget( $id );
+			return;
+		}
 		if ( ! $this->catalogue->holds( $postType ) ) {
 			return;
 		}

@@ -244,6 +244,13 @@ final class IndexJobsTest extends TestCase {
 		self::assertSame( 0, $this->store->saves, 'no reindex is running, so none is told' );
 	}
 
+	public function test_a_deleted_image_takes_its_renditions_and_queues_nothing(): void {
+		$this->jobs->removed( 11, 'attachment' );
+		$this->jobs->removed( 7, 'product' );
+		self::assertSame( array( 11 ), $this->renditions->forgotten, 'an image deleted from the Media Library, and no product' );
+		self::assertSame( array( 7 ), array_map( static fn( array $queued ): int => $queued[1]['part'], $this->queue->distinct ) );
+	}
+
 	public function test_a_parts_job_that_fails_is_logged_and_tried_again_after_a_longer_wait_each_time(): void {
 		$failing = new class() implements \CreativeBranding\SkateboardBuilder\Port\SpecSource {
 			public function read( int ...$partIds ): array {

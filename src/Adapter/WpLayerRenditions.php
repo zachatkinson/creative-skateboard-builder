@@ -52,10 +52,11 @@ final class WpLayerRenditions implements LayerRenditions {
 		if ( ! is_string( $file ) || ! is_string( $type ) || null === $stem || null === $where || array() === $sizes || ! is_readable( $file ) || ! wp_mkdir_p( $where['dir'] ) ) {
 			return;
 		}
+		$this->clear( $where['dir'], $attachment, $stem );
 		$original = wp_getimagesize( $file );
 		foreach ( Renditions::TYPES as $mime => $extension ) {
 			foreach ( $sizes as $size ) {
-				$path = $where['dir'] . '/' . self::name( $stem, $size, $extension );
+				$path = $where['dir'] . '/' . self::name( $attachment, $stem, $size, $extension );
 				if ( file_exists( $path ) ) {
 					continue;
 				}
@@ -88,7 +89,7 @@ final class WpLayerRenditions implements LayerRenditions {
 		$sources = array();
 		foreach ( Renditions::TYPES as $mime => $extension ) {
 			foreach ( $sizes as $size ) {
-				$name = self::name( $stem, $size, $extension );
+				$name = self::name( $attachment, $stem, $size, $extension );
 				if ( file_exists( $where['dir'] . '/' . $name ) ) {
 					$sources[ $mime ][] = array(
 						'url'    => $where['url'] . '/' . $name,
@@ -99,6 +100,38 @@ final class WpLayerRenditions implements LayerRenditions {
 			}
 		}
 		return $sources;
+	}
+
+	/**
+	 * Remove every rendition of an image, as when it is deleted from the Media Library. Its file may be gone, so
+	 * they are found by the attachment's ID that starts their names.
+	 *
+	 * @since 0.7.0
+	 *
+	 * @param int $attachment The image's attachment ID.
+	 */
+	public function forget( int $attachment ): void {
+		$where = self::where();
+		if ( null !== $where ) {
+			$this->clear( $where['dir'], $attachment, null );
+		}
+	}
+
+	/**
+	 * Remove an image's renditions of any file but this one: those of the file it had before an edit or a
+	 * replacement, or, with no stem, all of them (D-194).
+	 *
+	 * @param string      $dir        The renditions' folder.
+	 * @param int         $attachment The image's attachment ID.
+	 * @param string|null $stem       The hash of the file it has now, whose renditions are kept.
+	 */
+	private function clear( string $dir, int $attachment, ?string $stem ): void {
+		foreach ( (array) glob( $dir . '/' . $attachment . '-*' ) as $path ) {
+			$path = (string) $path;
+			if ( null === $stem || ! str_starts_with( wp_basename( $path ), $attachment . '-' . $stem . '-' ) ) {
+				wp_delete_file( $path );
+			}
+		}
 	}
 
 	/**
@@ -152,12 +185,14 @@ final class WpLayerRenditions implements LayerRenditions {
 	/**
 	 * A rendition's file name.
 	 *
-	 * @param string          $stem      The image's hash.
-	 * @param array{int, int} $size      Its pixels.
-	 * @param string          $extension Its type's extension.
+	 * @param int             $attachment The image's attachment ID, which starts the name, so its renditions are found
+	 *                                    after its file is gone.
+	 * @param string          $stem       The image's hash.
+	 * @param array{int, int} $size       Its pixels.
+	 * @param string          $extension  Its type's extension.
 	 */
-	private static function name( string $stem, array $size, string $extension ): string {
-		return $stem . '-' . $size[0] . 'x' . $size[1] . '.' . $extension;
+	private static function name( int $attachment, string $stem, array $size, string $extension ): string {
+		return $attachment . '-' . $stem . '-' . $size[0] . 'x' . $size[1] . '.' . $extension;
 	}
 
 	/**
