@@ -22,9 +22,11 @@ All notable changes to this project are documented here. The format follows [Kee
 - The Site Health test `cbuild_pictures` says when the server has neither GD nor Imagick able to make the composed pictures, or cannot write the uploads folder, and that carts, share cards and emails then show the deck's photo (D-198).
 - Uninstall removes `uploads/creative-skateboard-builder/`, with the layers' renditions and the composed pictures in it.
 - A kit's line in every cart shows the build's composed picture once it is made, and the deck's photo until then, through the Store API's cart item images and `woocommerce_cart_item_thumbnail`. The class `cbuild-cart-picture` marks the composed picture in a classic cart. The parts keep their own photos (D-199).
+- A build link's page carries a share card: Open Graph and X card tags with the build's name, as "8.25″ complete: Rascals, Independent 8.5″ and Retna 54 mm", its total, the build link as `og:url` and its composed picture, at 1200 by 630, or the deck's layer image or photo until it is made. The plugin prints them where no SEO plugin is active and passes them through Yoast SEO's filters where it is, and prints none where Rank Math, SEOPress or All in One SEO is active. `rel=canonical` stays the clean page (D-200).
 
 ### Changed
 
+- With Yoast SEO, a build link's page has the build link as its `og:url`, where 0.6.0 gave the clean page (D-200, in place of that part of D-147).
 - The seeded Independent chart gives each size's baseplate, from Independent's own pages: the 146, 151, 159, 166, 169 and 215 take both patterns, and the 109, 129, 139, 144 and 149 new school. A chart made before 0.7.0 has its empty baseplates filled on upgrade, never a value the shop typed, and the log says which sizes. Thunder's and Venture's pages give no holes, so their charts still leave the baseplate to the shop (issue #39, D-189).
 
 - CI runs each state of the code once: a push to main, or a pull request's push of docs alone, skips the legs and mutation testing when a full run has passed on the same code. A pull request's runs queue by its number, so one that starts after the merge cannot cancel main's, and runs nothing heavy. The newest leg has 120 minutes (D-188).

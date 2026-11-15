@@ -68,7 +68,7 @@ final class BuilderPage {
 	 * What the builder shows, by kit, address and base, worked out once a request: the page's title asks before the
 	 * builder renders.
 	 *
-	 * @var array<string, array{view: array<string, mixed>}|null>
+	 * @var array<string, array{state: \CreativeBranding\SkateboardBuilder\Service\State, answer: array<string, mixed>, view: array<string, mixed>}|null>
 	 */
 	private array $shown = array();
 
@@ -189,12 +189,36 @@ final class BuilderPage {
 	}
 
 	/**
+	 * A build link's share card, from what the page shows, or null where the builder shows nothing (D-200).
+	 *
+	 * @since 0.7.0
+	 *
+	 * @param int       $kit   The kit product's ID.
+	 * @param BuildLink $link  The build in the address.
+	 * @param string    $base  The address of the page the builder is on, with no build in it.
+	 * @param ShareCard $cards Works the card out.
+	 * @return array{title: string, description: string, url: string, image: array{src: string, width: int, height: int, type: string}|null}|null
+	 */
+	public function card( int $kit, BuildLink $link, string $base, ShareCard $cards ): ?array {
+		if ( ! $this->kits->isPublic( $kit ) ) {
+			return null;
+		}
+		try {
+			$shown = $this->shown( $kit, $link, $base );
+			return null === $shown ? null : $cards->of( $shown['state'], $shown['answer'], $link, $base );
+		} catch ( Throwable ) {
+			// The render logs and says what failed; a card is left out.
+			return null;
+		}
+	}
+
+	/**
 	 * What the builder shows, once a request for each kit, address and base.
 	 *
 	 * @param int       $kit  The kit.
 	 * @param BuildLink $link The address.
 	 * @param string    $base The page.
-	 * @return array{view: array<string, mixed>}|null
+	 * @return array{state: \CreativeBranding\SkateboardBuilder\Service\State, answer: array<string, mixed>, view: array<string, mixed>}|null
 	 *
 	 * @throws \CreativeBranding\SkateboardBuilder\Domain\Kit\InvalidMoney When the build cannot be priced.
 	 */

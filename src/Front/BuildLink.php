@@ -278,6 +278,20 @@ final readonly class BuildLink {
 	}
 
 	/**
+	 * The link's address on a page: the page's own address with the link's query, or the page's alone for a link
+	 * that says nothing.
+	 *
+	 * @since 0.7.0
+	 *
+	 * @param string $base  The address of the page the builder is on, with no build in it.
+	 * @param Slots  $slots The kit's slots, for the order of the picks.
+	 */
+	public function address( string $base, Slots $slots ): string {
+		$query = $this->query( $slots );
+		return array() === $query ? $base : $base . ( str_contains( $base, '?' ) ? '&' : '?' ) . http_build_query( array( self::PARAM => $query ) );
+	}
+
+	/**
 	 * The link as it is shared: part IDs, the step and assembly on or off (spec: Privacy), and nothing of the visit
 	 * it was made in.
 	 *

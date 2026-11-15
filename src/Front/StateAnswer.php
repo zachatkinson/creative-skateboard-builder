@@ -366,13 +366,15 @@ final class StateAnswer {
 	}
 
 	/**
-	 * A part's size, as the answer carries it.
+	 * A part's size, as the answer carries it, and as a share card names it (D-200).
+	 *
+	 * @since 0.7.0
 	 *
 	 * @param string $slot The slot's key.
 	 * @param Part   $part The part.
 	 * @return array{value: string, text: string}|null
 	 */
-	private static function size( string $slot, Part $part ): ?array {
+	public static function size( string $slot, Part $part ): ?array {
 		$sized = self::sized( $slot, $part );
 		return null === $sized ? null : array(
 			'value' => $sized['value'],

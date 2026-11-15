@@ -78,10 +78,7 @@ final class BuilderView {
 	 */
 	public function of( State $state, array $answer, BuildLink $link, string $base, array $steps, ?BuildProblem $stopped ): array {
 		$slots = $state->kit->slots;
-		$url   = static function ( BuildLink $to ) use ( $base, $slots ): string {
-			$query = $to->query( $slots );
-			return array() === $query ? $base : $base . ( str_contains( $base, '?' ) ? '&' : '?' ) . http_build_query( array( BuildLink::PARAM => $query ) );
-		};
+		$url   = static fn ( BuildLink $to ): string => $to->address( $base, $slots );
 		// The picks as the address has them, and as the total counts them: a slot that starts on a part counts it.
 		$counted = array();
 		$lines   = array();

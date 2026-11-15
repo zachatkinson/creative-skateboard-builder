@@ -268,6 +268,18 @@ final class Container {
 					$c->get( Front\BuilderPlace::class )
 				);
 			},
+			// The card's services are built on a page with a build in its address, when its head is printed.
+			Front\ShareHooks::class                     => static function ( Container $c ): object {
+				return new Front\ShareHooks(
+					$c->get( Front\BuilderPlace::class ),
+					static function () use ( $c ): Front\BuilderPage {
+						return $c->get( Front\BuilderPage::class );
+					},
+					static function () use ( $c ): Front\ShareCard {
+						return $c->get( Front\ShareCard::class );
+					}
+				);
+			},
 			// The state route's services are built when the route is asked, not whenever the REST API starts.
 			Rest\StateRoute::class                      => static function ( Container $c ): object {
 				return new Rest\StateRoute(
@@ -398,6 +410,7 @@ final class Container {
 			Front\PageHooks::class                 => array( Scope::Everywhere ),
 			// Robots and the canonical are printed in the head of a page the site shows a visitor.
 			Front\SeoHooks::class                  => array( Scope::Storefront ),
+			Front\ShareHooks::class                => array( Scope::Storefront ),
 			// WordPress builds its abilities when something first asks for one, on any kind of request.
 			Abilities\CatalogueCheckAbility::class => array( Scope::Everywhere ),
 			Abilities\CheckBuildAbility::class     => array( Scope::Everywhere ),

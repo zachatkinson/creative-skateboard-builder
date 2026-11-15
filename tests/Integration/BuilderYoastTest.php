@@ -59,7 +59,7 @@ final class BuilderYoastTest extends IntegrationTestCase {
 		return (string) ob_get_clean();
 	}
 
-	public function test_yoast_says_noindex_follow_with_no_canonical_and_the_clean_page_as_og_url_for_a_build(): void {
+	public function test_yoast_says_noindex_follow_with_no_canonical_and_the_build_link_as_og_url_for_a_build(): void {
 		self::assertTrue( function_exists( 'YoastSEO' ), 'Yoast SEO is loaded' );
 		$kit  = KitFactory::kit( 'Complete' )->get_id();
 		$page = self::factory()->post->create(
@@ -83,9 +83,10 @@ final class BuilderYoastTest extends IntegrationTestCase {
 		);
 		self::assertMatchesRegularExpression( "/<meta name='robots' content='noindex, follow/", $built );
 		// Yoast prints no canonical on a noindex page (`src/presenters/canonical-presenter.php:38`), so that the two
-		// never disagree; its og:url is the clean page (D-147).
+		// never disagree. From 0.7.0 its og:url is the build link, so a shared build's card shows that build (spec:
+		// SEO, "`og:url` is the build link"; D-200 in place of D-147's clean page).
 		self::assertStringNotContainsString( 'rel="canonical"', $built );
-		self::assertStringContainsString( '<meta property="og:url" content="' . get_permalink( $page ) . '"', $built );
+		self::assertMatchesRegularExpression( '#<meta property="og:url" content="' . preg_quote( esc_url( (string) get_permalink( $page ) ), '#' ) . '&(amp;)?cbuild#', $built );
 	}
 
 	public function test_yoasts_title_keeps_its_own_with_the_builders_step_before_it_once(): void {

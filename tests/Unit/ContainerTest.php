@@ -129,7 +129,7 @@ final class ContainerTest extends TestCase {
 			'Cli'        => array( 'Hooks\\CliHooks', 'Health\\SiteHealth' ),
 			'Cron'       => array( 'Health\\SiteHealth' ),
 			'Rest'       => array( 'Health\\SiteHealth', 'Rest\\StateRoute' ),
-			'Storefront' => array( 'Front\\SeoHooks' ),
+			'Storefront' => array( 'Front\\SeoHooks', 'Front\\ShareHooks' ),
 		);
 		self::assertSame( array_column( Scope::cases(), 'name' ), array_keys( $scopes ), 'every scope' );
 		foreach ( Scope::cases() as $scope ) {
