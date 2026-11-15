@@ -42,13 +42,16 @@ The spec fixes four things about every layer image:
 - the nose up: the end of the part that faces the board's nose is at the top of the image;
 - a transparent background.
 
-The spec leaves the setup's figures to the owner and the photographer. Record them here before the first shoot, so every later part is shot the same way:
+The spec leaves the setup's figures to the owner and the photographer. The figures below are a starting point from ordinary product-photography practice, worked out for a 32 in deck. Replace them with the photographer's own setup before the first shoot, and keep them the same for every later part:
 
-| Setting | Value |
-| --- | --- |
-| Camera height | Not set yet: the owner's choice |
-| Lens and focal length | Not set yet: the owner's choice |
-| Scale at the part, in pixels to the millimetre | Not set yet: the owner's choice, and at least 2 (see The file) |
+| Setting | Suggested | Why |
+| --- | --- | --- |
+| Camera | Pointing straight down, its sensor parallel to the table | A tilted camera draws the deck as a trapezoid |
+| Camera height | 1.75 m from the sensor to the table | Fits 900 mm across the frame with a 70 mm lens on a full-frame sensor, enough for an 813 mm deck with a margin |
+| Lens and focal length | 70 mm on full frame (about 45 mm on APS-C), stopped down to f/8 | A longer lens from further away shows less of a truck's sides; f/8 keeps a truck sharp from baseplate to axle |
+| Scale at the table | About 6.5 pixels to the millimetre, from a 24-megapixel sensor's 6,000 pixels across 900 mm | Over three times the field's floor of 2, so a crop for any part passes |
+
+A truck's or a wheel's top stands higher than the table, so it comes out a little larger than its base. At 1.75 m that is under 4 % for a truck 60 mm tall, which the picture's fitting hides.
 
 The picture fits each image into its part's box and never enlarges it, so a fixed scale does not change where a part is drawn. It keeps the parts consistent with each other, and keeps every shot above the field's floor of two pixels to the millimetre.
 
