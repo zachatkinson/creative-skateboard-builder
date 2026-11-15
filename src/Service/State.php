@@ -13,6 +13,7 @@ use CreativeBranding\SkateboardBuilder\Domain\Fit\BuildProblem;
 use CreativeBranding\SkateboardBuilder\Domain\Fit\ChangeList;
 use CreativeBranding\SkateboardBuilder\Domain\Fit\Validation;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Kit;
+use CreativeBranding\SkateboardBuilder\Domain\Kit\Part;
 use CreativeBranding\SkateboardBuilder\Domain\Pricing\Quote;
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -83,5 +84,23 @@ final readonly class State {
 	 */
 	public function ready(): bool {
 		return $this->validation->isValid();
+	}
+
+	/**
+	 * The part each step counts, the pick or else the recommendation, by slot in step order.
+	 *
+	 * @since 0.7.0
+	 *
+	 * @return array<string, Part>
+	 */
+	public function counted(): array {
+		$counted = array();
+		foreach ( $this->steps as $step ) {
+			$counts = $step->counted();
+			if ( null !== $counts ) {
+				$counted[ $step->slot->key ] = $counts->part;
+			}
+		}
+		return $counted;
 	}
 }

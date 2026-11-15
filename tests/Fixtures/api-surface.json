@@ -43,6 +43,7 @@
         "cbuild_specs"
     ],
     "scheduled_actions": [
+        "cbuild_compose_picture",
         "cbuild_import",
         "cbuild_index_part",
         "cbuild_migrate",

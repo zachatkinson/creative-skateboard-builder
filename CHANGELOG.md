@@ -17,6 +17,7 @@ All notable changes to this project are documented here. The format follows [Kee
 - The state route's `picture` gains `width`, `height` and `layers`, and each item `drawn`. Nothing is taken away.
 - The custom property `--cbuild-board-size` a theme may set, and `--cbuild-board-ratio`, `--cbuild-layer-x`, `--cbuild-layer-y`, `--cbuild-layer-width` and `--cbuild-layer-height`, which the builder sets on the board and its layers.
 - The composer draws the picture's layout as one image, a JPEG or a WebP on a white ground, with GD, or with Imagick where GD cannot. GD and Imagick agree to within a mean of 0.25 and at most 48 out of 255 per channel on the same layout (measured: 0.0492 and 40). The files go in `uploads/creative-skateboard-builder/pictures/`, named by a hash of what is drawn, and never in the Media Library (D-196).
+- The Action Scheduler action `cbuild_compose_picture` draws a build's composed pictures in the background, for the cart, share cards and emails, once it is added to the cart. It takes the build's IDs alone and checks the build again; a build that does not pass validation gets no picture. At most 50 builds wait at a time, and a build's three pictures took 0.46 s with GD in wp-env (D-197).
 
 ### Changed
 

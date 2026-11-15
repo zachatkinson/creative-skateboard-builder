@@ -179,4 +179,29 @@ final class ActionSchedulerQueue implements Queue {
 		}
 		return count( as_get_scheduled_actions( $query, 'ids' ) );
 	}
+
+	/**
+	 * How many of one of the plugin's actions wait to run, counted up to a limit. The count is of IDs, one page of them.
+	 *
+	 * @since 0.7.0
+	 *
+	 * @param string $hook The action.
+	 * @param int    $upTo The most to count.
+	 */
+	public function pending( string $hook, int $upTo ): int {
+		if ( $upTo < 1 || ! function_exists( 'as_get_scheduled_actions' ) ) {
+			return 0;
+		}
+		return count(
+			as_get_scheduled_actions(
+				array(
+					'hook'     => $hook,
+					'group'    => Options::QUEUE_GROUP,
+					'status'   => \ActionScheduler_Store::STATUS_PENDING,
+					'per_page' => $upTo,
+				),
+				'ids'
+			)
+		);
+	}
 }

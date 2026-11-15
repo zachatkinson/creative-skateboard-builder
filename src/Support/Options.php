@@ -211,6 +211,13 @@ final class Options {
 	public const JOB_IMPORT = 'cbuild_import';
 
 	/**
+	 * The job that draws one build's composed pictures (spec: Options and jobs).
+	 *
+	 * @since 0.7.0
+	 */
+	public const JOB_COMPOSE_PICTURE = 'cbuild_compose_picture';
+
+	/**
 	 * The specs import in hand: where it is, its place and its counts, and what it did after. Not autoloaded.
 	 *
 	 * @since 0.3.0
@@ -255,7 +262,7 @@ final class Options {
 	 * @return string[]
 	 */
 	public static function jobs(): array {
-		return array( self::JOB_MIGRATE, self::JOB_INDEX_PART, self::JOB_REINDEX, self::JOB_IMPORT );
+		return array( self::JOB_MIGRATE, self::JOB_INDEX_PART, self::JOB_REINDEX, self::JOB_IMPORT, self::JOB_COMPOSE_PICTURE );
 	}
 
 	/**

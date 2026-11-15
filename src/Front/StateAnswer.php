@@ -114,15 +114,11 @@ final class StateAnswer {
 		$link  ??= new BuildLink();
 		$labels  = array();
 		$current = null;
-		$counted = array();
+		$counted = $state->counted();
 		foreach ( $state->steps as $step ) {
 			$labels[ $step->slot->key ] = self::label( $step->slot->label, $step->slot->key, $state->id );
 			if ( $step->slot->key === $state->step ) {
 				$current = $step;
-			}
-			$counts = $step->counted();
-			if ( null !== $counts ) {
-				$counted[ $step->slot->key ] = $counts->part;
 			}
 		}
 		$page     = max( self::SHOWN, $link->shown );

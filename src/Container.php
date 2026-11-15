@@ -298,6 +298,14 @@ final class Container {
 					}
 				);
 			},
+			// The pictures' service is built when a kit is added to the cart or the job runs.
+			Hooks\PictureHooks::class                   => static function ( Container $c ): object {
+				return new Hooks\PictureHooks(
+					static function () use ( $c ): Service\ComposedPictures {
+						return $c->get( Service\ComposedPictures::class );
+					}
+				);
+			},
 			Hooks\ImportHooks::class                    => static function ( Container $c ): object {
 				return new Hooks\ImportHooks(
 					static function () use ( $c ): Service\SpecImport {
@@ -350,6 +358,8 @@ final class Container {
 			Hooks\SpecTableHooks::class            => array( Scope::Everywhere ),
 			// The import's job runs wherever the queue does.
 			Hooks\ImportHooks::class               => array( Scope::Everywhere ),
+			// A kit is added to the cart, and the picture's job runs, on any kind of request.
+			Hooks\PictureHooks::class              => array( Scope::Everywhere ),
 			// WooCommerce builds a product from its type's class wherever one is read.
 			Hooks\KitHooks::class                  => array( Scope::Everywhere ),
 			// A build is added from a page, the Store API or admin-ajax, and the cart is read on all three.

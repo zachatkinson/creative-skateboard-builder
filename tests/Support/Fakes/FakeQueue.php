@@ -176,4 +176,14 @@ final class FakeQueue implements Queue {
 		$this->since = $since;
 		return $this->failures;
 	}
+
+	/**
+	 * How many distinct actions of a hook wait, up to a limit.
+	 *
+	 * @param string $hook Hook.
+	 * @param int    $upTo The most to count.
+	 */
+	public function pending( string $hook, int $upTo ): int {
+		return min( max( 0, $upTo ), count( array_filter( $this->distinct, static fn( array $queued ): bool => $hook === $queued[0] ) ) );
+	}
 }

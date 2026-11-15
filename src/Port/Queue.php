@@ -102,4 +102,15 @@ interface Queue {
 	 * @param int $since Count only actions scheduled after this moment, a UTC timestamp; 0 for all of them.
 	 */
 	public function failed( int $since = 0 ): int;
+
+	/**
+	 * How many of one of the plugin's actions wait to run, counted up to a limit: a caller that caps a queue asks
+	 * only whether it is full.
+	 *
+	 * @since 0.7.0
+	 *
+	 * @param string $hook The action.
+	 * @param int    $upTo The most to count.
+	 */
+	public function pending( string $hook, int $upTo ): int;
 }
