@@ -342,7 +342,9 @@ $cbuild_layers = array(
 foreach ( $cbuild_layers as $cbuild_sku => $cbuild_layer ) {
 	$cbuild_item = wc_get_product( $cbuild_parts[ $cbuild_sku ] );
 	$cbuild_had  = (int) $cbuild_item->get_meta( '_cbuild_layer', true );
-	if ( $cbuild_had < 1 || ! wp_attachment_is_image( $cbuild_had ) ) {
+	// The file too: wp-env started on another WordPress keeps the database but not the uploads, so an attachment can
+	// outlive its file.
+	if ( $cbuild_had < 1 || ! wp_attachment_is_image( $cbuild_had ) || ! file_exists( (string) get_attached_file( $cbuild_had ) ) ) {
 		$cbuild_image = imagecreatetruecolor( $cbuild_layer[0], $cbuild_layer[1] );
 		imagealphablending( $cbuild_image, false );
 		imagesavealpha( $cbuild_image, true );
