@@ -327,33 +327,34 @@ $cbuild_kit->setDocument(
 	)
 );
 $cbuild_kit->save();
-// Layer images for the picture (milestone 7): a block of one colour on a transparent ground, at two pixels to the
-// millimetre of the size the picture draws each part, in the Media Library. The 8.25 in deck and the trucks 144 have
-// none, so the labelled photo is tested beside the board. Each is made once; its renditions are made as the part's
+// Layer images for the picture (milestone 7): clean test art drawn by tools/layer-art.php to the shooting template,
+// at two pixels to the millimetre, in the Media Library. The 8.25 in deck and the trucks 144 have none, so the
+// labelled photo is tested beside the board. An image is made again when its file is gone (wp-env started on another
+// WordPress keeps the database but not the uploads) or the art has changed; its renditions are made as the part's
 // index job makes them.
 require_once ABSPATH . 'wp-admin/includes/image.php';
 $cbuild_layers = array(
-	'builder-test-deck-8-0'      => array( 407, 1601, 0x1f6feb ),
-	'builder-test-deck-8-5'      => array( 432, 1626, 0x8250df ),
-	'builder-test-trucks-139'    => array( 407, 153, 0x57606a ),
-	'builder-test-trucks-149'    => array( 432, 153, 0x24292f ),
-	'builder-test-wheels-54'     => array( 65, 108, 0xd1242f ),
+	'builder-test-deck-8-0'   => 'deck-8.0-31.5.png',
+	'builder-test-deck-8-5'   => 'deck-8.5-32.png',
+	'builder-test-trucks-139' => 'trucks-8.0.png',
+	'builder-test-trucks-149' => 'trucks-8.5.png',
+	'builder-test-wheels-52'  => 'wheels-52.png',
+	'builder-test-wheels-54'  => 'wheels-54.png',
+	'builder-test-wheels-56'  => 'wheels-56.png',
+	'builder-test-wheels-58'  => 'wheels-58.png',
 );
-foreach ( $cbuild_layers as $cbuild_sku => $cbuild_layer ) {
+foreach ( $cbuild_layers as $cbuild_sku => $cbuild_art ) {
 	$cbuild_item = wc_get_product( $cbuild_parts[ $cbuild_sku ] );
 	$cbuild_had  = (int) $cbuild_item->get_meta( '_cbuild_layer', true );
-	// The file too: wp-env started on another WordPress keeps the database but not the uploads, so an attachment can
-	// outlive its file.
-	if ( $cbuild_had < 1 || ! wp_attachment_is_image( $cbuild_had ) || ! file_exists( (string) get_attached_file( $cbuild_had ) ) ) {
-		$cbuild_image = imagecreatetruecolor( $cbuild_layer[0], $cbuild_layer[1] );
-		imagealphablending( $cbuild_image, false );
-		imagesavealpha( $cbuild_image, true );
-		imagefill( $cbuild_image, 0, 0, imagecolorallocatealpha( $cbuild_image, 0, 0, 0, 127 ) );
-		$cbuild_inset = max( 1, intdiv( min( $cbuild_layer[0], $cbuild_layer[1] ), 10 ) );
-		imagefilledrectangle( $cbuild_image, $cbuild_inset, $cbuild_inset, $cbuild_layer[0] - 1 - $cbuild_inset, $cbuild_layer[1] - 1 - $cbuild_inset, imagecolorallocate( $cbuild_image, ( $cbuild_layer[2] >> 16 ) & 0xff, ( $cbuild_layer[2] >> 8 ) & 0xff, $cbuild_layer[2] & 0xff ) );
-		$cbuild_upload = wp_upload_bits( $cbuild_sku . '-layer.png', null, '' );
-		imagepng( $cbuild_image, $cbuild_upload['file'] );
-		$cbuild_had = (int) wp_insert_attachment(
+	$cbuild_from = __DIR__ . '/layers/' . $cbuild_art;
+	$cbuild_hash = (string) md5_file( $cbuild_from );
+	if ( $cbuild_had < 1 || ! wp_attachment_is_image( $cbuild_had ) || ! file_exists( (string) get_attached_file( $cbuild_had ) ) || get_post_meta( $cbuild_had, '_cbuild_e2e_art', true ) !== $cbuild_hash ) {
+		if ( $cbuild_had > 0 ) {
+			// Its renditions go with it (D-201).
+			wp_delete_attachment( $cbuild_had, true );
+		}
+		$cbuild_upload = wp_upload_bits( $cbuild_sku . '-layer.png', null, (string) file_get_contents( $cbuild_from ) );
+		$cbuild_had    = (int) wp_insert_attachment(
 			array(
 				'post_mime_type' => 'image/png',
 				'post_title'     => $cbuild_sku . ' layer',
@@ -362,6 +363,7 @@ foreach ( $cbuild_layers as $cbuild_sku => $cbuild_layer ) {
 			$cbuild_upload['file']
 		);
 		wp_update_attachment_metadata( $cbuild_had, wp_generate_attachment_metadata( $cbuild_had, $cbuild_upload['file'] ) );
+		update_post_meta( $cbuild_had, '_cbuild_e2e_art', $cbuild_hash );
 		$cbuild_item->update_meta_data( '_cbuild_layer', (string) $cbuild_had );
 		$cbuild_item->save();
 	}
