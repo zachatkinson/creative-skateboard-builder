@@ -59,4 +59,19 @@ final class LayerArtworkTest extends TestCase {
 		self::assertSame( array(), $art->of( Layout::of( Parts::picks( array( SlotKey::DECK => $deck ) ) ), array( SlotKey::DECK => $deck ) ) );
 		self::assertSame( array(), $art->of( new Layout( 0, 0, array(), array() ), array() ) );
 	}
+
+	public function test_a_layer_is_drawn_only_from_the_part_handed_in_for_its_slot(): void {
+		$deck                = Parts::of( array( 'deck_width' => '8.25' ), 100 );
+		$trucks              = Parts::of( array( 'axle_width' => '8.25' ), 200 );
+		$layout              = Layout::of( Parts::picks( array( SlotKey::DECK => $deck, SlotKey::TRUCKS => $trucks ) ) );
+		$layers              = new InMemoryLayerImages();
+		$layers->attachments = array( 100 => 10, 200 => 20 );
+		$layers->images      = array(
+			10 => new ImageFacts( 'image/png', 420, 1626, true ),
+			20 => new ImageFacts( 'image/png', 420, 152, true ),
+		);
+		$art                 = new LayerArtwork( $layers, new InMemoryLayerRenditions() );
+		self::assertSame( array( 200 ), array_keys( $art->of( $layout, array( SlotKey::TRUCKS => $trucks ) ) ), 'no part for the deck\'s slot' );
+		self::assertSame( array( 200 ), array_keys( $art->of( $layout, array( SlotKey::DECK => $trucks, SlotKey::TRUCKS => $trucks ) ) ), 'the trucks handed in as the deck' );
+	}
 }

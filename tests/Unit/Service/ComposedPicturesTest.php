@@ -93,6 +93,9 @@ final class ComposedPicturesTest extends TestCase {
 		self::assertSame( array( array( Options::JOB_COMPOSE_PICTURE, array( 'kit' => self::KIT, 'picks' => self::STREET ) ) ), $this->queue->distinct, 'one job, with the IDs alone' );
 		self::assertFalse( $this->pictures->ask( self::KIT, array() ), 'a build of nothing' );
 		self::assertFalse( $this->pictures->ask( 0, self::STREET ), 'no kit' );
+		self::assertTrue( $this->pictures->ask( 1, self::STREET ), 'the first ID a kit can have' );
+		$this->queue->distinct = array_slice( $this->queue->distinct, 0, 1 );
+		unset( $this->queue->pending[ Options::JOB_COMPOSE_PICTURE ] );
 
 		for ( $more = 1; $more < ComposedPictures::QUEUED_MOST; $more++ ) {
 			self::assertTrue( $this->pictures->ask( self::KIT, array( SlotKey::DECK => 1000 + $more ) ), 'room for ' . $more );
@@ -145,6 +148,37 @@ final class ComposedPicturesTest extends TestCase {
 		self::assertSame( 0, $this->files->asked, 'nothing is drawn' );
 	}
 
+	/**
+	 * A review that cannot go to the cart, with nothing refused: the kit's trucks are all gone, so no recommendation
+	 * fills the slot, and what is counted is still the shopper's own picks.
+	 *
+	 * @param BuildState $states The states.
+	 */
+	private function unready( BuildState $states ): State {
+		$parts                     = Shop::parts();
+		$parts[ SlotKey::TRUCKS ]  = array();
+		$this->kits->add( self::KIT, Shop::kit(), $parts );
+		$short = self::STREET;
+		unset( $short[ SlotKey::TRUCKS ] );
+		$unready = $states->of( self::KIT, $short, null, State::REVIEW, null );
+		self::assertNotNull( $unready );
+		self::assertFalse( $unready->ready() );
+		self::assertSame( array(), $unready->refused );
+		self::assertSame( array_keys( $short ), array_keys( $unready->counted() ), 'the picks alone' );
+		$this->kits->add( self::KIT, Shop::kit(), Shop::parts() );
+		return $unready;
+	}
+
+	public function test_no_picture_is_drawn_for_a_review_that_cannot_go_to_the_cart(): void {
+		$parts                    = Shop::parts();
+		$parts[ SlotKey::TRUCKS ] = array();
+		$this->kits->add( self::KIT, Shop::kit(), $parts );
+		$short = self::STREET;
+		unset( $short[ SlotKey::TRUCKS ] );
+		self::assertSame( 0, $this->pictures->compose( self::KIT, $short ) );
+		self::assertSame( 0, $this->files->asked, 'nothing is drawn of a build with no trucks to be had' );
+	}
+
 	public function test_a_build_with_no_layer_image_or_a_host_with_no_library_has_no_picture(): void {
 		$this->layers->attachments = array();
 		self::assertSame( 0, $this->pictures->compose( self::KIT, self::STREET ) );
@@ -168,6 +202,8 @@ final class ComposedPicturesTest extends TestCase {
 	}
 
 	public function test_a_picture_handed_out_is_marked_used_and_the_pruning_keeps_thirty_days_under_200_mb(): void {
+		self::assertNull( $this->pictures->url( self::KIT, self::STREET, ComposedPictures::CART ) );
+		self::assertSame( array(), $this->files->used, 'a picture not made yet is not marked' );
 		$this->pictures->compose( self::KIT, self::STREET );
 		self::assertSame( array(), $this->files->used, 'drawing is not showing' );
 		$url = (string) $this->pictures->url( self::KIT, self::STREET, ComposedPictures::CART );
@@ -230,6 +266,15 @@ final class ComposedPicturesTest extends TestCase {
 		$states = new BuildState( $this->kits, new InMemoryShopSettings(), new FakeLogger() );
 		$review = $states->of( self::KIT, self::STREET, null, State::REVIEW, null );
 		self::assertNotNull( $review );
+		// Before its picture is made, so that only the state keeps them from asking.
+		$trucks = $states->of( self::KIT, self::STREET, null, SlotKey::TRUCKS, null );
+		self::assertNotNull( $trucks );
+		self::assertTrue( $trucks->ready() );
+		$this->pictures->offered( $trucks );
+		$unready = $this->unready( $states );
+		$this->pictures->offered( $unready );
+		self::assertSame( array(), $this->queue->distinct, 'another step, or a build not ready, asks nothing' );
+
 		$this->pictures->offered( $review );
 		self::assertSame( array( array( Options::JOB_COMPOSE_PICTURE, array( 'kit' => self::KIT, 'picks' => self::STREET ) ) ), $this->queue->distinct );
 
@@ -237,16 +282,6 @@ final class ComposedPicturesTest extends TestCase {
 		$this->queue->distinct = array();
 		$this->pictures->offered( $review );
 		self::assertSame( array(), $this->queue->distinct, 'its picture is made' );
-
-		$trucks = $states->of( self::KIT, self::STREET, null, SlotKey::TRUCKS, null );
-		self::assertNotNull( $trucks );
-		$this->pictures->offered( $trucks );
-		$short = self::STREET;
-		unset( $short[ SlotKey::TRUCKS ] );
-		$unready = $states->of( self::KIT, $short, null, State::REVIEW, null );
-		self::assertNotNull( $unready );
-		$this->pictures->offered( $unready );
-		self::assertSame( array(), $this->queue->distinct, 'another step, or a build not ready, asks nothing' );
 
 		$this->layers->attachments = array();
 		$this->files->drawn        = array();

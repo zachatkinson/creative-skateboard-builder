@@ -10,7 +10,6 @@ declare( strict_types=1 );
 namespace CreativeBranding\SkateboardBuilder\Service;
 
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Kit;
-use CreativeBranding\SkateboardBuilder\Domain\Picture\Layout;
 use CreativeBranding\SkateboardBuilder\Domain\Picture\Renditions;
 use CreativeBranding\SkateboardBuilder\Port\Kits;
 use CreativeBranding\SkateboardBuilder\Port\LayerImages;
@@ -66,7 +65,7 @@ final class PartRenditions {
 	 * @param int ...$parts Product or variation IDs, as indexed.
 	 */
 	public function make( int ...$parts ): void {
-		$kits  = array_map( static fn( array $kit ): Kit => $kit['kit'], array_values( $this->kits->all() ) );
+		$kits  = array_map( static fn( array $kit ): Kit => $kit['kit'], $this->kits->all() );
 		$specs = $this->index->specsOf( ...$parts );
 		foreach ( $parts as $part ) {
 			$image = $this->layers->attachment( $part );
@@ -74,14 +73,14 @@ final class PartRenditions {
 			if ( null === $image || null === $facts || ! isset( $specs[ $part ] ) ) {
 				continue;
 			}
+			// Every slot that offers it, in any kit; a slot the picture does not draw gives no size. Two kits' decks
+			// give the same sizes, made once.
 			$sizes = array();
-			foreach ( array_intersect( Layout::DRAWN, $this->kits->slotsOf( $part, ...$kits ) ) as $slot ) {
-				foreach ( Renditions::drawn( $slot, $specs[ $part ], $facts->width, $facts->height ) as $size ) {
-					$sizes[ $size[0] . 'x' . $size[1] ] = $size;
-				}
+			foreach ( $this->kits->slotsOf( $part, ...$kits ) as $slot ) {
+				array_push( $sizes, ...Renditions::drawn( $slot, $specs[ $part ], $facts->width, $facts->height ) );
 			}
 			if ( array() !== $sizes ) {
-				$this->renditions->make( $image, array_values( $sizes ) );
+				$this->renditions->make( $image, array_values( array_unique( $sizes, SORT_REGULAR ) ) );
 			}
 		}
 	}

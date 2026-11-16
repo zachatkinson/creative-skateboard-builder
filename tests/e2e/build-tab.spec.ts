@@ -24,7 +24,11 @@ async function edit( page: Page ) {
 		.getByRole( 'link', { name: 'Build tab test kit', exact: true } )
 		.first()
 		.click();
-	await expect( page.locator( '#woocommerce-product-data' ) ).toBeVisible();
+	// The product editor is the heaviest admin page; Firefox on CI's runner took longer than five seconds to show it
+	// once (run 43832149023), with the page whole by the failure's snapshot. A page load's wait, not the check's.
+	await expect( page.locator( '#woocommerce-product-data' ) ).toBeVisible( {
+		timeout: 15_000,
+	} );
 }
 
 async function update( page: Page ) {

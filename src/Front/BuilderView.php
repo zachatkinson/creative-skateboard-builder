@@ -228,7 +228,7 @@ final class BuilderView {
 	 * @param array<string, mixed> $first   The picture's first part, if it has one: its slot, its ID and its photo.
 	 * @param int                  $kit     The kit product's ID.
 	 * @param array<string, mixed> $board   The board, drawn at the bar's size.
-	 * @return array{shown: bool, seen: bool, board: array<string, mixed>, photo: array{hasImage: bool, src: string, srcset: string, sizes: string, width: int, height: int, classes: string}, picture: string, total: string, parts: string, next: array{shown: bool, onStep: bool, onReview: bool, text: string, form: string, name: string, value: string, disabled: bool}}
+	 * @return array{shown: bool, seen: bool, board: array<string, mixed>, photo: array{hasImage: bool, src: string, srcset: string, sizes: string, width: int, height: int, classes: string}, picture: string, total: string, amount: string, parts: string, hide: string, next: array{shown: bool, onStep: bool, onReview: bool, text: string, form: string, name: string, value: string, disabled: bool}}
 	 */
 	private static function bar( array $summary, array $step, array $shown, bool $review, bool $panel, array $first, int $kit, array $board ): array {
 		$next  = Cast::map( $step['next'] ?? null );
@@ -245,6 +245,9 @@ final class BuilderView {
 			'picture' => __( 'See the picture', 'creative-skateboard-builder' ),
 			/* translators: %s: the build's total, such as $184.00. */
 			'total'   => sprintf( __( 'Total: %s', 'creative-skateboard-builder' ), Cast::str( $summary['total'] ?? null ) ),
+			// The amount alone is shown and the sentence read: beside the board's picture "Total:" broke the line at
+			// 412 pixels, and the bar grew under the thumb (D-207).
+			'amount'  => Cast::str( $summary['total'] ?? null ),
 			// The disclosure says what it does, open or shut (Cowork minor 18); the stylesheet shows the one that applies.
 			'parts'   => __( 'Show the parts', 'creative-skateboard-builder' ),
 			'hide'    => __( 'Hide the parts', 'creative-skateboard-builder' ),
@@ -408,7 +411,7 @@ final class BuilderView {
 			$share         = Cast::int( $layer['width'] ?? null ) / $height;
 			$sizes         = null === $fixed
 				? sprintf( '(min-height: %1$dpx) %2$dpx, %3$svh', self::BOARD_TALL, (int) ceil( self::BOARD_MOST * $share ), self::decimal( self::BOARD_SHARE * $share ) )
-				: (int) ceil( $fixed * $share ) . 'px';
+				: ceil( $fixed * $share ) . 'px';
 			$seen[ $slot ] = ( $seen[ $slot ] ?? 0 ) + 1;
 			$layers[]      = array(
 				'key'      => $slot . '-' . $seen[ $slot ],

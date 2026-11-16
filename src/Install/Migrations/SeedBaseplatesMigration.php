@@ -56,35 +56,45 @@ final class SeedBaseplatesMigration implements Migration {
 	public function run( Cursor $cursor ): Cursor {
 		unset( $cursor );
 		foreach ( SeedSpecTables::BASEPLATES as $seed => $plates ) {
-			$chart = $this->tables->seeded( $seed );
-			if ( null === $chart ) {
-				continue;
-			}
-			$rows   = array();
-			$filled = array();
-			foreach ( $chart['table']->rows as $row ) {
-				$stored = $row->toArray();
-				$plate  = $plates[ $row->size ] ?? null;
-				if ( null !== $plate && ! isset( $row->values['baseplate'] ) ) {
-					$stored['specs']['baseplate'] = $plate[0];
-					$stored['source']             = SeedSpecTables::plateSource( $row->source, $plate[1] );
-					$filled[]                     = $row->size;
-				}
-				$rows[] = $stored;
-			}
-			if ( array() === $filled ) {
-				continue;
-			}
-			$this->tables->update( $chart['id'], $chart['name'], SpecTable::read( $rows ) );
-			$this->logger->log(
-				Logger::INFO,
-				'Filled the baseplate of a seeded spec table\'s sizes from the maker\'s pages.',
-				array(
-					'table' => $chart['id'],
-					'sizes' => $filled,
-				)
-			);
+			$this->fill( $seed, $plates );
 		}
 		return Cursor::done();
+	}
+
+	/**
+	 * Fill one seeded chart's empty baseplates, if the shop still has the chart.
+	 *
+	 * @param string                                         $seed   The seed's key.
+	 * @param array<int|string, array{0: string, 1: string}> $plates Each size's baseplate and the page it was read from.
+	 */
+	private function fill( string $seed, array $plates ): void {
+		$chart = $this->tables->seeded( $seed );
+		if ( null === $chart ) {
+			return;
+		}
+		$rows   = array();
+		$filled = array();
+		foreach ( $chart['table']->rows as $row ) {
+			$stored = $row->toArray();
+			$plate  = $plates[ $row->size ] ?? null;
+			if ( null !== $plate && ! isset( $row->values['baseplate'] ) ) {
+				$stored['specs']['baseplate'] = $plate[0];
+				$stored['source']             = SeedSpecTables::plateSource( $row->source, $plate[1] );
+				$filled[]                     = $row->size;
+			}
+			$rows[] = $stored;
+		}
+		if ( array() === $filled ) {
+			return;
+		}
+		$this->tables->update( $chart['id'], $chart['name'], SpecTable::read( $rows ) );
+		$this->logger->log(
+			Logger::INFO,
+			'Filled the baseplate of a seeded spec table\'s sizes from the maker\'s pages.',
+			array(
+				'table' => $chart['id'],
+				'sizes' => $filled,
+			)
+		);
 	}
 }

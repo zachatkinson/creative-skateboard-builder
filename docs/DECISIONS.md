@@ -2787,3 +2787,13 @@ The audit's full run of milestone 7: in webkit-phone (an iPhone 14's 390 pixels)
 - **Tests.** `builder.spec.ts`, D-185's test, in webkit-phone, chromium-phone and firefox-phone, and the phone bar's own tests. **Red run:** "Next where it was under the press / Expected: < 2 / Received: 11.859375", webkit-phone, five runs of five, and the same on the commit before the audit (`1f283b0`).
 
 **Status:** Accepted.
+
+### D-207 · The phone bar shows the amount alone · 2026-11-16
+
+CI's full run of milestone 7 failed the phone bar's own test (Cowork's recheck, N6, "keeps its height") in Kadence at 412 pixels: the bar grew from 68 to 90 pixels with the first deck's pick, in webkit-phone, webkit-desktop, firefox-phone and firefox-desktop on the newest leg and webkit-phone on the oldest. D-206 keeps Next where it is when the bar grows, but the bar still grew: beside the 44-pixel picture and Next, "Total: $184.00" needs about 135 pixels where about 110 are left, so "Total:" took a line of its own. The runner's fonts are wider than macOS's and Playwright's image's, where the test passed, and a shopper's phone may be either. D-206 left the wording to Zach; asked, he chose the amount alone.
+
+- **The bar shows the amount** (`view.bar.amount`, added) in a span hidden from assistive technology, and **reads the sentence** (`view.bar.total`, unchanged) in screen-reader text, so the summary's name is still "Total: $184.00 Show the parts". No sentence is put together from parts. The summary beside the steps, the review and the share card keep "Total:".
+- **Not chosen:** keeping the picture's place from the start (a bar about 90 pixels high on such fonts for the whole build, and a blank square, D-206), or smaller type for the total (no room left for a larger amount or a longer translation).
+- **Tests.** `BuilderTest` › the phone bar holds the total…, `BuilderPageTest` › the phone bar sends the step's form…, and `builder.spec.ts` › The phone bar › says "Show the parts" whole under the total, which now also holds the amount to one line. **Red runs:** CI run 43832149023, "as high with a wider total / Expected: 68 / Received: 90"; locally, `BuilderPageTest` "the amount, shown: Failed asserting that null is not null." **Deliberate break:** the old template's summary, the same failure.
+
+**Status:** Accepted.

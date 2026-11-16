@@ -272,6 +272,72 @@ final class BuilderTest extends TestCase {
 		self::assertSame( array( 'auto', 'auto', 'auto' ), array_column( $bar['layers'], 'priority' ) );
 	}
 
+	// The arithmetic of each layer's place and the sizes it is fetched at, where a share is not a whole number of
+	// pixels: the board and the bar round each width up, so a rendition is never fetched smaller than it is drawn.
+	public function test_each_layer_is_placed_and_sized_by_its_share_of_the_board_rounded_up(): void {
+		$this->layers->attachments = array(
+			102 => 11,
+			139 => 49,
+			301 => 31,
+		);
+		$this->layers->images      = array(
+			11 => new ImageFacts( 'image/png', 420, 1626, true ),
+			49 => new ImageFacts( 'image/png', 432, 160, true ),
+			31 => new ImageFacts( 'image/png', 200, 200, true ),
+		);
+		$view = $this->show( new BuildLink( array( SlotKey::DECK => 102, SlotKey::TRUCKS => 139, SlotKey::WHEELS => 301 ), null, SlotKey::WHEELS ) )['view'];
+		$board = $view['picture']['board'];
+		self::assertSame( '--cbuild-board-ratio:2095500 / 8128000', $board['style'], 'an 8.25 in deck, wider than the axle' );
+		self::assertSame(
+			array(
+				'(min-height: 960px) 149px, 15.4688vh',
+				'(min-height: 960px) 144px, 15vh',
+				'(min-height: 960px) 144px, 15vh',
+				'(min-height: 960px) 23px, 2.3031vh',
+				'(min-height: 960px) 23px, 2.3031vh',
+				'(min-height: 960px) 23px, 2.3031vh',
+				'(min-height: 960px) 23px, 2.3031vh',
+			),
+			array_column( $board['layers'], 'sizes' ),
+			'576 pixels at most, and 60 % of the screen\'s height, times each layer\'s width over the board\'s length: 148.5 and 22.1 are 149 and 23'
+		);
+		self::assertSame(
+			array(
+				'--cbuild-layer-x:0%;--cbuild-layer-y:0%;--cbuild-layer-width:100%;--cbuild-layer-height:100%',
+				'--cbuild-layer-x:1.5152%;--cbuild-layer-y:19.7422%;--cbuild-layer-width:96.9697%;--cbuild-layer-height:9.375%',
+				'--cbuild-layer-x:1.5152%;--cbuild-layer-y:70.8828%;--cbuild-layer-width:96.9697%;--cbuild-layer-height:9.375%',
+				'--cbuild-layer-x:1.5152%;--cbuild-layer-y:21.2309%;--cbuild-layer-width:14.889%;--cbuild-layer-height:6.3976%',
+				'--cbuild-layer-x:83.5958%;--cbuild-layer-y:21.2309%;--cbuild-layer-width:14.889%;--cbuild-layer-height:6.3976%',
+				'--cbuild-layer-x:1.5152%;--cbuild-layer-y:72.3715%;--cbuild-layer-width:14.889%;--cbuild-layer-height:6.3976%',
+				'--cbuild-layer-x:83.5958%;--cbuild-layer-y:72.3715%;--cbuild-layer-width:14.889%;--cbuild-layer-height:6.3976%',
+			),
+			array_column( $board['layers'], 'style' ),
+			'each place a share of the board\'s width across and its length along'
+		);
+		self::assertSame( array( '12px', '11px', '11px', '2px', '2px', '2px', '2px' ), array_column( $view['bar']['board']['layers'], 'sizes' ), 'at the bar\'s 44 pixels: 11.3 and 1.7 are 12 and 2' );
+	}
+
+	public function test_a_picture_with_no_width_or_no_length_draws_no_board(): void {
+		foreach ( array( array( 0, 8128000 ), array( 2095500, 0 ), array( 0, 0 ) ) as [ $width, $length ] ) {
+			$picture = array(
+				'width'  => $width,
+				'height' => $length,
+				'layers' => array(
+					array(
+						'slot'   => SlotKey::DECK,
+						'part'   => 101,
+						'x'      => 0,
+						'y'      => 0,
+						'width'  => 2032000,
+						'height' => 8128000,
+					),
+				),
+			);
+			$board   = ( new \ReflectionMethod( BuilderView::class, 'board' ) )->invoke( null, $picture, self::KIT, null );
+			self::assertSame( array( 'shown' => false, 'style' => '', 'layers' => array() ), $board, $width . ' by ' . $length );
+		}
+	}
+
 	// Spec, A step, Sold out: "A preset or link that holds one names it, and the build can't go to the cart until
 	// it's swapped".
 	public function test_a_sold_out_part_a_preset_brings_is_named_at_the_review_and_keeps_the_build_from_the_cart(): void {
@@ -292,8 +358,11 @@ final class BuilderTest extends TestCase {
 			array(
 				'shown' => true,
 				'seen'  => true,
-				'total' => 'Total: ' . $view['summary']['total'],
-				'parts' => 'Show the parts',
+				'total'  => 'Total: ' . $view['summary']['total'],
+				// The bar shows the amount alone, and reads the sentence to a screen reader: beside the board's
+				// picture "Total:" broke the line at 412 pixels, and the bar grew under the thumb (Zach, 16 Nov).
+				'amount' => $view['summary']['total'],
+				'parts'  => 'Show the parts',
 				'hide'  => 'Hide the parts',
 				'next'  => array(
 					'shown'    => true,

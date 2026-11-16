@@ -803,6 +803,17 @@ final class StateAnswerTest extends TestCase {
 		);
 	}
 
+	// D-200: the share card names a part's size as the answer does, from outside it.
+	public function test_a_parts_size_is_read_the_same_from_outside_the_answer(): void {
+		self::assertSame(
+			array(
+				'value' => '54mm',
+				'text'  => '54 mm',
+			),
+			StateAnswer::size( SlotKey::WHEELS, Shop::parts()[ SlotKey::WHEELS ][1] )
+		);
+	}
+
 	public function test_a_part_is_sized_as_its_slots_parts_are_and_bolts_and_risers_in_fractions(): void {
 		$picks = array(
 			SlotKey::DECK   => 103,

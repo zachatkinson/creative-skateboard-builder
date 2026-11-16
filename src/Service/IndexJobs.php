@@ -128,8 +128,8 @@ final class IndexJobs implements Reindex {
 	public function removed( int $id, string $postType ): void {
 		if ( 'attachment' === $postType ) {
 			$this->renditions->forget( $id );
-			return;
 		}
+		// An attachment is not a part, so its renditions are all it takes.
 		if ( ! $this->catalogue->holds( $postType ) ) {
 			return;
 		}

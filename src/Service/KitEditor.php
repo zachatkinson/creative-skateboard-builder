@@ -586,7 +586,8 @@ final class KitEditor {
 		$layers = array();
 		foreach ( self::map( $sent['layers'] ?? null ) as $slot => $number ) {
 			if ( is_string( $slot ) && is_string( $number ) && ctype_digit( trim( $number ) ) ) {
-				$layers[ $slot ] = (int) trim( $number );
+				// Digits: asort() compares them as numbers, so 9 comes before 10.
+				$layers[ $slot ] = $number;
 			}
 		}
 		// asort() keeps equal numbers in the order they came in (PHP 8.0).

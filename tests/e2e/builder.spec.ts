@@ -2426,8 +2426,11 @@ test.describe( 'The phone bar', () => {
 					const more = summary.querySelector(
 						'.cbuild-bar__more--show'
 					)!;
-					const sum = summary.firstElementChild!;
+					const sum = summary.querySelector(
+						'[aria-hidden="true"]'
+					)!;
 					return {
+						shown: sum.getClientRects().length,
 						display: getComputedStyle( summary ).display,
 						lines: more.getClientRects().length,
 						under:
@@ -2455,10 +2458,13 @@ test.describe( 'The phone bar', () => {
 				.check();
 			await settled( page );
 			await expect( total ).not.toContainText( '$15.00' );
-			expect(
-				( await read() ).height,
-				'as high with a wider total'
-			).toBe( before.height );
+			const after = await read();
+			// Beside the board's picture "Total:" broke the line on CI's fonts, and the bar grew under the thumb
+			// (D-207): the amount alone is shown.
+			expect( after.shown, 'the amount on one line' ).toBe( 1 );
+			expect( after.height, 'as high with a wider total' ).toBe(
+				before.height
+			);
 		} );
 
 		test( `keeps its words readable on ${ theme }'s dark colours, and its open parts list too`, async ( {

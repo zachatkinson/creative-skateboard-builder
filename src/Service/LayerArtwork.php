@@ -50,11 +50,12 @@ final class LayerArtwork {
 	 */
 	public function of( Layout $layout, array $parts ): array {
 		$art   = array();
-		$drawn = array_values( array_unique( array_map( static fn( $layer ): int => $layer->part, $layout->layers ) ) );
+		$drawn = array_unique( array_map( static fn( $layer ): int => $layer->part, $layout->layers ) );
 		$found = array() === $drawn ? array() : $this->layers->attachments( ...$drawn );
 		foreach ( $layout->layers as $layer ) {
 			$part = $parts[ $layer->slot ] ?? null;
-			if ( array_key_exists( $layer->part, $art ) || null === $part || $part->id !== $layer->part ) {
+			// A layer of a part not handed in for its slot is not drawn; a part with two layers is read once.
+			if ( null === $part || $part->id !== $layer->part || array_key_exists( $layer->part, $art ) ) {
 				continue;
 			}
 			$attachment = $found[ $part->id ] ?? null;

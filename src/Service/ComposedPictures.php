@@ -347,7 +347,8 @@ final class ComposedPictures {
 		if ( null === $found ) {
 			return array();
 		}
-		$state = $this->states->of( $kit, $picks, null, State::REVIEW, null, array_values( array_diff( $found->slots->keys(), array_keys( $picks ) ) ) );
+		// Every slot it does not pick was left: a pick is read whatever the slots left say.
+		$state = $this->states->of( $kit, $picks, null, State::REVIEW, null, $found->slots->keys() );
 		if ( null === $state || ! $state->ready() || array() !== $state->refused ) {
 			return array();
 		}

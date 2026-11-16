@@ -101,7 +101,15 @@ final class InMemoryKits implements Kits {
 	 */
 	public array $slotsOf = array();
 
+	/**
+	 * The kits each slotsOf() was asked about, in order.
+	 *
+	 * @var list<list<Kit>>
+	 */
+	public array $slotsAsked = array();
+
 	public function slotsOf( int $product, Kit ...$kits ): array {
+		$this->slotsAsked[] = $kits;
 		return $this->slotsOf[ $product ] ?? array();
 	}
 

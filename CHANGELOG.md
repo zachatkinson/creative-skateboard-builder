@@ -39,6 +39,7 @@ All notable changes to this project are documented here. The format follows [Kee
 
 - A drawn deck's hidden product photo was fetched first, at high priority, beside the deck's layer. It now waits, lazily, so the layer is the page's largest paint on a phone; on a desktop the step's heading is, and no other image (D-204).
 - On a phone, Next rose under a press held as the first deck's answer came: the bar's small picture appeared beside the total, the total took two lines and the bar grew about Next's middle. WebKit dropped the press. The bar's contents now sit at its foot (D-206).
+- On a phone, the bar's total took two lines once the board's small picture sat beside it, and the bar grew from 68 to 90 pixels. The bar now shows the amount alone, and a screen reader still hears "Total:" with it. (D-207).
 - On a right-to-left page the board was drawn mirrored, its wheels swapped from side to side: the right-to-left stylesheet turned the board's `direction: ltr` into `rtl`. The board now takes `dir="ltr"` in its markup (D-203).
 - Under Shop Kit's product template on a desktop, the builder spans the row instead of a centred column the width of the template's buy box (Claude in Cowork's check of 0.6.0, D-184).
 - The assembly switch is a button in a GET form, not a link, so a crawler never follows it into a state, as every other way into a state already is.

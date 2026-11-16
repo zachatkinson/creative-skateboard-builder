@@ -460,6 +460,29 @@ final class KitEditorTest extends TestCase {
 		self::assertSame( 'snug', $this->editor->draft( $sent, $stored )->refused[ self::RULES ]['r1']['axle_fit'] );
 	}
 
+	// D-192: the picture's wheelbase anchor is 10 to 20 in, and says so in its own words; anything else wrong with
+	// it is named as the documents name it.
+	public function test_the_pictures_wheelbase_is_read_and_one_out_of_range_is_named_in_its_own_words(): void {
+		$sent            = self::sent();
+		$sent['picture'] = array(
+			'layers'    => array( 'deck' => '10', 'grip' => ' 9 ', 'trucks' => 'top', 'wheels' => array( '1' ), 0 => '1' ),
+			'wheelbase' => '14,25',
+		);
+		$draft           = $this->editor->draft( $sent, self::stored(), ',' );
+		self::assertSame( array(), $draft->problems );
+		self::assertSame( array( 'schema_version' => 1, 'order' => array( 'grip', 'deck' ), 'wheelbase' => '14.25' ), $draft->documents[ KitEditor::PICTURE ], 'by number, 9 before 10, spaces trimmed; a word, a list and a field with no slot\'s name left out' );
+
+		foreach ( array(
+			'picture ' . KitEditor::WHEELBASE_RANGE . ' wheelbase' => '25',
+			'picture document_bad_measure wheelbase'              => 'long',
+		) as $expected => $wheelbase ) {
+			$sent['picture'] = array( 'wheelbase' => $wheelbase );
+			$draft           = $this->editor->draft( $sent, self::stored() );
+			self::assertSame( array( $expected ), self::problems( $draft ), $wheelbase );
+			self::assertArrayNotHasKey( KitEditor::PICTURE, $draft->documents );
+		}
+	}
+
 	public function test_assembly_takes_a_fee_as_the_shop_writes_money_and_each_thing_wrong_is_named(): void {
 		$stored                             = self::stored();
 		$sent                               = self::sent();
