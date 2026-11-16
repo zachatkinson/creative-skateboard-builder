@@ -174,3 +174,44 @@ Until 0.6.0 the first row was the second: a reindex emptied the parts table a ba
 The reindex pays for it: 2,000 parts in 42 batches took 3.54 s in all, a batch 110 ms at its slowest (3.85 s and 130 ms on 12 November), where the index alone takes 0.84 s with no kit to write rows for. A batch is still well inside one request of the queue's.
 
 The second row stays outside the budget and is printed, not held. It is now paid only after `cbuild_parts_changed` is fired with no part named, and by the first visitor shown other prices than the shop's default: another language, another currency, or, where a shown price goes by address, other tax rates.
+
+## v0.7.0
+
+Machine: Apple M1 Max, PHP 8.5.12 in wp-env on OrbStack, WordPress 7.1.4, WooCommerce 11.3.0, wp-env's own database server, Xdebug off, no persistent object cache. Measured 16 November 2026, on the tree after the audit's fixes.
+
+The kit and catalogue of v0.4.0, seven slots over 2,000 simple products, 500 of them trucks, now with the decks given layer images and their renditions, so the route draws the board from them.
+
+| The state route, 500 candidates in the step | p95 | Median | Queries at most | Budget |
+| --- | --- | --- | --- | --- |
+| Cold | 60.5 ms | 58.9 ms | 45 | 80 ms |
+| Warm | 44.3 ms | 38.7 ms | 18 | 80 ms |
+| A move to the next step, cold | 60.9 ms | 59.0 ms | 40 | 80 ms |
+| A move to the next step, warm | 43.1 ms | 38.5 ms | 18 | 80 ms |
+| The first request after one part moves | 59.2 ms | 58.7 ms | 40 | 80 ms |
+| The first request after a reindex of 2,000 parts, cache emptied | 55.1 ms | | 40 | 80 ms |
+| With no row kept at all | 452 ms | | 97 | Printed, not held |
+
+The queries the board adds, three a cold request, are the parts' meta read together and the deck's layer image and its meta; the ceilings moved with Zach's approval (D-202). Adding the build to the cart by the Store API: p95 30.6 ms and 58 queries, four of them Action Scheduler's for the picture's job. A cart read with the build in it: p95 20.9 ms and 28 queries, two fewer than 0.6.0's, since a build's parts' specs are read once a request.
+
+| A build's composed pictures, GD, layers at 6.5 pixels to the millimetre | Result | Budget |
+| --- | --- | --- |
+| Time for the three (cart, share card, email) | 0.40 s | 4 s |
+| Memory above the job's start | 19.2 MB | 64 MB |
+| Files, grain the size of the picture's pixels | 2.6, 5.6 and 15.9 kB: 24 kB a build, about 8,500 builds in 200 MB | Measured against the cap |
+| Files, finer grain | 1.9, 3.3 and 12.2 kB: 17 kB a build | Measured against the cap |
+
+| The builder page | Result | Budget |
+| --- | --- | --- |
+| The store's script (`build/builder/view.js`), Brotli 11 | 2,852 B | 15,360 B |
+| The block's editor script (`build/builder/index.js`) | 1,177 B | 15,360 B |
+| The styles (`build/builder/style-index.css`, and its RTL twin) | 2,688 B | 10,240 B |
+| The Part specs panel's script (`build/admin/part-specs.js`) | 1,065 B | 15,360 B |
+| LCP, Kadence, mobile profile, median of three | 1.97 s | 2.5 s |
+| CLS and TBT, Kadence | 0.000 and 0 ms | Under 0.1 and 200 ms |
+| A build link's review with its layers drawn, Kadence: LCP, CLS, TBT | 1.97 s, 0.000, 9 ms | The same |
+| Lighthouse SEO, the clean page on both themes | 0.92 | 0.9 or more |
+| LCP and CLS, Twenty Twenty-Five, reported (D-165) | 2.28 s and 0.012 | Not held |
+| The largest paint on a phone | The deck's layer (`builder.spec.ts`, The largest paint, D-204) | The deck's layer |
+| A pick's own selected state painted, 4× slowed CPU | Under 100 ms in Chromium, desktop and phone | 100 ms |
+
+Twenty Twenty-Five's shift measured 0.012 here, against 0.133 for 0.6.0; it stays reported, not held, until a run shows why it moved. The build link's review scores 0.61 for SEO, which is not asserted: the page says `noindex` (D-147).

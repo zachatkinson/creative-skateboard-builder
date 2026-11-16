@@ -20,10 +20,12 @@ All notable changes to this project are documented here. The format follows [Kee
 - The composer draws the picture's layout as one image, a JPEG or a WebP on a white ground, with GD, or with Imagick where GD cannot. GD and Imagick agree to within a mean of 0.25 and at most 48 out of 255 per channel on the same layout (measured: 0.0492 and 40). The files go in `uploads/creative-skateboard-builder/pictures/`, named by a hash of what is drawn, and never in the Media Library (D-196).
 - The Action Scheduler action `cbuild_compose_picture` draws a build's composed pictures in the background, for the cart, share cards and emails, once it is added to the cart. It takes the build's IDs alone and checks the build again; a build that does not pass validation gets no picture. At most 50 builds wait at a time, and a build's three pictures took 0.46 s with GD in wp-env (D-197).
 - The Action Scheduler action `cbuild_prune_pictures` runs daily from the first composed picture. It deletes pictures not shown for 30 days, then the oldest until the folder holds 200 MB at most (D-198).
+- A page's asks for a composed picture, from a build link's page or a review offering its link, take at most 10 of the 50 places, where an add to the cart may take any, so visitors opening links cannot crowd out shoppers' builds. Each `cbuild_compose_picture` job holds the folder to its 200 MB before it draws, not only the daily prune. A picture that cannot be drawn is logged as a warning at most once an hour a kit, with the kit's ID and why: `empty`, `no_library`, `no_folder`, `layer_unreadable`, `draw_failed` or `move_failed` (D-205).
 - The Site Health test `cbuild_pictures` says when the server has neither GD nor Imagick able to make the composed pictures, or cannot write the uploads folder, and that carts, share cards and emails then show the deck's photo (D-198).
 - Uninstall removes `uploads/creative-skateboard-builder/`, with the layers' renditions and the composed pictures in it.
 - A kit's line in every cart shows the build's composed picture once it is made, and the deck's photo until then, through the Store API's cart item images and `woocommerce_cart_item_thumbnail`. The class `cbuild-cart-picture` marks the composed picture in a classic cart. The parts keep their own photos (D-199).
 - A build link's page carries a share card: Open Graph and X card tags with the build's name, as "8.25″ complete: Rascals, Independent 8.5″ and Retna 54 mm", its total, the build link as `og:url` and its composed picture, at 1200 by 630, or the deck's layer image or photo until it is made. The plugin prints them where no SEO plugin is active and passes them through Yoast SEO's filters where it is, and prints none where Rank Math, SEOPress or All in One SEO is active. `rel=canonical` stays the clean page (D-200).
+- The state route's answer to a review that could go to the cart asks for the build's composed picture, so by the time its link is shared the picture is usually made. Until it is, the share card shows the deck's product photo, then its layer image (D-205).
 
 ### Changed
 
@@ -35,6 +37,8 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Fixed
 
+- A drawn deck's hidden product photo was fetched first, at high priority, beside the deck's layer. It now waits, lazily, so the layer is the page's largest paint on a phone; on a desktop the step's heading is, and no other image (D-204).
+- On a phone, Next rose under a press held as the first deck's answer came: the bar's small picture appeared beside the total, the total took two lines and the bar grew about Next's middle. WebKit dropped the press. The bar's contents now sit at its foot (D-206).
 - On a right-to-left page the board was drawn mirrored, its wheels swapped from side to side: the right-to-left stylesheet turned the board's `direction: ltr` into `rtl`. The board now takes `dir="ltr"` in its markup (D-203).
 - Under Shop Kit's product template on a desktop, the builder spans the row instead of a centred column the width of the template's buy box (Claude in Cowork's check of 0.6.0, D-184).
 - The assembly switch is a button in a GET form, not a link, so a crawler never follows it into a state, as every other way into a state already is.
