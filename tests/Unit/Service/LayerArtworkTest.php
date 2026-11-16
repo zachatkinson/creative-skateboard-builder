@@ -48,6 +48,7 @@ final class LayerArtworkTest extends TestCase {
 		self::assertSame( array( 10, 'https://example.com/layer-10.png', 420, 1626 ), array( $art[100]->attachment, $art[100]->url, $art[100]->width, $art[100]->height ) );
 		self::assertSame( $sizes, array_map( static fn( array $file ): array => array( $file['width'], $file['height'] ), $art[100]->sources['image/webp'] ) );
 		self::assertSame( array(), $art[200]->sources, 'nothing made yet: the master alone' );
+		self::assertSame( array( array( 100, 200, 300 ) ), $layers->together, 'the drawn parts\' layer images asked for together, once (D-202)' );
 	}
 
 	public function test_an_image_no_longer_in_the_media_library_is_no_art_and_nothing_laid_out_reads_nothing(): void {

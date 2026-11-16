@@ -50,6 +50,18 @@ final class InMemoryLayerImages implements LayerImages {
 		return $this->attachments[ $part ] ?? null;
 	}
 
+	/**
+	 * Each call to attachments(), with its parts.
+	 *
+	 * @var list<list<int>>
+	 */
+	public array $together = array();
+
+	public function attachments( int ...$parts ): array {
+		$this->together[] = $parts;
+		return array_intersect_key( $this->attachments, array_flip( $parts ) );
+	}
+
 	public function image( int $attachment ): ?array {
 		$facts = $this->images[ $attachment ] ?? null;
 		return null === $facts ? null : array(

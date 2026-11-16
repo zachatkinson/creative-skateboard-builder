@@ -11,6 +11,7 @@ namespace CreativeBranding\SkateboardBuilder\Adapter;
 
 use CreativeBranding\SkateboardBuilder\Domain\Picture\ImageFacts;
 use CreativeBranding\SkateboardBuilder\Port\LayerImages;
+use CreativeBranding\SkateboardBuilder\Port\ProductMeta;
 use CreativeBranding\SkateboardBuilder\Support\Cast;
 use CreativeBranding\SkateboardBuilder\Support\Options;
 use Imagick;
@@ -42,9 +43,10 @@ final class WpLayerImages implements LayerImages {
 	 *
 	 * @since 0.7.0
 	 *
-	 * @param list<string> $libraries The libraries to try, from LIBRARIES; tests name one, or none.
+	 * @param list<string>     $libraries The libraries to try, from LIBRARIES; tests name one, or none.
+	 * @param ProductMeta|null $meta      Reads several parts' meta in one query; without it each is read alone.
 	 */
-	public function __construct( private array $libraries = self::LIBRARIES ) {}
+	public function __construct( private array $libraries = self::LIBRARIES, private ?ProductMeta $meta = null ) {}
 
 	/**
 	 * What is known of an attachment's file.
@@ -148,7 +150,8 @@ final class WpLayerImages implements LayerImages {
 	 * @return list<int>
 	 */
 	public function layered( int ...$parts ): array {
-		return array_values( array_filter( $parts, fn( int $part ): bool => null !== $this->attachment( $part ) ) );
+		$found = $this->attachments( ...$parts );
+		return array_values( array_filter( $parts, static fn( int $part ): bool => isset( $found[ $part ] ) ) );
 	}
 
 	/**
@@ -159,16 +162,47 @@ final class WpLayerImages implements LayerImages {
 	 * @param int $part A product's or variation's ID.
 	 */
 	public function attachment( int $part ): ?int {
-		$product = wc_get_product( $part );
-		if ( ! $product instanceof WC_Product ) {
-			return null;
+		return $this->attachments( $part )[ $part ] ?? null;
+	}
+
+	/**
+	 * The layer images of these parts, read together: the parts' meta in one query, their parents' in another where
+	 * a variation has none of its own, and the images' posts and meta in two more, however many parts there are
+	 * (D-202).
+	 *
+	 * @since 0.7.0
+	 *
+	 * @param int ...$parts Product or variation IDs.
+	 * @return array<int, int> The attachment's ID by part, for the parts that have one.
+	 */
+	public function attachments( int ...$parts ): array {
+		$this->meta?->prime( ...$parts );
+		$images  = array();
+		$parents = array();
+		foreach ( $parts as $part ) {
+			$product = wc_get_product( $part );
+			if ( ! $product instanceof WC_Product ) {
+				continue;
+			}
+			$image = Cast::int( $product->get_meta( Options::META_LAYER, true ) );
+			if ( $image > 0 ) {
+				$images[ $part ] = $image;
+			} elseif ( $product->is_type( 'variation' ) ) {
+				$parents[ $part ] = $product->get_parent_id();
+			}
 		}
-		$image = Cast::int( $product->get_meta( Options::META_LAYER, true ) );
-		if ( 0 === $image && $product->is_type( 'variation' ) ) {
-			$parent = wc_get_product( $product->get_parent_id() );
-			$image  = $parent instanceof WC_Product ? Cast::int( $parent->get_meta( Options::META_LAYER, true ) ) : 0;
+		$this->meta?->prime( ...array_values( $parents ) );
+		foreach ( $parents as $part => $parent ) {
+			$product = wc_get_product( $parent );
+			$image   = $product instanceof WC_Product ? Cast::int( $product->get_meta( Options::META_LAYER, true ) ) : 0;
+			if ( $image > 0 ) {
+				$images[ $part ] = $image;
+			}
 		}
-		return $image > 0 && wp_attachment_is_image( $image ) ? $image : null;
+		if ( count( array_unique( $images ) ) > 1 ) {
+			_prime_post_caches( array_values( array_unique( $images ) ), false, true );
+		}
+		return array_filter( $images, static fn( int $image ): bool => wp_attachment_is_image( $image ) );
 	}
 
 	/**

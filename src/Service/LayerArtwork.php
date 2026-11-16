@@ -49,13 +49,15 @@ final class LayerArtwork {
 	 * @return array<int, LayerArt> By part ID, in the order the layout first draws each.
 	 */
 	public function of( Layout $layout, array $parts ): array {
-		$art = array();
+		$art   = array();
+		$drawn = array_values( array_unique( array_map( static fn( $layer ): int => $layer->part, $layout->layers ) ) );
+		$found = array() === $drawn ? array() : $this->layers->attachments( ...$drawn );
 		foreach ( $layout->layers as $layer ) {
 			$part = $parts[ $layer->slot ] ?? null;
 			if ( array_key_exists( $layer->part, $art ) || null === $part || $part->id !== $layer->part ) {
 				continue;
 			}
-			$attachment = $this->layers->attachment( $part->id );
+			$attachment = $found[ $part->id ] ?? null;
 			$image      = null === $attachment ? null : $this->layers->image( $attachment );
 			if ( null === $attachment || null === $image ) {
 				$art[ $layer->part ] = null;

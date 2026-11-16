@@ -26,6 +26,7 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Changed
 
+- A build's parts' specs are read once a request, however many cart lines ask for them, and the parts' layer images are read together, so the cart and the builder ask fewer queries for the pictures than each part read alone would (D-202).
 - With Yoast SEO, a build link's page has the build link as its `og:url`, where 0.6.0 gave the clean page (D-200, in place of that part of D-147).
 - The seeded Independent chart gives each size's baseplate, from Independent's own pages: the 146, 151, 159, 166, 169 and 215 take both patterns, and the 109, 129, 139, 144 and 149 new school. A chart made before 0.7.0 has its empty baseplates filled on upgrade, never a value the shop typed, and the log says which sizes. Thunder's and Venture's pages give no holes, so their charts still leave the baseplate to the shop (issue #39, D-189).
 

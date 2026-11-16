@@ -7,9 +7,10 @@ The spec's budgets are tests: a build fails when one is missed. The numbers from
 | What | Budget | Measured by | From |
 | --- | --- | --- | --- |
 | The state route's server time, p95, 500 candidate parts in a slot | Under 80 ms | `composer test:benchmark:integration` (`StateRouteBenchmarkTest`) | Milestone 4 |
-| Adding a 7-part build to the cart, p95, by the Store API | Under 300 ms, and 54 queries | `composer test:benchmark:integration` (`CartBenchmarkTest`) | Milestone 5 |
+| Adding a 7-part build to the cart, p95, by the Store API | Under 300 ms, and 58 queries from 0.7.0, 54 before (D-202) | `composer test:benchmark:integration` (`CartBenchmarkTest`) | Milestone 5 |
 | A Store API cart read with a 7-part build in it | Recorded; 30 queries, and the add's 300 ms | `composer test:benchmark:integration` (`CartBenchmarkTest`) | Milestone 5 |
 | The fit engine with 500 candidates | The slowest slot under 40 ms, half the state route's budget; four times the candidates in under six times the time | `composer test:benchmark` (`FitEngineBenchmarkTest`) | Milestone 2 |
+| A build's three composed pictures, with GD, layers shot at 6.5 pixels to the millimetre | Under 4 s and 64 MB above the job's start; the files measured against the 200 MB cap | `composer test:benchmark:integration` (`ComposerBenchmarkTest`) | Milestone 7 |
 | Rebuilding the specs index for 2,000 parts | Recorded; in jobs of 100, each under 10 s and 400 queries | `composer test:benchmark:integration` (`SpecsBenchmarkTest`) | Milestone 3 |
 | The specs export, the Catalogue check, a 5,000-row import read and shown, and each job of 100 import writes, at 2,000 parts | Each under 10 s, a third of PHP's usual limit for a request, and one query a product | `composer test:benchmark:integration` | Milestone 3 |
 | The builder's script, compressed (Brotli, quality 11) | Under 15 kB | `npm run budget` | Milestone 6 |

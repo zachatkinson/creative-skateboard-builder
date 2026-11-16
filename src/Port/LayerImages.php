@@ -55,6 +55,17 @@ interface LayerImages {
 	public function attachment( int $part ): ?int;
 
 	/**
+	 * The layer images of these parts, read together: their own or their parent product's, where it is still an
+	 * image in the Media Library.
+	 *
+	 * @since 0.7.0
+	 *
+	 * @param int ...$parts Product or variation IDs.
+	 * @return array<int, int> The attachment's ID by part, for the parts that have one.
+	 */
+	public function attachments( int ...$parts ): array;
+
+	/**
 	 * The parts among these that have a layer image, their own or their parent product's, that is still an image in
 	 * the Media Library.
 	 *

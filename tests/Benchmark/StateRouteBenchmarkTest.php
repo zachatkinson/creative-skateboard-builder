@@ -13,12 +13,14 @@ use CreativeBranding\SkateboardBuilder\Adapter\WooKits;
 use CreativeBranding\SkateboardBuilder\Port\Kits;
 use CreativeBranding\SkateboardBuilder\Rest\StateRoute;
 use CreativeBranding\SkateboardBuilder\Service\IndexJobs;
+use CreativeBranding\SkateboardBuilder\Service\PartRenditions;
 use CreativeBranding\SkateboardBuilder\Service\ReindexState;
 use CreativeBranding\SkateboardBuilder\Service\SpecIndexer;
 use CreativeBranding\SkateboardBuilder\Support\Options;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Domain\KitDocuments;
 use CreativeBranding\SkateboardBuilder\Tests\Support\IntegrationTestCase;
 use CreativeBranding\SkateboardBuilder\Tests\Support\KitFactory;
+use CreativeBranding\SkateboardBuilder\Tests\Support\LayerFiles;
 use CreativeBranding\SkateboardBuilder\Tests\Support\RunnerSpeed;
 use WC_Product_Simple;
 use WP_REST_Request;
@@ -44,9 +46,9 @@ final class StateRouteBenchmarkTest extends IntegrationTestCase {
 	 * The queries a request may ask, by run. These do not move with the machine.
 	 */
 	private const QUERIES = array(
-		'cold'  => 42,
-		'warm'  => 15,
-		'moved' => 37,
+		'cold'  => 45,
+		'warm'  => 18,
+		'moved' => 40,
 	);
 
 	/**
@@ -188,6 +190,14 @@ final class StateRouteBenchmarkTest extends IntegrationTestCase {
 			)
 		)->get_id();
 		self::assertSame( 2000, array_sum( array_map( 'count', $ids ) ) );
+		// Milestone 7's plan: "the route's benchmark with layers held to 80 ms". The decks the runs pick have layer
+		// images and their renditions, so each answer draws the board and reads its attachments.
+		foreach ( array_slice( $ids['deck'], 0, 7 ) as $deck ) {
+			$product = wc_get_product( $deck );
+			$product->update_meta_data( Options::META_LAYER, (string) LayerFiles::attachment( 420, 1626 ) );
+			$product->save();
+		}
+		$this->service( PartRenditions::class )->make( ...array_slice( $ids['deck'], 0, 7 ) );
 
 		// A move asks as the store does (audit 13, milestone 6): the build's own fields and the page, which add the
 		// view, its brand lookup, the presets and the page's blocks. The rest ask with picks alone.
@@ -222,6 +232,8 @@ final class StateRouteBenchmarkTest extends IntegrationTestCase {
 		self::assertNotNull( $first['options'][0]['card'] );
 		self::assertCount( 6, $first['presets'] );
 		self::assertGreaterThan( 0, $first['presets'][0]['total']['amount'] );
+		self::assertCount( 1, $first['picture']['layers'], 'the deck drawn as a layer' );
+		self::assertNotSame( array(), $first['picture']['layers'][0]['image']['sources'] ?? array(), 'from its renditions' );
 
 		$view = $ask( $ids['deck'][0], true )[2];
 		self::assertSame( 'Step 2 of 7: Trucks', $view['view']['title'] ?? null, 'a move answers with the view' );

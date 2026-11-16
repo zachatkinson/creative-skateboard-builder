@@ -60,6 +60,7 @@ final class Container {
 			Port\LayerImages::class     => Adapter\WpLayerImages::class,
 			Port\LayerRenditions::class => Adapter\WpLayerRenditions::class,
 			Port\PictureFiles::class    => Adapter\WpPictureFiles::class,
+			Port\ProductMeta::class     => Repository\ProductMetaRepository::class,
 		);
 	}
 
