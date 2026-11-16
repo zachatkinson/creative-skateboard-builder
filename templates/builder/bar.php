@@ -12,7 +12,7 @@ defined( 'ABSPATH' ) || exit;
 ?>
 <div class="cbuild-bar" data-wp-bind--hidden="!state.view.bar.shown">
 	<a class="cbuild-bar__picture" href="#cbuild-picture" data-wp-bind--hidden="!state.view.bar.seen">
-		<span class="cbuild-board cbuild-board--bar" data-wp-bind--hidden="!state.view.bar.board.shown" data-wp-bind--style="state.view.bar.board.style">
+		<span class="cbuild-board cbuild-board--bar" dir="ltr" data-wp-bind--hidden="!state.view.bar.board.shown" data-wp-bind--style="state.view.bar.board.style">
 			<template data-wp-each--layer="state.view.bar.board.layers" data-wp-each-key="context.layer.key">
 				<picture data-wp-bind--class="context.layer.classes" data-wp-bind--style="context.layer.style">
 					<template data-wp-each--source="context.layer.sources" data-wp-each-key="context.source.type">

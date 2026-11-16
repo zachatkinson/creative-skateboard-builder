@@ -456,15 +456,15 @@
 /*
  * The picture: the board, drawn to scale from the layout (D-195), then what is in the box. The view places each layer
  * as a share of the board, so the board sets one size: at most 36rem tall, and 60% of the window below that, which
- * the layers' `sizes` assume. A board is the same board in either direction, so it is laid out left to right whatever
- * the page's, and its layers' logical edges are its left and top.
+ * the layers' `sizes` assume. A board is the same board in either direction, so its templates give it `dir="ltr"`
+ * whatever the page's, and its layers' logical edges are its left and top. The direction is in the markup, not here:
+ * the right-to-left stylesheet wp-scripts makes with rtlcss would turn `direction: ltr` into `rtl` (D-203).
  */
 :where(.cbuild-board) {
 	--cbuild-board-size: min(60vh, 36rem);
 
 	position: relative;
 	display: block;
-	direction: ltr;
 	block-size: var(--cbuild-board-size);
 	aspect-ratio: var(--cbuild-board-ratio, 1 / 4);
 	margin-inline: auto;

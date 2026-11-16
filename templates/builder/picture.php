@@ -11,7 +11,7 @@ defined( 'ABSPATH' ) || exit;
 ?>
 <figure class="cbuild-picture" id="cbuild-picture" tabindex="-1" aria-labelledby="cbuild-picture-heading">
 	<h3 class="cbuild-picture__heading" id="cbuild-picture-heading" data-wp-bind--hidden="!state.view.picture.captioned" data-wp-text="state.view.picture.heading"></h3>
-	<div class="cbuild-board" data-wp-bind--hidden="!state.view.picture.board.shown" data-wp-bind--style="state.view.picture.board.style">
+	<div class="cbuild-board" dir="ltr" data-wp-bind--hidden="!state.view.picture.board.shown" data-wp-bind--style="state.view.picture.board.style">
 		<template data-wp-each--layer="state.view.picture.board.layers" data-wp-each-key="context.layer.key">
 			<picture data-wp-bind--class="context.layer.classes" data-wp-bind--style="context.layer.style">
 				<template data-wp-each--source="context.layer.sources" data-wp-each-key="context.source.type">

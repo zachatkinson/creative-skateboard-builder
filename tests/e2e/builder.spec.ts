@@ -586,6 +586,72 @@ test.describe( 'Every way in by a link', () => {
 	} );
 } );
 
+test.describe( 'The board in either direction', () => {
+	// Milestone 7's plan, Internationalisation: "`rtl` asserts the layers unmirrored and the labels mirrored". The
+	// board is drawn left to right in every language, as a deck is seen from below, and its layers' edges are its left
+	// and top (D-195); the labelled photos beside it follow the page's direction.
+	test( 'draws each layer from the left in every direction, and lays the labelled photos out in the page’s', async ( {
+		page,
+	} ) => {
+		await page.goto(
+			linkTo( {
+				deck: id( 'builder-test-deck-8-0' ),
+				trucks: id( 'builder-test-trucks-139' ),
+				wheels: id( 'builder-test-wheels-54' ),
+				step: 'review',
+			} )
+		);
+		const board = page.locator( '#cbuild-picture .cbuild-board' ).first();
+		await expect( board.locator( '.cbuild-board__layer' ) ).toHaveCount(
+			7
+		);
+		const placed = await board.evaluate( ( element ) => {
+			const edge = element.getBoundingClientRect();
+			return Array.from(
+				element.querySelectorAll< HTMLElement >(
+					'.cbuild-board__layer'
+				)
+			).map( ( layer ) => ( {
+				asked: parseFloat(
+					layer.style.getPropertyValue( '--cbuild-layer-x' )
+				),
+				drawn:
+					( ( layer.getBoundingClientRect().left - edge.left ) /
+						edge.width ) *
+					100,
+			} ) );
+		} );
+		const sides = placed.map( ( layer ) => layer.asked );
+		expect(
+			Math.min( ...sides ),
+			'the wheels stand out to both sides, so a mirrored layer would be found'
+		).toBeLessThan( Math.max( ...sides ) );
+		for ( const layer of placed ) {
+			expect(
+				Math.abs( layer.drawn - layer.asked ),
+				'each layer is where its own x says, from the left'
+			).toBeLessThan( 0.5 );
+		}
+
+		const labels = page.locator(
+			'#cbuild-picture .cbuild-picture__item:visible'
+		);
+		expect( await labels.count() ).toBeGreaterThan( 1 );
+		const first = await labels.nth( 0 ).boundingBox();
+		const second = await labels.nth( 1 ).boundingBox();
+		const rtl = await page.evaluate(
+			() =>
+				getComputedStyle(
+					document.querySelector( '.cbuild' ) as Element
+				).direction === 'rtl'
+		);
+		expect(
+			( ( first?.x ?? 0 ) - ( second?.x ?? 0 ) ) * ( rtl ? 1 : -1 ),
+			'the first labelled photo starts the line on the page’s own side'
+		).toBeGreaterThan( 0 );
+	} );
+} );
+
 test.describe( 'The builder with JavaScript', () => {
 	test.beforeEach( async ( { page }, info ) => {
 		test.skip(

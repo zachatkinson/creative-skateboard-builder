@@ -34,6 +34,7 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Fixed
 
+- On a right-to-left page the board was drawn mirrored, its wheels swapped from side to side: the right-to-left stylesheet turned the board's `direction: ltr` into `rtl`. The board now takes `dir="ltr"` in its markup (D-203).
 - Under Shop Kit's product template on a desktop, the builder spans the row instead of a centred column the width of the template's buy box (Claude in Cowork's check of 0.6.0, D-184).
 - The assembly switch is a button in a GET form, not a link, so a crawler never follows it into a state, as every other way into a state already is.
 - The picture's "What is in the box" is a visible heading that names it, not a name only a screen reader hears.
