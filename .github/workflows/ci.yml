@@ -260,9 +260,10 @@ jobs:
     runs-on: ubuntu-26.04
     # Every browser project is some 790 tests: 45 minutes of the newest leg on a quick runner and 70 on a slow one,
     # after 20 of setup and gates. At 90 the merge of 0.6.0 was cancelled with every test passing, and was run again
-    # (CI run 43610439862, D-188); a minute not used is not billed. The other legs, and a draft's newest, are done in
-    # half an hour or something is wrong.
-    timeout-minutes: ${{ matrix.leg == 'newest' && needs.scope.outputs.browsers == 'every' && 120 || 30 }}
+    # (CI run 43610439862, D-188); a minute not used is not billed. The other legs, and a draft's newest, take about
+    # 25 minutes since milestone 7; at 30 a slow runner stopped the oldest leg with its browser tests still running
+    # (CI run 43906165176). At 45 a slow runner fits and a hang still stops at less than the newest leg's limit.
+    timeout-minutes: ${{ matrix.leg == 'newest' && needs.scope.outputs.browsers == 'every' && 120 || 45 }}
     strategy:
       fail-fast: false
       matrix:
