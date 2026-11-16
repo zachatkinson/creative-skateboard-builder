@@ -731,13 +731,16 @@
 
 /*
  * The phone bar: at the foot of the screen while the builder is on it, and no further. Sticky, not fixed, so it
- * stops where the builder ends and never covers the theme's footer.
+ * stops where the builder ends and never covers the theme's footer. Its contents sit at its foot: where the total
+ * takes two lines, as it does at 390 pixels once the board's picture takes its place beside it, the bar grows
+ * upward and Next stays under the thumb (a press on it held as the first deck's answer came was dropped by WebKit,
+ * when Next rose by 12 pixels). At the bar's own height, foot and middle are the same place.
  */
 :where(.cbuild-bar) {
 	position: sticky;
 	inset-block-end: var(--cbuild-bar-offset, 0px);
 	z-index: 10;
-	align-items: center;
+	align-items: flex-end;
 	gap: var(--cbuild-gap-small);
 	box-sizing: border-box;
 	min-block-size: var(--cbuild-bar-height);

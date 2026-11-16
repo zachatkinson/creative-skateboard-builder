@@ -2579,7 +2579,7 @@ Spec, Data model: `_cbuild_picture`, "the slots' layer order, and any anchor the
 
 **Status:** Accepted.
 
-## D-193: The Catalogue check lists the drawn slots' parts with no layer image, last
+### D-193 · The Catalogue check lists the drawn slots' parts with no layer image, last · 2026-11-14
 
 **Context.** Spec, Admin, Milestone 7: the picture shows a part's labelled photo where it has no layer image, and the shop should be told which parts those are. The check already lists what keeps a part from being offered or a preset from fitting.
 
@@ -2595,7 +2595,7 @@ Spec, Data model: `_cbuild_picture`, "the slots' layer order, and any anchor the
 
 **Status:** Accepted.
 
-## D-194: The layer images' renditions are the plugin's files, made in the part's index job
+### D-194 · The layer images' renditions are the plugin's files, made in the part's index job · 2026-11-14
 
 **Context.** The plan: "The plugin makes its AVIF and WebP renditions at the sizes the picture shows, without changing how WordPress handles the shop's other uploads." A layer image is a master at two pixels to the millimetre or more (D-190); a phone's picture needs a quarter of that.
 
@@ -2611,7 +2611,7 @@ Spec, Data model: `_cbuild_picture`, "the slots' layer order, and any anchor the
 
 **Status:** Accepted.
 
-## D-195: One renderer interface, the page's renderer, and the board in the page
+### D-195 · One renderer interface, the page's renderer, and the board in the page · 2026-11-15
 
 **Context.** The plan: "The renderer interface, with two renderers that draw the domain's Layout (D-060)"; "The picture becomes layered `<picture>` elements, each with an explicit size and AVIF and WebP sources. The deck layer is `fetchpriority="high"`. Each layer carries `cbuild_part_classes`. A pick swaps one layer in place with a view transition, and the description is said once. A part without a layer image keeps milestone 6's labelled photo within the same picture. The phone bar's small picture becomes the board."
 
@@ -2630,7 +2630,7 @@ Spec, Data model: `_cbuild_picture`, "the slots' layer order, and any anchor the
 
 **Status:** Accepted.
 
-## D-196: The composer: a drawing in the domain, drawn by GD or Imagick
+### D-196 · The composer: a drawing in the domain, drawn by GD or Imagick · 2026-11-15
 
 **Context.** The plan: "GD by default, and Imagick when the host has it. JPEG for email and WebP everywhere else." "Kept in `uploads/creative-skateboard-builder/pictures/`, named by a hash of the layers, the layout's version and the size." "GD and Imagick agree within a tolerance, measured per channel on the same layout. The figure is set from the first comparison and recorded." Deptrac lets an adapter reach the domain and the ports, not the services.
 
@@ -2647,7 +2647,7 @@ Spec, Data model: `_cbuild_picture`, "the slots' layer order, and any anchor the
 
 **Status:** Accepted.
 
-## D-197: The composed picture's job: asked for on an add to the cart, capped at 50 builds
+### D-197 · The composed picture's job: asked for on an add to the cart, capped at 50 builds · 2026-11-15
 
 **Context.** The plan: "A composed picture is asked for, never waited on. These ask for one: an add to the cart; an Edit build that replaces; a build link's page, where a crawler will read the share card. Each asks for its build once." "When the queue is full, nothing new is asked for, and the fallbacks above stand." The spec: "Composed pictures are made only for builds that pass validation, from a capped queue." Checked in WooCommerce 11.3.0: `woocommerce_add_to_cart` passes the line's key, the product, the quantity, the variation and the line's data (includes/class-wc-cart.php:1491; :1483 in 11.2.1).
 
@@ -2663,7 +2663,7 @@ Spec, Data model: `_cbuild_picture`, "the slots' layer order, and any anchor the
 
 **Status:** Accepted.
 
-## D-198: Pruning the composed pictures, the folder's cap, Site Health and uninstall
+### D-198 · Pruning the composed pictures, the folder's cap, Site Health and uninstall · 2026-11-15
 
 **Context.** The spec: "`cbuild_prune_pictures` (daily: composed images unused for 30 days, and the folder kept under its size cap)"; "uninstall removes ... composed pictures". The plan: "The folder's cap is pruned oldest first. The numbers are set while building and recorded with what they cost." "A host with neither image library makes no composed picture. It shows the deck's photo and says so in Site Health." Checked in WooCommerce 11.3.0: `as_schedule_recurring_action( $timestamp, $interval_in_seconds, $hook, $args, $group, $unique )` (packages/action-scheduler/functions.php:122).
 
@@ -2679,7 +2679,7 @@ Spec, Data model: `_cbuild_picture`, "the slots' layer order, and any anchor the
 
 **Status:** Accepted.
 
-## D-199: The kit's thumbnail in the cart, found without running the fit
+### D-199 · The kit's thumbnail in the cart, found without running the fit · 2026-11-15
 
 **Context.** The spec, The kit's thumbnail: "In every cart, the kit's line shows the build's composed picture once it's made, through the Store API's cart item images and `woocommerce_cart_item_thumbnail` (both confirmed in the installed source in milestone 7), and the deck's photo until then. Every part sits under it as its own line with its own photo." Checked in WooCommerce 11.3.0: `woocommerce_cart_item_thumbnail` with the product's image, the line and its key (templates/cart/cart.php:102, templates/cart/mini-cart.php:52); `woocommerce_store_api_cart_item_images` with the line's images as ImageAttachmentSchema's objects, the line and its key, and an image is dropped that has no `id`, or a `src` or `thumbnail` with no host (src/StoreApi/Schemas/V1/CartItemSchema.php:168-196).
 
@@ -2693,7 +2693,7 @@ Spec, Data model: `_cbuild_picture`, "the slots' layer order, and any anchor the
 
 **Status:** Accepted.
 
-## D-200: The share card, through Yoast's filters or the plugin's own tags, and none beside another SEO plugin
+### D-200 · The share card, through Yoast's filters or the plugin's own tags, and none beside another SEO plugin · 2026-11-15
 
 **Context.** The spec, SEO and sharing: "A build link's page carries Open Graph and X card tags with the build's composed picture, its name ("An 8.25″ complete: Rascals, Independent 149, Retna 54 mm") and its total. `og:url` is the build link, so the card shows that build, while `rel=canonical` stays the clean page, so search engines index one page. With Yoast or another SEO plugin active, the tags go through its filters. With none, the plugin prints them itself." D-147 left Yoast's `og:url` as the clean page. Checked in Yoast SEO 28.8: `wpseo_opengraph_title`, `wpseo_opengraph_desc` and `wpseo_opengraph_url` (src/presenters/open-graph/title-presenter.php:41, description-presenter.php:41, url-presenter.php:46); `wpseo_frontend_presentation` (src/integrations/front-end-integration.php:478), whose `open_graph_images` the image presenter prints with each image's width, height and type (src/presenters/open-graph/image-presenter.php:44-61). Yoast's image filters add to the product's own images and never take them away (src/generators/open-graph-image-generator.php:89-160). Yoast prints no X title, description or image where Open Graph has them (src/presentations/indexable-presentation.php:593-662), and X reads Open Graph's. Rank Math 1.0.282 defines `RANK_MATH_VERSION` (rank-math.php:248), SEOPress 10.4 `SEOPRESS_VERSION` (seopress.php:42) and All in One SEO 5.0.5.1 `AIOSEO_FILE` (all_in_one_seo_pack.php:74), each while its main file loads, and each prints Open Graph on every product page by default. WordPress prints no Open Graph of its own.
 
@@ -2713,7 +2713,7 @@ Spec, Data model: `_cbuild_picture`, "the slots' layer order, and any anchor the
 
 **Status:** Accepted.
 
-## D-201: A layer image's old renditions go with its new ones, and all of them with the image
+### D-201 · A layer image's old renditions go with its new ones, and all of them with the image · 2026-11-15
 
 **Context.** D-194 said an edited or replaced image's old renditions would "go with the prune (step 8)". The prune of D-198 reads only `pictures/`, by when each picture was last shown, and a rendition is never marked shown: the page asks for it by name on every view, and marking it would cost a write. So nothing removed a rendition but uninstall. The agent drafting docs/PICTURE.md found the gap.
 
@@ -2728,7 +2728,7 @@ Spec, Data model: `_cbuild_picture`, "the slots' layer order, and any anchor the
 
 **Status:** Accepted.
 
-## D-202: The pictures' queries, cut where they repeat, and four ceilings raised to what is left
+### D-202 · The pictures' queries, cut where they repeat, and four ceilings raised to what is left · 2026-11-15
 
 **Context.** Milestone 7's plan, Performance: "the state answer slowed by reading attachments" and "the route's benchmark with layers held to 80 ms", and "the composer's time and memory in the benchmark suite". With the benchmark's decks given layer images and their renditions, and the cart's thumbnails and the add's picture job in place, the benchmark's query ceilings, set from measurements in milestones 4 and 5 (D-124), failed: an add 64 against 54, a cart read 35 against 30, and the state route 48 cold against 42, 18 warm against 15, and 40 after a part moves against 37. Times stayed inside their budgets.
 
@@ -2743,7 +2743,7 @@ Spec, Data model: `_cbuild_picture`, "the slots' layer order, and any anchor the
 
 **Status:** Accepted.
 
-## D-203: The board's direction in its markup, since rtlcss flips it in the stylesheet
+### D-203 · The board's direction in its markup, since rtlcss flips it in the stylesheet · 2026-11-15
 
 **Context.** D-195 drew the board left to right in every language, as a deck is seen from below, with `direction: ltr` on `.cbuild-board` so its layers' `inset-inline-start` is their left. Milestone 7's plan, Internationalisation: "`rtl` asserts the layers unmirrored and the labels mirrored". The new browser test failed in the `rtl` project: a wheel whose `--cbuild-layer-x` is 0 % was drawn at 84 % of the board. wp-scripts makes `style-index-rtl.css` with rtlcss, which turned the declaration into `direction:rtl` (build/builder/style-index-rtl.css). An `rtl:ignore` comment does not survive: the minifier strips it before rtlcss reads the file.
 
@@ -2753,7 +2753,7 @@ Spec, Data model: `_cbuild_picture`, "the slots' layer order, and any anchor the
 
 **Status:** Accepted.
 
-## D-204: The deck's layer as the largest paint on a phone; on a desktop, no other image
+### D-204 · The deck's layer as the largest paint on a phone; on a desktop, no other image · 2026-11-15
 
 **Context.** Roadmap, milestone 7, Tests that must pass: "Speed: the deck layer as the largest paint, within 2.5 s in the lab". Lighthouse holds the time on the phone it emulates (`lighthouserc.cjs`). Both reviews of milestone 7 found nothing that named the element. A browser test that reads the browser's own `largest-contentful-paint` entry, once the deck's layer has painted, finds the deck's layer on every phone width, and the theme's heading on Chromium at 1280 by 720: on Twenty Twenty-Five the board starts about 540 pixels down, so only a strip of the deck is on screen, and the heading's text is larger.
 
@@ -2763,7 +2763,7 @@ Spec, Data model: `_cbuild_picture`, "the slots' layer order, and any anchor the
 
 **Status:** Accepted.
 
-## D-205: A page's share of the picture queue, the folder's cap at every job, and a failed picture logged
+### D-205 · A page's share of the picture queue, the folder's cap at every job, and a failed picture logged · 2026-11-15
 
 **Context.** The audit of milestone 7 found four should-fixes in the composed pictures (D-197, D-198, D-200). Any visitor's GET of a build link asked for its picture, capped only by the 50 builds the queue holds, and the 200 MB cap on the folder held only when the daily prune ran: a script walking build links could keep the queue full, crowd out a shopper's add to the cart, and fill gigabytes in a day. A picture that could not be drawn was written nowhere. And since the crawler's own fetch of a shared link was what asked for the picture, that first unfurl always showed the stand-in, the deck's layer, a narrow cut-out that platforms draw on black.
 
@@ -2775,5 +2775,15 @@ Spec, Data model: `_cbuild_picture`, "the slots' layer order, and any anchor the
 - Until the picture is made, the card shows the deck's product photo, at the size the builder shows it, before its layer image.
 
 **Tests.** `ComposedPicturesTest`: `test_a_pages_asks_take_at_most_their_share_of_the_queue_and_the_cart_keeps_the_rest`, `test_a_job_with_something_to_draw_holds_the_folder_to_its_cap_before_drawing`, `test_a_picture_that_cannot_be_drawn_is_logged_hourly_with_the_kit_and_the_reason`, `test_a_ready_review_offering_its_link_asks_for_its_picture_once_and_nothing_else_does`. `ShareCardTest`: `test_the_reviews_answer_asks_for_the_picture_so_a_shared_links_first_unfurl_can_be_it`, `test_until_the_picture_is_made_the_decks_photo_stands_in_before_its_layer`. `PictureFilesTest` asserts each reason. **Red runs:** "Undefined constant ...ComposedPictures::PAGE_MOST"; "Call to undefined method ...ComposedPictures::offered()"; the cap and the log, "Failed asserting that two arrays are identical." (`ComposedPicturesTest.php:208`, `:216`); the route, "the review offers the link, and asks for its picture / Failed asserting that actual size 0 matches expected size 1."; the photo, "Failed asserting that two arrays are identical." (`ShareCardTest.php:209`). **Deliberate breaks:** each fix taken out alone fails its own test at the same line.
+
+**Status:** Accepted.
+
+### D-206 · The phone bar's contents sit at its foot · 2026-11-16
+
+The audit's full run of milestone 7: in webkit-phone (an iPhone 14's 390 pixels), Next moved 11.9 pixels under a press held while the first deck's answer came, where 2 is allowed, and WebKit dropped the press (D-185's test, every run). D-185 keeps the picked card where it was; the bar is sticky at the foot of the screen and moves with nothing above it. But the answer shows the bar's small picture, 44 pixels and a gap beside the total, so "Total: $184.00" no longer fits on one line in the 103 pixels left. The total took two lines, the bar grew from 68 to 92 pixels upward, and Next, centred in it, rose by half of that. The same happens whenever a pick makes the total longer than its line.
+
+- **The bar's contents sit at its foot** (`align-items: flex-end`), so a bar that grows grows upward and Next, the picture and the total's last line stay under the thumb. At the bar's own height, 4.25rem, the foot and the middle are the same place, so nothing moves where the total fits.
+- **The picture's place is not kept empty** before a deck is picked: a blank square at the start of the bar says nothing, and the total would take two lines from the start on a phone.
+- **Tests.** `builder.spec.ts`, D-185's test, in webkit-phone, chromium-phone and firefox-phone, and the phone bar's own tests. **Red run:** "Next where it was under the press / Expected: < 2 / Received: 11.859375", webkit-phone, five runs of five, and the same on the commit before the audit (`1f283b0`).
 
 **Status:** Accepted.

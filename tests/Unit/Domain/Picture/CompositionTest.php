@@ -102,6 +102,7 @@ final class CompositionTest extends TestCase {
 				self::fail( 'refused' );
 			} catch ( InvalidCanvas $refused ) {
 				self::assertSame( $canvas[3], $refused->reason );
+				self::assertSame( $canvas[3]->value, $refused->getMessage(), 'its message is the reason\'s code' );
 			}
 		}
 		self::assertSame( 1, ( new Canvas( 1, 1, 'image/jpeg' ) )->width, 'one pixel is a canvas' );
