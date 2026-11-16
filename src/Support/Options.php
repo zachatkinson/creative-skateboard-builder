@@ -104,6 +104,20 @@ final class Options {
 	public const CLASS_EDIT     = 'cbuild-edit';
 
 	/**
+	 * The other classes docs/HOOKS.md promises a theme: in the cart, what a kit's line charges for assembly, the
+	 * slot's label in a part's Part of words, and a kit's composed picture; in the builder, the places
+	 * `cbuild_part_classes` reaches: a part's place in the picture, its layer on the board, the bar's photo and its
+	 * line in the review.
+	 */
+	public const CLASS_ASSEMBLY     = 'cbuild-assembly';
+	public const CLASS_PART_SLOT    = 'cbuild-part__slot';
+	public const CLASS_CART_PICTURE = 'cbuild-cart-picture';
+	public const CLASS_PICTURE_ITEM = 'cbuild-picture__item';
+	public const CLASS_LAYER        = 'cbuild-board__layer';
+	public const CLASS_BAR_PHOTO    = 'cbuild-bar__photo';
+	public const CLASS_REVIEW_ITEM  = 'cbuild-review__item';
+
+	/**
 	 * Order item meta (spec: Data model, Order items). Hidden from customers by their underscore, and kept with the
 	 * shop's order records for good: a key is never renamed.
 	 */
@@ -319,14 +333,26 @@ final class Options {
 	}
 
 	/**
-	 * Every class the plugin puts in a shop's carts.
+	 * Every class docs/HOOKS.md promises a theme, in the cart and in the builder.
 	 *
 	 * @since 0.6.0
 	 *
 	 * @return list<string>
 	 */
 	public static function cssClasses(): array {
-		return array( self::CLASS_KIT, self::CLASS_PART, self::CLASS_QUANTITY, self::CLASS_EDIT );
+		return array(
+			self::CLASS_KIT,
+			self::CLASS_PART,
+			self::CLASS_QUANTITY,
+			self::CLASS_EDIT,
+			self::CLASS_ASSEMBLY,
+			self::CLASS_PART_SLOT,
+			self::CLASS_CART_PICTURE,
+			self::CLASS_PICTURE_ITEM,
+			self::CLASS_LAYER,
+			self::CLASS_BAR_PHOTO,
+			self::CLASS_REVIEW_ITEM,
+		);
 	}
 
 	/**

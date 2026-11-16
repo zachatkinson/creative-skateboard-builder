@@ -533,6 +533,15 @@ A kit's line raised past what the shop has of a part is refused as `cbuild_build
 | `cbuild-part__slot` | 0.6.0 | The slot's label in a part's Part of words. |
 | `cbuild-cart-picture` | 0.7.0 | A kit's composed picture, as a classic cart's or the mini-cart widget's thumbnail. |
 
+**Builder classes.** The places a part is shown in the builder, which `cbuild_part_classes` adds to and a theme may style:
+
+| Class | Since | Where |
+| --- | --- | --- |
+| `cbuild-picture__item` | 0.6.0 | A part's place in the picture: its labelled photo, hidden where the board draws the part. |
+| `cbuild-board__layer` | 0.7.0 | A part's layer on the board, in the picture and in the bar, with `cbuild-board__layer--<slot>` beside it. |
+| `cbuild-bar__photo` | 0.6.0 | The bar's small picture of the deck's photo, until the board draws a layer. |
+| `cbuild-review__item` | 0.6.0 | A part's line in the review, with `cbuild-review__item--wrong` where it no longer fits. |
+
 **What the plugin loads.** A few style rules in the page, under the handle `cbuild-cart`, with the Mini-Cart, the Cart or Checkout block, or a classic cart or checkout page. With the Cart or Checkout block, also the script `cbuild-cart`, which answers `cartItemClass`, `itemName` and `showRemoveItemLink` in the namespace above and needs `wc-blocks-checkout`. Both only where the cart holds a build as the page is drawn.
 
 ### Shipping, express pay and delivery

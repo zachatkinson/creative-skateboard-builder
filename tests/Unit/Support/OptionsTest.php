@@ -60,4 +60,16 @@ final class OptionsTest extends TestCase {
 		self::assertSame( 'creative-skateboard-builder', Options::LOG_SOURCE );
 		self::assertSame( 'cbuild', Options::CACHE_GROUP );
 	}
+
+	// Spec review of milestone 7, should-fix: classes HOOKS.md promises a theme were not in the API's snapshot, so
+	// `composer api:check` would not notice one renamed. Every class in a table of HOOKS.md's is in the list the
+	// snapshot is made from; api:check holds the other way.
+	public function test_every_class_hooks_md_lists_in_a_table_is_in_the_api_surface(): void {
+		$hooks = (string) file_get_contents( dirname( __DIR__, 3 ) . '/docs/HOOKS.md' );
+		preg_match_all( '/^\| `(cbuild-[a-z0-9_-]+)` \| \d+\.\d+\.\d+ \|/m', $hooks, $rows );
+		self::assertNotSame( array(), $rows[1] );
+		self::assertSame( array(), array_values( array_diff( $rows[1], Options::cssClasses() ) ) );
+		self::assertContains( 'cbuild-board__layer', Options::cssClasses(), 'the board\'s layers, which cbuild_part_classes reaches' );
+		self::assertContains( 'cbuild-cart-picture', Options::cssClasses() );
+	}
 }

@@ -586,6 +586,84 @@ test.describe( 'Every way in by a link', () => {
 	} );
 } );
 
+test.describe( 'The largest paint', () => {
+	// Roadmap, milestone 7, Tests that must pass: "Speed: the deck layer as the largest paint, within 2.5 s in the
+	// lab". Lighthouse holds the time (lighthouserc.cjs); this names the element, from the browser's own entry.
+	test( "is the deck's layer on a build link's review", async ( {
+		page,
+		browserName,
+	} ) => {
+		test.skip(
+			browserName === 'webkit',
+			'WebKit reports no largest-contentful-paint entries.'
+		);
+		test.skip(
+			test.info().project.name === 'no-js',
+			'The browser runs no script, so it reports nothing to read.'
+		);
+		await page.goto(
+			linkTo( {
+				deck: id( 'builder-test-deck-8-0' ),
+				trucks: id( 'builder-test-trucks-139' ),
+				wheels: id( 'builder-test-wheels-54' ),
+				step: 'review',
+			} )
+		);
+		// The last entry once the deck's layer has loaded and been painted: the largest paint so far.
+		const deck = page.locator( '.cbuild-board__layer--deck img' ).first();
+		await expect
+			.poll( () =>
+				deck.evaluate(
+					( img: HTMLImageElement ) =>
+						img.complete && img.naturalWidth > 0
+				)
+			)
+			.toBe( true );
+		// After the layer has painted, a buffered observer's first batch holds every entry so far; the last is the
+		// largest paint.
+		const largest = await page.evaluate(
+			() =>
+				new Promise< string >( ( resolve ) => {
+					requestAnimationFrame( () =>
+						requestAnimationFrame( () =>
+							new PerformanceObserver( ( list, observer ) => {
+								observer.disconnect();
+								const entries = list.getEntries() as Array<
+									PerformanceEntry & {
+										element?: Element | null;
+									}
+								>;
+								const last = entries[ entries.length - 1 ];
+								resolve(
+									last?.element?.closest(
+										'.cbuild-board__layer'
+									)?.className ??
+										String( last?.element?.tagName )
+								);
+							} ).observe( {
+								type: 'largest-contentful-paint',
+								buffered: true,
+							} )
+						)
+					);
+				} )
+		);
+		// D-204: on a phone, as in Lighthouse's lab, the deck's layer is the largest paint. On a desktop the theme's
+		// heading can be larger than the strip of board above the fold, but no other image may take the paint.
+		if ( ( page.viewportSize()?.width ?? 0 ) < 782 ) {
+			expect( largest ).toContain( 'cbuild-board__layer--deck' );
+		} else if ( ! largest.includes( 'cbuild-board__layer--deck' ) ) {
+			expect( [
+				'IMG',
+				'PICTURE',
+				'VIDEO',
+				'svg',
+				'image',
+			] ).not.toContain( largest );
+		}
+	} );
+} );
+
 test.describe( 'The board in either direction', () => {
 	// Milestone 7's plan, Internationalisation: "`rtl` asserts the layers unmirrored and the labels mirrored". The
 	// board is drawn left to right in every language, as a deck is seen from below, and its layers' edges are its left
@@ -1756,6 +1834,12 @@ test.describe( 'The keyboard alone', () => {
 		);
 
 		const builder = page.locator( '.cbuild' );
+		if ( javaScriptEnabled ) {
+			// After a pick, the status says the build and its total, once (spec: Keyboard and screen readers).
+			await expect( builder.locator( '.cbuild__status' ) ).toHaveText(
+				/^The build so far: Deck: Builder test deck.*\. Total: .+\.$/
+			);
+		}
 		for ( let step = 0; step < 12; step++ ) {
 			const now = ( await heading( page ).textContent() ) ?? '';
 			if ( now.endsWith( ': Review' ) ) {
@@ -1769,6 +1853,12 @@ test.describe( 'The keyboard alone', () => {
 			if ( javaScriptEnabled ) {
 				await expect( heading( page ) ).toBeFocused();
 			}
+			// Spec, The picture: "a written description of the build", after every change (spec review of milestone
+			// 7, should-fix, owed from milestone 6): the deck chosen first is in it at every step. A step is read from
+			// its heading, so the status says nothing then (D-149); it spoke after the pick, above.
+			await expect(
+				builder.locator( '.cbuild-picture__description' )
+			).toHaveText( /^The build so far: Deck: Builder test deck.*\.$/ );
 		}
 		await expect( heading( page ) ).toHaveText( /: Review$/ );
 

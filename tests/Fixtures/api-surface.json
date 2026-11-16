@@ -137,10 +137,17 @@
         "cbuild[step]"
     ],
     "css_classes": [
+        "cbuild-assembly",
+        "cbuild-bar__photo",
+        "cbuild-board__layer",
+        "cbuild-cart-picture",
         "cbuild-edit",
         "cbuild-kit",
         "cbuild-part",
-        "cbuild-quantity"
+        "cbuild-part__slot",
+        "cbuild-picture__item",
+        "cbuild-quantity",
+        "cbuild-review__item"
     ],
     "dom_events": [
         "cbuild:added",

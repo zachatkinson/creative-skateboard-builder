@@ -564,6 +564,46 @@ final class StateRouteTest extends IntegrationTestCase {
 		}
 	}
 
+	// Spec review of milestone 7, should-fix: the picture's written description had no test in French. Spec, The
+	// picture: "a written description of the build"; Internationalisation: no sentence is built by joining words.
+	public function test_the_pictures_description_and_the_status_after_it_are_in_the_language_asked_for(): void {
+		add_filter( 'get_available_languages', static fn( array $languages ): array => array_merge( $languages, array( 'fr_CA' ) ) );
+		$GLOBALS['wp_locale_switcher'] = new WP_Locale_Switcher();
+		$GLOBALS['wp_locale_switcher']->init();
+		$french = array(
+			'The build so far: %s.' => 'Votre planche jusqu’ici : %s.',
+			'%1$s: %2$s'            => '%1$s : %2$s',
+			'%1$s Total: %2$s.'     => '%1$s Total : %2$s.',
+			'Deck'                  => 'Planche',
+			'Trucks'                => 'Trucks',
+		);
+		add_filter(
+			'gettext_creative-skateboard-builder',
+			static fn( string $translation, string $text ): string => 'fr_CA' === determine_locale() ? ( $french[ $text ] ?? $translation ) : $translation,
+			10,
+			2
+		);
+		add_filter(
+			'gettext_with_context_creative-skateboard-builder',
+			static fn( string $translation, string $text, string $context ): string => 'fr_CA' === determine_locale() && 'between the parts of a build' === $context ? ' ; ' : $translation,
+			10,
+			3
+		);
+		$body = $this->answer(
+			array(
+				'locale' => 'fr_CA',
+				'cbuild' => array(
+					'deck'   => (string) $this->parts['deck 8.5'],
+					'trucks' => (string) $this->parts['truck 139'],
+					'step'   => 'review',
+				),
+			)
+		);
+		$description = (string) $body['view']['picture']['description'];
+		self::assertMatchesRegularExpression( '/^Votre planche jusqu’ici : \S.* : .+ ; .+ : .+\.$/u', $description, 'the pattern, each part by its slot, and the separator, all in French' );
+		self::assertStringStartsWith( $description . ' Total : ', (string) $body['view']['status'], 'the status says the description, then the total, in French' );
+	}
+
 	public function test_the_answer_is_in_the_language_asked_for_when_the_site_has_it_and_the_sites_own_otherwise(): void {
 		add_filter( 'get_available_languages', static fn( array $languages ): array => array_merge( $languages, array( 'fr_CA' ) ) );
 		$GLOBALS['wp_locale_switcher'] = new WP_Locale_Switcher();

@@ -261,6 +261,9 @@ final class BuilderTest extends TestCase {
 		$items = array_column( $view['picture']['items'], 'drawn', 'key' );
 		self::assertTrue( $items[ SlotKey::DECK ] && $items[ SlotKey::TRUCKS ] );
 		self::assertFalse( $items[ SlotKey::WHEELS ], 'a part with no layer image keeps its labelled photo' );
+		// Both reviews of milestone 7: a hidden photo that is eager is still fetched, at high priority, against the
+		// deck's layer. A drawn deck's photo waits, and the layer alone is fetched first.
+		self::assertSame( array( 'lazy', 'auto' ), array( $view['picture']['items'][0]['loading'], $view['picture']['items'][0]['priority'] ), 'the drawn deck\'s hidden photo' );
 
 		$bar = $view['bar']['board'];
 		self::assertTrue( $view['bar']['seen'] );

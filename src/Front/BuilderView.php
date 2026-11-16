@@ -14,6 +14,7 @@ use CreativeBranding\SkateboardBuilder\Domain\Fit\Problem;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\SlotKey;
 use CreativeBranding\SkateboardBuilder\Service\State;
 use CreativeBranding\SkateboardBuilder\Support\Cast;
+use CreativeBranding\SkateboardBuilder\Support\Options;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -190,17 +191,19 @@ final class BuilderView {
 				'board'       => self::board( $picture, $state->id, null ),
 				'items'       => array_map(
 					static function ( mixed $item, int $at ) use ( $state ): array {
-						$item = Cast::map( $item );
+						$item  = Cast::map( $item );
+						$drawn = Cast::bool( $item['drawn'] ?? null );
 						return array(
 							'key'      => Cast::str( $item['slot'] ?? null ),
-							'classes'  => self::flagged( array( 'cbuild-picture__item' ), $state->id, Cast::str( $item['slot'] ?? null ), Cast::int( $item['part'] ?? null ) ),
+							'classes'  => self::flagged( array( Options::CLASS_PICTURE_ITEM ), $state->id, Cast::str( $item['slot'] ?? null ), Cast::int( $item['part'] ?? null ) ),
 							'label'    => Cast::str( $item['label'] ?? null ),
 							'name'     => Cast::str( $item['name'] ?? null ),
 							// A part the board draws has no labelled photo beside it (spec: The picture).
-							'drawn'    => Cast::bool( $item['drawn'] ?? null ),
-							// The first, the deck, is the page's largest paint (spec: The picture); the rest wait.
-							'loading'  => 0 === $at ? 'eager' : 'lazy',
-							'priority' => 0 === $at ? 'high' : 'auto',
+							'drawn'    => $drawn,
+							// The first, the deck, is the page's largest paint (spec: The picture); the rest wait. A
+							// drawn deck's photo is hidden, and a hidden eager image is still fetched, so it waits too.
+							'loading'  => 0 === $at && ! $drawn ? 'eager' : 'lazy',
+							'priority' => 0 === $at && ! $drawn ? 'high' : 'auto',
 						) + self::image( $item['image'] ?? null );
 					},
 					Cast::items( $picture['items'] ?? null ),
@@ -237,7 +240,7 @@ final class BuilderView {
 			'seen'    => Cast::bool( $board['shown'] ?? null ) || $photo['hasImage'],
 			'board'   => $board,
 			'photo'   => $photo + array(
-				'classes' => self::flagged( array( 'cbuild-bar__photo' ), $kit, Cast::str( $first['slot'] ?? null ), Cast::int( $first['part'] ?? null ) ),
+				'classes' => self::flagged( array( Options::CLASS_BAR_PHOTO ), $kit, Cast::str( $first['slot'] ?? null ), Cast::int( $first['part'] ?? null ) ),
 			),
 			'picture' => __( 'See the picture', 'creative-skateboard-builder' ),
 			/* translators: %s: the build's total, such as $184.00. */
@@ -409,7 +412,7 @@ final class BuilderView {
 			$seen[ $slot ] = ( $seen[ $slot ] ?? 0 ) + 1;
 			$layers[]      = array(
 				'key'      => $slot . '-' . $seen[ $slot ],
-				'classes'  => self::flagged( array( 'cbuild-board__layer', 'cbuild-board__layer--' . $slot ), $kit, $slot, Cast::int( $layer['part'] ?? null ) ),
+				'classes'  => self::flagged( array( Options::CLASS_LAYER, Options::CLASS_LAYER . '--' . $slot ), $kit, $slot, Cast::int( $layer['part'] ?? null ) ),
 				'style'    => sprintf(
 					'--cbuild-layer-x:%1$s%%;--cbuild-layer-y:%2$s%%;--cbuild-layer-width:%3$s%%;--cbuild-layer-height:%4$s%%',
 					self::decimal( 100 * Cast::int( $layer['x'] ?? null ) / $width ),
@@ -1126,7 +1129,7 @@ final class BuilderView {
 		}
 		$items = array();
 		foreach ( $steps as $slot ) {
-			$own     = isset( $wrong[ $slot ] ) ? array( 'cbuild-review__item', 'cbuild-review__item--wrong' ) : array( 'cbuild-review__item' );
+			$own     = isset( $wrong[ $slot ] ) ? array( Options::CLASS_REVIEW_ITEM, Options::CLASS_REVIEW_ITEM . '--wrong' ) : array( Options::CLASS_REVIEW_ITEM );
 			$items[] = array(
 				'key'     => $slot,
 				'classes' => isset( $counted[ $slot ] ) ? self::flagged( $own, $state->id, $slot, $counted[ $slot ] ) : implode( ' ', $own ),
