@@ -34,13 +34,32 @@ final class InMemoryPictureFiles implements PictureFiles {
 	 */
 	public ?string $library = 'gd';
 
-	public function draw( Composition $composition ): bool {
+	/**
+	 * The reason it gives for drawing nothing, or null to draw.
+	 */
+	public ?string $refuse = null;
+
+	/**
+	 * The calls to draw() and prune(), in order.
+	 *
+	 * @var list<string>
+	 */
+	public array $order = array();
+
+	public function draw( Composition $composition ): ?string {
 		++$this->asked;
-		if ( null === $this->library || $composition->isEmpty() ) {
-			return false;
+		$this->order[] = 'draw';
+		if ( null === $this->library ) {
+			return self::NO_LIBRARY;
+		}
+		if ( $composition->isEmpty() ) {
+			return self::EMPTY;
+		}
+		if ( null !== $this->refuse ) {
+			return $this->refuse;
 		}
 		$this->drawn[ $composition->name() ] = $composition;
-		return true;
+		return null;
 	}
 
 	public function url( string $name ): ?string {
@@ -76,6 +95,7 @@ final class InMemoryPictureFiles implements PictureFiles {
 
 	public function prune( int $before, int $mostBytes ): int {
 		$this->pruned[] = array( $before, $mostBytes );
+		$this->order[]  = 'prune';
 		return 2;
 	}
 

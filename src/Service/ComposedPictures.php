@@ -17,6 +17,7 @@ use CreativeBranding\SkateboardBuilder\Domain\Picture\Composition;
 use CreativeBranding\SkateboardBuilder\Domain\Picture\Layout;
 use CreativeBranding\SkateboardBuilder\Port\Clock;
 use CreativeBranding\SkateboardBuilder\Port\Kits;
+use CreativeBranding\SkateboardBuilder\Port\Logger;
 use CreativeBranding\SkateboardBuilder\Port\PictureFiles;
 use CreativeBranding\SkateboardBuilder\Port\Queue;
 
@@ -121,6 +122,23 @@ final class ComposedPictures {
 	public const int QUEUED_MOST = 50;
 
 	/**
+	 * The most of the queue a page's asks may take: a build link's page and the review's answer are asked by anyone,
+	 * so they share these places, and an add to the cart, which a shopper makes, keeps the rest (the audit of
+	 * milestone 7; D-205).
+	 *
+	 * @since 0.7.0
+	 */
+	public const int PAGE_MOST = 10;
+
+	/**
+	 * Who asks: an add to the cart, or a page.
+	 *
+	 * @since 0.7.0
+	 */
+	public const string FROM_CART = 'cart';
+	public const string FROM_PAGE = 'page';
+
+	/**
 	 * Constructor.
 	 *
 	 * @since 0.7.0
@@ -131,6 +149,7 @@ final class ComposedPictures {
 	 * @param PictureFiles $files   The pictures' files.
 	 * @param Queue        $queue   Where the job waits.
 	 * @param Clock        $clock   The time.
+	 * @param Logger       $logger  Where a picture that cannot be drawn is written, at most hourly for a kit.
 	 */
 	public function __construct(
 		private Kits $kits,
@@ -138,20 +157,24 @@ final class ComposedPictures {
 		private LayerArtwork $artwork,
 		private PictureFiles $files,
 		private Queue $queue,
-		private Clock $clock
+		private Clock $clock,
+		private Logger $logger
 	) {}
 
 	/**
-	 * Ask for a build's pictures. Nothing is asked while the queue is full, or for a build that names no part.
+	 * Ask for a build's pictures. Nothing is asked while the queue is full, or a page's share of it for a page's
+	 * ask, or for a build that names no part.
 	 *
 	 * @since 0.7.0
 	 *
 	 * @param int                $kit   The kit product's ID.
 	 * @param array<string, int> $picks The part's ID for each slot filled, in step order.
+	 * @param string             $from  FROM_CART or FROM_PAGE.
 	 * @return bool Whether it was asked for.
 	 */
-	public function ask( int $kit, array $picks ): bool {
-		if ( $kit < 1 || array() === $picks || $this->queue->pending( self::JOB, self::QUEUED_MOST ) >= self::QUEUED_MOST ) {
+	public function ask( int $kit, array $picks, string $from = self::FROM_CART ): bool {
+		$most = self::FROM_PAGE === $from ? self::PAGE_MOST : self::QUEUED_MOST;
+		if ( $kit < 1 || array() === $picks || $this->queue->pending( self::JOB, $most ) >= $most ) {
 			return false;
 		}
 		$this->queue->enqueueDistinct(
@@ -162,6 +185,32 @@ final class ComposedPictures {
 			) 
 		);
 		return true;
+	}
+
+	/**
+	 * A build's state answered: on a review that could go to the cart, where its link is offered to be shared, its
+	 * picture is asked for, as a page asks, unless it is made. So the card's first unfurl is the picture, once the job
+	 * has run (the audit of milestone 7).
+	 *
+	 * @since 0.7.0
+	 *
+	 * @param State $state The state answered.
+	 */
+	public function offered( State $state ): void {
+		if ( State::REVIEW !== $state->step || ! $state->ready() || array() !== $state->refused ) {
+			return;
+		}
+		$counted = $state->counted();
+		$card    = $this->drawings( $state->kit, $counted, array( self::SHARE => self::CANVASES[ self::SHARE ] ) )[ self::SHARE ] ?? null;
+		if ( null === $card || null !== $this->files->url( $card->name() ) ) {
+			// Nothing of the build is drawn, or its picture is made.
+			return;
+		}
+		$picks = array();
+		foreach ( $counted as $slot => $part ) {
+			$picks[ $slot ] = $part->id;
+		}
+		$this->ask( $state->id, $picks, self::FROM_PAGE );
 	}
 
 	/**
@@ -177,9 +226,27 @@ final class ComposedPictures {
 	 *                                                                         shop's currency settings.
 	 */
 	public function compose( int $kit, array $picks ): int {
+		$compositions = $this->compositions( $kit, $picks );
+		if ( array() !== $compositions ) {
+			// The folder's cap holds before each job draws, not only once a day (the audit of milestone 7).
+			$this->prune();
+		}
 		$there = 0;
-		foreach ( $this->compositions( $kit, $picks ) as $composition ) {
-			$there += $this->files->draw( $composition ) ? 1 : 0;
+		foreach ( $compositions as $composition ) {
+			$failed = $this->files->draw( $composition );
+			if ( null === $failed ) {
+				++$there;
+				continue;
+			}
+			$this->logger->hourly(
+				'picture_failed_' . $kit,
+				Logger::WARNING,
+				'A build\'s picture could not be drawn, so the deck\'s photo stands in for it. Site Health says whether the host can draw pictures.',
+				array(
+					'kit'    => $kit,
+					'reason' => $failed,
+				) 
+			);
 		}
 		if ( $there > 0 ) {
 			// The pruning starts with the first picture, and runs daily from then; deactivation unschedules it.

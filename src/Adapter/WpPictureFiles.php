@@ -76,21 +76,27 @@ final class WpPictureFiles implements PictureFiles {
 	 *
 	 * @param Composition $composition The drawing.
 	 */
-	public function draw( Composition $composition ): bool {
-		$folder  = self::folder();
+	public function draw( Composition $composition ): ?string {
+		if ( $composition->isEmpty() ) {
+			return self::EMPTY;
+		}
 		$library = $this->library( $composition->canvas->type );
-		if ( $composition->isEmpty() || null === $folder || null === $library || ! wp_mkdir_p( $folder['dir'] ) ) {
-			return false;
+		if ( null === $library ) {
+			return self::NO_LIBRARY;
+		}
+		$folder = self::folder();
+		if ( null === $folder || ! wp_mkdir_p( $folder['dir'] ) ) {
+			return self::NO_FOLDER;
 		}
 		$path = $folder['dir'] . '/' . $composition->name();
 		if ( file_exists( $path ) ) {
-			return true;
+			return null;
 		}
 		$files = array();
 		foreach ( $composition->placements as $placement ) {
 			$file = get_attached_file( $placement->attachment );
 			if ( ! is_string( $file ) || ! is_readable( $file ) ) {
-				return false;
+				return self::LAYER_UNREADABLE;
 			}
 			$files[] = array( $placement, $file );
 		}
@@ -98,14 +104,14 @@ final class WpPictureFiles implements PictureFiles {
 		$drawn     = 'gd' === $library ? self::gd( $composition, $files, $temporary ) : self::imagick( $composition, $files, $temporary );
 		if ( ! $drawn || ! file_exists( $temporary ) ) {
 			wp_delete_file( $temporary );
-			return false;
+			return self::DRAW_FAILED;
 		}
 		// phpcs:ignore WordPress.WP.AlternativeFunctions.rename_rename, WordPressVIPMinimum.Functions.RestrictedFunctions.file_ops_rename -- Both paths are in wp_get_upload_dir()'s folder: a move within the plugin's own folder, so a half-written file is never served.
 		if ( ! rename( $temporary, $path ) ) {
 			wp_delete_file( $temporary );
-			return false;
+			return self::MOVE_FAILED;
 		}
-		return true;
+		return null;
 	}
 
 	/**

@@ -103,7 +103,9 @@ final class ShareCard {
 	}
 
 	/**
-	 * The card's image: the composed picture, else the deck's layer image, else its photo, else none.
+	 * The card's image: the composed picture, else the deck's photo, else its layer image, else none. The photo comes
+	 * before the layer: a layer is a narrow cut-out on transparency, which platforms draw on black (the audit of
+	 * milestone 7).
 	 *
 	 * @param State                $state   The build's state.
 	 * @param array<string, int>   $picks   The part counted in each slot.
@@ -122,18 +124,15 @@ final class ShareCard {
 					'type'   => $type,
 				);
 			}
-			$this->pictures->ask( $state->id, $picks );
+			$this->pictures->ask( $state->id, $picks, ComposedPictures::FROM_PAGE );
 		}
-		foreach ( Cast::items( $picture['layers'] ?? null ) as $layer ) {
-			$layer = Cast::map( $layer );
-			if ( SlotKey::DECK === Cast::str( $layer['slot'] ?? null ) ) {
-				return self::shown( Cast::map( $layer['image'] ?? null ) );
-			}
-		}
-		foreach ( Cast::items( $picture['items'] ?? null ) as $item ) {
-			$item = Cast::map( $item );
-			if ( SlotKey::DECK === Cast::str( $item['slot'] ?? null ) ) {
-				return self::shown( Cast::map( $item['image'] ?? null ) );
+		foreach ( array( 'items', 'layers' ) as $list ) {
+			foreach ( Cast::items( $picture[ $list ] ?? null ) as $entry ) {
+				$entry = Cast::map( $entry );
+				$image = SlotKey::DECK === Cast::str( $entry['slot'] ?? null ) ? self::shown( Cast::map( $entry['image'] ?? null ) ) : null;
+				if ( null !== $image ) {
+					return $image;
+				}
 			}
 		}
 		return null;

@@ -17,6 +17,7 @@ use CreativeBranding\SkateboardBuilder\Front\SeoHooks;
 use CreativeBranding\SkateboardBuilder\Front\ShareCard;
 use CreativeBranding\SkateboardBuilder\Front\ShareHooks;
 use CreativeBranding\SkateboardBuilder\Hooks\PictureHooks;
+use CreativeBranding\SkateboardBuilder\Rest\StateRoute;
 use CreativeBranding\SkateboardBuilder\Support\Options;
 use CreativeBranding\SkateboardBuilder\Tests\Support\CartTestCase;
 use CreativeBranding\SkateboardBuilder\Tests\Support\LayerFiles;
@@ -166,5 +167,44 @@ final class ShareCardTest extends CartTestCase {
 	public function test_the_canonical_stays_the_clean_page_beside_the_card(): void {
 		$this->head( array_map( 'strval', $this->picks() ) );
 		self::assertSame( (string) get_permalink( $this->kit ), wp_get_canonical_url( $this->kit ) );
+	}
+
+	// The audit of milestone 7, should-fix: the crawler's first fetch of a shared link was what asked for the picture,
+	// so that fetch always got the stand-in. The review's answer, where the link is offered, asks for it.
+	public function test_the_reviews_answer_asks_for_the_picture_so_a_shared_links_first_unfurl_can_be_it(): void {
+		$_SERVER['REMOTE_ADDR'] = '203.0.113.9';
+		rest_get_server();
+		$this->service( StateRoute::class )->register();
+		// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- WordPress's own, to build the routes.
+		do_action( 'rest_api_init', rest_get_server() );
+		$ask = function ( string $step ): void {
+			$request = new \WP_REST_Request( 'GET', '/cbuild/v1/kits/' . $this->kit . '/state' );
+			// As the store asks it: with the build link it moves to.
+			$request->set_query_params( array( BuildLink::PARAM => array_map( 'strval', $this->picks() ) + array( 'step' => $step ) ) );
+			$response = rest_get_server()->dispatch( $request );
+			self::assertSame( 200, $response->get_status(), (string) wp_json_encode( $response->get_data() ) );
+		};
+		$ask( 'wheels' );
+		self::assertSame( array(), self::waiting( Options::JOB_COMPOSE_PICTURE ), 'a step before the review asks nothing' );
+		$ask( 'review' );
+		self::assertCount( 1, self::waiting( Options::JOB_COMPOSE_PICTURE ), 'the review offers the link, and asks for its picture' );
+
+		self::work();
+		$tags = $this->head( array_map( 'strval', $this->picks() ) + array( 'step' => 'review' ) );
+		self::assertMatchesRegularExpression( '#/pictures/[0-9a-f]{32}\.webp$#', $tags['og:image'][0], 'the first fetch of the link is the picture' );
+		unset( $_SERVER['REMOTE_ADDR'] );
+	}
+
+	// The audit of milestone 7, should-fix: until the picture was made, the card showed the deck's layer, a narrow
+	// cut-out that platforms draw on black. The deck's photo, whole and opaque, stands in first.
+	public function test_until_the_picture_is_made_the_decks_photo_stands_in_before_its_layer(): void {
+		$photo = LayerFiles::attachment( 800, 800, false );
+		$deck  = wc_get_product( $this->parts['deck'] );
+		$deck->set_image_id( $photo );
+		$deck->save();
+		$tags = $this->head( array_map( 'strval', $this->picks() ) );
+		$file = (string) wp_get_attachment_url( $photo );
+		self::assertStringStartsWith( substr( $file, 0, -strlen( '.png' ) ), $tags['og:image'][0], 'the deck\'s photo, at the size the builder shows it' );
+		self::assertGreaterThanOrEqual( array( '300' ), $tags['og:image:width'], 'at least the 300 pixels a large card needs' );
 	}
 }

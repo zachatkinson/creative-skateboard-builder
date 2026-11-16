@@ -2752,3 +2752,28 @@ Spec, Data model: `_cbuild_picture`, "the slots' layer order, and any anchor the
 **Tests.** `builder.spec.ts`, "The board in either direction" (in every project, `rtl` among them: each of seven layers drawn where its own x says, from the left; the labelled photos start on the page's side). **Red run:** "each layer is where its own x says, from the left", "Expected: < 0.5, Received: 84.06209941603761" in the `rtl` project. **Deliberate break:** `dir="ltr"` taken off the picture's board, the same line.
 
 **Status:** Accepted.
+
+## D-204: The deck's layer as the largest paint on a phone; on a desktop, no other image
+
+**Context.** Roadmap, milestone 7, Tests that must pass: "Speed: the deck layer as the largest paint, within 2.5 s in the lab". Lighthouse holds the time on the phone it emulates (`lighthouserc.cjs`). Both reviews of milestone 7 found nothing that named the element. A browser test that reads the browser's own `largest-contentful-paint` entry, once the deck's layer has painted, finds the deck's layer on every phone width, and the theme's heading on Chromium at 1280 by 720: on Twenty Twenty-Five the board starts about 540 pixels down, so only a strip of the deck is on screen, and the heading's text is larger.
+
+**Decision.** At a phone's width, where the lab measures, the test asserts the deck's layer. At a desktop's width it asserts that no other image takes the paint: the largest is the deck's layer or text. Moving the board above the heading on a desktop would change the page's order for a lab figure the heading already meets, since text paints first.
+
+**Tests.** `builder.spec.ts`, "The largest paint" (every project but WebKit, which reports no such entries, and `no-js`, which runs no script). **Deliberate break:** the board drawn 6rem tall: "Received string: "FIGCAPTION"" in `chromium-phone` and "H1" in `firefox-phone`.
+
+**Status:** Accepted.
+
+## D-205: A page's share of the picture queue, the folder's cap at every job, and a failed picture logged
+
+**Context.** The audit of milestone 7 found four should-fixes in the composed pictures (D-197, D-198, D-200). Any visitor's GET of a build link asked for its picture, capped only by the 50 builds the queue holds, and the 200 MB cap on the folder held only when the daily prune ran: a script walking build links could keep the queue full, crowd out a shopper's add to the cart, and fill gigabytes in a day. A picture that could not be drawn was written nowhere. And since the crawler's own fetch of a shared link was what asked for the picture, that first unfurl always showed the stand-in, the deck's layer, a narrow cut-out that platforms draw on black.
+
+**Decision.**
+- `ComposedPictures::ask()` takes who asks. A page's ask, from a build link's page or the review's answer, is refused once `PAGE_MOST` (10) builds wait; an add to the cart can fill the queue's 50. So anonymous traffic holds at most a fifth of it.
+- `compose()` prunes before it draws, so the folder is held to its cap at every job; the daily job still prunes when nothing is drawn.
+- `PictureFiles::draw()` returns null when the file is there, or why not (`empty`, `no_library`, `no_folder`, `layer_unreadable`, `draw_failed`, `move_failed`). `compose()` logs a refusal at most hourly for a kit, as a warning, with the kit's ID and the reason, and nothing of the shopper.
+- The state route's answer to a build link asks for the picture where the review could go to the cart (`ComposedPictures::offered()`), as a page asks, unless it is made or nothing of the build is drawn. The route is already rate-limited per address. The review is where the link is offered, so by the time it is shared the job has usually run.
+- Until the picture is made, the card shows the deck's product photo, at the size the builder shows it, before its layer image.
+
+**Tests.** `ComposedPicturesTest`: `test_a_pages_asks_take_at_most_their_share_of_the_queue_and_the_cart_keeps_the_rest`, `test_a_job_with_something_to_draw_holds_the_folder_to_its_cap_before_drawing`, `test_a_picture_that_cannot_be_drawn_is_logged_hourly_with_the_kit_and_the_reason`, `test_a_ready_review_offering_its_link_asks_for_its_picture_once_and_nothing_else_does`. `ShareCardTest`: `test_the_reviews_answer_asks_for_the_picture_so_a_shared_links_first_unfurl_can_be_it`, `test_until_the_picture_is_made_the_decks_photo_stands_in_before_its_layer`. `PictureFilesTest` asserts each reason. **Red runs:** "Undefined constant ...ComposedPictures::PAGE_MOST"; "Call to undefined method ...ComposedPictures::offered()"; the cap and the log, "Failed asserting that two arrays are identical." (`ComposedPicturesTest.php:208`, `:216`); the route, "the review offers the link, and asks for its picture / Failed asserting that actual size 0 matches expected size 1."; the photo, "Failed asserting that two arrays are identical." (`ShareCardTest.php:209`). **Deliberate breaks:** each fix taken out alone fails its own test at the same line.
+
+**Status:** Accepted.

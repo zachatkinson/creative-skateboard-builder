@@ -10,6 +10,7 @@ declare( strict_types=1 );
 namespace CreativeBranding\SkateboardBuilder\Tests\Integration;
 
 use CreativeBranding\SkateboardBuilder\Adapter\WpPictureFiles;
+use CreativeBranding\SkateboardBuilder\Port\PictureFiles;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\SlotKey;
 use CreativeBranding\SkateboardBuilder\Domain\Picture\Canvas;
 use CreativeBranding\SkateboardBuilder\Domain\Picture\Composition;
@@ -94,7 +95,7 @@ final class PictureFilesTest extends IntegrationTestCase {
 	 * Draw with one library and move its file aside, so the other can draw the same name.
 	 */
 	private static function drawn( string $library, Composition $composition ): \GdImage {
-		self::assertTrue( ( new WpPictureFiles( array( $library ) ) )->draw( $composition ), $library );
+		self::assertNull( ( new WpPictureFiles( array( $library ) ) )->draw( $composition ), $library );
 		$image = self::read( $composition->name() );
 		wp_delete_file( wp_get_upload_dir()['basedir'] . '/' . WpPictureFiles::FOLDER . '/' . $composition->name() );
 		return $image;
@@ -107,7 +108,7 @@ final class PictureFilesTest extends IntegrationTestCase {
 				$files       = new WpPictureFiles( array( $library ) );
 				self::assertSame( $library, $files->library( $type ) );
 				self::assertNull( $files->url( $composition->name() ), 'not made yet' );
-				self::assertTrue( $files->draw( $composition ), $library . ' ' . $type );
+				self::assertNull( $files->draw( $composition ), $library . ' ' . $type );
 				self::assertStringEndsWith( '/creative-skateboard-builder/pictures/' . $composition->name(), (string) $files->url( $composition->name() ) );
 				$size = wp_getimagesize( wp_get_upload_dir()['basedir'] . '/' . WpPictureFiles::FOLDER . '/' . $composition->name() );
 				self::assertIsArray( $size );
@@ -150,20 +151,20 @@ final class PictureFilesTest extends IntegrationTestCase {
 	public function test_what_is_made_is_kept_and_nothing_is_drawn_for_an_empty_composition_a_missing_layer_or_no_library(): void {
 		$composition = self::composition( new Canvas( 600, 600, 'image/webp' ) );
 		$files       = new WpPictureFiles();
-		self::assertTrue( $files->draw( $composition ) );
+		self::assertNull( $files->draw( $composition ) );
 		$path = wp_get_upload_dir()['basedir'] . '/' . WpPictureFiles::FOLDER . '/' . $composition->name();
 		file_put_contents( $path, 'kept' ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents -- A marker another draw would overwrite.
-		self::assertTrue( $files->draw( $composition ) );
+		self::assertNull( $files->draw( $composition ) );
 		self::assertSame( 'kept', file_get_contents( $path ), 'drawn once' ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents -- A local file.
 
-		self::assertFalse( $files->draw( Composition::of( new Canvas( 600, 600, 'image/webp' ), new Layout( 0, 0, array(), array() ), array() ) ) );
+		self::assertSame( PictureFiles::EMPTY, $files->draw( Composition::of( new Canvas( 600, 600, 'image/webp' ), new Layout( 0, 0, array(), array() ), array() ) ) );
 		$none = new WpPictureFiles( array() );
 		self::assertNull( $none->library( 'image/webp' ) );
-		self::assertFalse( $none->draw( self::composition( new Canvas( 300, 300, 'image/webp' ) ) ), 'a host with neither library makes no picture' );
+		self::assertSame( PictureFiles::NO_LIBRARY, $none->draw( self::composition( new Canvas( 300, 300, 'image/webp' ) ) ), 'a host with neither library makes no picture' );
 
 		$gone = self::composition( new Canvas( 400, 400, 'image/jpeg' ) );
 		wp_delete_file( (string) get_attached_file( $gone->placements[1]->attachment ) );
-		self::assertFalse( $files->draw( $gone ), 'a picture missing a part is not drawn' );
+		self::assertSame( PictureFiles::LAYER_UNREADABLE, $files->draw( $gone ), 'a picture missing a part is not drawn, and says why' );
 		self::assertNull( $files->url( $gone->name() ) );
 		self::assertSame( array( $path ), (array) glob( wp_get_upload_dir()['basedir'] . '/' . WpPictureFiles::FOLDER . '/*' ), 'no temporary file is left' );
 	}

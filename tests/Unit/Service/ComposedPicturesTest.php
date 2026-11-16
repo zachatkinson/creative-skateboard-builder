@@ -14,6 +14,9 @@ use CreativeBranding\SkateboardBuilder\Domain\Picture\ImageFacts;
 use CreativeBranding\SkateboardBuilder\Service\BuildState;
 use CreativeBranding\SkateboardBuilder\Service\ComposedPictures;
 use CreativeBranding\SkateboardBuilder\Service\LayerArtwork;
+use CreativeBranding\SkateboardBuilder\Service\State;
+use CreativeBranding\SkateboardBuilder\Port\Logger;
+use CreativeBranding\SkateboardBuilder\Port\PictureFiles;
 use CreativeBranding\SkateboardBuilder\Support\Options;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Domain\Shop;
 use CreativeBranding\SkateboardBuilder\Service\Health;
@@ -57,6 +60,8 @@ final class ComposedPicturesTest extends TestCase {
 
 	private ComposedPictures $pictures;
 
+	private FakeLogger $logger;
+
 	protected function setUp(): void {
 		$kits       = new InMemoryKits();
 		$this->kits = $kits;
@@ -69,13 +74,15 @@ final class ComposedPicturesTest extends TestCase {
 			30 => new ImageFacts( 'image/png', 130, 216, true ),
 		);
 		$this->files               = new InMemoryPictureFiles();
+		$this->logger              = new FakeLogger();
 		$this->pictures            = new ComposedPictures(
 			$kits,
 			new BuildState( $kits, new InMemoryShopSettings(), new FakeLogger() ),
 			new LayerArtwork( $this->layers, new InMemoryLayerRenditions() ),
 			$this->files,
 			$this->queue,
-			new FakeClock( self::NOW )
+			new FakeClock( self::NOW ),
+			$this->logger
 		);
 	}
 
@@ -166,6 +173,7 @@ final class ComposedPicturesTest extends TestCase {
 		$url = (string) $this->pictures->url( self::KIT, self::STREET, ComposedPictures::CART );
 		self::assertSame( array( basename( $url ) => self::NOW ), $this->files->used );
 
+		$this->files->pruned = array();
 		self::assertSame( 2, $this->pictures->prune() );
 		self::assertSame( array( array( self::NOW - 30 * 86400, 200 * 1024 * 1024 ) ), $this->files->pruned );
 	}
@@ -176,5 +184,73 @@ final class ComposedPicturesTest extends TestCase {
 		self::assertSame( array( 'status' => Health::RECOMMENDED, 'code' => ComposedPictures::HEALTH_UNWRITABLE ), $this->pictures->health() );
 		$this->files->library = null;
 		self::assertSame( array( 'status' => Health::RECOMMENDED, 'code' => ComposedPictures::HEALTH_NO_LIBRARY ), $this->pictures->health(), 'no library says so first: nothing could be drawn anyway' );
+	}
+
+	// The audit of milestone 7, should-fix: an anonymous page's ask could fill the queue, leaving a shopper's add to
+	// the cart with no picture. A page takes PAGE_MOST of the places; the rest are kept for the cart.
+	public function test_a_pages_asks_take_at_most_their_share_of_the_queue_and_the_cart_keeps_the_rest(): void {
+		for ( $more = 0; $more < ComposedPictures::PAGE_MOST; $more++ ) {
+			self::assertTrue( $this->pictures->ask( self::KIT, array( SlotKey::DECK => 1000 + $more ), ComposedPictures::FROM_PAGE ), 'a page\'s ask ' . $more );
+		}
+		self::assertFalse( $this->pictures->ask( self::KIT, array( SlotKey::DECK => 2000 ), ComposedPictures::FROM_PAGE ), 'the page\'s share is taken' );
+		self::assertTrue( $this->pictures->ask( self::KIT, self::STREET ), 'a cart\'s add still has a place' );
+		self::assertLessThan( ComposedPictures::QUEUED_MOST, ComposedPictures::PAGE_MOST );
+	}
+
+	// The audit of milestone 7, should-fix: the 200 MB cap held only once a day, so a day of asks could fill a disk.
+	public function test_a_job_with_something_to_draw_holds_the_folder_to_its_cap_before_drawing(): void {
+		$this->layers->attachments = array();
+		$this->pictures->compose( self::KIT, self::STREET );
+		self::assertSame( array(), $this->files->pruned, 'nothing to draw, nothing pruned' );
+
+		$this->layers->attachments = array( 101 => 10 );
+		$this->pictures->compose( self::KIT, self::STREET );
+		self::assertSame( array( array( self::NOW - 30 * 86400, 200 * 1024 * 1024 ) ), $this->files->pruned );
+		self::assertSame( array( 'prune', 'draw', 'draw', 'draw' ), $this->files->order, 'the cap first, then the drawing' );
+	}
+
+	// The audit of milestone 7, should-fix: a picture that could not be drawn was written nowhere.
+	public function test_a_picture_that_cannot_be_drawn_is_logged_hourly_with_the_kit_and_the_reason(): void {
+		$this->files->refuse = PictureFiles::LAYER_UNREADABLE;
+		self::assertSame( 0, $this->pictures->compose( self::KIT, self::STREET ) );
+		self::assertSame( array( 'picture_failed_' . self::KIT ), array_keys( $this->logger->keys ) );
+		self::assertCount( 1, $this->logger->lines, 'three refused, one line in the hour' );
+		self::assertSame( array( 'kit' => self::KIT, 'reason' => PictureFiles::LAYER_UNREADABLE ), $this->logger->lines[0]['context'], 'the kit and why, nothing of the shopper' );
+		self::assertSame( Logger::WARNING, $this->logger->lines[0]['level'] );
+
+		$this->logger->lines = array();
+		$this->files->refuse = null;
+		self::assertSame( 3, $this->pictures->compose( self::KIT, self::STREET ) );
+		self::assertSame( array(), $this->logger->lines, 'a picture drawn is not logged' );
+	}
+
+	// The audit of milestone 7, should-fix: a shared build's first unfurl was never its picture, since only the
+	// crawler's fetch asked for it. The review's answer, where the link is offered, asks; a page's share.
+	public function test_a_ready_review_offering_its_link_asks_for_its_picture_once_and_nothing_else_does(): void {
+		$states = new BuildState( $this->kits, new InMemoryShopSettings(), new FakeLogger() );
+		$review = $states->of( self::KIT, self::STREET, null, State::REVIEW, null );
+		self::assertNotNull( $review );
+		$this->pictures->offered( $review );
+		self::assertSame( array( array( Options::JOB_COMPOSE_PICTURE, array( 'kit' => self::KIT, 'picks' => self::STREET ) ) ), $this->queue->distinct );
+
+		$this->pictures->compose( self::KIT, self::STREET );
+		$this->queue->distinct = array();
+		$this->pictures->offered( $review );
+		self::assertSame( array(), $this->queue->distinct, 'its picture is made' );
+
+		$trucks = $states->of( self::KIT, self::STREET, null, SlotKey::TRUCKS, null );
+		self::assertNotNull( $trucks );
+		$this->pictures->offered( $trucks );
+		$short = self::STREET;
+		unset( $short[ SlotKey::TRUCKS ] );
+		$unready = $states->of( self::KIT, $short, null, State::REVIEW, null );
+		self::assertNotNull( $unready );
+		$this->pictures->offered( $unready );
+		self::assertSame( array(), $this->queue->distinct, 'another step, or a build not ready, asks nothing' );
+
+		$this->layers->attachments = array();
+		$this->files->drawn        = array();
+		$this->pictures->offered( $review );
+		self::assertSame( array(), $this->queue->distinct, 'a build with nothing to draw asks nothing' );
 	}
 }

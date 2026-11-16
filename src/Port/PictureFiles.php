@@ -25,14 +25,28 @@ if ( ! defined( 'ABSPATH' ) ) {
 interface PictureFiles {
 
 	/**
+	 * Why a picture is not there: the composition draws nothing, no library on this host writes its type, the
+	 * folder cannot be made, a layer's file cannot be read, the library failed, or the file could not be moved into
+	 * place.
+	 *
+	 * @since 0.7.0
+	 */
+	public const string EMPTY            = 'empty';
+	public const string NO_LIBRARY       = 'no_library';
+	public const string NO_FOLDER        = 'no_folder';
+	public const string LAYER_UNREADABLE = 'layer_unreadable';
+	public const string DRAW_FAILED      = 'draw_failed';
+	public const string MOVE_FAILED      = 'move_failed';
+
+	/**
 	 * Draw a composition and keep it under its name. Nothing is drawn for an empty one, or where no library can.
 	 *
 	 * @since 0.7.0
 	 *
 	 * @param Composition $composition The drawing.
-	 * @return bool Whether the file is there.
+	 * @return string|null Null when the file is there; otherwise why not, one of the constants above.
 	 */
-	public function draw( Composition $composition ): bool;
+	public function draw( Composition $composition ): ?string;
 
 	/**
 	 * The file's address, or null when it is not made.
