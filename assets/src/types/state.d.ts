@@ -308,7 +308,7 @@ export interface CbuildState {
 		 */
 		height: number;
 		/**
-		 * The board's layers from the bottom of the stack: one for each truck and each wheel.
+		 * The board's layers from the bottom of the stack: the deck, the grip, one for each truck and one for each wheel, each a part with a layer image.
 		 */
 		layers: {
 			/**

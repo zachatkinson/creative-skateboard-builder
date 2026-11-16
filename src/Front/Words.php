@@ -360,7 +360,7 @@ final class Words {
 			return '' === $brand ? $size : $brand;
 		}
 		/* translators: 1: a brand's name, such as Retna. 2: a size, such as 54 mm. */
-		return sprintf( __( '%1$s %2$s', 'creative-skateboard-builder' ), $brand, $size );
+		return sprintf( _x( '%1$s %2$s', 'a brand and a size', 'creative-skateboard-builder' ), $brand, $size );
 	}
 
 	/**
@@ -375,8 +375,11 @@ final class Words {
 	public static function complete( string $width, array $parts ): string {
 		$list = wp_sprintf( '%l', $parts );
 		if ( '' === $width ) {
+			if ( '' === $list ) {
+				return __( 'A complete', 'creative-skateboard-builder' );
+			}
 			/* translators: %s: the build's parts, as "Rascals, Independent 8.5 in and Retna 54 mm". */
-			return '' === $list ? __( 'A complete', 'creative-skateboard-builder' ) : sprintf( __( 'Complete: %s', 'creative-skateboard-builder' ), $list );
+			return sprintf( __( 'Complete: %s', 'creative-skateboard-builder' ), $list );
 		}
 		if ( '' === $list ) {
 			/* translators: %s: the deck's width, such as 8.25 in. */

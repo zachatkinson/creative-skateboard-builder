@@ -15,6 +15,7 @@ use CreativeBranding\SkateboardBuilder\Domain\Kit\Preset;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\RuleSettings;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Slot;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\SlotKey;
+use CreativeBranding\SkateboardBuilder\Domain\Picture\Layout;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Slots;
 use CreativeBranding\SkateboardBuilder\Port\ShopSettings;
 use CreativeBranding\SkateboardBuilder\Service\KitEditor;
@@ -68,11 +69,6 @@ final class BuildTab {
 	 * a problem's path leads to its field.
 	 */
 	private const IDS = 'cbuild-kit';
-
-	/**
-	 * The slots the picture draws, in the usual order from the bottom (Domain\Picture\Layout).
-	 */
-	private const DRAWN = array( SlotKey::DECK, SlotKey::GRIP, SlotKey::TRUCKS, SlotKey::WHEELS );
 
 	/**
 	 * The tab's script, built from assets/src/admin/build-tab.ts: it moves a slot's row and opens the field a
@@ -734,14 +730,14 @@ final class BuildTab {
 		$labels = array();
 		foreach ( self::rows( $slots, 'slots' ) as $row ) {
 			$key = self::text( $row, 'key' );
-			if ( in_array( $key, self::DRAWN, true ) ) {
+			if ( in_array( $key, Layout::DRAWN, true ) ) {
 				$drawn[]        = $key;
 				$labels[ $key ] = '' === self::text( $row, 'label' ) ? $key : self::text( $row, 'label' );
 			}
 		}
 		// The order in force: the document's, then the slots it leaves out in the usual order.
 		$order = is_array( $document['order'] ?? null ) ? array_values( array_intersect( array_filter( $document['order'], 'is_string' ), $drawn ) ) : array();
-		foreach ( self::DRAWN as $key ) {
+		foreach ( Layout::DRAWN as $key ) {
 			if ( in_array( $key, $drawn, true ) && ! in_array( $key, $order, true ) ) {
 				$order[] = $key;
 			}
