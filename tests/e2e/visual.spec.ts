@@ -8,7 +8,7 @@ import { test, expect, Page } from './support/test';
  * theme and colours by cookie, which the e2e theme mu-plugin answers for that request alone, so the site's own theme
  * stays the default the other specs expect (D-162).
  *
- * The builder's own box is pictured, the theme's ground behind it included, at a desktop and a phone width, on a
+ * The builder's own box is pictured, the theme's ground behind it included, at a desktop, a tablet and a phone width, on a
  * blank start and on a full build's review. Motion is off, so no picture is taken halfway through a transition.
  *
  * Only `bash tools/visual.sh` runs these, in Playwright's Linux container: the baselines are that container's fonts
@@ -19,6 +19,8 @@ const THEMES = [ 'twentytwentyfive', 'storefront', 'kadence' ] as const;
 const SCHEMES = [ 'light', 'dark' ] as const;
 const WIDTHS = [
 	{ name: 'desktop', width: 1280, height: 900 },
+	// Milestone 7's plan: the picture at three widths. A tablet held upright, at 48rem, where the phone's bar gives way.
+	{ name: 'tablet', width: 768, height: 1024 },
 	{ name: 'phone', width: 390, height: 844 },
 ] as const;
 
