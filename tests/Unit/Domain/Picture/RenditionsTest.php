@@ -68,4 +68,15 @@ final class RenditionsTest extends TestCase {
 			Renditions::TYPES
 		);
 	}
+
+	public function test_a_box_of_the_smallest_length_still_has_sizes_and_a_length_just_over_two_millimetres_rounds_up(): void {
+		self::assertNotSame( array(), Renditions::of( array( 1, 10000 ), 10, 10 ), 'a box one unit across' );
+		self::assertNotSame( array(), Renditions::of( array( 10000, 1 ), 10, 10 ), 'a box one unit along' );
+		// 2.0001 mm at half a pixel to the millimetre is 1.00005 px: two, rounded up.
+		self::assertSame( array( 2, 2 ), Renditions::of( array( 20001, 20001 ), 100, 100 )[0] );
+	}
+
+	public function test_an_image_of_the_boxs_own_shape_fills_it_whichever_side_decides(): void {
+		self::assertSame( array( array( 50, 100 ), array( 100, 200 ), array( 200, 400 ) ), Renditions::of( array( 1000000, 2000000 ), 400, 800 ) );
+	}
 }

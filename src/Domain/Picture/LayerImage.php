@@ -73,6 +73,6 @@ final class LayerImage {
 	 * @param int $length Ten-thousandths of a millimetre.
 	 */
 	private static function pixels( int $length ): int {
-		return intdiv( $length * self::DENSITY + 9999, 10000 );
+		return (int) ceil( $length * self::DENSITY / 10000 );
 	}
 }

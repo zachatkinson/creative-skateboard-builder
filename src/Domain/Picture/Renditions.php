@@ -87,13 +87,12 @@ final class Renditions {
 	 * @return array{int, int}
 	 */
 	private static function fitted( int $across, int $along, int $width, int $height ): array {
-		// The image is taller for its width than the box when its height decides the fit.
-		if ( $width * $along <= $height * $across ) {
-			$tall = min( $height, $along );
-			return array( max( 1, self::rounded( $width * $tall, $height ) ), $tall );
-		}
-		$wide = min( $width, $across );
-		return array( $wide, max( 1, self::rounded( $height * $wide, $width ) ) );
+		// Each side is the image's, the box's, or what the other side's fit makes it, whichever is least: one formula
+		// for a tall image and a wide one, and at least a pixel.
+		return array(
+			max( 1, min( $width, $across, self::rounded( $width * $along, $height ) ) ),
+			max( 1, min( $height, $along, self::rounded( $height * $across, $width ) ) ),
+		);
 	}
 
 	/**
@@ -103,7 +102,7 @@ final class Renditions {
 	 * @param int $halves Half pixels to the millimetre.
 	 */
 	private static function pixels( int $length, int $halves ): int {
-		return intdiv( $length * $halves + 19999, 20000 );
+		return (int) ceil( $length * $halves / 20000 );
 	}
 
 	/**

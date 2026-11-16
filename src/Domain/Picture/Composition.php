@@ -58,7 +58,7 @@ final readonly class Composition {
 		if ( $layout->width < 1 || $layout->height < 1 ) {
 			return new self( $canvas, array() );
 		}
-		$margin = intdiv( 2 * min( $canvas->width, $canvas->height ) * self::MARGIN + 100, 200 );
+		$margin = self::rounded( min( $canvas->width, $canvas->height ) * self::MARGIN, 100 );
 		$board  = self::fitted( $canvas->width - 2 * $margin, $canvas->height - 2 * $margin, $layout->width, $layout->height );
 		$left   = intdiv( $canvas->width - $board[0], 2 );
 		$top    = intdiv( $canvas->height - $board[1], 2 );
@@ -72,8 +72,9 @@ final readonly class Composition {
 			$box      = array(
 				$left + self::rounded( $corner[0] * $board[0], $layout->width ),
 				$top + self::rounded( $corner[1] * $board[1], $layout->height ),
-				max( 1, self::rounded( $layer->width * $board[0], $layout->width ) ),
-				max( 1, self::rounded( $layer->height * $board[1], $layout->height ) ),
+				// A box under half a pixel is fitted to one: fitted() never answers less.
+				self::rounded( $layer->width * $board[0], $layout->width ),
+				self::rounded( $layer->height * $board[1], $layout->height ),
 			);
 			$fit      = self::fitted( $box[2], $box[3], $image->width, $image->height );
 			$placed[] = new Placement( $image->attachment, $image->url, $box[0] + intdiv( $box[2] - $fit[0], 2 ), $box[1] + intdiv( $box[3] - $fit[1], 2 ), $fit[0], $fit[1] );
@@ -114,10 +115,12 @@ final readonly class Composition {
 	 * @return array{int, int}
 	 */
 	private static function fitted( int $across, int $down, int $width, int $height ): array {
-		if ( $width * $down <= $height * $across ) {
-			return array( max( 1, self::rounded( $width * $down, $height ) ), $down );
-		}
-		return array( $across, max( 1, self::rounded( $height * $across, $width ) ) );
+		// Each side is the box's, or what the other side's fit makes it, whichever is less: one formula for a tall
+		// rectangle and a wide one, and at least a pixel.
+		return array(
+			max( 1, min( $across, self::rounded( $width * $down, $height ) ) ),
+			max( 1, min( $down, self::rounded( $height * $across, $width ) ) ),
+		);
 	}
 
 	/**

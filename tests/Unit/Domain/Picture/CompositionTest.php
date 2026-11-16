@@ -106,4 +106,42 @@ final class CompositionTest extends TestCase {
 		}
 		self::assertSame( 1, ( new Canvas( 1, 1, 'image/jpeg' ) )->width, 'one pixel is a canvas' );
 	}
+
+	public function test_a_layout_with_no_width_or_no_height_places_nothing_and_one_of_a_single_unit_does(): void {
+		$canvas = new Canvas( 480, 480, 'image/webp' );
+		$art    = array( 100 => self::art( 10, 40, 40 ) );
+		$layer  = new Layer( SlotKey::DECK, 100, 0, 0, 1, 1 );
+		self::assertTrue( Composition::of( $canvas, new Layout( 0, 1, array( $layer ), array() ), $art )->isEmpty(), 'no width' );
+		self::assertTrue( Composition::of( $canvas, new Layout( 1, 0, array( $layer ), array() ), $art )->isEmpty(), 'no height' );
+		self::assertFalse( Composition::of( $canvas, new Layout( 1, 1, array( $layer ), array() ), $art )->isEmpty(), 'the smallest board is still drawn' );
+	}
+
+	public function test_the_margin_is_four_hundredths_of_the_shorter_side_rounded_to_the_nearest_pixel(): void {
+		// A board four times as tall as it is wide, on canvases wider than that: the board fills the height inside the
+		// margin, so its top is the margin. 87 px: 3.48, so 3; 113 px: 4.52, so 5.
+		$layout = new Layout( 1, 4, array( new Layer( SlotKey::DECK, 100, 0, 0, 1, 4 ) ), array() );
+		foreach ( array( 87 => 3, 113 => 5 ) as $side => $margin ) {
+			$placed = Composition::of( new Canvas( 1000, $side, 'image/webp' ), $layout, array( 100 => self::art( 10, 100, 400 ) ) )->placements[0];
+			self::assertSame( $margin, $placed->y, $side . ' px' );
+		}
+	}
+
+	public function test_a_layer_under_half_a_pixel_is_drawn_a_pixel_wide_and_one_of_a_pixel_stays_one(): void {
+		// The board 580 px tall on a 1200 by 630 canvas, 8,000,000 units: a unit is 0.0000725 px.
+		$canvas = new Canvas( 1200, 630, 'image/webp' );
+		$art    = array( 100 => self::art( 10, 400, 1600 ), 200 => self::art( 20, 1600, 400 ) );
+		$thin   = new Layout( 2000000, 8000000, array( new Layer( SlotKey::DECK, 100, 0, 0, 2000000, 8000000 ), new Layer( SlotKey::GRIP, 200, 0, 0, 1, 1 ) ), array() );
+		$tiny   = Composition::of( $canvas, $thin, $art )->placements[1];
+		self::assertSame( array( 1, 1 ), array( $tiny->width, $tiny->height ), 'under half a pixel each way: one' );
+		$pixel = new Layout( 2000000, 8000000, array( new Layer( SlotKey::DECK, 100, 0, 0, 2000000, 8000000 ), new Layer( SlotKey::GRIP, 200, 0, 0, 13793, 13793 ) ), array() );
+		$one   = Composition::of( $canvas, $pixel, $art )->placements[1];
+		self::assertSame( array( 1, 1 ), array( $one->width, $one->height ), 'a pixel each way stays a pixel' );
+	}
+
+	public function test_the_name_is_the_first_32_hex_digits_of_a_hash_of_the_version_the_canvas_and_each_placement(): void {
+		$composition = Composition::of( new Canvas( 1200, 630, 'image/webp' ), self::layout(), array( 100 => self::art( 10, 400, 1600 ) ) );
+		$placed      = $composition->placements[0];
+		$drawn       = Composition::VERSION . "|1200|630|image/webp\n" . implode( '|', array( 10, $placed->x, $placed->y, $placed->width, $placed->height, 'https://example.com/10.png' ) );
+		self::assertSame( substr( hash( 'sha256', $drawn ), 0, 32 ) . '.webp', $composition->name(), 'D-196: named by what is drawn, its version and its size' );
+	}
 }

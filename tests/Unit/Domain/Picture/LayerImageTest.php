@@ -105,4 +105,9 @@ final class LayerImageTest extends TestCase {
 	public function test_a_layer_image_is_a_transparent_png_or_webp_holding_the_parts_size( array $image, ?array $size, array $problems ): void {
 		self::assertSame( $problems, LayerImage::problems( new ImageFacts( ...$image ), $size ) );
 	}
+
+	public function test_a_length_just_over_a_whole_number_of_half_millimetres_needs_the_next_pixel(): void {
+		// 1.0001 mm at two pixels to the millimetre is 2.0002 px: three, rounded up.
+		self::assertSame( array( 3, 2 ), LayerImage::needs( array( 10001, 10000 ) ) );
+	}
 }
