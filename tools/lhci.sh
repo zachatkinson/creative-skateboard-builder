@@ -19,3 +19,6 @@ export CBUILD_LHCI_URL="${CBUILD_LHCI_URL:-$(node -p "require('./tmp/e2e-builder
 # Twenty Twenty-Five's font moves the page as it arrives, so its layout shift is reported; Kadence gates (D-165).
 CBUILD_LHCI_THEME=twentytwentyfive CBUILD_LHCI_SHIFT=warn npx lhci autorun --config=lighthouserc.cjs "$@"
 CBUILD_LHCI_THEME=kadence npx lhci autorun --config=lighthouserc.cjs "$@"
+# A build at its review, its deck, trucks and wheels drawn as layers: the board's deck layer must not hold LCP back.
+build="$(node -p "const f=require('./tmp/e2e-builder.json'),p=f.parts;f.page+'?cbuild[deck]='+p['builder-test-deck-8-0']+'&cbuild[trucks]='+p['builder-test-trucks-139']+'&cbuild[wheels]='+p['builder-test-wheels-54']+'&cbuild[step]=review'")"
+CBUILD_LHCI_URL="$build" CBUILD_LHCI_THEME=kadence CBUILD_LHCI_NAME=kadence-build CBUILD_LHCI_SEO=off npx lhci autorun --config=lighthouserc.cjs "$@"

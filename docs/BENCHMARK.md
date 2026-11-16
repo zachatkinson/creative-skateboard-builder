@@ -18,6 +18,7 @@ The spec's budgets are tests: a build fails when one is missed. The numbers from
 | LCP on the builder page, mobile profile, median of three | 2.5 s or less | `npm run lhci` | Milestone 1 (the front page until milestone 6) |
 | CLS, the same run | Under 0.1; 0 is the target | `npm run lhci` | Milestone 1 |
 | TBT, the same run | Under 200 ms | `npm run lhci` | Milestone 1 |
+| LCP, CLS and TBT on a build link's review, its deck, trucks and wheels drawn as layers, on Kadence | The same limits; its SEO score is not asserted, as the page says noindex (D-147) | `npm run lhci` | Milestone 7 |
 | A pick's own selected state painted, on a 4× slowed CPU | Within 100 ms | Playwright | Milestone 6 |
 | Queries the plugin adds to a request with the schema current | 0 | The integration suite (`InstallHooksTest`) | Milestone 1 |
 | Requests for a file of the plugin's on a page without a builder | 0 | Playwright (`smoke.spec.ts`) | Milestone 1 |
