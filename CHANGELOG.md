@@ -22,7 +22,7 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Changed
 
-- Nothing is picked for the shopper (#45, D-213). After the deck, each later step labels its recommendation and picks nothing; the board, the total and the state route's `total` count only what was picked, and the review and the cart need every slot the kit requires picked. Each step's parts are checked against the picks alone. A card with nothing picked in its slot says its whole price. Presets still fill every slot.
+- Nothing is picked for the shopper (#45, D-213). After the deck, each later step labels its recommendation and picks nothing; the board, the total, the state route's `total` and `creative-skateboard-builder/price-build`'s `total` count only what was picked, with the board with each recommendation in it as `total.estimate` in both; `creative-skateboard-builder/check-build` says a required slot with no pick is a problem and the build not `ready`; and the review and the cart need every slot the kit requires picked. Each step's parts are checked against the picks alone. A card with nothing picked in its slot says its whole price. Presets still fill every slot.
 - Site Health's advice on missing layer image copies names the logs only when a copy failed in the last 30 days, and otherwise says that "Read every part again" makes them (Cowork's recheck of 0.7.0, N1; D-214).
 - The upgrade notice asks for no manual step (D-216).
 - The grip is no longer drawn as a 1 in strip on the underside: the state route's `picture.layers` drops it, and the grip is drawn on the top. The composed pictures in the cart and share cards are the underside, so a build's new picture has no strip (#46).
@@ -32,6 +32,15 @@ All notable changes to this project are documented here. The format follows [Kee
 - "Read every part again" now makes the resized copies of layer images that have none, through each part's own job, and the update to 0.8.0 does the same with no step for the shop (Cowork's recheck of 0.7.0, N1; D-214).
 - With Yoast SEO, a build's `og:url` keeps its brackets encoded: Yoast decodes what its filter returns, so the plugin hands it a link that decodes to the encoded one (M6; D-215).
 - A pick stays shown as chosen while its answer is on the way, through any redraw (#47).
+- From the audit of milestone 8 (D-222):
+  - The emails name a build as the Build box does, "The build: …", with each slot's label in the email's language. Plain-text emails keep apostrophes.
+  - The assembly ticket prints only orders the user may open, as WooCommerce asks per order.
+  - My builds names each control for its build, and its queries no longer grow with the builds on it. It, the emails and the order's page ask for pictures as a page does, so carts keep their room in the queue.
+  - A save the database refuses says so and is logged by the build's UUID, in place of saying it was saved.
+  - A signed-in builder page holding a customer's nonce is kept out of page caches.
+  - My builds answers after the plugin is switched off and on again.
+  - Deleting an account on a network finds every site's builds table in one query, in place of one a site.
+  - The ticket's pictures load before it prints, and an unknown mismatch is said in words, not as its code.
 
 ## [0.7.0] - 2026-11-16
 

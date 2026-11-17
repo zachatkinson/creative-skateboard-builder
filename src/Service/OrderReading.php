@@ -30,7 +30,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  *
  * @since 0.8.0
  *
- * @phpstan-type Sold array{kit: int, assembly: bool, picks: array<string, array{label: string, name: string, sku: string, part: int, quantity: int, specs: array<string, string>}>}
+ * @phpstan-type Sold array{kit: int, assembly: bool, notes: list<string>, picks: array<string, array{label: string, name: string, sku: string, part: int, quantity: int, specs: array<string, string>}>}
  */
 final readonly class OrderReading {
 
@@ -166,7 +166,7 @@ final readonly class OrderReading {
 		foreach ( array_diff_key( $slots, $snapshot['picks'] ) as $slot => $held ) {
 			$mismatches[] = new Mismatch( Mismatch::PART_NOT_IN_BUILD, $id, (string) $slot, $held[0]->id, 0, 0, $held[0]->name );
 		}
-		return new OrderedBuild( $id, $kit->id, $snapshot['kit'], $boards, $snapshot['assembly'], $picks, true );
+		return new OrderedBuild( $id, $kit->id, $snapshot['kit'], $boards, $snapshot['assembly'], $picks, true, $snapshot['notes'] );
 	}
 
 	/**
@@ -238,7 +238,26 @@ final readonly class OrderReading {
 		return array(
 			'kit'      => is_array( $stored ) && is_int( $stored['kit'] ?? null ) ? $stored['kit'] : 0,
 			'assembly' => is_array( $stored ) && true === ( $stored['assembly'] ?? null ),
+			'notes'    => self::notes( is_array( $stored ) ? $stored : array() ),
 			'picks'    => $read,
 		);
+	}
+
+	/**
+	 * The lead time and returns notice the shopper read at the review, where the snapshot keeps them and they say
+	 * something.
+	 *
+	 * @param array<mixed> $stored The snapshot as stored.
+	 * @return list<string>
+	 */
+	private static function notes( array $stored ): array {
+		$notes = array();
+		foreach ( array( 'lead_time', 'returns_notice' ) as $key ) {
+			$note = is_string( $stored[ $key ] ?? null ) ? trim( $stored[ $key ] ) : '';
+			if ( '' !== $note ) {
+				$notes[] = $note;
+			}
+		}
+		return $notes;
 	}
 }

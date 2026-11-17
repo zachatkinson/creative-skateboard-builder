@@ -124,6 +124,11 @@ final class BuilderPage {
 				'saved'    => '',
 			);
 		}
+		// The page now holds this customer's nonce. WordPress sends them no-cache headers (wp-includes/class-wp.php:443);
+		// a page cache that reads only this constant is told too (spec: Security).
+		if ( ! defined( 'DONOTCACHEPAGE' ) ) {
+			define( 'DONOTCACHEPAGE', true ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedConstantFound -- The page caches' own constant, which they read by this name.
+		}
 		$sent = isset( $_GET[ MyBuildsView::PARAM ] ) && is_string( $_GET[ MyBuildsView::PARAM ] ) ? sanitize_text_field( wp_unslash( $_GET[ MyBuildsView::PARAM ] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read and checked against its owner, nothing changed.
 		return array(
 			'signedIn' => true,

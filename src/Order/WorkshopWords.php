@@ -88,7 +88,8 @@ final class WorkshopWords {
 				/* translators: %s: a line's name on the order. */
 				return sprintf( __( '%s is tied to this build, but the build was sold without it.', 'creative-skateboard-builder' ), $mismatch->name );
 		}
-		return $mismatch->code;
+		// A code a later version reads and this one does not: said in general words, never as the code itself.
+		return __( 'A line of the order no longer matches the build. Check its lines before you print the assembly ticket.', 'creative-skateboard-builder' );
 	}
 
 	/**

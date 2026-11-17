@@ -39,11 +39,18 @@ final class InMemorySavedBuilds implements SavedBuildStore {
 		return count( $this->of( $user ) );
 	}
 
-	public function put( SavedBuild $build ): void {
+	/**
+	 * Whether the table refuses every write, as a database that has gone away does.
+	 */
+	public bool $refuse = false;
+
+	public function put( SavedBuild $build ): bool {
 		$held = $this->rows[ $build->uuid ] ?? null;
-		if ( null === $held || $held->user === $build->user ) {
-			$this->rows[ $build->uuid ] = $build;
+		if ( $this->refuse || ( null !== $held && $held->user !== $build->user ) ) {
+			return false;
 		}
+		$this->rows[ $build->uuid ] = $build;
+		return true;
 	}
 
 	public function delete( int $user, string $uuid ): bool {

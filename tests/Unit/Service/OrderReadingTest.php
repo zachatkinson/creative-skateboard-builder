@@ -319,4 +319,19 @@ final class OrderReadingTest extends TestCase {
 			self::told( OrderReading::of( array( ...$lines, ...$second ) ) )
 		);
 	}
+
+	public function test_the_lead_time_and_returns_notice_are_read_as_sold_and_blank_ones_left_out(): void {
+		$lines   = self::order();
+		$sold    = self::snapshot();
+		$sold['lead_time']      = '  Ships in 3 days.  ';
+		$sold['returns_notice'] = 'Comes back whole.';
+		$lines[0] = new OrderLine( 11, self::KIT, 1, 'Complete', 'a', 'kit', '', true, $sold );
+		self::assertSame( array( 'Ships in 3 days.', 'Comes back whole.' ), OrderReading::of( $lines )->builds[0]->notes );
+
+		$sold['lead_time']      = '   ';
+		$sold['returns_notice'] = 7;
+		$lines[0] = new OrderLine( 11, self::KIT, 1, 'Complete', 'a', 'kit', '', true, $sold );
+		self::assertSame( array(), OrderReading::of( $lines )->builds[0]->notes, 'blank or not text' );
+		self::assertSame( array(), OrderReading::of( self::order() )->builds[0]->notes, 'none kept' );
+	}
 }

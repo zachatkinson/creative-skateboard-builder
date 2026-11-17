@@ -48,12 +48,15 @@ final class SavedBuildsTest extends TestCase {
 
 	private SavedBuilds $builds;
 
+	private FakeLogger $logger;
+
 	protected function setUp(): void {
 		$kits = new InMemoryKits();
 		$kits->add( self::KIT, Shop::kit(), Shop::parts() );
 		$this->store  = new InMemorySavedBuilds();
 		$this->clock  = new FakeClock();
-		$this->builds = new SavedBuilds( $this->store, new BuildState( $kits, new InMemoryShopSettings(), new FakeLogger() ), new CountingUuids(), $this->clock );
+		$this->logger = new FakeLogger();
+		$this->builds = new SavedBuilds( $this->store, new BuildState( $kits, new InMemoryShopSettings(), new FakeLogger() ), new CountingUuids(), $this->clock, $this->logger );
 	}
 
 	public function test_a_complete_build_is_kept_with_its_picks_in_step_order_and_its_name(): void {
@@ -131,5 +134,28 @@ final class SavedBuildsTest extends TestCase {
 		self::assertSame( 100, $this->builds->forget( self::ANA ) );
 		self::assertSame( array(), $this->builds->of( self::ANA ) );
 		self::assertCount( 1, $this->builds->of( self::BEN ) );
+	}
+
+	/**
+	 * Audit of milestone 8: a write the table refuses is said as a failure, not as saved, and the owner hears of it in
+	 * WooCommerce's log, with the build's UUID and nothing about the customer.
+	 */
+	public function test_a_save_or_rename_the_table_refuses_is_a_failure_and_is_logged(): void {
+		$kept = $this->builds->save( self::ANA, self::KIT, self::COMPLETE, true, 'Street' );
+		$this->store->refuse = true;
+		$saved = $this->builds->save( self::ANA, self::KIT, self::COMPLETE, true, 'Park' );
+		self::assertSame( SavedBuilds::FAILED, $saved['code'] );
+		self::assertSame( '', $saved['uuid'] );
+		self::assertSame( SavedBuilds::FAILED, $this->builds->save( self::ANA, self::KIT, self::COMPLETE, true, 'Again', $kept['uuid'] )['code'], 'saved over' );
+		self::assertFalse( $this->builds->rename( self::ANA, $kept['uuid'], 'Renamed' ) );
+		self::assertCount( 3, $this->logger->lines );
+		foreach ( $this->logger->lines as $line ) {
+			self::assertSame( 'error', $line['level'] );
+			self::assertSame( 'A saved build could not be written.', $line['message'] );
+			self::assertSame( array( 'uuid' ), array_keys( $line['context'] ), 'the UUID alone: no user, no name' );
+		}
+		self::assertSame( $kept['uuid'], $this->logger->lines[1]['context']['uuid'] );
+		$this->store->refuse = false;
+		self::assertSame( 'Street', $this->builds->find( self::ANA, $kept['uuid'] )?->name );
 	}
 }

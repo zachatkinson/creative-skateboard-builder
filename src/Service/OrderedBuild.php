@@ -33,6 +33,7 @@ final readonly class OrderedBuild {
 	 * @param bool                       $assembly Whether the shop assembles it.
 	 * @param array<string, OrderedPick> $picks    Each slot's part, by its key, in step order.
 	 * @param bool                       $read     Whether it was read from its snapshot.
+	 * @param list<string>               $notes    The lead time and returns notice the shopper read, as sold.
 	 */
 	public function __construct(
 		public string $id,
@@ -41,6 +42,7 @@ final readonly class OrderedBuild {
 		public int $boards,
 		public bool $assembly,
 		public array $picks,
-		public bool $read
+		public bool $read,
+		public array $notes = array()
 	) {}
 }

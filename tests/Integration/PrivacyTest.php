@@ -67,6 +67,7 @@ final class PrivacyTest extends CartTestCase {
 		self::assertSame( 'Street', $data['Name'] );
 		self::assertSame( 'Complete', $data['Kit'] );
 		self::assertStringContainsString( 'Deck', $data['Parts'] );
+		self::assertStringContainsString( ', and ', $data['Parts'], 'a list in the site\'s language, as WordPress joins one' );
 		self::assertSame( 'Yes', $data['Assembly'] );
 		self::assertMatchesRegularExpression( '/\A\d{4}-\d\d-\d\d \d\d:\d\d:\d\d UTC\z/', $data['Saved first'] );
 		self::assertStringNotContainsString( 'Ben', (string) wp_json_encode( $export ) );
@@ -180,6 +181,40 @@ final class PrivacyTest extends CartTestCase {
 			NetworkFile::remove();
 		}
 		self::assertFileDoesNotExist( NetworkFile::path() );
+	}
+
+	/**
+	 * Audit 2 of milestone 8: deleting an account on a network costs one query to find the builds tables and one
+	 * delete for each, however many sites the network has, and is done once, by the must-use file where it is in
+	 * place.
+	 */
+	public function test_deleting_an_account_on_a_network_does_not_visit_every_site(): void {
+		if ( ! is_multisite() ) {
+			self::markTestSkipped( 'The multisite leg (composer test:integration:multisite).' );
+		}
+		require_once ABSPATH . 'wp-admin/includes/ms.php';
+		for ( $i = 0; $i < 4; $i++ ) {
+			self::factory()->blog->create();
+		}
+		$this->save( $this->ana, 'Street' );
+		self::assertTrue( NetworkFile::ensure() );
+		try {
+			require NetworkFile::path();
+			$ours = array();
+			$seen = static function ( string $query ) use ( &$ours ): string {
+				if ( str_contains( $query, Tables::PREFIX . Tables::BUILDS ) || str_contains( $query, 'SHOW TABLES' ) || str_contains( $query, 'information_schema' ) ) {
+					$ours[] = $query;
+				}
+				return $query;
+			};
+			add_filter( 'query', $seen );
+			wpmu_delete_user( $this->ana );
+			remove_filter( 'query', $seen );
+		} finally {
+			NetworkFile::remove();
+		}
+		self::assertSame( array(), $this->service( SavedBuilds::class )->of( $this->ana ) );
+		self::assertCount( 2, $ours, "one query finds the builds tables, one delete for this site's:\n" . implode( "\n", $ours ) );
 	}
 
 	public function test_a_single_site_needs_no_network_file(): void {

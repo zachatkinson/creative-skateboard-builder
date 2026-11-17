@@ -12,6 +12,7 @@ namespace CreativeBranding\SkateboardBuilder\Service;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\InvalidMoney;
 use CreativeBranding\SkateboardBuilder\Domain\Saved\SavedBuild;
 use CreativeBranding\SkateboardBuilder\Port\Clock;
+use CreativeBranding\SkateboardBuilder\Port\Logger;
 use CreativeBranding\SkateboardBuilder\Port\SavedBuildStore;
 use CreativeBranding\SkateboardBuilder\Port\Uuids;
 
@@ -55,6 +56,13 @@ final class SavedBuilds {
 	public const string SIGNED_OUT = 'signed_out';
 
 	/**
+	 * The table refused the write; it is in WooCommerce's log.
+	 *
+	 * @since 0.8.0
+	 */
+	public const string FAILED = 'failed';
+
+	/**
 	 * The most builds a customer keeps (D-217).
 	 */
 	public const int MOST = 100;
@@ -73,8 +81,9 @@ final class SavedBuilds {
 	 * @param BuildState      $builds Checks a build as the builder does.
 	 * @param Uuids           $uuids  Names a new build.
 	 * @param Clock           $clock  When.
+	 * @param Logger          $logger Where a write the table refuses is said.
 	 */
-	public function __construct( private SavedBuildStore $store, private BuildState $builds, private Uuids $uuids, private Clock $clock ) {}
+	public function __construct( private SavedBuildStore $store, private BuildState $builds, private Uuids $uuids, private Clock $clock, private Logger $logger ) {}
 
 	/**
 	 * Keep a build for a customer. With the UUID of a build of theirs, that build is saved again, its name kept where
@@ -102,15 +111,13 @@ final class SavedBuilds {
 		$now  = $this->clock->now();
 		$had  = '' === $uuid ? null : $this->store->find( $user, $uuid );
 		if ( null !== $had ) {
-			$this->store->put( $had->with( $kit, $kept, $assembly, '' === $name ? $had->name : $name, $now ) );
-			return self::said( self::UPDATED, $had->uuid );
+			return $this->put( $had->with( $kit, $kept, $assembly, '' === $name ? $had->name : $name, $now ) ) ? self::said( self::UPDATED, $had->uuid ) : self::said( self::FAILED );
 		}
 		if ( $this->store->count( $user ) >= self::MOST ) {
 			return self::said( self::FULL );
 		}
 		$build = new SavedBuild( $this->uuids->next(), $user, $kit, $kept, $assembly, $name, $now, $now );
-		$this->store->put( $build );
-		return self::said( self::SAVED, $build->uuid );
+		return $this->put( $build ) ? self::said( self::SAVED, $build->uuid ) : self::said( self::FAILED );
 	}
 
 	/**
@@ -127,8 +134,21 @@ final class SavedBuilds {
 		if ( null === $had ) {
 			return false;
 		}
-		$this->store->put( $had->with( $had->kit, $had->picks, $had->assembly, self::name( $name ), $this->clock->now() ) );
-		return true;
+		return $this->put( $had->with( $had->kit, $had->picks, $had->assembly, self::name( $name ), $this->clock->now() ) );
+	}
+
+	/**
+	 * Write a build, and say in WooCommerce's log where the table refuses it: by its UUID alone, nothing about the
+	 * customer.
+	 *
+	 * @param SavedBuild $build The build.
+	 */
+	private function put( SavedBuild $build ): bool {
+		if ( $this->store->put( $build ) ) {
+			return true;
+		}
+		$this->logger->log( Logger::ERROR, 'A saved build could not be written.', array( 'uuid' => $build->uuid ) );
+		return false;
 	}
 
 	/**

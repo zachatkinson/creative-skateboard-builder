@@ -43,7 +43,7 @@ final class WorkshopWordsTest extends TestCase {
 			'the kit\'s line twice'      => array( new Mismatch( Mismatch::PART_TWICE, 'a', '', 17, 0, 0, 'Complete' ), '', '', 'The build\'s kit line is on the order twice.' ),
 			'another product'            => array( new Mismatch( Mismatch::PART_CHANGED, 'a', 'trucks', 13, 149, 150, 'Stage 11 Hollow' ), 'Trucks', 'Stage 11', 'The Trucks line is now Stage 11 Hollow. The build was sold with Stage 11.' ),
 			'a slot the build never had' => array( new Mismatch( Mismatch::PART_NOT_IN_BUILD, 'a', 'bearings', 15, 0, 0, 'Bones Reds' ), '', '', 'Bones Reds is tied to this build, but the build was sold without it.' ),
-			'a code this version lacks'  => array( new Mismatch( 'later_code', 'a' ), '', '', 'later_code' ),
+			'a code this version lacks'  => array( new Mismatch( 'later_code', 'a' ), '', '', 'A line of the order no longer matches the build. Check its lines before you print the assembly ticket.' ),
 		);
 	}
 

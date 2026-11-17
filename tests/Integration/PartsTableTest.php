@@ -298,6 +298,36 @@ final class PartsTableTest extends IntegrationTestCase {
 		self::assertSame( array( $this->deck ), $this->read, 'the part was read once' );
 	}
 
+	/**
+	 * Work done together (My builds) reads a slot's parts once, sees a part that moves inside it, and holds nothing
+	 * past it, where the shop is asked again each time.
+	 */
+	public function test_work_done_together_reads_a_slots_parts_once_and_holds_nothing_after(): void {
+		$queries = static function ( callable $work ): int {
+			$before = get_num_queries();
+			$work();
+			return get_num_queries() - $before;
+		};
+		$this->decks();
+		$alone = $queries( fn() => $this->decks() );
+		self::assertGreaterThan( 0, $alone, 'outside, the shop is asked which products the slot holds each time' );
+		$inside = $this->kits()->together(
+			function () use ( $queries ): array {
+				$first  = $queries( fn() => $this->decks() );
+				$second = $queries( fn() => $this->decks() );
+				$this->part( 'Deck 8.5', '62' );
+				$moved = $this->decks();
+				return array( $first, $second, count( $moved ) );
+			}
+		);
+		self::assertSame( 0, $inside[1], 'the second build of the slot asks nothing of its parts' );
+		self::assertGreaterThan( 0, $inside[0] );
+		self::assertSame( 2, $inside[2], 'a part that moved inside is seen' );
+		self::assertSame( $alone, $queries( fn() => $this->decks() ), 'nothing held after' );
+		$kits = $this->kits();
+		self::assertSame( 'answer', $kits->together( static fn(): string => $kits->together( static fn(): string => 'answer' ) ), 'work inside work' );
+	}
+
 	public function test_visitors_shown_other_prices_have_rows_of_their_own(): void {
 		$this->decks();
 		self::assertCount( 1, $this->rows( $this->deck ) );

@@ -109,15 +109,12 @@ final class WorkshopView {
 	 */
 	private function build( WC_Order $order, OrderReading $reading, OrderedBuild $build, int $at, int $of ): array {
 		$kit    = $build->kit > 0 ? $this->kits->kit( $build->kit ) : null;
-		$labels = array();
+		$labels = $this->labels( $build );
 		$rows   = array();
-		$named  = array();
 		$parts  = array();
 		foreach ( $build->picks as $slot => $pick ) {
-			$current         = $kit?->slots->get( $slot );
-			$labels[ $slot ] = null === $current ? $pick->label : StateAnswer::label( $current->label, $slot, $build->kit );
-			$specs           = array();
-			$ticket          = array();
+			$specs  = array();
+			$ticket = array();
 			foreach ( $pick->specs as $key => $value ) {
 				$said = WorkshopWords::spec( $key, $value );
 				if ( null !== $said ) {
@@ -140,9 +137,6 @@ final class WorkshopView {
 				'ticket'   => $ticket,
 			);
 			$parts[ $slot ] = $pick->part;
-			if ( '' !== $pick->name ) {
-				$named[] = array( $labels[ $slot ], $pick->name );
-			}
 		}
 		$problems = array();
 		foreach ( $reading->about( $build->id ) as $mismatch ) {
@@ -158,9 +152,46 @@ final class WorkshopView {
 			'rows'        => $rows,
 			'problems'    => $problems,
 			'board'       => $build->read ? $this->board( $build, $kit?->picture ) : null,
-			'description' => WorkshopWords::described( $named ),
+			'description' => WorkshopWords::described( $this->named( $build ) ),
 			'steps'       => WorkshopWords::steps( $parts, $build->assembly, $build->kit, $order->get_id() ),
 		);
+	}
+
+	/**
+	 * A build's parts by their slots, in step order, as the Build box, the ticket and the emails name them: each slot's
+	 * label as the kit calls it now, in the language of the page or email being written, or as the shopper read it
+	 * where the kit no longer has the slot; each part's name as sold, as WooCommerce keeps its own lines' names.
+	 *
+	 * @since 0.8.0
+	 *
+	 * @param OrderedBuild $build The build.
+	 * @return list<array{0: string, 1: string}>
+	 */
+	public function named( OrderedBuild $build ): array {
+		$named = array();
+		foreach ( $this->labels( $build ) as $slot => $label ) {
+			$name = $build->picks[ $slot ]->name;
+			if ( '' !== $name ) {
+				$named[] = array( $label, $name );
+			}
+		}
+		return $named;
+	}
+
+	/**
+	 * Each slot's label: the kit's now, through the slot label filter, or the one sold where the kit has no such slot.
+	 *
+	 * @param OrderedBuild $build The build.
+	 * @return array<string, string>
+	 */
+	private function labels( OrderedBuild $build ): array {
+		$kit    = $build->kit > 0 ? $this->kits->kit( $build->kit ) : null;
+		$labels = array();
+		foreach ( $build->picks as $slot => $pick ) {
+			$current         = $kit?->slots->get( $slot );
+			$labels[ $slot ] = null === $current ? $pick->label : StateAnswer::label( $current->label, $slot, $build->kit );
+		}
+		return $labels;
 	}
 
 	/**

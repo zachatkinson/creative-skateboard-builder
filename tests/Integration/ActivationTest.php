@@ -108,6 +108,16 @@ final class ActivationTest extends IntegrationTestCase {
 		delete_option( Options::REINDEX );
 	}
 
+	/**
+	 * Audit of milestone 8: switched off, the plugin forgets that its My builds address is in WordPress's rules, which
+	 * anything may rebuild without it meanwhile (Settings > Permalinks); switched on, the next request puts it back.
+	 */
+	public function test_deactivation_forgets_the_endpoints_flag_so_my_builds_comes_back(): void {
+		update_option( Options::ENDPOINTS, 'my-builds' );
+		Deactivator::deactivate();
+		self::assertFalse( get_option( Options::ENDPOINTS ) );
+	}
+
 	public function test_network_activation_installs_every_site(): void {
 		if ( ! is_multisite() ) {
 			self::markTestSkipped( 'The multisite leg (composer test:integration:multisite).' );

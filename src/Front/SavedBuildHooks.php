@@ -227,7 +227,10 @@ final class SavedBuildHooks implements Hookable {
 			return self::url();
 		}
 		$done = self::RENAME === $sent ? ( $this->saved )()->rename( $user, $uuid, $name ) : ( $this->saved )()->delete( $user, $uuid );
-		if ( ! $done ) {
+		if ( ! $done && null !== ( $this->saved )()->find( $user, $uuid ) ) {
+			// Theirs, and the table refused the change: it is in the log.
+			wc_add_notice( __( 'The build could not be saved just now. Please try again.', 'creative-skateboard-builder' ), 'error' );
+		} elseif ( ! $done ) {
 			wc_add_notice( __( 'That build is not among your saved builds.', 'creative-skateboard-builder' ), 'error' );
 		} elseif ( self::RENAME === $sent ) {
 			wc_add_notice( __( 'The build is renamed.', 'creative-skateboard-builder' ) );
@@ -266,6 +269,7 @@ final class SavedBuildHooks implements Hookable {
 		match ( $saved['code'] ) {
 			SavedBuilds::SAVED   => wc_add_notice( __( 'The build is saved. It is listed below.', 'creative-skateboard-builder' ) ),
 			SavedBuilds::UPDATED => wc_add_notice( __( 'Your saved build is updated.', 'creative-skateboard-builder' ) ),
+			SavedBuilds::FAILED  => wc_add_notice( __( 'The build could not be saved just now. Please try again.', 'creative-skateboard-builder' ), 'error' ),
 			/* translators: %s: how many builds a customer may keep, such as 100. */
 			SavedBuilds::FULL    => wc_add_notice( sprintf( __( 'You have %s saved builds, the most kept. Delete one to save another.', 'creative-skateboard-builder' ), number_format_i18n( SavedBuilds::MOST ) ), 'error' ),
 			default              => wc_add_notice( __( 'This build could not be saved: a part is missing or no longer fits. Open it in the builder to check it.', 'creative-skateboard-builder' ), 'error' ),

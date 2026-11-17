@@ -14,6 +14,7 @@ use CreativeBranding\SkateboardBuilder\Front\BuildLink;
 use CreativeBranding\SkateboardBuilder\Front\MyBuildsView;
 use CreativeBranding\SkateboardBuilder\Front\SavedBuildHooks;
 use CreativeBranding\SkateboardBuilder\Service\SavedBuilds;
+use CreativeBranding\SkateboardBuilder\Support\Options;
 use CreativeBranding\SkateboardBuilder\Support\Tables;
 use CreativeBranding\SkateboardBuilder\Tests\Support\CartTestCase;
 
@@ -221,6 +222,89 @@ final class SavedBuildsPageTest extends CartTestCase {
 		ob_start();
 		$this->service( SavedBuildHooks::class )->page();
 		self::assertStringContainsString( 'A part has changed since you saved it. Open the build to see which.', (string) ob_get_clean() );
+	}
+
+	/**
+	 * The page's markup, for the signed-in customer.
+	 */
+	private function page(): string {
+		ob_start();
+		$this->service( SavedBuildHooks::class )->page();
+		return (string) ob_get_clean();
+	}
+
+	/**
+	 * Spec, Security: "Signed-in pages aren't served from a page cache, so those nonces stay fresh." WordPress sends a
+	 * signed-in visitor no-cache headers itself (wp-includes/class-wp.php:443); a page cache that reads only
+	 * DONOTCACHEPAGE is told too, once the page holds a customer's nonce.
+	 */
+	public function test_a_signed_in_builder_page_holding_a_nonce_is_kept_out_of_page_caches(): void {
+		wp_set_current_user( $this->ana );
+		self::assertNotSame( '', $this->service( BuilderPage::class )->account()['nonce'] );
+		self::assertTrue( defined( 'DONOTCACHEPAGE' ) && true === constant( 'DONOTCACHEPAGE' ) );
+	}
+
+	/**
+	 * Audit 5: "distinct accessible names on every control". Each row's Open, Rename, Delete and name field are named
+	 * for their build, so a list of the page's buttons is not twenty "Delete"s.
+	 */
+	public function test_each_rows_controls_are_named_for_their_build(): void {
+		wp_set_current_user( $this->ana );
+		$this->post( $this->saveFields( wp_create_nonce( SavedBuildHooks::SAVE ), 'Street' ) );
+		$this->post( $this->saveFields( wp_create_nonce( SavedBuildHooks::SAVE ), 'Park' ) );
+		$dom   = new \DOMXPath( self::html( $this->page() ) );
+		$names = array();
+		foreach ( $dom->query( '//a[contains(@class,"cbuild-my-builds__open")] | //button | //input[@type="text"]' ) as $control ) {
+			self::assertInstanceOf( \DOMElement::class, $control );
+			$names[] = $control->getAttribute( 'aria-label' );
+		}
+		sort( $names );
+		self::assertSame( array( 'Delete Park', 'Delete Street', 'Name of Park', 'Name of Street', 'Open Park', 'Open Street', 'Rename Park', 'Rename Street' ), $names );
+	}
+
+	/**
+	 * D-205: a page's requests for pictures have 10 of the queue's 50 places, so carts always have room. My builds is
+	 * a page: with a page's share taken, it asks for none.
+	 */
+	public function test_my_builds_asks_for_pictures_as_a_page_does(): void {
+		wp_set_current_user( $this->ana );
+		$this->post( $this->saveFields( wp_create_nonce( SavedBuildHooks::SAVE ), 'Street' ) );
+		as_unschedule_all_actions( \CreativeBranding\SkateboardBuilder\Service\ComposedPictures::JOB, array(), Options::QUEUE_GROUP );
+		for ( $i = 1; $i <= \CreativeBranding\SkateboardBuilder\Service\ComposedPictures::PAGE_MOST; $i++ ) {
+			as_enqueue_async_action( \CreativeBranding\SkateboardBuilder\Service\ComposedPictures::JOB, array( array( 'kit' => 9000 + $i, 'picks' => array( 'deck' => $i ) ) ), Options::QUEUE_GROUP );
+		}
+		try {
+			$this->page();
+			self::assertCount( \CreativeBranding\SkateboardBuilder\Service\ComposedPictures::PAGE_MOST, self::waiting( \CreativeBranding\SkateboardBuilder\Service\ComposedPictures::JOB ) );
+		} finally {
+			as_unschedule_all_actions( \CreativeBranding\SkateboardBuilder\Service\ComposedPictures::JOB, array(), Options::QUEUE_GROUP );
+		}
+	}
+
+	/**
+	 * Audit 2 and 8: My builds' queries do not grow with the builds on it.
+	 */
+	public function test_my_builds_makes_as_many_queries_for_twenty_builds_as_for_one(): void {
+		// The test site has no placeholder image, which WordPress cannot cache and reads for each photo; a shop has one.
+		update_option( 'woocommerce_placeholder_image', 0 );
+		wp_set_current_user( $this->ana );
+		$this->post( $this->saveFields( wp_create_nonce( SavedBuildHooks::SAVE ), 'Build 1' ) );
+		$this->page();
+		wp_cache_flush();
+		$this->service( \CreativeBranding\SkateboardBuilder\Port\Kits::class )->forget();
+		$before = get_num_queries();
+		$this->page();
+		$one = get_num_queries() - $before;
+		for ( $i = 2; $i <= 20; $i++ ) {
+			$this->post( $this->saveFields( wp_create_nonce( SavedBuildHooks::SAVE ), 'Build ' . $i ) );
+		}
+		$this->page();
+		wp_cache_flush();
+		$this->service( \CreativeBranding\SkateboardBuilder\Port\Kits::class )->forget();
+		$before = get_num_queries();
+		$this->page();
+		$twenty = get_num_queries() - $before;
+		self::assertLessThanOrEqual( $one + 2, $twenty, sprintf( '%d queries for one build, %d for twenty', $one, $twenty ) );
 	}
 
 	/**

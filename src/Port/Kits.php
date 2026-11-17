@@ -159,4 +159,17 @@ interface Kits {
 	 * @since 0.4.0
 	 */
 	public function decimals(): int;
+
+	/**
+	 * Do a piece of work that reads many builds of the shop's kits, such as a customer's saved builds, holding each
+	 * slot's offered parts for its length, so the parts are read once however many builds share a slot. Nothing is
+	 * held past it.
+	 *
+	 * @since 0.8.0
+	 *
+	 * @template T
+	 * @param \Closure(): T $work The work.
+	 * @return T
+	 */
+	public function together( \Closure $work ): mixed;
 }

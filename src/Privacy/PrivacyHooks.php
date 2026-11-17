@@ -11,6 +11,7 @@ namespace CreativeBranding\SkateboardBuilder\Privacy;
 
 use Closure;
 use CreativeBranding\SkateboardBuilder\Hookable;
+use CreativeBranding\SkateboardBuilder\Install\NetworkFile;
 use CreativeBranding\SkateboardBuilder\Install\Sites;
 use CreativeBranding\SkateboardBuilder\Service\SavedBuilds;
 use CreativeBranding\SkateboardBuilder\Support\Options;
@@ -136,7 +137,7 @@ final class PrivacyHooks implements Hookable {
 					),
 					array(
 						'name'  => __( 'Parts', 'creative-skateboard-builder' ),
-						'value' => implode( ', ', $parts ),
+						'value' => wp_sprintf( '%l', $parts ),
 					),
 					array(
 						'name'  => __( 'Assembly', 'creative-skateboard-builder' ),
@@ -192,13 +193,18 @@ final class PrivacyHooks implements Hookable {
 
 	/**
 	 * An account deleted from the network: its builds go from every site the plugin is installed on, since the plugin
-	 * may be active on only some of them.
+	 * may be active on only some of them. The must-use file does it where it is in place; this visits each site only
+	 * where the file could not be written, which Site Health reports.
 	 *
 	 * @since 0.8.0
 	 *
 	 * @param mixed $user The user's ID.
 	 */
 	public function deletedFromNetwork( mixed $user ): void {
+		if ( NetworkFile::inPlace() ) {
+			// The must-use file does it, in one query to find the tables and a delete each (#8, D-220).
+			return;
+		}
 		$id    = is_numeric( $user ) ? (int) $user : 0;
 		$saved = ( $this->saved )();
 		Sites::each(

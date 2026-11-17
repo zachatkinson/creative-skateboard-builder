@@ -139,6 +139,21 @@
         "cbuild[preset]",
         "cbuild[step]"
     ],
+    "query_params": [
+        "cbuild_saved"
+    ],
+    "account_endpoints": [
+        "my-builds"
+    ],
+    "admin_actions": [
+        "cbuild_print_tickets"
+    ],
+    "list_columns": [
+        "cbuild_assembly"
+    ],
+    "privacy_tools": [
+        "creative-skateboard-builder"
+    ],
     "css_classes": [
         "cbuild-assembly",
         "cbuild-bar__photo",

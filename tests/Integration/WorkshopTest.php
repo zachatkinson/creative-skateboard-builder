@@ -203,10 +203,23 @@ final class WorkshopTest extends CartTestCase {
 		self::assertTrue( self::added( $order ) );
 	}
 
+	/**
+	 * The deck drawn: a layer image of its own, so the build's picture has something to lay out.
+	 */
+	private function drawnDeck(): void {
+		$deck = wc_get_product( $this->parts['deck'] );
+		$deck->update_meta_data( Options::META_LAYER, (string) \CreativeBranding\SkateboardBuilder\Tests\Support\LayerFiles::attachment( 420, 1626 ) );
+		$deck->save();
+		$this->service( \CreativeBranding\SkateboardBuilder\Port\Kits::class )->forget();
+	}
+
 	public function test_the_build_box_lists_each_slot_as_sold_with_the_picture_the_refund_help_and_the_ticket(): void {
 		$this->as( 'shop_manager' );
+		$this->drawnDeck();
 		$order = $this->ordered();
 		$box   = self::box( $order );
+		self::assertStringContainsString( 'class="cbuild-order__board"', $box, 'the layered picture' );
+		self::assertStringContainsString( 'cbuild-order__layer--deck', $box );
 
 		self::assertStringContainsString( '<h3 id="cbuild-order-build-0">Complete</h3>', $box );
 		self::assertStringContainsString( '1 board, assembled by the shop.', $box );
@@ -261,8 +274,11 @@ final class WorkshopTest extends CartTestCase {
 
 	public function test_the_ticket_prints_the_order_the_customer_the_parts_the_note_and_a_tick_box_per_step(): void {
 		$this->as( 'shop_manager' );
+		$this->drawnDeck();
 		$order = $this->ordered( true, 2 );
 		$page  = self::tickets( array( $order->get_id() ) );
+		self::assertSame( 2, substr_count( $page, 'cbuild-order__layer--deck' ), 'the layered picture on each board\'s page' );
+		self::assertStringNotContainsString( 'loading="lazy"', $page, 'a page to print loads every image before it prints' );
 
 		self::assertStringContainsString( '<title>Assembly tickets</title>', $page );
 		self::assertStringContainsString( 'Order ' . $order->get_order_number(), $page );
@@ -311,6 +327,26 @@ final class WorkshopTest extends CartTestCase {
 			self::fail( 'The ticket printed without its nonce.' );
 		} catch ( \WPDieException $stopped ) {
 			self::assertStringContainsString( 'expired', $stopped->getMessage() );
+		}
+	}
+
+	/**
+	 * A role that may edit orders but not other people's (WorkshopHooks supports one on purpose) prints none it could
+	 * not open: WooCommerce asks per order (src/Internal/Admin/Orders/PageController.php:67).
+	 */
+	public function test_the_ticket_prints_no_order_its_user_could_not_open(): void {
+		$order = $this->ordered();
+		add_role( 'cbuild_order_clerk', 'Order clerk', array( 'read' => true, 'edit_shop_orders' => true ) );
+		try {
+			$this->as( 'cbuild_order_clerk' );
+			self::assertTrue( current_user_can( 'edit_shop_orders' ) );
+			self::assertFalse( current_user_can( get_post_type_object( 'shop_order' )->cap->edit_post, $order->get_id() ), 'WooCommerce would not open it for them' );
+			$page = self::tickets( array( $order->get_id() ) );
+			self::assertSame( 0, substr_count( $page, '<article class="cbuild-ticket"' ), 'nothing of the order printed' );
+			self::assertStringNotContainsString( 'Sam Shopper', $page );
+			self::assertStringNotContainsString( 'Tight trucks', $page );
+		} finally {
+			remove_role( 'cbuild_order_clerk' );
 		}
 	}
 

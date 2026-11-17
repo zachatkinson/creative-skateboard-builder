@@ -13,6 +13,7 @@ The spec's budgets are tests: a build fails when one is missed. The numbers from
 | A build's three composed pictures, with GD, layers shot at 6.5 pixels to the millimetre | Under 4 s and 64 MB above the job's start; the files measured against the 200 MB cap | `composer test:benchmark:integration` (`ComposerBenchmarkTest`) | Milestone 7 |
 | Rebuilding the specs index for 2,000 parts | Recorded; in jobs of 100, each under 10 s and 400 queries | `composer test:benchmark:integration` (`SpecsBenchmarkTest`) | Milestone 3 |
 | The specs export, the Catalogue check, a 5,000-row import read and shown, and each job of 100 import writes, at 2,000 parts | Each under 10 s, a third of PHP's usual limit for a request, and one query a product | `composer test:benchmark:integration` | Milestone 3 |
+| My builds with a customer's 100 saved builds, p95 of 10 views with the caches emptied | Under 600 ms and 130 queries, the same queries as for one build (D-222) | `composer test:benchmark:integration` (`MyBuildsBenchmarkTest`) | Milestone 8 |
 | The builder's script, compressed (Brotli, quality 11) | Under 15 kB | `npm run budget` | Milestone 6 |
 | The builder's styles, compressed (Brotli, quality 11) | Under 10 kB | `npm run budget` | Milestone 6 |
 | LCP on the builder page, mobile profile, median of three | 2.5 s or less | `npm run lhci` | Milestone 1 (the front page until milestone 6) |

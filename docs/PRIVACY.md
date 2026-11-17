@@ -76,7 +76,7 @@ Neither carries the site's address, the version of WordPress or WooCommerce, or 
 
 - **Deactivation** keeps everything but pending scheduled actions and the upgrade lock, so reactivation finds the shop as it was.
 - **Uninstall** removes everything in the table above, on every site of a network.
-- **A site deleted from a network** has its tables dropped with it, wherever the deletion is made. On a network the plugin writes a must-use file, `wp-content/mu-plugins/creative-skateboard-builder-network.php`, which loads on every site and in the network's admin and does two things: it names the plugin's tables for `wpmu_drop_tables`, and on `wpmu_delete_user` deletes the account's rows from each site's builds table. It is written on activation and, where missing or out of date, on any wp-admin request; uninstall removes it. Where the folder cannot be written, Site Health's test "The skateboard builder on a network" says so (#8, D-220; `PrivacyTest`, `SiteHealthTest`, `UninstallTest`).
+- **A site deleted from a network** has its tables dropped with it, wherever the deletion is made. On a network the plugin writes a must-use file, `wp-content/mu-plugins/creative-skateboard-builder-network.php`, which loads on every site and in the network's admin and does two things: it names the plugin's tables for `wpmu_drop_tables`, and on `wpmu_delete_user` deletes the account's rows from each site's builds table, found in one query whatever the network's size (D-222). It is written on activation and, where missing or out of date, on any wp-admin request; uninstall removes it. Where the folder cannot be written, Site Health's test "The skateboard builder on a network" says so (#8, D-220; `PrivacyTest`, `SiteHealthTest`, `UninstallTest`).
 
 ## Who sees it
 

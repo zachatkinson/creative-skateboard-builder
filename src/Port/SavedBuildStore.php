@@ -58,8 +58,9 @@ interface SavedBuildStore {
 	 * @since 0.8.0
 	 *
 	 * @param SavedBuild $build The build.
+	 * @return bool Whether the table holds it now: false where the write failed, or its UUID is another customer's.
 	 */
-	public function put( SavedBuild $build ): void;
+	public function put( SavedBuild $build ): bool;
 
 	/**
 	 * Delete one of a customer's builds. False when they have none with that UUID.

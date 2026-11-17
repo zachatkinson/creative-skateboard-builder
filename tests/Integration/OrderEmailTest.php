@@ -15,6 +15,7 @@ use CreativeBranding\SkateboardBuilder\Support\Options;
 use CreativeBranding\SkateboardBuilder\Tests\Support\CartTestCase;
 use WC_Email;
 use WC_Order;
+use WP_Locale_Switcher;
 
 /**
  * Roadmap, milestone 8: "the composed picture in the HTML emails, with the build's description as its alt text, and
@@ -106,7 +107,7 @@ final class OrderEmailTest extends CartTestCase {
 	public function test_a_plain_text_email_says_the_build_in_words_and_its_lead_time_and_notice_once(): void {
 		$order = $this->order( true );
 		$text  = self::email( $order, true );
-		self::assertStringContainsString( 'Your build: Deck: Deck', $text );
+		self::assertStringContainsString( 'The build: Deck: Deck', $text );
 		self::assertSame( 1, substr_count( $text, 'Assembled builds ship in 3 days.' ) );
 		self::assertSame( 1, substr_count( $text, 'An assembled board comes back as a whole.' ) );
 		self::assertStringNotContainsString( '<img', $text );
@@ -131,7 +132,7 @@ final class OrderEmailTest extends CartTestCase {
 		foreach ( array( 'no', 'yes' ) as $improved ) {
 			update_option( 'woocommerce_feature_email_improvements_enabled', $improved );
 			$html = self::email( $order, false );
-			self::assertMatchesRegularExpression( '/<img src="[^"]+" alt="Your build: Deck: Deck[^"]*" width="300" height="300"/', $html, 'layout ' . $improved );
+			self::assertMatchesRegularExpression( '/<img src="[^"]+" alt="The build: Deck: Deck[^"]*" width="300" height="300"/', $html, 'layout ' . $improved );
 			self::assertSame( 1, substr_count( $html, 'Assembled builds ship in 3 days.' ), 'layout ' . $improved );
 			self::assertStringContainsString( 'cbuild-order-part', $html, 'parts marked as under their kit' );
 		}
@@ -155,6 +156,76 @@ final class OrderEmailTest extends CartTestCase {
 		woocommerce_order_details_table( $order->get_id() );
 		$html = (string) ob_get_clean();
 		self::assertStringContainsString( 'cbuild-order-part', $html );
-		self::assertMatchesRegularExpression( '/<img src="[^"]+" alt="Your build: Deck: Deck[^"]*"/', $html );
+		self::assertMatchesRegularExpression( '/<img src="[^"]+" alt="The build: Deck: Deck[^"]*"/', $html );
+	}
+
+	/**
+	 * The kit's assembly words, as the shop owner wrote them.
+	 *
+	 * @param string $lead The lead time.
+	 */
+	private function leadTime( string $lead ): void {
+		$kit = wc_get_product( $this->kit );
+		$kit->setDocument(
+			Options::META_KIT_ASSEMBLY,
+			array(
+				'schema_version' => 1,
+				'default_on'     => false,
+				'fee'            => '15',
+				'lead_time'      => $lead,
+				'returns_notice' => 'An assembled board comes back as a whole.',
+			)
+		);
+		$kit->save();
+	}
+
+	public function test_a_plain_text_email_keeps_an_apostrophe(): void {
+		$this->leadTime( "Livraison d'ici 3 jours." );
+		$order = $this->order( true );
+		$text  = self::email( $order, true );
+		self::assertStringContainsString( "Livraison d'ici 3 jours.", $text );
+	}
+
+	/**
+	 * Roadmap, milestone 8: "Emails in English and French." WooCommerce writes a customer's email in the site's
+	 * language (includes/emails/class-wc-email.php:443, `wc_switch_to_site_locale()`), or the one a translation plugin
+	 * chooses there; the plugin's words and the slots' labels follow it, the part names are as sold.
+	 */
+	public function test_an_email_written_in_french_names_the_build_in_french_in_every_form(): void {
+		$order  = $this->order( true );
+		$deck   = wc_get_product( $this->parts['deck'] );
+		$deck->update_meta_data( Options::META_LAYER, (string) \CreativeBranding\SkateboardBuilder\Tests\Support\LayerFiles::attachment( 420, 1626 ) );
+		$deck->save();
+		$this->service( ComposedPictures::class )->compose( $this->kit, $this->picks() );
+		add_filter( 'get_available_languages', static fn( array $languages ): array => array_merge( $languages, array( 'fr_CA' ) ) );
+		$french = array(
+			'The build: %s.'  => 'La planche : %s.',
+			'%1$s: %2$s'      => '%1$s : %2$s',
+		);
+		add_filter(
+			'gettext_creative-skateboard-builder',
+			static fn( string $translation, string $text ): string => 'fr_CA' === determine_locale() ? ( $french[ $text ] ?? $translation ) : $translation,
+			10,
+			2
+		);
+		// A translation plugin's answer for the shop's own label, as it would give it in French.
+		add_filter( 'cbuild_slot_label', static fn( string $label, string $slot ): string => 'fr_CA' === determine_locale() && 'deck' === $slot ? 'Plateau' : $label, 10, 2 );
+		$GLOBALS['wp_locale_switcher'] = new WP_Locale_Switcher();
+		$GLOBALS['wp_locale_switcher']->init();
+		self::assertTrue( switch_to_locale( 'fr_CA' ) );
+		try {
+			$text = self::email( $order, true );
+			$html = array();
+			foreach ( array( 'no', 'yes' ) as $improved ) {
+				update_option( 'woocommerce_feature_email_improvements_enabled', $improved );
+				$html[ $improved ] = self::email( $order, false );
+			}
+		} finally {
+			restore_previous_locale();
+		}
+		self::assertStringContainsString( 'La planche : Plateau : Deck; ', $text );
+		foreach ( $html as $improved => $page ) {
+			self::assertMatchesRegularExpression( '/alt="La planche : Plateau : Deck; [^"]*"/', $page, 'layout ' . $improved );
+		}
 	}
 }

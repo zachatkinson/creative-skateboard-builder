@@ -162,7 +162,12 @@ final class TicketPage {
 		$skipped        = array();
 		foreach ( $ids as $id ) {
 			$order = wc_get_order( $id );
-			$view  = $order instanceof WC_Order ? $this->view->of( $order ) : null;
+			if ( $order instanceof WC_Order && ! self::mayOpen( $order ) ) {
+				// Named by its ID alone: the user may not see its number, customer or note.
+				$skipped[] = (string) $id;
+				continue;
+			}
+			$view = $order instanceof WC_Order ? $this->view->of( $order ) : null;
 			if ( null === $view || array() === $view['builds'] ) {
 				$skipped[] = null === $view ? (string) $id : $view['number'];
 				continue;
@@ -183,5 +188,18 @@ final class TicketPage {
 		wp_add_inline_script( self::HANDLE, self::SCRIPT );
 		$handle = self::HANDLE;
 		include CBUILD_PATH . 'templates/admin/tickets.php';
+	}
+
+	/**
+	 * Whether the user may open this order, as WooCommerce asks before it shows one
+	 * (src/Internal/Admin/Orders/PageController.php:67): the order type's edit capability for this order, or
+	 * `manage_woocommerce`. A role with `edit_shop_orders` alone may open its own, not other people's.
+	 *
+	 * @param WC_Order $order The order.
+	 */
+	private static function mayOpen( WC_Order $order ): bool {
+		$type = get_post_type_object( $order->get_type() );
+		$cap  = null === $type ? 'edit_shop_orders' : Cast::str( $type->cap->edit_post ?? null, 'edit_shop_orders' );
+		return current_user_can( $cap, $order->get_id() ) || current_user_can( 'manage_woocommerce' ); // phpcs:ignore WordPress.WP.Capabilities.Undetermined -- The order type's own edit capability, as WooCommerce asks it (PageController.php:67).
 	}
 }

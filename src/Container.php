@@ -306,6 +306,9 @@ final class Container {
 				return new Order\EmailHooks(
 					static function () use ( $c ): Service\ComposedPictures {
 						return $c->get( Service\ComposedPictures::class );
+					},
+					static function () use ( $c ): Order\WorkshopView {
+						return $c->get( Order\WorkshopView::class );
 					}
 				);
 			},

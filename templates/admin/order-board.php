@@ -23,7 +23,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 				<?php foreach ( $cbuild_layer['sources'] as $cbuild_source ) : ?>
 					<source type="<?php echo esc_attr( $cbuild_source['type'] ); ?>" srcset="<?php echo esc_attr( $cbuild_source['srcset'] ); ?>" sizes="16rem">
 				<?php endforeach; ?>
-				<img class="cbuild-order__image" src="<?php echo esc_url( $cbuild_layer['src'] ); ?>" width="<?php echo esc_attr( (string) $cbuild_layer['width'] ); ?>" height="<?php echo esc_attr( (string) $cbuild_layer['height'] ); ?>" alt="" decoding="async" loading="lazy">
+				<img class="cbuild-order__image" src="<?php echo esc_url( $cbuild_layer['src'] ); ?>" width="<?php echo esc_attr( (string) $cbuild_layer['width'] ); ?>" height="<?php echo esc_attr( (string) $cbuild_layer['height'] ); ?>" alt="" decoding="async">
 			</picture>
 		<?php endforeach; ?>
 	</div>

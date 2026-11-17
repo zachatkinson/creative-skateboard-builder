@@ -54,5 +54,7 @@ final class Deactivator {
 			}
 		}
 		Plugin::container()->get( MigrationStore::class )->clearLock();
+		// What rewrite rules were flushed for: anything may rebuild them without My builds while the plugin is off.
+		delete_option( Options::ENDPOINTS );
 	}
 }

@@ -208,6 +208,18 @@ function cbuild_api_const( ?ReflectionClass $class, string $name ): string {
 	return is_scalar( $value ) ? (string) $value : '';
 }
 
+/**
+ * A class's string constant, read from its source: for a class that cannot be loaded on its own here.
+ *
+ * @param string $file The class's file.
+ * @param string $name The constant.
+ * @return list<string> The value, or nothing where there is none.
+ */
+function cbuild_api_source_const( string $file, string $name ): array {
+	$source = is_readable( $file ) ? (string) file_get_contents( $file ) : '';
+	return 1 === preg_match( '/const string ' . preg_quote( $name, '/' ) . " = '([^']+)';/", $source, $found ) ? array( $found[1] ) : array();
+}
+
 $cbuild_php     = cbuild_api_php_files( $cbuild_root );
 $cbuild_options = cbuild_api_class( $cbuild_root, 'CreativeBranding\\SkateboardBuilder\\Support\\Options' );
 $cbuild_tables  = cbuild_api_class( $cbuild_root, 'CreativeBranding\\SkateboardBuilder\\Support\\Tables' );
@@ -256,6 +268,13 @@ $cbuild_surface = array(
 	// The build link's parameters a shared link may carry, as BuildLink writes them; a slot's own key is the kit's.
 	// The builder's own keys start with an underscore and may change in any release.
 	'link_params'       => array_map( static fn( string $key ): string => 'cbuild[' . $key . ']', cbuild_api_matches( array( $cbuild_root . '/src/Front/BuildLink.php' ), "/\\\$query\\['([a-z][a-z0-9_]*)'\\]\\s*=/" ) ),
+	// Names a shop, a theme or another plugin may hold on to: an address's parameter, an account endpoint, an
+	// admin-post action and a bulk action, a list column, and the privacy tools' ID (audit of milestone 8).
+	'query_params'      => cbuild_api_source_const( $cbuild_root . '/src/Front/MyBuildsView.php', 'PARAM' ),
+	'account_endpoints' => cbuild_api_source_const( $cbuild_root . '/src/Front/SavedBuildHooks.php', 'ENDPOINT' ),
+	'admin_actions'     => cbuild_api_source_const( $cbuild_root . '/src/Order/TicketPage.php', 'ACTION' ),
+	'list_columns'      => cbuild_api_source_const( $cbuild_root . '/src/Order/OrdersList.php', 'COLUMN' ),
+	'privacy_tools'     => cbuild_api_source_const( $cbuild_root . '/src/Privacy/PrivacyHooks.php', 'ID' ),
 	'css_classes'       => cbuild_api_list( $cbuild_options, 'cssClasses' ),
 	'dom_events'        => cbuild_api_matches( $cbuild_assets, "/'(cbuild:[a-z0-9-]+)'/" ),
 	// Defined in the stylesheets, read there with var(), or set by the script: a theme may set any of them.

@@ -247,6 +247,32 @@ final class ShareCardTest extends CartTestCase {
 		self::assertSame( (string) get_permalink( $this->kit ), wp_get_canonical_url( $this->kit ) );
 	}
 
+	/**
+	 * Spec, Share links: they carry "never a customer, an order or a saved build's ID". A saved build opened from My
+	 * builds has `cbuild_saved` in its address; the card's `og:url` and the canonical leave it out.
+	 */
+	public function test_a_saved_builds_id_is_in_neither_og_url_nor_the_canonical(): void {
+		$build = array_map( 'strval', $this->picks() );
+		$url   = add_query_arg(
+			array(
+				BuildLink::PARAM                                               => $build,
+				\CreativeBranding\SkateboardBuilder\Front\MyBuildsView::PARAM => '00000000-0000-4000-8000-000000000001',
+			),
+			(string) get_permalink( $this->kit )
+		);
+		$this->go_to( $url );
+		$_GET[ BuildLink::PARAM ] = $build;
+		$_GET[ \CreativeBranding\SkateboardBuilder\Front\MyBuildsView::PARAM ] = '00000000-0000-4000-8000-000000000001';
+		ob_start();
+		$this->hooks()->tags();
+		$html = (string) ob_get_clean();
+		self::assertMatchesRegularExpression( '#<meta property="og:url" content="[^"]+"#', $html );
+		self::assertStringNotContainsString( 'cbuild_saved', $html );
+		self::assertStringNotContainsString( '00000000-0000-4000-8000-000000000001', $html );
+		self::assertStringNotContainsString( 'cbuild_saved', (string) wp_get_canonical_url( $this->kit ) );
+		unset( $_GET[ \CreativeBranding\SkateboardBuilder\Front\MyBuildsView::PARAM ] );
+	}
+
 	// The audit of milestone 7, should-fix: the crawler's first fetch of a shared link was what asked for the picture,
 	// so that fetch always got the stand-in. The review's answer, where the link is offered, asks for it.
 	public function test_the_reviews_answer_asks_for_the_picture_so_a_shared_links_first_unfurl_can_be_it(): void {

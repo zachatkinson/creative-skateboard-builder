@@ -83,18 +83,22 @@ final class SavedBuildRepository implements SavedBuildStore {
 	 * @since 0.8.0
 	 *
 	 * @param SavedBuild $build The build.
+	 * @return bool Whether the table holds it now.
 	 */
-	public function put( SavedBuild $build ): void {
+	public function put( SavedBuild $build ): bool {
 		global $wpdb;
 		$picks   = (string) wp_json_encode( $build->picks );
 		$created = self::utc( $build->created );
 		$updated = self::utc( $build->updated );
 		$changed = $wpdb->query( $wpdb->prepare( 'UPDATE %i SET kit_id = %d, picks = %s, assembly = %d, name = %s, updated_at = %s WHERE user_id = %d AND uuid = %s', Tables::builds(), $build->kit, $picks, $build->assembly ? 1 : 0, $build->name, $updated, $build->user, $build->uuid ) );
-		if ( 0 !== $changed || null !== $this->find( $build->user, $build->uuid ) ) {
-			return;
+		if ( false === $changed ) {
+			return false;
 		}
-		// INSERT IGNORE: the UUID's unique key keeps another customer's row as it is.
-		$wpdb->query( $wpdb->prepare( 'INSERT IGNORE INTO %i (uuid, user_id, kit_id, picks, assembly, name, created_at, updated_at) VALUES (%s, %d, %d, %s, %d, %s, %s, %s)', Tables::builds(), $build->uuid, $build->user, $build->kit, $picks, $build->assembly ? 1 : 0, $build->name, $created, $updated ) );
+		if ( 0 !== $changed || null !== $this->find( $build->user, $build->uuid ) ) {
+			return true;
+		}
+		// INSERT IGNORE: the UUID's unique key keeps another customer's row as it is, and nothing is inserted.
+		return 1 === $wpdb->query( $wpdb->prepare( 'INSERT IGNORE INTO %i (uuid, user_id, kit_id, picks, assembly, name, created_at, updated_at) VALUES (%s, %d, %d, %s, %d, %s, %s, %s)', Tables::builds(), $build->uuid, $build->user, $build->kit, $picks, $build->assembly ? 1 : 0, $build->name, $created, $updated ) );
 	}
 
 	/**

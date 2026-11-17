@@ -63,19 +63,40 @@ final class MyBuildsView {
 	) {}
 
 	/**
+	 * Whether this page may still ask for pictures: it stops at the first refusal.
+	 *
+	 * @var bool
+	 */
+	private bool $asking = true;
+
+	/**
+	 * The pictures this page asked for, by kit and parts: two builds of the same parts ask once.
+	 *
+	 * @var array<string, true>
+	 */
+	private array $asked = array();
+
+	/**
 	 * The customer's builds, the last saved first, as the template prints them.
 	 *
 	 * @since 0.8.0
 	 *
 	 * @param int $user The customer's user ID.
-	 * @return list<array{uuid: string, name: string, picture: string|null, deck: int, total: string, ready: bool, saved: string, open: string|null}>
+	 * @return list<array{uuid: string, name: string, picture: string|null, photo: string, total: string, ready: bool, saved: string, open: string|null}>
 	 */
 	public function rows( int $user ): array {
-		$rows = array();
-		foreach ( $this->saved->of( $user ) as $build ) {
-			$rows[] = $this->row( $build );
-		}
-		return $rows;
+		$this->asking = true;
+		$this->asked  = array();
+		// The builds share their kits' slots: each slot's parts are read once for the page (audit of milestone 8).
+		return $this->kits->together(
+			function () use ( $user ): array {
+				$rows = array();
+				foreach ( $this->saved->of( $user ) as $build ) {
+					$rows[] = $this->row( $build );
+				}
+				return $rows;
+			}
+		);
 	}
 
 	/**
@@ -117,7 +138,7 @@ final class MyBuildsView {
 	 * One build's row.
 	 *
 	 * @param SavedBuild $build The build.
-	 * @return array{uuid: string, name: string, picture: string|null, deck: int, total: string, ready: bool, saved: string, open: string|null}
+	 * @return array{uuid: string, name: string, picture: string|null, photo: string, total: string, ready: bool, saved: string, open: string|null}
 	 */
 	private function row( SavedBuild $build ): array {
 		try {
@@ -131,18 +152,26 @@ final class MyBuildsView {
 			$name = null === $state ? __( 'A saved build', 'creative-skateboard-builder' ) : $this->cards->title( $state->counted() );
 		}
 		$picture = null;
+		$photo   = '';
 		if ( $ready ) {
 			$picture = $this->pictures->url( $build->kit, $build->picks, ComposedPictures::CART );
-			if ( null === $picture ) {
-				// Made in the background for the next visit; the deck's photo stands in until then.
-				$this->pictures->ask( $build->kit, $build->picks );
+		}
+		if ( null === $picture ) {
+			$key = $build->kit . ':' . implode( ',', $build->picks );
+			if ( $ready && $this->asking && ! isset( $this->asked[ $key ] ) ) {
+				$this->asked[ $key ] = true;
+				// Made in the background for the next visit, as a page asks (D-205), so carts keep their room; once
+				// the page's share is taken, the rest wait for another visit.
+				$this->asking = $this->pictures->ask( $build->kit, $build->picks, ComposedPictures::FROM_PAGE );
 			}
+			$deck  = wc_get_product( $build->picks[ SlotKey::DECK ] ?? 0 );
+			$photo = $deck instanceof \WC_Product ? $deck->get_image( 'woocommerce_gallery_thumbnail', array( 'alt' => '' ) ) : '';
 		}
 		return array(
 			'uuid'    => $build->uuid,
 			'name'    => $name,
 			'picture' => $picture,
-			'deck'    => $build->picks[ SlotKey::DECK ] ?? 0,
+			'photo'   => $photo,
 			'total'   => $ready ? $this->money->text( $state->quote->total, $this->kits->decimals() ) : '',
 			'ready'   => $ready,
 			'saved'   => self::when( $build ),

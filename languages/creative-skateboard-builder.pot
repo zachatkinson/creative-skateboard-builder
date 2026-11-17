@@ -9,7 +9,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-11-17T08:59:57+00:00\n"
+"POT-Creation-Date: 2026-11-17T09:53:55+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: creative-skateboard-builder\n"
@@ -18,7 +18,7 @@ msgstr ""
 #: creative-skateboard-builder.php
 #: src/Abilities/CatalogueCheckAbility.php:65
 #: src/Health/SiteHealth.php:329
-#: src/Privacy/PrivacyHooks.php:225
+#: src/Privacy/PrivacyHooks.php:231
 msgid "Creative Skateboard Builder"
 msgstr ""
 
@@ -98,7 +98,7 @@ msgid "Check a build"
 msgstr ""
 
 #: src/Abilities/CheckBuildAbility.php:43
-msgid "Says whether a build of a kit may go to the cart: every required slot filled, each part one of its slot's, in stock, and fitting the others. What is wrong is listed with its code and a sentence. A slot with no pick is checked with the part the builder would start it on."
+msgid "Says whether a build of a kit may go to the cart: every required slot filled, each part one of its slot's, in stock, and fitting the others. What is wrong is listed with its code and a sentence. A required slot with no pick is a problem: nothing is picked for the shopper."
 msgstr ""
 
 #: src/Abilities/CheckBuildAbility.php:88
@@ -182,9 +182,9 @@ msgstr ""
 #: src/Order/BuildBox.php:95
 #: src/Order/OrderHooks.php:252
 #: src/Order/OrderHooks.php:342
-#: src/Order/WorkshopWords.php:285
+#: src/Order/WorkshopWords.php:286
 #: templates/account/my-builds.php:23
-#: templates/account/my-builds.php:33
+#: templates/account/my-builds.php:34
 #: templates/admin/tickets.php:72
 msgid "Build"
 msgstr ""
@@ -234,7 +234,7 @@ msgstr ""
 #: src/Order/OrderHooks.php:251
 #: src/Order/OrderHooks.php:341
 #: src/Order/OrdersList.php:47
-#: src/Privacy/PrivacyHooks.php:142
+#: src/Privacy/PrivacyHooks.php:143
 #: templates/admin/tickets.php:78
 msgid "Assembly"
 msgstr ""
@@ -469,8 +469,8 @@ msgstr ""
 
 #: src/Admin/BuildTab.php:641
 #: src/Admin/BuildTab.php:930
-#: src/Privacy/PrivacyHooks.php:130
-#: templates/account/my-builds.php:56
+#: src/Privacy/PrivacyHooks.php:131
+#: templates/account/my-builds.php:57
 msgid "Name"
 msgstr ""
 
@@ -919,7 +919,7 @@ msgstr ""
 #: src/Admin/PartSpecsPanel.php:505
 #: src/Health/SiteHealth.php:369
 #: src/Order/OrderHooks.php:341
-#: src/Privacy/PrivacyHooks.php:143
+#: src/Privacy/PrivacyHooks.php:144
 msgid "Yes"
 msgstr ""
 
@@ -927,7 +927,7 @@ msgstr ""
 #: src/Admin/PartSpecsPanel.php:506
 #: src/Health/SiteHealth.php:369
 #: src/Order/OrderHooks.php:341
-#: src/Privacy/PrivacyHooks.php:143
+#: src/Privacy/PrivacyHooks.php:144
 msgid "No"
 msgstr ""
 
@@ -1719,15 +1719,13 @@ msgstr ""
 #. translators: 1: a slot's label, such as Bearings. 2: a part's name.
 #. translators: 1: a slot's label, such as Wheels. 2: a brand's name, or a size such as 54 mm.
 #. translators: 1: a slot's label, such as Deck. 2: the part's name.
-#. translators: 1: a slot's label, such as Deck; 2: the part's name.
 #. translators: 1: a spec's name, such as Deck width; 2: its value, such as 8.5″.
 #: src/Cart/ShowHooks.php:516
 #: src/Front/BuilderView.php:1084
 #: src/Front/Words.php:347
 #: src/Front/Words.php:407
-#: src/Order/EmailHooks.php:225
 #: src/Order/OrderHooks.php:291
-#: src/Order/WorkshopWords.php:250
+#: src/Order/WorkshopWords.php:251
 #: templates/admin/order-build.php:66
 #: templates/admin/tickets.php:113
 #, php-format
@@ -1812,12 +1810,12 @@ msgstr ""
 msgid "The file has no %s column. Add one, or match parts by the other with --key."
 msgstr ""
 
-#: src/Front/BuilderPage.php:217
+#: src/Front/BuilderPage.php:222
 msgid "This builder isn't available right now."
 msgstr ""
 
 #. translators: %s: why the builder could not be shown, as the error said it.
-#: src/Front/BuilderPage.php:221
+#: src/Front/BuilderPage.php:226
 #, php-format
 msgid "Shown to shop managers only: %s"
 msgstr ""
@@ -2218,7 +2216,7 @@ msgstr ""
 msgid "Sign in to save this build"
 msgstr ""
 
-#: src/Front/MyBuildsView.php:131
+#: src/Front/MyBuildsView.php:152
 msgid "A saved build"
 msgstr ""
 
@@ -2238,33 +2236,38 @@ msgstr ""
 msgid "That form has expired. Please try again."
 msgstr ""
 
-#: src/Front/SavedBuildHooks.php:231
+#: src/Front/SavedBuildHooks.php:232
+#: src/Front/SavedBuildHooks.php:272
+msgid "The build could not be saved just now. Please try again."
+msgstr ""
+
+#: src/Front/SavedBuildHooks.php:234
 msgid "That build is not among your saved builds."
 msgstr ""
 
-#: src/Front/SavedBuildHooks.php:233
+#: src/Front/SavedBuildHooks.php:236
 msgid "The build is renamed."
 msgstr ""
 
-#: src/Front/SavedBuildHooks.php:235
+#: src/Front/SavedBuildHooks.php:238
 msgid "The build is deleted."
 msgstr ""
 
-#: src/Front/SavedBuildHooks.php:267
+#: src/Front/SavedBuildHooks.php:270
 msgid "The build is saved. It is listed below."
 msgstr ""
 
-#: src/Front/SavedBuildHooks.php:268
+#: src/Front/SavedBuildHooks.php:271
 msgid "Your saved build is updated."
 msgstr ""
 
 #. translators: %s: how many builds a customer may keep, such as 100.
-#: src/Front/SavedBuildHooks.php:270
+#: src/Front/SavedBuildHooks.php:274
 #, php-format
 msgid "You have %s saved builds, the most kept. Delete one to save another."
 msgstr ""
 
-#: src/Front/SavedBuildHooks.php:271
+#: src/Front/SavedBuildHooks.php:275
 msgid "This build could not be saved: a part is missing or no longer fits. Open it in the builder to check it."
 msgstr ""
 
@@ -2653,7 +2656,7 @@ msgstr ""
 
 #. translators: Between two parts of the build, as in "Deck: …; Trucks: …".
 #: src/Front/Words.php:410
-#: src/Order/WorkshopWords.php:253
+#: src/Order/WorkshopWords.php:254
 msgctxt "between the parts of a build"
 msgid "; "
 msgstr ""
@@ -2931,11 +2934,6 @@ msgstr ""
 msgid "Spec table"
 msgstr ""
 
-#. translators: %l: the build's parts, each with its slot, as a list in the site's language.
-#: src/Order/EmailHooks.php:228
-msgid "Your build: %l"
-msgstr ""
-
 #. translators: %s: the kit's name.
 #: src/Order/OrderHooks.php:95
 #, php-format
@@ -3014,54 +3012,58 @@ msgstr ""
 msgid "%s is tied to this build, but the build was sold without it."
 msgstr ""
 
-#: src/Order/WorkshopWords.php:136
+#: src/Order/WorkshopWords.php:92
+msgid "A line of the order no longer matches the build. Check its lines before you print the assembly ticket."
+msgstr ""
+
+#: src/Order/WorkshopWords.php:137
 msgid "Lay the grip tape on the deck, press it down and trim it to the edge."
 msgstr ""
 
-#: src/Order/WorkshopWords.php:140
+#: src/Order/WorkshopWords.php:141
 msgid "Bolt the trucks to the deck, with the risers between them."
 msgstr ""
 
-#: src/Order/WorkshopWords.php:141
+#: src/Order/WorkshopWords.php:142
 msgid "Bolt the trucks to the deck."
 msgstr ""
 
-#: src/Order/WorkshopWords.php:144
+#: src/Order/WorkshopWords.php:145
 msgid "Press the bearings into the wheels."
 msgstr ""
 
-#: src/Order/WorkshopWords.php:147
+#: src/Order/WorkshopWords.php:148
 msgid "Put the wheels on the trucks and tighten the axle nuts until each wheel spins without wobbling."
 msgstr ""
 
-#: src/Order/WorkshopWords.php:149
+#: src/Order/WorkshopWords.php:150
 msgid "Check every bolt and nut, and spin each wheel."
 msgstr ""
 
 #. translators: %s: a number of boards.
-#: src/Order/WorkshopWords.php:220
+#: src/Order/WorkshopWords.php:221
 #, php-format
 msgid "%s board to assemble"
 msgid_plural "%s boards to assemble"
 msgstr[0] ""
 msgstr[1] ""
 
-#: src/Order/WorkshopWords.php:222
+#: src/Order/WorkshopWords.php:223
 msgid "Not assembled"
 msgstr ""
 
-#: src/Order/WorkshopWords.php:232
+#: src/Order/WorkshopWords.php:233
 msgid "Restock refunded items covers a whole refund. Where the grip is already applied, refund the unused parts first with it ticked, then the grip and the rest in a second refund with it cleared."
 msgstr ""
 
 #. translators: %s: each part of the build, by its slot, as "Deck: …; Trucks: …".
-#: src/Order/WorkshopWords.php:255
+#: src/Order/WorkshopWords.php:256
 #, php-format
 msgid "The build: %s."
 msgstr ""
 
 #. translators: %s: a number of boards.
-#: src/Order/WorkshopWords.php:270
+#: src/Order/WorkshopWords.php:271
 #, php-format
 msgid "%s board, assembled by the shop."
 msgid_plural "%s boards, assembled by the shop."
@@ -3069,7 +3071,7 @@ msgstr[0] ""
 msgstr[1] ""
 
 #. translators: %s: a number of boards.
-#: src/Order/WorkshopWords.php:272
+#: src/Order/WorkshopWords.php:273
 #, php-format
 msgid "%s board, not assembled. The parts ship as they are."
 msgid_plural "%s boards, not assembled. The parts ship as they are."
@@ -3077,55 +3079,55 @@ msgstr[0] ""
 msgstr[1] ""
 
 #. translators: 1: which build, from 1; 2: how many builds the order holds; 3: the kit's name.
-#: src/Order/WorkshopWords.php:290
+#: src/Order/WorkshopWords.php:291
 #, php-format
 msgid "Build %1$s of %2$s: %3$s"
 msgstr ""
 
 #. translators: 1: which board, from 1; 2: how many boards of the build.
-#: src/Order/WorkshopWords.php:303
+#: src/Order/WorkshopWords.php:304
 #, php-format
 msgid "Board %1$s of %2$s"
 msgstr ""
 
-#: src/Privacy/PrivacyHooks.php:74
-#: src/Privacy/PrivacyHooks.php:92
-#: src/Privacy/PrivacyHooks.php:125
+#: src/Privacy/PrivacyHooks.php:75
+#: src/Privacy/PrivacyHooks.php:93
+#: src/Privacy/PrivacyHooks.php:126
 msgid "Saved builds"
 msgstr ""
 
-#: src/Privacy/PrivacyHooks.php:126
+#: src/Privacy/PrivacyHooks.php:127
 msgid "Builds saved under My builds."
 msgstr ""
 
-#: src/Privacy/PrivacyHooks.php:134
+#: src/Privacy/PrivacyHooks.php:135
 #: templates/admin/check.php:86
 #: build/builder/index.js:1
 msgid "Kit"
 msgstr ""
 
-#: src/Privacy/PrivacyHooks.php:138
+#: src/Privacy/PrivacyHooks.php:139
 #: templates/admin/tickets.php:91
 msgid "Parts"
 msgstr ""
 
-#: src/Privacy/PrivacyHooks.php:146
+#: src/Privacy/PrivacyHooks.php:147
 msgid "Saved first"
 msgstr ""
 
-#: src/Privacy/PrivacyHooks.php:150
+#: src/Privacy/PrivacyHooks.php:151
 msgid "Saved last"
 msgstr ""
 
-#: src/Privacy/PrivacyHooks.php:222
+#: src/Privacy/PrivacyHooks.php:228
 msgid "When you are signed in, you can save a skateboard build from the builder. We keep each saved build with your account: the parts you picked, whether you asked for assembly, the name you gave it, and when you saved it. You find them under My builds in your account, where you can rename or delete them."
 msgstr ""
 
-#: src/Privacy/PrivacyHooks.php:223
+#: src/Privacy/PrivacyHooks.php:229
 msgid "Saved builds are kept until you delete them or your account is deleted. They are included when you ask us for a copy of your personal data, and deleted when you ask us to erase it."
 msgstr ""
 
-#: src/Privacy/PrivacyHooks.php:224
+#: src/Privacy/PrivacyHooks.php:230
 msgid "A link to a build holds only the parts picked, and nothing about you. A picture of a build holds only the parts' images."
 msgstr ""
 
@@ -3186,37 +3188,64 @@ msgid "You have no saved builds yet. Save one from the review step of the builde
 msgstr ""
 
 #: templates/account/my-builds.php:24
-#: templates/account/my-builds.php:41
+#: templates/account/my-builds.php:42
 msgid "Total today"
 msgstr ""
 
 #: templates/account/my-builds.php:25
-#: templates/account/my-builds.php:48
+#: templates/account/my-builds.php:49
 msgid "Saved"
 msgstr ""
 
 #: templates/account/my-builds.php:26
-#: templates/account/my-builds.php:49
+#: templates/account/my-builds.php:50
 msgid "Actions"
 msgstr ""
 
-#: templates/account/my-builds.php:45
+#: templates/account/my-builds.php:46
 msgid "A part has changed since you saved it. Open the build to see which."
 msgstr ""
 
-#: templates/account/my-builds.php:51
+#. translators: %s: the saved build's name.
+#: templates/account/my-builds.php:52
+#, php-format
+msgid "Open %s"
+msgstr ""
+
+#. translators: %s: the saved build's name.
+#: templates/account/my-builds.php:52
 msgid "Open"
 msgstr ""
 
-#: templates/account/my-builds.php:53
+#: templates/account/my-builds.php:54
 msgid "The shop no longer sells this kit."
 msgstr ""
 
-#: templates/account/my-builds.php:62
+#. translators: %s: the saved build's name.
+#: templates/account/my-builds.php:58
+#, php-format
+msgid "Name of %s"
+msgstr ""
+
+#. translators: %s: the saved build's name.
+#: templates/account/my-builds.php:63
+#, php-format
+msgid "Rename %s"
+msgstr ""
+
+#. translators: %s: the saved build's name.
+#: templates/account/my-builds.php:63
 msgid "Rename"
 msgstr ""
 
-#: templates/account/my-builds.php:69
+#. translators: %s: the saved build's name.
+#: templates/account/my-builds.php:70
+#, php-format
+msgid "Delete %s"
+msgstr ""
+
+#. translators: %s: the saved build's name.
+#: templates/account/my-builds.php:70
 msgid "Delete"
 msgstr ""
 

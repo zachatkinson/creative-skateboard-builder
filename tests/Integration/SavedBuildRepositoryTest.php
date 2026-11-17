@@ -45,7 +45,7 @@ final class SavedBuildRepositoryTest extends IntegrationTestCase {
 	}
 
 	public function test_a_build_is_kept_and_read_back_as_it_was_written(): void {
-		$this->store->put( self::build( 'a0000000-0000-4000-8000-000000000001', 7, 'Mine & yours "quoted"' ) );
+		self::assertTrue( $this->store->put( self::build( 'a0000000-0000-4000-8000-000000000001', 7, 'Mine & yours "quoted"' ) ) );
 		self::assertEquals( self::build( 'a0000000-0000-4000-8000-000000000001', 7, 'Mine & yours "quoted"' ), $this->store->find( 7, 'a0000000-0000-4000-8000-000000000001' ) );
 		self::assertSame( 1, $this->store->count( 7 ) );
 	}
@@ -59,7 +59,7 @@ final class SavedBuildRepositoryTest extends IntegrationTestCase {
 		self::assertSame( array(), $this->store->of( 8 ) );
 		self::assertFalse( $this->store->delete( 8, $hers->uuid ) );
 		// Written by another customer under her UUID: neither an update of hers nor a row of his.
-		$this->store->put( self::build( $hers->uuid, 8, 'Taken' ) );
+		self::assertFalse( $this->store->put( self::build( $hers->uuid, 8, 'Taken' ) ), 'nothing written is said' );
 		self::assertEquals( $hers, $this->store->find( 7, $hers->uuid ) );
 		self::assertSame( 0, $this->store->count( 8 ) );
 		self::assertSame( 0, $this->store->forget( 8 ) );
@@ -76,12 +76,27 @@ final class SavedBuildRepositoryTest extends IntegrationTestCase {
 		$this->store->put( $renamed );
 		self::assertEquals( $renamed, $this->store->find( 7, $renamed->uuid ) );
 		self::assertSame( array( 'Renamed', 'New' ), array_map( static fn( SavedBuild $build ): string => $build->name, $this->store->of( 7 ) ) );
-		$this->store->put( $renamed );
+		self::assertTrue( $this->store->put( $renamed ), 'written again unchanged: it holds it' );
 		self::assertSame( 2, $this->store->count( 7 ), 'written again unchanged: no second row' );
 
 		self::assertTrue( $this->store->delete( 7, $renamed->uuid ) );
 		self::assertSame( 1, $this->store->forget( 7 ) );
 		self::assertSame( 0, $this->store->count( 7 ) );
 		self::assertSame( 1, $this->store->count( 8 ) );
+	}
+
+	public function test_a_write_the_database_refuses_is_said(): void {
+		global $wpdb;
+		$build = self::build( 'a0000000-0000-4000-8000-000000000009', 7, 'Lost' );
+		$fail  = static fn( string $query ): string => str_contains( $query, Tables::builds() ) && 1 === preg_match( '/^\s*(UPDATE|INSERT)/', $query ) ? 'SELECT * FROM cbuild_no_such_table' : $query;
+		add_filter( 'query', $fail );
+		$shown = $wpdb->show_errors( false );
+		try {
+			self::assertFalse( $this->store->put( $build ) );
+		} finally {
+			$wpdb->show_errors( $shown );
+			remove_filter( 'query', $fail );
+		}
+		self::assertNull( $this->store->find( 7, $build->uuid ) );
 	}
 }
