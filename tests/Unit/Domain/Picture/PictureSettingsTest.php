@@ -57,7 +57,8 @@ final class PictureSettingsTest extends TestCase {
 		self::assertSame( array(), $none->order );
 		self::assertNull( $none->wheelbase );
 		self::assertEquals( Layout::of( self::board() ), Layout::of( self::board(), $none ) );
-		self::assertSame( array( 'deck', 'grip', 'trucks', 'wheels' ), self::stack( Layout::of( self::board() ) ) );
+		// The grip is drawn on the top from 0.8.0, not on the underside this order stacks (#46).
+		self::assertSame( array( 'deck', 'trucks', 'wheels' ), self::stack( Layout::of( self::board() ) ) );
 	}
 
 	public function test_the_order_names_the_slots_from_the_bottom_and_those_it_leaves_out_follow_in_the_usual_order(): void {
@@ -69,9 +70,9 @@ final class PictureSettingsTest extends TestCase {
 		);
 		self::assertSame( array( 'grip', 'deck', 'wheels' ), $settings->order );
 		$layout = Layout::of( self::board(), $settings );
-		self::assertSame( array( 'grip', 'deck', 'wheels', 'trucks' ), self::stack( $layout ) );
-		self::assertCount( 8, $layout->layers, 'every layer is kept: a deck, a grip, two trucks and four wheels' );
-		self::assertSame( array( 300, 300, 300, 300 ), array_map( static fn( Layer $layer ): int => $layer->part, array_slice( $layout->layers, 2, 4 ) ), 'a slot\'s own layers keep their order' );
+		self::assertSame( array( 'deck', 'wheels', 'trucks' ), self::stack( $layout ) );
+		self::assertCount( 7, $layout->layers, 'every layer underneath is kept: a deck, two trucks and four wheels' );
+		self::assertSame( array( 300, 300, 300, 300 ), array_map( static fn( Layer $layer ): int => $layer->part, array_slice( $layout->layers, 1, 4 ) ), 'a slot\'s own layers keep their order' );
 		self::assertSame( Layout::of( self::board() )->width, $layout->width, 'the order moves nothing' );
 	}
 

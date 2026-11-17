@@ -10,6 +10,8 @@ declare( strict_types=1 );
 namespace CreativeBranding\SkateboardBuilder\Tests\Unit\Domain\Picture;
 
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Part;
+use CreativeBranding\SkateboardBuilder\Domain\Kit\Picks;
+use CreativeBranding\SkateboardBuilder\Domain\Picture\PictureSettings;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\SlotKey;
 use CreativeBranding\SkateboardBuilder\Domain\Picture\Layer;
 use CreativeBranding\SkateboardBuilder\Domain\Picture\Layout;
@@ -20,7 +22,8 @@ use PHPUnit\Framework\TestCase;
 
 /**
  * The picture's layout from the specs: the deck by its width and length, the trucks by the wheelbase or the shape's
- * usual one, the wheels at the axles and the grip as a strip along the edge (spec: The builder, The picture). Every
+ * usual one and the wheels at the axles, seen from underneath; and from 0.8.0 the board's top, with the grip filled
+ * into the deck nose to tail and a bolt head at each of the deck's holes (spec: The builder, The picture; #46). Every
  * number is a ten-thousandth of a millimetre from the deck's centre.
  */
 final class LayoutTest extends TestCase {
@@ -40,7 +43,34 @@ final class LayoutTest extends TestCase {
 	 * @return list<array{string, int, int, int, int, int}>
 	 */
 	private static function rows( Layout $layout ): array {
-		return array_map( static fn( Layer $layer ): array => array( $layer->slot, $layer->part, $layer->x, $layer->y, $layer->width, $layer->height ), $layout->layers );
+		return self::table( $layout->layers );
+	}
+
+	/**
+	 * Layers as rows: slot, part, x, y, width, height.
+	 *
+	 * @param list<Layer> $layers The layers.
+	 * @return list<array{string, int, int, int, int, int}>
+	 */
+	private static function table( array $layers ): array {
+		return array_map( static fn( Layer $layer ): array => array( $layer->slot, $layer->part, $layer->x, $layer->y, $layer->width, $layer->height ), $layers );
+	}
+
+	/**
+	 * A whole board: deck, trucks, wheels, grip and hardware.
+	 *
+	 * @param array<string, string> $deck Specs to add to the deck's or replace.
+	 */
+	private static function whole( array $deck = array() ): Picks {
+		return Parts::picks(
+			array(
+				SlotKey::WHEELS   => Parts::of( array( 'wheel_diameter' => '54' ), 300 ),
+				SlotKey::GRIP     => Parts::of( array(), 700 ),
+				SlotKey::HARDWARE => Parts::of( array( 'bolt_length' => '1' ), 600 ),
+				SlotKey::TRUCKS   => Parts::indy( '144' ),
+				SlotKey::DECK     => self::deck( $deck ),
+			)
+		);
 	}
 
 	public function test_nothing_is_laid_out_before_a_deck_is_picked(): void {
@@ -49,6 +79,7 @@ final class LayoutTest extends TestCase {
 		self::assertSame( 0, $layout->width );
 		self::assertSame( 0, $layout->height );
 		self::assertSame( array(), $layout->layers );
+		self::assertSame( array(), $layout->top );
 		self::assertSame( array(), $layout->assumed );
 	}
 
@@ -71,22 +102,12 @@ final class LayoutTest extends TestCase {
 	}
 
 	public function test_a_whole_board_from_the_bottom_of_the_stack_up(): void {
-		$layout = Layout::of(
-			Parts::picks(
-				array(
-					SlotKey::WHEELS => Parts::of( array( 'wheel_diameter' => '54' ), 300 ),
-					SlotKey::GRIP   => Parts::of( array(), 700 ),
-					SlotKey::TRUCKS => Parts::indy( '144' ),
-					SlotKey::DECK   => self::deck(),
-				)
-			)
-		);
+		$layout = Layout::of( self::whole() );
 
+		// Seen from underneath, the grip and the hardware are out of sight: the grip is drawn on the top (#46).
 		self::assertSame(
 			array(
 				array( SlotKey::DECK, 100, 0, 0, 2095500, 8128000 ),
-				// The strip is 1 in wide, flush with the deck's right edge.
-				array( SlotKey::GRIP, 700, 920750, 0, 254000, 8128000 ),
 				// Half the 14.25 in wheelbase and half the 2.125 in between a baseplate's holes; the axle is 8.25 in and
 				// the baseplate 3 in.
 				array( SlotKey::TRUCKS, 144, 0, 2079625, 2095500, 762000 ),
@@ -101,6 +122,63 @@ final class LayoutTest extends TestCase {
 		);
 		self::assertSame( array( 2095500, 8128000 ), array( $layout->width, $layout->height ) );
 		self::assertSame( array(), $layout->assumed );
+	}
+
+	// Issue #46: "On the top, the wheels peek out at the edges and the trucks are hidden"; "The grip's layer image becomes
+	// a swatch filled into the deck's shape, nose to tail"; "Bolt heads are drawn at the deck's holes".
+	public function test_the_top_is_the_wheels_under_the_deck_then_the_grip_nose_to_tail_and_a_bolt_head_at_each_hole(): void {
+		$layout = Layout::of( self::whole() );
+
+		self::assertSame(
+			array(
+				// The wheels where they are underneath: the deck covers all but what stands out past its edges.
+				array( SlotKey::WHEELS, 300, -885750, 2079625, 324000, 540000 ),
+				array( SlotKey::WHEELS, 300, 885750, 2079625, 324000, 540000 ),
+				array( SlotKey::WHEELS, 300, -885750, -2079625, 324000, 540000 ),
+				array( SlotKey::WHEELS, 300, 885750, -2079625, 324000, 540000 ),
+				array( SlotKey::DECK, 100, 0, 0, 2095500, 8128000 ),
+				// The grip has the deck's whole box, which the deck's shape then cuts.
+				array( SlotKey::GRIP, 700, 0, 0, 2095500, 8128000 ),
+				// A 3/8 in head at each hole, from the nose: the inner rows half the wheelbase out, the outer 2.125 in
+				// further, the columns 1.625 in apart; the left of each row first.
+				array( SlotKey::HARDWARE, 600, -206375, 2349500, 95250, 95250 ),
+				array( SlotKey::HARDWARE, 600, 206375, 2349500, 95250, 95250 ),
+				array( SlotKey::HARDWARE, 600, -206375, 1809750, 95250, 95250 ),
+				array( SlotKey::HARDWARE, 600, 206375, 1809750, 95250, 95250 ),
+				array( SlotKey::HARDWARE, 600, -206375, -1809750, 95250, 95250 ),
+				array( SlotKey::HARDWARE, 600, 206375, -1809750, 95250, 95250 ),
+				array( SlotKey::HARDWARE, 600, -206375, -2349500, 95250, 95250 ),
+				array( SlotKey::HARDWARE, 600, 206375, -2349500, 95250, 95250 ),
+			),
+			self::table( $layout->top )
+		);
+	}
+
+	public function test_an_old_school_decks_bolt_heads_are_at_its_wider_rows(): void {
+		$top = self::table( Layout::of( self::whole( array( 'hole_pattern' => 'old_school' ) ) )->top );
+
+		// The inner rows stay half the wheelbase out; the outer are 2.5 in further.
+		self::assertSame( array( SlotKey::HARDWARE, 600, -206375, 2444750, 95250, 95250 ), $top[6] );
+		self::assertSame( array( SlotKey::HARDWARE, 600, 206375, 1809750, 95250, 95250 ), $top[9] );
+		self::assertSame( array( SlotKey::HARDWARE, 600, 206375, -2444750, 95250, 95250 ), $top[13] );
+	}
+
+	public function test_a_top_with_no_grip_or_hardware_is_the_deck_alone_and_the_trucks_are_never_on_it(): void {
+		$layout = Layout::of( Parts::picks( array( SlotKey::DECK => self::deck(), SlotKey::TRUCKS => Parts::indy( '144' ) ) ) );
+
+		self::assertSame( array( array( SlotKey::DECK, 100, 0, 0, 2095500, 8128000 ) ), self::table( $layout->top ) );
+	}
+
+	public function test_the_kits_layer_order_stacks_the_underside_and_leaves_the_top_as_a_board_is_built(): void {
+		$settings = PictureSettings::fromDocument(
+			array(
+				'schema_version' => 1,
+				'order'          => array( 'wheels', 'deck' ),
+			)
+		);
+
+		self::assertSame( self::table( Layout::of( self::whole() )->top ), self::table( Layout::of( self::whole(), $settings )->top ) );
+		self::assertSame( SlotKey::WHEELS, Layout::of( self::whole(), $settings )->layers[0]->slot );
 	}
 
 	public function test_the_wheels_are_scaled_by_their_diameter(): void {
@@ -221,11 +299,11 @@ final class LayoutTest extends TestCase {
 		self::assertSame( array( SpecKey::Wheelbase, SpecKey::DeckLength, SpecKey::AxleWidth, SpecKey::WheelDiameter ), $layout->assumed );
 	}
 
-	public function test_the_grip_alone_is_a_strip_on_the_deck(): void {
+	public function test_the_grip_is_drawn_on_the_top_alone_as_large_as_the_deck_whatever_its_own_size(): void {
 		$layout = Layout::of( Parts::picks( array( SlotKey::DECK => self::deck( array( 'deck_width' => '8.5' ) ), SlotKey::GRIP => Parts::of( array( 'grip_width' => '9', 'grip_length' => '33' ), 700 ) ) ) );
 
-		self::assertSame( array( SlotKey::GRIP, 700, 952500, 0, 254000, 8128000 ), self::rows( $layout )[1] );
-		self::assertCount( 2, $layout->layers );
+		self::assertCount( 1, $layout->layers, 'no strip underneath' );
+		self::assertSame( array( SlotKey::GRIP, 700, 0, 0, 2159000, 8128000 ), self::table( $layout->top )[1] );
 		self::assertSame( array(), $layout->assumed );
 	}
 
@@ -242,5 +320,6 @@ final class LayoutTest extends TestCase {
 		);
 
 		self::assertCount( 1, $layout->layers );
+		self::assertSame( array( SlotKey::DECK, SlotKey::HARDWARE ), array_values( array_unique( array_column( self::table( $layout->top ), 0 ) ) ), 'the hardware shows on the top alone' );
 	}
 }
