@@ -176,4 +176,26 @@ final class WorkshopWordsTest extends TestCase {
 			WorkshopWords::refund()
 		);
 	}
+
+	public function test_the_build_is_described_once_for_whoever_cannot_see_its_picture(): void {
+		self::assertSame( 'The build: Deck: Eight and a half; Trucks: Stage 11, raw.', WorkshopWords::described( array( array( 'Deck', 'Eight and a half' ), array( 'Trucks', 'Stage 11, raw' ) ) ) );
+		self::assertSame( '', WorkshopWords::described( array() ) );
+	}
+
+	public function test_a_build_says_how_many_boards_and_whether_the_shop_assembles_them(): void {
+		self::assertSame( '1 board, assembled by the shop.', WorkshopWords::assembled( true, 1 ) );
+		self::assertSame( '1,200 boards, assembled by the shop.', WorkshopWords::assembled( true, 1200 ) );
+		self::assertSame( '1 board, not assembled. The parts ship as they are.', WorkshopWords::assembled( false, 1 ) );
+		self::assertSame( '2 boards, not assembled. The parts ship as they are.', WorkshopWords::assembled( false, 2 ) );
+	}
+
+	public function test_a_build_and_a_board_are_counted_where_an_order_has_more_than_one(): void {
+		self::assertSame( 'Complete', WorkshopWords::title( 1, 1, 'Complete' ) );
+		self::assertSame( 'Build 2 of 3: Complete', WorkshopWords::title( 2, 3, 'Complete' ) );
+		self::assertSame( 'Build', WorkshopWords::title( 1, 1, '' ), 'a kit\'s line that is gone' );
+		self::assertSame( 'Build 1 of 2: Build', WorkshopWords::title( 1, 2, '' ) );
+		self::assertSame( '', WorkshopWords::board( 1, 1 ) );
+		self::assertSame( 'Board 1 of 2', WorkshopWords::board( 1, 2 ) );
+		self::assertSame( 'Board 1,000 of 1,000', WorkshopWords::board( 1000, 1000 ) );
+	}
 }

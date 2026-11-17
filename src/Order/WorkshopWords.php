@@ -231,4 +231,75 @@ final class WorkshopWords {
 	public static function refund(): string {
 		return __( 'Restock refunded items covers a whole refund. Where the grip is already applied, refund the unused parts first with it ticked, then the grip and the rest in a second refund with it cleared.', 'creative-skateboard-builder' );
 	}
+
+	/**
+	 * The build in one sentence, for whoever cannot see its picture: each part by its slot, as the builder says it.
+	 * Empty for a build with no part.
+	 *
+	 * @since 0.8.0
+	 *
+	 * @param list<array{0: string, 1: string}> $parts Each part's slot label and name, in step order.
+	 */
+	public static function described( array $parts ): string {
+		if ( array() === $parts ) {
+			return '';
+		}
+		$said = array();
+		foreach ( $parts as [ $label, $name ] ) {
+			/* translators: 1: a slot's label, such as Deck. 2: the part's name. */
+			$said[] = sprintf( __( '%1$s: %2$s', 'creative-skateboard-builder' ), $label, $name );
+		}
+		/* translators: Between two parts of the build, as in "Deck: …; Trucks: …". */
+		$between = _x( '; ', 'between the parts of a build', 'creative-skateboard-builder' );
+		/* translators: %s: each part of the build, by its slot, as "Deck: …; Trucks: …". */
+		return sprintf( __( 'The build: %s.', 'creative-skateboard-builder' ), implode( $between, $said ) );
+	}
+
+	/**
+	 * How many boards of a build the order holds, and whether the shop assembles them.
+	 *
+	 * @since 0.8.0
+	 *
+	 * @param bool $assembly Whether the shop assembles the build.
+	 * @param int  $boards   How many boards.
+	 */
+	public static function assembled( bool $assembly, int $boards ): string {
+		$count = number_format_i18n( $boards );
+		return $assembly
+			/* translators: %s: a number of boards. */
+			? sprintf( _n( '%s board, assembled by the shop.', '%s boards, assembled by the shop.', $boards, 'creative-skateboard-builder' ), $count )
+			/* translators: %s: a number of boards. */
+			: sprintf( _n( '%s board, not assembled. The parts ship as they are.', '%s boards, not assembled. The parts ship as they are.', $boards, 'creative-skateboard-builder' ), $count );
+	}
+
+	/**
+	 * A build's heading: its kit's name on the order, counted where the order holds more than one build.
+	 *
+	 * @since 0.8.0
+	 *
+	 * @param int    $at   Which build, from 1.
+	 * @param int    $of   How many builds the order holds.
+	 * @param string $name The kit's name on the order, empty where its line is gone.
+	 */
+	public static function title( int $at, int $of, string $name ): string {
+		$name = '' === $name ? __( 'Build', 'creative-skateboard-builder' ) : $name;
+		if ( $of < 2 ) {
+			return $name;
+		}
+		/* translators: 1: which build, from 1; 2: how many builds the order holds; 3: the kit's name. */
+		return sprintf( __( 'Build %1$s of %2$s: %3$s', 'creative-skateboard-builder' ), number_format_i18n( $at ), number_format_i18n( $of ), $name );
+	}
+
+	/**
+	 * Which board a ticket is for, where a build has more than one; empty where it has one.
+	 *
+	 * @since 0.8.0
+	 *
+	 * @param int $at Which board, from 1.
+	 * @param int $of How many boards of the build.
+	 */
+	public static function board( int $at, int $of ): string {
+		/* translators: 1: which board, from 1; 2: how many boards of the build. */
+		return $of < 2 ? '' : sprintf( __( 'Board %1$s of %2$s', 'creative-skateboard-builder' ), number_format_i18n( $at ), number_format_i18n( $of ) );
+	}
 }
