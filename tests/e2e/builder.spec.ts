@@ -9,6 +9,7 @@ import {
 	type Locator,
 } from './support/test';
 import { axe } from './support/axe';
+import { login } from './support/login';
 
 /**
  * Milestone 6, without JavaScript (spec: The builder, Without JavaScript and Ways in): each step is a GET form whose
@@ -3035,4 +3036,100 @@ test.describe( 'Every control a name of its own (P11)', () => {
 			).toHaveCount( 1 );
 		} );
 	}
+} );
+
+// Roadmap, milestone 8 (D-217): a signed-in customer saves the review, finds it under My builds, opens it as a way
+// into the builder, saves it again over itself, and deletes it; a visitor is asked to sign in. With the script and
+// without it: every form is a plain post.
+test.describe( 'Saved builds', () => {
+	const full = () =>
+		linkTo( {
+			deck: id( 'builder-test-deck-8-0' ),
+			trucks: id( 'builder-test-trucks-139' ),
+			wheels: id( 'builder-test-wheels-54' ),
+			bearings: id( 'builder-test-bearings' ),
+			hardware: id( 'builder-test-bolts-1-25' ),
+			grip: id( 'builder-test-grip' ),
+			step: 'review',
+		} );
+
+	test( 'a visitor is asked to sign in, and comes back to the same build', async ( {
+		page,
+	} ) => {
+		await page.goto( full() );
+		await expect( heading( page ) ).toHaveText( /: Review$/ );
+		await expect(
+			page.getByRole( 'button', { name: 'Save build' } )
+		).toBeHidden();
+		const signIn = page.getByRole( 'link', {
+			name: 'Sign in to save this build',
+		} );
+		await expect( signIn ).toBeVisible();
+		const to = new URL( ( await signIn.getAttribute( 'href' ) ) || '' );
+		expect( to.pathname ).toContain( 'wp-login.php' );
+		const back = to.searchParams.get( 'redirect_to' ) || '';
+		expect( back ).toContain( 'cbuild' );
+		expect( back ).toContain( String( id( 'builder-test-deck-8-0' ) ) );
+	} );
+
+	test( 'a customer saves, opens, saves over and deletes a build under My builds', async ( {
+		page,
+		javaScriptEnabled,
+	}, info ) => {
+		await login( page );
+		const name = `E2E ${ info.project.name } ${ Date.now() }`;
+		await page.goto( full() );
+		await expect( heading( page ) ).toHaveText( /: Review$/ );
+		await page.getByLabel( 'Name it (optional)' ).fill( name );
+		await answered( page, () =>
+			page.getByRole( 'button', { name: 'Save build' } ).click()
+		);
+		await expect( page ).toHaveURL( /my-builds/ );
+		await expect(
+			page.getByText( 'The build is saved. It is listed below.' )
+		).toBeVisible();
+		const row = page
+			.locator( '.cbuild-my-builds__build' )
+			.filter( { hasText: name } );
+		await expect( row ).toHaveCount( 1 );
+		if ( javaScriptEnabled ) {
+			// axe runs in the page, so not where scripts are off.
+			await axe( page, 'My builds', '.woocommerce-MyAccount-content' );
+		}
+
+		// Open: the builder at the review, checked again, and Save build there updates it.
+		await row.getByRole( 'link', { name: 'Open' } ).click();
+		await expect( heading( page ) ).toHaveText( /: Review$/ );
+		expect( page.url() ).toContain( 'cbuild_saved=' );
+		await expect(
+			page.getByLabel( 'Link to this build' ),
+			'the saved build is no part of a shared link'
+		).not.toHaveValue( /cbuild_saved/ );
+		await answered( page, () =>
+			page.getByRole( 'button', { name: 'Save build' } ).click()
+		);
+		await expect(
+			page.getByText( 'Your saved build is updated.' )
+		).toBeVisible();
+		await expect(
+			page
+				.locator( '.cbuild-my-builds__build' )
+				.filter( { hasText: name } ),
+			'kept its name, and is one build still'
+		).toHaveCount( 1 );
+
+		await answered( page, () =>
+			page
+				.locator( '.cbuild-my-builds__build' )
+				.filter( { hasText: name } )
+				.getByRole( 'button', { name: 'Delete' } )
+				.click()
+		);
+		await expect( page.getByText( 'The build is deleted.' ) ).toBeVisible();
+		await expect(
+			page
+				.locator( '.cbuild-my-builds__build' )
+				.filter( { hasText: name } )
+		).toHaveCount( 0 );
+	} );
 } );
