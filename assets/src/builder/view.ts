@@ -280,6 +280,32 @@ function steady( change: () => void ): void {
 }
 
 /**
+ * Mark a pick in the store at once: the step's cards bind their radios' checked to it, so a card drawn again while the
+ * route is asked would otherwise put the pick back as it was until the answer came (#47). The answer then says the
+ * same, or what the server found instead.
+ *
+ * @param view  The view shown.
+ * @param value The radio's value: a part's ID, or "0" for leaving the slot empty.
+ */
+function chosen( view: Shown, value: string ): void {
+	const step = view.step as {
+		options?: unknown;
+		leave?: unknown;
+	};
+	if ( Array.isArray( step.options ) ) {
+		for ( const option of step.options as unknown[] ) {
+			if ( option && 'object' === typeof option ) {
+				const card = option as { value?: unknown; checked?: boolean };
+				card.checked = card.value === value;
+			}
+		}
+	}
+	if ( step.leave && 'object' === typeof step.leave ) {
+		( step.leave as { checked?: boolean } ).checked = '0' === value;
+	}
+}
+
+/**
  * The navigator, made on first use from the page's config.
  *
  * @param state The store's state.
@@ -405,6 +431,7 @@ const { state } = store(
 				) {
 					return;
 				}
+				chosen( state.view, input.value );
 				root?.dispatchEvent(
 					new CustomEvent( 'cbuild:pick', {
 						bubbles: true,

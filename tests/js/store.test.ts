@@ -271,6 +271,42 @@ describe( 'the store', () => {
 		);
 	} );
 
+	// #47: the card binds its radio's checked to the store, which said unchecked until the answer, so a re-render of the
+	// card while the route was held put a pick back to unchecked (CI run 43997746452, webkit-desktop).
+	it( 'marks the pick checked in the store before it asks, and the other cards and No risers not', () => {
+		const { radio } = form();
+		state.view = {
+			...START,
+			step: {
+				slot: 'deck',
+				options: [
+					{ value: '11', checked: true },
+					{ value: '12', checked: false },
+				],
+				leave: { checked: true },
+			},
+		};
+		actions.pick( { target: radio } as unknown as Event );
+		const step = state.view.step as {
+			options: { value: string; checked: boolean }[];
+			leave: { checked: boolean };
+		};
+		expect( step.options.map( ( option ) => option.checked ) ).toEqual( [
+			false,
+			true,
+		] );
+		expect( step.leave.checked ).toBe( false );
+		expect( fetched, 'before the route is asked' ).toHaveLength( 0 );
+
+		radio.value = '0';
+		actions.pick( { target: radio } as unknown as Event );
+		expect( step.options.map( ( option ) => option.checked ) ).toEqual( [
+			false,
+			false,
+		] );
+		expect( step.leave.checked, 'No risers picked' ).toBe( true );
+	} );
+
 	it( "keeps the pick when the route fails, for the form's Next to send", async () => {
 		const { radio } = form();
 		reply = () => answer( null, 429 );
