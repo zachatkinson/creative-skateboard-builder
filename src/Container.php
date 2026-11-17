@@ -251,6 +251,19 @@ final class Container {
 					}
 				);
 			},
+			Order\WorkshopHooks::class                    => static function ( Container $c ): object {
+				return new Order\WorkshopHooks(
+					static function () use ( $c ): Order\BuildBox {
+						return $c->get( Order\BuildBox::class );
+					},
+					static function () use ( $c ): Order\TicketPage {
+						return $c->get( Order\TicketPage::class );
+					},
+					static function () use ( $c ): Order\OrdersList {
+						return $c->get( Order\OrdersList::class );
+					}
+				);
+			},
 			Front\Delivery::class                         => static function ( Container $c ): object {
 				return new Front\Delivery( $c->get( Port\Kits::class ), $c->get( Port\ShippingZones::class ), new Front\ShippingWords( $c->get( Port\Money::class ) ) );
 			},
@@ -430,6 +443,7 @@ final class Container {
 			Cart\ThumbnailHooks::class             => array( Scope::Everywhere ),
 			// Both checkouts make the order, and its items are named on pages, in emails and in wp-admin.
 			Order\OrderHooks::class                => array( Scope::Everywhere ),
+			Order\WorkshopHooks::class             => array( Scope::Admin ),
 			// WooCommerce's settings screen.
 			Admin\SettingsHooks::class             => array( Scope::Admin ),
 			Admin\PartSpecsHooks::class            => array( Scope::Admin ),

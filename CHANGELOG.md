@@ -6,6 +6,10 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Added
 
+- The Build box on the order screen, with HPOS on or off, for users with `edit_shop_orders`: each build by slot with the part, its SKU and its specs as sold, how many boards and whether the shop assembles them, and the build's picture. It says where the order's lines no longer match the build: a part's line removed, a quantity changed, a line added again without the build's details, or a kit's line with no build behind it (D-YYY).
+- The assembly ticket: a page of its own that prints one board to a page, with the order's number, the customer, each slot's part and SKU with the specs that matter at the bench, the customer's note and a tick box per step. The Build box's "Print assembly ticket" opens it, behind `edit_shop_orders` and a nonce, with no PDF (D-YYY).
+- The bulk action Print assembly tickets (`cbuild_print_tickets`) and the Assembly column (`cbuild_assembly`) on the orders list, with HPOS on or off (D-YYY).
+- The refund help in the Build box: Restock refunded items covers a whole refund, so where the grip is already applied the unused parts are refunded first with it ticked, and the rest in a second refund with it cleared (D-YYY).
 - The filters `cbuild_ticket_specs` and `cbuild_ticket_steps`: which specs the assembly ticket shows for each slot's part, and the steps it lists with a tick box each, so a workshop can change either without a template (D-YYY).
 - The state route's `total.estimate`: what a complete board would cost with each slot's recommendation in it, priced as the total is, while a recommendation fills a slot; null otherwise. The summary says it under the total, "A complete board from about $184", and the status region says it with each pick (D-213).
 

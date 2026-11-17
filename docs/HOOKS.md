@@ -723,3 +723,12 @@ For users with `edit_shop_orders`. The Build box, the ticket and the orders list
 | `cbuild_ticket_steps` | 0.8.0 | `string[] $steps`, `array $context` | The steps the ticket lists for a build, each with a tick box. By default, for an assembled build: the grip, the trucks (with the risers where it has them), the bearings into the wheels, the wheels onto the trucks, then a last check, each only where the build has those parts; none for a build the shop does not assemble. `$context` holds `kit` (the kit product's ID), `order` (the order's ID), `parts` (slot key to part ID) and `assembly` (bool). Each step is shown as plain text, tags taken out, an empty one dropped and each said once; the ticket lists the first 20. |
 
 Both are asked as the ticket is drawn, in the admin's language, so a step a plugin adds goes through its own text domain.
+
+The names another plugin may meet on the order screens:
+
+| Item | Since | What it is |
+| --- | --- | --- |
+| `cbuild-build` | 0.8.0 | The Build box's ID, on `wc_get_page_screen_id( 'shop-order' )` with HPOS on or off, in the `normal` context. It is added only to an order with a build, or with a kit's line that has no build behind it. |
+| `admin-post.php?action=cbuild_print_tickets` | 0.8.0 | The assembly ticket: a page of its own that prints, one board to a page. It takes `orders` (order IDs separated by commas, the first 100 printed), `more` (how many more the bulk print left out) and `_wpnonce` (a nonce for the action `cbuild_print_tickets`), and refuses with a 403 a user without `edit_shop_orders` or without the nonce. It reads orders and changes nothing. |
+| `cbuild_print_tickets` | 0.8.0 | The bulk action Print assembly tickets on the orders list, with HPOS on (`woocommerce_page_wc-orders`, and `admin_page_wc-orders` for a user without `edit_others_shop_orders`) or off (`edit-shop_order`). It sends the picked orders to the ticket page. |
+| `cbuild_assembly` | 0.8.0 | The Assembly column's key on the same lists, before the total: how many boards of the order the shop assembles, Not assembled, or empty for an order with no build. |

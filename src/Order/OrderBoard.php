@@ -23,6 +23,15 @@ if ( ! defined( 'ABSPATH' ) ) {
 final class OrderBoard {
 
 	/**
+	 * The board's rules, which the Build box and the ticket share: the layers placed as the builder's are, on a board
+	 * of a fixed height whose width follows the build's own shape. It is drawn left to right in any language, so the
+	 * wheels stay where they are on a right-to-left screen (D-203).
+	 *
+	 * @since 0.8.0
+	 */
+	public const string STYLES = '.cbuild-order__board{position:relative;display:block;block-size:16rem;aspect-ratio:var(--cbuild-board-ratio,1 / 4)}.cbuild-order__layer{position:absolute;inset-block-start:var(--cbuild-layer-y);inset-inline-start:var(--cbuild-layer-x);inline-size:var(--cbuild-layer-width);block-size:var(--cbuild-layer-height)}.cbuild-order__image{display:block;inline-size:100%;block-size:100%;object-fit:contain}';
+
+	/**
 	 * A drawn layout as the templates show it, or null where nothing is drawn.
 	 *
 	 * @since 0.8.0
