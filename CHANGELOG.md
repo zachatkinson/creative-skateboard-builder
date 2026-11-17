@@ -6,6 +6,7 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Added
 
+- The filters `cbuild_ticket_specs` and `cbuild_ticket_steps`: which specs the assembly ticket shows for each slot's part, and the steps it lists with a tick box each, so a workshop can change either without a template (D-YYY).
 - The state route's `total.estimate`: what a complete board would cost with each slot's recommendation in it, priced as the total is, while a recommendation fills a slot; null otherwise. The summary says it under the total, "A complete board from about $184", and the status region says it with each pick (D-213).
 
 ### Changed

@@ -712,3 +712,14 @@ The builder also sends WooCommerce's own `wc-blocks_added_to_cart` on `document.
 | `total.estimate` in `schema/state.json` and in `creative-skateboard-builder/price-build`'s output | 0.8.0 | What a complete board would cost with each slot's recommendation in it, priced as `total` is (assembly, build discount, the shop's decimals), while a recommendation fills a slot and every slot the kit requires has a part; otherwise null. |
 | `total`, `steps[].recommended` and each option's `recommended` | 0.8.0 | Nothing is picked for the shopper (D-213): `total` and its `lines` count the picks alone, where before they also counted the part each later slot started on. `recommended` keeps its name and says the part the slot recommends, which is labelled and not picked. A caller that read `total` as the recommended board reads `estimate`. |
 
+
+### The workshop: the Build box, the assembly ticket and the orders list
+
+For users with `edit_shop_orders`. The Build box, the ticket and the orders list read an order's builds from its lines each time they are shown: each slot as sold from `_cbuild_snapshot`, matched to its line by `_cbuild_id` and `_cbuild_slot`.
+
+| Filter | Since | Arguments | What a plugin answers |
+| --- | --- | --- | --- |
+| `cbuild_ticket_specs` | 0.8.0 | `string[] $specs`, `string $slot`, `int $kit` | Which specs the assembly ticket shows for a slot's part, as spec keys in the order shown. By default `deck_width` for the deck, `axle_width` for the trucks (their size), `wheel_diameter` for the wheels, `riser_thickness` for the risers and `bolt_length` for the hardware, and none for any other slot. The ticket shows each one the part was sold with, from the snapshot, with its name and unit. A key that is not a spec key, or an answer that is no list, shows nothing. |
+| `cbuild_ticket_steps` | 0.8.0 | `string[] $steps`, `array $context` | The steps the ticket lists for a build, each with a tick box. By default, for an assembled build: the grip, the trucks (with the risers where it has them), the bearings into the wheels, the wheels onto the trucks, then a last check, each only where the build has those parts; none for a build the shop does not assemble. `$context` holds `kit` (the kit product's ID), `order` (the order's ID), `parts` (slot key to part ID) and `assembly` (bool). Each step is shown as plain text, tags taken out, an empty one dropped and each said once; the ticket lists the first 20. |
+
+Both are asked as the ticket is drawn, in the admin's language, so a step a plugin adds goes through its own text domain.
