@@ -59,6 +59,16 @@
 			"Cart/ShipHooks.php",
 			"Cart/ShowHooks.php",
 			"Order/OrderHooks.php",
+			// The workshop's screens (D-219): the order's lines through WooCommerce's CRUD, add_meta_box(), the orders
+			// lists' hooks, and a nonce and a capability before the ticket prints. Each is proven by BuildBoxTest and
+			// TicketTest in wp-env. What they show is decided in Service\OrderReading and Order\WorkshopWords and
+			// OrderBoard, which are mutated; TicketPage's ids() and pages() are unit tested but sit beside print().
+			"Order/OrderLines.php",
+			"Order/WorkshopView.php",
+			"Order/BuildBox.php",
+			"Order/TicketPage.php",
+			"Order/OrdersList.php",
+			"Order/WorkshopHooks.php",
 			"Adapter/WooCart.php",
 			// wp_generate_uuid4(), and the delivery line's two filters with wp_strip_all_tags().
 			"Adapter/WpUuids.php",

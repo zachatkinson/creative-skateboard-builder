@@ -11,6 +11,8 @@
         "cbuild_price_context",
         "cbuild_slot_label",
         "cbuild_summary_notes",
+        "cbuild_ticket_specs",
+        "cbuild_ticket_steps",
         "cbuild_updates_enabled"
     ],
     "actions": [],

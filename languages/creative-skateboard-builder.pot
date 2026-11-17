@@ -9,7 +9,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-11-17T08:21:41+00:00\n"
+"POT-Creation-Date: 2026-11-17T08:43:02+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: creative-skateboard-builder\n"
@@ -178,10 +178,13 @@ msgid "Builder"
 msgstr ""
 
 #: src/Admin/BuildTab.php:163
+#: src/Order/BuildBox.php:95
 #: src/Order/OrderHooks.php:252
 #: src/Order/OrderHooks.php:342
+#: src/Order/WorkshopWords.php:285
 #: templates/account/my-builds.php:23
 #: templates/account/my-builds.php:33
+#: templates/admin/tickets.php:72
 msgid "Build"
 msgstr ""
 
@@ -229,6 +232,8 @@ msgstr ""
 #: src/Cart/ShowHooks.php:326
 #: src/Order/OrderHooks.php:251
 #: src/Order/OrderHooks.php:341
+#: src/Order/OrdersList.php:47
+#: templates/admin/tickets.php:78
 msgid "Assembly"
 msgstr ""
 
@@ -706,6 +711,8 @@ msgid "ID"
 msgstr ""
 
 #: src/Admin/ImportScreen.php:253
+#: templates/admin/order-build.php:47
+#: templates/admin/tickets.php:97
 msgid "SKU"
 msgstr ""
 
@@ -1707,11 +1714,15 @@ msgstr ""
 #. translators: 1: a slot's label, such as Bearings. 2: a part's name.
 #. translators: 1: a slot's label, such as Wheels. 2: a brand's name, or a size such as 54 mm.
 #. translators: 1: a slot's label, such as Deck. 2: the part's name.
+#. translators: 1: a spec's name, such as Deck width; 2: its value, such as 8.5″.
 #: src/Cart/ShowHooks.php:516
 #: src/Front/BuilderView.php:1084
 #: src/Front/Words.php:347
 #: src/Front/Words.php:407
 #: src/Order/OrderHooks.php:291
+#: src/Order/WorkshopWords.php:250
+#: templates/admin/order-build.php:66
+#: templates/admin/tickets.php:113
 #, php-format
 msgid "%1$s: %2$s"
 msgstr ""
@@ -2635,6 +2646,7 @@ msgstr ""
 
 #. translators: Between two parts of the build, as in "Deck: …; Trucks: …".
 #: src/Front/Words.php:410
+#: src/Order/WorkshopWords.php:253
 msgctxt "between the parts of a build"
 msgid "; "
 msgstr ""
@@ -2900,6 +2912,146 @@ msgstr ""
 #: src/Order/OrderHooks.php:336
 #, php-format
 msgid "%1$s: %2$s × %3$s"
+msgstr ""
+
+#: src/Order/OrdersList.php:91
+msgid "Print assembly tickets"
+msgstr ""
+
+#: src/Order/TicketPage.php:151
+msgid "You are not allowed to print assembly tickets."
+msgstr ""
+
+#: src/Order/TicketPage.php:155
+msgid "This link to the assembly tickets has expired. Go back to the order and print it again."
+msgstr ""
+
+#. translators: %s: a slot's label, such as Trucks.
+#: src/Order/WorkshopWords.php:65
+#, php-format
+msgid "The %s line is no longer on the order."
+msgstr ""
+
+#. translators: 1: a slot's label, such as Wheels; 2: how many the line holds; 3: how many the build needs.
+#: src/Order/WorkshopWords.php:68
+#, php-format
+msgid "The %1$s line has %2$s, and the build needs %3$s."
+msgstr ""
+
+#. translators: %s: a slot's label, such as Trucks.
+#: src/Order/WorkshopWords.php:71
+#, php-format
+msgid "The %s line was added again without the build's details, so it is no longer tied to the build."
+msgstr ""
+
+#. translators: %s: the kit's name on the order.
+#: src/Order/WorkshopWords.php:74
+#, php-format
+msgid "%s is a kit's line with no build behind it. It was added outside the builder, so there is no ticket to print for it."
+msgstr ""
+
+#: src/Order/WorkshopWords.php:76
+msgid "The build's kit line is no longer on the order. Its parts are listed from their own lines."
+msgstr ""
+
+#: src/Order/WorkshopWords.php:78
+msgid "The record of this build as it was sold cannot be read. Its parts are listed from their own lines."
+msgstr ""
+
+#: src/Order/WorkshopWords.php:81
+msgid "The build's kit line is on the order twice."
+msgstr ""
+
+#. translators: %s: a slot's label, such as Trucks.
+#: src/Order/WorkshopWords.php:83
+#, php-format
+msgid "The %s line is on the order twice."
+msgstr ""
+
+#. translators: 1: a slot's label, such as Trucks; 2: the product the line now holds; 3: the product the build was sold with.
+#: src/Order/WorkshopWords.php:86
+#, php-format
+msgid "The %1$s line is now %2$s. The build was sold with %3$s."
+msgstr ""
+
+#. translators: %s: a line's name on the order.
+#: src/Order/WorkshopWords.php:89
+#, php-format
+msgid "%s is tied to this build, but the build was sold without it."
+msgstr ""
+
+#: src/Order/WorkshopWords.php:136
+msgid "Lay the grip tape on the deck, press it down and trim it to the edge."
+msgstr ""
+
+#: src/Order/WorkshopWords.php:140
+msgid "Bolt the trucks to the deck, with the risers between them."
+msgstr ""
+
+#: src/Order/WorkshopWords.php:141
+msgid "Bolt the trucks to the deck."
+msgstr ""
+
+#: src/Order/WorkshopWords.php:144
+msgid "Press the bearings into the wheels."
+msgstr ""
+
+#: src/Order/WorkshopWords.php:147
+msgid "Put the wheels on the trucks and tighten the axle nuts until each wheel spins without wobbling."
+msgstr ""
+
+#: src/Order/WorkshopWords.php:149
+msgid "Check every bolt and nut, and spin each wheel."
+msgstr ""
+
+#. translators: %s: a number of boards.
+#: src/Order/WorkshopWords.php:220
+#, php-format
+msgid "%s board to assemble"
+msgid_plural "%s boards to assemble"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/Order/WorkshopWords.php:222
+msgid "Not assembled"
+msgstr ""
+
+#: src/Order/WorkshopWords.php:232
+msgid "Restock refunded items covers a whole refund. Where the grip is already applied, refund the unused parts first with it ticked, then the grip and the rest in a second refund with it cleared."
+msgstr ""
+
+#. translators: %s: each part of the build, by its slot, as "Deck: …; Trucks: …".
+#: src/Order/WorkshopWords.php:255
+#, php-format
+msgid "The build: %s."
+msgstr ""
+
+#. translators: %s: a number of boards.
+#: src/Order/WorkshopWords.php:270
+#, php-format
+msgid "%s board, assembled by the shop."
+msgid_plural "%s boards, assembled by the shop."
+msgstr[0] ""
+msgstr[1] ""
+
+#. translators: %s: a number of boards.
+#: src/Order/WorkshopWords.php:272
+#, php-format
+msgid "%s board, not assembled. The parts ship as they are."
+msgid_plural "%s boards, not assembled. The parts ship as they are."
+msgstr[0] ""
+msgstr[1] ""
+
+#. translators: 1: which build, from 1; 2: how many builds the order holds; 3: the kit's name.
+#: src/Order/WorkshopWords.php:290
+#, php-format
+msgid "Build %1$s of %2$s: %3$s"
+msgstr ""
+
+#. translators: 1: which board, from 1; 2: how many boards of the build.
+#: src/Order/WorkshopWords.php:303
+#, php-format
+msgid "Board %1$s of %2$s"
 msgstr ""
 
 #: src/Rest/StateRoute.php:142
@@ -3187,6 +3339,8 @@ msgid "What would change"
 msgstr ""
 
 #: templates/admin/import.php:144
+#: templates/admin/order-build.php:46
+#: templates/admin/tickets.php:96
 msgid "Part"
 msgstr ""
 
@@ -3241,6 +3395,35 @@ msgstr ""
 
 #: templates/admin/import.php:214
 msgid "Download the CSV file"
+msgstr ""
+
+#: templates/admin/order-build.php:27
+msgid "The order's lines no longer match the build. Check them before you print the assembly ticket."
+msgstr ""
+
+#: templates/admin/order-build.php:45
+#: templates/admin/tickets.php:95
+msgid "Slot"
+msgstr ""
+
+#: templates/admin/order-build.php:48
+msgid "A board takes"
+msgstr ""
+
+#: templates/admin/order-build.php:49
+msgid "Specs as sold"
+msgstr ""
+
+#: templates/admin/order-build.php:61
+msgid "None kept"
+msgstr ""
+
+#: templates/admin/order-build.php:92
+msgid "Print assembly ticket"
+msgstr ""
+
+#: templates/admin/order-build.php:93
+msgid "(opens in a new tab)"
 msgstr ""
 
 #: templates/admin/part-specs.php:32
@@ -3384,6 +3567,73 @@ msgstr ""
 msgid "Add chart"
 msgstr ""
 
+#: templates/admin/tickets.php:29
+#: templates/admin/tickets.php:34
+msgid "Assembly tickets"
+msgstr ""
+
+#: templates/admin/tickets.php:36
+msgid "Print the tickets"
+msgstr ""
+
+#: templates/admin/tickets.php:37
+msgid "Back to the orders"
+msgstr ""
+
+#: templates/admin/tickets.php:40
+msgid "None of these orders has a build to print."
+msgstr ""
+
+#. translators: %l: the order numbers, as a list.
+#: templates/admin/tickets.php:46
+msgid "Order %l has no build to print."
+msgid_plural "Orders %l have no build to print."
+msgstr[0] ""
+msgstr[1] ""
+
+#. translators: 1: how many orders one page prints; 2: how many more were picked.
+#: templates/admin/tickets.php:54
+#, php-format
+msgid "One page prints the first %1$s orders. %2$s more was picked: print it from the next page of the list."
+msgid_plural "One page prints the first %1$s orders. %2$s more were picked: print them from the next page of the list."
+msgstr[0] ""
+msgstr[1] ""
+
+#. translators: %s: the order's number.
+#: templates/admin/tickets.php:66
+#, php-format
+msgid "Order %s"
+msgstr ""
+
+#: templates/admin/tickets.php:70
+msgid "Customer"
+msgstr ""
+
+#: templates/admin/tickets.php:75
+msgid "Board"
+msgstr ""
+
+#: templates/admin/tickets.php:83
+msgid "The order's lines no longer match this build. Check the order before you start."
+msgstr ""
+
+#: templates/admin/tickets.php:91
+msgid "Parts"
+msgstr ""
+
+#: templates/admin/tickets.php:98
+msgid "How many"
+msgstr ""
+
+#: templates/admin/tickets.php:99
+msgid "Specs"
+msgstr ""
+
+#: templates/admin/tickets.php:129
+msgid "Notes"
+msgstr ""
+
+#: templates/admin/tickets.php:133
 #: templates/builder/progress.php:11
 msgid "Steps"
 msgstr ""
