@@ -135,10 +135,9 @@ final readonly class Layout {
 			$assumed[] = SpecKey::DeckLength;
 			$length    = Measure::inches( self::USUAL_LENGTH );
 		}
-		$wide   = self::mm( $width );
-		$long   = self::mm( $length );
-		$board  = new Layer( SlotKey::DECK, $deck->id, 0, 0, $wide, $long );
-		$layers = array( $board );
+		$wide  = self::mm( $width );
+		$long  = self::mm( $length );
+		$board = new Layer( SlotKey::DECK, $deck->id, 0, 0, $wide, $long );
 
 		$trucks = $picks->part( SlotKey::TRUCKS );
 		$wheels = $picks->part( SlotKey::WHEELS );
@@ -154,7 +153,7 @@ final readonly class Layout {
 		// The wheelbase runs between the inner holes, so a truck's middle is half a spacing further out.
 		$out    = intdiv( self::mm( $base ) + $spacing, 2 );
 		$round  = self::wheels( $wheels, $out, $across );
-		$layers = array( ...$layers, ...self::trucks( $trucks, $out, $across, $spacing ), ...$round );
+		$layers = array( $board, ...self::trucks( $trucks, $out, $across, $spacing ), ...$round );
 		if ( null !== $settings ) {
 			// usort() keeps equal ranks in the order they came in (PHP 8.0), so a slot's own layers stay in theirs.
 			usort( $layers, static fn( Layer $a, Layer $b ): int => $settings->rank( $a->slot ) <=> $settings->rank( $b->slot ) );

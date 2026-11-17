@@ -423,12 +423,13 @@ test.describe( 'The builder without JavaScript', () => {
 		await expect( review.locator( '.cbuild-review__total' ) ).toHaveText(
 			'Total: $182.00'
 		);
-		// All before Add to cart, in the page's order (spec: Review and add to cart).
+		// All before Add to cart, in the page's order (spec: Review and add to cart). Save build, from 0.8.0, comes
+		// after it for a signed-in customer, and is not what this order is about.
 		expect(
 			await review.evaluate( ( section ) =>
 				[
 					...section.querySelectorAll(
-						'.cbuild-review__total, button[type="submit"]'
+						'.cbuild-review__total, button[type="submit"].cbuild-button--primary'
 					),
 				].map( ( node ) => node.className )
 			)
