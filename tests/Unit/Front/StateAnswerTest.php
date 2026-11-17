@@ -1029,6 +1029,7 @@ final class StateAnswerTest extends TestCase {
 				'width'       => 0,
 				'height'      => 0,
 				'layers'      => array(),
+				'top'         => array(),
 			),
 			$blank['picture']
 		);
@@ -1095,6 +1096,41 @@ final class StateAnswerTest extends TestCase {
 		);
 		self::assertSame( array(), array_filter( array_slice( array_column( $picture['items'], 'drawn' ), 2 ) ), 'the rest keep their labelled photos' );
 		self::assertCount( count( $answer['total']['lines'] ), $picture['items'], 'every part the total counts is still in the box' );
+	}
+
+	// Issue #46: the top "from its own layer image's shape", "the grip's layer image becomes a swatch filled into the
+	// deck's shape", "bolt heads drawn at the deck's holes"; the composed picture stays the underside.
+	public function test_the_top_draws_the_decks_shape_the_grip_over_it_and_the_bolt_heads_and_those_parts_lose_their_labelled_photos(): void {
+		$this->layers->attachments = array(
+			103 => 13,
+			701 => 71,
+			601 => 61,
+		);
+		$this->layers->images      = array(
+			13 => new ImageFacts( 'image/png', 432, 1626, true ),
+			71 => new ImageFacts( 'image/png', 51, 1626, true ),
+			61 => new ImageFacts( 'image/png', 40, 40, true ),
+		);
+		$picture = $this->answer( self::COMPLETE, SlotKey::GRIP )['picture'];
+
+		self::assertSame( array( SlotKey::DECK ), array_column( $picture['layers'], 'slot' ), 'underneath, the deck alone has a layer image: no grip strip' );
+		self::assertSame( array( SlotKey::DECK, SlotKey::GRIP, ...array_fill( 0, 8, SlotKey::HARDWARE ) ), array_column( $picture['top'], 'slot' ), 'the wheels have no layer image; the trucks are never on the top' );
+		self::assertSame( array( 0, 0, 2159000, 8128000 ), array( $picture['top'][1]['x'], $picture['top'][1]['y'], $picture['top'][1]['width'], $picture['top'][1]['height'] ), 'the grip covers the deck\'s whole box' );
+		self::assertSame( 'https://example.com/layer-71.png', $picture['top'][1]['image']['src'] );
+		self::assertSame(
+			array( SlotKey::DECK => true, SlotKey::TRUCKS => false, SlotKey::WHEELS => false, SlotKey::BEARINGS => false, SlotKey::HARDWARE => true, SlotKey::GRIP => true ),
+			array_column( $picture['items'], 'drawn', 'slot' ),
+			'a part either side draws has no labelled photo'
+		);
+	}
+
+	public function test_a_deck_with_no_layer_image_has_no_top_whatever_the_grip_has(): void {
+		$this->layers->attachments = array( 701 => 71 );
+		$this->layers->images      = array( 71 => new ImageFacts( 'image/png', 51, 1626, true ) );
+		$picture                   = $this->answer( self::COMPLETE, SlotKey::GRIP )['picture'];
+
+		self::assertSame( array(), $picture['top'], 'the deck\'s image is the top\'s shape' );
+		self::assertSame( array(), array_filter( array_column( $picture['items'], 'drawn' ) ), 'so the grip keeps its labelled photo' );
 	}
 
 	public function test_a_part_whose_product_has_gone_is_in_the_box_with_no_name_and_out_of_the_sentence(): void {

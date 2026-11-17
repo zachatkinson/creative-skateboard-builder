@@ -7,12 +7,14 @@ All notable changes to this project are documented here. The format follows [Kee
 ### Added
 
 - The state route's `total.estimate`: what a complete board would cost with each slot's recommendation in it, priced as the total is, while a recommendation fills a slot; null otherwise. The summary says it under the total, "A complete board from about $184", and the status region says it with each pick (D-213).
+- The state route's `picture.top`: the board seen from the top, from the deck's own layer image's outline, with the grip filled into it nose to tail, a bolt head at each hole from the hardware's layer image, and the wheels at the edges (#46).
 
 ### Changed
 
 - Nothing is picked for the shopper (#45, D-213). After the deck, each later step labels its recommendation and picks nothing; the board, the total and the state route's `total` count only what was picked, and the review and the cart need every slot the kit requires picked. Each step's parts are checked against the picks alone. A card with nothing picked in its slot says its whole price. Presets still fill every slot.
 - Site Health's advice on missing layer image copies names the logs only when a copy failed in the last 30 days, and otherwise says that "Read every part again" makes them (Cowork's recheck of 0.7.0, N1; D-214).
 - The upgrade notice asks for no manual step (D-216).
+- The grip is no longer drawn as a 1 in strip on the underside: the state route's `picture.layers` drops it, and the grip is drawn on the top. The composed pictures in the cart and share cards are the underside, so a build's new picture has no strip (#46).
 
 ### Fixed
 

@@ -312,64 +312,13 @@ export interface CbuildState {
 		 */
 		height: number;
 		/**
-		 * The board's layers from the bottom of the stack: the deck, the grip, one for each truck and one for each wheel, each a part with a layer image.
+		 * The board seen from underneath, its layers from the bottom of the stack: the deck, one for each truck and one for each wheel, each a part with a layer image. Until 0.8.0 the grip was here too, as a 1 in strip; from 0.8.0 it is on the top.
 		 */
-		layers: {
-			/**
-			 * The slot's key.
-			 */
-			slot: string;
-			/**
-			 * The part's ID.
-			 */
-			part: number;
-			/**
-			 * The layer's left edge from the board's.
-			 */
-			x: number;
-			/**
-			 * The layer's top edge from the board's, the nose's end.
-			 */
-			y: number;
-			/**
-			 * The layer across.
-			 */
-			width: number;
-			/**
-			 * The layer along.
-			 */
-			height: number;
-			/**
-			 * The part's layer image: its own file, and the renditions made of it.
-			 */
-			image: {
-				/**
-				 * The image's own file.
-				 */
-				src: string;
-				/**
-				 * Its pixels across.
-				 */
-				width: number;
-				/**
-				 * Its pixels along.
-				 */
-				height: number;
-				/**
-				 * The renditions made, a `srcset` for each type, AVIF first; none until they are made.
-				 */
-				sources: {
-					/**
-					 * The MIME type.
-					 */
-					type: 'image/avif' | 'image/webp';
-					/**
-					 * Its files with their widths, smallest first.
-					 */
-					srcset: string;
-				}[];
-			};
-		}[];
+		layers: Layer[];
+		/**
+		 * From 0.8.0: the board seen from the top (#46), in the same units and places as `layers`, from the bottom of the stack: the four wheels, which the deck covers but where they stand out past its edges; the deck, whose layer image is the top's outline; the grip over the deck's whole box, its layer image the swatch that fills that outline nose to tail; and a bolt head at each of the deck's eight holes, the hardware's layer image. The trucks are not on it. Each is a part with a layer image, and the list is empty where the deck has none. The composed pictures are the underside alone.
+		 */
+		top: Layer[];
 	};
 	/**
 	 * What the shop says of the build's delivery, each in plain text and empty where nothing is said.
@@ -776,4 +725,63 @@ export interface Money8 {
 	 * The amount as the shop writes its prices, in plain text.
 	 */
 	text: string;
+}
+/**
+ * One layer of the board: a part with a layer image, where it is drawn and the image.
+ */
+export interface Layer {
+	/**
+	 * The slot's key.
+	 */
+	slot: string;
+	/**
+	 * The part's ID.
+	 */
+	part: number;
+	/**
+	 * The layer's left edge from the board's.
+	 */
+	x: number;
+	/**
+	 * The layer's top edge from the board's, the nose's end.
+	 */
+	y: number;
+	/**
+	 * The layer across.
+	 */
+	width: number;
+	/**
+	 * The layer along.
+	 */
+	height: number;
+	/**
+	 * The part's layer image: its own file, and the renditions made of it.
+	 */
+	image: {
+		/**
+		 * The image's own file.
+		 */
+		src: string;
+		/**
+		 * Its pixels across.
+		 */
+		width: number;
+		/**
+		 * Its pixels along.
+		 */
+		height: number;
+		/**
+		 * The renditions made, a `srcset` for each type, AVIF first; none until they are made.
+		 */
+		sources: {
+			/**
+			 * The MIME type.
+			 */
+			type: 'image/avif' | 'image/webp';
+			/**
+			 * Its files with their widths, smallest first.
+			 */
+			srcset: string;
+		}[];
+	};
 }

@@ -95,12 +95,56 @@ final class PageRendererTest extends TestCase {
 		self::assertSame( array( 185750, 1794000 ), array( $drawn['layers'][0]['x'], $drawn['layers'][0]['y'] ) );
 	}
 
+	/**
+	 * The same board with its top: two wheels, the deck, the grip and two bolt heads.
+	 */
+	private static function turned(): Layout {
+		$base = self::layout();
+		return new Layout(
+			$base->width,
+			$base->height,
+			$base->layers,
+			array(),
+			array(
+				new Layer( SlotKey::WHEELS, 300, -700000, 2000000, 324000, 540000 ),
+				new Layer( SlotKey::WHEELS, 300, 700000, 2000000, 324000, 540000 ),
+				new Layer( SlotKey::DECK, 100, 0, 0, 2095500, 8128000 ),
+				new Layer( SlotKey::GRIP, 700, 0, 0, 2095500, 8128000 ),
+				new Layer( SlotKey::HARDWARE, 600, -206375, 2270000, 95250, 95250 ),
+				new Layer( SlotKey::HARDWARE, 600, 206375, 2270000, 95250, 95250 ),
+			)
+		);
+	}
+
+	// Issue #46: the top is drawn from the deck's own layer image, its outline, with the grip and bolt heads on it.
+	public function test_the_top_is_each_layer_with_art_placed_as_underneath_and_none_without_the_decks(): void {
+		$drawn = ( new PageRenderer() )->render( self::turned(), array( 100 => self::art( 10 ), 700 => self::art( 70, false ), 600 => self::art( 60, false ) ) );
+		self::assertSame(
+			array(
+				array( SlotKey::DECK, 100, 0, 0, 2095500, 8128000 ),
+				array( SlotKey::GRIP, 700, 0, 0, 2095500, 8128000 ),
+				// Half the board less half a head, then 20.6375 mm either side; 406.4 mm less half a head, then 227 mm up.
+				array( SlotKey::HARDWARE, 600, 793750, 1746375, 95250, 95250 ),
+				array( SlotKey::HARDWARE, 600, 1206500, 1746375, 95250, 95250 ),
+			),
+			array_map( static fn( array $layer ): array => array( $layer['slot'], $layer['part'], $layer['x'], $layer['y'], $layer['width'], $layer['height'] ), $drawn['top'] ),
+			'the wheels have no layer image, so they are not drawn'
+		);
+		self::assertSame( 'https://example.com/master-70.png', $drawn['top'][1]['image']['src'] );
+		self::assertCount( 1, $drawn['layers'], 'underneath is as it was' );
+
+		$shapeless = ( new PageRenderer() )->render( self::turned(), array( 700 => self::art( 70 ), 300 => self::art( 30 ) ) );
+		self::assertSame( array(), $shapeless['top'], 'no deck image, no outline: no top' );
+		self::assertCount( 1, $shapeless['layers'] );
+	}
+
 	public function test_nothing_laid_out_draws_nothing(): void {
 		self::assertSame(
 			array(
 				'width'  => 0,
 				'height' => 0,
 				'layers' => array(),
+				'top'    => array(),
 			),
 			( new PageRenderer() )->render( new Layout( 0, 0, array(), array() ), array( 100 => self::art( 10 ) ) )
 		);
