@@ -884,6 +884,7 @@ final class StateRouteTest extends IntegrationTestCase {
 			// phpcs:ignore WordPress.DB.DirectDatabaseQuery -- as above.
 			$kept = $wpdb->get_col( $wpdb->prepare( "SELECT option_name FROM {$wpdb->options} WHERE option_name LIKE %s", $wpdb->esc_like( '_transient_cbuild_rate_' ) . '%' ) );
 			self::assertNotSame( array(), $kept );
+			$counts = array();
 			foreach ( $kept as $name ) {
 				// One of a fixed number of rows (D-119). What it holds is a count and its end for each key, and a key
 				// is 40 characters of a keyed hash.
@@ -892,12 +893,18 @@ final class StateRouteTest extends IntegrationTestCase {
 				self::assertIsArray( $held );
 				foreach ( $held as $key => $entry ) {
 					self::assertMatchesRegularExpression( '/\A[0-9a-f]{40}\z/', (string) $key );
-					self::assertSame( array( 3, true ), array( $entry[0], is_int( $entry[1] ) ) );
+					self::assertTrue( is_int( $entry[0] ) && is_int( $entry[1] ) );
+					$counts[] = $entry[0];
 				}
 				$expires = (int) get_option( '_transient_timeout_' . substr( $name, strlen( '_transient_' ) ) );
 				self::assertLessThanOrEqual( time() + 120, $expires, 'Gone within two minutes.' );
 				self::assertGreaterThan( time(), $expires );
 			}
+			// The three requests are counted under the minute each was made in (Service\RateLimit), and the clock is the
+			// real one: a minute that turns between them splits them over two keys, 2 and 1 (CI run 44174950072,
+			// hpos-off). Together the counts are the three requests, every one.
+			self::assertSame( 3, array_sum( $counts ) );
+			self::assertLessThanOrEqual( 2, count( $counts ), 'One minute, or two when one turns between the requests.' );
 		}
 	}
 
