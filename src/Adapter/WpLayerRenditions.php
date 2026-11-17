@@ -220,6 +220,9 @@ final class WpLayerRenditions implements LayerRenditions {
 	 * @param string $step resize, save or type.
 	 */
 	private function failed( string $path, string $step ): void {
+		// Site Health names the logs only while a failure is this recent: the logs keep 30 days (Cowork's 0.7.0
+		// recheck, N1; D-214). A transient, so uninstall's sweep of the prefix takes it.
+		set_transient( Options::RENDITIONS_FAILED, 1, 30 * DAY_IN_SECONDS );
 		$this->logger->hourly(
 			'rendition_' . $step . '_' . pathinfo( $path, PATHINFO_EXTENSION ),
 			Logger::WARNING,

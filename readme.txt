@@ -123,5 +123,8 @@ Yes. Activating it for the network installs it on every site, and a site added l
 
 == Upgrade Notice ==
 
+= 0.8.0 =
+Update as usual, from the updater or by uploading the zip. The update makes any resized copies of layer images that are missing, in the background.
+
 = 0.7.0 =
-From 0.6.0, update as usual. From a release older than 0.6.0, deactivate the plugin before uploading the new zip, then activate it again.
+From 0.6.0, update as usual.

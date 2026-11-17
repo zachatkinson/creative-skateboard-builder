@@ -22,6 +22,7 @@ use CreativeBranding\SkateboardBuilder\Service\ComposedPictures;
 use CreativeBranding\SkateboardBuilder\Service\Health;
 use CreativeBranding\SkateboardBuilder\Service\PartRenditions;
 use CreativeBranding\SkateboardBuilder\Support\Cast;
+use CreativeBranding\SkateboardBuilder\Support\Options;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -219,12 +220,17 @@ final class SiteHealth implements Hookable {
 			/* translators: %s: a number of parts. */
 			$label = sprintf( _n( '%s part\'s layer image has no resized copies', '%s parts\' layer images have no resized copies', $unrendered, 'creative-skateboard-builder' ), number_format_i18n( $unrendered ) );
 			$says  = __( 'The builder draws each part from copies of its layer image in AVIF and WebP at the sizes it shows, made in the background when the part is saved. Without them the page loads the full-size image, which is slower.', 'creative-skateboard-builder' );
-			// The fix named is the one for the cause: a host whose editors write neither type, or jobs that did not run
-			// or failed (the audit of the fixes).
+			// The fix named is the one for the cause, and each says only what is so (Cowork's 0.7.0 recheck, N1; D-214):
+			// a host whose editors write neither type; a copy that failed in the last 30 days, whose reason is logged;
+			// or copies not made yet, which "Read every part again" queues the parts' jobs to make.
 			$writes = wp_image_editor_supports( array( 'mime_type' => 'image/avif' ) ) || wp_image_editor_supports( array( 'mime_type' => 'image/webp' ) );
-			$says  .= ' ' . ( $writes
-				? __( 'WooCommerce > Status > Logs has the reason, under creative-skateboard-builder. "Read every part again" on the Catalogue check makes them for every part.', 'creative-skateboard-builder' )
-				: __( 'This server\'s image editors write neither AVIF nor WebP. Your host can turn on WebP in GD or Imagick, and then "Read every part again" on the Catalogue check makes them.', 'creative-skateboard-builder' ) );
+			if ( ! $writes ) {
+				$says .= ' ' . __( 'This server\'s image editors write neither AVIF nor WebP. Your host can turn on WebP in GD or Imagick, and then "Read every part again" on the Catalogue check makes them in the background.', 'creative-skateboard-builder' );
+			} elseif ( false !== get_transient( Options::RENDITIONS_FAILED ) ) {
+				$says .= ' ' . __( 'Making a copy failed in the last 30 days. WooCommerce > Status > Logs has the reason, under creative-skateboard-builder. Once it is fixed, "Read every part again" on the Catalogue check makes the missing copies in the background.', 'creative-skateboard-builder' );
+			} else {
+				$says .= ' ' . __( '"Read every part again" on the Catalogue check makes the missing copies in the background, a part at a time.', 'creative-skateboard-builder' );
+			}
 			return self::result( self::TEST_PICTURES, Health::RECOMMENDED, $label, $says, sprintf( '<a href="%s">%s</a>', esc_url( CheckScreen::url() ), esc_html__( 'Open the Catalogue check', 'creative-skateboard-builder' ) ) );
 		}
 		return self::result( self::TEST_PICTURES, $verdict['status'], __( 'The skateboard builder can compose pictures', 'creative-skateboard-builder' ), __( 'Each build added to a cart gets pictures of the built board for the cart and share cards, made in the background. Pictures not shown for 30 days are deleted.', 'creative-skateboard-builder' ), '' );

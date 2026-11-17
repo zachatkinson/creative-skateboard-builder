@@ -11,9 +11,13 @@ All notable changes to this project are documented here. The format follows [Kee
 ### Changed
 
 - Nothing is picked for the shopper (#45, D-213). After the deck, each later step labels its recommendation and picks nothing; the board, the total and the state route's `total` count only what was picked, and the review and the cart need every slot the kit requires picked. Each step's parts are checked against the picks alone. A card with nothing picked in its slot says its whole price. Presets still fill every slot.
+- Site Health's advice on missing layer image copies names the logs only when a copy failed in the last 30 days, and otherwise says that "Read every part again" makes them (Cowork's recheck of 0.7.0, N1; D-214).
+- The upgrade notice asks for no manual step (D-216).
 
 ### Fixed
 
+- "Read every part again" now makes the resized copies of layer images that have none, through each part's own job, and the update to 0.8.0 does the same with no step for the shop (Cowork's recheck of 0.7.0, N1; D-214).
+- With Yoast SEO, a build's `og:url` keeps its brackets encoded: Yoast decodes what its filter returns, so the plugin hands it a link that decodes to the encoded one (M6; D-215).
 - A pick stays shown as chosen while its answer is on the way, through any redraw (#47).
 
 ## [0.7.0] - 2026-11-16

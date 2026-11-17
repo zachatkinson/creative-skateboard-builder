@@ -80,6 +80,7 @@ final class UninstallTest extends IntegrationTestCase {
 		set_transient( Options::TRANSIENT_PREFIX . 'forever', 'x' );
 		// A section of a kit's Build tab that was not saved, kept for the user who typed it (D-108).
 		set_transient( Options::TRANSIENT_PREFIX . 'kit_draft_12_1', array( 'refused' => array() ), HOUR_IN_SECONDS );
+		set_transient( Options::RENDITIONS_FAILED, 1, 30 * DAY_IN_SECONDS );
 		set_site_transient( Options::UPDATE_MANIFEST, array( 'data' => null ), HOUR_IN_SECONDS );
 		wp_cache_set( 'fit:1', array( 1 ), Options::CACHE_GROUP );
 		$wpdb->insert( Tables::specs(), array( 'part_id' => 1, 'spec' => 'width', 'number' => '8.25', 'source' => 'attribute', 'indexed_at' => '2026-11-09 00:00:00' ) );

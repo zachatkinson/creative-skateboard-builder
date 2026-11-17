@@ -199,18 +199,30 @@ final class SiteHealthTest extends IntegrationTestCase {
 			fn (): ComposedPictures => $this->service( ComposedPictures::class ),
 			fn (): PartRenditions => $renditions
 		);
+		// Cowork's recheck of 0.7.0, N1 (D-214): each wording only in its own case. Copies not made yet, with nothing
+		// failed: the logs hold no reason, so they are not named.
+		delete_transient( Options::RENDITIONS_FAILED );
 		$one = $health->pictures();
 		self::assertSame( array( 'recommended', 'cbuild_pictures', '1 part\'s layer image has no resized copies' ), array( $one['status'], $one['test'], $one['label'] ) );
-		self::assertStringContainsString( 'WooCommerce &gt; Status &gt; Logs', $one['description'] );
+		self::assertStringContainsString( '&quot;Read every part again&quot; on the Catalogue check makes the missing copies in the background', $one['description'] );
+		self::assertStringNotContainsString( 'Logs', $one['description'] );
+		self::assertStringNotContainsString( 'failed', $one['description'] );
 		self::assertStringContainsString( CheckScreen::url(), html_entity_decode( $one['actions'] ) );
 		self::assertStringNotContainsString( 'neither AVIF nor WebP', $one['description'] );
+
+		// A copy failed: the logs have the reason.
+		set_transient( Options::RENDITIONS_FAILED, 1, DAY_IN_SECONDS );
+		$failed = $health->pictures()['description'];
+		self::assertStringContainsString( 'Making a copy failed in the last 30 days. WooCommerce &gt; Status &gt; Logs has the reason', $failed );
+		self::assertStringNotContainsString( 'neither AVIF nor WebP', $failed );
 
 		// The audit of the fixes: where the host's editors write neither type, reading the parts again cannot help.
 		add_filter( 'wp_image_editors', '__return_empty_array' );
 		$none = $health->pictures()['description'];
 		remove_filter( 'wp_image_editors', '__return_empty_array' );
 		self::assertStringContainsString( 'This server&#039;s image editors write neither AVIF nor WebP. Your host can turn on WebP in GD or Imagick', $none );
-		self::assertStringNotContainsString( 'Logs', $none );
+		self::assertStringNotContainsString( 'Logs', $none, 'even with a failure recorded: the host is the cause' );
+		delete_transient( Options::RENDITIONS_FAILED );
 
 		$renditions->make( 102 );
 		self::assertSame( 'The skateboard builder can compose pictures', $health->pictures()['label'] );

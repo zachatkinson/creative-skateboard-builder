@@ -65,6 +65,14 @@ final class Options {
 	public const UPDATE_MANIFEST = 'cbuild_update_manifest';
 
 	/**
+	 * The transient set when a layer image's rendition is not made, kept 30 days, for Site Health to say the logs have
+	 * the reason (D-214). Uninstall's sweep of the transient prefix takes it.
+	 *
+	 * @since 0.8.0
+	 */
+	public const RENDITIONS_FAILED = 'cbuild_renditions_failed';
+
+	/**
 	 * The shop's settings, one option (docs/SETTINGS.md).
 	 *
 	 * @since 0.3.0

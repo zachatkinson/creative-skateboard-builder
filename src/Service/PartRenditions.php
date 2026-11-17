@@ -86,6 +86,53 @@ final class PartRenditions {
 	 * @since 0.7.0
 	 */
 	public function unrendered(): int {
+		return count( $this->missing( ...$this->offered() ) );
+	}
+
+	/**
+	 * Every part a kit offers in a slot the picture draws whose layer image has not one rendition: the parts whose
+	 * index job would make some, for the update and "Read every part again" to queue (Cowork's 0.7.0 recheck, N1).
+	 *
+	 * @since 0.8.0
+	 *
+	 * @return list<int>
+	 */
+	public function unrenderedParts(): array {
+		return $this->missing( ...$this->offered() );
+	}
+
+	/**
+	 * Which of these parts have a layer image with not one rendition of it, at the sizes the picture draws them. It
+	 * reads each image's stored pixels and opens no file, so a batch of the reindex can ask it of every part it reads.
+	 *
+	 * @since 0.8.0
+	 *
+	 * @param int ...$parts Product or variation IDs, as indexed.
+	 * @return list<int>
+	 */
+	public function missing( int ...$parts ): array {
+		$parts = $this->layers->layered( ...$parts );
+		if ( array() === $parts ) {
+			return array();
+		}
+		$kits    = $this->kitsAll();
+		$specs   = $this->index->specsOf( ...$parts );
+		$missing = array();
+		foreach ( $parts as $part ) {
+			$drawn = $this->drawn( $part, $kits, $specs, true );
+			if ( null !== $drawn && array() === $this->renditions->sources( ...$drawn ) ) {
+				$missing[] = $part;
+			}
+		}
+		return $missing;
+	}
+
+	/**
+	 * Every part a kit offers in a slot the picture draws, once each.
+	 *
+	 * @return list<int>
+	 */
+	private function offered(): array {
 		$parts = array();
 		foreach ( $this->kits->all() as $id => $entry ) {
 			foreach ( $entry['kit']->slots->all() as $slot ) {
@@ -96,20 +143,7 @@ final class PartRenditions {
 				}
 			}
 		}
-		$parts = $this->layers->layered( ...$parts );
-		if ( array() === $parts ) {
-			return 0;
-		}
-		$kits    = $this->kitsAll();
-		$specs   = $this->index->specsOf( ...$parts );
-		$missing = 0;
-		foreach ( $parts as $part ) {
-			$drawn = $this->drawn( $part, $kits, $specs, true );
-			if ( null !== $drawn && array() === $this->renditions->sources( ...$drawn ) ) {
-				++$missing;
-			}
-		}
-		return $missing;
+		return array_values( $parts );
 	}
 
 	/**
