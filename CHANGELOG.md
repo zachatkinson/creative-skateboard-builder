@@ -9,12 +9,15 @@ All notable changes to this project are documented here. The format follows [Kee
 - Saved builds (D-217). A signed-in customer saves the build at the review, named or not, and finds it under My builds, a new My account endpoint (`my-builds`), with its picture, its total today, the date it was saved, and Open, Rename and Delete. Open goes back to the builder at the review, checked again, and Save build there updates the same build (`cbuild_saved`, read for its owner alone). A visitor signed out gets a link to sign in that comes back to the build. Up to 100 builds a customer. The forms carry a nonce each and work without JavaScript.
 - The option `cbuild_endpoints`, which makes the rewrite rules again once when the plugin's account endpoints change, so My builds answers after the update.
 - The state route's `total.estimate`: what a complete board would cost with each slot's recommendation in it, priced as the total is, while a recommendation fills a slot; null otherwise. The summary says it under the total, "A complete board from about $184", and the status region says it with each pick (D-213).
+- The state route's `picture.top`: the board seen from the top, from the deck's own layer image's outline, with the grip filled into it nose to tail, a bolt head at each hole from the hardware's layer image, and the wheels at the edges (#46).
+- The board turns over (#46). The picture and the phone bar draw its top beside its underside and show one side: the grip tape step the top, the others the underside, and a button by the board, "Show the top" with `aria-pressed`, turns it on any step with JavaScript, after which the shopper's side is kept. The board turns over where motion is allowed, and the picture's description says which side is shown. The top's layers set `--cbuild-image` and `--cbuild-mask` for the stylesheet.
 
 ### Changed
 
 - Nothing is picked for the shopper (#45, D-213). After the deck, each later step labels its recommendation and picks nothing; the board, the total and the state route's `total` count only what was picked, and the review and the cart need every slot the kit requires picked. Each step's parts are checked against the picks alone. A card with nothing picked in its slot says its whole price. Presets still fill every slot.
 - Site Health's advice on missing layer image copies names the logs only when a copy failed in the last 30 days, and otherwise says that "Read every part again" makes them (Cowork's recheck of 0.7.0, N1; D-214).
 - The upgrade notice asks for no manual step (D-216).
+- The grip is no longer drawn as a 1 in strip on the underside: the state route's `picture.layers` drops it, and the grip is drawn on the top. The composed pictures in the cart and share cards are the underside, so a build's new picture has no strip (#46).
 
 ### Fixed
 

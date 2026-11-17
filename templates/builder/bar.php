@@ -3,7 +3,7 @@
  * The phone bar (spec: The total, W7; D-153, D-160, D-195): a small picture of the board, which links to the picture; the
  * total, which opens the parts list above the bar; and the step's own Next, or the review's Add to cart, each a
  * button of its form by the form's ID. The stylesheet shows it on a phone's width and the summary beside the steps
- * everywhere else, so nothing is shown or read twice.
+ * everywhere else, so nothing is shown or read twice. The small board shows the side the picture shows (#46).
  *
  * @package CreativeBranding\SkateboardBuilder
  */
@@ -11,7 +11,7 @@
 defined( 'ABSPATH' ) || exit;
 ?>
 <div class="cbuild-bar" data-wp-bind--hidden="!state.view.bar.shown">
-	<a class="cbuild-bar__picture" href="#cbuild-picture" data-wp-bind--hidden="!state.view.bar.seen">
+	<a class="cbuild-bar__picture" href="#cbuild-picture" data-wp-bind--hidden="!state.view.bar.seen" data-wp-class--cbuild-bar__picture--top="state.view.picture.turned" data-wp-class--cbuild-bar__picture--turning="state.turning">
 		<span class="cbuild-board cbuild-board--bar" dir="ltr" data-wp-bind--hidden="!state.view.bar.board.shown" data-wp-bind--style="state.view.bar.board.style">
 			<template data-wp-each--layer="state.view.bar.board.layers" data-wp-each-key="context.layer.key">
 				<picture data-wp-bind--class="context.layer.classes" data-wp-bind--style="context.layer.style">
@@ -20,6 +20,11 @@ defined( 'ABSPATH' ) || exit;
 					</template>
 					<img class="cbuild-board__image" alt="" decoding="async" loading="lazy" data-wp-bind--src="context.layer.src" data-wp-bind--width="context.layer.width" data-wp-bind--height="context.layer.height">
 				</picture>
+			</template>
+		</span>
+		<span class="cbuild-board cbuild-board--bar cbuild-board--top" dir="ltr" data-wp-bind--hidden="!state.view.picture.top.shown" data-wp-bind--style="state.view.picture.top.style">
+			<template data-wp-each--layer="state.view.picture.top.layers" data-wp-each-key="context.layer.key">
+				<span data-wp-bind--class="context.layer.classes" data-wp-bind--style="context.layer.style"></span>
 			</template>
 		</span>
 		<img data-wp-bind--hidden="state.view.bar.board.shown" data-wp-bind--class="state.view.bar.photo.classes" alt="" width="48" height="48" sizes="48px" loading="lazy" decoding="async" data-wp-bind--src="state.view.bar.photo.src" data-wp-bind--srcset="state.view.bar.photo.srcset">

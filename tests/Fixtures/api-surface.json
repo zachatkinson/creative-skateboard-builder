@@ -168,11 +168,13 @@
         "--cbuild-gap",
         "--cbuild-gap-small",
         "--cbuild-ground",
+        "--cbuild-image",
         "--cbuild-layer-height",
         "--cbuild-layer-width",
         "--cbuild-layer-x",
         "--cbuild-layer-y",
         "--cbuild-line",
+        "--cbuild-mask",
         "--cbuild-muted",
         "--cbuild-on-accent",
         "--cbuild-on-ground",
@@ -249,7 +251,7 @@
         "schema/kit-slots.json": "7c383e3f551b517328d9d195c01e15f9f5dad1a1263a20fa4ff2188592bb820c",
         "schema/order-snapshot.json": "78cc2355e3468a3f4ff06aa8c609594f21ab961dbcf06ca54bb2b4b2e1b18030",
         "schema/settings.json": "ac3d69970a5331c5d2ec28df62593d7f1de714dce2a3d45352b20f09bf4f3232",
-        "schema/state.json": "32cc520ea61fb7c8cafc80767270eda7606be33e1d07d0453ed5f202c729cc5f"
+        "schema/state.json": "726e37a155bc8b2624992cc87b8c24180cbb8a5396e622b36143b1bb9c9e375d"
     },
     "spec_keys": [
         "deck_width",

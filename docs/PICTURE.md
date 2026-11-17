@@ -1,10 +1,12 @@
 # The picture
 
-How the builder draws a board from its parts, and how to prepare the layer images it draws from. The first half is for a shop owner or the photographer who shoots the parts; the last section is for a developer. Every figure here is the code's, as of 0.7.0.
+How the builder draws a board from its parts, and how to prepare the layer images it draws from. The first half is for a shop owner or the photographer who shoots the parts; the last section is for a developer. Every figure here is the code's, as of 0.8.0.
 
 ## What the picture is
 
 The picture is the board as the shopper builds it, seen from underneath with the nose at the top. It heads every step of the builder and the review, and is drawn again with each pick.
+
+From 0.8.0 the page also draws the board's top, the same board turned over about its length (#46). The grip tape step shows the top, and every other step the underside. With JavaScript a button by the board, "Show the top", turns it over on any step; it is pressed (`aria-pressed`) while the top is shown, and once the shopper has used it, their side is kept on every later step that can draw it. Without JavaScript the button is not shown, and each step shows its own side. The phone bar's board shows the same side as the picture, and the picture's description ends "Seen from underneath." or "Seen from the top.". The board turns over in the time of the builder's other movements, and not at all where the shopper asks for reduced motion. The composed pictures stay the underside.
 
 It is drawn in two places from one layout:
 
@@ -18,18 +20,28 @@ Nothing is laid out until a deck with a width (`deck_width`) is picked. Until th
 
 ## The parts it draws
 
-The picture draws four slots: deck, grip, trucks and wheels. The layout sizes each from the part's specs, not from the image's pixels, so a layer image is always drawn at its part's real size.
+The underside draws three slots: deck, trucks and wheels. The top draws the deck, the grip, the hardware and the wheels. The layout sizes each from the part's specs, not from the image's pixels, so a layer image is always drawn at its part's real size.
 
 | Slot | What the board shows | Its box, across by along | Specs it reads |
 | --- | --- | --- | --- |
 | Deck | The deck | Its width by its length; 32 in long where the deck gives no length | `deck_width`, `deck_length` |
-| Grip | A strip along one long edge of the deck, the right as the board is drawn | 1 in (25.4 mm) by the deck's length | None |
+| Grip | On the top: the deck's whole outline, filled with the grip's image repeated nose to tail. Until 0.8.0 a 1 in strip along the underside's right edge | 1 in (25.4 mm) by the deck's length, for the image; the deck's box on the board | None |
 | Trucks | Two trucks, one at each end, placed by the wheelbase | The axle's width by 3 in (76.2 mm): a baseplate's two rows of holes 2.125 in apart and 0.875 in past them. On an old school deck the rows are 2.5 in apart | `axle_width`; the deck's `wheelbase` and `hole_pattern` |
 | Wheels | Four wheels, their outer faces at the axles' ends | Three fifths of the diameter by the diameter; 54 mm where the wheels give none | `wheel_diameter` |
 
 A truck's or a wheel's image is drawn as it is at each place: one truck image at both ends, the same way up, and one wheel image at all four corners, not flipped.
 
-Risers, bearings, hardware, spacers and a kit's own slots are not drawn. Risers sit under the trucks, and hardware and bearings cannot be seen from underneath. Their parts keep their labelled photos, and their Part specs panel opens with the Picture group closed.
+**The top** is drawn from the same layout, in the same places, so the board is turned over about its length and nothing moves from left to right:
+
+- **The deck** is plain maple in the shape of its own layer image: the image's transparency is the outline (a CSS mask), and its pixels are not shown. A deck with no layer image has no top, and no button.
+- **The grip** fills the same outline, its image repeated from the nose to the tail at the deck's length, so a swatch of tape 1 in across is enough.
+- **The hardware** is a bolt head at each of the deck's eight holes, the hardware's own layer image, 3/8 in (9.5 mm) across, at the trucks' rows of holes, 1 5/8 in (41.3 mm) apart across the board. Hardware is optional here: with no layer image it draws no heads and keeps its labelled photo, and the Catalogue check does not list it.
+- **The wheels** sit under the deck, so they show only where they stand out past its edge.
+- **The trucks** are hidden under the deck.
+
+The layers are drawn from the bottom: the wheels, the deck, the grip, the bolt heads. The kit's layer order is the underside's. Each top layer is an element painted from its style, fetched only when the top is shown, from the largest WebP rendition, else the layer image's own file.
+
+Risers, bearings, spacers and a kit's own slots are not drawn. Risers sit under the trucks, and bearings cannot be seen from either side. Their parts keep their labelled photos, and their Part specs panel opens with the Picture group closed. A part drawn on either side loses its labelled photo on both.
 
 **A part with no layer image** shows its labelled product photo in the page, beside the board. The composed picture leaves it out: a part it cannot draw is not in it. A build with no layer image at all gets no composed picture, and the cart shows the deck's photo instead.
 
@@ -60,7 +72,8 @@ What each slot's image shows, as far as the layout says:
 - **Deck:** its underside, seen square on, nose at the top. A cut-out from an existing product photo of the underside works where that photo is square to the deck and has the pixels the field asks for.
 - **Trucks:** one truck seen from underneath, the axle across the image. The box runs the axle's width across and 76.2 mm along.
 - **Wheels:** one wheel seen from underneath, its tread facing the camera, so the image is taller than it is wide: the box is three fifths of the diameter across and the diameter along.
-- **Grip:** a strip 1 in wide along the deck's length. What the strip shows is left to the owner.
+- **Grip:** the tape seen from the top, a strip 1 in wide along the deck's length. The top repeats it along the deck and clips it to the deck's outline, so a swatch shot flat and cropped to the strip is enough; its corners must still be transparent for the save's check, so leave a pixel clear at each.
+- **Hardware:** one bolt's head seen from the top, centred, about 3/8 in across. It is drawn at each hole in its own colours.
 
 Crop each image close to the part. The picture centres an image in its box and keeps its shape, as CSS's `object-fit: contain` does, so empty space around the part makes the part draw smaller than its box.
 
@@ -78,6 +91,7 @@ What the field asks for at two pixels to the millimetre:
 | --- | --- | --- |
 | A 32 in deck | Its width by 812.8 mm | Twice its width in millimetres, or 1,626 along |
 | Grip | 25.4 by 812.8 mm | 51 across or 1,626 along |
+| Hardware | No box: the size is not checked | Any; about 20 pixels across is drawn sharp at the page's size |
 | Trucks | The axle by 76.2 mm | Twice the axle in millimetres, or 153 along |
 | A 54 mm wheel | 32.4 by 54 mm | 65 across or 108 along |
 
@@ -106,7 +120,7 @@ The size check and the preview use the first slot the part fills that the pictur
 
 On the kit's product page: Product data > Build > Picture. It is stored as `_cbuild_picture`. A kit saved before 0.7.0 has none, and draws with the usual order and no anchor.
 
-- **Layer order.** A number for each slot the picture draws, 1 at the bottom. The usual order, from the bottom, is deck, grip, trucks, wheels. Equal numbers keep the order the slots are listed in. A slot the order leaves out is drawn after the slots it names, in the usual order.
+- **Layer order.** A number for each slot the picture draws, 1 at the bottom. The usual order, from the bottom, is deck, grip, trucks, wheels. Equal numbers keep the order the slots are listed in. A slot the order leaves out is drawn after the slots it names, in the usual order. It orders the underside alone: from 0.8.0 the grip is on the top, whose order is fixed, so the grip's number has no effect.
 - **Wheelbase where a deck gives none (in).** Where the trucks sit on a deck whose specs give no `wheelbase`, from 10 to 20 in, as a decimal or a fraction. A figure outside that range is refused with a sentence that gives it. Left empty, the layout uses the usual wheelbase for the deck:
 
 | The deck | The usual wheelbase |
@@ -154,6 +168,7 @@ WooCommerce > Builder > Catalogue check lists each part of a drawn slot with no 
 
 ## For developers
 
+- **The top.** `Layout::$top` lists the top's layers in the same units and places as `Layout::$layers`; `Front\PageRenderer` and the state route's `picture.top` carry them, and `Front\BuilderView` writes each as a `span` with `--cbuild-image` and, for the deck and the grip, `--cbuild-mask`, the deck's file as a quoted `url()` with anything that could close it percent-encoded. A layer image on a CDN of another origin must be sent with `Access-Control-Allow-Origin` for the browser to use it as a mask; without it the deck and the grip are not drawn. The composer reads `Layout::$layers` alone.
 - **Units.** The layout works in whole ten-thousandths of a millimetre, so a renderer's scale is one multiplication. A `Layer`'s centre is measured from the deck's centre, `x` to the right and `y` towards the nose. `Layout::corner()` gives a layer's top left corner from the board's, the nose at the top, which both renderers draw from. `Layout::drawn()` gives one part's box alone, which the Layer image field and the renditions use. Where a spec the layout needs is missing, a usual value stands in and `Layout::$assumed` lists the spec.
 - **One layout, two renderers.** `Domain\Picture\Layout::of()` lays the board out from the picks and the kit's `PictureSettings`. `Port\PictureRenderer` takes that layout and the parts' `LayerArt`. `Front\PageRenderer` gives the page's layers, which the state route's `picture.layers` carries (see [HOOKS.md](HOOKS.md)). `Service\ComposedRenderer` gives a `Domain\Picture\Composition`, worked out to the pixel before any library is called, which `Adapter\WpPictureFiles` draws with GD or Imagick. The interface is internal and has no filter yet; a 3D view after 1.0 would be a third renderer.
 - **Names change with the drawing.** `Composition::VERSION` is in every composed picture's name, so a change to how a picture is drawn gives new files rather than showing old ones.

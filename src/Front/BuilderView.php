@@ -154,6 +154,8 @@ final class BuilderView {
 			? sprintf( _n( '%s part no longer fits.', '%s parts no longer fit.', count( Cast::items( $changes['changes'] ?? null ) ), 'creative-skateboard-builder' ), number_format_i18n( count( Cast::items( $changes['changes'] ?? null ) ) ) )
 			: self::said( Cast::str( $picture['description'] ?? null ), $sum, isset( $total['estimate'] ) ? Cast::str( Cast::map( $total['estimate'] )['text'] ?? null ) : null );
 
+		$board              = self::board( $picture, $state->id, null );
+		$top                = self::top( $picture, $state->id );
 		[ $action, $carry ] = self::form( $base );
 		$step               = $review ? self::none() : $this->step( $state, $answer, $link, $url, $steps, $counted, $lines, $about );
 		$summary            = $this->summary( $state, $answer, $link, $url, $lines, $label );
@@ -187,7 +189,19 @@ final class BuilderView {
 				'description' => Cast::str( $picture['description'] ?? null ),
 				// With nothing picked, the summary says so; the picture keeps quiet rather than say it twice.
 				'captioned'   => array() !== Cast::items( $picture['items'] ?? null ),
-				'board'       => self::board( $picture, $state->id, null ),
+				'board'       => $board,
+				// The board's top (#46): shown on the grip step, where the shopper sees the grip go on, and turned to
+				// with the button by the board, which the store offers and keeps to once pressed. A deck with no layer
+				// image has no outline to draw the top from.
+				'top'         => $top,
+				'turnable'    => $top['shown'],
+				'turned'      => $top['shown'] && SlotKey::GRIP === $state->step,
+				'turn'        => __( 'Show the top', 'creative-skateboard-builder' ),
+				'sided'       => $board['shown'],
+				'seen'        => array(
+					'under' => __( 'Seen from underneath.', 'creative-skateboard-builder' ),
+					'top'   => __( 'Seen from the top.', 'creative-skateboard-builder' ),
+				),
 				'items'       => array_map(
 					static function ( mixed $item, int $at ) use ( $state ): array {
 						$item  = Cast::map( $item );
@@ -415,13 +429,7 @@ final class BuilderView {
 			$layers[]      = array(
 				'key'      => $slot . '-' . $seen[ $slot ],
 				'classes'  => self::flagged( array( Options::CLASS_LAYER, Options::CLASS_LAYER . '--' . $slot ), $kit, $slot, Cast::int( $layer['part'] ?? null ) ),
-				'style'    => sprintf(
-					'--cbuild-layer-x:%1$s%%;--cbuild-layer-y:%2$s%%;--cbuild-layer-width:%3$s%%;--cbuild-layer-height:%4$s%%',
-					self::decimal( 100 * Cast::int( $layer['x'] ?? null ) / $width ),
-					self::decimal( 100 * Cast::int( $layer['y'] ?? null ) / $height ),
-					self::decimal( 100 * Cast::int( $layer['width'] ?? null ) / $width ),
-					self::decimal( 100 * Cast::int( $layer['height'] ?? null ) / $height )
-				),
+				'style'    => self::placed( $layer, $width, $height ),
 				'src'      => Cast::str( $image['src'] ?? null ),
 				'width'    => Cast::int( $image['width'] ?? null ),
 				'height'   => Cast::int( $image['height'] ?? null ),
@@ -442,6 +450,96 @@ final class BuilderView {
 			'style'  => array() === $layers ? '' : '--cbuild-board-ratio:' . $width . ' / ' . $height,
 			'layers' => $layers,
 		);
+	}
+
+	/**
+	 * The board's top (#46), placed as the underside is, each layer an element the stylesheet paints from its style:
+	 * the deck maple in its own outline, the deck's image as a mask; the grip's image repeated across the same
+	 * outline, nose to tail; and each wheel and bolt head its own image. Each is one file, not a `srcset`: a style takes
+	 * one address. It is the largest WebP rendition made, or else AVIF's, or else the image's own file, so the outline
+	 * is as sharp as the underside's deck. The bar draws the same top at its size, from the same files.
+	 *
+	 * @param array<string, mixed> $picture The answer's picture.
+	 * @param int                  $kit     The kit product's ID.
+	 * @return array{shown: bool, style: string, layers: list<array{key: string, classes: string, style: string}>}
+	 */
+	private static function top( array $picture, int $kit ): array {
+		$width  = Cast::int( $picture['width'] ?? null );
+		$height = Cast::int( $picture['height'] ?? null );
+		$top    = $height > 0 && $width > 0 ? Cast::items( $picture['top'] ?? null ) : array();
+		$mask   = '';
+		foreach ( $top as $layer ) {
+			$layer = Cast::map( $layer );
+			if ( SlotKey::DECK === Cast::str( $layer['slot'] ?? null ) ) {
+				$mask = self::url( self::address( Cast::map( $layer['image'] ?? null ) ) );
+				break;
+			}
+		}
+		$layers = array();
+		$seen   = array();
+		foreach ( '' === $mask ? array() : $top as $layer ) {
+			$layer         = Cast::map( $layer );
+			$slot          = Cast::str( $layer['slot'] ?? null );
+			$style         = array( self::placed( $layer, $width, $height ) );
+			$style[]       = in_array( $slot, array( SlotKey::DECK, SlotKey::GRIP ), true ) ? '--cbuild-mask:' . $mask : '';
+			$style[]       = SlotKey::DECK === $slot ? '' : '--cbuild-image:' . self::url( self::address( Cast::map( $layer['image'] ?? null ) ) );
+			$seen[ $slot ] = ( $seen[ $slot ] ?? 0 ) + 1;
+			$layers[]      = array(
+				'key'     => $slot . '-' . $seen[ $slot ],
+				'classes' => self::flagged( array( Options::CLASS_LAYER, Options::CLASS_LAYER . '--' . $slot ), $kit, $slot, Cast::int( $layer['part'] ?? null ) ),
+				'style'   => implode( ';', array_filter( $style, static fn( string $part ): bool => '' !== $part ) ),
+			);
+		}
+		return array(
+			'shown'  => array() !== $layers,
+			'style'  => array() === $layers ? '' : '--cbuild-board-ratio:' . $width . ' / ' . $height,
+			'layers' => $layers,
+		);
+	}
+
+	/**
+	 * A layer's place on the board, as shares of it.
+	 *
+	 * @param array<string, mixed> $layer  The layer.
+	 * @param int                  $width  The board across.
+	 * @param int                  $height The board along.
+	 */
+	private static function placed( array $layer, int $width, int $height ): string {
+		return sprintf(
+			'--cbuild-layer-x:%1$s%%;--cbuild-layer-y:%2$s%%;--cbuild-layer-width:%3$s%%;--cbuild-layer-height:%4$s%%',
+			self::decimal( 100 * Cast::int( $layer['x'] ?? null ) / $width ),
+			self::decimal( 100 * Cast::int( $layer['y'] ?? null ) / $height ),
+			self::decimal( 100 * Cast::int( $layer['width'] ?? null ) / $width ),
+			self::decimal( 100 * Cast::int( $layer['height'] ?? null ) / $height )
+		);
+	}
+
+	/**
+	 * One file of a layer image for a style: the largest WebP rendition made, or else AVIF's, or else its own file.
+	 * A `srcset` lists its files smallest first.
+	 *
+	 * @param array<string, mixed> $image The layer's image.
+	 */
+	private static function address( array $image ): string {
+		$sets = array_column( array_map( static fn( mixed $source ): array => Cast::map( $source ), Cast::items( $image['sources'] ?? null ) ), 'srcset', 'type' );
+		foreach ( array( 'image/webp', 'image/avif' ) as $type ) {
+			$files = explode( ', ', Cast::str( $sets[ $type ] ?? '' ) );
+			$last  = explode( ' ', (string) end( $files ) )[0];
+			if ( '' !== $last ) {
+				return $last;
+			}
+		}
+		return Cast::str( $image['src'] ?? null );
+	}
+
+	/**
+	 * An address as a style's `url()`: quoted, with every character a URL does not need written as its escape, so
+	 * no quote, backslash, space or line in it can end the string or the declaration.
+	 *
+	 * @param string $address The address.
+	 */
+	private static function url( string $address ): string {
+		return 'url("' . preg_replace_callback( '/[^A-Za-z0-9\-._~:\/?#\[\]@!$&\'()*+,;=%]/', static fn( array $found ): string => rawurlencode( $found[0] ), $address ) . '")';
 	}
 
 	/**
@@ -1169,16 +1267,16 @@ final class BuilderView {
 		$on    = Cast::bool( Cast::map( $answer['total'] ?? null )['assembly'] ?? null );
 		$lead  = $on ? Cast::str( $texts['lead_time'] ?? null ) : '';
 		/* translators: %s: how long the shop takes to put a build together, in the owner's words, such as 2 business days. */
-		$lead      = '' === $lead ? '' : sprintf( __( 'Assembly time: %s', 'creative-skateboard-builder' ), $lead );
-		$notice    = Cast::str( $texts['returns_notice'] ?? null );
-		$fields    = array(
+		$lead   = '' === $lead ? '' : sprintf( __( 'Assembly time: %s', 'creative-skateboard-builder' ), $lead );
+		$notice = Cast::str( $texts['returns_notice'] ?? null );
+		$fields = array(
 			array(
 				'name'  => 'add-to-cart',
 				'value' => (string) $state->id,
 			),
 		);
-		$fields    = array_merge( $fields, self::fields( BuildLink::PARAM . '[picks]', $counted, array(), $state->kit->slots->keys() ) );
-		$fields    = array_merge(
+		$fields = array_merge( $fields, self::fields( BuildLink::PARAM . '[picks]', $counted, array(), $state->kit->slots->keys() ) );
+		$fields = array_merge(
 			$fields,
 			array(
 				array(

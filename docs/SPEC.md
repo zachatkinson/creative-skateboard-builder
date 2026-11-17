@@ -405,7 +405,8 @@ The board as it's built (P6). It heads every step and the review, and is redrawn
   - the deck, scaled by its width and length;
   - the trucks, placed by its wheelbase, or by the shape's usual one;
   - then the wheels;
-  - the grip, as a strip along the edge.
+  - the grip, as a strip along the edge, until milestone 8 gave the board a top (below).
+- **The top, from milestone 8 (#46).** The board turns over. Its top is the deck's own layer image's outline, plain maple with no grip, or filled with the grip's layer image as a swatch from nose to tail; a bolt head at each of the deck's holes, from the hardware's layer image, in its colour; and the wheels peeking out at the edges, the trucks hidden. The grip step shows the top and the next step the underside again, unless the shopper chose a side with the button by the board ("Show the top", with `aria-pressed`, from the keyboard and a screen reader alike). The phone bar's board shows the same side, the written description says which side is shown, and nothing moves under `prefers-reduced-motion`. The composed picture stays the underside.
 - **One layout, drawn twice.** The domain lays the board out from the specs. The page stacks the layers as images. A composed image of the same layout, made in the background, serves the cart, the emails and share cards.
 - **Where a part has no layer image yet,** the picture shows its product photo instead, labelled with its slot, brand and size ("Wheels: Retna, 54 mm"). This is the "What's in the box" layout: Baymard found [63% of test users missed bundled items when there was no picture of them](https://baymard.com/blog/included-accessories-image) (2019).
 - **Who ships what.** Milestone 6 ships the labelled layout, and milestone 7 adds the layers. Skatehouse's deck cut-outs come from today's photos. Trucks, wheels, risers and grip are shot to the template in `docs/PICTURE.md` as they arrive.

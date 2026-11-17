@@ -711,6 +711,8 @@ The builder also sends WooCommerce's own `wc-blocks_added_to_cart` on `document.
 | Item | Since | What changed |
 | --- | --- | --- |
 | `total.estimate` in `schema/state.json` and in `creative-skateboard-builder/price-build`'s output | 0.8.0 | What a complete board would cost with each slot's recommendation in it, priced as `total` is (assembly, build discount, the shop's decimals), while a recommendation fills a slot and every slot the kit requires has a part; otherwise null. |
+| `picture.top` in `schema/state.json` | 0.8.0 | The board seen from the top (#46), as a list of layers shaped as `picture.layers`' are (the schema's `layer` definition), in the same units and places: from the bottom, the wheels, the deck, the grip over the deck's whole box, and a bolt head at each of the deck's eight holes. The deck's layer image is the top's outline, the grip's is the swatch that fills it, and the hardware's is a bolt head; the trucks are not on it. Empty where the deck has no layer image. A part drawn on either side has `drawn` true. |
+| `picture.layers` | 0.8.0 | The underside no longer holds the grip's 1 in strip: the grip is drawn on the top. Nothing else changes, and the composed pictures stay the underside. |
 | `total`, `steps[].recommended` and each option's `recommended` | 0.8.0 | Nothing is picked for the shopper (D-213): `total` and its `lines` count the picks alone, where before they also counted the part each later slot started on. `recommended` keeps its name and says the part the slot recommends, which is labelled and not picked. A caller that read `total` as the recommended board reads `estimate`. |
 
 ### Saved builds and My builds
@@ -721,4 +723,15 @@ The builder also sends WooCommerce's own `wc-blocks_added_to_cart` on `document.
 | `cbuild_saved` | 0.8.0 | The query parameter Open adds: the saved build's UUID. Read only on its owner's page, where Save build then updates that build. Another customer's page, and a visitor's, ignore it; no build link, Copy link or `og:url` carries it. |
 
 Save build, Rename and Delete are forms posted to My builds with a nonce each, answered on `template_redirect`. Their fields are the builder's own and no part of this API (D-217). There is no REST route for saved builds.
+
+### Styling the board's top
+
+The picture and the phone bar draw the board's top (#46) beside its underside, as `.cbuild-board.cbuild-board--top`, and show one side at a time: the picture has `cbuild-picture--top` and the bar's link `cbuild-bar__picture--top` while the top is shown, and `--turning` while the board turns over (with JavaScript, never on load). Each of the top's layers is a `span.cbuild-board__layer` placed by the four `--cbuild-layer-*` properties above, and the builder sets these on it for the stylesheet to paint; a theme does not set them:
+
+| Property | Since | What it holds |
+| --- | --- | --- |
+| `--cbuild-image` | 0.8.0 | On each of the top's layers but the deck's: the part's layer image, as a `url()`. The grip's is repeated along the deck, the others fitted into their box |
+| `--cbuild-mask` | 0.8.0 | On the top's deck and grip layers: the deck's layer image, as a `url()`, whose transparency is their outline (`mask-image`). A layer image served from another origin needs `Access-Control-Allow-Origin` for the browser to use it as a mask |
+
+The button by the board, `.cbuild-picture__turn .cbuild-button`, has `aria-pressed` true while the top is shown.
 

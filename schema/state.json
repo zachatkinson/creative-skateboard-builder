@@ -471,7 +471,7 @@
 		"picture": {
 			"description": "What is in the box: each part the total counts, in step order. From 0.7.0, the board as well: the layers of the parts with a layer image, placed in the layout's units, ten-thousandths of a millimetre, with the nose at the top.",
 			"type": "object",
-			"required": [ "items", "description", "width", "height", "layers" ],
+			"required": [ "items", "description", "width", "height", "layers", "top" ],
 			"properties": {
 				"items": {
 					"type": "array",
@@ -541,82 +541,14 @@
 					"minimum": 0
 				},
 				"layers": {
-					"description": "The board's layers from the bottom of the stack: the deck, the grip, one for each truck and one for each wheel, each a part with a layer image.",
+					"description": "The board seen from underneath, its layers from the bottom of the stack: the deck, one for each truck and one for each wheel, each a part with a layer image. Until 0.8.0 the grip was here too, as a 1 in strip; from 0.8.0 it is on the top.",
 					"type": "array",
-					"items": {
-						"type": "object",
-						"required": [ "slot", "part", "x", "y", "width", "height", "image" ],
-						"properties": {
-							"slot": {
-								"description": "The slot's key.",
-								"type": "string"
-							},
-							"part": {
-								"description": "The part's ID.",
-								"type": "integer",
-								"minimum": 1
-							},
-							"x": {
-								"description": "The layer's left edge from the board's.",
-								"type": "integer"
-							},
-							"y": {
-								"description": "The layer's top edge from the board's, the nose's end.",
-								"type": "integer"
-							},
-							"width": {
-								"description": "The layer across.",
-								"type": "integer",
-								"minimum": 1
-							},
-							"height": {
-								"description": "The layer along.",
-								"type": "integer",
-								"minimum": 1
-							},
-							"image": {
-								"description": "The part's layer image: its own file, and the renditions made of it.",
-								"type": "object",
-								"required": [ "src", "width", "height", "sources" ],
-								"properties": {
-									"src": {
-										"description": "The image's own file.",
-										"type": "string",
-										"format": "uri"
-									},
-									"width": {
-										"description": "Its pixels across.",
-										"type": "integer",
-										"minimum": 1
-									},
-									"height": {
-										"description": "Its pixels along.",
-										"type": "integer",
-										"minimum": 1
-									},
-									"sources": {
-										"description": "The renditions made, a `srcset` for each type, AVIF first; none until they are made.",
-										"type": "array",
-										"items": {
-											"type": "object",
-											"required": [ "type", "srcset" ],
-											"properties": {
-												"type": {
-													"description": "The MIME type.",
-													"type": "string",
-													"enum": [ "image/avif", "image/webp" ]
-												},
-												"srcset": {
-													"description": "Its files with their widths, smallest first.",
-													"type": "string"
-												}
-											}
-										}
-									}
-								}
-							}
-						}
-					}
+					"items": { "$ref": "#/definitions/layer" }
+				},
+				"top": {
+					"description": "From 0.8.0: the board seen from the top (#46), in the same units and places as `layers`, from the bottom of the stack: the four wheels, which the deck covers but where they stand out past its edges; the deck, whose layer image is the top's outline; the grip over the deck's whole box, its layer image the swatch that fills that outline nose to tail; and a bolt head at each of the deck's eight holes, the hardware's layer image. The trucks are not on it. Each is a part with a layer image, and the list is empty where the deck has none. The composed pictures are the underside alone.",
+					"type": "array",
+					"items": { "$ref": "#/definitions/layer" }
 				}
 			}
 		},
@@ -677,12 +609,96 @@
 						"added": { "description": "What the builder says once the build is in the cart.", "type": "string" }
 					},
 					"additionalProperties": true
+				},
+				"picture": {
+					"type": "object",
+					"required": ["turnable", "turned"],
+					"properties": {
+						"turnable": { "description": "Whether the board has a top to show: its deck has a layer image (0.8.0).", "type": "boolean" },
+						"turned": { "description": "Whether the board shows its top: on the grip step, as the server renders it; the store keeps the side the shopper turned it to (0.8.0).", "type": "boolean" }
+					},
+					"additionalProperties": true
 				}
 			},
 			"additionalProperties": true
 		}
 	},
 	"definitions": {
+		"layer": {
+			"description": "One layer of the board: a part with a layer image, where it is drawn and the image.",
+			"type": "object",
+			"required": [ "slot", "part", "x", "y", "width", "height", "image" ],
+			"properties": {
+				"slot": {
+					"description": "The slot's key.",
+					"type": "string"
+				},
+				"part": {
+					"description": "The part's ID.",
+					"type": "integer",
+					"minimum": 1
+				},
+				"x": {
+					"description": "The layer's left edge from the board's.",
+					"type": "integer"
+				},
+				"y": {
+					"description": "The layer's top edge from the board's, the nose's end.",
+					"type": "integer"
+				},
+				"width": {
+					"description": "The layer across.",
+					"type": "integer",
+					"minimum": 1
+				},
+				"height": {
+					"description": "The layer along.",
+					"type": "integer",
+					"minimum": 1
+				},
+				"image": {
+					"description": "The part's layer image: its own file, and the renditions made of it.",
+					"type": "object",
+					"required": [ "src", "width", "height", "sources" ],
+					"properties": {
+						"src": {
+							"description": "The image's own file.",
+							"type": "string",
+							"format": "uri"
+						},
+						"width": {
+							"description": "Its pixels across.",
+							"type": "integer",
+							"minimum": 1
+						},
+						"height": {
+							"description": "Its pixels along.",
+							"type": "integer",
+							"minimum": 1
+						},
+						"sources": {
+							"description": "The renditions made, a `srcset` for each type, AVIF first; none until they are made.",
+							"type": "array",
+							"items": {
+								"type": "object",
+								"required": [ "type", "srcset" ],
+								"properties": {
+									"type": {
+										"description": "The MIME type.",
+										"type": "string",
+										"enum": [ "image/avif", "image/webp" ]
+									},
+									"srcset": {
+										"description": "Its files with their widths, smallest first.",
+										"type": "string"
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		},
 		"money": {
 			"description": "An amount in the shop's currency.",
 			"type": "object",

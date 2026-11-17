@@ -1090,7 +1090,10 @@ test.describe( 'The builder with JavaScript', () => {
 		page,
 	} ) => {
 		const picture = page.locator( '#cbuild-picture' );
-		const deck = picture.locator( '.cbuild-board__layer--deck' );
+		// The underside's deck: the top has a deck layer of its own (#46).
+		const deck = picture.locator(
+			'.cbuild-board:not(.cbuild-board--top) .cbuild-board__layer--deck'
+		);
 		const status = page.locator( '.cbuild' ).getByRole( 'status' );
 		const boxed = picture
 			.locator( '.cbuild-picture__item' )
@@ -2290,6 +2293,235 @@ test.describe( 'Motion', () => {
 		const { animations, transitions } = await seen( page );
 		expect( animations ).toEqual( [] );
 		expect( transitions ).toBe( 0 );
+	} );
+
+	// Issue #46: "No motion under prefers-reduced-motion"; elsewhere the board turns as the step crosses over.
+	for ( const motion of [ 'no-preference', 'reduce' ] as const ) {
+		test( `turns the board over ${
+			'reduce' === motion
+				? 'without moving it under reduced motion'
+				: 'in 150 to 250 ms by its transform alone'
+		}`, async ( { page } ) => {
+			await page.emulateMedia( { reducedMotion: motion } );
+			await page.goto(
+				linkTo( {
+					deck: id( 'builder-test-deck-8-0' ),
+					step: 'trucks',
+				} )
+			);
+			const turn = page
+				.locator( '#cbuild-picture' )
+				.getByRole( 'button', { name: 'Show the top' } );
+			await expect( turn ).toBeVisible();
+			await watch( page );
+			await turn.click();
+			await expect( turn ).toHaveAttribute( 'aria-pressed', 'true' );
+			const turned = ( await seen( page ) ).animations.filter(
+				( animation ) => 'cbuild-turn' === animation.name
+			);
+			if ( 'reduce' === motion ) {
+				expect( turned ).toEqual( [] );
+				return;
+			}
+			expect( turned.length ).toBeGreaterThan( 0 );
+			for ( const animation of turned ) {
+				expect( animation.duration ).toBeGreaterThanOrEqual( 150 );
+				expect( animation.duration ).toBeLessThanOrEqual( 250 );
+				expect( animation.properties ).toEqual( [ 'transform' ] );
+			}
+		} );
+	}
+} );
+
+// Issue #46, settled on 17 November 2026: the board has a top, drawn from the deck's own layer image, with the grip
+// filled into it and a bolt head at each hole; the grip step shows it, and a button by the board turns it over.
+test.describe( 'The board turned over', () => {
+	const picture = ( page: Page ) => page.locator( '#cbuild-picture' );
+	const top = ( page: Page ) =>
+		picture( page ).locator( '.cbuild-board--top' );
+	const under = ( page: Page ) =>
+		picture( page ).locator( '.cbuild-board:not(.cbuild-board--top)' );
+	const description = ( page: Page ) =>
+		picture( page ).locator( '.cbuild-picture__description' );
+
+	test( 'the grip step shows the top, filled with the grip and the bolt heads, and the next step the underside', async ( {
+		page,
+	} ) => {
+		await page.goto(
+			linkTo( {
+				deck: id( 'builder-test-deck-8-0' ),
+				trucks: id( 'builder-test-trucks-139' ),
+				wheels: id( 'builder-test-wheels-54' ),
+				bearings: id( 'builder-test-bearings' ),
+				hardware: id( 'builder-test-bolts-1-25' ),
+				step: 'grip',
+			} )
+		);
+		await expect( heading( page ) ).toHaveText( /: Grip tape$/ );
+		await expect( top( page ) ).toBeVisible();
+		await expect( under( page ) ).toBeHidden();
+		await expect(
+			top( page ).locator( '.cbuild-board__layer--hardware' ),
+			'a head at each of the eight holes'
+		).toHaveCount( 8 );
+		await expect(
+			top( page ).locator( '.cbuild-board__layer--wheels' )
+		).toHaveCount( 4 );
+		await expect( description( page ) ).toContainText(
+			'Seen from the top.'
+		);
+		await expect(
+			picture( page )
+				.locator( '.cbuild-picture__item:visible' )
+				.filter( { hasText: 'Hardware: ' } ),
+			'the heads are drawn, so the bolts have no labelled photo'
+		).toHaveCount( 0 );
+
+		// With the grip picked: by its link, so the page is drawn with it with the script or without.
+		await page.goto(
+			linkTo( {
+				deck: id( 'builder-test-deck-8-0' ),
+				trucks: id( 'builder-test-trucks-139' ),
+				wheels: id( 'builder-test-wheels-54' ),
+				bearings: id( 'builder-test-bearings' ),
+				hardware: id( 'builder-test-bolts-1-25' ),
+				grip: id( 'builder-test-grip' ),
+				step: 'grip',
+			} )
+		);
+		await expect(
+			top( page ).locator( '.cbuild-board__layer--grip' )
+		).toHaveCount( 1 );
+		const grip = await top( page )
+			.locator( '.cbuild-board__layer--grip' )
+			.evaluate( ( layer ) => {
+				const style = getComputedStyle( layer );
+				return {
+					image: style.backgroundImage,
+					mask: style.maskImage || style.webkitMaskImage,
+				};
+			} );
+		const deck = await top( page )
+			.locator( '.cbuild-board__layer--deck' )
+			.evaluate( ( layer ) => {
+				const style = getComputedStyle( layer );
+				return style.maskImage || style.webkitMaskImage;
+			} );
+		// The layer image or its resized copy, which wp-env makes (D-214): named by the file or by its attachment.
+		expect( grip.image, 'the swatch' ).toMatch(
+			/builder-test-grip|\/layers\/\d+-/
+		);
+		expect( grip.mask, "in the deck's outline" ).toBe( deck );
+		expect( grip.image, 'the swatch is not the deck' ).not.toBe(
+			grip.mask
+		);
+
+		// With the script or without: the click answers in place or loads the next page.
+		await page.getByRole( 'button', { name: 'Next: Review' } ).click();
+		await expect( heading( page ) ).toHaveText( /: Review$/ );
+		await expect( under( page ) ).toBeVisible();
+		await expect( top( page ) ).toBeHidden();
+		await expect( description( page ) ).toContainText(
+			'Seen from underneath.'
+		);
+	} );
+
+	test( "turns with its button from the keyboard, says the side, keeps the shopper's side and shows it in the bar", async ( {
+		page,
+	}, info ) => {
+		test.skip(
+			info.project.name === 'no-js',
+			"The button is the script's: without it the step's own side is shown."
+		);
+		await page.goto(
+			linkTo( {
+				deck: id( 'builder-test-deck-8-0' ),
+				trucks: id( 'builder-test-trucks-139' ),
+				step: 'wheels',
+			} )
+		);
+		const turn = picture( page ).getByRole( 'button', {
+			name: 'Show the top',
+		} );
+		await expect( turn ).toHaveAttribute( 'aria-pressed', 'false' );
+		await turn.focus();
+		await page.keyboard.press( 'Enter' );
+		await expect( turn ).toHaveAttribute( 'aria-pressed', 'true' );
+		await expect( turn, 'the shopper keeps their place' ).toBeFocused();
+		await expect( top( page ) ).toBeVisible();
+		await expect( under( page ) ).toBeHidden();
+		await expect( description( page ) ).toContainText(
+			'Seen from the top.'
+		);
+		const bar = page.locator( '.cbuild-bar__picture' );
+		if ( await bar.isVisible() ) {
+			await expect(
+				bar.locator( '.cbuild-board--top' ),
+				"the phone bar's board shows the same side"
+			).toBeVisible();
+			await expect(
+				bar.locator( '.cbuild-board:not(.cbuild-board--top)' )
+			).toBeHidden();
+		}
+		await axe( page, 'the board turned to its top', '#cbuild-picture' );
+
+		await choose( page, 'Builder test wheels 54' );
+		await page.getByRole( 'button', { name: 'Next: Bearings' } ).click();
+		await expect( heading( page ) ).toHaveText( /: Bearings$/ );
+		await expect(
+			turn,
+			'the top stays on a step that shows the underside: the shopper chose it'
+		).toHaveAttribute( 'aria-pressed', 'true' );
+		await turn.focus();
+		await page.keyboard.press( 'Space' );
+		await expect( turn ).toHaveAttribute( 'aria-pressed', 'false' );
+		await expect( under( page ) ).toBeVisible();
+		await expect( description( page ) ).toContainText(
+			'Seen from underneath.'
+		);
+	} );
+
+	test( 'has no button without the script, and a deck with no layer image has no top', async ( {
+		page,
+	}, info ) => {
+		// Every slot before the grip picked: nothing is picked for the shopper (D-213), so a link stops at the first
+		// empty one.
+		await page.goto(
+			linkTo( {
+				deck: id( 'builder-test-deck-8-25' ),
+				trucks: id( 'builder-test-trucks-149' ),
+				wheels: id( 'builder-test-wheels-54' ),
+				bearings: id( 'builder-test-bearings' ),
+				hardware: id( 'builder-test-bolts-1-25' ),
+				step: 'grip',
+			} )
+		);
+		await expect( heading( page ) ).toHaveText( /: Grip tape$/ );
+		await expect(
+			picture( page ).getByRole( 'button', { name: 'Show the top' } )
+		).toHaveCount( 0 );
+		await expect( top( page ) ).toBeHidden();
+		// The underside is drawn, from the trucks and wheels, and is the only side there is.
+		await expect( description( page ) ).toContainText(
+			'Seen from underneath.',
+			{ useInnerText: true }
+		);
+		await expect( description( page ) ).not.toContainText(
+			'Seen from the top.',
+			{ useInnerText: true }
+		);
+		if ( info.project.name === 'no-js' ) {
+			await page.goto(
+				linkTo( {
+					deck: id( 'builder-test-deck-8-0' ),
+					step: 'trucks',
+				} )
+			);
+			await expect(
+				picture( page ).getByRole( 'button', { name: 'Show the top' } )
+			).toHaveCount( 0 );
+			await expect( under( page ) ).toBeVisible();
+		}
 	} );
 } );
 

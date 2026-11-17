@@ -51,6 +51,26 @@ final class LayerArtworkTest extends TestCase {
 		self::assertSame( array( array( 100, 200, 300 ) ), $layers->together, 'the drawn parts\' layer images asked for together, once (D-202)' );
 	}
 
+	// Issue #46: the grip and the hardware are drawn on the top alone, so their art is found from it.
+	public function test_the_parts_only_the_top_draws_have_their_art_found_with_the_rest_in_one_ask(): void {
+		$deck     = Parts::of( array( 'deck_width' => '8.25', 'deck_length' => '32' ), 100 );
+		$grip     = Parts::of( array(), 700 );
+		$hardware = Parts::of( array( 'bolt_length' => '1' ), 600 );
+		$picks    = array( SlotKey::DECK => $deck, SlotKey::GRIP => $grip, SlotKey::HARDWARE => $hardware );
+
+		$layers              = new InMemoryLayerImages();
+		$layers->attachments = array( 100 => 10, 700 => 70, 600 => 60 );
+		$layers->images      = array(
+			10 => new ImageFacts( 'image/png', 420, 1626, true ),
+			70 => new ImageFacts( 'image/png', 51, 1626, true ),
+			60 => new ImageFacts( 'image/png', 40, 40, true ),
+		);
+		$art = ( new LayerArtwork( $layers, new InMemoryLayerRenditions() ) )->of( Layout::of( Parts::picks( $picks ) ), $picks );
+
+		self::assertSame( array( 100, 700, 600 ), array_keys( $art ), 'the hardware\'s eight heads read once' );
+		self::assertSame( array( array( 100, 700, 600 ) ), $layers->together );
+	}
+
 	public function test_an_image_no_longer_in_the_media_library_is_no_art_and_nothing_laid_out_reads_nothing(): void {
 		$deck                = Parts::of( array( 'deck_width' => '8.25' ), 100 );
 		$layers              = new InMemoryLayerImages();

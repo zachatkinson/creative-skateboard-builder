@@ -4,12 +4,17 @@
  * in the box, the photo of each other part labelled with its slot, brand and size, and the build in one sentence. The
  * layers are described by the sentence, so each is empty to a screen reader.
  *
+ * From 0.8.0 the board has a top as well (#46): the deck's outline, the grip filled into it, the bolt heads and the
+ * wheels at the edges, each layer an element the stylesheet paints from its style. One side shows at a time. The
+ * grip step shows the top, and the button by the board turns it over, with the script; the sentence says which side
+ * is shown.
+ *
  * @package CreativeBranding\SkateboardBuilder
  */
 
 defined( 'ABSPATH' ) || exit;
 ?>
-<figure class="cbuild-picture" id="cbuild-picture" tabindex="-1" aria-labelledby="cbuild-picture-heading">
+<figure class="cbuild-picture" id="cbuild-picture" tabindex="-1" aria-labelledby="cbuild-picture-heading" data-wp-class--cbuild-picture--top="state.view.picture.turned" data-wp-class--cbuild-picture--turning="state.turning">
 	<h3 class="cbuild-picture__heading" id="cbuild-picture-heading" data-wp-bind--hidden="!state.view.picture.captioned" data-wp-text="state.view.picture.heading"></h3>
 	<div class="cbuild-board" dir="ltr" data-wp-bind--hidden="!state.view.picture.board.shown" data-wp-bind--style="state.view.picture.board.style">
 		<template data-wp-each--layer="state.view.picture.board.layers" data-wp-each-key="context.layer.key">
@@ -21,6 +26,14 @@ defined( 'ABSPATH' ) || exit;
 			</picture>
 		</template>
 	</div>
+	<div class="cbuild-board cbuild-board--top" dir="ltr" data-wp-bind--hidden="!state.view.picture.top.shown" data-wp-bind--style="state.view.picture.top.style">
+		<template data-wp-each--layer="state.view.picture.top.layers" data-wp-each-key="context.layer.key">
+			<span data-wp-bind--class="context.layer.classes" data-wp-bind--style="context.layer.style"></span>
+		</template>
+	</div>
+	<div class="cbuild-picture__turn" data-wp-bind--hidden="!state.view.picture.turnable">
+		<button class="cbuild-button" type="button" data-wp-bind--hidden="!state.canTurn" data-wp-bind--aria-pressed="state.view.picture.turned" data-wp-on--click="actions.turn" data-wp-text="state.view.picture.turn"></button>
+	</div>
 	<ul class="cbuild-picture__items">
 		<template data-wp-each--item="state.view.picture.items" data-wp-each-key="context.item.key">
 			<li data-wp-bind--class="context.item.classes" data-wp-bind--hidden="context.item.drawn">
@@ -29,5 +42,5 @@ defined( 'ABSPATH' ) || exit;
 			</li>
 		</template>
 	</ul>
-	<figcaption class="cbuild-picture__description" data-wp-bind--hidden="!state.view.picture.captioned" data-wp-text="state.view.picture.description"></figcaption>
+	<figcaption class="cbuild-picture__description" data-wp-bind--hidden="!state.view.picture.captioned"><span data-wp-text="state.view.picture.description"></span><span data-wp-bind--hidden="!state.view.picture.sided"> <span data-wp-bind--hidden="state.view.picture.turned" data-wp-text="state.view.picture.seen.under"></span><span data-wp-bind--hidden="!state.view.picture.turned" data-wp-text="state.view.picture.seen.top"></span></span></figcaption>
 </figure>

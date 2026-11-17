@@ -169,6 +169,11 @@ final class BuilderPage {
 					'canCopy' => false,
 					// Save build, for a signed-in customer (D-217).
 					'account' => $this->account(),
+					// Set by the store, which turns the board over with the button by it; without the script the
+					// step's own side is shown (#46).
+					'canTurn' => false,
+					// Set by the store once a turn is seen, so the board turns where motion is allowed, never on load.
+					'turning' => false,
 				)
 			);
 			// Where the store asks for the next view: the state route, for this page, in its language (D-148), and the

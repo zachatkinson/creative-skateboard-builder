@@ -24,10 +24,12 @@ use function usort;
 
 /**
  * The board laid out from its parts' specs, seen from underneath with the nose up: the deck by its width and length,
- * the grip as a strip along its edge, the trucks by the wheelbase and the wheels at the axles' ends (spec: The
- * builder, The picture; D-060). Both of milestone 7's renderers draw from this one layout. Every number is a whole
- * ten-thousandth of a millimetre, so a renderer's scale is one multiplication. Where a spec the layout needs is not
- * known, a usual value stands in and the layout says which.
+ * the trucks by the wheelbase and the wheels at the axles' ends (spec: The builder, The picture; D-060). Both of
+ * milestone 7's renderers draw from this one layout. From 0.8.0 it also gives the board's top, which the page alone
+ * draws (#46): the wheels where they stand out past the deck, the deck, the grip over the whole of it, and a bolt
+ * head at each of the deck's eight holes. Every number is a whole ten-thousandth of a millimetre, so a renderer's
+ * scale is one multiplication. Where a spec the layout needs is not known, a usual value stands in and the layout
+ * says which.
  */
 final readonly class Layout {
 
@@ -77,21 +79,35 @@ final readonly class Layout {
 	private const int USUAL_WHEEL = 540000;
 
 	/**
-	 * The grip's strip: 1 in wide.
+	 * The grip's image: a strip 1 in wide along the deck's length, which the top repeats across the deck.
 	 */
 	private const int GRIP_STRIP = 254000;
+
+	/**
+	 * Between a baseplate's two columns of holes, new school or old: 1.625 in.
+	 */
+	private const int HOLE_COLUMNS = 412750;
+
+	/**
+	 * A bolt's head, seen from the top: 3/8 in across.
+	 */
+	private const int BOLT_HEAD = 95250;
 
 	/**
 	 * Constructor.
 	 *
 	 * @since 0.2.0
+	 * @since 0.8.0 The top.
 	 *
 	 * @param int           $width   The board across, wheels included.
 	 * @param int           $height  The board along.
-	 * @param list<Layer>   $layers  The layers, from the bottom of the stack.
+	 * @param list<Layer>   $layers  The layers seen from underneath, from the bottom of the stack.
 	 * @param list<SpecKey> $assumed The specs a usual value stood in for.
+	 * @param list<Layer>   $top     The layers seen from the top, from the bottom of the stack, in the same places:
+	 *                               the board is turned over about its length, and every place on it is the same either
+	 *                               way up.
 	 */
-	public function __construct( public int $width, public int $height, public array $layers, public array $assumed ) {}
+	public function __construct( public int $width, public int $height, public array $layers, public array $assumed, public array $top = array() ) {}
 
 	/**
 	 * The layout of the picks so far. Nothing is laid out until a deck with a width is picked. From 0.7.0 the kit's
@@ -121,11 +137,8 @@ final readonly class Layout {
 		}
 		$wide   = self::mm( $width );
 		$long   = self::mm( $length );
-		$layers = array( new Layer( SlotKey::DECK, $deck->id, 0, 0, $wide, $long ) );
-		$grip   = $picks->part( SlotKey::GRIP );
-		if ( null !== $grip ) {
-			$layers[] = new Layer( SlotKey::GRIP, $grip->id, intdiv( $wide - self::GRIP_STRIP, 2 ), 0, self::GRIP_STRIP, $long );
-		}
+		$board  = new Layer( SlotKey::DECK, $deck->id, 0, 0, $wide, $long );
+		$layers = array( $board );
 
 		$trucks = $picks->part( SlotKey::TRUCKS );
 		$wheels = $picks->part( SlotKey::WHEELS );
@@ -140,12 +153,21 @@ final readonly class Layout {
 		$spacing = HolePattern::OldSchool->value === $deck->specs->choice( SpecKey::HolePattern ) ? self::OLD_SCHOOL_SPACING : self::HOLE_SPACING;
 		// The wheelbase runs between the inner holes, so a truck's middle is half a spacing further out.
 		$out    = intdiv( self::mm( $base ) + $spacing, 2 );
-		$layers = array( ...$layers, ...self::trucks( $trucks, $out, $across, $spacing ), ...self::wheels( $wheels, $out, $across ) );
+		$round  = self::wheels( $wheels, $out, $across );
+		$layers = array( ...$layers, ...self::trucks( $trucks, $out, $across, $spacing ), ...$round );
 		if ( null !== $settings ) {
 			// usort() keeps equal ranks in the order they came in (PHP 8.0), so a slot's own layers stay in theirs.
 			usort( $layers, static fn( Layer $a, Layer $b ): int => $settings->rank( $a->slot ) <=> $settings->rank( $b->slot ) );
 		}
-		return new self( max( $wide, $across ), $long, $layers, $assumed );
+		// The top is stacked as a board is built, whatever the kit's order: the wheels under the deck, so only what
+		// stands out past its edges shows, then the grip over the whole deck, then the bolts' heads through it.
+		$grip = $picks->part( SlotKey::GRIP );
+		$top  = array( ...$round, $board );
+		if ( null !== $grip ) {
+			$top[] = new Layer( SlotKey::GRIP, $grip->id, 0, 0, $wide, $long );
+		}
+		$top = array( ...$top, ...self::bolts( $picks->part( SlotKey::HARDWARE ), $out, $spacing ) );
+		return new self( max( $wide, $across ), $long, $layers, $assumed, $top );
 	}
 
 	/**
@@ -229,6 +251,29 @@ final readonly class Layout {
 			foreach ( array( $out, -$out ) as $y ) {
 				foreach ( array( -$side, $side ) as $x ) {
 					$layers[] = new Layer( SlotKey::WHEELS, $wheels->id, $x, $y, $thick, $round );
+				}
+			}
+		}
+		return $layers;
+	}
+
+	/**
+	 * A bolt's head at each of the deck's eight holes, seen from the top: from the nose, each row's left first; none
+	 * when no hardware is picked. The rows are the trucks' baseplate holes, half a spacing either side of each truck's
+	 * middle, so the inner rows are the wheelbase apart.
+	 *
+	 * @param Part|null $hardware The hardware.
+	 * @param int       $out      How far a truck's middle is from the deck's.
+	 * @param int       $spacing  Between a baseplate's two rows of holes.
+	 * @return list<Layer>
+	 */
+	private static function bolts( ?Part $hardware, int $out, int $spacing ): array {
+		$layers = array();
+		if ( null !== $hardware ) {
+			$half = intdiv( $spacing, 2 );
+			foreach ( array( $out + $half, $out - $half, -$out + $half, -$out - $half ) as $y ) {
+				foreach ( array( -1, 1 ) as $side ) {
+					$layers[] = new Layer( SlotKey::HARDWARE, $hardware->id, $side * intdiv( self::HOLE_COLUMNS, 2 ), $y, self::BOLT_HEAD, self::BOLT_HEAD );
 				}
 			}
 		}

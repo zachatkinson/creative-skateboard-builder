@@ -454,14 +454,14 @@ final class StateAnswer {
 	 * What is in the box: each part the total counts, labelled with its slot, its brand and its size, with its photo,
 	 * and the build in one sentence. From 0.7.0 the board as well: the layout of the parts counted, with the kit's
 	 * picture settings, drawn for the page from the parts with a layer image, each of which the box then leaves out
-	 * (spec: The picture; D-195).
+	 * (spec: The picture; D-195). From 0.8.0 the board's top too, from the same layout (#46).
 	 *
 	 * @param State                                                                                                                                                                                   $state   The build's state.
 	 * @param array<string, Part>                                                                                                                                                                     $counted The part each slot counts, by slot.
 	 * @param array<string, string>                                                                                                                                                                   $labels  The slots' labels.
 	 * @param array<string, string>                                                                                                                                                                   $brands  Brands' names, by slug.
 	 * @param array<int, array{name: string, url: string, price: string, stock: string, stock_class: string, image: array{src: string, width: int, height: int, srcset: string, sizes: string}|null}> $cards The cards.
-	 * @return array{items: list<array<string, mixed>>, description: string, width: int, height: int, layers: list<array<string, mixed>>}
+	 * @return array{items: list<array<string, mixed>>, description: string, width: int, height: int, layers: list<array<string, mixed>>, top: list<array<string, mixed>>}
 	 */
 	private function picture( State $state, array $counted, array $labels, array $brands, array $cards ): array {
 		$picks = Picks::none();
@@ -470,9 +470,10 @@ final class StateAnswer {
 		}
 		$layout = Layout::of( $picks, $state->kit->picture );
 		$board  = $this->renderer->render( $layout, null === $this->artwork ? array() : $this->artwork->of( $layout, $counted ) );
-		$drawn  = array_column( $board['layers'], 'part', 'slot' );
-		$items  = array();
-		$names  = array();
+		// A part either side draws: the grip and the hardware are drawn on the top alone (#46).
+		$drawn = array_column( $board['top'], 'part', 'slot' ) + array_column( $board['layers'], 'part', 'slot' );
+		$items = array();
+		$names = array();
 		foreach ( $state->quote->lines as $line ) {
 			$part    = $counted[ $line->slot ];
 			$name    = $cards[ $line->part ]['name'] ?? '';
@@ -496,6 +497,7 @@ final class StateAnswer {
 			'width'       => $board['width'],
 			'height'      => $board['height'],
 			'layers'      => $board['layers'],
+			'top'         => $board['top'],
 		);
 	}
 
