@@ -61,6 +61,7 @@ final class Container {
 			Port\LayerRenditions::class => Adapter\WpLayerRenditions::class,
 			Port\PictureFiles::class    => Adapter\WpPictureFiles::class,
 			Port\ProductMeta::class     => Repository\ProductMetaRepository::class,
+			Port\SavedBuildStore::class => Repository\SavedBuildRepository::class,
 		);
 	}
 
@@ -280,6 +281,17 @@ final class Container {
 					$c->get( Front\BuilderPlace::class )
 				);
 			},
+			// The saved builds' services are built when a form is sent or My builds is shown.
+			Front\SavedBuildHooks::class                  => static function ( Container $c ): object {
+				return new Front\SavedBuildHooks(
+					static function () use ( $c ): Service\SavedBuilds {
+						return $c->get( Service\SavedBuilds::class );
+					},
+					static function () use ( $c ): Front\MyBuildsView {
+						return $c->get( Front\MyBuildsView::class );
+					}
+				);
+			},
 			// The card's services are built on a page with a build in its address, when its head is printed.
 			Front\ShareHooks::class                       => static function ( Container $c ): object {
 				return new Front\ShareHooks(
@@ -395,6 +407,7 @@ final class Container {
 			Service\CatalogueCheck::class => static fn( object $check, Container $c ): object => $check instanceof Service\CatalogueCheck ? $check->withLayers( $c->get( Port\LayerImages::class ) ) : $check,
 			Front\StateAnswer::class      => static fn( object $answer, Container $c ): object => $answer instanceof Front\StateAnswer ? $answer->withArtwork( $c->get( Service\LayerArtwork::class ) ) : $answer,
 			Admin\PartSpecsPanel::class   => static fn( object $panel, Container $c ): object => $panel instanceof Admin\PartSpecsPanel ? $panel->withImages( $c->get( Port\LayerImages::class ) ) : $panel,
+			Front\BuilderPage::class      => static fn( object $page, Container $c ): object => $page instanceof Front\BuilderPage ? $page->withSaved( $c->get( Service\SavedBuilds::class ) ) : $page,
 		);
 	}
 
@@ -446,6 +459,8 @@ final class Container {
 			// Robots and the canonical are printed in the head of a page the site shows a visitor.
 			Front\SeoHooks::class                  => array( Scope::Storefront ),
 			Front\ShareHooks::class                => array( Scope::Storefront ),
+			// My builds' endpoint is a rewrite rule, made on `init` in any request; its forms are answered on a page.
+			Front\SavedBuildHooks::class           => array( Scope::Everywhere ),
 			// WordPress builds its abilities when something first asks for one, on any kind of request.
 			Abilities\CatalogueCheckAbility::class => array( Scope::Everywhere ),
 			Abilities\CheckBuildAbility::class     => array( Scope::Everywhere ),

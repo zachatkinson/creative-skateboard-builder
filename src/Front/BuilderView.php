@@ -1187,6 +1187,8 @@ final class BuilderView {
 				),
 			)
 		);
+		// Save build's fields: the build alone, with nothing of the cart's (D-217).
+		$saving    = $fields;
 		$replacing = '' !== $link->replace;
 		if ( $replacing ) {
 			// From Edit build: the add takes the place of the build in the cart it came from (D-157).
@@ -1211,6 +1213,7 @@ final class BuilderView {
 			'ready'      => Cast::bool( $answer['ready'] ?? null ),
 			'action'     => $url( $link ),
 			'fields'     => $fields,
+			'saveFields' => $saving,
 			// From Edit build the add takes the place of the build in the cart, and says so (spec: Review and add to
 			// cart, "Saving there replaces the build"; Cowork's review, should-fix 7).
 			'add'        => $replacing ? __( 'Save changes', 'creative-skateboard-builder' ) : __( 'Add to cart', 'creative-skateboard-builder' ),
@@ -1224,6 +1227,12 @@ final class BuilderView {
 			'share'      => __( 'Link to this build', 'creative-skateboard-builder' ),
 			'copy'       => __( 'Copy link', 'creative-skateboard-builder' ),
 			'copied'     => __( 'Link copied.', 'creative-skateboard-builder' ),
+			// Save build (D-217): for a signed-in customer, a form to My builds; for anyone else, the way to sign in
+			// that brings them back to this build.
+			'save'       => __( 'Save build', 'creative-skateboard-builder' ),
+			'saveName'   => __( 'Name it (optional)', 'creative-skateboard-builder' ),
+			'signIn'     => wp_login_url( $url( $link->shared()->at( State::REVIEW ) ) ),
+			'signInText' => __( 'Sign in to save this build', 'creative-skateboard-builder' ),
 		);
 	}
 }

@@ -259,6 +259,7 @@ In the option `cbuild_settings`. [SETTINGS.md](SETTINGS.md) has each key's defau
 | `cbuild_reindex_owed` | 0.3.0 | Present, with the value `1`, while a reindex is owed: the plugin was activated on a site that had no queue, as when WooCommerce is missing. The first request that finds the queue asks for the reindex and removes the option. Autoloaded. Read it, never write it. |
 | `cbuild_import_state` | 0.3.0 | The specs import in hand: its status (`waiting`, `running`, `done` or `failed`), a token naming it, the column rows are matched by (`id` or `sku`), the shop's decimal separator when the file was read, where each column sits, whether its rows are held (`has_rows`, while it waits and runs), how many rows there were and how many are done, the parts changed, the rows that changed nothing, each row refused with its column, a code and what the cell held, its failures in a row, and while it waits the ID of the user who sent the file. Not autoloaded. Read it, never write it. |
 | `cbuild_import_rows` | 0.3.0 | The rows of the specs import in hand, kept apart so a batch does not write them again: the import's token, the rows read from the file, and the product each SKU matched when the file was read (for an import by SKU). Written once when a file is read, and removed when the import ends, is put away or is replaced. Not autoloaded. Read it, never write it. |
+| `cbuild_endpoints` | 0.8.0 | The account endpoints the rewrite rules were last made with: `my-builds`. When it differs, the plugin makes the rules again once, on `init`, so My builds answers after an update with no step for the shop (D-217). Autoloaded. Read it, never write it. |
 
 ### Scheduled actions
 
@@ -711,4 +712,13 @@ The builder also sends WooCommerce's own `wc-blocks_added_to_cart` on `document.
 | --- | --- | --- |
 | `total.estimate` in `schema/state.json` and in `creative-skateboard-builder/price-build`'s output | 0.8.0 | What a complete board would cost with each slot's recommendation in it, priced as `total` is (assembly, build discount, the shop's decimals), while a recommendation fills a slot and every slot the kit requires has a part; otherwise null. |
 | `total`, `steps[].recommended` and each option's `recommended` | 0.8.0 | Nothing is picked for the shopper (D-213): `total` and its `lines` count the picks alone, where before they also counted the part each later slot started on. `recommended` keeps its name and says the part the slot recommends, which is labelled and not picked. A caller that read `total` as the recommended board reads `estimate`. |
+
+### Saved builds and My builds
+
+| Item | Since | What it is |
+| --- | --- | --- |
+| My account endpoint `my-builds` | 0.8.0 | My builds: each of the signed-in customer's saved builds with its picture, name, total today and the date it was saved, and Open, Rename and Delete. Added through WooCommerce's `woocommerce_get_query_vars`, with its menu item before Log out (`woocommerce_account_menu_items`). A shop that wants it elsewhere in the menu reorders that filter's answer at a later priority. |
+| `cbuild_saved` | 0.8.0 | The query parameter Open adds: the saved build's UUID. Read only on its owner's page, where Save build then updates that build. Another customer's page, and a visitor's, ignore it; no build link, Copy link or `og:url` carries it. |
+
+Save build, Rename and Delete are forms posted to My builds with a nonce each, answered on `template_redirect`. Their fields are the builder's own and no part of this API (D-217). There is no REST route for saved builds.
 

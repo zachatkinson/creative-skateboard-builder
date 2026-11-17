@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Added
 
+- Saved builds (D-217). A signed-in customer saves the build at the review, named or not, and finds it under My builds, a new My account endpoint (`my-builds`), with its picture, its total today, the date it was saved, and Open, Rename and Delete. Open goes back to the builder at the review, checked again, and Save build there updates the same build (`cbuild_saved`, read for its owner alone). A visitor signed out gets a link to sign in that comes back to the build. Up to 100 builds a customer. The forms carry a nonce each and work without JavaScript.
+- The option `cbuild_endpoints`, which makes the rewrite rules again once when the plugin's account endpoints change, so My builds answers after the update.
 - The state route's `total.estimate`: what a complete board would cost with each slot's recommendation in it, priced as the total is, while a recommendation fills a slot; null otherwise. The summary says it under the total, "A complete board from about $184", and the status region says it with each pick (D-213).
 
 ### Changed

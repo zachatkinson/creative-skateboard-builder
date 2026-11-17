@@ -611,19 +611,19 @@
 	color: var(--cbuild-muted);
 }
 
-:where(.cbuild-share) {
+:where(.cbuild-share, .cbuild-save) {
 	display: flex;
 	flex-wrap: wrap;
 	align-items: center;
 	gap: var(--cbuild-gap-small);
 }
 
-:where(.cbuild-share__label) {
+:where(.cbuild-share__label, .cbuild-save__label) {
 	inline-size: 100%;
 	font-size: var(--cbuild-small);
 }
 
-:where(.cbuild-share__link) {
+:where(.cbuild-share__link, .cbuild-save__name) {
 	flex: 1 1 12rem;
 	min-inline-size: 0;
 	min-block-size: var(--cbuild-target);

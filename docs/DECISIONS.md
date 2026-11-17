@@ -2900,3 +2900,18 @@ Cowork's recheck of 0.7.0, M6 (minor): with Yoast active, the printed `og:url` s
 ### D-216 · The upgrade notice asks for no manual step · 2026-11-17
 
 Cowork's recheck of 0.7.0 noted that the readme's upgrade notice asked sites older than 0.6.0 to deactivate the plugin before uploading. D-208 found that releases before 0.6.0 were the agency's own builds, run by no shop, and the one site with the plugin, the demo, runs 0.7.0. So 0.8.0's notice says to update as usual, and 0.7.0's notice drops the step. 0.7.0's changelog entry keeps its line, as the record of what that release said.
+
+### D-217 · Saved builds: forms on My builds, no REST route, and 100 a customer · 2026-11-17
+
+The roadmap asks for saved builds under My builds, "save, rename, delete and open, with nonces; owner-only; re-checked on opening", with IDOR tests. The spec leaves the mechanics open.
+
+- **Forms, not REST.** Save build, Rename and Delete are POST forms to My builds, each with its own nonce (Rename's and Delete's name the build's UUID), answered on `template_redirect`, where WooCommerce answers its own account forms (includes/class-wc-form-handler.php:50). They work without JavaScript, their notices go through WooCommerce's session, and the plugin adds no route for another client to call. The plan expected `cbuild/v1/builds` routes; the spec asks for none, and a route would be a second way to the same rows to secure and keep stable for a store that has no use for it. The builder's store does not need one: Save build is a plain form in the review, filled from the review's own fields.
+- **Owner-only in the store.** Every query of the repository names the user ID with the UUID, so a guessed or copied UUID finds nothing that is not the customer's. A Save build sent with another customer's UUID makes a new build of the sender's. `SavedBuildRepositoryTest` and `SavedBuildsPageTest` check another customer's UUID, a guessed one, and a write under another's.
+- **What is kept.** The picks the build counts (D-213), assembly, the name (up to 100 characters, as text) and when it was made and last saved. Not a price: My builds prices each build today, and says so where a part has gone or no longer fits. Open goes to the builder at the review, which checks it again.
+- **100 a customer.** A cap keeps one account from filling the table. A save past it says to delete one first. Changing it is a question for Zach; the number is `SavedBuilds::MOST`.
+- **`cbuild_saved`.** Open's address carries the build's UUID so Save build there updates that build and keeps its name. Only its owner's page reads it, the page's state names it only for them, and it is in no build link, Copy link or `og:url`. A visitor signed out sees nothing of an account in the page's state, so a cached page holds none.
+- **My builds after an update.** WooCommerce makes its endpoints' rewrite rules when it installs, not on a plugin's update. The plugin keeps the endpoints it last made rules with in `cbuild_endpoints`, and makes them again once, on `init`, when they differ. `flush_rewrite_rules( false )` runs that once, not on every request.
+- **Sign in to save.** A visitor's review links to `wp_login_url()` with the build's review address, so they come back to the same build signed in.
+
+**Tests.** `SavedBuildsTest` (unit, the service), `SavedBuildRepositoryTest` and `SavedBuildsPageTest` (integration). **Red runs:** SavedBuildsTest, all seven, "Error: Class …SavedBuilds not found" at SavedBuildsTest.php:56; SavedBuildsPageTest's save test "This build could not be saved: a part is missing or no longer fits." at SavedBuildsPageTest.php:100, until the posted picks were read as a build link reads them.
+
