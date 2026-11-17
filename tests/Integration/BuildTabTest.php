@@ -653,6 +653,11 @@ final class BuildTabTest extends IntegrationTestCase {
 		$kit   = KitFactory::kit();
 		$panel = $this->panel( $kit );
 		self::assertStringContainsString( 'id="cbuild-kit-picture"', $panel );
+		// Cowork's M7 review, M5: no group is announced without a name. One with no legend is a plain box.
+		self::assertMatchesRegularExpression( '#<div id="cbuild-kit-picture-fields" class="cbuild-kit-group">#', $panel );
+		preg_match_all( '#<fieldset[^>]*>\s*(<\w+)#', $panel, $opened );
+		self::assertNotSame( array(), $opened[1] );
+		self::assertSame( array( '<legend' ), array_values( array_unique( $opened[1] ) ), 'each fieldset opens with its legend' );
 		self::assertSame(
 			array( '1', '2', '3', '4', null, null, null ),
 			array_map( static fn( string $slot ): ?string => self::layer( $panel, $slot ), array( 'deck', 'grip', 'trucks', 'wheels', 'risers', 'bearings', 'hardware' ) ),

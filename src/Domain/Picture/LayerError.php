@@ -14,7 +14,8 @@ namespace CreativeBranding\SkateboardBuilder\Domain\Picture;
  */
 enum LayerError: string {
 
-	case NotPngOrWebp = 'layer_not_png_or_webp';
-	case Opaque       = 'layer_opaque';
-	case TooSmall     = 'layer_too_small';
+	case WrongType  = 'layer_wrong_type';
+	case Unreadable = 'layer_unreadable';
+	case Opaque     = 'layer_opaque';
+	case TooSmall   = 'layer_too_small';
 }

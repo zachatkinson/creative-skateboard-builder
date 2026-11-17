@@ -100,10 +100,13 @@ final class StateAnswerTest extends TestCase {
 	 * @param array<mixed>|null $previous The picks before.
 	 * @return array<string, mixed>
 	 */
-	private function answer( array $picks = array(), ?string $step = null, ?array $previous = null, ?bool $assembly = null, ?BuildLink $link = null ): array {
+	private function answer( array $picks = array(), ?string $step = null, ?array $previous = null, ?bool $assembly = null, ?BuildLink $link = null, bool $artwork = true ): array {
 		$state = ( new BuildState( $this->kits, $this->settings, $this->logger ) )->of( self::KIT, $picks, $previous, $step, $assembly );
 		self::assertNotNull( $state );
-		return ( new StateAnswer( $this->cards, new FakeMoney(), $this->kits, new Delivery( $this->kits, new FakeShippingZones(), new ShippingWords( new FakeMoney() ) ), new LayerArtwork( $this->layers, $this->renditions ), new PageRenderer() ) )->of( $state, $link );
+		$answer = new StateAnswer( $this->cards, new FakeMoney(), $this->kits, new Delivery( $this->kits, new FakeShippingZones(), new ShippingWords( new FakeMoney() ) ), new PageRenderer() );
+		$drawn = $answer->withArtwork( new LayerArtwork( $this->layers, $this->renditions ) );
+		// Without artwork, the answer withArtwork() was called on, as 0.6.0's container's is: a copy took the artwork.
+		return ( $artwork ? $drawn : $answer )->of( $state, $link );
 	}
 
 	/**
@@ -1021,6 +1024,19 @@ final class StateAnswerTest extends TestCase {
 		self::assertSame( 'Bearings', $answer['picture']['items'][3]['label'], 'A part with no brand and no size is labelled with its slot.' );
 		self::assertStringStartsWith( 'The build so far: Deck: Part 103; Trucks: Part 149; ', $answer['picture']['description'] );
 		self::assertStringEndsWith( '; Grip: Part 701.', $answer['picture']['description'] );
+	}
+
+	// D-208: an answer that 0.6.0's container builds, in the request that puts 0.7.0's files in its place, has no
+	// artwork, and draws the board with each part's labelled photo; the answer the container gives it is not changed.
+	public function test_an_answer_built_without_artwork_draws_no_layer_and_keeps_every_part(): void {
+		$this->layers->attachments = array( 103 => 13 );
+		$this->layers->images      = array( 13 => new ImageFacts( 'image/png', 432, 1626, true ) );
+		$picks                     = array( SlotKey::DECK => 103 );
+		$without                   = $this->answer( $picks, SlotKey::TRUCKS, artwork: false )['picture'];
+		self::assertSame( array(), $without['layers'] );
+		self::assertSame( array( SlotKey::DECK => false ), array_slice( array_column( $without['items'], 'drawn', 'slot' ), 0, 1, true ) );
+		self::assertSame( array( SlotKey::DECK ), array_column( $this->answer( $picks, SlotKey::TRUCKS )['picture']['layers'], 'slot' ) );
+		self::assertSame( $this->answer( $picks, SlotKey::TRUCKS )['picture']['items'][0]['part'], $without['items'][0]['part'] );
 	}
 
 	public function test_the_board_draws_the_parts_with_a_layer_image_and_the_box_keeps_the_rest(): void {

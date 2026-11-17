@@ -49,7 +49,7 @@ final class ShareHooks implements Hookable {
 	/**
 	 * The cards worked out in this request, by page and build: an array, or false for none.
 	 *
-	 * @var array<string, array{title: string, description: string, url: string, image: array{src: string, width: int, height: int, type: string}|null}|false>
+	 * @var array<string, array{title: string, description: string, url: string, image: array{src: string, width: int, height: int, type: string}|null, waiting: bool}|false>
 	 */
 	private array $cards = array();
 
@@ -71,11 +71,46 @@ final class ShareHooks implements Hookable {
 	 * @since 0.7.0
 	 */
 	public function register(): void {
+		add_action( 'template_redirect', array( $this, 'uncached' ), 10, 0 );
 		add_action( 'wp_head', array( $this, 'tags' ), 5, 0 );
 		add_filter( 'wpseo_opengraph_title', array( $this, 'title' ), 20, 1 );
 		add_filter( 'wpseo_opengraph_desc', array( $this, 'description' ), 20, 1 );
 		add_filter( 'wpseo_opengraph_url', array( $this, 'url' ), 20, 1 );
 		add_filter( 'wpseo_frontend_presentation', array( $this, 'presentation' ), 20, 1 );
+	}
+
+	/**
+	 * Keep a build link's page out of page caches while its card falls back from its composed picture, which is not
+	 * made yet: the page caches named in the review (WP Super Cache, W3 Total Cache, LiteSpeed Cache, WP Rocket)
+	 * honour `DONOTCACHEPAGE`, and proxies the no-cache headers. Once the picture is there, the page caches as any
+	 * other (Cowork's M7 review, F5; D-212). Run before the headers are sent, so whichever plugin prints the tags.
+	 *
+	 * @since 0.7.0
+	 */
+	public function uncached(): void {
+		$this->keptUncached();
+	}
+
+	/**
+	 * What `uncached()` does, with whether it kept the page out of caches: the constant, once defined, says nothing of
+	 * a later page in the same process.
+	 *
+	 * @since 0.7.0
+	 *
+	 * @return bool Whether the page was kept out of caches.
+	 */
+	public function keptUncached(): bool {
+		// Another SEO plugin prints its own card, which this one does not change.
+		if ( 'other' === $this->seoPlugin() || true !== ( $this->card()['waiting'] ?? null ) ) {
+			return false;
+		}
+		if ( ! defined( 'DONOTCACHEPAGE' ) ) {
+			define( 'DONOTCACHEPAGE', true ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedConstantFound -- The page caches' own constant, which they read by this name.
+		}
+		if ( ! headers_sent() ) {
+			nocache_headers();
+		}
+		return true;
 	}
 
 	/**
@@ -200,7 +235,7 @@ final class ShareHooks implements Hookable {
 	/**
 	 * This request's card, or null where the page holds no builder with a build in its address.
 	 *
-	 * @return array{title: string, description: string, url: string, image: array{src: string, width: int, height: int, type: string}|null}|null
+	 * @return array{title: string, description: string, url: string, image: array{src: string, width: int, height: int, type: string}|null, waiting: bool}|null
 	 */
 	private function card(): ?array {
 		$sent = BuilderPage::sent();

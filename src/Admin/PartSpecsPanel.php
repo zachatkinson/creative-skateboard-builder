@@ -132,9 +132,30 @@ final class PartSpecsPanel {
 	 * @param SpecIndexer $indexer Says which value is in use, and from where.
 	 * @param SpecTables  $charts  The makers' charts.
 	 * @param Kits        $kits    The kits, for the slot a product fills.
-	 * @param LayerImages $images  The Media Library's images, for the Layer image field (from 0.7.0).
 	 */
-	public function __construct( private SpecWriter $writer, private SpecIndexer $indexer, private SpecTables $charts, private Kits $kits, private LayerImages $images ) {}
+	public function __construct( private SpecWriter $writer, private SpecIndexer $indexer, private SpecTables $charts, private Kits $kits ) {}
+
+	/**
+	 * The Media Library's images, for the Layer image field, since 0.7.0, given by the container through
+	 * `withImages()`. A panel that an earlier release's container builds, in the request that replaces that release's
+	 * files with these, has none, and leaves the field as it is (D-208).
+	 *
+	 * @var LayerImages|null
+	 */
+	private ?LayerImages $images = null;
+
+	/**
+	 * The same panel, checking the Layer image field.
+	 *
+	 * @since 0.7.0
+	 *
+	 * @param LayerImages $images The Media Library's images.
+	 */
+	public function withImages( LayerImages $images ): self {
+		$panel         = clone $this;
+		$panel->images = $images;
+		return $panel;
+	}
 
 	/**
 	 * Style the groups' headings, and open the tab a link names.
@@ -316,7 +337,7 @@ final class PartSpecsPanel {
 	 * @param mixed      $sent    The field, unslashed.
 	 */
 	private function storeLayer( WC_Product $product, mixed $sent ): void {
-		if ( ! is_string( $sent ) ) {
+		if ( ! is_string( $sent ) || null === $this->images ) {
 			return;
 		}
 		$text = trim( sanitize_text_field( $sent ) );
@@ -361,7 +382,9 @@ final class PartSpecsPanel {
 		$needs = LayerImage::needs( $size ?? array( 0, 0 ) );
 		return match ( $problem ) {
 			/* translators: %s: a file's media type, such as image/jpeg. */
-			LayerError::NotPngOrWebp => sprintf( __( 'Layer image was not saved: it is %s, and a layer must be a PNG or WebP with a transparent background.', 'creative-skateboard-builder' ), $type ),
+			LayerError::WrongType => sprintf( __( 'Layer image was not saved: it is %s, and a layer must be a PNG, WebP or AVIF with a transparent background.', 'creative-skateboard-builder' ), $type ),
+			/* translators: %s: a file's media type, such as image/avif. */
+			LayerError::Unreadable => sprintf( __( 'Layer image was not saved: it is %s, and this server\'s image library cannot read that type. Upload the cut-out as a PNG or WebP, or ask your host to turn on AVIF in GD or Imagick.', 'creative-skateboard-builder' ), $type ),
 			LayerError::Opaque => __( 'Layer image was not saved: its corners are not transparent. Export the cut-out with a transparent background.', 'creative-skateboard-builder' ),
 			/* translators: 1: a number of pixels. 2: another. */
 			LayerError::TooSmall => sprintf( __( 'Layer image was not saved: it is too small for the size the picture draws this part. It needs at least %1$s pixels across or %2$s along.', 'creative-skateboard-builder' ), number_format_i18n( $needs[0] ), number_format_i18n( $needs[1] ) ),
@@ -393,15 +416,15 @@ final class PartSpecsPanel {
 	 * @param WC_Product $product The product or variation.
 	 * @param string     $prefix  The prefix of the product's or the variation's controls.
 	 * @param string     $name    The name it is sent under.
-	 * @return array{id: string, name: string, value: string, open: bool, note: string, src: string, box: array{int, int}|null, caption: string, choose: string, title: string}
+	 * @return array{id: string, name: string, value: string, open: bool, note: string, src: string, box: array{int, int}|null, caption: string, choose: string, title: string, types: list<string>}
 	 */
 	private function layer( WC_Product $product, string $prefix, string $name ): array {
 		$own   = max( 0, Cast::int( $product->get_meta( Options::META_LAYER, true ) ) );
 		$size  = $this->size( $product );
 		$shown = $own;
 		$note  = $product->is_type( 'variation' )
-			? __( 'The part\'s cut-out on a transparent background, a PNG or WebP from the Media Library. Choose one, or type its attachment ID. Left empty, the variation takes its parent product\'s, or the picture shows its labelled photo.', 'creative-skateboard-builder' )
-			: __( 'The part\'s cut-out on a transparent background, a PNG or WebP from the Media Library. Choose one, or type its attachment ID. Left empty, the picture shows the part\'s labelled photo.', 'creative-skateboard-builder' );
+			? __( 'The part\'s cut-out on a transparent background, a PNG, WebP or AVIF from the Media Library. Choose one, or type its attachment ID. Left empty, the variation takes its parent product\'s, or the picture shows its labelled photo.', 'creative-skateboard-builder' )
+			: __( 'The part\'s cut-out on a transparent background, a PNG, WebP or AVIF from the Media Library. Choose one, or type its attachment ID. Left empty, the picture shows the part\'s labelled photo.', 'creative-skateboard-builder' );
 		if ( 0 === $own && $product->is_type( 'variation' ) ) {
 			$whole  = wc_get_product( $product->get_parent_id() );
 			$parent = $whole instanceof WC_Product ? max( 0, Cast::int( $whole->get_meta( Options::META_LAYER, true ) ) ) : 0;
@@ -430,6 +453,8 @@ final class PartSpecsPanel {
 			'caption' => $caption,
 			'choose'  => __( 'Choose an image', 'creative-skateboard-builder' ),
 			'title'   => __( 'Layer image', 'creative-skateboard-builder' ),
+			// The chooser's filter: the domain's one list of layer types (D-210).
+			'types'   => LayerImage::TYPES,
 		);
 	}
 

@@ -52,7 +52,7 @@ final class PartSpecsPanelTest extends IntegrationTestCase {
 	 */
 	private function hooks(): PartSpecsHooks {
 		if ( null === $this->hooks ) {
-			$panel       = new PartSpecsPanel( $this->service( SpecWriter::class ), $this->service( SpecIndexer::class ), $this->service( SpecTables::class ), $this->service( Kits::class ), $this->service( LayerImages::class ) );
+			$panel       = ( new PartSpecsPanel( $this->service( SpecWriter::class ), $this->service( SpecIndexer::class ), $this->service( SpecTables::class ), $this->service( Kits::class ) ) )->withImages( $this->service( LayerImages::class ) );
 			$this->hooks = new PartSpecsHooks( static fn(): PartSpecsPanel => $panel );
 		}
 		return $this->hooks;
@@ -396,13 +396,12 @@ final class PartSpecsPanelTest extends IntegrationTestCase {
 		$kits->add( 5, KitDocuments::kit(), array() );
 		// The kit takes each of them, so each has its fields.
 		$kits->slotsOf = array_fill_keys( array( ...$ids, $parent->get_id() ), array( 'trucks' ) );
-		$panel    = new PartSpecsPanel(
+		$panel    = ( new PartSpecsPanel(
 			$this->service( SpecWriter::class ),
 			new SpecIndexer( $this->service( \CreativeBranding\SkateboardBuilder\Port\SpecIndex::class ), $this->service( \CreativeBranding\SkateboardBuilder\Port\ShopSettings::class ), $this->service( \CreativeBranding\SkateboardBuilder\Port\Clock::class ), $counting ),
 			$this->service( SpecTables::class ),
-			$kits,
-			$this->service( LayerImages::class )
-		);
+			$kits
+		) )->withImages( $this->service( LayerImages::class ) );
 		ob_start();
 		foreach ( $ids as $loop => $id ) {
 			$panel->variation( $loop, get_post( $id ) );

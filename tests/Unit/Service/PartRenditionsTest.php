@@ -106,4 +106,35 @@ final class PartRenditionsTest extends TestCase {
 		$this->made()->make( 6 );
 		self::assertSame( array( array( $this->kits->kits[3]['kit'], $this->kits->kits[9]['kit'] ) ), $this->kits->slotsAsked );
 	}
+
+	public function test_a_drawn_part_whose_layer_image_has_no_rendition_is_counted_and_one_with_renditions_is_not(): void {
+		// Cowork's M7 review, F2: Site Health says when parts with layer images have no renditions (D-209).
+		$this->kits->add( 3, Shop::kit(), Shop::parts() );
+		self::assertSame( 0, $this->made()->unrendered(), 'no part has a layer image' );
+
+		// Decks 101, 102 and 103: 101 rendered, 102 not, 103 with no layer image; a riser's layer is never drawn.
+		$risers = array_map( static fn( $part ): int => $part->id, $this->kits->parts[3]['risers'] ?? array() );
+		$this->indexed( 101, 102, ...$risers );
+		$this->layer( 101, 11 );
+		$this->layer( 102, 12 );
+		foreach ( $risers as $riser ) {
+			$this->layer( $riser, 900 + $riser );
+			$this->kits->slotsOf[ $riser ] = array( 'risers' );
+		}
+		$this->layers->layered = array_merge( array( 101, 102 ), $risers );
+		$this->kits->slotsOf  += array(
+			101 => array( 'deck' ),
+			102 => array( 'deck' ),
+		);
+		$this->layers->factsRead = 0;
+		$this->made()->make( 101 );
+		self::assertSame( 1, $this->layers->factsRead, 'making the renditions reads the file itself' );
+		$this->layers->factsRead = 0;
+		self::assertSame( 1, $this->made()->unrendered(), '102 alone' );
+		// Site Health's direct test: the stored pixels, no image file opened (the spec review of the fixes).
+		self::assertSame( 0, $this->layers->factsRead );
+
+		$this->made()->make( 102 );
+		self::assertSame( 0, $this->made()->unrendered() );
+	}
 }

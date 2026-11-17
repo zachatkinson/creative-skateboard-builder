@@ -67,7 +67,7 @@ final class CatalogueCheckTest extends TestCase {
 		$this->queue     = new FakeQueue();
 		$indexer         = new SpecIndexer( new InMemorySpecIndex(), new InMemoryShopSettings(), new FakeClock(), $this->source );
 		$this->layers    = new InMemoryLayerImages();
-		$this->check     = new CatalogueCheck( $this->kits, $this->catalogue, $indexer, $this->reindex, $this->import, $this->queue, $this->layers );
+		$this->check     = ( new CatalogueCheck( $this->kits, $this->catalogue, $indexer, $this->reindex, $this->import, $this->queue ) )->withLayers( $this->layers );
 	}
 
 	/**
@@ -314,6 +314,20 @@ final class CatalogueCheckTest extends TestCase {
 	 * Spec, Admin, Milestone 7: "The Catalogue check lists the parts without a layer image, so the owner sees what
 	 * the picture still lacks." Only the slots the picture draws, and after everything else (D-193).
 	 */
+	// D-208: a check that 0.6.0's container builds, in the request that puts 0.7.0's files in its place, has no layer
+	// images to read, and finds what 0.6.0's did.
+	public function test_a_check_built_without_layer_images_finds_no_missing_layer_and_the_rest_as_before(): void {
+		$this->kits->add( 5, KitDocuments::kit(), array( 'trucks' => array( Builds::truck( '159' ) ) ) + self::stocked() );
+		$this->layers->layered = array();
+		$plain = new CatalogueCheck( $this->kits, $this->catalogue, new SpecIndexer( new InMemorySpecIndex(), new InMemoryShopSettings(), new FakeClock(), $this->source ), $this->reindex, $this->import, $this->queue );
+		// withLayers() gives a copy: the check it was called on is still 0.6.0's.
+		$plain->withLayers( $this->layers );
+		$without = $plain->run();
+		$with    = self::lines( $this->check->run() );
+		self::assertContains( 'layer_missing part=159 kit=5 trucks', $with );
+		self::assertSame( array_values( array_filter( $with, static fn( string $line ): bool => ! str_starts_with( $line, 'layer_missing' ) ) ), self::lines( $without ) );
+	}
+
 	public function test_the_parts_of_the_slots_the_picture_draws_with_no_layer_image_are_listed_last(): void {
 		$slots           = self::stocked();
 		$slots['trucks'] = array( Builds::truck( '149' ), Builds::truck( '159' ) );

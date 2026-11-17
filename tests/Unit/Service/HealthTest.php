@@ -188,6 +188,7 @@ final class HealthTest extends TestCase {
 				'code'     => Health::CHECK_CLEAR,
 				'findings' => 0,
 				'parts'    => 0,
+				'layers'   => 0,
 			),
 			Health::catalogue( array() )
 		);
@@ -203,11 +204,34 @@ final class HealthTest extends TestCase {
 				'code'     => Health::CHECK_FOUND,
 				'findings' => 4,
 				'parts'    => 2,
+				'layers'   => 0,
 			),
 			Health::catalogue( $found )
 		);
 		self::assertSame( 1, Health::catalogue( array( $found[3] ) )['findings'] );
 		self::assertSame( 0, Health::catalogue( array( $found[3] ) )['parts'], 'a kit\'s finding names no part' );
+	}
+
+	public function test_parts_with_no_layer_image_are_counted_apart_from_what_keeps_a_part_out(): void {
+		// Cowork's M7 review, F4 (D-211): a missing layer image leaves the part in the builder, with its photo drawn.
+		$layers = array(
+			new CheckFinding( CatalogueCheck::LAYER_MISSING, 21, 7, 'deck' ),
+			new CheckFinding( CatalogueCheck::LAYER_MISSING, 21, 9, 'deck' ),
+			new CheckFinding( CatalogueCheck::LAYER_MISSING, 22, 7, 'wheels' ),
+		);
+		self::assertSame(
+			array(
+				'status'   => Health::RECOMMENDED,
+				'code'     => Health::CHECK_LAYERS,
+				'findings' => 0,
+				'parts'    => 0,
+				'layers'   => 2,
+			),
+			Health::catalogue( $layers ),
+			'two parts, one of them offered by two kits'
+		);
+		$both = Health::catalogue( array_merge( $layers, array( new CheckFinding( CatalogueCheck::UNREAD, 21, spec: 'deck_min' ) ) ) );
+		self::assertSame( array( Health::RECOMMENDED, Health::CHECK_FOUND, 1, 1, 2 ), array_values( $both ) );
 	}
 
 	public function test_background_work_is_the_other_two_tests_to_report(): void {

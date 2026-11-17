@@ -127,6 +127,9 @@ final class Container {
 					},
 					static function () use ( $c ): Service\ComposedPictures {
 						return $c->get( Service\ComposedPictures::class );
+					},
+					static function () use ( $c ): Service\PartRenditions {
+						return $c->get( Service\PartRenditions::class );
 					}
 				);
 			},
@@ -368,6 +371,26 @@ final class Container {
 	}
 
 	/**
+	 * What this release gives a service that an earlier release's container also builds, by the service's class.
+	 *
+	 * WordPress replaces a plugin's files in the middle of a request, and the request goes on: the earlier release's
+	 * callbacks still run and ask its container for a service, which is then this release's class, built from the
+	 * constructor that container knew. So a class an earlier release built keeps that constructor, and what a later
+	 * release adds to it, here the picture's ports of 0.7.0, comes through a `with` method that only this container
+	 * calls (D-208). `tools/upgrade/graph.php` asks the previous release's container for each of its services.
+	 *
+	 * @return array<class-string, callable(object, Container): object>
+	 */
+	private static function additions(): array {
+		return array(
+			Service\IndexJobs::class      => static fn( object $jobs, Container $c ): object => $jobs instanceof Service\IndexJobs ? $jobs->withRenditions( $c->get( Service\PartRenditions::class ) ) : $jobs,
+			Service\CatalogueCheck::class => static fn( object $check, Container $c ): object => $check instanceof Service\CatalogueCheck ? $check->withLayers( $c->get( Port\LayerImages::class ) ) : $check,
+			Front\StateAnswer::class      => static fn( object $answer, Container $c ): object => $answer instanceof Front\StateAnswer ? $answer->withArtwork( $c->get( Service\LayerArtwork::class ) ) : $answer,
+			Admin\PartSpecsPanel::class   => static fn( object $panel, Container $c ): object => $panel instanceof Admin\PartSpecsPanel ? $panel->withImages( $c->get( Port\LayerImages::class ) ) : $panel,
+		);
+	}
+
+	/**
 	 * Hookable classes in registration order, each with the scopes its hooks can fire in (D-067).
 	 *
 	 * @return array<class-string<Hookable>, list<Scope>>
@@ -536,6 +559,18 @@ final class Container {
 	 * @throws PluginException When the class or a constructor argument can't be resolved.
 	 */
 	private function build( string $id ): object {
+		$service = $this->make( $id );
+		$add     = self::additions()[ $service::class ] ?? null;
+		return null === $add ? $service : $add( $service, $this );
+	}
+
+	/**
+	 * A service as its factory or its constructor makes it.
+	 *
+	 * @param string $id The service's class or interface.
+	 * @throws PluginException When it cannot be built.
+	 */
+	private function make( string $id ): object {
 		$factory = self::factories()[ $id ] ?? null;
 		if ( null !== $factory ) {
 			return $factory( $this );

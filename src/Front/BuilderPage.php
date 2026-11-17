@@ -197,7 +197,7 @@ final class BuilderPage {
 	 * @param BuildLink $link  The build in the address.
 	 * @param string    $base  The address of the page the builder is on, with no build in it.
 	 * @param ShareCard $cards Works the card out.
-	 * @return array{title: string, description: string, url: string, image: array{src: string, width: int, height: int, type: string}|null}|null
+	 * @return array{title: string, description: string, url: string, image: array{src: string, width: int, height: int, type: string}|null, waiting: bool}|null
 	 */
 	public function card( int $kit, BuildLink $link, string $base, ShareCard $cards ): ?array {
 		if ( ! $this->kits->isPublic( $kit ) ) {

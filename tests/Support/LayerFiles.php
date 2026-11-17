@@ -21,7 +21,7 @@ final class LayerFiles {
 	 * @param int    $width  Pixels across.
 	 * @param int    $height Pixels along.
 	 * @param bool   $clear  A transparent background (true) or a white one.
-	 * @param string $type   `png`, `webp` or `jpeg`.
+	 * @param string $type   `png`, `webp`, `avif` or `jpeg`.
 	 * @param int    $colour The block's colour, as 0xRRGGBB.
 	 */
 	public static function draw( int $width, int $height, bool $clear = true, string $type = 'png', int $colour = 0x1f6feb ): string {
@@ -34,6 +34,7 @@ final class LayerFiles {
 		$path = sys_get_temp_dir() . '/cbuild-layer-' . wp_generate_password( 8, false ) . '.' . $type;
 		match ( $type ) {
 			'webp'  => imagewebp( $image, $path, 101 ),
+			'avif'  => imageavif( $image, $path, 100 ),
 			'jpeg'  => imagejpeg( $image, $path ),
 			default => imagepng( $image, $path ),
 		};
@@ -46,7 +47,7 @@ final class LayerFiles {
 	 * @param int    $width  Pixels across.
 	 * @param int    $height Pixels along.
 	 * @param bool   $clear  A transparent background.
-	 * @param string $type   `png`, `webp` or `jpeg`.
+	 * @param string $type   `png`, `webp`, `avif` or `jpeg`.
 	 * @return int The attachment's ID.
 	 */
 	public static function attachment( int $width, int $height, bool $clear = true, string $type = 'png' ): int {

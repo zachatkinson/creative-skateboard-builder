@@ -17,6 +17,7 @@ use CreativeBranding\SkateboardBuilder\Domain\Picture\Composition;
 use CreativeBranding\SkateboardBuilder\Domain\Picture\LayerArt;
 use CreativeBranding\SkateboardBuilder\Domain\Picture\Layer;
 use CreativeBranding\SkateboardBuilder\Domain\Picture\Layout;
+use CreativeBranding\SkateboardBuilder\Adapter\WpLayerFile;
 use CreativeBranding\SkateboardBuilder\Tests\Support\IntegrationTestCase;
 use CreativeBranding\SkateboardBuilder\Tests\Support\LayerFiles;
 
@@ -46,9 +47,10 @@ final class PictureFilesTest extends IntegrationTestCase {
 	 * A deck of one colour and a wheel of another on it, as the board draws them.
 	 *
 	 * @param Canvas $canvas The canvas.
+	 * @param string $type   The deck image's type: `png`, `webp` or `avif`.
 	 */
-	private static function composition( Canvas $canvas ): Composition {
-		$deck   = LayerFiles::attachment( 400, 1600 );
+	private static function composition( Canvas $canvas, string $type = 'png' ): Composition {
+		$deck   = LayerFiles::attachment( 400, 1600, true, $type );
 		$wheel  = (int) ( new \WP_UnitTest_Factory_For_Attachment() )->create_upload_object( LayerFiles::draw( 60, 100, true, 'png', 0xd1242f ) );
 		$layout = new Layout(
 			2000000,
@@ -122,6 +124,31 @@ final class PictureFilesTest extends IntegrationTestCase {
 				self::assertEqualsWithDelta( array( 0xd1, 0x24, 0x2f ), self::colour( $image, 563, 97 ), 12, 'the wheel on the deck, above it in the stack: ' . $where );
 				wp_delete_file( wp_get_upload_dir()['basedir'] . '/' . WpPictureFiles::FOLDER . '/' . $composition->name() );
 			}
+		}
+	}
+
+	public function test_an_avif_layer_is_drawn_by_a_library_that_reads_avif_and_a_png_an_output_format_made_avif_by_either(): void {
+		// Cowork's M7 review, F1 (D-210): a layer image in AVIF, and the demo's case, a PNG its host's mapping turned
+		// into an AVIF under an attachment WordPress still calls a PNG.
+		$avif = self::composition( new Canvas( 1200, 630, 'image/webp' ), 'avif' );
+		self::assertSame( 'image/avif', get_post_mime_type( $avif->placements[0]->attachment ) );
+		$image = self::drawn( 'gd', $avif );
+		self::assertEqualsWithDelta( array( 0x1f, 0x6f, 0xeb ), self::colour( $image, 600, 315 ), 12, 'GD reads the AVIF deck' );
+		self::assertEqualsWithDelta( array( 255, 255, 255 ), self::colour( $image, 530, 30 ), 6, 'and its transparent edge' );
+		self::assertSame( WpLayerFile::imagickReads( 'image/avif' ) ? null : PictureFiles::NO_LIBRARY, ( new WpPictureFiles( array( 'imagick' ) ) )->draw( $avif ), 'Imagick draws it only with an AVIF coder' );
+
+		add_filter( 'image_editor_output_format', static fn( array $formats ): array => array( 'image/png' => 'image/avif' ) + $formats );
+		try {
+			$mapped = self::composition( new Canvas( 1200, 630, 'image/jpeg' ) );
+		} finally {
+			remove_all_filters( 'image_editor_output_format' );
+		}
+		$deck = $mapped->placements[0]->attachment;
+		self::assertSame( array( 'image/png', 'image/avif' ), array( get_post_mime_type( $deck ), wp_get_image_mime( (string) get_attached_file( $deck ) ) ), 'the attachment says PNG, its file is AVIF' );
+		foreach ( array( 'gd', 'imagick' ) as $library ) {
+			$image = self::drawn( $library, $mapped );
+			self::assertEqualsWithDelta( array( 0x1f, 0x6f, 0xeb ), self::colour( $image, 600, 315 ), 12, $library . ': the AVIF, or the PNG WordPress kept beside it' );
+			self::assertEqualsWithDelta( array( 0xd1, 0x24, 0x2f ), self::colour( $image, 563, 97 ), 12, $library . ': the wheel' );
 		}
 	}
 

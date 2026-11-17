@@ -19,10 +19,11 @@ final readonly class ImageFacts {
 	 *
 	 * @since 0.7.0
 	 *
-	 * @param string    $type   The file's media type, such as `image/png`.
-	 * @param int       $width  Its pixels across.
-	 * @param int       $height Its pixels along.
-	 * @param bool|null $clear  Whether its four corners are fully transparent; null where no image library could tell.
+	 * @param string    $type     The file's media type, such as `image/png`.
+	 * @param int       $width    Its pixels across.
+	 * @param int       $height   Its pixels along.
+	 * @param bool|null $clear    Whether its four corners are fully transparent; null where no image library could tell.
+	 * @param bool      $readable Whether one of the host's image libraries reads its type.
 	 */
-	public function __construct( public string $type, public int $width, public int $height, public ?bool $clear ) {}
+	public function __construct( public string $type, public int $width, public int $height, public ?bool $clear, public bool $readable = true ) {}
 }

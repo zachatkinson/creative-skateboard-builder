@@ -92,7 +92,6 @@ final class CatalogueCheck {
 	 * @param ReindexStore  $reindex   Where the reindex is.
 	 * @param ImportStore   $import    The import in hand.
 	 * @param Queue         $queue     The background queue.
-	 * @param LayerImages   $layers    The parts' layer images (from 0.7.0).
 	 */
 	public function __construct(
 		private Kits $kits,
@@ -100,9 +99,30 @@ final class CatalogueCheck {
 		private SpecIndexer $indexer,
 		private ReindexStore $reindex,
 		private ImportStore $import,
-		private Queue $queue,
-		private LayerImages $layers
+		private Queue $queue
 	) {}
+
+	/**
+	 * The parts' layer images, since 0.7.0, given by the container through `withLayers()`. A check that an earlier
+	 * release's container builds, in the request that replaces that release's files with these, has none, and finds no
+	 * missing layer image (D-208).
+	 *
+	 * @var LayerImages|null
+	 */
+	private ?LayerImages $layers = null;
+
+	/**
+	 * The same check, finding the drawn parts that have no layer image.
+	 *
+	 * @since 0.7.0
+	 *
+	 * @param LayerImages $layers The parts' layer images.
+	 */
+	public function withLayers( LayerImages $layers ): self {
+		$check         = clone $this;
+		$check->layers = $layers;
+		return $check;
+	}
 
 	/**
 	 * Run the check.
@@ -146,6 +166,9 @@ final class CatalogueCheck {
 	 * @return list<CheckFinding>
 	 */
 	private function layers( int $id, Kit $kit ): array {
+		if ( null === $this->layers ) {
+			return array();
+		}
 		$found = array();
 		foreach ( $kit->slots->all() as $slot ) {
 			if ( ! in_array( $slot->key, Layout::DRAWN, true ) ) {

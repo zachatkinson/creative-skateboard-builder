@@ -79,17 +79,21 @@ final class LayerImageTest extends TestCase {
 	}
 
 	/**
-	 * @return iterable<string, array{array{string, int, int, bool|null}, array{int, int}|null, list<LayerError>}>
+	 * @return iterable<string, array{array{0: string, 1: int, 2: int, 3: bool|null, 4?: bool}, array{int, int}|null, list<LayerError>}>
 	 */
 	public static function checked(): iterable {
 		$deck = array( 2095500, 8128000 );
 		yield 'a transparent PNG large enough' => array( array( 'image/png', 420, 1626, true ), $deck, array() );
 		yield 'a transparent WebP' => array( array( 'image/webp', 500, 2000, true ), $deck, array() );
+		// Cowork's M7 review, F1 (D-210): an AVIF where the host reads it, and a refusal of its own where it does not.
+		yield 'a transparent AVIF the host reads' => array( array( 'image/avif', 500, 2000, true, true ), $deck, array() );
+		yield 'an AVIF the host cannot read, whatever else is true of it' => array( array( 'image/avif', 10, 10, null, false ), $deck, array( LayerError::Unreadable ) );
+		yield 'a JPEG the host cannot read is the wrong type first' => array( array( 'image/jpeg', 800, 3000, null, false ), $deck, array( LayerError::WrongType ) );
 		yield 'wide enough though too short: drawn to fit, it is never enlarged' => array( array( 'image/png', 420, 900, true ), $deck, array() );
 		yield 'long enough though too narrow' => array( array( 'image/png', 100, 1626, true ), $deck, array() );
 		yield 'short of both' => array( array( 'image/png', 419, 1625, true ), $deck, array( LayerError::TooSmall ) );
-		yield 'a JPEG, which has no transparency' => array( array( 'image/jpeg', 800, 3000, null ), $deck, array( LayerError::NotPngOrWebp ) );
-		yield 'an SVG' => array( array( 'image/svg+xml', 0, 0, null ), $deck, array( LayerError::NotPngOrWebp ) );
+		yield 'a JPEG, which has no transparency' => array( array( 'image/jpeg', 800, 3000, null ), $deck, array( LayerError::WrongType ) );
+		yield 'an SVG' => array( array( 'image/svg+xml', 0, 0, null ), $deck, array( LayerError::WrongType ) );
 		yield 'a PNG with its background left in' => array( array( 'image/png', 800, 3000, false ), $deck, array( LayerError::Opaque ) );
 		yield 'opaque and small' => array( array( 'image/png', 10, 10, false ), $deck, array( LayerError::Opaque, LayerError::TooSmall ) );
 		yield 'no size to check, from a part the picture does not draw yet' => array( array( 'image/png', 10, 10, true ), null, array() );
@@ -97,12 +101,12 @@ final class LayerImageTest extends TestCase {
 	}
 
 	/**
-	 * @param array{string, int, int, bool|null} $image    The image's type, pixels and corners.
-	 * @param array{int, int}|null               $size     The part's size.
-	 * @param list<LayerError>                   $problems What is wrong.
+	 * @param array{0: string, 1: int, 2: int, 3: bool|null, 4?: bool} $image    The image's type, pixels, corners and whether the host reads it.
+	 * @param array{int, int}|null                                $size     The part's size.
+	 * @param list<LayerError>                                    $problems What is wrong.
 	 */
 	#[DataProvider( 'checked' )]
-	public function test_a_layer_image_is_a_transparent_png_or_webp_holding_the_parts_size( array $image, ?array $size, array $problems ): void {
+	public function test_a_layer_image_is_a_transparent_png_webp_or_avif_the_host_reads_holding_the_parts_size( array $image, ?array $size, array $problems ): void {
 		self::assertSame( $problems, LayerImage::problems( new ImageFacts( ...$image ), $size ) );
 	}
 

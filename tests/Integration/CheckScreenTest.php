@@ -57,7 +57,7 @@ final class CheckScreenTest extends IntegrationTestCase {
 	 */
 	private function screen( ?Kits $kits = null ): CheckScreen {
 		$kits ??= $this->service( Kits::class );
-		$check  = new CatalogueCheck( $kits, $this->service( PartCatalogue::class ), $this->service( SpecIndexer::class ), $this->service( ReindexStore::class ), $this->service( ImportStore::class ), $this->service( Queue::class ), $this->service( LayerImages::class ) );
+		$check  = ( new CatalogueCheck( $kits, $this->service( PartCatalogue::class ), $this->service( SpecIndexer::class ), $this->service( ReindexStore::class ), $this->service( ImportStore::class ), $this->service( Queue::class ) ) )->withLayers( $this->service( LayerImages::class ) );
 		return new CheckScreen( $check, $kits, $this->service( Reindex::class ) );
 	}
 
@@ -279,6 +279,40 @@ final class CheckScreenTest extends IntegrationTestCase {
 		self::assertSame( 2, substr_count( $page, 'It has no layer image' ), 'a part with its own image, and a variation with its parent\'s, are not listed; bearings and hardware are not drawn' );
 		self::assertStringNotContainsString( 'slot &quot;wheels&quot;. Add one', $page );
 		self::assertGreaterThan( strrpos( $page, 'The slot &quot;risers&quot; has no parts.' ), strpos( $page, 'It has no layer image' ), 'listed after what keeps a part from being offered' );
+		// Cowork's M7 review, F4 (D-211): in a section of their own, counted by part, and not among the things to fix.
+		self::assertGreaterThan( strpos( $page, '<h3 id="cbuild-found">' ), strpos( $page, '<h3 id="cbuild-unlaid">Parts with no layer image</h3>' ) );
+		self::assertStringContainsString( '2 parts the picture draws have no layer image. Each is still offered', $page );
+		self::assertStringContainsString( 'aria-labelledby="cbuild-unlaid"', $page );
+		self::assertSame( 0, substr_count( substr( $page, 0, (int) strpos( $page, 'id="cbuild-unlaid"' ) ), 'It has no layer image' ), 'none of them among what it found to fix' );
+	}
+
+	public function test_parts_with_no_layer_image_have_their_own_list_cut_at_its_own_length(): void {
+		// Cowork's M7 review, F4: on a large catalogue, the layer lines are reached however many other findings there are.
+		$decks = array();
+		for ( $id = 900001; $id <= 900000 + CheckScreen::SHOWN + 2; $id++ ) {
+			$decks[] = Parts::of( array( 'deck_width' => '8.25' ), $id );
+		}
+		$kits = new InMemoryKits();
+		$kits->add(
+			5,
+			KitDocuments::kit(),
+			array(
+				'deck'     => $decks,
+				'trucks'   => array( Builds::truck( '149' ) ),
+				'wheels'   => array( Builds::wheel( '54' ) ),
+				'bearings' => array( Builds::bearings() ),
+				'hardware' => array( Builds::bolts() ),
+				'grip'     => array( Builds::grip() ),
+				'risers'   => array( Builds::riser( '0.125' ) ),
+			),
+			'Complete'
+		);
+		$this->as( 'shop_manager' );
+		$page    = self::checked( $this->screen( $kits ) );
+		$section = substr( $page, (int) strpos( $page, 'id="cbuild-unlaid"' ) );
+		self::assertStringContainsString( number_format_i18n( CheckScreen::SHOWN + 2 + 3 ) . ' parts the picture draws have no layer image.', $section, 'the decks, then the trucks, wheels and grip' );
+		self::assertStringContainsString( 'And 5 more.', $section );
+		self::assertSame( CheckScreen::SHOWN, substr_count( $section, 'It has no layer image' ) );
 	}
 
 	public function test_a_long_list_is_cut_and_says_how_many_more_there_are(): void {

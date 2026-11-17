@@ -20,6 +20,7 @@ use CreativeBranding\SkateboardBuilder\Port\ShopSettings;
 use CreativeBranding\SkateboardBuilder\Service\CatalogueCheck;
 use CreativeBranding\SkateboardBuilder\Service\ComposedPictures;
 use CreativeBranding\SkateboardBuilder\Service\Health;
+use CreativeBranding\SkateboardBuilder\Service\PartRenditions;
 use CreativeBranding\SkateboardBuilder\Support\Cast;
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -57,13 +58,15 @@ final class SiteHealth implements Hookable {
 	 *
 	 * @since 0.3.0
 	 *
-	 * @param Closure(): Health           $health     Builds the verdicts, when a test runs.
-	 * @param Closure(): ShopSettings     $settings   Builds the settings, when the Info tab is drawn.
-	 * @param Closure(): MigrationStore   $migrations Builds the schema's version, when the Info tab is drawn.
-	 * @param Closure(): CatalogueCheck   $check      Builds the Catalogue check, when its test runs.
-	 * @param Closure(): ComposedPictures $pictures Builds the composed pictures' service, when its test runs.
+	 * @param Closure(): Health                $health     Builds the verdicts, when a test runs.
+	 * @param Closure(): ShopSettings          $settings   Builds the settings, when the Info tab is drawn.
+	 * @param Closure(): MigrationStore        $migrations Builds the schema's version, when the Info tab is drawn.
+	 * @param Closure(): CatalogueCheck        $check      Builds the Catalogue check, when its test runs.
+	 * @param Closure(): ComposedPictures      $pictures   Builds the composed pictures' service, when its test runs.
+	 * @param (Closure(): PartRenditions)|null $renditions Builds the layer images' renditions, when the pictures' test
+	 *                                                    runs; none leaves their count out.
 	 */
-	public function __construct( private Closure $health, private Closure $settings, private Closure $migrations, private Closure $check, private Closure $pictures ) {}
+	public function __construct( private Closure $health, private Closure $settings, private Closure $migrations, private Closure $check, private Closure $pictures, private ?Closure $renditions = null ) {}
 
 	/**
 	 * Attach hooks.
@@ -96,7 +99,8 @@ final class SiteHealth implements Hookable {
 	}
 
 	/**
-	 * Add the tests. Three are direct: an option read and one indexed query each, or the host's libraries and a folder. The Catalogue check is not.
+	 * Add the tests. Three are direct: an option read and one indexed query each, or the host's libraries, a folder and
+	 * the drawn parts' stored image details, with no image file opened. The Catalogue check is not.
 	 *
 	 * @since 0.3.0
 	 *
@@ -204,12 +208,26 @@ final class SiteHealth implements Hookable {
 	public function pictures(): array {
 		$verdict = ( $this->pictures )()->health();
 		if ( ComposedPictures::HEALTH_NO_LIBRARY === $verdict['code'] ) {
-			return self::result( self::TEST_PICTURES, $verdict['status'], __( 'The skateboard builder cannot compose pictures on this server', 'creative-skateboard-builder' ), __( 'PHP has neither GD nor Imagick able to read PNG and WebP and write WebP and JPEG, so carts, share cards and emails show the deck\'s photo instead of the built board. The page\'s own picture is not affected. Your host can turn on GD or Imagick with WebP.', 'creative-skateboard-builder' ), '' );
+			return self::result( self::TEST_PICTURES, $verdict['status'], __( 'The skateboard builder cannot compose pictures on this server', 'creative-skateboard-builder' ), __( 'PHP has neither GD nor Imagick able to read PNG and WebP and write WebP and JPEG, so carts and share cards show the deck\'s photo instead of the built board. The page\'s own picture is not affected. Your host can turn on GD or Imagick with WebP.', 'creative-skateboard-builder' ), '' );
 		}
 		if ( ComposedPictures::HEALTH_UNWRITABLE === $verdict['code'] ) {
-			return self::result( self::TEST_PICTURES, $verdict['status'], __( 'The skateboard builder cannot save composed pictures', 'creative-skateboard-builder' ), __( 'The uploads folder cannot be written, so carts, share cards and emails show the deck\'s photo instead of the built board. Your host can make wp-content/uploads writable by the web server.', 'creative-skateboard-builder' ), '' );
+			return self::result( self::TEST_PICTURES, $verdict['status'], __( 'The skateboard builder cannot save composed pictures', 'creative-skateboard-builder' ), __( 'The uploads folder cannot be written, so carts and share cards show the deck\'s photo instead of the built board. Your host can make wp-content/uploads writable by the web server.', 'creative-skateboard-builder' ), '' );
 		}
-		return self::result( self::TEST_PICTURES, $verdict['status'], __( 'The skateboard builder can compose pictures', 'creative-skateboard-builder' ), __( 'Each build added to a cart gets pictures of the built board for the cart, share cards and emails, made in the background. Pictures not shown for 30 days are deleted.', 'creative-skateboard-builder' ), '' );
+		// Cowork's M7 review, F2: a part whose layer image has no resized copy is drawn from the full-size file (D-209).
+		$unrendered = null === $this->renditions ? 0 : ( $this->renditions )()->unrendered();
+		if ( $unrendered > 0 ) {
+			/* translators: %s: a number of parts. */
+			$label = sprintf( _n( '%s part\'s layer image has no resized copies', '%s parts\' layer images have no resized copies', $unrendered, 'creative-skateboard-builder' ), number_format_i18n( $unrendered ) );
+			$says  = __( 'The builder draws each part from copies of its layer image in AVIF and WebP at the sizes it shows, made in the background when the part is saved. Without them the page loads the full-size image, which is slower.', 'creative-skateboard-builder' );
+			// The fix named is the one for the cause: a host whose editors write neither type, or jobs that did not run
+			// or failed (the audit of the fixes).
+			$writes = wp_image_editor_supports( array( 'mime_type' => 'image/avif' ) ) || wp_image_editor_supports( array( 'mime_type' => 'image/webp' ) );
+			$says  .= ' ' . ( $writes
+				? __( 'WooCommerce > Status > Logs has the reason, under creative-skateboard-builder. "Read every part again" on the Catalogue check makes them for every part.', 'creative-skateboard-builder' )
+				: __( 'This server\'s image editors write neither AVIF nor WebP. Your host can turn on WebP in GD or Imagick, and then "Read every part again" on the Catalogue check makes them.', 'creative-skateboard-builder' ) );
+			return self::result( self::TEST_PICTURES, Health::RECOMMENDED, $label, $says, sprintf( '<a href="%s">%s</a>', esc_url( CheckScreen::url() ), esc_html__( 'Open the Catalogue check', 'creative-skateboard-builder' ) ) );
+		}
+		return self::result( self::TEST_PICTURES, $verdict['status'], __( 'The skateboard builder can compose pictures', 'creative-skateboard-builder' ), __( 'Each build added to a cart gets pictures of the built board for the cart and share cards, made in the background. Pictures not shown for 30 days are deleted.', 'creative-skateboard-builder' ), '' );
 	}
 
 	/**
@@ -222,6 +240,18 @@ final class SiteHealth implements Hookable {
 	 */
 	public function catalogue(): array {
 		$verdict = Health::catalogue( ( $this->check )()->run() );
+		$open    = sprintf( '<a href="%s">%s</a>', esc_url( CheckScreen::url() ), esc_html__( 'Open the Catalogue check', 'creative-skateboard-builder' ) );
+		// Parts with no layer image stay in the builder, so they are counted in a sentence of their own (D-211).
+		$layers = '';
+		if ( $verdict['layers'] > 0 ) {
+			/* translators: %s: a number of parts. */
+			$layers = sprintf( _n( '%s part the picture draws has no layer image. It is still offered, and the picture shows its labelled photo beside the board until one is chosen on its product page.', '%s parts the picture draws have no layer image. Each is still offered, and the picture shows its labelled photo beside the board until one is chosen on its product page.', $verdict['layers'], 'creative-skateboard-builder' ), number_format_i18n( $verdict['layers'] ) );
+		}
+		if ( Health::CHECK_LAYERS === $verdict['code'] ) {
+			/* translators: %s: a number of parts. */
+			$label = sprintf( _n( 'The skateboard builder\'s Catalogue check found %s part with no layer image', 'The skateboard builder\'s Catalogue check found %s parts with no layer image', $verdict['layers'], 'creative-skateboard-builder' ), number_format_i18n( $verdict['layers'] ) );
+			return self::result( self::TEST_CATALOGUE, $verdict['status'], $label, $layers . ' ' . __( 'Nothing it found keeps a part out of the builder.', 'creative-skateboard-builder' ), $open );
+		}
 		if ( Health::CHECK_FOUND !== $verdict['code'] ) {
 			return self::result( self::TEST_CATALOGUE, $verdict['status'], __( 'The skateboard builder\'s Catalogue check found nothing to fix', 'creative-skateboard-builder' ), __( 'The check reads every part and lists sources that disagree and values that cannot be read. It found none.', 'creative-skateboard-builder' ), '' );
 		}
@@ -229,7 +259,7 @@ final class SiteHealth implements Hookable {
 		$label = sprintf( _n( 'The skateboard builder\'s Catalogue check found %s thing to fix', 'The skateboard builder\'s Catalogue check found %s things to fix', $verdict['findings'], 'creative-skateboard-builder' ), number_format_i18n( $verdict['findings'] ) );
 		/* translators: %s: a number of parts. */
 		$says = sprintf( _n( 'What it found is in %s part. Until it is fixed, a part may be left out of the builder or offered by the wrong figure. The check lists each finding with a link to where it is fixed.', 'What it found is in %s parts. Until it is fixed, a part may be left out of the builder or offered by the wrong figure. The check lists each finding with a link to where it is fixed.', $verdict['parts'], 'creative-skateboard-builder' ), number_format_i18n( $verdict['parts'] ) );
-		return self::result( self::TEST_CATALOGUE, $verdict['status'], $label, $says, sprintf( '<a href="%s">%s</a>', esc_url( CheckScreen::url() ), esc_html__( 'Open the Catalogue check', 'creative-skateboard-builder' ) ) );
+		return self::result( self::TEST_CATALOGUE, $verdict['status'], $label, '' === $layers ? $says : $says . ' ' . $layers, $open );
 	}
 
 	/**

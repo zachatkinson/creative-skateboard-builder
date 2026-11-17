@@ -24,10 +24,11 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * Reads an attachment's file. The type is WordPress's for the attachment, which it checked on upload; the pixels are
- * the file's own. Whether the background is transparent is read from the four corners, where a cut-out shot nose up
- * has no board: GD where PHP has it, Imagick where it reads the format, and not known with neither. Only the corners are read, so a
- * large image costs one decode and four lookups (D-190).
+ * Reads an attachment's file as WpLayerFile finds it: the type is the file's own, since an output format mapping can
+ * put an AVIF under an attachment WordPress calls a PNG (D-210). Whether the background is transparent is read from
+ * the four corners, where a cut-out shot nose up has no board: GD where it reads the type, Imagick where it has the
+ * type's coder, and not known with neither. Only the corners are read, so a large image costs one decode and four
+ * lookups (D-190).
  *
  * @since 0.7.0
  */
@@ -60,29 +61,34 @@ final class WpLayerImages implements LayerImages {
 		if ( ! $post instanceof WP_Post || 'attachment' !== $post->post_type || ! wp_attachment_is_image( $post ) ) {
 			return null;
 		}
-		$file = get_attached_file( $attachment );
-		$size = is_string( $file ) && is_readable( $file ) ? wp_getimagesize( $file ) : false;
+		// A layer's type: the file WpLayerFile reads, its type from its first bytes. Another image keeps its own, for
+		// the refusal to name.
+		$layer = WpLayerFile::of( $attachment, $this->libraries );
+		$file  = $layer['path'] ?? get_attached_file( $attachment );
+		$size  = is_string( $file ) && is_readable( $file ) ? wp_getimagesize( $file ) : false;
 		if ( ! is_string( $file ) || ! is_array( $size ) ) {
 			return null;
 		}
-		$type = (string) get_post_mime_type( $post );
-		return new ImageFacts( $type, (int) $size[0], (int) $size[1], $this->clear( $file, $type ) );
+		$type = $layer['type'] ?? ( is_string( $size['mime'] ?? null ) ? $size['mime'] : (string) get_post_mime_type( $post ) );
+		// Only an AVIF the host cannot read is refused for it: a PNG or WebP with no library to read it is checked for
+		// its type and size alone, as before 0.7.0 allowed AVIF (PICTURE.md; the spec review of the fixes, D-210).
+		$readable = 'image/avif' !== $type || WpLayerFile::reads( $type, $this->libraries );
+		return new ImageFacts( $type, (int) $size[0], (int) $size[1], $this->clear( $file, $type ), $readable );
 	}
 
 	/**
-	 * Whether the four corners are fully transparent; null when no library can tell, or the type has no transparency to read.
+	 * Whether the four corners are fully transparent; null when no library named reads the type.
 	 *
 	 * @param string $file The file.
 	 * @param string $type Its media type.
 	 */
 	private function clear( string $file, string $type ): ?bool {
 		foreach ( $this->libraries as $library ) {
-			if ( 'gd' === $library && function_exists( 'imagecreatefrompng' ) ) {
+			if ( 'gd' === $library && WpLayerFile::gdReads( $type ) ) {
 				return self::gd( $file, $type );
 			}
-			// The extension can load with no coder for the format, as in wp-env's cli image (D-191).
-			if ( 'imagick' === $library && class_exists( Imagick::class ) && array() !== Imagick::queryFormats( strtoupper( substr( $type, 6 ) ) ) ) {
-				return self::imagick( $file );
+			if ( 'imagick' === $library && WpLayerFile::imagickReads( $type ) ) {
+				return self::imagick( $file, $type );
 			}
 		}
 		return null;
@@ -95,18 +101,8 @@ final class WpLayerImages implements LayerImages {
 	 * @param string $type Its media type.
 	 */
 	private static function gd( string $file, string $type ): ?bool {
-		// A corrupt file makes GD warn as well as fail; the failure is the answer, so the warning is not shown.
-		set_error_handler( static fn(): bool => true ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_set_error_handler -- Held for one decode, and put back below.
-		try {
-			$image = match ( $type ) {
-				'image/png'  => imagecreatefrompng( $file ),
-				'image/webp' => function_exists( 'imagecreatefromwebp' ) ? imagecreatefromwebp( $file ) : false,
-				default      => false,
-			};
-		} finally {
-			restore_error_handler();
-		}
-		if ( false === $image ) {
+		$image = WpLayerFile::gd( $file, $type );
+		if ( null === $image ) {
 			return null;
 		}
 		$right = imagesx( $image ) - 1;
@@ -121,13 +117,17 @@ final class WpLayerImages implements LayerImages {
 	}
 
 	/**
-	 * The corners, read by Imagick. Its alpha runs from 0, transparent, to 1, opaque.
+	 * The corners, read by Imagick with the type's own coder. Its alpha runs from 0, transparent, to 1, opaque.
 	 *
 	 * @param string $file The file.
+	 * @param string $type Its media type.
 	 */
-	private static function imagick( string $file ): ?bool {
+	private static function imagick( string $file, string $type ): ?bool {
+		$image = WpLayerFile::imagick( $file, $type );
+		if ( null === $image ) {
+			return null;
+		}
 		try {
-			$image = new Imagick( $file );
 			$right = $image->getImageWidth() - 1;
 			$foot  = $image->getImageHeight() - 1;
 			foreach ( array( array( 0, 0 ), array( $right, 0 ), array( 0, $foot ), array( $right, $foot ) ) as $corner ) {

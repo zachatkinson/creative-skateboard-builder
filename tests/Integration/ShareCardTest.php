@@ -17,6 +17,7 @@ use CreativeBranding\SkateboardBuilder\Front\SeoHooks;
 use CreativeBranding\SkateboardBuilder\Front\ShareCard;
 use CreativeBranding\SkateboardBuilder\Front\ShareHooks;
 use CreativeBranding\SkateboardBuilder\Hooks\PictureHooks;
+use CreativeBranding\SkateboardBuilder\Port\Kits;
 use CreativeBranding\SkateboardBuilder\Rest\StateRoute;
 use CreativeBranding\SkateboardBuilder\Support\Options;
 use CreativeBranding\SkateboardBuilder\Tests\Support\CartTestCase;
@@ -103,7 +104,7 @@ final class ShareCardTest extends CartTestCase {
 	public function test_a_build_links_page_carries_its_name_total_build_link_and_the_decks_layer_until_the_picture_is_made(): void {
 		$build = array_map( 'strval', $this->picks() ) + array( 'step' => 'review' );
 		$tags  = $this->head( $build );
-		self::assertSame( array( "8.5″ complete: 8.5″ and 54\u{00A0}mm" ), $tags['og:title'], 'the deck\'s width heads the name; the trucks and wheels by their sizes, as these have no brand' );
+		self::assertSame( array( '8.5″ complete: Deck, Trucks, and Wheels' ), $tags['og:title'], 'the deck\'s width heads the name; each part by its product\'s name, as these have no brand (M1), joined as WordPress joins a list' );
 		self::assertSame( $tags['og:title'], $tags['twitter:title'] );
 		self::assertSame( array( 'Total: $183.00' ), $tags['og:description'], 'the total: the parts at the shop\'s prices, a truck sold singly counted twice' );
 		self::assertSame( array( 'website' ), $tags['og:type'] );
@@ -113,6 +114,9 @@ final class ShareCardTest extends CartTestCase {
 		self::assertNotSame( (string) get_permalink( $this->kit ), $link );
 		wp_parse_str( (string) wp_parse_url( $link, PHP_URL_QUERY ), $query );
 		self::assertSame( array_map( 'strval', $this->picks() ), array_intersect_key( $query['cbuild'] ?? array(), $this->picks() ), 'the picks, so the card shows this build' );
+		// Cowork's M7 review, M6: the brackets encoded, so a strict parser reads the same link.
+		self::assertStringContainsString( BuildLink::PARAM . '%5Bdeck%5D=', $link );
+		self::assertStringNotContainsString( '[', $link );
 		self::assertSame( array( (string) wp_get_attachment_url( $this->layer ) ), $tags['og:image'], 'the deck\'s layer, until the picture is made' );
 		self::assertSame( array( array( '420' ), array( '1626' ), array( 'image/png' ) ), array( $tags['og:image:width'], $tags['og:image:height'], $tags['og:image:type'] ) );
 		self::assertFileExists( (string) get_attached_file( $this->layer ), 'a file that is there' );
@@ -134,13 +138,87 @@ final class ShareCardTest extends CartTestCase {
 		$sold->set_stock_status( 'outofstock' );
 		$sold->save();
 		$short = $this->head( array_map( 'strval', $this->picks() ) );
-		self::assertArrayHasKey( 'og:url', $short, 'a build with a part sold out still has its card' );
-		self::assertSame( array(), self::waiting( Options::JOB_COMPOSE_PICTURE ), 'but no picture is asked for until it could go to the cart' );
+		// Cowork's M7 review, M2 (D-212): a card would call the build complete and total what remains.
+		self::assertSame( array(), $short, 'a build with a part sold out keeps the kit\'s own card, as the clean page' );
+		self::assertSame( array(), self::waiting( Options::JOB_COMPOSE_PICTURE ), 'and no picture is asked for until it could go to the cart' );
 
 		define( 'CBUILD_TEST_OTHER_SEO', '1' );
 		self::assertSame( array(), $this->head( array_map( 'strval', $this->picks() ), $this->hooks( array( 'CBUILD_TEST_OTHER_SEO' ) ) ), 'another SEO plugin prints its own tags, and the plugin no second set' );
 		self::assertSame( 'other', $this->hooks( array( 'CBUILD_TEST_OTHER_SEO' ) )->seoPlugin() );
 		self::assertNull( $this->hooks()->seoPlugin(), 'none in this site' );
+	}
+
+	public function test_a_build_links_page_is_kept_out_of_page_caches_while_its_card_falls_back_and_not_after(): void {
+		// Cowork's M7 review, F5 (D-212). The constant cannot be taken back in a process, and an earlier test's page
+		// may have defined it, so the answer and the headers say what this page did.
+		$build = array_map( 'strval', $this->picks() ) + array( 'step' => 'review' );
+		$sent  = 0;
+		add_filter(
+			'nocache_headers',
+			static function ( array $headers ) use ( &$sent ): array {
+				++$sent;
+				return $headers;
+			}
+		);
+		$this->head( $build );
+		self::work();
+		$made = $this->hooks();
+		$this->head( $build, $made );
+		self::assertFalse( $made->keptUncached(), 'with its picture, the page caches as any other' );
+		self::assertSame( 0, $sent );
+
+		foreach ( (array) glob( wp_get_upload_dir()['basedir'] . '/' . WpPictureFiles::FOLDER . '/*' ) as $file ) {
+			wp_delete_file( (string) $file );
+		}
+		$falls = $this->hooks();
+		$tags  = $this->head( $build, $falls );
+		self::assertSame( array( (string) wp_get_attachment_url( $this->layer ) ), $tags['og:image'], 'the card falls back' );
+		self::assertTrue( $falls->keptUncached() );
+		self::assertTrue( defined( 'DONOTCACHEPAGE' ) && DONOTCACHEPAGE );
+		self::assertSame( headers_sent() ? 0 : 1, $sent, 'the no-cache headers, where they can still be sent' );
+	}
+
+	public function test_a_build_with_nothing_to_draw_is_cached_as_any_page_and_asks_for_no_picture(): void {
+		// The audit of the fixes: no part has a layer image, so no picture will ever be made. Waiting for one would keep a
+		// shared link out of page caches for good, and queue a job on every view.
+		$deck = wc_get_product( $this->parts['deck'] );
+		$deck->delete_meta_data( Options::META_LAYER );
+		$deck->save();
+		$sent = 0;
+		add_filter(
+			'nocache_headers',
+			static function ( array $headers ) use ( &$sent ): array {
+				++$sent;
+				return $headers;
+			}
+		);
+		$never = $this->hooks();
+		$this->head( array_map( 'strval', $this->picks() ) + array( 'step' => 'review' ), $never );
+		self::assertFalse( $never->keptUncached() );
+		self::assertSame( 0, $sent );
+		self::assertFalse( as_has_scheduled_action( Options::JOB_COMPOSE_PICTURE, null, Options::QUEUE_GROUP ) );
+	}
+
+	public function test_a_part_with_no_brand_is_named_by_its_product_on_the_card(): void {
+		// Cowork's M7 review, M1 (D-212): a bare size read like a second deck width.
+		$tags = $this->head( array_map( 'strval', $this->picks() ) );
+		$name = $tags['og:title'][0];
+		self::assertStringStartsWith( '8.5″ complete: ', $name );
+		foreach ( array( 'deck', 'trucks', 'wheels' ) as $slot ) {
+			self::assertStringContainsString( wc_get_product( $this->parts[ $slot ] )->get_name(), $name, $slot );
+		}
+	}
+
+	public function test_a_branded_deck_is_named_by_its_brand_and_branded_trucks_by_brand_and_size(): void {
+		// Cowork's M7 review, M1 (D-212): PICTURE.md and the code agree.
+		foreach ( array( 'deck' => 'Baker', 'trucks' => 'Independent' ) as $slot => $brand ) {
+			$term = wp_insert_term( $brand, 'product_brand' );
+			self::assertIsArray( $term );
+			wp_set_object_terms( $this->parts[ $slot ], array( (int) $term['term_id'] ), 'product_brand' );
+		}
+		$this->service( Kits::class )->forget( ...array_values( $this->parts ) );
+		$tags = $this->head( array_map( 'strval', $this->picks() ) );
+		self::assertSame( array( '8.5″ complete: Baker, Independent 8.5″, and Wheels' ), $tags['og:title'] );
 	}
 
 	public function test_the_cards_name_and_total_are_in_the_pages_language(): void {

@@ -9,9 +9,11 @@ declare( strict_types=1 );
 
 namespace CreativeBranding\SkateboardBuilder\Tests\Integration;
 
+use CreativeBranding\SkateboardBuilder\Adapter\WpLayerFile;
 use CreativeBranding\SkateboardBuilder\Adapter\WpLayerImages;
 use CreativeBranding\SkateboardBuilder\Admin\PartSpecsHooks;
 use CreativeBranding\SkateboardBuilder\Admin\PartSpecsPanel;
+use CreativeBranding\SkateboardBuilder\Domain\Picture\LayerImage;
 use CreativeBranding\SkateboardBuilder\Port\Kits;
 use CreativeBranding\SkateboardBuilder\Port\LayerImages;
 use CreativeBranding\SkateboardBuilder\Port\SpecTables;
@@ -47,7 +49,7 @@ final class LayerImageFieldTest extends IntegrationTestCase {
 	 * The hooks with a panel of this test's own.
 	 */
 	private function hooks(): PartSpecsHooks {
-		$panel = new PartSpecsPanel( $this->service( SpecWriter::class ), $this->service( SpecIndexer::class ), $this->service( SpecTables::class ), $this->service( Kits::class ), $this->service( LayerImages::class ) );
+		$panel = ( new PartSpecsPanel( $this->service( SpecWriter::class ), $this->service( SpecIndexer::class ), $this->service( SpecTables::class ), $this->service( Kits::class ) ) )->withImages( $this->service( LayerImages::class ) );
 		return new PartSpecsHooks( static fn(): PartSpecsPanel => $panel );
 	}
 
@@ -115,13 +117,13 @@ final class LayerImageFieldTest extends IntegrationTestCase {
 		self::assertStringContainsString( '<summary>Picture</summary>', $group );
 		self::assertMatchesRegularExpression( '#<label for="cbuild-spec-layer">Layer image</label>\s*<input\s+type="text"\s+inputmode="numeric"\s+class="short cbuild-layer__id"\s+id="cbuild-spec-layer"\s+name="cbuild_layer"\s+value=""#', $group );
 		self::assertStringNotContainsString( 'disabled', $group, 'an open group\'s field is sent' );
-		self::assertStringContainsString( 'aria-describedby="cbuild-spec-layer-note"', $group );
+		self::assertStringContainsString( 'aria-describedby="cbuild-spec-layer-note cbuild-spec-layer-caption"', $group, 'the note, then the size the caption gives (Cowork\'s M7 review, M5)' );
 		self::assertStringContainsString( 'Left empty, the picture shows the part&#039;s labelled photo.', $group );
-		self::assertMatchesRegularExpression( '#<button type="button" class="button cbuild-layer__choose" data-cbuild-layer="cbuild-spec-layer" data-cbuild-title="Layer image" hidden>Choose an image</button>#', $group, 'without the script, the ID is typed' );
+		self::assertMatchesRegularExpression( '#<button type="button" class="button cbuild-layer__choose" data-cbuild-layer="cbuild-spec-layer" data-cbuild-title="Layer image" data-cbuild-types="image/png,image/webp,image/avif" hidden>Choose an image</button>#', $group, 'without the script, the ID is typed' );
 		// 209.55 by 812.8 mm, at half a pixel to the millimetre, rounded up.
 		self::assertStringContainsString( '<div class="cbuild-layer__box" style="inline-size:105px;block-size:407px">', $group );
 		self::assertMatchesRegularExpression( '#<img alt="" src="" hidden>#', $group, 'nothing to show yet' );
-		self::assertStringContainsString( '<figcaption class="description">Drawn 209.6 by 812.8 mm, nose up. The image needs at least 420 pixels across or 1,626 along.</figcaption>', $group );
+		self::assertStringContainsString( '<figcaption class="description" id="cbuild-spec-layer-caption">Drawn 209.6 by 812.8 mm, nose up. The image needs at least 420 pixels across or 1,626 along.</figcaption>', $group );
 	}
 
 	public function test_the_preview_shows_the_parts_image_on_the_chequer_and_a_wheel_is_drawn_at_its_diameter(): void {
@@ -174,7 +176,7 @@ final class LayerImageFieldTest extends IntegrationTestCase {
 		foreach ( array(
 			'abc'                                                       => 'Layer image was not saved: &quot;abc&quot; is not the ID of an image in the Media Library.',
 			(string) $page                                              => 'Layer image was not saved: &quot;' . $page . '&quot; is not the ID of an image in the Media Library.',
-			(string) LayerFiles::attachment( 420, 1626, true, 'jpeg' )  => 'Layer image was not saved: it is image/jpeg, and a layer must be a PNG or WebP with a transparent background.',
+			(string) LayerFiles::attachment( 420, 1626, true, 'jpeg' )  => 'Layer image was not saved: it is image/jpeg, and a layer must be a PNG, WebP or AVIF with a transparent background.',
 			(string) LayerFiles::attachment( 420, 1626, false )         => 'Layer image was not saved: its corners are not transparent. Export the cut-out with a transparent background.',
 			(string) LayerFiles::attachment( 419, 1625 )                => 'Layer image was not saved: it is too small for the size the picture draws this part. It needs at least 420 pixels across or 1,626 along.',
 		) as $sent => $notice ) {
@@ -182,6 +184,84 @@ final class LayerImageFieldTest extends IntegrationTestCase {
 			self::assertSame( (string) $kept, $this->send( $deck, (string) $sent )->get_meta( Options::META_LAYER, true ), (string) $sent );
 			self::assertSame( array( '<a href="#cbuild-spec-layer">' . $notice . '</a>' ), \WC_Admin_Meta_Boxes::$meta_box_errors, (string) $sent );
 		}
+	}
+
+	public function test_an_avif_the_host_reads_is_saved_and_one_it_cannot_read_is_refused_with_its_own_reason(): void {
+		// Cowork's M7 review, F1 (D-210).
+		$deck = self::part( 'deck', array( 'deck_width' => '8.2500' ) );
+		$avif = LayerFiles::attachment( 420, 1626, true, 'avif' );
+		self::assertSame( array( 'image/avif', true, true ), array( $this->service( LayerImages::class )->facts( $avif )?->type, $this->service( LayerImages::class )->facts( $avif )?->clear, $this->service( LayerImages::class )->facts( $avif )?->readable ), 'GD reads AVIF in wp-env, its corners among it' );
+		self::assertSame( (string) $avif, $this->send( $deck, (string) $avif )->get_meta( Options::META_LAYER, true ) );
+		self::assertSame( array(), \WC_Admin_Meta_Boxes::$meta_box_errors );
+
+		// A host whose one library has no AVIF coder, as wp-env's Imagick.
+		$kept = LayerFiles::attachment( 420, 1626 );
+		$this->send( $deck, (string) $kept );
+		$panel = $this->service( PartSpecsPanel::class )->withImages( new WpLayerImages( array( 'imagick' ) ) );
+		if ( WpLayerFile::imagickReads( 'image/avif' ) ) {
+			self::markTestIncomplete( 'This Imagick reads AVIF, so it stands in for no host without it.' );
+		}
+		$_POST['cbuild_layer'] = (string) $avif;
+		$product               = wc_get_product( $deck->get_id() );
+		( new PartSpecsHooks( static fn(): PartSpecsPanel => $panel ) )->saveProduct( $product );
+		$product->save();
+		self::assertSame( (string) $kept, wc_get_product( $deck->get_id() )->get_meta( Options::META_LAYER, true ) );
+		self::assertSame( array( '<a href="#cbuild-spec-layer">Layer image was not saved: it is image/avif, and this server&#039;s image library cannot read that type. Upload the cut-out as a PNG or WebP, or ask your host to turn on AVIF in GD or Imagick.</a>' ), \WC_Admin_Meta_Boxes::$meta_box_errors );
+	}
+
+	public function test_imagick_has_a_coder_for_each_layer_type_the_server_accepts_and_no_other(): void {
+		// One list (Cowork's M7 review, F1; the audit of the fixes): a type added to LayerImage::TYPES needs its coder.
+		$coders = ( new \ReflectionClassConstant( WpLayerFile::class, 'CODERS' ) )->getValue();
+		self::assertIsArray( $coders );
+		self::assertSame( LayerImage::TYPES, array_keys( $coders ) );
+	}
+
+	public function test_a_png_on_a_host_with_no_library_to_read_it_is_saved_on_its_type_and_size_alone(): void {
+		// PICTURE.md: where neither library reads the file, transparency is not known, and it is checked for its type
+		// and size alone. Only an AVIF is refused for want of a reader (the spec review of the fixes, D-210).
+		$deck  = self::part( 'deck', array( 'deck_width' => '8.2500' ) );
+		$png   = LayerFiles::attachment( 420, 1626 );
+		$none  = new WpLayerImages( array() );
+		$facts = $none->facts( $png );
+		self::assertSame( array( 'image/png', null, true ), array( $facts?->type, $facts?->clear, $facts?->readable ) );
+		$_POST['cbuild_layer'] = (string) $png;
+		$product               = wc_get_product( $deck->get_id() );
+		$panel                 = $this->service( PartSpecsPanel::class )->withImages( $none );
+		( new PartSpecsHooks( static fn(): PartSpecsPanel => $panel ) )->saveProduct( $product );
+		$product->save();
+		self::assertSame( (string) $png, wc_get_product( $deck->get_id() )->get_meta( Options::META_LAYER, true ) );
+		self::assertSame( array(), \WC_Admin_Meta_Boxes::$meta_box_errors );
+	}
+
+	public function test_a_png_an_output_format_mapping_made_avif_is_saved_and_read_as_the_file_it_is(): void {
+		// Cowork's M7 review, F1: the demo's host maps every upload to AVIF; the attachment keeps image/png.
+		add_filter( 'image_editor_output_format', static fn( array $formats ): array => array( 'image/png' => 'image/avif' ) + $formats );
+		try {
+			$mapped = LayerFiles::attachment( 420, 1626 );
+		} finally {
+			remove_all_filters( 'image_editor_output_format' );
+		}
+		self::assertSame( array( 'image/png', 'image/avif' ), array( get_post_mime_type( $mapped ), wp_get_image_mime( (string) get_attached_file( $mapped ) ) ) );
+		$facts = $this->service( LayerImages::class )->facts( $mapped );
+		self::assertSame( array( 'image/avif', 420, 1626, true, true ), array( $facts?->type, $facts?->width, $facts?->height, $facts?->clear, $facts?->readable ), 'the AVIF file, read as AVIF' );
+		$deck = self::part( 'deck', array( 'deck_width' => '8.2500' ) );
+		self::assertSame( (string) $mapped, $this->send( $deck, (string) $mapped )->get_meta( Options::META_LAYER, true ) );
+		self::assertSame( array(), \WC_Admin_Meta_Boxes::$meta_box_errors );
+
+		// A host that reads PNG and not AVIF reads the PNG WordPress kept beside it.
+		$imagick = ( new WpLayerImages( array( 'imagick' ) ) )->facts( $mapped );
+		self::assertSame( WpLayerFile::imagickReads( 'image/avif' ) ? 'image/avif' : 'image/png', $imagick?->type );
+		self::assertSame( array( true, true ), array( $imagick?->clear, $imagick?->readable ) );
+	}
+
+	public function test_the_chooser_lists_the_layer_types_the_server_accepts_and_the_caption_describes_the_field(): void {
+		// Cowork's M7 review, F1 (one list for PHP and the script) and M5 (the caption in aria-describedby).
+		$deck = self::part( 'deck', array( 'deck_width' => '8.2500' ) );
+		$html = $this->panel( $deck );
+		self::assertStringContainsString( 'data-cbuild-types="' . implode( ',', LayerImage::TYPES ) . '"', $html );
+		self::assertSame( array( 'image/png', 'image/webp', 'image/avif' ), LayerImage::TYPES );
+		self::assertMatchesRegularExpression( '/aria-describedby="cbuild-spec-layer-note cbuild-spec-layer-caption"/', $html );
+		self::assertMatchesRegularExpression( '/<figcaption class="description" id="cbuild-spec-layer-caption">Drawn /', $html );
 	}
 
 	public function test_a_variation_saves_its_own_row_and_says_when_it_takes_its_parents_image(): void {
@@ -230,6 +310,21 @@ final class LayerImageFieldTest extends IntegrationTestCase {
 		$deck = self::part( 'deck', array( 'deck_width' => '8.2500' ) );
 		wp_set_current_user( self::factory()->user->create( array( 'role' => 'subscriber' ) ) );
 		self::assertSame( '', $this->send( $deck, (string) LayerFiles::attachment( 420, 1626 ) )->get_meta( Options::META_LAYER, true ) );
+	}
+
+	// D-208: a panel that 0.6.0's container builds, in the request that puts 0.7.0's files in its place, has no images
+	// to check the field against, and leaves the part's layer image as it was.
+	public function test_a_panel_built_without_images_leaves_the_layer_image_as_it_was(): void {
+		$deck = self::part( 'deck', array( 'deck_width' => '8.2500' ) );
+		$kept = LayerFiles::attachment( 420, 1626 );
+		$this->send( $deck, (string) $kept );
+		$plain                 = new PartSpecsPanel( $this->service( SpecWriter::class ), $this->service( SpecIndexer::class ), $this->service( SpecTables::class ), $this->service( Kits::class ) );
+		$_POST['cbuild_layer'] = '';
+		$product               = wc_get_product( $deck->get_id() );
+		( new PartSpecsHooks( static fn(): PartSpecsPanel => $plain ) )->saveProduct( $product );
+		$product->save();
+		self::assertSame( (string) $kept, wc_get_product( $deck->get_id() )->get_meta( Options::META_LAYER, true ) );
+		self::assertSame( array(), \WC_Admin_Meta_Boxes::$meta_box_errors );
 	}
 
 	public function test_gd_and_imagick_read_the_same_corners_and_neither_is_a_corner_not_known(): void {

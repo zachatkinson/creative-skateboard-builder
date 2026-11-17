@@ -38,7 +38,13 @@ final class InMemoryLayerImages implements LayerImages {
 	 */
 	public array $attachments = array();
 
+	/**
+	 * How many times an image's file was read for its facts.
+	 */
+	public int $factsRead = 0;
+
 	public function facts( int $attachment ): ?ImageFacts {
+		++$this->factsRead;
 		return $this->images[ $attachment ] ?? null;
 	}
 

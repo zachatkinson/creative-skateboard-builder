@@ -27,6 +27,7 @@
 		"test:e2e": "playwright test",
 		"plugin-check": "bash tools/plugin-check.sh",
 		"zip-lifecycle": "bash tools/zip-lifecycle.sh",
+		"upgrade": "bash tools/upgrade.sh",
 		"mutate:js": "bash tools/mutate-js.sh",
 		"budget": "node tools/budget.mjs",
 		"lhci": "bash tools/lhci.sh",

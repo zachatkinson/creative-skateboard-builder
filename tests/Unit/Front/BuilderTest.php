@@ -71,7 +71,7 @@ final class BuilderTest extends TestCase {
 	private function builder(): Builder {
 		return new Builder(
 			new BuildState( $this->kits, new InMemoryShopSettings(), new FakeLogger() ),
-			new StateAnswer( new InMemoryPartCards(), new FakeMoney(), $this->kits, new Delivery( $this->kits, new FakeShippingZones(), new ShippingWords( new FakeMoney() ) ), new LayerArtwork( $this->layers, $this->renditions ), new PageRenderer() ),
+			( new StateAnswer( new InMemoryPartCards(), new FakeMoney(), $this->kits, new Delivery( $this->kits, new FakeShippingZones(), new ShippingWords( new FakeMoney() ) ), new PageRenderer() ) )->withArtwork( new LayerArtwork( $this->layers, $this->renditions ) ),
 			new BuilderView()
 		);
 	}

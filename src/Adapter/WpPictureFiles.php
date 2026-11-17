@@ -13,7 +13,6 @@ use CreativeBranding\SkateboardBuilder\Domain\Picture\Composition;
 use CreativeBranding\SkateboardBuilder\Domain\Picture\Placement;
 use CreativeBranding\SkateboardBuilder\Port\PictureFiles;
 use CreativeBranding\SkateboardBuilder\Support\Options;
-use GdImage;
 use Imagick;
 use ImagickException;
 use ImagickPixel;
@@ -56,7 +55,8 @@ final class WpPictureFiles implements PictureFiles {
 	private const TOUCHED = 86400;
 
 	/**
-	 * The types a layer image may be, which a library must read.
+	 * The layer types a library must read to be counted able to compose at all, for Site Health: PNG and WebP. A
+	 * composition with an AVIF layer is drawn by a library that reads AVIF too (D-210).
 	 */
 	private const LAYERS = array( 'image/png', 'image/webp' );
 
@@ -80,10 +80,6 @@ final class WpPictureFiles implements PictureFiles {
 		if ( $composition->isEmpty() ) {
 			return self::EMPTY;
 		}
-		$library = $this->library( $composition->canvas->type );
-		if ( null === $library ) {
-			return self::NO_LIBRARY;
-		}
 		$folder = self::folder();
 		if ( null === $folder || ! wp_mkdir_p( $folder['dir'] ) ) {
 			return self::NO_FOLDER;
@@ -92,13 +88,20 @@ final class WpPictureFiles implements PictureFiles {
 		if ( file_exists( $path ) ) {
 			return null;
 		}
+		// Each layer's file and its own type, then a library that reads every one of those types.
 		$files = array();
+		$types = array();
 		foreach ( $composition->placements as $placement ) {
-			$file = get_attached_file( $placement->attachment );
-			if ( ! is_string( $file ) || ! is_readable( $file ) ) {
+			$file = WpLayerFile::of( $placement->attachment, $this->libraries );
+			if ( null === $file ) {
 				return self::LAYER_UNREADABLE;
 			}
-			$files[] = array( $placement, $file );
+			$files[]                = array( $placement, $file['path'], $file['type'] );
+			$types[ $file['type'] ] = $file['type'];
+		}
+		$library = $this->library( $composition->canvas->type, ...array_values( $types ) );
+		if ( null === $library ) {
+			return self::NO_LIBRARY;
 		}
 		$temporary = $path . '.' . wp_generate_password( 8, false ) . '.tmp';
 		$drawn     = 'gd' === $library ? self::gd( $composition, $files, $temporary ) : self::imagick( $composition, $files, $temporary );
@@ -204,18 +207,21 @@ final class WpPictureFiles implements PictureFiles {
 	}
 
 	/**
-	 * The library a picture of this type is drawn with.
+	 * The library a picture of this type is drawn with: the first that reads every layer type given, PNG and WebP
+	 * when none is, and writes the picture's.
 	 *
 	 * @since 0.7.0
 	 *
-	 * @param string $type The picture's MIME type.
+	 * @param string $type      The picture's MIME type.
+	 * @param string ...$layers The layers' types.
 	 */
-	public function library( string $type ): ?string {
+	public function library( string $type, string ...$layers ): ?string {
+		$layers = array() === $layers ? self::LAYERS : array_values( $layers );
 		foreach ( $this->libraries as $library ) {
-			if ( 'gd' === $library && self::gdCan( $type ) ) {
+			if ( 'gd' === $library && self::gdCan( $type, $layers ) ) {
 				return 'gd';
 			}
-			if ( 'imagick' === $library && self::imagickCan( $type ) ) {
+			if ( 'imagick' === $library && self::imagickCan( $type, $layers ) ) {
 				return 'imagick';
 			}
 		}
@@ -223,40 +229,37 @@ final class WpPictureFiles implements PictureFiles {
 	}
 
 	/**
-	 * Whether GD reads both layer types and writes this one.
+	 * Whether GD reads these layer types and writes this one.
 	 *
-	 * @param string $type The picture's MIME type.
+	 * @param string       $type   The picture's MIME type.
+	 * @param list<string> $layers The layers' types.
 	 */
-	private static function gdCan( string $type ): bool {
-		if ( ! function_exists( 'imagecreatetruecolor' ) || ! function_exists( 'imagecreatefrompng' ) || ! function_exists( 'imagecreatefromwebp' ) ) {
+	private static function gdCan( string $type, array $layers ): bool {
+		if ( ! function_exists( 'imagecreatetruecolor' ) || array() !== array_filter( $layers, static fn( string $layer ): bool => ! WpLayerFile::gdReads( $layer ) ) ) {
 			return false;
 		}
 		return 'image/jpeg' === $type ? function_exists( 'imagejpeg' ) : function_exists( 'imagewebp' );
 	}
 
 	/**
-	 * Whether Imagick reads both layer types and writes this one.
+	 * Whether Imagick reads these layer types and writes this one.
 	 *
-	 * @param string $type The picture's MIME type.
+	 * @param string       $type   The picture's MIME type.
+	 * @param list<string> $layers The layers' types.
 	 */
-	private static function imagickCan( string $type ): bool {
-		if ( ! class_exists( Imagick::class ) ) {
+	private static function imagickCan( string $type, array $layers ): bool {
+		if ( ! class_exists( Imagick::class ) || array() !== array_filter( $layers, static fn( string $layer ): bool => ! WpLayerFile::imagickReads( $layer ) ) ) {
 			return false;
 		}
-		foreach ( array( 'PNG', 'WEBP', 'image/jpeg' === $type ? 'JPEG' : 'WEBP' ) as $format ) {
-			if ( array() === Imagick::queryFormats( $format ) ) {
-				return false;
-			}
-		}
-		return true;
+		return array() !== Imagick::queryFormats( 'image/jpeg' === $type ? 'JPEG' : 'WEBP' );
 	}
 
 	/**
 	 * Draw with GD.
 	 *
-	 * @param Composition                    $composition The drawing.
-	 * @param list<array{Placement, string}> $files       Each placement with its layer's file.
-	 * @param string                         $path        Where to write.
+	 * @param Composition                            $composition The drawing.
+	 * @param list<array{Placement, string, string}> $files       Each placement with its layer's file and type.
+	 * @param string                                 $path        Where to write.
 	 */
 	private static function gd( Composition $composition, array $files, string $path ): bool {
 		$canvas = imagecreatetruecolor( max( 1, $composition->canvas->width ), max( 1, $composition->canvas->height ) );
@@ -266,8 +269,8 @@ final class WpPictureFiles implements PictureFiles {
 		}
 		imagefill( $canvas, 0, 0, $white );
 		imagealphablending( $canvas, true );
-		foreach ( $files as [ $placement, $file ] ) {
-			$layer = self::gdLayer( $file );
+		foreach ( $files as [ $placement, $file, $type ] ) {
+			$layer = WpLayerFile::gd( $file, $type );
 			if ( null === $layer ) {
 				return false;
 			}
@@ -277,38 +280,22 @@ final class WpPictureFiles implements PictureFiles {
 	}
 
 	/**
-	 * A layer's file read with GD, or null. Its warnings on a file cut short are caught: the picture is not drawn.
-	 *
-	 * @param string $file The file.
-	 */
-	private static function gdLayer( string $file ): ?GdImage {
-		$type = wp_check_filetype( $file )['type'];
-		if ( ! in_array( $type, self::LAYERS, true ) ) {
-			return null;
-		}
-		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_set_error_handler -- GD warns on a damaged file; the picture is not drawn instead.
-		set_error_handler( static fn(): bool => true );
-		try {
-			$image = 'image/png' === $type ? imagecreatefrompng( $file ) : imagecreatefromwebp( $file );
-		} finally {
-			restore_error_handler();
-		}
-		return $image instanceof GdImage ? $image : null;
-	}
-
-	/**
 	 * Draw with Imagick.
 	 *
-	 * @param Composition                    $composition The drawing.
-	 * @param list<array{Placement, string}> $files       Each placement with its layer's file.
-	 * @param string                         $path        Where to write.
+	 * @param Composition                            $composition The drawing.
+	 * @param list<array{Placement, string, string}> $files       Each placement with its layer's file and type.
+	 * @param string                                 $path        Where to write.
 	 */
 	private static function imagick( Composition $composition, array $files, string $path ): bool {
 		try {
 			$canvas = new Imagick();
 			$canvas->newImage( $composition->canvas->width, $composition->canvas->height, new ImagickPixel( 'white' ) );
-			foreach ( $files as [ $placement, $file ] ) {
-				$layer = new Imagick( $file );
+			foreach ( $files as [ $placement, $file, $type ] ) {
+				// The type's own coder, never one Imagick would guess from the file (Cowork's M7 review, M7).
+				$layer = WpLayerFile::imagick( $file, $type );
+				if ( null === $layer ) {
+					return false;
+				}
 				$layer->resizeImage( $placement->width, $placement->height, Imagick::FILTER_LANCZOS, 1 );
 				$canvas->compositeImage( $layer, Imagick::COMPOSITE_OVER, $placement->x, $placement->y );
 			}

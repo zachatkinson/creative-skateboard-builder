@@ -84,7 +84,7 @@ final class BuildTab {
 	 * stands above its field. Then a row's outline, its buttons in a line with targets 30 pixels high, a group's
 	 * heading 34 pixels high, and the list of what was not saved.
 	 */
-	private const STYLES = '.cbuild-kit fieldset{margin:0 12px 12px;padding:0 0 8px;border:1px solid #c3c4c7}'
+	private const STYLES = '.cbuild-kit .cbuild-kit-group{margin:0 12px 12px;padding:0 0 8px;border:1px solid #c3c4c7}'
 		. '.cbuild-kit legend{float:none;width:auto;margin:0;margin-inline-start:8px;padding:0 4px;font-weight:600}'
 		. '.cbuild-kit h3{margin:0;padding:12px}'
 		. '.cbuild-kit p.form-field{margin:0;padding:6px 12px!important}'

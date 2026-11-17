@@ -48,6 +48,25 @@ final class ContainerTest extends TestCase {
 		}
 	}
 
+	// D-208: the classes an earlier release's container built keep that release's constructors, and this container
+	// gives each what 0.7.0 adds to it; a service asked for by its port gets it too.
+	public function test_each_class_an_earlier_release_built_gets_what_this_release_adds(): void {
+		$container = new Container();
+		foreach (
+			array(
+				array( \CreativeBranding\SkateboardBuilder\Service\IndexJobs::class, 'renditions', \CreativeBranding\SkateboardBuilder\Service\PartRenditions::class ),
+				array( \CreativeBranding\SkateboardBuilder\Port\Reindex::class, 'renditions', \CreativeBranding\SkateboardBuilder\Service\PartRenditions::class ),
+				array( \CreativeBranding\SkateboardBuilder\Service\CatalogueCheck::class, 'layers', \CreativeBranding\SkateboardBuilder\Port\LayerImages::class ),
+				array( \CreativeBranding\SkateboardBuilder\Front\StateAnswer::class, 'artwork', \CreativeBranding\SkateboardBuilder\Service\LayerArtwork::class ),
+				array( \CreativeBranding\SkateboardBuilder\Admin\PartSpecsPanel::class, 'images', \CreativeBranding\SkateboardBuilder\Port\LayerImages::class ),
+			) as [ $id, $property, $type ]
+		) {
+			$service = $container->get( $id );
+			self::assertInstanceOf( $type, ( new \ReflectionProperty( $service, $property ) )->getValue( $service ), $id );
+		}
+		self::assertNull( ( new \ReflectionProperty( \CreativeBranding\SkateboardBuilder\Front\StateAnswer::class, 'artwork' ) )->getValue( ( new \ReflectionClass( \CreativeBranding\SkateboardBuilder\Front\StateAnswer::class ) )->newInstanceWithoutConstructor() ), 'none without the container' );
+	}
+
 	public function test_set_replaces_a_service_and_has_reports_it(): void {
 		$container = new Container();
 		self::assertFalse( $container->has( Clock::class ) );

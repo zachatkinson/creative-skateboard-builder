@@ -295,7 +295,7 @@ final class CliTest extends IntegrationTestCase {
 
 		$catalogue = $this->createMock( PartCatalogue::class );
 		$catalogue->method( 'page' )->willThrowException( new RuntimeException( 'The database went away.' ) );
-		$jobs    = new IndexJobs( $this->service( SpecIndexer::class ), $this->service( SpecIndex::class ), $catalogue, $this->service( Queue::class ), $this->service( ReindexStore::class ), $this->service( ShopSettings::class ), $this->service( Clock::class ), $this->service( Logger::class ), $this->service( \CreativeBranding\SkateboardBuilder\Port\Kits::class ), $this->service( \CreativeBranding\SkateboardBuilder\Service\SavedSources::class ), $this->service( \CreativeBranding\SkateboardBuilder\Service\PartRenditions::class ) );
+		$jobs    = new IndexJobs( $this->service( SpecIndexer::class ), $this->service( SpecIndex::class ), $catalogue, $this->service( Queue::class ), $this->service( ReindexStore::class ), $this->service( ShopSettings::class ), $this->service( Clock::class ), $this->service( Logger::class ), $this->service( \CreativeBranding\SkateboardBuilder\Port\Kits::class ), $this->service( \CreativeBranding\SkateboardBuilder\Service\SavedSources::class ) );
 		$reindex = new ReindexCommand( $jobs );
 		self::assertSame( 'A batch of the reindex failed. It is tried again in the background. WooCommerce > Status > Logs has the reason.', self::exits( static fn() => $reindex( array() ) ) );
 		self::assertTrue( $jobs->state()?->isRunning() );

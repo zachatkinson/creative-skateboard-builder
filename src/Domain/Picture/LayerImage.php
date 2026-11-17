@@ -20,9 +20,10 @@ use function intdiv;
 final class LayerImage {
 
 	/**
-	 * The types a layer image may be.
+	 * The types a layer image may be, each with transparency: the one list the checks on upload, the readers and the
+	 * Media Library chooser's filter take (D-210).
 	 */
-	public const array TYPES = array( 'image/png', 'image/webp' );
+	public const array TYPES = array( 'image/png', 'image/webp', 'image/avif' );
 
 	/**
 	 * Pixels to the millimetre.
@@ -52,7 +53,11 @@ final class LayerImage {
 	 */
 	public static function problems( ImageFacts $image, ?array $size ): array {
 		if ( ! in_array( $image->type, self::TYPES, true ) ) {
-			return array( LayerError::NotPngOrWebp );
+			return array( LayerError::WrongType );
+		}
+		// A type the host's image libraries cannot read gives no corners, renditions or composed pictures.
+		if ( ! $image->readable ) {
+			return array( LayerError::Unreadable );
 		}
 		$problems = array();
 		if ( false === $image->clear ) {

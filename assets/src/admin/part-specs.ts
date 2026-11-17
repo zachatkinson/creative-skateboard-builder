@@ -252,7 +252,12 @@ export function layers( doc: Document, media: Media | undefined ): void {
 		const frame = media( {
 			title: button.dataset.cbuildTitle ?? '',
 			multiple: false,
-			library: { type: [ 'image/png', 'image/webp' ] },
+			// The layer types the server accepts, from the one list it keeps (D-210).
+			library: {
+				type: ( button.dataset.cbuildTypes ?? '' )
+					.split( ',' )
+					.filter( Boolean ),
+			},
 		} );
 		frame.on( 'select', () => {
 			const chosen = frame.state().get( 'selection' ).first()?.toJSON();

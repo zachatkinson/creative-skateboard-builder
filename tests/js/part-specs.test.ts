@@ -662,7 +662,7 @@ describe( 'the Layer image field', () => {
 	function markup( preview = true ): string {
 		return `<div class="cbuild-part-specs"><details class="cbuild-layer">
 			<input id="cbuild-spec-layer" name="cbuild_layer" value="" disabled>
-			<button type="button" class="cbuild-layer__choose" data-cbuild-layer="cbuild-spec-layer" data-cbuild-title="Layer image" hidden>Choose an image</button>
+			<button type="button" class="cbuild-layer__choose" data-cbuild-layer="cbuild-spec-layer" data-cbuild-title="Layer image" data-cbuild-types="image/png,image/webp,image/avif" hidden>Choose an image</button>
 			${
 				preview
 					? '<figure id="cbuild-spec-layer-preview"><div><img alt="" src="" hidden></div></figure>'
@@ -707,7 +707,7 @@ describe( 'the Layer image field', () => {
 		).toBe( true );
 	} );
 
-	it( 'shows the button and opens the modal for PNG and WebP alone', () => {
+	it( 'shows the button and opens the modal for the layer types the server lists on it', () => {
 		document.body.innerHTML = markup();
 		const { media, asked, opened } = modal( undefined );
 		layers( document, media );
@@ -721,7 +721,9 @@ describe( 'the Layer image field', () => {
 				{
 					title: 'Layer image',
 					multiple: false,
-					library: { type: [ 'image/png', 'image/webp' ] },
+					library: {
+						type: [ 'image/png', 'image/webp', 'image/avif' ],
+					},
 				},
 			],
 		] );

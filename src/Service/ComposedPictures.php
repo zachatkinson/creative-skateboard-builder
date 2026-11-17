@@ -269,6 +269,37 @@ final class ComposedPictures {
 	 * @param string             $purpose One of CART, SHARE and EMAIL.
 	 */
 	public function url( int $kit, array $picks, string $purpose ): ?string {
+		$composition = $this->composition( $kit, $picks, $purpose );
+		$url         = null === $composition ? null : $this->files->url( $composition->name() );
+		if ( null !== $composition && null !== $url ) {
+			$this->files->used( $composition->name(), $this->clock->now()->getTimestamp() );
+		}
+		return $url;
+	}
+
+	/**
+	 * Whether a build's picture for this use can be drawn on this host: it has something to draw, and a library reads
+	 * the layers and writes the canvas. A page whose picture cannot be is not waiting for one (the audit of the fixes; D-212).
+	 *
+	 * @since 0.7.0
+	 *
+	 * @param int                $kit     The kit product's ID.
+	 * @param array<string, int> $picks   The part's ID for each slot filled.
+	 * @param string             $purpose One of CART, SHARE and EMAIL.
+	 */
+	public function drawable( int $kit, array $picks, string $purpose ): bool {
+		$composition = $this->composition( $kit, $picks, $purpose );
+		return null !== $composition && null !== $this->files->library( $composition->canvas->type );
+	}
+
+	/**
+	 * A build's composition for one use, or null when the kit, a slot or a part is gone, or nothing is drawn.
+	 *
+	 * @param int                $kit     The kit product's ID.
+	 * @param array<string, int> $picks   The part's ID for each slot filled.
+	 * @param string             $purpose One of CART, SHARE and EMAIL.
+	 */
+	private function composition( int $kit, array $picks, string $purpose ): ?Composition {
 		$found = $this->kits->kit( $kit );
 		if ( null === $found || array() === $picks || ! isset( self::CANVASES[ $purpose ] ) ) {
 			return null;
@@ -290,12 +321,7 @@ final class ComposedPictures {
 			}
 			$parts[ $slot ] = $read[ $slot ];
 		}
-		$composition = $this->drawings( $found, $parts, array( $purpose => self::CANVASES[ $purpose ] ) )[ $purpose ] ?? null;
-		$url         = null === $composition ? null : $this->files->url( $composition->name() );
-		if ( null !== $composition && null !== $url ) {
-			$this->files->used( $composition->name(), $this->clock->now()->getTimestamp() );
-		}
-		return $url;
+		return $this->drawings( $found, $parts, array( $purpose => self::CANVASES[ $purpose ] ) )[ $purpose ] ?? null;
 	}
 
 	/**

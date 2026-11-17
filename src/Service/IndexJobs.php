@@ -61,17 +61,16 @@ final class IndexJobs implements Reindex {
 	 *
 	 * @since 0.3.0
 	 *
-	 * @param SpecIndexer    $indexer   Reads the sources and writes the index.
-	 * @param SpecIndex      $index     The index.
-	 * @param PartCatalogue  $catalogue The shop's parts.
-	 * @param Queue          $queue     The background queue.
-	 * @param ReindexStore   $store     The reindex's place.
-	 * @param ShopSettings   $settings  The mapping.
-	 * @param Clock          $clock     The time.
-	 * @param Logger         $logger    Where failures go.
-	 * @param Kits           $kits      Told of the parts a batch indexed.
-	 * @param SavedSources   $saved     What each save changed.
-	 * @param PartRenditions $renditions Makes the parts' layer images at the picture's sizes.
+	 * @param SpecIndexer   $indexer   Reads the sources and writes the index.
+	 * @param SpecIndex     $index     The index.
+	 * @param PartCatalogue $catalogue The shop's parts.
+	 * @param Queue         $queue     The background queue.
+	 * @param ReindexStore  $store     The reindex's place.
+	 * @param ShopSettings  $settings  The mapping.
+	 * @param Clock         $clock     The time.
+	 * @param Logger        $logger    Where failures go.
+	 * @param Kits          $kits      Told of the parts a batch indexed.
+	 * @param SavedSources  $saved     What each save changed.
 	 */
 	public function __construct(
 		private SpecIndexer $indexer,
@@ -83,9 +82,31 @@ final class IndexJobs implements Reindex {
 		private Clock $clock,
 		private Logger $logger,
 		private Kits $kits,
-		private SavedSources $saved,
-		private PartRenditions $renditions
+		private SavedSources $saved
 	) {}
+
+	/**
+	 * Makes the parts' layer images at the picture's sizes, since 0.7.0, given by the container through
+	 * `withRenditions()`. Jobs that an earlier release's container builds, in the request that replaces that release's
+	 * files with these, have none: that container knows nothing of the picture's ports, and builds this class from the
+	 * constructor it knew (D-208).
+	 *
+	 * @var PartRenditions|null
+	 */
+	private ?PartRenditions $renditions = null;
+
+	/**
+	 * The same jobs, making the parts' layer images as they index them.
+	 *
+	 * @since 0.7.0
+	 *
+	 * @param PartRenditions $renditions Makes the parts' layer images at the picture's sizes.
+	 */
+	public function withRenditions( PartRenditions $renditions ): self {
+		$jobs             = clone $this;
+		$jobs->renditions = $renditions;
+		return $jobs;
+	}
 
 	/**
 	 * A product or variation was saved over what was stored: queue its job, unless the save moved no source of the
@@ -127,7 +148,7 @@ final class IndexJobs implements Reindex {
 	 */
 	public function removed( int $id, string $postType ): void {
 		if ( 'attachment' === $postType ) {
-			$this->renditions->forget( $id );
+			$this->renditions?->forget( $id );
 		}
 		// An attachment is not a part, so its renditions are all it takes.
 		if ( ! $this->catalogue->holds( $postType ) ) {
@@ -200,7 +221,7 @@ final class IndexJobs implements Reindex {
 				// And written again here, in the background, so that no visitor's request reads the shop for them.
 				$this->kits->warm( ...$parts );
 				// And the layer images at the sizes the picture now draws these parts at (D-194).
-				$this->renditions->make( ...$parts );
+				$this->renditions?->make( ...$parts );
 			}
 		} catch ( Throwable $failure ) {
 			$this->logger->log(

@@ -88,7 +88,6 @@ final class StateAnswer {
 	 * @param Money        $money    Writes an amount as the shop does.
 	 * @param Kits         $kits     The shop's kits, for the currency's decimals.
 	 * @param Delivery     $delivery What the shop says of a build's delivery.
-	 * @param LayerArtwork $artwork  The drawn parts' layer images.
 	 * @param PageRenderer $renderer Draws the layout for the page.
 	 */
 	public function __construct(
@@ -96,9 +95,30 @@ final class StateAnswer {
 		private Money $money,
 		private Kits $kits,
 		private Delivery $delivery,
-		private LayerArtwork $artwork,
 		private PageRenderer $renderer
 	) {}
+
+	/**
+	 * The drawn parts' layer images, since 0.7.0, given by the container through `withArtwork()`. An answer that an
+	 * earlier release's container builds, in the request that replaces that release's files with these, has none, and
+	 * draws the board with no layers and each part's labelled photo beside it (D-208).
+	 *
+	 * @var LayerArtwork|null
+	 */
+	private ?LayerArtwork $artwork = null;
+
+	/**
+	 * The same answer, drawing the parts from their layer images.
+	 *
+	 * @since 0.7.0
+	 *
+	 * @param LayerArtwork $artwork The drawn parts' layer images.
+	 */
+	public function withArtwork( LayerArtwork $artwork ): self {
+		$answer          = clone $this;
+		$answer->artwork = $artwork;
+		return $answer;
+	}
 
 	/**
 	 * The answer.
@@ -447,7 +467,7 @@ final class StateAnswer {
 			$picks = $picks->with( $slot, $part );
 		}
 		$layout = Layout::of( $picks, $state->kit->picture );
-		$board  = $this->renderer->render( $layout, $this->artwork->of( $layout, $counted ) );
+		$board  = $this->renderer->render( $layout, null === $this->artwork ? array() : $this->artwork->of( $layout, $counted ) );
 		$drawn  = array_column( $board['layers'], 'part', 'slot' );
 		$items  = array();
 		$names  = array();
