@@ -43,6 +43,11 @@ final class SavedBuildHooks implements Hookable {
 	public const string ENDPOINT = 'my-builds';
 
 	/**
+	 * My builds' one rule: the picture on its own line, its name under it.
+	 */
+	private const string STYLES = '.cbuild-my-builds__build th img{display:block;margin:0 0 8px}';
+
+	/**
 	 * The field that says which form was sent.
 	 *
 	 * @since 0.8.0
@@ -114,6 +119,7 @@ final class SavedBuildHooks implements Hookable {
 		add_action( 'template_redirect', array( $this, 'handle' ) );
 		// After WooCommerce has added its endpoints, on `init` (includes/class-wc-query.php:30).
 		add_action( 'init', array( $this, 'rewrite' ), 99 );
+		add_action( 'wp_enqueue_scripts', array( $this, 'styles' ), 20 );
 	}
 
 	/**
@@ -175,6 +181,18 @@ final class SavedBuildHooks implements Hookable {
 		$rows   = ( $this->view )()->rows( get_current_user_id() );
 		$action = self::url();
 		require CBUILD_PATH . 'templates/account/my-builds.php';
+	}
+
+	/**
+	 * On My builds alone, beside WooCommerce's own styles: each build's picture on its own line above its name, so a
+	 * name of more than one word does not wrap around it.
+	 *
+	 * @since 0.8.0
+	 */
+	public function styles(): void {
+		if ( function_exists( 'is_wc_endpoint_url' ) && is_wc_endpoint_url( self::ENDPOINT ) ) {
+			wp_add_inline_style( 'woocommerce-general', self::STYLES );
+		}
 	}
 
 	/**

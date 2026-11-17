@@ -225,6 +225,33 @@ final class SavedBuildsPageTest extends CartTestCase {
 	}
 
 	/**
+	 * The milestone 8 walkthrough: a build's picture sat inline with its name, so a two-word name wrapped around it. On
+	 * My builds, and there alone, the picture takes its own line above the name, beside WooCommerce's own styles.
+	 */
+	public function test_my_builds_sets_each_picture_above_its_name_and_no_other_page_gets_the_rule(): void {
+		$styles = static function (): string {
+			$after = wp_styles()->get_data( 'woocommerce-general', 'after' );
+			return is_array( $after ) ? implode( '', $after ) : '';
+		};
+		// Each page gets styles of its own, and the site's are put back for the tests after this one.
+		$kept = $GLOBALS['wp_styles'] ?? null;
+		try {
+			$GLOBALS['wp_styles'] = new \WP_Styles(); // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- A fresh set of styles for the test, restored below.
+			$this->go_to( wc_get_account_endpoint_url( SavedBuildHooks::ENDPOINT ) );
+			self::assertTrue( is_wc_endpoint_url( SavedBuildHooks::ENDPOINT ), 'on My builds' );
+			do_action( 'wp_enqueue_scripts' );
+			self::assertStringContainsString( '.cbuild-my-builds__build th img{display:block', $styles() );
+
+			$GLOBALS['wp_styles'] = new \WP_Styles(); // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- As above.
+			$this->go_to( wc_get_account_endpoint_url( 'orders' ) );
+			do_action( 'wp_enqueue_scripts' );
+			self::assertStringNotContainsString( 'cbuild-my-builds', $styles(), 'not on another account page' );
+		} finally {
+			$GLOBALS['wp_styles'] = $kept; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Restored.
+		}
+	}
+
+	/**
 	 * The page's markup, for the signed-in customer.
 	 */
 	private function page(): string {
