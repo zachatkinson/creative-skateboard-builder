@@ -3020,3 +3020,9 @@ New tests that found no bug: `workshop.spec.ts` (the Build box and the ticket un
 Zach, 17 November 2026: a milestone's pull request merges and its version is tagged once the full CI run is green, after the spec-reviewer's and the auditor's findings are fixed. Claude in Cowork then reviews the release, the code and the demo, and its findings go into the next milestone, as 0.6.0's and 0.7.0's already did (milestone 8 took 0.7.0's recheck in place of a 0.7.1). Before, the merge waited for Cowork's review of the pull request.
 
 Why: Cowork's suggestions were bundled into the next milestone anyway, so holding the merge for them only delayed the release. The cost is that no reader outside the repository sees the code before it ships; the two fresh-context reviews and every gate still do. Changed: `CLAUDE.md` (how each milestone runs, step 4), the `audit-milestone` skill (step 8), `docs/PROJECT.md` (Review) and `docs/AUDIT.md` (the milestone review's row).
+
+### D-224 · A try at Playwright's system packages waits for the last try's apt-get · 2026-11-17
+
+CI run 44194833317, oldest leg: the first try at `npx playwright install-deps` was still downloading when D-123's `timeout 180` stopped it. `timeout` stops npx, but the `apt-get` it had started through sudo runs as root and kept going. So tries 2 and 3 each failed at once with "Could not get lock /var/lib/dpkg/lock-frontend. It is held by process 33467 (apt-get)", and the job failed before any test ran.
+
+Each try in both install steps now first waits up to five minutes for any `apt-get` or `dpkg` to finish, then starts. The leftover apt-get is not killed: stopping dpkg part-way can leave the packages broken, and here it was only slow. D-123's tries and timeouts and D-126's change of mirror stay as they were.
