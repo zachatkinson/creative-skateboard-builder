@@ -77,7 +77,9 @@ final class SiteHealthTest extends IntegrationTestCase {
 		$ids = array_keys( $tests['direct'] );
 		self::assertSame( 'core', $ids[0] );
 		// WooCommerce adds its own between.
-		self::assertSame( array( 'cbuild_index', 'cbuild_jobs', 'cbuild_pictures' ), array_slice( $ids, -3 ) );
+		// On a network, a fourth: the must-use file that keeps deletions whole (#8, D-220).
+		$ours = is_multisite() ? array( 'cbuild_index', 'cbuild_jobs', 'cbuild_pictures', 'cbuild_network' ) : array( 'cbuild_index', 'cbuild_jobs', 'cbuild_pictures' );
+		self::assertSame( $ours, array_slice( $ids, -count( $ours ) ) );
 		// WooCommerce 11.3.0 adds an async test of its own before it (D-139).
 		self::assertSame( array( 'cbuild_catalogue' ), array_slice( array_keys( $tests['async'] ), -1 ) );
 		self::assertSame( array(), array_values( array_filter( array_keys( $tests['async'] ), static fn ( string $id ): bool => str_starts_with( $id, 'cbuild_' ) && 'cbuild_catalogue' !== $id ) ) );
@@ -403,5 +405,21 @@ final class SiteHealthTest extends IntegrationTestCase {
 		self::assertSame( 'Up to date', $section['fields']['index']['value'], 'words on the page' );
 		self::assertSame( 'index_current', $section['fields']['index']['debug'], 'the code in what is copied' );
 		self::assertSame( 0, $section['fields']['failedJobs']['value'] );
+	}
+
+	public function test_a_network_hears_when_the_must_use_file_cannot_be_written(): void {
+		if ( ! is_multisite() ) {
+			self::markTestSkipped( 'The multisite leg (composer test:integration:multisite).' );
+		}
+		\CreativeBranding\SkateboardBuilder\Install\NetworkFile::remove();
+		$missing = $this->service( SiteHealth::class )->network();
+		self::assertSame( 'recommended', $missing['status'] );
+		self::assertStringContainsString( \CreativeBranding\SkateboardBuilder\Install\NetworkFile::NAME, $missing['description'] );
+		self::assertTrue( \CreativeBranding\SkateboardBuilder\Install\NetworkFile::ensure() );
+		try {
+			self::assertSame( 'good', $this->service( SiteHealth::class )->network()['status'] );
+		} finally {
+			\CreativeBranding\SkateboardBuilder\Install\NetworkFile::remove();
+		}
 	}
 }

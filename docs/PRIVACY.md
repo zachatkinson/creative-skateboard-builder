@@ -8,7 +8,15 @@ From 0.5.0 the state route reads WooCommerce's own session cookie, where the bro
 
 ## Personal data
 
-None in 0.1.0. Saved builds (milestone 8) will be the only personal data the plugin keeps: the customer's user ID, the picks, the name they give the build and when it was saved, with a personal data exporter and eraser.
+From 0.8.0, saved builds are the only personal data the plugin keeps (spec: Privacy and data handling; D-217, D-220): the customer's user ID, the picks, assembly, the name they give the build, and when it was made and last saved. Nothing else about a customer is stored, and a build link, Copy link or a picture holds nothing of them.
+
+- **Export.** WordPress's Export Personal Data finds them by the account's email address: the exporter `creative-skateboard-builder`, "Saved builds", gives each build's name, kit, parts, assembly and both times (`PrivacyTest`).
+- **Erase.** Erase Personal Data deletes them all: the eraser `creative-skateboard-builder`. Nothing is kept, so nothing is reported retained (`PrivacyTest`).
+- **A deleted account** takes its saved builds with it: on its site through `delete_user`, and on every site of a network through `wpmu_delete_user`, from the must-use file below where the plugin is not loaded (`PrivacyTest`).
+- **The customer** renames or deletes each one under My builds, and only they can read or change them (`SavedBuildsPageTest`).
+- **The suggested policy text** goes to Settings > Privacy's guide on `admin_init`, through the text domain, in the site's language. It says what is kept, for how long, and how to have it exported or erased.
+
+Order item meta is not personal data the plugin adds: each build's snapshot names parts, SKUs, specs and the shop's own words, and is kept with the order as part of the shop's records (spec: Uninstall).
 
 ## What 0.1.0 stores
 
@@ -20,6 +28,7 @@ None in 0.1.0. Saved builds (milestone 8) will be the only personal data the plu
 | Site transient | `cbuild_update_manifest` | The agency's release manifest: versions, a download address, a checksum, release notes. | No | 12 hours (1 hour after a failed request); uninstall | `UpdaterTest`, `UninstallTest` |
 | Transient | `cbuild_kit_draft_<kit>_<user>` | A section of a kit's Build tab that was not saved, as it was typed, and the sentences that say why. The kit's ID and the ID of the user who sent it are in the name. | No: the owner's own words and product IDs | The tab is next drawn for that user, or 1 hour; uninstall | `BuildTabTest`, `UninstallTest` |
 | Table | `{prefix}cbuild_specs` | One row per part and spec: the product's or variation's ID, the spec's key, its value, which source it came from (the part's field, an attribute, a spec table), what in that source, and when it was read. Nothing about a person. | No | Uninstall; the site's deletion on a network; rebuilt from the products, never edited | `ActivationTest`, `UninstallTest`, `SpecIndexRepositoryTest` |
+| File, on a network | `wp-content/mu-plugins/creative-skateboard-builder-network.php` (0.8.0) | The must-use file above: the plugin's table names and two hooks. Nothing about a person. | No | Uninstall | `PrivacyTest`, `UninstallTest` |
 | Table | `{prefix}cbuild_builds` | Saved builds (0.8.0, D-217): the customer's user ID, a random UUID, the kit, the picks as product IDs, assembly, the name the customer gives it (up to 100 characters, may be empty) and when it was made and last saved, in UTC. Up to 100 a customer. | Yes | The customer's Delete; uninstall; the site's deletion on a network | `ActivationTest`, `UninstallTest`, `SavedBuildRepositoryTest`, `SavedBuildsPageTest` |
 | Action Scheduler | Group `creative-skateboard-builder`, action `cbuild_migrate` | A queued upgrade run, with no arguments. | No | It runs; deactivation unschedules it; uninstall deletes every row, log and the group | `InstallHooksTest`, `UninstallTest` |
 | Log | Source `creative-skateboard-builder` | A failed upgrade step's name, its cursor and the error's message. | No | WooCommerce's own log retention | `MigrationRunnerTest`, `MigrationTest` |
@@ -67,7 +76,7 @@ Neither carries the site's address, the version of WordPress or WooCommerce, or 
 
 - **Deactivation** keeps everything but pending scheduled actions and the upgrade lock, so reactivation finds the shop as it was.
 - **Uninstall** removes everything in the table above, on every site of a network.
-- **A site deleted from a network** has its tables dropped with it where the plugin is loaded on the request that deletes it: active for the network, or on the site the deletion is made from. Deleted from elsewhere, with the plugin active only on that site, its tables stay in the database until someone drops them. They hold no personal data before milestone 8, when saved builds arrive; closing the gap before then is raised with Zach in `docs/reviews/M1.md`.
+- **A site deleted from a network** has its tables dropped with it, wherever the deletion is made. On a network the plugin writes a must-use file, `wp-content/mu-plugins/creative-skateboard-builder-network.php`, which loads on every site and in the network's admin and does two things: it names the plugin's tables for `wpmu_drop_tables`, and on `wpmu_delete_user` deletes the account's rows from each site's builds table. It is written on activation and, where missing or out of date, on any wp-admin request; uninstall removes it. Where the folder cannot be written, Site Health's test "The skateboard builder on a network" says so (#8, D-220; `PrivacyTest`, `SiteHealthTest`, `UninstallTest`).
 
 ## Who sees it
 

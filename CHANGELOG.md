@@ -6,6 +6,9 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Added
 
+- WordPress's privacy tools find saved builds: the exporter and eraser `creative-skateboard-builder`, "Saved builds". A deleted account's builds go with it, and the suggested policy text says what is kept (D-220).
+- On a network, a must-use file that drops a deleted site's tables and deletes a deleted account's saved builds on every site, where the plugin is not loaded too, with a Site Health test, `cbuild_network`, when it cannot be written (#8, D-220).
+- The build's picture under the kit's line on the order's page and in the HTML emails, with the build in words as its alt text and alone in plain-text emails; the lead time and returns notice after the emails' order table; and the parts indented under their kit (D-221).
 - Saved builds (D-217). A signed-in customer saves the build at the review, named or not, and finds it under My builds, a new My account endpoint (`my-builds`), with its picture, its total today, the date it was saved, and Open, Rename and Delete. Open goes back to the builder at the review, checked again, and Save build there updates the same build (`cbuild_saved`, read for its owner alone). A visitor signed out gets a link to sign in that comes back to the build. Up to 100 builds a customer. The forms carry a nonce each and work without JavaScript.
 - The option `cbuild_endpoints`, which makes the rewrite rules again once when the plugin's account endpoints change, so My builds answers after the update.
 - The Build box on the order screen, with HPOS on or off, for users with `edit_shop_orders`: each build by slot with the part, its SKU and its specs as sold, how many boards and whether the shop assembles them, and the build's picture. It says where the order's lines no longer match the build: a part's line removed, a quantity changed, a line added again without the build's details, or a kit's line with no build behind it (D-219).

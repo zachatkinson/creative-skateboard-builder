@@ -204,9 +204,11 @@ final class UninstallTest extends IntegrationTestCase {
 				set_transient( Options::TRANSIENT_PREFIX . 'x', 'x', HOUR_IN_SECONDS );
 				restore_current_blog();
 
+				self::assertTrue( \CreativeBranding\SkateboardBuilder\Install\NetworkFile::ensure(), 'the network\'s must-use file, written on activation' );
 				$wpdb->last_error = '';
 				Uninstaller::run();
 				self::assertSame( '', $wpdb->last_error, 'a site with no Action Scheduler tables raises nothing' );
+				self::assertFileDoesNotExist( \CreativeBranding\SkateboardBuilder\Install\NetworkFile::path(), 'and the must-use file goes with the plugin (#8)' );
 
 				switch_to_blog( $site );
 				try {

@@ -294,6 +294,21 @@ final class Container {
 					$c->get( Front\BuilderPlace::class )
 				);
 			},
+			// Saved builds' services are built when a privacy tool, a deletion or an email asks.
+			Privacy\PrivacyHooks::class                   => static function ( Container $c ): object {
+				return new Privacy\PrivacyHooks(
+					static function () use ( $c ): Service\SavedBuilds {
+						return $c->get( Service\SavedBuilds::class );
+					}
+				);
+			},
+			Order\EmailHooks::class                       => static function ( Container $c ): object {
+				return new Order\EmailHooks(
+					static function () use ( $c ): Service\ComposedPictures {
+						return $c->get( Service\ComposedPictures::class );
+					}
+				);
+			},
 			// The saved builds' services are built when a form is sent or My builds is shown.
 			Front\SavedBuildHooks::class                  => static function ( Container $c ): object {
 				return new Front\SavedBuildHooks(
@@ -456,6 +471,10 @@ final class Container {
 			Cart\ThumbnailHooks::class             => array( Scope::Everywhere ),
 			// Both checkouts make the order, and its items are named on pages, in emails and in wp-admin.
 			Order\OrderHooks::class                => array( Scope::Everywhere ),
+			// Emails are sent from any kind of request: a checkout, a REST call, the queue, wp-admin.
+			Order\EmailHooks::class                => array( Scope::Everywhere ),
+			// The privacy tools answer over admin-ajax; an account is deleted from wp-admin, WP-CLI or a REST call.
+			Privacy\PrivacyHooks::class            => array( Scope::Everywhere ),
 			Order\WorkshopHooks::class             => array( Scope::Admin ),
 			// WooCommerce's settings screen.
 			Admin\SettingsHooks::class             => array( Scope::Admin ),

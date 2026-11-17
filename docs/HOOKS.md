@@ -345,6 +345,7 @@ Three direct tests and one asynchronous test on Tools > Site Health, and a secti
 | `cbuild_index` | 0.3.0 | No reindex has been asked for, the last one finished, or one is under way with its job waiting or running. | A reindex is under way and has no job: it stopped part way. | A reindex stopped after five failures. |
 | `cbuild_jobs` | 0.3.0 | No action of the group `creative-skateboard-builder` is marked failed. | One or more is, with links to the failed actions and the Catalogue check. | Never. |
 | `cbuild_pictures` | 0.7.0 | GD or Imagick can read PNG and WebP and write WebP and JPEG, the uploads folder can be written, and every drawn part's layer image has its resized copies. | Neither library can, so carts and share cards show the deck's photo; the uploads folder cannot be written; or drawn parts' layer images have no resized copies, counted from what the Media Library stored, with no file opened (D-209). | Never. |
+| `cbuild_network` | 0.8.0 | On a network only: the must-use file `creative-skateboard-builder-network.php` is in `wp-content/mu-plugins` as this release writes it, so deleting a site drops the plugin's tables and deleting an account deletes its saved builds on every site (#8, D-220). | The folder cannot be written, so a site deleted where the plugin is not active for the network keeps its tables, and an account deleted from the network keeps its builds on such a site. The test names the file and the folder. | Never. |
 | `cbuild_catalogue` | 0.3.0 | The Catalogue check finds nothing in any part or kit. | It finds something: the result counts the findings and the parts they are in, and links to the check. Background work that failed is left to the first two tests above. From 0.7.0, parts with no layer image are counted apart, by part, in a sentence and a label of their own, since they stay in the builder (D-211). | Never. |
 
 `cbuild_catalogue` reads every part, so it is asynchronous: the page asks for it once it has drawn, and WordPress's weekly check calls it directly.
@@ -755,3 +756,11 @@ The names another plugin may meet on the order screens:
 | `admin-post.php?action=cbuild_print_tickets` | 0.8.0 | The assembly ticket: a page of its own that prints, one board to a page. It takes `orders` (order IDs separated by commas, the first 100 printed), `more` (how many more the bulk print left out) and `_wpnonce` (a nonce for the action `cbuild_print_tickets`), and refuses with a 403 a user without `edit_shop_orders` or without the nonce. It reads orders and changes nothing. |
 | `cbuild_print_tickets` | 0.8.0 | The bulk action Print assembly tickets on the orders list, with HPOS on (`woocommerce_page_wc-orders`, and `admin_page_wc-orders` for a user without `edit_others_shop_orders`) or off (`edit-shop_order`). It sends the picked orders to the ticket page. |
 | `cbuild_assembly` | 0.8.0 | The Assembly column's key on the same lists, before the total: how many boards of the order the shop assembles, Not assembled, or empty for an order with no build. |
+
+### Privacy tools and orders
+
+| Item | Since | What it is |
+| --- | --- | --- |
+| Exporter and eraser `creative-skateboard-builder` | 0.8.0 | "Saved builds" in Tools > Export Personal Data and Erase Personal Data: each of the account's saved builds, found by its email address. One page each (D-220). |
+| The build under a kit's order line | 0.8.0 | On `woocommerce_order_item_meta_end`: the build's picture, `.cbuild-email-picture`, with the build in words as its alt text, on the order's page and in HTML emails; the words alone in plain text. Each part's row has the class `cbuild-order-part` (D-221). The markup is the plugin's own and may change in any release. |
+
