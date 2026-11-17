@@ -9,6 +9,11 @@ declare( strict_types=1 );
 
 namespace CreativeBranding\SkateboardBuilder\Tests\Unit\Front;
 
+use CreativeBranding\SkateboardBuilder\Domain\Picture\ImageFacts;
+use CreativeBranding\SkateboardBuilder\Front\PageRenderer;
+use CreativeBranding\SkateboardBuilder\Service\LayerArtwork;
+use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\InMemoryLayerImages;
+use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\InMemoryLayerRenditions;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\BuildTerms;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Part;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\SlotKey;
@@ -34,6 +39,10 @@ use PHPUnit\Framework\TestCase;
  * Performance: a slot shows 24 options at a time, and card data is loaded only for the options a step shows.
  */
 final class StateAnswerTest extends TestCase {
+
+	private InMemoryLayerImages $layers;
+
+	private InMemoryLayerRenditions $renditions;
 
 	private const int KIT = 77;
 
@@ -75,6 +84,8 @@ final class StateAnswerTest extends TestCase {
 	}
 
 	protected function setUp(): void {
+		$this->layers     = new InMemoryLayerImages();
+		$this->renditions = new InMemoryLayerRenditions();
 		$this->kits     = new InMemoryKits();
 		$this->settings = new InMemoryShopSettings();
 		$this->logger   = new FakeLogger();
@@ -89,10 +100,13 @@ final class StateAnswerTest extends TestCase {
 	 * @param array<mixed>|null $previous The picks before.
 	 * @return array<string, mixed>
 	 */
-	private function answer( array $picks = array(), ?string $step = null, ?array $previous = null, ?bool $assembly = null, ?BuildLink $link = null ): array {
+	private function answer( array $picks = array(), ?string $step = null, ?array $previous = null, ?bool $assembly = null, ?BuildLink $link = null, bool $artwork = true ): array {
 		$state = ( new BuildState( $this->kits, $this->settings, $this->logger ) )->of( self::KIT, $picks, $previous, $step, $assembly );
 		self::assertNotNull( $state );
-		return ( new StateAnswer( $this->cards, new FakeMoney(), $this->kits, new Delivery( $this->kits, new FakeShippingZones(), new ShippingWords( new FakeMoney() ) ) ) )->of( $state, $link );
+		$answer = new StateAnswer( $this->cards, new FakeMoney(), $this->kits, new Delivery( $this->kits, new FakeShippingZones(), new ShippingWords( new FakeMoney() ) ), new PageRenderer() );
+		$drawn = $answer->withArtwork( new LayerArtwork( $this->layers, $this->renditions ) );
+		// Without artwork, the answer withArtwork() was called on, as 0.6.0's container's is: a copy took the artwork.
+		return ( $artwork ? $drawn : $answer )->of( $state, $link );
 	}
 
 	/**
@@ -792,6 +806,17 @@ final class StateAnswerTest extends TestCase {
 		);
 	}
 
+	// D-200: the share card names a part's size as the answer does, from outside it.
+	public function test_a_parts_size_is_read_the_same_from_outside_the_answer(): void {
+		self::assertSame(
+			array(
+				'value' => '54mm',
+				'text'  => '54 mm',
+			),
+			StateAnswer::size( SlotKey::WHEELS, Shop::parts()[ SlotKey::WHEELS ][1] )
+		);
+	}
+
 	public function test_a_part_is_sized_as_its_slots_parts_are_and_bolts_and_risers_in_fractions(): void {
 		$picks = array(
 			SlotKey::DECK   => 103,
@@ -967,6 +992,9 @@ final class StateAnswerTest extends TestCase {
 			array(
 				'items'       => array(),
 				'description' => 'Nothing is chosen yet.',
+				'width'       => 0,
+				'height'      => 0,
+				'layers'      => array(),
 			),
 			$blank['picture']
 		);
@@ -986,6 +1014,7 @@ final class StateAnswerTest extends TestCase {
 				'size'  => '8.5″',
 				'name'  => 'Part 103',
 				'image' => InMemoryPartCards::card( 103 )['image'],
+				'drawn' => false,
 			),
 			$answer['picture']['items'][0]
 		);
@@ -995,6 +1024,48 @@ final class StateAnswerTest extends TestCase {
 		self::assertSame( 'Bearings', $answer['picture']['items'][3]['label'], 'A part with no brand and no size is labelled with its slot.' );
 		self::assertStringStartsWith( 'The build so far: Deck: Part 103; Trucks: Part 149; ', $answer['picture']['description'] );
 		self::assertStringEndsWith( '; Grip: Part 701.', $answer['picture']['description'] );
+	}
+
+	// D-208: an answer that 0.6.0's container builds, in the request that puts 0.7.0's files in its place, has no
+	// artwork, and draws the board with each part's labelled photo; the answer the container gives it is not changed.
+	public function test_an_answer_built_without_artwork_draws_no_layer_and_keeps_every_part(): void {
+		$this->layers->attachments = array( 103 => 13 );
+		$this->layers->images      = array( 13 => new ImageFacts( 'image/png', 432, 1626, true ) );
+		$picks                     = array( SlotKey::DECK => 103 );
+		$without                   = $this->answer( $picks, SlotKey::TRUCKS, artwork: false )['picture'];
+		self::assertSame( array(), $without['layers'] );
+		self::assertSame( array( SlotKey::DECK => false ), array_slice( array_column( $without['items'], 'drawn', 'slot' ), 0, 1, true ) );
+		self::assertSame( array( SlotKey::DECK ), array_column( $this->answer( $picks, SlotKey::TRUCKS )['picture']['layers'], 'slot' ) );
+		self::assertSame( $this->answer( $picks, SlotKey::TRUCKS )['picture']['items'][0]['part'], $without['items'][0]['part'] );
+	}
+
+	public function test_the_board_draws_the_parts_with_a_layer_image_and_the_box_keeps_the_rest(): void {
+		$this->layers->attachments = array(
+			103 => 13,
+			149 => 49,
+		);
+		$this->layers->images      = array(
+			13 => new ImageFacts( 'image/png', 432, 1626, true ),
+			49 => new ImageFacts( 'image/png', 432, 160, true ),
+		);
+		$answer = $this->answer(
+			array(
+				SlotKey::DECK   => 103,
+				SlotKey::TRUCKS => 149,
+			),
+			SlotKey::WHEELS
+		);
+		$picture = $answer['picture'];
+		self::assertSame( array( SlotKey::DECK, SlotKey::TRUCKS, SlotKey::TRUCKS ), array_column( $picture['layers'], 'slot' ), 'the wheels the step recommends have no layer image' );
+		self::assertSame( array( 103, 149, 149 ), array_column( $picture['layers'], 'part' ) );
+		self::assertSame( array( 2159000, 8128000 ), array( $picture['width'], $picture['height'] ), 'an 8.5 in deck, 32 in long' );
+		self::assertSame( 'https://example.com/layer-13.png', $picture['layers'][0]['image']['src'], 'the master until the renditions are made' );
+		self::assertSame(
+			array( SlotKey::DECK => true, SlotKey::TRUCKS => true ),
+			array_slice( array_column( $picture['items'], 'drawn', 'slot' ), 0, 2, true )
+		);
+		self::assertSame( array(), array_filter( array_slice( array_column( $picture['items'], 'drawn' ), 2 ) ), 'the rest keep their labelled photos' );
+		self::assertCount( count( $answer['total']['lines'] ), $picture['items'], 'every part the total counts is still in the box' );
 	}
 
 	public function test_a_part_whose_product_has_gone_is_in_the_box_with_no_name_and_out_of_the_sentence(): void {

@@ -19,7 +19,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * A kit is a product a shopper builds from parts (spec: Vocabulary): a product of the kit type, with four documents.
+ * A kit is a product a shopper builds from parts (spec: Vocabulary): a product of the kit type, with its documents: four, and from 0.7.0 the picture's.
  *
  * @since 0.3.0
  */

@@ -85,6 +85,9 @@ final class Sentences {
 			case CatalogueCheck::ASSUMED:
 				/* translators: %s: a spec's name. */
 				return sprintf( __( '%s is not filled in, so the builder assumes the usual one.', 'creative-skateboard-builder' ), $spec );
+			case CatalogueCheck::LAYER_MISSING:
+				/* translators: %s: a slot's key, such as trucks. */
+				return sprintf( __( 'It has no layer image, so the picture shows its labelled photo in the slot "%s". Add one on its Part specs, under Picture.', 'creative-skateboard-builder' ), $finding->slot );
 			case CatalogueCheck::PRESET:
 				$problems = array(
 					/* translators: 1: a preset's name. 2: a slot's key. */
@@ -206,6 +209,8 @@ final class Sentences {
 			/* translators: %s: a field's name. */
 			DocumentError::SlotNotFilled->value => sprintf( __( '%s: choose a part. A build must have one.', 'creative-skateboard-builder' ), $field ),
 			KitEditor::LEAVE_PRESETS => __( 'The slots were not saved. A preset the kit already has names a slot these leave out, or leaves empty one a build must now have. Put that preset right, or remove it, in the same save.', 'creative-skateboard-builder' ),
+			/* translators: %s: a field's name. */
+			KitEditor::WHEELBASE_RANGE => sprintf( __( '%s: type a wheelbase from 10 to 20 in, or leave it empty.', 'creative-skateboard-builder' ), $field ),
 			KitEditor::NO_SLOTS => __( 'Presets need the kit\'s slots. Put the slots right and save, then add the presets.', 'creative-skateboard-builder' ),
 			/* translators: 1: a field's name. 2: a product's name. 3: a slot's label. */
 			KitEditor::NOT_IN_SLOT => sprintf( __( '%1$s: %2$s is not a part the %3$s slot takes, or it cannot be bought now.', 'creative-skateboard-builder' ), $field, $part, $slot ),

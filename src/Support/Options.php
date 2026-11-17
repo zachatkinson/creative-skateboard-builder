@@ -104,6 +104,20 @@ final class Options {
 	public const CLASS_EDIT     = 'cbuild-edit';
 
 	/**
+	 * The other classes docs/HOOKS.md promises a theme: in the cart, what a kit's line charges for assembly, the
+	 * slot's label in a part's Part of words, and a kit's composed picture; in the builder, the places
+	 * `cbuild_part_classes` reaches: a part's place in the picture, its layer on the board, the bar's photo and its
+	 * line in the review.
+	 */
+	public const CLASS_ASSEMBLY     = 'cbuild-assembly';
+	public const CLASS_PART_SLOT    = 'cbuild-part__slot';
+	public const CLASS_CART_PICTURE = 'cbuild-cart-picture';
+	public const CLASS_PICTURE_ITEM = 'cbuild-picture__item';
+	public const CLASS_LAYER        = 'cbuild-board__layer';
+	public const CLASS_BAR_PHOTO    = 'cbuild-bar__photo';
+	public const CLASS_REVIEW_ITEM  = 'cbuild-review__item';
+
+	/**
 	 * Order item meta (spec: Data model, Order items). Hidden from customers by their underscore, and kept with the
 	 * shop's order records for good: a key is never renamed.
 	 */
@@ -135,6 +149,13 @@ final class Options {
 	public const META_SPEC_TABLE = '_cbuild_spec_table';
 
 	/**
+	 * Product meta: a part's layer image for the picture, an attachment's ID (spec: Data model; D-190).
+	 *
+	 * @since 0.7.0
+	 */
+	public const META_LAYER = '_cbuild_layer';
+
+	/**
 	 * The kit's product type.
 	 *
 	 * @since 0.4.0
@@ -150,6 +171,13 @@ final class Options {
 	public const META_KIT_RULES    = '_cbuild_rules';
 	public const META_KIT_PRESETS  = '_cbuild_presets';
 	public const META_KIT_ASSEMBLY = '_cbuild_assembly';
+
+	/**
+	 * A kit's meta: its picture settings, as JSON text (schema/kit-picture.json). A kit may have none.
+	 *
+	 * @since 0.7.0
+	 */
+	public const META_KIT_PICTURE = '_cbuild_picture';
 
 	/**
 	 * The spec tables' post type.
@@ -197,6 +225,27 @@ final class Options {
 	public const JOB_IMPORT = 'cbuild_import';
 
 	/**
+	 * The job that draws one build's composed pictures (spec: Options and jobs).
+	 *
+	 * @since 0.7.0
+	 */
+	public const JOB_COMPOSE_PICTURE = 'cbuild_compose_picture';
+
+	/**
+	 * The daily job that deletes composed pictures unused for 30 days and keeps their folder under its cap.
+	 *
+	 * @since 0.7.0
+	 */
+	public const JOB_PRUNE_PICTURES = 'cbuild_prune_pictures';
+
+	/**
+	 * The plugin's folder in the uploads folder: the layers' renditions and the composed pictures. Uninstall removes it.
+	 *
+	 * @since 0.7.0
+	 */
+	public const UPLOADS_FOLDER = 'creative-skateboard-builder';
+
+	/**
 	 * The specs import in hand: where it is, its place and its counts, and what it did after. Not autoloaded.
 	 *
 	 * @since 0.3.0
@@ -241,7 +290,7 @@ final class Options {
 	 * @return string[]
 	 */
 	public static function jobs(): array {
-		return array( self::JOB_MIGRATE, self::JOB_INDEX_PART, self::JOB_REINDEX, self::JOB_IMPORT );
+		return array( self::JOB_MIGRATE, self::JOB_INDEX_PART, self::JOB_REINDEX, self::JOB_IMPORT, self::JOB_COMPOSE_PICTURE, self::JOB_PRUNE_PICTURES );
 	}
 
 	/**
@@ -252,18 +301,18 @@ final class Options {
 	 * @return string[]
 	 */
 	public static function metaKeys(): array {
-		return array( self::META_SPECS, self::META_SPEC_TABLE, self::META_TABLE_ROWS, self::META_TABLE_SEED, ...self::kitDocuments() );
+		return array( self::META_SPECS, self::META_SPEC_TABLE, self::META_LAYER, self::META_TABLE_ROWS, self::META_TABLE_SEED, ...self::kitDocuments() );
 	}
 
 	/**
-	 * The meta keys of a kit's four documents.
+	 * The meta keys of a kit's documents: the four, and the picture's from 0.7.0.
 	 *
 	 * @since 0.4.0
 	 *
 	 * @return list<string>
 	 */
 	public static function kitDocuments(): array {
-		return array( self::META_KIT_SLOTS, self::META_KIT_RULES, self::META_KIT_PRESETS, self::META_KIT_ASSEMBLY );
+		return array( self::META_KIT_SLOTS, self::META_KIT_RULES, self::META_KIT_PRESETS, self::META_KIT_ASSEMBLY, self::META_KIT_PICTURE );
 	}
 
 	/**
@@ -279,18 +328,31 @@ final class Options {
 			'rules'    => self::META_KIT_RULES,
 			'presets'  => self::META_KIT_PRESETS,
 			'assembly' => self::META_KIT_ASSEMBLY,
+			'picture'  => self::META_KIT_PICTURE,
 		);
 	}
 
 	/**
-	 * Every class the plugin puts in a shop's carts.
+	 * Every class docs/HOOKS.md promises a theme, in the cart and in the builder.
 	 *
 	 * @since 0.6.0
 	 *
 	 * @return list<string>
 	 */
 	public static function cssClasses(): array {
-		return array( self::CLASS_KIT, self::CLASS_PART, self::CLASS_QUANTITY, self::CLASS_EDIT );
+		return array(
+			self::CLASS_KIT,
+			self::CLASS_PART,
+			self::CLASS_QUANTITY,
+			self::CLASS_EDIT,
+			self::CLASS_ASSEMBLY,
+			self::CLASS_PART_SLOT,
+			self::CLASS_CART_PICTURE,
+			self::CLASS_PICTURE_ITEM,
+			self::CLASS_LAYER,
+			self::CLASS_BAR_PHOTO,
+			self::CLASS_REVIEW_ITEM,
+		);
 	}
 
 	/**

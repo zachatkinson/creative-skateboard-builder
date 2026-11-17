@@ -5,4 +5,4 @@ set -uo pipefail
 cd "$(dirname "$0")/.."
 trap 'bash tools/yoast.sh down' EXIT
 bash tools/yoast.sh up || exit 1
-CBUILD_YOAST=1 bash tools/integration.sh --filter "KitYoastTest|BuilderYoastTest" "$@"
+CBUILD_YOAST=1 bash tools/integration.sh --filter "KitYoastTest|BuilderYoastTest|ShareCardYoastTest" "$@"

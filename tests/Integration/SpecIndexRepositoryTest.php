@@ -68,6 +68,24 @@ final class SpecIndexRepositoryTest extends IntegrationTestCase {
 		self::assertTrue( $specs->has( SpecKey::SpacersBuiltIn ), 'a flag that says no is still a spec the part has' );
 	}
 
+	public function test_the_same_parts_read_again_in_a_request_cost_no_query_until_the_index_is_written(): void {
+		$index = $this->index();
+		$at    = new DateTimeImmutable( '2026-11-15 12:00:00', new DateTimeZone( 'UTC' ) );
+		$index->replace( 41, array( new IndexedSpec( SpecKey::AxleWidth, '8.5000', Origin::Field ) ), $at );
+		$index->replace( 42, array( new IndexedSpec( SpecKey::WheelDiameter, '54.0000', Origin::Field ) ), $at );
+		self::assertTrue( $index->specsOf( 41, 42 )[41]->has( SpecKey::AxleWidth ) );
+
+		$queries = get_num_queries();
+		$again   = $index->specsOf( 42, 41 );
+		self::assertSame( $queries, get_num_queries(), 'the cart\'s second read of a build\'s parts, in any order (D-202)' );
+		self::assertSame( array( 41, 42 ), array_keys( $again ) );
+
+		$index->replace( 41, array( new IndexedSpec( SpecKey::AxleWidth, '8.0000', Origin::Field ) ), $at );
+		self::assertSame( 80000, $index->specsOf( 41, 42 )[41]->measure( SpecKey::AxleWidth )?->tenThousandths, 'a write reads the index again' );
+		$index->forget( 42 );
+		self::assertArrayNotHasKey( 42, $index->specsOf( 41, 42 ), 'and so does a part forgotten' );
+	}
+
 	public function test_a_row_this_version_cannot_read_is_passed_over(): void {
 		global $wpdb;
 		$index = $this->index();

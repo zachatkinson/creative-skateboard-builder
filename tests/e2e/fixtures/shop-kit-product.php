@@ -18,6 +18,8 @@ while ( have_posts() ) :
 		.kb-row-layout-wrap { max-width: 1290px; margin-inline: auto; }
 		.kt-row-column-wrap { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 2rem; }
 		@media (max-width: 767px) { .kt-row-column-wrap.kt-mobile-layout-row { grid-template-columns: minmax(0, 1fr); } }
+		/* The buy box's own rule, by its ID class, as Cowork's check of 0.6.0 quotes it (M6-release-check.md, item 2). */
+		.kadence-column192_buy { max-width: 560px; margin-left: auto; margin-right: auto; }
 	</style>
 	<div class="kb-row-layout-wrap kb-row-layout-id192_pdp-b alignnone wp-block-kadence-rowlayout">
 		<div class="kt-row-column-wrap kt-has-2-columns kt-row-layout-equal kt-tab-layout-inherit kt-mobile-layout-row kt-row-valign-top">

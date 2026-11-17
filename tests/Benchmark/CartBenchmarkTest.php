@@ -43,7 +43,7 @@ final class CartBenchmarkTest extends CartTestCase {
 	 * The queries a request may ask. These do not move with the machine.
 	 */
 	private const QUERIES = array(
-		'add'     => 54,
+		'add'     => 58,
 		'read'    => 30,
 		'session' => 1,
 	);

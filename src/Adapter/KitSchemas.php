@@ -17,7 +17,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 /**
  * Checks a kit's document against its JSON Schema in `schema/`, with WordPress's own validator. The schema says
- * what a document may hold; the domain then says whether the four agree with each other.
+ * what a document may hold; the domain then says whether they agree with each other.
  *
  * @since 0.4.0
  */
@@ -31,6 +31,7 @@ final class KitSchemas implements DocumentSchemas {
 		'rules'    => 'kit-rules.json',
 		'presets'  => 'kit-presets.json',
 		'assembly' => 'kit-assembly.json',
+		'picture'  => 'kit-picture.json',
 	);
 
 	/**

@@ -9,6 +9,8 @@ declare( strict_types=1 );
 
 namespace CreativeBranding\SkateboardBuilder\Domain\Kit;
 
+use CreativeBranding\SkateboardBuilder\Domain\Picture\PictureSettings;
+
 /**
  * What the owner set up on a kit's Build tab, as the domain reads it: the slots, the rules, the presets and assembly
  * (spec: Data model, the kit). Built from the four JSON documents once the edge has validated their shape.
@@ -23,15 +25,16 @@ final readonly class Kit {
 	/**
 	 * Constructor.
 	 *
-	 * @param Slots        $slots    The slots, in step order.
-	 * @param RuleSettings $rules    Which rules run, and their settings.
-	 * @param list<Preset> $presets  The ready builds.
-	 * @param Assembly     $assembly Assembly's settings.
+	 * @param Slots           $slots    The slots, in step order.
+	 * @param RuleSettings    $rules    Which rules run, and their settings.
+	 * @param list<Preset>    $presets  The ready builds.
+	 * @param Assembly        $assembly Assembly's settings.
+	 * @param PictureSettings $picture  The picture's settings (from 0.7.0).
 	 */
-	private function __construct( public Slots $slots, public RuleSettings $rules, public array $presets, public Assembly $assembly ) {}
+	private function __construct( public Slots $slots, public RuleSettings $rules, public array $presets, public Assembly $assembly, public PictureSettings $picture ) {}
 
 	/**
-	 * From the kit's four documents.
+	 * From the kit's documents.
 	 *
 	 * @since 0.2.0
 	 *
@@ -39,10 +42,11 @@ final readonly class Kit {
 	 * @param mixed $rules    The decoded `_cbuild_rules` document.
 	 * @param mixed $presets  The decoded `_cbuild_presets` document.
 	 * @param mixed $assembly The decoded `_cbuild_assembly` document.
+	 * @param mixed $picture  The decoded `_cbuild_picture` document, from 0.7.0; null for a kit that has none.
 	 *
-	 * @throws InvalidDocument When a document is not valid, or a preset names a slot the kit lacks or leaves a required one empty.
+	 * @throws InvalidDocument When a document is not valid, a preset names a slot the kit lacks or leaves a required one empty.
 	 */
-	public static function fromDocuments( mixed $slots, mixed $rules, mixed $presets, mixed $assembly ): self {
+	public static function fromDocuments( mixed $slots, mixed $rules, mixed $presets, mixed $assembly, mixed $picture = null ): self {
 		$kitSlots = Slots::fromDocument( $slots );
 		$ready    = array();
 		foreach ( Fields::document( $presets )->rows( 'presets', self::MAX_PRESETS ) as $row ) {
@@ -61,6 +65,9 @@ final readonly class Kit {
 			}
 			$ready[] = $preset;
 		}
-		return new self( $kitSlots, RuleSettings::fromDocument( $rules ), $ready, Assembly::fromDocument( $assembly ) );
+		// The picture's order passes over a slot the kit no longer has: removing a slot must not leave a kit that
+		// no shopper can open for want of a picture setting (D-192).
+		$drawn = PictureSettings::fromDocument( $picture )->only( ...array_map( static fn( Slot $slot ): string => $slot->key, $kitSlots->all() ) );
+		return new self( $kitSlots, RuleSettings::fromDocument( $rules ), $ready, Assembly::fromDocument( $assembly ), $drawn );
 	}
 }

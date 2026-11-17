@@ -176,4 +176,35 @@ final class FakeQueue implements Queue {
 		$this->since = $since;
 		return $this->failures;
 	}
+
+	/**
+	 * How many distinct actions of a hook wait, up to a limit.
+	 *
+	 * @param string $hook Hook.
+	 * @param int    $upTo The most to count.
+	 */
+	public function pending( string $hook, int $upTo ): int {
+		return min( max( 0, $upTo ), count( array_filter( $this->distinct, static fn( array $queued ): bool => $hook === $queued[0] ) ) );
+	}
+
+	/**
+	 * What recurringUnique() scheduled, by hook: when first, and how far apart.
+	 *
+	 * @var array<string, array{int, int}>
+	 */
+	public array $recurring = array();
+
+	/**
+	 * Schedule a recurring action, unless one is.
+	 *
+	 * @param int    $first    When first.
+	 * @param int    $interval How far apart.
+	 * @param string $hook     Hook.
+	 */
+	public function recurringUnique( int $first, int $interval, string $hook ): void {
+		if ( ! isset( $this->pending[ $hook ] ) ) {
+			$this->recurring[ $hook ] = array( $first, $interval );
+			$this->pending[ $hook ]   = true;
+		}
+	}
 }

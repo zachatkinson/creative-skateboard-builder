@@ -14,6 +14,7 @@ use CreativeBranding\SkateboardBuilder\Domain\Fit\Problem;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\SlotKey;
 use CreativeBranding\SkateboardBuilder\Service\State;
 use CreativeBranding\SkateboardBuilder\Support\Cast;
+use CreativeBranding\SkateboardBuilder\Support\Options;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -33,6 +34,21 @@ if ( ! defined( 'ABSPATH' ) ) {
  * @since 0.6.0
  */
 final class BuilderView {
+
+	/**
+	 * The board's height in the picture: at most this many CSS pixels (36rem), from a window this tall, and below
+	 * that this share of the window's height, in vh. The stylesheet's `--cbuild-board-size` is the same.
+	 */
+	private const int BOARD_MOST = 576;
+
+	private const int BOARD_TALL = 960;
+
+	private const int BOARD_SHARE = 60;
+
+	/**
+	 * The board's height in the phone bar, in CSS pixels: the bar's target, `--cbuild-target`'s 2.75rem.
+	 */
+	private const int BAR_SIZE = 44;
 
 	/**
 	 * The step's form's ID, by which the phone bar's button sends it. A page holds one builder.
@@ -63,10 +79,7 @@ final class BuilderView {
 	 */
 	public function of( State $state, array $answer, BuildLink $link, string $base, array $steps, ?BuildProblem $stopped ): array {
 		$slots = $state->kit->slots;
-		$url   = static function ( BuildLink $to ) use ( $base, $slots ): string {
-			$query = $to->query( $slots );
-			return array() === $query ? $base : $base . ( str_contains( $base, '?' ) ? '&' : '?' ) . http_build_query( array( BuildLink::PARAM => $query ) );
-		};
+		$url   = static fn ( BuildLink $to ): string => $to->address( $base, $slots );
 		// The picks as the address has them, and as the total counts them: a slot that starts on a part counts it.
 		$counted = array();
 		$lines   = array();
@@ -169,23 +182,28 @@ final class BuilderView {
 			'step'      => $step,
 			'changes'   => $this->changes( $state, $changes, $link, $lines, $label ),
 			'summary'   => $summary,
-			'bar'       => self::bar( $summary, $step, $shown, $review, $panel, Cast::map( Cast::items( $picture['items'] ?? null )[0] ?? null ), $state->id ),
+			'bar'       => self::bar( $summary, $step, $shown, $review, $panel, Cast::map( Cast::items( $picture['items'] ?? null )[0] ?? null ), $state->id, self::board( $picture, $state->id, self::BAR_SIZE ) ),
 			'picture'   => array(
 				'heading'     => __( 'What is in the box', 'creative-skateboard-builder' ),
 				'description' => Cast::str( $picture['description'] ?? null ),
 				// With nothing picked, the summary says so; the picture keeps quiet rather than say it twice.
 				'captioned'   => array() !== Cast::items( $picture['items'] ?? null ),
+				'board'       => self::board( $picture, $state->id, null ),
 				'items'       => array_map(
 					static function ( mixed $item, int $at ) use ( $state ): array {
-						$item = Cast::map( $item );
+						$item  = Cast::map( $item );
+						$drawn = Cast::bool( $item['drawn'] ?? null );
 						return array(
 							'key'      => Cast::str( $item['slot'] ?? null ),
-							'classes'  => self::flagged( array( 'cbuild-picture__item' ), $state->id, Cast::str( $item['slot'] ?? null ), Cast::int( $item['part'] ?? null ) ),
+							'classes'  => self::flagged( array( Options::CLASS_PICTURE_ITEM ), $state->id, Cast::str( $item['slot'] ?? null ), Cast::int( $item['part'] ?? null ) ),
 							'label'    => Cast::str( $item['label'] ?? null ),
 							'name'     => Cast::str( $item['name'] ?? null ),
-							// The first, the deck, is the page's largest paint (spec: The picture); the rest wait.
-							'loading'  => 0 === $at ? 'eager' : 'lazy',
-							'priority' => 0 === $at ? 'high' : 'auto',
+							// A part the board draws has no labelled photo beside it (spec: The picture).
+							'drawn'    => $drawn,
+							// The first, the deck, is the page's largest paint (spec: The picture); the rest wait. A
+							// drawn deck's photo is hidden, and a hidden eager image is still fetched, so it waits too.
+							'loading'  => 0 === $at && ! $drawn ? 'eager' : 'lazy',
+							'priority' => 0 === $at && ! $drawn ? 'high' : 'auto',
 						) + self::image( $item['image'] ?? null );
 					},
 					Cast::items( $picture['items'] ?? null ),
@@ -209,19 +227,27 @@ final class BuilderView {
 	 * @param bool                 $panel   Whether the change panel is shown.
 	 * @param array<string, mixed> $first   The picture's first part, if it has one: its slot, its ID and its photo.
 	 * @param int                  $kit     The kit product's ID.
-	 * @return array{shown: bool, photo: array{hasImage: bool, src: string, srcset: string, sizes: string, width: int, height: int, classes: string}, picture: string, total: string, parts: string, next: array{shown: bool, onStep: bool, onReview: bool, text: string, form: string, name: string, value: string, disabled: bool}}
+	 * @param array<string, mixed> $board   The board, drawn at the bar's size.
+	 * @return array{shown: bool, seen: bool, board: array<string, mixed>, photo: array{hasImage: bool, src: string, srcset: string, sizes: string, width: int, height: int, classes: string}, picture: string, total: string, amount: string, parts: string, hide: string, next: array{shown: bool, onStep: bool, onReview: bool, text: string, form: string, name: string, value: string, disabled: bool}}
 	 */
-	private static function bar( array $summary, array $step, array $shown, bool $review, bool $panel, array $first, int $kit ): array {
-		$next = Cast::map( $step['next'] ?? null );
+	private static function bar( array $summary, array $step, array $shown, bool $review, bool $panel, array $first, int $kit, array $board ): array {
+		$next  = Cast::map( $step['next'] ?? null );
+		$photo = self::image( $first['image'] ?? null );
 		return array(
 			'shown'   => true,
-			// A small picture of the board: for now the picture's first photo, the deck's, which links to the picture.
-			'photo'   => self::image( $first['image'] ?? null ) + array(
-				'classes' => self::flagged( array( 'cbuild-bar__photo' ), $kit, Cast::str( $first['slot'] ?? null ), Cast::int( $first['part'] ?? null ) ),
+			// A small picture of the board, which links to the picture: the board itself once it draws a layer, and
+			// until then the picture's first photo, the deck's.
+			'seen'    => Cast::bool( $board['shown'] ?? null ) || $photo['hasImage'],
+			'board'   => $board,
+			'photo'   => $photo + array(
+				'classes' => self::flagged( array( Options::CLASS_BAR_PHOTO ), $kit, Cast::str( $first['slot'] ?? null ), Cast::int( $first['part'] ?? null ) ),
 			),
 			'picture' => __( 'See the picture', 'creative-skateboard-builder' ),
 			/* translators: %s: the build's total, such as $184.00. */
 			'total'   => sprintf( __( 'Total: %s', 'creative-skateboard-builder' ), Cast::str( $summary['total'] ?? null ) ),
+			// The amount alone is shown and the sentence read: beside the board's picture "Total:" broke the line at
+			// 412 pixels, and the bar grew under the thumb (D-207).
+			'amount'  => Cast::str( $summary['total'] ?? null ),
 			// The disclosure says what it does, open or shut (Cowork minor 18); the stylesheet shows the one that applies.
 			'parts'   => __( 'Show the parts', 'creative-skateboard-builder' ),
 			'hide'    => __( 'Hide the parts', 'creative-skateboard-builder' ),
@@ -359,6 +385,73 @@ final class BuilderView {
 			'width'    => Cast::int( $image['width'] ?? null ),
 			'height'   => Cast::int( $image['height'] ?? null ),
 		);
+	}
+
+	/**
+	 * The board in the page (spec: The picture; D-195): its layers from the bottom, each placed as a share of the
+	 * board, so the stylesheet sets one size and the layers keep to scale. The layout's numbers are millimetres, so a
+	 * layer's share of the board's height says how wide it shows, which is its `sizes`. The board is drawn at most
+	 * 36rem tall, and 60 % of the window's height below that (the stylesheet's `--cbuild-board-size`); in the bar, at
+	 * the bar's own size. The deck, the board's largest paint, is fetched first.
+	 *
+	 * @param array<string, mixed> $picture The answer's picture.
+	 * @param int                  $kit     The kit product's ID.
+	 * @param int|null             $fixed   The board's height in CSS pixels, or null for the picture's own.
+	 * @return array{shown: bool, style: string, layers: list<array<string, mixed>>}
+	 */
+	private static function board( array $picture, int $kit, ?int $fixed ): array {
+		$width  = Cast::int( $picture['width'] ?? null );
+		$height = Cast::int( $picture['height'] ?? null );
+		$layers = array();
+		$seen   = array();
+		foreach ( $height > 0 && $width > 0 ? Cast::items( $picture['layers'] ?? null ) : array() as $layer ) {
+			$layer         = Cast::map( $layer );
+			$slot          = Cast::str( $layer['slot'] ?? null );
+			$image         = Cast::map( $layer['image'] ?? null );
+			$share         = Cast::int( $layer['width'] ?? null ) / $height;
+			$sizes         = null === $fixed
+				? sprintf( '(min-height: %1$dpx) %2$dpx, %3$svh', self::BOARD_TALL, (int) ceil( self::BOARD_MOST * $share ), self::decimal( self::BOARD_SHARE * $share ) )
+				: ceil( $fixed * $share ) . 'px';
+			$seen[ $slot ] = ( $seen[ $slot ] ?? 0 ) + 1;
+			$layers[]      = array(
+				'key'      => $slot . '-' . $seen[ $slot ],
+				'classes'  => self::flagged( array( Options::CLASS_LAYER, Options::CLASS_LAYER . '--' . $slot ), $kit, $slot, Cast::int( $layer['part'] ?? null ) ),
+				'style'    => sprintf(
+					'--cbuild-layer-x:%1$s%%;--cbuild-layer-y:%2$s%%;--cbuild-layer-width:%3$s%%;--cbuild-layer-height:%4$s%%',
+					self::decimal( 100 * Cast::int( $layer['x'] ?? null ) / $width ),
+					self::decimal( 100 * Cast::int( $layer['y'] ?? null ) / $height ),
+					self::decimal( 100 * Cast::int( $layer['width'] ?? null ) / $width ),
+					self::decimal( 100 * Cast::int( $layer['height'] ?? null ) / $height )
+				),
+				'src'      => Cast::str( $image['src'] ?? null ),
+				'width'    => Cast::int( $image['width'] ?? null ),
+				'height'   => Cast::int( $image['height'] ?? null ),
+				'sizes'    => $sizes,
+				'sources'  => array_map(
+					static fn( mixed $source ): array => array(
+						'type'   => Cast::str( Cast::map( $source )['type'] ?? null ),
+						'srcset' => Cast::str( Cast::map( $source )['srcset'] ?? null ),
+						'sizes'  => $sizes,
+					),
+					Cast::items( $image['sources'] ?? null )
+				),
+				'priority' => SlotKey::DECK === $slot && null === $fixed ? 'high' : 'auto',
+			);
+		}
+		return array(
+			'shown'  => array() !== $layers,
+			'style'  => array() === $layers ? '' : '--cbuild-board-ratio:' . $width . ' / ' . $height,
+			'layers' => $layers,
+		);
+	}
+
+	/**
+	 * A number with at most four decimals, a point whatever the locale, for a style or a size.
+	 *
+	 * @param float $number The number.
+	 */
+	private static function decimal( float $number ): string {
+		return rtrim( rtrim( sprintf( '%.4F', $number ), '0' ), '.' );
 	}
 
 	/**
@@ -996,9 +1089,10 @@ final class BuilderView {
 			'empty'      => array() === $rows,
 			'emptyText'  => __( 'Nothing is chosen yet.', 'creative-skateboard-builder' ),
 			'assembly'   => $assembly,
+			// A button in a GET form, not a link (spec: SEO and sharing): a crawler never enters a state.
 			'toggle'     => array(
-				'url'  => $url( $link->assembled( ! $on ) ),
-				'text' => $on ? __( 'Remove assembly', 'creative-skateboard-builder' ) : __( 'Add assembly', 'creative-skateboard-builder' ),
+				'fields' => self::flat( $link->assembled( ! $on )->query( $state->kit->slots ) ),
+				'text'   => $on ? __( 'Remove assembly', 'creative-skateboard-builder' ) : __( 'Add assembly', 'creative-skateboard-builder' ),
 			),
 			'hasSaved'   => Cast::int( $saved['amount'] ?? null ) > 0,
 			/* translators: %s: an amount of money, such as $12.00. */
@@ -1038,7 +1132,7 @@ final class BuilderView {
 		}
 		$items = array();
 		foreach ( $steps as $slot ) {
-			$own     = isset( $wrong[ $slot ] ) ? array( 'cbuild-review__item', 'cbuild-review__item--wrong' ) : array( 'cbuild-review__item' );
+			$own     = isset( $wrong[ $slot ] ) ? array( Options::CLASS_REVIEW_ITEM, Options::CLASS_REVIEW_ITEM . '--wrong' ) : array( Options::CLASS_REVIEW_ITEM );
 			$items[] = array(
 				'key'     => $slot,
 				'classes' => isset( $counted[ $slot ] ) ? self::flagged( $own, $state->id, $slot, $counted[ $slot ] ) : implode( ' ', $own ),

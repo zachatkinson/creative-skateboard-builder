@@ -47,7 +47,12 @@ if ( ! defined( 'ABSPATH' ) ) {
 				<?php endif; ?>
 			>
 				<?php foreach ( $cbuild_section['groups'] as $cbuild_group ) : ?>
-					<fieldset id="<?php echo esc_attr( $cbuild_group['id'] ); ?>"<?php echo $cbuild_group['moves'] ? ' class="cbuild-kit-row"' : ''; ?>>
+					<?php
+					// A group with no legend of its own is named by its section's heading: a plain box, not a fieldset
+					// a screen reader announces with no name (Cowork's M7 review, M5).
+					$cbuild_tag = '' === $cbuild_group['legend'] ? 'div' : 'fieldset';
+					?>
+					<<?php echo esc_html( $cbuild_tag ); ?> id="<?php echo esc_attr( $cbuild_group['id'] ); ?>" class="<?php echo esc_attr( trim( 'cbuild-kit-group ' . ( $cbuild_group['moves'] ? 'cbuild-kit-row' : '' ) ) ); ?>">
 						<?php if ( '' !== $cbuild_group['legend'] ) : ?>
 							<legend id="<?php echo esc_attr( $cbuild_group['id'] . '-legend' ); ?>"><?php echo esc_html( $cbuild_group['legend'] ); ?></legend>
 						<?php endif; ?>
@@ -198,7 +203,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 						<?php if ( '' !== $cbuild_group['fold'] ) : ?>
 							</details>
 						<?php endif; ?>
-					</fieldset>
+					</<?php echo esc_html( $cbuild_tag ); ?>>
 				<?php endforeach; ?>
 			</div>
 		</div>

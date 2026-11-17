@@ -48,6 +48,25 @@ final class ContainerTest extends TestCase {
 		}
 	}
 
+	// D-208: the classes an earlier release's container built keep that release's constructors, and this container
+	// gives each what 0.7.0 adds to it; a service asked for by its port gets it too.
+	public function test_each_class_an_earlier_release_built_gets_what_this_release_adds(): void {
+		$container = new Container();
+		foreach (
+			array(
+				array( \CreativeBranding\SkateboardBuilder\Service\IndexJobs::class, 'renditions', \CreativeBranding\SkateboardBuilder\Service\PartRenditions::class ),
+				array( \CreativeBranding\SkateboardBuilder\Port\Reindex::class, 'renditions', \CreativeBranding\SkateboardBuilder\Service\PartRenditions::class ),
+				array( \CreativeBranding\SkateboardBuilder\Service\CatalogueCheck::class, 'layers', \CreativeBranding\SkateboardBuilder\Port\LayerImages::class ),
+				array( \CreativeBranding\SkateboardBuilder\Front\StateAnswer::class, 'artwork', \CreativeBranding\SkateboardBuilder\Service\LayerArtwork::class ),
+				array( \CreativeBranding\SkateboardBuilder\Admin\PartSpecsPanel::class, 'images', \CreativeBranding\SkateboardBuilder\Port\LayerImages::class ),
+			) as [ $id, $property, $type ]
+		) {
+			$service = $container->get( $id );
+			self::assertInstanceOf( $type, ( new \ReflectionProperty( $service, $property ) )->getValue( $service ), $id );
+		}
+		self::assertNull( ( new \ReflectionProperty( \CreativeBranding\SkateboardBuilder\Front\StateAnswer::class, 'artwork' ) )->getValue( ( new \ReflectionClass( \CreativeBranding\SkateboardBuilder\Front\StateAnswer::class ) )->newInstanceWithoutConstructor() ), 'none without the container' );
+	}
+
 	public function test_set_replaces_a_service_and_has_reports_it(): void {
 		$container = new Container();
 		self::assertFalse( $container->has( Clock::class ) );
@@ -71,7 +90,7 @@ final class ContainerTest extends TestCase {
 	public function test_the_registry_is_built_from_its_classes(): void {
 		$registry = ( new Container() )->get( MigrationRegistry::class );
 		$keys     = $registry->keys();
-		self::assertSame( array( 'schema_1', 'noop_1', 'spec_tables_1', 'schema_2', 'reserved_slot_keys_1' ), $keys );
+		self::assertSame( array( 'schema_1', 'noop_1', 'spec_tables_1', 'schema_2', 'reserved_slot_keys_1', 'spec_tables_2' ), $keys );
 	}
 
 	public function test_an_unknown_service_throws(): void {
@@ -107,7 +126,7 @@ final class ContainerTest extends TestCase {
 		$container = new Container();
 		$container->set( MigrationStore::class, new InMemoryMigrationStore() );
 		$hookables = $container->hookablesFor( Scope::Everywhere );
-		self::assertCount( 18, $hookables, 'the install\'s, the index\'s, the cards\', the spec tables\', the import\'s, the kit\'s, the cart\'s seven, the order\'s, the builder\'s and the three abilities\'' );
+		self::assertCount( 20, $hookables, 'the install\'s, the index\'s, the cards\', the spec tables\', the import\'s, the picture\'s, the kit\'s, the cart\'s eight, the order\'s, the builder\'s and the three abilities\'' );
 		self::assertContainsOnlyInstancesOf( Hookable::class, $hookables );
 	}
 
@@ -124,12 +143,12 @@ final class ContainerTest extends TestCase {
 	// Claude in Cowork's review of milestone 3, minor 9: mutation testing left the plugin's own scopes unpinned.
 	public function test_each_scope_builds_its_own_hookables_and_no_others(): void {
 		$scopes = array(
-			'Everywhere' => array( 'Hooks\\InstallHooks', 'Hooks\\IndexHooks', 'Hooks\\CardHooks', 'Hooks\\SpecTableHooks', 'Hooks\\ImportHooks', 'Hooks\\KitHooks', 'Cart\\CartHooks', 'Cart\\LineHooks', 'Cart\\PriceHooks', 'Cart\\ShowHooks', 'Cart\\ShipHooks', 'Cart\\ExpressHooks', 'Cart\\AgainHooks', 'Order\\OrderHooks', 'Front\\PageHooks', 'Abilities\\CatalogueCheckAbility', 'Abilities\\CheckBuildAbility', 'Abilities\\PriceBuildAbility' ),
+			'Everywhere' => array( 'Hooks\\InstallHooks', 'Hooks\\IndexHooks', 'Hooks\\CardHooks', 'Hooks\\SpecTableHooks', 'Hooks\\ImportHooks', 'Hooks\\PictureHooks', 'Hooks\\KitHooks', 'Cart\\CartHooks', 'Cart\\LineHooks', 'Cart\\PriceHooks', 'Cart\\ShowHooks', 'Cart\\ShipHooks', 'Cart\\ExpressHooks', 'Cart\\AgainHooks', 'Cart\\ThumbnailHooks', 'Order\\OrderHooks', 'Front\\PageHooks', 'Abilities\\CatalogueCheckAbility', 'Abilities\\CheckBuildAbility', 'Abilities\\PriceBuildAbility' ),
 			'Admin'      => array( 'Admin\\SettingsHooks', 'Admin\\PartSpecsHooks', 'Admin\\BuildTabHooks', 'Admin\\BuilderHooks', 'Health\\SiteHealth' ),
 			'Cli'        => array( 'Hooks\\CliHooks', 'Health\\SiteHealth' ),
 			'Cron'       => array( 'Health\\SiteHealth' ),
 			'Rest'       => array( 'Health\\SiteHealth', 'Rest\\StateRoute' ),
-			'Storefront' => array( 'Front\\SeoHooks' ),
+			'Storefront' => array( 'Front\\SeoHooks', 'Front\\ShareHooks' ),
 		);
 		self::assertSame( array_column( Scope::cases(), 'name' ), array_keys( $scopes ), 'every scope' );
 		foreach ( Scope::cases() as $scope ) {

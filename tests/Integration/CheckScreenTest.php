@@ -14,6 +14,7 @@ use CreativeBranding\SkateboardBuilder\Admin\CheckScreen;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\SpecTable;
 use CreativeBranding\SkateboardBuilder\Port\ImportStore;
 use CreativeBranding\SkateboardBuilder\Port\Kits;
+use CreativeBranding\SkateboardBuilder\Port\LayerImages;
 use CreativeBranding\SkateboardBuilder\Port\PartCatalogue;
 use CreativeBranding\SkateboardBuilder\Port\Queue;
 use CreativeBranding\SkateboardBuilder\Port\Reindex;
@@ -29,6 +30,7 @@ use CreativeBranding\SkateboardBuilder\Tests\Support\Domain\KitDocuments;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Domain\Parts;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\InMemoryKits;
 use CreativeBranding\SkateboardBuilder\Tests\Support\IntegrationTestCase;
+use CreativeBranding\SkateboardBuilder\Tests\Support\LayerFiles;
 
 /**
  * Spec, Admin, Catalogue check: parts whose sources disagree, and for each kit the parts that lack a spec, presets
@@ -55,7 +57,7 @@ final class CheckScreenTest extends IntegrationTestCase {
 	 */
 	private function screen( ?Kits $kits = null ): CheckScreen {
 		$kits ??= $this->service( Kits::class );
-		$check  = new CatalogueCheck( $kits, $this->service( PartCatalogue::class ), $this->service( SpecIndexer::class ), $this->service( ReindexStore::class ), $this->service( ImportStore::class ), $this->service( Queue::class ) );
+		$check  = ( new CatalogueCheck( $kits, $this->service( PartCatalogue::class ), $this->service( SpecIndexer::class ), $this->service( ReindexStore::class ), $this->service( ImportStore::class ), $this->service( Queue::class ) ) )->withLayers( $this->service( LayerImages::class ) );
 		return new CheckScreen( $check, $kits, $this->service( Reindex::class ) );
 	}
 
@@ -224,6 +226,93 @@ final class CheckScreenTest extends IntegrationTestCase {
 		self::assertStringContainsString( 'The preset &quot;Street &lt;i&gt;&quot; names it for the slot &quot;deck&quot;, and it no longer fits the preset&#039;s other parts.', $page );
 		// A part that is not a product of this shop is named by its ID, with no link.
 		self::assertMatchesRegularExpression( '#<td>\s*Product 100\s*</td>#', $page );
+	}
+
+	/**
+	 * A simple product, with this layer image or none.
+	 *
+	 * @param int $layer An attachment's ID, or 0.
+	 */
+	private static function part( int $layer ): int {
+		$product = new \WC_Product_Simple();
+		$product->set_regular_price( '60' );
+		if ( $layer > 0 ) {
+			$product->update_meta_data( Options::META_LAYER, (string) $layer );
+		}
+		return $product->save();
+	}
+
+	public function test_a_drawn_slots_part_with_no_layer_image_is_listed_with_a_link_to_its_layer_field(): void {
+		$drawn   = self::part( LayerFiles::attachment( 420, 1626 ) );
+		$bare    = self::part( 0 );
+		$gone    = LayerFiles::attachment( 420, 1626 );
+		$deleted = self::part( $gone );
+		wp_delete_attachment( $gone, true );
+
+		$parent = new \WC_Product_Variable();
+		$parent->update_meta_data( Options::META_LAYER, (string) LayerFiles::attachment( 70, 110 ) );
+		$parent->save();
+		$variation = new \WC_Product_Variation();
+		$variation->set_parent_id( $parent->get_id() );
+		$variation->set_regular_price( '30' );
+		$variation->save();
+
+		$kits = new InMemoryKits();
+		$kits->add(
+			5,
+			KitDocuments::kit(),
+			array(
+				'deck'     => array( Parts::of( array( 'deck_width' => '8.25' ), $drawn ), Parts::of( array( 'deck_width' => '8.5' ), $bare ) ),
+				'trucks'   => array( Parts::of( array( 'axle_width' => '8.25' ), $deleted ) ),
+				'wheels'   => array( Parts::of( array( 'wheel_diameter' => '54', 'set_size' => 4 ), $variation->get_id() ) ),
+				'bearings' => array( Builds::bearings() ),
+				'hardware' => array( Builds::bolts() ),
+			),
+			'Complete'
+		);
+
+		$this->as( 'shop_manager' );
+		$page = self::checked( $this->screen( $kits ) );
+		self::assertStringContainsString( 'It has no layer image, so the picture shows its labelled photo in the slot &quot;deck&quot;. Add one on its Part specs, under Picture.', $page );
+		self::assertStringContainsString( 'It has no layer image, so the picture shows its labelled photo in the slot &quot;trucks&quot;.', $page, 'an image no longer in the Media Library is none' );
+		self::assertStringContainsString( esc_url( (string) get_edit_post_link( $bare, 'raw' ) . '#cbuild-spec-layer' ), $page );
+		self::assertSame( 2, substr_count( $page, 'It has no layer image' ), 'a part with its own image, and a variation with its parent\'s, are not listed; bearings and hardware are not drawn' );
+		self::assertStringNotContainsString( 'slot &quot;wheels&quot;. Add one', $page );
+		self::assertGreaterThan( strrpos( $page, 'The slot &quot;risers&quot; has no parts.' ), strpos( $page, 'It has no layer image' ), 'listed after what keeps a part from being offered' );
+		// Cowork's M7 review, F4 (D-211): in a section of their own, counted by part, and not among the things to fix.
+		self::assertGreaterThan( strpos( $page, '<h3 id="cbuild-found">' ), strpos( $page, '<h3 id="cbuild-unlaid">Parts with no layer image</h3>' ) );
+		self::assertStringContainsString( '2 parts the picture draws have no layer image. Each is still offered', $page );
+		self::assertStringContainsString( 'aria-labelledby="cbuild-unlaid"', $page );
+		self::assertSame( 0, substr_count( substr( $page, 0, (int) strpos( $page, 'id="cbuild-unlaid"' ) ), 'It has no layer image' ), 'none of them among what it found to fix' );
+	}
+
+	public function test_parts_with_no_layer_image_have_their_own_list_cut_at_its_own_length(): void {
+		// Cowork's M7 review, F4: on a large catalogue, the layer lines are reached however many other findings there are.
+		$decks = array();
+		for ( $id = 900001; $id <= 900000 + CheckScreen::SHOWN + 2; $id++ ) {
+			$decks[] = Parts::of( array( 'deck_width' => '8.25' ), $id );
+		}
+		$kits = new InMemoryKits();
+		$kits->add(
+			5,
+			KitDocuments::kit(),
+			array(
+				'deck'     => $decks,
+				'trucks'   => array( Builds::truck( '149' ) ),
+				'wheels'   => array( Builds::wheel( '54' ) ),
+				'bearings' => array( Builds::bearings() ),
+				'hardware' => array( Builds::bolts() ),
+				'grip'     => array( Builds::grip() ),
+				'risers'   => array( Builds::riser( '0.125' ) ),
+			),
+			'Complete'
+		);
+		$this->as( 'shop_manager' );
+		$page    = self::checked( $this->screen( $kits ) );
+		$section = substr( $page, (int) strpos( $page, 'id="cbuild-unlaid"' ) );
+		self::assertStringContainsString( number_format_i18n( CheckScreen::SHOWN + 2 + 3 ) . ' parts the picture draws have no layer image.', $section, 'the decks, then the trucks, wheels and grip' );
+		self::assertStringContainsString( 'And 5 more.', $section );
+		self::assertSame( CheckScreen::SHOWN, substr_count( $section, 'It has no layer image' ) );
 	}
 
 	public function test_a_long_list_is_cut_and_says_how_many_more_there_are(): void {

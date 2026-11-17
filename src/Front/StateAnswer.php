@@ -12,14 +12,17 @@ namespace CreativeBranding\SkateboardBuilder\Front;
 use CreativeBranding\SkateboardBuilder\Domain\Fit\BuildProblem;
 use CreativeBranding\SkateboardBuilder\Domain\Fit\Option;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Part;
+use CreativeBranding\SkateboardBuilder\Domain\Kit\Picks;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\SlotKey;
 use CreativeBranding\SkateboardBuilder\Domain\Measure\Measure;
+use CreativeBranding\SkateboardBuilder\Domain\Picture\Layout;
 use CreativeBranding\SkateboardBuilder\Domain\Pricing\Pricer;
 use CreativeBranding\SkateboardBuilder\Domain\Rule\Finding;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\SpecKey;
 use CreativeBranding\SkateboardBuilder\Port\Kits;
 use CreativeBranding\SkateboardBuilder\Port\Money;
 use CreativeBranding\SkateboardBuilder\Port\PartCards;
+use CreativeBranding\SkateboardBuilder\Service\LayerArtwork;
 use CreativeBranding\SkateboardBuilder\Service\State;
 use CreativeBranding\SkateboardBuilder\Service\StateStep;
 
@@ -81,12 +84,41 @@ final class StateAnswer {
 	 * @since 0.4.0
 	 * @since 0.6.0 Takes what the shop says of delivery.
 	 *
-	 * @param PartCards $cards    What a card shows of a part.
-	 * @param Money     $money    Writes an amount as the shop does.
-	 * @param Kits      $kits     The shop's kits, for the currency's decimals.
-	 * @param Delivery  $delivery What the shop says of a build's delivery.
+	 * @param PartCards    $cards    What a card shows of a part.
+	 * @param Money        $money    Writes an amount as the shop does.
+	 * @param Kits         $kits     The shop's kits, for the currency's decimals.
+	 * @param Delivery     $delivery What the shop says of a build's delivery.
+	 * @param PageRenderer $renderer Draws the layout for the page.
 	 */
-	public function __construct( private PartCards $cards, private Money $money, private Kits $kits, private Delivery $delivery ) {}
+	public function __construct(
+		private PartCards $cards,
+		private Money $money,
+		private Kits $kits,
+		private Delivery $delivery,
+		private PageRenderer $renderer
+	) {}
+
+	/**
+	 * The drawn parts' layer images, since 0.7.0, given by the container through `withArtwork()`. An answer that an
+	 * earlier release's container builds, in the request that replaces that release's files with these, has none, and
+	 * draws the board with no layers and each part's labelled photo beside it (D-208).
+	 *
+	 * @var LayerArtwork|null
+	 */
+	private ?LayerArtwork $artwork = null;
+
+	/**
+	 * The same answer, drawing the parts from their layer images.
+	 *
+	 * @since 0.7.0
+	 *
+	 * @param LayerArtwork $artwork The drawn parts' layer images.
+	 */
+	public function withArtwork( LayerArtwork $artwork ): self {
+		$answer          = clone $this;
+		$answer->artwork = $artwork;
+		return $answer;
+	}
 
 	/**
 	 * The answer.
@@ -102,15 +134,11 @@ final class StateAnswer {
 		$link  ??= new BuildLink();
 		$labels  = array();
 		$current = null;
-		$counted = array();
+		$counted = $state->counted();
 		foreach ( $state->steps as $step ) {
 			$labels[ $step->slot->key ] = self::label( $step->slot->label, $step->slot->key, $state->id );
 			if ( $step->slot->key === $state->step ) {
 				$current = $step;
-			}
-			$counts = $step->counted();
-			if ( null !== $counts ) {
-				$counted[ $step->slot->key ] = $counts->part;
 			}
 		}
 		$page     = max( self::SHOWN, $link->shown );
@@ -328,7 +356,7 @@ final class StateAnswer {
 				'fee'      => $money( $state->quote->fee ),
 				'total'    => $money( $state->quote->total ),
 			),
-			'picture'  => self::picture( $state, $counted, $labels, $brands, $cards ),
+			'picture'  => $this->picture( $state, $counted, $labels, $brands, $cards ),
 			'delivery' => $this->delivery->said( $state->id, $state->quote->assembly, $state->quote->total, $decimals ),
 			'notes'    => self::notes( $state, $decimals ),
 		);
@@ -358,13 +386,15 @@ final class StateAnswer {
 	}
 
 	/**
-	 * A part's size, as the answer carries it.
+	 * A part's size, as the answer carries it, and as a share card names it (D-200).
+	 *
+	 * @since 0.7.0
 	 *
 	 * @param string $slot The slot's key.
 	 * @param Part   $part The part.
 	 * @return array{value: string, text: string}|null
 	 */
-	private static function size( string $slot, Part $part ): ?array {
+	public static function size( string $slot, Part $part ): ?array {
 		$sized = self::sized( $slot, $part );
 		return null === $sized ? null : array(
 			'value' => $sized['value'],
@@ -420,18 +450,27 @@ final class StateAnswer {
 
 	/**
 	 * What is in the box: each part the total counts, labelled with its slot, its brand and its size, with its photo,
-	 * and the build in one sentence.
+	 * and the build in one sentence. From 0.7.0 the board as well: the layout of the parts counted, with the kit's
+	 * picture settings, drawn for the page from the parts with a layer image, each of which the box then leaves out
+	 * (spec: The picture; D-195).
 	 *
 	 * @param State                                                                                                                                                                                   $state   The build's state.
 	 * @param array<string, Part>                                                                                                                                                                     $counted The part each slot counts, by slot.
 	 * @param array<string, string>                                                                                                                                                                   $labels  The slots' labels.
 	 * @param array<string, string>                                                                                                                                                                   $brands  Brands' names, by slug.
 	 * @param array<int, array{name: string, url: string, price: string, stock: string, stock_class: string, image: array{src: string, width: int, height: int, srcset: string, sizes: string}|null}> $cards The cards.
-	 * @return array{items: list<array<string, mixed>>, description: string}
+	 * @return array{items: list<array<string, mixed>>, description: string, width: int, height: int, layers: list<array<string, mixed>>}
 	 */
-	private static function picture( State $state, array $counted, array $labels, array $brands, array $cards ): array {
-		$items = array();
-		$names = array();
+	private function picture( State $state, array $counted, array $labels, array $brands, array $cards ): array {
+		$picks = Picks::none();
+		foreach ( $counted as $slot => $part ) {
+			$picks = $picks->with( $slot, $part );
+		}
+		$layout = Layout::of( $picks, $state->kit->picture );
+		$board  = $this->renderer->render( $layout, null === $this->artwork ? array() : $this->artwork->of( $layout, $counted ) );
+		$drawn  = array_column( $board['layers'], 'part', 'slot' );
+		$items  = array();
+		$names  = array();
 		foreach ( $state->quote->lines as $line ) {
 			$part    = $counted[ $line->slot ];
 			$name    = $cards[ $line->part ]['name'] ?? '';
@@ -443,6 +482,7 @@ final class StateAnswer {
 				'size'  => $size,
 				'name'  => $name,
 				'image' => $cards[ $line->part ]['image'] ?? null,
+				'drawn' => ( $drawn[ $line->slot ] ?? null ) === $line->part,
 			);
 			if ( '' !== $name ) {
 				$names[] = array( $labels[ $line->slot ], $name );
@@ -451,6 +491,9 @@ final class StateAnswer {
 		return array(
 			'items'       => $items,
 			'description' => Words::built( $names ),
+			'width'       => $board['width'],
+			'height'      => $board['height'],
+			'layers'      => $board['layers'],
 		);
 	}
 

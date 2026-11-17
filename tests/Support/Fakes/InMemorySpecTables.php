@@ -59,6 +59,25 @@ final class InMemorySpecTables implements SpecTables {
 	}
 
 	/**
+	 * The first table made from this seed.
+	 *
+	 * @param string $seed The seed.
+	 * @return array{id: int, name: string, table: SpecTable}|null
+	 */
+	public function seeded( string $seed ): ?array {
+		foreach ( $this->made as $id => $made ) {
+			if ( $seed === $made['seed'] ) {
+				return array(
+					'id'    => $id,
+					'name'  => $made['name'],
+					'table' => $made['table'],
+				);
+			}
+		}
+		return null;
+	}
+
+	/**
 	 * Every table, by ID, in the order of their names.
 	 *
 	 * @return array<int, array{name: string, table: SpecTable}>

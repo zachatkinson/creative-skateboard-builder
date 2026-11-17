@@ -15,6 +15,6 @@
 		"SCRIPT_DEBUG": true
 	},
 	"lifecycleScripts": {
-		"afterStart": "wp-env run cli --config=.wp-env.tests.json wp plugin activate woocommerce creative-skateboard-builder"
+		"afterStart": "wp-env run cli --config=.wp-env.tests.json wp plugin activate woocommerce creative-skateboard-builder && bash tools/imagick-coders.sh"
 	}
 }

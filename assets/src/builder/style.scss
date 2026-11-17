@@ -319,7 +319,10 @@
 .cbuild .cbuild-filters__option,
 .cbuild .cbuild-filters__option:hover,
 .cbuild .cbuild-filters__option:focus,
-.cbuild .cbuild-filters__option:visited {
+.cbuild .cbuild-filters__option:visited,
+.cbuild .cbuild-summary__toggle button,
+.cbuild .cbuild-summary__toggle button:hover,
+.cbuild .cbuild-summary__toggle button:focus {
 	border: 1px solid var(--cbuild-line);
 	background: transparent;
 	box-shadow: none;
@@ -328,7 +331,8 @@
 	font-weight: 400;
 }
 
-.cbuild .cbuild-filters__option:hover {
+.cbuild .cbuild-filters__option:hover,
+.cbuild .cbuild-summary__toggle button:hover {
 	border-color: var(--cbuild-text);
 }
 
@@ -449,7 +453,49 @@
 	font-size: var(--cbuild-small);
 }
 
-/* The picture, for now: what is in the box. */
+/*
+ * The picture: the board, drawn to scale from the layout (D-195), then what is in the box. The view places each layer
+ * as a share of the board, so the board sets one size: at most 36rem tall, and 60% of the window below that, which
+ * the layers' `sizes` assume. A board is the same board in either direction, so its templates give it `dir="ltr"`
+ * whatever the page's, and its layers' logical edges are its left and top. The direction is in the markup, not here:
+ * the right-to-left stylesheet wp-scripts makes with rtlcss would turn `direction: ltr` into `rtl` (D-203).
+ */
+:where(.cbuild-board) {
+	--cbuild-board-size: min(60vh, 36rem);
+
+	position: relative;
+	display: block;
+	block-size: var(--cbuild-board-size);
+	aspect-ratio: var(--cbuild-board-ratio, 1 / 4);
+	margin-inline: auto;
+	margin-block-end: var(--cbuild-gap-small);
+}
+
+:where(.cbuild-board--bar) {
+	--cbuild-board-size: 100%;
+
+	margin-block-end: 0;
+}
+
+:where(.cbuild-board__layer) {
+	position: absolute;
+	inset-block-start: var(--cbuild-layer-y);
+	inset-inline-start: var(--cbuild-layer-x);
+	inline-size: var(--cbuild-layer-width);
+	block-size: var(--cbuild-layer-height);
+}
+
+:where(.cbuild-board__image) {
+	display: block;
+	inline-size: 100%;
+	block-size: 100%;
+	object-fit: contain;
+}
+
+:where(.cbuild-picture__heading) {
+	margin: 0 0 var(--cbuild-gap-small);
+}
+
 :where(.cbuild-picture__items) {
 	display: grid;
 	grid-template-columns: repeat(auto-fill, minmax(min(100%, 7rem), 1fr));
@@ -619,6 +665,18 @@
 	}
 }
 
+:where(.cbuild-summary__assembly) {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--cbuild-gap-small);
+
+	:where(form) {
+		margin: 0;
+	}
+}
+
 :where(.cbuild-summary__name, .cbuild-summary__count) {
 	color: var(--cbuild-muted);
 }
@@ -673,13 +731,16 @@
 
 /*
  * The phone bar: at the foot of the screen while the builder is on it, and no further. Sticky, not fixed, so it
- * stops where the builder ends and never covers the theme's footer.
+ * stops where the builder ends and never covers the theme's footer. Its contents sit at its foot: where the total
+ * takes two lines, as it does at 390 pixels once the board's picture takes its place beside it, the bar grows
+ * upward and Next stays under the thumb (a press on it held as the first deck's answer came was dropped by WebKit,
+ * when Next rose by 12 pixels). At the bar's own height, foot and middle are the same place.
  */
 :where(.cbuild-bar) {
 	position: sticky;
 	inset-block-end: var(--cbuild-bar-offset, 0px);
 	z-index: 10;
-	align-items: center;
+	align-items: flex-end;
 	gap: var(--cbuild-gap-small);
 	box-sizing: border-box;
 	min-block-size: var(--cbuild-bar-height);
@@ -791,7 +852,7 @@
 		animation: cbuild-settle var(--cbuild-duration) var(--cbuild-ease);
 	}
 
-	:where(.cbuild-picture__item) {
+	:where(.cbuild-picture__item, .cbuild-board__layer) {
 		view-transition-class: cbuild-part;
 		view-transition-name: match-element;
 	}

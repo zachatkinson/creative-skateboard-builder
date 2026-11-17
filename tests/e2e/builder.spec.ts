@@ -124,6 +124,24 @@ test.describe( 'The builder without JavaScript', () => {
 		);
 	} );
 
+	// Milestone 6's audit 29: the assembly switch was a link into a state. It is a button in a GET form, so a crawler
+	// never follows it (spec: SEO and sharing), and the step stays where it was.
+	test( 'switches assembly with a button in a form, on the step it is on', async ( {
+		page,
+	} ) => {
+		await page.goto( fixture().page );
+		await expect( heading( page ) ).toHaveText( 'Step 1 of 7: Deck' );
+		const assembly = page.locator( '.cbuild-summary__assembly' );
+		await expect( assembly.locator( 'a' ) ).toHaveCount( 0 );
+		const before = ( await assembly.textContent() ) ?? '';
+		await assembly.getByRole( 'button' ).click();
+		await expect( heading( page ) ).toHaveText( 'Step 1 of 7: Deck' );
+		expect(
+			new URL( page.url() ).searchParams.has( 'cbuild[assembly]' )
+		).toBe( true );
+		await expect( assembly ).not.toHaveText( before );
+	} );
+
 	test( 'goes from a blank page to the cart, one GET form a step', async ( {
 		page,
 	} ) => {
@@ -568,6 +586,150 @@ test.describe( 'Every way in by a link', () => {
 	} );
 } );
 
+test.describe( 'The largest paint', () => {
+	// Roadmap, milestone 7, Tests that must pass: "Speed: the deck layer as the largest paint, within 2.5 s in the
+	// lab". Lighthouse holds the time (lighthouserc.cjs); this names the element, from the browser's own entry.
+	test( "is the deck's layer on a build link's review", async ( {
+		page,
+		browserName,
+	} ) => {
+		test.skip(
+			browserName === 'webkit',
+			'WebKit reports no largest-contentful-paint entries.'
+		);
+		test.skip(
+			test.info().project.name === 'no-js',
+			'The browser runs no script, so it reports nothing to read.'
+		);
+		await page.goto(
+			linkTo( {
+				deck: id( 'builder-test-deck-8-0' ),
+				trucks: id( 'builder-test-trucks-139' ),
+				wheels: id( 'builder-test-wheels-54' ),
+				step: 'review',
+			} )
+		);
+		// The last entry once the deck's layer has loaded and been painted: the largest paint so far.
+		const deck = page.locator( '.cbuild-board__layer--deck img' ).first();
+		await expect
+			.poll( () =>
+				deck.evaluate(
+					( img: HTMLImageElement ) =>
+						img.complete && img.naturalWidth > 0
+				)
+			)
+			.toBe( true );
+		// After the layer has painted, a buffered observer's first batch holds every entry so far; the last is the
+		// largest paint.
+		const largest = await page.evaluate(
+			() =>
+				new Promise< string >( ( resolve ) => {
+					requestAnimationFrame( () =>
+						requestAnimationFrame( () =>
+							new PerformanceObserver( ( list, observer ) => {
+								observer.disconnect();
+								const entries = list.getEntries() as Array<
+									PerformanceEntry & {
+										element?: Element | null;
+									}
+								>;
+								const last = entries[ entries.length - 1 ];
+								resolve(
+									last?.element?.closest(
+										'.cbuild-board__layer'
+									)?.className ??
+										String( last?.element?.tagName )
+								);
+							} ).observe( {
+								type: 'largest-contentful-paint',
+								buffered: true,
+							} )
+						)
+					);
+				} )
+		);
+		// D-204: on a phone, as in Lighthouse's lab, the deck's layer is the largest paint. On a desktop the theme's
+		// heading can be larger than the strip of board above the fold, but no other image may take the paint.
+		if ( ( page.viewportSize()?.width ?? 0 ) < 782 ) {
+			expect( largest ).toContain( 'cbuild-board__layer--deck' );
+		} else if ( ! largest.includes( 'cbuild-board__layer--deck' ) ) {
+			expect( [
+				'IMG',
+				'PICTURE',
+				'VIDEO',
+				'svg',
+				'image',
+			] ).not.toContain( largest );
+		}
+	} );
+} );
+
+test.describe( 'The board in either direction', () => {
+	// Milestone 7's plan, Internationalisation: "`rtl` asserts the layers unmirrored and the labels mirrored". The
+	// board is drawn left to right in every language, as a deck is seen from below, and its layers' edges are its left
+	// and top (D-195); the labelled photos beside it follow the page's direction.
+	test( 'draws each layer from the left in every direction, and lays the labelled photos out in the page’s', async ( {
+		page,
+	} ) => {
+		await page.goto(
+			linkTo( {
+				deck: id( 'builder-test-deck-8-0' ),
+				trucks: id( 'builder-test-trucks-139' ),
+				wheels: id( 'builder-test-wheels-54' ),
+				step: 'review',
+			} )
+		);
+		const board = page.locator( '#cbuild-picture .cbuild-board' ).first();
+		await expect( board.locator( '.cbuild-board__layer' ) ).toHaveCount(
+			7
+		);
+		const placed = await board.evaluate( ( element ) => {
+			const edge = element.getBoundingClientRect();
+			return Array.from(
+				element.querySelectorAll< HTMLElement >(
+					'.cbuild-board__layer'
+				)
+			).map( ( layer ) => ( {
+				asked: parseFloat(
+					layer.style.getPropertyValue( '--cbuild-layer-x' )
+				),
+				drawn:
+					( ( layer.getBoundingClientRect().left - edge.left ) /
+						edge.width ) *
+					100,
+			} ) );
+		} );
+		const sides = placed.map( ( layer ) => layer.asked );
+		expect(
+			Math.min( ...sides ),
+			'the wheels stand out to both sides, so a mirrored layer would be found'
+		).toBeLessThan( Math.max( ...sides ) );
+		for ( const layer of placed ) {
+			expect(
+				Math.abs( layer.drawn - layer.asked ),
+				'each layer is where its own x says, from the left'
+			).toBeLessThan( 0.5 );
+		}
+
+		const labels = page.locator(
+			'#cbuild-picture .cbuild-picture__item:visible'
+		);
+		expect( await labels.count() ).toBeGreaterThan( 1 );
+		const first = await labels.nth( 0 ).boundingBox();
+		const second = await labels.nth( 1 ).boundingBox();
+		const rtl = await page.evaluate(
+			() =>
+				getComputedStyle(
+					document.querySelector( '.cbuild' ) as Element
+				).direction === 'rtl'
+		);
+		expect(
+			( ( first?.x ?? 0 ) - ( second?.x ?? 0 ) ) * ( rtl ? 1 : -1 ),
+			'the first labelled photo starts the line on the page’s own side'
+		).toBeGreaterThan( 0 );
+	} );
+} );
+
 test.describe( 'The builder with JavaScript', () => {
 	test.beforeEach( async ( { page }, info ) => {
 		test.skip(
@@ -881,6 +1043,70 @@ test.describe( 'The builder with JavaScript', () => {
 		await expect( page ).toHaveTitle( /^Step 1 of 7: Deck - / );
 	} );
 
+	test( "swaps the deck's layer in place on a pick, says the build once, and shows a labelled photo for a part with no layer image (D-195)", async ( {
+		page,
+	} ) => {
+		const picture = page.locator( '#cbuild-picture' );
+		const deck = picture.locator( '.cbuild-board__layer--deck' );
+		const status = page.locator( '.cbuild' ).getByRole( 'status' );
+		const boxed = picture
+			.locator( '.cbuild-picture__item' )
+			.filter( { hasText: 'Deck: ' } );
+		await page
+			.getByRole( 'radio', { name: 'Choose Builder test deck 8.0' } )
+			.check();
+		await expect( deck ).toHaveCount( 1 );
+		await expect( deck.locator( 'img' ) ).toHaveAttribute(
+			'src',
+			/builder-test-deck-8-0-layer/
+		);
+		await expect( deck.locator( 'img' ) ).toHaveAttribute(
+			'fetchpriority',
+			'high'
+		);
+		await expect(
+			deck.locator( 'source[type="image/avif"]' )
+		).toHaveAttribute( 'srcset', / 407w$/ );
+		await expect( boxed ).toHaveCount( 1 );
+		await expect(
+			boxed,
+			'the deck is drawn, so its labelled photo is not shown'
+		).toBeHidden();
+		await deck.evaluate( ( element ) => {
+			( element as HTMLElement & { kept?: boolean } ).kept = true;
+		} );
+
+		await page
+			.getByRole( 'radio', { name: 'Choose Builder test deck 8.5' } )
+			.check();
+		await expect( deck.locator( 'img' ) ).toHaveAttribute(
+			'src',
+			/builder-test-deck-8-5-layer/
+		);
+		expect(
+			await deck.evaluate(
+				( element ) =>
+					( element as HTMLElement & { kept?: boolean } ).kept ===
+					true
+			),
+			'the same layer, swapped in place'
+		).toBe( true );
+		await expect( status ).toContainText( 'Builder test deck 8.5' );
+		expect(
+			( await status.textContent() )?.split( 'The build so far' ).length,
+			'the build said once'
+		).toBe( 2 );
+
+		await page
+			.getByRole( 'radio', { name: 'Choose Builder test deck 8.25' } )
+			.check();
+		await expect(
+			deck,
+			'the 8.25 in deck has no layer image; the wheels the total counts still do'
+		).toHaveCount( 0 );
+		await expect( boxed, 'its labelled photo instead' ).toBeVisible();
+	} );
+
 	test( 'puts focus on the error summary when a step is asked for past an empty one, and says Error first', async ( {
 		page,
 	} ) => {
@@ -930,7 +1156,7 @@ test.describe( 'The builder with JavaScript', () => {
 		await expect( width ).toHaveAttribute( 'aria-pressed', 'true' );
 		await expect( width, 'the shopper keeps their place' ).toBeFocused();
 
-		const toggle = page.locator( '.cbuild-summary__assembly a' );
+		const toggle = page.locator( '.cbuild-summary__toggle button' );
 		test.skip(
 			! ( await toggle.isVisible() ),
 			"On a phone the bar takes the summary's place, and has no switch."
@@ -1608,6 +1834,12 @@ test.describe( 'The keyboard alone', () => {
 		);
 
 		const builder = page.locator( '.cbuild' );
+		if ( javaScriptEnabled ) {
+			// After a pick, the status says the build and its total, once (spec: Keyboard and screen readers).
+			await expect( builder.locator( '.cbuild__status' ) ).toHaveText(
+				/^The build so far: Deck: Builder test deck.*\. Total: .+\.$/
+			);
+		}
 		for ( let step = 0; step < 12; step++ ) {
 			const now = ( await heading( page ).textContent() ) ?? '';
 			if ( now.endsWith( ': Review' ) ) {
@@ -1621,6 +1853,12 @@ test.describe( 'The keyboard alone', () => {
 			if ( javaScriptEnabled ) {
 				await expect( heading( page ) ).toBeFocused();
 			}
+			// Spec, The picture: "a written description of the build", after every change (spec review of milestone
+			// 7, should-fix, owed from milestone 6): the deck chosen first is in it at every step. A step is read from
+			// its heading, so the status says nothing then (D-149); it spoke after the pick, above.
+			await expect(
+				builder.locator( '.cbuild-picture__description' )
+			).toHaveText( /^The build so far: Deck: Builder test deck.*\.$/ );
 		}
 		await expect( heading( page ) ).toHaveText( /: Review$/ );
 
@@ -2188,8 +2426,11 @@ test.describe( 'The phone bar', () => {
 					const more = summary.querySelector(
 						'.cbuild-bar__more--show'
 					)!;
-					const sum = summary.firstElementChild!;
+					const sum = summary.querySelector(
+						'[aria-hidden="true"]'
+					)!;
 					return {
+						shown: sum.getClientRects().length,
 						display: getComputedStyle( summary ).display,
 						lines: more.getClientRects().length,
 						under:
@@ -2217,10 +2458,13 @@ test.describe( 'The phone bar', () => {
 				.check();
 			await settled( page );
 			await expect( total ).not.toContainText( '$15.00' );
-			expect(
-				( await read() ).height,
-				'as high with a wider total'
-			).toBe( before.height );
+			const after = await read();
+			// Beside the board's picture "Total:" broke the line on CI's fonts, and the bar grew under the thumb
+			// (D-207): the amount alone is shown.
+			expect( after.shown, 'the amount on one line' ).toBe( 1 );
+			expect( after.height, 'as high with a wider total' ).toBe(
+				before.height
+			);
 		} );
 
 		test( `keeps its words readable on ${ theme }'s dark colours, and its open parts list too`, async ( {

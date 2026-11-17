@@ -86,6 +86,29 @@ final class IndexJobs implements Reindex {
 	) {}
 
 	/**
+	 * Makes the parts' layer images at the picture's sizes, since 0.7.0, given by the container through
+	 * `withRenditions()`. Jobs that an earlier release's container builds, in the request that replaces that release's
+	 * files with these, have none: that container knows nothing of the picture's ports, and builds this class from the
+	 * constructor it knew (D-208).
+	 *
+	 * @var PartRenditions|null
+	 */
+	private ?PartRenditions $renditions = null;
+
+	/**
+	 * The same jobs, making the parts' layer images as they index them.
+	 *
+	 * @since 0.7.0
+	 *
+	 * @param PartRenditions $renditions Makes the parts' layer images at the picture's sizes.
+	 */
+	public function withRenditions( PartRenditions $renditions ): self {
+		$jobs             = clone $this;
+		$jobs->renditions = $renditions;
+		return $jobs;
+	}
+
+	/**
 	 * A product or variation was saved over what was stored: queue its job, unless the save moved no source of the
 	 * index. An order's stock change is such a save, one for every line (issue #21).
 	 *
@@ -114,7 +137,9 @@ final class IndexJobs implements Reindex {
 
 	/**
 	 * A post was deleted: when it was a product or a variation, queue its job, which will find nothing and remove
-	 * its rows. A reindex walking the shop's pages is told, since a page just moved under it.
+	 * its rows. A reindex walking the shop's pages is told, since a page just moved under it. An image deleted from
+	 * the Media Library takes its layer renditions with it (D-194, WordPress 7.1.4's `wp_delete_attachment()`
+	 * fires `deleted_post`, wp-includes/post.php:6904).
 	 *
 	 * @since 0.3.0
 	 *
@@ -122,6 +147,10 @@ final class IndexJobs implements Reindex {
 	 * @param string $postType Its type.
 	 */
 	public function removed( int $id, string $postType ): void {
+		if ( 'attachment' === $postType ) {
+			$this->renditions?->forget( $id );
+		}
+		// An attachment is not a part, so its renditions are all it takes.
 		if ( ! $this->catalogue->holds( $postType ) ) {
 			return;
 		}
@@ -191,6 +220,8 @@ final class IndexJobs implements Reindex {
 				$this->kits->forget( ...$parts );
 				// And written again here, in the background, so that no visitor's request reads the shop for them.
 				$this->kits->warm( ...$parts );
+				// And the layer images at the sizes the picture now draws these parts at (D-194).
+				$this->renditions?->make( ...$parts );
 			}
 		} catch ( Throwable $failure ) {
 			$this->logger->log(

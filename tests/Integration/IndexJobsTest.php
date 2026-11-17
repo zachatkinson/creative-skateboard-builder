@@ -149,6 +149,12 @@ final class IndexJobsTest extends IntegrationTestCase {
 		self::assertSame( $job, self::waiting( Options::JOB_INDEX_PART ), 'the chart taken away' );
 		self::work();
 
+		$fresh = wc_get_product( $id );
+		$fresh->update_meta_data( Options::META_LAYER, '42' );
+		$fresh->save();
+		self::assertSame( $job, self::waiting( Options::JOB_INDEX_PART ), 'a layer image, which the job makes at the picture\'s sizes (D-194)' );
+		self::work();
+
 		$attribute = new \WC_Product_Attribute();
 		$attribute->set_name( 'Width' );
 		$attribute->set_options( array( '8.25' ) );

@@ -27,6 +27,7 @@ use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\FakeClock;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\FakeQueue;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\InMemoryImportStore;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\InMemoryKits;
+use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\InMemoryLayerImages;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\InMemoryPartCatalogue;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\InMemoryReindexStore;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\InMemoryShopSettings;
@@ -55,6 +56,8 @@ final class CatalogueCheckTest extends TestCase {
 
 	private CatalogueCheck $check;
 
+	private InMemoryLayerImages $layers;
+
 	protected function setUp(): void {
 		$this->kits      = new InMemoryKits();
 		$this->catalogue = new InMemoryPartCatalogue();
@@ -63,7 +66,8 @@ final class CatalogueCheckTest extends TestCase {
 		$this->import    = new InMemoryImportStore();
 		$this->queue     = new FakeQueue();
 		$indexer         = new SpecIndexer( new InMemorySpecIndex(), new InMemoryShopSettings(), new FakeClock(), $this->source );
-		$this->check     = new CatalogueCheck( $this->kits, $this->catalogue, $indexer, $this->reindex, $this->import, $this->queue );
+		$this->layers    = new InMemoryLayerImages();
+		$this->check     = ( new CatalogueCheck( $this->kits, $this->catalogue, $indexer, $this->reindex, $this->import, $this->queue ) )->withLayers( $this->layers );
 	}
 
 	/**
@@ -305,4 +309,48 @@ final class CatalogueCheckTest extends TestCase {
 		self::assertSame( 3, ( new Part( 1, '', Specs::none(), 100, true, 3 ) )->stock );
 		self::assertSame( 0, ( new Part( 1, '', Specs::none(), 100, false, 0 ) )->stock );
 	}
+
+	/**
+	 * Spec, Admin, Milestone 7: "The Catalogue check lists the parts without a layer image, so the owner sees what
+	 * the picture still lacks." Only the slots the picture draws, and after everything else (D-193).
+	 */
+	// D-208: a check that 0.6.0's container builds, in the request that puts 0.7.0's files in its place, has no layer
+	// images to read, and finds what 0.6.0's did.
+	public function test_a_check_built_without_layer_images_finds_no_missing_layer_and_the_rest_as_before(): void {
+		$this->kits->add( 5, KitDocuments::kit(), array( 'trucks' => array( Builds::truck( '159' ) ) ) + self::stocked() );
+		$this->layers->layered = array();
+		$plain = new CatalogueCheck( $this->kits, $this->catalogue, new SpecIndexer( new InMemorySpecIndex(), new InMemoryShopSettings(), new FakeClock(), $this->source ), $this->reindex, $this->import, $this->queue );
+		// withLayers() gives a copy: the check it was called on is still 0.6.0's.
+		$plain->withLayers( $this->layers );
+		$without = $plain->run();
+		$with    = self::lines( $this->check->run() );
+		self::assertContains( 'layer_missing part=159 kit=5 trucks', $with );
+		self::assertSame( array_values( array_filter( $with, static fn( string $line ): bool => ! str_starts_with( $line, 'layer_missing' ) ) ), self::lines( $without ) );
+	}
+
+	public function test_the_parts_of_the_slots_the_picture_draws_with_no_layer_image_are_listed_last(): void {
+		$slots           = self::stocked();
+		$slots['trucks'] = array( Builds::truck( '149' ), Builds::truck( '159' ) );
+		$slots['wheels'] = array( Builds::wheel( '54' ), Builds::wheel( '52', 301 ) );
+		$slots['deck'][] = Builds::deck( '8.25', 101 );
+		$this->kits->add( 5, KitDocuments::kit(), $slots );
+		$this->kits->add( 6, KitDocuments::kit(), array( 'risers' => array() ) + self::stocked() );
+		$this->layers->layered = array( 100, 149, 300 );
+
+		$lines = self::lines( $this->check->run() );
+		self::assertSame(
+			array(
+				'slot_empty part=0 kit=6 risers',
+				'layer_missing part=101 kit=5 deck',
+				'layer_missing part=159 kit=5 trucks',
+				'layer_missing part=301 kit=5 wheels',
+				'layer_missing part=700 kit=5 grip',
+				'layer_missing part=700 kit=6 grip',
+			),
+			array_values( array_filter( $lines, static fn( string $line ): bool => ! str_starts_with( $line, 'spec_' ) ) ),
+			'risers, bearings and hardware are not drawn; each kit says its own; the rest come first'
+		);
+		self::assertSame( 'layer_missing', substr( (string) end( $lines ), 0, 13 ) );
+	}
+
 }

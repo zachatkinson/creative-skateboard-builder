@@ -262,7 +262,7 @@ export interface CbuildState {
 		total: Money7;
 	};
 	/**
-	 * What is in the box: each part the total counts, in step order.
+	 * What is in the box: each part the total counts, in step order. From 0.7.0, the board as well: the layers of the parts with a layer image, placed in the layout's units, ten-thousandths of a millimetre, with the nose at the top.
 	 */
 	picture: {
 		items: {
@@ -290,11 +290,82 @@ export interface CbuildState {
 			 * The part's photo, or null when it has none.
 			 */
 			image: Photo | null;
+			/**
+			 * Whether the board draws the part, which then has no labelled photo (0.7.0).
+			 */
+			drawn: boolean;
 		}[];
 		/**
 		 * The build in one sentence, for whoever cannot see the picture.
 		 */
 		description: string;
+		/**
+		 * The board across, wheels included, or 0 until a deck with a width is picked.
+		 */
+		width: number;
+		/**
+		 * The board along, or 0 until a deck with a width is picked.
+		 */
+		height: number;
+		/**
+		 * The board's layers from the bottom of the stack: the deck, the grip, one for each truck and one for each wheel, each a part with a layer image.
+		 */
+		layers: {
+			/**
+			 * The slot's key.
+			 */
+			slot: string;
+			/**
+			 * The part's ID.
+			 */
+			part: number;
+			/**
+			 * The layer's left edge from the board's.
+			 */
+			x: number;
+			/**
+			 * The layer's top edge from the board's, the nose's end.
+			 */
+			y: number;
+			/**
+			 * The layer across.
+			 */
+			width: number;
+			/**
+			 * The layer along.
+			 */
+			height: number;
+			/**
+			 * The part's layer image: its own file, and the renditions made of it.
+			 */
+			image: {
+				/**
+				 * The image's own file.
+				 */
+				src: string;
+				/**
+				 * Its pixels across.
+				 */
+				width: number;
+				/**
+				 * Its pixels along.
+				 */
+				height: number;
+				/**
+				 * The renditions made, a `srcset` for each type, AVIF first; none until they are made.
+				 */
+				sources: {
+					/**
+					 * The MIME type.
+					 */
+					type: 'image/avif' | 'image/webp';
+					/**
+					 * Its files with their widths, smallest first.
+					 */
+					srcset: string;
+				}[];
+			};
+		}[];
 	};
 	/**
 	 * What the shop says of the build's delivery, each in plain text and empty where nothing is said.

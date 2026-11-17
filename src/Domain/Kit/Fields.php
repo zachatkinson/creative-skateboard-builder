@@ -17,6 +17,7 @@ use function array_is_list;
 use function array_key_exists;
 use function array_keys;
 use function count;
+use function in_array;
 use function is_array;
 use function is_bool;
 use function is_int;
@@ -323,6 +324,52 @@ final readonly class Fields {
 			$ids[] = $value;
 		}
 		return $ids;
+	}
+
+	/**
+	 * A list of keys, each once, at most so many, and none when the field is left out.
+	 *
+	 * @since 0.7.0
+	 *
+	 * @param string $key The field.
+	 * @param int    $max The most allowed.
+	 *
+	 * @return list<string>
+	 *
+	 * @throws InvalidDocument When it is not a list, holds too many, or holds something that is not a key or is there twice.
+	 */
+	public function keys( string $key, int $max ): array {
+		$items = $this->items( $key );
+		if ( count( $items ) > $max ) {
+			$refused = InvalidDocument::because( DocumentError::OutOfRange, $this->path( $key ) );
+			throw $refused;
+		}
+		$keys = array();
+		foreach ( $items as $at => $value ) {
+			if ( ! is_string( $value ) || ! self::isKey( $value ) ) {
+				$refused = InvalidDocument::because( DocumentError::BadKey, $this->path( $key . '[' . $at . ']' ) );
+				throw $refused;
+			}
+			if ( in_array( $value, $keys, true ) ) {
+				$refused = InvalidDocument::because( DocumentError::Duplicate, $this->path( $key . '[' . $at . ']' ) );
+				throw $refused;
+			}
+			$keys[] = $value;
+		}
+		return $keys;
+	}
+
+	/**
+	 * An amount that may be left out or empty, as an amount() is written.
+	 *
+	 * @since 0.7.0
+	 *
+	 * @param string $key The field.
+	 *
+	 * @throws InvalidDocument When it is there and not a string or not such a decimal.
+	 */
+	public function amountOrNull( string $key ): ?int {
+		return ! $this->has( $key ) || '' === $this->data[ $key ] ? null : $this->amount( $key );
 	}
 
 	/**

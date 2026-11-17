@@ -13,6 +13,7 @@ use CreativeBranding\SkateboardBuilder\Domain\Fit\BuildValidator;
 use CreativeBranding\SkateboardBuilder\Domain\Fit\FitEngine;
 use CreativeBranding\SkateboardBuilder\Domain\Fit\Problem;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Assembly;
+use CreativeBranding\SkateboardBuilder\Domain\Kit\DocumentError;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Fields;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\InvalidDocument;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Kit;
@@ -25,6 +26,7 @@ use CreativeBranding\SkateboardBuilder\Domain\Kit\SlotKey;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Slots;
 use CreativeBranding\SkateboardBuilder\Domain\Measure\MeasureParser;
 use CreativeBranding\SkateboardBuilder\Domain\Measure\Unit;
+use CreativeBranding\SkateboardBuilder\Domain\Picture\PictureSettings;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\HeightClass;
 use CreativeBranding\SkateboardBuilder\Domain\Rule\RuleId;
 use CreativeBranding\SkateboardBuilder\Port\DocumentSchemas;
@@ -35,7 +37,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * The Build tab's four sections become the kit's four documents here (spec: Admin, The kit's Build tab). Each is
+ * The Build tab's sections become the kit's documents here (spec: Admin, The kit's Build tab). Each is
  * built from what was typed, read by the domain, which says what is wrong and where, and then held to its schema.
  * One that fails is not saved and the rest are. Presets are held to the slots and rules that will be in force once
  * the save is done, and are saved only when the rules accept every one. The tab, and anything else that edits a
@@ -55,6 +57,14 @@ final class KitEditor {
 	public const RULES    = 'rules';
 	public const PRESETS  = 'presets';
 	public const ASSEMBLY = 'assembly';
+	public const PICTURE  = 'picture';
+
+	/**
+	 * The picture's wheelbase anchor is outside what a deck has: 10 to 20 in.
+	 *
+	 * @since 0.7.0
+	 */
+	public const WHEELBASE_RANGE = 'picture_wheelbase_range';
 
 	/**
 	 * A document the domain read and its schema still refused. The schemas and the domain agree
@@ -147,10 +157,13 @@ final class KitEditor {
 		if ( is_array( $sent['assembly'] ?? null ) ) {
 			$built[ self::ASSEMBLY ] = self::assembly( $sent['assembly'], $separator );
 		}
+		if ( is_array( $sent['picture'] ?? null ) ) {
+			$built[ self::PICTURE ] = self::picture( $sent['picture'], $separator );
+		}
 
 		$problems = array();
 		$inForce  = array();
-		foreach ( array( self::SLOTS, self::RULES, self::ASSEMBLY ) as $key ) {
+		foreach ( array( self::SLOTS, self::RULES, self::ASSEMBLY, self::PICTURE ) as $key ) {
 			$inForce[ $key ] = $stored[ $key ] ?? null;
 			if ( ! isset( $built[ $key ] ) ) {
 				continue;
@@ -253,10 +266,12 @@ final class KitEditor {
 			match ( $key ) {
 				self::SLOTS => Slots::fromDocument( $document ),
 				self::RULES => RuleSettings::fromDocument( $document ),
+				self::PICTURE => PictureSettings::fromDocument( $document ),
 				default                 => Assembly::fromDocument( $document ),
 			};
 		} catch ( InvalidDocument $refused ) {
-			return array( self::problem( $key, $refused->reason->value, $refused->path ) );
+			$code = self::PICTURE === $key && DocumentError::OutOfRange === $refused->reason ? self::WHEELBASE_RANGE : $refused->reason->value;
+			return array( self::problem( $key, $code, $refused->path ) );
 		}
 		return array();
 	}
@@ -555,6 +570,33 @@ final class KitEditor {
 			'fee'            => '' === $fee ? '0' : ( '' === $separator ? $fee : str_replace( $separator, '.', $fee ) ),
 			'lead_time'      => self::text( $sent, 'lead_time' ),
 			'returns_notice' => self::text( $sent, 'returns_notice' ),
+		);
+	}
+
+	/**
+	 * The picture document from the tab's fields: a layer number for each slot the picture draws, and the wheelbase
+	 * anchor. The order is the slots by their numbers, equal numbers in the order sent; a slot with none is left to
+	 * the usual order (D-192).
+	 *
+	 * @param array<mixed> $sent      The fields.
+	 * @param string       $separator The shop's decimal separator.
+	 * @return array<string, mixed>
+	 */
+	private static function picture( array $sent, string $separator ): array {
+		$layers = array();
+		foreach ( self::map( $sent['layers'] ?? null ) as $slot => $number ) {
+			if ( is_string( $slot ) && is_string( $number ) && ctype_digit( trim( $number ) ) ) {
+				// Digits: asort() compares them as numbers, so 9 comes before 10.
+				$layers[ $slot ] = $number;
+			}
+		}
+		// asort() keeps equal numbers in the order they came in (PHP 8.0).
+		asort( $layers );
+		$wheelbase = self::text( $sent, 'wheelbase' );
+		return array(
+			'schema_version' => 1,
+			'order'          => array_keys( $layers ),
+			'wheelbase'      => '' === $wheelbase ? '' : self::measure( $wheelbase, Unit::Inch, $separator ),
 		);
 	}
 

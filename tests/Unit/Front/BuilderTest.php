@@ -9,6 +9,12 @@ declare( strict_types=1 );
 
 namespace CreativeBranding\SkateboardBuilder\Tests\Unit\Front;
 
+use CreativeBranding\SkateboardBuilder\Domain\Picture\Renditions;
+use CreativeBranding\SkateboardBuilder\Domain\Picture\ImageFacts;
+use CreativeBranding\SkateboardBuilder\Front\PageRenderer;
+use CreativeBranding\SkateboardBuilder\Service\LayerArtwork;
+use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\InMemoryLayerImages;
+use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\InMemoryLayerRenditions;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Part;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\SlotKey;
 use CreativeBranding\SkateboardBuilder\Front\Builder;
@@ -32,6 +38,10 @@ use PHPUnit\Framework\TestCase;
 
 final class BuilderTest extends TestCase {
 
+	private InMemoryLayerImages $layers;
+
+	private InMemoryLayerRenditions $renditions;
+
 	private const int KIT = 77;
 
 	private const string BASE = 'https://shop.test/kit/';
@@ -48,6 +58,8 @@ final class BuilderTest extends TestCase {
 	private InMemoryKits $kits;
 
 	protected function setUp(): void {
+		$this->layers     = new InMemoryLayerImages();
+		$this->renditions = new InMemoryLayerRenditions();
 		$this->kits = new InMemoryKits();
 		$this->kits->add( self::KIT, Shop::kit(), Shop::parts() );
 	}
@@ -59,7 +71,7 @@ final class BuilderTest extends TestCase {
 	private function builder(): Builder {
 		return new Builder(
 			new BuildState( $this->kits, new InMemoryShopSettings(), new FakeLogger() ),
-			new StateAnswer( new InMemoryPartCards(), new FakeMoney(), $this->kits, new Delivery( $this->kits, new FakeShippingZones(), new ShippingWords( new FakeMoney() ) ) ),
+			( new StateAnswer( new InMemoryPartCards(), new FakeMoney(), $this->kits, new Delivery( $this->kits, new FakeShippingZones(), new ShippingWords( new FakeMoney() ) ), new PageRenderer() ) )->withArtwork( new LayerArtwork( $this->layers, $this->renditions ) ),
 			new BuilderView()
 		);
 	}
@@ -220,6 +232,112 @@ final class BuilderTest extends TestCase {
 		self::assertStringStartsWith( 'The build so far: Deck: ', $begun['picture']['description'] );
 	}
 
+	// Spec, The picture: "Each part that has a layer image is drawn to scale"; the bar's small picture becomes the
+	// board (plan, milestone 7; D-195).
+	public function test_the_board_places_each_layer_as_a_share_of_it_and_the_bar_shows_the_same_board(): void {
+		$this->layers->attachments = array(
+			101 => 11,
+			149 => 49,
+		);
+		$this->layers->images      = array(
+			11 => new ImageFacts( 'image/png', 420, 1626, true ),
+			49 => new ImageFacts( 'image/png', 432, 160, true ),
+		);
+		$this->renditions->make( 11, Renditions::drawn( SlotKey::DECK, Shop::parts()[ SlotKey::DECK ][0]->specs, 420, 1626 ) );
+		$view  = $this->show( new BuildLink( array( SlotKey::DECK => 101, SlotKey::TRUCKS => 149 ), null, SlotKey::WHEELS ) )['view'];
+		$board = $view['picture']['board'];
+		self::assertTrue( $board['shown'] );
+		self::assertSame( array( 'deck-1', 'trucks-1', 'trucks-2' ), array_column( $board['layers'], 'key' ) );
+		self::assertMatchesRegularExpression( '#^--cbuild-board-ratio:\d+ / 8128000$#', $board['style'] );
+		self::assertSame( '--cbuild-layer-x:2.9412%;--cbuild-layer-y:0%;--cbuild-layer-width:94.1176%;--cbuild-layer-height:100%', $board['layers'][0]['style'], 'an 8 in deck centred on a board as wide as the 8.5 in axle, end to end' );
+		self::assertSame( 'cbuild-board__layer cbuild-board__layer--deck', $board['layers'][0]['classes'] );
+		self::assertSame( array( 'high', 'auto', 'auto' ), array_column( $board['layers'], 'priority' ), 'the deck is fetched first' );
+		self::assertStringStartsWith( '(min-height: 960px) ', $board['layers'][0]['sizes'] );
+		self::assertSame( array( 'image/webp' ), array_column( $board['layers'][0]['sources'], 'type' ) );
+		self::assertSame( $board['layers'][0]['sizes'], $board['layers'][0]['sources'][0]['sizes'] );
+		self::assertSame( array(), $board['layers'][1]['sources'], 'the trucks\' renditions are not made yet' );
+		self::assertSame( 'https://example.com/layer-49.png', $board['layers'][1]['src'] );
+
+		$items = array_column( $view['picture']['items'], 'drawn', 'key' );
+		self::assertTrue( $items[ SlotKey::DECK ] && $items[ SlotKey::TRUCKS ] );
+		self::assertFalse( $items[ SlotKey::WHEELS ], 'a part with no layer image keeps its labelled photo' );
+		// Both reviews of milestone 7: a hidden photo that is eager is still fetched, at high priority, against the
+		// deck's layer. A drawn deck's photo waits, and the layer alone is fetched first.
+		self::assertSame( array( 'lazy', 'auto' ), array( $view['picture']['items'][0]['loading'], $view['picture']['items'][0]['priority'] ), 'the drawn deck\'s hidden photo' );
+
+		$bar = $view['bar']['board'];
+		self::assertTrue( $view['bar']['seen'] );
+		self::assertSame( array_column( $board['layers'], 'style' ), array_column( $bar['layers'], 'style' ), 'the same board' );
+		self::assertMatchesRegularExpression( '#^\d+px$#', $bar['layers'][0]['sizes'], 'at the bar\'s size' );
+		self::assertSame( array( 'auto', 'auto', 'auto' ), array_column( $bar['layers'], 'priority' ) );
+	}
+
+	// The arithmetic of each layer's place and the sizes it is fetched at, where a share is not a whole number of
+	// pixels: the board and the bar round each width up, so a rendition is never fetched smaller than it is drawn.
+	public function test_each_layer_is_placed_and_sized_by_its_share_of_the_board_rounded_up(): void {
+		$this->layers->attachments = array(
+			102 => 11,
+			139 => 49,
+			301 => 31,
+		);
+		$this->layers->images      = array(
+			11 => new ImageFacts( 'image/png', 420, 1626, true ),
+			49 => new ImageFacts( 'image/png', 432, 160, true ),
+			31 => new ImageFacts( 'image/png', 200, 200, true ),
+		);
+		$view = $this->show( new BuildLink( array( SlotKey::DECK => 102, SlotKey::TRUCKS => 139, SlotKey::WHEELS => 301 ), null, SlotKey::WHEELS ) )['view'];
+		$board = $view['picture']['board'];
+		self::assertSame( '--cbuild-board-ratio:2095500 / 8128000', $board['style'], 'an 8.25 in deck, wider than the axle' );
+		self::assertSame(
+			array(
+				'(min-height: 960px) 149px, 15.4688vh',
+				'(min-height: 960px) 144px, 15vh',
+				'(min-height: 960px) 144px, 15vh',
+				'(min-height: 960px) 23px, 2.3031vh',
+				'(min-height: 960px) 23px, 2.3031vh',
+				'(min-height: 960px) 23px, 2.3031vh',
+				'(min-height: 960px) 23px, 2.3031vh',
+			),
+			array_column( $board['layers'], 'sizes' ),
+			'576 pixels at most, and 60 % of the screen\'s height, times each layer\'s width over the board\'s length: 148.5 and 22.1 are 149 and 23'
+		);
+		self::assertSame(
+			array(
+				'--cbuild-layer-x:0%;--cbuild-layer-y:0%;--cbuild-layer-width:100%;--cbuild-layer-height:100%',
+				'--cbuild-layer-x:1.5152%;--cbuild-layer-y:19.7422%;--cbuild-layer-width:96.9697%;--cbuild-layer-height:9.375%',
+				'--cbuild-layer-x:1.5152%;--cbuild-layer-y:70.8828%;--cbuild-layer-width:96.9697%;--cbuild-layer-height:9.375%',
+				'--cbuild-layer-x:1.5152%;--cbuild-layer-y:21.2309%;--cbuild-layer-width:14.889%;--cbuild-layer-height:6.3976%',
+				'--cbuild-layer-x:83.5958%;--cbuild-layer-y:21.2309%;--cbuild-layer-width:14.889%;--cbuild-layer-height:6.3976%',
+				'--cbuild-layer-x:1.5152%;--cbuild-layer-y:72.3715%;--cbuild-layer-width:14.889%;--cbuild-layer-height:6.3976%',
+				'--cbuild-layer-x:83.5958%;--cbuild-layer-y:72.3715%;--cbuild-layer-width:14.889%;--cbuild-layer-height:6.3976%',
+			),
+			array_column( $board['layers'], 'style' ),
+			'each place a share of the board\'s width across and its length along'
+		);
+		self::assertSame( array( '12px', '11px', '11px', '2px', '2px', '2px', '2px' ), array_column( $view['bar']['board']['layers'], 'sizes' ), 'at the bar\'s 44 pixels: 11.3 and 1.7 are 12 and 2' );
+	}
+
+	public function test_a_picture_with_no_width_or_no_length_draws_no_board(): void {
+		foreach ( array( array( 0, 8128000 ), array( 2095500, 0 ), array( 0, 0 ) ) as [ $width, $length ] ) {
+			$picture = array(
+				'width'  => $width,
+				'height' => $length,
+				'layers' => array(
+					array(
+						'slot'   => SlotKey::DECK,
+						'part'   => 101,
+						'x'      => 0,
+						'y'      => 0,
+						'width'  => 2032000,
+						'height' => 8128000,
+					),
+				),
+			);
+			$board   = ( new \ReflectionMethod( BuilderView::class, 'board' ) )->invoke( null, $picture, self::KIT, null );
+			self::assertSame( array( 'shown' => false, 'style' => '', 'layers' => array() ), $board, $width . ' by ' . $length );
+		}
+	}
+
 	// Spec, A step, Sold out: "A preset or link that holds one names it, and the build can't go to the cart until
 	// it's swapped".
 	public function test_a_sold_out_part_a_preset_brings_is_named_at_the_review_and_keeps_the_build_from_the_cart(): void {
@@ -239,8 +357,12 @@ final class BuilderTest extends TestCase {
 		self::assertSame(
 			array(
 				'shown' => true,
-				'total' => 'Total: ' . $view['summary']['total'],
-				'parts' => 'Show the parts',
+				'seen'  => true,
+				'total'  => 'Total: ' . $view['summary']['total'],
+				// The bar shows the amount alone, and reads the sentence to a screen reader: beside the board's
+				// picture "Total:" broke the line at 412 pixels, and the bar grew under the thumb (Zach, 16 Nov).
+				'amount' => $view['summary']['total'],
+				'parts'  => 'Show the parts',
 				'hide'  => 'Hide the parts',
 				'next'  => array(
 					'shown'    => true,
@@ -253,7 +375,7 @@ final class BuilderTest extends TestCase {
 					'disabled' => false,
 				),
 			),
-			array_diff_key( $view['bar'], array_flip( array( 'photo', 'picture' ) ) )
+			array_diff_key( $view['bar'], array_flip( array( 'photo', 'picture', 'board' ) ) )
 		);
 		self::assertSame( $view['step']['next']['text'], $view['bar']['next']['text'], "the step's own Next, sent from its form" );
 		$bar   = array_diff_key( $view['bar']['photo'], array( 'classes' => true ) );
@@ -263,6 +385,8 @@ final class BuilderTest extends TestCase {
 		self::assertTrue( $view['bar']['photo']['hasImage'] );
 		self::assertSame( 'See the picture', $view['bar']['picture'] );
 		self::assertFalse( $this->show( new BuildLink() )['view']['bar']['photo']['hasImage'], 'nothing picked, no photo' );
+		self::assertFalse( $this->show( new BuildLink() )['view']['bar']['seen'], 'and no picture to link to' );
+		self::assertFalse( $view['bar']['board']['shown'], 'no part has a layer image' );
 
 		$review = $this->show( new BuildLink( self::STREET, null, BuildLink::REVIEW ) )['view']['bar']['next'];
 		self::assertSame(
@@ -384,7 +508,9 @@ final class BuilderTest extends TestCase {
 		self::assertSame( array(), $view['summary']['rows'] );
 		self::assertSame( 'Assembly: not added', $view['summary']['assembly'] );
 		self::assertSame( 'Add assembly', $view['summary']['toggle']['text'] );
-		self::assertSame( self::url( array( 'step' => 'deck', 'assembly' => '1' ) ), $view['summary']['toggle']['url'] );
+		// A button in a GET form, as every way into a state is (spec: SEO and sharing; milestone 6's audit 29).
+		self::assertSame( self::fields( array( 'step' => 'deck', 'assembly' => '1' ) ), $view['summary']['toggle']['fields'] );
+		self::assertArrayNotHasKey( 'url', $view['summary']['toggle'], 'No link into a state for a crawler to follow.' );
 		self::assertSame( '$0.00', $view['summary']['total'] );
 		self::assertFalse( $view['summary']['hasSaved'] );
 		self::assertFalse( $view['summary']['hasShips'] );

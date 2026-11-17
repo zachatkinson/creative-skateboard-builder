@@ -10,6 +10,18 @@ declare( strict_types=1 );
 namespace CreativeBranding\SkateboardBuilder\Tests\Integration;
 
 use CreativeBranding\SkateboardBuilder\Admin\CheckScreen;
+use CreativeBranding\SkateboardBuilder\Adapter\WpPictureFiles;
+use CreativeBranding\SkateboardBuilder\Port\Clock;
+use CreativeBranding\SkateboardBuilder\Port\Kits;
+use CreativeBranding\SkateboardBuilder\Port\Logger;
+use CreativeBranding\SkateboardBuilder\Port\MigrationStore;
+use CreativeBranding\SkateboardBuilder\Port\Queue;
+use CreativeBranding\SkateboardBuilder\Port\ShopSettings;
+use CreativeBranding\SkateboardBuilder\Service\BuildState;
+use CreativeBranding\SkateboardBuilder\Service\CatalogueCheck;
+use CreativeBranding\SkateboardBuilder\Service\ComposedPictures;
+use CreativeBranding\SkateboardBuilder\Service\Health;
+use CreativeBranding\SkateboardBuilder\Service\LayerArtwork;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\SpecTable;
 use CreativeBranding\SkateboardBuilder\Health\SiteHealth;
 use CreativeBranding\SkateboardBuilder\Port\ImportStore;
@@ -19,6 +31,23 @@ use CreativeBranding\SkateboardBuilder\Service\ImportState;
 use CreativeBranding\SkateboardBuilder\Service\IndexJobs;
 use CreativeBranding\SkateboardBuilder\Service\ReindexState;
 use CreativeBranding\SkateboardBuilder\Support\Options;
+use CreativeBranding\SkateboardBuilder\Domain\Picture\ImageFacts;
+use CreativeBranding\SkateboardBuilder\Domain\Spec\IndexedSpec;
+use CreativeBranding\SkateboardBuilder\Domain\Spec\Origin;
+use CreativeBranding\SkateboardBuilder\Domain\Spec\SpecKey;
+use CreativeBranding\SkateboardBuilder\Service\PartRenditions;
+use CreativeBranding\SkateboardBuilder\Tests\Support\Domain\Shop;
+use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\FakeClock;
+use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\InMemoryKits;
+use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\InMemoryLayerImages;
+use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\InMemoryLayerRenditions;
+use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\InMemorySpecIndex;
+use CreativeBranding\SkateboardBuilder\Port\LayerImages;
+use CreativeBranding\SkateboardBuilder\Port\PartCatalogue;
+use CreativeBranding\SkateboardBuilder\Service\SpecIndexer;
+use CreativeBranding\SkateboardBuilder\Tests\Support\Domain\Builds;
+use CreativeBranding\SkateboardBuilder\Tests\Support\Domain\KitDocuments;
+use CreativeBranding\SkateboardBuilder\Tests\Support\Domain\Parts;
 use CreativeBranding\SkateboardBuilder\Tests\Support\IntegrationTestCase;
 use WP_REST_Request;
 
@@ -43,18 +72,19 @@ final class SiteHealthTest extends IntegrationTestCase {
 		return (array) apply_filters( 'site_status_tests', array( 'direct' => array( 'core' => array( 'label' => 'Core' ) ), 'async' => array() ) );
 	}
 
-	public function test_site_health_gains_two_direct_tests_and_keeps_its_own(): void {
+	public function test_site_health_gains_three_direct_tests_and_keeps_its_own(): void {
 		$tests = $this->tests();
 		$ids = array_keys( $tests['direct'] );
 		self::assertSame( 'core', $ids[0] );
 		// WooCommerce adds its own between.
-		self::assertSame( array( 'cbuild_index', 'cbuild_jobs' ), array_slice( $ids, -2 ) );
+		self::assertSame( array( 'cbuild_index', 'cbuild_jobs', 'cbuild_pictures' ), array_slice( $ids, -3 ) );
 		// WooCommerce 11.3.0 adds an async test of its own before it (D-139).
 		self::assertSame( array( 'cbuild_catalogue' ), array_slice( array_keys( $tests['async'] ), -1 ) );
 		self::assertSame( array(), array_values( array_filter( array_keys( $tests['async'] ), static fn ( string $id ): bool => str_starts_with( $id, 'cbuild_' ) && 'cbuild_catalogue' !== $id ) ) );
 		self::assertSame( 'The skateboard builder\'s specs index', $tests['direct']['cbuild_index']['label'] );
 		self::assertIsCallable( $tests['direct']['cbuild_index']['test'] );
 		self::assertIsCallable( $tests['direct']['cbuild_jobs']['test'] );
+		self::assertIsCallable( $tests['direct']['cbuild_pictures']['test'] );
 		// What another plugin broke is handed on as it came.
 		self::assertSame( 'broken', $this->service( SiteHealth::class )->tests( 'broken' ) );
 		self::assertSame( 'broken', $this->service( SiteHealth::class )->info( 'broken' ) );
@@ -111,6 +141,79 @@ final class SiteHealthTest extends IntegrationTestCase {
 		self::assertSame( '1 background job of the skateboard builder has failed', $result['label'] );
 		self::assertStringContainsString( 'page=wc-status&#038;tab=action-scheduler&#038;status=failed">See the failed jobs</a>', $result['actions'] );
 		self::assertStringContainsString( 'page=cbuild&#038;tab=check">Open the Catalogue check</a>', $result['actions'] );
+	}
+
+	// Plan, milestone 7: "A host with neither image library makes no composed picture. It shows the deck's photo and
+	// says so in Site Health" (D-198).
+	public function test_a_host_that_cannot_draw_or_save_pictures_hears_of_it(): void {
+		$pictures = $this->tests()['direct']['cbuild_pictures']['test'];
+		$result   = $pictures();
+		self::assertSame( array( 'good', 'cbuild_pictures', 'The skateboard builder can compose pictures' ), array( $result['status'], $result['test'], $result['label'] ), 'wp-env has GD and Imagick' );
+
+		$with = fn ( WpPictureFiles $files ): SiteHealth => new SiteHealth(
+			fn (): Health => $this->service( Health::class ),
+			fn (): ShopSettings => $this->service( ShopSettings::class ),
+			fn (): MigrationStore => $this->service( MigrationStore::class ),
+			fn (): CatalogueCheck => $this->service( CatalogueCheck::class ),
+			fn (): ComposedPictures => new ComposedPictures( $this->service( Kits::class ), $this->service( BuildState::class ), $this->service( LayerArtwork::class ), $files, $this->service( Queue::class ), $this->service( Clock::class ), $this->service( Logger::class ) )
+		);
+		$none = $with( new WpPictureFiles( array() ) )->pictures();
+		self::assertSame( array( 'recommended', 'The skateboard builder cannot compose pictures on this server' ), array( $none['status'], $none['label'] ) );
+		self::assertStringContainsString( 'neither GD nor Imagick', $none['description'] );
+
+		$uploads = static fn ( array $dirs ): array => array( 'basedir' => '/proc/cbuild-not-writable', 'baseurl' => 'https://example.com/none' ) + $dirs;
+		add_filter( 'upload_dir', $uploads );
+		try {
+			$locked = $with( new WpPictureFiles() )->pictures();
+		} finally {
+			remove_filter( 'upload_dir', $uploads );
+		}
+		self::assertSame( array( 'recommended', 'The skateboard builder cannot save composed pictures' ), array( $locked['status'], $locked['label'] ) );
+		// Cowork's M7 review, M4: emails come in milestone 8, so Site Health does not speak of them yet.
+		foreach ( array( $result, $none, $locked ) as $said ) {
+			self::assertStringNotContainsStringIgnoringCase( 'email', $said['description'] );
+		}
+	}
+
+	public function test_parts_whose_layer_images_have_no_resized_copies_are_counted_in_the_pictures_test(): void {
+		// Cowork's M7 review, F2 (D-209). Two decks with layer images; one has its renditions, one has none.
+		$kits   = new InMemoryKits();
+		$layers = new InMemoryLayerImages();
+		$made   = new InMemoryLayerRenditions();
+		$index  = new InMemorySpecIndex();
+		$kits->add( 3, Shop::kit(), Shop::parts() );
+		foreach ( array( 101 => 11, 102 => 12 ) as $part => $image ) {
+			$index->replace( $part, array( new IndexedSpec( SpecKey::DeckWidth, '8.0000', Origin::Field ) ), ( new FakeClock() )->now() );
+			$layers->attachments[ $part ] = $image;
+			$layers->images[ $image ]     = new ImageFacts( 'image/png', 420, 1626, true );
+			$kits->slotsOf[ $part ]       = array( 'deck' );
+		}
+		$layers->layered = array( 101, 102 );
+		$renditions      = new PartRenditions( $kits, $index, $layers, $made );
+		$renditions->make( 101 );
+		$health = new SiteHealth(
+			fn (): Health => $this->service( Health::class ),
+			fn (): ShopSettings => $this->service( ShopSettings::class ),
+			fn (): MigrationStore => $this->service( MigrationStore::class ),
+			fn (): CatalogueCheck => $this->service( CatalogueCheck::class ),
+			fn (): ComposedPictures => $this->service( ComposedPictures::class ),
+			fn (): PartRenditions => $renditions
+		);
+		$one = $health->pictures();
+		self::assertSame( array( 'recommended', 'cbuild_pictures', '1 part\'s layer image has no resized copies' ), array( $one['status'], $one['test'], $one['label'] ) );
+		self::assertStringContainsString( 'WooCommerce &gt; Status &gt; Logs', $one['description'] );
+		self::assertStringContainsString( CheckScreen::url(), html_entity_decode( $one['actions'] ) );
+		self::assertStringNotContainsString( 'neither AVIF nor WebP', $one['description'] );
+
+		// The audit of the fixes: where the host's editors write neither type, reading the parts again cannot help.
+		add_filter( 'wp_image_editors', '__return_empty_array' );
+		$none = $health->pictures()['description'];
+		remove_filter( 'wp_image_editors', '__return_empty_array' );
+		self::assertStringContainsString( 'This server&#039;s image editors write neither AVIF nor WebP. Your host can turn on WebP in GD or Imagick', $none );
+		self::assertStringNotContainsString( 'Logs', $none );
+
+		$renditions->make( 102 );
+		self::assertSame( 'The skateboard builder can compose pictures', $health->pictures()['label'] );
 	}
 
 	public function test_an_import_that_stopped_or_lost_its_job_reaches_site_health(): void {
@@ -180,6 +283,51 @@ final class SiteHealthTest extends IntegrationTestCase {
 		self::assertStringContainsString( 'in 1 part', $result['description'] );
 		self::assertStringContainsString( 'href="' . esc_url( CheckScreen::url() ) . '"', $result['actions'] );
 		self::assertStringContainsString( 'Open the Catalogue check', $result['actions'] );
+	}
+
+	/**
+	 * Site Health over one kit whose decks are these, and whose other parts have no layer image either.
+	 *
+	 * @param list<\CreativeBranding\SkateboardBuilder\Domain\Kit\Part> $decks The decks.
+	 * @return array{label: string, status: string, badge: array{label: string, color: string}, description: string, actions: string, test: string}
+	 */
+	private function catalogueOver( array $decks ): array {
+		$kits = new InMemoryKits();
+		$kits->add(
+			5,
+			KitDocuments::kit(),
+			array(
+				'deck'     => $decks,
+				'trucks'   => array( Builds::truck( '149' ) ),
+				'wheels'   => array( Builds::wheel( '54' ) ),
+				'bearings' => array( Builds::bearings() ),
+				'hardware' => array( Builds::bolts() ),
+				'grip'     => array( Builds::grip() ),
+				'risers'   => array( Builds::riser( '0.125' ) ),
+			),
+			'Complete'
+		);
+		$check = ( new CatalogueCheck( $kits, $this->service( PartCatalogue::class ), $this->service( SpecIndexer::class ), $this->service( ReindexStore::class ), $this->service( ImportStore::class ), $this->service( Queue::class ) ) )->withLayers( $this->service( LayerImages::class ) );
+		return ( new SiteHealth(
+			fn (): Health => $this->service( Health::class ),
+			fn (): ShopSettings => $this->service( ShopSettings::class ),
+			fn (): MigrationStore => $this->service( MigrationStore::class ),
+			static fn (): CatalogueCheck => $check,
+			fn (): ComposedPictures => $this->service( ComposedPictures::class )
+		) )->catalogue();
+	}
+
+	public function test_parts_with_no_layer_image_have_their_own_wording_and_are_not_things_to_fix(): void {
+		// Cowork's M7 review, F4 (D-211): a missing layer image does not keep a part out of the builder.
+		$alone = $this->catalogueOver( array( Builds::deck( '8.25', 900001 ), Builds::deck( '8.5', 900002 ) ) );
+		self::assertSame( array( 'recommended', 'The skateboard builder\'s Catalogue check found 5 parts with no layer image' ), array( $alone['status'], $alone['label'] ), 'two decks, a truck, a wheel and a grip' );
+		self::assertSame( '<p>5 parts the picture draws have no layer image. Each is still offered, and the picture shows its labelled photo beside the board until one is chosen on its product page. Nothing it found keeps a part out of the builder.</p>', $alone['description'] );
+		self::assertStringContainsString( 'Open the Catalogue check', $alone['actions'] );
+
+		// Decks missing two specs each: four things to fix, and the five parts' sentence after them.
+		$both = $this->catalogueOver( array( Parts::of( array( 'deck_width' => '8.25' ), 900001 ), Parts::of( array( 'deck_width' => '8.5' ), 900002 ) ) );
+		self::assertSame( 'The skateboard builder\'s Catalogue check found 4 things to fix', $both['label'], 'the layer images are not among them' );
+		self::assertStringEndsWith( 'The check lists each finding with a link to where it is fixed. 5 parts the picture draws have no layer image. Each is still offered, and the picture shows its labelled photo beside the board until one is chosen on its product page.</p>', $both['description'] );
 	}
 
 	public function test_the_route_answers_who_may_see_site_health_and_nobody_else(): void {

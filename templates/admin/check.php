@@ -6,9 +6,12 @@
  *
  * @var list<array{label: string, url: string, current: bool}>               $tabs  The page's tabs.
  * @var bool                                                                 $ran   Whether the check ran in this request.
- * @var int                                                                  $count How many things it found.
- * @var list<array{kit: string, about: string, link: string, says: string}> $rows  What it found, as far as the page lists.
- * @var int                                                                  $more  How many it does not list.
+ * @var int                                                                  $count  How many things it found that keep a part out, or offer it by the wrong figure.
+ * @var list<array{kit: string, about: string, link: string, says: string}> $rows   Those, as far as the page lists.
+ * @var int                                                                  $more   How many of those it does not list.
+ * @var int                                                                  $unlaid How many parts the picture draws have no layer image.
+ * @var list<array{kit: string, about: string, link: string, says: string}> $bare   Where each is offered, as far as the page lists (D-211).
+ * @var int                                                                  $past   How many of those it does not list.
  * @var bool                                                                 $none  Whether the shop has no kit yet.
  * @var string                                                               $nonce The form's nonce action.
  * @var string                                                               $back  The tab's own address.
@@ -25,7 +28,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	<h1><?php esc_html_e( 'Builder', 'creative-skateboard-builder' ); ?></h1>
 	<?php require __DIR__ . '/builder-tabs.php'; ?>
 	<h2><?php esc_html_e( 'Catalogue check', 'creative-skateboard-builder' ); ?></h2>
-	<p><?php esc_html_e( 'Finds what keeps a part out of the builder: sources that disagree about a part, values that cannot be read, and background work that failed. It reads every part and changes nothing.', 'creative-skateboard-builder' ); ?></p>
+	<p><?php esc_html_e( 'Finds what keeps a part out of the builder: sources that disagree about a part, values that cannot be read, and background work that failed. It reads every part and changes nothing. It also lists, apart, the parts the picture draws that have no layer image.', 'creative-skateboard-builder' ); ?></p>
 	<?php if ( $none ) : ?>
 		<p><?php esc_html_e( 'The shop has no kit yet. Once it has one, the check also lists each kit\'s parts that lack a spec, presets that no longer fit and slots with nothing in stock.', 'creative-skateboard-builder' ); ?></p>
 	<?php endif; ?>
@@ -38,8 +41,10 @@ if ( ! defined( 'ABSPATH' ) ) {
 	<?php if ( $asked ) : ?>
 		<div class="notice notice-success inline" role="status"><p><?php esc_html_e( 'Every part is being read again in the background, 100 at a time. Tools > Site Health shows how far it is.', 'creative-skateboard-builder' ); ?></p></div>
 	<?php endif; ?>
-	<?php if ( $ran && 0 === $count ) : ?>
+	<?php if ( $ran && 0 === $count && 0 === $unlaid ) : ?>
 		<div class="notice notice-success inline" role="status"><p><?php esc_html_e( 'The check found nothing to fix.', 'creative-skateboard-builder' ); ?></p></div>
+	<?php elseif ( $ran && 0 === $count ) : ?>
+		<div class="notice notice-success inline" role="status"><p><?php esc_html_e( 'Nothing the check found keeps a part out of the builder.', 'creative-skateboard-builder' ); ?></p></div>
 	<?php elseif ( $ran ) : ?>
 		<div class="notice notice-warning inline" role="status">
 			<p>
@@ -49,8 +54,31 @@ if ( ! defined( 'ABSPATH' ) ) {
 				?>
 			</p>
 		</div>
-		<h3 id="cbuild-found"><?php esc_html_e( 'What it found', 'creative-skateboard-builder' ); ?></h3>
-		<div class="cbuild-scroll" role="region" aria-labelledby="cbuild-found" tabindex="0">
+	<?php endif; ?>
+	<?php
+	$cbuild_lists = array(
+		array( 'cbuild-found', __( 'What it found', 'creative-skateboard-builder' ), '', $rows, $more ),
+		array(
+			'cbuild-unlaid',
+			__( 'Parts with no layer image', 'creative-skateboard-builder' ),
+			/* translators: %s: a number of parts. */
+			sprintf( _n( '%s part the picture draws has no layer image. It is still offered, and the picture shows its labelled photo beside the board until one is chosen on its product page.', '%s parts the picture draws have no layer image. Each is still offered, and the picture shows its labelled photo beside the board until one is chosen on its product page.', $unlaid, 'creative-skateboard-builder' ), number_format_i18n( $unlaid ) ),
+			$bare,
+			$past,
+		),
+	);
+	?>
+	<?php foreach ( $ran ? $cbuild_lists : array() as list( $cbuild_id, $cbuild_heading, $cbuild_intro, $cbuild_rows, $cbuild_more ) ) : ?>
+		<?php
+		if ( array() === $cbuild_rows ) {
+			continue;
+		}
+		?>
+		<h3 id="<?php echo esc_attr( $cbuild_id ); ?>"><?php echo esc_html( $cbuild_heading ); ?></h3>
+		<?php if ( '' !== $cbuild_intro ) : ?>
+			<p><?php echo esc_html( $cbuild_intro ); ?></p>
+		<?php endif; ?>
+		<div class="cbuild-scroll" role="region" aria-labelledby="<?php echo esc_attr( $cbuild_id ); ?>" tabindex="0">
 			<table class="widefat striped">
 				<thead>
 					<tr>
@@ -60,7 +88,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 					</tr>
 				</thead>
 				<tbody>
-					<?php foreach ( $rows as $cbuild_row ) : ?>
+					<?php foreach ( $cbuild_rows as $cbuild_row ) : ?>
 						<tr>
 							<td>
 								<?php if ( '' !== $cbuild_row['link'] ) : ?>
@@ -76,15 +104,15 @@ if ( ! defined( 'ABSPATH' ) ) {
 				</tbody>
 			</table>
 		</div>
-		<?php if ( $more > 0 ) : ?>
+		<?php if ( $cbuild_more > 0 ) : ?>
 			<p>
 				<?php
 				/* translators: %s: how many more rows a list has than it shows. */
-				echo esc_html( sprintf( _n( 'And %s more.', 'And %s more.', $more, 'creative-skateboard-builder' ), number_format_i18n( $more ) ) );
+				echo esc_html( sprintf( _n( 'And %s more.', 'And %s more.', $cbuild_more, 'creative-skateboard-builder' ), number_format_i18n( $cbuild_more ) ) );
 				?>
 			</p>
 		<?php endif; ?>
-	<?php endif; ?>
+	<?php endforeach; ?>
 	<h2><?php esc_html_e( 'Read every part again', 'creative-skateboard-builder' ); ?></h2>
 	<p><?php esc_html_e( 'The builder keeps an index of each part\'s specs and updates a part whenever it is saved. Use this when the index was not rebuilt, or stopped part way. It runs in the background, and parts keep what they held until they are reached.', 'creative-skateboard-builder' ); ?></p>
 	<form method="post" action="<?php echo esc_url( $back ); ?>">

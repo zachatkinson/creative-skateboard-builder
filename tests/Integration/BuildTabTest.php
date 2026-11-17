@@ -132,6 +132,15 @@ final class BuildTabTest extends IntegrationTestCase {
 				'lead_time'      => '',
 				'returns_notice' => '',
 			),
+			'picture'  => array(
+				'layers'    => array(
+					'deck'   => '1',
+					'grip'   => '2',
+					'trucks' => '3',
+					'wheels' => '4',
+				),
+				'wheelbase' => '',
+			),
 		);
 	}
 
@@ -234,7 +243,7 @@ final class BuildTabTest extends IntegrationTestCase {
 		foreach ( Options::kitDocumentNames() as $name => $key ) {
 			self::assertNull( $this->service( DocumentSchemas::class )->refusal( $name, $stored[ $key ] ), $name );
 		}
-		Kit::fromDocuments( $stored[ Options::META_KIT_SLOTS ], $stored[ Options::META_KIT_RULES ], $stored[ Options::META_KIT_PRESETS ], $stored[ Options::META_KIT_ASSEMBLY ] );
+		Kit::fromDocuments( $stored[ Options::META_KIT_SLOTS ], $stored[ Options::META_KIT_RULES ], $stored[ Options::META_KIT_PRESETS ], $stored[ Options::META_KIT_ASSEMBLY ], $stored[ Options::META_KIT_PICTURE ] );
 	}
 
 	public function test_a_new_kits_assembly_starts_from_the_shops_settings_and_a_kit_that_has_its_own_keeps_it(): void {
@@ -621,4 +630,93 @@ final class BuildTabTest extends IntegrationTestCase {
 		);
 		self::assertSame( array( $wheels->get_id() ), self::stored( $kit->get_id() )[ Options::META_KIT_SLOTS ]['slots'][2]['sources']['products'], 'a note, not a refusal' );
 	}
+
+	/**
+	 * The layer a slot's select has chosen in the tab, or null where the tab has no such select.
+	 *
+	 * @param string $panel The tab.
+	 * @param string $slot  The slot's key.
+	 */
+	private static function layer( string $panel, string $slot ): ?string {
+		if ( 1 !== preg_match( '#<select[^>]*name="cbuild_kit\[picture\]\[layers\]\[' . $slot . '\]".*?</select>#s', $panel, $select ) ) {
+			return null;
+		}
+		return 1 === preg_match( '#<option value="(\d+)"\s+selected=\'selected\'>#', $select[0], $chosen ) ? $chosen[1] : '';
+	}
+
+	/**
+	 * Spec, Admin, Milestone 7: "On the kit's Build tab, a Picture section sets the slots' layer order and any anchor
+	 * the kit needs to move." D-192.
+	 */
+	public function test_the_picture_section_sets_the_layer_order_and_where_the_trucks_sit_on_a_deck_with_no_wheelbase(): void {
+		$this->as( 'shop_manager' );
+		$kit   = KitFactory::kit();
+		$panel = $this->panel( $kit );
+		self::assertStringContainsString( 'id="cbuild-kit-picture"', $panel );
+		// Cowork's M7 review, M5: no group is announced without a name. One with no legend is a plain box.
+		self::assertMatchesRegularExpression( '#<div id="cbuild-kit-picture-fields" class="cbuild-kit-group">#', $panel );
+		preg_match_all( '#<fieldset[^>]*>\s*(<\w+)#', $panel, $opened );
+		self::assertNotSame( array(), $opened[1] );
+		self::assertSame( array( '<legend' ), array_values( array_unique( $opened[1] ) ), 'each fieldset opens with its legend' );
+		self::assertSame(
+			array( '1', '2', '3', '4', null, null, null ),
+			array_map( static fn( string $slot ): ?string => self::layer( $panel, $slot ), array( 'deck', 'grip', 'trucks', 'wheels', 'risers', 'bearings', 'hardware' ) ),
+			'a kit saved before 0.7.0: the usual order, and a layer only for the slots the picture draws'
+		);
+		self::assertStringContainsString( '<option value="1"  selected=\'selected\'>1, the bottom</option>', $panel );
+		self::assertMatchesRegularExpression( '#<label for="cbuild-kit-picture-wheelbase">Wheelbase where a deck gives none \(in\)</label>\s*<input[^>]*name="cbuild_kit\[picture\]\[wheelbase\]"\s+value=""#s', $panel );
+
+		$sent                    = self::form();
+		$sent['picture']['layers'] = array(
+			'deck'   => '2',
+			'grip'   => '1',
+			'trucks' => '3',
+			'wheels' => '3',
+		);
+		$sent['picture']['wheelbase'] = '14 1/4';
+		$this->send( $kit, $sent );
+		self::assertSame( array(), self::notices() );
+		self::assertSame(
+			array(
+				'schema_version' => 1,
+				'order'          => array( 'grip', 'deck', 'trucks', 'wheels' ),
+				'wheelbase'      => '14.25',
+			),
+			self::stored( $kit->get_id() )[ Options::META_KIT_PICTURE ],
+			'equal layers keep the order sent; a fraction is written as a decimal'
+		);
+		$panel = $this->panel( $kit );
+		self::assertSame( array( '2', '1' ), array( self::layer( $panel, 'deck' ), self::layer( $panel, 'grip' ) ) );
+		self::assertLessThan( strpos( $panel, '[layers][deck]' ), strpos( $panel, '[layers][grip]' ), 'drawn in the order in force' );
+		self::assertMatchesRegularExpression( '#name="cbuild_kit\[picture\]\[wheelbase\]"\s+value="14.25"#', $panel );
+		$read = $this->service( \CreativeBranding\SkateboardBuilder\Port\Kits::class )->kit( $kit->get_id() );
+		self::assertSame( array( 'grip', 'deck', 'trucks', 'wheels' ), $read?->picture->order, 'the kit the builder reads' );
+		self::assertSame( 142500, $read?->picture->wheelbase?->tenThousandths );
+	}
+
+	public function test_a_wheelbase_outside_what_a_deck_has_is_not_saved_and_the_notice_says_the_range(): void {
+		$this->as( 'shop_manager' );
+		$kit                          = KitFactory::kit();
+		$sent                         = self::form();
+		$sent['picture']['wheelbase'] = '25';
+		$sent['assembly']['fee']      = '9';
+		$this->send( $kit, $sent );
+		self::assertSame(
+			array(
+				'<a href="#cbuild-kit-picture">The kit&#039;s picture settings were not saved. The Build tab shows them as you typed them, with what to put right.</a>',
+				'<a href="#cbuild-kit-picture-wheelbase">Wheelbase where a deck gives none: type a wheelbase from 10 to 20 in, or leave it empty.</a>',
+			),
+			self::notices()
+		);
+		$stored = self::stored( $kit->get_id() );
+		self::assertNull( $stored[ Options::META_KIT_PICTURE ], 'nothing saved in its place' );
+		self::assertSame( '9', $stored[ Options::META_KIT_ASSEMBLY ]['fee'], 'the rest of the kit saved' );
+		self::assertMatchesRegularExpression( '#name="cbuild_kit\[picture\]\[wheelbase\]"\s+value="25"#', $this->panel( $kit ), 'shown as typed' );
+
+		$sent['picture']['wheelbase'] = 'long';
+		\WC_Admin_Meta_Boxes::$meta_box_errors = array();
+		$this->send( $kit, $sent );
+		self::assertContains( '<a href="#cbuild-kit-picture-wheelbase">Wheelbase where a deck gives none: type a number, such as 0.25.</a>', self::notices() );
+	}
+
 }

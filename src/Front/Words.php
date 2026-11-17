@@ -348,6 +348,48 @@ final class Words {
 	}
 
 	/**
+	 * A part as a share card names it, by its brand and its size, as "Retna 54 mm"; either alone where it has one.
+	 *
+	 * @since 0.7.0
+	 *
+	 * @param string $brand The brand's name, or empty.
+	 * @param string $size  The part's size as a person reads it, or empty.
+	 */
+	public static function branded( string $brand, string $size ): string {
+		if ( '' === $brand || '' === $size ) {
+			return '' === $brand ? $size : $brand;
+		}
+		/* translators: 1: a brand's name, such as Retna. 2: a size, such as 54 mm. */
+		return sprintf( _x( '%1$s %2$s', 'a brand and a size', 'creative-skateboard-builder' ), $brand, $size );
+	}
+
+	/**
+	 * A complete's name on its share card (spec: SEO), as "8.25 in complete: Rascals, Independent 8.5 in, Retna
+	 * 54 mm". The parts are joined as the site's language joins a list.
+	 *
+	 * @since 0.7.0
+	 *
+	 * @param string       $width The deck's width as a person reads it, or empty.
+	 * @param list<string> $parts The parts a complete is known by, each as branded() names it.
+	 */
+	public static function complete( string $width, array $parts ): string {
+		$list = wp_sprintf( '%l', $parts );
+		if ( '' === $width ) {
+			if ( '' === $list ) {
+				return __( 'A complete', 'creative-skateboard-builder' );
+			}
+			/* translators: %s: the build's parts, as "Rascals, Independent 8.5 in and Retna 54 mm". */
+			return sprintf( __( 'Complete: %s', 'creative-skateboard-builder' ), $list );
+		}
+		if ( '' === $list ) {
+			/* translators: %s: the deck's width, such as 8.25 in. */
+			return sprintf( __( '%s complete', 'creative-skateboard-builder' ), $width );
+		}
+		/* translators: 1: the deck's width, such as 8.25 in. 2: the build's parts, as "Rascals, Independent 8.5 in and Retna 54 mm". */
+		return sprintf( __( '%1$s complete: %2$s', 'creative-skateboard-builder' ), $width, $list );
+	}
+
+	/**
 	 * The build in a sentence, for whoever cannot see its picture (spec: The picture, a written description). Each
 	 * part is said by its slot, since a part's name may hold commas of its own (Cowork's review, minor 15).
 	 *

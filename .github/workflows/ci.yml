@@ -260,9 +260,10 @@ jobs:
     runs-on: ubuntu-26.04
     # Every browser project is some 790 tests: 45 minutes of the newest leg on a quick runner and 70 on a slow one,
     # after 20 of setup and gates. At 90 the merge of 0.6.0 was cancelled with every test passing, and was run again
-    # (CI run 43610439862, D-188); a minute not used is not billed. The other legs, and a draft's newest, are done in
-    # half an hour or something is wrong.
-    timeout-minutes: ${{ matrix.leg == 'newest' && needs.scope.outputs.browsers == 'every' && 120 || 30 }}
+    # (CI run 43610439862, D-188); a minute not used is not billed. The other legs, and a draft's newest, take about
+    # 25 minutes since milestone 7; at 30 a slow runner stopped the oldest leg with its browser tests still running
+    # (CI run 43906165176). At 45 a slow runner fits and a hang still stops at less than the newest leg's limit.
+    timeout-minutes: ${{ matrix.leg == 'newest' && needs.scope.outputs.browsers == 'every' && 120 || 45 }}
     strategy:
       fail-fast: false
       matrix:
@@ -364,6 +365,15 @@ jobs:
             sleep 30
           done
           exit 1
+      # The previous release, as published, updated to this build through the upload screen's "Replace current with
+      # uploaded", after a check that its container builds every service from these files (Cowork's M7 review, F3;
+      # D-208). It needs Playwright's Chromium, so it comes after the install; the browser projects' setup seeds the
+      # site again after it, as after the zip's lifecycle.
+      - name: The update from the previous release, through the upload screen
+        if: matrix.leg == 'newest' || matrix.leg == 'oldest'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: npm run upgrade
       - run: npm run test:e2e -- ${{ steps.browsers.outputs.projects }}
         if: matrix.leg == 'newest' || matrix.leg == 'oldest'
       # In Playwright's own Linux image, as locally, so the baselines are one machine's pictures (D-162). Only where

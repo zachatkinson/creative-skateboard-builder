@@ -9,6 +9,7 @@ declare( strict_types=1 );
 
 namespace CreativeBranding\SkateboardBuilder\Admin;
 
+use CreativeBranding\SkateboardBuilder\Domain\Kit\Kit;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\Origin;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\SpecKey;
 use CreativeBranding\SkateboardBuilder\Port\Kits;
@@ -121,8 +122,33 @@ final class CheckScreen {
 		$ran   = null !== $this->found;
 		$found = $this->found ?? array();
 		$kits  = $this->kits->all();
-		$rows  = array();
-		foreach ( array_slice( $found, 0, self::SHOWN ) as $finding ) {
+		// Parts with no layer image are listed apart, each list cut at its own length: on a large catalogue they would
+		// otherwise fill the page after what keeps a part out (Cowork's M7 review, F4; D-211).
+		$fixes  = array_values( array_filter( $found, static fn( CheckFinding $finding ): bool => CatalogueCheck::LAYER_MISSING !== $finding->code ) );
+		$layers = array_values( array_filter( $found, static fn( CheckFinding $finding ): bool => CatalogueCheck::LAYER_MISSING === $finding->code ) );
+		$rows   = $this->rows( array_slice( $fixes, 0, self::SHOWN ), $kits );
+		$more   = count( $fixes ) - count( $rows );
+		$count  = count( $fixes );
+		$bare   = $this->rows( array_slice( $layers, 0, self::SHOWN ), $kits );
+		$past   = count( $layers ) - count( $bare );
+		$unlaid = count( array_unique( array_map( static fn( CheckFinding $finding ): int => $finding->part, $layers ) ) );
+		$tabs   = BuilderHooks::tabs( BuilderHooks::TAB_CHECK );
+		$nonce  = self::NONCE;
+		$back   = self::url();
+		$none   = array() === $kits;
+		$asked  = $this->asked;
+		include CBUILD_PATH . 'templates/admin/check.php';
+	}
+	/**
+	 * Findings as the table's rows.
+	 *
+	 * @param list<CheckFinding>                        $found The findings.
+	 * @param array<int, array{name: string, kit: Kit}> $kits  The kits that read, by ID.
+	 * @return list<array{kit: string, about: string, link: string, says: string}>
+	 */
+	private function rows( array $found, array $kits ): array {
+		$rows = array();
+		foreach ( $found as $finding ) {
 			$product = 0 === $finding->part ? null : wc_get_product( $finding->part );
 			$about   = '';
 			$link    = '';
@@ -130,7 +156,8 @@ final class CheckScreen {
 				$owner = 0 === $product->get_parent_id() ? $product->get_id() : $product->get_parent_id();
 				$about = '' === $product->get_sku() ? $product->get_name() : $product->get_name() . ' (' . $product->get_sku() . ')';
 				// The product's screen opens the tab, or the variation, the address names (PartSpecsPanel).
-				$link = (string) get_edit_post_link( $owner, 'raw' ) . ( $owner === $product->get_id() ? '#cbuild_part_specs' : '#cbuild_variation_' . $product->get_id() );
+				$field = CatalogueCheck::LAYER_MISSING === $finding->code ? '#cbuild-spec-layer' : '#cbuild_part_specs';
+				$link  = (string) get_edit_post_link( $owner, 'raw' ) . ( $owner === $product->get_id() ? $field : '#cbuild_variation_' . $product->get_id() );
 			} elseif ( 0 !== $finding->part ) {
 				/* translators: %s: a product's ID. */
 				$about = sprintf( __( 'Product %s', 'creative-skateboard-builder' ), (string) $finding->part );
@@ -152,13 +179,6 @@ final class CheckScreen {
 				'says'  => Sentences::finding( $finding ),
 			);
 		}
-		$more  = count( $found ) - count( $rows );
-		$count = count( $found );
-		$tabs  = BuilderHooks::tabs( BuilderHooks::TAB_CHECK );
-		$nonce = self::NONCE;
-		$back  = self::url();
-		$none  = array() === $kits;
-		$asked = $this->asked;
-		include CBUILD_PATH . 'templates/admin/check.php';
+		return $rows;
 	}
 }

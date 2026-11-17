@@ -52,8 +52,9 @@ final class Health {
 	/**
 	 * What the Catalogue check's verdict can say.
 	 */
-	public const CHECK_CLEAR = 'check_clear';
-	public const CHECK_FOUND = 'check_found';
+	public const CHECK_CLEAR  = 'check_clear';
+	public const CHECK_FOUND  = 'check_found';
+	public const CHECK_LAYERS = 'check_layers';
 
 	/**
 	 * Constructor.
@@ -123,18 +124,24 @@ final class Health {
 
 	/**
 	 * What the Catalogue check found, for Site Health. Background work that failed is left out: the index's and the
-	 * jobs' tests report it, and one failure is not shown three times.
+	 * jobs' tests report it, and one failure is not shown three times. Parts with no layer image are counted apart, by
+	 * part: they stay in the builder with their photo drawn, so they are not things that keep a part out (D-211).
 	 *
 	 * @since 0.3.0
 	 *
 	 * @param list<CheckFinding> $found The check's findings.
-	 * @return array{status: string, code: string, findings: int, parts: int}
+	 * @return array{status: string, code: string, findings: int, parts: int, layers: int}
 	 */
 	public static function catalogue( array $found ): array {
 		$findings = 0;
 		$parts    = array();
+		$layers   = array();
 		foreach ( $found as $finding ) {
 			if ( in_array( $finding->code, array( CatalogueCheck::REINDEX_FAILED, CatalogueCheck::IMPORT_FAILED, CatalogueCheck::JOBS_FAILED ), true ) ) {
+				continue;
+			}
+			if ( CatalogueCheck::LAYER_MISSING === $finding->code ) {
+				$layers[ $finding->part ] = $finding->part;
 				continue;
 			}
 			++$findings;
@@ -142,11 +149,18 @@ final class Health {
 				$parts[ $finding->part ] = $finding->part;
 			}
 		}
+		$code = self::CHECK_CLEAR;
+		if ( $findings > 0 ) {
+			$code = self::CHECK_FOUND;
+		} elseif ( array() !== $layers ) {
+			$code = self::CHECK_LAYERS;
+		}
 		return array(
-			'status'   => 0 === $findings ? self::GOOD : self::RECOMMENDED,
-			'code'     => 0 === $findings ? self::CHECK_CLEAR : self::CHECK_FOUND,
+			'status'   => self::CHECK_CLEAR === $code ? self::GOOD : self::RECOMMENDED,
+			'code'     => $code,
 			'findings' => $findings,
 			'parts'    => count( $parts ),
+			'layers'   => count( $layers ),
 		);
 	}
 

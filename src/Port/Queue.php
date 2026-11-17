@@ -102,4 +102,26 @@ interface Queue {
 	 * @param int $since Count only actions scheduled after this moment, a UTC timestamp; 0 for all of them.
 	 */
 	public function failed( int $since = 0 ): int;
+
+	/**
+	 * How many of one of the plugin's actions wait to run, counted up to a limit: a caller that caps a queue asks
+	 * only whether it is full.
+	 *
+	 * @since 0.7.0
+	 *
+	 * @param string $hook The action.
+	 * @param int    $upTo The most to count.
+	 */
+	public function pending( string $hook, int $upTo ): int;
+
+	/**
+	 * Run an action again and again, a set time apart, unless it is already scheduled.
+	 *
+	 * @since 0.7.0
+	 *
+	 * @param int    $first    When it first runs, as a UTC timestamp.
+	 * @param int    $interval The seconds between runs.
+	 * @param string $hook     The action.
+	 */
+	public function recurringUnique( int $first, int $interval, string $hook ): void;
 }

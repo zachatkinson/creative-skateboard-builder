@@ -318,4 +318,19 @@ final class WordsTest extends TestCase {
 		self::assertSame( 'éclat', Words::inSentence( 'Éclat' ) );
 		self::assertSame( '', Words::inSentence( '' ) );
 	}
+
+	public function test_a_part_on_the_share_card_is_named_by_its_brand_and_its_size_or_either_alone(): void {
+		self::assertSame( "Retna 54\u{00A0}mm", Words::branded( 'Retna', "54\u{00A0}mm" ) );
+		self::assertSame( 'Rascals', Words::branded( 'Rascals', '' ) );
+		self::assertSame( '8.5″', Words::branded( '', '8.5″' ) );
+		self::assertSame( '', Words::branded( '', '' ) );
+	}
+
+	public function test_a_complete_on_the_share_card_is_named_by_its_decks_width_and_its_parts(): void {
+		self::assertSame( '8.25″ complete: Rascals, Independent 8.5″ and Retna 54 mm', Words::complete( '8.25″', array( 'Rascals', 'Independent 8.5″', 'Retna 54 mm' ) ) );
+		self::assertSame( '8.25″ complete: Rascals', Words::complete( '8.25″', array( 'Rascals' ) ) );
+		self::assertSame( '8.25″ complete', Words::complete( '8.25″', array() ) );
+		self::assertSame( 'Complete: Rascals and Retna 54 mm', Words::complete( '', array( 'Rascals', 'Retna 54 mm' ) ) );
+		self::assertSame( 'A complete', Words::complete( '', array() ) );
+	}
 }

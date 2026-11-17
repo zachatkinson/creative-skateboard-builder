@@ -16,9 +16,11 @@ use CreativeBranding\SkateboardBuilder\Domain\Measure\Measure;
 use CreativeBranding\SkateboardBuilder\Domain\Measure\Unit;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\HolePattern;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\SpecKey;
+use CreativeBranding\SkateboardBuilder\Domain\Spec\Specs;
 
 use function intdiv;
 use function max;
+use function usort;
 
 /**
  * The board laid out from its parts' specs, seen from underneath with the nose up: the deck by its width and length,
@@ -28,6 +30,11 @@ use function max;
  * known, a usual value stands in and the layout says which.
  */
 final readonly class Layout {
+
+	/**
+	 * The slots the picture draws, in the order it stacks them when the kit sets none.
+	 */
+	public const array DRAWN = array( SlotKey::DECK, SlotKey::GRIP, SlotKey::TRUCKS, SlotKey::WHEELS );
 
 	/**
 	 * The length of a deck that gives none: 32 in.
@@ -87,13 +94,15 @@ final readonly class Layout {
 	public function __construct( public int $width, public int $height, public array $layers, public array $assumed ) {}
 
 	/**
-	 * The layout of the picks so far. Nothing is laid out until a deck with a width is picked.
+	 * The layout of the picks so far. Nothing is laid out until a deck with a width is picked. From 0.7.0 the kit's
+	 * picture settings stack the layers in its order and anchor the trucks on a deck that gives no wheelbase.
 	 *
 	 * @since 0.2.0
 	 *
-	 * @param Picks $picks The picks.
+	 * @param Picks                $picks    The picks.
+	 * @param PictureSettings|null $settings The kit's picture settings; none, the usual order and no anchor.
 	 */
-	public static function of( Picks $picks ): self {
+	public static function of( Picks $picks, ?PictureSettings $settings = null ): self {
 		$deck  = $picks->part( SlotKey::DECK );
 		$width = $deck?->specs->measure( SpecKey::DeckWidth );
 		if ( null === $deck || null === $width ) {
@@ -104,7 +113,7 @@ final readonly class Layout {
 		$base    = $deck->specs->measure( SpecKey::Wheelbase );
 		if ( null === $base ) {
 			$assumed[] = SpecKey::Wheelbase;
-			$base      = self::usualWheelbase( $width, $length );
+			$base      = $settings->wheelbase ?? self::usualWheelbase( $width, $length );
 		}
 		if ( null === $length ) {
 			$assumed[] = SpecKey::DeckLength;
@@ -130,13 +139,56 @@ final readonly class Layout {
 		$across  = self::mm( $axle ?? $width );
 		$spacing = HolePattern::OldSchool->value === $deck->specs->choice( SpecKey::HolePattern ) ? self::OLD_SCHOOL_SPACING : self::HOLE_SPACING;
 		// The wheelbase runs between the inner holes, so a truck's middle is half a spacing further out.
-		$out = intdiv( self::mm( $base ) + $spacing, 2 );
-		return new self(
-			max( $wide, $across ),
-			$long,
-			array( ...$layers, ...self::trucks( $trucks, $out, $across, $spacing ), ...self::wheels( $wheels, $out, $across ) ),
-			$assumed
-		);
+		$out    = intdiv( self::mm( $base ) + $spacing, 2 );
+		$layers = array( ...$layers, ...self::trucks( $trucks, $out, $across, $spacing ), ...self::wheels( $wheels, $out, $across ) );
+		if ( null !== $settings ) {
+			// usort() keeps equal ranks in the order they came in (PHP 8.0), so a slot's own layers stay in theirs.
+			usort( $layers, static fn( Layer $a, Layer $b ): int => $settings->rank( $a->slot ) <=> $settings->rank( $b->slot ) );
+		}
+		return new self( max( $wide, $across ), $long, $layers, $assumed );
+	}
+
+	/**
+	 * A layer's top left corner from the board's, the nose at the top: where a renderer draws it from.
+	 *
+	 * @since 0.7.0
+	 *
+	 * @param Layer $layer One of this layout's layers.
+	 * @return array{int, int} Across and down.
+	 */
+	public function corner( Layer $layer ): array {
+		return array( intdiv( $this->width - $layer->width, 2 ) + $layer->x, intdiv( $this->height - $layer->height, 2 ) - $layer->y );
+	}
+
+	/**
+	 * The size one part of a slot is drawn at, alone: across and along, as `of()` draws it on a usual 32 in deck with
+	 * new school holes. Null where the picture does not draw the slot, or the part lacks the spec its size comes from.
+	 * The Layer image field checks an image against it (D-190).
+	 *
+	 * @since 0.7.0
+	 *
+	 * @param string $slot  The slot's key.
+	 * @param Specs  $specs The part's specs.
+	 * @return array{int, int}|null
+	 */
+	public static function drawn( string $slot, Specs $specs ): ?array {
+		$usual = self::mm( Measure::inches( self::USUAL_LENGTH ) );
+		switch ( $slot ) {
+			case SlotKey::DECK:
+				$width  = $specs->measure( SpecKey::DeckWidth );
+				$length = $specs->measure( SpecKey::DeckLength );
+				return null === $width ? null : array( self::mm( $width ), null === $length ? $usual : self::mm( $length ) );
+			case SlotKey::GRIP:
+				return array( self::GRIP_STRIP, $usual );
+			case SlotKey::TRUCKS:
+				$axle = $specs->measure( SpecKey::AxleWidth );
+				return null === $axle ? null : array( self::mm( $axle ), self::HOLE_SPACING + self::BASEPLATE_MARGIN );
+			case SlotKey::WHEELS:
+				$diameter = $specs->measure( SpecKey::WheelDiameter );
+				$round    = null === $diameter ? self::USUAL_WHEEL : self::mm( $diameter );
+				return array( intdiv( $round * 3, 5 ), $round );
+		}
+		return null;
 	}
 
 	/**

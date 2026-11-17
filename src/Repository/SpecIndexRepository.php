@@ -37,6 +37,14 @@ if ( ! defined( 'ABSPATH' ) ) {
 final class SpecIndexRepository implements SpecIndex {
 
 	/**
+	 * What `specsOf()` read in this request, by the parts asked for. The cart asks for a build's parts once for its
+	 * prices and again for each line's picture (D-202), so an answer is kept until this index is written.
+	 *
+	 * @var array<string, array<int, Specs>>
+	 */
+	private array $read = array();
+
+	/**
 	 * Make the index hold exactly these specs for a part. Two statements, not one transaction: between them a reader
 	 * may see a spec the part has just lost beside its new values, for as long as one statement takes. The index is
 	 * derived, and the cart checks a build again when it is added.
@@ -49,6 +57,7 @@ final class SpecIndexRepository implements SpecIndex {
 	 */
 	public function replace( int $partId, array $rows, DateTimeImmutable $at ): void {
 		global $wpdb;
+		$this->read = array();
 		if ( array() === $rows ) {
 			$this->forget( $partId );
 			return;
@@ -77,6 +86,7 @@ final class SpecIndexRepository implements SpecIndex {
 	 */
 	public function forget( int ...$partIds ): void {
 		global $wpdb;
+		$this->read = array();
 		if ( array() === $partIds ) {
 			return;
 		}
@@ -85,7 +95,8 @@ final class SpecIndexRepository implements SpecIndex {
 	}
 
 	/**
-	 * The specs of each of these parts, in one query.
+	 * The specs of each of these parts, in one query, or none where the same parts were read in this request and the
+	 * index has not been written since.
 	 *
 	 * @since 0.3.0
 	 *
@@ -97,6 +108,12 @@ final class SpecIndexRepository implements SpecIndex {
 		if ( array() === $partIds ) {
 			return array();
 		}
+		$asked = $partIds;
+		sort( $asked );
+		$key = implode( ',', $asked );
+		if ( isset( $this->read[ $key ] ) ) {
+			return $this->read[ $key ];
+		}
 		// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber, PluginCheck.Security.DirectDB.UnescapedDBParameter -- Only placeholders are joined in: one %d per part.
 		$found = $wpdb->get_results( $wpdb->prepare( 'SELECT part_id, spec, number, text FROM %i WHERE part_id IN (' . self::marks( '%d', count( $partIds ) ) . ')', array( Tables::specs(), ...array_values( $partIds ) ) ), ARRAY_A );
 		$texts = array();
@@ -106,7 +123,8 @@ final class SpecIndexRepository implements SpecIndex {
 				$texts[ Cast::int( $row['part_id'] ?? null ) ][ Cast::str( $row['spec'] ?? null ) ] = $text;
 			}
 		}
-		return array_map( static fn( array $rows ): Specs => Specs::fromIndex( $rows ), $texts );
+		$this->read[ $key ] = array_map( static fn( array $rows ): Specs => Specs::fromIndex( $rows ), $texts );
+		return $this->read[ $key ];
 	}
 
 	/**

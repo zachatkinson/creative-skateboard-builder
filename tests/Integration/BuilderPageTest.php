@@ -9,6 +9,8 @@ declare( strict_types=1 );
 
 namespace CreativeBranding\SkateboardBuilder\Tests\Integration;
 
+use CreativeBranding\SkateboardBuilder\Tests\Support\LayerFiles;
+use CreativeBranding\SkateboardBuilder\Service\PartRenditions;
 use CreativeBranding\SkateboardBuilder\Cart\ShowHooks;
 use CreativeBranding\SkateboardBuilder\Front\Builder;
 use CreativeBranding\SkateboardBuilder\Front\BuilderPage;
@@ -103,6 +105,9 @@ final class BuilderPageTest extends IntegrationTestCase {
 		unset( $_GET[ BuildLink::PARAM ], $GLOBALS['product'] );
 		remove_all_filters( 'cbuild_part_classes' );
 		remove_all_filters( 'cbuild_builder_url' );
+		foreach ( (array) glob( wp_get_upload_dir()['basedir'] . '/creative-skateboard-builder/layers/*' ) as $file ) {
+			wp_delete_file( (string) $file );
+		}
 		wp_dequeue_style( ShowHooks::HANDLE );
 		wp_dequeue_style( BuilderPage::STYLE );
 		parent::tear_down();
@@ -201,6 +206,57 @@ final class BuilderPageTest extends IntegrationTestCase {
 		self::assertNotNull( $dom->query( '//section[contains(@class,"cbuild-review")][@hidden]' )->item( 0 ), 'The review is not this step.' );
 		self::assertNotNull( $dom->query( '//section[contains(@class,"cbuild-changes")][@hidden]' )->item( 0 ) );
 		self::assertNotNull( $dom->query( '//figcaption[contains(@class,"cbuild-picture__description")][@hidden]' )->item( 0 ), 'With nothing chosen, the summary says so alone (Cowork minor 15).' );
+		self::assertNotNull( $dom->query( '//figure[@id="cbuild-picture"]//*[contains(@class,"cbuild-picture__heading")][@hidden]' )->item( 0 ), 'and the picture has no heading over nothing.' );
+	}
+
+	public function test_the_picture_is_named_by_a_heading_a_sighted_shopper_reads_too(): void {
+		$dom    = self::dom( $this->kitPage( array( 'deck' => (string) $this->parts['deck 8.5'] ) ) );
+		$figure = $dom->query( '//figure[@id="cbuild-picture"]' )->item( 0 );
+		self::assertInstanceOf( \DOMElement::class, $figure );
+		// Milestone 6's audit 27: the heading was an aria-label on the list, which only a screen reader heard.
+		$heading = $dom->query( './/h3[contains(@class,"cbuild-picture__heading")][not(@hidden)]', $figure )->item( 0 );
+		self::assertInstanceOf( \DOMElement::class, $heading, 'A visible heading in the figure.' );
+		self::assertSame( 'What is in the box', trim( $heading->textContent ) );
+		self::assertSame( $heading->getAttribute( 'id' ), $figure->getAttribute( 'aria-labelledby' ), 'It names the figure.' );
+		self::assertSame( 0, $dom->query( './/*[@aria-label]', $figure )->length, 'No name only a screen reader hears.' );
+	}
+
+	// Spec, The picture: "Each part that has a layer image is drawn to scale"; "A part without a layer image keeps
+	// milestone 6's labelled photo within the same picture" (plan); the deck layer is the largest paint (D-195).
+	public function test_the_board_is_served_as_layers_with_their_renditions_and_the_rest_keep_their_photos(): void {
+		foreach ( array( 'deck 8.5' => array( 432, 1626 ), 'truck 149' => array( 432, 160 ) ) as $part => $pixels ) {
+			$product = wc_get_product( $this->parts[ $part ] );
+			$product->update_meta_data( Options::META_LAYER, (string) LayerFiles::attachment( ...$pixels ) );
+			$product->save();
+		}
+		$this->service( PartRenditions::class )->make( $this->parts['deck 8.5'] );
+
+		$html = $this->kitPage(
+			array(
+				'deck'   => (string) $this->parts['deck 8.5'],
+				'trucks' => (string) $this->parts['truck 149'],
+				'step'   => 'wheels',
+			)
+		);
+		$dom  = self::dom( $html );
+		$layers = $dom->query( '//figure[@id="cbuild-picture"]/div[contains(@class,"cbuild-board")]/picture' );
+		self::assertSame( 3, $layers->length, 'a deck and two trucks' );
+		self::assertSame( 'cbuild-board__layer cbuild-board__layer--deck', $layers->item( 0 )->getAttribute( 'class' ) );
+		self::assertSame( '--cbuild-layer-x:0%;--cbuild-layer-y:0%;--cbuild-layer-width:100%;--cbuild-layer-height:100%', $layers->item( 0 )->getAttribute( 'style' ) );
+		// libxml reads HTML 4, where a source is not void, so it nests the second in the first: descendants, then.
+		$sources = $dom->query( './/source', $layers->item( 0 ) );
+		self::assertSame( array( 'image/avif', 'image/webp' ), array( $sources->item( 0 )->getAttribute( 'type' ), $sources->item( 1 )->getAttribute( 'type' ) ) );
+		self::assertMatchesRegularExpression( '#/creative-skateboard-builder/layers/[0-9]+-[0-9a-f]{20}-108x407\.avif 108w, .+ 216w, .+ 432w$#', $sources->item( 0 )->getAttribute( 'srcset' ) );
+		self::assertStringStartsWith( '(min-height: 960px) ', $sources->item( 0 )->getAttribute( 'sizes' ) );
+		$deck = $dom->query( './/img', $layers->item( 0 ) )->item( 0 );
+		self::assertSame( array( 'high', 'eager', '', '432', '1626' ), array( $deck->getAttribute( 'fetchpriority' ), $deck->getAttribute( 'loading' ), $deck->getAttribute( 'alt' ), $deck->getAttribute( 'width' ), $deck->getAttribute( 'height' ) ) );
+		self::assertSame( 0, $dom->query( './/source', $layers->item( 1 ) )->length, 'the trucks\' renditions are not made: the master alone' );
+		self::assertStringEndsWith( '.png', $dom->query( './/img', $layers->item( 1 ) )->item( 0 )->getAttribute( 'src' ) );
+
+		$hidden = $dom->query( '//ul[@class="cbuild-picture__items"]/li[@hidden]' );
+		self::assertSame( 2, $hidden->length, 'the deck and the trucks are drawn, so their labelled photos are not shown' );
+		self::assertSame( 3, $dom->query( '//div[contains(@class,"cbuild-bar")]//span[contains(@class,"cbuild-board--bar")]/picture' )->length, 'the bar shows the same board' );
+		self::assertNotNull( $dom->query( '//div[contains(@class,"cbuild-bar")]//img[contains(@class,"cbuild-bar__photo") and @hidden]' )->item( 0 ) );
 	}
 
 	public function test_the_kits_page_gives_the_store_its_route_page_and_language_and_loads_it(): void {
@@ -350,7 +406,10 @@ final class BuilderPageTest extends IntegrationTestCase {
 		self::assertSame( '#cbuild-picture', $dom->query( $bar . '//a[contains(@class,"cbuild-bar__picture")]' )->item( 0 )->getAttribute( 'href' ) );
 		self::assertSame( '48px', $dom->query( $bar . '//img[contains(@class,"cbuild-bar__photo")]' )->item( 0 )->getAttribute( 'sizes' ), 'a 48 px picture, so a phone takes the smallest of its sources, not the widest' );
 		self::assertSame( 1, $dom->query( '//figure[@id="cbuild-picture"][@tabindex="-1"]' )->length, 'and the picture takes focus when the link is followed' );
-		self::assertStringStartsWith( 'Total: ', self::text( $dom, $bar . '//summary' ) );
+		self::assertStringStartsWith( 'Total: ', self::text( $dom, $bar . '//summary/span[contains(@class,"screen-reader-text")]' ), 'the sentence, read' );
+		$shown = $dom->query( $bar . '//summary/span[@aria-hidden="true"]' )->item( 0 );
+		self::assertNotNull( $shown, 'the amount, shown' );
+		self::assertSame( wp_interactivity_state( BuilderPage::STORE )['view']['summary']['total'], trim( $shown->textContent ), 'the amount alone beside the board, so the bar keeps its height' );
 		self::assertSame( count( wp_interactivity_state( BuilderPage::STORE )['view']['summary']['rows'] ), $dom->query( $bar . '//dl[contains(@class,"cbuild-bar__lines")]/div' )->length, 'the summary\'s rows, in the parts list the total opens' );
 	}
 
@@ -472,6 +531,45 @@ final class BuilderPageTest extends IntegrationTestCase {
 			self::assertGreaterThan( 0, $links->length, $state . ' has links into states to check.' );
 			foreach ( $links as $link ) {
 				self::assertSame( 'nofollow', $link->getAttribute( 'rel' ), $state . ': ' . trim( $link->textContent ) . ' leads into a state, so crawlers are asked not to follow it (spec: SEO and sharing).' );
+			}
+		}
+	}
+
+	public function test_the_assembly_switch_is_a_button_in_a_get_form_on_every_state(): void {
+		$states = array(
+			'the blank start' => array(),
+			'a step'          => array(
+				'deck' => (string) $this->parts['deck 8.5'],
+				'step' => 'trucks',
+			),
+			'the step it sends a build short of a part back to' => array(
+				'deck' => (string) $this->parts['deck 8.5'],
+				'step' => 'review',
+			),
+		);
+		$shown = array(
+			'a step' => 'trucks',
+			'the step it sends a build short of a part back to' => 'wheels',
+		);
+		foreach ( $states as $state => $build ) {
+			$dom = self::dom( $this->kitPage( $build ) );
+			// Spec, SEO and sharing: builder state is reached by forms, not links (milestone 6's audit 29).
+			self::assertSame( 0, $dom->query( '//*[contains(@class,"cbuild-summary__assembly")]//a' )->length, $state . ': the switch is no link.' );
+			$forms = $dom->query( '//form[contains(@class,"cbuild-summary__toggle")][@method="get"]' );
+			self::assertSame( 1, $forms->length, $state . ': one GET form.' );
+			$form = $forms->item( 0 );
+			self::assertInstanceOf( \DOMElement::class, $form );
+			$button = $dom->query( './/button[@type="submit"]', $form );
+			self::assertSame( 1, $button->length, $state . ': with its button.' );
+			$names = array();
+			foreach ( $dom->query( './/input[@type="hidden"]', $form ) as $field ) {
+				if ( $field instanceof \DOMElement ) {
+					$names[ $field->getAttribute( 'name' ) ] = $field->getAttribute( 'value' );
+				}
+			}
+			self::assertSame( '0', $names['cbuild[assembly]'] ?? null, $state . ': it takes off the assembly the kit starts with.' );
+			if ( isset( $shown[ $state ] ) ) {
+				self::assertSame( $shown[ $state ], $names['cbuild[step]'] ?? null, $state . ': it stays on the step shown.' );
 			}
 		}
 	}

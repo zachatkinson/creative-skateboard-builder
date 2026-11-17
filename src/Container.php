@@ -57,6 +57,10 @@ final class Container {
 			Port\Uuids::class           => Adapter\WpUuids::class,
 			Port\BuilderPosts::class    => Adapter\WpBuilderPosts::class,
 			Port\KitMeta::class         => Adapter\WooKitMeta::class,
+			Port\LayerImages::class     => Adapter\WpLayerImages::class,
+			Port\LayerRenditions::class => Adapter\WpLayerRenditions::class,
+			Port\PictureFiles::class    => Adapter\WpPictureFiles::class,
+			Port\ProductMeta::class     => Repository\ProductMetaRepository::class,
 		);
 	}
 
@@ -120,6 +124,12 @@ final class Container {
 					},
 					static function () use ( $c ): Service\CatalogueCheck {
 						return $c->get( Service\CatalogueCheck::class );
+					},
+					static function () use ( $c ): Service\ComposedPictures {
+						return $c->get( Service\ComposedPictures::class );
+					},
+					static function () use ( $c ): Service\PartRenditions {
+						return $c->get( Service\PartRenditions::class );
 					}
 				);
 			},
@@ -202,6 +212,13 @@ final class Container {
 					$c->get( Cart\Refusals::class )
 				);
 			},
+			Cart\ThumbnailHooks::class                  => static function ( Container $c ): object {
+				return new Cart\ThumbnailHooks(
+					static function () use ( $c ): Service\ComposedPictures {
+						return $c->get( Service\ComposedPictures::class );
+					}
+				);
+			},
 			Cart\AgainHooks::class                      => static function ( Container $c ): object {
 				return new Cart\AgainHooks(
 					static function () use ( $c ): Service\BuildCart {
@@ -244,7 +261,7 @@ final class Container {
 				);
 			},
 			Service\SavedSources::class                 => static function (): object {
-				return new Service\SavedSources( array( Support\Options::META_SPECS, Support\Options::META_SPEC_TABLE ) );
+				return new Service\SavedSources( array( Support\Options::META_SPECS, Support\Options::META_SPEC_TABLE, Support\Options::META_LAYER ) );
 			},
 			// The builder's services are built when a page shows a builder, not on every request.
 			Front\PageHooks::class                      => static function ( Container $c ): object {
@@ -253,6 +270,18 @@ final class Container {
 						return $c->get( Front\BuilderPage::class );
 					},
 					$c->get( Front\BuilderPlace::class )
+				);
+			},
+			// The card's services are built on a page with a build in its address, when its head is printed.
+			Front\ShareHooks::class                     => static function ( Container $c ): object {
+				return new Front\ShareHooks(
+					$c->get( Front\BuilderPlace::class ),
+					static function () use ( $c ): Front\BuilderPage {
+						return $c->get( Front\BuilderPage::class );
+					},
+					static function () use ( $c ): Front\ShareCard {
+						return $c->get( Front\ShareCard::class );
+					}
 				);
 			},
 			// The state route's services are built when the route is asked, not whenever the REST API starts.
@@ -274,7 +303,10 @@ final class Container {
 					static function () use ( $c ): Front\Builder {
 						return $c->get( Front\Builder::class );
 					},
-					$c->get( Front\BuilderPlace::class )
+					$c->get( Front\BuilderPlace::class ),
+					static function () use ( $c ): Service\ComposedPictures {
+						return $c->get( Service\ComposedPictures::class );
+					}
 				);
 			},
 			// The cards are built when something a card shows moves.
@@ -292,6 +324,14 @@ final class Container {
 				return new Hooks\SpecTableHooks(
 					static function () use ( $c ): Service\IndexJobs {
 						return $c->get( Service\IndexJobs::class );
+					}
+				);
+			},
+			// The pictures' service is built when a kit is added to the cart or the job runs.
+			Hooks\PictureHooks::class                   => static function ( Container $c ): object {
+				return new Hooks\PictureHooks(
+					static function () use ( $c ): Service\ComposedPictures {
+						return $c->get( Service\ComposedPictures::class );
 					}
 				);
 			},
@@ -331,6 +371,26 @@ final class Container {
 	}
 
 	/**
+	 * What this release gives a service that an earlier release's container also builds, by the service's class.
+	 *
+	 * WordPress replaces a plugin's files in the middle of a request, and the request goes on: the earlier release's
+	 * callbacks still run and ask its container for a service, which is then this release's class, built from the
+	 * constructor that container knew. So a class an earlier release built keeps that constructor, and what a later
+	 * release adds to it, here the picture's ports of 0.7.0, comes through a `with` method that only this container
+	 * calls (D-208). `tools/upgrade/graph.php` asks the previous release's container for each of its services.
+	 *
+	 * @return array<class-string, callable(object, Container): object>
+	 */
+	private static function additions(): array {
+		return array(
+			Service\IndexJobs::class      => static fn( object $jobs, Container $c ): object => $jobs instanceof Service\IndexJobs ? $jobs->withRenditions( $c->get( Service\PartRenditions::class ) ) : $jobs,
+			Service\CatalogueCheck::class => static fn( object $check, Container $c ): object => $check instanceof Service\CatalogueCheck ? $check->withLayers( $c->get( Port\LayerImages::class ) ) : $check,
+			Front\StateAnswer::class      => static fn( object $answer, Container $c ): object => $answer instanceof Front\StateAnswer ? $answer->withArtwork( $c->get( Service\LayerArtwork::class ) ) : $answer,
+			Admin\PartSpecsPanel::class   => static fn( object $panel, Container $c ): object => $panel instanceof Admin\PartSpecsPanel ? $panel->withImages( $c->get( Port\LayerImages::class ) ) : $panel,
+		);
+	}
+
+	/**
 	 * Hookable classes in registration order, each with the scopes its hooks can fire in (D-067).
 	 *
 	 * @return array<class-string<Hookable>, list<Scope>>
@@ -347,6 +407,8 @@ final class Container {
 			Hooks\SpecTableHooks::class            => array( Scope::Everywhere ),
 			// The import's job runs wherever the queue does.
 			Hooks\ImportHooks::class               => array( Scope::Everywhere ),
+			// A kit is added to the cart, and the picture's job runs, on any kind of request.
+			Hooks\PictureHooks::class              => array( Scope::Everywhere ),
 			// WooCommerce builds a product from its type's class wherever one is read.
 			Hooks\KitHooks::class                  => array( Scope::Everywhere ),
 			// A build is added from a page, the Store API or admin-ajax, and the cart is read on all three.
@@ -357,6 +419,7 @@ final class Container {
 			Cart\ShipHooks::class                  => array( Scope::Everywhere ),
 			Cart\ExpressHooks::class               => array( Scope::Everywhere ),
 			Cart\AgainHooks::class                 => array( Scope::Everywhere ),
+			Cart\ThumbnailHooks::class             => array( Scope::Everywhere ),
 			// Both checkouts make the order, and its items are named on pages, in emails and in wp-admin.
 			Order\OrderHooks::class                => array( Scope::Everywhere ),
 			// WooCommerce's settings screen.
@@ -374,6 +437,7 @@ final class Container {
 			Front\PageHooks::class                 => array( Scope::Everywhere ),
 			// Robots and the canonical are printed in the head of a page the site shows a visitor.
 			Front\SeoHooks::class                  => array( Scope::Storefront ),
+			Front\ShareHooks::class                => array( Scope::Storefront ),
 			// WordPress builds its abilities when something first asks for one, on any kind of request.
 			Abilities\CatalogueCheckAbility::class => array( Scope::Everywhere ),
 			Abilities\CheckBuildAbility::class     => array( Scope::Everywhere ),
@@ -495,6 +559,18 @@ final class Container {
 	 * @throws PluginException When the class or a constructor argument can't be resolved.
 	 */
 	private function build( string $id ): object {
+		$service = $this->make( $id );
+		$add     = self::additions()[ $service::class ] ?? null;
+		return null === $add ? $service : $add( $service, $this );
+	}
+
+	/**
+	 * A service as its factory or its constructor makes it.
+	 *
+	 * @param string $id The service's class or interface.
+	 * @throws PluginException When it cannot be built.
+	 */
+	private function make( string $id ): object {
 		$factory = self::factories()[ $id ] ?? null;
 		if ( null !== $factory ) {
 			return $factory( $this );

@@ -23,6 +23,7 @@ use CreativeBranding\SkateboardBuilder\Hookable;
 use CreativeBranding\SkateboardBuilder\Port\Cart;
 use CreativeBranding\SkateboardBuilder\Port\Kits;
 use CreativeBranding\SkateboardBuilder\Service\BuildState;
+use CreativeBranding\SkateboardBuilder\Service\ComposedPictures;
 use CreativeBranding\SkateboardBuilder\Service\RateLimit;
 use CreativeBranding\SkateboardBuilder\Support\Cast;
 use WP_Error;
@@ -71,15 +72,16 @@ final class StateRoute implements Hookable {
 	 *
 	 * @since 0.4.0
 	 *
-	 * @param Kits                   $kits   The shop's kits.
-	 * @param Closure(): BuildState  $state  Works a build's state out.
-	 * @param Closure(): StateAnswer $writer Writes it down.
-	 * @param Closure(): RateLimit   $limit  The rate limit.
-	 * @param Closure(): Cart        $cart   The cart, for the shopper it knows.
-	 * @param Closure(): Builder     $builder What the builder shows, for a build link.
-	 * @param BuilderPlace           $place   Which page holds which kit's builder.
+	 * @param Kits                               $kits   The shop's kits.
+	 * @param Closure(): BuildState              $state  Works a build's state out.
+	 * @param Closure(): StateAnswer             $writer Writes it down.
+	 * @param Closure(): RateLimit               $limit  The rate limit.
+	 * @param Closure(): Cart                    $cart   The cart, for the shopper it knows.
+	 * @param Closure(): Builder                 $builder What the builder shows, for a build link.
+	 * @param BuilderPlace                       $place   Which page holds which kit's builder.
+	 * @param (Closure(): ComposedPictures)|null $pictures Asks for a review's picture, where its link is offered; none in tests that leave it out.
 	 */
-	public function __construct( private Kits $kits, private Closure $state, private Closure $writer, private Closure $limit, private Closure $cart, private Closure $builder, private BuilderPlace $place ) {}
+	public function __construct( private Kits $kits, private Closure $state, private Closure $writer, private Closure $limit, private Closure $cart, private Closure $builder, private BuilderPlace $place, private ?Closure $pictures = null ) {}
 
 	/**
 	 * Add the hooks.
@@ -276,6 +278,9 @@ final class StateRoute implements Hookable {
 		}
 		if ( null === $shown ) {
 			return new WP_Error( 'cbuild_kit_not_found', __( 'There is no such kit.', 'creative-skateboard-builder' ), array( 'status' => 404 ) );
+		}
+		if ( null !== $this->pictures ) {
+			( $this->pictures )()->offered( $shown['state'] );
 		}
 		return new WP_REST_Response( $shown['answer'] + array( 'view' => $shown['view'] ) );
 	}

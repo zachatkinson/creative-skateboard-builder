@@ -15,7 +15,10 @@ use CreativeBranding\SkateboardBuilder\Domain\Spec\IndexedSpec;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\Origin;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\Reading;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\SpecKey;
+use CreativeBranding\SkateboardBuilder\Domain\Picture\ImageFacts;
+use CreativeBranding\SkateboardBuilder\Domain\Picture\Renditions;
 use CreativeBranding\SkateboardBuilder\Service\IndexJobs;
+use CreativeBranding\SkateboardBuilder\Service\PartRenditions;
 use CreativeBranding\SkateboardBuilder\Service\ReindexState;
 use CreativeBranding\SkateboardBuilder\Service\SavedSources;
 use CreativeBranding\SkateboardBuilder\Service\SpecIndexer;
@@ -23,6 +26,8 @@ use CreativeBranding\SkateboardBuilder\Support\Options;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\FakeClock;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\FakeLogger;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\InMemoryKits;
+use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\InMemoryLayerImages;
+use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\InMemoryLayerRenditions;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\FakeQueue;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\InMemoryPartCatalogue;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\InMemoryReindexStore;
@@ -57,6 +62,10 @@ final class IndexJobsTest extends TestCase {
 
 	private SavedSources $saved;
 
+	private InMemoryLayerImages $layers;
+
+	private InMemoryLayerRenditions $renditions;
+
 	private IndexJobs $jobs;
 
 	protected function setUp(): void {
@@ -70,7 +79,9 @@ final class IndexJobsTest extends TestCase {
 		$this->logger    = new FakeLogger();
 		$this->kits      = new InMemoryKits();
 		$this->saved     = new SavedSources( array( '_cbuild_specs' ) );
-		$this->jobs      = new IndexJobs(
+		$this->layers     = new InMemoryLayerImages();
+		$this->renditions = new InMemoryLayerRenditions();
+		$this->jobs      = ( new IndexJobs(
 			new SpecIndexer( $this->index, $this->settings, $this->clock, $this->source ),
 			$this->index,
 			$this->catalogue,
@@ -80,8 +91,11 @@ final class IndexJobsTest extends TestCase {
 			$this->clock,
 			$this->logger,
 			$this->kits,
-			$this->saved
-		);
+			$this->saved ) )->withRenditions( $this->made() );
+	}
+
+	private function made(): PartRenditions {
+		return new PartRenditions( $this->kits, $this->index, $this->layers, $this->renditions );
 	}
 
 	/**
@@ -166,6 +180,59 @@ final class IndexJobsTest extends TestCase {
 		self::assertSame( array(), $this->logger->lines );
 	}
 
+	public function test_a_parts_job_makes_its_layer_image_at_the_sizes_its_drawn_slots_draw_it(): void {
+		$this->parts( 7, 8, 9 );
+		$this->kits->slotsOf          = array(
+			7 => array( 'deck', 'stickers' ),
+			8 => array( 'deck' ),
+			9 => array( 'risers' ),
+		);
+		$this->layers->attachments    = array(
+			7 => 70,
+			9 => 90,
+		);
+		$this->layers->images         = array(
+			70 => new ImageFacts( 'image/png', 420, 1626, true ),
+			90 => new ImageFacts( 'image/png', 420, 1626, true ),
+		);
+		$this->catalogue->products[7] = array( 7 );
+
+		$this->jobs->indexPart( 7 );
+		$this->jobs->indexPart( 8 );
+		$this->jobs->indexPart( 9 );
+		$specs = $this->index->specsOf( 7 )[7];
+		self::assertSame(
+			array( array( 70, Renditions::drawn( 'deck', $specs, 420, 1626 ) ) ),
+			$this->renditions->made,
+			'a part with no layer image, and one in a slot the picture does not draw, make none'
+		);
+		self::assertCount( 3, $this->renditions->made[0][1] );
+	}
+
+	// D-208: the jobs that 0.6.0's container builds, in the request that puts 0.7.0's files in its place (the upload
+	// screen's own zip is deleted then, through `deleted_post`), have no renditions to make or forget, and still index.
+	public function test_jobs_built_without_renditions_index_and_pass_over_a_deleted_image(): void {
+		$this->parts( 7 );
+		$this->kits->slotsOf          = array( 7 => array( 'deck' ) );
+		$this->layers->attachments    = array( 7 => 70 );
+		$this->layers->images         = array( 70 => new ImageFacts( 'image/png', 420, 1626, true ) );
+		$this->catalogue->products[7] = array( 7 );
+		$plain                        = new IndexJobs( new SpecIndexer( $this->index, $this->settings, $this->clock, $this->source ), $this->index, $this->catalogue, $this->queue, $this->store, $this->settings, $this->clock, $this->logger, $this->kits, $this->saved );
+
+		$plain->indexPart( 7 );
+		$plain->removed( 11, 'attachment' );
+		self::assertSame( array( 7 ), array_keys( $this->index->rows ) );
+		self::assertSame( array( array(), array() ), array( $this->renditions->made, $this->renditions->forgotten ) );
+		self::assertSame( array(), $this->queue->distinct, 'an image is no part' );
+		self::assertSame( array(), $this->logger->lines, 'no job failed for want of renditions' );
+
+		$plain->withRenditions( $this->made() );
+		$plain->indexPart( 7 );
+		self::assertSame( array(), $this->renditions->made, 'withRenditions() gives a copy' );
+		$this->jobs->indexPart( 7 );
+		self::assertSame( array( 70 ), array_column( $this->renditions->made, 0 ) );
+	}
+
 	public function test_a_variable_products_job_indexes_its_variations_and_not_itself(): void {
 		$this->parts( 21, 22 );
 		$this->catalogue->products[20] = array( 21, 22 );
@@ -199,13 +266,20 @@ final class IndexJobsTest extends TestCase {
 		self::assertSame( 0, $this->store->saves, 'no reindex is running, so none is told' );
 	}
 
+	public function test_a_deleted_image_takes_its_renditions_and_queues_nothing(): void {
+		$this->jobs->removed( 11, 'attachment' );
+		$this->jobs->removed( 7, 'product' );
+		self::assertSame( array( 11 ), $this->renditions->forgotten, 'an image deleted from the Media Library, and no product' );
+		self::assertSame( array( 7 ), array_map( static fn( array $queued ): int => $queued[1]['part'], $this->queue->distinct ) );
+	}
+
 	public function test_a_parts_job_that_fails_is_logged_and_tried_again_after_a_longer_wait_each_time(): void {
 		$failing = new class() implements \CreativeBranding\SkateboardBuilder\Port\SpecSource {
 			public function read( int ...$partIds ): array {
 				throw new RuntimeException( 'the database went away' );
 			}
 		};
-		$jobs    = new IndexJobs( new SpecIndexer( $this->index, $this->settings, $this->clock, $failing ), $this->index, $this->catalogue, $this->queue, $this->store, $this->settings, $this->clock, $this->logger, $this->kits, $this->saved );
+		$jobs    = ( new IndexJobs( new SpecIndexer( $this->index, $this->settings, $this->clock, $failing ), $this->index, $this->catalogue, $this->queue, $this->store, $this->settings, $this->clock, $this->logger, $this->kits, $this->saved ) )->withRenditions( $this->made() );
 		$this->catalogue->products[7] = array( 7 );
 		$now                          = $this->clock->now()->getTimestamp();
 
@@ -290,7 +364,7 @@ final class IndexJobsTest extends TestCase {
 
 		// The process dies: the same batch runs again when the queue retries the action, and the place is still there.
 		$halfway     = $this->index->rows;
-		$fresh       = new IndexJobs( new SpecIndexer( $this->index, $this->settings, $this->clock, $this->source ), $this->index, $this->catalogue, $this->queue, $this->store, $this->settings, $this->clock, $this->logger, $this->kits, $this->saved );
+		$fresh       = ( new IndexJobs( new SpecIndexer( $this->index, $this->settings, $this->clock, $this->source ), $this->index, $this->catalogue, $this->queue, $this->store, $this->settings, $this->clock, $this->logger, $this->kits, $this->saved ) )->withRenditions( $this->made() );
 		$fresh->runReindex();
 		self::assertSame( 2, $fresh->state()?->position );
 		self::assertSame( array_keys( $halfway ), range( 1, 100 ) );
@@ -375,7 +449,7 @@ final class IndexJobsTest extends TestCase {
 				return array_fill_keys( $partIds, array() );
 			}
 		};
-		$jobs         = new IndexJobs( new SpecIndexer( $this->index, $this->settings, $this->clock, $asking ), $this->index, $this->catalogue, $this->queue, $this->store, $this->settings, $this->clock, $this->logger, $this->kits, $this->saved );
+		$jobs         = ( new IndexJobs( new SpecIndexer( $this->index, $this->settings, $this->clock, $asking ), $this->index, $this->catalogue, $this->queue, $this->store, $this->settings, $this->clock, $this->logger, $this->kits, $this->saved ) )->withRenditions( $this->made() );
 		$asking->jobs = $jobs;
 		$this->queue->running['cbuild_reindex'] = true;
 		unset( $this->queue->pending['cbuild_reindex'] );
@@ -411,7 +485,7 @@ final class IndexJobsTest extends TestCase {
 				throw new RuntimeException( 'the database went away' );
 			}
 		};
-		$jobs    = new IndexJobs( new SpecIndexer( $this->index, $this->settings, $this->clock, $failing ), $this->index, $this->catalogue, $this->queue, $this->store, $this->settings, $this->clock, $this->logger, $this->kits, $this->saved );
+		$jobs    = ( new IndexJobs( new SpecIndexer( $this->index, $this->settings, $this->clock, $failing ), $this->index, $this->catalogue, $this->queue, $this->store, $this->settings, $this->clock, $this->logger, $this->kits, $this->saved ) )->withRenditions( $this->made() );
 		$state   = $jobs->reindexNow();
 		self::assertSame( 1, $state?->failures );
 		self::assertTrue( $state->isRunning() );
@@ -505,7 +579,7 @@ final class IndexJobsTest extends TestCase {
 				throw new RuntimeException( 'gone' );
 			}
 		};
-		$jobs           = new IndexJobs( new SpecIndexer( $this->index, $this->settings, $this->clock, $deleting ), $this->index, $this->catalogue, $this->queue, $this->store, $this->settings, $this->clock, $this->logger, $this->kits, $this->saved );
+		$jobs           = ( new IndexJobs( new SpecIndexer( $this->index, $this->settings, $this->clock, $deleting ), $this->index, $this->catalogue, $this->queue, $this->store, $this->settings, $this->clock, $this->logger, $this->kits, $this->saved ) )->withRenditions( $this->made() );
 		$deleting->jobs = $jobs;
 		$jobs->runReindex();
 		$state = $jobs->state();
