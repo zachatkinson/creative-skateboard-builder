@@ -396,7 +396,7 @@ It reads and changes nothing. Its arguments travel in the query:
 
 | Schema | Since | What the document holds |
 | --- | --- | --- |
-| `schema/state.json` | 0.4.0 | The route's answer (draft 4, with `definitions`): `kit`, `step`, `ready`, the kit's `texts` (lead time and returns notice) and `presets`, the `steps` (each slot's label, its pick, the part it starts on, how many parts it offers and hides, and the hidden ones counted by reason, each with a sentence), the current step's `options` and `hidden` parts (24 of each at most, each with its fit, its messages and its card), the picks that were `refused`, the `problems` that keep the build from the cart, the `changes` and the `total`. From 0.6.0 it also holds the step's `filters`, `matching` and `more`, the `picture`, `delivery` and `notes`, each option's `size` and `delta`, and each preset's `image`, `total`, `ready` and `problems` (Milestone 6, below), and closes no object. `npm run types` writes `assets/src/types/state.d.ts` from it. |
+| `schema/state.json` | 0.4.0 | The route's answer (draft 4, with `definitions`): `kit`, `step`, `ready`, the kit's `texts` (lead time and returns notice) and `presets`, the `steps` (each slot's label, its pick, the part it recommends, how many parts it offers and hides, and the hidden ones counted by reason, each with a sentence), the current step's `options` and `hidden` parts (24 of each at most, each with its fit, its messages and its card), the picks that were `refused`, the `problems` that keep the build from the cart, the `changes` and the `total`. From 0.6.0 it also holds the step's `filters`, `matching` and `more`, the `picture`, `delivery` and `notes`, each option's `size` and `delta`, and each preset's `image`, `total`, `ready` and `problems` (Milestone 6, below), and closes no object. `npm run types` writes `assets/src/types/state.d.ts` from it. |
 
 What the answer holds beside the schema's own descriptions:
 
@@ -442,7 +442,7 @@ In the category `creative-skateboard-builder`, which the Catalogue check's abili
 | Ability | Since | Who | Input | Output |
 | --- | --- | --- | --- | --- |
 | `creative-skateboard-builder/check-build` | 0.4.0 | Whoever may run an ability | `kit`, the kit product's ID; `picks`, an object of slot key to part ID, 20 at most; `assembly`, a boolean. Only `kit` is required. | `kit`, `ready`, `refused` and `problems`, as the state route's answer holds them: whether the build may go to the cart, and each thing in the way with its `code`, `slot`, `part`, `message` and the rules' `messages`. |
-| `creative-skateboard-builder/price-build` | 0.4.0 | Whoever may run an ability | The same. | `kit` and `total`, as the state route's answer holds it: `lines` (each with `slot`, `part`, `name`, `quantity`, `price`, `charged` and `total`), `parts`, `saved`, `assembly`, `fee` and `total`. Each amount is `amount`, in whole minor units, and `text`. |
+| `creative-skateboard-builder/price-build` | 0.4.0 | Whoever may run an ability | The same. | `kit` and `total`, as the state route's answer holds it: `lines` (each with `slot`, `part`, `name`, `quantity`, `price`, `charged` and `total`), `parts`, `saved`, `assembly`, `fee` and `total`. Each amount is `amount`, in whole minor units, and `text`. From 0.8.0 `total` counts the picks alone, and `estimate` is the board with each slot's recommendation in it, or null (D-213). |
 
 Both are annotated read-only and idempotent and shown in REST, so WordPress serves each at `GET /wp-abilities/v1/abilities/<name>/run`. Each answers to a signed-in user alone, over REST and when run in PHP (D-118), and refuses a `POST` with 405. They ask the state route's own service, for the shopper WooCommerce knows the signed-in user as (from 0.5.0, D-138), and give parts of its answer, so the two cannot disagree: a slot with no pick is counted with the part the builder would start it on, as the route counts it. A kit a visitor may not see is `cbuild_kit_not_found` to everyone, as it is on the route. Input that is not the schema's is refused by WordPress as `ability_invalid_input`; a slot key the kit lacks is not refused, and comes back in `refused` as `slot_unknown`. Neither is counted against the route's rate limit.
 
@@ -702,4 +702,13 @@ The builder sends two events on its own element (`.cbuild`), with JavaScript onl
 | `cbuild:added` | 0.6.0 | `{ kit: number, picks: { [slot: string]: number }, assembly: boolean }`: the kit's ID, the build's parts by slot, and whether it is assembled. | The Store API has added the build to the cart. An add that falls back to WooCommerce's own handler loads the page, and sends nothing. |
 
 The builder also sends WooCommerce's own `wc-blocks_added_to_cart` on `document.body` after an add, on which the Mini-Cart reads the cart again (D-155). It is WooCommerce's event, not part of this plugin's API.
+
+## Milestone 8: orders and after (0.8.0)
+
+### The state route and the price ability
+
+| Item | Since | What changed |
+| --- | --- | --- |
+| `total.estimate` in `schema/state.json` and in `creative-skateboard-builder/price-build`'s output | 0.8.0 | What a complete board would cost with each slot's recommendation in it, priced as `total` is (assembly, build discount, the shop's decimals), while a recommendation fills a slot and every slot the kit requires has a part; otherwise null. |
+| `total`, `steps[].recommended` and each option's `recommended` | 0.8.0 | Nothing is picked for the shopper (D-213): `total` and its `lines` count the picks alone, where before they also counted the part each later slot started on. `recommended` keeps its name and says the part the slot recommends, which is labelled and not picked. A caller that read `total` as the recommended board reads `estimate`. |
 

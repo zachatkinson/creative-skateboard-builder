@@ -2,6 +2,20 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html). One entry per milestone; `v1.0.0` closes milestone 9.
 
+## [Unreleased]
+
+### Added
+
+- The state route's `total.estimate`: what a complete board would cost with each slot's recommendation in it, priced as the total is, while a recommendation fills a slot; null otherwise. The summary says it under the total, "A complete board from about $184", and the status region says it with each pick (D-213).
+
+### Changed
+
+- Nothing is picked for the shopper (#45, D-213). After the deck, each later step labels its recommendation and picks nothing; the board, the total and the state route's `total` count only what was picked, and the review and the cart need every slot the kit requires picked. Each step's parts are checked against the picks alone. A card with nothing picked in its slot says its whole price. Presets still fill every slot.
+
+### Fixed
+
+- A pick stays shown as chosen while its answer is on the way, through any redraw (#47).
+
 ## [0.7.0] - 2026-11-16
 
 ### Added

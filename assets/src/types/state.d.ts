@@ -97,7 +97,7 @@ export interface CbuildState {
 		 */
 		picked: number | null;
 		/**
-		 * The ID of the part the step starts on while nothing is picked, or null. The total counts it.
+		 * The ID of the part the step recommends while nothing is picked, or null. From 0.8.0 the total does not count it, and the estimate does.
 		 */
 		recommended: number | null;
 		/**
@@ -260,6 +260,10 @@ export interface CbuildState {
 		assembly: boolean;
 		fee: Money6;
 		total: Money7;
+		/**
+		 * What the board would cost with each slot's recommendation in it, priced as the total is, while a recommendation fills a slot and every slot the kit requires has a part; otherwise null. From 0.8.0.
+		 */
+		estimate: Money8 | null;
 	};
 	/**
 	 * What is in the box: each part the total counts, in step order. From 0.7.0, the board as well: the layers of the parts with a layer image, placed in the layout's units, ten-thousandths of a millimetre, with the nose at the top.
@@ -582,7 +586,7 @@ export interface Option {
 	 */
 	picked: boolean;
 	/**
-	 * Whether it is the part the step starts on.
+	 * Whether it is the part the step recommends. It is labelled, never picked.
 	 */
 	recommended: boolean;
 	/**
@@ -751,6 +755,19 @@ export interface Money6 {
  * The parts and the fee.
  */
 export interface Money7 {
+	/**
+	 * The amount in whole minor units: cents, where the currency has two decimals.
+	 */
+	amount: number;
+	/**
+	 * The amount as the shop writes its prices, in plain text.
+	 */
+	text: string;
+}
+/**
+ * An amount in the shop's currency.
+ */
+export interface Money8 {
 	/**
 	 * The amount in whole minor units: cents, where the currency has two decimals.
 	 */

@@ -690,6 +690,7 @@
 }
 
 :where(
+	.cbuild-summary__estimate,
 	.cbuild-summary__ships,
 	.cbuild-summary__arrival,
 	.cbuild-summary__notes,
@@ -701,7 +702,11 @@
 
 /* Waiting for the server: the shopper's own pick is painted, and the rest says it is on its way. */
 :where(.cbuild[aria-busy="true"])
-	:where(.cbuild-summary__total, .cbuild-picture__description) {
+	:where(
+		.cbuild-summary__total,
+		.cbuild-summary__estimate,
+		.cbuild-picture__description
+	) {
 	opacity: 0.6;
 }
 

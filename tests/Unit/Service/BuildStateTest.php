@@ -215,7 +215,9 @@ final class BuildStateTest extends TestCase {
 		self::assertSame( 0, $state->quote->total, 'assembly is off until the shopper or the kit turns it on' );
 	}
 
-	public function test_once_the_deck_is_picked_each_later_slot_shows_what_fits_hides_the_rest_with_why_and_starts_on_a_part(): void {
+	// Zach, 16 Nov 2026 (#45): nothing is picked for the shopper. Each later slot names its recommendation, and the
+	// total counts what was picked; the estimate is the build with each recommendation in it.
+	public function test_once_the_deck_is_picked_each_later_slot_shows_what_fits_hides_the_rest_with_why_and_names_its_recommendation(): void {
 		$state = $this->of( array( SlotKey::DECK => 103 ) );
 		self::assertSame( SlotKey::TRUCKS, $state->step, 'the first step with nothing picked' );
 		self::assertSame( 103, self::step( $state, SlotKey::DECK )->picked?->part->id );
@@ -229,53 +231,93 @@ final class BuildStateTest extends TestCase {
 		self::assertSame( array( array( RuleId::R1, MessageCode::DeckAboveRange, 2 ), array( RuleId::R1, MessageCode::DeckBelowRange, 1 ) ), array_map( static fn( $group ): array => array( $group->rule, $group->code, $group->count ), $groups ) );
 		self::assertNull( $trucks->picked );
 		self::assertSame( 149, $trucks->recommended?->part->id );
-		self::assertSame( $trucks->recommended, $trucks->counted() );
+		self::assertNull( $trucks->counted(), 'a recommendation is not a pick' );
 
-		// The wheels are held against the trucks the slot before them starts on: their limit is 56 mm.
+		// The wheels are held against the picks alone: with no trucks picked, nothing limits them but the deck.
 		$wheels = self::step( $state, SlotKey::WHEELS );
 		self::assertSame( array( 301, 302, 303 ), self::ids( $wheels->options->offered ) );
-		self::assertSame( Severity::Warn, $wheels->options->offer( 303 )?->severity, '58 mm on a 56 mm truck warns' );
+		self::assertSame( Severity::Fits, $wheels->options->offer( 303 )?->severity, 'no trucks picked, so no limit' );
+		// The recommendation is made for the build the estimate counts: on the recommended trucks, 58 mm warns, and of
+		// those that fit clean the middle price is the 302.
 		self::assertSame( 302, $wheels->recommended?->part->id, 'the middle price, of those that fit clean' );
+		self::assertSame( $wheels->options->offer( 302 ), $wheels->recommended, 'the card the step offers' );
 		self::assertNull( self::step( $state, SlotKey::RISERS )->recommended, 'a slot the kit does not require starts empty' );
 		self::assertSame( 501, self::step( $state, SlotKey::BEARINGS )->recommended?->part->id );
 		self::assertSame( 601, self::step( $state, SlotKey::HARDWARE )->recommended?->part->id );
 		self::assertSame( 701, self::step( $state, SlotKey::GRIP )->recommended?->part->id );
 
-		// The total counts each from the start (P9), and the build could go to the cart as it stands.
-		self::assertSame( array( 103, 149, 302, 501, 601, 701 ), array_column( $state->quote->lines, 'part' ) );
-		self::assertSame( array( 1, 1, 1, 1, 1, 1 ), array_column( $state->quote->lines, 'quantity' ) );
-		self::assertSame( 7000 + 5400 + 3200 + 1500 + 400 + 800, $state->quote->total );
-		self::assertTrue( $state->ready() );
-		self::assertSame( array(), $state->validation->problems );
+		// The total counts the deck alone, and the build needs every slot the kit requires picked before the cart.
+		self::assertSame( array( 103 ), array_column( $state->quote->lines, 'part' ) );
+		self::assertSame( 7000, $state->quote->total );
+		self::assertFalse( $state->ready() );
+		self::assertSame(
+			array( array( 'slot_empty', 'trucks', null ), array( 'slot_empty', 'wheels', null ), array( 'slot_empty', 'bearings', null ), array( 'slot_empty', 'hardware', null ), array( 'slot_empty', 'grip', null ) ),
+			self::rows( $state->validation->problems )
+		);
+
+		// The estimate is the board with each recommendation in it, so its full price is no surprise (P9).
+		self::assertNotNull( $state->estimate );
+		self::assertSame( array( 103, 149, 302, 501, 601, 701 ), array_column( $state->estimate->lines, 'part' ) );
+		self::assertSame( array( 1, 1, 1, 1, 1, 1 ), array_column( $state->estimate->lines, 'quantity' ) );
+		self::assertSame( 7000 + 5400 + 3200 + 1500 + 400 + 800, $state->estimate->total );
+		self::assertSame( $state->quote->assembly, $state->estimate->assembly );
+	}
+
+	public function test_the_estimate_is_priced_as_the_total_is_and_given_only_while_a_recommendation_fills_a_slot(): void {
+		self::assertNull( $this->of()->estimate, 'nothing is recommended before the deck' );
+		self::assertNull( $this->of( self::COMPLETE )->estimate, 'every slot picked: the total says it all' );
+
+		$this->settings->terms = BuildTerms::read( array( 'build_discount' => '10' ) );
+		$state                 = $this->of( array( SlotKey::DECK => 103 ), null, null, true );
+		$whole                 = $this->of( self::COMPLETE, null, null, true );
+		self::assertSame( $whole->quote->total, $state->estimate?->total, 'the same discount and fee as the build it estimates' );
+		self::assertSame( 1500, $state->estimate?->fee );
+		self::assertSame( $state->quote->fee, $state->estimate?->fee );
+	}
+
+	public function test_no_estimate_when_a_required_slot_has_nothing_to_recommend(): void {
+		// 58 mm wheels picked on an 8.5 deck: the recommended trucks take 56, so the riser recommended is the 402, and
+		// no hardware reaches over it. A board that cannot be finished has no estimate.
+		$state = $this->of( array( SlotKey::DECK => 103, SlotKey::WHEELS => 303 ) );
+		self::assertNull( self::step( $state, SlotKey::HARDWARE )->recommended );
+		self::assertNull( $state->estimate );
 	}
 
 	public function test_a_slot_is_held_against_the_picks_before_it_and_a_pick_stands_in_place_of_a_recommendation(): void {
 		$state  = $this->of( array( SlotKey::DECK => 103, SlotKey::WHEELS => 303 ) );
 		$wheels = self::step( $state, SlotKey::WHEELS );
 		self::assertSame( 303, $wheels->picked?->part->id );
-		self::assertSame( Severity::Warn, $wheels->picked?->severity );
+		self::assertSame( Severity::Fits, $wheels->picked?->severity, 'held against the picks: no trucks are picked' );
 		self::assertNull( $wheels->recommended, 'a slot with a pick has no recommendation' );
 		self::assertSame( $wheels->picked, $wheels->counted() );
-		// 58 mm wheels over the trucks' limit ask for a riser, so the risers start on one.
+		// 58 mm wheels over the recommended trucks' limit ask for a riser, so the risers recommend one, which the total
+		// does not count.
 		self::assertSame( 402, self::step( $state, SlotKey::RISERS )->recommended?->part->id );
-		self::assertContains( 402, array_column( $state->quote->lines, 'part' ) );
+		self::assertSame( array( 103, 303 ), array_column( $state->quote->lines, 'part' ) );
 		self::assertSame( SlotKey::TRUCKS, $state->step );
-		// The riser the slot starts on is what the hardware is held against: 1 in bolts are too short over it, so the
-		// hardware has nothing to start on, and neither has the grip after it.
+		// The hardware is offered against the picks, which hold no riser; its recommendation is held against the
+		// recommended riser, which 1 in bolts do not reach over, so it has none, and neither has the grip after it.
+		$hardware = self::step( $state, SlotKey::HARDWARE );
+		self::assertSame( array( 601 ), self::ids( $hardware->options->offered ) );
+		self::assertNull( $hardware->recommended );
+		self::assertNull( self::step( $state, SlotKey::GRIP )->recommended );
+		self::assertFalse( $state->ready() );
+
+		// With the riser picked, the hardware is held against it.
+		$state    = $this->of( array( SlotKey::DECK => 103, SlotKey::WHEELS => 303, SlotKey::RISERS => 402 ) );
 		$hardware = self::step( $state, SlotKey::HARDWARE );
 		self::assertSame( array( 601 ), self::ids( $hardware->options->hidden ) );
 		self::assertSame( RuleId::R4, $hardware->options->hiddenGroups()[0]->rule );
-		self::assertNull( $hardware->recommended );
-		self::assertNull( self::step( $state, SlotKey::GRIP )->recommended );
-		self::assertSame( array( array( 'slot_empty', 'hardware', null ), array( 'slot_empty', 'grip', null ) ), self::rows( $state->validation->problems ) );
-		self::assertFalse( $state->ready() );
 
-		// With bolts that reach, the build could go to the cart: a warning does not keep it from there.
+		// With bolts that reach, the hardware recommends them, and the whole build picked could go to the cart: a
+		// warning does not keep it from there.
 		$shop                        = self::shop();
 		$shop[ SlotKey::HARDWARE ][] = self::priced( Builds::bolts( '1.25', 602 ), 450 );
 		$this->kits->add( self::KIT, self::kit(), $shop );
 		$state = $this->of( array( SlotKey::DECK => 103, SlotKey::WHEELS => 303 ) );
 		self::assertSame( 602, self::step( $state, SlotKey::HARDWARE )->recommended?->part->id );
+		self::assertContains( 602, array_column( $state->estimate->lines ?? array(), 'part' ) );
+		$state = $this->of( array( SlotKey::DECK => 103, SlotKey::TRUCKS => 149, SlotKey::WHEELS => 303, SlotKey::RISERS => 402, SlotKey::BEARINGS => 501, SlotKey::HARDWARE => 602, SlotKey::GRIP => 701 ) );
 		self::assertTrue( $state->ready(), 'a warning does not keep a build from the cart' );
 	}
 
@@ -429,12 +471,10 @@ final class BuildStateTest extends TestCase {
 		$asked = $this->state->of( self::KIT, $picks );
 		self::assertNotNull( $asked );
 		self::assertNotNull( self::step( $asked, SlotKey::RISERS )->recommended );
-		self::assertContains( SlotKey::RISERS, array_column( $asked->quote->lines, 'slot' ) );
 
 		$left = $this->state->of( self::KIT, $picks, null, null, null, array( SlotKey::RISERS, SlotKey::BEARINGS ) );
 		self::assertNotNull( $left );
 		self::assertNull( self::step( $left, SlotKey::RISERS )->recommended, 'No risers.' );
-		self::assertNotContains( SlotKey::RISERS, array_column( $left->quote->lines, 'slot' ) );
 		self::assertSame( 501, self::step( $left, SlotKey::BEARINGS )->recommended?->part->id, 'A slot the kit requires cannot be left.' );
 		self::assertNotNull( self::step( $left, SlotKey::HARDWARE )->recommended, 'And the slots after it start as they would.' );
 
@@ -448,7 +488,7 @@ final class BuildStateTest extends TestCase {
 		$moved                 = $state->at( State::REVIEW );
 		self::assertSame( State::REVIEW, $moved->step );
 		self::assertSame( SlotKey::DECK, $state->step );
-		foreach ( array( 'id', 'kit', 'steps', 'refused', 'validation', 'changes', 'quote', 'discount' ) as $held ) {
+		foreach ( array( 'id', 'kit', 'steps', 'refused', 'validation', 'changes', 'quote', 'discount', 'presets', 'estimate' ) as $held ) {
 			self::assertSame( $state->$held, $moved->$held, $held );
 		}
 		self::assertNotSame( array(), $moved->refused );
@@ -560,11 +600,13 @@ final class BuildStateTest extends TestCase {
 		}
 	}
 
-	public function test_a_step_counts_its_pick_before_its_recommendation(): void {
+	public function test_a_step_counts_its_pick_and_never_its_recommendation(): void {
 		$state  = $this->of( array( SlotKey::DECK => 103 ) );
 		$trucks = self::step( $state, SlotKey::TRUCKS );
 		$deck   = self::step( $state, SlotKey::DECK );
 		self::assertNotNull( $deck->picked );
+		self::assertNotNull( $trucks->recommended );
+		self::assertNull( $trucks->counted() );
 		$both = new StateStep( $trucks->slot, $trucks->options, $deck->picked, $trucks->recommended );
 		self::assertSame( $deck->picked, $both->counted() );
 		self::assertSame( $trucks->slot, $both->slot );

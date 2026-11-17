@@ -288,7 +288,9 @@ final class StateRouteTest extends IntegrationTestCase {
 		self::assertSame( '1 part hidden: the trucks are made for another width of deck.', $picked['steps'][1]['groups'][0]['message'] );
 		self::assertSame( array( 'amount' => 7000, 'text' => '$70.00' ), $picked['total']['lines'][0]['price'] );
 		self::assertSame( 'Deck 8.5', $picked['total']['lines'][0]['name'] );
-		self::assertSame( '$97.00', $picked['total']['total']['text'], 'the deck and the set of trucks the step starts on' );
+		self::assertSame( '$70.00', $picked['total']['total']['text'], 'the deck alone: nothing is picked for the shopper (D-213)' );
+		self::assertArrayHasKey( 'estimate', $picked['total'] );
+		self::assertNull( $picked['total']['estimate'], 'this shop has no wheels, so no complete board to estimate' );
 
 		$changed = $this->answer(
 			array(

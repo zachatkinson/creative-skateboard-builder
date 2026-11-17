@@ -200,7 +200,7 @@ Classes, tables, settings and the docs use these words, and no others, for these
 | Picture | The board drawn as it's built: the chosen parts' layer images stacked to scale in the page, and the same layout as one composed image for carts, emails and share cards. A part with no layer image shows its labelled product photo instead. |
 | Layer image | A part's photo shot to the agency's template (one camera height and lens, a fixed scale, nose up, a transparent background), used only by the picture. |
 | Change list | What a changed earlier pick does to later ones: the picks kept, the picks that no longer fit with the closest part that does, and an undo. |
-| Recommendation | The part a later slot starts on once the deck is picked: the kit's default when it fits and is in stock, otherwise the fitting, in-stock part nearest the middle of the slot's prices. Labelled, never hidden, never a deck. |
+| Recommendation | The part a later slot recommends once the deck is picked: the kit's default when it fits and is in stock, otherwise the fitting, in-stock part nearest the middle of the slot's prices. Labelled, never picked for the shopper, never hidden, never a deck (D-213). |
 
 ## How it fits
 
@@ -269,7 +269,7 @@ Eight numbered rules, each with its source: six fit tests between two slots (R1 
 - The engine checks every option in a slot against the picks already made, in step order.
 - Each slot reports how many parts it hid and why, grouped by rule ("9 trucks hidden: too narrow for 8.5″").
 - When an earlier pick changes so that later picks no longer fit, the engine returns a **change list**: the picks kept, each pick that no longer fits with the closest part that does (the nearest spec, then the same brand, then the nearest price, in stock), and an undo that restores the build as it was. Nothing changes until the shopper accepts (The builder). SkatePro removes the later pick and says why; Porsche's configurator asks first, which is what this does.
-- After the deck, each later slot starts on its **recommendation**: the kit's default part when it fits and is in stock, otherwise the fitting, in-stock part nearest the middle of the slot's prices. The deck is never picked for the shopper.
+- After the deck, each later slot names its **recommendation**: the kit's default part when it fits and is in stock, otherwise the fitting, in-stock part nearest the middle of the slot's prices. It is made against the picks and the recommendations before it, so the recommended board fits together, and it is never picked for the shopper (D-213). Each slot's options are checked against the picks alone.
 - A part missing a spec that one of its rules requires isn't offered, and the Catalogue check lists it, so nothing is sold on a guess. Three specs aren't required: a deck with no hole pattern counts as new school (R2), an axle with no diameter counts as 8 mm (R5), and a deck with no length skips the length check (R6). The Catalogue check flags each so it can be filled in.
 
 **R1. Deck width and truck size (block).**
@@ -371,7 +371,7 @@ One step per slot, in the kit's order, then a review. The deck comes first, ever
   - a fit label ("Fits your 8.25″ deck").
 
   Each card's control has a name of its own ("Choose Independent 149 trucks"), never one of seven buttons called "Add" (P11).
-- **Recommendations.** After the deck, each later slot starts on its recommendation, labelled "Recommended for your 8.25″ deck", and the total counts it from the start (P9). Nothing is picked that the shopper can't see and change, and the deck is never picked for them.
+- **Recommendations.** After the deck, each later step labels its recommendation "Recommended for your 8.25″ deck" and picks nothing (Zach, 16 Nov 2026; D-213). The board and the total count only what the shopper picked. Under the total, an estimate says what a complete board would come to with each recommendation: "A complete board from about $184", so the full price is no surprise at the review (P9). The review and Add to cart need every slot the kit requires picked. A preset still fills every slot, since the shopper chose it.
 - **Hidden parts.** Options that don't fit stay out of the main list but not out of sight: "9 trucks hidden: too narrow for 8.5″" opens to show them with their reasons. Nothing vanishes silently (P1).
 - **Filters.** Long lists get filters (brand, size) above them, and in a drawer on phones.
 - **Sold out.** Sold-out parts show after those in stock and can't be picked; each links to its page's Notify me. A preset or link that holds one names it, and the build can't go to the cart until it's swapped (as SkatePro does).

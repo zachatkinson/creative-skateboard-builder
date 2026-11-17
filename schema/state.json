@@ -172,7 +172,7 @@
 						"type": [ "integer", "null" ]
 					},
 					"recommended": {
-						"description": "The ID of the part the step starts on while nothing is picked, or null. The total counts it.",
+						"description": "The ID of the part the step recommends while nothing is picked, or null. From 0.8.0 the total does not count it, and the estimate does.",
 						"type": [ "integer", "null" ]
 					},
 					"offered": {
@@ -381,7 +381,8 @@
 				"saved",
 				"assembly",
 				"fee",
-				"total"
+				"total",
+				"estimate"
 			],
 			"properties": {
 				"lines": {
@@ -453,6 +454,17 @@
 				"total": {
 					"description": "The parts and the fee.",
 					"$ref": "#/definitions/money"
+				},
+				"estimate": {
+					"description": "What the board would cost with each slot's recommendation in it, priced as the total is, while a recommendation fills a slot and every slot the kit requires has a part; otherwise null. From 0.8.0.",
+					"oneOf": [
+						{
+							"$ref": "#/definitions/money"
+						},
+						{
+							"type": "null"
+						}
+					]
 				}
 			}
 		},
@@ -846,7 +858,7 @@
 					"type": "boolean"
 				},
 				"recommended": {
-					"description": "Whether it is the part the step starts on.",
+					"description": "Whether it is the part the step recommends. It is labelled, never picked.",
 					"type": "boolean"
 				},
 				"messages": {

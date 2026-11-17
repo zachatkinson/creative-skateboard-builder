@@ -152,8 +152,7 @@ final class BuilderView {
 		$status  = $panel
 			/* translators: %s: a number of parts. */
 			? sprintf( _n( '%s part no longer fits.', '%s parts no longer fit.', count( Cast::items( $changes['changes'] ?? null ) ), 'creative-skateboard-builder' ), number_format_i18n( count( Cast::items( $changes['changes'] ?? null ) ) ) )
-			/* translators: 1: the build in a sentence. 2: the build's total, such as $184.00. */
-			: sprintf( __( '%1$s Total: %2$s.', 'creative-skateboard-builder' ), Cast::str( $picture['description'] ?? null ), $sum );
+			: self::said( Cast::str( $picture['description'] ?? null ), $sum, isset( $total['estimate'] ) ? Cast::str( Cast::map( $total['estimate'] )['text'] ?? null ) : null );
 
 		[ $action, $carry ] = self::form( $base );
 		$step               = $review ? self::none() : $this->step( $state, $answer, $link, $url, $steps, $counted, $lines, $about );
@@ -1041,6 +1040,22 @@ final class BuilderView {
 	}
 
 	/**
+	 * What the status region says after a pick: the build, its total, and the estimate while there is one (D-213).
+	 *
+	 * @param string      $description The build in a sentence.
+	 * @param string      $total       The total, as the shop writes money.
+	 * @param string|null $estimate    The estimate, or null.
+	 */
+	private static function said( string $description, string $total, ?string $estimate ): string {
+		if ( null === $estimate ) {
+			/* translators: 1: the build in a sentence. 2: the build's total, such as $184.00. */
+			return sprintf( __( '%1$s Total: %2$s.', 'creative-skateboard-builder' ), $description, $total );
+		}
+		/* translators: 1: the build in a sentence. 2: the build's total, such as $70.00. 3: the estimate for a complete board, such as $184.00. */
+		return sprintf( __( '%1$s Total: %2$s. A complete board from about %3$s.', 'creative-skateboard-builder' ), $description, $total, $estimate );
+	}
+
+	/**
 	 * The summary (spec: The total): the parts so far, assembly from the first step, any build discount, the
 	 * total, the delivery line and what other plugins add.
 	 *
@@ -1084,27 +1099,32 @@ final class BuilderView {
 		$arrival = Cast::str( $delivery['arrival'] ?? null );
 		$ships   = Cast::str( $delivery['line'] ?? null );
 		return array(
-			'heading'    => __( 'Your build', 'creative-skateboard-builder' ),
-			'rows'       => $rows,
-			'empty'      => array() === $rows,
-			'emptyText'  => __( 'Nothing is chosen yet.', 'creative-skateboard-builder' ),
-			'assembly'   => $assembly,
+			'heading'     => __( 'Your build', 'creative-skateboard-builder' ),
+			'rows'        => $rows,
+			'empty'       => array() === $rows,
+			'emptyText'   => __( 'Nothing is chosen yet.', 'creative-skateboard-builder' ),
+			'assembly'    => $assembly,
 			// A button in a GET form, not a link (spec: SEO and sharing): a crawler never enters a state.
-			'toggle'     => array(
+			'toggle'      => array(
 				'fields' => self::flat( $link->assembled( ! $on )->query( $state->kit->slots ) ),
 				'text'   => $on ? __( 'Remove assembly', 'creative-skateboard-builder' ) : __( 'Add assembly', 'creative-skateboard-builder' ),
 			),
-			'hasSaved'   => Cast::int( $saved['amount'] ?? null ) > 0,
+			'hasSaved'    => Cast::int( $saved['amount'] ?? null ) > 0,
 			/* translators: %s: an amount of money, such as $12.00. */
-			'saved'      => sprintf( __( 'Build discount: %s', 'creative-skateboard-builder' ), Words::delta( 'less', Cast::str( $saved['text'] ?? null ) ) ),
-			'totalLabel' => __( 'Total', 'creative-skateboard-builder' ),
-			'total'      => Cast::str( Cast::map( $total['total'] ?? null )['text'] ?? null ),
-			'hasArrival' => '' !== $arrival,
-			'arrival'    => $arrival,
-			'hasShips'   => '' !== $ships,
-			'ships'      => $ships,
-			'notes'      => $notes,
-			'kit'        => $state->id,
+			'saved'       => sprintf( __( 'Build discount: %s', 'creative-skateboard-builder' ), Words::delta( 'less', Cast::str( $saved['text'] ?? null ) ) ),
+			'totalLabel'  => __( 'Total', 'creative-skateboard-builder' ),
+			'total'       => Cast::str( Cast::map( $total['total'] ?? null )['text'] ?? null ),
+			// The full price is no surprise at the review (P9): the board with each recommendation, said as an
+			// estimate under the total, which counts what was picked (D-213).
+			'hasEstimate' => null !== ( $total['estimate'] ?? null ),
+			/* translators: %s: an amount of money, such as $184.00. */
+			'estimate'    => sprintf( __( 'A complete board from about %s', 'creative-skateboard-builder' ), Cast::str( Cast::map( $total['estimate'] ?? null )['text'] ?? null ) ),
+			'hasArrival'  => '' !== $arrival,
+			'arrival'     => $arrival,
+			'hasShips'    => '' !== $ships,
+			'ships'       => $ships,
+			'notes'       => $notes,
+			'kit'         => $state->id,
 		);
 	}
 

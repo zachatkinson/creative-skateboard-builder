@@ -281,18 +281,21 @@ final class BuilderPageTest extends IntegrationTestCase {
 		self::assertNotNull( wp_script_modules()->get_registered( BuilderPage::MODULE ), 'the block registers it, from build/builder/view.js' );
 	}
 
-	public function test_a_build_link_opens_on_its_step_with_its_picks_carried_and_the_recommendation_checked(): void {
+	public function test_a_build_link_opens_on_its_step_with_its_picks_carried_and_the_recommendation_labelled_not_checked(): void {
 		$dom = self::dom( $this->kitPage( array( 'deck' => (string) $this->parts['deck 8.5'] ) ) );
 
 		self::assertSame( 'Step 2 of 7: Trucks', self::text( $dom, '//h2[contains(@class,"cbuild__heading")]' ) );
 		$deck = $dom->query( '//form[contains(@class,"cbuild-step")]//input[@type="hidden" and @name="cbuild[deck]"]' )->item( 0 );
 		self::assertNotNull( $deck, 'The deck travels with the form.' );
 		self::assertSame( (string) $this->parts['deck 8.5'], $deck->getAttribute( 'value' ) );
-		$checked = $dom->query( '//input[@type="radio" and @name="cbuild[trucks]" and @checked]' );
-		self::assertSame( 1, $checked->length );
-		self::assertSame( (string) $this->parts['truck 149'], $checked->item( 0 )->getAttribute( 'value' ), 'The step starts on what fits, and the form sends it.' );
-		self::assertSame( 'Recommended for your 8.5″ deck', self::text( $dom, '//li[contains(@class,"cbuild-card--chosen")]//span[@class="cbuild-card__recommended"]' ) );
-		self::assertSame( 'Fits your 8.5″ deck', self::text( $dom, '//li[contains(@class,"cbuild-card--chosen")]//span[contains(@class,"cbuild-card__fit")]' ) );
+		// Nothing is picked for the shopper (D-213): the trucks that fit are labelled, and the form sends no trucks.
+		self::assertSame( 0, $dom->query( '//input[@type="radio" and @name="cbuild[trucks]" and @checked]' )->length );
+		$recommended = '//li[.//span[@class="cbuild-card__recommended" and not(@hidden)]]';
+		self::assertSame( 1, $dom->query( $recommended )->length );
+		self::assertSame( (string) $this->parts['truck 149'], $dom->query( $recommended . '//input[@type="radio"]' )->item( 0 )?->getAttribute( 'value' ) );
+		self::assertSame( 'Recommended for your 8.5″ deck', self::text( $dom, $recommended . '//span[@class="cbuild-card__recommended"]' ) );
+		self::assertSame( 'Fits your 8.5″ deck', self::text( $dom, $recommended . '//span[contains(@class,"cbuild-card__fit")]' ) );
+		self::assertSame( 0, $dom->query( '//li[contains(@class,"cbuild-card--chosen")]' )->length );
 		$back = $dom->query( '//a[contains(@class,"cbuild-step__back")]' )->item( 0 );
 		self::assertNotNull( $back );
 		self::assertSame( 'Back: Deck', trim( $back->textContent ) );
@@ -342,12 +345,12 @@ final class BuilderPageTest extends IntegrationTestCase {
 				self::assertSame( 1, $dom->query( '//*[@id="' . $id . '"]' )->length, $id );
 			}
 		}
-		$chosen = $dom->query( '//li[contains(@class,"cbuild-card--chosen")]/input' )->item( 0 );
-		self::assertNotNull( $chosen );
+		$chosen = $dom->query( '//li[.//span[@class="cbuild-card__recommended" and not(@hidden)]]/input' )->item( 0 );
+		self::assertNotNull( $chosen, 'the card the step recommends' );
 		$about = trim( (string) preg_replace( '/\s+/', ' ', self::text( $dom, '//*[@id="' . $chosen->getAttribute( 'id' ) . '-about"]' ) ) );
 		self::assertStringContainsString( 'Fits your 8.5″ deck', $about );
 		self::assertStringContainsString( 'Recommended for your 8.5″ deck', $about );
-		self::assertStringStartsWith( 'Included', $about, 'its price, first' );
+		self::assertMatchesRegularExpression( '/^\+\$\d+\.\d\d /', $about, 'its price first: what it adds, since nothing is picked in its slot (D-213)' );
 	}
 
 	public function test_parts_that_do_not_fit_are_listed_under_a_disclosure_with_their_reasons(): void {
@@ -549,7 +552,8 @@ final class BuilderPageTest extends IntegrationTestCase {
 		);
 		$shown = array(
 			'a step' => 'trucks',
-			'the step it sends a build short of a part back to' => 'wheels',
+			// The first slot the kit requires with no pick: nothing is picked for the shopper (D-213).
+			'the step it sends a build short of a part back to' => 'trucks',
 		);
 		foreach ( $states as $state => $build ) {
 			$dom = self::dom( $this->kitPage( $build ) );

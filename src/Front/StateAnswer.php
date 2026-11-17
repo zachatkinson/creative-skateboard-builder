@@ -355,6 +355,8 @@ final class StateAnswer {
 				'assembly' => $state->quote->assembly,
 				'fee'      => $money( $state->quote->fee ),
 				'total'    => $money( $state->quote->total ),
+				// The board with each recommendation in it, while one fills a slot (D-213).
+				'estimate' => null === $state->estimate ? null : $money( $state->estimate->total ),
 			),
 			'picture'  => $this->picture( $state, $counted, $labels, $brands, $cards ),
 			'delivery' => $this->delivery->said( $state->id, $state->quote->assembly, $state->quote->total, $decimals ),

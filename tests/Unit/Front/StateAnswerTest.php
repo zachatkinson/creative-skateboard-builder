@@ -71,6 +71,18 @@ final class StateAnswerTest extends TestCase {
 		return $listed;
 	}
 
+	/**
+	 * A complete of the shop's parts that fits: an 8.5 deck on 149s with 54 mm wheels.
+	 */
+	private const array COMPLETE = array(
+		SlotKey::DECK     => 103,
+		SlotKey::TRUCKS   => 149,
+		SlotKey::WHEELS   => 302,
+		SlotKey::BEARINGS => 501,
+		SlotKey::HARDWARE => 601,
+		SlotKey::GRIP     => 701,
+	);
+
 	private InMemoryKits $kits;
 
 	private InMemoryShopSettings $settings;
@@ -202,6 +214,7 @@ final class StateAnswerTest extends TestCase {
 				'assembly' => false,
 				'fee'      => self::money( 0, '$0.00' ),
 				'total'    => self::money( 0, '$0.00' ),
+				'estimate' => null,
 			),
 			$answer['total']
 		);
@@ -388,11 +401,11 @@ final class StateAnswerTest extends TestCase {
 		self::assertSame( 'An assembled board goes back whole.', $answer['texts']['returns_notice'] );
 	}
 
-	public function test_a_later_step_lists_what_fits_hides_the_rest_with_why_and_marks_the_part_it_starts_on(): void {
+	public function test_a_later_step_lists_what_fits_hides_the_rest_with_why_and_marks_the_part_it_recommends(): void {
 		$answer = $this->answer( array( SlotKey::DECK => 103 ), SlotKey::TRUCKS );
 
 		self::assertSame( SlotKey::TRUCKS, $answer['step'] );
-		self::assertTrue( $answer['ready'] );
+		self::assertFalse( $answer['ready'], 'the trucks and the rest are still to pick (D-213)' );
 		self::assertSame( array( 149 ), self::ids( $answer['options'] ) );
 		self::assertTrue( $answer['options'][0]['recommended'] );
 		self::assertFalse( $answer['options'][0]['picked'] );
@@ -434,27 +447,40 @@ final class StateAnswerTest extends TestCase {
 			$trucks['groups']
 		);
 		self::assertSame( 103, self::step( $answer, SlotKey::DECK )['picked'] );
-		// A step that is not on show still says what it counts, and lists nothing.
+		// A step that is not on show still says what it recommends, and lists nothing.
 		self::assertSame( 302, self::step( $answer, SlotKey::WHEELS )['recommended'] );
 		self::assertSame( 3, self::step( $answer, SlotKey::WHEELS )['offered'] );
 
-		// The total counts the pick and every part a later step starts on, each named from its card.
-		self::assertSame( array( 103, 149, 302, 501, 601, 701 ), array_column( $answer['total']['lines'], 'part' ) );
+		// The total counts the pick, named from its card; the estimate adds each recommendation (D-213).
 		self::assertSame(
 			array(
-				'slot'     => SlotKey::TRUCKS,
-				'part'     => 149,
-				'name'     => 'Part 149',
-				'quantity' => 1,
-				'price'    => self::money( 5400, '$54.00' ),
-				'charged'  => self::money( 5400, '$54.00' ),
-				'total'    => self::money( 5400, '$54.00' ),
+				array(
+					'slot'     => SlotKey::DECK,
+					'part'     => 103,
+					'name'     => 'Part 103',
+					'quantity' => 1,
+					'price'    => self::money( 7000, '$70.00' ),
+					'charged'  => self::money( 7000, '$70.00' ),
+					'total'    => self::money( 7000, '$70.00' ),
+				),
 			),
-			$answer['total']['lines'][1]
+			$answer['total']['lines']
 		);
-		self::assertSame( self::money( 18300, '$183.00' ), $answer['total']['parts'] );
-		self::assertSame( self::money( 18300, '$183.00' ), $answer['total']['total'] );
-		self::assertSame( array( array( 149, 139, 144, 169, 103, 302, 501, 601, 701 ) ), $this->cards->asked, 'One call: the options on show, then the parts the total counts, each once.' );
+		self::assertSame( self::money( 7000, '$70.00' ), $answer['total']['parts'] );
+		self::assertSame( self::money( 7000, '$70.00' ), $answer['total']['total'] );
+		self::assertSame( self::money( 18300, '$183.00' ), $answer['total']['estimate'] );
+		self::assertSame( array( array( 149, 139, 144, 169, 103 ) ), $this->cards->asked, 'One call: the options on show, then the parts the total counts, each once.' );
+	}
+
+	public function test_the_estimate_is_the_board_with_each_recommendation_and_is_gone_once_every_slot_is_picked(): void {
+		self::assertNull( $this->answer()['total']['estimate'], 'nothing to recommend before the deck' );
+		self::assertNull( $this->answer( self::COMPLETE )['total']['estimate'], 'everything picked: the total is the whole board' );
+
+		$this->settings->terms = BuildTerms::read( array( BuildTerms::DISCOUNT => '10' ) );
+		$deck                  = $this->answer( array( SlotKey::DECK => 103 ), null, null, true );
+		$whole                 = $this->answer( self::COMPLETE, null, null, true );
+		self::assertSame( $whole['total']['total'], $deck['total']['estimate'], 'with the fee and the discount, as the total' );
+		self::assertSame( self::money( 17970, '$179.70' ), $deck['total']['estimate'] );
 	}
 
 	public function test_the_pick_is_marked_and_a_pick_the_build_blocks_is_among_the_hidden_with_its_reason(): void {
@@ -471,8 +497,9 @@ final class StateAnswerTest extends TestCase {
 		self::assertFalse( $blocked['ready'] );
 		self::assertSame( array( true, false, false ), array_column( $blocked['hidden'], 'picked' ) );
 		self::assertSame( array( false ), array_column( $blocked['options'], 'recommended' ), 'A step with a pick starts on nothing else.' );
-		self::assertSame( array( SlotKey::DECK, SlotKey::TRUCKS ), array_column( $blocked['problems'], 'slot' ), 'Both parts of the pair that does not fit.' );
-		$problem = $blocked['problems'][1];
+		$pair = array_values( array_filter( $blocked['problems'], static fn( array $problem ): bool => 'part_blocked' === $problem['code'] ) );
+		self::assertSame( array( SlotKey::DECK, SlotKey::TRUCKS ), array_column( $pair, 'slot' ), 'Both parts of the pair that does not fit.' );
+		$problem = $pair[1];
 		self::assertSame( 'part_blocked', $problem['code'] );
 		self::assertSame( 139, $problem['part'] );
 		self::assertSame( 'Trucks: the part chosen does not fit the rest of the build.', $problem['message'] );
@@ -585,7 +612,7 @@ final class StateAnswerTest extends TestCase {
 
 	public function test_the_total_carries_the_fee_and_the_build_discount_as_amounts_and_as_the_shop_writes_them(): void {
 		$this->settings->terms = BuildTerms::read( array( BuildTerms::DISCOUNT => '10' ) );
-		$answer                = $this->answer( array( SlotKey::DECK => 103 ), null, null, true );
+		$answer                = $this->answer( self::COMPLETE, null, null, true );
 
 		self::assertTrue( $answer['total']['assembly'] );
 		self::assertSame( self::money( 1500, '$15.00' ), $answer['total']['fee'] );
@@ -684,10 +711,7 @@ final class StateAnswerTest extends TestCase {
 
 	public function test_a_part_whose_product_has_gone_keeps_its_place_with_no_card_and_no_name(): void {
 		$this->cards->missing = array( 103, 149 );
-		$now                  = array(
-			SlotKey::DECK   => 103,
-			SlotKey::TRUCKS => 149,
-		);
+		$now                  = self::COMPLETE;
 		$answer               = $this->answer( $now, SlotKey::DECK );
 
 		self::assertNull( $answer['options'][2]['card'] );
@@ -760,12 +784,22 @@ final class StateAnswerTest extends TestCase {
 		self::assertSame( 'more', $blank[102]['kind'] );
 	}
 
+	public function test_a_recommended_part_is_priced_as_what_it_adds_since_the_total_does_not_count_it(): void {
+		$trucks = self::deltas( $this->answer( array( SlotKey::DECK => 103 ), SlotKey::TRUCKS ) );
+		self::assertSame(
+			array(
+				'kind'   => 'more',
+				'amount' => 5400,
+				'text'   => '+$54.00',
+			),
+			$trucks[149]
+		);
+	}
+
 	public function test_the_change_is_in_what_the_build_charges_for_as_many_as_it_takes(): void {
 		$this->settings->terms = BuildTerms::read( array( BuildTerms::DISCOUNT => '10' ) );
-		// The trucks step starts on its recommendation, which the total counts: each other pair is priced against it.
-		$answer  = $this->answer( array( SlotKey::DECK => 103 ), SlotKey::TRUCKS );
-		$counted = self::step( $answer, SlotKey::TRUCKS )['recommended'];
-		self::assertSame( 149, $counted );
+		// The trucks picked are what the total counts: each other pair is priced against them.
+		$answer = $this->answer( array( SlotKey::DECK => 103, SlotKey::TRUCKS => 149 ), SlotKey::TRUCKS );
 		self::assertSame( 'included', self::deltas( $answer )[149]['kind'] );
 		// The trucks that do not fit say theirs too. 169 is 56.00 against 54.00, and 139 is 50.00, each less 10 %.
 		$hidden = array_column( $answer['hidden'], 'delta', 'id' );
@@ -999,13 +1033,7 @@ final class StateAnswerTest extends TestCase {
 			$blank['picture']
 		);
 
-		$answer = $this->answer(
-			array(
-				SlotKey::DECK   => 103,
-				SlotKey::TRUCKS => 149,
-			),
-			SlotKey::WHEELS
-		);
+		$answer = $this->answer( self::COMPLETE, SlotKey::WHEELS );
 		self::assertSame(
 			array(
 				'slot'  => SlotKey::DECK,
@@ -1020,7 +1048,7 @@ final class StateAnswerTest extends TestCase {
 		);
 		self::assertSame( 'Trucks: Independent, 8.5″', $answer['picture']['items'][1]['label'] );
 		self::assertSame( '', $answer['picture']['items'][3]['size'], 'Bearings have no size of their own.' );
-		self::assertSame( array_column( $answer['total']['lines'], 'part' ), array_column( $answer['picture']['items'], 'part' ), 'The parts the total counts, the recommendations among them.' );
+		self::assertSame( array_column( $answer['total']['lines'], 'part' ), array_column( $answer['picture']['items'], 'part' ), 'The parts the total counts.' );
 		self::assertSame( 'Bearings', $answer['picture']['items'][3]['label'], 'A part with no brand and no size is labelled with its slot.' );
 		self::assertStringStartsWith( 'The build so far: Deck: Part 103; Trucks: Part 149; ', $answer['picture']['description'] );
 		self::assertStringEndsWith( '; Grip: Part 701.', $answer['picture']['description'] );
@@ -1052,11 +1080,12 @@ final class StateAnswerTest extends TestCase {
 			array(
 				SlotKey::DECK   => 103,
 				SlotKey::TRUCKS => 149,
+				SlotKey::WHEELS => 302,
 			),
-			SlotKey::WHEELS
+			SlotKey::BEARINGS
 		);
 		$picture = $answer['picture'];
-		self::assertSame( array( SlotKey::DECK, SlotKey::TRUCKS, SlotKey::TRUCKS ), array_column( $picture['layers'], 'slot' ), 'the wheels the step recommends have no layer image' );
+		self::assertSame( array( SlotKey::DECK, SlotKey::TRUCKS, SlotKey::TRUCKS ), array_column( $picture['layers'], 'slot' ), 'the wheels picked have no layer image' );
 		self::assertSame( array( 103, 149, 149 ), array_column( $picture['layers'], 'part' ) );
 		self::assertSame( array( 2159000, 8128000 ), array( $picture['width'], $picture['height'] ), 'an 8.5 in deck, 32 in long' );
 		self::assertSame( 'https://example.com/layer-13.png', $picture['layers'][0]['image']['src'], 'the master until the renditions are made' );
@@ -1070,7 +1099,7 @@ final class StateAnswerTest extends TestCase {
 
 	public function test_a_part_whose_product_has_gone_is_in_the_box_with_no_name_and_out_of_the_sentence(): void {
 		$this->cards->missing = array( 103 );
-		$answer               = $this->answer( array( SlotKey::DECK => 103 ), SlotKey::DECK );
+		$answer               = $this->answer( self::COMPLETE, SlotKey::DECK );
 		self::assertSame( '', $answer['picture']['items'][0]['name'] );
 		self::assertNull( $answer['picture']['items'][0]['image'] );
 		self::assertStringStartsWith( 'The build so far: Trucks: Part 149', $answer['picture']['description'] );
