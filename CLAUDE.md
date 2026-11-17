@@ -24,7 +24,7 @@ It is the agency's showpiece, built to the twelve-dimension audit in `docs/AUDIT
 1. `/plan-milestone`: write the plan into `docs/reviews/M<n>.md`, with the risks under all twelve dimensions. Ask Zach anything that needs him before writing code.
 2. Build. The spec's test cases come first. Run `/verify` before every commit (docs-only commits skip it; in milestone 1 it runs the gates that exist so far). Keep commits small and green.
 3. `/audit-milestone`: the `spec-reviewer` and `auditor` agents read the diff since the last tag. Fix every blocker and should-fix with a test that fails without the fix, then write the review.
-4. Open a draft pull request with the template and a `CHANGELOG.md` entry, and mark it ready once the gates pass locally (D-041). After Claude in Cowork's review, its fixes land and Claude merges, once the full CI run is green.
+4. Open a draft pull request with the template and a `CHANGELOG.md` entry, and mark it ready once the gates pass locally (D-041). Claude merges once the full CI run is green, and tags the release. Claude in Cowork then reviews the release, on the demo and in the code, and its fixes go into the next milestone (D-223).
 5. Stop. Don't start the next milestone until Zach says "Milestone N is approved". The next `/plan-milestone` tags the merge: `v0.<n>.0`, and `v1.0.0` for milestone 9.
 
 ## Commands

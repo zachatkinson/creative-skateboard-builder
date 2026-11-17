@@ -66,7 +66,7 @@ The builder calls none of these directly. Where they meet, the builder offers a 
 - **Local:** wp-env on ports 8898 and 8899 (8888 to 8897 belong to the other projects). Docker runs through OrbStack.
 - **CI:** GitHub Actions, as in Creative Search.
 - **Releases:** a version tag publishes the zip and its manifest to `zachatkinson/creative-releases`. Shops update from there through the plugin's updater. Zach installs releases on the demo himself.
-- **Review:** each milestone's pull request and summary go to Claude in Cowork. It reviews the code against the spec and `AUDIT.md`, checks what shows on the demo, and lists blockers, should-fixes and minors with file and line. Fixes land before the next milestone starts.
+- **Review:** each milestone's release, its pull request and its summary go to Claude in Cowork once it is merged and tagged. It reviews the code against the spec and `AUDIT.md`, checks what shows on the demo, and lists blockers, should-fixes and minors with file and line. Its fixes go into the next milestone (D-223).
 - **The demo's own tests:** Skatehouse has a Playwright suite run against the demo. After Skatehouse's setup it gains a build-and-checkout test.
 
 ## Standing rules that reach the repository

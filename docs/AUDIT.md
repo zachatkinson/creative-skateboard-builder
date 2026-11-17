@@ -31,7 +31,7 @@ Through the whole build:
 | Every commit | Claude Code, with the `verify` skill | Every fast gate below. Nothing is committed on red. Docs-only commits skip it; in milestone 1 it runs the gates that exist so far | The commit |
 | Every push and pull request | CI | Every gate, on the full version matrix | GitHub Actions |
 | End of a milestone | Claude Code, with the `audit-milestone` skill | Two reviewer agents with fresh context read the milestone's diff (`git diff $(git merge-base main HEAD)..HEAD`): `spec-reviewer` (does the code do what the milestone and the spec say) and `auditor` (these twelve dimensions). Every blocker and should-fix is fixed, each with a test or gate that fails on the old code where one can be written | `docs/reviews/M<n>.md`: gates, the twelve verdicts, the findings |
-| Milestone review | Claude in Cowork | An independent review of the code against the spec and this matrix, and a check on the demo once the milestone shows there | Findings to Zach, fixed before the next milestone starts |
+| Milestone review | Claude in Cowork | An independent review of the code against the spec and this matrix, and a check on the demo once the milestone shows there | Findings to Zach, after the release is tagged; fixed in the next milestone (D-223) |
 | Every release, from 1.0 | Claude Code, then Claude in Cowork | An audit of the whole codebase: every dimension, every rule, open items carried forward | `docs/AUDIT-<version>.md` |
 
 ## Severity and verdicts

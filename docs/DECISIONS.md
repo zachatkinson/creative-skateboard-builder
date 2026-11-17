@@ -3015,3 +3015,8 @@ What the `spec-reviewer` and `auditor` found, and what was done; the review is `
 
 New tests that found no bug: `workshop.spec.ts` (the Build box and the ticket under axe and from the keyboard, the ticket in print media, one board a page), `ShareCardTest::test_a_saved_builds_id_is_in_neither_og_url_nor_the_canonical`, `PartsTableTest::test_work_done_together_reads_a_slots_parts_once_and_holds_nothing_after`, `SavedBuildRepositoryTest::test_a_write_the_database_refuses_is_said`, `OrderReadingTest`'s notes, and `UninstallTest` with a saved build and the spec's order keys.
 
+### D-223 · Claude in Cowork reviews the release, after the merge · 2026-11-17
+
+Zach, 17 November 2026: a milestone's pull request merges and its version is tagged once the full CI run is green, after the spec-reviewer's and the auditor's findings are fixed. Claude in Cowork then reviews the release, the code and the demo, and its findings go into the next milestone, as 0.6.0's and 0.7.0's already did (milestone 8 took 0.7.0's recheck in place of a 0.7.1). Before, the merge waited for Cowork's review of the pull request.
+
+Why: Cowork's suggestions were bundled into the next milestone anyway, so holding the merge for them only delayed the release. The cost is that no reader outside the repository sees the code before it ships; the two fresh-context reviews and every gate still do. Changed: `CLAUDE.md` (how each milestone runs, step 4), the `audit-milestone` skill (step 8), `docs/PROJECT.md` (Review) and `docs/AUDIT.md` (the milestone review's row).

@@ -46,6 +46,8 @@ Yes. Activating it for the network installs it on every site, and a site added l
 * With Yoast SEO, a shared build's address keeps its brackets encoded.
 * The board turns over. The grip tape step shows its top: the deck's outline, the grip tape filled into it, a bolt head at each hole and the wheels at the edges. A button by the board turns it over on any step, and the description says which side is shown. A grip's layer image is now a swatch of the tape, and a hardware's can be one bolt's head.
 * For the workshop: an order with a build shows it in a Build box, part by part with the specs it was sold with, and warns when the order's lines no longer match it. The assembly ticket prints from there, or for many orders at once from the orders list, which also gains an Assembly column.
+* For the customer: the order's page in My account and the order emails show the build's picture under its kit, with the parts under it, and the emails say the lead time and the returns notice.
+* Privacy: WordPress's personal data export and erasure include saved builds, a deleted account's builds go with it, on a network too, and the privacy policy guide gains a suggested paragraph.
 
 = 0.7.0 =
 * Each part's Part specs panel has a Picture group with a Layer image field: a transparent PNG, WebP or AVIF from the Media Library, shown at the size the picture draws the part. An image that is not transparent, is too small, or is another kind of file is refused, and the notice says why.
