@@ -554,7 +554,7 @@ Everything sits in WooCommerce's own screens, built from WordPress's admin marku
 
 **The picture's images**, from milestone 7.
 
-- A Layer image field on each part's Part specs panel (simple products and variations) takes a transparent PNG or WebP from the Media Library, previews it on the template at the part's size, and checks its transparency and size.
+- A Layer image field on each part's Part specs panel (simple products and variations) takes a transparent PNG, WebP or AVIF from the Media Library (an AVIF where the server's image library reads it, D-210), previews it on the template at the part's size, and checks its transparency and size.
 - On the kit's Build tab, a Picture section sets the slots' layer order and any anchor the kit needs to move.
 - The Catalogue check lists the parts without a layer image, so the owner sees what the picture still lacks.
 

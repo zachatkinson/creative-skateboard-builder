@@ -40,10 +40,11 @@ Yes. Activating it for the network installs it on every site, and a site added l
 == Changelog ==
 
 = 0.7.0 =
-* Each part's Part specs panel has a Picture group with a Layer image field: a transparent PNG or WebP from the Media Library, shown at the size the picture draws the part. An image that is not transparent, is too small, or is another kind of file is refused, and the notice says why.
+* Each part's Part specs panel has a Picture group with a Layer image field: a transparent PNG, WebP or AVIF from the Media Library, shown at the size the picture draws the part. An image that is not transparent, is too small, or is another kind of file is refused, and the notice says why.
 * The builder draws the board to scale as the shopper picks: deck, grip, trucks and wheels, each from its layer image, with the parts that have none shown as photos beside it.
 * A build in the cart shows a picture of it, made in the background, in place of the deck's photo. A shared build link unfurls with that picture, the build's name and its total.
-* Pictures not shown for 30 days are deleted, and the folder is kept under 200 MB. Site Health says when the host cannot make them.
+* Pictures not shown for 30 days are deleted, and the folder is kept under 200 MB. Site Health says when the host cannot make them, or when parts' layer images have no resized copies.
+* Updating from 0.6.0 by uploading the zip and choosing Replace current with uploaded works in one step, and the uploaded zip is deleted. From a release older than 0.6.0, deactivate the plugin before updating, then activate it again.
 * The seeded Independent truck chart gives each size's baseplate, from Independent's own pages. An upgrade fills the baseplates your copy of the chart leaves empty, and keeps any you typed.
 
 = 0.6.0 =
@@ -119,3 +120,8 @@ Yes. Activating it for the network installs it on every site, and a site added l
 
 = 0.1.0 =
 * Foundation: the plugin skeleton, the two tables, the upgrade steps, uninstall, the update check, the test harness and the CI gates. Nothing a shopper or shop owner sees yet.
+
+== Upgrade Notice ==
+
+= 0.7.0 =
+From 0.6.0, update as usual. From a release older than 0.6.0, deactivate the plugin before uploading the new zip, then activate it again.

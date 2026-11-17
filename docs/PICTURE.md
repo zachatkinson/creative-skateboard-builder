@@ -68,7 +68,7 @@ Crop each image close to the part. The picture centres an image in its box and k
 
 The Layer image field takes an image already in the Media Library. On save it checks the file:
 
-- **Type.** A PNG or a WebP, by the type WordPress gave the attachment on upload.
+- **Type.** A PNG, a WebP or an AVIF, read from the file itself: a host that maps uploads to AVIF keeps `image/png` on the attachment and an AVIF file under it, which is read as the AVIF it is. Where the server's image library reads the original WordPress kept beside it and not the file in use, the original is read. An AVIF needs GD built with AVIF or Imagick with an AVIF coder (D-210).
 - **Transparency.** All four corners fully transparent. A cut-out shot nose up has no part in its corners, so this catches a file exported with its background left in, even where the file has an alpha channel. Only the corners are read: by GD where PHP has it, else by Imagick where it reads the format. Where neither can read the file, transparency is not known, and the file is checked for its type and size alone.
 - **Size.** At least two pixels to the millimetre of the part's box, across or along: one side reaching its count is enough. A file is refused only when it falls short both ways. The size is checked only for a part in a drawn slot whose specs give its box.
 
@@ -86,7 +86,8 @@ When a file fails, nothing is stored: the image the part had before is kept, and
 | Problem | The notice |
 | --- | --- |
 | Not the ID of an image in the Media Library | Layer image was not saved: "…" is not the ID of an image in the Media Library. |
-| Not a PNG or WebP | Layer image was not saved: it is (its type), and a layer must be a PNG or WebP with a transparent background. |
+| Not a PNG, WebP or AVIF | Layer image was not saved: it is (its type), and a layer must be a PNG, WebP or AVIF with a transparent background. |
+| A type the server cannot read | Layer image was not saved: it is (its type), and this server's image library cannot read that type. Upload the cut-out as a PNG or WebP, or ask your host to turn on AVIF in GD or Imagick. |
 | A corner not transparent | Layer image was not saved: its corners are not transparent. Export the cut-out with a transparent background. |
 | Too small both ways | Layer image was not saved: it is too small for the size the picture draws this part. It needs at least (pixels) across or (pixels) along. |
 
@@ -94,7 +95,7 @@ When a file fails, nothing is stored: the image the part had before is kept, and
 
 On each part's product page: Product data > Part specs > Picture > Layer image. The field is stored as `_cbuild_layer`, the attachment's ID.
 
-- **Choose an image** opens the Media Library, offering PNG and WebP. Without JavaScript the button is hidden, and the field takes the attachment's ID typed in. Either way the save checks it.
+- **Choose an image** opens the Media Library, offering PNG, WebP and AVIF, the list the save checks against. Without JavaScript the button is hidden, and the field takes the attachment's ID typed in. Either way the save checks it.
 - **The preview** draws the part's box at half a pixel to the millimetre (a 32 in deck is 407 pixels long), on a chequer that shows what is transparent. The caption gives the box in millimetres, nose up, and the pixels the image needs.
 - **Variations** have the same field. A variation left empty takes its parent product's layer image, and the note says which image is in use. A variation's own image replaces the parent's.
 - **Emptying the field** removes the layer image, and the part shows its labelled photo again.
@@ -122,7 +123,7 @@ Either way the deck still lacks its wheelbase, and the layout counts it as assum
 For the page, the plugin makes smaller copies of each layer image, and leaves WordPress's own image sizes and filters alone.
 
 - **Sizes.** The part's box at half a pixel, one pixel and two pixels to the millimetre, the image fitted into each and never enlarged. An image too small for a size is made once at its own size. The page offers them in `srcset`, and the browser picks.
-- **Types.** AVIF, then WebP, each through the image editor WordPress chooses. A type no editor on the host writes is not made.
+- **Types.** AVIF, then WebP, each through the image editor WordPress chooses. A type no editor on the host writes is not made. While a rendition is saved, an `image_editor_output_format` mapping of its own type is set aside, so a shop that maps WebP to AVIF still gets both; the shop's own uploads are as it set them. A rendition that is not made is logged, and Site Health counts the drawn parts whose layer image has none (D-209).
 - **When.** In the part's index job, `cbuild_index_part`, after its specs are indexed, since the specs give the box. Saving a new layer image queues the job. No page request makes a rendition: until the job has run, the page shows the image's own file.
 - **Where.** `wp-content/uploads/creative-skateboard-builder/layers/`, named by the attachment's ID, a hash of its file's name and its size in bytes, then the pixels. An image edited or replaced in the Media Library gets new names, so the page never shows an old copy, and the old file's renditions are removed when the new ones are made. Deleting the image from the Media Library removes all of its renditions.
 
@@ -139,17 +140,17 @@ In the page, the deck's layer is fetched first (`fetchpriority="high"`), and eve
 - **The drawing.** The board fitted inside a margin of 4 % of the canvas's shorter side, nose up and centred, on a white ground. Each layer image is fitted into its part's box and centred in it, as in the page. The layer images' own files are drawn, not their renditions. Saved at quality 82.
 - **When it is made.** Adding a kit to the cart asks for the build's pictures, and Edit build's add asks as well, as does opening a build link for a build that could go to the cart. The job, `cbuild_compose_picture`, works the build out again from its IDs. A build that does not pass validation, or where a recommendation would fill a slot the shopper left, gets no picture. One job waits per build, and while 50 builds wait, nothing more is asked for. No page waits for a picture.
 - **Where.** `wp-content/uploads/creative-skateboard-builder/pictures/`, never in the Media Library. A name is the first 32 hex digits of a SHA-256 hash of the drawing: its version, the canvas, and each image's place, size and file. Nothing a visitor sends is in it, and two shoppers with the same build share one file.
-- **The share card.** A build link's page carries Open Graph and X card tags: the build's name, as "8.25″ complete: Rascals, Independent 8.5″ and Retna 54 mm", its total, the build link as `og:url`, and the 1200 by 630 picture once it is made, the deck's layer image or else its photo until then. With Yoast SEO the tags go through its filters; with Rank Math, SEOPress or All in One SEO the plugin prints none, and theirs show the kit.
+- **The share card.** A build link's page carries Open Graph and X card tags: the build's name, as "8.25″ complete: Baker, Independent 8.5″, and Spitfire 54 mm": the deck by its brand, the trucks and wheels by brand and size, and a part with no brand by its product's name, joined as the site's language joins a list. Then its total, the build link as `og:url` with its brackets encoded, and the 1200 by 630 picture once it is made, the deck's photo or else its layer image until then. While the card falls back, the page is kept out of page caches (`DONOTCACHEPAGE` and no-cache headers). A build that could not go to the cart, a part sold out or no longer offered, has no card of the plugin's, as the kit's page without a build (D-212). With Yoast SEO the tags go through its filters; with Rank Math, SEOPress or All in One SEO the plugin prints none, and theirs show the kit.
 - **The cart.** The kit's line shows the 480 by 480 picture once it is made, and the deck's product photo until then, both with the kit's name as their alt text. A build with no deck keeps whatever the kit product shows. Each part keeps its own line with its own photo.
 - **Pruning.** `cbuild_prune_pictures` runs daily, from a day after the first picture is drawn. It deletes the pictures not shown for 30 days, with any file a draw left half-written, then the oldest of the rest until the folder holds 200 MB at most. Showing a picture marks it used, at most once a day.
-- **The libraries.** GD is tried first and Imagick second. Each must read PNG and WebP and write the canvas's type. A host with neither makes no composed picture: the cart, share cards and emails show the deck's photo, and the page's own picture is not affected.
-- **Site Health.** Tools > Site Health runs "The skateboard builder's composed pictures". It recommends an action where neither library can make the pictures, or where the uploads folder cannot be written, and passes otherwise.
+- **The libraries.** GD is tried first and Imagick second. Each must read PNG and WebP and write the canvas's type, and a picture with an AVIF layer is drawn by one that reads AVIF too. Imagick reads each layer by its type's own coder. A host with neither makes no composed picture: the cart and share cards show the deck's photo, and the page's own picture is not affected.
+- **Site Health.** Tools > Site Health runs "The skateboard builder's composed pictures". It recommends an action where neither library can make the pictures, where the uploads folder cannot be written, or where drawn parts' layer images have no resized copies, and passes otherwise.
 
 Uninstall removes `wp-content/uploads/creative-skateboard-builder/`, with the renditions and the composed pictures, and leaves the shop's own uploads.
 
 ## Finding parts without one
 
-WooCommerce > Builder > Catalogue check lists each part of a drawn slot with no layer image: one line per kit, slot and part, saying "It has no layer image, so the picture shows its labelled photo in the slot …". A variation that takes its parent's image is not listed, and an image deleted from the Media Library counts as none. These lines come after every other finding, since a part without a layer image still sells. Each links to the part's Layer image field.
+WooCommerce > Builder > Catalogue check lists each part of a drawn slot with no layer image: one line per kit, slot and part, saying "It has no layer image, so the picture shows its labelled photo in the slot …". A variation that takes its parent's image is not listed, and an image deleted from the Media Library counts as none. These lines come after every other finding, since a part without a layer image still sells. The check's page lists them in a section of their own, "Parts with no layer image", with the number of parts and its own 500 rows, and Site Health counts them apart from the things to fix, in words of their own (D-211). Each links to the part's Layer image field.
 
 ## For developers
 
@@ -157,4 +158,4 @@ WooCommerce > Builder > Catalogue check lists each part of a drawn slot with no 
 - **One layout, two renderers.** `Domain\Picture\Layout::of()` lays the board out from the picks and the kit's `PictureSettings`. `Port\PictureRenderer` takes that layout and the parts' `LayerArt`. `Front\PageRenderer` gives the page's layers, which the state route's `picture.layers` carries (see [HOOKS.md](HOOKS.md)). `Service\ComposedRenderer` gives a `Domain\Picture\Composition`, worked out to the pixel before any library is called, which `Adapter\WpPictureFiles` draws with GD or Imagick. The interface is internal and has no filter yet; a 3D view after 1.0 would be a third renderer.
 - **Names change with the drawing.** `Composition::VERSION` is in every composed picture's name, so a change to how a picture is drawn gives new files rather than showing old ones.
 
-The decisions behind this page: D-060 (the layout), D-190 (the layer image), D-192 (the kit's settings), D-193 (the Catalogue check), D-194 (the renditions), D-195 (the renderer and the page), D-196 (the composer), D-197 (the job), D-198 (pruning and Site Health), D-199 (the cart's thumbnail), D-200 (the share card) and D-201 (the renditions' cleanup), in [DECISIONS.md](DECISIONS.md).
+The decisions behind this page: D-060 (the layout), D-190 (the layer image), D-192 (the kit's settings), D-193 (the Catalogue check), D-194 (the renditions), D-195 (the renderer and the page), D-196 (the composer), D-197 (the job), D-198 (pruning and Site Health), D-199 (the cart's thumbnail), D-200 (the share card), D-201 (the renditions' cleanup), D-208 (updating from an earlier release), D-209 (renditions under an output format), D-210 (AVIF layer images), D-211 (the missing layers, counted apart) and D-212 (the share card's name and caching), in [DECISIONS.md](DECISIONS.md).
