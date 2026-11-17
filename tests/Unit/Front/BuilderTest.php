@@ -384,6 +384,38 @@ final class BuilderTest extends TestCase {
 		self::assertSame( array(), $picture['top']['layers'] );
 	}
 
+	/**
+	 * The top from an answer as it is: a board with no width or no length draws no top, rather than dividing by
+	 * nothing; the first deck layer's image is the outline; and a source that is not a map is not read.
+	 */
+	public function test_the_top_needs_a_size_takes_the_first_decks_outline_and_reads_only_sources_that_are_maps(): void {
+		$top    = new \ReflectionMethod( BuilderView::class, 'top' );
+		$layer  = static fn( string $slot, string $src, array $sources = array() ): array => array(
+			'slot'   => $slot,
+			'part'   => 9,
+			'x'      => 0,
+			'y'      => 0,
+			'width'  => 216,
+			'height' => 813,
+			'image'  => array(
+				'src'     => $src,
+				'sources' => $sources,
+			),
+		);
+		$layers = array( $layer( SlotKey::DECK, 'https://shop.test/first.png' ), $layer( SlotKey::DECK, 'https://shop.test/second.png' ) );
+		foreach ( array( array( 216, 0 ), array( 0, 813 ) ) as list( $width, $height ) ) {
+			$drawn = $top->invoke( null, array( 'width' => $width, 'height' => $height, 'top' => $layers ), 77 );
+			self::assertSame( array( false, '', array() ), array( $drawn['shown'], $drawn['style'], $drawn['layers'] ), "a board {$width} by {$height}" );
+		}
+
+		$drawn = $top->invoke( null, array( 'width' => 216, 'height' => 813, 'top' => $layers ), 77 );
+		self::assertStringEndsWith( '--cbuild-mask:url("https://shop.test/first.png")', $drawn['layers'][1]['style'], 'the first deck\'s outline, for every layer' );
+
+		$object = (object) array( 'type' => 'image/webp', 'srcset' => 'https://shop.test/object.webp 216w' );
+		$drawn  = $top->invoke( null, array( 'width' => 216, 'height' => 813, 'top' => array( $layer( SlotKey::DECK, 'https://shop.test/own.png', array( $object ) ) ) ), 77 );
+		self::assertStringEndsWith( '--cbuild-mask:url("https://shop.test/own.png")', $drawn['layers'][0]['style'], 'the image\'s own file' );
+	}
+
 	public function test_an_address_is_written_into_a_style_as_a_quoted_url_that_nothing_in_it_can_close(): void {
 		$url = new \ReflectionMethod( BuilderView::class, 'url' );
 		self::assertSame( 'url("https://shop.test/a%20b%22c%5C)%0A.png?x=1&y=(2)")', $url->invoke( null, "https://shop.test/a b\"c\\)\n.png?x=1&y=(2)" ) );

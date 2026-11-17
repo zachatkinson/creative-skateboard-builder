@@ -64,11 +64,16 @@ final class WorkshopWordsTest extends TestCase {
 		$asked                                               = array();
 		$GLOBALS['cbuild_test_filters']['cbuild_ticket_specs'] = static function ( array $specs, string $slot, int $kit ) use ( &$asked ): mixed {
 			$asked[] = array( $specs, $slot, $kit );
-			return 'deck' === $slot ? array( 'deck_width', 'deck_length', 3, 'deck_width', array() ) : 'nothing';
+			return match ( $slot ) {
+				'deck'   => array( 'deck_width', 'deck_length', 3, 'deck_width', array() ),
+				'wheels' => array( 'wheel_diameter', 'wheel_diameter', 'wheel_width' ),
+				default  => 'nothing',
+			};
 		};
 		self::assertSame( array( 'deck_width', 'deck_length' ), WorkshopWords::ticketSpecs( 'deck', 77 ), 'what is no text is left out, and each key is said once' );
+		self::assertSame( array( 'wheel_diameter', 'wheel_width' ), WorkshopWords::ticketSpecs( 'wheels', 77 ), 'a list, numbered from 0, after a key said twice' );
 		self::assertSame( array(), WorkshopWords::ticketSpecs( 'trucks', 78 ), 'an answer that is no list shows none' );
-		self::assertSame( array( array( array( 'deck_width' ), 'deck', 77 ), array( array( 'axle_width' ), 'trucks', 78 ) ), $asked );
+		self::assertSame( array( array( array( 'deck_width' ), 'deck', 77 ), array( array( 'wheel_diameter' ), 'wheels', 77 ), array( array( 'axle_width' ), 'trucks', 78 ) ), $asked );
 	}
 
 	/**
@@ -87,6 +92,8 @@ final class WorkshopWordsTest extends TestCase {
 			'a complete board'         => array( array( 'deck', 'trucks', 'wheels', 'risers', 'bearings', 'hardware', 'grip' ), array( $grip, $risers, $press, $wheels, $checked ) ),
 			'no risers and no grip'    => array( array( 'deck', 'trucks', 'wheels', 'bearings', 'hardware' ), array( $trucks, $press, $wheels, $checked ) ),
 			'no wheels and no bearings' => array( array( 'deck', 'trucks', 'hardware' ), array( $trucks, $checked ) ),
+			'wheels and no bearings'   => array( array( 'deck', 'trucks', 'wheels' ), array( $trucks, $wheels, $checked ) ),
+			'bearings and no wheels'   => array( array( 'deck', 'trucks', 'bearings' ), array( $trucks, $checked ) ),
 			'a deck alone'             => array( array( 'deck' ), array( $checked ) ),
 			'risers with no trucks'    => array( array( 'deck', 'risers' ), array( $checked ) ),
 		);

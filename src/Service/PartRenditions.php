@@ -143,7 +143,7 @@ final class PartRenditions {
 				}
 			}
 		}
-		return array_values( $parts );
+		return array_keys( $parts );
 	}
 
 	/**

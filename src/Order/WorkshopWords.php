@@ -175,7 +175,7 @@ final class WorkshopWords {
 				$listed[] = $step;
 			}
 		}
-		return array_slice( array_values( array_unique( $listed ) ), 0, self::STEPS_MOST );
+		return array_slice( array_unique( $listed ), 0, self::STEPS_MOST );
 	}
 
 	/**

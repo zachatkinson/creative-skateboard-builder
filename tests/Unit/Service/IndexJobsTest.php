@@ -221,6 +221,13 @@ final class IndexJobsTest extends TestCase {
 
 		$plain->indexPart( 7 );
 		$plain->removed( 11, 'attachment' );
+		// And a reindex, which with renditions queues the 7's job (0.8.0), runs to its end without them.
+		$plain->requestReindex();
+		for ( $batches = 0; isset( $this->queue->pending[ IndexJobs::JOB_REINDEX ] ) && $batches < 50; ++$batches ) {
+			unset( $this->queue->pending[ IndexJobs::JOB_REINDEX ] );
+			$plain->runReindex();
+		}
+		self::assertSame( ReindexState::DONE, $plain->state()?->phase, 'the reindex ended, with no failure' );
 		self::assertSame( array( 7 ), array_keys( $this->index->rows ) );
 		self::assertSame( array( array(), array() ), array( $this->renditions->made, $this->renditions->forgotten ) );
 		self::assertSame( array(), $this->queue->distinct, 'an image is no part' );

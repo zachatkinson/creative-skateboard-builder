@@ -129,4 +129,23 @@ final class OrderBoardTest extends TestCase {
 			)
 		);
 	}
+
+	public function test_a_board_one_millimetre_wide_or_long_is_drawn(): void {
+		$layer = array(
+			'slot'   => 'deck',
+			'part'   => 103,
+			'x'      => 0,
+			'y'      => 0,
+			'width'  => 1,
+			'height' => 1,
+			'image'  => array(
+				'src'     => 'https://shop.test/deck.png',
+				'width'   => 2,
+				'height'  => 2,
+				'sources' => array(),
+			),
+		);
+		self::assertSame( '--cbuild-board-ratio:1 / 813', OrderBoard::placed( array( 'width' => 1, 'height' => 813, 'layers' => array( $layer ) ) )['style'] ?? null );
+		self::assertSame( '--cbuild-board-ratio:216 / 1', OrderBoard::placed( array( 'width' => 216, 'height' => 1, 'layers' => array( $layer ) ) )['style'] ?? null );
+	}
 }

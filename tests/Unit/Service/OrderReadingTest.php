@@ -334,4 +334,46 @@ final class OrderReadingTest extends TestCase {
 		self::assertSame( array(), OrderReading::of( $lines )->builds[0]->notes, 'blank or not text' );
 		self::assertSame( array(), OrderReading::of( self::order() )->builds[0]->notes, 'none kept' );
 	}
+
+	/**
+	 * Builds read past one with no kit's line, a build whose ID is a number, and each build's own count and mismatches.
+	 */
+	public function test_every_build_is_read_whatever_comes_before_it_and_each_counts_for_itself(): void {
+		$snapshot = self::snapshot();
+		$lines    = array(
+			// A kit's line with no build, whose mismatch is the order's first.
+			new OrderLine( 51, self::KIT, 1, 'Complete', '', 'kit', '', true ),
+			// Build "a" lost its kit's line, and has its trucks' line twice.
+			new OrderLine( 12, 103, 1, 'Eight and a half', 'a', 'part', 'deck' ),
+			new OrderLine( 13, 149, 1, 'Stage 11', 'a', 'part', 'trucks' ),
+			new OrderLine( 15, 149, 1, 'Stage 11', 'a', 'part', 'trucks' ),
+			// Build "b" lost its kit's line too.
+			new OrderLine( 41, 103, 1, 'Eight and a half', 'b', 'part', 'deck' ),
+			// Build "7", a number as a key, two boards assembled, its wheels' line gone.
+			new OrderLine( 21, self::KIT, 2, 'Complete', '7', 'kit', '', true, $snapshot ),
+			new OrderLine( 22, 103, 2, 'Eight and a half', '7', 'part', 'deck' ),
+			new OrderLine( 23, 149, 2, 'Stage 11', '7', 'part', 'trucks' ),
+			// Build "c", one board assembled.
+			new OrderLine( 31, self::KIT, 1, 'Complete', 'c', 'kit', '', true, $snapshot ),
+			new OrderLine( 32, 103, 1, 'Eight and a half', 'c', 'part', 'deck' ),
+			new OrderLine( 33, 149, 1, 'Stage 11', 'c', 'part', 'trucks' ),
+			new OrderLine( 34, 54, 4, 'Formula Four', 'c', 'part', 'wheels' ),
+		);
+		$reading = OrderReading::of( $lines );
+		self::assertSame( array( '7', 'c', 'a', 'b' ), array_map( static fn( $build ): string => $build->id, $reading->builds ), 'those with a kit\'s line first, then those without, each read' );
+		self::assertSame( 13, $reading->builds[2]->picks['trucks']->item, 'with no snapshot, a slot is its first line' );
+		self::assertSame( 3, $reading->toAssemble(), 'two boards of "7" and one of "c"' );
+		self::assertSame( array( array( Mismatch::PART_REMOVED, '7', 'wheels', 0, 0, 0, '' ) ), array_map( static fn( Mismatch $m ): array => array( $m->code, $m->build, $m->slot, $m->item, $m->expected, $m->found, $m->name ), $reading->about( '7' ) ), 'a list, though the order\'s mismatches are not "7"\'s alone' );
+	}
+
+	public function test_a_snapshot_of_part_one_reads(): void {
+		$snapshot                          = self::snapshot();
+		$snapshot['picks']['deck']['part'] = 1;
+		$lines                             = self::order();
+		$lines[0]                          = new OrderLine( 11, self::KIT, 1, 'Complete', 'a', 'kit', '', true, $snapshot );
+		$lines[1]                          = new OrderLine( 12, 1, 1, 'Eight and a half', 'a', 'part', 'deck' );
+		$reading                           = OrderReading::of( $lines );
+		self::assertSame( array(), $reading->mismatches );
+		self::assertTrue( $reading->builds[0]->read );
+	}
 }

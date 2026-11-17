@@ -10,6 +10,7 @@ declare( strict_types=1 );
 namespace CreativeBranding\SkateboardBuilder\Tests\Unit\Service;
 
 use CreativeBranding\SkateboardBuilder\Domain\Kit\SlotKey;
+use CreativeBranding\SkateboardBuilder\Domain\Saved\SavedBuild;
 use CreativeBranding\SkateboardBuilder\Service\BuildState;
 use CreativeBranding\SkateboardBuilder\Service\SavedBuilds;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Domain\Shop;
@@ -157,5 +158,27 @@ final class SavedBuildsTest extends TestCase {
 		self::assertSame( $kept['uuid'], $this->logger->lines[1]['context']['uuid'] );
 		$this->store->refuse = false;
 		self::assertSame( 'Street', $this->builds->find( self::ANA, $kept['uuid'] )?->name );
+	}
+
+	/**
+	 * No one is user 0: a row the table holds for it, as a row left by a deleted account might, is never found, listed,
+	 * changed or forgotten, and a build with no UUID is never looked up. User 1, the site's first account, is a customer
+	 * like any other.
+	 */
+	public function test_user_zero_owns_nothing_and_user_one_is_a_customer(): void {
+		$at = $this->clock->now();
+		foreach ( array( 'nobodys' => 0, '' => self::ANA ) as $uuid => $user ) {
+			$this->store->rows[ (string) $uuid ] = new SavedBuild( (string) $uuid, $user, self::KIT, self::COMPLETE, false, 'Kept', $at, $at );
+		}
+		self::assertNull( $this->builds->find( 0, 'nobodys' ) );
+		self::assertNull( $this->builds->find( self::ANA, '' ), 'no UUID, no lookup' );
+		self::assertSame( array(), $this->builds->of( 0 ) );
+		self::assertFalse( $this->builds->delete( 0, 'nobodys' ) );
+		self::assertSame( 0, $this->builds->forget( 0 ) );
+		self::assertCount( 2, $this->store->rows, 'nothing was deleted' );
+
+		$saved = $this->builds->save( 1, self::KIT, self::COMPLETE, false, 'First' );
+		self::assertSame( SavedBuilds::SAVED, $saved['code'] );
+		self::assertNotNull( $this->builds->find( 1, $saved['uuid'] ) );
 	}
 }

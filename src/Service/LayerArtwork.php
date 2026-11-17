@@ -52,7 +52,7 @@ final class LayerArtwork {
 		$art = array();
 		// The underside's layers, then the top's: the grip and the hardware are drawn on the top alone (#46).
 		$every = array( ...$layout->layers, ...$layout->top );
-		$drawn = array_values( array_unique( array_map( static fn( $layer ): int => $layer->part, $every ) ) );
+		$drawn = array_keys( array_flip( array_map( static fn( $layer ): int => $layer->part, $every ) ) );
 		$found = array() === $drawn ? array() : $this->layers->attachments( ...$drawn );
 		foreach ( $every as $layer ) {
 			$part = $parts[ $layer->slot ] ?? null;
