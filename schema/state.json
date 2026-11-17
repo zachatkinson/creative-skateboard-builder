@@ -609,6 +609,15 @@
 						"added": { "description": "What the builder says once the build is in the cart.", "type": "string" }
 					},
 					"additionalProperties": true
+				},
+				"picture": {
+					"type": "object",
+					"required": ["turnable", "turned"],
+					"properties": {
+						"turnable": { "description": "Whether the board has a top to show: its deck has a layer image (0.8.0).", "type": "boolean" },
+						"turned": { "description": "Whether the board shows its top: on the grip step, as the server renders it; the store keeps the side the shopper turned it to (0.8.0).", "type": "boolean" }
+					},
+					"additionalProperties": true
 				}
 			},
 			"additionalProperties": true

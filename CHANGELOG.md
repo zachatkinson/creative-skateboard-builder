@@ -8,6 +8,7 @@ All notable changes to this project are documented here. The format follows [Kee
 
 - The state route's `total.estimate`: what a complete board would cost with each slot's recommendation in it, priced as the total is, while a recommendation fills a slot; null otherwise. The summary says it under the total, "A complete board from about $184", and the status region says it with each pick (D-213).
 - The state route's `picture.top`: the board seen from the top, from the deck's own layer image's outline, with the grip filled into it nose to tail, a bolt head at each hole from the hardware's layer image, and the wheels at the edges (#46).
+- The board turns over (#46). The picture and the phone bar draw its top beside its underside and show one side: the grip tape step the top, the others the underside, and a button by the board, "Show the top" with `aria-pressed`, turns it on any step with JavaScript, after which the shopper's side is kept. The board turns over where motion is allowed, and the picture's description says which side is shown. The top's layers set `--cbuild-image` and `--cbuild-mask` for the stylesheet.
 
 ### Changed
 

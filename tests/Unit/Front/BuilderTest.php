@@ -317,6 +317,78 @@ final class BuilderTest extends TestCase {
 		self::assertSame( array( '12px', '11px', '11px', '2px', '2px', '2px', '2px' ), array_column( $view['bar']['board']['layers'], 'sizes' ), 'at the bar\'s 44 pixels: 11.3 and 1.7 are 12 and 2' );
 	}
 
+	/**
+	 * The deck, the grip and the hardware with layer images, the deck's renditions made.
+	 */
+	private function topArt(): void {
+		$this->layers->attachments = array(
+			101 => 11,
+			701 => 71,
+			601 => 61,
+		);
+		$this->layers->images      = array(
+			11 => new ImageFacts( 'image/png', 420, 1626, true ),
+			71 => new ImageFacts( 'image/png', 51, 1626, true ),
+			61 => new ImageFacts( 'image/png', 40, 40, true ),
+		);
+		$this->renditions->make( 11, Renditions::drawn( SlotKey::DECK, Shop::parts()[ SlotKey::DECK ][0]->specs, 420, 1626 ) );
+	}
+
+	// Issue #46, settled on 17 November 2026: the deck's top "from its own layer image's shape: the cut-out's
+	// transparency is the outline, used as a CSS mask"; "the grip's layer image becomes a swatch filled into the deck's
+	// shape, nose to tail"; "bolt heads are drawn at the deck's holes"; "the grip step turns the board to the top".
+	public function test_the_top_is_the_decks_outline_filled_with_the_grip_and_bolt_heads_and_the_grip_step_shows_it(): void {
+		$this->topArt();
+		$picks = array( SlotKey::DECK => 101, SlotKey::TRUCKS => 139, SlotKey::WHEELS => 301, SlotKey::BEARINGS => 501, SlotKey::HARDWARE => 601, SlotKey::GRIP => 701 );
+		$view  = $this->show( new BuildLink( $picks, null, SlotKey::GRIP ) )['view'];
+
+		$picture = $view['picture'];
+		self::assertTrue( $picture['turnable'] );
+		self::assertTrue( $picture['turned'], 'the grip step shows the top' );
+		self::assertSame( 'Show the top', $picture['turn'] );
+		self::assertSame( array( 'under' => 'Seen from underneath.', 'top' => 'Seen from the top.' ), $picture['seen'] );
+
+		$top = $picture['top'];
+		self::assertTrue( $top['shown'] );
+		self::assertSame( $picture['board']['style'], $top['style'], 'the same board, the other way up' );
+		self::assertSame( array( 'deck-1', 'grip-1', 'hardware-1', 'hardware-2', 'hardware-3', 'hardware-4', 'hardware-5', 'hardware-6', 'hardware-7', 'hardware-8' ), array_column( $top['layers'], 'key' ), 'the wheels and trucks have no layer image' );
+		self::assertSame( 'cbuild-board__layer cbuild-board__layer--grip', $top['layers'][1]['classes'] );
+
+		// The deck's largest WebP rendition is the outline of the deck and of the grip over it.
+		$mask = $picture['board']['layers'][0]['sources'][0]['srcset'];
+		self::assertMatchesRegularExpression( '#(?:^|, )(https://example\.com/11-\d+x\d+\.webp) \d+w$#', $mask );
+		preg_match( '#(https://example\.com/11-\d+x\d+\.webp) \d+w$#', $mask, $largest );
+		self::assertSame( '--cbuild-layer-x:0%;--cbuild-layer-y:0%;--cbuild-layer-width:100%;--cbuild-layer-height:100%;--cbuild-mask:url("' . $largest[1] . '")', $top['layers'][0]['style'], 'the deck alone is maple in its own shape' );
+		self::assertSame( '--cbuild-layer-x:0%;--cbuild-layer-y:0%;--cbuild-layer-width:100%;--cbuild-layer-height:100%;--cbuild-mask:url("' . $largest[1] . '");--cbuild-image:url("https://example.com/layer-71.png")', $top['layers'][1]['style'], 'the grip\'s own file, its renditions not made' );
+		self::assertStringEndsWith( ';--cbuild-image:url("https://example.com/layer-61.png")', $top['layers'][2]['style'] );
+		self::assertStringStartsWith( '--cbuild-layer-x:', $top['layers'][2]['style'] );
+		self::assertStringNotContainsString( '--cbuild-mask', $top['layers'][2]['style'], 'a bolt head is its own image' );
+
+		$items = array_column( $picture['items'], 'drawn', 'key' );
+		self::assertTrue( $items[ SlotKey::GRIP ] && $items[ SlotKey::HARDWARE ], 'drawn on the top, so no labelled photo' );
+
+		$after = $this->show( new BuildLink( $picks, null, BuildLink::REVIEW ) )['view']['picture'];
+		self::assertFalse( $after['turned'], 'and back after it' );
+		self::assertTrue( $after['turnable'] );
+		$before = $this->show( new BuildLink( array( SlotKey::DECK => 101 ), null, SlotKey::TRUCKS ) )['view']['picture'];
+		self::assertSame( array( true, false ), array( $before['turnable'], $before['turned'] ), 'a step before the grip shows the underside' );
+		self::assertSame( array( 'deck-1' ), array_column( $before['top']['layers'], 'key' ), 'the plain top, maple in the deck\'s shape' );
+	}
+
+	public function test_a_deck_with_no_layer_image_has_no_top_to_turn_to_even_on_the_grip_step(): void {
+		$this->topArt();
+		$this->layers->attachments = array( 701 => 71 );
+		$picture                   = $this->show( new BuildLink( array( SlotKey::DECK => 101, SlotKey::GRIP => 701 ), null, SlotKey::GRIP ) )['view']['picture'];
+
+		self::assertSame( array( false, false, false ), array( $picture['turnable'], $picture['turned'], $picture['top']['shown'] ) );
+		self::assertSame( array(), $picture['top']['layers'] );
+	}
+
+	public function test_an_address_is_written_into_a_style_as_a_quoted_url_that_nothing_in_it_can_close(): void {
+		$url = new \ReflectionMethod( BuilderView::class, 'url' );
+		self::assertSame( 'url("https://shop.test/a%20b%22c%5C)%0A.png?x=1&y=(2)")', $url->invoke( null, "https://shop.test/a b\"c\\)\n.png?x=1&y=(2)" ) );
+	}
+
 	public function test_a_picture_with_no_width_or_no_length_draws_no_board(): void {
 		foreach ( array( array( 0, 8128000 ), array( 2095500, 0 ), array( 0, 0 ) ) as [ $width, $length ] ) {
 			$picture = array(

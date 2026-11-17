@@ -714,3 +714,14 @@ The builder also sends WooCommerce's own `wc-blocks_added_to_cart` on `document.
 | `picture.layers` | 0.8.0 | The underside no longer holds the grip's 1 in strip: the grip is drawn on the top. Nothing else changes, and the composed pictures stay the underside. |
 | `total`, `steps[].recommended` and each option's `recommended` | 0.8.0 | Nothing is picked for the shopper (D-213): `total` and its `lines` count the picks alone, where before they also counted the part each later slot started on. `recommended` keeps its name and says the part the slot recommends, which is labelled and not picked. A caller that read `total` as the recommended board reads `estimate`. |
 
+### Styling the board's top
+
+The picture and the phone bar draw the board's top (#46) beside its underside, as `.cbuild-board.cbuild-board--top`, and show one side at a time: the picture has `cbuild-picture--top` and the bar's link `cbuild-bar__picture--top` while the top is shown, and `--turning` while the board turns over (with JavaScript, never on load). Each of the top's layers is a `span.cbuild-board__layer` placed by the four `--cbuild-layer-*` properties above, and the builder sets these on it for the stylesheet to paint; a theme does not set them:
+
+| Property | Since | What it holds |
+| --- | --- | --- |
+| `--cbuild-image` | 0.8.0 | On each of the top's layers but the deck's: the part's layer image, as a `url()`. The grip's is repeated along the deck, the others fitted into their box |
+| `--cbuild-mask` | 0.8.0 | On the top's deck and grip layers: the deck's layer image, as a `url()`, whose transparency is their outline (`mask-image`). A layer image served from another origin needs `Access-Control-Allow-Origin` for the browser to use it as a mask |
+
+The button by the board, `.cbuild-picture__turn .cbuild-button`, has `aria-pressed` true while the top is shown.
+

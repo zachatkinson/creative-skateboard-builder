@@ -259,6 +259,34 @@ final class BuilderPageTest extends IntegrationTestCase {
 		self::assertNotNull( $dom->query( '//div[contains(@class,"cbuild-bar")]//img[contains(@class,"cbuild-bar__photo") and @hidden]' )->item( 0 ) );
 	}
 
+	// Issue #46: the top from the deck's own layer image, a button by the board with aria-pressed, and the description
+	// saying which side is shown. Without the script the button is hidden and the step's own side is shown.
+	public function test_the_top_is_served_beside_the_underside_with_its_button_for_the_script_and_the_side_said(): void {
+		$product = wc_get_product( $this->parts['deck 8.5'] );
+		$product->update_meta_data( Options::META_LAYER, (string) LayerFiles::attachment( 432, 1626 ) );
+		$product->save();
+		$this->service( PartRenditions::class )->make( $this->parts['deck 8.5'] );
+
+		$dom = self::dom( $this->kitPage( array( 'deck' => (string) $this->parts['deck 8.5'], 'step' => 'trucks' ) ) );
+
+		$figure = $dom->query( '//figure[@id="cbuild-picture"]' )->item( 0 );
+		self::assertInstanceOf( \DOMElement::class, $figure );
+		self::assertStringNotContainsString( 'cbuild-picture--top', $figure->getAttribute( 'class' ), 'the trucks step shows the underside' );
+		$top = $dom->query( '//figure[@id="cbuild-picture"]/div[contains(@class,"cbuild-board--top")][not(@hidden)]/span' );
+		self::assertSame( 1, $top->length, 'the deck\'s top, plain maple' );
+		self::assertSame( 'cbuild-board__layer cbuild-board__layer--deck', $top->item( 0 )->getAttribute( 'class' ) );
+		self::assertMatchesRegularExpression( '#;--cbuild-mask:url\("[^"]+/creative-skateboard-builder/layers/[0-9]+-[0-9a-f]{20}-432x1626\.webp"\)$#', $top->item( 0 )->getAttribute( 'style' ), 'its outline is the deck\'s largest WebP rendition' );
+		self::assertSame( 1, $dom->query( '//div[contains(@class,"cbuild-bar")]//span[contains(@class,"cbuild-board--top")]/span' )->length, 'the bar has the same top' );
+
+		$button = $dom->query( '//div[@class="cbuild-picture__turn"][not(@hidden)]/button[@hidden]' )->item( 0 );
+		self::assertInstanceOf( \DOMElement::class, $button, 'offered by the script alone' );
+		self::assertSame( array( 'button', 'false', 'Show the top' ), array( $button->getAttribute( 'type' ), $button->getAttribute( 'aria-pressed' ), trim( $button->textContent ) ) );
+
+		$caption = '//figcaption[contains(@class,"cbuild-picture__description")]';
+		self::assertNotNull( $dom->query( $caption . '/span[not(@hidden)]/span[not(@hidden)][.="Seen from underneath."]' )->item( 0 ) );
+		self::assertNotNull( $dom->query( $caption . '/span/span[@hidden][.="Seen from the top."]' )->item( 0 ) );
+	}
+
 	public function test_the_kits_page_gives_the_store_its_route_page_and_language_and_loads_it(): void {
 		$this->go_to( (string) get_permalink( $this->kit ) );
 		$this->kitPage();

@@ -492,6 +492,45 @@
 	object-fit: contain;
 }
 
+/*
+ * The board's top (#46), the same board turned over about its length. Each layer is painted from its style, fitted
+ * and centred in its box as the underside's images are: the deck maple inside its own layer image's outline, a mask;
+ * the grip's image repeated across that outline, each the deck's length; and each wheel and bolt head its own image.
+ */
+:where(.cbuild-board--top .cbuild-board__layer) {
+	background: var(--cbuild-image) center / contain no-repeat;
+}
+
+:where(.cbuild-board--top)
+	:where(.cbuild-board__layer--deck, .cbuild-board__layer--grip) {
+	mask-image: var(--cbuild-mask);
+	mask-position: center;
+	mask-repeat: no-repeat;
+	mask-size: contain;
+}
+
+:where(.cbuild-board--top .cbuild-board__layer--deck) {
+	background: #dcbf8f;
+}
+
+:where(.cbuild-board--top .cbuild-board__layer--grip) {
+	background: var(--cbuild-image) 0 0 / auto 100% repeat-x;
+}
+
+/* One side at a time, the picture's and the bar's the same. Not under :where(), so no theme's rule shows both. */
+.cbuild-picture--top > .cbuild-board:not(.cbuild-board--top),
+.cbuild-picture:not(.cbuild-picture--top) > .cbuild-board--top,
+.cbuild-bar__picture--top > .cbuild-board:not(.cbuild-board--top),
+.cbuild-bar__picture:not(.cbuild-bar__picture--top) > .cbuild-board--top {
+	display: none;
+}
+
+:where(.cbuild-picture__turn) {
+	display: flex;
+	justify-content: center;
+	margin-block-end: var(--cbuild-gap-small);
+}
+
 :where(.cbuild-picture__heading) {
 	margin: 0 0 var(--cbuild-gap-small);
 }
@@ -732,6 +771,15 @@
 	:where(.cbuild-card:has(> .cbuild-card__control:focus-visible)) {
 		outline-color: Highlight;
 	}
+
+	/* The board's top is a picture, as its images are: its maple is not the system's ground. */
+	:where(.cbuild-board--top .cbuild-board__layer) {
+		forced-color-adjust: none;
+	}
+
+	:where(.cbuild-picture__turn .cbuild-button[aria-pressed="true"]) {
+		border: 3px solid Highlight;
+	}
 }
 
 /*
@@ -880,6 +928,18 @@
 	/* The page under a transition still takes taps. */
 	::view-transition {
 		pointer-events: none;
+	}
+
+	/* The board turns over about its length to the side now shown (#46): once a turn is seen, never on load. */
+	:where(.cbuild-picture--turning, .cbuild-bar__picture--turning)
+		> :where(.cbuild-board) {
+		animation: cbuild-turn var(--cbuild-duration) var(--cbuild-ease);
+	}
+}
+
+@keyframes cbuild-turn {
+	from {
+		transform: scaleX(0.1);
 	}
 }
 

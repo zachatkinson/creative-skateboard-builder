@@ -11,6 +11,7 @@ interface Actions {
 	submit: ( event: SubmitEvent ) => void;
 	add: ( event: SubmitEvent ) => Promise< void >;
 	copy: () => Promise< void >;
+	turn: () => void;
 	reveal: ( event: FocusEvent ) => void;
 	pick: ( event: Event ) => void;
 	follow: ( event: MouseEvent ) => void;
@@ -24,6 +25,8 @@ interface Defined {
 		status: string;
 		added: boolean;
 		canCopy: boolean;
+		canTurn: boolean;
+		turning: boolean;
 	};
 	actions: Actions;
 }
@@ -1245,5 +1248,118 @@ describe( 'keeping the control in use where it was', () => {
 		vi.advanceTimersToNextFrame();
 		expect( state.view ).toEqual( NEXT );
 		expect( scrolled ).not.toHaveBeenCalled();
+	} );
+} );
+
+// Issue #46, settled on 17 November 2026: "The flip is a button by the board ... with aria-pressed"; "The grip step
+// turns the board to the top, and back after it, unless the shopper chose a side"; "The phone bar's board shows the
+// same side". The server says which side a step shows (`picture.turned`); the store keeps the shopper's own choice.
+describe( 'turning the board over', () => {
+	interface Picture {
+		turnable: boolean;
+		turned: boolean;
+	}
+
+	function view(
+		slot: string,
+		picture: Picture | undefined
+	): Record< string, unknown > {
+		return {
+			...START,
+			url: window.location.origin + '/?' + slot,
+			step: { slot },
+			...( picture ? { picture } : {} ),
+		};
+	}
+
+	function shown(): Picture {
+		return ( state.view as { picture: Picture } ).picture;
+	}
+
+	async function go( next: Record< string, unknown > ): Promise< void > {
+		const { form: sheet, next: button } = form();
+		setElement( sheet );
+		reply = () => answer( next );
+		actions.submit(
+			new SubmitEvent( 'submit', { submitter: button, cancelable: true } )
+		);
+		await settle();
+	}
+
+	beforeEach( () => {
+		state.turning = false;
+	} );
+
+	it( 'offers the button once the script runs, and not before', () => {
+		document.body.innerHTML = '<div class="cbuild"></div>';
+		state.canTurn = false;
+		setElement( document.querySelector< HTMLElement >( '.cbuild' )! );
+		(
+			defined.definition as { callbacks: { init: () => void } }
+		 ).callbacks.init();
+		expect( state.canTurn ).toBe( true );
+	} );
+
+	it( 'shows the top on the grip step and the underside after it, as the server says, while the shopper has not chosen', async () => {
+		state.view = view( 'hardware', { turnable: true, turned: false } );
+		await go( view( 'grip', { turnable: true, turned: true } ) );
+		expect( shown().turned ).toBe( true );
+		expect( state.turning, 'the turn is seen' ).toBe( true );
+		await go( view( 'review', { turnable: true, turned: false } ) );
+		expect( shown().turned ).toBe( false );
+	} );
+
+	it( "turns the board with the button, and keeps the shopper's side through the grip step and after it", async () => {
+		state.view = view( 'trucks', { turnable: true, turned: false } );
+		actions.turn();
+		expect( shown().turned, 'pressed: the top' ).toBe( true );
+		expect( state.turning ).toBe( true );
+		await go( view( 'grip', { turnable: true, turned: true } ) );
+		expect( shown().turned ).toBe( true );
+		await go( view( 'review', { turnable: true, turned: false } ) );
+		expect( shown().turned, 'the top stays: the shopper chose it' ).toBe(
+			true
+		);
+
+		actions.turn();
+		expect( shown().turned, 'pressed again: the underside' ).toBe( false );
+		await go( view( 'grip', { turnable: true, turned: true } ) );
+		expect(
+			shown().turned,
+			'the grip step keeps the underside the shopper chose'
+		).toBe( false );
+	} );
+
+	it( 'shows the underside where a chosen top cannot be drawn, and the top again once it can', async () => {
+		state.view = view( 'deck', { turnable: true, turned: false } );
+		actions.turn();
+		await go( view( 'trucks', { turnable: false, turned: false } ) );
+		expect( shown().turned, 'a deck with no layer image has no top' ).toBe(
+			false
+		);
+		await go( view( 'wheels', { turnable: true, turned: false } ) );
+		expect( shown().turned ).toBe( true );
+	} );
+
+	it( 'does nothing where there is no top, and leaves a view with no picture as it came', async () => {
+		state.view = view( 'deck', { turnable: false, turned: false } );
+		actions.turn();
+		expect( shown().turned ).toBe( false );
+		expect( state.turning ).toBe( false );
+
+		state.view = view( 'deck', undefined );
+		actions.turn();
+		const plain = view( 'trucks', undefined );
+		await go( plain );
+		expect( state.view ).toEqual( plain );
+	} );
+
+	it( 'moves nothing when a new view shows the side already shown, so a board shown again later is not turned', async () => {
+		state.view = view( 'deck', { turnable: true, turned: false } );
+		actions.turn();
+		expect( state.turning ).toBe( true );
+		await go( view( 'trucks', { turnable: true, turned: false } ) );
+		expect( shown().turned ).toBe( true );
+		expect( state.turning, 'the turn is over' ).toBe( false );
 	} );
 } );

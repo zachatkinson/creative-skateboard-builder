@@ -4,7 +4,7 @@ Tags: woocommerce, skateboard, product builder, configurator, bundle
 Requires at least: 7.0
 Tested up to: 7.1
 Requires PHP: 8.5
-Stable tag: 0.7.0
+Stable tag: 0.8.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -14,7 +14,7 @@ Sells complete skateboards built from parts the shop stocks, with fit checked fr
 
 Creative Skateboard Builder lets a shopper put a complete skateboard together from the decks, trucks, wheels, bearings, hardware and grip a WooCommerce shop already sells. It checks that the parts fit from each part's specs, draws a picture of the build, keeps the total in view, and gives each part its own line in the cart and on the order, so stock, tax and refunds work as they do for any other product.
 
-This is version 0.7.0. A kit's page shows the builder in place of the add-to-cart form, and the Builder block puts it on any other page. The shopper goes one step a slot, sees only the parts that fit what they picked, can start from one of your presets, and reaches a review with the total, a link to the build and Add to cart. It works with a keyboard and a screen reader, on a phone, and without JavaScript. From 0.7.0 the builder draws the board to scale from each part's layer image, and the cart and a shared build link show a picture of it. Saved builds arrive in a later version.
+This is version 0.8.0. A kit's page shows the builder in place of the add-to-cart form, and the Builder block puts it on any other page. The shopper goes one step a slot, sees only the parts that fit what they picked, can start from one of your presets, and reaches a review with the total, a link to the build and Add to cart. It works with a keyboard and a screen reader, on a phone, and without JavaScript. From 0.7.0 the builder draws the board to scale from each part's layer image, and the cart and a shared build link show a picture of it. Saved builds arrive in a later version.
 
 The plugin needs WooCommerce 11.2 or newer, WordPress 7.0 or newer and PHP 8.5 or newer. Below any of them it does nothing and says so on the Plugins screen.
 
@@ -38,6 +38,9 @@ Everything the plugin made: its three tables, its options and transients, and it
 Yes. Activating it for the network installs it on every site, and a site added later installs itself the first time an administrator opens its dashboard.
 
 == Changelog ==
+
+= 0.8.0 =
+* The board turns over. The grip tape step shows its top: the deck's outline, the grip tape filled into it, a bolt head at each hole and the wheels at the edges. A button by the board turns it over on any step, and the description says which side is shown. A grip's layer image is now a swatch of the tape, and a hardware's can be one bolt's head.
 
 = 0.7.0 =
 * Each part's Part specs panel has a Picture group with a Layer image field: a transparent PNG, WebP or AVIF from the Media Library, shown at the size the picture draws the part. An image that is not transparent, is too small, or is another kind of file is refused, and the notice says why.

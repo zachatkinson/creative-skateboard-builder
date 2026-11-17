@@ -396,6 +396,17 @@ export interface CbuildState {
 			added: string;
 			[k: string]: unknown;
 		};
+		picture?: {
+			/**
+			 * Whether the board has a top to show: its deck has a layer image (0.8.0).
+			 */
+			turnable: boolean;
+			/**
+			 * Whether the board shows its top: on the grip step, as the server renders it; the store keeps the side the shopper turned it to (0.8.0).
+			 */
+			turned: boolean;
+			[k: string]: unknown;
+		};
 		[k: string]: unknown;
 	};
 }
