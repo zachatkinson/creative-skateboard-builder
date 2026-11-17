@@ -9,6 +9,9 @@
  * trucks' baseplate holes are at the same spacing, so a truck's holes land on the deck's. The browser fixture uploads
  * the files, and Claude in Cowork can upload the same ones to a demo's test parts.
  *
+ * From 0.8.0 the board has a top (#46): the grip's image is a swatch the top repeats across the deck, and the
+ * hardware's is one bolt's head, drawn at each hole. Both are seen from the top.
+ *
  * Usage: php tools/layer-art.php [out dir]. Needs GD.
  *
  * @package CreativeBranding\SkateboardBuilder
@@ -238,6 +241,68 @@ function wheel( float $diameter_mm, int $urethane, string $file ): void {
 	finish( $image, $width, $length, $urethane, $file );
 }
 
+/**
+ * Grip tape from the top: a swatch the board's top repeats across the deck, nose to tail (#46). Its box is 1 in across
+ * and the deck's length along, the strip the layout sizes a grip's image by; the whole box is grit, but for the
+ * corners the template asks to be clear. A faint band every 4 in shows the swatch running nose to tail.
+ *
+ * @param int    $base The grit's colour.
+ * @param int    $fleck The flecks' colour.
+ * @param int    $seed  The flecks' places, so the same art is drawn every time.
+ * @param string $file  Where to write it.
+ */
+function grip( int $base, int $fleck, int $seed, string $file ): void {
+	$width  = (int) ceil( INCH * PX_PER_MM );
+	$length = (int) ceil( 32 * INCH * PX_PER_MM );
+	$image  = canvas( $width, $length, $base );
+	$s      = PX_PER_MM * SUPER;
+	$w      = $width * SUPER;
+	$h      = $length * SUPER;
+	imagefilledrectangle( $image, 0, 0, $w - 1, $h - 1, colour( $image, $base ) );
+	for ( $band = 2; $band < 32; $band += 4 ) {
+		$y = (int) round( $band * INCH * $s );
+		imagefilledrectangle( $image, 0, $y, $w - 1, $y + (int) round( 6 * $s ), colour( $image, $fleck, 112 ) );
+	}
+	mt_srand( $seed );
+	for ( $i = 0; $i < 2400; $i++ ) {
+		$size = mt_rand( 1, 3 ) * SUPER;
+		imagefilledellipse( $image, mt_rand( 0, $w - 1 ), mt_rand( 0, $h - 1 ), $size, $size, colour( $image, $fleck, mt_rand( 40, 100 ) ) );
+	}
+	finish( $image, $width, $length, $base, $file );
+}
+
+/**
+ * A bolt's head from the top, as the board's top draws one at each of the deck's eight holes (#46): 3/8 in across,
+ * round, with a cross for a Phillips head or a hexagon for an Allen key.
+ *
+ * @param int    $metal The head's colour.
+ * @param bool   $allen An Allen head, not a Phillips.
+ * @param string $file  Where to write it.
+ */
+function bolt( int $metal, bool $allen, string $file ): void {
+	$side  = (int) ceil( 0.375 * INCH * PX_PER_MM );
+	$image = canvas( $side, $side, $metal );
+	$w     = $side * SUPER;
+	$mid   = (int) round( $w / 2 );
+	imagefilledellipse( $image, $mid, $mid, $w - SUPER, $w - SUPER, colour( $image, $metal ) );
+	imagefilledellipse( $image, $mid - (int) round( $w * 0.08 ), $mid - (int) round( $w * 0.08 ), (int) round( $w * 0.6 ), (int) round( $w * 0.6 ), colour( $image, 0xffffff, 100 ) );
+	$recess = colour( $image, ( $metal >> 1 ) & 0x7f7f7f );
+	if ( $allen ) {
+		$points = array();
+		for ( $corner = 0; $corner < 6; $corner++ ) {
+			$points[] = (int) round( $mid + $w * 0.2 * cos( M_PI / 3 * $corner ) );
+			$points[] = (int) round( $mid + $w * 0.2 * sin( M_PI / 3 * $corner ) );
+		}
+		imagefilledpolygon( $image, $points, $recess );
+	} else {
+		$arm  = (int) round( $w * 0.26 );
+		$half = (int) round( $w * 0.05 );
+		imagefilledrectangle( $image, $mid - $arm, $mid - $half, $mid + $arm, $mid + $half, $recess );
+		imagefilledrectangle( $image, $mid - $half, $mid - $arm, $mid + $half, $mid + $arm, $recess );
+	}
+	finish( $image, $side, $side, $metal, $file );
+}
+
 $out = $argv[1] ?? dirname( __DIR__ ) . '/tests/e2e/fixtures/layers';
 if ( ! is_dir( $out ) ) {
 	mkdir( $out, 0755, true );
@@ -261,4 +326,9 @@ foreach ( array(
 ) as $diameter => $urethane ) {
 	wheel( $diameter, $urethane, $out . '/wheels-' . $diameter . '.png' );
 }
+// The top (#46): black grip and a blue one, and the bolts' heads, black Phillips and silver Allen.
+grip( 0x232326, 0x8a8f96, 46, $out . '/grip-black.png' );
+grip( 0x1d4f8c, 0xcfe3f7, 47, $out . '/grip-blue.png' );
+bolt( 0x26272b, false, $out . '/bolts-1.png' );
+bolt( 0xc3c8ce, true, $out . '/bolts-1.25.png' );
 echo 'Drawn into ' . $out . PHP_EOL;
