@@ -1102,6 +1102,12 @@ final class BuilderTest extends TestCase {
 			),
 			$review['fields']
 		);
+		$saving    = $review['fields'];
+		$saving[0] = array(
+			'name'  => 'cbuild_kit',
+			'value' => '77',
+		);
+		self::assertSame( $saving, $review['saveFields'], 'Save build sends the same build, with the kit under the plugin\'s own field, not add-to-cart, which WooCommerce answers by adding to the cart.' );
 		self::assertFalse( $review['hasLead'] );
 		self::assertFalse( $review['hasNotice'] );
 	}

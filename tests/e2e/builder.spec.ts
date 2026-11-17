@@ -1938,6 +1938,21 @@ test.describe( 'The keyboard alone', () => {
 			await expect(
 				builder.locator( '.cbuild-review__added' )
 			).toBeFocused();
+			// WooCommerce writes the cart to the session at PHP's shutdown, which can come after the add's answer has gone out, so a
+			// cart page asked for 120 ms later once read it empty (CI run 44157697581, chromium-desktop; #51). The
+			// cart is read until it holds the build, as a shopper's slower step to View cart would find it.
+			await expect
+				.poll(
+					async () =>
+						(
+							await (
+								await page.request.get(
+									'/wp-json/wc/store/v1/cart'
+								)
+							).json()
+						).items_count as number
+				)
+				.toBeGreaterThan( 0 );
 		}
 		await press(
 			// The builder's own link with a script; without one, WooCommerce's notice over the page has it.
