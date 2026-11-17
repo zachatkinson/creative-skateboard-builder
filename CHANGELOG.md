@@ -42,6 +42,7 @@ All notable changes to this project are documented here. The format follows [Kee
   - Deleting an account on a network finds every site's builds table in one query, in place of one a site.
   - The ticket's pictures load before it prints, and an unknown mismatch is said in words, not as its code.
 - From the walkthrough: My builds sets each build's picture above its name, so a name of two words no longer wraps around it.
+- From CI: Save build no longer also puts the build in the cart. The kit goes under the plugin's own field, `cbuild_kit`, not `add-to-cart`, which WooCommerce adds to the cart on any request.
 
 ## [0.7.0] - 2026-11-16
 

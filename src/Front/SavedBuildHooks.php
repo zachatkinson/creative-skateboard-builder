@@ -97,6 +97,13 @@ final class SavedBuildHooks implements Hookable {
 	public const string NAME = 'cbuild_name';
 
 	/**
+	 * Save build's field for the kit. Not `add-to-cart`, which WooCommerce answers on any request by adding to the cart.
+	 *
+	 * @since 0.8.0
+	 */
+	public const string KIT = 'cbuild_kit';
+
+	/**
 	 * Constructor.
 	 *
 	 * @since 0.8.0
@@ -268,7 +275,7 @@ final class SavedBuildHooks implements Hookable {
 	}
 
 	/**
-	 * Save build: the review's own fields, the kit as `add-to-cart` and the picks and assembly under `cbuild`.
+	 * Save build: the kit as its own field, and the picks and assembly under `cbuild` as the review sends them.
 	 *
 	 * @param int    $user The customer.
 	 * @param string $name The name given.
@@ -276,7 +283,7 @@ final class SavedBuildHooks implements Hookable {
 	 */
 	private function save( int $user, string $name, string $uuid ): void {
 		// phpcs:disable WordPress.Security.NonceVerification.Missing -- Checked in answer(), before this is called.
-		$kit  = isset( $_POST['add-to-cart'] ) && is_string( $_POST['add-to-cart'] ) ? absint( wp_unslash( $_POST['add-to-cart'] ) ) : 0;
+		$kit  = isset( $_POST[ self::KIT ] ) && is_string( $_POST[ self::KIT ] ) ? absint( wp_unslash( $_POST[ self::KIT ] ) ) : 0;
 		$sent = isset( $_POST[ BuildLink::PARAM ] ) && is_array( $_POST[ BuildLink::PARAM ] ) ? map_deep( wp_unslash( $_POST[ BuildLink::PARAM ] ), 'sanitize_text_field' ) : array(); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Sanitised by map_deep().
 		// phpcs:enable WordPress.Security.NonceVerification.Missing
 		$sent = Cast::map( $sent );

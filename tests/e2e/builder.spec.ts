@@ -3078,6 +3078,14 @@ test.describe( 'Saved builds', () => {
 		javaScriptEnabled,
 	}, info ) => {
 		await login( page );
+		// Saving is no add: the cart's lines are as they were after both saves (CI run 44119225891).
+		const lines = async () =>
+			(
+				await (
+					await page.request.get( '/wp-json/wc/store/v1/cart' )
+				).json()
+			).items_count as number;
+		const before = await lines();
 		const name = `E2E ${ info.project.name } ${ Date.now() }`;
 		await page.goto( full() );
 		await expect( heading( page ) ).toHaveText( /: Review$/ );
@@ -3106,6 +3114,9 @@ test.describe( 'Saved builds', () => {
 			page.getByLabel( 'Link to this build' ),
 			'the saved build is no part of a shared link'
 		).not.toHaveValue( /cbuild_saved/ );
+		// answered() waits for the next page's load, so the page it acts on must have had its own: WebKit, pressed
+		// before then, sent no form and the wait took the opened page's load for the answer (CI run 44119225891, #50).
+		await page.waitForLoadState( 'load' );
 		await answered( page, () =>
 			page.getByRole( 'button', { name: 'Save build' } ).click()
 		);
@@ -3118,6 +3129,7 @@ test.describe( 'Saved builds', () => {
 				.filter( { hasText: name } ),
 			'kept its name, and is one build still'
 		).toHaveCount( 1 );
+		expect( await lines(), 'nothing was added to the cart' ).toBe( before );
 
 		await answered( page, () =>
 			page

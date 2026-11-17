@@ -1285,8 +1285,13 @@ final class BuilderView {
 				),
 			)
 		);
-		// Save build's fields: the build alone, with nothing of the cart's (D-217).
+		// Save build's fields: the build alone, with nothing of the cart's (D-217). The kit goes under the plugin's own name:
+		// WooCommerce adds `add-to-cart` to the cart on any request it comes with (includes/class-wc-form-handler.php).
 		$saving    = $fields;
+		$saving[0] = array(
+			'name'  => SavedBuildHooks::KIT,
+			'value' => (string) $state->id,
+		);
 		$replacing = '' !== $link->replace;
 		if ( $replacing ) {
 			// From Edit build: the add takes the place of the build in the cart it came from (D-157).

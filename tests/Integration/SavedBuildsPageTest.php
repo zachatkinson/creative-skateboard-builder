@@ -68,7 +68,7 @@ final class SavedBuildsPageTest extends CartTestCase {
 			SavedBuildHooks::NONCE => $nonce,
 			SavedBuildHooks::NAME  => $name,
 			SavedBuildHooks::UUID  => $uuid,
-			'add-to-cart'          => (string) $this->kit,
+			SavedBuildHooks::KIT   => (string) $this->kit,
 			BuildLink::PARAM       => array(
 				'picks'    => array_map( 'strval', $this->picks() ),
 				'assembly' => '1',
@@ -104,6 +104,41 @@ final class SavedBuildsPageTest extends CartTestCase {
 		self::assertSame( 'Street board', $saved[0]->name, 'the name sanitised as text' );
 		self::assertSame( $this->picks(), $saved[0]->picks );
 		self::assertTrue( $saved[0]->assembly );
+	}
+
+	/**
+	 * CI run 44119225891: each Save build in the browser test put the build in the cart as well, seven lines a save. The
+	 * review's Save build fields carried the kit as `add-to-cart`, which WooCommerce's form handler adds to the cart on
+	 * any request (includes/class-wc-form-handler.php, add_to_cart_action on `wp_loaded`).
+	 */
+	public function test_save_build_sends_the_review_as_the_page_draws_it_and_leaves_the_cart_alone(): void {
+		wp_set_current_user( $this->ana );
+		$_GET[ BuildLink::PARAM ] = array_map( 'strval', $this->picks() ) + array( 'step' => 'review' );
+		$this->service( BuilderPage::class )->render( $this->kit, BuildLink::read( $_GET[ BuildLink::PARAM ] ), (string) get_permalink( $this->kit ) );
+		$fields = array();
+		foreach ( wp_interactivity_state( BuilderPage::STORE )['view']['review']['saveFields'] as $field ) {
+			$fields[] = array( $field['name'], $field['value'] );
+		}
+		self::assertNotContains( 'add-to-cart', array_column( $fields, 0 ), 'Save build carries nothing of the cart\'s (D-217).' );
+		parse_str( implode( '&', array_map( static fn( array $field ): string => rawurlencode( $field[0] ) . '=' . rawurlencode( $field[1] ), $fields ) ), $sent );
+		$sent += array(
+			SavedBuildHooks::FIELD => SavedBuildHooks::SAVE,
+			SavedBuildHooks::NONCE => wp_create_nonce( SavedBuildHooks::SAVE ),
+			SavedBuildHooks::NAME  => 'Kept, not bought',
+		);
+		WC()->cart->empty_cart();
+		$_SERVER['REQUEST_METHOD'] = 'POST';
+		$_POST                     = $sent;
+		$_REQUEST                  = $sent;
+		\WC_Form_Handler::add_to_cart_action();
+		self::assertSame( 0, WC()->cart->get_cart_contents_count(), 'WooCommerce added nothing to the cart' );
+		self::assertSame( SavedBuildHooks::url(), $this->post( $sent ) );
+		self::assertSame( array( 'The build is saved. It is listed below.' ), self::notices(), implode( ' | ', self::notices( 'error' ) ) );
+		$saved = $this->service( SavedBuilds::class )->of( $this->ana );
+		self::assertCount( 1, $saved );
+		self::assertSame( $this->kit, $saved[0]->kit );
+		self::assertSame( $this->picks(), $saved[0]->picks );
+		$_REQUEST = array();
 	}
 
 	public function test_a_form_without_its_nonce_or_from_no_one_changes_nothing(): void {
