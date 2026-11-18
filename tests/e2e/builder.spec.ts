@@ -3223,6 +3223,13 @@ test.describe( 'Saved builds', () => {
 				`${ info.project.name }: My builds, Undo offered`,
 				'.woocommerce-MyAccount-content'
 			);
+			// WooCommerce puts focus on its notice 500 ms after the page loads. Focus taken before then was moved
+			// under the press, and Enter fell on the notice (CI run 44289674928): the shopper reaches Undo after it.
+			await expect(
+				page
+					.locator( '[role="alert"]' )
+					.filter( { hasText: 'The build is deleted.' } )
+			).toBeFocused();
 		}
 		await undo.focus();
 		await answered( page, () => page.keyboard.press( 'Enter' ) );
