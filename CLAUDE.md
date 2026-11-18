@@ -57,7 +57,7 @@ It is the agency's showpiece, built to the twelve-dimension audit in `docs/AUDIT
 - `npm run check`: ESLint, Stylelint, Prettier, `tsc --noEmit` and Vitest
 - `npm run mutate:js`: StrykerJS on the builder's store (90 %)
 - `npm run budget`: the script under 15 kB and the styles under 10 kB, compressed with Brotli at quality 11
-- `npm run test:e2e`: Playwright with axe. The projects are `chromium-desktop`, `chromium-phone`, `webkit-desktop`, `webkit-phone`, `firefox-desktop`, `firefox-phone`, `no-js`, `fr-ca`, `rtl` and `visual`. `visual` runs only in Playwright's Linux container, through `bash tools/visual.sh` (CI's newest leg runs it; `--update-snapshots` remakes the baselines, on purpose only), so its baselines stay stable
+- `npm run test:e2e`: Playwright with axe. The projects are `chromium-desktop`, `chromium-phone`, `webkit-desktop`, `webkit-phone`, `firefox-desktop`, `firefox-phone`, `no-js`, `fr-ca`, `rtl` and `visual`. `visual` runs only in Playwright's Linux container, through `bash tools/visual.sh` (CI's `Browser (visual)` job runs it, beside the newest leg (D-258); `--update-snapshots` remakes the baselines, on purpose only), so its baselines stay stable
 - `npm run lhci`: Lighthouse CI on the builder page (LCP, CLS, TBT, SEO)
 - `npm run plugin-check`: builds the zip and runs Plugin Check on it in wp-env. Any error or warning fails
 - `composer i18n:pot` / `composer i18n:check` / `composer i18n:compile`: run inside wp-env (`.mo`, `.l10n.php` and script JSON)

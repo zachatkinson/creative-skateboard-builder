@@ -24,7 +24,7 @@ The repository is public. These hold what reaches `main` and what a release publ
 - **`main`** (ruleset "main"), with no one able to bypass it, Zach and Claude Code included:
   - no force-push and no deletion;
   - every change through a pull request, merged as a merge commit;
-  - the seven CI jobs green before the merge, by their exact names;
+  - the CI jobs green before the merge, by their exact names: the seven of 18 November, and from D-258 the five `Browser (…)` jobs beside the newest leg;
   - review threads resolved.
 - **Release tags** (ruleset "release tags", `refs/tags/v*`): a tag can be created, never moved or deleted, so a version always names the code `release.yml` published.
 - **Secrets:** GitHub's secret scanning and push protection on; gitleaks in CI on every change; the full history scanned clean before the repository went public (gitleaks 8.30.1, every branch).
