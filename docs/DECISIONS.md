@@ -3234,9 +3234,11 @@ Corrected the same day, from Cowork's review: a riser counts as clearing the whe
 
 Zach agreed, and authorized Creative Search 1.7.0 in its own pull request.
 
-### D-249 · Cards keep P4's price as a change from the current pick · 2026-11-18
+### D-249 · Cards show the full price, and the change from the current pick under it · 2026-11-18
 
-The prototype shows full prices. `UX-RESEARCH.md`'s P4 gives each card "+$12.00", "Same price" or "Included", which says what a pick does to the total; the footer has the total.
+The prototype shows full prices; `UX-RESEARCH.md`'s P4 gave each card "+$12.00", "Same price" or "Included". The first draft kept P4 alone. Zach, the same day, chose both: the part's full price large, and under it, once the step has a pick, the change it makes to the total in smaller type ("+$12.00 over your pick", "Same price", "$8.00 less").
+
+**Why:** a difference alone changes meaning with every other pick, so cards are hard to compare and remember, and "Price low to high" over a list of differences reads oddly. A full price is what a shopper scans in a long list. The difference still says what a pick does to the total, so P4's point is kept. "Included" stays for a part that comes with another (bearings with their wheels, D-246). No Baymard text we could read prefers either: guideline #3108's public summary asks only that options' prices be shown, not hidden.
 
 ### D-250 · The delivery line and notes sit in the desktop footer and at the phone's review · 2026-11-18
 
