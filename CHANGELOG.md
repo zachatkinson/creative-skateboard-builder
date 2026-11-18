@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html). One entry per milestone; `v1.0.0` closes milestone 9.
+All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html). One entry per milestone; `v1.0.0` closes milestone 10 (D-236).
 
 ## [Unreleased]
 
@@ -18,6 +18,7 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Fixed
 
+- The test sites run WordPress 7.1.5, the release shops now run, and never update themselves: CI's 7.1.4 site updated itself in a run and was in maintenance mode under a test (D-235).
 - On a network, the must-use file is written only for a network admin in wp-admin, never on admin-ajax.php or for a visitor, and a copy whose line endings changed is not written again (Cowork's 0.8.0 review, F5; #57; D-226).
 - The order's picture has a short alt, "The build, as drawn", on the order's page and in HTML emails, since its parts are listed under it (F4; #56).
 - The Build box says "No specs" for a part with none, not "None kept" (F6; #58).

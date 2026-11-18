@@ -769,10 +769,10 @@ The plugin can be built and tested on a generated catalogue now. Selling complet
 
 ## Milestones for Claude Code
 
-Nine milestones, in order.
+Ten milestones to 1.0, in order (D-236).
 
 - Each starts with a plan: the risks under each of the twelve dimensions.
-- Each ends with every CI gate green, the audit written into `docs/reviews/M<n>.md` and its pull request, a changelog entry, a commit and a tag (0.1.0 to 1.0.0).
+- Each ends with every CI gate green, the audit written into `docs/reviews/M<n>.md` and its pull request, a changelog entry, a commit and a tag (0.1.0 to 0.9.0, then 1.0.0).
 - `docs/ROADMAP.md` has each one in full: what it builds, the tests that must pass, where the audit looks hardest, and what comes after 1.0.
 - The cart comes before the builder's front end. Keeping a build together on every route is the riskiest part, and the cart can be driven through the Store API before the builder exists.
 
@@ -786,7 +786,8 @@ Nine milestones, in order.
 | 6 | The builder | Server-rendered steps from one template, the Interactivity API store and the no-JavaScript forms. Presets, every way in, the change panel, the phone bar, the labelled parts picture, the review, history, the delivery line, Edit build, the Builder block, motion, and the SEO rules for builder URLs |
 | 7 | The picture | Layer images and the kit's picture settings; the layered picture in the page; the composed image, made in the background, for the cart thumbnail and share cards; `docs/PICTURE.md` |
 | 8 | Orders and after | Order display and emails with the picture, the Build box, the assembly ticket and its bulk print, the orders list column, saved builds under My builds, the privacy exporter and eraser, and the refund help text |
-| 9 | Hardening and 1.0 | French, the manual accessibility pass, the benchmarks and Lighthouse on the generated catalogue, the security and privacy walk-throughs, the public API frozen, a clean Plugin Check, and the full audit in `docs/AUDIT-1.0.0.md`. The docs are complete and the release is tagged 1.0.0 |
+| 9 | Hardening | French, the benchmarks and Lighthouse on the generated catalogue, the security and privacy walk-throughs, the update from every release, a clean Plugin Check, and the full audit in `docs/AUDIT-0.9.0.md`. Tagged 0.9.0 (D-236) |
+| 10 | The configurator and 1.0 | The builder as a full-screen configurator (`docs/ROADMAP.md`), then the manual accessibility pass, French read by a person, the hallway test, the public API frozen and the full audit, on the front end that ships. Tagged 1.0.0 |
 
 Skatehouse's own setup follows 1.0, as What Skatehouse needs describes, alongside the companion releases.
 

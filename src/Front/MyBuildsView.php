@@ -137,7 +137,7 @@ final class MyBuildsView {
 	/**
 	 * A build's name as My builds shows it: the one the customer gave, or, for an unnamed build, its parts' title.
 	 *
-	 * @since 1.0.0
+	 * @since 0.9.0
 	 *
 	 * @param SavedBuild $build The build.
 	 */

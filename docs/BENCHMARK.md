@@ -217,7 +217,7 @@ The queries the board adds, three a cold request, are the parts' meta read toget
 
 Twenty Twenty-Five's shift measured 0.012 here, against 0.133 for 0.6.0; it stays reported, not held, until a run shows why it moved. The build link's review scores 0.61 for SEO, which is not asserted: the page says `noindex` (D-147).
 
-## v1.0.0
+## v0.9.0
 
 Machine: Apple M1 Max, PHP 8.5.12 in wp-env on OrbStack, WordPress 7.1.4, WooCommerce 11.3.0, wp-env's own database server, Xdebug off. Measured 18 November 2026 on the milestone 9 branch. The catalogue is v0.7.0's: seven slots over 2,000 simple products, 500 of them trucks, the decks with layer images and their renditions. `composer test:benchmark` (the fit engine at 500 candidates) passed its budgets.
 
@@ -253,4 +253,4 @@ Machine: Apple M1 Max, PHP 8.5.12 in wp-env on OrbStack, WordPress 7.1.4, WooCom
 | A build link's review with its layers drawn, Kadence | 1.98 s, 0.000, 21 ms | The same |
 | Lighthouse SEO, the clean page on both themes | 0.92 | 0.9 or more |
 
-Not measured here: the renditions migration at 2,000 parts (0.8.0's review, auditor 19), which queues one index job a part and needs a site with that many layer images; it stays open in `docs/AUDIT-1.0.0.md` (O6).
+Not measured here: the renditions migration at 2,000 parts (0.8.0's review, auditor 19), which queues one index job a part and needs a site with that many layer images; it stays open in `docs/AUDIT-0.9.0.md` (O6).

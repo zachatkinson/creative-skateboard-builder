@@ -82,7 +82,7 @@ final class SavedBuildHooks implements Hookable {
 	 * Undo, in the notice after a Delete: saves the deleted build back. Its nonce action is this and the deleted build's
 	 * UUID (Cowork's 0.8.0 review, F3; D-231).
 	 *
-	 * @since 1.0.0
+	 * @since 0.9.0
 	 */
 	public const string RESTORE = 'cbuild_restore_build';
 

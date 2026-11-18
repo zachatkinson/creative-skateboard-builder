@@ -125,7 +125,7 @@ final class SavedBuilds {
 	 * review, F3; D-231). It is not checked again: a part gone since stays among its picks, and Open names it, as for any
 	 * saved build. Sent twice, it is there already, and nothing more is made. The most a customer keeps still holds.
 	 *
-	 * @since 1.0.0
+	 * @since 0.9.0
 	 *
 	 * @param SavedBuild $build The build as it was deleted.
 	 * @return string SAVED, FULL, FAILED or SIGNED_OUT.

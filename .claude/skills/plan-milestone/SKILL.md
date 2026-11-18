@@ -3,7 +3,7 @@ name: plan-milestone
 description: Start a milestone. Read its roadmap entry and spec sections, write the plan with the risks under all twelve audit dimensions into docs/reviews/M<n>.md, and raise anything that needs Zach before code is written.
 ---
 
-0. If the last milestone's pull request is merged into `main` and its merge isn't tagged, tag it (`v0.<n-1>.0`, or `v1.0.0` after milestone 9) and push the tag; `release.yml` publishes it. Then branch `m<n>-<short name>` from `main`.
+0. If the last milestone's pull request is merged into `main` and its merge isn't tagged, tag it (`v0.<n-1>.0`, or `v1.0.0` after milestone 10) and push the tag; `release.yml` publishes it. Then branch `m<n>-<short name>` from `main`.
 1. Read the milestone in `docs/ROADMAP.md`: Builds, Tests that must pass, Done when, and where the audit looks hardest.
 2. Read every `docs/SPEC.md` section it touches, `docs/DECISIONS.md`, and the last milestone's review for anything carried over. List the open issues in this milestone's GitHub milestone (`gh issue list --milestone "Milestone <n>: <name> (0.<n>.0)"`): each is work owed that the roadmap does not list (D-042), and goes into the plan.
 3. Where the milestone names a WordPress or WooCommerce hook, function or event, find it in the source wp-env installed now, and note its file and line. In milestone 1, do this as soon as wp-env is up, before relying on any hook. A difference from the spec is a decision to record, or a question for Zach.

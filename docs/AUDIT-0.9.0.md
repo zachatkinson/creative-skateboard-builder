@@ -1,4 +1,4 @@
-# Release audit: 1.0.0
+# Release audit: 0.9.0
 
 The whole codebase on `m9-hardening`, 18 November 2026. The reviewer was the `auditor` agent, with a fresh context and no part in writing the code, as `docs/AUDIT.md` asks for every release from 1.0. The milestone's own review is `docs/reviews/M9.md`, and the gates' numbers are there.
 
@@ -30,7 +30,7 @@ Each table gives a rule of the dimension and the evidence that holds the code to
 | No `date()`, `time()` or `NOW()` | Gate 3 is clean. Undo's kept dates are parsed as the repository parses its rows. |
 | No outbound requests but the updater | Gate 5 is clean. |
 | No `catch (Throwable)` that swallows | At the boundaries only: the render boundary, the migration runner, the index jobs and the import, each logged. |
-| No `!important`, no IDs, no styles that leak | Recorded exceptions: `BuildTab` (DECISIONS.md, the Build tab's notice) and `PageHooks` (the theme's skip link). The 1.0.0 focus ring wins by specificity, with no `!important` (D-229). AUDIT.md's "none, anywhere" should name these: O15. |
+| No `!important`, no IDs, no styles that leak | Recorded exceptions: `BuildTab` (DECISIONS.md, the Build tab's notice) and `PageHooks` (the theme's skip link). The 0.9.0 focus ring wins by specificity, with no `!important` (D-229). AUDIT.md's "none, anywhere" should name these: O15. |
 
 ## 3. Security
 
@@ -46,14 +46,14 @@ Each table gives a rule of the dimension and the evidence that holds the code to
 | Supply chain | Every `uses:` pinned to a 40-character SHA. gitleaks; CycloneDX SBOMs; the release token in the publish job alone (gate 9: "Release plan self-test: 13 cases"); `composer audit:deps` clean on 18 November; Dependabot. |
 | The updater: HTTPS, its own releases, SHA-256 | `UpdaterTest`, `ManifestTest`. |
 
-`docs/SECURITY.md` has the v1.0.0 column of this walk. Some line numbers it cites from earlier releases have moved: minor 7, O17.
+`docs/SECURITY.md` has the v0.9.0 column of this walk. Some line numbers it cites from earlier releases have moved: minor 7, O17.
 
 ## 4. Privacy and data handling
 
 | Rule | Evidence |
 | --- | --- |
 | The inventory is complete | `docs/PRIVACY.md` now names the three log lines this audit found missing, says the must-use file is written by a network admin alone (D-226), and says the session's Undo copy ends with the session, not at uninstall. |
-| Personal data is saved builds alone | The `cbuild_builds` table, and from 1.0.0 the build just deleted, held in the customer's own WooCommerce session for one view of My builds (D-231). The eraser cannot reach another person's session: recorded in D-231, O18 for Zach. |
+| Personal data is saved builds alone | The `cbuild_builds` table, and from 0.9.0 the build just deleted, held in the customer's own WooCommerce session for one view of My builds (D-231). The eraser cannot reach another person's session: recorded in D-231, O18 for Zach. |
 | The rate limiter keeps hashes, never the address | `StateRouteTest::test_nothing_kept_for_the_limit_names_an_address`, `RateLimitTest`. |
 | Exporter, eraser, policy text, a deleted account | `PrivacyTest`, on a single site and on a network. |
 | Share links hold no customer | `ShareCardTest`: `cbuild_saved` is never in `og:url` or the canonical. |
@@ -72,7 +72,7 @@ Each table gives a rule of the dimension and the evidence that holds the code to
 | 24 px targets, reflow, text spacing, reduced motion | `builder.spec.ts`, the Motion and reflow suites (M8). |
 | Admin screens by keyboard and axe | `workshop.spec.ts`, `check.spec.ts`, `import.spec.ts` and the others (M8). |
 | Undo | Pressed by keyboard, with axe on the page that offers it, and focus on WooCommerce's notice after, in seven projects, `no-js` among them. |
-| The manual pass, with VoiceOver and NVDA | Owed: the 1.0.0 row of `docs/A11Y.md`, by a tester Zach arranges (O2). |
+| The manual pass, with VoiceOver and NVDA | Owed: the 1.0.0 row of `docs/A11Y.md`, now milestone 10's (D-236), by a tester Zach arranges (O2). |
 
 ## 6. Internationalisation
 
@@ -97,7 +97,7 @@ Each table gives a rule of the dimension and the evidence that holds the code to
 
 | Rule | Evidence |
 | --- | --- |
-| The route's p95 under 80 ms at 500 candidates | Without a persistent cache, held: 67.6 ms cold, 47.4 ms warm (`docs/BENCHMARK.md`, v1.0.0). With Redis, warm 45.2 ms, but a request that finds the cache empty is over: 85.6 ms after a part moves, 88 to 94 ms cold. Open, O21. |
+| The route's p95 under 80 ms at 500 candidates | Without a persistent cache, held: 67.6 ms cold, 47.4 ms warm (`docs/BENCHMARK.md`, v0.9.0). With Redis, warm 45.2 ms, but a request that finds the cache empty is over: 85.6 ms after a part moves, 88 to 94 ms cold. Open, O21. |
 | Fixed query counts | `SavedBuildsPageTest`'s twenty against one; `StateRouteBenchmarkTest`. |
 | The script under 15 kB and the styles under 10 kB | `npm run budget` on 18 November: `view.js` 3,027 B, `style-index.css` 2,987 B. |
 | LCP, CLS, TBT | Kadence 1.95 s, 0.000, 5 ms; Twenty Twenty-Five 2.30 s, 0.012, 1 ms; a build link's review 1.98 s, 0.000, 21 ms (`docs/BENCHMARK.md`). The TBT flake on Twenty Twenty-Five is #52, O5. |
@@ -164,8 +164,8 @@ Each table gives a rule of the dimension and the evidence that holds the code to
 | O9 | Sign in goes to WordPress's login, not WooCommerce's (0.8.0's review, auditor 18) | Zach to decide | 1.1 |
 | O10 | The board's turn is said by its caption alone (0.8.0's review, auditor 16) | The screen reader tester (O2), then Claude Code | With O2 |
 | O11 | Classes over 300 lines (`BuilderView`, `BuildTab`, `PartSpecsPanel`, `KitEditor`) | Claude Code | 1.1 |
-| O12 | #59: the demo's emails, readable for a review | Zach, on the demo | Before Cowork's 1.0.0 review |
-| O13 | Earlier reviews' "For Zach": a carrier plugin's $0 kit line, the Stripe and WooPayments buttons, Shop Kit's checkout and template, Venture 5.0's 7.62 in axle, the sources for the Thunder 143, 148 and 161 | Cowork on the demo; Zach for the sources | Cowork's 1.0.0 review |
+| O12 | #59: the demo's emails, readable for a review | Zach, on the demo | Before Cowork's 0.9.0 review |
+| O13 | Earlier reviews' "For Zach": a carrier plugin's $0 kit line, the Stripe and WooPayments buttons, Shop Kit's checkout and template, Venture 5.0's 7.62 in axle, the sources for the Thunder 143, 148 and 161 | Cowork on the demo; Zach for the sources | Cowork's 0.9.0 review |
 | O14 | The dev toolchain's advisories with no fix yet: `deepmerge`, low (#9, D-051), and `picomatch` up to 4.0.7, high, a ReDoS (GHSA-fc5q-39xc-vjpf, Dependabot alert 2, 18 November). Neither ships: `npm audit --omit=dev` is clean | Claude Code | An override the day a fixed version is out |
 | O15 | AUDIT.md's dimension 2 to name its recorded exceptions | Zach to approve the wording | 1.0.x |
 | O16 | Minors listed in `docs/reviews/M9.md`: counts without `_n()`, the saved builds read with no `LIMIT` and the cap checked before the insert, two bounded admin loops, the forced-colours test not reading the colour, a pressed filter's inset line under the focus ring | Claude Code | 1.0.x |
@@ -173,4 +173,4 @@ Each table gives a rule of the dimension and the evidence that holds the code to
 | O18 | The eraser does not reach a session's Undo copy, held for one page view (D-231) | Zach to confirm | Before the tag |
 | O19 | The spec's grip sheets sized "9 × 33 in" in one attribute, which the mapping cannot split (spec review S4) | Zach to decide | Before the tag |
 | O20 | A preset's tile shows its deck's photo, not the preset's board (spec review S5; D-154 said milestone 7) | Zach to decide | Before the tag |
-| O21 | With a persistent object cache, the state route's first request after a part moves is 85.6 ms p95, over the 80 ms budget; each miss is a round trip to Redis (`docs/BENCHMARK.md`, v1.0.0) | Zach to decide. Batching the plugin's own two reads measured no better (`docs/BENCHMARK.md`); WooCommerce's per-product reads are next | Before the tag |
+| O21 | With a persistent object cache, the state route's first request after a part moves is 85.6 ms p95, over the 80 ms budget; each miss is a round trip to Redis (`docs/BENCHMARK.md`, v0.9.0) | Zach to decide. Batching the plugin's own two reads measured no better (`docs/BENCHMARK.md`); WooCommerce's per-product reads are next | Before the tag |

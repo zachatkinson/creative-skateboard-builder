@@ -1,5 +1,5 @@
 {
-	"core": "https://wordpress.org/wordpress-7.1.4.zip",
+	"core": "https://wordpress.org/wordpress-7.1.5.zip",
 	"phpVersion": "8.5",
 	"plugins": [],
 	"mappings": {
@@ -12,7 +12,8 @@
 		"WP_DEBUG": true,
 		"WP_DEBUG_LOG": true,
 		"WP_DEBUG_DISPLAY": false,
-		"SCRIPT_DEBUG": true
+		"SCRIPT_DEBUG": true,
+		"AUTOMATIC_UPDATER_DISABLED": true
 	},
 	"lifecycleScripts": {
 		"afterStart": "wp-env run cli --config=.wp-env.tests.json wp plugin activate woocommerce creative-skateboard-builder && bash tools/imagick-coders.sh"

@@ -4,7 +4,7 @@ Tags: woocommerce, skateboard, product builder, configurator, bundle
 Requires at least: 7.0
 Tested up to: 7.1
 Requires PHP: 8.5
-Stable tag: 1.0.0
+Stable tag: 0.9.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -14,7 +14,7 @@ Sells complete skateboards built from parts the shop stocks, with fit checked fr
 
 Creative Skateboard Builder lets a shopper put a complete skateboard together from the decks, trucks, wheels, bearings, hardware and grip a WooCommerce shop already sells. It checks that the parts fit from each part's specs, draws a picture of the build, keeps the total in view, and gives each part its own line in the cart and on the order, so stock, tax and refunds work as they do for any other product.
 
-This is version 1.0.0. A kit's page shows the builder in place of the add-to-cart form, and the Builder block puts it on any other page. The shopper goes one step a slot, sees only the parts that fit what they picked, can start from one of your presets, and reaches a review with the total, a link to the build and Add to cart. The builder draws the board to scale from each part's layer image, top and underside, and the cart, the order, its emails and a shared build link show a picture of it. A signed-in customer can save a build and find it again under My builds in My account. The workshop gets each order's build in a box on the order screen and a printed assembly ticket.
+This is version 0.9.0. A kit's page shows the builder in place of the add-to-cart form, and the Builder block puts it on any other page. The shopper goes one step a slot, sees only the parts that fit what they picked, can start from one of your presets, and reaches a review with the total, a link to the build and Add to cart. The builder draws the board to scale from each part's layer image, top and underside, and the cart, the order, its emails and a shared build link show a picture of it. A signed-in customer can save a build and find it again under My builds in My account. The workshop gets each order's build in a box on the order screen and a printed assembly ticket.
 
 It works with a keyboard and a screen reader, on a phone, without JavaScript, in English and French (Canada), and right to left.
 
@@ -49,7 +49,7 @@ Yes. Its hooks, REST routes, block attributes, settings keys, order item keys, C
 
 == Changelog ==
 
-= 1.0.0 =
+= 0.9.0 =
 * Focus is seen on a dark theme and a light one: the ring has two tones of its own.
 * On a phone, the bar gives the estimate for a complete board under the total.
 * My builds has Undo after Delete.
@@ -151,7 +151,7 @@ Yes. Its hooks, REST routes, block attributes, settings keys, order item keys, C
 
 == Upgrade Notice ==
 
-= 1.0.0 =
+= 0.9.0 =
 Update as usual, from the updater or by uploading the zip. No step is needed, from any earlier release. On a network, a network admin's next visit to wp-admin writes the must-use file again.
 
 = 0.8.0 =

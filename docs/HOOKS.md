@@ -665,8 +665,8 @@ The builder's stylesheet is the Builder block's `style` (`build/builder/style-in
 | `--cbuild-surface` | 0.6.0 | A card's and the summary's ground | the text at 5 % |
 | `--cbuild-accent` | 0.6.0 | The chosen card, a pressed filter, the primary button | `--wp--preset--color--contrast`, then the text |
 | `--cbuild-on-accent` | 0.6.0 | Text on the accent | `--wp--preset--color--base`, then `Canvas` |
-| `--cbuild-focus` | 0.6.0 | The focus ring's outline. From 1.0.0 it no longer takes the theme's colours, since a dark theme's contrast preset can be dark too (D-229) | `#000` |
-| `--cbuild-focus-contrast` | 1.0.0 | The band on each side of the focus ring, so the ring reads on a dark page and a light one | `#fff` |
+| `--cbuild-focus` | 0.6.0 | The focus ring's outline. From 0.9.0 it no longer takes the theme's colours, since a dark theme's contrast preset can be dark too (D-229) | `#000` |
+| `--cbuild-focus-contrast` | 0.9.0 | The band on each side of the focus ring, so the ring reads on a dark page and a light one | `#fff` |
 | `--cbuild-wrong` | 0.6.0 | The edge of the error summary and of a part that does not fit; never text | `--wp--preset--color--vivid-red`, then `#b32d2e` |
 | `--cbuild-radius` | 0.6.0 | Corners | `0.5rem` |
 | `--cbuild-gap` | 0.6.0 | Space between the builder's pieces | `--wp--preset--spacing--40`, then `1.5rem` |
@@ -728,7 +728,7 @@ The builder also sends WooCommerce's own `wc-blocks_added_to_cart` on `document.
 | My account endpoint `my-builds` | 0.8.0 | My builds: each of the signed-in customer's saved builds with its picture, name, total today and the date it was saved, and Open, Rename and Delete. Added through WooCommerce's `woocommerce_get_query_vars`, with its menu item before Log out (`woocommerce_account_menu_items`). A shop that wants it elsewhere in the menu reorders that filter's answer at a later priority. |
 | `cbuild_saved` | 0.8.0 | The query parameter Open adds: the saved build's UUID. Read only on its owner's page, where Save build then updates that build. Another customer's page, and a visitor's, ignore it; no build link, Copy link or `og:url` carries it. |
 
-Save build, Rename, Delete and, from 1.0.0, Undo (the action `cbuild_restore_build`) are forms posted to My builds with a nonce each, answered on `template_redirect`. Their fields are the builder's own and no part of this API (D-217, D-231). The phone bar's estimate line, `.cbuild-bar__estimate` (1.0.0, D-230), is the builder's own markup, as the rest of the bar is. There is no REST route for saved builds.
+Save build, Rename, Delete and, from 0.9.0, Undo (the action `cbuild_restore_build`) are forms posted to My builds with a nonce each, answered on `template_redirect`. Their fields are the builder's own and no part of this API (D-217, D-231). The phone bar's estimate line, `.cbuild-bar__estimate` (1.0.0, D-230), is the builder's own markup, as the rest of the bar is. There is no REST route for saved builds.
 
 ### Styling the board's top
 
@@ -767,5 +767,5 @@ The names another plugin may meet on the order screens:
 | Item | Since | What it is |
 | --- | --- | --- |
 | Exporter and eraser `creative-skateboard-builder` | 0.8.0 | "Saved builds" in Tools > Export Personal Data and Erase Personal Data: each of the account's saved builds, found by its email address. One page each (D-220). |
-| The build under a kit's order line | 0.8.0 | On `woocommerce_order_item_meta_end`: the build's picture, `.cbuild-email-picture`, with a short alt text from 1.0.0, "The build, as drawn", since the parts are listed under it, on the order's page and in HTML emails; the build in words in plain text. Each part's row has the class `cbuild-order-part` (D-221). The markup is the plugin's own and may change in any release. |
+| The build under a kit's order line | 0.8.0 | On `woocommerce_order_item_meta_end`: the build's picture, `.cbuild-email-picture`, with a short alt text from 0.9.0, "The build, as drawn", since the parts are listed under it, on the order's page and in HTML emails; the build in words in plain text. Each part's row has the class `cbuild-order-part` (D-221). The markup is the plugin's own and may change in any release. |
 

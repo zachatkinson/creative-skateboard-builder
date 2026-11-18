@@ -3127,3 +3127,37 @@ CI's first full run of milestone 9 (run 44264444652) failed the `fr-ca` project 
 The same run failed Firefox's phone bar test on the desktop and phone projects. The bar is taller with the estimate (D-230), so its top falls on a fraction of a pixel. Firefox lays out in sixtieths of a pixel and gave the parts list's bottom as 599.8333740 against the bar's top plus one at 599.8333129, for the same line. The test now compares the two in sixtieths of a pixel; the one-pixel allowance is unchanged.
 
 **Red runs:** the fr-ca project on CI, "✘ 708 [fr-ca] › build-tab.spec.ts:72" and 25 more before the leg's timeout. Firefox: "Expected: <= 599.8333129882812, Received: 599.8333740234375" at `builder.spec.ts:2915`, locally too.
+
+### D-235 · The test sites never update themselves, and run WordPress 7.1.5 · 2026-11-18
+
+CI run 44328074447 failed one browser test on firefox-desktop in the newest leg: after "Start from Street" the page was WordPress's "Briefly unavailable for scheduled maintenance." The trace has the cart and the builder answering 503 from 18:14:34. No spec updates anything. WordPress 7.1.5 had been released, and wordpress.org lists 7.1.4 as insecure, so the fresh 7.1.4 site's cron offered itself a minor core update and turned on maintenance mode for it (`wp-admin/includes/class-wp-automatic-updater.php:474`, WordPress 7.1.4 and 7.1.5; translations skip maintenance mode, core, plugins and themes do not).
+
+- **Both sites set `AUTOMATIC_UPDATER_DISABLED`** in `.wp-env.json` and `.wp-env.tests.json`. Each leg tests the versions it pins, and a release of WordPress, WooCommerce or a theme cannot change a site under a run. The oldest leg's override files leave `config` alone, so it holds there too.
+- **The newest leg moves to WordPress 7.1.5,** Zach's call on 18 November 2026: it is the release shops and the demo now run, as D-145 moves WooCommerce's pin to the release the demo runs. `.wp-env.json`, `.wp-env.tests.json`, `CLAUDE.md` and `docs/AUDIT.md` say 7.1.5; the benchmarks and decisions measured on 7.1.4 keep the version they were measured on. WooCommerce 11.3.0 is still its newest release.
+
+**Red:** "✘ 441 [firefox-desktop] › tests/e2e/builder.spec.ts:1364:2", "Expected: "Step 7 of 7: Review"", "Error: element(s) not found" at `builder.spec.ts:1381`, with the maintenance page in the screenshot. Locally, `WP_Automatic_Updater::is_disabled()` printed "enabled" on both sites before and "disabled" on both after.
+
+### D-236 · Milestone 9 is 0.9.0, and the configurator is 1.0.0 · 2026-11-18
+
+Zach, 18 November 2026, once the redesign (the full-screen configurator) was proposed for after milestone 9: milestone 10, the configurator, is tagged `v1.0.0`, and milestone 9 is released as 0.9.0.
+
+**Why:** the checks a person makes on the screens (the screen-reader pass, French read by a person, the hallway test) and the visual baselines would be made on a front end about to be replaced, then made again. And 1.0.0 freezes the public API (Semantic Versioning holds from it): the configurator adds to the state route and changes the builder's templates and classes, which is plain work before the freeze and deprecations after it. No shop sells with the builder yet, so none waits on the number.
+
+- **0.9.0** is milestone 9 as built: the plugin header, `CBUILD_VERSION`, `package.json`, `readme.txt`'s stable tag and entries, the translation files' headers, and the `@since` of the three items milestone 9 added (`SavedBuilds::restore()`, `SavedBuildHooks::RESTORE`, `MyBuildsView`'s Undo), with `docs/HOOKS.md`, `docs/PRIVACY.md` and `docs/A11Y.md` dated to match. `docs/AUDIT-1.0.0.md` is renamed `docs/AUDIT-0.9.0.md`, `docs/BENCHMARK.md`'s section and `docs/SECURITY.md`'s column with it.
+- **Moved to milestone 10:** the manual accessibility pass, French read by a person, the hallway test, the API freeze, and the full audit in a new `docs/AUDIT-1.0.0.md`. D-225's hold now applies to 0.9.0 only until Cowork's review: the tag waits for Zach's approval of milestone 9, as every milestone's has.
+- **Milestone 11, the motion,** follows 1.0.0 as 1.1.0: it adds no public API.
+- **What keeps its words:** decisions and reviews written before today say 1.0.0 where they meant this milestone. They are records, and stay as written.
+
+### D-237 · The repository is public, and `main` and the release tags are held by rulesets · 2026-11-18
+
+Zach, 18 November 2026: the repository goes public, so CI runs on GitHub's standard runners at no cost (public repositories' standard runners are free; ours are all `ubuntu-26.04`), and its setup follows best practice, "do it all".
+
+- **Before it went public:** gitleaks scanned every commit on every branch and found nothing.
+- **Who can write:** Zach is the only collaborator. Outsiders can only fork and open pull requests, which run no workflow until he approves them.
+- **`main`:** no force-push or deletion; changes only through a pull request; the seven CI jobs required; merge commits only; no bypass for anyone. This matches how every milestone already lands (a branch, a ready pull request, a merge on a green full run), and it binds Claude Code, which pushes with Zach's login.
+- **Tags:** `v*` tags can't be moved or deleted, since `release.yml` publishes what a tag names.
+- **Secrets and Actions:** secret scanning with push protection on; Actions limited to GitHub's own and the three third-party actions the workflows use, all pinned to SHAs (`sha_pinning_required`); private vulnerability reporting on. Merged branches are deleted.
+- **Not done:**
+  - Signed commits need a signing key set up for git first. That's Zach's call later.
+  - The scanning of non-provider patterns, and validity checks, need GitHub's paid Secret Protection.
+- **Why approvals stay at 0:** a pull request needs no approving review, since Zach can't approve his own and is the only reviewer. CI and the two reviewer agents stand in for a second person.

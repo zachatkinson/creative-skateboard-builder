@@ -212,7 +212,7 @@ tools/                    gates.sh, integration/ (PHPUnit 9.6), build, release, 
 
 - **Branches:** `main` is protected. Each milestone works on its own branch (`m6-builder`) and lands through one pull request, using the template in `.github/`.
 - **Commits:** an area and an imperative summary (`Cart: keep a build's parts with their parent`), with D-numbers where a decision is involved, as the family's repositories do. Small, each green.
-- **Versions:** milestones tag `v0.<n>.0`; the last tags `v1.0.0`. Semantic Versioning from 1.0, with the public API rules in `AUDIT.md`. The version lives in the plugin header, `readme.txt`'s stable tag, `package.json` and a constant, kept in step by the build script.
+- **Versions:** milestones tag `v0.<n>.0`; milestone 10 tags `v1.0.0` (D-236). Semantic Versioning from 1.0, with the public API rules in `AUDIT.md`. The version lives in the plugin header, `readme.txt`'s stable tag, `package.json` and a constant, kept in step by the build script.
 - **Changelog:** `CHANGELOG.md` in Keep a Changelog's sections (Added, Changed, Deprecated, Removed, Fixed, Security), one entry per milestone. `readme.txt`'s `== Changelog ==` is written by hand for shop owners, a line or two per release in plain words, and is what the update's "View details" popup and the release's notes show (D-053).
 - **Releases:** `.github/workflows/release.yml`, copied from Creative Search and kept the same:
   - It runs on a version tag once CI has passed on that commit.
