@@ -47,7 +47,21 @@ export function inLocale( project: string, text: string ): string {
  * @param send What sends the form: a click, or Enter on its button.
  */
 export async function answered( page: Page, send: () => Promise< void > ) {
-	await Promise.all( [ page.waitForEvent( 'load' ), send() ] );
+	// The form's own navigation, waited for too, so a press that sends nothing fails here and says so, not later at the
+	// next check, as it did under WebKit when Save build was pressed before the page's load (#50).
+	await Promise.all( [
+		page
+			.waitForRequest( ( request ) => request.isNavigationRequest(), {
+				timeout: 15000,
+			} )
+			.catch( () => {
+				throw new Error(
+					'The form sent nothing: no page was asked for within 15 s.'
+				);
+			} ),
+		page.waitForEvent( 'load' ),
+		send(),
+	] );
 }
 
 /**

@@ -97,10 +97,10 @@ Each table gives a rule of the dimension and the evidence that holds the code to
 
 | Rule | Evidence |
 | --- | --- |
-| The route's p95 under 80 ms at 500 candidates | `docs/BENCHMARK.md`, v1.0.0. |
+| The route's p95 under 80 ms at 500 candidates | Without a persistent cache, held: 67.6 ms cold, 47.4 ms warm (`docs/BENCHMARK.md`, v1.0.0). With Redis, warm 45.2 ms, but a request that finds the cache empty is over: 85.6 ms after a part moves, 88 to 94 ms cold. Open, O21. |
 | Fixed query counts | `SavedBuildsPageTest`'s twenty against one; `StateRouteBenchmarkTest`. |
 | The script under 15 kB and the styles under 10 kB | `npm run budget` on 18 November: `view.js` 3,027 B, `style-index.css` 2,987 B. |
-| LCP, CLS, TBT | `docs/BENCHMARK.md`, v1.0.0. The TBT flake on Twenty Twenty-Five is #52, O5. |
+| LCP, CLS, TBT | Kadence 1.95 s, 0.000, 5 ms; Twenty Twenty-Five 2.30 s, 0.012, 1 ms; a build link's review 1.98 s, 0.000, 21 ms (`docs/BENCHMARK.md`). The TBT flake on Twenty Twenty-Five is #52, O5. |
 | Nothing on pages without a builder | The cart's styles only with a build in the cart, the account's on account pages only (`ShowHooks`, `SavedBuildHooks`). |
 
 ## 9. Testing
@@ -166,10 +166,11 @@ Each table gives a rule of the dimension and the evidence that holds the code to
 | O11 | Classes over 300 lines (`BuilderView`, `BuildTab`, `PartSpecsPanel`, `KitEditor`) | Claude Code | 1.1 |
 | O12 | #59: the demo's emails, readable for a review | Zach, on the demo | Before Cowork's 1.0.0 review |
 | O13 | Earlier reviews' "For Zach": a carrier plugin's $0 kit line, the Stripe and WooPayments buttons, Shop Kit's checkout and template, Venture 5.0's 7.62 in axle, the sources for the Thunder 143, 148 and 161 | Cowork on the demo; Zach for the sources | Cowork's 1.0.0 review |
-| O14 | The dev toolchain's low `deepmerge` advisory, with no fix (#9, D-051) | Claude Code | Watched |
+| O14 | The dev toolchain's advisories with no fix yet: `deepmerge`, low (#9, D-051), and `picomatch` up to 4.0.7, high, a ReDoS (GHSA-fc5q-39xc-vjpf, Dependabot alert 2, 18 November). Neither ships: `npm audit --omit=dev` is clean | Claude Code | An override the day a fixed version is out |
 | O15 | AUDIT.md's dimension 2 to name its recorded exceptions | Zach to approve the wording | 1.0.x |
 | O16 | Minors listed in `docs/reviews/M9.md`: counts without `_n()`, the saved builds read with no `LIMIT` and the cap checked before the insert, two bounded admin loops, the forced-colours test not reading the colour, a pressed filter's inset line under the focus ring | Claude Code | 1.0.x |
 | O17 | `docs/SECURITY.md`'s line numbers from earlier releases | Claude Code | 1.0.x |
 | O18 | The eraser does not reach a session's Undo copy, held for one page view (D-231) | Zach to confirm | Before the tag |
 | O19 | The spec's grip sheets sized "9 × 33 in" in one attribute, which the mapping cannot split (spec review S4) | Zach to decide | Before the tag |
 | O20 | A preset's tile shows its deck's photo, not the preset's board (spec review S5; D-154 said milestone 7) | Zach to decide | Before the tag |
+| O21 | With a persistent object cache, the state route's first request after a part moves is 85.6 ms p95, over the 80 ms budget; each miss is a round trip to Redis (`docs/BENCHMARK.md`, v1.0.0) | Zach to decide. Batching the plugin's own two reads measured no better (`docs/BENCHMARK.md`); WooCommerce's per-product reads are next | Before the tag |

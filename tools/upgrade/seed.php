@@ -61,6 +61,11 @@ if ( 'kits' === ( $cbuild_args[0] ?? '' ) ) {
 		return;
 	}
 	$kits = CreativeBranding\SkateboardBuilder\Plugin::container()->get( $port );
+	// 0.3.x's Kits was a stub with no kit(): no kit could be read before 0.4.0.
+	if ( ! method_exists( $kits, 'kit' ) ) {
+		echo "kits:0\n";
+		return;
+	}
 	$read = 0;
 	foreach ( wc_get_products( array( 'type' => 'cbuild_kit', 'limit' => 50, 'return' => 'ids', 'status' => array( 'publish', 'private', 'draft' ) ) ) as $id ) {
 		$read += null === $kits->kit( (int) $id ) ? 0 : 1;

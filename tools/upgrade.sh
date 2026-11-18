@@ -69,6 +69,15 @@ wp plugin uninstall "$slug" --skip-delete >/dev/null
 wp plugin install "$here/tmp/upgrade/old.zip" --force --activate >/dev/null
 [ "$(wp plugin get "$copy" --field=version | tail -n 1)" = "$from" ] || fail "$from did not install"
 
+# From 0.6.0 the update is made clean in one request with both releases' code (D-208). Before it, the releases were the
+# agency's own builds, which no shop runs, and their readme said to deactivate the plugin first: they are updated so,
+# and the check of their container in the update's request is not made.
+clean=1
+[ "$(printf '%s\n%s\n' "$from" 0.6.0 | sort -V | head -n 1)" = 0.6.0 ] || clean=0
+
+if [ "$clean" = 0 ]; then
+	echo "2. Not made for $from, from before 0.6.0: updated deactivated, as its readme said (D-208)."
+else
 echo "2. $from's container, asked for each of its services from $version's files."
 wp plugin install "$here/tmp/upgrade/old.zip" --force >/dev/null
 said="$(wp_said --skip-plugins="$copy" eval-file "$here/tools/upgrade/graph.php" services "wp-content/plugins/$copy" "$here/tmp/upgrade/services.json")"
@@ -80,6 +89,7 @@ for kind in admin cron cli; do
 	echo "$said" | grep . | sed 's/^/   /'
 	case "$said" in *Success:*) ;; *) fail "$from's container does not fit $version's files in a $kind request" ;; esac
 done
+fi
 
 echo "3. $from updated to $version through the upload screen."
 # The graph check left this release's files in the copy's folder, and WP-CLI booted them: a clean install of the
@@ -108,11 +118,16 @@ user="${saved#saved:}"; [ "$user" = none ] && user=0
 wp action-scheduler run --group=creative-skateboard-builder >/dev/null
 echo "   on $from: $seed; kits $from reads: $kits; $saved"
 before="$(errors)"
+[ "$clean" = 1 ] || wp plugin deactivate "$copy" >/dev/null
 page="$(node tools/upgrade/upload.mjs "tmp/upgrade/$upload")"
 echo "$page" | grep -E 'updated successfully|critical error' | sed 's/^/   /' || true
 case "$page" in *"critical error"*) fail "the update page ended in a critical error" ;; esac
 case "$page" in *"Plugin updated successfully"*) ;; *) fail "the update page did not say the plugin was updated" ;; esac
 [ "$(errors)" = "$before" ] || fail "the update logged a PHP error naming the plugin ($before before, $(errors) after)"
+if [ "$clean" = 0 ]; then
+	wp plugin activate "$copy" >/dev/null
+	wp action-scheduler run --group=creative-skateboard-builder >/dev/null
+fi
 state="$(wp plugin get "$copy" --field=version | tail -n 1)|$(wp plugin get "$copy" --field=status | tail -n 1)|$(wp option get cbuild_db_version | tail -n 1)"
 [ "$state" = "$version|active|$schema" ] || fail "after the update: $state (version|status|schema)"
 # WordPress keeps the upload under its own name, as an attachment, until the update's request deletes both.
@@ -136,4 +151,8 @@ case "$failed" in ''|*[!0-9]*) fail "the plugin's failed jobs could not be count
 [ "$failed" = 0 ] || fail "after the update, $failed of the plugin's jobs failed"
 [ "$(errors)" = "$before" ] || fail "the jobs after the update logged a PHP error naming the plugin"
 echo "   after: $read; no failed job."
-echo "Upgrade: $from updates to $version through the upload screen, and its container fits $version's files."
+if [ "$clean" = 1 ]; then
+	echo "Upgrade: $from updates to $version through the upload screen, and its container fits $version's files."
+else
+	echo "Upgrade: $from updates to $version through the upload screen, deactivated first (D-208)."
+fi

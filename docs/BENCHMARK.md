@@ -216,3 +216,41 @@ The queries the board adds, three a cold request, are the parts' meta read toget
 | A pick's own selected state painted, 4× slowed CPU | Under 100 ms in Chromium, desktop and phone | 100 ms |
 
 Twenty Twenty-Five's shift measured 0.012 here, against 0.133 for 0.6.0; it stays reported, not held, until a run shows why it moved. The build link's review scores 0.61 for SEO, which is not asserted: the page says `noindex` (D-147).
+
+## v1.0.0
+
+Machine: Apple M1 Max, PHP 8.5.12 in wp-env on OrbStack, WordPress 7.1.4, WooCommerce 11.3.0, wp-env's own database server, Xdebug off. Measured 18 November 2026 on the milestone 9 branch. The catalogue is v0.7.0's: seven slots over 2,000 simple products, 500 of them trucks, the decks with layer images and their renditions. `composer test:benchmark` (the fit engine at 500 candidates) passed its budgets.
+
+| The state route, 500 candidates in the step | No persistent cache: p95 | Queries | Redis 8.10 and Redis Object Cache 3.0.0: p95 | Queries | Budget |
+| --- | --- | --- | --- | --- | --- |
+| Cold: the cache emptied before each request | 67.6 ms | 45 | 94.2 ms (88.1 ms in a second run) | 35 | 80 ms |
+| Warm | 47.4 ms | 18 | 45.2 ms | 14 | 80 ms |
+| A move to the next step, cold | 65.1 ms | 40 | 88.0 ms | 35 | 80 ms |
+| A move to the next step, warm | 47.0 ms | 18 | 46.4 ms | 14 | 80 ms |
+| The first request after one part moves | 66.2 ms | 40 | 85.6 ms | 35 | 80 ms |
+| The first request after a reindex of 2,000 parts | 58.6 ms | 40 | | | 80 ms |
+| With no row kept at all | 459 ms | 106 | | | Printed, not held |
+
+**With a persistent object cache, three rows are over the budget.** Each is a request that finds the cache empty or emptied, and pays a round trip to Redis for each miss and each write it makes. The warm rows are faster than without the cache. "Cold" empties the whole cache before each request, which models a site with no persistent cache and happens on a Redis site only after a flush. "The first request after one part moves" is a shop's ordinary request after a stock change, and it is the one that matters. The budget stays at 80 ms. Batching the plugin's own two reads of the cache (`wp_cache_get_multiple()` in `ProductMetaRepository::prime()` and `WooPartCards::cards()`) was tried on 18 November and measured no better: 98.5 ms after a part moves, in a run that shared the machine with an update test, so no gain could be trusted. It is not in 1.0.0. Most of the misses are WooCommerce's own reads of each product, which is where to look next; it is open for Zach in `docs/reviews/M9.md` before the tag. `composer test:benchmark:integration` holds the budget without the cache, as before. The run with Redis is `tools/object-cache.sh up`, then `CBUILD_OBJECT_CACHE=persistent composer test:benchmark:integration`.
+
+| The rest, no persistent cache | Result | Budget |
+| --- | --- | --- |
+| Adding a 7-part build to the cart by the Store API | p95 26.4 ms, 58 queries | 300 ms, 58 queries |
+| A Store API cart read with the build in it | p95 21.1 ms, 28 queries | Recorded |
+| My builds with 100 saved builds, caches emptied | p95 432 ms, 112 queries | 600 ms, 130 queries |
+| Reindex of 2,000 parts | 22 batches, 0.95 s in all; a batch 69 ms and 319 queries at most | Each batch under 10 s and 400 queries |
+| The specs export, 2,000 rows | 0.32 s | 10 s |
+| The Catalogue check, 2,000 parts | 0.45 s, peak memory 183 MB | 10 s |
+| The import's dry run, 5,000 rows read; 1,800 parts written | 0.27 s planned; 20 jobs, 662 ms at the slowest | 10 s a job |
+| A build's three composed pictures, GD | 0.37 s, 19.3 MB; 23 kB a build | 4 s, 64 MB |
+
+| The builder page | Result | Budget |
+| --- | --- | --- |
+| The store's script, Brotli 11 | 3,027 B | 15,360 B |
+| The styles, and their RTL twin | 2,987 B | 10,240 B |
+| LCP, CLS and TBT, Twenty Twenty-Five, mobile profile, three runs | 2.30 s, 0.012, 1 ms (medians) | LCP and CLS reported (D-165); TBT under 200 ms |
+| LCP, CLS and TBT, Kadence | 1.95 s, 0.000, 5 ms | 2.5 s, 0.1, 200 ms |
+| A build link's review with its layers drawn, Kadence | 1.98 s, 0.000, 21 ms | The same |
+| Lighthouse SEO, the clean page on both themes | 0.92 | 0.9 or more |
+
+Not measured here: the renditions migration at 2,000 parts (0.8.0's review, auditor 19), which queues one index job a part and needs a site with that many layer images; it stays open in `docs/AUDIT-1.0.0.md` (O6).
