@@ -263,7 +263,9 @@ jobs:
     # (CI run 43610439862, D-188); a minute not used is not billed. The other legs, and a draft's newest, take about
     # 25 minutes since milestone 7; at 30 a slow runner stopped the oldest leg with its browser tests still running
     # (CI run 43906165176). At 45 a slow runner fits and a hang still stops at less than the newest leg's limit.
-    timeout-minutes: ${{ matrix.leg == 'newest' && needs.scope.outputs.browsers == 'every' && 120 || 45 }}
+    # Since D-258 the newest leg runs Chromium's two projects alone, and the `browsers` job the rest beside it, so
+    # every leg takes about what the oldest does.
+    timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
@@ -320,16 +322,18 @@ jobs:
       - name: The zip installs, upgrades over itself and uninstalls clean
         if: matrix.leg == 'newest' || matrix.leg == 'oldest'
         run: npm run zip-lifecycle
-      # Newest runs every browser project, and the visual snapshots after them; oldest, which is there for the WordPress
-      # and WooCommerce versions, one desktop and one phone engine, and so does a draft's newest (D-085). The browsers
-      # are cached by Playwright's version and the engines; the system packages they need are installed each time.
+      # Where every project runs, newest runs Chromium's desktop and phone, and the `browsers` job the other engines,
+      # the other projects, the update from every release and the visual snapshots, each in a job of its own (D-258).
+      # Oldest, which is there for the WordPress and WooCommerce versions, runs one desktop and one phone engine, and
+      # so does a draft's newest (D-085). The browsers are cached by Playwright's version and the engines; the system
+      # packages they need are installed each time.
       - name: The browser projects for the leg
         id: browsers
         if: matrix.leg == 'newest' || matrix.leg == 'oldest'
         run: |
           if [ "${{ matrix.leg }}" = newest ] && [ "${{ needs.scope.outputs.browsers }}" = every ]; then
-            echo "engines=chromium firefox webkit" >> "$GITHUB_OUTPUT"
-            echo "projects=" >> "$GITHUB_OUTPUT"
+            echo "engines=chromium" >> "$GITHUB_OUTPUT"
+            echo "projects=--project=chromium-desktop --project=chromium-phone" >> "$GITHUB_OUTPUT"
           else
             echo "engines=chromium webkit" >> "$GITHUB_OUTPUT"
             echo "projects=--project=chromium-desktop --project=webkit-phone" >> "$GITHUB_OUTPUT"
@@ -340,7 +344,7 @@ jobs:
         if: matrix.leg == 'newest' || matrix.leg == 'oldest'
         with:
           path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ steps.browsers.outputs.version }}-${{ steps.browsers.outputs.projects == '' && 'every' || 'two' }}
+          key: playwright-${{ runner.os }}-${{ steps.browsers.outputs.version }}-${{ steps.browsers.outputs.engines }}
       # apt can hang for as long as the job has when the runner cannot reach Ubuntu's mirrors: two jobs sat here for 15
       # and 19 minutes on 11 November 2026 (D-123). Each try is stopped after a few minutes, and there are three.
       # `timeout` stops npx, not the apt-get it started as root, so a try waits up to five minutes for the last one's
@@ -378,20 +382,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: npm run upgrade
-      # Milestone 9: from every published release, each with the shop's data made on it (D-232). Only where every
-      # browser project runs, as the visual snapshots: some 25 minutes more.
-      - name: The update from every published release
-        if: matrix.leg == 'newest' && needs.scope.outputs.browsers == 'every'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: npm run upgrade:all
       - run: npm run test:e2e -- ${{ steps.browsers.outputs.projects }}
         if: matrix.leg == 'newest' || matrix.leg == 'oldest'
-      # In Playwright's own Linux image, as locally, so the baselines are one machine's pictures (D-162). Only where
-      # every browser project runs: a draft's newest leg and the oldest leg leave it out, as they leave out the engines.
-      - name: The visual snapshots (three themes, light and dark), in Playwright's container
-        if: matrix.leg == 'newest' && needs.scope.outputs.browsers == 'every'
-        run: bash tools/visual.sh
       - name: Lighthouse CI (LCP, CLS, TBT, SEO on the mobile profile)
         if: matrix.leg == 'newest'
         run: npm run lhci
@@ -406,3 +398,96 @@ jobs:
       - name: WordPress's debug log
         if: failure()
         run: npx wp-env run cli --config=.wp-env.tests.json -- bash -c 'cat wp-content/debug.log 2>/dev/null || true'; npx wp-env run cli -- bash -c 'cat wp-content/debug.log 2>/dev/null || true'
+
+  # The newest WordPress and WooCommerce's other browser work, beside the newest leg, where every project runs (D-258).
+  # The newest leg did all of it in one job, some 95 minutes, which set the length of every full run; each part is now
+  # a job of its own on its own browser site. Each keeps one Playwright worker, since the tests share the site's state.
+  # It is skipped where the newest leg runs two projects alone: a draft, and a change only to the browser tests.
+  browsers:
+    name: Browser (${{ matrix.part }})
+    needs: scope
+    if: needs.scope.outputs.heavy == 'true' && needs.scope.outputs.full == 'true' && needs.scope.outputs.browsers == 'every'
+    runs-on: ubuntu-26.04
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - part: webkit
+            engines: webkit
+            run: npm run test:e2e -- --project=webkit-desktop --project=webkit-phone
+          - part: firefox
+            engines: firefox
+            run: npm run test:e2e -- --project=firefox-desktop --project=firefox-phone
+          - part: no-js, fr-ca, rtl
+            engines: chromium
+            run: npm run test:e2e -- --project=no-js --project=fr-ca --project=rtl
+          # Milestone 9: from every published release, each with the shop's data made on it (D-232).
+          - part: updates
+            engines: chromium
+            run: npm run upgrade:all
+          # In Playwright's own Linux image, as locally, so the baselines are one machine's pictures (D-162).
+          - part: visual
+            engines: ''
+            run: bash tools/visual.sh
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
+        with:
+          php-version: '8.5'
+          coverage: none
+          tools: composer:v2
+      - uses: ramsey/composer-install@65e4f84970763564f46a70b8a54b90d033b3bdda # 4.0.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: npm run env:start
+      - id: playwright
+        if: matrix.engines != ''
+        run: echo "version=$(node -p "require('./node_modules/@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+        id: playwright-cache
+        if: matrix.engines != ''
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}-${{ matrix.engines }}
+      # As the legs install them, with the same three tries (D-123, D-126, D-224).
+      - name: Playwright's browsers and their system packages (three tries, five minutes each)
+        if: matrix.engines != '' && steps.playwright-cache.outputs.cache-hit != 'true'
+        run: |
+          for try in 1 2 3; do
+            timeout 300 bash -c 'while pgrep -x apt-get > /dev/null || pgrep -x dpkg > /dev/null; do sleep 5; done' || true
+            if timeout 300 npx playwright install --with-deps ${{ matrix.engines }}; then exit 0; fi
+            echo "::warning::Try ${try} of Playwright's install did not finish."
+            grep -rl azure.archive.ubuntu.com /etc/apt | xargs -r sudo sed -i 's/azure\.archive\.ubuntu\.com/archive.ubuntu.com/g' || true
+            sleep 30
+          done
+          exit 1
+      - name: The system packages Playwright's cached browsers need (three tries, three minutes each)
+        if: matrix.engines != '' && steps.playwright-cache.outputs.cache-hit == 'true'
+        run: |
+          for try in 1 2 3; do
+            timeout 300 bash -c 'while pgrep -x apt-get > /dev/null || pgrep -x dpkg > /dev/null; do sleep 5; done' || true
+            if timeout 180 npx playwright install-deps ${{ matrix.engines }}; then exit 0; fi
+            echo "::warning::Try ${try} of Playwright's system packages did not finish."
+            grep -rl azure.archive.ubuntu.com /etc/apt | xargs -r sudo sed -i 's/azure\.archive\.ubuntu\.com/archive.ubuntu.com/g' || true
+            sleep 30
+          done
+          exit 1
+      - name: ${{ matrix.part }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: ${{ matrix.run }}
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        if: failure() || cancelled()
+        with:
+          name: browser-newest-${{ strategy.job-index }}
+          path: test-results
+      - name: WordPress's debug log
+        if: failure()
+        run: npx wp-env run cli -- bash -c 'cat wp-content/debug.log 2>/dev/null || true'
