@@ -489,10 +489,12 @@ final class PartSpecsPanel {
 		$notes  = $this->inUse( $product );
 		$groups = array();
 		$slots  = $this->slots( $product->get_id() );
+		$sets   = $this->inSets( $slots );
 		foreach ( self::layout() as $label => $keys ) {
 			$fields = array();
-			// The group a kit's slot needs of this part is open (issue #16), and so is one with a value.
-			$open = in_array( self::SLOTS[ $keys[0]->value ] ?? '', $slots, true );
+			// The group a kit's slot needs of this part is open (issue #16), and so is one with a value. A slot that
+			// takes more than one unit needs the part's Number in a set (R7), so Sold in sets opens for it (issue #61).
+			$open = in_array( self::SLOTS[ $keys[0]->value ] ?? '', $slots, true ) || ( $sets && SpecKey::SetSize === $keys[0] );
 			if ( in_array( SpecKey::AxleWidth, $keys, true ) ) {
 				$fields[] = $this->chartField( $product, self::field( $id, SpecWriter::TABLE ), $chart );
 				$open     = $open || '' !== $fields[0]['value'];
@@ -548,6 +550,22 @@ final class PartSpecsPanel {
 	private function slots( int $product ): array {
 		$this->read ??= array_values( array_column( $this->kits->all(), 'kit' ) );
 		return $this->kits->slotsOf( $product, ...$this->read );
+	}
+
+	/**
+	 * Whether a kit slot that takes the part takes more than one unit of it, so R7 needs its Number in a set.
+	 *
+	 * @param list<string> $slots The keys of the slots that take the part.
+	 */
+	private function inSets( array $slots ): bool {
+		foreach ( $this->read ?? array() as $kit ) {
+			foreach ( $kit->slots->all() as $slot ) {
+				if ( $slot->units > 1 && in_array( $slot->key, $slots, true ) ) {
+					return true;
+				}
+			}
+		}
+		return false;
 	}
 
 	/**
