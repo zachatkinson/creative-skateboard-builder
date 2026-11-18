@@ -4,6 +4,7 @@
  * has, or keeps one it lost, and when a shipped translation has an empty, fuzzy or misplaced entry: every msgstr
  * filled, every plural form present, the placeholders of each form the same set as its source's, and the spacing
  * of its locale's punctuation (Creative Search's D-158: in fr_CA a no-break space before a colon and inside « »).
+ * From milestone 9 fr_CA is required: the check fails when it is missing.
  *
  * Run: php tools/i18n-check.php tmp/i18n-check.pot languages/creative-skateboard-builder.pot languages/*.po
  * (`composer i18n:check` makes the first file from the code with WP-CLI in wp-env.)
@@ -50,6 +51,13 @@ foreach ( array_merge( array( $cbuild_fresh, $cbuild_pot ), $cbuild_pos ) as $cb
 }
 
 $cbuild_problems = array();
+// From milestone 9 French ships, complete (roadmap; docs/AUDIT.md, dimension 6), so its file must be there to be read.
+foreach ( array( 'fr_CA' ) as $cbuild_required ) {
+	$cbuild_named = array_filter( $cbuild_pos, static fn( string $file ): bool => str_ends_with( $file, '-' . $cbuild_required . '.po' ) );
+	if ( array() === $cbuild_named ) {
+		$cbuild_problems[] = "languages/: no {$cbuild_required} translation, which ships complete (run composer i18n:po and translate it)";
+	}
+}
 $cbuild_code     = array_keys( cbuild_po_entries( $cbuild_fresh ) );
 $cbuild_kept     = array_keys( cbuild_po_entries( $cbuild_pot ) );
 foreach ( array_diff( $cbuild_code, $cbuild_kept ) as $cbuild_key ) {

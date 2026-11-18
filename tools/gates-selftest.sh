@@ -16,6 +16,7 @@ for fixture in "$fixtures"/*.fixture; do
 	printf '<?php\ndeclare( strict_types=1 );\n' > "$root/uninstall.php"
 	case "$name" in
 		*.pot) cp "$fixture" "$root/languages/creative-skateboard-builder.pot" ;;
+		*.po) cp "$fixture" "$root/languages/creative-skateboard-builder-fr_CA.po" ;;
 		*.yml) mkdir -p "$root/.github/workflows"; cp "$fixture" "$root/.github/workflows/release.yml" ;;
 		6-*|11-*|12-*|13-*) mkdir -p "$root/src/Domain"; cp "$fixture" "$root/src/Domain/Probe.php" ;;
 		14-*|15-*) mkdir -p "$root/assets/src/builder"; cp "$fixture" "$root/assets/src/builder/probe.ts" ;;

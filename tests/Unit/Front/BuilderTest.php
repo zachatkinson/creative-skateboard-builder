@@ -479,7 +479,8 @@ final class BuilderTest extends TestCase {
 					'disabled' => false,
 				),
 			),
-			array_diff_key( $view['bar'], array_flip( array( 'photo', 'picture', 'board' ) ) )
+			// The estimate has a test of its own, below.
+			array_diff_key( $view['bar'], array_flip( array( 'photo', 'picture', 'board', 'hasEstimate', 'estimate' ) ) )
 		);
 		self::assertSame( $view['step']['next']['text'], $view['bar']['next']['text'], "the step's own Next, sent from its form" );
 		$bar   = array_diff_key( $view['bar']['photo'], array( 'classes' => true ) );
@@ -863,6 +864,20 @@ final class BuilderTest extends TestCase {
 		self::assertFalse( $whole['summary']['hasEstimate'], 'every slot picked: the total says it all' );
 		self::assertStringEndsWith( ' Total: ' . $whole['summary']['total'] . '.', $whole['status'] );
 		self::assertFalse( $this->show( new BuildLink() )['view']['summary']['hasEstimate'], 'nothing to estimate before the deck' );
+	}
+
+	// Cowork's 0.8.0 review, F2 (#54): on a phone the summary is in the shut parts sheet, so the bar gives the estimate
+	// itself, on a line under the amount, while one is given. The amount stays alone (D-207).
+	public function test_the_phone_bar_gives_the_estimate_under_its_amount_while_one_is_given(): void {
+		$view = $this->show( new BuildLink( array( SlotKey::DECK => 101 ) ) )['view'];
+		self::assertSame( '$60.00', $view['bar']['amount'], 'the amount alone' );
+		self::assertTrue( $view['bar']['hasEstimate'] );
+		self::assertMatchesRegularExpression( '/^Complete from about \$\d+\.\d\d$/', $view['bar']['estimate'] );
+		self::assertStringEndsWith( substr( $view['summary']['estimate'], strlen( 'A complete board from about ' ) ), $view['bar']['estimate'], 'the summary\'s amount' );
+
+		$whole = $this->show( new BuildLink( self::STREET, null, BuildLink::REVIEW ) )['view'];
+		self::assertFalse( $whole['bar']['hasEstimate'], 'every slot picked: no estimate' );
+		self::assertFalse( $this->show( new BuildLink() )['view']['bar']['hasEstimate'], 'nothing before the deck' );
 	}
 
 	public function test_a_card_lists_its_notes_and_the_summary_what_other_plugins_add(): void {

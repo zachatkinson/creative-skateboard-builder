@@ -127,3 +127,94 @@ for ( const theme of THEMES ) {
 		} );
 	}
 }
+
+// Cowork's 0.8.0 review, F1 (#53): the demo's dark Kadence, its "contrast" preset dark too, with a deck card in focus
+// from the keyboard. The ring's two tones are seen on the near-black page (focus.spec.ts measures them).
+test( 'a deck card in focus on the demo’s dark Kadence, desktop', async ( {
+	page: on,
+	context,
+	baseURL,
+} ) => {
+	const url = baseURL || 'http://localhost:8898';
+	await context.addCookies( [
+		{ name: 'cbuild_e2e_theme', value: 'kadence', url },
+		{ name: 'cbuild_e2e_scheme', value: 'demo-dark', url },
+	] );
+	await on.setViewportSize( { width: 1280, height: 900 } );
+	await on.emulateMedia( { colorScheme: 'dark', reducedMotion: 'reduce' } );
+	await on.goto( page() );
+	await still( on, 1280 );
+	for ( let i = 0; i < 120; i++ ) {
+		await on.keyboard.press( 'Tab' );
+		if (
+			await on.evaluate(
+				() =>
+					document.documentElement.ownerDocument.activeElement?.matches(
+						'.cbuild-card__control'
+					) ?? false
+			)
+		) {
+			break;
+		}
+	}
+	// The card and the ring around it: a picture of the card's own box would leave out what is drawn outside it.
+	const box = await on
+		.locator( '.cbuild-card:has(> .cbuild-card__control:focus-visible)' )
+		.boundingBox();
+	expect( box ).not.toBeNull();
+	if ( box ) {
+		await expect( on ).toHaveScreenshot(
+			'kadence-demo-dark-desktop-card-focus.png',
+			{
+				animations: 'disabled',
+				caret: 'hide',
+				clip: {
+					x: box.x - 12,
+					y: box.y - 12,
+					width: box.width + 24,
+					height: box.height + 24,
+				},
+			}
+		);
+	}
+} );
+
+// Cowork's 0.8.0 review, F2 (#54): on a phone, with the deck picked and the trucks' step shown, the bar gives the
+// estimate under its amount, as the summary does on a wider screen. Kadence, light and dark.
+for ( const scheme of SCHEMES ) {
+	test( `the phone bar with an estimate on Kadence, ${ scheme }`, async ( {
+		page: on,
+		context,
+		baseURL,
+	} ) => {
+		const url = baseURL || 'http://localhost:8898';
+		await context.addCookies( [
+			{ name: 'cbuild_e2e_theme', value: 'kadence', url },
+			{ name: 'cbuild_e2e_scheme', value: scheme, url },
+		] );
+		const fixture = JSON.parse(
+			readFileSync(
+				path.join( process.cwd(), 'tmp', 'e2e-builder.json' ),
+				'utf8'
+			)
+		) as { parts: Record< string, number > };
+		await on.setViewportSize( { width: 390, height: 844 } );
+		await on.emulateMedia( {
+			colorScheme: scheme,
+			reducedMotion: 'reduce',
+		} );
+		const link = new URL( page() );
+		link.searchParams.set(
+			'cbuild[deck]',
+			String( fixture.parts[ 'builder-test-deck-8-25' ] )
+		);
+		link.searchParams.set( 'cbuild[step]', 'trucks' );
+		await on.goto( link.toString() );
+		await expect( on.locator( '.cbuild-bar__estimate' ) ).toBeVisible();
+		await still( on, 390 );
+		await expect( on.locator( '.cbuild-bar' ) ).toHaveScreenshot(
+			`kadence-${ scheme }-phone-bar-estimate.png`,
+			{ animations: 'disabled', caret: 'hide' }
+		);
+	} );
+}

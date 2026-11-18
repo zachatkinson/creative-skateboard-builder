@@ -2739,11 +2739,16 @@ test.describe( 'The phone bar', () => {
 					const more = summary.querySelector(
 						'.cbuild-bar__more--show'
 					)!;
+					// The amount's own text, inside the shown part, which holds the estimate's line under it (D-230).
 					const sum = summary.querySelector(
-						'[aria-hidden="true"]'
+						'.cbuild-bar__amount > :first-child'
+					)!;
+					const estimate = summary.querySelector(
+						'.cbuild-bar__estimate'
 					)!;
 					return {
 						shown: sum.getClientRects().length,
+						estimate: estimate.getBoundingClientRect().height,
 						display: getComputedStyle( summary ).display,
 						lines: more.getClientRects().length,
 						under:
@@ -2775,9 +2780,28 @@ test.describe( 'The phone bar', () => {
 			// Beside the board's picture "Total:" broke the line on CI's fonts, and the bar grew under the thumb
 			// (D-207): the amount alone is shown.
 			expect( after.shown, 'the amount on one line' ).toBe( 1 );
-			expect( after.height, 'as high with a wider total' ).toBe(
-				before.height
-			);
+			// The deck brings the estimate, a line of its own under the amount (F2, D-230), which may grow the bar by
+			// at most that line. Without it the bar is as high as before: a wider total alone never grows it.
+			expect( before.estimate, 'no estimate on a blank build' ).toBe( 0 );
+			expect(
+				after.estimate,
+				'the estimate, once a deck is picked'
+			).toBeGreaterThan( 0 );
+			expect(
+				after.height - before.height,
+				"grown by the estimate's line at most"
+			).toBeLessThanOrEqual( Math.ceil( after.estimate ) );
+			await total.evaluate( ( summary ) => {
+				(
+					summary.querySelector(
+						'.cbuild-bar__estimate'
+					) as HTMLElement
+				 ).style.display = 'none';
+			} );
+			expect(
+				( await read() ).height,
+				'as high with a wider total, the estimate aside'
+			).toBe( before.height );
 		} );
 
 		test( `keeps its words readable on ${ theme }'s dark colours, and its open parts list too`, async ( {
@@ -2955,41 +2979,62 @@ test.describe( 'The phone bar', () => {
 		await expect( page.locator( '.cbuild-bar__lines' ) ).toBeVisible();
 	} );
 
-	test( 'never covers the control in focus', async ( { page } ) => {
-		await page.setViewportSize( PHONE );
-		await page.goto( fixture().page );
-		const bar = page.locator( '.cbuild-bar' );
-		await page.locator( '.cbuild__heading' ).focus();
-		const covered: string[] = [];
-		for ( let tab = 0; tab < 40; tab++ ) {
-			await page.keyboard.press( 'Tab' );
-			const seen = await page.evaluate( () => {
-				const own = document.querySelector( '.cbuild-bar' );
-				const focused = own?.ownerDocument
-					.activeElement as HTMLElement | null;
-				if (
-					! focused?.closest( '.cbuild' ) ||
-					! own ||
-					own.contains( focused )
-				) {
-					return null;
+	for ( const [ name, picked ] of [
+		[ 'a blank build', false ],
+		// Cowork's 0.8.0 review, F2 (D-230): with the estimate the bar is taller.
+		[ 'the bar giving the estimate', true ],
+	] as const ) {
+		test( `never covers the control in focus, ${ name }`, async ( {
+			page,
+		} ) => {
+			await page.setViewportSize( PHONE );
+			const at = new URL( fixture().page );
+			if ( picked ) {
+				at.searchParams.set(
+					'cbuild[deck]',
+					String( fixture().parts[ 'builder-test-deck-8-25' ] )
+				);
+				at.searchParams.set( 'cbuild[step]', 'trucks' );
+			}
+			await page.goto( at.toString() );
+			if ( picked ) {
+				await expect(
+					page.locator( '.cbuild-bar__estimate' )
+				).toBeVisible();
+			}
+			const bar = page.locator( '.cbuild-bar' );
+			await page.locator( '.cbuild__heading' ).focus();
+			const covered: string[] = [];
+			for ( let tab = 0; tab < 40; tab++ ) {
+				await page.keyboard.press( 'Tab' );
+				const seen = await page.evaluate( () => {
+					const own = document.querySelector( '.cbuild-bar' );
+					const focused = own?.ownerDocument
+						.activeElement as HTMLElement | null;
+					if (
+						! focused?.closest( '.cbuild' ) ||
+						! own ||
+						own.contains( focused )
+					) {
+						return null;
+					}
+					const box = focused.getBoundingClientRect();
+					const top = own.getBoundingClientRect().top;
+					return box.bottom > top + 1
+						? `${ focused.className || focused.tagName } ${ box.bottom } > ${ top }`
+						: '';
+				} );
+				if ( null === seen ) {
+					continue;
 				}
-				const box = focused.getBoundingClientRect();
-				const top = own.getBoundingClientRect().top;
-				return box.bottom > top + 1
-					? `${ focused.className || focused.tagName } ${ box.bottom } > ${ top }`
-					: '';
-			} );
-			if ( null === seen ) {
-				continue;
+				if ( '' !== seen ) {
+					covered.push( seen );
+				}
 			}
-			if ( '' !== seen ) {
-				covered.push( seen );
-			}
-		}
-		expect( covered ).toEqual( [] );
-		await expect( bar ).toBeVisible();
-	} );
+			expect( covered ).toEqual( [] );
+			await expect( bar ).toBeVisible();
+		} );
+	}
 
 	test( "stops where the builder ends, and never covers the theme's footer", async ( {
 		page,
@@ -3159,5 +3204,45 @@ test.describe( 'Saved builds', () => {
 				.locator( '.cbuild-my-builds__build' )
 				.filter( { hasText: name } )
 		).toHaveCount( 0 );
+
+		// Undo (Cowork's 0.8.0 review, F3; D-231): named for the build, reached and pressed by keyboard, and the build
+		// is back, with and without JavaScript.
+		const undo = page.getByRole( 'button', {
+			name: `Undo deleting ${ name }`,
+		} );
+		await expect( undo ).toBeVisible();
+		if ( javaScriptEnabled ) {
+			await axe(
+				page,
+				`${ info.project.name }: My builds, Undo offered`,
+				'.woocommerce-MyAccount-content'
+			);
+		}
+		await undo.focus();
+		await answered( page, () => page.keyboard.press( 'Enter' ) );
+		await expect(
+			page.getByText( 'The build is back in My builds.' )
+		).toBeVisible();
+		const back = page
+			.locator( '.cbuild-my-builds__build' )
+			.filter( { hasText: name } );
+		await expect( back ).toHaveCount( 1 );
+		if ( javaScriptEnabled ) {
+			// Focus goes where WooCommerce puts it after any action in My account: on its notice, which says the
+			// build is back (woocommerce.js, focus_populate_live_region; D-231).
+			await expect(
+				page
+					.locator( '[role="alert"]' )
+					.filter( { hasText: 'The build is back in My builds.' } ),
+				'focus on the notice that says so'
+			).toBeFocused();
+		}
+		await expect(
+			page.locator( '.cbuild-my-builds__undo' ),
+			'offered once'
+		).toHaveCount( 0 );
+		await answered( page, () =>
+			back.getByRole( 'button', { name: 'Delete' } ).click()
+		);
 	} );
 } );

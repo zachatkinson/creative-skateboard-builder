@@ -4,6 +4,28 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+### Changed
+
+- The focus ring has two tones, a dark outline between light bands, so it is seen on a dark theme and a light one alike, and it wins over a theme's own focus style on a button or a link. `--cbuild-focus` sets the outline as before, now `#000` where it took the theme's contrast colour, which a dark theme can have dark too (Cowork's 0.8.0 review, F1; #53; D-229).
+
+### Added
+
+- `--cbuild-focus-contrast`, the focus ring's light bands, `#fff` (D-229).
+- Undo after Delete on My builds: the notice is followed by an Undo button, named for the build, a form that works without JavaScript. The build comes back as it was, its parts, name and dates, even with a part gone since, and a second press makes nothing more (Cowork's 0.8.0 review, F3; #55; D-231).
+- French (Canada), complete: `languages/creative-skateboard-builder-fr_CA` as `.po`, `.mo`, `.l10n.php` and the editor script's JSON. `composer i18n:check` requires it, and the copy gate reads it (D-233).
+- `npm run upgrade:all`: the update from every published release, each with its own kits, parts and, from 0.8.0, a saved build made on it by that release, read back by this one (D-232).
+- On a phone, the bar gives the estimate under its amount while one is given, "Complete from about $207.96", as the summary does on a wider screen: the summary is in the shut parts sheet there. (Cowork's 0.8.0 review, F2; #54; D-230).
+
+### Fixed
+
+- On a network, the must-use file is written only for a network admin in wp-admin, never on admin-ajax.php or for a visitor, and a copy whose line endings changed is not written again (Cowork's 0.8.0 review, F5; #57; D-226).
+- The order's picture has a short alt, "The build, as drawn", on the order's page and in HTML emails, since its parts are listed under it (F4; #56).
+- The Build box says "No specs" for a part with none, not "None kept" (F6; #58).
+- The millimetre unit can be translated: its msgid held PHP's escape for the no-break space (D-228). The Build tab's warning names the Part specs field "Number in a set", as the panel does.
+- The canary's cart test reads the Edit build link's attributes in any order, as WordPress trunk prints them (#43; D-227).
+
+## [0.8.0] - 2026-11-17
+
 ### Added
 
 - WordPress's privacy tools find saved builds: the exporter and eraser `creative-skateboard-builder`, "Saved builds". A deleted account's builds go with it, and the suggested policy text says what is kept (D-220).

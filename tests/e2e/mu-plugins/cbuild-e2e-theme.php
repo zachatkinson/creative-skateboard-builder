@@ -19,6 +19,19 @@ if ( in_array( $cbuild_e2e_theme, array( 'twentytwentyfive', 'storefront', 'kade
 	add_filter( 'template', $cbuild_e2e_slug );
 }
 
+// The demo's dark Kadence (Cowork's 0.8.0 review, F1): a dark palette whose "contrast" preset is dark too, on a
+// near-black page, and the theme's own focus ring on buttons, dark as the demo measured it.
+if ( 'demo-dark' === $cbuild_e2e_scheme ) {
+	add_action(
+		'wp_head',
+		static function () {
+			echo '<style id="cbuild-e2e-demo-dark">:root{--wp--preset--color--contrast:#2a2a2a;--wp--preset--color--base:#121212}body{background:#0b0b0b;color:#e8e8e8}.woocommerce button.button:focus-visible,button:focus-visible,a:focus-visible{outline:3px solid rgb(18,18,18);outline-offset:0}</style>';
+		},
+		99
+	);
+	$cbuild_e2e_scheme = 'dark';
+}
+
 if ( 'dark' !== $cbuild_e2e_scheme ) {
 	return;
 }

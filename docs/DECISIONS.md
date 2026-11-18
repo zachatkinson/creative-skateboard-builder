@@ -3053,3 +3053,57 @@ The same pass found "Fill in Units in a set on its Part specs." in the Build tab
 
 **Red runs:** `composer i18n:check` on the code before the fix: "tmp/i18n-check.pot: "%s\u{00A0}mm" (millimetres) holds an escape PHP turns into another character; write the character itself in a single-quoted string", "1 i18n problem(s)." `BuildTabTest::test_saving_says_which_parts_of_a_slot_have_no_set_size`, with the test naming the panel's field: "Failed asserting that two arrays are identical." at BuildTabTest.php:627.
 
+### D-229 · The focus ring has two tones of its own, outside `:where()` · 2026-11-18
+
+Cowork's 0.8.0 review, F1 (#53). `--cbuild-focus` fell back to the theme's `contrast` preset, which on the demo's dark Kadence is dark too, so focus on a deck card (2 px of rgb(42, 42, 42)) and on Next (Kadence's own 3 px of rgb(18, 18, 18), which won over the builder's rule inside `:where()`) could not be seen on the near-black page.
+
+The ring is now a 2 px outline in `--cbuild-focus`, `#000`, between two light bands drawn by a box-shadow in `--cbuild-focus-contrast`, `#fff`. Whatever is behind it, one of the two stands out from it by 3:1 or better (WCAG 2.4.11): black and white each reach at least 4.5:1 against any colour on one side of mid-grey. The review suggested the builder's text colour and its background. That was not taken, because neither is known: `--cbuild-text` is `currentcolor`, which a custom property resolves where it is used, on a button's own colour, and the builder has no ground of its own, only the page's, which can be an image or a gradient. The ring is outside `:where()` with the builder's class twice, so it wins over a theme's `button:focus-visible` or `.woocommerce button.button:focus-visible`, as `[hidden]` does. A theme that sets `--cbuild-focus` keeps its colour. A chosen card keeps its inset line in the accent while it has focus. A card's radio no longer draws a ring of its own beside the card's. In forced colours the box-shadow goes and the outline is the system's Highlight.
+
+**Red run:** `focus.spec.ts` › "a deck card and the step's Next each show a ring that stands out from the page", chromium-desktop, on the stylesheet before the change: "a deck card: {"outline":"rgb(42, 42, 42)","width":2,…,"ground":"rgb(11, 11, 11)"} Expected: >= 3 Received: 1.3712861600211907" at focus.spec.ts:152, the demo's own measure. The test runs on Chromium and Firefox; WebKit's Tab passes over radios unless the system's keyboard setting says otherwise. A visual baseline, `kadence-demo-dark-desktop-card-focus.png`, shows the ring.
+
+### D-230 · The phone bar gives the estimate on a line under its amount · 2026-11-18
+
+Cowork's 0.8.0 review, F2 (#54). On a phone the summary, with "A complete board from about $207.96", is in the parts sheet, shut until opened, so a sighted shopper saw the deck's price alone. While an estimate is given, the bar now shows "Complete from about $207.96" on a line of its own under the amount, smaller and in the muted colour, so the amount stays alone, as D-207 has it, and the bar stays one line high beside the picture. It is in the same `aria-hidden` span as the amount: the bar's summary is read as "Total: …", and the status region already says the estimate with each pick, so it is not said twice. The wording is shorter than the summary's, for the bar's width. On the narrowest phones it wraps, so the bar is taller while it shows: the page's scroll padding, which keeps focus clear of the bar (D-160), is 6.75rem then, room for three lines, in CSS alone so it holds without the script. The `never covers the control in focus` test runs with the estimate too.
+
+**Red runs:** `BuilderTest::test_the_phone_bar_gives_the_estimate_under_its_amount_while_one_is_given`: "Undefined array key "hasEstimate"" at BuilderTest.php:874. `builder.spec.ts` › "never covers the control in focus, the bar giving the estimate", chromium-phone, without the padding rule: "cbuild-card__control 623.6875 > 598.8125". Baselines `kadence-light-phone-bar-estimate.png` and `kadence-dark-phone-bar-estimate.png` made on purpose. The phone bar's "keeps its height" test (D-207) went red with the estimate, which grows the bar by its line on purpose: it now holds the bar to grow by that line at most, and, with the line set aside, to the height it had before the pick, as before. `BuilderPageTest` reads the amount's own span, and that the line is hidden while the build gives no estimate.
+
+### D-231 · Undo after Delete on My builds, from the server's copy, as it was · 2026-11-18
+
+Cowork's 0.8.0 review, F3 (#55), which replaces D-222's "no confirmation before Delete". Delete still deletes at once, and WooCommerce's notice "The build is deleted." is followed by an Undo button, named for the build ("Undo deleting Street", an unnamed build by the name My builds gives it), a form that works without JavaScript.
+
+- **The copy is the server's.** The customer's WooCommerce session holds the deleted build whole: its UUID, owner, kit, picks, assembly, name and dates. The form sends its UUID and a nonce alone (`cbuild_restore_build` and the UUID, for the signed-in customer), so nothing of the build is taken from the browser.
+- **Back as it was.** `SavedBuilds::restore()` writes the copy back under its own UUID and dates. It is not checked again: a build whose part went since comes back with that part among its picks, and Open names it, as for any saved build. Checking it, as a save does, would have lost it for good, since My builds lists such builds (both reviews of 1.0.0, S1). The 100 a customer keeps still holds.
+- **Once.** Sent twice, by a second press or Back, the build is there already and nothing more is made. The offer is for the next view of My builds alone: a later view forgets the copy, and the old page's form then says "That build can no longer be brought back."
+- **Focus** goes where WooCommerce puts it after every action in My account: on its notice, which says "The build is back in My builds." (`woocommerce/assets/js/frontend/woocommerce.js:266-292`, `focus_populate_live_region`, 500 ms after load). The plan said the restored row's name; WooCommerce's script takes focus from it half a second later, and an `autofocus` is skipped on an address with a fragment, so a second focus target would only make focus jump.
+- **The session** is WooCommerce's, cleared at sign-out and expired by WooCommerce. The copy lasts from the Delete to the next view of My builds, or to Undo. WordPress's eraser cannot reach another person's session without reading WooCommerce's sessions table, which the plugin does not touch; the copy is the customer's own build, held for one page view, and `docs/PRIVACY.md` lists it. Uninstall leaves it to the session's end.
+
+**Red runs** (the tests first, on the form that posted the build back):
+- `SavedBuildsPageTest::test_a_deleted_build_comes_back_with_undo_as_it_was_once_and_by_its_own_nonce`: "Failed asserting that two arrays are identical" at SavedBuildsPageTest.php:256 (the form's fields).
+- `…::test_undo_brings_back_a_build_whose_part_went_since_as_it_was` at :289 ("This build could not be saved: a part is missing…").
+- `…::test_undo_names_an_unnamed_build_as_the_list_did_and_is_offered_on_the_next_view_alone` at :299.
+- `…::test_undo_on_a_full_account_says_so_and_keeps_nothing_over_the_most` at :316.
+
+**Deliberate break:** `restore()` sent through the checked `save()` again: red at SavedBuildsPageTest.php:289. The browser test "a customer saves, opens, saves over and deletes a build under My builds" goes on to Undo by keyboard, runs axe on the Undo state and holds focus to the notice, in seven projects, `no-js` among them.
+
+Why not a row kept for a while: that would be a change to the builds table, or a soft-delete column every query and the eraser must know about. Why not a confirmation: Baymard's account research, which Cowork cited, finds undo kinder, and a confirmation without JavaScript is a page of its own.
+
+### D-232 · The update is tested from every published release, with that release's own data on it · 2026-11-18
+
+Milestone 9: "Upgrades: tested from every 0.x tag". `npm run upgrade:all` (`tools/upgrade-all.sh`) runs `tools/upgrade.sh` once for each release on `zachatkinson/creative-releases` below this one, from its own published zip: 0.1.0, 0.2.0, 0.3.0, 0.3.1, 0.4.0, 0.6.0, 0.7.0 and 0.8.0. 0.5.0 was tagged but never published, so no shop runs it.
+
+On the old release, before the update, `tools/upgrade.sh` makes:
+- with WooCommerce alone, the same on every release: six products with SKUs, prices, stock and an attribute, and a paid order holding them (`tools/upgrade/seed.php`);
+- from 0.4.0, the release's own kits, parts and specs, made by that tag's own browser fixture (`tests/e2e/fixtures/shop.php`, taken with `git archive` from the tag) with that release's own classes, so they are stored as that release stored them, and its jobs index them;
+- from 0.8.0, a customer's saved build, made by that release's own `SavedBuilds` service from a preset.
+
+After the update, the plugin's jobs run and none may fail, no PHP error may name the plugin, the order reads back with its lines and products and its Build box runs, 1.0.0 reads every kit the old release read (0.8.0's fixture stores three kits and reads two: its Build tab kit holds a slots document alone, there for that tab's tests), every preset is priced, and the saved build is listed. A deliberate break, 1.0.0 refusing to read the cart test kit, fails the run at that line. The seed's products, orders and customers are deleted after the run, so a browser run after it meets the site as before. CI runs `npm run upgrade` from the newest release on every full run, and `upgrade:all` on the newest leg where every browser project runs.
+
+What it does not make: an order holding a build, written by an old release's own cart and checkout. That needs each release's Store API add and a checkout in a request, which WP-CLI is not. The order shapes are held by the tests that start from each stored snapshot (`OrderEmailTest`, `WorkshopTest`, from 0.8.0's), and it stays an open item in `AUDIT-1.0.0.md` (0.8.0's review, auditor 20).
+
+### D-233 · French ships, complete, and the checks require it · 2026-11-18
+
+Milestone 9: "French: complete and read by a person". `languages/creative-skateboard-builder-fr_CA.po` holds every one of the POT's 769 strings, with `.mo`, `.l10n.php` and the editor script's JSON made by `composer i18n:compile`. The words are Canadian French: « configurateur » for the builder, « montage » for a build, « Illustration » for the picture, « UGS » for SKU, the no-break spaces of D-158 (Creative Search) before a colon and inside « », and `%s mm` with its no-break space (D-228).
+
+- `composer i18n:check` now fails when fr_CA is missing, not only when it is incomplete: it passed with no translation at all (both reviews of 1.0.0, B1). **Red run:** with the `.po` moved away, "languages/: no fr_CA translation, which ships complete" and "1 i18n problem(s)".
+- Gate 8b runs the copy gate's em dash and exclamation mark over each shipped translation's msgstrs; the banned words are English and stay the POT's. Its self-test has two snippets, `8b-em-dash.po` and `8b-exclamation.po`, the second on a wrapped string.
+- The French was written by Claude and checked by the tools. It is read by a person Zach arranges before the tag (D-225); their changes go into the `.po` as any fix does.

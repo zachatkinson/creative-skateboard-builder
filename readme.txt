@@ -4,7 +4,7 @@ Tags: woocommerce, skateboard, product builder, configurator, bundle
 Requires at least: 7.0
 Tested up to: 7.1
 Requires PHP: 8.5
-Stable tag: 0.8.0
+Stable tag: 1.0.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -14,7 +14,9 @@ Sells complete skateboards built from parts the shop stocks, with fit checked fr
 
 Creative Skateboard Builder lets a shopper put a complete skateboard together from the decks, trucks, wheels, bearings, hardware and grip a WooCommerce shop already sells. It checks that the parts fit from each part's specs, draws a picture of the build, keeps the total in view, and gives each part its own line in the cart and on the order, so stock, tax and refunds work as they do for any other product.
 
-This is version 0.8.0. A kit's page shows the builder in place of the add-to-cart form, and the Builder block puts it on any other page. The shopper goes one step a slot, sees only the parts that fit what they picked, can start from one of your presets, and reaches a review with the total, a link to the build and Add to cart. It works with a keyboard and a screen reader, on a phone, and without JavaScript. From 0.7.0 the builder draws the board to scale from each part's layer image, and the cart and a shared build link show a picture of it. From 0.8.0 a signed-in customer can save a build and find it again under My builds in My account.
+This is version 1.0.0. A kit's page shows the builder in place of the add-to-cart form, and the Builder block puts it on any other page. The shopper goes one step a slot, sees only the parts that fit what they picked, can start from one of your presets, and reaches a review with the total, a link to the build and Add to cart. The builder draws the board to scale from each part's layer image, top and underside, and the cart, the order, its emails and a shared build link show a picture of it. A signed-in customer can save a build and find it again under My builds in My account. The workshop gets each order's build in a box on the order screen and a printed assembly ticket.
+
+It works with a keyboard and a screen reader, on a phone, without JavaScript, in English and French (Canada), and right to left.
 
 The plugin needs WooCommerce 11.2 or newer, WordPress 7.0 or newer and PHP 8.5 or newer. Below any of them it does nothing and says so on the Plugins screen.
 
@@ -31,13 +33,29 @@ Nothing about the shop or its shoppers. The plugin makes two kinds of request, b
 
 = What does deleting the plugin remove? =
 
-Everything the plugin made: its three tables, its options and transients, and its scheduled actions. Products and orders are never touched, and the build details on past orders stay, because they are part of the shop's records.
+Everything the plugin made: its three tables, saved builds among them, its options and transients, its scheduled actions, the resized layer images and composed pictures in `uploads/creative-skateboard-builder/`, and on a network the must-use file it wrote. Products and orders are never touched, and the build details on past orders stay, because they are part of the shop's records.
 
 = Does it work on a multisite network? =
 
-Yes. Activating it for the network installs it on every site, and a site added later installs itself the first time an administrator opens its dashboard.
+Yes. Activating it for the network installs it on every site, and a site added later installs itself the first time an administrator opens its dashboard. On a network it writes a small must-use file, so that deleting a site drops the plugin's tables and deleting an account deletes its saved builds on every site, even where the plugin is not active. A network admin's visit to wp-admin writes it again after an update, and Site Health says if the folder cannot be written.
+
+= Is it translated? =
+
+It ships in English and French (Canada). Every string goes through the text domain `creative-skateboard-builder`, so a translation plugin or a language pack can add any other language.
+
+= Can other plugins build on it? =
+
+Yes. Its hooks, REST routes, block attributes, settings keys, order item keys, CSS custom properties and DOM events are listed with the version each arrived in, and from 1.0.0 they follow Semantic Versioning: no minor or patch release removes or renames one, and a deprecation comes first.
 
 == Changelog ==
+
+= 1.0.0 =
+* Focus is seen on a dark theme and a light one: the ring has two tones of its own.
+* On a phone, the bar gives the estimate for a complete board under the total.
+* My builds has Undo after Delete.
+* The order's picture has a short alt text, since its parts are listed under it, and the Build box says "No specs" for a part with none.
+* On a network, the must-use file is written only by a network admin in wp-admin.
+* French (Canada).
 
 = 0.8.0 =
 * Nothing is picked for the shopper. After the deck, each step labels its recommendation, and the board and the total count only what was picked, with an estimate of the complete board beside the total.
@@ -132,6 +150,9 @@ Yes. Activating it for the network installs it on every site, and a site added l
 * Foundation: the plugin skeleton, the two tables, the upgrade steps, uninstall, the update check, the test harness and the CI gates. Nothing a shopper or shop owner sees yet.
 
 == Upgrade Notice ==
+
+= 1.0.0 =
+Update as usual, from the updater or by uploading the zip. No step is needed, from any earlier release. On a network, a network admin's next visit to wp-admin writes the must-use file again.
 
 = 0.8.0 =
 Update as usual, from the updater or by uploading the zip. The update makes any resized copies of layer images that are missing, in the background.

@@ -31,7 +31,7 @@ defined( 'ABSPATH' ) || exit;
 		<span class="screen-reader-text" data-wp-text="state.view.bar.picture"></span>
 	</a>
 	<details class="cbuild-bar__parts">
-		<summary class="cbuild-bar__total"><span class="screen-reader-text" data-wp-text="state.view.bar.total"></span><span aria-hidden="true" data-wp-text="state.view.bar.amount"></span> <span class="cbuild-bar__more cbuild-bar__more--show" data-wp-text="state.view.bar.parts"></span><span class="cbuild-bar__more cbuild-bar__more--hide" data-wp-text="state.view.bar.hide"></span></summary>
+		<summary class="cbuild-bar__total"><span class="screen-reader-text" data-wp-text="state.view.bar.total"></span><span class="cbuild-bar__amount" aria-hidden="true"><span data-wp-text="state.view.bar.amount"></span><span class="cbuild-bar__estimate" data-wp-bind--hidden="!state.view.bar.hasEstimate" data-wp-text="state.view.bar.estimate"></span></span> <span class="cbuild-bar__more cbuild-bar__more--show" data-wp-text="state.view.bar.parts"></span><span class="cbuild-bar__more cbuild-bar__more--hide" data-wp-text="state.view.bar.hide"></span></summary>
 		<dl class="cbuild-bar__lines">
 			<template data-wp-each--row="state.view.summary.rows" data-wp-each-key="context.row.key">
 				<div class="cbuild-summary__line">

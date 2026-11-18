@@ -51,6 +51,8 @@ wp() { npx wp-env run cli -- wp "$@" 2>/dev/null | tr -d '\r' | grep -v 'php-cli
 wp_said() { npx wp-env run cli -- wp "$@" 2>&1 | tr -d '\r' | grep -v '^ℹ\|^✔\|^✖\|^Command failed\|php-cli-tools' || true; }
 fail() { echo "upgrade: $1" >&2; exit 1; }
 restore() {
+	# What the seed made goes with the run, so a browser run after it meets the site as it was (audit of 1.0.0, M8).
+	wp eval-file "$here/tools/upgrade/seed.php" clean >/dev/null
 	wp plugin deactivate "$copy" >/dev/null
 	wp plugin uninstall "$copy" --skip-delete >/dev/null
 	npx wp-env run cli -- bash -c "rm -rf wp-content/plugins/$copy" >/dev/null 2>&1 || true
@@ -86,6 +88,25 @@ wp plugin deactivate "$copy" >/dev/null
 wp plugin uninstall "$copy" --skip-delete >/dev/null
 wp plugin install "$here/tmp/upgrade/old.zip" --force --activate >/dev/null
 [ "$(wp plugin get "$copy" --field=status | tail -n 1)" = active ] || fail "$from is not active before the update"
+# The shop as it stood on that release (milestone 9): products with SKUs, prices and stock, which the old release's
+# own jobs read into its tables, and a paid order holding them, so the update meets data and not an empty site.
+seed="$(wp eval-file "$here/tools/upgrade/seed.php" | tail -n 1)"
+case "$seed" in order:*) ;; *) fail "the shop's data was not made on $from: $seed" ;; esac
+# The release's own kits, parts and specs, made by its own browser fixture with its own classes, so they are stored as
+# that release stored them (D-232). Kits arrived in 0.4.0; before then, the fixture made none.
+rm -rf tmp/upgrade/fixture && mkdir -p tmp/upgrade/fixture
+git rev-parse -q --verify "refs/tags/v$from" >/dev/null || git fetch -q --depth=1 origin tag "v$from" 2>/dev/null || true
+if git cat-file -e "v$from:tests/e2e/fixtures/shop.php" 2>/dev/null; then
+	git archive "v$from" tests/e2e/fixtures | tar -x -C tmp/upgrade/fixture
+	said="$(wp_said eval-file "$here/tmp/upgrade/fixture/tests/e2e/fixtures/shop.php")"
+	case "$said" in *"Fatal error"*|*"Error:"*) echo "$said" | sed 's/^/   /'; fail "$from's own fixture did not run" ;; esac
+fi
+kits="$(wp eval-file "$here/tools/upgrade/seed.php" kits | tail -n 1)"
+kits="${kits#kits:}"
+saved="$(wp eval-file "$here/tools/upgrade/seed.php" saved | tail -n 1)"
+user="${saved#saved:}"; [ "$user" = none ] && user=0
+wp action-scheduler run --group=creative-skateboard-builder >/dev/null
+echo "   on $from: $seed; kits $from reads: $kits; $saved"
 before="$(errors)"
 page="$(node tools/upgrade/upload.mjs "tmp/upgrade/$upload")"
 echo "$page" | grep -E 'updated successfully|critical error' | sed 's/^/   /' || true
@@ -98,4 +119,21 @@ state="$(wp plugin get "$copy" --field=version | tail -n 1)|$(wp plugin get "$co
 left="$(wp post list --post_type=attachment --post_mime_type=application/zip --format=count | tail -n 1)|$(npx wp-env run cli -- find wp-content/uploads -name "$upload" 2>/dev/null | tr -d '\r' | grep -c . || true)"
 [ "$left" = "0|0" ] || fail "the uploaded zip was left behind: $left (attachments|files)"
 echo "   version|status|schema: $state; no zip left in uploads."
+# The release's own jobs after the update, then the data read by this release: the order with its lines, the old
+# release's kits and their presets, its saved build, and no failed job of the plugin's.
+wp action-scheduler run --group=creative-skateboard-builder >/dev/null
+read="$(wp eval-file "$here/tools/upgrade/seed.php" read "${seed#order:}" "$user" | tail -n 1)"
+case "$read" in read:*) ;; *) fail "after the update, the shop's data did not read: $read" ;; esac
+# Every preset is priced, and the old release's saved build is listed.
+# Every kit the old release read, this one reads too.
+kitsread="$(sed -n 's/.*; kits \([0-9]*\) of [0-9]*,.*/\1/p' <<<"$read")"
+[ "$kitsread" = "$kits" ] || fail "after the update, $kitsread kits read where $from read $kits: $read"
+presets="$(sed -n 's/.*presets \([0-9]*\) of \([0-9]*\) priced.*/\1 \2/p' <<<"$read")"
+[ "${presets% *}" = "${presets#* }" ] || fail "after the update, not every preset was priced: $read"
+[ "$user" = 0 ] || case "$read" in *"saved builds 1"*) ;; *) fail "after the update, $from's saved build was not listed: $read" ;; esac
+failed="$(wp action-scheduler action list --group=creative-skateboard-builder --status=failed --format=count 2>/dev/null | tail -n 1)"
+case "$failed" in ''|*[!0-9]*) fail "the plugin's failed jobs could not be counted: '$failed'" ;; esac
+[ "$failed" = 0 ] || fail "after the update, $failed of the plugin's jobs failed"
+[ "$(errors)" = "$before" ] || fail "the jobs after the update logged a PHP error naming the plugin"
+echo "   after: $read; no failed job."
 echo "Upgrade: $from updates to $version through the upload screen, and its container fits $version's files."

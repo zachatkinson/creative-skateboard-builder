@@ -8,12 +8,22 @@
  *
  * @var list<array{uuid: string, name: string, picture: string|null, photo: string, total: string, ready: bool, saved: string, open: string|null}> $rows
  * @var string $action Where the forms post: this page.
+ * @var array{uuid: string, name: string}|null $undo The build just deleted, which Undo puts back from the server's copy (D-231).
  */
 
 defined( 'ABSPATH' ) || exit;
 
 use CreativeBranding\SkateboardBuilder\Front\SavedBuildHooks;
 ?>
+<?php if ( null !== $undo ) : ?>
+	<?php /* Right under WooCommerce's "The build is deleted." notice: a form that puts the build back, without JavaScript. It names the build; the build itself is the session's copy (Cowork's 0.8.0 review, F3; D-231). */ ?>
+	<form class="cbuild-my-builds__undo" method="post" action="<?php echo esc_url( $action ); ?>">
+		<input type="hidden" name="<?php echo esc_attr( SavedBuildHooks::FIELD ); ?>" value="<?php echo esc_attr( SavedBuildHooks::RESTORE ); ?>">
+		<input type="hidden" name="<?php echo esc_attr( SavedBuildHooks::UUID ); ?>" value="<?php echo esc_attr( $undo['uuid'] ); ?>">
+		<input type="hidden" name="<?php echo esc_attr( SavedBuildHooks::NONCE ); ?>" value="<?php echo esc_attr( wp_create_nonce( SavedBuildHooks::RESTORE . '_' . $undo['uuid'] ) ); ?>">
+		<button type="submit" class="button" aria-label="<?php /* translators: %s: the deleted build's name. */ echo esc_attr( sprintf( __( 'Undo deleting %s', 'creative-skateboard-builder' ), $undo['name'] ) ); ?>"><?php esc_html_e( 'Undo', 'creative-skateboard-builder' ); ?></button>
+	</form>
+<?php endif; ?>
 <?php if ( array() === $rows ) : ?>
 	<p class="cbuild-my-builds__none"><?php esc_html_e( 'You have no saved builds yet. Save one from the review step of the builder, and it waits for you here.', 'creative-skateboard-builder' ); ?></p>
 <?php else : ?>

@@ -17,7 +17,8 @@
 	--cbuild-surface: color-mix(in srgb, currentcolor 5%, transparent);
 	--cbuild-accent: var(--wp--preset--color--contrast, currentcolor);
 	--cbuild-on-accent: var(--wp--preset--color--base, Canvas);
-	--cbuild-focus: var(--wp--preset--color--contrast, currentcolor);
+	--cbuild-focus: #000;
+	--cbuild-focus-contrast: #fff;
 	--cbuild-wrong: var(--wp--preset--color--vivid-red, #b32d2e);
 	--cbuild-radius: 0.5rem;
 	--cbuild-gap: var(--wp--preset--spacing--40, 1.5rem);
@@ -118,11 +119,6 @@
 		display: block;
 		max-inline-size: 100%;
 		block-size: auto;
-	}
-
-	:where(:focus-visible) {
-		outline: 2px solid var(--cbuild-focus);
-		outline-offset: 2px;
 	}
 
 	:where(a) {
@@ -420,12 +416,6 @@
 ) {
 	border-color: var(--cbuild-accent);
 	box-shadow: inset 0 0 0 1px var(--cbuild-accent);
-}
-
-/* A card's focus ring is the card's: the radio inside it is what has focus. */
-:where(.cbuild-card:has(> .cbuild-card__control:focus-visible)) {
-	outline: 2px solid var(--cbuild-focus);
-	outline-offset: 2px;
 }
 
 :where(.cbuild-card--sold-out) :where(.cbuild-card__body) {
@@ -767,11 +757,6 @@
 		border: 2px solid ButtonText;
 	}
 
-	:where(.cbuild) :where(:focus-visible),
-	:where(.cbuild-card:has(> .cbuild-card__control:focus-visible)) {
-		outline-color: Highlight;
-	}
-
 	/* The board's top is a picture, as its images are: its maple is not the system's ground. */
 	:where(.cbuild-board--top .cbuild-board__layer) {
 		forced-color-adjust: none;
@@ -844,6 +829,19 @@
 	display: none;
 }
 
+/* The amount, with the estimate on a line under it while one is given (Cowork's 0.8.0 review, F2; D-230). */
+:where(.cbuild-bar__amount) {
+	display: flex;
+	flex-direction: column;
+}
+
+:where(.cbuild-bar__estimate) {
+	color: var(--cbuild-muted);
+	font-size: var(--cbuild-small);
+	font-weight: 400;
+	line-height: 1.25;
+}
+
 :where(.cbuild-bar__more) {
 	color: var(--cbuild-muted);
 	font-size: var(--cbuild-small);
@@ -887,6 +885,15 @@
 		// The bar, and any bar of the theme's own below it (D-163), on one line for Stylelint.
 		// prettier-ignore
 		scroll-padding-block-end: calc(var(--cbuild-bar-height, 4.25rem) + var(--cbuild-bar-offset, 0px) + 0.5rem);
+	}
+
+	/* While the bar gives the estimate (D-230) it is taller: room for the estimate over three lines, as French on the
+	   narrowest phone can need, so focus stays clear of it with or without the script. */
+	:root:has(
+		.cbuild .cbuild-bar:not([hidden]) .cbuild-bar__estimate:not([hidden])
+	) {
+		// prettier-ignore
+		scroll-padding-block-end: calc(6.75rem + var(--cbuild-bar-offset, 0px) + 0.5rem);
 	}
 }
 
@@ -953,5 +960,36 @@
 	from {
 		opacity: 0;
 		transform: translateY(0.5rem);
+	}
+}
+
+/*
+ * Focus (Cowork's 0.8.0 review, F1; D-229). Two tones: a dark ring with a light band on each side of it, so one of
+ * the two stands out from whatever is behind it, a theme's dark page or its light one, at 3:1 or better (WCAG 2.4.7,
+ * 2.4.11). The theme's own colours are not trusted for it: a dark theme's "contrast" preset can be dark too, which
+ * left focus unseen on the demo. Outside `:where()`, and twice the builder's class, so it wins over a theme's focus
+ * style on a button or a link, as `[hidden]` does; a theme restyles it through the two properties. Forced colours
+ * drop the box-shadow and keep the outline, in the system's Highlight.
+ * A card's ring is the card's, and not the radio's inside it, which is what has focus.
+ */
+.cbuild.cbuild :focus-visible:not(.cbuild-card__control),
+.cbuild.cbuild .cbuild-card:has(> .cbuild-card__control:focus-visible) {
+	outline: 2px solid var(--cbuild-focus);
+	outline-offset: 2px;
+	box-shadow: 0 0 0 6px var(--cbuild-focus-contrast);
+}
+
+/* A chosen card keeps its inset line in the accent while it has focus. */
+.cbuild.cbuild .cbuild-card--chosen:has(> .cbuild-card__control:focus-visible),
+.cbuild.cbuild .cbuild-card:has(> .cbuild-card__control:checked:focus-visible) {
+	box-shadow:
+		inset 0 0 0 1px var(--cbuild-accent),
+		0 0 0 6px var(--cbuild-focus-contrast);
+}
+
+@media (forced-colors: active) {
+	.cbuild.cbuild :focus-visible:not(.cbuild-card__control),
+	.cbuild.cbuild .cbuild-card:has(> .cbuild-card__control:focus-visible) {
+		outline-color: Highlight;
 	}
 }
