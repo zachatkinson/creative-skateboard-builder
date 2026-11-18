@@ -138,6 +138,69 @@ final class SavedBuildsTest extends TestCase {
 	}
 
 	/**
+	 * Undo (Cowork's 0.8.0 review, F3; D-231): the build as it was deleted, its UUID and dates the same, even with a part
+	 * the kit no longer has; twice is once; the most kept still holds; a refused write is a failure; no one owns nothing.
+	 */
+	public function test_restore_puts_a_deleted_build_back_as_it_was_once_within_the_most(): void {
+		$saved = $this->builds->save( self::ANA, self::KIT, self::COMPLETE, true, 'Street' );
+		$build = $this->builds->find( self::ANA, $saved['uuid'] );
+		self::assertNotNull( $build );
+		$this->builds->delete( self::ANA, $build->uuid );
+		$this->clock->advance( 60 );
+		$gone = new \CreativeBranding\SkateboardBuilder\Domain\Saved\SavedBuild( $build->uuid, $build->user, $build->kit, array( SlotKey::WHEELS => 999 ) + $build->picks, $build->assembly, $build->name, $build->created, $build->updated );
+		self::assertSame( SavedBuilds::SAVED, $this->builds->restore( $gone ) );
+		self::assertEquals( $gone, $this->builds->find( self::ANA, $build->uuid ), 'as it was, the part gone since among its picks' );
+		self::assertSame( SavedBuilds::SAVED, $this->builds->restore( $gone ), 'sent twice' );
+		self::assertCount( 1, $this->store->rows );
+
+		$this->builds->delete( self::ANA, $build->uuid );
+		for ( $i = 0; $i < SavedBuilds::MOST; $i++ ) {
+			$this->builds->save( self::ANA, self::KIT, self::COMPLETE, true, (string) $i );
+		}
+		self::assertSame( SavedBuilds::FULL, $this->builds->restore( $gone ) );
+		self::assertNull( $this->builds->find( self::ANA, $build->uuid ) );
+		$this->builds->forget( self::ANA );
+		$this->store->refuse = true;
+		self::assertSame( SavedBuilds::FAILED, $this->builds->restore( $gone ) );
+		$this->store->refuse = false;
+		$no_one = new \CreativeBranding\SkateboardBuilder\Domain\Saved\SavedBuild( $build->uuid, 0, $build->kit, $build->picks, true, '', $build->created, $build->updated );
+		self::assertSame( SavedBuilds::SIGNED_OUT, $this->builds->restore( $no_one ) );
+		self::assertSame( array(), $this->store->rows );
+	}
+
+	public function test_restore_at_one_short_of_the_most_puts_it_back(): void {
+		$saved = $this->builds->save( self::ANA, self::KIT, self::COMPLETE, true, 'Kept' );
+		$build = $this->builds->find( self::ANA, $saved['uuid'] );
+		self::assertNotNull( $build );
+		$this->builds->delete( self::ANA, $build->uuid );
+		for ( $i = 1; $i < SavedBuilds::MOST; $i++ ) {
+			$this->builds->save( self::ANA, self::KIT, self::COMPLETE, true, (string) $i );
+		}
+		self::assertSame( SavedBuilds::SAVED, $this->builds->restore( $build ), 'the hundredth' );
+		self::assertCount( SavedBuilds::MOST, $this->builds->of( self::ANA ) );
+	}
+
+	/**
+	 * Milestone 9's CI mutation run: a build Undo sends while it is still there is answered as saved without a write,
+	 * even on a full account, and the first user's build is theirs to put back.
+	 */
+	public function test_restore_of_a_build_still_there_writes_nothing_and_user_one_is_signed_in(): void {
+		$first = $this->builds->save( 1, self::KIT, self::COMPLETE, true, 'First' );
+		$build = $this->builds->find( 1, $first['uuid'] );
+		self::assertNotNull( $build );
+		for ( $i = 1; $i < SavedBuilds::MOST; $i++ ) {
+			$this->builds->save( 1, self::KIT, self::COMPLETE, true, (string) $i );
+		}
+		$this->store->refuse = true;
+		self::assertSame( SavedBuilds::SAVED, $this->builds->restore( $build ), 'there already, on a full account, with no write' );
+		self::assertSame( array(), $this->logger->lines, 'no write was tried' );
+		$this->store->refuse = false;
+		$this->builds->delete( 1, $build->uuid );
+		self::assertSame( SavedBuilds::SAVED, $this->builds->restore( $build ), 'user 1' );
+		self::assertEquals( $build, $this->builds->find( 1, $build->uuid ) );
+	}
+
+	/**
 	 * Audit of milestone 8: a write the table refuses is said as a failure, not as saved, and the owner hears of it in
 	 * WooCommerce's log, with the build's UUID and nothing about the customer.
 	 */

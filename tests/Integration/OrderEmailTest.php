@@ -113,7 +113,7 @@ final class OrderEmailTest extends CartTestCase {
 		self::assertStringNotContainsString( '<img', $text );
 	}
 
-	public function test_both_html_layouts_show_the_picture_with_the_build_in_words_as_its_alt(): void {
+	public function test_both_html_layouts_show_the_picture_with_a_short_alt_as_the_parts_follow(): void {
 		$order = $this->order( true );
 		$kit   = null;
 		foreach ( $order->get_items() as $item ) {
@@ -132,7 +132,9 @@ final class OrderEmailTest extends CartTestCase {
 		foreach ( array( 'no', 'yes' ) as $improved ) {
 			update_option( 'woocommerce_feature_email_improvements_enabled', $improved );
 			$html = self::email( $order, false );
-			self::assertMatchesRegularExpression( '/<img src="[^"]+" alt="The build: Deck: Deck[^"]*" width="300" height="300"/', $html, 'layout ' . $improved );
+			// Cowork's 0.8.0 review, F4: the parts are listed under the picture, so its alt says what it is and no more.
+			self::assertMatchesRegularExpression( '/<img src="[^"]+" alt="The build, as drawn" width="300" height="300"/', $html, 'layout ' . $improved );
+			self::assertStringNotContainsString( 'alt="The build: ', $html, 'layout ' . $improved );
 			self::assertSame( 1, substr_count( $html, 'Assembled builds ship in 3 days.' ), 'layout ' . $improved );
 			self::assertStringContainsString( 'cbuild-order-part', $html, 'parts marked as under their kit' );
 		}
@@ -156,7 +158,7 @@ final class OrderEmailTest extends CartTestCase {
 		woocommerce_order_details_table( $order->get_id() );
 		$html = (string) ob_get_clean();
 		self::assertStringContainsString( 'cbuild-order-part', $html );
-		self::assertMatchesRegularExpression( '/<img src="[^"]+" alt="The build: Deck: Deck[^"]*"/', $html );
+		self::assertMatchesRegularExpression( '/<img src="[^"]+" alt="The build, as drawn"/', $html, 'F4: the parts follow, so the alt does not repeat them' );
 	}
 
 	/**
@@ -199,8 +201,9 @@ final class OrderEmailTest extends CartTestCase {
 		$this->service( ComposedPictures::class )->compose( $this->kit, $this->picks() );
 		add_filter( 'get_available_languages', static fn( array $languages ): array => array_merge( $languages, array( 'fr_CA' ) ) );
 		$french = array(
-			'The build: %s.'  => 'La planche : %s.',
-			'%1$s: %2$s'      => '%1$s : %2$s',
+			'The build: %s.'      => 'La planche : %s.',
+			'The build, as drawn' => 'Le montage, tel que dessiné',
+			'%1$s: %2$s'          => '%1$s : %2$s',
 		);
 		add_filter(
 			'gettext_creative-skateboard-builder',
@@ -225,7 +228,7 @@ final class OrderEmailTest extends CartTestCase {
 		}
 		self::assertStringContainsString( 'La planche : Plateau : Deck; ', $text );
 		foreach ( $html as $improved => $page ) {
-			self::assertMatchesRegularExpression( '/alt="La planche : Plateau : Deck; [^"]*"/', $page, 'layout ' . $improved );
+			self::assertStringContainsString( 'alt="Le montage, tel que dessiné"', $page, 'layout ' . $improved );
 		}
 	}
 }

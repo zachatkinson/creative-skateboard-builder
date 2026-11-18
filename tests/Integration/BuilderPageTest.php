@@ -438,9 +438,12 @@ final class BuilderPageTest extends IntegrationTestCase {
 		self::assertSame( '48px', $dom->query( $bar . '//img[contains(@class,"cbuild-bar__photo")]' )->item( 0 )->getAttribute( 'sizes' ), 'a 48 px picture, so a phone takes the smallest of its sources, not the widest' );
 		self::assertSame( 1, $dom->query( '//figure[@id="cbuild-picture"][@tabindex="-1"]' )->length, 'and the picture takes focus when the link is followed' );
 		self::assertStringStartsWith( 'Total: ', self::text( $dom, $bar . '//summary/span[contains(@class,"screen-reader-text")]' ), 'the sentence, read' );
-		$shown = $dom->query( $bar . '//summary/span[@aria-hidden="true"]' )->item( 0 );
+		$shown = $dom->query( $bar . '//summary/span[@aria-hidden="true"]/span[1]' )->item( 0 );
 		self::assertNotNull( $shown, 'the amount, shown' );
 		self::assertSame( wp_interactivity_state( BuilderPage::STORE )['view']['summary']['total'], trim( $shown->textContent ), 'the amount alone beside the board, so the bar keeps its height' );
+		$estimate = $dom->query( $bar . '//summary/span[@aria-hidden="true"]/span[contains(@class,"cbuild-bar__estimate")]' )->item( 0 );
+		self::assertNotNull( $estimate, 'the estimate\'s line, under the amount (D-230)' );
+		self::assertTrue( $estimate->hasAttribute( 'hidden' ), 'hidden while the build gives no estimate' );
 		self::assertSame( count( wp_interactivity_state( BuilderPage::STORE )['view']['summary']['rows'] ), $dom->query( $bar . '//dl[contains(@class,"cbuild-bar__lines")]/div' )->length, 'the summary\'s rows, in the parts list the total opens' );
 	}
 

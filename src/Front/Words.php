@@ -75,8 +75,8 @@ final class Words {
 			/* translators: %s: a number of inches. The double prime is the inch sign; French writes "%s po", with a no-break space. */
 			return sprintf( _x( '%s″', 'inches', 'creative-skateboard-builder' ), $number );
 		}
-		/* translators: %s: a number of millimetres. The space before mm is a no-break space. */
-		return sprintf( _x( "%s\u{00A0}mm", 'millimetres', 'creative-skateboard-builder' ), $number );
+		/* translators: %s: a number of millimetres. The space before mm is a no-break space, written as itself: make-pot copies an escape as written, and the msgid would never match (D-228). */
+		return sprintf( _x( '%s mm', 'millimetres', 'creative-skateboard-builder' ), $number );
 	}
 
 	/**

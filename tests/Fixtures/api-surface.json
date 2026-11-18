@@ -182,6 +182,7 @@
         "--cbuild-duration",
         "--cbuild-ease",
         "--cbuild-focus",
+        "--cbuild-focus-contrast",
         "--cbuild-gap",
         "--cbuild-gap-small",
         "--cbuild-ground",

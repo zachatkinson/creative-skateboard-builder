@@ -89,7 +89,9 @@ if ( 'services' === $cbuild_mode ) {
 // The previous release, booted as this kind of request boots it: its main file, then the Hookables of its scopes.
 require $cbuild_copy . '/creative-skateboard-builder.php';
 $cbuild_c = $cbuild_plugin::container();
-foreach ( $cbuild_c->hookablesFor( ...$cbuild_scope::atBoot( 'admin' === $cbuild_kind, 'cli' === $cbuild_kind, 'cron' === $cbuild_kind ) ) as $cbuild_hookable ) {
+// 0.1.0 and 0.2.0 had no scopes: every Hookable was registered on every request, as their Plugin::boot() did.
+$cbuild_hookables = method_exists( $cbuild_c, 'hookablesFor' ) ? $cbuild_c->hookablesFor( ...$cbuild_scope::atBoot( 'admin' === $cbuild_kind, 'cli' === $cbuild_kind, 'cron' === $cbuild_kind ) ) : $cbuild_c->hookables();
+foreach ( $cbuild_hookables as $cbuild_hookable ) {
 	$cbuild_hookable->register();
 }
 $cbuild_loaded = count( array_filter( get_declared_classes(), static fn( string $c ): bool => str_starts_with( $c, 'CreativeBranding\\SkateboardBuilder\\' ) ) );
@@ -110,7 +112,9 @@ $cbuild_known = (array) json_decode( (string) file_get_contents( $cbuild_list ),
 $cbuild_ids   = array_keys( $cbuild_known );
 foreach ( array( 'bindings', 'factories', 'hookableClasses' ) as $cbuild_lists ) {
 	if ( method_exists( $cbuild_container, $cbuild_lists ) ) {
-		$cbuild_ids = array_merge( $cbuild_ids, array_keys( (array) ( new ReflectionMethod( $cbuild_container, $cbuild_lists ) )->invoke( null ) ) );
+		// A map of IDs, or, in 0.1.0's hookableClasses(), a plain list of class names.
+		$cbuild_listed = (array) ( new ReflectionMethod( $cbuild_container, $cbuild_lists ) )->invoke( null );
+		$cbuild_ids    = array_merge( $cbuild_ids, array_is_list( $cbuild_listed ) ? array_values( array_filter( $cbuild_listed, 'is_string' ) ) : array_keys( $cbuild_listed ) );
 	}
 }
 $cbuild_ids = array_values( array_unique( $cbuild_ids ) );

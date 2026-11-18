@@ -1,8 +1,10 @@
 # Hooks and the public API
 
-Everything another plugin, a theme or a shop's own code may rely on, added as it appears: filters and actions, constants, options, tables, scheduled actions, the names the plugin writes under, the kit's document schemas and the spec keys. Names carry the `cbuild_` prefix. An item listed in the spec and not here has not been built yet.
+Everything another plugin, a theme or a shop's own code may rely on, added as it appears: filters and actions, constants, options, tables, scheduled actions, the names the plugin writes under, the kit's document schemas and the spec keys. Names carry the `cbuild_` prefix. An item listed in the spec and not here is not part of the API.
 
 `composer api:check` reads the code and fails when an item is missing from this file or from `tests/Fixtures/api-surface.json`. Renaming or removing anything here is a breaking change and needs Zach.
+
+**From 1.0.0 this list is frozen, and Semantic Versioning holds** (docs/AUDIT.md, dimension 10). No minor or patch release removes or renames anything here or changes what it means. REST responses only gain fields; a removal or a rename is a `v2` namespace, with `v1` kept until the next major release. A hook to retire is deprecated first, with `apply_filters_deprecated()` or `do_action_deprecated()`, and kept until the next major release and for at least six months. Settings, option and meta keys are never renamed in place: a migration copies them and the old key stays readable until the next major release. Block attributes keep working through the block's `deprecated` entries. What the sections below call the builder's own (its template markup, the store's state, the state route's `view`, the keys of the builder's forms that start with an underscore, and markup said to be the plugin's own) is not part of the API and may change in any release. `tests/Fixtures/api-surface.json` as committed with 1.0.0 is the snapshot the next releases are held to.
 
 ## Milestone 1: the foundation (0.1.0)
 
@@ -59,8 +61,8 @@ Per site, each named with the site's table prefix first (`wp_cbuild_specs` on a 
 
 | Table | Since | What it holds |
 | --- | --- | --- |
-| `cbuild_specs` | 0.1.0 | One row per part and spec: the index the fit engine reads. Empty until milestone 3. |
-| `cbuild_builds` | 0.1.0 | Saved builds. Empty until milestone 8. |
+| `cbuild_specs` | 0.1.0 | One row per part and spec: the index the fit engine reads, filled from 0.3.0. |
+| `cbuild_builds` | 0.1.0 | Saved builds, filled from 0.8.0. |
 | `cbuild_parts` | 0.4.0 | What a build needs to know of each part, one row per product or variation and price context: whether it may be sold, its brand, price, stock, a variation's attribute values and its specs. Derived from the shop: a row is deleted when its part moves and read again when next asked for, so a row is never the place to change a part. To have rows read again, do `cbuild_parts_changed`. |
 
 ### Scheduled actions
@@ -653,7 +655,7 @@ The first, `raw_key` `cbuild_assembly`, keyed "Assembly", says what the line cha
 
 ### Styling the builder
 
-The builder's stylesheet is the Builder block's `style` (`build/builder/style-index.css`, handle `creative-skateboard-builder-builder-style`), loaded wherever a builder renders, on a kit's own page as in the block. Its rules sit inside `:where()`, so a theme overrides any of them with a single class; only `.cbuild [hidden]` and `.cbuild .screen-reader-text` are outside it. Its classes are BEM under the `cbuild-` prefix, on the builder's root `.cbuild`, and its templates are not for overriding (docs/STANDARDS.md). A theme restyles it most simply by setting these on `.cbuild` (D-159 to D-162):
+The builder's stylesheet is the Builder block's `style` (`build/builder/style-index.css`, handle `creative-skateboard-builder-builder-style`), loaded wherever a builder renders, on a kit's own page as in the block. Its rules sit inside `:where()`, so a theme overrides any of them with a single class; only `.cbuild [hidden]`, `.cbuild .screen-reader-text` and, from 1.0.0, the focus ring are outside it, the ring so that it wins over a theme's own focus style on a button or a link (D-229). Its classes are BEM under the `cbuild-` prefix, on the builder's root `.cbuild`, and its templates are not for overriding (docs/STANDARDS.md). A theme restyles it most simply by setting these on `.cbuild` (D-159 to D-162):
 
 | Property | Since | What it sets | Falls back to |
 | --- | --- | --- | --- |
@@ -663,7 +665,8 @@ The builder's stylesheet is the Builder block's `style` (`build/builder/style-in
 | `--cbuild-surface` | 0.6.0 | A card's and the summary's ground | the text at 5 % |
 | `--cbuild-accent` | 0.6.0 | The chosen card, a pressed filter, the primary button | `--wp--preset--color--contrast`, then the text |
 | `--cbuild-on-accent` | 0.6.0 | Text on the accent | `--wp--preset--color--base`, then `Canvas` |
-| `--cbuild-focus` | 0.6.0 | The focus ring | `--wp--preset--color--contrast`, then the text |
+| `--cbuild-focus` | 0.6.0 | The focus ring's outline. From 0.9.0 it no longer takes the theme's colours, since a dark theme's contrast preset can be dark too (D-229) | `#000` |
+| `--cbuild-focus-contrast` | 0.9.0 | The band on each side of the focus ring, so the ring reads on a dark page and a light one | `#fff` |
 | `--cbuild-wrong` | 0.6.0 | The edge of the error summary and of a part that does not fit; never text | `--wp--preset--color--vivid-red`, then `#b32d2e` |
 | `--cbuild-radius` | 0.6.0 | Corners | `0.5rem` |
 | `--cbuild-gap` | 0.6.0 | Space between the builder's pieces | `--wp--preset--spacing--40`, then `1.5rem` |
@@ -725,7 +728,7 @@ The builder also sends WooCommerce's own `wc-blocks_added_to_cart` on `document.
 | My account endpoint `my-builds` | 0.8.0 | My builds: each of the signed-in customer's saved builds with its picture, name, total today and the date it was saved, and Open, Rename and Delete. Added through WooCommerce's `woocommerce_get_query_vars`, with its menu item before Log out (`woocommerce_account_menu_items`). A shop that wants it elsewhere in the menu reorders that filter's answer at a later priority. |
 | `cbuild_saved` | 0.8.0 | The query parameter Open adds: the saved build's UUID. Read only on its owner's page, where Save build then updates that build. Another customer's page, and a visitor's, ignore it; no build link, Copy link or `og:url` carries it. |
 
-Save build, Rename and Delete are forms posted to My builds with a nonce each, answered on `template_redirect`. Their fields are the builder's own and no part of this API (D-217). There is no REST route for saved builds.
+Save build, Rename, Delete and, from 0.9.0, Undo (the action `cbuild_restore_build`) are forms posted to My builds with a nonce each, answered on `template_redirect`. Their fields are the builder's own and no part of this API (D-217, D-231). The phone bar's estimate line, `.cbuild-bar__estimate` (1.0.0, D-230), is the builder's own markup, as the rest of the bar is. There is no REST route for saved builds.
 
 ### Styling the board's top
 
@@ -764,5 +767,5 @@ The names another plugin may meet on the order screens:
 | Item | Since | What it is |
 | --- | --- | --- |
 | Exporter and eraser `creative-skateboard-builder` | 0.8.0 | "Saved builds" in Tools > Export Personal Data and Erase Personal Data: each of the account's saved builds, found by its email address. One page each (D-220). |
-| The build under a kit's order line | 0.8.0 | On `woocommerce_order_item_meta_end`: the build's picture, `.cbuild-email-picture`, with the build in words as its alt text, on the order's page and in HTML emails; the words alone in plain text. Each part's row has the class `cbuild-order-part` (D-221). The markup is the plugin's own and may change in any release. |
+| The build under a kit's order line | 0.8.0 | On `woocommerce_order_item_meta_end`: the build's picture, `.cbuild-email-picture`, with a short alt text from 0.9.0, "The build, as drawn", since the parts are listed under it, on the order's page and in HTML emails; the build in words in plain text. Each part's row has the class `cbuild-order-part` (D-221). The markup is the plugin's own and may change in any release. |
 

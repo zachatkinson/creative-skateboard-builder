@@ -247,24 +247,30 @@ final class BuilderView {
 		$next  = Cast::map( $step['next'] ?? null );
 		$photo = self::image( $first['image'] ?? null );
 		return array(
-			'shown'   => true,
+			'shown'       => true,
 			// A small picture of the board, which links to the picture: the board itself once it draws a layer, and
 			// until then the picture's first photo, the deck's.
-			'seen'    => Cast::bool( $board['shown'] ?? null ) || $photo['hasImage'],
-			'board'   => $board,
-			'photo'   => $photo + array(
+			'seen'        => Cast::bool( $board['shown'] ?? null ) || $photo['hasImage'],
+			'board'       => $board,
+			'photo'       => $photo + array(
 				'classes' => self::flagged( array( Options::CLASS_BAR_PHOTO ), $kit, Cast::str( $first['slot'] ?? null ), Cast::int( $first['part'] ?? null ) ),
 			),
-			'picture' => __( 'See the picture', 'creative-skateboard-builder' ),
+			'picture'     => __( 'See the picture', 'creative-skateboard-builder' ),
 			/* translators: %s: the build's total, such as $184.00. */
-			'total'   => sprintf( __( 'Total: %s', 'creative-skateboard-builder' ), Cast::str( $summary['total'] ?? null ) ),
+			'total'       => sprintf( __( 'Total: %s', 'creative-skateboard-builder' ), Cast::str( $summary['total'] ?? null ) ),
 			// The amount alone is shown and the sentence read: beside the board's picture "Total:" broke the line at
 			// 412 pixels, and the bar grew under the thumb (D-207).
-			'amount'  => Cast::str( $summary['total'] ?? null ),
+			'amount'      => Cast::str( $summary['total'] ?? null ),
 			// The disclosure says what it does, open or shut (Cowork minor 18); the stylesheet shows the one that applies.
-			'parts'   => __( 'Show the parts', 'creative-skateboard-builder' ),
-			'hide'    => __( 'Hide the parts', 'creative-skateboard-builder' ),
-			'next'    => array(
+			// On a phone the summary is in the shut parts sheet, so the bar gives the estimate itself, on a line of its
+			// own under the amount, while one is given (Cowork's 0.8.0 review, F2; D-230). The status region says it
+			// already, so the line is not read again.
+			'hasEstimate' => Cast::bool( $summary['hasEstimate'] ?? null ),
+			/* translators: %s: an amount of money, such as $184.00. Short: it sits under the total in the phone's bar. */
+			'estimate'    => sprintf( __( 'Complete from about %s', 'creative-skateboard-builder' ), Cast::str( $summary['estimateAmount'] ?? null ) ),
+			'parts'       => __( 'Show the parts', 'creative-skateboard-builder' ),
+			'hide'        => __( 'Hide the parts', 'creative-skateboard-builder' ),
+			'next'        => array(
 				'shown'    => ! $panel,
 				// Which of the bar's two buttons: a button's form is its own, set once, so each form has one.
 				'onStep'   => ! $panel && ! $review,
@@ -1197,32 +1203,33 @@ final class BuilderView {
 		$arrival = Cast::str( $delivery['arrival'] ?? null );
 		$ships   = Cast::str( $delivery['line'] ?? null );
 		return array(
-			'heading'     => __( 'Your build', 'creative-skateboard-builder' ),
-			'rows'        => $rows,
-			'empty'       => array() === $rows,
-			'emptyText'   => __( 'Nothing is chosen yet.', 'creative-skateboard-builder' ),
-			'assembly'    => $assembly,
+			'heading'        => __( 'Your build', 'creative-skateboard-builder' ),
+			'rows'           => $rows,
+			'empty'          => array() === $rows,
+			'emptyText'      => __( 'Nothing is chosen yet.', 'creative-skateboard-builder' ),
+			'assembly'       => $assembly,
 			// A button in a GET form, not a link (spec: SEO and sharing): a crawler never enters a state.
-			'toggle'      => array(
+			'toggle'         => array(
 				'fields' => self::flat( $link->assembled( ! $on )->query( $state->kit->slots ) ),
 				'text'   => $on ? __( 'Remove assembly', 'creative-skateboard-builder' ) : __( 'Add assembly', 'creative-skateboard-builder' ),
 			),
-			'hasSaved'    => Cast::int( $saved['amount'] ?? null ) > 0,
+			'hasSaved'       => Cast::int( $saved['amount'] ?? null ) > 0,
 			/* translators: %s: an amount of money, such as $12.00. */
-			'saved'       => sprintf( __( 'Build discount: %s', 'creative-skateboard-builder' ), Words::delta( 'less', Cast::str( $saved['text'] ?? null ) ) ),
-			'totalLabel'  => __( 'Total', 'creative-skateboard-builder' ),
-			'total'       => Cast::str( Cast::map( $total['total'] ?? null )['text'] ?? null ),
+			'saved'          => sprintf( __( 'Build discount: %s', 'creative-skateboard-builder' ), Words::delta( 'less', Cast::str( $saved['text'] ?? null ) ) ),
+			'totalLabel'     => __( 'Total', 'creative-skateboard-builder' ),
+			'total'          => Cast::str( Cast::map( $total['total'] ?? null )['text'] ?? null ),
 			// The full price is no surprise at the review (P9): the board with each recommendation, said as an
 			// estimate under the total, which counts what was picked (D-213).
-			'hasEstimate' => null !== ( $total['estimate'] ?? null ),
+			'hasEstimate'    => null !== ( $total['estimate'] ?? null ),
 			/* translators: %s: an amount of money, such as $184.00. */
-			'estimate'    => sprintf( __( 'A complete board from about %s', 'creative-skateboard-builder' ), Cast::str( Cast::map( $total['estimate'] ?? null )['text'] ?? null ) ),
-			'hasArrival'  => '' !== $arrival,
-			'arrival'     => $arrival,
-			'hasShips'    => '' !== $ships,
-			'ships'       => $ships,
-			'notes'       => $notes,
-			'kit'         => $state->id,
+			'estimate'       => sprintf( __( 'A complete board from about %s', 'creative-skateboard-builder' ), Cast::str( Cast::map( $total['estimate'] ?? null )['text'] ?? null ) ),
+			'estimateAmount' => Cast::str( Cast::map( $total['estimate'] ?? null )['text'] ?? null ),
+			'hasArrival'     => '' !== $arrival,
+			'arrival'        => $arrival,
+			'hasShips'       => '' !== $ships,
+			'ships'          => $ships,
+			'notes'          => $notes,
+			'kit'            => $state->id,
 		);
 	}
 

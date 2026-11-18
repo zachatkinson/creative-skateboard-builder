@@ -1,6 +1,6 @@
 # Roadmap
 
-The whole Creative Skateboard Builder project: nine milestones to 1.0, then what follows it. `SPEC.md` says what each part must do; this file says what each milestone builds, what proves it, and where its audit looks hardest. The milestones are in order. Don't start one until Zach approves the last. Milestones 1 to 8 are tagged `v0.1.0` to `v0.8.0`; milestone 9 is `v1.0.0`.
+The whole Creative Skateboard Builder project: ten milestones to 1.0 (D-236), then what follows it. `SPEC.md` says what each part must do; this file says what each milestone builds, what proves it, and where its audit looks hardest. The milestones are in order. Don't start one until Zach approves the last. Milestones 1 to 9 are tagged `v0.1.0` to `v0.9.0`; milestone 10 is `v1.0.0`.
 
 **Every milestone runs the same way** (`AUDIT.md`):
 
@@ -8,7 +8,7 @@ The whole Creative Skateboard Builder project: nine milestones to 1.0, then what
 2. Build, test first where the spec gives cases. `/verify` before every commit.
 3. `/audit-milestone`: the two reviewer agents, every blocker and should-fix fixed with a test that fails without it, and the review written up.
 4. A draft pull request using the template, with a `CHANGELOG.md` entry, marked ready once the gates pass locally (D-041).
-5. Zach sends the summary to Claude in Cowork for the independent review. Its fixes land, Claude merges once the full CI run is green, and the next milestone's `/plan-milestone` tags the merge (`v0.<n>.0`; `v1.0.0` for milestone 9).
+5. Zach sends the summary to Claude in Cowork for the independent review. Its fixes land, Claude merges once the full CI run is green, and the next milestone's `/plan-milestone` tags the merge (`v0.<n>.0`; `v1.0.0` for milestone 10).
 
 ---
 
@@ -341,21 +341,29 @@ Shop Kit can't run in CI, so Claude in Cowork checks its checkout with a build i
 
 ---
 
-## Milestone 9: Hardening and 1.0 (1.0.0)
+## Milestone 9: Hardening (0.9.0)
+
+Planned as 1.0.0. On 18 November 2026 Zach moved 1.0.0 to milestone 10, the configurator, so the checks a person makes on the screens, and the API freeze, are made on the front end that ships (D-236). The items marked "moved" are milestone 10's now.
 
 **Builds and checks**
 
-- **French:** complete and read by a person (`.po`, `.mo`, `.l10n.php`).
-- **Accessibility:** the manual pass in `docs/A11Y.md`, with VoiceOver and NVDA, by someone who didn't write the code.
+- **French:** complete (`.po`, `.mo`, `.l10n.php`). Read by a person: moved.
+- **Accessibility:** the manual pass in `docs/A11Y.md`, with VoiceOver and NVDA, by someone who didn't write the code. Moved.
 - **Benchmarks** on the generated catalogue (2,000 parts, 500 candidates in one slot; cold and warm; with and without a persistent object cache) and Lighthouse, recorded in `docs/BENCHMARK.md`.
 - **Walk-throughs:** security (`docs/SECURITY.md`) and privacy (`docs/PRIVACY.md`).
-- **The public API frozen** for 1.0: `docs/HOOKS.md` final, the 1.0 snapshot committed. From here Semantic Versioning's rules hold.
+- **The public API ready to freeze:** `docs/HOOKS.md` complete, the snapshot committed. The freeze: moved.
 - **Upgrades:** tested from every 0.x tag; the canary green; a clean Plugin Check; `readme.txt` complete.
-- **The full-codebase audit** in `docs/AUDIT-1.0.0.md`, every dimension, every open item named.
-- **A hallway test:** Zach and three people who haven't seen the builder, on their own phones. The findings go into the review.
-- **The release:** tagged 1.0.0 and published.
+- **The full-codebase audit** in `docs/AUDIT-0.9.0.md`, every dimension, every open item named. Milestone 10 writes `docs/AUDIT-1.0.0.md`.
+- **A hallway test:** Zach and three people who haven't seen the builder, on their own phones. Moved.
+- **The release:** tagged 0.9.0 and published.
 
 **Done when** the audit has no blocker or should-fix open, and Zach approves the release.
+
+---
+
+## Milestone 10: The configurator and 1.0 (1.0.0)
+
+Planned in `docs/reviews/M10.md` and the redesign spec, after milestone 9 is merged and reviewed. It ends with the items milestone 9 moved here: the manual accessibility pass, French read by a person, the hallway test, the public API frozen, and the full audit in `docs/AUDIT-1.0.0.md` (D-236).
 
 ---
 

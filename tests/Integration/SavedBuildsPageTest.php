@@ -215,6 +215,107 @@ final class SavedBuildsPageTest extends CartTestCase {
 		self::assertSame( array(), $this->service( SavedBuilds::class )->of( $this->ana ) );
 	}
 
+	/**
+	 * Cowork's 0.8.0 review, F3 (#55; D-231): Delete has an Undo, a form under its notice that saves the build back,
+	 * with its name, picks and assembly, checked and priced again as any save. It is offered once, the session keeps
+	 * the build only until then, and its nonce is the deleted build's.
+	 */
+	/**
+	 * Delete Ana's one build and give back the Undo form's fields, as the page after the delete draws them.
+	 *
+	 * @param string $name The build's name.
+	 * @return array{0: \CreativeBranding\SkateboardBuilder\Domain\Saved\SavedBuild, 1: array<string, mixed>, 2: string}
+	 */
+	private function deleteAndOfferUndo( string $name ): array {
+		WC()->initialize_session();
+		wp_set_current_user( $this->ana );
+		$this->post( $this->saveFields( wp_create_nonce( SavedBuildHooks::SAVE ), $name ) );
+		$build = $this->service( SavedBuilds::class )->of( $this->ana )[0];
+		$this->post(
+			array(
+				SavedBuildHooks::FIELD => SavedBuildHooks::DELETE,
+				SavedBuildHooks::UUID  => $build->uuid,
+				SavedBuildHooks::NONCE => wp_create_nonce( SavedBuildHooks::DELETE . '_' . $build->uuid ),
+			)
+		);
+		self::assertSame( array( 'The build is deleted.' ), self::notices() );
+		self::assertSame( array(), $this->service( SavedBuilds::class )->of( $this->ana ), 'gone from the table' );
+		$page = $this->page();
+		self::assertSame( 1, preg_match( '#<form class="cbuild-my-builds__undo"[^>]*>(.*?)</form>#s', $page, $form ), 'Undo offered' );
+		preg_match_all( '#<input type="hidden" name="([^"]+)" value="([^"]*)">#', $form[1], $inputs, PREG_SET_ORDER );
+		$fields = array();
+		foreach ( $inputs as $input ) {
+			$fields[ html_entity_decode( $input[1] ) ] = html_entity_decode( $input[2] );
+		}
+		return array( $build, $fields, $page );
+	}
+
+	public function test_a_deleted_build_comes_back_with_undo_as_it_was_once_and_by_its_own_nonce(): void {
+		[ $build, $fields, $page ] = $this->deleteAndOfferUndo( 'Street setup' );
+		self::assertStringContainsString( 'aria-label="Undo deleting Street setup">Undo</button>', $page );
+		self::assertSame( array( SavedBuildHooks::FIELD, SavedBuildHooks::UUID, SavedBuildHooks::NONCE ), array_keys( $fields ), 'the form names the build; the build itself is the server\'s copy' );
+
+		// Another customer, with the form as it was: their nonce is not the deleted build's.
+		wp_set_current_user( $this->ben );
+		$this->post( $fields );
+		self::assertSame( array( 'That form has expired. Please try again.' ), self::notices( 'error' ) );
+		self::assertSame( array(), $this->service( SavedBuilds::class )->of( $this->ben ) );
+		// No nonce at all.
+		wp_set_current_user( $this->ana );
+		$this->post( array( SavedBuildHooks::NONCE => '' ) + $fields );
+		self::assertSame( array( 'That form has expired. Please try again.' ), self::notices( 'error' ) );
+		self::assertSame( array(), $this->service( SavedBuilds::class )->of( $this->ana ) );
+
+		$to = $this->post( $fields );
+		self::assertSame( array( 'The build is back in My builds.' ), self::notices() );
+		self::assertSame( SavedBuildHooks::url(), $to );
+		$back = $this->service( SavedBuilds::class )->of( $this->ana );
+		self::assertCount( 1, $back );
+		self::assertEquals( $build, $back[0], 'the same build: its UUID, name, picks, assembly and dates' );
+
+		// Sent again, by Back or a second press: nothing more is made.
+		$this->post( $fields );
+		self::assertSame( array( 'The build is back in My builds.' ), self::notices() );
+		self::assertCount( 1, $this->service( SavedBuilds::class )->of( $this->ana ) );
+		self::assertStringNotContainsString( 'cbuild-my-builds__undo', $this->page(), 'offered once' );
+	}
+
+	public function test_undo_brings_back_a_build_whose_part_went_since_as_it_was(): void {
+		[ $build, $fields ] = $this->deleteAndOfferUndo( 'Old wheels' );
+		wp_trash_post( $this->parts['wheels'] );
+		$this->service( \CreativeBranding\SkateboardBuilder\Port\Kits::class )->forget();
+		$this->post( $fields );
+		self::assertSame( array( 'The build is back in My builds.' ), self::notices() );
+		self::assertSame( array(), self::notices( 'error' ) );
+		$back = $this->service( SavedBuilds::class )->of( $this->ana );
+		self::assertCount( 1, $back );
+		self::assertSame( $build->picks, $back[0]->picks, 'the gone part kept, for Open to name' );
+		self::assertStringContainsString( 'A part has changed since you saved it. Open the build to see which.', $this->page() );
+	}
+
+	public function test_undo_names_an_unnamed_build_as_the_list_did_and_is_offered_on_the_next_view_alone(): void {
+		[ , $fields, $page ] = $this->deleteAndOfferUndo( '' );
+		self::assertSame( 1, preg_match( '#aria-label="Undo deleting ([^"]+)">Undo</button>#', $page, $label ) );
+		self::assertNotSame( '', trim( html_entity_decode( $label[1] ) ), 'named as My builds named it' );
+		// A later view: the offer has passed, and the form sent from the old page says so.
+		self::assertStringNotContainsString( 'cbuild-my-builds__undo', $this->page() );
+		$this->post( $fields );
+		self::assertSame( array( 'That build can no longer be brought back.' ), self::notices( 'error' ) );
+		self::assertSame( array(), $this->service( SavedBuilds::class )->of( $this->ana ) );
+	}
+
+	public function test_undo_on_a_full_account_says_so_and_keeps_nothing_over_the_most(): void {
+		[ , $fields ] = $this->deleteAndOfferUndo( 'One too many' );
+		$store = $this->service( \CreativeBranding\SkateboardBuilder\Port\SavedBuildStore::class );
+		$now   = new \DateTimeImmutable( '2026-11-18 03:00:00', new \DateTimeZone( 'UTC' ) );
+		for ( $i = 0; $i < SavedBuilds::MOST; $i++ ) {
+			$store->put( new \CreativeBranding\SkateboardBuilder\Domain\Saved\SavedBuild( sprintf( '00000000-0000-4000-8000-%012d', $i ), $this->ana, $this->kit, $this->picks(), true, 'Full ' . $i, $now, $now ) );
+		}
+		$this->post( $fields );
+		self::assertSame( array( 'You have 100 saved builds, the most kept. Delete one to save another.' ), self::notices( 'error' ) );
+		self::assertCount( SavedBuilds::MOST, $this->service( SavedBuilds::class )->of( $this->ana ) );
+	}
+
 	public function test_my_builds_lists_each_build_with_its_total_today_and_open_carries_its_uuid_for_its_owner_alone(): void {
 		wp_set_current_user( $this->ana );
 		$this->post( $this->saveFields( wp_create_nonce( SavedBuildHooks::SAVE ), 'Mine' ) );

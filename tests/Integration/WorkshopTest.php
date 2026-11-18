@@ -233,6 +233,29 @@ final class WorkshopTest extends CartTestCase {
 		self::assertStringContainsString( 'orders=' . $order->get_id(), $box );
 	}
 
+	/**
+	 * Cowork's 0.8.0 review, F6: a part sold with no spec the build reads says "No specs", not "None kept", which read
+	 * as if something had been thrown away.
+	 */
+	public function test_a_part_sold_with_no_specs_says_so(): void {
+		$this->as( 'shop_manager' );
+		$order = $this->ordered();
+		foreach ( $order->get_items() as $item ) {
+			$snapshot = $item->get_meta( Options::ORDER_SNAPSHOT );
+			if ( '' === $snapshot || null === $snapshot ) {
+				continue;
+			}
+			$data = is_string( $snapshot ) ? json_decode( $snapshot, true ) : $snapshot;
+			self::assertIsArray( $data );
+			$data['picks']['grip']['specs'] = array();
+			$item->update_meta_data( Options::ORDER_SNAPSHOT, is_string( $snapshot ) ? (string) wp_json_encode( $data ) : $data );
+			$item->save();
+		}
+		$box = self::box( wc_get_order( $order->get_id() ) );
+		self::assertMatchesRegularExpression( '#<th scope="row">Grip</th>(?:\s*<td>[^<]*</td>){3}\s*<td>\s*No specs\s*</td>#', $box );
+		self::assertStringNotContainsString( 'None kept', $box );
+	}
+
 	public function test_a_build_the_shop_does_not_assemble_has_no_refund_help(): void {
 		$this->as( 'shop_manager' );
 		$box = self::box( $this->ordered( false ) );

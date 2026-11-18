@@ -157,6 +157,19 @@ if [ -f "$pot" ]; then
 	fi
 fi
 
+# 8b. The same on each shipped translation, from milestone 9 (French ships, D-233): no em dash and no exclamation mark
+# in a msgstr. Words are the translator's: the banned list is English.
+for po in languages/*.po; do
+	[ -f "$po" ] || continue
+	translated="$(awk '/^msgstr(\[[0-9]+\])? "/ { if ( text != "" ) print text; sub( /^msgstr(\[[0-9]+\])? "/, "" ); sub( /"$/, "" ); text = $0; open = 1; next } open && /^"/ { sub( /^"/, "" ); sub( /"$/, "" ); text = text $0; next } { if ( text != "" ) print text; text = ""; open = 0 } END { if ( text != "" ) print text }' "$po")"
+	if printf '%s\n' "$translated" | grep -n '—' ; then
+		echo "Gate 8b: an em dash in $po."; status=1
+	fi
+	if printf '%s\n' "$translated" | grep -nE '!' ; then
+		echo "Gate 8b: an exclamation mark in $po."; status=1
+	fi
+done
+
 # 9 and 10. The release workflow (tools/gate-release.awk). 9: a job that holds a secret runs gh and nothing of the
 # repository's or of any package, so nothing installed can reach the token that publishes to the repository every
 # shop's updater trusts (D-043); an allow-list of commands, not a list of tools to refuse (D-048). 10: the job that

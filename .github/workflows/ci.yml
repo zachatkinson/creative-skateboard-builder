@@ -378,6 +378,13 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: npm run upgrade
+      # Milestone 9: from every published release, each with the shop's data made on it (D-232). Only where every
+      # browser project runs, as the visual snapshots: some 25 minutes more.
+      - name: The update from every published release
+        if: matrix.leg == 'newest' && needs.scope.outputs.browsers == 'every'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: npm run upgrade:all
       - run: npm run test:e2e -- ${{ steps.browsers.outputs.projects }}
         if: matrix.leg == 'newest' || matrix.leg == 'oldest'
       # In Playwright's own Linux image, as locally, so the baselines are one machine's pictures (D-162). Only where

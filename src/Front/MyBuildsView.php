@@ -135,6 +135,35 @@ final class MyBuildsView {
 	}
 
 	/**
+	 * A build's name as My builds shows it: the one the customer gave, or, for an unnamed build, its parts' title.
+	 *
+	 * @since 0.9.0
+	 *
+	 * @param SavedBuild $build The build.
+	 */
+	public function name( SavedBuild $build ): string {
+		try {
+			$state = $this->builds->of( $build->kit, $build->picks, null, State::REVIEW, $build->assembly );
+		} catch ( InvalidMoney ) {
+			$state = null;
+		}
+		return $this->named( $build, $state );
+	}
+
+	/**
+	 * The name, given the build's state.
+	 *
+	 * @param SavedBuild $build The build.
+	 * @param State|null $state Its state, or null where it could not be priced.
+	 */
+	private function named( SavedBuild $build, ?State $state ): string {
+		if ( '' !== $build->name ) {
+			return $build->name;
+		}
+		return null === $state ? __( 'A saved build', 'creative-skateboard-builder' ) : $this->cards->title( $state->counted() );
+	}
+
+	/**
 	 * One build's row.
 	 *
 	 * @param SavedBuild $build The build.
@@ -146,11 +175,8 @@ final class MyBuildsView {
 		} catch ( InvalidMoney ) {
 			$state = null;
 		}
-		$ready = null !== $state && $state->ready();
-		$name  = $build->name;
-		if ( '' === $name ) {
-			$name = null === $state ? __( 'A saved build', 'creative-skateboard-builder' ) : $this->cards->title( $state->counted() );
-		}
+		$ready   = null !== $state && $state->ready();
+		$name    = $this->named( $build, $state );
 		$picture = null;
 		$photo   = '';
 		if ( $ready ) {

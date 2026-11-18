@@ -121,6 +121,29 @@ final class SavedBuilds {
 	}
 
 	/**
+	 * Undo: put back a build its customer just deleted, as it was, its UUID, picks and dates the same (Cowork's 0.8.0
+	 * review, F3; D-231). It is not checked again: a part gone since stays among its picks, and Open names it, as for any
+	 * saved build. Sent twice, it is there already, and nothing more is made. The most a customer keeps still holds.
+	 *
+	 * @since 0.9.0
+	 *
+	 * @param SavedBuild $build The build as it was deleted.
+	 * @return string SAVED, FULL, FAILED or SIGNED_OUT.
+	 */
+	public function restore( SavedBuild $build ): string {
+		if ( $build->user < 1 ) {
+			return self::SIGNED_OUT;
+		}
+		if ( null !== $this->store->find( $build->user, $build->uuid ) ) {
+			return self::SAVED;
+		}
+		if ( $this->store->count( $build->user ) >= self::MOST ) {
+			return self::FULL;
+		}
+		return $this->put( $build ) ? self::SAVED : self::FAILED;
+	}
+
+	/**
 	 * Give one of a customer's builds another name. False when they have none with that UUID.
 	 *
 	 * @since 0.8.0

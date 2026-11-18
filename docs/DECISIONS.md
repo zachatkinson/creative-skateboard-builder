@@ -3026,3 +3026,138 @@ Why: Cowork's suggestions were bundled into the next milestone anyway, so holdin
 CI run 44194833317, oldest leg: the first try at `npx playwright install-deps` was still downloading when D-123's `timeout 180` stopped it. `timeout` stops npx, but the `apt-get` it had started through sudo runs as root and kept going. So tries 2 and 3 each failed at once with "Could not get lock /var/lib/dpkg/lock-frontend. It is held by process 33467 (apt-get)", and the job failed before any test ran.
 
 Each try in both install steps now first waits up to five minutes for any `apt-get` or `dpkg` to finish, then starts. The leftover apt-get is not killed: stopping dpkg part-way can leave the packages broken, and here it was only slow. D-123's tries and timeouts and D-126's change of mirror stay as they were.
+
+### D-225 · 1.0.0 merges on green and is tagged after the human checks · 2026-11-18
+
+Zach, 18 November 2026: milestone 9's pull request merges into `main` once the full CI run is green, as every milestone's has (D-223), but `v1.0.0` is not tagged, so nothing reaches `zachatkinson/creative-releases` or the demo. The tag waits for the four parts of the milestone only people can do: French read by a person, the screen-reader pass of `docs/A11Y.md` by someone who didn't write the code, the hallway test, and Zach's approval of the release (ROADMAP.md, milestone 9's Done when). Their findings go into `docs/reviews/M9.md` before the tag.
+
+Why: the roadmap's Done when needs all four, and a tag publishes to every shop that updates, the demo among them. `main` carries the version 1.0.0 untagged until then.
+
+### D-226 · The network file is written by a network admin, off admin-ajax.php, whatever its line endings · 2026-11-18
+
+Cowork's 0.8.0 review, F5 (#57). `InstallHooks::networkFile()` on `admin_init` wrote the must-use file for any request that fired the hook, a logged-out `admin-ajax.php` call among them, and a file whose line endings an SFTP deploy had changed was written again on every such request. It now writes only on a network, never under `wp_doing_ajax()` (wp-includes/load.php:1745), and only for `manage_network_plugins` (wp-includes/capabilities.php:767). `NetworkFile::inPlace()` compares after turning `\r\n` into `\n`. Activation still writes it, as the one who activates could have put it there.
+
+After an update, the file is written by the first network admin's wp-admin page on the new release, not on `upgrader_process_complete` as the review suggested: that action runs in the old release's request (wp-admin/includes/class-wp-upgrader.php:987), where `Plugin::completed()` has already taken every callback of the plugin off every hook (Cowork's M7 review, F3), so nothing of the new release could write it there. Until a network admin visits, the file is the old release's, which names the same tables, and Site Health says when it is missing.
+
+**Red run:** `InstallHooksTest::test_the_network_file_is_written_only_for_a_network_admin_off_ajax_and_not_for_line_endings`, multisite leg: "Failed asserting that file "…/mu-plugins/creative-skateboard-builder-network.php" does not exist." at InstallHooksTest.php:293 (a visitor). **Deliberate breaks:** without the AJAX guard, the same at :306; without the line endings' normalising, "line endings are not a difference. Failed asserting that false is true." at :317.
+
+### D-227 · The canary's cart test reads the Edit build link's attributes as a set · 2026-11-18
+
+The canary, run 43819073525 on WordPress trunk: `CartShowTest::test_a_classic_cart_prints_the_kits_link_after_its_assembly_with_no_entry_of_no_label` failed, "Failed asserting that 0 is identical to 1." at CartShowTest.php:243, because trunk prints the link's attributes in another order (`aria-label`, `class`, `href`). The order is not part of what a shopper or a theme gets. The test now takes the link out of the same anchored pattern and reads its attributes with `WP_HTML_Tag_Processor`: exactly `aria-label`, `class` and `href`, the class `cbuild-edit`, a link and a name. It still holds the words, the single entry and the link after the assembly, so it is no weaker; it passes on 7.1.4 and is built for trunk's order. Issue #43 closes when the next canary is green.
+
+### D-228 · A translatable string holds its characters, never PHP's escapes for them · 2026-11-18
+
+Writing the French, the translator found `%s\u{00A0}mm` in the POT. `Words::measure()` wrote the millimetre pattern in a double-quoted string with `\u{00A0}`, and `wp i18n make-pot` copies a string's escapes as written, so the POT's msgid was the six characters `\u{00A0}` where PHP's string holds one no-break space. No translation of it could ever be used. The pattern now holds the no-break space itself, in a single-quoted string, and `composer i18n:check` refuses any msgid with a `\u{…}`, `\x…` or octal escape in it, so the next one is caught before a translator meets it.
+
+The same pass found "Fill in Units in a set on its Part specs." in the Build tab's warning, which names a field the Part specs panel calls "Number in a set" (`Admin\Labels`). It now names it as the panel does.
+
+**Red runs:** `composer i18n:check` on the code before the fix: "tmp/i18n-check.pot: "%s\u{00A0}mm" (millimetres) holds an escape PHP turns into another character; write the character itself in a single-quoted string", "1 i18n problem(s)." `BuildTabTest::test_saving_says_which_parts_of_a_slot_have_no_set_size`, with the test naming the panel's field: "Failed asserting that two arrays are identical." at BuildTabTest.php:627.
+
+### D-229 · The focus ring has two tones of its own, outside `:where()` · 2026-11-18
+
+Cowork's 0.8.0 review, F1 (#53). `--cbuild-focus` fell back to the theme's `contrast` preset, which on the demo's dark Kadence is dark too, so focus on a deck card (2 px of rgb(42, 42, 42)) and on Next (Kadence's own 3 px of rgb(18, 18, 18), which won over the builder's rule inside `:where()`) could not be seen on the near-black page.
+
+The ring is now a 2 px outline in `--cbuild-focus`, `#000`, between two light bands drawn by a box-shadow in `--cbuild-focus-contrast`, `#fff`. Whatever is behind it, one of the two stands out from it by 3:1 or better (WCAG 2.4.11): black and white each reach at least 4.5:1 against any colour on one side of mid-grey. The review suggested the builder's text colour and its background. That was not taken, because neither is known: `--cbuild-text` is `currentcolor`, which a custom property resolves where it is used, on a button's own colour, and the builder has no ground of its own, only the page's, which can be an image or a gradient. The ring is outside `:where()` with the builder's class twice, so it wins over a theme's `button:focus-visible` or `.woocommerce button.button:focus-visible`, as `[hidden]` does. A theme that sets `--cbuild-focus` keeps its colour. A chosen card keeps its inset line in the accent while it has focus. A card's radio no longer draws a ring of its own beside the card's. In forced colours the box-shadow goes and the outline is the system's Highlight.
+
+**Red run:** `focus.spec.ts` › "a deck card and the step's Next each show a ring that stands out from the page", chromium-desktop, on the stylesheet before the change: "a deck card: {"outline":"rgb(42, 42, 42)","width":2,…,"ground":"rgb(11, 11, 11)"} Expected: >= 3 Received: 1.3712861600211907" at focus.spec.ts:152, the demo's own measure. The test runs on Chromium and Firefox; WebKit's Tab passes over radios unless the system's keyboard setting says otherwise. A visual baseline, `kadence-demo-dark-desktop-card-focus.png`, shows the ring.
+
+### D-230 · The phone bar gives the estimate on a line under its amount · 2026-11-18
+
+Cowork's 0.8.0 review, F2 (#54). On a phone the summary, with "A complete board from about $207.96", is in the parts sheet, shut until opened, so a sighted shopper saw the deck's price alone. While an estimate is given, the bar now shows "Complete from about $207.96" on a line of its own under the amount, smaller and in the muted colour, so the amount stays alone, as D-207 has it, and the bar stays one line high beside the picture. It is in the same `aria-hidden` span as the amount: the bar's summary is read as "Total: …", and the status region already says the estimate with each pick, so it is not said twice. The wording is shorter than the summary's, for the bar's width. On the narrowest phones it wraps, so the bar is taller while it shows: the page's scroll padding, which keeps focus clear of the bar (D-160), is 6.75rem then, room for three lines, in CSS alone so it holds without the script. The `never covers the control in focus` test runs with the estimate too.
+
+**Red runs:** `BuilderTest::test_the_phone_bar_gives_the_estimate_under_its_amount_while_one_is_given`: "Undefined array key "hasEstimate"" at BuilderTest.php:874. `builder.spec.ts` › "never covers the control in focus, the bar giving the estimate", chromium-phone, without the padding rule: "cbuild-card__control 623.6875 > 598.8125". Baselines `kadence-light-phone-bar-estimate.png` and `kadence-dark-phone-bar-estimate.png` made on purpose. The phone bar's "keeps its height" test (D-207) went red with the estimate, which grows the bar by its line on purpose: it now holds the bar to grow by that line at most, and, with the line set aside, to the height it had before the pick, as before. `BuilderPageTest` reads the amount's own span, and that the line is hidden while the build gives no estimate.
+
+### D-231 · Undo after Delete on My builds, from the server's copy, as it was · 2026-11-18
+
+Cowork's 0.8.0 review, F3 (#55), which replaces D-222's "no confirmation before Delete". Delete still deletes at once, and WooCommerce's notice "The build is deleted." is followed by an Undo button, named for the build ("Undo deleting Street", an unnamed build by the name My builds gives it), a form that works without JavaScript.
+
+- **The copy is the server's.** The customer's WooCommerce session holds the deleted build whole: its UUID, owner, kit, picks, assembly, name and dates. The form sends its UUID and a nonce alone (`cbuild_restore_build` and the UUID, for the signed-in customer), so nothing of the build is taken from the browser.
+- **Back as it was.** `SavedBuilds::restore()` writes the copy back under its own UUID and dates. It is not checked again: a build whose part went since comes back with that part among its picks, and Open names it, as for any saved build. Checking it, as a save does, would have lost it for good, since My builds lists such builds (both reviews of 1.0.0, S1). The 100 a customer keeps still holds.
+- **Once.** Sent twice, by a second press or Back, the build is there already and nothing more is made. The offer is for the next view of My builds alone: a later view forgets the copy, and the old page's form then says "That build can no longer be brought back."
+- **Focus** goes where WooCommerce puts it after every action in My account: on its notice, which says "The build is back in My builds." (`woocommerce/assets/js/frontend/woocommerce.js:266-292`, `focus_populate_live_region`, 500 ms after load). The plan said the restored row's name; WooCommerce's script takes focus from it half a second later, and an `autofocus` is skipped on an address with a fragment, so a second focus target would only make focus jump. WooCommerce focuses the notice twice, as the page loads and again from that timer (`woocommerce.js:243`), so the browser test waits for the timer before it reaches Undo by keyboard (`noticeFocusDone()` in `tests/e2e/support/test.ts`; CI run 44307517356).
+- **The session** is WooCommerce's, cleared at sign-out and expired by WooCommerce. The copy lasts from the Delete to the next view of My builds, or to Undo. WordPress's eraser cannot reach another person's session without reading WooCommerce's sessions table, which the plugin does not touch; the copy is the customer's own build, held for one page view, and `docs/PRIVACY.md` lists it. Uninstall leaves it to the session's end.
+
+**Red runs** (the tests first, on the form that posted the build back):
+- `SavedBuildsPageTest::test_a_deleted_build_comes_back_with_undo_as_it_was_once_and_by_its_own_nonce`: "Failed asserting that two arrays are identical" at SavedBuildsPageTest.php:256 (the form's fields).
+- `…::test_undo_brings_back_a_build_whose_part_went_since_as_it_was` at :289 ("This build could not be saved: a part is missing…").
+- `…::test_undo_names_an_unnamed_build_as_the_list_did_and_is_offered_on_the_next_view_alone` at :299.
+- `…::test_undo_on_a_full_account_says_so_and_keeps_nothing_over_the_most` at :316.
+
+**Deliberate break:** `restore()` sent through the checked `save()` again: red at SavedBuildsPageTest.php:289. The browser test "a customer saves, opens, saves over and deletes a build under My builds" goes on to Undo by keyboard, runs axe on the Undo state and holds focus to the notice, in seven projects, `no-js` among them.
+
+Why not a row kept for a while: that would be a change to the builds table, or a soft-delete column every query and the eraser must know about. Why not a confirmation: Baymard's account research, which Cowork cited, finds undo kinder, and a confirmation without JavaScript is a page of its own.
+
+### D-232 · The update is tested from every published release, with that release's own data on it · 2026-11-18
+
+Milestone 9: "Upgrades: tested from every 0.x tag". `npm run upgrade:all` (`tools/upgrade-all.sh`) runs `tools/upgrade.sh` once for each release on `zachatkinson/creative-releases` below this one, from its own published zip: 0.1.0, 0.2.0, 0.3.0, 0.3.1, 0.4.0, 0.6.0, 0.7.0 and 0.8.0. 0.5.0 was tagged but never published, so no shop runs it.
+
+On the old release, before the update, `tools/upgrade.sh` makes:
+- with WooCommerce alone, the same on every release: six products with SKUs, prices, stock and an attribute, and a paid order holding them (`tools/upgrade/seed.php`);
+- from 0.4.0, the release's own kits, parts and specs, made by that tag's own browser fixture (`tests/e2e/fixtures/shop.php`, taken with `git archive` from the tag) with that release's own classes, so they are stored as that release stored them, and its jobs index them;
+- from 0.8.0, a customer's saved build, made by that release's own `SavedBuilds` service from a preset.
+
+Releases before 0.6.0 are updated deactivated, as their readme said, and the check of their container in the update's request is not made: D-208 found those releases were the agency's own builds, run by no shop, and their containers have no binding for what 0.4.0 and 0.5.0 added. Their data is still made and read back: from 0.4.0 its own fixture's kits, and 0.3.x read no kit at all. Two runs of `tools/upgrade.sh` at once share the browser site and `tmp/upgrade`, and fail each other; `upgrade:all` runs them one after another. The check of the container learned the oldest releases' ways for this: 0.1.0 and 0.2.0 register every Hookable through `hookables()`, with no scopes, and 0.1.0's `hookableClasses()` is a plain list of class names (`tools/upgrade/graph.php`).
+
+After the update, the plugin's jobs run and none may fail, no PHP error may name the plugin, the order reads back with its lines and products and its Build box runs, 1.0.0 reads every kit the old release read (0.8.0's fixture stores three kits and reads two: its Build tab kit holds a slots document alone, there for that tab's tests), every preset is priced, and the saved build is listed. A deliberate break, 1.0.0 refusing to read the cart test kit, fails the run at that line. The seed's products, orders and customers are deleted after the run, so a browser run after it meets the site as before. CI runs `npm run upgrade` from the newest release on every full run, and `upgrade:all` on the newest leg where every browser project runs.
+
+What it does not make: an order holding a build, written by an old release's own cart and checkout. That needs each release's Store API add and a checkout in a request, which WP-CLI is not. The order shapes are held by the tests that start from each stored snapshot (`OrderEmailTest`, `WorkshopTest`, from 0.8.0's), and it stays an open item in `AUDIT-1.0.0.md` (0.8.0's review, auditor 20).
+
+### D-233 · French ships, complete, and the checks require it · 2026-11-18
+
+Milestone 9: "French: complete and read by a person". `languages/creative-skateboard-builder-fr_CA.po` holds every one of the POT's 769 strings, with `.mo`, `.l10n.php` and the editor script's JSON made by `composer i18n:compile`. The words are Canadian French: « configurateur » for the builder, « montage » for a build, « Illustration » for the picture, « UGS » for SKU, the no-break spaces of D-158 (Creative Search) before a colon and inside « », and `%s mm` with its no-break space (D-228).
+
+- `composer i18n:check` now fails when fr_CA is missing, not only when it is incomplete: it passed with no translation at all (both reviews of 1.0.0, B1). **Red run:** with the `.po` moved away, "languages/: no fr_CA translation, which ships complete" and "1 i18n problem(s)".
+- Gate 8b runs the copy gate's em dash and exclamation mark over each shipped translation's msgstrs; the banned words are English and stay the POT's. Its self-test has two snippets, `8b-em-dash.po` and `8b-exclamation.po`, the second on a wrapped string.
+- The French was written by Claude and checked by the tools. It is read by a person Zach arranges before the tag (D-225); their changes go into the `.po` as any fix does.
+
+### D-234 · The fr-ca project keeps the plugin in English, and one spec walks it in French · 2026-11-18
+
+CI's first full run of milestone 9 (run 44264444652) failed the `fr-ca` project test after test, until its leg reached its 120 minutes. The project runs every spec with the site in fr_CA, and the specs find the builder by its English words. Until this milestone no French was shipped, so the plugin's own strings stayed English there and only numbers and WordPress's words were French. With D-233's French complete, every name a spec asked for was French.
+
+- **The project runs as before.** `tests/e2e/mu-plugins/cbuild-e2e-locale.php` keeps the plugin's own strings in English unless the request sends `x-cbuild-e2e-translated`. It uses `pre_load_textdomain` (`wp-includes/l10n.php:749`, WordPress 7.1.4) for the PHP strings and `pre_load_script_translations` (`:1371`) for the script's. Numbers, dates and WordPress's own words stay in fr_CA, which is what the project was for (D-084's `inLocale()`).
+- **`tests/e2e/french.spec.ts` asks for the French.** It runs in the `fr-ca` project alone, at phone width, with the script. It checks:
+  - the step heading, « Étape 1 sur 7 : »;
+  - the summary and a pick by its French name;
+  - the bar's « Complète à partir d’environ »;
+  - axe on the builder;
+  - the next step drawn in French, « Étape 2 sur 7 : Trucks »;
+  - `lang="fr-CA"`.
+- **Why not translate every spec's names:** that is 900 tests' words, and a spec that reads the English source strings tests the code, while one spec in French tests the translation. The person's reading of the French stays owed (O1).
+
+The same run failed Firefox's phone bar test on the desktop and phone projects. The bar is taller with the estimate (D-230), so its top falls on a fraction of a pixel. Firefox lays out in sixtieths of a pixel and gave the parts list's bottom as 599.8333740 against the bar's top plus one at 599.8333129, for the same line. The test now compares the two in sixtieths of a pixel; the one-pixel allowance is unchanged.
+
+**Red runs:** the fr-ca project on CI, "✘ 708 [fr-ca] › build-tab.spec.ts:72" and 25 more before the leg's timeout. Firefox: "Expected: <= 599.8333129882812, Received: 599.8333740234375" at `builder.spec.ts:2915`, locally too.
+
+### D-235 · The test sites never update themselves, and run WordPress 7.1.5 · 2026-11-18
+
+CI run 44328074447 failed one browser test on firefox-desktop in the newest leg: after "Start from Street" the page was WordPress's "Briefly unavailable for scheduled maintenance." The trace has the cart and the builder answering 503 from 18:14:34. No spec updates anything. WordPress 7.1.5 had been released, and wordpress.org lists 7.1.4 as insecure, so the fresh 7.1.4 site's cron offered itself a minor core update and turned on maintenance mode for it (`wp-admin/includes/class-wp-automatic-updater.php:474`, WordPress 7.1.4 and 7.1.5; translations skip maintenance mode, core, plugins and themes do not).
+
+- **Both sites set `AUTOMATIC_UPDATER_DISABLED`** in `.wp-env.json` and `.wp-env.tests.json`. Each leg tests the versions it pins, and a release of WordPress, WooCommerce or a theme cannot change a site under a run. The oldest leg's override files leave `config` alone, so it holds there too.
+- **The newest leg moves to WordPress 7.1.5,** Zach's call on 18 November 2026: it is the release shops and the demo now run, as D-145 moves WooCommerce's pin to the release the demo runs. `.wp-env.json`, `.wp-env.tests.json`, `CLAUDE.md` and `docs/AUDIT.md` say 7.1.5; the benchmarks and decisions measured on 7.1.4 keep the version they were measured on. WooCommerce 11.3.0 is still its newest release.
+
+**Red:** "✘ 441 [firefox-desktop] › tests/e2e/builder.spec.ts:1364:2", "Expected: "Step 7 of 7: Review"", "Error: element(s) not found" at `builder.spec.ts:1381`, with the maintenance page in the screenshot. Locally, `WP_Automatic_Updater::is_disabled()` printed "enabled" on both sites before and "disabled" on both after.
+
+### D-236 · Milestone 9 is 0.9.0, and the configurator is 1.0.0 · 2026-11-18
+
+Zach, 18 November 2026, once the redesign (the full-screen configurator) was proposed for after milestone 9: milestone 10, the configurator, is tagged `v1.0.0`, and milestone 9 is released as 0.9.0.
+
+**Why:** the checks a person makes on the screens (the screen-reader pass, French read by a person, the hallway test) and the visual baselines would be made on a front end about to be replaced, then made again. And 1.0.0 freezes the public API (Semantic Versioning holds from it): the configurator adds to the state route and changes the builder's templates and classes, which is plain work before the freeze and deprecations after it. No shop sells with the builder yet, so none waits on the number.
+
+- **0.9.0** is milestone 9 as built: the plugin header, `CBUILD_VERSION`, `package.json`, `readme.txt`'s stable tag and entries, the translation files' headers, and the `@since` of the three items milestone 9 added (`SavedBuilds::restore()`, `SavedBuildHooks::RESTORE`, `MyBuildsView`'s Undo), with `docs/HOOKS.md`, `docs/PRIVACY.md` and `docs/A11Y.md` dated to match. `docs/AUDIT-1.0.0.md` is renamed `docs/AUDIT-0.9.0.md`, `docs/BENCHMARK.md`'s section and `docs/SECURITY.md`'s column with it.
+- **Moved to milestone 10:** the manual accessibility pass, French read by a person, the hallway test, the API freeze, and the full audit in a new `docs/AUDIT-1.0.0.md`. D-225's hold now applies to 0.9.0 only until Cowork's review: the tag waits for Zach's approval of milestone 9, as every milestone's has.
+- **Milestone 11, the motion,** follows 1.0.0 as 1.1.0: it adds no public API.
+- **What keeps its words:** decisions and reviews written before today say 1.0.0 where they meant this milestone. They are records, and stay as written.
+
+### D-237 · The repository is public, and `main` and the release tags are held by rulesets · 2026-11-18
+
+Zach, 18 November 2026: the repository goes public, so CI runs on GitHub's standard runners at no cost (public repositories' standard runners are free; ours are all `ubuntu-26.04`), and its setup follows best practice, "do it all".
+
+- **Before it went public:** gitleaks scanned every commit on every branch and found nothing.
+- **Who can write:** Zach is the only collaborator. Outsiders can only fork and open pull requests, which run no workflow until he approves them.
+- **`main`:** no force-push or deletion; changes only through a pull request; the seven CI jobs required; merge commits only; no bypass for anyone. This matches how every milestone already lands (a branch, a ready pull request, a merge on a green full run), and it binds Claude Code, which pushes with Zach's login.
+- **Tags:** `v*` tags can't be moved or deleted, since `release.yml` publishes what a tag names.
+- **Secrets and Actions:** secret scanning with push protection on; Actions limited to GitHub's own and the three third-party actions the workflows use, all pinned to SHAs (`sha_pinning_required`); private vulnerability reporting on. Merged branches are deleted.
+- **Not done:**
+  - Signed commits need a signing key set up for git first. That's Zach's call later.
+  - The scanning of non-provider patterns, and validity checks, need GitHub's paid Secret Protection.
+- **Why approvals stay at 0:** a pull request needs no approving review, since Zach can't approve his own and is the only reviewer. CI and the two reviewer agents stand in for a second person.

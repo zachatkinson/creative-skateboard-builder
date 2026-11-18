@@ -60,11 +60,15 @@ final class InstallHooks implements Hookable {
 
 	/**
 	 * On a network, in wp-admin: write the must-use file where it is missing or out of date, as after an update (#8,
-	 * D-220). One read of a small file a request; nothing on a single site.
+	 * D-220), for a network admin alone and never on admin-ajax.php, so no visitor's request writes a file that runs
+	 * (Cowork's 0.8.0 review, F5; D-226). Nothing on a single site, and no read of the file for anyone else.
 	 *
 	 * @since 0.8.0
 	 */
 	public function networkFile(): void {
+		if ( ! is_multisite() || wp_doing_ajax() || ! current_user_can( 'manage_network_plugins' ) ) {
+			return;
+		}
 		NetworkFile::ensure();
 	}
 

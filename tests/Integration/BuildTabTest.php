@@ -625,7 +625,7 @@ final class BuildTabTest extends IntegrationTestCase {
 		$this->send( $kit, $sent );
 
 		self::assertSame(
-			array( '<a href="#cbuild-kit-slots-2-units">1 part the Wheels slot takes has no set size, so the builder cannot tell how many a build needs and does not offer it. Fill in Units in a set on its Part specs.</a>' ),
+			array( '<a href="#cbuild-kit-slots-2-units">1 part the Wheels slot takes has no set size, so the builder cannot tell how many a build needs and does not offer it. Fill in Number in a set on its Part specs.</a>' ),
 			self::notices()
 		);
 		self::assertSame( array( $wheels->get_id() ), self::stored( $kit->get_id() )[ Options::META_KIT_SLOTS ]['slots'][2]['sources']['products'], 'a note, not a refusal' );
