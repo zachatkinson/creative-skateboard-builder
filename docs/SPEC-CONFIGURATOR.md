@@ -182,7 +182,7 @@ The count is the step's offered looks before any filter, so the tools don't vani
   - a part that no longer fits;
   - a price that changed.
 - **The screen.** Any of these opens a "Your build has changed" panel before the review, with focus on its heading.
-  - Each sold-out or gone part is named, with the closest part that fits in its place. That part is found by the change list's own finder (`ChangePlanner::closest()`: the nearest spec, then the same brand, then the nearest price, in stock), against the rest of the build. It is private today (`src/Domain/Fit/ChangePlanner.php:116`), so it moves to a domain class both can call, not copied.
+  - Each sold-out or gone part is named, with the closest part that fits in its place. That part is found by the change list's own finder, `ClosestPart::find()` (the nearest spec, then the same brand, then the nearest price, in stock), against the rest of the build. It was `ChangePlanner::closest()`, private, and moved to `src/Domain/Fit/ClosestPart.php` for both to call, not copied.
   - Each new price is named: "Independent 149 trucks: $59.00 when you saved, $64.00 now".
   - The total then and now.
   - "Use these" takes the replacements to the review. "Choose myself" opens the first changed step.
