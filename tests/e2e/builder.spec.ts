@@ -5,6 +5,7 @@ import {
 	expect,
 	answered,
 	inLocale,
+	noticeFocusDone,
 	Page,
 	type Locator,
 } from './support/test';
@@ -3223,8 +3224,10 @@ test.describe( 'Saved builds', () => {
 				`${ info.project.name }: My builds, Undo offered`,
 				'.woocommerce-MyAccount-content'
 			);
-			// WooCommerce puts focus on its notice 500 ms after the page loads. Focus taken before then was moved
-			// under the press, and Enter fell on the notice (CI run 44289674928): the shopper reaches Undo after it.
+			// WooCommerce puts focus on its notice as the page loads and again 500 ms later. Focus taken before the
+			// second was moved under the press, and Enter fell on the notice (CI runs 44289674928, 44307517356): the
+			// shopper reaches Undo after both.
+			await noticeFocusDone( page );
 			await expect(
 				page
 					.locator( '[role="alert"]' )
@@ -3232,6 +3235,7 @@ test.describe( 'Saved builds', () => {
 			).toBeFocused();
 		}
 		await undo.focus();
+		await expect( undo ).toBeFocused();
 		await answered( page, () => page.keyboard.press( 'Enter' ) );
 		await expect(
 			page.getByText( 'The build is back in My builds.' )

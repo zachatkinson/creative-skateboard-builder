@@ -65,6 +65,31 @@ export async function answered( page: Page, send: () => Promise< void > ) {
 }
 
 /**
+ * Waits until WooCommerce has finished putting focus on its notice. It does so twice: once as the page loads, and again
+ * from a timer it sets 500 ms after DOMContentLoaded (woocommerce.js:243, focus_populate_live_region). Focus taken
+ * between the two is taken back, and a key pressed then falls on the notice (CI run 44307517356). A timer set here to
+ * end no sooner than WooCommerce's runs after it, as the HTML standard orders timers, so this waits for that one.
+ *
+ * @param page The page.
+ */
+export async function noticeFocusDone( page: Page ) {
+	await page.waitForLoadState( 'domcontentloaded' );
+	await page.evaluate(
+		() =>
+			new Promise< void >( ( resolve ) => {
+				const [ entry ] = performance.getEntriesByType(
+					'navigation'
+				) as PerformanceNavigationTiming[];
+				const due = ( entry?.domContentLoadedEventEnd ?? 0 ) + 500;
+				setTimeout(
+					resolve,
+					Math.max( 0, Math.ceil( due - performance.now() ) )
+				);
+			} )
+	);
+}
+
+/**
  * Waits until the page has loaded and has fetched nothing more for half a second, by the page's own resource timing.
  * It stands where `waitForLoadState( 'networkidle' )` stood: under Firefox that wait never ended on the cart and the
  * checkout, though every request had been answered within a second (issue #35, CI, 12 November 2026).
