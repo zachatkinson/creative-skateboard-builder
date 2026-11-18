@@ -2912,7 +2912,13 @@ test.describe( 'The phone bar', () => {
 			lines.boundingBox(),
 			bar.boundingBox(),
 		] );
-		expect( list!.y + list!.height ).toBeLessThanOrEqual( own!.y + 1 );
+		// Compared in sixtieths of a pixel, the unit Firefox lays out in: with the estimate the bar's top falls on a
+		// fraction, and Firefox gave the sum 599.8333740 against 599.8333129 for one and the same line (CI run
+		// 44264444652, D-234).
+		const sixtieths = ( px: number ) => Math.round( px * 60 );
+		expect( sixtieths( list!.y + list!.height ) ).toBeLessThanOrEqual(
+			sixtieths( own!.y + 1 )
+		);
 		// With JavaScript the store moves the step without a page load, and without it the form is sent.
 		await bar.getByRole( 'button', { name: 'Next: Trucks' } ).click();
 		await expect( heading( page ) ).toHaveText( 'Step 2 of 7: Trucks' );

@@ -3109,3 +3109,21 @@ Milestone 9: "French: complete and read by a person". `languages/creative-skateb
 - `composer i18n:check` now fails when fr_CA is missing, not only when it is incomplete: it passed with no translation at all (both reviews of 1.0.0, B1). **Red run:** with the `.po` moved away, "languages/: no fr_CA translation, which ships complete" and "1 i18n problem(s)".
 - Gate 8b runs the copy gate's em dash and exclamation mark over each shipped translation's msgstrs; the banned words are English and stay the POT's. Its self-test has two snippets, `8b-em-dash.po` and `8b-exclamation.po`, the second on a wrapped string.
 - The French was written by Claude and checked by the tools. It is read by a person Zach arranges before the tag (D-225); their changes go into the `.po` as any fix does.
+
+### D-234 · The fr-ca project keeps the plugin in English, and one spec walks it in French · 2026-11-18
+
+CI's first full run of milestone 9 (run 44264444652) failed the `fr-ca` project test after test, until its leg reached its 120 minutes. The project runs every spec with the site in fr_CA, and the specs find the builder by its English words. Until this milestone no French was shipped, so the plugin's own strings stayed English there and only numbers and WordPress's words were French. With D-233's French complete, every name a spec asked for was French.
+
+- **The project runs as before.** `tests/e2e/mu-plugins/cbuild-e2e-locale.php` keeps the plugin's own strings in English unless the request sends `x-cbuild-e2e-translated`. It uses `pre_load_textdomain` (`wp-includes/l10n.php:749`, WordPress 7.1.4) for the PHP strings and `pre_load_script_translations` (`:1371`) for the script's. Numbers, dates and WordPress's own words stay in fr_CA, which is what the project was for (D-084's `inLocale()`).
+- **`tests/e2e/french.spec.ts` asks for the French.** It runs in the `fr-ca` project alone, at phone width, with the script. It checks:
+  - the step heading, « Étape 1 sur 7 : »;
+  - the summary and a pick by its French name;
+  - the bar's « Complète à partir d’environ »;
+  - axe on the builder;
+  - the next step drawn in French, « Étape 2 sur 7 : Trucks »;
+  - `lang="fr-CA"`.
+- **Why not translate every spec's names:** that is 900 tests' words, and a spec that reads the English source strings tests the code, while one spec in French tests the translation. The person's reading of the French stays owed (O1).
+
+The same run failed Firefox's phone bar test on the desktop and phone projects. The bar is taller with the estimate (D-230), so its top falls on a fraction of a pixel. Firefox lays out in sixtieths of a pixel and gave the parts list's bottom as 599.8333740 against the bar's top plus one at 599.8333129, for the same line. The test now compares the two in sixtieths of a pixel; the one-pixel allowance is unchanged.
+
+**Red runs:** the fr-ca project on CI, "✘ 708 [fr-ca] › build-tab.spec.ts:72" and 25 more before the leg's timeout. Firefox: "Expected: <= 599.8333129882812, Received: 599.8333740234375" at `builder.spec.ts:2915`, locally too.

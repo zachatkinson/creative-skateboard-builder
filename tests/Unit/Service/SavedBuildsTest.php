@@ -181,6 +181,26 @@ final class SavedBuildsTest extends TestCase {
 	}
 
 	/**
+	 * Milestone 9's CI mutation run: a build Undo sends while it is still there is answered as saved without a write,
+	 * even on a full account, and the first user's build is theirs to put back.
+	 */
+	public function test_restore_of_a_build_still_there_writes_nothing_and_user_one_is_signed_in(): void {
+		$first = $this->builds->save( 1, self::KIT, self::COMPLETE, true, 'First' );
+		$build = $this->builds->find( 1, $first['uuid'] );
+		self::assertNotNull( $build );
+		for ( $i = 1; $i < SavedBuilds::MOST; $i++ ) {
+			$this->builds->save( 1, self::KIT, self::COMPLETE, true, (string) $i );
+		}
+		$this->store->refuse = true;
+		self::assertSame( SavedBuilds::SAVED, $this->builds->restore( $build ), 'there already, on a full account, with no write' );
+		self::assertSame( array(), $this->logger->lines, 'no write was tried' );
+		$this->store->refuse = false;
+		$this->builds->delete( 1, $build->uuid );
+		self::assertSame( SavedBuilds::SAVED, $this->builds->restore( $build ), 'user 1' );
+		self::assertEquals( $build, $this->builds->find( 1, $build->uuid ) );
+	}
+
+	/**
 	 * Audit of milestone 8: a write the table refuses is said as a failure, not as saved, and the owner hears of it in
 	 * WooCommerce's log, with the build's UUID and nothing about the customer.
 	 */
