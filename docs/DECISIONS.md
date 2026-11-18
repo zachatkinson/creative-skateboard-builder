@@ -3026,3 +3026,21 @@ Why: Cowork's suggestions were bundled into the next milestone anyway, so holdin
 CI run 44194833317, oldest leg: the first try at `npx playwright install-deps` was still downloading when D-123's `timeout 180` stopped it. `timeout` stops npx, but the `apt-get` it had started through sudo runs as root and kept going. So tries 2 and 3 each failed at once with "Could not get lock /var/lib/dpkg/lock-frontend. It is held by process 33467 (apt-get)", and the job failed before any test ran.
 
 Each try in both install steps now first waits up to five minutes for any `apt-get` or `dpkg` to finish, then starts. The leftover apt-get is not killed: stopping dpkg part-way can leave the packages broken, and here it was only slow. D-123's tries and timeouts and D-126's change of mirror stay as they were.
+
+### D-225 · 1.0.0 merges on green and is tagged after the human checks · 2026-11-18
+
+Zach, 18 November 2026: milestone 9's pull request merges into `main` once the full CI run is green, as every milestone's has (D-223), but `v1.0.0` is not tagged, so nothing reaches `zachatkinson/creative-releases` or the demo. The tag waits for the four parts of the milestone only people can do: French read by a person, the screen-reader pass of `docs/A11Y.md` by someone who didn't write the code, the hallway test, and Zach's approval of the release (ROADMAP.md, milestone 9's Done when). Their findings go into `docs/reviews/M9.md` before the tag.
+
+Why: the roadmap's Done when needs all four, and a tag publishes to every shop that updates, the demo among them. `main` carries the version 1.0.0 untagged until then.
+
+### D-226 · The network file is written by a network admin, off admin-ajax.php, whatever its line endings · 2026-11-18
+
+Cowork's 0.8.0 review, F5 (#57). `InstallHooks::networkFile()` on `admin_init` wrote the must-use file for any request that fired the hook, a logged-out `admin-ajax.php` call among them, and a file whose line endings an SFTP deploy had changed was written again on every such request. It now writes only on a network, never under `wp_doing_ajax()` (wp-includes/load.php:1745), and only for `manage_network_plugins` (wp-includes/capabilities.php:767). `NetworkFile::inPlace()` compares after turning `\r\n` into `\n`. Activation still writes it, as the one who activates could have put it there.
+
+After an update, the file is written by the first network admin's wp-admin page on the new release, not on `upgrader_process_complete` as the review suggested: that action runs in the old release's request (wp-admin/includes/class-wp-upgrader.php:987), where `Plugin::completed()` has already taken every callback of the plugin off every hook (Cowork's M7 review, F3), so nothing of the new release could write it there. Until a network admin visits, the file is the old release's, which names the same tables, and Site Health says when it is missing.
+
+**Red run:** `InstallHooksTest::test_the_network_file_is_written_only_for_a_network_admin_off_ajax_and_not_for_line_endings`, multisite leg: "Failed asserting that file "…/mu-plugins/creative-skateboard-builder-network.php" does not exist." at InstallHooksTest.php:293 (a visitor). **Deliberate breaks:** without the AJAX guard, the same at :306; without the line endings' normalising, "line endings are not a difference. Failed asserting that false is true." at :317.
+
+### D-227 · The canary's cart test reads the Edit build link's attributes as a set · 2026-11-18
+
+The canary, run 43819073525 on WordPress trunk: `CartShowTest::test_a_classic_cart_prints_the_kits_link_after_its_assembly_with_no_entry_of_no_label` failed, "Failed asserting that 0 is identical to 1." at CartShowTest.php:243, because trunk prints the link's attributes in another order (`aria-label`, `class`, `href`). The order is not part of what a shopper or a theme gets. The test now takes the link out of the same anchored pattern and reads its attributes with `WP_HTML_Tag_Processor`: exactly `aria-label`, `class` and `href`, the class `cbuild-edit`, a link and a name. It still holds the words, the single entry and the link after the assembly, so it is no weaker; it passes on 7.1.4 and is built for trunk's order. Issue #43 closes when the next canary is green.

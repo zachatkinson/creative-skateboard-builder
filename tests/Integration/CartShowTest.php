@@ -15,6 +15,7 @@ use CreativeBranding\SkateboardBuilder\Cart\ShowHooks;
 use CreativeBranding\SkateboardBuilder\Support\Options;
 use CreativeBranding\SkateboardBuilder\Tests\Support\CartTestCase;
 use WC_Product_Simple;
+use WP_HTML_Tag_Processor;
 use WP_REST_Request;
 
 /**
@@ -240,7 +241,17 @@ final class CartShowTest extends CartTestCase {
 		// classic cart prints the data, one entry says the assembly and has the link after it.
 		[ 'kit' => $kit ] = $this->lines();
 		$flat             = wc_get_formatted_cart_item_data( $kit[1], true );
-		self::assertSame( 1, preg_match( '#\AAssembly: <span class="cbuild-assembly">not added</span> <a class="cbuild-edit" href="[^"]+" aria-label="[^"]+">Edit build</a>\n\z#', $flat ), $flat );
+		// The link's attributes are read as a set: WordPress trunk writes them in another order (aria-label first, the
+		// canary's run 43819073525), and the order is no part of what the shopper gets.
+		self::assertSame( 1, preg_match( '#\AAssembly: <span class="cbuild-assembly">not added</span> <a ([^>]+)>Edit build</a>\n\z#', $flat, $link ), $flat );
+		$tag = new WP_HTML_Tag_Processor( '<a ' . $link[1] . '>' );
+		self::assertTrue( $tag->next_tag( 'a' ) );
+		$names = (array) $tag->get_attribute_names_with_prefix( '' );
+		sort( $names );
+		self::assertSame( array( 'aria-label', 'class', 'href' ), $names, $flat );
+		self::assertSame( 'cbuild-edit', $tag->get_attribute( 'class' ) );
+		self::assertNotSame( '', (string) $tag->get_attribute( 'href' ) );
+		self::assertNotSame( '', (string) $tag->get_attribute( 'aria-label' ) );
 		$listed = wc_get_formatted_cart_item_data( $kit[1] );
 		self::assertSame( 1, substr_count( $listed, '<dt' ), 'one entry in a classic cart, so no colon stands alone' );
 		self::assertStringContainsString( '>Edit build</a>', $listed );

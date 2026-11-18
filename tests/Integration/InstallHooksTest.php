@@ -18,6 +18,7 @@ use CreativeBranding\SkateboardBuilder\Port\Logger;
 use CreativeBranding\SkateboardBuilder\Port\MigrationStore;
 use CreativeBranding\SkateboardBuilder\Port\Queue;
 use CreativeBranding\SkateboardBuilder\Install\Activator;
+use CreativeBranding\SkateboardBuilder\Install\NetworkFile;
 use CreativeBranding\SkateboardBuilder\Port\Reindex;
 use CreativeBranding\SkateboardBuilder\Support\Tables;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\BatchMigration;
@@ -275,5 +276,50 @@ final class InstallHooksTest extends IntegrationTestCase {
 		as_unschedule_all_actions( Options::JOB_REINDEX );
 		delete_option( Options::REINDEX );
 		self::assertContains( Options::REINDEX_OWED, Options::names(), 'so uninstall removes it' );
+	}
+	/**
+	 * Cowork's 0.8.0 review, F5 (#57): on a network, the must-use file is written by a request from someone who could
+	 * have installed it, a network admin on a wp-admin page, and by no visitor, site admin or admin-ajax.php call. A
+	 * file that differs only in its line endings is the same file and is not written again.
+	 */
+	public function test_the_network_file_is_written_only_for_a_network_admin_off_ajax_and_not_for_line_endings(): void {
+		if ( ! is_multisite() ) {
+			self::markTestSkipped( 'The multisite leg (composer test:integration:multisite).' );
+		}
+		NetworkFile::remove();
+		try {
+			wp_set_current_user( 0 );
+			$this->hooks->networkFile();
+			self::assertFileDoesNotExist( NetworkFile::path(), 'a visitor' );
+
+			$site_admin = (int) self::factory()->user->create( array( 'role' => 'administrator' ) );
+			wp_set_current_user( $site_admin );
+			$this->hooks->networkFile();
+			self::assertFileDoesNotExist( NetworkFile::path(), 'a site\'s own administrator' );
+
+			$network_admin = (int) self::factory()->user->create( array( 'role' => 'administrator' ) );
+			grant_super_admin( $network_admin );
+			wp_set_current_user( $network_admin );
+			add_filter( 'wp_doing_ajax', '__return_true' );
+			$this->hooks->networkFile();
+			remove_filter( 'wp_doing_ajax', '__return_true' );
+			self::assertFileDoesNotExist( NetworkFile::path(), 'admin-ajax.php, even for a network admin' );
+
+			$this->hooks->networkFile();
+			self::assertFileExists( NetworkFile::path(), 'a network admin on a wp-admin page' );
+			self::assertTrue( NetworkFile::inPlace() );
+
+			// As an SFTP deploy leaves it: the same file with Windows line endings.
+			file_put_contents( NetworkFile::path(), str_replace( "\n", "\r\n", NetworkFile::content() ) ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents -- the test sets the file as a deploy would.
+			$before = (int) filemtime( NetworkFile::path() );
+			touch( NetworkFile::path(), $before - 60 );
+			clearstatcache();
+			self::assertTrue( NetworkFile::inPlace(), 'line endings are not a difference' );
+			$this->hooks->networkFile();
+			clearstatcache();
+			self::assertSame( $before - 60, (int) filemtime( NetworkFile::path() ), 'not written again' );
+		} finally {
+			NetworkFile::remove();
+		}
 	}
 }

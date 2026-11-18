@@ -94,7 +94,7 @@ final class NetworkFile {
 	}
 
 	/**
-	 * Whether the file is in place, as this release writes it. Always true on a single site, which needs none.
+	 * Whether the file is in place, as this release writes it, whatever its line endings. Always true on a single site, which needs none.
 	 *
 	 * @since 0.8.0
 	 */
@@ -102,7 +102,8 @@ final class NetworkFile {
 		if ( ! is_multisite() ) {
 			return true;
 		}
-		return is_readable( self::path() ) && self::content() === self::disk()->get_contents( self::path() );
+		// Line endings aside: an SFTP deploy can turn them into Windows', and the file is the same (F5).
+		return is_readable( self::path() ) && self::content() === str_replace( "\r\n", "\n", (string) self::disk()->get_contents( self::path() ) );
 	}
 
 	/**
