@@ -85,8 +85,8 @@ final class EmailHooks implements Hookable {
 	}
 
 	/**
-	 * Under a kit's line, in an email or on the order's own page (spec: Orders): the build's picture, with its words as
-	 * the alt text, or the words alone in a plain-text email.
+	 * Under a kit's line, in an email or on the order's own page (spec: Orders): the build's picture, with a short alt
+	 * since its parts are listed below it, or the build in words in a plain-text email.
 	 *
 	 * @since 0.8.0
 	 *
@@ -101,8 +101,8 @@ final class EmailHooks implements Hookable {
 		if ( null === $build ) {
 			return;
 		}
-		$words = WorkshopWords::described( ( $this->view )()->named( $build ) );
 		if ( true === $plain ) {
+			$words = WorkshopWords::described( ( $this->view )()->named( $build ) );
 			// Plain text is not escaped for HTML: WooCommerce's clean-up drops an entity it does not know, such as
 			// &#039;, and French would lose its apostrophes (class-wc-email.php:216, :244).
 			echo "\n" . wp_kses( $words, array() ) . "\n";
@@ -118,10 +118,12 @@ final class EmailHooks implements Hookable {
 			return;
 		}
 		// Made at 600 pixels square, shown at half that, so it is sharp on a dense screen and fits a phone's mail app.
+		// The parts are listed under the kit's line, so the alt says what the picture is and does not read them all
+		// again; not empty, so a mail app that blocks images still shows something (Cowork's 0.8.0 review, F4).
 		printf(
 			'<div class="cbuild-email-picture" style="margin-top:8px"><img src="%1$s" alt="%2$s" width="300" height="300" style="display:block;max-width:100%%;height:auto;border:0" /></div>',
 			esc_url( $url ),
-			esc_attr( $words )
+			esc_attr__( 'The build, as drawn', 'creative-skateboard-builder' )
 		);
 	}
 

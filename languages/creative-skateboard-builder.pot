@@ -9,7 +9,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-11-17T09:53:55+00:00\n"
+"POT-Creation-Date: 2026-11-18T05:43:17+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: creative-skateboard-builder\n"
@@ -196,8 +196,8 @@ msgstr ""
 #. translators: 1: a number of parts. 2: a slot's label, such as Wheels.
 #: src/Admin/BuildTab.php:267
 #, php-format
-msgid "%1$d part the %2$s slot takes has no set size, so the builder cannot tell how many a build needs and does not offer it. Fill in Units in a set on its Part specs."
-msgid_plural "%1$d parts the %2$s slot takes have no set size, so the builder cannot tell how many a build needs and does not offer them. Fill in Units in a set on their Part specs."
+msgid "%1$d part the %2$s slot takes has no set size, so the builder cannot tell how many a build needs and does not offer it. Fill in Number in a set on its Part specs."
+msgid_plural "%1$d parts the %2$s slot takes have no set size, so the builder cannot tell how many a build needs and does not offer them. Fill in Number in a set on their Part specs."
 msgstr[0] ""
 msgstr[1] ""
 
@@ -1726,7 +1726,7 @@ msgstr ""
 #: src/Front/Words.php:407
 #: src/Order/OrderHooks.php:291
 #: src/Order/WorkshopWords.php:251
-#: templates/admin/order-build.php:66
+#: templates/admin/order-build.php:67
 #: templates/admin/tickets.php:113
 #, php-format
 msgid "%1$s: %2$s"
@@ -1873,7 +1873,7 @@ msgstr ""
 
 #. translators: %s: the build's total, such as $184.00.
 #: src/Front/BuilderView.php:260
-#: src/Front/BuilderView.php:1306
+#: src/Front/BuilderView.php:1311
 #: src/Front/ShareCard.php:128
 #, php-format
 msgid "Total: %s"
@@ -2168,51 +2168,51 @@ msgstr ""
 msgid "Assembly time: %s"
 msgstr ""
 
-#: src/Front/BuilderView.php:1299
+#: src/Front/BuilderView.php:1304
 msgid "Check your build"
 msgstr ""
 
-#: src/Front/BuilderView.php:1317
+#: src/Front/BuilderView.php:1322
 msgid "Save changes"
 msgstr ""
 
-#: src/Front/BuilderView.php:1317
+#: src/Front/BuilderView.php:1322
 msgid "Add to cart"
 msgstr ""
 
-#: src/Front/BuilderView.php:1319
+#: src/Front/BuilderView.php:1324
 msgid "Saving replaces the build in your cart."
 msgstr ""
 
-#: src/Front/BuilderView.php:1321
+#: src/Front/BuilderView.php:1326
 msgid "Your cart has the changed build."
 msgstr ""
 
-#: src/Front/BuilderView.php:1321
+#: src/Front/BuilderView.php:1326
 msgid "The build is in your cart."
 msgstr ""
 
-#: src/Front/BuilderView.php:1325
+#: src/Front/BuilderView.php:1330
 msgid "Link to this build"
 msgstr ""
 
-#: src/Front/BuilderView.php:1326
+#: src/Front/BuilderView.php:1331
 msgid "Copy link"
 msgstr ""
 
-#: src/Front/BuilderView.php:1327
+#: src/Front/BuilderView.php:1332
 msgid "Link copied."
 msgstr ""
 
-#: src/Front/BuilderView.php:1330
+#: src/Front/BuilderView.php:1335
 msgid "Save build"
 msgstr ""
 
-#: src/Front/BuilderView.php:1331
+#: src/Front/BuilderView.php:1336
 msgid "Name it (optional)"
 msgstr ""
 
-#: src/Front/BuilderView.php:1333
+#: src/Front/BuilderView.php:1338
 msgid "Sign in to save this build"
 msgstr ""
 
@@ -2226,48 +2226,48 @@ msgstr ""
 msgid "%1$s - %2$s"
 msgstr ""
 
-#: src/Front/SavedBuildHooks.php:149
-#: src/Front/SavedBuildHooks.php:153
+#: src/Front/SavedBuildHooks.php:162
 #: src/Front/SavedBuildHooks.php:166
+#: src/Front/SavedBuildHooks.php:179
 msgid "My builds"
 msgstr ""
 
-#: src/Front/SavedBuildHooks.php:221
+#: src/Front/SavedBuildHooks.php:246
 msgid "That form has expired. Please try again."
 msgstr ""
 
-#: src/Front/SavedBuildHooks.php:232
-#: src/Front/SavedBuildHooks.php:272
+#: src/Front/SavedBuildHooks.php:257
+#: src/Front/SavedBuildHooks.php:297
 msgid "The build could not be saved just now. Please try again."
 msgstr ""
 
-#: src/Front/SavedBuildHooks.php:234
+#: src/Front/SavedBuildHooks.php:259
 msgid "That build is not among your saved builds."
 msgstr ""
 
-#: src/Front/SavedBuildHooks.php:236
+#: src/Front/SavedBuildHooks.php:261
 msgid "The build is renamed."
 msgstr ""
 
-#: src/Front/SavedBuildHooks.php:238
+#: src/Front/SavedBuildHooks.php:263
 msgid "The build is deleted."
 msgstr ""
 
-#: src/Front/SavedBuildHooks.php:270
+#: src/Front/SavedBuildHooks.php:295
 msgid "The build is saved. It is listed below."
 msgstr ""
 
-#: src/Front/SavedBuildHooks.php:271
+#: src/Front/SavedBuildHooks.php:296
 msgid "Your saved build is updated."
 msgstr ""
 
 #. translators: %s: how many builds a customer may keep, such as 100.
-#: src/Front/SavedBuildHooks.php:274
+#: src/Front/SavedBuildHooks.php:299
 #, php-format
 msgid "You have %s saved builds, the most kept. Delete one to save another."
 msgstr ""
 
-#: src/Front/SavedBuildHooks.php:275
+#: src/Front/SavedBuildHooks.php:300
 msgid "This build could not be saved: a part is missing or no longer fits. Open it in the builder to check it."
 msgstr ""
 
@@ -2296,11 +2296,11 @@ msgctxt "inches"
 msgid "%s″"
 msgstr ""
 
-#. translators: %s: a number of millimetres. The space before mm is a no-break space.
+#. translators: %s: a number of millimetres. The space before mm is a no-break space, written as itself: make-pot copies an escape as written, and the msgid would never match (D-228).
 #: src/Front/Words.php:79
 #, php-format
 msgctxt "millimetres"
-msgid "%s\\u{00A0}mm"
+msgid "%s mm"
 msgstr ""
 
 #. translators: %s: a spec's name, such as Deck width.
@@ -2934,6 +2934,10 @@ msgstr ""
 msgid "Spec table"
 msgstr ""
 
+#: src/Order/EmailHooks.php:126
+msgid "The build, as drawn"
+msgstr ""
+
 #. translators: %s: the kit's name.
 #: src/Order/OrderHooks.php:95
 #, php-format
@@ -3513,15 +3517,16 @@ msgstr ""
 msgid "Specs as sold"
 msgstr ""
 
-#: templates/admin/order-build.php:61
-msgid "None kept"
-msgstr ""
-
-#: templates/admin/order-build.php:92
-msgid "Print assembly ticket"
+#. translators: in the Build box's Specs as sold column, for a part with no spec the build reads.
+#: templates/admin/order-build.php:62
+msgid "No specs"
 msgstr ""
 
 #: templates/admin/order-build.php:93
+msgid "Print assembly ticket"
+msgstr ""
+
+#: templates/admin/order-build.php:94
 msgid "(opens in a new tab)"
 msgstr ""
 

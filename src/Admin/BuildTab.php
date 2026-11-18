@@ -265,8 +265,8 @@ final class BuildTab {
 				sprintf(
 					/* translators: 1: a number of parts. 2: a slot's label, such as Wheels. */
 					_n(
-						'%1$d part the %2$s slot takes has no set size, so the builder cannot tell how many a build needs and does not offer it. Fill in Units in a set on its Part specs.',
-						'%1$d parts the %2$s slot takes have no set size, so the builder cannot tell how many a build needs and does not offer them. Fill in Units in a set on their Part specs.',
+						'%1$d part the %2$s slot takes has no set size, so the builder cannot tell how many a build needs and does not offer it. Fill in Number in a set on its Part specs.',
+						'%1$d parts the %2$s slot takes have no set size, so the builder cannot tell how many a build needs and does not offer them. Fill in Number in a set on their Part specs.',
 						$note['count'],
 						'creative-skateboard-builder'
 					),

@@ -3044,3 +3044,12 @@ After an update, the file is written by the first network admin's wp-admin page 
 ### D-227 · The canary's cart test reads the Edit build link's attributes as a set · 2026-11-18
 
 The canary, run 43819073525 on WordPress trunk: `CartShowTest::test_a_classic_cart_prints_the_kits_link_after_its_assembly_with_no_entry_of_no_label` failed, "Failed asserting that 0 is identical to 1." at CartShowTest.php:243, because trunk prints the link's attributes in another order (`aria-label`, `class`, `href`). The order is not part of what a shopper or a theme gets. The test now takes the link out of the same anchored pattern and reads its attributes with `WP_HTML_Tag_Processor`: exactly `aria-label`, `class` and `href`, the class `cbuild-edit`, a link and a name. It still holds the words, the single entry and the link after the assembly, so it is no weaker; it passes on 7.1.4 and is built for trunk's order. Issue #43 closes when the next canary is green.
+
+### D-228 · A translatable string holds its characters, never PHP's escapes for them · 2026-11-18
+
+Writing the French, the translator found `%s\u{00A0}mm` in the POT. `Words::measure()` wrote the millimetre pattern in a double-quoted string with `\u{00A0}`, and `wp i18n make-pot` copies a string's escapes as written, so the POT's msgid was the six characters `\u{00A0}` where PHP's string holds one no-break space. No translation of it could ever be used. The pattern now holds the no-break space itself, in a single-quoted string, and `composer i18n:check` refuses any msgid with a `\u{…}`, `\x…` or octal escape in it, so the next one is caught before a translator meets it.
+
+The same pass found "Fill in Units in a set on its Part specs." in the Build tab's warning, which names a field the Part specs panel calls "Number in a set" (`Admin\Labels`). It now names it as the panel does.
+
+**Red runs:** `composer i18n:check` on the code before the fix: "tmp/i18n-check.pot: "%s\u{00A0}mm" (millimetres) holds an escape PHP turns into another character; write the character itself in a single-quoted string", "1 i18n problem(s)." `BuildTabTest::test_saving_says_which_parts_of_a_slot_have_no_set_size`, with the test naming the panel's field: "Failed asserting that two arrays are identical." at BuildTabTest.php:627.
+

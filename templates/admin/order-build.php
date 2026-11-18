@@ -58,7 +58,8 @@ foreach ( $view['builds'] as $cbuild_build ) {
 									<td><?php echo esc_html( number_format_i18n( $cbuild_row['quantity'] ) ); ?></td>
 									<td>
 										<?php if ( array() === $cbuild_row['specs'] ) : ?>
-											<?php esc_html_e( 'None kept', 'creative-skateboard-builder' ); ?>
+											<?php /* translators: in the Build box's Specs as sold column, for a part with no spec the build reads. */ ?>
+											<?php esc_html_e( 'No specs', 'creative-skateboard-builder' ); ?>
 										<?php else : ?>
 											<ul class="cbuild-order__specs">
 												<?php foreach ( $cbuild_row['specs'] as $cbuild_spec ) : ?>

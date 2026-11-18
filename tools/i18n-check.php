@@ -55,6 +55,13 @@ $cbuild_kept     = array_keys( cbuild_po_entries( $cbuild_pot ) );
 foreach ( array_diff( $cbuild_code, $cbuild_kept ) as $cbuild_key ) {
 	$cbuild_problems[] = "{$cbuild_pot}: missing " . cbuild_po_name( $cbuild_key ) . ' (run composer i18n:pot)';
 }
+// make-pot copies a double-quoted string's escapes as written, so a source string with "\u{00A0}" in it is a msgid
+// that never matches the string PHP makes, and no translation of it is ever used (the French draft, 18 November).
+foreach ( $cbuild_code as $cbuild_key ) {
+	if ( 1 === preg_match( '/\\\\(u\{[0-9A-Fa-f]+\}|x[0-9A-Fa-f]{1,2}|[0-7]{1,3})/', $cbuild_key ) ) {
+		$cbuild_problems[] = "{$cbuild_fresh}: " . cbuild_po_name( $cbuild_key ) . ' holds an escape PHP turns into another character; write the character itself in a single-quoted string';
+	}
+}
 foreach ( array_diff( $cbuild_kept, $cbuild_code ) as $cbuild_key ) {
 	$cbuild_problems[] = "{$cbuild_pot}: keeps " . cbuild_po_name( $cbuild_key ) . ', which the code no longer has (run composer i18n:pot)';
 }
