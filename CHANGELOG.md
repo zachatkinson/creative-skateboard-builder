@@ -4,6 +4,8 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-11-18
+
 ### Changed
 
 - The focus ring has two tones, a dark outline between light bands, so it is seen on a dark theme and a light one alike, and it wins over a theme's own focus style on a button or a link. `--cbuild-focus` sets the outline as before, now `#000` where it took the theme's contrast colour, which a dark theme can have dark too (Cowork's 0.8.0 review, F1; #53; D-229).
