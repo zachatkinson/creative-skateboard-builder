@@ -397,7 +397,7 @@ Planned as 1.0.0. On 18 November 2026 Zach moved 1.0.0 to milestone 10, the conf
   The schema only gains; the types are regenerated.
 - **Moved from milestone 9 (D-236):**
   - the manual accessibility pass with VoiceOver and NVDA, by someone who didn't write the code;
-  - French read by a person, found now, since the milestone adds many strings;
+  - French held by the checks and Cowork's walk in French, not read by a person (D-260);
   - the hallway test, Zach and three people on their own phones, one of them an iPhone, with the route's rate limit checked;
   - the public API frozen, `docs/HOOKS.md` final with the 1.0 snapshot;
   - the full-codebase audit in `docs/AUDIT-1.0.0.md`.
