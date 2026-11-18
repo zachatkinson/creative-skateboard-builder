@@ -175,13 +175,27 @@ final class KitEditor {
 			$problems = array( ...$problems, ...$found );
 		}
 
-		$parts = array();
+		$parts     = array();
+		$unoffered = array();
 		if ( is_array( $sent['presets'] ?? null ) ) {
 			$presets                = self::presets( $sent['presets'] );
 			$built[ self::PRESETS ] = $presets;
 			$found                  = self::rows( self::PRESETS, $presets, 'presets', static fn( Fields $row ): Preset => Preset::fromFields( $row ) );
 			if ( array() === $found && array() !== $presets['presets'] ) {
 				$found = $this->accepted( $presets, $inForce, $parts );
+			}
+			// Presets sent as they are stored, whose only fault is a part their slot doesn't offer now (the shop hid
+			// it, or it can't be bought), are not a failed save: nothing in them changed, and they stay as they are.
+			// The tab names each such part instead (issue #62). An edited preset is held to the slots as before.
+			if ( array() !== $found && ( $stored[ self::PRESETS ] ?? null ) === $presets && array( self::NOT_IN_SLOT ) === array_unique( array_column( $found, 'code' ) ) ) {
+				foreach ( $found as $problem ) {
+					$unoffered[] = array(
+						'path'   => $problem['path'],
+						'values' => $problem['values'],
+					);
+				}
+				unset( $built[ self::PRESETS ] );
+				$found = array();
 			}
 			$problems = array( ...$problems, ...$this->held( self::PRESETS, $presets, $found ) );
 		}
@@ -209,7 +223,7 @@ final class KitEditor {
 				$documents[ $key ] = $document;
 			}
 		}
-		return new KitDraft( $documents, $refused, $problems, $this->notes( $inForce, $parts ) );
+		return new KitDraft( $documents, $refused, $problems, $this->notes( $inForce, $parts ), $unoffered );
 	}
 
 	/**

@@ -258,6 +258,19 @@ final class BuildTab {
 			);
 			self::notice( $field, $text );
 		}
+		foreach ( $draft->unoffered as $kept ) {
+			$part = (int) ( $kept['values']['part'] ?? 0 );
+			self::notice(
+				self::id( KitEditor::PRESETS, $kept['path'] ),
+				sprintf(
+					/* translators: 1: a preset's name. 2: a product's name. 3: a slot's label, such as Trucks. */
+					__( '%1$s holds %2$s, which the %3$s slot doesn\'t offer now. The preset is kept as it is, and its tile says so until the part is offered again.', 'creative-skateboard-builder' ),
+					$kept['values']['preset'] ?? '',
+					self::products( array( $part ) )[ $part ] ?? '',
+					self::slotLabel( $shown, $kept['values']['slot'] ?? '' )
+				)
+			);
+		}
 		foreach ( $draft->notes as $note ) {
 			$row = array_search( $note['slot'], array_column( self::rows( $shown[ KitEditor::SLOTS ] ?? null, 'slots' ), 'key' ), true );
 			self::notice(

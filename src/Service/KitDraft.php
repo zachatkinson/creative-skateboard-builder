@@ -30,8 +30,9 @@ final readonly class KitDraft {
 	 * @param array<string, array<string, mixed>>                                                      $refused   The documents not saved, as built from what was typed, by name.
 	 * @param list<array{document: string, code: string, path: string, values: array<string, string>}> $problems  What is wrong: the document's name, a code, the field's path in the document, and what the words need.
 	 * @param list<array{code: string, slot: string, count: int}>                                      $notes     What to know of the kit as it now stands.
+	 * @param list<array{path: string, values: array<string, string>}>                                 $unoffered Parts that presets sent unchanged hold and their slots don't offer now (issue #62): the field's path, and the preset, slot and part.
 	 */
-	public function __construct( public array $documents, public array $refused, public array $problems, public array $notes ) {}
+	public function __construct( public array $documents, public array $refused, public array $problems, public array $notes, public array $unoffered = array() ) {}
 
 	/**
 	 * Whether a document was sent and not saved.

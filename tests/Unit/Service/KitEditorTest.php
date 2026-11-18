@@ -578,6 +578,64 @@ final class KitEditorTest extends TestCase {
 		self::assertSame( 'Narrow', $draft->refused[ self::PRESETS ]['presets'][1]['name'] );
 	}
 
+	/**
+	 * Issue #62: presets sent as they are stored, whose only fault is a part their slot doesn't offer now, are kept
+	 * and named, not refused. Any other fault, or any edit, and they are held to the slots as before.
+	 */
+	public function test_unchanged_presets_whose_parts_the_slots_no_longer_offer_are_kept_and_named(): void {
+		$this->kits->found['1'][] = Builds::deck( '7.75', 102 );
+		$sent                     = self::sent();
+		$sent['presets'][]        = self::preset();
+		$sent['presets'][]        = self::preset( array( 'deck' => '102' ), 'Narrow' );
+		unset( $sent['rules']['r1']['enabled'] );
+		$stored                  = self::stored();
+		$stored[ self::PRESETS ] = $this->editor->draft( $sent, $stored )->documents[ self::PRESETS ];
+
+		// The shop hides deck 100: Street names it.
+		$this->kits->found['1'] = array( Builds::deck( '8.0', 101 ), Builds::deck( '7.75', 102 ) );
+		$draft                  = $this->editor->draft( $sent, $stored );
+		self::assertSame( array(), $draft->problems );
+		self::assertArrayNotHasKey( self::PRESETS, $draft->documents, 'nothing to write' );
+		self::assertArrayNotHasKey( self::PRESETS, $draft->refused );
+		self::assertArrayHasKey( self::SLOTS, $draft->documents );
+		self::assertSame(
+			array(
+				array(
+					'path'   => 'presets[0].picks.deck',
+					'values' => array(
+						'preset' => 'Street',
+						'slot'   => 'deck',
+						'part'   => '100',
+					),
+				),
+			),
+			$draft->unoffered
+		);
+
+		// And its wheels: each part is named, in both presets.
+		$this->kits->found['3'] = array();
+		self::assertSame(
+			array( 'presets[0].picks.deck', 'presets[0].picks.wheels', 'presets[1].picks.wheels' ),
+			array_column( $this->editor->draft( $sent, $stored )->unoffered, 'path' )
+		);
+
+		// A fault of another kind beside it: R1 on again blocks Narrow's trucks, and the presets are refused.
+		$this->kits->found['3'] = array( Builds::wheel( '54' ) );
+		$rules                  = $sent;
+		$rules['rules']['r1']['enabled'] = '1';
+		$draft                  = $this->editor->draft( $rules, $stored );
+		self::assertSame( array( 'presets preset_part_not_in_slot presets[0].picks.deck', 'presets preset_part_blocked presets[1].picks.trucks' ), self::problems( $draft ) );
+		self::assertSame( array(), $draft->unoffered );
+
+		// Edited, they are refused as before.
+		$edited                       = $sent;
+		$edited['presets'][0]['name'] = 'Street, edited';
+		$draft                        = $this->editor->draft( $edited, $stored );
+		self::assertSame( array( 'presets preset_part_not_in_slot presets[0].picks.deck' ), self::problems( $draft ) );
+		self::assertArrayHasKey( self::PRESETS, $draft->refused );
+		self::assertSame( array(), $draft->unoffered );
+	}
+
 	public function test_a_preset_names_only_its_slots_parts_and_fills_each_slot_a_build_must(): void {
 		$stored = self::stored();
 		foreach ( array(

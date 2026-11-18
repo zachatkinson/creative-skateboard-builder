@@ -509,6 +509,71 @@ final class BuildTabTest extends IntegrationTestCase {
 		self::assertMatchesRegularExpression( '/id="cbuild-kit-slots-0-sources-products"[^>]*multiple="multiple"[^>]*>\s*<option value="' . $deck->get_id() . '" selected="selected">/', $panel );
 	}
 
+	/**
+	 * Issue #62 (Cowork, on the demo): the test kit's presets name trucks the shop hides, so every save said the
+	 * presets were not saved, though nothing in them had changed and nothing was lost. Presets sent as they are
+	 * stored are kept without a failure, and the tab says which preset holds which part the slot doesn't offer now.
+	 * A preset that was edited is still held to the slots.
+	 */
+	public function test_unchanged_presets_naming_a_part_the_shop_hides_are_kept_and_named_not_refused(): void {
+		$this->as( 'shop_manager' );
+		$deck = new \WC_Product_Simple();
+		$deck->set_name( 'Plain deck' );
+		$deck->set_regular_price( '60' );
+		$deck->set_status( 'publish' );
+		$deck->update_meta_data(
+			Options::META_SPECS,
+			array(
+				'deck_width'  => '8.25',
+				'deck_length' => '32',
+			)
+		);
+		$deck->save();
+		$this->service( SpecIndexer::class )->index( $deck->get_id() );
+		$kit  = KitFactory::kit();
+		$sent = self::form(
+			array(
+				'slots'   => array(
+					array(
+						'key'      => 'deck',
+						'label'    => 'Deck',
+						'required' => '1',
+						'units'    => '1',
+						'products' => array( (string) $deck->get_id() ),
+					),
+				),
+				'presets' => array(
+					array(
+						'name'  => 'Street',
+						'picks' => array( 'deck' => (string) $deck->get_id() ),
+					),
+				),
+			)
+		);
+		$this->send( $kit, $sent );
+		self::assertSame( array(), self::notices(), 'saved as a preset that fits' );
+		$saved = self::stored( $kit->get_id() )[ Options::META_KIT_PRESETS ];
+
+		// The shop hides the deck, and saves the kit again with nothing changed.
+		$deck->set_catalog_visibility( 'hidden' );
+		$deck->save();
+		\WC_Admin_Meta_Boxes::$meta_box_errors = array();
+		$this->send( $kit, $sent );
+		self::assertSame(
+			array( '<a href="#cbuild-kit-presets-0-picks-deck">Street holds Plain deck (#' . $deck->get_id() . '), which the Deck slot doesn&#039;t offer now. The preset is kept as it is, and its tile says so until the part is offered again.</a>' ),
+			self::notices(),
+			'that alone: no "not saved"'
+		);
+		self::assertSame( $saved, self::stored( $kit->get_id() )[ Options::META_KIT_PRESETS ], 'the presets are as they were' );
+
+		// Edited, it is held to the slots as before.
+		\WC_Admin_Meta_Boxes::$meta_box_errors = array();
+		$sent['presets'][0]['name']            = 'Street, edited';
+		$this->send( $kit, $sent );
+		self::assertStringContainsString( 'The kit&#039;s presets were not saved.', implode( ' ', self::notices() ) );
+		self::assertSame( $saved, self::stored( $kit->get_id() )[ Options::META_KIT_PRESETS ] );
+	}
+
 	// The auditor's should-fix 9, milestone 4: every row's buttons were "Move up" and "Move down", and every fold
 	// "Settings", so a list of the tab's controls named none of them apart.
 	// Claude in Cowork's review of milestone 4, should-fix 1: PHP drops the fields past max_input_vars with no error,
