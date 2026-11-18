@@ -3158,6 +3158,136 @@ Zach, 18 November 2026: the repository goes public, so CI runs on GitHub's stand
 - **Tags:** `v*` tags can't be moved or deleted, since `release.yml` publishes what a tag names.
 - **Secrets and Actions:** secret scanning with push protection on; Actions limited to GitHub's own and the three third-party actions the workflows use, all pinned to SHAs (`sha_pinning_required`); private vulnerability reporting on. Merged branches are deleted.
 - **Not done:**
-  - Signed commits need a signing key set up for git first. That's Zach's call later.
+  - Signed commits needed a signing key set up for git first. Done later the same day: see D-259.
   - The scanning of non-provider patterns, and validity checks, need GitHub's paid Secret Protection.
 - **Why approvals stay at 0:** a pull request needs no approving review, since Zach can't approve his own and is the only reviewer. CI and the two reviewer agents stand in for a second person.
+
+### D-238 · The configurator fills the page below the theme's header; a block theme gets a kit template · 2026-11-18
+
+The proposal shrinks the theme's header to a slim bar on kit pages. The plugin can do that on a block theme, where it offers a `single-product-cbuild-kit` template made of the theme's own header and footer parts, which the shop can edit in the Site Editor. On a classic theme (Kadence, which the demo runs; Storefront; Shop Kit's templates) the header is the theme's PHP, and `docs/AUDIT.md` forbids overriding a theme's or WooCommerce's templates. There, the configurator renders full width before the product's summary and fills the screen below whatever header the theme prints; a shop that wants a slim header uses its theme's own setting. Zach agreed, 18 November 2026.
+
+Corrected the same day, from Cowork's review of the drafts:
+- **The template's name.** `single-product-cbuild-kit` is the hierarchy's name for the one product whose slug is `cbuild-kit`. The template is registered with `register_block_template()` under a name no slug can match, and put first for kits through `single_template_hierarchy`.
+- **Page builders' product templates.** The demo draws product pages with Shop Kit's "Single Post" template, which has no WooCommerce summary, so the builder renders in its add-to-cart block's column. The readme says how to give kits the full width (leave them out of that template, or give them one with a full-width add-to-cart row), and the layout tests run under the suite's Shop Kit stand-in.
+- **One h1.** Where the theme's title is left out, the configurator prints the product's name as the h1; where a template keeps its title block, it adds none.
+
+### D-239 · A theme's sticky add-to-cart bar is left to the theme's settings · 2026-11-18
+
+The proposal named a setting to turn it off, outside its four. The bar on the demo is a Kadence Pro element ("Product page: phone buy bar"), not Shop Kit's, and code aimed at one theme breaks "nothing shop-specific". `readme.txt` says how to leave kits out of it, with Kadence Pro's steps (Elements, the element's Exclude Settings, Hide On, each kit or a tag). The demo's bar already leaves the kit out (Cowork, 18 November).
+
+### D-240 · One card per look; the build picks a size where a rule or the width decides it · 2026-11-18
+
+- **Sizes.** A variation attribute mapped to the slot's size spec is a size: deck width, axle width, wheel diameter, riser thickness or bolt length. Every other variation attribute makes a look. One card a look, and no admin setting.
+- **Where the build decides the size:**
+  - the deck's width from the question asked first;
+  - the trucks' axle under R1, nearest the deck;
+  - the riser's thickness R3 asks for;
+  - the bolts' length R4 makes usual, 1″ plus the riser.
+- **Where nothing decides it** (a wheel's diameter), the proposal's "the build picks it" can't hold. The size stays the shopper's choice, preselected from the step's size filter or the recommendation. Zach agreed.
+
+Corrected the same day, from Cowork's review of the drafts:
+- **A look is what the shopper sees.** Variations that share a photo and a layer image are one look, and no two cards show the same photo. Any other attribute that differs between them (an Allen or Phillips head, a wheel's hardness) is chosen after the pick, like a wheel's diameter. Otherwise one bolt in two heads is two cards with one photo.
+- **Two more sizes the build decides.** Grip: the smallest sheet R6 allows that covers the deck. Hardware: R4's usual length, or else the nearest it allows, so a look sold in ⅞″ and 1¼″ doesn't drop out for having no 1″.
+- **Not on the card.** Each card is the label of a native radio (`A11Y.md`), so it can't hold buttons, and 30 cards with buttons would add 30 tab stops. The sizes and choices are a radio group of their own after the picked card.
+
+### D-241 · The deck's width first, with no All, and a width guide a shop can change · 2026-11-18
+
+The width guide by shoe size follows Skate Warehouse's deck buying guide, in translatable words. `cbuild_width_guide` lets a shop give its own rows. A width with no deck in stock is shown dimmed and named.
+
+### D-242 · The width is remembered for the visit; nothing is stored on the device; no Recently viewed · 2026-11-18
+
+The builder sets no cookie of its own, and a browser test holds that (Privacy). The width travels in the build link and history. A signed-in customer's comes from their most recent saved build. Recently viewed needs a cookie, so it waits until it can read WooCommerce's own, where a shop has it.
+
+### D-243 · Order: recommended, featured, best sellers, then name; Sort for price and newest · 2026-11-18
+
+Read through WooCommerce's CRUD (`wc_get_products()` with the step's IDs), with no table change, and cached with the step's cards.
+
+### D-244 · 30 looks at a time; the route sends one page through `from` · 2026-11-18
+
+The page grows from 24 to 30 (`StateAnswer::SHOWN`, `BuildLink::PAGE`). The build link's `_shown` keeps the count for reload and Back. The cap of 500 stays.
+
+### D-245 · Wheels that no riser in stock clears are hidden by the step, with the reason; R3 is unchanged · 2026-11-18
+
+The proposal shows them "as not fitting". R3 only warns, and Zach asked for R3 and R4 as they are, so the rule is untouched. The step moves a wheel whose R3 riser the kit can't supply into the hidden parts, with "Needs ¼″ risers, and none are in stock." Zach agreed.
+
+Corrected the same day, from Cowork's review: a riser counts as clearing the wheels only when the kit also has an in-stock bolt R4 allows with it. Otherwise the shopper takes a ½″ riser and finds every hardware look hidden (the demo's bolts stop at 1¼″, and R4 asks 1⅜″), a required step with nothing to pick. The risers step leaves such a riser out with R4's reason, and the hidden wheel's reason says which is missing: the riser, the bolts for it, or (in a kit with no Risers slot) risers altogether.
+
+### D-246 · Bearings: R5 kept, and wheels sold with bearings skip the step; risers as built, plus Add risers · 2026-11-18
+
+- **R5 stays.** The proposal says bearings need no fit rule, but R5 blocks a 7 mm bore on an 8 mm axle and costs nothing.
+- **A new spec key.** `bearings_included` on wheels fills the bearings slot and takes the step out of the rail.
+- **Risers** keep 0.9.0's behaviour (`Front\Builder::steps()`). Wheel cards gain R3's "Needs ¼″ risers", and the review gains "Add risers".
+
+### D-247 · Filter chips from the step's own data, with true counts · 2026-11-18
+
+- **The groups:** brand; the slot's size spec only where the shopper picks the size (wheels, and any step no rule sizes), since a size chip where the build picks the size contradicts the build (corrected from Cowork's review); and each global attribute on at least 80 % of the step's looks, up to four groups.
+- **The counts** apply the other groups. Today's counts ignore the other filter.
+
+### D-248 · Search: Creative Search through a filter, by product ID, or the builder's own · 2026-11-18
+
+- **A filter, not a function.** The builder talks to sibling plugins through hooks only (`SPEC.md`, How it fits), so it asks the filter `csearch_ranked_ids` (Creative Search 1.7.0).
+- **By product ID, not by category.** A slot takes parts from categories, brands, products or attributes, and Creative Search ranks at most 500 results, so the builder passes the step's own parts by ID.
+- **Its own log source.** The search is logged under `builder`, apart from the shop's searches.
+- **With no answer,** the builder matches word starts, ignoring case and accents, with no typos.
+- **The query** travels as `_q` and is never logged by the builder.
+- **Parents to looks** (from Cowork's review). Creative Search answers with parent products (its D-162), so the builder keeps, within each, the looks whose own words match the query or its `corrected` form, and all of them if none do. It passes the IDs as integers and the shopper's locale as `lang`.
+
+Zach agreed, and authorized Creative Search 1.7.0 in its own pull request.
+
+### D-249 · Cards keep P4's price as a change from the current pick · 2026-11-18
+
+The prototype shows full prices. `UX-RESEARCH.md`'s P4 gives each card "+$12.00", "Same price" or "Included", which says what a pick does to the total; the footer has the total.
+
+### D-250 · The delivery line and notes sit in the desktop footer and at the phone's review · 2026-11-18
+
+The proposal's footer had only the total and the estimate. The spec puts the delivery line and `cbuild_summary_notes` under the total, and Creative Checkout answers them.
+
+### D-251 · No swipe between steps in milestone 10 · 2026-11-18
+
+A sideways swipe fights the rail and chips, which scroll sideways, and iOS's back swipe. Next, Back and the rail move between steps. It is reconsidered after the hallway test.
+
+### D-252 · Rider builds show the composed picture, or a rider photo set on the preset · 2026-11-18
+
+Presets gain an optional `image` (an attachment ID) in `schema/kit-presets.json`. Without one, the tile shows the build's composed picture (milestone 7), not the first part's photo.
+
+### D-253 · The plugin places "Build a complete with this deck"; Skatehouse Core doesn't · 2026-11-18
+
+- **Where.** After the add-to-cart form of a deck offered by a kit's first slot.
+- **Which kit.** Where more than one kit offers the deck in its first slot, the first by menu order.
+- **What a shop can change.** `cbuild_start_button` chooses the kit, moves the button, words it or turns it off.
+- **Skatehouse Core.** The roadmap had Skatehouse Core 2.x place the link; it no longer needs to.
+
+### D-254 · A saved build keeps its prices, and reopening a changed one shows the change · 2026-11-18
+
+- **The prices.** Save build keeps each part's price inside the picks document, with no new column (D-217 kept no prices). They are the shop's prices, not personal data.
+- **Reopening.** A sold-out, gone or no-longer-fitting part is named with the closest part that fits, from `ChangePlanner::closest()`, which SPEC.md:703 already asks for here. Each changed price is named, then and now.
+- **Older builds.** Builds saved before 1.0.0 show part changes only.
+- **Currency** (from Cowork's review). Each kept price carries its currency, and prices are compared only in the same one.
+- **One finder.** `ChangePlanner::closest()` is private, so it moves to a domain class both the change list and the saved build call.
+
+### D-255 · Four settings in the kit's Layout section; motion arrives with milestone 11 · 2026-11-18
+
+- **Where they live.** A `_cbuild_layout` document, with keys `stage_side`, `board_size`, `search` and `motion`.
+- **Search applies to every step** that has it, not only the deck step the proposal named.
+- **Motion** ships with milestone 11, the moments it governs.
+
+### D-256 · Reduced motion means cross-fades, not nothing · 2026-11-18
+
+The spec said nothing moves under reduced motion; the proposal fades. An opacity change of 150 ms or less moves nothing (WCAG 2.3.3 is about motion), and it keeps a change noticeable. The Motion setting's subtle gives every shopper the same fades.
+
+### D-257 · The counting total's in-between amounts are formatted in the browser · 2026-11-18
+
+The rule is that prices are the server's, through `wc_price()`. Counting from one total to the next needs amounts the server never sent. They are formatted from the shop's currency settings, which the route sends as the Store API gives them, and hidden from screen readers. The last frame is the server's own string. Zach agreed to bend the rule this far, and no further.
+
+### D-258 · CI's newest leg is split into parallel jobs · 2026-11-18
+
+- **Why.** On the runs of 18 November the newest leg took about 95 minutes and every other job 30 or less, so one job set the length of every full run. The repository is public (D-237), so standard runners cost nothing, and the free plan runs 20 jobs at once against the 7 CI used.
+- **The split.** The newest leg's browser projects, its upgrade test and its visual snapshots run as separate jobs, each on its own wp-env site. Each job keeps one Playwright worker, since the tests share one site's state.
+- **The ruleset.** The main ruleset's required checks are updated in the same pull request to name the new jobs, and none of the old checks is dropped without its replacement.
+- **The aim.** A full run in about 40 minutes. Nothing is tested less.
+
+### D-259 · Commits and tags are signed; SHA-pin enforcement is off while a GitHub fault is tested · 2026-11-18
+
+- **Signing.** Zach asked for signed commits to best practice. Git signs every commit and tag with an SSH key of its own (`gpg.format ssh`, `commit.gpgsign` and `tag.gpgsign` on), uploaded to GitHub as a signing key, so GitHub shows them Verified. Milestone 9's last commit (afef15d) and the `v0.9.0` tag are the first. The key has no passphrase, so a person with this Mac's files could sign as Zach; he knows. A `required_signatures` rule joins the main ruleset once the unsigned pull requests open on 18 November have merged.
+- **SHA pinning.** With `sha_pinning_required` on, GitHub created no workflow run at all for afef15d: no check suite, nothing on the Actions tab, through two reopenings of pull request #60. Every `uses:` in the workflows, and the one nested in `ramsey/composer-install`, is pinned to a full SHA. Turned off at Zach's word, the next reopening started run 44383528536 at once. GitHub documents a different failure (a run is created and its job fails at Set up job, naming the action), and Community threads #212049 and #212051 report runs never created in repositories made public that week. So it reads as GitHub's fault, not ours.
+- **What holds meanwhile.** Every action is still pinned to a SHA and kept current by Dependabot, and Actions still runs only GitHub's own and three named third-party actions. Enforcement goes back on and is tested on a throwaway pull request with a code change. If a run is created, it stays on; if not, it stays off, the fault is reported to GitHub with this evidence, and a gate checks the pins instead.
