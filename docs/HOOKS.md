@@ -259,6 +259,7 @@ In the option `cbuild_settings`. [SETTINGS.md](SETTINGS.md) has each key's defau
 | `cbuild_reindex_owed` | 0.3.0 | Present, with the value `1`, while a reindex is owed: the plugin was activated on a site that had no queue, as when WooCommerce is missing. The first request that finds the queue asks for the reindex and removes the option. Autoloaded. Read it, never write it. |
 | `cbuild_import_state` | 0.3.0 | The specs import in hand: its status (`waiting`, `running`, `done` or `failed`), a token naming it, the column rows are matched by (`id` or `sku`), the shop's decimal separator when the file was read, where each column sits, whether its rows are held (`has_rows`, while it waits and runs), how many rows there were and how many are done, the parts changed, the rows that changed nothing, each row refused with its column, a code and what the cell held, its failures in a row, and while it waits the ID of the user who sent the file. Not autoloaded. Read it, never write it. |
 | `cbuild_import_rows` | 0.3.0 | The rows of the specs import in hand, kept apart so a batch does not write them again: the import's token, the rows read from the file, and the product each SKU matched when the file was read (for an import by SKU). Written once when a file is read, and removed when the import ends, is put away or is replaced. Not autoloaded. Read it, never write it. |
+| `cbuild_endpoints` | 0.8.0 | The account endpoints the rewrite rules were last made with: `my-builds`. When it differs, the plugin makes the rules again once, on `init`, so My builds answers after an update with no step for the shop (D-217). Autoloaded. Read it, never write it. |
 
 ### Scheduled actions
 
@@ -344,6 +345,7 @@ Three direct tests and one asynchronous test on Tools > Site Health, and a secti
 | `cbuild_index` | 0.3.0 | No reindex has been asked for, the last one finished, or one is under way with its job waiting or running. | A reindex is under way and has no job: it stopped part way. | A reindex stopped after five failures. |
 | `cbuild_jobs` | 0.3.0 | No action of the group `creative-skateboard-builder` is marked failed. | One or more is, with links to the failed actions and the Catalogue check. | Never. |
 | `cbuild_pictures` | 0.7.0 | GD or Imagick can read PNG and WebP and write WebP and JPEG, the uploads folder can be written, and every drawn part's layer image has its resized copies. | Neither library can, so carts and share cards show the deck's photo; the uploads folder cannot be written; or drawn parts' layer images have no resized copies, counted from what the Media Library stored, with no file opened (D-209). | Never. |
+| `cbuild_network` | 0.8.0 | On a network only: the must-use file `creative-skateboard-builder-network.php` is in `wp-content/mu-plugins` as this release writes it, so deleting a site drops the plugin's tables and deleting an account deletes its saved builds on every site (#8, D-220). | The folder cannot be written, so a site deleted where the plugin is not active for the network keeps its tables, and an account deleted from the network keeps its builds on such a site. The test names the file and the folder. | Never. |
 | `cbuild_catalogue` | 0.3.0 | The Catalogue check finds nothing in any part or kit. | It finds something: the result counts the findings and the parts they are in, and links to the check. Background work that failed is left to the first two tests above. From 0.7.0, parts with no layer image are counted apart, by part, in a sentence and a label of their own, since they stay in the builder (D-211). | Never. |
 
 `cbuild_catalogue` reads every part, so it is asynchronous: the page asks for it once it has drawn, and WordPress's weekly check calls it directly.
@@ -396,7 +398,7 @@ It reads and changes nothing. Its arguments travel in the query:
 
 | Schema | Since | What the document holds |
 | --- | --- | --- |
-| `schema/state.json` | 0.4.0 | The route's answer (draft 4, with `definitions`): `kit`, `step`, `ready`, the kit's `texts` (lead time and returns notice) and `presets`, the `steps` (each slot's label, its pick, the part it starts on, how many parts it offers and hides, and the hidden ones counted by reason, each with a sentence), the current step's `options` and `hidden` parts (24 of each at most, each with its fit, its messages and its card), the picks that were `refused`, the `problems` that keep the build from the cart, the `changes` and the `total`. From 0.6.0 it also holds the step's `filters`, `matching` and `more`, the `picture`, `delivery` and `notes`, each option's `size` and `delta`, and each preset's `image`, `total`, `ready` and `problems` (Milestone 6, below), and closes no object. `npm run types` writes `assets/src/types/state.d.ts` from it. |
+| `schema/state.json` | 0.4.0 | The route's answer (draft 4, with `definitions`): `kit`, `step`, `ready`, the kit's `texts` (lead time and returns notice) and `presets`, the `steps` (each slot's label, its pick, the part it recommends, how many parts it offers and hides, and the hidden ones counted by reason, each with a sentence), the current step's `options` and `hidden` parts (24 of each at most, each with its fit, its messages and its card), the picks that were `refused`, the `problems` that keep the build from the cart, the `changes` and the `total`. From 0.6.0 it also holds the step's `filters`, `matching` and `more`, the `picture`, `delivery` and `notes`, each option's `size` and `delta`, and each preset's `image`, `total`, `ready` and `problems` (Milestone 6, below), and closes no object. `npm run types` writes `assets/src/types/state.d.ts` from it. |
 
 What the answer holds beside the schema's own descriptions:
 
@@ -442,9 +444,9 @@ In the category `creative-skateboard-builder`, which the Catalogue check's abili
 | Ability | Since | Who | Input | Output |
 | --- | --- | --- | --- | --- |
 | `creative-skateboard-builder/check-build` | 0.4.0 | Whoever may run an ability | `kit`, the kit product's ID; `picks`, an object of slot key to part ID, 20 at most; `assembly`, a boolean. Only `kit` is required. | `kit`, `ready`, `refused` and `problems`, as the state route's answer holds them: whether the build may go to the cart, and each thing in the way with its `code`, `slot`, `part`, `message` and the rules' `messages`. |
-| `creative-skateboard-builder/price-build` | 0.4.0 | Whoever may run an ability | The same. | `kit` and `total`, as the state route's answer holds it: `lines` (each with `slot`, `part`, `name`, `quantity`, `price`, `charged` and `total`), `parts`, `saved`, `assembly`, `fee` and `total`. Each amount is `amount`, in whole minor units, and `text`. |
+| `creative-skateboard-builder/price-build` | 0.4.0 | Whoever may run an ability | The same. | `kit` and `total`, as the state route's answer holds it: `lines` (each with `slot`, `part`, `name`, `quantity`, `price`, `charged` and `total`), `parts`, `saved`, `assembly`, `fee` and `total`. Each amount is `amount`, in whole minor units, and `text`. From 0.8.0 `total` counts the picks alone, and `estimate` is the board with each slot's recommendation in it, or null (D-213). |
 
-Both are annotated read-only and idempotent and shown in REST, so WordPress serves each at `GET /wp-abilities/v1/abilities/<name>/run`. Each answers to a signed-in user alone, over REST and when run in PHP (D-118), and refuses a `POST` with 405. They ask the state route's own service, for the shopper WooCommerce knows the signed-in user as (from 0.5.0, D-138), and give parts of its answer, so the two cannot disagree: a slot with no pick is counted with the part the builder would start it on, as the route counts it. A kit a visitor may not see is `cbuild_kit_not_found` to everyone, as it is on the route. Input that is not the schema's is refused by WordPress as `ability_invalid_input`; a slot key the kit lacks is not refused, and comes back in `refused` as `slot_unknown`. Neither is counted against the route's rate limit.
+Both are annotated read-only and idempotent and shown in REST, so WordPress serves each at `GET /wp-abilities/v1/abilities/<name>/run`. Each answers to a signed-in user alone, over REST and when run in PHP (D-118), and refuses a `POST` with 405. They ask the state route's own service, for the shopper WooCommerce knows the signed-in user as (from 0.5.0, D-138), and give parts of its answer, so the two cannot disagree: from 0.8.0 a slot with no pick is counted empty, as the route counts it (D-213); before, it was counted with the part the builder started it on. A kit a visitor may not see is `cbuild_kit_not_found` to everyone, as it is on the route. Input that is not the schema's is refused by WordPress as `ability_invalid_input`; a slot key the kit lacks is not refused, and comes back in `refused` as `slot_unknown`. Neither is counted against the route's rate limit.
 
 ## Milestone 5: cart and checkout (0.5.0)
 
@@ -646,7 +648,8 @@ From 0.6.0, `cbuild` on either route of Adding a build (0.5.0, above) takes `rep
 
 ### Edit build on a kit's line
 
-Each kit's line in the cart has two item data entries from 0.6.0. The first, `raw_key` `cbuild_assembly`, keyed "Assembly", says what the line charges: the fee as the cart shows prices, "free", or "not added" for a build the shop does not assemble; a classic cart prints no price or subtotal on the kit's line, and an order's line subtotal says "Assembly: …" in the same words. The second, `raw_key` `cbuild_edit`, has an empty key, so the blocks print the link alone, and its `display` is a link with the class `cbuild-edit`. The link is the kit's builder, where `cbuild_builder_url` says it is, at the review, with the build's parts and assembly and `cbuild[_replace]`, the build's `id`. The Cart and Checkout blocks, the Mini-Cart and a classic cart all print it.
+Each kit's line in the cart has two item data entries from 0.6.0.
+The first, `raw_key` `cbuild_assembly`, keyed "Assembly", says what the line charges: the fee as the cart shows prices, "free", or "not added" for a build the shop does not assemble; a classic cart prints no price or subtotal on the kit's line, and an order's line subtotal says "Assembly: …" in the same words. The second, `raw_key` `cbuild_edit`, has an empty key, so the blocks print the link alone, and its `display` is a link with the class `cbuild-edit`. The link is the kit's builder, where `cbuild_builder_url` says it is, at the review, with the build's parts and assembly and `cbuild[_replace]`, the build's `id`. The Cart and Checkout blocks, the Mini-Cart and a classic cart all print it.
 
 ### Styling the builder
 
@@ -702,4 +705,64 @@ The builder sends two events on its own element (`.cbuild`), with JavaScript onl
 | `cbuild:added` | 0.6.0 | `{ kit: number, picks: { [slot: string]: number }, assembly: boolean }`: the kit's ID, the build's parts by slot, and whether it is assembled. | The Store API has added the build to the cart. An add that falls back to WooCommerce's own handler loads the page, and sends nothing. |
 
 The builder also sends WooCommerce's own `wc-blocks_added_to_cart` on `document.body` after an add, on which the Mini-Cart reads the cart again (D-155). It is WooCommerce's event, not part of this plugin's API.
+
+## Milestone 8: orders and after (0.8.0)
+
+### The state route and the price ability
+
+| Item | Since | What changed |
+| --- | --- | --- |
+| `total.estimate` in `schema/state.json` and in `creative-skateboard-builder/price-build`'s output | 0.8.0 | What a complete board would cost with each slot's recommendation in it, priced as `total` is (assembly, build discount, the shop's decimals), while a recommendation fills a slot and every slot the kit requires has a part; otherwise null. |
+| `picture.top` in `schema/state.json` | 0.8.0 | The board seen from the top (#46), as a list of layers shaped as `picture.layers`' are (the schema's `layer` definition), in the same units and places: from the bottom, the wheels, the deck, the grip over the deck's whole box, and a bolt head at each of the deck's eight holes. The deck's layer image is the top's outline, the grip's is the swatch that fills it, and the hardware's is a bolt head; the trucks are not on it. Empty where the deck has no layer image. A part drawn on either side has `drawn` true. |
+| `picture.layers` | 0.8.0 | The underside no longer holds the grip's 1 in strip: the grip is drawn on the top. Nothing else changes, and the composed pictures stay the underside. |
+| `total`, `steps[].recommended` and each option's `recommended` | 0.8.0 | Nothing is picked for the shopper (D-213): `total` and its `lines` count the picks alone, where before they also counted the part each later slot started on. `recommended` keeps its name and says the part the slot recommends, which is labelled and not picked. A caller that read `total` as the recommended board reads `estimate`. |
+| `creative-skateboard-builder/check-build`'s `ready` and `problems` | 0.8.0 | A required slot with no pick is now a problem, `slot_empty`, and the build is not `ready`, where before the part the builder started it on was checked in its place: a build of the deck alone was `ready` in 0.7.0 and is not now (D-213). The ability's description says so. |
+
+### Saved builds and My builds
+
+| Item | Since | What it is |
+| --- | --- | --- |
+| My account endpoint `my-builds` | 0.8.0 | My builds: each of the signed-in customer's saved builds with its picture, name, total today and the date it was saved, and Open, Rename and Delete. Added through WooCommerce's `woocommerce_get_query_vars`, with its menu item before Log out (`woocommerce_account_menu_items`). A shop that wants it elsewhere in the menu reorders that filter's answer at a later priority. |
+| `cbuild_saved` | 0.8.0 | The query parameter Open adds: the saved build's UUID. Read only on its owner's page, where Save build then updates that build. Another customer's page, and a visitor's, ignore it; no build link, Copy link or `og:url` carries it. |
+
+Save build, Rename and Delete are forms posted to My builds with a nonce each, answered on `template_redirect`. Their fields are the builder's own and no part of this API (D-217). There is no REST route for saved builds.
+
+### Styling the board's top
+
+The picture and the phone bar draw the board's top (#46) beside its underside, as `.cbuild-board.cbuild-board--top`, and show one side at a time: the picture has `cbuild-picture--top` and the bar's link `cbuild-bar__picture--top` while the top is shown, and `--turning` while the board turns over (with JavaScript, never on load). Each of the top's layers is a `span.cbuild-board__layer` placed by the four `--cbuild-layer-*` properties above, and the builder sets these on it for the stylesheet to paint; a theme does not set them:
+
+| Property | Since | What it holds |
+| --- | --- | --- |
+| `--cbuild-image` | 0.8.0 | On each of the top's layers but the deck's: the part's layer image, as a `url()`. The grip's is repeated along the deck, the others fitted into their box |
+| `--cbuild-mask` | 0.8.0 | On the top's deck and grip layers: the deck's layer image, as a `url()`, whose transparency is their outline (`mask-image`). A layer image served from another origin needs `Access-Control-Allow-Origin` for the browser to use it as a mask |
+
+The button by the board, `.cbuild-picture__turn .cbuild-button`, has `aria-pressed` true while the top is shown.
+
+
+### The workshop: the Build box, the assembly ticket and the orders list
+
+For users with `edit_shop_orders`. The Build box, the ticket and the orders list read an order's builds from its lines each time they are shown: each slot as sold from `_cbuild_snapshot`, matched to its line by `_cbuild_id` and `_cbuild_slot`.
+
+| Filter | Since | Arguments | What a plugin answers |
+| --- | --- | --- | --- |
+| `cbuild_ticket_specs` | 0.8.0 | `string[] $specs`, `string $slot`, `int $kit` | Which specs the assembly ticket shows for a slot's part, as spec keys in the order shown. By default `deck_width` for the deck, `axle_width` for the trucks (their size), `wheel_diameter` for the wheels, `riser_thickness` for the risers and `bolt_length` for the hardware, and none for any other slot. The ticket shows each one the part was sold with, from the snapshot, with its name and unit. A key that is not a spec key, or an answer that is no list, shows nothing. |
+| `cbuild_ticket_steps` | 0.8.0 | `string[] $steps`, `array $context` | The steps the ticket lists for a build, each with a tick box. By default, for an assembled build: the grip, the trucks (with the risers where it has them), the bearings into the wheels, the wheels onto the trucks, then a last check, each only where the build has those parts; none for a build the shop does not assemble. `$context` holds `kit` (the kit product's ID), `order` (the order's ID), `parts` (slot key to part ID) and `assembly` (bool). Each step is shown as plain text, tags taken out, an empty one dropped and each said once; the ticket lists the first 20. |
+
+Both are asked as the ticket is drawn, in the admin's language, so a step a plugin adds goes through its own text domain.
+
+The names another plugin may meet on the order screens:
+
+| Item | Since | What it is |
+| --- | --- | --- |
+| The Build box's ID, `cbuild-build` | 0.8.0 | Its meta box, on `wc_get_page_screen_id( 'shop-order' )` with HPOS on or off, in the `normal` context. It is added only to an order with a build, or with a kit's line that has no build behind it. |
+| `admin-post.php?action=cbuild_print_tickets` | 0.8.0 | The assembly ticket: a page of its own that prints, one board to a page. It takes `orders` (order IDs separated by commas, the first 100 printed), `more` (how many more the bulk print left out) and `_wpnonce` (a nonce for the action `cbuild_print_tickets`), and refuses with a 403 a user without `edit_shop_orders` or without the nonce. It reads orders and changes nothing. |
+| `cbuild_print_tickets` | 0.8.0 | The bulk action Print assembly tickets on the orders list, with HPOS on (`woocommerce_page_wc-orders`, and `admin_page_wc-orders` for a user without `edit_others_shop_orders`) or off (`edit-shop_order`). It sends the picked orders to the ticket page. |
+| `cbuild_assembly` | 0.8.0 | The Assembly column's key on the same lists, before the total: how many boards of the order the shop assembles, Not assembled, or empty for an order with no build. |
+
+### Privacy tools and orders
+
+| Item | Since | What it is |
+| --- | --- | --- |
+| Exporter and eraser `creative-skateboard-builder` | 0.8.0 | "Saved builds" in Tools > Export Personal Data and Erase Personal Data: each of the account's saved builds, found by its email address. One page each (D-220). |
+| The build under a kit's order line | 0.8.0 | On `woocommerce_order_item_meta_end`: the build's picture, `.cbuild-email-picture`, with the build in words as its alt text, on the order's page and in HTML emails; the words alone in plain text. Each part's row has the class `cbuild-order-part` (D-221). The markup is the plugin's own and may change in any release. |
 

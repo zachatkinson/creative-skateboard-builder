@@ -2,6 +2,48 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html). One entry per milestone; `v1.0.0` closes milestone 9.
 
+## [Unreleased]
+
+### Added
+
+- WordPress's privacy tools find saved builds: the exporter and eraser `creative-skateboard-builder`, "Saved builds". A deleted account's builds go with it, and the suggested policy text says what is kept (D-220).
+- On a network, a must-use file that drops a deleted site's tables and deletes a deleted account's saved builds on every site, where the plugin is not loaded too, with a Site Health test, `cbuild_network`, when it cannot be written (#8, D-220).
+- The build's picture under the kit's line on the order's page and in the HTML emails, with the build in words as its alt text and alone in plain-text emails; the lead time and returns notice after the emails' order table; and the parts indented under their kit (D-221).
+- Saved builds (D-217). A signed-in customer saves the build at the review, named or not, and finds it under My builds, a new My account endpoint (`my-builds`), with its picture, its total today, the date it was saved, and Open, Rename and Delete. Open goes back to the builder at the review, checked again, and Save build there updates the same build (`cbuild_saved`, read for its owner alone). A visitor signed out gets a link to sign in that comes back to the build. Up to 100 builds a customer. The forms carry a nonce each and work without JavaScript.
+- The option `cbuild_endpoints`, which makes the rewrite rules again once when the plugin's account endpoints change, so My builds answers after the update.
+- The Build box on the order screen, with HPOS on or off, for users with `edit_shop_orders`: each build by slot with the part, its SKU and its specs as sold, how many boards and whether the shop assembles them, and the build's picture. It says where the order's lines no longer match the build: a part's line removed, a quantity changed, a line added again without the build's details, or a kit's line with no build behind it (D-219).
+- The assembly ticket: a page of its own that prints one board to a page, with the order's number, the customer, each slot's part and SKU with the specs that matter at the bench, the customer's note and a tick box per step. The Build box's "Print assembly ticket" opens it, behind `edit_shop_orders` and a nonce, with no PDF (D-219).
+- The bulk action Print assembly tickets (`cbuild_print_tickets`) and the Assembly column (`cbuild_assembly`) on the orders list, with HPOS on or off (D-219).
+- The refund help in the Build box: Restock refunded items covers a whole refund, so where the grip is already applied the unused parts are refunded first with it ticked, and the rest in a second refund with it cleared (D-219).
+- The filters `cbuild_ticket_specs` and `cbuild_ticket_steps`: which specs the assembly ticket shows for each slot's part, and the steps it lists with a tick box each, so a workshop can change either without a template (D-219).
+- The state route's `total.estimate`: what a complete board would cost with each slot's recommendation in it, priced as the total is, while a recommendation fills a slot; null otherwise. The summary says it under the total, "A complete board from about $184", and the status region says it with each pick (D-213).
+- The state route's `picture.top`: the board seen from the top, from the deck's own layer image's outline, with the grip filled into it nose to tail, a bolt head at each hole from the hardware's layer image, and the wheels at the edges (#46).
+- The board turns over (#46). The picture and the phone bar draw its top beside its underside and show one side: the grip tape step the top, the others the underside, and a button by the board, "Show the top" with `aria-pressed`, turns it on any step with JavaScript, after which the shopper's side is kept. The board turns over where motion is allowed, and the picture's description says which side is shown. The top's layers set `--cbuild-image` and `--cbuild-mask` for the stylesheet.
+
+### Changed
+
+- Nothing is picked for the shopper (#45, D-213). After the deck, each later step labels its recommendation and picks nothing; the board, the total, the state route's `total` and `creative-skateboard-builder/price-build`'s `total` count only what was picked, with the board with each recommendation in it as `total.estimate` in both; `creative-skateboard-builder/check-build` says a required slot with no pick is a problem and the build not `ready`; and the review and the cart need every slot the kit requires picked. Each step's parts are checked against the picks alone. A card with nothing picked in its slot says its whole price. Presets still fill every slot.
+- Site Health's advice on missing layer image copies names the logs only when a copy failed in the last 30 days, and otherwise says that "Read every part again" makes them (Cowork's recheck of 0.7.0, N1; D-214).
+- The upgrade notice asks for no manual step (D-216).
+- The grip is no longer drawn as a 1 in strip on the underside: the state route's `picture.layers` drops it, and the grip is drawn on the top. The composed pictures in the cart and share cards are the underside, so a build's new picture has no strip (#46).
+
+### Fixed
+
+- "Read every part again" now makes the resized copies of layer images that have none, through each part's own job, and the update to 0.8.0 does the same with no step for the shop (Cowork's recheck of 0.7.0, N1; D-214).
+- With Yoast SEO, a build's `og:url` keeps its brackets encoded: Yoast decodes what its filter returns, so the plugin hands it a link that decodes to the encoded one (M6; D-215).
+- A pick stays shown as chosen while its answer is on the way, through any redraw (#47).
+- From the audit of milestone 8 (D-222):
+  - The emails name a build as the Build box does, "The build: …", with each slot's label in the email's language. Plain-text emails keep apostrophes.
+  - The assembly ticket prints only orders the user may open, as WooCommerce asks per order.
+  - My builds names each control for its build, and its queries no longer grow with the builds on it. It, the emails and the order's page ask for pictures as a page does, so carts keep their room in the queue.
+  - A save the database refuses says so and is logged by the build's UUID, in place of saying it was saved.
+  - A signed-in builder page holding a customer's nonce is kept out of page caches.
+  - My builds answers after the plugin is switched off and on again.
+  - Deleting an account on a network finds every site's builds table in one query, in place of one a site.
+  - The ticket's pictures load before it prints, and an unknown mismatch is said in words, not as its code.
+- From the walkthrough: My builds sets each build's picture above its name, so a name of two words no longer wraps around it.
+- From CI: Save build no longer also puts the build in the cart. The kit goes under the plugin's own field, `cbuild_kit`, not `add-to-cart`, which WooCommerce adds to the cart on any request.
+
 ## [0.7.0] - 2026-11-16
 
 ### Added

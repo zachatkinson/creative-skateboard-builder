@@ -92,9 +92,13 @@ final class BuildState {
 		$refused = array();
 		$picked  = self::found( $picks, $parts, $refused );
 
-		// The build the steps count: each pick, and each recommendation a slot with no pick starts on.
+		// Two builds go through the steps (D-213). The one counted holds the picks alone: each slot's parts are held
+		// against it, and it is what is validated and priced. The one estimated adds each slot's recommendation, made
+		// against the picks and the recommendations before it, so the board they make together fits.
 		$recommender = new Recommender( $engine );
 		$counted     = Picks::none();
+		$estimated   = Picks::none();
+		$recommends  = false;
 		$steps       = array();
 		$started     = true;
 		$first       = null;
@@ -102,17 +106,27 @@ final class BuildState {
 			$options     = $engine->options( $kit, $slot->key, $counted, $candidates[ $slot->key ] );
 			$part        = $picked->part( $slot->key );
 			$starts      = null === $part && $started && ( $slot->required || ! in_array( $slot->key, $left, true ) );
-			$recommended = $starts ? $recommender->among( $kit, $slot->key, $counted, $options ) : null;
-			$steps[]     = new StateStep( $slot, $options, null === $part ? null : self::option( $options, $part->id ), $recommended );
-			$part      ??= $recommended?->part;
-			if ( null !== $part ) {
-				$counted = $counted->with( $slot->key, $part );
+			$recommended = null;
+			if ( $starts ) {
+				// Held against the recommendations before it only where there are any: otherwise the options are the same.
+				$against     = $recommends ? $engine->options( $kit, $slot->key, $estimated, $candidates[ $slot->key ] ) : $options;
+				$recommended = $recommender->among( $kit, $slot->key, $estimated, $against );
+				// A part that fits the board the estimate counts fits the picks alone: it is the card the step offers.
+				$recommended = null === $recommended ? null : ( $options->offer( $recommended->part->id ) ?? $recommended );
 			}
-			if ( null === $picked->part( $slot->key ) ) {
+			$steps[] = new StateStep( $slot, $options, null === $part ? null : self::option( $options, $part->id ), $recommended );
+			if ( null !== $part ) {
+				$counted   = $counted->with( $slot->key, $part );
+				$estimated = $estimated->with( $slot->key, $part );
+			} elseif ( null !== $recommended ) {
+				$estimated  = $estimated->with( $slot->key, $recommended->part );
+				$recommends = true;
+			}
+			if ( null === $part ) {
 				$first ??= $slot->key;
 			}
-			// A later slot starts on a part once every slot the kit requires before it has one.
-			$started = $started && ( null !== $part || ! $slot->required );
+			// A later slot recommends a part once every slot the kit requires before it has one, picked or recommended.
+			$started = $started && ( null !== $part || null !== $recommended || ! $slot->required );
 		}
 
 		$validator  = new BuildValidator( $engine );
@@ -123,7 +137,15 @@ final class BuildState {
 		$pricer     = new Pricer();
 		$presets    = array();
 		try {
-			$quote = $pricer->quote( $kit, $validation->build, $assembly ?? $kit->assembly->defaultOn, $discount, $decimals );
+			$assembled = $assembly ?? $kit->assembly->defaultOn;
+			$quote     = $pricer->quote( $kit, $validation->build, $assembled, $discount, $decimals );
+			// The estimate, while a recommendation fills a slot and the board it makes is whole: a board that cannot
+			// be finished from what the shop has is given no price.
+			$estimate = null;
+			if ( $recommends && $started ) {
+				$whole    = $validator->validate( $kit, $estimated, $ids );
+				$estimate = $pricer->quote( $kit, $whole->build, $assembled, $discount, $decimals );
+			}
 			// Each preset as the build it starts: its tile's total and what keeps it from the cart.
 			foreach ( $kit->presets as $preset ) {
 				$left      = array();
@@ -145,7 +167,8 @@ final class BuildState {
 			null === $previous ? null : self::changes( $engine, $kit, $picked, self::found( $previous, $parts ), $candidates ),
 			$quote,
 			$discount,
-			$presets
+			$presets,
+			$estimate
 		);
 	}
 

@@ -83,10 +83,11 @@ final class BuilderYoastTest extends IntegrationTestCase {
 		);
 		self::assertMatchesRegularExpression( "/<meta name='robots' content='noindex, follow/", $built );
 		// Yoast prints no canonical on a noindex page (`src/presenters/canonical-presenter.php:38`), so that the two
-		// never disagree. From 0.7.0 its og:url is the build link, so a shared build's card shows that build (spec:
-		// SEO, "`og:url` is the build link"; D-200 in place of D-147's clean page).
+		// never disagree. A complete build's og:url is the build link (D-200, ShareCardYoastTest); this one has a deck
+		// alone, which since 0.8.0 is no complete build (D-213), so it keeps the kit's own card and its clean og:url
+		// (D-212).
 		self::assertStringNotContainsString( 'rel="canonical"', $built );
-		self::assertMatchesRegularExpression( '#<meta property="og:url" content="' . preg_quote( esc_url( (string) get_permalink( $page ) ), '#' ) . '&(amp;)?cbuild#', $built );
+		self::assertStringContainsString( '<meta property="og:url" content="' . esc_url( (string) get_permalink( $page ) ) . '"', $built );
 	}
 
 	public function test_yoasts_title_keeps_its_own_with_the_builders_step_before_it_once(): void {

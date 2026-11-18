@@ -49,10 +49,12 @@ final class LayerArtwork {
 	 * @return array<int, LayerArt> By part ID, in the order the layout first draws each.
 	 */
 	public function of( Layout $layout, array $parts ): array {
-		$art   = array();
-		$drawn = array_unique( array_map( static fn( $layer ): int => $layer->part, $layout->layers ) );
+		$art = array();
+		// The underside's layers, then the top's: the grip and the hardware are drawn on the top alone (#46).
+		$every = array( ...$layout->layers, ...$layout->top );
+		$drawn = array_keys( array_flip( array_map( static fn( $layer ): int => $layer->part, $every ) ) );
 		$found = array() === $drawn ? array() : $this->layers->attachments( ...$drawn );
-		foreach ( $layout->layers as $layer ) {
+		foreach ( $every as $layer ) {
 			$part = $parts[ $layer->slot ] ?? null;
 			// A layer of a part not handed in for its slot is not drawn; a part with two layers is read once.
 			if ( null === $part || $part->id !== $layer->part || array_key_exists( $layer->part, $art ) ) {

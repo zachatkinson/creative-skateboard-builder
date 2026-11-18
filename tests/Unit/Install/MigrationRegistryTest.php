@@ -43,8 +43,8 @@ final class MigrationRegistryTest extends TestCase {
 	}
 
 	public function test_the_shipped_list_is_in_the_order_it_shipped(): void {
-		self::assertSame( array( SchemaMigration::class, NoopMigration::class, \CreativeBranding\SkateboardBuilder\Install\Migrations\SpecTablesMigration::class, \CreativeBranding\SkateboardBuilder\Install\Migrations\PartsTableMigration::class, \CreativeBranding\SkateboardBuilder\Install\Migrations\ReservedSlotKeysMigration::class, \CreativeBranding\SkateboardBuilder\Install\Migrations\SeedBaseplatesMigration::class ), MigrationRegistry::CLASSES );
-		self::assertSame( '5', MigrationRegistry::VERSION );
+		self::assertSame( array( SchemaMigration::class, NoopMigration::class, \CreativeBranding\SkateboardBuilder\Install\Migrations\SpecTablesMigration::class, \CreativeBranding\SkateboardBuilder\Install\Migrations\PartsTableMigration::class, \CreativeBranding\SkateboardBuilder\Install\Migrations\ReservedSlotKeysMigration::class, \CreativeBranding\SkateboardBuilder\Install\Migrations\SeedBaseplatesMigration::class, \CreativeBranding\SkateboardBuilder\Install\Migrations\RenditionsMigration::class ), MigrationRegistry::CLASSES );
+		self::assertSame( '6', MigrationRegistry::VERSION );
 		self::assertSame( 'schema_2', ( new \CreativeBranding\SkateboardBuilder\Install\Migrations\PartsTableMigration() )->key() );
 	}
 
@@ -63,6 +63,7 @@ final class MigrationRegistryTest extends TestCase {
 			4 => '3',
 			5 => '4',
 			6 => '5',
+			7 => '6',
 		);
 		self::assertArrayHasKey( count( MigrationRegistry::CLASSES ), $versionAfter, 'a migration was added: raise MigrationRegistry::VERSION and add the pair here' );
 		self::assertSame( $versionAfter[ count( MigrationRegistry::CLASSES ) ], MigrationRegistry::VERSION );

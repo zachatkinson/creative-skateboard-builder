@@ -10,6 +10,7 @@ declare( strict_types=1 );
 namespace CreativeBranding\SkateboardBuilder\Tests\Integration;
 
 use CreativeBranding\SkateboardBuilder\Adapter\WpLayerRenditions;
+use CreativeBranding\SkateboardBuilder\Support\Options;
 use CreativeBranding\SkateboardBuilder\Port\LayerRenditions;
 use CreativeBranding\SkateboardBuilder\Tests\Support\IntegrationTestCase;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\FakeLogger;
@@ -163,7 +164,9 @@ final class LayerRenditionsTest extends IntegrationTestCase {
 		$image  = LayerFiles::attachment( 420, 1626 );
 		$logger = new FakeLogger();
 		$made   = new WpLayerRenditions( $logger );
+		delete_transient( Options::RENDITIONS_FAILED );
 		$made->make( $image, self::SIZES );
+		self::assertFalse( get_transient( Options::RENDITIONS_FAILED ), 'no failure, nothing recorded' );
 		$folder = wp_get_upload_dir()['basedir'] . '/' . WpLayerRenditions::FOLDER;
 		$webps  = (array) glob( $folder . '/*.webp' );
 		self::assertCount( 3, $webps );
@@ -179,6 +182,7 @@ final class LayerRenditionsTest extends IntegrationTestCase {
 		self::assertSame( array( 'rendition_type_webp' => true ), $logger->keys );
 		self::assertSame( array( 'warning', 'A layer image rendition was not made.' ), array( $logger->lines[0]['level'] ?? null, $logger->lines[0]['message'] ?? null ) );
 		self::assertSame( 'type', $logger->lines[0]['context']['step'] ?? null );
+		self::assertSame( 1, get_transient( Options::RENDITIONS_FAILED ), 'recorded for Site Health to name the logs (D-214)' );
 
 		// Onto a name of no rendition's: removed.
 		StrayEditor::$to = static fn( string $path ): array => array( dirname( $path ) . '/stray-' . wp_basename( $path, '.webp' ) . '.png', 'image/png' );

@@ -96,6 +96,21 @@ final class IndexJobs implements Reindex {
 	private ?PartRenditions $renditions = null;
 
 	/**
+	 * Queue the index job of every drawn part whose layer image has no resized copy (D-214).
+	 *
+	 * @since 0.8.0
+	 *
+	 * @return int How many parts' jobs were asked for.
+	 */
+	public function requestRenditions(): int {
+		$parts = $this->renditions?->unrenderedParts() ?? array();
+		foreach ( $parts as $part ) {
+			$this->queue->enqueueDistinct( self::JOB_PART, array( 'part' => $part ) );
+		}
+		return count( $parts );
+	}
+
+	/**
 	 * The same jobs, making the parts' layer images as they index them.
 	 *
 	 * @since 0.7.0
@@ -325,6 +340,11 @@ final class IndexJobs implements Reindex {
 				$this->kits->forget( ...$parts );
 				// And written again here, in the background, so that no visitor's request reads the shop for them.
 				$this->kits->warm( ...$parts );
+				// A part whose layer image has no resized copy gets its own job, which makes them as a save's does: a
+				// batch of a hundred decks drawn here would outrun the queue's time (Cowork's 0.7.0 recheck, N1).
+				foreach ( $this->renditions?->missing( ...$parts ) ?? array() as $part ) {
+					$this->queue->enqueueDistinct( self::JOB_PART, array( 'part' => $part ) );
+				}
 			}
 		} catch ( Throwable $failure ) {
 			$failed = ( $this->state() ?? $state )->failed( $failure->getMessage() );

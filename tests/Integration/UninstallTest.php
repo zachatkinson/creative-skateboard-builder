@@ -54,7 +54,10 @@ final class UninstallTest extends IntegrationTestCase {
 		$item  = new \WC_Order_Item_Product();
 		$item->set_product( $product );
 		$item->set_quantity( 1 );
-		$item->add_meta_data( '_cbuild_build', 'c0ffee', true );
+		// The keys the checkout writes on a build's lines (spec: Uninstall), as it writes them.
+		$item->add_meta_data( Options::ORDER_BUILD, 'c0ffee', true );
+		$item->add_meta_data( Options::ORDER_ROLE, Options::ROLE_KIT, true );
+		$item->add_meta_data( Options::ORDER_SNAPSHOT, array( 'kit' => 1, 'picks' => array() ), true );
 		$order->add_item( $item );
 		$order->save();
 		$items = $order->get_items();
@@ -80,6 +83,7 @@ final class UninstallTest extends IntegrationTestCase {
 		set_transient( Options::TRANSIENT_PREFIX . 'forever', 'x' );
 		// A section of a kit's Build tab that was not saved, kept for the user who typed it (D-108).
 		set_transient( Options::TRANSIENT_PREFIX . 'kit_draft_12_1', array( 'refused' => array() ), HOUR_IN_SECONDS );
+		set_transient( Options::RENDITIONS_FAILED, 1, 30 * DAY_IN_SECONDS );
 		set_site_transient( Options::UPDATE_MANIFEST, array( 'data' => null ), HOUR_IN_SECONDS );
 		wp_cache_set( 'fit:1', array( 1 ), Options::CACHE_GROUP );
 		$wpdb->insert( Tables::specs(), array( 'part_id' => 1, 'spec' => 'width', 'number' => '8.25', 'source' => 'attribute', 'indexed_at' => '2026-11-09 00:00:00' ) );
@@ -102,7 +106,14 @@ final class UninstallTest extends IntegrationTestCase {
 		}
 		file_put_contents( $uploads . '/cbuild-shop-own.txt', 'x' ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents -- The shop's own upload beside it.
 
-		$this->withRealTables( static fn() => Uninstaller::run() );
+		// A customer's saved build (milestone 8): personal data, which goes with the plugin.
+		$this->withRealTables(
+			static function () use ( $wpdb ): void {
+				$wpdb->insert( Tables::builds(), array( 'uuid' => '00000000-0000-4000-8000-0000000000aa', 'user_id' => 1, 'kit_id' => 1, 'picks' => '{}', 'assembly' => 0, 'name' => 'Kept?', 'created_at' => '2026-11-17 00:00:00', 'updated_at' => '2026-11-17 00:00:00' ) );
+				self::assertSame( '1', (string) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM %i', Tables::builds() ) ) );
+				Uninstaller::run();
+			}
+		);
 
 		self::assertDirectoryDoesNotExist( $uploads . '/' . Options::UPLOADS_FOLDER, 'the layers\' renditions and the composed pictures left behind' );
 		self::assertFileExists( $uploads . '/cbuild-shop-own.txt', 'the shop\'s uploads are never touched' );
@@ -131,7 +142,10 @@ final class UninstallTest extends IntegrationTestCase {
 		self::assertNotEmpty( get_post( $records['product'] ), 'products are never touched' );
 		$order = wc_get_order( $records['order'] );
 		self::assertNotFalse( $order, 'orders are never touched' );
-		self::assertSame( 'c0ffee', (string) $order->get_item( $records['item'] )->get_meta( '_cbuild_build' ), 'order item meta is part of the shop\'s records (spec: Uninstall)' );
+		$line = $order->get_item( $records['item'] );
+		self::assertSame( 'c0ffee', (string) $line->get_meta( Options::ORDER_BUILD ), 'order item meta is part of the shop\'s records (spec: Uninstall)' );
+		self::assertSame( Options::ROLE_KIT, (string) $line->get_meta( Options::ORDER_ROLE ) );
+		self::assertSame( array( 'kit' => 1, 'picks' => array() ), $line->get_meta( Options::ORDER_SNAPSHOT ) );
 	}
 
 	public function test_delete_jobs_by_sql_removes_only_the_plugin_group(): void {
@@ -203,9 +217,11 @@ final class UninstallTest extends IntegrationTestCase {
 				set_transient( Options::TRANSIENT_PREFIX . 'x', 'x', HOUR_IN_SECONDS );
 				restore_current_blog();
 
+				self::assertTrue( \CreativeBranding\SkateboardBuilder\Install\NetworkFile::ensure(), 'the network\'s must-use file, written on activation' );
 				$wpdb->last_error = '';
 				Uninstaller::run();
 				self::assertSame( '', $wpdb->last_error, 'a site with no Action Scheduler tables raises nothing' );
+				self::assertFileDoesNotExist( \CreativeBranding\SkateboardBuilder\Install\NetworkFile::path(), 'and the must-use file goes with the plugin (#8)' );
 
 				switch_to_blog( $site );
 				try {

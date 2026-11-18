@@ -40,7 +40,7 @@ final class PriceBuildAbility extends BuildAbility {
 			'creative-skateboard-builder/price-build',
 			array(
 				'label'         => __( 'Price a build', 'creative-skateboard-builder' ),
-				'description'   => __( 'Gives what a build of a kit costs: a line for each part with its quantity and price, what the build discount takes off, the assembly fee and the total. Each amount comes in whole minor units and as the shop writes its prices. A slot with no pick is priced with the part the builder would start it on.', 'creative-skateboard-builder' ),
+				'description'   => __( 'Gives what a build of a kit costs: a line for each part with its quantity and price, what the build discount takes off, the assembly fee and the total. Each amount comes in whole minor units and as the shop writes its prices. The total counts the picks; the estimate prices the board with each slot that has no pick filled by its recommendation, while one fills a slot.', 'creative-skateboard-builder' ),
 				'output_schema' => self::outputSchema(),
 			) + $this->common()
 		);
@@ -102,8 +102,12 @@ final class PriceBuildAbility extends BuildAbility {
 						),
 						'fee'      => array( 'description' => __( 'The assembly fee.', 'creative-skateboard-builder' ) ) + $money,
 						'total'    => array( 'description' => __( 'The parts and the fee.', 'creative-skateboard-builder' ) ) + $money,
+						'estimate' => array(
+							'type'        => array( 'object', 'null' ),
+							'description' => __( 'The board with each recommendation in it, priced as the total is, or null when no recommendation fills a slot or the board cannot be finished.', 'creative-skateboard-builder' ),
+						) + array_diff_key( $money, array( 'type' => true ) ),
 					),
-					'required'             => array( 'lines', 'parts', 'saved', 'assembly', 'fee', 'total' ),
+					'required'             => array( 'lines', 'parts', 'saved', 'assembly', 'fee', 'total', 'estimate' ),
 					'additionalProperties' => false,
 				),
 			),

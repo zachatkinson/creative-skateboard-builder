@@ -61,6 +61,7 @@ final class Container {
 			Port\LayerRenditions::class => Adapter\WpLayerRenditions::class,
 			Port\PictureFiles::class    => Adapter\WpPictureFiles::class,
 			Port\ProductMeta::class     => Repository\ProductMetaRepository::class,
+			Port\SavedBuildStore::class => Repository\SavedBuildRepository::class,
 		);
 	}
 
@@ -71,15 +72,23 @@ final class Container {
 	 */
 	private static function factories(): array {
 		return array(
-			Install\Migrations\MigrationRegistry::class => static function ( Container $c ): object {
+			Install\Migrations\MigrationRegistry::class   => static function ( Container $c ): object {
 				$migrations = array();
 				foreach ( Install\Migrations\MigrationRegistry::CLASSES as $class ) {
 					$migrations[] = $c->get( $class );
 				}
 				return new Install\Migrations\MigrationRegistry( ...$migrations );
 			},
+			Install\Migrations\RenditionsMigration::class => static function ( Container $c ): object {
+				return new Install\Migrations\RenditionsMigration(
+					static function () use ( $c ): Port\Reindex {
+						return $c->get( Port\Reindex::class );
+					},
+					$c->get( Port\Logger::class )
+				);
+			},
 			// The index's services are built when a migration finishes, not on every request.
-			Hooks\InstallHooks::class                   => static function ( Container $c ): object {
+			Hooks\InstallHooks::class                     => static function ( Container $c ): object {
 				return new Hooks\InstallHooks(
 					$c->get( Install\Migrations\MigrationRunner::class ),
 					$c->get( Install\Migrations\InlineRule::class ),
@@ -89,7 +98,7 @@ final class Container {
 				);
 			},
 			// The settings tab extends a class WooCommerce loads on its settings screen alone, so it is built when asked for.
-			Admin\SettingsHooks::class                  => static function ( Container $c ): object {
+			Admin\SettingsHooks::class                    => static function ( Container $c ): object {
 				return new Admin\SettingsHooks(
 					static function () use ( $c ): object {
 						return $c->get( Admin\SettingsPage::class );
@@ -97,7 +106,7 @@ final class Container {
 				);
 			},
 			// The Builder page's screen is built when the page is asked for.
-			Admin\BuilderHooks::class                   => static function ( Container $c ): object {
+			Admin\BuilderHooks::class                     => static function ( Container $c ): object {
 				return new Admin\BuilderHooks(
 					static function () use ( $c ): Admin\SpecTablesScreen {
 						return $c->get( Admin\SpecTablesScreen::class );
@@ -111,7 +120,7 @@ final class Container {
 				);
 			},
 			// Nothing is built until a test runs or the Info tab is drawn.
-			Health\SiteHealth::class                    => static function ( Container $c ): object {
+			Health\SiteHealth::class                      => static function ( Container $c ): object {
 				return new Health\SiteHealth(
 					static function () use ( $c ): Service\Health {
 						return $c->get( Service\Health::class );
@@ -134,7 +143,7 @@ final class Container {
 				);
 			},
 			// The check is built when the ability is run.
-			Abilities\CatalogueCheckAbility::class      => static function ( Container $c ): object {
+			Abilities\CatalogueCheckAbility::class        => static function ( Container $c ): object {
 				return new Abilities\CatalogueCheckAbility(
 					static function () use ( $c ): Service\CatalogueCheck {
 						return $c->get( Service\CatalogueCheck::class );
@@ -142,7 +151,7 @@ final class Container {
 				);
 			},
 			// A build's services are built when an ability is run.
-			Abilities\CheckBuildAbility::class          => static function ( Container $c ): object {
+			Abilities\CheckBuildAbility::class            => static function ( Container $c ): object {
 				return new Abilities\CheckBuildAbility(
 					static function () use ( $c ): Port\Kits {
 						return $c->get( Port\Kits::class );
@@ -158,7 +167,7 @@ final class Container {
 					}
 				);
 			},
-			Abilities\PriceBuildAbility::class          => static function ( Container $c ): object {
+			Abilities\PriceBuildAbility::class            => static function ( Container $c ): object {
 				return new Abilities\PriceBuildAbility(
 					static function () use ( $c ): Port\Kits {
 						return $c->get( Port\Kits::class );
@@ -175,7 +184,7 @@ final class Container {
 				);
 			},
 			// The kit's class is an adapter's, which a Hookable may not name.
-			Hooks\KitHooks::class                       => static function ( Container $c ): object {
+			Hooks\KitHooks::class                         => static function ( Container $c ): object {
 				return new Hooks\KitHooks(
 					Adapter\KitProduct::class,
 					new Service\KitVisibility(
@@ -187,7 +196,7 @@ final class Container {
 				);
 			},
 			// The jobs and the import are built when a part is saved or a job runs, not on every request.
-			Hooks\IndexHooks::class                     => static function ( Container $c ): object {
+			Hooks\IndexHooks::class                       => static function ( Container $c ): object {
 				return new Hooks\IndexHooks(
 					static function () use ( $c ): Service\IndexJobs {
 						return $c->get( Service\IndexJobs::class );
@@ -196,7 +205,7 @@ final class Container {
 				);
 			},
 			// The cart's service is built when a kit is on its way to the cart or in it.
-			Cart\CartHooks::class                       => static function ( Container $c ): object {
+			Cart\CartHooks::class                         => static function ( Container $c ): object {
 				return new Cart\CartHooks(
 					static function () use ( $c ): Service\BuildCart {
 						return $c->get( Service\BuildCart::class );
@@ -204,7 +213,7 @@ final class Container {
 					$c->get( Cart\Refusals::class )
 				);
 			},
-			Cart\LineHooks::class                       => static function ( Container $c ): object {
+			Cart\LineHooks::class                         => static function ( Container $c ): object {
 				return new Cart\LineHooks(
 					static function () use ( $c ): Service\BuildLines {
 						return $c->get( Service\BuildLines::class );
@@ -212,28 +221,28 @@ final class Container {
 					$c->get( Cart\Refusals::class )
 				);
 			},
-			Cart\ThumbnailHooks::class                  => static function ( Container $c ): object {
+			Cart\ThumbnailHooks::class                    => static function ( Container $c ): object {
 				return new Cart\ThumbnailHooks(
 					static function () use ( $c ): Service\ComposedPictures {
 						return $c->get( Service\ComposedPictures::class );
 					}
 				);
 			},
-			Cart\AgainHooks::class                      => static function ( Container $c ): object {
+			Cart\AgainHooks::class                        => static function ( Container $c ): object {
 				return new Cart\AgainHooks(
 					static function () use ( $c ): Service\BuildCart {
 						return $c->get( Service\BuildCart::class );
 					}
 				);
 			},
-			Cart\PriceHooks::class                      => static function ( Container $c ): object {
+			Cart\PriceHooks::class                        => static function ( Container $c ): object {
 				return new Cart\PriceHooks(
 					static function () use ( $c ): Service\BuildCart {
 						return $c->get( Service\BuildCart::class );
 					}
 				);
 			},
-			Order\OrderHooks::class                     => static function ( Container $c ): object {
+			Order\OrderHooks::class                       => static function ( Container $c ): object {
 				return new Order\OrderHooks(
 					static function () use ( $c ): Service\OrderBuilds {
 						return $c->get( Service\OrderBuilds::class );
@@ -243,28 +252,41 @@ final class Container {
 					}
 				);
 			},
-			Front\Delivery::class                       => static function ( Container $c ): object {
+			Order\WorkshopHooks::class                    => static function ( Container $c ): object {
+				return new Order\WorkshopHooks(
+					static function () use ( $c ): Order\BuildBox {
+						return $c->get( Order\BuildBox::class );
+					},
+					static function () use ( $c ): Order\TicketPage {
+						return $c->get( Order\TicketPage::class );
+					},
+					static function () use ( $c ): Order\OrdersList {
+						return $c->get( Order\OrdersList::class );
+					}
+				);
+			},
+			Front\Delivery::class                         => static function ( Container $c ): object {
 				return new Front\Delivery( $c->get( Port\Kits::class ), $c->get( Port\ShippingZones::class ), new Front\ShippingWords( $c->get( Port\Money::class ) ) );
 			},
-			Cart\ShowHooks::class                       => static function ( Container $c ): object {
+			Cart\ShowHooks::class                         => static function ( Container $c ): object {
 				return new Cart\ShowHooks(
 					static function () use ( $c ): Port\Kits {
 						return $c->get( Port\Kits::class );
 					}
 				);
 			},
-			Cart\Refusals::class                        => static function ( Container $c ): object {
+			Cart\Refusals::class                          => static function ( Container $c ): object {
 				return new Cart\Refusals(
 					static function () use ( $c ): Port\Kits {
 						return $c->get( Port\Kits::class );
 					}
 				);
 			},
-			Service\SavedSources::class                 => static function (): object {
+			Service\SavedSources::class                   => static function (): object {
 				return new Service\SavedSources( array( Support\Options::META_SPECS, Support\Options::META_SPEC_TABLE, Support\Options::META_LAYER ) );
 			},
 			// The builder's services are built when a page shows a builder, not on every request.
-			Front\PageHooks::class                      => static function ( Container $c ): object {
+			Front\PageHooks::class                        => static function ( Container $c ): object {
 				return new Front\PageHooks(
 					static function () use ( $c ): Front\BuilderPage {
 						return $c->get( Front\BuilderPage::class );
@@ -272,8 +294,37 @@ final class Container {
 					$c->get( Front\BuilderPlace::class )
 				);
 			},
+			// Saved builds' services are built when a privacy tool, a deletion or an email asks.
+			Privacy\PrivacyHooks::class                   => static function ( Container $c ): object {
+				return new Privacy\PrivacyHooks(
+					static function () use ( $c ): Service\SavedBuilds {
+						return $c->get( Service\SavedBuilds::class );
+					}
+				);
+			},
+			Order\EmailHooks::class                       => static function ( Container $c ): object {
+				return new Order\EmailHooks(
+					static function () use ( $c ): Service\ComposedPictures {
+						return $c->get( Service\ComposedPictures::class );
+					},
+					static function () use ( $c ): Order\WorkshopView {
+						return $c->get( Order\WorkshopView::class );
+					}
+				);
+			},
+			// The saved builds' services are built when a form is sent or My builds is shown.
+			Front\SavedBuildHooks::class                  => static function ( Container $c ): object {
+				return new Front\SavedBuildHooks(
+					static function () use ( $c ): Service\SavedBuilds {
+						return $c->get( Service\SavedBuilds::class );
+					},
+					static function () use ( $c ): Front\MyBuildsView {
+						return $c->get( Front\MyBuildsView::class );
+					}
+				);
+			},
 			// The card's services are built on a page with a build in its address, when its head is printed.
-			Front\ShareHooks::class                     => static function ( Container $c ): object {
+			Front\ShareHooks::class                       => static function ( Container $c ): object {
 				return new Front\ShareHooks(
 					$c->get( Front\BuilderPlace::class ),
 					static function () use ( $c ): Front\BuilderPage {
@@ -285,7 +336,7 @@ final class Container {
 				);
 			},
 			// The state route's services are built when the route is asked, not whenever the REST API starts.
-			Rest\StateRoute::class                      => static function ( Container $c ): object {
+			Rest\StateRoute::class                        => static function ( Container $c ): object {
 				return new Rest\StateRoute(
 					$c->get( Port\Kits::class ),
 					static function () use ( $c ): Service\BuildState {
@@ -310,7 +361,7 @@ final class Container {
 				);
 			},
 			// The cards are built when something a card shows moves.
-			Hooks\CardHooks::class                      => static function ( Container $c ): object {
+			Hooks\CardHooks::class                        => static function ( Container $c ): object {
 				return new Hooks\CardHooks(
 					static function () use ( $c ): Port\PartCards {
 						return $c->get( Port\PartCards::class );
@@ -320,7 +371,7 @@ final class Container {
 					}
 				);
 			},
-			Hooks\SpecTableHooks::class                 => static function ( Container $c ): object {
+			Hooks\SpecTableHooks::class                   => static function ( Container $c ): object {
 				return new Hooks\SpecTableHooks(
 					static function () use ( $c ): Service\IndexJobs {
 						return $c->get( Service\IndexJobs::class );
@@ -328,14 +379,14 @@ final class Container {
 				);
 			},
 			// The pictures' service is built when a kit is added to the cart or the job runs.
-			Hooks\PictureHooks::class                   => static function ( Container $c ): object {
+			Hooks\PictureHooks::class                     => static function ( Container $c ): object {
 				return new Hooks\PictureHooks(
 					static function () use ( $c ): Service\ComposedPictures {
 						return $c->get( Service\ComposedPictures::class );
 					}
 				);
 			},
-			Hooks\ImportHooks::class                    => static function ( Container $c ): object {
+			Hooks\ImportHooks::class                      => static function ( Container $c ): object {
 				return new Hooks\ImportHooks(
 					static function () use ( $c ): Service\SpecImport {
 						return $c->get( Service\SpecImport::class );
@@ -343,7 +394,7 @@ final class Container {
 				);
 			},
 			// The panel reads the sources, so it is built when one of its hooks fires.
-			Admin\PartSpecsHooks::class                 => static function ( Container $c ): object {
+			Admin\PartSpecsHooks::class                   => static function ( Container $c ): object {
 				return new Admin\PartSpecsHooks(
 					static function () use ( $c ): Admin\PartSpecsPanel {
 						return $c->get( Admin\PartSpecsPanel::class );
@@ -351,7 +402,7 @@ final class Container {
 				);
 			},
 			// The tab reads the kit and its parts, so it is built when one of its hooks fires.
-			Admin\BuildTabHooks::class                  => static function ( Container $c ): object {
+			Admin\BuildTabHooks::class                    => static function ( Container $c ): object {
 				return new Admin\BuildTabHooks(
 					static function () use ( $c ): Admin\BuildTab {
 						return $c->get( Admin\BuildTab::class );
@@ -359,7 +410,7 @@ final class Container {
 				);
 			},
 			// The sources, each asked once per batch.
-			Service\SpecIndexer::class                  => static fn( Container $c ): object => new Service\SpecIndexer(
+			Service\SpecIndexer::class                    => static fn( Container $c ): object => new Service\SpecIndexer(
 				$c->get( Port\SpecIndex::class ),
 				$c->get( Port\ShopSettings::class ),
 				$c->get( Port\Clock::class ),
@@ -387,6 +438,7 @@ final class Container {
 			Service\CatalogueCheck::class => static fn( object $check, Container $c ): object => $check instanceof Service\CatalogueCheck ? $check->withLayers( $c->get( Port\LayerImages::class ) ) : $check,
 			Front\StateAnswer::class      => static fn( object $answer, Container $c ): object => $answer instanceof Front\StateAnswer ? $answer->withArtwork( $c->get( Service\LayerArtwork::class ) ) : $answer,
 			Admin\PartSpecsPanel::class   => static fn( object $panel, Container $c ): object => $panel instanceof Admin\PartSpecsPanel ? $panel->withImages( $c->get( Port\LayerImages::class ) ) : $panel,
+			Front\BuilderPage::class      => static fn( object $page, Container $c ): object => $page instanceof Front\BuilderPage ? $page->withSaved( $c->get( Service\SavedBuilds::class ) ) : $page,
 		);
 	}
 
@@ -422,6 +474,11 @@ final class Container {
 			Cart\ThumbnailHooks::class             => array( Scope::Everywhere ),
 			// Both checkouts make the order, and its items are named on pages, in emails and in wp-admin.
 			Order\OrderHooks::class                => array( Scope::Everywhere ),
+			// Emails are sent from any kind of request: a checkout, a REST call, the queue, wp-admin.
+			Order\EmailHooks::class                => array( Scope::Everywhere ),
+			// The privacy tools answer over admin-ajax; an account is deleted from wp-admin, WP-CLI or a REST call.
+			Privacy\PrivacyHooks::class            => array( Scope::Everywhere ),
+			Order\WorkshopHooks::class             => array( Scope::Admin ),
 			// WooCommerce's settings screen.
 			Admin\SettingsHooks::class             => array( Scope::Admin ),
 			Admin\PartSpecsHooks::class            => array( Scope::Admin ),
@@ -438,6 +495,8 @@ final class Container {
 			// Robots and the canonical are printed in the head of a page the site shows a visitor.
 			Front\SeoHooks::class                  => array( Scope::Storefront ),
 			Front\ShareHooks::class                => array( Scope::Storefront ),
+			// My builds' endpoint is a rewrite rule, made on `init` in any request; its forms are answered on a page.
+			Front\SavedBuildHooks::class           => array( Scope::Everywhere ),
 			// WordPress builds its abilities when something first asks for one, on any kind of request.
 			Abilities\CatalogueCheckAbility::class => array( Scope::Everywhere ),
 			Abilities\CheckBuildAbility::class     => array( Scope::Everywhere ),

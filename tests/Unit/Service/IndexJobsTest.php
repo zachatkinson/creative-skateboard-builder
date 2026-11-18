@@ -221,6 +221,13 @@ final class IndexJobsTest extends TestCase {
 
 		$plain->indexPart( 7 );
 		$plain->removed( 11, 'attachment' );
+		// And a reindex, which with renditions queues the 7's job (0.8.0), runs to its end without them.
+		$plain->requestReindex();
+		for ( $batches = 0; isset( $this->queue->pending[ IndexJobs::JOB_REINDEX ] ) && $batches < 50; ++$batches ) {
+			unset( $this->queue->pending[ IndexJobs::JOB_REINDEX ] );
+			$plain->runReindex();
+		}
+		self::assertSame( ReindexState::DONE, $plain->state()?->phase, 'the reindex ended, with no failure' );
 		self::assertSame( array( 7 ), array_keys( $this->index->rows ) );
 		self::assertSame( array( array(), array() ), array( $this->renditions->made, $this->renditions->forgotten ) );
 		self::assertSame( array(), $this->queue->distinct, 'an image is no part' );
@@ -343,6 +350,45 @@ final class IndexJobsTest extends TestCase {
 		self::assertSame( array( range( 1, 100 ), range( 101, 200 ), range( 201, 250 ) ), $this->kits->forgotten );
 		// Issue #28: and writes their rows again itself, a batch at a time.
 		self::assertSame( array( range( 1, 100 ), range( 101, 200 ), range( 201, 250 ) ), $this->kits->warmed );
+	}
+
+	// Cowork's recheck of 0.7.0, N1: "Read every part again" made no resized copies, though Site Health said it did, so a
+	// layer image whose copies were gone had no way back but saving its part. Each batch queues the part's own job, which
+	// makes them, for every part it read whose layer image has none; the batch itself draws nothing.
+	public function test_a_reindex_queues_the_job_of_each_part_whose_layer_image_has_no_resized_copies(): void {
+		$this->parts( 7, 8, 9, 10 );
+		$this->kits->slotsOf       = array(
+			7  => array( 'deck' ),
+			8  => array( 'deck' ),
+			9  => array( 'risers' ),
+			10 => array( 'deck' ),
+		);
+		$this->layers->attachments = array(
+			7  => 70,
+			9  => 90,
+			10 => 100,
+		);
+		$this->layers->images      = array(
+			70  => new ImageFacts( 'image/png', 420, 1626, true ),
+			90  => new ImageFacts( 'image/png', 420, 1626, true ),
+			100 => new ImageFacts( 'image/png', 420, 1626, true ),
+		);
+		// The 10's copies are made; the 7's are not.
+		$this->jobs->indexPart( 10 );
+		$this->renditions->made = array_values( array_filter( $this->renditions->made, static fn( array $made ): bool => 100 === $made[0] ) );
+		$made                   = $this->renditions->made;
+
+		$this->jobs->requestReindex();
+		$this->drain();
+		self::assertSame( array( array( IndexJobs::JOB_PART, array( 'part' => 7 ) ) ), $this->queue->distinct, 'the 7 alone: the 8 has no layer image, the risers are not drawn, and the 10 has its copies' );
+		self::assertSame( $made, $this->renditions->made, 'the batch makes none itself: a batch of a hundred decks would outrun the queue\'s time' );
+
+		// The queued job makes them, and the next reindex queues nothing.
+		$this->queue->distinct = array();
+		$this->jobs->indexPart( 7 );
+		$this->jobs->requestReindex();
+		$this->drain();
+		self::assertSame( array(), $this->queue->distinct );
 	}
 
 	public function test_a_full_last_page_is_followed_by_an_empty_one(): void {

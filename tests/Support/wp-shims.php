@@ -108,3 +108,8 @@ if ( ! function_exists( 'sanitize_html_class' ) ) {
 		return '' === $sanitized && '' !== $fallback ? sanitize_html_class( $fallback ) : $sanitized;
 	}
 }
+if ( ! function_exists( 'wp_login_url' ) ) {
+	function wp_login_url( string $redirect = '', bool $force_reauth = false ): string {
+		return 'https://shop.test/wp-login.php' . ( '' === $redirect ? '' : '?redirect_to=' . rawurlencode( $redirect ) );
+	}
+}

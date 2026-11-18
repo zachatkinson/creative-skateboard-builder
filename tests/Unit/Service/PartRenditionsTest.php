@@ -137,4 +137,23 @@ final class PartRenditionsTest extends TestCase {
 		$this->made()->make( 102 );
 		self::assertSame( 0, $this->made()->unrendered() );
 	}
+
+	public function test_parts_with_no_layer_image_are_answered_without_reading_the_shops_kits(): void {
+		$this->kits->add( 3, Shop::kit(), Shop::parts() );
+		$this->indexed( 101 );
+		$this->layers->layered = array( 900 );
+		$this->kits->read      = 0;
+		self::assertSame( array(), $this->made()->missing( 101, 102 ) );
+		self::assertSame( 0, $this->kits->read, 'a reindex asks this of every batch, and most parts have no layer image' );
+	}
+
+	public function test_the_parts_offered_in_drawn_slots_are_a_list_each_once(): void {
+		$this->kits->add( 3, Shop::kit(), Shop::parts() );
+		$this->kits->add( 9, Shop::kit(), Shop::parts() );
+		$offered = ( new \ReflectionMethod( PartRenditions::class, 'offered' ) )->invoke( $this->made() );
+		self::assertIsArray( $offered );
+		self::assertTrue( array_is_list( $offered ), 'a list, numbered from 0' );
+		self::assertSame( array_unique( $offered ), $offered, 'two kits that offer a part list it once' );
+		self::assertContains( 101, $offered );
+	}
 }

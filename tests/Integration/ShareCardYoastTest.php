@@ -91,6 +91,12 @@ final class ShareCardYoastTest extends CartTestCase {
 		self::assertCount( 1, $tags['og:url'], 'one set of tags' );
 		self::assertSame( (string) get_permalink( $this->kit ), remove_query_arg( BuildLink::PARAM, $tags['og:url'][0] ) );
 		self::assertNotSame( (string) get_permalink( $this->kit ), $tags['og:url'][0], 'og:url is the build link (spec), where D-147 had the clean page' );
+		// Cowork's recheck of 0.7.0, M6 (D-215): Yoast 28.8 urldecode()s what its filter returns
+		// (src/presenters/open-graph/url-presenter.php:46), which printed the brackets bare. The build link is printed as
+		// the plugin's own tags and Copy link write it, its brackets encoded.
+		self::assertStringContainsString( 'cbuild%5Bdeck%5D=', $tags['og:url'][0] );
+		self::assertStringNotContainsString( '[', $tags['og:url'][0] );
+		self::assertStringNotContainsString( '%25', $tags['og:url'][0], 'and nothing encoded twice' );
 		self::assertCount( 1, $tags['og:image'], 'the deck\'s layer alone, not the product\'s own photo beside it' );
 		self::assertStringContainsString( 'cbuild-layer-', $tags['og:image'][0] );
 		self::assertStringNotContainsString( 'rel="canonical"', $html, 'Yoast prints no canonical on a noindex page' );

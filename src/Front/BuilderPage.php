@@ -9,6 +9,7 @@ declare( strict_types=1 );
 
 namespace CreativeBranding\SkateboardBuilder\Front;
 
+use CreativeBranding\SkateboardBuilder\Service\SavedBuilds;
 use CreativeBranding\SkateboardBuilder\Cart\ShowHooks;
 use CreativeBranding\SkateboardBuilder\Port\Kits;
 use CreativeBranding\SkateboardBuilder\Port\Logger;
@@ -84,6 +85,61 @@ final class BuilderPage {
 	public function __construct( private Builder $builder, private Kits $kits, private Logger $logger ) {}
 
 	/**
+	 * The customer's saved builds, for Save build on the review; null in a container that predates them (D-208).
+	 *
+	 * @var SavedBuilds|null
+	 */
+	private ?SavedBuilds $saved = null;
+
+	/**
+	 * The same page, with Save build for a signed-in customer (D-217). Only this release's container calls it, so a
+	 * page an earlier release's container builds mid-update has no Save build (D-208).
+	 *
+	 * @since 0.8.0
+	 *
+	 * @param SavedBuilds $saved The customer's saved builds.
+	 */
+	public function withSaved( SavedBuilds $saved ): self {
+		$page        = clone $this;
+		$page->saved = $saved;
+		return $page;
+	}
+
+	/**
+	 * Save build's part of the store's state: whether a customer is signed in, where the form posts, its nonce, and
+	 * the saved build the page was opened from where it is theirs. Nothing of a customer's for a visitor signed out,
+	 * whose page a cache may keep.
+	 *
+	 * @since 0.8.0
+	 *
+	 * @return array{signedIn: bool, action: string, nonce: string, saved: string}
+	 */
+	public function account(): array {
+		$user = get_current_user_id();
+		if ( null === $this->saved || $user < 1 ) {
+			return array(
+				'signedIn' => false,
+				'action'   => '',
+				'nonce'    => '',
+				'saved'    => '',
+			);
+		}
+		// The page now holds this customer's nonce. WordPress sends them no-cache headers (wp-includes/class-wp.php:443);
+		// a page cache that reads only this constant is told too (spec: Security).
+		if ( ! defined( 'DONOTCACHEPAGE' ) ) {
+			define( 'DONOTCACHEPAGE', true ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedConstantFound -- The page caches' own constant, which they read by this name.
+		}
+		$sent = isset( $_GET[ MyBuildsView::PARAM ] ) && is_string( $_GET[ MyBuildsView::PARAM ] ) ? sanitize_text_field( wp_unslash( $_GET[ MyBuildsView::PARAM ] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read and checked against its owner, nothing changed.
+		return array(
+			'signedIn' => true,
+			'action'   => SavedBuildHooks::url(),
+			'nonce'    => wp_create_nonce( SavedBuildHooks::SAVE ),
+			// Honoured only for its owner (spec: Security; D-217).
+			'saved'    => null === $this->saved->find( $user, $sent ) ? '' : $sent,
+		);
+	}
+
+	/**
 	 * The builder's markup for a kit, or an empty string where there is none to show.
 	 *
 	 * @since 0.6.0
@@ -116,6 +172,13 @@ final class BuilderPage {
 					'added'   => false,
 					// Set by the store where the browser has a clipboard to write to (D-156).
 					'canCopy' => false,
+					// Save build, for a signed-in customer (D-217).
+					'account' => $this->account(),
+					// Set by the store, which turns the board over with the button by it; without the script the
+					// step's own side is shown (#46).
+					'canTurn' => false,
+					// Set by the store once a turn is seen, so the board turns where motion is allowed, never on load.
+					'turning' => false,
 				)
 			);
 			// Where the store asks for the next view: the state route, for this page, in its language (D-148), and the

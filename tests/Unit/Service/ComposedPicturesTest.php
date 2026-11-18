@@ -140,7 +140,7 @@ final class ComposedPicturesTest extends TestCase {
 		);
 		$short = self::STREET;
 		unset( $short[ SlotKey::TRUCKS ] );
-		$cases['a required slot left, which a recommendation would fill'] = array( self::KIT, $short );
+		$cases['a required slot left unpicked'] = array( self::KIT, $short );
 		foreach ( $cases as $case => [ $kit, $picks ] ) {
 			self::assertSame( 0, $this->pictures->compose( $kit, $picks ), $case );
 			self::assertNull( $this->pictures->url( $kit, $picks, ComposedPictures::CART ), $case );

@@ -29,6 +29,7 @@ final class Uninstaller {
 	 * @since 0.1.0
 	 */
 	public static function run(): void {
+		NetworkFile::remove();
 		foreach ( Options::siteTransients() as $transient ) {
 			delete_site_transient( $transient );
 		}

@@ -79,6 +79,13 @@ final class WooKits implements Kits {
 	private bool $every = false;
 
 	/**
+	 * Each slot's offered parts while work is done together, by kit, slot and price context; null outside it.
+	 *
+	 * @var array<string, list<Part>>|null
+	 */
+	private ?array $held = null;
+
+	/**
 	 * Constructor.
 	 *
 	 * @since 0.4.0
@@ -177,7 +184,44 @@ final class WooKits implements Kits {
 	 * @return list<Part>
 	 */
 	public function offered( int $kit, Slot $slot ): array {
-		unset( $kit );
+		if ( null !== $this->held ) {
+			$key = $kit . '|' . $slot->key . '|' . WooPartCards::context();
+			if ( ! isset( $this->held[ $key ] ) ) {
+				$this->held[ $key ] = $this->offeredNow( $slot );
+			}
+			return $this->held[ $key ];
+		}
+		return $this->offeredNow( $slot );
+	}
+
+	/**
+	 * Do a piece of work that reads many builds, holding each slot's offered parts for its length.
+	 *
+	 * @since 0.8.0
+	 *
+	 * @template T
+	 * @param \Closure(): T $work The work.
+	 * @return T
+	 */
+	public function together( \Closure $work ): mixed {
+		if ( null !== $this->held ) {
+			return $work();
+		}
+		$this->held = array();
+		try {
+			return $work();
+		} finally {
+			$this->held = null;
+		}
+	}
+
+	/**
+	 * A slot's parts, read now: what offered() gives outside work done together.
+	 *
+	 * @param Slot $slot One of a kit's slots.
+	 * @return list<Part>
+	 */
+	private function offeredNow( Slot $slot ): array {
 		$sources = $slot->sources;
 		$found   = $this->found( $sources );
 		$ids     = array_values( array_unique( array( ...$found, ...$sources->products ) ) );
@@ -248,6 +292,9 @@ final class WooKits implements Kits {
 	 * @param int ...$ids Products' and variations' IDs.
 	 */
 	public function forget( int ...$ids ): void {
+		if ( null !== $this->held ) {
+			$this->held = array();
+		}
 		if ( array() === $ids ) {
 			$this->every = true;
 		}

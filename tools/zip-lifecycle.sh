@@ -55,8 +55,9 @@ wp plugin install "wp-content/plugins/$slug/tmp/$copy.zip" --activate | tail -n 
 [ "$(active)" = active ] || fail "the zip did not activate"
 installed="$(read_state)"
 # Activation asks for every part to be read again (D-082): the reindex's state is one more option, and its job the one
-# action, waiting or already run.
-[ "$installed" = "$schema|3|2|1|$errors" ] || [ "$installed" = "$schema|3|3|1|$errors" ] || fail "after the install: $installed (version|tables|options|actions|errors)"
+# action, waiting or already run. From 0.8.0 the first request after it records the account endpoints the rewrite
+# rules were made with (`cbuild_endpoints`, D-217): one more option still.
+[ "$installed" = "$schema|3|3|1|$errors" ] || [ "$installed" = "$schema|3|4|1|$errors" ] || fail "after the install: $installed (version|tables|options|actions|errors)"
 echo "   version|tables|options|actions|errors: $installed"
 
 echo "3. Install the same zip over itself."

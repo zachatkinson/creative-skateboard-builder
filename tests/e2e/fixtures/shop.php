@@ -342,6 +342,10 @@ $cbuild_layers = array(
 	'builder-test-wheels-54'  => 'wheels-54.png',
 	'builder-test-wheels-56'  => 'wheels-56.png',
 	'builder-test-wheels-58'  => 'wheels-58.png',
+	// The board's top (#46): the grip's swatch, and the longer bolts' heads. The 1 in bolts have none, so the hardware's
+	// labelled photo is tested as well; tools/layer-art.php draws a blue grip and black heads too, for a demo's parts.
+	'builder-test-grip'       => 'grip-black.png',
+	'builder-test-bolts-1-25' => 'bolts-1.25.png',
 );
 foreach ( $cbuild_layers as $cbuild_sku => $cbuild_art ) {
 	$cbuild_item = wc_get_product( $cbuild_parts[ $cbuild_sku ] );

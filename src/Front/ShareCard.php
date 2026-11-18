@@ -83,9 +83,11 @@ final class ShareCard {
 	 * since its width heads the name, the trucks and wheels by brand and size. A part with no brand is named by its
 	 * product's name, which says more than a bare size (Cowork's M7 review, M1; D-212).
 	 *
+	 * @since 0.8.0 Public, for My builds' name of a build its customer did not name.
+	 *
 	 * @param array<string, \CreativeBranding\SkateboardBuilder\Domain\Kit\Part> $counted The parts, by slot.
 	 */
-	private function title( array $counted ): string {
+	public function title( array $counted ): string {
 		$slugs    = array_values( array_unique( array_filter( array_map( static fn( $part ): string => $part->brand, $counted ), static fn( string $slug ): bool => '' !== $slug ) ) );
 		$brands   = array() === $slugs ? array() : $this->cards->brands( $slugs );
 		$nameless = array();

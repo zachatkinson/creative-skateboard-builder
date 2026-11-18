@@ -9,6 +9,7 @@ declare( strict_types=1 );
 
 namespace CreativeBranding\SkateboardBuilder\Health;
 
+use CreativeBranding\SkateboardBuilder\Install\NetworkFile;
 use Closure;
 use CreativeBranding\SkateboardBuilder\Admin\CheckScreen;
 use CreativeBranding\SkateboardBuilder\Admin\ImportScreen;
@@ -22,6 +23,7 @@ use CreativeBranding\SkateboardBuilder\Service\ComposedPictures;
 use CreativeBranding\SkateboardBuilder\Service\Health;
 use CreativeBranding\SkateboardBuilder\Service\PartRenditions;
 use CreativeBranding\SkateboardBuilder\Support\Cast;
+use CreativeBranding\SkateboardBuilder\Support\Options;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -45,6 +47,7 @@ final class SiteHealth implements Hookable {
 	public const TEST_JOBS      = 'cbuild_jobs';
 	public const TEST_CATALOGUE = 'cbuild_catalogue';
 	public const TEST_PICTURES  = 'cbuild_pictures';
+	public const TEST_NETWORK   = 'cbuild_network';
 	public const SECTION        = 'creative-skateboard-builder';
 
 	/**
@@ -124,6 +127,12 @@ final class SiteHealth implements Hookable {
 			'label' => __( 'The skateboard builder\'s composed pictures', 'creative-skateboard-builder' ),
 			'test'  => array( $this, 'pictures' ),
 		);
+		if ( is_multisite() ) {
+			$direct[ self::TEST_NETWORK ] = array(
+				'label' => __( 'The skateboard builder on a network', 'creative-skateboard-builder' ),
+				'test'  => array( $this, 'network' ),
+			);
+		}
 		$tests['direct']               = $direct;
 		$async                         = is_array( $tests['async'] ?? null ) ? $tests['async'] : array();
 		$async[ self::TEST_CATALOGUE ] = array(
@@ -199,6 +208,34 @@ final class SiteHealth implements Hookable {
 	}
 
 	/**
+	 * On a network: whether the must-use file is in place that drops a deleted site's tables and a deleted account's
+	 * saved builds where the plugin is not loaded (#8, D-220).
+	 *
+	 * @since 0.8.0
+	 *
+	 * @return array{label: string, status: string, badge: array{label: string, color: string}, description: string, actions: string, test: string}
+	 */
+	public function network(): array {
+		if ( NetworkFile::inPlace() ) {
+			return self::result(
+				self::TEST_NETWORK,
+				Health::GOOD,
+				__( 'Deleting a site or an account removes the skateboard builder\'s data', 'creative-skateboard-builder' ),
+				__( 'A must-use file names the builder\'s tables, so deleting a site drops them and deleting an account deletes its saved builds, on every site of the network.', 'creative-skateboard-builder' ),
+				''
+			);
+		}
+		return self::result(
+			self::TEST_NETWORK,
+			Health::RECOMMENDED,
+			__( 'Deleting a site or an account may leave the skateboard builder\'s data behind', 'creative-skateboard-builder' ),
+			/* translators: 1: a file's name; 2: a folder's path. */
+			sprintf( __( 'The builder could not write %1$s to %2$s. Without it, a site deleted where the builder is not active for the whole network keeps its tables, and an account deleted from the network keeps its saved builds on such a site. Make the folder writable by the web server, then open any wp-admin page and the builder writes it.', 'creative-skateboard-builder' ), NetworkFile::NAME, WPMU_PLUGIN_DIR ),
+			''
+		);
+	}
+
+	/**
 	 * The test of the composed pictures: whether this host can draw them and keep them (D-198).
 	 *
 	 * @since 0.7.0
@@ -219,12 +256,17 @@ final class SiteHealth implements Hookable {
 			/* translators: %s: a number of parts. */
 			$label = sprintf( _n( '%s part\'s layer image has no resized copies', '%s parts\' layer images have no resized copies', $unrendered, 'creative-skateboard-builder' ), number_format_i18n( $unrendered ) );
 			$says  = __( 'The builder draws each part from copies of its layer image in AVIF and WebP at the sizes it shows, made in the background when the part is saved. Without them the page loads the full-size image, which is slower.', 'creative-skateboard-builder' );
-			// The fix named is the one for the cause: a host whose editors write neither type, or jobs that did not run
-			// or failed (the audit of the fixes).
+			// The fix named is the one for the cause, and each says only what is so (Cowork's 0.7.0 recheck, N1; D-214):
+			// a host whose editors write neither type; a copy that failed in the last 30 days, whose reason is logged;
+			// or copies not made yet, which "Read every part again" queues the parts' jobs to make.
 			$writes = wp_image_editor_supports( array( 'mime_type' => 'image/avif' ) ) || wp_image_editor_supports( array( 'mime_type' => 'image/webp' ) );
-			$says  .= ' ' . ( $writes
-				? __( 'WooCommerce > Status > Logs has the reason, under creative-skateboard-builder. "Read every part again" on the Catalogue check makes them for every part.', 'creative-skateboard-builder' )
-				: __( 'This server\'s image editors write neither AVIF nor WebP. Your host can turn on WebP in GD or Imagick, and then "Read every part again" on the Catalogue check makes them.', 'creative-skateboard-builder' ) );
+			if ( ! $writes ) {
+				$says .= ' ' . __( 'This server\'s image editors write neither AVIF nor WebP. Your host can turn on WebP in GD or Imagick, and then "Read every part again" on the Catalogue check makes them in the background.', 'creative-skateboard-builder' );
+			} elseif ( false !== get_transient( Options::RENDITIONS_FAILED ) ) {
+				$says .= ' ' . __( 'Making a copy failed in the last 30 days. WooCommerce > Status > Logs has the reason, under creative-skateboard-builder. Once it is fixed, "Read every part again" on the Catalogue check makes the missing copies in the background.', 'creative-skateboard-builder' );
+			} else {
+				$says .= ' ' . __( '"Read every part again" on the Catalogue check makes the missing copies in the background, a part at a time.', 'creative-skateboard-builder' );
+			}
 			return self::result( self::TEST_PICTURES, Health::RECOMMENDED, $label, $says, sprintf( '<a href="%s">%s</a>', esc_url( CheckScreen::url() ), esc_html__( 'Open the Catalogue check', 'creative-skateboard-builder' ) ) );
 		}
 		return self::result( self::TEST_PICTURES, $verdict['status'], __( 'The skateboard builder can compose pictures', 'creative-skateboard-builder' ), __( 'Each build added to a cart gets pictures of the built board for the cart and share cards, made in the background. Pictures not shown for 30 days are deleted.', 'creative-skateboard-builder' ), '' );

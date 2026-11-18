@@ -343,10 +343,13 @@ jobs:
           key: playwright-${{ runner.os }}-${{ steps.browsers.outputs.version }}-${{ steps.browsers.outputs.projects == '' && 'every' || 'two' }}
       # apt can hang for as long as the job has when the runner cannot reach Ubuntu's mirrors: two jobs sat here for 15
       # and 19 minutes on 11 November 2026 (D-123). Each try is stopped after a few minutes, and there are three.
+      # `timeout` stops npx, not the apt-get it started as root, so a try waits up to five minutes for the last one's
+      # apt-get to let go of dpkg's lock before it starts (CI run 44194833317, oldest; D-224).
       - name: Playwright's browsers and their system packages (three tries, five minutes each)
         if: (matrix.leg == 'newest' || matrix.leg == 'oldest') && steps.playwright-cache.outputs.cache-hit != 'true'
         run: |
           for try in 1 2 3; do
+            timeout 300 bash -c 'while pgrep -x apt-get > /dev/null || pgrep -x dpkg > /dev/null; do sleep 5; done' || true
             if timeout 300 npx playwright install --with-deps ${{ steps.browsers.outputs.engines }}; then exit 0; fi
             echo "::warning::Try ${try} of Playwright's install did not finish."
             # Only after a try has failed: the hosted runners use Azure's mirror, and Ubuntu's own may answer when it does not (D-126).
@@ -358,6 +361,7 @@ jobs:
         if: (matrix.leg == 'newest' || matrix.leg == 'oldest') && steps.playwright-cache.outputs.cache-hit == 'true'
         run: |
           for try in 1 2 3; do
+            timeout 300 bash -c 'while pgrep -x apt-get > /dev/null || pgrep -x dpkg > /dev/null; do sleep 5; done' || true
             if timeout 180 npx playwright install-deps ${{ steps.browsers.outputs.engines }}; then exit 0; fi
             echo "::warning::Try ${try} of Playwright's system packages did not finish."
             # Only after a try has failed: the hosted runners use Azure's mirror, and Ubuntu's own may answer when it does not (D-126).

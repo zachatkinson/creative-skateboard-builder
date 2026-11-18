@@ -40,7 +40,7 @@ final class CheckBuildAbility extends BuildAbility {
 			'creative-skateboard-builder/check-build',
 			array(
 				'label'         => __( 'Check a build', 'creative-skateboard-builder' ),
-				'description'   => __( 'Says whether a build of a kit may go to the cart: every required slot filled, each part one of its slot\'s, in stock, and fitting the others. What is wrong is listed with its code and a sentence. A slot with no pick is checked with the part the builder would start it on.', 'creative-skateboard-builder' ),
+				'description'   => __( 'Says whether a build of a kit may go to the cart: every required slot filled, each part one of its slot\'s, in stock, and fitting the others. What is wrong is listed with its code and a sentence. A required slot with no pick is a problem: nothing is picked for the shopper.', 'creative-skateboard-builder' ),
 				'output_schema' => self::outputSchema(),
 			) + $this->common()
 		);

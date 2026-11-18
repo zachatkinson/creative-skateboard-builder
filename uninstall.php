@@ -28,6 +28,7 @@ if ( null === \CreativeBranding\SkateboardBuilder\Support\Requirements::platform
 	require_once __DIR__ . '/src/Support/Options.php';
 	require_once __DIR__ . '/src/Support/Tables.php';
 	require_once __DIR__ . '/src/Install/Sites.php';
+	require_once __DIR__ . '/src/Install/NetworkFile.php';
 	require_once __DIR__ . '/src/Install/Uninstaller.php';
 }
 

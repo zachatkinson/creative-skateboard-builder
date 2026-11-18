@@ -23,6 +23,9 @@
  * - **The phone bar** never covers the control in focus: one the bar overlaps is scrolled clear of it (D-160).
  * - **Copy link** writes the build's shared link to the clipboard and says so. It is offered only where the browser
  *   has a clipboard to write to; the address is in the page as a field either way, and a refused copy selects it.
+ * - **The board turns over** (#46). Each view says which side its step shows (the grip step, the top); the button by
+ *   the board turns it, and from then on the side the shopper chose is kept on every view that can draw it. The
+ *   picture and the phone bar show the same side, and the stylesheet turns the board only where motion is allowed.
  */
 import { getConfig, getElement, store } from '@wordpress/interactivity';
 import { fit } from './bar';
@@ -53,9 +56,27 @@ interface State {
 	status: string;
 	added: boolean;
 	canCopy: boolean;
+	canTurn: boolean;
+	turning: boolean;
 }
 
 let navigator: Navigator | undefined;
+
+/**
+ * The side the shopper turned the board to with the button, once they have: it then holds over each step's own.
+ */
+let side: 'top' | 'under' | undefined;
+
+/**
+ * Show a view on the side the shopper chose, where it can draw it; a view whose board has no top shows its underside.
+ *
+ * @param view The view to be shown.
+ */
+function sided( view: Shown ): void {
+	if ( view.picture && undefined !== side ) {
+		view.picture.turned = view.picture.turnable && 'top' === side;
+	}
+}
 
 /**
  * The builder's own element, as its init callback found it.
@@ -280,6 +301,32 @@ function steady( change: () => void ): void {
 }
 
 /**
+ * Mark a pick in the store at once: the step's cards bind their radios' checked to it, so a card drawn again while the
+ * route is asked would otherwise put the pick back as it was until the answer came (#47). The answer then says the
+ * same, or what the server found instead.
+ *
+ * @param view  The view shown.
+ * @param value The radio's value: a part's ID, or "0" for leaving the slot empty.
+ */
+function chosen( view: Shown, value: string ): void {
+	const step = view.step as {
+		options?: unknown;
+		leave?: unknown;
+	};
+	if ( Array.isArray( step.options ) ) {
+		for ( const option of step.options as unknown[] ) {
+			if ( option && 'object' === typeof option ) {
+				const card = option as { value?: unknown; checked?: boolean };
+				card.checked = card.value === value;
+			}
+		}
+	}
+	if ( step.leave && 'object' === typeof step.leave ) {
+		( step.leave as { checked?: boolean } ).checked = '0' === value;
+	}
+}
+
+/**
  * The navigator, made on first use from the page's config.
  *
  * @param state The store's state.
@@ -303,6 +350,13 @@ function nav( state: State ): Navigator {
 						? 'push'
 						: history;
 				const before = state.view;
+				sided( shown );
+				// A side shown that was not is a turn the shopper sees, where motion is allowed; the same side ends the
+				// last turn, so a board shown again later is not turned.
+				state.turning =
+					undefined !== shown.picture &&
+					undefined !== before.picture &&
+					shown.picture.turned !== before.picture.turned;
 				const change = () => {
 					state.view = shown;
 					state.added = false;
@@ -336,6 +390,7 @@ function nav( state: State ): Navigator {
 export function reset(): void {
 	navigator = undefined;
 	root = null;
+	side = undefined;
 }
 
 /**
@@ -371,12 +426,16 @@ const { state } = store(
 			status: '',
 			added: false,
 			canCopy: false,
+			canTurn: false,
+			turning: false,
 		} as State,
 		callbacks: {
 			init(): void {
 				root = getElement().ref;
 				state.canCopy =
 					'function' === typeof window.navigator.clipboard?.writeText;
+				// The button turns the board in the page; without the script the step's own side is shown.
+				state.canTurn = true;
 				if ( root ) {
 					fit( root );
 				}
@@ -405,6 +464,7 @@ const { state } = store(
 				) {
 					return;
 				}
+				chosen( state.view, input.value );
 				root?.dispatchEvent(
 					new CustomEvent( 'cbuild:pick', {
 						bubbles: true,
@@ -472,6 +532,19 @@ const { state } = store(
 				);
 				state.added = true;
 				told( state, form.ownerDocument );
+			},
+			/**
+			 * Show the top, or the underside again: the button by the board, its pressed state the side shown (#46).
+			 * The shopper's side is kept from now on.
+			 */
+			turn(): void {
+				const picture = state.view.picture;
+				if ( ! picture?.turnable ) {
+					return;
+				}
+				side = picture.turned ? 'under' : 'top';
+				state.turning = true;
+				picture.turned = ! picture.turned;
 			},
 			/**
 			 * The screen changed: fit the phone bar into the theme again (D-163).

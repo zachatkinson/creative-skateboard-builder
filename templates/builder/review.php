@@ -39,6 +39,21 @@ defined( 'ABSPATH' ) || exit;
 		<input class="cbuild-share__link" id="cbuild-share-link" type="url" readonly data-wp-bind--value="state.view.review.link">
 		<button class="cbuild-button cbuild-share__copy" type="button" data-wp-bind--hidden="!state.canCopy" data-wp-on--click="actions.copy" data-wp-text="state.view.review.copy"></button>
 	</div>
+	<?php // Save build (D-217): a form to My builds for a signed-in customer, with no script of its own; a link to sign in, which comes back here, for anyone else. ?>
+	<form class="cbuild-save" method="post" data-wp-bind--action="state.account.action" data-wp-bind--hidden="!state.account.signedIn">
+		<template data-wp-each--field="state.view.review.saveFields">
+			<input type="hidden" data-wp-bind--name="context.field.name" data-wp-bind--value="context.field.value">
+		</template>
+		<input type="hidden" name="<?php echo esc_attr( \CreativeBranding\SkateboardBuilder\Front\SavedBuildHooks::FIELD ); ?>" value="<?php echo esc_attr( \CreativeBranding\SkateboardBuilder\Front\SavedBuildHooks::SAVE ); ?>">
+		<input type="hidden" name="<?php echo esc_attr( \CreativeBranding\SkateboardBuilder\Front\SavedBuildHooks::NONCE ); ?>" data-wp-bind--value="state.account.nonce">
+		<input type="hidden" name="<?php echo esc_attr( \CreativeBranding\SkateboardBuilder\Front\SavedBuildHooks::UUID ); ?>" data-wp-bind--value="state.account.saved">
+		<label class="cbuild-save__label" for="cbuild-save-name" data-wp-text="state.view.review.saveName"></label>
+		<input class="cbuild-save__name" id="cbuild-save-name" type="text" maxlength="100" name="<?php echo esc_attr( \CreativeBranding\SkateboardBuilder\Front\SavedBuildHooks::NAME ); ?>">
+		<button class="cbuild-button" type="submit" data-wp-bind--disabled="!state.view.review.ready" data-wp-text="state.view.review.save"></button>
+	</form>
+	<p class="cbuild-save__sign-in" data-wp-bind--hidden="state.account.signedIn">
+		<a rel="nofollow" data-wp-bind--href="state.view.review.signIn" data-wp-text="state.view.review.signInText"></a>
+	</p>
 	<p class="cbuild-review__added" tabindex="-1" data-wp-bind--hidden="!state.added">
 		<span data-wp-text="state.view.review.added"></span>
 		<a href="<?php echo esc_url( wc_get_cart_url() ); ?>"><?php esc_html_e( 'View cart', 'creative-skateboard-builder' ); ?></a>

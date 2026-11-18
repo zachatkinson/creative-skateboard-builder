@@ -14,6 +14,7 @@ use CreativeBranding\SkateboardBuilder\Hookable;
 use CreativeBranding\SkateboardBuilder\Install\Migrations\InlineRule;
 use CreativeBranding\SkateboardBuilder\Install\Migrations\MigrationRunner;
 use CreativeBranding\SkateboardBuilder\Install\Migrations\RunResult;
+use CreativeBranding\SkateboardBuilder\Install\NetworkFile;
 use CreativeBranding\SkateboardBuilder\Install\Uninstaller;
 use CreativeBranding\SkateboardBuilder\Install\Sites;
 use CreativeBranding\SkateboardBuilder\Install\Activator;
@@ -54,6 +55,17 @@ final class InstallHooks implements Hookable {
 		add_action( 'admin_init', array( $this, 'runWhenBehind' ) );
 		add_action( Options::JOB_MIGRATE, array( $this, 'runJob' ) );
 		add_filter( 'wpmu_drop_tables', array( Uninstaller::class, 'siteTables' ) );
+		add_action( 'admin_init', array( $this, 'networkFile' ) );
+	}
+
+	/**
+	 * On a network, in wp-admin: write the must-use file where it is missing or out of date, as after an update (#8,
+	 * D-220). One read of a small file a request; nothing on a single site.
+	 *
+	 * @since 0.8.0
+	 */
+	public function networkFile(): void {
+		NetworkFile::ensure();
 	}
 
 	/**

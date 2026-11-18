@@ -150,7 +150,7 @@ final class MigrationTest extends IntegrationTestCase {
 				$wpdb->query( 'DROP TABLE IF EXISTS ' . $parts ); // phpcs:ignore
 				$states = get_option( Options::MIGRATIONS );
 				self::assertIsArray( $states );
-				self::assertSame( array( 'schema_1', 'noop_1', 'spec_tables_1', 'schema_2', 'reserved_slot_keys_1', 'spec_tables_2' ), array_keys( $states ) );
+				self::assertSame( array( 'schema_1', 'noop_1', 'spec_tables_1', 'schema_2', 'reserved_slot_keys_1', 'spec_tables_2', 'layer_renditions_1' ), array_keys( $states ) );
 				$later  = array(
 					'schema_2'             => true,
 					'reserved_slot_keys_1' => true,

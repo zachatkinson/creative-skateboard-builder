@@ -178,7 +178,11 @@ final class ShareHooks implements Hookable {
 	}
 
 	/**
-	 * Yoast's `og:url`: the build link.
+	 * Yoast's `og:url`: the build link, its brackets encoded as the plugin's own tags and Copy link write them.
+	 *
+	 * Yoast 28.8 runs urldecode() over what this filter returns (src/presenters/open-graph/url-presenter.php:46),
+	 * which printed `cbuild[deck]` with bare brackets (Cowork's recheck of 0.7.0, M6). The link is given to it with
+	 * each `%` and `+` written as urldecode() reads them back, so what it prints is the link itself (D-215).
 	 *
 	 * @since 0.7.0
 	 *
@@ -186,7 +190,14 @@ final class ShareHooks implements Hookable {
 	 * @return mixed
 	 */
 	public function url( mixed $url ): mixed {
-		return $this->card()['url'] ?? $url;
+		$link = $this->card()['url'] ?? null;
+		return null === $link ? $url : strtr(
+			$link,
+			array(
+				'%' => '%25',
+				'+' => '%2B',
+			)
+		);
 	}
 
 	/**

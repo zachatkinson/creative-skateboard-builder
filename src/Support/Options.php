@@ -65,6 +65,22 @@ final class Options {
 	public const UPDATE_MANIFEST = 'cbuild_update_manifest';
 
 	/**
+	 * The transient set when a layer image's rendition is not made, kept 30 days, for Site Health to say the logs have
+	 * the reason (D-214). Uninstall's sweep of the transient prefix takes it.
+	 *
+	 * @since 0.8.0
+	 */
+	public const RENDITIONS_FAILED = 'cbuild_renditions_failed';
+
+	/**
+	 * The account endpoints the rewrite rules were last made with, so they are made again once when the plugin's
+	 * change (D-217). Removed on uninstall.
+	 *
+	 * @since 0.8.0
+	 */
+	public const ENDPOINTS = 'cbuild_endpoints';
+
+	/**
 	 * The shop's settings, one option (docs/SETTINGS.md).
 	 *
 	 * @since 0.3.0
@@ -268,7 +284,7 @@ final class Options {
 	 * @return string[]
 	 */
 	public static function names(): array {
-		return array( self::DB_VERSION, self::MIGRATIONS, self::MIGRATION_LOCK, self::SETTINGS, self::REINDEX, self::REINDEX_OWED, self::IMPORT, self::IMPORT_ROWS );
+		return array( self::DB_VERSION, self::MIGRATIONS, self::MIGRATION_LOCK, self::SETTINGS, self::REINDEX, self::REINDEX_OWED, self::IMPORT, self::IMPORT_ROWS, self::ENDPOINTS );
 	}
 
 	/**

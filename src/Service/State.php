@@ -52,6 +52,8 @@ final readonly class State {
 	 * @param Quote              $quote      What the build costs so far.
 	 * @param int                $discount   The build discount the quote was made with, in basis points.
 	 * @param list<PresetState>  $presets    Each of the kit's presets as a build, in the kit's order.
+	 * @param Quote|null         $estimate   What the board costs with each slot's recommendation in it, while one fills
+	 *                                       a slot and every slot the kit requires has a part (D-213).
 	 */
 	public function __construct(
 		public int $id,
@@ -63,7 +65,8 @@ final readonly class State {
 		public ?ChangeList $changes,
 		public Quote $quote,
 		public int $discount,
-		public array $presets = array()
+		public array $presets = array(),
+		public ?Quote $estimate = null
 	) {}
 
 	/**
@@ -74,7 +77,7 @@ final readonly class State {
 	 * @param string $step A slot's key, or the review.
 	 */
 	public function at( string $step ): self {
-		return new self( $this->id, $this->kit, $this->steps, $step, $this->refused, $this->validation, $this->changes, $this->quote, $this->discount, $this->presets );
+		return new self( $this->id, $this->kit, $this->steps, $step, $this->refused, $this->validation, $this->changes, $this->quote, $this->discount, $this->presets, $this->estimate );
 	}
 
 	/**
@@ -87,9 +90,10 @@ final readonly class State {
 	}
 
 	/**
-	 * The part each step counts, the pick or else the recommendation, by slot in step order.
+	 * The part each step counts, which is its pick, by slot in step order.
 	 *
 	 * @since 0.7.0
+	 * @since 0.8.0 The picks alone (D-213).
 	 *
 	 * @return array<string, Part>
 	 */

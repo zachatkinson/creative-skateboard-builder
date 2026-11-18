@@ -9,6 +9,8 @@ declare( strict_types=1 );
 
 namespace CreativeBranding\SkateboardBuilder\Front;
 
+use CreativeBranding\SkateboardBuilder\Domain\Kit\SlotKey;
+use CreativeBranding\SkateboardBuilder\Domain\Picture\Layer;
 use CreativeBranding\SkateboardBuilder\Domain\Picture\Layout;
 use CreativeBranding\SkateboardBuilder\Domain\Picture\LayerArt;
 use CreativeBranding\SkateboardBuilder\Port\PictureRenderer;
@@ -22,10 +24,14 @@ if ( ! defined( 'ABSPATH' ) ) {
  * the top, in the layout's units: the view turns them into shares of the board, so the page draws at any size. Its
  * image is the master, with each type's renditions as a `srcset` where they are made (D-194, D-195).
  *
+ * From 0.8.0 the board's top as well (#46), which the page alone draws: the same, from the layout's top. The deck's
+ * image is the top's outline, so a deck with no art has no top.
+ *
  * @since 0.7.0
  * @internal
  *
- * @implements PictureRenderer<array{width: int, height: int, layers: list<array{slot: string, part: int, x: int, y: int, width: int, height: int, image: array{src: string, width: int, height: int, sources: list<array{type: string, srcset: string}>}}>}>
+ * @phpstan-type Drawn array{slot: string, part: int, x: int, y: int, width: int, height: int, image: array{src: string, width: int, height: int, sources: list<array{type: string, srcset: string}>}}
+ * @implements PictureRenderer<array{width: int, height: int, layers: list<Drawn>, top: list<Drawn>}>
  */
 final class PageRenderer implements PictureRenderer {
 
@@ -33,14 +39,33 @@ final class PageRenderer implements PictureRenderer {
 	 * Draw the layout.
 	 *
 	 * @since 0.7.0
+	 * @since 0.8.0 The top.
 	 *
 	 * @param Layout               $layout The layout.
 	 * @param array<int, LayerArt> $art    By part ID.
-	 * @return array{width: int, height: int, layers: list<array{slot: string, part: int, x: int, y: int, width: int, height: int, image: array{src: string, width: int, height: int, sources: list<array{type: string, srcset: string}>}}>}
+	 * @return array{width: int, height: int, layers: list<Drawn>, top: list<Drawn>}
 	 */
 	public function render( Layout $layout, array $art ): array {
+		$top = self::drawn( $layout, $layout->top, $art );
+		return array(
+			'width'  => $layout->width,
+			'height' => $layout->height,
+			'layers' => self::drawn( $layout, $layout->layers, $art ),
+			'top'    => in_array( SlotKey::DECK, array_column( $top, 'slot' ), true ) ? $top : array(),
+		);
+	}
+
+	/**
+	 * The layers with art, placed.
+	 *
+	 * @param Layout               $layout The layout.
+	 * @param list<Layer>          $stack  Its layers, one side's.
+	 * @param array<int, LayerArt> $art    By part ID.
+	 * @return list<Drawn>
+	 */
+	private static function drawn( Layout $layout, array $stack, array $art ): array {
 		$layers = array();
-		foreach ( $layout->layers as $layer ) {
+		foreach ( $stack as $layer ) {
 			$image = $art[ $layer->part ] ?? null;
 			if ( null === $image ) {
 				continue;
@@ -60,11 +85,7 @@ final class PageRenderer implements PictureRenderer {
 				),
 			);
 		}
-		return array(
-			'width'  => $layout->width,
-			'height' => $layout->height,
-			'layers' => $layers,
-		);
+		return $layers;
 	}
 
 	/**

@@ -384,7 +384,8 @@ final class ComposedPictures {
 			$ids[ $slot ] = $part->id;
 		}
 		if ( $ids !== $picks ) {
-			// A recommendation filled a slot the build left: the picture would show a part the shopper did not choose.
+			// The build counted is the picks alone (D-213), in step order; picks sent in another order, or for a part the
+			// state holds otherwise, are no build this picture is named for.
 			return array();
 		}
 		return $this->drawings( $state->kit, $counted, self::CANVASES );

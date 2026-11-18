@@ -33,6 +33,7 @@ defined( 'ABSPATH' ) || exit;
 	</div>
 	<p class="cbuild-summary__saved" data-wp-bind--hidden="!state.view.summary.hasSaved" data-wp-text="state.view.summary.saved"></p>
 	<p class="cbuild-summary__total"><span data-wp-text="state.view.summary.totalLabel"></span> <strong data-wp-text="state.view.summary.total"></strong></p>
+	<p class="cbuild-summary__estimate" data-wp-bind--hidden="!state.view.summary.hasEstimate" data-wp-text="state.view.summary.estimate"></p>
 	<p class="cbuild-summary__ships" data-wp-bind--hidden="!state.view.summary.hasShips" data-wp-text="state.view.summary.ships"></p>
 	<p class="cbuild-summary__arrival" data-wp-bind--hidden="!state.view.summary.hasArrival" data-wp-text="state.view.summary.arrival"></p>
 	<ul class="cbuild-summary__notes">

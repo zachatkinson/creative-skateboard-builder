@@ -187,4 +187,14 @@ final class InMemoryKits implements Kits {
 	public function decimals(): int {
 		return $this->decimals;
 	}
+
+	/**
+	 * How many times work was done together.
+	 */
+	public int $together = 0;
+
+	public function together( \Closure $work ): mixed {
+		++$this->together;
+		return $work();
+	}
 }

@@ -35,6 +35,9 @@ final class Activator {
 	 * @param bool|mixed $networkWide Whether the plugin is being network-activated.
 	 */
 	public static function activate( $networkWide = false ): void {
+		// On a network, the must-use file that keeps a site's or an account's deletion whole (#8, D-220). Where it
+		// cannot be written, Site Health says so.
+		NetworkFile::ensure();
 		if ( is_multisite() && true === $networkWide ) {
 			Sites::each( array( self::class, 'site' ) );
 			return;

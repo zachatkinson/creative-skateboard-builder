@@ -63,7 +63,7 @@ final class ActivationTest extends IntegrationTestCase {
 		self::assertArrayHasKey( Options::DB_VERSION, wp_load_alloptions( true ), 'the version is autoloaded: read on every request' );
 		$states = get_option( Options::MIGRATIONS );
 		self::assertIsArray( $states );
-		self::assertSame( array( 'schema_1', 'noop_1', 'spec_tables_1', 'schema_2', 'reserved_slot_keys_1', 'spec_tables_2' ), array_keys( $states ), 'in order' );
+		self::assertSame( array( 'schema_1', 'noop_1', 'spec_tables_1', 'schema_2', 'reserved_slot_keys_1', 'spec_tables_2', 'layer_renditions_1' ), array_keys( $states ), 'in order' );
 		foreach ( $states as $key => $state ) {
 			self::assertSame( 'done', $state['status'], $key );
 			self::assertSame( 1, $state['attempts'], $key );
@@ -106,6 +106,16 @@ final class ActivationTest extends IntegrationTestCase {
 		self::assertNotSame( 'done', get_option( Options::REINDEX )['phase'] );
 		self::assertCount( 1, self::pendingJobs( Options::JOB_REINDEX ) );
 		delete_option( Options::REINDEX );
+	}
+
+	/**
+	 * Audit of milestone 8: switched off, the plugin forgets that its My builds address is in WordPress's rules, which
+	 * anything may rebuild without it meanwhile (Settings > Permalinks); switched on, the next request puts it back.
+	 */
+	public function test_deactivation_forgets_the_endpoints_flag_so_my_builds_comes_back(): void {
+		update_option( Options::ENDPOINTS, 'my-builds' );
+		Deactivator::deactivate();
+		self::assertFalse( get_option( Options::ENDPOINTS ) );
 	}
 
 	public function test_network_activation_installs_every_site(): void {
