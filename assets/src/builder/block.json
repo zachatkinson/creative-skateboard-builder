@@ -17,6 +17,10 @@
 		"title": {
 			"type": "boolean",
 			"default": false
+		},
+		"align": {
+			"type": "string",
+			"default": "full"
 		}
 	},
 	"supports": {

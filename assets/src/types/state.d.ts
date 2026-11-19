@@ -414,9 +414,13 @@ export interface CbuildState {
 			 */
 			name: string;
 			/**
-			 * The part's photo, or null when it has none.
+			 * The part's photo, else from 1.0.0 its layer image, uncropped; null when it has neither.
 			 */
 			image: Photo | null;
+			/**
+			 * Whether `image` is the part's photo, not its layer image (1.0.0).
+			 */
+			photo: boolean;
 			/**
 			 * Whether the board draws the part, which then has no labelled photo (0.7.0).
 			 */
@@ -725,9 +729,13 @@ export interface Card {
 	 */
 	stock_class: string;
 	/**
-	 * The part's photo at the catalogue's size, or null when it has none.
+	 * The part's photo at the catalogue's size, else from 1.0.0 its layer image, uncropped; null when it has neither.
 	 */
 	image: Photo | null;
+	/**
+	 * Whether `image` is the part's photo, not its layer image (1.0.0).
+	 */
+	photo: boolean;
 }
 /**
  * A value a filter offers.

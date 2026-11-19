@@ -3497,3 +3497,24 @@ Spec (configurator): "The Catalogue check says which variations share a photo, a
 
 **Why:** the spec asks the check to say it, and a shop with a colour sharing its photo with another would otherwise first learn it from a shopper. Counting it as a fix would turn every variable deck into a warning.
 
+### D-282 · A card with no photo shows the part's layer image, and the chosen card is marked by a tick, not a radio's circle · 2026-11-19
+
+Spec (configurator): "The card shows the photo large"; the prototype's cards show the deck's art.
+
+- **The picture.** A part's product photo, as before; with none (its own or, for a variation, its parent's), its layer image: the variation's own, else its parent's, as the picture reads them. At WordPress's `medium` size, which is never cropped: the shop's thumbnail size may be a square crop, and a deck's cut-out is tall and narrow. The layer images are read with the photos in the one query that primes them.
+- **The mark.** The card's radio stays in the page for the keyboard and screen readers, and is not drawn. The chosen card has the accent's border, twice as thick, and a tick on a disc of the accent at its corner, drawn by CSS with no words of its own (WCAG 1.4.1). Forced colours keep the 3 px Highlight border.
+- **Kept cards.** A card cached before 1.0.0 keeps no picture until it expires, within the hour.
+
+**Why:** a shop whose parts have layer images and no photos got cards with nothing on them, unlike the prototype. A radio drawn on the card sat on the brand, read backwards on a dark theme (#68), and put a second, smaller target inside the card's own.
+
+**For Zach:** the fallback is my call. A shop that wants no picture on a card without a photo has no setting for it.
+
+### D-283 · The Builder block is full width unless the editor chose otherwise, and takes the editor's block settings · 2026-11-19
+
+- **What.** The block's `align` attribute defaults to `full`. Its render puts `get_block_wrapper_attributes()` (wp-includes/class-wp-block-supports.php:203, which reads the attributes with their defaults, :128) on the builder's root: the alignment, spacing, colours and font size `block.json` has supported since 0.6.0, which the page had left off, the kit template's own `"align":"full"` included. Stacked and full width, the panel keeps the theme's root padding, and never less than 16 px.
+- **Existing pages.** A block saved without an alignment renders full width from 1.0.0. One saved as wide stays wide.
+
+**Why:** in a theme's content column (645 px on Twenty Twenty-Five) the builder's container is under 64rem, so a desktop got the phone's stacked layout, the stage over the cards and half the screen's height, against the spec's side-by-side layout.
+
+**For Zach:** this changes how existing pages with the block look, the demo's among them, when it updates.
+

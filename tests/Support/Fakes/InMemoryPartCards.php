@@ -74,6 +74,7 @@ final class InMemoryPartCards implements PartCards {
 				'srcset' => '',
 				'sizes'  => '',
 			),
+			'photo'       => 0 !== $id % 2,
 		);
 	}
 

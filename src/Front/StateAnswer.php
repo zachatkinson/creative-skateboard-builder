@@ -787,11 +787,11 @@ final class StateAnswer {
 	 * picture settings, drawn for the page from the parts with a layer image, each of which the box then leaves out
 	 * (spec: The picture; D-195). From 0.8.0 the board's top too, from the same layout (#46).
 	 *
-	 * @param State                                                                                                                                                                                   $state   The build's state.
-	 * @param array<string, Part>                                                                                                                                                                     $counted The part each slot counts, by slot.
-	 * @param array<string, string>                                                                                                                                                                   $labels  The slots' labels.
-	 * @param array<string, string>                                                                                                                                                                   $brands  Brands' names, by slug.
-	 * @param array<int, array{name: string, url: string, price: string, stock: string, stock_class: string, image: array{src: string, width: int, height: int, srcset: string, sizes: string}|null}> $cards The cards.
+	 * @param State                                                                                                                                                                                                $state   The build's state.
+	 * @param array<string, Part>                                                                                                                                                                                  $counted The part each slot counts, by slot.
+	 * @param array<string, string>                                                                                                                                                                                $labels  The slots' labels.
+	 * @param array<string, string>                                                                                                                                                                                $brands  Brands' names, by slug.
+	 * @param array<int, array{name: string, url: string, price: string, stock: string, stock_class: string, image: array{src: string, width: int, height: int, srcset: string, sizes: string}|null, photo: bool}> $cards The cards.
 	 * @return array{items: list<array<string, mixed>>, description: string, width: int, height: int, layers: list<array<string, mixed>>, top: list<array<string, mixed>>}
 	 */
 	private function picture( State $state, array $counted, array $labels, array $brands, array $cards ): array {
@@ -816,6 +816,7 @@ final class StateAnswer {
 				'size'  => $size,
 				'name'  => $name,
 				'image' => $cards[ $line->part ]['image'] ?? null,
+				'photo' => $cards[ $line->part ]['photo'] ?? false,
 				'drawn' => ( $drawn[ $line->slot ] ?? null ) === $line->part,
 			);
 			if ( '' !== $name ) {

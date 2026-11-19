@@ -1150,6 +1150,7 @@ final class StateAnswerTest extends TestCase {
 				'size'  => '8.5″',
 				'name'  => 'Part 103',
 				'image' => InMemoryPartCards::card( 103 )['image'],
+				'photo' => true,
 				'drawn' => false,
 			),
 			$answer['picture']['items'][0]

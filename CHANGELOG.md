@@ -20,7 +20,7 @@ All notable changes to this project are documented here. The format follows [Kee
 - A search that lists nothing says why and offers the way on: "No 8.25″ decks match Rascals. Rascals comes in 8.5″." with a button to each width; "2 parts match, but they don't fit your build." with See why, which opens the hidden parts; or "No trucks match zzz." with Clear search. The state route's `shelf` gains `elsewhere` and `hidden_matching` (spec: Search).
 - A saved build that has changed since it was saved opens from My builds on "Your build has changed" before its review: each part gone, sold out or no longer fitting, with the closest part that fits in its place; each new price, "Independent 149 trucks: $59.00 when you saved, $64.00 now"; and the total then and now. Use these takes the replacements to the review, and Choose myself opens the first changed step. Save build keeps each line's price and the currency beside the picks; a build saved before 1.0.0 shows the parts alone (spec: A saved build that has changed; D-254, D-278).
 - A kit's Build tab has a Layout section: the stage on the left or right of a desktop, the board large (60 %) or balanced (50 %), and the steps' search, Creative Search where it is active or the builder's own always. It is kept in `_cbuild_layout` (`schema/kit-layout.json`); a kit with none has the defaults (spec: Settings; D-255).
-- The state route's answer gains `bearings_included`, `currency` (how the shop writes a price, for milestone 11's totals) and, for a build link carrying `_saved`, `reopened`: what changed in a saved build and its prices then and now.
+- The state route's answer gains `photo` on each card and picture item, whether its image is the part's photo or its layer image, `bearings_included`, `currency` (how the shop writes a price, for milestone 11's totals) and, for a build link carrying `_saved`, `reopened`: what changed in a saved build and its prices then and now.
 - The Catalogue check says which variations share a photo, and so a card, in a list of its own (`look_shared`, D-281).
 - The risers step says why it appeared: "Your 58 mm wheels need ¼″ risers with these trucks."
 - A step lists 500 looks at most, page by page, as a reload keeps; search and filters narrow past it.
@@ -56,6 +56,9 @@ All notable changes to this project are documented here. The format follows [Kee
 - Saving a kit whose presets are unchanged and name a part the shop hides no longer says the presets were not saved. The Build tab says which preset holds which part, and the presets are kept as they are (Cowork; #62).
 
 ### Changed
+
+- The Builder block is full width unless the editor chose otherwise (its `align` defaults to `full`), so a page's builder has its stage beside its steps on a desktop rather than above them in the theme's column. The editor's alignment, spacing, colours and font size now reach the page, as they reach the editor; until 1.0.0 the page left them off (D-283).
+- A part card with no photo shows the part's layer image, uncropped, and the chosen card is marked by a tick and a thicker border in place of the radio's circle (D-282, #68).
 
 - The builder takes the prototype's layout (D-268 to D-271). A row of steps across the top; the board on a stage with "Your board" and the side it shows, and "Pick a deck to start" before a deck; the step beside it in a panel that scrolls on its own; and a footer pinned under the panel with the total, the estimate, Back and Next, or Add to cart. On a phone the stage stays at the top, the rail shows the step before, the step shown and the step after, and the footer is the bar.
 - The step's heading says its question, such as "Choose your deck", with its help under it; a screen reader hears the count first, and the page's title keeps it (D-269).

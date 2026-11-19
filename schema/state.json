@@ -555,6 +555,7 @@
 							"size",
 							"name",
 							"image",
+							"photo",
 							"drawn"
 						],
 						"properties": {
@@ -580,7 +581,7 @@
 								"type": "string"
 							},
 							"image": {
-								"description": "The part's photo, or null when it has none.",
+								"description": "The part's photo, else from 1.0.0 its layer image, uncropped; null when it has neither.",
 								"oneOf": [
 									{
 										"$ref": "#/definitions/photo"
@@ -589,6 +590,10 @@
 										"type": "null"
 									}
 								]
+							},
+							"photo": {
+								"description": "Whether `image` is the part's photo, not its layer image (1.0.0).",
+								"type": "boolean"
 							},
 							"drawn": {
 								"description": "Whether the board draws the part, which then has no labelled photo (0.7.0).",
@@ -842,7 +847,8 @@
 				"price",
 				"stock",
 				"stock_class",
-				"image"
+				"image",
+				"photo"
 			],
 			"properties": {
 				"name": {
@@ -866,7 +872,7 @@
 					"type": "string"
 				},
 				"image": {
-					"description": "The part's photo at the catalogue's size, or null when it has none.",
+					"description": "The part's photo at the catalogue's size, else from 1.0.0 its layer image, uncropped; null when it has neither.",
 					"oneOf": [
 						{
 							"$ref": "#/definitions/photo"
@@ -875,6 +881,10 @@
 							"type": "null"
 						}
 					]
+				},
+				"photo": {
+					"description": "Whether `image` is the part's photo, not its layer image (1.0.0).",
+					"type": "boolean"
 				}
 			}
 		},

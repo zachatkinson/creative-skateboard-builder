@@ -14,6 +14,7 @@ use CreativeBranding\SkateboardBuilder\Hooks\CardHooks;
 use CreativeBranding\SkateboardBuilder\Port\PartCards;
 use CreativeBranding\SkateboardBuilder\Support\Options;
 use CreativeBranding\SkateboardBuilder\Tests\Support\IntegrationTestCase;
+use CreativeBranding\SkateboardBuilder\Tests\Support\LayerFiles;
 use WC_Product_Simple;
 use WC_Product_Variable;
 use WC_Product_Variation;
@@ -91,7 +92,8 @@ final class WooPartCardsTest extends IntegrationTestCase {
 		self::assertSame( array( $gone, $deck, $plain ), array_keys( $cards ), 'in the order asked, each once, and nothing for what is no part' );
 
 		$card = $cards[ $deck ];
-		self::assertSame( array( 'name', 'url', 'price', 'stock', 'stock_class', 'image' ), array_keys( $card ) );
+		self::assertSame( array( 'name', 'url', 'price', 'stock', 'stock_class', 'image', 'photo' ), array_keys( $card ) );
+		self::assertTrue( $card['photo'] );
 		self::assertSame( 'Rascals "8.25" & deck', $card['name'], 'plain text, where WordPress stores &amp;: the edge escapes it once' );
 		self::assertSame( get_permalink( $deck ), $card['url'] );
 		self::assertSame( self::price( 44.5 ), $card['price'], 'the price of one as the shop shows it' );
@@ -145,6 +147,45 @@ final class WooPartCardsTest extends IntegrationTestCase {
 		$parent->set_name( 'Pro deck' );
 		$parent->save();
 		self::assertStringStartsWith( 'Pro deck', $this->cards()->cards( array( $id ) )[ $id ]['name'] );
+	}
+
+	/**
+	 * Spec (configurator): "The card shows the photo large". A part with no photo of its own, nor its parent's, has its
+	 * layer image on its card instead, as the prototype's cards show the deck's art (D-282): a shop whose parts have
+	 * layer images and no photos does not get blank cards.
+	 */
+	public function test_a_part_with_no_photo_has_its_layer_image_on_its_card(): void {
+		$layer = LayerFiles::attachment( 420, 1626 );
+		$deck  = self::product( 'Cut-out only' );
+		update_post_meta( $deck, Options::META_LAYER, $layer );
+		self::assertFalse( $this->cards()->cards( array( $deck ) )[ $deck ]['photo'], 'its layer image, not a photo: a share card wants the photo' );
+		$card = $this->cards()->cards( array( $deck ) )[ $deck ]['image'] ?? null;
+		self::assertSame( wp_get_attachment_image_src( $layer, 'medium' )[0], $card['src'] ?? null, 'uncropped: the shop\'s thumbnail size may be a square crop, which showed a deck\'s middle alone' );
+		self::assertGreaterThan( $card['width'] ?? 0, $card['height'] ?? 0, 'the whole deck, upright' );
+
+		$photo = self::photo();
+		$both  = self::product( 'Both', array( 'set_image_id' => $photo ) );
+		update_post_meta( $both, Options::META_LAYER, $layer );
+		self::assertSame( wp_get_attachment_image_src( $photo, 'woocommerce_thumbnail' )[0], $this->cards()->cards( array( $both ) )[ $both ]['image']['src'] ?? null, 'a photo comes first' );
+
+		// A variation: its own layer image, else its parent's, as the picture reads them.
+		$parent = new WC_Product_Variable();
+		$parent->set_name( 'Team deck' );
+		$parent->update_meta_data( Options::META_LAYER, $layer );
+		$parent->save();
+		$own   = LayerFiles::attachment( 420, 1626 );
+		$first = new WC_Product_Variation();
+		$first->set_parent_id( $parent->get_id() );
+		$first->set_attributes( array( 'width' => '8.25' ) );
+		$first->update_meta_data( Options::META_LAYER, $own );
+		$first = $first->save();
+		$second = new WC_Product_Variation();
+		$second->set_parent_id( $parent->get_id() );
+		$second->set_attributes( array( 'width' => '8.5' ) );
+		$second = $second->save();
+		$cards  = $this->cards()->cards( array( $first, $second ) );
+		self::assertSame( wp_get_attachment_image_src( $own, 'medium' )[0], $cards[ $first ]['image']['src'] ?? null, 'its own' );
+		self::assertSame( wp_get_attachment_image_src( $layer, 'medium' )[0], $cards[ $second ]['image']['src'] ?? null, "its parent's" );
 	}
 
 	public function test_a_card_is_kept_and_read_again_when_its_part_is_forgotten(): void {

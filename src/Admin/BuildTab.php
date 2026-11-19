@@ -654,10 +654,12 @@ final class BuildTab {
 		$groups = array();
 		$shown  = max( Kit::MAX_PRESETS, count( $rows ) );
 		for ( $at = 0; $at < $shown; ++$at ) {
-			$row    = $rows[ $at ] ?? array();
-			$id     = self::IDS . '-presets-' . $at;
-			$name   = self::FIELD . '[presets][' . $at . ']';
-			$picks  = is_array( $row['picks'] ?? null ) ? $row['picks'] : array();
+			$row   = $rows[ $at ] ?? array();
+			$id    = self::IDS . '-presets-' . $at;
+			$name  = self::FIELD . '[presets][' . $at . ']';
+			$picks = is_array( $row['picks'] ?? null ) ? $row['picks'] : array();
+			/* translators: %d: a preset's number, 1 to 6. */
+			$legend = sprintf( __( 'Preset %d', 'creative-skateboard-builder' ), $at + 1 );
 			$fields = array(
 				$this->field( $id . '-name', $name . '[name]', __( 'Name', 'creative-skateboard-builder' ), 'text', self::text( $row, 'name' ), array( 'max' => Preset::MAX_NAME ) ),
 				$this->field( $id . '-description', $name . '[description]', __( 'Description', 'creative-skateboard-builder' ), 'text', self::text( $row, 'description' ), array( 'max' => Preset::MAX_DESCRIPTION ) ),
@@ -671,8 +673,11 @@ final class BuildTab {
 						'note'   => __( 'A rider photo for its tile, by its ID in the media library. Without one, the tile shows the build’s picture.', 'creative-skateboard-builder' ),
 						'choose' => array(
 							'title'   => __( 'Choose a photo', 'creative-skateboard-builder' ),
-							/* translators: %s: a preset's name, or "Preset 2" for one with none. */
-							'label'   => sprintf( __( 'Choose a photo for %s', 'creative-skateboard-builder' ), '' !== self::text( $row, 'name' ) ? self::text( $row, 'name' ) : sprintf( __( 'Preset %d', 'creative-skateboard-builder' ), $at + 1 ) ),
+							'label'   => sprintf(
+								/* translators: %s: a preset's name, or "Preset 2" for one with none. */
+								__( 'Choose a photo for %s', 'creative-skateboard-builder' ),
+								'' !== self::text( $row, 'name' ) ? self::text( $row, 'name' ) : $legend
+							),
 							'preview' => (string) wp_get_attachment_image_url( (int) self::text( $row, 'image' ), 'thumbnail' ),
 						),
 					)
@@ -702,8 +707,7 @@ final class BuildTab {
 			}
 			$groups[] = array(
 				'id'     => $id,
-				/* translators: %d: a preset's number, 1 to 6. */
-				'legend' => sprintf( __( 'Preset %d', 'creative-skateboard-builder' ), $at + 1 ),
+				'legend' => $legend,
 				'moves'  => false,
 				'fold'   => __( 'Name and parts', 'creative-skateboard-builder' ),
 				'open'   => array() !== $row || self::wrong( $fields ),

@@ -942,6 +942,8 @@ test.describe( 'The board in either direction', () => {
 							element.getBoundingClientRect().left ) /
 						( element as HTMLElement ).offsetWidth ) *
 					100,
+				// offsetLeft is in whole pixels: one, as a share of the board, is as close as it can measure.
+				pixel: 100 / ( element as HTMLElement ).offsetWidth,
 			} ) )
 		);
 		const sides = placed.map( ( layer ) => layer.asked );
@@ -953,7 +955,7 @@ test.describe( 'The board in either direction', () => {
 			expect(
 				Math.abs( layer.drawn - layer.asked ),
 				'each layer is where its own x says, from the left'
-			).toBeLessThan( 0.5 );
+			).toBeLessThan( Math.max( 0.5, layer.pixel ) );
 		}
 
 		const labels = page.locator(
@@ -2453,21 +2455,41 @@ test.describe( 'Fills in the accent on a classic theme', () => {
 						padding: own.paddingInlineStart,
 					};
 				} );
-			// A card's radio stands clear of its words: the theme's list rules leave the card's own padding alone.
+			// The theme's list rules leave the card alone: its unseen radio lies over the whole card, so a press anywhere
+			// on it picks it (#68), and its words keep inside the card's own padding.
 			const card = page.locator( '.cbuild-cards .cbuild-card' ).first();
+			const box = await card.boundingBox();
 			const control = await card
 				.locator( '.cbuild-card__control' )
 				.boundingBox();
 			const words = await card
 				.locator( '.cbuild-card__about' )
 				.boundingBox();
+			expect( box ).not.toBeNull();
 			expect( control ).not.toBeNull();
 			expect( words ).not.toBeNull();
-			if ( control && words ) {
+			if ( box && control && words ) {
+				// Inside the card's border, a pixel each side.
+				const edges = [
+					control.x - box.x,
+					control.y - box.y,
+					box.x + box.width - ( control.x + control.width ),
+					box.y + box.height - ( control.y + control.height ),
+				];
+				for ( const edge of edges ) {
+					expect(
+						edge,
+						'the radio, over the whole card'
+					).toBeGreaterThanOrEqual( 0 );
+					expect(
+						edge,
+						'the radio, over the whole card'
+					).toBeLessThanOrEqual( 2 );
+				}
 				expect(
-					control.x + control.width,
-					"the radio's edge, before the words"
-				).toBeLessThanOrEqual( words.x );
+					words.x,
+					"the words, inside the card's padding"
+				).toBeGreaterThan( box.x + 4 );
 			}
 
 			expect( tiles, 'the ready builds' ).toEqual( {
@@ -2767,7 +2789,7 @@ test.describe( "The builder's styles", () => {
 			} )
 		);
 		const cards = page.locator( '.cbuild-card' );
-		await cards.first().locator( 'label' ).click();
+		await cards.first().click();
 		const width = ( index: number ) =>
 			cards
 				.nth( index )
@@ -3685,7 +3707,7 @@ test.describe( 'The phone bar', () => {
 			if ( ! javaScriptEnabled ) {
 				return;
 			}
-			await page.locator( '.cbuild-card label' ).first().click();
+			await page.locator( '.cbuild-card' ).first().click();
 			await settled( page );
 			await page.evaluate( () =>
 				window.scrollTo( 0, document.documentElement.scrollHeight )
@@ -3703,7 +3725,7 @@ test.describe( 'The phone bar', () => {
 		await page.setViewportSize( PHONE );
 		await page.goto( linkTo( { _width: '8in' } ) );
 		const bar = page.locator( '.cbuild-bar' );
-		await page.locator( '.cbuild-card label' ).first().click();
+		await page.locator( '.cbuild-card' ).first().click();
 		// The shopper opens the list on the page the pick's answer drew, as `settled()` says: a tap pressed as the
 		// answer scrolled the page under the bar was lost in WebKit (CI run 43554697648). The two tests after this
 		// one hold the list open across the answer.
@@ -3748,7 +3770,7 @@ test.describe( 'The phone bar', () => {
 		} );
 		await page.goto( linkTo( { _width: '8in' } ) );
 		const bar = page.locator( '.cbuild-bar' );
-		await page.locator( '.cbuild-card label' ).first().click();
+		await page.locator( '.cbuild-card' ).first().click();
 		await page.waitForRequest( /\/cbuild\/v1\/kits\/\d+\/state/ );
 		await bar.locator( 'summary' ).click();
 		const lines = bar.locator( '.cbuild-bar__lines' );
@@ -3776,7 +3798,7 @@ test.describe( 'The phone bar', () => {
 			await route.continue();
 		} );
 		await page.goto( linkTo( { _width: '8in' } ) );
-		await page.locator( '.cbuild-card label' ).first().click();
+		await page.locator( '.cbuild-card' ).first().click();
 		await page.waitForRequest( /\/cbuild\/v1\/kits\/\d+\/state/ );
 		const total = await page.locator( '.cbuild-bar summary' ).boundingBox();
 		await page.mouse.move(

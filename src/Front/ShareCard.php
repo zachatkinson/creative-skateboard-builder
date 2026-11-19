@@ -161,7 +161,10 @@ final class ShareCard {
 		foreach ( array( 'items', 'layers' ) as $list ) {
 			foreach ( Cast::items( $picture[ $list ] ?? null ) as $entry ) {
 				$entry = Cast::map( $entry );
-				$image = SlotKey::DECK === Cast::str( $entry['slot'] ?? null ) ? self::shown( Cast::map( $entry['image'] ?? null ) ) : null;
+				// An item's image is the deck's photo only where the card says so: without one, its card shows its layer
+				// image small (D-282), and the layer's own file, from the layers, is the card's.
+				$photo = 'layers' === $list || true === ( $entry['photo'] ?? null );
+				$image = $photo && SlotKey::DECK === Cast::str( $entry['slot'] ?? null ) ? self::shown( Cast::map( $entry['image'] ?? null ) ) : null;
 				if ( null !== $image ) {
 					return array( $image, $waiting );
 				}

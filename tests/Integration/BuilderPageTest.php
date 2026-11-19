@@ -846,6 +846,12 @@ final class BuilderPageTest extends IntegrationTestCase {
 		$html = do_blocks( '<!-- wp:creative-skateboard-builder/builder {"kit":' . $this->kit . '} /-->' );
 		self::assertSame( 'Step 1 of 7: Choose your deck', self::text( self::dom( $html ), '//h2[contains(@class,"cbuild__heading")]' ), 'Its directives processed by WordPress.' );
 		self::assertSame( 2, self::dom( $html )->query( '//button[contains(@class,"cbuild-width__option")]' )->length, 'Each width, once: the directives were processed once.' );
+		// Full width unless the editor chose otherwise, as the kit's template places it: in a theme's content column a
+		// desktop's builder was stacked, its stage over its cards (D-283).
+		self::assertStringContainsString( 'alignfull', (string) self::dom( $html )->query( '//*[contains(concat(" ",normalize-space(@class)," ")," cbuild ")]' )->item( 0 )?->attributes?->getNamedItem( 'class' )?->nodeValue );
+		unregister_block_type( PageHooks::BLOCK );
+		( new PageHooks( fn(): BuilderPage => $this->page(), $this->service( \CreativeBranding\SkateboardBuilder\Front\BuilderPlace::class ) ) )->block();
+		self::assertStringContainsString( 'alignwide', do_blocks( '<!-- wp:creative-skateboard-builder/builder {"kit":' . $this->kit . ',"align":"wide"} /-->' ) );
 
 		unregister_block_type( PageHooks::BLOCK );
 		( new PageHooks( fn(): BuilderPage => $this->page(), $this->service( \CreativeBranding\SkateboardBuilder\Front\BuilderPlace::class ) ) )->block();

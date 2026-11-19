@@ -14,7 +14,9 @@ use CreativeBranding\SkateboardBuilder\Support\Cast;
 use CreativeBranding\SkateboardBuilder\Support\Options;
 use Closure;
 use WC_Product;
+use WP_HTML_Tag_Processor;
 use WP_Post;
+
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -329,6 +331,30 @@ final class PageHooks implements Hookable {
 			return '';
 		}
 		$base = is_singular() ? (string) get_permalink( get_queried_object_id() ) : (string) get_permalink( $kit );
-		return $this->page()->render( $kit, BuilderPage::requested(), $base, false, Cast::bool( $attributes['title'] ?? null ) );
+		return self::wrapped( $this->page()->render( $kit, BuilderPage::requested(), $base, false, Cast::bool( $attributes['title'] ?? null ) ) );
+	}
+
+	/**
+	 * The builder with the block's own classes and style on its root: its alignment, full unless the editor chose
+	 * otherwise, its spacing, colours and font size, as WordPress gives every block that supports them
+	 * (`get_block_wrapper_attributes()`, wp-includes/class-wp-block-supports.php:203; D-283). Until 1.0.0 they were
+	 * left off.
+	 *
+	 * @param string $html The builder.
+	 */
+	private static function wrapped( string $html ): string {
+		$given = new WP_HTML_Tag_Processor( '<div ' . get_block_wrapper_attributes() . '>' );
+		$root  = new WP_HTML_Tag_Processor( $html );
+		if ( ! $given->next_tag() || ! $root->next_tag( array( 'class_name' => 'cbuild' ) ) ) {
+			return $html;
+		}
+		foreach ( $given->class_list() as $name ) {
+			$root->add_class( $name );
+		}
+		$style = Cast::str( $given->get_attribute( 'style' ) );
+		if ( '' !== $style ) {
+			$root->set_attribute( 'style', trim( Cast::str( $root->get_attribute( 'style' ) ) . ';' . $style, ';' ) );
+		}
+		return $root->get_updated_html();
 	}
 }
