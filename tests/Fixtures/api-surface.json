@@ -240,6 +240,7 @@
         "name",
         "spec_table",
         "spec_size",
+        "layer_image",
         "deck_width",
         "deck_length",
         "wheelbase",

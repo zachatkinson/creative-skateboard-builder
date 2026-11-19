@@ -38,8 +38,8 @@ final class SpecExportTest extends TestCase {
 
 	public function test_the_columns_are_the_keys_the_name_the_chart_and_every_spec(): void {
 		$columns = SpecSheet::columns();
-		self::assertSame( array( 'id', 'sku', 'name', 'spec_table', 'spec_size' ), array_slice( $columns, 0, 5 ) );
-		self::assertSame( array_map( static fn( SpecKey $key ): string => $key->value, SpecKey::cases() ), array_slice( $columns, 5 ) );
+		self::assertSame( array( 'id', 'sku', 'name', 'spec_table', 'spec_size', 'layer_image' ), array_slice( $columns, 0, 6 ) );
+		self::assertSame( array_map( static fn( SpecKey $key ): string => $key->value, SpecKey::cases() ), array_slice( $columns, 6 ) );
 		self::assertSame( array( $columns ), Csv::parse( $this->export->header() ) );
 	}
 

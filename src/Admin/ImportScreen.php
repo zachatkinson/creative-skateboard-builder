@@ -253,6 +253,7 @@ final class ImportScreen {
 			SpecSheet::SKU   => __( 'SKU', 'creative-skateboard-builder' ),
 			SpecSheet::TABLE => __( 'Maker\'s chart', 'creative-skateboard-builder' ),
 			SpecSheet::SIZE  => __( 'Size in the chart', 'creative-skateboard-builder' ),
+			SpecSheet::LAYER => __( 'Layer image', 'creative-skateboard-builder' ),
 		);
 		return $columns[ $name ] ?? $name;
 	}

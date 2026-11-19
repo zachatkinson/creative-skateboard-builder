@@ -292,13 +292,14 @@ The CSV file that WooCommerce > Builder > Import and export writes and reads. On
 | `name` | 0.3.0 | Its name, for the reader. | Passed over. |
 | `spec_table` | 0.3.0 | The name of the spec table it names, empty for none. | A spec table's name. Empty removes it. |
 | `spec_size` | 0.3.0 | The size it names. | A size. With a table, it must be one of the table's. Empty removes it. |
+| `layer_image` | 1.0.0 | The file name of its own Layer image, as uploaded, empty for none. A variation's parent's is not written. | An attachment's ID, or the file name of an image in the Media Library, held to the Layer image field's rules. A name more than one image has is refused, and the row names their IDs. Empty leaves a product's image as it is, and takes a variation's own away, so it takes its parent's. A change is saved through the product, which queues its index job and the image's copies. The product image and gallery are left as they are (D-287). |
 | One per spec key | 0.3.0 | The part's own value, as stored. What it takes from a chart, an attribute or its parent is not written. | A value, read as the Part specs panel reads one: the shop's decimal separator or a point, or a fraction. Empty removes it. |
 
 An import reads a file of 2 MB and 5,000 rows at most, comma- or semicolon-separated, in UTF-8 with or without the mark. A heading is matched whatever its case, and a column the sheet does not have is passed over. A column the file leaves out is left as it is. A cell that an export neutralised with a leading apostrophe is read without it. A row with anything wrong in it is not written at all.
 
 Why a file is not read: `upload_missing`, `upload_failed`, `upload_not_csv`, `file_too_big`, `file_not_utf8`, `file_empty`, `rows_too_many`, `key_column_missing`, `column_twice`, `no_spec_columns` and `import_running`.
 
-Why a row is not written: `key_missing`, `key_twice`, `part_missing`, `sku_mismatch`, `table_unknown`, `table_ambiguous`, `table_missing`, `size_missing`, `size_long`, and the refusal codes of a value (`measure_malformed`, `measure_zero_denominator`, `measure_negative`, `spec_unknown_choice`, `spec_not_positive`, `spec_wrong_kind`).
+Why a row is not written: `key_missing`, `key_twice`, `part_missing`, `sku_mismatch`, `table_unknown`, `table_ambiguous`, `table_missing`, `size_missing`, `size_long`, and the refusal codes of a value (`measure_malformed`, `measure_zero_denominator`, `measure_negative`, `spec_unknown_choice`, `spec_not_positive`, `spec_wrong_kind`), and from 1.0.0 a layer image's: `layer_not_image`, `layer_not_found`, `layer_ambiguous`, `layer_wrong_type`, `layer_unreadable`, `layer_opaque` and `layer_too_small`.
 
 ### The Catalogue check
 

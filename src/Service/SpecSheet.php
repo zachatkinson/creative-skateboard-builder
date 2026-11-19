@@ -18,7 +18,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * One row per product or variation. The headings are the same in every language, as the spec keys are, so a sheet
  * exported from one shop reads in another: `id`, `sku`, `name` (for the reader; an import passes over it),
- * `spec_table` (a chart's name), `spec_size`, then a column per spec key.
+ * `spec_table` (a chart's name), `spec_size`, from 1.0.0 `layer_image` (a part's own Layer image, by its file's name
+ * on export, and by that or its attachment ID on import), then a column per spec key.
  *
  * @since 0.3.0
  */
@@ -34,6 +35,13 @@ final class SpecSheet {
 	public const SIZE  = 'spec_size';
 
 	/**
+	 * A part's own Layer image: an attachment's ID or an image's file name (D-287).
+	 *
+	 * @since 1.0.0
+	 */
+	public const LAYER = 'layer_image';
+
+	/**
 	 * Every column, in the order an export writes them.
 	 *
 	 * @since 0.3.0
@@ -41,7 +49,7 @@ final class SpecSheet {
 	 * @return list<string>
 	 */
 	public static function columns(): array {
-		return array( self::ID, self::SKU, self::NAME, self::TABLE, self::SIZE, ...self::specs() );
+		return array( self::ID, self::SKU, self::NAME, self::TABLE, self::SIZE, self::LAYER, ...self::specs() );
 	}
 
 	/**

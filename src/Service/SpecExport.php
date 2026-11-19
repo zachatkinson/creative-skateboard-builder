@@ -9,6 +9,7 @@ declare( strict_types=1 );
 
 namespace CreativeBranding\SkateboardBuilder\Service;
 
+use CreativeBranding\SkateboardBuilder\Port\PartLayers;
 use CreativeBranding\SkateboardBuilder\Port\PartSpecs;
 use CreativeBranding\SkateboardBuilder\Port\SpecTables;
 
@@ -41,6 +42,26 @@ final class SpecExport {
 	public function __construct( private PartSpecs $parts, private SpecTables $tables ) {}
 
 	/**
+	 * The parts' own layer images, for the `layer_image` column; without them it is written empty, as a 0.9.0
+	 * container builds this class (D-208).
+	 *
+	 * @var PartLayers|null
+	 */
+	private ?PartLayers $layers = null;
+
+	/**
+	 * With each part's own Layer image written by its file's name (Cowork's 1.0.0 request; D-287).
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param PartLayers $layers The parts' own layer images.
+	 */
+	public function withLayers( PartLayers $layers ): self {
+		$this->layers = $layers;
+		return $this;
+	}
+
+	/**
 	 * The heading row.
 	 *
 	 * @since 0.3.0
@@ -64,13 +85,15 @@ final class SpecExport {
 		}
 		$charts = $this->tables->all();
 		$held   = $this->parts->read( ...$ids );
+		$owned  = $this->layers?->owned( ...$ids ) ?? array();
 		$text   = '';
 		foreach ( $ids as $id ) {
 			$part = $held[ $id ] ?? null;
 			if ( null === $part ) {
 				continue;
 			}
-			$cells = array( (string) $id, $part['sku'], $part['name'], $charts[ $part['table'] ]['name'] ?? '', $part['size'] );
+			$own   = $owned[ $id ]['own'] ?? 0;
+			$cells = array( (string) $id, $part['sku'], $part['name'], $charts[ $part['table'] ]['name'] ?? '', $part['size'], $own > 0 ? (string) $this->layers?->fileName( $own ) : '' );
 			foreach ( SpecSheet::specs() as $key ) {
 				$cells[] = $part['fields'][ $key ] ?? '';
 			}

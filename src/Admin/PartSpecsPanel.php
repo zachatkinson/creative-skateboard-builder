@@ -10,7 +10,6 @@ declare( strict_types=1 );
 namespace CreativeBranding\SkateboardBuilder\Admin;
 
 use CreativeBranding\SkateboardBuilder\Domain\Measure\MeasureError;
-use CreativeBranding\SkateboardBuilder\Domain\Picture\LayerError;
 use CreativeBranding\SkateboardBuilder\Domain\Picture\LayerImage;
 use CreativeBranding\SkateboardBuilder\Domain\Picture\Layout;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\Origin;
@@ -24,6 +23,7 @@ use CreativeBranding\SkateboardBuilder\Port\SpecSource;
 use CreativeBranding\SkateboardBuilder\Port\Kits;
 use CreativeBranding\SkateboardBuilder\Port\LayerImages;
 use CreativeBranding\SkateboardBuilder\Port\SpecTables;
+use CreativeBranding\SkateboardBuilder\Service\LayerCheck;
 use CreativeBranding\SkateboardBuilder\Service\SpecIndexer;
 use CreativeBranding\SkateboardBuilder\Service\SpecWriter;
 use CreativeBranding\SkateboardBuilder\Support\Cast;
@@ -143,6 +143,13 @@ final class PartSpecsPanel {
 	 * @var LayerImages|null
 	 */
 	private ?LayerImages $images = null;
+
+	/**
+	 * The layer image check, made once the images are known.
+	 *
+	 * @var LayerCheck|null
+	 */
+	private ?LayerCheck $check = null;
 
 	/**
 	 * The same panel, checking the Layer image field.
@@ -346,16 +353,15 @@ final class PartSpecsPanel {
 			return;
 		}
 		$id    = ctype_digit( $text ) ? (int) $text : 0;
-		$facts = $id > 0 ? $this->images->facts( $id ) : null;
 		$texts = array();
-		if ( null === $facts ) {
-			/* translators: %s: what was typed in the Layer image field. */
-			$texts[] = sprintf( __( 'Layer image was not saved: "%s" is not the ID of an image in the Media Library.', 'creative-skateboard-builder' ), $text );
-		} else {
-			$size = $this->size( $product );
-			foreach ( LayerImage::problems( $facts, $size ) as $problem ) {
-				$texts[] = self::layerProblem( $problem, $facts->type, $size );
-			}
+		$check = $this->check();
+		foreach ( 0 === $id || null === $check ? array(
+			array(
+				'code' => LayerCheck::NOT_IMAGE,
+				'text' => $text,
+			),
+		) : $check->problems( $id, $this->size( $product ) ) as $problem ) {
+			$texts[] = (string) Sentences::layer( $problem['code'], LayerCheck::NOT_IMAGE === $problem['code'] ? $text : $problem['text'] );
 		}
 		if ( array() === $texts ) {
 			$product->update_meta_data( Options::META_LAYER, (string) $id );
@@ -372,23 +378,13 @@ final class PartSpecsPanel {
 	}
 
 	/**
-	 * What was wrong with a layer image, as a sentence.
-	 *
-	 * @param LayerError           $problem The problem.
-	 * @param string               $type    The image's media type.
-	 * @param array{int, int}|null $size    The part's size, where the picture draws it.
+	 * The layer image check, from the panel's own services and the Media Library's images (D-287).
 	 */
-	private static function layerProblem( LayerError $problem, string $type, ?array $size ): string {
-		$needs = LayerImage::needs( $size ?? array( 0, 0 ) );
-		return match ( $problem ) {
-			/* translators: %s: a file's media type, such as image/jpeg. */
-			LayerError::WrongType => sprintf( __( 'Layer image was not saved: it is %s, and a layer must be a PNG, WebP or AVIF with a transparent background.', 'creative-skateboard-builder' ), $type ),
-			/* translators: %s: a file's media type, such as image/avif. */
-			LayerError::Unreadable => sprintf( __( 'Layer image was not saved: it is %s, and this server\'s image library cannot read that type. Upload the cut-out as a PNG or WebP, or ask your host to turn on AVIF in GD or Imagick.', 'creative-skateboard-builder' ), $type ),
-			LayerError::Opaque => __( 'Layer image was not saved: its corners are not transparent. Export the cut-out with a transparent background.', 'creative-skateboard-builder' ),
-			/* translators: 1: a number of pixels. 2: another. */
-			LayerError::TooSmall => sprintf( __( 'Layer image was not saved: it is too small for the size the picture draws this part. It needs at least %1$s pixels across or %2$s along.', 'creative-skateboard-builder' ), number_format_i18n( $needs[0] ), number_format_i18n( $needs[1] ) ),
-		};
+	private function check(): ?LayerCheck {
+		if ( null !== $this->images ) {
+			$this->check ??= new LayerCheck( $this->images, $this->indexer, $this->kits );
+		}
+		return $this->check;
 	}
 
 	/**
@@ -402,6 +398,7 @@ final class PartSpecsPanel {
 		if ( array() === $slots || $product->get_id() <= 0 ) {
 			return null;
 		}
+		// The page's variations were resolved together (sourced()); one saved alone is resolved here, once.
 		$this->sourced[ $product->get_id() ] ??= $this->indexer->resolve( $product->get_id() )[ $product->get_id() ];
 		$texts                                 = array();
 		foreach ( $this->sourced[ $product->get_id() ]->resolution->rows() as $row ) {
@@ -423,8 +420,8 @@ final class PartSpecsPanel {
 		$size  = $this->size( $product );
 		$shown = $own;
 		$note  = $product->is_type( 'variation' )
-			? __( 'The part\'s cut-out on a transparent background, a PNG, WebP or AVIF from the Media Library. Choose one, or type its attachment ID. Left empty, the variation takes its parent product\'s, or the picture shows its labelled photo.', 'creative-skateboard-builder' )
-			: __( 'The part\'s cut-out on a transparent background, a PNG, WebP or AVIF from the Media Library. Choose one, or type its attachment ID. Left empty, the picture shows the part\'s labelled photo.', 'creative-skateboard-builder' );
+			? __( 'The part\'s cut-out on a transparent background, a PNG, WebP or AVIF from the Media Library. Choose one, or type its attachment ID. Left empty, the variation takes its parent product\'s, or the picture shows its labelled photo. The product image and gallery stay as they are: only the builder\'s picture uses this image.', 'creative-skateboard-builder' )
+			: __( 'The part\'s cut-out on a transparent background, a PNG, WebP or AVIF from the Media Library. Choose one, or type its attachment ID. Left empty, the picture shows the part\'s labelled photo. The product image and gallery stay as they are: only the builder\'s picture uses this image.', 'creative-skateboard-builder' );
 		if ( 0 === $own && $product->is_type( 'variation' ) ) {
 			$whole  = wc_get_product( $product->get_parent_id() );
 			$parent = $whole instanceof WC_Product ? max( 0, Cast::int( $whole->get_meta( Options::META_LAYER, true ) ) ) : 0;

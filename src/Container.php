@@ -62,6 +62,7 @@ final class Container {
 			Port\BuilderPosts::class    => Adapter\WpBuilderPosts::class,
 			Port\KitMeta::class         => Adapter\WooKitMeta::class,
 			Port\LayerImages::class     => Adapter\WpLayerImages::class,
+			Port\PartLayers::class      => Adapter\WooPartLayers::class,
 			Port\LayerRenditions::class => Adapter\WpLayerRenditions::class,
 			Port\PictureFiles::class    => Adapter\WpPictureFiles::class,
 			Port\ProductMeta::class     => Repository\ProductMetaRepository::class,
@@ -462,6 +463,8 @@ final class Container {
 			Admin\PartSpecsPanel::class   => static fn( object $panel, Container $c ): object => $panel instanceof Admin\PartSpecsPanel ? $panel->withImages( $c->get( Port\LayerImages::class ) ) : $panel,
 			Front\BuilderPage::class      => static fn( object $page, Container $c ): object => $page instanceof Front\BuilderPage ? $page->withSaved( $c->get( Service\SavedBuilds::class ) ) : $page,
 			Front\Builder::class          => static fn( object $builder, Container $c ): object => $builder instanceof Front\Builder ? $builder->withSaved( $c->get( Front\RememberedWidth::class ), $c->get( Service\SavedBuilds::class ) ) : $builder,
+			Service\SpecImport::class     => static fn( object $import, Container $c ): object => $import instanceof Service\SpecImport ? $import->withLayers( $c->get( Service\LayerCheck::class ), $c->get( Port\PartLayers::class ) ) : $import,
+			Service\SpecExport::class     => static fn( object $export, Container $c ): object => $export instanceof Service\SpecExport ? $export->withLayers( $c->get( Port\PartLayers::class ) ) : $export,
 		);
 	}
 

@@ -9,7 +9,14 @@ declare( strict_types=1 );
 
 namespace CreativeBranding\SkateboardBuilder\Tests\Unit\Service;
 
+use CreativeBranding\SkateboardBuilder\Admin\Sentences;
+use CreativeBranding\SkateboardBuilder\Domain\Picture\ImageFacts;
+use CreativeBranding\SkateboardBuilder\Domain\Spec\Origin;
+use CreativeBranding\SkateboardBuilder\Domain\Spec\Reading;
+use CreativeBranding\SkateboardBuilder\Domain\Spec\SpecKey;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\SpecTable;
+use CreativeBranding\SkateboardBuilder\Service\LayerCheck;
+use CreativeBranding\SkateboardBuilder\Service\SpecIndexer;
 use CreativeBranding\SkateboardBuilder\Service\ImportState;
 use CreativeBranding\SkateboardBuilder\Service\SpecExport;
 use CreativeBranding\SkateboardBuilder\Service\SpecImport;
@@ -18,8 +25,16 @@ use CreativeBranding\SkateboardBuilder\Support\Options;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\FakeClock;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\FakeLogger;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\FakeQueue;
+use CreativeBranding\SkateboardBuilder\Tests\Support\Domain\KitDocuments;
+use CreativeBranding\SkateboardBuilder\Tests\Support\Domain\Parts;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\InMemoryImportStore;
+use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\InMemoryKits;
+use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\InMemoryLayerImages;
+use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\InMemoryPartLayers;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\InMemoryPartSpecs;
+use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\InMemoryShopSettings;
+use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\InMemorySpecIndex;
+use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\InMemorySpecSource;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\InMemorySpecTables;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
@@ -787,5 +802,155 @@ final class SpecImportTest extends TestCase {
 		foreach ( array( 'waiting', 'running', 'done' ) as $status ) {
 			self::assertSame( $status, ImportState::fromArray( array( 'status' => $status, 'key' => 'id' ) )?->status );
 		}
+	}
+
+	/**
+	 * The import with the `layer_image` column read: part 7 a product with image 11 its own, 9 a variation with 12.
+	 *
+	 * @return array{0: SpecImport, 1: InMemoryPartLayers, 2: InMemoryLayerImages}
+	 */
+	private function layered(): array {
+		$layers             = new InMemoryPartLayers();
+		$layers->own        = array(
+			7 => 11,
+			9 => 12,
+		);
+		$layers->variations = array( 9 );
+		$layers->files      = array(
+			11 => 'katie.png',
+			12 => 'stage.webp',
+			13 => 'kelly.webp',
+			14 => 'twin.png',
+			15 => 'twin.png',
+			16 => 'tiny.png',
+			17 => 'photo.jpg',
+		);
+		$images             = new InMemoryLayerImages();
+		foreach ( array( 11, 12, 13, 14, 15 ) as $id ) {
+			$images->images[ $id ] = new ImageFacts( 'image/png', 4000, 16000, true );
+		}
+		$images->images[16] = new ImageFacts( 'image/png', 4, 16, true );
+		$images->images[17] = new ImageFacts( 'image/jpeg', 4000, 16000, null );
+		$kits               = new InMemoryKits();
+		$kits->add( 5, KitDocuments::kit(), array() );
+		$kits->slotsOf = array(
+			7 => array( 'deck' ),
+			9 => array( 'trucks' ),
+		);
+		$source        = new InMemorySpecSource(
+			array(
+				7 => array(
+					Reading::of( SpecKey::DeckWidth, Parts::inches( '7.75' ), Origin::Field ),
+					Reading::of( SpecKey::DeckLength, Parts::inches( '31.5' ), Origin::Field ),
+				),
+			)
+		);
+		$check         = new LayerCheck( $images, new SpecIndexer( new InMemorySpecIndex(), new InMemoryShopSettings(), new FakeClock(), $source ), $kits );
+		$this->import  = ( new SpecImport( $this->parts, $this->tables, new SpecWriter( $this->tables ), $this->store, $this->queue, $this->clock, $this->logger ) )->withLayers( $check, $layers );
+		return array( $this->import, $layers, $images );
+	}
+
+	// Cowork's 1.0.0 request (D-287): the column takes an attachment's ID or an image's file name, and the change
+	// shows by file name.
+	public function test_a_layer_image_is_set_by_its_id_or_its_file_name_and_shown_by_its_file_name(): void {
+		[ , $layers ] = $this->layered();
+		self::assertSame( array(), $this->import->read( "id,layer_image\n7,kelly.webp\n9,13\n" ) );
+		$plan = $this->plan();
+		self::assertSame(
+			array(
+				array(
+					'key'  => 'layer_image',
+					'from' => 'katie.png',
+					'to'   => 'kelly.webp',
+				),
+			),
+			$plan[0]['changes']
+		);
+		self::assertSame( array( 13, 13 ), array_column( $plan, 'layer' ) );
+		self::assertSame( array( array(), array() ), array_column( $plan, 'problems' ) );
+		self::assertSame( array( array( 7, 9 ) ), $layers->asked, 'the parts own images are read once a page' );
+		self::assertSame( array(), $layers->assigned, 'reading writes nothing' );
+
+		$after = $this->confirmAndRun();
+		self::assertSame( 2, $after->changed );
+		self::assertSame( array( array( 7, 13 ), array( 9, 13 ) ), $layers->assigned );
+		self::assertSame( array( 7, 9 ), $this->parts->written, 'a row whose image alone changes is written' );
+	}
+
+	// Zach's call (D-287): an empty cell leaves a product's image as it is, and takes a variation's own away, so it
+	// takes its parent's; the image a part already has is no change.
+	public function test_an_empty_cell_leaves_a_products_image_and_gives_a_variation_its_parents(): void {
+		[ , $layers ] = $this->layered();
+		$layers->own[8] = 0;
+		$layers->variations[] = 8;
+		$this->parts->add( 8, 'TR-150', array(), 0, '', 'Stage 11 150' );
+		self::assertSame( array(), $this->import->read( "id,layer_image\n7,\n9,\n8,\n" ) );
+		$plan = $this->plan();
+		self::assertSame( array( SpecImport::KEEP_LAYER, 0, SpecImport::KEEP_LAYER ), array_column( $plan, 'layer' ) );
+		self::assertSame(
+			array(
+				array(),
+				array(
+					array(
+						'key'  => 'layer_image',
+						'from' => 'stage.webp',
+						'to'   => '',
+					),
+				),
+				array(),
+			),
+			array_column( $plan, 'changes' )
+		);
+		$this->confirmAndRun();
+		self::assertSame( array( array( 9, 0 ) ), $layers->assigned );
+
+		self::assertSame( array(), $this->import->read( "id,layer_image\n7,katie.png\n9,  \n" ) );
+		self::assertSame( array( array(), array() ), array_column( $this->plan(), 'changes' ), 'the image it has, and a variation with none of its own' );
+	}
+
+	// Cowork's 1.0.0 request (D-287): each value is held to the Layer image field's rules, and a row with a refused
+	// image is refused whole, its specs too.
+	public function test_an_image_the_field_would_refuse_refuses_the_row_in_the_fields_terms(): void {
+		[ , $layers ] = $this->layered();
+		$rows = array(
+			'twin.png'   => array( LayerCheck::AMBIGUOUS, "twin.png\t14, 15" ),
+			'katy.png'   => array( LayerCheck::NOT_FOUND, 'katy.png' ),
+			'99'         => array( LayerCheck::NOT_IMAGE, '99' ),
+			'tiny.png'   => array( 'layer_too_small', "image/png\t" ),
+			'photo.jpg'  => array( 'layer_wrong_type', "image/jpeg\t" ),
+		);
+		foreach ( $rows as $cell => [ $code, $text ] ) {
+			$cell = (string) $cell;
+			self::assertSame( array(), $this->import->read( "id,deck_width,layer_image\n7,8.5,{$cell}\n" ), $cell );
+			$plan = $this->plan();
+			self::assertSame( array( 'layer_image:' . $code ), self::codes( $plan[0] ), $cell );
+			self::assertStringStartsWith( $text, $plan[0]['problems'][0]['text'], $cell );
+			self::assertSame( SpecImport::KEEP_LAYER, $plan[0]['layer'], $cell );
+			$after = $this->confirmAndRun();
+			self::assertSame( 0, $after->changed, $cell );
+			self::assertSame( array( 2 ), array_column( $after->refused, 'row' ), $cell );
+		}
+		self::assertSame( array(), $layers->assigned );
+		self::assertSame( array(), $this->parts->written );
+		self::assertNotNull( Sentences::rowProblem( LayerCheck::AMBIGUOUS, "twin.png\t14, 15" ) );
+	}
+
+	public function test_without_the_layer_images_the_column_is_passed_over(): void {
+		self::assertSame( array(), $this->import->read( "id,layer_image\n7,kelly.webp\n" ) );
+		$plan = $this->plan();
+		self::assertSame( array( array() ), array_column( $plan, 'changes' ) );
+		self::assertSame( array( array() ), array_column( $plan, 'problems' ) );
+		self::assertSame( array( SpecImport::KEEP_LAYER ), array_column( $plan, 'layer' ) );
+	}
+
+	public function test_the_export_writes_each_parts_own_layer_image_by_its_file_name(): void {
+		[ , $layers ] = $this->layered();
+		$layers->own[9] = 0;
+		$export = ( new SpecExport( $this->parts, $this->tables ) )->withLayers( $layers );
+		$lines  = explode( "\n", trim( $export->text() ) );
+		self::assertSame( 'id,sku,name,spec_table,spec_size,layer_image', implode( ',', array_slice( str_getcsv( $lines[0], ',', '"', '' ), 0, 6 ) ) );
+		self::assertSame( 'katie.png', str_getcsv( $lines[1], ',', '"', '' )[5] );
+		self::assertSame( '', str_getcsv( $lines[2], ',', '"', '' )[5] );
+		self::assertSame( '', str_getcsv( explode( "\n", ( new SpecExport( $this->parts, $this->tables ) )->text() )[1], ',', '"', '' )[5], 'without the layer images' );
 	}
 }

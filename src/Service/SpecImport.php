@@ -12,6 +12,7 @@ namespace CreativeBranding\SkateboardBuilder\Service;
 use CreativeBranding\SkateboardBuilder\Port\Clock;
 use CreativeBranding\SkateboardBuilder\Port\ImportStore;
 use CreativeBranding\SkateboardBuilder\Port\Logger;
+use CreativeBranding\SkateboardBuilder\Port\PartLayers;
 use CreativeBranding\SkateboardBuilder\Port\PartSpecs;
 use CreativeBranding\SkateboardBuilder\Port\Queue;
 use CreativeBranding\SkateboardBuilder\Port\SpecTables;
@@ -73,6 +74,11 @@ final class SpecImport {
 	public const TABLE_TWICE   = 'table_ambiguous';
 
 	/**
+	 * A row's `layer` that leaves the part's Layer image as it is.
+	 */
+	public const KEEP_LAYER = -1;
+
+	/**
 	 * Constructor.
 	 *
 	 * @since 0.3.0
@@ -94,6 +100,35 @@ final class SpecImport {
 		private Clock $clock,
 		private Logger $logger
 	) {}
+
+	/**
+	 * The Layer image check and the parts' own layer images, for the `layer_image` column. Without them the column is
+	 * passed over, as a 0.9.0 container builds this class (D-208).
+	 *
+	 * @var LayerCheck|null
+	 */
+	private ?LayerCheck $check = null;
+
+	/**
+	 * The parts' own layer images.
+	 *
+	 * @var PartLayers|null
+	 */
+	private ?PartLayers $layers = null;
+
+	/**
+	 * With the `layer_image` column read and written (Cowork's 1.0.0 request; D-287).
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param LayerCheck $check  Checks an image as the Layer image field does.
+	 * @param PartLayers $layers The parts' own layer images, and the Media Library's by name.
+	 */
+	public function withLayers( LayerCheck $check, PartLayers $layers ): self {
+		$this->check  = $check;
+		$this->layers = $layers;
+		return $this;
+	}
 
 	/**
 	 * Read a file's text into rows that wait to be confirmed, in place of any that waited before. Nothing is
@@ -265,7 +300,7 @@ final class SpecImport {
 	 * @param ImportState $state The import.
 	 * @param int         $from  The first row, from 0.
 	 * @param int         $count How many rows.
-	 * @return list<array{row: int, part: int, name: string, sku: string, fields: array<string, string>, table: int, size: string, changes: list<array{key: string, from: string, to: string}>, problems: list<array{key: string, code: string, text: string}>}>
+	 * @return list<array{row: int, part: int, name: string, sku: string, fields: array<string, string>, table: int, size: string, layer: int, changes: list<array{key: string, from: string, to: string}>, problems: list<array{key: string, code: string, text: string}>}>
 	 *         A row is counted from 2: the heading is row 1.
 	 */
 	public function plan( ImportState $state, int $from, int $count ): array {
@@ -284,6 +319,7 @@ final class SpecImport {
 			$ids = array_filter( $ids, static fn( int $id, string $sku ): bool => ( $held[ $id ]['sku'] ?? null ) === $sku, ARRAY_FILTER_USE_BOTH );
 		}
 
+		$owned  = null !== $this->layers && isset( $state->columns[ SpecSheet::LAYER ] ) ? $this->layers->owned( ...array_values( $ids ) ) : array();
 		$charts = $this->tables->all();
 		$named  = array();
 		foreach ( $charts as $id => $chart ) {
@@ -355,7 +391,12 @@ final class SpecImport {
 			if ( $draft->size !== $now['size'] ) {
 				$changes[] = self::change( SpecSheet::SIZE, $now['size'], $draft->size );
 			}
-			$outcome            = self::outcome( $from + $at, $part, $now, array( ...$problems, ...$draft->problems ) );
+			[ $layer, $wrong ] = $this->layer( $cell( $row, SpecSheet::LAYER ), $part, $owned[ $part ] ?? null );
+			if ( self::KEEP_LAYER !== $layer && null !== $this->layers ) {
+				$changes[] = self::change( SpecSheet::LAYER, $this->layers->fileName( $owned[ $part ]['own'] ?? 0 ), $this->layers->fileName( $layer ) );
+			}
+			$outcome            = self::outcome( $from + $at, $part, $now, array( ...$problems, ...$draft->problems, ...$wrong ) );
+			$outcome['layer']   = $layer;
 			$outcome['fields']  = $draft->fields;
 			$outcome['table']   = $draft->table;
 			$outcome['size']    = $draft->size;
@@ -383,6 +424,9 @@ final class SpecImport {
 			$summary = self::summary( $this->plan( $state, $state->cursor, self::BATCH ) );
 			foreach ( $summary['changed'] as $row ) {
 				$this->parts->write( $row['part'], $row['fields'], $row['table'], $row['size'] );
+				if ( self::KEEP_LAYER !== $row['layer'] ) {
+					$this->layers?->assign( $row['part'], $row['layer'] );
+				}
 			}
 			$changed = count( $summary['changed'] );
 			$same    = $summary['same'];
@@ -418,8 +462,8 @@ final class SpecImport {
 	 *
 	 * @since 0.4.0
 	 *
-	 * @param list<array{row: int, part: int, name: string, sku: string, fields: array<string, string>, table: int, size: string, changes: list<array{key: string, from: string, to: string}>, problems: list<array{key: string, code: string, text: string}>}> $plan Rows, as `plan()` gives them.
-	 * @return array{changed: list<array{row: int, part: int, name: string, sku: string, fields: array<string, string>, table: int, size: string, changes: list<array{key: string, from: string, to: string}>, problems: list<array{key: string, code: string, text: string}>}>, same: int, refused: list<array{row: int, key: string, code: string, text: string}>, rows: int}
+	 * @param list<array{row: int, part: int, name: string, sku: string, fields: array<string, string>, table: int, size: string, layer: int, changes: list<array{key: string, from: string, to: string}>, problems: list<array{key: string, code: string, text: string}>}> $plan Rows, as `plan()` gives them.
+	 * @return array{changed: list<array{row: int, part: int, name: string, sku: string, fields: array<string, string>, table: int, size: string, layer: int, changes: list<array{key: string, from: string, to: string}>, problems: list<array{key: string, code: string, text: string}>}>, same: int, refused: list<array{row: int, key: string, code: string, text: string}>, rows: int}
 	 *         `rows` is how many rows the problems are about.
 	 */
 	public static function summary( array $plan ): array {
@@ -448,6 +492,34 @@ final class SpecImport {
 	}
 
 	/**
+	 * What a `layer_image` cell asks of a part's own Layer image, and what is wrong with it. An empty cell leaves a
+	 * product's as it is, and takes a variation's own away, so it takes its parent's (D-287).
+	 *
+	 * @param string|null                           $cell  The cell, or null where the file has no such column.
+	 * @param int                                   $part  The part's ID.
+	 * @param array{own: int, variation: bool}|null $owned Its own layer image, and whether it is a variation.
+	 * @return array{0: int, 1: list<array{key: string, code: string, text: string}>} The attachment's ID to set, 0 to
+	 *         take the part's own away, or KEEP_LAYER; and the problems.
+	 */
+	private function layer( ?string $cell, int $part, ?array $owned ): array {
+		if ( null === $cell || null === $this->check || null === $this->layers || null === $owned ) {
+			return array( self::KEEP_LAYER, array() );
+		}
+		$cell = trim( $cell );
+		if ( '' === $cell ) {
+			return array( $owned['variation'] && $owned['own'] > 0 ? 0 : self::KEEP_LAYER, array() );
+		}
+		[ $id, $wrong ] = LayerCheck::named( $cell, $this->layers );
+		if ( array() === $wrong ) {
+			$wrong = $this->check->problems( $id, $this->check->size( $part ) );
+		}
+		if ( array() !== $wrong ) {
+			return array( self::KEEP_LAYER, array_map( static fn( array $problem ): array => self::problem( SpecSheet::LAYER, $problem['code'], $problem['text'] ), $wrong ) );
+		}
+		return array( $id === $owned['own'] ? self::KEEP_LAYER : $id, array() );
+	}
+
+	/**
 	 * A key cell as rows are matched by it: an ID as its number, a SKU as it is, and '' for a cell that is neither.
 	 *
 	 * @param string $text   The cell.
@@ -467,7 +539,7 @@ final class SpecImport {
 	 * @param int                                                                                            $part     The part's ID, 0 for none.
 	 * @param array{sku: string, name: string, fields: array<string, string>, table: int, size: string}|null $now      What the part holds.
 	 * @param list<array{key: string, code: string, text: string}>                                           $problems What is wrong.
-	 * @return array{row: int, part: int, name: string, sku: string, fields: array<string, string>, table: int, size: string, changes: list<array{key: string, from: string, to: string}>, problems: list<array{key: string, code: string, text: string}>}
+	 * @return array{row: int, part: int, name: string, sku: string, fields: array<string, string>, table: int, size: string, layer: int, changes: list<array{key: string, from: string, to: string}>, problems: list<array{key: string, code: string, text: string}>}
 	 */
 	private static function outcome( int $at, int $part, ?array $now, array $problems ): array {
 		return array(
@@ -478,6 +550,7 @@ final class SpecImport {
 			'fields'   => $now['fields'] ?? array(),
 			'table'    => $now['table'] ?? 0,
 			'size'     => $now['size'] ?? '',
+			'layer'    => self::KEEP_LAYER,
 			'changes'  => array(),
 			'problems' => $problems,
 		);

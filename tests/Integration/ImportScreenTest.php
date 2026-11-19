@@ -223,7 +223,7 @@ final class ImportScreenTest extends IntegrationTestCase {
 		self::post( array( 'cbuild_action' => 'export' ) );
 		$file = $this->screen()->download();
 		self::assertIsString( $file );
-		self::assertStringStartsWith( "\xEF\xBB\xBFid,sku,name,spec_table,spec_size,deck_width,", $file );
+		self::assertStringStartsWith( "\xEF\xBB\xBFid,sku,name,spec_table,spec_size,layer_image,deck_width,", $file );
 		$rows = array();
 		foreach ( array_slice( Csv::parse( substr( $file, 3 ) ), 1 ) as $row ) {
 			$rows[ (int) $row[0] ] = array_combine( SpecSheet::columns(), $row );
