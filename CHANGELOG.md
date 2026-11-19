@@ -19,6 +19,7 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Fixed
 
+- French: names no longer follow « de » (« Annuler la suppression du montage %s », « Voir la fiche du produit %s », « Partir du modèle %s »), the bar says « Planche complète dès environ », My builds names the « Récapitulatif » step, and a card's fit label has a sentence per case, so English now has "Fits your %s deck" and "Recommended for your %s deck" of their own (Cowork; #65).
 - CI stops an apt-get a timed-out Playwright install left, and repairs dpkg, before the next try (#64; D-224).
 - The builder draws its own radios, a ring in its text colour on its own ground and a dot once picked, so an unpicked card no longer looks filled in on a dark theme. With forced colours the browser's radio is drawn (Cowork; #68).
 - In HTML emails a kit with no photo of its own has no placeholder image on its line, alt "Placeholder", above the build's picture (Cowork; #69).

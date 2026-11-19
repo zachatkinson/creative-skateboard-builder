@@ -369,6 +369,25 @@ final class BuilderPageTest extends IntegrationTestCase {
 		self::assertLessThanOrEqual( 60, $cold, 'cold, as the state route' );
 	}
 
+	// Cowork's review of 0.9.0 (#65): "Fits your %s" with "8.5″ deck" in it left French no room for its determiner, so
+	// the deck's labels are sentences of their own, and a translation says « votre planche de 8,5″ ».
+	public function test_a_translation_gives_the_decks_fit_labels_their_own_sentence(): void {
+		$french = array(
+			'Fits your %s deck'            => 'Compatible avec votre planche de %s',
+			'Recommended for your %s deck' => 'Recommandé pour votre planche de %s',
+		);
+		$filter = static fn( string $translation, string $text ): string => $french[ $text ] ?? $translation;
+		add_filter( 'gettext_creative-skateboard-builder', $filter, 10, 2 );
+		try {
+			$dom = self::dom( $this->kitPage( array( 'deck' => (string) $this->parts['deck 8.5'] ) ) );
+		} finally {
+			remove_filter( 'gettext_creative-skateboard-builder', $filter, 10 );
+		}
+		$recommended = '//li[.//span[@class="cbuild-card__recommended" and not(@hidden)]]';
+		self::assertSame( 'Recommandé pour votre planche de 8.5″', self::text( $dom, $recommended . '//span[@class="cbuild-card__recommended"]' ) );
+		self::assertSame( 'Compatible avec votre planche de 8.5″', self::text( $dom, $recommended . '//span[contains(@class,"cbuild-card__fit")]' ) );
+	}
+
 	public function test_each_cards_radio_is_described_by_its_price_stock_fit_recommendation_and_notes(): void {
 		$dom    = self::dom( $this->kitPage( array( 'deck' => (string) $this->parts['deck 8.5'] ) ) );
 		$radios = $dom->query( '//li[contains(@class,"cbuild-card")]/input[@type="radio"]' );

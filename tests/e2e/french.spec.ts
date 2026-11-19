@@ -59,7 +59,7 @@ test.describe( 'The builder in French', () => {
 		}
 		const bar = page.locator( '.cbuild-bar' );
 		await expect( bar.locator( '.cbuild-bar__estimate' ) ).toHaveText(
-			/^Complète à partir d’environ /
+			/^Planche complète dès environ /
 		);
 		await axe( page, 'the builder in French, a deck picked', '.cbuild' );
 		await bar

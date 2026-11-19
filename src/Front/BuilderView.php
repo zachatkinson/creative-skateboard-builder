@@ -1051,7 +1051,7 @@ final class BuilderView {
 		$place = array_flip( $steps )[ $slot ];
 		$next  = $steps[ $place + 1 ] ?? State::REVIEW;
 		$width = SlotKey::DECK === $slot ? '' : self::deckWidth( $answer );
-		// What the step's parts were checked against, as a phrase: "8.25″ deck", or "trucks and risers".
+		// What the step's parts were checked against, as a fitting part's two labels.
 		$against = self::against( Cast::strings( $step['against'] ?? null ), $width, static fn( string $key ): string => Cast::str( Cast::map( $about[ $key ] ?? null )['label'] ?? $key ) );
 
 		$card    = function ( array $option, array $look = array() ) use ( $state, $slot, $counted, $against ): array {
@@ -1123,11 +1123,11 @@ final class BuilderView {
 				'hasAlso'       => '' !== $also,
 				'stock'         => Cast::str( $card['stock'] ?? null ),
 				'stockClass'    => 'cbuild-card__stock cbuild-card__stock--' . sanitize_html_class( Cast::str( $card['stock_class'] ?? null ) ),
-				'fit'           => self::fit( $fit, $against ),
+				'fit'           => self::fit( $fit, $against['fits'] ),
 				'fitClass'      => 'cbuild-card__fit cbuild-card__fit--' . sanitize_html_class( $fit ),
 				'notes'         => $notes,
 				'recommended'   => Cast::bool( $option['recommended'] ?? null ),
-				'recommendedAs' => self::recommended( $against ),
+				'recommendedAs' => $against['recommended'],
 				'classes'       => self::classes( $state->id, $slot, $id, $fit, $available, $checked ),
 			) + self::image( $card['image'] ?? null );
 		};
@@ -1256,20 +1256,39 @@ final class BuilderView {
 	}
 
 	/**
-	 * What a step's parts were checked against, as a phrase for its labels: the deck by its width, as "8.25″ deck",
-	 * and other slots by their labels inside a sentence, as "trucks and risers". Empty where the parts were checked
-	 * against nothing picked before them (Cowork's review, should-fix 5).
+	 * What a step's parts were checked against, as a fitting part's labels: the deck by its width, "Fits your 8.25″
+	 * deck", and other slots by their labels inside a sentence, "Fits your trucks and risers". Each case is a sentence
+	 * of its own, so a translation can give each its own determiner (Cowork's review of 0.9.0, #65). Where the parts
+	 * were checked against nothing picked before them, no fit label and plain "Recommended" (Cowork's review,
+	 * should-fix 5; spec: A step, P9).
 	 *
 	 * @param list<string>             $slots The slots' keys.
 	 * @param string                   $width The deck's width, or empty.
 	 * @param callable(string): string $label A slot's label.
+	 * @return array{fits: string, recommended: string}
 	 */
-	private static function against( array $slots, string $width, callable $label ): string {
+	private static function against( array $slots, string $width, callable $label ): array {
 		if ( array( SlotKey::DECK ) === $slots && '' !== $width ) {
-			/* translators: %s: a deck's width, such as 8.25″. */
-			return sprintf( __( '%s deck', 'creative-skateboard-builder' ), $width );
+			return array(
+				/* translators: %s: a deck's width, such as 8.25″. */
+				'fits'        => sprintf( __( 'Fits your %s deck', 'creative-skateboard-builder' ), $width ),
+				/* translators: %s: a deck's width, such as 8.25″. */
+				'recommended' => sprintf( __( 'Recommended for your %s deck', 'creative-skateboard-builder' ), $width ),
+			);
 		}
-		return wp_sprintf( '%l', array_map( static fn( string $slot ): string => Words::inSentence( $label( $slot ) ), $slots ) );
+		if ( array() === $slots ) {
+			return array(
+				'fits'        => '',
+				'recommended' => __( 'Recommended', 'creative-skateboard-builder' ),
+			);
+		}
+		$parts = wp_sprintf( '%l', array_map( static fn( string $slot ): string => Words::inSentence( $label( $slot ) ), $slots ) );
+		return array(
+			/* translators: %s: the parts picked before, such as "trucks and risers". */
+			'fits'        => sprintf( __( 'Fits your %s', 'creative-skateboard-builder' ), $parts ),
+			/* translators: %s: the parts picked before, such as "trucks and risers". */
+			'recommended' => sprintf( __( 'Recommended for your %s', 'creative-skateboard-builder' ), $parts ),
+		);
 	}
 
 	/**
@@ -1277,7 +1296,7 @@ final class BuilderView {
 	 * checked against nothing; one that warns or is blocked says so shortly, and its notes say why.
 	 *
 	 * @param string $fit     The option's fit: `fits`, `warn` or `block`.
-	 * @param string $against What it was checked against, as a phrase, or empty.
+	 * @param string $against A fitting part's label ("Fits your 8.25″ deck"), or empty.
 	 */
 	private static function fit( string $fit, string $against ): string {
 		if ( 'warn' === $fit ) {
@@ -1286,24 +1305,7 @@ final class BuilderView {
 		if ( 'block' === $fit ) {
 			return __( 'Does not fit', 'creative-skateboard-builder' );
 		}
-		if ( '' === $against ) {
-			return '';
-		}
-		/* translators: %s: what the part was checked against, such as "8.25″ deck" or "trucks and risers". */
-		return sprintf( __( 'Fits your %s', 'creative-skateboard-builder' ), $against );
-	}
-
-	/**
-	 * The label of the part a step starts on (spec: A step, P9).
-	 *
-	 * @param string $against What the step's parts were checked against, as a phrase, or empty.
-	 */
-	private static function recommended( string $against ): string {
-		if ( '' === $against ) {
-			return __( 'Recommended', 'creative-skateboard-builder' );
-		}
-		/* translators: %s: what the part was checked against, such as "8.25″ deck" or "trucks and risers". */
-		return sprintf( __( 'Recommended for your %s', 'creative-skateboard-builder' ), $against );
+		return $against;
 	}
 
 	/**
