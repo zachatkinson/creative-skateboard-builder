@@ -9,7 +9,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-11-19T11:34:25+00:00\n"
+"POT-Creation-Date: 2026-11-19T12:06:42+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: creative-skateboard-builder\n"
@@ -335,7 +335,7 @@ msgstr ""
 #: src/Admin/BuildTab.php:674
 #: src/Admin/PartSpecsPanel.php:609
 #: src/Front/BuilderView.php:1228
-#: src/Front/BuilderView.php:1560
+#: src/Front/BuilderView.php:1580
 #: src/Health/SiteHealth.php:364
 msgid "None"
 msgstr ""
@@ -1860,7 +1860,7 @@ msgstr[0] ""
 msgstr[1] ""
 
 #: src/Front/BuilderView.php:189
-#: src/Front/BuilderView.php:1609
+#: src/Front/BuilderView.php:1629
 msgid "Check your build"
 msgstr ""
 
@@ -1919,7 +1919,7 @@ msgstr ""
 
 #. translators: %s: the build's total, such as $184.00.
 #: src/Front/BuilderView.php:312
-#: src/Front/BuilderView.php:1616
+#: src/Front/BuilderView.php:1642
 #: src/Front/ShareCard.php:128
 #, php-format
 msgid "Total: %s"
@@ -2339,67 +2339,77 @@ msgstr ""
 msgid "A complete board from about %s"
 msgstr ""
 
-#: src/Front/BuilderView.php:1562
-msgid "Fits"
+#: src/Front/BuilderView.php:1563
+msgid "Included with your wheels"
 msgstr ""
 
-#: src/Front/BuilderView.php:1566
+#: src/Front/BuilderView.php:1568
+#: src/Front/BuilderView.php:1586
 msgid "Change"
 msgstr ""
 
 #. translators: %s: a slot's label, such as Trucks.
-#: src/Front/BuilderView.php:1568
+#: src/Front/BuilderView.php:1570
+#: src/Front/BuilderView.php:1588
 #, php-format
 msgid "Change %s"
 msgstr ""
 
+#: src/Front/BuilderView.php:1582
+msgid "Fits"
+msgstr ""
+
 #. translators: %s: how long the shop takes to put a build together, in the owner's words, such as 2 business days.
-#: src/Front/BuilderView.php:1575
+#: src/Front/BuilderView.php:1595
 #, php-format
 msgid "Assembly time: %s"
 msgstr ""
 
-#: src/Front/BuilderView.php:1627
+#: src/Front/BuilderView.php:1634
+msgid "Add risers"
+msgstr ""
+
+#: src/Front/BuilderView.php:1653
 msgid "Save changes"
 msgstr ""
 
-#: src/Front/BuilderView.php:1627
+#: src/Front/BuilderView.php:1653
 msgid "Add to cart"
 msgstr ""
 
-#: src/Front/BuilderView.php:1629
+#: src/Front/BuilderView.php:1655
 msgid "Saving replaces the build in your cart."
 msgstr ""
 
-#: src/Front/BuilderView.php:1631
+#: src/Front/BuilderView.php:1657
 msgid "Your cart has the changed build."
 msgstr ""
 
-#: src/Front/BuilderView.php:1631
+#: src/Front/BuilderView.php:1657
 msgid "The build is in your cart."
 msgstr ""
 
-#: src/Front/BuilderView.php:1635
+#: src/Front/BuilderView.php:1661
 msgid "Link to this build"
 msgstr ""
 
-#: src/Front/BuilderView.php:1636
+#: src/Front/BuilderView.php:1662
 msgid "Copy link"
 msgstr ""
 
-#: src/Front/BuilderView.php:1637
+#: src/Front/BuilderView.php:1663
 msgid "Link copied."
 msgstr ""
 
-#: src/Front/BuilderView.php:1640
+#: src/Front/BuilderView.php:1666
 msgid "Save build"
 msgstr ""
 
-#: src/Front/BuilderView.php:1641
+#: src/Front/BuilderView.php:1667
 msgid "Name it (optional)"
 msgstr ""
 
-#: src/Front/BuilderView.php:1643
+#: src/Front/BuilderView.php:1669
 msgid "Sign in to save this build"
 msgstr ""
 
@@ -4103,7 +4113,7 @@ msgstr ""
 msgid "Back to the shop"
 msgstr ""
 
-#: templates/builder/review.php:71
+#: templates/builder/review.php:73
 msgid "View cart"
 msgstr ""
 

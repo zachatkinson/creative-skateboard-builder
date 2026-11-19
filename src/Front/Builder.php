@@ -13,6 +13,7 @@ use CreativeBranding\SkateboardBuilder\Domain\Fit\BuildProblem;
 use CreativeBranding\SkateboardBuilder\Domain\Fit\Problem;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\InvalidMoney;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\SlotKey;
+use CreativeBranding\SkateboardBuilder\Domain\Rule\BearingRule;
 use CreativeBranding\SkateboardBuilder\Domain\Rule\MessageCode;
 use CreativeBranding\SkateboardBuilder\Service\BuildState;
 use CreativeBranding\SkateboardBuilder\Service\State;
@@ -67,13 +68,18 @@ final class Builder {
 		if ( null === $state ) {
 			return null;
 		}
-		$steps   = self::steps( $state );
+		$steps = self::steps( $state );
+		if ( $link->asked && SlotKey::RISERS === $link->step && ! in_array( SlotKey::RISERS, $steps, true ) && in_array( SlotKey::RISERS, $state->kit->slots->keys(), true ) ) {
+			// Asked for by a link, as Add risers at the review asks, the risers slot is a step though nothing needs it
+			// (spec: Risers, "Anyone can add them"). A step's form naming it gives way as before: its Next was made
+			// before the form's own pick of smaller wheels.
+			$steps = array_values( array_intersect( $state->kit->slots->keys(), array_merge( $steps, array( SlotKey::RISERS ) ) ) );
+		}
 		$stopped = null;
 		$step    = $state->step;
 		if ( State::REVIEW !== $step && ! in_array( $step, $steps, true ) ) {
-			// A slot that is no step now gives way to the one after it, and the last to the review.
-			// Risers are the one slot that can be no step, so the slot after it is one.
-			$step = $state->kit->slots->after( $step )[0] ?? State::REVIEW;
+			// A slot that is no step now gives way to the first step after it, and the last to the review.
+			$step = array_values( array_intersect( $state->kit->slots->after( $step ), $steps ) )[0] ?? State::REVIEW;
 		}
 		$unseen = self::risersNeeded( $state ) && ! isset( $link->picks[ SlotKey::RISERS ] ) && ! in_array( SlotKey::RISERS, $link->none, true );
 		foreach ( $state->steps as $about ) {
@@ -86,7 +92,7 @@ final class Builder {
 				$step = SlotKey::RISERS;
 				break;
 			}
-			if ( $about->slot->required && null === $about->counted() ) {
+			if ( $about->slot->required && null === $about->counted() && in_array( $about->slot->key, $steps, true ) ) {
 				$stopped = new BuildProblem( Problem::SlotEmpty, $about->slot->key, null );
 				$step    = $about->slot->key;
 				break;
@@ -113,7 +119,8 @@ final class Builder {
 
 	/**
 	 * The slots that are steps, in step order: every slot but a risers slot the kit does not require, while the build
-	 * holds no risers and its wheels need none (spec: A step, risers only when needed). Wheels that need risers keep
+	 * holds no risers and its wheels need none (spec: A step, risers only when needed), and but bearings the wheels
+	 * come with (spec: Bearings). Wheels that need risers keep
 	 * the step with "No risers" chosen, so a shopper who left them out can still see why and change it.
 	 *
 	 * @since 0.6.0
@@ -122,14 +129,32 @@ final class Builder {
 	 * @return list<string>
 	 */
 	public static function steps( State $state ): array {
-		$steps  = array();
-		$needed = self::risersNeeded( $state );
+		$steps    = array();
+		$needed   = self::risersNeeded( $state );
+		$included = self::bearingsIncluded( $state );
 		foreach ( $state->steps as $step ) {
-			if ( $needed || ! self::skipped( $step ) ) {
+			if ( ( $needed || ! self::skipped( $step ) ) && ! ( $included && SlotKey::BEARINGS === $step->slot->key && null === $step->counted() ) ) {
 				$steps[] = $step->slot->key;
 			}
 		}
 		return $steps;
+	}
+
+	/**
+	 * Whether the wheels the build counts come with their bearings, so the bearings slot is no step and counts as
+	 * filled (spec: Bearings, D-246). A bearing picked before such wheels stays a step until the change list takes it.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param State $state The build's state.
+	 */
+	public static function bearingsIncluded( State $state ): bool {
+		foreach ( $state->steps as $step ) {
+			if ( SlotKey::WHEELS === $step->slot->key ) {
+				return BearingRule::comesWith( $step->counted()?->part );
+			}
+		}
+		return false;
 	}
 
 	/**

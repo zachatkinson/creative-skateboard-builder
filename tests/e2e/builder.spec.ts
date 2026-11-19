@@ -159,6 +159,31 @@ test.describe( 'The builder without JavaScript', () => {
 
 	// Milestone 6's audit 29: the assembly switch was a link into a state. It is a button in a GET form, so a crawler
 	// never follows it (spec: SEO and sharing), and the review stays where it was. It is on the review (D-271).
+	// Spec (configurator): The review and Risers (D-246). "Add risers" sits under the parts when the build has none,
+	// and opens the step though nothing asks for it.
+	test( 'Add risers at the review opens the risers step for a build that has none', async ( {
+		page,
+	} ) => {
+		await page.goto(
+			linkTo( {
+				deck: id( 'builder-test-deck-8-0' ),
+				trucks: id( 'builder-test-trucks-139' ),
+				wheels: id( 'builder-test-wheels-52' ),
+				bearings: id( 'builder-test-bearings' ),
+				hardware: id( 'builder-test-bolts-1' ),
+				grip: id( 'builder-test-grip' ),
+				step: 'review',
+			} )
+		);
+		await page.getByRole( 'link', { name: 'Add risers' } ).click();
+		await expect( heading( page ) ).toHaveText(
+			'Step 4 of 8: Choose your risers'
+		);
+		await expect(
+			page.getByRole( 'radio', { name: 'No risers' } )
+		).toBeVisible();
+	} );
+
 	test( 'switches assembly with a button in a form, on the review', async ( {
 		page,
 	} ) => {
@@ -2272,6 +2297,33 @@ test.describe( 'The keyboard alone', () => {
 		await expect(
 			page.locator( '.woocommerce-table--order-details' )
 		).toContainText( 'Builder test kit' );
+	} );
+} );
+
+test.describe( 'The review with JavaScript', () => {
+	// Spec (configurator): The review and Risers (D-246). "Add risers" sits under the parts when the build has none,
+	// and opens the step though nothing asks for it.
+	test( 'Add risers at the review opens the risers step for a build that has none', async ( {
+		page,
+	} ) => {
+		await page.goto(
+			linkTo( {
+				deck: id( 'builder-test-deck-8-0' ),
+				trucks: id( 'builder-test-trucks-139' ),
+				wheels: id( 'builder-test-wheels-52' ),
+				bearings: id( 'builder-test-bearings' ),
+				hardware: id( 'builder-test-bolts-1' ),
+				grip: id( 'builder-test-grip' ),
+				step: 'review',
+			} )
+		);
+		await page.getByRole( 'link', { name: 'Add risers' } ).click();
+		await expect( heading( page ) ).toHaveText(
+			'Step 4 of 8: Choose your risers'
+		);
+		await expect(
+			page.getByRole( 'radio', { name: 'No risers' } )
+		).toBeVisible();
 	} );
 } );
 

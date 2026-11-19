@@ -3434,3 +3434,13 @@ Cowork's review of 0.9.0, F1 (#66) and F2 (#67). Zach was asked whether the Undo
 
 **Why:** a deleted build sitting in a session for up to 48 hours is more than Undo needs, and O18 asks how long personal data the eraser can't reach is kept. Fifteen minutes is the issue's suggestion; it covers going to another page and coming back, and is said on the page so nobody is surprised.
 
+### D-276 · Add risers is a link that names the step; a step's form naming it still gives way · 2026-11-19
+
+Spec (configurator): Risers, "Anyone can add them", and The review. The risers step is no step while nothing needs risers, and a request for it gave way to the next step: a step's form without JavaScript sends its pick and its Next together, and the Next was made before the pick of smaller wheels undid the need (BuilderTest, `test_a_step_that_is_no_step_gives_way_to_the_next_and_the_last_to_the_review`).
+
+- **Add risers** at the review is a plain link to the risers step. A request that names a step and carries no `_on`, so came from a link and not a step's form, is "asked" (`BuildLink::$asked`, read only from a request), and an asked risers step is shown though nothing needs it. Only the risers slot can be no step and be asked for this way.
+- **No new link key.** `_on` already tells a form from a link, so the shared link stays as it was.
+- **Bearings** the wheels come with take that step off the rail the same way (D-246), and a link to it goes on to the next step, asked or not: there is nothing to pick.
+
+**Why:** a new key such as `_add` would have touched every way a link is made, for a fact the request already carries.
+

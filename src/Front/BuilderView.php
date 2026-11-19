@@ -1550,8 +1550,28 @@ final class BuilderView {
 			$problem                                      = Cast::map( $problem );
 			$wrong[ Cast::str( $problem['slot'] ?? '' ) ] = Cast::str( $problem['message'] ?? null );
 		}
-		$items = array();
-		foreach ( $steps as $slot ) {
+		$items    = array();
+		$included = Builder::bearingsIncluded( $state );
+		foreach ( $state->kit->slots->keys() as $slot ) {
+			if ( ! in_array( $slot, $steps, true ) ) {
+				if ( SlotKey::BEARINGS === $slot && $included ) {
+					// Wheels sold with their bearings fill the slot (spec: Bearings, D-246): said, and changed with the wheels.
+					$items[] = array(
+						'key'     => $slot,
+						'classes' => Options::CLASS_REVIEW_ITEM,
+						'label'   => $label( $slot ),
+						'name'    => __( 'Included with your wheels', 'creative-skateboard-builder' ),
+						'fits'    => true,
+						'fit'     => '',
+						'amount'  => '',
+						'url'     => $url( $link->at( SlotKey::WHEELS ) ),
+						'text'    => __( 'Change', 'creative-skateboard-builder' ),
+						/* translators: %s: a slot's label, such as Trucks. */
+						'change'  => sprintf( __( 'Change %s', 'creative-skateboard-builder' ), Words::inSentence( $label( SlotKey::WHEELS ) ) ),
+					);
+				}
+				continue;
+			}
 			$own     = isset( $wrong[ $slot ] ) ? array( Options::CLASS_REVIEW_ITEM, Options::CLASS_REVIEW_ITEM . '--wrong' ) : array( Options::CLASS_REVIEW_ITEM );
 			$items[] = array(
 				'key'     => $slot,
@@ -1608,6 +1628,12 @@ final class BuilderView {
 		return array(
 			'heading'    => __( 'Check your build', 'creative-skateboard-builder' ),
 			'items'      => $items,
+			// Under the parts, for a rider who wants risers when nothing asks for them (spec: The review, D-246).
+			'addRisers'  => array(
+				'shown' => in_array( SlotKey::RISERS, $state->kit->slots->keys(), true ) && ! in_array( SlotKey::RISERS, $steps, true ),
+				'text'  => __( 'Add risers', 'creative-skateboard-builder' ),
+				'url'   => $url( $link->at( SlotKey::RISERS ) ),
+			),
 			// All before Add to cart (spec: Review and add to cart), in the summary's own words.
 			'assembly'   => Cast::str( $summary['assembly'] ?? null ),
 			'hasArrival' => Cast::bool( $summary['hasArrival'] ?? null ),

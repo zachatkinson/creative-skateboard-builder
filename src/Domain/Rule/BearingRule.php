@@ -9,6 +9,7 @@ declare( strict_types=1 );
 
 namespace CreativeBranding\SkateboardBuilder\Domain\Rule;
 
+use CreativeBranding\SkateboardBuilder\Domain\Kit\Part;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Picks;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\RuleSettings;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\SlotKey;
@@ -55,7 +56,18 @@ final readonly class BearingRule implements Rule {
 	 * @param Picks $picks The picks.
 	 */
 	public static function included( Picks $picks ): bool {
-		return true === $picks->part( SlotKey::WHEELS )?->specs->flag( SpecKey::BearingsIncluded );
+		return self::comesWith( $picks->part( SlotKey::WHEELS ) );
+	}
+
+	/**
+	 * Whether these wheels come with their bearings: the steps leave Bearings out for them (D-246).
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param Part|null $wheels The wheels, or none.
+	 */
+	public static function comesWith( ?Part $wheels ): bool {
+		return true === $wheels?->specs->flag( SpecKey::BearingsIncluded );
 	}
 
 	/**

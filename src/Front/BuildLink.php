@@ -79,6 +79,9 @@ final readonly class BuildLink {
 	 * @param string                  $replace  The identifier of the build in the cart this one replaces, or empty.
 	 * @param list<string>            $none     The slots the shopper chose to leave empty, by key: "No risers".
 	 * @param ShelfQuery              $shelf    The step's width, chips, search and sort (from 1.0.0).
+	 * @param bool                    $asked    Whether a link asked for the step by name, as Add risers does, not a
+	 *                                          step's form, whose Next may name a step the form's own pick undid
+	 *                                          (from 1.0.0). Only a request read says so; a link made here does not.
 	 */
 	public function __construct(
 		public array $picks = array(),
@@ -91,7 +94,8 @@ final readonly class BuildLink {
 		public int $shown = 0,
 		public string $replace = '',
 		public array $none = array(),
-		public ShelfQuery $shelf = new ShelfQuery()
+		public ShelfQuery $shelf = new ShelfQuery(),
+		public bool $asked = false
 	) {}
 
 	/**
@@ -134,7 +138,8 @@ final readonly class BuildLink {
 				$own ? self::chips( $sent['_chips'] ?? null ) : array(),
 				$own ? self::text( $sent['_q'] ?? null ) : '',
 				$own && in_array( $sent['_sort'] ?? null, ShelfAsk::SORTS, true ) ? Cast::str( $sent['_sort'] ) : ShelfAsk::SORTS[0]
-			)
+			),
+			null !== $step && null === $on
 		);
 	}
 

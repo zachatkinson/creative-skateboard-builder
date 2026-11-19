@@ -23,6 +23,8 @@ defined( 'ABSPATH' ) || exit;
 			</li>
 		</template>
 	</ul>
+	<?php // For a rider who wants risers when nothing asks for them (spec: The review, D-246). ?>
+	<a class="cbuild-button cbuild-review__add" rel="nofollow" data-wp-on--click="actions.follow" data-wp-bind--hidden="!state.view.review.addRisers.shown" data-wp-bind--href="state.view.review.addRisers.url" data-wp-text="state.view.review.addRisers.text"></a>
 	<div class="cbuild-review__assembly">
 		<p data-wp-text="state.view.review.assembly"></p>
 		<form class="cbuild-review__toggle" method="get" data-wp-on--submit="actions.submit" data-wp-bind--action="state.view.action">

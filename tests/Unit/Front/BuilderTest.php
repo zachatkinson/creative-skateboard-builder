@@ -1042,6 +1042,45 @@ final class BuilderTest extends TestCase {
 		);
 	}
 
+	// Spec (configurator): Bearings (D-246). Wheels sold with their bearings take the step off the rail, the slot
+	// counts as filled, and the review says so.
+	public function test_wheels_sold_with_their_bearings_take_bearings_off_the_rail_and_the_review_says_so(): void {
+		$parts                      = Shop::parts();
+		$parts[ SlotKey::WHEELS ][] = Shop::priced( Parts::of( array( 'wheel_diameter' => '52', 'set_size' => 4, 'bearings_included' => true ), 304 ), 4500 );
+		$this->kits->add( self::KIT, Shop::kit(), $parts );
+		$plain = array( SlotKey::DECK => 101, SlotKey::TRUCKS => 139, SlotKey::WHEELS => 301 );
+		self::assertContains( SlotKey::BEARINGS, Builder::steps( $this->show( new BuildLink( $plain ) )['state'] ), 'plain wheels still ask' );
+
+		$picks = array( SlotKey::WHEELS => 304 ) + $plain;
+		$shown = $this->show( new BuildLink( $picks, null, SlotKey::BEARINGS ) );
+		self::assertNotContains( SlotKey::BEARINGS, Builder::steps( $shown['state'] ), 'the bearings step leaves the rail' );
+		self::assertNotContains( SlotKey::BEARINGS, array_column( $shown['view']['progress'], 'key' ), 'and the rail' );
+		self::assertSame( 'Choose your hardware', $shown['view']['heading'], 'a link to it goes on to the next step' );
+
+		$view = $this->show( new BuildLink( $picks + array( SlotKey::HARDWARE => 601, SlotKey::GRIP => 701 ), null, State::REVIEW ) )['view'];
+		self::assertTrue( $view['review']['ready'], 'the slot counts as filled' );
+		$items = array_column( $view['review']['items'], null, 'key' );
+		self::assertSame( array( SlotKey::DECK, SlotKey::TRUCKS, SlotKey::WHEELS, SlotKey::BEARINGS, SlotKey::HARDWARE, SlotKey::GRIP ), array_keys( $items ), 'in the kit\'s order' );
+		self::assertSame( array( 'Bearings', 'Included with your wheels', '' ), array( $items[ SlotKey::BEARINGS ]['label'], $items[ SlotKey::BEARINGS ]['name'], $items[ SlotKey::BEARINGS ]['amount'] ) );
+		self::assertSame( 'Change wheels', $items[ SlotKey::BEARINGS ]['change'], 'they change with the wheels' );
+	}
+
+	// Spec (configurator): The review and Risers, "Add risers at the review opens the step when nothing asks for it".
+	public function test_add_risers_at_the_review_opens_the_risers_step_when_nothing_asks_for_it(): void {
+		$review = $this->show( new BuildLink( self::STREET, null, State::REVIEW ) )['view']['review'];
+		self::assertTrue( $review['addRisers']['shown'] );
+		self::assertSame( 'Add risers', $review['addRisers']['text'] );
+		parse_str( (string) parse_url( $review['addRisers']['url'], PHP_URL_QUERY ), $query );
+		self::assertSame( SlotKey::RISERS, $query['cbuild']['step'] ?? null );
+
+		$view = $this->show( BuildLink::read( $query['cbuild'] ) )['view'];
+		self::assertSame( 'Choose your risers', $view['heading'], 'asked for by the link, the step is shown' );
+		self::assertContains( SlotKey::RISERS, array_column( $view['progress'], 'key' ) );
+
+		$with = $this->show( new BuildLink( self::STREET + array( SlotKey::RISERS => 401 ), null, State::REVIEW ) )['view']['review'];
+		self::assertFalse( $with['addRisers']['shown'], 'a build with risers has them' );
+	}
+
 	public function test_wheels_that_need_risers_keep_the_risers_step_even_with_no_risers_chosen(): void {
 		$picks = array(
 			SlotKey::DECK   => 101,

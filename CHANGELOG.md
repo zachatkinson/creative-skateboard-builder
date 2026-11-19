@@ -19,6 +19,7 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Fixed
 
+- Wheels sold with their bearings take the bearings step off the rail, and the review says "Bearings: Included with your wheels", changed with the wheels. "Add risers" under the review's parts opens the risers step when nothing asks for it (spec: Bearings, Risers, The review; D-246, D-276).
 - A skip link, "Skip to the step", is the builder's first stop; the first deck is at most eight presses after it. "Show 30 more" says how many it added, and below 320 px the stage scrolls with the page (spec: Accessibility).
 - French: names no longer follow « de » (« Annuler la suppression du montage %s », « Voir la fiche du produit %s », « Partir du modèle %s »), the bar says « Planche complète dès environ », My builds names the « Récapitulatif » step, and a card's fit label has a sentence per case, so English now has "Fits your %s deck" and "Recommended for your %s deck" of their own (Cowork; #65).
 - CI stops an apt-get a timed-out Playwright install left, and repairs dpkg, before the next try (#64; D-224).
