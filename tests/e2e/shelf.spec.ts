@@ -60,6 +60,10 @@ test.describe( 'A long step', () => {
 		await expect(
 			page.locator( '.cbuild-step__more .cbuild-step__count' )
 		).toHaveText( /30\D+46/ );
+		// Said once, at the foot beside Show more (the auditor's M10 minor 20).
+		await expect(
+			page.locator( '.cbuild-step__count:visible' )
+		).toHaveCount( 1 );
 		// axe runs as a script in the page, so not in the no-js project.
 		if ( javaScriptEnabled ) {
 			await axe( page, 'a long step', '.cbuild' );

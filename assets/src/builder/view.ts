@@ -479,12 +479,6 @@ function fields(
 }
 
 /**
- * Send a form as the browser would without JavaScript, the button pressed among its fields.
- *
- * @param form      The form.
- * @param submitter The button pressed, if any.
- */
-/**
  * How long search waits after the last key, in milliseconds.
  */
 const SEARCH_WAIT = 150;
@@ -508,6 +502,12 @@ function narrowed( form: HTMLFormElement ): void {
 	} );
 }
 
+/**
+ * Send a form as the browser would without JavaScript, the button pressed among its fields.
+ *
+ * @param form      The form.
+ * @param submitter The button pressed, if any.
+ */
 function send( form: HTMLFormElement, submitter?: HTMLElement | null ): void {
 	browser.submit( form, submitter ?? null );
 }
@@ -665,12 +665,15 @@ const { state } = store(
 				told( state, form.ownerDocument );
 			},
 			/**
-			 * Show the top, or the underside again: the button by the board, its pressed state the side shown (#46).
-			 * The shopper's side is kept from now on.
+			 * Open or fold the phone's filters behind their button.
 			 */
 			filters(): void {
 				state.folded = ! state.folded;
 			},
+			/**
+			 * Show the top, or the underside again: the button by the board, its pressed state the side shown (#46).
+			 * The shopper's side is kept from now on.
+			 */
 			turn(): void {
 				const picture = state.view.picture;
 				if ( ! picture?.turnable ) {

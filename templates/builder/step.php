@@ -114,8 +114,8 @@ defined( 'ABSPATH' ) || exit;
 				<button class="cbuild-button cbuild-found__clear" type="submit" value="" data-wp-bind--name="state.view.step.found.clear.name" data-wp-bind--hidden="!state.view.step.found.clear.shown" data-wp-text="state.view.step.found.clear.text"></button>
 			</p>
 		</div>
+		<?php // The count is said once, at the foot beside Show more (spec: 30 at a time). ?>
 		<div class="cbuild-step__bar" data-wp-bind--hidden="!state.view.step.shelf.sort.shown">
-			<span class="cbuild-step__count" data-wp-text="state.view.step.more.count"></span>
 			<label class="cbuild-sort">
 				<span class="cbuild-sort__label" data-wp-text="state.view.step.shelf.sort.label"></span>
 				<select class="cbuild-sort__select" data-wp-bind--name="state.view.step.shelf.sort.name" data-wp-bind--disabled="!state.view.step.shelf.sort.shown" data-wp-on--change="actions.narrow">
