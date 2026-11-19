@@ -19,6 +19,7 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Fixed
 
+- My builds' Undo says what it undoes, "Street setup is deleted. You can undo this for 15 minutes.", since a theme can show WooCommerce's notice far from it, and the deleted build is kept for Undo 15 minutes at most (Cowork; #66, #67; D-275).
 - The step rail says each step in one sentence, "Deck, done: Katie", "Trucks, current step", "Wheels, to come", where a screen reader heard the label and its state run together. Once a step has a pick, the next step is a link in the rail (spec: The step rail).
 - Focus stays clear of the bar however many lines the bar takes, on a phone and in a narrow column on a desktop (D-272).
 - On a phone, Next stays under the thumb when the first deck's answer arrives while the shopper is at the end of the step (D-267).

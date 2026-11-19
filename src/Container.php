@@ -323,7 +323,8 @@ final class Container {
 					},
 					static function () use ( $c ): Front\MyBuildsView {
 						return $c->get( Front\MyBuildsView::class );
-					}
+					},
+					$c->get( Port\Clock::class )
 				);
 			},
 			// The card's services are built on a page with a build in its address, when its head is printed.

@@ -8,7 +8,7 @@ From 0.5.0 the state route reads WooCommerce's own session cookie, where the bro
 
 ## Personal data
 
-From 0.8.0, saved builds are the only personal data the plugin keeps (spec: Privacy and data handling; D-217, D-220): the customer's user ID, the picks, assembly, the name they give the build, and when it was made and last saved. From 1.0.0, a build just deleted is kept in the customer's own WooCommerce session until the next view of My builds, for Undo (D-231): the same build, for one page view, and no other kind of data. Nothing else about a customer is stored, and a build link, Copy link or a picture holds nothing of them.
+From 0.8.0, saved builds are the only personal data the plugin keeps (spec: Privacy and data handling; D-217, D-220): the customer's user ID, the picks, assembly, the name they give the build, and when it was made and last saved. From 1.0.0, a build just deleted is kept in the customer's own WooCommerce session for Undo (D-231, D-275): the same build, and no other kind of data. It goes at the first of: 15 minutes after the Delete, My builds shown again after its Undo, the Undo, sign-out, or the session's end (48 hours by default). Before 1.0.0 it stayed until the session ended if My builds wasn't shown again. Nothing else about a customer is stored, and a build link, Copy link or a picture holds nothing of them.
 
 - **Export.** WordPress's Export Personal Data finds them by the account's email address: the exporter `creative-skateboard-builder`, "Saved builds", gives each build's name, kit, parts, assembly and both times (`PrivacyTest`).
 - **Erase.** Erase Personal Data deletes them all: the eraser `creative-skateboard-builder`. Nothing is kept, so nothing is reported retained (`PrivacyTest`).

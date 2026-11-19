@@ -9,7 +9,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-11-19T09:34:29+00:00\n"
+"POT-Creation-Date: 2026-11-19T09:57:34+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: creative-skateboard-builder\n"
@@ -183,8 +183,8 @@ msgstr ""
 #: src/Order/OrderHooks.php:252
 #: src/Order/OrderHooks.php:342
 #: src/Order/WorkshopWords.php:286
-#: templates/account/my-builds.php:33
-#: templates/account/my-builds.php:44
+#: templates/account/my-builds.php:43
+#: templates/account/my-builds.php:54
 #: templates/admin/tickets.php:72
 msgid "Build"
 msgstr ""
@@ -476,7 +476,7 @@ msgstr ""
 #: src/Admin/BuildTab.php:654
 #: src/Admin/BuildTab.php:943
 #: src/Privacy/PrivacyHooks.php:131
-#: templates/account/my-builds.php:67
+#: templates/account/my-builds.php:77
 msgid "Name"
 msgstr ""
 
@@ -2253,7 +2253,7 @@ msgstr ""
 
 #. translators: %s: the deleted build's name.
 #: src/Front/BuilderView.php:1429
-#: templates/account/my-builds.php:24
+#: templates/account/my-builds.php:34
 msgid "Undo"
 msgstr ""
 
@@ -2407,59 +2407,59 @@ msgstr ""
 msgid "%1$s - %2$s"
 msgstr ""
 
-#: src/Front/SavedBuildHooks.php:179
-#: src/Front/SavedBuildHooks.php:183
-#: src/Front/SavedBuildHooks.php:196
+#: src/Front/SavedBuildHooks.php:189
+#: src/Front/SavedBuildHooks.php:193
+#: src/Front/SavedBuildHooks.php:206
 msgid "My builds"
 msgstr ""
 
-#: src/Front/SavedBuildHooks.php:268
+#: src/Front/SavedBuildHooks.php:278
 msgid "That form has expired. Please try again."
 msgstr ""
 
-#: src/Front/SavedBuildHooks.php:283
-#: src/Front/SavedBuildHooks.php:323
-#: src/Front/SavedBuildHooks.php:439
+#: src/Front/SavedBuildHooks.php:293
+#: src/Front/SavedBuildHooks.php:333
+#: src/Front/SavedBuildHooks.php:451
 msgid "The build could not be saved just now. Please try again."
 msgstr ""
 
-#: src/Front/SavedBuildHooks.php:285
+#: src/Front/SavedBuildHooks.php:295
 msgid "That build is not among your saved builds."
 msgstr ""
 
-#: src/Front/SavedBuildHooks.php:287
+#: src/Front/SavedBuildHooks.php:297
 msgid "The build is renamed."
 msgstr ""
 
-#: src/Front/SavedBuildHooks.php:289
+#: src/Front/SavedBuildHooks.php:299
 msgid "The build is deleted."
 msgstr ""
 
-#: src/Front/SavedBuildHooks.php:306
-#: src/Front/SavedBuildHooks.php:315
+#: src/Front/SavedBuildHooks.php:316
+#: src/Front/SavedBuildHooks.php:325
 msgid "The build is back in My builds."
 msgstr ""
 
-#: src/Front/SavedBuildHooks.php:309
+#: src/Front/SavedBuildHooks.php:319
 msgid "That build can no longer be brought back."
 msgstr ""
 
 #. translators: %s: how many builds a customer may keep, such as 100.
-#: src/Front/SavedBuildHooks.php:320
-#: src/Front/SavedBuildHooks.php:441
+#: src/Front/SavedBuildHooks.php:330
+#: src/Front/SavedBuildHooks.php:453
 #, php-format
 msgid "You have %s saved builds, the most kept. Delete one to save another."
 msgstr ""
 
-#: src/Front/SavedBuildHooks.php:437
+#: src/Front/SavedBuildHooks.php:449
 msgid "The build is saved. It is listed below."
 msgstr ""
 
-#: src/Front/SavedBuildHooks.php:438
+#: src/Front/SavedBuildHooks.php:450
 msgid "Your saved build is updated."
 msgstr ""
 
-#: src/Front/SavedBuildHooks.php:442
+#: src/Front/SavedBuildHooks.php:454
 msgid "This build could not be saved: a part is missing or no longer fits. Open it in the builder to check it."
 msgstr ""
 
@@ -3511,74 +3511,88 @@ msgid "The Creative Skateboard Builder update did not match its published checks
 msgstr ""
 
 #. translators: %s: the deleted build's name.
-#: templates/account/my-builds.php:24
+#: templates/account/my-builds.php:28
+#, php-format
+msgid "%s is deleted."
+msgstr ""
+
+#. translators: %s: a number of minutes, such as 15.
+#: templates/account/my-builds.php:31
+#, php-format
+msgid "You can undo this for %s minute."
+msgid_plural "You can undo this for %s minutes."
+msgstr[0] ""
+msgstr[1] ""
+
+#. translators: %s: the deleted build's name.
+#: templates/account/my-builds.php:34
 #, php-format
 msgid "Undo deleting %s"
 msgstr ""
 
-#: templates/account/my-builds.php:28
+#: templates/account/my-builds.php:38
 msgid "You have no saved builds yet. Save one from the review step of the builder, and it waits for you here."
 msgstr ""
 
-#: templates/account/my-builds.php:34
-#: templates/account/my-builds.php:52
+#: templates/account/my-builds.php:44
+#: templates/account/my-builds.php:62
 msgid "Total today"
 msgstr ""
 
-#: templates/account/my-builds.php:35
-#: templates/account/my-builds.php:59
+#: templates/account/my-builds.php:45
+#: templates/account/my-builds.php:69
 msgid "Saved"
 msgstr ""
 
-#: templates/account/my-builds.php:36
-#: templates/account/my-builds.php:60
+#: templates/account/my-builds.php:46
+#: templates/account/my-builds.php:70
 msgid "Actions"
 msgstr ""
 
-#: templates/account/my-builds.php:56
+#: templates/account/my-builds.php:66
 msgid "A part has changed since you saved it. Open the build to see which."
 msgstr ""
 
 #. translators: %s: the saved build's name.
-#: templates/account/my-builds.php:62
+#: templates/account/my-builds.php:72
 #, php-format
 msgid "Open %s"
 msgstr ""
 
 #. translators: %s: the saved build's name.
-#: templates/account/my-builds.php:62
+#: templates/account/my-builds.php:72
 msgid "Open"
 msgstr ""
 
-#: templates/account/my-builds.php:64
+#: templates/account/my-builds.php:74
 msgid "The shop no longer sells this kit."
 msgstr ""
 
 #. translators: %s: the saved build's name.
-#: templates/account/my-builds.php:68
+#: templates/account/my-builds.php:78
 #, php-format
 msgid "Name of %s"
 msgstr ""
 
 #. translators: %s: the saved build's name.
-#: templates/account/my-builds.php:73
+#: templates/account/my-builds.php:83
 #, php-format
 msgid "Rename %s"
 msgstr ""
 
 #. translators: %s: the saved build's name.
-#: templates/account/my-builds.php:73
+#: templates/account/my-builds.php:83
 msgid "Rename"
 msgstr ""
 
 #. translators: %s: the saved build's name.
-#: templates/account/my-builds.php:80
+#: templates/account/my-builds.php:90
 #, php-format
 msgid "Delete %s"
 msgstr ""
 
 #. translators: %s: the saved build's name.
-#: templates/account/my-builds.php:80
+#: templates/account/my-builds.php:90
 msgid "Delete"
 msgstr ""
 

@@ -17,6 +17,7 @@ use CreativeBranding\SkateboardBuilder\Service\SavedBuilds;
 use CreativeBranding\SkateboardBuilder\Support\Options;
 use CreativeBranding\SkateboardBuilder\Support\Tables;
 use CreativeBranding\SkateboardBuilder\Tests\Support\CartTestCase;
+use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\FakeClock;
 
 /**
  * Roadmap, milestone 8: "saved builds under My builds: save, rename, delete and open, with nonces; owner-only;
@@ -278,6 +279,38 @@ final class SavedBuildsPageTest extends CartTestCase {
 		self::assertSame( array( 'The build is back in My builds.' ), self::notices() );
 		self::assertCount( 1, $this->service( SavedBuilds::class )->of( $this->ana ) );
 		self::assertStringNotContainsString( 'cbuild-my-builds__undo', $this->page(), 'offered once' );
+	}
+
+	// Cowork's review of 0.9.0, F1 (#66): a theme can move WooCommerce's notice far from Undo, so the form says what it
+	// undoes. F2 (#67): the copy is kept 15 minutes from the Delete, not until the session ends (D-275).
+	public function test_undo_says_which_build_it_brings_back_and_is_offered_for_fifteen_minutes(): void {
+		$clock = new FakeClock();
+		$hooks = $this->service( SavedBuildHooks::class );
+		$this->container()->set(
+			SavedBuildHooks::class,
+			new SavedBuildHooks(
+				fn(): SavedBuilds => $this->service( SavedBuilds::class ),
+				fn(): MyBuildsView => $this->service( MyBuildsView::class ),
+				$clock
+			)
+		);
+		try {
+			[ , $fields, $page ] = $this->deleteAndOfferUndo( 'Street setup' );
+			self::assertStringContainsString( 'Street setup is deleted. You can undo this for 15 minutes.', wp_strip_all_tags( $page ) );
+			self::assertStringContainsString( 'aria-label="Undo deleting Street setup">Undo</button>', $page, 'the button keeps its name' );
+			$clock->advance( 15 * 60 - 1 );
+			$this->post( $fields );
+			self::assertSame( array( 'The build is back in My builds.' ), self::notices(), 'within the 15 minutes' );
+
+			$this->service( SavedBuilds::class )->delete( $this->ana, $this->service( SavedBuilds::class )->of( $this->ana )[0]->uuid );
+			[ , $fields ] = $this->deleteAndOfferUndo( 'Late setup' );
+			$clock->advance( 15 * 60 + 1 );
+			$this->post( $fields );
+			self::assertSame( array( 'That build can no longer be brought back.' ), self::notices( 'error' ), 'not after them' );
+			self::assertSame( array(), $this->service( SavedBuilds::class )->of( $this->ana ) );
+		} finally {
+			$this->container()->set( SavedBuildHooks::class, $hooks );
+		}
 	}
 
 	public function test_undo_brings_back_a_build_whose_part_went_since_as_it_was(): void {
