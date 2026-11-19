@@ -947,8 +947,8 @@ test.describe( 'The builder with JavaScript', () => {
 		expect( await stayed( page ) ).toBe( true );
 
 		await page
-			.getByRole( 'link', { name: 'Back', exact: false } )
-			.first()
+			// The bar's Back, named for the step it goes to; the panel's head has Back to the shop before it.
+			.getByRole( 'link', { name: /^Back: / } )
 			.click();
 		await expect( heading( page ) ).toHaveText(
 			'Step 1 of 7: Choose your deck'
@@ -993,8 +993,8 @@ test.describe( 'The builder with JavaScript', () => {
 		// The store takes over the reloaded page: Back is drawn, not loaded, and the deck is still picked.
 		await mark( page );
 		await page
-			.getByRole( 'link', { name: 'Back', exact: false } )
-			.first()
+			// The bar's Back, named for the step it goes to; the panel's head has Back to the shop before it.
+			.getByRole( 'link', { name: /^Back: / } )
 			.click();
 		await expect( heading( page ) ).toHaveText(
 			'Step 1 of 7: Choose your deck'
@@ -2804,7 +2804,7 @@ test.describe( 'The board turned over', () => {
 // under Kadence the filters' drawer heading showed on a desktop and the filters took its primary button colour.
 test.describe( "A kit's own page", () => {
 	for ( const theme of [ 'kadence', 'storefront', 'twentytwentyfive' ] ) {
-		test( `gives the builder the content's width on ${ theme }, with no gallery and no price under the title`, async ( {
+		test( `gives the builder the content's width on ${ theme }, with no gallery and no price under the title, and one h1`, async ( {
 			page,
 			context,
 			baseURL,
@@ -2817,6 +2817,20 @@ test.describe( "A kit's own page", () => {
 			await page.goto( '/product/cart-test-kit/' );
 			const builder = page.locator( '.cbuild' ).first();
 			await expect( builder ).toBeVisible();
+			// One h1, the builder's, where it takes the place of the theme's title, and a way back to the shop (spec:
+			// Where it renders). A classic theme's summary keeps no title or form of its own, and the builder is
+			// before it, not in it.
+			await expect( page.locator( 'h1' ) ).toHaveCount( 1 );
+			await expect( builder.locator( 'h1.cbuild__title' ) ).toHaveText(
+				'Cart test kit'
+			);
+			await expect(
+				builder.getByRole( 'link', { name: 'Back to the shop' } )
+			).toHaveAttribute( 'href', /\/shop\/$/ );
+			await expect( page.locator( '.summary .cbuild' ) ).toHaveCount( 0 );
+			await expect( page.locator( '.summary form.cart' ) ).toHaveCount(
+				0
+			);
 			const width = ( await builder.boundingBox() )?.width ?? 0;
 			// The theme's main column, which on Storefront sits beside its sidebar.
 			const main =
@@ -2916,6 +2930,12 @@ test.describe( "A kit's own page", () => {
 			expect( width, 'the builder has the row' ).toBeGreaterThan(
 				across * 0.95
 			);
+			// The template's own title is the page's one h1: the builder adds none, and still has its way back.
+			await expect( page.locator( 'h1' ) ).toHaveCount( 1 );
+			await expect( builder.locator( 'h1' ) ).toHaveCount( 0 );
+			await expect(
+				builder.getByRole( 'link', { name: 'Back to the shop' } )
+			).toBeVisible();
 			// The title, then the builder: nothing of the gallery's above them.
 			const title = await page.locator( '#buy-box h1' ).boundingBox();
 			expect( title?.y ?? 9999 ).toBeLessThan(

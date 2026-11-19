@@ -832,4 +832,51 @@ final class BuilderPageTest extends IntegrationTestCase {
 		( new PageHooks( fn(): BuilderPage => $this->page(), $this->service( \CreativeBranding\SkateboardBuilder\Front\BuilderPlace::class ) ) )->block();
 		self::assertSame( '', trim( do_blocks( '<!-- wp:creative-skateboard-builder/builder /-->' ) ) );
 	}
+
+	// Spec: Where it renders. A block theme gives a kit's page the plugin's template; a classic theme gets the builder
+	// before the summary, with the product's name as the h1 in place of the summary's title.
+	public function test_a_kits_page_takes_the_kit_template_in_a_block_theme_and_the_page_width_in_a_classic_one(): void {
+		$hooks = new PageHooks( fn(): BuilderPage => $this->page(), $this->service( \CreativeBranding\SkateboardBuilder\Front\BuilderPlace::class ) );
+		$template = get_block_template( 'creative-skateboard-builder//' . PageHooks::TEMPLATE );
+		self::assertNotNull( $template, 'registered on init' );
+		self::assertStringContainsString( '<!-- wp:creative-skateboard-builder/builder {"title":true,"align":"full"} /-->', $template->content );
+		self::assertStringContainsString( '<!-- wp:woocommerce/product-details', $template->content, 'the description, specs and reviews under it' );
+
+		$theme = get_stylesheet();
+		self::assertTrue( wp_get_theme( 'twentytwentyfive' )->exists(), 'wp-env installs Twenty Twenty-Five' );
+		switch_theme( 'twentytwentyfive' );
+		$this->go_to( get_permalink( $this->kit ) );
+		self::assertSame( array( PageHooks::TEMPLATE, 'single-product', 'single' ), $hooks->hierarchy( array( 'single-product', 'single' ) ) );
+		$this->go_to( get_permalink( $this->parts['deck 8.0'] ) );
+		self::assertSame( array( 'single-product' ), $hooks->hierarchy( array( 'single-product' ) ), 'a product that is no kit keeps its template' );
+		$page = self::factory()->post->create( array( 'post_type' => 'page' ) );
+		add_filter( 'cbuild_builder_url', static fn(): string => (string) get_permalink( $page ) );
+		$this->go_to( get_permalink( $this->kit ) );
+		self::assertSame( array( 'single-product' ), $hooks->hierarchy( array( 'single-product' ) ), 'and so does a kit whose builder is elsewhere' );
+		remove_all_filters( 'cbuild_builder_url' );
+		switch_theme( $theme );
+		$this->go_to( get_permalink( $this->kit ) );
+		self::assertSame( array( 'single-product' ), $hooks->hierarchy( array( 'single-product' ) ), 'a classic theme has no block templates' );
+
+		// The template's block names no kit: on a kit's page it is that kit's, with its name as the h1.
+		unregister_block_type( PageHooks::BLOCK );
+		$hooks->block();
+		$this->go_to( get_permalink( $this->kit ) );
+		$dom = self::dom( do_blocks( '<!-- wp:creative-skateboard-builder/builder {"title":true} /-->' ) );
+		self::assertSame( 'Complete', self::text( $dom, '//h1[@class="cbuild__title"]' ) );
+		self::assertSame( (string) wc_get_page_permalink( 'shop' ), $dom->query( '//a[@class="cbuild__back"]' )->item( 0 )?->getAttribute( 'href' ) );
+
+		$hooks->kitLayout();
+		self::assertFalse( has_action( 'woocommerce_single_product_summary', 'woocommerce_template_single_title' ), 'the builder holds the h1' );
+		self::assertFalse( has_action( 'woocommerce_single_product_summary', 'woocommerce_template_single_add_to_cart' ), 'and the form' );
+		self::assertSame( 5, has_action( 'woocommerce_before_single_product_summary', array( $hooks, 'kitWide' ) ), 'before the summary, at the page\'s width' );
+		add_action( 'woocommerce_single_product_summary', 'woocommerce_template_single_title', 5 );
+		add_action( 'woocommerce_single_product_summary', 'woocommerce_template_single_add_to_cart', 30 );
+		remove_all_actions( 'woocommerce_before_single_product_summary' );
+		add_action( 'woocommerce_before_single_product_summary', 'woocommerce_show_product_sale_flash', 10 );
+		add_action( 'woocommerce_before_single_product_summary', 'woocommerce_show_product_images', 20 );
+		add_action( 'woocommerce_single_product_summary', 'woocommerce_template_single_price', 10 );
+		remove_all_filters( 'woocommerce_get_price_html' );
+		remove_all_actions( 'body_class' );
+	}
 }

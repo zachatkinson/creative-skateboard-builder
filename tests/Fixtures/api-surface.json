@@ -131,6 +131,10 @@
             "kit": {
                 "type": "integer",
                 "default": 0
+            },
+            "title": {
+                "type": "boolean",
+                "default": false
             }
         }
     },

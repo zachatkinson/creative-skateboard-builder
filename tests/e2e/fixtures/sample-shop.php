@@ -7,7 +7,7 @@
  * tests expect: run it by hand, `npx wp-env run cli wp eval-file
  * wp-content/plugins/creative-skateboard-builder/tests/e2e/fixtures/sample-shop.php`. A second run makes nothing new.
  *
- * @package CreativeSkateboardBuilder
+ * @package CreativeBranding\SkateboardBuilder\Tests
  */
 
 declare(strict_types=1);

@@ -608,6 +608,29 @@
 	cursor: pointer;
 }
 
+/* The panel's head: the way back to the shop, small, and the product's name where the builder holds the page's h1,
+   above the step's heading and quieter than it (spec: Where it renders). */
+:where(.cbuild__head) {
+	display: grid;
+	gap: 0.25rem;
+	margin-block-end: var(--cbuild-gap-small);
+}
+
+:where(.cbuild__back) {
+	justify-self: start;
+	font-size: var(--cbuild-small);
+}
+
+/* One class of weight, over a theme's own h1 rule, which is the page title's and sized for it; a theme still wins
+   with a class of its own. */
+.cbuild :where(.cbuild__title) {
+	margin: 0;
+	color: var(--cbuild-muted);
+	font-size: 1rem;
+	font-weight: 600;
+	line-height: 1.3;
+}
+
 /* The cards: a native radio each, and its label the whole card. */
 :where(.cbuild-cards) {
 	display: grid;

@@ -3412,3 +3412,14 @@ On a phone, where a card spans the panel, the photo sits beside the words rather
 
 **Why:** the variation's name repeats the size the width question already answered, and the shared, differing attributes are what a shopper sees on the photo. An owner setting for a look's name would be a field per photo; the spec says looks need no admin settings.
 
+### D-274 · Where the builder renders: the kit template, before a classic summary, and the panel's head · 2026-11-19
+
+The spec sets where the builder renders (Where it renders; D-238). What it left to the build:
+
+- **The template's slug** is `cbuild-kit`, registered as `creative-skateboard-builder//cbuild-kit` with the title "Skateboard kit". A product's own template is `single-product-<slug>`, so no product's slug can name it. It is put first in `single_template_hierarchy` only in a block theme, on a kit's own page, and not where `cbuild_builder_url` sends the visitor elsewhere. Its main group has the default layout, so the builder spans the page; the product's details sit in a constrained group under it.
+- **The template's block names no kit.** From 1.0.0 a Builder block with `kit` 0 on a kit's own page is that kit's builder; anywhere else it still renders nothing. The block gains `title` (boolean, default false) for a template with no title of its own.
+- **In a classic theme** the builder renders at `woocommerce_before_single_product_summary`, priority 5, and the summary's title and add-to-cart form are removed for kits (WooCommerce 11.3.0, `includes/wc-template-hooks.php:126` and `:131`). A page builder's template that calls the form itself still gets the builder there, once, and the template's own title stays the page's one h1.
+- **The panel's head** holds "Back to the shop" (the shop page, `wc_get_page_permalink( 'shop' )`), small, and the product's name as the h1 in the muted body type, under the rail and above the step's question. The rule has one class of weight, `.cbuild :where(.cbuild__title)`, so a theme's bare `h1` rule, sized for a page title, doesn't make it the loudest thing in the panel, while a theme's own class still wins.
+
+**Why:** the question a shopper answers is the step's; the product's name only says where they are. A full-size h1 above "Choose your deck" pushed the step under the fold of a 900 px screen.
+

@@ -9,7 +9,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-11-19T08:24:59+00:00\n"
+"POT-Creation-Date: 2026-11-19T09:09:51+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: creative-skateboard-builder\n"
@@ -1822,12 +1822,12 @@ msgstr ""
 msgid "The file has no %s column. Add one, or match parts by the other with --key."
 msgstr ""
 
-#: src/Front/BuilderPage.php:225
+#: src/Front/BuilderPage.php:233
 msgid "This builder isn't available right now."
 msgstr ""
 
 #. translators: %s: why the builder could not be shown, as the error said it.
-#: src/Front/BuilderPage.php:229
+#: src/Front/BuilderPage.php:237
 #, php-format
 msgid "Shown to shop managers only: %s"
 msgstr ""
@@ -2379,6 +2379,14 @@ msgstr ""
 
 #: src/Front/MyBuildsView.php:163
 msgid "A saved build"
+msgstr ""
+
+#: src/Front/PageHooks.php:277
+msgid "Skateboard kit"
+msgstr ""
+
+#: src/Front/PageHooks.php:278
+msgid "A kit product: its builder at the page's width, then its description, specs and reviews."
 msgstr ""
 
 #. translators: 1: the builder's step, such as "Step 2 of 7: Trucks". 2: the page's own title, such as "Build a complete - Skatehouse".
@@ -4045,6 +4053,10 @@ msgstr ""
 #: templates/admin/tickets.php:133
 #: templates/builder/progress.php:11
 msgid "Steps"
+msgstr ""
+
+#: templates/builder/builder.php:25
+msgid "Back to the shop"
 msgstr ""
 
 #: templates/builder/review.php:71

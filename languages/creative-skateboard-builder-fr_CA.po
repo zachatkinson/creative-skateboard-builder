@@ -1817,12 +1817,12 @@ msgstr "%s n’est pas un fichier .csv."
 msgid "The file has no %s column. Add one, or match parts by the other with --key."
 msgstr "Le fichier n’a pas de colonne %s. Ajoutez-en une, ou associez les pièces par l’autre colonne avec --key."
 
-#: src/Front/BuilderPage.php:225
+#: src/Front/BuilderPage.php:233
 msgid "This builder isn't available right now."
 msgstr "Ce configurateur n’est pas disponible pour le moment."
 
 #. translators: %s: why the builder could not be shown, as the error said it.
-#: src/Front/BuilderPage.php:229
+#: src/Front/BuilderPage.php:237
 #, php-format
 msgid "Shown to shop managers only: %s"
 msgstr "Affiché aux gestionnaires du magasin seulement : %s"
@@ -4082,3 +4082,15 @@ msgstr "%s de moins"
 #, php-format
 msgid "Also in %s"
 msgstr "Aussi en %s"
+
+#: src/Front/PageHooks.php:277
+msgid "Skateboard kit"
+msgstr "Planche en kit"
+
+#: src/Front/PageHooks.php:278
+msgid "A kit product: its builder at the page's width, then its description, specs and reviews."
+msgstr "Un produit en kit : son configurateur sur toute la largeur de la page, puis sa description, ses caractéristiques et ses avis."
+
+#: templates/builder/builder.php:25
+msgid "Back to the shop"
+msgstr "Retour à la boutique"

@@ -20,6 +20,13 @@ defined( 'ABSPATH' ) || exit;
 		<?php // The panel: the step, scrolling inside itself on a desktop, and the footer pinned at its foot. ?>
 		<div class="cbuild__panel">
 			<div class="cbuild__body">
+				<?php // The panel's head: the way back to the shop, and the product's name where the builder holds the page's h1. ?>
+				<div class="cbuild__head">
+					<a class="cbuild__back" href="<?php echo esc_url( $head['shop'] ); ?>"><?php esc_html_e( 'Back to the shop', 'creative-skateboard-builder' ); ?></a>
+					<?php if ( '' !== $head['title'] ) : ?>
+						<h1 class="cbuild__title"><?php echo esc_html( $head['title'] ); ?></h1>
+					<?php endif; ?>
+				</div>
 				<?php require __DIR__ . '/errors.php'; ?>
 				<h2 class="cbuild__heading" id="cbuild-heading" tabindex="-1"><span class="screen-reader-text" data-wp-text="state.view.count"></span> <span data-wp-text="state.view.heading"></span></h2>
 				<p class="cbuild-step__lead" data-wp-bind--hidden="!state.view.step.hasLead" data-wp-text="state.view.step.lead"></p>

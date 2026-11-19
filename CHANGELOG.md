@@ -14,6 +14,7 @@ All notable changes to this project are documented here. The format follows [Kee
 
 - `--cbuild-bar-size`, which the builder sets on the page's root to the bar's height while the bar sticks over the page.
 - On the state route, each look of the `shelf` names its product (`name`), its `brand` and what tells it from the product's other looks (`look`), and an option's `delta` says its `change` as a card does under the full price (D-249, D-273).
+- A kit's page takes the page's width (D-274). In a block theme it takes a template of the plugin's, "Skateboard kit", which the shop can edit in the Site Editor; in a classic theme the builder sits before the product's summary, whose title and form go. The builder prints the product's name as the page's h1 where it takes the theme's title's place, and has a link back to the shop. The Builder block gains `title`, and a block with no kit on a kit's page is that kit's.
 - `--cbuild-top`, for a theme's sticky header to keep the stage and the panel clear of it, and `--cbuild-stage-height`, the stage's height on a phone.
 
 ### Fixed
