@@ -46,7 +46,51 @@
 			contrast-color(currentcolor)
 		);
 		--cbuild-on-ground: var(--wp--preset--color--contrast, currentcolor);
+		--cbuild-on-accent: var(
+			--wp--preset--color--base,
+			contrast-color(currentcolor)
+		);
 	}
+}
+
+/*
+ * A fill in the accent. Where the theme names no colour presets (a classic theme), the accent is the text's colour,
+ * `currentcolor`, which a custom property resolves where it is used: a fill that set its own `color` would paint its
+ * ground the colour of its words. So a fill keeps the text as its `color`, and so as its ground, and paints its words
+ * in the colour on the accent, which contrasts with the text where the browser can work that out.
+ */
+.cbuild .cbuild-progress__step--current .cbuild-progress__label,
+.cbuild .cbuild-chip[aria-pressed="true"],
+.cbuild .cbuild-chips__control:checked + .cbuild-chip,
+.cbuild .cbuild__skip {
+	color: var(--cbuild-text);
+	-webkit-text-fill-color: var(--cbuild-on-accent);
+}
+
+/* The builder's grids that are lists, the rail among them: a classic theme's numbers, bullets and indent for a list
+   stay out of them. The lists of words, a card's notes and the like, keep the theme's. */
+.cbuild .cbuild-progress__list,
+.cbuild .cbuild-cards,
+.cbuild .cbuild-presets__tiles,
+.cbuild .cbuild-picture__items,
+.cbuild .cbuild-review__items,
+.cbuild .cbuild-changes__kept,
+.cbuild .cbuild-changes__gone {
+	margin: 0;
+	padding-inline-start: 0;
+	list-style: none;
+}
+
+/* Their items keep their own padding: a card's is its frame. */
+.cbuild .cbuild-progress__step,
+.cbuild .cbuild-cards > li,
+.cbuild .cbuild-presets__tiles > li,
+.cbuild .cbuild-picture__items > li,
+.cbuild .cbuild-review__items > li,
+.cbuild .cbuild-changes__kept > li,
+.cbuild .cbuild-changes__gone > li {
+	margin: 0;
+	list-style: none;
 }
 
 /* Outside `:where()`: a theme's `display` must not show what the builder hides. */
@@ -378,7 +422,6 @@
 :where(.cbuild-progress__step--current .cbuild-progress__label) {
 	border-color: var(--cbuild-accent);
 	background: var(--cbuild-accent);
-	color: var(--cbuild-on-accent);
 }
 
 /* The error summary. */
@@ -491,7 +534,6 @@
 	inset-inline-start: 0;
 	padding: var(--cbuild-gap-small) 1rem;
 	background: var(--cbuild-accent);
-	color: var(--cbuild-on-accent);
 	font-weight: 600;
 	white-space: nowrap;
 }
@@ -697,7 +739,6 @@
 .cbuild .cbuild-chips__control:checked + .cbuild-chip {
 	border-color: var(--cbuild-accent);
 	background: var(--cbuild-accent);
-	color: var(--cbuild-on-accent);
 }
 
 .cbuild .cbuild-chip[aria-pressed="true"] .cbuild-chip__count,
@@ -1057,8 +1098,8 @@
 
 /*
  * The picture on the stage: the heading at the top, the board filling the space under it, centred, and the button to
- * turn it over in the corner. On a phone the board is turned a quarter turn, so it fills the stage's width rather
- * than its short height; the written description is the same (spec: Phone). A board is drawn left to right in
+ * turn it over in the corner. On a phone or a tablet the board is turned a quarter turn, so it fills the stage's width
+ * rather than its short height; the written description is the same (spec: Phone). A board is drawn left to right in
  * either direction (D-203), so the turn is too.
  */
 :where(.cbuild__stage .cbuild-picture) {
@@ -1093,7 +1134,8 @@
 	margin: 0;
 }
 
-@container cbuild (max-width: 47.99rem) {
+/* Stacked, on a tablet as on a phone, the stage is a short strip on top: the board turned fills its width (D-280). */
+@container cbuild (max-width: 63.99rem) {
 	:where(.cbuild__stage) :where(.cbuild-board:not(.cbuild-board--bar)) {
 		--cbuild-board-size: min(calc(100cqi - 3rem), 32rem);
 

@@ -810,8 +810,8 @@ final class BuilderTest extends TestCase {
 		return array(
 			'width'   => array(
 				'shown'   => false,
-				'asking'  => true,
-				'legend'  => 'What width do you ride?',
+				'asking'  => false,
+				'legend'  => 'Width',
 				'name'    => 'cbuild[_width]',
 				'options' => array(),
 				'hasNone' => false,

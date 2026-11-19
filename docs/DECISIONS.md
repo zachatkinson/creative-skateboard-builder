@@ -3476,3 +3476,13 @@ Spec (configurator): One card per look, "The picked card is followed by a radio 
 
 **Why:** a key of its own, such as `_sized`, would have needed a rule for which of two values for one slot wins, on every way a link is read. Two radios of one name already say it.
 
+### D-280 · On a tablet the board is turned on the stage as on a phone, and fills in the accent paint their words, not their colour · 2026-11-19
+
+Found in the visual baselines remade for 1.0.0, under Storefront and Kadence, which name no colour presets.
+
+- **The tablet's board.** Spec (configurator): Tablet puts the stage on top at about 40 % of the height; Phone turns the board a quarter turn "where the board reads better sideways in that space". Upright in a tablet's strip, the board ran past the stage's foot, under the heading and the chips for parts with no layer (Storefront at 1280 by 900, whose content is 786 pixels wide: the board's foot at 476 pixels, the stage's at 378). Wherever the layout is stacked, under 64rem, the board is turned, as on a phone. The written description does not change.
+- **Fills in the accent.** Where a theme has no `--wp--preset--color--contrast`, `--cbuild-accent` is the text's colour, `currentcolor`, which a custom property resolves where it is used, so a fill that set its own `color` to `--cbuild-on-accent` painted its ground the same colour as its words (contrast 1: the rail's current step and a pressed width or chip read as blank pills). A fill now keeps the text as its `color`, so as its ground, and paints its words with `-webkit-text-fill-color` in `--cbuild-on-accent`, which falls back to `contrast-color(currentcolor)` where the browser has it, then `Canvas`. The documented fallbacks of both properties (HOOKS.md) are unchanged. The step's buttons are left as they were: a classic theme's own button colours win there, and painting their words would fight them.
+- **The theme's list rules.** The builder's lists that are grids (the rail, the cards, the ready builds, the picture's items, the review's lines, the changed build's lists) take no theme numbers, bullets or indent; their items keep their own padding.
+- **The deck step** shows only its width question until a width is picked: the cards' frame with "Showing 0 of 0" is hidden (spec: The deck's width first).
+- **The visual test** keeps the stage's and the layout's heights at the screen's while the screen grows to the page's height for the picture. Sized by `svh`, they otherwise grew with it.
+

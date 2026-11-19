@@ -270,6 +270,12 @@ final class BuilderShelfTest extends TestCase {
 		}
 	}
 
+	public function test_only_the_deck_step_without_a_width_is_asking_it(): void {
+		self::assertTrue( $this->step( BuildLink::read( array() ) )['shelf']['width']['asking'], 'the deck step, no width yet' );
+		self::assertFalse( $this->step( BuildLink::read( array( '_width' => '8.25in' ) ) )['shelf']['width']['asking'], 'a width picked' );
+		self::assertFalse( $this->step( BuildLink::read( array( 'deck' => '102', 'step' => 'trucks' ) ) )['shelf']['width']['asking'], 'a step with no width question, whose cards show' );
+	}
+
 	public function test_a_width_with_nothing_in_stock_is_dimmed_and_named(): void {
 		$parts                  = Shop::parts();
 		$parts[ SlotKey::DECK ] = array_map( static fn( Part $part ): Part => 102 === $part->id ? Shop::priced( $part, $part->price, false, 0 ) : $part, $parts[ SlotKey::DECK ] );

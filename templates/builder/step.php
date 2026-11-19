@@ -90,8 +90,11 @@ defined( 'ABSPATH' ) || exit;
 			</fieldset>
 		</template>
 	</details>
-	<?php // The step's heading names its group: the count and the question, one name for the eye and the ear (D-269). ?>
-	<fieldset class="cbuild-step__fieldset" aria-labelledby="cbuild-heading">
+	<?php
+	// The step's heading names its group: the count and the question, one name for the eye and the ear (D-269). While
+	// the deck step asks the width, there is nothing in it to show (spec: The deck's width first).
+	?>
+	<fieldset class="cbuild-step__fieldset" aria-labelledby="cbuild-heading" data-wp-bind--hidden="state.view.step.shelf.width.asking">
 		<p class="cbuild-step__help" data-wp-bind--hidden="!state.view.step.hasHelp" data-wp-text="state.view.step.help"></p>
 		<p class="cbuild-step__empty" data-wp-bind--hidden="!state.view.step.empty" data-wp-text="state.view.step.emptyText"></p>
 		<?php // A search that lists nothing says why and offers the way on (spec: Search, when nothing is found). ?>

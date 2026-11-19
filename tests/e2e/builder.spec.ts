@@ -412,6 +412,25 @@ test.describe( 'The builder without JavaScript', () => {
 		).toBeChecked();
 	} );
 
+	// Spec: The deck's width first. The step opens on its question alone: no count of decks, and no frame round none.
+	test( 'opens the deck step on the width question alone, with no count until a width is picked', async ( {
+		page,
+	}, info ) => {
+		await page.goto( fixture().page );
+		await expect( page.locator( '.cbuild-width' ) ).toBeVisible();
+		await expect( page.locator( '.cbuild-step__fieldset' ) ).toBeHidden();
+		await expect(
+			page.locator( '.cbuild-step__count:visible' )
+		).toHaveCount( 0 );
+
+		await ride( page, inLocale( info.project.name, '8.25″' ) );
+		await expect( page.locator( '.cbuild-step__fieldset' ) ).toBeVisible();
+		// "Showing 1 of 1", in any language.
+		await expect(
+			page.locator( '.cbuild-step__count:visible' ).first()
+		).toHaveText( /1\D+1/ );
+	} );
+
 	test( 'a width pressed lists only its decks and stays on the step, and another width lists its own (D-241)', async ( {
 		page,
 	} ) => {
@@ -967,6 +986,24 @@ test.describe( 'The builder with JavaScript', () => {
 		await mark( page );
 	} );
 
+	// Spec: The deck's width first. The step opens on its question alone: no count of decks, and no frame round none.
+	test( 'opens the deck step on the width question alone, with no count until a width is picked, with JavaScript', async ( {
+		page,
+	}, info ) => {
+		await page.goto( fixture().page );
+		await expect( page.locator( '.cbuild-width' ) ).toBeVisible();
+		await expect( page.locator( '.cbuild-step__fieldset' ) ).toBeHidden();
+		await expect(
+			page.locator( '.cbuild-step__count:visible' )
+		).toHaveCount( 0 );
+
+		await ride( page, inLocale( info.project.name, '8.25″' ) );
+		await expect( page.locator( '.cbuild-step__fieldset' ) ).toBeVisible();
+		// "Showing 1 of 1", in any language.
+		await expect(
+			page.locator( '.cbuild-step__count:visible' ).first()
+		).toHaveText( /1\D+1/ );
+	} );
 	test( 'moves from step to step without loading the page, and Back and Forward show the steps again', async ( {
 		page,
 	} ) => {
@@ -2344,6 +2381,123 @@ test( 'the width question opens a guide by shoe size', async ( { page } ) => {
 
 // Cowork's review of 0.9.0, F3 (#68): on the demo's dark theme a native radio drew an unpicked card's as a white disc
 // and a picked one's as a white ring, so the unpicked one looked filled in.
+// A classic theme names no colour presets, so the accent is the text's colour. A fill in it once painted its words in
+// the same colour as itself, and the theme's list numbers and indent showed beside the rail's own numbers.
+test.describe( 'Fills in the accent on a classic theme', () => {
+	for ( const [ theme, scheme ] of [
+		[ 'storefront', 'light' ],
+		[ 'kadence', 'dark' ],
+	] as const ) {
+		test( `the current step and a pressed width read on ${ theme }, ${ scheme }, and the rail has no list numbers`, async ( {
+			page,
+			context,
+			baseURL,
+		} ) => {
+			const url = baseURL || 'http://localhost:8898';
+			await context.addCookies( [
+				{ name: 'cbuild_e2e_theme', value: theme, url },
+				{ name: 'cbuild_e2e_scheme', value: scheme, url },
+			] );
+			await page.goto( linkTo( { _width: '8in' } ) );
+			// The contrast between a fill's words, as painted, and its ground.
+			const contrast = ( selector: string ) =>
+				page
+					.locator( selector )
+					.first()
+					.evaluate( ( element ) => {
+						const luminance = ( colour: string ) => {
+							const [ r, g, b ] = (
+								colour.match( /[\d.]+/g ) ?? []
+							)
+								.slice( 0, 3 )
+								.map( ( part ) => {
+									const c = Number( part ) / 255;
+									return c <= 0.04045
+										? c / 12.92
+										: ( ( c + 0.055 ) / 1.055 ) ** 2.4;
+								} );
+							return (
+								0.2126 * ( r ?? 0 ) +
+								0.7152 * ( g ?? 0 ) +
+								0.0722 * ( b ?? 0 )
+							);
+						};
+						const own = getComputedStyle( element );
+						const words = luminance(
+							own.webkitTextFillColor || own.color
+						);
+						const ground = luminance( own.backgroundColor );
+						return (
+							( Math.max( words, ground ) + 0.05 ) /
+							( Math.min( words, ground ) + 0.05 )
+						);
+					} );
+			expect(
+				await contrast(
+					'.cbuild-progress__step--current .cbuild-progress__label'
+				),
+				'the current step'
+			).toBeGreaterThanOrEqual( 4.5 );
+			expect(
+				await contrast( '.cbuild-chip[aria-pressed="true"]' ),
+				'the pressed width'
+			).toBeGreaterThanOrEqual( 4.5 );
+
+			const tiles = await page
+				.locator( '.cbuild-presets__tiles' )
+				.evaluate( ( element ) => {
+					const own = getComputedStyle( element );
+					return {
+						list: own.listStyleType,
+						margin: own.marginInlineStart,
+						padding: own.paddingInlineStart,
+					};
+				} );
+			// A card's radio stands clear of its words: the theme's list rules leave the card's own padding alone.
+			const card = page.locator( '.cbuild-cards .cbuild-card' ).first();
+			const control = await card
+				.locator( '.cbuild-card__control' )
+				.boundingBox();
+			const words = await card
+				.locator( '.cbuild-card__about' )
+				.boundingBox();
+			expect( control ).not.toBeNull();
+			expect( words ).not.toBeNull();
+			if ( control && words ) {
+				expect(
+					control.x + control.width,
+					"the radio's edge, before the words"
+				).toBeLessThanOrEqual( words.x );
+			}
+
+			expect( tiles, 'the ready builds' ).toEqual( {
+				list: 'none',
+				margin: '0px',
+				padding: '0px',
+			} );
+
+			const list = await page
+				.locator( '.cbuild-progress__list' )
+				.evaluate( ( element ) => {
+					const own = getComputedStyle( element );
+					const step = getComputedStyle(
+						element.querySelector( 'li' ) as Element
+					);
+					return {
+						list: own.listStyleType,
+						step: step.listStyleType,
+						margin: own.marginInlineStart,
+					};
+				} );
+			expect( list ).toEqual( {
+				list: 'none',
+				step: 'none',
+				margin: '0px',
+			} );
+		} );
+	}
+} );
+
 test.describe( 'Radios on a dark theme whose contrast colour is dark', () => {
 	test( 'an unpicked radio is a ring and a picked one has its dot, each standing out from its ground', async ( {
 		page,
@@ -2834,6 +2988,66 @@ test.describe( 'Motion', () => {
 
 // Issue #46, settled on 17 November 2026: the board has a top, drawn from the deck's own layer image, with the grip
 // filled into it and a bolt head at each hole; the grip step shows it, and a button by the board turns it over.
+// Spec: The layout. The stage holds the whole board at every width: beside the panel on a desktop, and in the short
+// strip on top when the layout is stacked, a tablet's as a phone's, where the board is turned a quarter turn (D-280).
+test.describe( 'The board on the stage', () => {
+	for ( const [ theme, width, height ] of [
+		[ 'kadence', 390, 844 ],
+		[ 'kadence', 820, 1180 ],
+		[ 'kadence', 1000, 800 ],
+		[ 'kadence', 1280, 900 ],
+		// Storefront's content is 786 pixels wide here: the stacked layout on a desktop's short screen.
+		[ 'storefront', 1280, 900 ],
+	] as const ) {
+		test( `is drawn whole inside the stage on ${ theme } at ${ width } by ${ height }`, async ( {
+			page,
+			context,
+			baseURL,
+		} ) => {
+			await context.addCookies( [
+				{
+					name: 'cbuild_e2e_theme',
+					value: theme,
+					url: baseURL || 'http://localhost:8898',
+				},
+			] );
+			await page.setViewportSize( { width, height } );
+			// At the review, with the whole build on the board and the parts that have no layer named above it.
+			await page.goto( fixture().page );
+			await page
+				.locator( '.cbuild-presets' )
+				.getByRole( 'button', { name: 'Start from Street' } )
+				.click();
+			await expect( page.locator( '.cbuild-review' ) ).toBeVisible();
+			await expect( page.locator( '.cbuild' ) ).toHaveAttribute(
+				'aria-busy',
+				'false'
+			);
+			const stage = await page.locator( '.cbuild__stage' ).boundingBox();
+			const board = await page
+				.locator(
+					'.cbuild__stage .cbuild-board:not(.cbuild-board--bar):visible'
+				)
+				.boundingBox();
+			expect( stage ).not.toBeNull();
+			expect( board ).not.toBeNull();
+			if ( stage && board ) {
+				expect( board.y, 'its top' ).toBeGreaterThanOrEqual(
+					stage.y - 1
+				);
+				expect(
+					board.y + board.height,
+					'its foot'
+				).toBeLessThanOrEqual( stage.y + stage.height + 1 );
+				expect( board.x ).toBeGreaterThanOrEqual( stage.x - 1 );
+				expect( board.x + board.width ).toBeLessThanOrEqual(
+					stage.x + stage.width + 1
+				);
+			}
+		} );
+	}
+} );
+
 test.describe( 'The board turned over', () => {
 	const picture = ( page: Page ) => page.locator( '#cbuild-picture' );
 	const top = ( page: Page ) =>

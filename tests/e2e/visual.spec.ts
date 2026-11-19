@@ -37,14 +37,27 @@ const page = (): string =>
 /**
  * Wait until the builder is still: its fonts loaded, its photos decoded, and no answer pending.
  *
- * @param on    The page.
- * @param width The screen's width.
+ * @param on     The page.
+ * @param width  The screen's width.
+ * @param height The screen's height.
  */
-async function still( on: Page, width: number ) {
+async function still( on: Page, width: number, height: number ) {
 	await expect( on.locator( '.cbuild' ) ).toHaveAttribute(
 		'aria-busy',
 		'false'
 	);
+	// The stage and the layout are sized by the screen's height (spec: The layout), so before the screen grows to the
+	// page's height they keep, in pixels, the heights they have on the screen the test is about.
+	await on.setViewportSize( { width, height } );
+	await on.evaluate( () => {
+		for ( const piece of document.querySelectorAll< HTMLElement >(
+			'.cbuild__stage, .cbuild__layout'
+		) ) {
+			piece.style.blockSize = `${
+				piece.getBoundingClientRect().height
+			}px`;
+		}
+	} );
 	// The whole page in one screen: a picture of a box taller than the screen is taken in pieces, and a theme's fixed
 	// bar is drawn into the middle of it. A fixed bar then sits at the page's foot, below the builder.
 	await on.setViewportSize( {
@@ -94,7 +107,7 @@ for ( const theme of THEMES ) {
 						reducedMotion: 'reduce',
 					} );
 					await on.goto( page() );
-					await still( on, size.width );
+					await still( on, size.width, size.height );
 					const builder = on.locator( '.cbuild' );
 					await expect( builder ).toHaveScreenshot(
 						`${ theme }-${ scheme }-${ size.name }-start.png`,
@@ -111,7 +124,7 @@ for ( const theme of THEMES ) {
 							name: 'Step 7 of 7: Check your build',
 						} )
 					).toBeVisible();
-					await still( on, size.width );
+					await still( on, size.width, size.height );
 					await expect( builder ).toHaveScreenshot(
 						`${ theme }-${ scheme }-${ size.name }-review.png`,
 						{
@@ -142,8 +155,11 @@ test( 'a deck card in focus on the demo’s dark Kadence, desktop', async ( {
 	] );
 	await on.setViewportSize( { width: 1280, height: 900 } );
 	await on.emulateMedia( { colorScheme: 'dark', reducedMotion: 'reduce' } );
-	await on.goto( page() );
-	await still( on, 1280 );
+	// The deck step lists its cards once a width is picked (spec: The deck's width first).
+	const widthed = new URL( page() );
+	widthed.searchParams.set( 'cbuild[_width]', '8.25in' );
+	await on.goto( widthed.toString() );
+	await still( on, 1280, 900 );
 	for ( let i = 0; i < 120; i++ ) {
 		await on.keyboard.press( 'Tab' );
 		if (
@@ -211,7 +227,7 @@ for ( const scheme of SCHEMES ) {
 		link.searchParams.set( 'cbuild[step]', 'trucks' );
 		await on.goto( link.toString() );
 		await expect( on.locator( '.cbuild-bar__estimate' ) ).toBeVisible();
-		await still( on, 390 );
+		await still( on, 390, 844 );
 		await expect( on.locator( '.cbuild-bar' ) ).toHaveScreenshot(
 			`kadence-${ scheme }-phone-bar-estimate.png`,
 			{ animations: 'disabled', caret: 'hide' }

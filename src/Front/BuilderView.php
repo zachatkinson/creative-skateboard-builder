@@ -941,7 +941,9 @@ final class BuilderView {
 			'price-desc'  => __( 'Price high to low', 'creative-skateboard-builder' ),
 			'newest'      => __( 'Newest', 'creative-skateboard-builder' ),
 		);
-		$tools = $offered > self::CARDS_ALONE;
+		// Asking only where there is a question: a step with no widths lists its cards.
+		$asking = $asking && array() !== $widths;
+		$tools  = $offered > self::CARDS_ALONE;
 		// "Not sure of your width?" under the question, asked only where there is a question (spec: The deck's width).
 		$guide = array() === $widths ? array() : WidthGuide::rows( $kit );
 		return array(
