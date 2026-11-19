@@ -46,6 +46,7 @@ final class Container {
 			Port\Uploads::class         => Adapter\RequestUploads::class,
 			Port\Kits::class            => Adapter\WooKits::class,
 			Port\PartCards::class       => Adapter\WooPartCards::class,
+			Port\PartLooks::class       => Adapter\WooPartLooks::class,
 			Port\PartFacts::class       => Repository\PartFactsRepository::class,
 			Port\Tally::class           => Adapter\CacheTally::class,
 			Port\Money::class           => Adapter\ShopMoney::class,

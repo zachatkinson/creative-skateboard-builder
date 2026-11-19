@@ -3320,3 +3320,12 @@ What the build asks of a slot (R3's riser thickness) moved from `Recommender` to
 - **Values in natural order,** so 9, 9.5 and 10 read as numbers. How a value is labelled is the template's.
 - **A look of a ranked parent is kept** when any word of the query, or of Creative Search's corrected query, starts one of its own words; when none of the parent's looks is, all are, since the name or the brand matched. Without Creative Search every word must match, as the spec says, since there the look stands alone.
 - **Folding is the adapter's.** The domain matches text already in lower case without accents. WordPress's `remove_accents()` does the folding, so the domain needs neither intl nor mbstring.
+
+### D-263 · A part's look is read from the product and kept beside its card · 2026-11-18
+
+Looks (D-240) need each part's product, photo and layer image; the chips (D-247) its global attributes; the default order (D-243) its star, sales count and date. The parts index holds the parent and a variation's own attributes, but no photo, layer image or order.
+
+- **Read through WooCommerce's CRUD,** by `Port\PartLooks` (`Adapter\WooPartLooks`), not stored in the parts table: a new column would be a table change after milestone 1, which needs Zach, and the step reads its products once already for the order.
+- **Kept per part in the object cache** for an hour, against the card's stamp (the part's and its parent's last save), and forgotten with the card by `WooPartCards::settle()`, so every hook that forgets a card forgets the look. A term renamed without a product save shows its old name until the hour ends; the chips' values are slugs, so nothing chosen breaks.
+- **A variation's attributes** are its own, then those its parent holds and doesn't vary, so a wheel whose hardness is set once on the product still gets a hardness chip.
+- **A photo** is `WC_Product::get_image_id()`, which gives a variation without one its parent's: two variations with no photo of their own share their parent's, and so share a card, unless their layer images differ.

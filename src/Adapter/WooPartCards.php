@@ -235,6 +235,8 @@ final class WooPartCards implements PartCards {
 		);
 		foreach ( array_merge( $ids, Cast::ints( $children->posts ) ) as $id ) {
 			wp_cache_delete( self::key( $id ), Options::CACHE_GROUP );
+			// Its look is kept beside its card, against the same stamp (D-263).
+			wp_cache_delete( WooPartLooks::key( $id ), Options::CACHE_GROUP );
 		}
 	}
 
@@ -248,11 +250,13 @@ final class WooPartCards implements PartCards {
 	}
 
 	/**
-	 * When the part and its parent were last saved.
+	 * When the part and its parent were last saved: what a part's kept card, and its kept look, are checked against.
+	 *
+	 * @since 1.0.0
 	 *
 	 * @param WP_Post $post The part's post.
 	 */
-	private static function stamp( WP_Post $post ): string {
+	public static function stamp( WP_Post $post ): string {
 		$parent = $post->post_parent > 0 ? get_post( $post->post_parent ) : null;
 		return $post->post_modified_gmt . '|' . ( $parent instanceof WP_Post ? $parent->post_modified_gmt : '' );
 	}
