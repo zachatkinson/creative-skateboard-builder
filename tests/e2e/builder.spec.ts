@@ -2327,6 +2327,21 @@ test.describe( 'The review with JavaScript', () => {
 	} );
 } );
 
+// Spec (configurator): The deck's width first, "Not sure of your width?".
+test( 'the width question opens a guide by shoe size', async ( { page } ) => {
+	await page.goto( linkTo( {} ) );
+	const guide = page.locator( '.cbuild-width__guide' );
+	await expect( guide.getByRole( 'table' ) ).toBeHidden();
+	await guide.getByText( 'Not sure of your width?' ).click();
+	const table = page.getByRole( 'table', {
+		name: 'Deck width by shoe size',
+	} );
+	await expect( table ).toBeVisible();
+	await expect(
+		table.getByRole( 'row', { name: '9 and larger 8.25″ and wider' } )
+	).toBeVisible();
+} );
+
 // Cowork's review of 0.9.0, F3 (#68): on the demo's dark theme a native radio drew an unpicked card's as a white disc
 // and a picked one's as a white ring, so the unpicked one looked filled in.
 test.describe( 'Radios on a dark theme whose contrast colour is dark', () => {

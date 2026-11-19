@@ -29,6 +29,27 @@ defined( 'ABSPATH' ) || exit;
 			</template>
 		</div>
 		<p class="cbuild-width__none" data-wp-bind--hidden="!state.view.step.shelf.width.hasNone" data-wp-text="state.view.step.shelf.width.none"></p>
+		<?php // "Not sure of your width?": a disclosure that opens without JavaScript, by shoe size (spec: The deck's width first). ?>
+		<details class="cbuild-width__guide" data-wp-bind--hidden="!state.view.step.shelf.width.guide.shown">
+			<summary data-wp-text="state.view.step.shelf.width.guide.summary"></summary>
+			<table class="cbuild-width__table">
+				<caption class="screen-reader-text" data-wp-text="state.view.step.shelf.width.guide.caption"></caption>
+				<thead>
+					<tr>
+						<th scope="col" data-wp-text="state.view.step.shelf.width.guide.shoe"></th>
+						<th scope="col" data-wp-text="state.view.step.shelf.width.guide.width"></th>
+					</tr>
+				</thead>
+				<tbody>
+					<template data-wp-each--row="state.view.step.shelf.width.guide.rows" data-wp-each-key="context.row.shoe">
+						<tr>
+							<th scope="row" data-wp-text="context.row.shoe"></th>
+							<td data-wp-text="context.row.width"></td>
+						</tr>
+					</template>
+				</tbody>
+			</table>
+		</details>
 	</fieldset>
 	<div class="cbuild-search" role="search" data-wp-bind--hidden="!state.view.step.shelf.search.shown">
 		<label class="cbuild-search__label" for="cbuild-search" data-wp-text="state.view.step.shelf.search.label"></label>

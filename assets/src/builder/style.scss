@@ -477,6 +477,30 @@
 	clip-path: inset(50%);
 }
 
+/* The width guide, under the width question: a small disclosure with a plain table. */
+:where(.cbuild-width__guide) {
+	font-size: var(--cbuild-small);
+}
+
+:where(.cbuild-width__guide > summary) {
+	display: inline-flex;
+	align-items: center;
+	min-block-size: var(--cbuild-control);
+	text-decoration: underline;
+	cursor: pointer;
+}
+
+:where(.cbuild-width__table) {
+	margin-block-start: var(--cbuild-gap-small);
+	border-collapse: collapse;
+
+	:where(th, td) {
+		padding: 0.25rem 1rem 0.25rem 0;
+		border-block-end: 1px solid var(--cbuild-line);
+		text-align: start;
+	}
+}
+
 /* The filters. */
 :where(.cbuild-filters__heading) {
 	min-block-size: var(--cbuild-control);

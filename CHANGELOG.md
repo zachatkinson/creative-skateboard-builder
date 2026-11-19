@@ -19,6 +19,9 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Fixed
 
+- A signed-in customer's deck step opens on the width of the deck in the build they saved last, where the kit offers it; a width asked for, or the deck the build holds, comes first. Nothing is stored for it (spec: The deck's width first; D-242).
+- "Not sure of your width?" under the deck's width question opens a guide by shoe size, after Skate Warehouse's deck buying guide, without JavaScript; `cbuild_width_guide` gives a shop its own rows (spec: The deck's width first).
+- A wheel card over the trucks' limit says the riser it needs, "Needs ¼″ risers with your trucks", in place of "Fits, with a note"; each finding in the state route's answer gains `short`, that label or empty (spec: Risers).
 - Wheels sold with their bearings take the bearings step off the rail, and the review says "Bearings: Included with your wheels", changed with the wheels. "Add risers" under the review's parts opens the risers step when nothing asks for it (spec: Bearings, Risers, The review; D-246, D-276).
 - A skip link, "Skip to the step", is the builder's first stop; the first deck is at most eight presses after it. "Show 30 more" says how many it added, and below 320 px the stage scrolls with the page (spec: Accessibility).
 - French: names no longer follow « de » (« Annuler la suppression du montage %s », « Voir la fiche du produit %s », « Partir du modèle %s »), the bar says « Planche complète dès environ », My builds names the « Récapitulatif » step, and a card's fit label has a sentence per case, so English now has "Fits your %s deck" and "Recommended for your %s deck" of their own (Cowork; #65).

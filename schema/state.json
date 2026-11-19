@@ -737,7 +737,7 @@
 		"message": {
 			"description": "What a rule found.",
 			"type": "object",
-			"required": [ "rule", "code", "severity", "text" ],
+			"required": [ "rule", "code", "severity", "text", "short" ],
 			"properties": {
 				"rule": {
 					"description": "The rule: r1 to r7.",
@@ -755,6 +755,10 @@
 				},
 				"text": {
 					"description": "The finding as a sentence, in the language of the answer.",
+					"type": "string"
+				},
+				"short": {
+					"description": "From 1.0.0: the finding as a card's short label, where it has one, such as \"Needs ⅛″ risers with your trucks\"; otherwise empty.",
 					"type": "string"
 				}
 			}

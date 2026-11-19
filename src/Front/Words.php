@@ -80,6 +80,37 @@ final class Words {
 	}
 
 	/**
+	 * What a rule found, as a card's short label where it has one, or empty: wheels over the trucks' limit say the
+	 * riser they need before the pick (spec: Risers, "Before the pick").
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param Finding $finding The finding.
+	 */
+	public static function short( Finding $finding ): string {
+		if ( MessageCode::WheelNeedsRiser !== $finding->code ) {
+			return '';
+		}
+		/* translators: %s: a riser's thickness, such as ⅛″. */
+		return sprintf( __( 'Needs %s risers with your trucks', 'creative-skateboard-builder' ), self::value( $finding, 'riser' ) );
+	}
+
+	/**
+	 * One of a finding's values, as words: a measure with its unit, a spec by its name, a choice by its label.
+	 *
+	 * @param Finding $finding The finding.
+	 * @param string  $name    The value's name.
+	 */
+	private static function value( Finding $finding, string $name ): string {
+		$value = $finding->values[ $name ] ?? '';
+		if ( $value instanceof Measure ) {
+			return self::measure( $value, in_array( $name, self::FRACTIONS, true ) );
+		}
+		$spec = 'spec' === $name ? SpecKey::tryFrom( $value ) : null;
+		return null === $spec ? Labels::choice( $value ) : Labels::spec( $spec );
+	}
+
+	/**
 	 * What a rule found, as a sentence.
 	 *
 	 * @since 0.4.0
@@ -89,14 +120,7 @@ final class Words {
 	public static function finding( Finding $finding ): string {
 		$values = $finding->values;
 		$has    = static fn( string $name ): bool => ( $values[ $name ] ?? null ) instanceof Measure && $values[ $name ]->tenThousandths > 0;
-		$v      = static function ( string $name ) use ( $values ): string {
-			$value = $values[ $name ] ?? '';
-			if ( $value instanceof Measure ) {
-				return self::measure( $value, in_array( $name, self::FRACTIONS, true ) );
-			}
-			$spec = 'spec' === $name ? SpecKey::tryFrom( $value ) : null;
-			return null === $spec ? Labels::choice( $value ) : Labels::spec( $spec );
-		};
+		$v      = static fn( string $name ): string => self::value( $finding, $name );
 		switch ( $finding->code ) {
 			case MessageCode::SpecMissing:
 				/* translators: %s: a spec's name, such as Deck width. */

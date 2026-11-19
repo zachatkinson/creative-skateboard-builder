@@ -13,7 +13,8 @@
         "cbuild_summary_notes",
         "cbuild_ticket_specs",
         "cbuild_ticket_steps",
-        "cbuild_updates_enabled"
+        "cbuild_updates_enabled",
+        "cbuild_width_guide"
     ],
     "actions": [],
     "listened_actions": [
@@ -256,7 +257,7 @@
     ],
     "ability_schemas": {
         "creative-skateboard-builder/catalogue-check": "3419ea03a7f81096029e2247d2914dc5a7132729e9c34b442d4e911a49e15c32",
-        "creative-skateboard-builder/check-build": "f17f046dc3d1e98e2d2fa042e821420cffc92b336d2b39d080a69994c730236d",
+        "creative-skateboard-builder/check-build": "6fbad3491aa7dd2f426b244a2fd70f33fb834396c8dcb3ca1f8a75bdd1f76354",
         "creative-skateboard-builder/price-build": "6e678afe2fcd4d6f1427a0883892211494c70c3f4a876e24f8bbb96247f31a09"
     },
     "schemas": [
@@ -277,7 +278,7 @@
         "schema/kit-slots.json": "7c383e3f551b517328d9d195c01e15f9f5dad1a1263a20fa4ff2188592bb820c",
         "schema/order-snapshot.json": "78cc2355e3468a3f4ff06aa8c609594f21ab961dbcf06ca54bb2b4b2e1b18030",
         "schema/settings.json": "c6ce801eae753f4d85734fdf81489cc91a4e2db8adf318aa2da21832d7ef9df4",
-        "schema/state.json": "41808a4261923bfc2a28ed681c1c44b1a4cdba12fef4fcf2fe584d656645eeae"
+        "schema/state.json": "792a72170593036992ff5077bfeacf7426fcacce5737af425caf50da20020558"
     },
     "spec_keys": [
         "deck_width",

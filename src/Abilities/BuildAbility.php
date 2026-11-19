@@ -180,8 +180,10 @@ abstract class BuildAbility implements Hookable {
 					'enum' => array( 'fits', 'warn', 'block' ),
 				),
 				'text'     => $text,
+				// From 1.0.0: the finding as a card says it before the pick, or empty (spec: Risers, before the pick).
+				'short'    => $text,
 			),
-			'required'             => array( 'rule', 'code', 'severity', 'text' ),
+			'required'             => array( 'rule', 'code', 'severity', 'text', 'short' ),
 			'additionalProperties' => false,
 		);
 	}

@@ -493,6 +493,10 @@ export interface Message {
 	 * The finding as a sentence, in the language of the answer.
 	 */
 	text: string;
+	/**
+	 * From 1.0.0: the finding as a card's short label, where it has one, such as "Needs ⅛″ risers with your trucks"; otherwise empty.
+	 */
+	short: string;
 }
 /**
  * A part as a slot holds it.

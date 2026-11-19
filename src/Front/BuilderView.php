@@ -882,9 +882,10 @@ final class BuilderView {
 	 * @param array<string, mixed>       $shelf  The answer's shelf, or nothing where there is none.
 	 * @param string                     $slot   The step's slot.
 	 * @param list<array<string, mixed>> $folded The sold-out looks' cards.
+	 * @param int                        $kit    The kit product's ID, for the width guide's filter.
 	 * @return array<string, mixed>
 	 */
-	private static function shelf( array $shelf, string $slot, array $folded ): array {
+	private static function shelf( array $shelf, string $slot, array $folded, int $kit = 0 ): array {
 		$offered = Cast::int( $shelf['offered'] ?? null );
 		$widths  = array();
 		$none    = array();
@@ -935,6 +936,8 @@ final class BuilderView {
 			'newest'      => __( 'Newest', 'creative-skateboard-builder' ),
 		);
 		$tools = $offered > self::CARDS_ALONE;
+		// "Not sure of your width?" under the question, asked only where there is a question (spec: The deck's width).
+		$guide = array() === $widths ? array() : WidthGuide::rows( $kit );
 		return array(
 			'width'   => array(
 				'shown'   => array() !== $widths,
@@ -945,6 +948,14 @@ final class BuilderView {
 				'hasNone' => array() !== $none,
 				/* translators: %s: widths, such as 7.75″, 8.125″ or 9″. */
 				'none'    => array() === $none ? '' : sprintf( __( 'Nothing in %s is in stock right now.', 'creative-skateboard-builder' ), Words::either( $none ) ),
+				'guide'   => array(
+					'shown'   => array() !== $guide,
+					'summary' => __( 'Not sure of your width?', 'creative-skateboard-builder' ),
+					'caption' => __( 'Deck width by shoe size', 'creative-skateboard-builder' ),
+					'shoe'    => __( 'Shoe size (US)', 'creative-skateboard-builder' ),
+					'width'   => __( 'Deck width', 'creative-skateboard-builder' ),
+					'rows'    => $guide,
+				),
 			),
 			'search'  => array(
 				'shown'  => $offered > self::SEARCHED,
@@ -1084,8 +1095,10 @@ final class BuilderView {
 			$available = Cast::bool( $option['available'] ?? null );
 			$fit       = Cast::str( $option['fit'] ?? null );
 			$notes     = array();
+			$short     = '';
 			foreach ( Cast::items( $option['messages'] ?? null ) as $message ) {
 				$message = Cast::map( $message );
+				$short   = '' === $short ? Cast::str( $message['short'] ?? null ) : $short;
 				// A spec the owner left out and the rule assumed is the owner's to fix, and the catalogue check says so. A
 				// card that fits keeps quiet about it; one that warns or is blocked says it, since it may be the reason.
 				if ( 'fits' === $fit && 'fits' === Cast::str( $message['severity'] ?? null ) ) {
@@ -1128,7 +1141,8 @@ final class BuilderView {
 				'hasAlso'       => '' !== $also,
 				'stock'         => Cast::str( $card['stock'] ?? null ),
 				'stockClass'    => 'cbuild-card__stock cbuild-card__stock--' . sanitize_html_class( Cast::str( $card['stock_class'] ?? null ) ),
-				'fit'           => self::fit( $fit, $against['fits'] ),
+				// A warning with a short label of its own says it on the card, as "Needs ⅛″ risers with your trucks".
+				'fit'           => 'warn' === $fit && '' !== $short ? $short : self::fit( $fit, $against['fits'] ),
 				'fitClass'      => 'cbuild-card__fit cbuild-card__fit--' . sanitize_html_class( $fit ),
 				'notes'         => $notes,
 				'recommended'   => Cast::bool( $option['recommended'] ?? null ),
@@ -1216,7 +1230,7 @@ final class BuilderView {
 			'hidden'    => self::hidden( $answer, $step ),
 			'filters'   => null === $shelf ? self::filters( $answer, $slot ) : self::filters( array(), '' ),
 			'more'      => null === $shelf ? self::more( $answer, count( $options ) ) : self::page( $shelf, count( $options ), $link ),
-			'shelf'     => self::shelf( $shelf ?? array(), $slot, $folded ),
+			'shelf'     => self::shelf( $shelf ?? array(), $slot, $folded, $state->id ),
 			// The deck step asking its width lists nothing yet, and says nothing is missing.
 			'empty'     => array() === $options && ! ( null !== $shelf && SlotKey::DECK === $slot && '' === $link->shelf->width ),
 			'emptyText' => '' === $link->brand && '' === $link->size

@@ -16,6 +16,7 @@ use CreativeBranding\SkateboardBuilder\Domain\Kit\SlotKey;
 use CreativeBranding\SkateboardBuilder\Domain\Rule\BearingRule;
 use CreativeBranding\SkateboardBuilder\Domain\Rule\MessageCode;
 use CreativeBranding\SkateboardBuilder\Service\BuildState;
+use CreativeBranding\SkateboardBuilder\Service\ShelfQuery;
 use CreativeBranding\SkateboardBuilder\Service\State;
 use CreativeBranding\SkateboardBuilder\Service\StateStep;
 
@@ -45,11 +46,12 @@ final class Builder {
 	 *
 	 * @since 0.6.0
 	 *
-	 * @param BuildState  $builds Works a build's state out.
-	 * @param StateAnswer $writer Writes it down.
-	 * @param BuilderView $view   Says it as the template shows it.
+	 * @param BuildState           $builds Works a build's state out.
+	 * @param StateAnswer          $writer Writes it down.
+	 * @param BuilderView          $view   Says it as the template shows it.
+	 * @param RememberedWidth|null $remembered A signed-in customer's width, from their saved builds (from 1.0.0).
 	 */
-	public function __construct( private BuildState $builds, private StateAnswer $writer, private BuilderView $view ) {}
+	public function __construct( private BuildState $builds, private StateAnswer $writer, private BuilderView $view, private ?RememberedWidth $remembered = null ) {}
 
 	/**
 	 * What the builder shows at an address, or null when the shop has no such kit.
@@ -64,6 +66,15 @@ final class Builder {
 	 * @throws InvalidMoney When the build cannot be priced in the shop's currency settings.
 	 */
 	public function show( int $kit, BuildLink $link, string $base ): ?array {
+		if ( null !== $this->remembered && '' === $link->shelf->width && ! isset( $link->picks[ SlotKey::DECK ] ) ) {
+			// A width asked for, or the deck's, comes first; otherwise a signed-in customer's last saved build brings
+			// theirs, and skips the question (spec: The deck's width first, "Remembered").
+			$width = $this->remembered->of( $kit );
+			if ( '' !== $width ) {
+				$shelf = $link->shelf;
+				$link  = $link->shelved( new ShelfQuery( $width, $shelf->chips, $shelf->query, $shelf->sort, $shelf->from, $shelf->shown, $shelf->ranked ) );
+			}
+		}
 		$state = $this->builds->of( $kit, $link->picks, $link->was, $link->step, $link->assembly, $link->none );
 		if ( null === $state ) {
 			return null;

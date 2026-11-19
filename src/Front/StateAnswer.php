@@ -806,6 +806,7 @@ final class StateAnswer {
 				'code'     => $finding->code->value,
 				'severity' => $finding->severity->value,
 				'text'     => Words::finding( $finding ),
+				'short'    => Words::short( $finding ),
 			);
 		}
 		return $messages;

@@ -455,6 +455,7 @@ final class StateAnswerTest extends TestCase {
 					'code'     => 'deck_above_range',
 					'severity' => 'block',
 					'text'     => 'The trucks are made for decks from 7.8″ to 8.2″ wide. The deck is 8.5″.',
+					'short'    => '',
 				),
 			),
 			$answer['hidden'][0]['messages']

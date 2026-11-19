@@ -10,20 +10,25 @@ declare( strict_types=1 );
 namespace CreativeBranding\SkateboardBuilder\Tests\Unit\Front;
 
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Part;
+use CreativeBranding\SkateboardBuilder\Domain\Saved\SavedBuild;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\SlotKey;
 use CreativeBranding\SkateboardBuilder\Front\Builder;
 use CreativeBranding\SkateboardBuilder\Front\BuilderView;
 use CreativeBranding\SkateboardBuilder\Front\BuildLink;
 use CreativeBranding\SkateboardBuilder\Front\Delivery;
 use CreativeBranding\SkateboardBuilder\Front\PageRenderer;
+use CreativeBranding\SkateboardBuilder\Front\RememberedWidth;
 use CreativeBranding\SkateboardBuilder\Front\ShippingWords;
 use CreativeBranding\SkateboardBuilder\Front\StateAnswer;
 use CreativeBranding\SkateboardBuilder\Front\Words;
 use CreativeBranding\SkateboardBuilder\Port\LookFact;
 use CreativeBranding\SkateboardBuilder\Port\TextFolding;
 use CreativeBranding\SkateboardBuilder\Service\BuildState;
+use CreativeBranding\SkateboardBuilder\Service\SavedBuilds;
 use CreativeBranding\SkateboardBuilder\Service\StepShelf;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Domain\Shop;
+use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\CountingUuids;
+use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\FakeClock;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\FakeLogger;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\FakeMoney;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\FakeRanking;
@@ -31,7 +36,10 @@ use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\FakeShippingZones;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\InMemoryKits;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\InMemoryPartCards;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\InMemoryPartLooks;
+use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\InMemorySavedBuilds;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\InMemoryShopSettings;
+use DateTimeImmutable;
+use DateTimeZone;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -87,7 +95,7 @@ final class BuilderShelfTest extends TestCase {
 	 *
 	 * @return array<string, mixed>
 	 */
-	private function step( BuildLink $link ): array {
+	private function step( BuildLink $link, ?RememberedWidth $remembered = null ): array {
 		$folding = new class() implements TextFolding {
 			public function fold( string $text ): string {
 				return strtolower( $text );
@@ -97,7 +105,7 @@ final class BuilderShelfTest extends TestCase {
 		$cards    = new InMemoryPartCards();
 		$answer   = ( new StateAnswer( $cards, new FakeMoney(), $this->kits, new Delivery( $this->kits, new FakeShippingZones(), new ShippingWords( new FakeMoney() ) ), new PageRenderer() ) )
 			->withShelf( new StepShelf( $this->looks, $cards, new FakeRanking(), $folding, $settings ) );
-		$shown    = ( new Builder( new BuildState( $this->kits, $settings, new FakeLogger() ), $answer, new BuilderView() ) )->show( self::KIT, $link, self::BASE );
+		$shown    = ( new Builder( new BuildState( $this->kits, $settings, new FakeLogger() ), $answer, new BuilderView(), $remembered ) )->show( self::KIT, $link, self::BASE );
 		self::assertNotNull( $shown );
 		$step = $shown['view']['step'];
 		self::assertIsArray( $step );
@@ -130,6 +138,84 @@ final class BuilderShelfTest extends TestCase {
 		self::assertFalse( $width['hasNone'] );
 		self::assertSame( 'deck', self::tail( $step )['cbuild[_on]'] ?? null, 'the width stays on the step it was asked on' );
 		self::assertFalse( $step['shelf']['search']['shown'] );
+	}
+
+	// Spec (configurator): The deck's width first, "Not sure of your width?", a guide by shoe size from Skate
+	// Warehouse's deck buying guide, in the plugin's own words; `cbuild_width_guide` gives a shop's own rows.
+	public function test_the_width_question_has_a_guide_by_shoe_size_that_a_shop_can_replace(): void {
+		$guide = $this->step( new BuildLink() )['shelf']['width']['guide'];
+		self::assertTrue( $guide['shown'] );
+		self::assertSame( 'Not sure of your width?', $guide['summary'] );
+		self::assertSame( array( 'Shoe size (US)', 'Deck width' ), array( $guide['shoe'], $guide['width'] ) );
+		self::assertSame(
+			array(
+				array( 'shoe' => '7 or smaller', 'width' => '7″ to 7.75″' ),
+				array( 'shoe' => '7 to 8.5', 'width' => '7.75″ to 8″' ),
+				array( 'shoe' => '8.5 to 9', 'width' => '8″ to 8.25″' ),
+				array( 'shoe' => '9 and larger', 'width' => '8.25″ and wider' ),
+			),
+			$guide['rows']
+		);
+		self::assertTrue( $this->step( BuildLink::read( array( '_width' => '8.25in' ) ) )['shelf']['width']['guide']['shown'], 'still there once a width is picked' );
+
+		$asked                                                = array();
+		$GLOBALS['cbuild_test_filters']['cbuild_width_guide'] = static function ( array $rows, int $kit ) use ( &$asked ): array {
+			$asked[] = array( count( $rows ), $kit );
+			return array(
+				array( 'shoe' => 'EU 38 to 41', 'width' => '8″' ),
+				array( 'shoe' => '<b>EU 42</b> and up', 'width' => '8.5″' ),
+				array( 'shoe' => 'no width' ),
+				'not a row',
+			);
+		};
+		try {
+			$guide = $this->step( new BuildLink() )['shelf']['width']['guide'];
+		} finally {
+			unset( $GLOBALS['cbuild_test_filters']['cbuild_width_guide'] );
+		}
+		self::assertSame( array( array( 4, self::KIT ) ), $asked, 'given the plugin\'s rows and the kit' );
+		self::assertSame(
+			array(
+				array( 'shoe' => 'EU 38 to 41', 'width' => '8″' ),
+				array( 'shoe' => 'EU 42 and up', 'width' => '8.5″' ),
+			),
+			$guide['rows'],
+			'plain text, and a row without both is left out'
+		);
+
+		$GLOBALS['cbuild_test_filters']['cbuild_width_guide'] = static fn(): array => array();
+		try {
+			self::assertFalse( $this->step( new BuildLink() )['shelf']['width']['guide']['shown'], 'no rows, no guide' );
+		} finally {
+			unset( $GLOBALS['cbuild_test_filters']['cbuild_width_guide'] );
+		}
+	}
+
+	// Spec (configurator): The deck's width first, "A signed-in customer's width comes from their most recent saved
+	// build. Nothing is stored on the device (D-242)."
+	public function test_a_signed_in_customers_width_comes_from_their_most_recent_saved_build(): void {
+		$store = new InMemorySavedBuilds();
+		$saved = new SavedBuilds( $store, new BuildState( $this->kits, new InMemoryShopSettings(), new FakeLogger() ), new CountingUuids(), new FakeClock(), new FakeLogger() );
+		$at    = static fn( string $when ): DateTimeImmutable => new DateTimeImmutable( $when, new DateTimeZone( 'UTC' ) );
+		$store->put( new SavedBuild( 'a', 7, self::KIT, array( SlotKey::DECK => 103 ), true, 'Old', $at( '2026-11-01' ), $at( '2026-11-01' ) ) );
+		$store->put( new SavedBuild( 'b', 7, self::KIT, array( SlotKey::DECK => 102 ), true, 'New', $at( '2026-11-02' ), $at( '2026-11-10' ) ) );
+		$store->put( new SavedBuild( 'c', 8, self::KIT, array( SlotKey::TRUCKS => 139 ), true, 'No deck', $at( '2026-11-02' ), $at( '2026-11-10' ) ) );
+		$remembered = new RememberedWidth( $saved, $this->kits );
+		try {
+			$GLOBALS['cbuild_test_user'] = 7;
+			$step                        = $this->step( new BuildLink(), $remembered );
+			self::assertSame( array( 102 ), array_column( $step['options'], 'id' ), 'the decks in the width of the build saved last' );
+			self::assertSame( array( 'false', 'true', 'false' ), array_column( $step['shelf']['width']['options'], 'pressed' ) );
+			self::assertSame( '8.25in', self::tail( $step )['cbuild[_width]'] ?? null, 'and it travels with the build' );
+			self::assertSame( array( 103 ), array_column( $this->step( BuildLink::read( array( '_width' => '8.5in' ) ), $remembered )['options'], 'id' ), 'a width asked for comes first' );
+			self::assertSame( array( 'true', 'false', 'false' ), array_column( $this->step( BuildLink::read( array( 'deck' => '101', 'step' => 'deck' ) ), $remembered )['shelf']['width']['options'], 'pressed' ), 'and the deck the build holds' );
+			$GLOBALS['cbuild_test_user'] = 8;
+			self::assertSame( array(), $this->step( new BuildLink(), $remembered )['options'], 'a saved build with no deck brings no width' );
+			$GLOBALS['cbuild_test_user'] = 0;
+			self::assertSame( array(), $this->step( new BuildLink(), $remembered )['options'], 'nothing for a visitor signed out' );
+		} finally {
+			unset( $GLOBALS['cbuild_test_user'] );
+		}
 	}
 
 	public function test_a_width_with_nothing_in_stock_is_dimmed_and_named(): void {

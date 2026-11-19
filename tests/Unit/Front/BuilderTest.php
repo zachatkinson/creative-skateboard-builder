@@ -807,6 +807,14 @@ final class BuilderTest extends TestCase {
 				'options' => array(),
 				'hasNone' => false,
 				'none'    => '',
+				'guide'   => array(
+					'shown'   => false,
+					'summary' => 'Not sure of your width?',
+					'caption' => 'Deck width by shoe size',
+					'shoe'    => 'Shoe size (US)',
+					'width'   => 'Deck width',
+					'rows'    => array(),
+				),
 			),
 			'search'  => array(
 				'shown'  => false,
@@ -1002,7 +1010,7 @@ final class BuilderTest extends TestCase {
 		$cards = $this->show( new BuildLink( array( SlotKey::DECK => 101, SlotKey::TRUCKS => 139 ), null, SlotKey::WHEELS ) )['view']['step']['options'];
 		self::assertSame( 'Fits your trucks', $cards[0]['fit'] );
 		self::assertSame( 303, $cards[2]['id'] );
-		self::assertSame( 'Fits, with a note', $cards[2]['fit'], '58 mm wheels want a riser under these trucks.' );
+		self::assertSame( 'Needs ¼″ risers with your trucks', $cards[2]['fit'], '58 mm wheels want a riser under these trucks, and the card says which (spec: Risers, before the pick).' );
 		self::assertSame( 'cbuild-card__fit cbuild-card__fit--warn', $cards[2]['fitClass'] );
 	}
 
@@ -1079,6 +1087,15 @@ final class BuilderTest extends TestCase {
 
 		$with = $this->show( new BuildLink( self::STREET + array( SlotKey::RISERS => 401 ), null, State::REVIEW ) )['view']['review'];
 		self::assertFalse( $with['addRisers']['shown'], 'a build with risers has them' );
+	}
+
+	// Spec (configurator): Risers, "Before the pick. Wheel cards say 'Needs ¼″ risers with your trucks', from R3's
+	// warning on each option."
+	public function test_a_wheel_card_that_needs_a_riser_says_which_before_the_pick(): void {
+		$step  = $this->show( new BuildLink( array( SlotKey::DECK => 101, SlotKey::TRUCKS => 139 ), null, SlotKey::WHEELS ) )['view']['step'];
+		$cards = array_column( $step['options'], null, 'id' );
+		self::assertSame( 'Needs ¼″ risers with your trucks', $cards[303]['fit'], '58 mm wheels over these trucks\' limit' );
+		self::assertSame( 'Fits your trucks', $cards[301]['fit'], 'wheels under it say what they fit' );
 	}
 
 	public function test_wheels_that_need_risers_keep_the_risers_step_even_with_no_risers_chosen(): void {
