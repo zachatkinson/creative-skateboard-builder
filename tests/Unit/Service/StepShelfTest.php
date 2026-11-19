@@ -1,0 +1,193 @@
+<?php
+/**
+ * StepShelf.
+ *
+ * @package CreativeBranding\SkateboardBuilder\Tests
+ */
+
+declare( strict_types=1 );
+
+namespace CreativeBranding\SkateboardBuilder\Tests\Unit\Service;
+
+use CreativeBranding\SkateboardBuilder\Domain\Kit\Part;
+use CreativeBranding\SkateboardBuilder\Domain\Kit\SlotKey;
+use CreativeBranding\SkateboardBuilder\Domain\Look\ChipGroup;
+use CreativeBranding\SkateboardBuilder\Domain\Look\Listing;
+use CreativeBranding\SkateboardBuilder\Domain\Look\ShelfLook;
+use CreativeBranding\SkateboardBuilder\Domain\Spec\AttributeMap;
+use CreativeBranding\SkateboardBuilder\Port\LookFact;
+use CreativeBranding\SkateboardBuilder\Port\TextFolding;
+use CreativeBranding\SkateboardBuilder\Service\BuildState;
+use CreativeBranding\SkateboardBuilder\Service\ShelfQuery;
+use CreativeBranding\SkateboardBuilder\Service\State;
+use CreativeBranding\SkateboardBuilder\Service\StepShelf;
+use CreativeBranding\SkateboardBuilder\Tests\Support\Domain\Builds;
+use CreativeBranding\SkateboardBuilder\Tests\Support\Domain\Parts;
+use CreativeBranding\SkateboardBuilder\Tests\Support\Domain\Shop;
+use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\FakeLogger;
+use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\FakeRanking;
+use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\InMemoryKits;
+use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\InMemoryPartCards;
+use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\InMemoryPartLooks;
+use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\InMemoryShopSettings;
+use PHPUnit\Framework\TestCase;
+
+/**
+ * The step's shelf from what the shop holds of each part (D-263, D-264): looks, the size attribute kept out of the
+ * choices and chips, words folded for search, and Creative Search's ranking where the kit allows it.
+ */
+final class StepShelfTest extends TestCase {
+
+	private const int KIT = 77;
+
+	private InMemoryKits $kits;
+
+	private InMemoryPartLooks $looks;
+
+	private FakeRanking $ranking;
+
+	private InMemoryShopSettings $settings;
+
+	protected function setUp(): void {
+		$this->kits     = new InMemoryKits();
+		$this->looks    = new InMemoryPartLooks();
+		$this->ranking  = new FakeRanking();
+		$this->settings = new InMemoryShopSettings();
+		$parts          = Shop::parts();
+		// Retna in Mint (52, 54) and Black (58), Spitfire's; Rétro Cubes, Bones', in 53.
+		$parts[ SlotKey::WHEELS ] = array(
+			self::wheel( 301, '52', 'spitfire' ),
+			self::wheel( 302, '54', 'spitfire' ),
+			self::wheel( 303, '56', 'spitfire' ),
+			self::wheel( 304, '53', 'bones' ),
+		);
+		$this->kits->add( self::KIT, Shop::kit(), $parts );
+		$retna = static fn( int $photo, string $colour, string $size ): LookFact => new LookFact(
+			10,
+			$photo,
+			0,
+			'Retna Cruiser',
+			array(
+				'pa_colour'   => array( $colour ),
+				'pa_diameter' => array( $size ),
+			),
+			array(
+				'pa_colour'   => array( $colour => ucfirst( $colour ) ),
+				'pa_diameter' => array( $size => $size . ' mm' ),
+			),
+			false,
+			0,
+			0
+		);
+		$this->looks->facts = array(
+			301 => $retna( 1, 'mint', '52' ),
+			302 => $retna( 1, 'mint', '54' ),
+			303 => $retna( 2, 'black', '56' ),
+			304 => new LookFact( 20, 3, 0, 'Rétro Cubes', array( 'pa_colour' => array( 'white' ) ), array( 'pa_colour' => array( 'white' => 'Blanc cassé' ) ), true, 0, 0 ),
+		);
+		$map = AttributeMap::read(
+			array(
+				'attribute' => 'pa_diameter',
+				'spec'      => 'wheel_diameter',
+				'unit'      => '',
+			)
+		);
+		self::assertNotNull( $map );
+		$this->settings->mapping = array( $map );
+	}
+
+	private static function wheel( int $id, string $diameter, string $brand ): Part {
+		$part = Builds::wheel( $diameter, $id );
+		return new Part( $id, $brand, $part->specs, 3000, true );
+	}
+
+	private function shelf(): StepShelf {
+		$folding = new class() implements TextFolding {
+			public function fold( string $text ): string {
+				return strtolower( strtr( $text, array( 'é' => 'e', 'É' => 'e', 'í' => 'i' ) ) );
+			}
+		};
+		return new StepShelf( $this->looks, new InMemoryPartCards(), $this->ranking, $folding, $this->settings );
+	}
+
+	private function state( string $step, array $picks = array() ): State {
+		$state = ( new BuildState( $this->kits, $this->settings, new FakeLogger() ) )->of( self::KIT, $picks, null, $step );
+		self::assertNotNull( $state );
+		return $state;
+	}
+
+	private function wheels( ShelfQuery $query = new ShelfQuery() ): Listing {
+		$listing = $this->shelf()->of( $this->state( SlotKey::WHEELS, array( 'deck' => 102, 'trucks' => 144 ) ), $query );
+		self::assertNotNull( $listing );
+		return $listing;
+	}
+
+	/**
+	 * The look keys listed.
+	 *
+	 * @param list<ShelfLook> $looks The cards.
+	 * @return list<string>
+	 */
+	private static function keys( array $looks ): array {
+		return array_map( static fn( ShelfLook $look ): string => $look->look->key, $looks );
+	}
+
+	public function test_a_steps_looks_come_from_the_shop_with_the_size_attribute_kept_out_of_the_choices_and_chips(): void {
+		$listing = $this->wheels();
+		self::assertSame( array( '10:1:0', '20:3:0', '10:2:0' ), self::keys( $listing->looks ), 'the recommendation\'s look, then Rétro Cubes, featured' );
+		self::assertContains( $this->state( SlotKey::WHEELS, array( 'deck' => 102, 'trucks' => 144 ) )->steps[2]->recommended?->part->id, array( 301, 302 ) );
+		self::assertSame( array(), $listing->looks[1]->look->choices(), 'Mint\'s two diameters are its sizes, not a choice' );
+		self::assertSame( array( 'brand', 'wheel_diameter', 'pa_colour' ), array_map( static fn( ChipGroup $group ): string => $group->name, $listing->groups ) );
+		self::assertSame( array( array( 301, 302, 303, 304 ) ), $this->looks->asked, 'the step\'s offered parts, in one call' );
+	}
+
+	public function test_search_folds_the_query_and_matches_brand_names_product_names_and_values(): void {
+		self::assertSame( array( '10:1:0', '10:2:0' ), self::keys( $this->wheels( new ShelfQuery( query: 'SPIT' ) )->looks ), 'the brand\'s name, Spitfire' );
+		self::assertSame( array( '20:3:0' ), self::keys( $this->wheels( new ShelfQuery( query: 'retro' ) )->looks ), 'Rétro, folded' );
+		self::assertSame( array( '20:3:0' ), self::keys( $this->wheels( new ShelfQuery( query: 'casse' ) )->looks ), 'a value\'s name: Blanc cassé' );
+		self::assertSame( array( '10:1:0' ), self::keys( $this->wheels( new ShelfQuery( query: '54' ) )->looks ), 'the size' );
+		self::assertCount( 4, $this->ranking->asked, 'asked each time, and with no answer the builder searched on its own' );
+	}
+
+	public function test_creative_search_ranks_the_query_where_the_kit_allows_it(): void {
+		$this->ranking->answer = array(
+			'ids'       => array( 10 ),
+			'corrected' => 'Mínt',
+		);
+		self::assertSame( array( '10:1:0' ), self::keys( $this->wheels( new ShelfQuery( query: '  mnit  ' ) )->looks ), 'Retna, narrowed by the corrected query, folded' );
+		self::assertSame( array( array( 'mnit', array( 301, 302, 303, 304 ) ) ), $this->ranking->asked, 'the query trimmed, with the step\'s parts' );
+
+		$this->ranking->asked = array();
+		self::assertSame( array(), self::keys( $this->wheels( new ShelfQuery( query: 'mnit', ranked: false ) )->looks ), 'the builder\'s own search, with no typos' );
+		self::assertSame( array(), $this->ranking->asked, 'and Creative Search is not asked' );
+
+		$this->wheels( new ShelfQuery( query: str_repeat( 'a', 150 ) ) );
+		self::assertSame( 100, strlen( $this->ranking->asked[0][0] ), 'a query is 100 characters at most' );
+	}
+
+	public function test_the_width_asked_lists_the_decks_in_it_and_anything_else_asks_the_question(): void {
+		$shelf = $this->shelf();
+		foreach ( array( 101, 102, 103 ) as $at => $id ) {
+			$this->looks->facts[ $id ] = new LookFact( 1, 10 + $at, 0, 'Deck', array(), array(), false, 0, 0 );
+		}
+		$listing = $shelf->of( $this->state( SlotKey::DECK ), new ShelfQuery( '8.25in' ) );
+		self::assertSame( array( 102 ), array_map( static fn( ShelfLook $look ): int => $look->option->part->id, $listing->looks ?? array() ) );
+		self::assertCount( 3, $listing->widths ?? array() );
+		foreach ( array( '', 'wide', '8.25', '8.25ft', '1234in', '8.123456in' ) as $width ) {
+			self::assertSame( array(), $shelf->of( $this->state( SlotKey::DECK ), new ShelfQuery( $width ) )?->looks, $width );
+		}
+		self::assertSame( array( 103 ), array_map( static fn( ShelfLook $look ): int => $look->option->part->id, $shelf->of( $this->state( SlotKey::DECK ), new ShelfQuery( '8.5in' ) )->looks ?? array() ) );
+	}
+
+	public function test_the_review_lists_no_parts_and_a_page_starts_where_it_is_asked(): void {
+		self::assertNull( $this->shelf()->of( $this->state( State::REVIEW ), new ShelfQuery() ) );
+		$page = $this->wheels( new ShelfQuery( from: -4, shown: 0 ) );
+		self::assertSame( array( '10:1:0' ), self::keys( $page->looks ), 'from 0, one at least' );
+		self::assertSame( 1, $page->more );
+	}
+
+	public function test_a_part_the_shop_holds_no_look_for_is_left_off(): void {
+		unset( $this->looks->facts[304] );
+		self::assertSame( array( '10:1:0', '10:2:0' ), self::keys( $this->wheels()->looks ) );
+	}
+}

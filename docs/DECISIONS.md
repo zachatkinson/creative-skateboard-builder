@@ -3341,3 +3341,5 @@ Looks (D-240) need each part's product, photo and layer image; the chips (D-247)
 - **A size chip** is named as the route's size filter names a size, `54mm` or `8.25in`, so a build link's `_size` and a chip agree.
 - **The width question** counts, for each width, the looks with a part in stock in it; a look sold out in a width counts for none.
 - **A look's own words** (its values' names) narrow a product Creative Search ranked; its brand, name and size words don't, since every look of the product shares them (D-248).
+- **The attribute the shop mapped to the slot's size** is the size alone (`Service\StepShelf`): never a choice you can't see, never a chip group of its own beside the size's.
+- **Creative Search is asked for every query** while the kit's Search setting allows it. Its `null`, with Creative Search inactive or not yet indexed, is the builder's own search. An id it returns that is no whole number above 0 is left out (`Adapter\CreativeSearchRanking`).
