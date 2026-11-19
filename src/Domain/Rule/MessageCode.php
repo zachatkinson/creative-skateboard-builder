@@ -34,9 +34,17 @@ enum MessageCode: string {
 	case WheelNoRiser    = 'wheel_no_riser';
 	case LimitFromClass  = 'limit_from_class';
 
+	// R3, as a step applies it: wheels hidden because the kit can't supply a riser that clears them (D-245).
+	case RiserNotInStock = 'riser_not_in_stock';
+	case RiserNoBolts    = 'riser_no_bolts';
+	case RiserNoSlot     = 'riser_no_slot';
+
 	// R4, bolts and risers.
 	case BoltsTooShort = 'bolts_too_short';
 	case BoltsTooLong  = 'bolts_too_long';
+
+	// R4, as the risers step applies it: a riser hidden because no bolt in stock reaches through it (D-245).
+	case RiserBoltsShort = 'riser_bolts_short';
 
 	// R5, bearings.
 	case BoreMismatch   = 'bore_mismatch';
@@ -54,22 +62,26 @@ enum MessageCode: string {
 	 * with one end has no other), and may not add one.
 	 */
 	private const VALUES = array(
-		'spec_missing'      => array( 'spec' ),
-		'deck_below_range'  => array( 'deck_width', 'deck_min', 'deck_max' ),
-		'deck_above_range'  => array( 'deck_width', 'deck_min', 'deck_max' ),
-		'axle_narrower'     => array( 'deck_width', 'axle_width', 'gap' ),
-		'axle_wider'        => array( 'deck_width', 'axle_width', 'gap' ),
-		'pattern_mismatch'  => array( 'hole_pattern', 'baseplate' ),
-		'pattern_assumed'   => array( 'hole_pattern' ),
-		'wheel_needs_riser' => array( 'wheel_diameter', 'limit', 'over', 'riser' ),
-		'wheel_no_riser'    => array( 'wheel_diameter', 'limit', 'over' ),
-		'limit_from_class'  => array( 'height_class', 'limit' ),
-		'bolts_too_short'   => array( 'bolt_length', 'shortest', 'usual', 'riser_thickness' ),
-		'bolts_too_long'    => array( 'bolt_length', 'shortest', 'usual', 'riser_thickness' ),
-		'bore_mismatch'     => array( 'bearing_bore', 'axle_diameter' ),
-		'axle_assumed'      => array( 'axle_diameter' ),
-		'grip_too_narrow'   => array( 'grip_width', 'deck_width' ),
-		'grip_too_short'    => array( 'grip_length', 'deck_length' ),
+		'spec_missing'       => array( 'spec' ),
+		'deck_below_range'   => array( 'deck_width', 'deck_min', 'deck_max' ),
+		'deck_above_range'   => array( 'deck_width', 'deck_min', 'deck_max' ),
+		'axle_narrower'      => array( 'deck_width', 'axle_width', 'gap' ),
+		'axle_wider'         => array( 'deck_width', 'axle_width', 'gap' ),
+		'pattern_mismatch'   => array( 'hole_pattern', 'baseplate' ),
+		'pattern_assumed'    => array( 'hole_pattern' ),
+		'wheel_needs_riser'  => array( 'wheel_diameter', 'limit', 'over', 'riser' ),
+		'wheel_no_riser'     => array( 'wheel_diameter', 'limit', 'over' ),
+		'limit_from_class'   => array( 'height_class', 'limit' ),
+		'riser_not_in_stock' => array( 'wheel_diameter', 'limit', 'over', 'riser' ),
+		'riser_no_bolts'     => array( 'wheel_diameter', 'limit', 'over', 'riser' ),
+		'riser_no_slot'      => array( 'wheel_diameter', 'limit', 'over', 'riser' ),
+		'bolts_too_short'    => array( 'bolt_length', 'shortest', 'usual', 'riser_thickness' ),
+		'bolts_too_long'     => array( 'bolt_length', 'shortest', 'usual', 'riser_thickness' ),
+		'riser_bolts_short'  => array( 'riser_thickness', 'shortest' ),
+		'bore_mismatch'      => array( 'bearing_bore', 'axle_diameter' ),
+		'axle_assumed'       => array( 'axle_diameter' ),
+		'grip_too_narrow'    => array( 'grip_width', 'deck_width' ),
+		'grip_too_short'     => array( 'grip_length', 'deck_length' ),
 	);
 
 	/**

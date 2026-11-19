@@ -141,6 +141,17 @@ final class WordsTest extends TestCase {
 		);
 		yield 'wheels that need a riser' => array( MessageCode::WheelNeedsRiser, $wheels + array( 'riser' => self::in( '0.25' ) ), 'Wheels of 58 mm are 2 mm over what the trucks clear, which is 56 mm. A riser of ¼″ or thicker makes the room.' );
 		yield 'wheels no riser makes room for' => array( MessageCode::WheelNoRiser, $wheels, 'Wheels of 58 mm are 2 mm over what the trucks clear, which is 56 mm. That is more than a riser makes up for.' );
+		yield 'wheels whose riser is not in stock' => array( MessageCode::RiserNotInStock, $wheels + array( 'riser' => self::in( '0.5' ) ), 'Needs ½″ risers, and none are in stock.' );
+		yield 'wheels whose riser no bolts reach through' => array( MessageCode::RiserNoBolts, $wheels + array( 'riser' => self::in( '0.5' ) ), 'Needs ½″ risers, and no bolts here are long enough for them.' );
+		yield 'wheels in a kit with no risers' => array( MessageCode::RiserNoSlot, $wheels + array( 'riser' => self::in( '0.5' ) ), 'Needs ½″ risers, and this kit has none.' );
+		yield 'a riser no bolts reach through' => array(
+			MessageCode::RiserBoltsShort,
+			array(
+				'riser_thickness' => self::in( '0.5' ),
+				'shortest'        => self::in( '1.375' ),
+			),
+			'No bolts here are long enough for a ½″ riser. It takes 1⅜″ or longer.',
+		);
 		yield 'a limit from the height' => array(
 			MessageCode::LimitFromClass,
 			array(
@@ -227,6 +238,10 @@ final class WordsTest extends TestCase {
 		yield 'spacers_built_in' => array( MessageCode::SpacersBuiltIn, '1 part hidden: the bearings have spacers built in.', '9 parts hidden: the bearings have spacers built in.' );
 		yield 'grip_too_narrow' => array( MessageCode::GripTooNarrow, '1 part hidden: the grip would be narrower than the deck.', '9 parts hidden: the grip would be narrower than the deck.' );
 		yield 'grip_too_short' => array( MessageCode::GripTooShort, '1 part hidden: the grip would be shorter than the deck.', '9 parts hidden: the grip would be shorter than the deck.' );
+		yield 'riser_not_in_stock' => array( MessageCode::RiserNotInStock, '1 part hidden: the risers it needs are not in stock.', '9 parts hidden: the risers they need are not in stock.' );
+		yield 'riser_no_bolts' => array( MessageCode::RiserNoBolts, '1 part hidden: no bolts here are long enough for the risers it needs.', '9 parts hidden: no bolts here are long enough for the risers they need.' );
+		yield 'riser_no_slot' => array( MessageCode::RiserNoSlot, '1 part hidden: it needs risers, and this kit has none.', '9 parts hidden: they need risers, and this kit has none.' );
+		yield 'riser_bolts_short' => array( MessageCode::RiserBoltsShort, '1 part hidden: no bolts here are long enough for it.', '9 parts hidden: no bolts here are long enough for them.' );
 		yield 'a code that hides nothing today' => array( MessageCode::WheelNoRiser, '1 part hidden: it does not fit the rest of the build.', '9 parts hidden: they do not fit the rest of the build.' );
 	}
 

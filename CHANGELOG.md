@@ -4,6 +4,10 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+### Added
+
+- Message codes for parts a step hides because the kit can't supply the riser they need (D-245): `riser_not_in_stock`, `riser_no_bolts` and `riser_no_slot` on wheels, and `riser_bolts_short` on risers.
+
 ### Fixed
 
 - Part specs opens Sold in sets for any part in a slot that takes more than one unit, so a riser's Number in a set is filled in and the riser is offered (Cowork; #61).
@@ -11,7 +15,7 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Changed
 
-- CI runs the newest leg's other browser engines, projects, updates and visual snapshots as five jobs beside it, so a full run takes about 40 minutes rather than 95 (D-258).
+- CI runs the newest leg's other browser engines, projects, updates and visual snapshots as five jobs beside it, so a full run takes about 30 minutes rather than 95 (D-258).
 
 ## [0.9.0] - 2026-11-18
 

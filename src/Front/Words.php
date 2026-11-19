@@ -131,6 +131,15 @@ final class Words {
 			case MessageCode::WheelNoRiser:
 				/* translators: 1: the wheels' diameter. 2: how far over the trucks' limit they are. 3: the limit. */
 				return sprintf( __( 'Wheels of %1$s are %2$s over what the trucks clear, which is %3$s. That is more than a riser makes up for.', 'creative-skateboard-builder' ), $v( 'wheel_diameter' ), $v( 'over' ), $v( 'limit' ) );
+			case MessageCode::RiserNotInStock:
+				/* translators: %s: a riser's thickness. */
+				return sprintf( __( 'Needs %s risers, and none are in stock.', 'creative-skateboard-builder' ), $v( 'riser' ) );
+			case MessageCode::RiserNoBolts:
+				/* translators: %s: a riser's thickness. */
+				return sprintf( __( 'Needs %s risers, and no bolts here are long enough for them.', 'creative-skateboard-builder' ), $v( 'riser' ) );
+			case MessageCode::RiserNoSlot:
+				/* translators: %s: a riser's thickness. */
+				return sprintf( __( 'Needs %s risers, and this kit has none.', 'creative-skateboard-builder' ), $v( 'riser' ) );
 			case MessageCode::LimitFromClass:
 				/* translators: 1: the trucks' height, such as Low. 2: a wheel diameter. */
 				return sprintf( __( 'The trucks give no largest wheel, so the usual one for their height (%1$s) is taken: %2$s.', 'creative-skateboard-builder' ), $v( 'height_class' ), $v( 'limit' ) );
@@ -148,6 +157,9 @@ final class Words {
 				}
 				/* translators: 1: the bolts' length. 2: the usual length. */
 				return sprintf( __( 'Bolts of %1$s are longer than a board with no riser needs. The usual length is %2$s.', 'creative-skateboard-builder' ), $v( 'bolt_length' ), $v( 'usual' ) );
+			case MessageCode::RiserBoltsShort:
+				/* translators: 1: a riser's thickness. 2: the shortest bolts that reach through it. */
+				return sprintf( __( 'No bolts here are long enough for a %1$s riser. It takes %2$s or longer.', 'creative-skateboard-builder' ), $v( 'riser_thickness' ), $v( 'shortest' ) );
 			case MessageCode::BoreMismatch:
 				/* translators: 1: the bearings' bore. 2: the axle's diameter. */
 				return sprintf( __( 'The bearings\' bore is %1$s and the trucks\' axle is %2$s.', 'creative-skateboard-builder' ), $v( 'bearing_bore' ), $v( 'axle_diameter' ) );
@@ -198,6 +210,18 @@ final class Words {
 			case MessageCode::BoltsTooShort:
 				/* translators: %s: a number of parts. */
 				return sprintf( _n( '%s part hidden: the bolts would be too short.', '%s parts hidden: the bolts would be too short.', $count, 'creative-skateboard-builder' ), $number );
+			case MessageCode::RiserNotInStock:
+				/* translators: %s: a number of parts. */
+				return sprintf( _n( '%s part hidden: the risers it needs are not in stock.', '%s parts hidden: the risers they need are not in stock.', $count, 'creative-skateboard-builder' ), $number );
+			case MessageCode::RiserNoBolts:
+				/* translators: %s: a number of parts. */
+				return sprintf( _n( '%s part hidden: no bolts here are long enough for the risers it needs.', '%s parts hidden: no bolts here are long enough for the risers they need.', $count, 'creative-skateboard-builder' ), $number );
+			case MessageCode::RiserNoSlot:
+				/* translators: %s: a number of parts. */
+				return sprintf( _n( '%s part hidden: it needs risers, and this kit has none.', '%s parts hidden: they need risers, and this kit has none.', $count, 'creative-skateboard-builder' ), $number );
+			case MessageCode::RiserBoltsShort:
+				/* translators: %s: a number of parts. */
+				return sprintf( _n( '%s part hidden: no bolts here are long enough for it.', '%s parts hidden: no bolts here are long enough for them.', $count, 'creative-skateboard-builder' ), $number );
 			case MessageCode::BoreMismatch:
 				/* translators: %s: a number of parts. */
 				return sprintf( _n( '%s part hidden: the bearings would not fit the axle.', '%s parts hidden: the bearings would not fit the axle.', $count, 'creative-skateboard-builder' ), $number );

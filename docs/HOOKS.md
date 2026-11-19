@@ -147,8 +147,12 @@ Severities, since 0.2.0: `fits` (a note: a default was taken for a spec the part
 | `wheel_needs_riser` | 0.2.0 | R3 | Warn | `wheel_diameter`, `limit`, `over`, `riser` | The wheel is over the truck's limit; a riser of at least `riser` clears it. |
 | `wheel_no_riser` | 0.2.0 | R3 | Warn | `wheel_diameter`, `limit`, `over` | The wheel is further over the limit than any riser in the kit's table covers. |
 | `limit_from_class` | 0.2.0 | R3 | Fits | `height_class`, `limit` | The truck gives no largest wheel, so its height class's limit was used. |
+| `riser_not_in_stock` | 1.0.0 | R3 | Block | `wheel_diameter`, `limit`, `over`, `riser` | The wheels step hides the wheel: no riser of at least `riser` is in stock (D-245). |
+| `riser_no_bolts` | 1.0.0 | R3 | Block | `wheel_diameter`, `limit`, `over`, `riser` | The wheels step hides the wheel: risers that clear it are in stock, and no bolts in stock reach through them (D-245). |
+| `riser_no_slot` | 1.0.0 | R3 | Block | `wheel_diameter`, `limit`, `over`, `riser` | The wheels step hides the wheel: it needs a riser and the kit has no Risers slot (D-245). |
 | `bolts_too_short` | 0.2.0 | R4 | Block | `bolt_length`, `shortest`, `usual`, `riser_thickness` | The bolts are shorter than 7/8 in plus the riser. |
 | `bolts_too_long` | 0.2.0 | R4 | Warn | `bolt_length`, `shortest`, `usual`, `riser_thickness` | The bolts are more than 1/4 in longer than usual and will stand proud. |
+| `riser_bolts_short` | 1.0.0 | R4 | Block | `riser_thickness`, `shortest` | The risers step hides the riser: no bolts in stock are `shortest` or longer (D-245). |
 | `bore_mismatch` | 0.2.0 | R5 | Block | `bearing_bore`, `axle_diameter` | The bearing's bore is not the axle's diameter. |
 | `axle_assumed` | 0.2.0 | R5 | Fits | `axle_diameter` | The truck gives no axle diameter and was counted as 8 mm. |
 | `spacers_built_in` | 0.2.0 | R5 | Block | None | The bearings have their spacers built in, so separate spacers are not offered. As a spec key it is the bearing's flag. |

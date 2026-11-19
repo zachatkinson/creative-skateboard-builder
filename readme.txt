@@ -4,7 +4,7 @@ Tags: woocommerce, skateboard, product builder, configurator, bundle
 Requires at least: 7.0
 Tested up to: 7.1
 Requires PHP: 8.5
-Stable tag: 0.9.0
+Stable tag: 1.0.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -14,7 +14,7 @@ Sells complete skateboards built from parts the shop stocks, with fit checked fr
 
 Creative Skateboard Builder lets a shopper put a complete skateboard together from the decks, trucks, wheels, bearings, hardware and grip a WooCommerce shop already sells. It checks that the parts fit from each part's specs, draws a picture of the build, keeps the total in view, and gives each part its own line in the cart and on the order, so stock, tax and refunds work as they do for any other product.
 
-This is version 0.9.0. A kit's page shows the builder in place of the add-to-cart form, and the Builder block puts it on any other page. The shopper goes one step a slot, sees only the parts that fit what they picked, can start from one of your presets, and reaches a review with the total, a link to the build and Add to cart. The builder draws the board to scale from each part's layer image, top and underside, and the cart, the order, its emails and a shared build link show a picture of it. A signed-in customer can save a build and find it again under My builds in My account. The workshop gets each order's build in a box on the order screen and a printed assembly ticket.
+This is version 1.0.0. A kit's page shows the builder in place of the add-to-cart form, and the Builder block puts it on any other page. The shopper goes one step a slot, sees only the parts that fit what they picked, can start from one of your presets, and reaches a review with the total, a link to the build and Add to cart. The builder draws the board to scale from each part's layer image, top and underside, and the cart, the order, its emails and a shared build link show a picture of it. A signed-in customer can save a build and find it again under My builds in My account. The workshop gets each order's build in a box on the order screen and a printed assembly ticket.
 
 It works with a keyboard and a screen reader, on a phone, without JavaScript, in English and French (Canada), and right to left.
 
@@ -48,6 +48,10 @@ It ships in English and French (Canada). Every string goes through the text doma
 Yes. Its hooks, REST routes, block attributes, settings keys, order item keys, CSS custom properties and DOM events are listed with the version each arrived in, and from 1.0.0 they follow Semantic Versioning: no minor or patch release removes or renames one, and a deprecation comes first.
 
 == Changelog ==
+
+= 1.0.0 =
+* Steps hide wheels that need a riser the kit can't supply with bolts long enough, and risers no bolts in stock reach through, each with its reason.
+* Part specs opens Sold in sets for parts in slots that take more than one unit. Saving a kit whose presets name a hidden part keeps the presets and says which part.
 
 = 0.9.0 =
 * Focus is seen on a dark theme and a light one: the ring has two tones of its own.
@@ -150,6 +154,9 @@ Yes. Its hooks, REST routes, block attributes, settings keys, order item keys, C
 * Foundation: the plugin skeleton, the two tables, the upgrade steps, uninstall, the update check, the test harness and the CI gates. Nothing a shopper or shop owner sees yet.
 
 == Upgrade Notice ==
+
+= 1.0.0 =
+Update as usual, from the updater or by uploading the zip. No step is needed, from any earlier release.
 
 = 0.9.0 =
 Update as usual, from the updater or by uploading the zip. No step is needed, from any earlier release. On a network, a network admin's next visit to wp-admin writes the must-use file again.
