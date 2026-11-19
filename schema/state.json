@@ -1140,6 +1140,42 @@
 						}
 					}
 				},
+				"sized": {
+					"description": "From 1.0.0, on the look the step's pick is of and only where nothing in the build decides its size: each size it comes in, as the part of that size with the pick's other choices, smallest first, for the radio group after the picked card (D-279). Left out on any other look, and on a look in one size.",
+					"type": "array",
+					"items": {
+						"type": "object",
+						"required": [
+							"part",
+							"value",
+							"text",
+							"in_stock",
+							"picked"
+						],
+						"properties": {
+							"part": {
+								"description": "The part of this size: the step's pick when chosen.",
+								"type": "integer"
+							},
+							"value": {
+								"description": "The size as the chips name it: `54mm`.",
+								"type": "string"
+							},
+							"text": {
+								"description": "The size as a person reads it.",
+								"type": "string"
+							},
+							"in_stock": {
+								"description": "Whether the shop can supply it for the build.",
+								"type": "boolean"
+							},
+							"picked": {
+								"description": "Whether it is the size the build holds.",
+								"type": "boolean"
+							}
+						}
+					}
+				},
 				"choices": {
 					"description": "The choices you can't see: each attribute whose values differ between its parts, by attribute, with its values.",
 					"type": "object",

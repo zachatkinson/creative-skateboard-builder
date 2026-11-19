@@ -16,6 +16,7 @@ interface Actions {
 	pick: ( event: Event ) => void;
 	follow: ( event: MouseEvent ) => void;
 	back: () => void;
+	filters: () => void;
 }
 
 interface Defined {
@@ -27,6 +28,7 @@ interface Defined {
 		canCopy: boolean;
 		canTurn: boolean;
 		turning: boolean;
+		folded: boolean;
 	};
 	actions: Actions;
 }
@@ -135,6 +137,21 @@ afterEach( () => {
 } );
 
 describe( 'the store', () => {
+	// Spec (configurator): Phone, "The filters sit behind a Filters button, so the cards come first."
+	it( 'folds the filters behind the Filters button once the script runs, and the button opens and closes them', () => {
+		state.folded = false;
+		document.body.innerHTML = '<div class="cbuild"></div>';
+		setElement( document.querySelector< HTMLElement >( '.cbuild' )! );
+		(
+			defined.definition as { callbacks: { init: () => void } }
+		 ).callbacks.init();
+		expect( state.folded ).toBe( true );
+		actions.filters();
+		expect( state.folded ).toBe( false );
+		actions.filters();
+		expect( state.folded ).toBe( true );
+	} );
+
 	it( 'is private and locked', () => {
 		expect( defined.options ).toEqual( { lock: true } );
 		expect( NAME ).toBe( 'creative-skateboard-builder' );
@@ -308,6 +325,47 @@ describe( 'the store', () => {
 			false,
 		] );
 		expect( step.leave.checked, 'No risers picked' ).toBe( true );
+	} );
+
+	// D-279: a size picked after the card is a pick of the step, so its card stays picked and the size is marked.
+	it( 'marks a size picked after its card in the store, and keeps the card picked', () => {
+		const { radio } = form();
+		state.view = {
+			...START,
+			step: {
+				slot: 'wheels',
+				options: [
+					{
+						value: '302',
+						checked: true,
+						sizeGroup: {
+							inputs: [
+								{ value: '301', checked: false },
+								{ value: '302', checked: true },
+							],
+						},
+					},
+					{ value: '303', checked: false, sizeGroup: { inputs: [] } },
+				],
+			},
+		};
+		radio.value = '301';
+		actions.pick( { target: radio } as unknown as Event );
+		const step = state.view.step as {
+			options: {
+				checked: boolean;
+				sizeGroup: { inputs: { checked: boolean }[] };
+			}[];
+		};
+		expect( step.options.map( ( option ) => option.checked ) ).toEqual( [
+			true,
+			false,
+		] );
+		expect(
+			step.options[ 0 ]?.sizeGroup.inputs.map(
+				( input ) => input.checked
+			)
+		).toEqual( [ true, false ] );
 	} );
 
 	it( "keeps the pick when the route fails, for the form's Next to send", async () => {

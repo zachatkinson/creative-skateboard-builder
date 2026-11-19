@@ -3464,3 +3464,15 @@ Spec (configurator): A saved build that has changed (D-254), "in the saved build
 
 **Why:** a column would be a table change after milestone 1. One document keeps a build and what it cost together, and the key is the builder's own, as `_replace` is.
 
+### D-279 · The picked card's sizes are picks of the step, and the card's own radio stands aside · 2026-11-19
+
+Spec (configurator): One card per look, "The picked card is followed by a radio group of its own, 'Size for Retna Cruiser, Mint', with the size … already chosen." M10's plan left open where the size group's radios live in the form.
+
+- **Each size is a part.** The group's radios are named as the step's cards are, `cbuild[<slot>]`, each valued with the part of that size that has the pick's other choices (a wheel's hardness, a bolt's head). Picking a size is picking that part, through the same form, route and store action as a card, with and without JavaScript. No new link key.
+- **One radio checked.** While the group shows, the picked card's own radio has no name, so it is a group of its own: it stays checked, and the step's one checked radio is the size. Picking another card unchecks the size, since they share the name; without JavaScript the old card's radio stays drawn checked until Next, and the value sent is right.
+- **Where.** Only where nothing in the build decides the slot's size (`SizePicker::decides()`): wheels' diameter and any slot the rules don't size. Only on the picked card, and only for a look in two sizes or more. A sold-out size is listed, dimmed and disabled, unless the build holds it.
+- **The store** marks a size picked at once, and keeps its card picked, as it marks a card (#47).
+- **The Filters button** on a phone (spec: Phone) folds the chips only once the script runs, so without it they show; it says how many chips are chosen ("Filters, 2 chosen").
+
+**Why:** a key of its own, such as `_sized`, would have needed a rule for which of two values for one slot wins, on every way a link is read. Two radios of one name already say it.
+

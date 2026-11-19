@@ -975,6 +975,8 @@ final class BuilderView {
 				'shown'  => $tools && array() !== $groups,
 				'groups' => $groups,
 				'apply'  => __( 'Apply', 'creative-skateboard-builder' ),
+				// A phone folds the chips behind this button (spec: Phone); it says how many narrow the cards.
+				'toggle' => self::toggle( $groups ),
 			),
 			'sort'    => array(
 				'shown'   => $tools,
@@ -1204,6 +1206,27 @@ final class BuilderView {
 				$notes[] = array( 'text' => Cast::str( $message['text'] ?? null ) );
 			}
 			$input = 'cbuild-' . $state->id . '-' . $id;
+			// The picked card's sizes, where the shopper chooses one: radios of the step's own field, after the card. The
+			// card's own radio then stands aside, so that one radio of the step is checked (D-279).
+			$field  = BuildLink::PARAM . '[' . $slot . ']';
+			$inputs = array();
+			foreach ( Cast::items( $look['sized'] ?? null ) as $sized ) {
+				$sized    = Cast::map( $sized );
+				$part     = Cast::int( $sized['part'] ?? null );
+				$inStock  = Cast::bool( $sized['in_stock'] ?? null );
+				$picked   = Cast::bool( $sized['picked'] ?? null );
+				$inputs[] = array(
+					'id'       => $input . '-size-' . $part,
+					'name'     => $field,
+					'value'    => (string) $part,
+					'text'     => Cast::str( $sized['text'] ?? null ),
+					'checked'  => $picked,
+					'disabled' => ! $inStock && ! $picked,
+					/* translators: %s: a size, such as 54 mm. */
+					'label'    => $inStock ? Cast::str( $sized['text'] ?? null ) : sprintf( __( '%s, sold out', 'creative-skateboard-builder' ), Cast::str( $sized['text'] ?? null ) ),
+				);
+			}
+			$grouped = $checked && array() !== $inputs;
 			return array(
 				'id'            => $id,
 				'input'         => $input,
@@ -1224,6 +1247,13 @@ final class BuilderView {
 				/* translators: %s: a part's name. */
 				'choose'        => sprintf( __( 'Choose %s', 'creative-skateboard-builder' ), $title ),
 				'checked'       => $checked,
+				'field'         => $grouped ? '' : $field,
+				'hasSizes'      => $grouped,
+				'sizeGroup'     => array(
+					/* translators: %s: a look's name, such as Retna Cruiser, Mint. */
+					'legend' => sprintf( __( 'Size for %s', 'creative-skateboard-builder' ), $title ),
+					'inputs' => $grouped ? $inputs : array(),
+				),
 				// A part the shop cannot supply cannot be picked. One a link or a preset brought stays in the form, so
 				// that the build still names it until the shopper swaps it.
 				'disabled'      => ! $available && ! $checked,
@@ -1555,6 +1585,25 @@ final class BuilderView {
 				'text'   => __( 'Undo', 'creative-skateboard-builder' ),
 			),
 		);
+	}
+
+	/**
+	 * The Filters button's words: "Filters", and how many chips are chosen where any are.
+	 *
+	 * @param list<array<string, mixed>> $groups The chip groups, as the view gives them.
+	 */
+	private static function toggle( array $groups ): string {
+		$chosen = 0;
+		foreach ( $groups as $group ) {
+			foreach ( Cast::items( $group['inputs'] ?? null ) as $chip ) {
+				$chosen += true === ( Cast::map( $chip )['checked'] ?? null ) ? 1 : 0;
+			}
+		}
+		if ( 0 === $chosen ) {
+			return __( 'Filters', 'creative-skateboard-builder' );
+		}
+		/* translators: %s: how many filter choices are chosen, such as 2. */
+		return sprintf( _n( 'Filters, %s chosen', 'Filters, %s chosen', $chosen, 'creative-skateboard-builder' ), number_format_i18n( $chosen ) );
 	}
 
 	/**

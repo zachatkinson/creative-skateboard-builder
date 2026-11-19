@@ -916,6 +916,31 @@ export interface Look {
 		text: string;
 	}[];
 	/**
+	 * From 1.0.0, on the look the step's pick is of and only where nothing in the build decides its size: each size it comes in, as the part of that size with the pick's other choices, smallest first, for the radio group after the picked card (D-279). Left out on any other look, and on a look in one size.
+	 */
+	sized?: {
+		/**
+		 * The part of this size: the step's pick when chosen.
+		 */
+		part: number;
+		/**
+		 * The size as the chips name it: `54mm`.
+		 */
+		value: string;
+		/**
+		 * The size as a person reads it.
+		 */
+		text: string;
+		/**
+		 * Whether the shop can supply it for the build.
+		 */
+		in_stock: boolean;
+		/**
+		 * Whether it is the size the build holds.
+		 */
+		picked: boolean;
+	}[];
+	/**
 	 * The choices you can't see: each attribute whose values differ between its parts, by attribute, with its values.
 	 */
 	choices: {

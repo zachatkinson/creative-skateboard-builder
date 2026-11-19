@@ -58,21 +58,25 @@ defined( 'ABSPATH' ) || exit;
 			<button class="cbuild-button cbuild-search__go" type="submit" data-wp-bind--hidden="state.live" data-wp-text="state.view.step.shelf.search.button"></button>
 		</span>
 	</div>
-	<div class="cbuild-chips" data-wp-bind--hidden="!state.view.step.shelf.chips.shown">
-		<template data-wp-each--group="state.view.step.shelf.chips.groups" data-wp-each-key="context.group.key">
-			<fieldset class="cbuild-chips__group">
-				<legend class="cbuild-chips__legend" data-wp-text="context.group.legend"></legend>
-				<div class="cbuild-chips__options">
-					<template data-wp-each--chip="context.group.inputs" data-wp-each-key="context.chip.value">
-						<span class="cbuild-chips__chip">
-							<input class="cbuild-chips__control" type="checkbox" data-wp-bind--id="context.chip.id" data-wp-bind--name="context.chip.name" data-wp-bind--value="context.chip.value" data-wp-bind--checked="context.chip.checked" data-wp-on--change="actions.narrow">
-							<label class="cbuild-chip" data-wp-bind--for="context.chip.id"><span class="cbuild-chip__text" data-wp-text="context.chip.text"></span> <span class="cbuild-chip__count" data-wp-text="context.chip.count"></span></label>
-						</span>
-					</template>
-				</div>
-			</fieldset>
-		</template>
-		<button class="cbuild-button cbuild-chips__apply" type="submit" data-wp-bind--hidden="state.live" data-wp-text="state.view.step.shelf.chips.apply"></button>
+	<div class="cbuild-chips" data-wp-bind--hidden="!state.view.step.shelf.chips.shown" data-wp-class--cbuild-chips--folded="state.folded">
+		<?php // On a phone the cards come first: the chips wait behind this button once the script runs (spec: Phone). ?>
+		<button class="cbuild-button cbuild-chips__toggle" type="button" aria-controls="cbuild-chips-body" hidden data-wp-bind--hidden="!state.live" data-wp-bind--aria-expanded="!state.folded" data-wp-on--click="actions.filters" data-wp-text="state.view.step.shelf.chips.toggle"></button>
+		<div class="cbuild-chips__body" id="cbuild-chips-body">
+			<template data-wp-each--group="state.view.step.shelf.chips.groups" data-wp-each-key="context.group.key">
+				<fieldset class="cbuild-chips__group">
+					<legend class="cbuild-chips__legend" data-wp-text="context.group.legend"></legend>
+					<div class="cbuild-chips__options">
+						<template data-wp-each--chip="context.group.inputs" data-wp-each-key="context.chip.value">
+							<span class="cbuild-chips__chip">
+								<input class="cbuild-chips__control" type="checkbox" data-wp-bind--id="context.chip.id" data-wp-bind--name="context.chip.name" data-wp-bind--value="context.chip.value" data-wp-bind--checked="context.chip.checked" data-wp-on--change="actions.narrow">
+								<label class="cbuild-chip" data-wp-bind--for="context.chip.id"><span class="cbuild-chip__text" data-wp-text="context.chip.text"></span> <span class="cbuild-chip__count" data-wp-text="context.chip.count"></span></label>
+							</span>
+						</template>
+					</div>
+				</fieldset>
+			</template>
+			<button class="cbuild-button cbuild-chips__apply" type="submit" data-wp-bind--hidden="state.live" data-wp-text="state.view.step.shelf.chips.apply"></button>
+		</div>
 	</div>
 	<details class="cbuild-filters" data-wp-bind--open="state.view.step.filters.open" data-wp-bind--hidden="!state.view.step.filters.shown">
 		<summary class="cbuild-filters__heading" data-wp-text="state.view.step.filters.heading"></summary>
@@ -116,7 +120,7 @@ defined( 'ABSPATH' ) || exit;
 		<ul class="cbuild-cards">
 			<template data-wp-each--option="state.view.step.options" data-wp-each-key="context.option.id">
 				<li data-wp-bind--class="context.option.classes">
-					<input class="cbuild-card__control" type="radio" data-wp-bind--id="context.option.input" data-wp-bind--name="state.view.step.name" data-wp-bind--value="context.option.value" data-wp-bind--checked="context.option.checked" data-wp-bind--disabled="context.option.disabled" data-wp-bind--aria-label="context.option.choose" data-wp-bind--aria-describedby="context.option.describedby">
+					<input class="cbuild-card__control" type="radio" data-wp-bind--id="context.option.input" data-wp-bind--name="context.option.field" data-wp-bind--value="context.option.value" data-wp-bind--checked="context.option.checked" data-wp-bind--disabled="context.option.disabled" data-wp-bind--aria-label="context.option.choose" data-wp-bind--aria-describedby="context.option.describedby">
 					<label class="cbuild-card__body" data-wp-bind--for="context.option.input">
 						<img class="cbuild-card__photo" alt="" loading="lazy" decoding="async" data-wp-bind--hidden="!context.option.hasImage" data-wp-bind--src="context.option.src" data-wp-bind--srcset="context.option.srcset" data-wp-bind--sizes="context.option.sizes" data-wp-bind--width="context.option.width" data-wp-bind--height="context.option.height">
 						<span class="cbuild-card__brand" data-wp-bind--id="context.option.brandId" data-wp-bind--hidden="!context.option.hasBrand" data-wp-text="context.option.brand"></span>
@@ -138,6 +142,18 @@ defined( 'ABSPATH' ) || exit;
 						</template>
 					</ul>
 					<a class="cbuild-card__page" data-wp-bind--hidden="!context.option.soldOut" data-wp-bind--href="context.option.url" data-wp-text="context.option.page"></a>
+					<?php // The picked card's sizes, where the shopper chooses one: picks of the step, as the cards are (D-279). ?>
+					<fieldset class="cbuild-sizes cbuild-chips__group" data-wp-bind--hidden="!context.option.hasSizes">
+						<legend class="cbuild-sizes__legend cbuild-chips__legend" data-wp-text="context.option.sizeGroup.legend"></legend>
+						<div class="cbuild-sizes__options cbuild-chips__options">
+							<template data-wp-each--size="context.option.sizeGroup.inputs" data-wp-each-key="context.size.value">
+								<span class="cbuild-sizes__size cbuild-chips__chip">
+									<input class="cbuild-sizes__control cbuild-chips__control" type="radio" data-wp-bind--id="context.size.id" data-wp-bind--name="context.size.name" data-wp-bind--value="context.size.value" data-wp-bind--checked="context.size.checked" data-wp-bind--disabled="context.size.disabled">
+									<label class="cbuild-chip" data-wp-bind--for="context.size.id" data-wp-text="context.size.label"></label>
+								</span>
+							</template>
+						</div>
+					</fieldset>
 				</li>
 			</template>
 		</ul>

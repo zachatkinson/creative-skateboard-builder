@@ -837,6 +837,7 @@ final class BuilderTest extends TestCase {
 				'shown'  => false,
 				'groups' => array(),
 				'apply'  => 'Apply',
+				'toggle' => 'Filters',
 			),
 			'sort'    => array(
 				'shown'   => false,

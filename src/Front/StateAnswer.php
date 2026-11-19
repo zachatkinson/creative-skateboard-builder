@@ -10,6 +10,7 @@ declare( strict_types=1 );
 namespace CreativeBranding\SkateboardBuilder\Front;
 
 use Closure;
+use CreativeBranding\SkateboardBuilder\Domain\Fit\SizePicker;
 use CreativeBranding\SkateboardBuilder\Domain\Fit\BuildProblem;
 use CreativeBranding\SkateboardBuilder\Domain\Fit\Option;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Part;
@@ -428,7 +429,67 @@ final class StateAnswer {
 			'picture'  => $this->picture( $state, $counted, $labels, $brands, $cards ),
 			'delivery' => $this->delivery->said( $state->id, $state->quote->assembly, $state->quote->total, $decimals ),
 			'notes'    => self::notes( $state, $decimals ),
-			'shelf'    => null === $view ? null : self::shelf( $view, $state->step, static fn( Option $shown ): array => $option( $shown, $state->step, $current ) ),
+			'shelf'    => null === $view ? null : self::shelf( $view, $state->step, static fn( Option $shown ): array => $option( $shown, $state->step, $current ), $current ),
+		);
+	}
+
+	/**
+	 * The sizes of the look the step's pick is of, where nothing in the build decides its size: each the part of
+	 * that size with the same choices as the pick, smallest first, for the radio group after the picked card (spec:
+	 * One card per look; D-279). Nothing for any other look, or a look in one size.
+	 *
+	 * @param ShelfLook                                             $shelved The card.
+	 * @param string                                                $slot    The step's slot.
+	 * @param StateStep|null                                        $current The step.
+	 * @param callable(Measure): array{value: string, text: string} $size    A size as the answer names it.
+	 * @return array{sized?: list<array{part: int, value: string, text: string, in_stock: bool, picked: bool}>}
+	 */
+	private static function sizesOf( ShelfLook $shelved, string $slot, ?StateStep $current, callable $size ): array {
+		$spec   = self::SIZES[ $slot ] ?? null;
+		$picked = $current?->picked?->part;
+		if ( null === $spec || null === $picked || null === $current || SizePicker::decides( $slot ) ) {
+			return array();
+		}
+		$held = null;
+		foreach ( $shelved->look->variants as $variant ) {
+			$held = $variant->part->id === $picked->id ? $variant : $held;
+		}
+		if ( null === $held ) {
+			return array();
+		}
+		$sized = array();
+		foreach ( $shelved->look->variants as $variant ) {
+			$measure = $variant->part->specs->measure( $spec );
+			$offered = $current->options->offer( $variant->part->id );
+			if ( null === $measure || null === $offered || $variant->choices !== $held->choices ) {
+				continue;
+			}
+			$named = Shelf::named( $measure );
+			// One radio a size: the part the build holds, else the first in stock.
+			if ( isset( $sized[ $named ] ) && ( $sized[ $named ]['picked'] || $sized[ $named ]['in_stock'] ) && $variant !== $held ) {
+				continue;
+			}
+			$sized[ $named ] = array( 'part' => $variant->part->id ) + $size( $measure ) + array(
+				'in_stock' => $offered->available(),
+				'picked'   => $variant === $held,
+				'measure'  => $measure,
+			);
+		}
+		if ( count( $sized ) < 2 ) {
+			return array();
+		}
+		usort( $sized, static fn( array $one, array $other ): int => $one['measure']->compare( $other['measure'] ) );
+		return array(
+			'sized' => array_map(
+				static fn( array $one ): array => array(
+					'part'     => $one['part'],
+					'value'    => $one['value'],
+					'text'     => $one['text'],
+					'in_stock' => $one['in_stock'],
+					'picked'   => $one['picked'],
+				),
+				$sized
+			),
 		);
 	}
 
@@ -447,16 +508,17 @@ final class StateAnswer {
 	 *
 	 * @param ShelfView                      $view   The shelf and its names.
 	 * @param string                         $slot   The step's slot.
-	 * @param callable(Option): array<mixed> $option An option as the answer carries it.
+	 * @param callable(Option): array<mixed> $option  An option as the answer carries it.
+	 * @param StateStep|null                 $current The step, for the sizes of the look its pick is of.
 	 * @return array<string, mixed>
 	 */
-	private static function shelf( ShelfView $view, string $slot, callable $option ): array {
+	private static function shelf( ShelfView $view, string $slot, callable $option, ?StateStep $current = null ): array {
 		$fraction = in_array( self::SIZES[ $slot ] ?? null, array( SpecKey::RiserThickness, SpecKey::BoltLength ), true );
 		$size     = static fn( Measure $measure ): array => array(
 			'value' => Shelf::named( $measure ),
 			'text'  => Words::measure( $measure, $fraction ),
 		);
-		$look     = static function ( ShelfLook $shelved ) use ( $view, $option, $size ): array {
+		$look     = static function ( ShelfLook $shelved ) use ( $view, $option, $size, $slot, $current ): array {
 			$choices = array();
 			foreach ( $shelved->look->choices() as $name => $values ) {
 				$choices[ $name ] = array_map(
@@ -481,7 +543,7 @@ final class StateAnswer {
 				'part'    => $option( $shelved->option ),
 				'sizes'   => array_map( $size, $shelved->sizes ),
 				'choices' => (object) $choices,
-			);
+			) + self::sizesOf( $shelved, $slot, $current, $size );
 		};
 		$sized    = self::SIZES[ $slot ]->value ?? null;
 		$groups   = array();

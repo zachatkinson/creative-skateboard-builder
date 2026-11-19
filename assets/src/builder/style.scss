@@ -626,9 +626,27 @@
 	font-size: var(--cbuild-small);
 }
 
-:where(.cbuild-chips) {
+:where(.cbuild-chips, .cbuild-chips__body) {
 	display: grid;
 	gap: var(--cbuild-gap-small);
+}
+
+/* On a phone the cards come first: once the script runs, the chips wait behind the Filters button (spec: Phone).
+   Without it, or wider, they show as they are. */
+:where(.cbuild-chips__toggle) {
+	justify-self: start;
+}
+
+@container cbuild (width < 48rem) {
+	:where(.cbuild-chips--folded .cbuild-chips__body) {
+		display: none;
+	}
+}
+
+@container cbuild (width >= 48rem) {
+	:where(.cbuild-chips__toggle) {
+		display: none;
+	}
 }
 
 :where(.cbuild-chips__chip) {
@@ -691,6 +709,16 @@
 	outline: 2px solid var(--cbuild-focus);
 	outline-offset: 2px;
 	box-shadow: 0 0 0 4px var(--cbuild-focus-contrast);
+}
+
+/* The picked card's sizes (D-279): chips under the card, a sold-out size dimmed and not to be picked. */
+:where(.cbuild-sizes) {
+	margin-block-start: var(--cbuild-gap-small);
+}
+
+:where(.cbuild-chips__control:disabled + .cbuild-chip) {
+	opacity: 0.55;
+	cursor: not-allowed;
 }
 
 :where(.cbuild-chip--dimmed) {

@@ -360,6 +360,42 @@ final class BuilderShelfTest extends TestCase {
 		self::assertSame( 'wheels', self::tail( $step )['cbuild[_on]'] ?? null );
 	}
 
+	// Spec (configurator): One card per look, "Where nothing decides it (a wheel's diameter …), the shopper chooses after
+	// picking the card. … The picked card is followed by a radio group of its own, 'Size for Retna Cruiser, Mint', with
+	// the size … already chosen." Its radios are the step's own picks (D-279).
+	public function test_the_picked_card_is_followed_by_its_sizes_as_picks_of_the_step(): void {
+		$this->looks->facts[301] = new LookFact( 10, 1, 0, 'Retna Cruiser', array(), array(), false, 0, 0 );
+		$this->looks->facts[302] = new LookFact( 10, 1, 0, 'Retna Cruiser', array(), array(), false, 0, 0 );
+		$at      = array( 'deck' => '101', 'trucks' => '139', 'step' => 'wheels' );
+		$unpicked = $this->step( BuildLink::read( $at ) );
+		self::assertSame( array( false, false ), array_column( $unpicked['options'], 'hasSizes' ), 'no group before a pick' );
+
+		$step   = $this->step( BuildLink::read( $at + array( 'wheels' => '302' ) ) );
+		$picked = array_values( array_filter( $step['options'], static fn( array $card ): bool => (bool) $card['checked'] ) )[0];
+		self::assertTrue( $picked['hasSizes'] );
+		self::assertSame( 'Size for Retna Cruiser', $picked['sizeGroup']['legend'] );
+		self::assertSame( array( "52\u{a0}mm", "54\u{a0}mm" ), array_column( $picked['sizeGroup']['inputs'], 'text' ) );
+		self::assertSame( array( '301', '302' ), array_column( $picked['sizeGroup']['inputs'], 'value' ), 'each size is the part of it' );
+		self::assertSame( array( false, true ), array_column( $picked['sizeGroup']['inputs'], 'checked' ), 'the size the build holds' );
+		self::assertSame( 'cbuild[wheels]', $picked['sizeGroup']['inputs'][0]['name'], 'a pick of the step, as a card is' );
+		self::assertSame( '', $picked['field'], 'the picked card\'s own radio stands aside, so one radio of the step is checked' );
+		$other = array_values( array_filter( $step['options'], static fn( array $card ): bool => ! $card['checked'] ) )[0];
+		self::assertFalse( $other['hasSizes'] );
+		self::assertSame( 'cbuild[wheels]', $other['field'] );
+
+		$deck = $this->step( BuildLink::read( array( 'deck' => '101', 'step' => 'deck' ) ) );
+		self::assertSame( array( false ), array_unique( array_column( $deck['options'], 'hasSizes' ) ), 'the build decides a deck\'s width' );
+	}
+
+	// Spec (configurator): Phone, "The filters sit behind a Filters button, so the cards come first." The button says
+	// how many chips are chosen, so the shopper knows the cards are narrowed while the chips are folded away.
+	public function test_the_filters_button_says_how_many_chips_are_chosen(): void {
+		$this->manyWheels();
+		$at = array( 'deck' => '101', 'trucks' => '139', 'step' => 'wheels', '_on' => 'wheels' );
+		self::assertSame( 'Filters', $this->step( BuildLink::read( $at ) )['shelf']['chips']['toggle'] );
+		self::assertSame( 'Filters, 2 chosen', $this->step( BuildLink::read( $at + array( '_chips' => array( 'brand' => array( 'bones', 'ricta' ) ) ) ) )['shelf']['chips']['toggle'] );
+	}
+
 	public function test_what_the_shopper_chose_is_said_back(): void {
 		$this->manyWheels();
 		$searched = $this->step( BuildLink::read( array( 'deck' => '101', 'trucks' => '139', 'step' => 'wheels', '_on' => 'wheels', '_q' => 'bones' ) ) );

@@ -61,6 +61,8 @@ interface State {
 	turning: boolean;
 	/** The route's rate limit, in its words, while the step waits to be asked again; empty otherwise. */
 	limited: string;
+	/** Whether a phone's filters are folded behind the Filters button: only once the script runs, so they show without it. */
+	folded: boolean;
 }
 
 let navigator: Navigator | undefined;
@@ -348,7 +350,7 @@ function measure( element: HTMLElement ): void {
  * same, or what the server found instead.
  *
  * @param view  The view shown.
- * @param value The radio's value: a part's ID, or "0" for leaving the slot empty.
+ * @param value The radio's value: a part's ID, a size's (which is a part's ID too), or "0" for leaving the slot empty.
  */
 function chosen( view: Shown, value: string ): void {
 	const step = view.step as {
@@ -358,8 +360,21 @@ function chosen( view: Shown, value: string ): void {
 	if ( Array.isArray( step.options ) ) {
 		for ( const option of step.options as unknown[] ) {
 			if ( option && 'object' === typeof option ) {
-				const card = option as { value?: unknown; checked?: boolean };
-				card.checked = card.value === value;
+				const card = option as {
+					value?: unknown;
+					checked?: boolean;
+					sizeGroup?: {
+						inputs?: { value?: unknown; checked?: boolean }[];
+					};
+				};
+				// A size picked after its card is a part of the card's look: the card stays picked (D-279).
+				const sizes = card.sizeGroup?.inputs ?? [];
+				let sized = false;
+				for ( const input of sizes ) {
+					input.checked = input.value === value;
+					sized = sized || input.checked;
+				}
+				card.checked = card.value === value || sized;
 			}
 		}
 	}
@@ -501,6 +516,7 @@ const { state } = store(
 			live: false,
 			turning: false,
 			limited: '',
+			folded: false,
 		} as State,
 		callbacks: {
 			init(): void {
@@ -510,6 +526,8 @@ const { state } = store(
 				// The button turns the board in the page; without the script the step's own side is shown.
 				state.canTurn = true;
 				state.live = true;
+				// On a phone the cards come first, and the filters wait behind their button (spec: Phone).
+				state.folded = true;
 				if ( root ) {
 					fit( root );
 					measure( root );
@@ -641,6 +659,9 @@ const { state } = store(
 			 * Show the top, or the underside again: the button by the board, its pressed state the side shown (#46).
 			 * The shopper's side is kept from now on.
 			 */
+			filters(): void {
+				state.folded = ! state.folded;
+			},
 			turn(): void {
 				const picture = state.view.picture;
 				if ( ! picture?.turnable ) {
