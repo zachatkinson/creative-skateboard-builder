@@ -50,6 +50,7 @@ Yes. Its hooks, REST routes, block attributes, settings keys, order item keys, C
 == Changelog ==
 
 = 1.0.0 =
+* Wheels can say they come with their bearings, and then need none of their own.
 * Steps hide wheels that need a riser the kit can't supply with bolts long enough, and risers no bolts in stock reach through, each with its reason.
 * Part specs opens Sold in sets for parts in slots that take more than one unit. Saving a kit whose presets name a hidden part keeps the presets and says which part.
 

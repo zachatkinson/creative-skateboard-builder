@@ -44,7 +44,18 @@ final readonly class BearingRule implements Rule {
 	 * @return list<string>
 	 */
 	public function slots(): array {
-		return array( SlotKey::BEARINGS, SlotKey::SPACERS, SlotKey::TRUCKS );
+		return array( SlotKey::BEARINGS, SlotKey::SPACERS, SlotKey::TRUCKS, SlotKey::WHEELS );
+	}
+
+	/**
+	 * Whether the wheels picked come with their bearings, so that the kit's Bearings slot counts as filled (D-246).
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param Picks $picks The picks.
+	 */
+	public static function included( Picks $picks ): bool {
+		return true === $picks->part( SlotKey::WHEELS )?->specs->flag( SpecKey::BearingsIncluded );
 	}
 
 	/**
@@ -84,6 +95,10 @@ final readonly class BearingRule implements Rule {
 		}
 		if ( $read->picked( SlotKey::SPACERS ) && true === $picks->part( SlotKey::BEARINGS )?->specs->flag( SpecKey::SpacersBuiltIn ) ) {
 			$findings[] = new Finding( RuleId::R5, Severity::Block, MessageCode::SpacersBuiltIn, Source::Maker, array( SlotKey::BEARINGS, SlotKey::SPACERS ), array() );
+		}
+		if ( $read->picked( SlotKey::BEARINGS ) && self::included( $picks ) ) {
+			// Wheels sold with their bearings take no others, so the bearings step leaves the rail (D-246).
+			$findings[] = new Finding( RuleId::R5, Severity::Block, MessageCode::BearingsIncluded, Source::Maker, array( SlotKey::BEARINGS ), array() );
 		}
 		return $findings;
 	}

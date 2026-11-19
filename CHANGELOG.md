@@ -7,6 +7,7 @@ All notable changes to this project are documented here. The format follows [Kee
 ### Added
 
 - Message codes for parts a step hides because the kit can't supply the riser they need (D-245): `riser_not_in_stock`, `riser_no_bolts` and `riser_no_slot` on wheels, and `riser_bolts_short` on risers.
+- The `bearings_included` spec on wheels, in Part specs and the CSV. Wheels that carry it fill the kit's Bearings slot, and R5 blocks a separate bearing with the code `bearings_included` (D-246).
 
 ### Fixed
 

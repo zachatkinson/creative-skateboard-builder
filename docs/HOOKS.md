@@ -121,6 +121,7 @@ The keys a part's specs are stored under: in the specs index (`cbuild_specs`), i
 | `baseplate` | 0.2.0 | Choice | `new_school`, `old_school`, `both` | The mounting pattern a truck's baseplate takes. |
 | `axle_diameter` | 0.2.0 | Measure | mm | A truck's axle diameter. |
 | `wheel_diameter` | 0.2.0 | Measure | mm | A wheel's diameter. |
+| `bearings_included` | 1.0.0 | Flag | | Whether wheels come with their bearings, so they take no others and fill the kit's Bearings slot (D-246). |
 | `riser_thickness` | 0.2.0 | Measure | in | A riser's thickness. |
 | `bolt_length` | 0.2.0 | Measure | in | The length of a hardware set's bolts. |
 | `bearing_bore` | 0.2.0 | Measure | mm | A bearing's bore. |
@@ -156,6 +157,7 @@ Severities, since 0.2.0: `fits` (a note: a default was taken for a spec the part
 | `bore_mismatch` | 0.2.0 | R5 | Block | `bearing_bore`, `axle_diameter` | The bearing's bore is not the axle's diameter. |
 | `axle_assumed` | 0.2.0 | R5 | Fits | `axle_diameter` | The truck gives no axle diameter and was counted as 8 mm. |
 | `spacers_built_in` | 0.2.0 | R5 | Block | None | The bearings have their spacers built in, so separate spacers are not offered. As a spec key it is the bearing's flag. |
+| `bearings_included` | 1.0.0 | R5 | Block | None | The wheels come with their bearings, so a separate bearing is not offered. As a spec key it is the wheels' flag. |
 | `grip_too_narrow` | 0.2.0 | R6 | Block | `grip_width`, `deck_width` | The sheet is narrower than the deck. |
 | `grip_too_short` | 0.2.0 | R6 | Block | `grip_length`, `deck_length` | The sheet is shorter than the deck. |
 | `length_unchecked` | 0.2.0 | R6 | Fits | None | The deck gives no length, so the length check was skipped. |

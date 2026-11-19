@@ -168,6 +168,8 @@ final class Words {
 				return sprintf( __( 'The trucks give no axle size, so the usual one is taken: %s.', 'creative-skateboard-builder' ), $v( 'axle_diameter' ) );
 			case MessageCode::SpacersBuiltIn:
 				return __( 'The bearings have spacers built in, so they take no others.', 'creative-skateboard-builder' );
+			case MessageCode::BearingsIncluded:
+				return __( 'The wheels come with their bearings, so they take no others.', 'creative-skateboard-builder' );
 			case MessageCode::GripTooNarrow:
 				/* translators: 1: the grip's width. 2: the deck's width. */
 				return sprintf( __( 'The grip is %1$s wide and the deck is %2$s.', 'creative-skateboard-builder' ), $v( 'grip_width' ), $v( 'deck_width' ) );
@@ -228,6 +230,9 @@ final class Words {
 			case MessageCode::SpacersBuiltIn:
 				/* translators: %s: a number of parts. */
 				return sprintf( _n( '%s part hidden: the bearings have spacers built in.', '%s parts hidden: the bearings have spacers built in.', $count, 'creative-skateboard-builder' ), $number );
+			case MessageCode::BearingsIncluded:
+				/* translators: %s: a number of parts. */
+				return sprintf( _n( '%s part hidden: the wheels come with their bearings.', '%s parts hidden: the wheels come with their bearings.', $count, 'creative-skateboard-builder' ), $number );
 			case MessageCode::GripTooNarrow:
 				/* translators: %s: a number of parts. */
 				return sprintf( _n( '%s part hidden: the grip would be narrower than the deck.', '%s parts hidden: the grip would be narrower than the deck.', $count, 'creative-skateboard-builder' ), $number );

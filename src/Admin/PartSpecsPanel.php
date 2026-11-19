@@ -578,7 +578,7 @@ final class PartSpecsPanel {
 		return array(
 			__( 'Deck', 'creative-skateboard-builder' )   => array( SpecKey::DeckWidth, SpecKey::DeckLength, SpecKey::Wheelbase, SpecKey::HolePattern ),
 			__( 'Trucks', 'creative-skateboard-builder' ) => array( SpecKey::AxleWidth, SpecKey::DeckMin, SpecKey::DeckMax, SpecKey::TruckHeight, SpecKey::HeightClass, SpecKey::MaxWheel, SpecKey::Baseplate, SpecKey::AxleDiameter ),
-			__( 'Wheels', 'creative-skateboard-builder' ) => array( SpecKey::WheelDiameter ),
+			__( 'Wheels', 'creative-skateboard-builder' ) => array( SpecKey::WheelDiameter, SpecKey::BearingsIncluded ),
 			__( 'Risers', 'creative-skateboard-builder' ) => array( SpecKey::RiserThickness ),
 			__( 'Hardware', 'creative-skateboard-builder' ) => array( SpecKey::BoltLength ),
 			__( 'Bearings', 'creative-skateboard-builder' ) => array( SpecKey::BearingBore, SpecKey::SpacersBuiltIn ),

@@ -47,9 +47,10 @@ enum MessageCode: string {
 	case RiserBoltsShort = 'riser_bolts_short';
 
 	// R5, bearings.
-	case BoreMismatch   = 'bore_mismatch';
-	case AxleAssumed    = 'axle_assumed';
-	case SpacersBuiltIn = 'spacers_built_in';
+	case BoreMismatch     = 'bore_mismatch';
+	case AxleAssumed      = 'axle_assumed';
+	case SpacersBuiltIn   = 'spacers_built_in';
+	case BearingsIncluded = 'bearings_included';
 
 	// R6, grip.
 	case GripTooNarrow   = 'grip_too_narrow';

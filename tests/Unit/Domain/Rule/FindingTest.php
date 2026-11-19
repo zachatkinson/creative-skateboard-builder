@@ -107,6 +107,7 @@ final class FindingTest extends TestCase {
 				'bore_mismatch'     => array( 'bearing_bore', 'axle_diameter' ),
 				'axle_assumed'      => array( 'axle_diameter' ),
 				'spacers_built_in'  => array(),
+				'bearings_included' => array(),
 				'grip_too_narrow'   => array( 'grip_width', 'deck_width' ),
 				'grip_too_short'    => array( 'grip_length', 'deck_length' ),
 				'length_unchecked'  => array(),

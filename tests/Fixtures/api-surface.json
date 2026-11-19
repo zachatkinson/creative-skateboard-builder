@@ -239,6 +239,7 @@
         "baseplate",
         "axle_diameter",
         "wheel_diameter",
+        "bearings_included",
         "riser_thickness",
         "bolt_length",
         "bearing_bore",
@@ -269,7 +270,7 @@
         "schema/kit-rules.json": "79f9a5c998a63c1ceee8ec7877096515dabd9e75c6116257874e1d4418242c45",
         "schema/kit-slots.json": "7c383e3f551b517328d9d195c01e15f9f5dad1a1263a20fa4ff2188592bb820c",
         "schema/order-snapshot.json": "78cc2355e3468a3f4ff06aa8c609594f21ab961dbcf06ca54bb2b4b2e1b18030",
-        "schema/settings.json": "ac3d69970a5331c5d2ec28df62593d7f1de714dce2a3d45352b20f09bf4f3232",
+        "schema/settings.json": "c6ce801eae753f4d85734fdf81489cc91a4e2db8adf318aa2da21832d7ef9df4",
         "schema/state.json": "726e37a155bc8b2624992cc87b8c24180cbb8a5396e622b36143b1bb9c9e375d"
     },
     "spec_keys": [
@@ -286,6 +287,7 @@
         "baseplate",
         "axle_diameter",
         "wheel_diameter",
+        "bearings_included",
         "riser_thickness",
         "bolt_length",
         "bearing_bore",
@@ -308,6 +310,7 @@
         "baseplate": "choice",
         "axle_diameter": "measure mm",
         "wheel_diameter": "measure mm",
+        "bearings_included": "flag",
         "riser_thickness": "measure in",
         "bolt_length": "measure in",
         "bearing_bore": "measure mm",
@@ -341,6 +344,7 @@
         "bore_mismatch",
         "axle_assumed",
         "spacers_built_in",
+        "bearings_included",
         "grip_too_narrow",
         "grip_too_short",
         "length_unchecked"
@@ -393,6 +397,7 @@
         "bore_mismatch": "bearing_bore axle_diameter",
         "axle_assumed": "axle_diameter",
         "spacers_built_in": "",
+        "bearings_included": "",
         "grip_too_narrow": "grip_width deck_width",
         "grip_too_short": "grip_length deck_length",
         "length_unchecked": ""

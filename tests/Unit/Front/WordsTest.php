@@ -181,6 +181,7 @@ final class WordsTest extends TestCase {
 		);
 		yield 'an axle taken' => array( MessageCode::AxleAssumed, array( 'axle_diameter' => self::mm( '8' ) ), 'The trucks give no axle size, so the usual one is taken: 8 mm.' );
 		yield 'spacers built in' => array( MessageCode::SpacersBuiltIn, array(), 'The bearings have spacers built in, so they take no others.' );
+		yield 'bearings included' => array( MessageCode::BearingsIncluded, array(), 'The wheels come with their bearings, so they take no others.' );
 		yield 'grip too narrow' => array(
 			MessageCode::GripTooNarrow,
 			array(
@@ -236,6 +237,7 @@ final class WordsTest extends TestCase {
 		yield 'bolts_too_short' => array( MessageCode::BoltsTooShort, '1 part hidden: the bolts would be too short.', '9 parts hidden: the bolts would be too short.' );
 		yield 'bore_mismatch' => array( MessageCode::BoreMismatch, '1 part hidden: the bearings would not fit the axle.', '9 parts hidden: the bearings would not fit the axle.' );
 		yield 'spacers_built_in' => array( MessageCode::SpacersBuiltIn, '1 part hidden: the bearings have spacers built in.', '9 parts hidden: the bearings have spacers built in.' );
+		yield 'bearings_included' => array( MessageCode::BearingsIncluded, '1 part hidden: the wheels come with their bearings.', '9 parts hidden: the wheels come with their bearings.' );
 		yield 'grip_too_narrow' => array( MessageCode::GripTooNarrow, '1 part hidden: the grip would be narrower than the deck.', '9 parts hidden: the grip would be narrower than the deck.' );
 		yield 'grip_too_short' => array( MessageCode::GripTooShort, '1 part hidden: the grip would be shorter than the deck.', '9 parts hidden: the grip would be shorter than the deck.' );
 		yield 'riser_not_in_stock' => array( MessageCode::RiserNotInStock, '1 part hidden: the risers it needs are not in stock.', '9 parts hidden: the risers they need are not in stock.' );

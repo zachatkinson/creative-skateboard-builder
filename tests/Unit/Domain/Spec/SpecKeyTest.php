@@ -36,6 +36,7 @@ final class SpecKeyTest extends TestCase {
 		'baseplate'        => array( 'choice', null ),
 		'axle_diameter'    => array( 'measure', 'mm' ),
 		'wheel_diameter'   => array( 'measure', 'mm' ),
+		'bearings_included' => array( 'flag', null ),
 		'riser_thickness'  => array( 'measure', 'in' ),
 		'bolt_length'      => array( 'measure', 'in' ),
 		'bearing_bore'     => array( 'measure', 'mm' ),

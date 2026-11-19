@@ -101,7 +101,7 @@ final class RuleSetTest extends TestCase {
 		$set = RuleSet::standard();
 		self::assertSame( array( SlotKey::TRUCKS, SlotKey::GRIP ), $set->reading( SlotKey::DECK, $on ) );
 		self::assertSame( array( SlotKey::DECK, SlotKey::WHEELS, SlotKey::RISERS, SlotKey::BEARINGS, SlotKey::SPACERS ), $set->reading( SlotKey::TRUCKS, $on ) );
-		self::assertSame( array( SlotKey::TRUCKS, SlotKey::RISERS ), $set->reading( SlotKey::WHEELS, $on ) );
+		self::assertSame( array( SlotKey::TRUCKS, SlotKey::RISERS, SlotKey::BEARINGS, SlotKey::SPACERS ), $set->reading( SlotKey::WHEELS, $on ), 'R5 reads the wheels for bearings_included (D-246)' );
 		self::assertSame( array( SlotKey::RISERS ), $set->reading( SlotKey::HARDWARE, $on ) );
 		self::assertSame( array( SlotKey::DECK ), $set->reading( SlotKey::GRIP, $on ) );
 		self::assertNull( $set->reading( 'stickers', $on ), 'a slot no rule reads' );

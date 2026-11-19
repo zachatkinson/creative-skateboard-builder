@@ -327,6 +327,7 @@ Seed spec tables. Each maker's figures come from its own size chart, read on 10 
 - Reads: the bearing's `bearing_bore` and the truck's `axle_diameter`, in mm; the axle is 8 mm unless a part says otherwise.
 - It fits when they're equal. The standard 608 bearing has an 8 mm bore, 22 mm outside and 7 mm width; Bones also sells 7 mm-bore bearings, which are blocked on an 8 mm axle.
 - Bearings with `spacers_built_in`, such as Bones Race Reds, block a separate spacers slot, where a kit has one.
+- Wheels with `bearings_included` block a separate bearing, and fill a kit's Bearings slot (from 1.0.0, D-246).
 
 **R6. Grip (block).**
 

@@ -97,6 +97,13 @@ final class BuildValidatorTest extends TestCase {
 		);
 	}
 
+	public function test_wheels_that_come_with_their_bearings_fill_the_bearings_slot(): void {
+		$included = Parts::of( array( 'wheel_diameter' => '54', 'set_size' => 4, 'bearings_included' => true ), 300 );
+		self::assertTrue( self::validate( Builds::complete( array( SlotKey::WHEELS => $included ) )->without( SlotKey::BEARINGS ) )->isValid(), 'no bearing is needed' );
+		self::assertSame( array( array( 'slot_empty', SlotKey::BEARINGS, null ) ), self::rows( self::validate( Builds::complete()->without( SlotKey::BEARINGS ) ) ), 'plain wheels still need them' );
+		self::assertSame( array( array( 'part_blocked', SlotKey::BEARINGS, 500 ) ), self::rows( self::validate( Builds::complete( array( SlotKey::WHEELS => $included ) ) ) ), 'and take none besides' );
+	}
+
 	public function test_a_pick_for_a_slot_the_kit_lacks_is_refused(): void {
 		$picks      = Builds::complete()->with( 'stickers', Parts::of( array( 'set_size' => 1 ), 950 ) );
 		$validation = self::validate( $picks );
