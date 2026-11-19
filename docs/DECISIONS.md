@@ -3310,3 +3310,13 @@ The spec (One card per look, D-240) says which size each slot takes. `SizePicker
 - **No rank by warning.** R1's warning grows with the gap, so the nearest truck is never a warning when a farther one fits.
 
 What the build asks of a slot (R3's riser thickness) moved from `Recommender` to `Asking`, and the slot's size spec from `ChangePlanner` to `SlotSize`, so the recommendation, the size picker and the closest part (D-254) share them rather than copy them.
+
+### D-262 · Chips and search, where the spec leaves a choice · 2026-11-18
+
+`Chips` and `Query` (`src/Domain/Look/`) carry D-247 and D-248. Where the spec leaves a choice:
+
+- **Four groups in all.** "Up to four groups" counts brand and the size with the attributes, as the spec's examples do: brand, diameter and hardness on wheels. Brand comes first, then the size where the shopper picks it, then attributes by how many looks carry them, then by name. A group with one value offers no choice, so it is left out and takes no place.
+- **80 % of the step's offered looks,** counted before any chip, so groups don't come and go as the shopper narrows. A look with an empty value list doesn't carry the attribute.
+- **Values in natural order,** so 9, 9.5 and 10 read as numbers. How a value is labelled is the template's.
+- **A look of a ranked parent is kept** when any word of the query, or of Creative Search's corrected query, starts one of its own words; when none of the parent's looks is, all are, since the name or the brand matched. Without Creative Search every word must match, as the spec says, since there the look stands alone.
+- **Folding is the adapter's.** The domain matches text already in lower case without accents. WordPress's `remove_accents()` does the folding, so the domain needs neither intl nor mbstring.
