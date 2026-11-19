@@ -45,12 +45,12 @@ final class WidthGuide {
 		$rows    = array(
 			array(
 				/* translators: %s: a US shoe size, such as 7. */
-				'shoe'  => sprintf( __( '%s or smaller', 'creative-skateboard-builder' ), number_format_i18n( 7 ) ),
+				'shoe'  => sprintf( __( '%s or smaller', 'creative-skateboard-builder' ), number_format_i18n( 6.5, 1 ) ),
 				'width' => $between( 70000, 77500 ),
 			),
 			array(
 				/* translators: 1: the smaller US shoe size, such as 7. 2: the larger, such as 8.5. */
-				'shoe'  => sprintf( __( '%1$s to %2$s', 'creative-skateboard-builder' ), number_format_i18n( 7 ), number_format_i18n( 8.5, 1 ) ),
+				'shoe'  => sprintf( __( '%1$s to %2$s', 'creative-skateboard-builder' ), number_format_i18n( 7 ), number_format_i18n( 8 ) ),
 				'width' => $between( 77500, 80000 ),
 			),
 			array(
@@ -60,7 +60,7 @@ final class WidthGuide {
 			),
 			array(
 				/* translators: %s: a US shoe size, such as 9. */
-				'shoe'  => sprintf( __( '%s and larger', 'creative-skateboard-builder' ), number_format_i18n( 9 ) ),
+				'shoe'  => sprintf( __( '%s and larger', 'creative-skateboard-builder' ), number_format_i18n( 9.5, 1 ) ),
 				/* translators: %s: a deck width, such as 8.25″. */
 				'width' => sprintf( __( '%s and wider', 'creative-skateboard-builder' ), $inches( 82500 ) ),
 			),

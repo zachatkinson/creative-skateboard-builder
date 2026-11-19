@@ -5,6 +5,129 @@
  */
 export interface CbuildState {
 	/**
+	 * From 1.0.0: whether the wheels picked come with their bearings (the `bearings_included` spec), so the kit's bearings slot counts as filled and its step is no step (D-246).
+	 */
+	bearings_included: boolean;
+	/**
+	 * From 1.0.0: how the shop writes a price, from WooCommerce's settings and their filters, for a page that formats a total itself. `format` puts the symbol (`%1$s`) beside the amount (`%2$s`), as `get_woocommerce_price_format()` does.
+	 */
+	currency: {
+		/**
+		 * The currency's ISO 4217 code: the shop's, or a currency switcher's.
+		 */
+		code: string;
+		/**
+		 * Its symbol, as plain text.
+		 */
+		symbol: string;
+		/**
+		 * How many decimals a price shows.
+		 */
+		decimals: number;
+		/**
+		 * Between the whole amount and its decimals.
+		 */
+		decimal_separator: string;
+		/**
+		 * Between thousands.
+		 */
+		thousand_separator: string;
+		/**
+		 * Where the symbol goes: `%1$s%2$s`, `%2$s%1$s`, `%1$s&nbsp;%2$s` or `%2$s&nbsp;%1$s` as WooCommerce has it.
+		 */
+		format: string;
+	};
+	/**
+	 * From 1.0.0, only on the answer to a build link that carries `_saved`, the UUID of the signed-in customer's own saved build of this kit, where it has changed since it was saved: what changed and the prices then and now (spec: A saved build that has changed; D-254, D-278). The answer's state is then the build with the closest parts in place, at the review.
+	 */
+	reopened?: {
+		/**
+		 * Each part gone, sold out or no longer fitting, in step order, with the closest part that fits in its place, or null where none does.
+		 */
+		changes: {
+			/**
+			 * The slot's key.
+			 */
+			slot: string;
+			/**
+			 * The slot's label.
+			 */
+			label: string;
+			/**
+			 * The part saved: a product's or a variation's ID.
+			 */
+			was: number;
+			/**
+			 * Its name, or empty where it no longer reads.
+			 */
+			name: string;
+			/**
+			 * `gone`, `sold_out` or `no_fit`.
+			 */
+			reason: 'gone' | 'sold_out' | 'no_fit';
+			/**
+			 * The closest part that fits in its place, or null.
+			 */
+			closest: {
+				/**
+				 * The part's ID.
+				 */
+				id: number;
+				/**
+				 * Its name.
+				 */
+				name: string;
+			} | null;
+		}[];
+		/**
+		 * Each part kept whose price changed, in the same currency as when it was saved, with the price then and now as text.
+		 */
+		prices: {
+			/**
+			 * The slot's key.
+			 */
+			slot: string;
+			/**
+			 * The slot's label.
+			 */
+			label: string;
+			/**
+			 * The part's ID.
+			 */
+			part: number;
+			/**
+			 * Its name.
+			 */
+			name: string;
+			/**
+			 * Its price when saved.
+			 */
+			then: string;
+			/**
+			 * Its price now.
+			 */
+			now: string;
+		}[];
+		/**
+		 * The build's total when saved, as text, or null where no prices were kept in this currency (a build saved before 1.0.0).
+		 */
+		then: string | null;
+		/**
+		 * The total now, with the closest parts in place, as text.
+		 */
+		now: string;
+		/**
+		 * The build with the closest parts in place: a part ID per slot.
+		 */
+		picks: {
+			[k: string]: number;
+		};
+		/**
+		 * The first slot that changed, which Choose myself opens, or `review`.
+		 */
+		first: string;
+	};
+	/**
 	 * The kit product's ID.
 	 */
 	kit: number;

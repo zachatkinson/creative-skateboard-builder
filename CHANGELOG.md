@@ -15,26 +15,35 @@ All notable changes to this project are documented here. The format follows [Kee
 - `--cbuild-bar-size`, which the builder sets on the page's root to the bar's height while the bar sticks over the page.
 - On the state route, each look of the `shelf` names its product (`name`), its `brand` and what tells it from the product's other looks (`look`), and an option's `delta` says its `change` as a card does under the full price (D-249, D-273).
 - A kit's page takes the page's width (D-274). In a block theme it takes a template of the plugin's, "Skateboard kit", which the shop can edit in the Site Editor; in a classic theme the builder sits before the product's summary, whose title and form go. The builder prints the product's name as the page's h1 where it takes the theme's title's place, and has a link back to the shop. The Builder block gains `title`, and a block with no kit on a kit's page is that kit's.
-- `--cbuild-top`, for a theme's sticky header to keep the stage and the panel clear of it, and `--cbuild-stage-height`, the stage's height on a phone.
-
-### Fixed
-
+- `--cbuild-top`, for a theme's sticky header to keep the stage and the panel clear of it, `--cbuild-stage-height`, the stage's height on a phone, and `--cbuild-stage-size`, which the builder sets to how far down the screen the stage reaches, so a control in focus is scrolled clear of it.
 - A signed-in customer's deck step opens on the width of the deck in the build they saved last, where the kit offers it; a width asked for, or the deck the build holds, comes first. Nothing is stored for it (spec: The deck's width first; D-242).
 - A search that lists nothing says why and offers the way on: "No 8.25″ decks match Rascals. Rascals comes in 8.5″." with a button to each width; "2 parts match, but they don't fit your build." with See why, which opens the hidden parts; or "No trucks match zzz." with Clear search. The state route's `shelf` gains `elsewhere` and `hidden_matching` (spec: Search).
-- Past the state route's rate limit, the step keeps what it shows and says when to try again: "Too many requests. Try again in 20 seconds.", from the route's own answer, which now names the wait (spec: Search, the rate limit). A 429 that says nothing still sends the form.
 - A saved build that has changed since it was saved opens from My builds on "Your build has changed" before its review: each part gone, sold out or no longer fitting, with the closest part that fits in its place; each new price, "Independent 149 trucks: $59.00 when you saved, $64.00 now"; and the total then and now. Use these takes the replacements to the review, and Choose myself opens the first changed step. Save build keeps each line's price and the currency beside the picks; a build saved before 1.0.0 shows the parts alone (spec: A saved build that has changed; D-254, D-278).
 - A kit's Build tab has a Layout section: the stage on the left or right of a desktop, the board large (60 %) or balanced (50 %), and the steps' search, Creative Search where it is active or the builder's own always. It is kept in `_cbuild_layout` (`schema/kit-layout.json`); a kit with none has the defaults (spec: Settings; D-255).
-- On a tablet the board is turned on the stage as on a phone, so it fits the strip on top (D-280).
-- On a theme with no colour presets, the rail's current step and a pressed chip read: their words are painted in the colour on the accent. The rail, cards and ready builds take no list numbers or indent from the theme (D-280).
-- The deck step shows only its width question until a width is picked.
+- The state route's answer gains `bearings_included`, `currency` (how the shop writes a price, for milestone 11's totals) and, for a build link carrying `_saved`, `reopened`: what changed in a saved build and its prices then and now.
+- The Catalogue check says which variations share a photo, and so a card, in a list of its own (`look_shared`, D-281).
+- The risers step says why it appeared: "Your 58 mm wheels need ¼″ risers with these trucks."
+- A step lists 500 looks at most, page by page, as a reload keeps; search and filters narrow past it.
 - On a phone the step's filter chips fold behind a Filters button, which says how many are chosen, so the cards come first; without JavaScript they show as before (spec: Phone).
 - The picked card is followed by its sizes, "Size for Retna Cruiser, Mint", where nothing in the build decides the size, as wheels' diameter. Each size is a pick of the step; the route's looks gain `sized` (spec: One card per look; D-279).
 - "Build a complete with this deck" after a deck's add-to-cart form opens the first kit by menu order whose first slot offers it, with the deck picked and its width with it. `cbuild_start_button` chooses the kit, moves the button, words it or turns it off (spec: Ways in that skip the hunt; D-253).
 - Rider builds: a preset's tile shows a rider photo set on the preset, else the build's composed picture once made, asked for as a page asks; the deck's photo until then. Presets gain an optional `image` in `schema/kit-presets.json`, and the Build tab a Photo field with the media library's modal (D-252).
 - "Not sure of your width?" under the deck's width question opens a guide by shoe size, after Skate Warehouse's deck buying guide, without JavaScript; `cbuild_width_guide` gives a shop its own rows (spec: The deck's width first).
-- A wheel card over the trucks' limit says the riser it needs, "Needs ¼″ risers with your trucks", in place of "Fits, with a note"; each finding in the state route's answer gains `short`, that label or empty (spec: Risers).
+- A wheel card over the trucks' limit says the riser it needs, "Needs ¼″ risers with your trucks", in place of "Fits, with a note"; each finding in the state route's answer and in the `check-build` ability's `problems[].messages[]` gains `short`, that label or empty (spec: Risers).
 - Wheels sold with their bearings take the bearings step off the rail, and the review says "Bearings: Included with your wheels", changed with the wheels. "Add risers" under the review's parts opens the risers step when nothing asks for it (spec: Bearings, Risers, The review; D-246, D-276).
 - A skip link, "Skip to the step", is the builder's first stop; the first deck is at most eight presses after it. "Show 30 more" says how many it added, and below 320 px the stage scrolls with the page (spec: Accessibility).
+
+### Fixed
+
+- The builder's stylesheet and script are asked for as 1.0.0, so a browser or a page cache no longer serves 0.6.0's against this release's markup: the block's `block.json` still said 0.6.0, which WordPress writes on them as their version. A gate holds it to the plugin's (the auditor's M10 review, 5).
+- On a phone and a tablet, the control in focus is never behind the stage at the top of the screen: the page keeps room for it as it does for the bar, going back up a step and after Next (WCAG 2.4.11; the auditor's M10 review, 1).
+- Enter in a step's search searches it at the width shown; it pressed the narrowest width's button (the auditor's M10 review, 2).
+- Typing in a step's search no longer loses letters while an answer is slow: a key drops the answer asked for before it (the auditor's M10 review, 19).
+- The Build a complete button's link carries `rel="nofollow"`, a deck's page reads only what is kept of the kit's decks, and a shop's `slot` in `cbuild_start_button` is the one picked (the auditor's M10 review, 3, 4, 11).
+- Past the state route's rate limit, the step keeps what it shows and says when to try again: "Too many requests. Try again in 20 seconds.", from the route's own answer, which now names the wait (spec: Search, the rate limit). A 429 that says nothing still sends the form.
+- On a tablet the board is turned on the stage as on a phone, so it fits the strip on top (D-280).
+- On a theme with no colour presets, the rail's current step and a pressed chip read: their words are painted in the colour on the accent. The rail, cards and ready builds take no list numbers or indent from the theme (D-280).
+- The deck step shows only its width question until a width is picked.
 - French: names no longer follow « de » (« Annuler la suppression du montage %s », « Voir la fiche du produit %s », « Partir du modèle %s »), the bar says « Planche complète dès environ », My builds names the « Récapitulatif » step, and a card's fit label has a sentence per case, so English now has "Fits your %s deck" and "Recommended for your %s deck" of their own (Cowork; #65).
 - CI stops an apt-get a timed-out Playwright install left, and repairs dpkg, before the next try (#64; D-224).
 - The builder draws its own radios, a ring in its text colour on its own ground and a dot once picked, so an unpicked card no longer looks filled in on a dark theme. With forced colours the browser's radio is drawn (Cowork; #68).

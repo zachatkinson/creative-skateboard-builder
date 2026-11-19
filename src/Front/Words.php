@@ -96,6 +96,22 @@ final class Words {
 	}
 
 	/**
+	 * Why the risers step appeared, from R3's finding on the wheels picked (spec: Risers, "It opens on the riser that
+	 * clears them, with the reason"), or empty for any other finding.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param Finding $finding The finding.
+	 */
+	public static function riserLead( Finding $finding ): string {
+		if ( MessageCode::WheelNeedsRiser !== $finding->code ) {
+			return '';
+		}
+		/* translators: 1: the wheels' diameter, such as 56 mm. 2: a riser's thickness, such as ½″. */
+		return sprintf( __( 'Your %1$s wheels need %2$s risers with these trucks.', 'creative-skateboard-builder' ), self::value( $finding, 'wheel_diameter' ), self::value( $finding, 'riser' ) );
+	}
+
+	/**
 	 * One of a finding's values, as words: a measure with its unit, a spec by its name, a choice by its label.
 	 *
 	 * @param Finding $finding The finding.

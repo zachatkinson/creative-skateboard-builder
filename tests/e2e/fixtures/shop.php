@@ -397,6 +397,87 @@ $cbuild_drawer = (int) wp_insert_post(
 		'post_content' => '<!-- wp:woocommerce/mini-cart {"addToCartBehaviour":"open_drawer"} /-->' . "\n" . '<!-- wp:creative-skateboard-builder/builder {"kit":' . $cbuild_kit->get_id() . '} /-->',
 	)
 );
+// A kit whose deck step is as long as a real shop's (milestone 10; spec: One card per look, Search): 46 decks at 8.25,
+// over four brands, with a search past 40, chips past 12, pages of 30 and three sold out; and six at 8. One deck is
+// named Rascals for the search. Its other slots are the cart test kit's.
+$cbuild_shelf_cat = get_term_by( 'slug', 'shelf-test-deck', 'product_cat' );
+$cbuild_shelf_cat = $cbuild_shelf_cat instanceof WP_Term ? $cbuild_shelf_cat->term_id : (int) wp_insert_term( 'Shelf test deck', 'product_cat', array( 'slug' => 'shelf-test-deck' ) )['term_id'];
+$cbuild_brands    = array();
+foreach ( array( 'Alder', 'Birch', 'Cedar', 'Dogwood' ) as $cbuild_brand ) {
+	$cbuild_found                   = get_term_by( 'slug', 'shelf-' . strtolower( $cbuild_brand ), 'product_brand' );
+	$cbuild_brands[ $cbuild_brand ] = $cbuild_found instanceof WP_Term ? $cbuild_found->term_id : (int) wp_insert_term( $cbuild_brand, 'product_brand', array( 'slug' => 'shelf-' . strtolower( $cbuild_brand ) ) )['term_id'];
+}
+$cbuild_shelf = array();
+for ( $cbuild_at = 1; $cbuild_at <= 55; ++$cbuild_at ) {
+	$cbuild_width = $cbuild_at > 49 ? '8.0000' : '8.2500';
+	$cbuild_name  = 7 === $cbuild_at ? 'Rascals' : sprintf( 'Shelf deck %02d', $cbuild_at );
+	$cbuild_brand = array_keys( $cbuild_brands )[ $cbuild_at % 4 ];
+	$cbuild_item  = new WC_Product_Simple( wc_get_product_id_by_sku( 'shelf-test-deck-' . $cbuild_at ) );
+	$cbuild_item->set_name( $cbuild_name );
+	$cbuild_item->set_slug( 'shelf-test-deck-' . $cbuild_at );
+	$cbuild_item->set_sku( 'shelf-test-deck-' . $cbuild_at );
+	$cbuild_item->set_regular_price( (string) ( 50 + $cbuild_at ) );
+	$cbuild_item->set_status( 'publish' );
+	$cbuild_item->set_stock_status( in_array( $cbuild_at, array( 47, 48, 49 ), true ) ? 'outofstock' : 'instock' );
+	$cbuild_item->set_category_ids( array( $cbuild_shelf_cat ) );
+	$cbuild_item->update_meta_data(
+		'_cbuild_specs',
+		array(
+			'deck_width'   => $cbuild_width,
+			'deck_length'  => '32.0000',
+			'hole_pattern' => 'new_school',
+		)
+	);
+	$cbuild_item->save();
+	wp_set_object_terms( $cbuild_item->get_id(), array( $cbuild_brands[ $cbuild_brand ] ), 'product_brand' );
+	CreativeBranding\SkateboardBuilder\Plugin::container()->get( CreativeBranding\SkateboardBuilder\Service\SpecIndexer::class )->index( $cbuild_item->get_id() );
+	$cbuild_shelf[] = $cbuild_item->get_id();
+}
+$cbuild_cart_kit                     = get_page_by_path( 'cart-test-kit', OBJECT, 'product' );
+$cbuild_slots                        = $cbuild_cart_kit instanceof WP_Post ? ( new CreativeBranding\SkateboardBuilder\Adapter\KitProduct( $cbuild_cart_kit->ID ) )->document( '_cbuild_slots' ) : null;
+$cbuild_slots                        = is_array( $cbuild_slots ) ? $cbuild_slots : array(
+	'schema_version' => 1,
+	'slots'          => array(),
+);
+$cbuild_slots['slots'][0]['sources'] = array( 'categories' => array( $cbuild_shelf_cat ) );
+$cbuild_post                         = get_page_by_path( 'shelf-test-kit', OBJECT, 'product' );
+$cbuild_shelf_kit                    = new CreativeBranding\SkateboardBuilder\Adapter\KitProduct( $cbuild_post instanceof WP_Post ? $cbuild_post->ID : 0 );
+$cbuild_shelf_kit->set_name( 'Shelf test kit' );
+$cbuild_shelf_kit->set_slug( 'shelf-test-kit' );
+$cbuild_shelf_kit->set_status( 'publish' );
+$cbuild_shelf_kit->setDocument( '_cbuild_slots', $cbuild_slots );
+$cbuild_shelf_kit->setDocument( '_cbuild_rules', CreativeBranding\SkateboardBuilder\Domain\Kit\RuleSettings::DEFAULTS );
+$cbuild_shelf_kit->setDocument(
+	'_cbuild_presets',
+	array(
+		'schema_version' => 1,
+		'presets'        => array(),
+	)
+);
+// A kit reads only with every document, its assembly too.
+$cbuild_shelf_kit->setDocument(
+	'_cbuild_assembly',
+	array(
+		'schema_version' => 1,
+		'default_on'     => false,
+		'fee'            => '15',
+		'lead_time'      => '',
+		'returns_notice' => '',
+	)
+);
+$cbuild_shelf_kit->save();
+$cbuild_shelf_page = get_page_by_path( 'shelf-test-page' );
+$cbuild_shelf_page = (int) wp_insert_post(
+	array(
+		'ID'           => $cbuild_shelf_page instanceof WP_Post ? $cbuild_shelf_page->ID : 0,
+		'post_type'    => 'page',
+		'post_status'  => 'publish',
+		'post_name'    => 'shelf-test-page',
+		'post_title'   => 'A long step',
+		'post_content' => '<!-- wp:creative-skateboard-builder/builder {"kit":' . $cbuild_shelf_kit->get_id() . '} /-->',
+	)
+);
+
 // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents -- a test fixture, writing where the tests read.
 file_put_contents(
 	CBUILD_PATH . 'tmp/e2e-builder.json',
@@ -406,6 +487,11 @@ file_put_contents(
 			'page'   => (string) get_permalink( $cbuild_page ),
 			'drawer' => (string) get_permalink( $cbuild_drawer ),
 			'parts'  => $cbuild_parts,
+			'shelf'  => array(
+				'kit'   => $cbuild_shelf_kit->get_id(),
+				'page'  => (string) get_permalink( $cbuild_shelf_page ),
+				'decks' => $cbuild_shelf,
+			),
 		)
 	)
 );

@@ -368,6 +368,24 @@ describe( 'Navigator', () => {
 		expect( h.pending ).toEqual( [ false ] );
 	} );
 
+	// The auditor's M10 review, 19: a key typed in the search drops the answer already asked for, which would put the
+	// search box back to the letters it was asked with.
+	it( 'drops the answer it waits for once the shopper types on, and says it waits no more', async () => {
+		const h = harness();
+		const nav = new Navigator( h.deps );
+		nav.go( {
+			fields: STEP,
+			history: 'replace',
+			fallback: () => h.fallbacks.push( 'sent' ),
+		} );
+		nav.drop();
+		h.reply( answer( { view: view( 'https://shop.example/?b' ) } ) );
+		await settle();
+		expect( h.shown ).toEqual( [] );
+		expect( h.fallbacks ).toEqual( [] );
+		expect( h.pending.at( -1 ) ).toBe( false );
+	} );
+
 	it( 'cancels a waiting pick when the shopper moves on', async () => {
 		const h = harness();
 		const nav = new Navigator( h.deps );

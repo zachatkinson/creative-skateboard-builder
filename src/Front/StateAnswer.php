@@ -399,24 +399,24 @@ final class StateAnswer {
 		}
 
 		return array(
-			'kit'      => $state->id,
-			'step'     => $state->step,
-			'ready'    => $state->ready(),
-			'texts'    => array(
+			'kit'               => $state->id,
+			'step'              => $state->step,
+			'ready'             => $state->ready(),
+			'texts'             => array(
 				'lead_time'      => self::text( $state->kit->assembly->leadTime, 'lead_time', $state->id ),
 				'returns_notice' => self::text( $state->kit->assembly->returnsNotice, 'returns_notice', $state->id ),
 			),
-			'presets'  => $presets,
-			'steps'    => $steps,
-			'options'  => array_map( static fn( Option $shown ): array => $option( $shown, $state->step, $current ), $offered ),
-			'hidden'   => array_map( static fn( Option $shown ): array => $option( $shown, $state->step, $current ), $hidden ),
-			'filters'  => self::filters( $state->step, $all, $brands, $link ),
-			'matching' => count( $matching ),
-			'more'     => $more,
-			'refused'  => array_map( $problem, $state->refused ),
-			'problems' => array_map( $problem, $state->validation->problems ),
-			'changes'  => $changes,
-			'total'    => array(
+			'presets'           => $presets,
+			'steps'             => $steps,
+			'options'           => array_map( static fn( Option $shown ): array => $option( $shown, $state->step, $current ), $offered ),
+			'hidden'            => array_map( static fn( Option $shown ): array => $option( $shown, $state->step, $current ), $hidden ),
+			'filters'           => self::filters( $state->step, $all, $brands, $link ),
+			'matching'          => count( $matching ),
+			'more'              => $more,
+			'refused'           => array_map( $problem, $state->refused ),
+			'problems'          => array_map( $problem, $state->validation->problems ),
+			'changes'           => $changes,
+			'total'             => array(
 				'lines'    => $lines,
 				'parts'    => $money( $state->quote->parts ),
 				'saved'    => $money( $state->quote->saved ),
@@ -426,10 +426,14 @@ final class StateAnswer {
 				// The board with each recommendation in it, while one fills a slot (D-213).
 				'estimate' => null === $state->estimate ? null : $money( $state->estimate->total ),
 			),
-			'picture'  => $this->picture( $state, $counted, $labels, $brands, $cards ),
-			'delivery' => $this->delivery->said( $state->id, $state->quote->assembly, $state->quote->total, $decimals ),
-			'notes'    => self::notes( $state, $decimals ),
-			'shelf'    => null === $view ? null : self::shelf( $view, $state->step, static fn( Option $shown ): array => $option( $shown, $state->step, $current ), $current ),
+			'picture'           => $this->picture( $state, $counted, $labels, $brands, $cards ),
+			'delivery'          => $this->delivery->said( $state->id, $state->quote->assembly, $state->quote->total, $decimals ),
+			'notes'             => self::notes( $state, $decimals ),
+			'shelf'             => null === $view ? null : self::shelf( $view, $state->step, static fn( Option $shown ): array => $option( $shown, $state->step, $current ), $current ),
+			// From 1.0.0: whether the wheels picked come with their bearings, so the kit's bearings slot is filled (D-246),
+			// and how the shop writes a price, for a page that formats a total itself.
+			'bearings_included' => Builder::bearingsIncluded( $state ),
+			'currency'          => $this->money->settings(),
 		);
 	}
 

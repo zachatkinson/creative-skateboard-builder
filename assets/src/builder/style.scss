@@ -200,6 +200,18 @@
 	order: -1;
 }
 
+/* The step form's default button, pressed by Enter alone: kept out of sight, as a screen reader's text is. */
+.cbuild .cbuild-step__default {
+	position: absolute;
+	inline-size: 1px;
+	block-size: 1px;
+	padding: 0;
+	overflow: hidden;
+	clip-path: inset(50%);
+	border: 0;
+	white-space: nowrap;
+}
+
 :where(.cbuild__stage) {
 	position: sticky;
 	inset-block-start: var(--cbuild-top, 0px);
@@ -1573,6 +1585,20 @@
 :root:has(.cbuild .cbuild-bar:not([hidden])) {
 	// prettier-ignore
 	scroll-padding-block-end: calc(var(--cbuild-bar-size, 0px) + var(--cbuild-bar-offset, 0px) + 0.5rem);
+}
+
+/* The stage that sticks on top, narrower than 64rem, keeps focus clear of it too (WCAG 2.4.11; the auditor's M10
+   review, 1): with the script its foot as it is drawn, which is 0 where it stands beside the panel. */
+:root:has(.cbuild .cbuild__stage) {
+	scroll-padding-block-start: calc(var(--cbuild-stage-size, 0px) + 0.5rem);
+}
+
+/* Without it, on a screen narrower than 64rem and wider than 320 px, the stage's own height under a theme's header. */
+@media (320px <= width < 64rem) {
+	:root:has(.cbuild .cbuild__stage) {
+		// prettier-ignore
+		scroll-padding-block-start: calc(var(--cbuild-stage-size, calc(var(--cbuild-top, 0px) + var(--cbuild-stage-height, 42svh))) + 0.5rem);
+	}
 }
 
 /* Without it, on a phone, room for the bar's tallest: the total over two lines, and Back and Next on a row below. */

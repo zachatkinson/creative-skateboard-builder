@@ -4,7 +4,7 @@
  * browser test runs both on Storefront, which does both.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { fit, size, taken, unclip } from '../../assets/src/builder/bar';
+import { fit, size, stage, taken, unclip } from '../../assets/src/builder/bar';
 
 /**
  * A page: the builder, with its bar, inside two wrappers.
@@ -168,5 +168,49 @@ describe( 'size', () => {
 		shown.mockReturnValue( [] as unknown as DOMRectList );
 		size( root );
 		expect( read(), 'no bar shown' ).toBe( '' );
+	} );
+} );
+
+// The auditor's M10 review, 1 (WCAG 2.4.11): narrower than 64rem the stage sticks at the top of the screen, so the page
+// keeps focus clear of it as it does of the bar. The scroll padding reads where the stage's foot is.
+describe( 'stage', () => {
+	const read = () =>
+		document.documentElement.style.getPropertyValue(
+			'--cbuild-stage-size'
+		);
+
+	it( "sets the stage's foot on the page while it sticks, and nothing to clear when it doesn't", () => {
+		const { root } = page( '', '' );
+		root.insertAdjacentHTML(
+			'afterbegin',
+			'<div class="cbuild__stage"></div>'
+		);
+		const shown = root.querySelector( '.cbuild__stage' ) as HTMLElement;
+		vi.spyOn( shown, 'getClientRects' ).mockReturnValue( [
+			new DOMRect(),
+		] as unknown as DOMRectList );
+		shown.style.position = 'sticky';
+		shown.style.top = '40px';
+		box( shown, 40, 293.4 );
+		stage( root );
+		expect(
+			read(),
+			"a theme's header of 40 px and the stage under it"
+		).toBe( '334px' );
+
+		// At the top of the page the stage has not stuck yet: it stands under the page's title, its foot at 696 px of
+		// a 720 px screen. What it covers is where its foot will be once it sticks, or the page kept no room to scroll
+		// a control into (verify, 19 November: "Start from Street" behind the footer at 1280 by 720).
+		box( shown, 394, 302 );
+		stage( root );
+		expect( read(), 'not stuck yet' ).toBe( '342px' );
+
+		// From 64rem the stage is beside the panel and covers nothing, nor below 320 px, where it scrolls away.
+		shown.style.position = 'static';
+		stage( root );
+		expect( read() ).toBe( '0px' );
+		root.querySelector( '.cbuild__stage' )?.remove();
+		stage( root );
+		expect( read(), 'no stage' ).toBe( '0px' );
 	} );
 } );

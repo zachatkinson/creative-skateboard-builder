@@ -22,6 +22,20 @@ final class FakeMoney implements Money {
 		return $this->currency;
 	}
 
+	/**
+	 * @return array{code: string, symbol: string, decimals: int, decimal_separator: string, thousand_separator: string, format: string}
+	 */
+	public function settings(): array {
+		return array(
+			'code'               => $this->currency,
+			'symbol'             => '$',
+			'decimals'           => 2,
+			'decimal_separator'  => '.',
+			'thousand_separator' => ',',
+			'format'             => '%1$s%2$s',
+		);
+	}
+
 	public function text( int $amount, int $decimals ): string {
 		return '$' . number_format( $amount / 10 ** $decimals, $decimals, '.', ',' );
 	}

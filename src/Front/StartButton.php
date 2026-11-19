@@ -74,7 +74,7 @@ final class StartButton implements Hookable {
 		);
 		/**
 		 * Filters "Build a complete with this deck" on a product's page. The button is an array with `kit` (the kit
-		 * product's ID), `part` (the product or variation it opens picked), `text`, `hook` (the action it prints on,
+		 * product's ID), `part` (the product or variation it opens picked), `slot` (the kit's slot it is picked in: the first, or another of the kit's slots), `text`, `hook` (the action it prints on,
 		 * `woocommerce_after_add_to_cart_form` by default) and `priority`; or false where no kit offers the product in
 		 * its first slot. Return false to leave the button out, or an array to choose the kit, move it or word it. A
 		 * kit a visitor may not see shows no button, and the builder checks the part as it checks any link.
@@ -94,7 +94,7 @@ final class StartButton implements Hookable {
 		$hook = Cast::str( $said['hook'] ?? null );
 		$kits = ( $this->kits )();
 		$read = $kit > 0 && $kits->isPublic( $kit ) ? $kits->kit( $kit ) : null;
-		$slot = null === $read ? null : ( $read->slots->all()[0] ?? null );
+		$slot = null === $read ? null : ( $read->slots->get( Cast::str( $said['slot'] ?? null ) ) ?? $read->slots->all()[0] ?? null );
 		if ( null === $read || null === $slot || $part < 1 || '' === $text || '' === $hook ) {
 			return;
 		}
@@ -102,7 +102,7 @@ final class StartButton implements Hookable {
 		add_action(
 			$hook,
 			static function () use ( $url, $text ): void {
-				printf( '<p class="cbuild-start"><a class="button cbuild-start__link" href="%1$s">%2$s</a></p>', esc_url( $url ), esc_html( $text ) );
+				printf( '<p class="cbuild-start"><a class="button cbuild-start__link" href="%1$s" rel="nofollow">%2$s</a></p>', esc_url( $url ), esc_html( $text ) );
 			},
 			Cast::int( $said['priority'] ?? 10 )
 		);
@@ -121,8 +121,11 @@ final class StartButton implements Hookable {
 		}
 		$ids   = array( $product, ...array_map( Cast::int( ... ), $found->get_children() ) );
 		$every = ( $this->kits )();
-		$kits  = array_keys( $every->all() );
-		$rank  = array();
+		// Asked once, of the product: its variations are in its categories, brands and attributes. A kit that takes it
+		// in its first slot then finds its parts among what is kept of the slot's, with no product read (the auditor's
+		// M10 review, 4).
+		$kits = array_keys( $every->all() );
+		$rank = array();
 		foreach ( $kits as $kit ) {
 			$rank[ $kit ] = (int) get_post_field( 'menu_order', $kit );
 		}
@@ -133,14 +136,10 @@ final class StartButton implements Hookable {
 			if ( null === $read || null === $slot ) {
 				continue;
 			}
-			$takes = false;
-			foreach ( $ids as $id ) {
-				$takes = $takes || in_array( $slot->key, $every->slotsOf( $id, $read ), true );
-			}
-			if ( ! $takes ) {
+			if ( ! in_array( $slot->key, $every->slotsOf( $product, $read ), true ) ) {
 				continue;
 			}
-			foreach ( $every->candidates( $kit, $slot->key ) as $part ) {
+			foreach ( $every->offered( $kit, $slot ) as $part ) {
 				if ( $part->inStock && in_array( $part->id, $ids, true ) ) {
 					return array(
 						'kit'  => $kit,

@@ -12,6 +12,8 @@
  * @var int                                                                  $unlaid How many parts the picture draws have no layer image.
  * @var list<array{kit: string, about: string, link: string, says: string}> $bare   Where each is offered, as far as the page lists (D-211).
  * @var int                                                                  $past   How many of those it does not list.
+ * @var list<array{kit: string, about: string, link: string, says: string}> $alike  Variations that share a card, as far as the page lists (D-281).
+ * @var int                                                                  $beyond How many of those it does not list.
  * @var bool                                                                 $none  Whether the shop has no kit yet.
  * @var string                                                               $nonce The form's nonce action.
  * @var string                                                               $back  The tab's own address.
@@ -41,7 +43,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	<?php if ( $asked ) : ?>
 		<div class="notice notice-success inline" role="status"><p><?php esc_html_e( 'Every part is being read again in the background, 100 at a time. Tools > Site Health shows how far it is.', 'creative-skateboard-builder' ); ?></p></div>
 	<?php endif; ?>
-	<?php if ( $ran && 0 === $count && 0 === $unlaid ) : ?>
+	<?php if ( $ran && 0 === $count && 0 === $unlaid && array() === $alike ) : ?>
 		<div class="notice notice-success inline" role="status"><p><?php esc_html_e( 'The check found nothing to fix.', 'creative-skateboard-builder' ); ?></p></div>
 	<?php elseif ( $ran && 0 === $count ) : ?>
 		<div class="notice notice-success inline" role="status"><p><?php esc_html_e( 'Nothing the check found keeps a part out of the builder.', 'creative-skateboard-builder' ); ?></p></div>
@@ -56,8 +58,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 		</div>
 	<?php endif; ?>
 	<?php
+	$cbuild_fix   = __( 'What to fix', 'creative-skateboard-builder' );
 	$cbuild_lists = array(
-		array( 'cbuild-found', __( 'What it found', 'creative-skateboard-builder' ), '', $rows, $more ),
+		array( 'cbuild-found', __( 'What it found', 'creative-skateboard-builder' ), '', $rows, $more, $cbuild_fix ),
 		array(
 			'cbuild-unlaid',
 			__( 'Parts with no layer image', 'creative-skateboard-builder' ),
@@ -65,10 +68,19 @@ if ( ! defined( 'ABSPATH' ) ) {
 			sprintf( _n( '%s part the picture draws has no layer image. It is still offered, and the picture shows its labelled photo beside the board until one is chosen on its product page.', '%s parts the picture draws have no layer image. Each is still offered, and the picture shows its labelled photo beside the board until one is chosen on its product page.', $unlaid, 'creative-skateboard-builder' ), number_format_i18n( $unlaid ) ),
 			$bare,
 			$past,
+			$cbuild_fix,
+		),
+		array(
+			'cbuild-shared',
+			__( 'Variations that share a card', 'creative-skateboard-builder' ),
+			__( 'The builder shows a product\'s variations that share a photo and a layer image as one card, and asks for what tells them apart after the pick. Give a variation a photo of its own to give it a card of its own.', 'creative-skateboard-builder' ),
+			$alike,
+			$beyond,
+			__( 'What it says', 'creative-skateboard-builder' ),
 		),
 	);
 	?>
-	<?php foreach ( $ran ? $cbuild_lists : array() as list( $cbuild_id, $cbuild_heading, $cbuild_intro, $cbuild_rows, $cbuild_more ) ) : ?>
+	<?php foreach ( $ran ? $cbuild_lists : array() as list( $cbuild_id, $cbuild_heading, $cbuild_intro, $cbuild_rows, $cbuild_more, $cbuild_column ) ) : ?>
 		<?php
 		if ( array() === $cbuild_rows ) {
 			continue;
@@ -84,7 +96,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 					<tr>
 						<th scope="col"><?php esc_html_e( 'Where', 'creative-skateboard-builder' ); ?></th>
 						<th scope="col"><?php esc_html_e( 'Kit', 'creative-skateboard-builder' ); ?></th>
-						<th scope="col"><?php esc_html_e( 'What to fix', 'creative-skateboard-builder' ); ?></th>
+						<th scope="col"><?php echo esc_html( $cbuild_column ); ?></th>
 					</tr>
 				</thead>
 				<tbody>

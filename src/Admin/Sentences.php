@@ -88,6 +88,9 @@ final class Sentences {
 			case CatalogueCheck::LAYER_MISSING:
 				/* translators: %s: a slot's key, such as trucks. */
 				return sprintf( __( 'It has no layer image, so the picture shows its labelled photo in the slot "%s". Add one on its Part specs, under Picture.', 'creative-skateboard-builder' ), $finding->slot );
+			case CatalogueCheck::LOOK_SHARED:
+				/* translators: 1: a list of variations' IDs, such as 11, 12. 2: a slot's key, such as deck. */
+				return sprintf( __( 'Its variations %1$s share a photo, so the builder shows them as one card in the slot "%2$s" and asks for the rest after the pick.', 'creative-skateboard-builder' ), $finding->values['parts'] ?? '', $finding->slot );
 			case CatalogueCheck::PRESET:
 				$problems = array(
 					/* translators: 1: a preset's name. 2: a slot's key. */

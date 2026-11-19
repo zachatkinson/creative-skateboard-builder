@@ -53,6 +53,17 @@ final class ShippingWordsTest extends TestCase {
 			public function currency(): string {
 				return 'JPY';
 			}
+
+			public function settings(): array {
+				return array(
+					'code'               => 'JPY',
+					'symbol'             => '¥',
+					'decimals'           => 0,
+					'decimal_separator'  => '.',
+					'thousand_separator' => ',',
+					'format'             => '%1$s%2$s',
+				);
+			}
 		} ) )->line( new ShippingRates( 'Japan', false, null, 900, 0 ), 5000 ), 'the shop\'s own decimals' );
 	}
 

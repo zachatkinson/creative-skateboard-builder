@@ -28,7 +28,7 @@
  *   picture and the phone bar show the same side, and the stylesheet turns the board only where motion is allowed.
  */
 import { getConfig, getElement, store } from '@wordpress/interactivity';
-import { fit, size } from './bar';
+import { fit, size, stage } from './bar';
 import { Navigator, type Move, type View } from './navigate';
 import { add, body } from './cart';
 import type { CbuildState } from '../types/state';
@@ -336,12 +336,20 @@ function steady( change: () => void ): void {
  * @param element The builder's element.
  */
 function measure( element: HTMLElement ): void {
-	const bar = element.querySelector( '.cbuild-bar' );
 	size( element );
-	if ( ! bar || 'function' !== typeof window.ResizeObserver ) {
+	stage( element );
+	if ( 'function' !== typeof window.ResizeObserver ) {
 		return;
 	}
-	new window.ResizeObserver( () => size( element ) ).observe( bar );
+	const bar = element.querySelector( '.cbuild-bar' );
+	const shown = element.querySelector( '.cbuild__stage' );
+	if ( bar ) {
+		new window.ResizeObserver( () => size( element ) ).observe( bar );
+	}
+	// The stage sticks on top, or stands beside the panel, as the builder's width changes its size.
+	if ( shown ) {
+		new window.ResizeObserver( () => stage( element ) ).observe( shown );
+	}
 }
 
 /**
@@ -571,6 +579,7 @@ const { state } = store(
 				}
 				const form = input.form;
 				window.clearTimeout( typing );
+				nav( state ).drop();
 				// 150 ms after the last key (SPEC-CONFIGURATOR, Search); the navigator drops an answer a later one overtakes.
 				typing = window.setTimeout(
 					() => narrowed( form ),
@@ -682,21 +691,27 @@ const { state } = store(
 			},
 			reveal( event: FocusEvent ): void {
 				const target = event.target;
-				const bar = root?.querySelector< HTMLElement >( '.cbuild-bar' );
-				if (
-					! ( target instanceof HTMLElement ) ||
-					! bar ||
-					0 === bar.getClientRects().length ||
-					bar.contains( target )
-				) {
+				if ( ! ( target instanceof HTMLElement ) ) {
 					return;
 				}
-				// A browser that scrolls a focused control only when it leaves the screen (Firefox) leaves it under the
-				// bar; scrolling it into view honours the page's scroll padding, which clears the bar (D-160).
-				if (
-					target.getBoundingClientRect().bottom >
-					bar.getBoundingClientRect().top
-				) {
+				const bar = root?.querySelector< HTMLElement >( '.cbuild-bar' );
+				const shown =
+					root?.querySelector< HTMLElement >( '.cbuild__stage' );
+				const place = target.getBoundingClientRect();
+				// A browser that scrolls a focused control only when it leaves the screen (Firefox, WebKit) leaves it under
+				// the bar at the foot, or the stage that sticks on top; scrolling it into view honours the page's scroll
+				// padding, which clears both (D-160; the auditor's M10 review, 1).
+				const under =
+					!! bar &&
+					0 !== bar.getClientRects().length &&
+					! bar.contains( target ) &&
+					place.bottom > bar.getBoundingClientRect().top;
+				const behind =
+					!! shown &&
+					! shown.contains( target ) &&
+					'sticky' === window.getComputedStyle( shown ).position &&
+					place.top < shown.getBoundingClientRect().bottom;
+				if ( under || behind ) {
 					target.scrollIntoView( { block: 'nearest' } );
 				}
 			},

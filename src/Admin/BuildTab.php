@@ -671,6 +671,8 @@ final class BuildTab {
 						'note'   => __( 'A rider photo for its tile, by its ID in the media library. Without one, the tile shows the build’s picture.', 'creative-skateboard-builder' ),
 						'choose' => array(
 							'title'   => __( 'Choose a photo', 'creative-skateboard-builder' ),
+							/* translators: %s: a preset's name, or "Preset 2" for one with none. */
+							'label'   => sprintf( __( 'Choose a photo for %s', 'creative-skateboard-builder' ), '' !== self::text( $row, 'name' ) ? self::text( $row, 'name' ) : sprintf( __( 'Preset %d', 'creative-skateboard-builder' ), $at + 1 ) ),
 							'preview' => (string) wp_get_attachment_image_url( (int) self::text( $row, 'image' ), 'thumbnail' ),
 						),
 					)

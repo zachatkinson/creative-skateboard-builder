@@ -115,6 +115,26 @@ final class StartButtonTest extends IntegrationTestCase {
 		$href = html_entity_decode( (string) preg_replace( '/\A.*href="([^"]*)".*\z/s', '$1', $html ) );
 		self::assertStringStartsWith( BuilderUrl::of( $this->first ), $href, 'the first kit by menu order' );
 		self::assertStringContainsString( 'cbuild[deck]=' . $this->deck, rawurldecode( $href ), 'with the deck picked' );
+		// The auditor's M10 review, 3: a link into a builder state is not for search engines, as the rail's are not.
+		self::assertStringContainsString( 'rel="nofollow"', $html );
+	}
+
+	// The auditor's M10 review, 4: a product's page costs no more queries for a slot of 50 decks than of 5.
+	public function test_a_decks_page_asks_no_more_of_the_database_however_many_decks_the_slot_has(): void {
+		$count = function (): int {
+			$this->shown( $this->deck );
+			wp_cache_flush();
+			global $wpdb;
+			$before = $wpdb->num_queries;
+			$this->shown( $this->deck );
+			return $wpdb->num_queries - $before;
+		};
+		$few = $count();
+		$cat = wp_get_object_terms( $this->deck, 'product_cat', array( 'fields' => 'ids' ) );
+		for ( $i = 0; $i < 45; ++$i ) {
+			$this->part( 'Deck ' . $i, array( 'deck_width' => '8.0000' ), (int) $cat[0] );
+		}
+		self::assertSame( $few, $count() );
 	}
 
 	public function test_a_part_no_kits_first_slot_offers_gets_no_button(): void {
@@ -139,5 +159,14 @@ final class StartButtonTest extends IntegrationTestCase {
 		remove_all_actions( 'woocommerce_before_add_to_cart_form' );
 		add_filter( 'cbuild_start_button', '__return_false' );
 		self::assertSame( '', $this->shown( $this->deck ), 'turned off' );
+	}
+
+	// The auditor's M10 review, 11: the slot the filter names is the one picked, where the kit has it.
+	public function test_a_shop_can_name_another_slot_for_the_part(): void {
+		add_filter( 'cbuild_start_button', fn( $button ) => is_array( $button ) ? array( 'slot' => 'trucks', 'part' => $this->truck ) + $button : $button );
+		self::assertStringContainsString( 'cbuild[trucks]=' . $this->truck, rawurldecode( html_entity_decode( $this->shown( $this->deck ) ) ) );
+		remove_all_filters( 'cbuild_start_button' );
+		add_filter( 'cbuild_start_button', static fn( $button ) => is_array( $button ) ? array( 'slot' => 'spacers' ) + $button : $button );
+		self::assertStringContainsString( 'cbuild[deck]=' . $this->deck, rawurldecode( html_entity_decode( $this->shown( $this->deck ) ) ), 'a slot the kit does not have is its first' );
 	}
 }

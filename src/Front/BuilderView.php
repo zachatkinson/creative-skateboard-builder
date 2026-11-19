@@ -905,6 +905,9 @@ final class BuilderView {
 				'value'   => Cast::str( $width['value'] ?? null ),
 				'text'    => Cast::str( $width['text'] ?? null ),
 				'count'   => number_format_i18n( $stock ),
+				// The button's name, as words: "8.25″, 12 in stock" (the auditor's M10 review, 13).
+				/* translators: 1: a deck width, such as 8.25″. 2: how many decks of that width are in stock. */
+				'said'    => sprintf( _n( '%1$s, %2$s in stock', '%1$s, %2$s in stock', $stock, 'creative-skateboard-builder' ), Cast::str( $width['text'] ?? null ), number_format_i18n( $stock ) ),
 				'pressed' => $pressed ? 'true' : 'false',
 				'dimmed'  => 0 === $stock,
 			);
@@ -919,7 +922,10 @@ final class BuilderView {
 			$inputs = array();
 			foreach ( Cast::items( $group['chips'] ?? null ) as $at => $chip ) {
 				$chip     = Cast::map( $chip );
+				$count    = Cast::int( $chip['count'] ?? null );
 				$inputs[] = array(
+					/* translators: 1: a chip, such as a brand. 2: how many parts it leaves. */
+					'said'    => sprintf( _n( '%1$s, %2$s part', '%1$s, %2$s parts', $count, 'creative-skateboard-builder' ), Cast::str( $chip['label'] ?? null ), number_format_i18n( $count ) ),
 					'id'      => 'cbuild-chip-' . $slot . '-' . $name . '-' . $at,
 					'name'    => BuildLink::PARAM . '[_chips][' . $name . '][]',
 					'value'   => Cast::str( $chip['value'] ?? null ),
@@ -1344,13 +1350,20 @@ final class BuilderView {
 			);
 		}
 		$back = $place > 0 ? $steps[ $place - 1 ] : null;
+		// The risers step says why it appeared: the wheels picked are over what the trucks clear (R3).
+		$lead = '';
+		foreach ( SlotKey::RISERS === $slot ? $state->steps : array() as $held ) {
+			foreach ( $held->counted()->findings ?? array() as $finding ) {
+				$lead = '' === $lead ? Words::riserLead( $finding ) : $lead;
+			}
+		}
 		return array(
 			'slot'      => $slot,
 			'legend'    => Cast::str( $step['label'] ?? $slot ),
 			'help'      => Cast::str( $step['help'] ?? null ),
 			'hasHelp'   => '' !== Cast::str( $step['help'] ?? null ),
-			'lead'      => __( 'Start with a width. Every later step offers only what fits the deck you choose.', 'creative-skateboard-builder' ),
-			'hasLead'   => SlotKey::DECK === $slot && ! isset( $counted[ $slot ] ),
+			'lead'      => '' !== $lead ? $lead : __( 'Start with a width. Every later step offers only what fits the deck you choose.', 'creative-skateboard-builder' ),
+			'hasLead'   => '' !== $lead || ( SlotKey::DECK === $slot && ! isset( $counted[ $slot ] ) ),
 			'name'      => BuildLink::PARAM . '[' . $slot . ']',
 			'before'    => self::fields( BuildLink::PARAM, $link->picks, $link->none, $before ),
 			'after'     => self::fields( BuildLink::PARAM, $link->picks, $link->none, $after ),

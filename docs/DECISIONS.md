@@ -3486,3 +3486,14 @@ Found in the visual baselines remade for 1.0.0, under Storefront and Kadence, wh
 - **The deck step** shows only its width question until a width is picked: the cards' frame with "Showing 0 of 0" is hidden (spec: The deck's width first).
 - **The visual test** keeps the stage's and the layout's heights at the screen's while the screen grows to the page's height for the picture. Sized by `svh`, they otherwise grew with it.
 
+### D-281 · The Catalogue check says which variations share a card, in a list of its own, as information · 2026-11-19
+
+Spec (configurator): "The Catalogue check says which variations share a photo, and so share a card."
+
+- **What.** `look_shared`, once per kit, slot and product: the product's parts in that slot that share a photo and a layer image, as the step groups them (D-240), their IDs in `values.parts`. A layer image of its own is a card of its own, as a photo is.
+- **Where.** After the parts with no layer image, under "Variations that share a card", cut at its own length. Its column reads "What it says", not "What to fix".
+- **Not a fix.** Site Health's catalogue test and the screen's count leave it out: one card per look is what the builder does with a product's sizes, and the list is there so a shop sees it before a shopper does.
+- **Upgrades.** The check gets the looks through `withLooks()`, which only 1.0.0's container calls (D-208).
+
+**Why:** the spec asks the check to say it, and a shop with a colour sharing its photo with another would otherwise first learn it from a shopper. Counting it as a fix would turn every variable deck into a warning.
+

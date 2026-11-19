@@ -1089,6 +1089,8 @@ final class BuilderTest extends TestCase {
 		self::assertNotContains( SlotKey::BEARINGS, Builder::steps( $shown['state'] ), 'the bearings step leaves the rail' );
 		self::assertNotContains( SlotKey::BEARINGS, array_column( $shown['view']['progress'], 'key' ), 'and the rail' );
 		self::assertSame( 'Choose your hardware', $shown['view']['heading'], 'a link to it goes on to the next step' );
+		self::assertTrue( $shown['answer']['bearings_included'], 'the route says so (M10\'s route additions)' );
+		self::assertFalse( $this->show( new BuildLink( $plain ) )['answer']['bearings_included'] );
 
 		$view = $this->show( new BuildLink( $picks + array( SlotKey::HARDWARE => 601, SlotKey::GRIP => 701 ), null, State::REVIEW ) )['view'];
 		self::assertTrue( $view['review']['ready'], 'the slot counts as filled' );
@@ -1096,6 +1098,17 @@ final class BuilderTest extends TestCase {
 		self::assertSame( array( SlotKey::DECK, SlotKey::TRUCKS, SlotKey::WHEELS, SlotKey::BEARINGS, SlotKey::HARDWARE, SlotKey::GRIP ), array_keys( $items ), 'in the kit\'s order' );
 		self::assertSame( array( 'Bearings', 'Included with your wheels', '' ), array( $items[ SlotKey::BEARINGS ]['label'], $items[ SlotKey::BEARINGS ]['name'], $items[ SlotKey::BEARINGS ]['amount'] ) );
 		self::assertSame( 'Change wheels', $items[ SlotKey::BEARINGS ]['change'], 'they change with the wheels' );
+	}
+
+	// Spec (configurator): Risers, "It opens on the riser that clears them, with the reason ("Your 56 mm wheels need ½″
+	// risers with these trucks")".
+	public function test_the_risers_step_says_why_it_appeared(): void {
+		$step = $this->show( new BuildLink( array( SlotKey::DECK => 101, SlotKey::TRUCKS => 139, SlotKey::WHEELS => 303 ), null, SlotKey::RISERS ) )['view']['step'];
+		self::assertTrue( $step['hasLead'] );
+		self::assertSame( "Your 58\u{a0}mm wheels need ¼″ risers with these trucks.", $step['lead'] );
+
+		$asked = $this->show( new BuildLink( self::STREET, null, SlotKey::RISERS ) )['view']['step'];
+		self::assertFalse( $asked['hasLead'], 'opened by Add risers, nothing asked for it' );
 	}
 
 	// Spec (configurator): The review and Risers, "Add risers at the review opens the step when nothing asks for it".

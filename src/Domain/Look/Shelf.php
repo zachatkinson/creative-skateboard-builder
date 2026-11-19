@@ -52,6 +52,12 @@ final class Shelf {
 	public const int SHOWN = 30;
 
 	/**
+	 * The most looks a step lists, page by page: search and filters narrow past it (spec: 30 at a time). The build
+	 * link's `_shown` stops at the same number.
+	 */
+	public const int MOST = 500;
+
+	/**
 	 * The group the brand chips are in.
 	 */
 	public const string BRAND = 'brand';
@@ -150,8 +156,12 @@ final class Shelf {
 		foreach ( $keys as $key ) {
 			$found[] = $facets[ $key ];
 		}
-		$groups = Chips::groups( $found, $always, $ask->chosen );
-		$left   = array_flip( array_map( static fn( Facets $look ): string => $look->key, Chips::filter( $found, $ask->chosen ) ) );
+		// A deck in another width is not on the step, so no chip counts it ("how many looks it leaves"). The search
+		// still reads it, for "Rascals comes in 8.5″".
+		$width   = SlotKey::DECK === $slot ? $ask->width : null;
+		$counted = array_flip( array_map( static fn( Look $look ): string => $look->key, array_filter( $looks, static fn( Look $look ): bool => null === $width || in_array( self::named( $width ), array_map( self::named( ... ), $look->sizes( SpecKey::DeckWidth ) ), true ) ) ) );
+		$groups  = Chips::groups( array_values( array_filter( $found, static fn( Facets $look ): bool => isset( $counted[ $look->key ] ) ) ), $always, $ask->chosen );
+		$left    = array_flip( array_map( static fn( Facets $look ): string => $look->key, Chips::filter( $found, $ask->chosen ) ) );
 
 		$wanted  = $this->wanted( $slot, $looks, $chip, $recommended, $ask );
 		$inStock = array();
@@ -176,6 +186,8 @@ final class Shelf {
 		usort( $inStock, $order );
 		usort( $soldOut, $order );
 
+		// No page goes past the cap, so a reload, which keeps at most that many, shows what was paged.
+		$capped    = array_slice( $inStock, 0, self::MOST );
 		$next      = $ask->from + $ask->shown;
 		$elsewhere = array();
 		if ( SlotKey::DECK === $slot && null !== $spec && '' !== $ask->query && array() === $inStock ) {
@@ -184,13 +196,13 @@ final class Shelf {
 			$elsewhere = array_values( array_filter( self::widths( $matched, $spec ), static fn( Width $width ): bool => $width->inStock > 0 ) );
 		}
 		return new Listing(
-			array_slice( $inStock, $ask->from, $ask->shown ),
+			array_slice( $capped, $ask->from, $ask->shown ),
 			$soldOut,
 			$groups,
 			SlotKey::DECK === $slot && null !== $spec ? self::widths( $looks, $spec ) : array(),
 			count( $looks ),
 			count( $inStock ),
-			$next < count( $inStock ) ? $next : null,
+			$next < count( $capped ) ? $next : null,
 			$elsewhere
 		);
 	}

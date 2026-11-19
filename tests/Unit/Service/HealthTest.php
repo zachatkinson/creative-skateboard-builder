@@ -210,6 +210,8 @@ final class HealthTest extends TestCase {
 		);
 		self::assertSame( 1, Health::catalogue( array( $found[3] ) )['findings'] );
 		self::assertSame( 0, Health::catalogue( array( $found[3] ) )['parts'], 'a kit\'s finding names no part' );
+		// Variations that share a card are what the builder does, not a fix (D-281).
+		self::assertSame( Health::CHECK_CLEAR, Health::catalogue( array( new CheckFinding( CatalogueCheck::LOOK_SHARED, 10, 7, 'deck', values: array( 'parts' => '11, 12' ) ) ) )['code'] );
 	}
 
 	public function test_parts_with_no_layer_image_are_counted_apart_from_what_keeps_a_part_out(): void {

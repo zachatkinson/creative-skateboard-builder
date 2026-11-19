@@ -135,6 +135,22 @@ final class LooksTest extends TestCase {
 		);
 	}
 
+	public function test_a_look_told_apart_by_two_attributes_is_named_by_both(): void {
+		$looks = Looks::of(
+			array(
+				self::deck( 11, 10, '8', 1, 0, array( 'pa_colour' => 'mint', 'pa_finish' => 'matte' ) ),
+				self::deck( 12, 10, '8', 2, 0, array( 'pa_colour' => 'black', 'pa_finish' => 'gloss' ) ),
+			)
+		);
+		self::assertSame(
+			array(
+				'10:1:0' => array( 'pa_colour' => 'mint', 'pa_finish' => 'matte' ),
+				'10:2:0' => array( 'pa_colour' => 'black', 'pa_finish' => 'gloss' ),
+			),
+			Looks::names( $looks )
+		);
+	}
+
 	public function test_a_value_that_differs_within_a_look_does_not_name_it(): void {
 		$looks = Looks::of(
 			array(

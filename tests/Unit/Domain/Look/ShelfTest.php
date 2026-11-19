@@ -15,6 +15,7 @@ use CreativeBranding\SkateboardBuilder\Domain\Fit\SizePicker;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Part;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Picks;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\SlotKey;
+use CreativeBranding\SkateboardBuilder\Domain\Look\Chip;
 use CreativeBranding\SkateboardBuilder\Domain\Look\ChipGroup;
 use CreativeBranding\SkateboardBuilder\Domain\Look\Listing;
 use CreativeBranding\SkateboardBuilder\Domain\Look\Shelf;
@@ -246,6 +247,26 @@ final class ShelfTest extends TestCase {
 		self::assertSame( array(), self::list( SlotKey::WHEELS, $parts, $shelved, new ShelfAsk( from: 9 ) )->looks, 'past the end' );
 	}
 
+	/**
+	 * Spec (configurator): 30 at a time, "The cap stays at 500 looks a step: search and filters narrow past it." The
+	 * route's `from` reaches 2,000 (D-265), but no page goes past the 500th look, so a reload shows what was paged.
+	 */
+	public function test_no_page_goes_past_the_five_hundredth_look(): void {
+		$parts   = array();
+		$shelved = array();
+		for ( $i = 0; $i < 520; $i++ ) {
+			$parts[]               = self::wheel( 10000 + $i, '54' );
+			$shelved[ 10000 + $i ] = self::shelved( 20000 + $i, 30000 + $i, array(), array(), array( 'name' => sprintf( 'Wheel %04d', $i ) ) );
+		}
+		$last = self::list( SlotKey::WHEELS, $parts, $shelved, new ShelfAsk( from: 480, shown: 30 ) );
+		self::assertCount( 20, $last->looks, 'the page stops at the 500th' );
+		self::assertNull( $last->more, 'and offers no more' );
+		self::assertSame( 520, $last->matching, 'the count says how many match, for search and filters to narrow' );
+		self::assertSame( 480, self::list( SlotKey::WHEELS, $parts, $shelved, new ShelfAsk( from: 450, shown: 30 ) )->more );
+		self::assertNull( self::list( SlotKey::WHEELS, $parts, $shelved, new ShelfAsk( from: 470, shown: 30 ) )->more, 'a page ending on the 500th' );
+		self::assertSame( array(), self::list( SlotKey::WHEELS, $parts, $shelved, new ShelfAsk( from: 500 ) )->looks, 'past the cap' );
+	}
+
 	public function test_the_deck_step_asks_the_width_first_then_lists_the_decks_in_it(): void {
 		$deck    = static fn( string $width, int $id, bool $inStock = true ): Part => Parts::of( array( 'deck_width' => $width, 'deck_length' => '32', 'hole_pattern' => 'new_school', 'set_size' => 1 ), $id, 6000, 'baker', $inStock );
 		$parts   = array( $deck( '9', 105, false ), $deck( '8', 101 ), $deck( '8.25', 102 ), $deck( '8.25', 103, false ), $deck( '8.5', 104 ) );
@@ -270,6 +291,29 @@ final class ShelfTest extends TestCase {
 		self::assertSame( array( '1:1:0' => 102 ), self::cards( $listed->looks ) );
 		self::assertSame( array( '2:2:0' => 103 ), self::cards( $listed->soldOut ), 'sold out in the width asked' );
 		self::assertCount( 4, $listed->widths, 'the question stays, for Change' );
+	}
+
+	/**
+	 * Spec (configurator): "Each chip says how many looks it leaves." On the deck step that is in the width asked: a
+	 * deck in another width is not on the step, so a brand's chip does not count it (found on the long step's page).
+	 */
+	public function test_a_deck_chip_counts_only_the_decks_in_the_width_asked(): void {
+		$deck    = static fn( string $width, int $id, string $brand, bool $inStock = true ): Part => Parts::of( array( 'deck_width' => $width, 'deck_length' => '32', 'hole_pattern' => 'new_school', 'set_size' => 1 ), $id, 6000, $brand, $inStock );
+		$parts   = array( $deck( '8.25', 101, 'baker' ), $deck( '8.25', 102, 'baker', false ), $deck( '8', 103, 'baker' ), $deck( '8.25', 104, 'zero' ), $deck( '8', 105, 'alien' ) );
+		$shelved = array();
+		foreach ( array( 101, 102, 103, 104, 105 ) as $id ) {
+			$shelved[ $id ] = self::shelved( $id, $id );
+		}
+		$listing = self::list( SlotKey::DECK, $parts, $shelved, new ShelfAsk( Measure::inches( 82500 ) ), Picks::none() );
+		self::assertSame(
+			array( 'baker' => 2, 'zero' => 1 ),
+			array_column( array_map( static fn( Chip $chip ): array => array( $chip->value, $chip->count ), $listing->groups[0]->chips ), 1, 0 ),
+			'the sold-out 8.25″ deck is left, under its fold; the 8″ decks are not, and a brand only in 8″ has no chip'
+		);
+		// The build link keeps the width on every step, and a later step's chips are not the deck's.
+		$wheels = array( Parts::of( array( 'wheel_diameter' => '54', 'set_size' => 4 ), 201, 3000, 'bones' ), Parts::of( array( 'wheel_diameter' => '54', 'set_size' => 4 ), 202, 3000, 'spitfire' ) );
+		$later  = self::list( SlotKey::WHEELS, $wheels, array( 201 => self::shelved( 201, 201 ), 202 => self::shelved( 202, 202 ) ), new ShelfAsk( Measure::inches( 82500 ) ) );
+		self::assertSame( array( 'bones', 'spitfire' ), array_map( static fn( Chip $chip ): string => $chip->value, $later->groups[0]->chips ) );
 	}
 
 	// Spec (configurator): Search, "When nothing is found": "No 8.25″ decks match Rascals. Rascals comes in 8.5″."

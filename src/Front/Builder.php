@@ -43,17 +43,46 @@ if ( ! defined( 'ABSPATH' ) ) {
 final class Builder {
 
 	/**
+	 * A signed-in customer's width, from their saved builds (from 1.0.0).
+	 *
+	 * @var RememberedWidth|null
+	 */
+	private ?RememberedWidth $remembered = null;
+
+	/**
+	 * A saved build opened from My builds, checked against the shop (from 1.0.0).
+	 *
+	 * @var SavedBuilds|null
+	 */
+	private ?SavedBuilds $saved = null;
+
+	/**
 	 * Constructor.
 	 *
 	 * @since 0.6.0
 	 *
-	 * @param BuildState           $builds Works a build's state out.
-	 * @param StateAnswer          $writer Writes it down.
-	 * @param BuilderView          $view   Says it as the template shows it.
-	 * @param RememberedWidth|null $remembered A signed-in customer's width, from their saved builds (from 1.0.0).
-	 * @param SavedBuilds|null     $saved      A saved build opened from My builds, checked against the shop (from 1.0.0).
+	 * @param BuildState  $builds Works a build's state out.
+	 * @param StateAnswer $writer Writes it down.
+	 * @param BuilderView $view   Says it as the template shows it.
 	 */
-	public function __construct( private BuildState $builds, private StateAnswer $writer, private BuilderView $view, private ?RememberedWidth $remembered = null, private ?SavedBuilds $saved = null ) {}
+	public function __construct( private BuildState $builds, private StateAnswer $writer, private BuilderView $view ) {}
+
+	/**
+	 * The same builder, which asks a signed-in customer's width of their saved builds and checks a saved build opened
+	 * from My builds against the shop. Only this release's container calls it, so a builder an earlier release's
+	 * container makes mid-update does neither (D-208).
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param RememberedWidth|null $remembered A signed-in customer's width.
+	 * @param SavedBuilds|null     $saved      The customers' saved builds.
+	 */
+	public function withSaved( ?RememberedWidth $remembered, ?SavedBuilds $saved ): self {
+		$builder             = clone $this;
+		$builder->remembered = $remembered;
+		$builder->saved      = $saved;
+		return $builder;
+	}
 
 	/**
 	 * What the builder shows at an address, or null when the shop has no such kit.
@@ -79,7 +108,9 @@ final class Builder {
 			if ( null === $shown ) {
 				return null;
 			}
-			$shown['view'] = $this->view->reopened( $shown['view'], $this->writer->reopened( $reopened ), $shown['state'], $reopened->build->assembly );
+			$panel           = $this->writer->reopened( $reopened );
+			$shown['view']   = $this->view->reopened( $shown['view'], $panel, $shown['state'], $reopened->build->assembly );
+			$shown['answer'] = $shown['answer'] + array( 'reopened' => $panel );
 			return $shown;
 		}
 		if ( null !== $this->remembered && '' === $link->shelf->width && ! isset( $link->picks[ SlotKey::DECK ] ) ) {

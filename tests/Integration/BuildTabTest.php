@@ -544,6 +544,8 @@ final class BuildTabTest extends IntegrationTestCase {
 		self::assertMatchesRegularExpression( '/<button type="button" class="button cbuild-layer__choose" hidden data-cbuild-layer="cbuild-kit-presets-0-image"/', $panel, 'the button the script shows' );
 		self::assertMatchesRegularExpression( '/id="cbuild-kit-presets-0-image-preview"><img alt="" width="60" height="60" src="[^"]+canola[^"]*"/', $panel, 'and what it is' );
 		self::assertMatchesRegularExpression( '/id="cbuild-kit-presets-1-image-preview"><img alt="" width="60" height="60" src="" hidden/', $panel, 'an empty row has no preview' );
+		// Each named for its preset, so six buttons are not six of one name (the auditor's M10 review, 14).
+		self::assertStringContainsString( 'aria-label="Choose a photo for Preset 2"', $panel );
 	}
 
 	public function test_unchanged_presets_naming_a_part_the_shop_hides_are_kept_and_named_not_refused(): void {

@@ -1433,7 +1433,7 @@ test.describe( 'The builder with JavaScript', () => {
 		const widths = page.locator( '.cbuild-width' );
 		// French writes the width with a decimal comma.
 		const width = widths.getByRole( 'button', {
-			name: inLocale( info.project.name, '8.25″ 1' ),
+			name: inLocale( info.project.name, '8.25″, 1' ),
 		} );
 		await width.click();
 		await expect(
@@ -1450,7 +1450,7 @@ test.describe( 'The builder with JavaScript', () => {
 		page,
 	}, info ) => {
 		const width = page.locator( '.cbuild-width' ).getByRole( 'button', {
-			name: inLocale( info.project.name, '8.25″ 1' ),
+			name: inLocale( info.project.name, '8.25″, 1' ),
 		} );
 		await width.focus();
 		await page.keyboard.press( 'Enter' );
@@ -2036,7 +2036,7 @@ test.describe( 'The builder with JavaScript', () => {
 		await page
 			.locator( '.cbuild-width' )
 			.getByRole( 'button', {
-				name: inLocale( info.project.name, '8.25″ 1' ),
+				name: inLocale( info.project.name, '8.25″, 1' ),
 			} )
 			.click();
 		await expect(
@@ -2375,7 +2375,7 @@ test( 'the width question opens a guide by shoe size', async ( { page } ) => {
 	} );
 	await expect( table ).toBeVisible();
 	await expect(
-		table.getByRole( 'row', { name: '9 and larger 8.25″ and wider' } )
+		table.getByRole( 'row', { name: '9.5 and larger 8.25″ and wider' } )
 	).toBeVisible();
 } );
 
@@ -3628,6 +3628,71 @@ test.describe( 'The phone bar', () => {
 					} )
 				)
 				.toEqual( { onScreen: true, covered: 0 } );
+		} );
+	}
+
+	// The auditor's M10 review, 1 (WCAG 2.4.11): on a phone the stage sticks at the top of the screen, and a control
+	// that takes focus going back up the step, or the heading Next moves focus to, is never behind it.
+	// At a phone's width and a tablet's, where the stage sticks on top too (the spec reviewer's M10 S7).
+	for ( const [ width, height ] of [
+		[ 390, 700 ],
+		[ 820, 1180 ],
+	] as const ) {
+		test( `keeps the control in focus clear of the stage on top at ${ width } by ${ height }, going back up the step and after Next`, async ( {
+			page,
+			javaScriptEnabled,
+		} ) => {
+			await page.setViewportSize( { width, height } );
+			await page.goto( linkTo( { _width: '8in' } ) );
+			await expect(
+				page.locator( '.cbuild-card' ).first()
+			).toBeVisible();
+			const seen = () =>
+				page.evaluate( () => {
+					const focused = document.body.ownerDocument.activeElement;
+					if ( ! ( focused instanceof HTMLElement ) ) {
+						return 'nothing in focus';
+					}
+					const box = focused.getBoundingClientRect();
+					const at = document.elementFromPoint(
+						box.left + Math.min( box.width / 2, 20 ),
+						box.top + Math.min( box.height / 2, 10 )
+					);
+					if ( at?.closest( '.cbuild__stage' ) ) {
+						return 'behind the stage';
+					}
+					if (
+						at?.closest( '.cbuild-bar' ) &&
+						! focused.closest( '.cbuild-bar' )
+					) {
+						return 'under the bar';
+					}
+					return 'clear';
+				} );
+			await page.evaluate( () =>
+				window.scrollTo( 0, document.documentElement.scrollHeight )
+			);
+			await page
+				.locator( '.cbuild-cards input[type="radio"]' )
+				.last()
+				.focus();
+			for ( let back = 0; back < 6; back++ ) {
+				await page.keyboard.press( 'Shift+Tab' );
+				expect( await seen(), `after ${ back + 1 } Shift+Tab` ).toBe(
+					'clear'
+				);
+			}
+			if ( ! javaScriptEnabled ) {
+				return;
+			}
+			await page.locator( '.cbuild-card label' ).first().click();
+			await settled( page );
+			await page.evaluate( () =>
+				window.scrollTo( 0, document.documentElement.scrollHeight )
+			);
+			await page.getByRole( 'button', { name: 'Next: Trucks' } ).click();
+			await expect( heading( page ) ).toBeFocused();
+			expect( await seen(), "the next step's heading" ).toBe( 'clear' );
 		} );
 	}
 

@@ -143,3 +143,32 @@ export function size( root: Element ): void {
 		`${ Math.ceil( bar.getBoundingClientRect().height ) }px`
 	);
 }
+
+/**
+ * Keep where the stage's foot is on the page while it sticks at the top of the screen, narrower than 64rem, for the
+ * scroll padding that keeps focus clear of it (WCAG 2.4.11; the auditor's M10 review, 1). Nothing to clear, 0, where
+ * it sits beside the panel or scrolls with the page.
+ *
+ * @param root The builder's element.
+ */
+export function stage( root: Element ): void {
+	const shown = root.querySelector( '.cbuild__stage' );
+	const page = root.ownerDocument.documentElement;
+	const view = root.ownerDocument.defaultView;
+	const sticks =
+		!! shown &&
+		!! view &&
+		0 !== shown.getClientRects().length &&
+		'sticky' === view.getComputedStyle( shown ).position;
+	// Where its foot is once it sticks: its sticky top and its height, not where it stands now, which before it
+	// sticks is further down the page.
+	page.style.setProperty(
+		'--cbuild-stage-size',
+		sticks && shown && view
+			? `${ Math.ceil(
+					( parseFloat( view.getComputedStyle( shown ).top ) || 0 ) +
+						shown.getBoundingClientRect().height
+				) }px`
+			: '0px'
+	);
+}

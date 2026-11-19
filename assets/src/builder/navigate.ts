@@ -134,6 +134,19 @@ export class Navigator {
 	}
 
 	/**
+	 * Drop the answer waited for, and any pick waiting to be asked: the shopper has gone on typing, and the answer would
+	 * put the search box back to what it was asked with (the auditor's M10 review, 19). The next move asks again.
+	 */
+	drop(): void {
+		clearTimeout( this.timer );
+		clearTimeout( this.slow );
+		this.slow = undefined;
+		this.asking?.abort();
+		this.asking = undefined;
+		this.deps.pending( false );
+	}
+
+	/**
 	 * Any other move: the route is asked at once.
 	 *
 	 * @param move Where to go.

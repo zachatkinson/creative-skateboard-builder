@@ -207,6 +207,7 @@
         "--cbuild-radius",
         "--cbuild-small",
         "--cbuild-stage-height",
+        "--cbuild-stage-size",
         "--cbuild-surface",
         "--cbuild-target",
         "--cbuild-text",
@@ -282,7 +283,7 @@
         "schema/kit-slots.json": "7c383e3f551b517328d9d195c01e15f9f5dad1a1263a20fa4ff2188592bb820c",
         "schema/order-snapshot.json": "78cc2355e3468a3f4ff06aa8c609594f21ab961dbcf06ca54bb2b4b2e1b18030",
         "schema/settings.json": "c6ce801eae753f4d85734fdf81489cc91a4e2db8adf318aa2da21832d7ef9df4",
-        "schema/state.json": "4607c2df961df9ecd0e683c9e2cbb4893177eb543d182a2070882ee171237429"
+        "schema/state.json": "1e95756b03d27754b41180bd601131a5f5156067eb10cf848735979d7ad6b24f"
     },
     "spec_keys": [
         "deck_width",

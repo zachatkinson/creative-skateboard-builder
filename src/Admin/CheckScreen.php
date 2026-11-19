@@ -124,8 +124,12 @@ final class CheckScreen {
 		$kits  = $this->kits->all();
 		// Parts with no layer image are listed apart, each list cut at its own length: on a large catalogue they would
 		// otherwise fill the page after what keeps a part out (Cowork's M7 review, F4; D-211).
-		$fixes  = array_values( array_filter( $found, static fn( CheckFinding $finding ): bool => CatalogueCheck::LAYER_MISSING !== $finding->code ) );
+		$fixes  = array_values( array_filter( $found, static fn( CheckFinding $finding ): bool => ! in_array( $finding->code, array( CatalogueCheck::LAYER_MISSING, CatalogueCheck::LOOK_SHARED ), true ) ) );
 		$layers = array_values( array_filter( $found, static fn( CheckFinding $finding ): bool => CatalogueCheck::LAYER_MISSING === $finding->code ) );
+		// Variations that share a card, in a list of their own after the layers: what the builder does, not a fix (D-281).
+		$looks  = array_values( array_filter( $found, static fn( CheckFinding $finding ): bool => CatalogueCheck::LOOK_SHARED === $finding->code ) );
+		$alike  = $this->rows( array_slice( $looks, 0, self::SHOWN ), $kits );
+		$beyond = count( $looks ) - count( $alike );
 		$rows   = $this->rows( array_slice( $fixes, 0, self::SHOWN ), $kits );
 		$more   = count( $fixes ) - count( $rows );
 		$count  = count( $fixes );

@@ -15,6 +15,7 @@ use CreativeBranding\SkateboardBuilder\Domain\Kit\SlotKey;
 use CreativeBranding\SkateboardBuilder\Domain\Saved\SavedChange;
 use CreativeBranding\SkateboardBuilder\Domain\Saved\SavedCheck;
 use CreativeBranding\SkateboardBuilder\Domain\Saved\SavedReason;
+use CreativeBranding\SkateboardBuilder\Tests\Support\Domain\Builds;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Domain\Shop;
 use PHPUnit\Framework\TestCase;
 
@@ -74,6 +75,16 @@ final class SavedCheckTest extends TestCase {
 		$parts                      = Shop::parts();
 		$parts[ SlotKey::BEARINGS ] = array( Shop::priced( $parts[ SlotKey::BEARINGS ][0], 1500, true, 3 ) );
 		self::assertSame( array( array( SlotKey::BEARINGS, 501, 'sold_out', null ) ), self::said( self::check( $parts ) ), 'the build takes 8, and no other bearing is offered' );
+
+		$parts[ SlotKey::BEARINGS ][] = Shop::priced( Builds::bearings( '8', 502 ), 1600, true, 4 );
+		self::assertSame( array( array( SlotKey::BEARINGS, 501, 'sold_out', null ) ), self::said( self::check( $parts ) ), 'nor is one the shop holds too few of a replacement' );
+	}
+
+	public function test_a_part_still_offered_is_replaced_by_the_closest_to_it_as_it_reads_now_not_as_it_was(): void {
+		$parts                    = Shop::parts();
+		$parts[ SlotKey::WHEELS ] = array_map( static fn( Part $part ): Part => 302 === $part->id ? Shop::priced( $part, $part->price, false, 0 ) : $part, $parts[ SlotKey::WHEELS ] );
+		$stale                    = Builds::wheel( '58', 302 );
+		self::assertSame( array( array( SlotKey::WHEELS, 302, 'sold_out', 301 ) ), self::said( self::check( $parts, array( SlotKey::WHEELS => $stale ) ) ), 'its 54 mm now, nearer 52 mm, not the 58 mm it once read' );
 	}
 
 	public function test_a_part_gone_from_the_kit_is_named_with_the_closest_to_it_as_it_reads_now(): void {

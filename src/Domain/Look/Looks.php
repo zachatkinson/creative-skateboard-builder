@@ -59,11 +59,9 @@ final class Looks {
 		foreach ( $looks as $look ) {
 			$own = array();
 			foreach ( $shared[ $look->key ] as $name => $value ) {
-				foreach ( $kin[ $look->product ] as $other ) {
-					if ( $other !== $look->key && ( $shared[ $other ][ $name ] ?? null ) !== $value ) {
-						$own[ $name ] = $value;
-						break;
-					}
+				$apart = array_filter( $kin[ $look->product ], static fn( string $other ): bool => $other !== $look->key && ( $shared[ $other ][ $name ] ?? null ) !== $value );
+				if ( array() !== $apart ) {
+					$own[ $name ] = $value;
 				}
 			}
 			$names[ $look->key ] = $own;

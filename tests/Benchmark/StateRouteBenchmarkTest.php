@@ -161,6 +161,8 @@ final class StateRouteBenchmarkTest extends IntegrationTestCase {
 				$product->update_meta_data( Options::META_SPECS, self::specs( $slot['key'], $n ) );
 				$product->save();
 				wp_set_object_terms( $product->get_id(), array( $category ), 'product_cat' );
+				// Four brands, so the step has a brand chip to narrow by (milestone 10's shelf).
+				wp_set_object_terms( $product->get_id(), array( 'bench-brand-' . ( $n % 4 ) ), 'product_brand' );
 				$this->service( SpecIndexer::class )->index( $product->get_id() );
 				$ids[ $slot['key'] ][] = $product->get_id();
 			}
@@ -201,10 +203,16 @@ final class StateRouteBenchmarkTest extends IntegrationTestCase {
 
 		// A move asks as the store does (audit 13, milestone 6): the build's own fields and the page, which add the
 		// view, its brand lookup, the presets and the page's blocks. The rest ask with picks alone.
-		$ask = static function ( int $deck, bool $move = false ) use ( $kit ): array {
+		// Milestone 10 (the spec reviewer's B4): a search with a chip and a sort, over the 500, as the shelf asks.
+		$narrowed = array(
+			'q'     => 'Trucks 1',
+			'chips' => array( 'brand' => array( 'bench-brand-1' ) ),
+			'sort'  => 'price-asc',
+		);
+		$ask      = static function ( int $deck, bool $move = false, bool $narrow = false ) use ( $kit, $narrowed ): array {
 			$request = new WP_REST_Request( 'GET', "/cbuild/v1/kits/{$kit}/state" );
 			$request->set_query_params(
-				$move ? array(
+				( $move ? array(
 					'cbuild' => array(
 						'deck' => (string) $deck,
 						'step' => 'trucks',
@@ -213,7 +221,7 @@ final class StateRouteBenchmarkTest extends IntegrationTestCase {
 				) : array(
 					'picks' => array( 'deck' => $deck ),
 					'step'  => 'trucks',
-				)
+				) ) + ( $narrow ? $narrowed : array() )
 			);
 			$queries  = get_num_queries();
 			$start    = hrtime( true );
@@ -237,9 +245,14 @@ final class StateRouteBenchmarkTest extends IntegrationTestCase {
 
 		$view = $ask( $ids['deck'][0], true )[2];
 		self::assertSame( 'Step 2 of 7: Trucks', $view['view']['title'] ?? null, 'a move answers with the view' );
-		foreach ( array( false, true ) as $move ) {
-			// Each shape from an address of its own: the two runs are as many requests as one address may make in a minute.
-			$_SERVER['REMOTE_ADDR'] = $move ? '203.0.113.9' : '203.0.113.7';
+		$found = $ask( $ids['deck'][0], false, true )[2];
+		self::assertSame( 'Trucks 1', $found['shelf']['query'] ?? null, 'the search is the one asked' );
+		self::assertSame( 'price-asc', $found['shelf']['sort'] ?? null );
+		self::assertGreaterThan( 0, $found['shelf']['matching'] ?? 0, 'it finds trucks of the brand chosen' );
+		self::assertLessThan( $first['shelf']['matching'] ?? 0, $found['shelf']['matching'] ?? 0, 'fewer than the step lists without it' );
+		foreach ( array( 'plain' => array( false, false ), 'move' => array( true, false ), 'narrowed' => array( false, true ) ) as $shape => [ $move, $narrow ] ) {
+			// Each shape from an address of its own: the runs are as many requests as one address may make in a minute.
+			$_SERVER['REMOTE_ADDR'] = array( 'plain' => '203.0.113.7', 'move' => '203.0.113.9', 'narrowed' => '203.0.113.11' )[ $shape ];
 			foreach ( array( 'cold' => true, 'warm' => false ) as $run => $flush ) {
 				$times   = array();
 				$queries = array();
@@ -248,13 +261,13 @@ final class StateRouteBenchmarkTest extends IntegrationTestCase {
 						// A request on a site with no persistent object cache starts with nothing kept.
 						wp_cache_flush();
 					}
-					[ $took, $asked ] = $ask( $ids['deck'][ $request % 7 ], $move );
+					[ $took, $asked ] = $ask( $ids['deck'][ $request % 7 ], $move, $narrow );
 					$times[]          = $took;
 					$queries[]        = $asked;
 				}
 				$p95 = self::p95( $times );
 				sort( $times );
-				$name = ( $move ? 'a move, ' : '' ) . $run;
+				$name = array( 'plain' => '', 'move' => 'a move, ', 'narrowed' => 'a search with a chip and a sort, ' )[ $shape ] . $run;
 				self::say( sprintf( 'state route, %s, 500 candidates in the step, 2,000 parts in the kit: p95 %.1f ms, median %.1f ms, slowest %.1f ms, %d queries at most', $name, $p95, $times[ (int) ( count( $times ) / 2 ) ], max( $times ), max( $queries ) ) );
 				self::assertLessThanOrEqual( self::QUERIES[ $run ], max( $queries ), "The state route's queries, {$name}." );
 				self::assertLessThan( self::limit(), $p95, "The state route, {$name}." );

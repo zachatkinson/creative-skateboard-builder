@@ -117,7 +117,7 @@ final class BuilderShelfTest extends TestCase {
 		$cards    = new InMemoryPartCards();
 		$answer   = ( new StateAnswer( $cards, new FakeMoney(), $this->kits, new Delivery( $this->kits, new FakeShippingZones(), new ShippingWords( new FakeMoney() ) ), new PageRenderer() ) )
 			->withShelf( new StepShelf( $this->looks, $cards, new FakeRanking(), $folding, $settings ) );
-		$shown    = ( new Builder( new BuildState( $this->kits, $settings, new FakeLogger() ), $answer, new BuilderView(), $remembered, $saved ) )->show( self::KIT, $link, self::BASE );
+		$shown    = ( new Builder( new BuildState( $this->kits, $settings, new FakeLogger() ), $answer, new BuilderView() ) )->withSaved( $remembered, $saved )->show( self::KIT, $link, self::BASE );
 		self::assertNotNull( $shown );
 		return $shown;
 	}
@@ -159,10 +159,11 @@ final class BuilderShelfTest extends TestCase {
 		self::assertSame( array( 'Shoe size (US)', 'Deck width' ), array( $guide['shoe'], $guide['width'] ) );
 		self::assertSame(
 			array(
-				array( 'shoe' => '7 or smaller', 'width' => '7″ to 7.75″' ),
-				array( 'shoe' => '7 to 8.5', 'width' => '7.75″ to 8″' ),
+				// Each shoe size in one row (the auditor's M10 review, 15): US sizes go by halves.
+				array( 'shoe' => '6.5 or smaller', 'width' => '7″ to 7.75″' ),
+				array( 'shoe' => '7 to 8', 'width' => '7.75″ to 8″' ),
 				array( 'shoe' => '8.5 to 9', 'width' => '8″ to 8.25″' ),
-				array( 'shoe' => '9 and larger', 'width' => '8.25″ and wider' ),
+				array( 'shoe' => '9.5 and larger', 'width' => '8.25″ and wider' ),
 			),
 			$guide['rows']
 		);
@@ -216,6 +217,7 @@ final class BuilderShelfTest extends TestCase {
 			$step                        = $this->step( new BuildLink(), $remembered );
 			self::assertSame( array( 102 ), array_column( $step['options'], 'id' ), 'the decks in the width of the build saved last' );
 			self::assertSame( array( 'false', 'true', 'false' ), array_column( $step['shelf']['width']['options'], 'pressed' ) );
+			self::assertSame( '8.25″, 1 in stock', $step['shelf']['width']['options'][1]['said'] ?? null, 'heard as words (the auditor\'s M10 review, 13)' );
 			self::assertSame( '8.25in', self::tail( $step )['cbuild[_width]'] ?? null, 'and it travels with the build' );
 			self::assertSame( array( 103 ), array_column( $this->step( BuildLink::read( array( '_width' => '8.5in' ) ), $remembered )['options'], 'id' ), 'a width asked for comes first' );
 			self::assertSame( array( 'true', 'false', 'false' ), array_column( $this->step( BuildLink::read( array( 'deck' => '101', 'step' => 'deck' ) ), $remembered )['shelf']['width']['options'], 'pressed' ), 'and the deck the build holds' );
@@ -244,8 +246,15 @@ final class BuilderShelfTest extends TestCase {
 		$link = BuildLink::read( array_map( 'strval', $picks ) + array( 'step' => 'review', '_saved' => 'a0000000-0000-4000-8000-000000000001' ) );
 		try {
 			$GLOBALS['cbuild_test_user'] = 7;
-			$view                        = $this->shown( $link, null, $saved )['view'];
+			$shown                       = $this->shown( $link, null, $saved );
+			$view                        = $shown['view'];
 			self::assertTrue( $view['isChanges'] );
+			// The route's answer to the same link says what changed, for a page or app that draws its own panel.
+			$reopened = $shown['answer']['reopened'] ?? array();
+			self::assertSame( array( SlotKey::WHEELS ), array_column( $reopened['changes'] ?? array(), 'slot' ) );
+			self::assertSame( 'sold_out', $reopened['changes'][0]['reason'] ?? null );
+			self::assertSame( 301, $reopened['changes'][0]['closest']['id'] ?? null );
+			self::assertSame( SlotKey::WHEELS, $reopened['first'] ?? null );
 			self::assertFalse( $view['isReview'] );
 			$panel = $view['changes'];
 			$use   = array_column( $panel['use']['fields'], 'value', 'name' );
@@ -349,6 +358,8 @@ final class BuilderShelfTest extends TestCase {
 		self::assertSame( array( 'Bones', 'Ricta', 'Spitfire' ), array_column( $brand['inputs'], 'text' ) );
 		self::assertSame( 'cbuild[_chips][brand][]', $brand['inputs'][0]['name'] );
 		self::assertSame( array( '15', '15', '15' ), array_column( $brand['inputs'], 'count' ), 'what each leaves, its sold-out looks with it' );
+		// Heard as words, not "Bones 15" (the auditor's M10 review, 13).
+		self::assertSame( 'Bones, 15 parts', $brand['inputs'][0]['said'] );
 
 		self::assertTrue( $shelf['sort']['shown'] );
 		self::assertSame( 'cbuild[_sort]', $shelf['sort']['name'] );

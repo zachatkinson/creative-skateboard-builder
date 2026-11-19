@@ -11,6 +11,7 @@ namespace CreativeBranding\SkateboardBuilder\Tests\Unit\Service;
 
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Part;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\Origin;
+use CreativeBranding\SkateboardBuilder\Port\LookFact;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\Reading;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\SpecKey;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\Specs;
@@ -29,6 +30,7 @@ use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\InMemoryImportStore;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\InMemoryKits;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\InMemoryLayerImages;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\InMemoryPartCatalogue;
+use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\InMemoryPartLooks;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\InMemoryReindexStore;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\InMemoryShopSettings;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\InMemorySpecIndex;
@@ -58,6 +60,8 @@ final class CatalogueCheckTest extends TestCase {
 
 	private InMemoryLayerImages $layers;
 
+	private InMemoryPartLooks $looks;
+
 	protected function setUp(): void {
 		$this->kits      = new InMemoryKits();
 		$this->catalogue = new InMemoryPartCatalogue();
@@ -67,7 +71,8 @@ final class CatalogueCheckTest extends TestCase {
 		$this->queue     = new FakeQueue();
 		$indexer         = new SpecIndexer( new InMemorySpecIndex(), new InMemoryShopSettings(), new FakeClock(), $this->source );
 		$this->layers    = new InMemoryLayerImages();
-		$this->check     = ( new CatalogueCheck( $this->kits, $this->catalogue, $indexer, $this->reindex, $this->import, $this->queue ) )->withLayers( $this->layers );
+		$this->looks     = new InMemoryPartLooks();
+		$this->check     = ( new CatalogueCheck( $this->kits, $this->catalogue, $indexer, $this->reindex, $this->import, $this->queue ) )->withLayers( $this->layers )->withLooks( $this->looks );
 	}
 
 	/**
@@ -326,6 +331,30 @@ final class CatalogueCheckTest extends TestCase {
 		$with    = self::lines( $this->check->run() );
 		self::assertContains( 'layer_missing part=159 kit=5 trucks', $with );
 		self::assertSame( array_values( array_filter( $with, static fn( string $line ): bool => ! str_starts_with( $line, 'layer_missing' ) ) ), self::lines( $without ) );
+	}
+
+	/**
+	 * Spec (configurator): "The Catalogue check says which variations share a photo, and so share a card." Said after
+	 * everything else, as what the builder will do rather than a fix (D-281).
+	 */
+	public function test_the_variations_that_share_a_photo_and_so_a_card_are_said_after_everything_else(): void {
+		$slots           = self::stocked();
+		$slots['deck']   = array( Builds::deck( '8.0', 110 ), Builds::deck( '8.25', 111 ), Builds::deck( '8.5', 112 ), Builds::deck( '8.0', 120 ) );
+		$slots['wheels'] = array( Builds::wheel( '54', 301 ), Builds::wheel( '56', 302 ) );
+		$this->kits->add( 5, KitDocuments::kit(), $slots );
+		$fact                     = static fn( int $product, int $photo, int $layer = 0 ): LookFact => new LookFact( $product, $photo, $layer, 'Board', array(), array(), false, 0, 0 );
+		$this->looks->facts = array(
+			110 => $fact( 10, 1 ),
+			111 => $fact( 10, 1 ),
+			112 => $fact( 10, 2 ),
+			120 => $fact( 12, 3 ),
+			301 => $fact( 30, 4, 7 ),
+			302 => $fact( 30, 4, 8 ),
+		);
+
+		$lines = self::lines( $this->check->run() );
+		self::assertSame( array( 'look_shared part=10 kit=5 deck parts=110%2C+111' ), array_values( array_filter( $lines, static fn( string $line ): bool => str_starts_with( $line, 'look_shared' ) ) ), 'a photo of its own is a card of its own, and so is another layer image' );
+		self::assertStringStartsWith( 'look_shared', (string) end( $lines ), 'last' );
 	}
 
 	public function test_the_parts_of_the_slots_the_picture_draws_with_no_layer_image_are_listed_last(): void {

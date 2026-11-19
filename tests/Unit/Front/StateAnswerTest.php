@@ -190,7 +190,20 @@ final class StateAnswerTest extends TestCase {
 	public function test_with_nothing_picked_the_first_step_lists_its_parts_each_with_its_card(): void {
 		$answer = $this->answer();
 
-		self::assertSame( array( 'kit', 'step', 'ready', 'texts', 'presets', 'steps', 'options', 'hidden', 'filters', 'matching', 'more', 'refused', 'problems', 'changes', 'total', 'picture', 'delivery', 'notes', 'shelf' ), array_keys( $answer ) );
+		self::assertSame( array( 'kit', 'step', 'ready', 'texts', 'presets', 'steps', 'options', 'hidden', 'filters', 'matching', 'more', 'refused', 'problems', 'changes', 'total', 'picture', 'delivery', 'notes', 'shelf', 'bearings_included', 'currency' ), array_keys( $answer ) );
+		// How the shop writes a price, for a page that formats a total itself (milestone 11, sent from 1.0.0).
+		self::assertSame(
+			array(
+				'code'               => 'CAD',
+				'symbol'             => '$',
+				'decimals'           => 2,
+				'decimal_separator'  => '.',
+				'thousand_separator' => ',',
+				'format'             => '%1$s%2$s',
+			),
+			$answer['currency']
+		);
+		self::assertFalse( $answer['bearings_included'] );
 		self::assertSame( self::KIT, $answer['kit'] );
 		self::assertSame( SlotKey::DECK, $answer['step'] );
 		self::assertFalse( $answer['ready'] );

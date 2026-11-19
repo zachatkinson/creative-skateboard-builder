@@ -9,6 +9,12 @@
 defined( 'ABSPATH' ) || exit;
 ?>
 <form class="cbuild-step" id="cbuild-step-form" method="get" data-wp-on--submit="actions.submit" data-wp-on--change="actions.pick" data-wp-bind--action="state.view.action" data-wp-bind--hidden="!state.view.isStep">
+	<?php
+	// The form's default button, which Enter in the search presses: it sends the form as it is, so a search keeps the
+	// width, where the first width button would send its own (the auditor's M10 review, 2). Out of sight and the tab
+	// order, and named for no one.
+	?>
+	<button class="cbuild-step__default" type="submit" tabindex="-1" aria-hidden="true"></button>
 	<template data-wp-each--field="state.view.carry">
 		<input type="hidden" data-wp-bind--name="context.field.name" data-wp-bind--value="context.field.value">
 	</template>
@@ -25,7 +31,7 @@ defined( 'ABSPATH' ) || exit;
 		<legend class="cbuild-width__legend" data-wp-text="state.view.step.shelf.width.legend"></legend>
 		<div class="cbuild-width__options">
 			<template data-wp-each--width="state.view.step.shelf.width.options" data-wp-each-key="context.width.value">
-				<button class="cbuild-chip cbuild-width__option" type="submit" data-wp-bind--name="state.view.step.shelf.width.name" data-wp-bind--value="context.width.value" data-wp-bind--aria-pressed="context.width.pressed" data-wp-class--cbuild-chip--dimmed="context.width.dimmed"><span class="cbuild-chip__text" data-wp-text="context.width.text"></span> <span class="cbuild-chip__count" data-wp-text="context.width.count"></span></button>
+				<button class="cbuild-chip cbuild-width__option" type="submit" data-wp-bind--name="state.view.step.shelf.width.name" data-wp-bind--value="context.width.value" data-wp-bind--aria-label="context.width.said" data-wp-bind--aria-pressed="context.width.pressed" data-wp-class--cbuild-chip--dimmed="context.width.dimmed"><span class="cbuild-chip__text" data-wp-text="context.width.text"></span> <span class="cbuild-chip__count" data-wp-text="context.width.count"></span></button>
 			</template>
 		</div>
 		<p class="cbuild-width__none" data-wp-bind--hidden="!state.view.step.shelf.width.hasNone" data-wp-text="state.view.step.shelf.width.none"></p>
@@ -68,7 +74,7 @@ defined( 'ABSPATH' ) || exit;
 					<div class="cbuild-chips__options">
 						<template data-wp-each--chip="context.group.inputs" data-wp-each-key="context.chip.value">
 							<span class="cbuild-chips__chip">
-								<input class="cbuild-chips__control" type="checkbox" data-wp-bind--id="context.chip.id" data-wp-bind--name="context.chip.name" data-wp-bind--value="context.chip.value" data-wp-bind--checked="context.chip.checked" data-wp-on--change="actions.narrow">
+								<input class="cbuild-chips__control" type="checkbox" data-wp-bind--id="context.chip.id" data-wp-bind--name="context.chip.name" data-wp-bind--value="context.chip.value" data-wp-bind--checked="context.chip.checked" data-wp-bind--aria-label="context.chip.said" data-wp-on--change="actions.narrow">
 								<label class="cbuild-chip" data-wp-bind--for="context.chip.id"><span class="cbuild-chip__text" data-wp-text="context.chip.text"></span> <span class="cbuild-chip__count" data-wp-text="context.chip.count"></span></label>
 							</span>
 						</template>

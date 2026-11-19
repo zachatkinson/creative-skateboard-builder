@@ -22,9 +22,79 @@
 		"picture",
 		"delivery",
 		"notes",
-		"shelf"
+		"shelf",
+		"bearings_included",
+		"currency"
 	],
 	"properties": {
+		"bearings_included": {
+			"description": "From 1.0.0: whether the wheels picked come with their bearings (the `bearings_included` spec), so the kit's bearings slot counts as filled and its step is no step (D-246).",
+			"type": "boolean"
+		},
+		"currency": {
+			"description": "From 1.0.0: how the shop writes a price, from WooCommerce's settings and their filters, for a page that formats a total itself. `format` puts the symbol (`%1$s`) beside the amount (`%2$s`), as `get_woocommerce_price_format()` does.",
+			"type": "object",
+			"required": [ "code", "symbol", "decimals", "decimal_separator", "thousand_separator", "format" ],
+			"properties": {
+				"code": { "description": "The currency's ISO 4217 code: the shop's, or a currency switcher's.", "type": "string" },
+				"symbol": { "description": "Its symbol, as plain text.", "type": "string" },
+				"decimals": { "description": "How many decimals a price shows.", "type": "integer", "minimum": 0 },
+				"decimal_separator": { "description": "Between the whole amount and its decimals.", "type": "string" },
+				"thousand_separator": { "description": "Between thousands.", "type": "string" },
+				"format": { "description": "Where the symbol goes: `%1$s%2$s`, `%2$s%1$s`, `%1$s&nbsp;%2$s` or `%2$s&nbsp;%1$s` as WooCommerce has it.", "type": "string" }
+			}
+		},
+		"reopened": {
+			"description": "From 1.0.0, only on the answer to a build link that carries `_saved`, the UUID of the signed-in customer's own saved build of this kit, where it has changed since it was saved: what changed and the prices then and now (spec: A saved build that has changed; D-254, D-278). The answer's state is then the build with the closest parts in place, at the review.",
+			"type": "object",
+			"required": [ "changes", "prices", "then", "now", "picks", "first" ],
+			"properties": {
+				"changes": {
+					"description": "Each part gone, sold out or no longer fitting, in step order, with the closest part that fits in its place, or null where none does.",
+					"type": "array",
+					"items": {
+						"type": "object",
+						"required": [ "slot", "label", "was", "name", "reason", "closest" ],
+						"properties": {
+							"slot": { "description": "The slot's key.", "type": "string" },
+							"label": { "description": "The slot's label.", "type": "string" },
+							"was": { "description": "The part saved: a product's or a variation's ID.", "type": "integer" },
+							"name": { "description": "Its name, or empty where it no longer reads.", "type": "string" },
+							"reason": { "description": "`gone`, `sold_out` or `no_fit`.", "type": "string", "enum": [ "gone", "sold_out", "no_fit" ] },
+							"closest": {
+								"description": "The closest part that fits in its place, or null.",
+								"type": [ "object", "null" ],
+								"required": [ "id", "name" ],
+								"properties": {
+									"id": { "description": "The part's ID.", "type": "integer" },
+									"name": { "description": "Its name.", "type": "string" }
+								}
+							}
+						}
+					}
+				},
+				"prices": {
+					"description": "Each part kept whose price changed, in the same currency as when it was saved, with the price then and now as text.",
+					"type": "array",
+					"items": {
+						"type": "object",
+						"required": [ "slot", "label", "part", "name", "then", "now" ],
+						"properties": {
+							"slot": { "description": "The slot's key.", "type": "string" },
+							"label": { "description": "The slot's label.", "type": "string" },
+							"part": { "description": "The part's ID.", "type": "integer" },
+							"name": { "description": "Its name.", "type": "string" },
+							"then": { "description": "Its price when saved.", "type": "string" },
+							"now": { "description": "Its price now.", "type": "string" }
+						}
+					}
+				},
+				"then": { "description": "The build's total when saved, as text, or null where no prices were kept in this currency (a build saved before 1.0.0).", "type": [ "string", "null" ] },
+				"now": { "description": "The total now, with the closest parts in place, as text.", "type": "string" },
+				"picks": { "description": "The build with the closest parts in place: a part ID per slot.", "type": "object", "additionalProperties": { "type": "integer" } },
+				"first": { "description": "The first slot that changed, which Choose myself opens, or `review`.", "type": "string" }
+			}
+		},
 		"kit": {
 			"description": "The kit product's ID.",
 			"type": "integer",

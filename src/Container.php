@@ -457,10 +457,11 @@ final class Container {
 	private static function additions(): array {
 		return array(
 			Service\IndexJobs::class      => static fn( object $jobs, Container $c ): object => $jobs instanceof Service\IndexJobs ? $jobs->withRenditions( $c->get( Service\PartRenditions::class ) ) : $jobs,
-			Service\CatalogueCheck::class => static fn( object $check, Container $c ): object => $check instanceof Service\CatalogueCheck ? $check->withLayers( $c->get( Port\LayerImages::class ) ) : $check,
+			Service\CatalogueCheck::class => static fn( object $check, Container $c ): object => $check instanceof Service\CatalogueCheck ? $check->withLayers( $c->get( Port\LayerImages::class ) )->withLooks( $c->get( Port\PartLooks::class ) ) : $check,
 			Front\StateAnswer::class      => static fn( object $answer, Container $c ): object => $answer instanceof Front\StateAnswer ? $answer->withArtwork( $c->get( Service\LayerArtwork::class ) )->withShelf( $c->get( Service\StepShelf::class ) )->withPictures( self::tiles( $c ) ) : $answer,
 			Admin\PartSpecsPanel::class   => static fn( object $panel, Container $c ): object => $panel instanceof Admin\PartSpecsPanel ? $panel->withImages( $c->get( Port\LayerImages::class ) ) : $panel,
 			Front\BuilderPage::class      => static fn( object $page, Container $c ): object => $page instanceof Front\BuilderPage ? $page->withSaved( $c->get( Service\SavedBuilds::class ) ) : $page,
+			Front\Builder::class          => static fn( object $builder, Container $c ): object => $builder instanceof Front\Builder ? $builder->withSaved( $c->get( Front\RememberedWidth::class ), $c->get( Service\SavedBuilds::class ) ) : $builder,
 		);
 	}
 
@@ -515,7 +516,7 @@ final class Container {
 			// The block is registered on every request, the editor's and the REST renderer's among them.
 			Front\PageHooks::class                 => array( Scope::Everywhere ),
 			// A deck's own product page.
-			Front\StartButton::class               => array( Scope::Everywhere ),
+			Front\StartButton::class               => array( Scope::Storefront ),
 			// Robots and the canonical are printed in the head of a page the site shows a visitor.
 			Front\SeoHooks::class                  => array( Scope::Storefront ),
 			Front\ShareHooks::class                => array( Scope::Storefront ),

@@ -22,6 +22,7 @@ use CreativeBranding\SkateboardBuilder\Port\ImportStore;
 use CreativeBranding\SkateboardBuilder\Port\Kits;
 use CreativeBranding\SkateboardBuilder\Port\LayerImages;
 use CreativeBranding\SkateboardBuilder\Port\PartCatalogue;
+use CreativeBranding\SkateboardBuilder\Port\PartLooks;
 use CreativeBranding\SkateboardBuilder\Port\Queue;
 use CreativeBranding\SkateboardBuilder\Port\ReindexStore;
 
@@ -69,6 +70,12 @@ final class CatalogueCheck {
 	 * A part of a slot the picture draws has no layer image, so the picture shows its labelled photo (since 0.7.0).
 	 */
 	public const LAYER_MISSING = 'layer_missing';
+
+	/**
+	 * A product's variations share a photo and a layer image, so the builder shows them as one card and asks what
+	 * tells them apart after the pick (since 1.0.0, D-281). Said, not a fix.
+	 */
+	public const LOOK_SHARED = 'look_shared';
 
 
 	/**
@@ -125,6 +132,27 @@ final class CatalogueCheck {
 	}
 
 	/**
+	 * The parts' looks, since 1.0.0, given by the container through `withLooks()`. A check an earlier release's
+	 * container builds has none, and says nothing of shared cards (D-208).
+	 *
+	 * @var PartLooks|null
+	 */
+	private ?PartLooks $looks = null;
+
+	/**
+	 * The same check, saying which variations share a card.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param PartLooks $looks The parts' looks.
+	 */
+	public function withLooks( PartLooks $looks ): self {
+		$check        = clone $this;
+		$check->looks = $looks;
+		return $check;
+	}
+
+	/**
 	 * Run the check.
 	 *
 	 * @since 0.3.0
@@ -136,6 +164,7 @@ final class CatalogueCheck {
 	public function run(): array {
 		$found  = $this->work();
 		$layers = array();
+		$shared = array();
 		$kits   = $this->kits->all();
 		// A kit product that is not among those that read: no shopper can open it, and it has no slot to check.
 		foreach ( $this->kits->ids() as $id ) {
@@ -146,6 +175,7 @@ final class CatalogueCheck {
 		foreach ( $kits as $id => $kit ) {
 			$found  = array( ...$found, ...$this->kit( $id, $kit['kit'] ) );
 			$layers = array( ...$layers, ...$this->layers( $id, $kit['kit'] ) );
+			$shared = array( ...$shared, ...$this->shared( $id, $kit['kit'] ) );
 		}
 		$page = 0;
 		do {
@@ -155,7 +185,38 @@ final class CatalogueCheck {
 			}
 			$full = count( $ids ) >= self::BATCH;
 		} while ( $full );
-		return array( ...$found, ...$layers );
+		return array( ...$found, ...$layers, ...$shared );
+	}
+
+	/**
+	 * Each product of a kit's slot whose parts share a photo and a layer image, and so a card, with those parts: the
+	 * looks the step groups them into (D-240), in the slots' order.
+	 *
+	 * @param int $id  The kit product's ID.
+	 * @param Kit $kit The kit.
+	 * @return list<CheckFinding>
+	 */
+	private function shared( int $id, Kit $kit ): array {
+		if ( null === $this->looks ) {
+			return array();
+		}
+		$found = array();
+		foreach ( $kit->slots->all() as $slot ) {
+			$ids    = array_map( static fn( Part $part ): int => $part->id, $this->kits->candidates( $id, $slot->key ) );
+			$groups = array();
+			$owners = array();
+			foreach ( $this->looks->looks( $ids ) as $part => $fact ) {
+				$key              = $fact->product . ':' . $fact->photo . ':' . $fact->layer;
+				$groups[ $key ][] = $part;
+				$owners[ $key ]   = $fact->product;
+			}
+			foreach ( $groups as $key => $parts ) {
+				if ( count( $parts ) > 1 ) {
+					$found[] = new CheckFinding( self::LOOK_SHARED, $owners[ $key ], $id, $slot->key, values: array( 'parts' => implode( ', ', $parts ) ) );
+				}
+			}
+		}
+		return $found;
 	}
 
 	/**
