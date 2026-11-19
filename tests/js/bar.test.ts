@@ -4,7 +4,7 @@
  * browser test runs both on Storefront, which does both.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { fit, taken, unclip } from '../../assets/src/builder/bar';
+import { fit, size, taken, unclip } from '../../assets/src/builder/bar';
 
 /**
  * A page: the builder, with its bar, inside two wrappers.
@@ -138,5 +138,35 @@ describe( 'fit', () => {
 				'--cbuild-bar-offset'
 			)
 		).toBe( '' );
+	} );
+} );
+
+// D-272: the bar is as tall as its lines make it: the total, the estimate, and Back and Next on a row of their own
+// where they do not fit beside the total. The page's scroll padding reads its height, so focus stays clear of it.
+describe( 'size', () => {
+	const read = () =>
+		document.documentElement.style.getPropertyValue( '--cbuild-bar-size' );
+
+	it( "sets the bar's height on the page while it sticks over the page, and takes it away when it doesn't", () => {
+		const { root } = page( '', '' );
+		const bar = root.querySelector( '.cbuild-bar' ) as HTMLElement;
+		const shown = vi
+			.spyOn( bar, 'getClientRects' )
+			.mockReturnValue( [ new DOMRect() ] as unknown as DOMRectList );
+		box( bar, 600, 149.5 );
+		bar.style.position = 'sticky';
+		size( root );
+		expect( read() ).toBe( '150px' );
+
+		// Pinned under the panel on a desktop, it is in the page's flow and covers nothing.
+		bar.style.position = 'static';
+		size( root );
+		expect( read() ).toBe( '' );
+
+		bar.style.position = 'sticky';
+		size( root );
+		shown.mockReturnValue( [] as unknown as DOMRectList );
+		size( root );
+		expect( read(), 'no bar shown' ).toBe( '' );
 	} );
 } );

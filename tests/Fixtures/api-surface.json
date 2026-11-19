@@ -175,6 +175,7 @@
         "--cbuild-accent",
         "--cbuild-bar-height",
         "--cbuild-bar-offset",
+        "--cbuild-bar-size",
         "--cbuild-board-ratio",
         "--cbuild-board-size",
         "--cbuild-card-width",
@@ -198,10 +199,11 @@
         "--cbuild-on-ground",
         "--cbuild-radius",
         "--cbuild-small",
-        "--cbuild-summary-width",
+        "--cbuild-stage-height",
         "--cbuild-surface",
         "--cbuild-target",
         "--cbuild-text",
+        "--cbuild-top",
         "--cbuild-wrong"
     ],
     "site_health_tests": [

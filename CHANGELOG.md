@@ -12,15 +12,28 @@ All notable changes to this project are documented here. The format follows [Kee
 
 - The deck step asks "What width do you ride?" first, one button a width with how many decks it has in stock, and lists that width's decks; a build that holds a deck starts at its width. A step with more than 40 parts has a search box, one with more than 12 has chips, and every step has a sort, a page of 30 with "Show 30 more", and its sold-out parts folded under "Show N sold out". Each works without JavaScript; with it, the step changes in place and focus stays on the control used (D-266).
 
+- `--cbuild-bar-size`, which the builder sets on the page's root to the bar's height while the bar sticks over the page.
+- `--cbuild-top`, for a theme's sticky header to keep the stage and the panel clear of it, and `--cbuild-stage-height`, the stage's height on a phone.
+
 ### Fixed
 
+- Focus stays clear of the bar however many lines the bar takes, on a phone and in a narrow column on a desktop (D-272).
 - On a phone, Next stays under the thumb when the first deck's answer arrives while the shopper is at the end of the step (D-267).
 - Part specs opens Sold in sets for any part in a slot that takes more than one unit, so a riser's Number in a set is filled in and the riser is offered (Cowork; #61).
 - Saving a kit whose presets are unchanged and name a part the shop hides no longer says the presets were not saved. The Build tab says which preset holds which part, and the presets are kept as they are (Cowork; #62).
 
 ### Changed
 
+- The builder takes the prototype's layout (D-268 to D-271). A row of steps across the top; the board on a stage with "Your board" and the side it shows, and "Pick a deck to start" before a deck; the step beside it in a panel that scrolls on its own; and a footer pinned under the panel with the total, the estimate, Back and Next, or Add to cart. On a phone the stage stays at the top, the rail shows the step before, the step shown and the step after, and the footer is the bar.
+- The step's heading says its question, such as "Choose your deck", with its help under it; a screen reader hears the count first, and the page's title keeps it (D-269).
+- Each row of the review shows the part's price and a Change button. The assembly switch is on the review.
+- `--cbuild-card-width` defaults to `13.5rem`.
 - CI runs the newest leg's other browser engines, projects, updates and visual snapshots as five jobs beside it, so a full run takes about 30 minutes rather than 95 (D-258).
+
+### Removed
+
+- The summary beside the steps, and with it `--cbuild-summary-width`, which set its width. The footer holds the total and the parts at every width (D-271).
+- The phone bar's small picture of the board: the stage stays in view above the step.
 
 ## [0.9.0] - 2026-11-18
 

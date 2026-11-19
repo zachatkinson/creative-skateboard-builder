@@ -158,17 +158,31 @@ test.describe( 'The builder without JavaScript', () => {
 	} );
 
 	// Milestone 6's audit 29: the assembly switch was a link into a state. It is a button in a GET form, so a crawler
-	// never follows it (spec: SEO and sharing), and the step stays where it was.
-	test( 'switches assembly with a button in a form, on the step it is on', async ( {
+	// never follows it (spec: SEO and sharing), and the review stays where it was. It is on the review (D-271).
+	test( 'switches assembly with a button in a form, on the review', async ( {
 		page,
 	} ) => {
-		await page.goto( fixture().page );
-		await expect( heading( page ) ).toHaveText( 'Step 1 of 7: Deck' );
-		const assembly = page.locator( '.cbuild-summary__assembly' );
+		await page.goto(
+			linkTo( {
+				deck: id( 'builder-test-deck-8-0' ),
+				trucks: id( 'builder-test-trucks-139' ),
+				wheels: id( 'builder-test-wheels-52' ),
+				bearings: id( 'builder-test-bearings' ),
+				hardware: id( 'builder-test-bolts-1' ),
+				grip: id( 'builder-test-grip' ),
+				step: 'review',
+			} )
+		);
+		await expect( heading( page ) ).toHaveText(
+			'Step 7 of 7: Check your build'
+		);
+		const assembly = page.locator( '.cbuild-review__assembly' );
 		await expect( assembly.locator( 'a' ) ).toHaveCount( 0 );
 		const before = ( await assembly.textContent() ) ?? '';
 		await assembly.getByRole( 'button' ).click();
-		await expect( heading( page ) ).toHaveText( 'Step 1 of 7: Deck' );
+		await expect( heading( page ) ).toHaveText(
+			'Step 7 of 7: Check your build'
+		);
 		expect(
 			new URL( page.url() ).searchParams.has( 'cbuild[assembly]' )
 		).toBe( true );
@@ -179,7 +193,9 @@ test.describe( 'The builder without JavaScript', () => {
 		page,
 	} ) => {
 		await page.goto( fixture().page );
-		await expect( heading( page ) ).toHaveText( 'Step 1 of 7: Deck' );
+		await expect( heading( page ) ).toHaveText(
+			'Step 1 of 7: Choose your deck'
+		);
 		await expect(
 			page.getByText( 'Start with a width.', { exact: false } )
 		).toBeVisible();
@@ -192,7 +208,9 @@ test.describe( 'The builder without JavaScript', () => {
 		);
 		await expect( decks ).toHaveCount( 0 );
 		await ride( page, '8″' );
-		await expect( heading( page ) ).toHaveText( 'Step 1 of 7: Deck' );
+		await expect( heading( page ) ).toHaveText(
+			'Step 1 of 7: Choose your deck'
+		);
 		await expect( decks ).toHaveCount( 1 );
 		await expect( decks.and( page.locator( ':checked' ) ) ).toHaveCount(
 			0
@@ -205,7 +223,9 @@ test.describe( 'The builder without JavaScript', () => {
 			.getByRole( 'radio', { name: 'Choose Builder test deck 8.0' } )
 			.check();
 		await next( page, 'Next: Trucks' );
-		await expect( heading( page ) ).toHaveText( 'Step 2 of 7: Trucks' );
+		await expect( heading( page ) ).toHaveText(
+			'Step 2 of 7: Choose your trucks'
+		);
 		// The kit's own setting decides assembly until the shopper changes it, so the address leaves it out. The
 		// browser writes what the form sent, the step it was on among it (D-150).
 		expect( build( page ) ).toEqual( [
@@ -225,7 +245,9 @@ test.describe( 'The builder without JavaScript', () => {
 		await trucks.check();
 
 		await next( page, 'Next: Wheels' );
-		await expect( heading( page ) ).toHaveText( 'Step 3 of 7: Wheels' );
+		await expect( heading( page ) ).toHaveText(
+			'Step 3 of 7: Choose your wheels'
+		);
 		// Sold out, the part is folded under "Show N sold out" (spec: Only what fits, then the sold-out fold).
 		await page.locator( '.cbuild-sold-out summary' ).click();
 		await expect(
@@ -241,7 +263,7 @@ test.describe( 'The builder without JavaScript', () => {
 		await expect(
 			heading( page ),
 			'58 mm wheels want a riser under these trucks, so the risers step appears.'
-		).toHaveText( 'Step 4 of 8: Risers' );
+		).toHaveText( 'Step 4 of 8: Choose your risers' );
 		const riser = page.getByRole( 'radio', {
 			name: 'Choose Builder test risers 1/4',
 		} );
@@ -255,7 +277,9 @@ test.describe( 'The builder without JavaScript', () => {
 		await riser.check();
 
 		await next( page, 'Next: Bearings' );
-		await expect( heading( page ) ).toHaveText( 'Step 5 of 8: Bearings' );
+		await expect( heading( page ) ).toHaveText(
+			'Step 5 of 8: Choose your bearings'
+		);
 		await page
 			.getByRole( 'radio', { name: 'Choose Builder test bearings' } )
 			.check();
@@ -268,7 +292,9 @@ test.describe( 'The builder without JavaScript', () => {
 			.getByRole( 'radio', { name: 'Choose Builder test grip' } )
 			.check();
 		await next( page, 'Next: Review' );
-		await expect( heading( page ) ).toHaveText( 'Step 8 of 8: Review' );
+		await expect( heading( page ) ).toHaveText(
+			'Step 8 of 8: Check your build'
+		);
 
 		const review = page.locator( '.cbuild-review' );
 		await expect(
@@ -334,7 +360,9 @@ test.describe( 'The builder without JavaScript', () => {
 		await answered( page, () =>
 			panel.getByRole( 'button', { name: 'Use these' } ).click()
 		);
-		await expect( heading( page ) ).toHaveText( 'Step 2 of 7: Trucks' );
+		await expect( heading( page ) ).toHaveText(
+			'Step 2 of 7: Choose your trucks'
+		);
 		await expect(
 			page.getByRole( 'radio', {
 				name: 'Choose Builder test trucks 149',
@@ -351,7 +379,9 @@ test.describe( 'The builder without JavaScript', () => {
 				.getByRole( 'button', { name: 'Undo' } )
 				.click()
 		);
-		await expect( heading( page ) ).toHaveText( 'Step 1 of 7: Deck' );
+		await expect( heading( page ) ).toHaveText(
+			'Step 1 of 7: Choose your deck'
+		);
 		await expect(
 			page.getByRole( 'radio', { name: 'Choose Builder test deck 8.0' } )
 		).toBeChecked();
@@ -365,7 +395,9 @@ test.describe( 'The builder without JavaScript', () => {
 			name: /^Choose Builder test deck/,
 		} );
 		await answered( page, () => ride( page, '8.25″' ) );
-		await expect( heading( page ) ).toHaveText( 'Step 1 of 7: Deck' );
+		await expect( heading( page ) ).toHaveText(
+			'Step 1 of 7: Choose your deck'
+		);
 		await expect( decks ).toHaveCount( 1 );
 		await expect(
 			page.getByRole( 'radio', { name: 'Choose Builder test deck 8.25' } )
@@ -390,7 +422,9 @@ test.describe( 'The builder without JavaScript', () => {
 			.getByRole( 'radio', { name: 'Choose Builder test deck 8.0' } )
 			.check();
 		await next( page, 'Next: Trucks' );
-		await expect( heading( page ) ).toHaveText( 'Step 2 of 7: Trucks' );
+		await expect( heading( page ) ).toHaveText(
+			'Step 2 of 7: Choose your trucks'
+		);
 		await expect(
 			page.getByRole( 'radio', {
 				name: 'Choose Builder test trucks 139',
@@ -434,7 +468,9 @@ test.describe( 'The builder without JavaScript', () => {
 		await answered( page, () =>
 			tiles.getByRole( 'button', { name: 'Start from Street' } ).click()
 		);
-		await expect( heading( page ) ).toHaveText( 'Step 7 of 7: Review' );
+		await expect( heading( page ) ).toHaveText(
+			'Step 7 of 7: Check your build'
+		);
 		await expect( page.locator( '.cbuild-errors' ) ).toBeHidden();
 		const review = page.locator( '.cbuild-review' );
 		await expect( review.locator( '.cbuild-review__assembly' ) ).toHaveText(
@@ -472,7 +508,9 @@ test.describe( 'The builder without JavaScript', () => {
 				.getByRole( 'button', { name: 'Start from Cruiser' } )
 				.click()
 		);
-		await expect( heading( page ) ).toHaveText( 'Step 7 of 7: Review' );
+		await expect( heading( page ) ).toHaveText(
+			'Step 7 of 7: Check your build'
+		);
 		await expect( page.locator( '.cbuild-errors' ) ).toContainText(
 			'Wheels: Builder test wheels 56 is sold out.'
 		);
@@ -519,7 +557,9 @@ test.describe( 'The builder without JavaScript', () => {
 		const canonical = page.locator( 'link[rel="canonical"]' );
 
 		await page.goto( clean );
-		await expect( heading( page ) ).toHaveText( 'Step 1 of 7: Deck' );
+		await expect( heading( page ) ).toHaveText(
+			'Step 1 of 7: Choose your deck'
+		);
 		expect(
 			( await robots.getAttribute( 'content' ).catch( () => '' ) ) ?? ''
 		).not.toContain( 'noindex' );
@@ -529,7 +569,9 @@ test.describe( 'The builder without JavaScript', () => {
 		await page.goto(
 			linkTo( { deck: id( 'builder-test-deck-8-0' ), step: 'trucks' } )
 		);
-		await expect( heading( page ) ).toHaveText( 'Step 2 of 7: Trucks' );
+		await expect( heading( page ) ).toHaveText(
+			'Step 2 of 7: Choose your trucks'
+		);
 		await expect( robots ).toHaveAttribute( 'content', /noindex, follow/ );
 		await expect( canonical ).toHaveCount( 1 );
 		await expect( canonical ).toHaveAttribute( 'href', clean );
@@ -547,7 +589,9 @@ test.describe( 'The builder without JavaScript', () => {
 
 	test( "the kit's own page shows the same builder", async ( { page } ) => {
 		await page.goto( '/product/builder-test-kit/' );
-		await expect( heading( page ) ).toHaveText( 'Step 1 of 7: Deck' );
+		await expect( heading( page ) ).toHaveText(
+			'Step 1 of 7: Choose your deck'
+		);
 		await expect( page.locator( '.cbuild-width__option' ) ).toHaveCount(
 			3
 		);
@@ -594,7 +638,9 @@ test.describe( 'Every way in by a link', () => {
 		page,
 	}, info ) => {
 		await page.goto( linkTo( { deck: id( 'builder-test-deck-8-5' ) } ) );
-		await expect( heading( page ) ).toHaveText( 'Step 2 of 7: Trucks' );
+		await expect( heading( page ) ).toHaveText(
+			'Step 2 of 7: Choose your trucks'
+		);
 		await expect(
 			page.getByRole( 'radio', {
 				name: 'Choose Builder test trucks 149',
@@ -626,7 +672,9 @@ test.describe( 'Every way in by a link', () => {
 		await expect( errors.getByRole( 'link' ).first() ).toBeVisible();
 		// The trucks the kit cannot take leave the slot empty, so the link stops at it: nothing is picked for the
 		// shopper (D-213), and the trucks that fit the deck are labelled.
-		await expect( heading( page ) ).toHaveText( 'Step 2 of 7: Trucks' );
+		await expect( heading( page ) ).toHaveText(
+			'Step 2 of 7: Choose your trucks'
+		);
 		const fits = page.getByRole( 'radio', {
 			name: 'Choose Builder test trucks 144',
 		} );
@@ -738,14 +786,17 @@ test.describe( 'The board in either direction', () => {
 				step: 'review',
 			} )
 		);
-		await expect( heading( page ) ).toHaveText( 'Step 7 of 7: Review' );
+		await expect( heading( page ) ).toHaveText(
+			'Step 7 of 7: Check your build'
+		);
 		const board = page.locator( '#cbuild-picture .cbuild-board' ).first();
 		await expect( board.locator( '.cbuild-board__layer' ) ).toHaveCount(
 			7
 		);
-		const placed = await board.evaluate( ( element ) => {
-			const edge = element.getBoundingClientRect();
-			return Array.from(
+		// Measured in the board's own box, before it is turned: on a phone the stage draws the board on its side
+		// (D-271), and a mirrored layer is still found from the left of the board.
+		const placed = await board.evaluate( ( element ) =>
+			Array.from(
 				element.querySelectorAll< HTMLElement >(
 					'.cbuild-board__layer'
 				)
@@ -754,11 +805,14 @@ test.describe( 'The board in either direction', () => {
 					layer.style.getPropertyValue( '--cbuild-layer-x' )
 				),
 				drawn:
-					( ( layer.getBoundingClientRect().left - edge.left ) /
-						edge.width ) *
+					( ( layer.offsetParent === element
+						? layer.offsetLeft
+						: layer.getBoundingClientRect().left -
+							element.getBoundingClientRect().left ) /
+						( element as HTMLElement ).offsetWidth ) *
 					100,
-			} ) );
-		} );
+			} ) )
+		);
 		const sides = placed.map( ( layer ) => layer.asked );
 		expect(
 			Math.min( ...sides ),
@@ -815,7 +869,9 @@ test.describe( 'The builder with JavaScript', () => {
 			'false'
 		);
 		await page.getByRole( 'button', { name: 'Next: Trucks' } ).click();
-		await expect( heading( page ) ).toHaveText( 'Step 2 of 7: Trucks' );
+		await expect( heading( page ) ).toHaveText(
+			'Step 2 of 7: Choose your trucks'
+		);
 		expect( await stayed( page ), 'no page was loaded' ).toBe( true );
 		expect( build( page ) ).toEqual( [
 			'cbuild[deck]',
@@ -830,19 +886,25 @@ test.describe( 'The builder with JavaScript', () => {
 		).not.toBeChecked();
 
 		await page.goBack();
-		await expect( heading( page ) ).toHaveText( 'Step 1 of 7: Deck' );
+		await expect( heading( page ) ).toHaveText(
+			'Step 1 of 7: Choose your deck'
+		);
 		await expect(
 			page.getByRole( 'radio', { name: 'Choose Builder test deck 8.0' } )
 		).toBeChecked();
 		await page.goForward();
-		await expect( heading( page ) ).toHaveText( 'Step 2 of 7: Trucks' );
+		await expect( heading( page ) ).toHaveText(
+			'Step 2 of 7: Choose your trucks'
+		);
 		expect( await stayed( page ) ).toBe( true );
 
 		await page
 			.getByRole( 'link', { name: 'Back', exact: false } )
 			.first()
 			.click();
-		await expect( heading( page ) ).toHaveText( 'Step 1 of 7: Deck' );
+		await expect( heading( page ) ).toHaveText(
+			'Step 1 of 7: Choose your deck'
+		);
 		expect( await stayed( page ) ).toBe( true );
 	} );
 
@@ -858,7 +920,9 @@ test.describe( 'The builder with JavaScript', () => {
 			.poll( () => build( page ) )
 			.toEqual( [ 'cbuild[deck]', 'cbuild[step]', 'cbuild[_width]' ] );
 		await page.getByRole( 'button', { name: 'Next: Trucks' } ).click();
-		await expect( heading( page ) ).toHaveText( 'Step 2 of 7: Trucks' );
+		await expect( heading( page ) ).toHaveText(
+			'Step 2 of 7: Choose your trucks'
+		);
 		expect( await stayed( page ), 'the store moved' ).toBe( true );
 		const address = page.url();
 
@@ -868,7 +932,9 @@ test.describe( 'The builder with JavaScript', () => {
 			false
 		);
 		expect( page.url() ).toBe( address );
-		await expect( heading( page ) ).toHaveText( 'Step 2 of 7: Trucks' );
+		await expect( heading( page ) ).toHaveText(
+			'Step 2 of 7: Choose your trucks'
+		);
 		await expect(
 			page.getByRole( 'radio', {
 				name: 'Choose Builder test trucks 139',
@@ -882,7 +948,9 @@ test.describe( 'The builder with JavaScript', () => {
 			.getByRole( 'link', { name: 'Back', exact: false } )
 			.first()
 			.click();
-		await expect( heading( page ) ).toHaveText( 'Step 1 of 7: Deck' );
+		await expect( heading( page ) ).toHaveText(
+			'Step 1 of 7: Choose your deck'
+		);
 		await expect(
 			page.getByRole( 'radio', { name: 'Choose Builder test deck 8.0' } )
 		).toBeChecked();
@@ -899,7 +967,9 @@ test.describe( 'The builder with JavaScript', () => {
 		await pickDeck( page, '8.0' );
 		await settled( page );
 		await page.getByRole( 'button', { name: 'Next: Trucks' } ).click();
-		await expect( heading( page ) ).toHaveText( 'Step 2 of 7: Trucks' );
+		await expect( heading( page ) ).toHaveText(
+			'Step 2 of 7: Choose your trucks'
+		);
 		expect( await stayed( page ), 'the store drew the step' ).toBe( true );
 		await expect(
 			page.getByRole( 'radio', {
@@ -998,7 +1068,7 @@ test.describe( 'The builder with JavaScript', () => {
 			await held;
 			await route.continue();
 		} );
-		const total = page.locator( '.cbuild-summary__total' );
+		const total = page.locator( '.cbuild-bar__amount' );
 		const deck = page.getByRole( 'radio', {
 			name: 'Choose Builder test deck 8.0',
 		} );
@@ -1015,7 +1085,7 @@ test.describe( 'The builder with JavaScript', () => {
 				);
 			( input as HTMLInputElement ).click();
 			return Promise.all( [ at( 50 ), at( 600 ) ] );
-		}, '.cbuild-summary__total' );
+		}, '.cbuild-bar__amount' );
 		release();
 		expect( seen, 'no flicker for a quick answer, then dimmed' ).toEqual( [
 			'1',
@@ -1037,7 +1107,9 @@ test.describe( 'The builder with JavaScript', () => {
 		await answered( page, () =>
 			page.getByRole( 'button', { name: 'Next: Trucks' } ).click()
 		);
-		await expect( heading( page ) ).toHaveText( 'Step 2 of 7: Trucks' );
+		await expect( heading( page ) ).toHaveText(
+			'Step 2 of 7: Choose your trucks'
+		);
 		expect(
 			await stayed( page ),
 			'the page was loaded, as without JavaScript'
@@ -1054,7 +1126,9 @@ test.describe( 'The builder with JavaScript', () => {
 		await next( page, 'Next: Wheels' );
 		await choose( page, 'Builder test wheels 58' );
 		await next( page, 'Next: Bearings' );
-		await expect( heading( page ) ).toHaveText( 'Step 4 of 8: Risers' );
+		await expect( heading( page ) ).toHaveText(
+			'Step 4 of 8: Choose your risers'
+		);
 		await choose( page, 'Builder test risers 1/4' );
 		await next( page, 'Next: Bearings' );
 		await choose( page, 'Builder test bearings' );
@@ -1063,7 +1137,9 @@ test.describe( 'The builder with JavaScript', () => {
 		await next( page, 'Next: Grip tape' );
 		await choose( page, 'Builder test grip' );
 		await next( page, 'Next: Review' );
-		await expect( heading( page ) ).toHaveText( 'Step 8 of 8: Review' );
+		await expect( heading( page ) ).toHaveText(
+			'Step 8 of 8: Check your build'
+		);
 		// The review's own, or the phone bar's where the review's is hidden: one at each width (P11).
 		await page
 			.locator( '.cbuild' )
@@ -1108,7 +1184,9 @@ test.describe( 'The builder with JavaScript', () => {
 		).toHaveTitle( /^Build a complete/ );
 
 		await page.getByRole( 'button', { name: 'Next: Trucks' } ).click();
-		await expect( heading( page ) ).toHaveText( 'Step 2 of 7: Trucks' );
+		await expect( heading( page ) ).toHaveText(
+			'Step 2 of 7: Choose your trucks'
+		);
 		await expect( heading( page ) ).toBeFocused();
 		await expect( page ).toHaveTitle( /^Step 2 of 7: Trucks - / );
 		await expect(
@@ -1229,11 +1307,26 @@ test.describe( 'The builder with JavaScript', () => {
 		await expect( width ).toHaveAttribute( 'aria-pressed', 'true' );
 		await expect( width, 'the shopper keeps their place' ).toBeFocused();
 
-		const toggle = page.locator( '.cbuild-summary__toggle button' );
-		test.skip(
-			! ( await toggle.isVisible() ),
-			"On a phone the bar takes the summary's place, and has no switch."
+		expect( await stayed( page ), 'the width kept the page' ).toBe( true );
+
+		// The switch is on the review at every width (D-271).
+		await page.goto(
+			linkTo( {
+				deck: id( 'builder-test-deck-8-0' ),
+				trucks: id( 'builder-test-trucks-139' ),
+				wheels: id( 'builder-test-wheels-52' ),
+				bearings: id( 'builder-test-bearings' ),
+				hardware: id( 'builder-test-bolts-1' ),
+				grip: id( 'builder-test-grip' ),
+				step: 'review',
+			} )
 		);
+		await expect( page.locator( '.cbuild' ) ).toHaveAttribute(
+			'aria-busy',
+			'false'
+		);
+		await mark( page );
+		const toggle = page.locator( '.cbuild-review__toggle button' );
 		const before = await toggle.textContent();
 		await toggle.focus();
 		await page.keyboard.press( 'Enter' );
@@ -1285,7 +1378,9 @@ test.describe( 'The builder with JavaScript', () => {
 		await expect( page.locator( '.cbuild-step' ) ).toBeHidden();
 
 		await panel.getByRole( 'button', { name: 'Use these' } ).click();
-		await expect( heading( page ) ).toHaveText( 'Step 2 of 7: Trucks' );
+		await expect( heading( page ) ).toHaveText(
+			'Step 2 of 7: Choose your trucks'
+		);
 		await expect( heading( page ) ).toBeFocused();
 		await expect(
 			page.getByRole( 'radio', {
@@ -1301,7 +1396,9 @@ test.describe( 'The builder with JavaScript', () => {
 		await page.goBack();
 		await expect( title ).toBeVisible();
 		await panel.getByRole( 'button', { name: 'Undo' } ).click();
-		await expect( heading( page ) ).toHaveText( 'Step 1 of 7: Deck' );
+		await expect( heading( page ) ).toHaveText(
+			'Step 1 of 7: Choose your deck'
+		);
 		await expect(
 			page.getByRole( 'radio', { name: 'Choose Builder test deck 8.0' } )
 		).toBeChecked();
@@ -1353,7 +1450,9 @@ test.describe( 'The builder with JavaScript', () => {
 		await tiles
 			.getByRole( 'button', { name: 'Start from Cruiser' } )
 			.click();
-		await expect( heading( page ) ).toHaveText( 'Step 7 of 7: Review' );
+		await expect( heading( page ) ).toHaveText(
+			'Step 7 of 7: Check your build'
+		);
 		expect( await stayed( page ), 'the store drew the review' ).toBe(
 			true
 		);
@@ -1375,7 +1474,9 @@ test.describe( 'The builder with JavaScript', () => {
 			.locator( '.cbuild-presets' )
 			.getByRole( 'button', { name: 'Start from Street' } )
 			.click();
-		await expect( heading( page ) ).toHaveText( 'Step 7 of 7: Review' );
+		await expect( heading( page ) ).toHaveText(
+			'Step 7 of 7: Check your build'
+		);
 		await expect( heading( page ) ).toBeFocused();
 		await expect( page.locator( '.cbuild-presets' ) ).toBeHidden();
 		expect(
@@ -1401,7 +1502,9 @@ test.describe( 'The builder with JavaScript', () => {
 			.locator( '.cbuild-presets' )
 			.getByRole( 'button', { name: 'Start from Street' } )
 			.click();
-		await expect( heading( page ) ).toHaveText( 'Step 7 of 7: Review' );
+		await expect( heading( page ) ).toHaveText(
+			'Step 7 of 7: Check your build'
+		);
 		// The cart is empty, and the page has the styles a build in its Mini-Cart is grouped by (D-132, D-158).
 		await expect(
 			page.locator( 'style#cbuild-cart-inline-css' )
@@ -1523,7 +1626,9 @@ test.describe( 'The builder with JavaScript', () => {
 			'Next where it was under the press'
 		).toBeLessThan( 2 );
 		await page.mouse.up();
-		await expect( heading( page ) ).toHaveText( 'Step 2 of 7: Trucks' );
+		await expect( heading( page ) ).toHaveText(
+			'Step 2 of 7: Choose your trucks'
+		);
 	} );
 
 	// Claude in Cowork's recheck, finding 10: on the demo the Mini-Cart's drawer opened on the add and took focus a
@@ -1566,7 +1671,9 @@ test.describe( 'The builder with JavaScript', () => {
 				.locator( '.cbuild-presets' )
 				.getByRole( 'button', { name: 'Start from Street' } )
 				.click();
-			await expect( heading( page ) ).toHaveText( 'Step 7 of 7: Review' );
+			await expect( heading( page ) ).toHaveText(
+				'Step 7 of 7: Check your build'
+			);
 			await page
 				.locator( '.cbuild' )
 				.getByRole( 'button', { name: 'Add to cart' } )
@@ -1598,7 +1705,9 @@ test.describe( 'The builder with JavaScript', () => {
 			.locator( '.cbuild-presets' )
 			.getByRole( 'button', { name: 'Start from Street' } )
 			.click();
-		await expect( heading( page ) ).toHaveText( 'Step 7 of 7: Review' );
+		await expect( heading( page ) ).toHaveText(
+			'Step 7 of 7: Check your build'
+		);
 		if ( 'chromium' === browserName ) {
 			await context.grantPermissions( [
 				'clipboard-read',
@@ -1710,13 +1819,17 @@ test.describe( 'The builder with JavaScript', () => {
 		await pickDeck( page, '8.0' );
 		await settled( page );
 		await page.getByRole( 'button', { name: 'Next: Trucks' } ).click();
-		await expect( heading( page ) ).toHaveText( 'Step 2 of 7: Trucks' );
+		await expect( heading( page ) ).toHaveText(
+			'Step 2 of 7: Choose your trucks'
+		);
 		await page.goto( fixture().page );
 		await page
 			.locator( '.cbuild-presets' )
 			.getByRole( 'button', { name: 'Start from Street' } )
 			.click();
-		await expect( heading( page ) ).toHaveText( 'Step 7 of 7: Review' );
+		await expect( heading( page ) ).toHaveText(
+			'Step 7 of 7: Check your build'
+		);
 		await page
 			.locator( '.cbuild' )
 			.getByRole( 'button', { name: 'Add to cart' } )
@@ -1844,7 +1957,9 @@ test.describe( 'The builder with JavaScript', () => {
 			.locator( '.cbuild-presets' )
 			.getByRole( 'button', { name: 'Start from Street' } )
 			.click();
-		await expect( heading( page ) ).toHaveText( 'Step 7 of 7: Review' );
+		await expect( heading( page ) ).toHaveText(
+			'Step 7 of 7: Check your build'
+		);
 		await check( 'the review' );
 		await page
 			.locator( '.cbuild' )
@@ -1900,7 +2015,9 @@ test.describe( 'The keyboard alone', () => {
 		};
 
 		await page.goto( fixture().page );
-		await expect( heading( page ) ).toHaveText( 'Step 1 of 7: Deck' );
+		await expect( heading( page ) ).toHaveText(
+			'Step 1 of 7: Choose your deck'
+		);
 		// The width first (D-241), as a button of the step's form.
 		const width = page.locator( '.cbuild-width__option' ).first();
 		await press( width );
@@ -1924,7 +2041,7 @@ test.describe( 'The keyboard alone', () => {
 		}
 		for ( let step = 0; step < 12; step++ ) {
 			const now = ( await heading( page ).textContent() ) ?? '';
-			if ( now.endsWith( ': Review' ) ) {
+			if ( now.endsWith( 'Check your build' ) ) {
 				break;
 			}
 			// Nothing is picked for the shopper (D-213): a step with no pick gets one, by Tab into its group and
@@ -1963,7 +2080,7 @@ test.describe( 'The keyboard alone', () => {
 				builder.locator( '.cbuild-picture__description' )
 			).toHaveText( /^The build so far: Deck: Builder test deck.*\.$/ );
 		}
-		await expect( heading( page ) ).toHaveText( /: Review$/ );
+		await expect( heading( page ) ).toHaveText( /: Check your build$/ );
 
 		await press( builder.getByRole( 'button', { name: 'Add to cart' } ) );
 		if ( test.info().project.name !== 'no-js' ) {
@@ -2067,7 +2184,9 @@ test.describe( "The builder's styles", () => {
 		] ) {
 			await page.setViewportSize( size );
 			await page.goto( linkTo( { step: 'deck' } ) );
-			await expect( heading( page ) ).toHaveText( 'Step 1 of 7: Deck' );
+			await expect( heading( page ) ).toHaveText(
+				'Step 1 of 7: Choose your deck'
+			);
 			await expect( widths ).toHaveCount( 3 );
 			for ( const width of await widths.all() ) {
 				await expect( width ).toBeVisible();
@@ -2077,6 +2196,47 @@ test.describe( "The builder's styles", () => {
 			}
 			expect( await overflows( page ) ).toEqual( [] );
 		}
+	} );
+
+	// Zach, 19 Nov (D-270): on a phone the rail shows the step before, the step shown and the step after; on a
+	// desktop, every step.
+	test( 'shows the steps either side of the one shown on a phone, and every step on a desktop', async ( {
+		page,
+	} ) => {
+		const parts = fixture().parts;
+		// Each step's name, without the state a screen reader hears after it.
+		const shown = () =>
+			page
+				.locator( '.cbuild-progress__step' )
+				.evaluateAll( ( steps ) =>
+					steps
+						.filter(
+							( step ) =>
+								'visible' ===
+								getComputedStyle( step ).visibility
+						)
+						.map(
+							( step ) =>
+								step.querySelector(
+									':scope > :not([hidden]) > span:first-child'
+								)?.textContent ?? ''
+						)
+				);
+		await page.setViewportSize( { width: 390, height: 844 } );
+		await page.goto( linkTo( { step: 'deck' } ) );
+		expect( await shown() ).toEqual( [ 'Deck', 'Trucks' ] );
+		await page.goto(
+			linkTo( {
+				deck: String( parts[ 'builder-test-deck-8-25' ] ),
+				trucks: String( parts[ 'builder-test-trucks-139' ] ),
+				step: 'wheels',
+			} )
+		);
+		expect( await shown() ).toEqual( [ 'Trucks', 'Wheels', 'Bearings' ] );
+		// The kit's own page gives the builder a desktop's width; the test page's column is a phone's.
+		await page.setViewportSize( { width: 1280, height: 900 } );
+		await page.goto( '/product/builder-test-kit/' );
+		expect( await shown() ).toHaveLength( 7 );
 	} );
 
 	test( 'reflows at 320 CSS pixels with nothing scrolling sideways', async ( {
@@ -2089,7 +2249,9 @@ test.describe( "The builder's styles", () => {
 			.locator( '.cbuild-presets' )
 			.getByRole( 'button', { name: 'Start from Street' } )
 			.click();
-		await expect( heading( page ) ).toHaveText( 'Step 7 of 7: Review' );
+		await expect( heading( page ) ).toHaveText(
+			'Step 7 of 7: Check your build'
+		);
 		expect( await overflows( page ) ).toEqual( [] );
 	} );
 
@@ -2294,7 +2456,9 @@ test.describe( 'Motion', () => {
 			.getByRole( 'button', { name: 'Next: Trucks' } )
 			.first()
 			.click();
-		await expect( heading( page ) ).toHaveText( 'Step 2 of 7: Trucks' );
+		await expect( heading( page ) ).toHaveText(
+			'Step 2 of 7: Choose your trucks'
+		);
 	};
 
 	test.beforeEach( async ( { page }, info ) => {
@@ -2414,7 +2578,9 @@ test.describe( 'The board turned over', () => {
 				step: 'grip',
 			} )
 		);
-		await expect( heading( page ) ).toHaveText( /: Grip tape$/ );
+		await expect( heading( page ) ).toHaveText(
+			/: Choose your grip tape$/
+		);
 		await expect( top( page ) ).toBeVisible();
 		await expect( under( page ) ).toBeHidden();
 		await expect(
@@ -2475,7 +2641,7 @@ test.describe( 'The board turned over', () => {
 
 		// With the script or without: the click answers in place or loads the next page.
 		await page.getByRole( 'button', { name: 'Next: Review' } ).click();
-		await expect( heading( page ) ).toHaveText( /: Review$/ );
+		await expect( heading( page ) ).toHaveText( /: Check your build$/ );
 		await expect( under( page ) ).toBeVisible();
 		await expect( top( page ) ).toBeHidden();
 		await expect( description( page ) ).toContainText(
@@ -2524,7 +2690,7 @@ test.describe( 'The board turned over', () => {
 
 		await choose( page, 'Builder test wheels 54' );
 		await page.getByRole( 'button', { name: 'Next: Bearings' } ).click();
-		await expect( heading( page ) ).toHaveText( /: Bearings$/ );
+		await expect( heading( page ) ).toHaveText( /: Choose your bearings$/ );
 		await expect(
 			turn,
 			'the top stays on a step that shows the underside: the shopper chose it'
@@ -2553,7 +2719,9 @@ test.describe( 'The board turned over', () => {
 				step: 'grip',
 			} )
 		);
-		await expect( heading( page ) ).toHaveText( /: Grip tape$/ );
+		await expect( heading( page ) ).toHaveText(
+			/: Choose your grip tape$/
+		);
 		await expect(
 			picture( page ).getByRole( 'button', { name: 'Show the top' } )
 		).toHaveCount( 0 );
@@ -2623,16 +2791,27 @@ test.describe( "A kit's own page", () => {
 					)
 					.filter( { hasText: '$' } )
 			).toHaveCount( 0 );
-			// The steps and the summary side by side, as on a wide builder anywhere: the summary after the steps, to
-			// their right, or to their left in a right-to-left language.
+			// From 64rem the stage and the panel side by side: the panel after the stage, to its right, or to its left
+			// in a right-to-left language. Narrower, as Storefront's content column is on a desktop, the panel is under
+			// the stage, as on a tablet (D-268, D-271).
 			const steps = await page
-				.locator( '.cbuild-step' )
+				.locator( '.cbuild__stage' )
 				.first()
 				.boundingBox();
 			const summary = await page
-				.locator( '.cbuild-summary' )
+				.locator( '.cbuild__panel' )
 				.first()
 				.boundingBox();
+			const wide =
+				width >=
+				64 *
+					parseFloat(
+						await page.evaluate(
+							() =>
+								getComputedStyle( document.documentElement )
+									.fontSize
+						)
+					);
 			const centre = ( box: typeof steps ) =>
 				( box?.x ?? 0 ) + ( box?.width ?? 0 ) / 2;
 			const rtl = await page.evaluate(
@@ -2640,10 +2819,19 @@ test.describe( "A kit's own page", () => {
 					getComputedStyle( document.documentElement ).direction ===
 					'rtl'
 			);
-			expect(
-				( centre( summary ) - centre( steps ) ) * ( rtl ? -1 : 1 ),
-				'the summary beside the steps, after them'
-			).toBeGreaterThan( ( steps?.width ?? 0 ) / 2 );
+			if ( wide ) {
+				expect(
+					( centre( summary ) - centre( steps ) ) * ( rtl ? -1 : 1 ),
+					'the panel beside the stage, after it'
+				).toBeGreaterThan( ( steps?.width ?? 0 ) / 2 );
+			} else {
+				expect(
+					summary?.y ?? 0,
+					'the panel under the stage'
+				).toBeGreaterThanOrEqual(
+					( steps?.y ?? 0 ) + ( steps?.height ?? 0 ) - 1
+				);
+			}
 		} );
 	}
 
@@ -2686,17 +2874,17 @@ test.describe( "A kit's own page", () => {
 			);
 			if ( size.name === 'desktop' ) {
 				const steps = await page
-					.locator( '.cbuild-step' )
+					.locator( '.cbuild__stage' )
 					.first()
 					.boundingBox();
 				const summary = await page
-					.locator( '.cbuild-summary' )
+					.locator( '.cbuild__panel' )
 					.first()
 					.boundingBox();
-				// Beside them on either side, as a right-to-left page has it on the left: it starts above their foot.
+				// Beside it on either side, as a right-to-left page has it on the left: it starts above its foot.
 				expect(
 					summary?.y ?? 99999,
-					'the summary beside the steps, not under them'
+					'the panel beside the stage, not under it'
 				).toBeLessThan( ( steps?.y ?? 0 ) + ( steps?.height ?? 0 ) );
 			}
 		} );
@@ -2715,7 +2903,8 @@ test.describe( "A kit's own page", () => {
 		await page.goto( fixture().page );
 		const width = page.locator( '.cbuild-width__option' ).first();
 		await expect( width ).toBeVisible();
-		const action = page.locator( '.cbuild-step__next' ).first();
+		// The Next a shopper sees: the footer's (D-271).
+		const action = page.locator( '.cbuild-bar__next:not([hidden])' );
 		const ground = ( locator: typeof width ) =>
 			locator.evaluate(
 				( element ) => getComputedStyle( element ).backgroundColor
@@ -2728,14 +2917,16 @@ test.describe( "A kit's own page", () => {
 test.describe( 'The phone bar', () => {
 	const PHONE = { width: 390, height: 700 };
 
-	test( 'takes the place of the summary on a phone, and the summary has the desktop', async ( {
+	// The prototype's footer: the same bar holds the total on a phone and under the panel on a desktop, and the
+	// summary's sidebar is gone (D-271).
+	test( 'holds the total on a phone and on a desktop, with no summary beside it', async ( {
 		page,
 	} ) => {
 		await page.setViewportSize( PHONE );
 		await page.goto( fixture().page );
 		const bar = page.locator( '.cbuild-bar' );
 		await expect( bar ).toBeVisible();
-		await expect( page.locator( '.cbuild-summary' ) ).toBeHidden();
+		await expect( page.locator( '.cbuild-summary' ) ).toHaveCount( 0 );
 		// Cowork's review, minor 18: the disclosure says what it does, open and shut.
 		const summary = bar.locator( 'summary' );
 		await expect( summary ).toHaveText( /Show the parts$/, {
@@ -2747,8 +2938,8 @@ test.describe( 'The phone bar', () => {
 		} );
 		await summary.click();
 		await page.setViewportSize( { width: 1280, height: 800 } );
-		await expect( bar ).toBeHidden();
-		await expect( page.locator( '.cbuild-summary' ) ).toBeVisible();
+		await expect( bar ).toBeVisible();
+		await expect( bar.locator( '.cbuild-bar__amount' ) ).toBeVisible();
 	} );
 
 	// Claude in Cowork's recheck, N6: at 412 pixels under Kadence, "Show the parts" broke over two lines beside the
@@ -2958,7 +3149,9 @@ test.describe( 'The phone bar', () => {
 		);
 		// With JavaScript the store moves the step without a page load, and without it the form is sent.
 		await bar.getByRole( 'button', { name: 'Next: Trucks' } ).click();
-		await expect( heading( page ) ).toHaveText( 'Step 2 of 7: Trucks' );
+		await expect( heading( page ) ).toHaveText(
+			'Step 2 of 7: Choose your trucks'
+		);
 	} );
 
 	test( 'keeps the parts list open when a pick is answered after it opens', async ( {
@@ -3133,7 +3326,9 @@ test.describe( 'Every control a name of its own (P11)', () => {
 				.locator( '.cbuild-presets' )
 				.getByRole( 'button', { name: 'Start from Street' } )
 				.click();
-			await expect( heading( page ) ).toHaveText( 'Step 7 of 7: Review' );
+			await expect( heading( page ) ).toHaveText(
+				'Step 7 of 7: Check your build'
+			);
 			expect( twice( await names() ) ).toEqual( [] );
 			await expect(
 				page.getByRole( 'button', { name: 'Add to cart' } )
@@ -3161,7 +3356,7 @@ test.describe( 'Saved builds', () => {
 		page,
 	} ) => {
 		await page.goto( full() );
-		await expect( heading( page ) ).toHaveText( /: Review$/ );
+		await expect( heading( page ) ).toHaveText( /: Check your build$/ );
 		await expect(
 			page.getByRole( 'button', { name: 'Save build' } )
 		).toBeHidden();
@@ -3191,7 +3386,7 @@ test.describe( 'Saved builds', () => {
 		const before = await lines();
 		const name = `E2E ${ info.project.name } ${ Date.now() }`;
 		await page.goto( full() );
-		await expect( heading( page ) ).toHaveText( /: Review$/ );
+		await expect( heading( page ) ).toHaveText( /: Check your build$/ );
 		await page.getByLabel( 'Name it (optional)' ).fill( name );
 		await answered( page, () =>
 			page.getByRole( 'button', { name: 'Save build' } ).click()
@@ -3211,7 +3406,7 @@ test.describe( 'Saved builds', () => {
 
 		// Open: the builder at the review, checked again, and Save build there updates it.
 		await row.getByRole( 'link', { name: 'Open' } ).click();
-		await expect( heading( page ) ).toHaveText( /: Review$/ );
+		await expect( heading( page ) ).toHaveText( /: Check your build$/ );
 		expect( page.url() ).toContain( 'cbuild_saved=' );
 		await expect(
 			page.getByLabel( 'Link to this build' ),

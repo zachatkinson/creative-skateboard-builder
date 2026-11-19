@@ -458,7 +458,7 @@ test.describe( 'A build in a classic cart and checkout', () => {
 			.getByRole( 'link', { name: 'Edit build' } )
 			.click();
 		await expect( page.locator( 'h2.cbuild__heading' ) ).toHaveText(
-			'Step 7 of 7: Review'
+			'Step 7 of 7: Check your build'
 		);
 		const review = page.locator( '.cbuild-review' );
 		await expect(

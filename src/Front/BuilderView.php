@@ -115,6 +115,9 @@ final class BuilderView {
 		$name    = $review ? __( 'Review', 'creative-skateboard-builder' ) : $label( $state->step );
 		/* translators: 1: the step's number. 2: how many steps there are. 3: the step's name, such as Trucks. */
 		$heading = sprintf( __( 'Step %1$s of %2$s: %3$s', 'creative-skateboard-builder' ), number_format_i18n( $at + 1 ), number_format_i18n( count( $all ) ), $name );
+		// The heading shows the step's question and is read with its count; the title keeps the count and the name (D-269).
+		/* translators: 1: the step's number. 2: how many steps there are. Read before the step's question. */
+		$count = sprintf( __( 'Step %1$s of %2$s:', 'creative-skateboard-builder' ), number_format_i18n( $at + 1 ), number_format_i18n( count( $all ) ) );
 
 		// What keeps the build from where the shopper asked to go, or from the cart.
 		$errors = array();
@@ -177,7 +180,8 @@ final class BuilderView {
 			'clean'     => $base,
 			'action'    => $action,
 			'carry'     => $carry,
-			'heading'   => $heading,
+			'heading'   => $review ? __( 'Check your build', 'creative-skateboard-builder' ) : self::question( $state->step, $name ),
+			'count'     => $count,
 			/* translators: %s: the page's heading, such as "Step 2 of 7: Trucks". */
 			'title'     => array() === $errors ? $heading : sprintf( __( 'Error: %s', 'creative-skateboard-builder' ), $heading ),
 			'isStep'    => ! $panel && ! $review,
@@ -194,12 +198,13 @@ final class BuilderView {
 			'step'      => $step,
 			'changes'   => $this->changes( $state, $changes, $link, $lines, $label ),
 			'summary'   => $summary,
-			'bar'       => self::bar( $summary, $step, $shown, $review, $panel, Cast::map( Cast::items( $picture['items'] ?? null )[0] ?? null ), $state->id, self::board( $picture, $state->id, self::BAR_SIZE ) ),
+			'bar'       => self::bar( $summary, $step, $shown, $review, $panel, Cast::map( Cast::items( $picture['items'] ?? null )[0] ?? null ), $state->id, self::board( $picture, $state->id, self::BAR_SIZE ), self::back( $review, $step, $steps, $link, $url, $label ) ),
 			'picture'   => array(
-				'heading'     => __( 'What is in the box', 'creative-skateboard-builder' ),
+				'heading'     => __( 'Your board', 'creative-skateboard-builder' ),
 				'description' => Cast::str( $picture['description'] ?? null ),
-				// With nothing picked, the summary says so; the picture keeps quiet rather than say it twice.
+				// With nothing picked, the stage says what to do where the board will be; the caption waits for a part.
 				'captioned'   => array() !== Cast::items( $picture['items'] ?? null ),
+				'empty'       => __( 'Pick a deck to start', 'creative-skateboard-builder' ),
 				'board'       => $board,
 				// The board's top (#46): shown on the grip step, where the shopper sees the grip go on, and turned to
 				// with the button by the board, which the store offers and keeps to once pressed. A deck with no layer
@@ -212,6 +217,11 @@ final class BuilderView {
 				'seen'        => array(
 					'under' => __( 'Seen from underneath.', 'creative-skateboard-builder' ),
 					'top'   => __( 'Seen from the top.', 'creative-skateboard-builder' ),
+				),
+				// The same, as a line under the stage's heading.
+				'side'        => array(
+					'under' => __( 'Seen from underneath', 'creative-skateboard-builder' ),
+					'top'   => __( 'Seen from the top', 'creative-skateboard-builder' ),
 				),
 				'items'       => array_map(
 					static function ( mixed $item, int $at ) use ( $state ): array {
@@ -239,22 +249,47 @@ final class BuilderView {
 	}
 
 	/**
+	 * The footer's Back: the step's own Back on a step, and the last step at the review. It shows "Back" and is read
+	 * with the step it goes to, as the step's own link is (spec: The layout, Footer).
+	 *
+	 * @param bool                        $review Whether the view is the review.
+	 * @param array<string, mixed>        $step   The step's view.
+	 * @param list<string>                $steps  The slots that are steps.
+	 * @param BuildLink                   $link   The address of what is shown.
+	 * @param callable(BuildLink): string $url    Makes an address.
+	 * @param callable(string): string    $label  A slot's label.
+	 * @return array{shown: bool, url: string, text: string, label: string}
+	 */
+	private static function back( bool $review, array $step, array $steps, BuildLink $link, callable $url, callable $label ): array {
+		$own  = Cast::map( $step['back'] ?? null );
+		$last = $review && array() !== $steps ? $steps[ count( $steps ) - 1 ] : null;
+		return array(
+			'shown' => null !== $last || Cast::bool( $own['shown'] ?? null ),
+			'url'   => null === $last ? Cast::str( $own['url'] ?? null ) : $url( $link->at( $last ) ),
+			'text'  => __( 'Back', 'creative-skateboard-builder' ),
+			/* translators: %s: a step's name, such as Deck. */
+			'label' => null === $last ? Cast::str( $own['text'] ?? null ) : sprintf( __( 'Back: %s', 'creative-skateboard-builder' ), $label( $last ) ),
+		);
+	}
+
+	/**
 	 * The phone bar (spec: The total, W7): the total, which opens the parts list, and the button that moves the build
 	 * on, the step's Next or the review's Add to cart. The button belongs to its form by the form's ID, so it sends that
 	 * form with JavaScript or without. The change panel asks for Use these or Undo in its own forms, so the bar has no
 	 * button there.
 	 *
-	 * @param array<string, mixed> $summary The summary.
-	 * @param array<string, mixed> $step    The step.
-	 * @param array<string, mixed> $shown   The review.
-	 * @param bool                 $review  Whether the review is shown.
-	 * @param bool                 $panel   Whether the change panel is shown.
-	 * @param array<string, mixed> $first   The picture's first part, if it has one: its slot, its ID and its photo.
-	 * @param int                  $kit     The kit product's ID.
-	 * @param array<string, mixed> $board   The board, drawn at the bar's size.
-	 * @return array{shown: bool, seen: bool, board: array<string, mixed>, photo: array{hasImage: bool, src: string, srcset: string, sizes: string, width: int, height: int, classes: string}, picture: string, total: string, amount: string, parts: string, hide: string, next: array{shown: bool, onStep: bool, onReview: bool, text: string, form: string, name: string, value: string, disabled: bool}}
+	 * @param array<string, mixed>                                         $summary The summary.
+	 * @param array<string, mixed>                                         $step    The step.
+	 * @param array<string, mixed>                                         $shown   The review.
+	 * @param bool                                                         $review  Whether the review is shown.
+	 * @param bool                                                         $panel   Whether the change panel is shown.
+	 * @param array<string, mixed>                                         $first   The picture's first part, if it has one: its slot, its ID and its photo.
+	 * @param int                                                          $kit     The kit product's ID.
+	 * @param array<string, mixed>                                         $board   The board, drawn at the bar's size.
+	 * @param array{shown: bool, url: string, text: string, label: string} $back The footer's Back.
+	 * @return array{shown: bool, seen: bool, board: array<string, mixed>, photo: array{hasImage: bool, src: string, srcset: string, sizes: string, width: int, height: int, classes: string}, picture: string, total: string, amount: string, parts: string, hide: string, back: array{shown: bool, url: string, text: string, label: string}, next: array{shown: bool, onStep: bool, onReview: bool, text: string, form: string, name: string, value: string, disabled: bool}}
 	 */
-	private static function bar( array $summary, array $step, array $shown, bool $review, bool $panel, array $first, int $kit, array $board ): array {
+	private static function bar( array $summary, array $step, array $shown, bool $review, bool $panel, array $first, int $kit, array $board, array $back ): array {
 		$next  = Cast::map( $step['next'] ?? null );
 		$photo = self::image( $first['image'] ?? null );
 		return array(
@@ -281,6 +316,7 @@ final class BuilderView {
 			'estimate'    => sprintf( __( 'Complete from about %s', 'creative-skateboard-builder' ), Cast::str( $summary['estimateAmount'] ?? null ) ),
 			'parts'       => __( 'Show the parts', 'creative-skateboard-builder' ),
 			'hide'        => __( 'Hide the parts', 'creative-skateboard-builder' ),
+			'back'        => array( 'shown' => $back['shown'] && ! $panel ) + $back,
 			'next'        => array(
 				'shown'    => ! $panel,
 				// Which of the bar's two buttons: a button's form is its own, set once, so each form has one.
@@ -943,6 +979,26 @@ final class BuilderView {
 	}
 
 	/**
+	 * A step's question, as its heading shows it (D-269). A slot of a kind the plugin does not name asks with its own
+	 * name.
+	 *
+	 * @param string $slot The step's slot.
+	 * @param string $name The step's name, as the kit gives it.
+	 */
+	private static function question( string $slot, string $name ): string {
+		return match ( $slot ) {
+			SlotKey::DECK     => __( 'Choose your deck', 'creative-skateboard-builder' ),
+			SlotKey::TRUCKS   => __( 'Choose your trucks', 'creative-skateboard-builder' ),
+			SlotKey::WHEELS   => __( 'Choose your wheels', 'creative-skateboard-builder' ),
+			SlotKey::BEARINGS => __( 'Choose your bearings', 'creative-skateboard-builder' ),
+			SlotKey::RISERS   => __( 'Choose your risers', 'creative-skateboard-builder' ),
+			SlotKey::HARDWARE => __( 'Choose your hardware', 'creative-skateboard-builder' ),
+			SlotKey::GRIP     => __( 'Choose your grip tape', 'creative-skateboard-builder' ),
+			default           => $name,
+		};
+	}
+
+	/**
 	 * What a step's search box is called.
 	 *
 	 * @param string $slot The step's slot.
@@ -1452,7 +1508,10 @@ final class BuilderView {
 				'name'    => isset( $counted[ $slot ] ) ? Cast::str( $lines[ $slot ]['name'] ?? null ) : __( 'None', 'creative-skateboard-builder' ),
 				'fits'    => ! isset( $wrong[ $slot ] ),
 				'fit'     => $wrong[ $slot ] ?? ( isset( $counted[ $slot ] ) ? __( 'Fits', 'creative-skateboard-builder' ) : '' ),
+				'amount'  => isset( $counted[ $slot ] ) ? Cast::str( $lines[ $slot ]['amount'] ?? null ) : '',
 				'url'     => $url( $link->at( $slot ) ),
+				// "Change" to the eye, as the prototype has it, and read with the slot it changes.
+				'text'    => __( 'Change', 'creative-skateboard-builder' ),
 				/* translators: %s: a slot's label, such as Trucks. */
 				'change'  => sprintf( __( 'Change %s', 'creative-skateboard-builder' ), Words::inSentence( $label( $slot ) ) ),
 			);

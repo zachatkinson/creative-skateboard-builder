@@ -65,7 +65,9 @@ test.describe( 'The builder in French', () => {
 		await bar
 			.getByRole( 'button', { name: /^Suivant\s:\sTrucks$/ } )
 			.click();
-		await expect( heading ).toHaveText( /^Étape 2 sur 7\s:\sTrucks$/ );
+		await expect( heading ).toHaveText(
+			/^Étape 2 sur 7\s:\sChoisissez vos trucks$/
+		);
 		await expect( page.locator( 'html' ) ).toHaveAttribute(
 			'lang',
 			'fr-CA'

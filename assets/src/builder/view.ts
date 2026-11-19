@@ -28,7 +28,7 @@
  *   picture and the phone bar show the same side, and the stylesheet turns the board only where motion is allowed.
  */
 import { getConfig, getElement, store } from '@wordpress/interactivity';
-import { fit } from './bar';
+import { fit, size } from './bar';
 import { Navigator, type Move, type View } from './navigate';
 import { add, body } from './cart';
 import type { CbuildState } from '../types/state';
@@ -325,6 +325,21 @@ function steady( change: () => void ): void {
 }
 
 /**
+ * Keep the bar's height on the page as its lines change, for the scroll padding that keeps focus clear of it (D-272).
+ * A browser with no resize observer keeps the stylesheet's room for two rows.
+ *
+ * @param element The builder's element.
+ */
+function measure( element: HTMLElement ): void {
+	const bar = element.querySelector( '.cbuild-bar' );
+	size( element );
+	if ( ! bar || 'function' !== typeof window.ResizeObserver ) {
+		return;
+	}
+	new window.ResizeObserver( () => size( element ) ).observe( bar );
+}
+
+/**
  * Mark a pick in the store at once: the step's cards bind their radios' checked to it, so a card drawn again while the
  * route is asked would otherwise put the pick back as it was until the answer came (#47). The answer then says the
  * same, or what the server found instead.
@@ -488,6 +503,7 @@ const { state } = store(
 				state.live = true;
 				if ( root ) {
 					fit( root );
+					measure( root );
 				}
 			},
 		},
@@ -631,6 +647,7 @@ const { state } = store(
 			fit(): void {
 				if ( root ) {
 					fit( root );
+					size( root );
 				}
 			},
 			reveal( event: FocusEvent ): void {

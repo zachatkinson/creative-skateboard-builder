@@ -3380,3 +3380,24 @@ Zach's call. The prototype puts the rail in the site's header, which the plugin 
 ### D-269 · The step's heading says the step's question; the count is read · 2026-11-19
 
 Zach's call. The heading shows the prototype's words, "Choose your deck", with the step's help under it, and the rail's numbers say where the shopper is. A screen reader hears "Step 1 of 7: Choose your deck" from a visually hidden prefix, and the page's title keeps the count, so the step is still said as it was from 0.6.0.
+
+### D-270 · On a phone the rail shows the step before, the step shown and the step after · 2026-11-19
+
+Zach's call. The prototype's phone rail scrolls sideways, which leaves steps behind a swipe that a shopper may not notice, and broke the reflow test at 320 pixels. A rail that scrolled with faded edges was tried and dropped for this. Below 48rem the rail shows the step before, the step shown and the step after; the others are taken out of the row with `visibility: hidden`, not `display: none`, so the step counter still counts them and each pill keeps its own number. From 48rem every step shows. Every step stays one tap away: Back, and the review's Change buttons. The total of steps is not shown on a phone; a screen reader hears it from the heading (D-269).
+
+### D-271 · The prototype's layout: a stage, a panel and a footer · 2026-11-19
+
+The redesign's layout, made from the prototype's frames (`docs/reviews/redesign/screenshots/`), with the comparisons in `docs/reviews/M10/layout/`.
+
+- The summary's sidebar is gone. The bar is the footer at every width: the total, the estimate, the parts list, Back and Next, or Add to cart on the review. From 64rem it is pinned under the panel, which scrolls on its own. The step's own Back and Next and the review's own submit are hidden; the footer's buttons send the same forms.
+- The assembly switch moved from the summary to the review, still a GET form with its button (milestone 6's audit 29).
+- The bar's small picture of the board is gone: the stage stays in view on a phone, sticky above the step.
+- The picture is headed "Your board" with the side it shows, and says "Pick a deck to start" over a dashed place-holder until a deck is picked. Its written description is visually hidden at every width; a screen reader reads it as before.
+- The presets come after the step, as the prototype's "ways in" do.
+- Each row of the review shows its slot, the part with its fit under it, its price, and a "Change" button read as "Change trucks".
+- The step's radio group is named by the heading (`aria-labelledby`), not a legend, so the eye and the ear get one name and no text is hidden in it (WCAG 1.4.12's test).
+- Templates and markup are the builder's own (HOOKS.md), so none of this changes the public API. `--cbuild-summary-width` no longer did anything, so it is removed (Zach: dead code goes), and `--cbuild-card-width`'s default is `13.5rem`, for the card's photo beside its words.
+
+### D-272 · The page's scroll padding reads the bar's measured height · 2026-11-19
+
+The footer bar of D-271 is as tall as its lines make it: the total, the estimate, and Back and Next on a row of their own where they don't fit beside the total. That reached about 150 pixels, past the fixed room of D-160 and D-230, and the browser test "never covers the control in focus, the bar giving the estimate" found a control under it ("cbuild-hidden__summary 584.453125 > 562.3125"). With JavaScript the builder now watches the bar with a ResizeObserver and sets its height on the page's root as `--cbuild-bar-size` while the bar sticks over the page, a narrow column on a desktop included; the scroll padding reads it. Without JavaScript a phone keeps a fixed room, raised to two rows (`--cbuild-bar-height` plus 3.25rem, and 10rem with the estimate). Pinned under the panel on a desktop, the bar covers nothing and the property is removed.

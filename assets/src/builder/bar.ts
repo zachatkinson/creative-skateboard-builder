@@ -117,3 +117,29 @@ export function fit( root: Element ): void {
 		page.style.removeProperty( '--cbuild-bar-offset' );
 	}
 }
+
+/**
+ * Set the bar's own height on the page while it sticks over the page, for the page's scroll padding to keep focus
+ * clear of it: it is as tall as its lines make it, the total, the estimate, and Back and Next on a row of their own
+ * where they do not fit beside the total (D-272). Pinned under the panel on a desktop, it covers nothing.
+ *
+ * @param root The builder's element.
+ */
+export function size( root: Element ): void {
+	const bar = root.querySelector( '.cbuild-bar' );
+	const page = root.ownerDocument.documentElement;
+	const view = root.ownerDocument.defaultView;
+	if (
+		! bar ||
+		! view ||
+		0 === bar.getClientRects().length ||
+		'sticky' !== view.getComputedStyle( bar ).position
+	) {
+		page.style.removeProperty( '--cbuild-bar-size' );
+		return;
+	}
+	page.style.setProperty(
+		'--cbuild-bar-size',
+		`${ Math.ceil( bar.getBoundingClientRect().height ) }px`
+	);
+}

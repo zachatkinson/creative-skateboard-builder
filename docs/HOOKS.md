@@ -688,14 +688,15 @@ The builder's stylesheet is the Builder block's `style` (`build/builder/style-in
 | `--cbuild-target` | 0.6.0 | The least height and width of a button | `2.75rem` |
 | `--cbuild-control` | 0.6.0 | A radio's size, and the least height of a link that is a control | `1.5rem` |
 | `--cbuild-small` | 0.6.0 | Small text | `--wp--preset--font-size--small`, then `0.875rem` |
-| `--cbuild-card-width` | 0.6.0 | The narrowest a part's card is before the cards wrap | `13rem` |
-| `--cbuild-summary-width` | 0.6.0 | The summary's width beside the steps, from a builder 48rem wide | `19rem` |
+| `--cbuild-card-width` | 0.6.0 | The narrowest a part's card is before the cards wrap. From 1.0.0 the default is `13.5rem`, for the card's photo beside its words | `13.5rem` |
 | `--cbuild-ground` | 0.6.0 | The phone bar's ground, and its parts list's | `--wp--preset--color--base`, then the colour that contrasts with the builder's text (`contrast-color()`), else `Canvas` |
 | `--cbuild-on-ground` | 0.6.0 | Words on the phone bar's ground | `--wp--preset--color--contrast`, then the builder's text where the browser can pick a ground that contrasts with it, else `CanvasText` |
 | `--cbuild-bar-height` | 0.6.0 | The phone bar's least height, which focus is kept clear of | `4.25rem` |
 | `--cbuild-duration` | 0.6.0 | How long each movement lasts: the chosen card settling, a part arriving in the picture, a step crossing over. The step's crossing is the page's view transition, which reads it on `:root`, so set it there too | `200ms` |
 | `--cbuild-bar-offset` | 0.6.0 | How far above the foot of the screen the phone bar sits, set on the page's root (below) | `0px` |
 | `--cbuild-ease` | 0.6.0 | How each movement eases, read as `--cbuild-duration` is | `cubic-bezier(0.2, 0, 0, 1)` |
+| `--cbuild-top` | 1.0.0 | The height of anything the theme keeps at the top of the screen, such as a sticky header: the stage sticks below it on a phone, and the stage and the panel fit under it on a desktop | `0px` |
+| `--cbuild-stage-height` | 1.0.0 | The stage's height on a phone and a tablet, where it stays at the top above the step | `42svh` |
 | `--cbuild-board-size` | 0.7.0 | The board's height in the picture. The layers' `sizes` assume the default, so a board drawn much larger may fetch a smaller rendition than the screen could use | `min(60vh, 36rem)` |
 
 From 0.7.0 the builder sets these on the board and its layers, for a theme's rules to read; a theme does not set them (D-195):
@@ -707,6 +708,7 @@ From 0.7.0 the builder sets these on the board and its layers, for a theme's rul
 | `--cbuild-layer-y` | 0.7.0 | Its top edge, as a share of the board's height, the nose at the top |
 | `--cbuild-layer-width` | 0.7.0 | Its width, as a share of the board's |
 | `--cbuild-layer-height` | 0.7.0 | Its height, as a share of the board's |
+| `--cbuild-bar-size` | 1.0.0 | On the page's root, with JavaScript: the bar's height while it sticks over the page, which the page's scroll padding reads so focus stays clear of it (D-272) |
 
 Nothing moves where the shopper asks for reduced motion.
 

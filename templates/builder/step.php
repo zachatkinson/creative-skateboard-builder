@@ -65,9 +65,8 @@ defined( 'ABSPATH' ) || exit;
 			</fieldset>
 		</template>
 	</details>
-	<fieldset class="cbuild-step__fieldset">
-		<legend class="cbuild-step__legend" data-wp-text="state.view.step.legend"></legend>
-		<p class="cbuild-step__lead" data-wp-bind--hidden="!state.view.step.hasLead" data-wp-text="state.view.step.lead"></p>
+	<?php // The step's heading names its group: the count and the question, one name for the eye and the ear (D-269). ?>
+	<fieldset class="cbuild-step__fieldset" aria-labelledby="cbuild-heading">
 		<p class="cbuild-step__help" data-wp-bind--hidden="!state.view.step.hasHelp" data-wp-text="state.view.step.help"></p>
 		<p class="cbuild-step__empty" data-wp-bind--hidden="!state.view.step.empty" data-wp-text="state.view.step.emptyText"></p>
 		<div class="cbuild-step__bar" data-wp-bind--hidden="!state.view.step.shelf.sort.shown">

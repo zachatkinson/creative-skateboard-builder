@@ -108,7 +108,7 @@ for ( const theme of THEMES ) {
 					await expect(
 						on.getByRole( 'heading', {
 							level: 2,
-							name: 'Step 7 of 7: Review',
+							name: 'Step 7 of 7: Check your build',
 						} )
 					).toBeVisible();
 					await still( on, size.width );

@@ -105,7 +105,7 @@ test.describe( 'Focus on a dark theme whose contrast colour is dark', () => {
 		] );
 	} );
 
-	test( 'a deck card and the step’s Next each show a ring that stands out from the page', async ( {
+	test( 'a deck card and the footer’s Next each show a ring that stands out from the page', async ( {
 		page: on,
 	}, info ) => {
 		test.skip(
@@ -136,10 +136,11 @@ test.describe( 'Focus on a dark theme whose contrast colour is dark', () => {
 				focus: '.cbuild-card__control',
 				drawn: '.cbuild-card:has(> .cbuild-card__control:focus-visible)',
 			},
+			// The footer's Next stands in for the step's own, which is hidden (D-271).
 			{
-				name: 'the step’s Next',
-				focus: '.cbuild-step__next',
-				drawn: '.cbuild-step__next:focus-visible',
+				name: 'the footer’s Next',
+				focus: '.cbuild-bar__next:not([hidden])',
+				drawn: '.cbuild-bar__next:focus-visible',
 			},
 		];
 		for ( const check of checks ) {

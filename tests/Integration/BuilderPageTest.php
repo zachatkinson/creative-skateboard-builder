@@ -184,7 +184,7 @@ final class BuilderPageTest extends IntegrationTestCase {
 		$dom  = self::dom( $html );
 
 		self::assertStringContainsString( 'data-wp-interactive="creative-skateboard-builder"', $html );
-		self::assertSame( 'Step 1 of 7: Deck', self::text( $dom, '//h2[contains(@class,"cbuild__heading")]' ) );
+		self::assertSame( 'Step 1 of 7: Choose your deck', self::text( $dom, '//h2[contains(@class,"cbuild__heading")]' ) );
 		$form = $dom->query( '//form[contains(@class,"cbuild-step")]' )->item( 0 );
 		self::assertNotNull( $form );
 		self::assertSame( 'get', $form->getAttribute( 'method' ) );
@@ -210,7 +210,9 @@ final class BuilderPageTest extends IntegrationTestCase {
 		self::assertNotNull( $dom->query( '//section[contains(@class,"cbuild-review")][@hidden]' )->item( 0 ), 'The review is not this step.' );
 		self::assertNotNull( $dom->query( '//section[contains(@class,"cbuild-changes")][@hidden]' )->item( 0 ) );
 		self::assertNotNull( $dom->query( '//figcaption[contains(@class,"cbuild-picture__description")][@hidden]' )->item( 0 ), 'With nothing chosen, the summary says so alone (Cowork minor 15).' );
-		self::assertNotNull( $dom->query( '//figure[@id="cbuild-picture"]//*[contains(@class,"cbuild-picture__heading")][@hidden]' )->item( 0 ), 'and the picture has no heading over nothing.' );
+		// The stage keeps its heading and says what starts the board, as the prototype has it.
+		self::assertNull( $dom->query( '//figure[@id="cbuild-picture"]//*[contains(@class,"cbuild-picture__heading")][@hidden]' )->item( 0 ), 'The stage is headed before anything is picked.' );
+		self::assertSame( 'Pick a deck to start', self::text( $dom, '//figure[@id="cbuild-picture"]//p[contains(@class,"cbuild-picture__empty")][not(@hidden)]' ) );
 	}
 
 	public function test_the_picture_is_named_by_a_heading_a_sighted_shopper_reads_too(): void {
@@ -220,7 +222,7 @@ final class BuilderPageTest extends IntegrationTestCase {
 		// Milestone 6's audit 27: the heading was an aria-label on the list, which only a screen reader heard.
 		$heading = $dom->query( './/h3[contains(@class,"cbuild-picture__heading")][not(@hidden)]', $figure )->item( 0 );
 		self::assertInstanceOf( \DOMElement::class, $heading, 'A visible heading in the figure.' );
-		self::assertSame( 'What is in the box', trim( $heading->textContent ) );
+		self::assertSame( 'Your board', trim( $heading->textContent ) );
 		self::assertSame( $heading->getAttribute( 'id' ), $figure->getAttribute( 'aria-labelledby' ), 'It names the figure.' );
 		self::assertSame( 0, $dom->query( './/*[@aria-label]', $figure )->length, 'No name only a screen reader hears.' );
 	}
@@ -316,7 +318,7 @@ final class BuilderPageTest extends IntegrationTestCase {
 	public function test_a_build_link_opens_on_its_step_with_its_picks_carried_and_the_recommendation_labelled_not_checked(): void {
 		$dom = self::dom( $this->kitPage( array( 'deck' => (string) $this->parts['deck 8.5'] ) ) );
 
-		self::assertSame( 'Step 2 of 7: Trucks', self::text( $dom, '//h2[contains(@class,"cbuild__heading")]' ) );
+		self::assertSame( 'Step 2 of 7: Choose your trucks', self::text( $dom, '//h2[contains(@class,"cbuild__heading")]' ) );
 		$deck = $dom->query( '//form[contains(@class,"cbuild-step")]//input[@type="hidden" and @name="cbuild[deck]"]' )->item( 0 );
 		self::assertNotNull( $deck, 'The deck travels with the form.' );
 		self::assertSame( (string) $this->parts['deck 8.5'], $deck->getAttribute( 'value' ) );
@@ -492,7 +494,7 @@ final class BuilderPageTest extends IntegrationTestCase {
 	public function test_a_step_past_one_the_build_leaves_empty_stays_there_and_says_why(): void {
 		$dom = self::dom( $this->kitPage( array( 'step' => 'review' ) ) );
 
-		self::assertSame( 'Step 1 of 7: Deck', self::text( $dom, '//h2[contains(@class,"cbuild__heading")]' ) );
+		self::assertSame( 'Step 1 of 7: Choose your deck', self::text( $dom, '//h2[contains(@class,"cbuild__heading")]' ) );
 		$errors = $dom->query( '//div[contains(@class,"cbuild-errors")]' )->item( 0 );
 		self::assertNotNull( $errors );
 		self::assertFalse( $errors->hasAttribute( 'hidden' ) );
@@ -589,8 +591,8 @@ final class BuilderPageTest extends IntegrationTestCase {
 		foreach ( $states as $state => $build ) {
 			$dom = self::dom( $this->kitPage( $build ) );
 			// Spec, SEO and sharing: builder state is reached by forms, not links (milestone 6's audit 29).
-			self::assertSame( 0, $dom->query( '//*[contains(@class,"cbuild-summary__assembly")]//a' )->length, $state . ': the switch is no link.' );
-			$forms = $dom->query( '//form[contains(@class,"cbuild-summary__toggle")][@method="get"]' );
+			self::assertSame( 0, $dom->query( '//*[contains(@class,"cbuild-review__assembly")]//a' )->length, $state . ': the switch is no link.' );
+			$forms = $dom->query( '//form[contains(@class,"cbuild-review__toggle")][@method="get"]' );
 			self::assertSame( 1, $forms->length, $state . ': one GET form.' );
 			$form = $forms->item( 0 );
 			self::assertInstanceOf( \DOMElement::class, $form );
@@ -822,7 +824,7 @@ final class BuilderPageTest extends IntegrationTestCase {
 		unregister_block_type( PageHooks::BLOCK );
 		( new PageHooks( fn(): BuilderPage => $this->page(), $this->service( \CreativeBranding\SkateboardBuilder\Front\BuilderPlace::class ) ) )->block();
 		$html = do_blocks( '<!-- wp:creative-skateboard-builder/builder {"kit":' . $this->kit . '} /-->' );
-		self::assertSame( 'Step 1 of 7: Deck', self::text( self::dom( $html ), '//h2[contains(@class,"cbuild__heading")]' ), 'Its directives processed by WordPress.' );
+		self::assertSame( 'Step 1 of 7: Choose your deck', self::text( self::dom( $html ), '//h2[contains(@class,"cbuild__heading")]' ), 'Its directives processed by WordPress.' );
 		self::assertSame( 2, self::dom( $html )->query( '//button[contains(@class,"cbuild-width__option")]' )->length, 'Each width, once: the directives were processed once.' );
 
 		unregister_block_type( PageHooks::BLOCK );
