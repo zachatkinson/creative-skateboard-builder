@@ -1,4 +1,5 @@
-import { readFileSync } from 'node:fs';
+import { execSync } from 'node:child_process';
+import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import {
 	test,
@@ -4135,5 +4136,340 @@ test.describe( 'Saved builds', () => {
 		await answered( page, () =>
 			back.getByRole( 'button', { name: 'Delete' } ).click()
 		);
+	} );
+} );
+
+/**
+ * Presses a button and waits for the step whose heading it leads to, with JavaScript or without: the store moves the
+ * builder without loading the page, and the form loads the next one.
+ *
+ * @param page   The page.
+ * @param name   The button's name, or a pattern where it differs with JavaScript and without.
+ * @param titled The heading the step it leads to has.
+ */
+async function moveTo( page: Page, name: string | RegExp, titled: RegExp ) {
+	await page.getByRole( 'button', { name, exact: true } ).click();
+	await expect( heading( page ) ).toHaveText( titled );
+	await expect( page.locator( '.cbuild' ) ).not.toHaveAttribute(
+		'aria-busy',
+		'true'
+	);
+}
+
+/**
+ * Runs WP-CLI in the browser site. A test that changes the shop puts it back in its afterAll, so the others see the
+ * fixture as made; the projects run one test at a time (playwright.config.ts, workers: 1).
+ *
+ * @param command The command, after `wp`.
+ */
+function wp( command: string ): string {
+	return execSync( `npx wp-env run cli -- wp ${ command }`, {
+		stdio: [ 'ignore', 'pipe', 'ignore' ],
+	} )
+		.toString()
+		.trim();
+}
+
+/**
+ * Runs PHP in the browser site, the plugin loaded, with `$cbuild_index`, which saves a part and indexes it again as
+ * the fixture does.
+ *
+ * @param code The PHP.
+ */
+function runPhp( code: string ): void {
+	const index =
+		'$cbuild_index = static function ( WC_Product $p ): void { $p->save(); CreativeBranding\\SkateboardBuilder\\Plugin::container()->get( CreativeBranding\\SkateboardBuilder\\Service\\SpecIndexer::class )->index( $p->get_id() ); };';
+	const file = path.join( process.cwd(), 'tmp', 'e2e-eval.php' );
+	writeFileSync( file, `<?php\n${ index }\n${ code }\n` );
+	wp(
+		'eval-file wp-content/plugins/creative-skateboard-builder/tmp/e2e-eval.php'
+	);
+}
+
+/**
+ * A part's own specs set to these, or taken off with null, as the Part specs panel would save them.
+ *
+ * @param sku    The part's SKU.
+ * @param values The specs to set.
+ */
+function setSpecs(
+	sku: string,
+	values: Record< string, string | null >
+): void {
+	runPhp(
+		`$p = wc_get_product( ${ id( sku ) } ); $s = (array) $p->get_meta( '_cbuild_specs', true ); foreach ( json_decode( '${ JSON.stringify(
+			values
+		) }', true ) as $k => $v ) { if ( null === $v ) { unset( $s[ $k ] ); } else { $s[ $k ] = $v; } } $p->update_meta_data( '_cbuild_specs', $s ); $cbuild_index( $p );`
+	);
+}
+
+/**
+ * A part of the test kit made for one test, in a slot's category, or deleted with its SKU.
+ *
+ * @param sku   Its SKU.
+ * @param slot  The slot whose category it is in, or '' to delete it.
+ * @param price Its price.
+ * @param own   Its specs.
+ */
+function tempPart(
+	sku: string,
+	slot: string,
+	price = '5',
+	own: Record< string, string > = {}
+): void {
+	if ( '' === slot ) {
+		runPhp(
+			`$i = wc_get_product_id_by_sku( '${ sku }' ); if ( $i ) { wc_get_product( $i )->delete( true ); }`
+		);
+		return;
+	}
+	runPhp(
+		`$p = new WC_Product_Simple( wc_get_product_id_by_sku( '${ sku }' ) ); $p->set_name( '${ sku.replace(
+			/-/g,
+			' '
+		) }' ); $p->set_sku( '${ sku }' ); $p->set_regular_price( '${ price }' ); $p->set_status( 'publish' ); $p->set_category_ids( array( get_term_by( 'slug', 'builder-test-${ slot }', 'product_cat' )->term_id ) ); $p->update_meta_data( '_cbuild_specs', json_decode( '${ JSON.stringify(
+			own
+		) }', true ) ); $cbuild_index( $p );`
+	);
+}
+
+// Spec: The steps that appear only when needed (D-246), and the roadmap's "the bearings step skipped" and "the
+// risers step and the bolts following, on the test kit's 54 mm and 56 mm wheels, with bolts long enough for a ½″
+// riser and without". The spec reviewer's M10 finding B2.
+test.describe( 'The steps that appear only when needed', () => {
+	test.afterAll( () => {
+		setSpecs( 'builder-test-wheels-54', { bearings_included: null } );
+		setSpecs( 'builder-test-trucks-139', { max_wheel: '56.0000' } );
+		runPhp(
+			`$p = wc_get_product( ${ id(
+				'builder-test-wheels-56'
+			) } ); $p->set_stock_status( 'outofstock' ); $cbuild_index( $p );`
+		);
+		tempPart( 'builder-test-risers-1-2', '' );
+		tempPart( 'builder-test-bolts-1-5', '' );
+	} );
+
+	test( 'wheels sold with their bearings skip the bearings step, and the review says so', async ( {
+		page,
+		javaScriptEnabled,
+	} ) => {
+		setSpecs( 'builder-test-wheels-54', { bearings_included: '1' } );
+		await page.goto(
+			linkTo( {
+				deck: id( 'builder-test-deck-8-0' ),
+				trucks: id( 'builder-test-trucks-139' ),
+				step: 'wheels',
+			} )
+		);
+		await choose( page, 'Builder test wheels 54' );
+		// Without JavaScript the button names the step after the wheels as the page had it, before the wheels were
+		// sent; the server then skips the bearings. With it, the store names the hardware once the wheels are picked.
+		await moveTo(
+			page,
+			javaScriptEnabled
+				? 'Next: Hardware'
+				: /^Next: (Bearings|Hardware)$/,
+			/^Step \d+ of 6: Choose your hardware$/
+		);
+		await expect(
+			page.locator( '.cbuild-progress' ).getByText( 'Bearings' )
+		).toHaveCount( 0 );
+		await choose( page, 'Builder test bolts 1.25' );
+		await moveTo( page, 'Next: Grip tape', /: Choose your grip tape$/ );
+		await choose( page, 'Builder test grip' );
+		await moveTo( page, 'Next: Review', /: Check your build$/ );
+		await expect(
+			page
+				.locator( '.cbuild-review' )
+				.getByText( 'Included with your wheels' )
+		).toBeVisible();
+		setSpecs( 'builder-test-wheels-54', { bearings_included: null } );
+	} );
+
+	test( 'wheels over the trucks are hidden when no bolt is long enough for the riser they need, and offered when one is', async ( {
+		page,
+	} ) => {
+		// The trucks take 52 mm: 54 mm wheels are 2 mm over and need ¼″ risers, 56 mm wheels 4 mm over and ½″
+		// (R3's table). A ½″ riser needs a bolt of 1⅜″ (R4), longer than the kit's 1¼″.
+		setSpecs( 'builder-test-trucks-139', { max_wheel: '52.0000' } );
+		runPhp(
+			`$p = wc_get_product( ${ id(
+				'builder-test-wheels-56'
+			) } ); $p->set_stock_status( 'instock' ); $cbuild_index( $p );`
+		);
+		tempPart( 'builder-test-risers-1-2', 'risers', '7', {
+			riser_thickness: '0.5000',
+			set_size: '2',
+		} );
+		const wheels = linkTo( {
+			deck: id( 'builder-test-deck-8-0' ),
+			trucks: id( 'builder-test-trucks-139' ),
+			step: 'wheels',
+		} );
+
+		// Without: the 56 mm wheels are hidden with R4's reason; the 54 mm say what they need.
+		await page.goto( wheels );
+		await expect(
+			page.getByRole( 'radio', { name: 'Choose Builder test wheels 56' } )
+		).toHaveCount( 0 );
+		const hidden = page.locator( '.cbuild-hidden' );
+		await hidden.locator( 'summary' ).click();
+		await expect(
+			hidden
+				.locator( 'li' )
+				.filter( { hasText: 'Builder test wheels 56' } )
+				.getByText(
+					'Needs ½″ risers, and no bolts here are long enough for them.'
+				)
+		).toBeVisible();
+		await expect(
+			page
+				.locator( '.cbuild-card' )
+				.filter( { hasText: 'Builder test wheels 54' } )
+				.getByText( 'Needs ¼″ risers with your trucks' )
+		).toBeVisible();
+
+		// With a 1½″ bolt: the 56 mm wheels are offered, the risers step opens on the ½″ riser, and the bolts follow.
+		tempPart( 'builder-test-bolts-1-5', 'hardware', '6', {
+			bolt_length: '1.5000',
+			set_size: '8',
+		} );
+		await page.goto( wheels );
+		await expect(
+			page
+				.locator( '.cbuild-card' )
+				.filter( { hasText: 'Builder test wheels 56' } )
+				.getByText( 'Needs ½″ risers with your trucks' )
+		).toBeVisible();
+		await choose( page, 'Builder test wheels 56' );
+		await moveTo( page, 'Next: Bearings', /: Choose your risers$/ );
+		await expect(
+			page.getByText(
+				'Your 56 mm wheels need ½″ risers with these trucks'
+			)
+		).toBeVisible();
+		await expect(
+			page.getByRole( 'radio', { name: 'No risers' } ),
+			'Never added silently.'
+		).toBeChecked();
+		await choose( page, 'builder test risers 1 2' );
+		await moveTo( page, 'Next: Bearings', /: Choose your bearings$/ );
+		await choose( page, 'Builder test bearings' );
+		await moveTo( page, 'Next: Hardware', /: Choose your hardware$/ );
+		await expect(
+			page.getByRole( 'radio', { name: 'Choose builder test bolts 1 5' } )
+		).toBeVisible();
+		await expect(
+			page.getByRole( 'radio', {
+				name: 'Choose Builder test bolts 1.25',
+			} ),
+			'too short for the riser'
+		).toHaveCount( 0 );
+	} );
+} );
+
+// Spec: A saved build that has changed (D-254), and "Build a complete with this deck". The spec reviewer's M10
+// finding B3.
+test.describe( 'A saved build that has changed, and the deck page', () => {
+	test.afterAll( () => {
+		runPhp(
+			`$p = wc_get_product( ${ id( 'builder-test-wheels-54' ) } ); $p->set_stock_status( 'instock' ); $cbuild_index( $p );`
+		);
+		runPhp(
+			`$p = wc_get_product( ${ id( 'builder-test-bearings' ) } ); $p->set_regular_price( '15' ); $cbuild_index( $p );`
+		);
+	} );
+
+	test( 'opens with what changed, its heading in focus, and Use these or Choose myself', async ( {
+		page,
+		javaScriptEnabled,
+	}, info ) => {
+		await login( page );
+		const name = `Changed ${ info.project.name } ${ Date.now() }`;
+		await page.goto(
+			linkTo( {
+				deck: id( 'builder-test-deck-8-0' ),
+				trucks: id( 'builder-test-trucks-139' ),
+				wheels: id( 'builder-test-wheels-54' ),
+				bearings: id( 'builder-test-bearings' ),
+				hardware: id( 'builder-test-bolts-1-25' ),
+				grip: id( 'builder-test-grip' ),
+				step: 'review',
+			} )
+		);
+		await page.getByLabel( 'Name it (optional)' ).fill( name );
+		await answered( page, () =>
+			page.getByRole( 'button', { name: 'Save build' } ).click()
+		);
+		await expect( page ).toHaveURL( /my-builds/ );
+
+		runPhp(
+			`$p = wc_get_product( ${ id( 'builder-test-wheels-54' ) } ); $p->set_stock_status( 'outofstock' ); $cbuild_index( $p );`
+		);
+		runPhp(
+			`$p = wc_get_product( ${ id( 'builder-test-bearings' ) } ); $p->set_regular_price( '16' ); $cbuild_index( $p );`
+		);
+		const open = async () => {
+			await page.goto( '/my-account/my-builds/' );
+			await page
+				.locator( '.cbuild-my-builds__build' )
+				.filter( { hasText: name } )
+				.getByRole( 'link', { name: 'Open' } )
+				.click();
+			const changed = page.getByRole( 'heading', {
+				name: 'Your build has changed',
+			} );
+			await expect( changed ).toBeVisible();
+			if ( javaScriptEnabled ) {
+				await expect( changed ).toBeFocused();
+			}
+			return changed;
+		};
+
+		await open();
+		await expect(
+			page.getByText( 'Wheels: Builder test wheels 54 is sold out.' )
+		).toBeVisible();
+		await expect(
+			page.getByText( /^Closest fit: Builder test wheels / )
+		).toBeVisible();
+		await expect(
+			page.getByText(
+				/^Builder test bearings: .*15\.00 when you saved, .*16\.00 now$/
+			)
+		).toBeVisible();
+		if ( javaScriptEnabled ) {
+			await axe( page, 'a saved build that has changed', '.cbuild' );
+		}
+		await moveTo( page, 'Use these', /: Check your build$/ );
+		// The review's heading is on the page under the panel already, so the panel's going away is the move's end.
+		await expect(
+			page.getByRole( 'heading', { name: 'Your build has changed' } )
+		).toHaveCount( 0 );
+		await page.waitForLoadState( 'load' );
+		await expect(
+			page
+				.locator( '.cbuild-review' )
+				.getByText( 'Builder test wheels 54' )
+		).toHaveCount( 0 );
+
+		await open();
+		await moveTo( page, 'Choose myself', /: Choose your wheels$/ );
+	} );
+
+	test( "a deck's page starts a build with that deck, past the width question", async ( {
+		page,
+	} ) => {
+		await page.goto( `/?p=${ id( 'builder-test-deck-8-25' ) }` );
+		const start = page.getByRole( 'link', {
+			name: 'Build a complete with this deck',
+		} );
+		await expect( start ).toHaveAttribute( 'rel', /nofollow/ );
+		await start.click();
+		await expect( heading( page ) ).toHaveText( /: Choose your trucks$/ );
+		expect( page.url() ).toContain(
+			`cbuild%5Bdeck%5D=${ id( 'builder-test-deck-8-25' ) }`
+		);
+		await expect( page.locator( '.cbuild-width' ) ).toBeHidden();
 	} );
 } );

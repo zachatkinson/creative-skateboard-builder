@@ -276,8 +276,11 @@ final class BuildStateTest extends TestCase {
 	}
 
 	public function test_no_estimate_when_a_required_slot_has_nothing_to_recommend(): void {
-		// 58 mm wheels picked on an 8.5 deck: the recommended trucks take 56, so the riser recommended is the 402, and
-		// no hardware reaches over it. A board that cannot be finished has no estimate.
+		// 58 mm wheels picked on an 8.5 deck, and the shop's bolts sold out: no hardware to recommend. A board that
+		// cannot be finished has no estimate.
+		$shop                       = self::shop();
+		$shop[ SlotKey::HARDWARE ] = array( self::priced( Builds::bolts( '1', 601 ), 400, false, 0 ) );
+		$this->kits->add( self::KIT, self::kit(), $shop );
 		$state = $this->of( array( SlotKey::DECK => 103, SlotKey::WHEELS => 303 ) );
 		self::assertNull( self::step( $state, SlotKey::HARDWARE )->recommended );
 		self::assertNull( $state->estimate );
@@ -296,11 +299,10 @@ final class BuildStateTest extends TestCase {
 		self::assertSame( array( 103, 303 ), array_column( $state->quote->lines, 'part' ) );
 		self::assertSame( SlotKey::TRUCKS, $state->step );
 		// The hardware is offered against the picks, which hold no riser; its recommendation is held against the
-		// recommended riser, which 1 in bolts do not reach over, so it has none, and neither has the grip after it.
+		// recommended riser, which 1 in bolts do not reach through, so it is the 1¼ in.
 		$hardware = self::step( $state, SlotKey::HARDWARE );
-		self::assertSame( array( 601 ), self::ids( $hardware->options->offered ) );
-		self::assertNull( $hardware->recommended );
-		self::assertNull( self::step( $state, SlotKey::GRIP )->recommended );
+		self::assertSame( array( 601, 602 ), self::ids( $hardware->options->offered ) );
+		self::assertSame( 602, $hardware->recommended?->part->id );
 		self::assertFalse( $state->ready() );
 
 		// With the riser picked, the hardware is held against it.
@@ -309,13 +311,9 @@ final class BuildStateTest extends TestCase {
 		self::assertSame( array( 601 ), self::ids( $hardware->options->hidden ) );
 		self::assertSame( RuleId::R4, $hardware->options->hiddenGroups()[0]->rule );
 
-		// With bolts that reach, the hardware recommends them, and the whole build picked could go to the cart: a
-		// warning does not keep it from there.
-		$shop                        = self::shop();
-		$shop[ SlotKey::HARDWARE ][] = self::priced( Builds::bolts( '1.25', 602 ), 450 );
-		$this->kits->add( self::KIT, self::kit(), $shop );
+		// The estimate holds the bolts that reach, and the whole build picked could go to the cart: a warning does
+		// not keep it from there.
 		$state = $this->of( array( SlotKey::DECK => 103, SlotKey::WHEELS => 303 ) );
-		self::assertSame( 602, self::step( $state, SlotKey::HARDWARE )->recommended?->part->id );
 		self::assertContains( 602, array_column( $state->estimate->lines ?? array(), 'part' ) );
 		$state = $this->of( array( SlotKey::DECK => 103, SlotKey::TRUCKS => 149, SlotKey::WHEELS => 303, SlotKey::RISERS => 402, SlotKey::BEARINGS => 501, SlotKey::HARDWARE => 602, SlotKey::GRIP => 701 ) );
 		self::assertTrue( $state->ready(), 'a warning does not keep a build from the cart' );
@@ -611,5 +609,40 @@ final class BuildStateTest extends TestCase {
 		self::assertSame( $deck->picked, $both->counted() );
 		self::assertSame( $trucks->slot, $both->slot );
 		self::assertSame( $trucks->options, $both->options );
+	}
+
+	/**
+	 * The codes of an option's findings.
+	 *
+	 * @return list<string>
+	 */
+	private static function codesOf( ?Option $option ): array {
+		return array_map( static fn( $finding ): string => $finding->code->value, $option->findings ?? array() );
+	}
+
+	// D-245, wired into the steps (found by the spec reviewer's B2 browser test): wheels over the trucks' limit are
+	// hidden when no riser in stock clears them with bolts R4 allows, and a riser no bolt reaches through is hidden
+	// from the risers step. The small shop's bolts are 1″, and a ¼″ riser needs 1⅛″.
+	public function test_wheels_no_riser_and_bolts_in_stock_clear_are_hidden_and_risers_no_bolt_reaches_through(): void {
+		$short                       = self::shop();
+		$short[ SlotKey::HARDWARE ] = array( self::priced( Builds::bolts( '1', 601 ), 400 ) );
+		$this->kits->add( self::KIT, self::kit(), $short );
+		$state  = $this->of( array( SlotKey::DECK => 101, SlotKey::TRUCKS => 139 ) );
+		$wheels = self::step( $state, SlotKey::WHEELS )->options;
+		self::assertSame( array( 301, 302 ), self::ids( $wheels->offered ) );
+		self::assertSame( array( 303 ), self::ids( $wheels->hidden ) );
+		self::assertContains( MessageCode::RiserNoBolts->value, self::codesOf( $wheels->hidden[0] ) );
+
+		$state  = $this->of( array( SlotKey::DECK => 101, SlotKey::TRUCKS => 139, SlotKey::WHEELS => 303 ) );
+		$risers = self::step( $state, SlotKey::RISERS )->options;
+		self::assertSame( array( 401 ), self::ids( $risers->offered ), 'a ⅛″ riser takes 1″ bolts' );
+		self::assertSame( array( 402 ), self::ids( $risers->hidden ) );
+		self::assertContains( MessageCode::RiserBoltsShort->value, self::codesOf( $risers->hidden[0] ) );
+
+		// With bolts that reach through a ¼″ riser, as the small shop has, the wheels and the riser are offered.
+		$this->kits->add( self::KIT, self::kit(), self::shop() );
+		$state = $this->of( array( SlotKey::DECK => 101, SlotKey::TRUCKS => 139, SlotKey::WHEELS => 303 ) );
+		self::assertSame( array( 301, 302, 303 ), self::ids( self::step( $state, SlotKey::WHEELS )->options->offered ) );
+		self::assertSame( array( 401, 402 ), self::ids( self::step( $state, SlotKey::RISERS )->options->offered ) );
 	}
 }

@@ -3214,6 +3214,8 @@ The proposal shows them "as not fitting". R3 only warns, and Zach asked for R3 a
 
 Corrected the same day, from Cowork's review: a riser counts as clearing the wheels only when the kit also has an in-stock bolt R4 allows with it. Otherwise the shopper takes a ½″ riser and finds every hardware look hidden (the demo's bolts stop at 1¼″, and R4 asks 1⅜″), a required step with nothing to pick. The risers step leaves such a riser out with R4's reason, and the hidden wheel's reason says which is missing: the riser, the bolts for it, or (in a kit with no Risers slot) risers altogether.
 
+Corrected again on 19 November, before 1.0.0 shipped. The class that does this, `Domain\Fit\RiserClearance`, was built and unit tested on the 18th, but no service called it, so the steps still offered such wheels and risers. The spec reviewer's browser case for the 56 mm wheels (finding B2) found it. `Service\BuildState` now passes the wheels' and the risers' options through it, for the picks and for the estimate, so the step, the state route, the build link and the shelf all hide them. `BuildStateTest` holds it, and the browser test runs the 56 mm wheels with a 1½″ bolt and without.
+
 ### D-246 · Bearings: R5 kept, and wheels sold with bearings skip the step; risers as built, plus Add risers · 2026-11-18
 
 - **R5 stays.** The proposal says bearings need no fit rule, but R5 blocks a 7 mm bore on an 8 mm axle and costs nothing.

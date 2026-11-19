@@ -15,6 +15,8 @@ use CreativeBranding\SkateboardBuilder\Domain\Fit\ChangeList;
 use CreativeBranding\SkateboardBuilder\Domain\Fit\ChangePlanner;
 use CreativeBranding\SkateboardBuilder\Domain\Saved\SavedCheck;
 use CreativeBranding\SkateboardBuilder\Domain\Fit\FitEngine;
+use CreativeBranding\SkateboardBuilder\Domain\Kit\SlotKey;
+use CreativeBranding\SkateboardBuilder\Domain\Fit\RiserClearance;
 use CreativeBranding\SkateboardBuilder\Domain\Fit\Option;
 use CreativeBranding\SkateboardBuilder\Domain\Fit\Problem;
 use CreativeBranding\SkateboardBuilder\Domain\Fit\Recommender;
@@ -80,6 +82,7 @@ final class BuildState {
 			return null;
 		}
 		$engine     = FitEngine::standard();
+		$clearance  = new RiserClearance( $engine );
 		$candidates = array();
 		$parts      = array();
 		foreach ( $kit->slots->all() as $slot ) {
@@ -104,13 +107,13 @@ final class BuildState {
 		$started     = true;
 		$first       = null;
 		foreach ( $kit->slots->all() as $slot ) {
-			$options     = $engine->options( $kit, $slot->key, $counted, $candidates[ $slot->key ] );
+			$options     = self::cleared( $clearance, $kit, $counted, $engine->options( $kit, $slot->key, $counted, $candidates[ $slot->key ] ), $candidates );
 			$part        = $picked->part( $slot->key );
 			$starts      = null === $part && $started && ( $slot->required || ! in_array( $slot->key, $left, true ) );
 			$recommended = null;
 			if ( $starts ) {
 				// Held against the recommendations before it only where there are any: otherwise the options are the same.
-				$against     = $recommends ? $engine->options( $kit, $slot->key, $estimated, $candidates[ $slot->key ] ) : $options;
+				$against     = $recommends ? self::cleared( $clearance, $kit, $estimated, $engine->options( $kit, $slot->key, $estimated, $candidates[ $slot->key ] ), $candidates ) : $options;
 				$recommended = $recommender->among( $kit, $slot->key, $estimated, $against );
 				// A part that fits the board the estimate counts fits the picks alone: it is the card the step offers.
 				$recommended = null === $recommended ? null : ( $options->offer( $recommended->part->id ) ?? $recommended );
@@ -254,5 +257,23 @@ final class BuildState {
 			}
 		}
 		return null;
+	}
+
+	/**
+	 * A step's options with what the kit cannot supply moved to the hidden (D-245): wheels no riser in stock clears
+	 * with bolts R4 allows, and risers no bolt in stock reaches through. Other slots' options are as the engine gave.
+	 *
+	 * @param RiserClearance            $clearance  The clearance.
+	 * @param Kit                       $kit        The kit.
+	 * @param Picks                     $build      The build the options are held against.
+	 * @param SlotOptions               $options    The engine's options.
+	 * @param array<string, list<Part>> $candidates Each slot's parts.
+	 */
+	private static function cleared( RiserClearance $clearance, Kit $kit, Picks $build, SlotOptions $options, array $candidates ): SlotOptions {
+		return match ( $options->slot ) {
+			SlotKey::WHEELS => $clearance->wheels( $kit, $build, $options, $candidates[ SlotKey::RISERS ] ?? array(), $candidates[ SlotKey::HARDWARE ] ?? array() ),
+			SlotKey::RISERS => $clearance->risers( $kit, $build, $options, $candidates[ SlotKey::HARDWARE ] ?? array() ),
+			default         => $options,
+		};
 	}
 }

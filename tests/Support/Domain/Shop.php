@@ -69,7 +69,7 @@ final class Shop {
 			SlotKey::WHEELS   => array( self::priced( Builds::wheel( '52', 301 ), 3000 ), self::priced( Builds::wheel( '54', 302 ), 3200 ), self::priced( Builds::wheel( '58', 303 ), 3400 ) ),
 			SlotKey::RISERS   => array( self::priced( Builds::riser( '0.125', 401 ), 500 ), self::priced( Builds::riser( '0.25', 402 ), 600 ) ),
 			SlotKey::BEARINGS => array( self::priced( Builds::bearings( '8', 501 ), 1500 ) ),
-			SlotKey::HARDWARE => array( self::priced( Builds::bolts( '1', 601 ), 400 ) ),
+			SlotKey::HARDWARE => array( self::priced( Builds::bolts( '1', 601 ), 400 ), self::priced( Builds::bolts( '1.25', 602 ), 450 ) ),
 			SlotKey::GRIP     => array( self::priced( Builds::grip( '9', 701 ), 800 ) ),
 		);
 	}
