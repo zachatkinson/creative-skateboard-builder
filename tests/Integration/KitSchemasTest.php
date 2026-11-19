@@ -73,7 +73,7 @@ final class KitSchemasTest extends IntegrationTestCase {
 	}
 
 	public function test_the_schemas_are_draft_4_objects_that_allow_nothing_extra(): void {
-		foreach ( array( 'kit-slots', 'kit-rules', 'kit-presets', 'kit-assembly', 'kit-picture' ) as $name ) {
+		foreach ( array( 'kit-slots', 'kit-rules', 'kit-presets', 'kit-assembly', 'kit-picture', 'kit-layout' ) as $name ) {
 			$schema = self::schema( $name );
 			$this->assertSame( 'http://json-schema.org/draft-04/schema#', $schema['$schema'], $name );
 			$this->assertSame( 'object', $schema['type'], $name );
@@ -122,6 +122,8 @@ final class KitSchemasTest extends IntegrationTestCase {
 		$this->assertTrue( self::accepts( array( 'schema_version' => 1, 'order' => array(), 'wheelbase' => '' ), 'kit-picture' ), 'as the Build tab writes nothing set' );
 		$this->assertTrue( self::accepts( array( 'schema_version' => 1, 'wheelbase' => '20' ), 'kit-picture' ) );
 		$this->assertTrue( self::accepts( array( 'schema_version' => 1, 'wheelbase' => '10.0001' ), 'kit-picture' ) );
+		$this->assertTrue( self::accepts( array( 'schema_version' => 1 ), 'kit-layout' ), 'a layout with nothing set' );
+		$this->assertTrue( self::accepts( array( 'schema_version' => 1, 'stage_side' => 'right', 'board_size' => 'balanced', 'search' => 'own' ), 'kit-layout' ) );
 
 		$kit = Kit::fromDocuments( $slots, RuleSettings::DEFAULTS, self::presets(), $assembly, $picture );
 		$this->assertSame( array( 'grip', 'deck', 'wheels', 'trucks' ), $kit->picture->order );
@@ -170,6 +172,11 @@ final class KitSchemasTest extends IntegrationTestCase {
 			'assembly with no default'       => array( 'kit-assembly', $without( KitDocuments::assembly(), 'default_on' ) ),
 			'assembly with a list for words' => array( 'kit-assembly', array( 'lead_time' => array() ) + KitDocuments::assembly() ),
 			'a picture of another version'   => array( 'kit-picture', array( 'schema_version' => 2 ) ),
+			'a layout of another version'    => array( 'kit-layout', array( 'schema_version' => 2 ) ),
+			'a stage on top'                 => array( 'kit-layout', array( 'schema_version' => 1, 'stage_side' => 'top' ) ),
+			'a board size that is none'      => array( 'kit-layout', array( 'schema_version' => 1, 'board_size' => 'huge' ) ),
+			'a search that is none'          => array( 'kit-layout', array( 'schema_version' => 1, 'search' => 'google' ) ),
+			'motion before 1.1.0'            => array( 'kit-layout', array( 'schema_version' => 1, 'motion' => 'subtle' ) ),
 			'an order with a bad key'        => array( 'kit-picture', array( 'schema_version' => 1, 'order' => array( 'Grip Tape' ) ) ),
 			'an order naming a slot twice'   => array( 'kit-picture', array( 'schema_version' => 1, 'order' => array( 'deck', 'deck' ) ) ),
 			'an order of 21 slots'           => array( 'kit-picture', array( 'schema_version' => 1, 'order' => array_map( static fn( int $n ): string => 'slot_' . $n, range( 1, 21 ) ) ) ),

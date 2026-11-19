@@ -483,6 +483,26 @@ final class KitEditorTest extends TestCase {
 		}
 	}
 
+	// Spec (configurator): Settings (D-255): the Layout section's three choices, in `_cbuild_layout`.
+	public function test_the_layout_keeps_each_choice_and_refuses_one_it_does_not_have(): void {
+		$sent           = self::sent();
+		$sent['layout'] = array(
+			'stage_side' => 'right',
+			'board_size' => 'balanced',
+			'search'     => 'own',
+			'motion'     => 'subtle',
+		);
+		$draft          = $this->editor->draft( $sent, self::stored() );
+		self::assertSame( array(), $draft->problems );
+		self::assertSame( array( 'schema_version' => 1, 'stage_side' => 'right', 'board_size' => 'balanced', 'search' => 'own' ), $draft->documents[ KitEditor::LAYOUT ], 'motion is milestone 11\'s' );
+
+		$sent['layout'] = array( 'stage_side' => 'top' );
+		$draft          = $this->editor->draft( $sent, self::stored() );
+		self::assertSame( array( 'layout document_out_of_range stage_side' ), self::problems( $draft ) );
+		self::assertArrayNotHasKey( KitEditor::LAYOUT, $draft->documents );
+		self::assertSame( 'top', $draft->refused[ KitEditor::LAYOUT ]['stage_side'] ?? null, 'shown as typed' );
+	}
+
 	public function test_assembly_takes_a_fee_as_the_shop_writes_money_and_each_thing_wrong_is_named(): void {
 		$stored                             = self::stored();
 		$sent                               = self::sent();
@@ -552,6 +572,21 @@ final class KitEditorTest extends TestCase {
 			),
 			$draft->documents[ self::PRESETS ]
 		);
+	}
+
+	// D-252: a preset's rider photo, an attachment's ID, from the tab's Photo field.
+	public function test_a_presets_photo_is_kept_by_its_id_and_an_empty_one_is_none(): void {
+		$sent                = self::sent();
+		$sent['presets'][]   = array( 'image' => ' 81 ' ) + self::preset();
+		$sent['presets'][]   = array(
+			'image' => '',
+			'name'  => 'Park',
+		) + self::preset();
+		$saved               = $this->editor->draft( $sent, self::stored() )->documents[ self::PRESETS ]['presets'] ?? array();
+		self::assertSame( array( 81, null ), array( $saved[0]['image'] ?? null, $saved[1]['image'] ?? null ) );
+		$sent['presets'][0]['image'] = 'a photo';
+		$wrong                       = $this->editor->draft( $sent, self::stored() );
+		self::assertSame( array( 'presets[0].image' ), array_column( $wrong->problems, 'path' ), 'kept as sent, for the schema to refuse' );
 	}
 
 	public function test_a_preset_the_rules_refuse_is_not_saved_and_says_which_part_and_which_rule(): void {

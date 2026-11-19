@@ -90,6 +90,17 @@ defined( 'ABSPATH' ) || exit;
 	<fieldset class="cbuild-step__fieldset" aria-labelledby="cbuild-heading">
 		<p class="cbuild-step__help" data-wp-bind--hidden="!state.view.step.hasHelp" data-wp-text="state.view.step.help"></p>
 		<p class="cbuild-step__empty" data-wp-bind--hidden="!state.view.step.empty" data-wp-text="state.view.step.emptyText"></p>
+		<?php // A search that lists nothing says why and offers the way on (spec: Search, when nothing is found). ?>
+		<div class="cbuild-found" data-wp-bind--hidden="!state.view.step.found.shown">
+			<p class="cbuild-found__text" data-wp-text="state.view.step.found.text"></p>
+			<p class="cbuild-found__ways">
+				<template data-wp-each--width="state.view.step.found.widths" data-wp-each-key="context.width.value">
+					<button class="cbuild-button cbuild-found__width" type="submit" name="cbuild[_width]" data-wp-bind--value="context.width.value" data-wp-text="context.width.label"></button>
+				</template>
+				<a class="cbuild-found__why" href="#cbuild-hidden" data-wp-bind--hidden="!state.view.step.found.why.shown" data-wp-text="state.view.step.found.why.text"></a>
+				<button class="cbuild-button cbuild-found__clear" type="submit" value="" data-wp-bind--name="state.view.step.found.clear.name" data-wp-bind--hidden="!state.view.step.found.clear.shown" data-wp-text="state.view.step.found.clear.text"></button>
+			</p>
+		</div>
 		<div class="cbuild-step__bar" data-wp-bind--hidden="!state.view.step.shelf.sort.shown">
 			<span class="cbuild-step__count" data-wp-text="state.view.step.more.count"></span>
 			<label class="cbuild-sort">
@@ -159,7 +170,7 @@ defined( 'ABSPATH' ) || exit;
 			<input type="radio" value="0" data-wp-bind--id="state.view.step.leave.id" data-wp-bind--name="state.view.step.name" data-wp-bind--checked="state.view.step.leave.checked" data-wp-bind--disabled="!state.view.step.leave.shown">
 			<label data-wp-bind--for="state.view.step.leave.id"><span data-wp-text="state.view.step.leave.label"></span> <span class="cbuild-card__delta" data-wp-text="state.view.step.leave.delta"></span></label>
 		</p>
-		<details class="cbuild-hidden" data-wp-bind--hidden="!state.view.step.hidden.shown">
+		<details class="cbuild-hidden" id="cbuild-hidden" data-wp-bind--hidden="!state.view.step.hidden.shown" data-wp-bind--open="state.view.step.found.why.shown">
 			<summary class="cbuild-hidden__summary" data-wp-text="state.view.step.hidden.summary"></summary>
 			<ul class="cbuild-hidden__groups">
 				<template data-wp-each--group="state.view.step.hidden.groups">

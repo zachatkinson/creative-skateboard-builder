@@ -261,7 +261,7 @@ final class StateAnswerTest extends TestCase {
 	/**
 	 * A kit with words of the owner's own: help on the trucks, two presets, a lead time and a returns notice.
 	 */
-	private function worded(): void {
+	private function worded( ?int $image = null ): void {
 		$slots                     = KitDocuments::slots();
 		$slots['slots'][1]['help'] = 'Sold in pairs.';
 		$this->kits->add(
@@ -276,7 +276,7 @@ final class StateAnswerTest extends TestCase {
 							'name'        => 'Street',
 							'description' => 'For ledges and stairs.',
 							'picks'       => self::STREET,
-						),
+						) + ( null === $image ? array() : array( 'image' => $image ) ),
 						array(
 							'name'  => 'Park',
 							'picks' => self::PARK,
@@ -335,6 +335,54 @@ final class StateAnswerTest extends TestCase {
 	}
 
 	// Spec, Presets: each tile shows its total, and one holding a sold-out part says so.
+	// D-252: "Without one, the tile shows the build's composed picture (milestone 7), not the first part's photo."
+	public function test_a_presets_tile_shows_its_rider_photo_else_the_builds_picture_once_made(): void {
+		$this->worded( 81 );
+		$photo                   = array(
+			'src'    => 'https://example.com/rider.jpg',
+			'width'  => 300,
+			'height' => 400,
+			'srcset' => '',
+			'sizes'  => '',
+		);
+		$this->cards->photos[81] = $photo;
+		$asked                   = array();
+		$state                   = ( new BuildState( $this->kits, $this->settings, $this->logger ) )->of( self::KIT, array(), null, null, null );
+		self::assertNotNull( $state );
+		$answer = ( new StateAnswer( $this->cards, new FakeMoney(), $this->kits, new Delivery( $this->kits, new FakeShippingZones(), new ShippingWords( new FakeMoney() ) ), new PageRenderer() ) )
+			->withPictures(
+				static function ( int $kit, array $picks ) use ( &$asked ): ?string {
+					$asked[] = $picks;
+					return self::PARK === $picks ? 'https://example.com/pictures/park.webp' : null;
+				}
+			);
+		$presets = $answer->of( $state )['presets'];
+		self::assertSame( $photo, $presets[0]['image'], 'the rider photo the preset names' );
+		self::assertSame(
+			array(
+				'src'    => 'https://example.com/pictures/park.webp',
+				'width'  => 480,
+				'height' => 480,
+				'srcset' => '',
+				'sizes'  => '',
+			),
+			$presets[1]['image'],
+			'the build\'s picture'
+		);
+		self::assertSame( array( self::PARK ), $asked, 'asked for the preset with no photo' );
+
+		unset( $this->cards->photos[81] );
+		$asked = array();
+		self::assertSame( InMemoryPartCards::card( 101 )['image'], $answer->of( $state )['presets'][0]['image'], 'a photo gone, the picture not made: the deck\'s photo' );
+		self::assertSame( array( self::STREET, self::PARK ), $asked );
+
+		$asked = array();
+		$on    = ( new BuildState( $this->kits, $this->settings, $this->logger ) )->of( self::KIT, array( SlotKey::DECK => 101 ), null, null, null );
+		self::assertNotNull( $on );
+		$answer->of( $on );
+		self::assertSame( array(), $asked, 'a build begun shows no presets, and asks for none' );
+	}
+
 	public function test_each_preset_says_its_total_and_names_what_keeps_it_from_the_cart(): void {
 		$this->worded();
 		$parts                    = Shop::parts();

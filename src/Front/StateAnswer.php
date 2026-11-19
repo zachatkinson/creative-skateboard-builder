@@ -9,6 +9,7 @@ declare( strict_types=1 );
 
 namespace CreativeBranding\SkateboardBuilder\Front;
 
+use Closure;
 use CreativeBranding\SkateboardBuilder\Domain\Fit\BuildProblem;
 use CreativeBranding\SkateboardBuilder\Domain\Fit\Option;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Part;
@@ -25,7 +26,9 @@ use CreativeBranding\SkateboardBuilder\Port\PartCards;
 use CreativeBranding\SkateboardBuilder\Domain\Look\Shelf;
 use CreativeBranding\SkateboardBuilder\Domain\Look\ShelfLook;
 use CreativeBranding\SkateboardBuilder\Domain\Look\Width;
+use CreativeBranding\SkateboardBuilder\Service\ComposedPictures;
 use CreativeBranding\SkateboardBuilder\Service\LayerArtwork;
+use CreativeBranding\SkateboardBuilder\Service\Reopened;
 use CreativeBranding\SkateboardBuilder\Service\ShelfQuery;
 use CreativeBranding\SkateboardBuilder\Service\ShelfView;
 use CreativeBranding\SkateboardBuilder\Service\StepShelf;
@@ -120,6 +123,28 @@ final class StateAnswer {
 	 * @var StepShelf|null
 	 */
 	private ?StepShelf $shelf = null;
+
+	/**
+	 * A preset's tile picture by kit and picks, since 1.0.0, given by the container through `withPictures()`: its
+	 * address once made, or null. An answer an earlier release's container builds has none, and shows each preset's
+	 * first part's photo (D-208, D-252).
+	 *
+	 * @var (Closure(int, array<string, int>): ?string)|null
+	 */
+	private ?Closure $pictures = null;
+
+	/**
+	 * The same answer, with the presets' tile pictures (D-252).
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param Closure(int, array<string, int>): ?string $pictures A preset's picture's address, or null until made.
+	 */
+	public function withPictures( Closure $pictures ): self {
+		$answer           = clone $this;
+		$answer->pictures = $pictures;
+		return $answer;
+	}
 
 	/**
 	 * The same answer, with the step's shelf (D-264).
@@ -348,6 +373,11 @@ final class StateAnswer {
 		}
 
 		$presets = array();
+		// The tiles show at the start alone, so only there are their pictures looked for (D-252).
+		$begun = ( $state->kit->slots->keys()[0] ?? '' ) !== $state->step;
+		foreach ( $state->steps as $step ) {
+			$begun = $begun || null !== $step->counted();
+		}
 		foreach ( $state->kit->presets as $at => $preset ) {
 			$picks = array();
 			foreach ( $preset->picks as $slot => $part ) {
@@ -359,7 +389,7 @@ final class StateAnswer {
 				'name'        => self::preset( $preset->name, $at, $state->id ),
 				'description' => self::text( $preset->description, 'preset_description', $state->id, (string) $at ),
 				'picks'       => $picks,
-				'image'       => $cards[ array_values( $preset->picks )[0] ?? 0 ]['image'] ?? null,
+				'image'       => $this->tile( $state->id, $preset->picks, $preset->image, $begun ) ?? $cards[ array_values( $preset->picks )[0] ?? 0 ]['image'] ?? null,
 				'total'       => $money( $built->quote->total ?? 0 ),
 				'ready'       => array() === $kept,
 				// What keeps it from the cart, each part named for its tile (spec: Presets).
@@ -477,21 +507,107 @@ final class StateAnswer {
 			);
 		}
 		return array(
-			'looks'    => array_map( $look, $view->listing->looks ),
-			'sold_out' => array_map( $look, $view->listing->soldOut ),
-			'chips'    => $groups,
-			'widths'   => array_map(
+			'looks'           => array_map( $look, $view->listing->looks ),
+			'sold_out'        => array_map( $look, $view->listing->soldOut ),
+			'chips'           => $groups,
+			'widths'          => array_map(
 				static fn( Width $width ): array => $size( $width->width ) + array(
 					'in_stock' => $width->inStock,
 					'selected' => Shelf::named( $width->width ) === $view->width,
 				),
 				$view->listing->widths
 			),
-			'offered'  => $view->listing->offered,
-			'matching' => $view->listing->matching,
-			'more'     => $view->listing->more,
-			'query'    => $view->query,
-			'sort'     => $view->sort,
+			'offered'         => $view->listing->offered,
+			'matching'        => $view->listing->matching,
+			'more'            => $view->listing->more,
+			'query'           => $view->query,
+			'sort'            => $view->sort,
+			'elsewhere'       => array_map( static fn( Width $width ): array => $size( $width->width ), $view->listing->elsewhere ),
+			'hidden_matching' => $view->hidden,
+		);
+	}
+
+	/**
+	 * A saved build as it reopens, for "Your build has changed" (D-254): each pick that changed with its reason and
+	 * the closest part in its place, each part kept whose price changed, then and now, and the totals.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param Reopened $reopened What changed.
+	 * @return array{changes: list<array{slot: string, label: string, was: int, name: string, reason: string, closest: array{id: int, name: string}|null}>, prices: list<array{slot: string, label: string, part: int, name: string, then: string, now: string}>, then: string|null, now: string, picks: array<string, int>, first: string}
+	 */
+	public function reopened( Reopened $reopened ): array {
+		$state = $reopened->state;
+		$ids   = array_column( $reopened->prices, 'part' );
+		foreach ( $reopened->check->changes as $change ) {
+			$ids[] = $change->was;
+			if ( null !== $change->closest ) {
+				$ids[] = $change->closest;
+			}
+		}
+		$cards    = $this->cards->cards( array_values( array_unique( $ids ) ) );
+		$decimals = $this->kits->decimals();
+		$label    = static fn( string $slot ): string => self::label( $state->kit->slots->get( $slot )->label ?? $slot, $slot, $state->id );
+		$changes  = array();
+		foreach ( $reopened->check->changes as $change ) {
+			$changes[] = array(
+				'slot'    => $change->slot,
+				'label'   => $label( $change->slot ),
+				'was'     => $change->was,
+				'name'    => $cards[ $change->was ]['name'] ?? '',
+				'reason'  => $change->reason->value,
+				'closest' => null === $change->closest ? null : array(
+					'id'   => $change->closest,
+					'name' => $cards[ $change->closest ]['name'] ?? '',
+				),
+			);
+		}
+		$prices = array();
+		foreach ( $reopened->prices as $price ) {
+			$prices[] = array(
+				'slot'  => $price['slot'],
+				'label' => $label( $price['slot'] ),
+				'part'  => $price['part'],
+				'name'  => $cards[ $price['part'] ]['name'] ?? '',
+				'then'  => $this->money->text( $price['then'], $decimals ),
+				'now'   => $this->money->text( $price['now'], $decimals ),
+			);
+		}
+		return array(
+			'changes' => $changes,
+			'prices'  => $prices,
+			'then'    => null === $reopened->then ? null : $this->money->text( $reopened->then, $decimals ),
+			'now'     => $this->money->text( $state->quote->total, $decimals ),
+			'picks'   => $reopened->check->picks,
+			'first'   => $reopened->check->changes[0]->slot ?? ( $reopened->prices[0]['slot'] ?? State::REVIEW ),
+		);
+	}
+
+	/**
+	 * A preset's tile photo: the rider photo it names, else the build's composed picture once made; null for the
+	 * first part's photo meanwhile, and on a build begun, which shows no tiles (D-252).
+	 *
+	 * @param int                $kit   The kit product's ID.
+	 * @param array<string, int> $picks The preset's picks.
+	 * @param int|null           $image The rider photo it names, or null.
+	 * @param bool               $begun Whether the build is begun.
+	 * @return array{src: string, width: int, height: int, srcset: string, sizes: string}|null
+	 */
+	private function tile( int $kit, array $picks, ?int $image, bool $begun ): ?array {
+		if ( $begun ) {
+			return null;
+		}
+		$photo = null === $image ? null : $this->cards->photo( $image );
+		if ( null !== $photo ) {
+			return $photo;
+		}
+		$url = null === $this->pictures ? null : ( $this->pictures )( $kit, $picks );
+		return null === $url ? null : array(
+			'src'    => $url,
+			'width'  => ComposedPictures::CANVASES[ ComposedPictures::CART ][0],
+			'height' => ComposedPictures::CANVASES[ ComposedPictures::CART ][1],
+			'srcset' => '',
+			'sizes'  => '',
 		);
 	}
 

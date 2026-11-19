@@ -10,6 +10,7 @@ declare( strict_types=1 );
 namespace CreativeBranding\SkateboardBuilder\Repository;
 
 use CreativeBranding\SkateboardBuilder\Domain\Saved\SavedBuild;
+use CreativeBranding\SkateboardBuilder\Domain\Saved\SavedPrices;
 use CreativeBranding\SkateboardBuilder\Port\SavedBuildStore;
 use CreativeBranding\SkateboardBuilder\Support\Cast;
 use CreativeBranding\SkateboardBuilder\Support\Tables;
@@ -30,6 +31,12 @@ if ( ! defined( 'ABSPATH' ) ) {
  * @since 0.8.0
  */
 final class SavedBuildRepository implements SavedBuildStore {
+
+	/**
+	 * Where the picks document keeps the prices (D-254).
+	 */
+	private const string PRICES = '_prices';
+
 
 	/**
 	 * A customer's builds, the last saved first.
@@ -87,7 +94,7 @@ final class SavedBuildRepository implements SavedBuildStore {
 	 */
 	public function put( SavedBuild $build ): bool {
 		global $wpdb;
-		$picks   = (string) wp_json_encode( $build->picks );
+		$picks   = (string) wp_json_encode( self::document( $build ) );
 		$created = self::utc( $build->created );
 		$updated = self::utc( $build->updated );
 		$changed = $wpdb->query( $wpdb->prepare( 'UPDATE %i SET kit_id = %d, picks = %s, assembly = %d, name = %s, updated_at = %s WHERE user_id = %d AND uuid = %s', Tables::builds(), $build->kit, $picks, $build->assembly ? 1 : 0, $build->name, $updated, $build->user, $build->uuid ) );
@@ -135,9 +142,10 @@ final class SavedBuildRepository implements SavedBuildStore {
 		if ( ! is_object( $row ) ) {
 			return null;
 		}
-		$row   = get_object_vars( $row );
-		$picks = array();
-		foreach ( Cast::map( json_decode( Cast::str( $row['picks'] ?? null ), true ) ) as $slot => $part ) {
+		$row      = get_object_vars( $row );
+		$picks    = array();
+		$document = Cast::map( json_decode( Cast::str( $row['picks'] ?? null ), true ) );
+		foreach ( $document as $slot => $part ) {
 			if ( is_string( $slot ) && is_int( $part ) && $part > 0 ) {
 				$picks[ $slot ] = $part;
 			}
@@ -149,7 +157,21 @@ final class SavedBuildRepository implements SavedBuildStore {
 			return null;
 		}
 		$assembly = Cast::str( $row['assembly'] ?? null );
-		return new SavedBuild( Cast::str( $row['uuid'] ?? null ), Cast::int( $row['user_id'] ?? null ), Cast::int( $row['kit_id'] ?? null ), $picks, '1' === $assembly, Cast::str( $row['name'] ?? null ), $created, $updated );
+		return new SavedBuild( Cast::str( $row['uuid'] ?? null ), Cast::int( $row['user_id'] ?? null ), Cast::int( $row['kit_id'] ?? null ), $picks, '1' === $assembly, Cast::str( $row['name'] ?? null ), $created, $updated, SavedPrices::fromArray( $document[ self::PRICES ] ?? null ) );
+	}
+
+	/**
+	 * The picks document: slot keys to IDs, and from 1.0.0 the prices beside them under `_prices`, which is no slot
+	 * key, so an earlier release reads the picks alone (D-254).
+	 *
+	 * @param SavedBuild $build The build.
+	 * @return array<string, mixed>
+	 */
+	private static function document( SavedBuild $build ): array {
+		if ( null === $build->prices ) {
+			return $build->picks;
+		}
+		return $build->picks + array( self::PRICES => $build->prices->toArray() );
 	}
 
 	/**

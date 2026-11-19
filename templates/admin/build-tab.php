@@ -194,6 +194,11 @@ if ( ! defined( 'ABSPATH' ) ) {
 									<?php if ( '' !== $cbuild_field['note'] ) : ?>
 										<span class="description" id="<?php echo esc_attr( $cbuild_field['id'] . '-note' ); ?>"><?php echo esc_html( $cbuild_field['note'] ); ?></span>
 									<?php endif; ?>
+									<?php if ( array() !== $cbuild_field['choose'] ) : ?>
+										<?php // The media library's modal, where the page has it: without JavaScript the field takes the ID (D-252). ?>
+										<button type="button" class="button cbuild-layer__choose" hidden data-cbuild-layer="<?php echo esc_attr( $cbuild_field['id'] ); ?>" data-cbuild-title="<?php echo esc_attr( $cbuild_field['choose']['title'] ); ?>" data-cbuild-types="image/jpeg,image/png,image/webp,image/avif"><?php echo esc_html( $cbuild_field['choose']['title'] ); ?></button>
+										<span class="cbuild-preset__preview" id="<?php echo esc_attr( $cbuild_field['id'] . '-preview' ); ?>"><img alt="" width="60" height="60" src="<?php echo esc_url( $cbuild_field['choose']['preview'] ); ?>"<?php echo '' === $cbuild_field['choose']['preview'] ? ' hidden' : ''; ?> /></span>
+									<?php endif; ?>
 								</p>
 							<?php endforeach; ?>
 							<?php if ( 1 === $cbuild_at ) : ?>

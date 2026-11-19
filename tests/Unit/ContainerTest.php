@@ -60,6 +60,9 @@ final class ContainerTest extends TestCase {
 				array( \CreativeBranding\SkateboardBuilder\Front\StateAnswer::class, 'artwork', \CreativeBranding\SkateboardBuilder\Service\LayerArtwork::class ),
 				array( \CreativeBranding\SkateboardBuilder\Admin\PartSpecsPanel::class, 'images', \CreativeBranding\SkateboardBuilder\Port\LayerImages::class ),
 				array( \CreativeBranding\SkateboardBuilder\Front\BuilderPage::class, 'saved', \CreativeBranding\SkateboardBuilder\Service\SavedBuilds::class ),
+				array( \CreativeBranding\SkateboardBuilder\Front\StateAnswer::class, 'pictures', \Closure::class ),
+				array( \CreativeBranding\SkateboardBuilder\Front\Builder::class, 'saved', \CreativeBranding\SkateboardBuilder\Service\SavedBuilds::class ),
+				array( \CreativeBranding\SkateboardBuilder\Service\SavedBuilds::class, 'money', \CreativeBranding\SkateboardBuilder\Port\Money::class ),
 			) as [ $id, $property, $type ]
 		) {
 			$service = $container->get( $id );
@@ -127,7 +130,7 @@ final class ContainerTest extends TestCase {
 		$container = new Container();
 		$container->set( MigrationStore::class, new InMemoryMigrationStore() );
 		$hookables = $container->hookablesFor( Scope::Everywhere );
-		self::assertCount( 23, $hookables, 'the install\'s, the index\'s, the cards\', the spec tables\', the import\'s, the picture\'s, the kit\'s, the cart\'s eight, the order\'s two, the privacy tools\', the builder\'s, the saved builds\' and the three abilities\'' );
+		self::assertCount( 24, $hookables, 'the install\'s, the index\'s, the cards\', the spec tables\', the import\'s, the picture\'s, the kit\'s, the cart\'s eight, the order\'s two, the privacy tools\', the builder\'s, the deck page\'s start button, the saved builds\' and the three abilities\'' );
 		self::assertContainsOnlyInstancesOf( Hookable::class, $hookables );
 	}
 
@@ -144,7 +147,7 @@ final class ContainerTest extends TestCase {
 	// Claude in Cowork's review of milestone 3, minor 9: mutation testing left the plugin's own scopes unpinned.
 	public function test_each_scope_builds_its_own_hookables_and_no_others(): void {
 		$scopes = array(
-			'Everywhere' => array( 'Hooks\\InstallHooks', 'Hooks\\IndexHooks', 'Hooks\\CardHooks', 'Hooks\\SpecTableHooks', 'Hooks\\ImportHooks', 'Hooks\\PictureHooks', 'Hooks\\KitHooks', 'Cart\\CartHooks', 'Cart\\LineHooks', 'Cart\\PriceHooks', 'Cart\\ShowHooks', 'Cart\\ShipHooks', 'Cart\\ExpressHooks', 'Cart\\AgainHooks', 'Cart\\ThumbnailHooks', 'Order\\OrderHooks', 'Order\\EmailHooks', 'Privacy\\PrivacyHooks', 'Front\\PageHooks', 'Front\\SavedBuildHooks', 'Abilities\\CatalogueCheckAbility', 'Abilities\\CheckBuildAbility', 'Abilities\\PriceBuildAbility' ),
+			'Everywhere' => array( 'Hooks\\InstallHooks', 'Hooks\\IndexHooks', 'Hooks\\CardHooks', 'Hooks\\SpecTableHooks', 'Hooks\\ImportHooks', 'Hooks\\PictureHooks', 'Hooks\\KitHooks', 'Cart\\CartHooks', 'Cart\\LineHooks', 'Cart\\PriceHooks', 'Cart\\ShowHooks', 'Cart\\ShipHooks', 'Cart\\ExpressHooks', 'Cart\\AgainHooks', 'Cart\\ThumbnailHooks', 'Order\\OrderHooks', 'Order\\EmailHooks', 'Privacy\\PrivacyHooks', 'Front\\PageHooks', 'Front\\StartButton', 'Front\\SavedBuildHooks', 'Abilities\\CatalogueCheckAbility', 'Abilities\\CheckBuildAbility', 'Abilities\\PriceBuildAbility' ),
 			'Admin'      => array( 'Order\\WorkshopHooks', 'Admin\\SettingsHooks', 'Admin\\PartSpecsHooks', 'Admin\\BuildTabHooks', 'Admin\\BuilderHooks', 'Health\\SiteHealth' ),
 			'Cli'        => array( 'Hooks\\CliHooks', 'Health\\SiteHealth' ),
 			'Cron'       => array( 'Health\\SiteHealth' ),

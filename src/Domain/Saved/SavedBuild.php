@@ -29,6 +29,7 @@ final readonly class SavedBuild {
 	 * @param string             $name     The name the customer gave it, or empty.
 	 * @param DateTimeImmutable  $created  When it was first saved.
 	 * @param DateTimeImmutable  $updated  When it was last saved or renamed.
+	 * @param SavedPrices|null   $prices   From 1.0.0, what it cost when saved; null for a build saved before.
 	 */
 	public function __construct(
 		public string $uuid,
@@ -38,7 +39,8 @@ final readonly class SavedBuild {
 		public bool $assembly,
 		public string $name,
 		public DateTimeImmutable $created,
-		public DateTimeImmutable $updated
+		public DateTimeImmutable $updated,
+		public ?SavedPrices $prices = null
 	) {}
 
 	/**
@@ -49,8 +51,9 @@ final readonly class SavedBuild {
 	 * @param bool               $assembly Whether the shop assembles it.
 	 * @param string             $name     The name.
 	 * @param DateTimeImmutable  $at       When.
+	 * @param SavedPrices|null   $prices   What it costs as saved now, or null to keep the prices it has.
 	 */
-	public function with( int $kit, array $picks, bool $assembly, string $name, DateTimeImmutable $at ): self {
-		return new self( $this->uuid, $this->user, $kit, $picks, $assembly, $name, $this->created, $at );
+	public function with( int $kit, array $picks, bool $assembly, string $name, DateTimeImmutable $at, ?SavedPrices $prices = null ): self {
+		return new self( $this->uuid, $this->user, $kit, $picks, $assembly, $name, $this->created, $at, $prices ?? $this->prices );
 	}
 }

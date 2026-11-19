@@ -9,10 +9,13 @@ declare( strict_types=1 );
 
 namespace CreativeBranding\SkateboardBuilder\Tests\Integration;
 
+use CreativeBranding\SkateboardBuilder\Front\Builder;
 use CreativeBranding\SkateboardBuilder\Front\BuilderPage;
 use CreativeBranding\SkateboardBuilder\Front\BuildLink;
 use CreativeBranding\SkateboardBuilder\Front\MyBuildsView;
 use CreativeBranding\SkateboardBuilder\Front\SavedBuildHooks;
+use CreativeBranding\SkateboardBuilder\Port\Kits;
+use CreativeBranding\SkateboardBuilder\Port\Logger;
 use CreativeBranding\SkateboardBuilder\Service\SavedBuilds;
 use CreativeBranding\SkateboardBuilder\Support\Options;
 use CreativeBranding\SkateboardBuilder\Support\Tables;
@@ -112,6 +115,37 @@ final class SavedBuildsPageTest extends CartTestCase {
 	 * review's Save build fields carried the kit as `add-to-cart`, which WooCommerce's form handler adds to the cart on
 	 * any request (includes/class-wc-form-handler.php, add_to_cart_action on `wp_loaded`).
 	 */
+	/**
+	 * A renderer of its own, as a request has: the container's draws once.
+	 */
+	private function builder(): BuilderPage {
+		return new BuilderPage( $this->service( Builder::class ), $this->service( Kits::class ), $this->service( Logger::class ) );
+	}
+
+	// Spec (configurator): A saved build that has changed (D-254): "Any of these opens a 'Your build has changed'
+	// panel before the review, with focus on its heading", and "Without JavaScript, the panel is a step of its own".
+	public function test_a_saved_build_whose_price_changed_opens_on_your_build_has_changed_with_focus_on_it(): void {
+		wp_set_current_user( $this->ana );
+		$saved = $this->service( SavedBuilds::class )->save( $this->ana, $this->kit, $this->picks(), true, '' );
+		$uuid  = $saved['uuid'];
+		self::assertNotSame( '', $uuid );
+		$link = BuildLink::read( array_map( 'strval', $this->picks() ) + array( 'step' => 'review', '_saved' => $uuid ) );
+		$base = (string) get_permalink( $this->kit );
+		self::assertStringNotContainsString( 'Your build has changed', $this->builder()->render( $this->kit, $link, $base ), 'nothing has changed yet' );
+
+		$deck = wc_get_product( $this->picks()['deck'] );
+		self::assertInstanceOf( \WC_Product::class, $deck );
+		$deck->set_regular_price( '99' );
+		$deck->save();
+		$html = $this->builder()->render( $this->kit, $link, $base );
+		self::assertMatchesRegularExpression( '/<h3 autofocus class="cbuild-changes__heading"[^>]*>Your build has changed<\/h3>/', $html );
+		self::assertStringContainsString( ' when you saved, ', $html, 'the new price, then and now' );
+		self::assertStringContainsString( '>Choose myself</button>', $html );
+
+		wp_set_current_user( $this->ben );
+		self::assertStringNotContainsString( 'Your build has changed', $this->builder()->render( $this->kit, $link, $base ), 'checked only for its own customer' );
+	}
+
 	public function test_save_build_sends_the_review_as_the_page_draws_it_and_leaves_the_cart_alone(): void {
 		wp_set_current_user( $this->ana );
 		$_GET[ BuildLink::PARAM ] = array_map( 'strval', $this->picks() ) + array( 'step' => 'review' );

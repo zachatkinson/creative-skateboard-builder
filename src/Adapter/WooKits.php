@@ -495,8 +495,10 @@ final class WooKits implements Kits {
 		}
 		$documents = $product->documents();
 		foreach ( Options::kitDocumentNames() as $name => $key ) {
-			// A kit saved before 0.7.0 has no picture document, and is drawn as it always was (D-192).
-			if ( ( Options::META_KIT_PICTURE !== $key || null !== $documents[ $key ] ) && null !== $this->schemas->refusal( $name, $documents[ $key ] ) ) {
+			// A kit saved before 0.7.0 has no picture document, and is drawn as it always was (D-192); one saved before
+			// 1.0.0 has no layout, and is laid out with the defaults (D-255).
+			$optional = in_array( $key, array( Options::META_KIT_PICTURE, Options::META_KIT_LAYOUT ), true );
+			if ( ( ! $optional || null !== $documents[ $key ] ) && null !== $this->schemas->refusal( $name, $documents[ $key ] ) ) {
 				return null;
 			}
 		}
@@ -506,7 +508,8 @@ final class WooKits implements Kits {
 				$documents[ Options::META_KIT_RULES ],
 				$documents[ Options::META_KIT_PRESETS ],
 				$documents[ Options::META_KIT_ASSEMBLY ],
-				$documents[ Options::META_KIT_PICTURE ]
+				$documents[ Options::META_KIT_PICTURE ],
+				$documents[ Options::META_KIT_LAYOUT ]
 			);
 		} catch ( InvalidDocument ) {
 			return null;

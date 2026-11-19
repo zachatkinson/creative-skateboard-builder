@@ -1012,7 +1012,7 @@
 		"shelf": {
 			"description": "A step's shelf: a page of the looks in stock, the sold-out fold, the chips, the deck's width question and the counts.",
 			"type": "object",
-			"required": [ "looks", "sold_out", "chips", "widths", "offered", "matching", "more", "query", "sort" ],
+			"required": [ "looks", "sold_out", "chips", "widths", "offered", "matching", "more", "query", "sort", "elsewhere", "hidden_matching" ],
 			"properties": {
 				"looks": {
 					"description": "The page of looks in stock, in the order asked: 30 at most from `from`.",
@@ -1067,6 +1067,23 @@
 					"description": "The order the step was listed in.",
 					"type": "string",
 					"enum": [ "recommended", "price-asc", "price-desc", "newest" ]
+				},
+				"elsewhere": {
+					"description": "From 1.0.0, on the deck step, where a search finds nothing in stock in the width asked: the widths its matches are in stock in, narrowest first, each with `value` and `text`; otherwise empty.",
+					"type": "array",
+					"items": {
+						"type": "object",
+						"required": [ "value", "text" ],
+						"properties": {
+							"value": { "description": "The width as the `width` argument names it: `8.5in`.", "type": "string" },
+							"text": { "description": "The width as a person reads it.", "type": "string" }
+						}
+					}
+				},
+				"hidden_matching": {
+					"description": "From 1.0.0, where a search finds nothing to list here or in another width: how many of the step's parts that don't fit the build match it; otherwise 0.",
+					"type": "integer",
+					"minimum": 0
 				}
 			}
 		},

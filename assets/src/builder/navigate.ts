@@ -49,8 +49,20 @@ export interface Deps {
 	 */
 	show: ( view: View, history: Move[ 'history' ] ) => Move[ 'history' ];
 	pending: ( on: boolean ) => void;
+	/** Says the route's rate limit is reached, in its own words, which say when to try again. */
+	limited: ( message: string ) => void;
 	push: ( url: string ) => void;
 	replace: ( url: string ) => void;
+}
+
+/**
+ * The route's refusal past its rate limit, in its own words.
+ */
+class Limited {
+	/**
+	 * @param message What the route says, which names when to try again.
+	 */
+	constructor( readonly message: string ) {}
 }
 
 /** How long a pick waits for the next before the route is asked. */
@@ -143,6 +155,11 @@ export class Navigator {
 				move.fallback();
 				return;
 			}
+			// Past the rate limit, the step keeps what it shows and says when to try again (spec: Search).
+			if ( view instanceof Limited ) {
+				this.deps.limited( view.message );
+				return;
+			}
 			const history = this.deps.show( view, move.history );
 			if ( 'push' === history ) {
 				this.deps.push( view.url );
@@ -170,7 +187,7 @@ export class Navigator {
 	private async ask(
 		move: Move,
 		signal: AbortSignal
-	): Promise< View | null > {
+	): Promise< View | Limited | null > {
 		let body: unknown;
 		try {
 			const response = await this.deps.fetch(
@@ -181,6 +198,16 @@ export class Navigator {
 					credentials: 'same-origin',
 				}
 			);
+			if ( 429 === response.status ) {
+				const refused: unknown = await response.json();
+				const message =
+					refused !== null && 'object' === typeof refused
+						? ( refused as { message?: unknown } ).message
+						: undefined;
+				return 'string' === typeof message && '' !== message
+					? new Limited( message )
+					: null;
+			}
 			if ( ! response.ok ) {
 				return null;
 			}

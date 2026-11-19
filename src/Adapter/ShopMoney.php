@@ -36,6 +36,16 @@ final class ShopMoney implements Money {
 	}
 
 	/**
+	 * The currency prices are shown in now: WooCommerce's, after its `woocommerce_currency` filter, which a currency
+	 * switcher answers.
+	 *
+	 * @since 1.0.0
+	 */
+	public function currency(): string {
+		return get_woocommerce_currency();
+	}
+
+	/**
 	 * A price WooCommerce wrote, as plain text.
 	 *
 	 * @since 0.4.0

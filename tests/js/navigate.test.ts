@@ -31,6 +31,7 @@ interface Harness {
 	shown: View[];
 	pending: boolean[];
 	fallbacks: string[];
+	limited: string[];
 	pushed: string[];
 	replaced: string[];
 	asked: URL[];
@@ -54,6 +55,7 @@ function harness( endpoint = ENDPOINT ): Harness {
 		shown: [],
 		pending: [],
 		fallbacks: [],
+		limited: [],
 		pushed: [],
 		replaced: [],
 		asked: [],
@@ -89,6 +91,7 @@ function harness( endpoint = ENDPOINT ): Harness {
 				return h.turn ? h.turn( v ) : history;
 			},
 			pending: ( on ) => h.pending.push( on ),
+			limited: ( message ) => h.limited.push( message ),
 			push: ( url ) => h.pushed.push( url ),
 			replace: ( url ) => h.replaced.push( url ),
 		},
@@ -338,6 +341,33 @@ describe( 'Navigator', () => {
 		] );
 	} );
 
+	// Spec (configurator): Search, "After a 429 the step keeps its last results and says when to try again."
+	it( 'keeps the view and says when to try again when the route says 429', async () => {
+		const h = harness();
+		new Navigator( h.deps ).go( {
+			fields: STEP,
+			history: 'replace',
+			fallback: () => h.fallbacks.push( 'form' ),
+		} );
+		h.reply(
+			answer(
+				{
+					code: 'cbuild_rate_limited',
+					message: 'Too many requests. Try again in 20 seconds.',
+				},
+				429
+			)
+		);
+		await settle();
+		expect( h.limited ).toEqual( [
+			'Too many requests. Try again in 20 seconds.',
+		] );
+		expect( h.fallbacks ).toEqual( [] );
+		expect( h.shown ).toEqual( [] );
+		expect( h.replaced ).toEqual( [] );
+		expect( h.pending ).toEqual( [ false ] );
+	} );
+
 	it( 'cancels a waiting pick when the shopper moves on', async () => {
 		const h = harness();
 		const nav = new Navigator( h.deps );
@@ -357,7 +387,7 @@ describe( 'Navigator', () => {
 	it.each( [
 		[ 'the network fails', () => new TypeError( 'Failed to fetch' ) ],
 		[
-			'the route says 429',
+			'the route says 429 with nothing to say',
 			() => answer( { code: 'cbuild_rate_limited' }, 429 ),
 		],
 		[

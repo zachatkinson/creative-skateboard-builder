@@ -59,6 +59,8 @@ interface State {
 	canTurn: boolean;
 	live: boolean;
 	turning: boolean;
+	/** The route's rate limit, in its words, while the step waits to be asked again; empty otherwise. */
+	limited: string;
 }
 
 let navigator: Navigator | undefined;
@@ -400,6 +402,7 @@ function nav( state: State ): Navigator {
 				const change = () => {
 					state.view = shown;
 					state.added = false;
+					state.limited = '';
 					say( state, shown, turned, config, before );
 				};
 				// Only a new step crosses over (spec: Motion): a transition takes the screen's taps while it
@@ -416,6 +419,10 @@ function nav( state: State ): Navigator {
 			},
 			pending: ( on ) => {
 				state.pending = on;
+			},
+			limited: ( message ) => {
+				state.limited = message;
+				state.status = message;
 			},
 			push: ( url ) => window.history.pushState( null, '', url ),
 			replace: ( url ) => window.history.replaceState( null, '', url ),
@@ -493,6 +500,7 @@ const { state } = store(
 			canTurn: false,
 			live: false,
 			turning: false,
+			limited: '',
 		} as State,
 		callbacks: {
 			init(): void {

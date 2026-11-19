@@ -29,4 +29,11 @@ interface Money {
 	 * @param int $decimals How many decimals the minor unit is.
 	 */
 	public function text( int $amount, int $decimals ): string;
+
+	/**
+	 * The currency prices are shown in now, as its ISO 4217 code: the shop's, or the one a currency switcher chose.
+	 *
+	 * @since 1.0.0
+	 */
+	public function currency(): string;
 }

@@ -82,6 +82,9 @@ final readonly class BuildLink {
 	 * @param bool                    $asked    Whether a link asked for the step by name, as Add risers does, not a
 	 *                                          step's form, whose Next may name a step the form's own pick undid
 	 *                                          (from 1.0.0). Only a request read says so; a link made here does not.
+	 * @param string                  $saved    The UUID of the saved build My builds opened, so it is checked against
+	 *                                          the shop once, or empty (from 1.0.0, D-254). No link made from this one
+	 *                                          carries it.
 	 */
 	public function __construct(
 		public array $picks = array(),
@@ -95,7 +98,8 @@ final readonly class BuildLink {
 		public string $replace = '',
 		public array $none = array(),
 		public ShelfQuery $shelf = new ShelfQuery(),
-		public bool $asked = false
+		public bool $asked = false,
+		public string $saved = ''
 	) {}
 
 	/**
@@ -139,7 +143,8 @@ final readonly class BuildLink {
 				$own ? self::text( $sent['_q'] ?? null ) : '',
 				$own && in_array( $sent['_sort'] ?? null, ShelfAsk::SORTS, true ) ? Cast::str( $sent['_sort'] ) : ShelfAsk::SORTS[0]
 			),
-			null !== $step && null === $on
+			null !== $step && null === $on,
+			self::matching( $sent['_saved'] ?? null, '/\A[a-f0-9-]{36}\z/' )
 		);
 	}
 
@@ -200,6 +205,9 @@ final readonly class BuildLink {
 		}
 		if ( '' !== $this->replace ) {
 			$query['_replace'] = $this->replace;
+		}
+		if ( '' !== $this->saved ) {
+			$query['_saved'] = $this->saved;
 		}
 		if ( '' !== $this->shelf->width ) {
 			$query['_width'] = $this->shelf->width;

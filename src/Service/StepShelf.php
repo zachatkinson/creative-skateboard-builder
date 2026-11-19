@@ -12,7 +12,9 @@ namespace CreativeBranding\SkateboardBuilder\Service;
 use CreativeBranding\SkateboardBuilder\Domain\Fit\FitEngine;
 use CreativeBranding\SkateboardBuilder\Domain\Fit\SizePicker;
 use CreativeBranding\SkateboardBuilder\Domain\Fit\SlotSize;
+use CreativeBranding\SkateboardBuilder\Domain\Kit\KitLayout;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Picks;
+use CreativeBranding\SkateboardBuilder\Domain\Look\Query;
 use CreativeBranding\SkateboardBuilder\Domain\Look\Shelf;
 use CreativeBranding\SkateboardBuilder\Domain\Look\ShelfAsk;
 use CreativeBranding\SkateboardBuilder\Domain\Look\Shelved;
@@ -149,7 +151,8 @@ final class StepShelf {
 		$text      = mb_substr( trim( $query->query ), 0, ShelfQuery::QUERY );
 		$ranked    = null;
 		$corrected = null;
-		if ( '' !== $text && $query->ranked ) {
+		// A kit whose Search is its own never asks a search engine (D-255); one that allows it asks where one answers.
+		if ( '' !== $text && $query->ranked && KitLayout::SEARCHES[0] === $state->kit->layout->search ) {
 			$ranking = $this->ranking->ranked( $text, $ids );
 			if ( null !== $ranking ) {
 				$ranked    = $ranking['ids'];
@@ -170,13 +173,26 @@ final class StepShelf {
 		);
 		$width   = null === $ask->width ? '' : Shelf::named( $ask->width );
 		$listing = $this->shelf->of( $state->kit, $slot, $build, $offered, $current->picked, $current->recommended, $shelved, $ask );
-		$named   = array();
+		// A search that finds nothing to list, here or in another width: how many of the parts that don't fit match it,
+		// for "2 trucks match, but they don't fit" (spec: Search, when nothing is found).
+		$hidden = 0;
+		if ( '' !== $ask->query && array() === $listing->looks && array() === $listing->soldOut && array() === $listing->elsewhere ) {
+			$parts = array_map( static fn( $option ) => $option->part, $current->options->hidden );
+			$known = $this->looks->looks( array_map( static fn( $part ): int => $part->id, $parts ) );
+			foreach ( $parts as $part ) {
+				$fact = $known[ $part->id ] ?? null;
+				if ( null !== $fact && Query::matches( $ask->query, array( $this->folding->fold( $brands[ $part->brand ] ?? $part->brand ), $this->folding->fold( $fact->name ) ) ) ) {
+					++$hidden;
+				}
+			}
+		}
+		$named = array();
 		foreach ( $listing->groups as $group ) {
 			if ( isset( $labels[ $group->name ] ) && Shelf::BRAND !== $group->name ) {
 				$named[] = $group->name;
 			}
 		}
-		return new ShelfView( $listing, $labels, $sizes, $text, in_array( $query->sort, ShelfAsk::SORTS, true ) ? $query->sort : ShelfAsk::SORTS[0], $width, $this->looks->attributes( $named ), $names );
+		return new ShelfView( $listing, $labels, $sizes, $text, in_array( $query->sort, ShelfAsk::SORTS, true ) ? $query->sort : ShelfAsk::SORTS[0], $width, $this->looks->attributes( $named ), $names, $hidden );
 	}
 
 	/**

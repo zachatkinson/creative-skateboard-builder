@@ -748,6 +748,8 @@ final class StateRouteTest extends IntegrationTestCase {
 		self::assertSame( array( 'code', 'message', 'data' ), array_keys( $body ), 'The shape of any REST error.' );
 		self::assertSame( 'cbuild_rate_limited', $body['code'] );
 		self::assertSame( 429, $body['data']['status'] );
+		// Spec (configurator): Search, "After a 429 the step keeps its last results and says when to try again."
+		self::assertSame( sprintf( 1 === (int) $wait ? 'Too many requests. Try again in %s second.' : 'Too many requests. Try again in %s seconds.', $wait ), $body['message'] );
 
 		$_SERVER['REMOTE_ADDR'] = '203.0.113.8';
 		self::assertSame( 200, $this->ask()->get_status() );

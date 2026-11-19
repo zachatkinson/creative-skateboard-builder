@@ -10,6 +10,7 @@ declare( strict_types=1 );
 namespace CreativeBranding\SkateboardBuilder;
 
 use CreativeBranding\SkateboardBuilder\Support\PluginException;
+use Closure;
 use ReflectionClass;
 use ReflectionNamedType;
 
@@ -305,6 +306,13 @@ final class Container {
 					}
 				);
 			},
+			Front\StartButton::class                      => static function ( Container $c ): object {
+				return new Front\StartButton(
+					static function () use ( $c ): Port\Kits {
+						return $c->get( Port\Kits::class );
+					}
+				);
+			},
 			Order\EmailHooks::class                       => static function ( Container $c ): object {
 				return new Order\EmailHooks(
 					static function () use ( $c ): Service\ComposedPictures {
@@ -426,6 +434,16 @@ final class Container {
 	}
 
 	/**
+	 * A preset's tile picture, from the pictures service, built when a tile asks (D-252).
+	 *
+	 * @param Container $c The container.
+	 * @return Closure(int, array<string, int>): ?string
+	 */
+	private static function tiles( Container $c ): Closure {
+		return static fn( int $kit, array $picks ): ?string => $c->get( Service\ComposedPictures::class )->tile( $kit, $picks );
+	}
+
+	/**
 	 * What this release gives a service that an earlier release's container also builds, by the service's class.
 	 *
 	 * WordPress replaces a plugin's files in the middle of a request, and the request goes on: the earlier release's
@@ -440,7 +458,7 @@ final class Container {
 		return array(
 			Service\IndexJobs::class      => static fn( object $jobs, Container $c ): object => $jobs instanceof Service\IndexJobs ? $jobs->withRenditions( $c->get( Service\PartRenditions::class ) ) : $jobs,
 			Service\CatalogueCheck::class => static fn( object $check, Container $c ): object => $check instanceof Service\CatalogueCheck ? $check->withLayers( $c->get( Port\LayerImages::class ) ) : $check,
-			Front\StateAnswer::class      => static fn( object $answer, Container $c ): object => $answer instanceof Front\StateAnswer ? $answer->withArtwork( $c->get( Service\LayerArtwork::class ) )->withShelf( $c->get( Service\StepShelf::class ) ) : $answer,
+			Front\StateAnswer::class      => static fn( object $answer, Container $c ): object => $answer instanceof Front\StateAnswer ? $answer->withArtwork( $c->get( Service\LayerArtwork::class ) )->withShelf( $c->get( Service\StepShelf::class ) )->withPictures( self::tiles( $c ) ) : $answer,
 			Admin\PartSpecsPanel::class   => static fn( object $panel, Container $c ): object => $panel instanceof Admin\PartSpecsPanel ? $panel->withImages( $c->get( Port\LayerImages::class ) ) : $panel,
 			Front\BuilderPage::class      => static fn( object $page, Container $c ): object => $page instanceof Front\BuilderPage ? $page->withSaved( $c->get( Service\SavedBuilds::class ) ) : $page,
 		);
@@ -496,6 +514,8 @@ final class Container {
 			Rest\StateRoute::class                 => array( Scope::Rest ),
 			// The block is registered on every request, the editor's and the REST renderer's among them.
 			Front\PageHooks::class                 => array( Scope::Everywhere ),
+			// A deck's own product page.
+			Front\StartButton::class               => array( Scope::Everywhere ),
 			// Robots and the canonical are printed in the head of a page the site shows a visitor.
 			Front\SeoHooks::class                  => array( Scope::Storefront ),
 			Front\ShareHooks::class                => array( Scope::Storefront ),

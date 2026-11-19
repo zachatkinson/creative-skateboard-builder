@@ -62,6 +62,13 @@ final class KitProductTest extends IntegrationTestCase {
 		);
 		$kit->setDocument( Options::META_KIT_SLOTS, $slots );
 		$kit->setDocument( Options::META_KIT_PICTURE, $picture );
+		$layout = array(
+			'schema_version' => 1,
+			'stage_side'     => 'right',
+			'board_size'     => 'balanced',
+			'search'         => 'own',
+		);
+		$kit->setDocument( Options::META_KIT_LAYOUT, $layout );
 		$kit->save();
 
 		$read = self::fresh( $kit->get_id() );
@@ -73,6 +80,7 @@ final class KitProductTest extends IntegrationTestCase {
 				Options::META_KIT_PRESETS  => KitDocuments::presets(),
 				Options::META_KIT_ASSEMBLY => KitDocuments::assembly(),
 				Options::META_KIT_PICTURE  => $picture,
+				Options::META_KIT_LAYOUT   => $layout,
 			),
 			$read->documents(),
 			'every character comes back, a backslash and a quote among them'
@@ -106,6 +114,7 @@ final class KitProductTest extends IntegrationTestCase {
 				Options::META_KIT_PRESETS  => null,
 				Options::META_KIT_ASSEMBLY => null,
 				Options::META_KIT_PICTURE  => null,
+				Options::META_KIT_LAYOUT   => null,
 			),
 			$read->documents()
 		);

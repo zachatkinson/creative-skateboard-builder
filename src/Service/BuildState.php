@@ -13,6 +13,7 @@ use CreativeBranding\SkateboardBuilder\Domain\Fit\BuildProblem;
 use CreativeBranding\SkateboardBuilder\Domain\Fit\BuildValidator;
 use CreativeBranding\SkateboardBuilder\Domain\Fit\ChangeList;
 use CreativeBranding\SkateboardBuilder\Domain\Fit\ChangePlanner;
+use CreativeBranding\SkateboardBuilder\Domain\Saved\SavedCheck;
 use CreativeBranding\SkateboardBuilder\Domain\Fit\FitEngine;
 use CreativeBranding\SkateboardBuilder\Domain\Fit\Option;
 use CreativeBranding\SkateboardBuilder\Domain\Fit\Problem;
@@ -193,6 +194,27 @@ final class BuildState {
 			$found = $found->with( $slot, $part );
 		}
 		return $found;
+	}
+
+	/**
+	 * A saved build's picks against the shop as it is now: what is gone, sold out or no longer fits, each with the
+	 * closest part that fits in its place (D-254). Null where the kit does not read.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param int                $id    The kit product's ID.
+	 * @param array<string, int> $picks The picks saved.
+	 */
+	public function check( int $id, array $picks ): ?SavedCheck {
+		$kit = $this->kits->kit( $id );
+		if ( null === $kit ) {
+			return null;
+		}
+		$candidates = array();
+		foreach ( $kit->slots->all() as $slot ) {
+			$candidates[ $slot->key ] = $this->kits->offered( $id, $slot );
+		}
+		return SavedCheck::of( $kit, FitEngine::standard(), $picks, $candidates, array() );
 	}
 
 	/**

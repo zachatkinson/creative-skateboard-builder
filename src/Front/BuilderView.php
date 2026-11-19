@@ -193,6 +193,11 @@ final class BuilderView {
 			'isStep'    => ! $panel && ! $review,
 			'isChanges' => $panel,
 			'isReview'  => ! $panel && $review,
+			// The kit's layout on a desktop (D-255): the stage on the left or the right, the board 60 % or 50 % wide.
+			'layout'    => array(
+				'stageRight' => 'right' === $state->kit->layout->stageSide,
+				'balanced'   => 'balanced' === $state->kit->layout->boardSize,
+			),
 			'status'    => $status,
 			'errors'    => array(
 				'shown'   => array() !== $errors,
@@ -683,6 +688,7 @@ final class BuilderView {
 			'shelf'     => self::shelf( array(), '', array() ),
 			'empty'     => false,
 			'emptyText' => '',
+			'found'     => self::found( array(), '', array() ),
 			'leave'     => array(
 				'shown'   => false,
 				'id'      => '',
@@ -1030,6 +1036,97 @@ final class BuilderView {
 	}
 
 	/**
+	 * What a search that lists nothing says, and the way on (spec: Search, "When nothing is found"): the widths its
+	 * matches come in, with a button to each; or how many parts that don't fit match, with a link to why; or that
+	 * nothing matches, with Clear search. Shown only where a search lists nothing.
+	 *
+	 * @param array<string, mixed> $shelf   The answer's shelf, or nothing where there is none.
+	 * @param string               $slot    The step's slot.
+	 * @param list<mixed>          $options The cards listed.
+	 * @return array<string, mixed>
+	 */
+	private static function found( array $shelf, string $slot, array $options ): array {
+		$query     = Cast::str( $shelf['query'] ?? null );
+		$shown     = '' !== $query && array() === $options && array() === Cast::items( $shelf['sold_out'] ?? null );
+		$elsewhere = array();
+		foreach ( $shown ? Cast::items( $shelf['elsewhere'] ?? null ) : array() as $width ) {
+			$width       = Cast::map( $width );
+			$elsewhere[] = array(
+				'value' => Cast::str( $width['value'] ?? null ),
+				'text'  => Cast::str( $width['text'] ?? null ),
+				/* translators: %s: a deck width, such as 8.5″. */
+				'label' => sprintf( __( 'Show %s decks', 'creative-skateboard-builder' ), Cast::str( $width['text'] ?? null ) ),
+			);
+		}
+		$asked = '';
+		foreach ( Cast::items( $shelf['widths'] ?? null ) as $width ) {
+			$width = Cast::map( $width );
+			if ( true === ( $width['selected'] ?? null ) ) {
+				$asked = Cast::str( $width['text'] ?? null );
+			}
+		}
+		$hidden = $shown && array() === $elsewhere ? Cast::int( $shelf['hidden_matching'] ?? null ) : 0;
+		if ( ! $shown ) {
+			$text = '';
+		} elseif ( array() !== $elsewhere ) {
+			/* translators: 1: a deck width, such as 8.25″. 2: what the shopper searched for. */
+			$text = sprintf( __( 'No %1$s decks match %2$s.', 'creative-skateboard-builder' ), $asked, $query ) . ' '
+				/* translators: 1: what the shopper searched for. 2: deck widths, such as 8″ or 8.5″. */
+				. sprintf( __( '%1$s comes in %2$s.', 'creative-skateboard-builder' ), $query, Words::either( array_column( $elsewhere, 'text' ) ) );
+		} elseif ( $hidden > 0 ) {
+			/* translators: %s: how many parts match the search. */
+			$text = sprintf( _n( '%s part matches, but it doesn’t fit your build.', '%s parts match, but they don’t fit your build.', $hidden, 'creative-skateboard-builder' ), number_format_i18n( $hidden ) );
+		} else {
+			$text = self::noMatch( $slot, $query );
+		}
+		return array(
+			'shown'     => $shown,
+			'text'      => $text,
+			'widths'    => $elsewhere,
+			'hasWidths' => array() !== $elsewhere,
+			'why'       => array(
+				'shown' => $hidden > 0,
+				'text'  => __( 'See why', 'creative-skateboard-builder' ),
+			),
+			'clear'     => array(
+				'shown' => $shown && array() === $elsewhere && 0 === $hidden,
+				'text'  => __( 'Clear search', 'creative-skateboard-builder' ),
+				'name'  => BuildLink::PARAM . '[_q]',
+			),
+		);
+	}
+
+	/**
+	 * "No decks match Rascals.", in the step's own words.
+	 *
+	 * @param string $slot  The step's slot.
+	 * @param string $query What the shopper searched for.
+	 */
+	private static function noMatch( string $slot, string $query ): string {
+		return sprintf(
+			match ( $slot ) {
+				/* translators: %s: what the shopper searched for. */
+				SlotKey::DECK     => __( 'No decks match %s.', 'creative-skateboard-builder' ),
+				/* translators: %s: what the shopper searched for. */
+				SlotKey::TRUCKS   => __( 'No trucks match %s.', 'creative-skateboard-builder' ),
+				/* translators: %s: what the shopper searched for. */
+				SlotKey::WHEELS   => __( 'No wheels match %s.', 'creative-skateboard-builder' ),
+				/* translators: %s: what the shopper searched for. */
+				SlotKey::BEARINGS => __( 'No bearings match %s.', 'creative-skateboard-builder' ),
+				/* translators: %s: what the shopper searched for. */
+				SlotKey::RISERS   => __( 'No risers match %s.', 'creative-skateboard-builder' ),
+				/* translators: %s: what the shopper searched for. */
+				SlotKey::HARDWARE => __( 'No hardware matches %s.', 'creative-skateboard-builder' ),
+				/* translators: %s: what the shopper searched for. */
+				SlotKey::GRIP     => __( 'No grip tape matches %s.', 'creative-skateboard-builder' ),
+				/* translators: %s: what the shopper searched for. */
+				default           => __( 'No parts match %s.', 'creative-skateboard-builder' ),
+			},
+			$query
+		);
+	}
+
+	/**
 	 * What a step's search box is called.
 	 *
 	 * @param string $slot The step's slot.
@@ -1236,6 +1333,7 @@ final class BuilderView {
 			'emptyText' => '' === $link->brand && '' === $link->size
 				? __( 'Nothing the shop has fits the parts before this step.', 'creative-skateboard-builder' )
 				: __( 'No part matches these filters.', 'creative-skateboard-builder' ),
+			'found'     => self::found( $shelf ?? array(), $slot, $options ),
 			'leave'     => array(
 				'shown'   => ! $required,
 				'id'      => 'cbuild-' . $state->id . '-' . $slot . '-none',
@@ -1434,22 +1532,108 @@ final class BuilderView {
 		$undo = new BuildLink( $was, null, $changed, $link->assembly, $link->preset, replace: $link->replace, none: $link->none );
 		$none = array() === $changes;
 		return array(
-			'heading'  => __( 'This change affects parts you chose', 'creative-skateboard-builder' ),
-			'keptHead' => __( 'Kept', 'creative-skateboard-builder' ),
-			'hasKept'  => array() !== $kept,
-			'kept'     => $kept,
-			'goneHead' => __( 'No longer fits', 'creative-skateboard-builder' ),
-			'items'    => $items,
+			'heading'    => __( 'This change affects parts you chose', 'creative-skateboard-builder' ),
+			'keptHead'   => __( 'Kept', 'creative-skateboard-builder' ),
+			'hasKept'    => array() !== $kept,
+			'kept'       => $kept,
+			'goneHead'   => __( 'No longer fits', 'creative-skateboard-builder' ),
+			'hasItems'   => true,
+			'items'      => $items,
+			// A saved build reopened says its new prices and totals here (D-254); a change made now has none.
+			'pricesHead' => __( 'New prices', 'creative-skateboard-builder' ),
+			'hasPrices'  => false,
+			'prices'     => array(),
+			'hasTotals'  => false,
+			'totals'     => '',
 			// Buttons in GET forms, not links (spec: Without JavaScript; SEO and sharing): a crawler never enters a state.
-			'use'      => array(
+			'use'        => array(
 				'fields' => $none ? array() : self::flat( $use->query( $state->kit->slots ) ),
 				'text'   => __( 'Use these', 'creative-skateboard-builder' ),
 			),
-			'undo'     => array(
+			'undo'       => array(
 				'fields' => $none ? array() : self::flat( $undo->query( $state->kit->slots ) ),
 				'text'   => __( 'Undo', 'creative-skateboard-builder' ),
 			),
 		);
+	}
+
+	/**
+	 * The view of a saved build that changed since it was saved, as "Your build has changed" before the review (spec: A
+	 * saved build that has changed, D-254): the change panel, each changed part named with why and its closest fit,
+	 * each new price then and now, the totals, then Use these, which takes the closest parts to the review, and Choose
+	 * myself, which opens the first changed step.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param array<string, mixed>                                                                                                                                                                                                                                                                                                         $view     The view of the build with the closest parts in place, at the review.
+	 * @param array{changes: list<array{slot: string, label: string, was: int, name: string, reason: string, closest: array{id: int, name: string}|null}>, prices: list<array{slot: string, label: string, part: int, name: string, then: string, now: string}>, then: string|null, now: string, picks: array<string, int>, first: string} $reopened What changed, as the answer says it.
+	 * @param State                                                                                                                                                                                                                                                                                                                        $state    The build's state.
+	 * @param bool|null                                                                                                                                                                                                                                                                                                                    $assembly Assembly, as saved.
+	 * @return array<string, mixed>
+	 */
+	public function reopened( array $view, array $reopened, State $state, ?bool $assembly ): array {
+		$items = array();
+		foreach ( $reopened['changes'] as $change ) {
+			$named   = '' === $change['name'] ? __( 'a part', 'creative-skateboard-builder' ) : $change['name'];
+			$items[] = array(
+				'key'     => $change['slot'],
+				'text'    => match ( $change['reason'] ) {
+					/* translators: 1: a slot's label, such as Wheels. 2: a part's name. */
+					'gone'     => sprintf( __( '%1$s: %2$s is no longer in the shop.', 'creative-skateboard-builder' ), $change['label'], $named ),
+					/* translators: 1: a slot's label, such as Wheels. 2: a part's name. */
+					'sold_out' => sprintf( __( '%1$s: %2$s is sold out.', 'creative-skateboard-builder' ), $change['label'], $named ),
+					/* translators: 1: a slot's label, such as Trucks. 2: a part's name. */
+					default    => sprintf( __( '%1$s: %2$s no longer fits.', 'creative-skateboard-builder' ), $change['label'], $named ),
+				},
+				'reasons' => array(),
+				'closest' => null === $change['closest']
+					? __( 'Nothing the shop has fits here, so this slot would be left for you to choose again.', 'creative-skateboard-builder' )
+					/* translators: %s: a part's name. */
+					: sprintf( __( 'Closest fit: %s', 'creative-skateboard-builder' ), $change['closest']['name'] ),
+			);
+		}
+		$prices = array();
+		foreach ( $reopened['prices'] as $price ) {
+			/* translators: 1: a part's name, such as Independent 149 trucks. 2: its price when the build was saved. 3: its price now. */
+			$prices[] = array( 'text' => sprintf( __( '%1$s: %2$s when you saved, %3$s now', 'creative-skateboard-builder' ), $price['name'], $price['then'], $price['now'] ) );
+		}
+		$totals = null === $reopened['then']
+			/* translators: %s: the build's total now. */
+			? sprintf( __( 'Total now: %s', 'creative-skateboard-builder' ), $reopened['now'] )
+			/* translators: 1: the build's total when it was saved. 2: its total now. */
+			: sprintf( __( 'Total: %1$s when you saved, %2$s now', 'creative-skateboard-builder' ), $reopened['then'], $reopened['now'] );
+		$slots             = $state->kit->slots;
+		$kept              = array_diff_key( $reopened['picks'], array_flip( array_column( $reopened['changes'], 'slot' ) ) );
+		$use               = new BuildLink( $reopened['picks'], null, State::REVIEW, $assembly );
+		$self              = new BuildLink( $kept, null, $reopened['first'], $assembly );
+		$heading           = __( 'Your build has changed', 'creative-skateboard-builder' );
+		$view['changes']   = array(
+			'heading'    => $heading,
+			'keptHead'   => '',
+			'hasKept'    => false,
+			'kept'       => array(),
+			'goneHead'   => __( 'Changed since you saved it', 'creative-skateboard-builder' ),
+			'hasItems'   => array() !== $items,
+			'items'      => $items,
+			'pricesHead' => __( 'New prices', 'creative-skateboard-builder' ),
+			'hasPrices'  => array() !== $prices,
+			'prices'     => $prices,
+			'hasTotals'  => true,
+			'totals'     => $totals,
+			'use'        => array(
+				'fields' => self::flat( $use->query( $slots ) ),
+				'text'   => __( 'Use these', 'creative-skateboard-builder' ),
+			),
+			'undo'       => array(
+				'fields' => self::flat( $self->query( $slots ) ),
+				'text'   => __( 'Choose myself', 'creative-skateboard-builder' ),
+			),
+		);
+		$view['isStep']    = false;
+		$view['isReview']  = false;
+		$view['isChanges'] = true;
+		$view['status']    = $heading;
+		return $view;
 	}
 
 	/**

@@ -49,6 +49,10 @@ final class ShippingWordsTest extends TestCase {
 			public function text( int $amount, int $decimals ): string {
 				return '¥' . $amount;
 			}
+
+			public function currency(): string {
+				return 'JPY';
+			}
 		} ) )->line( new ShippingRates( 'Japan', false, null, 900, 0 ), 5000 ), 'the shop\'s own decimals' );
 	}
 

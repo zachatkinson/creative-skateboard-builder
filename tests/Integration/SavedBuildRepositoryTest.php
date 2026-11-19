@@ -10,6 +10,7 @@ declare( strict_types=1 );
 namespace CreativeBranding\SkateboardBuilder\Tests\Integration;
 
 use CreativeBranding\SkateboardBuilder\Domain\Saved\SavedBuild;
+use CreativeBranding\SkateboardBuilder\Domain\Saved\SavedPrices;
 use CreativeBranding\SkateboardBuilder\Port\SavedBuildStore;
 use CreativeBranding\SkateboardBuilder\Repository\SavedBuildRepository;
 use CreativeBranding\SkateboardBuilder\Support\Tables;
@@ -48,6 +49,22 @@ final class SavedBuildRepositoryTest extends IntegrationTestCase {
 		self::assertTrue( $this->store->put( self::build( 'a0000000-0000-4000-8000-000000000001', 7, 'Mine & yours "quoted"' ) ) );
 		self::assertEquals( self::build( 'a0000000-0000-4000-8000-000000000001', 7, 'Mine & yours "quoted"' ), $this->store->find( 7, 'a0000000-0000-4000-8000-000000000001' ) );
 		self::assertSame( 1, $this->store->count( 7 ) );
+	}
+
+	// Spec (configurator): A saved build that has changed (D-254), "in the saved build's picks document (no new column)".
+	public function test_a_builds_prices_are_kept_beside_its_picks_and_a_build_saved_before_has_none(): void {
+		$uuid   = 'a0000000-0000-4000-8000-000000000009';
+		$prices = new SavedPrices( 'CAD', array( 'deck' => 6000, 'trucks' => 5000 ), 11000 );
+		$build  = new SavedBuild( $uuid, 7, 12, array( 'deck' => 21, 'trucks' => 22 ), true, '', self::utc( '2026-11-17 10:00:00' ), self::utc( '2026-11-17 10:00:00' ), $prices );
+		self::assertTrue( $this->store->put( $build ) );
+		self::assertEquals( $build, $this->store->find( 7, $uuid ) );
+		global $wpdb;
+		$stored = json_decode( (string) $wpdb->get_var( $wpdb->prepare( 'SELECT picks FROM %i WHERE uuid = %s', Tables::builds(), $uuid ) ), true );
+		self::assertSame( array( 'deck' => 21, 'trucks' => 22, '_prices' => array( 'currency' => 'CAD', 'lines' => array( 'deck' => 6000, 'trucks' => 5000 ), 'total' => 11000 ) ), $stored, 'one document, which 0.9.0 reads as its picks alone' );
+
+		$wpdb->query( $wpdb->prepare( 'UPDATE %i SET picks = %s WHERE uuid = %s', Tables::builds(), '{"deck":21,"_prices":{"currency":"CAD","lines":{"deck":"60"},"total":6000}}', $uuid ) );
+		self::assertNull( $this->store->find( 7, $uuid )?->prices, 'prices that do not read are none' );
+		self::assertNull( $this->store->find( 7, 'a0000000-0000-4000-8000-000000000001' ), 'and a build saved before 1.0.0 has none' );
 	}
 
 	public function test_another_customer_reads_changes_and_deletes_none_of_a_customers_builds(): void {

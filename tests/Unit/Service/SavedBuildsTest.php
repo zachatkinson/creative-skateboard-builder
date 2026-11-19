@@ -9,6 +9,7 @@ declare( strict_types=1 );
 
 namespace CreativeBranding\SkateboardBuilder\Tests\Unit\Service;
 
+use CreativeBranding\SkateboardBuilder\Domain\Kit\Part;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\SlotKey;
 use CreativeBranding\SkateboardBuilder\Domain\Saved\SavedBuild;
 use CreativeBranding\SkateboardBuilder\Service\BuildState;
@@ -17,6 +18,7 @@ use CreativeBranding\SkateboardBuilder\Tests\Support\Domain\Shop;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\CountingUuids;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\FakeClock;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\FakeLogger;
+use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\FakeMoney;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\InMemoryKits;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\InMemorySavedBuilds;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\InMemoryShopSettings;
@@ -51,13 +53,19 @@ final class SavedBuildsTest extends TestCase {
 
 	private FakeLogger $logger;
 
+	private InMemoryKits $kits;
+
+	private FakeMoney $money;
+
 	protected function setUp(): void {
 		$kits = new InMemoryKits();
 		$kits->add( self::KIT, Shop::kit(), Shop::parts() );
 		$this->store  = new InMemorySavedBuilds();
 		$this->clock  = new FakeClock();
 		$this->logger = new FakeLogger();
-		$this->builds = new SavedBuilds( $this->store, new BuildState( $kits, new InMemoryShopSettings(), new FakeLogger() ), new CountingUuids(), $this->clock, $this->logger );
+		$this->kits   = $kits;
+		$this->money  = new FakeMoney();
+		$this->builds = new SavedBuilds( $this->store, new BuildState( $kits, new InMemoryShopSettings(), new FakeLogger() ), new CountingUuids(), $this->clock, $this->logger, $this->money );
 	}
 
 	public function test_a_complete_build_is_kept_with_its_picks_in_step_order_and_its_name(): void {
@@ -70,6 +78,48 @@ final class SavedBuildsTest extends TestCase {
 		self::assertSame( array( self::KIT, true, 'My street board', self::ANA ), array( $build->kit, $build->assembly, $build->name, $build->user ) );
 		self::assertEquals( $this->clock->now(), $build->created );
 		self::assertEquals( $this->clock->now(), $build->updated );
+	}
+
+	// Spec (configurator): A saved build that has changed (D-254), "From 1.0.0, Save build keeps each part's price and
+	// its currency beside its pick".
+	public function test_a_build_is_kept_with_each_lines_price_its_total_and_the_currency(): void {
+		$saved = $this->builds->save( self::ANA, self::KIT, self::COMPLETE, false, '' );
+		$build = $this->builds->find( self::ANA, $saved['uuid'] );
+		self::assertNotNull( $build?->prices );
+		self::assertSame( 'CAD', $build->prices->currency );
+		self::assertSame( array_keys( self::COMPLETE ), array_keys( $build->prices->lines ), 'a line for each slot picked' );
+		self::assertSame( 7000, $build->prices->lines[ SlotKey::DECK ], 'the 8.5 deck' );
+		self::assertSame( array_sum( $build->prices->lines ), $build->prices->total, 'with no assembly fee' );
+
+		$renamed = $this->builds->rename( self::ANA, $saved['uuid'], 'Mine' );
+		self::assertTrue( $renamed );
+		self::assertEquals( $build->prices, $this->builds->find( self::ANA, $saved['uuid'] )?->prices, 'a rename keeps them' );
+	}
+
+	// Spec (configurator): A saved build that has changed (D-254), "What's checked" and "The screen".
+	public function test_a_build_reopened_names_what_changed_each_new_price_and_the_totals_then_and_now(): void {
+		$saved = $this->builds->save( self::ANA, self::KIT, self::COMPLETE, false, '' );
+		self::assertNull( $this->builds->reopened( self::ANA, $saved['uuid'] ), 'nothing has changed' );
+		$then = $this->builds->find( self::ANA, $saved['uuid'] )?->prices;
+		self::assertNotNull( $then );
+
+		$parts                    = Shop::parts();
+		$parts[ SlotKey::WHEELS ] = array_map( static fn( Part $part ): Part => 302 === $part->id ? Shop::priced( $part, $part->price, false, 0 ) : $part, $parts[ SlotKey::WHEELS ] );
+		$parts[ SlotKey::TRUCKS ] = array_map( static fn( Part $part ): Part => 149 === $part->id ? Shop::priced( $part, 5900 ) : $part, $parts[ SlotKey::TRUCKS ] );
+		$this->kits->add( self::KIT, Shop::kit(), $parts );
+
+		$reopened = $this->builds->reopened( self::ANA, $saved['uuid'] );
+		self::assertNotNull( $reopened );
+		self::assertSame( array( SlotKey::WHEELS ), array_map( static fn( $change ): string => $change->slot, $reopened->check->changes ), 'the sold-out wheels' );
+		self::assertSame( 301, $reopened->state->counted()[ SlotKey::WHEELS ]->id, 'the build as it would be, with the closest wheels' );
+		self::assertSame( array( array( SlotKey::TRUCKS, 149, $then->lines[ SlotKey::TRUCKS ], 5900 ) ), array_map( static fn( array $price ): array => array( $price['slot'], $price['part'], $price['then'], $price['now'] ), $reopened->prices ), 'each new price, then and now: a pair at 59.00' );
+		self::assertSame( array( $then->total, $reopened->state->quote->total ), array( $reopened->then, $reopened->state->quote->total ) );
+
+		$this->money->currency = 'USD';
+		$other                 = $this->builds->reopened( self::ANA, $saved['uuid'] );
+		self::assertSame( array(), $other?->prices, 'prices are compared in the same currency alone' );
+		self::assertNull( $other?->then );
+		self::assertNull( $this->builds->reopened( self::BEN, $saved['uuid'] ), 'another customer\'s' );
 	}
 
 	public function test_a_build_short_of_a_part_or_of_no_kit_or_from_no_one_is_not_kept(): void {

@@ -176,7 +176,13 @@ final class Shelf {
 		usort( $inStock, $order );
 		usort( $soldOut, $order );
 
-		$next = $ask->from + $ask->shown;
+		$next      = $ask->from + $ask->shown;
+		$elsewhere = array();
+		if ( SlotKey::DECK === $slot && null !== $spec && '' !== $ask->query && array() === $inStock ) {
+			// Nothing in stock in the width asked: the widths its matches are in stock in, for "Rascals comes in 8.5″".
+			$matched   = array_values( array_filter( $looks, static fn( Look $look ): bool => isset( $left[ $look->key ] ) ) );
+			$elsewhere = array_values( array_filter( self::widths( $matched, $spec ), static fn( Width $width ): bool => $width->inStock > 0 ) );
+		}
 		return new Listing(
 			array_slice( $inStock, $ask->from, $ask->shown ),
 			$soldOut,
@@ -184,7 +190,8 @@ final class Shelf {
 			SlotKey::DECK === $slot && null !== $spec ? self::widths( $looks, $spec ) : array(),
 			count( $looks ),
 			count( $inStock ),
-			$next < count( $inStock ) ? $next : null
+			$next < count( $inStock ) ? $next : null,
+			$elsewhere
 		);
 	}
 

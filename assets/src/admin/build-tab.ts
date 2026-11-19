@@ -12,6 +12,7 @@
  * No data is read and no markup is built: every word comes from the page.
  */
 import { settle } from './settle';
+import { layers, type Media } from './media';
 
 /**
  * As much of jQuery as this script uses: the rows made to drag, and a callback for when the page is ready.
@@ -209,10 +210,12 @@ export function rows( doc: Document, speak?: Speak, $?: Query ): void {
 export function start(
 	win: Window & {
 		jQuery?: Query;
-		wp?: { a11y?: { speak?: Speak } };
+		wp?: { a11y?: { speak?: Speak }; media?: Media };
 	}
 ): void {
 	const doc = win.document;
+	// A preset's Photo: the media library's modal (D-252).
+	layers( doc, win.wp?.media );
 	const now = () => open( doc, win.location.hash );
 	const ready = () => {
 		rows( doc, win.wp?.a11y?.speak, win.jQuery );

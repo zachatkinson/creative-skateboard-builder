@@ -27,6 +27,8 @@ final readonly class Listing {
 	 * @param int             $offered  How many looks the step offers before any search or chip, for its tools.
 	 * @param int             $matching How many looks in stock the search and chips leave.
 	 * @param int|null        $more     Where the next page starts, or null when none is left.
+	 * @param list<Width>     $elsewhere On the deck step, where a search finds nothing in stock in the width asked: the
+	 *                                   widths its matches are in stock in, narrowest first (from 1.0.0).
 	 */
 	public function __construct(
 		public array $looks,
@@ -35,6 +37,7 @@ final readonly class Listing {
 		public array $widths,
 		public int $offered,
 		public int $matching,
-		public ?int $more
+		public ?int $more,
+		public array $elsewhere = array()
 	) {}
 }

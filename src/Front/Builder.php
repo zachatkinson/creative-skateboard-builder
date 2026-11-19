@@ -16,6 +16,7 @@ use CreativeBranding\SkateboardBuilder\Domain\Kit\SlotKey;
 use CreativeBranding\SkateboardBuilder\Domain\Rule\BearingRule;
 use CreativeBranding\SkateboardBuilder\Domain\Rule\MessageCode;
 use CreativeBranding\SkateboardBuilder\Service\BuildState;
+use CreativeBranding\SkateboardBuilder\Service\SavedBuilds;
 use CreativeBranding\SkateboardBuilder\Service\ShelfQuery;
 use CreativeBranding\SkateboardBuilder\Service\State;
 use CreativeBranding\SkateboardBuilder\Service\StateStep;
@@ -50,8 +51,9 @@ final class Builder {
 	 * @param StateAnswer          $writer Writes it down.
 	 * @param BuilderView          $view   Says it as the template shows it.
 	 * @param RememberedWidth|null $remembered A signed-in customer's width, from their saved builds (from 1.0.0).
+	 * @param SavedBuilds|null     $saved      A saved build opened from My builds, checked against the shop (from 1.0.0).
 	 */
-	public function __construct( private BuildState $builds, private StateAnswer $writer, private BuilderView $view, private ?RememberedWidth $remembered = null ) {}
+	public function __construct( private BuildState $builds, private StateAnswer $writer, private BuilderView $view, private ?RememberedWidth $remembered = null, private ?SavedBuilds $saved = null ) {}
 
 	/**
 	 * What the builder shows at an address, or null when the shop has no such kit.
@@ -66,6 +68,20 @@ final class Builder {
 	 * @throws InvalidMoney When the build cannot be priced in the shop's currency settings.
 	 */
 	public function show( int $kit, BuildLink $link, string $base ): ?array {
+		if ( '' !== $link->saved && null !== $this->saved ) {
+			// Opened from My builds: a build that changed since it was saved says so before its review, with the
+			// closest parts in place (spec: A saved build that has changed, D-254). One that has not opens as it was.
+			$reopened = $this->saved->reopened( get_current_user_id(), $link->saved );
+			if ( null === $reopened || $kit !== $reopened->build->kit ) {
+				return $this->show( $kit, new BuildLink( $link->picks, null, $link->step, $link->assembly ), $base );
+			}
+			$shown = $this->show( $kit, new BuildLink( $reopened->check->picks, null, State::REVIEW, $reopened->build->assembly ), $base );
+			if ( null === $shown ) {
+				return null;
+			}
+			$shown['view'] = $this->view->reopened( $shown['view'], $this->writer->reopened( $reopened ), $shown['state'], $reopened->build->assembly );
+			return $shown;
+		}
 		if ( null !== $this->remembered && '' === $link->shelf->width && ! isset( $link->picks[ SlotKey::DECK ] ) ) {
 			// A width asked for, or the deck's, comes first; otherwise a signed-in customer's last saved build brings
 			// theirs, and skips the question (spec: The deck's width first, "Remembered").

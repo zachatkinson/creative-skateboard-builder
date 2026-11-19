@@ -12,6 +12,7 @@ namespace CreativeBranding\SkateboardBuilder\Admin;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Assembly;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Kit;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Preset;
+use CreativeBranding\SkateboardBuilder\Domain\Kit\KitLayout;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\RuleSettings;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Slot;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\SlotKey;
@@ -143,7 +144,9 @@ final class BuildTab {
 		if ( ! is_array( $built ) || ! is_string( $built['version'] ?? null ) ) {
 			return;
 		}
-		wp_enqueue_script( self::SCRIPT, CBUILD_URL . self::BUILT . '.js', array( 'jquery', 'jquery-ui-sortable', 'wp-a11y', 'wc-admin-product-meta-boxes' ), $built['version'], array( 'in_footer' => true ) );
+		// A preset's Photo opens the media library's modal, whose scripts come before this one (D-252).
+		wp_enqueue_media();
+		wp_enqueue_script( self::SCRIPT, CBUILD_URL . self::BUILT . '.js', array( 'jquery', 'jquery-ui-sortable', 'wp-a11y', 'wc-admin-product-meta-boxes', 'media-views' ), $built['version'], array( 'in_footer' => true ) );
 	}
 
 	/**
@@ -363,6 +366,11 @@ final class BuildTab {
 				__( 'Picture', 'creative-skateboard-builder' ),
 				__( 'How the picture of a build stacks its parts, seen from underneath with the nose up. Layer 1 is drawn first, at the bottom. A part with no layer image shows its labelled photo instead.', 'creative-skateboard-builder' ),
 				$this->picture( $shown[ KitEditor::PICTURE ], $shown[ KitEditor::SLOTS ] ),
+			),
+			KitEditor::LAYOUT   => array(
+				__( 'Layout', 'creative-skateboard-builder' ),
+				__( 'How the builder is laid out on a desktop, and which search its steps use. A phone always shows the board above the step.', 'creative-skateboard-builder' ),
+				$this->layout( $shown[ KitEditor::LAYOUT ] ),
 			),
 		) as $name => $section ) {
 			$sections[] = array(
@@ -653,6 +661,20 @@ final class BuildTab {
 			$fields = array(
 				$this->field( $id . '-name', $name . '[name]', __( 'Name', 'creative-skateboard-builder' ), 'text', self::text( $row, 'name' ), array( 'max' => Preset::MAX_NAME ) ),
 				$this->field( $id . '-description', $name . '[description]', __( 'Description', 'creative-skateboard-builder' ), 'text', self::text( $row, 'description' ), array( 'max' => Preset::MAX_DESCRIPTION ) ),
+				$this->field(
+					$id . '-image',
+					$name . '[image]',
+					__( 'Photo', 'creative-skateboard-builder' ),
+					'text',
+					self::text( $row, 'image' ),
+					array(
+						'note'   => __( 'A rider photo for its tile, by its ID in the media library. Without one, the tile shows the build’s picture.', 'creative-skateboard-builder' ),
+						'choose' => array(
+							'title'   => __( 'Choose a photo', 'creative-skateboard-builder' ),
+							'preview' => (string) wp_get_attachment_image_url( (int) self::text( $row, 'image' ), 'thumbnail' ),
+						),
+					)
+				),
 			);
 			foreach ( self::rows( $slots, 'slots' ) as $slot ) {
 				$key = self::text( $slot, 'key' );
@@ -793,6 +815,71 @@ final class BuildTab {
 	}
 
 	/**
+	 * The Layout section's fields (D-255): the stage's side and the board's size on a desktop, and the steps' search.
+	 *
+	 * @param array<mixed> $document The layout document to show.
+	 * @return list<array{id: string, legend: string, moves: bool, fold: string, open: bool, fields: list<array<string, mixed>>, more: list<array<string, mixed>>}>
+	 */
+	private function layout( array $document ): array {
+		$id     = self::IDS . '-layout';
+		$name   = self::FIELD . '[layout]';
+		$chosen = static fn( string $key, array $choices ): string => is_string( $document[ $key ] ?? null ) ? $document[ $key ] : $choices[0];
+		$fields = array(
+			$this->field(
+				$id . '-stage-side',
+				$name . '[stage_side]',
+				__( 'Stage side on a desktop', 'creative-skateboard-builder' ),
+				'select',
+				$chosen( 'stage_side', KitLayout::SIDES ),
+				array(
+					'options' => array(
+						'left'  => __( 'Left', 'creative-skateboard-builder' ),
+						'right' => __( 'Right', 'creative-skateboard-builder' ),
+					),
+				)
+			),
+			$this->field(
+				$id . '-board-size',
+				$name . '[board_size]',
+				__( 'Board size on a desktop', 'creative-skateboard-builder' ),
+				'select',
+				$chosen( 'board_size', KitLayout::SIZES ),
+				array(
+					'options' => array(
+						'large'    => __( 'Large, 60 % of the width', 'creative-skateboard-builder' ),
+						'balanced' => __( 'Balanced, 50 % of the width', 'creative-skateboard-builder' ),
+					),
+				)
+			),
+			$this->field(
+				$id . '-search',
+				$name . '[search]',
+				__( 'Search in the steps', 'creative-skateboard-builder' ),
+				'select',
+				$chosen( 'search', KitLayout::SEARCHES ),
+				array(
+					'options' => array(
+						'creative_search' => __( 'Creative Search where it is active, the builder\'s own otherwise', 'creative-skateboard-builder' ),
+						'own'             => __( 'The builder\'s own always', 'creative-skateboard-builder' ),
+					),
+					'note'    => __( 'Creative Search corrects typing errors and ranks matches by how well they match. The builder\'s own search matches the words as typed.', 'creative-skateboard-builder' ),
+				)
+			),
+		);
+		return array(
+			array(
+				'id'     => $id . '-fields',
+				'legend' => '',
+				'moves'  => false,
+				'fold'   => '',
+				'open'   => true,
+				'fields' => $fields,
+				'more'   => array(),
+			),
+		);
+	}
+
+	/**
 	 * A field as the template draws it.
 	 *
 	 * @param string                    $id    The control's ID.
@@ -824,6 +911,7 @@ final class BuildTab {
 			'multiple' => false,
 			'data'     => array(),
 			'max'      => 0,
+			'choose'   => array(),
 		);
 	}
 
@@ -855,7 +943,7 @@ final class BuildTab {
 		if ( KitEditor::ASSEMBLY === $name ) {
 			return $this->settings->terms()->assembly;
 		}
-		if ( KitEditor::PICTURE === $name ) {
+		if ( KitEditor::PICTURE === $name || KitEditor::LAYOUT === $name ) {
 			return array( 'schema_version' => 1 );
 		}
 		if ( KitEditor::SLOTS !== $name ) {
@@ -1020,6 +1108,7 @@ final class BuildTab {
 			KitEditor::RULES   => __( 'The kit\'s rules were not saved. The Build tab shows them as you typed them, with what to put right.', 'creative-skateboard-builder' ),
 			KitEditor::PRESETS => __( 'The kit\'s presets were not saved. The Build tab shows them as you typed them, with what to put right.', 'creative-skateboard-builder' ),
 			KitEditor::PICTURE => __( 'The kit\'s picture settings were not saved. The Build tab shows them as you typed them, with what to put right.', 'creative-skateboard-builder' ),
+			KitEditor::LAYOUT  => __( 'The kit\'s layout was not saved. The Build tab shows it as you chose it, with what to put right.', 'creative-skateboard-builder' ),
 			default            => __( 'The kit\'s assembly settings were not saved. The Build tab shows them as you typed them, with what to put right.', 'creative-skateboard-builder' ),
 		};
 	}

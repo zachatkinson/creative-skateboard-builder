@@ -15,6 +15,7 @@ use CreativeBranding\SkateboardBuilder\Front\PageRenderer;
 use CreativeBranding\SkateboardBuilder\Service\LayerArtwork;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\InMemoryLayerImages;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\InMemoryLayerRenditions;
+use CreativeBranding\SkateboardBuilder\Domain\Kit\Kit;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Part;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\SlotKey;
 use CreativeBranding\SkateboardBuilder\Front\Builder;
@@ -218,6 +219,14 @@ final class BuilderTest extends TestCase {
 
 		$this->presets();
 		self::assertTrue( $this->show( new BuildLink() )['view']['presets']['tiles'][1]['hasTotal'], 'a sold-out part leaves the build whole, so its total stands' );
+	}
+
+	// Spec (configurator): Settings (D-255), the stage's side and the board's size on a desktop.
+	public function test_the_kits_layout_puts_the_stage_on_its_side_at_its_size(): void {
+		self::assertSame( array( 'stageRight' => false, 'balanced' => false ), $this->show( new BuildLink() )['view']['layout'], 'left and large unless the kit says' );
+		$kit = Kit::fromDocuments( KitDocuments::slots(), KitDocuments::rules(), KitDocuments::presets(), KitDocuments::assembly(), null, array( 'schema_version' => 1, 'stage_side' => 'right', 'board_size' => 'balanced' ) );
+		$this->kits->add( self::KIT, $kit, Shop::parts() );
+		self::assertSame( array( 'stageRight' => true, 'balanced' => true ), $this->show( new BuildLink() )['view']['layout'] );
 	}
 
 	public function test_the_picture_says_nothing_under_it_at_a_blank_start_where_the_summary_says_it(): void {
@@ -886,6 +895,21 @@ final class BuilderTest extends TestCase {
 				'shelf'     => self::emptyShelf(),
 				'empty'     => false,
 				'emptyText' => '',
+				'found'     => array(
+					'shown'     => false,
+					'text'      => '',
+					'widths'    => array(),
+					'hasWidths' => false,
+					'why'       => array(
+						'shown' => false,
+						'text'  => 'See why',
+					),
+					'clear'     => array(
+						'shown' => false,
+						'text'  => 'Clear search',
+						'name'  => 'cbuild[_q]',
+					),
+				),
 				'leave'     => array(
 					'shown'   => false,
 					'id'      => '',

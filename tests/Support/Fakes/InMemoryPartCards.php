@@ -91,6 +91,17 @@ final class InMemoryPartCards implements PartCards {
 		return $names;
 	}
 
+	/**
+	 * The media library's photos, by attachment ID.
+	 *
+	 * @var array<int, array{src: string, width: int, height: int, srcset: string, sizes: string}>
+	 */
+	public array $photos = array();
+
+	public function photo( int $attachment ): ?array {
+		return $this->photos[ $attachment ] ?? null;
+	}
+
 	public function forget( int ...$ids ): void {
 		array_push( $this->forgotten, ...array_values( $ids ) );
 	}

@@ -245,7 +245,8 @@ final class StateRoute implements Hookable {
 			$refusal = new WP_REST_Response(
 				array(
 					'code'    => 'cbuild_rate_limited',
-					'message' => __( 'Too many requests. Try again in a minute.', 'creative-skateboard-builder' ),
+					/* translators: %s: how many seconds until the shopper can try again. */
+					'message' => sprintf( _n( 'Too many requests. Try again in %s second.', 'Too many requests. Try again in %s seconds.', $wait, 'creative-skateboard-builder' ), number_format_i18n( $wait ) ),
 					'data'    => array( 'status' => 429 ),
 				),
 				429

@@ -16,6 +16,7 @@ use CreativeBranding\SkateboardBuilder\Domain\Kit\Assembly;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\DocumentError;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Fields;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\InvalidDocument;
+use CreativeBranding\SkateboardBuilder\Domain\Kit\KitLayout;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Kit;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Part;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Picks;
@@ -58,6 +59,7 @@ final class KitEditor {
 	public const PRESETS  = 'presets';
 	public const ASSEMBLY = 'assembly';
 	public const PICTURE  = 'picture';
+	public const LAYOUT   = 'layout';
 
 	/**
 	 * The picture's wheelbase anchor is outside what a deck has: 10 to 20 in.
@@ -160,10 +162,13 @@ final class KitEditor {
 		if ( is_array( $sent['picture'] ?? null ) ) {
 			$built[ self::PICTURE ] = self::picture( $sent['picture'], $separator );
 		}
+		if ( is_array( $sent['layout'] ?? null ) ) {
+			$built[ self::LAYOUT ] = self::layout( $sent['layout'] );
+		}
 
 		$problems = array();
 		$inForce  = array();
-		foreach ( array( self::SLOTS, self::RULES, self::ASSEMBLY, self::PICTURE ) as $key ) {
+		foreach ( array( self::SLOTS, self::RULES, self::ASSEMBLY, self::PICTURE, self::LAYOUT ) as $key ) {
 			$inForce[ $key ] = $stored[ $key ] ?? null;
 			if ( ! isset( $built[ $key ] ) ) {
 				continue;
@@ -281,6 +286,7 @@ final class KitEditor {
 				self::SLOTS => Slots::fromDocument( $document ),
 				self::RULES => RuleSettings::fromDocument( $document ),
 				self::PICTURE => PictureSettings::fromDocument( $document ),
+				self::LAYOUT => KitLayout::fromDocument( $document ),
 				default                 => Assembly::fromDocument( $document ),
 			};
 		} catch ( InvalidDocument $refused ) {
@@ -561,6 +567,11 @@ final class KitEditor {
 			if ( '' !== $description ) {
 				$preset['description'] = $description;
 			}
+			// A rider photo, by its attachment's ID (D-252); anything else is kept as sent, for the schema to refuse.
+			$image = self::text( $row, 'image' );
+			if ( '' !== $image ) {
+				$preset['image'] = ctype_digit( $image ) ? (int) $image : $image;
+			}
 			$presets[] = $preset;
 		}
 		return array(
@@ -612,6 +623,23 @@ final class KitEditor {
 			'order'          => array_keys( $layers ),
 			'wheelbase'      => '' === $wheelbase ? '' : self::measure( $wheelbase, Unit::Inch, $separator ),
 		);
+	}
+
+	/**
+	 * The layout document from the tab's fields (D-255): each choice sent as text, which the domain then holds to its
+	 * choices. Motion is milestone 11's, and is not kept yet.
+	 *
+	 * @param array<mixed> $sent The fields.
+	 * @return array<string, mixed>
+	 */
+	private static function layout( array $sent ): array {
+		$document = array( 'schema_version' => 1 );
+		foreach ( array( 'stage_side', 'board_size', 'search' ) as $key ) {
+			if ( is_string( $sent[ $key ] ?? null ) ) {
+				$document[ $key ] = trim( $sent[ $key ] );
+			}
+		}
+		return $document;
 	}
 
 	/**

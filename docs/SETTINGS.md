@@ -84,6 +84,18 @@ Saving these alone reads no part again: they feed no spec.
 
 No new setting. What the picture needs is kept with the products it draws: a part's Layer image on its Part specs panel (`_cbuild_layer`) and a kit's layer order and wheelbase in the Build tab's Picture section (`_cbuild_picture`), each in [HOOKS.md](HOOKS.md). The composed pictures' limits are fixed, not settings: 50 builds waiting, 10 of them from pages; 200 MB in the folder; 30 days unshown (D-197, D-198, D-205).
 
+## Milestone 10 (1.0.0)
+
+A kit's Build tab gains a **Layout** section, kept in the kit's `_cbuild_layout` document (`schema/kit-layout.json`, D-255). There is one layout and no mode switch, and nothing for variations. A kit saved before 1.0.0 has none and is laid out with the defaults. The kit's export carries the document with the others.
+
+| Setting | Key | Choices | Default | What it does |
+| --- | --- | --- | --- | --- |
+| Stage side on a desktop | `stage_side` | `left`, `right` | `left` | The side of the screen the board takes from 64rem wide. A phone always shows the board above the step. |
+| Board size on a desktop | `board_size` | `large` (60 % of the width), `balanced` (50 %) | `large` | How much of the width the board takes there. |
+| Search in the steps | `search` | `creative_search` (Creative Search where it is active, the builder's own otherwise), `own` (the builder's own always) | `creative_search` | Whether a step's search asks Creative Search to rank and correct it (D-248). |
+
+Motion (`motion`: playful, subtle) is milestone 11's, and is not kept before 1.1.0.
+
 ## Options beside the settings
 
 The plugin keeps seven options of its own, which no screen edits: `cbuild_db_version`, `cbuild_migrations`, `cbuild_migration_lock` and, from 0.3.0, `cbuild_reindex_state`, `cbuild_reindex_owed`, `cbuild_import_state` and `cbuild_import_rows`. [HOOKS.md](HOOKS.md) says what each holds, and [PRIVACY.md](PRIVACY.md) lists everything stored.

@@ -52,4 +52,14 @@ interface PartCards {
 	 * @param int ...$ids Products' and variations' IDs.
 	 */
 	public function forget( int ...$ids ): void;
+
+	/**
+	 * An image from the media library as a card's photo is, or null when it is none.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param int $attachment The attachment's ID.
+	 * @return array{src: string, width: int, height: int, srcset: string, sizes: string}|null
+	 */
+	public function photo( int $attachment ): ?array;
 }

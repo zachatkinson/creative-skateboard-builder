@@ -3444,3 +3444,23 @@ Spec (configurator): Risers, "Anyone can add them", and The review. The risers s
 
 **Why:** a new key such as `_add` would have touched every way a link is made, for a fact the request already carries.
 
+### D-277 · A search with hidden matches says "parts … your build", not "trucks … your deck" · 2026-11-19
+
+Spec (configurator): Search, "2 trucks match, but they don't fit your deck." The parts a step hides are hidden by any pick before it, not by the deck alone: trucks by the deck, wheels by the trucks, bearings by the wheels. "Your deck" would be wrong on every step but trucks, and a sentence per slot and per cause would be twelve strings where one says the truth.
+
+- The sentence is `_n( '%s part matches, but it doesn’t fit your build.', '%s parts match, but they don’t fit your build.' )`, with See why opening the hidden parts, which name their own reasons.
+- "No decks match %s." and its kin stay one sentence per slot, since there the noun is the step's own.
+
+**Why:** a sentence that is true on every step beats one that is vivid on one and false on four. Flagged for Zach in M10's review.
+
+### D-278 · A saved build's prices go in its picks document under `_prices`; My builds' Open carries `_saved` · 2026-11-19
+
+Spec (configurator): A saved build that has changed (D-254), "in the saved build's picks document (no new column)".
+
+- **Stored.** `{"deck":103,…,"_prices":{"currency":"CAD","lines":{"deck":6000,…},"total":30000}}`. 0.9.0's reader keeps a key only when its value is a part ID, so a downgrade reads the picks and ignores the prices. A `_prices` that does not read is none, so the build is checked for parts alone.
+- **Compared.** Each line kept, against its line now, in the same currency (`Money::currency()`, after `woocommerce_currency`, which a currency switcher answers). A slot whose part changed shows its change, not a price. The totals are said then and now whenever prices were kept in this currency, and "Total now" otherwise.
+- **Checked once.** My builds' Open adds `cbuild[_saved]`, the build's UUID. The builder checks that build for the signed-in customer, whose own it must be and of this kit, and no link it makes carries the key, so Use these and Choose myself go on without the panel coming back. Another customer's UUID opens the picks the link holds, as any link does.
+- **Replacements.** `SavedCheck` (`src/Domain/Saved`) walks the slots in step order: gone, sold out (too few for the slot's units), or no longer fitting the parts before it. Each gets `ClosestPart::find()` among the slot's other parts in stock, against the build as replaced so far; a part that no longer reads at all gets the slot's recommendation, or the slot is left to choose.
+
+**Why:** a column would be a table change after milestone 1. One document keeps a build and what it cost together, and the key is the builder's own, as `_replace` is.
+

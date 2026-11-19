@@ -11,6 +11,7 @@ namespace CreativeBranding\SkateboardBuilder\Tests\Unit\Front;
 
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Part;
 use CreativeBranding\SkateboardBuilder\Domain\Saved\SavedBuild;
+use CreativeBranding\SkateboardBuilder\Domain\Saved\SavedPrices;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\SlotKey;
 use CreativeBranding\SkateboardBuilder\Front\Builder;
 use CreativeBranding\SkateboardBuilder\Front\BuilderView;
@@ -96,6 +97,17 @@ final class BuilderShelfTest extends TestCase {
 	 * @return array<string, mixed>
 	 */
 	private function step( BuildLink $link, ?RememberedWidth $remembered = null ): array {
+		$view = $this->shown( $link, $remembered )['view']['step'];
+		self::assertIsArray( $view );
+		return $view;
+	}
+
+	/**
+	 * What the builder shows for a link.
+	 *
+	 * @return array{state: mixed, answer: array<string, mixed>, view: array<string, mixed>}
+	 */
+	private function shown( BuildLink $link, ?RememberedWidth $remembered = null, ?SavedBuilds $saved = null ): array {
 		$folding = new class() implements TextFolding {
 			public function fold( string $text ): string {
 				return strtolower( $text );
@@ -105,11 +117,9 @@ final class BuilderShelfTest extends TestCase {
 		$cards    = new InMemoryPartCards();
 		$answer   = ( new StateAnswer( $cards, new FakeMoney(), $this->kits, new Delivery( $this->kits, new FakeShippingZones(), new ShippingWords( new FakeMoney() ) ), new PageRenderer() ) )
 			->withShelf( new StepShelf( $this->looks, $cards, new FakeRanking(), $folding, $settings ) );
-		$shown    = ( new Builder( new BuildState( $this->kits, $settings, new FakeLogger() ), $answer, new BuilderView(), $remembered ) )->show( self::KIT, $link, self::BASE );
+		$shown    = ( new Builder( new BuildState( $this->kits, $settings, new FakeLogger() ), $answer, new BuilderView(), $remembered, $saved ) )->show( self::KIT, $link, self::BASE );
 		self::assertNotNull( $shown );
-		$step = $shown['view']['step'];
-		self::assertIsArray( $step );
-		return $step;
+		return $shown;
 	}
 
 	/**
@@ -218,6 +228,48 @@ final class BuilderShelfTest extends TestCase {
 		}
 	}
 
+	// Spec (configurator): A saved build that has changed (D-254), "The screen": "Your build has changed" before the
+	// review, with each change, each new price, the totals, Use these and Choose myself.
+	public function test_a_saved_build_that_changed_opens_on_what_changed_before_its_review(): void {
+		$store  = new InMemorySavedBuilds();
+		$money  = new FakeMoney();
+		$saved  = new SavedBuilds( $store, new BuildState( $this->kits, new InMemoryShopSettings(), new FakeLogger() ), new CountingUuids(), new FakeClock(), new FakeLogger(), $money );
+		$picks  = array( SlotKey::DECK => 103, SlotKey::TRUCKS => 149, SlotKey::WHEELS => 302, SlotKey::BEARINGS => 501, SlotKey::HARDWARE => 601, SlotKey::GRIP => 701 );
+		$at     = new DateTimeImmutable( '2026-11-01', new DateTimeZone( 'UTC' ) );
+		$prices = new SavedPrices( 'CAD', array( SlotKey::TRUCKS => 5000 ), 30000 );
+		$store->put( new SavedBuild( 'a0000000-0000-4000-8000-000000000001', 7, self::KIT, $picks, false, '', $at, $at, $prices ) );
+		$parts                    = Shop::parts();
+		$parts[ SlotKey::WHEELS ] = array_map( static fn( Part $part ): Part => 302 === $part->id ? Shop::priced( $part, $part->price, false, 0 ) : $part, $parts[ SlotKey::WHEELS ] );
+		$this->stock( $parts );
+		$link = BuildLink::read( array_map( 'strval', $picks ) + array( 'step' => 'review', '_saved' => 'a0000000-0000-4000-8000-000000000001' ) );
+		try {
+			$GLOBALS['cbuild_test_user'] = 7;
+			$view                        = $this->shown( $link, null, $saved )['view'];
+			self::assertTrue( $view['isChanges'] );
+			self::assertFalse( $view['isReview'] );
+			$panel = $view['changes'];
+			$use   = array_column( $panel['use']['fields'], 'value', 'name' );
+			$self  = array_column( $panel['undo']['fields'], 'value', 'name' );
+			self::assertSame( 'Your build has changed', $panel['heading'] );
+			self::assertSame( array( SlotKey::WHEELS ), array_column( $panel['items'], 'key' ) );
+			self::assertStringEndsWith( 'is sold out.', $panel['items'][0]['text'] );
+			self::assertStringStartsWith( 'Closest fit: ', $panel['items'][0]['closest'] );
+			self::assertCount( 1, $panel['prices'], 'the trucks cost another amount now' );
+			self::assertStringContainsString( 'when you saved', $panel['prices'][0]['text'] );
+			self::assertStringStartsWith( 'Total: $300.00 when you saved, ', $panel['totals'] );
+			self::assertSame( '301', $use['cbuild[wheels]'] ?? null, 'Use these takes the closest wheels' );
+			self::assertSame( 'review', $use['cbuild[step]'] ?? null, 'to the review' );
+			self::assertArrayNotHasKey( 'cbuild[wheels]', $self, 'Choose myself leaves the wheels to choose' );
+			self::assertSame( 'wheels', $self['cbuild[step]'] ?? null, 'on their step' );
+			self::assertArrayNotHasKey( 'cbuild[_saved]', $use, 'checked once' );
+
+			$GLOBALS['cbuild_test_user'] = 8;
+			self::assertTrue( $this->shown( $link, null, $saved )['view']['isReview'], 'another customer\'s build opens as the link says' );
+		} finally {
+			unset( $GLOBALS['cbuild_test_user'] );
+		}
+	}
+
 	public function test_a_width_with_nothing_in_stock_is_dimmed_and_named(): void {
 		$parts                  = Shop::parts();
 		$parts[ SlotKey::DECK ] = array_map( static fn( Part $part ): Part => 102 === $part->id ? Shop::priced( $part, $part->price, false, 0 ) : $part, $parts[ SlotKey::DECK ] );
@@ -321,6 +373,27 @@ final class BuilderShelfTest extends TestCase {
 		self::assertCount( 15, $step['options'] );
 		self::assertSame( 'Showing 15 of 15', $step['more']['count'] );
 		self::assertFalse( $step['more']['shown'] );
+	}
+
+	// Spec (configurator): Search, "When nothing is found, the step says why and offers the way on".
+	public function test_a_search_that_lists_nothing_says_why_and_offers_the_way_on(): void {
+		$elsewhere = $this->step( BuildLink::read( array( 'step' => 'deck', '_on' => 'deck', '_width' => '8.25in', '_q' => 'Part 101' ) ) )['found'];
+		self::assertTrue( $elsewhere['shown'] );
+		self::assertSame( 'No 8.25″ decks match Part 101. Part 101 comes in 8″.', $elsewhere['text'] );
+		self::assertSame( array( array( 'value' => '8in', 'text' => '8″', 'label' => 'Show 8″ decks' ) ), $elsewhere['widths'], 'a button to that width' );
+		self::assertFalse( $elsewhere['clear']['shown'] );
+
+		$hidden = $this->step( BuildLink::read( array( 'deck' => '101', 'step' => 'trucks', '_on' => 'trucks', '_q' => 'Part 169' ) ) )['found'];
+		self::assertSame( '1 part matches, but it doesn’t fit your build.', $hidden['text'] );
+		self::assertTrue( $hidden['why']['shown'], 'with a link to the hidden parts' );
+		self::assertFalse( $hidden['clear']['shown'] );
+
+		$none = $this->step( BuildLink::read( array( 'deck' => '101', 'step' => 'trucks', '_on' => 'trucks', '_q' => 'zzz' ) ) )['found'];
+		self::assertSame( 'No trucks match zzz.', $none['text'] );
+		self::assertSame( array( true, false, 'cbuild[_q]' ), array( $none['clear']['shown'], $none['why']['shown'], $none['clear']['name'] ), 'with Clear search' );
+
+		self::assertFalse( $this->step( BuildLink::read( array( 'deck' => '101', 'step' => 'trucks', '_on' => 'trucks', '_q' => 'Part 139' ) ) )['found']['shown'], 'nothing to say where it lists a part' );
+		self::assertFalse( $this->step( BuildLink::read( array( 'deck' => '101', 'step' => 'trucks', '_on' => 'trucks' ) ) )['found']['shown'], 'or without a search' );
 	}
 
 	public function test_sold_out_looks_fold_into_one_line_at_the_end(): void {

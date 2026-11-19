@@ -10,6 +10,7 @@ declare( strict_types=1 );
 namespace CreativeBranding\SkateboardBuilder\Tests\Unit\Service;
 
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Part;
+use CreativeBranding\SkateboardBuilder\Domain\Kit\Kit;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\SlotKey;
 use CreativeBranding\SkateboardBuilder\Domain\Look\ChipGroup;
 use CreativeBranding\SkateboardBuilder\Domain\Look\Listing;
@@ -23,6 +24,7 @@ use CreativeBranding\SkateboardBuilder\Service\State;
 use CreativeBranding\SkateboardBuilder\Service\StepShelf;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Domain\Builds;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Domain\Parts;
+use CreativeBranding\SkateboardBuilder\Tests\Support\Domain\KitDocuments;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Domain\Shop;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\FakeLogger;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\FakeRanking;
@@ -46,6 +48,13 @@ final class StepShelfTest extends TestCase {
 
 	private FakeRanking $ranking;
 
+	/**
+	 * The kit's parts, by slot.
+	 *
+	 * @var array<string, list<Part>>
+	 */
+	private array $parts = array();
+
 	private InMemoryShopSettings $settings;
 
 	protected function setUp(): void {
@@ -62,6 +71,7 @@ final class StepShelfTest extends TestCase {
 			self::wheel( 304, '53', 'bones' ),
 		);
 		$this->kits->add( self::KIT, Shop::kit(), $parts );
+		$this->parts = $parts;
 		$retna = static fn( int $photo, string $colour, string $size ): LookFact => new LookFact(
 			10,
 			$photo,
@@ -163,6 +173,18 @@ final class StepShelfTest extends TestCase {
 
 		$this->wheels( new ShelfQuery( query: str_repeat( 'a', 150 ) ) );
 		self::assertSame( 100, strlen( $this->ranking->asked[0][0] ), 'a query is 100 characters at most' );
+	}
+
+	// Spec (configurator): Settings (D-255), "Search in the steps": own, "the builder's own always".
+	public function test_a_kit_whose_search_is_its_own_never_asks_creative_search(): void {
+		$own = Kit::fromDocuments( KitDocuments::slots(), KitDocuments::rules(), KitDocuments::presets(), KitDocuments::assembly(), null, array( 'schema_version' => 1, 'search' => 'own' ) );
+		$this->kits->add( self::KIT, $own, $this->parts );
+		$this->ranking->answer = array(
+			'ids'       => array( 10 ),
+			'corrected' => null,
+		);
+		$this->wheels( new ShelfQuery( query: 'mnit' ) );
+		self::assertSame( array(), $this->ranking->asked );
 	}
 
 	public function test_the_width_asked_lists_the_decks_in_it_and_anything_else_asks_the_question(): void {

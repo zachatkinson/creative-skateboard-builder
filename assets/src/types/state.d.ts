@@ -857,6 +857,23 @@ export interface Shelf {
 	 * The order the step was listed in.
 	 */
 	sort: 'recommended' | 'price-asc' | 'price-desc' | 'newest';
+	/**
+	 * From 1.0.0, on the deck step, where a search finds nothing in stock in the width asked: the widths its matches are in stock in, narrowest first, each with `value` and `text`; otherwise empty.
+	 */
+	elsewhere: {
+		/**
+		 * The width as the `width` argument names it: `8.5in`.
+		 */
+		value: string;
+		/**
+		 * The width as a person reads it.
+		 */
+		text: string;
+	}[];
+	/**
+	 * From 1.0.0, where a search finds nothing to list here or in another width: how many of the step's parts that don't fit the build match it; otherwise 0.
+	 */
+	hidden_matching: number;
 }
 /**
  * A card: a product, or the variations of one that share a photo and a layer image.

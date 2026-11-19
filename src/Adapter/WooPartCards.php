@@ -322,6 +322,38 @@ final class WooPartCards implements PartCards {
 	}
 
 	/**
+	 * An image from the media library as a card's photo is, or null when it is none.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param int $attachment The attachment's ID.
+	 * @return array{src: string, width: int, height: int, srcset: string, sizes: string}|null
+	 */
+	public function photo( int $attachment ): ?array {
+		return self::image( $attachment );
+	}
+
+	/**
+	 * An attachment at the cards' size, or null.
+	 *
+	 * @param int $photo The attachment's ID, or 0.
+	 * @return array{src: string, width: int, height: int, srcset: string, sizes: string}|null
+	 */
+	private static function image( int $photo ): ?array {
+		$source = $photo > 0 ? wp_get_attachment_image_src( $photo, self::SIZE ) : false;
+		if ( ! is_array( $source ) ) {
+			return null;
+		}
+		return array(
+			'src'    => $source[0],
+			'width'  => $source[1],
+			'height' => $source[2],
+			'srcset' => (string) wp_get_attachment_image_srcset( $photo, self::SIZE ),
+			'sizes'  => (string) wp_get_attachment_image_sizes( $photo, self::SIZE ),
+		);
+	}
+
+	/**
 	 * A product's card.
 	 *
 	 * @param WC_Product $product The part.
@@ -329,18 +361,7 @@ final class WooPartCards implements PartCards {
 	 */
 	private static function card( WC_Product $product ): array {
 		$availability = $product->get_availability();
-		$photo        = Cast::int( $product->get_image_id() );
-		$source       = $photo > 0 ? wp_get_attachment_image_src( $photo, self::SIZE ) : false;
-		$image        = null;
-		if ( is_array( $source ) ) {
-			$image = array(
-				'src'    => $source[0],
-				'width'  => $source[1],
-				'height' => $source[2],
-				'srcset' => (string) wp_get_attachment_image_srcset( $photo, self::SIZE ),
-				'sizes'  => (string) wp_get_attachment_image_sizes( $photo, self::SIZE ),
-			);
-		}
+		$image        = self::image( Cast::int( $product->get_image_id() ) );
 		return array(
 			// WordPress stores a title with its entities written out. A card's name is plain text, which the edge escapes.
 			'name'        => html_entity_decode( wp_strip_all_tags( $product->get_name() ), ENT_QUOTES, 'UTF-8' ),

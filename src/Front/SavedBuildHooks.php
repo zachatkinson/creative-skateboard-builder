@@ -12,6 +12,7 @@ namespace CreativeBranding\SkateboardBuilder\Front;
 use Closure;
 use CreativeBranding\SkateboardBuilder\Port\Clock;
 use CreativeBranding\SkateboardBuilder\Domain\Saved\SavedBuild;
+use CreativeBranding\SkateboardBuilder\Domain\Saved\SavedPrices;
 use DateTimeImmutable;
 use DateTimeZone;
 use CreativeBranding\SkateboardBuilder\Hookable;
@@ -356,6 +357,7 @@ final class SavedBuildHooks implements Hookable {
 				'name'     => $build->name,
 				'created'  => $build->created->setTimezone( new DateTimeZone( 'UTC' ) )->format( 'Y-m-d H:i:s' ),
 				'updated'  => $build->updated->setTimezone( new DateTimeZone( 'UTC' ) )->format( 'Y-m-d H:i:s' ),
+				'prices'   => $build->prices?->toArray(),
 				'shown'    => false,
 				'deleted'  => $this->clock->now()->getTimestamp(),
 			)
@@ -389,7 +391,7 @@ final class SavedBuildHooks implements Hookable {
 			return null;
 		}
 		return array(
-			'build' => new SavedBuild( $uuid, Cast::int( $kept['user'] ?? null ), Cast::int( $kept['kit'] ?? null ), $picks, Cast::bool( $kept['assembly'] ?? null ), Cast::str( $kept['name'] ?? null ), $created, $updated ),
+			'build' => new SavedBuild( $uuid, Cast::int( $kept['user'] ?? null ), Cast::int( $kept['kit'] ?? null ), $picks, Cast::bool( $kept['assembly'] ?? null ), Cast::str( $kept['name'] ?? null ), $created, $updated, SavedPrices::fromArray( $kept['prices'] ?? null ) ),
 			'shown' => Cast::bool( $kept['shown'] ?? null ),
 		);
 	}

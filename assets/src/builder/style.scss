@@ -231,6 +231,28 @@
 		overscroll-behavior: contain;
 		padding-inline: var(--cbuild-gap);
 	}
+
+	/* The kit's Layout (D-255): the board balanced takes half the width, and the stage may take the right side. */
+	:where(.cbuild--balanced .cbuild__layout) {
+		grid-template-columns: minmax(0, 1fr) clamp(23.75rem, 50%, 40rem);
+	}
+
+	:where(.cbuild--stage-right .cbuild__layout) {
+		grid-template-columns: clamp(23.75rem, 40%, 32.5rem) minmax(0, 1fr);
+	}
+
+	:where(.cbuild--stage-right.cbuild--balanced .cbuild__layout) {
+		grid-template-columns: clamp(23.75rem, 50%, 40rem) minmax(0, 1fr);
+	}
+
+	:where(.cbuild--stage-right .cbuild__stage) {
+		order: 1;
+	}
+
+	:where(.cbuild--stage-right .cbuild__panel) {
+		border-inline-start: 0;
+		border-inline-end: 1px solid var(--cbuild-line);
+	}
 }
 
 /* Buttons: the step's Next and Back, Add to cart, the filters, Show more, Use these and Undo, Copy link. */
@@ -393,7 +415,12 @@
 	color: var(--cbuild-muted);
 }
 
-:where(.cbuild-step__nav, .cbuild-step__more, .cbuild-changes__actions) {
+:where(
+	.cbuild-step__nav,
+	.cbuild-step__more,
+	.cbuild-changes__actions,
+	.cbuild-found__ways
+) {
 	display: flex;
 	flex-wrap: wrap;
 	align-items: center;
@@ -1210,7 +1237,7 @@
 	}
 }
 
-:where(.cbuild-review__item--wrong) {
+:where(.cbuild-review__item--wrong, .cbuild__limited) {
 	border-inline-start: 0.25rem solid var(--cbuild-wrong);
 	padding-inline-start: var(--cbuild-gap-small);
 }
