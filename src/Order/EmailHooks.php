@@ -16,6 +16,7 @@ use CreativeBranding\SkateboardBuilder\Service\OrderedBuild;
 use CreativeBranding\SkateboardBuilder\Support\Options;
 use WC_Order;
 use WC_Order_Item_Product;
+use WC_Product;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -68,6 +69,8 @@ final class EmailHooks implements Hookable {
 		add_action( 'woocommerce_order_item_meta_end', array( $this, 'picture' ), 10, 4 );
 		add_action( 'woocommerce_email_after_order_table', array( $this, 'notes' ), 10, 3 );
 		add_filter( 'woocommerce_order_item_class', array( $this, 'rowClass' ), 10, 2 );
+		// WooCommerce 11.3.0, templates/emails/email-order-items.php:80 and :166.
+		add_filter( 'woocommerce_order_item_thumbnail', array( $this, 'thumbnail' ), 10, 2 );
 		add_filter( 'woocommerce_email_styles', array( $this, 'styles' ) );
 		add_action( 'wp_enqueue_scripts', array( $this, 'pageStyles' ), 20 );
 	}
@@ -160,6 +163,24 @@ final class EmailHooks implements Hookable {
 			echo '<p>' . esc_html( $text ) . '</p>';
 		}
 		echo '</div>';
+	}
+
+	/**
+	 * An email's thumbnail of the kit's line: none where the kit has no photo of its own, since the build's picture
+	 * follows it, where WooCommerce would draw its placeholder, alt "Placeholder" (Cowork's review of 0.9.0, F4).
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param mixed $image The thumbnail's HTML.
+	 * @param mixed $item  The order's line.
+	 * @return mixed
+	 */
+	public function thumbnail( mixed $image, mixed $item = null ): mixed {
+		if ( ! $item instanceof WC_Order_Item_Product || Options::ROLE_KIT !== $item->get_meta( Options::ORDER_ROLE ) ) {
+			return $image;
+		}
+		$kit = $item->get_product();
+		return $kit instanceof WC_Product && $kit->get_image_id() > 0 ? $image : '';
 	}
 
 	/**
