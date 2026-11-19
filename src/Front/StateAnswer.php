@@ -22,7 +22,13 @@ use CreativeBranding\SkateboardBuilder\Domain\Spec\SpecKey;
 use CreativeBranding\SkateboardBuilder\Port\Kits;
 use CreativeBranding\SkateboardBuilder\Port\Money;
 use CreativeBranding\SkateboardBuilder\Port\PartCards;
+use CreativeBranding\SkateboardBuilder\Domain\Look\Shelf;
+use CreativeBranding\SkateboardBuilder\Domain\Look\ShelfLook;
+use CreativeBranding\SkateboardBuilder\Domain\Look\Width;
 use CreativeBranding\SkateboardBuilder\Service\LayerArtwork;
+use CreativeBranding\SkateboardBuilder\Service\ShelfQuery;
+use CreativeBranding\SkateboardBuilder\Service\ShelfView;
+use CreativeBranding\SkateboardBuilder\Service\StepShelf;
 use CreativeBranding\SkateboardBuilder\Service\State;
 use CreativeBranding\SkateboardBuilder\Service\StateStep;
 
@@ -108,6 +114,27 @@ final class StateAnswer {
 	private ?LayerArtwork $artwork = null;
 
 	/**
+	 * The step's shelf, since 1.0.0, given by the container through `withShelf()`. An answer an earlier release's
+	 * container builds has none, and says null for it, as on the review.
+	 *
+	 * @var StepShelf|null
+	 */
+	private ?StepShelf $shelf = null;
+
+	/**
+	 * The same answer, with the step's shelf (D-264).
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param StepShelf $shelf The step's shelf.
+	 */
+	public function withShelf( StepShelf $shelf ): self {
+		$answer        = clone $this;
+		$answer->shelf = $shelf;
+		return $answer;
+	}
+
+	/**
 	 * The same answer, drawing the parts from their layer images.
 	 *
 	 * @since 0.7.0
@@ -126,12 +153,16 @@ final class StateAnswer {
 	 * @since 0.4.0
 	 * @since 0.6.0 Takes the address, for the step's filters and how many options it lists.
 	 *
-	 * @param State          $state The build's state.
-	 * @param BuildLink|null $link  The address the build was asked at, or null for one that says nothing.
+	 * @since 1.0.0 Takes what the route asks of the shelf, which comes before the link's.
+	 *
+	 * @param State           $state The build's state.
+	 * @param BuildLink|null  $link  The address the build was asked at, or null for one that says nothing.
+	 * @param ShelfQuery|null $query What the route asks of the step's shelf, or null for the link's.
 	 * @return array<string, mixed>
 	 */
-	public function of( State $state, ?BuildLink $link = null ): array {
+	public function of( State $state, ?BuildLink $link = null, ?ShelfQuery $query = null ): array {
 		$link  ??= new BuildLink();
+		$view    = $this->shelf?->of( $state, $query ?? self::page( $link ) );
 		$labels  = array();
 		$current = null;
 		$counted = $state->counted();
@@ -177,6 +208,9 @@ final class StateAnswer {
 		}
 		foreach ( $state->quote->lines as $line ) {
 			$ids[] = $line->part;
+		}
+		foreach ( null === $view ? array() : array_merge( $view->listing->looks, $view->listing->soldOut ) as $look ) {
+			$ids[] = $look->option->part->id;
 		}
 		foreach ( $state->kit->presets as $preset ) {
 			// Its first slot's part, for the tile's picture.
@@ -361,7 +395,111 @@ final class StateAnswer {
 			'picture'  => $this->picture( $state, $counted, $labels, $brands, $cards ),
 			'delivery' => $this->delivery->said( $state->id, $state->quote->assembly, $state->quote->total, $decimals ),
 			'notes'    => self::notes( $state, $decimals ),
+			'shelf'    => null === $view ? null : self::shelf( $view, $state->step, static fn( Option $shown ): array => $option( $shown, $state->step, $current ) ),
 		);
+	}
+
+	/**
+	 * What a link asks of the step's shelf: its width, chips, search and sort, and as many looks as it lists, a
+	 * page at least.
+	 *
+	 * @param BuildLink $link The link.
+	 */
+	private static function page( BuildLink $link ): ShelfQuery {
+		return new ShelfQuery( $link->shelf->width, $link->shelf->chips, $link->shelf->query, $link->shelf->sort, 0, max( Shelf::SHOWN, $link->shown ) );
+	}
+
+	/**
+	 * The shelf as the answer carries it.
+	 *
+	 * @param ShelfView                      $view   The shelf and its names.
+	 * @param string                         $slot   The step's slot.
+	 * @param callable(Option): array<mixed> $option An option as the answer carries it.
+	 * @return array<string, mixed>
+	 */
+	private static function shelf( ShelfView $view, string $slot, callable $option ): array {
+		$fraction = in_array( self::SIZES[ $slot ] ?? null, array( SpecKey::RiserThickness, SpecKey::BoltLength ), true );
+		$size     = static fn( Measure $measure ): array => array(
+			'value' => Shelf::named( $measure ),
+			'text'  => Words::measure( $measure, $fraction ),
+		);
+		$look     = static function ( ShelfLook $shelved ) use ( $view, $option, $size ): array {
+			$choices = array();
+			foreach ( $shelved->look->choices() as $name => $values ) {
+				$choices[ $name ] = array_map(
+					static fn( string $value ): array => array(
+						'value' => $value,
+						'label' => $view->labels[ $name ][ $value ] ?? $value,
+					),
+					$values
+				);
+			}
+			return array(
+				'key'     => $shelved->look->key,
+				'product' => $shelved->look->product,
+				'part'    => $option( $shelved->option ),
+				'sizes'   => array_map( $size, $shelved->sizes ),
+				'choices' => (object) $choices,
+			);
+		};
+		$sized    = self::SIZES[ $slot ]->value ?? null;
+		$groups   = array();
+		foreach ( $view->listing->groups as $group ) {
+			$chips = array();
+			foreach ( $group->chips as $chip ) {
+				$measure = $group->name === $sized ? ( $view->sizes[ $chip->value ] ?? null ) : null;
+				$chips[] = array(
+					'value'    => $chip->value,
+					'label'    => null === $measure ? ( $view->labels[ $group->name ][ $chip->value ] ?? $chip->value ) : $size( $measure )['text'],
+					'count'    => $chip->count,
+					'selected' => $chip->chosen,
+				);
+			}
+			$groups[] = array(
+				'name'  => $group->name,
+				'label' => match ( $group->name ) {
+					Shelf::BRAND => __( 'Brand', 'creative-skateboard-builder' ),
+					$sized       => self::sizeName( $slot ),
+					default      => $view->groups[ $group->name ] ?? $group->name,
+				},
+				'chips' => $chips,
+			);
+		}
+		return array(
+			'looks'    => array_map( $look, $view->listing->looks ),
+			'sold_out' => array_map( $look, $view->listing->soldOut ),
+			'chips'    => $groups,
+			'widths'   => array_map(
+				static fn( Width $width ): array => $size( $width->width ) + array(
+					'in_stock' => $width->inStock,
+					'selected' => Shelf::named( $width->width ) === $view->width,
+				),
+				$view->listing->widths
+			),
+			'offered'  => $view->listing->offered,
+			'matching' => $view->listing->matching,
+			'more'     => $view->listing->more,
+			'query'    => $view->query,
+			'sort'     => $view->sort,
+		);
+	}
+
+	/**
+	 * What a slot's size is called: a deck's width, wheels' diameter.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param string $slot The slot's key.
+	 */
+	public static function sizeName( string $slot ): string {
+		return match ( $slot ) {
+			SlotKey::DECK     => __( 'Width', 'creative-skateboard-builder' ),
+			SlotKey::TRUCKS   => __( 'Axle width', 'creative-skateboard-builder' ),
+			SlotKey::WHEELS   => __( 'Diameter', 'creative-skateboard-builder' ),
+			SlotKey::RISERS   => __( 'Thickness', 'creative-skateboard-builder' ),
+			SlotKey::HARDWARE => __( 'Length', 'creative-skateboard-builder' ),
+			default           => __( 'Size', 'creative-skateboard-builder' ),
+		};
 	}
 
 	/**

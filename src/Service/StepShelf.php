@@ -13,7 +13,6 @@ use CreativeBranding\SkateboardBuilder\Domain\Fit\FitEngine;
 use CreativeBranding\SkateboardBuilder\Domain\Fit\SizePicker;
 use CreativeBranding\SkateboardBuilder\Domain\Fit\SlotSize;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Picks;
-use CreativeBranding\SkateboardBuilder\Domain\Look\Listing;
 use CreativeBranding\SkateboardBuilder\Domain\Look\Shelf;
 use CreativeBranding\SkateboardBuilder\Domain\Look\ShelfAsk;
 use CreativeBranding\SkateboardBuilder\Domain\Look\Shelved;
@@ -68,14 +67,14 @@ final class StepShelf {
 	}
 
 	/**
-	 * The listing of the state's step, or null on the review, which lists no parts.
+	 * The listing of the state's step and the names its values need, or null on the review, which lists no parts.
 	 *
 	 * @since 1.0.0
 	 *
 	 * @param State      $state The build's state.
 	 * @param ShelfQuery $query What the request asks.
 	 */
-	public function of( State $state, ShelfQuery $query ): ?Listing {
+	public function of( State $state, ShelfQuery $query ): ?ShelfView {
 		$current = null;
 		$build   = Picks::none();
 		foreach ( $state->steps as $step ) {
@@ -113,6 +112,8 @@ final class StepShelf {
 		}
 
 		$shelved = array();
+		$labels  = array( Shelf::BRAND => $brands );
+		$sizes   = array();
 		foreach ( $offered as $option ) {
 			$fact = $facts[ $option->part->id ] ?? null;
 			if ( null === $fact ) {
@@ -126,14 +127,17 @@ final class StepShelf {
 					$choices[ $taxonomy ] = $values[0];
 				}
 				foreach ( $values as $value ) {
-					$own[] = $this->folding->fold( $fact->labels[ $taxonomy ][ $value ] ?? $value );
+					$label                         = $fact->labels[ $taxonomy ][ $value ] ?? $value;
+					$labels[ $taxonomy ][ $value ] = $label;
+					$own[]                         = $this->folding->fold( $label );
 				}
 			}
 			$brand = $option->part->brand;
 			$words = array( $this->folding->fold( $brands[ $brand ] ?? $brand ), $this->folding->fold( $fact->name ) );
 			$size  = null === $spec ? null : $option->part->specs->measure( $spec );
 			if ( null !== $size ) {
-				$words[] = Shelf::named( $size );
+				$words[]                        = Shelf::named( $size );
+				$sizes[ Shelf::named( $size ) ] = $size;
 			}
 			$shelved[ $option->part->id ] = new Shelved( $fact->product, $fact->photo, $fact->layer, $choices, $attributes, $words, $own, $fact->featured, $fact->sales, $fact->created, $fact->name );
 		}
@@ -148,7 +152,7 @@ final class StepShelf {
 				$corrected = null === $ranking['corrected'] ? null : $this->folding->fold( $ranking['corrected'] );
 			}
 		}
-		$ask = new ShelfAsk(
+		$ask     = new ShelfAsk(
 			self::width( $query->width ),
 			$query->chips,
 			$this->folding->fold( $text ),
@@ -158,7 +162,15 @@ final class StepShelf {
 			max( 0, $query->from ),
 			max( 1, $query->shown )
 		);
-		return $this->shelf->of( $state->kit, $slot, $build, $offered, $current->picked, $current->recommended, $shelved, $ask );
+		$width   = null === $ask->width ? '' : Shelf::named( $ask->width );
+		$listing = $this->shelf->of( $state->kit, $slot, $build, $offered, $current->picked, $current->recommended, $shelved, $ask );
+		$named   = array();
+		foreach ( $listing->groups as $group ) {
+			if ( isset( $labels[ $group->name ] ) && Shelf::BRAND !== $group->name ) {
+				$named[] = $group->name;
+			}
+		}
+		return new ShelfView( $listing, $labels, $sizes, $text, in_array( $query->sort, ShelfAsk::SORTS, true ) ? $query->sort : ShelfAsk::SORTS[0], $width, $this->looks->attributes( $named ) );
 	}
 
 	/**

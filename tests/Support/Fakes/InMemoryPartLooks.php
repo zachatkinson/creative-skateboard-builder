@@ -32,6 +32,13 @@ final class InMemoryPartLooks implements PartLooks {
 	public array $asked = array();
 
 	/**
+	 * The attributes' names, by taxonomy.
+	 *
+	 * @var array<string, string>
+	 */
+	public array $names = array();
+
+	/**
 	 * The facts of these parts, by ID, in the order asked.
 	 *
 	 * @param list<int> $ids Parts' IDs.
@@ -43,6 +50,22 @@ final class InMemoryPartLooks implements PartLooks {
 		foreach ( $ids as $id ) {
 			if ( isset( $this->facts[ $id ] ) ) {
 				$found[ $id ] = $this->facts[ $id ];
+			}
+		}
+		return $found;
+	}
+
+	/**
+	 * The attributes' names set, in the order asked.
+	 *
+	 * @param list<string> $taxonomies Attributes' taxonomies.
+	 * @return array<string, string>
+	 */
+	public function attributes( array $taxonomies ): array {
+		$found = array();
+		foreach ( $taxonomies as $taxonomy ) {
+			if ( isset( $this->names[ $taxonomy ] ) ) {
+				$found[ $taxonomy ] = $this->names[ $taxonomy ];
 			}
 		}
 		return $found;

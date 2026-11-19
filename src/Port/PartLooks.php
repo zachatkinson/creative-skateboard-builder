@@ -30,4 +30,15 @@ interface PartLooks {
 	 * @return array<int, LookFact>
 	 */
 	public function looks( array $ids ): array;
+
+	/**
+	 * The shop's names of these global attributes, by taxonomy, in the order asked. A taxonomy that is no attribute
+	 * of the shop's has none.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param list<string> $taxonomies Attributes' taxonomies, `pa_…`.
+	 * @return array<string, string>
+	 */
+	public function attributes( array $taxonomies ): array;
 }

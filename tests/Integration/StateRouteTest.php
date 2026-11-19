@@ -248,7 +248,7 @@ final class StateRouteTest extends IntegrationTestCase {
 		self::assertArrayHasKey( $route, $routes );
 		self::assertSame( array( 'GET' => true ), $routes[ $route ][0]['methods'] );
 		self::assertSame( '__return_true', $routes[ $route ][0]['permission_callback'], 'Said, not left out: WordPress warns of a route with none.' );
-		self::assertSame( array( 'id', 'picks', 'previous', 'step', 'assembly', 'locale', 'cbuild', 'page' ), array_keys( $routes[ $route ][0]['args'] ) );
+		self::assertSame( array( 'id', 'picks', 'previous', 'step', 'assembly', 'locale', 'cbuild', 'page', 'width', 'chips', 'q', 'sort', 'from' ), array_keys( $routes[ $route ][0]['args'] ) );
 
 		wp_set_current_user( 0 );
 		self::assertSame( 200, $this->ask()->get_status() );
@@ -421,6 +421,41 @@ final class StateRouteTest extends IntegrationTestCase {
 		self::assertArrayHasKey( 'view', $answer );
 	}
 
+	public function test_the_shelf_lists_the_step_as_its_arguments_ask(): void {
+		$asking = $this->answer();
+		self::assertSame( array(), $asking['shelf']['looks'], 'the deck step asks its width first' );
+		self::assertSame( array( '8in', '8.5in' ), array_column( $asking['shelf']['widths'], 'value' ) );
+		self::assertSame( array( '8″', '8.5″' ), array_column( $asking['shelf']['widths'], 'text' ) );
+
+		$wide = $this->answer( array( 'width' => '8.5in' ) );
+		self::assertSame( array( $this->parts['deck 8.5'] ), array_column( array_column( $wide['shelf']['looks'], 'part' ), 'id' ) );
+		self::assertSame( 'Deck 8.5', $wide['shelf']['looks'][0]['part']['card']['name'], 'each card\'s part with its card' );
+		self::assertSame( array( false, true ), array_column( $wide['shelf']['widths'], 'selected' ) );
+
+		$trucks = array(
+			'picks' => array( 'deck' => $this->parts['deck 8.0'] ),
+			'step'  => 'trucks',
+		);
+		self::assertSame( array( $this->parts['truck 139'] ), array_column( array_column( $this->answer( $trucks )['shelf']['looks'], 'part' ), 'id' ) );
+		$none = $this->answer( $trucks + array( 'q' => '  nothing like it ', 'sort' => 'newest' ) );
+		self::assertSame( array( array(), 0, 'nothing like it', 'newest' ), array( $none['shelf']['looks'], $none['shelf']['matching'], $none['shelf']['query'], $none['shelf']['sort'] ) );
+		self::assertSame( array(), $this->answer( $trucks + array( 'from' => '1' ) )['shelf']['looks'], 'a page past the last lists none' );
+		self::assertSame( 1, $this->answer( $trucks + array( 'chips' => array( 'brand' => array( 'nobody' ) ) ) )['shelf']['offered'], 'a chip no look has narrows nothing it does not know' );
+	}
+
+	public function test_a_build_link_carries_the_shelf_and_the_routes_arguments_change_it(): void {
+		$linked = $this->answer( array( 'cbuild' => array( '_width' => '8.5in' ) ) );
+		self::assertSame( array( $this->parts['deck 8.5'] ), array_column( array_column( $linked['shelf']['looks'], 'part' ), 'id' ) );
+		$changed = $this->answer(
+			array(
+				'cbuild' => array( '_width' => '8.5in' ),
+				'width'  => '8in',
+			)
+		);
+		self::assertSame( array( $this->parts['deck 8.0'] ), array_column( array_column( $changed['shelf']['looks'], 'part' ), 'id' ) );
+		self::assertStringContainsString( rawurlencode( 'cbuild[_width]' ) . '=8in', $changed['view']['url'], 'the view\'s address is the build as now listed' );
+	}
+
 	public function test_the_schema_refuses_an_answer_that_is_not_its_own(): void {
 		$body = $this->answer();
 		unset( $body['total'] );
@@ -451,6 +486,18 @@ final class StateRouteTest extends IntegrationTestCase {
 		yield 'assembly that is neither' => array( array( 'assembly' => 'perhaps' ), 'assembly' );
 		yield 'a locale that is no locale' => array( array( 'locale' => '../fr' ), 'locale' );
 		yield 'a locale with a line break' => array( array( 'locale' => "fr_CA\n" ), 'locale' );
+		yield 'a search of 101 characters' => array( array( 'q' => str_repeat( 'é', 101 ) ), 'q' );
+		yield 'a search that is a list' => array( array( 'q' => array( 'x' ) ), 'q' );
+		yield 'a sort of its own' => array( array( 'sort' => 'cheapest' ), 'sort' );
+		yield 'a page before the first' => array( array( 'from' => '-1' ), 'from' );
+		yield 'a page past the most a step lists' => array( array( 'from' => '2001' ), 'from' );
+		yield 'a width with no unit' => array( array( 'width' => '8.25' ), 'width' );
+		yield 'a width with a line break' => array( array( 'width' => "8in\n" ), 'width' );
+		yield 'chips that are no map' => array( array( 'chips' => 'brand' ), 'chips' );
+		yield 'a chip group that is no key' => array( array( 'chips' => array( 'Brand' => array( 'x' ) ) ), 'chips' );
+		yield 'a chip that is no slug' => array( array( 'chips' => array( 'brand' => array( '<b>' ) ) ), 'chips' );
+		yield 'more chips than a group shows' => array( array( 'chips' => array( 'brand' => array_map( static fn( int $n ): string => "b{$n}", range( 1, 21 ) ) ) ), 'chips' );
+		yield 'more chip groups than a step shows' => array( array( 'chips' => array_fill_keys( array( 'brand', 'pa_a', 'pa_b', 'pa_c', 'pa_d' ), array( 'x' ) ) ), 'chips' );
 	}
 
 	/**

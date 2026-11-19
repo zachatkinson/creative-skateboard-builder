@@ -3343,3 +3343,16 @@ Looks (D-240) need each part's product, photo and layer image; the chips (D-247)
 - **A look's own words** (its values' names) narrow a product Creative Search ranked; its brand, name and size words don't, since every look of the product shares them (D-248).
 - **The attribute the shop mapped to the slot's size** is the size alone (`Service\StepShelf`): never a choice you can't see, never a chip group of its own beside the size's.
 - **Creative Search is asked for every query** while the kit's Search setting allows it. Its `null`, with Creative Search inactive or not yet indexed, is the builder's own search. An id it returns that is no whole number above 0 is left out (`Adapter\CreativeSearchRanking`).
+
+### D-265 · The shelf on the state route and in the build link · 2026-11-18
+
+The route answers the shelf (D-264) as `shelf`, and keeps `options`, `filters`, `matching` and `more` as they were, since a REST answer only gains fields within a major version (HOOKS.md). Where the spec leaves a choice:
+
+- **One field, null on the review.** The shelf is one object, so a reader asks for it once; an answer built by an earlier release's container, which gives the answer no shelf, says null as the review does.
+- **The arguments.** `width`, `chips`, `q`, `sort` and `from`, each refused by the schema when forged: a search over 100 characters, a sort of its own, a page past 2,000 (the most parts a step is built to list), more than four chip groups or 20 chips a group. A search inside the limit is read as a link's is: control characters as spaces, then trimmed.
+- **Beside a build link,** the shelf arguments take the place of the link's own shelf, and the view's addresses follow, so the store sends a search or a chip as an argument and gets back the address to push.
+- **In the link,** `_width`, `_chips`, `_q` and `_sort`, read as leniently as the link's other keys: what is no part of a shelf is dropped. Another step keeps the width, which the visit remembers (D-242), and starts with no search, chip or sort; Next from a step, whose form names it in `_on`, leaves its search and chips behind. A shared link carries none of it.
+- **A page** from a link is as many looks as `_shown` lists, 30 at least; from the route, 30 from `from`.
+- **`choices` is an object,** so a look with none is `{}` in JSON, as the schema says.
+- **The looks' meta is primed** (`Port\ProductMeta`) before they are read, as the layer images' are (D-202): WooCommerce reads a product's meta in a query of its own otherwise, and the route's query count would grow with the step's parts.
+- **A chip group's label** is Brand, the slot's size name (Width, Diameter), or the shop's name for the attribute (`wc_get_attribute_taxonomy_labels()`, woocommerce/includes/wc-attribute-functions.php:121).

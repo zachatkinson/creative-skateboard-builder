@@ -340,6 +340,10 @@ export interface CbuildState {
 	 */
 	notes: string[];
 	/**
+	 * From 1.0.0: the current step as the configurator lists it, one card per look (D-240 to D-264), or null on the review, which lists no parts. `options` and `filters` stay as they were, for whoever reads them.
+	 */
+	shelf: Shelf | null;
+	/**
 	 * Only in an answer to a build link (the cbuild argument): what the builder's template draws for it, as the page's first render has it. The builder's own, and no part of the public API: it may change in any release. The fields the store's script reads are described, so its types are generated from here; the rest are the templates'.
 	 */
 	view?: {
@@ -795,4 +799,226 @@ export interface Layer {
 			srcset: string;
 		}[];
 	};
+}
+/**
+ * A step's shelf: a page of the looks in stock, the sold-out fold, the chips, the deck's width question and the counts.
+ */
+export interface Shelf {
+	/**
+	 * The page of looks in stock, in the order asked: 30 at most from `from`.
+	 */
+	looks: Look[];
+	/**
+	 * Every sold-out look the search and chips leave, in the same order, for the fold.
+	 */
+	sold_out: Look[];
+	/**
+	 * The chip groups: brand, the size where the shopper picks it, and the attributes most of the step's looks carry; four at most, each with two values or more.
+	 *
+	 * @maxItems 4
+	 */
+	chips: ChipGroup[];
+	/**
+	 * On the deck step, each width the kit's decks come in, smallest first; empty on every other step.
+	 */
+	widths: Width[];
+	/**
+	 * How many looks the step offers before any search or chip, which decides its tools: Sort and the chips from 13, search from 41.
+	 */
+	offered: number;
+	/**
+	 * How many looks in stock the search and chips leave: the 90 of "Showing 30 of 90".
+	 */
+	matching: number;
+	/**
+	 * The `from` that asks for the next page, or null when none is left.
+	 */
+	more: number | null;
+	/**
+	 * The search the step was listed with, as it was read: trimmed, 100 characters at most.
+	 */
+	query: string;
+	/**
+	 * The order the step was listed in.
+	 */
+	sort: 'recommended' | 'price-asc' | 'price-desc' | 'newest';
+}
+/**
+ * A card: a product, or the variations of one that share a photo and a layer image.
+ */
+export interface Look {
+	/**
+	 * What tells it from the step's other looks: its product, photo and layer image's IDs.
+	 */
+	key: string;
+	/**
+	 * The product it belongs to.
+	 */
+	product: number;
+	part: Option1;
+	/**
+	 * The sizes it comes in on the slot's size, smallest first; empty where the slot has none.
+	 *
+	 * Items: A size, as the chips name it and as a person reads it.
+	 */
+	sizes: {
+		/**
+		 * The size as the chips and the `width` argument name it: `8.25in`, `54mm`.
+		 */
+		value: string;
+		/**
+		 * The size as a person reads it, in the shop's units.
+		 */
+		text: string;
+	}[];
+	/**
+	 * The choices you can't see: each attribute whose values differ between its parts, by attribute, with its values.
+	 */
+	choices: {
+		/**
+		 * Items: A value.
+		 */
+		[k: string]: {
+			/**
+			 * The value's slug.
+			 */
+			value: string;
+			/**
+			 * The value as the shop names it.
+			 */
+			label: string;
+		}[];
+	};
+}
+/**
+ * A part as a slot holds it.
+ */
+export interface Option1 {
+	/**
+	 * The part's ID: a product's or a variation's.
+	 */
+	id: number;
+	/**
+	 * The slug of the part's brand, or an empty string.
+	 */
+	brand: string;
+	/**
+	 * The part's size, as its slot's parts are sized (a deck by its width, trucks by their axle, wheels by their diameter, risers by their thickness, bolts by their length), or null where the slot has no such size or the part does not give it.
+	 */
+	size: {
+		/**
+		 * The size as the size filter names it: `8.25in`, `54mm`.
+		 */
+		value: string;
+		/**
+		 * The size as a person reads it.
+		 */
+		text: string;
+	} | null;
+	/**
+	 * What taking the part does to the total, against the part the step counts now: what the build charges for as many as it takes.
+	 */
+	delta: {
+		/**
+		 * `more` or `less` than the part counted; `free`, for the same price; `included`, for the part counted itself; `none`, for a part that gives no set size and so has no price in a build.
+		 */
+		kind: 'more' | 'less' | 'free' | 'included' | 'none';
+		/**
+		 * The change in the shop's minor units, below nothing where it comes off.
+		 */
+		amount: number;
+		/**
+		 * The change as its card says it: `+$12.00`, `−$5.00`, `Same price`, `Included`, or an empty string.
+		 */
+		text: string;
+	};
+	/**
+	 * How the part fits the picks before it: the worst of its messages.
+	 */
+	fit: 'fits' | 'warn' | 'block';
+	/**
+	 * Whether the shop has the part.
+	 */
+	in_stock: boolean;
+	/**
+	 * Whether the shop has as many as a build takes.
+	 */
+	available: boolean;
+	/**
+	 * How many of the part a build takes, or null when the part gives no set size.
+	 */
+	quantity: number | null;
+	/**
+	 * Whether it is the step's pick.
+	 */
+	picked: boolean;
+	/**
+	 * Whether it is the part the step recommends. It is labelled, never picked.
+	 */
+	recommended: boolean;
+	/**
+	 * What the rules found of it, notes included.
+	 */
+	messages: Message[];
+	/**
+	 * What its card shows, or null when the product has gone since the index read it.
+	 */
+	card: Card | null;
+}
+/**
+ * A group of chips: chips in one group widen, and groups narrow each other.
+ */
+export interface ChipGroup {
+	/**
+	 * `brand`, the slot's size spec's key, or an attribute's taxonomy (`pa_…`), as the `chips` argument names it.
+	 */
+	name: string;
+	/**
+	 * The group's name as a person reads it.
+	 */
+	label: string;
+	/**
+	 * Its values, in natural order.
+	 *
+	 * Items: A chip.
+	 */
+	chips: {
+		/**
+		 * The value as the `chips` argument names it.
+		 */
+		value: string;
+		/**
+		 * The value as a person reads it.
+		 */
+		label: string;
+		/**
+		 * How many looks it leaves, with the other groups' chips applied and not its own.
+		 */
+		count: number;
+		/**
+		 * Whether it is chosen.
+		 */
+		selected: boolean;
+	}[];
+}
+/**
+ * A width the deck step's question offers.
+ */
+export interface Width {
+	/**
+	 * The width as the `width` argument names it: `8.25in`.
+	 */
+	value: string;
+	/**
+	 * The width as a person reads it.
+	 */
+	text: string;
+	/**
+	 * How many looks are in stock in it; a width with none shows dimmed.
+	 */
+	in_stock: number;
+	/**
+	 * Whether it is the width asked.
+	 */
+	selected: boolean;
 }

@@ -21,7 +21,8 @@
 		"total",
 		"picture",
 		"delivery",
-		"notes"
+		"notes",
+		"shelf"
 	],
 	"properties": {
 		"kit": {
@@ -575,6 +576,17 @@
 				"type": "string"
 			}
 		},
+		"shelf": {
+			"description": "From 1.0.0: the current step as the configurator lists it, one card per look (D-240 to D-264), or null on the review, which lists no parts. `options` and `filters` stay as they were, for whoever reads them.",
+			"oneOf": [
+				{
+					"$ref": "#/definitions/shelf"
+				},
+				{
+					"type": "null"
+				}
+			]
+		},
 		"view": {
 			"description": "Only in an answer to a build link (the cbuild argument): what the builder's template draws for it, as the page's first render has it. The builder's own, and no part of the public API: it may change in any release. The fields the store's script reads are described, so its types are generated from here; the rest are the templates'.",
 			"type": "object",
@@ -977,6 +989,196 @@
 				},
 				"selected": {
 					"description": "Whether the list is filtered by it.",
+					"type": "boolean"
+				}
+			}
+		},
+		"shelf": {
+			"description": "A step's shelf: a page of the looks in stock, the sold-out fold, the chips, the deck's width question and the counts.",
+			"type": "object",
+			"required": [ "looks", "sold_out", "chips", "widths", "offered", "matching", "more", "query", "sort" ],
+			"properties": {
+				"looks": {
+					"description": "The page of looks in stock, in the order asked: 30 at most from `from`.",
+					"type": "array",
+					"items": {
+						"$ref": "#/definitions/look"
+					}
+				},
+				"sold_out": {
+					"description": "Every sold-out look the search and chips leave, in the same order, for the fold.",
+					"type": "array",
+					"items": {
+						"$ref": "#/definitions/look"
+					}
+				},
+				"chips": {
+					"description": "The chip groups: brand, the size where the shopper picks it, and the attributes most of the step's looks carry; four at most, each with two values or more.",
+					"type": "array",
+					"maxItems": 4,
+					"items": {
+						"$ref": "#/definitions/chipGroup"
+					}
+				},
+				"widths": {
+					"description": "On the deck step, each width the kit's decks come in, smallest first; empty on every other step.",
+					"type": "array",
+					"items": {
+						"$ref": "#/definitions/width"
+					}
+				},
+				"offered": {
+					"description": "How many looks the step offers before any search or chip, which decides its tools: Sort and the chips from 13, search from 41.",
+					"type": "integer",
+					"minimum": 0
+				},
+				"matching": {
+					"description": "How many looks in stock the search and chips leave: the 90 of \"Showing 30 of 90\".",
+					"type": "integer",
+					"minimum": 0
+				},
+				"more": {
+					"description": "The `from` that asks for the next page, or null when none is left.",
+					"type": [ "integer", "null" ],
+					"minimum": 1
+				},
+				"query": {
+					"description": "The search the step was listed with, as it was read: trimmed, 100 characters at most.",
+					"type": "string",
+					"maxLength": 100
+				},
+				"sort": {
+					"description": "The order the step was listed in.",
+					"type": "string",
+					"enum": [ "recommended", "price-asc", "price-desc", "newest" ]
+				}
+			}
+		},
+		"look": {
+			"description": "A card: a product, or the variations of one that share a photo and a layer image.",
+			"type": "object",
+			"required": [ "key", "product", "part", "sizes", "choices" ],
+			"properties": {
+				"key": {
+					"description": "What tells it from the step's other looks: its product, photo and layer image's IDs.",
+					"type": "string",
+					"pattern": "^[0-9]+:[0-9]+:[0-9]+$"
+				},
+				"product": {
+					"description": "The product it belongs to.",
+					"type": "integer",
+					"minimum": 1
+				},
+				"part": {
+					"description": "The part the card shows and the build would take: the pick where it is in the look, else the size the build decides, else the size the shopper's chip or the recommendation wants.",
+					"$ref": "#/definitions/option"
+				},
+				"sizes": {
+					"description": "The sizes it comes in on the slot's size, smallest first; empty where the slot has none.",
+					"type": "array",
+					"items": {
+						"description": "A size, as the chips name it and as a person reads it.",
+						"type": "object",
+						"required": [ "value", "text" ],
+						"properties": {
+							"value": {
+								"description": "The size as the chips and the `width` argument name it: `8.25in`, `54mm`.",
+								"type": "string"
+							},
+							"text": {
+								"description": "The size as a person reads it, in the shop's units.",
+								"type": "string"
+							}
+						}
+					}
+				},
+				"choices": {
+					"description": "The choices you can't see: each attribute whose values differ between its parts, by attribute, with its values.",
+					"type": "object",
+					"additionalProperties": {
+						"type": "array",
+						"items": {
+							"description": "A value.",
+							"type": "object",
+							"required": [ "value", "label" ],
+							"properties": {
+								"value": {
+									"description": "The value's slug.",
+									"type": "string"
+								},
+								"label": {
+									"description": "The value as the shop names it.",
+									"type": "string"
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"chipGroup": {
+			"description": "A group of chips: chips in one group widen, and groups narrow each other.",
+			"type": "object",
+			"required": [ "name", "label", "chips" ],
+			"properties": {
+				"name": {
+					"description": "`brand`, the slot's size spec's key, or an attribute's taxonomy (`pa_…`), as the `chips` argument names it.",
+					"type": "string"
+				},
+				"label": {
+					"description": "The group's name as a person reads it.",
+					"type": "string"
+				},
+				"chips": {
+					"description": "Its values, in natural order.",
+					"type": "array",
+					"items": {
+						"description": "A chip.",
+						"type": "object",
+						"required": [ "value", "label", "count", "selected" ],
+						"properties": {
+							"value": {
+								"description": "The value as the `chips` argument names it.",
+								"type": "string"
+							},
+							"label": {
+								"description": "The value as a person reads it.",
+								"type": "string"
+							},
+							"count": {
+								"description": "How many looks it leaves, with the other groups' chips applied and not its own.",
+								"type": "integer",
+								"minimum": 0
+							},
+							"selected": {
+								"description": "Whether it is chosen.",
+								"type": "boolean"
+							}
+						}
+					}
+				}
+			}
+		},
+		"width": {
+			"description": "A width the deck step's question offers.",
+			"type": "object",
+			"required": [ "value", "text", "in_stock", "selected" ],
+			"properties": {
+				"value": {
+					"description": "The width as the `width` argument names it: `8.25in`.",
+					"type": "string"
+				},
+				"text": {
+					"description": "The width as a person reads it.",
+					"type": "string"
+				},
+				"in_stock": {
+					"description": "How many looks are in stock in it; a width with none shows dimmed.",
+					"type": "integer",
+					"minimum": 0
+				},
+				"selected": {
+					"description": "Whether it is the width asked.",
 					"type": "boolean"
 				}
 			}

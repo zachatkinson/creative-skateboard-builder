@@ -11,6 +11,7 @@ namespace CreativeBranding\SkateboardBuilder\Adapter;
 
 use CreativeBranding\SkateboardBuilder\Port\LookFact;
 use CreativeBranding\SkateboardBuilder\Port\PartLooks;
+use CreativeBranding\SkateboardBuilder\Port\ProductMeta;
 use CreativeBranding\SkateboardBuilder\Support\Cast;
 use CreativeBranding\SkateboardBuilder\Support\Options;
 use WC_Product;
@@ -49,9 +50,10 @@ final class WooPartLooks implements PartLooks {
 	 *
 	 * @since 1.0.0
 	 *
-	 * @param Products $products Loads products in one query.
+	 * @param Products    $products Loads products in one query.
+	 * @param ProductMeta $meta     Reads the products' meta in one query.
 	 */
-	public function __construct( private Products $products ) {}
+	public function __construct( private Products $products, private ProductMeta $meta ) {}
 
 	/**
 	 * The facts of these parts, by ID, in the order asked.
@@ -95,7 +97,9 @@ final class WooPartLooks implements PartLooks {
 		if ( array() !== $missed ) {
 			$products = $this->products->load( ...$missed );
 			$owners   = $this->products->parentsOf( $products );
-			$read     = array();
+			// The layer image is the products' meta, which WooCommerce reads a product at a time unless it is primed.
+			$this->meta->prime( ...array_merge( array_keys( $products ), array_keys( $owners ) ) );
+			$read = array();
 			foreach ( $products as $id => $product ) {
 				$read[ $id ] = self::readPart( $product, $owners[ $product->get_parent_id() ] ?? null );
 			}
@@ -178,6 +182,30 @@ final class WooPartLooks implements PartLooks {
 			'sales'      => Cast::int( $owner->get_total_sales() ),
 			'created'    => null === $created ? 0 : $created->getTimestamp(),
 		);
+	}
+
+	/**
+	 * The shop's names of these global attributes, from WooCommerce's cached list of them
+	 * (`wc_get_attribute_taxonomy_labels()`, woocommerce/includes/wc-attribute-functions.php:121).
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param list<string> $taxonomies Attributes' taxonomies, `pa_…`.
+	 * @return array<string, string>
+	 */
+	public function attributes( array $taxonomies ): array {
+		if ( array() === $taxonomies ) {
+			return array();
+		}
+		$labels = wc_get_attribute_taxonomy_labels();
+		$names  = array();
+		foreach ( $taxonomies as $taxonomy ) {
+			$label = str_starts_with( $taxonomy, 'pa_' ) ? ( $labels[ substr( $taxonomy, 3 ) ] ?? null ) : null;
+			if ( is_string( $label ) ) {
+				$names[ $taxonomy ] = html_entity_decode( $label, ENT_QUOTES, 'UTF-8' );
+			}
+		}
+		return $names;
 	}
 
 	/**

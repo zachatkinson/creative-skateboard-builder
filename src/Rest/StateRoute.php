@@ -12,6 +12,8 @@ namespace CreativeBranding\SkateboardBuilder\Rest;
 use Closure;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\InvalidMoney;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Slots;
+use CreativeBranding\SkateboardBuilder\Domain\Look\Chips;
+use CreativeBranding\SkateboardBuilder\Domain\Look\ShelfAsk;
 use CreativeBranding\SkateboardBuilder\Front\Builder;
 use CreativeBranding\SkateboardBuilder\Front\BuilderPlace;
 use CreativeBranding\SkateboardBuilder\Front\BuilderUrl;
@@ -25,6 +27,7 @@ use CreativeBranding\SkateboardBuilder\Port\Kits;
 use CreativeBranding\SkateboardBuilder\Service\BuildState;
 use CreativeBranding\SkateboardBuilder\Service\ComposedPictures;
 use CreativeBranding\SkateboardBuilder\Service\RateLimit;
+use CreativeBranding\SkateboardBuilder\Service\ShelfQuery;
 use CreativeBranding\SkateboardBuilder\Support\Cast;
 use WP_Error;
 use WP_REST_Request;
@@ -66,6 +69,21 @@ final class StateRoute implements Hookable {
 	 * What a locale's name is made of: `fr`, `fr_CA`, `de_DE_formal`.
 	 */
 	private const string LOCALE = '^[a-z]{2,3}(_[A-Z]{2})?(_[a-z0-9]+)?(?!\n)$';
+
+	/**
+	 * A deck width as the shelf names it.
+	 */
+	private const string WIDTH = '^[0-9]{1,3}(\\.[0-9]{1,4})?(in|mm)(?!\n)$';
+
+	/**
+	 * A chip's value: a slug, or a size as the shelf names it.
+	 */
+	private const string CHIP = '^[a-z0-9_%.-]{1,200}(?!\n)$';
+
+	/**
+	 * The furthest a shelf's page starts: the most parts a step is built to list (docs/BENCHMARK.md).
+	 */
+	private const int FROM = 2000;
 
 	/**
 	 * Constructor.
@@ -164,6 +182,43 @@ final class StateRoute implements Hookable {
 				'type'        => 'integer',
 				'minimum'     => 1,
 			),
+			'width'    => array(
+				'description' => __( 'The deck width the shelf lists, as its widths name one: 8.25in.', 'creative-skateboard-builder' ),
+				'type'        => 'string',
+				'pattern'     => self::WIDTH,
+			),
+			'chips'    => array(
+				'description'          => __( 'The chips chosen: each group\'s name to the values chosen in it.', 'creative-skateboard-builder' ),
+				'type'                 => 'object',
+				'maxProperties'        => Chips::MOST,
+				'patternProperties'    => array(
+					self::KEY => array(
+						'type'     => 'array',
+						'maxItems' => 20,
+						'items'    => array(
+							'type'    => 'string',
+							'pattern' => self::CHIP,
+						),
+					),
+				),
+				'additionalProperties' => false,
+			),
+			'q'        => array(
+				'description' => __( 'What the shopper searched the step for.', 'creative-skateboard-builder' ),
+				'type'        => 'string',
+				'maxLength'   => ShelfQuery::QUERY,
+			),
+			'sort'     => array(
+				'description' => __( 'The order the shelf lists the step in.', 'creative-skateboard-builder' ),
+				'type'        => 'string',
+				'enum'        => ShelfAsk::SORTS,
+			),
+			'from'     => array(
+				'description' => __( 'Where the shelf\'s page starts, as the last answer\'s more said.', 'creative-skateboard-builder' ),
+				'type'        => 'integer',
+				'minimum'     => 0,
+				'maximum'     => self::FROM,
+			),
 		);
 	}
 
@@ -250,7 +305,7 @@ final class StateRoute implements Hookable {
 		if ( null === $state ) {
 			return $missing;
 		}
-		return new WP_REST_Response( ( $this->writer )()->of( $state ) );
+		return new WP_REST_Response( ( $this->writer )()->of( $state, null, self::shelf( $request ) ?? new ShelfQuery() ) );
 	}
 
 	/**
@@ -272,7 +327,9 @@ final class StateRoute implements Hookable {
 			}
 		}
 		try {
-			$shown = ( $this->builder )()->show( $id, BuildLink::read( $request['cbuild'] ), $this->base( $id, Cast::int( $request['page'] ) ) );
+			$link  = BuildLink::read( $request['cbuild'] );
+			$shelf = self::shelf( $request );
+			$shown = ( $this->builder )()->show( $id, null === $shelf ? $link : $link->shelved( $shelf ), $this->base( $id, Cast::int( $request['page'] ) ) );
 		} catch ( InvalidMoney ) {
 			return new WP_Error( 'cbuild_no_price', __( 'This build cannot be priced in the shop\'s currency settings.', 'creative-skateboard-builder' ), array( 'status' => 500 ) );
 		}
@@ -283,6 +340,31 @@ final class StateRoute implements Hookable {
 			( $this->pictures )()->offered( $shown['state'] );
 		}
 		return new WP_REST_Response( $shown['answer'] + array( 'view' => $shown['view'] ) );
+	}
+
+	/**
+	 * What the request asks of the step's shelf, or null where it sends none of the shelf's arguments. The schema
+	 * has checked each; a search is read as a link's is.
+	 *
+	 * @param WP_REST_Request<array<string, mixed>> $request The request.
+	 */
+	private static function shelf( WP_REST_Request $request ): ?ShelfQuery {
+		if ( null === $request['width'] && null === $request['chips'] && null === $request['q'] && null === $request['sort'] && null === $request['from'] ) {
+			return null;
+		}
+		$read = BuildLink::read(
+			array(
+				'_q'     => $request['q'],
+				'_chips' => $request['chips'],
+			)
+		)->shelf;
+		return new ShelfQuery(
+			null === $request['width'] ? '' : Cast::str( $request['width'] ),
+			$read->chips,
+			$read->query,
+			null === $request['sort'] ? ShelfAsk::SORTS[0] : Cast::str( $request['sort'] ),
+			Cast::int( $request['from'] )
+		);
 	}
 
 	/**

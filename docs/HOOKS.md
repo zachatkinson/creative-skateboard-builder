@@ -403,6 +403,13 @@ It reads and changes nothing. Its arguments travel in the query:
 | `locale` | 0.4.0 | The language to answer in, such as `fr_CA`. The answer is in it when the site has it installed, and in the site's own otherwise. |
 | `cbuild[…]` | 0.6.0 | A build link, as a page's address holds it (The build link, under Milestone 6). It takes the place of `picks`, `previous`, `step` and `assembly`, and sent beside any of them is refused as `rest_invalid_param`. The answer is what the builder's page shows for the link, with `view` added. `cbuild=` with nothing in it is the clean page. |
 | `page` | 0.6.0 | With `cbuild`: the ID of the post the builder is on, for the addresses in `view`. A post a visitor may not see, or one whose Builder block is not this kit's, is not used, and the addresses go to where the kit's builder is (`cbuild_builder_url`). |
+| `width` | 1.0.0 | The deck width the `shelf` lists, as its `widths` name one: `8.25in`, `210mm`. Other steps keep it, for the visit. |
+| `chips[<group>][]` | 1.0.0 | The chips chosen: four groups at most, each `brand`, the slot's size spec's key or an attribute's taxonomy, with 20 values at most, each a slug or a size as the chips name it. Values in a group widen, and groups narrow each other. |
+| `q` | 1.0.0 | A search of the step, 100 characters at most. Matched against each look's brand, name, size and values, with accents and case folded, or ranked by Creative Search where it answers `csearch_ranked_ids` (D-248). It is neither kept nor logged. |
+| `sort` | 1.0.0 | `recommended` (the default), `price-asc`, `price-desc` or `newest`. |
+| `from` | 1.0.0 | Where the shelf's page of 30 starts, as the last answer's `shelf.more` said: 0 to 2,000. |
+
+Beside `cbuild`, the five shelf arguments change what the link asks of the shelf, and the view's addresses follow.
 
 | Schema | Since | What the document holds |
 | --- | --- | --- |
@@ -608,7 +615,7 @@ The plugin writes a link in one order: the kit's slots in step order, then the s
 
 No slot is keyed `step`, `assembly`, `preset` or `review`; a slots document with one is refused as `document_bad_key`. A kit saved by 0.4.0 or 0.5.0 with one has it renamed `<key>_slot` on upgrade (D-169).
 
-Keys that start with an underscore are the builder's own forms' and are not part of a shared link. They may change in any release: `_was` (the picks before a change, slot key to part ID), `_brand` and `_size` (the step's filters), `_shown` (how many options the step lists), `_on` (the step whose form was sent: its filters and Show more count only on it) and `_replace` (the build in the cart an add takes the place of). A slot's key starts with a letter, so none can be one.
+Keys that start with an underscore are the builder's own forms' and are not part of a shared link. They may change in any release: `_was` (the picks before a change, slot key to part ID), `_brand` and `_size` (the step's filters), `_shown` (how many options the step lists), `_on` (the step whose form was sent: its filters and Show more count only on it) and `_replace` (the build in the cart an add takes the place of); from 1.0.0, `_width`, `_chips`, `_q` and `_sort` (the step's shelf, as the state route's arguments of those names). A slot's key starts with a letter, so none can be one.
 
 ### What the state route's answer gains
 
@@ -627,6 +634,7 @@ Keys that start with an underscore are the builder's own forms' and are not part
 | `delivery` | 0.6.0 | `arrival` and `line`: what `cbuild_arrival_estimate` and `cbuild_delivery_line` answer, in plain text, each empty where nothing is said. |
 | `notes` | 0.6.0 | What `cbuild_summary_notes` answers: six lines at most, in plain text. |
 | `view` | 0.6.0 | Only in an answer to `cbuild`: what the builder's template draws, as the page's first render has it. It is the builder's own and no part of this API: it may change in any release. |
+| `shelf` | 1.0.0 | The current step as the configurator lists it, or null on the review. `looks`: a page of cards in stock, one a product or the variations of one that share a photo (`key`, `product`, the `part` the card shows as an option, its `sizes` on the slot's size and the `choices` you can't see on the photo); `sold_out`, the matching looks sold out; `chips`, four groups at most (`name`, `label`, and each chip's `value`, `label`, `count` and `selected`); `widths`, on the deck step, each width the kit's decks come in with how many looks are `in_stock` in it; `offered`, `matching` and `more`; and the `query` and `sort` as read. `options`, `filters`, `matching` and `more` stay as they were (D-264). |
 
 The published schema no longer closes its objects (`additionalProperties`), so a reader that checks an answer against one release's schema accepts the fields a later release adds. The plugin's own test still fails on any field the schema does not describe.
 

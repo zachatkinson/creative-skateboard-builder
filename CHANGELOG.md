@@ -8,6 +8,7 @@ All notable changes to this project are documented here. The format follows [Kee
 
 - Message codes for parts a step hides because the kit can't supply the riser they need (D-245): `riser_not_in_stock`, `riser_no_bolts` and `riser_no_slot` on wheels, and `riser_bolts_short` on risers.
 - The `bearings_included` spec on wheels, in Part specs and the CSV. Wheels that carry it fill the kit's Bearings slot, and R5 blocks a separate bearing with the code `bearings_included` (D-246).
+- The state route's `shelf`: the current step as cards, one per look, with the chips, the deck's width question, a page of 30 and the sold-out looks (D-264). The route takes `width`, `chips`, `q`, `sort` and `from` for it, and a build link carries them as `_width`, `_chips`, `_q` and `_sort`. A search is ranked by Creative Search where it answers `csearch_ranked_ids`, and matched by the builder otherwise (D-248).
 
 ### Fixed
 

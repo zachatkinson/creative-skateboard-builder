@@ -231,6 +231,95 @@ final class BuildLinkTest extends TestCase {
 		self::assertSame( array( 'deck' => '12', 'trucks' => '21', 'step' => 'trucks' ), $link->after( array( 'deck' => 11 ) )->replacing( 'abc-1' )->shared()->query( self::slots() ), 'what is shared is the build and its step, as the spec has it, and nothing of the visit' );
 	}
 
+	public function test_the_shelf_travels_as_its_width_chips_search_and_sort(): void {
+		$sent = array(
+			'deck'   => '12',
+			'step'   => 'wheels',
+			'_width' => '8.25in',
+			'_q'     => "  Retna\tmint ",
+			'_sort'  => 'price-asc',
+			'_chips' => array(
+				'brand'          => array( 'spitfire', 'bones' ),
+				'wheel_diameter' => array( '54mm' ),
+				'pa_hardness'    => array( '99a' ),
+			),
+		);
+		$link = BuildLink::read( $sent );
+		self::assertSame( '8.25in', $link->shelf->width );
+		self::assertSame( 'Retna mint', $link->shelf->query, 'trimmed, a control character as a space' );
+		self::assertSame( 'price-asc', $link->shelf->sort );
+		self::assertSame( $sent['_chips'], $link->shelf->chips );
+		self::assertFalse( $link->isClean() );
+		self::assertSame(
+			array(
+				'deck'   => '12',
+				'step'   => 'wheels',
+				'_width' => '8.25in',
+				'_q'     => 'Retna mint',
+				'_sort'  => 'price-asc',
+				'_chips' => array(
+					'brand'          => array( 'spitfire', 'bones' ),
+					'wheel_diameter' => array( '54mm' ),
+					'pa_hardness'    => array( '99a' ),
+				),
+			),
+			$link->query( self::slots() )
+		);
+		self::assertSame( array( 'deck' => '12', 'step' => 'trucks', '_width' => '8.25in' ), $link->at( 'trucks' )->query( self::slots() ), 'another step keeps the width, remembered for the visit (D-242), and nothing else of the shelf' );
+		self::assertSame( array( 'deck' => '12', 'step' => 'wheels' ), $link->shared()->query( self::slots() ), 'nothing of the shelf is shared' );
+		self::assertSame( 'Retna mint', $link->showing( 60 )->assembled( true )->after( array() )->replacing( 'a' )->pick( 'deck', 13 )->filtered( '', '' )->shelf->query, 'every other change keeps it' );
+		self::assertSame( 0, $link->showing( 60 )->shelved( $link->shelf )->shown, 'a new shelf starts from its first page' );
+	}
+
+	/**
+	 * @return iterable<string, array{array<string, mixed>, string, string}>
+	 */
+	public static function shelvesNotRead(): iterable {
+		yield 'a width with no unit' => array( array( '_width' => '8.25' ), 'width', '' );
+		yield 'a width in feet' => array( array( '_width' => '8ft' ), 'width', '' );
+		yield 'a width as a list' => array( array( '_width' => array( '8in' ) ), 'width', '' );
+		yield 'a sort of its own' => array( array( '_sort' => 'cheapest' ), 'sort', 'recommended' );
+		yield 'a query that is no text' => array( array( '_q' => "\xff\xfe" ), 'query', '' );
+		yield 'a query as a list' => array( array( '_q' => array( 'x' ) ), 'query', '' );
+	}
+
+	/**
+	 * @param array<string, mixed> $sent What was sent.
+	 */
+	#[DataProvider( 'shelvesNotRead' )]
+	public function test_what_is_no_shelf_is_left_out( array $sent, string $field, string $read ): void {
+		self::assertSame( $read, BuildLink::read( $sent )->shelf->{$field} );
+	}
+
+	public function test_a_query_is_100_characters_and_the_chips_four_groups_of_twenty_at_most(): void {
+		self::assertSame( str_repeat( 'é', 100 ), BuildLink::read( array( '_q' => str_repeat( 'é', 150 ) ) )->shelf->query, 'characters, not bytes' );
+		$chips = array();
+		foreach ( array( 'brand', 'pa_a', 'pa_b', 'pa_c', 'pa_d' ) as $group ) {
+			$chips[ $group ] = array_map( static fn( int $i ): string => 'v' . $i, range( 1, 25 ) );
+		}
+		$chips['Bad Key'] = array( 'x' );
+		$chips['pa_e']    = array( 'BAD VALUE', array( 'x' ), 'ok' );
+		$read             = BuildLink::read( array( '_chips' => $chips ) )->shelf->chips;
+		self::assertSame( array( 'brand', 'pa_a', 'pa_b', 'pa_c' ), array_keys( $read ) );
+		self::assertCount( 20, $read['brand'] );
+		self::assertSame( array( 'ok' ), BuildLink::read( array( '_chips' => array( 'pa_e' => array( 'BAD VALUE', array( 'x' ), 'ok', '' ) ) ) )->shelf->chips['pa_e'] );
+		self::assertSame( array(), BuildLink::read( array( '_chips' => 'brand' ) )->shelf->chips );
+		self::assertSame( array(), BuildLink::read( array( '_chips' => array( 'brand' => array() ) ) )->shelf->chips, 'a group with nothing chosen is no group' );
+	}
+
+	public function test_a_shelf_sent_from_another_step_goes_no_further(): void {
+		$link = BuildLink::read(
+			array(
+				'step'   => 'trucks',
+				'_on'    => 'wheels',
+				'_width' => '8in',
+				'_q'     => 'retna',
+				'_chips' => array( 'brand' => array( 'bones' ) ),
+			)
+		);
+		self::assertSame( array( '8in', '', array() ), array( $link->shelf->width, $link->shelf->query, $link->shelf->chips ), 'Next from wheels leaves its search and chips behind; the width is the visit\'s' );
+	}
+
 	public function test_a_slot_sent_as_nothing_is_left_empty_by_choice_and_written_back_in_its_place(): void {
 		$link = BuildLink::read(
 			array(

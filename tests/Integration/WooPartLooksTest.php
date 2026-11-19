@@ -154,6 +154,12 @@ final class WooPartLooksTest extends IntegrationTestCase {
 		self::assertFalse( $looks[ $made[0] ]->featured );
 	}
 
+	public function test_an_attributes_name_is_the_shops(): void {
+		self::attribute( 'finish', 'Gloss' );
+		self::assertSame( array( 'pa_finish' => 'Finish' ), $this->looks()->attributes( array( 'pa_nothing', 'pa_finish', 'brand' ) ) );
+		self::assertSame( array(), $this->looks()->attributes( array() ) );
+	}
+
 	public function test_a_look_is_kept_and_read_again_when_its_part_or_parent_is_saved(): void {
 		$wheel = new WC_Product_Simple();
 		$wheel->set_name( 'Before' );

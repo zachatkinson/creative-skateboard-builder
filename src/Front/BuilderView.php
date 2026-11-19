@@ -709,14 +709,7 @@ final class BuilderView {
 		);
 		$size    = array(
 			'key'    => 'size',
-			'legend' => match ( $slot ) {
-				SlotKey::DECK     => __( 'Width', 'creative-skateboard-builder' ),
-				SlotKey::TRUCKS   => __( 'Axle width', 'creative-skateboard-builder' ),
-				SlotKey::WHEELS   => __( 'Diameter', 'creative-skateboard-builder' ),
-				SlotKey::RISERS   => __( 'Thickness', 'creative-skateboard-builder' ),
-				SlotKey::HARDWARE => __( 'Length', 'creative-skateboard-builder' ),
-				default           => __( 'Size', 'creative-skateboard-builder' ),
-			},
+			'legend' => StateAnswer::sizeName( $slot ),
 			'name'   => BuildLink::PARAM . '[_size]',
 			'any'    => match ( $slot ) {
 				SlotKey::DECK => __( 'Any width', 'creative-skateboard-builder' ),

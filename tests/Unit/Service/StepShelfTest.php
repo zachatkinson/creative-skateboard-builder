@@ -117,9 +117,9 @@ final class StepShelfTest extends TestCase {
 	}
 
 	private function wheels( ShelfQuery $query = new ShelfQuery() ): Listing {
-		$listing = $this->shelf()->of( $this->state( SlotKey::WHEELS, array( 'deck' => 102, 'trucks' => 144 ) ), $query );
-		self::assertNotNull( $listing );
-		return $listing;
+		$view = $this->shelf()->of( $this->state( SlotKey::WHEELS, array( 'deck' => 102, 'trucks' => 144 ) ), $query );
+		self::assertNotNull( $view );
+		return $view->listing;
 	}
 
 	/**
@@ -170,13 +170,13 @@ final class StepShelfTest extends TestCase {
 		foreach ( array( 101, 102, 103 ) as $at => $id ) {
 			$this->looks->facts[ $id ] = new LookFact( 1, 10 + $at, 0, 'Deck', array(), array(), false, 0, 0 );
 		}
-		$listing = $shelf->of( $this->state( SlotKey::DECK ), new ShelfQuery( '8.25in' ) );
+		$listing = $shelf->of( $this->state( SlotKey::DECK ), new ShelfQuery( '8.25in' ) )?->listing;
 		self::assertSame( array( 102 ), array_map( static fn( ShelfLook $look ): int => $look->option->part->id, $listing->looks ?? array() ) );
 		self::assertCount( 3, $listing->widths ?? array() );
 		foreach ( array( '', 'wide', '8.25', '8.25ft', '1234in', '8.123456in' ) as $width ) {
-			self::assertSame( array(), $shelf->of( $this->state( SlotKey::DECK ), new ShelfQuery( $width ) )?->looks, $width );
+			self::assertSame( array(), $shelf->of( $this->state( SlotKey::DECK ), new ShelfQuery( $width ) )?->listing->looks, $width );
 		}
-		self::assertSame( array( 103 ), array_map( static fn( ShelfLook $look ): int => $look->option->part->id, $shelf->of( $this->state( SlotKey::DECK ), new ShelfQuery( '8.5in' ) )->looks ?? array() ) );
+		self::assertSame( array( 103 ), array_map( static fn( ShelfLook $look ): int => $look->option->part->id, $shelf->of( $this->state( SlotKey::DECK ), new ShelfQuery( '8.5in' ) )?->listing->looks ?? array() ) );
 	}
 
 	public function test_the_review_lists_no_parts_and_a_page_starts_where_it_is_asked(): void {
@@ -184,6 +184,28 @@ final class StepShelfTest extends TestCase {
 		$page = $this->wheels( new ShelfQuery( from: -4, shown: 0 ) );
 		self::assertSame( array( '10:1:0' ), self::keys( $page->looks ), 'from 0, one at least' );
 		self::assertSame( 1, $page->more );
+	}
+
+	public function test_the_view_names_the_brands_the_values_and_the_sizes(): void {
+		$view = $this->shelf()->of( $this->state( SlotKey::WHEELS, array( 'deck' => 102, 'trucks' => 144 ) ), new ShelfQuery() );
+		self::assertNotNull( $view );
+		self::assertSame( 'Spitfire', $view->labels['brand']['spitfire'] );
+		self::assertSame( 'Blanc cassé', $view->labels['pa_colour']['white'] );
+		self::assertSame( array(), $view->groups, 'the shop names no attribute' );
+		$this->looks->names = array(
+			'pa_colour'   => 'Colour',
+			'pa_diameter' => 'Diameter',
+			'brand'       => 'Brand',
+		);
+		self::assertSame( array( 'pa_colour' => 'Colour' ), $this->shelf()->of( $this->state( SlotKey::WHEELS, array( 'deck' => 102, 'trucks' => 144 ) ), new ShelfQuery() )?->groups, 'the chip groups\' attributes alone' );
+		self::assertArrayNotHasKey( 'pa_diameter', $view->labels, 'the size is said from its measure' );
+		self::assertSame( array( '52mm', '54mm', '56mm', '53mm' ), array_keys( $view->sizes ) );
+		self::assertSame( '54.0000', $view->sizes['54mm']->decimal() );
+		self::assertSame( array( '', 'recommended', '' ), array( $view->query, $view->sort, $view->width ) );
+		$read = $this->shelf()->of( $this->state( SlotKey::WHEELS, array( 'deck' => 102, 'trucks' => 144 ) ), new ShelfQuery( '8.250in', query: '  mint ', sort: 'cheapest' ) );
+		self::assertSame( array( 'mint', 'recommended', '8.25in' ), array( $read?->query, $read?->sort, $read?->width ), 'as read: trimmed, the default for an unknown sort, the width named again' );
+		$read = $this->shelf()->of( $this->state( SlotKey::WHEELS, array( 'deck' => 102, 'trucks' => 144 ) ), new ShelfQuery( sort: 'newest' ) );
+		self::assertSame( 'newest', $read?->sort );
 	}
 
 	public function test_a_part_the_shop_holds_no_look_for_is_left_off(): void {
