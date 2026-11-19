@@ -3329,3 +3329,15 @@ Looks (D-240) need each part's product, photo and layer image; the chips (D-247)
 - **Kept per part in the object cache** for an hour, against the card's stamp (the part's and its parent's last save), and forgotten with the card by `WooPartCards::settle()`, so every hook that forgets a card forgets the look. A term renamed without a product save shows its old name until the hour ends; the chips' values are slugs, so nothing chosen breaks.
 - **A variation's attributes** are its own, then those its parent holds and doesn't vary, so a wheel whose hardness is set once on the product still gets a hardness chip.
 - **A photo** is `WC_Product::get_image_id()`, which gives a variation without one its parent's: two variations with no photo of their own share their parent's, and so share a card, unless their layer images differ.
+
+### D-264 · The step's shelf, where the spec leaves a choice · 2026-11-18
+
+`Domain\Look\Shelf` lists a step from the parts the engine offers it (D-240 to D-248). Where the spec leaves a choice:
+
+- **The sorts** are named `recommended` (the default), `price-asc`, `price-desc` and `newest`; anything else is the default. A price sort reads the price of the part each card shows; Newest reads the product's date made.
+- **Creative Search's order** stands in for the default order when it ranked the query; a sort the shopper chooses still sorts, with its order breaking ties.
+- **Pages count looks in stock.** "Showing 30 of 90" counts what the search and chips leave in stock; the sold-out fold holds every sold-out look that matches, in the same order, and is not paged.
+- **A card's part** is the pick where it is in the look; else the size the build takes (SizePicker); else, where the shopper picks the size, the one size chip chosen or the recommendation's size, or the smallest.
+- **A size chip** is named as the route's size filter names a size, `54mm` or `8.25in`, so a build link's `_size` and a chip agree.
+- **The width question** counts, for each width, the looks with a part in stock in it; a look sold out in a width counts for none.
+- **A look's own words** (its values' names) narrow a product Creative Search ranked; its brand, name and size words don't, since every look of the product shares them (D-248).

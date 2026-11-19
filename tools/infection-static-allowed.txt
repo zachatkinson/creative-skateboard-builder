@@ -7,3 +7,5 @@ CastInt src/Domain/Measure/MeasureParser.php 1
 CastInt src/Domain/Measure/Rounding.php 1
 # The trucks are only ever swapped after a change to the deck, so the build always has a deck there.
 NullSafePropertyCall src/Domain/Fit/ClosestPart.php 1
+# A look's values are gathered as a set; array_values() makes each a list, as Facets is typed. Chips reads either alike.
+UnwrapArrayMap src/Domain/Look/Shelf.php 1
