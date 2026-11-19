@@ -13,11 +13,7 @@ use CreativeBranding\SkateboardBuilder\Domain\Kit\Kit;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Part;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Picks;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\SlotKey;
-use CreativeBranding\SkateboardBuilder\Domain\Measure\Measure;
-use CreativeBranding\SkateboardBuilder\Domain\Rule\Finding;
-use CreativeBranding\SkateboardBuilder\Domain\Rule\MessageCode;
 use CreativeBranding\SkateboardBuilder\Domain\Rule\Severity;
-use CreativeBranding\SkateboardBuilder\Domain\Spec\SpecKey;
 
 use function abs;
 use function count;
@@ -37,21 +33,22 @@ use const PHP_INT_MAX;
 final readonly class Recommender {
 
 	/**
+	 * What the build asks of a slot.
+	 *
+	 * @var Asking
+	 */
+	private Asking $asking;
+
+	/**
 	 * Constructor.
 	 *
 	 * @since 0.2.0
 	 *
 	 * @param FitEngine $engine The engine.
 	 */
-	public function __construct( private FitEngine $engine ) {}
-
-	/**
-	 * The findings that ask for a part of a certain size, by code: the value that names the size, and the spec of the
-	 * asked slot's parts it is measured on.
-	 */
-	private const array ASKED = array(
-		MessageCode::WheelNeedsRiser->value => array( 'riser', SpecKey::RiserThickness ),
-	);
+	public function __construct( private FitEngine $engine ) {
+		$this->asking = new Asking( $engine );
+	}
 
 	/**
 	 * The option a slot starts on, or null when the shopper is left to pick.
@@ -83,7 +80,7 @@ final readonly class Recommender {
 		if ( null === $about || SlotKey::DECK === $slot ) {
 			return null;
 		}
-		$asking = $this->asking( $kit, $slot, $picks );
+		$asking = $this->asking->findings( $kit, $slot, $picks );
 		if ( ! $about->required && array() === $asking ) {
 			return null;
 		}
@@ -104,7 +101,7 @@ final readonly class Recommender {
 			}
 		}
 		sort( $prices );
-		$wanted  = self::wanted( $asking );
+		$wanted  = Asking::size( $asking );
 		$nearest = null;
 		$best    = array();
 		foreach ( $fitting as $option ) {
@@ -123,45 +120,5 @@ final readonly class Recommender {
 			}
 		}
 		return $nearest;
-	}
-
-	/**
-	 * The size the build asks for, and the spec it is measured on: from the first finding that names one.
-	 *
-	 * @param list<Finding> $asking The findings that ask for the slot.
-	 * @return array{Measure, SpecKey}|null
-	 */
-	private static function wanted( array $asking ): ?array {
-		foreach ( $asking as $finding ) {
-			$asked = self::ASKED[ $finding->code->value ] ?? null;
-			if ( null === $asked ) {
-				continue;
-			}
-			$size = $finding->values[ $asked[0] ] ?? null;
-			if ( $size instanceof Measure ) {
-				return array( $size, $asked[1] );
-			}
-		}
-		return null;
-	}
-
-	/**
-	 * The findings among the picks before a slot that read it: the build is asking for the slot to be filled.
-	 *
-	 * @param Kit    $kit   The kit.
-	 * @param string $slot  The slot's key.
-	 * @param Picks  $picks The picks so far.
-	 * @return list<Finding>
-	 */
-	private function asking( Kit $kit, string $slot, Picks $picks ): array {
-		$asking = array();
-		foreach ( $this->engine->build( $kit, $picks->only( $kit->slots->before( $slot ) ) ) as $option ) {
-			foreach ( $option->findings as $finding ) {
-				if ( $finding->reads( $slot ) ) {
-					$asking[] = $finding;
-				}
-			}
-		}
-		return $asking;
 	}
 }

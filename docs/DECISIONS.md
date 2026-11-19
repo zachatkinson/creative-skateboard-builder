@@ -3298,3 +3298,15 @@ The rule is that prices are the server's, through `wc_price()`. Counting from on
 ### D-260 · French isn't read by a person before 1.0.0 · 2026-11-18
 
 Zach, 18 November 2026, asked who reads fr_CA before the tag: none is arranged, and he doesn't want the release to wait on one. 1.0.0's French is held by the checks that run: `composer i18n:check` at 100 %, the copy gate over the `.po`, msgfmt's plural check, and the fr-ca browser project with its phone baselines. Cowork walks the demo in French in each review. A shop that finds a wrong word reports it like any bug. This replaces "French read by a person" in milestone 9's moved checks (D-236).
+
+### D-261 · How the build picks a look's size, where the spec leaves a tie · 2026-11-18
+
+The spec (One card per look, D-240) says which size each slot takes. `SizePicker` (`src/Domain/Fit/SizePicker.php`) adds what it doesn't say:
+
+- **In stock first.** A size the shop holds enough of comes before a nearer one sold out. A look whose only fitting size is sold out keeps that size, so its card goes to the sold-out fold rather than vanishing.
+- **Risers** cover the thickness asked before coming nearest to it, since a thinner riser leaves the wheel bite R3 warns of. With nothing asking, as after "Add risers", the thinnest.
+- **Bolts as near either way** (⅞″ and 1⅛″ around 1″) come in the longer, since R4 blocks short and only warns long.
+- **Elsewhere, sizes as near** come in the smaller, then the first given. A truck with no deck picked yet takes the narrowest.
+- **No rank by warning.** R1's warning grows with the gap, so the nearest truck is never a warning when a farther one fits.
+
+What the build asks of a slot (R3's riser thickness) moved from `Recommender` to `Asking`, and the slot's size spec from `ChangePlanner` to `SlotSize`, so the recommendation, the size picker and the closest part (D-254) share them rather than copy them.
