@@ -1351,6 +1351,32 @@ test.describe( 'The builder with JavaScript', () => {
 		await expect( page ).toHaveTitle( /^Step 1 of 7: Deck - / );
 	} );
 
+	// Found comparing the builder with the prototype: a block theme draws an outline on anything in focus, and the
+	// heading the builder moves focus to, a place to read from and no control, was boxed after a mouse press.
+	test( 'draws no ring on the heading it moves focus to after a press, on a block theme', async ( {
+		page,
+		context,
+		baseURL,
+	} ) => {
+		await context.addCookies( [
+			{
+				name: 'cbuild_e2e_theme',
+				value: 'twentytwentyfive',
+				url: baseURL || 'http://localhost:8898',
+			},
+		] );
+		await ride( page, '8.25″' );
+		await pickDeck( page, '8.25' );
+		await page.getByRole( 'button', { name: 'Next: Trucks' } ).click();
+		await expect( heading( page ) ).toBeFocused();
+		expect(
+			await heading( page ).evaluate(
+				( element ) => getComputedStyle( element ).outlineStyle
+			),
+			'the heading in focus'
+		).toBe( 'none' );
+	} );
+
 	test( "swaps the deck's layer in place on a pick, says the build once, and shows a labelled photo for a part with no layer image (D-195)", async ( {
 		page,
 	} ) => {
@@ -3205,6 +3231,13 @@ test.describe( 'The board turned over', () => {
 		await choose( page, 'Builder test wheels 54' );
 		await page.getByRole( 'button', { name: 'Next: Bearings' } ).click();
 		await expect( heading( page ) ).toHaveText( /: Choose your bearings$/ );
+		// The step has landed when focus is on its heading and the builder is no longer busy: pressed before, focus
+		// went on to the heading under the key (2 runs in 10 before this wait).
+		await expect( heading( page ) ).toBeFocused();
+		await expect( page.locator( '.cbuild' ) ).toHaveAttribute(
+			'aria-busy',
+			'false'
+		);
 		await expect(
 			turn,
 			'the top stays on a step that shows the underside: the shopper chose it'
@@ -3474,6 +3507,17 @@ test.describe( 'The phone bar', () => {
 		await page.setViewportSize( { width: 1280, height: 800 } );
 		await expect( bar ).toBeVisible();
 		await expect( bar.locator( '.cbuild-bar__amount' ) ).toBeVisible();
+		// Zach's call on the comparison with the prototype: the sum is labelled "Total" above it, as the prototype's is.
+		// A screen reader hears the total once, in its own words, so the label is not read.
+		const label = bar.locator( '.cbuild-bar__label' );
+		await expect( label ).toHaveText( 'Total' );
+		await expect( label ).toHaveAttribute( 'aria-hidden', 'true' );
+		const above = await label.boundingBox();
+		const amount = await bar.locator( '.cbuild-bar__amount' ).boundingBox();
+		expect(
+			above && amount && above.y + above.height <= amount.y + 1,
+			'the label above the sum'
+		).toBe( true );
 	} );
 
 	// Claude in Cowork's recheck, N6: at 412 pixels under Kadence, "Show the parts" broke over two lines beside the

@@ -705,7 +705,7 @@ The builder's stylesheet is the Builder block's `style` (`build/builder/style-in
 | `--cbuild-bar-offset` | 0.6.0 | How far above the foot of the screen the phone bar sits, set on the page's root (below) | `0px` |
 | `--cbuild-ease` | 0.6.0 | How each movement eases, read as `--cbuild-duration` is | `cubic-bezier(0.2, 0, 0, 1)` |
 | `--cbuild-top` | 1.0.0 | The height of anything the theme keeps at the top of the screen, such as a sticky header: the stage sticks below it on a phone, and the stage and the panel fit under it on a desktop | `0px` |
-| `--cbuild-stage-height` | 1.0.0 | The stage's height on a phone and a tablet, where it stays at the top above the step | `42svh` |
+| `--cbuild-stage-height` | 1.0.0 | The stage's height on a phone and a tablet, where it stays at the top above the step | `34svh` (D-284) |
 | `--cbuild-stage-size` | 1.0.0 | Set by the builder's script, not by a theme: how far down the screen the stage reaches while it stays at the top, so the page scrolls a control in focus clear of it (WCAG 2.4.11). A theme can read it for its own sticky elements | `0px` |
 | `--cbuild-board-size` | 0.7.0 | The board's height in the picture. The layers' `sizes` assume the default, so a board drawn much larger may fetch a smaller rendition than the screen could use | `min(60vh, 36rem)` |
 

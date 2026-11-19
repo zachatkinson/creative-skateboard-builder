@@ -39,11 +39,11 @@ The redesign replaces the builder's front end and keeps everything under it.
 
 ### Tablet, 768 to 1023 px
 
-The stage on top, about 40 % of the height and sticky; the panel below it, scrolling with the page; the footer pinned to the bottom.
+The stage on top, about a third of the height and sticky (D-284); the panel below it, scrolling with the page; the footer pinned to the bottom.
 
 ### Phone, under 768 px
 
-- The stage on top, 40 to 45 % of the screen's height and sticky. Where the board reads better sideways in that space, it is drawn turned a quarter turn, by a transform on the picture; the written description does not change.
+- The stage on top, about a third of the screen's height (34 %, the prototype's) and sticky (D-284). Where the board reads better sideways in that space, it is drawn turned a quarter turn, by a transform on the picture; the written description does not change.
 - The panel is a sheet under the stage: the rail scrolls sideways as a row of steps, then the step.
 - A bar pinned to the bottom: the total, the estimate on its own line, Back and Next. The bar never covers the control in focus (the page's scroll padding grows with it, as in 0.9.0). The delivery line and notes show at the review (D-250).
 - No swipe between steps in milestone 10: Next and Back move, and so does the rail (D-251).

@@ -15,6 +15,7 @@ use CreativeBranding\SkateboardBuilder\Port\LayerRenditions;
 use CreativeBranding\SkateboardBuilder\Tests\Support\IntegrationTestCase;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\FakeLogger;
 use CreativeBranding\SkateboardBuilder\Tests\Support\LayerFiles;
+use CreativeBranding\SkateboardBuilder\Tests\Support\LooseQualityEditor;
 use CreativeBranding\SkateboardBuilder\Tests\Support\StrayEditor;
 
 /**
@@ -29,6 +30,9 @@ final class LayerRenditionsTest extends IntegrationTestCase {
 	public function tear_down(): void {
 		remove_all_filters( 'image_editor_output_format' );
 		StrayEditor::$to = null;
+		LooseQualityEditor::$throws = null;
+		remove_all_filters( 'wp_editor_set_quality' );
+		remove_all_filters( 'wp_image_editors' );
 		$folder = wp_get_upload_dir()['basedir'] . '/' . WpLayerRenditions::FOLDER;
 		foreach ( (array) glob( $folder . '/*' ) as $file ) {
 			wp_delete_file( (string) $file );
@@ -189,6 +193,48 @@ final class LayerRenditionsTest extends IntegrationTestCase {
 		$made->make( $image, self::SIZES );
 		self::assertSame( array(), (array) glob( $folder . '/stray-*' ), 'no stray file left' );
 		self::assertCount( 3, (array) glob( $folder . '/*.avif' ) );
+	}
+
+	// Cowork's 1.0.0 report: under a media plugin set to AVIF at "Balanced", every rendition's save failed with
+	// "imageavif(): Argument #3 ($quality) must be between -1 and 100". The renditions set their own quality on the
+	// editor, so no setting of the shop's or of another plugin reaches them.
+	public function test_a_quality_another_plugin_answers_outside_1_to_100_does_not_reach_the_renditions(): void {
+		$image = LayerFiles::attachment( 420, 1626 );
+		add_filter( 'wp_image_editors', static fn( array $editors ): array => array_merge( array( LooseQualityEditor::class ), $editors ) );
+		foreach ( array( 150, -5 ) as $quality ) {
+			add_filter( 'wp_editor_set_quality', static fn(): int => $quality, PHP_INT_MAX );
+			$logger = new FakeLogger();
+			( new WpLayerRenditions( $logger ) )->make( $image, self::SIZES );
+			$sources = $this->renditions()->sources( $image, self::SIZES );
+			self::assertSame( array( 'image/avif', 'image/webp' ), array_keys( $sources ), 'quality ' . $quality );
+			self::assertCount( 3, $sources['image/avif'] );
+			self::assertSame( array(), $logger->lines, 'quality ' . $quality );
+			self::assertSame( $quality, apply_filters( 'wp_editor_set_quality', 82, 'image/jpeg', array() ), "the shop's own uploads keep its setting" ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- WordPress's own filter.
+			remove_all_filters( 'wp_editor_set_quality' );
+			foreach ( (array) glob( wp_get_upload_dir()['basedir'] . '/' . WpLayerRenditions::FOLDER . '/*' ) as $file ) {
+				wp_delete_file( (string) $file );
+			}
+		}
+	}
+
+	// Cowork's 1.0.0 report, 2: a save that throws, as GD's does, is a rendition not made. The others are still made, so
+	// the part is drawn from its WebP copy, or else its full-size file (D-209), and the index job is not failed.
+	public function test_a_save_that_throws_is_logged_and_the_other_renditions_are_still_made(): void {
+		$image  = LayerFiles::attachment( 420, 1626 );
+		$logger = new FakeLogger();
+		add_filter( 'wp_image_editors', static fn( array $editors ): array => array_merge( array( LooseQualityEditor::class ), $editors ) );
+		LooseQualityEditor::$throws = 'image/avif';
+		delete_transient( Options::RENDITIONS_FAILED );
+
+		( new WpLayerRenditions( $logger ) )->make( $image, self::SIZES );
+
+		$sources = $this->renditions()->sources( $image, self::SIZES );
+		self::assertSame( array( 'image/webp' ), array_keys( $sources ) );
+		self::assertCount( 3, $sources['image/webp'] );
+		self::assertSame( array( 'rendition_save_avif' => true ), $logger->keys );
+		self::assertSame( 'save', $logger->lines[0]['context']['step'] ?? null );
+		self::assertStringContainsString( 'imageavif()', (string) ( $logger->lines[0]['context']['error'] ?? '' ) );
+		self::assertSame( 1, get_transient( Options::RENDITIONS_FAILED ), 'Site Health names the logs (D-214)' );
 	}
 
 	public function test_an_image_that_is_gone_or_no_image_makes_nothing(): void {

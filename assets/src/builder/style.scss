@@ -218,7 +218,7 @@
 	z-index: 2;
 	display: grid;
 	box-sizing: border-box;
-	block-size: var(--cbuild-stage-height, 42svh);
+	block-size: var(--cbuild-stage-height, 34svh);
 	padding: var(--cbuild-gap-small) var(--cbuild-gap-small) 0;
 	overflow: hidden;
 	background: var(--cbuild-ground);
@@ -252,6 +252,13 @@
 }
 
 /* The step's help, under its question. */
+
+/* A heading the builder moves focus to is where a screen reader starts reading, not a control, and is not boxed when a
+   theme outlines anything in focus (a block theme's `:focus`). The error summary keeps its ring. */
+.cbuild :is(.cbuild__heading, .cbuild-changes__heading):focus {
+	outline: none;
+}
+
 :where(.cbuild__heading + .cbuild-step__lead) {
 	margin-block-start: calc(var(--cbuild-gap-small) - var(--cbuild-gap));
 	color: var(--cbuild-muted);
@@ -1203,11 +1210,15 @@
 	:where(.cbuild__stage) :where(.cbuild-board:not(.cbuild-board--bar)) {
 		--cbuild-board-size: min(calc(100cqi - 3rem), 32rem);
 
-		/* Centred by its own size, the same in either direction, then turned: no edge for a mirrored stylesheet to swap. */
+		/* Centred by its own size, the same in either direction, then turned: no edge for a mirrored stylesheet to swap.
+		   Upright it is longer than its row is high, where automatic margins stop centring it, so its top is worked
+		   out: the middle of its row, under the heading and the labels, less half its length. */
 		position: absolute;
-		inset: 3rem 0 0;
+		inset-block-start: calc(50% - var(--cbuild-board-size) / 2);
+		inset-inline: 0;
 		max-block-size: none;
-		margin: auto;
+		margin-block: 0;
+		margin-inline: auto;
 		rotate: -90deg;
 	}
 
@@ -1552,6 +1563,13 @@
 	display: none;
 }
 
+/* "Total" over the sum, as the prototype's footer has it (D-285). A screen reader hears the total in its own words. */
+:where(.cbuild-bar__label) {
+	color: var(--cbuild-muted);
+	font-size: var(--cbuild-small);
+	font-weight: 400;
+}
+
 /* The amount, with the estimate on a line under it while one is given (Cowork's 0.8.0 review, F2; D-230). */
 :where(.cbuild-bar__amount) {
 	display: flex;
@@ -1649,7 +1667,7 @@
 @media (320px <= width < 64rem) {
 	:root:has(.cbuild .cbuild__stage) {
 		// prettier-ignore
-		scroll-padding-block-start: calc(var(--cbuild-stage-size, calc(var(--cbuild-top, 0px) + var(--cbuild-stage-height, 42svh))) + 0.5rem);
+		scroll-padding-block-start: calc(var(--cbuild-stage-size, calc(var(--cbuild-top, 0px) + var(--cbuild-stage-height, 34svh))) + 0.5rem);
 	}
 }
 

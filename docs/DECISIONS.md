@@ -3518,3 +3518,23 @@ Spec (configurator): "The card shows the photo large"; the prototype's cards sho
 
 **For Zach:** this changes how existing pages with the block look, the demo's among them, when it updates.
 
+### D-284 · The stage is about a third of the screen on a phone and a tablet, as the prototype's · 2026-11-19
+
+- **What.** `--cbuild-stage-height` defaults to `34svh`, from `42svh`. Turned on its side in that strip, the board is centred in its row by its own length, since upright it is longer than the row is high and automatic margins stopped centring it: at 1000 by 800 its foot was 6 px below the stage.
+- **Spec.** SPEC-CONFIGURATOR's Tablet and Phone sections said "about 40 %" and "40 to 45 %"; they now say about a third.
+
+**Why:** Zach's call on the comparison with the prototype (19 November): "yes follow the prototype". At 42 % the step began below the first screen on a phone.
+
+### D-285 · The bar labels its sum "Total" · 2026-11-19
+
+- **What.** The footer says "Total" over the sum, as the prototype's does, on a phone and a desktop. The label is hidden from a screen reader, which hears the total once in its own words ("Total: $182.00").
+
+**Why:** Zach's call on the comparison with the prototype (19 November).
+
+### D-286 · Layer renditions are saved at their own quality, and a save that throws is a rendition not made · 2026-11-19
+
+- **What.** While a rendition is resized and saved, `WpLayerRenditions` answers `wp_editor_set_quality` last with 82, WordPress's own default, and removes its answer after, so the shop's own uploads keep whatever quality is set for them. A save that throws (GD's `imageavif()` throws a `ValueError` for a quality outside -1 to 100) is logged with the error as a rendition not made. The other renditions are still made, so the part is drawn from its WebP copy, else its full-size file (D-209), and the index job no longer fails and retries.
+- **Checked before relying.** Setting the quality on the editor alone, as the report suggested, does not hold. WordPress asks the filter again on each resize (wp-includes/class-wp-image-editor-gd.php:230) and on each save to another type (wp-includes/class-wp-image-editor.php:414), over a quality already set. Its own range check (class-wp-image-editor.php:291) only resets a filtered value below 0 or above 100 to the default, so the value out of range most likely came from a media plugin's own editor taking it as given. The test's editor does that.
+
+**Why:** Cowork's 1.0.0 report. On the demo, with a media plugin converting uploads to AVIF at "Balanced", every rendition of three decks' WebP layer images failed with "imageavif(): Argument #3 ($quality) must be between -1 and 100". The AVIF copies are made first, so no WebP copy was made either, and the job retried until it gave up.
+

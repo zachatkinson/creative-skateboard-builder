@@ -14,6 +14,7 @@ use CreativeBranding\SkateboardBuilder\Port\LayerRenditions;
 use CreativeBranding\SkateboardBuilder\Port\Logger;
 use CreativeBranding\SkateboardBuilder\Support\Options;
 use CreativeBranding\SkateboardBuilder\Support\Cast;
+use Throwable;
 use WP_Image_Editor;
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -36,6 +37,13 @@ final class WpLayerRenditions implements LayerRenditions {
 	 * The folder in the uploads folder.
 	 */
 	public const FOLDER = Options::UPLOADS_FOLDER . '/layers';
+
+	/**
+	 * The quality every rendition is saved at, WordPress's own default. WordPress asks `wp_editor_set_quality` again on
+	 * each resize and each save to another type, over a quality set on the editor, so the renditions answer it last
+	 * while they are made: neither the shop's setting nor another plugin's reaches them (Cowork's 1.0.0 report; D-286).
+	 */
+	public const QUALITY = 82;
 
 	/**
 	 * Constructor.
@@ -151,7 +159,9 @@ final class WpLayerRenditions implements LayerRenditions {
 	 * still gets a WebP rendition, and the AVIF one already made is never written over (Cowork's M7 review, F2; D-209).
 	 * The shop's other mappings, and every save that is not one of ours, are left as they are. A file that still comes
 	 * out as another type, from an editor of the host's own, is removed unless it is a rendition's name, and the
-	 * failure is logged once an hour.
+	 * failure is logged once an hour. Each is saved at its own quality, and a save that throws, as GD's `imageavif()`
+	 * does for a quality out of its range, is a rendition not made: the others are still made, and the index job is
+	 * not failed (Cowork's 1.0.0 report; D-286).
 	 *
 	 * @param string               $file The image's file.
 	 * @param string               $type Its MIME type.
@@ -170,21 +180,28 @@ final class WpLayerRenditions implements LayerRenditions {
 		if ( ! $editor instanceof WP_Image_Editor || ! $editor::supports_mime_type( $mime ) ) {
 			return;
 		}
-		if ( null !== $size && true !== $editor->resize( $size[0], $size[1], false ) ) {
-			$this->failed( $path, 'resize' );
-			return;
-		}
-		$aside = static function ( mixed $formats ) use ( $mime ): mixed {
+		$aside   = static function ( mixed $formats ) use ( $mime ): mixed {
 			if ( is_array( $formats ) ) {
 				unset( $formats[ $mime ] );
 			}
 			return $formats;
 		};
-		add_filter( 'image_editor_output_format', $aside, PHP_INT_MAX );
+		$quality = static fn(): int => self::QUALITY;
+		add_filter( 'wp_editor_set_quality', $quality, PHP_INT_MAX );
 		try {
+			$editor->set_quality( self::QUALITY );
+			if ( null !== $size && true !== $editor->resize( $size[0], $size[1], false ) ) {
+				$this->failed( $path, 'resize' );
+				return;
+			}
+			add_filter( 'image_editor_output_format', $aside, PHP_INT_MAX );
 			$saved = $editor->save( $path, $mime );
+		} catch ( Throwable $failure ) {
+			$this->failed( $path, 'save', $failure->getMessage() );
+			return;
 		} finally {
 			remove_filter( 'image_editor_output_format', $aside, PHP_INT_MAX );
+			remove_filter( 'wp_editor_set_quality', $quality, PHP_INT_MAX );
 		}
 		if ( ! is_array( $saved ) ) {
 			$this->failed( $path, 'save' );
@@ -216,10 +233,11 @@ final class WpLayerRenditions implements LayerRenditions {
 	 * A rendition that was not made, logged at most once an hour for its type and step: the page draws the part from
 	 * its full-size image until it is, and Site Health counts the parts with none.
 	 *
-	 * @param string $path Where it was to go.
-	 * @param string $step resize, save or type.
+	 * @param string $path  Where it was to go.
+	 * @param string $step  resize, save or type.
+	 * @param string $error What the editor threw, if it threw.
 	 */
-	private function failed( string $path, string $step ): void {
+	private function failed( string $path, string $step, string $error = '' ): void {
 		// Site Health names the logs only while a failure is this recent: the logs keep 30 days (Cowork's 0.7.0
 		// recheck, N1; D-214). A transient, so uninstall's sweep of the prefix takes it.
 		set_transient( Options::RENDITIONS_FAILED, 1, 30 * DAY_IN_SECONDS );
@@ -227,9 +245,13 @@ final class WpLayerRenditions implements LayerRenditions {
 			'rendition_' . $step . '_' . pathinfo( $path, PATHINFO_EXTENSION ),
 			Logger::WARNING,
 			'A layer image rendition was not made.',
-			array(
-				'file' => wp_basename( $path ),
-				'step' => $step,
+			array_filter(
+				array(
+					'file'  => wp_basename( $path ),
+					'step'  => $step,
+					'error' => $error,
+				),
+				static fn( string $value ): bool => '' !== $value
 			)
 		);
 	}

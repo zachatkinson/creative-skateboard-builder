@@ -35,6 +35,7 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Fixed
 
+- Layer image renditions are saved at their own quality, so another plugin's image quality setting cannot fail them, and a rendition that fails no longer stops the others: the part is drawn from its WebP copy or its full-size file (D-286).
 - The builder's stylesheet and script are asked for as 1.0.0, so a browser or a page cache no longer serves 0.6.0's against this release's markup: the block's `block.json` still said 0.6.0, which WordPress writes on them as their version. A gate holds it to the plugin's (the auditor's M10 review, 5).
 - On a phone and a tablet, the control in focus is never behind the stage at the top of the screen: the page keeps room for it as it does for the bar, going back up a step and after Next (WCAG 2.4.11; the auditor's M10 review, 1).
 - Enter in a step's search searches it at the width shown; it pressed the narrowest width's button (the auditor's M10 review, 2).
@@ -57,6 +58,9 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Changed
 
+- On a phone and a tablet the stage is about a third of the screen, as the prototype's, so the step starts in the first screen (D-284).
+- The footer says "Total" over the sum (D-285).
+- A heading the builder moves focus to is not outlined by a theme that outlines anything in focus; the error summary keeps its ring.
 - The Builder block is full width unless the editor chose otherwise (its `align` defaults to `full`), so a page's builder has its stage beside its steps on a desktop rather than above them in the theme's column. The editor's alignment, spacing, colours and font size now reach the page, as they reach the editor; until 1.0.0 the page left them off (D-283).
 - A part card with no photo shows the part's layer image, uncropped, and the chosen card is marked by a tick and a thicker border in place of the radio's circle (D-282, #68).
 
