@@ -147,15 +147,21 @@ final class BuilderView {
 		}
 
 		$progress = array();
+		// The step after the current one is a link too once the current one has a pick: one tap away (spec: The step
+		// rail).
+		$picked = isset( $counted[ $state->step ] );
 		foreach ( $all as $number => $key ) {
 			$done       = $number < $at;
+			$linked     = $done || ( $picked && $number === $at + 1 );
+			$named      = State::REVIEW === $key ? __( 'Review', 'creative-skateboard-builder' ) : $label( $key );
 			$progress[] = array(
 				'key'     => $key,
-				'label'   => State::REVIEW === $key ? __( 'Review', 'creative-skateboard-builder' ) : $label( $key ),
-				'state'   => self::place( $number, $at ),
+				'label'   => $named,
+				'state'   => self::place( $number, $at, $named, $done ? Cast::str( $lines[ $key ]['name'] ?? null ) : '' ),
 				'done'    => $done,
+				'linked'  => $linked,
 				'current' => $number === $at,
-				'url'     => $done ? $url( $link->at( $key ) ) : '',
+				'url'     => $linked ? $url( $link->at( $key ) ) : '',
 				'aria'    => $number === $at ? 'step' : false,
 			);
 		}
@@ -402,15 +408,24 @@ final class BuilderView {
 	/**
 	 * Where a step stands against the one shown, as its class and as a reader hears it.
 	 *
-	 * @param int $number The step's place.
-	 * @param int $at     The place of the step shown.
+	 * @param int    $number The step's place.
+	 * @param int    $at     The place of the step shown.
+	 * @param string $label  The step's label.
+	 * @param string $pick   The part picked in a step done, or empty.
 	 */
-	private static function place( int $number, int $at ): string {
-		return match ( $number <=> $at ) {
-			-1      => __( 'Done', 'creative-skateboard-builder' ),
-			0       => __( 'Current step', 'creative-skateboard-builder' ),
-			default => __( 'To come', 'creative-skateboard-builder' ),
-		};
+	private static function place( int $number, int $at, string $label, string $pick ): string {
+		if ( $number < $at ) {
+			return '' === $pick
+				/* translators: %s: a step's label, such as Risers, done with nothing picked. */
+				? sprintf( __( '%s, done', 'creative-skateboard-builder' ), $label )
+				/* translators: 1: a step's label, such as Deck. 2: the part picked in it. */
+				: sprintf( __( '%1$s, done: %2$s', 'creative-skateboard-builder' ), $label, $pick );
+		}
+		return $number === $at
+			/* translators: %s: a step's label, such as Trucks. */
+			? sprintf( __( '%s, current step', 'creative-skateboard-builder' ), $label )
+			/* translators: %s: a step's label, such as Wheels. */
+			: sprintf( __( '%s, to come', 'creative-skateboard-builder' ), $label );
 	}
 
 	/**

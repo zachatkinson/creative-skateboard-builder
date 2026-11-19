@@ -19,6 +19,7 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Fixed
 
+- The step rail says each step in one sentence, "Deck, done: Katie", "Trucks, current step", "Wheels, to come", where a screen reader heard the label and its state run together. Once a step has a pick, the next step is a link in the rail (spec: The step rail).
 - Focus stays clear of the bar however many lines the bar takes, on a phone and in a narrow column on a desktop (D-272).
 - On a phone, Next stays under the thumb when the first deck's answer arrives while the shopper is at the end of the step (D-267).
 - Part specs opens Sold in sets for any part in a slot that takes more than one unit, so a riser's Number in a set is filled in and the riser is offered (Cowork; #61).

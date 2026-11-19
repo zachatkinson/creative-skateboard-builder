@@ -634,6 +634,45 @@ const stayed = ( page: Page ): Promise< boolean > =>
 // Audit, spec review S2: the roadmap's "every way in built so far" on every engine and width, with JavaScript and
 // without. A link is opened with page.goto alone, so the store has nothing to do until the shopper moves.
 test.describe( 'Every way in by a link', () => {
+	test( 'names each step of the rail with its pick, and links the next once the step has one', async ( {
+		page,
+	} ) => {
+		const rail = page.getByRole( 'navigation', { name: 'Steps' } );
+		await page.goto(
+			linkTo( { deck: id( 'builder-test-deck-8-0' ), step: 'trucks' } )
+		);
+		await expect(
+			rail.getByRole( 'link', {
+				name: 'Deck, done: Builder test deck 8.0',
+				exact: true,
+			} )
+		).toBeVisible();
+		await expect(
+			rail.locator(
+				'[aria-current="step"] .cbuild-progress__label .screen-reader-text'
+			)
+		).toHaveText( 'Trucks, current step' );
+		await expect(
+			rail.getByRole( 'link', { name: 'Wheels, to come' } ),
+			'no link past a step with no pick'
+		).toHaveCount( 0 );
+
+		await page.goto(
+			linkTo( {
+				deck: id( 'builder-test-deck-8-0' ),
+				trucks: id( 'builder-test-trucks-139' ),
+				step: 'trucks',
+			} )
+		);
+		await expect(
+			rail.getByRole( 'link', { name: 'Wheels, to come', exact: true } ),
+			'the next step, one tap away (spec: The step rail)'
+		).toHaveAttribute( 'href', /cbuild%5Bstep%5D=wheels/ );
+		await expect(
+			rail.getByRole( 'link', { name: 'Bearings, to come' } )
+		).toHaveCount( 0 );
+	} );
+
 	test( 'a card shows its brand, its name and its full price, and once the step has a pick what it changes', async ( {
 		page,
 	} ) => {

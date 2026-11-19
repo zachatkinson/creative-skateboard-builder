@@ -549,15 +549,16 @@ final class BuilderTest extends TestCase {
 			array(
 				'key'     => 'deck',
 				'label'   => 'Deck',
-				'state'   => 'Current step',
+				'state'   => 'Deck, current step',
 				'done'    => false,
+				'linked'  => false,
 				'current' => true,
 				'url'     => '',
 				'aria'    => 'step',
 			),
 			$view['progress'][0]
 		);
-		self::assertSame( array( 'To come', false, false, '', false ), array( $view['progress'][1]['state'], $view['progress'][1]['done'], $view['progress'][1]['current'], $view['progress'][1]['url'], $view['progress'][1]['aria'] ) );
+		self::assertSame( array( 'Trucks, to come', false, false, '', false ), array( $view['progress'][1]['state'], $view['progress'][1]['done'], $view['progress'][1]['current'], $view['progress'][1]['url'], $view['progress'][1]['aria'] ) );
 		self::assertSame( 'Review', $view['progress'][6]['label'] );
 
 		$step = $view['step'];
@@ -647,7 +648,12 @@ final class BuilderTest extends TestCase {
 		self::assertSame( 'Choose your trucks', $view['heading'] );
 		self::assertSame( 'Step 2 of 7:', $view['count'] );
 		self::assertSame( 'done', $view['progress'][0]['done'] ? 'done' : 'not done' );
-		self::assertSame( 'Done', $view['progress'][0]['state'] );
+		self::assertSame( 'Deck, done: Part 103', $view['progress'][0]['state'], 'a done step is said with its pick (spec: The step rail)' );
+		self::assertSame( array( false, '' ), array( $view['progress'][2]['linked'], $view['progress'][2]['url'] ), 'the step after one with no pick is no link yet' );
+		$picked = $this->show( new BuildLink( array( SlotKey::DECK => 103, SlotKey::TRUCKS => 149 ), null, SlotKey::TRUCKS ) )['view']['progress'];
+		self::assertSame( array( true, false, 'Wheels, to come' ), array( $picked[2]['linked'], $picked[2]['done'], $picked[2]['state'] ), 'once the step has a pick, the next is one tap away' );
+		self::assertSame( self::url( array( 'deck' => '103', 'trucks' => '149', 'step' => 'wheels' ) ), $picked[2]['url'] );
+		self::assertFalse( $picked[3]['linked'], 'and only the next' );
 		self::assertSame( self::url( array( 'deck' => '103', 'grip' => '701', 'step' => 'deck', 'assembly' => '1', 'preset' => '4' ) ), $view['progress'][0]['url'] );
 		self::assertFalse( $step['hasLead'] );
 		self::assertSame(
@@ -895,7 +901,11 @@ final class BuilderTest extends TestCase {
 		self::assertSame( 'Your build', $view['summary']['heading'] );
 		self::assertSame( 'Nothing is chosen yet.', $view['summary']['emptyText'] );
 		self::assertSame( 'Total', $view['summary']['totalLabel'] );
-		self::assertSame( array( 'Done', 'Done', 'Done', 'Done', 'Done', 'Done', 'Current step' ), array_column( $view['progress'], 'state' ) );
+		$states = array_column( $view['progress'], 'state' );
+		self::assertSame( 'Review, current step', array_pop( $states ) );
+		foreach ( $states as $state ) {
+			self::assertMatchesRegularExpression( '/^[^,]+, done: Part \d+$/', $state, 'each step done is said with its pick' );
+		}
 	}
 
 	public function test_a_pick_the_kit_cannot_take_is_named_with_a_link_to_the_step(): void {
