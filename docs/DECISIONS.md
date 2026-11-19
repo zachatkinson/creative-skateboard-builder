@@ -3372,3 +3372,11 @@ The step draws the route's shelf (D-265) from one template, with and without Jav
 ### D-267 · A control the view moves is brought back over more than one scroll · 2026-11-19
 
 The store keeps the control the shopper is on where it was after a view on the same step (D-185), by scrolling the page by what the view moved it. Next in the phone bar moves with the bar, which is sticky (D-160): the first deck's answer grew the builder, the bar stuck at the foot of the screen and Next showed 171 pixels lower; the scroll that put it back brought the builder's end into view, the bar came unstuck at that end, and Next sat 39 pixels lower than under the press. It showed once the deck step listed one width's decks, so the shopper was at the step's end. The store now measures again after each scroll and scrolls by what is left, three times at most, before the browser paints. The bar stays sticky, not fixed, so it still never covers the theme's footer.
+
+### D-268 · On desktop the step rail is a row across the top · 2026-11-19
+
+Zach's call. The prototype puts the rail in the site's header, which the plugin can't reach; the spec put it at the head of the panel. On desktop it is a row across the builder's top, under the theme's header and over the stage and the panel, the closest the plugin comes to the prototype. On a tablet and a phone it heads the sheet, as the spec has it. The rail comes first in the markup either way, so the place is the stylesheet's alone.
+
+### D-269 · The step's heading says the step's question; the count is read · 2026-11-19
+
+Zach's call. The heading shows the prototype's words, "Choose your deck", with the step's help under it, and the rail's numbers say where the shopper is. A screen reader hears "Step 1 of 7: Choose your deck" from a visually hidden prefix, and the page's title keeps the count, so the step is still said as it was from 0.6.0.
