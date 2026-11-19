@@ -3356,3 +3356,19 @@ The route answers the shelf (D-264) as `shelf`, and keeps `options`, `filters`, 
 - **`choices` is an object,** so a look with none is `{}` in JSON, as the schema says.
 - **The looks' meta is primed** (`Port\ProductMeta`) before they are read, as the layer images' are (D-202): WooCommerce reads a product's meta in a query of its own otherwise, and the route's query count would grow with the step's parts.
 - **A chip group's label** is Brand, the slot's size name (Width, Diameter), or the shop's name for the attribute (`wc_get_attribute_taxonomy_labels()`, woocommerce/includes/wc-attribute-functions.php:121).
+
+### D-266 · The shelf on the page · 2026-11-18
+
+The step draws the route's shelf (D-265) from one template, with and without JavaScript. Where the spec leaves a choice:
+
+- **A width is a submit button** of the step's form, named `cbuild[_width]`, so a width works without JavaScript; the store sends the same form to the route. The hidden `_width` field comes before the buttons, so the button pressed, sent after it, wins.
+- **Chips are checkboxes with an Apply button.** Without JavaScript, Apply sends them; with it, a change sends them at once and Apply is hidden. The search's own Search button is hidden the same way, and the store waits 150 ms after the last key before it asks.
+- **`live`** in the store's state says the store is running, and is false in the page the server writes, so the page without JavaScript keeps its buttons.
+- **A deck the build holds brings its width** (`Service\StepShelf`), from a preset, a link or a saved build, and skips the question; a width asked comes first.
+- **Focus after a width, a chip or a search** stays on the control used. Only Show more, which keeps the list and adds to it, moves focus to the first new card.
+- **The old list stands** where the answer has no shelf (an earlier release's container, D-265), so a page built by one still works.
+- **The filters drawer goes** on a step with a shelf: the width question, search and chips take its place.
+
+### D-267 · A control the view moves is brought back over more than one scroll · 2026-11-19
+
+The store keeps the control the shopper is on where it was after a view on the same step (D-185), by scrolling the page by what the view moved it. Next in the phone bar moves with the bar, which is sticky (D-160): the first deck's answer grew the builder, the bar stuck at the foot of the screen and Next showed 171 pixels lower; the scroll that put it back brought the builder's end into view, the bar came unstuck at that end, and Next sat 39 pixels lower than under the press. It showed once the deck step listed one width's decks, so the shopper was at the step's end. The store now measures again after each scroll and scrolls by what is left, three times at most, before the browser paints. The bar stays sticky, not fixed, so it still never covers the theme's footer.

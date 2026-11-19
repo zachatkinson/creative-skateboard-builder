@@ -10,8 +10,11 @@ All notable changes to this project are documented here. The format follows [Kee
 - The `bearings_included` spec on wheels, in Part specs and the CSV. Wheels that carry it fill the kit's Bearings slot, and R5 blocks a separate bearing with the code `bearings_included` (D-246).
 - The state route's `shelf`: the current step as cards, one per look, with the chips, the deck's width question, a page of 30 and the sold-out looks (D-264). The route takes `width`, `chips`, `q`, `sort` and `from` for it, and a build link carries them as `_width`, `_chips`, `_q` and `_sort`. A search is ranked by Creative Search where it answers `csearch_ranked_ids`, and matched by the builder otherwise (D-248).
 
+- The deck step asks "What width do you ride?" first, one button a width with how many decks it has in stock, and lists that width's decks; a build that holds a deck starts at its width. A step with more than 40 parts has a search box, one with more than 12 has chips, and every step has a sort, a page of 30 with "Show 30 more", and its sold-out parts folded under "Show N sold out". Each works without JavaScript; with it, the step changes in place and focus stays on the control used (D-266).
+
 ### Fixed
 
+- On a phone, Next stays under the thumb when the first deck's answer arrives while the shopper is at the end of the step (D-267).
 - Part specs opens Sold in sets for any part in a slot that takes more than one unit, so a riser's Number in a set is filled in and the riser is offered (Cowork; #61).
 - Saving a kit whose presets are unchanged and name a part the shop hides no longer says the presets were not saved. The Build tab says which preset holds which part, and the presets are kept as they are (Cowork; #62).
 

@@ -113,7 +113,10 @@ test.describe( 'Focus on a dark theme whose contrast colour is dark', () => {
 				info.project.name !== 'firefox-desktop',
 			'Chromium and Firefox at a desktop width: the ring is the same at every width, and WebKit moves Tab past radios unless the system says otherwise.'
 		);
-		await on.goto( page() );
+		// A width in the link, so the step lists a deck to focus (D-241).
+		const url = new URL( page() );
+		url.searchParams.set( 'cbuild[_width]', '8in' );
+		await on.goto( url.toString() );
 		await expect( on.locator( '.cbuild' ) ).toHaveAttribute(
 			'aria-busy',
 			'false'

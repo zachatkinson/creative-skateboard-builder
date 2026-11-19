@@ -12,6 +12,7 @@ namespace CreativeBranding\SkateboardBuilder\Front;
 use CreativeBranding\SkateboardBuilder\Domain\Fit\BuildProblem;
 use CreativeBranding\SkateboardBuilder\Domain\Fit\Problem;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\SlotKey;
+use CreativeBranding\SkateboardBuilder\Domain\Look\Shelf;
 use CreativeBranding\SkateboardBuilder\Service\State;
 use CreativeBranding\SkateboardBuilder\Support\Cast;
 use CreativeBranding\SkateboardBuilder\Support\Options;
@@ -34,6 +35,16 @@ if ( ! defined( 'ABSPATH' ) ) {
  * @since 0.6.0
  */
 final class BuilderView {
+
+	/**
+	 * The most looks a step offers with its cards alone; from 13 it gets Sort and the chips (spec: Tools that grow).
+	 */
+	private const int CARDS_ALONE = 12;
+
+	/**
+	 * The most looks a step offers with no search; from 41 it gets one.
+	 */
+	private const int SEARCHED = 40;
 
 	/**
 	 * The board's height in the picture: at most this many CSS pixels (36rem), from a window this tall, and below
@@ -618,6 +629,7 @@ final class BuilderView {
 			'hidden'    => self::hidden( array(), array() ),
 			'filters'   => self::filters( array(), '' ),
 			'more'      => self::more( array(), 0 ),
+			'shelf'     => self::shelf( array(), '', array() ),
 			'empty'     => false,
 			'emptyText' => '',
 			'leave'     => array(
@@ -784,6 +796,171 @@ final class BuilderView {
 	}
 
 	/**
+	 * Show 30 more from the shelf (D-244): a button that asks the link to list 30 more, and how many are shown of
+	 * how many in stock match.
+	 *
+	 * @param array<string, mixed> $shelf  The answer's shelf.
+	 * @param int                  $listed How many looks the step lists.
+	 * @param BuildLink            $link   The address of what is shown.
+	 * @return array{shown: bool, name: string, value: string, text: string, count: string}
+	 */
+	private static function page( array $shelf, int $listed, BuildLink $link ): array {
+		$matching = Cast::int( $shelf['matching'] ?? null );
+		$more     = null === ( $shelf['more'] ?? null ) ? null : Cast::int( $shelf['more'] );
+		$shown    = max( Shelf::SHOWN, $link->shown );
+		return array(
+			'shown' => null !== $more,
+			'name'  => BuildLink::PARAM . '[_shown]',
+			'value' => null === $more ? '' : (string) ( $shown + Shelf::SHOWN ),
+			/* translators: %s: how many more looks the button lists. */
+			'text'  => null === $more ? '' : sprintf( __( 'Show %s more', 'creative-skateboard-builder' ), number_format_i18n( min( Shelf::SHOWN, $matching - $listed ) ) ),
+			/* translators: 1: how many looks are listed. 2: how many match. */
+			'count' => sprintf( _n( 'Showing %1$s of %2$s', 'Showing %1$s of %2$s', $matching, 'creative-skateboard-builder' ), number_format_i18n( $listed ), number_format_i18n( $matching ) ),
+		);
+	}
+
+	/**
+	 * The step's shelf tools (SPEC-CONFIGURATOR, Finding a part): the deck's width question, then search, the chips
+	 * and Sort as the step's offered looks grow, and the sold-out fold. Each is a field of the step's GET form.
+	 *
+	 * @param array<string, mixed>       $shelf  The answer's shelf, or nothing where there is none.
+	 * @param string                     $slot   The step's slot.
+	 * @param list<array<string, mixed>> $folded The sold-out looks' cards.
+	 * @return array<string, mixed>
+	 */
+	private static function shelf( array $shelf, string $slot, array $folded ): array {
+		$offered = Cast::int( $shelf['offered'] ?? null );
+		$widths  = array();
+		$none    = array();
+		$asking  = true;
+		foreach ( Cast::items( $shelf['widths'] ?? null ) as $width ) {
+			$width    = Cast::map( $width );
+			$stock    = Cast::int( $width['in_stock'] ?? null );
+			$pressed  = Cast::bool( $width['selected'] ?? null );
+			$asking   = $asking && ! $pressed;
+			$widths[] = array(
+				'value'   => Cast::str( $width['value'] ?? null ),
+				'text'    => Cast::str( $width['text'] ?? null ),
+				'count'   => number_format_i18n( $stock ),
+				'pressed' => $pressed ? 'true' : 'false',
+				'dimmed'  => 0 === $stock,
+			);
+			if ( 0 === $stock ) {
+				$none[] = Cast::str( $width['text'] ?? null );
+			}
+		}
+		$groups = array();
+		foreach ( Cast::items( $shelf['chips'] ?? null ) as $group ) {
+			$group  = Cast::map( $group );
+			$name   = Cast::str( $group['name'] ?? null );
+			$inputs = array();
+			foreach ( Cast::items( $group['chips'] ?? null ) as $at => $chip ) {
+				$chip     = Cast::map( $chip );
+				$inputs[] = array(
+					'id'      => 'cbuild-chip-' . $slot . '-' . $name . '-' . $at,
+					'name'    => BuildLink::PARAM . '[_chips][' . $name . '][]',
+					'value'   => Cast::str( $chip['value'] ?? null ),
+					'text'    => Cast::str( $chip['label'] ?? null ),
+					'count'   => number_format_i18n( Cast::int( $chip['count'] ?? null ) ),
+					'checked' => Cast::bool( $chip['selected'] ?? null ),
+				);
+			}
+			$groups[] = array(
+				'key'    => $name,
+				'legend' => Cast::str( $group['label'] ?? null ),
+				'inputs' => $inputs,
+			);
+		}
+		$sort  = Cast::str( $shelf['sort'] ?? null );
+		$sorts = array(
+			'recommended' => __( 'Recommended', 'creative-skateboard-builder' ),
+			'price-asc'   => __( 'Price low to high', 'creative-skateboard-builder' ),
+			'price-desc'  => __( 'Price high to low', 'creative-skateboard-builder' ),
+			'newest'      => __( 'Newest', 'creative-skateboard-builder' ),
+		);
+		$tools = $offered > self::CARDS_ALONE;
+		return array(
+			'width'   => array(
+				'shown'   => array() !== $widths,
+				'asking'  => $asking,
+				'legend'  => $asking ? __( 'What width do you ride?', 'creative-skateboard-builder' ) : __( 'Width', 'creative-skateboard-builder' ),
+				'name'    => BuildLink::PARAM . '[_width]',
+				'options' => $widths,
+				'hasNone' => array() !== $none,
+				/* translators: %s: widths, such as 7.75″, 8.125″ or 9″. */
+				'none'    => array() === $none ? '' : sprintf( __( 'Nothing in %s is in stock right now.', 'creative-skateboard-builder' ), Words::either( $none ) ),
+			),
+			'search'  => array(
+				'shown'  => $offered > self::SEARCHED,
+				'label'  => self::searchLabel( $slot ),
+				'hint'   => SlotKey::DECK === $slot ? __( 'Brand or graphic', 'creative-skateboard-builder' ) : __( 'Brand or name', 'creative-skateboard-builder' ),
+				'name'   => BuildLink::PARAM . '[_q]',
+				'value'  => Cast::str( $shelf['query'] ?? null ),
+				'button' => __( 'Search', 'creative-skateboard-builder' ),
+			),
+			'chips'   => array(
+				'shown'  => $tools && array() !== $groups,
+				'groups' => $groups,
+				'apply'  => __( 'Apply', 'creative-skateboard-builder' ),
+			),
+			'sort'    => array(
+				'shown'   => $tools,
+				'label'   => __( 'Sort', 'creative-skateboard-builder' ),
+				'name'    => BuildLink::PARAM . '[_sort]',
+				'options' => array_map(
+					static fn( string $value, string $text ): array => array(
+						'value'    => $value,
+						'text'     => $text,
+						'selected' => $value === $sort || ( '' === $sort && 'recommended' === $value ),
+					),
+					array_keys( $sorts ),
+					array_values( $sorts )
+				),
+			),
+			'soldOut' => array(
+				'shown'   => array() !== $folded,
+				/* translators: %s: how many sold-out looks the fold holds. */
+				'summary' => sprintf( _n( 'Show %s sold out', 'Show %s sold out', count( $folded ), 'creative-skateboard-builder' ), number_format_i18n( count( $folded ) ) ),
+				'options' => $folded,
+			),
+		);
+	}
+
+	/**
+	 * The width the deck step's shelf lists, as the `width` argument names it, or empty: the one asked, or the one
+	 * of the deck the build holds.
+	 *
+	 * @param array<string, mixed> $shelf The answer's shelf.
+	 */
+	private static function shown( array $shelf ): string {
+		foreach ( Cast::items( $shelf['widths'] ?? null ) as $width ) {
+			$width = Cast::map( $width );
+			if ( Cast::bool( $width['selected'] ?? null ) ) {
+				return Cast::str( $width['value'] ?? null );
+			}
+		}
+		return '';
+	}
+
+	/**
+	 * What a step's search box is called.
+	 *
+	 * @param string $slot The step's slot.
+	 */
+	private static function searchLabel( string $slot ): string {
+		return match ( $slot ) {
+			SlotKey::DECK     => __( 'Search decks', 'creative-skateboard-builder' ),
+			SlotKey::TRUCKS   => __( 'Search trucks', 'creative-skateboard-builder' ),
+			SlotKey::WHEELS   => __( 'Search wheels', 'creative-skateboard-builder' ),
+			SlotKey::BEARINGS => __( 'Search bearings', 'creative-skateboard-builder' ),
+			SlotKey::RISERS   => __( 'Search risers', 'creative-skateboard-builder' ),
+			SlotKey::HARDWARE => __( 'Search hardware', 'creative-skateboard-builder' ),
+			SlotKey::GRIP     => __( 'Search grip tape', 'creative-skateboard-builder' ),
+			default           => __( 'Search parts', 'creative-skateboard-builder' ),
+		};
+	}
+
+	/**
 	 * The step: its form's fields, its options as cards, and where Back and Next go.
 	 *
 	 * @param State                               $state   The build's state.
@@ -806,9 +983,7 @@ final class BuilderView {
 		// What the step's parts were checked against, as a phrase: "8.25″ deck", or "trucks and risers".
 		$against = self::against( Cast::strings( $step['against'] ?? null ), $width, static fn( string $key ): string => Cast::str( Cast::map( $about[ $key ] ?? null )['label'] ?? $key ) );
 
-		$options = array();
-		foreach ( Cast::items( $answer['options'] ?? null ) as $option ) {
-			$option    = Cast::map( $option );
+		$card    = function ( array $option ) use ( $state, $slot, $counted, $against ): array {
 			$id        = Cast::int( $option['id'] ?? null );
 			$card      = Cast::map( $option['card'] ?? null );
 			$title     = Cast::str( $card['name'] ?? null );
@@ -825,8 +1000,8 @@ final class BuilderView {
 				}
 				$notes[] = array( 'text' => Cast::str( $message['text'] ?? null ) );
 			}
-			$input     = 'cbuild-' . $state->id . '-' . $id;
-			$options[] = array(
+			$input = 'cbuild-' . $state->id . '-' . $id;
+			return array(
 				'id'            => $id,
 				'input'         => $input,
 				// The radio is named by its part alone; what else the card says describes it, so that a screen reader
@@ -856,6 +1031,21 @@ final class BuilderView {
 				'recommendedAs' => self::recommended( $against ),
 				'classes'       => self::classes( $state->id, $slot, $id, $fit, $available, $checked ),
 			) + self::image( $card['image'] ?? null );
+		};
+		$shelf   = isset( $answer['shelf'] ) ? Cast::map( $answer['shelf'] ) : null;
+		$options = array();
+		$folded  = array();
+		if ( null === $shelf ) {
+			foreach ( Cast::items( $answer['options'] ?? null ) as $option ) {
+				$options[] = $card( Cast::map( $option ) );
+			}
+		} else {
+			foreach ( Cast::items( $shelf['looks'] ?? null ) as $look ) {
+				$options[] = $card( Cast::map( Cast::map( $look )['part'] ?? null ) );
+			}
+			foreach ( Cast::items( $shelf['sold_out'] ?? null ) as $look ) {
+				$folded[] = $card( Cast::map( Cast::map( $look )['part'] ?? null ) );
+			}
 		}
 
 		$required = Cast::bool( $step['required'] ?? null );
@@ -865,7 +1055,7 @@ final class BuilderView {
 		// Where the step has filters or Show more, the step the form is on, so that they keep the shopper on it and Next,
 		// which names the next, leaves them behind (D-150).
 		$tail = array();
-		if ( self::filters( $answer, $slot )['shown'] || null !== ( $answer['more'] ?? null ) ) {
+		if ( null !== $shelf || self::filters( $answer, $slot )['shown'] || null !== ( $answer['more'] ?? null ) ) {
 			$tail[] = array(
 				'name'  => BuildLink::PARAM . '[_on]',
 				'value' => $slot,
@@ -874,6 +1064,8 @@ final class BuilderView {
 		foreach ( array(
 			'_brand' => $link->brand,
 			'_size'  => $link->size,
+			// The width every step keeps (D-242), before the deck step's width buttons, so one pressed comes after it.
+			'_width' => '' !== $link->shelf->width ? $link->shelf->width : self::shown( $shelf ?? array() ),
 		) as $key => $value ) {
 			if ( '' !== $value ) {
 				$tail[] = array(
@@ -916,9 +1108,11 @@ final class BuilderView {
 			'tail'      => $tail,
 			'options'   => $options,
 			'hidden'    => self::hidden( $answer, $step ),
-			'filters'   => self::filters( $answer, $slot ),
-			'more'      => self::more( $answer, count( $options ) ),
-			'empty'     => array() === $options,
+			'filters'   => null === $shelf ? self::filters( $answer, $slot ) : self::filters( array(), '' ),
+			'more'      => null === $shelf ? self::more( $answer, count( $options ) ) : self::page( $shelf, count( $options ), $link ),
+			'shelf'     => self::shelf( $shelf ?? array(), $slot, $folded ),
+			// The deck step asking its width lists nothing yet, and says nothing is missing.
+			'empty'     => array() === $options && ! ( null !== $shelf && SlotKey::DECK === $slot && '' === $link->shelf->width ),
 			'emptyText' => '' === $link->brand && '' === $link->size
 				? __( 'Nothing the shop has fits the parts before this step.', 'creative-skateboard-builder' )
 				: __( 'No part matches these filters.', 'creative-skateboard-builder' ),

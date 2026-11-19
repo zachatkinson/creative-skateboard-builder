@@ -19,6 +19,8 @@ use CreativeBranding\SkateboardBuilder\Domain\Look\Shelved;
 use CreativeBranding\SkateboardBuilder\Domain\Measure\InvalidMeasure;
 use CreativeBranding\SkateboardBuilder\Domain\Measure\Measure;
 use CreativeBranding\SkateboardBuilder\Domain\Measure\MeasureParser;
+use CreativeBranding\SkateboardBuilder\Domain\Spec\SpecKey;
+use CreativeBranding\SkateboardBuilder\Domain\Kit\SlotKey;
 use CreativeBranding\SkateboardBuilder\Domain\Measure\Unit;
 use CreativeBranding\SkateboardBuilder\Port\PartCards;
 use CreativeBranding\SkateboardBuilder\Port\PartLooks;
@@ -152,8 +154,10 @@ final class StepShelf {
 				$corrected = null === $ranking['corrected'] ? null : $this->folding->fold( $ranking['corrected'] );
 			}
 		}
+		// A deck the build holds brings its width, as a preset, a link or a saved build does, and skips the question.
+		$held    = SlotKey::DECK === $slot ? $current->picked?->part->specs->measure( SpecKey::DeckWidth ) : null;
 		$ask     = new ShelfAsk(
-			self::width( $query->width ),
+			self::width( $query->width ) ?? $held,
 			$query->chips,
 			$this->folding->fold( $text ),
 			$ranked,

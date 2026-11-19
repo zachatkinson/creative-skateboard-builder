@@ -179,6 +179,17 @@ final class StepShelfTest extends TestCase {
 		self::assertSame( array( 103 ), array_map( static fn( ShelfLook $look ): int => $look->option->part->id, $shelf->of( $this->state( SlotKey::DECK ), new ShelfQuery( '8.5in' ) )?->listing->looks ?? array() ) );
 	}
 
+	public function test_a_deck_the_build_holds_brings_its_width_and_skips_the_question(): void {
+		foreach ( array( 101, 102, 103 ) as $at => $id ) {
+			$this->looks->facts[ $id ] = new LookFact( 1, 10 + $at, 0, 'Deck', array(), array(), false, 0, 0 );
+		}
+		$view = $this->shelf()->of( $this->state( SlotKey::DECK, array( 'deck' => 102 ) ), new ShelfQuery() );
+		self::assertSame( array( 102 ), array_map( static fn( ShelfLook $look ): int => $look->option->part->id, $view->listing->looks ?? array() ) );
+		self::assertSame( '8.25in', $view?->width );
+		$asked = $this->shelf()->of( $this->state( SlotKey::DECK, array( 'deck' => 102 ) ), new ShelfQuery( '8.5in' ) );
+		self::assertSame( '8.5in', $asked?->width, 'a width asked comes first' );
+	}
+
 	public function test_the_review_lists_no_parts_and_a_page_starts_where_it_is_asked(): void {
 		self::assertNull( $this->shelf()->of( $this->state( State::REVIEW ), new ShelfQuery() ) );
 		$page = $this->wheels( new ShelfQuery( from: -4, shown: 0 ) );

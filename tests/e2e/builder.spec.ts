@@ -69,23 +69,6 @@ const heading = ( page: Page ) =>
 	page.getByRole( 'heading', { level: 2, name: /^Step \d+ of \d+:/ } );
 
 /**
- * Opens the filters' drawer where it is one: on a phone, closed until a filter is pressed (audit 21).
- *
- * @param page The page.
- */
-async function openFilters( page: Page ) {
-	const drawer = page.locator( '.cbuild-filters' );
-	if (
-		( await drawer.locator( 'summary' ).isVisible() ) &&
-		! ( await drawer.evaluate(
-			( details ) => ( details as HTMLDetailsElement ).open
-		) )
-	) {
-		await drawer.locator( 'summary' ).click();
-	}
-}
-
-/**
  * Sends a step's form with its Next button, and waits for the step the server answers with.
  *
  * @param page The page.
@@ -104,6 +87,43 @@ async function next( page: Page, name: string ) {
  */
 async function choose( page: Page, name: string ) {
 	await page.getByRole( 'radio', { name: `Choose ${ name }` } ).check();
+}
+
+/**
+ * Press a width on the deck step, as a shopper does before the decks are listed (D-241), and wait for its decks.
+ *
+ * @param page  The page.
+ * @param width The width as its button says it, such as 8.25″.
+ */
+async function ride( page: Page, width: string ) {
+	const button = page.locator( '.cbuild-width__option', {
+		has: page.locator( '.cbuild-chip__text', {
+			hasText: new RegExp( `^${ width.replace( '.', '\\.' ) }$` ),
+		} ),
+	} );
+	await button.click();
+	await expect( button ).toHaveAttribute( 'aria-pressed', 'true' );
+	// Without JavaScript the page is the server's, with no aria-busy at all.
+	await expect( page.locator( '.cbuild' ) ).not.toHaveAttribute(
+		'aria-busy',
+		'true'
+	);
+}
+
+/**
+ * Pick a deck, pressing its width first where the step lists another (D-241).
+ *
+ * @param page  The page.
+ * @param width The deck's width as its name ends: 8.0, 8.25 or 8.5.
+ */
+async function pickDeck( page: Page, width: '8.0' | '8.25' | '8.5' ) {
+	const radio = page.getByRole( 'radio', {
+		name: `Choose Builder test deck ${ width }`,
+	} );
+	if ( ! ( await radio.isVisible() ) ) {
+		await ride( page, `${ '8.0' === width ? '8' : width }″` );
+	}
+	await radio.check();
 }
 
 /**
@@ -126,7 +146,7 @@ const build = ( page: Page ): string[] =>
 async function settled( page: Page ): Promise< void > {
 	await expect
 		.poll( () => build( page ) )
-		.toEqual( [ 'cbuild[deck]', 'cbuild[step]' ] );
+		.toEqual( [ 'cbuild[deck]', 'cbuild[step]', 'cbuild[_width]' ] );
 }
 
 test.describe( 'The builder without JavaScript', () => {
@@ -166,7 +186,14 @@ test.describe( 'The builder without JavaScript', () => {
 		const decks = page.getByRole( 'radio', {
 			name: /^Choose Builder test deck/,
 		} );
-		await expect( decks ).toHaveCount( 3 );
+		// The width first (D-241): no deck is listed until one is pressed, a button of the step's GET form.
+		await expect( page.locator( '.cbuild-width__option' ) ).toHaveCount(
+			3
+		);
+		await expect( decks ).toHaveCount( 0 );
+		await ride( page, '8″' );
+		await expect( heading( page ) ).toHaveText( 'Step 1 of 7: Deck' );
+		await expect( decks ).toHaveCount( 1 );
 		await expect( decks.and( page.locator( ':checked' ) ) ).toHaveCount(
 			0
 		);
@@ -183,6 +210,7 @@ test.describe( 'The builder without JavaScript', () => {
 		// browser writes what the form sent, the step it was on among it (D-150).
 		expect( build( page ) ).toEqual( [
 			'cbuild[_on]',
+			'cbuild[_width]',
 			'cbuild[deck]',
 			'cbuild[step]',
 		] );
@@ -198,6 +226,8 @@ test.describe( 'The builder without JavaScript', () => {
 
 		await next( page, 'Next: Wheels' );
 		await expect( heading( page ) ).toHaveText( 'Step 3 of 7: Wheels' );
+		// Sold out, the part is folded under "Show N sold out" (spec: Only what fits, then the sold-out fold).
+		await page.locator( '.cbuild-sold-out summary' ).click();
 		await expect(
 			page.getByRole( 'radio', {
 				name: 'Choose Builder test wheels 56',
@@ -283,9 +313,7 @@ test.describe( 'The builder without JavaScript', () => {
 				step: 'deck',
 			} )
 		);
-		await page
-			.getByRole( 'radio', { name: 'Choose Builder test deck 8.5' } )
-			.check();
+		await pickDeck( page, '8.5' );
 		await next( page, 'Next: Trucks' );
 
 		const panel = page.locator( '.cbuild-changes' );
@@ -329,44 +357,35 @@ test.describe( 'The builder without JavaScript', () => {
 		).toBeChecked();
 	} );
 
-	test( 'a width pressed lists only its decks and stays on the step, and Any width lists them all again', async ( {
+	test( 'a width pressed lists only its decks and stays on the step, and another width lists its own (D-241)', async ( {
 		page,
 	} ) => {
 		await page.goto( fixture().page );
-		const filters = page.getByRole( 'group', { name: 'Width' } );
-		await answered( page, () =>
-			filters.getByRole( 'button', { name: '8.25″ (1)' } ).click()
-		);
+		const decks = page.getByRole( 'radio', {
+			name: /^Choose Builder test deck/,
+		} );
+		await answered( page, () => ride( page, '8.25″' ) );
 		await expect( heading( page ) ).toHaveText( 'Step 1 of 7: Deck' );
+		await expect( decks ).toHaveCount( 1 );
 		await expect(
-			page.getByRole( 'radio', { name: /^Choose Builder test deck/ } )
-		).toHaveCount( 1 );
-		await expect(
-			filters.getByRole( 'button', { name: '8.25″ (1)' } )
-		).toHaveAttribute( 'aria-pressed', 'true' );
-		await expect( page.getByText( '1 of 1 part shown' ) ).toBeVisible();
+			page.getByRole( 'radio', { name: 'Choose Builder test deck 8.25' } )
+		).toBeVisible();
 
-		await answered( page, () =>
-			filters.getByRole( 'button', { name: 'Any width' } ).click()
-		);
+		await answered( page, () => ride( page, '8.5″' ) );
+		await expect( decks ).toHaveCount( 1 );
 		await expect(
-			page.getByRole( 'radio', { name: /^Choose Builder test deck/ } )
-		).toHaveCount( 3 );
+			page.getByRole( 'radio', { name: 'Choose Builder test deck 8.5' } )
+		).toBeVisible();
 		await expect(
-			filters.getByRole( 'button', { name: 'Any width' } )
-		).toBeHidden();
+			page.locator( '.cbuild-width__option[aria-pressed="true"]' )
+		).toHaveCount( 1 );
 	} );
 
-	test( "a deck's width filter stays on the deck step and Next leaves it behind", async ( {
+	test( "a deck's width stays on the deck step and Next leaves no filter behind", async ( {
 		page,
 	} ) => {
 		await page.goto( fixture().page );
-		await answered( page, () =>
-			page
-				.getByRole( 'group', { name: 'Width' } )
-				.getByRole( 'button', { name: '8″ (1)' } )
-				.click()
-		);
+		await answered( page, () => ride( page, '8″' ) );
 		await page
 			.getByRole( 'radio', { name: 'Choose Builder test deck 8.0' } )
 			.check();
@@ -529,9 +548,9 @@ test.describe( 'The builder without JavaScript', () => {
 	test( "the kit's own page shows the same builder", async ( { page } ) => {
 		await page.goto( '/product/builder-test-kit/' );
 		await expect( heading( page ) ).toHaveText( 'Step 1 of 7: Deck' );
-		await expect(
-			page.getByRole( 'radio', { name: /^Choose Builder test deck/ } )
-		).toHaveCount( 3 );
+		await expect( page.locator( '.cbuild-width__option' ) ).toHaveCount(
+			3
+		);
 	} );
 } );
 
@@ -785,13 +804,12 @@ test.describe( 'The builder with JavaScript', () => {
 	test( 'moves from step to step without loading the page, and Back and Forward show the steps again', async ( {
 		page,
 	} ) => {
-		await page
-			.getByRole( 'radio', { name: 'Choose Builder test deck 8.0' } )
-			.check();
+		await ride( page, '8″' );
+		await pickDeck( page, '8.0' );
 		// The pick's own answer puts it in the page's address, so that Back comes back to it.
 		await expect
 			.poll( () => build( page ) )
-			.toEqual( [ 'cbuild[deck]', 'cbuild[step]' ] );
+			.toEqual( [ 'cbuild[deck]', 'cbuild[step]', 'cbuild[_width]' ] );
 		await expect( page.locator( '.cbuild' ) ).toHaveAttribute(
 			'aria-busy',
 			'false'
@@ -799,7 +817,11 @@ test.describe( 'The builder with JavaScript', () => {
 		await page.getByRole( 'button', { name: 'Next: Trucks' } ).click();
 		await expect( heading( page ) ).toHaveText( 'Step 2 of 7: Trucks' );
 		expect( await stayed( page ), 'no page was loaded' ).toBe( true );
-		expect( build( page ) ).toEqual( [ 'cbuild[deck]', 'cbuild[step]' ] );
+		expect( build( page ) ).toEqual( [
+			'cbuild[deck]',
+			'cbuild[step]',
+			'cbuild[_width]',
+		] );
 		await expect(
 			page.getByRole( 'radio', {
 				name: 'Choose Builder test trucks 139',
@@ -828,14 +850,13 @@ test.describe( 'The builder with JavaScript', () => {
 	test( 'a reload at a step the store reached opens the same step with the same picks', async ( {
 		page,
 	} ) => {
-		await page
-			.getByRole( 'radio', { name: 'Choose Builder test deck 8.0' } )
-			.check();
+		await ride( page, '8″' );
+		await pickDeck( page, '8.0' );
 		// As a shopper would, Next is pressed once the pick's answer has redrawn the bar: pressed as it landed, the
 		// bar grew under a slow runner's click and the click missed.
 		await expect
 			.poll( () => build( page ) )
-			.toEqual( [ 'cbuild[deck]', 'cbuild[step]' ] );
+			.toEqual( [ 'cbuild[deck]', 'cbuild[step]', 'cbuild[_width]' ] );
 		await page.getByRole( 'button', { name: 'Next: Trucks' } ).click();
 		await expect( heading( page ) ).toHaveText( 'Step 2 of 7: Trucks' );
 		expect( await stayed( page ), 'the store moved' ).toBe( true );
@@ -871,12 +892,11 @@ test.describe( 'The builder with JavaScript', () => {
 	test( "describes each card's radio by the rest of its card, on a step the store drew (Accessibility)", async ( {
 		page,
 	} ) => {
+		await ride( page, '8″' );
 		await expect(
 			page.getByRole( 'radio', { name: 'Choose Builder test deck 8.0' } )
 		).toHaveAccessibleDescription( /\+\$\d/ );
-		await page
-			.getByRole( 'radio', { name: 'Choose Builder test deck 8.0' } )
-			.check();
+		await pickDeck( page, '8.0' );
 		await settled( page );
 		await page.getByRole( 'button', { name: 'Next: Trucks' } ).click();
 		await expect( heading( page ) ).toHaveText( 'Step 2 of 7: Trucks' );
@@ -893,6 +913,16 @@ test.describe( 'The builder with JavaScript', () => {
 	test( 'asks the route once for picks made in quick succession, and paints each pick before it answers', async ( {
 		page,
 	} ) => {
+		// Two parts in one list: the wheels on an 8″ deck and its trucks, since the deck step lists one width (D-241).
+		await page.goto(
+			linkTo( {
+				deck: id( 'builder-test-deck-8-0' ),
+				trucks: id( 'builder-test-trucks-139' ),
+				step: 'wheels',
+			} )
+		);
+		await page.waitForLoadState( 'load' );
+		await mark( page );
 		const asked: URL[] = [];
 		page.on( 'request', ( request ) => {
 			if ( isRoute( request.url() ) ) {
@@ -908,10 +938,10 @@ test.describe( 'The builder with JavaScript', () => {
 			await route.continue();
 		} );
 		const first = page.getByRole( 'radio', {
-			name: 'Choose Builder test deck 8.0',
+			name: 'Choose Builder test wheels 52',
 		} );
 		const second = page.getByRole( 'radio', {
-			name: 'Choose Builder test deck 8.25',
+			name: 'Choose Builder test wheels 54',
 		} );
 		// Both picks in one task, as a quick shopper's land inside the store's wait: two checks from the test can fall
 		// further apart than that on a slow runner, and the store rightly asks twice (CI run 43417214571, webkit-phone).
@@ -925,7 +955,7 @@ test.describe( 'The builder with JavaScript', () => {
 						?.click();
 				}
 			},
-			[ id( 'builder-test-deck-8-0' ), id( 'builder-test-deck-8-25' ) ]
+			[ id( 'builder-test-wheels-52' ), id( 'builder-test-wheels-54' ) ]
 		);
 		await expect( first ).not.toBeChecked();
 		await expect(
@@ -943,20 +973,23 @@ test.describe( 'The builder with JavaScript', () => {
 			'false'
 		);
 		expect( asked ).toHaveLength( 1 );
-		expect( asked[ 0 ]!.searchParams.get( 'cbuild[deck]' ) ).toBe(
-			String( id( 'builder-test-deck-8-25' ) )
+		expect( asked[ 0 ]!.searchParams.get( 'cbuild[wheels]' ) ).toBe(
+			String( id( 'builder-test-wheels-54' ) )
 		);
-		expect( asked[ 0 ]!.searchParams.get( 'cbuild[step]' ) ).toBe( 'deck' );
+		expect( asked[ 0 ]!.searchParams.get( 'cbuild[step]' ) ).toBe(
+			'wheels'
+		);
 		await expect( second ).toBeChecked();
-		expect( new URL( page.url() ).searchParams.get( 'cbuild[deck]' ) ).toBe(
-			String( id( 'builder-test-deck-8-25' ) )
-		);
+		expect(
+			new URL( page.url() ).searchParams.get( 'cbuild[wheels]' )
+		).toBe( String( id( 'builder-test-wheels-54' ) ) );
 		expect( await stayed( page ) ).toBe( true );
 	} );
 
 	test( 'shows the pending state only once an answer has kept the shopper waiting 300 ms (Resilience)', async ( {
 		page,
 	} ) => {
+		await ride( page, '8″' );
 		let release: () => void = () => undefined;
 		const held = new Promise< void >( ( done ) => {
 			release = done;
@@ -998,10 +1031,9 @@ test.describe( 'The builder with JavaScript', () => {
 	test( 'sends the form when the state route fails, the server shows the next step, and the build still reaches the cart', async ( {
 		page,
 	} ) => {
+		await ride( page, '8″' );
 		await page.route( isRoute, ( route ) => route.abort() );
-		await page
-			.getByRole( 'radio', { name: 'Choose Builder test deck 8.0' } )
-			.check();
+		await pickDeck( page, '8.0' );
 		await answered( page, () =>
 			page.getByRole( 'button', { name: 'Next: Trucks' } ).click()
 		);
@@ -1012,6 +1044,7 @@ test.describe( 'The builder with JavaScript', () => {
 		).toBe( false );
 		expect( build( page ) ).toEqual( [
 			'cbuild[_on]',
+			'cbuild[_width]',
 			'cbuild[deck]',
 			'cbuild[step]',
 		] );
@@ -1063,9 +1096,8 @@ test.describe( 'The builder with JavaScript', () => {
 	} ) => {
 		const status = page.locator( '.cbuild' ).getByRole( 'status' );
 		await expect( status ).toHaveText( '' );
-		await page
-			.getByRole( 'radio', { name: 'Choose Builder test deck 8.25' } )
-			.check();
+		await ride( page, '8.25″' );
+		await pickDeck( page, '8.25' );
 		await expect(
 			status,
 			'the build and its total, after the pick'
@@ -1101,9 +1133,7 @@ test.describe( 'The builder with JavaScript', () => {
 		const boxed = picture
 			.locator( '.cbuild-picture__item' )
 			.filter( { hasText: 'Deck: ' } );
-		await page
-			.getByRole( 'radio', { name: 'Choose Builder test deck 8.0' } )
-			.check();
+		await pickDeck( page, '8.0' );
 		await expect( deck ).toHaveCount( 1 );
 		await expect( deck.locator( 'img' ) ).toHaveAttribute(
 			'src',
@@ -1125,9 +1155,7 @@ test.describe( 'The builder with JavaScript', () => {
 			( element as HTMLElement & { kept?: boolean } ).kept = true;
 		} );
 
-		await page
-			.getByRole( 'radio', { name: 'Choose Builder test deck 8.5' } )
-			.check();
+		await pickDeck( page, '8.5' );
 		await expect( deck.locator( 'img' ) ).toHaveAttribute(
 			'src',
 			/builder-test-deck-8-5-layer/
@@ -1146,9 +1174,8 @@ test.describe( 'The builder with JavaScript', () => {
 			'the build said once'
 		).toBe( 2 );
 
-		await page
-			.getByRole( 'radio', { name: 'Choose Builder test deck 8.25' } )
-			.check();
+		await ride( page, '8.25″' );
+		await pickDeck( page, '8.25' );
 		await expect(
 			deck,
 			'the 8.25 in deck has no layer image; the wheels the total counts still do'
@@ -1172,33 +1199,30 @@ test.describe( 'The builder with JavaScript', () => {
 		expect( await stayed( page ) ).toBe( true );
 	} );
 
-	test( 'filters the step without loading the page', async ( {
+	test( 'lists the decks of the width pressed without loading the page (D-241)', async ( {
 		page,
 	}, info ) => {
-		await openFilters( page );
-		const filters = page.getByRole( 'group', { name: 'Width' } );
+		const widths = page.locator( '.cbuild-width' );
 		// French writes the width with a decimal comma.
-		const width = inLocale( info.project.name, '8.25″ (1)' );
-		await filters.getByRole( 'button', { name: width } ).click();
+		const width = widths.getByRole( 'button', {
+			name: inLocale( info.project.name, '8.25″ 1' ),
+		} );
+		await width.click();
 		await expect(
 			page.getByRole( 'radio', { name: /^Choose Builder test deck/ } )
 		).toHaveCount( 1 );
-		await expect(
-			filters.getByRole( 'button', { name: width } )
-		).toHaveAttribute( 'aria-pressed', 'true' );
+		await expect( width ).toHaveAttribute( 'aria-pressed', 'true' );
 		expect(
-			new URL( page.url() ).searchParams.get( 'cbuild[_size]' )
+			new URL( page.url() ).searchParams.get( 'cbuild[_width]' )
 		).toBe( '8.25in' );
 		expect( await stayed( page ) ).toBe( true );
 	} );
 
-	test( 'keeps focus on a filter and on the assembly switch, and says the new total (Accessibility)', async ( {
+	test( 'keeps focus on a width and on the assembly switch, and says the new total (Accessibility)', async ( {
 		page,
 	}, info ) => {
-		await openFilters( page );
-		const filters = page.getByRole( 'group', { name: 'Width' } );
-		const width = filters.getByRole( 'button', {
-			name: inLocale( info.project.name, '8.25″ (1)' ),
+		const width = page.locator( '.cbuild-width' ).getByRole( 'button', {
+			name: inLocale( info.project.name, '8.25″ 1' ),
 		} );
 		await width.focus();
 		await page.keyboard.press( 'Enter' );
@@ -1224,6 +1248,7 @@ test.describe( 'The builder with JavaScript', () => {
 	test( 'a wider deck opens the change panel with focus on its heading, and Use these and Undo stay on the page', async ( {
 		page,
 	} ) => {
+		await ride( page, '8.5″' );
 		await page.goto(
 			linkTo( {
 				deck: id( 'builder-test-deck-8-0' ),
@@ -1241,9 +1266,7 @@ test.describe( 'The builder with JavaScript', () => {
 			url.pathname.endsWith( '/state' ) &&
 			url.searchParams.get( 'cbuild[step]' ) === 'deck';
 		await page.route( picking, () => undefined );
-		await page
-			.getByRole( 'radio', { name: 'Choose Builder test deck 8.5' } )
-			.check();
+		await pickDeck( page, '8.5' );
 		await page.getByRole( 'button', { name: 'Next: Trucks' } ).click();
 
 		const panel = page.locator( '.cbuild-changes' );
@@ -1297,10 +1320,10 @@ test.describe( 'The builder with JavaScript', () => {
 		);
 		await page.waitForLoadState( 'load' );
 		await mark( page );
+		// The wider width first: Back leaves the panel for the step as it was just before the pick.
+		await ride( page, '8.5″' );
 		const before = page.url();
-		await page
-			.getByRole( 'radio', { name: 'Choose Builder test deck 8.5' } )
-			.check();
+		await pickDeck( page, '8.5' );
 
 		const title = page.locator( '.cbuild-changes' ).getByRole( 'heading', {
 			name: 'This change affects parts you chose',
@@ -1464,7 +1487,7 @@ test.describe( 'The builder with JavaScript', () => {
 				await route.fulfill( { response: answer } );
 			}
 		);
-		await page.goto( fixture().page );
+		await page.goto( linkTo( { _width: '8in' } ) );
 		await page.waitForLoadState( 'load' );
 		const button = page
 			.locator( '.cbuild' )
@@ -1608,6 +1631,15 @@ test.describe( 'The builder with JavaScript', () => {
 			! info.project.name.startsWith( 'chromium' ),
 			'Only Chromium can slow its CPU (DevTools protocol).'
 		);
+		// Parts that share a list: the wheels on an 8″ deck and its trucks (D-241 lists one width of deck at a time).
+		await page.goto(
+			linkTo( {
+				deck: id( 'builder-test-deck-8-0' ),
+				trucks: id( 'builder-test-trucks-139' ),
+				step: 'wheels',
+			} )
+		);
+		await page.waitForLoadState( 'load' );
 		const devtools = await page.context().newCDPSession( page );
 		await devtools.send( 'Emulation.setCPUThrottlingRate', { rate: 4 } );
 		// From the input to the next paint, as the browser measures an interaction (Event Timing): the handlers, the
@@ -1628,9 +1660,9 @@ test.describe( 'The builder with JavaScript', () => {
 			} as PerformanceObserverInit );
 		} );
 		for ( const name of [
-			'Choose Builder test deck 8.0',
-			'Choose Builder test deck 8.25',
-			'Choose Builder test deck 8.5',
+			'Choose Builder test wheels 52',
+			'Choose Builder test wheels 54',
+			'Choose Builder test wheels 52',
 		] ) {
 			await page.getByRole( 'radio', { name } ).click();
 			await expect( page.getByRole( 'radio', { name } ) ).toBeChecked();
@@ -1675,9 +1707,7 @@ test.describe( 'The builder with JavaScript', () => {
 		} );
 		await page.goto( fixture().page );
 		await page.waitForLoadState( 'load' );
-		await page
-			.getByRole( 'radio', { name: 'Choose Builder test deck 8.0' } )
-			.check();
+		await pickDeck( page, '8.0' );
 		await settled( page );
 		await page.getByRole( 'button', { name: 'Next: Trucks' } ).click();
 		await expect( heading( page ) ).toHaveText( 'Step 2 of 7: Trucks' );
@@ -1736,21 +1766,20 @@ test.describe( 'The builder with JavaScript', () => {
 		const check = ( state: string ) =>
 			axe( page, `${ info.project.name }: ${ state }`, region );
 
-		// The blank start: presets, the filters and the deck step.
+		// The blank start: presets and the deck step's width question.
 		await check( 'the blank start' );
 
-		// Filtered.
-		await openFilters( page );
-		const filters = page.getByRole( 'group', { name: 'Width' } );
-		await filters
+		// A width pressed: the deck step lists its decks.
+		await page
+			.locator( '.cbuild-width' )
 			.getByRole( 'button', {
-				name: inLocale( info.project.name, '8.25″ (1)' ),
+				name: inLocale( info.project.name, '8.25″ 1' ),
 			} )
 			.click();
 		await expect(
 			page.getByRole( 'radio', { name: /^Choose Builder test deck/ } )
 		).toHaveCount( 1 );
-		await check( 'a filtered step' );
+		await check( 'a width pressed' );
 
 		// The error summary, asked past an empty step.
 		await page.goto( fixture().page );
@@ -1796,9 +1825,7 @@ test.describe( 'The builder with JavaScript', () => {
 			url.pathname.endsWith( '/state' ) &&
 			url.searchParams.get( 'cbuild[step]' ) === 'deck';
 		await page.route( picking, () => undefined );
-		await page
-			.getByRole( 'radio', { name: 'Choose Builder test deck 8.5' } )
-			.check();
+		await pickDeck( page, '8.5' );
 		await page
 			.locator( '.cbuild' )
 			.getByRole( 'button', { name: 'Next: Trucks' } )
@@ -1874,6 +1901,12 @@ test.describe( 'The keyboard alone', () => {
 
 		await page.goto( fixture().page );
 		await expect( heading( page ) ).toHaveText( 'Step 1 of 7: Deck' );
+		// The width first (D-241), as a button of the step's form.
+		const width = page.locator( '.cbuild-width__option' ).first();
+		await press( width );
+		await expect(
+			page.locator( '.cbuild-width__option' ).first()
+		).toHaveAttribute( 'aria-pressed', 'true' );
 		const decks = page.getByRole( 'radio', {
 			name: /^Choose Builder test deck/,
 		} );
@@ -2024,34 +2057,26 @@ test.describe( "The builder's styles", () => {
 		} );
 
 	// Audit 21, milestone 6. The spec's A step: filters above long lists, "and in a drawer on phones".
-	test( 'puts the filters in a closed drawer one row high on a phone, and shows them wider', async ( {
+	test( 'asks the width open on a phone, each width a full-size target, and the same wider (D-241)', async ( {
 		page,
 	} ) => {
-		const filters = page.locator( '.cbuild-filters' );
-		const width = filters.locator( '.cbuild-filters__option' ).first();
-		const drawer = filters.locator( 'summary' );
-
-		await page.setViewportSize( { width: 390, height: 844 } );
-		await page.goto( linkTo( { step: 'deck' } ) );
-		await expect( heading( page ) ).toHaveText( 'Step 1 of 7: Deck' );
-		await expect( drawer ).toBeVisible();
-		await expect( drawer ).toHaveText( 'Filter the parts' );
-		await expect( width ).toBeHidden();
-		// Closed, the drawer is one row, and the parts' list follows it.
-		const box = await filters.boundingBox();
-		const summary = await drawer.boundingBox();
-		expect( box?.height ).toBe( summary?.height );
-		expect( box?.height ).toBeLessThanOrEqual( 48 );
-		await drawer.click();
-		await expect( width ).toBeVisible();
-
-		await page.setViewportSize( { width: 1280, height: 900 } );
-		await page.goto( linkTo( { step: 'deck' } ) );
-		await expect( width ).toBeVisible();
-		await expect(
-			drawer,
-			'no drawer to open where there is room'
-		).toBeHidden();
+		const widths = page.locator( '.cbuild-width__option' );
+		for ( const size of [
+			{ width: 390, height: 844 },
+			{ width: 1280, height: 900 },
+		] ) {
+			await page.setViewportSize( size );
+			await page.goto( linkTo( { step: 'deck' } ) );
+			await expect( heading( page ) ).toHaveText( 'Step 1 of 7: Deck' );
+			await expect( widths ).toHaveCount( 3 );
+			for ( const width of await widths.all() ) {
+				await expect( width ).toBeVisible();
+				expect(
+					( await width.boundingBox() )?.height ?? 0
+				).toBeGreaterThanOrEqual( 44 );
+			}
+			expect( await overflows( page ) ).toEqual( [] );
+		}
 	} );
 
 	test( 'reflows at 320 CSS pixels with nothing scrolling sideways', async ( {
@@ -2130,7 +2155,23 @@ test.describe( "The builder's styles", () => {
 			'Only Chromium lets a test turn forced colours on.'
 		);
 		await page.emulateMedia( { forcedColors: 'active' } );
-		await page.goto( fixture().page );
+		// A pressed width is a border, not a colour.
+		await page.goto( linkTo( { step: 'deck', _width: '8in' } ) );
+		expect(
+			await page
+				.locator( '.cbuild-width__option[aria-pressed="true"]' )
+				.evaluate( ( chip ) =>
+					parseFloat( getComputedStyle( chip ).borderTopWidth )
+				)
+		).toBeGreaterThanOrEqual( 3 );
+		// Two cards in one list: the wheels on an 8″ deck and its trucks.
+		await page.goto(
+			linkTo( {
+				deck: id( 'builder-test-deck-8-0' ),
+				trucks: id( 'builder-test-trucks-139' ),
+				step: 'wheels',
+			} )
+		);
 		const cards = page.locator( '.cbuild-card' );
 		await cards.first().locator( 'label' ).click();
 		const width = ( index: number ) =>
@@ -2242,9 +2283,7 @@ test.describe( 'Motion', () => {
 	};
 
 	const pickAndStep = async ( page: Page ) => {
-		await page
-			.getByRole( 'radio', { name: 'Choose Builder test deck 8.0' } )
-			.check();
+		await pickDeck( page, '8.0' );
 		await settled( page );
 		await expect( page.locator( '.cbuild' ) ).toHaveAttribute(
 			'aria-busy',
@@ -2663,7 +2702,7 @@ test.describe( "A kit's own page", () => {
 		} );
 	}
 
-	test( "keeps the filters' drawer heading out of a desktop, and draws the filters second to Next, under Kadence", async ( {
+	test( 'draws the widths second to Next, under Kadence', async ( {
 		page,
 		context,
 		baseURL,
@@ -2674,15 +2713,14 @@ test.describe( "A kit's own page", () => {
 		] );
 		await page.setViewportSize( { width: 1280, height: 900 } );
 		await page.goto( fixture().page );
-		await expect( page.locator( '.cbuild-filters__heading' ) ).toBeHidden();
-		const filter = page.locator( '.cbuild-filters__option' ).first();
-		await expect( filter ).toBeVisible();
+		const width = page.locator( '.cbuild-width__option' ).first();
+		await expect( width ).toBeVisible();
 		const action = page.locator( '.cbuild-step__next' ).first();
-		const ground = ( locator: typeof filter ) =>
+		const ground = ( locator: typeof width ) =>
 			locator.evaluate(
 				( element ) => getComputedStyle( element ).backgroundColor
 			);
-		expect( await ground( filter ) ).toBe( 'rgba(0, 0, 0, 0)' );
+		expect( await ground( width ) ).toBe( 'rgba(0, 0, 0, 0)' );
 		expect( await ground( action ) ).not.toBe( 'rgba(0, 0, 0, 0)' );
 	} );
 } );
@@ -2772,9 +2810,7 @@ test.describe( 'The phone bar', () => {
 			if ( ! javaScriptEnabled ) {
 				return;
 			}
-			await page
-				.getByRole( 'radio', { name: 'Choose Builder test deck 8.0' } )
-				.check();
+			await pickDeck( page, '8.0' );
 			await settled( page );
 			await expect( total ).not.toContainText( '$15.00' );
 			const after = await read();
@@ -2897,7 +2933,7 @@ test.describe( 'The phone bar', () => {
 		javaScriptEnabled,
 	} ) => {
 		await page.setViewportSize( PHONE );
-		await page.goto( fixture().page );
+		await page.goto( linkTo( { _width: '8in' } ) );
 		const bar = page.locator( '.cbuild-bar' );
 		await page.locator( '.cbuild-card label' ).first().click();
 		// The shopper opens the list on the page the pick's answer drew, as `settled()` says: a tap pressed as the
@@ -2940,7 +2976,7 @@ test.describe( 'The phone bar', () => {
 			await held;
 			await route.continue();
 		} );
-		await page.goto( fixture().page );
+		await page.goto( linkTo( { _width: '8in' } ) );
 		const bar = page.locator( '.cbuild-bar' );
 		await page.locator( '.cbuild-card label' ).first().click();
 		await page.waitForRequest( /\/cbuild\/v1\/kits\/\d+\/state/ );
@@ -2969,7 +3005,7 @@ test.describe( 'The phone bar', () => {
 			await held;
 			await route.continue();
 		} );
-		await page.goto( fixture().page );
+		await page.goto( linkTo( { _width: '8in' } ) );
 		await page.locator( '.cbuild-card label' ).first().click();
 		await page.waitForRequest( /\/cbuild\/v1\/kits\/\d+\/state/ );
 		const total = await page.locator( '.cbuild-bar summary' ).boundingBox();

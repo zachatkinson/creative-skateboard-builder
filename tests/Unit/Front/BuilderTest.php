@@ -771,6 +771,54 @@ final class BuilderTest extends TestCase {
 		self::assertContains( SlotKey::RISERS, Builder::steps( $this->show( new BuildLink() )['state'] ), 'A kit that requires risers asks for them.' );
 	}
 
+	/**
+	 * The shelf's part of a step with no shelf: every field there, and nothing shown.
+	 *
+	 * @return array<string, mixed>
+	 */
+	private static function emptyShelf(): array {
+		return array(
+			'width'   => array(
+				'shown'   => false,
+				'asking'  => true,
+				'legend'  => 'What width do you ride?',
+				'name'    => 'cbuild[_width]',
+				'options' => array(),
+				'hasNone' => false,
+				'none'    => '',
+			),
+			'search'  => array(
+				'shown'  => false,
+				'label'  => 'Search parts',
+				'hint'   => 'Brand or name',
+				'name'   => 'cbuild[_q]',
+				'value'  => '',
+				'button' => 'Search',
+			),
+			'chips'   => array(
+				'shown'  => false,
+				'groups' => array(),
+				'apply'  => 'Apply',
+			),
+			'sort'    => array(
+				'shown'   => false,
+				'label'   => 'Sort',
+				'name'    => 'cbuild[_sort]',
+				'options' => array(
+					array( 'value' => 'recommended', 'text' => 'Recommended', 'selected' => true ),
+					array( 'value' => 'price-asc', 'text' => 'Price low to high', 'selected' => false ),
+					array( 'value' => 'price-desc', 'text' => 'Price high to low', 'selected' => false ),
+					array( 'value' => 'newest', 'text' => 'Newest', 'selected' => false ),
+				),
+			),
+			'soldOut' => array(
+				'shown'   => false,
+				'summary' => 'Show 0 sold out',
+				'options' => array(),
+			),
+		);
+	}
+
 	public function test_the_review_shows_no_step_and_its_step_fields_are_all_there_and_empty(): void {
 		$view = $this->show( new BuildLink( self::STREET, null, State::REVIEW ) )['view'];
 		self::assertSame(
@@ -805,6 +853,7 @@ final class BuilderTest extends TestCase {
 					'text'  => '',
 					'count' => '0 of 0 parts shown',
 				),
+				'shelf'     => self::emptyShelf(),
 				'empty'     => false,
 				'emptyText' => '',
 				'leave'     => array(

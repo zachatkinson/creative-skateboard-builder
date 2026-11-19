@@ -338,6 +338,143 @@
 	font-weight: 600;
 }
 
+/* The shelf's chips (D-241, D-247): a width is a button in the step's form, a chip a checkbox's label. Each is a
+   pill, its count in the muted colour, drawn second to the step's one action whatever a theme does to a button.
+   Pressed or checked, it takes the accent; a width with nothing in stock is dimmed but stays a button. */
+:where(.cbuild-width, .cbuild-chips__group) {
+	margin: 0;
+	padding: 0;
+	border: 0;
+	min-inline-size: 0;
+}
+
+:where(.cbuild-width__legend, .cbuild-chips__legend, .cbuild-search__label) {
+	margin-block-end: var(--cbuild-gap-small);
+	padding: 0;
+	font-weight: 600;
+}
+
+:where(.cbuild-chips__legend) {
+	font-size: var(--cbuild-small);
+}
+
+:where(.cbuild-width__options, .cbuild-chips__options) {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--cbuild-gap-small);
+}
+
+:where(.cbuild-width__none) {
+	margin-block: var(--cbuild-gap-small) 0;
+	color: var(--cbuild-muted);
+	font-size: var(--cbuild-small);
+}
+
+:where(.cbuild-chips) {
+	display: grid;
+	gap: var(--cbuild-gap-small);
+}
+
+:where(.cbuild-chips__chip) {
+	position: relative;
+	display: inline-flex;
+}
+
+/* The checkbox stays in the page, under its label, for the keyboard and screen readers. */
+:where(.cbuild-chips__control) {
+	position: absolute;
+	inset: 0;
+	margin: 0;
+	opacity: 0;
+}
+
+.cbuild .cbuild-chip,
+.cbuild .cbuild-chip:hover,
+.cbuild .cbuild-chip:focus,
+.cbuild .cbuild-chip:visited {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.375em;
+	min-block-size: var(--cbuild-target);
+	padding-block: 0;
+	padding-inline: 1em;
+	border: 1px solid var(--cbuild-line);
+	border-radius: calc(var(--cbuild-target) / 2);
+	background: transparent;
+	box-shadow: none;
+	color: var(--cbuild-text);
+	font-size: inherit;
+	font-weight: 600;
+	line-height: 1.2;
+	cursor: pointer;
+}
+
+.cbuild .cbuild-chip:hover,
+.cbuild .cbuild-chips__control:hover + .cbuild-chip {
+	border-color: var(--cbuild-text);
+}
+
+:where(.cbuild-chip__count) {
+	color: var(--cbuild-muted);
+	font-weight: 400;
+}
+
+.cbuild .cbuild-chip[aria-pressed="true"],
+.cbuild .cbuild-chips__control:checked + .cbuild-chip {
+	border-color: var(--cbuild-accent);
+	background: var(--cbuild-accent);
+	color: var(--cbuild-on-accent);
+}
+
+.cbuild .cbuild-chip[aria-pressed="true"] .cbuild-chip__count,
+.cbuild .cbuild-chips__control:checked + .cbuild-chip .cbuild-chip__count {
+	color: inherit;
+}
+
+.cbuild .cbuild-chips__control:focus-visible + .cbuild-chip {
+	outline: 2px solid var(--cbuild-focus);
+	outline-offset: 2px;
+	box-shadow: 0 0 0 4px var(--cbuild-focus-contrast);
+}
+
+:where(.cbuild-chip--dimmed) {
+	opacity: 0.55;
+}
+
+:where(.cbuild-search__row) {
+	display: flex;
+	gap: var(--cbuild-gap-small);
+}
+
+:where(.cbuild-search__input) {
+	flex: 1;
+	min-inline-size: 0;
+	min-block-size: var(--cbuild-target);
+}
+
+:where(.cbuild-step__bar) {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--cbuild-gap-small);
+}
+
+:where(.cbuild-sort) {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--cbuild-gap-small);
+}
+
+:where(.cbuild-sort__select) {
+	min-block-size: var(--cbuild-target);
+}
+
+:where(.cbuild-sold-out__summary) {
+	min-block-size: var(--cbuild-target);
+	cursor: pointer;
+}
+
 /* The cards: a native radio each, and its label the whole card. */
 :where(.cbuild-cards) {
 	display: grid;
@@ -750,6 +887,12 @@
 		.cbuild-card:has(> .cbuild-card__control:checked),
 		.cbuild-filters__option[aria-pressed="true"]
 	) {
+		border: 3px solid Highlight;
+	}
+
+	/* A chip's own border is set as a theme's button's is, so its pressed one must outweigh it. */
+	.cbuild .cbuild-chip[aria-pressed="true"],
+	.cbuild .cbuild-chips__control:checked + .cbuild-chip {
 		border: 3px solid Highlight;
 	}
 

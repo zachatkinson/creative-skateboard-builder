@@ -40,6 +40,17 @@ test.describe( 'The builder in French', () => {
 		await expect(
 			page.getByText( 'Votre montage' ).first()
 		).toBeAttached();
+		// The width first (D-241), in the shop's French.
+		await expect(
+			page.getByRole( 'group', {
+				name: /^Quelle largeur roulez-vous\s\?$/,
+			} )
+		).toBeVisible();
+		const width = page.locator( '.cbuild-width__option', {
+			hasText: /^8[,.]25\s?(″|po)/,
+		} );
+		await width.click();
+		await expect( width ).toHaveAttribute( 'aria-pressed', 'true' );
 		await page
 			.getByRole( 'radio', { name: /^Choisir Builder test deck 8\.25/ } )
 			.check();

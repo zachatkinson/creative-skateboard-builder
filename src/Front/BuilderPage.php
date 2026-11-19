@@ -177,6 +177,9 @@ final class BuilderPage {
 					// Set by the store, which turns the board over with the button by it; without the script the
 					// step's own side is shown (#46).
 					'canTurn' => false,
+					// Set by the store once it runs: the shelf's chips and Sort then send themselves, and their Apply
+					// buttons, for a page with no script, are hidden (D-266).
+					'live'    => false,
 					// Set by the store once a turn is seen, so the board turns where motion is allowed, never on load.
 					'turning' => false,
 				)

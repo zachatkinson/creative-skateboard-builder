@@ -393,6 +393,25 @@ final class Words {
 	}
 
 	/**
+	 * Values named as a choice, as "7.75″, 8.125″ or 9″": the last two joined by "or", the rest by commas.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param list<string> $values The values, in order.
+	 */
+	public static function either( array $values ): string {
+		$last = array_pop( $values );
+		if ( null === $last ) {
+			return '';
+		}
+		if ( array() === $values ) {
+			return $last;
+		}
+		/* translators: 1: values joined by commas, such as 7.75″, 8.125″. 2: the last value, such as 9″. */
+		return sprintf( __( '%1$s or %2$s', 'creative-skateboard-builder' ), implode( _x( ', ', 'between values in a list', 'creative-skateboard-builder' ), $values ), $last );
+	}
+
+	/**
 	 * A complete's name on its share card (spec: SEO), as "8.25 in complete: Rascals, Independent 8.5 in, Retna
 	 * 54 mm". The parts are joined as the site's language joins a list.
 	 *

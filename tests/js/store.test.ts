@@ -1190,7 +1190,8 @@ describe( 'keeping the control in use where it was', () => {
 
 	it( 'scrolls the page by what the view moved the part picked, once it is drawn and before it is painted', async () => {
 		const { radio } = builder();
-		at( radio, [ 300, 134 ] );
+		// Before the view, after it, and back where it was once scrolled.
+		at( radio, [ 300, 134, 300 ] );
 		await pick( radio );
 		expect( state.view ).toMatchObject( { status: 'A deck.' } );
 		expect( scrolled ).not.toHaveBeenCalled();
@@ -1201,7 +1202,7 @@ describe( 'keeping the control in use where it was', () => {
 	it( 'keeps the control with focus in the builder where it was, ahead of the part picked', async () => {
 		const { radio, filter } = builder();
 		filter.focus();
-		at( filter, [ 100, 160 ] );
+		at( filter, [ 100, 160, 100 ] );
 		at( radio, [ 300, 0 ] );
 		await pick( radio );
 		vi.advanceTimersToNextFrame();
@@ -1210,7 +1211,7 @@ describe( 'keeping the control in use where it was', () => {
 
 	it( 'scrolls by a pixel, and by nothing for less', async () => {
 		const { radio } = builder();
-		at( radio, [ 300, 299 ] );
+		at( radio, [ 300, 299, 300 ] );
 		await pick( radio );
 		vi.advanceTimersToNextFrame();
 		expect( scrolled ).toHaveBeenCalledExactlyOnceWith( 0, -1 );
@@ -1220,6 +1221,32 @@ describe( 'keeping the control in use where it was', () => {
 		await pick( radio );
 		vi.advanceTimersToNextFrame();
 		expect( scrolled ).not.toHaveBeenCalled();
+	} );
+
+	it( 'scrolls again by what is left where the first scroll moved the control too, as the phone bar does (D-267)', async () => {
+		const { radio, filter } = builder();
+		filter.focus();
+		// Next in the bar: stuck at the screen's foot after the view, then at the builder's end once scrolled.
+		at( filter, [ 614, 785, 653, 614 ] );
+		at( radio, [ 300, 0 ] );
+		await pick( radio );
+		vi.advanceTimersToNextFrame();
+		expect( scrolled.mock.calls ).toEqual( [
+			[ 0, 171 ],
+			[ 0, 39 ],
+		] );
+	} );
+
+	it( 'scrolls three times at most for a control that never comes back', async () => {
+		const { radio } = builder();
+		at( radio, [ 300, 400 ] );
+		await pick( radio );
+		vi.advanceTimersToNextFrame();
+		expect( scrolled.mock.calls ).toEqual( [
+			[ 0, 100 ],
+			[ 0, 100 ],
+			[ 0, 100 ],
+		] );
 	} );
 
 	it( 'scrolls nothing for a control the view took off the page, or with nothing picked or focused', async () => {

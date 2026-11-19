@@ -93,11 +93,11 @@ final class Builder {
 			}
 		}
 		$state = $state->at( $step );
-		// The address of what is shown: the step landed on, with the asked step's filters only where it is that step,
+		// The address of what is shown: the step landed on, with the asked step's filters and shelf only where it is that step,
 		// and the picks before only while their change is being explained.
 		$shown = $link->at( $step );
 		if ( $step === $link->step ) {
-			$shown = $shown->filtered( $link->brand, $link->size )->showing( $link->shown );
+			$shown = $shown->filtered( $link->brand, $link->size )->shelved( $link->shelf )->showing( $link->shown );
 		}
 		if ( null !== $state->changes && null !== $link->was ) {
 			$shown = $shown->after( $link->was );

@@ -57,6 +57,7 @@ interface State {
 	added: boolean;
 	canCopy: boolean;
 	canTurn: boolean;
+	live: boolean;
 	turning: boolean;
 }
 
@@ -128,8 +129,19 @@ function say(
 		! view.errors.shown &&
 		view.step.slot === before.step.slot;
 	if ( stays ) {
-		const shown = before.step.options?.length ?? 0;
-		const more = ( view.step.options?.length ?? 0 ) > shown;
+		const was = before.step.options ?? [];
+		const now = view.step.options ?? [];
+		const shown = was.length;
+		// Show more keeps the list and adds to it. A width, a chip or a search that lists more is no Show more: focus
+		// stays on the control used.
+		const more =
+			shown > 0 &&
+			now.length > shown &&
+			was.every(
+				( option, at ) =>
+					( option as { id?: unknown } ).id ===
+					( now[ at ] as { id?: unknown } | undefined )?.id
+			);
 		state.status = more ? '' : view.status;
 		if ( more ) {
 			window.requestAnimationFrame( () => {
@@ -266,6 +278,12 @@ function motion( change: () => void ): void {
 }
 
 /**
+ * How many times the page is scrolled to bring a control back where it was after a view on the same step: the bar's
+ * stuck and unstuck places take two; the third is spare.
+ */
+const SETTLE_PASSES = 3;
+
+/**
  * Show a view on the same step with the control the shopper is on where it was on the screen: the one with focus in
  * the builder, or else the part picked on the step, as WebKit gives a pressed radio no focus. The first deck's answer
  * starts every later slot on its recommendation, so the picture comes in and the presets go above the step, and Next
@@ -291,10 +309,16 @@ function steady( change: () => void ): void {
 		return;
 	}
 	window.requestAnimationFrame( () => {
-		const moved = anchor.isConnected
-			? anchor.getBoundingClientRect().top - before
-			: 0;
-		if ( Math.abs( moved ) >= 1 ) {
+		// A control in the phone bar moves as the bar does: stuck at the foot of the screen, then, once the scroll
+		// brings the builder's end into view, at that end. So the scroll is measured again, a few times at most, until
+		// the control is back; each pass lays the page out, and none paints (D-267).
+		for ( let pass = 0; pass < SETTLE_PASSES; pass++ ) {
+			const moved = anchor.isConnected
+				? anchor.getBoundingClientRect().top - before
+				: 0;
+			if ( Math.abs( moved ) < 1 ) {
+				return;
+			}
 			window.scrollBy( 0, moved );
 		}
 	} );
@@ -414,6 +438,30 @@ function fields(
  * @param form      The form.
  * @param submitter The button pressed, if any.
  */
+/**
+ * How long search waits after the last key, in milliseconds.
+ */
+const SEARCH_WAIT = 150;
+
+/**
+ * The search waiting to be sent.
+ */
+let typing: number | undefined;
+
+/**
+ * Lists the step again as its shelf's fields now ask: its search, chips and sort, on the step it is on. The
+ * address is replaced, not pushed, so Back leaves the step rather than undoing each chip.
+ *
+ * @param form The step's form.
+ */
+function narrowed( form: HTMLFormElement ): void {
+	nav( state ).go( {
+		fields: [ ...fields( form ), [ 'cbuild[step]', state.view.step.slot ] ],
+		history: 'replace',
+		fallback: () => send( form ),
+	} );
+}
+
 function send( form: HTMLFormElement, submitter?: HTMLElement | null ): void {
 	browser.submit( form, submitter ?? null );
 }
@@ -427,6 +475,7 @@ const { state } = store(
 			added: false,
 			canCopy: false,
 			canTurn: false,
+			live: false,
 			turning: false,
 		} as State,
 		callbacks: {
@@ -436,6 +485,7 @@ const { state } = store(
 					'function' === typeof window.navigator.clipboard?.writeText;
 				// The button turns the board in the page; without the script the step's own side is shown.
 				state.canTurn = true;
+				state.live = true;
 				if ( root ) {
 					fit( root );
 				}
@@ -454,6 +504,35 @@ const { state } = store(
 					fallback: () => send( form, event.submitter ),
 				};
 				nav( state ).go( move );
+			},
+			narrow( event: Event ): void {
+				const control = event.target;
+				if (
+					! (
+						control instanceof HTMLInputElement ||
+						control instanceof HTMLSelectElement
+					) ||
+					null === control.form
+				) {
+					return;
+				}
+				narrowed( control.form );
+			},
+			search( event: Event ): void {
+				const input = event.target;
+				if (
+					! ( input instanceof HTMLInputElement ) ||
+					null === input.form
+				) {
+					return;
+				}
+				const form = input.form;
+				window.clearTimeout( typing );
+				// 150 ms after the last key (SPEC-CONFIGURATOR, Search); the navigator drops an answer a later one overtakes.
+				typing = window.setTimeout(
+					() => narrowed( form ),
+					SEARCH_WAIT
+				);
 			},
 			pick( event: Event ): void {
 				const input = event.target;
