@@ -142,7 +142,8 @@ function say(
 					( option as { id?: unknown } ).id ===
 					( now[ at ] as { id?: unknown } | undefined )?.id
 			);
-		state.status = more ? '' : view.status;
+		// After Show more the region says how many it added, and the card focus goes to is read with it.
+		state.status = more ? ( view.step.more?.added ?? '' ) : view.status;
 		if ( more ) {
 			window.requestAnimationFrame( () => {
 				root?.querySelector< HTMLElement >(

@@ -873,6 +873,7 @@ final class BuilderTest extends TestCase {
 					'value' => '',
 					'text'  => '',
 					'count' => '0 of 0 parts shown',
+					'added' => '',
 				),
 				'shelf'     => self::emptyShelf(),
 				'empty'     => false,
@@ -1388,6 +1389,7 @@ final class BuilderTest extends TestCase {
 				'value' => '30',
 				'text'  => 'Show 6 more',
 				'count' => '24 of 30 parts shown',
+				'added' => '',
 			),
 			$step['more']
 		);

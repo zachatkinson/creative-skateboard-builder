@@ -638,7 +638,7 @@ describe( 'the store', () => {
 		expect( state.status ).toBe( 'A deck, assembled. Total: $85.00.' );
 	} );
 
-	it( 'puts focus on the first new card after Show more', async () => {
+	it( 'puts focus on the first new card after Show more, and says how many were added', async () => {
 		const div = builder();
 		div.insertAdjacentHTML(
 			'beforeend',
@@ -649,7 +649,11 @@ describe( 'the store', () => {
 			answer( {
 				...START,
 				url: window.location.origin + '/?more',
-				step: { slot: 'deck', options: [ {}, {}, {}, {} ] },
+				step: {
+					slot: 'deck',
+					options: [ {}, {}, {}, {} ],
+					more: { added: '2 more parts shown, 4 of 4.' },
+				},
 				status: 'A deck. Total: $70.00.',
 			} );
 		await move();
@@ -662,10 +666,9 @@ describe( 'the store', () => {
 		expect( div.ownerDocument.activeElement ).toBe(
 			div.querySelector( 'input[value="3"]' )
 		);
-		expect(
-			state.status,
-			'the card is read; the total has not changed'
-		).toBe( '' );
+		// Spec (configurator): "Show 30 more" says how many were added. The card is read with it; the total has not
+		// changed, so it is not said.
+		expect( state.status ).toBe( '2 more parts shown, 4 of 4.' );
 	} );
 
 	it( 'says the step alone in the title when the page gave no title, and moves no focus with no builder found', async () => {

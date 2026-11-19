@@ -383,6 +383,13 @@ export interface CbuildState {
 			 * The step's listed parts.
 			 */
 			options: {}[];
+			more?: {
+				/**
+				 * What the status says after Show more: how many it added, or empty (1.0.0).
+				 */
+				added: string;
+				[k: string]: unknown;
+			};
 			[k: string]: unknown;
 		};
 		review: {

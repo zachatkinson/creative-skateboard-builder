@@ -9,6 +9,8 @@
 defined( 'ABSPATH' ) || exit;
 ?>
 <div class="cbuild" data-wp-interactive="creative-skateboard-builder" data-wp-bind--data-kit="state.view.kit" data-wp-bind--aria-busy="state.pending" data-wp-on-window--popstate="actions.back" data-wp-on-window--resize="actions.fit" data-wp-on--focusin="actions.reveal" data-wp-init="callbacks.init">
+	<?php // The builder's first stop: past the rail to the step, seen once focused (spec: Accessibility, keyboard order). ?>
+	<a class="cbuild__skip" href="#cbuild-heading"><?php esc_html_e( 'Skip to the step', 'creative-skateboard-builder' ); ?></a>
 	<p class="cbuild__status screen-reader-text" role="status" aria-live="polite" data-wp-text="state.status"></p>
 	<?php // The rail first: a row across the top on a desktop (D-268), the sheet's head on a tablet or a phone. ?>
 	<?php require __DIR__ . '/progress.php'; ?>

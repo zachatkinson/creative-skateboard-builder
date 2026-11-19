@@ -215,6 +215,10 @@ final class BuilderShelfTest extends TestCase {
 		self::assertSame( 'Showing 30 of 44', $step['more']['count'] );
 		self::assertTrue( $step['more']['shown'] );
 		self::assertSame( array( 'cbuild[_shown]', '60', 'Show 14 more' ), array( $step['more']['name'], $step['more']['value'], $step['more']['text'] ) );
+		self::assertSame( '', $step['more']['added'], 'the first page added nothing' );
+		// Spec (configurator): Accessibility, "Show 30 more" says how many were added.
+		$more = $this->step( BuildLink::read( array( 'deck' => '101', 'trucks' => '139', 'step' => 'wheels', '_on' => 'wheels', '_shown' => '60' ) ) );
+		self::assertSame( '14 more parts shown, 44 of 44.', $more['more']['added'] );
 		self::assertSame( 'wheels', self::tail( $step )['cbuild[_on]'] ?? null );
 	}
 

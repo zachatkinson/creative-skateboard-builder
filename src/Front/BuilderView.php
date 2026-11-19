@@ -827,7 +827,7 @@ final class BuilderView {
 	 *
 	 * @param array<string, mixed> $answer The state's answer.
 	 * @param int                  $listed How many options the step lists.
-	 * @return array{shown: bool, name: string, value: string, text: string, count: string}
+	 * @return array{shown: bool, name: string, value: string, text: string, count: string, added: string}
 	 */
 	private static function more( array $answer, int $listed ): array {
 		$matching = Cast::int( $answer['matching'] ?? null );
@@ -843,22 +843,25 @@ final class BuilderView {
 			'text'  => null === $more ? '' : sprintf( __( 'Show %s more', 'creative-skateboard-builder' ), number_format_i18n( $next ) ),
 			/* translators: 1: how many parts are listed. 2: how many match. */
 			'count' => sprintf( _n( '%1$s of %2$s part shown', '%1$s of %2$s parts shown', $matching, 'creative-skateboard-builder' ), number_format_i18n( $listed ), number_format_i18n( $matching ) ),
+			'added' => '',
 		);
 	}
 
 	/**
 	 * Show 30 more from the shelf (D-244): a button that asks the link to list 30 more, and how many are shown of
-	 * how many in stock match.
+	 * how many in stock match. After a Show more, what it added, for the status region (spec: Accessibility).
 	 *
 	 * @param array<string, mixed> $shelf  The answer's shelf.
 	 * @param int                  $listed How many looks the step lists.
 	 * @param BuildLink            $link   The address of what is shown.
-	 * @return array{shown: bool, name: string, value: string, text: string, count: string}
+	 * @return array{shown: bool, name: string, value: string, text: string, count: string, added: string}
 	 */
 	private static function page( array $shelf, int $listed, BuildLink $link ): array {
 		$matching = Cast::int( $shelf['matching'] ?? null );
 		$more     = null === ( $shelf['more'] ?? null ) ? null : Cast::int( $shelf['more'] );
 		$shown    = max( Shelf::SHOWN, $link->shown );
+		// What the last Show more added: those listed past the page before it.
+		$added = $listed - min( $shown - Shelf::SHOWN, $matching );
 		return array(
 			'shown' => null !== $more,
 			'name'  => BuildLink::PARAM . '[_shown]',
@@ -867,6 +870,8 @@ final class BuilderView {
 			'text'  => null === $more ? '' : sprintf( __( 'Show %s more', 'creative-skateboard-builder' ), number_format_i18n( min( Shelf::SHOWN, $matching - $listed ) ) ),
 			/* translators: 1: how many looks are listed. 2: how many match. */
 			'count' => sprintf( _n( 'Showing %1$s of %2$s', 'Showing %1$s of %2$s', $matching, 'creative-skateboard-builder' ), number_format_i18n( $listed ), number_format_i18n( $matching ) ),
+			/* translators: 1: how many parts Show more added. 2: how many are listed. 3: how many match. */
+			'added' => $shown > Shelf::SHOWN && $added > 0 ? sprintf( _n( '%1$s more part shown, %2$s of %3$s.', '%1$s more parts shown, %2$s of %3$s.', $added, 'creative-skateboard-builder' ), number_format_i18n( $added ), number_format_i18n( $listed ), number_format_i18n( $matching ) ) : '',
 		);
 	}
 

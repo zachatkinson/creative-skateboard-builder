@@ -98,6 +98,7 @@
 }
 
 :where(.cbuild) {
+	position: relative;
 	container: cbuild / inline-size;
 	color: var(--cbuild-text);
 	overflow-wrap: anywhere;
@@ -166,6 +167,14 @@
 	overflow: hidden;
 	background: var(--cbuild-ground);
 	color: var(--cbuild-on-ground);
+}
+
+/* Narrower than 320 px, as at 400 % zoom on a small screen, the stage scrolls with the page, so it never squeezes the
+   panel out (spec: Accessibility, zoom and reflow). */
+@media (width < 320px) {
+	:where(.cbuild__stage) {
+		position: static;
+	}
 }
 
 :where(.cbuild__panel) {
@@ -445,6 +454,27 @@
 	:where(.cbuild) :where(input[type="radio"])::before {
 		content: none;
 	}
+}
+
+/* The skip link: clipped to nothing until focused, then over the builder's top, in its accent. */
+.cbuild :where(.cbuild__skip) {
+	position: absolute;
+	z-index: 3;
+	inset-block-start: 0;
+	inset-inline-start: 0;
+	padding: var(--cbuild-gap-small) 1rem;
+	background: var(--cbuild-accent);
+	color: var(--cbuild-on-accent);
+	font-weight: 600;
+	white-space: nowrap;
+}
+
+.cbuild :where(.cbuild__skip:not(:focus)) {
+	overflow: hidden;
+	inline-size: 1px;
+	block-size: 1px;
+	padding: 0;
+	clip-path: inset(50%);
 }
 
 /* The filters. */

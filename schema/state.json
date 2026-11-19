@@ -608,7 +608,15 @@
 					"required": ["slot", "options"],
 					"properties": {
 						"slot": { "description": "The step's slot, or empty at the review.", "type": "string" },
-						"options": { "description": "The step's listed parts.", "type": "array", "items": { "type": "object" } }
+						"options": { "description": "The step's listed parts.", "type": "array", "items": { "type": "object" } },
+						"more": {
+							"type": "object",
+							"required": ["added"],
+							"properties": {
+								"added": { "description": "What the status says after Show more: how many it added, or empty (1.0.0).", "type": "string" }
+							},
+							"additionalProperties": true
+						}
 					},
 					"additionalProperties": true
 				},

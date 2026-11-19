@@ -2071,6 +2071,42 @@ test.describe( 'The keyboard alone', () => {
 		] );
 	} );
 
+	// Spec (configurator): Accessibility, keyboard order. A skip link first, to the step, and the first deck reached in at
+	// most eight presses from it once a width is picked.
+	test( 'a skip link goes to the step, and the first deck is at most eight presses after it', async ( {
+		page,
+		browserName,
+	} ) => {
+		const tab = browserName === 'webkit' ? 'Alt+Tab' : 'Tab';
+		await page.goto( linkTo( { _width: '8in' } ) );
+		const skip = page.getByRole( 'link', { name: 'Skip to the step' } );
+		await expect( skip ).toHaveCount( 1 );
+		// It is the builder's first stop.
+		await expect(
+			page.locator( '.cbuild a, .cbuild button, .cbuild input' ).first()
+		).toHaveText( 'Skip to the step' );
+		await skip.focus();
+		await expect( skip, 'seen once focused' ).toBeInViewport();
+		await page.keyboard.press( 'Enter' );
+		await expect( page.locator( '#cbuild-heading' ) ).toBeFocused();
+		let presses = 0;
+		while ( presses < 8 ) {
+			await page.keyboard.press( tab );
+			presses++;
+			const at =
+				( await page
+					.locator( 'input[type="radio"][name="cbuild[deck]"]:focus' )
+					.count() ) > 0;
+			if ( at ) {
+				break;
+			}
+		}
+		await expect(
+			page.locator( 'input[type="radio"][name="cbuild[deck]"]:focus' ),
+			`a deck card within eight presses (took ${ presses })`
+		).toHaveCount( 1 );
+	} );
+
 	test( 'builds a board from a blank page and places its order (Accessibility: a keyboard-only build)', async ( {
 		page,
 		browserName,
@@ -2314,6 +2350,19 @@ test.describe( 'Radios on a dark theme whose contrast colour is dark', () => {
 } );
 
 test.describe( "The builder's styles", () => {
+	// Spec (configurator): Accessibility, zoom and reflow. Below 320 px the stage stops being sticky, so the panel is
+	// never squeezed out.
+	test( 'the stage is sticky at 320 px and not below it', async ( {
+		page,
+	} ) => {
+		await page.setViewportSize( { width: 320, height: 640 } );
+		await page.goto( linkTo( { _width: '8in' } ) );
+		const stage = page.locator( '.cbuild__stage' );
+		await expect( stage ).toHaveCSS( 'position', 'sticky' );
+		await page.setViewportSize( { width: 300, height: 640 } );
+		await expect( stage ).toHaveCSS( 'position', 'static' );
+	} );
+
 	/**
 	 * Whether anything in the builder is wider than the builder, or than the page.
 	 *
