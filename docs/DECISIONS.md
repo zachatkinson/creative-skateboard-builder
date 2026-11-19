@@ -3401,3 +3401,14 @@ The redesign's layout, made from the prototype's frames (`docs/reviews/redesign/
 ### D-272 · The page's scroll padding reads the bar's measured height · 2026-11-19
 
 The footer bar of D-271 is as tall as its lines make it: the total, the estimate, and Back and Next on a row of their own where they don't fit beside the total. That reached about 150 pixels, past the fixed room of D-160 and D-230, and the browser test "never covers the control in focus, the bar giving the estimate" found a control under it ("cbuild-hidden__summary 584.453125 > 562.3125"). With JavaScript the builder now watches the bar with a ResizeObserver and sets its height on the page's root as `--cbuild-bar-size` while the bar sticks over the page, a narrow column on a desktop included; the scroll padding reads it. Without JavaScript a phone keeps a fixed room, raised to two rows (`--cbuild-bar-height` plus 3.25rem, and 10rem with the estimate). Pinned under the panel on a desktop, the bar covers nothing and the property is removed.
+
+### D-273 · A card names its product, and its look by what tells it from the product's others · 2026-11-19
+
+The spec gives a card "the brand and name, the look's name" without saying where a look's name comes from. WooCommerce has no such field: a look is the variations of one product that share a photo (D-240), and each variation's name is the product's with its attributes after it ("Katie - 8.25″").
+
+The card shows the product's name, and under it the look's name: the attribute values every part of the look shares that some other look of the same product doesn't, such as "Mint" beside "Black". A product with one look shows no look name. The looks compared are every look the step offers, not the ones the width asked lists, so a deck's look keeps its name at every width. The brand is said first of what describes the card's radio, not in its name, so the radio is named as before ("Choose Katie, Mint"). The state route gains `name`, `brand` and `look` on each look, and `change` on an option's `delta`: the change as it reads under the full price, empty until the step has a pick (D-249). `text` stays as it was.
+
+On a phone, where a card spans the panel, the photo sits beside the words rather than above them, so a long step isn't a column of photos.
+
+**Why:** the variation's name repeats the size the width question already answered, and the shared, differing attributes are what a shopper sees on the photo. An owner setting for a look's name would be a field per photo; the spec says looks need no admin settings.
+

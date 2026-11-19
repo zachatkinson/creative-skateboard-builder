@@ -154,6 +154,34 @@ final class BuilderShelfTest extends TestCase {
 		self::assertFalse( $this->step( BuildLink::read( array( 'deck' => '102', 'step' => 'trucks', '_width' => '8.25in' ) ) )['shelf']['width']['shown'], 'the question is the deck step\'s' );
 	}
 
+	// The card the prototype draws: brand, the product's name and the look's, the full price, the change once the step
+	// has a pick, and the deck's other widths (D-249, D-273).
+	public function test_a_card_names_the_brand_the_product_and_its_look_with_the_full_price_and_the_other_widths(): void {
+		$parts                  = Shop::parts();
+		$parts[ SlotKey::DECK ] = array_map( static fn( Part $part ): Part => new Part( $part->id, 'harbour', $part->specs, $part->price, $part->inStock ), $parts[ SlotKey::DECK ] );
+		$this->stock( $parts );
+		$colour = array( 'pa_colour' => array( 'mint' => 'Mint', 'black' => 'Black' ) );
+		foreach ( array( 101, 102, 103 ) as $id ) {
+			$this->looks->facts[ $id ] = new LookFact( 10, 1, 0, 'Katie', array( 'pa_colour' => array( 'mint' ) ), $colour, false, 0, 0 );
+		}
+		$step = $this->step( BuildLink::read( array( '_width' => '8.25in' ) ) );
+		self::assertCount( 1, $step['options'] );
+		$card = $step['options'][0];
+		self::assertSame(
+			array( 'Harbour', true, 'Katie', '', false, '$102', '', false, 'Also in 8″ and 8.5″', true, 'Choose Katie', 'cbuild-77-102-brand cbuild-77-102-about cbuild-77-102-notes' ),
+			array( $card['brand'], $card['hasBrand'], $card['name'], $card['look'], $card['hasLook'], $card['price'], $card['delta'], $card['hasDelta'], $card['also'], $card['hasAlso'], $card['choose'], $card['describedby'] ),
+			'one look of one product needs no look name; no change before a pick'
+		);
+
+		$this->looks->facts[103] = new LookFact( 10, 2, 0, 'Katie', array( 'pa_colour' => array( 'black' ) ), $colour, false, 0, 0 );
+		$picked = $this->step( BuildLink::read( array( 'deck' => '102', 'step' => 'deck', '_width' => '8.25in' ) ) )['options'][0];
+		self::assertSame(
+			array( 'Mint', true, 'Also in 8″', 'Included', true, 'Choose Katie, Mint' ),
+			array( $picked['look'], $picked['hasLook'], $picked['also'], $picked['delta'], $picked['hasDelta'], $picked['choose'] ),
+			'the black deck has its own photo, so its own card, and the mint one is named for what tells them apart'
+		);
+	}
+
 	public function test_a_short_step_has_the_cards_alone(): void {
 		$shelf = $this->step( BuildLink::read( array( '_width' => '8.25in' ) ) )['shelf'];
 		self::assertFalse( $shelf['search']['shown'] );

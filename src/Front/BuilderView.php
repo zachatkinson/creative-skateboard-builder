@@ -1039,10 +1039,27 @@ final class BuilderView {
 		// What the step's parts were checked against, as a phrase: "8.25″ deck", or "trucks and risers".
 		$against = self::against( Cast::strings( $step['against'] ?? null ), $width, static fn( string $key ): string => Cast::str( Cast::map( $about[ $key ] ?? null )['label'] ?? $key ) );
 
-		$card    = function ( array $option ) use ( $state, $slot, $counted, $against ): array {
-			$id        = Cast::int( $option['id'] ?? null );
-			$card      = Cast::map( $option['card'] ?? null );
-			$title     = Cast::str( $card['name'] ?? null );
+		$card    = function ( array $option, array $look = array() ) use ( $state, $slot, $counted, $against ): array {
+			$id   = Cast::int( $option['id'] ?? null );
+			$card = Cast::map( $option['card'] ?? null );
+			// A look's card names its product, not a size of it, and the look by what tells it from the product's
+			// others (D-273); a part listed alone keeps its own name.
+			$product = Cast::str( $look['name'] ?? null );
+			$name    = '' !== $product ? $product : Cast::str( $card['name'] ?? null );
+			$seen    = implode( _x( ', ', 'between values in a list', 'creative-skateboard-builder' ), Cast::strings( $look['look'] ?? null ) );
+			/* translators: 1: a product's name, such as Katie. 2: what tells one look of it from another, such as Mint. */
+			$title  = '' === $seen ? $name : sprintf( __( '%1$s, %2$s', 'creative-skateboard-builder' ), $name, $seen );
+			$brand  = Cast::str( $look['brand'] ?? null );
+			$size   = Cast::str( Cast::map( $option['size'] ?? null )['text'] ?? null );
+			$others = array();
+			foreach ( Cast::items( $look['sizes'] ?? null ) as $other ) {
+				$text = Cast::str( Cast::map( $other )['text'] ?? null );
+				if ( '' !== $text && $text !== $size ) {
+					$others[] = $text;
+				}
+			}
+			$also      = SlotKey::DECK === $slot ? Words::also( $others ) : '';
+			$change    = Cast::str( Cast::map( $option['delta'] ?? null )['change'] ?? null );
 			$checked   = ( $counted[ $slot ] ?? null ) === $id;
 			$available = Cast::bool( $option['available'] ?? null );
 			$fit       = Cast::str( $option['fit'] ?? null );
@@ -1064,9 +1081,16 @@ final class BuilderView {
 				// says the price, stock, fit and notes after the name (spec: Accessibility).
 				'about'         => $input . '-about',
 				'notesId'       => $input . '-notes',
-				'describedby'   => $input . '-about ' . $input . '-notes',
+				// The brand, shown above the name, is said first of what describes it (D-273).
+				'brandId'       => $input . '-brand',
+				'describedby'   => ( '' === $brand ? '' : $input . '-brand ' ) . $input . '-about ' . $input . '-notes',
 				'value'         => (string) $id,
-				'name'          => $title,
+				'brand'         => $brand,
+				'hasBrand'      => '' !== $brand,
+				'name'          => $name,
+				'look'          => $seen,
+				'hasLook'       => '' !== $seen,
+				'price'         => Cast::str( $card['price'] ?? null ),
 				/* translators: %s: a part's name. */
 				'choose'        => sprintf( __( 'Choose %s', 'creative-skateboard-builder' ), $title ),
 				'checked'       => $checked,
@@ -1077,7 +1101,11 @@ final class BuilderView {
 				'url'           => Cast::str( $card['url'] ?? null ),
 				/* translators: %s: a part's name. */
 				'page'          => sprintf( __( 'See the page for %s', 'creative-skateboard-builder' ), $title ),
-				'delta'         => Cast::str( Cast::map( $option['delta'] ?? null )['text'] ?? null ),
+				// Under the full price, once the step has a pick (D-249).
+				'delta'         => $change,
+				'hasDelta'      => '' !== $change,
+				'also'          => $also,
+				'hasAlso'       => '' !== $also,
 				'stock'         => Cast::str( $card['stock'] ?? null ),
 				'stockClass'    => 'cbuild-card__stock cbuild-card__stock--' . sanitize_html_class( Cast::str( $card['stock_class'] ?? null ) ),
 				'fit'           => self::fit( $fit, $against ),
@@ -1097,10 +1125,12 @@ final class BuilderView {
 			}
 		} else {
 			foreach ( Cast::items( $shelf['looks'] ?? null ) as $look ) {
-				$options[] = $card( Cast::map( Cast::map( $look )['part'] ?? null ) );
+				$look      = Cast::map( $look );
+				$options[] = $card( Cast::map( $look['part'] ?? null ), $look );
 			}
 			foreach ( Cast::items( $shelf['sold_out'] ?? null ) as $look ) {
-				$folded[] = $card( Cast::map( Cast::map( $look )['part'] ?? null ) );
+				$look     = Cast::map( $look );
+				$folded[] = $card( Cast::map( $look['part'] ?? null ), $look );
 			}
 		}
 

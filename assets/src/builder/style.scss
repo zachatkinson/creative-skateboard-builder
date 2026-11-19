@@ -638,52 +638,95 @@
 
 :where(.cbuild-card__body) {
 	display: grid;
-	grid-template-columns: 3.5rem minmax(0, 1fr);
-	align-items: start;
-	gap: 0.25rem var(--cbuild-gap-small);
-	padding-inline-start: calc(var(--cbuild-control) + var(--cbuild-gap-small));
+	grid-template-columns: minmax(0, 1fr);
+	align-content: start;
+	gap: 0.125rem;
 	cursor: pointer;
 }
 
-/* The photo beside the words, as the prototype has it: the card reads down its words, and two fit across the panel.
-   A part with no photo gives its words the whole card. */
-:where(.cbuild-card__body > :not(.cbuild-card__photo)) {
-	grid-column: 2;
+/* The prototype's card: the photo large on top, then the brand, the name and the look, the full price large and
+   what it changes in smaller type (D-249). On a phone, where a card spans the panel, the photo sits beside the
+   words, so a long step isn't a column of photos. */
+:where(.cbuild-card__photo) {
+	inline-size: 100%;
+	block-size: auto;
+	aspect-ratio: 1;
+	margin-block-end: var(--cbuild-gap-small);
+	object-fit: contain;
+	border-radius: calc(var(--cbuild-radius) / 2);
 }
 
+@container cbuild (max-width: 47.99rem) {
+	:where(.cbuild-card__body) {
+		grid-template-columns: 5.5rem minmax(0, 1fr);
+		column-gap: var(--cbuild-gap-small);
+		padding-inline-start: calc(
+			var(--cbuild-control) + var(--cbuild-gap-small)
+		);
+	}
+
+	:where(.cbuild-card__body > :not(.cbuild-card__photo)) {
+		grid-column: 2;
+	}
+
+	:where(.cbuild-card__photo) {
+		grid-row: 1 / span 4;
+		margin-block-end: 0;
+	}
+
+	:where(.cbuild-card__body:not(:has(> .cbuild-card__photo:not([hidden])))) {
+		grid-template-columns: minmax(0, 1fr);
+	}
+
+	:where(
+		.cbuild-card__body:not(:has(> .cbuild-card__photo:not([hidden]))) > *
+	) {
+		grid-column: 1;
+	}
+}
+
+/* With no photo, the words clear the radio. */
 :where(.cbuild-card__body:not(:has(> .cbuild-card__photo:not([hidden])))) {
-	grid-template-columns: minmax(0, 1fr);
-}
-
-:where(.cbuild-card__body:not(:has(> .cbuild-card__photo:not([hidden]))) > *) {
-	grid-column: 1;
+	padding-inline-start: calc(var(--cbuild-control) + var(--cbuild-gap-small));
 }
 
 // The card's details, which describe its radio: a grid of its own, not display: contents, which older Safari left
 // out of the accessibility tree.
 :where(.cbuild-card__about) {
 	display: grid;
-	gap: 0.25rem;
+	gap: 0.125rem;
+	margin-block-start: 0.25rem;
 }
 
-:where(.cbuild-card__photo) {
-	grid-row: 1 / span 3;
-	inline-size: 100%;
-	block-size: auto;
-	max-block-size: 7rem;
-	object-fit: contain;
-	border-radius: calc(var(--cbuild-radius) / 2);
+:where(.cbuild-card__brand) {
+	color: var(--cbuild-muted);
+	font-size: var(--cbuild-small);
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
 }
 
 :where(.cbuild-card__name) {
-	font-weight: 600;
+	font-weight: 700;
+}
+
+:where(.cbuild-card__look) {
+	color: var(--cbuild-muted);
+}
+
+:where(.cbuild-card__price) {
+	font-size: 1.25rem;
+	font-weight: 700;
+	font-variant-numeric: tabular-nums;
+	line-height: 1.2;
 }
 
 :where(.cbuild-card__delta) {
+	font-size: var(--cbuild-small);
 	font-variant-numeric: tabular-nums;
 }
 
 :where(
+	.cbuild-card__also,
 	.cbuild-card__stock,
 	.cbuild-card__fit,
 	.cbuild-card__recommended,
@@ -691,6 +734,11 @@
 ) {
 	color: var(--cbuild-muted);
 	font-size: var(--cbuild-small);
+}
+
+/* A card with no notes leaves no gap for them; the list holds its template, so it is never :empty. */
+:where(.cbuild-card__notes:not(:has(li))) {
+	display: none;
 }
 
 :where(.cbuild-card__page) {

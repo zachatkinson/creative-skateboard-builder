@@ -841,7 +841,7 @@
 				"delta": {
 					"description": "What taking the part does to the total, against the part the step counts now: what the build charges for as many as it takes.",
 					"type": "object",
-					"required": [ "kind", "amount", "text" ],
+					"required": [ "kind", "amount", "text", "change" ],
 					"properties": {
 						"kind": {
 							"description": "`more` or `less` than the part counted; `free`, for the same price; `included`, for the part counted itself; `none`, for a part that gives no set size and so has no price in a build.",
@@ -860,6 +860,10 @@
 						},
 						"text": {
 							"description": "The change as its card says it: `+$12.00`, `−$5.00`, `Same price`, `Included`, or an empty string.",
+							"type": "string"
+						},
+						"change": {
+							"description": "From 1.0.0: the change as it reads under the card's full price, once the step has a pick: `+$12.00 over your pick`, `$8.00 less`, `Same price`, `Included`, or an empty string (D-249).",
 							"type": "string"
 						}
 					}
@@ -1057,7 +1061,7 @@
 		"look": {
 			"description": "A card: a product, or the variations of one that share a photo and a layer image.",
 			"type": "object",
-			"required": [ "key", "product", "part", "sizes", "choices" ],
+			"required": [ "key", "product", "name", "brand", "look", "part", "sizes", "choices" ],
 			"properties": {
 				"key": {
 					"description": "What tells it from the step's other looks: its product, photo and layer image's IDs.",
@@ -1068,6 +1072,21 @@
 					"description": "The product it belongs to.",
 					"type": "integer",
 					"minimum": 1
+				},
+				"name": {
+					"type": "string",
+					"description": "From 1.0.0: the product's name, in plain text: the parent's for a variation, so a look's card says \"Katie\", not \"Katie - 8.25″\" (D-273)."
+				},
+				"brand": {
+					"type": "string",
+					"description": "From 1.0.0: the brand's name, in plain text, or an empty string."
+				},
+				"look": {
+					"type": "array",
+					"items": {
+						"type": "string"
+					},
+					"description": "From 1.0.0: the values that tell the look from its product's other looks in the step, such as [\"Mint\"]; empty where the product has one look (D-273)."
 				},
 				"part": {
 					"description": "The part the card shows and the build would take: the pick where it is in the look, else the size the build decides, else the size the shopper's chip or the recommendation wants.",

@@ -528,6 +528,10 @@ export interface Option {
 		 * The change as its card says it: `+$12.00`, `−$5.00`, `Same price`, `Included`, or an empty string.
 		 */
 		text: string;
+		/**
+		 * From 1.0.0: the change as it reads under the card's full price, once the step has a pick: `+$12.00 over your pick`, `$8.00 less`, `Same price`, `Included`, or an empty string (D-249).
+		 */
+		change: string;
 	};
 	/**
 	 * How the part fits the picks before it: the worst of its messages.
@@ -855,6 +859,18 @@ export interface Look {
 	 * The product it belongs to.
 	 */
 	product: number;
+	/**
+	 * From 1.0.0: the product's name, in plain text: the parent's for a variation, so a look's card says "Katie", not "Katie - 8.25″" (D-273).
+	 */
+	name: string;
+	/**
+	 * From 1.0.0: the brand's name, in plain text, or an empty string.
+	 */
+	brand: string;
+	/**
+	 * From 1.0.0: the values that tell the look from its product's other looks in the step, such as ["Mint"]; empty where the product has one look (D-273).
+	 */
+	look: string[];
 	part: Option1;
 	/**
 	 * The sizes it comes in on the slot's size, smallest first; empty where the slot has none.
@@ -931,6 +947,10 @@ export interface Option1 {
 		 * The change as its card says it: `+$12.00`, `−$5.00`, `Same price`, `Included`, or an empty string.
 		 */
 		text: string;
+		/**
+		 * From 1.0.0: the change as it reads under the card's full price, once the step has a pick: `+$12.00 over your pick`, `$8.00 less`, `Same price`, `Included`, or an empty string (D-249).
+		 */
+		change: string;
 	};
 	/**
 	 * How the part fits the picks before it: the worst of its messages.

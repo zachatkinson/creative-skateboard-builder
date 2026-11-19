@@ -248,10 +248,13 @@ final class StateAnswer {
 					$kind = 'included';
 				}
 			}
+			$text = $this->money->text( abs( $amount ), $decimals );
 			return array(
 				'kind'   => $kind,
 				'amount' => $amount,
-				'text'   => Words::delta( $kind, $this->money->text( abs( $amount ), $decimals ) ),
+				'text'   => Words::delta( $kind, $text ),
+				// Under the card's full price, once the step has a pick (D-249).
+				'change' => null === $step?->counted() ? '' : Words::change( $kind, $text ),
 			);
 		};
 		$option   = static fn( Option $option, string $slot, ?StateStep $step ): array => array(
@@ -434,9 +437,17 @@ final class StateAnswer {
 					$values
 				);
 			}
+			$brand = $shelved->option->part->brand;
+			$name  = array();
+			foreach ( $shelved->name as $attribute => $value ) {
+				$name[] = $view->labels[ $attribute ][ $value ] ?? $value;
+			}
 			return array(
 				'key'     => $shelved->look->key,
 				'product' => $shelved->look->product,
+				'name'    => $view->names[ $shelved->look->product ] ?? '',
+				'brand'   => '' === $brand ? '' : ( $view->labels[ Shelf::BRAND ][ $brand ] ?? '' ),
+				'look'    => $name,
 				'part'    => $option( $shelved->option ),
 				'sizes'   => array_map( $size, $shelved->sizes ),
 				'choices' => (object) $choices,

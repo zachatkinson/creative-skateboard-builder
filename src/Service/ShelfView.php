@@ -36,6 +36,7 @@ final readonly class ShelfView {
 	 * @param string                               $sort    The order as it was read: one of `ShelfAsk::SORTS`.
 	 * @param string                               $width   The deck width asked, as a size is named, or empty.
 	 * @param array<string, string>                $groups  The shop's names of the attributes the values are of, by taxonomy.
+	 * @param array<int, string>                   $names   Each product's name, in plain text, by its ID (D-273).
 	 */
 	public function __construct(
 		public Listing $listing,
@@ -44,6 +45,7 @@ final readonly class ShelfView {
 		public string $query,
 		public string $sort,
 		public string $width,
-		public array $groups = array()
+		public array $groups = array(),
+		public array $names = array()
 	) {}
 }

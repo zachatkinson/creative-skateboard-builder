@@ -634,6 +634,54 @@ const stayed = ( page: Page ): Promise< boolean > =>
 // Audit, spec review S2: the roadmap's "every way in built so far" on every engine and width, with JavaScript and
 // without. A link is opened with page.goto alone, so the store has nothing to do until the shopper moves.
 test.describe( 'Every way in by a link', () => {
+	test( 'a card shows its brand, its name and its full price, and once the step has a pick what it changes', async ( {
+		page,
+	} ) => {
+		const card = ( name: string ) =>
+			page.locator( '.cbuild-card', {
+				has: page.getByRole( 'radio', { name: `Choose ${ name }` } ),
+			} );
+		await page.goto(
+			linkTo( {
+				deck: id( 'builder-test-deck-8-0' ),
+				trucks: id( 'builder-test-trucks-139' ),
+				step: 'wheels',
+			} )
+		);
+		const fresh = card( 'Builder test wheels 54' );
+		await expect( fresh.locator( '.cbuild-card__brand' ) ).toHaveText(
+			'Northside'
+		);
+		await expect( fresh.locator( '.cbuild-card__price' ) ).toHaveText(
+			'$32.00'
+		);
+		await expect(
+			fresh.locator( '.cbuild-card__delta' ),
+			'no change before the step has a pick (D-249)'
+		).toBeHidden();
+		await expect(
+			page.getByRole( 'radio', {
+				name: 'Choose Builder test wheels 54',
+			} ),
+			'the brand is said first of what describes the radio'
+		).toHaveAccessibleDescription( /^Northside \$32\.00/ );
+
+		await page.goto(
+			linkTo( {
+				deck: id( 'builder-test-deck-8-0' ),
+				trucks: id( 'builder-test-trucks-139' ),
+				wheels: id( 'builder-test-wheels-52' ),
+				step: 'wheels',
+			} )
+		);
+		await expect(
+			card( 'Builder test wheels 54' ).locator( '.cbuild-card__delta' )
+		).toHaveText( '+$2.00 over your pick' );
+		await expect(
+			card( 'Builder test wheels 52' ).locator( '.cbuild-card__delta' )
+		).toHaveText( 'Included' );
+	} );
+
 	test( "a deck's link opens on the trucks with the deck picked", async ( {
 		page,
 	}, info ) => {
@@ -962,8 +1010,9 @@ test.describe( 'The builder with JavaScript', () => {
 	} ) => {
 		await ride( page, '8″' );
 		await expect(
-			page.getByRole( 'radio', { name: 'Choose Builder test deck 8.0' } )
-		).toHaveAccessibleDescription( /\+\$\d/ );
+			page.getByRole( 'radio', { name: 'Choose Builder test deck 8.0' } ),
+			'its brand, then its full price, with no change before a pick (D-249, D-273)'
+		).toHaveAccessibleDescription( /^Northside \$60\.00/ );
 		await pickDeck( page, '8.0' );
 		await settled( page );
 		await page.getByRole( 'button', { name: 'Next: Trucks' } ).click();

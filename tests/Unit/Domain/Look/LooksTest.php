@@ -113,4 +113,43 @@ final class LooksTest extends TestCase {
 		$look = Looks::of( array( self::deck( 13, 10, '8.5', 1 ), new Variant( Parts::of( array(), 15 ), 10, 1, 0, array() ), self::deck( 11, 10, '8', 1 ), self::deck( 14, 10, '8.5', 1 ), self::deck( 12, 10, '203.2mm', 1 ) ) )[0];
 		self::assertSame( array( '8.0000', '8.5000' ), array_map( static fn( Measure $size ): string => $size->decimal(), $look->sizes( SpecKey::DeckWidth ) ), '203.2 mm is 8 in, and a variation with no width adds none' );
 	}
+
+	// The card names a look by what tells it from its product's other looks: "Mint" beside "Black" (D-273).
+	public function test_a_look_is_named_by_the_attributes_that_tell_it_from_its_products_other_looks(): void {
+		$looks = Looks::of(
+			array(
+				self::deck( 11, 10, '8', 1, 0, array( 'pa_colour' => 'mint', 'pa_shape' => 'popsicle' ) ),
+				self::deck( 12, 10, '8.5', 1, 0, array( 'pa_colour' => 'mint', 'pa_shape' => 'popsicle' ) ),
+				self::deck( 13, 10, '8', 2, 0, array( 'pa_colour' => 'black', 'pa_shape' => 'popsicle' ) ),
+				self::deck( 21, 20, '8', 3, 0, array( 'pa_colour' => 'red' ) ),
+			)
+		);
+		self::assertSame(
+			array(
+				'10:1:0' => array( 'pa_colour' => 'mint' ),
+				'10:2:0' => array( 'pa_colour' => 'black' ),
+				'20:3:0' => array(),
+			),
+			Looks::names( $looks ),
+			'the shape is the product\'s, and a product with one look needs no name'
+		);
+	}
+
+	public function test_a_value_that_differs_within_a_look_does_not_name_it(): void {
+		$looks = Looks::of(
+			array(
+				self::deck( 11, 10, '8', 1, 0, array( 'pa_head' => 'allen', 'pa_colour' => 'mint' ) ),
+				self::deck( 12, 10, '8', 1, 0, array( 'pa_head' => 'phillips', 'pa_colour' => 'mint' ) ),
+				self::deck( 13, 10, '8', 2, 0, array( 'pa_head' => 'allen' ) ),
+			)
+		);
+		self::assertSame(
+			array(
+				'10:1:0' => array( 'pa_colour' => 'mint' ),
+				'10:2:0' => array( 'pa_head' => 'allen' ),
+			),
+			Looks::names( $looks ),
+			'a choice you can\'t see is chosen after the pick, and a look missing an attribute another has is told by its own'
+		);
+	}
 }

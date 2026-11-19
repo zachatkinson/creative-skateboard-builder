@@ -355,6 +355,47 @@ final class Words {
 	}
 
 	/**
+	 * The change a card's part makes to the total, against the step's pick, said under its full price (D-249):
+	 * "+$12.00 over your pick", "Same price", "$8.00 less", or "Included" for the pick itself.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param string $kind   `more`, `less`, `free` or `included`; any other kind says nothing.
+	 * @param string $amount The change as an amount of money, without a sign.
+	 */
+	public static function change( string $kind, string $amount ): string {
+		switch ( $kind ) {
+			case 'more':
+				/* translators: %s: an amount of money, such as $12.00. What a part adds to the total, against the part picked. */
+				return sprintf( __( '+%s over your pick', 'creative-skateboard-builder' ), $amount );
+			case 'less':
+				/* translators: %s: an amount of money, such as $8.00. What a part takes off the total, against the part picked. */
+				return sprintf( __( '%s less', 'creative-skateboard-builder' ), $amount );
+			case 'free':
+				return _x( 'Same price', 'a part that costs the same as the one picked', 'creative-skateboard-builder' );
+			case 'included':
+				return _x( 'Included', 'a part the total counts already', 'creative-skateboard-builder' );
+			default:
+				return '';
+		}
+	}
+
+	/**
+	 * The other sizes a look comes in, on its card, as "Also in 8″, 8.5″ and 8.75″" (D-240).
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param list<string> $sizes The other sizes, as a person reads them, in order.
+	 */
+	public static function also( array $sizes ): string {
+		if ( array() === $sizes ) {
+			return '';
+		}
+		/* translators: %s: sizes joined as the site's language joins a list, such as 8″, 8.5″ and 8.75″. */
+		return sprintf( __( 'Also in %s', 'creative-skateboard-builder' ), wp_sprintf( '%l', $sizes ) );
+	}
+
+	/**
 	 * A part's label in the picture of what is in the box (spec: The picture): its slot, then its brand and its
 	 * size where it has them, as "Wheels: Retna, 54 mm".
 	 *

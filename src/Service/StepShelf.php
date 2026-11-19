@@ -114,6 +114,7 @@ final class StepShelf {
 		}
 
 		$shelved = array();
+		$names   = array();
 		$labels  = array( Shelf::BRAND => $brands );
 		$sizes   = array();
 		foreach ( $offered as $option ) {
@@ -141,6 +142,7 @@ final class StepShelf {
 				$words[]                        = Shelf::named( $size );
 				$sizes[ Shelf::named( $size ) ] = $size;
 			}
+			$names[ $fact->product ]      = $fact->name;
 			$shelved[ $option->part->id ] = new Shelved( $fact->product, $fact->photo, $fact->layer, $choices, $attributes, $words, $own, $fact->featured, $fact->sales, $fact->created, $fact->name );
 		}
 
@@ -174,7 +176,7 @@ final class StepShelf {
 				$named[] = $group->name;
 			}
 		}
-		return new ShelfView( $listing, $labels, $sizes, $text, in_array( $query->sort, ShelfAsk::SORTS, true ) ? $query->sort : ShelfAsk::SORTS[0], $width, $this->looks->attributes( $named ) );
+		return new ShelfView( $listing, $labels, $sizes, $text, in_array( $query->sort, ShelfAsk::SORTS, true ) ? $query->sort : ShelfAsk::SORTS[0], $width, $this->looks->attributes( $named ), $names );
 	}
 
 	/**

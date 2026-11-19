@@ -13,6 +13,7 @@ All notable changes to this project are documented here. The format follows [Kee
 - The deck step asks "What width do you ride?" first, one button a width with how many decks it has in stock, and lists that width's decks; a build that holds a deck starts at its width. A step with more than 40 parts has a search box, one with more than 12 has chips, and every step has a sort, a page of 30 with "Show 30 more", and its sold-out parts folded under "Show N sold out". Each works without JavaScript; with it, the step changes in place and focus stays on the control used (D-266).
 
 - `--cbuild-bar-size`, which the builder sets on the page's root to the bar's height while the bar sticks over the page.
+- On the state route, each look of the `shelf` names its product (`name`), its `brand` and what tells it from the product's other looks (`look`), and an option's `delta` says its `change` as a card does under the full price (D-249, D-273).
 - `--cbuild-top`, for a theme's sticky header to keep the stage and the panel clear of it, and `--cbuild-stage-height`, the stage's height on a phone.
 
 ### Fixed
@@ -28,6 +29,7 @@ All notable changes to this project are documented here. The format follows [Kee
 - The step's heading says its question, such as "Choose your deck", with its help under it; a screen reader hears the count first, and the page's title keeps it (D-269).
 - Each row of the review shows the part's price and a Change button. The assembly switch is on the review.
 - `--cbuild-card-width` defaults to `13.5rem`.
+- The prototype's card: the photo large, the brand, the product's name and the look's (such as "Mint"), the full price large, and under it, once the step has a pick, "+$12.00 over your pick", "Same price", "$8.00 less" or "Included". A deck card names its other widths, "Also in 8″ and 8.5″". On a phone the photo sits beside the words (D-249, D-273).
 - CI runs the newest leg's other browser engines, projects, updates and visual snapshots as five jobs beside it, so a full run takes about 30 minutes rather than 95 (D-258).
 
 ### Removed

@@ -208,6 +208,7 @@ final class StateAnswerTest extends TestCase {
 					'kind'   => 'more',
 					'amount' => 6000,
 					'text'   => '+$60.00',
+					'change' => '',
 				),
 				'fit'         => 'fits',
 				'in_stock'    => true,
@@ -777,6 +778,7 @@ final class StateAnswerTest extends TestCase {
 				'kind'   => 'less',
 				'amount' => -500,
 				'text'   => '−$5.00',
+				'change' => '$5.00 less',
 			),
 			$picked[101]
 		);
@@ -785,6 +787,7 @@ final class StateAnswerTest extends TestCase {
 				'kind'   => 'included',
 				'amount' => 0,
 				'text'   => 'Included',
+				'change' => 'Included',
 			),
 			$picked[102]
 		);
@@ -793,6 +796,7 @@ final class StateAnswerTest extends TestCase {
 				'kind'   => 'more',
 				'amount' => 500,
 				'text'   => '+$5.00',
+				'change' => '+$5.00 over your pick',
 			),
 			$picked[103]
 		);
@@ -811,6 +815,7 @@ final class StateAnswerTest extends TestCase {
 				'kind'   => 'free',
 				'amount' => 0,
 				'text'   => 'Same price',
+				'change' => 'Same price',
 			),
 			$picked[104]
 		);
@@ -827,6 +832,7 @@ final class StateAnswerTest extends TestCase {
 				'kind'   => 'more',
 				'amount' => 5400,
 				'text'   => '+$54.00',
+				'change' => '',
 			),
 			$trucks[149]
 		);
@@ -844,6 +850,7 @@ final class StateAnswerTest extends TestCase {
 				'kind'   => 'more',
 				'amount' => 180,
 				'text'   => '+$1.80',
+				'change' => '+$1.80 over your pick',
 			),
 			$hidden[169]
 		);
@@ -852,6 +859,7 @@ final class StateAnswerTest extends TestCase {
 				'kind'   => 'less',
 				'amount' => -360,
 				'text'   => '−$3.60',
+				'change' => '$3.60 less',
 			),
 			$hidden[139]
 		);
@@ -871,6 +879,7 @@ final class StateAnswerTest extends TestCase {
 				'kind'   => 'none',
 				'amount' => 0,
 				'text'   => '',
+				'change' => '',
 			),
 			$all[150]['delta']
 		);
@@ -1302,6 +1311,31 @@ final class StateAnswerTest extends TestCase {
 		self::assertSame( array(), $shelf['widths'] );
 		self::assertSame( array( 2, 2, null, '', 'recommended' ), array( $shelf['offered'], $shelf['matching'], $shelf['more'], $shelf['query'], $shelf['sort'] ) );
 		self::assertSame( array(), $shelf['sold_out'] );
+	}
+
+	// A card names its product, not the size-suffixed variation, and a look by what tells it from its product's
+	// other looks (D-273).
+	public function test_a_card_names_its_product_its_brand_and_what_tells_its_look_from_the_products_others(): void {
+		$colour = static fn( string $slug, string $name ): array => array( 'pa_colour' => array( $slug => $name ) );
+		$looks  = array(
+			301 => new LookFact( 30, 5, 0, 'Conical', array( 'pa_colour' => array( 'mint' ) ), $colour( 'mint', 'Mint' ), false, 0, 0 ),
+			302 => new LookFact( 30, 6, 0, 'Conical', array( 'pa_colour' => array( 'black' ) ), $colour( 'black', 'Black' ), false, 0, 0 ),
+			303 => new LookFact( 40, 7, 0, 'Classic', array( 'pa_colour' => array( 'red' ) ), $colour( 'red', 'Red' ), false, 0, 0 ),
+		);
+		$shelf = $this->shelf( array( SlotKey::DECK => 103, SlotKey::TRUCKS => 149 ), SlotKey::WHEELS, null, $looks );
+		self::assertNotNull( $shelf );
+		$cards = array_column( $shelf['looks'], null, 'key' );
+		ksort( $cards );
+		self::assertSame(
+			array(
+				'30:5:0' => array( 'Conical', '', array( 'Mint' ) ),
+				'30:6:0' => array( 'Conical', '', array( 'Black' ) ),
+			),
+			array_map( static fn( array $card ): array => array( $card['name'], $card['brand'], $card['look'] ), array_intersect_key( $cards, array_flip( array( '30:5:0', '30:6:0' ) ) ) ),
+			'the shop\'s parts have no brand'
+		);
+		$all = array_column( array( ...$shelf['looks'], ...$shelf['sold_out'] ), null, 'key' );
+		self::assertSame( array(), $all['40:7:0']['look'] ?? null, 'a product with one look needs no name' );
 	}
 
 	public function test_the_deck_step_asks_the_width_and_the_link_carries_the_shelf(): void {

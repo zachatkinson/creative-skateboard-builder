@@ -87,9 +87,14 @@ defined( 'ABSPATH' ) || exit;
 					<input class="cbuild-card__control" type="radio" data-wp-bind--id="context.option.input" data-wp-bind--name="state.view.step.name" data-wp-bind--value="context.option.value" data-wp-bind--checked="context.option.checked" data-wp-bind--disabled="context.option.disabled" data-wp-bind--aria-label="context.option.choose" data-wp-bind--aria-describedby="context.option.describedby">
 					<label class="cbuild-card__body" data-wp-bind--for="context.option.input">
 						<img class="cbuild-card__photo" alt="" loading="lazy" decoding="async" data-wp-bind--hidden="!context.option.hasImage" data-wp-bind--src="context.option.src" data-wp-bind--srcset="context.option.srcset" data-wp-bind--sizes="context.option.sizes" data-wp-bind--width="context.option.width" data-wp-bind--height="context.option.height">
+						<span class="cbuild-card__brand" data-wp-bind--id="context.option.brandId" data-wp-bind--hidden="!context.option.hasBrand" data-wp-text="context.option.brand"></span>
 						<span class="cbuild-card__name" data-wp-text="context.option.name"></span>
+						<span class="cbuild-card__look" data-wp-bind--hidden="!context.option.hasLook" data-wp-text="context.option.look"></span>
 						<span class="cbuild-card__about" data-wp-bind--id="context.option.about">
-							<span class="cbuild-card__delta" data-wp-text="context.option.delta"></span>
+							<?php // The full price large, and the change under it once the step has a pick (D-249). ?>
+							<span class="cbuild-card__price" data-wp-text="context.option.price"></span>
+							<span class="cbuild-card__delta" data-wp-bind--hidden="!context.option.hasDelta" data-wp-text="context.option.delta"></span>
+							<span class="cbuild-card__also" data-wp-bind--hidden="!context.option.hasAlso" data-wp-text="context.option.also"></span>
 							<span data-wp-bind--class="context.option.stockClass" data-wp-text="context.option.stock"></span>
 							<span data-wp-bind--class="context.option.fitClass" data-wp-text="context.option.fit"></span>
 							<span class="cbuild-card__recommended" data-wp-bind--hidden="!context.option.recommended" data-wp-text="context.option.recommendedAs"></span>
@@ -116,8 +121,11 @@ defined( 'ABSPATH' ) || exit;
 						<input class="cbuild-card__control" type="radio" data-wp-bind--id="context.option.input" data-wp-bind--name="state.view.step.name" data-wp-bind--value="context.option.value" data-wp-bind--checked="context.option.checked" data-wp-bind--disabled="context.option.disabled" data-wp-bind--aria-label="context.option.choose" data-wp-bind--aria-describedby="context.option.describedby">
 						<label class="cbuild-card__body" data-wp-bind--for="context.option.input">
 							<img class="cbuild-card__photo" alt="" loading="lazy" decoding="async" data-wp-bind--hidden="!context.option.hasImage" data-wp-bind--src="context.option.src" data-wp-bind--srcset="context.option.srcset" data-wp-bind--sizes="context.option.sizes" data-wp-bind--width="context.option.width" data-wp-bind--height="context.option.height">
+							<span class="cbuild-card__brand" data-wp-bind--id="context.option.brandId" data-wp-bind--hidden="!context.option.hasBrand" data-wp-text="context.option.brand"></span>
 							<span class="cbuild-card__name" data-wp-text="context.option.name"></span>
+							<span class="cbuild-card__look" data-wp-bind--hidden="!context.option.hasLook" data-wp-text="context.option.look"></span>
 							<span class="cbuild-card__about" data-wp-bind--id="context.option.about">
+								<span class="cbuild-card__price" data-wp-text="context.option.price"></span>
 								<span data-wp-bind--class="context.option.stockClass" data-wp-text="context.option.stock"></span>
 							</span>
 						</label>

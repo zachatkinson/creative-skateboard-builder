@@ -605,7 +605,8 @@ final class BuilderTest extends TestCase {
 		self::assertFalse( $card['checked'] );
 		self::assertFalse( $card['disabled'] );
 		self::assertFalse( $card['soldOut'] );
-		self::assertSame( '+$60.00', $card['delta'] );
+		self::assertSame( array( '$101', '', false ), array( $card['price'], $card['delta'], $card['hasDelta'] ), 'the full price, and no change before the step has a pick (D-249)' );
+		self::assertSame( array( '', false, '', false, '', false ), array( $card['brand'], $card['hasBrand'], $card['look'], $card['hasLook'], $card['also'], $card['hasAlso'] ), 'a part listed alone has no look' );
 		self::assertSame( 'In stock', $card['stock'] );
 		self::assertSame( 'cbuild-card__stock cbuild-card__stock--in-stock', $card['stockClass'] );
 		self::assertSame( '', $card['fit'], 'A deck is not fitted against a deck.' );

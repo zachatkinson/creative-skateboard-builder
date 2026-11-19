@@ -203,7 +203,8 @@ final class BuilderPageTest extends IntegrationTestCase {
 		self::assertSame( array( (string) $this->parts['deck 8.0'], '0' ), array_map( static fn( $radio ) => $radio->getAttribute( 'value' ), iterator_to_array( $radios ) ), 'The width’s deck, then None.' );
 		self::assertSame( 'Choose Deck 8.0 & co', $radios->item( 0 )->getAttribute( 'aria-label' ), 'A name is plain text, escaped as an attribute and read back.' );
 		self::assertStringNotContainsString( '<b>co</b>', $html, 'A part\'s name is text, never markup.' );
-		self::assertSame( '+$60.00', self::text( $dom, '//li[contains(@class,"cbuild-card")][1]//span[@class="cbuild-card__delta"]' ) );
+		self::assertSame( '$60.00', self::text( $dom, '//li[contains(@class,"cbuild-card")][1]//span[@class="cbuild-card__price"]' ), 'the full price (D-249)' );
+		self::assertNotNull( $dom->query( '//li[contains(@class,"cbuild-card")][1]//span[@class="cbuild-card__delta"][@hidden]' )->item( 0 ), 'and no change before the step has a pick' );
 		self::assertSame( 'Next: Trucks', self::text( $dom, '//button[@name="cbuild[step]"]' ) );
 		self::assertSame( 'trucks', $dom->query( '//button[@name="cbuild[step]"]' )->item( 0 )->getAttribute( 'value' ) );
 		self::assertSame( 1, $dom->query( '//*[@role="status"]' )->length, 'The status region is in the page from the start.' );
@@ -384,7 +385,7 @@ final class BuilderPageTest extends IntegrationTestCase {
 		$about = trim( (string) preg_replace( '/\s+/', ' ', self::text( $dom, '//*[@id="' . $chosen->getAttribute( 'id' ) . '-about"]' ) ) );
 		self::assertStringContainsString( 'Fits your 8.5″ deck', $about );
 		self::assertStringContainsString( 'Recommended for your 8.5″ deck', $about );
-		self::assertMatchesRegularExpression( '/^\+\$\d+\.\d\d /', $about, 'its price first: what it adds, since nothing is picked in its slot (D-213)' );
+		self::assertMatchesRegularExpression( '/^\$\d+\.\d\d /', $about, 'its full price first, and no change, since nothing is picked in its slot (D-213, D-249)' );
 	}
 
 	public function test_parts_that_do_not_fit_are_listed_under_a_disclosure_with_their_reasons(): void {

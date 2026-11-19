@@ -100,6 +100,8 @@ final class Shelf {
 			}
 		}
 		$looks = Looks::of( $variants );
+		// Named against every look the step offers, so a look's name is the same whatever width is asked (D-273).
+		$names = Looks::names( $looks );
 
 		// The size is a chip only where the shopper picks it (D-247).
 		$chip   = SizePicker::decides( $slot ) ? null : $spec;
@@ -163,7 +165,7 @@ final class Shelf {
 			if ( null === $option ) {
 				continue;
 			}
-			$card = new ShelfLook( $look, $option, null === $spec ? array() : $look->sizes( $spec ) );
+			$card = new ShelfLook( $look, $option, null === $spec ? array() : $look->sizes( $spec ), $names[ $look->key ] );
 			if ( $option->available() ) {
 				$inStock[] = $card;
 			} else {
