@@ -3027,6 +3027,8 @@ CI run 44194833317, oldest leg: the first try at `npx playwright install-deps` w
 
 Each try in both install steps now first waits up to five minutes for any `apt-get` or `dpkg` to finish, then starts. The leftover apt-get is not killed: stopping dpkg part-way can leave the packages broken, and here it was only slow. D-123's tries and timeouts and D-126's change of mirror stay as they were.
 
+**Since (#64):** waiting is not enough when apt-get outlives the try and holds dpkg's lock past the five minutes. After a failed try, CI now stops any apt-get and dpkg left (`sudo pkill -x`) and runs `sudo dpkg --configure -a` before the next. Reproduced in ubuntu:24.04 with apt-get in its own session, as sudo leaves it: the next try failed with exit 100 without the cleanup and passed with it.
+
 ### D-225 · 1.0.0 merges on green and is tagged after the human checks · 2026-11-18
 
 Zach, 18 November 2026: milestone 9's pull request merges into `main` once the full CI run is green, as every milestone's has (D-223), but `v1.0.0` is not tagged, so nothing reaches `zachatkinson/creative-releases` or the demo. The tag waits for the four parts of the milestone only people can do: French read by a person, the screen-reader pass of `docs/A11Y.md` by someone who didn't write the code, the hallway test, and Zach's approval of the release (ROADMAP.md, milestone 9's Done when). Their findings go into `docs/reviews/M9.md` before the tag.

@@ -19,6 +19,8 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Fixed
 
+- CI stops an apt-get a timed-out Playwright install left, and repairs dpkg, before the next try (#64; D-224).
+- The builder draws its own radios, a ring in its text colour on its own ground and a dot once picked, so an unpicked card no longer looks filled in on a dark theme. With forced colours the browser's radio is drawn (Cowork; #68).
 - In HTML emails a kit with no photo of its own has no placeholder image on its line, alt "Placeholder", above the build's picture (Cowork; #69).
 - My builds' Undo says what it undoes, "Street setup is deleted. You can undo this for 15 minutes.", since a theme can show WooCommerce's notice far from it, and the deleted build is kept for Undo 15 minutes at most (Cowork; #66, #67; D-275).
 - The step rail says each step in one sentence, "Deck, done: Katie", "Trucks, current step", "Wheels, to come", where a screen reader heard the label and its state run together. Once a step has a pick, the next step is a link in the rail (spec: The step rail).

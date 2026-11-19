@@ -2239,6 +2239,80 @@ test.describe( 'The keyboard alone', () => {
 	} );
 } );
 
+// Cowork's review of 0.9.0, F3 (#68): on the demo's dark theme a native radio drew an unpicked card's as a white disc
+// and a picked one's as a white ring, so the unpicked one looked filled in.
+test.describe( 'Radios on a dark theme whose contrast colour is dark', () => {
+	test( 'an unpicked radio is a ring and a picked one has its dot, each standing out from its ground', async ( {
+		page,
+		context,
+		baseURL,
+	} ) => {
+		const url = baseURL || 'http://localhost:8898';
+		await context.addCookies( [
+			{ name: 'cbuild_e2e_theme', value: 'kadence', url },
+			{ name: 'cbuild_e2e_scheme', value: 'demo-dark', url },
+		] );
+		await page.goto( linkTo( { _width: '8in' } ) );
+		const radio = page.getByRole( 'radio', {
+			name: 'Choose Builder test deck 8.0',
+		} );
+		// The radio's ground, its ring and its dot, each as a relative luminance, and whether the dot is drawn.
+		const drawn = () =>
+			radio.evaluate( ( input ) => {
+				const luminance = ( colour: string ) => {
+					const [ r, g, b ] = ( colour.match( /[\d.]+/g ) ?? [] )
+						.slice( 0, 3 )
+						.map( ( part ) => {
+							const c = Number( part ) / 255;
+							return c <= 0.04045
+								? c / 12.92
+								: ( ( c + 0.055 ) / 1.055 ) ** 2.4;
+						} );
+					return (
+						0.2126 * ( r ?? 0 ) +
+						0.7152 * ( g ?? 0 ) +
+						0.0722 * ( b ?? 0 )
+					);
+				};
+				const own = getComputedStyle( input );
+				const dot = getComputedStyle( input, '::before' );
+				return {
+					opaque: ! /^rgba\(.*,\s*0\)$|^transparent$/.test(
+						own.backgroundColor
+					),
+					ground: luminance( own.backgroundColor ),
+					ring: luminance( own.borderTopColor ),
+					dot: luminance( dot.backgroundColor ),
+					shown:
+						dot.content !== 'none' &&
+						dot.transform !== 'matrix(0, 0, 0, 0, 0, 0)',
+				};
+			} );
+		const contrast = ( a: number, b: number ) =>
+			( Math.max( a, b ) + 0.05 ) / ( Math.min( a, b ) + 0.05 );
+		const unpicked = await drawn();
+		expect( unpicked.shown, 'no dot before a pick' ).toBe( false );
+		expect( unpicked.opaque, 'a ground of its own, over any photo' ).toBe(
+			true
+		);
+		expect(
+			contrast( unpicked.ring, unpicked.ground ),
+			'its ring stands out from its own ground (WCAG 1.4.11)'
+		).toBeGreaterThanOrEqual( 3 );
+		expect(
+			unpicked.ground,
+			'a dark disc on a dark theme, not a white one'
+		).toBeLessThan( 0.2 );
+		await radio.check();
+		const picked = await drawn();
+		expect( picked.shown, 'the dot once picked' ).toBe( true );
+		expect(
+			contrast( picked.dot, picked.ground ),
+			'the dot stands out from the ground'
+		).toBeGreaterThanOrEqual( 3 );
+	} );
+} );
+
 test.describe( "The builder's styles", () => {
 	/**
 	 * Whether anything in the builder is wider than the builder, or than the page.

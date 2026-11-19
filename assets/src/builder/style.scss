@@ -398,11 +398,53 @@
 	min-block-size: var(--cbuild-target);
 }
 
+/* The builder draws its radios: a ring in its text colour on its own ground, and a dot in it once picked, so they
+   read the same on a light or a dark theme and over a photo (Cowork's review of 0.9.0, F3). A theme's contrast colour
+   can be as dark as its ground, so neither is drawn in the accent. With forced colours the browser's own radio is
+   drawn, in the system's colours. */
 :where(.cbuild) :where(input[type="radio"]) {
+	display: inline-grid;
+	flex: none;
+	place-content: center;
 	inline-size: var(--cbuild-control);
 	block-size: var(--cbuild-control);
 	margin: 0;
-	accent-color: var(--cbuild-accent);
+	border: 2px solid var(--cbuild-text);
+	border-radius: 50%;
+	background: var(--cbuild-ground);
+	// An outline of the ground outside the ring, so the ring shows on a photo as light as it.
+	box-shadow: 0 0 0 2px var(--cbuild-ground);
+	color: var(--cbuild-text);
+	cursor: pointer;
+	appearance: none;
+}
+
+:where(.cbuild) :where(input[type="radio"])::before {
+	content: "";
+	inline-size: 0.625rem;
+	block-size: 0.625rem;
+	border-radius: 50%;
+	background: currentcolor;
+	transform: scale(0);
+}
+
+:where(.cbuild) :where(input[type="radio"]:checked)::before {
+	transform: scale(1);
+}
+
+:where(.cbuild) :where(input[type="radio"]:disabled) {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+
+@media (forced-colors: active) {
+	:where(.cbuild) :where(input[type="radio"]) {
+		appearance: auto;
+	}
+
+	:where(.cbuild) :where(input[type="radio"])::before {
+		content: none;
+	}
 }
 
 /* The filters. */
