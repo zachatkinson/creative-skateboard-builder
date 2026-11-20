@@ -111,7 +111,14 @@ for ( const theme of THEMES ) {
 					const builder = on.locator( '.cbuild' );
 					await expect( builder ).toHaveScreenshot(
 						`${ theme }-${ scheme }-${ size.name }-start.png`,
-						{ animations: 'disabled', caret: 'hide' }
+						{
+							animations: 'disabled',
+							caret: 'hide',
+							// A ready build's picture is composed by a job of its own (D-252), so a tile shows it or its
+							// deck's photo as the job has run or not: CI's fresh site and a used one drew Cruiser's
+							// differently (PR #71's first visual run). The tile's frame, words and button stay compared.
+							mask: [ on.locator( '.cbuild-preset__photo' ) ],
+						}
 					);
 
 					await on
