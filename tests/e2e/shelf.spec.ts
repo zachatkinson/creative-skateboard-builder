@@ -180,12 +180,30 @@ test.describe( 'A long step', () => {
 			'Rascals'
 		);
 
+		// The entry Back reaches belongs to the page before the reload, so the browser loads it anew. Until then the
+		// page in hand can answer the popstate itself, and in WebKit a Forward pressed before the new page was in was
+		// lost (CI run 44746354681, webkit-desktop): Forward waits for the new page, settled.
+		await page.evaluate( () => {
+			document.documentElement.dataset.before = 'back';
+		} );
 		await page.goBack();
+		await expect
+			.poll( () =>
+				page
+					.evaluate( () => document.documentElement.dataset.before )
+					.catch( () => 'loading' )
+			)
+			.toBeUndefined();
+		await page.waitForLoadState( 'load' );
 		await expect
 			.poll( () => decodeURIComponent( page.url() ) )
 			.toContain( 'cbuild[_shown]' );
 		await expect( cards( page ) ).toHaveCount( 46 );
 		await expect( page.locator( '#cbuild-search' ) ).toHaveValue( '' );
+		await expect( page.locator( '.cbuild' ) ).toHaveAttribute(
+			'aria-busy',
+			'false'
+		);
 		await page.goForward();
 		await expect( cards( page ) ).toHaveCount( 1 );
 		await expect( page.locator( '#cbuild-search' ) ).toHaveValue(
