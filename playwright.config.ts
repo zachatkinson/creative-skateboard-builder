@@ -29,6 +29,8 @@ const firefoxLaunchOptions =
 			}
 		: {};
 
+// The shopper's pages, which a tablet's projects run.
+const tablet = /\/(builder|shelf|cart|focus|smoke)\.spec\.ts$/;
 const visual = /visual\.spec\.ts$/;
 
 export default defineConfig( {
@@ -83,6 +85,31 @@ export default defineConfig( {
 			use: {
 				...devices[ 'Desktop Firefox' ],
 				viewport: { width: 412, height: 915 },
+				launchOptions: firefoxLaunchOptions,
+			},
+		},
+		// A tablet held upright, 768 to 1023 px (SPEC-CONFIGURATOR: Tablet), on each engine, for the shopper's pages
+		// (the spec reviewer's M10 S-a, D-288). The admin's screens are tested at desktop and phone widths.
+		{
+			name: 'chromium-tablet',
+			testMatch: tablet,
+			use: {
+				...devices[ 'Desktop Chrome' ],
+				viewport: { width: 820, height: 1180 },
+				hasTouch: true,
+			},
+		},
+		{
+			name: 'webkit-tablet',
+			testMatch: tablet,
+			use: { ...devices[ 'iPad Mini' ] },
+		},
+		{
+			name: 'firefox-tablet',
+			testMatch: tablet,
+			use: {
+				...devices[ 'Desktop Firefox' ],
+				viewport: { width: 1000, height: 1280 },
 				launchOptions: firefoxLaunchOptions,
 			},
 		},

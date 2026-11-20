@@ -103,6 +103,93 @@ test.describe( 'A long step', () => {
 		await expect.poll( () => field( page, '_q' ) ).toBe( 'Rascals' );
 	} );
 
+	// Spec: Search, when nothing is found. The spec reviewer's M10 finding S-b.
+	test( 'says which width a search finds its deck in, and offers Clear search when it finds none', async ( {
+		page,
+		javaScriptEnabled,
+	} ) => {
+		const search = async ( query: string ) => {
+			await page.locator( '#cbuild-search' ).fill( query );
+			await page.locator( '#cbuild-search' ).press( 'Enter' );
+		};
+		await page.goto( at() );
+		await search( 'Ponies' );
+		const found = page.locator( '.cbuild-found' );
+		await expect( found.locator( '.cbuild-found__text' ) ).toHaveText(
+			'No 8.25″ decks match Ponies. Ponies comes in 8″.'
+		);
+		await expect( cards( page ) ).toHaveCount( 0 );
+		if ( javaScriptEnabled ) {
+			await axe( page, 'a search that finds nothing here', '.cbuild' );
+		}
+		await found.getByRole( 'button', { name: 'Show 8″ decks' } ).click();
+		await expect( cards( page ) ).toHaveCount( 1 );
+		await expect( cards( page ).first() ).toContainText( 'Ponies' );
+		// Without JavaScript the button's width follows the form's own in the address, and PHP reads the last.
+		await expect
+			.poll( () =>
+				new URL( page.url() ).searchParams
+					.getAll( 'cbuild[_width]' )
+					.at( -1 )
+			)
+			.toBe( '8in' );
+
+		await page.goto( at() );
+		await search( 'Zebracorn' );
+		await expect( found.locator( '.cbuild-found__text' ) ).toContainText(
+			'Zebracorn'
+		);
+		await expect(
+			found.getByRole( 'button', { name: 'Show 8″ decks' } )
+		).toHaveCount( 0 );
+		await found.getByRole( 'button', { name: 'Clear search' } ).click();
+		await expect( cards( page ) ).toHaveCount( 30 );
+		await expect( page.locator( '#cbuild-search' ) ).toHaveValue( '' );
+		// Without JavaScript the box's own text goes too, before the button's empty one, which PHP reads last.
+		await expect
+			.poll( () =>
+				new URL( page.url() ).searchParams
+					.getAll( 'cbuild[_q]' )
+					.at( -1 )
+			)
+			.toBeFalsy();
+	} );
+
+	// Spec: Pages ("The build link's `_shown` keeps the count, so a reload or Back shows the same list") and Search.
+	// The spec reviewer's M10 finding S-c.
+	test( 'keeps a search, and a list grown by Show 30 more, through a reload, Back and Forward', async ( {
+		page,
+	} ) => {
+		await page.goto( at() );
+		await page.locator( '.cbuild-step__show' ).click();
+		await expect( cards( page ) ).toHaveCount( 46 );
+		await expect.poll( () => field( page, '_shown' ) ).not.toBeNull();
+		await page.reload();
+		await expect( cards( page ) ).toHaveCount( 46 );
+
+		await page.locator( '#cbuild-search' ).fill( 'Rascals' );
+		await page.locator( '#cbuild-search' ).press( 'Enter' );
+		await expect( cards( page ) ).toHaveCount( 1 );
+		await expect.poll( () => field( page, '_q' ) ).toBe( 'Rascals' );
+		await page.reload();
+		await expect( cards( page ) ).toHaveCount( 1 );
+		await expect( page.locator( '#cbuild-search' ) ).toHaveValue(
+			'Rascals'
+		);
+
+		await page.goBack();
+		await expect
+			.poll( () => decodeURIComponent( page.url() ) )
+			.toContain( 'cbuild[_shown]' );
+		await expect( cards( page ) ).toHaveCount( 46 );
+		await expect( page.locator( '#cbuild-search' ) ).toHaveValue( '' );
+		await page.goForward();
+		await expect( cards( page ) ).toHaveCount( 1 );
+		await expect( page.locator( '#cbuild-search' ) ).toHaveValue(
+			'Rascals'
+		);
+	} );
+
 	test( 'narrows by a brand, and a reload, and Back from the next step, keep it', async ( {
 		page,
 		javaScriptEnabled,
@@ -111,15 +198,23 @@ test.describe( 'A long step', () => {
 		const alder = page.locator( '.cbuild-chips__chip', {
 			hasText: 'Alder',
 		} );
-		// On a phone, with the script, the chips wait behind Filters (spec: Phone).
+		// On a phone, with the script, the chips wait behind Filters (spec: Phone): once the store has folded them.
 		const filters = page.locator( '.cbuild-chips__toggle' );
+		if ( javaScriptEnabled ) {
+			await expect( page.locator( '.cbuild-chips' ) ).toHaveClass(
+				/cbuild-chips--folded/
+			);
+		}
 		if ( await filters.isVisible() ) {
 			await filters.click();
 		}
 		await expect( alder.locator( 'input' ) ).toHaveAccessibleName(
 			'Alder, 12 parts'
 		);
-		await alder.locator( 'input' ).check();
+		// By the keyboard: Safari gives a checkbox no focus when it is clicked or tapped, so only a key shows that focus
+		// stays on the control used.
+		await alder.locator( 'input' ).focus();
+		await page.keyboard.press( 'Space' );
 		if ( ! javaScriptEnabled ) {
 			await page.locator( '.cbuild-chips__apply' ).click();
 		}

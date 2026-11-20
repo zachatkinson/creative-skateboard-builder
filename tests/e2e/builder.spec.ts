@@ -2071,6 +2071,14 @@ test.describe( 'The builder with JavaScript', () => {
 		await expect(
 			page.getByRole( 'radio', { name: /^Choose Builder test deck/ } )
 		).toHaveCount( 1 );
+		// Where the layout is stacked, the bar covers the foot of the window, and axe counts a target it covers as too
+		// small wherever the page happens to stand: on a tablet, "Not sure of your width?" (D-288). The width question
+		// is brought into view as a shopper scrolls it, clear of the bar by the page's scroll padding.
+		await page
+			.locator( '.cbuild-width' )
+			.evaluate( ( width ) =>
+				width.scrollIntoView( { block: 'nearest' } )
+			);
 		await check( 'a width pressed' );
 
 		// The error summary, asked past an empty step.
@@ -2642,9 +2650,26 @@ test.describe( "The builder's styles", () => {
 		page.locator( '.cbuild' ).evaluate( ( root ) => {
 			const wide: string[] = [];
 			const edge = root.getBoundingClientRect().right + 1;
+			// Inside a box that hides its overflow within the edge, nothing shows past it. Firefox gives the text of
+			// a visually hidden caption its full width, though the caption clips it to a pixel.
+			const clipped = ( node: Element ): boolean => {
+				for (
+					let up = node.parentElement;
+					up && up !== root;
+					up = up.parentElement
+				) {
+					if (
+						'visible' !== getComputedStyle( up ).overflowX &&
+						up.getBoundingClientRect().right <= edge
+					) {
+						return true;
+					}
+				}
+				return false;
+			};
 			for ( const node of root.querySelectorAll< HTMLElement >( '*' ) ) {
 				const box = node.getBoundingClientRect();
-				if ( box.width > 0 && box.right > edge ) {
+				if ( box.width > 0 && box.right > edge && ! clipped( node ) ) {
 					wide.push( node.className || node.tagName );
 				}
 			}
@@ -3072,27 +3097,36 @@ test.describe( 'The board on the stage', () => {
 				'aria-busy',
 				'false'
 			);
-			const stage = await page.locator( '.cbuild__stage' ).boundingBox();
-			const board = await page
-				.locator(
-					'.cbuild__stage .cbuild-board:not(.cbuild-board--bar):visible'
+			// The stage and the board measured together, once the picture has settled: measured apart, straight after
+			// the answer, the board was once read before the stage's new height (D-288). One that never fits still fails.
+			await expect
+				.poll( () =>
+					page.evaluate( () => {
+						const stage = document
+							.querySelector( '.cbuild__stage' )
+							?.getBoundingClientRect();
+						const board = [
+							...document.querySelectorAll< HTMLElement >(
+								'.cbuild__stage .cbuild-board:not(.cbuild-board--bar)'
+							),
+						]
+							.find( ( one ) => one.offsetParent !== null )
+							?.getBoundingClientRect();
+						if ( ! stage || ! board ) {
+							return 'no stage or no board';
+						}
+						const over = {
+							top: stage.top - board.top,
+							foot: board.bottom - stage.bottom,
+							start: stage.left - board.left,
+							end: board.right - stage.right,
+						};
+						return Object.entries( over )
+							.filter( ( [ , by ] ) => by > 1 )
+							.map( ( [ edge, by ] ) => `${ edge } by ${ by }` );
+					} )
 				)
-				.boundingBox();
-			expect( stage ).not.toBeNull();
-			expect( board ).not.toBeNull();
-			if ( stage && board ) {
-				expect( board.y, 'its top' ).toBeGreaterThanOrEqual(
-					stage.y - 1
-				);
-				expect(
-					board.y + board.height,
-					'its foot'
-				).toBeLessThanOrEqual( stage.y + stage.height + 1 );
-				expect( board.x ).toBeGreaterThanOrEqual( stage.x - 1 );
-				expect( board.x + board.width ).toBeLessThanOrEqual(
-					stage.x + stage.width + 1
-				);
-			}
+				.toEqual( [] );
 		} );
 	}
 } );

@@ -3548,3 +3548,15 @@ Spec (configurator): "The card shows the photo large"; the prototype's cards sho
 - **Not a table change.** The column writes the `_cbuild_layer` meta the field has written since 0.7.0.
 
 **Why:** Cowork's 1.0.0 request. Setting layer images one product at a time on the demo was slow, and the sheet is how the shop already sets specs in bulk.
+
+
+### D-288 · Tablet widths in the browser suite, and three tests that held on one engine only · 2026-11-19
+
+- **What.** Three Playwright projects at tablet width: `chromium-tablet` (820 by 1180, touch), `webkit-tablet` (iPad Mini) and `firefox-tablet` (1000 by 1280). They run the builder, shelf, cart, focus and smoke files, and CI runs them inside its existing WebKit, Firefox and no-JS jobs, so the required checks keep their names. Closes the spec reviewer's S-a.
+- **Four test fixes the new widths, engines and runs found.** None is a change to the plugin:
+  - At tablet width, the phone bar covered part of "Not sure of your width?", and axe's target-size rule failed. The axe test scrolls the width question into view before it checks that state, as a shopper would see it.
+  - Firefox measures the visually hidden caption at its full text width. The overflow check now skips a node clipped by an ancestor with hidden overflow inside the page's edge. This failed on `firefox-desktop` before M10's changes too.
+  - Safari doesn't focus a checkbox it clicks. The brand chip test waits for the chips to fold, focuses the chip and presses Space. This failed on `webkit-phone` before M10's changes too.
+  - The board-on-the-stage test measured the stage and the board in two calls straight after the answer, and once read the board before the stage's new height (1 run in 16 on `chromium-desktop`, Kadence at 1000 by 800). It measures both together, polled until the picture settles; a stage squeezed to 50 px still fails it.
+
+**Why:** the spec names tablets among the widths the builder is checked at, and the suite had phones and desktops only.

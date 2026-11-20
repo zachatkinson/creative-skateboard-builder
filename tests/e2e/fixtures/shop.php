@@ -399,7 +399,7 @@ $cbuild_drawer = (int) wp_insert_post(
 );
 // A kit whose deck step is as long as a real shop's (milestone 10; spec: One card per look, Search): 46 decks at 8.25,
 // over four brands, with a search past 40, chips past 12, pages of 30 and three sold out; and six at 8. One deck is
-// named Rascals for the search. Its other slots are the cart test kit's.
+// named Rascals for the search, and one 8″ deck Ponies, for a search that finds nothing at 8.25″. Its other slots are the cart test kit's.
 $cbuild_shelf_cat = get_term_by( 'slug', 'shelf-test-deck', 'product_cat' );
 $cbuild_shelf_cat = $cbuild_shelf_cat instanceof WP_Term ? $cbuild_shelf_cat->term_id : (int) wp_insert_term( 'Shelf test deck', 'product_cat', array( 'slug' => 'shelf-test-deck' ) )['term_id'];
 $cbuild_brands    = array();
@@ -410,7 +410,7 @@ foreach ( array( 'Alder', 'Birch', 'Cedar', 'Dogwood' ) as $cbuild_brand ) {
 $cbuild_shelf = array();
 for ( $cbuild_at = 1; $cbuild_at <= 55; ++$cbuild_at ) {
 	$cbuild_width = $cbuild_at > 49 ? '8.0000' : '8.2500';
-	$cbuild_name  = 7 === $cbuild_at ? 'Rascals' : sprintf( 'Shelf deck %02d', $cbuild_at );
+	$cbuild_name  = array( 7 => 'Rascals', 52 => 'Ponies' )[ $cbuild_at ] ?? sprintf( 'Shelf deck %02d', $cbuild_at );
 	$cbuild_brand = array_keys( $cbuild_brands )[ $cbuild_at % 4 ];
 	$cbuild_item  = new WC_Product_Simple( wc_get_product_id_by_sku( 'shelf-test-deck-' . $cbuild_at ) );
 	$cbuild_item->set_name( $cbuild_name );
