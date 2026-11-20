@@ -14,6 +14,7 @@ interface Actions {
 	turn: () => void;
 	reveal: ( event: FocusEvent ) => void;
 	pick: ( event: Event ) => void;
+	search: ( event: Event ) => void;
 	follow: ( event: MouseEvent ) => void;
 	back: () => void;
 	filters: () => void;
@@ -191,6 +192,31 @@ describe( 'the store', () => {
 			'',
 			window.location.origin + '/?next'
 		);
+	} );
+
+	// Found by the browser test of Clear search (spec review S-b): Enter sent the search at once, and the search still
+	// waiting from the same keys went out after a button pressed within 150 ms, so Clear search was undone.
+	it( 'drops a search still waiting when the form is sent, so a button pressed after it is the last word', async () => {
+		document.body.innerHTML = `
+			<form method="get" action="/">
+				<input type="hidden" name="page_id" value="25">
+				<input type="search" name="cbuild[_q]" value="Zebracorn">
+				<button type="submit" name="cbuild[_q]" value="">Clear search</button>
+			</form>`;
+		const step = document.querySelector( 'form' )!;
+		const box = document.querySelector( 'input[type=search]' )!;
+		const clear = document.querySelector( 'button' )!;
+		setElement( step );
+		actions.search( { target: box } as unknown as Event );
+		actions.submit(
+			new SubmitEvent( 'submit', { submitter: clear, cancelable: true } )
+		);
+		vi.advanceTimersByTime( 1000 );
+		await settle();
+		expect( fetched ).toHaveLength( 1 );
+		expect(
+			fetched[ 0 ]!.searchParams.getAll( 'cbuild[_q]' ).at( -1 )
+		).toBe( '' );
 	} );
 
 	it( 'sends the form as it would be sent without JavaScript when the route fails, the button pressed in it', async () => {

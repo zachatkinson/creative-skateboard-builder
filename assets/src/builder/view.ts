@@ -549,6 +549,9 @@ const { state } = store(
 					return;
 				}
 				event.preventDefault();
+				// A search still waiting from the keys typed would go out after this and undo it, as Clear search was.
+				// The form carries the box as it is, so nothing typed is lost.
+				window.clearTimeout( typing );
 				const move: Move = {
 					fields: fields( form, event.submitter ),
 					history: 'push',
