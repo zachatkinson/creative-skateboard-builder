@@ -3681,7 +3681,6 @@ CI's Lighthouse gate failed Total Blocking Time on the builder page on Twenty Tw
 **Why:** the floor stays exactly as strict, and every run of it, in CI and in `/verify`, is quicker. CI's runner has four cores, so four shards there.
 
 **Status:** Accepted.
-||||||| parent of 3c4a8bf (CI: each WordPress pair's leg is two jobs, and WebKit and Firefox two each, by project (D-298, #76))
 
 ### D-298 · Each WordPress pair's leg is two jobs, and WebKit and Firefox two each, by project · 2026-11-20
 
