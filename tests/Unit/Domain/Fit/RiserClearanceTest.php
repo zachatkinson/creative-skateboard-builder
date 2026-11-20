@@ -19,6 +19,8 @@ use CreativeBranding\SkateboardBuilder\Domain\Kit\Picks;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\SlotKey;
 use CreativeBranding\SkateboardBuilder\Domain\Measure\Measure;
 use CreativeBranding\SkateboardBuilder\Domain\Rule\Finding;
+use CreativeBranding\SkateboardBuilder\Domain\Kit\RuleSettings;
+use CreativeBranding\SkateboardBuilder\Domain\Rule\BoltLengthRule;
 use CreativeBranding\SkateboardBuilder\Domain\Rule\MessageCode;
 use CreativeBranding\SkateboardBuilder\Domain\Rule\Rule;
 use CreativeBranding\SkateboardBuilder\Domain\Rule\RuleId;
@@ -262,6 +264,45 @@ final class RiserClearanceTest extends TestCase {
 		$bolt = Builds::bolts( '1.5', 603 );
 		$few  = $clear->risers( $kit, $build, $risers, array( new Part( $bolt->id, $bolt->brand, $bolt->specs, $bolt->price, true, 0 ) ) );
 		self::assertSame( array( 402, 403 ), $ids( $few->hidden ), 'a bolt said to be in stock with none to sell is not enough' );
+	}
+
+	// A sold-out riser is passed over, not the end of the search: one in stock after it can still clear the wheels.
+	public function test_a_sold_out_riser_is_passed_over_for_one_in_stock_after_it(): void {
+		$cleared = self::cleared( array( self::stocked( Builds::riser( '0.5', 402 ), 0 ), Builds::riser( '0.5', 404 ) ), array( Builds::bolts( '1.5', 601 ) ) );
+		self::assertSame( array( 354, 357, 360 ), $cleared['offered'] );
+	}
+
+	// D-289: risers as thick have their bolts judged once. R4 itself, counted, is asked of the one bolt once for the
+	// two ½ in risers, not once each.
+	public function test_risers_as_thick_have_their_bolts_judged_once(): void {
+		$counted = new class() implements Rule {
+			public int $asked = 0;
+
+			private BoltLengthRule $rule;
+
+			public function __construct() {
+				$this->rule = new BoltLengthRule();
+			}
+
+			public function id(): RuleId {
+				return $this->rule->id();
+			}
+
+			public function check( Picks $picks, RuleSettings $settings ): array {
+				$this->asked += null === $picks->part( SlotKey::HARDWARE ) ? 0 : 1;
+				return $this->rule->check( $picks, $settings );
+			}
+
+			public function slots(): array {
+				return $this->rule->slots();
+			}
+		};
+		$kit     = KitDocuments::kit();
+		$build   = self::build()->with( SlotKey::WHEELS, Builds::wheel( '57' ) );
+		$risers  = FitEngine::standard()->options( $kit, SlotKey::RISERS, $build, array( Builds::riser( '0.5', 402 ), Builds::riser( '0.5', 403 ) ) );
+		$offered = ( new RiserClearance( new FitEngine( new RuleSet( array( $counted ) ) ) ) )->risers( $kit, $build, $risers, array( Builds::bolts( '1.5', 601 ) ) )->offered;
+		self::assertCount( 2, $offered );
+		self::assertSame( 1, $counted->asked );
 	}
 
 	public function test_a_kit_with_no_hardware_slot_offers_every_riser(): void {

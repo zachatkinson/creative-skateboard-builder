@@ -253,6 +253,27 @@ final class SentencesTest extends TestCase {
 		}
 	}
 
+	// D-287: the Layer image field and the import say why an image was refused in the same sentence; any other code
+	// is not a layer image's.
+	public function test_each_reason_a_layer_image_is_refused_has_its_sentence(): void {
+		$sentences = array(
+			'layer_not_image'  => array( '4o4', 'Layer image was not saved: "4o4" is not the ID of an image in the Media Library.' ),
+			'layer_not_found'  => array( 'deck.png', 'Layer image was not saved: no image in the Media Library has the file name "deck.png".' ),
+			'layer_ambiguous'  => array( "deck.png\t11, 12, 40", 'Layer image was not saved: more than one image in the Media Library has the file name "deck.png" (IDs 11, 12 and 40). Use the ID of the one you mean.' ),
+			'layer_wrong_type' => array( 'image/jpeg', 'Layer image was not saved: it is image/jpeg, and a layer must be a PNG, WebP or AVIF with a transparent background.' ),
+			'layer_unreadable' => array( 'image/avif', 'Layer image was not saved: it is image/avif, and this server\'s image library cannot read that type. Upload the cut-out as a PNG or WebP, or ask your host to turn on AVIF in GD or Imagick.' ),
+			'layer_opaque'     => array( 'image/png', 'Layer image was not saved: its corners are not transparent. Export the cut-out with a transparent background.' ),
+			'layer_too_small'  => array( "image/png\t1200\t3400", 'Layer image was not saved: it is too small for the size the picture draws this part. It needs at least 1,200 pixels across or 3,400 along.' ),
+		);
+		foreach ( $sentences as $code => [ $text, $sentence ] ) {
+			self::assertSame( $sentence, Sentences::layer( $code, $text ), $code );
+			self::assertSame( $sentence, Sentences::rowProblem( $code, $text ), 'the import says the same: ' . $code );
+		}
+		self::assertSame( 'Layer image was not saved: it is too small for the size the picture draws this part. It needs at least 0 pixels across or 0 along.', Sentences::layer( 'layer_too_small', 'image/png' ), 'pixels not given are none' );
+		self::assertSame( 'Layer image was not saved: more than one image in the Media Library has the file name "deck.png" (IDs ). Use the ID of the one you mean.', Sentences::layer( 'layer_ambiguous', 'deck.png' ), 'IDs not given are none' );
+		self::assertNull( Sentences::layer( 'measure_negative', 'x' ) );
+	}
+
 	public function test_each_problem_with_a_kits_setting_has_its_sentence_and_names_its_field(): void {
 		$field     = 'The Trucks slot, Units per build';
 		$sentences = array(

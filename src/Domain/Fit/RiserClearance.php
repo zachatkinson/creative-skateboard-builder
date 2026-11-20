@@ -143,16 +143,16 @@ final readonly class RiserClearance {
 			if ( ! $riser->inStock ) {
 				continue;
 			}
-			foreach ( $this->engine->options( $kit, SlotKey::RISERS, $build, array( $riser ) )->offered as $option ) {
-				// R3 warns of a riser thinner than it asks for, so one offered without that warning clears the wheels.
-				if ( ! $option->available() || null !== self::asking( $option ) ) {
-					continue;
-				}
-				if ( $this->bolted( $kit, $build, $option->part, $bolts, $bolted ) ) {
-					return null;
-				}
-				$code = MessageCode::RiserNoBolts;
+			// Judged alone, a riser is one option or none.
+			$option = $this->engine->options( $kit, SlotKey::RISERS, $build, array( $riser ) )->offered[0] ?? null;
+			// R3 warns of a riser thinner than it asks for, so one offered without that warning clears the wheels.
+			if ( null === $option || ! $option->available() || null !== self::asking( $option ) ) {
+				continue;
 			}
+			if ( $this->bolted( $kit, $build, $option->part, $bolts, $bolted ) ) {
+				return null;
+			}
+			$code = MessageCode::RiserNoBolts;
 		}
 		return $code;
 	}
