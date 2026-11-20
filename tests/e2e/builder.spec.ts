@@ -2957,20 +2957,31 @@ test.describe( "The builder's styles", () => {
 		page,
 	} ) => {
 		await page.goto( linkTo( { step: 'deck' } ) );
-		// A filter as the step's template draws it, pressed.
-		await page.evaluate( () => {
-			const option = document.createElement( 'button' );
-			option.className = 'cbuild-filters__option';
-			option.setAttribute( 'aria-pressed', 'true' );
-			option.textContent = 'Pressed';
-			document.querySelector( '.cbuild' )?.append( option );
-		} );
-		await page.keyboard.press( 'Shift' );
 		const pressed = page.locator(
 			'.cbuild-filters__option[aria-pressed="true"]'
 		);
-		await pressed.focus();
-		await expect( pressed ).toBeFocused();
+		// A filter as the step's template draws it, pressed. The store hydrates the builder after the page's load, in
+		// pieces, and on a slow runner took a button added before it away (CI run 44737515082, webkit-phone): added
+		// again until it stays and holds focus.
+		await expect( async () => {
+			await page.evaluate( () => {
+				if (
+					document.querySelector(
+						'.cbuild-filters__option[aria-pressed="true"]'
+					)
+				) {
+					return;
+				}
+				const option = document.createElement( 'button' );
+				option.className = 'cbuild-filters__option';
+				option.setAttribute( 'aria-pressed', 'true' );
+				option.textContent = 'Pressed';
+				document.querySelector( '.cbuild' )?.append( option );
+			} );
+			await page.keyboard.press( 'Shift' );
+			await pressed.focus( { timeout: 1000 } );
+			await expect( pressed ).toBeFocused( { timeout: 1000 } );
+		} ).toPass();
 		const shadows = await pressed.evaluate( ( option ) => ( {
 			ring: option.matches( ':focus-visible' ),
 			shadow: getComputedStyle( option ).boxShadow,
