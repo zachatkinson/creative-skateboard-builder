@@ -319,8 +319,9 @@ final class ShelfTest extends TestCase {
 	// Spec (configurator): Search, "When nothing is found": "No 8.25″ decks match Rascals. Rascals comes in 8.5″."
 	public function test_a_deck_search_with_nothing_in_the_width_asked_names_the_widths_it_comes_in(): void {
 		$deck    = static fn( string $width, int $id, bool $inStock = true ): Part => Parts::of( array( 'deck_width' => $width, 'deck_length' => '32', 'hole_pattern' => 'new_school', 'set_size' => 1 ), $id, 6000, 'baker', $inStock );
-		$parts   = array( $deck( '8', 101 ), $deck( '8.25', 102 ), $deck( '8.5', 104 ), $deck( '9', 105, false ) );
+		$parts   = array( $deck( '7.75', 100, false ), $deck( '8', 101 ), $deck( '8.25', 102 ), $deck( '8.5', 104 ), $deck( '9', 105, false ) );
 		$shelved = array(
+			100 => self::shelved( 0, 0, array( 'rascals' ) ),
 			101 => self::shelved( 1, 1, array( 'rascals' ) ),
 			102 => self::shelved( 2, 2, array( 'other' ) ),
 			104 => self::shelved( 3, 3, array( 'rascals' ) ),
@@ -333,6 +334,7 @@ final class ShelfTest extends TestCase {
 		self::assertSame( array(), $named( self::list( SlotKey::DECK, $parts, $shelved, new ShelfAsk( Measure::inches( 82500 ), query: 'other' ), Picks::none() ) ), 'none where the width asked has it' );
 		self::assertSame( array(), $named( self::list( SlotKey::DECK, $parts, $shelved, new ShelfAsk( Measure::inches( 82500 ) ), Picks::none() ) ), 'none without a search' );
 		self::assertSame( array(), $named( self::list( SlotKey::DECK, $parts, $shelved, new ShelfAsk( Measure::inches( 82500 ), query: 'nothing' ), Picks::none() ) ), 'none where it is in no width' );
+		self::assertSame( array(), $named( self::list( SlotKey::DECK, $parts, $shelved, new ShelfAsk( Measure::inches( 87500 ) ), Picks::none() ) ), 'none without a search, even in a width with nothing in stock' );
 	}
 
 	public function test_trucks_show_the_size_that_fits_the_deck(): void {

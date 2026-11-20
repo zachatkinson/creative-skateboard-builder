@@ -9,3 +9,11 @@ CastInt src/Domain/Measure/Rounding.php 1
 NullSafePropertyCall src/Domain/Fit/ClosestPart.php 1
 # A look's values are gathered as a set; array_values() makes each a list, as Facets is typed. Chips reads either alike.
 UnwrapArrayMap src/Domain/Look/Shelf.php 1
+# Chips::groups(), Shelf::widths() and the engine's options read their lists with foreach, so array_values() on a filtered
+# list changes only its keys, which none of them reads; it keeps the list<> type PHPStan holds them to.
+UnwrapArrayValues src/Domain/Look/Shelf.php 2
+UnwrapArrayValues src/Domain/Saved/SavedCheck.php 1
+# Off the deck step, the picker takes an in-stock size of a look before a sold-out one, so a step with nothing in stock
+# has no matched look in stock in any size it offers, and "comes in" finds nothing with or without the deck test.
+# `null !== $spec` narrows the type: the deck always has its width (SlotSize).
+LogicalAnd src/Domain/Look/Shelf.php 1
