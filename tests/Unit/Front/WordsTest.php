@@ -334,6 +334,18 @@ final class WordsTest extends TestCase {
 		self::assertSame( 'X', Words::inSentence( 'X' ) );
 		self::assertSame( 'éclat', Words::inSentence( 'Éclat' ) );
 		self::assertSame( '', Words::inSentence( '' ) );
+		self::assertSame( 'XLarge', Words::inSentence( 'XLarge' ), 'read by its second letter alone' );
+		self::assertSame( 'ÉCOLE', Words::inSentence( 'ÉCOLE' ), 'a capital after an accented one' );
+		self::assertSame( 'aéro', Words::inSentence( 'Aéro' ), 'an accented small letter is a small letter' );
+	}
+
+	// Spec: A step, Sold out, "A preset or link that holds one names it".
+	public function test_a_problem_about_a_part_names_the_part(): void {
+		self::assertSame( 'Wheels: Retna is sold out.', Words::named( Problem::PartSoldOut, 'Wheels', 'Retna' ) );
+		self::assertSame( 'Wheels: the shop has fewer of Retna than a build takes.', Words::named( Problem::PartShort, 'Wheels', 'Retna' ) );
+		self::assertSame( 'Wheels: Retna is no longer offered here.', Words::named( Problem::PartNotInSlot, 'Wheels', 'Retna' ) );
+		self::assertSame( 'Wheels: the part chosen does not fit the rest of the build.', Words::named( Problem::PartBlocked, 'Wheels', 'Retna' ), 'one with no sentence of its own says the slot\'s' );
+		self::assertSame( 'Wheels: the part chosen is sold out.', Words::named( Problem::PartSoldOut, 'Wheels', '' ), 'and one with no name' );
 	}
 
 	public function test_a_part_on_the_share_card_is_named_by_its_brand_and_its_size_or_either_alone(): void {

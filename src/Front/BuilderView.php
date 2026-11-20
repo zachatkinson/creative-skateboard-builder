@@ -177,7 +177,7 @@ final class BuilderView {
 		$board              = self::board( $picture, $state->id, null );
 		$top                = self::top( $picture, $state->id );
 		[ $action, $carry ] = self::form( $base );
-		$step               = $review ? self::none() : $this->step( $state, $answer, $link, $url, $steps, $counted, $lines, $about );
+		$step               = $review ? self::none( $state->id ) : $this->step( $state, $answer, $link, $url, $steps, $counted, $lines, $about );
 		$summary            = $this->summary( $state, $answer, $link, $url, $lines, $label );
 		$shown              = $this->review( $state, $answer, $link, $url, $steps, $counted, $lines, $label, $summary );
 		return array(
@@ -667,9 +667,10 @@ final class BuilderView {
 	/**
 	 * The step's part of the document on the review, where there is no step: every field there, and nothing shown.
 	 *
+	 * @param int $kit The kit product's ID.
 	 * @return array<string, mixed>
 	 */
-	private static function none(): array {
+	private static function none( int $kit ): array {
 		return array(
 			'slot'      => '',
 			'legend'    => '',
@@ -685,7 +686,7 @@ final class BuilderView {
 			'hidden'    => self::hidden( array(), array() ),
 			'filters'   => self::filters( array(), '' ),
 			'more'      => self::more( array(), 0 ),
-			'shelf'     => self::shelf( array(), '', array() ),
+			'shelf'     => self::shelf( array(), '', array(), $kit ),
 			'empty'     => false,
 			'emptyText' => '',
 			'found'     => self::found( array(), '', array() ),
@@ -840,13 +841,12 @@ final class BuilderView {
 		$more     = $answer['more'] ?? null;
 		// The answer asks for the next page whole; the button says, and asks for, only what is left.
 		$more = null === $more ? null : min( Cast::int( $more ), $matching );
-		$next = null === $more ? 0 : $more - $listed;
 		return array(
 			'shown' => null !== $more,
 			'name'  => BuildLink::PARAM . '[_shown]',
 			'value' => null === $more ? '' : (string) $more,
 			/* translators: %s: how many more the button lists: parts, or looks on the shelf. */
-			'text'  => null === $more ? '' : sprintf( __( 'Show %s more', 'creative-skateboard-builder' ), number_format_i18n( $next ) ),
+			'text'  => null === $more ? '' : sprintf( __( 'Show %s more', 'creative-skateboard-builder' ), number_format_i18n( $more - $listed ) ),
 			/* translators: 1: how many parts are listed. 2: how many match. */
 			'count' => sprintf( _n( '%1$s of %2$s part shown', '%1$s of %2$s parts shown', $matching, 'creative-skateboard-builder' ), number_format_i18n( $listed ), number_format_i18n( $matching ) ),
 			'added' => '',
@@ -915,7 +915,7 @@ final class BuilderView {
 	 * @param int                        $kit    The kit product's ID, for the width guide's filter.
 	 * @return array<string, mixed>
 	 */
-	private static function shelf( array $shelf, string $slot, array $folded, int $kit = 0 ): array {
+	private static function shelf( array $shelf, string $slot, array $folded, int $kit ): array {
 		$offered = Cast::int( $shelf['offered'] ?? null );
 		$widths  = array();
 		$none    = array();
@@ -1027,7 +1027,7 @@ final class BuilderView {
 						'selected' => $value === $sort || ( '' === $sort && 'recommended' === $value ),
 					),
 					array_keys( $sorts ),
-					array_values( $sorts )
+					$sorts
 				),
 			),
 			'soldOut' => array(
@@ -1105,7 +1105,9 @@ final class BuilderView {
 				$asked = Cast::str( $width['text'] ?? null );
 			}
 		}
-		$hidden = $shown && array() === $elsewhere ? Cast::int( $shelf['hidden_matching'] ?? null ) : 0;
+		$hidden = Cast::int( $shelf['hidden_matching'] ?? null );
+		// Parts that match but don't fit are said only where no other width has the search's matches.
+		$why = $shown && array() === $elsewhere && $hidden > 0;
 		if ( ! $shown ) {
 			$text = '';
 		} elseif ( array() !== $elsewhere ) {
@@ -1113,7 +1115,7 @@ final class BuilderView {
 			$text = sprintf( __( 'No %1$s decks match %2$s.', 'creative-skateboard-builder' ), $asked, $query ) . ' '
 				/* translators: 1: what the shopper searched for. 2: deck widths, such as 8″ or 8.5″. */
 				. sprintf( __( '%1$s comes in %2$s.', 'creative-skateboard-builder' ), $query, Words::either( array_column( $elsewhere, 'text' ) ) );
-		} elseif ( $hidden > 0 ) {
+		} elseif ( $why ) {
 			/* translators: %s: how many parts match the search. */
 			$text = sprintf( _n( '%s part matches, but it doesn’t fit your build.', '%s parts match, but they don’t fit your build.', $hidden, 'creative-skateboard-builder' ), number_format_i18n( $hidden ) );
 		} else {
@@ -1125,7 +1127,7 @@ final class BuilderView {
 			'widths'    => $elsewhere,
 			'hasWidths' => array() !== $elsewhere,
 			'why'       => array(
-				'shown' => $hidden > 0,
+				'shown' => $why,
 				'text'  => __( 'See why', 'creative-skateboard-builder' ),
 			),
 			'clear'     => array(

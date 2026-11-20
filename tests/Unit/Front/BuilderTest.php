@@ -1100,6 +1100,7 @@ final class BuilderTest extends TestCase {
 		self::assertSame( array( SlotKey::DECK, SlotKey::TRUCKS, SlotKey::WHEELS, SlotKey::BEARINGS, SlotKey::HARDWARE, SlotKey::GRIP ), array_keys( $items ), 'in the kit\'s order' );
 		self::assertSame( array( 'Bearings', 'Included with your wheels', '' ), array( $items[ SlotKey::BEARINGS ]['label'], $items[ SlotKey::BEARINGS ]['name'], $items[ SlotKey::BEARINGS ]['amount'] ) );
 		self::assertSame( 'Change wheels', $items[ SlotKey::BEARINGS ]['change'], 'they change with the wheels' );
+		self::assertTrue( $items[ SlotKey::BEARINGS ]['fits'], 'and they fit' );
 	}
 
 	// Spec (configurator): Risers, "It opens on the riser that clears them, with the reason ("Your 56 mm wheels need ½″
@@ -1169,6 +1170,34 @@ final class BuilderTest extends TestCase {
 		self::assertSame( SlotKey::BEARINGS, $this->show( new BuildLink( $picks + array( SlotKey::RISERS => 402 ), null, SlotKey::BEARINGS ) )['state']->step, 'Seen and kept, they let the shopper on.' );
 		self::assertSame( SlotKey::BEARINGS, $this->show( new BuildLink( $picks, null, SlotKey::BEARINGS, none: array( SlotKey::RISERS ) ) )['state']->step, 'So does No risers.' );
 		self::assertSame( SlotKey::WHEELS, $this->show( new BuildLink( $picks, null, SlotKey::WHEELS ) )['state']->step, 'A step before them is shown as asked.' );
+	}
+
+	/**
+	 * The shop's parts with wheels sold with their bearings, 304, and a build of them.
+	 *
+	 * @return array<string, int>
+	 */
+	private function withBearings(): array {
+		$parts                      = Shop::parts();
+		$parts[ SlotKey::WHEELS ][] = Shop::priced( Parts::of( array( 'wheel_diameter' => '52', 'set_size' => 4, 'bearings_included' => true ), 304 ), 4500 );
+		$this->kits->add( self::KIT, Shop::kit(), $parts );
+		return array( SlotKey::DECK => 101, SlotKey::TRUCKS => 139, SlotKey::WHEELS => 304, SlotKey::HARDWARE => 601, SlotKey::GRIP => 701 );
+	}
+
+	// Spec (configurator): Risers, "Anyone can add them", and Bearings (D-246). Add risers puts the risers step in its
+	// place on the rail, between steps that stay as they were, with Back and Next round it.
+	public function test_add_risers_puts_the_step_in_its_place_among_the_steps_the_build_has(): void {
+		$query = array_map( 'strval', $this->withBearings() ) + array( 'step' => SlotKey::RISERS );
+		$view  = $this->show( BuildLink::read( $query ) )['view'];
+		self::assertSame( array( SlotKey::DECK, SlotKey::TRUCKS, SlotKey::WHEELS, SlotKey::RISERS, SlotKey::HARDWARE, SlotKey::GRIP, State::REVIEW ), array_column( $view['progress'], 'key' ), 'no bearings step: the wheels bring them' );
+		self::assertSame( SlotKey::HARDWARE, $view['step']['next']['value'] );
+		self::assertSame( 'Back: Wheels', $view['step']['back']['text'] );
+	}
+
+	public function test_a_step_that_gives_way_skips_every_slot_after_it_that_is_no_step(): void {
+		$shown = $this->show( new BuildLink( $this->withBearings(), null, SlotKey::RISERS ) );
+		self::assertSame( SlotKey::HARDWARE, $shown['state']->step, 'neither risers nor the bearings the wheels bring' );
+		self::assertSame( 'Choose your hardware', $shown['view']['heading'] );
 	}
 
 	public function test_a_step_that_is_no_step_gives_way_to_the_next_and_the_last_to_the_review(): void {

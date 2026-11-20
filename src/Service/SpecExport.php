@@ -93,8 +93,8 @@ final class SpecExport {
 			if ( null === $part ) {
 				continue;
 			}
-			$own   = $owned[ $id ]['own'] ?? 0;
-			$cells = array( (string) $id, $part['sku'], $part['name'], $charts[ $part['table'] ]['name'] ?? '', $part['size'], $own > 0 ? (string) $this->layers?->fileName( $own ) : '' );
+			$layer = null !== $this->layers && isset( $owned[ $id ] ) && $owned[ $id ]['own'] > 0 ? $this->layers->fileName( $owned[ $id ]['own'] ) : '';
+			$cells = array( (string) $id, $part['sku'], $part['name'], $charts[ $part['table'] ]['name'] ?? '', $part['size'], $layer );
 			foreach ( SpecSheet::specs() as $key ) {
 				$cells[] = $part['fields'][ $key ] ?? '';
 			}

@@ -954,6 +954,74 @@ final class SpecImportTest extends TestCase {
 		self::assertSame( '', str_getcsv( explode( "\n", ( new SpecExport( $this->parts, $this->tables ) )->text() )[1], ',', '"', '' )[5], 'without the layer images' );
 	}
 
+	// D-287: matched by SKU, the parts' own images are asked by the parts' IDs alone, as a list.
+	public function test_matched_by_sku_the_parts_own_images_are_asked_by_their_ids(): void {
+		[ , $layers ] = $this->layered();
+		self::assertSame( array(), $this->import->read( "sku,layer_image\nDK-7750,kelly.webp\n", 'sku' ) );
+		$plan = $this->plan();
+		self::assertSame( array( array( 7 ) ), $layers->asked );
+		self::assertSame( array( 13 ), array_column( $plan, 'layer' ) );
+	}
+
+	// The auditor's 1.0.0 should-fix P1: the image a part already has is no change, by its ID or its file name, and
+	// is not checked again, so an image the field would refuse now doesn't refuse the row it is already on.
+	public function test_the_image_a_part_already_has_is_kept_unchecked_by_its_id_or_its_file_name(): void {
+		[ , $layers ] = $this->layered();
+		$layers->own[7] = 16;
+		foreach ( array( '16', 'tiny.png' ) as $cell ) {
+			self::assertSame( array(), $this->import->read( "id,deck_width,layer_image\n7,8.5,{$cell}\n" ), $cell );
+			$plan = $this->plan();
+			self::assertSame( array(), $plan[0]['problems'], $cell );
+			self::assertSame( SpecImport::KEEP_LAYER, $plan[0]['layer'], $cell );
+			self::assertSame( array( 'deck_width' ), array_column( $plan[0]['changes'], 'key' ), $cell );
+		}
+		$after = $this->confirmAndRun();
+		self::assertSame( 1, $after->changed );
+		self::assertSame( array( 7 ), $this->parts->written );
+		self::assertSame( array(), $layers->assigned, 'a row whose specs alone change sets no image' );
+	}
+
+	// D-287: a part with no image of its own has no attachment 0 to keep; "0" names no image, and is refused.
+	public function test_a_part_with_no_image_of_its_own_is_refused_attachment_0(): void {
+		[ , $layers ] = $this->layered();
+		$layers->own[7] = 0;
+		self::assertSame( array(), $this->import->read( "id,layer_image\n7,0\n" ) );
+		$plan = $this->plan();
+		self::assertSame( array( 'layer_image:' . LayerCheck::NOT_IMAGE ), self::codes( $plan[0] ) );
+		self::assertSame( '0', $plan[0]['problems'][0]['text'] );
+	}
+
+	// D-287: a part the layer images know nothing of keeps what it has, whatever its cell names.
+	public function test_a_part_the_layer_images_know_nothing_of_is_left_as_it_is(): void {
+		[ , $layers ] = $this->layered();
+		$this->parts->add( 8, 'GR-1', array(), 0, '', 'Grip' );
+		self::assertSame( array(), $this->import->read( "id,layer_image\n8,kelly.webp\n" ) );
+		$plan = $this->plan();
+		self::assertSame( array( SpecImport::KEEP_LAYER ), array_column( $plan, 'layer' ) );
+		self::assertSame( array( array() ), array_column( $plan, 'changes' ) );
+		self::assertSame( array( array() ), array_column( $plan, 'problems' ) );
+		self::assertSame( array( array( 8 ) ), $layers->asked );
+	}
+
+	// D-287: a file without the column leaves every part's image as it is, and asks for none.
+	public function test_a_file_without_the_layer_image_column_leaves_the_images_and_asks_for_none(): void {
+		[ , $layers ] = $this->layered();
+		self::assertSame( array(), $this->import->read( "id,deck_width\n7,8.5\n" ) );
+		$plan = $this->plan();
+		self::assertSame( array( SpecImport::KEEP_LAYER ), array_column( $plan, 'layer' ) );
+		self::assertSame( array( 'deck_width' ), array_column( $plan[0]['changes'], 'key' ) );
+		self::assertSame( array(), $layers->asked );
+	}
+
+	// D-287: a cell is read without its outer spaces, whatever the stored rows hold.
+	public function test_a_layer_image_cell_is_read_without_its_outer_spaces(): void {
+		$this->layered();
+		$state = new ImportState( ImportState::WAITING, 't', 'id', '.', $this->clock->timestamp(), array( 'id' => 0, 'layer_image' => 1 ), array( array( '7', ' kelly.webp ' ), array( '9', ' ' ) ), 2 );
+		$plan  = $this->import->plan( $state, 0, 2 );
+		self::assertSame( array( 13, 0 ), array_column( $plan, 'layer' ), 'the name found, and a blank cell for a variation' );
+		self::assertSame( array( array(), array() ), array_column( $plan, 'problems' ) );
+	}
+
 	// The auditor's 1.0.0 minor 9: withLayers() gives a copy, as every other with…() does, so what a 0.9.0 container
 	// built is still 0.9.0's (D-208).
 	public function test_with_layers_gives_a_copy_and_leaves_the_export_and_the_import_it_was_called_on_as_they_were(): void {

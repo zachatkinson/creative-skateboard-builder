@@ -375,4 +375,32 @@ final class BuildLinkTest extends TestCase {
 		}
 		self::assertCount( Slots::MAX, BuildLink::read( $sent )->none );
 	}
+
+	// Spec (configurator): Risers, "Anyone can add them": a link that names a step asks for it; a step's form does not,
+	// since its Next was made before the form's own pick.
+	public function test_only_a_link_that_names_a_step_asks_for_it(): void {
+		self::assertTrue( BuildLink::read( array( 'step' => 'risers' ) )->asked );
+		self::assertFalse( BuildLink::read( array() )->asked, 'a link with no step asks for none' );
+		self::assertFalse( BuildLink::read( array( '_on' => 'risers' ) )->asked, 'a step\'s form stays on its step without asking for it' );
+		self::assertFalse( BuildLink::read( array( 'step' => 'hardware', '_on' => 'risers' ) )->asked, 'nor does its Next' );
+	}
+
+	public function test_a_chip_group_with_a_name_of_its_own_is_left_out_and_the_groups_after_it_are_read(): void {
+		self::assertSame(
+			array( 'brand' => array( 'bones' ) ),
+			BuildLink::read(
+				array(
+					'_chips' => array(
+						'Bad-Group'   => array( 'x' ),
+						'pa_hardness' => '99a',
+						'brand'       => array( 'bones' ),
+					),
+				)
+			)->shelf->chips
+		);
+	}
+
+	public function test_a_query_that_is_not_utf_8_is_no_query_even_with_a_control_character_in_it(): void {
+		self::assertSame( '', BuildLink::read( array( '_q' => "Retna\t\xff" ) )->shelf->query );
+	}
 }

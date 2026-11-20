@@ -205,7 +205,8 @@ final class StepShelf {
 			return null;
 		}
 		try {
-			return MeasureParser::parse( $parts[1], Unit::from( $parts[2] ) );
+			// The parser reads the unit's mark itself, as it reads `8.25in` typed in a field.
+			return MeasureParser::parse( $named, Unit::from( $parts[2] ) );
 		} catch ( InvalidMeasure ) {
 			return null;
 		}

@@ -20,6 +20,7 @@ use CreativeBranding\SkateboardBuilder\Port\LookFact;
 use CreativeBranding\SkateboardBuilder\Port\TextFolding;
 use CreativeBranding\SkateboardBuilder\Service\BuildState;
 use CreativeBranding\SkateboardBuilder\Service\ShelfQuery;
+use CreativeBranding\SkateboardBuilder\Service\ShelfView;
 use CreativeBranding\SkateboardBuilder\Service\State;
 use CreativeBranding\SkateboardBuilder\Service\StepShelf;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Domain\Builds;
@@ -244,5 +245,60 @@ final class StepShelfTest extends TestCase {
 	public function test_a_part_the_shop_holds_no_look_for_is_left_off(): void {
 		unset( $this->looks->facts[304] );
 		self::assertSame( array( '10:1:0', '10:2:0' ), self::keys( $this->wheels()->looks ) );
+		$this->looks->facts[304] = new LookFact( 20, 3, 0, 'Rétro Cubes', array(), array(), true, 0, 0 );
+		unset( $this->looks->facts[301] );
+		self::assertSame( array( '20:3:0', '10:1:0', '10:2:0' ), self::keys( $this->wheels()->looks ), 'and the parts after it are listed: 302 and 303 of Retna' );
+	}
+
+	/**
+	 * The shelf with a folding that keeps case, so a brand's name and its slug read apart.
+	 */
+	private function caseKept(): StepShelf {
+		$folding = new class() implements TextFolding {
+			public function fold( string $text ): string {
+				return $text;
+			}
+		};
+		return new StepShelf( $this->looks, new InMemoryPartCards(), $this->ranking, $folding, $this->settings );
+	}
+
+	// D-263: a brand is searched by the shop's name for it, and the shop is asked each brand's name once.
+	public function test_a_brand_is_searched_by_its_name_and_each_brands_name_is_asked_once(): void {
+		$cards = new InMemoryPartCards();
+		$shelf = new StepShelf( $this->looks, $cards, $this->ranking, new class() implements TextFolding {
+			public function fold( string $text ): string {
+				return $text;
+			}
+		}, $this->settings );
+		$view  = $shelf->of( $this->state( SlotKey::WHEELS, array( 'deck' => 102, 'trucks' => 144 ) ), new ShelfQuery( query: 'Spit' ) );
+		self::assertSame( array( array( 'spitfire', 'bones' ) ), $cards->brandsAsked, 'a list, each brand once' );
+		self::assertSame( array( '10:1:0', '10:2:0' ), self::keys( $view->listing->looks ?? array() ), 'Spitfire, not its slug' );
+	}
+
+	// SPEC-CONFIGURATOR, Search: a query is 100 characters at most, not 100 bytes.
+	public function test_a_query_is_cut_at_100_characters(): void {
+		$this->wheels( new ShelfQuery( query: str_repeat( 'é', 150 ) ) );
+		self::assertSame( str_repeat( 'é', 100 ), $this->ranking->asked[0][0] );
+	}
+
+	// Spec: Search, when nothing is found (D-277): "2 trucks match, but they don't fit", by brand or by name, and only
+	// when nothing is listed.
+	public function test_the_parts_that_dont_fit_are_counted_by_brand_when_nothing_is_listed_and_only_then(): void {
+		foreach ( array( 139, 144, 149, 169 ) as $id ) {
+			$this->looks->facts[ $id ] = new LookFact( 40, $id, 0, 'Stage 11', array(), array(), false, 0, 0 );
+		}
+		$trucks = fn( string $query ): ?ShelfView => $this->caseKept()->of( $this->state( SlotKey::TRUCKS, array( 'deck' => 103 ) ), new ShelfQuery( query: $query ) );
+		self::assertSame( 0, $trucks( 'Stage' )?->hidden, 'the 149 is listed' );
+		unset( $this->looks->facts[149] );
+		self::assertSame( 3, $trucks( 'Indep' )?->hidden, 'Independent, the brand\'s name' );
+		self::assertSame( 3, $trucks( 'Stage' )?->hidden, 'the product\'s name' );
+	}
+
+	// D-264: a query left to its defaults starts at the first page, and a view that says nothing hides nothing.
+	public function test_a_query_starts_at_the_first_page_and_a_view_hides_none_unless_told(): void {
+		$query = new ShelfQuery();
+		self::assertSame( array( '', array(), '', 'recommended', 0, true ), array( $query->width, $query->chips, $query->query, $query->sort, $query->from, $query->ranked ) );
+		$view = new ShelfView( $this->wheels(), array(), array(), '', 'recommended', '' );
+		self::assertSame( array( array(), array(), 0 ), array( $view->groups, $view->names, $view->hidden ) );
 	}
 }

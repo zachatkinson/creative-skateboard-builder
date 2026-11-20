@@ -348,6 +348,55 @@ final class BuildCartTest extends TestCase {
 		self::assertCount( 5 * 7, $this->cart->lines() );
 	}
 
+	// D-157: the lines of the build an edit replaces go once it is in, so the shop's stock is counted without them.
+	public function test_an_edited_build_is_counted_against_the_stock_without_the_lines_it_replaces(): void {
+		$this->kits->now[103] = Shop::priced( Shop::parts()['deck'][2], 7000, true, 1 );
+		[ , $was ]            = $this->inCart();
+		self::assertSame( array( array( 'part_short', 'deck', 103 ) ), self::problems( $this->consider( array( 'wheels' => 301 ) ) ), 'beside it, the one deck is short' );
+		self::assertNull( $this->consider( array( 'wheels' => 301 ), array( 'replace' => $was->id ) )->refusal, 'in its place, the one deck is its own' );
+	}
+
+	// D-157: an edit is counted against the stock at the quantity it keeps, the cart's, not the one it was sent with.
+	public function test_an_edited_build_is_counted_at_the_quantity_the_cart_held_of_the_one_it_replaces(): void {
+		$this->kits->now[103] = Shop::priced( Shop::parts()['deck'][2], 7000, true, 2 );
+		$build                = $this->consider( array(), array(), 2 )->build;
+		self::assertNotNull( $build );
+		self::assertNull( $this->builds->attach( $this->cart->put( self::KIT, 2, $build->toArray() ) ) );
+		self::assertNull( $this->consider( array( 'wheels' => 301 ), array( 'replace' => $build->id ) )->refusal, 'two in its place, and two decks' );
+		$this->kits->now[103] = Shop::priced( Shop::parts()['deck'][2], 7000, true, 1 );
+		self::assertSame( array( array( 'part_short', 'deck', 103 ) ), self::problems( $this->consider( array( 'wheels' => 301 ), array( 'replace' => $build->id, 'assembly' => true ) ) ), 'two in its place, and one deck' );
+	}
+
+	// D-157: an edit keeps the quantity the cart held of the build it replaces, and sets nothing already right.
+	public function test_an_edited_build_keeps_the_quantity_of_the_one_it_replaces_and_sets_none_already_right(): void {
+		$build = $this->consider( array(), array(), 2 )->build;
+		self::assertNotNull( $build );
+		$held = $this->cart->put( self::KIT, 2, $build->toArray() );
+		self::assertNull( $this->builds->attach( $held ) );
+		$new = $this->consider( array( 'wheels' => 301 ), array( 'replace' => $build->id ), 2 )->build;
+		self::assertNotNull( $new );
+		$this->cart->resized = array();
+		$key                 = $this->cart->put( self::KIT, 2, $new->toArray() );
+		self::assertNull( $this->builds->attach( $key ) );
+		self::assertSame( array(), $this->cart->resized, 'two of it, as the cart held' );
+
+		$again = $this->consider( array( 'wheels' => 302 ), array( 'replace' => $new->id ) )->build;
+		self::assertNotNull( $again );
+		$last = $this->cart->put( self::KIT, 1, $again->toArray() );
+		self::assertNull( $this->builds->attach( $last ) );
+		self::assertSame( 2, $this->cart->lines()[ $last ]->quantity );
+		self::assertCount( 7, $this->cart->resized, 'the kit\'s line and each part\'s' );
+	}
+
+	// D-157: a build that is refused replaces nothing, whatever build it names.
+	public function test_a_refused_build_replaces_nothing(): void {
+		[ $old, $was ] = $this->inCart();
+		$refused       = $this->consider( array( 'deck' => 999 ), array( 'replace' => $was->id ) );
+		self::assertSame( CartRefusal::BuildRefused, $refused->refusal );
+		self::assertNull( $refused->build );
+		self::assertArrayHasKey( $old, $this->cart->lines() );
+	}
+
 	public function test_an_edited_build_the_cart_will_not_take_leaves_the_one_it_replaces_as_it_was(): void {
 		[ $old, $was ] = $this->inCart();
 		$before        = $this->cart->lines();

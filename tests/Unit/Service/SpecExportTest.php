@@ -14,6 +14,7 @@ use CreativeBranding\SkateboardBuilder\Domain\Spec\SpecTable;
 use CreativeBranding\SkateboardBuilder\Service\Csv;
 use CreativeBranding\SkateboardBuilder\Service\SpecExport;
 use CreativeBranding\SkateboardBuilder\Service\SpecSheet;
+use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\InMemoryPartLayers;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\InMemoryPartSpecs;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\InMemorySpecTables;
 use PHPUnit\Framework\TestCase;
@@ -117,5 +118,25 @@ final class SpecExportTest extends TestCase {
 		};
 		$rows = Csv::parse( (string) ( new SpecExport( $gone, $this->tables ) )->page( 1 ) );
 		self::assertSame( array( '2' ), array_column( $rows, 0 ) );
+	}
+
+	// D-287: a part's own layer image is written by its file name; one with none, or one the layer images know nothing
+	// of, writes the cell empty, whatever the Media Library names attachment 0 or 1.
+	public function test_the_layer_image_column_names_a_parts_own_image_alone(): void {
+		$this->parts->add( 7, 'DK-7', array(), 0, '', 'Katie' );
+		$this->parts->add( 8, 'DK-8', array(), 0, '', 'Kelly' );
+		$this->parts->add( 9, 'DK-9', array(), 0, '', 'Twin' );
+		$layers        = new InMemoryPartLayers();
+		$layers->own   = array(
+			7 => 11,
+			8 => 0,
+		);
+		$layers->files = array(
+			0  => 'zero.png',
+			1  => 'one.png',
+			11 => 'katie.png',
+		);
+		$rows = Csv::parse( (string) $this->export->withLayers( $layers )->page( 1 ) );
+		self::assertSame( array( 'katie.png', '', '' ), array_column( $rows, 5 ) );
 	}
 }

@@ -368,6 +368,54 @@ final class CatalogueCheckTest extends TestCase {
 		self::assertNotSame( array(), $this->looks->asked, 'the check it was called on' );
 	}
 
+	// D-208: withLooks() gives a copy, so the check it was called on still says nothing of shared cards.
+	public function test_with_looks_gives_a_copy_and_leaves_the_check_it_was_called_on_as_it_was(): void {
+		$this->kits->add( 5, KitDocuments::kit(), self::stocked() );
+		$plain = new CatalogueCheck( $this->kits, $this->catalogue, new SpecIndexer( new InMemorySpecIndex(), new InMemoryShopSettings(), new FakeClock(), $this->source ), $this->reindex, $this->import, $this->queue );
+		self::assertNotSame( $plain, $plain->withLooks( $this->looks ) );
+		$plain->run();
+		self::assertSame( array(), $this->looks->asked );
+	}
+
+	/**
+	 * Spec (configurator): "The Catalogue check says which variations share a photo, and so share a card" (D-281). A
+	 * card is its product, its photo and its layer image together: numbers that run into each other are not one.
+	 */
+	public function test_each_shared_card_of_each_kit_is_said_and_only_a_card_its_parts_all_share(): void {
+		$slots           = self::stocked();
+		$slots['deck']   = array( Builds::deck( '8.0', 110 ), Builds::deck( '8.25', 111 ), Builds::deck( '8.5', 112 ), Builds::deck( '8.0', 113 ), Builds::deck( '8.0', 114 ), Builds::deck( '8.0', 115 ), Builds::deck( '8.0', 116 ), Builds::deck( '8.0', 117 ) );
+		$slots['wheels'] = array( Builds::wheel( '54', 301 ), Builds::wheel( '56', 302 ) );
+		$this->kits->add( 5, KitDocuments::kit(), $slots );
+		$this->kits->add( 6, KitDocuments::kit(), $slots );
+		$fact               = static fn( int $product, int $photo, int $layer = 0 ): LookFact => new LookFact( $product, $photo, $layer, 'Board', array(), array(), false, 0, 0 );
+		$this->looks->facts = array(
+			// Product 1's photo 12 and product 11's photo 2.
+			110 => $fact( 1, 12 ),
+			111 => $fact( 11, 2 ),
+			// Photo 1 with layer 23 and photo 12 with layer 3.
+			112 => $fact( 3, 1, 23 ),
+			113 => $fact( 3, 12, 3 ),
+			// Two products with the same photo.
+			114 => $fact( 4, 5 ),
+			115 => $fact( 6, 5 ),
+			116 => $fact( 7, 8 ),
+			117 => $fact( 7, 8 ),
+			301 => $fact( 30, 4, 7 ),
+			302 => $fact( 30, 4, 7 ),
+		);
+
+		$lines = self::lines( $this->check->run() );
+		self::assertSame(
+			array(
+				'look_shared part=7 kit=5 deck parts=116%2C+117',
+				'look_shared part=30 kit=5 wheels parts=301%2C+302',
+				'look_shared part=7 kit=6 deck parts=116%2C+117',
+				'look_shared part=30 kit=6 wheels parts=301%2C+302',
+			),
+			array_values( array_filter( $lines, static fn( string $line ): bool => str_starts_with( $line, 'look_shared' ) ) )
+		);
+	}
+
 	public function test_the_parts_of_the_slots_the_picture_draws_with_no_layer_image_are_listed_last(): void {
 		$slots           = self::stocked();
 		$slots['trucks'] = array( Builds::truck( '149' ), Builds::truck( '159' ) );

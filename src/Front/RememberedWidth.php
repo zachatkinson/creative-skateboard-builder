@@ -47,8 +47,7 @@ final class RememberedWidth {
 	 * @param int $kit The kit product's ID.
 	 */
 	public function of( int $kit ): string {
-		$last = $this->saved->of( get_current_user_id() )[0] ?? null;
-		$deck = $last?->picks[ SlotKey::DECK ] ?? null;
+		$deck = $this->saved->of( get_current_user_id() )[0]->picks[ SlotKey::DECK ] ?? null;
 		$slot = null === $deck ? null : $this->kits->kit( $kit )?->slots->get( SlotKey::DECK );
 		if ( null === $deck || null === $slot ) {
 			return '';

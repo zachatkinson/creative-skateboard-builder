@@ -101,7 +101,7 @@ final class LayerCheck {
 				),
 			);
 		}
-		$needs = LayerImage::needs( $size ?? array( 0, 0 ) );
+		$needs = null === $size ? array( 0, 0 ) : LayerImage::needs( $size );
 		$found = array();
 		foreach ( LayerImage::problems( $facts, $size ) as $problem ) {
 			$found[] = array(
@@ -122,7 +122,7 @@ final class LayerCheck {
 	 */
 	public function size( int $part ): ?array {
 		// Read on each check, not kept: one process runs many queued jobs, and a kit may change between them.
-		$slots = array_values( array_intersect( Layout::DRAWN, $this->kits->slotsOf( $part, ...array_values( array_column( $this->kits->all(), 'kit' ) ) ) ) );
+		$slots = array_values( array_intersect( Layout::DRAWN, $this->kits->slotsOf( $part, ...array_column( $this->kits->all(), 'kit' ) ) ) );
 		if ( array() === $slots || $part <= 0 ) {
 			return null;
 		}

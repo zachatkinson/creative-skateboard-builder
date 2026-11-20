@@ -501,6 +501,15 @@ final class KitEditorTest extends TestCase {
 		self::assertSame( array( 'layout document_out_of_range stage_side' ), self::problems( $draft ) );
 		self::assertArrayNotHasKey( KitEditor::LAYOUT, $draft->documents );
 		self::assertSame( 'top', $draft->refused[ KitEditor::LAYOUT ]['stage_side'] ?? null, 'shown as typed' );
+
+		$sent['layout'] = array(
+			'stage_side' => ' left ',
+			'board_size' => "large\n",
+			'search'     => ' own',
+		);
+		$draft          = $this->editor->draft( $sent, self::stored() );
+		self::assertSame( array(), $draft->problems, 'a choice is read without its outer spaces' );
+		self::assertSame( array( 'schema_version' => 1, 'stage_side' => 'left', 'board_size' => 'large', 'search' => 'own' ), $draft->documents[ KitEditor::LAYOUT ] );
 	}
 
 	public function test_assembly_takes_a_fee_as_the_shop_writes_money_and_each_thing_wrong_is_named(): void {

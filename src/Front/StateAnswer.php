@@ -240,7 +240,7 @@ final class StateAnswer {
 		}
 		foreach ( $state->kit->presets as $preset ) {
 			// Its first slot's part, for the tile's picture.
-			$first = array_values( $preset->picks )[0] ?? null;
+			$first = self::first( $preset->picks );
 			if ( null !== $first ) {
 				$ids[] = $first;
 			}
@@ -386,15 +386,16 @@ final class StateAnswer {
 			}
 			$built     = $state->presets[ $at ] ?? null;
 			$kept      = null === $built ? array() : array_merge( $built->refused, $built->validation->problems );
+			$first     = self::first( $preset->picks );
 			$presets[] = array(
 				'name'        => self::preset( $preset->name, $at, $state->id ),
 				'description' => self::text( $preset->description, 'preset_description', $state->id, (string) $at ),
 				'picks'       => $picks,
-				'image'       => $this->tile( $state->id, $preset->picks, $preset->image, $begun ) ?? $cards[ array_values( $preset->picks )[0] ?? 0 ]['image'] ?? null,
+				'image'       => $this->tile( $state->id, $preset->picks, $preset->image, $begun ) ?? ( null === $first ? null : ( $cards[ $first ]['image'] ?? null ) ),
 				'total'       => $money( $built->quote->total ?? 0 ),
 				'ready'       => array() === $kept,
 				// What keeps it from the cart, each part named for its tile (spec: Presets).
-				'problems'    => array_map( static fn( BuildProblem $kept ): array => $problem( $kept ) + array( 'name' => $cards[ $kept->part ?? 0 ]['name'] ?? '' ), $kept ),
+				'problems'    => array_map( static fn( BuildProblem $kept ): array => $problem( $kept ) + array( 'name' => null === $kept->part ? '' : ( $cards[ $kept->part ]['name'] ?? '' ) ), $kept ),
 			);
 		}
 
@@ -429,7 +430,8 @@ final class StateAnswer {
 			'picture'           => $this->picture( $state, $counted, $labels, $brands, $cards ),
 			'delivery'          => $this->delivery->said( $state->id, $state->quote->assembly, $state->quote->total, $decimals ),
 			'notes'             => self::notes( $state, $decimals ),
-			'shelf'             => null === $view ? null : self::shelf( $view, $state->step, static fn( Option $shown ): array => $option( $shown, $state->step, $current ), $current ),
+			// The shelf is the step's, so a view comes with the step it lists.
+			'shelf'             => null === $view || null === $current ? null : self::shelf( $view, $state->step, static fn( Option $shown ): array => $option( $shown, $state->step, $current ), $current ),
 			// From 1.0.0: whether the wheels picked come with their bearings, so the kit's bearings slot is filled (D-246),
 			// and how the shop writes a price, for a page that formats a total itself.
 			'bearings_included' => Builder::bearingsIncluded( $state ),
@@ -444,14 +446,14 @@ final class StateAnswer {
 	 *
 	 * @param ShelfLook                                             $shelved The card.
 	 * @param string                                                $slot    The step's slot.
-	 * @param StateStep|null                                        $current The step.
+	 * @param StateStep                                             $current The step.
 	 * @param callable(Measure): array{value: string, text: string} $size    A size as the answer names it.
 	 * @return array{sized?: list<array{part: int, value: string, text: string, in_stock: bool, picked: bool}>}
 	 */
-	private static function sizesOf( ShelfLook $shelved, string $slot, ?StateStep $current, callable $size ): array {
+	private static function sizesOf( ShelfLook $shelved, string $slot, StateStep $current, callable $size ): array {
 		$spec   = self::SIZES[ $slot ] ?? null;
-		$picked = $current?->picked?->part;
-		if ( null === $spec || null === $picked || null === $current || SizePicker::decides( $slot ) ) {
+		$picked = $current->picked?->part;
+		if ( null === $spec || null === $picked || SizePicker::decides( $slot ) ) {
 			return array();
 		}
 		$held = null;
@@ -465,19 +467,19 @@ final class StateAnswer {
 		foreach ( $shelved->look->variants as $variant ) {
 			$measure = $variant->part->specs->measure( $spec );
 			$offered = $current->options->offer( $variant->part->id );
-			if ( null === $measure || null === $offered || $variant->choices !== $held->choices ) {
-				continue;
+			// A size of the part with the pick's own choices, among those the step offers.
+			if ( $variant->choices === $held->choices && null !== $measure && null !== $offered ) {
+				$named = Shelf::named( $measure );
+				$taken = $sized[ $named ] ?? null;
+				// One radio a size: the part the build holds, else the first in stock.
+				if ( null === $taken || $variant === $held || ! ( $taken['picked'] || $taken['in_stock'] ) ) {
+					$sized[ $named ] = array( 'part' => $variant->part->id ) + $size( $measure ) + array(
+						'in_stock' => $offered->available(),
+						'picked'   => $variant === $held,
+						'measure'  => $measure,
+					);
+				}
 			}
-			$named = Shelf::named( $measure );
-			// One radio a size: the part the build holds, else the first in stock.
-			if ( isset( $sized[ $named ] ) && ( $sized[ $named ]['picked'] || $sized[ $named ]['in_stock'] ) && $variant !== $held ) {
-				continue;
-			}
-			$sized[ $named ] = array( 'part' => $variant->part->id ) + $size( $measure ) + array(
-				'in_stock' => $offered->available(),
-				'picked'   => $variant === $held,
-				'measure'  => $measure,
-			);
 		}
 		if ( count( $sized ) < 2 ) {
 			return array();
@@ -504,7 +506,7 @@ final class StateAnswer {
 	 * @param BuildLink $link The link.
 	 */
 	private static function page( BuildLink $link ): ShelfQuery {
-		return new ShelfQuery( $link->shelf->width, $link->shelf->chips, $link->shelf->query, $link->shelf->sort, 0, max( Shelf::SHOWN, $link->shown ) );
+		return new ShelfQuery( $link->shelf->width, $link->shelf->chips, $link->shelf->query, $link->shelf->sort, shown: max( Shelf::SHOWN, $link->shown ) );
 	}
 
 	/**
@@ -513,10 +515,10 @@ final class StateAnswer {
 	 * @param ShelfView                      $view   The shelf and its names.
 	 * @param string                         $slot   The step's slot.
 	 * @param callable(Option): array<mixed> $option  An option as the answer carries it.
-	 * @param StateStep|null                 $current The step, for the sizes of the look its pick is of.
+	 * @param StateStep                      $current The step, for the sizes of the look its pick is of.
 	 * @return array<string, mixed>
 	 */
-	private static function shelf( ShelfView $view, string $slot, callable $option, ?StateStep $current = null ): array {
+	private static function shelf( ShelfView $view, string $slot, callable $option, StateStep $current ): array {
 		$fraction = in_array( self::SIZES[ $slot ] ?? null, array( SpecKey::RiserThickness, SpecKey::BoltLength ), true );
 		$size     = static fn( Measure $measure ): array => array(
 			'value' => Shelf::named( $measure ),
@@ -667,14 +669,24 @@ final class StateAnswer {
 		if ( null !== $photo ) {
 			return $photo;
 		}
-		$url = null === $this->pictures ? null : ( $this->pictures )( $kit, $picks );
+		$url                = null === $this->pictures ? null : ( $this->pictures )( $kit, $picks );
+		[ $width, $height ] = ComposedPictures::CANVASES[ ComposedPictures::CART ];
 		return null === $url ? null : array(
 			'src'    => $url,
-			'width'  => ComposedPictures::CANVASES[ ComposedPictures::CART ][0],
-			'height' => ComposedPictures::CANVASES[ ComposedPictures::CART ][1],
+			'width'  => $width,
+			'height' => $height,
 			'srcset' => '',
 			'sizes'  => '',
 		);
+	}
+
+	/**
+	 * The first part a preset picks, or null for a preset that picks none.
+	 *
+	 * @param array<string, int> $picks The preset's picks.
+	 */
+	private static function first( array $picks ): ?int {
+		return array_values( $picks )[0] ?? null;
 	}
 
 	/**

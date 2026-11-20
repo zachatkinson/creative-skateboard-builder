@@ -230,6 +230,26 @@ final class BuilderShelfTest extends TestCase {
 		}
 	}
 
+	// D-208: only this release's container asks the saved builds; a builder made without them still asks the width.
+	public function test_a_builder_given_the_saved_builds_leaves_the_one_it_came_from_as_it_was(): void {
+		$store = new InMemorySavedBuilds();
+		$state = new BuildState( $this->kits, new InMemoryShopSettings(), new FakeLogger() );
+		$saved = new SavedBuilds( $store, $state, new CountingUuids(), new FakeClock(), new FakeLogger() );
+		$at    = new DateTimeImmutable( '2026-11-02', new DateTimeZone( 'UTC' ) );
+		$store->put( new SavedBuild( 'b', 7, self::KIT, array( SlotKey::DECK => 102 ), true, 'Mine', $at, $at ) );
+		$plain = new Builder( $state, new StateAnswer( new InMemoryPartCards(), new FakeMoney(), $this->kits, new Delivery( $this->kits, new FakeShippingZones(), new ShippingWords( new FakeMoney() ) ), new PageRenderer() ), new BuilderView() );
+		$given = $plain->withSaved( new RememberedWidth( $saved, $this->kits ), $saved );
+		try {
+			$GLOBALS['cbuild_test_user'] = 7;
+			$remembered                  = $given->show( self::KIT, new BuildLink(), self::BASE );
+			$shown                       = $plain->show( self::KIT, new BuildLink(), self::BASE );
+		} finally {
+			unset( $GLOBALS['cbuild_test_user'] );
+		}
+		self::assertStringContainsString( '_width', $remembered['view']['url'] ?? '', 'the builder given them brings the width' );
+		self::assertStringNotContainsString( '_width', $shown['view']['url'] ?? '', 'the one it came from does not' );
+	}
+
 	// Spec (configurator): A saved build that has changed (D-254), "The screen": "Your build has changed" before the
 	// review, with each change, each new price, the totals, Use these and Choose myself.
 	public function test_a_saved_build_that_changed_opens_on_what_changed_before_its_review(): void {

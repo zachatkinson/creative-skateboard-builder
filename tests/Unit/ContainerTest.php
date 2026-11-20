@@ -65,6 +65,9 @@ final class ContainerTest extends TestCase {
 				array( \CreativeBranding\SkateboardBuilder\Front\Builder::class, 'saved', \CreativeBranding\SkateboardBuilder\Service\SavedBuilds::class ),
 				array( \CreativeBranding\SkateboardBuilder\Front\Builder::class, 'remembered', \CreativeBranding\SkateboardBuilder\Front\RememberedWidth::class ),
 				array( \CreativeBranding\SkateboardBuilder\Service\SavedBuilds::class, 'money', \CreativeBranding\SkateboardBuilder\Port\Money::class ),
+				array( \CreativeBranding\SkateboardBuilder\Service\SpecImport::class, 'check', \CreativeBranding\SkateboardBuilder\Service\LayerCheck::class ),
+				array( \CreativeBranding\SkateboardBuilder\Service\SpecImport::class, 'layers', \CreativeBranding\SkateboardBuilder\Port\PartLayers::class ),
+				array( \CreativeBranding\SkateboardBuilder\Service\SpecExport::class, 'layers', \CreativeBranding\SkateboardBuilder\Port\PartLayers::class ),
 			) as [ $id, $property, $type ]
 		) {
 			$service = $container->get( $id );

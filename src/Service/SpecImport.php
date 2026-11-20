@@ -163,7 +163,8 @@ final class SpecImport {
 		if ( null === $header || array() === $rows ) {
 			return array( self::FILE_EMPTY );
 		}
-		if ( count( $rows ) > self::MAX_ROWS ) {
+		// Read to that limit, a file has too many rows when it has the one more.
+		if ( self::MAX_ROWS + 1 === count( $rows ) ) {
 			return array( self::ROWS_MANY );
 		}
 		$key      = SpecSheet::SKU === $key ? SpecSheet::SKU : SpecSheet::ID;
@@ -392,9 +393,11 @@ final class SpecImport {
 			if ( $draft->size !== $now['size'] ) {
 				$changes[] = self::change( SpecSheet::SIZE, $now['size'], $draft->size );
 			}
-			[ $layer, $wrong ] = $this->layer( $cell( $row, SpecSheet::LAYER ), $part, $owned[ $part ] ?? null );
-			if ( self::KEEP_LAYER !== $layer && null !== $this->layers ) {
-				$changes[] = self::change( SpecSheet::LAYER, $this->layers->fileName( $owned[ $part ]['own'] ?? 0 ), $this->layers->fileName( $layer ) );
+			// Without the layer images, as a 0.9.0 container builds this class, the column is passed over (D-208).
+			$own               = $owned[ $part ] ?? null;
+			[ $layer, $wrong ] = null === $this->layers ? array( self::KEEP_LAYER, array() ) : $this->layer( (string) $cell( $row, SpecSheet::LAYER ), $part, $own, $this->layers );
+			if ( self::KEEP_LAYER !== $layer && null !== $this->layers && null !== $own ) {
+				$changes[] = self::change( SpecSheet::LAYER, $this->layers->fileName( $own['own'] ), $this->layers->fileName( $layer ) );
 			}
 			$outcome            = self::outcome( $from + $at, $part, $now, array( ...$problems, ...$draft->problems, ...$wrong ) );
 			$outcome['layer']   = $layer;
@@ -425,8 +428,8 @@ final class SpecImport {
 			$summary = self::summary( $this->plan( $state, $state->cursor, self::BATCH ) );
 			foreach ( $summary['changed'] as $row ) {
 				$this->parts->write( $row['part'], $row['fields'], $row['table'], $row['size'] );
-				if ( self::KEEP_LAYER !== $row['layer'] ) {
-					$this->layers?->assign( $row['part'], $row['layer'] );
+				if ( self::KEEP_LAYER !== $row['layer'] && null !== $this->layers ) {
+					$this->layers->assign( $row['part'], $row['layer'] );
 				}
 			}
 			$changed = count( $summary['changed'] );
@@ -496,14 +499,17 @@ final class SpecImport {
 	 * What a `layer_image` cell asks of a part's own Layer image, and what is wrong with it. An empty cell leaves a
 	 * product's as it is, and takes a variation's own away, so it takes its parent's (D-287).
 	 *
-	 * @param string|null                           $cell  The cell, or null where the file has no such column.
-	 * @param int                                   $part  The part's ID.
-	 * @param array{own: int, variation: bool}|null $owned Its own layer image, and whether it is a variation.
+	 * @param string                                $cell   The cell.
+	 * @param int                                   $part   The part's ID.
+	 * @param array{own: int, variation: bool}|null $owned  Its own layer image, and whether it is a variation; null
+	 *                                                      where the file has no such column.
+	 * @param PartLayers                            $layers The parts' own layer images, which `withLayers()` gives
+	 *                                                      with the check.
 	 * @return array{0: int, 1: list<array{key: string, code: string, text: string}>} The attachment's ID to set, 0 to
 	 *         take the part's own away, or KEEP_LAYER; and the problems.
 	 */
-	private function layer( ?string $cell, int $part, ?array $owned ): array {
-		if ( null === $cell || null === $this->check || null === $this->layers || null === $owned ) {
+	private function layer( string $cell, int $part, ?array $owned, PartLayers $layers ): array {
+		if ( null === $owned || null === $this->check ) {
 			return array( self::KEEP_LAYER, array() );
 		}
 		$cell = trim( $cell );
@@ -512,10 +518,10 @@ final class SpecImport {
 		}
 		// The part's own image, by its ID or the name an export writes, is no change: it is not looked up, so another
 		// image with that name doesn't refuse the row, nor checked again (the auditor's 1.0.0 should-fix P1).
-		if ( $owned['own'] > 0 && ( (string) $owned['own'] === $cell || $this->layers->fileName( $owned['own'] ) === $cell ) ) {
+		if ( $owned['own'] > 0 && ( (string) $owned['own'] === $cell || $layers->fileName( $owned['own'] ) === $cell ) ) {
 			return array( self::KEEP_LAYER, array() );
 		}
-		[ $id, $wrong ] = LayerCheck::named( $cell, $this->layers );
+		[ $id, $wrong ] = LayerCheck::named( $cell, $layers );
 		if ( array() === $wrong ) {
 			$wrong = $this->check->problems( $id, $this->check->size( $part ) );
 		}

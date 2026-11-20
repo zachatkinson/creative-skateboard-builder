@@ -442,9 +442,10 @@ final readonly class BuildLink {
 	 * @param mixed $sent What was sent.
 	 */
 	private static function text( mixed $sent ): string {
-		if ( ! is_string( $sent ) || 1 !== preg_match( '//u', $sent ) ) {
+		if ( ! is_string( $sent ) ) {
 			return '';
 		}
+		// A pattern with the u flag matches nothing in text that is not UTF-8: preg_replace() gives null, so none is read.
 		$plain = trim( (string) preg_replace( '/\p{Cc}/u', ' ', $sent ) );
 		return (string) preg_replace( '/\A(.{0,' . ShelfQuery::QUERY . '}).*\z/us', '$1', $plain );
 	}

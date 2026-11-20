@@ -122,6 +122,31 @@ final class SavedBuildsTest extends TestCase {
 		self::assertNull( $this->builds->reopened( self::BEN, $saved['uuid'] ), 'another customer\'s' );
 	}
 
+	// D-254 and D-208: a build kept without prices, as an earlier release's container keeps one, still names what
+	// changed, with no price then to set beside a price now.
+	public function test_a_build_kept_without_prices_reopens_with_what_changed_and_no_prices(): void {
+		$plain = new SavedBuilds( $this->store, new BuildState( $this->kits, new InMemoryShopSettings(), new FakeLogger() ), new CountingUuids(), $this->clock, $this->logger );
+		$saved = $plain->save( self::ANA, self::KIT, self::COMPLETE, false, '' );
+		self::assertNull( $plain->find( self::ANA, $saved['uuid'] )?->prices );
+
+		$parts                    = Shop::parts();
+		$parts[ SlotKey::WHEELS ] = array_map( static fn( Part $part ): Part => 302 === $part->id ? Shop::priced( $part, $part->price, false, 0 ) : $part, $parts[ SlotKey::WHEELS ] );
+		$this->kits->add( self::KIT, Shop::kit(), $parts );
+		$reopened = $this->builds->reopened( self::ANA, $saved['uuid'] );
+		self::assertNotNull( $reopened );
+		self::assertSame( array( SlotKey::WHEELS ), array_map( static fn( $change ): string => $change->slot, $reopened->check->changes ) );
+		self::assertSame( array(), $reopened->prices );
+		self::assertNull( $reopened->then );
+	}
+
+	// D-254: a build whose kit no longer reads has nothing to reopen into.
+	public function test_a_build_whose_kit_no_longer_reads_does_not_reopen(): void {
+		$saved = $this->builds->save( self::ANA, self::KIT, self::COMPLETE, false, '' );
+		unset( $this->kits->kits[ self::KIT ] );
+		self::assertNotNull( $this->builds->find( self::ANA, $saved['uuid'] ) );
+		self::assertNull( $this->builds->reopened( self::ANA, $saved['uuid'] ) );
+	}
+
 	public function test_a_build_short_of_a_part_or_of_no_kit_or_from_no_one_is_not_kept(): void {
 		$short = self::COMPLETE;
 		unset( $short[ SlotKey::GRIP ] );

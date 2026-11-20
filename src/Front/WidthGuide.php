@@ -79,8 +79,10 @@ final class WidthGuide {
 		$said = apply_filters( 'cbuild_width_guide', $rows, $kit );
 		$kept = array();
 		foreach ( Cast::items( $said ) as $row ) {
-			$shoe  = is_array( $row ) && is_string( $row['shoe'] ?? null ) ? trim( wp_strip_all_tags( $row['shoe'] ) ) : '';
-			$width = is_array( $row ) && is_string( $row['width'] ?? null ) ? trim( wp_strip_all_tags( $row['width'] ) ) : '';
+			$row = is_array( $row ) ? $row : array();
+			// wp_strip_all_tags() trims what it leaves, so a row of spaces or of markup alone is empty.
+			$shoe  = is_string( $row['shoe'] ?? null ) ? wp_strip_all_tags( $row['shoe'] ) : '';
+			$width = is_string( $row['width'] ?? null ) ? wp_strip_all_tags( $row['width'] ) : '';
 			if ( '' !== $shoe && '' !== $width ) {
 				$kept[] = array(
 					'shoe'  => $shoe,
