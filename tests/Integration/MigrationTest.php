@@ -150,7 +150,7 @@ final class MigrationTest extends IntegrationTestCase {
 				$wpdb->query( 'DROP TABLE IF EXISTS ' . $parts ); // phpcs:ignore
 				$states = get_option( Options::MIGRATIONS );
 				self::assertIsArray( $states );
-				self::assertSame( array( 'schema_1', 'noop_1', 'spec_tables_1', 'schema_2', 'reserved_slot_keys_1', 'spec_tables_2', 'layer_renditions_1' ), array_keys( $states ) );
+				self::assertSame( array( 'schema_1', 'noop_1', 'spec_tables_1', 'schema_2', 'reserved_slot_keys_1', 'spec_tables_2', 'layer_renditions_1', 'schema_3' ), array_keys( $states ) );
 				$later  = array(
 					'schema_2'             => true,
 					'reserved_slot_keys_1' => true,
@@ -170,6 +170,52 @@ final class MigrationTest extends IntegrationTestCase {
 				self::assertIsArray( $after );
 				self::assertSame( $before, array_diff_key( $after, $later ), 'the three it had run are as they were' );
 				self::assertSame( MigrationStatus::Done, MigrationState::fromArray( 'schema_2', $after['schema_2'] ?? null )->status );
+				self::assertFalse( $runner->needed() );
+			}
+		);
+	}
+
+	// D-289: 0.9.0 left schema version 6 and a parts table with no look or card. The columns are added to the rows
+	// already there, empty, and nothing else is run again.
+	public function test_a_site_on_0_9_0_gains_the_look_and_card_columns_and_keeps_its_rows(): void {
+		global $wpdb;
+		$parts = Tables::parts();
+		$this->withRealTables(
+			function () use ( $wpdb, $parts ): void {
+				delete_option( Options::DB_VERSION );
+				delete_option( Options::MIGRATIONS );
+				self::assertSame( RunResult::Finished, $this->service( MigrationRunner::class )->run() );
+
+				// As 0.9.0 left the site, with one part's row kept.
+				$wpdb->query( 'ALTER TABLE ' . $parts . ' DROP COLUMN look, DROP COLUMN card' ); // phpcs:ignore
+				$wpdb->query( $wpdb->prepare( 'INSERT INTO %i (part_id, context, parent_id, sellable, brand, price, in_stock, stock, attributes, specs, read_at) VALUES (41, %s, 0, 1, %s, 6000, 1, NULL, %s, %s, 1795000000)', $parts, 'ctx', 'katie', '{}', '{"deck_width":"8.2500"}' ) ); // phpcs:ignore
+				$states = get_option( Options::MIGRATIONS );
+				self::assertIsArray( $states );
+				unset( $states['schema_3'] );
+				update_option( Options::MIGRATIONS, $states, false );
+				update_option( Options::DB_VERSION, '6', true );
+
+				$runner = $this->service( MigrationRunner::class );
+				self::assertTrue( $runner->needed(), 'behind' );
+				self::assertSame( RunResult::Finished, $runner->run() );
+				$columns = $wpdb->get_col( 'SHOW COLUMNS FROM ' . $parts ); // phpcs:ignore
+				self::assertContains( 'look', $columns );
+				self::assertContains( 'card', $columns );
+				self::assertSame( MigrationRegistry::VERSION, get_option( Options::DB_VERSION ) );
+				$after = get_option( Options::MIGRATIONS );
+				self::assertIsArray( $after );
+				self::assertSame( $states, array_diff_key( $after, array( 'schema_3' => true ) ), 'the rest are as they were' );
+				$row = $wpdb->get_row( $wpdb->prepare( 'SELECT price, specs, look, card FROM %i WHERE part_id = 41', $parts ), ARRAY_A ); // phpcs:ignore
+				self::assertSame(
+					array(
+						'price' => '6000',
+						'specs' => '{"deck_width":"8.2500"}',
+						'look'  => null,
+						'card'  => null,
+					),
+					$row,
+					'the row kept, its look and card empty'
+				);
 				self::assertFalse( $runner->needed() );
 			}
 		);

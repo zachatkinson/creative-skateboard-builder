@@ -25,7 +25,7 @@ final class MigrationRegistry {
 	/**
 	 * The schema version `cbuild_db_version` holds once every migration below is done.
 	 */
-	public const VERSION = '6';
+	public const VERSION = '7';
 
 	/**
 	 * The migrations, oldest first.
@@ -40,6 +40,7 @@ final class MigrationRegistry {
 		ReservedSlotKeysMigration::class,
 		SeedBaseplatesMigration::class,
 		RenditionsMigration::class,
+		PartsLooksMigration::class,
 	);
 
 	/**

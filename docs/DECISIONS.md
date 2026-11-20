@@ -3560,3 +3560,30 @@ Spec (configurator): "The card shows the photo large"; the prototype's cards sho
   - The board-on-the-stage test measured the stage and the board in two calls straight after the answer, and once read the board before the stage's new height (1 run in 16 on `chromium-desktop`, Kadence at 1000 by 800). It measures both together, polled until the picture settles; a stage squeezed to 50 px still fails it.
 
 **Why:** the spec names tablets among the widths the builder is checked at, and the suite had phones and desktops only.
+
+
+### D-289 · Each part's look and card kept in the parts table, and the state route's riser clearance worked out once per answer · 2026-11-19
+
+- **What.** The parts table gains two columns, `look` and `card` (migration `schema_3`, schema version 7). Zach approved the table change on 19 November: "Add look+card columns". Each holds what `Adapter\WooPartLooks` and `Adapter\WooPartCards` read of a part, kept against the same stamp as in the object cache, and for an hour, as the object cache keeps them. A request that finds neither in the object cache reads them from the table with the part's facts, one query each, and loads no product for them.
+- **What forgets them.**
+  - A move that a card shows forgets both: a save, a stock or price change, a sale starting or ending, a deletion. `PartFacts::clear()` empties the columns.
+  - A forget of the facts alone, as from a reindex or a term set, marks the row stale (`read_at = 0`), so it is read from the shop again as one an hour old is. The look and card stay.
+  - When the row is written again, the look is carried over. The card is carried over only where the price and stock read are the same.
+  - A product deleted for good leaves its row, stale and without a look or card, until every row is forgotten or the plugin is uninstalled. That is a few hundred bytes a product, with nothing about a person.
+  - An entry read from the table goes back into the object cache for an hour. On a persistent cache that lost it early, it can outlive its first hour by up to an hour.
+- **Riser clearance (D-245) worked out once per answer.**
+  - R3 is the only standard rule that reads the wheels with the risers. Wheels it says the same of get the same answer, so they are worked out once.
+  - R4 is the only one that reads the risers with the bolts, and it reads their thickness alone, so risers are worked out once per thickness.
+  - Risers and bolts are judged one at a time, and the first that clears ends the search.
+  - Two unit tests hold the first two facts, so a rule added later breaks them rather than the answers.
+- **The budget's ceilings, moved with Zach's approval on 19 November.**
+  - Warm queries go from 18 to 20. The first warm request for a deck after a flush reads its kept looks and cards.
+  - The first request after a part moves goes from 40 to 44. It reads the kept looks and cards, and keeps the moved part's again.
+  - The cold ceiling of 45 and the 80 ms budget are unchanged.
+- **The benchmark.** Before each shape's cold and warm runs, each of the seven decks is asked once, so the table holds their looks and cards as a shop's does between changes. The session benchmark warms the visitor's own price context the same way.
+- **Numbers on this Mac, all eight state route benchmarks in one run.**
+  - Cold: p95 65.0 ms, 44 queries. It was 147 ms with D-245 wired and 1,252 ms before that.
+  - Warm: p95 58.9 ms, 20 queries.
+  - The first request after a reindex: 54.8 ms and 44 queries, from 112 ms and 81.
+
+**Why:** M10's looks and cards were kept in the object cache alone. On a site with none that persists, which is most shops and the demo, every request loaded each candidate's product to draw its card, and the state route took over a second. Zach: "fix the performance first".

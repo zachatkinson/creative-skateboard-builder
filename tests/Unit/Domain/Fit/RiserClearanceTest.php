@@ -20,7 +20,9 @@ use CreativeBranding\SkateboardBuilder\Domain\Kit\SlotKey;
 use CreativeBranding\SkateboardBuilder\Domain\Measure\Measure;
 use CreativeBranding\SkateboardBuilder\Domain\Rule\Finding;
 use CreativeBranding\SkateboardBuilder\Domain\Rule\MessageCode;
+use CreativeBranding\SkateboardBuilder\Domain\Rule\Rule;
 use CreativeBranding\SkateboardBuilder\Domain\Rule\RuleId;
+use CreativeBranding\SkateboardBuilder\Domain\Rule\RuleSet;
 use CreativeBranding\SkateboardBuilder\Domain\Rule\Severity;
 use CreativeBranding\SkateboardBuilder\Domain\Rule\Source;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Domain\Builds;
@@ -95,6 +97,50 @@ final class RiserClearanceTest extends TestCase {
 			'offered' => array_map( static fn( Option $option ): int => $option->part->id, $options->offered ),
 			'hidden'  => $hidden,
 		);
+	}
+
+	// D-289: the wheels are worked out once for each thing R3 says of them, which holds while R3 is the only rule that
+	// reads the wheels with the risers. A rule that also did would make two wheels R3 says the same of differ.
+	public function test_r3_is_the_only_standard_rule_that_reads_the_wheels_with_the_risers(): void {
+		$rules = ( new \ReflectionProperty( RuleSet::class, 'rules' ) )->getValue( RuleSet::standard() );
+		self::assertIsArray( $rules );
+		$both = array();
+		foreach ( $rules as $rule ) {
+			self::assertInstanceOf( Rule::class, $rule );
+			if ( in_array( SlotKey::WHEELS, $rule->slots(), true ) && in_array( SlotKey::RISERS, $rule->slots(), true ) ) {
+				$both[] = $rule->id();
+			}
+		}
+		self::assertSame( array( RuleId::R3 ), $both );
+	}
+
+	// D-289: the bolts are worked out once for each riser thickness, which holds while R4 is the only rule that reads
+	// the risers with the bolts, and reads their thickness alone.
+	public function test_r4_is_the_only_standard_rule_that_reads_the_risers_with_the_bolts(): void {
+		$rules = ( new \ReflectionProperty( RuleSet::class, 'rules' ) )->getValue( RuleSet::standard() );
+		self::assertIsArray( $rules );
+		$both = array();
+		foreach ( $rules as $rule ) {
+			self::assertInstanceOf( Rule::class, $rule );
+			if ( in_array( SlotKey::RISERS, $rule->slots(), true ) && in_array( SlotKey::HARDWARE, $rule->slots(), true ) ) {
+				$both[] = $rule->id();
+			}
+		}
+		self::assertSame( array( RuleId::R4 ), $both );
+	}
+
+	public function test_wheels_r3_says_the_same_of_get_the_same_answer_whatever_else_they_differ_in(): void {
+		$kit    = KitDocuments::kit();
+		$soft   = Parts::of( array( 'wheel_diameter' => '60', 'set_size' => 4 ), 361 );
+		$hard   = Parts::of( array( 'wheel_diameter' => '60', 'bearings_included' => true, 'set_size' => 4 ), 362 );
+		$wheels = FitEngine::standard()->options( $kit, SlotKey::WHEELS, self::build(), array( $soft, $hard ) );
+		$codes  = static fn( SlotOptions $options ): array => array_map( static fn( Option $option ): string => $option->reason()?->code->value ?? '', $options->hidden );
+		$clear  = new RiserClearance( FitEngine::standard() );
+
+		$short = $clear->wheels( $kit, self::build(), $wheels, array( Builds::riser( '0.5' ) ), array( Builds::bolts( '1.25' ) ) );
+		self::assertSame( array( MessageCode::RiserNoBolts->value, MessageCode::RiserNoBolts->value ), $codes( $short ), 'both, for the one reason' );
+		$long = $clear->wheels( $kit, self::build(), $wheels, array( Builds::riser( '0.5' ) ), array( Builds::bolts( '1.5' ) ) );
+		self::assertSame( array( 361, 362 ), array_map( static fn( Option $option ): int => $option->part->id, $long->offered ) );
 	}
 
 	public function test_wheels_stay_when_a_riser_in_stock_clears_them_with_bolts_long_enough(): void {
@@ -198,6 +244,24 @@ final class RiserClearanceTest extends TestCase {
 		self::assertSame( array( 'offered' => array( 401 ), 'hidden' => array( 402 => 'riser_bolts_short' ) ), self::risers( array( Builds::bolts( '1.25', 601 ) ) ) );
 		self::assertSame( array( 'offered' => array( 401, 402 ), 'hidden' => array() ), self::risers( array( Builds::bolts( '1.25', 601 ), Builds::bolts( '1.5', 602 ) ) ) );
 		self::assertSame( array( 'offered' => array(), 'hidden' => array( 401 => 'riser_bolts_short', 402 => 'riser_bolts_short' ) ), self::risers( array( self::stocked( Builds::bolts( '1.5', 601 ), 0 ) ) ) );
+	}
+
+	// D-289: the bolts are worked out once for each riser thickness, and the first in stock that R4 allows ends the
+	// search, past any sold out before it.
+	public function test_risers_as_thick_get_the_same_answer_and_a_sold_out_bolt_is_passed_over(): void {
+		$kit    = KitDocuments::kit();
+		$build  = self::build()->with( SlotKey::WHEELS, Builds::wheel( '57' ) );
+		$risers = FitEngine::standard()->options( $kit, SlotKey::RISERS, $build, array( Builds::riser( '0.5', 402 ), Parts::of( array( 'riser_thickness' => '0.5', 'set_size' => 4 ), 403 ) ) );
+		$clear  = new RiserClearance( FitEngine::standard() );
+		$ids    = static fn( array $options ): array => array_map( static fn( Option $option ): int => $option->part->id, $options );
+
+		$short = $clear->risers( $kit, $build, $risers, array( Builds::bolts( '1.25', 601 ) ) );
+		self::assertSame( array( 402, 403 ), $ids( $short->hidden ), 'both, for the one thickness' );
+		$long = $clear->risers( $kit, $build, $risers, array( self::stocked( Builds::bolts( '1.5', 601 ), 0 ), Builds::bolts( '1.5', 602 ) ) );
+		self::assertSame( array( 402, 403 ), $ids( $long->offered ) );
+		$bolt = Builds::bolts( '1.5', 603 );
+		$few  = $clear->risers( $kit, $build, $risers, array( new Part( $bolt->id, $bolt->brand, $bolt->specs, $bolt->price, true, 0 ) ) );
+		self::assertSame( array( 402, 403 ), $ids( $few->hidden ), 'a bolt said to be in stock with none to sell is not enough' );
 	}
 
 	public function test_a_kit_with_no_hardware_slot_offers_every_riser(): void {

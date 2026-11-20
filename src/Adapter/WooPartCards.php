@@ -9,6 +9,7 @@ declare( strict_types=1 );
 
 namespace CreativeBranding\SkateboardBuilder\Adapter;
 
+use CreativeBranding\SkateboardBuilder\Port\PartFacts;
 use CreativeBranding\SkateboardBuilder\Port\PartCards;
 use CreativeBranding\SkateboardBuilder\Support\Cast;
 use CreativeBranding\SkateboardBuilder\Support\Options;
@@ -77,9 +78,10 @@ final class WooPartCards implements PartCards {
 	 *
 	 * @since 0.4.0
 	 *
-	 * @param Products $products Loads products in one query.
+	 * @param Products  $products Loads products in one query.
+	 * @param PartFacts $facts    Keeps each card beside its part's facts in its price context (D-289).
 	 */
-	public function __construct( private Products $products ) {}
+	public function __construct( private Products $products, private PartFacts $facts ) {}
 
 	/**
 	 * The cards of these parts, by ID, in the order asked.
@@ -126,7 +128,29 @@ final class WooPartCards implements PartCards {
 			$cards[ $id ] = $card;
 		}
 
+		// Then beside the parts' facts in this price context, where a site with no persistent object cache keeps
+		// them between requests (D-289).
+		foreach ( array() === $others ? array() : $this->facts->kept( $context, ...array_keys( $others ) ) as $id => $row ) {
+			$entry = $row['card'];
+			$card  = is_array( $entry ) && ( $entry['stamp'] ?? null ) === ( $stamps[ $id ] ?? null ) ? self::read( $entry['card'] ?? null ) : null;
+			if ( null === $card || ! isset( $others[ $id ] ) ) {
+				continue;
+			}
+			$cards[ $id ] = $card;
+			wp_cache_set(
+				self::key( $id ),
+				array(
+					'stamp' => $stamps[ $id ],
+					'cards' => array_slice( array( $context => $card ) + $others[ $id ], 0, self::CONTEXTS, true ),
+				),
+				Options::CACHE_GROUP,
+				HOUR_IN_SECONDS
+			);
+			unset( $others[ $id ] );
+		}
+
 		if ( array() !== $others ) {
+			$keep   = array();
 			$missed = $this->products->load( ...array_keys( $others ) );
 			$images = array();
 			foreach ( $missed as $product ) {
@@ -140,6 +164,10 @@ final class WooPartCards implements PartCards {
 			_prime_post_caches( array_values( array_unique( $images ) ), false, true );
 			foreach ( $missed as $id => $product ) {
 				$cards[ $id ] = self::card( $product );
+				$keep[ $id ]  = array(
+					'stamp' => $stamps[ $id ],
+					'card'  => $cards[ $id ],
+				);
 				wp_cache_set(
 					self::key( $id ),
 					array(
@@ -151,6 +179,7 @@ final class WooPartCards implements PartCards {
 					HOUR_IN_SECONDS
 				);
 			}
+			$this->facts->keep( $context, 'card', $keep );
 		}
 
 		$ordered = array();
@@ -241,7 +270,10 @@ final class WooPartCards implements PartCards {
 				'no_found_rows'   => true,
 			)
 		);
-		foreach ( array_merge( $ids, Cast::ints( $children->posts ) ) as $id ) {
+		$moved    = array_merge( $ids, Cast::ints( $children->posts ) );
+		// Kept beside the facts too, in every price context (D-289).
+		$this->facts->clear( ...$moved );
+		foreach ( $moved as $id ) {
 			wp_cache_delete( self::key( $id ), Options::CACHE_GROUP );
 			// Its look is kept beside its card, against the same stamp (D-263).
 			wp_cache_delete( WooPartLooks::key( $id ), Options::CACHE_GROUP );

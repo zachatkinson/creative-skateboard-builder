@@ -194,6 +194,12 @@ final class CartBenchmarkTest extends CartTestCase {
 		// The parts' rows are kept by the first request after the fixture's saves (D-116), which is not what is measured.
 		self::timed( $state(), 200 );
 		$kept = array( WC()->customer, WC()->cart, WC()->session );
+		// And their looks and cards in the visitor's own price context, by the first request that finds the visitor
+		// (D-289): kept once, as the rows are.
+		WC()->customer = null;
+		WC()->cart     = null;
+		WC()->session  = null;
+		self::timed( $state(), 200 );
 		$with = array();
 		$bare = array();
 		$read = did_action( 'woocommerce_cart_loaded_from_session' );

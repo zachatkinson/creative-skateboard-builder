@@ -47,8 +47,10 @@ final class StateRouteBenchmarkTest extends IntegrationTestCase {
 	 */
 	private const QUERIES = array(
 		'cold'  => 45,
-		'warm'  => 18,
-		'moved' => 40,
+		// The first warm request for a deck after a flush reads its kept looks and cards, one query each (D-289).
+		'warm'  => 20,
+		// The first request after a part moves reads the kept looks and cards and keeps the part's again (D-289).
+		'moved' => 44,
 	);
 
 	/**
@@ -253,6 +255,12 @@ final class StateRouteBenchmarkTest extends IntegrationTestCase {
 		foreach ( array( 'plain' => array( false, false ), 'move' => array( true, false ), 'narrowed' => array( false, true ) ) as $shape => [ $move, $narrow ] ) {
 			// Each shape from an address of its own: the runs are as many requests as one address may make in a minute.
 			$_SERVER['REMOTE_ADDR'] = array( 'plain' => '203.0.113.7', 'move' => '203.0.113.9', 'narrowed' => '203.0.113.11' )[ $shape ];
+			// The parts table as a shop's is between changes: each deck's answer asked once, so its looks and cards are
+			// kept beside their facts, as the facts were by the first answer (D-289). "Cold" empties the object cache
+			// alone; the first request after a change is timed below.
+			foreach ( array_slice( $ids['deck'], 0, 7 ) as $deck ) {
+				$ask( $deck, $move, $narrow );
+			}
 			foreach ( array( 'cold' => true, 'warm' => false ) as $run => $flush ) {
 				$times   = array();
 				$queries = array();

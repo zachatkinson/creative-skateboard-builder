@@ -63,7 +63,7 @@ Per site, each named with the site's table prefix first (`wp_cbuild_specs` on a 
 | --- | --- | --- |
 | `cbuild_specs` | 0.1.0 | One row per part and spec: the index the fit engine reads, filled from 0.3.0. |
 | `cbuild_builds` | 0.1.0 | Saved builds, filled from 0.8.0. |
-| `cbuild_parts` | 0.4.0 | What a build needs to know of each part, one row per product or variation and price context: whether it may be sold, its brand, price, stock, a variation's attribute values and its specs. Derived from the shop: a row is deleted when its part moves and read again when next asked for, so a row is never the place to change a part. To have rows read again, do `cbuild_parts_changed`. |
+| `cbuild_parts` | 0.4.0 | What a build needs to know of each part, one row per product or variation and price context: whether it may be sold, its brand, price, stock, a variation's attribute values and its specs; from 1.0.0 also the part's look and card as the builder shows them, kept for an hour (D-289). Derived from the shop: a row is read again when its part moves, so a row is never the place to change a part. To have rows read again, do `cbuild_parts_changed`. |
 
 ### Scheduled actions
 

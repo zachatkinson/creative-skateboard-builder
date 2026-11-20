@@ -10,6 +10,7 @@ declare( strict_types=1 );
 namespace CreativeBranding\SkateboardBuilder\Adapter;
 
 use CreativeBranding\SkateboardBuilder\Port\LookFact;
+use CreativeBranding\SkateboardBuilder\Port\PartFacts;
 use CreativeBranding\SkateboardBuilder\Port\PartLooks;
 use CreativeBranding\SkateboardBuilder\Port\ProductMeta;
 use CreativeBranding\SkateboardBuilder\Support\Cast;
@@ -52,8 +53,9 @@ final class WooPartLooks implements PartLooks {
 	 *
 	 * @param Products    $products Loads products in one query.
 	 * @param ProductMeta $meta     Reads the products' meta in one query.
+	 * @param PartFacts   $facts    Keeps each look beside its part's facts (D-289).
 	 */
-	public function __construct( private Products $products, private ProductMeta $meta ) {}
+	public function __construct( private Products $products, private ProductMeta $meta, private PartFacts $facts ) {}
 
 	/**
 	 * The facts of these parts, by ID, in the order asked.
@@ -93,8 +95,22 @@ final class WooPartLooks implements PartLooks {
 			}
 		}
 
+		// Then beside the parts' facts, where a site with no persistent object cache keeps them between requests
+		// (D-289): reading them from the shop loads every candidate's product.
+		$context = WooPartCards::context();
+		$waiting = array_values( array_diff( array_keys( $posts ), array_keys( $facts ) ) );
+		foreach ( array() === $waiting ? array() : $this->facts->kept( $context, ...$waiting ) as $id => $row ) {
+			$entry = $row['look'];
+			$kept  = is_array( $entry ) && ( $entry['stamp'] ?? null ) === ( $stamps[ $id ] ?? null ) ? self::read( $entry['look'] ?? null ) : null;
+			if ( null !== $kept ) {
+				$facts[ $id ] = $kept;
+				wp_cache_set( self::key( $id ), $entry, Options::CACHE_GROUP, HOUR_IN_SECONDS );
+			}
+		}
+
 		$missed = array_values( array_diff( array_keys( $posts ), array_keys( $facts ) ) );
 		if ( array() !== $missed ) {
+			$keep     = array();
 			$products = $this->products->load( ...$missed );
 			$owners   = $this->products->parentsOf( $products );
 			// The layer image is the products' meta, which WooCommerce reads a product at a time unless it is primed.
@@ -112,16 +128,13 @@ final class WooPartLooks implements PartLooks {
 					}
 				}
 				$facts[ $id ] = self::fact( $one );
-				wp_cache_set(
-					self::key( $id ),
-					array(
-						'stamp' => $stamps[ $id ],
-						'look'  => $one,
-					),
-					Options::CACHE_GROUP,
-					HOUR_IN_SECONDS
+				$keep[ $id ]  = array(
+					'stamp' => $stamps[ $id ],
+					'look'  => $one,
 				);
+				wp_cache_set( self::key( $id ), $keep[ $id ], Options::CACHE_GROUP, HOUR_IN_SECONDS );
 			}
+			$this->facts->keep( $context, 'look', $keep );
 		}
 
 		$ordered = array();
