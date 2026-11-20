@@ -12,8 +12,8 @@ A WooCommerce plugin that sells complete skateboards built from the parts a shop
 ![WooCommerce 11.2+](https://img.shields.io/badge/WooCommerce-11.2%2B-7f54b3)
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/images/review-dark.png">
-  <img src="docs/images/review-light.png" alt="The builder on a desktop at its review: the complete board drawn on the left, and on the right every part with its price, the total and Add to cart" width="800">
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/review-dark.png?raw=true">
+  <img src="docs/images/review-light.png?raw=true" alt="The builder on a desktop at its review: the complete board drawn on the left, and on the right every part with its price, the total and Add to cart" width="800">
 </picture>
 
 </div>
