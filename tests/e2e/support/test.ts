@@ -24,7 +24,50 @@ export const test = base.extend( {
 		);
 		await provide( context );
 	},
+	// The builder's pieces are hydrated one region at a time (D-296), and in WebKit, which has no scheduler.yield,
+	// that takes some 100 ms past the load: a press before then is sent as the page would send it without the script.
+	// A page the store runs on waits for the builder's ready mark, set by its last region, as a shopper sees it settle.
+	page: async ( { page, javaScriptEnabled }, provide ) => {
+		if ( false !== javaScriptEnabled ) {
+			const ready = () => builderReady( page );
+			for ( const name of [
+				'goto',
+				'reload',
+				'goBack',
+				'goForward',
+			] as const ) {
+				const move = page[ name ].bind( page ) as (
+					...args: unknown[]
+				) => Promise< unknown >;
+				( page as unknown as Record< string, unknown > )[ name ] =
+					async ( ...args: unknown[] ) => {
+						const answer = await move( ...args );
+						await ready();
+						return answer;
+					};
+			}
+		}
+		await provide( page );
+	},
 } );
+
+/**
+ * Waits for the builder's ready mark, set once its last region is hydrated (D-296). A page with no builder has nothing
+ * to wait for, nor one whose scripts don't run: the test site's pages load jQuery as a classic script in the head, so
+ * it is missing exactly where JavaScript is off, and the mark never comes.
+ *
+ * @param page The page.
+ */
+export async function builderReady( page: Page ): Promise< void > {
+	await page.waitForFunction(
+		() =>
+			! document.querySelector( '.cbuild' ) ||
+			! ( 'jQuery' in window ) ||
+			null !== document.querySelector( '.cbuild[data-ready]' ),
+		undefined,
+		{ timeout: 15000 }
+	);
+}
 
 /**
  * A number as the page writes it for the project's locale: French writes a decimal comma. The page formats a value
@@ -62,6 +105,8 @@ export async function answered( page: Page, send: () => Promise< void > ) {
 		page.waitForEvent( 'load' ),
 		send(),
 	] );
+	// The page that answered, with the store running on it where it runs at all.
+	await builderReady( page );
 }
 
 /**

@@ -11,6 +11,10 @@ namespace CreativeBranding\SkateboardBuilder\Service;
 
 use CreativeBranding\SkateboardBuilder\Port\Kits;
 
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 /**
  * What an order keeps of a build (spec: Cart, checkout and orders, Orders): the snapshot on the kit's item, which is
  * kept for as long as the order is, and which of an order's items belong to which. The hooks hand over what

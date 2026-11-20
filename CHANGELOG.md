@@ -2,7 +2,105 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html). One entry per milestone; `v1.0.0` closes milestone 10 (D-236).
 
-## [Unreleased]
+## [1.0.0] - 2026-11-20
+
+### Added
+
+- The specs CSV's `layer_image` column. An export writes the file name of each part's own Layer image; an import sets it by attachment ID or file name, held to the Layer image field's rules, with a refusal in the field's own words. An empty cell leaves a product's image as it is and gives a variation its parent's. WP-CLI's `cbuild specs` takes it too (D-287).
+- Message codes for parts a step hides because the kit can't supply the riser they need (D-245): `riser_not_in_stock`, `riser_no_bolts` and `riser_no_slot` on wheels, and `riser_bolts_short` on risers.
+- The `bearings_included` spec on wheels, in Part specs and the CSV. Wheels that carry it fill the kit's Bearings slot, and R5 blocks a separate bearing with the code `bearings_included` (D-246).
+- The state route's `shelf`: the current step as cards, one per look, with the chips, the deck's width question, a page of 30 and the sold-out looks (D-264). The route takes `width`, `chips`, `q`, `sort` and `from` for it, and a build link carries them as `_width`, `_chips`, `_q` and `_sort`. A search is ranked by Creative Search where it answers `csearch_ranked_ids`, and matched by the builder otherwise (D-248).
+
+- The deck step asks "What width do you ride?" first, one button a width with how many decks it has in stock, and lists that width's decks; a build that holds a deck starts at its width. A step with more than 40 parts has a search box, one with more than 12 has chips, and every step has a sort, a page of 30 with "Show 30 more", and its sold-out parts folded under "Show N sold out". Each works without JavaScript; with it, the step changes in place and focus stays on the control used (D-266).
+
+- `--cbuild-bar-size`, which the builder sets on the page's root to the bar's height while the bar sticks over the page.
+- On the state route, each look of the `shelf` names its product (`name`), its `brand` and what tells it from the product's other looks (`look`), and an option's `delta` says its `change` as a card does under the full price (D-249, D-273).
+- A kit's page takes the page's width (D-274). In a block theme it takes a template of the plugin's, "Skateboard kit", which the shop can edit in the Site Editor; in a classic theme the builder sits before the product's summary, whose title and form go. The builder prints the product's name as the page's h1 where it takes the theme's title's place, and has a link back to the shop. The Builder block gains `title`, and a block with no kit on a kit's page is that kit's.
+- `--cbuild-top`, for a theme's sticky header to keep the stage and the panel clear of it, `--cbuild-stage-height`, the stage's height on a phone, and `--cbuild-stage-size`, which the builder sets to how far down the screen the stage reaches, so a control in focus is scrolled clear of it.
+- A signed-in customer's deck step opens on the width of the deck in the build they saved last, where the kit offers it; a width asked for, or the deck the build holds, comes first. Nothing is stored for it (spec: The deck's width first; D-242).
+- A search that lists nothing says why and offers the way on: "No 8.25″ decks match Rascals. Rascals comes in 8.5″." with a button to each width; "2 parts match, but they don't fit your build." with See why, which opens the hidden parts; or "No trucks match zzz." with Clear search. The state route's `shelf` gains `elsewhere` and `hidden_matching` (spec: Search).
+- A saved build that has changed since it was saved opens from My builds on "Your build has changed" before its review: each part gone, sold out or no longer fitting, with the closest part that fits in its place; each new price, "Independent 149 trucks: $59.00 when you saved, $64.00 now"; and the total then and now. Use these takes the replacements to the review, and Choose myself opens the first changed step. Save build keeps each line's price and the currency beside the picks; a build saved before 1.0.0 shows the parts alone (spec: A saved build that has changed; D-254, D-278).
+- A kit's Build tab has a Layout section: the stage on the left or right of a desktop, the board large (60 %) or balanced (50 %), and the steps' search, Creative Search where it is active or the builder's own always. It is kept in `_cbuild_layout` (`schema/kit-layout.json`); a kit with none has the defaults (spec: Settings; D-255).
+- The state route's answer gains `photo` on each card and picture item, whether its image is the part's photo or its layer image, `bearings_included`, `currency` (how the shop writes a price, for milestone 11's totals) and, for a build link carrying `_saved`, `reopened`: what changed in a saved build and its prices then and now.
+- The Catalogue check says which variations share a photo, and so a card, in a list of its own (`look_shared`, D-281).
+- The risers step says why it appeared: "Your 58 mm wheels need ¼″ risers with these trucks."
+- A step lists 500 looks at most, page by page, as a reload keeps; search and filters narrow past it.
+- On a phone the step's filter chips fold behind a Filters button, which says how many are chosen, so the cards come first; without JavaScript they show as before (spec: Phone).
+- The picked card is followed by its sizes, "Size for Retna Cruiser, Mint", where nothing in the build decides the size, as wheels' diameter. Each size is a pick of the step; the route's looks gain `sized` (spec: One card per look; D-279).
+- "Build a complete with this deck" after a deck's add-to-cart form opens the first kit by menu order whose first slot offers it, with the deck picked and its width with it. `cbuild_start_button` chooses the kit, moves the button, words it or turns it off (spec: Ways in that skip the hunt; D-253).
+- Rider builds: a preset's tile shows a rider photo set on the preset, else the build's composed picture once made, asked for as a page asks; the deck's photo until then. Presets gain an optional `image` in `schema/kit-presets.json`, and the Build tab a Photo field with the media library's modal (D-252).
+- "Not sure of your width?" under the deck's width question opens a guide by shoe size, after Skate Warehouse's deck buying guide, without JavaScript; `cbuild_width_guide` gives a shop its own rows (spec: The deck's width first).
+- A wheel card over the trucks' limit says the riser it needs, "Needs ¼″ risers with your trucks", in place of "Fits, with a note"; each finding in the state route's answer and in the `check-build` ability's `problems[].messages[]` gains `short`, that label or empty (spec: Risers).
+- Wheels sold with their bearings take the bearings step off the rail, and the review says "Bearings: Included with your wheels", changed with the wheels. "Add risers" under the review's parts opens the risers step when nothing asks for it (spec: Bearings, Risers, The review; D-246, D-276).
+- A skip link, "Skip to the step", is the builder's first stop; the first deck is at most eight presses after it. "Show 30 more" says how many it added, and below 320 px the stage scrolls with the page (spec: Accessibility).
+
+### Fixed
+
+- The builder no longer holds the page for long as it starts: each of its pieces starts in a task of its own, where the whole builder took one, which on a slow phone blocked the page for over 200 ms (D-296). Its markup and behaviour are unchanged; the root element is no longer itself an Interactivity region.
+- Layer image renditions are saved at their own quality, so another plugin's image quality setting cannot fail them, and a rendition that fails no longer stops the others: the part is drawn from its WebP copy or its full-size file (D-286).
+- The builder's stylesheet and script are asked for as 1.0.0, so a browser or a page cache no longer serves 0.6.0's against this release's markup: the block's `block.json` still said 0.6.0, which WordPress writes on them as their version. A gate holds it to the plugin's (the auditor's M10 review, 5).
+- On a phone and a tablet, the control in focus is never behind the stage at the top of the screen: the page keeps room for it as it does for the bar, going back up a step and after Next (WCAG 2.4.11; the auditor's M10 review, 1).
+- Enter in a step's search searches it at the width shown; it pressed the narrowest width's button (the auditor's M10 review, 2).
+- Typing in a step's search no longer loses letters while an answer is slow: a key drops the answer asked for before it (the auditor's M10 review, 19).
+- The Build a complete button's link carries `rel="nofollow"`, a deck's page reads only what is kept of the kit's decks, and a shop's `slot` in `cbuild_start_button` is the one picked (the auditor's M10 review, 3, 4, 11).
+- Past the state route's rate limit, the step keeps what it shows and says when to try again: "Too many requests. Try again in 20 seconds.", from the route's own answer, which now names the wait (spec: Search, the rate limit). A 429 that says nothing still sends the form.
+- On a tablet the board is turned on the stage as on a phone, so it fits the strip on top (D-280).
+- On a theme with no colour presets, the rail's current step and a pressed chip read: their words are painted in the colour on the accent. The rail, cards and ready builds take no list numbers or indent from the theme (D-280).
+- The deck step shows only its width question until a width is picked.
+- French: names no longer follow « de » (« Annuler la suppression du montage %s », « Voir la fiche du produit %s », « Partir du modèle %s »), the bar says « Planche complète dès environ », My builds names the « Récapitulatif » step, and a card's fit label has a sentence per case, so English now has "Fits your %s deck" and "Recommended for your %s deck" of their own (Cowork; #65).
+- CI stops an apt-get a timed-out Playwright install left, and repairs dpkg, before the next try (#64; D-224).
+- The builder draws its own radios, a ring in its text colour on its own ground and a dot once picked, so an unpicked card no longer looks filled in on a dark theme. With forced colours the browser's radio is drawn (Cowork; #68).
+- In HTML emails a kit with no photo of its own has no placeholder image on its line, alt "Placeholder", above the build's picture (Cowork; #69).
+- My builds' Undo says what it undoes, "Street setup is deleted. You can undo this for 15 minutes.", since a theme can show WooCommerce's notice far from it, and the deleted build is kept for Undo 15 minutes at most (Cowork; #66, #67; D-275).
+- The step rail says each step in one sentence, "Deck, done: Katie", "Trucks, current step", "Wheels, to come", where a screen reader heard the label and its state run together. Once a step has a pick, the next step is a link in the rail (spec: The step rail).
+- Focus stays clear of the bar however many lines the bar takes, on a phone and in a narrow column on a desktop (D-272).
+- On a phone, Next stays under the thumb when the first deck's answer arrives while the shopper is at the end of the step (D-267). In Safari too, where a pressed button takes no focus: the control under a press is kept in place first.
+- Right to left on Kadence, the rail, the cards and the ready builds no longer take the theme's indent for a list.
+- In Safari, Show the top turns the board when the top of the picture is scrolled off the screen. The press focused the picture, which scrolled it into view and moved the button from under the pointer.
+- Part specs opens Sold in sets for any part in a slot that takes more than one unit, so a riser's Number in a set is filled in and the riser is offered (Cowork; #61).
+- Saving a kit whose presets are unchanged and name a part the shop hides no longer says the presets were not saved. The Build tab says which preset holds which part, and the presets are kept as they are (Cowork; #62).
+- Clear search, or Enter, pressed within the moment a search waits after typing, no longer has the search put back after it.
+- A specs sheet exported and imported again keeps each part's own layer image without looking it up, so another image with the same file name no longer refuses the row, and 2,000 rows plan in under a second.
+- A deleted build's Undo copy leaves the session once it is read past its 15 minutes.
+- The state route answers inside its 80 ms budget again on a site with no persistent object cache: each part's look and card are kept beside its facts (D-289).
+- The Layer image field's button names its part, "Choose an image for Wheels, Mint", so a page of variations has buttons of distinct names.
+- A layer image named in the specs CSV is found among any number of images whose file names hold its name; the lookup stopped at 20.
+- A layer image rendition that fails in its quality or resize step is logged as that step, not as the save.
+- A Catalogue check's list of IDs reads as a list, "11, 12 and 13", in the site's language.
+- The cards of variations that show their parent's layer image read the parent once between them.
+- Site Health's Catalogue check test no longer works out which variations share a card, which it never counted.
+- The Catalogue check's table and a kit's Build tab read their products in a fixed number of queries, however many rows they show.
+- Counts said in Site Health, the import's progress and the saved-builds limit use the language's plural forms.
+- A customer's saved builds are read to the most kept (100), and a save past it is refused by the table itself, so two saves at once can't both pass.
+- A pressed filter keeps its line in the accent colour under the focus ring.
+- Once a deck width is chosen, the step shows it as its first line with Change, which opens the widths again, and focus goes to that line; it listed every width.
+- The step's search hint names one of the step's brands: "Brand or graphic, like Rascals".
+- On a variable deck's page, "Build a complete with this deck" opens the variation chosen in the product's form; it opened the first in stock.
+- On a phone, the width guide, the parts that don't fit and a card's link to its product page are 44 px targets.
+
+### Changed
+
+- On a phone and a tablet the stage is about a third of the screen, as the prototype's, so the step starts in the first screen (D-284).
+- The footer says "Total" over the sum (D-285).
+- A heading the builder moves focus to is not outlined by a theme that outlines anything in focus; the error summary keeps its ring.
+- The Builder block is full width unless the editor chose otherwise (its `align` defaults to `full`), so a page's builder has its stage beside its steps on a desktop rather than above them in the theme's column. The editor's alignment, spacing, colours and font size now reach the page, as they reach the editor; until 1.0.0 the page left them off (D-283).
+- A part card with no photo shows the part's layer image, uncropped, and the chosen card is marked by a tick and a thicker border in place of the radio's circle (D-282, #68).
+- The parts table gains `look` and `card` columns (schema version 7, D-289).
+- The state route's `currency.format` is plain text, its space a no-break space, not `&nbsp;` (D-290).
+
+- The builder takes the prototype's layout (D-268 to D-271). A row of steps across the top; the board on a stage with "Your board" and the side it shows, and "Pick a deck to start" before a deck; the step beside it in a panel that scrolls on its own; and a footer pinned under the panel with the total, the estimate, Back and Next, or Add to cart. On a phone the stage stays at the top, the rail shows the step before, the step shown and the step after, and the footer is the bar.
+- The step's heading says its question, such as "Choose your deck", with its help under it; a screen reader hears the count first, and the page's title keeps it (D-269).
+- Each row of the review shows the part's price and a Change button. The assembly switch is on the review.
+- `--cbuild-card-width` defaults to `13.5rem`.
+- The prototype's card: the photo large, the brand, the product's name and the look's (such as "Mint"), the full price large, and under it, once the step has a pick, "+$12.00 over your pick", "Same price", "$8.00 less" or "Included". A deck card names its other widths, "Also in 8″ and 8.5″". On a phone the photo sits beside the words (D-249, D-273).
+- CI runs the newest leg's other browser engines, projects, updates and visual snapshots as five jobs beside it, so a full run takes about 30 minutes rather than 95 (D-258).
+
+### Removed
+
+- The summary beside the steps, and with it `--cbuild-summary-width`, which set its width. The footer holds the total and the parts at every width (D-271).
+- The phone bar's small picture of the board: the stage stays in view above the step.
+
+## [0.9.0] - 2026-11-18
 
 ### Changed
 

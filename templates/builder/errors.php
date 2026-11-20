@@ -8,7 +8,7 @@
 
 defined( 'ABSPATH' ) || exit;
 ?>
-<div class="cbuild-errors" tabindex="-1" data-wp-bind--hidden="!state.view.errors.shown">
+<div class="cbuild-errors" data-wp-interactive="creative-skateboard-builder" tabindex="-1" data-wp-bind--hidden="!state.view.errors.shown">
 	<h3 class="cbuild-errors__heading" data-wp-text="state.view.errors.heading"></h3>
 	<ul class="cbuild-errors__list">
 		<template data-wp-each--error="state.view.errors.items">

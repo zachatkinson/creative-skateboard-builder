@@ -117,7 +117,7 @@ final class BuildCart {
 			// Edit build's add keeps the quantity the cart holds of the build it replaces, and is counted against the
 			// shop's stock without that build's lines, which go once it is in (D-157).
 			$held       = $this->held( $replace );
-			$this->said = array( $asking, $this->judge( $kit, $read, $asked, $assembly, max( 1, $quantity, $held[1] ), $held[0] ) );
+			$this->said = array( $asking, $this->judge( $kit, $read, $asked, $assembly, max( 1, $quantity, $held[1] ?? $quantity ), $held[0] ?? array() ) );
 		}
 		if ( null !== $this->said[1]->build && '' !== $replace ) {
 			$this->replacing[ $this->said[1]->build->id ] = $replace;
@@ -163,7 +163,7 @@ final class BuildCart {
 		// Edit build's add takes the build it replaces out first, so that WooCommerce's own stock check does not
 		// count it beside the new one, and puts it back as it was when the new one cannot all go in: the shopper
 		// never ends up with neither. The new one keeps the quantity the cart held of it (D-157).
-		[ $old, $held ] = $this->held( $this->replacing[ $build->id ] ?? '' );
+		[ $old, $held ] = $this->held( $this->replacing[ $build->id ] ?? '' ) ?? array( array(), $line->quantity );
 		unset( $this->replacing[ $build->id ] );
 		foreach ( $old as $gone ) {
 			$this->cart->remove( $gone );
@@ -172,9 +172,10 @@ final class BuildCart {
 		foreach ( $build->picks as $slot => $part ) {
 			$child = $this->cart->add( $part, $build->quantities[ $slot ] * $line->quantity, $key, $slot );
 			if ( null === $child ) {
-				foreach ( array( ...array_values( $children ), $key ) as $added ) {
+				foreach ( $children as $added ) {
 					$this->cart->remove( $added );
 				}
+				$this->cart->remove( $key );
 				foreach ( $old as $back ) {
 					$this->cart->restore( $back );
 				}
@@ -193,12 +194,12 @@ final class BuildCart {
 	}
 
 	/**
-	 * The lines of the build in the cart with this ID, and how many of it the cart holds: none where no build has it.
+	 * The lines of the build in the cart with this ID, and how many of it the cart holds, or null where no build has it.
 	 *
 	 * @param string $id A build's ID, or empty.
-	 * @return array{list<string>, int}
+	 * @return array{list<string>, int}|null
 	 */
-	private function held( string $id ): array {
+	private function held( string $id ): ?array {
 		if ( '' !== $id ) {
 			foreach ( $this->cart->lines() as $key => $line ) {
 				if ( Build::read( $line->build )?->id === $id ) {
@@ -206,7 +207,7 @@ final class BuildCart {
 				}
 			}
 		}
-		return array( array(), 0 );
+		return null;
 	}
 
 	/**

@@ -356,6 +356,11 @@ jobs:
             timeout 300 bash -c 'while pgrep -x apt-get > /dev/null || pgrep -x dpkg > /dev/null; do sleep 5; done' || true
             if timeout 300 npx playwright install --with-deps ${{ steps.browsers.outputs.engines }}; then exit 0; fi
             echo "::warning::Try ${try} of Playwright's install did not finish."
+            # `timeout` stopped npx, not the apt-get it started as root, which can keep dpkg's lock for the next try to
+            # wait out and fail on (#64). Stop what the try left, and finish any package it left half set up.
+            sudo pkill -x apt-get || true
+            sudo pkill -x dpkg || true
+            sudo dpkg --configure -a || true
             # Only after a try has failed: the hosted runners use Azure's mirror, and Ubuntu's own may answer when it does not (D-126).
             grep -rl azure.archive.ubuntu.com /etc/apt | xargs -r sudo sed -i 's/azure\.archive\.ubuntu\.com/archive.ubuntu.com/g' || true
             sleep 30
@@ -368,6 +373,11 @@ jobs:
             timeout 300 bash -c 'while pgrep -x apt-get > /dev/null || pgrep -x dpkg > /dev/null; do sleep 5; done' || true
             if timeout 180 npx playwright install-deps ${{ steps.browsers.outputs.engines }}; then exit 0; fi
             echo "::warning::Try ${try} of Playwright's system packages did not finish."
+            # `timeout` stopped npx, not the apt-get it started as root, which can keep dpkg's lock for the next try to
+            # wait out and fail on (#64). Stop what the try left, and finish any package it left half set up.
+            sudo pkill -x apt-get || true
+            sudo pkill -x dpkg || true
+            sudo dpkg --configure -a || true
             # Only after a try has failed: the hosted runners use Azure's mirror, and Ubuntu's own may answer when it does not (D-126).
             grep -rl azure.archive.ubuntu.com /etc/apt | xargs -r sudo sed -i 's/azure\.archive\.ubuntu\.com/archive.ubuntu.com/g' || true
             sleep 30
@@ -413,15 +423,16 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          # Each engine's job runs its tablet project too, so the required checks keep their names (D-288).
           - part: webkit
             engines: webkit
-            run: npm run test:e2e -- --project=webkit-desktop --project=webkit-phone
+            run: npm run test:e2e -- --project=webkit-desktop --project=webkit-phone --project=webkit-tablet
           - part: firefox
             engines: firefox
-            run: npm run test:e2e -- --project=firefox-desktop --project=firefox-phone
+            run: npm run test:e2e -- --project=firefox-desktop --project=firefox-phone --project=firefox-tablet
           - part: no-js, fr-ca, rtl
             engines: chromium
-            run: npm run test:e2e -- --project=no-js --project=fr-ca --project=rtl
+            run: npm run test:e2e -- --project=no-js --project=fr-ca --project=rtl --project=chromium-tablet
           # Milestone 9: from every published release, each with the shop's data made on it (D-232).
           - part: updates
             engines: chromium
@@ -464,6 +475,11 @@ jobs:
             timeout 300 bash -c 'while pgrep -x apt-get > /dev/null || pgrep -x dpkg > /dev/null; do sleep 5; done' || true
             if timeout 300 npx playwright install --with-deps ${{ matrix.engines }}; then exit 0; fi
             echo "::warning::Try ${try} of Playwright's install did not finish."
+            # `timeout` stopped npx, not the apt-get it started as root, which can keep dpkg's lock for the next try to
+            # wait out and fail on (#64). Stop what the try left, and finish any package it left half set up.
+            sudo pkill -x apt-get || true
+            sudo pkill -x dpkg || true
+            sudo dpkg --configure -a || true
             grep -rl azure.archive.ubuntu.com /etc/apt | xargs -r sudo sed -i 's/azure\.archive\.ubuntu\.com/archive.ubuntu.com/g' || true
             sleep 30
           done
@@ -475,6 +491,11 @@ jobs:
             timeout 300 bash -c 'while pgrep -x apt-get > /dev/null || pgrep -x dpkg > /dev/null; do sleep 5; done' || true
             if timeout 180 npx playwright install-deps ${{ matrix.engines }}; then exit 0; fi
             echo "::warning::Try ${try} of Playwright's system packages did not finish."
+            # `timeout` stopped npx, not the apt-get it started as root, which can keep dpkg's lock for the next try to
+            # wait out and fail on (#64). Stop what the try left, and finish any package it left half set up.
+            sudo pkill -x apt-get || true
+            sudo pkill -x dpkg || true
+            sudo dpkg --configure -a || true
             grep -rl azure.archive.ubuntu.com /etc/apt | xargs -r sudo sed -i 's/azure\.archive\.ubuntu\.com/archive.ubuntu.com/g' || true
             sleep 30
           done

@@ -149,8 +149,10 @@ final class BuilderPage {
 	 * @param string    $base    The address of the page the builder is on, with no build in it.
 	 * @param bool      $process Whether to process the directives here. A block's are processed by WordPress
 	 *                           once the block has rendered, as for any interactive block.
+	 * @param bool      $titled  Whether the builder prints the product's name as the page's h1: where it takes the
+	 *                           place of the theme's title (spec: Where it renders, One h1).
 	 */
-	public function render( int $kit, BuildLink $link, string $base, bool $process = true ): string {
+	public function render( int $kit, BuildLink $link, string $base, bool $process = true, bool $titled = false ): string {
 		if ( $this->rendered || ! $this->kits->isPublic( $kit ) ) {
 			return '';
 		}
@@ -177,6 +179,9 @@ final class BuilderPage {
 					// Set by the store, which turns the board over with the button by it; without the script the
 					// step's own side is shown (#46).
 					'canTurn' => false,
+					// Set by the store once it runs: the shelf's chips and Sort then send themselves, and their Apply
+					// buttons, for a page with no script, are hidden (D-266).
+					'live'    => false,
 					// Set by the store once a turn is seen, so the board turns where motion is allowed, never on load.
 					'turning' => false,
 				)
@@ -200,6 +205,12 @@ final class BuilderPage {
 			wp_enqueue_style( self::STYLE );
 			// A build added here without a page load shows in the page's Mini-Cart, grouped (D-158).
 			ShowHooks::styles();
+			// The panel's head: a way back to the shop for a theme whose header has none, and the h1 where the builder
+			// takes the theme's title's place (spec: Where it renders).
+			$head = array(
+				'shop'  => (string) wc_get_page_permalink( 'shop' ),
+				'title' => $titled ? get_the_title( $kit ) : '',
+			);
 			ob_start();
 			require CBUILD_PATH . 'templates/builder/builder.php';
 			$html = (string) ob_get_clean();

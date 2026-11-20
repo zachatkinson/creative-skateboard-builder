@@ -14,8 +14,12 @@ interface Actions {
 	turn: () => void;
 	reveal: ( event: FocusEvent ) => void;
 	pick: ( event: Event ) => void;
+	search: ( event: Event ) => void;
+	narrow: ( event: Event ) => void;
+	fit: () => void;
 	follow: ( event: MouseEvent ) => void;
 	back: () => void;
+	filters: () => void;
 }
 
 interface Defined {
@@ -27,6 +31,9 @@ interface Defined {
 		canCopy: boolean;
 		canTurn: boolean;
 		turning: boolean;
+		folded: boolean;
+		live: boolean;
+		limited: string;
 	};
 	actions: Actions;
 }
@@ -103,6 +110,17 @@ async function settle(): Promise< void > {
 let fetched: URL[];
 let reply: () => Response | Promise< Response >;
 
+/**
+ * Put what the test has made into a builder, as the page has it: the store's regions are pieces inside one (D-296).
+ */
+function wrapped(): HTMLElement {
+	const root = document.createElement( 'div' );
+	root.className = 'cbuild';
+	root.append( ...document.body.childNodes );
+	document.body.append( root );
+	return root;
+}
+
 beforeEach( () => {
 	vi.useFakeTimers();
 	reset();
@@ -135,6 +153,43 @@ afterEach( () => {
 } );
 
 describe( 'the store', () => {
+	// Spec (configurator): Phone, "The filters sit behind a Filters button, so the cards come first."
+	it( 'folds the filters behind the Filters button once the script runs, and the button opens and closes them', () => {
+		state.folded = false;
+		document.body.innerHTML = '<div class="cbuild"></div>';
+		setElement( document.querySelector< HTMLElement >( '.cbuild' )! );
+		(
+			defined.definition as { callbacks: { init: () => void } }
+		 ).callbacks.init();
+		expect( state.folded ).toBe( true );
+		actions.filters();
+		expect( state.folded ).toBe( false );
+		actions.filters();
+		expect( state.folded ).toBe( true );
+	} );
+
+	// Chips and sorts ask the route as they change, so their Apply buttons, there for the page without the script, hide.
+	it( 'hides the Apply buttons once the script runs, and starts with no builder found without throwing', () => {
+		state.live = false;
+		document.body.innerHTML = '<div class="cbuild"></div>';
+		setElement( document.querySelector< HTMLElement >( '.cbuild' )! );
+		const init = (
+			defined.definition as { callbacks: { init: () => void } }
+		 ).callbacks.init;
+		init();
+		expect( state.live ).toBe( true );
+
+		state.live = false;
+		setElement( null );
+		expect( () => init() ).not.toThrow();
+		expect( state.live ).toBe( true );
+	} );
+
+	it( 'goes to an address as the browser would without JavaScript', () => {
+		browser.assign( window.location.origin + '/?page_id=25#cbuild' );
+		expect( window.location.hash ).toBe( '#cbuild' );
+	} );
+
 	it( 'is private and locked', () => {
 		expect( defined.options ).toEqual( { lock: true } );
 		expect( NAME ).toBe( 'creative-skateboard-builder' );
@@ -174,6 +229,31 @@ describe( 'the store', () => {
 			'',
 			window.location.origin + '/?next'
 		);
+	} );
+
+	// Found by the browser test of Clear search (spec review S-b): Enter sent the search at once, and the search still
+	// waiting from the same keys went out after a button pressed within 150 ms, so Clear search was undone.
+	it( 'drops a search still waiting when the form is sent, so a button pressed after it is the last word', async () => {
+		document.body.innerHTML = `
+			<form method="get" action="/">
+				<input type="hidden" name="page_id" value="25">
+				<input type="search" name="cbuild[_q]" value="Zebracorn">
+				<button type="submit" name="cbuild[_q]" value="">Clear search</button>
+			</form>`;
+		const step = document.querySelector( 'form' )!;
+		const box = document.querySelector( 'input[type=search]' )!;
+		const clear = document.querySelector( 'button' )!;
+		setElement( step );
+		actions.search( { target: box } as unknown as Event );
+		actions.submit(
+			new SubmitEvent( 'submit', { submitter: clear, cancelable: true } )
+		);
+		vi.advanceTimersByTime( 1000 );
+		await settle();
+		expect( fetched ).toHaveLength( 1 );
+		expect(
+			fetched[ 0 ]!.searchParams.getAll( 'cbuild[_q]' ).at( -1 )
+		).toBe( '' );
 	} );
 
 	it( 'sends the form as it would be sent without JavaScript when the route fails, the button pressed in it', async () => {
@@ -308,6 +388,97 @@ describe( 'the store', () => {
 			false,
 		] );
 		expect( step.leave.checked, 'No risers picked' ).toBe( true );
+	} );
+
+	// D-279: a size picked after the card is a pick of the step, so its card stays picked and the size is marked.
+	it( 'marks a size picked after its card in the store, and keeps the card picked', () => {
+		const { radio } = form();
+		state.view = {
+			...START,
+			step: {
+				slot: 'wheels',
+				options: [
+					{
+						value: '302',
+						checked: true,
+						sizeGroup: {
+							inputs: [
+								{ value: '301', checked: false },
+								{ value: '302', checked: true },
+							],
+						},
+					},
+					{ value: '303', checked: false, sizeGroup: { inputs: [] } },
+				],
+			},
+		};
+		radio.value = '301';
+		actions.pick( { target: radio } as unknown as Event );
+		const step = state.view.step as {
+			options: {
+				checked: boolean;
+				sizeGroup: { inputs: { checked: boolean }[] };
+			}[];
+		};
+		expect( step.options.map( ( option ) => option.checked ) ).toEqual( [
+			true,
+			false,
+		] );
+		expect(
+			step.options[ 0 ]?.sizeGroup.inputs.map(
+				( input ) => input.checked
+			)
+		).toEqual( [ true, false ] );
+	} );
+
+	it( 'marks a card unpicked when none of its sizes is the one picked', () => {
+		const { radio } = form();
+		state.view = {
+			...START,
+			step: {
+				slot: 'wheels',
+				options: [
+					{
+						value: '302',
+						checked: true,
+						sizeGroup: {
+							inputs: [
+								{ value: '302', checked: true },
+								{ value: '304', checked: false },
+							],
+						},
+					},
+				],
+			},
+		};
+		radio.value = '301';
+		actions.pick( { target: radio } as unknown as Event );
+		const card = (
+			state.view.step as {
+				options: {
+					checked: boolean;
+					sizeGroup: { inputs: { checked: boolean }[] };
+				}[];
+			}
+		 ).options[ 0 ]!;
+		expect( card.checked ).toBe( false );
+		expect(
+			card.sizeGroup.inputs.map( ( input ) => input.checked )
+		).toEqual( [ false, false ] );
+	} );
+
+	it( 'leaves anything in the list that is not a card alone, and a step with no No risers', () => {
+		const { radio } = form();
+		const card = { value: '12', checked: false };
+		state.view = {
+			...START,
+			step: { slot: 'deck', options: [ null, 3, card ], leave: null },
+		};
+		expect( () =>
+			actions.pick( { target: radio } as unknown as Event )
+		).not.toThrow();
+		expect( card.checked ).toBe( true );
+		expect( ( state.view.step as { leave: unknown } ).leave ).toBeNull();
 	} );
 
 	it( "keeps the pick when the route fails, for the form's Next to send", async () => {
@@ -566,7 +737,7 @@ describe( 'the store', () => {
 			'afterbegin',
 			'<h2 class="cbuild-changes__heading" tabindex="-1">Changes</h2>'
 		);
-		setElement( document.body );
+		setElement( wrapped() );
 		(
 			defined.definition as { callbacks: { init: () => void } }
 		 ).callbacks.init();
@@ -605,7 +776,7 @@ describe( 'the store', () => {
 			'afterbegin',
 			'<h2 class="cbuild__heading" tabindex="-1">Step</h2>'
 		);
-		setElement( document.body );
+		setElement( wrapped() );
 		(
 			defined.definition as { callbacks: { init: () => void } }
 		 ).callbacks.init();
@@ -638,7 +809,39 @@ describe( 'the store', () => {
 		expect( state.status ).toBe( 'A deck, assembled. Total: $85.00.' );
 	} );
 
-	it( 'puts focus on the first new card after Show more', async () => {
+	// The spec reviewer's M10 minor M1: once chosen, the width is the step's first line with Change. A width pressed
+	// in the open fold folds it again, and focus goes to the line that now says it; with no width chosen yet the line
+	// is hidden and the widths stay open.
+	it( 'folds the widths behind their line after an answer, and gives that line the focus a width button had', async () => {
+		const div = builder();
+		div.insertAdjacentHTML(
+			'beforeend',
+			`<details class="cbuild-width__pick" open><summary class="cbuild-width__chosen">8.25″ Change</summary><button type="submit">8.5″</button></details>
+			<details class="cbuild-width__pick" open><summary class="cbuild-width__chosen" hidden>Asking</summary></details>`
+		);
+		const [ chosen, asking ] =
+			div.querySelectorAll< HTMLDetailsElement >( 'details' );
+		const width = chosen!.querySelector( 'button' )!;
+		width.focus();
+		reply = () =>
+			answer( {
+				...START,
+				url: window.location.origin + '/?width',
+				status: 'Showing 8.5″ decks.',
+			} );
+		await move();
+		vi.advanceTimersToNextFrame();
+		expect( chosen!.open, 'the widths fold behind their line' ).toBe(
+			false
+		);
+		expect( asking!.open, 'no width chosen: they stay open' ).toBe( true );
+		expect(
+			div.ownerDocument.activeElement,
+			'the shopper keeps their place, on the line that says the width'
+		).toBe( chosen!.querySelector( 'summary' ) );
+	} );
+
+	it( 'puts focus on the first new card after Show more, and says how many were added', async () => {
 		const div = builder();
 		div.insertAdjacentHTML(
 			'beforeend',
@@ -649,7 +852,11 @@ describe( 'the store', () => {
 			answer( {
 				...START,
 				url: window.location.origin + '/?more',
-				step: { slot: 'deck', options: [ {}, {}, {}, {} ] },
+				step: {
+					slot: 'deck',
+					options: [ {}, {}, {}, {} ],
+					more: { added: '2 more parts shown, 4 of 4.' },
+				},
 				status: 'A deck. Total: $70.00.',
 			} );
 		await move();
@@ -662,10 +869,155 @@ describe( 'the store', () => {
 		expect( div.ownerDocument.activeElement ).toBe(
 			div.querySelector( 'input[value="3"]' )
 		);
-		expect(
-			state.status,
-			'the card is read; the total has not changed'
-		).toBe( '' );
+		// Spec (configurator): "Show 30 more" says how many were added. The card is read with it; the total has not
+		// changed, so it is not said.
+		expect( state.status ).toBe( '2 more parts shown, 4 of 4.' );
+	} );
+
+	/**
+	 * The step's cards, as the page draws them.
+	 *
+	 * @param div   The builder.
+	 * @param count How many.
+	 */
+	function cards( div: HTMLElement, count: number ): void {
+		const items = Array.from(
+			{ length: count },
+			( _, at ) =>
+				`<li><input type="radio" name="cbuild[deck]" value="${ at + 1 }"></li>`
+		).join( '' );
+		div.insertAdjacentHTML(
+			'beforeend',
+			`<ul class="cbuild-cards">${ items }</ul>`
+		);
+	}
+
+	// A search, a width or a chip that lists other cards, or as many, is no Show more: focus stays on the control used,
+	// and the region says the total (spec: Keyboard and screen readers).
+	it.each( [
+		[ 'lists cards where there were none', undefined, [ {}, {} ] ],
+		[
+			'lists the same cards',
+			[ { id: 1 }, { id: 2 } ],
+			[ { id: 1 }, { id: 2 } ],
+		],
+		[
+			'lists more cards, but others',
+			[ { id: 1 }, { id: 2 } ],
+			[ { id: 1 }, { id: 3 }, { id: 4 } ],
+		],
+	] )(
+		'keeps focus on the control used, and says the total, when a search %s',
+		async ( _name, was, now ) => {
+			const div = builder();
+			cards( div, now.length );
+			const used = div.querySelector( 'a' )!;
+			used.focus();
+			state.view = { ...START, step: { slot: 'deck', options: was } };
+			reply = () =>
+				answer( {
+					...START,
+					url: window.location.origin + '/?found',
+					step: { slot: 'deck', options: now, more: { added: '' } },
+					status: 'A deck. Total: $70.00.',
+				} );
+			await move();
+			vi.advanceTimersToNextFrame();
+			expect( div.ownerDocument.activeElement ).toBe( used );
+			expect( state.status ).toBe( 'A deck. Total: $70.00.' );
+		}
+	);
+
+	it( 'still puts focus on the first new card after Show more where the server gives no count, and says nothing', async () => {
+		const div = builder();
+		cards( div, 3 );
+		state.view = { ...START, step: { slot: 'deck', options: [ {}, {} ] } };
+		state.status = 'A deck. Total: $70.00.';
+		reply = () =>
+			answer( {
+				...START,
+				url: window.location.origin + '/?more',
+				step: { slot: 'deck', options: [ {}, {}, {} ] },
+				status: 'A deck. Total: $70.00.',
+			} );
+		await move();
+		vi.advanceTimersToNextFrame();
+		expect( div.ownerDocument.activeElement ).toBe(
+			div.querySelector( 'input[value="3"]' )
+		);
+		expect( state.status ).toBe( '' );
+	} );
+
+	it( 'moves no focus, and throws nothing, after Show more where the new cards are not drawn or no builder was found', async () => {
+		const more = () =>
+			answer( {
+				...START,
+				url: window.location.origin + '/?more',
+				step: {
+					slot: 'deck',
+					options: [ {}, {}, {}, {} ],
+					more: { added: '2 more parts shown, 4 of 4.' },
+				},
+			} );
+		builder();
+		state.view = { ...START, step: { slot: 'deck', options: [ {}, {} ] } };
+		reply = more;
+		await move();
+		expect( () => vi.advanceTimersToNextFrame() ).not.toThrow();
+		expect( document.body.ownerDocument.activeElement ).toBe(
+			document.body
+		);
+
+		reset();
+		document.body.innerHTML =
+			'<a href="/?cbuild%5Bstep%5D=deck">Show more</a>';
+		setElement( document.querySelector( 'a' ) );
+		state.view = { ...START, step: { slot: 'deck', options: [ {}, {} ] } };
+		await move();
+		expect( () => vi.advanceTimersToNextFrame() ).not.toThrow();
+		expect( state.status ).toBe( '2 more parts shown, 4 of 4.' );
+	} );
+
+	// D-152: the change panel is a step of its own, but going back to it, as to any address, makes no entry.
+	it( 'makes no history entry going back to an address that shows the change panel', async () => {
+		const pushed = vi.spyOn( window.history, 'pushState' );
+		reply = () =>
+			answer( {
+				...START,
+				url: window.location.origin + '/?changes',
+				isChanges: true,
+				status: '1 part no longer fits.',
+			} );
+		actions.back();
+		await settle();
+		expect( state.view ).toMatchObject( { isChanges: true } );
+		expect( pushed ).not.toHaveBeenCalled();
+	} );
+
+	// Spec (configurator): Search, past the rate limit the step keeps what it shows and says when to try again.
+	it( "says the route's rate limit in its own words, and forgets it once a view comes", async () => {
+		reply = () =>
+			new Response(
+				JSON.stringify( {
+					message: 'Too many searches. Try again in a minute.',
+				} ),
+				{ status: 429, headers: { 'Content-Type': 'application/json' } }
+			);
+		actions.back();
+		await settle();
+		expect( state.limited ).toBe(
+			'Too many searches. Try again in a minute.'
+		);
+		expect( state.status ).toBe(
+			'Too many searches. Try again in a minute.'
+		);
+		expect( state.view ).toBe( START );
+
+		reply = () => answer( NEXT );
+		actions.back();
+		await settle();
+		expect( state.view ).toEqual( NEXT );
+		expect( state.limited ).toBe( '' );
 	} );
 
 	it( 'says the step alone in the title when the page gave no title, and moves no focus with no builder found', async () => {
@@ -745,8 +1097,11 @@ describe( 'adding to the cart', () => {
 		const { root, sheet } = review();
 		const asked = cart( 201 );
 		const told: string[] = [];
+		// As WooCommerce's own add sends it: bubbling, and cancelable.
 		const carts = ( event: Event ) =>
-			told.push( 'carts:' + String( event.bubbles ) );
+			told.push(
+				`carts:${ String( event.bubbles ) },${ String( event.cancelable ) }`
+			);
 		let detail: unknown;
 		const builder = ( event: Event ) => {
 			told.push(
@@ -771,7 +1126,7 @@ describe( 'adding to the cart', () => {
 			'GET ' + CART,
 			'POST ' + CART + '/add-item',
 		] );
-		expect( told ).toEqual( [ 'carts:true', 'builder:cbuild' ] );
+		expect( told ).toEqual( [ 'carts:true,true', 'builder:cbuild' ] );
 		expect( detail ).toEqual( {
 			kit: 7,
 			picks: { deck: 101 },
@@ -930,6 +1285,133 @@ describe( 'adding to the cart', () => {
 		expect( state.added ).toBe( false );
 	} );
 
+	it( 'shows the add on its way while it is', async () => {
+		review();
+		cart( 201 );
+		const adding = actions.add(
+			new SubmitEvent( 'submit', { cancelable: true } )
+		);
+		expect( state.pending ).toBe( true );
+		await adding;
+		expect( state.pending ).toBe( false );
+	} );
+
+	it( "sends the form to WooCommerce's own handler, asking nothing, where the page names no Store API cart", async () => {
+		const { sheet } = review();
+		setConfig( NAME, { endpoint: ENDPOINT } );
+		const asked = cart( 201 );
+		const submitted = vi
+			.spyOn( browser, 'submit' )
+			.mockImplementation( () => undefined );
+		await actions.add( new SubmitEvent( 'submit', { cancelable: true } ) );
+		expect( asked ).toEqual( [] );
+		expect( submitted ).toHaveBeenCalledWith( sheet, null );
+	} );
+
+	it( "sends the builder's event with no assembly where the form asks for none", async () => {
+		const { root, sheet } = review();
+		sheet.querySelector( '[name="cbuild[assembly]"]' )!.remove();
+		cart( 201 );
+		let detail: unknown;
+		const builder = ( event: Event ) => {
+			detail = ( event as CustomEvent ).detail;
+		};
+		root.addEventListener( 'cbuild:added', builder );
+		await actions.add( new SubmitEvent( 'submit', { cancelable: true } ) );
+		root.removeEventListener( 'cbuild:added', builder );
+		expect( detail ).toEqual( {
+			kit: 7,
+			picks: { deck: 101 },
+			assembly: false,
+		} );
+	} );
+
+	it( 'says the add once, though focus moves again after a drawer took it', async () => {
+		const { root } = review();
+		cart( 201 );
+		const drawer = document.createElement( 'button' );
+		const close = document.createElement( 'button' );
+		document.body.append( drawer, close );
+		await actions.add( new SubmitEvent( 'submit', { cancelable: true } ) );
+		vi.advanceTimersToNextFrame();
+		drawer.focus();
+		expect( state.status ).toBe( REVIEW.review.added );
+		// Something said since, such as a link copied, is not said over by the add again.
+		state.status = REVIEW.review.copied;
+		close.focus();
+		expect( state.status ).toBe( REVIEW.review.copied );
+		expect( root.contains( root.ownerDocument.activeElement ) ).toBe(
+			false
+		);
+	} );
+
+	it( 'says nothing more while the shopper moves about the builder after an add, and the add once a drawer takes focus', async () => {
+		const { root } = review();
+		cart( 201 );
+		const drawer = document.createElement( 'button' );
+		document.body.append( drawer );
+		await actions.add( new SubmitEvent( 'submit', { cancelable: true } ) );
+		vi.advanceTimersToNextFrame();
+		root.querySelector( 'button' )!.focus();
+		expect( state.status ).toBe( '' );
+		drawer.focus();
+		expect( state.status ).toBe( REVIEW.review.added );
+	} );
+
+	it( 'puts focus on the notice where the browser says no element has focus', async () => {
+		const { root } = review();
+		cart( 201 );
+		await actions.add( new SubmitEvent( 'submit', { cancelable: true } ) );
+		Object.defineProperty( document, 'activeElement', {
+			get: () => null,
+			configurable: true,
+		} );
+		try {
+			vi.advanceTimersToNextFrame();
+		} finally {
+			delete ( document as { activeElement?: unknown } ).activeElement;
+		}
+		expect( root.ownerDocument.activeElement ).toBe(
+			root.querySelector( '.cbuild-review__added' )
+		);
+		expect( state.status ).toBe( '' );
+	} );
+
+	it( 'throws nothing where the review shows no notice to focus', async () => {
+		const { root } = review();
+		root.querySelector( '.cbuild-review__added' )!.remove();
+		cart( 201 );
+		await actions.add( new SubmitEvent( 'submit', { cancelable: true } ) );
+		expect( () => vi.advanceTimersToNextFrame() ).not.toThrow();
+		expect( state.added ).toBe( true );
+	} );
+
+	it( "adds the build and tells the carts where the builder's element was never found, though a drawer takes focus", async () => {
+		document.body.innerHTML = `
+			<form method="post" action="/?review">
+				<input type="hidden" name="add-to-cart" value="7">
+				<input type="hidden" name="cbuild[picks][deck]" value="101">
+				<button type="submit">Add to cart</button>
+			</form>`;
+		setElement( document.querySelector( 'form' ) );
+		state.view = REVIEW;
+		cart( 201 );
+		const drawer = document.createElement( 'button' );
+		document.body.append( drawer );
+		const told: string[] = [];
+		const opens = () => {
+			told.push( 'carts' );
+			drawer.focus();
+		};
+		document.addEventListener( 'wc-blocks_added_to_cart', opens );
+		await actions.add( new SubmitEvent( 'submit', { cancelable: true } ) );
+		document.removeEventListener( 'wc-blocks_added_to_cart', opens );
+		expect( () => vi.advanceTimersToNextFrame() ).not.toThrow();
+		expect( told ).toEqual( [ 'carts' ] );
+		expect( state.added ).toBe( true );
+		expect( drawer.ownerDocument.activeElement ).toBe( drawer );
+	} );
+
 	it( 'sends the builder an event for each pick, with the kit, the slot and the part', () => {
 		const { radio } = form();
 		document.body.insertAdjacentHTML(
@@ -1009,6 +1491,15 @@ describe( 'copying the build link', () => {
 		expect( link.selectionStart ).toBe( 0 );
 		expect( link.selectionEnd ).toBe( REVIEW.review.link.length );
 	} );
+
+	it( 'throws nothing when the browser refuses and there is no link to select, or no builder', async () => {
+		const { link } = share( () => Promise.reject( new Error( 'denied' ) ) );
+		link.remove();
+		await expect( actions.copy() ).resolves.toBeUndefined();
+		reset();
+		await expect( actions.copy() ).resolves.toBeUndefined();
+		expect( state.status ).toBe( '' );
+	} );
 } );
 
 describe( 'keeping focus clear of the phone bar', () => {
@@ -1057,6 +1548,477 @@ describe( 'keeping focus clear of the phone bar', () => {
 		actions.reveal( { target: inBar } as unknown as FocusEvent );
 		actions.reveal( { target: document } as unknown as FocusEvent );
 		expect( scrolled ).toEqual( [] );
+	} );
+
+	// D-296: the builder's pieces are regions of their own, so init runs in one of them: the root around it takes the
+	// focusin, and a focus anywhere in the builder is brought clear of the bar.
+	it( 'brings a control the bar covers into view when it takes focus, from a region inside the builder', () => {
+		const { below, scrolled } = page( 632 );
+		const region = document.createElement( 'p' );
+		document.querySelector( '.cbuild' )!.append( region );
+		setElement( region );
+		// jsdom has no layout: init fits the bar, which asks what is under its foot.
+		Object.defineProperty( document, 'elementsFromPoint', {
+			value: () => [],
+			configurable: true,
+		} );
+		(
+			defined.definition as { callbacks: { init: () => void } }
+		 ).callbacks.init();
+		// An earlier test's listener on the document would hear the focus after the builder: stopped short of it.
+		const stop = ( event: Event ) => event.stopPropagation();
+		document
+			.querySelector( '.cbuild' )!
+			.addEventListener( 'focusin', stop );
+		below.dispatchEvent( new FocusEvent( 'focusin', { bubbles: true } ) );
+		expect( scrolled.length ).toBeGreaterThan( 0 );
+		expect(
+			scrolled.every( ( said ) => '{"block":"nearest"}' === said )
+		).toBe( true );
+		// A focus outside the builder is no concern of its own.
+		const outside = document.createElement( 'button' );
+		const main = document.createElement( 'main' );
+		main.addEventListener( 'focusin', stop );
+		main.append( outside );
+		document.body.append( main );
+		outside.scrollIntoView = () => scrolled.push( 'outside' );
+		outside.getBoundingClientRect = () =>
+			( { top: 600, bottom: 644 } ) as DOMRect;
+		outside.dispatchEvent( new FocusEvent( 'focusin', { bubbles: true } ) );
+		expect( scrolled ).not.toContain( 'outside' );
+	} );
+
+	it( 'says on the builder whether an answer is awaited, from a region inside it', () => {
+		page( 650 );
+		const region = document.createElement( 'p' );
+		document.querySelector( '.cbuild' )!.append( region );
+		setElement( region );
+		const busy = (
+			defined.definition as { callbacks: { busy: () => void } }
+		 ).callbacks.busy;
+		state.pending = true;
+		busy();
+		expect(
+			document.querySelector( '.cbuild' )!.getAttribute( 'aria-busy' )
+		).toBe( 'true' );
+		state.pending = false;
+		busy();
+		expect(
+			document.querySelector( '.cbuild' )!.getAttribute( 'aria-busy' )
+		).toBe( 'false' );
+		// Outside a builder there is nothing to say it on, and nothing throws.
+		const loose = document.createElement( 'p' );
+		document.body.append( loose );
+		setElement( loose );
+		expect( busy ).not.toThrow();
+		setElement( null );
+		expect( busy ).not.toThrow();
+	} );
+
+	it( 'marks the builder ready from its last region, and nothing outside one', () => {
+		page( 650 );
+		const bar = document.querySelector< HTMLElement >( '.cbuild-bar' )!;
+		setElement( bar );
+		const ready = (
+			defined.definition as { callbacks: { ready: () => void } }
+		 ).callbacks.ready;
+		ready();
+		// A bare mark, as the server writes a boolean attribute.
+		expect(
+			document.querySelector( '.cbuild' )!.getAttribute( 'data-ready' )
+		).toBe( '' );
+		const loose = document.createElement( 'p' );
+		document.body.append( loose );
+		setElement( loose );
+		expect( ready ).not.toThrow();
+		expect( loose.hasAttribute( 'data-ready' ) ).toBe( false );
+		setElement( null );
+		expect( ready ).not.toThrow();
+	} );
+
+	it( "leaves a control whose foot meets the bar's top alone", () => {
+		const { below, scrolled } = page( 644 );
+		actions.reveal( { target: below } as unknown as FocusEvent );
+		expect( scrolled ).toEqual( [] );
+	} );
+
+	it( 'scrolls nothing, and throws nothing, where no builder was found', () => {
+		const { below, scrolled } = page( 632 );
+		reset();
+		expect( () =>
+			actions.reveal( { target: below } as unknown as FocusEvent )
+		).not.toThrow();
+		expect( scrolled ).toEqual( [] );
+	} );
+} );
+
+describe( 'narrowing the step', () => {
+	function chips(): {
+		chip: HTMLInputElement;
+		sort: HTMLSelectElement;
+		loose: HTMLInputElement;
+	} {
+		document.body.innerHTML = `
+			<form method="get" action="/">
+				<input type="hidden" name="page_id" value="25">
+				<input type="checkbox" name="cbuild[brand][]" value="acme" checked>
+				<select name="cbuild[sort]"><option value="price-asc" selected>Price</option></select>
+			</form>
+			<input type="checkbox" class="loose" name="loose" value="1" checked>`;
+		return {
+			chip: document.querySelector< HTMLInputElement >(
+				'form input[type=checkbox]'
+			)!,
+			sort: document.querySelector( 'select' )!,
+			loose: document.querySelector< HTMLInputElement >( '.loose' )!,
+		};
+	}
+
+	it( 'asks for the same step with a chip or a sort, at once, and replaces the history entry', async () => {
+		const replaced = vi.spyOn( window.history, 'replaceState' );
+		for ( const target of [ chips().chip, chips().sort ] ) {
+			fetched = [];
+			state.view = START;
+			actions.narrow( { target } as unknown as Event );
+			await settle();
+			expect( fetched ).toHaveLength( 1 );
+			expect( [ ...fetched[ 0 ]!.searchParams ] ).toEqual( [
+				[ 'cbuild[brand][]', 'acme' ],
+				[ 'cbuild[sort]', 'price-asc' ],
+				[ 'cbuild[step]', 'deck' ],
+				[ 'page', '25' ],
+				[ 'locale', 'fr_CA' ],
+			] );
+		}
+		expect( replaced ).toHaveBeenCalledWith(
+			null,
+			'',
+			window.location.origin + '/?next'
+		);
+	} );
+
+	it( 'leaves a change outside a form, or on anything but a chip or a sort, alone', async () => {
+		const { loose } = chips();
+		actions.narrow( { target: loose } as unknown as Event );
+		actions.narrow( {
+			target: document.querySelector( 'form' ),
+		} as unknown as Event );
+		await settle();
+		expect( fetched ).toEqual( [] );
+	} );
+
+	it( 'sends the form as it would be sent without JavaScript when the route fails on a chip', async () => {
+		const { chip } = chips();
+		reply = () => answer( null, 503 );
+		const sent = vi
+			.spyOn( browser, 'submit' )
+			.mockImplementation( () => undefined );
+		actions.narrow( { target: chip } as unknown as Event );
+		await settle();
+		expect( sent ).toHaveBeenCalledWith( chip.form, null );
+	} );
+
+	function box(): HTMLInputElement {
+		document.body.innerHTML = `
+			<form method="get" action="/">
+				<input type="hidden" name="page_id" value="25">
+				<input type="search" name="cbuild[_q]" value="Zebra">
+			</form>`;
+		return document.querySelector< HTMLInputElement >(
+			'input[type=search]'
+		)!;
+	}
+
+	// SPEC-CONFIGURATOR, Search: the step is asked again 150 ms after the last key.
+	it( 'asks for the step with the search 150 ms after the last key, and replaces the history entry', async () => {
+		const search = box();
+		const replaced = vi.spyOn( window.history, 'replaceState' );
+		actions.search( { target: search } as unknown as Event );
+		vi.advanceTimersByTime( 100 );
+		search.value = 'Zebracorn';
+		actions.search( { target: search } as unknown as Event );
+		vi.advanceTimersByTime( 149 );
+		expect( fetched, 'not while the shopper types' ).toHaveLength( 0 );
+		vi.advanceTimersByTime( 1 );
+		expect( fetched ).toHaveLength( 1 );
+		expect( [ ...fetched[ 0 ]!.searchParams ] ).toEqual( [
+			[ 'cbuild[_q]', 'Zebracorn' ],
+			[ 'cbuild[step]', 'deck' ],
+			[ 'page', '25' ],
+			[ 'locale', 'fr_CA' ],
+		] );
+		await settle();
+		expect( state.view ).toEqual( NEXT );
+		expect( replaced ).toHaveBeenCalledWith(
+			null,
+			'',
+			window.location.origin + '/?next'
+		);
+	} );
+
+	// The auditor's M10 review, 19: an answer to the search as it was would put the box back to what it was asked with.
+	it( 'drops the answer to a search the shopper has gone on typing over', async () => {
+		const search = box();
+		let release: ( response: Response ) => void = () => undefined;
+		reply = () =>
+			new Promise< Response >( ( done ) => {
+				release = done;
+			} );
+		actions.search( { target: search } as unknown as Event );
+		vi.advanceTimersByTime( 150 );
+		await settle();
+		expect( fetched ).toHaveLength( 1 );
+		actions.search( { target: search } as unknown as Event );
+		release( answer( NEXT ) );
+		await settle();
+		expect( state.view ).toBe( START );
+	} );
+
+	it( 'asks nothing for a key in a box outside a form, or on anything but a box', async () => {
+		const loose = document.createElement( 'input' );
+		document.body.innerHTML = '';
+		document.body.append( loose );
+		for ( const target of [ loose, document.body ] ) {
+			actions.search( { target } as unknown as Event );
+		}
+		expect( () => vi.advanceTimersByTime( 1000 ) ).not.toThrow();
+		await settle();
+		expect( fetched ).toEqual( [] );
+	} );
+} );
+
+describe( 'keeping focus clear of the stage that sticks on top', () => {
+	function page( position: string ): {
+		under: HTMLButtonElement;
+		inside: HTMLButtonElement;
+		scrolled: string[];
+	} {
+		document.body.innerHTML = `
+			<div class="cbuild">
+				<div class="cbuild__stage"><button class="inside">Show the top</button></div>
+				<button class="under">Deck 8</button>
+			</div>`;
+		setElement( document.querySelector< HTMLElement >( '.cbuild' )! );
+		(
+			defined.definition as { callbacks: { init: () => void } }
+		 ).callbacks.init();
+		const scrolled: string[] = [];
+		const stage =
+			document.querySelector< HTMLElement >( '.cbuild__stage' )!;
+		stage.getBoundingClientRect = () =>
+			( { top: 0, bottom: 300 } ) as DOMRect;
+		const real = window.getComputedStyle.bind( window );
+		vi.spyOn( window, 'getComputedStyle' ).mockImplementation(
+			( element ) =>
+				element === stage
+					? ( { position } as CSSStyleDeclaration )
+					: real( element )
+		);
+		const under = document.querySelector< HTMLButtonElement >( '.under' )!;
+		under.getBoundingClientRect = () =>
+			( { top: 250, bottom: 294 } ) as DOMRect;
+		const inside =
+			document.querySelector< HTMLButtonElement >( '.inside' )!;
+		inside.getBoundingClientRect = () =>
+			( { top: 10, bottom: 54 } ) as DOMRect;
+		for ( const button of [ under, inside ] ) {
+			button.scrollIntoView = ( options ) =>
+				scrolled.push( JSON.stringify( options ) );
+		}
+		return { under, inside, scrolled };
+	}
+
+	it( 'brings a control the stuck stage covers into view below it', () => {
+		const { under, scrolled } = page( 'sticky' );
+		actions.reveal( { target: under } as unknown as FocusEvent );
+		expect( scrolled ).toEqual( [ '{"block":"nearest"}' ] );
+	} );
+
+	it( 'leaves a control in the stage, and one under a stage that scrolls with the page, alone', () => {
+		let { under, inside, scrolled } = page( 'sticky' );
+		actions.reveal( { target: inside } as unknown as FocusEvent );
+		expect( scrolled ).toEqual( [] );
+		( { under, inside, scrolled } = page( 'static' ) );
+		actions.reveal( { target: under } as unknown as FocusEvent );
+		expect( scrolled ).toEqual( [] );
+	} );
+
+	it( 'leaves a control that starts where the stuck stage ends alone', () => {
+		const { under, scrolled } = page( 'sticky' );
+		under.getBoundingClientRect = () =>
+			( { top: 300, bottom: 344 } ) as DOMRect;
+		actions.reveal( { target: under } as unknown as FocusEvent );
+		expect( scrolled ).toEqual( [] );
+	} );
+} );
+
+describe( 'measuring the bar and the stage', () => {
+	function builder(): HTMLElement {
+		document.body.innerHTML = `
+			<div class="cbuild">
+				<div class="cbuild__stage"></div>
+				<div class="cbuild-bar"></div>
+			</div>`;
+		const root = document.querySelector< HTMLElement >( '.cbuild' )!;
+		setElement( root );
+		return root;
+	}
+
+	it( 'measures the bar and the stage again whenever either changes size', () => {
+		const root = builder();
+		const watched: Array< { element: Element; again: () => void } > = [];
+		vi.stubGlobal(
+			'ResizeObserver',
+			class {
+				constructor( private again: () => void ) {}
+				observe( element: Element ): void {
+					watched.push( { element, again: this.again } );
+				}
+			}
+		);
+		(
+			defined.definition as { callbacks: { init: () => void } }
+		 ).callbacks.init();
+		expect( watched.map( ( one ) => one.element.className ) ).toEqual( [
+			'cbuild-bar',
+			'cbuild__stage',
+		] );
+		const page = document.documentElement.style;
+		const bar = root.querySelector< HTMLElement >( '.cbuild-bar' )!;
+		const stage = root.querySelector< HTMLElement >( '.cbuild__stage' )!;
+		for ( const element of [ bar, stage ] ) {
+			element.getClientRects = () => [ {} ] as unknown as DOMRectList;
+			element.getBoundingClientRect = () =>
+				( { height: 120.2 } ) as DOMRect;
+		}
+		vi.spyOn( window, 'getComputedStyle' ).mockImplementation(
+			() => ( { position: 'sticky', top: '8px' } ) as CSSStyleDeclaration
+		);
+		watched[ 0 ]!.again();
+		expect( page.getPropertyValue( '--cbuild-bar-size' ) ).toBe( '121px' );
+		watched[ 1 ]!.again();
+		expect( page.getPropertyValue( '--cbuild-stage-size' ) ).toBe(
+			'129px'
+		);
+		page.removeProperty( '--cbuild-bar-size' );
+		page.removeProperty( '--cbuild-stage-size' );
+	} );
+
+	it( 'measures once, and watches nothing, where the browser has no resize observer', () => {
+		builder();
+		vi.stubGlobal( 'ResizeObserver', undefined );
+		expect( () =>
+			(
+				defined.definition as { callbacks: { init: () => void } }
+			 ).callbacks.init()
+		).not.toThrow();
+		expect(
+			document.documentElement.style.getPropertyValue(
+				'--cbuild-stage-size'
+			)
+		).toBe( '0px' );
+		document.documentElement.style.removeProperty( '--cbuild-stage-size' );
+	} );
+
+	it( "measures the bar's height once the script runs", () => {
+		const root = builder();
+		vi.stubGlobal( 'ResizeObserver', undefined );
+		const bar = root.querySelector< HTMLElement >( '.cbuild-bar' )!;
+		bar.getClientRects = () => [ {} ] as unknown as DOMRectList;
+		bar.getBoundingClientRect = () => ( { height: 70 } ) as DOMRect;
+		Object.defineProperty( document, 'elementsFromPoint', {
+			value: () => [],
+			configurable: true,
+		} );
+		vi.spyOn( window, 'getComputedStyle' ).mockImplementation(
+			() => ( { position: 'sticky', top: '0px' } ) as CSSStyleDeclaration
+		);
+		(
+			defined.definition as { callbacks: { init: () => void } }
+		 ).callbacks.init();
+		const page = document.documentElement.style;
+		expect( page.getPropertyValue( '--cbuild-bar-size' ) ).toBe( '70px' );
+		page.removeProperty( '--cbuild-bar-size' );
+		page.removeProperty( '--cbuild-stage-size' );
+	} );
+
+	it( 'watches only the bar or the stage the page has', () => {
+		const watched: string[] = [];
+		vi.stubGlobal(
+			'ResizeObserver',
+			class {
+				// As a browser's: anything but an element is refused.
+				observe( element: unknown ): void {
+					if ( ! ( element instanceof Element ) ) {
+						throw new TypeError( 'Not an element.' );
+					}
+					watched.push( element.className );
+				}
+			}
+		);
+		const init = (
+			defined.definition as { callbacks: { init: () => void } }
+		 ).callbacks.init;
+		for ( const only of [ '.cbuild-bar', '.cbuild__stage' ] ) {
+			builder().querySelector( only )!.remove();
+			expect( () => init() ).not.toThrow();
+		}
+		expect( watched ).toEqual( [ 'cbuild__stage', 'cbuild-bar' ] );
+		document.documentElement.style.removeProperty( '--cbuild-stage-size' );
+	} );
+
+	// D-163: a theme's `overflow: hidden` around the builder would keep the bar from sticking.
+	it( 'fits the bar into the theme once the script runs, and again when the screen changes', () => {
+		document.body.innerHTML = `
+			<div class="site" style="overflow-x: hidden">
+				<div class="cbuild"><div class="cbuild-bar"></div></div>
+			</div>`;
+		const site = document.querySelector< HTMLElement >( '.site' )!;
+		const root = document.querySelector< HTMLElement >( '.cbuild' )!;
+		const bar = root.querySelector< HTMLElement >( '.cbuild-bar' )!;
+		bar.getClientRects = () => [ {} ] as unknown as DOMRectList;
+		Object.defineProperty( document, 'elementsFromPoint', {
+			value: () => [],
+			configurable: true,
+		} );
+		setElement( root );
+		(
+			defined.definition as { callbacks: { init: () => void } }
+		 ).callbacks.init();
+		expect( site.style.overflowX ).toBe( 'clip' );
+
+		site.style.overflowX = 'hidden';
+		actions.fit();
+		expect( site.style.overflowX ).toBe( 'clip' );
+		document.documentElement.style.removeProperty( '--cbuild-stage-size' );
+	} );
+
+	it( 'fits nothing, and throws nothing, when the screen changes where no builder was found', () => {
+		expect( () => actions.fit() ).not.toThrow();
+	} );
+
+	it( 'fits and measures the bar again when the screen changes', () => {
+		const root = builder();
+		(
+			defined.definition as { callbacks: { init: () => void } }
+		 ).callbacks.init();
+		const bar = root.querySelector< HTMLElement >( '.cbuild-bar' )!;
+		bar.getClientRects = () => [ {} ] as unknown as DOMRectList;
+		bar.getBoundingClientRect = () => ( { height: 70 } ) as DOMRect;
+		Object.defineProperty( document, 'elementsFromPoint', {
+			value: () => [],
+			configurable: true,
+		} );
+		vi.spyOn( window, 'getComputedStyle' ).mockImplementation(
+			() => ( { position: 'sticky', top: '0px' } ) as CSSStyleDeclaration
+		);
+		actions.fit();
+		expect(
+			document.documentElement.style.getPropertyValue(
+				'--cbuild-bar-size'
+			)
+		).toBe( '70px' );
+		document.documentElement.style.removeProperty( '--cbuild-bar-size' );
 	} );
 } );
 
@@ -1136,6 +2098,37 @@ describe( 'motion', () => {
 		await step();
 		expect( state.view ).toEqual( NEXT );
 	} );
+
+	it( 'crosses over where the browser has view transitions but no media queries to ask about motion', async () => {
+		const transitions = motion( false, true );
+		vi.stubGlobal( 'matchMedia', undefined );
+		await step();
+		expect( transitions ).toHaveLength( 1 );
+		expect( state.view ).toEqual( NEXT );
+	} );
+
+	it( 'takes the new picture once the page has rendered the view, a task after the change', async () => {
+		motion( false, false );
+		let rendered: Promise< void > | undefined;
+		Object.defineProperty( document, 'startViewTransition', {
+			value: ( update: () => Promise< void > ) => {
+				rendered = update();
+				return { finished: rendered };
+			},
+			configurable: true,
+		} );
+		await step();
+		expect( state.view ).toEqual( NEXT );
+		let taken = false;
+		void rendered!.then( () => {
+			taken = true;
+		} );
+		await settle();
+		expect( taken, 'not before the render has run' ).toBe( false );
+		vi.advanceTimersByTime( 0 );
+		await settle();
+		expect( taken ).toBe( true );
+	} );
 } );
 
 // CI run 43520699158: the first deck's answer moved Next by 166 pixels, and WebKit dropped a press it came during
@@ -1190,7 +2183,8 @@ describe( 'keeping the control in use where it was', () => {
 
 	it( 'scrolls the page by what the view moved the part picked, once it is drawn and before it is painted', async () => {
 		const { radio } = builder();
-		at( radio, [ 300, 134 ] );
+		// Before the view, after it, and back where it was once scrolled.
+		at( radio, [ 300, 134, 300 ] );
 		await pick( radio );
 		expect( state.view ).toMatchObject( { status: 'A deck.' } );
 		expect( scrolled ).not.toHaveBeenCalled();
@@ -1201,16 +2195,110 @@ describe( 'keeping the control in use where it was', () => {
 	it( 'keeps the control with focus in the builder where it was, ahead of the part picked', async () => {
 		const { radio, filter } = builder();
 		filter.focus();
-		at( filter, [ 100, 160 ] );
+		at( filter, [ 100, 160, 100 ] );
 		at( radio, [ 300, 0 ] );
 		await pick( radio );
 		vi.advanceTimersToNextFrame();
 		expect( scrolled ).toHaveBeenCalledExactlyOnceWith( 0, 60 );
 	} );
 
+	// WebKit focuses no button a pointer presses: the control under the press is kept in place, ahead of what has focus,
+	// and once the pointer comes up, or the browser takes the press over, focus decides again.
+	it( 'keeps the control under a press where it was, ahead of the one with focus, until the press ends', async () => {
+		for ( const end of [ 'pointerup', 'pointercancel' ] ) {
+			const { radio, filter } = builder();
+			radio.focus();
+			at( radio, [ 300, 300 ] );
+			at( filter, [ 610, 584, 610 ] );
+			filter.dispatchEvent(
+				new Event( 'pointerdown', { bubbles: true } )
+			);
+			await pick( radio );
+			vi.advanceTimersToNextFrame();
+			expect( scrolled ).toHaveBeenCalledExactlyOnceWith( 0, -26 );
+
+			scrolled.mockClear();
+			document.dispatchEvent( new Event( end ) );
+			at( filter, [ 610, 584 ] );
+			at( radio, [ 300, 300 ] );
+			await pick( radio );
+			vi.advanceTimersToNextFrame();
+			expect( scrolled ).not.toHaveBeenCalled();
+			scrolled.mockClear();
+		}
+	} );
+
+	it( 'keeps no press on what is not a control, or once the builder is gone', async () => {
+		const { radio } = builder();
+		const step = document.querySelector( 'form' )!;
+		at( radio, [ 300, 300 ] );
+		at( step, [ 10, 50 ] );
+		step.dispatchEvent( new Event( 'pointerdown', { bubbles: true } ) );
+		await pick( radio );
+		vi.advanceTimersToNextFrame();
+		expect( scrolled ).not.toHaveBeenCalled();
+
+		// A press held when the builder was drawn again is on a control no longer in it.
+		const { filter } = builder();
+		filter.dispatchEvent( new Event( 'pointerdown', { bubbles: true } ) );
+		const { radio: again } = builder();
+		at( filter, [ 610, 584 ] );
+		at( again, [ 300, 300 ] );
+		await pick( again );
+		vi.advanceTimersToNextFrame();
+		expect( scrolled ).not.toHaveBeenCalled();
+	} );
+
+	it( 'keeps a press on a button in an element the page can focus from focusing that element, and no other', () => {
+		document.body.innerHTML = `
+			<main tabindex="-1">
+				<div class="cbuild">
+					<figure id="cbuild-picture" tabindex="-1"><button type="button"><span>Show the top</span></button></figure>
+					<button type="button" class="next">Next</button>
+					<button type="submit" class="default" tabindex="-1"></button>
+					<p tabindex="-1"><a href="#x">A link</a></p>
+				</div>
+			</main>`;
+		const root = document.querySelector< HTMLElement >( '.cbuild' )!;
+		setElement( root );
+		(
+			defined.definition as { callbacks: { init: () => void } }
+		 ).callbacks.init();
+		// Two earlier tests drew the builder on the body itself, and their listener stays there: the press stops at the
+		// page's main, past this builder's own listener, as the page's other listeners are none of this test's.
+		document
+			.querySelector( 'main' )!
+			.addEventListener( 'mousedown', ( event ) =>
+				event.stopPropagation()
+			);
+		const prevented = ( element: Element ): boolean =>
+			! element.dispatchEvent(
+				new Event( 'mousedown', { bubbles: true, cancelable: true } )
+			);
+		expect(
+			prevented( root.querySelector( 'figure span' )! ),
+			'the turn'
+		).toBe( true );
+		expect(
+			prevented( root.querySelector( 'figure' )! ),
+			'the figure'
+		).toBe( false );
+		expect(
+			prevented( root.querySelector( '.next' )! ),
+			'a button whose focusable ancestor is outside the builder'
+		).toBe( false );
+		expect(
+			prevented( root.querySelector( '.default' )! ),
+			'a button the page can focus itself'
+		).toBe( false );
+		expect( prevented( root.querySelector( 'a' )! ), 'a link' ).toBe(
+			false
+		);
+	} );
+
 	it( 'scrolls by a pixel, and by nothing for less', async () => {
 		const { radio } = builder();
-		at( radio, [ 300, 299 ] );
+		at( radio, [ 300, 299, 300 ] );
 		await pick( radio );
 		vi.advanceTimersToNextFrame();
 		expect( scrolled ).toHaveBeenCalledExactlyOnceWith( 0, -1 );
@@ -1220,6 +2308,32 @@ describe( 'keeping the control in use where it was', () => {
 		await pick( radio );
 		vi.advanceTimersToNextFrame();
 		expect( scrolled ).not.toHaveBeenCalled();
+	} );
+
+	it( 'scrolls again by what is left where the first scroll moved the control too, as the phone bar does (D-267)', async () => {
+		const { radio, filter } = builder();
+		filter.focus();
+		// Next in the bar: stuck at the screen's foot after the view, then at the builder's end once scrolled.
+		at( filter, [ 614, 785, 653, 614 ] );
+		at( radio, [ 300, 0 ] );
+		await pick( radio );
+		vi.advanceTimersToNextFrame();
+		expect( scrolled.mock.calls ).toEqual( [
+			[ 0, 171 ],
+			[ 0, 39 ],
+		] );
+	} );
+
+	it( 'scrolls three times at most for a control that never comes back', async () => {
+		const { radio } = builder();
+		at( radio, [ 300, 400 ] );
+		await pick( radio );
+		vi.advanceTimersToNextFrame();
+		expect( scrolled.mock.calls ).toEqual( [
+			[ 0, 100 ],
+			[ 0, 100 ],
+			[ 0, 100 ],
+		] );
 	} );
 
 	it( 'scrolls nothing for a control the view took off the page, or with nothing picked or focused', async () => {
@@ -1235,6 +2349,56 @@ describe( 'keeping the control in use where it was', () => {
 		await pick( again );
 		vi.advanceTimersToNextFrame();
 		expect( scrolled ).not.toHaveBeenCalled();
+	} );
+
+	it( 'keeps the part picked where it was when the builder itself has focus', async () => {
+		const { radio } = builder();
+		const root = document.querySelector< HTMLElement >( '.cbuild' )!;
+		root.tabIndex = -1;
+		root.focus();
+		at( radio, [ 300, 134, 300 ] );
+		await pick( radio );
+		vi.advanceTimersToNextFrame();
+		expect( scrolled ).toHaveBeenCalledExactlyOnceWith( 0, -166 );
+	} );
+
+	it( 'leaves focus where it was when the part picked, not a control with focus, sits in a folded width', async () => {
+		document.body.innerHTML = `
+			<div class="cbuild">
+				<form class="cbuild-step" method="get" action="/">
+					<details class="cbuild-width__pick">
+						<summary class="cbuild-width__chosen">8.25″ Change</summary>
+						<input type="radio" name="cbuild[deck]" value="12" checked>
+					</details>
+				</form>
+			</div>`;
+		setElement( document.querySelector< HTMLElement >( '.cbuild' )! );
+		(
+			defined.definition as { callbacks: { init: () => void } }
+		 ).callbacks.init();
+		const radio =
+			document.querySelector< HTMLInputElement >( 'input[type=radio]' )!;
+		at( radio, [ 300, 300 ] );
+		await pick( radio );
+		vi.advanceTimersToNextFrame();
+		expect( document.body.ownerDocument.activeElement ).toBe(
+			document.body
+		);
+	} );
+
+	it( 'leaves a width fold with no line open after an answer', async () => {
+		const { radio } = builder();
+		document
+			.querySelector( '.cbuild' )!
+			.insertAdjacentHTML(
+				'beforeend',
+				'<details class="cbuild-width__pick" open><button type="submit">8.5″</button></details>'
+			);
+		await pick( radio );
+		expect( () => vi.advanceTimersToNextFrame() ).not.toThrow();
+		expect(
+			document.querySelector< HTMLDetailsElement >( 'details' )!.open
+		).toBe( true );
 	} );
 
 	it( 'leaves a move to another step to its own focus and motion', async () => {
@@ -1352,6 +2516,19 @@ describe( 'turning the board over', () => {
 		const plain = view( 'trucks', undefined );
 		await go( plain );
 		expect( state.view ).toEqual( plain );
+	} );
+
+	it( 'turns nothing as a board comes into the picture or leaves it', async () => {
+		state.view = view( 'deck', undefined );
+		const drawn = view( 'trucks', { turnable: true, turned: true } );
+		await go( drawn );
+		expect( state.view ).toEqual( drawn );
+		expect( state.turning ).toBe( false );
+
+		const plain = view( 'wheels', undefined );
+		await go( plain );
+		expect( state.view ).toEqual( plain );
+		expect( state.turning ).toBe( false );
 	} );
 
 	it( 'moves nothing when a new view shows the side already shown, so a board shown again later is not turned', async () => {

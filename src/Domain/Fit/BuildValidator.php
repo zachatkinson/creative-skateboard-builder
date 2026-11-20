@@ -11,6 +11,8 @@ namespace CreativeBranding\SkateboardBuilder\Domain\Fit;
 
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Kit;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Picks;
+use CreativeBranding\SkateboardBuilder\Domain\Kit\SlotKey;
+use CreativeBranding\SkateboardBuilder\Domain\Rule\BearingRule;
 use CreativeBranding\SkateboardBuilder\Domain\Rule\Finding;
 use CreativeBranding\SkateboardBuilder\Domain\Rule\Severity;
 
@@ -54,7 +56,8 @@ final readonly class BuildValidator {
 		foreach ( $kit->slots->all() as $slot ) {
 			$option = $build[ $slot->key ] ?? null;
 			if ( null === $option ) {
-				if ( $slot->required ) {
+				// Wheels sold with their bearings fill the Bearings slot (D-246).
+				if ( $slot->required && ! ( SlotKey::BEARINGS === $slot->key && BearingRule::included( $picks ) ) ) {
 					$problems[] = new BuildProblem( Problem::SlotEmpty, $slot->key );
 				}
 				continue;

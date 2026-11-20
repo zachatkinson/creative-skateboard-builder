@@ -36,6 +36,38 @@ final class ShopMoney implements Money {
 	}
 
 	/**
+	 * The currency prices are shown in now: WooCommerce's, after its `woocommerce_currency` filter, which a currency
+	 * switcher answers.
+	 *
+	 * @since 1.0.0
+	 */
+	public function currency(): string {
+		return get_woocommerce_currency();
+	}
+
+	/**
+	 * How the shop writes a price, from WooCommerce's own settings and their filters (WooCommerce 11.3.0,
+	 * includes/wc-core-functions.php:716, includes/wc-formatting-functions.php:522, 550, 560 and 571). The symbol is
+	 * plain text: WooCommerce gives it as an HTML entity.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @return array{code: string, symbol: string, decimals: int, decimal_separator: string, thousand_separator: string, format: string}
+	 */
+	public function settings(): array {
+		$code = get_woocommerce_currency();
+		return array(
+			'code'               => $code,
+			'symbol'             => html_entity_decode( get_woocommerce_currency_symbol( $code ), ENT_QUOTES | ENT_HTML5, 'UTF-8' ),
+			'decimals'           => max( 0, wc_get_price_decimals() ),
+			'decimal_separator'  => wc_get_price_decimal_separator(),
+			'thousand_separator' => wc_get_price_thousand_separator(),
+			// Plain text as the symbol is: WooCommerce writes its space as an entity, for HTML (D-290).
+			'format'             => html_entity_decode( get_woocommerce_price_format(), ENT_QUOTES | ENT_HTML5, 'UTF-8' ),
+		);
+	}
+
+	/**
 	 * A price WooCommerce wrote, as plain text.
 	 *
 	 * @since 0.4.0

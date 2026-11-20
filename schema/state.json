@@ -21,9 +21,80 @@
 		"total",
 		"picture",
 		"delivery",
-		"notes"
+		"notes",
+		"shelf",
+		"bearings_included",
+		"currency"
 	],
 	"properties": {
+		"bearings_included": {
+			"description": "From 1.0.0: whether the wheels picked come with their bearings (the `bearings_included` spec), so the kit's bearings slot counts as filled and its step is no step (D-246).",
+			"type": "boolean"
+		},
+		"currency": {
+			"description": "From 1.0.0: how the shop writes a price, from WooCommerce's settings and their filters, for a page that formats a total itself. `format` puts the symbol (`%1$s`) beside the amount (`%2$s`), as `get_woocommerce_price_format()` does.",
+			"type": "object",
+			"required": [ "code", "symbol", "decimals", "decimal_separator", "thousand_separator", "format" ],
+			"properties": {
+				"code": { "description": "The currency's ISO 4217 code: the shop's, or a currency switcher's.", "type": "string" },
+				"symbol": { "description": "Its symbol, as plain text.", "type": "string" },
+				"decimals": { "description": "How many decimals a price shows.", "type": "integer", "minimum": 0 },
+				"decimal_separator": { "description": "Between the whole amount and its decimals.", "type": "string" },
+				"thousand_separator": { "description": "Between thousands.", "type": "string" },
+				"format": { "description": "Where the symbol goes, as plain text: `%1$s%2$s`, `%2$s%1$s`, or either with a no-break space (U+00A0) between, as WooCommerce has it. From 1.0.0 the space is the character, not `&nbsp;`.", "type": "string" }
+			}
+		},
+		"reopened": {
+			"description": "From 1.0.0, only on the answer to a build link that carries `_saved`, the UUID of the signed-in customer's own saved build of this kit, where it has changed since it was saved: what changed and the prices then and now (spec: A saved build that has changed; D-254, D-278). The answer's state is then the build with the closest parts in place, at the review.",
+			"type": "object",
+			"required": [ "changes", "prices", "then", "now", "picks", "first" ],
+			"properties": {
+				"changes": {
+					"description": "Each part gone, sold out or no longer fitting, in step order, with the closest part that fits in its place, or null where none does.",
+					"type": "array",
+					"items": {
+						"type": "object",
+						"required": [ "slot", "label", "was", "name", "reason", "closest" ],
+						"properties": {
+							"slot": { "description": "The slot's key.", "type": "string" },
+							"label": { "description": "The slot's label.", "type": "string" },
+							"was": { "description": "The part saved: a product's or a variation's ID.", "type": "integer" },
+							"name": { "description": "Its name, or empty where it no longer reads.", "type": "string" },
+							"reason": { "description": "`gone`, `sold_out` or `no_fit`.", "type": "string", "enum": [ "gone", "sold_out", "no_fit" ] },
+							"closest": {
+								"description": "The closest part that fits in its place, or null.",
+								"type": [ "object", "null" ],
+								"required": [ "id", "name" ],
+								"properties": {
+									"id": { "description": "The part's ID.", "type": "integer" },
+									"name": { "description": "Its name.", "type": "string" }
+								}
+							}
+						}
+					}
+				},
+				"prices": {
+					"description": "Each part kept whose price changed, in the same currency as when it was saved, with the price then and now as text.",
+					"type": "array",
+					"items": {
+						"type": "object",
+						"required": [ "slot", "label", "part", "name", "then", "now" ],
+						"properties": {
+							"slot": { "description": "The slot's key.", "type": "string" },
+							"label": { "description": "The slot's label.", "type": "string" },
+							"part": { "description": "The part's ID.", "type": "integer" },
+							"name": { "description": "Its name.", "type": "string" },
+							"then": { "description": "Its price when saved.", "type": "string" },
+							"now": { "description": "Its price now.", "type": "string" }
+						}
+					}
+				},
+				"then": { "description": "The build's total when saved, as text, or null where no prices were kept in this currency (a build saved before 1.0.0).", "type": [ "string", "null" ] },
+				"now": { "description": "The total now, with the closest parts in place, as text.", "type": "string" },
+				"picks": { "description": "The build with the closest parts in place: a part ID per slot.", "type": "object", "additionalProperties": { "type": "integer" } },
+				"first": { "description": "The first slot that changed, which Choose myself opens, or `review`.", "type": "string" }
+			}
+		},
 		"kit": {
 			"description": "The kit product's ID.",
 			"type": "integer",
@@ -484,6 +555,7 @@
 							"size",
 							"name",
 							"image",
+							"photo",
 							"drawn"
 						],
 						"properties": {
@@ -509,7 +581,7 @@
 								"type": "string"
 							},
 							"image": {
-								"description": "The part's photo, or null when it has none.",
+								"description": "The part's photo, else from 1.0.0 its layer image, uncropped; null when it has neither.",
 								"oneOf": [
 									{
 										"$ref": "#/definitions/photo"
@@ -518,6 +590,10 @@
 										"type": "null"
 									}
 								]
+							},
+							"photo": {
+								"description": "Whether `image` is the part's photo, not its layer image (1.0.0).",
+								"type": "boolean"
 							},
 							"drawn": {
 								"description": "Whether the board draws the part, which then has no labelled photo (0.7.0).",
@@ -575,6 +651,17 @@
 				"type": "string"
 			}
 		},
+		"shelf": {
+			"description": "From 1.0.0: the current step as the configurator lists it, one card per look (D-240 to D-264), or null on the review, which lists no parts. `options` and `filters` stay as they were, for whoever reads them.",
+			"oneOf": [
+				{
+					"$ref": "#/definitions/shelf"
+				},
+				{
+					"type": "null"
+				}
+			]
+		},
 		"view": {
 			"description": "Only in an answer to a build link (the cbuild argument): what the builder's template draws for it, as the page's first render has it. The builder's own, and no part of the public API: it may change in any release. The fields the store's script reads are described, so its types are generated from here; the rest are the templates'.",
 			"type": "object",
@@ -596,7 +683,15 @@
 					"required": ["slot", "options"],
 					"properties": {
 						"slot": { "description": "The step's slot, or empty at the review.", "type": "string" },
-						"options": { "description": "The step's listed parts.", "type": "array", "items": { "type": "object" } }
+						"options": { "description": "The step's listed parts.", "type": "array", "items": { "type": "object" } },
+						"more": {
+							"type": "object",
+							"required": ["added"],
+							"properties": {
+								"added": { "description": "What the status says after Show more: how many it added, or empty (1.0.0).", "type": "string" }
+							},
+							"additionalProperties": true
+						}
 					},
 					"additionalProperties": true
 				},
@@ -717,7 +812,7 @@
 		"message": {
 			"description": "What a rule found.",
 			"type": "object",
-			"required": [ "rule", "code", "severity", "text" ],
+			"required": [ "rule", "code", "severity", "text", "short" ],
 			"properties": {
 				"rule": {
 					"description": "The rule: r1 to r7.",
@@ -736,6 +831,10 @@
 				"text": {
 					"description": "The finding as a sentence, in the language of the answer.",
 					"type": "string"
+				},
+				"short": {
+					"description": "From 1.0.0: the finding as a card's short label, where it has one, such as \"Needs ⅛″ risers with your trucks\"; otherwise empty.",
+					"type": "string"
 				}
 			}
 		},
@@ -748,7 +847,8 @@
 				"price",
 				"stock",
 				"stock_class",
-				"image"
+				"image",
+				"photo"
 			],
 			"properties": {
 				"name": {
@@ -772,7 +872,7 @@
 					"type": "string"
 				},
 				"image": {
-					"description": "The part's photo at the catalogue's size, or null when it has none.",
+					"description": "The part's photo at the catalogue's size, else from 1.0.0 its layer image, uncropped; null when it has neither.",
 					"oneOf": [
 						{
 							"$ref": "#/definitions/photo"
@@ -781,6 +881,10 @@
 							"type": "null"
 						}
 					]
+				},
+				"photo": {
+					"description": "Whether `image` is the part's photo, not its layer image (1.0.0).",
+					"type": "boolean"
 				}
 			}
 		},
@@ -829,7 +933,7 @@
 				"delta": {
 					"description": "What taking the part does to the total, against the part the step counts now: what the build charges for as many as it takes.",
 					"type": "object",
-					"required": [ "kind", "amount", "text" ],
+					"required": [ "kind", "amount", "text", "change" ],
 					"properties": {
 						"kind": {
 							"description": "`more` or `less` than the part counted; `free`, for the same price; `included`, for the part counted itself; `none`, for a part that gives no set size and so has no price in a build.",
@@ -848,6 +952,10 @@
 						},
 						"text": {
 							"description": "The change as its card says it: `+$12.00`, `−$5.00`, `Same price`, `Included`, or an empty string.",
+							"type": "string"
+						},
+						"change": {
+							"description": "From 1.0.0: the change as it reads under the card's full price, once the step has a pick: `+$12.00 over your pick`, `$8.00 less`, `Same price`, `Included`, or an empty string (D-249).",
 							"type": "string"
 						}
 					}
@@ -977,6 +1085,264 @@
 				},
 				"selected": {
 					"description": "Whether the list is filtered by it.",
+					"type": "boolean"
+				}
+			}
+		},
+		"shelf": {
+			"description": "A step's shelf: a page of the looks in stock, the sold-out fold, the chips, the deck's width question and the counts.",
+			"type": "object",
+			"required": [ "looks", "sold_out", "chips", "widths", "offered", "matching", "more", "query", "sort", "elsewhere", "hidden_matching" ],
+			"properties": {
+				"looks": {
+					"description": "The page of looks in stock, in the order asked: 30 at most from `from`.",
+					"type": "array",
+					"items": {
+						"$ref": "#/definitions/look"
+					}
+				},
+				"sold_out": {
+					"description": "Every sold-out look the search and chips leave, in the same order, for the fold.",
+					"type": "array",
+					"items": {
+						"$ref": "#/definitions/look"
+					}
+				},
+				"chips": {
+					"description": "The chip groups: brand, the size where the shopper picks it, and the attributes most of the step's looks carry; four at most, each with two values or more.",
+					"type": "array",
+					"maxItems": 4,
+					"items": {
+						"$ref": "#/definitions/chipGroup"
+					}
+				},
+				"widths": {
+					"description": "On the deck step, each width the kit's decks come in, smallest first; empty on every other step.",
+					"type": "array",
+					"items": {
+						"$ref": "#/definitions/width"
+					}
+				},
+				"offered": {
+					"description": "How many looks the step offers before any search or chip, which decides its tools: Sort and the chips from 13, search from 41.",
+					"type": "integer",
+					"minimum": 0
+				},
+				"matching": {
+					"description": "How many looks in stock the search and chips leave: the 90 of \"Showing 30 of 90\".",
+					"type": "integer",
+					"minimum": 0
+				},
+				"more": {
+					"description": "The `from` that asks for the next page, or null when none is left.",
+					"type": [ "integer", "null" ],
+					"minimum": 1
+				},
+				"query": {
+					"description": "The search the step was listed with, as it was read: trimmed, 100 characters at most.",
+					"type": "string",
+					"maxLength": 100
+				},
+				"sort": {
+					"description": "The order the step was listed in.",
+					"type": "string",
+					"enum": [ "recommended", "price-asc", "price-desc", "newest" ]
+				},
+				"elsewhere": {
+					"description": "From 1.0.0, on the deck step, where a search finds nothing in stock in the width asked: the widths its matches are in stock in, narrowest first, each with `value` and `text`; otherwise empty.",
+					"type": "array",
+					"items": {
+						"type": "object",
+						"required": [ "value", "text" ],
+						"properties": {
+							"value": { "description": "The width as the `width` argument names it: `8.5in`.", "type": "string" },
+							"text": { "description": "The width as a person reads it.", "type": "string" }
+						}
+					}
+				},
+				"hidden_matching": {
+					"description": "From 1.0.0, where a search finds nothing to list here or in another width: how many of the step's parts that don't fit the build match it; otherwise 0.",
+					"type": "integer",
+					"minimum": 0
+				}
+			}
+		},
+		"look": {
+			"description": "A card: a product, or the variations of one that share a photo and a layer image.",
+			"type": "object",
+			"required": [ "key", "product", "name", "brand", "look", "part", "sizes", "choices" ],
+			"properties": {
+				"key": {
+					"description": "What tells it from the step's other looks: its product, photo and layer image's IDs.",
+					"type": "string",
+					"pattern": "^[0-9]+:[0-9]+:[0-9]+$"
+				},
+				"product": {
+					"description": "The product it belongs to.",
+					"type": "integer",
+					"minimum": 1
+				},
+				"name": {
+					"type": "string",
+					"description": "From 1.0.0: the product's name, in plain text: the parent's for a variation, so a look's card says \"Katie\", not \"Katie - 8.25″\" (D-273)."
+				},
+				"brand": {
+					"type": "string",
+					"description": "From 1.0.0: the brand's name, in plain text, or an empty string."
+				},
+				"look": {
+					"type": "array",
+					"items": {
+						"type": "string"
+					},
+					"description": "From 1.0.0: the values that tell the look from its product's other looks in the step, such as [\"Mint\"]; empty where the product has one look (D-273)."
+				},
+				"part": {
+					"description": "The part the card shows and the build would take: the pick where it is in the look, else the size the build decides, else the size the shopper's chip or the recommendation wants.",
+					"$ref": "#/definitions/option"
+				},
+				"sizes": {
+					"description": "The sizes it comes in on the slot's size, smallest first; empty where the slot has none.",
+					"type": "array",
+					"items": {
+						"description": "A size, as the chips name it and as a person reads it.",
+						"type": "object",
+						"required": [ "value", "text" ],
+						"properties": {
+							"value": {
+								"description": "The size as the chips and the `width` argument name it: `8.25in`, `54mm`.",
+								"type": "string"
+							},
+							"text": {
+								"description": "The size as a person reads it, in the shop's units.",
+								"type": "string"
+							}
+						}
+					}
+				},
+				"sized": {
+					"description": "From 1.0.0, on the look the step's pick is of and only where nothing in the build decides its size: each size it comes in, as the part of that size with the pick's other choices, smallest first, for the radio group after the picked card (D-279). Left out on any other look, and on a look in one size.",
+					"type": "array",
+					"items": {
+						"type": "object",
+						"required": [
+							"part",
+							"value",
+							"text",
+							"in_stock",
+							"picked"
+						],
+						"properties": {
+							"part": {
+								"description": "The part of this size: the step's pick when chosen.",
+								"type": "integer"
+							},
+							"value": {
+								"description": "The size as the chips name it: `54mm`.",
+								"type": "string"
+							},
+							"text": {
+								"description": "The size as a person reads it.",
+								"type": "string"
+							},
+							"in_stock": {
+								"description": "Whether the shop can supply it for the build.",
+								"type": "boolean"
+							},
+							"picked": {
+								"description": "Whether it is the size the build holds.",
+								"type": "boolean"
+							}
+						}
+					}
+				},
+				"choices": {
+					"description": "The choices you can't see: each attribute whose values differ between its parts, by attribute, with its values.",
+					"type": "object",
+					"additionalProperties": {
+						"type": "array",
+						"items": {
+							"description": "A value.",
+							"type": "object",
+							"required": [ "value", "label" ],
+							"properties": {
+								"value": {
+									"description": "The value's slug.",
+									"type": "string"
+								},
+								"label": {
+									"description": "The value as the shop names it.",
+									"type": "string"
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"chipGroup": {
+			"description": "A group of chips: chips in one group widen, and groups narrow each other.",
+			"type": "object",
+			"required": [ "name", "label", "chips" ],
+			"properties": {
+				"name": {
+					"description": "`brand`, the slot's size spec's key, or an attribute's taxonomy (`pa_…`), as the `chips` argument names it.",
+					"type": "string"
+				},
+				"label": {
+					"description": "The group's name as a person reads it.",
+					"type": "string"
+				},
+				"chips": {
+					"description": "Its values, in natural order.",
+					"type": "array",
+					"items": {
+						"description": "A chip.",
+						"type": "object",
+						"required": [ "value", "label", "count", "selected" ],
+						"properties": {
+							"value": {
+								"description": "The value as the `chips` argument names it.",
+								"type": "string"
+							},
+							"label": {
+								"description": "The value as a person reads it.",
+								"type": "string"
+							},
+							"count": {
+								"description": "How many looks it leaves, with the other groups' chips applied and not its own.",
+								"type": "integer",
+								"minimum": 0
+							},
+							"selected": {
+								"description": "Whether it is chosen.",
+								"type": "boolean"
+							}
+						}
+					}
+				}
+			}
+		},
+		"width": {
+			"description": "A width the deck step's question offers.",
+			"type": "object",
+			"required": [ "value", "text", "in_stock", "selected" ],
+			"properties": {
+				"value": {
+					"description": "The width as the `width` argument names it: `8.25in`.",
+					"type": "string"
+				},
+				"text": {
+					"description": "The width as a person reads it.",
+					"type": "string"
+				},
+				"in_stock": {
+					"description": "How many looks are in stock in it; a width with none shows dimmed.",
+					"type": "integer",
+					"minimum": 0
+				},
+				"selected": {
+					"description": "Whether it is the width asked.",
 					"type": "boolean"
 				}
 			}

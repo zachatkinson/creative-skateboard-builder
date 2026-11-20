@@ -76,6 +76,11 @@ if ( ! function_exists( '_n' ) ) {
 		return 1 === $number ? $single : $plural;
 	}
 }
+if ( ! function_exists( 'get_current_user_id' ) ) {
+	function get_current_user_id(): int {
+		return $GLOBALS['cbuild_test_user'] ?? 0;
+	}
+}
 if ( ! function_exists( 'number_format_i18n' ) ) {
 	function number_format_i18n( $number, int $decimals = 0 ): string {
 		return number_format( (float) $number, $decimals, $GLOBALS['cbuild_test_decimal'] ?? '.', ',' );

@@ -111,6 +111,8 @@ CREATE TABLE {$parts} (
   attributes text NULL,
   specs text NULL,
   read_at bigint(20) unsigned NOT NULL DEFAULT 0,
+  look mediumtext NULL,
+  card mediumtext NULL,
   PRIMARY KEY  (part_id,context),
   KEY parent_id (parent_id,context)
 ) {$charset};

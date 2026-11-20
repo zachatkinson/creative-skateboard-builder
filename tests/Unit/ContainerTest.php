@@ -57,9 +57,17 @@ final class ContainerTest extends TestCase {
 				array( \CreativeBranding\SkateboardBuilder\Service\IndexJobs::class, 'renditions', \CreativeBranding\SkateboardBuilder\Service\PartRenditions::class ),
 				array( \CreativeBranding\SkateboardBuilder\Port\Reindex::class, 'renditions', \CreativeBranding\SkateboardBuilder\Service\PartRenditions::class ),
 				array( \CreativeBranding\SkateboardBuilder\Service\CatalogueCheck::class, 'layers', \CreativeBranding\SkateboardBuilder\Port\LayerImages::class ),
+				array( \CreativeBranding\SkateboardBuilder\Service\CatalogueCheck::class, 'looks', \CreativeBranding\SkateboardBuilder\Port\PartLooks::class ),
 				array( \CreativeBranding\SkateboardBuilder\Front\StateAnswer::class, 'artwork', \CreativeBranding\SkateboardBuilder\Service\LayerArtwork::class ),
 				array( \CreativeBranding\SkateboardBuilder\Admin\PartSpecsPanel::class, 'images', \CreativeBranding\SkateboardBuilder\Port\LayerImages::class ),
 				array( \CreativeBranding\SkateboardBuilder\Front\BuilderPage::class, 'saved', \CreativeBranding\SkateboardBuilder\Service\SavedBuilds::class ),
+				array( \CreativeBranding\SkateboardBuilder\Front\StateAnswer::class, 'pictures', \Closure::class ),
+				array( \CreativeBranding\SkateboardBuilder\Front\Builder::class, 'saved', \CreativeBranding\SkateboardBuilder\Service\SavedBuilds::class ),
+				array( \CreativeBranding\SkateboardBuilder\Front\Builder::class, 'remembered', \CreativeBranding\SkateboardBuilder\Front\RememberedWidth::class ),
+				array( \CreativeBranding\SkateboardBuilder\Service\SavedBuilds::class, 'money', \CreativeBranding\SkateboardBuilder\Port\Money::class ),
+				array( \CreativeBranding\SkateboardBuilder\Service\SpecImport::class, 'check', \CreativeBranding\SkateboardBuilder\Service\LayerCheck::class ),
+				array( \CreativeBranding\SkateboardBuilder\Service\SpecImport::class, 'layers', \CreativeBranding\SkateboardBuilder\Port\PartLayers::class ),
+				array( \CreativeBranding\SkateboardBuilder\Service\SpecExport::class, 'layers', \CreativeBranding\SkateboardBuilder\Port\PartLayers::class ),
 			) as [ $id, $property, $type ]
 		) {
 			$service = $container->get( $id );
@@ -91,7 +99,7 @@ final class ContainerTest extends TestCase {
 	public function test_the_registry_is_built_from_its_classes(): void {
 		$registry = ( new Container() )->get( MigrationRegistry::class );
 		$keys     = $registry->keys();
-		self::assertSame( array( 'schema_1', 'noop_1', 'spec_tables_1', 'schema_2', 'reserved_slot_keys_1', 'spec_tables_2', 'layer_renditions_1' ), $keys );
+		self::assertSame( array( 'schema_1', 'noop_1', 'spec_tables_1', 'schema_2', 'reserved_slot_keys_1', 'spec_tables_2', 'layer_renditions_1', 'schema_3' ), $keys );
 	}
 
 	public function test_an_unknown_service_throws(): void {
@@ -127,7 +135,7 @@ final class ContainerTest extends TestCase {
 		$container = new Container();
 		$container->set( MigrationStore::class, new InMemoryMigrationStore() );
 		$hookables = $container->hookablesFor( Scope::Everywhere );
-		self::assertCount( 23, $hookables, 'the install\'s, the index\'s, the cards\', the spec tables\', the import\'s, the picture\'s, the kit\'s, the cart\'s eight, the order\'s two, the privacy tools\', the builder\'s, the saved builds\' and the three abilities\'' );
+		self::assertCount( 23, $hookables, 'the install\'s, the index\'s, the cards\', the spec tables\', the import\'s, the picture\'s, the kit\'s, the cart\'s eight, the order\'s two, the privacy tools\', the builder\'s, the deck page\'s start button, the saved builds\' and the three abilities\'' );
 		self::assertContainsOnlyInstancesOf( Hookable::class, $hookables );
 	}
 
@@ -149,7 +157,7 @@ final class ContainerTest extends TestCase {
 			'Cli'        => array( 'Hooks\\CliHooks', 'Health\\SiteHealth' ),
 			'Cron'       => array( 'Health\\SiteHealth' ),
 			'Rest'       => array( 'Health\\SiteHealth', 'Rest\\StateRoute' ),
-			'Storefront' => array( 'Front\\SeoHooks', 'Front\\ShareHooks' ),
+			'Storefront' => array( 'Front\\StartButton', 'Front\\SeoHooks', 'Front\\ShareHooks' ),
 		);
 		self::assertSame( array_column( Scope::cases(), 'name' ), array_keys( $scopes ), 'every scope' );
 		foreach ( Scope::cases() as $scope ) {

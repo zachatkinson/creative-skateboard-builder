@@ -98,11 +98,12 @@ final class PartsTableTest extends IntegrationTestCase {
 	 * @return array<int, PartFact>
 	 */
 	private function rows( int ...$ids ): array {
-		// As the request's end does: what moved is deleted once, then.
+		// As the request's end does: what moved is forgotten once, then. A forgotten row is kept for its look and card
+		// and read again from the shop, as one an hour old is (D-289): it is not what is believed of the part.
 		$kits = $this->service( \CreativeBranding\SkateboardBuilder\Port\Kits::class );
 		self::assertInstanceOf( \CreativeBranding\SkateboardBuilder\Adapter\WooKits::class, $kits );
 		$kits->settle();
-		return $this->service( PartFacts::class )->of( WooPartCards::context(), ...$ids );
+		return array_filter( $this->service( PartFacts::class )->of( WooPartCards::context(), ...$ids ), static fn( \CreativeBranding\SkateboardBuilder\Port\PartFact $fact ): bool => $fact->readAt > 0 );
 	}
 
 	/**
@@ -489,7 +490,7 @@ final class PartsTableTest extends IntegrationTestCase {
 
 	// The auditor's should-fix 6, milestone 4: a row was looked for and deleted on every post's and every taxonomy's
 	// write, a dozen times in one product's save.
-	public function test_a_products_save_deletes_its_rows_once_and_another_posts_terms_cost_nothing(): void {
+	public function test_a_products_save_forgets_its_rows_once_and_another_posts_terms_cost_nothing(): void {
 		global $wpdb;
 		$this->decks();
 		$kits = $this->service( \CreativeBranding\SkateboardBuilder\Port\Kits::class );
@@ -512,7 +513,7 @@ final class PartsTableTest extends IntegrationTestCase {
 		self::assertSame( array(), $asked, 'no post but a product touches the table' );
 		self::assertFalse( has_action( 'shutdown', array( $kits, 'settle' ) ), 'and nothing waits for the request\'s end' );
 
-		// A product saved with a price, a category, a tag and its stock: told of many times, deleted once.
+		// A product saved with a price, a category, a tag and its stock: told of many times, forgotten once.
 		$deck = wc_get_product( $this->deck );
 		self::assertInstanceOf( \WC_Product::class, $deck );
 		$deck->set_regular_price( '75' );
@@ -524,7 +525,7 @@ final class PartsTableTest extends IntegrationTestCase {
 		self::assertSame( 10, has_action( 'shutdown', array( $kits, 'settle' ) ) );
 		$kits->settle();
 		remove_filter( 'query', $count );
-		self::assertCount( 1, array_filter( $asked, static fn( string $query ): bool => str_starts_with( $query, 'DELETE' ) ), implode( "\n", $asked ) );
+		self::assertCount( 1, array_filter( $asked, static fn( string $query ): bool => str_starts_with( $query, 'UPDATE' ) && str_contains( $query, 'SET read_at = 0' ) ), implode( "\n", $asked ) );
 		self::assertLessThanOrEqual( 2, count( $asked ), implode( "\n", $asked ) );
 		self::assertSame( 7500, $this->decks()[ $this->deck ]->price );
 	}

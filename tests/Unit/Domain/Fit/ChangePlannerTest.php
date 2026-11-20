@@ -97,6 +97,15 @@ final class ChangePlannerTest extends TestCase {
 		}
 	}
 
+	public function test_wheels_that_come_with_their_bearings_take_the_bearing_picked_out(): void {
+		$included = Parts::of( array( 'wheel_diameter' => '54', 'set_size' => 4, 'bearings_included' => true ), 301 );
+		$list     = self::plan( Builds::complete(), SlotKey::WHEELS, $included, array( SlotKey::BEARINGS => array( Builds::bearings( '8', 501 ) ) ) );
+		self::assertSame( array( SlotKey::BEARINGS ), array_column( $list->changes, 'slot' ) );
+		self::assertSame( array( MessageCode::BearingsIncluded ), array_column( $list->changes[0]->findings, 'code' ) );
+		self::assertNull( $list->changes[0]->closest, 'no bearing goes with them' );
+		self::assertNull( $list->proposed->part( SlotKey::BEARINGS ) );
+	}
+
 	public function test_a_changes_findings_are_a_list_when_a_note_comes_before_the_block(): void {
 		// A kit that asks for trucks after wheels and bearings: the truck's note about its wheel limit comes first, and
 		// its 10 mm axle, which the bearings do not fit, second.

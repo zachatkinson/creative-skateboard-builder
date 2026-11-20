@@ -9,7 +9,7 @@
 
 defined( 'ABSPATH' ) || exit;
 ?>
-<section class="cbuild-presets" aria-labelledby="cbuild-presets-heading" data-wp-bind--hidden="!state.view.presets.shown">
+<section class="cbuild-presets" data-wp-interactive="creative-skateboard-builder" aria-labelledby="cbuild-presets-heading" data-wp-bind--hidden="!state.view.presets.shown">
 	<h3 class="cbuild-presets__heading" id="cbuild-presets-heading" data-wp-text="state.view.presets.heading"></h3>
 	<ul class="cbuild-presets__tiles">
 		<template data-wp-each--tile="state.view.presets.tiles" data-wp-each-key="context.tile.button">

@@ -10,7 +10,9 @@ declare( strict_types=1 );
 namespace CreativeBranding\SkateboardBuilder\Front;
 
 use Closure;
+use CreativeBranding\SkateboardBuilder\Port\Clock;
 use CreativeBranding\SkateboardBuilder\Domain\Saved\SavedBuild;
+use CreativeBranding\SkateboardBuilder\Domain\Saved\SavedPrices;
 use DateTimeImmutable;
 use DateTimeZone;
 use CreativeBranding\SkateboardBuilder\Hookable;
@@ -87,10 +89,18 @@ final class SavedBuildHooks implements Hookable {
 	public const string RESTORE = 'cbuild_restore_build';
 
 	/**
-	 * The customer's session key that holds a build just deleted, until My builds next shows its Undo. Nothing else
-	 * keeps it: the form then carries it, and it is checked and priced again as any save.
+	 * The customer's session key that holds a build just deleted, whole, for Undo. The form carries its UUID alone. It
+	 * goes when My builds is next shown after its Undo, when Undo brings it back, at sign-out, when the session ends,
+	 * or UNDO_MINUTES after the Delete, whichever comes first (Cowork's review of 0.9.0, F2; D-275).
 	 */
 	private const string DELETED = 'cbuild_deleted';
+
+	/**
+	 * How long Undo can bring a deleted build back, in minutes from the Delete (D-275).
+	 *
+	 * @since 1.0.0
+	 */
+	public const int UNDO_MINUTES = 15;
 
 	/**
 	 * The nonce's field.
@@ -127,8 +137,9 @@ final class SavedBuildHooks implements Hookable {
 	 *
 	 * @param Closure(): SavedBuilds  $saved The customer's builds, built when a form is sent.
 	 * @param Closure(): MyBuildsView $view  My builds' rows, built when the page is shown.
+	 * @param Clock                   $clock The time, for how long Undo is offered.
 	 */
-	public function __construct( private Closure $saved, private Closure $view ) {}
+	public function __construct( private Closure $saved, private Closure $view, private Clock $clock ) {}
 
 	/**
 	 * Attach hooks.
@@ -204,7 +215,7 @@ final class SavedBuildHooks implements Hookable {
 	public function page(): void {
 		$rows   = ( $this->view )()->rows( get_current_user_id() );
 		$action = self::url();
-		$gone   = self::offered();
+		$gone   = $this->offered();
 		$undo   = null === $gone ? null : array(
 			'uuid' => $gone->uuid,
 			'name' => ( $this->view )()->name( $gone ),
@@ -287,7 +298,7 @@ final class SavedBuildHooks implements Hookable {
 			wc_add_notice( __( 'The build is renamed.', 'creative-skateboard-builder' ) );
 		} else {
 			wc_add_notice( __( 'The build is deleted.', 'creative-skateboard-builder' ) );
-			self::keep( $gone );
+			$this->keep( $gone );
 		}
 		return self::url();
 	}
@@ -300,7 +311,7 @@ final class SavedBuildHooks implements Hookable {
 	 * @param string $uuid The UUID the form names.
 	 */
 	private function restore( int $user, string $uuid ): string {
-		$kept = self::kept();
+		$kept = $this->kept();
 		if ( null === $kept || $uuid !== $kept['build']->uuid || $user !== $kept['build']->user ) {
 			if ( null !== ( $this->saved )()->find( $user, $uuid ) ) {
 				wc_add_notice( __( 'The build is back in My builds.', 'creative-skateboard-builder' ) );
@@ -317,7 +328,7 @@ final class SavedBuildHooks implements Hookable {
 		}
 		if ( SavedBuilds::FULL === $code ) {
 			/* translators: %s: how many builds a customer may keep, such as 100. */
-			wc_add_notice( sprintf( __( 'You have %s saved builds, the most kept. Delete one to save another.', 'creative-skateboard-builder' ), number_format_i18n( SavedBuilds::MOST ) ), 'error' );
+			wc_add_notice( sprintf( _n( 'You have %s saved build, the most kept. Delete it to save another.', 'You have %s saved builds, the most kept. Delete one to save another.', SavedBuilds::MOST, 'creative-skateboard-builder' ), number_format_i18n( SavedBuilds::MOST ) ), 'error' );
 			return self::url();
 		}
 		wc_add_notice( __( 'The build could not be saved just now. Please try again.', 'creative-skateboard-builder' ), 'error' );
@@ -330,7 +341,7 @@ final class SavedBuildHooks implements Hookable {
 	 *
 	 * @param SavedBuild|null $build The build, as it was.
 	 */
-	private static function keep( ?SavedBuild $build ): void {
+	private function keep( ?SavedBuild $build ): void {
 		$session = function_exists( 'WC' ) ? WC()->session : null;
 		if ( null === $build || null === $session ) {
 			return;
@@ -346,7 +357,9 @@ final class SavedBuildHooks implements Hookable {
 				'name'     => $build->name,
 				'created'  => $build->created->setTimezone( new DateTimeZone( 'UTC' ) )->format( 'Y-m-d H:i:s' ),
 				'updated'  => $build->updated->setTimezone( new DateTimeZone( 'UTC' ) )->format( 'Y-m-d H:i:s' ),
+				'prices'   => $build->prices?->toArray(),
 				'shown'    => false,
+				'deleted'  => $this->clock->now()->getTimestamp(),
 			)
 		);
 	}
@@ -356,14 +369,19 @@ final class SavedBuildHooks implements Hookable {
 	 *
 	 * @return array{build: SavedBuild, shown: bool}|null
 	 */
-	private static function kept(): ?array {
+	private function kept(): ?array {
 		$session = function_exists( 'WC' ) ? WC()->session : null;
 		if ( null === $session ) {
 			return null;
 		}
 		$kept = Cast::map( $session->get( self::DELETED ) );
 		$uuid = Cast::str( $kept['uuid'] ?? null );
-		if ( '' === $uuid ) {
+		// A copy from before 1.0.0 has no time, and is past its Undo as any other kept too long. One past it is taken
+		// out of the session as it is read (the auditor's 1.0.0 should-fix P2).
+		if ( '' === $uuid || $this->clock->now()->getTimestamp() - Cast::int( $kept['deleted'] ?? null ) > self::UNDO_MINUTES * 60 ) {
+			if ( null !== $session->get( self::DELETED ) ) {
+				self::drop();
+			}
 			return null;
 		}
 		$picks = array();
@@ -377,7 +395,7 @@ final class SavedBuildHooks implements Hookable {
 			return null;
 		}
 		return array(
-			'build' => new SavedBuild( $uuid, Cast::int( $kept['user'] ?? null ), Cast::int( $kept['kit'] ?? null ), $picks, Cast::bool( $kept['assembly'] ?? null ), Cast::str( $kept['name'] ?? null ), $created, $updated ),
+			'build' => new SavedBuild( $uuid, Cast::int( $kept['user'] ?? null ), Cast::int( $kept['kit'] ?? null ), $picks, Cast::bool( $kept['assembly'] ?? null ), Cast::str( $kept['name'] ?? null ), $created, $updated, SavedPrices::fromArray( $kept['prices'] ?? null ) ),
 			'shown' => Cast::bool( $kept['shown'] ?? null ),
 		);
 	}
@@ -394,8 +412,8 @@ final class SavedBuildHooks implements Hookable {
 	 * The build to offer Undo for on this view of My builds: the one just deleted, on the first view after the delete
 	 * alone. A later view forgets it.
 	 */
-	private static function offered(): ?SavedBuild {
-		$kept = self::kept();
+	private function offered(): ?SavedBuild {
+		$kept = $this->kept();
 		$user = get_current_user_id();
 		if ( null === $kept || $user !== $kept['build']->user || $kept['shown'] ) {
 			self::drop();
@@ -438,7 +456,7 @@ final class SavedBuildHooks implements Hookable {
 			SavedBuilds::UPDATED => wc_add_notice( __( 'Your saved build is updated.', 'creative-skateboard-builder' ) ),
 			SavedBuilds::FAILED  => wc_add_notice( __( 'The build could not be saved just now. Please try again.', 'creative-skateboard-builder' ), 'error' ),
 			/* translators: %s: how many builds a customer may keep, such as 100. */
-			SavedBuilds::FULL    => wc_add_notice( sprintf( __( 'You have %s saved builds, the most kept. Delete one to save another.', 'creative-skateboard-builder' ), number_format_i18n( SavedBuilds::MOST ) ), 'error' ),
+			SavedBuilds::FULL    => wc_add_notice( sprintf( _n( 'You have %s saved build, the most kept. Delete it to save another.', 'You have %s saved builds, the most kept. Delete one to save another.', SavedBuilds::MOST, 'creative-skateboard-builder' ), number_format_i18n( SavedBuilds::MOST ) ), 'error' ),
 			default              => wc_add_notice( __( 'This build could not be saved: a part is missing or no longer fits. Open it in the builder to check it.', 'creative-skateboard-builder' ), 'error' ),
 		};
 	}

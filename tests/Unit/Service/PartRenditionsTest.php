@@ -156,4 +156,16 @@ final class PartRenditionsTest extends TestCase {
 		self::assertSame( array_unique( $offered ), $offered, 'two kits that offer a part list it once' );
 		self::assertContains( 101, $offered );
 	}
+
+	// D-209: every drawn part with no rendition is said, not the first alone.
+	public function test_each_drawn_part_with_no_rendition_is_missing(): void {
+		$this->indexed( 101, 102, 103 );
+		$this->layer( 101, 11 );
+		$this->layer( 102, 12 );
+		$this->layer( 103, 13 );
+		$this->layers->layered = array( 101, 102, 103 );
+		$this->kits->slotsOf   = array_fill_keys( array( 101, 102, 103 ), array( 'deck' ) );
+		$this->made()->make( 102 );
+		self::assertSame( array( 101, 103 ), $this->made()->missing( 101, 102, 103 ) );
+	}
 }

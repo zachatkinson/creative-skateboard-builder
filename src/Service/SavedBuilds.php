@@ -11,8 +11,10 @@ namespace CreativeBranding\SkateboardBuilder\Service;
 
 use CreativeBranding\SkateboardBuilder\Domain\Kit\InvalidMoney;
 use CreativeBranding\SkateboardBuilder\Domain\Saved\SavedBuild;
+use CreativeBranding\SkateboardBuilder\Domain\Saved\SavedPrices;
 use CreativeBranding\SkateboardBuilder\Port\Clock;
 use CreativeBranding\SkateboardBuilder\Port\Logger;
+use CreativeBranding\SkateboardBuilder\Port\Money;
 use CreativeBranding\SkateboardBuilder\Port\SavedBuildStore;
 use CreativeBranding\SkateboardBuilder\Port\Uuids;
 
@@ -63,9 +65,9 @@ final class SavedBuilds {
 	public const string FAILED = 'failed';
 
 	/**
-	 * The most builds a customer keeps (D-217).
+	 * The most builds a customer keeps (D-217), as the store holds it.
 	 */
-	public const int MOST = 100;
+	public const int MOST = SavedBuildStore::MOST;
 
 	/**
 	 * The longest name, in characters, as the table's column holds it.
@@ -82,8 +84,9 @@ final class SavedBuilds {
 	 * @param Uuids           $uuids  Names a new build.
 	 * @param Clock           $clock  When.
 	 * @param Logger          $logger Where a write the table refuses is said.
+	 * @param Money|null      $money  The currency prices are shown in, for the prices a build keeps (from 1.0.0).
 	 */
-	public function __construct( private SavedBuildStore $store, private BuildState $builds, private Uuids $uuids, private Clock $clock, private Logger $logger ) {}
+	public function __construct( private SavedBuildStore $store, private BuildState $builds, private Uuids $uuids, private Clock $clock, private Logger $logger, private ?Money $money = null ) {}
 
 	/**
 	 * Keep a build for a customer. With the UUID of a build of theirs, that build is saved again, its name kept where
@@ -103,20 +106,22 @@ final class SavedBuilds {
 		if ( $user < 1 ) {
 			return self::said( self::SIGNED_OUT );
 		}
-		$kept = $this->counted( $kit, $picks, $assembly );
-		if ( null === $kept ) {
+		$state = $this->counted( $kit, $picks, $assembly );
+		if ( null === $state ) {
 			return self::said( self::NOT_READY );
 		}
-		$name = self::name( $name );
-		$now  = $this->clock->now();
-		$had  = '' === $uuid ? null : $this->store->find( $user, $uuid );
+		$kept   = array_map( static fn( $part ): int => $part->id, $state->counted() );
+		$prices = $this->prices( $state );
+		$name   = self::name( $name );
+		$now    = $this->clock->now();
+		$had    = '' === $uuid ? null : $this->store->find( $user, $uuid );
 		if ( null !== $had ) {
-			return $this->put( $had->with( $kit, $kept, $assembly, '' === $name ? $had->name : $name, $now ) ) ? self::said( self::UPDATED, $had->uuid ) : self::said( self::FAILED );
+			return $this->put( $had->with( $kit, $kept, $assembly, '' === $name ? $had->name : $name, $now, $prices ) ) ? self::said( self::UPDATED, $had->uuid ) : self::said( self::FAILED );
 		}
 		if ( $this->store->count( $user ) >= self::MOST ) {
 			return self::said( self::FULL );
 		}
-		$build = new SavedBuild( $this->uuids->next(), $user, $kit, $kept, $assembly, $name, $now, $now );
+		$build = new SavedBuild( $this->uuids->next(), $user, $kit, $kept, $assembly, $name, $now, $now, $prices );
 		return $this->put( $build ) ? self::said( self::SAVED, $build->uuid ) : self::said( self::FAILED );
 	}
 
@@ -141,6 +146,50 @@ final class SavedBuilds {
 			return self::FULL;
 		}
 		return $this->put( $build ) ? self::SAVED : self::FAILED;
+	}
+
+	/**
+	 * One of a customer's builds as it reopens, where anything changed since it was saved: a part gone, sold out or no
+	 * longer fitting, or a price (spec: A saved build that has changed, D-254). Null where nothing did, or the build is
+	 * not theirs, or its kit does not read.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param int    $user The customer's user ID.
+	 * @param string $uuid The build's UUID.
+	 */
+	public function reopened( int $user, string $uuid ): ?Reopened {
+		$build = $this->find( $user, $uuid );
+		$check = null === $build ? null : $this->builds->check( $build->kit, $build->picks );
+		if ( null === $build || null === $check ) {
+			return null;
+		}
+		try {
+			$state = $this->builds->of( $build->kit, $check->picks, null, State::REVIEW, $build->assembly );
+		} catch ( InvalidMoney ) {
+			return null;
+		}
+		if ( null === $state ) {
+			return null;
+		}
+		$currency = null === $this->money ? '' : $this->money->currency();
+		$changed  = array_map( static fn( $change ): string => $change->slot, $check->changes );
+		$prices   = array();
+		foreach ( $state->quote->lines as $line ) {
+			$then = in_array( $line->slot, $changed, true ) ? null : $build->prices?->of( $line->slot, $currency );
+			if ( null !== $then && $then !== $line->total ) {
+				$prices[] = array(
+					'slot' => $line->slot,
+					'part' => $line->part,
+					'then' => $then,
+					'now'  => $line->total,
+				);
+			}
+		}
+		if ( ! $check->changed() && array() === $prices ) {
+			return null;
+		}
+		return new Reopened( $build, $check, $state, $prices, $build->prices?->total( $currency ) );
 	}
 
 	/**
@@ -222,14 +271,13 @@ final class SavedBuilds {
 	}
 
 	/**
-	 * The picks the builder would send to the cart, in step order, or null when it would send none.
+	 * The build's state where the builder would send it to the cart, or null when it would send none.
 	 *
 	 * @param int          $kit      The kit.
 	 * @param array<mixed> $picks    The picks as sent.
 	 * @param bool         $assembly Assembly.
-	 * @return array<string, int>|null
 	 */
-	private function counted( int $kit, array $picks, bool $assembly ): ?array {
+	private function counted( int $kit, array $picks, bool $assembly ): ?State {
 		try {
 			$state = $this->builds->of( $kit, $picks, null, State::REVIEW, $assembly );
 		} catch ( InvalidMoney ) {
@@ -239,7 +287,24 @@ final class SavedBuilds {
 		if ( null === $state || ! $state->ready() ) {
 			return null;
 		}
-		return array_map( static fn( $part ): int => $part->id, $state->counted() );
+		return $state;
+	}
+
+	/**
+	 * What the build costs as it is saved, in the currency shown now (D-254). None where no currency is known: an
+	 * earlier release's container builds this class without one.
+	 *
+	 * @param State $state The build's state.
+	 */
+	private function prices( State $state ): ?SavedPrices {
+		if ( null === $this->money ) {
+			return null;
+		}
+		$lines = array();
+		foreach ( $state->quote->lines as $line ) {
+			$lines[ $line->slot ] = $line->total;
+		}
+		return new SavedPrices( $this->money->currency(), $lines, $state->quote->total );
 	}
 
 	/**

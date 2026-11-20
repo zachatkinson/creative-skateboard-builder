@@ -119,7 +119,7 @@ final class LayerImageFieldTest extends IntegrationTestCase {
 		self::assertStringNotContainsString( 'disabled', $group, 'an open group\'s field is sent' );
 		self::assertStringContainsString( 'aria-describedby="cbuild-spec-layer-note cbuild-spec-layer-caption"', $group, 'the note, then the size the caption gives (Cowork\'s M7 review, M5)' );
 		self::assertStringContainsString( 'Left empty, the picture shows the part&#039;s labelled photo.', $group );
-		self::assertMatchesRegularExpression( '#<button type="button" class="button cbuild-layer__choose" data-cbuild-layer="cbuild-spec-layer" data-cbuild-title="Layer image" data-cbuild-types="image/png,image/webp,image/avif" hidden>Choose an image</button>#', $group, 'without the script, the ID is typed' );
+		self::assertMatchesRegularExpression( '#<button type="button" class="button cbuild-layer__choose" data-cbuild-layer="cbuild-spec-layer" data-cbuild-title="Layer image" data-cbuild-types="image/png,image/webp,image/avif" hidden>Choose an image for Part</button>#', $group, 'without the script, the ID is typed; the button names the part, as a page of variations has one each (the auditor\'s 1.0.0 P5)' );
 		// 209.55 by 812.8 mm, at half a pixel to the millimetre, rounded up.
 		self::assertStringContainsString( '<div class="cbuild-layer__box" style="inline-size:105px;block-size:407px">', $group );
 		self::assertMatchesRegularExpression( '#<img alt="" src="" hidden>#', $group, 'nothing to show yet' );

@@ -196,6 +196,13 @@ final class Options {
 	public const META_KIT_PICTURE = '_cbuild_picture';
 
 	/**
+	 * A kit's meta: its layout settings, as JSON text (schema/kit-layout.json). A kit may have none (D-255).
+	 *
+	 * @since 1.0.0
+	 */
+	public const META_KIT_LAYOUT = '_cbuild_layout';
+
+	/**
 	 * The spec tables' post type.
 	 *
 	 * @since 0.3.0
@@ -321,14 +328,14 @@ final class Options {
 	}
 
 	/**
-	 * The meta keys of a kit's documents: the four, and the picture's from 0.7.0.
+	 * The meta keys of a kit's documents: the four, the picture's from 0.7.0 and the layout's from 1.0.0.
 	 *
 	 * @since 0.4.0
 	 *
 	 * @return list<string>
 	 */
 	public static function kitDocuments(): array {
-		return array( self::META_KIT_SLOTS, self::META_KIT_RULES, self::META_KIT_PRESETS, self::META_KIT_ASSEMBLY, self::META_KIT_PICTURE );
+		return array( self::META_KIT_SLOTS, self::META_KIT_RULES, self::META_KIT_PRESETS, self::META_KIT_ASSEMBLY, self::META_KIT_PICTURE, self::META_KIT_LAYOUT );
 	}
 
 	/**
@@ -345,6 +352,7 @@ final class Options {
 			'presets'  => self::META_KIT_PRESETS,
 			'assembly' => self::META_KIT_ASSEMBLY,
 			'picture'  => self::META_KIT_PICTURE,
+			'layout'   => self::META_KIT_LAYOUT,
 		);
 	}
 

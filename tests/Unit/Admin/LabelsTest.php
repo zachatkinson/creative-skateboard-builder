@@ -42,6 +42,7 @@ final class LabelsTest extends TestCase {
 			'baseplate'        => array( 'Baseplate hole pattern', 'Baseplate hole pattern' ),
 			'axle_diameter'    => array( 'Axle diameter', 'Axle diameter (mm)' ),
 			'wheel_diameter'   => array( 'Wheel diameter', 'Wheel diameter (mm)' ),
+			'bearings_included' => array( 'Bearings included', 'Bearings included' ),
 			'riser_thickness'  => array( 'Riser thickness', 'Riser thickness (in)' ),
 			'bolt_length'      => array( 'Bolt length', 'Bolt length (in)' ),
 			'bearing_bore'     => array( 'Bearing bore', 'Bearing bore (mm)' ),

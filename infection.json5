@@ -44,6 +44,10 @@
 			"Adapter/WooPartSpecs.php",
 			"Adapter/WooKits.php",
 			"Adapter/WooPartCards.php",
+			// A part's own layer image through the product's CRUD, and WP_Query for an image by name (D-287). Proven by
+			// LayerColumnTest; what the column does with them is Service\SpecImport's and LayerCheck's, which are mutated.
+			"Adapter/WooPartLayers.php",
+			"Support/LayerMeta.php",
 			// The object cache and transients, and wc_price().
 			"Adapter/CacheTally.php",
 			"Adapter/ShopMoney.php",

@@ -31,6 +31,7 @@ export interface CbuildSettings {
 			| 'baseplate'
 			| 'axle_diameter'
 			| 'wheel_diameter'
+			| 'bearings_included'
 			| 'riser_thickness'
 			| 'bolt_length'
 			| 'bearing_bore'

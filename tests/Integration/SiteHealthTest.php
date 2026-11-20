@@ -117,6 +117,9 @@ final class SiteHealthTest extends IntegrationTestCase {
 		self::assertSame( 'The skateboard builder\'s specs index stopped part way', $result['label'] );
 		self::assertStringContainsString( 'Start it again with &quot;Read every part again&quot; on the Catalogue check.', $result['description'] );
 		self::assertStringContainsString( 'page=cbuild&#038;tab=check">Open the Catalogue check</a>', $result['actions'] );
+		// The M9 audit's minor 3: a count is said through _n().
+		$this->service( ReindexStore::class )->save( ( new ReindexState( ReindexState::CATALOGUE, 1, 1, 1 ) )->toArray() );
+		self::assertStringContainsString( 'got as far as 1 part and has no job', $index()['description'] );
 
 		$this->service( ReindexStore::class )->save( ( new ReindexState( ReindexState::FAILED, 0, 0, 1, null, false, ReindexState::MAX_FAILURES, '<b>gone</b>' ) )->toArray() );
 		$result = $index();
@@ -278,6 +281,26 @@ final class SiteHealthTest extends IntegrationTestCase {
 		require_once ABSPATH . 'wp-admin/includes/class-wp-site-health.php';
 		self::assertArrayHasKey( 'cbuild_catalogue', \WP_Site_Health::get_tests()['async'] );
 		self::assertArrayNotHasKey( 'cbuild_catalogue', \WP_Site_Health::get_tests()['direct'], 'it reads every part, so the page does not wait for it' );
+	}
+
+	// The auditor's 1.0.0 minor 11: the test counts no shared cards (D-281), so it doesn't work them out.
+	public function test_the_catalogue_test_does_not_work_out_which_variations_share_a_card(): void {
+		$this->truckThatDisagrees();
+		\CreativeBranding\SkateboardBuilder\Tests\Support\KitFactory::kit();
+		$looks = new \CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\InMemoryPartLooks();
+		$check = $this->service( CatalogueCheck::class )->withLooks( $looks );
+		$check->run();
+		self::assertNotSame( array(), $looks->asked, 'the check\'s own screen does' );
+		$looks->asked = array();
+		$health       = new SiteHealth(
+			fn (): Health => $this->service( Health::class ),
+			fn (): ShopSettings => $this->service( ShopSettings::class ),
+			fn (): MigrationStore => $this->service( MigrationStore::class ),
+			fn (): CatalogueCheck => $check,
+			fn (): ComposedPictures => $this->service( ComposedPictures::class )
+		);
+		self::assertSame( 'recommended', $health->catalogue()['status'] );
+		self::assertSame( array(), $looks->asked );
 	}
 
 	public function test_the_catalogue_check_is_good_until_a_part_has_something_to_fix(): void {

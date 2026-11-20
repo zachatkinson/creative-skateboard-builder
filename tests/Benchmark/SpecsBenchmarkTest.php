@@ -20,6 +20,7 @@ use CreativeBranding\SkateboardBuilder\Service\SpecImport;
 use CreativeBranding\SkateboardBuilder\Service\SpecSheet;
 use CreativeBranding\SkateboardBuilder\Support\Options;
 use CreativeBranding\SkateboardBuilder\Tests\Support\IntegrationTestCase;
+use CreativeBranding\SkateboardBuilder\Tests\Support\LayerFiles;
 
 /**
  * Spec, Performance: the specs index is rebuilt in the background, in jobs of 100, and 2,000 parts are recorded
@@ -179,6 +180,30 @@ final class SpecsBenchmarkTest extends IntegrationTestCase {
 		self::assertLessThan( self::REQUEST, $took + $planned, 'a file matched by SKU is read and shown in one request' );
 		self::assertLessThan( self::PARTS * 1.1 + 60, $queries, 'one query a SKU to find its product' );
 		self::assertLessThan( self::PARTS * 1.1 + 60, $asked2, 'and the plan asks for no SKU again' );
+		$import->discard();
+
+		// The auditor's 1.0.0 should-fix P3: a sheet exported with each part's own Layer image, by its file name, read
+		// back and planned whole. A part's own image is no change and is not looked up (P1), so the column costs the
+		// plan no query a row.
+		$images = array();
+		for ( $at = 0; $at < 20; $at++ ) {
+			$images[] = LayerFiles::attachment( 420, 1626 );
+		}
+		foreach ( $ids as $at => $id ) {
+			update_post_meta( $id, Options::META_LAYER, (string) $images[ $at % 20 ] );
+		}
+		$sheet = (string) $this->service( SpecExport::class )->text();
+		self::assertStringContainsString( ',layer_image,', strtok( $sheet, "\n" ) );
+		[ $took, $queries ]          = self::timed( static fn() => $import->read( $sheet ) );
+		$state                       = $import->state();
+		self::assertInstanceOf( ImportState::class, $state );
+		[ $planned, $asked2, $plan ] = self::timed( static fn() => $import->plan( $state, 0, $state->total ) );
+		$summary                     = SpecImport::summary( (array) $plan );
+		self::say( sprintf( 'dry run of an export with layer images: %d rows read in %.2f s (%d queries), planned in %.2f s (%d queries)', self::PARTS, $took, $queries, $planned, $asked2 ) );
+		self::assertSame( array(), $summary['refused'], 'every part keeps its own image' );
+		self::assertSame( array( SpecImport::KEEP_LAYER ), array_values( array_unique( array_column( (array) $plan, 'layer' ) ) ) );
+		self::assertLessThan( self::REQUEST, $took + $planned );
+		self::assertLessThan( self::PARTS * 1.1 + 60, $asked2, 'no query a row for its image' );
 		$import->discard();
 
 		// The largest file an import takes: 5,000 rows, 2,000 of them parts, read and planned whole as the screen does.

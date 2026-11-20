@@ -202,9 +202,9 @@ final class FitEngineTest extends TestCase {
 		self::assertSame( array( SlotKey::DECK ), $engine->options( KitDocuments::kit(), SlotKey::TRUCKS, $picks, array() )->against );
 		self::assertSame( array( SlotKey::TRUCKS ), $engine->options( KitDocuments::kit(), SlotKey::WHEELS, $picks->without( SlotKey::RISERS ), array() )->against, 'no riser picked' );
 		self::assertSame( array( SlotKey::DECK ), $engine->options( KitDocuments::kit(), SlotKey::GRIP, $picks, array() )->against );
-		// Bearings are read with the spacers, a later step, and the trucks: the list starts again at 0, or the state
-		// route's JSON would carry an object.
-		self::assertSame( array( SlotKey::TRUCKS ), $engine->options( KitDocuments::kit(), SlotKey::BEARINGS, $picks, array() )->against, 'bearings: the spacers come after' );
+		// Bearings are read with the spacers, a later step, the trucks and the wheels (D-246): the list starts again at
+		// 0, or the state route's JSON would carry an object.
+		self::assertSame( array( SlotKey::TRUCKS, SlotKey::WHEELS ), $engine->options( KitDocuments::kit(), SlotKey::BEARINGS, $picks, array() )->against, 'bearings: the spacers come after' );
 		$document                              = KitDocuments::rules();
 		$document[ RuleId::R6->value ]['enabled'] = false;
 		self::assertNull( $engine->options( KitDocuments::kit( null, $document ), SlotKey::GRIP, $picks, array() )->against, 'grip, with R6 off: no rule reads it' );

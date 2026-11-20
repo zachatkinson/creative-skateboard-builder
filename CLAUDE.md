@@ -36,7 +36,7 @@ It is the agency's showpiece, built to the twelve-dimension audit in `docs/AUDIT
 - `composer gates`: `tools/gates.sh`. It checks:
   - SQL outside repositories;
   - banned functions and `date()`;
-  - `strict_types`;
+  - `strict_types`, and the direct-access guard outside the domain;
   - outbound requests;
   - WordPress, words, untyped throws and top-level statements in the domain;
   - em dashes and banned words in the POT;

@@ -11,7 +11,15 @@ namespace CreativeBranding\SkateboardBuilder\Front;
 
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Fields;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Slots;
+use CreativeBranding\SkateboardBuilder\Domain\Look\Shelf;
+use CreativeBranding\SkateboardBuilder\Domain\Look\ShelfAsk;
+use CreativeBranding\SkateboardBuilder\Service\ShelfQuery;
 use CreativeBranding\SkateboardBuilder\Service\State;
+use CreativeBranding\SkateboardBuilder\Support\Cast;
+
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
 
 /**
  * A build as the query parameters of a page: `cbuild[<slot key>]=<part ID>`, with `cbuild[step]`,
@@ -22,7 +30,8 @@ use CreativeBranding\SkateboardBuilder\Service\State;
  * slot's key can (D-142): `_was`, the picks before a change, slot key to part ID; `_brand` and `_size`, the step's
  * filters; `_shown`, how many options the step lists; `_on`, the step whose form was sent, so that a filter or Show
  * pressed in it stays on it and no other step takes them (D-150); `_replace`, the build in the cart an add takes the
- * place of.
+ * place of. From 1.0.0 the step's shelf too (D-264): `_width`, the deck width asked, which every step keeps for the
+ * visit (D-242); `_chips`, group to the values chosen; `_q`, the search; and `_sort`.
  *
  * Nothing sent is trusted. A link is read into IDs, keys and flags, and what is not one of those is left out. Which
  * parts a slot may hold, and whether an ID is a part at all, is the state's to say.
@@ -53,11 +62,11 @@ final readonly class BuildLink {
 	public const int PAGE = 24;
 
 	/**
-	 * The most options a step lists: every part a slot can have.
+	 * The most options a step lists, as the shelf lists looks, page by page.
 	 *
 	 * @since 0.6.0
 	 */
-	public const int MOST = 500;
+	public const int MOST = Shelf::MOST;
 
 	/**
 	 * Constructor.
@@ -74,6 +83,13 @@ final readonly class BuildLink {
 	 * @param int                     $shown    How many options the step lists, or 0 for the first page.
 	 * @param string                  $replace  The identifier of the build in the cart this one replaces, or empty.
 	 * @param list<string>            $none     The slots the shopper chose to leave empty, by key: "No risers".
+	 * @param ShelfQuery              $shelf    The step's width, chips, search and sort (from 1.0.0).
+	 * @param bool                    $asked    Whether a link asked for the step by name, as Add risers does, not a
+	 *                                          step's form, whose Next may name a step the form's own pick undid
+	 *                                          (from 1.0.0). Only a request read says so; a link made here does not.
+	 * @param string                  $saved    The UUID of the saved build My builds opened, so it is checked against
+	 *                                          the shop once, or empty (from 1.0.0, D-254). No link made from this one
+	 *                                          carries it.
 	 */
 	public function __construct(
 		public array $picks = array(),
@@ -85,8 +101,16 @@ final readonly class BuildLink {
 		public string $size = '',
 		public int $shown = 0,
 		public string $replace = '',
-		public array $none = array()
+		public array $none = array(),
+		public ShelfQuery $shelf = new ShelfQuery(),
+		public bool $asked = false,
+		public string $saved = ''
 	) {}
+
+	/**
+	 * The most chip groups a link carries, and values a group.
+	 */
+	private const array CHIPS = array( 4, 20 );
 
 	/**
 	 * Read what a request sent under `cbuild`.
@@ -117,7 +141,15 @@ final readonly class BuildLink {
 			$own ? self::matching( $sent['_size'] ?? null, '/\A[a-z0-9._-]{1,32}\z/' ) : '',
 			! $own || null === $shown || $shown <= self::PAGE ? 0 : min( self::MOST, $shown ),
 			self::matching( $sent['_replace'] ?? null, '/\A[a-f0-9-]{1,64}\z/' ),
-			self::left( $sent )
+			self::left( $sent ),
+			new ShelfQuery(
+				self::matching( $sent['_width'] ?? null, '/\A[0-9]{1,3}(?:\.[0-9]{1,4})?(?:in|mm)\z/' ),
+				$own ? self::chips( $sent['_chips'] ?? null ) : array(),
+				$own ? self::text( $sent['_q'] ?? null ) : '',
+				$own && in_array( $sent['_sort'] ?? null, ShelfAsk::SORTS, true ) ? Cast::str( $sent['_sort'] ) : ShelfAsk::SORTS[0]
+			),
+			null !== $step && null === $on,
+			self::matching( $sent['_saved'] ?? null, '/\A[a-f0-9-]{36}\z/' )
 		);
 	}
 
@@ -128,7 +160,8 @@ final readonly class BuildLink {
 	 */
 	public function isClean(): bool {
 		return array() === $this->picks && null === $this->was && null === $this->step && null === $this->assembly && null === $this->preset
-			&& '' === $this->brand && '' === $this->size && 0 === $this->shown && '' === $this->replace && array() === $this->none;
+			&& '' === $this->brand && '' === $this->size && 0 === $this->shown && '' === $this->replace && array() === $this->none
+			&& '' === $this->shelf->width && array() === $this->shelf->chips && '' === $this->shelf->query && ShelfAsk::SORTS[0] === $this->shelf->sort;
 	}
 
 	/**
@@ -139,7 +172,7 @@ final readonly class BuildLink {
 	 * @since 0.6.0
 	 *
 	 * @param Slots $slots The kit's slots.
-	 * @return array<string, string|array<string, string>>
+	 * @return array<string, string|array<string, string>|array<string, list<string>>>
 	 */
 	public function query( Slots $slots ): array {
 		$query = array();
@@ -178,6 +211,21 @@ final readonly class BuildLink {
 		if ( '' !== $this->replace ) {
 			$query['_replace'] = $this->replace;
 		}
+		if ( '' !== $this->saved ) {
+			$query['_saved'] = $this->saved;
+		}
+		if ( '' !== $this->shelf->width ) {
+			$query['_width'] = $this->shelf->width;
+		}
+		if ( '' !== $this->shelf->query ) {
+			$query['_q'] = $this->shelf->query;
+		}
+		if ( ShelfAsk::SORTS[0] !== $this->shelf->sort ) {
+			$query['_sort'] = $this->shelf->sort;
+		}
+		if ( array() !== $this->shelf->chips ) {
+			$query['_chips'] = $this->shelf->chips;
+		}
 		return $query;
 	}
 
@@ -195,7 +243,7 @@ final readonly class BuildLink {
 		if ( null !== $part ) {
 			$picks[ $slot ] = $part;
 		}
-		return new self( $picks, $this->was, $this->step, $this->assembly, $this->preset, $this->brand, $this->size, $this->shown, $this->replace, array_values( array_diff( $this->none, array( $slot ) ) ) );
+		return new self( $picks, $this->was, $this->step, $this->assembly, $this->preset, $this->brand, $this->size, $this->shown, $this->replace, array_values( array_diff( $this->none, array( $slot ) ) ), $this->shelf );
 	}
 
 	/**
@@ -207,7 +255,7 @@ final readonly class BuildLink {
 	 */
 	public function leave( string $slot ): self {
 		$left = $this->pick( $slot, null );
-		return new self( $left->picks, $left->was, $left->step, $left->assembly, $left->preset, $left->brand, $left->size, $left->shown, $left->replace, array_merge( $left->none, array( $slot ) ) );
+		return new self( $left->picks, $left->was, $left->step, $left->assembly, $left->preset, $left->brand, $left->size, $left->shown, $left->replace, array_merge( $left->none, array( $slot ) ), $left->shelf );
 	}
 
 	/**
@@ -218,7 +266,7 @@ final readonly class BuildLink {
 	 * @param string $step The step: a slot's key or the review.
 	 */
 	public function at( string $step ): self {
-		return new self( $this->picks, null, $step, $this->assembly, $this->preset, '', '', 0, $this->replace, $this->none );
+		return new self( $this->picks, null, $step, $this->assembly, $this->preset, '', '', 0, $this->replace, $this->none, new ShelfQuery( $this->shelf->width ) );
 	}
 
 	/**
@@ -230,7 +278,7 @@ final readonly class BuildLink {
 	 * @param string $size  The size, or empty.
 	 */
 	public function filtered( string $brand, string $size ): self {
-		return new self( $this->picks, $this->was, $this->step, $this->assembly, $this->preset, $brand, $size, 0, $this->replace, $this->none );
+		return new self( $this->picks, $this->was, $this->step, $this->assembly, $this->preset, $brand, $size, 0, $this->replace, $this->none, $this->shelf );
 	}
 
 	/**
@@ -241,7 +289,7 @@ final readonly class BuildLink {
 	 * @param int $shown How many.
 	 */
 	public function showing( int $shown ): self {
-		return new self( $this->picks, $this->was, $this->step, $this->assembly, $this->preset, $this->brand, $this->size, $shown, $this->replace, $this->none );
+		return new self( $this->picks, $this->was, $this->step, $this->assembly, $this->preset, $this->brand, $this->size, $shown, $this->replace, $this->none, $this->shelf );
 	}
 
 	/**
@@ -252,7 +300,7 @@ final readonly class BuildLink {
 	 * @param bool $assembly Whether the shop assembles the build.
 	 */
 	public function assembled( bool $assembly ): self {
-		return new self( $this->picks, $this->was, $this->step, $assembly, $this->preset, $this->brand, $this->size, $this->shown, $this->replace, $this->none );
+		return new self( $this->picks, $this->was, $this->step, $assembly, $this->preset, $this->brand, $this->size, $this->shown, $this->replace, $this->none, $this->shelf );
 	}
 
 	/**
@@ -263,7 +311,7 @@ final readonly class BuildLink {
 	 * @param array<string, int> $was The picks before the change.
 	 */
 	public function after( array $was ): self {
-		return new self( $this->picks, $was, $this->step, $this->assembly, $this->preset, $this->brand, $this->size, $this->shown, $this->replace, $this->none );
+		return new self( $this->picks, $was, $this->step, $this->assembly, $this->preset, $this->brand, $this->size, $this->shown, $this->replace, $this->none, $this->shelf );
 	}
 
 	/**
@@ -274,7 +322,18 @@ final readonly class BuildLink {
 	 * @param string $build The build's identifier.
 	 */
 	public function replacing( string $build ): self {
-		return new self( $this->picks, $this->was, $this->step, $this->assembly, $this->preset, $this->brand, $this->size, $this->shown, $build, $this->none );
+		return new self( $this->picks, $this->was, $this->step, $this->assembly, $this->preset, $this->brand, $this->size, $this->shown, $build, $this->none, $this->shelf );
+	}
+
+	/**
+	 * The link with the step's shelf set. What is listed starts again from the first page.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param ShelfQuery $shelf The width, chips, search and sort.
+	 */
+	public function shelved( ShelfQuery $shelf ): self {
+		return new self( $this->picks, $this->was, $this->step, $this->assembly, $this->preset, $this->brand, $this->size, 0, $this->replace, $this->none, $shelf );
 	}
 
 	/**
@@ -298,6 +357,7 @@ final readonly class BuildLink {
 	 * @since 0.6.0
 	 */
 	public function shared(): self {
+		// Nothing of the shelf: its width comes with the deck.
 		return new self( $this->picks, null, $this->step, $this->assembly, none: $this->none );
 	}
 
@@ -346,6 +406,48 @@ final readonly class BuildLink {
 			return null;
 		}
 		return (int) $text;
+	}
+
+	/**
+	 * The chips as sent: four groups at most, each `brand`, a spec's key or an attribute's taxonomy, with twenty
+	 * values at most, each a slug or a size as the chips name it. A group with none is left out.
+	 *
+	 * @param mixed $sent What was sent.
+	 * @return array<string, list<string>>
+	 */
+	private static function chips( mixed $sent ): array {
+		$chips = array();
+		foreach ( is_array( $sent ) ? $sent : array() as $group => $values ) {
+			if ( count( $chips ) === self::CHIPS[0] || ! is_string( $group ) || 1 !== preg_match( '/\A[a-z][a-z0-9_]{0,31}\z/', $group ) || ! is_array( $values ) ) {
+				continue;
+			}
+			$kept = array();
+			foreach ( $values as $value ) {
+				$value = self::matching( $value, '/\A[a-z0-9_%.-]{1,200}\z/' );
+				if ( '' !== $value && count( $kept ) < self::CHIPS[1] ) {
+					$kept[] = $value;
+				}
+			}
+			if ( array() !== $kept ) {
+				$chips[ $group ] = $kept;
+			}
+		}
+		return $chips;
+	}
+
+	/**
+	 * A search as sent, as plain text: UTF-8 alone, each control character a space, trimmed, and 100 characters at
+	 * most. It is not stored and never logged (SPEC-CONFIGURATOR, Search).
+	 *
+	 * @param mixed $sent What was sent.
+	 */
+	private static function text( mixed $sent ): string {
+		if ( ! is_string( $sent ) ) {
+			return '';
+		}
+		// A pattern with the u flag matches nothing in text that is not UTF-8: preg_replace() gives null, so none is read.
+		$plain = trim( (string) preg_replace( '/\p{Cc}/u', ' ', $sent ) );
+		return (string) preg_replace( '/\A(.{0,' . ShelfQuery::QUERY . '}).*\z/us', '$1', $plain );
 	}
 
 	/**

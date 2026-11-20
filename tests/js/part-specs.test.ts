@@ -678,14 +678,18 @@ describe( 'the Layer image field', () => {
 		const media: Media = ( options ) => {
 			asked.push( [ options ] );
 			return {
-				on: ( _event, heard ) => {
-					select = heard;
+				on: ( event, heard ) => {
+					if ( 'select' === event ) {
+						select = heard;
+					}
 				},
 				open: opened,
 				state: () => ( {
-					get: () => ( {
+					get: ( name ) => ( {
 						first: () =>
-							chosen ? { toJSON: () => chosen } : undefined,
+							'selection' === name && chosen
+								? { toJSON: () => chosen }
+								: undefined,
 					} ),
 				} ),
 			};
@@ -739,8 +743,9 @@ describe( 'the Layer image field', () => {
 		layers( document, media );
 		const input =
 			document.querySelector< HTMLInputElement >( '#cbuild-spec-layer' );
+		// WooCommerce hears the change on the variation's row, not on the field (meta-boxes-product-variation.js).
 		const changed = vi.fn();
-		input?.addEventListener( 'change', changed );
+		document.body.addEventListener( 'change', changed );
 		document
 			.querySelector< HTMLButtonElement >( '.cbuild-layer__choose' )
 			?.click();
@@ -748,6 +753,7 @@ describe( 'the Layer image field', () => {
 		expect( input?.value ).toBe( '42' );
 		expect( input?.disabled ).toBe( false );
 		expect( changed ).toHaveBeenCalledOnce();
+		document.body.removeEventListener( 'change', changed );
 		const image = document.querySelector( 'img' );
 		expect( image?.getAttribute( 'src' ) ).toBe(
 			'https://example.com/deck.png'
@@ -793,5 +799,56 @@ describe( 'the Layer image field', () => {
 		button?.setAttribute( 'data-cbuild-layer', 'nowhere' );
 		button?.click();
 		expect( opened ).not.toHaveBeenCalled();
+	} );
+
+	it( 'shows the button of a variation that arrives deep inside a row already on the page', async () => {
+		document.body.innerHTML =
+			'<div id="variations"><div id="row"></div></div>';
+		// What the page held before is settled first, so only the variation's arrival is heard.
+		await Promise.resolve();
+		layers( document, modal( undefined ).media );
+		document
+			.getElementById( 'row' )
+			?.insertAdjacentHTML( 'beforeend', markup() );
+		await Promise.resolve();
+		expect(
+			document.querySelector< HTMLButtonElement >(
+				'.cbuild-layer__choose'
+			)?.hidden
+		).toBe( false );
+	} );
+
+	it( 'keeps what its own click would do from happening, and what a click elsewhere does', () => {
+		document.body.innerHTML = `${ markup() }<input type="checkbox" id="other">`;
+		layers( document, modal( undefined ).media );
+		const click = ( target: Element | null ) =>
+			target?.dispatchEvent(
+				new MouseEvent( 'click', { bubbles: true, cancelable: true } )
+			);
+		expect(
+			click( document.querySelector( '.cbuild-layer__choose' ) ),
+			'the Choose button'
+		).toBe( false );
+		const other = document.querySelector< HTMLInputElement >( '#other' );
+		other?.click();
+		expect( other?.checked, 'a checkbox elsewhere' ).toBe( true );
+	} );
+
+	it( 'opens the modal for any image, untitled, where the button names no types and no title', () => {
+		document.body.innerHTML = markup()
+			.replace( ' data-cbuild-title="Layer image"', '' )
+			.replace(
+				' data-cbuild-types="image/png,image/webp,image/avif"',
+				''
+			);
+		const { media, asked, opened } = modal( undefined );
+		layers( document, media );
+		document
+			.querySelector< HTMLButtonElement >( '.cbuild-layer__choose' )
+			?.click();
+		expect( asked ).toEqual( [
+			[ { title: '', multiple: false, library: { type: [] } } ],
+		] );
+		expect( opened ).toHaveBeenCalledOnce();
 	} );
 } );

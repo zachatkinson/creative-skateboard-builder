@@ -131,6 +131,15 @@ final class ComposedPicturesTest extends TestCase {
 		self::assertSame( $names, array_keys( $this->files->drawn ), 'the same build is the same three names' );
 	}
 
+	// D-252: a rider build's tile shows the build's composed picture, asked for as a page asks until it is made.
+	public function test_a_presets_tile_has_its_picture_once_made_and_asks_for_it_until_then(): void {
+		self::assertNull( $this->pictures->tile( self::KIT, self::STREET ) );
+		self::assertSame( array( array( Options::JOB_COMPOSE_PICTURE, array( 'kit' => self::KIT, 'picks' => self::STREET ) ) ), $this->queue->distinct, 'asked for' );
+		$this->pictures->compose( self::KIT, self::STREET );
+		self::assertSame( $this->pictures->url( self::KIT, self::STREET, ComposedPictures::CART ), $this->pictures->tile( self::KIT, self::STREET ), 'the cart\'s, a square' );
+		self::assertCount( 1, $this->queue->distinct, 'and not asked again' );
+	}
+
 	public function test_no_picture_is_drawn_for_a_build_that_does_not_validate_or_holds_what_the_shopper_did_not_pick(): void {
 		$cases = array(
 			'a kit the shop does not have'          => array( 78, self::STREET ),

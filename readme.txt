@@ -4,7 +4,7 @@ Tags: woocommerce, skateboard, product builder, configurator, bundle
 Requires at least: 7.0
 Tested up to: 7.1
 Requires PHP: 8.5
-Stable tag: 0.9.0
+Stable tag: 1.0.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -14,7 +14,7 @@ Sells complete skateboards built from parts the shop stocks, with fit checked fr
 
 Creative Skateboard Builder lets a shopper put a complete skateboard together from the decks, trucks, wheels, bearings, hardware and grip a WooCommerce shop already sells. It checks that the parts fit from each part's specs, draws a picture of the build, keeps the total in view, and gives each part its own line in the cart and on the order, so stock, tax and refunds work as they do for any other product.
 
-This is version 0.9.0. A kit's page shows the builder in place of the add-to-cart form, and the Builder block puts it on any other page. The shopper goes one step a slot, sees only the parts that fit what they picked, can start from one of your presets, and reaches a review with the total, a link to the build and Add to cart. The builder draws the board to scale from each part's layer image, top and underside, and the cart, the order, its emails and a shared build link show a picture of it. A signed-in customer can save a build and find it again under My builds in My account. The workshop gets each order's build in a box on the order screen and a printed assembly ticket.
+This is version 1.0.0. A kit's page is the builder: the board on one side, the steps on the other, and the total at the foot, and the Builder block puts it on any other page. The shopper goes one step a slot, picks a deck by the width they ride, sees one card a look with only the parts that fit what they picked, can search, sort and filter a long step, can start from one of your rider builds, and reaches a review with the total, a link to the build and Add to cart. A deck's own page can open the builder with that deck picked. The builder draws the board to scale from each part's layer image, top and underside, and the cart, the order, its emails and a shared build link show a picture of it. A signed-in customer can save a build and find it again under My builds in My account. The workshop gets each order's build in a box on the order screen and a printed assembly ticket.
 
 It works with a keyboard and a screen reader, on a phone, without JavaScript, in English and French (Canada), and right to left.
 
@@ -43,11 +43,38 @@ Yes. Activating it for the network installs it on every site, and a site added l
 
 It ships in English and French (Canada). Every string goes through the text domain `creative-skateboard-builder`, so a translation plugin or a language pack can add any other language.
 
+= How does a kit's page look in my theme? =
+
+In a block theme, a kit's page takes the plugin's own template, made of your theme's header and footer, which you can edit under Appearance > Editor > Templates. In a classic theme, the builder fills the width before the product's summary, and the summary's title, price and form are left out for kits; a slimmer header is your theme's own setting.
+
+A page builder's product template (Kadence's, Elementor's and the like) draws the builder in its add-to-cart block's column. For the full width, leave kits out of that template, by their category or a tag, so they take the theme's own product page, or give kits a template of their own whose add-to-cart block has a full-width row.
+
+The kit's Build tab has a Layout section: the board on the left or the right of a desktop, large or balanced, and which search the steps use.
+
+= My theme shows a sticky add-to-cart bar on a kit's page =
+
+The builder has its own bar with the total, Back and Next, so a theme's bar on a kit's page is one too many. Leave kits out of it in your theme's settings. In Kadence Pro: Appearance > Elements, open the element that holds the bar, then Element Settings > Display Settings > Exclude Settings; set Hide On to Single Products, Select product by to Individually, pick each kit, and save. Kadence can't pick products by type, so add each new kit the same way, or give your kits a tag and pick it under Group.
+
 = Can other plugins build on it? =
 
 Yes. Its hooks, REST routes, block attributes, settings keys, order item keys, CSS custom properties and DOM events are listed with the version each arrived in, and from 1.0.0 they follow Semantic Versioning: no minor or patch release removes or renames one, and a deprecation comes first.
 
 == Changelog ==
+
+= 1.0.0 =
+* A kit's page is a configurator: the board beside the steps on a desktop, above them on a tablet or a phone, a rail of steps, and the total at the foot. A block theme gets a kit template of its own.
+* The deck step asks the width you ride first, with a guide by shoe size, and remembers a signed-in customer's width.
+* One card a look, with its sizes after the card once it is picked. A long step gets sort, filter chips with true counts, search (through Creative Search where it is active) and 30 cards at a time.
+* A search that finds nothing says why and offers the way on.
+* "Build a complete with this deck" on a deck's own page, and rider builds with their own photo or the build's picture.
+* A saved build that has changed says so when it is opened: the parts gone, sold out or no longer fitting, with the closest part in each place, and the new prices.
+* The kit's Build tab has a Layout section: the stage's side, the board's size and the search.
+* Wheels can say they come with their bearings, and then need none of their own.
+* Steps hide wheels that need a riser the kit can't supply with bolts long enough, and risers no bolts in stock reach through, each with its reason.
+* Part specs opens Sold in sets for parts in slots that take more than one unit. Saving a kit whose presets name a hidden part keeps the presets and says which part.
+* The specs CSV has a layer_image column: an export writes each part's layer image by its file name, and an import sets it by file name or attachment ID, checked as the field checks it.
+* The builder answers faster on a host with no persistent object cache: each part's card is kept with its facts between requests.
+* From 1.0.0 the hooks, the state route's answer, the block and the CSS custom properties are a public API, changed only in a major version (docs/HOOKS.md in the repository).
 
 = 0.9.0 =
 * Focus is seen on a dark theme and a light one: the ring has two tones of its own.
@@ -150,6 +177,9 @@ Yes. Its hooks, REST routes, block attributes, settings keys, order item keys, C
 * Foundation: the plugin skeleton, the two tables, the upgrade steps, uninstall, the update check, the test harness and the CI gates. Nothing a shopper or shop owner sees yet.
 
 == Upgrade Notice ==
+
+= 1.0.0 =
+Update as usual, from the updater or by uploading the zip. No step is needed, from any earlier release.
 
 = 0.9.0 =
 Update as usual, from the updater or by uploading the zip. No step is needed, from any earlier release. On a network, a network admin's next visit to wp-admin writes the must-use file again.

@@ -10,7 +10,6 @@ declare( strict_types=1 );
 namespace CreativeBranding\SkateboardBuilder\Admin;
 
 use CreativeBranding\SkateboardBuilder\Domain\Measure\MeasureError;
-use CreativeBranding\SkateboardBuilder\Domain\Picture\LayerError;
 use CreativeBranding\SkateboardBuilder\Domain\Picture\LayerImage;
 use CreativeBranding\SkateboardBuilder\Domain\Picture\Layout;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\Origin;
@@ -24,9 +23,11 @@ use CreativeBranding\SkateboardBuilder\Port\SpecSource;
 use CreativeBranding\SkateboardBuilder\Port\Kits;
 use CreativeBranding\SkateboardBuilder\Port\LayerImages;
 use CreativeBranding\SkateboardBuilder\Port\SpecTables;
+use CreativeBranding\SkateboardBuilder\Service\LayerCheck;
 use CreativeBranding\SkateboardBuilder\Service\SpecIndexer;
 use CreativeBranding\SkateboardBuilder\Service\SpecWriter;
 use CreativeBranding\SkateboardBuilder\Support\Cast;
+use CreativeBranding\SkateboardBuilder\Support\LayerMeta;
 use CreativeBranding\SkateboardBuilder\Support\Options;
 use WC_Admin_Meta_Boxes;
 use WC_Product;
@@ -143,6 +144,13 @@ final class PartSpecsPanel {
 	 * @var LayerImages|null
 	 */
 	private ?LayerImages $images = null;
+
+	/**
+	 * The layer image check, made once the images are known.
+	 *
+	 * @var LayerCheck|null
+	 */
+	private ?LayerCheck $check = null;
 
 	/**
 	 * The same panel, checking the Layer image field.
@@ -346,16 +354,15 @@ final class PartSpecsPanel {
 			return;
 		}
 		$id    = ctype_digit( $text ) ? (int) $text : 0;
-		$facts = $id > 0 ? $this->images->facts( $id ) : null;
 		$texts = array();
-		if ( null === $facts ) {
-			/* translators: %s: what was typed in the Layer image field. */
-			$texts[] = sprintf( __( 'Layer image was not saved: "%s" is not the ID of an image in the Media Library.', 'creative-skateboard-builder' ), $text );
-		} else {
-			$size = $this->size( $product );
-			foreach ( LayerImage::problems( $facts, $size ) as $problem ) {
-				$texts[] = self::layerProblem( $problem, $facts->type, $size );
-			}
+		$check = $this->check();
+		foreach ( 0 === $id || null === $check ? array(
+			array(
+				'code' => LayerCheck::NOT_IMAGE,
+				'text' => $text,
+			),
+		) : $check->problems( $id, $this->size( $product ) ) as $problem ) {
+			$texts[] = (string) Sentences::layer( $problem['code'], LayerCheck::NOT_IMAGE === $problem['code'] ? $text : $problem['text'] );
 		}
 		if ( array() === $texts ) {
 			$product->update_meta_data( Options::META_LAYER, (string) $id );
@@ -372,23 +379,13 @@ final class PartSpecsPanel {
 	}
 
 	/**
-	 * What was wrong with a layer image, as a sentence.
-	 *
-	 * @param LayerError           $problem The problem.
-	 * @param string               $type    The image's media type.
-	 * @param array{int, int}|null $size    The part's size, where the picture draws it.
+	 * The layer image check, from the panel's own services and the Media Library's images (D-287).
 	 */
-	private static function layerProblem( LayerError $problem, string $type, ?array $size ): string {
-		$needs = LayerImage::needs( $size ?? array( 0, 0 ) );
-		return match ( $problem ) {
-			/* translators: %s: a file's media type, such as image/jpeg. */
-			LayerError::WrongType => sprintf( __( 'Layer image was not saved: it is %s, and a layer must be a PNG, WebP or AVIF with a transparent background.', 'creative-skateboard-builder' ), $type ),
-			/* translators: %s: a file's media type, such as image/avif. */
-			LayerError::Unreadable => sprintf( __( 'Layer image was not saved: it is %s, and this server\'s image library cannot read that type. Upload the cut-out as a PNG or WebP, or ask your host to turn on AVIF in GD or Imagick.', 'creative-skateboard-builder' ), $type ),
-			LayerError::Opaque => __( 'Layer image was not saved: its corners are not transparent. Export the cut-out with a transparent background.', 'creative-skateboard-builder' ),
-			/* translators: 1: a number of pixels. 2: another. */
-			LayerError::TooSmall => sprintf( __( 'Layer image was not saved: it is too small for the size the picture draws this part. It needs at least %1$s pixels across or %2$s along.', 'creative-skateboard-builder' ), number_format_i18n( $needs[0] ), number_format_i18n( $needs[1] ) ),
-		};
+	private function check(): ?LayerCheck {
+		if ( null !== $this->images ) {
+			$this->check ??= new LayerCheck( $this->images, $this->indexer, $this->kits );
+		}
+		return $this->check;
 	}
 
 	/**
@@ -402,6 +399,7 @@ final class PartSpecsPanel {
 		if ( array() === $slots || $product->get_id() <= 0 ) {
 			return null;
 		}
+		// The page's variations were resolved together (sourced()); one saved alone is resolved here, once.
 		$this->sourced[ $product->get_id() ] ??= $this->indexer->resolve( $product->get_id() )[ $product->get_id() ];
 		$texts                                 = array();
 		foreach ( $this->sourced[ $product->get_id() ]->resolution->rows() as $row ) {
@@ -419,15 +417,15 @@ final class PartSpecsPanel {
 	 * @return array{id: string, name: string, value: string, open: bool, note: string, src: string, box: array{int, int}|null, caption: string, choose: string, title: string, types: list<string>}
 	 */
 	private function layer( WC_Product $product, string $prefix, string $name ): array {
-		$own   = max( 0, Cast::int( $product->get_meta( Options::META_LAYER, true ) ) );
+		$own   = LayerMeta::own( $product );
 		$size  = $this->size( $product );
 		$shown = $own;
 		$note  = $product->is_type( 'variation' )
-			? __( 'The part\'s cut-out on a transparent background, a PNG, WebP or AVIF from the Media Library. Choose one, or type its attachment ID. Left empty, the variation takes its parent product\'s, or the picture shows its labelled photo.', 'creative-skateboard-builder' )
-			: __( 'The part\'s cut-out on a transparent background, a PNG, WebP or AVIF from the Media Library. Choose one, or type its attachment ID. Left empty, the picture shows the part\'s labelled photo.', 'creative-skateboard-builder' );
+			? __( 'The part\'s cut-out on a transparent background, a PNG, WebP or AVIF from the Media Library. Choose one, or type its attachment ID. Left empty, the variation takes its parent product\'s, or the picture shows its labelled photo. The product image and gallery stay as they are: only the builder\'s picture uses this image.', 'creative-skateboard-builder' )
+			: __( 'The part\'s cut-out on a transparent background, a PNG, WebP or AVIF from the Media Library. Choose one, or type its attachment ID. Left empty, the picture shows the part\'s labelled photo. The product image and gallery stay as they are: only the builder\'s picture uses this image.', 'creative-skateboard-builder' );
 		if ( 0 === $own && $product->is_type( 'variation' ) ) {
 			$whole  = wc_get_product( $product->get_parent_id() );
-			$parent = $whole instanceof WC_Product ? max( 0, Cast::int( $whole->get_meta( Options::META_LAYER, true ) ) ) : 0;
+			$parent = $whole instanceof WC_Product ? LayerMeta::own( $whole ) : 0;
 			if ( $parent > 0 ) {
 				$shown = $parent;
 				/* translators: %d: an attachment's ID. */
@@ -451,7 +449,9 @@ final class PartSpecsPanel {
 			'src'     => is_string( $src ) ? $src : '',
 			'box'     => null === $size ? null : array( (int) ceil( $size[0] / 10000 * self::PREVIEW ), (int) ceil( $size[1] / 10000 * self::PREVIEW ) ),
 			'caption' => $caption,
-			'choose'  => __( 'Choose an image', 'creative-skateboard-builder' ),
+			// Named for the part: a page of variations has a button each (the auditor's 1.0.0 P5).
+			/* translators: %s: the product's or variation's name. */
+			'choose'  => sprintf( __( 'Choose an image for %s', 'creative-skateboard-builder' ), $product->get_name() ),
 			'title'   => __( 'Layer image', 'creative-skateboard-builder' ),
 			// The chooser's filter: the domain's one list of layer types (D-210).
 			'types'   => LayerImage::TYPES,
@@ -489,10 +489,12 @@ final class PartSpecsPanel {
 		$notes  = $this->inUse( $product );
 		$groups = array();
 		$slots  = $this->slots( $product->get_id() );
+		$sets   = $this->inSets( $slots );
 		foreach ( self::layout() as $label => $keys ) {
 			$fields = array();
-			// The group a kit's slot needs of this part is open (issue #16), and so is one with a value.
-			$open = in_array( self::SLOTS[ $keys[0]->value ] ?? '', $slots, true );
+			// The group a kit's slot needs of this part is open (issue #16), and so is one with a value. A slot that
+			// takes more than one unit needs the part's Number in a set (R7), so Sold in sets opens for it (issue #61).
+			$open = in_array( self::SLOTS[ $keys[0]->value ] ?? '', $slots, true ) || ( $sets && SpecKey::SetSize === $keys[0] );
 			if ( in_array( SpecKey::AxleWidth, $keys, true ) ) {
 				$fields[] = $this->chartField( $product, self::field( $id, SpecWriter::TABLE ), $chart );
 				$open     = $open || '' !== $fields[0]['value'];
@@ -551,6 +553,22 @@ final class PartSpecsPanel {
 	}
 
 	/**
+	 * Whether a kit slot that takes the part takes more than one unit of it, so R7 needs its Number in a set.
+	 *
+	 * @param list<string> $slots The keys of the slots that take the part.
+	 */
+	private function inSets( array $slots ): bool {
+		foreach ( $this->read ?? array() as $kit ) {
+			foreach ( $kit->slots->all() as $slot ) {
+				if ( $slot->units > 1 && in_array( $slot->key, $slots, true ) ) {
+					return true;
+				}
+			}
+		}
+		return false;
+	}
+
+	/**
 	 * The specs in the order the panel shows them, under the kind of part each belongs to. Every group is shown on
 	 * every part, and the one its kit slot needs is open (SLOTS).
 	 *
@@ -560,7 +578,7 @@ final class PartSpecsPanel {
 		return array(
 			__( 'Deck', 'creative-skateboard-builder' )   => array( SpecKey::DeckWidth, SpecKey::DeckLength, SpecKey::Wheelbase, SpecKey::HolePattern ),
 			__( 'Trucks', 'creative-skateboard-builder' ) => array( SpecKey::AxleWidth, SpecKey::DeckMin, SpecKey::DeckMax, SpecKey::TruckHeight, SpecKey::HeightClass, SpecKey::MaxWheel, SpecKey::Baseplate, SpecKey::AxleDiameter ),
-			__( 'Wheels', 'creative-skateboard-builder' ) => array( SpecKey::WheelDiameter ),
+			__( 'Wheels', 'creative-skateboard-builder' ) => array( SpecKey::WheelDiameter, SpecKey::BearingsIncluded ),
 			__( 'Risers', 'creative-skateboard-builder' ) => array( SpecKey::RiserThickness ),
 			__( 'Hardware', 'creative-skateboard-builder' ) => array( SpecKey::BoltLength ),
 			__( 'Bearings', 'creative-skateboard-builder' ) => array( SpecKey::BearingBore, SpecKey::SpacersBuiltIn ),

@@ -21,6 +21,12 @@ use CreativeBranding\SkateboardBuilder\Front\BuildLink;
 use CreativeBranding\SkateboardBuilder\Front\Delivery;
 use CreativeBranding\SkateboardBuilder\Front\ShippingWords;
 use CreativeBranding\SkateboardBuilder\Front\StateAnswer;
+use CreativeBranding\SkateboardBuilder\Port\LookFact;
+use CreativeBranding\SkateboardBuilder\Port\TextFolding;
+use CreativeBranding\SkateboardBuilder\Service\ShelfQuery;
+use CreativeBranding\SkateboardBuilder\Service\StepShelf;
+use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\FakeRanking;
+use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\InMemoryPartLooks;
 use CreativeBranding\SkateboardBuilder\Service\BuildState;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Domain\Builds;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Domain\KitDocuments;
@@ -122,6 +128,36 @@ final class StateAnswerTest extends TestCase {
 	}
 
 	/**
+	 * The answer's shelf for a build of the usual kit, with each part a look of its own product unless set.
+	 *
+	 * @param array<mixed>         $picks The picks.
+	 * @param array<int, LookFact> $looks Looks by part, beside the usual.
+	 * @return array<string, mixed>|null
+	 */
+	private function shelf( array $picks = array(), ?string $step = null, ?BuildLink $link = null, array $looks = array(), ?ShelfQuery $query = null ): ?array {
+		$state = ( new BuildState( $this->kits, $this->settings, $this->logger ) )->of( self::KIT, $picks, null, $step );
+		self::assertNotNull( $state );
+		$facts = new InMemoryPartLooks();
+		foreach ( Shop::parts() as $parts ) {
+			foreach ( $parts as $part ) {
+				$facts->facts[ $part->id ] = $looks[ $part->id ] ?? new LookFact( $part->id, $part->id, 0, 'Part ' . $part->id, array(), array(), false, 0, 0 );
+			}
+		}
+		$folding = new class() implements TextFolding {
+			public function fold( string $text ): string {
+				return strtolower( $text );
+			}
+		};
+		$answer = ( new StateAnswer( $this->cards, new FakeMoney(), $this->kits, new Delivery( $this->kits, new FakeShippingZones(), new ShippingWords( new FakeMoney() ) ), new PageRenderer() ) )
+			->withShelf( new StepShelf( $facts, $this->cards, new FakeRanking(), $folding, $this->settings ) )
+			->of( $state, $link, $query );
+		self::assertArrayHasKey( 'shelf', $answer );
+		$shelf = $answer['shelf'];
+		self::assertTrue( null === $shelf || is_array( $shelf ) );
+		return $shelf;
+	}
+
+	/**
 	 * A list's IDs.
 	 *
 	 * @param mixed $options Options, as the answer lists them.
@@ -154,7 +190,20 @@ final class StateAnswerTest extends TestCase {
 	public function test_with_nothing_picked_the_first_step_lists_its_parts_each_with_its_card(): void {
 		$answer = $this->answer();
 
-		self::assertSame( array( 'kit', 'step', 'ready', 'texts', 'presets', 'steps', 'options', 'hidden', 'filters', 'matching', 'more', 'refused', 'problems', 'changes', 'total', 'picture', 'delivery', 'notes' ), array_keys( $answer ) );
+		self::assertSame( array( 'kit', 'step', 'ready', 'texts', 'presets', 'steps', 'options', 'hidden', 'filters', 'matching', 'more', 'refused', 'problems', 'changes', 'total', 'picture', 'delivery', 'notes', 'shelf', 'bearings_included', 'currency' ), array_keys( $answer ) );
+		// How the shop writes a price, for a page that formats a total itself (milestone 11, sent from 1.0.0).
+		self::assertSame(
+			array(
+				'code'               => 'CAD',
+				'symbol'             => '$',
+				'decimals'           => 2,
+				'decimal_separator'  => '.',
+				'thousand_separator' => ',',
+				'format'             => '%1$s%2$s',
+			),
+			$answer['currency']
+		);
+		self::assertFalse( $answer['bearings_included'] );
 		self::assertSame( self::KIT, $answer['kit'] );
 		self::assertSame( SlotKey::DECK, $answer['step'] );
 		self::assertFalse( $answer['ready'] );
@@ -172,6 +221,7 @@ final class StateAnswerTest extends TestCase {
 					'kind'   => 'more',
 					'amount' => 6000,
 					'text'   => '+$60.00',
+					'change' => '',
 				),
 				'fit'         => 'fits',
 				'in_stock'    => true,
@@ -224,7 +274,7 @@ final class StateAnswerTest extends TestCase {
 	/**
 	 * A kit with words of the owner's own: help on the trucks, two presets, a lead time and a returns notice.
 	 */
-	private function worded(): void {
+	private function worded( ?int $image = null ): void {
 		$slots                     = KitDocuments::slots();
 		$slots['slots'][1]['help'] = 'Sold in pairs.';
 		$this->kits->add(
@@ -239,7 +289,7 @@ final class StateAnswerTest extends TestCase {
 							'name'        => 'Street',
 							'description' => 'For ledges and stairs.',
 							'picks'       => self::STREET,
-						),
+						) + ( null === $image ? array() : array( 'image' => $image ) ),
 						array(
 							'name'  => 'Park',
 							'picks' => self::PARK,
@@ -298,6 +348,54 @@ final class StateAnswerTest extends TestCase {
 	}
 
 	// Spec, Presets: each tile shows its total, and one holding a sold-out part says so.
+	// D-252: "Without one, the tile shows the build's composed picture (milestone 7), not the first part's photo."
+	public function test_a_presets_tile_shows_its_rider_photo_else_the_builds_picture_once_made(): void {
+		$this->worded( 81 );
+		$photo                   = array(
+			'src'    => 'https://example.com/rider.jpg',
+			'width'  => 300,
+			'height' => 400,
+			'srcset' => '',
+			'sizes'  => '',
+		);
+		$this->cards->photos[81] = $photo;
+		$asked                   = array();
+		$state                   = ( new BuildState( $this->kits, $this->settings, $this->logger ) )->of( self::KIT, array(), null, null, null );
+		self::assertNotNull( $state );
+		$answer = ( new StateAnswer( $this->cards, new FakeMoney(), $this->kits, new Delivery( $this->kits, new FakeShippingZones(), new ShippingWords( new FakeMoney() ) ), new PageRenderer() ) )
+			->withPictures(
+				static function ( int $kit, array $picks ) use ( &$asked ): ?string {
+					$asked[] = $picks;
+					return self::PARK === $picks ? 'https://example.com/pictures/park.webp' : null;
+				}
+			);
+		$presets = $answer->of( $state )['presets'];
+		self::assertSame( $photo, $presets[0]['image'], 'the rider photo the preset names' );
+		self::assertSame(
+			array(
+				'src'    => 'https://example.com/pictures/park.webp',
+				'width'  => 480,
+				'height' => 480,
+				'srcset' => '',
+				'sizes'  => '',
+			),
+			$presets[1]['image'],
+			'the build\'s picture'
+		);
+		self::assertSame( array( self::PARK ), $asked, 'asked for the preset with no photo' );
+
+		unset( $this->cards->photos[81] );
+		$asked = array();
+		self::assertSame( InMemoryPartCards::card( 101 )['image'], $answer->of( $state )['presets'][0]['image'], 'a photo gone, the picture not made: the deck\'s photo' );
+		self::assertSame( array( self::STREET, self::PARK ), $asked );
+
+		$asked = array();
+		$on    = ( new BuildState( $this->kits, $this->settings, $this->logger ) )->of( self::KIT, array( SlotKey::DECK => 101 ), null, null, null );
+		self::assertNotNull( $on );
+		$answer->of( $on );
+		self::assertSame( array(), $asked, 'a build begun shows no presets, and asks for none' );
+	}
+
 	public function test_each_preset_says_its_total_and_names_what_keeps_it_from_the_cart(): void {
 		$this->worded();
 		$parts                    = Shop::parts();
@@ -418,6 +516,7 @@ final class StateAnswerTest extends TestCase {
 					'code'     => 'deck_above_range',
 					'severity' => 'block',
 					'text'     => 'The trucks are made for decks from 7.8″ to 8.2″ wide. The deck is 8.5″.',
+					'short'    => '',
 				),
 			),
 			$answer['hidden'][0]['messages']
@@ -741,6 +840,7 @@ final class StateAnswerTest extends TestCase {
 				'kind'   => 'less',
 				'amount' => -500,
 				'text'   => '−$5.00',
+				'change' => '$5.00 less',
 			),
 			$picked[101]
 		);
@@ -749,6 +849,7 @@ final class StateAnswerTest extends TestCase {
 				'kind'   => 'included',
 				'amount' => 0,
 				'text'   => 'Included',
+				'change' => 'Included',
 			),
 			$picked[102]
 		);
@@ -757,6 +858,7 @@ final class StateAnswerTest extends TestCase {
 				'kind'   => 'more',
 				'amount' => 500,
 				'text'   => '+$5.00',
+				'change' => '+$5.00 over your pick',
 			),
 			$picked[103]
 		);
@@ -775,6 +877,7 @@ final class StateAnswerTest extends TestCase {
 				'kind'   => 'free',
 				'amount' => 0,
 				'text'   => 'Same price',
+				'change' => 'Same price',
 			),
 			$picked[104]
 		);
@@ -791,6 +894,7 @@ final class StateAnswerTest extends TestCase {
 				'kind'   => 'more',
 				'amount' => 5400,
 				'text'   => '+$54.00',
+				'change' => '',
 			),
 			$trucks[149]
 		);
@@ -808,6 +912,7 @@ final class StateAnswerTest extends TestCase {
 				'kind'   => 'more',
 				'amount' => 180,
 				'text'   => '+$1.80',
+				'change' => '+$1.80 over your pick',
 			),
 			$hidden[169]
 		);
@@ -816,6 +921,7 @@ final class StateAnswerTest extends TestCase {
 				'kind'   => 'less',
 				'amount' => -360,
 				'text'   => '−$3.60',
+				'change' => '$3.60 less',
 			),
 			$hidden[139]
 		);
@@ -835,6 +941,7 @@ final class StateAnswerTest extends TestCase {
 				'kind'   => 'none',
 				'amount' => 0,
 				'text'   => '',
+				'change' => '',
 			),
 			$all[150]['delta']
 		);
@@ -1043,6 +1150,7 @@ final class StateAnswerTest extends TestCase {
 				'size'  => '8.5″',
 				'name'  => 'Part 103',
 				'image' => InMemoryPartCards::card( 103 )['image'],
+				'photo' => true,
 				'drawn' => false,
 			),
 			$answer['picture']['items'][0]
@@ -1212,5 +1320,128 @@ final class StateAnswerTest extends TestCase {
 		self::assertTrue( $answer['ready'] );
 		self::assertCount( 6, $answer['total']['lines'] );
 		self::assertCount( 6, $answer['picture']['items'] );
+	}
+
+	public function test_an_answer_without_the_shelf_says_null_as_an_earlier_releases_container_builds_it(): void {
+		self::assertNull( $this->answer( array(), SlotKey::WHEELS )['shelf'] );
+	}
+
+	public function test_the_shelf_lists_a_step_as_cards_with_their_part_sizes_and_choices(): void {
+		$looks = array(
+			301 => new LookFact( 30, 5, 0, 'Retna', array( 'pa_colour' => array( 'mint' ) ), array( 'pa_colour' => array( 'mint' => 'Mint' ) ), false, 0, 0 ),
+			302 => new LookFact( 30, 5, 0, 'Retna', array( 'pa_colour' => array( 'black' ) ), array( 'pa_colour' => array( 'black' => 'Black' ) ), false, 0, 0 ),
+		);
+		$shelf = $this->shelf( array( SlotKey::DECK => 103, SlotKey::TRUCKS => 149 ), SlotKey::WHEELS, null, $looks );
+		self::assertNotNull( $shelf );
+		$cards = array_column( $shelf['looks'], null, 'key' );
+		self::assertArrayHasKey( '30:5:0', $cards, 'two wheels on one photo, one card' );
+		$card = $cards['30:5:0'];
+		self::assertSame( 30, $card['product'] );
+		self::assertContains( $card['part']['id'], array( 301, 302 ) );
+		self::assertSame( array( 'id', 'brand', 'size', 'delta', 'fit', 'in_stock', 'available', 'quantity', 'picked', 'recommended', 'messages', 'card' ), array_keys( $card['part'] ), 'the part as an option carries it' );
+		self::assertSame(
+			array(
+				array(
+					'value' => '52mm',
+					'text'  => "52\u{a0}mm",
+				),
+				array(
+					'value' => '54mm',
+					'text'  => "54\u{a0}mm",
+				),
+			),
+			$card['sizes']
+		);
+		self::assertSame(
+			array(
+				'pa_colour' => array(
+					array(
+						'value' => 'mint',
+						'label' => 'Mint',
+					),
+					array(
+						'value' => 'black',
+						'label' => 'Black',
+					),
+				),
+			),
+			(array) $card['choices'],
+			'an object, so that none is {} in JSON'
+		);
+		self::assertIsObject( $card['choices'] );
+		self::assertSame( array( 'name' => 'wheel_diameter', 'label' => 'Diameter' ), array_intersect_key( $shelf['chips'][0], array_flip( array( 'name', 'label' ) ) ), 'the size where the shopper picks it; the shop\'s parts have no brand' );
+		self::assertSame( array( 'value' => '52mm', 'label' => "52\u{a0}mm", 'count' => 1, 'selected' => false ), $shelf['chips'][0]['chips'][0] );
+		self::assertSame( array(), $shelf['widths'] );
+		self::assertSame( array( 2, 2, null, '', 'recommended' ), array( $shelf['offered'], $shelf['matching'], $shelf['more'], $shelf['query'], $shelf['sort'] ) );
+		self::assertSame( array(), $shelf['sold_out'] );
+	}
+
+	// A card names its product, not the size-suffixed variation, and a look by what tells it from its product's
+	// other looks (D-273).
+	public function test_a_card_names_its_product_its_brand_and_what_tells_its_look_from_the_products_others(): void {
+		$colour = static fn( string $slug, string $name ): array => array( 'pa_colour' => array( $slug => $name ) );
+		$looks  = array(
+			301 => new LookFact( 30, 5, 0, 'Conical', array( 'pa_colour' => array( 'mint' ) ), $colour( 'mint', 'Mint' ), false, 0, 0 ),
+			302 => new LookFact( 30, 6, 0, 'Conical', array( 'pa_colour' => array( 'black' ) ), $colour( 'black', 'Black' ), false, 0, 0 ),
+			303 => new LookFact( 40, 7, 0, 'Classic', array( 'pa_colour' => array( 'red' ) ), $colour( 'red', 'Red' ), false, 0, 0 ),
+		);
+		$shelf = $this->shelf( array( SlotKey::DECK => 103, SlotKey::TRUCKS => 149 ), SlotKey::WHEELS, null, $looks );
+		self::assertNotNull( $shelf );
+		$cards = array_column( $shelf['looks'], null, 'key' );
+		ksort( $cards );
+		self::assertSame(
+			array(
+				'30:5:0' => array( 'Conical', '', array( 'Mint' ) ),
+				'30:6:0' => array( 'Conical', '', array( 'Black' ) ),
+			),
+			array_map( static fn( array $card ): array => array( $card['name'], $card['brand'], $card['look'] ), array_intersect_key( $cards, array_flip( array( '30:5:0', '30:6:0' ) ) ) ),
+			'the shop\'s parts have no brand'
+		);
+		$all = array_column( array( ...$shelf['looks'], ...$shelf['sold_out'] ), null, 'key' );
+		self::assertSame( array(), $all['40:7:0']['look'] ?? null, 'a product with one look needs no name' );
+	}
+
+	public function test_the_deck_step_asks_the_width_and_the_link_carries_the_shelf(): void {
+		$asking = $this->shelf( array(), SlotKey::DECK );
+		self::assertSame( array(), $asking['looks'] ?? null );
+		self::assertSame(
+			array(
+				array(
+					'value'    => '8in',
+					'text'     => '8″',
+					'in_stock' => 1,
+					'selected' => false,
+				),
+				array(
+					'value'    => '8.25in',
+					'text'     => '8.25″',
+					'in_stock' => 1,
+					'selected' => true,
+				),
+				array(
+					'value'    => '8.5in',
+					'text'     => '8.5″',
+					'in_stock' => 1,
+					'selected' => false,
+				),
+			),
+			$this->shelf( array(), SlotKey::DECK, BuildLink::read( array( '_width' => '8.25in' ) ) )['widths'] ?? null
+		);
+		$listed = $this->shelf( array(), SlotKey::DECK, BuildLink::read( array( '_width' => '8.25in', '_sort' => 'price-desc', '_q' => 'part' ) ) );
+		self::assertSame( array( 102 ), array_column( array_column( $listed['looks'] ?? array(), 'part' ), 'id' ) );
+		self::assertSame( array( 'part', 'price-desc' ), array( $listed['query'] ?? null, $listed['sort'] ?? null ) );
+		$query = $this->shelf( array(), SlotKey::DECK, BuildLink::read( array( '_width' => '8.25in' ) ), array(), new ShelfQuery( '8.5in' ) );
+		self::assertSame( array( 103 ), array_column( array_column( $query['looks'] ?? array(), 'part' ), 'id' ), 'arguments sent beside the link are the route\'s own, and come first' );
+		self::assertNull( $this->shelf( self::COMPLETE, 'review' ) );
+	}
+
+	public function test_a_page_follows_the_links_count_and_a_page_from_the_route_starts_where_asked(): void {
+		$looks = array();
+		foreach ( array( 301, 302, 303 ) as $id ) {
+			$looks[ $id ] = new LookFact( $id, $id, 0, 'Wheel ' . $id, array(), array(), false, 0, 0 );
+		}
+		$page = $this->shelf( array( SlotKey::DECK => 103, SlotKey::TRUCKS => 149 ), SlotKey::WHEELS, null, $looks, new ShelfQuery( from: 1, shown: 1 ) );
+		self::assertCount( 1, $page['looks'] ?? array() );
+		self::assertSame( 2, $page['more'] ?? null );
 	}
 }

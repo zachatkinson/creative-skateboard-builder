@@ -32,7 +32,7 @@ interface Found {
  */
 export function plain( rendered: string ): string {
 	const text = new DOMParser().parseFromString( rendered, 'text/html' );
-	return text.body.textContent ?? '';
+	return text.body.textContent;
 }
 
 function Edit( { attributes, setAttributes }: EditProps ) {

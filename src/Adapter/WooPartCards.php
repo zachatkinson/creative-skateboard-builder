@@ -9,8 +9,10 @@ declare( strict_types=1 );
 
 namespace CreativeBranding\SkateboardBuilder\Adapter;
 
+use CreativeBranding\SkateboardBuilder\Port\PartFacts;
 use CreativeBranding\SkateboardBuilder\Port\PartCards;
 use CreativeBranding\SkateboardBuilder\Support\Cast;
+use CreativeBranding\SkateboardBuilder\Support\LayerMeta;
 use CreativeBranding\SkateboardBuilder\Support\Options;
 use WC_Product;
 use WC_Tax;
@@ -55,6 +57,12 @@ final class WooPartCards implements PartCards {
 	private const string SIZE = 'woocommerce_thumbnail';
 
 	/**
+	 * A layer image's size on a card: WordPress's, which is never cropped, as the shop's thumbnail may be. A deck's
+	 * cut-out is tall and narrow, and a square crop showed its middle alone (D-282).
+	 */
+	private const string LAYER_SIZE = 'medium';
+
+	/**
 	 * The post types a part has.
 	 */
 	private const array TYPES = array( 'product', 'product_variation' );
@@ -71,9 +79,10 @@ final class WooPartCards implements PartCards {
 	 *
 	 * @since 0.4.0
 	 *
-	 * @param Products $products Loads products in one query.
+	 * @param Products  $products Loads products in one query.
+	 * @param PartFacts $facts    Keeps each card beside its part's facts in its price context (D-289).
 	 */
-	public function __construct( private Products $products ) {}
+	public function __construct( private Products $products, private PartFacts $facts ) {}
 
 	/**
 	 * The cards of these parts, by ID, in the order asked.
@@ -81,7 +90,7 @@ final class WooPartCards implements PartCards {
 	 * @since 0.4.0
 	 *
 	 * @param list<int> $ids Parts' IDs.
-	 * @return array<int, array{name: string, url: string, price: string, stock: string, stock_class: string, image: array{src: string, width: int, height: int, srcset: string, sizes: string}|null}>
+	 * @return array<int, array{name: string, url: string, price: string, stock: string, stock_class: string, image: array{src: string, width: int, height: int, srcset: string, sizes: string}|null, photo: bool}>
 	 */
 	public function cards( array $ids ): array {
 		$ids = array_values( array_unique( array_filter( $ids, static fn( int $id ): bool => $id > 0 ) ) );
@@ -120,18 +129,57 @@ final class WooPartCards implements PartCards {
 			$cards[ $id ] = $card;
 		}
 
+		// Then beside the parts' facts in this price context, where a site with no persistent object cache keeps
+		// them between requests (D-289).
+		foreach ( array() === $others ? array() : $this->facts->kept( $context, ...array_keys( $others ) ) as $id => $row ) {
+			$entry = $row['card'];
+			$card  = is_array( $entry ) && ( $entry['stamp'] ?? null ) === ( $stamps[ $id ] ?? null ) ? self::read( $entry['card'] ?? null ) : null;
+			if ( null === $card || ! isset( $others[ $id ] ) ) {
+				continue;
+			}
+			$cards[ $id ] = $card;
+			wp_cache_set(
+				self::key( $id ),
+				array(
+					'stamp' => $stamps[ $id ],
+					'cards' => array_slice( array( $context => $card ) + $others[ $id ], 0, self::CONTEXTS, true ),
+				),
+				Options::CACHE_GROUP,
+				HOUR_IN_SECONDS
+			);
+			unset( $others[ $id ] );
+		}
+
 		if ( array() !== $others ) {
+			$keep   = array();
 			$missed = $this->products->load( ...array_keys( $others ) );
-			$images = array();
+			// The parents of variations with no photo and no layer image of their own, read once for them all (the
+			// auditor's 1.0.0 minor 5).
+			$wanted = array();
 			foreach ( $missed as $product ) {
-				$photo = Cast::int( $product->get_image_id() );
+				if ( Cast::int( $product->get_image_id() ) <= 0 && LayerMeta::own( $product ) <= 0 && $product->get_parent_id() > 0 ) {
+					$wanted[] = $product->get_parent_id();
+				}
+			}
+			$parents = array() === $wanted ? array() : $this->products->load( ...array_values( array_unique( $wanted ) ) );
+			$layers  = array();
+			$images  = array();
+			foreach ( $missed as $id => $product ) {
+				// The photo, else the layer image the card falls back to (D-282), read with the rest in one query.
+				$layers[ $id ] = self::layer( $product, $parents );
+				$photo         = Cast::int( $product->get_image_id() );
+				$photo         = $photo > 0 ? $photo : $layers[ $id ];
 				if ( $photo > 0 ) {
 					$images[] = $photo;
 				}
 			}
 			_prime_post_caches( array_values( array_unique( $images ) ), false, true );
 			foreach ( $missed as $id => $product ) {
-				$cards[ $id ] = self::card( $product );
+				$cards[ $id ] = self::card( $product, $layers[ $id ] );
+				$keep[ $id ]  = array(
+					'stamp' => $stamps[ $id ],
+					'card'  => $cards[ $id ],
+				);
 				wp_cache_set(
 					self::key( $id ),
 					array(
@@ -143,6 +191,7 @@ final class WooPartCards implements PartCards {
 					HOUR_IN_SECONDS
 				);
 			}
+			$this->facts->keep( $context, 'card', $keep );
 		}
 
 		$ordered = array();
@@ -233,8 +282,13 @@ final class WooPartCards implements PartCards {
 				'no_found_rows'   => true,
 			)
 		);
-		foreach ( array_merge( $ids, Cast::ints( $children->posts ) ) as $id ) {
+		$moved    = array_merge( $ids, Cast::ints( $children->posts ) );
+		// Kept beside the facts too, in every price context (D-289).
+		$this->facts->clear( ...$moved );
+		foreach ( $moved as $id ) {
 			wp_cache_delete( self::key( $id ), Options::CACHE_GROUP );
+			// Its look is kept beside its card, against the same stamp (D-263).
+			wp_cache_delete( WooPartLooks::key( $id ), Options::CACHE_GROUP );
 		}
 	}
 
@@ -248,11 +302,13 @@ final class WooPartCards implements PartCards {
 	}
 
 	/**
-	 * When the part and its parent were last saved.
+	 * When the part and its parent were last saved: what a part's kept card, and its kept look, are checked against.
+	 *
+	 * @since 1.0.0
 	 *
 	 * @param WP_Post $post The part's post.
 	 */
-	private static function stamp( WP_Post $post ): string {
+	public static function stamp( WP_Post $post ): string {
 		$parent = $post->post_parent > 0 ? get_post( $post->post_parent ) : null;
 		return $post->post_modified_gmt . '|' . ( $parent instanceof WP_Post ? $parent->post_modified_gmt : '' );
 	}
@@ -318,25 +374,60 @@ final class WooPartCards implements PartCards {
 	}
 
 	/**
+	 * An image from the media library as a card's photo is, or null when it is none.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param int $attachment The attachment's ID.
+	 * @return array{src: string, width: int, height: int, srcset: string, sizes: string}|null
+	 */
+	public function photo( int $attachment ): ?array {
+		return self::image( $attachment );
+	}
+
+	/**
+	 * An attachment at the cards' size, or null.
+	 *
+	 * @param int    $photo The attachment's ID, or 0.
+	 * @param string $size  The image size: the shop's thumbnail, or a layer image's.
+	 * @return array{src: string, width: int, height: int, srcset: string, sizes: string}|null
+	 */
+	private static function image( int $photo, string $size = self::SIZE ): ?array {
+		$source = $photo > 0 ? wp_get_attachment_image_src( $photo, $size ) : false;
+		if ( ! is_array( $source ) ) {
+			return null;
+		}
+		return array(
+			'src'    => $source[0],
+			'width'  => $source[1],
+			'height' => $source[2],
+			'srcset' => (string) wp_get_attachment_image_srcset( $photo, $size ),
+			'sizes'  => (string) wp_get_attachment_image_sizes( $photo, $size ),
+		);
+	}
+
+	/**
+	 * A part's layer image, for a card with no photo (D-282): a variation's own, else its parent's, as the picture
+	 * reads it.
+	 *
+	 * @param WC_Product             $product The part.
+	 * @param array<int, WC_Product> $parents The parents read for the cards, by ID.
+	 */
+	private static function layer( WC_Product $product, array $parents ): int {
+		return LayerMeta::inUse( $product, $parents[ $product->get_parent_id() ] ?? null );
+	}
+
+	/**
 	 * A product's card.
 	 *
 	 * @param WC_Product $product The part.
-	 * @return array{name: string, url: string, price: string, stock: string, stock_class: string, image: array{src: string, width: int, height: int, srcset: string, sizes: string}|null}
+	 * @param int        $layer   Its layer image, its own or its parent's, or 0.
+	 * @return array{name: string, url: string, price: string, stock: string, stock_class: string, image: array{src: string, width: int, height: int, srcset: string, sizes: string}|null, photo: bool}
 	 */
-	private static function card( WC_Product $product ): array {
+	private static function card( WC_Product $product, int $layer ): array {
 		$availability = $product->get_availability();
-		$photo        = Cast::int( $product->get_image_id() );
-		$source       = $photo > 0 ? wp_get_attachment_image_src( $photo, self::SIZE ) : false;
-		$image        = null;
-		if ( is_array( $source ) ) {
-			$image = array(
-				'src'    => $source[0],
-				'width'  => $source[1],
-				'height' => $source[2],
-				'srcset' => (string) wp_get_attachment_image_srcset( $photo, self::SIZE ),
-				'sizes'  => (string) wp_get_attachment_image_sizes( $photo, self::SIZE ),
-			);
-		}
+		$photo        = self::image( Cast::int( $product->get_image_id() ) );
+		$image        = $photo ?? self::image( $layer, self::LAYER_SIZE );
 		return array(
 			// WordPress stores a title with its entities written out. A card's name is plain text, which the edge escapes.
 			'name'        => html_entity_decode( wp_strip_all_tags( $product->get_name() ), ENT_QUOTES, 'UTF-8' ),
@@ -345,6 +436,8 @@ final class WooPartCards implements PartCards {
 			'stock'       => $availability['availability'],
 			'stock_class' => $availability['class'],
 			'image'       => $image,
+			// Whether the image is the part's photo, not its layer image: a share card wants the photo (D-282).
+			'photo'       => null !== $photo,
 		);
 	}
 
@@ -352,7 +445,7 @@ final class WooPartCards implements PartCards {
 	 * A kept card, when it is one: a cache can hand back anything.
 	 *
 	 * @param mixed $kept What the entry holds for a context.
-	 * @return array{name: string, url: string, price: string, stock: string, stock_class: string, image: array{src: string, width: int, height: int, srcset: string, sizes: string}|null}|null
+	 * @return array{name: string, url: string, price: string, stock: string, stock_class: string, image: array{src: string, width: int, height: int, srcset: string, sizes: string}|null, photo: bool}|null
 	 */
 	private static function read( mixed $kept ): ?array {
 		if ( ! is_array( $kept ) ) {
@@ -363,6 +456,10 @@ final class WooPartCards implements PartCards {
 			if ( ! is_string( $kept[ $text ] ?? null ) ) {
 				return null;
 			}
+		}
+		// A card kept before 1.0.0 has no `photo`, and is read again with its layer image.
+		if ( ! is_bool( $kept['photo'] ?? null ) ) {
+			return null;
 		}
 		if ( null !== $image && ! ( is_array( $image ) && is_string( $image['src'] ?? null ) && is_int( $image['width'] ?? null ) && is_int( $image['height'] ?? null ) && is_string( $image['srcset'] ?? null ) && is_string( $image['sizes'] ?? null ) ) ) {
 			return null;
@@ -380,6 +477,7 @@ final class WooPartCards implements PartCards {
 				'srcset' => $image['srcset'],
 				'sizes'  => $image['sizes'],
 			),
+			'photo'       => $kept['photo'],
 		);
 	}
 }

@@ -211,6 +211,28 @@ final readonly class Fields {
 	}
 
 	/**
+	 * An optional choice: one of a fixed set of strings, or the first of them where the field is left out.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param string                 $key     The field.
+	 * @param non-empty-list<string> $choices The choices, the default first.
+	 *
+	 * @throws InvalidDocument When it is not a string, or not one of the choices.
+	 */
+	public function choice( string $key, array $choices ): string {
+		if ( ! $this->has( $key ) ) {
+			return $choices[0];
+		}
+		$value = $this->string( $key );
+		if ( ! in_array( $value, $choices, true ) ) {
+			$refused = InvalidDocument::because( DocumentError::OutOfRange, $this->path( $key ) );
+			throw $refused;
+		}
+		return $value;
+	}
+
+	/**
 	 * A required key: a lower-case letter, then up to 31 letters, digits or underscores.
 	 *
 	 * @since 0.2.0

@@ -30,8 +30,9 @@ final readonly class Kit {
 	 * @param list<Preset>    $presets  The ready builds.
 	 * @param Assembly        $assembly Assembly's settings.
 	 * @param PictureSettings $picture  The picture's settings (from 0.7.0).
+	 * @param KitLayout       $layout   The builder's layout (from 1.0.0).
 	 */
-	private function __construct( public Slots $slots, public RuleSettings $rules, public array $presets, public Assembly $assembly, public PictureSettings $picture ) {}
+	private function __construct( public Slots $slots, public RuleSettings $rules, public array $presets, public Assembly $assembly, public PictureSettings $picture, public KitLayout $layout ) {}
 
 	/**
 	 * From the kit's documents.
@@ -43,10 +44,11 @@ final readonly class Kit {
 	 * @param mixed $presets  The decoded `_cbuild_presets` document.
 	 * @param mixed $assembly The decoded `_cbuild_assembly` document.
 	 * @param mixed $picture  The decoded `_cbuild_picture` document, from 0.7.0; null for a kit that has none.
+	 * @param mixed $layout   The decoded `_cbuild_layout` document, from 1.0.0; null for a kit that has none.
 	 *
 	 * @throws InvalidDocument When a document is not valid, a preset names a slot the kit lacks or leaves a required one empty.
 	 */
-	public static function fromDocuments( mixed $slots, mixed $rules, mixed $presets, mixed $assembly, mixed $picture = null ): self {
+	public static function fromDocuments( mixed $slots, mixed $rules, mixed $presets, mixed $assembly, mixed $picture = null, mixed $layout = null ): self {
 		$kitSlots = Slots::fromDocument( $slots );
 		$ready    = array();
 		foreach ( Fields::document( $presets )->rows( 'presets', self::MAX_PRESETS ) as $row ) {
@@ -68,6 +70,6 @@ final readonly class Kit {
 		// The picture's order passes over a slot the kit no longer has: removing a slot must not leave a kit that
 		// no shopper can open for want of a picture setting (D-192).
 		$drawn = PictureSettings::fromDocument( $picture )->only( ...array_map( static fn( Slot $slot ): string => $slot->key, $kitSlots->all() ) );
-		return new self( $kitSlots, RuleSettings::fromDocument( $rules ), $ready, Assembly::fromDocument( $assembly ), $drawn );
+		return new self( $kitSlots, RuleSettings::fromDocument( $rules ), $ready, Assembly::fromDocument( $assembly ), $drawn, KitLayout::fromDocument( $layout ) );
 	}
 }

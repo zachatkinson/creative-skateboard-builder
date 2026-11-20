@@ -363,7 +363,131 @@ Planned as 1.0.0. On 18 November 2026 Zach moved 1.0.0 to milestone 10, the conf
 
 ## Milestone 10: The configurator and 1.0 (1.0.0)
 
-Planned in `docs/reviews/M10.md` and the redesign spec, after milestone 9 is merged and reviewed. It ends with the items milestone 9 moved here: the manual accessibility pass, French read by a person, the hallway test, the public API frozen, and the full audit in `docs/AUDIT-1.0.0.md` (D-236).
+**Builds**, everything in `docs/SPEC-CONFIGURATOR.md` but its Motion section:
+
+- **The layout:**
+  - the kit page's full-screen configurator, with the stage, the panel, the step rail and the footer;
+  - the block theme's `single-product-cbuild-kit` template, and the classic themes' full-width placement (D-238);
+  - the tablet and phone layouts and the phone's sheet and bar;
+  - the Builder block at any width;
+  - "Back to the shop".
+- **Finding a part:**
+  - one card per look (variations that share a photo), with sizes picked by the build, grip and hardware included, or chosen after the pick where nothing decides them (D-240);
+  - the deck's width first, with no All, and the width guide (`cbuild_width_guide`; D-241, D-242);
+  - the order and Sort (D-243);
+  - 30 at a time, with the route's `from` argument (D-244);
+  - the sold-out fold;
+  - the filter chips from the step's own data, with true counts (D-247);
+  - search, through `csearch_ranked_ids` or the builder's own (D-248);
+  - the tools by the step's size.
+- **The steps that appear only when needed:**
+  - bearings, skipped for wheels with `bearings_included` (a new spec key);
+  - risers, from R3 as built, with "Needs ¼″ risers" on wheel cards, the bolts following R4, Add risers at the review, and over-limit wheels hidden when the kit has no riser that clears them with bolts long enough for it (D-245, D-246).
+- **Ways in:** "Build a complete with this deck" (`cbuild_start_button`, D-253); rider builds with the composed picture or a rider photo (D-252).
+- **A saved build that has changed:** prices kept at save; the "Your build has changed" panel with the closest replacements and the prices then and now (D-254).
+- **The admin screens:** `bearings_included` in Part specs, and Sold in sets opened for parts in a slot of more than one unit (#61); presets with an image, and unchanged presets naming a hidden part no longer reported as not saved (#62).
+- **The Build tab's Layout section:** stage side, board size and search (`_cbuild_layout`, D-255).
+- **The route's additions:**
+  - `from`, `q` and `sort`;
+  - the looks and their sizes;
+  - chip groups with true counts;
+  - `bearings_included`;
+  - the changed-build answer.
+
+  The schema only gains; the types are regenerated.
+- **Moved from milestone 9 (D-236):**
+  - the manual accessibility pass with VoiceOver and NVDA, by someone who didn't write the code;
+  - French held by the checks and Cowork's walk in French, not read by a person (D-260);
+  - the hallway test, Zach and three people on their own phones, one of them an iPhone, with the route's rate limit checked;
+  - the public API frozen, `docs/HOOKS.md` final with the 1.0 snapshot;
+  - the full-codebase audit in `docs/AUDIT-1.0.0.md`.
+- **CI:** the newest leg split into parallel jobs, with the ruleset's required checks updated to match (D-258).
+- **The release:** tagged 1.0.0 and published.
+
+**Tests that must pass**
+
+- **The spec's cases, in the domain first:**
+  - a look's size picked by the deck's width, by R1, R3 and R4;
+  - a wheel's size, and a choice you can't see, chosen after the pick;
+  - variations that share a photo making one look;
+  - grip's sheet and hardware's nearest length picked by the build;
+  - `bearings_included` filling the bearings slot;
+  - the closest replacement against the rest of the build;
+  - chip counts with the other groups applied.
+  - 100 % lines, branches and MSI in `src/Domain`, as always.
+- **The route:**
+  - `from` pages without gaps or repeats;
+  - search through a stubbed `csearch_ranked_ids`, and without it;
+  - the 500 cap;
+  - its p95 under 80 ms at 500 candidates with search and chips (`composer test:benchmark:integration`).
+- **Browser, on Chromium, WebKit and Firefox at desktop, tablet and phone widths:**
+  - every way in;
+  - the width question;
+  - search with and without results, the nearest width offered;
+  - Show 30 more and the sold-out fold;
+  - chips;
+  - the bearings step skipped;
+  - the risers step and the bolts following, on the test kit's 54 mm and 56 mm wheels, with bolts long enough for a ½″ riser and without;
+  - Add risers at the review;
+  - a changed saved build, sold out and repriced;
+  - Back, Forward and reload keeping a step's filters, search and place;
+  - JavaScript off, fr_CA and right to left;
+  - the route forced to fail.
+- **Themes:** Twenty Twenty-Five (the block template), Storefront (classic) and the suite's Shop Kit stand-in (a page builder's product template), each with one h1; Kadence checked by Cowork on the demo.
+- **Accessibility:**
+  - axe on every state;
+  - the keyboard to the first deck in at most eight presses;
+  - focus after a pick, Show more and the changed-build panel;
+  - targets, 200 % zoom, 320 px, forced colours, text spacing;
+  - the bar never over the control in focus.
+- **Speed:**
+  - Lighthouse CI: largest paint under 2.5 s mobile, no layout shift;
+  - a pick paints within 100 ms on a 4× slowed CPU;
+  - the asset budgets.
+- **Snapshots:** visual on Twenty Twenty-Five, Storefront and Kadence's stand-in, dark and light, at three widths, rebaselined on purpose.
+- **CI:** a full run in about 40 minutes, with every project, upgrade and snapshot the newest leg ran before (D-258).
+- **Upgrades:** from every 0.x release to 1.0.0 (`npm run upgrade:all`), saved builds from 0.8.0 and 0.9.0 opening with no prices kept.
+
+**Done when** a shopper can find a part in a step of 500 as quickly as in one of 20, build, change, save, reopen a changed build, share and buy a board on a phone, a tablet and a desktop with or without JavaScript, by keyboard, touch or screen reader, within every budget, and the 1.0 checks moved from milestone 9 are done, with Zach's approval of the release.
+
+**Where the audit looks hardest:**
+- UX and content: Baymard's product-list and configurator research, P1 to P12, screen by screen, with the walkthrough;
+- accessibility: the rail, the chips, the sheet, the manual pass;
+- performance: the route's paging and search at 500, the largest paint on the stage;
+- upgrades and the API: the schema only gains, the freeze, the old saved builds;
+- internationalisation: French at phone width, sizes and the width guide;
+- resilience: without Creative Search, a failing route, a theme with no block template;
+- privacy: nothing stored on the device, the search not logged by the builder.
+
+---
+
+## Milestone 11: The motion (1.1.0)
+
+**Builds**, the Motion section of `docs/SPEC-CONFIGURATOR.md`:
+- the ten moments in its table, through view transitions and the Web Animations API, each cut short by a new pick;
+- reduced motion and the Motion setting's subtle as cross-fades (D-256);
+- the counting total (D-257);
+- Add to cart aiming at the Mini-Cart's button.
+
+**Tests that must pass**
+
+- **Each moment:** its end state as a visual baseline; its duration, and its fade under reduced motion and subtle, read from the animation's own timing in the browser test.
+- **Speed:**
+  - a pick still paints within 100 ms on a 4× slowed CPU;
+  - Interaction to Next Paint under 200 ms;
+  - no layout shift;
+  - a performance trace of each moment in CI;
+  - the script budget.
+- **Accessibility:**
+  - the total said once;
+  - the counting frames hidden;
+  - nothing moves under reduced motion;
+  - focus never lost in a transition.
+- **Engines:** Firefox's view transitions without types; a browser without view transitions changes at once.
+
+**Done when** every pick, swap and step change shows the board being built within its time, and a shopper who asked for less motion sees fades alone.
+
+**Where the audit looks hardest:** performance (the main thread during a moment), accessibility (reduced motion, the counting total), UX (motion that explains and never waits).
 
 ---
 
@@ -389,7 +513,7 @@ Following What Skatehouse needs in the spec:
 - the kit in the Completes category;
 - the part specs imported, and the Catalogue check clean;
 - the Builder block on /build-a-complete/;
-- "Make it a complete" from Skatehouse Core 2.x;
+- "Build a complete with this deck", placed by the plugin from 1.0.0 (D-253), so Skatehouse Core needs no button of its own;
 - the presets approved by the owner;
 - the deck cut-outs, then trucks, wheels, risers and grip shot to `docs/PICTURE.md` as they arrive;
 - a build-and-checkout test in Skatehouse's own end-to-end suite.

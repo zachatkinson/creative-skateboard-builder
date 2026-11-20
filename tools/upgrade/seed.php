@@ -48,8 +48,27 @@ if ( 'read' === ( $cbuild_args[0] ?? '' ) ) {
 	}
 	// The build 0.8.0 saved, listed by this release.
 	$user  = (int) ( $cbuild_args[2] ?? 0 );
-	$saved = $user > 0 ? count( $container->get( CreativeBranding\SkateboardBuilder\Service\SavedBuilds::class )->of( $user ) ) : 0;
-	echo "read: order {$order->get_id()}, {$lines} lines, {$found} products, total {$order->get_total()}; kits " . $read . ' of ' . count( $stored ) . ", presets {$priced} of {$presets} priced; saved builds {$saved}\n";
+	$builds = $container->get( CreativeBranding\SkateboardBuilder\Service\SavedBuilds::class );
+	$list   = $user > 0 ? $builds->of( $user ) : array();
+	$saved  = count( $list );
+	// Each reopened as My builds opens it (the spec reviewer's M10 S6): a build saved before 1.0.0 kept no prices, so
+	// it shows no price changes and no total then, whatever else changed.
+	$clean = 0;
+	foreach ( $list as $build ) {
+		// A build where nothing changed does not reopen at all (SavedBuilds::reopened()), so one of its parts is sold
+		// out first: then it must reopen, saying so, and with no prices it never kept.
+		$picks = $build->picks;
+		$part  = wc_get_product( (int) end( $picks ) );
+		if ( $part instanceof WC_Product ) {
+			$part->set_stock_quantity( 0 );
+			$part->set_stock_status( 'outofstock' );
+			$part->save();
+		}
+		$again  = $builds->reopened( $user, $build->uuid );
+		// One that doesn't reopen at all is not clean (the spec reviewer's M10 m2).
+		$clean += null !== $again && null === $again->then && array() === $again->prices ? 1 : 0;
+	}
+	echo "read: order {$order->get_id()}, {$lines} lines, {$found} products, total {$order->get_total()}; kits " . $read . ' of ' . count( $stored ) . ", presets {$priced} of {$presets} priced; saved builds {$saved}, {$clean} reopened with no prices then\n";
 	return;
 }
 

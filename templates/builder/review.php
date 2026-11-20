@@ -10,19 +10,33 @@
 
 defined( 'ABSPATH' ) || exit;
 ?>
-<section class="cbuild-review" data-wp-bind--hidden="!state.view.isReview">
-	<h3 class="cbuild-review__heading" data-wp-text="state.view.review.heading"></h3>
+<section class="cbuild-review" data-wp-interactive="creative-skateboard-builder" data-wp-bind--hidden="!state.view.isReview">
+	<h3 class="cbuild-review__heading screen-reader-text" data-wp-text="state.view.review.heading"></h3>
 	<ul class="cbuild-review__items">
 		<template data-wp-each--item="state.view.review.items" data-wp-each-key="context.item.key">
 			<li data-wp-bind--class="context.item.classes">
 				<span class="cbuild-review__slot" data-wp-text="context.item.label"></span>
 				<span class="cbuild-review__name" data-wp-text="context.item.name"></span>
 				<span class="cbuild-review__fit" data-wp-text="context.item.fit"></span>
-				<a class="cbuild-review__change" rel="nofollow" data-wp-on--click="actions.follow" data-wp-bind--href="context.item.url" data-wp-text="context.item.change"></a>
+				<span class="cbuild-review__amount" data-wp-text="context.item.amount"></span>
+				<a class="cbuild-button cbuild-review__change" rel="nofollow" data-wp-on--click="actions.follow" data-wp-bind--href="context.item.url" data-wp-bind--aria-label="context.item.change" data-wp-text="context.item.text"></a>
 			</li>
 		</template>
 	</ul>
-	<p class="cbuild-review__assembly" data-wp-text="state.view.review.assembly"></p>
+	<?php // For a rider who wants risers when nothing asks for them (spec: The review, D-246). ?>
+	<a class="cbuild-button cbuild-review__add" rel="nofollow" data-wp-on--click="actions.follow" data-wp-bind--hidden="!state.view.review.addRisers.shown" data-wp-bind--href="state.view.review.addRisers.url" data-wp-text="state.view.review.addRisers.text"></a>
+	<div class="cbuild-review__assembly">
+		<p data-wp-text="state.view.review.assembly"></p>
+		<form class="cbuild-review__toggle" method="get" data-wp-on--submit="actions.submit" data-wp-bind--action="state.view.action">
+			<template data-wp-each--field="state.view.carry">
+				<input type="hidden" data-wp-bind--name="context.field.name" data-wp-bind--value="context.field.value">
+			</template>
+			<template data-wp-each--field="state.view.summary.toggle.fields">
+				<input type="hidden" data-wp-bind--name="context.field.name" data-wp-bind--value="context.field.value">
+			</template>
+			<button class="cbuild-button" type="submit" data-wp-text="state.view.summary.toggle.text"></button>
+		</form>
+	</div>
 	<p class="cbuild-review__lead" data-wp-bind--hidden="!state.view.review.hasLead" data-wp-text="state.view.review.lead"></p>
 	<p class="cbuild-review__arrival" data-wp-bind--hidden="!state.view.review.hasArrival" data-wp-text="state.view.review.arrival"></p>
 	<p class="cbuild-review__total" data-wp-text="state.view.review.total"></p>

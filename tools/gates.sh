@@ -182,5 +182,25 @@ if [ -f "$release" ]; then
 	fi
 fi
 
+# 16. The builder block's version is the plugin's. WordPress writes block.json's version on the block's stylesheet
+# and script as their `ver` where SCRIPT_DEBUG is off (wp-includes/blocks.php:410), so a block.json left behind serves
+# a cached stylesheet of an earlier release against this one's markup (the auditor's M10 review, 5).
+plugin="$(sed -nE "s/.*define\( 'CBUILD_VERSION', '([^']+)'.*/\1/p" creative-skateboard-builder.php | head -1)"
+for block in assets/src/*/block.json; do
+	[ -f "$block" ] || continue
+	said="$(sed -nE 's/^[[:space:]]*"version": "([^"]+)".*/\1/p' "$block" | head -1)"
+	if [ "$said" != "$plugin" ]; then
+		echo "Gate 16: $block says version ${said:-none}, and the plugin is ${plugin:-none}."; status=1
+	fi
+done
+
+# 17. Every PHP file under src/ outside the domain stops when it is requested directly: WordPress's guard, as Plugin
+# Check asks of a file it can reach. The domain has none, and gate 13 holds that it runs nothing (the auditor's
+# 1.0.0 P4, three files without it).
+unguarded="$(grep -rL "defined( 'ABSPATH' )" src --include='*.php' | grep -v '^src/Domain/' || true)"
+if [ -n "$unguarded" ]; then
+	echo "Gate 17: no direct-access guard (if ( ! defined( 'ABSPATH' ) ) { exit; }):"; echo "$unguarded"; status=1
+fi
+
 if [ "$status" -eq 0 ]; then echo "Gates: clean."; fi
 exit "$status"

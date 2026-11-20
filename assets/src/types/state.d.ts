@@ -5,6 +5,129 @@
  */
 export interface CbuildState {
 	/**
+	 * From 1.0.0: whether the wheels picked come with their bearings (the `bearings_included` spec), so the kit's bearings slot counts as filled and its step is no step (D-246).
+	 */
+	bearings_included: boolean;
+	/**
+	 * From 1.0.0: how the shop writes a price, from WooCommerce's settings and their filters, for a page that formats a total itself. `format` puts the symbol (`%1$s`) beside the amount (`%2$s`), as `get_woocommerce_price_format()` does.
+	 */
+	currency: {
+		/**
+		 * The currency's ISO 4217 code: the shop's, or a currency switcher's.
+		 */
+		code: string;
+		/**
+		 * Its symbol, as plain text.
+		 */
+		symbol: string;
+		/**
+		 * How many decimals a price shows.
+		 */
+		decimals: number;
+		/**
+		 * Between the whole amount and its decimals.
+		 */
+		decimal_separator: string;
+		/**
+		 * Between thousands.
+		 */
+		thousand_separator: string;
+		/**
+		 * Where the symbol goes, as plain text: `%1$s%2$s`, `%2$s%1$s`, or either with a no-break space (U+00A0) between, as WooCommerce has it. From 1.0.0 the space is the character, not `&nbsp;`.
+		 */
+		format: string;
+	};
+	/**
+	 * From 1.0.0, only on the answer to a build link that carries `_saved`, the UUID of the signed-in customer's own saved build of this kit, where it has changed since it was saved: what changed and the prices then and now (spec: A saved build that has changed; D-254, D-278). The answer's state is then the build with the closest parts in place, at the review.
+	 */
+	reopened?: {
+		/**
+		 * Each part gone, sold out or no longer fitting, in step order, with the closest part that fits in its place, or null where none does.
+		 */
+		changes: {
+			/**
+			 * The slot's key.
+			 */
+			slot: string;
+			/**
+			 * The slot's label.
+			 */
+			label: string;
+			/**
+			 * The part saved: a product's or a variation's ID.
+			 */
+			was: number;
+			/**
+			 * Its name, or empty where it no longer reads.
+			 */
+			name: string;
+			/**
+			 * `gone`, `sold_out` or `no_fit`.
+			 */
+			reason: 'gone' | 'sold_out' | 'no_fit';
+			/**
+			 * The closest part that fits in its place, or null.
+			 */
+			closest: {
+				/**
+				 * The part's ID.
+				 */
+				id: number;
+				/**
+				 * Its name.
+				 */
+				name: string;
+			} | null;
+		}[];
+		/**
+		 * Each part kept whose price changed, in the same currency as when it was saved, with the price then and now as text.
+		 */
+		prices: {
+			/**
+			 * The slot's key.
+			 */
+			slot: string;
+			/**
+			 * The slot's label.
+			 */
+			label: string;
+			/**
+			 * The part's ID.
+			 */
+			part: number;
+			/**
+			 * Its name.
+			 */
+			name: string;
+			/**
+			 * Its price when saved.
+			 */
+			then: string;
+			/**
+			 * Its price now.
+			 */
+			now: string;
+		}[];
+		/**
+		 * The build's total when saved, as text, or null where no prices were kept in this currency (a build saved before 1.0.0).
+		 */
+		then: string | null;
+		/**
+		 * The total now, with the closest parts in place, as text.
+		 */
+		now: string;
+		/**
+		 * The build with the closest parts in place: a part ID per slot.
+		 */
+		picks: {
+			[k: string]: number;
+		};
+		/**
+		 * The first slot that changed, which Choose myself opens, or `review`.
+		 */
+		first: string;
+	};
+	/**
 	 * The kit product's ID.
 	 */
 	kit: number;
@@ -291,9 +414,13 @@ export interface CbuildState {
 			 */
 			name: string;
 			/**
-			 * The part's photo, or null when it has none.
+			 * The part's photo, else from 1.0.0 its layer image, uncropped; null when it has neither.
 			 */
 			image: Photo | null;
+			/**
+			 * Whether `image` is the part's photo, not its layer image (1.0.0).
+			 */
+			photo: boolean;
 			/**
 			 * Whether the board draws the part, which then has no labelled photo (0.7.0).
 			 */
@@ -340,6 +467,10 @@ export interface CbuildState {
 	 */
 	notes: string[];
 	/**
+	 * From 1.0.0: the current step as the configurator lists it, one card per look (D-240 to D-264), or null on the review, which lists no parts. `options` and `filters` stay as they were, for whoever reads them.
+	 */
+	shelf: Shelf | null;
+	/**
 	 * Only in an answer to a build link (the cbuild argument): what the builder's template draws for it, as the page's first render has it. The builder's own, and no part of the public API: it may change in any release. The fields the store's script reads are described, so its types are generated from here; the rest are the templates'.
 	 */
 	view?: {
@@ -379,6 +510,13 @@ export interface CbuildState {
 			 * The step's listed parts.
 			 */
 			options: {}[];
+			more?: {
+				/**
+				 * What the status says after Show more: how many it added, or empty (1.0.0).
+				 */
+				added: string;
+				[k: string]: unknown;
+			};
 			[k: string]: unknown;
 		};
 		review: {
@@ -482,6 +620,10 @@ export interface Message {
 	 * The finding as a sentence, in the language of the answer.
 	 */
 	text: string;
+	/**
+	 * From 1.0.0: the finding as a card's short label, where it has one, such as "Needs ⅛″ risers with your trucks"; otherwise empty.
+	 */
+	short: string;
 }
 /**
  * A part as a slot holds it.
@@ -524,6 +666,10 @@ export interface Option {
 		 * The change as its card says it: `+$12.00`, `−$5.00`, `Same price`, `Included`, or an empty string.
 		 */
 		text: string;
+		/**
+		 * From 1.0.0: the change as it reads under the card's full price, once the step has a pick: `+$12.00 over your pick`, `$8.00 less`, `Same price`, `Included`, or an empty string (D-249).
+		 */
+		change: string;
 	};
 	/**
 	 * How the part fits the picks before it: the worst of its messages.
@@ -583,9 +729,13 @@ export interface Card {
 	 */
 	stock_class: string;
 	/**
-	 * The part's photo at the catalogue's size, or null when it has none.
+	 * The part's photo at the catalogue's size, else from 1.0.0 its layer image, uncropped; null when it has neither.
 	 */
 	image: Photo | null;
+	/**
+	 * Whether `image` is the part's photo, not its layer image (1.0.0).
+	 */
+	photo: boolean;
 }
 /**
  * A value a filter offers.
@@ -795,4 +945,284 @@ export interface Layer {
 			srcset: string;
 		}[];
 	};
+}
+/**
+ * A step's shelf: a page of the looks in stock, the sold-out fold, the chips, the deck's width question and the counts.
+ */
+export interface Shelf {
+	/**
+	 * The page of looks in stock, in the order asked: 30 at most from `from`.
+	 */
+	looks: Look[];
+	/**
+	 * Every sold-out look the search and chips leave, in the same order, for the fold.
+	 */
+	sold_out: Look[];
+	/**
+	 * The chip groups: brand, the size where the shopper picks it, and the attributes most of the step's looks carry; four at most, each with two values or more.
+	 *
+	 * @maxItems 4
+	 */
+	chips: ChipGroup[];
+	/**
+	 * On the deck step, each width the kit's decks come in, smallest first; empty on every other step.
+	 */
+	widths: Width[];
+	/**
+	 * How many looks the step offers before any search or chip, which decides its tools: Sort and the chips from 13, search from 41.
+	 */
+	offered: number;
+	/**
+	 * How many looks in stock the search and chips leave: the 90 of "Showing 30 of 90".
+	 */
+	matching: number;
+	/**
+	 * The `from` that asks for the next page, or null when none is left.
+	 */
+	more: number | null;
+	/**
+	 * The search the step was listed with, as it was read: trimmed, 100 characters at most.
+	 */
+	query: string;
+	/**
+	 * The order the step was listed in.
+	 */
+	sort: 'recommended' | 'price-asc' | 'price-desc' | 'newest';
+	/**
+	 * From 1.0.0, on the deck step, where a search finds nothing in stock in the width asked: the widths its matches are in stock in, narrowest first, each with `value` and `text`; otherwise empty.
+	 */
+	elsewhere: {
+		/**
+		 * The width as the `width` argument names it: `8.5in`.
+		 */
+		value: string;
+		/**
+		 * The width as a person reads it.
+		 */
+		text: string;
+	}[];
+	/**
+	 * From 1.0.0, where a search finds nothing to list here or in another width: how many of the step's parts that don't fit the build match it; otherwise 0.
+	 */
+	hidden_matching: number;
+}
+/**
+ * A card: a product, or the variations of one that share a photo and a layer image.
+ */
+export interface Look {
+	/**
+	 * What tells it from the step's other looks: its product, photo and layer image's IDs.
+	 */
+	key: string;
+	/**
+	 * The product it belongs to.
+	 */
+	product: number;
+	/**
+	 * From 1.0.0: the product's name, in plain text: the parent's for a variation, so a look's card says "Katie", not "Katie - 8.25″" (D-273).
+	 */
+	name: string;
+	/**
+	 * From 1.0.0: the brand's name, in plain text, or an empty string.
+	 */
+	brand: string;
+	/**
+	 * From 1.0.0: the values that tell the look from its product's other looks in the step, such as ["Mint"]; empty where the product has one look (D-273).
+	 */
+	look: string[];
+	part: Option1;
+	/**
+	 * The sizes it comes in on the slot's size, smallest first; empty where the slot has none.
+	 *
+	 * Items: A size, as the chips name it and as a person reads it.
+	 */
+	sizes: {
+		/**
+		 * The size as the chips and the `width` argument name it: `8.25in`, `54mm`.
+		 */
+		value: string;
+		/**
+		 * The size as a person reads it, in the shop's units.
+		 */
+		text: string;
+	}[];
+	/**
+	 * From 1.0.0, on the look the step's pick is of and only where nothing in the build decides its size: each size it comes in, as the part of that size with the pick's other choices, smallest first, for the radio group after the picked card (D-279). Left out on any other look, and on a look in one size.
+	 */
+	sized?: {
+		/**
+		 * The part of this size: the step's pick when chosen.
+		 */
+		part: number;
+		/**
+		 * The size as the chips name it: `54mm`.
+		 */
+		value: string;
+		/**
+		 * The size as a person reads it.
+		 */
+		text: string;
+		/**
+		 * Whether the shop can supply it for the build.
+		 */
+		in_stock: boolean;
+		/**
+		 * Whether it is the size the build holds.
+		 */
+		picked: boolean;
+	}[];
+	/**
+	 * The choices you can't see: each attribute whose values differ between its parts, by attribute, with its values.
+	 */
+	choices: {
+		/**
+		 * Items: A value.
+		 */
+		[k: string]: {
+			/**
+			 * The value's slug.
+			 */
+			value: string;
+			/**
+			 * The value as the shop names it.
+			 */
+			label: string;
+		}[];
+	};
+}
+/**
+ * A part as a slot holds it.
+ */
+export interface Option1 {
+	/**
+	 * The part's ID: a product's or a variation's.
+	 */
+	id: number;
+	/**
+	 * The slug of the part's brand, or an empty string.
+	 */
+	brand: string;
+	/**
+	 * The part's size, as its slot's parts are sized (a deck by its width, trucks by their axle, wheels by their diameter, risers by their thickness, bolts by their length), or null where the slot has no such size or the part does not give it.
+	 */
+	size: {
+		/**
+		 * The size as the size filter names it: `8.25in`, `54mm`.
+		 */
+		value: string;
+		/**
+		 * The size as a person reads it.
+		 */
+		text: string;
+	} | null;
+	/**
+	 * What taking the part does to the total, against the part the step counts now: what the build charges for as many as it takes.
+	 */
+	delta: {
+		/**
+		 * `more` or `less` than the part counted; `free`, for the same price; `included`, for the part counted itself; `none`, for a part that gives no set size and so has no price in a build.
+		 */
+		kind: 'more' | 'less' | 'free' | 'included' | 'none';
+		/**
+		 * The change in the shop's minor units, below nothing where it comes off.
+		 */
+		amount: number;
+		/**
+		 * The change as its card says it: `+$12.00`, `−$5.00`, `Same price`, `Included`, or an empty string.
+		 */
+		text: string;
+		/**
+		 * From 1.0.0: the change as it reads under the card's full price, once the step has a pick: `+$12.00 over your pick`, `$8.00 less`, `Same price`, `Included`, or an empty string (D-249).
+		 */
+		change: string;
+	};
+	/**
+	 * How the part fits the picks before it: the worst of its messages.
+	 */
+	fit: 'fits' | 'warn' | 'block';
+	/**
+	 * Whether the shop has the part.
+	 */
+	in_stock: boolean;
+	/**
+	 * Whether the shop has as many as a build takes.
+	 */
+	available: boolean;
+	/**
+	 * How many of the part a build takes, or null when the part gives no set size.
+	 */
+	quantity: number | null;
+	/**
+	 * Whether it is the step's pick.
+	 */
+	picked: boolean;
+	/**
+	 * Whether it is the part the step recommends. It is labelled, never picked.
+	 */
+	recommended: boolean;
+	/**
+	 * What the rules found of it, notes included.
+	 */
+	messages: Message[];
+	/**
+	 * What its card shows, or null when the product has gone since the index read it.
+	 */
+	card: Card | null;
+}
+/**
+ * A group of chips: chips in one group widen, and groups narrow each other.
+ */
+export interface ChipGroup {
+	/**
+	 * `brand`, the slot's size spec's key, or an attribute's taxonomy (`pa_…`), as the `chips` argument names it.
+	 */
+	name: string;
+	/**
+	 * The group's name as a person reads it.
+	 */
+	label: string;
+	/**
+	 * Its values, in natural order.
+	 *
+	 * Items: A chip.
+	 */
+	chips: {
+		/**
+		 * The value as the `chips` argument names it.
+		 */
+		value: string;
+		/**
+		 * The value as a person reads it.
+		 */
+		label: string;
+		/**
+		 * How many looks it leaves, with the other groups' chips applied and not its own.
+		 */
+		count: number;
+		/**
+		 * Whether it is chosen.
+		 */
+		selected: boolean;
+	}[];
+}
+/**
+ * A width the deck step's question offers.
+ */
+export interface Width {
+	/**
+	 * The width as the `width` argument names it: `8.25in`.
+	 */
+	value: string;
+	/**
+	 * The width as a person reads it.
+	 */
+	text: string;
+	/**
+	 * How many looks are in stock in it; a width with none shows dimmed.
+	 */
+	in_stock: number;
+	/**
+	 * Whether it is the width asked.
+	 */
+	selected: boolean;
 }

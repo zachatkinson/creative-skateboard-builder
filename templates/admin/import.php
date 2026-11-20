@@ -74,7 +74,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 		<p>
 			<?php
 			/* translators: 1: rows done. 2: rows in the file. */
-			echo esc_html( sprintf( __( '%1$s of %2$s rows done. It runs in the background, so this page can be left.', 'creative-skateboard-builder' ), number_format_i18n( $counts['done'] ), number_format_i18n( $counts['rows'] ) ) );
+			echo esc_html( sprintf( _n( '%1$s of %2$s row done. It runs in the background, so this page can be left.', '%1$s of %2$s rows done. It runs in the background, so this page can be left.', $counts['rows'], 'creative-skateboard-builder' ), number_format_i18n( $counts['done'] ), number_format_i18n( $counts['rows'] ) ) );
 			?>
 		</p>
 		<p><a class="button" href="<?php echo esc_url( $back ); ?>"><?php esc_html_e( 'Check again', 'creative-skateboard-builder' ); ?></a></p>

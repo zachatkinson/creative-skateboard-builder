@@ -20,26 +20,27 @@ use function array_column;
  */
 enum SpecKey: string {
 
-	case DeckWidth      = 'deck_width';
-	case DeckLength     = 'deck_length';
-	case Wheelbase      = 'wheelbase';
-	case HolePattern    = 'hole_pattern';
-	case AxleWidth      = 'axle_width';
-	case DeckMin        = 'deck_min';
-	case DeckMax        = 'deck_max';
-	case TruckHeight    = 'truck_height';
-	case HeightClass    = 'height_class';
-	case MaxWheel       = 'max_wheel';
-	case Baseplate      = 'baseplate';
-	case AxleDiameter   = 'axle_diameter';
-	case WheelDiameter  = 'wheel_diameter';
-	case RiserThickness = 'riser_thickness';
-	case BoltLength     = 'bolt_length';
-	case BearingBore    = 'bearing_bore';
-	case SpacersBuiltIn = 'spacers_built_in';
-	case GripWidth      = 'grip_width';
-	case GripLength     = 'grip_length';
-	case SetSize        = 'set_size';
+	case DeckWidth        = 'deck_width';
+	case DeckLength       = 'deck_length';
+	case Wheelbase        = 'wheelbase';
+	case HolePattern      = 'hole_pattern';
+	case AxleWidth        = 'axle_width';
+	case DeckMin          = 'deck_min';
+	case DeckMax          = 'deck_max';
+	case TruckHeight      = 'truck_height';
+	case HeightClass      = 'height_class';
+	case MaxWheel         = 'max_wheel';
+	case Baseplate        = 'baseplate';
+	case AxleDiameter     = 'axle_diameter';
+	case WheelDiameter    = 'wheel_diameter';
+	case BearingsIncluded = 'bearings_included';
+	case RiserThickness   = 'riser_thickness';
+	case BoltLength       = 'bolt_length';
+	case BearingBore      = 'bearing_bore';
+	case SpacersBuiltIn   = 'spacers_built_in';
+	case GripWidth        = 'grip_width';
+	case GripLength       = 'grip_length';
+	case SetSize          = 'set_size';
 
 	/**
 	 * Each measure's unit. A key that is not here is not a measure.
@@ -77,26 +78,27 @@ enum SpecKey: string {
 	 * Each key's kind. A table, as the units and the choices are (D-052).
 	 */
 	private const KINDS = array(
-		'deck_width'       => SpecKind::Measure,
-		'deck_length'      => SpecKind::Measure,
-		'wheelbase'        => SpecKind::Measure,
-		'hole_pattern'     => SpecKind::Choice,
-		'axle_width'       => SpecKind::Measure,
-		'deck_min'         => SpecKind::Measure,
-		'deck_max'         => SpecKind::Measure,
-		'truck_height'     => SpecKind::Measure,
-		'height_class'     => SpecKind::Choice,
-		'max_wheel'        => SpecKind::Measure,
-		'baseplate'        => SpecKind::Choice,
-		'axle_diameter'    => SpecKind::Measure,
-		'wheel_diameter'   => SpecKind::Measure,
-		'riser_thickness'  => SpecKind::Measure,
-		'bolt_length'      => SpecKind::Measure,
-		'bearing_bore'     => SpecKind::Measure,
-		'spacers_built_in' => SpecKind::Flag,
-		'grip_width'       => SpecKind::Measure,
-		'grip_length'      => SpecKind::Measure,
-		'set_size'         => SpecKind::Count,
+		'deck_width'        => SpecKind::Measure,
+		'deck_length'       => SpecKind::Measure,
+		'wheelbase'         => SpecKind::Measure,
+		'hole_pattern'      => SpecKind::Choice,
+		'axle_width'        => SpecKind::Measure,
+		'deck_min'          => SpecKind::Measure,
+		'deck_max'          => SpecKind::Measure,
+		'truck_height'      => SpecKind::Measure,
+		'height_class'      => SpecKind::Choice,
+		'max_wheel'         => SpecKind::Measure,
+		'baseplate'         => SpecKind::Choice,
+		'axle_diameter'     => SpecKind::Measure,
+		'wheel_diameter'    => SpecKind::Measure,
+		'riser_thickness'   => SpecKind::Measure,
+		'bolt_length'       => SpecKind::Measure,
+		'bearing_bore'      => SpecKind::Measure,
+		'spacers_built_in'  => SpecKind::Flag,
+		'bearings_included' => SpecKind::Flag,
+		'grip_width'        => SpecKind::Measure,
+		'grip_length'       => SpecKind::Measure,
+		'set_size'          => SpecKind::Count,
 	);
 
 	/**

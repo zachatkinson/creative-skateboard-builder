@@ -179,12 +179,46 @@ final class BuilderPageTest extends IntegrationTestCase {
 		return trim( $node->textContent );
 	}
 
+	/**
+	 * D-296: the root is no region and each piece is one of its own, so the browser hydrates the builder a piece at a
+	 * task and no one task blocks the page for long (CI's Lighthouse found 206 to 228 ms of blocking time with the
+	 * builder one region). What the root shows is the kit's, written by the server.
+	 */
+	public function test_each_piece_of_the_builder_is_a_region_of_its_own_and_the_root_none(): void {
+		$dom  = self::dom( $this->kitPage() );
+		$root = $dom->query( '//div[contains(concat(" ", normalize-space(@class), " "), " cbuild ")]' )->item( 0 );
+		self::assertInstanceOf( \DOMElement::class, $root );
+		self::assertFalse( $root->hasAttribute( 'data-wp-interactive' ), 'the root is no region' );
+		self::assertSame( 'false', $root->getAttribute( 'aria-busy' ) );
+		self::assertNotSame( '', $root->getAttribute( 'data-kit' ) );
+		$regions = array();
+		foreach ( $dom->query( './/*[@data-wp-interactive="creative-skateboard-builder"]', $root ) ?: array() as $region ) {
+			self::assertInstanceOf( \DOMElement::class, $region );
+			self::assertSame( 0, $dom->query( 'ancestor::*[@data-wp-interactive]', $region )->length, 'no region inside another' );
+			$regions[] = strtok( $region->getAttribute( 'class' ), ' ' );
+		}
+		self::assertSame(
+			array( 'cbuild__status', 'cbuild__limited', 'cbuild-progress', 'cbuild__stage', 'cbuild-errors', 'cbuild__heading', 'cbuild-step__lead', 'cbuild-step', 'cbuild-presets', 'cbuild-changes', 'cbuild-review', 'cbuild-bar' ),
+			$regions
+		);
+		// No directive is left outside a region, where nothing would run it.
+		foreach ( $dom->query( './/*', $root ) ?: array() as $node ) {
+			self::assertInstanceOf( \DOMElement::class, $node );
+			if ( 0 !== $dom->query( 'ancestor-or-self::*[@data-wp-interactive]', $node )->length ) {
+				continue;
+			}
+			foreach ( $node->attributes ?? array() as $attribute ) {
+				self::assertStringStartsNotWith( 'data-wp-', $attribute->name, $node->getNodePath() ?? '' );
+			}
+		}
+	}
+
 	public function test_the_kits_page_renders_the_first_step_as_a_form_with_a_radio_for_each_deck(): void {
 		$html = $this->kitPage();
 		$dom  = self::dom( $html );
 
 		self::assertStringContainsString( 'data-wp-interactive="creative-skateboard-builder"', $html );
-		self::assertSame( 'Step 1 of 7: Deck', self::text( $dom, '//h2[contains(@class,"cbuild__heading")]' ) );
+		self::assertSame( 'Step 1 of 7: Choose your deck', self::text( $dom, '//h2[contains(@class,"cbuild__heading")]' ) );
 		$form = $dom->query( '//form[contains(@class,"cbuild-step")]' )->item( 0 );
 		self::assertNotNull( $form );
 		self::assertSame( 'get', $form->getAttribute( 'method' ) );
@@ -196,17 +230,24 @@ final class BuilderPageTest extends IntegrationTestCase {
 		self::assertFalse( $form->hasAttribute( 'hidden' ) );
 
 		$radios = $dom->query( '//input[@type="radio" and @name="cbuild[deck]"]' );
-		self::assertSame( array( (string) $this->parts['deck 8.0'], (string) $this->parts['deck 8.5'], '0' ), array_map( static fn( $radio ) => $radio->getAttribute( 'value' ), iterator_to_array( $radios ) ), 'Each deck, then None, which the deck step hides.' );
+		self::assertSame( array( '0' ), array_map( static fn( $radio ) => $radio->getAttribute( 'value' ), iterator_to_array( $radios ) ), 'The width first (D-241): no deck until one is pressed, and None, which the deck step hides.' );
+
+		$dom    = self::dom( $this->kitPage( array( '_width' => '8in' ) ) );
+		$radios = $dom->query( '//input[@type="radio" and @name="cbuild[deck]"]' );
+		self::assertSame( array( (string) $this->parts['deck 8.0'], '0' ), array_map( static fn( $radio ) => $radio->getAttribute( 'value' ), iterator_to_array( $radios ) ), 'The width’s deck, then None.' );
 		self::assertSame( 'Choose Deck 8.0 & co', $radios->item( 0 )->getAttribute( 'aria-label' ), 'A name is plain text, escaped as an attribute and read back.' );
 		self::assertStringNotContainsString( '<b>co</b>', $html, 'A part\'s name is text, never markup.' );
-		self::assertSame( '+$60.00', self::text( $dom, '//li[contains(@class,"cbuild-card")][1]//span[@class="cbuild-card__delta"]' ) );
+		self::assertSame( '$60.00', self::text( $dom, '//li[contains(@class,"cbuild-card")][1]//span[@class="cbuild-card__price"]' ), 'the full price (D-249)' );
+		self::assertNotNull( $dom->query( '//li[contains(@class,"cbuild-card")][1]//span[@class="cbuild-card__delta"][@hidden]' )->item( 0 ), 'and no change before the step has a pick' );
 		self::assertSame( 'Next: Trucks', self::text( $dom, '//button[@name="cbuild[step]"]' ) );
 		self::assertSame( 'trucks', $dom->query( '//button[@name="cbuild[step]"]' )->item( 0 )->getAttribute( 'value' ) );
 		self::assertSame( 1, $dom->query( '//*[@role="status"]' )->length, 'The status region is in the page from the start.' );
 		self::assertNotNull( $dom->query( '//section[contains(@class,"cbuild-review")][@hidden]' )->item( 0 ), 'The review is not this step.' );
 		self::assertNotNull( $dom->query( '//section[contains(@class,"cbuild-changes")][@hidden]' )->item( 0 ) );
 		self::assertNotNull( $dom->query( '//figcaption[contains(@class,"cbuild-picture__description")][@hidden]' )->item( 0 ), 'With nothing chosen, the summary says so alone (Cowork minor 15).' );
-		self::assertNotNull( $dom->query( '//figure[@id="cbuild-picture"]//*[contains(@class,"cbuild-picture__heading")][@hidden]' )->item( 0 ), 'and the picture has no heading over nothing.' );
+		// The stage keeps its heading and says what starts the board, as the prototype has it.
+		self::assertNull( $dom->query( '//figure[@id="cbuild-picture"]//*[contains(@class,"cbuild-picture__heading")][@hidden]' )->item( 0 ), 'The stage is headed before anything is picked.' );
+		self::assertSame( 'Pick a deck to start', self::text( $dom, '//figure[@id="cbuild-picture"]//p[contains(@class,"cbuild-picture__empty")][not(@hidden)]' ) );
 	}
 
 	public function test_the_picture_is_named_by_a_heading_a_sighted_shopper_reads_too(): void {
@@ -216,7 +257,7 @@ final class BuilderPageTest extends IntegrationTestCase {
 		// Milestone 6's audit 27: the heading was an aria-label on the list, which only a screen reader heard.
 		$heading = $dom->query( './/h3[contains(@class,"cbuild-picture__heading")][not(@hidden)]', $figure )->item( 0 );
 		self::assertInstanceOf( \DOMElement::class, $heading, 'A visible heading in the figure.' );
-		self::assertSame( 'What is in the box', trim( $heading->textContent ) );
+		self::assertSame( 'Your board', trim( $heading->textContent ) );
 		self::assertSame( $heading->getAttribute( 'id' ), $figure->getAttribute( 'aria-labelledby' ), 'It names the figure.' );
 		self::assertSame( 0, $dom->query( './/*[@aria-label]', $figure )->length, 'No name only a screen reader hears.' );
 	}
@@ -312,7 +353,7 @@ final class BuilderPageTest extends IntegrationTestCase {
 	public function test_a_build_link_opens_on_its_step_with_its_picks_carried_and_the_recommendation_labelled_not_checked(): void {
 		$dom = self::dom( $this->kitPage( array( 'deck' => (string) $this->parts['deck 8.5'] ) ) );
 
-		self::assertSame( 'Step 2 of 7: Trucks', self::text( $dom, '//h2[contains(@class,"cbuild__heading")]' ) );
+		self::assertSame( 'Step 2 of 7: Choose your trucks', self::text( $dom, '//h2[contains(@class,"cbuild__heading")]' ) );
 		$deck = $dom->query( '//form[contains(@class,"cbuild-step")]//input[@type="hidden" and @name="cbuild[deck]"]' )->item( 0 );
 		self::assertNotNull( $deck, 'The deck travels with the form.' );
 		self::assertSame( (string) $this->parts['deck 8.5'], $deck->getAttribute( 'value' ) );
@@ -362,6 +403,25 @@ final class BuilderPageTest extends IntegrationTestCase {
 		self::assertLessThanOrEqual( 60, $cold, 'cold, as the state route' );
 	}
 
+	// Cowork's review of 0.9.0 (#65): "Fits your %s" with "8.5″ deck" in it left French no room for its determiner, so
+	// the deck's labels are sentences of their own, and a translation says « votre planche de 8,5″ ».
+	public function test_a_translation_gives_the_decks_fit_labels_their_own_sentence(): void {
+		$french = array(
+			'Fits your %s deck'            => 'Compatible avec votre planche de %s',
+			'Recommended for your %s deck' => 'Recommandé pour votre planche de %s',
+		);
+		$filter = static fn( string $translation, string $text ): string => $french[ $text ] ?? $translation;
+		add_filter( 'gettext_creative-skateboard-builder', $filter, 10, 2 );
+		try {
+			$dom = self::dom( $this->kitPage( array( 'deck' => (string) $this->parts['deck 8.5'] ) ) );
+		} finally {
+			remove_filter( 'gettext_creative-skateboard-builder', $filter, 10 );
+		}
+		$recommended = '//li[.//span[@class="cbuild-card__recommended" and not(@hidden)]]';
+		self::assertSame( 'Recommandé pour votre planche de 8.5″', self::text( $dom, $recommended . '//span[@class="cbuild-card__recommended"]' ) );
+		self::assertSame( 'Compatible avec votre planche de 8.5″', self::text( $dom, $recommended . '//span[contains(@class,"cbuild-card__fit")]' ) );
+	}
+
 	public function test_each_cards_radio_is_described_by_its_price_stock_fit_recommendation_and_notes(): void {
 		$dom    = self::dom( $this->kitPage( array( 'deck' => (string) $this->parts['deck 8.5'] ) ) );
 		$radios = $dom->query( '//li[contains(@class,"cbuild-card")]/input[@type="radio"]' );
@@ -378,7 +438,7 @@ final class BuilderPageTest extends IntegrationTestCase {
 		$about = trim( (string) preg_replace( '/\s+/', ' ', self::text( $dom, '//*[@id="' . $chosen->getAttribute( 'id' ) . '-about"]' ) ) );
 		self::assertStringContainsString( 'Fits your 8.5″ deck', $about );
 		self::assertStringContainsString( 'Recommended for your 8.5″ deck', $about );
-		self::assertMatchesRegularExpression( '/^\+\$\d+\.\d\d /', $about, 'its price first: what it adds, since nothing is picked in its slot (D-213)' );
+		self::assertMatchesRegularExpression( '/^\$\d+\.\d\d /', $about, 'its full price first, and no change, since nothing is picked in its slot (D-213, D-249)' );
 	}
 
 	public function test_parts_that_do_not_fit_are_listed_under_a_disclosure_with_their_reasons(): void {
@@ -463,36 +523,32 @@ final class BuilderPageTest extends IntegrationTestCase {
 
 	public function test_the_deck_step_has_a_button_for_each_width_in_its_form(): void {
 		$dom  = self::dom( $this->kitPage( array() ) );
-		$path = '//details[contains(@class,"cbuild-filters")]';
+		$path = '//fieldset[contains(@class,"cbuild-width")]';
 		self::assertFalse( $dom->query( $path )->item( 0 )->hasAttribute( 'hidden' ) );
-		// Audit 21, milestone 6: a drawer on phones, closed until a filter is pressed; wider, the styles show it.
-		self::assertFalse( $dom->query( $path )->item( 0 )->hasAttribute( 'open' ), 'closed with nothing pressed' );
-		self::assertSame( 'Width', self::text( $dom, $path . '//legend' ) );
-		$buttons = $dom->query( $path . '//button[contains(@class,"cbuild-filters__option")]' );
+		self::assertSame( 'What width do you ride?', self::text( $dom, $path . '//legend' ) );
+		$buttons = $dom->query( $path . '//button[contains(@class,"cbuild-width__option")]' );
 		self::assertSame( array( '8in', '8.5in' ), array_map( static fn( $button ) => $button->getAttribute( 'value' ), iterator_to_array( $buttons ) ) );
-		self::assertSame( 'cbuild[_size]', $buttons->item( 1 )->getAttribute( 'name' ) );
+		self::assertSame( 'cbuild[_width]', $buttons->item( 1 )->getAttribute( 'name' ) );
+		self::assertSame( 'submit', $buttons->item( 1 )->getAttribute( 'type' ) );
 		self::assertSame( 'false', $buttons->item( 1 )->getAttribute( 'aria-pressed' ) );
-		self::assertTrue( $dom->query( $path . '//button[contains(@class,"cbuild-filters__clear")]' )->item( 0 )->hasAttribute( 'hidden' ) );
+		self::assertNull( $dom->query( '//details[contains(@class,"cbuild-filters")][not(@hidden)]' )->item( 0 ), 'the width question takes the place of the filters' );
 	}
 
 	public function test_a_width_pressed_in_the_step_lists_only_its_decks_and_keeps_the_step(): void {
-		$path   = '//details[contains(@class,"cbuild-filters")]';
-		$dom    = self::dom( $this->kitPage( array( '_on' => 'deck', '_size' => '8.5in' ) ) );
+		$path   = '//fieldset[contains(@class,"cbuild-width")]';
+		$dom    = self::dom( $this->kitPage( array( '_on' => 'deck', '_width' => '8.5in' ) ) );
 		$radios = $dom->query( '//input[@name="cbuild[deck]"][not(@value="0")]' );
 		self::assertSame( array( (string) $this->parts['deck 8.5'] ), array_map( static fn( $radio ) => $radio->getAttribute( 'value' ), iterator_to_array( $radios ) ) );
 		self::assertSame( 'true', $dom->query( $path . '//button[@value="8.5in"]' )->item( 0 )->getAttribute( 'aria-pressed' ) );
-		self::assertTrue( $dom->query( $path )->item( 0 )->hasAttribute( 'open' ), 'open while a filter is pressed, so the shopper sees which' );
-		self::assertFalse( $dom->query( $path . '//button[contains(@class,"cbuild-filters__clear")]' )->item( 0 )->hasAttribute( 'hidden' ) );
-		self::assertNotNull( $dom->query( '//input[@type="hidden"][@name="cbuild[_size]"][@value="8.5in"]' )->item( 0 ), 'the filter stays on through a pick' );
+		self::assertSame( 'false', $dom->query( $path . '//button[@value="8in"]' )->item( 0 )->getAttribute( 'aria-pressed' ) );
+		self::assertNotNull( $dom->query( '//input[@type="hidden"][@name="cbuild[_width]"][@value="8.5in"]' )->item( 0 ), 'the width stays on through a pick' );
 		self::assertNotNull( $dom->query( '//input[@type="hidden"][@name="cbuild[_on]"][@value="deck"]' )->item( 0 ), 'the step its form is on' );
-		self::assertSame( '1 of 1 part shown', self::text( $dom, '//span[contains(@class,"cbuild-step__count")]' ) );
-		self::assertTrue( $dom->query( '//button[contains(@class,"cbuild-step__show")]' )->item( 0 )->hasAttribute( 'hidden' ) );
 	}
 
 	public function test_a_step_past_one_the_build_leaves_empty_stays_there_and_says_why(): void {
 		$dom = self::dom( $this->kitPage( array( 'step' => 'review' ) ) );
 
-		self::assertSame( 'Step 1 of 7: Deck', self::text( $dom, '//h2[contains(@class,"cbuild__heading")]' ) );
+		self::assertSame( 'Step 1 of 7: Choose your deck', self::text( $dom, '//h2[contains(@class,"cbuild__heading")]' ) );
 		$errors = $dom->query( '//div[contains(@class,"cbuild-errors")]' )->item( 0 );
 		self::assertNotNull( $errors );
 		self::assertFalse( $errors->hasAttribute( 'hidden' ) );
@@ -589,8 +645,8 @@ final class BuilderPageTest extends IntegrationTestCase {
 		foreach ( $states as $state => $build ) {
 			$dom = self::dom( $this->kitPage( $build ) );
 			// Spec, SEO and sharing: builder state is reached by forms, not links (milestone 6's audit 29).
-			self::assertSame( 0, $dom->query( '//*[contains(@class,"cbuild-summary__assembly")]//a' )->length, $state . ': the switch is no link.' );
-			$forms = $dom->query( '//form[contains(@class,"cbuild-summary__toggle")][@method="get"]' );
+			self::assertSame( 0, $dom->query( '//*[contains(@class,"cbuild-review__assembly")]//a' )->length, $state . ': the switch is no link.' );
+			$forms = $dom->query( '//form[contains(@class,"cbuild-review__toggle")][@method="get"]' );
 			self::assertSame( 1, $forms->length, $state . ': one GET form.' );
 			$form = $forms->item( 0 );
 			self::assertInstanceOf( \DOMElement::class, $form );
@@ -822,11 +878,72 @@ final class BuilderPageTest extends IntegrationTestCase {
 		unregister_block_type( PageHooks::BLOCK );
 		( new PageHooks( fn(): BuilderPage => $this->page(), $this->service( \CreativeBranding\SkateboardBuilder\Front\BuilderPlace::class ) ) )->block();
 		$html = do_blocks( '<!-- wp:creative-skateboard-builder/builder {"kit":' . $this->kit . '} /-->' );
-		self::assertSame( 'Step 1 of 7: Deck', self::text( self::dom( $html ), '//h2[contains(@class,"cbuild__heading")]' ), 'Its directives processed by WordPress.' );
-		self::assertSame( 3, self::dom( $html )->query( '//input[@type="radio" and @name="cbuild[deck]"]' )->length, 'Each deck and None, once: the directives were processed once.' );
+		self::assertSame( 'Step 1 of 7: Choose your deck', self::text( self::dom( $html ), '//h2[contains(@class,"cbuild__heading")]' ), 'Its directives processed by WordPress.' );
+		self::assertSame( 2, self::dom( $html )->query( '//button[contains(@class,"cbuild-width__option")]' )->length, 'Each width, once: the directives were processed once.' );
+		// Full width unless the editor chose otherwise, as the kit's template places it: in a theme's content column a
+		// desktop's builder was stacked, its stage over its cards (D-283).
+		self::assertStringContainsString( 'alignfull', (string) self::dom( $html )->query( '//*[contains(concat(" ",normalize-space(@class)," ")," cbuild ")]' )->item( 0 )?->attributes?->getNamedItem( 'class' )?->nodeValue );
+		unregister_block_type( PageHooks::BLOCK );
+		( new PageHooks( fn(): BuilderPage => $this->page(), $this->service( \CreativeBranding\SkateboardBuilder\Front\BuilderPlace::class ) ) )->block();
+		self::assertStringContainsString( 'alignwide', do_blocks( '<!-- wp:creative-skateboard-builder/builder {"kit":' . $this->kit . ',"align":"wide"} /-->' ) );
+		// The auditor's 1.0.0 minor 10: None in the editor stores an empty align where the block has a default
+		// (wp-includes/js/dist/block-editor.js:85184-85191), and the builder takes the content column's width.
+		unregister_block_type( PageHooks::BLOCK );
+		( new PageHooks( fn(): BuilderPage => $this->page(), $this->service( \CreativeBranding\SkateboardBuilder\Front\BuilderPlace::class ) ) )->block();
+		$none = (string) self::dom( do_blocks( '<!-- wp:creative-skateboard-builder/builder {"kit":' . $this->kit . ',"align":""} /-->' ) )->query( '//*[contains(concat(" ",normalize-space(@class)," ")," cbuild ")]' )->item( 0 )?->attributes?->getNamedItem( 'class' )?->nodeValue;
+		self::assertStringContainsString( 'cbuild', $none );
+		self::assertStringNotContainsString( 'alignfull', $none );
+		self::assertStringNotContainsString( 'alignwide', $none, 'WordPress writes a bare "align", no width' );
 
 		unregister_block_type( PageHooks::BLOCK );
 		( new PageHooks( fn(): BuilderPage => $this->page(), $this->service( \CreativeBranding\SkateboardBuilder\Front\BuilderPlace::class ) ) )->block();
 		self::assertSame( '', trim( do_blocks( '<!-- wp:creative-skateboard-builder/builder /-->' ) ) );
+	}
+
+	// Spec: Where it renders. A block theme gives a kit's page the plugin's template; a classic theme gets the builder
+	// before the summary, with the product's name as the h1 in place of the summary's title.
+	public function test_a_kits_page_takes_the_kit_template_in_a_block_theme_and_the_page_width_in_a_classic_one(): void {
+		$hooks = new PageHooks( fn(): BuilderPage => $this->page(), $this->service( \CreativeBranding\SkateboardBuilder\Front\BuilderPlace::class ) );
+		$template = get_block_template( 'creative-skateboard-builder//' . PageHooks::TEMPLATE );
+		self::assertNotNull( $template, 'registered on init' );
+		self::assertStringContainsString( '<!-- wp:creative-skateboard-builder/builder {"title":true,"align":"full"} /-->', $template->content );
+		self::assertStringContainsString( '<!-- wp:woocommerce/product-details', $template->content, 'the description, specs and reviews under it' );
+
+		$theme = get_stylesheet();
+		self::assertTrue( wp_get_theme( 'twentytwentyfive' )->exists(), 'wp-env installs Twenty Twenty-Five' );
+		switch_theme( 'twentytwentyfive' );
+		$this->go_to( get_permalink( $this->kit ) );
+		self::assertSame( array( PageHooks::TEMPLATE, 'single-product', 'single' ), $hooks->hierarchy( array( 'single-product', 'single' ) ) );
+		$this->go_to( get_permalink( $this->parts['deck 8.0'] ) );
+		self::assertSame( array( 'single-product' ), $hooks->hierarchy( array( 'single-product' ) ), 'a product that is no kit keeps its template' );
+		$page = self::factory()->post->create( array( 'post_type' => 'page' ) );
+		add_filter( 'cbuild_builder_url', static fn(): string => (string) get_permalink( $page ) );
+		$this->go_to( get_permalink( $this->kit ) );
+		self::assertSame( array( 'single-product' ), $hooks->hierarchy( array( 'single-product' ) ), 'and so does a kit whose builder is elsewhere' );
+		remove_all_filters( 'cbuild_builder_url' );
+		switch_theme( $theme );
+		$this->go_to( get_permalink( $this->kit ) );
+		self::assertSame( array( 'single-product' ), $hooks->hierarchy( array( 'single-product' ) ), 'a classic theme has no block templates' );
+
+		// The template's block names no kit: on a kit's page it is that kit's, with its name as the h1.
+		unregister_block_type( PageHooks::BLOCK );
+		$hooks->block();
+		$this->go_to( get_permalink( $this->kit ) );
+		$dom = self::dom( do_blocks( '<!-- wp:creative-skateboard-builder/builder {"title":true} /-->' ) );
+		self::assertSame( 'Complete', self::text( $dom, '//h1[@class="cbuild__title"]' ) );
+		self::assertSame( (string) wc_get_page_permalink( 'shop' ), $dom->query( '//a[@class="cbuild__back"]' )->item( 0 )?->getAttribute( 'href' ) );
+
+		$hooks->kitLayout();
+		self::assertFalse( has_action( 'woocommerce_single_product_summary', 'woocommerce_template_single_title' ), 'the builder holds the h1' );
+		self::assertFalse( has_action( 'woocommerce_single_product_summary', 'woocommerce_template_single_add_to_cart' ), 'and the form' );
+		self::assertSame( 5, has_action( 'woocommerce_before_single_product_summary', array( $hooks, 'kitWide' ) ), 'before the summary, at the page\'s width' );
+		add_action( 'woocommerce_single_product_summary', 'woocommerce_template_single_title', 5 );
+		add_action( 'woocommerce_single_product_summary', 'woocommerce_template_single_add_to_cart', 30 );
+		remove_all_actions( 'woocommerce_before_single_product_summary' );
+		add_action( 'woocommerce_before_single_product_summary', 'woocommerce_show_product_sale_flash', 10 );
+		add_action( 'woocommerce_before_single_product_summary', 'woocommerce_show_product_images', 20 );
+		add_action( 'woocommerce_single_product_summary', 'woocommerce_template_single_price', 10 );
+		remove_all_filters( 'woocommerce_get_price_html' );
+		remove_all_actions( 'body_class' );
 	}
 }

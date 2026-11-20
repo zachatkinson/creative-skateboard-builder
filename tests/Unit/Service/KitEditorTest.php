@@ -483,6 +483,35 @@ final class KitEditorTest extends TestCase {
 		}
 	}
 
+	// Spec (configurator): Settings (D-255): the Layout section's three choices, in `_cbuild_layout`.
+	public function test_the_layout_keeps_each_choice_and_refuses_one_it_does_not_have(): void {
+		$sent           = self::sent();
+		$sent['layout'] = array(
+			'stage_side' => 'right',
+			'board_size' => 'balanced',
+			'search'     => 'own',
+			'motion'     => 'subtle',
+		);
+		$draft          = $this->editor->draft( $sent, self::stored() );
+		self::assertSame( array(), $draft->problems );
+		self::assertSame( array( 'schema_version' => 1, 'stage_side' => 'right', 'board_size' => 'balanced', 'search' => 'own' ), $draft->documents[ KitEditor::LAYOUT ], 'motion is milestone 11\'s' );
+
+		$sent['layout'] = array( 'stage_side' => 'top' );
+		$draft          = $this->editor->draft( $sent, self::stored() );
+		self::assertSame( array( 'layout document_out_of_range stage_side' ), self::problems( $draft ) );
+		self::assertArrayNotHasKey( KitEditor::LAYOUT, $draft->documents );
+		self::assertSame( 'top', $draft->refused[ KitEditor::LAYOUT ]['stage_side'] ?? null, 'shown as typed' );
+
+		$sent['layout'] = array(
+			'stage_side' => ' left ',
+			'board_size' => "large\n",
+			'search'     => ' own',
+		);
+		$draft          = $this->editor->draft( $sent, self::stored() );
+		self::assertSame( array(), $draft->problems, 'a choice is read without its outer spaces' );
+		self::assertSame( array( 'schema_version' => 1, 'stage_side' => 'left', 'board_size' => 'large', 'search' => 'own' ), $draft->documents[ KitEditor::LAYOUT ] );
+	}
+
 	public function test_assembly_takes_a_fee_as_the_shop_writes_money_and_each_thing_wrong_is_named(): void {
 		$stored                             = self::stored();
 		$sent                               = self::sent();
@@ -554,6 +583,21 @@ final class KitEditorTest extends TestCase {
 		);
 	}
 
+	// D-252: a preset's rider photo, an attachment's ID, from the tab's Photo field.
+	public function test_a_presets_photo_is_kept_by_its_id_and_an_empty_one_is_none(): void {
+		$sent                = self::sent();
+		$sent['presets'][]   = array( 'image' => ' 81 ' ) + self::preset();
+		$sent['presets'][]   = array(
+			'image' => '',
+			'name'  => 'Park',
+		) + self::preset();
+		$saved               = $this->editor->draft( $sent, self::stored() )->documents[ self::PRESETS ]['presets'] ?? array();
+		self::assertSame( array( 81, null ), array( $saved[0]['image'] ?? null, $saved[1]['image'] ?? null ) );
+		$sent['presets'][0]['image'] = 'a photo';
+		$wrong                       = $this->editor->draft( $sent, self::stored() );
+		self::assertSame( array( 'presets[0].image' ), array_column( $wrong->problems, 'path' ), 'kept as sent, for the schema to refuse' );
+	}
+
 	public function test_a_preset_the_rules_refuse_is_not_saved_and_says_which_part_and_which_rule(): void {
 		// A 7.75 in deck is narrower than the 149's range: R1 blocks the trucks.
 		$this->kits->found['1'][] = Builds::deck( '7.75', 102 );
@@ -576,6 +620,64 @@ final class KitEditorTest extends TestCase {
 		self::assertArrayNotHasKey( self::PRESETS, $draft->documents, 'one preset refused, and none is saved' );
 		self::assertArrayHasKey( self::SLOTS, $draft->documents );
 		self::assertSame( 'Narrow', $draft->refused[ self::PRESETS ]['presets'][1]['name'] );
+	}
+
+	/**
+	 * Issue #62: presets sent as they are stored, whose only fault is a part their slot doesn't offer now, are kept
+	 * and named, not refused. Any other fault, or any edit, and they are held to the slots as before.
+	 */
+	public function test_unchanged_presets_whose_parts_the_slots_no_longer_offer_are_kept_and_named(): void {
+		$this->kits->found['1'][] = Builds::deck( '7.75', 102 );
+		$sent                     = self::sent();
+		$sent['presets'][]        = self::preset();
+		$sent['presets'][]        = self::preset( array( 'deck' => '102' ), 'Narrow' );
+		unset( $sent['rules']['r1']['enabled'] );
+		$stored                  = self::stored();
+		$stored[ self::PRESETS ] = $this->editor->draft( $sent, $stored )->documents[ self::PRESETS ];
+
+		// The shop hides deck 100: Street names it.
+		$this->kits->found['1'] = array( Builds::deck( '8.0', 101 ), Builds::deck( '7.75', 102 ) );
+		$draft                  = $this->editor->draft( $sent, $stored );
+		self::assertSame( array(), $draft->problems );
+		self::assertArrayNotHasKey( self::PRESETS, $draft->documents, 'nothing to write' );
+		self::assertArrayNotHasKey( self::PRESETS, $draft->refused );
+		self::assertArrayHasKey( self::SLOTS, $draft->documents );
+		self::assertSame(
+			array(
+				array(
+					'path'   => 'presets[0].picks.deck',
+					'values' => array(
+						'preset' => 'Street',
+						'slot'   => 'deck',
+						'part'   => '100',
+					),
+				),
+			),
+			$draft->unoffered
+		);
+
+		// And its wheels: each part is named, in both presets.
+		$this->kits->found['3'] = array();
+		self::assertSame(
+			array( 'presets[0].picks.deck', 'presets[0].picks.wheels', 'presets[1].picks.wheels' ),
+			array_column( $this->editor->draft( $sent, $stored )->unoffered, 'path' )
+		);
+
+		// A fault of another kind beside it: R1 on again blocks Narrow's trucks, and the presets are refused.
+		$this->kits->found['3'] = array( Builds::wheel( '54' ) );
+		$rules                  = $sent;
+		$rules['rules']['r1']['enabled'] = '1';
+		$draft                  = $this->editor->draft( $rules, $stored );
+		self::assertSame( array( 'presets preset_part_not_in_slot presets[0].picks.deck', 'presets preset_part_blocked presets[1].picks.trucks' ), self::problems( $draft ) );
+		self::assertSame( array(), $draft->unoffered );
+
+		// Edited, they are refused as before.
+		$edited                       = $sent;
+		$edited['presets'][0]['name'] = 'Street, edited';
+		$draft                        = $this->editor->draft( $edited, $stored );
+		self::assertSame( array( 'presets preset_part_not_in_slot presets[0].picks.deck' ), self::problems( $draft ) );
+		self::assertArrayHasKey( self::PRESETS, $draft->refused );
+		self::assertSame( array(), $draft->unoffered );
 	}
 
 	public function test_a_preset_names_only_its_slots_parts_and_fills_each_slot_a_build_must(): void {

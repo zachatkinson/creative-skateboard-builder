@@ -23,6 +23,10 @@ export interface CbuildPresets {
 		 */
 		description?: string;
 		/**
+		 * From 1.0.0, a rider photo for the build's tile, an attachment's id. Without one, the tile shows the build's composed picture (D-252).
+		 */
+		image?: number;
+		/**
 		 * A part's id by slot key.
 		 */
 		picks: {

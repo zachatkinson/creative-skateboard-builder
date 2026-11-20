@@ -1,0 +1,1042 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Skateboard builder prototype</title>
+
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&amp;family=Inter:wght@400;600;700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#F4F1EA}a:hover{color:#F2E600}
+button{font:inherit;color:inherit}
+button:focus-visible,input:focus-visible,select:focus-visible,a:focus-visible{outline:3px solid #F2E600;outline-offset:2px;box-shadow:0 0 0 6px #121212}
+svg g{transform-box:fill-box;transform-origin:50% 50%}
+.landA{animation:landA 300ms ease-out both}.landB{animation:landB 300ms ease-out both}
+@keyframes landA{0%{transform:translateY(-34px) scale(.96);opacity:0}55%{transform:translateY(5px) scale(1.03,.97);opacity:1}80%{transform:translateY(-2px) scale(.99,1.01)}100%{transform:none;opacity:1}}
+@keyframes landB{0%{transform:translateY(-34px) scale(.96);opacity:0}55%{transform:translateY(5px) scale(1.03,.97);opacity:1}80%{transform:translateY(-2px) scale(.99,1.01)}100%{transform:none;opacity:1}}
+.trkA{animation:trkA 260ms cubic-bezier(.34,1.56,.64,1) both}.trkB{animation:trkB 260ms cubic-bezier(.34,1.56,.64,1) both}
+@keyframes trkA{from{transform:translateX(-40px);opacity:0}to{transform:none;opacity:1}}
+@keyframes trkB{from{transform:translateX(-40px);opacity:0}to{transform:none;opacity:1}}
+.whlLA{animation:whlLA 280ms cubic-bezier(.34,1.56,.64,1) both}.whlLB{animation:whlLB 280ms cubic-bezier(.34,1.56,.64,1) both}
+.whlRA{animation:whlRA 280ms cubic-bezier(.34,1.56,.64,1) both}.whlRB{animation:whlRB 280ms cubic-bezier(.34,1.56,.64,1) both}
+@keyframes whlLA{from{transform:translateX(-30px) rotate(-360deg);opacity:0}to{transform:none;opacity:1}}
+@keyframes whlLB{from{transform:translateX(-30px) rotate(-360deg);opacity:0}to{transform:none;opacity:1}}
+@keyframes whlRA{from{transform:translateX(30px) rotate(360deg);opacity:0}to{transform:none;opacity:1}}
+@keyframes whlRB{from{transform:translateX(30px) rotate(360deg);opacity:0}to{transform:none;opacity:1}}
+.layA{animation:layA 300ms ease-out both}.layB{animation:layB 300ms ease-out both}
+@keyframes layA{from{clip-path:inset(0 0 100% 0)}to{clip-path:inset(0 0 0 0)}}
+@keyframes layB{from{clip-path:inset(0 0 100% 0)}to{clip-path:inset(0 0 0 0)}}
+.leave{animation:leave 180ms ease-in both}
+@keyframes leave{to{transform:translateY(-22px);opacity:0}}
+.panA{animation:panA 200ms ease-out both}.panB{animation:panB 200ms ease-out both}
+@keyframes panA{from{transform:translateX(16px);opacity:0}to{transform:none;opacity:1}}
+@keyframes panB{from{transform:translateX(16px);opacity:0}to{transform:none;opacity:1}}
+.bumpA{animation:bumpA 420ms ease-out}.bumpB{animation:bumpB 420ms ease-out}
+@keyframes bumpA{40%{transform:scale(1.25)}}
+@keyframes bumpB{40%{transform:scale(1.25)}}
+.cardA{animation:cardA 280ms cubic-bezier(.34,1.56,.64,1) both}.cardB{animation:cardB 280ms cubic-bezier(.34,1.56,.64,1) both}
+@keyframes cardA{from{transform:translateY(14px) scale(.96);opacity:0}to{transform:none;opacity:1}}
+@keyframes cardB{from{transform:translateY(14px) scale(.96);opacity:0}to{transform:none;opacity:1}}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+@keyframes fadeOut{to{opacity:0}}
+@media (prefers-reduced-motion: reduce){
+.landA,.landB,.trkA,.trkB,.whlLA,.whlLB,.whlRA,.whlRB,.layA,.layB,.panA,.panB,.cardA,.cardB{animation:fade 150ms ease-out both !important}
+.leave{animation:fadeOut 150ms ease-out both !important}
+.bumpA,.bumpB{animation:none !important}
+.flipper{transition:none !important}
+}
+</style>
+
+<style>
+.proto-bar{font:14px/1.4 Inter,system-ui,sans-serif;display:flex;gap:14px;align-items:center;flex-wrap:wrap;padding:10px 16px;background:#2B2A26;color:#F4F1EA}
+.proto-bar label{display:inline-flex;gap:6px;align-items:center}
+.proto-bar select{font:inherit;padding:4px 8px;border-radius:6px}
+.proto-stage{display:flex;justify-content:center;align-items:flex-start;padding:16px;background:#3A3A3A;min-height:calc(100vh - 44px);box-sizing:border-box;overflow:auto}
+</style>
+</head>
+<body>
+<div class="proto-bar">
+<strong>Skateboard builder prototype</strong>
+<span>Sample data where the demo has none; stock is per deck, not per width.</span>
+<label>Layout <select id="proto-layout"><option value="desktop">Desktop, 1440 by 900</option><option value="phone">Phone, 390 by 844</option></select></label>
+<label>Starting state <select id="proto-scenario"><option value="">Fresh start</option><option value="long-decks">Longest deck names, sold out shown</option><option value="long-wheels">Wheels, longest names first</option><option value="long-review">Review with long names</option></select></label>
+</div>
+<div class="proto-stage"><div id="root"></div></div>
+<template id="tpl">
+<div style="{{rootStyle}}">
+<header style="{{headerStyle}}">
+<a href="#" style="font-family: Anton, Impact, sans-serif; font-size: 22px; letter-spacing: 0.04em; text-decoration: none;">SKATEHOUSE</a>
+<h1 style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; margin: 0;">Build a complete skateboard</h1>
+<sc-if value="{{isDesktop}}" hint-placeholder-val="{{ true }}">
+<nav aria-label="Steps" style="flex: 1; min-width: 0; display: flex; justify-content: center;">
+<ol style="list-style: none; margin: 0; padding: 0; display: flex; gap: 6px;">
+<sc-for list="{{rail}}" as="r" hint-placeholder-count="7">
+<li><button type="button" onClick="{{r.go}}" aria-current="{{r.current}}" disabled="{{r.locked}}" style="{{r.style}}"><span aria-hidden="true">{{r.mark}}</span> {{r.label}}</button></li>
+</sc-for>
+</ol>
+</nav>
+</sc-if>
+<div style="display: flex; align-items: center; gap: 16px;">
+<a href="#" style="font-size: 14px;">Back to the shop</a>
+<span class="{{cartAnim}}" aria-label="{{cartLabel}}" style="display: inline-flex; align-items: center; gap: 6px; font-weight: 700;">
+<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#F4F1EA" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 4h2l2.4 11.2a2 2 0 0 0 2 1.6h7.7a2 2 0 0 0 2-1.5L21 8H6"></path><circle cx="10" cy="20" r="1.4"></circle><circle cx="17" cy="20" r="1.4"></circle></svg>
+<span>{{cart}}</span>
+</span>
+</div>
+</header>
+<div style="{{bodyStyle}}">
+<section aria-label="Your board" style="{{stageStyle}}">
+<div style="position: absolute; top: 18px; left: 22px; display: flex; flex-direction: column; gap: 2px;">
+<span style="font-family: Anton, Impact, sans-serif; font-size: 22px; letter-spacing: 0.03em; text-transform: uppercase;">Your board</span>
+<span style="font-size: 13px; color: #B5B1A8;">{{stageSub}}</span>
+</div>
+<div style="{{floorStyle}}"></div>
+<div style="{{boardWrapStyle}}">
+<div class="flipper" style="{{flipperStyle}}">
+<div style="position: absolute; inset: 0; backface-visibility: hidden; -webkit-backface-visibility: hidden;">
+<svg viewBox="0 0 240 860" width="100%" height="100%" role="img" aria-label="{{boardLabel}}">
+<defs><clipPath id="dkU"><rect x="20" y="20" width="200" height="820" rx="100"></rect></clipPath></defs>
+<sc-if value="{{noDeck}}" hint-placeholder-val="{{ false }}">
+<rect x="20" y="20" width="200" height="820" rx="100" fill="none" stroke="#5A5852" stroke-width="4" stroke-dasharray="14 12"></rect>
+<sc-if value="{{isDesktop}}" hint-placeholder-val="{{ true }}">
+<text x="120" y="420" text-anchor="middle" fill="#B5B1A8" font-family="Inter, sans-serif" font-size="22">Pick a deck</text>
+<text x="120" y="452" text-anchor="middle" fill="#B5B1A8" font-family="Inter, sans-serif" font-size="22">to start</text>
+</sc-if>
+<sc-if value="{{isPhone}}" hint-placeholder-val="{{ false }}">
+<text x="120" y="430" text-anchor="middle" dominant-baseline="middle" fill="#B5B1A8" font-family="Inter, sans-serif" font-size="58" transform="rotate(90 120 430)">Pick a deck to start</text>
+</sc-if>
+</sc-if>
+<sc-if value="{{hasDeck}}" hint-placeholder-val="{{ true }}">
+<g class="{{deckAnim}}">
+<rect x="20" y="20" width="200" height="820" rx="100" fill="{{art.base}}"></rect>
+<g clip-path="url(#dkU)"><polygon points="0,380 240,330 240,410 0,460" fill="{{art.band}}"></polygon></g>
+<circle cx="120" cy="575" r="34" fill="none" stroke="{{art.ring}}" stroke-width="12"></circle>
+<rect x="20" y="20" width="200" height="820" rx="100" fill="none" stroke="#000000" stroke-opacity="0.35" stroke-width="3"></rect>
+</g>
+</sc-if>
+<sc-if value="{{hasTrucks}}" hint-placeholder-val="{{ false }}">
+<g class="{{trucksAnim}}">
+<rect x="86" y="146" width="68" height="48" rx="8" fill="{{art.truck}}"></rect>
+<rect x="24" y="161" width="192" height="18" rx="9" fill="{{art.hanger}}"></rect>
+<circle cx="120" cy="170" r="9" fill="{{art.hanger}}"></circle>
+</g>
+<g class="{{trucksAnim}}" style="animation-delay: 60ms;">
+<rect x="86" y="666" width="68" height="48" rx="8" fill="{{art.truck}}"></rect>
+<rect x="24" y="681" width="192" height="18" rx="9" fill="{{art.hanger}}"></rect>
+<circle cx="120" cy="690" r="9" fill="{{art.hanger}}"></circle>
+</g>
+</sc-if>
+<sc-if value="{{hasWheels}}" hint-placeholder-val="{{ false }}">
+<g class="{{wheelsLAnim}}"><rect x="2" y="140" width="32" height="60" rx="11" fill="{{art.wheel}}" stroke="#000000" stroke-opacity="0.3" stroke-width="2"></rect></g>
+<g class="{{wheelsRAnim}}" style="animation-delay: 40ms;"><rect x="206" y="140" width="32" height="60" rx="11" fill="{{art.wheel}}" stroke="#000000" stroke-opacity="0.3" stroke-width="2"></rect></g>
+<g class="{{wheelsLAnim}}" style="animation-delay: 80ms;"><rect x="2" y="660" width="32" height="60" rx="11" fill="{{art.wheel}}" stroke="#000000" stroke-opacity="0.3" stroke-width="2"></rect></g>
+<g class="{{wheelsRAnim}}" style="animation-delay: 120ms;"><rect x="206" y="660" width="32" height="60" rx="11" fill="{{art.wheel}}" stroke="#000000" stroke-opacity="0.3" stroke-width="2"></rect></g>
+</sc-if>
+</svg>
+</div>
+<div style="position: absolute; inset: 0; backface-visibility: hidden; -webkit-backface-visibility: hidden; transform: rotateY(180deg);">
+<svg viewBox="0 0 240 860" width="100%" height="100%" role="img" aria-label="{{topLabel}}">
+<defs><clipPath id="dkT"><rect x="20" y="20" width="200" height="820" rx="100"></rect></clipPath></defs>
+<rect x="20" y="20" width="200" height="820" rx="100" fill="#D9B98A"></rect>
+<sc-if value="{{hasGrip}}" hint-placeholder-val="{{ false }}">
+<g class="{{gripAnim}}" clip-path="url(#dkT)">
+<rect x="20" y="20" width="200" height="820" fill="{{art.grip}}"></rect>
+<polygon points="20,260 220,200 220,240 20,300" fill="{{art.gripAccent}}"></polygon>
+<polygon points="20,620 220,560 220,600 20,660" fill="{{art.gripAccent}}"></polygon>
+</g>
+</sc-if>
+<sc-if value="{{hasBolts}}" hint-placeholder-val="{{ false }}">
+<g fill="{{art.bolt}}" stroke="#000000" stroke-opacity="0.4" stroke-width="2">
+<circle cx="98" cy="156" r="7"></circle><circle cx="142" cy="156" r="7"></circle><circle cx="98" cy="184" r="7"></circle><circle cx="142" cy="184" r="7"></circle>
+<circle cx="98" cy="676" r="7"></circle><circle cx="142" cy="676" r="7"></circle><circle cx="98" cy="704" r="7"></circle><circle cx="142" cy="704" r="7"></circle>
+</g>
+</sc-if>
+<rect x="20" y="20" width="200" height="820" rx="100" fill="none" stroke="#000000" stroke-opacity="0.35" stroke-width="3"></rect>
+</svg>
+</div>
+</div>
+</div>
+<button type="button" onClick="{{flip}}" aria-pressed="{{flipPressed}}" disabled="{{noDeck}}" style="{{flipStyle}}">Show the top</button>
+</section>
+<section aria-label="Build steps" style="{{panelStyle}}">
+<sc-if value="{{isPhone}}" hint-placeholder-val="{{ false }}">
+<nav aria-label="Steps" style="padding: 14px 18px 0; overflow-x: auto;">
+<ol style="list-style: none; margin: 0; padding: 0; display: flex; gap: 6px;">
+<sc-for list="{{rail}}" as="r" hint-placeholder-count="7">
+<li><button type="button" onClick="{{r.go}}" aria-current="{{r.current}}" disabled="{{r.locked}}" style="{{r.style}}"><span aria-hidden="true">{{r.mark}}</span> {{r.label}}</button></li>
+</sc-for>
+</ol>
+</nav>
+</sc-if>
+<sc-if value="{{hasNotice}}" hint-placeholder-val="{{ false }}">
+<div role="status" style="margin: 12px 18px 0; padding: 10px 12px; border-radius: 10px; background: #2B2A26; border: 1px solid #5A5852; font-size: 14px;">{{notice}}</div>
+</sc-if>
+<div style="flex: 1; min-height: 0; overflow-y: auto; padding: 16px 18px 20px;">
+<sc-if value="{{onDeck}}" hint-placeholder-val="{{ true }}">
+<div class="{{panelAnim}}" style="display: flex; flex-direction: column; gap: 14px;">
+<div>
+<h2 style="margin: 0; font-family: Anton, Impact, sans-serif; font-size: 30px; font-weight: 400; letter-spacing: 0.02em; text-transform: uppercase;">Choose your deck</h2>
+<p style="margin: 4px 0 0; font-size: 14px; color: #B5B1A8;">{{deckLead}}</p>
+</div>
+<div style="display: flex; flex-direction: column; gap: 8px;">
+<span id="width-q" style="font-size: 15px; font-weight: 700;">{{widthQuestion}}</span>
+<div role="group" aria-labelledby="width-q" style="{{widthRowStyle}}">
+<sc-for list="{{widthQ}}" as="w" hint-placeholder-count="8">
+<button type="button" onClick="{{w.pick}}" aria-pressed="{{w.pressed}}" disabled="{{w.disabled}}" aria-label="{{w.aria}}" style="{{w.style}}">{{w.label}} <span style="opacity: 0.7; font-weight: 400;">{{w.count}}</span></button>
+</sc-for>
+</div>
+<sc-if value="{{noWidth}}" hint-placeholder-val="{{ true }}">
+<sc-if value="{{hasWidthNote}}" hint-placeholder-val="{{ true }}">
+<p style="margin: 0; font-size: 13px; color: #B5B1A8;">{{widthNote}}</p>
+</sc-if>
+<button type="button" onClick="{{toggleHelp}}" aria-expanded="{{helpPressed}}" style="align-self: flex-start; min-height: 36px; padding: 0; border: none; background: transparent; cursor: pointer; font-size: 14px; font-weight: 600; text-decoration: underline; text-underline-offset: 3px;">Not sure of your width?</button>
+<sc-if value="{{help}}" hint-placeholder-val="{{ false }}">
+<div style="display: flex; flex-direction: column; gap: 6px; padding: 12px 14px; border-radius: 10px; background: #222220; border: 1px solid #2E2E2B; font-size: 13px;">
+<span style="font-weight: 700;">By US shoe size</span>
+<span>7 or smaller: 7.75″ or narrower</span>
+<span>7 to 8.5: 7.75″ to 8″</span>
+<span>8.5 to 9: 8″ to 8.25″</span>
+<span>9 and up: 8.25″ and wider</span>
+<span style="color: #B5B1A8;">For street, 7.5″ to 8.25″ is usual, and 8.25″ is the most popular. For bowls and ramps, 8.5″ and up.</span>
+<a href="#" style="font-weight: 600;">Full size guide</a>
+</div>
+</sc-if>
+</sc-if>
+</div>
+<sc-if value="{{noWidth}}" hint-placeholder-val="{{ true }}">
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px;">
+<span style="font-size: 13px; color: #B5B1A8;">Or start from a rider build:</span>
+<sc-for list="{{presets}}" as="p" hint-placeholder-count="2">
+<button type="button" onClick="{{p.pick}}" style="min-height: 36px; padding: 0 12px; border-radius: 999px; border: 1px solid #5A5852; background: transparent; cursor: pointer; font-size: 13px;">{{p.label}}</button>
+</sc-for>
+</div>
+</sc-if>
+<sc-if value="{{hasWidth}}" hint-placeholder-val="{{ false }}">
+<sc-if value="{{lv.search}}" hint-placeholder-val="{{ true }}">
+<div style="display: flex; flex-direction: column; gap: 6px;">
+<label for="deck-search" style="font-size: 13px; font-weight: 600;">Search decks</label>
+<input id="deck-search" type="search" value="{{q}}" onChange="{{setQ}}" placeholder="Brand or graphic, like rascals" autocomplete="off" style="height: 44px; box-sizing: border-box; padding: 0 14px; border-radius: 10px; border: 1px solid #5A5852; background: #121212; color: #F4F1EA; font: inherit; font-size: 15px;">
+</div>
+</sc-if>
+<sc-if value="{{lv.tools}}" hint-placeholder-val="{{ true }}">
+<sc-if value="{{showRows}}" hint-placeholder-val="{{ true }}">
+<sc-for list="{{lv.rows}}" as="fr" hint-placeholder-count="1">
+<div style="display: flex; flex-direction: column; gap: 6px;">
+<span style="font-size: 12px; font-weight: 600; color: #B5B1A8;">{{fr.label}}</span>
+<div role="group" aria-label="{{fr.label}}" style="{{chipRowStyle}}">
+<sc-for list="{{fr.chips}}" as="c" hint-placeholder-count="5">
+<button type="button" onClick="{{c.pick}}" aria-pressed="{{c.pressed}}" disabled="{{c.disabled}}" aria-label="{{c.aria}}" style="{{c.style}}">{{c.label}} <span style="opacity: 0.7; font-weight: 400;">{{c.count}}</span></button>
+</sc-for>
+</div>
+</div>
+</sc-for>
+</sc-if>
+<div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;">
+<p aria-live="polite" style="margin: 0; font-size: 13px; color: #B5B1A8;">{{listCount}}</p>
+<div style="display: flex; align-items: center; gap: 8px;">
+<sc-if value="{{lv.hasClear}}" hint-placeholder-val="{{ false }}">
+<button type="button" onClick="{{lv.clear}}" style="min-height: 36px; padding: 0 8px; border: none; background: transparent; cursor: pointer; font-size: 13px; font-weight: 600; text-decoration: underline; text-underline-offset: 3px;">Clear filters</button>
+</sc-if>
+<sc-if value="{{isPhone}}" hint-placeholder-val="{{ false }}">
+<button type="button" onClick="{{toggleFilters}}" aria-expanded="{{filtersPressed}}" style="{{filtersStyle}}">{{filtersLabel}}</button>
+</sc-if>
+<label style="display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: #B5B1A8;">Sort
+<select onChange="{{lv.setSort}}" style="height: 36px; padding: 0 8px; border-radius: 8px; border: 1px solid #5A5852; background: #121212; color: #F4F1EA; font: inherit; font-size: 13px;">
+<option value="popular" selected="{{sortPopular}}">Popular</option>
+<option value="newest" selected="{{sortNewest}}">Newest</option>
+<option value="low" selected="{{sortLow}}">Price, low to high</option>
+<option value="high" selected="{{sortHigh}}">Price, high to low</option>
+</select>
+</label>
+</div>
+</div>
+</sc-if>
+<div style="{{gridStyle}}">
+<sc-for list="{{deckCards}}" as="d" hint-placeholder-count="6">
+<button type="button" class="{{d.cls}}" onClick="{{d.pick}}" disabled="{{d.disabled}}" aria-pressed="{{d.pressed}}" aria-label="{{d.aria}}" style="{{d.style}}">
+<svg width="30" height="108" viewBox="0 0 240 860" aria-hidden="true" style="flex: none;">
+<rect x="20" y="20" width="200" height="820" rx="100" fill="{{d.base}}"></rect>
+<polygon points="20,380 220,338 220,410 20,452" fill="{{d.band}}"></polygon>
+<circle cx="120" cy="575" r="34" fill="none" stroke="{{d.ring}}" stroke-width="14"></circle>
+</svg>
+<span style="display: flex; flex-direction: column; gap: 2px; min-width: 0;">
+<span style="font-size: 12px; color: #B5B1A8;">{{d.brand}}</span>
+<span style="font-size: 16px; font-weight: 700;">{{d.name}}</span>
+<sc-if value="{{d.hasNote}}" hint-placeholder-val="{{ false }}">
+<span style="font-size: 12px; color: #B5B1A8;">{{d.note}}</span>
+</sc-if>
+<span style="font-size: 14px; font-weight: 600;">{{d.from}}</span>
+<span style="font-size: 12px; color: #B5B1A8;">{{d.avail}}</span>
+</span>
+</button>
+</sc-for>
+</div>
+<sc-if value="{{lv.empty}}" hint-placeholder-val="{{ false }}">
+<p style="margin: 0; font-size: 14px;">{{lv.emptyText}}</p>
+</sc-if>
+<sc-if value="{{lv.hasMore}}" hint-placeholder-val="{{ false }}">
+<div style="display: flex; flex-direction: column; align-items: center; gap: 8px; padding-top: 4px;">
+<span style="font-size: 13px; color: #B5B1A8;">{{lv.shownText}}</span>
+<button type="button" onClick="{{lv.more}}" style="min-height: 44px; padding: 0 20px; border-radius: 10px; border: 1px solid #F4F1EA; background: transparent; cursor: pointer; font-weight: 600;">{{lv.moreLabel}}</button>
+</div>
+</sc-if>
+<sc-if value="{{lv.hasFold}}" hint-placeholder-val="{{ false }}">
+<button type="button" onClick="{{lv.fold}}" style="align-self: center; min-height: 40px; padding: 0 16px; border-radius: 999px; border: 1px dashed #5A5852; background: transparent; cursor: pointer; font-size: 13px; font-weight: 600; color: #B5B1A8;">{{lv.foldLabel}}</button>
+</sc-if>
+<sc-if value="{{lv.hasUnfold}}" hint-placeholder-val="{{ false }}">
+<button type="button" onClick="{{lv.unfold}}" style="align-self: center; min-height: 40px; padding: 0 16px; border-radius: 999px; border: 1px dashed #5A5852; background: transparent; cursor: pointer; font-size: 13px; font-weight: 600; color: #B5B1A8;">Hide sold out</button>
+</sc-if>
+</sc-if>
+</div>
+</sc-if>
+<sc-if value="{{onOptions}}" hint-placeholder-val="{{ false }}">
+<div class="{{panelAnim}}" style="display: flex; flex-direction: column; gap: 12px;">
+<div>
+<h2 style="margin: 0; font-family: Anton, Impact, sans-serif; font-size: 30px; font-weight: 400; letter-spacing: 0.02em; text-transform: uppercase;">{{stepTitle}}</h2>
+<p style="margin: 4px 0 0; font-size: 14px; color: #B5B1A8;">{{stepLead}}</p>
+</div>
+<sc-if value="{{lv.tools}}" hint-placeholder-val="{{ false }}">
+<sc-if value="{{showRows}}" hint-placeholder-val="{{ true }}">
+<sc-for list="{{lv.rows}}" as="fr" hint-placeholder-count="1">
+<div style="display: flex; flex-direction: column; gap: 6px;">
+<span style="font-size: 12px; font-weight: 600; color: #B5B1A8;">{{fr.label}}</span>
+<div role="group" aria-label="{{fr.label}}" style="{{chipRowStyle}}">
+<sc-for list="{{fr.chips}}" as="c" hint-placeholder-count="4">
+<button type="button" onClick="{{c.pick}}" aria-pressed="{{c.pressed}}" disabled="{{c.disabled}}" aria-label="{{c.aria}}" style="{{c.style}}">{{c.label}} <span style="opacity: 0.7; font-weight: 400;">{{c.count}}</span></button>
+</sc-for>
+</div>
+</div>
+</sc-for>
+</sc-if>
+<div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;">
+<p aria-live="polite" style="margin: 0; font-size: 13px; color: #B5B1A8;">{{listCount}}</p>
+<div style="display: flex; align-items: center; gap: 8px;">
+<sc-if value="{{lv.hasClear}}" hint-placeholder-val="{{ false }}">
+<button type="button" onClick="{{lv.clear}}" style="min-height: 36px; padding: 0 8px; border: none; background: transparent; cursor: pointer; font-size: 13px; font-weight: 600; text-decoration: underline; text-underline-offset: 3px;">Clear filters</button>
+</sc-if>
+<sc-if value="{{isPhone}}" hint-placeholder-val="{{ false }}">
+<button type="button" onClick="{{toggleFilters}}" aria-expanded="{{filtersPressed}}" style="{{filtersStyle}}">{{filtersLabel}}</button>
+</sc-if>
+<label style="display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: #B5B1A8;">Sort
+<select onChange="{{lv.setSort}}" style="height: 36px; padding: 0 8px; border-radius: 8px; border: 1px solid #5A5852; background: #121212; color: #F4F1EA; font: inherit; font-size: 13px;">
+<option value="popular" selected="{{sortPopular}}">Popular</option>
+<option value="newest" selected="{{sortNewest}}">Newest</option>
+<option value="low" selected="{{sortLow}}">Price, low to high</option>
+<option value="high" selected="{{sortHigh}}">Price, high to low</option>
+</select>
+</label>
+</div>
+</div>
+</sc-if>
+<div role="group" aria-label="{{stepTitle}}" style="display: flex; flex-direction: column; gap: 8px;">
+<sc-for list="{{options}}" as="o" hint-placeholder-count="3">
+<button type="button" class="{{o.cls}}" onClick="{{o.pick}}" disabled="{{o.disabled}}" aria-pressed="{{o.pressed}}" style="{{o.style}}">
+<span aria-hidden="true" style="{{o.swatch}}"></span>
+<span style="display: flex; flex-direction: column; gap: 3px; flex: 1; min-width: 0; text-align: left;">
+<span style="font-size: 15px; font-weight: 700;">{{o.name}}</span>
+<span style="font-size: 13px; color: #B5B1A8;">{{o.meta}}</span>
+<sc-if value="{{o.rec}}" hint-placeholder-val="{{ false }}">
+<span style="align-self: flex-start; font-size: 12px; font-weight: 700; color: #121212; background: #F2E600; border-radius: 999px; padding: 2px 8px;">{{o.recText}}</span>
+</sc-if>
+</span>
+<span style="font-size: 15px; font-weight: 700;">{{o.price}}</span>
+</button>
+</sc-for>
+</div>
+<sc-if value="{{lv.empty}}" hint-placeholder-val="{{ false }}">
+<p style="margin: 0; font-size: 14px;">{{lv.emptyText}}</p>
+</sc-if>
+<sc-if value="{{lv.hasMore}}" hint-placeholder-val="{{ false }}">
+<div style="display: flex; flex-direction: column; align-items: center; gap: 8px; padding-top: 4px;">
+<span style="font-size: 13px; color: #B5B1A8;">{{lv.shownText}}</span>
+<button type="button" onClick="{{lv.more}}" style="min-height: 44px; padding: 0 20px; border-radius: 10px; border: 1px solid #F4F1EA; background: transparent; cursor: pointer; font-weight: 600;">{{lv.moreLabel}}</button>
+</div>
+</sc-if>
+<sc-if value="{{lv.hasFold}}" hint-placeholder-val="{{ false }}">
+<button type="button" onClick="{{lv.fold}}" style="align-self: center; min-height: 40px; padding: 0 16px; border-radius: 999px; border: 1px dashed #5A5852; background: transparent; cursor: pointer; font-size: 13px; font-weight: 600; color: #B5B1A8;">{{lv.foldLabel}}</button>
+</sc-if>
+<sc-if value="{{lv.hasUnfold}}" hint-placeholder-val="{{ false }}">
+<button type="button" onClick="{{lv.unfold}}" style="align-self: center; min-height: 40px; padding: 0 16px; border-radius: 999px; border: 1px dashed #5A5852; background: transparent; cursor: pointer; font-size: 13px; font-weight: 600; color: #B5B1A8;">Hide sold out</button>
+</sc-if>
+<sc-if value="{{hasHidden}}" hint-placeholder-val="{{ false }}">
+<p style="margin: 0; font-size: 13px; color: #B5B1A8;">{{hiddenText}}</p>
+</sc-if>
+</div>
+</sc-if>
+<sc-if value="{{onReview}}" hint-placeholder-val="{{ false }}">
+<div class="{{panelAnim}}" style="display: flex; flex-direction: column; gap: 12px;">
+<h2 style="margin: 0; font-family: Anton, Impact, sans-serif; font-size: 30px; font-weight: 400; letter-spacing: 0.02em; text-transform: uppercase;">Check your build</h2>
+<ul style="list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px;">
+<sc-for list="{{reviewRows}}" as="v" hint-placeholder-count="5">
+<li style="display: flex; flex-wrap: wrap; align-items: center; column-gap: 12px; row-gap: 2px; padding: 10px 12px; border-radius: 10px; background: #222220; border: 1px solid #2E2E2B;">
+<span style="{{reviewSlotStyle}}">{{v.slot}}</span>
+<span style="flex: 1; min-width: 0; font-size: 14px; font-weight: 600;">{{v.name}}</span>
+<span style="font-size: 14px;">{{v.price}}</span>
+<button type="button" onClick="{{v.change}}" aria-label="{{v.aria}}" style="min-height: 36px; padding: 0 10px; border-radius: 8px; border: 1px solid #5A5852; background: transparent; cursor: pointer; font-size: 13px;">Change</button>
+</li>
+</sc-for>
+</ul>
+<p style="margin: 0; font-size: 14px;">Assembly: free. We grip it, bolt it and check it before it ships.</p>
+<div style="display: flex; gap: 8px; flex-wrap: wrap;">
+<button type="button" onClick="{{save}}" style="min-height: 44px; padding: 0 16px; border-radius: 10px; border: 1px solid #F4F1EA; background: transparent; cursor: pointer; font-weight: 600;">Save build</button>
+<button type="button" onClick="{{share}}" style="min-height: 44px; padding: 0 16px; border-radius: 10px; border: 1px solid #5A5852; background: transparent; cursor: pointer; font-weight: 600;">Copy link</button>
+</div>
+</div>
+</sc-if>
+</div>
+<div style="{{footerStyle}}">
+<div style="display: flex; flex-direction: column; gap: 2px; min-width: 0;">
+<span style="font-size: 13px; color: #B5B1A8;">Total</span>
+<span style="font-size: 24px; font-weight: 700; font-variant-numeric: tabular-nums;">{{shownTotal}}</span>
+<sc-if value="{{hasEstimate}}" hint-placeholder-val="{{ false }}">
+<span style="font-size: 13px; color: #B5B1A8;">{{estimateText}}</span>
+</sc-if>
+</div>
+<div style="display: flex; gap: 8px; align-items: center;">
+<sc-if value="{{canBack}}" hint-placeholder-val="{{ false }}">
+<button type="button" onClick="{{back}}" style="min-height: 48px; padding: 0 16px; border-radius: 10px; border: 1px solid #5A5852; background: transparent; cursor: pointer; font-weight: 600;">Back</button>
+</sc-if>
+<button type="button" onClick="{{next}}" disabled="{{nextDisabled}}" style="{{nextStyle}}">{{nextLabel}}</button>
+</div>
+</div>
+</section>
+</div>
+<p role="status" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; margin: 0;">{{status}}</p>
+</div>
+</template>
+<script>
+
+class DCLogic { constructor(p) { this.props = p || {}; this.state = {}; } setState(s, cb) { const n = typeof s === 'function' ? s(this.state, this.props) : s; this.state = Object.assign({}, this.state, n); if (this.__render) this.__render(); if (cb) cb(); } }
+const HOLE = /\{\{\s*([\w.]+)\s*\}\}/g;
+const ONE = /^\{\{\s*([\w.]+)\s*\}\}$/;
+const get = (scope, path) => path.split('.').reduce((a, k) => (a == null ? undefined : a[k]), scope);
+function proc(node, scope) {
+  if (node.nodeType === 3) return [document.createTextNode(node.nodeValue.replace(HOLE, (m, p) => { const v = get(scope, p); return v == null ? '' : String(v); }))];
+  if (node.nodeType !== 1) return [];
+  const tag = node.localName;
+  const one = (a) => { const m = (node.getAttribute(a) || '').match(ONE); return m ? get(scope, m[1]) : undefined; };
+  const kids = (sc) => Array.from(node.childNodes).flatMap((c) => proc(c, sc));
+  if (tag === 'sc-if') return one('value') ? kids(scope) : [];
+  if (tag === 'sc-for') { const list = one('list') || []; const as = node.getAttribute('as'); return list.flatMap((it) => kids(Object.assign({}, scope, { [as]: it }))); }
+  const el = node.cloneNode(false);
+  for (const a of Array.from(node.attributes)) {
+    if (a.name.startsWith('hint-')) { el.removeAttribute(a.name); continue; }
+    const m = a.value.match(ONE);
+    if (!m) { if (a.value.indexOf('{{') >= 0) el.setAttribute(a.name, a.value.replace(HOLE, (x, p) => String(get(scope, p) ?? ''))); continue; }
+    const v = get(scope, m[1]);
+    if (/^on/i.test(a.name)) { el.removeAttribute(a.name); if (typeof v === 'function') { const ev = a.name.toLowerCase() === 'onchange' ? (tag === 'input' ? 'input' : 'change') : a.name.slice(2).toLowerCase(); el.addEventListener(ev, v); } continue; }
+    if (v === false || v == null) el.removeAttribute(a.name); else if (v === true) el.setAttribute(a.name, ''); else el.setAttribute(a.name, String(v));
+  }
+  kids(scope).forEach((k) => el.appendChild(k));
+  return [el];
+}
+
+class Component extends DCLogic {
+constructor(props) {
+super(props);
+this._C = this.build();
+this.state = { step: 0, q: '', width: '', help: false, filters: false, deck: '', deckWidth: '', trucks: '', wheels: '', bearings: '', hardware: '', grip: '', flipped: false, cart: 0, shown: 0, b: { deck: { f: { brand: [] }, sort: 'popular', n: 30, sold: false, more: false }, wheels: { f: { brand: [], mm: [], duro: [] }, sort: 'popular', n: 30, sold: false, more: false } }, flips: { deck: 0, trucks: 0, wheels: 0, grip: 0, panel: 0, cart: 0, list: 0 }, leaving: '', notice: '', status: '' };
+this._target = 0;
+const sc = (props && props.scenario) || '';
+if (sc) {
+const b = this.state.b;
+if (sc === 'long-decks') Object.assign(this.state, { width: '8.5', deck: 'd1829', deckWidth: '8.5', b: Object.assign({}, b, { deck: Object.assign({}, b.deck, { sort: 'long', sold: true }) }) });
+if (sc === 'long-wheels') Object.assign(this.state, { step: 2, width: '8.25', deck: 'd1829', deckWidth: '8.25', trucks: 't144', b: Object.assign({}, b, { wheels: Object.assign({}, b.wheels, { sort: 'long', sold: true }) }) });
+if (sc === 'long-review') Object.assign(this.state, { step: 6, width: '8.5', deck: 'd1829', deckWidth: '8.5', trucks: 't149', wheels: 'w2113', bearings: 'ceramic', hardware: 'jade', grip: 'fur' });
+this.state.shown = this.totals().total;
+this._target = this.state.shown;
+}
+}
+catalog() {
+return this._C;
+}
+rows() {
+return {
+decks: [
+[4354, "Years", "Katie", "", 94.99, "8 8.25 8.5 8.75", 1, 2],
+[4345, "Years", "Kelly", "", 94.99, "8 8.25 8.5 8.75", 1, 3],
+[3891, "KAZUMI", "80’s Boardwalk", "Decades", 124.99, "7.75 8 8.125 8.25 8.375 8.5 8.75 9", 0, 4],
+[3871, "KAZUMI", "80’s Aerobics", "Decades", 124.99, "7.75 8 8.125 8.25 8.375 8.5 8.75 9", 0, 5],
+[3865, "KAZUMI", "80’s Drive-In", "Decades", 124.99, "7.75 8 8.125 8.25 8.375 8.5 8.75 9", 0, 6],
+[3859, "KAZUMI", "80’s Roller Rink", "Decades", 124.99, "7.75 8 8.125 8.25 8.375 8.5 8.75 9", 0, 7],
+[3853, "KAZUMI", "80’s Pinball", "Decades", 124.99, "7.75 8 8.125 8.25 8.375 8.5 8.75 9", 0, 8],
+[3833, "KAZUMI", "80’s Groupie", "Decades", 124.99, "7.75 8 8.125 8.25 8.375 8.5 8.75 9", 0, 9],
+[3827, "KAZUMI", "80’s Boardwalk, NSFW", "Decades", 124.99, "7.75 8 8.125 8.25 8.375 8.5 8.75 9", 0, 10],
+[3821, "KAZUMI", "80’s Aerobics, NSFW", "Decades", 124.99, "7.75 8 8.125 8.25 8.375 8.5 8.75 9", 0, 11],
+[3803, "KAZUMI", "80’s Drive-In, NSFW", "Decades", 124.99, "7.75 8 8.125 8.25 8.375 8.5 8.75 9", 0, 12],
+[3797, "KAZUMI", "80’s Roller Rink, NSFW", "Decades", 124.99, "7.75 8 8.125 8.25 8.375 8.5 8.75 9", 0, 13],
+[3791, "KAZUMI", "80’s Pinball, NSFW", "Decades", 124.99, "7.75 8 8.125 8.25 8.375 8.5 8.75 9", 0, 14],
+[3771, "KAZUMI", "80’s Groupie, NSFW", "Decades", 124.99, "7.75 8 8.125 8.25 8.375 8.5 8.75 9", 0, 15],
+[3764, "KAZUMI", "White Dress", "", 124.99, "8 8.25 8.5 8.75", 1, 16],
+[3757, "KAZUMI", "Backyard", "", 124.99, "8 8.25 8.5 8.75", 1, 17],
+[3750, "KAZUMI", "First Date", "", 124.99, "7.75 8 8.125 8.25 8.375 8.5 8.75 9", 0, 18],
+[3729, "KAZUMI", "Pit Stop", "", 124.99, "8 8.25 8.5 8.75", 1, 19],
+[3722, "KAZUMI", "Yellow Brick Road", "", 124.99, "8 8.25 8.5 8.75", 1, 20],
+[3715, "KAZUMI", "Hard Hat", "", 124.99, "8 8.25 8.5 8.75", 1, 21],
+[3699, "KAZUMI", "Cream Pie", "", 124.99, "8 8.25 8.5 8.75", 1, 22],
+[3692, "KAZUMI", "House Party", "", 124.99, "8 8.25 8.5 8.75", 1, 23],
+[3685, "KAZUMI", "Leather", "", 119.99, "8 8.25 8.5 8.75", 1, 24],
+[3667, "KAZUMI", "Freddy", "", 119.99, "8 8.25 8.5 8.75", 1, 25],
+[3660, "KAZUMI", "Jason", "", 119.99, "8 8.25 8.5 8.75", 1, 26],
+[3653, "KAZUMI", "Michael", "", 119.99, "8 8.25 8.5 8.75", 1, 27],
+[3646, "KAZUMI", "Logo", "Black", 119.99, "8 8.25 8.5 8.75", 1, 28],
+[3631, "KAZUMI", "Shop Girl", "", 149.99, "8 8.25 8.5 8.75", 1, 29],
+[3622, "KAZUMI", "Trailer Trash", "", 149.99, "8 8.25 8.5 8.75", 1, 30],
+[3613, "KAZUMI", "Army Brat", "", 149.99, "8 8.25 8.5 8.75", 1, 31],
+[3598, "KAZUMI", "Diner Waitress", "", 149.99, "7.75 8 8.125 8.25 8.375 8.5 8.75 9", 0, 32],
+[3589, "KAZUMI", "Cocktails", "", 149.99, "8 8.25 8.5 8.75", 1, 33],
+[3580, "KAZUMI", "Country Star", "", 149.99, "8 8.25 8.5 8.75", 1, 34],
+[3563, "KAZUMI", "Retro Rocker", "", 149.99, "7.75 8 8.125 8.25 8.375 8.5 8.75 9", 0, 35],
+[3554, "KAZUMI", "19th Hole", "", 149.99, "8 8.25 8.5 8.75", 1, 36],
+[3545, "KAZUMI", "Dealer", "", 149.99, "8 8.25 8.5 8.75", 1, 37],
+[3536, "KAZUMI", "Board Gamer", "", 149.99, "8 8.25 8.5 8.75", 1, 38],
+[3521, "KAZUMI", "Lifeguard", "", 149.99, "8 8.25 8.5 8.75", 1, 39],
+[3512, "KAZUMI", "Ramper", "", 149.99, "8 8.25 8.5 8.75", 1, 40],
+[3503, "KAZUMI", "Hang Ten", "", 149.99, "7.75 8 8.125 8.25 8.375 8.5 8.75 9", 0, 41],
+[3488, "KAZUMI", "Striker", "", 149.99, "8 8.25 8.5 8.75", 1, 42],
+[3479, "KAZUMI", "Endzone", "", 149.99, "8 8.25 8.5 8.75", 1, 43],
+[3470, "KAZUMI", "Baller", "", 149.99, "8 8.25 8.5 8.75", 1, 44],
+[3453, "KAZUMI", "Puck Bunny", "", 149.99, "8 8.25 8.5 8.75", 1, 45],
+[3444, "KAZUMI", "Poolshark", "", 149.99, "8 8.25 8.5 8.75", 1, 46],
+[3435, "KAZUMI", "Slugger", "", 149.99, "8 8.25 8.5 8.75", 1, 47],
+[3426, "KAZUMI", "Bowlerama", "", 149.99, "8 8.25 8.5 8.75", 1, 48],
+[3402, "L'ÉTAT", "Street Racer Shape, Blue", "", 79.95, "7.75 8 8.125 8.25 8.375 8.5 8.75 9", 0, 49],
+[3401, "L'ÉTAT", "Street Racer Shape, Red", "", 79.95, "7.75 8 8.125 8.25 8.375 8.5 8.75 9", 0, 50],
+[3375, "L'ÉTAT", "Twin Shape", "", 79.95, "7.75 8 8.125 8.25 8.375 8.5 8.75 9", 0, 51],
+[3374, "L'ÉTAT", "Québec Shape", "", 79.95, "7.75 8 8.125 8.25 8.375 8.5 8.75 9", 0, 52],
+[3373, "L'ÉTAT", "Québec Shape Mini", "", 74.95, "7.75 8 8.125 8.25 8.375 8.5 8.75 9", 0, 53],
+[3339, "L'ÉTAT", "In Maple We Trust Quebec Shape", "", 94.95, "7.75 8 8.125 8.25 8.375 8.5 8.75 9", 0, 54],
+[3336, "L'ÉTAT", "Brad Arseneau Pro", "", 94.95, "7.75 8 8.125 8.25 8.375 8.5 8.75 9", 0, 55],
+[3332, "L'ÉTAT", "Weekend Warrior Twin Shape", "", 94.95, "7.75 8 8.125 8.25 8.375 8.5 8.75 9", 0, 56],
+[3302, "L'ÉTAT", "Team Script, Québec Shape", "Blue on Red", 79.95, "7.75 8 8.125 8.25 8.375 8.5 8.75 9", 0, 57],
+[3301, "L'ÉTAT", "Team Script, Québec Shape", "Cyan on Brown", 79.95, "7.75 8 8.125 8.25 8.375 8.5 8.75 9", 0, 58],
+[3300, "L'ÉTAT", "Team Script, Québec Shape", "Punk Pink on Yellow", 79.95, "7.75 8 8.125 8.25 8.375 8.5 8.75 9", 0, 59],
+[3267, "L'ÉTAT", "Team Script, Québec Shape", "Yellow on Purple", 79.95, "7.75 8 8.125 8.25 8.375 8.5 8.75 9", 0, 60],
+[3266, "L'ÉTAT", "Team Script Twin Shape", "Silver on Charcoal", 79.95, "7.75 8 8.125 8.25 8.375 8.5 8.75 9", 0, 61],
+[3265, "L'ÉTAT", "Team Script, Twin Shape", "Orange on Green", 79.95, "7.75 8 8.125 8.25 8.375 8.5 8.75 9", 0, 62],
+[3264, "L'ÉTAT", "Team Script Street Racer", "Blue on Red", 79.95, "7.75 8 8.125 8.25 8.375 8.5 8.75 9", 0, 63],
+[3237, "L'ÉTAT", "Team Script Street Racer", "Red on Red", 79.95, "7.75 8 8.125 8.25 8.375 8.5 8.75 9", 0, 64],
+[3234, "L'ÉTAT", "Aaron Jones New Twin Shape", "", 109.95, "7.75 8 8.125 8.25 8.375 8.5 8.75 9", 0, 65],
+[3231, "L'ÉTAT", "Don Pendleton Quebec Shape", "", 109.95, "7.75 8 8.125 8.25 8.375 8.5 8.75 9", 0, 66],
+[3200, "L'ÉTAT", "Cindy Blazevic Quebec Shape", "", 109.95, "7.75 8 8.125 8.25 8.375 8.5 8.75 9", 0, 67],
+[3197, "L'ÉTAT", "Dana Alwazani Quebec Shape", "", 109.95, "7.75 8 8.125 8.25 8.375 8.5 8.75 9", 0, 68],
+[3195, "L'ÉTAT", "Mourning Flowers", "", 89.95, "7.75 8 8.125 8.25 8.375 8.5 8.75 9", 0, 69],
+[3163, "L'ÉTAT", "In Maple We Trust", "", 89.95, "7.75 8 8.125 8.25 8.375 8.5 8.75 9", 0, 70],
+[3161, "L'ÉTAT", "Script VIII", "", 99.95, "7.75 8 8.125 8.25 8.375 8.5 8.75 9", 0, 71],
+[3159, "L'ÉTAT", "Chris Foley Vol 5", "", 99.95, "7.75 8 8.125 8.25 8.375 8.5 8.75 9", 0, 72],
+[3157, "L'ÉTAT", "Evey Maclean Robber II", "", 99.95, "7.75 8 8.125 8.25 8.375 8.5 8.75 9", 0, 73],
+[3146, "Philly's", "The Littlest MOPHO", "", 99.99, "7.75 8 8.125 8.25 8.375 8.5 8.75 9", 0, 74],
+[3123, "Philly's", "Living Room", "", 99.99, "7.75 8 8.125 8.25 8.375 8.5 8.75 9", 0, 75],
+[3117, "Philly's", "Travelling Philbury", "", 99.99, "7.75 8 8.125 8.25 8.375 8.5 8.75 9", 0, 76],
+[3111, "Philly's", "Nash Dad", "", 99.99, "7.75 8 8.125 8.25 8.375 8.5 8.75 9", 0, 77],
+[3109, "Philly's", "OnlyPhils Blind Bag", "Series 3", 124.99, "8.25", 1, 0],
+[3108, "Philly's", "OnlyPhils Blind Bag", "Series 2", 124.99, "8.25", 1, 1],
+[3101, "Philly's", "OnlyPhils Blind Bag", "Series 1", 124.99, "8.25", 1, 78],
+[3021, "Years", "Fran", "", 94.99, "8 8.25 8.5 8.75", 1, 79],
+[2999, "Years", "Urkel", "", 94.99, "8 8.25 8.5 8.75", 1, 80],
+[2992, "Years", "Chris", "", 94.99, "7.75 8 8.125 8.25 8.375 8.5 8.75 9", 0, 81],
+[2983, "Years", "Logo", "Black/Red", 94.99, "8 8.25 8.5 8.75", 1, 82],
+[2949, "Years", "Zach", "", 94.99, "8 8.25 8.5 8.75", 1, 83],
+[2945, "Years", "Robin", "", 99.99, "7.75 8 8.125 8.25 8.375 8.5 8.75 9", 0, 84],
+[2942, "Years", "Jim", "", 99.99, "7.75 8 8.125 8.25 8.375 8.5 8.75 9", 0, 85],
+[2926, "NEFAR", "Vine Vengeance", "", 99.99, "7.75 8 8.125 8.25 8.375 8.5 8.75 9", 0, 86],
+[2919, "NEFAR", "Kraven Curse", "", 99.99, "7.75 8 8.125 8.25 8.375 8.5 8.75 9", 0, 87],
+[2903, "NEFAR", "Winged Terror", "", 99.99, "7.75 8 8.125 8.25 8.375 8.5 8.75 9", 0, 88],
+[2896, "NEFAR", "Yeti Fury", "", 99.99, "7.75 8 8.125 8.25 8.375 8.5 8.75 9", 0, 89],
+[2889, "NEFAR", "Scorpion Scourge", "", 99.99, "7.75 8 8.125 8.25 8.375 8.5 8.75 9", 0, 90],
+[2872, "NEFAR", "Tentacle Terror", "", 99.99, "7.75 8 8.125 8.25 8.375 8.5 8.75 9", 0, 91],
+[2865, "NEFAR", "Grams", "", 94.99, "8 8.25 8.5 8.75", 1, 92],
+[2858, "NEFAR", "Gram", "", 94.99, "8 8.25 8.5 8.75", 1, 93],
+[2851, "NEFAR", "Logo", "", 94.99, "8 8.25 8.5 8.75", 1, 94],
+[2835, "Hoser", "Trailer Park Hosers", "", 99.99, "8 8.25 8.5 8.75", 1, 95],
+[2828, "Hoser", "Vanity Plate", "", 99.99, "8 8.25 8.5 8.75", 1, 96],
+[2817, "Hoser", "Tom Brown", "", 89.99, "7.75 8 8.125 8.25 8.375 8.5 8.75 9", 0, 97],
+[2808, "Hoser", "TJ Gnawgers", "", 89.99, "8 8.25 8.5 8.75", 1, 98],
+[2799, "Hoser", "Mark Lumberyard", "", 89.99, "8 8.25 8.5 8.75", 1, 99],
+[2785, "Hoser", "Wireless", "", 89.99, "8 8.25 8.5 8.75", 1, 100],
+[2776, "Hoser", "Skate Boards", "", 89.99, "8 8.25 8.5 8.75", 1, 101],
+[2767, "Hoser", "Brand", "", 89.99, "8 8.25 8.5 8.75", 1, 102],
+[2758, "Hoser", "Quebecois", "", 89.99, "8 8.25 8.5 8.75", 1, 103],
+[2563, "HZRD", "Tigerstyle", "Twin Tail", 109.99, "8 8.25 8.375 8.5 8.75", 1, 104],
+[2557, "HZRD", "Gold Ink Triangle", "Twin Tail", 99.99, "8 8.25 8.375 8.5 8.75", 1, 105],
+[2534, "HZRD", "Summer ’25 Vaporwave Sunset", "Pink", 84.99, "7.75 8 8.125 8.25 8.375 8.5 8.75 9", 0, 106],
+[2529, "HZRD", "Summer ’25 Vaporwave Sunset", "Blue", 84.99, "7.75 8 8.125 8.25 8.375 8.5 8.75 9", 0, 107],
+[2525, "HZRD", "Red Logo", "", 74.99, "8.25 8.5", 1, 108],
+[2519, "HZRD", "Namakubi", "", 84.99, "8 8.25 8.5", 1, 109],
+[2358, "Gnarmy", "Roach Wizard", "", 99.99, "8 8.25 8.375 8.5", 1, 110],
+[2334, "Gnarmy", "Beaver Wizard", "", 99.99, "8 8.25 8.375 8.5", 1, 111],
+[2329, "Gnarmy", "Dragon Wizard", "", 99.99, "8 8.25 8.375 8.5", 1, 112],
+[2324, "Gnarmy", "Gorilla Wizard", "", 99.99, "8 8.25 8.375 8.5", 1, 113],
+[2321, "Gnarmy", "Tattoo Wall", "", 79.99, "8 8.5", 1, 114],
+[2309, "Beans", "Baby", "", 79.99, "7.75 8 8.125 8.25 8.375 8.5 8.75 9", 0, 115],
+[2286, "Beans", "Acid Bears", "", 79.99, "7.75 8 8.125 8.25 8.375 8.5 8.75 9", 0, 116],
+[2279, "Beans", "No Name", "", 79.99, "7.75 8 8.125 8.25 8.375 8.5 8.75 9", 0, 117],
+[2275, "Beans", "OG", "", 79.99, "7.75 8 8.125 8.25 8.375 8.5 8.75 9", 0, 118],
+[2245, "Comacan", "Triple Skull, Black/White Skull", "Assorted Stain", 84.99, "7.75 8 8.125 8.25 8.375 8.5 8.75 9", 0, 119],
+[2242, "Comacan", "Single Skull, Black Natural", "Assorted Stain", 84.99, "7.75 8 8.125 8.25 8.375 8.5 8.75 9", 0, 120],
+[2238, "Comacan", "Single Skull, Green", "Assorted Stain", 84.99, "7.75 8 8.125 8.25 8.375 8.5 8.75 9", 0, 121],
+[2234, "Comacan", "Single Skull, Gold", "Assorted Stain", 84.99, "7.75 8 8.125 8.25 8.375 8.5 8.75 9", 0, 122],
+[2209, "Sharpe", "Sharpie", "Assorted Stains/Naturals", 94.99, "8.25 8.5", 1, 123],
+[2206, "Sharpe", "Surf", "", 94.99, "8.25 8.5", 1, 124],
+[2203, "Sharpe", "VX", "", 94.99, "8.25 8.5", 1, 125],
+[1925, "Baitshop", "Fire Tiger", "", 84.99, "7.75 8 8.125 8.25 8.375 8.5 8.75 9", 0, 126],
+[1917, "Baitshop", "Dare Devil", "", 84.99, "7.75 8 8.125 8.25 8.375 8.5 8.75 9", 0, 127],
+[1908, "Baitshop", "Five Diamond", "", 84.99, "8", 1, 128],
+[1899, "Baitshop", "Yellow Stripe", "", 84.99, "7.75 8 8.125 8.25 8.375 8.5 8.75 9", 0, 129],
+[1892, "Philly's", "Broke", "", 94.99, "8 8.25 8.5 8.75", 1, 130],
+[1885, "Philly's", "Water Colour", "", 99.99, "8 8.25 8.5 8.75", 1, 131],
+[1878, "Philly's", "Black Logo", "Phatality", 99.99, "8 8.25 8.5 8.75", 1, 132],
+[1871, "Philly's", "White Logo", "Phatality", 99.99, "8 8.25 8.5 8.75", 1, 133],
+[1864, "Philly's", "Choose", "Phatality", 99.99, "8 8.25 8.5 8.75", 1, 134],
+[1857, "Philly's", "Pit", "Phatality", 99.99, "8 8.25 8.5 8.75", 1, 135],
+[1850, "Philly's", "Lair", "Phatality", 99.99, "8 8.25 8.5 8.75", 1, 136],
+[1843, "Philly's", "The Cats in the Sac", "Dr Philly’s", 89.99, "8 8.25 8.5 8.75", 1, 137],
+[1836, "Philly's", "Green Legs on Cam", "Dr Philly’s", 89.99, "8 8.25 8.5 8.75", 1, 138],
+[1829, "Philly's", "Horton Hears a Who-locaust?", "Dr Philly’s", 89.99, "8 8.25 8.5 8.75", 1, 139],
+[1822, "Philly's", "Quiz", "Philly Madison", 89.99, "8 8.25 8.5 8.75", 1, 140],
+[1815, "Philly's", "Puppy Who Lost His Way", "Philly Madison", 89.99, "8 8.25 8.5 8.75", 1, 141],
+[1808, "Philly's", "Blue Duck", "Philly Madison", 89.99, "8 8.25 8.5 8.75", 1, 142],
+[1801, "Philly's", "You Opened a Skateshop", "Goophbumps", 89.99, "8 8.25 8.5 8.75", 1, 143],
+[1794, "Philly's", "Say Cheese and Slam", "Goophbumps", 89.99, "8 8.25 8.5 8.75", 1, 144],
+[1787, "Philly's", "It Came from the Skatepark", "Goophbumps", 89.99, "8 8.25 8.5 8.75", 1, 145],
+[1780, "Philly's", "Night of the Living Poser", "Goophbumps", 89.99, "8 8.25 8.5 8.75", 1, 146],
+[1773, "Philly's", "Skating in Your 30’s", "Goophbumps", 89.99, "8 8.25 8.5 8.75", 1, 147],
+[1766, "Philly's", "King of the Thrill 1.0", "B.H.A.D. Series", 89.99, "8 8.25 8.5 8.75", 1, 148],
+[1759, "Philly's", "Too Much Acid", "B.H.A.D. Series", 89.99, "8 8.25 8.5 8.75", 1, 149],
+[1752, "Philly's", "PBR", "B.H.A.D. Series", 89.99, "8 8.25 8.5 8.75", 1, 150],
+[1745, "Philly's", "Horror Party", "B.H.A.D. Series", 89.99, "8 8.25 8.5 8.75", 1, 151],
+[1738, "Philly's", "Spongeslob Drunk Pants", "B.H.A.D. Series", 89.99, "8 8.25 8.5 8.75", 1, 152],
+[1731, "Philly's", "King of the Thrill 2.0", "B.H.A.D. Series", 89.99, "8 8.25 8.5 8.75", 1, 153],
+[1724, "Philly's", "No Skateboarding", "", 94.99, "8 8.25 8.5 8.75", 1, 154],
+[1717, "Philly's", "No Fun", "", 94.99, "8 8.25 8.5 8.75", 1, 155],
+[1710, "Philly's", "Phucking Pawsome", "", 94.99, "8 8.25 8.5 8.75", 1, 156],
+[1688, "Philly's", "Hard World", "", 94.99, "8 8.25 8.5 8.75", 1, 157],
+[1681, "Philly's", "Scoot or Die", "", 94.99, "8 8.25 8.5 8.75", 1, 158],
+[1125, "Philly's", "Rascals", "", 89.99, "8 8.25 8.5 8.75", 1, 159]
+],
+wheels: [
+[2119, "Retna Wheel Co.", "Retna Wheel Co., Blue, Conical", "52", "101A", 44.99, 0, "#5AA9E6"],
+[2118, "Retna Wheel Co.", "Retna Wheel Co., Red, Radial", "53", "101A", 44.99, 0, "#D64933"],
+[2117, "Retna Wheel Co.", "Retna Wheel Co., Yellow, Conical", "54", "101A", 44.99, 1, "#F2E600"],
+[2116, "Retna Wheel Co.", "Retna Wheel Co., Green, Conical", "56", "101A", 44.99, 1, "#3BB273"],
+[2115, "Retna Wheel Co.", "Retna Wheel Co., Orange, Conical", "58", "101A", 44.99, 0, "#FF7A1A"],
+[2114, "Retna Wheel Co.", "Retna Wheel Co., Yellow/Grey, Conical", "54", "100A", 44.99, 1, "#F2E600"],
+[2113, "Retna Wheel Co.", "Retna Wheel Co., Purple/Grey, Conical", "56", "100A", 44.99, 1, "#9B5DE5"],
+[2112, "Retna Wheel Co.", "Retna Wheel Co., Black/White, Radial Slim", "54", "100A", 44.99, 0, "#1A1A1A"],
+[2111, "Retna Wheel Co.", "Retna Wheel Co., Red/Blue, Conical", "54", "104A", 44.99, 0, "#D64933"],
+[1978, "Blotto Wheels", "Blotto Wheels, White 53", "53", "101A", 39.99, 1, "#F4F1EA"],
+[1976, "Blotto Wheels", "Blotto Wheels, Peaches", "54", "101A", 39.99, 0, "#FFB38A"],
+[1973, "Blotto Wheels", "Blotto Wheels, Partners in Crime Pack", "54", "101A", 39.99, 0, "#F7A1C4"],
+[1970, "Blotto Wheels", "Blotto Wheels, White", "52", "101A", 39.99, 0, "#F4F1EA"],
+[1968, "Blotto Wheels", "Blotto Wheels, Black", "54", "101A", 39.99, 0, "#1A1A1A"],
+[1966, "Blotto Wheels", "Blotto Wheels, Cotton Candy", "56", "101A", 39.99, 1, "#F7A1C4"],
+[1964, "Blotto Wheels", "Blotto Wheels, Green", "54", "101A", 39.99, 0, "#3BB273"],
+[1962, "Blotto Wheels", "Blotto Wheels, Red", "54", "101A", 39.99, 1, "#D64933"],
+[1960, "Blotto Wheels", "Blotto Wheels, Blue", "54", "101A", 39.99, 1, "#5AA9E6"],
+[1958, "Blotto Wheels", "Blotto Wheels, Purple", "54", "101A", 39.99, 0, "#9B5DE5"],
+[1956, "Blotto Wheels", "Blotto Wheels, Dark Party Pack", "54", "101A", 39.99, 0, "#3D2C4F"],
+[1954, "Blotto Wheels", "Blotto Wheels, Pink & White Swirl", "53", "101A", 39.99, 1, "#F7A1C4"],
+[1952, "Blotto Wheels", "Blotto Wheels, Night Buddies", "54", "101A", 39.99, 0, "#2B2B5A"],
+[1949, "Blotto Wheels", "Blotto Wheels, Orange Gel", "54", "101A", 39.99, 1, "#FF7A1A"],
+[1947, "Blotto Wheels", "Blotto Wheels, Purple Gel", "54", "101A", 39.99, 1, "#9B5DE5"],
+[1945, "Blotto Wheels", "Blotto Wheels, Blue Gel", "54", "101A", 39.99, 0, "#5AA9E6"],
+[1943, "Blotto Wheels", "Blotto Wheels, Grey Gel", "54", "101A", 39.99, 0, "#9AA0A6"],
+[1941, "Blotto Wheels", "Blotto Wheels, Gel Party Pack", "54", "101A", 39.99, 1, "#8FE3CF"],
+[1933, "Blotto Wheels", "Blotto Wheels, Blue Glow in the Dark", "54", "101A", 39.99, 1, "#A0E7E5"]
+]
+};
+}
+build() {
+const R = this.rows();
+const ART = [['#1D3A6B', '#E9C46A', '#E9C46A'], ['#161616', '#F4F1EA', '#D64933'], ['#2F6B4F', '#F2E600', '#F4F1EA'], ['#7A1F2B', '#F4F1EA', '#121212'], ['#3A7CA5', '#F4F1EA', '#16425B'], ['#2B2B2B', '#FF7A1A', '#FFD166'], ['#C9D6DF', '#52616B', '#1E2022'], ['#5C3C92', '#F2E600', '#F4F1EA'], ['#F7A1C4', '#1D3A6B', '#F4F1EA'], ['#0F4C5C', '#E36414', '#FB8B24'], ['#E9D8A6', '#9B2226', '#005F73'], ['#283618', '#DDA15E', '#FEFAE0'], ['#F4F1EA', '#D64933', '#121212'], ['#3D2C4F', '#C9B6E4', '#F2E600'], ['#8FE3CF', '#161616', '#F7A1C4'], ['#9B2226', '#F4F1EA', '#E9C46A']];
+const art = (id) => ART[(id * 7 + 3) % ART.length];
+return {
+steps: [['deck', 'Deck'], ['trucks', 'Trucks'], ['wheels', 'Wheels'], ['bearings', 'Bearings'], ['hardware', 'Hardware'], ['grip', 'Grip tape'], ['review', 'Review']],
+decks: R.decks.map(([id, brand, name, note, price, widths, stock, pop], i) => { const a = art(id); return { id: 'd' + id, brand, name, note, price, widths: widths.split(' '), soldOut: !stock, pop, fresh: i, base: a[0], band: a[1], ring: a[2] }; }),
+trucks: [
+{ id: 't139', name: 'House trucks 139', meta: '139 mm hanger, 8″ axle', price: 55, color: '#C8CCD0', hanger: '#9AA0A6', min: 7.75, max: 8.125 },
+{ id: 't144', name: 'House trucks 144', meta: '144 mm hanger, 8.25″ axle', price: 57, color: '#D9DDE0', hanger: '#7D848A', min: 8.125, max: 8.375 },
+{ id: 't149', name: 'House trucks 149', meta: '149 mm hanger, 8.5″ axle', price: 59, color: '#E0B84F', hanger: '#B8912E', min: 8.375, max: 8.75 },
+{ id: 't159', name: 'House trucks 159', meta: '159 mm hanger, 9″ axle', price: 62, color: '#3A3A3A', hanger: '#222222', min: 8.75, max: 9.25 }
+],
+wheels: R.wheels.map(([id, brand, name, mm, duro, price, stock, color], i) => ({ id: 'w' + id, brand, name, mm, duro, meta: mm + ' mm, ' + duro, price, color, soldOut: !stock, pop: i, fresh: i })).concat([
+{ id: 'cruise60', brand: 'Retna Wheel Co.', name: 'Retna Cruiser, Mint', mm: '60', duro: '78A', meta: '60 mm, 78A, bearings included', price: 54.99, color: '#8FE3CF', bearings: true, soldOut: false, pop: 5, fresh: 0 }
+]),
+bearings: [
+{ id: 'house', name: 'House bearings', meta: 'Set of 8, standard 608', price: 19.99, color: '#C8CCD0' },
+{ id: 'swiss', name: 'Swiss bearings', meta: 'Set of 8, standard 608', price: 49.99, color: '#E0B84F' },
+{ id: 'ceramic', name: 'Ceramic bearings', meta: 'Set of 8, standard 608', price: 69.99, color: '#F4F1EA' }
+],
+hardware: [
+{ id: 'bubble', name: "Philly's Hardware, Bubblegum", meta: '1″, Allen key', price: 6.99, color: '#F7A1C4' },
+{ id: 'jade', name: "Philly's Hardware, Jade", meta: '1″, Allen key', price: 6.99, color: '#3BB273' },
+{ id: 'black', name: "Philly's Hardware, Black", meta: '1″, Phillips', price: 5.99, color: '#1A1A1A' }
+],
+grip: [
+{ id: 'camman', name: 'Graffic Grip, Cam Man', meta: '33″ × 9″ sheet', price: 15.99, color: '#232323', accent: '#F2E600' },
+{ id: 'plain', name: 'Black grip', meta: '33″ × 9″ sheet', price: 9.99, color: '#1A1A1A', accent: '#2A2A2A' },
+{ id: 'fur', name: 'Mumber-Fur grip', meta: '33″ × 9″ sheet', price: 12.5, color: '#3D2C4F', accent: '#C9B6E4' }
+],
+presets: [
+{ label: 'Street, 8.25″', deck: 'd1125', width: '8.25', trucks: 't144', wheels: 'w1960', bearings: 'house', hardware: 'bubble', grip: 'camman' },
+{ label: 'Bowl, 8.5″', deck: 'd1829', width: '8.5', trucks: 't149', wheels: 'w2113', bearings: 'swiss', hardware: 'black', grip: 'plain' }
+]
+};
+}
+reduced() {
+return typeof window !== 'undefined' && !!window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
+money(v) {
+return '$' + (Math.round(v * 100) / 100).toFixed(2);
+}
+fits(t, w) {
+return !!t && w >= t.min && w <= t.max;
+}
+bump(keys) {
+const f = Object.assign({}, this.state.flips);
+keys.forEach((k) => { f[k] = (f[k] || 0) + 1; });
+return f;
+}
+picked() {
+const C = this.catalog();
+const s = this.state;
+const find = (list, id) => list.find((x) => x.id === id) || null;
+return { deck: find(C.decks, s.deck), trucks: find(C.trucks, s.trucks), wheels: find(C.wheels, s.wheels), bearings: find(C.bearings, s.bearings), hardware: find(C.hardware, s.hardware), grip: find(C.grip, s.grip) };
+}
+recommended(w) {
+const C = this.catalog();
+return { trucks: C.trucks.find((t) => this.fits(t, w)) || null, wheels: C.wheels.find((x) => !x.soldOut) || null, bearings: C.bearings[0], hardware: C.hardware[0], grip: C.grip[0] };
+}
+totals() {
+const p = this.picked();
+const w = parseFloat(this.state.deckWidth) || 0;
+const r = this.recommended(w);
+let total = 0;
+let estimate = 0;
+let missing = false;
+const inc = !!(p.wheels && p.wheels.bearings);
+['deck', 'trucks', 'wheels', 'bearings', 'hardware', 'grip'].forEach((k) => {
+if (k === 'bearings' && inc) return;
+if (p[k]) { total += p[k].price; estimate += p[k].price; } else if (k !== 'deck' && r[k]) { estimate += r[k].price; missing = true; }
+});
+return { total, estimate: p.deck && missing ? estimate : 0 };
+}
+componentDidUpdate() {
+const t = this.totals().total;
+if (this._target === t) return;
+const from = this.state.shown;
+this._target = t;
+if (this._raf) cancelAnimationFrame(this._raf);
+const dur = this.reduced() ? 0 : 300;
+const start = performance.now();
+const tick = (now) => {
+const k = dur ? Math.min(1, (now - start) / dur) : 1;
+this.setState({ shown: from + (t - from) * (1 - Math.pow(1 - k, 3)) });
+if (k < 1) this._raf = requestAnimationFrame(tick);
+};
+this._raf = requestAnimationFrame(tick);
+}
+say(extra) {
+const p = this.picked();
+const parts = [];
+if (p.deck) parts.push('Deck: ' + p.deck.brand + ' ' + p.deck.name + ', ' + this.state.deckWidth + '″');
+if (p.trucks) parts.push('Trucks: ' + p.trucks.name);
+if (p.wheels) parts.push('Wheels: ' + p.wheels.name);
+if (p.bearings && !(p.wheels && p.wheels.bearings)) parts.push('Bearings: ' + p.bearings.name);
+if (p.hardware) parts.push('Hardware: ' + p.hardware.name);
+if (p.grip) parts.push('Grip tape: ' + p.grip.name);
+const t = this.totals();
+return (extra ? extra + ' ' : '') + 'The build so far: ' + (parts.join('; ') || 'nothing yet') + '. Total ' + this.money(t.total) + (t.estimate ? '. A complete board from about ' + this.money(t.estimate) : '') + '.';
+}
+pickDeck(d, width, extra) {
+const C = this.catalog();
+const w = parseFloat(width);
+const s = this.state;
+const t = C.trucks.find((x) => x.id === s.trucks);
+let notice = '';
+if (t && !this.fits(t, w)) {
+notice = t.name + ' lifted off: they don’t fit an ' + width + '″ deck. Pick trucks again.';
+this.setState({ leaving: 'trucks' });
+setTimeout(() => { this.setState({ trucks: '', leaving: '' }, () => this.setState({ status: this.say() })); }, this.reduced() ? 0 : 190);
+}
+this.setState({ deck: d.id, deckWidth: width, notice, flips: this.bump(['deck'].concat(extra || [])) }, () => this.setState({ status: this.say(notice) }));
+}
+pickPart(key, id) {
+const anim = key === 'trucks' ? ['trucks'] : (key === 'wheels' || key === 'bearings') ? ['wheels'] : key === 'grip' ? ['grip'] : [];
+this.setState({ [key]: id, notice: '', leaving: '', flips: this.bump(anim) }, () => this.setState({ status: this.say() }));
+}
+goTo(i) {
+this.setState({ step: i, notice: '', flips: this.bump(['panel']), flipped: this.catalog().steps[i][0] === 'grip' ? true : (i === 0 ? false : this.state.flipped) });
+}
+list(a, word) {
+return a.length < 2 ? a.join('') : a.slice(0, -1).join(', ') + ' ' + word + ' ' + a[a.length - 1];
+}
+norm(t) {
+return String(t).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[’'`]/g, '').replace(/[^a-z0-9.]+/g, ' ').trim();
+}
+near(a, b) {
+if (Math.abs(a.length - b.length) > 1) return false;
+let i = 0;
+let j = 0;
+let e = 0;
+while (i < a.length && j < b.length) {
+if (a[i] === b[j]) { i++; j++; continue; }
+e++;
+if (e > 1) return false;
+if (a.length > b.length) i++; else if (a.length < b.length) j++; else { i++; j++; }
+}
+return e + (a.length - i) + (b.length - j) <= 1;
+}
+textMatch(it, tokens) {
+const words = this.norm([it.brand, it.name, it.note || '', it.meta || ''].join(' ')).split(' ');
+return tokens.every((tk) => {
+if (it.widths && /^\d+(\.\d+)?$/.test(tk)) return it.widths.indexOf(String(parseFloat(tk))) >= 0;
+return words.some((w) => w.indexOf(tk) >= 0 || (tk.length >= 5 && this.near(w, tk)));
+});
+}
+chipStyle(on, dead) {
+return 'flex: none; min-height: 36px; padding: 0 12px; border-radius: 999px; white-space: nowrap; font-size: 13px; font-weight: 600; cursor: ' + (dead ? 'not-allowed' : 'pointer') + '; ' + (on ? 'background: #F2E600; color: #121212; border: 1px solid #F2E600;' : 'background: transparent; color: ' + (dead ? '#8C8880' : '#F4F1EA') + '; border: 1px solid ' + (dead ? '#3A3936' : '#5A5852') + ';');
+}
+setB(key, patch, anim) {
+const b = Object.assign({}, this.state.b, { [key]: Object.assign({}, this.state.b[key], patch) });
+this.setState(anim === false ? { b } : { b, flips: this.bump(['list']) });
+}
+setWidth(x) {
+const s = this.state;
+const d = this.catalog().decks.find((y) => y.id === s.deck);
+const b = Object.assign({}, s.b, { deck: Object.assign({}, s.b.deck, { n: 30 }) });
+if (d && d.widths.indexOf(x) >= 0) {
+this.setState({ width: x, b });
+this.pickDeck(d, x, ['list']);
+return;
+}
+if (d) {
+const notice = d.brand + ' ' + d.name + ' doesn’t come in ' + x + '″, so it’s off the board. Pick a deck in ' + x + '″.';
+this.setState({ width: x, b, deck: '', deckWidth: '', notice, flips: this.bump(['list']) }, () => this.setState({ status: this.say(notice) }));
+return;
+}
+this.setState({ width: x, b, flips: this.bump(['list']) });
+}
+browse(key, items, cfg) {
+const s = this.state;
+const own = !!s.b[key];
+const bs = s.b[key] || { f: {}, sort: 'popular', n: 999, sold: true, more: true };
+const facets = cfg.facets || [];
+const tokens = cfg.search ? this.norm(cfg.q || '').split(' ').filter(Boolean) : [];
+const sel = (k) => (bs.f && bs.f[k]) || [];
+const keep = (it, skip) => (!tokens.length || this.textMatch(it, tokens)) && facets.every((fc) => fc.key === skip || !sel(fc.key).length || sel(fc.key).indexOf(fc.val(it)) >= 0);
+const pool = items.filter((it) => keep(it, null));
+const rec = cfg.rec;
+const pop = (a, b) => (a.pop || 0) - (b.pop || 0);
+const len = (x) => (x.brand + x.name + (x.note || '')).length;
+const by = { popular: (a, b) => (rec && a.id === rec.id ? -1 : rec && b.id === rec.id ? 1 : pop(a, b)), newest: (a, b) => (a.fresh || 0) - (b.fresh || 0), low: (a, b) => a.price - b.price || pop(a, b), high: (a, b) => b.price - a.price || pop(a, b), long: (a, b) => len(b) - len(a) }[bs.sort] || pop;
+const live = pool.filter((it) => !it.soldOut).sort(by);
+const sold = pool.filter((it) => it.soldOut).sort(by);
+const list = bs.sort === 'long' ? live.concat(sold).sort(by) : (bs.sold ? live.concat(sold) : live);
+const page = list.slice(0, bs.n);
+const left = list.length - page.length;
+const tools = items.length > 12;
+const rows = tools ? facets.map((fc) => {
+const vals = [];
+items.forEach((it) => { const v = fc.val(it); if (vals.indexOf(v) < 0) vals.push(v); });
+let chips = vals.map((v) => ({ v, n: items.filter((it) => fc.val(it) === v && (bs.sold || !it.soldOut) && keep(it, fc.key)).length }));
+chips.sort(fc.byCount ? (a, b) => b.n - a.n || String(a.v).localeCompare(String(b.v)) : (a, b) => parseFloat(a.v) - parseFloat(b.v) || String(a.v).localeCompare(String(b.v)));
+const on = sel(fc.key);
+const cap = fc.cap || 99;
+const hidden = !bs.more && chips.length > cap + 1 ? chips.filter((c, i) => i >= cap && on.indexOf(c.v) < 0).length : 0;
+if (hidden) chips = chips.filter((c, i) => i < cap || on.indexOf(c.v) >= 0);
+const out = chips.map((c) => {
+const pressed = on.indexOf(c.v) >= 0;
+const dead = !pressed && c.n === 0;
+const label = fc.fmt ? fc.fmt(c.v) : c.v;
+return { label, count: String(c.n), pressed: pressed ? 'true' : 'false', disabled: dead, style: this.chipStyle(pressed, dead), aria: label + ', ' + c.n + (c.n === 1 ? ' match' : ' matches'), pick: () => { if (dead) return; this.setB(key, { f: Object.assign({}, bs.f, { [fc.key]: pressed ? on.filter((x) => x !== c.v) : on.concat([c.v]) }), n: 30 }); } };
+});
+if (hidden) out.push({ label: hidden + ' more', count: '', pressed: 'false', disabled: false, style: this.chipStyle(false, false), aria: 'Show ' + hidden + ' more', pick: () => this.setB(key, { more: true }, false) });
+return { label: fc.label, chips: out };
+}) : [];
+const active = tokens.length > 0 || facets.some((fc) => sel(fc.key).length > 0);
+const one = cfg.one || 'part';
+const many = cfg.many || 'parts';
+return {
+tools, search: !!cfg.search && items.length > 40, rows, page, tokens, liveCount: live.length,
+countText: live.length + ' ' + (live.length === 1 ? one : many) + ' in stock' + (active ? ' with these filters' : ''),
+sortSel: { popular: bs.sort === 'popular', newest: bs.sort === 'newest', low: bs.sort === 'low', high: bs.sort === 'high' },
+setSort: (e) => this.setB(key, { sort: e.target.value, n: 30 }),
+hasClear: active,
+clear: () => { const f = {}; facets.forEach((fc) => { f[fc.key] = []; }); this.setB(key, { f, n: 30 }); if (cfg.search) this.setState({ q: '' }); },
+hasMore: left > 0, moreLabel: 'Show ' + Math.min(30, left) + ' more', shownText: 'Showing ' + page.length + ' of ' + list.length,
+more: () => this.setB(key, { n: bs.n + 30 }, false),
+hasFold: own && !bs.sold && sold.length > 0 && left <= 0, foldLabel: 'Show ' + sold.length + ' sold out', fold: () => this.setB(key, { sold: true }, false),
+hasUnfold: own && bs.sold && sold.length > 0, unfold: () => this.setB(key, { sold: false, n: 30 }),
+empty: items.length > 0 && live.length === 0 && !(bs.sold && sold.length > 0),
+emptyText: sold.length ? 'Nothing in stock matches. ' + sold.length + ' sold-out ' + (sold.length === 1 ? one + ' does' : many + ' do') + '.' : 'Nothing matches' + (tokens.length ? ' “' + String(cfg.q).trim() + '”' : '') + '. Try fewer filters' + (cfg.search ? ' or another word' : '') + '.'
+};
+}
+renderVals() {
+const C = this.catalog();
+const s = this.state;
+const phone = (this.props.layout ?? 'desktop') === 'phone';
+const p = this.picked();
+const w = parseFloat(s.deckWidth) || 0;
+const r = this.recommended(w);
+const tot = this.totals();
+const f = s.flips;
+const ab = (n, a, b) => (n % 2 ? b : a);
+const stepKey = C.steps[s.step][0];
+const allWidths = [];
+C.decks.forEach((d) => d.widths.forEach((x) => { if (allWidths.indexOf(x) < 0) allWidths.push(x); }));
+allWidths.sort((a, b) => parseFloat(a) - parseFloat(b));
+const stockIn = (x) => C.decks.filter((d) => !d.soldOut && d.widths.indexOf(x) >= 0).length;
+const widthQ = allWidths.map((x) => {
+const n = stockIn(x);
+const on = s.width === x;
+const dead = n === 0;
+return { label: x + '″', count: String(n), pressed: on ? 'true' : 'false', disabled: dead, aria: x + ' inches, ' + (dead ? 'none in stock' : n + ' decks in stock'), style: this.chipStyle(on, dead) + (s.width ? '' : ' min-height: 44px; padding: 0 16px; font-size: 15px;'), pick: () => { if (!dead && !on) this.setWidth(x); } };
+});
+const noneIn = allWidths.filter((x) => stockIn(x) === 0).map((x) => x + '″');
+const deckItems = s.width ? C.decks.filter((d) => d.widths.indexOf(s.width) >= 0) : [];
+const dlv = this.browse('deck', deckItems, { search: true, q: s.q, one: 'deck', many: 'decks', facets: [{ key: 'brand', label: 'Brand', val: (d) => d.brand, byCount: true, cap: 5 }] });
+const quick = this.reduced();
+const deckCards = dlv.page.map((d, i) => {
+const on = s.deck === d.id;
+const others = d.widths.filter((x) => x !== s.width).map((x) => x + '″');
+return {
+brand: d.brand, name: d.name, note: d.note, hasNote: !!d.note, base: d.base, band: d.band, ring: d.ring, from: this.money(d.price),
+avail: d.soldOut ? 'Sold out in ' + s.width + '″' : (others.length ? 'Also in ' + this.list(others, 'and') : 'Only in ' + s.width + '″'),
+disabled: d.soldOut, pressed: on ? 'true' : 'false', cls: ab(f.list, 'cardA', 'cardB'),
+aria: (d.soldOut ? 'Sold out: ' : 'Choose ') + d.brand + ' ' + d.name + (d.note ? ', ' + d.note : '') + ', ' + s.width + ' inches, ' + this.money(d.price),
+style: 'animation-delay: ' + (quick ? 0 : Math.min(i % 30, 12) * 25) + 'ms; display: flex; gap: 12px; align-items: center; width: 100%; min-width: 0; box-sizing: border-box; text-align: left; padding: 12px; border-radius: 12px; background: #222220; color: #F4F1EA; font: inherit; overflow-wrap: anywhere; cursor: ' + (d.soldOut ? 'not-allowed' : 'pointer') + '; opacity: ' + (d.soldOut ? '0.55' : '1') + '; border: ' + (on ? '2px solid #F2E600' : '1px solid #2E2E2B') + ';',
+pick: () => { if (!d.soldOut) this.pickDeck(d, s.width); }
+};
+});
+const brandSel = s.b.deck.f.brand || [];
+const deckCount = s.width ? dlv.liveCount + ' ' + (dlv.liveCount === 1 ? 'deck' : 'decks') + ' in stock in ' + s.width + '″' + (brandSel.length ? ' from ' + this.list(brandSel, 'or') : '') + (dlv.tokens.length ? ' matching “' + s.q.trim() + '”' : '') : '';
+const none = () => {};
+const blank = { tools: false, search: false, rows: [], page: [], sortSel: {}, setSort: none, hasClear: false, clear: none, hasMore: false, more: none, moreLabel: '', shownText: '', hasFold: false, fold: none, foldLabel: '', hasUnfold: false, unfold: none, empty: false, emptyText: '' };
+const optionLists = { trucks: C.trucks.filter((t) => !w || this.fits(t, w)), wheels: C.wheels, bearings: (p.wheels && p.wheels.bearings) ? [] : C.bearings, hardware: C.hardware, grip: C.grip };
+const recText = { trucks: 'Recommended for your ' + (s.deckWidth || '') + '″ deck', wheels: 'Recommended for your trucks', bearings: 'Recommended', hardware: 'Recommended', grip: 'Recommended' };
+const leads = { trucks: 'Only trucks that fit your deck are shown.', wheels: 'Every wheel here fits your trucks.', bearings: (p.wheels && p.wheels.bearings) ? 'Your wheels come with bearings, so there is nothing to pick here.' : 'Eight bearings, two a wheel. Every set here fits every wheel.', hardware: 'Bolts that suit your deck and trucks.', grip: 'Turn the board over to see it laid on the deck.' };
+const isOptions = ['trucks', 'wheels', 'bearings', 'hardware', 'grip'].indexOf(stepKey) >= 0;
+const olv = isOptions ? this.browse(stepKey, optionLists[stepKey], stepKey === 'wheels' ? { rec: r.wheels, one: 'wheel', many: 'wheels', facets: [{ key: 'brand', label: 'Brand', val: (x) => x.brand, byCount: true, cap: 5 }, { key: 'mm', label: 'Diameter', val: (x) => x.mm, fmt: (v) => v + ' mm' }, { key: 'duro', label: 'Hardness', val: (x) => x.duro }] } : { rec: r[stepKey] }) : null;
+const options = olv ? olv.page.map((o, i) => {
+const on = s[stepKey] === o.id;
+const delta = p[stepKey] ? o.price - p[stepKey].price : o.price;
+return {
+name: o.name, meta: o.meta + (o.soldOut ? ' · Sold out' : ' · In stock'), disabled: !!o.soldOut, pressed: on ? 'true' : 'false', cls: ab(f.list, 'cardA', 'cardB'),
+rec: !!r[stepKey] && r[stepKey].id === o.id, recText: recText[stepKey],
+price: on ? 'Picked' : (delta >= 0 ? '+' : '−') + this.money(Math.abs(delta)),
+swatch: 'width: 30px; height: 30px; border-radius: 999px; flex: none; background: ' + o.color + '; border: 2px solid #5A5852;',
+style: 'animation-delay: ' + (quick ? 0 : Math.min(i % 30, 12) * 25) + 'ms; display: flex; align-items: center; gap: 12px; width: 100%; min-height: 68px; overflow-wrap: anywhere; padding: 10px 14px; border-radius: 12px; background: #222220; cursor: ' + (o.soldOut ? 'not-allowed' : 'pointer') + '; opacity: ' + (o.soldOut ? '0.55' : '1') + '; border: ' + (on ? '2px solid #F2E600' : '1px solid #2E2E2B') + ';',
+pick: () => { if (!o.soldOut) this.pickPart(stepKey, o.id); }
+};
+}) : [];
+const lv = stepKey === 'deck' ? dlv : (olv || blank);
+const hiddenTrucks = stepKey === 'trucks' && w ? C.trucks.length - optionLists.trucks.length : 0;
+const rail = C.steps.map(([k, label], i) => {
+const done = k !== 'review' && (!!p[k] || (k === 'bearings' && !!(p.wheels && p.wheels.bearings)));
+const current = i === s.step;
+const locked = i > 0 && !p.deck;
+return { label, mark: done ? '✓' : String(i + 1), current: current ? 'step' : undefined, locked, go: () => { if (!locked) this.goTo(i); }, style: 'min-height: 36px; white-space: nowrap; padding: 0 12px; border-radius: 999px; cursor: ' + (locked ? 'not-allowed' : 'pointer') + '; font-size: 13px; font-weight: 600; ' + (current ? 'background: #F2E600; color: #121212; border: 1px solid #F2E600;' : done ? 'background: transparent; color: #F4F1EA; border: 1px solid #F2E600;' : 'background: transparent; color: ' + (locked ? '#8C8880' : '#F4F1EA') + '; border: 1px solid #3A3936;') };
+});
+const inc = !!(p.wheels && p.wheels.bearings);
+const reviewRows = [['deck', 'Deck'], ['trucks', 'Trucks'], ['wheels', 'Wheels'], ['bearings', 'Bearings'], ['hardware', 'Hardware'], ['grip', 'Grip tape']].map(([k, label], i) => ({
+slot: label, name: (k === 'bearings' && inc) ? 'Included with your wheels' : (p[k] ? (k === 'deck' ? p[k].brand + ' ' + p[k].name + ', ' + s.deckWidth + '″' : p[k].name) : 'Not picked yet'), price: (k === 'bearings' && inc) ? '' : (p[k] ? this.money(p[k].price) : ''), aria: 'Change ' + label.toLowerCase(), change: () => this.goTo(i)
+}));
+const complete = ['deck', 'trucks', 'wheels', 'bearings', 'hardware', 'grip'].every((k) => !!p[k] || (k === 'bearings' && inc));
+const onReview = stepKey === 'review';
+const art = {
+base: p.deck ? p.deck.base : '#333', band: p.deck ? p.deck.band : '#555', ring: p.deck ? p.deck.ring : '#555',
+truck: p.trucks ? p.trucks.color : '#999', hanger: p.trucks ? p.trucks.hanger : '#777', wheel: p.wheels ? p.wheels.color : '#ccc',
+grip: p.grip ? p.grip.color : '#222', gripAccent: p.grip ? p.grip.accent : '#333', bolt: p.hardware ? p.hardware.color : '#999'
+};
+const boardLabel = p.deck ? 'Your board from underneath: ' + p.deck.brand + ' ' + p.deck.name + ' deck' + (p.trucks ? ', ' + p.trucks.name : '') + (p.wheels ? ', ' + p.wheels.name : '') : 'No deck picked yet';
+const nextLabel = onReview ? (complete ? 'Add to cart' : 'Pick every part first') : 'Next: ' + C.steps[s.step + 1][1];
+const nextDisabled = (s.step === 0 && !p.deck) || (onReview && !complete);
+const fsel = (s.b[stepKey] && s.b[stepKey].f) || {};
+const nActive = Object.keys(fsel).reduce((n, k) => n + fsel[k].length, 0);
+return {
+isDesktop: !phone,
+rootStyle: 'width: ' + (phone ? 390 : 1440) + 'px; height: ' + (phone ? 844 : 900) + 'px; box-sizing: border-box; overflow: hidden; position: relative; display: flex; flex-direction: column; background: #121212; color: #F4F1EA; font-family: Inter, system-ui, sans-serif;',
+headerStyle: 'flex: none; height: ' + (phone ? 52 : 56) + 'px; box-sizing: border-box; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 0 ' + (phone ? 16 : 24) + 'px; border-bottom: 1px solid #2E2E2B;',
+bodyStyle: 'flex: 1; min-height: 0; display: flex; flex-direction: ' + (phone ? 'column' : 'row') + ';',
+stageStyle: phone ? 'flex: 0 0 300px; position: relative; display: flex; align-items: center; justify-content: center; overflow: hidden; background: #171716;' : 'flex: 0 0 60%; position: relative; display: flex; align-items: center; justify-content: center; overflow: hidden; background: #171716;',
+floorStyle: phone ? 'position: absolute; left: 50%; top: 58%; width: 300px; height: 40px; margin-left: -150px; border-radius: 50%; background: #000000; opacity: 0.35; filter: blur(14px);' : 'position: absolute; left: 50%; bottom: 52px; width: 300px; height: 44px; margin-left: -150px; border-radius: 50%; background: #000000; opacity: 0.45; filter: blur(16px);',
+boardWrapStyle: phone ? 'position: relative; width: 86px; height: 310px; transform: rotate(-90deg); perspective: 1200px;' : 'position: relative; width: 206px; height: 740px; perspective: 1800px;',
+flipperStyle: 'position: absolute; inset: 0; transform-style: preserve-3d; transition: transform 400ms cubic-bezier(.2,.7,.2,1); transform: rotateY(' + (s.flipped ? 180 : 0) + 'deg);',
+flipStyle: phone ? 'position: absolute; right: 12px; bottom: 22px; min-height: 40px; padding: 0 14px; border-radius: 999px; border: 1px solid #5A5852; background: #121212; cursor: pointer; font-size: 13px; font-weight: 600;' : 'position: absolute; right: 24px; bottom: 24px; min-height: 44px; padding: 0 18px; border-radius: 999px; border: 1px solid #5A5852; background: #121212; cursor: pointer; font-size: 14px; font-weight: 600;',
+panelStyle: phone ? 'flex: 1; min-height: 0; display: flex; flex-direction: column; position: relative; margin-top: -14px; border-radius: 16px 16px 0 0; background: #1B1B1A; border-top: 1px solid #2E2E2B;' : 'flex: 1; min-width: 0; display: flex; flex-direction: column; background: #1B1B1A; border-left: 1px solid #2E2E2B;',
+footerStyle: 'flex: none; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: ' + (phone ? '10px 16px 14px' : '14px 18px') + '; border-top: 1px solid #2E2E2B; background: #1B1B1A;',
+gridStyle: 'display: grid; grid-template-columns: repeat(' + (phone ? 1 : 2) + ', minmax(0, 1fr)); gap: 10px;',
+nextStyle: 'min-height: 48px; padding: 0 18px; border-radius: 10px; border: none; white-space: nowrap; cursor: ' + (nextDisabled ? 'not-allowed' : 'pointer') + '; font-weight: 700; font-size: 15px; background: ' + (nextDisabled ? '#3A3936' : '#F2E600') + '; color: ' + (nextDisabled ? '#B5B1A8' : '#121212') + ';',
+cart: s.cart, cartLabel: 'Cart, ' + s.cart + ' item' + (s.cart === 1 ? '' : 's'), cartAnim: s.flips.cart ? ab(f.cart, 'bumpA', 'bumpB') : '',
+stageSub: s.flipped ? 'Seen from the top' : 'Seen from underneath', flipPressed: s.flipped ? 'true' : 'false', flip: () => this.setState({ flipped: !s.flipped }),
+noDeck: !p.deck, hasDeck: !!p.deck, hasTrucks: !!p.trucks, hasWheels: !!p.wheels, hasGrip: !!p.grip, hasBolts: !!p.hardware,
+deckAnim: ab(f.deck, 'landA', 'landB'), trucksAnim: s.leaving === 'trucks' ? 'leave' : ab(f.trucks, 'trkA', 'trkB'),
+wheelsLAnim: ab(f.wheels, 'whlLA', 'whlLB'), wheelsRAnim: ab(f.wheels, 'whlRA', 'whlRB'), gripAnim: ab(f.grip, 'layA', 'layB'),
+panelAnim: ab(f.panel, 'panA', 'panB'),
+art, boardLabel, topLabel: p.deck ? 'Your board from the top' + (p.grip ? ', with ' + p.grip.name : ', bare maple') : 'No deck picked yet',
+rail, hasNotice: !!s.notice, notice: s.notice, status: s.status,
+onDeck: stepKey === 'deck', onOptions: isOptions, onReview,
+deckLead: s.width ? 'Pick a graphic. You can change the width any time.' : 'Start with your width. Every deck and every part after it will fit it.',
+widthQuestion: s.width ? 'Width' : 'What width do you ride?', widthQ,
+widthRowStyle: 'display: flex; gap: 6px; ' + (s.width && phone ? 'flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px;' : 'flex-wrap: wrap;'),
+noWidth: !s.width, hasWidth: !!s.width, hasWidthNote: noneIn.length > 0, widthNote: 'Nothing in ' + this.list(noneIn, 'or') + ' is in stock right now.',
+help: !!s.help, helpPressed: s.help ? 'true' : 'false', toggleHelp: () => this.setState({ help: !s.help }),
+q: s.q, setQ: (e) => this.setState({ q: e.target.value, b: Object.assign({}, s.b, { deck: Object.assign({}, s.b.deck, { n: 30 }) }) }),
+deckCards, lv, listCount: stepKey === 'deck' ? deckCount : (olv ? olv.countText : ''),
+sortPopular: !!lv.sortSel.popular, sortNewest: !!lv.sortSel.newest, sortLow: !!lv.sortSel.low, sortHigh: !!lv.sortSel.high,
+chipRowStyle: 'display: flex; gap: 6px; ' + (phone ? 'flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px;' : 'flex-wrap: wrap;'),
+isPhone: phone, showRows: !phone || !!s.filters, filtersPressed: s.filters ? 'true' : 'false',
+toggleFilters: () => this.setState({ filters: !s.filters }),
+filtersLabel: (s.filters ? 'Hide filters' : 'Filters') + (nActive ? ' (' + nActive + ')' : ''),
+filtersStyle: 'min-height: 36px; padding: 0 12px; border-radius: 999px; cursor: pointer; font-size: 13px; font-weight: 600; white-space: nowrap; background: transparent; color: #F4F1EA; border: 1px solid ' + (nActive ? '#F2E600' : '#5A5852') + ';',
+reviewSlotStyle: phone ? 'flex: 0 0 100%; font-size: 12px; color: #B5B1A8;' : 'width: 84px; font-size: 13px; color: #B5B1A8;',
+presets: C.presets.map((pr) => ({ label: pr.label, pick: () => this.setState({ deck: pr.deck, deckWidth: pr.width, width: pr.width, trucks: pr.trucks, wheels: pr.wheels, bearings: pr.bearings, hardware: pr.hardware, grip: pr.grip, notice: 'Started from the ' + pr.label + ' build. Change any part you like.', leaving: '', flips: this.bump(['deck', 'trucks', 'wheels', 'grip']) }, () => this.setState({ status: this.say() })) })),
+stepTitle: isOptions ? C.steps[s.step][1] : '', stepLead: isOptions ? leads[stepKey] : '', options,
+hasHidden: hiddenTrucks > 0, hiddenText: hiddenTrucks + ' more trucks don’t fit an ' + s.deckWidth + '″ deck, so they’re hidden.',
+reviewRows,
+save: () => this.setState({ notice: 'Saved to My builds. Open it from your account any time.' }),
+share: () => this.setState({ notice: 'Link copied. Anyone with it sees this build.' }),
+shownTotal: this.money(s.shown), hasEstimate: !!tot.estimate, estimateText: 'Complete board from about ' + this.money(tot.estimate),
+canBack: s.step > 0, back: () => this.goTo(s.step - 1),
+nextLabel, nextDisabled,
+next: () => {
+if (nextDisabled) return;
+if (onReview) { this.setState({ cart: s.cart + 1, notice: 'The build is in your cart.', flips: this.bump(['cart']) }); return; }
+this.goTo(s.step + 1);
+}
+};
+}
+}
+
+let C = null;
+let first = true;
+function render() {
+  const root = document.getElementById('root');
+  const ae = document.activeElement;
+  const focusId = ae && ae.id ? ae.id : '';
+  const caret = ae && typeof ae.selectionStart === 'number' ? ae.selectionStart : null;
+  const scroller = root.querySelector('[style*="overflow-y: auto"]');
+  const top = scroller ? scroller.scrollTop : 0;
+  const v = C.renderVals();
+  root.replaceChildren(...Array.from(document.getElementById('tpl').content.childNodes).flatMap((n) => proc(n, v)));
+  const s2 = root.querySelector('[style*="overflow-y: auto"]');
+  if (s2) s2.scrollTop = top;
+  if (focusId) { const el = document.getElementById(focusId); if (el) { el.focus(); if (caret !== null && el.setSelectionRange) el.setSelectionRange(caret, caret); } }
+  if (!first && C.componentDidUpdate) { const f = C.__render; C.__render = null; C.componentDidUpdate(); C.__render = f; }
+  first = false;
+}
+function boot() {
+  first = true;
+  C = new Component({ layout: document.getElementById('proto-layout').value, scenario: document.getElementById('proto-scenario').value });
+  C.__render = render;
+  render();
+  window.C = C;
+}
+document.getElementById('proto-layout').addEventListener('change', boot);
+document.getElementById('proto-scenario').addEventListener('change', boot);
+boot();
+</script>
+</body>
+</html>

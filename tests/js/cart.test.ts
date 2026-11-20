@@ -74,6 +74,16 @@ describe( 'the build as the Store API takes it', () => {
 		} );
 	} );
 
+	it( 'takes as a pick only a field named as one, whole', () => {
+		expect(
+			body( [
+				[ 'add-to-cart', '7' ],
+				[ 'old-cbuild[picks][deck]', '101' ],
+				[ 'cbuild[picks][deck][]', '102' ],
+			] )
+		).toEqual( { id: 7, quantity: 1, cbuild: { picks: {} } } );
+	} );
+
 	it( 'carries the build it replaces, where Edit build sent one', () => {
 		expect(
 			body( [

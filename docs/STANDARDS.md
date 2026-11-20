@@ -66,7 +66,7 @@ tools/                    gates.sh, integration/ (PHPUnit 9.6), build, release, 
 ## PHP
 
 - PHP 8.5 is the floor (as Creative Search, D-023). `composer.json` pins `platform.php` to `8.5.99`, so no dependency can need more than the floor.
-- `declare( strict_types=1 );` in every file. Classes are `final` unless built to be extended. Value objects are `readonly`. Enums stand in for string constants. Use typed constants, `#[\Override]` and property hooks where they make the code clearer, and PHP 8.5's pipe operator where it reads better.
+- `declare( strict_types=1 );` in every file. Every file under `src/` outside the domain stops when requested directly (`if ( ! defined( 'ABSPATH' ) ) { exit; }`, after its `use` lines); gate 17 holds both. Classes are `final` unless built to be extended. Value objects are `readonly`. Enums stand in for string constants. Use typed constants, `#[\Override]` and property hooks where they make the code clearer, and PHP 8.5's pipe operator where it reads better.
 - No globals, no static state outside the bootstrap and the container, no service locator inside the domain.
 - Errors are typed exceptions in the domain, turned into `WP_Error` or notices at the edges. No `@` suppression, and no catch that hides an error.
 - **Naming:**
@@ -212,7 +212,7 @@ tools/                    gates.sh, integration/ (PHPUnit 9.6), build, release, 
 
 - **Branches:** `main` is protected. Each milestone works on its own branch (`m6-builder`) and lands through one pull request, using the template in `.github/`.
 - **Commits:** an area and an imperative summary (`Cart: keep a build's parts with their parent`), with D-numbers where a decision is involved, as the family's repositories do. Small, each green.
-- **Versions:** milestones tag `v0.<n>.0`; milestone 10 tags `v1.0.0` (D-236). Semantic Versioning from 1.0, with the public API rules in `AUDIT.md`. The version lives in the plugin header, `readme.txt`'s stable tag, `package.json` and a constant, kept in step by the build script.
+- **Versions:** milestones tag `v0.<n>.0`; milestone 10 tags `v1.0.0` (D-236). Semantic Versioning from 1.0, with the public API rules in `AUDIT.md`. The version lives in the plugin header, `readme.txt`'s stable tag, `package.json` and a constant, kept in step by the build script, and in each block's `block.json`, which WordPress writes on the block's stylesheet and script as their `ver`: gate 16 holds it to the constant.
 - **Changelog:** `CHANGELOG.md` in Keep a Changelog's sections (Added, Changed, Deprecated, Removed, Fixed, Security), one entry per milestone. `readme.txt`'s `== Changelog ==` is written by hand for shop owners, a line or two per release in plain words, and is what the update's "View details" popup and the release's notes show (D-053).
 - **Releases:** `.github/workflows/release.yml`, copied from Creative Search and kept the same:
   - It runs on a version tag once CI has passed on that commit.

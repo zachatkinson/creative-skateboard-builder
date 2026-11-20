@@ -9,6 +9,10 @@ declare( strict_types=1 );
 
 namespace CreativeBranding\SkateboardBuilder\Service;
 
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 /**
  * What WooCommerce's Order again needs of a build on an order (D-137): what the order's snapshot asks for, to be
  * judged again as the shop is now, and whether the lines WooCommerce put back make a whole build. WooCommerce leaves

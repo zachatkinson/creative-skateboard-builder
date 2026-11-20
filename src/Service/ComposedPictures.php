@@ -278,6 +278,23 @@ final class ComposedPictures {
 	}
 
 	/**
+	 * A preset's tile picture: the cart's square, once made; until then null, and it is asked for as a page asks
+	 * (D-252).
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param int                $kit   The kit product's ID.
+	 * @param array<string, int> $picks The preset's picks.
+	 */
+	public function tile( int $kit, array $picks ): ?string {
+		$url = $this->url( $kit, $picks, self::CART );
+		if ( null === $url ) {
+			$this->ask( $kit, $picks, self::FROM_PAGE );
+		}
+		return $url;
+	}
+
+	/**
 	 * Whether a build's picture for this use can be drawn on this host: it has something to draw, and a library reads
 	 * the layers and writes the canvas. A page whose picture cannot be is not waiting for one (the audit of the fixes; D-212).
 	 *

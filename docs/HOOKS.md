@@ -63,7 +63,7 @@ Per site, each named with the site's table prefix first (`wp_cbuild_specs` on a 
 | --- | --- | --- |
 | `cbuild_specs` | 0.1.0 | One row per part and spec: the index the fit engine reads, filled from 0.3.0. |
 | `cbuild_builds` | 0.1.0 | Saved builds, filled from 0.8.0. |
-| `cbuild_parts` | 0.4.0 | What a build needs to know of each part, one row per product or variation and price context: whether it may be sold, its brand, price, stock, a variation's attribute values and its specs. Derived from the shop: a row is deleted when its part moves and read again when next asked for, so a row is never the place to change a part. To have rows read again, do `cbuild_parts_changed`. |
+| `cbuild_parts` | 0.4.0 | What a build needs to know of each part, one row per product or variation and price context: whether it may be sold, its brand, price, stock, a variation's attribute values and its specs; from 1.0.0 also the part's look and card as the builder shows them, kept for an hour (D-289). Derived from the shop: a row is read again when its part moves, so a row is never the place to change a part. To have rows read again, do `cbuild_parts_changed`. |
 
 ### Scheduled actions
 
@@ -91,7 +91,7 @@ A kit is four JSON documents. Each has a JSON Schema (draft 4) in the plugin's `
 | --- | --- | --- |
 | `schema/kit-slots.json` | 0.2.0 | The kit's slots in step order, 1 to 20, the deck first: each one's key, label, help, whether it is required, the units a build takes, its default part and where its parts come from (categories, brands, products, attribute terms). |
 | `schema/kit-rules.json` | 0.2.0 | Each fit rule, R1 to R6, on or off, with R1's tolerances, R3's limits by height class and its riser table, and whether R6 checks a deck's length. Measures are decimal strings in the rule's unit, with no unit mark. |
-| `schema/kit-presets.json` | 0.2.0 | Up to six presets: a name, a description and a part for each slot it fills. |
+| `schema/kit-presets.json` | 0.2.0 | Up to six presets: a name, a description and a part for each slot it fills; from 1.0.0 also an optional `image`, a rider photo's attachment ID for the preset's tile (D-252). |
 | `schema/kit-assembly.json` | 0.2.0 | Whether assembly is on by default, its fee as a decimal string in the shop's currency, the lead time and the returns notice. |
 | `schema/kit-picture.json` | 0.7.0 | The picture's settings: the field order, slot keys from the bottom of the stack, each once, 20 at most; and the field wheelbase, where the trucks sit on a deck that gives none, inches as a decimal string from 10 to 20, or empty. A slot the order leaves out is drawn after it in the usual order (deck, grip, trucks, wheels), and a key the kit has no slot for is passed over. Unlike the other four, a kit may have none: it is drawn in the usual order with the wheelbase guessed from the deck's shape (D-192). |
 
@@ -121,6 +121,7 @@ The keys a part's specs are stored under: in the specs index (`cbuild_specs`), i
 | `baseplate` | 0.2.0 | Choice | `new_school`, `old_school`, `both` | The mounting pattern a truck's baseplate takes. |
 | `axle_diameter` | 0.2.0 | Measure | mm | A truck's axle diameter. |
 | `wheel_diameter` | 0.2.0 | Measure | mm | A wheel's diameter. |
+| `bearings_included` | 1.0.0 | Flag | | Whether wheels come with their bearings, so they take no others and fill the kit's Bearings slot (D-246). |
 | `riser_thickness` | 0.2.0 | Measure | in | A riser's thickness. |
 | `bolt_length` | 0.2.0 | Measure | in | The length of a hardware set's bolts. |
 | `bearing_bore` | 0.2.0 | Measure | mm | A bearing's bore. |
@@ -147,11 +148,16 @@ Severities, since 0.2.0: `fits` (a note: a default was taken for a spec the part
 | `wheel_needs_riser` | 0.2.0 | R3 | Warn | `wheel_diameter`, `limit`, `over`, `riser` | The wheel is over the truck's limit; a riser of at least `riser` clears it. |
 | `wheel_no_riser` | 0.2.0 | R3 | Warn | `wheel_diameter`, `limit`, `over` | The wheel is further over the limit than any riser in the kit's table covers. |
 | `limit_from_class` | 0.2.0 | R3 | Fits | `height_class`, `limit` | The truck gives no largest wheel, so its height class's limit was used. |
+| `riser_not_in_stock` | 1.0.0 | R3 | Block | `wheel_diameter`, `limit`, `over`, `riser` | The wheels step hides the wheel: no riser of at least `riser` is in stock (D-245). |
+| `riser_no_bolts` | 1.0.0 | R3 | Block | `wheel_diameter`, `limit`, `over`, `riser` | The wheels step hides the wheel: risers that clear it are in stock, and no bolts in stock reach through them (D-245). |
+| `riser_no_slot` | 1.0.0 | R3 | Block | `wheel_diameter`, `limit`, `over`, `riser` | The wheels step hides the wheel: it needs a riser and the kit has no Risers slot (D-245). |
 | `bolts_too_short` | 0.2.0 | R4 | Block | `bolt_length`, `shortest`, `usual`, `riser_thickness` | The bolts are shorter than 7/8 in plus the riser. |
 | `bolts_too_long` | 0.2.0 | R4 | Warn | `bolt_length`, `shortest`, `usual`, `riser_thickness` | The bolts are more than 1/4 in longer than usual and will stand proud. |
+| `riser_bolts_short` | 1.0.0 | R4 | Block | `riser_thickness`, `shortest` | The risers step hides the riser: no bolts in stock are `shortest` or longer (D-245). |
 | `bore_mismatch` | 0.2.0 | R5 | Block | `bearing_bore`, `axle_diameter` | The bearing's bore is not the axle's diameter. |
 | `axle_assumed` | 0.2.0 | R5 | Fits | `axle_diameter` | The truck gives no axle diameter and was counted as 8 mm. |
 | `spacers_built_in` | 0.2.0 | R5 | Block | None | The bearings have their spacers built in, so separate spacers are not offered. As a spec key it is the bearing's flag. |
+| `bearings_included` | 1.0.0 | R5 | Block | None | The wheels come with their bearings, so a separate bearing is not offered. As a spec key it is the wheels' flag. |
 | `grip_too_narrow` | 0.2.0 | R6 | Block | `grip_width`, `deck_width` | The sheet is narrower than the deck. |
 | `grip_too_short` | 0.2.0 | R6 | Block | `grip_length`, `deck_length` | The sheet is shorter than the deck. |
 | `length_unchecked` | 0.2.0 | R6 | Fits | None | The deck gives no length, so the length check was skipped. |
@@ -286,13 +292,14 @@ The CSV file that WooCommerce > Builder > Import and export writes and reads. On
 | `name` | 0.3.0 | Its name, for the reader. | Passed over. |
 | `spec_table` | 0.3.0 | The name of the spec table it names, empty for none. | A spec table's name. Empty removes it. |
 | `spec_size` | 0.3.0 | The size it names. | A size. With a table, it must be one of the table's. Empty removes it. |
+| `layer_image` | 1.0.0 | The file name of its own Layer image, as uploaded, empty for none. A variation's parent's is not written. | An attachment's ID, or the file name of an image in the Media Library, held to the Layer image field's rules. A name more than one image has is refused, and the row names their IDs. Empty leaves a product's image as it is, and takes a variation's own away, so it takes its parent's. A change is saved through the product, which queues its index job and the image's copies. The product image and gallery are left as they are (D-287). |
 | One per spec key | 0.3.0 | The part's own value, as stored. What it takes from a chart, an attribute or its parent is not written. | A value, read as the Part specs panel reads one: the shop's decimal separator or a point, or a fraction. Empty removes it. |
 
 An import reads a file of 2 MB and 5,000 rows at most, comma- or semicolon-separated, in UTF-8 with or without the mark. A heading is matched whatever its case, and a column the sheet does not have is passed over. A column the file leaves out is left as it is. A cell that an export neutralised with a leading apostrophe is read without it. A row with anything wrong in it is not written at all.
 
 Why a file is not read: `upload_missing`, `upload_failed`, `upload_not_csv`, `file_too_big`, `file_not_utf8`, `file_empty`, `rows_too_many`, `key_column_missing`, `column_twice`, `no_spec_columns` and `import_running`.
 
-Why a row is not written: `key_missing`, `key_twice`, `part_missing`, `sku_mismatch`, `table_unknown`, `table_ambiguous`, `table_missing`, `size_missing`, `size_long`, and the refusal codes of a value (`measure_malformed`, `measure_zero_denominator`, `measure_negative`, `spec_unknown_choice`, `spec_not_positive`, `spec_wrong_kind`).
+Why a row is not written: `key_missing`, `key_twice`, `part_missing`, `sku_mismatch`, `table_unknown`, `table_ambiguous`, `table_missing`, `size_missing`, `size_long`, and the refusal codes of a value (`measure_malformed`, `measure_zero_denominator`, `measure_negative`, `spec_unknown_choice`, `spec_not_positive`, `spec_wrong_kind`), and from 1.0.0 a layer image's: `layer_not_image`, `layer_not_found`, `layer_ambiguous`, `layer_wrong_type`, `layer_unreadable`, `layer_opaque` and `layer_too_small`.
 
 ### The Catalogue check
 
@@ -312,6 +319,7 @@ What WooCommerce > Builder > Catalogue check lists, each a `Service\CheckFinding
 | `spec_assumed` | 0.3.0 | A kit, a slot, a part and a spec | A rule went without the spec and assumed the usual: the hole pattern, the axle's diameter, the deck's length, or the wheel a truck clears. |
 | `preset_broken` | 0.3.0 | A kit, a slot and a part | A preset names a part that is gone from its slot, is sold out, or no longer fits the preset's other parts. `values` holds the preset's name and the build problem's code. |
 | `layer_missing` | 0.7.0 | A kit, a slot and a part | A part of a slot the picture draws (deck, grip, trucks, wheels) has no layer image of its own or its parent's, or its image is no longer in the Media Library, so the picture shows its labelled photo. Listed after every other finding. The screen links to the part's Layer image field. |
+| `look_shared` | 1.0.0 | A kit, a slot and a product | The product's parts in the slot share a photo and a layer image, so the builder shows them as one card and asks for what tells them apart after the pick. `values.parts` lists their IDs. Listed after the parts with no layer image, in a list of its own, and not counted as a fix (D-281). |
 
 The kit codes are found once the shop has a kit, which milestone 4 builds: until then `Port\Kits` answers with none, and the screen says so.
 
@@ -379,6 +387,7 @@ Each is on a kit product, as JSON text, and is the document its schema describes
 | `_cbuild_presets` | 0.4.0 | `schema/kit-presets.json` | Up to six ready builds. |
 | `_cbuild_assembly` | 0.4.0 | `schema/kit-assembly.json` | Assembly: on or off to start, the fee, the lead time and the returns notice. |
 | `_cbuild_picture` | 0.7.0 | `schema/kit-picture.json` | The picture: the layer order and the trucks' anchor on a deck with no wheelbase. A kit may have none. |
+| `_cbuild_layout` | 1.0.0 | `schema/kit-layout.json` | The builder's layout: the stage's side and the board's size on a desktop, and the steps' search (D-255). A kit may have none, and has the defaults. |
 
 ### The state route
 
@@ -397,6 +406,13 @@ It reads and changes nothing. Its arguments travel in the query:
 | `locale` | 0.4.0 | The language to answer in, such as `fr_CA`. The answer is in it when the site has it installed, and in the site's own otherwise. |
 | `cbuild[…]` | 0.6.0 | A build link, as a page's address holds it (The build link, under Milestone 6). It takes the place of `picks`, `previous`, `step` and `assembly`, and sent beside any of them is refused as `rest_invalid_param`. The answer is what the builder's page shows for the link, with `view` added. `cbuild=` with nothing in it is the clean page. |
 | `page` | 0.6.0 | With `cbuild`: the ID of the post the builder is on, for the addresses in `view`. A post a visitor may not see, or one whose Builder block is not this kit's, is not used, and the addresses go to where the kit's builder is (`cbuild_builder_url`). |
+| `width` | 1.0.0 | The deck width the `shelf` lists, as its `widths` name one: `8.25in`, `210mm`. Other steps keep it, for the visit. |
+| `chips[<group>][]` | 1.0.0 | The chips chosen: four groups at most, each `brand`, the slot's size spec's key or an attribute's taxonomy, with 20 values at most, each a slug or a size as the chips name it. Values in a group widen, and groups narrow each other. |
+| `q` | 1.0.0 | A search of the step, 100 characters at most. Matched against each look's brand, name, size and values, with accents and case folded, or ranked by Creative Search where it answers `csearch_ranked_ids` (D-248). The builder keeps it nowhere; where Creative Search ranks it, Creative Search keeps it in its own search log under the source `builder` (PRIVACY.md). |
+| `sort` | 1.0.0 | `recommended` (the default), `price-asc`, `price-desc` or `newest`. |
+| `from` | 1.0.0 | Where the shelf's page of 30 starts, as the last answer's `shelf.more` said: 0 to 500, the most a step lists. |
+
+Beside `cbuild`, the five shelf arguments change what the link asks of the shelf, and the view's addresses follow.
 
 | Schema | Since | What the document holds |
 | --- | --- | --- |
@@ -602,7 +618,7 @@ The plugin writes a link in one order: the kit's slots in step order, then the s
 
 No slot is keyed `step`, `assembly`, `preset` or `review`; a slots document with one is refused as `document_bad_key`. A kit saved by 0.4.0 or 0.5.0 with one has it renamed `<key>_slot` on upgrade (D-169).
 
-Keys that start with an underscore are the builder's own forms' and are not part of a shared link. They may change in any release: `_was` (the picks before a change, slot key to part ID), `_brand` and `_size` (the step's filters), `_shown` (how many options the step lists), `_on` (the step whose form was sent: its filters and Show more count only on it) and `_replace` (the build in the cart an add takes the place of). A slot's key starts with a letter, so none can be one.
+Keys that start with an underscore are the builder's own forms' and are not part of a shared link. They may change in any release: `_was` (the picks before a change, slot key to part ID), `_brand` and `_size` (the step's filters), `_shown` (how many options the step lists), `_on` (the step whose form was sent: its filters and Show more count only on it) and `_replace` (the build in the cart an add takes the place of); from 1.0.0, `_width`, `_chips`, `_q` and `_sort` (the step's shelf, as the state route's arguments of those names), and `_saved` (the saved build My builds opened, checked against the shop once, D-278). A slot's key starts with a letter, so none can be one.
 
 ### What the state route's answer gains
 
@@ -621,6 +637,12 @@ Keys that start with an underscore are the builder's own forms' and are not part
 | `delivery` | 0.6.0 | `arrival` and `line`: what `cbuild_arrival_estimate` and `cbuild_delivery_line` answer, in plain text, each empty where nothing is said. |
 | `notes` | 0.6.0 | What `cbuild_summary_notes` answers: six lines at most, in plain text. |
 | `view` | 0.6.0 | Only in an answer to `cbuild`: what the builder's template draws, as the page's first render has it. It is the builder's own and no part of this API: it may change in any release. |
+| `shelf` | 1.0.0 | The current step as the configurator lists it, or null on the review. `looks`: a page of cards in stock, one a product or the variations of one that share a photo (`key`, `product`, the `part` the card shows as an option, its `sizes` on the slot's size and the `choices` you can't see on the photo; from 1.0.0 also the product's `name`, the `brand`'s name and the `look`, the values that tell it from the product's other looks (D-273); and on the look the step's pick is of, where nothing in the build decides its size, `sized`: each size as the part of it (`part`, `value`, `text`, `in_stock`, `picked`), for the radio group after the picked card (D-279)); `sold_out`, the matching looks sold out; `chips`, four groups at most (`name`, `label`, and each chip's `value`, `label`, `count` and `selected`); `widths`, on the deck step, each width the kit's decks come in with how many looks are `in_stock` in it; `offered`, `matching` and `more`; and the `query` and `sort` as read; where a search lists nothing, `elsewhere`, on the deck step the widths its matches are in stock in (`value`, `text`), and `hidden_matching`, how many parts that don't fit match it. `options`, `filters`, `matching` and `more` stay as they were (D-264). |
+| `options[].messages[].short` and every other finding's | 1.0.0 | The finding as a card's short label where it has one, otherwise empty: `wheel_needs_riser` says the riser its wheels need, "Needs ¼″ risers with your trucks" (spec: Risers, before the pick). |
+| `options[].card.photo`, `hidden[].card.photo`, `picture.items[].photo` | 1.0.0 | Whether the card's or the item's `image` is the part's photo. Without a photo it is the part's layer image, uncropped, and `photo` is false (D-282). |
+| `bearings_included` | 1.0.0 | Whether the wheels picked come with their bearings, so the kit's bearings slot counts as filled and its step is no step (D-246). |
+| `currency` | 1.0.0 | How the shop writes a price, for a page that formats a total itself: `code`, `symbol` (plain text), `decimals`, `decimal_separator`, `thousand_separator` and `format`, WooCommerce's pattern with the symbol as `%1$s` and the amount as `%2$s`, as plain text: a space between them is a no-break space, not `&nbsp;` (D-290). From WooCommerce's settings and their filters, so a currency switcher's answer is the one sent. |
+| `reopened` | 1.0.0 | Only in the answer to a build link carrying `_saved`, the UUID of the signed-in customer's own saved build of this kit, where it has changed: `changes` (each `slot`, `label`, `was`, `name`, `reason` of `gone`, `sold_out` or `no_fit`, and `closest`, `id` and `name`, or null), `prices` (each kept part whose price changed, `then` and `now` as text), the totals `then` (null where no prices were kept in this currency) and `now`, the `picks` with the closest parts in place, and the `first` slot that changed. The answer's state is that build, at the review (D-254, D-278). |
 
 The published schema no longer closes its objects (`additionalProperties`), so a reader that checks an answer against one release's schema accepts the fields a later release adds. The plugin's own test still fails on any field the schema does not describe.
 
@@ -628,9 +650,9 @@ The published schema no longer closes its objects (`additionalProperties`), so a
 
 | Block | Since | What it is |
 | --- | --- | --- |
-| `creative-skateboard-builder/builder` | 0.6.0 | The builder for one kit, on any page or post. Its one attribute, `kit` (integer, default `0`), is the kit product's ID. A kit that is a draft, private or password-protected, a product that is no kit, and `0` render nothing. The block can be used once in a post (`supports.multiple: false`), and a page shows one builder: the first one rendered, the kit's own page included. |
+| `creative-skateboard-builder/builder` | 0.6.0 | The builder for one kit, on any page or post. Its attribute `kit` (integer, default `0`) is the kit product's ID. From 1.0.0, `0` on a kit's own page is that kit, as the kit template has it, and `title` (boolean, default `false`) prints the product's name as the page's h1, for a template with no title of its own. From 1.0.0 the block takes the editor's alignment, spacing, colours and font size on the builder's root, and `align` (string, default `full`) is full width unless the editor chose otherwise (D-283). A kit that is a draft, private or password-protected, a product that is no kit, and `0` anywhere else render nothing. The block can be used once in a post (`supports.multiple: false`), and a page shows one builder: the first one rendered, the kit's own page included. |
 
-The kit's own product page shows the same builder where WooCommerce asks a product type for its add-to-cart area (`woocommerce_cbuild_kit_add_to_cart`), in a classic theme and in the Add to Cart form block. Where `cbuild_builder_url` names another page, the kit's page sends a visitor there instead, with the build in their address, by a 302. Both are rendered on the server, and the template's markup and the store's state are the builder's own: they may change in any release, and are no part of this API. With JavaScript, the store asks the state route for each move with `cbuild` and `page`, and shows the answer's `view` without loading the page. The store, `creative-skateboard-builder`, is private and locked: no other script can read or change it (D-148).
+The kit's own product page shows the same builder. From 1.0.0, in a block theme a kit's page takes the template `creative-skateboard-builder//cbuild-kit` (Templates in the Site Editor, "Skateboard kit"), put first in `single_template_hierarchy`: the theme's header, the block with `title`, the product's details, and the theme's footer. The shop may edit it. In a classic theme the builder renders at `woocommerce_before_single_product_summary`, priority 5, at the page's width, with the product's name as its h1, and the summary's title (`woocommerce_template_single_title`) and form (`woocommerce_template_single_add_to_cart`) are left out for kits. Elsewhere, as in a page builder's product template, it renders where WooCommerce asks a product type for its add-to-cart area (`woocommerce_cbuild_kit_add_to_cart`), as in the Add to Cart form block, and adds no h1. Each has a link back to the shop page at the panel's head. Where `cbuild_builder_url` names another page, the kit's page sends a visitor there instead, with the build in their address, by a 302. Both are rendered on the server, and the template's markup and the store's state are the builder's own: they may change in any release, and are no part of this API. With JavaScript, the store asks the state route for each move with `cbuild` and `page`, and shows the answer's `view` without loading the page. The store, `creative-skateboard-builder`, is private and locked: no other script can read or change it (D-148).
 
 A page that holds a builder and carries a `cbuild` query, whatever it holds, says `noindex, follow` through `wp_robots`, and through `wpseo_robots_array` where Yoast SEO prints its own robots tag. Its canonical through `get_canonical_url` is the page without `cbuild`, so a canonical another filter wrote with the build in it is made clean. Yoast SEO prints no canonical on a noindex page. An SEO plugin that reads neither filter is asked to do the same through its own (D-147).
 
@@ -643,6 +665,8 @@ From 0.7.0, such a page carries a share card: Open Graph and X card tags with th
 | `cbuild_builder_url` | 0.6.0 | `string $url`, `int $kit` | Where a kit's builder is: the address of the page its Builder block is on, with no build in it. `$url` starts as the kit's own page. An address on another host, or an answer that is no address, is ignored. A deck's "Make it a complete" link is this address with `cbuild[<deck slot key>]=<deck ID>` added (The build link, above): it opens on the step after the deck, with the deck picked. |
 | `cbuild_part_classes` | 0.6.0 | `array $classes`, `int $part`, `string $slot`, `int $kit` | Classes to add to a part wherever the builder shows it, such as `is-flagged`: its card in a step, its place in the picture (`cbuild-picture__item`, and from 0.7.0 its layer on the board, `cbuild-board__layer`, in the picture and in the bar), the bar's photo (`cbuild-bar__photo`) and its line in the review (`cbuild-review__item`), so one answer can blur a part in every place. `$classes` starts empty. Each answer is made safe for a class attribute and put after the builder's own, which are kept whatever the answer; an answer that is no list adds nothing. `$part` is a product's or a variation's ID. |
 | `cbuild_summary_notes` | 0.6.0 | `array $notes`, `array $context` | Lines under a build's total in the builder: the points a build earns, or a word to a signed-in dealer. `$notes` starts empty. `$context` holds `kit` (the kit product's ID), `parts` (the parts the total counts, slot key to part ID), `assembly`, and `total` in whole minor units with its `decimals`. Answer with a list of sentences in the request's language. Each is shown as plain text, the first six are kept, and anything that is no text is dropped. The answer is asked for on every pick and is never cached, so it has to be quick. Name no person in a line that a shared screen could show. |
+| `cbuild_width_guide` | 1.0.0 | `array $rows`, `int $kit` | The rows of "Not sure of your width?" under the deck step's width question, each an array with `shoe` (a shoe size, as the shop writes it) and `width` (the deck width it rides). `$rows` starts as the plugin's, by US shoe size after Skate Warehouse's deck buying guide, in its own translatable words. Each is shown as plain text, a row without both is left out, and twelve rows are shown at most; an empty list takes the guide away. |
+| `cbuild_start_button` | 1.0.0 | `array\|false $button`, `int $product` | "Build a complete with this deck" on a product's page (D-253). `$button` has `kit` (the first kit by menu order whose first slot offers the product in stock), `part` (the product, or its first variation that kit offers), `slot` (the slot it is picked in: the kit's first, or another of the kit's slots the filter names), `text`, `hook` (`woocommerce_after_add_to_cart_form`) and `priority` (10); or it is false where no kit offers the product first. Return an array to choose the kit or the part, word the button or move it to another action; return false to leave it out. A kit a visitor may not see shows no button, and the builder checks the part as it checks any link. The link carries `rel="nofollow"`, as the rail's do. |
 
 ### Adding a build: `replace`
 
@@ -674,14 +698,16 @@ The builder's stylesheet is the Builder block's `style` (`build/builder/style-in
 | `--cbuild-target` | 0.6.0 | The least height and width of a button | `2.75rem` |
 | `--cbuild-control` | 0.6.0 | A radio's size, and the least height of a link that is a control | `1.5rem` |
 | `--cbuild-small` | 0.6.0 | Small text | `--wp--preset--font-size--small`, then `0.875rem` |
-| `--cbuild-card-width` | 0.6.0 | The narrowest a part's card is before the cards wrap | `13rem` |
-| `--cbuild-summary-width` | 0.6.0 | The summary's width beside the steps, from a builder 48rem wide | `19rem` |
+| `--cbuild-card-width` | 0.6.0 | The narrowest a part's card is before the cards wrap. From 1.0.0 the default is `13.5rem`, for the card's photo beside its words | `13.5rem` |
 | `--cbuild-ground` | 0.6.0 | The phone bar's ground, and its parts list's | `--wp--preset--color--base`, then the colour that contrasts with the builder's text (`contrast-color()`), else `Canvas` |
 | `--cbuild-on-ground` | 0.6.0 | Words on the phone bar's ground | `--wp--preset--color--contrast`, then the builder's text where the browser can pick a ground that contrasts with it, else `CanvasText` |
 | `--cbuild-bar-height` | 0.6.0 | The phone bar's least height, which focus is kept clear of | `4.25rem` |
 | `--cbuild-duration` | 0.6.0 | How long each movement lasts: the chosen card settling, a part arriving in the picture, a step crossing over. The step's crossing is the page's view transition, which reads it on `:root`, so set it there too | `200ms` |
 | `--cbuild-bar-offset` | 0.6.0 | How far above the foot of the screen the phone bar sits, set on the page's root (below) | `0px` |
 | `--cbuild-ease` | 0.6.0 | How each movement eases, read as `--cbuild-duration` is | `cubic-bezier(0.2, 0, 0, 1)` |
+| `--cbuild-top` | 1.0.0 | The height of anything the theme keeps at the top of the screen, such as a sticky header: the stage sticks below it on a phone, and the stage and the panel fit under it on a desktop | `0px` |
+| `--cbuild-stage-height` | 1.0.0 | The stage's height on a phone and a tablet, where it stays at the top above the step | `34svh` (D-284) |
+| `--cbuild-stage-size` | 1.0.0 | Set by the builder's script, not by a theme: how far down the screen the stage reaches while it stays at the top, so the page scrolls a control in focus clear of it (WCAG 2.4.11). A theme can read it for its own sticky elements | `0px` |
 | `--cbuild-board-size` | 0.7.0 | The board's height in the picture. The layers' `sizes` assume the default, so a board drawn much larger may fetch a smaller rendition than the screen could use | `min(60vh, 36rem)` |
 
 From 0.7.0 the builder sets these on the board and its layers, for a theme's rules to read; a theme does not set them (D-195):
@@ -693,6 +719,7 @@ From 0.7.0 the builder sets these on the board and its layers, for a theme's rul
 | `--cbuild-layer-y` | 0.7.0 | Its top edge, as a share of the board's height, the nose at the top |
 | `--cbuild-layer-width` | 0.7.0 | Its width, as a share of the board's |
 | `--cbuild-layer-height` | 0.7.0 | Its height, as a share of the board's |
+| `--cbuild-bar-size` | 1.0.0 | On the page's root, with JavaScript: the bar's height while it sticks over the page, which the page's scroll padding reads so focus stays clear of it (D-272) |
 
 Nothing moves where the shopper asks for reduced motion.
 

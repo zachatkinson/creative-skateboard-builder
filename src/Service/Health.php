@@ -137,7 +137,8 @@ final class Health {
 		$parts    = array();
 		$layers   = array();
 		foreach ( $found as $finding ) {
-			if ( in_array( $finding->code, array( CatalogueCheck::REINDEX_FAILED, CatalogueCheck::IMPORT_FAILED, CatalogueCheck::JOBS_FAILED ), true ) ) {
+			// Background work has its own test, and variations that share a card are what the builder does (D-281).
+			if ( in_array( $finding->code, array( CatalogueCheck::REINDEX_FAILED, CatalogueCheck::IMPORT_FAILED, CatalogueCheck::JOBS_FAILED, CatalogueCheck::LOOK_SHARED ), true ) ) {
 				continue;
 			}
 			if ( CatalogueCheck::LAYER_MISSING === $finding->code ) {

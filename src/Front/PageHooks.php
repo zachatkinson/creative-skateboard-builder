@@ -14,7 +14,9 @@ use CreativeBranding\SkateboardBuilder\Support\Cast;
 use CreativeBranding\SkateboardBuilder\Support\Options;
 use Closure;
 use WC_Product;
+use WP_HTML_Tag_Processor;
 use WP_Post;
+
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -35,6 +37,14 @@ final class PageHooks implements Hookable {
 	 * @since 0.6.0
 	 */
 	public const string BLOCK = 'creative-skateboard-builder/builder';
+
+	/**
+	 * The block template kits take in a block theme: a slug no product can be read as, since a product's own
+	 * template is `single-product-<slug>` (spec: Where it renders).
+	 *
+	 * @since 1.0.0
+	 */
+	public const string TEMPLATE = 'cbuild-kit';
 
 	/**
 	 * A kit's own page (D-174). The server leaves out a classic template's gallery, and these widen its summary
@@ -84,6 +94,10 @@ final class PageHooks implements Hookable {
 	 */
 	public function register(): void {
 		add_action( 'init', array( $this, 'block' ), 10, 0 );
+		add_action( 'init', array( $this, 'template' ), 10, 0 );
+		// WordPress 7.1.5, wp-includes/template.php:62 (`{$type}_template_hierarchy`), read by the block template's
+		// resolver, wp-includes/block-template.php:153.
+		add_filter( 'single_template_hierarchy', array( $this, 'hierarchy' ), 10, 1 );
 		// WooCommerce 11.3.0: includes/wc-template-functions.php:2174, and the Add to Cart form block at
 		// src/Blocks/BlockTypes/AddToCartForm.php:227. Each fires `woocommerce_<type>_add_to_cart`.
 		add_action( 'woocommerce_' . Options::PRODUCT_TYPE_KIT . '_add_to_cart', array( $this, 'kitPage' ), 10, 0 );
@@ -145,6 +159,12 @@ final class PageHooks implements Hookable {
 		remove_action( 'woocommerce_before_single_product_summary', 'woocommerce_show_product_sale_flash', 10 );
 		remove_action( 'woocommerce_before_single_product_summary', 'woocommerce_show_product_images', 20 );
 		remove_action( 'woocommerce_single_product_summary', 'woocommerce_template_single_price', 10 );
+		// A classic theme's product page: the builder takes the page's width before the summary, and prints the
+		// product's name as the page's h1 in place of the summary's title; the summary's form goes with it (spec:
+		// Where it renders; D-238). WooCommerce 11.3.0, includes/wc-template-hooks.php:126 and :131.
+		remove_action( 'woocommerce_single_product_summary', 'woocommerce_template_single_title', 5 );
+		remove_action( 'woocommerce_single_product_summary', 'woocommerce_template_single_add_to_cart', 30 );
+		add_action( 'woocommerce_before_single_product_summary', array( $this, 'kitWide' ), 5, 0 );
 		add_filter(
 			'body_class',
 			static function ( mixed $classes ): mixed {
@@ -230,6 +250,70 @@ final class PageHooks implements Hookable {
 	}
 
 	/**
+	 * A classic theme's kit page: the builder full width before the summary, with the product's name as its h1.
+	 *
+	 * @since 1.0.0
+	 */
+	public function kitWide(): void {
+		global $product;
+		if ( ! $product instanceof WC_Product ) {
+			return;
+		}
+		$kit = $product->get_id();
+		// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- as kitPage(): the HTML API's processing escapes every value.
+		echo $this->page()->render( $kit, BuilderPage::requested(), (string) get_permalink( $kit ), true, true );
+	}
+
+	/**
+	 * Register the template kits take in a block theme: the theme's header, the builder at the page's width with the
+	 * product's name as the h1, the product's description, specs and reviews, and the theme's footer. The shop can
+	 * edit it in the Site Editor (spec: Where it renders).
+	 *
+	 * @since 1.0.0
+	 */
+	public function template(): void {
+		// WordPress 7.1.5, wp-includes/block-template.php:506.
+		register_block_template(
+			'creative-skateboard-builder//' . self::TEMPLATE,
+			array(
+				'title'       => __( 'Skateboard kit', 'creative-skateboard-builder' ),
+				'description' => __( 'A kit product: its builder at the page\'s width, then its description, specs and reviews.', 'creative-skateboard-builder' ),
+				'post_types'  => array( 'product' ),
+				'content'     => self::markup(),
+			)
+		);
+	}
+
+	/**
+	 * The kit template's block markup, from the plugin's own file.
+	 */
+	private static function markup(): string {
+		ob_start();
+		require CBUILD_PATH . 'templates/block/kit.php';
+		return (string) ob_get_clean();
+	}
+
+	/**
+	 * Put the kit template first for a kit's own page, in a block theme. A kit whose builder is on another page
+	 * keeps the theme's own template, as the visitor is sent on.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param mixed $templates The template slugs, most specific first.
+	 * @return mixed
+	 */
+	public function hierarchy( mixed $templates ): mixed {
+		if ( ! is_array( $templates ) || ! wp_is_block_theme() || ! is_singular( 'product' ) ) {
+			return $templates;
+		}
+		$kit = $this->place->kit( get_queried_object_id(), 'product' );
+		if ( $kit < 1 || null !== $this->elsewhere() ) {
+			return $templates;
+		}
+		return array( self::TEMPLATE, ...$templates );
+	}
+
+	/**
 	 * The block's markup.
 	 *
 	 * @since 0.6.0
@@ -237,11 +321,40 @@ final class PageHooks implements Hookable {
 	 * @param mixed $attributes The block's attributes.
 	 */
 	public function renderBlock( mixed $attributes ): string {
-		$kit = Cast::int( Cast::map( $attributes )['kit'] ?? null );
+		$attributes = Cast::map( $attributes );
+		$kit        = Cast::int( $attributes['kit'] ?? null );
+		// From 1.0.0, a block with no kit on a kit's own page, as the kit template has it, is that kit's builder.
+		if ( $kit < 1 && is_singular( 'product' ) ) {
+			$kit = $this->place->kit( get_queried_object_id(), 'product' );
+		}
 		if ( $kit < 1 ) {
 			return '';
 		}
 		$base = is_singular() ? (string) get_permalink( get_queried_object_id() ) : (string) get_permalink( $kit );
-		return $this->page()->render( $kit, BuilderPage::requested(), $base, false );
+		return self::wrapped( $this->page()->render( $kit, BuilderPage::requested(), $base, false, Cast::bool( $attributes['title'] ?? null ) ) );
+	}
+
+	/**
+	 * The builder with the block's own classes and style on its root: its alignment, full unless the editor chose
+	 * otherwise, its spacing, colours and font size, as WordPress gives every block that supports them
+	 * (`get_block_wrapper_attributes()`, wp-includes/class-wp-block-supports.php:203; D-283). Until 1.0.0 they were
+	 * left off.
+	 *
+	 * @param string $html The builder.
+	 */
+	private static function wrapped( string $html ): string {
+		$given = new WP_HTML_Tag_Processor( '<div ' . get_block_wrapper_attributes() . '>' );
+		$root  = new WP_HTML_Tag_Processor( $html );
+		if ( ! $given->next_tag() || ! $root->next_tag( array( 'class_name' => 'cbuild' ) ) ) {
+			return $html;
+		}
+		foreach ( $given->class_list() as $name ) {
+			$root->add_class( $name );
+		}
+		$style = Cast::str( $given->get_attribute( 'style' ) );
+		if ( '' !== $style ) {
+			$root->set_attribute( 'style', trim( Cast::str( $root->get_attribute( 'style' ) ) . ';' . $style, ';' ) );
+		}
+		return $root->get_updated_html();
 	}
 }

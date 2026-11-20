@@ -28,7 +28,7 @@
  *   picture and the phone bar show the same side, and the stylesheet turns the board only where motion is allowed.
  */
 import { getConfig, getElement, store } from '@wordpress/interactivity';
-import { fit } from './bar';
+import { fit, size, stage } from './bar';
 import { Navigator, type Move, type View } from './navigate';
 import { add, body } from './cart';
 import type { CbuildState } from '../types/state';
@@ -57,15 +57,20 @@ interface State {
 	added: boolean;
 	canCopy: boolean;
 	canTurn: boolean;
+	live: boolean;
 	turning: boolean;
+	/** The route's rate limit, in its words, while the step waits to be asked again; empty otherwise. */
+	limited: string;
+	/** Whether a phone's filters are folded behind the Filters button: only once the script runs, so they show without it. */
+	folded: boolean;
 }
 
 let navigator: Navigator | undefined;
 
 /**
- * The side the shopper turned the board to with the button, once they have: it then holds over each step's own.
+ * Whether the shopper turned the board to its top with the button, once they have: it then holds over each step's own.
  */
-let side: 'top' | 'under' | undefined;
+let top: boolean | undefined;
 
 /**
  * Show a view on the side the shopper chose, where it can draw it; a view whose board has no top shows its underside.
@@ -73,8 +78,8 @@ let side: 'top' | 'under' | undefined;
  * @param view The view to be shown.
  */
 function sided( view: Shown ): void {
-	if ( view.picture && undefined !== side ) {
-		view.picture.turned = view.picture.turnable && 'top' === side;
+	if ( view.picture && undefined !== top ) {
+		view.picture.turned = view.picture.turnable && top;
 	}
 }
 
@@ -82,6 +87,57 @@ function sided( view: Shown ): void {
  * The builder's own element, as its init callback found it.
  */
 let root: HTMLElement | null = null;
+
+/**
+ * The control under a press, from the pointer going down to its coming up.
+ */
+let held: HTMLElement | null = null;
+
+/**
+ * Notes the control a press lands on. WebKit focuses no button a pointer presses, so the answer that arrives under the
+ * press would otherwise be kept in place by what was focused before, and the button would move under the finger.
+ *
+ * @param event The pointer going down.
+ */
+function press( event: Event ): void {
+	held =
+		event.target instanceof Element
+			? event.target.closest< HTMLElement >( 'button, a, summary, label' )
+			: null;
+}
+
+/**
+ * Forgets the press once the pointer comes up, or the browser takes it over.
+ */
+function release(): void {
+	held = null;
+}
+
+/**
+ * Keeps a press on a button inside an element the page can focus, the picture's figure among them, from focusing
+ * that element: WebKit focuses no button a pointer presses but hands focus to the nearest such ancestor, and scrolls it
+ * into view, which moved the button from under the pointer before the click landed. The click still fires.
+ *
+ * @param event The mouse going down, on the builder it is listened for on.
+ */
+function steadyPress( event: Event ): void {
+	const builder = event.currentTarget as Element;
+	const control = ( event.target as Element ).closest( 'button' );
+	// A button cannot hold another, so the nearest such element that is no button is the button's own ancestor; it
+	// counts only inside the builder, and a button the page focuses itself is left alone.
+	const focusable = ':not(button)[tabindex="-1"]';
+	const inside = builder.querySelectorAll< Element >(
+		`${ focusable } button`
+	);
+	const within = [ ...inside ].some(
+		( button ) =>
+			button === control &&
+			builder.contains( button.closest( focusable ) )
+	);
+	if ( within ) {
+		event.preventDefault();
+	}
+}
 
 /**
  * Whether an add is on its way: a second press while it is would put a second build in the cart.
@@ -128,9 +184,22 @@ function say(
 		! view.errors.shown &&
 		view.step.slot === before.step.slot;
 	if ( stays ) {
-		const shown = before.step.options?.length ?? 0;
-		const more = ( view.step.options?.length ?? 0 ) > shown;
-		state.status = more ? '' : view.status;
+		const was = before.step.options ?? [];
+		// A view with no list lists no more than the one before.
+		const now = view.step.options ?? was;
+		const shown = was.length;
+		// Show more keeps the list and adds to it. A width, a chip or a search that lists more is no Show more: focus
+		// stays on the control used. Each card asked for is in the longer list.
+		const more =
+			shown > 0 &&
+			now.length > shown &&
+			was.every(
+				( option, at ) =>
+					( option as { id?: unknown } ).id ===
+					( now[ at ] as { id?: unknown } ).id
+			);
+		// After Show more the region says how many it added, and the card focus goes to is read with it.
+		state.status = more ? ( view.step.more?.added ?? '' ) : view.status;
 		if ( more ) {
 			window.requestAnimationFrame( () => {
 				root?.querySelector< HTMLElement >(
@@ -159,16 +228,14 @@ function say(
 export const SETTLE = 2000;
 
 /**
- * Whether focus is somewhere a drawer or another part of the page took it: not the page itself, not in the builder,
- * and not an element the builder is inside, which a theme may focus on a click (Storefront's content, in WebKit).
+ * Whether focus is somewhere a drawer or another part of the page took it: not in the builder, and not an element the
+ * builder is inside, such as the page's body or what a theme may focus on a click (Storefront's content, in WebKit).
  *
  * @param focused The element with focus.
- * @param page    The page.
  */
-function taken( focused: Element | null, page: Document ): boolean {
+function taken( focused: Element | null ): boolean {
 	return (
 		null !== focused &&
-		focused !== page.body &&
 		null !== root &&
 		! root.contains( focused ) &&
 		! focused.contains( root )
@@ -189,23 +256,24 @@ function told( state: State, page: Document ): void {
 		state.status = state.view.review.added;
 	};
 	window.requestAnimationFrame( () => {
-		if ( taken( page.activeElement, page ) ) {
+		if ( taken( page.activeElement ) ) {
 			announce();
 			return;
 		}
 		root?.querySelector< HTMLElement >( '.cbuild-review__added' )?.focus();
-		const watch = ( event: FocusEvent ): void => {
-			if ( taken( event.target as Element | null, page ) ) {
-				stop();
-				announce();
-			}
-		};
-		const stop = (): void => {
-			window.clearTimeout( timer );
-			page.removeEventListener( 'focusin', watch );
-		};
-		const timer = window.setTimeout( stop, SETTLE );
-		page.addEventListener( 'focusin', watch );
+		// Watched until a drawer takes focus or the add has settled, whichever comes first.
+		const watching = new AbortController();
+		page.addEventListener(
+			'focusin',
+			( event: FocusEvent ): void => {
+				if ( taken( event.target as Element | null ) ) {
+					watching.abort();
+					announce();
+				}
+			},
+			{ signal: watching.signal }
+		);
+		window.setTimeout( () => watching.abort(), SETTLE );
 	} );
 }
 
@@ -219,7 +287,7 @@ let leaving = false;
  */
 export const browser = {
 	assign: ( url: string ): void => window.location.assign( url ),
-	reload: (): void => window.location.reload(),
+	reload: window.location.reload.bind( window.location ),
 	/**
 	 * Send a form as the browser would without JavaScript, the button pressed among its fields: the browser's own
 	 * submit, which the store's handlers stand aside for, so no field is made to carry the button (no markup is
@@ -266,6 +334,12 @@ function motion( change: () => void ): void {
 }
 
 /**
+ * How many times the page is scrolled to bring a control back where it was after a view on the same step: the bar's
+ * stuck and unstuck places take two; the third is spare.
+ */
+const SETTLE_PASSES = 3;
+
+/**
  * Show a view on the same step with the control the shopper is on where it was on the screen: the one with focus in
  * the builder, or else the part picked on the step, as WebKit gives a pressed radio no focus. The first deck's answer
  * starts every later slot on its recommendation, so the picture comes in and the presets go above the step, and Next
@@ -276,28 +350,88 @@ function motion( change: () => void ): void {
  * @param change What changes the view.
  */
 function steady( change: () => void ): void {
-	const focused = root?.ownerDocument.activeElement;
+	// With no builder found, there is nothing on it to keep in place.
+	const builder = root;
+	if ( ! builder ) {
+		change();
+		return;
+	}
+	const focused = builder.ownerDocument.activeElement;
 	const anchor =
-		focused instanceof HTMLElement &&
-		focused !== root &&
-		root?.contains( focused )
+		held ??
+		( focused instanceof HTMLElement &&
+		focused !== builder &&
+		builder.contains( focused )
 			? focused
-			: root?.querySelector< HTMLElement >(
+			: builder.querySelector< HTMLElement >(
 					'.cbuild-step input[type="radio"]:checked'
-				);
-	const before = anchor?.getBoundingClientRect().top;
+				) );
+	const before = anchor?.getBoundingClientRect().top ?? 0;
 	change();
-	if ( ! anchor || undefined === before ) {
+	window.requestAnimationFrame( () => {
+		// Once a width is chosen the widths fold behind its line after every answer. Change opens them natively, and
+		// the server's `asking` stays false throughout, so the bound `open` never changes and would leave them open.
+		builder
+			.querySelectorAll< HTMLDetailsElement >(
+				'details.cbuild-width__pick'
+			)
+			.forEach( ( fold ) => {
+				const line =
+					fold.querySelector< HTMLElement >( ':scope > summary' );
+				if ( line ) {
+					fold.open = true === line.hidden;
+				}
+			} );
+	} );
+	if ( ! anchor ) {
 		return;
 	}
 	window.requestAnimationFrame( () => {
-		const moved = anchor.isConnected
-			? anchor.getBoundingClientRect().top - before
-			: 0;
-		if ( Math.abs( moved ) >= 1 ) {
+		// A control the view folds away, as a width once chosen is, hands focus to its fold's summary: the line that
+		// now says the width, with Change (the spec reviewer's M10 minor M1).
+		const fold =
+			anchor === focused ? anchor.closest( 'details:not([open])' ) : null;
+		const summary =
+			fold?.querySelector< HTMLElement >( ':scope > summary' );
+		if ( summary && ! summary.hidden ) {
+			summary.focus();
+		}
+		// A control in the phone bar moves as the bar does: stuck at the foot of the screen, then, once the scroll
+		// brings the builder's end into view, at that end. So the scroll is measured again, a few times at most, until
+		// the control is back; each pass lays the page out, and none paints (D-267).
+		for ( let pass = 0; pass < SETTLE_PASSES; pass++ ) {
+			const moved = anchor.isConnected
+				? anchor.getBoundingClientRect().top - before
+				: 0;
+			if ( Math.abs( moved ) < 1 ) {
+				return;
+			}
 			window.scrollBy( 0, moved );
 		}
 	} );
+}
+
+/**
+ * Keep the bar's height on the page as its lines change, for the scroll padding that keeps focus clear of it (D-272).
+ * A browser with no resize observer keeps the stylesheet's room for two rows.
+ *
+ * @param element The builder's element.
+ */
+function measure( element: HTMLElement ): void {
+	size( element );
+	stage( element );
+	if ( 'function' !== typeof window.ResizeObserver ) {
+		return;
+	}
+	const bar = element.querySelector( '.cbuild-bar' );
+	const shown = element.querySelector( '.cbuild__stage' );
+	if ( bar ) {
+		new window.ResizeObserver( () => size( element ) ).observe( bar );
+	}
+	// The stage sticks on top, or stands beside the panel, as the builder's width changes its size.
+	if ( shown ) {
+		new window.ResizeObserver( () => stage( element ) ).observe( shown );
+	}
 }
 
 /**
@@ -306,7 +440,7 @@ function steady( change: () => void ): void {
  * same, or what the server found instead.
  *
  * @param view  The view shown.
- * @param value The radio's value: a part's ID, or "0" for leaving the slot empty.
+ * @param value The radio's value: a part's ID, a size's (which is a part's ID too), or "0" for leaving the slot empty.
  */
 function chosen( view: Shown, value: string ): void {
 	const step = view.step as {
@@ -315,13 +449,26 @@ function chosen( view: Shown, value: string ): void {
 	};
 	if ( Array.isArray( step.options ) ) {
 		for ( const option of step.options as unknown[] ) {
-			if ( option && 'object' === typeof option ) {
-				const card = option as { value?: unknown; checked?: boolean };
-				card.checked = card.value === value;
+			if ( option instanceof Object ) {
+				const card = option as {
+					value?: unknown;
+					checked?: boolean;
+					sizeGroup?: {
+						inputs?: { value?: unknown; checked?: boolean }[];
+					};
+				};
+				// A size picked after its card is a part of the card's look: the card stays picked (D-279).
+				const sizes = card.sizeGroup?.inputs ?? [];
+				let sized = false;
+				for ( const input of sizes ) {
+					input.checked = input.value === value;
+					sized = sized || input.checked;
+				}
+				card.checked = card.value === value || sized;
 			}
 		}
 	}
-	if ( step.leave && 'object' === typeof step.leave ) {
+	if ( step.leave instanceof Object ) {
 		( step.leave as { checked?: boolean } ).checked = '0' === value;
 	}
 }
@@ -360,6 +507,7 @@ function nav( state: State ): Navigator {
 				const change = () => {
 					state.view = shown;
 					state.added = false;
+					state.limited = '';
 					say( state, shown, turned, config, before );
 				};
 				// Only a new step crosses over (spec: Motion): a transition takes the screen's taps while it
@@ -377,6 +525,10 @@ function nav( state: State ): Navigator {
 			pending: ( on ) => {
 				state.pending = on;
 			},
+			limited: ( message ) => {
+				state.limited = message;
+				state.status = message;
+			},
 			push: ( url ) => window.history.pushState( null, '', url ),
 			replace: ( url ) => window.history.replaceState( null, '', url ),
 		} );
@@ -390,7 +542,8 @@ function nav( state: State ): Navigator {
 export function reset(): void {
 	navigator = undefined;
 	root = null;
-	side = undefined;
+	held = null;
+	top = undefined;
 }
 
 /**
@@ -409,6 +562,30 @@ function fields(
 }
 
 /**
+ * How long search waits after the last key, in milliseconds.
+ */
+const SEARCH_WAIT = 150;
+
+/**
+ * The search waiting to be sent.
+ */
+let typing: number | undefined;
+
+/**
+ * Lists the step again as its shelf's fields now ask: its search, chips and sort, on the step it is on. The
+ * address is replaced, not pushed, so Back leaves the step rather than undoing each chip.
+ *
+ * @param form The step's form.
+ */
+function narrowed( form: HTMLFormElement ): void {
+	nav( state ).go( {
+		fields: [ ...fields( form ), [ 'cbuild[step]', state.view.step.slot ] ],
+		history: 'replace',
+		fallback: () => send( form ),
+	} );
+}
+
+/**
  * Send a form as the browser would without JavaScript, the button pressed among its fields.
  *
  * @param form      The form.
@@ -416,6 +593,37 @@ function fields(
  */
 function send( form: HTMLFormElement, submitter?: HTMLElement | null ): void {
 	browser.submit( form, submitter ?? null );
+}
+
+/**
+ * Keep a focused control clear of the phone bar at the foot and the stage that sticks on top: the builder's focusin.
+ *
+ * @param event The focus that came in.
+ */
+function reveal( event: FocusEvent ): void {
+	const target = event.target;
+	if ( ! ( target instanceof HTMLElement ) ) {
+		return;
+	}
+	const bar = root?.querySelector< HTMLElement >( '.cbuild-bar' );
+	const shown = root?.querySelector< HTMLElement >( '.cbuild__stage' );
+	const place = target.getBoundingClientRect();
+	// A browser that scrolls a focused control only when it leaves the screen (Firefox, WebKit) leaves it under
+	// the bar at the foot, or the stage that sticks on top; scrolling it into view honours the page's scroll
+	// padding, which clears both (D-160; the auditor's M10 review, 1).
+	const under =
+		!! bar &&
+		0 !== bar.getClientRects().length &&
+		! bar.contains( target ) &&
+		place.bottom > bar.getBoundingClientRect().top;
+	const behind =
+		!! shown &&
+		! shown.contains( target ) &&
+		'sticky' === window.getComputedStyle( shown ).position &&
+		place.top < shown.getBoundingClientRect().bottom;
+	if ( under || behind ) {
+		target.scrollIntoView( { block: 'nearest' } );
+	}
 }
 
 const { state } = store(
@@ -427,17 +635,54 @@ const { state } = store(
 			added: false,
 			canCopy: false,
 			canTurn: false,
+			live: false,
 			turning: false,
+			limited: '',
+			folded: false,
 		} as State,
 		callbacks: {
+			/**
+			 * Say on the builder whether an answer is awaited: its root is no region, so no directive binds it (D-296).
+			 */
+			busy(): void {
+				const busy = String( state.pending );
+				getElement()
+					.ref?.closest( '.cbuild' )
+					?.setAttribute( 'aria-busy', busy );
+			},
+			/**
+			 * Mark the builder ready: run by the bar, its last region, so every piece has been hydrated before it
+			 * (D-296). A press before then goes as the page would send it without the script.
+			 */
+			ready(): void {
+				getElement()
+					.ref?.closest( '.cbuild' )
+					?.setAttribute( 'data-ready', '' );
+			},
 			init(): void {
-				root = getElement().ref;
+				// The builder's pieces are regions of their own, each hydrated in its own task (D-296), so the root
+				// is the builder around the one this runs in.
+				root =
+					getElement().ref?.closest< HTMLElement >( '.cbuild' ) ??
+					null;
 				state.canCopy =
 					'function' === typeof window.navigator.clipboard?.writeText;
 				// The button turns the board in the page; without the script the step's own side is shown.
 				state.canTurn = true;
+				state.live = true;
+				// On a phone the cards come first, and the filters wait behind their button (spec: Phone).
+				state.folded = true;
 				if ( root ) {
 					fit( root );
+					measure( root );
+					root.addEventListener( 'focusin', reveal );
+					root.addEventListener( 'pointerdown', press );
+					root.addEventListener( 'mousedown', steadyPress );
+					root.ownerDocument.addEventListener( 'pointerup', release );
+					root.ownerDocument.addEventListener(
+						'pointercancel',
+						release
+					);
 				}
 			},
 		},
@@ -448,12 +693,45 @@ const { state } = store(
 					return;
 				}
 				event.preventDefault();
+				// A search still waiting from the keys typed would go out after this and undo it, as Clear search was.
+				// The form carries the box as it is, so nothing typed is lost.
+				window.clearTimeout( typing );
 				const move: Move = {
 					fields: fields( form, event.submitter ),
 					history: 'push',
 					fallback: () => send( form, event.submitter ),
 				};
 				nav( state ).go( move );
+			},
+			narrow( event: Event ): void {
+				const control = event.target;
+				if (
+					! (
+						control instanceof HTMLInputElement ||
+						control instanceof HTMLSelectElement
+					) ||
+					null === control.form
+				) {
+					return;
+				}
+				narrowed( control.form );
+			},
+			search( event: Event ): void {
+				const input = event.target;
+				if (
+					! ( input instanceof HTMLInputElement ) ||
+					null === input.form
+				) {
+					return;
+				}
+				const form = input.form;
+				window.clearTimeout( typing );
+				nav( state ).drop();
+				// 150 ms after the last key (SPEC-CONFIGURATOR, Search); the navigator drops an answer a later one overtakes.
+				typing = window.setTimeout(
+					() => narrowed( form ),
+					SEARCH_WAIT
+				);
 			},
 			pick( event: Event ): void {
 				const input = event.target;
@@ -534,6 +812,12 @@ const { state } = store(
 				told( state, form.ownerDocument );
 			},
 			/**
+			 * Open or fold the phone's filters behind their button.
+			 */
+			filters(): void {
+				state.folded = ! state.folded;
+			},
+			/**
 			 * Show the top, or the underside again: the button by the board, its pressed state the side shown (#46).
 			 * The shopper's side is kept from now on.
 			 */
@@ -542,7 +826,7 @@ const { state } = store(
 				if ( ! picture?.turnable ) {
 					return;
 				}
-				side = picture.turned ? 'under' : 'top';
+				top = ! picture.turned;
 				state.turning = true;
 				picture.turned = ! picture.turned;
 			},
@@ -552,27 +836,11 @@ const { state } = store(
 			fit(): void {
 				if ( root ) {
 					fit( root );
+					size( root );
 				}
 			},
 			reveal( event: FocusEvent ): void {
-				const target = event.target;
-				const bar = root?.querySelector< HTMLElement >( '.cbuild-bar' );
-				if (
-					! ( target instanceof HTMLElement ) ||
-					! bar ||
-					0 === bar.getClientRects().length ||
-					bar.contains( target )
-				) {
-					return;
-				}
-				// A browser that scrolls a focused control only when it leaves the screen (Firefox) leaves it under the
-				// bar; scrolling it into view honours the page's scroll padding, which clears the bar (D-160).
-				if (
-					target.getBoundingClientRect().bottom >
-					bar.getBoundingClientRect().top
-				) {
-					target.scrollIntoView( { block: 'nearest' } );
-				}
+				reveal( event );
 			},
 			async copy(): Promise< void > {
 				try {

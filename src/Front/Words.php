@@ -80,6 +80,53 @@ final class Words {
 	}
 
 	/**
+	 * What a rule found, as a card's short label where it has one, or empty: wheels over the trucks' limit say the
+	 * riser they need before the pick (spec: Risers, "Before the pick").
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param Finding $finding The finding.
+	 */
+	public static function short( Finding $finding ): string {
+		if ( MessageCode::WheelNeedsRiser !== $finding->code ) {
+			return '';
+		}
+		/* translators: %s: a riser's thickness, such as ⅛″. */
+		return sprintf( __( 'Needs %s risers with your trucks', 'creative-skateboard-builder' ), self::value( $finding, 'riser' ) );
+	}
+
+	/**
+	 * Why the risers step appeared, from R3's finding on the wheels picked (spec: Risers, "It opens on the riser that
+	 * clears them, with the reason"), or empty for any other finding.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param Finding $finding The finding.
+	 */
+	public static function riserLead( Finding $finding ): string {
+		if ( MessageCode::WheelNeedsRiser !== $finding->code ) {
+			return '';
+		}
+		/* translators: 1: the wheels' diameter, such as 56 mm. 2: a riser's thickness, such as ½″. */
+		return sprintf( __( 'Your %1$s wheels need %2$s risers with these trucks.', 'creative-skateboard-builder' ), self::value( $finding, 'wheel_diameter' ), self::value( $finding, 'riser' ) );
+	}
+
+	/**
+	 * One of a finding's values, as words: a measure with its unit, a spec by its name, a choice by its label.
+	 *
+	 * @param Finding $finding The finding.
+	 * @param string  $name    The value's name.
+	 */
+	private static function value( Finding $finding, string $name ): string {
+		$value = $finding->values[ $name ] ?? '';
+		if ( $value instanceof Measure ) {
+			return self::measure( $value, in_array( $name, self::FRACTIONS, true ) );
+		}
+		$spec = 'spec' === $name ? SpecKey::tryFrom( $value ) : null;
+		return null === $spec ? Labels::choice( $value ) : Labels::spec( $spec );
+	}
+
+	/**
 	 * What a rule found, as a sentence.
 	 *
 	 * @since 0.4.0
@@ -89,14 +136,7 @@ final class Words {
 	public static function finding( Finding $finding ): string {
 		$values = $finding->values;
 		$has    = static fn( string $name ): bool => ( $values[ $name ] ?? null ) instanceof Measure && $values[ $name ]->tenThousandths > 0;
-		$v      = static function ( string $name ) use ( $values ): string {
-			$value = $values[ $name ] ?? '';
-			if ( $value instanceof Measure ) {
-				return self::measure( $value, in_array( $name, self::FRACTIONS, true ) );
-			}
-			$spec = 'spec' === $name ? SpecKey::tryFrom( $value ) : null;
-			return null === $spec ? Labels::choice( $value ) : Labels::spec( $spec );
-		};
+		$v      = static fn( string $name ): string => self::value( $finding, $name );
 		switch ( $finding->code ) {
 			case MessageCode::SpecMissing:
 				/* translators: %s: a spec's name, such as Deck width. */
@@ -131,6 +171,15 @@ final class Words {
 			case MessageCode::WheelNoRiser:
 				/* translators: 1: the wheels' diameter. 2: how far over the trucks' limit they are. 3: the limit. */
 				return sprintf( __( 'Wheels of %1$s are %2$s over what the trucks clear, which is %3$s. That is more than a riser makes up for.', 'creative-skateboard-builder' ), $v( 'wheel_diameter' ), $v( 'over' ), $v( 'limit' ) );
+			case MessageCode::RiserNotInStock:
+				/* translators: %s: a riser's thickness. */
+				return sprintf( __( 'Needs %s risers, and none are in stock.', 'creative-skateboard-builder' ), $v( 'riser' ) );
+			case MessageCode::RiserNoBolts:
+				/* translators: %s: a riser's thickness. */
+				return sprintf( __( 'Needs %s risers, and no bolts here are long enough for them.', 'creative-skateboard-builder' ), $v( 'riser' ) );
+			case MessageCode::RiserNoSlot:
+				/* translators: %s: a riser's thickness. */
+				return sprintf( __( 'Needs %s risers, and this kit has none.', 'creative-skateboard-builder' ), $v( 'riser' ) );
 			case MessageCode::LimitFromClass:
 				/* translators: 1: the trucks' height, such as Low. 2: a wheel diameter. */
 				return sprintf( __( 'The trucks give no largest wheel, so the usual one for their height (%1$s) is taken: %2$s.', 'creative-skateboard-builder' ), $v( 'height_class' ), $v( 'limit' ) );
@@ -148,6 +197,9 @@ final class Words {
 				}
 				/* translators: 1: the bolts' length. 2: the usual length. */
 				return sprintf( __( 'Bolts of %1$s are longer than a board with no riser needs. The usual length is %2$s.', 'creative-skateboard-builder' ), $v( 'bolt_length' ), $v( 'usual' ) );
+			case MessageCode::RiserBoltsShort:
+				/* translators: 1: a riser's thickness. 2: the shortest bolts that reach through it. */
+				return sprintf( __( 'No bolts here are long enough for a %1$s riser. It takes %2$s or longer.', 'creative-skateboard-builder' ), $v( 'riser_thickness' ), $v( 'shortest' ) );
 			case MessageCode::BoreMismatch:
 				/* translators: 1: the bearings' bore. 2: the axle's diameter. */
 				return sprintf( __( 'The bearings\' bore is %1$s and the trucks\' axle is %2$s.', 'creative-skateboard-builder' ), $v( 'bearing_bore' ), $v( 'axle_diameter' ) );
@@ -156,6 +208,8 @@ final class Words {
 				return sprintf( __( 'The trucks give no axle size, so the usual one is taken: %s.', 'creative-skateboard-builder' ), $v( 'axle_diameter' ) );
 			case MessageCode::SpacersBuiltIn:
 				return __( 'The bearings have spacers built in, so they take no others.', 'creative-skateboard-builder' );
+			case MessageCode::BearingsIncluded:
+				return __( 'The wheels come with their bearings, so they take no others.', 'creative-skateboard-builder' );
 			case MessageCode::GripTooNarrow:
 				/* translators: 1: the grip's width. 2: the deck's width. */
 				return sprintf( __( 'The grip is %1$s wide and the deck is %2$s.', 'creative-skateboard-builder' ), $v( 'grip_width' ), $v( 'deck_width' ) );
@@ -198,12 +252,27 @@ final class Words {
 			case MessageCode::BoltsTooShort:
 				/* translators: %s: a number of parts. */
 				return sprintf( _n( '%s part hidden: the bolts would be too short.', '%s parts hidden: the bolts would be too short.', $count, 'creative-skateboard-builder' ), $number );
+			case MessageCode::RiserNotInStock:
+				/* translators: %s: a number of parts. */
+				return sprintf( _n( '%s part hidden: the risers it needs are not in stock.', '%s parts hidden: the risers they need are not in stock.', $count, 'creative-skateboard-builder' ), $number );
+			case MessageCode::RiserNoBolts:
+				/* translators: %s: a number of parts. */
+				return sprintf( _n( '%s part hidden: no bolts here are long enough for the risers it needs.', '%s parts hidden: no bolts here are long enough for the risers they need.', $count, 'creative-skateboard-builder' ), $number );
+			case MessageCode::RiserNoSlot:
+				/* translators: %s: a number of parts. */
+				return sprintf( _n( '%s part hidden: it needs risers, and this kit has none.', '%s parts hidden: they need risers, and this kit has none.', $count, 'creative-skateboard-builder' ), $number );
+			case MessageCode::RiserBoltsShort:
+				/* translators: %s: a number of parts. */
+				return sprintf( _n( '%s part hidden: no bolts here are long enough for it.', '%s parts hidden: no bolts here are long enough for them.', $count, 'creative-skateboard-builder' ), $number );
 			case MessageCode::BoreMismatch:
 				/* translators: %s: a number of parts. */
 				return sprintf( _n( '%s part hidden: the bearings would not fit the axle.', '%s parts hidden: the bearings would not fit the axle.', $count, 'creative-skateboard-builder' ), $number );
 			case MessageCode::SpacersBuiltIn:
 				/* translators: %s: a number of parts. */
 				return sprintf( _n( '%s part hidden: the bearings have spacers built in.', '%s parts hidden: the bearings have spacers built in.', $count, 'creative-skateboard-builder' ), $number );
+			case MessageCode::BearingsIncluded:
+				/* translators: %s: a number of parts. */
+				return sprintf( _n( '%s part hidden: the wheels come with their bearings.', '%s parts hidden: the wheels come with their bearings.', $count, 'creative-skateboard-builder' ), $number );
 			case MessageCode::GripTooNarrow:
 				/* translators: %s: a number of parts. */
 				return sprintf( _n( '%s part hidden: the grip would be narrower than the deck.', '%s parts hidden: the grip would be narrower than the deck.', $count, 'creative-skateboard-builder' ), $number );
@@ -326,6 +395,47 @@ final class Words {
 	}
 
 	/**
+	 * The change a card's part makes to the total, against the step's pick, said under its full price (D-249):
+	 * "+$12.00 over your pick", "Same price", "$8.00 less", or "Included" for the pick itself.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param string $kind   `more`, `less`, `free` or `included`; any other kind says nothing.
+	 * @param string $amount The change as an amount of money, without a sign.
+	 */
+	public static function change( string $kind, string $amount ): string {
+		switch ( $kind ) {
+			case 'more':
+				/* translators: %s: an amount of money, such as $12.00. What a part adds to the total, against the part picked. */
+				return sprintf( __( '+%s over your pick', 'creative-skateboard-builder' ), $amount );
+			case 'less':
+				/* translators: %s: an amount of money, such as $8.00. What a part takes off the total, against the part picked. */
+				return sprintf( __( '%s less', 'creative-skateboard-builder' ), $amount );
+			case 'free':
+				return _x( 'Same price', 'a part that costs the same as the one picked', 'creative-skateboard-builder' );
+			case 'included':
+				return _x( 'Included', 'a part the total counts already', 'creative-skateboard-builder' );
+			default:
+				return '';
+		}
+	}
+
+	/**
+	 * The other sizes a look comes in, on its card, as "Also in 8″, 8.5″ and 8.75″" (D-240).
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param list<string> $sizes The other sizes, as a person reads them, in order.
+	 */
+	public static function also( array $sizes ): string {
+		if ( array() === $sizes ) {
+			return '';
+		}
+		/* translators: %s: sizes joined as the site's language joins a list, such as 8″, 8.5″ and 8.75″. */
+		return sprintf( __( 'Also in %s', 'creative-skateboard-builder' ), wp_sprintf( '%l', $sizes ) );
+	}
+
+	/**
 	 * A part's label in the picture of what is in the box (spec: The picture): its slot, then its brand and its
 	 * size where it has them, as "Wheels: Retna, 54 mm".
 	 *
@@ -361,6 +471,25 @@ final class Words {
 		}
 		/* translators: 1: a brand's name, such as Retna. 2: a size, such as 54 mm. */
 		return sprintf( _x( '%1$s %2$s', 'a brand and a size', 'creative-skateboard-builder' ), $brand, $size );
+	}
+
+	/**
+	 * Values named as a choice, as "7.75″, 8.125″ or 9″": the last two joined by "or", the rest by commas.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param list<string> $values The values, in order.
+	 */
+	public static function either( array $values ): string {
+		$last = array_pop( $values );
+		if ( null === $last ) {
+			return '';
+		}
+		if ( array() === $values ) {
+			return $last;
+		}
+		/* translators: 1: values joined by commas, such as 7.75″, 8.125″. 2: the last value, such as 9″. */
+		return sprintf( __( '%1$s or %2$s', 'creative-skateboard-builder' ), implode( _x( ', ', 'between values in a list', 'creative-skateboard-builder' ), $values ), $last );
 	}
 
 	/**

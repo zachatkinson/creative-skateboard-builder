@@ -258,7 +258,7 @@ final class PartSpecsPanelTest extends IntegrationTestCase {
 		self::assertMatchesRegularExpression( '/name="cbuild_specs\[set_size\]"\s+value="8"/', $panel );
 		self::assertStringContainsString( '<option value="new_school"  selected=\'selected\'>New school</option>', $panel );
 		self::assertStringContainsString( '<option value="0"  selected=\'selected\'>No</option>', $panel );
-		self::assertSame( 4, substr_count( $panel, '<option value="">Not set</option>' ), 'three choices and one flag' );
+		self::assertSame( 5, substr_count( $panel, '<option value="">Not set</option>' ), 'three choices and two flags: spacers built in, and bearings included (D-246)' );
 
 		self::assertSame( 9, substr_count( $panel, '<details' ), 'a group per kind of part, and the Picture (0.7.0)' );
 		self::assertSame( 3, substr_count( $panel, '<details open>' ), 'open where the part has a value: deck, bearings and sets' );
@@ -654,8 +654,10 @@ final class PartSpecsPanelTest extends IntegrationTestCase {
 		$simple = self::simple();
 		wp_set_object_terms( $simple->get_id(), array( $trucks ), 'product_cat' );
 		$panel = $this->panel( $simple );
-		self::assertSame( 1, substr_count( $panel, '<details open>' ) );
+		// Trucks, and Sold in sets, since the slot takes two (issue #61).
+		self::assertSame( 2, substr_count( $panel, '<details open>' ) );
 		self::assertMatchesRegularExpression( '#<details open>\s*<summary>Trucks</summary>#', $panel );
+		self::assertMatchesRegularExpression( '#<details open>\s*<summary>Sold in sets</summary>#', $panel );
 
 		// A part not yet published is filled in before it is: the slot that names it opens its group.
 		self::assertMatchesRegularExpression( '#<details open>\s*<summary>Grip tape</summary>#', $this->panel( $draft ) );
@@ -666,8 +668,43 @@ final class PartSpecsPanelTest extends IntegrationTestCase {
 		wp_set_object_terms( $parent->get_id(), array( $trucks ), 'product_cat' );
 		$this->hooks = null;
 		$fields      = $this->fields( $variation );
-		self::assertSame( 1, substr_count( $fields, '<details open>' ) );
+		self::assertSame( 2, substr_count( $fields, '<details open>' ) );
 		self::assertMatchesRegularExpression( '#<details open>\s*<summary>Trucks</summary>#', $fields );
+		self::assertMatchesRegularExpression( '#<details open>\s*<summary>Sold in sets</summary>#', $fields );
+	}
+
+	/**
+	 * Issue #61: a slot that takes more than one unit needs each part's Number in a set (R7), and a part without it
+	 * is not offered. A closed group's fields are disabled, so a riser's Sold in sets has to open with its Risers
+	 * group, or the owner never fills it in and the riser never appears. A part in a slot of one unit keeps it shut.
+	 */
+	public function test_sold_in_sets_is_open_for_a_part_in_a_slot_that_takes_more_than_one_unit(): void {
+		$risers = self::factory()->term->create(
+			array(
+				'taxonomy' => 'product_cat',
+				'name'     => 'Risers',
+			)
+		);
+		$decks  = self::factory()->term->create(
+			array(
+				'taxonomy' => 'product_cat',
+				'name'     => 'Decks',
+			)
+		);
+		$slots                        = KitDocuments::slots();
+		$slots['slots'][0]['sources'] = array( 'categories' => array( $decks ) );
+		$slots['slots'][3]['sources'] = array( 'categories' => array( $risers ) );
+		KitFactory::kit( 'Complete', array( Options::META_KIT_SLOTS => $slots ) );
+
+		$riser = self::simple();
+		wp_set_object_terms( $riser->get_id(), array( $risers ), 'product_cat' );
+		$panel = $this->panel( $riser );
+		self::assertMatchesRegularExpression( '#<details open>\s*<summary>Sold in sets</summary>#', $panel );
+		self::assertContains( 'cbuild_specs[set_size]', self::sent( $panel ), 'and its field is sent' );
+
+		$deck = self::simple();
+		wp_set_object_terms( $deck->get_id(), array( $decks ), 'product_cat' );
+		self::assertDoesNotMatchRegularExpression( '#<details open>\s*<summary>Sold in sets</summary>#', $this->panel( $deck ) );
 	}
 
 	/**
@@ -695,11 +732,11 @@ final class PartSpecsPanelTest extends IntegrationTestCase {
 		list( $parent, $variation ) = self::variable();
 		self::assertSame( array(), self::sent( $this->fields( $variation ) ), 'a variation with no specs' );
 		self::assertSame( array(), self::sent( $this->panel( $parent ) ), 'and its parent' );
-		self::assertSame( 22, substr_count( $this->fields( $variation ), ' disabled' ), 'every field is still drawn: 21 specs and the layer image' );
+		self::assertSame( 23, substr_count( $this->fields( $variation ), ' disabled' ), 'every field is still drawn: 22 specs and the layer image' );
 
 		$variation->update_meta_data( Options::META_SPECS, array( 'wheel_diameter' => '54.0000' ) );
 		$variation->save();
-		self::assertSame( array( 'cbuild_variation_specs[0][wheel_diameter]' ), self::sent( $this->fields( $variation ) ), 'one with specs sends its open groups alone' );
+		self::assertSame( array( 'cbuild_variation_specs[0][wheel_diameter]', 'cbuild_variation_specs[0][bearings_included]' ), self::sent( $this->fields( $variation ) ), 'one with specs sends its open groups alone: Wheels, with Bearings included (D-246)' );
 
 		$deck = self::simple( array( 'deck_width' => '8.2500' ) );
 		self::assertSame(

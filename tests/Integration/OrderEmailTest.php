@@ -140,6 +140,34 @@ final class OrderEmailTest extends CartTestCase {
 		}
 	}
 
+	// Cowork's review of 0.9.0, F4 (#69): a kit has no photo of its own, and its line showed WooCommerce's placeholder,
+	// alt "Placeholder", just above the build's picture.
+	public function test_a_kits_line_with_no_photo_has_no_placeholder_and_a_part_keeps_its_own(): void {
+		$order = $this->order( true );
+		$lines = array();
+		foreach ( $order->get_items() as $item ) {
+			$lines[ (string) $item->get_meta( Options::ORDER_ROLE ) ][] = $item;
+		}
+		$placeholder = wc_placeholder_img();
+		// phpcs:disable WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- WooCommerce's own.
+		self::assertSame( '', apply_filters( 'woocommerce_order_item_thumbnail', $placeholder, $lines[ Options::ROLE_KIT ][0] ), 'the build\'s picture follows it' );
+		self::assertSame( $placeholder, apply_filters( 'woocommerce_order_item_thumbnail', $placeholder, $lines[ Options::ROLE_PART ][0] ), 'a part keeps WooCommerce\'s' );
+		$kit = wc_get_product( $this->kit );
+		$kit->set_image_id( \CreativeBranding\SkateboardBuilder\Tests\Support\LayerFiles::attachment( 300, 300 ) );
+		$kit->save();
+		self::assertSame( '<img src="kit.png">', apply_filters( 'woocommerce_order_item_thumbnail', '<img src="kit.png">', $lines[ Options::ROLE_KIT ][0] ), 'a kit with a photo of its own keeps it' );
+		// phpcs:enable
+		update_option( 'woocommerce_feature_email_improvements_enabled', 'yes' );
+		$kit->set_image_id( 0 );
+		$kit->save();
+		$with  = substr_count( self::email( $order, false ), 'alt="Placeholder"' );
+		$hooks = $this->service( \CreativeBranding\SkateboardBuilder\Order\EmailHooks::class );
+		remove_filter( 'woocommerce_order_item_thumbnail', array( $hooks, 'thumbnail' ) );
+		$without = substr_count( self::email( $order, false ), 'alt="Placeholder"' );
+		add_filter( 'woocommerce_order_item_thumbnail', array( $hooks, 'thumbnail' ), 10, 2 );
+		self::assertSame( $without - 1, $with, 'in the email itself, the kit\'s line alone' );
+	}
+
 	public function test_a_picture_not_made_yet_is_asked_for_and_the_email_goes_without(): void {
 		$order = $this->order( false );
 		$html  = self::email( $order, false );

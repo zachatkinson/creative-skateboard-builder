@@ -9,14 +9,18 @@ declare( strict_types=1 );
 
 namespace CreativeBranding\SkateboardBuilder\Tests\Integration;
 
+use CreativeBranding\SkateboardBuilder\Front\Builder;
 use CreativeBranding\SkateboardBuilder\Front\BuilderPage;
 use CreativeBranding\SkateboardBuilder\Front\BuildLink;
 use CreativeBranding\SkateboardBuilder\Front\MyBuildsView;
 use CreativeBranding\SkateboardBuilder\Front\SavedBuildHooks;
+use CreativeBranding\SkateboardBuilder\Port\Kits;
+use CreativeBranding\SkateboardBuilder\Port\Logger;
 use CreativeBranding\SkateboardBuilder\Service\SavedBuilds;
 use CreativeBranding\SkateboardBuilder\Support\Options;
 use CreativeBranding\SkateboardBuilder\Support\Tables;
 use CreativeBranding\SkateboardBuilder\Tests\Support\CartTestCase;
+use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\FakeClock;
 
 /**
  * Roadmap, milestone 8: "saved builds under My builds: save, rename, delete and open, with nonces; owner-only;
@@ -111,6 +115,37 @@ final class SavedBuildsPageTest extends CartTestCase {
 	 * review's Save build fields carried the kit as `add-to-cart`, which WooCommerce's form handler adds to the cart on
 	 * any request (includes/class-wc-form-handler.php, add_to_cart_action on `wp_loaded`).
 	 */
+	/**
+	 * A renderer of its own, as a request has: the container's draws once.
+	 */
+	private function builder(): BuilderPage {
+		return new BuilderPage( $this->service( Builder::class ), $this->service( Kits::class ), $this->service( Logger::class ) );
+	}
+
+	// Spec (configurator): A saved build that has changed (D-254): "Any of these opens a 'Your build has changed'
+	// panel before the review, with focus on its heading", and "Without JavaScript, the panel is a step of its own".
+	public function test_a_saved_build_whose_price_changed_opens_on_your_build_has_changed_with_focus_on_it(): void {
+		wp_set_current_user( $this->ana );
+		$saved = $this->service( SavedBuilds::class )->save( $this->ana, $this->kit, $this->picks(), true, '' );
+		$uuid  = $saved['uuid'];
+		self::assertNotSame( '', $uuid );
+		$link = BuildLink::read( array_map( 'strval', $this->picks() ) + array( 'step' => 'review', '_saved' => $uuid ) );
+		$base = (string) get_permalink( $this->kit );
+		self::assertStringNotContainsString( 'Your build has changed', $this->builder()->render( $this->kit, $link, $base ), 'nothing has changed yet' );
+
+		$deck = wc_get_product( $this->picks()['deck'] );
+		self::assertInstanceOf( \WC_Product::class, $deck );
+		$deck->set_regular_price( '99' );
+		$deck->save();
+		$html = $this->builder()->render( $this->kit, $link, $base );
+		self::assertMatchesRegularExpression( '/<h3 autofocus class="cbuild-changes__heading"[^>]*>Your build has changed<\/h3>/', $html );
+		self::assertStringContainsString( ' when you saved, ', $html, 'the new price, then and now' );
+		self::assertStringContainsString( '>Choose myself</button>', $html );
+
+		wp_set_current_user( $this->ben );
+		self::assertStringNotContainsString( 'Your build has changed', $this->builder()->render( $this->kit, $link, $base ), 'checked only for its own customer' );
+	}
+
 	public function test_save_build_sends_the_review_as_the_page_draws_it_and_leaves_the_cart_alone(): void {
 		wp_set_current_user( $this->ana );
 		$_GET[ BuildLink::PARAM ] = array_map( 'strval', $this->picks() ) + array( 'step' => 'review' );
@@ -278,6 +313,40 @@ final class SavedBuildsPageTest extends CartTestCase {
 		self::assertSame( array( 'The build is back in My builds.' ), self::notices() );
 		self::assertCount( 1, $this->service( SavedBuilds::class )->of( $this->ana ) );
 		self::assertStringNotContainsString( 'cbuild-my-builds__undo', $this->page(), 'offered once' );
+	}
+
+	// Cowork's review of 0.9.0, F1 (#66): a theme can move WooCommerce's notice far from Undo, so the form says what it
+	// undoes. F2 (#67): the copy is kept 15 minutes from the Delete, not until the session ends (D-275).
+	public function test_undo_says_which_build_it_brings_back_and_is_offered_for_fifteen_minutes(): void {
+		$clock = new FakeClock();
+		$hooks = $this->service( SavedBuildHooks::class );
+		$this->container()->set(
+			SavedBuildHooks::class,
+			new SavedBuildHooks(
+				fn(): SavedBuilds => $this->service( SavedBuilds::class ),
+				fn(): MyBuildsView => $this->service( MyBuildsView::class ),
+				$clock
+			)
+		);
+		try {
+			[ , $fields, $page ] = $this->deleteAndOfferUndo( 'Street setup' );
+			self::assertStringContainsString( 'Street setup is deleted. You can undo this for 15 minutes.', wp_strip_all_tags( $page ) );
+			self::assertStringContainsString( 'aria-label="Undo deleting Street setup">Undo</button>', $page, 'the button keeps its name' );
+			$clock->advance( 15 * 60 - 1 );
+			$this->post( $fields );
+			self::assertSame( array( 'The build is back in My builds.' ), self::notices(), 'within the 15 minutes' );
+
+			$this->service( SavedBuilds::class )->delete( $this->ana, $this->service( SavedBuilds::class )->of( $this->ana )[0]->uuid );
+			[ , $fields ] = $this->deleteAndOfferUndo( 'Late setup' );
+			$clock->advance( 15 * 60 + 1 );
+			$this->post( $fields );
+			self::assertSame( array( 'That build can no longer be brought back.' ), self::notices( 'error' ), 'not after them' );
+			self::assertSame( array(), $this->service( SavedBuilds::class )->of( $this->ana ) );
+			// The auditor's 1.0.0 should-fix P2: and the copy is out of the session, read past its 15 minutes.
+			self::assertNull( WC()->session->get( 'cbuild_deleted' ), 'the build is not kept past its Undo' );
+		} finally {
+			$this->container()->set( SavedBuildHooks::class, $hooks );
+		}
 	}
 
 	public function test_undo_brings_back_a_build_whose_part_went_since_as_it_was(): void {

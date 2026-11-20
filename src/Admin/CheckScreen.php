@@ -124,8 +124,12 @@ final class CheckScreen {
 		$kits  = $this->kits->all();
 		// Parts with no layer image are listed apart, each list cut at its own length: on a large catalogue they would
 		// otherwise fill the page after what keeps a part out (Cowork's M7 review, F4; D-211).
-		$fixes  = array_values( array_filter( $found, static fn( CheckFinding $finding ): bool => CatalogueCheck::LAYER_MISSING !== $finding->code ) );
+		$fixes  = array_values( array_filter( $found, static fn( CheckFinding $finding ): bool => ! in_array( $finding->code, array( CatalogueCheck::LAYER_MISSING, CatalogueCheck::LOOK_SHARED ), true ) ) );
 		$layers = array_values( array_filter( $found, static fn( CheckFinding $finding ): bool => CatalogueCheck::LAYER_MISSING === $finding->code ) );
+		// Variations that share a card, in a list of their own after the layers: what the builder does, not a fix (D-281).
+		$looks  = array_values( array_filter( $found, static fn( CheckFinding $finding ): bool => CatalogueCheck::LOOK_SHARED === $finding->code ) );
+		$alike  = $this->rows( array_slice( $looks, 0, self::SHOWN ), $kits );
+		$beyond = count( $looks ) - count( $alike );
 		$rows   = $this->rows( array_slice( $fixes, 0, self::SHOWN ), $kits );
 		$more   = count( $fixes ) - count( $rows );
 		$count  = count( $fixes );
@@ -147,6 +151,20 @@ final class CheckScreen {
 	 * @return list<array{kit: string, about: string, link: string, says: string}>
 	 */
 	private function rows( array $found, array $kits ): array {
+		// The parts, their terms, their meta and their parents read together, so the table asks no query a row (the M9 audit's
+		// minor 11). WooCommerce reads a product from these caches.
+		$ids = array_values( array_unique( array_filter( array_map( static fn( CheckFinding $finding ): int => $finding->part, $found ), static fn( int $part ): bool => $part > 0 ) ) );
+		if ( array() !== $ids ) {
+			_prime_post_caches( $ids, true, true );
+			$parents = array();
+			foreach ( $ids as $id ) {
+				$post = get_post( $id );
+				if ( $post instanceof \WP_Post && $post->post_parent > 0 ) {
+					$parents[] = $post->post_parent;
+				}
+			}
+			_prime_post_caches( array_values( array_unique( $parents ) ), true, true );
+		}
 		$rows = array();
 		foreach ( $found as $finding ) {
 			$product = 0 === $finding->part ? null : wc_get_product( $finding->part );

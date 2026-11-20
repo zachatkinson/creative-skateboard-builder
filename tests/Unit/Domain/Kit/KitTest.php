@@ -88,6 +88,13 @@ final class KitTest extends TestCase {
 		self::assertSame( 44, $kit->presets[0]->picks['risers'] );
 		self::assertSame( 1, $kit->presets[0]->picks['grip'], 'the first id there is' );
 		self::assertSame( '', $kit->presets[0]->description );
+		self::assertNull( $kit->presets[0]->image, 'and its photo' );
+	}
+
+	// D-252: a preset may name a rider photo, an attachment, for its tile.
+	public function test_a_preset_may_name_a_photo_for_its_tile(): void {
+		$kit = KitDocuments::kit( null, null, self::presets( array( array( 'image' => 81 ) + self::preset() ) ) );
+		self::assertSame( 81, $kit->presets[0]->image );
 	}
 
 	/**
@@ -103,6 +110,7 @@ final class KitTest extends TestCase {
 			'presets[1].name',
 		);
 		yield 'a name that is a number' => array( static fn( array $p ): array => array( 'name' => 4 ) + $p, DocumentError::WrongType, 'presets[1].name' );
+		yield 'a photo that is not an id' => array( static fn( array $p ): array => array( 'image' => '81' ) + $p, DocumentError::WrongType, 'presets[1].image' );
 		yield 'a description that is a number' => array( static fn( array $p ): array => array( 'description' => 4 ) + $p, DocumentError::WrongType, 'presets[1].description' );
 		yield 'no picks' => array(
 			static function ( array $p ): array {

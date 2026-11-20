@@ -46,7 +46,8 @@ interface PartFacts {
 
 	/**
 	 * Forget these products in every price context: their rows, their variations' rows, and the rows of the
-	 * parents of those that are variations, which answer for which variations there are.
+	 * parents of those that are variations, which answer for which variations there are. Their looks and cards
+	 * are kept, and carried over when the rows are written again (D-289).
 	 *
 	 * @since 0.4.0
 	 *
@@ -60,4 +61,37 @@ interface PartFacts {
 	 * @since 0.4.0
 	 */
 	public function forgetAll(): void;
+
+	/**
+	 * Each part's look and card as kept beside its facts in a price context, each as it was kept, or null where
+	 * none is (D-289). A part with no row is not in the answer.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param string $context The price context.
+	 * @param int    ...$ids  Products' and variations' IDs.
+	 * @return array<int, array{look: array<mixed>|null, card: array<mixed>|null}>
+	 */
+	public function kept( string $context, int ...$ids ): array;
+
+	/**
+	 * Keep these parts' looks, or their cards, beside their facts in a price context. A part with no row in it is
+	 * passed over: its facts are read first, and its look or card is kept on its next read.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param string                   $context The price context.
+	 * @param 'look'|'card'            $column  Which is kept.
+	 * @param array<int, array<mixed>> $values  By part.
+	 */
+	public function keep( string $context, string $column, array $values ): void;
+
+	/**
+	 * Forget these parts' looks and cards in every price context, and keep their facts.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param int ...$ids Products' and variations' IDs.
+	 */
+	public function clear( int ...$ids ): void;
 }

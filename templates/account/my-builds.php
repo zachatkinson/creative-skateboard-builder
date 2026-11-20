@@ -16,11 +16,21 @@ defined( 'ABSPATH' ) || exit;
 use CreativeBranding\SkateboardBuilder\Front\SavedBuildHooks;
 ?>
 <?php if ( null !== $undo ) : ?>
-	<?php /* Right under WooCommerce's "The build is deleted." notice: a form that puts the build back, without JavaScript. It names the build; the build itself is the session's copy (Cowork's 0.8.0 review, F3; D-231). */ ?>
+	<?php /* A form that puts the build back, without JavaScript, for UNDO_MINUTES after the Delete. It names the build; the build itself is the session's copy (Cowork's 0.8.0 review, F3; D-231, D-275). */ ?>
 	<form class="cbuild-my-builds__undo" method="post" action="<?php echo esc_url( $action ); ?>">
 		<input type="hidden" name="<?php echo esc_attr( SavedBuildHooks::FIELD ); ?>" value="<?php echo esc_attr( SavedBuildHooks::RESTORE ); ?>">
 		<input type="hidden" name="<?php echo esc_attr( SavedBuildHooks::UUID ); ?>" value="<?php echo esc_attr( $undo['uuid'] ); ?>">
 		<input type="hidden" name="<?php echo esc_attr( SavedBuildHooks::NONCE ); ?>" value="<?php echo esc_attr( wp_create_nonce( SavedBuildHooks::RESTORE . '_' . $undo['uuid'] ) ); ?>">
+		<?php // Its own sentence, since a theme can move WooCommerce's notice far from it (Cowork's review of 0.9.0, F1). ?>
+		<p class="cbuild-my-builds__gone">
+			<?php
+			/* translators: %s: the deleted build's name. */
+			echo esc_html( sprintf( __( '%s is deleted.', 'creative-skateboard-builder' ), $undo['name'] ) );
+			echo ' ';
+			/* translators: %s: a number of minutes, such as 15. */
+			echo esc_html( sprintf( _n( 'You can undo this for %s minute.', 'You can undo this for %s minutes.', SavedBuildHooks::UNDO_MINUTES, 'creative-skateboard-builder' ), number_format_i18n( SavedBuildHooks::UNDO_MINUTES ) ) );
+			?>
+		</p>
 		<button type="submit" class="button" aria-label="<?php /* translators: %s: the deleted build's name. */ echo esc_attr( sprintf( __( 'Undo deleting %s', 'creative-skateboard-builder' ), $undo['name'] ) ); ?>"><?php esc_html_e( 'Undo', 'creative-skateboard-builder' ); ?></button>
 	</form>
 <?php endif; ?>

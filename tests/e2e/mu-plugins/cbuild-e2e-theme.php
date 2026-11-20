@@ -32,6 +32,20 @@ if ( 'demo-dark' === $cbuild_e2e_scheme ) {
 	$cbuild_e2e_scheme = 'dark';
 }
 
+// The redesign's prototype (docs/reviews/redesign): a shop's own look, set only through the builder's documented
+// `--cbuild-*` properties and the theme's presets, as a shop would set it (HOOKS.md). The prototype's display face is
+// a web font; a local condensed face stands in, so the test site asks no other host.
+if ( 'prototype' === $cbuild_e2e_scheme ) {
+	add_action(
+		'wp_head',
+		static function () {
+			echo '<style id="cbuild-e2e-prototype">:root{--wp--preset--color--base:#121212;--wp--preset--color--contrast:#f4f1ea}body{background:#121212;color:#f4f1ea}.cbuild{--cbuild-accent:#f2e600;--cbuild-on-accent:#121212;--cbuild-muted:#b5b1a8;--cbuild-line:rgb(244 241 234 / 22%);--cbuild-surface:#1c1c1c;--cbuild-ground:#121212;--cbuild-on-ground:#f4f1ea;--cbuild-radius:.75rem}.cbuild__heading,.cbuild-picture__heading{font-family:Impact,"Arial Narrow",sans-serif;font-weight:400;letter-spacing:.02em;text-transform:uppercase}.cbuild__heading{font-size:2rem}</style>';
+		},
+		99
+	);
+	return;
+}
+
 if ( 'dark' !== $cbuild_e2e_scheme ) {
 	return;
 }

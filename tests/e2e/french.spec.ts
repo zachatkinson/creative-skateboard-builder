@@ -40,6 +40,17 @@ test.describe( 'The builder in French', () => {
 		await expect(
 			page.getByText( 'Votre montage' ).first()
 		).toBeAttached();
+		// The width first (D-241), in the shop's French.
+		await expect(
+			page.getByRole( 'group', {
+				name: /^Quelle largeur roulez-vous\s\?$/,
+			} )
+		).toBeVisible();
+		const width = page.locator( '.cbuild-width__option', {
+			hasText: /^8[,.]25\s?(″|po)/,
+		} );
+		await width.click();
+		await expect( width ).toHaveAttribute( 'aria-pressed', 'true' );
 		await page
 			.getByRole( 'radio', { name: /^Choisir Builder test deck 8\.25/ } )
 			.check();
@@ -48,13 +59,15 @@ test.describe( 'The builder in French', () => {
 		}
 		const bar = page.locator( '.cbuild-bar' );
 		await expect( bar.locator( '.cbuild-bar__estimate' ) ).toHaveText(
-			/^Complète à partir d’environ /
+			/^Planche complète dès environ /
 		);
 		await axe( page, 'the builder in French, a deck picked', '.cbuild' );
 		await bar
 			.getByRole( 'button', { name: /^Suivant\s:\sTrucks$/ } )
 			.click();
-		await expect( heading ).toHaveText( /^Étape 2 sur 7\s:\sTrucks$/ );
+		await expect( heading ).toHaveText(
+			/^Étape 2 sur 7\s:\sChoisissez vos trucks$/
+		);
 		await expect( page.locator( 'html' ) ).toHaveAttribute(
 			'lang',
 			'fr-CA'

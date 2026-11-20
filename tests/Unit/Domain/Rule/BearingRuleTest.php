@@ -115,6 +115,15 @@ final class BearingRuleTest extends TestCase {
 		self::assertSame( array(), self::check( array( SlotKey::SPACERS => Parts::of() ) ), 'spacers on their own' );
 	}
 
+	public function test_wheels_that_come_with_their_bearings_block_a_bearing(): void {
+		$included = Parts::of( array( 'wheel_diameter' => '54', 'bearings_included' => true ) );
+		$blocked  = new Finding( RuleId::R5, Severity::Block, MessageCode::BearingsIncluded, Source::Maker, array( SlotKey::BEARINGS ), array() );
+		self::assertEquals( array( $blocked ), self::check( array( SlotKey::WHEELS => $included, SlotKey::BEARINGS => self::bearings( '8' ) ) ) );
+		self::assertSame( array(), self::check( array( SlotKey::WHEELS => $included ) ), 'no bearing picked' );
+		self::assertSame( array(), self::check( array( SlotKey::WHEELS => Parts::of( array( 'wheel_diameter' => '54' ) ), SlotKey::BEARINGS => self::bearings( '8' ) ) ), 'plain wheels take bearings' );
+		self::assertContains( SlotKey::WHEELS, ( new BearingRule() )->slots(), 'R5 reads the wheels' );
+	}
+
 	public function test_parts_on_their_own_with_their_specs_say_nothing(): void {
 		self::assertSame( array(), self::check( array() ) );
 		self::assertSame( array(), self::check( array( SlotKey::TRUCKS => self::truck( '8' ) ) ) );

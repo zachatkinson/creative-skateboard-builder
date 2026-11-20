@@ -112,7 +112,7 @@ final class MyBuildsView {
 		if ( null === $kit || ! $this->kits->isPublic( $build->kit ) ) {
 			return null;
 		}
-		$query = ( new BuildLink( $build->picks, null, State::REVIEW, $build->assembly ) )->query( $kit->slots );
+		$query = ( new BuildLink( $build->picks, null, State::REVIEW, $build->assembly, saved: $build->uuid ) )->query( $kit->slots );
 		return add_query_arg(
 			array(
 				BuildLink::PARAM => urlencode_deep( $query ),

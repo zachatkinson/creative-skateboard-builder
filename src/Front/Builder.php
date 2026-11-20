@@ -13,8 +13,11 @@ use CreativeBranding\SkateboardBuilder\Domain\Fit\BuildProblem;
 use CreativeBranding\SkateboardBuilder\Domain\Fit\Problem;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\InvalidMoney;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\SlotKey;
+use CreativeBranding\SkateboardBuilder\Domain\Rule\BearingRule;
 use CreativeBranding\SkateboardBuilder\Domain\Rule\MessageCode;
 use CreativeBranding\SkateboardBuilder\Service\BuildState;
+use CreativeBranding\SkateboardBuilder\Service\SavedBuilds;
+use CreativeBranding\SkateboardBuilder\Service\ShelfQuery;
 use CreativeBranding\SkateboardBuilder\Service\State;
 use CreativeBranding\SkateboardBuilder\Service\StateStep;
 
@@ -40,6 +43,20 @@ if ( ! defined( 'ABSPATH' ) ) {
 final class Builder {
 
 	/**
+	 * A signed-in customer's width, from their saved builds (from 1.0.0).
+	 *
+	 * @var RememberedWidth|null
+	 */
+	private ?RememberedWidth $remembered = null;
+
+	/**
+	 * A saved build opened from My builds, checked against the shop (from 1.0.0).
+	 *
+	 * @var SavedBuilds|null
+	 */
+	private ?SavedBuilds $saved = null;
+
+	/**
 	 * Constructor.
 	 *
 	 * @since 0.6.0
@@ -49,6 +66,23 @@ final class Builder {
 	 * @param BuilderView $view   Says it as the template shows it.
 	 */
 	public function __construct( private BuildState $builds, private StateAnswer $writer, private BuilderView $view ) {}
+
+	/**
+	 * The same builder, which asks a signed-in customer's width of their saved builds and checks a saved build opened
+	 * from My builds against the shop. Only this release's container calls it, so a builder an earlier release's
+	 * container makes mid-update does neither (D-208).
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param RememberedWidth|null $remembered A signed-in customer's width.
+	 * @param SavedBuilds|null     $saved      The customers' saved builds.
+	 */
+	public function withSaved( ?RememberedWidth $remembered, ?SavedBuilds $saved ): self {
+		$builder             = clone $this;
+		$builder->remembered = $remembered;
+		$builder->saved      = $saved;
+		return $builder;
+	}
 
 	/**
 	 * What the builder shows at an address, or null when the shop has no such kit.
@@ -63,17 +97,47 @@ final class Builder {
 	 * @throws InvalidMoney When the build cannot be priced in the shop's currency settings.
 	 */
 	public function show( int $kit, BuildLink $link, string $base ): ?array {
+		if ( '' !== $link->saved && null !== $this->saved ) {
+			// Opened from My builds: a build that changed since it was saved says so before its review, with the
+			// closest parts in place (spec: A saved build that has changed, D-254). One that has not opens as it was.
+			$reopened = $this->saved->reopened( get_current_user_id(), $link->saved );
+			if ( null === $reopened || $kit !== $reopened->build->kit ) {
+				return $this->show( $kit, new BuildLink( $link->picks, null, $link->step, $link->assembly ), $base );
+			}
+			$shown = $this->show( $kit, new BuildLink( $reopened->check->picks, null, State::REVIEW, $reopened->build->assembly ), $base );
+			if ( null === $shown ) {
+				return null;
+			}
+			$panel           = $this->writer->reopened( $reopened );
+			$shown['view']   = $this->view->reopened( $shown['view'], $panel, $shown['state'], $reopened->build->assembly );
+			$shown['answer'] = $shown['answer'] + array( 'reopened' => $panel );
+			return $shown;
+		}
+		if ( null !== $this->remembered && '' === $link->shelf->width && ! isset( $link->picks[ SlotKey::DECK ] ) ) {
+			// A width asked for, or the deck's, comes first; otherwise a signed-in customer's last saved build brings
+			// theirs, and skips the question (spec: The deck's width first, "Remembered").
+			$width = $this->remembered->of( $kit );
+			if ( '' !== $width ) {
+				$shelf = $link->shelf;
+				$link  = $link->shelved( new ShelfQuery( $width, $shelf->chips, $shelf->query, $shelf->sort, $shelf->from, $shelf->shown, $shelf->ranked ) );
+			}
+		}
 		$state = $this->builds->of( $kit, $link->picks, $link->was, $link->step, $link->assembly, $link->none );
 		if ( null === $state ) {
 			return null;
 		}
-		$steps   = self::steps( $state );
+		$steps = self::steps( $state );
+		if ( $link->asked && SlotKey::RISERS === $link->step && ! in_array( SlotKey::RISERS, $steps, true ) && in_array( SlotKey::RISERS, $state->kit->slots->keys(), true ) ) {
+			// Asked for by a link, as Add risers at the review asks, the risers slot is a step though nothing needs it
+			// (spec: Risers, "Anyone can add them"). A step's form naming it gives way as before: its Next was made
+			// before the form's own pick of smaller wheels.
+			$steps = array_values( array_intersect( $state->kit->slots->keys(), array_merge( $steps, array( SlotKey::RISERS ) ) ) );
+		}
 		$stopped = null;
 		$step    = $state->step;
 		if ( State::REVIEW !== $step && ! in_array( $step, $steps, true ) ) {
-			// A slot that is no step now gives way to the one after it, and the last to the review.
-			// Risers are the one slot that can be no step, so the slot after it is one.
-			$step = $state->kit->slots->after( $step )[0] ?? State::REVIEW;
+			// A slot that is no step now gives way to the first step after it, and the last to the review.
+			$step = array_values( array_intersect( $state->kit->slots->after( $step ), $steps ) )[0] ?? State::REVIEW;
 		}
 		$unseen = self::risersNeeded( $state ) && ! isset( $link->picks[ SlotKey::RISERS ] ) && ! in_array( SlotKey::RISERS, $link->none, true );
 		foreach ( $state->steps as $about ) {
@@ -86,18 +150,18 @@ final class Builder {
 				$step = SlotKey::RISERS;
 				break;
 			}
-			if ( $about->slot->required && null === $about->counted() ) {
+			if ( $about->slot->required && null === $about->counted() && in_array( $about->slot->key, $steps, true ) ) {
 				$stopped = new BuildProblem( Problem::SlotEmpty, $about->slot->key, null );
 				$step    = $about->slot->key;
 				break;
 			}
 		}
 		$state = $state->at( $step );
-		// The address of what is shown: the step landed on, with the asked step's filters only where it is that step,
+		// The address of what is shown: the step landed on, with the asked step's filters and shelf only where it is that step,
 		// and the picks before only while their change is being explained.
 		$shown = $link->at( $step );
 		if ( $step === $link->step ) {
-			$shown = $shown->filtered( $link->brand, $link->size )->showing( $link->shown );
+			$shown = $shown->filtered( $link->brand, $link->size )->shelved( $link->shelf )->showing( $link->shown );
 		}
 		if ( null !== $state->changes && null !== $link->was ) {
 			$shown = $shown->after( $link->was );
@@ -113,7 +177,8 @@ final class Builder {
 
 	/**
 	 * The slots that are steps, in step order: every slot but a risers slot the kit does not require, while the build
-	 * holds no risers and its wheels need none (spec: A step, risers only when needed). Wheels that need risers keep
+	 * holds no risers and its wheels need none (spec: A step, risers only when needed), and but bearings the wheels
+	 * come with (spec: Bearings). Wheels that need risers keep
 	 * the step with "No risers" chosen, so a shopper who left them out can still see why and change it.
 	 *
 	 * @since 0.6.0
@@ -122,14 +187,32 @@ final class Builder {
 	 * @return list<string>
 	 */
 	public static function steps( State $state ): array {
-		$steps  = array();
-		$needed = self::risersNeeded( $state );
+		$steps    = array();
+		$needed   = self::risersNeeded( $state );
+		$included = self::bearingsIncluded( $state );
 		foreach ( $state->steps as $step ) {
-			if ( $needed || ! self::skipped( $step ) ) {
+			if ( ( $needed || ! self::skipped( $step ) ) && ! ( $included && SlotKey::BEARINGS === $step->slot->key && null === $step->counted() ) ) {
 				$steps[] = $step->slot->key;
 			}
 		}
 		return $steps;
+	}
+
+	/**
+	 * Whether the wheels the build counts come with their bearings, so the bearings slot is no step and counts as
+	 * filled (spec: Bearings, D-246). A bearing picked before such wheels stays a step until the change list takes it.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param State $state The build's state.
+	 */
+	public static function bearingsIncluded( State $state ): bool {
+		foreach ( $state->steps as $step ) {
+			if ( SlotKey::WHEELS === $step->slot->key ) {
+				return BearingRule::comesWith( $step->counted()?->part );
+			}
+		}
+		return false;
 	}
 
 	/**

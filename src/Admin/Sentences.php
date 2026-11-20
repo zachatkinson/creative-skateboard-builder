@@ -9,6 +9,7 @@ declare( strict_types=1 );
 
 namespace CreativeBranding\SkateboardBuilder\Admin;
 
+use CreativeBranding\SkateboardBuilder\Domain\Picture\LayerError;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\DocumentError;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Kit;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Slot;
@@ -22,6 +23,7 @@ use CreativeBranding\SkateboardBuilder\Port\UploadRefused;
 use CreativeBranding\SkateboardBuilder\Service\CatalogueCheck;
 use CreativeBranding\SkateboardBuilder\Service\CheckFinding;
 use CreativeBranding\SkateboardBuilder\Service\KitEditor;
+use CreativeBranding\SkateboardBuilder\Service\LayerCheck;
 use CreativeBranding\SkateboardBuilder\Service\SpecImport;
 use CreativeBranding\SkateboardBuilder\Service\SpecWriter;
 
@@ -88,6 +90,9 @@ final class Sentences {
 			case CatalogueCheck::LAYER_MISSING:
 				/* translators: %s: a slot's key, such as trucks. */
 				return sprintf( __( 'It has no layer image, so the picture shows its labelled photo in the slot "%s". Add one on its Part specs, under Picture.', 'creative-skateboard-builder' ), $finding->slot );
+			case CatalogueCheck::LOOK_SHARED:
+				/* translators: 1: a list of variations' IDs, such as 11, 12. 2: a slot's key, such as deck. */
+				return sprintf( __( 'Its variations %1$s share a photo, so the builder shows them as one card in the slot "%2$s" and asks for the rest after the pick.', 'creative-skateboard-builder' ), self::ids( $finding->values['parts'] ?? '' ), $finding->slot );
 			case CatalogueCheck::PRESET:
 				$problems = array(
 					/* translators: 1: a preset's name. 2: a slot's key. */
@@ -172,7 +177,37 @@ final class Sentences {
 			/* translators: %s: what a cell held. */
 			MeasureError::Negative->value => sprintf( __( '"%s" is below zero.', 'creative-skateboard-builder' ), $text ),
 			/* translators: %s: what a cell held. */
-			default => sprintf( __( '"%s" is not a value this column takes.', 'creative-skateboard-builder' ), $text ),
+			default => self::layer( $code, $text ) ?? sprintf( __( '"%s" is not a value this column takes.', 'creative-skateboard-builder' ), $text ),
+		};
+	}
+
+	/**
+	 * Why a layer image was not saved, as the Layer image field and an import's results both say it, or null for a
+	 * code that is not a layer image's (D-287).
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param string $code A `LayerError`'s value, or one of `LayerCheck`'s.
+	 * @param string $text What its sentence needs, as `LayerCheck` gives it: the image's type and the pixels it needs,
+	 *                     each after a tab, or what the cell named.
+	 */
+	public static function layer( string $code, string $text ): ?string {
+		$parts = explode( "\t", $text );
+		return match ( $code ) {
+			/* translators: %s: what was typed in the Layer image field. */
+			LayerCheck::NOT_IMAGE => sprintf( __( 'Layer image was not saved: "%s" is not the ID of an image in the Media Library.', 'creative-skateboard-builder' ), $parts[0] ),
+			/* translators: %s: a file's name. */
+			LayerCheck::NOT_FOUND => sprintf( __( 'Layer image was not saved: no image in the Media Library has the file name "%s".', 'creative-skateboard-builder' ), $parts[0] ),
+			/* translators: 1: a file's name. 2: the attachment IDs of the images with that name, such as 12, 40. */
+			LayerCheck::AMBIGUOUS => sprintf( __( 'Layer image was not saved: more than one image in the Media Library has the file name "%1$s" (IDs %2$s). Use the ID of the one you mean.', 'creative-skateboard-builder' ), $parts[0], self::ids( $parts[1] ?? '' ) ),
+			/* translators: %s: a file's media type, such as image/jpeg. */
+			LayerError::WrongType->value => sprintf( __( 'Layer image was not saved: it is %s, and a layer must be a PNG, WebP or AVIF with a transparent background.', 'creative-skateboard-builder' ), $parts[0] ),
+			/* translators: %s: a file's media type, such as image/avif. */
+			LayerError::Unreadable->value => sprintf( __( 'Layer image was not saved: it is %s, and this server\'s image library cannot read that type. Upload the cut-out as a PNG or WebP, or ask your host to turn on AVIF in GD or Imagick.', 'creative-skateboard-builder' ), $parts[0] ),
+			LayerError::Opaque->value => __( 'Layer image was not saved: its corners are not transparent. Export the cut-out with a transparent background.', 'creative-skateboard-builder' ),
+			/* translators: 1: a number of pixels. 2: another. */
+			LayerError::TooSmall->value => sprintf( __( 'Layer image was not saved: it is too small for the size the picture draws this part. It needs at least %1$s pixels across or %2$s along.', 'creative-skateboard-builder' ), number_format_i18n( (int) ( $parts[1] ?? 0 ) ), number_format_i18n( (int) ( $parts[2] ?? 0 ) ) ),
+			default => null,
 		};
 	}
 
@@ -224,5 +259,14 @@ final class Sentences {
 			/* translators: %s: a section's name. */
 			default => sprintf( __( '%s: what was sent could not be read. Load the page again and try once more.', 'creative-skateboard-builder' ), $field ),
 		};
+	}
+
+	/**
+	 * IDs the check joined with commas, as the locale writes a list: "11, 12 and 13".
+	 *
+	 * @param string $ids IDs joined with `, `.
+	 */
+	private static function ids( string $ids ): string {
+		return '' === $ids ? '' : wp_sprintf( '%l', explode( ', ', $ids ) );
 	}
 }

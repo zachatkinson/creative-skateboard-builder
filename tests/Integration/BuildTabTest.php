@@ -141,6 +141,11 @@ final class BuildTabTest extends IntegrationTestCase {
 				),
 				'wheelbase' => '',
 			),
+			'layout'   => array(
+				'stage_side' => 'left',
+				'board_size' => 'large',
+				'search'     => 'creative_search',
+			),
 		);
 	}
 
@@ -243,7 +248,7 @@ final class BuildTabTest extends IntegrationTestCase {
 		foreach ( Options::kitDocumentNames() as $name => $key ) {
 			self::assertNull( $this->service( DocumentSchemas::class )->refusal( $name, $stored[ $key ] ), $name );
 		}
-		Kit::fromDocuments( $stored[ Options::META_KIT_SLOTS ], $stored[ Options::META_KIT_RULES ], $stored[ Options::META_KIT_PRESETS ], $stored[ Options::META_KIT_ASSEMBLY ], $stored[ Options::META_KIT_PICTURE ] );
+		Kit::fromDocuments( $stored[ Options::META_KIT_SLOTS ], $stored[ Options::META_KIT_RULES ], $stored[ Options::META_KIT_PRESETS ], $stored[ Options::META_KIT_ASSEMBLY ], $stored[ Options::META_KIT_PICTURE ], $stored[ Options::META_KIT_LAYOUT ] );
 	}
 
 	public function test_a_new_kits_assembly_starts_from_the_shops_settings_and_a_kit_that_has_its_own_keeps_it(): void {
@@ -509,6 +514,99 @@ final class BuildTabTest extends IntegrationTestCase {
 		self::assertMatchesRegularExpression( '/id="cbuild-kit-slots-0-sources-products"[^>]*multiple="multiple"[^>]*>\s*<option value="' . $deck->get_id() . '" selected="selected">/', $panel );
 	}
 
+	/**
+	 * Issue #62 (Cowork, on the demo): the test kit's presets name trucks the shop hides, so every save said the
+	 * presets were not saved, though nothing in them had changed and nothing was lost. Presets sent as they are
+	 * stored are kept without a failure, and the tab says which preset holds which part the slot doesn't offer now.
+	 * A preset that was edited is still held to the slots.
+	 */
+	// D-252: a preset's Photo, by its media library ID, with the modal's button where the page has it.
+	public function test_a_presets_photo_is_a_field_with_a_choose_button_and_its_preview(): void {
+		$this->as( 'shop_manager' );
+		$photo = self::factory()->attachment->create_upload_object( DIR_TESTDATA . '/images/canola.jpg' );
+		$kit   = KitFactory::kit(
+			'Complete',
+			array(
+				Options::META_KIT_PRESETS => array(
+					'schema_version' => 1,
+					'presets'        => array(
+						array(
+							'name'  => 'Street',
+							'picks' => array( 'deck' => 1 ),
+							'image' => $photo,
+						),
+					),
+				),
+			)
+		);
+		$panel = $this->panel( $kit );
+		self::assertMatchesRegularExpression( '/<input\s[^>]*id="cbuild-kit-presets-0-image"[^>]*name="cbuild_kit\[presets\]\[0\]\[image\]"[^>]*value="' . $photo . '"/s', $panel );
+		self::assertMatchesRegularExpression( '/<button type="button" class="button cbuild-layer__choose" hidden data-cbuild-layer="cbuild-kit-presets-0-image"/', $panel, 'the button the script shows' );
+		self::assertMatchesRegularExpression( '/id="cbuild-kit-presets-0-image-preview"><img alt="" width="60" height="60" src="[^"]+canola[^"]*"/', $panel, 'and what it is' );
+		self::assertMatchesRegularExpression( '/id="cbuild-kit-presets-1-image-preview"><img alt="" width="60" height="60" src="" hidden/', $panel, 'an empty row has no preview' );
+		// Each named for its preset, so six buttons are not six of one name (the auditor's M10 review, 14).
+		self::assertStringContainsString( 'aria-label="Choose a photo for Preset 2"', $panel );
+	}
+
+	public function test_unchanged_presets_naming_a_part_the_shop_hides_are_kept_and_named_not_refused(): void {
+		$this->as( 'shop_manager' );
+		$deck = new \WC_Product_Simple();
+		$deck->set_name( 'Plain deck' );
+		$deck->set_regular_price( '60' );
+		$deck->set_status( 'publish' );
+		$deck->update_meta_data(
+			Options::META_SPECS,
+			array(
+				'deck_width'  => '8.25',
+				'deck_length' => '32',
+			)
+		);
+		$deck->save();
+		$this->service( SpecIndexer::class )->index( $deck->get_id() );
+		$kit  = KitFactory::kit();
+		$sent = self::form(
+			array(
+				'slots'   => array(
+					array(
+						'key'      => 'deck',
+						'label'    => 'Deck',
+						'required' => '1',
+						'units'    => '1',
+						'products' => array( (string) $deck->get_id() ),
+					),
+				),
+				'presets' => array(
+					array(
+						'name'  => 'Street',
+						'picks' => array( 'deck' => (string) $deck->get_id() ),
+					),
+				),
+			)
+		);
+		$this->send( $kit, $sent );
+		self::assertSame( array(), self::notices(), 'saved as a preset that fits' );
+		$saved = self::stored( $kit->get_id() )[ Options::META_KIT_PRESETS ];
+
+		// The shop hides the deck, and saves the kit again with nothing changed.
+		$deck->set_catalog_visibility( 'hidden' );
+		$deck->save();
+		\WC_Admin_Meta_Boxes::$meta_box_errors = array();
+		$this->send( $kit, $sent );
+		self::assertSame(
+			array( '<a href="#cbuild-kit-presets-0-picks-deck">Street holds Plain deck (#' . $deck->get_id() . '), which the Deck slot doesn&#039;t offer now. The preset is kept as it is, and its tile says so until the part is offered again.</a>' ),
+			self::notices(),
+			'that alone: no "not saved"'
+		);
+		self::assertSame( $saved, self::stored( $kit->get_id() )[ Options::META_KIT_PRESETS ], 'the presets are as they were' );
+
+		// Edited, it is held to the slots as before.
+		\WC_Admin_Meta_Boxes::$meta_box_errors = array();
+		$sent['presets'][0]['name']            = 'Street, edited';
+		$this->send( $kit, $sent );
+		self::assertStringContainsString( 'The kit&#039;s presets were not saved.', implode( ' ', self::notices() ) );
+		self::assertSame( $saved, self::stored( $kit->get_id() )[ Options::META_KIT_PRESETS ] );
+	}
+
 	// The auditor's should-fix 9, milestone 4: every row's buttons were "Move up" and "Move down", and every fold
 	// "Settings", so a list of the tab's controls named none of them apart.
 	// Claude in Cowork's review of milestone 4, should-fix 1: PHP drops the fields past max_input_vars with no error,
@@ -694,6 +792,34 @@ final class BuildTabTest extends IntegrationTestCase {
 		self::assertSame( 142500, $read?->picture->wheelbase?->tenThousandths );
 	}
 
+	// Spec (configurator): Settings (D-255): the Build tab's Layout section, kept in `_cbuild_layout`.
+	public function test_the_layout_section_sets_the_stage_side_the_board_size_and_the_search(): void {
+		$this->as( 'shop_manager' );
+		$kit   = KitFactory::kit();
+		$panel = $this->panel( $kit );
+		self::assertStringContainsString( 'id="cbuild-kit-layout"', $panel );
+		foreach ( array( 'stage_side' => 'left', 'board_size' => 'large', 'search' => 'creative_search' ) as $key => $default ) {
+			self::assertMatchesRegularExpression( '#name="cbuild_kit\[layout\]\[' . $key . '\]".*?<option value="' . $default . '"\s+selected#s', $panel, $key . ': a kit saved before 1.0.0 shows the default' );
+		}
+
+		$sent           = self::form();
+		$sent['layout'] = array(
+			'stage_side' => 'right',
+			'board_size' => 'balanced',
+			'search'     => 'own',
+		);
+		$this->send( $kit, $sent );
+		self::assertSame( array(), self::notices() );
+		self::assertSame( array( 'schema_version' => 1, 'stage_side' => 'right', 'board_size' => 'balanced', 'search' => 'own' ), self::stored( $kit->get_id() )[ Options::META_KIT_LAYOUT ] );
+		$read = $this->service( \CreativeBranding\SkateboardBuilder\Port\Kits::class )->kit( $kit->get_id() );
+		self::assertSame( array( 'right', 'balanced', 'own' ), array( $read?->layout->stageSide, $read?->layout->boardSize, $read?->layout->search ), 'the kit the builder reads' );
+
+		$sent['layout']['stage_side'] = 'top';
+		$this->send( $kit, $sent );
+		self::assertStringContainsString( 'The kit&#039;s layout was not saved.', implode( '', self::notices() ) );
+		self::assertSame( 'right', self::stored( $kit->get_id() )[ Options::META_KIT_LAYOUT ]['stage_side'], 'the layout in force stays' );
+	}
+
 	public function test_a_wheelbase_outside_what_a_deck_has_is_not_saved_and_the_notice_says_the_range(): void {
 		$this->as( 'shop_manager' );
 		$kit                          = KitFactory::kit();
@@ -719,4 +845,28 @@ final class BuildTabTest extends IntegrationTestCase {
 		self::assertContains( '<a href="#cbuild-kit-picture-wheelbase">Wheelbase where a deck gives none: type a number, such as 0.25.</a>', self::notices() );
 	}
 
+
+	// The M9 audit's minor 11: a slot's list of products, or of terms, is read together, so it asks as many queries
+	// for twelve as for two.
+	public function test_a_list_of_products_or_terms_is_named_in_queries_that_do_not_grow_with_it(): void {
+		$products = array();
+		$terms    = array();
+		for ( $n = 0; $n < 12; $n++ ) {
+			$product = new \WC_Product_Simple();
+			$product->set_name( 'Deck ' . $n );
+			$products[] = $product->save();
+			$terms[]    = (int) wp_insert_term( 'Category ' . $n, 'product_cat' )['term_id'];
+		}
+		foreach ( array( 'products' => $products, 'terms' => $terms ) as $method => $ids ) {
+			$named   = new \ReflectionMethod( \CreativeBranding\SkateboardBuilder\Admin\BuildTab::class, $method );
+			$queries = static function ( array $some ) use ( $named ): int {
+				global $wpdb;
+				wp_cache_flush();
+				$before = $wpdb->num_queries;
+				self::assertCount( count( $some ), $named->invoke( null, $some ) );
+				return $wpdb->num_queries - $before;
+			};
+			self::assertSame( $queries( array_slice( $ids, 0, 2 ) ), $queries( $ids ), $method );
+		}
+	}
 }

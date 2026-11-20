@@ -36,3 +36,6 @@ Thumbs.db
 # PHPUnit 9.6 and the polyfills for the WordPress suite (tools/integration.sh installs them; the lock is committed)
 /tools/integration/vendor/
 .deptrac.cache
+
+# The browser tool's screenshots and snapshots, local only.
+.playwright-mcp/

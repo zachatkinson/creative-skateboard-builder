@@ -28,8 +28,10 @@ final readonly class Preset {
 	 * @param string             $name        The owner's name for it.
 	 * @param string             $description A line of description, or empty.
 	 * @param array<string, int> $picks       A part's id by slot key.
+	 * @param int|null           $image       From 1.0.0, a rider photo for its tile, an attachment's id, or null for the
+	 *                                        build's own picture (D-252).
 	 */
-	private function __construct( public string $name, public string $description, public array $picks ) {}
+	private function __construct( public string $name, public string $description, public array $picks, public ?int $image = null ) {}
 
 	/**
 	 * From one row of the presets document.
@@ -50,6 +52,6 @@ final readonly class Preset {
 			}
 			$picks[ $slot ] = $chosen->whole( $slot, 1, PHP_INT_MAX );
 		}
-		return new self( $fields->text( 'name', self::MAX_NAME ), $fields->textOrEmpty( 'description', self::MAX_DESCRIPTION ), $picks );
+		return new self( $fields->text( 'name', self::MAX_NAME ), $fields->textOrEmpty( 'description', self::MAX_DESCRIPTION ), $picks, $fields->idOrNull( 'image' ) );
 	}
 }

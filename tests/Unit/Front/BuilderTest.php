@@ -15,6 +15,7 @@ use CreativeBranding\SkateboardBuilder\Front\PageRenderer;
 use CreativeBranding\SkateboardBuilder\Service\LayerArtwork;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\InMemoryLayerImages;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\InMemoryLayerRenditions;
+use CreativeBranding\SkateboardBuilder\Domain\Kit\Kit;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Part;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\SlotKey;
 use CreativeBranding\SkateboardBuilder\Front\Builder;
@@ -218,6 +219,14 @@ final class BuilderTest extends TestCase {
 
 		$this->presets();
 		self::assertTrue( $this->show( new BuildLink() )['view']['presets']['tiles'][1]['hasTotal'], 'a sold-out part leaves the build whole, so its total stands' );
+	}
+
+	// Spec (configurator): Settings (D-255), the stage's side and the board's size on a desktop.
+	public function test_the_kits_layout_puts_the_stage_on_its_side_at_its_size(): void {
+		self::assertSame( array( 'stageRight' => false, 'balanced' => false ), $this->show( new BuildLink() )['view']['layout'], 'left and large unless the kit says' );
+		$kit = Kit::fromDocuments( KitDocuments::slots(), KitDocuments::rules(), KitDocuments::presets(), KitDocuments::assembly(), null, array( 'schema_version' => 1, 'stage_side' => 'right', 'board_size' => 'balanced' ) );
+		$this->kits->add( self::KIT, $kit, Shop::parts() );
+		self::assertSame( array( 'stageRight' => true, 'balanced' => true ), $this->show( new BuildLink() )['view']['layout'] );
 	}
 
 	public function test_the_picture_says_nothing_under_it_at_a_blank_start_where_the_summary_says_it(): void {
@@ -468,6 +477,13 @@ final class BuilderTest extends TestCase {
 				'amount' => $view['summary']['total'],
 				'parts'  => 'Show the parts',
 				'hide'  => 'Hide the parts',
+				// The footer holds Back beside Next, as the prototype has it; the step's own Back is hidden.
+				'back'  => array(
+					'shown' => true,
+					'url'   => self::url( array( 'deck' => '101', 'step' => 'deck' ) ),
+					'text'  => 'Back',
+					'label' => 'Back: Deck',
+				),
 				'next'  => array(
 					'shown'    => true,
 					'onStep'   => true,
@@ -524,8 +540,9 @@ final class BuilderTest extends TestCase {
 		$view = $this->show( new BuildLink() )['view'];
 
 		self::assertSame( self::KIT, $view['kit'] );
-		self::assertSame( 'Step 1 of 7: Deck', $view['heading'] );
-		self::assertSame( $view['heading'], $view['title'] );
+		self::assertSame( 'Choose your deck', $view['heading'] );
+		self::assertSame( 'Step 1 of 7:', $view['count'] );
+		self::assertSame( 'Step 1 of 7: Deck', $view['title'], 'The title keeps the count and the name; the heading says the question (D-269).' );
 		self::assertTrue( $view['isStep'] );
 		self::assertFalse( $view['isChanges'] );
 		self::assertFalse( $view['isReview'] );
@@ -541,15 +558,16 @@ final class BuilderTest extends TestCase {
 			array(
 				'key'     => 'deck',
 				'label'   => 'Deck',
-				'state'   => 'Current step',
+				'state'   => 'Deck, current step',
 				'done'    => false,
+				'linked'  => false,
 				'current' => true,
 				'url'     => '',
 				'aria'    => 'step',
 			),
 			$view['progress'][0]
 		);
-		self::assertSame( array( 'To come', false, false, '', false ), array( $view['progress'][1]['state'], $view['progress'][1]['done'], $view['progress'][1]['current'], $view['progress'][1]['url'], $view['progress'][1]['aria'] ) );
+		self::assertSame( array( 'Trucks, to come', false, false, '', false ), array( $view['progress'][1]['state'], $view['progress'][1]['done'], $view['progress'][1]['current'], $view['progress'][1]['url'], $view['progress'][1]['aria'] ) );
 		self::assertSame( 'Review', $view['progress'][6]['label'] );
 
 		$step = $view['step'];
@@ -597,7 +615,8 @@ final class BuilderTest extends TestCase {
 		self::assertFalse( $card['checked'] );
 		self::assertFalse( $card['disabled'] );
 		self::assertFalse( $card['soldOut'] );
-		self::assertSame( '+$60.00', $card['delta'] );
+		self::assertSame( array( '$101', '', false ), array( $card['price'], $card['delta'], $card['hasDelta'] ), 'the full price, and no change before the step has a pick (D-249)' );
+		self::assertSame( array( '', false, '', false, '', false ), array( $card['brand'], $card['hasBrand'], $card['look'], $card['hasLook'], $card['also'], $card['hasAlso'] ), 'a part listed alone has no look' );
 		self::assertSame( 'In stock', $card['stock'] );
 		self::assertSame( 'cbuild-card__stock cbuild-card__stock--in-stock', $card['stockClass'] );
 		self::assertSame( '', $card['fit'], 'A deck is not fitted against a deck.' );
@@ -622,7 +641,10 @@ final class BuilderTest extends TestCase {
 		self::assertFalse( $view['summary']['hasArrival'] );
 		self::assertSame( self::KIT, $view['summary']['kit'] );
 		self::assertSame( 'Nothing is chosen yet. Total: $0.00.', $view['status'] );
-		self::assertSame( 'What is in the box', $view['picture']['heading'] );
+		// The stage is headed as the prototype's is, with the side shown and a place-holder until a deck is picked.
+		self::assertSame( 'Your board', $view['picture']['heading'] );
+		self::assertSame( 'Pick a deck to start', $view['picture']['empty'] );
+		self::assertSame( array( 'under' => 'Seen from underneath', 'top' => 'Seen from the top' ), $view['picture']['side'] );
 		self::assertSame( array(), $view['picture']['items'] );
 		self::assertFalse( $view['review']['ready'] );
 	}
@@ -632,9 +654,15 @@ final class BuilderTest extends TestCase {
 		$view = $this->show( $link )['view'];
 		$step = $view['step'];
 
-		self::assertSame( 'Step 2 of 7: Trucks', $view['heading'] );
+		self::assertSame( 'Choose your trucks', $view['heading'] );
+		self::assertSame( 'Step 2 of 7:', $view['count'] );
 		self::assertSame( 'done', $view['progress'][0]['done'] ? 'done' : 'not done' );
-		self::assertSame( 'Done', $view['progress'][0]['state'] );
+		self::assertSame( 'Deck, done: Part 103', $view['progress'][0]['state'], 'a done step is said with its pick (spec: The step rail)' );
+		self::assertSame( array( false, '' ), array( $view['progress'][2]['linked'], $view['progress'][2]['url'] ), 'the step after one with no pick is no link yet' );
+		$picked = $this->show( new BuildLink( array( SlotKey::DECK => 103, SlotKey::TRUCKS => 149 ), null, SlotKey::TRUCKS ) )['view']['progress'];
+		self::assertSame( array( true, false, 'Wheels, to come' ), array( $picked[2]['linked'], $picked[2]['done'], $picked[2]['state'] ), 'once the step has a pick, the next is one tap away' );
+		self::assertSame( self::url( array( 'deck' => '103', 'trucks' => '149', 'step' => 'wheels' ) ), $picked[2]['url'] );
+		self::assertFalse( $picked[3]['linked'], 'and only the next' );
 		self::assertSame( self::url( array( 'deck' => '103', 'grip' => '701', 'step' => 'deck', 'assembly' => '1', 'preset' => '4' ) ), $view['progress'][0]['url'] );
 		self::assertFalse( $step['hasLead'] );
 		self::assertSame(
@@ -738,7 +766,8 @@ final class BuilderTest extends TestCase {
 	public function test_a_review_asked_for_with_no_deck_stops_on_the_deck_and_links_to_it(): void {
 		$view = $this->show( new BuildLink( array(), null, State::REVIEW ) )['view'];
 
-		self::assertSame( 'Step 1 of 7: Deck', $view['heading'] );
+		self::assertSame( 'Choose your deck', $view['heading'] );
+		self::assertSame( 'Step 1 of 7:', $view['count'] );
 		self::assertSame( 'Error: Step 1 of 7: Deck', $view['title'] );
 		self::assertTrue( $view['errors']['shown'] );
 		self::assertSame( 'Fix these before going on', $view['errors']['heading'], 'The heading says what to do; each item names its problem (audit minor 27).' );
@@ -758,7 +787,8 @@ final class BuilderTest extends TestCase {
 		self::assertNotContains( SlotKey::RISERS, Builder::steps( $state ) );
 
 		$view = $this->show( new BuildLink( array( SlotKey::DECK => 101, SlotKey::TRUCKS => 139, SlotKey::WHEELS => 301, SlotKey::RISERS => 401 ), null, SlotKey::RISERS ) )['view'];
-		self::assertSame( 'Step 4 of 8: Risers', $view['heading'] );
+		self::assertSame( 'Choose your risers', $view['heading'] );
+		self::assertSame( 'Step 4 of 8:', $view['count'] );
 		self::assertTrue( $view['step']['leave']['shown'] );
 		self::assertSame( 'No risers', $view['step']['leave']['label'] );
 		self::assertFalse( $view['step']['leave']['checked'] );
@@ -769,6 +799,65 @@ final class BuilderTest extends TestCase {
 		$kit['slots'][3]['required'] = true;
 		$this->kits->add( self::KIT, KitDocuments::kit( $kit ), Shop::parts() );
 		self::assertContains( SlotKey::RISERS, Builder::steps( $this->show( new BuildLink() )['state'] ), 'A kit that requires risers asks for them.' );
+	}
+
+	/**
+	 * The shelf's part of a step with no shelf: every field there, and nothing shown.
+	 *
+	 * @return array<string, mixed>
+	 */
+	private static function emptyShelf(): array {
+		return array(
+			'width'   => array(
+				'shown'   => false,
+				'asking'  => false,
+				'legend'  => 'Width',
+				'chosen'  => '',
+				'change'  => 'Change',
+				'name'    => 'cbuild[_width]',
+				'options' => array(),
+				'hasNone' => false,
+				'none'    => '',
+				'guide'   => array(
+					'shown'   => false,
+					'summary' => 'Not sure of your width?',
+					'caption' => 'Deck width by shoe size',
+					'shoe'    => 'Shoe size (US)',
+					'width'   => 'Deck width',
+					'rows'    => array(),
+				),
+			),
+			'search'  => array(
+				'shown'  => false,
+				'label'  => 'Search parts',
+				'hint'   => 'Brand or name',
+				'name'   => 'cbuild[_q]',
+				'value'  => '',
+				'button' => 'Search',
+			),
+			'chips'   => array(
+				'shown'  => false,
+				'groups' => array(),
+				'apply'  => 'Apply',
+				'toggle' => 'Filters',
+			),
+			'sort'    => array(
+				'shown'   => false,
+				'label'   => 'Sort',
+				'name'    => 'cbuild[_sort]',
+				'options' => array(
+					array( 'value' => 'recommended', 'text' => 'Recommended', 'selected' => true ),
+					array( 'value' => 'price-asc', 'text' => 'Price low to high', 'selected' => false ),
+					array( 'value' => 'price-desc', 'text' => 'Price high to low', 'selected' => false ),
+					array( 'value' => 'newest', 'text' => 'Newest', 'selected' => false ),
+				),
+			),
+			'soldOut' => array(
+				'shown'   => false,
+				'summary' => 'Show 0 sold out',
+				'options' => array(),
+			),
+		);
 	}
 
 	public function test_the_review_shows_no_step_and_its_step_fields_are_all_there_and_empty(): void {
@@ -804,9 +893,26 @@ final class BuilderTest extends TestCase {
 					'value' => '',
 					'text'  => '',
 					'count' => '0 of 0 parts shown',
+					'added' => '',
 				),
+				'shelf'     => self::emptyShelf(),
 				'empty'     => false,
 				'emptyText' => '',
+				'found'     => array(
+					'shown'     => false,
+					'text'      => '',
+					'widths'    => array(),
+					'hasWidths' => false,
+					'why'       => array(
+						'shown' => false,
+						'text'  => 'See why',
+					),
+					'clear'     => array(
+						'shown' => false,
+						'text'  => 'Clear search',
+						'name'  => 'cbuild[_q]',
+					),
+				),
 				'leave'     => array(
 					'shown'   => false,
 					'id'      => '',
@@ -831,7 +937,11 @@ final class BuilderTest extends TestCase {
 		self::assertSame( 'Your build', $view['summary']['heading'] );
 		self::assertSame( 'Nothing is chosen yet.', $view['summary']['emptyText'] );
 		self::assertSame( 'Total', $view['summary']['totalLabel'] );
-		self::assertSame( array( 'Done', 'Done', 'Done', 'Done', 'Done', 'Done', 'Current step' ), array_column( $view['progress'], 'state' ) );
+		$states = array_column( $view['progress'], 'state' );
+		self::assertSame( 'Review, current step', array_pop( $states ) );
+		foreach ( $states as $state ) {
+			self::assertMatchesRegularExpression( '/^[^,]+, done: Part \d+$/', $state, 'each step done is said with its pick' );
+		}
 	}
 
 	public function test_a_pick_the_kit_cannot_take_is_named_with_a_link_to_the_step(): void {
@@ -927,7 +1037,7 @@ final class BuilderTest extends TestCase {
 		$cards = $this->show( new BuildLink( array( SlotKey::DECK => 101, SlotKey::TRUCKS => 139 ), null, SlotKey::WHEELS ) )['view']['step']['options'];
 		self::assertSame( 'Fits your trucks', $cards[0]['fit'] );
 		self::assertSame( 303, $cards[2]['id'] );
-		self::assertSame( 'Fits, with a note', $cards[2]['fit'], '58 mm wheels want a riser under these trucks.' );
+		self::assertSame( 'Needs ¼″ risers with your trucks', $cards[2]['fit'], '58 mm wheels want a riser under these trucks, and the card says which (spec: Risers, before the pick).' );
 		self::assertSame( 'cbuild-card__fit cbuild-card__fit--warn', $cards[2]['fitClass'] );
 	}
 
@@ -967,6 +1077,68 @@ final class BuilderTest extends TestCase {
 		);
 	}
 
+	// Spec (configurator): Bearings (D-246). Wheels sold with their bearings take the step off the rail, the slot
+	// counts as filled, and the review says so.
+	public function test_wheels_sold_with_their_bearings_take_bearings_off_the_rail_and_the_review_says_so(): void {
+		$parts                      = Shop::parts();
+		$parts[ SlotKey::WHEELS ][] = Shop::priced( Parts::of( array( 'wheel_diameter' => '52', 'set_size' => 4, 'bearings_included' => true ), 304 ), 4500 );
+		$this->kits->add( self::KIT, Shop::kit(), $parts );
+		$plain = array( SlotKey::DECK => 101, SlotKey::TRUCKS => 139, SlotKey::WHEELS => 301 );
+		self::assertContains( SlotKey::BEARINGS, Builder::steps( $this->show( new BuildLink( $plain ) )['state'] ), 'plain wheels still ask' );
+
+		$picks = array( SlotKey::WHEELS => 304 ) + $plain;
+		$shown = $this->show( new BuildLink( $picks, null, SlotKey::BEARINGS ) );
+		self::assertNotContains( SlotKey::BEARINGS, Builder::steps( $shown['state'] ), 'the bearings step leaves the rail' );
+		self::assertNotContains( SlotKey::BEARINGS, array_column( $shown['view']['progress'], 'key' ), 'and the rail' );
+		self::assertSame( 'Choose your hardware', $shown['view']['heading'], 'a link to it goes on to the next step' );
+		self::assertTrue( $shown['answer']['bearings_included'], 'the route says so (M10\'s route additions)' );
+		self::assertFalse( $this->show( new BuildLink( $plain ) )['answer']['bearings_included'] );
+
+		$view = $this->show( new BuildLink( $picks + array( SlotKey::HARDWARE => 601, SlotKey::GRIP => 701 ), null, State::REVIEW ) )['view'];
+		self::assertTrue( $view['review']['ready'], 'the slot counts as filled' );
+		$items = array_column( $view['review']['items'], null, 'key' );
+		self::assertSame( array( SlotKey::DECK, SlotKey::TRUCKS, SlotKey::WHEELS, SlotKey::BEARINGS, SlotKey::HARDWARE, SlotKey::GRIP ), array_keys( $items ), 'in the kit\'s order' );
+		self::assertSame( array( 'Bearings', 'Included with your wheels', '' ), array( $items[ SlotKey::BEARINGS ]['label'], $items[ SlotKey::BEARINGS ]['name'], $items[ SlotKey::BEARINGS ]['amount'] ) );
+		self::assertSame( 'Change wheels', $items[ SlotKey::BEARINGS ]['change'], 'they change with the wheels' );
+		self::assertTrue( $items[ SlotKey::BEARINGS ]['fits'], 'and they fit' );
+	}
+
+	// Spec (configurator): Risers, "It opens on the riser that clears them, with the reason ("Your 56 mm wheels need ½″
+	// risers with these trucks")".
+	public function test_the_risers_step_says_why_it_appeared(): void {
+		$step = $this->show( new BuildLink( array( SlotKey::DECK => 101, SlotKey::TRUCKS => 139, SlotKey::WHEELS => 303 ), null, SlotKey::RISERS ) )['view']['step'];
+		self::assertTrue( $step['hasLead'] );
+		self::assertSame( "Your 58\u{a0}mm wheels need ¼″ risers with these trucks.", $step['lead'] );
+
+		$asked = $this->show( new BuildLink( self::STREET, null, SlotKey::RISERS ) )['view']['step'];
+		self::assertFalse( $asked['hasLead'], 'opened by Add risers, nothing asked for it' );
+	}
+
+	// Spec (configurator): The review and Risers, "Add risers at the review opens the step when nothing asks for it".
+	public function test_add_risers_at_the_review_opens_the_risers_step_when_nothing_asks_for_it(): void {
+		$review = $this->show( new BuildLink( self::STREET, null, State::REVIEW ) )['view']['review'];
+		self::assertTrue( $review['addRisers']['shown'] );
+		self::assertSame( 'Add risers', $review['addRisers']['text'] );
+		parse_str( (string) parse_url( $review['addRisers']['url'], PHP_URL_QUERY ), $query );
+		self::assertSame( SlotKey::RISERS, $query['cbuild']['step'] ?? null );
+
+		$view = $this->show( BuildLink::read( $query['cbuild'] ) )['view'];
+		self::assertSame( 'Choose your risers', $view['heading'], 'asked for by the link, the step is shown' );
+		self::assertContains( SlotKey::RISERS, array_column( $view['progress'], 'key' ) );
+
+		$with = $this->show( new BuildLink( self::STREET + array( SlotKey::RISERS => 401 ), null, State::REVIEW ) )['view']['review'];
+		self::assertFalse( $with['addRisers']['shown'], 'a build with risers has them' );
+	}
+
+	// Spec (configurator): Risers, "Before the pick. Wheel cards say 'Needs ¼″ risers with your trucks', from R3's
+	// warning on each option."
+	public function test_a_wheel_card_that_needs_a_riser_says_which_before_the_pick(): void {
+		$step  = $this->show( new BuildLink( array( SlotKey::DECK => 101, SlotKey::TRUCKS => 139 ), null, SlotKey::WHEELS ) )['view']['step'];
+		$cards = array_column( $step['options'], null, 'id' );
+		self::assertSame( 'Needs ¼″ risers with your trucks', $cards[303]['fit'], '58 mm wheels over these trucks\' limit' );
+		self::assertSame( 'Fits your trucks', $cards[301]['fit'], 'wheels under it say what they fit' );
+	}
+
 	public function test_wheels_that_need_risers_keep_the_risers_step_even_with_no_risers_chosen(): void {
 		$picks = array(
 			SlotKey::DECK   => 101,
@@ -977,7 +1149,8 @@ final class BuilderTest extends TestCase {
 		self::assertContains( SlotKey::RISERS, Builder::steps( $state ), '58 mm wheels want a riser under these trucks, so one is recommended.' );
 
 		$view = $this->show( new BuildLink( $picks, null, SlotKey::RISERS, none: array( SlotKey::RISERS ) ) )['view'];
-		self::assertSame( 'Step 4 of 8: Risers', $view['heading'], 'Left out, they are still asked about while the wheels need them.' );
+		self::assertSame( 'Choose your risers', $view['heading'], 'Left out, they are still asked about while the wheels need them.' );
+		self::assertSame( 'Step 4 of 8:', $view['count'] );
 		self::assertTrue( $view['step']['leave']['checked'] );
 		self::assertSame( 'No risers', $view['step']['leave']['label'] );
 	}
@@ -990,7 +1163,8 @@ final class BuilderTest extends TestCase {
 		);
 		$shown = $this->show( new BuildLink( $picks, null, SlotKey::BEARINGS ) );
 		self::assertSame( SlotKey::RISERS, $shown['state']->step, 'The wheels step\'s Next said Bearings before 58 mm wheels made risers a step.' );
-		self::assertSame( 'Step 4 of 8: Risers', $shown['view']['heading'] );
+		self::assertSame( 'Choose your risers', $shown['view']['heading'] );
+		self::assertSame( 'Step 4 of 8:', $shown['view']['count'] );
 		self::assertFalse( $shown['view']['errors']['shown'], 'Nothing is wrong: a riser is recommended, to be seen.' );
 
 		self::assertSame( SlotKey::BEARINGS, $this->show( new BuildLink( $picks + array( SlotKey::RISERS => 402 ), null, SlotKey::BEARINGS ) )['state']->step, 'Seen and kept, they let the shopper on.' );
@@ -998,10 +1172,39 @@ final class BuilderTest extends TestCase {
 		self::assertSame( SlotKey::WHEELS, $this->show( new BuildLink( $picks, null, SlotKey::WHEELS ) )['state']->step, 'A step before them is shown as asked.' );
 	}
 
+	/**
+	 * The shop's parts with wheels sold with their bearings, 304, and a build of them.
+	 *
+	 * @return array<string, int>
+	 */
+	private function withBearings(): array {
+		$parts                      = Shop::parts();
+		$parts[ SlotKey::WHEELS ][] = Shop::priced( Parts::of( array( 'wheel_diameter' => '52', 'set_size' => 4, 'bearings_included' => true ), 304 ), 4500 );
+		$this->kits->add( self::KIT, Shop::kit(), $parts );
+		return array( SlotKey::DECK => 101, SlotKey::TRUCKS => 139, SlotKey::WHEELS => 304, SlotKey::HARDWARE => 601, SlotKey::GRIP => 701 );
+	}
+
+	// Spec (configurator): Risers, "Anyone can add them", and Bearings (D-246). Add risers puts the risers step in its
+	// place on the rail, between steps that stay as they were, with Back and Next round it.
+	public function test_add_risers_puts_the_step_in_its_place_among_the_steps_the_build_has(): void {
+		$query = array_map( 'strval', $this->withBearings() ) + array( 'step' => SlotKey::RISERS );
+		$view  = $this->show( BuildLink::read( $query ) )['view'];
+		self::assertSame( array( SlotKey::DECK, SlotKey::TRUCKS, SlotKey::WHEELS, SlotKey::RISERS, SlotKey::HARDWARE, SlotKey::GRIP, State::REVIEW ), array_column( $view['progress'], 'key' ), 'no bearings step: the wheels bring them' );
+		self::assertSame( SlotKey::HARDWARE, $view['step']['next']['value'] );
+		self::assertSame( 'Back: Wheels', $view['step']['back']['text'] );
+	}
+
+	public function test_a_step_that_gives_way_skips_every_slot_after_it_that_is_no_step(): void {
+		$shown = $this->show( new BuildLink( $this->withBearings(), null, SlotKey::RISERS ) );
+		self::assertSame( SlotKey::HARDWARE, $shown['state']->step, 'neither risers nor the bearings the wheels bring' );
+		self::assertSame( 'Choose your hardware', $shown['view']['heading'] );
+	}
+
 	public function test_a_step_that_is_no_step_gives_way_to_the_next_and_the_last_to_the_review(): void {
 		$shown = $this->show( new BuildLink( self::STREET, null, SlotKey::RISERS ) );
 		self::assertSame( SlotKey::BEARINGS, $shown['state']->step );
-		self::assertSame( 'Step 4 of 7: Bearings', $shown['view']['heading'] );
+		self::assertSame( 'Choose your bearings', $shown['view']['heading'] );
+		self::assertSame( 'Step 4 of 7:', $shown['view']['count'] );
 	}
 
 	public function test_edit_builds_review_sends_the_build_it_replaces_and_its_shared_link_does_not(): void {
@@ -1038,7 +1241,8 @@ final class BuilderTest extends TestCase {
 	public function test_the_review_names_every_step_and_posts_the_build_to_the_carts_own_handler(): void {
 		$view = $this->show( new BuildLink( self::STREET, null, State::REVIEW ), 'https://shop.test/?page_id=5&lang=fr' )['view'];
 
-		self::assertSame( 'Step 7 of 7: Review', $view['heading'] );
+		self::assertSame( 'Check your build', $view['heading'] );
+		self::assertSame( 'Step 7 of 7:', $view['count'] );
 		self::assertTrue( $view['isReview'] );
 		self::assertFalse( $view['isStep'] );
 		self::assertSame( 'https://shop.test/', $view['action'] );
@@ -1074,7 +1278,11 @@ final class BuilderTest extends TestCase {
 				'name'    => 'Part 139',
 				'fits'    => true,
 				'fit'     => 'Fits',
+				// Each row carries its price, as the prototype's review has it.
+				'amount'  => '$50.00',
 				'url'     => 'https://shop.test/?page_id=5&lang=fr&' . http_build_query( array( 'cbuild' => array_map( 'strval', self::STREET ) + array( 'step' => 'trucks' ) ) ),
+				// "Change" to the eye, read with what it changes.
+				'text'    => 'Change',
 				'change'  => 'Change trucks',
 			),
 			$review['items'][1]
@@ -1306,6 +1514,7 @@ final class BuilderTest extends TestCase {
 				'value' => '30',
 				'text'  => 'Show 6 more',
 				'count' => '24 of 30 parts shown',
+				'added' => '',
 			),
 			$step['more']
 		);
