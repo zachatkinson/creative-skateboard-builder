@@ -69,13 +69,15 @@
 
 /* The builder's grids that are lists, the rail among them: a classic theme's numbers, bullets and indent for a list
    stay out of them. The lists of words, a card's notes and the like, keep the theme's. */
-.cbuild .cbuild-progress__list,
-.cbuild .cbuild-cards,
-.cbuild .cbuild-presets__tiles,
-.cbuild .cbuild-picture__items,
-.cbuild .cbuild-review__items,
-.cbuild .cbuild-changes__kept,
-.cbuild .cbuild-changes__gone {
+// Doubled, as the focus rings are: right to left, Kadence indents a list with `.rtl .single-content ul`, which a single
+// class would lose to.
+.cbuild.cbuild .cbuild-progress__list,
+.cbuild.cbuild .cbuild-cards,
+.cbuild.cbuild .cbuild-presets__tiles,
+.cbuild.cbuild .cbuild-picture__items,
+.cbuild.cbuild .cbuild-review__items,
+.cbuild.cbuild .cbuild-changes__kept,
+.cbuild.cbuild .cbuild-changes__gone {
 	margin: 0;
 	padding-inline-start: 0;
 	list-style: none;

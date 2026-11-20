@@ -55,6 +55,15 @@ if ( 'read' === ( $cbuild_args[0] ?? '' ) ) {
 	// it shows no price changes and no total then, whatever else changed.
 	$clean = 0;
 	foreach ( $list as $build ) {
+		// A build where nothing changed does not reopen at all (SavedBuilds::reopened()), so one of its parts is sold
+		// out first: then it must reopen, saying so, and with no prices it never kept.
+		$picks = $build->picks;
+		$part  = wc_get_product( (int) end( $picks ) );
+		if ( $part instanceof WC_Product ) {
+			$part->set_stock_quantity( 0 );
+			$part->set_stock_status( 'outofstock' );
+			$part->save();
+		}
 		$again  = $builds->reopened( $user, $build->uuid );
 		// One that doesn't reopen at all is not clean (the spec reviewer's M10 m2).
 		$clean += null !== $again && null === $again->then && array() === $again->prices ? 1 : 0;

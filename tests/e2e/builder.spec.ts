@@ -99,7 +99,8 @@ async function choose( page: Page, name: string ) {
 async function ride( page: Page, width: string ) {
 	const button = page.locator( '.cbuild-width__option', {
 		has: page.locator( '.cbuild-chip__text', {
-			hasText: new RegExp( `^${ width.replace( '.', '\\.' ) }$` ),
+			// French writes the decimal comma: 8,25″.
+			hasText: new RegExp( `^${ width.replace( '.', '[.,]' ) }$` ),
 		} ),
 	} );
 	// Once one is chosen the widths fold behind the line that says it, with Change.
@@ -339,8 +340,12 @@ test.describe( 'The builder without JavaScript', () => {
 			review.getByRole( 'link', { name: 'Change trucks' } )
 		).toHaveAttribute( 'rel', 'nofollow' );
 
+		// The footer's Add to cart: the review's own gives way to it at every width (P11; spec: The layout, Footer).
 		await answered( page, () =>
-			review.getByRole( 'button', { name: 'Add to cart' } ).click()
+			page
+				.locator( '.cbuild' )
+				.getByRole( 'button', { name: 'Add to cart' } )
+				.click()
 		);
 		const cart = await (
 			await page.request.get( '/wp-json/wc/store/v1/cart' )
@@ -523,9 +528,10 @@ test.describe( 'The builder without JavaScript', () => {
 		);
 		await expect( page.locator( '.cbuild-errors' ) ).toBeHidden();
 		const review = page.locator( '.cbuild-review' );
-		await expect( review.locator( '.cbuild-review__assembly' ) ).toHaveText(
-			'Assembly: $15.00'
-		);
+		// The line's sentence: its Remove assembly button is beside it.
+		await expect(
+			review.locator( '.cbuild-review__assembly > p' )
+		).toHaveText( 'Assembly: $15.00' );
 		await expect( review.locator( '.cbuild-review__total' ) ).toHaveText(
 			'Total: $182.00'
 		);
@@ -544,7 +550,9 @@ test.describe( 'The builder without JavaScript', () => {
 			'cbuild-button cbuild-button--primary',
 		] );
 		await expect(
-			review.getByRole( 'button', { name: 'Add to cart' } )
+			page
+				.locator( '.cbuild' )
+				.getByRole( 'button', { name: 'Add to cart' } )
 		).toBeEnabled();
 		expect(
 			new URL( page.url() ).searchParams.get( 'cbuild[preset]' )
@@ -566,7 +574,7 @@ test.describe( 'The builder without JavaScript', () => {
 		);
 		await expect(
 			page
-				.locator( '.cbuild-review' )
+				.locator( '.cbuild' )
 				.getByRole( 'button', { name: 'Add to cart' } )
 		).toBeDisabled();
 	} );

@@ -54,6 +54,7 @@ All notable changes to this project are documented here. The format follows [Kee
 - The step rail says each step in one sentence, "Deck, done: Katie", "Trucks, current step", "Wheels, to come", where a screen reader heard the label and its state run together. Once a step has a pick, the next step is a link in the rail (spec: The step rail).
 - Focus stays clear of the bar however many lines the bar takes, on a phone and in a narrow column on a desktop (D-272).
 - On a phone, Next stays under the thumb when the first deck's answer arrives while the shopper is at the end of the step (D-267). In Safari too, where a pressed button takes no focus: the control under a press is kept in place first.
+- Right to left on Kadence, the rail, the cards and the ready builds no longer take the theme's indent for a list.
 - In Safari, Show the top turns the board when the top of the picture is scrolled off the screen. The press focused the picture, which scrolled it into view and moved the button from under the pointer.
 - Part specs opens Sold in sets for any part in a slot that takes more than one unit, so a riser's Number in a set is filled in and the riser is offered (Cowork; #61).
 - Saving a kit whose presets are unchanged and name a part the shop hides no longer says the presets were not saved. The Build tab says which preset holds which part, and the presets are kept as they are (Cowork; #62).
