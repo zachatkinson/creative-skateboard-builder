@@ -226,6 +226,7 @@ tools/                    gates.sh, integration/ (PHPUnit 9.6), build, release, 
   - Jobs that can't affect each other run in parallel, unless running them in one job costs fewer billed minutes for the same gates (D-040): a job is billed to the whole minute, so a few seconds of work rides in a job that already exists, and the matrix variants share one wp-env.
   - A pull request is opened as a draft and takes the lighter run; marking it ready starts the full one (D-041). Pushes are batched, since each is a run.
   - Every job has a time limit, and no checkout keeps its token.
+  - The workflows pass actionlint and zizmor at its pedantic persona, in the scope job (D-299). A value from an expression reaches a script through `env:`, never pasted into it. A release builds without caches.
   - Dependabot opens one grouped pull request per ecosystem a month; security updates are not delayed.
   - The weekly canary runs on a schedule.
 

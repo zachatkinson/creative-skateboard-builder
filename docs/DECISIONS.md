@@ -3695,3 +3695,25 @@ CI's Lighthouse gate failed Total Blocking Time on the builder page on Twenty Tw
 **Why:** the full run waits on the longest job, and every push to a ready pull request, every merge and every release waits on the full run.
 
 **Status:** Accepted (Zach: "we should do it", and the ruleset change, 20 November).
+
+### D-299 · The workflows are linted by actionlint and zizmor, and each release's zip gets signed build provenance · 2026-11-20
+
+**Context:** #74, a review of the workflows against current GitHub Actions practice. Zach approved actionlint and zizmor as dev tools on 20 November, "if they are modern and best practice in 2026": zizmor 1.32.0 is maintained (hardened by Trail of Bits in May 2026; GitHub's own `gh-aw` runs it daily); actionlint's latest is 1.7.12, from March 2026.
+
+**Decision:**
+- **actionlint and zizmor run in the scope job**, beside gitleaks, so no required check's name changes: actionlint from its image pinned by digest (it carries ShellCheck, so every `run:` script is checked), zizmor through `zizmorcore/zizmor-action` pinned by SHA, at its pedantic persona with its online audits, its findings as annotations and not uploaded to code scanning (which would need `security-events: write`). `.github/actionlint.yaml` names the `ubuntu-26.04` labels actionlint 1.7.12 doesn't know yet (rhysd/actionlint#682).
+- **What zizmor found, at pedantic, and what was done:**
+  - cache poisoning in release.yml's build (Composer's and npm's caches): the release builds without them;
+  - the `workflow_run` trigger: suppressed inline, with the reason (it acts only on CI's successful push to main, checks out the tagged commit itself, and uses nothing of the other run);
+  - eight expressions pasted into scripts: each passes through `env:` now;
+  - the canary's `issues: write` at the workflow's level: moved to its job, with a concurrency group;
+  - permissions without a comment: each has one.
+  - Its `self-repository` rule (GitHub's `$/` syntax for a local action, from 30 July 2026) is turned off in `.github/zizmor.yml`: actionlint 1.7.12 rejects `$/`, and every job using the local action checks the repository out first. On when actionlint accepts it.
+- **Playwright's install is one local action**, `.github/actions/playwright`, in place of four copies of the three-try script (D-123, D-126, D-224); the canary uses it too, so its install has the tries now.
+- **Build provenance.** A job of its own, `attest`, on a fresh runner with no secret, signs the zip's SLSA build provenance with `actions/attest` (the wrapper `attest-build-provenance` is only that since its v4), and `publish` waits for it, so no zip is published unsigned. Not in `build`, which runs the toolchain, and not in `publish`, whose token gate 9 keeps to `gh` alone (D-043). A zip is checked with `gh attestation verify <zip> --repo zachatkinson/creative-skateboard-builder`. It runs for the first time on 1.1.0's tag; if it fails, `publish` is skipped and the run is started again (D-048).
+- **Lighthouse's medians go to the job's summary** whether its gates pass or fail (`tools/lhci-summary.php`): it prints values only for a failed one, so 1.0.0's passing rerun left none (#75).
+- Artifacts kept on a failure are kept 14 days, not 90.
+
+**Why:** each closes a way a workflow could be misused or a release be taken for another's, at the cost of seconds in a job that already runs.
+
+**Status:** Accepted (Zach approved the tools, 20 November).

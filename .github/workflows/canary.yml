@@ -10,13 +10,20 @@ on:
 
 permissions:
   contents: read
-  issues: write
+
+# One canary at a time: a run started by hand while the Monday one runs waits for it.
+concurrency:
+  group: canary
+  cancel-in-progress: false
 
 jobs:
   canary:
     name: WordPress trunk and WooCommerce's pre-release
     runs-on: ubuntu-26.04
     timeout-minutes: 60
+    permissions:
+      contents: read
+      issues: write # a red run opens the canary issue, or comments on the open one
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
@@ -52,7 +59,10 @@ jobs:
           esac
       - run: composer test:integration
       - run: npm run plugin-check
-      - run: npx playwright install --with-deps chromium
+      # As CI installs them, in three tries (.github/actions/playwright).
+      - uses: ./.github/actions/playwright
+        with:
+          engines: chromium
       - run: npm run test:e2e -- --project=chromium-desktop --project=chromium-phone
       # The whole npm tree, dev tools included: none of it reaches the zip, so a pull request is not held up by it
       # (D-044), and a high or critical advisory in the toolchain still reaches the issue within a week (D-051).
