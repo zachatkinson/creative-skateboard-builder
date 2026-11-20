@@ -56,6 +56,24 @@ All notable changes to this project are documented here. The format follows [Kee
 - On a phone, Next stays under the thumb when the first deck's answer arrives while the shopper is at the end of the step (D-267).
 - Part specs opens Sold in sets for any part in a slot that takes more than one unit, so a riser's Number in a set is filled in and the riser is offered (Cowork; #61).
 - Saving a kit whose presets are unchanged and name a part the shop hides no longer says the presets were not saved. The Build tab says which preset holds which part, and the presets are kept as they are (Cowork; #62).
+- Clear search, or Enter, pressed within the moment a search waits after typing, no longer has the search put back after it.
+- A specs sheet exported and imported again keeps each part's own layer image without looking it up, so another image with the same file name no longer refuses the row, and 2,000 rows plan in under a second.
+- A deleted build's Undo copy leaves the session once it is read past its 15 minutes.
+- The state route answers inside its 80 ms budget again on a site with no persistent object cache: each part's look and card are kept beside its facts (D-289).
+- The Layer image field's button names its part, "Choose an image for Wheels, Mint", so a page of variations has buttons of distinct names.
+- A layer image named in the specs CSV is found among any number of images whose file names hold its name; the lookup stopped at 20.
+- A layer image rendition that fails in its quality or resize step is logged as that step, not as the save.
+- A Catalogue check's list of IDs reads as a list, "11, 12 and 13", in the site's language.
+- The cards of variations that show their parent's layer image read the parent once between them.
+- Site Health's Catalogue check test no longer works out which variations share a card, which it never counted.
+- The Catalogue check's table and a kit's Build tab read their products in a fixed number of queries, however many rows they show.
+- Counts said in Site Health, the import's progress and the saved-builds limit use the language's plural forms.
+- A customer's saved builds are read to the most kept (100), and a save past it is refused by the table itself, so two saves at once can't both pass.
+- A pressed filter keeps its line in the accent colour under the focus ring.
+- Once a deck width is chosen, the step shows it as its first line with Change, which opens the widths again, and focus goes to that line; it listed every width.
+- The step's search hint names one of the step's brands: "Brand or graphic, like Rascals".
+- On a variable deck's page, "Build a complete with this deck" opens the variation chosen in the product's form; it opened the first in stock.
+- On a phone, the width guide, the parts that don't fit and a card's link to its product page are 44 px targets.
 
 ### Changed
 
@@ -64,6 +82,8 @@ All notable changes to this project are documented here. The format follows [Kee
 - A heading the builder moves focus to is not outlined by a theme that outlines anything in focus; the error summary keeps its ring.
 - The Builder block is full width unless the editor chose otherwise (its `align` defaults to `full`), so a page's builder has its stage beside its steps on a desktop rather than above them in the theme's column. The editor's alignment, spacing, colours and font size now reach the page, as they reach the editor; until 1.0.0 the page left them off (D-283).
 - A part card with no photo shows the part's layer image, uncropped, and the chosen card is marked by a tick and a thicker border in place of the radio's circle (D-282, #68).
+- The parts table gains `look` and `card` columns (schema version 7, D-289).
+- The state route's `currency.format` is plain text, its space a no-break space, not `&nbsp;` (D-290).
 
 - The builder takes the prototype's layout (D-268 to D-271). A row of steps across the top; the board on a stage with "Your board" and the side it shows, and "Pick a deck to start" before a deck; the step beside it in a panel that scrolls on its own; and a footer pinned under the panel with the total, the estimate, Back and Next, or Add to cart. On a phone the stage stays at the top, the rail shows the step before, the step shown and the step after, and the footer is the bar.
 - The step's heading says its question, such as "Choose your deck", with its help under it; a screen reader hears the count first, and the page's title keeps it (D-269).

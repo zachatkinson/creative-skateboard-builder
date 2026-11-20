@@ -29,32 +29,36 @@ defined( 'ABSPATH' ) || exit;
 	</template>
 	<fieldset class="cbuild-width" data-wp-bind--hidden="!state.view.step.shelf.width.shown" data-wp-class--cbuild-width--asking="state.view.step.shelf.width.asking">
 		<legend class="cbuild-width__legend" data-wp-text="state.view.step.shelf.width.legend"></legend>
-		<div class="cbuild-width__options">
-			<template data-wp-each--width="state.view.step.shelf.width.options" data-wp-each-key="context.width.value">
-				<button class="cbuild-chip cbuild-width__option" type="submit" data-wp-bind--name="state.view.step.shelf.width.name" data-wp-bind--value="context.width.value" data-wp-bind--aria-label="context.width.said" data-wp-bind--aria-pressed="context.width.pressed" data-wp-class--cbuild-chip--dimmed="context.width.dimmed"><span class="cbuild-chip__text" data-wp-text="context.width.text"></span> <span class="cbuild-chip__count" data-wp-text="context.width.count"></span></button>
-			</template>
-		</div>
-		<p class="cbuild-width__none" data-wp-bind--hidden="!state.view.step.shelf.width.hasNone" data-wp-text="state.view.step.shelf.width.none"></p>
-		<?php // "Not sure of your width?": a disclosure that opens without JavaScript, by shoe size (spec: The deck's width first). ?>
-		<details class="cbuild-width__guide" data-wp-bind--hidden="!state.view.step.shelf.width.guide.shown">
-			<summary data-wp-text="state.view.step.shelf.width.guide.summary"></summary>
-			<table class="cbuild-width__table">
-				<caption class="screen-reader-text" data-wp-text="state.view.step.shelf.width.guide.caption"></caption>
-				<thead>
-					<tr>
-						<th scope="col" data-wp-text="state.view.step.shelf.width.guide.shoe"></th>
-						<th scope="col" data-wp-text="state.view.step.shelf.width.guide.width"></th>
-					</tr>
-				</thead>
-				<tbody>
-					<template data-wp-each--row="state.view.step.shelf.width.guide.rows" data-wp-each-key="context.row.shoe">
+		<?php // Open while the step asks; once a width is chosen, its summary is that width with Change (spec: The deck's width first). ?>
+		<details class="cbuild-width__pick" data-wp-bind--open="state.view.step.shelf.width.asking">
+			<summary class="cbuild-width__chosen" data-wp-bind--hidden="state.view.step.shelf.width.asking"><span class="cbuild-width__text" data-wp-text="state.view.step.shelf.width.chosen"></span> <span class="cbuild-width__change" data-wp-text="state.view.step.shelf.width.change"></span></summary>
+			<div class="cbuild-width__options">
+				<template data-wp-each--width="state.view.step.shelf.width.options" data-wp-each-key="context.width.value">
+					<button class="cbuild-chip cbuild-width__option" type="submit" data-wp-bind--name="state.view.step.shelf.width.name" data-wp-bind--value="context.width.value" data-wp-bind--aria-label="context.width.said" data-wp-bind--aria-pressed="context.width.pressed" data-wp-class--cbuild-chip--dimmed="context.width.dimmed"><span class="cbuild-chip__text" data-wp-text="context.width.text"></span> <span class="cbuild-chip__count" data-wp-text="context.width.count"></span></button>
+				</template>
+			</div>
+			<p class="cbuild-width__none" data-wp-bind--hidden="!state.view.step.shelf.width.hasNone" data-wp-text="state.view.step.shelf.width.none"></p>
+			<?php // "Not sure of your width?": a disclosure that opens without JavaScript, by shoe size (spec: The deck's width first). ?>
+			<details class="cbuild-width__guide" data-wp-bind--hidden="!state.view.step.shelf.width.guide.shown">
+				<summary data-wp-text="state.view.step.shelf.width.guide.summary"></summary>
+				<table class="cbuild-width__table">
+					<caption class="screen-reader-text" data-wp-text="state.view.step.shelf.width.guide.caption"></caption>
+					<thead>
 						<tr>
-							<th scope="row" data-wp-text="context.row.shoe"></th>
-							<td data-wp-text="context.row.width"></td>
+							<th scope="col" data-wp-text="state.view.step.shelf.width.guide.shoe"></th>
+							<th scope="col" data-wp-text="state.view.step.shelf.width.guide.width"></th>
 						</tr>
-					</template>
-				</tbody>
-			</table>
+					</thead>
+					<tbody>
+						<template data-wp-each--row="state.view.step.shelf.width.guide.rows" data-wp-each-key="context.row.shoe">
+							<tr>
+								<th scope="row" data-wp-text="context.row.shoe"></th>
+								<td data-wp-text="context.row.width"></td>
+							</tr>
+						</template>
+					</tbody>
+				</table>
+			</details>
 		</details>
 	</fieldset>
 	<div class="cbuild-search" role="search" data-wp-bind--hidden="!state.view.step.shelf.search.shown">

@@ -852,6 +852,14 @@ final class BuilderPageTest extends IntegrationTestCase {
 		unregister_block_type( PageHooks::BLOCK );
 		( new PageHooks( fn(): BuilderPage => $this->page(), $this->service( \CreativeBranding\SkateboardBuilder\Front\BuilderPlace::class ) ) )->block();
 		self::assertStringContainsString( 'alignwide', do_blocks( '<!-- wp:creative-skateboard-builder/builder {"kit":' . $this->kit . ',"align":"wide"} /-->' ) );
+		// The auditor's 1.0.0 minor 10: None in the editor stores an empty align where the block has a default
+		// (wp-includes/js/dist/block-editor.js:85184-85191), and the builder takes the content column's width.
+		unregister_block_type( PageHooks::BLOCK );
+		( new PageHooks( fn(): BuilderPage => $this->page(), $this->service( \CreativeBranding\SkateboardBuilder\Front\BuilderPlace::class ) ) )->block();
+		$none = (string) self::dom( do_blocks( '<!-- wp:creative-skateboard-builder/builder {"kit":' . $this->kit . ',"align":""} /-->' ) )->query( '//*[contains(concat(" ",normalize-space(@class)," ")," cbuild ")]' )->item( 0 )?->attributes?->getNamedItem( 'class' )?->nodeValue;
+		self::assertStringContainsString( 'cbuild', $none );
+		self::assertStringNotContainsString( 'alignfull', $none );
+		self::assertStringNotContainsString( 'alignwide', $none, 'WordPress writes a bare "align", no width' );
 
 		unregister_block_type( PageHooks::BLOCK );
 		( new PageHooks( fn(): BuilderPage => $this->page(), $this->service( \CreativeBranding\SkateboardBuilder\Front\BuilderPlace::class ) ) )->block();

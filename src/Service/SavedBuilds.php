@@ -65,9 +65,9 @@ final class SavedBuilds {
 	public const string FAILED = 'failed';
 
 	/**
-	 * The most builds a customer keeps (D-217).
+	 * The most builds a customer keeps (D-217), as the store holds it.
 	 */
-	public const int MOST = 100;
+	public const int MOST = SavedBuildStore::MOST;
 
 	/**
 	 * The longest name, in characters, as the table's column holds it.

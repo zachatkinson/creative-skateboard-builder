@@ -153,6 +153,17 @@ final class CatalogueCheck {
 	}
 
 	/**
+	 * The same check, saying nothing of shared cards: for Site Health, which counts none (D-281).
+	 *
+	 * @since 1.0.0
+	 */
+	public function withoutLooks(): self {
+		$check        = clone $this;
+		$check->looks = null;
+		return $check;
+	}
+
+	/**
 	 * Run the check.
 	 *
 	 * @since 0.3.0

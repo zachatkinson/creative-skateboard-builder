@@ -13,6 +13,7 @@ use Closure;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\InvalidMoney;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Slots;
 use CreativeBranding\SkateboardBuilder\Domain\Look\Chips;
+use CreativeBranding\SkateboardBuilder\Domain\Look\Shelf;
 use CreativeBranding\SkateboardBuilder\Domain\Look\ShelfAsk;
 use CreativeBranding\SkateboardBuilder\Front\Builder;
 use CreativeBranding\SkateboardBuilder\Front\BuilderPlace;
@@ -80,10 +81,6 @@ final class StateRoute implements Hookable {
 	 */
 	private const string CHIP = '^[a-z0-9_%.-]{1,200}(?!\n)$';
 
-	/**
-	 * The furthest a shelf's page starts: the most parts a step is built to list (docs/BENCHMARK.md).
-	 */
-	private const int FROM = 2000;
 
 	/**
 	 * Constructor.
@@ -217,7 +214,7 @@ final class StateRoute implements Hookable {
 				'description' => __( 'Where the shelf\'s page starts, as the last answer\'s more said.', 'creative-skateboard-builder' ),
 				'type'        => 'integer',
 				'minimum'     => 0,
-				'maximum'     => self::FROM,
+				'maximum'     => Shelf::MOST,
 			),
 		);
 	}

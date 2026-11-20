@@ -3340,7 +3340,7 @@ Looks (D-240) need each part's product, photo and layer image; the chips (D-247)
 
 - **The sorts** are named `recommended` (the default), `price-asc`, `price-desc` and `newest`; anything else is the default. A price sort reads the price of the part each card shows; Newest reads the product's date made.
 - **Creative Search's order** stands in for the default order when it ranked the query; a sort the shopper chooses still sorts, with its order breaking ties.
-- **Pages count looks in stock.** "Showing 30 of 90" counts what the search and chips leave in stock; the sold-out fold holds every sold-out look that matches, in the same order, and is not paged.
+- **Pages count looks in stock.** "Showing 30 of 90" counts what the search and chips leave in stock; the sold-out fold holds every sold-out look that matches, in the same order, and is not paged. Why, where the spec says the route sends one page of looks (the spec reviewer's M10 minor M11): the fold is closed until opened and lists what can't be bought, so a second Show more inside it, with its own place in the link, would ask more of the shopper than the list is worth. It is still bounded: a step lists 500 looks at most, sold out or not (`Shelf::MOST`), so the answer never holds every part of a large shop.
 - **A card's part** is the pick where it is in the look; else the size the build takes (SizePicker); else, where the shopper picks the size, the one size chip chosen or the recommendation's size, or the smallest.
 - **A size chip** is named as the route's size filter names a size, `54mm` or `8.25in`, so a build link's `_size` and a chip agree.
 - **The width question** counts, for each width, the looks with a part in stock in it; a look sold out in a width counts for none.
@@ -3353,9 +3353,9 @@ Looks (D-240) need each part's product, photo and layer image; the chips (D-247)
 The route answers the shelf (D-264) as `shelf`, and keeps `options`, `filters`, `matching` and `more` as they were, since a REST answer only gains fields within a major version (HOOKS.md). Where the spec leaves a choice:
 
 - **One field, null on the review.** The shelf is one object, so a reader asks for it once; an answer built by an earlier release's container, which gives the answer no shelf, says null as the review does.
-- **The arguments.** `width`, `chips`, `q`, `sort` and `from`, each refused by the schema when forged: a search over 100 characters, a sort of its own, a page past 2,000 (the most parts a step is built to list), more than four chip groups or 20 chips a group. A search inside the limit is read as a link's is: control characters as spaces, then trimmed.
+- **The arguments.** `width`, `chips`, `q`, `sort` and `from`, each refused by the schema when forged: a search over 100 characters, a sort of its own, a page past 500 (the most looks a step lists, `Shelf::MOST`; 2,000 until the auditor's 1.0.0 minor 8), more than four chip groups or 20 chips a group. A search inside the limit is read as a link's is: control characters as spaces, then trimmed.
 - **Beside a build link,** the shelf arguments take the place of the link's own shelf, and the view's addresses follow, so the store sends a search or a chip as an argument and gets back the address to push.
-- **In the link,** `_width`, `_chips`, `_q` and `_sort`, read as leniently as the link's other keys: what is no part of a shelf is dropped. Another step keeps the width, which the visit remembers (D-242), and starts with no search, chip or sort; Next from a step, whose form names it in `_on`, leaves its search and chips behind. A shared link carries none of it.
+- **In the link,** `_width`, `_chips`, `_q` and `_sort`, read as leniently as the link's other keys: what is no part of a shelf is dropped. Another step keeps the width, which the visit remembers (D-242), and starts with no search, chip or sort; Next from a step, whose form names it in `_on`, leaves its search and chips behind. A shared link carries none of it. Why, where the spec says coming back to a step keeps its filters, its sort, its search and its place (the spec reviewer's M10 minor M10): Back and Forward do keep them, since each search, chip and page is in the address the history holds. Reached again from the rail or Next, a step opens clean, because the build link carries one step's shelf: to carry every step's, the link would grow with each step searched, and a search typed for decks would still narrow decks when the shopper came back from wheels meaning to browse.
 - **A page** from a link is as many looks as `_shown` lists, 30 at least; from the route, 30 from `from`.
 - **`choices` is an object,** so a look with none is `{}` in JSON, as the schema says.
 - **The looks' meta is primed** (`Port\ProductMeta`) before they are read, as the layer images' are (D-202): WooCommerce reads a product's meta in a query of its own otherwise, and the route's query count would grow with the step's parts.
@@ -3400,7 +3400,7 @@ The redesign's layout, made from the prototype's frames (`docs/reviews/redesign/
 - The presets come after the step, as the prototype's "ways in" do.
 - Each row of the review shows its slot, the part with its fit under it, its price, and a "Change" button read as "Change trucks".
 - The step's radio group is named by the heading (`aria-labelledby`), not a legend, so the eye and the ear get one name and no text is hidden in it (WCAG 1.4.12's test).
-- Templates and markup are the builder's own (HOOKS.md), so none of this changes the public API. `--cbuild-summary-width` no longer did anything, so it is removed (Zach: dead code goes), and `--cbuild-card-width`'s default is `13.5rem`, for the card's photo beside its words.
+- Templates and markup are the builder's own (HOOKS.md), so none of this changes the public API. `--cbuild-summary-width` no longer did anything, so it is removed (Zach: dead code goes). That departs from SPEC-CONFIGURATOR's "What stays", which keeps every documented custom property or deprecates it with notice; it is the one property removed, it is in the 1.0.0 changelog under Removed, and a theme that set it sees no change, since nothing read it (the spec reviewer's M10 minor M12), and `--cbuild-card-width`'s default is `13.5rem`, for the card's photo beside its words.
 
 ### D-272 · The page's scroll padding reads the bar's measured height · 2026-11-19
 
@@ -3587,3 +3587,41 @@ Spec (configurator): "The card shows the photo large"; the prototype's cards sho
   - The first request after a reindex: 54.8 ms and 44 queries, from 112 ms and 81.
 
 **Why:** M10's looks and cards were kept in the object cache alone. On a site with none that persists, which is most shops and the demo, every request loaded each candidate's product to draw its card, and the state route took over a second. Zach: "fix the performance first".
+
+
+### D-290 · The state route's currency format is plain text, as its symbol is · 2026-11-19
+
+- **What.** `currency.format` in the state route's answer was WooCommerce's price format as WooCommerce writes it for HTML, with its space as `&nbsp;`, beside a `symbol` already decoded to plain text. It is now decoded the same way: `%1$s%2$s`, `%2$s%1$s`, or either with a no-break space (U+00A0) between. `schema/state.json` and its generated types say so. Nothing in the plugin reads it; it is there for a theme's or a plugin's script.
+- **My call (Zach: "decide, record, flag").** The answer is frozen API from 1.0.0 (D-236), so this is the last release it can change in without a major version. A JSON consumer that writes the format into text would print the entity.
+
+**Why:** the auditor's 1.0.0 minor 4.
+
+
+### D-291 · v1.0.0 is tagged without the manual screen-reader pass, the hallway test or the grip sheets' size · 2026-11-19
+
+- **What.** The release audit listed three items for before the tag: the manual pass of `docs/A11Y.md` with VoiceOver and NVDA (O2, with O10, the board's turn said by its caption alone), the hallway test (O4), and how a grip sheet sized "9 × 33 in" in one attribute is read (O19). Zach, 19 November: "you can tag without the three". Each stays open after 1.0.0, and A11Y.md's row now says the tag did not wait for it.
+- **What still holds the tag.** Everything automated: the gates, the browser projects with axe, and CI.
+
+**Why:** Zach's call, so the release isn't held by checks that need a person he hasn't arranged yet.
+
+
+### D-292 · On a balanced layout the panel is half the width, past 520 px · 2026-11-20
+
+- **What.** SPEC-CONFIGURATOR's layout gives the panel 380 to 520 px, and the board 60 % (large) or 50 % (balanced) of the width. Above 1,040 px the two can't both hold on a balanced layout: half the width is more than 520 px. The 50 % wins, so the panel grows to 40rem (640 px) there (`style.scss`, `clamp(23.75rem, 50%, 40rem)`); on the large layout it stays within 380 to 520 px.
+- **My call (Zach: "decide, record, flag"; the spec reviewer's M10 minor M9).** Balanced is the setting a shop chooses for a panel as wide as the board: holding the panel to 520 px would leave the board at 60 % or more on a wide screen, which is the large layout again under another name. Past 40rem the panel stops growing and the board takes the rest.
+
+**Why:** the spec's two lines disagree above 1,040 px, and the setting's own name says which one the shop meant.
+
+
+### D-293 · The repository's front page and its community files · 2026-11-20
+
+Zach's answers (19 November): the README is a "Showcase for the agency"; "Issues welcome, PRs by invitation"; and "LICENSE (GPL-2.0-or-later), SECURITY.md reporting policy, Issue templates + CONTRIBUTING.md, CODE_OF_CONDUCT.md". So:
+
+- **README.md** says what the builder does for a shop and how it is held to the audit, with the walkthrough's screenshots, and points to the docs. Its setup for a shop stays in `readme.txt`.
+- **SECURITY.md** sends a report through GitHub's private vulnerability reporting, which the repository already has on (checked through the API on 20 November, so no setting was changed), and supports the newest 1.x. It promises an answer within three working days: my call, flagged for Zach, who answers them.
+- **CONTRIBUTING.md** and two issue forms, a bug and an idea or question, with blank issues off and a link to the private report for security. Pull requests are by invitation: one not talked about first on its issue is likely to be closed.
+- **CODE_OF_CONDUCT.md** adopts the Contributor Covenant 2.1 by reference, with reports through the same private channel, so no address of anyone's is published.
+- **LICENSE** is GPL-2.0's text under the plugin's "or any later version" notice, as its header and `readme.txt` say.
+- `.distignore` leaves CONTRIBUTING, CODE_OF_CONDUCT and SECURITY out of the zip: they are about the repository, not the plugin. LICENSE and the readme go in it.
+
+**Why:** Zach's answers; the rest keeps everyone's contact details off the page.

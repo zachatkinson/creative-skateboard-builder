@@ -30,7 +30,8 @@ final class LayerRenditionsTest extends IntegrationTestCase {
 	public function tear_down(): void {
 		remove_all_filters( 'image_editor_output_format' );
 		StrayEditor::$to = null;
-		LooseQualityEditor::$throws = null;
+		LooseQualityEditor::$throws       = null;
+		LooseQualityEditor::$resizeThrows = false;
 		remove_all_filters( 'wp_editor_set_quality' );
 		remove_all_filters( 'wp_image_editors' );
 		$folder = wp_get_upload_dir()['basedir'] . '/' . WpLayerRenditions::FOLDER;
@@ -235,6 +236,20 @@ final class LayerRenditionsTest extends IntegrationTestCase {
 		self::assertSame( 'save', $logger->lines[0]['context']['step'] ?? null );
 		self::assertStringContainsString( 'imageavif()', (string) ( $logger->lines[0]['context']['error'] ?? '' ) );
 		self::assertSame( 1, get_transient( Options::RENDITIONS_FAILED ), 'Site Health names the logs (D-214)' );
+	}
+
+	// The auditor's 1.0.0 minor 6: a throw is logged with the step it came from, not as the save.
+	public function test_a_resize_that_throws_is_logged_as_the_resize(): void {
+		$image  = LayerFiles::attachment( 420, 1626 );
+		$logger = new FakeLogger();
+		add_filter( 'wp_image_editors', static fn( array $editors ): array => array_merge( array( LooseQualityEditor::class ), $editors ) );
+		LooseQualityEditor::$resizeThrows = true;
+
+		( new WpLayerRenditions( $logger ) )->make( $image, self::SIZES );
+
+		self::assertNotSame( array(), $logger->lines );
+		self::assertSame( array( 'resize' ), array_values( array_unique( array_map( static fn( array $line ): mixed => $line['context']['step'] ?? null, $logger->lines ) ) ) );
+		self::assertSame( 'The resize ran out of memory.', $logger->lines[0]['context']['error'] ?? null );
 	}
 
 	public function test_an_image_that_is_gone_or_no_image_makes_nothing(): void {

@@ -188,16 +188,20 @@ final class WpLayerRenditions implements LayerRenditions {
 		};
 		$quality = static fn(): int => self::QUALITY;
 		add_filter( 'wp_editor_set_quality', $quality, PHP_INT_MAX );
+		// The step a throw came from, for the log (the auditor's 1.0.0 minor 6).
+		$step = 'quality';
 		try {
 			$editor->set_quality( self::QUALITY );
+			$step = 'resize';
 			if ( null !== $size && true !== $editor->resize( $size[0], $size[1], false ) ) {
 				$this->failed( $path, 'resize' );
 				return;
 			}
+			$step = 'save';
 			add_filter( 'image_editor_output_format', $aside, PHP_INT_MAX );
 			$saved = $editor->save( $path, $mime );
 		} catch ( Throwable $failure ) {
-			$this->failed( $path, 'save', $failure->getMessage() );
+			$this->failed( $path, $step, $failure->getMessage() );
 			return;
 		} finally {
 			remove_filter( 'image_editor_output_format', $aside, PHP_INT_MAX );

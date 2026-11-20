@@ -41,7 +41,7 @@
 				"decimals": { "description": "How many decimals a price shows.", "type": "integer", "minimum": 0 },
 				"decimal_separator": { "description": "Between the whole amount and its decimals.", "type": "string" },
 				"thousand_separator": { "description": "Between thousands.", "type": "string" },
-				"format": { "description": "Where the symbol goes: `%1$s%2$s`, `%2$s%1$s`, `%1$s&nbsp;%2$s` or `%2$s&nbsp;%1$s` as WooCommerce has it.", "type": "string" }
+				"format": { "description": "Where the symbol goes, as plain text: `%1$s%2$s`, `%2$s%1$s`, or either with a no-break space (U+00A0) between, as WooCommerce has it. From 1.0.0 the space is the character, not `&nbsp;`.", "type": "string" }
 			}
 		},
 		"reopened": {

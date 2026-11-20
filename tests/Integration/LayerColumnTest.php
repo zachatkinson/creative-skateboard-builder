@@ -137,7 +137,7 @@ final class LayerColumnTest extends IntegrationTestCase {
 		$small = LayerFiles::attachment( 419, 1625 );
 
 		foreach ( array(
-			$name                                       => 'Layer image was not saved: more than one image in the Media Library has the file name "' . $name . '" (IDs ' . $first . ', ' . $twin . '). Use the ID of the one you mean.',
+			$name                                       => 'Layer image was not saved: more than one image in the Media Library has the file name "' . $name . '" (IDs ' . $first . ' and ' . $twin . '). Use the ID of the one you mean.',
 			'not-uploaded.png'                         => 'Layer image was not saved: no image in the Media Library has the file name "not-uploaded.png".',
 			$this->service( PartLayers::class )->fileName( $small ) => 'Layer image was not saved: it is too small for the size the picture draws this part. It needs at least 420 pixels across or 1,626 along.',
 		) as $cell => $sentence ) {
@@ -152,6 +152,56 @@ final class LayerColumnTest extends IntegrationTestCase {
 		self::assertSame( LayerCheck::AMBIGUOUS, $this->import( "id,layer_image\n{$deck->get_id()},{$name}\n" )[0]['problems'][0]['code'] );
 		$this->import( "id,layer_image\n{$deck->get_id()},{$twin}\n" );
 		self::assertSame( (string) $twin, self::layer( $deck->get_id() ), 'its ID names it' );
+	}
+
+	// The auditor's 1.0.0 minor 3: a name is looked for by the file's whole name, so a library with many files whose
+	// names hold it still finds the one, wherever its ID falls.
+	public function test_a_file_name_is_found_among_more_than_twenty_files_whose_names_hold_it(): void {
+		for ( $n = 1; $n <= 25; $n++ ) {
+			$decoy = wp_insert_attachment(
+				array(
+					'post_mime_type' => 'image/png',
+					'post_status'    => 'inherit',
+					'post_title'     => 'crowded copy ' . $n,
+				)
+			);
+			update_attached_file( $decoy, wp_upload_dir()['basedir'] . "/2025/03/cbuild-crowded-copy-{$n}.png" );
+		}
+		$image = LayerFiles::attachment( 420, 1626 );
+		$named = wp_upload_dir()['basedir'] . '/2025/04/cbuild-crowded.png';
+		wp_mkdir_p( dirname( $named ) );
+		rename( (string) get_attached_file( $image ), $named );
+		update_attached_file( $image, $named );
+		self::assertSame( array( $image ), $this->service( PartLayers::class )->named( 'cbuild-crowded.png' ) );
+		self::assertSame( array(), $this->service( PartLayers::class )->named( 'crowded.png' ), 'a name is the whole name' );
+	}
+
+	// The auditor's 1.0.0 should-fix P1: a sheet exported and imported again names each part's own image, by its file
+	// name. That is no change, so it is never looked up or checked again: another image with the same name, or a
+	// kit that now draws the part larger, refused the row whole, its specs too.
+	public function test_a_cell_naming_the_parts_own_image_keeps_it_whatever_else_has_that_name(): void {
+		$deck = self::deck();
+		$own  = LayerFiles::attachment( 420, 1626 );
+		$deck->update_meta_data( Options::META_LAYER, (string) $own );
+		$deck->save();
+		$name = $this->service( PartLayers::class )->fileName( $own );
+		// The same name uploaded in another month.
+		$twin  = LayerFiles::attachment( 420, 1626 );
+		$older = wp_upload_dir()['basedir'] . '/2025/02/' . $name;
+		wp_mkdir_p( dirname( $older ) );
+		rename( (string) get_attached_file( $twin ), $older );
+		update_attached_file( $twin, $older );
+		self::assertCount( 2, $this->service( PartLayers::class )->named( $name ) );
+
+		foreach ( array( $name, (string) $own ) as $cell ) {
+			$plan = $this->import( "id,deck_width,layer_image\n{$deck->get_id()},8.5,{$cell}\n" );
+			self::assertSame( array(), $plan[0]['problems'], $cell );
+			self::assertSame( SpecImport::KEEP_LAYER, $plan[0]['layer'], $cell );
+			self::assertSame( (string) $own, self::layer( $deck->get_id() ), $cell );
+			self::assertSame( '8.5000', wc_get_product( $deck->get_id() )->get_meta( Options::META_SPECS, true )['deck_width'] ?? null, 'the row\'s specs are saved' );
+			$deck->update_meta_data( Options::META_SPECS, array( 'deck_width' => '8.2500' ) );
+			$deck->save();
+		}
 	}
 
 	public function test_an_empty_cell_gives_a_variation_its_parents_image(): void {

@@ -812,6 +812,8 @@ final class BuilderTest extends TestCase {
 				'shown'   => false,
 				'asking'  => false,
 				'legend'  => 'Width',
+				'chosen'  => '',
+				'change'  => 'Change',
 				'name'    => 'cbuild[_width]',
 				'options' => array(),
 				'hasNone' => false,

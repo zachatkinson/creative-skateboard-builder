@@ -56,7 +56,8 @@ if ( 'read' === ( $cbuild_args[0] ?? '' ) ) {
 	$clean = 0;
 	foreach ( $list as $build ) {
 		$again  = $builds->reopened( $user, $build->uuid );
-		$clean += null === $again || ( null === $again->then && array() === $again->prices ) ? 1 : 0;
+		// One that doesn't reopen at all is not clean (the spec reviewer's M10 m2).
+		$clean += null !== $again && null === $again->then && array() === $again->prices ? 1 : 0;
 	}
 	echo "read: order {$order->get_id()}, {$lines} lines, {$found} products, total {$order->get_total()}; kits " . $read . ' of ' . count( $stored ) . ", presets {$priced} of {$presets} priced; saved builds {$saved}, {$clean} reopened with no prices then\n";
 	return;

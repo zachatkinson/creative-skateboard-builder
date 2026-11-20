@@ -14,6 +14,7 @@ use CreativeBranding\SkateboardBuilder\Port\PartFacts;
 use CreativeBranding\SkateboardBuilder\Port\PartLooks;
 use CreativeBranding\SkateboardBuilder\Port\ProductMeta;
 use CreativeBranding\SkateboardBuilder\Support\Cast;
+use CreativeBranding\SkateboardBuilder\Support\LayerMeta;
 use CreativeBranding\SkateboardBuilder\Support\Options;
 use WC_Product;
 use WP_Post;
@@ -181,12 +182,11 @@ final class WooPartLooks implements PartLooks {
 				$attributes[ $held->get_name() ] = $slugs;
 			}
 		}
-		$layer   = Cast::int( $product->get_meta( Options::META_LAYER, true ) );
 		$created = $owner->get_date_created();
 		return array(
 			'product'    => $owner->get_id(),
 			'photo'      => Cast::int( $product->get_image_id() ),
-			'layer'      => $layer > 0 || null === $variable ? $layer : Cast::int( $variable->get_meta( Options::META_LAYER, true ) ),
+			'layer'      => LayerMeta::inUse( $product, $variable ),
 			// WordPress stores a title with its entities written out; this is plain text, which the edge escapes.
 			'name'       => html_entity_decode( wp_strip_all_tags( $owner->get_name() ), ENT_QUOTES, 'UTF-8' ),
 			'attributes' => $attributes,

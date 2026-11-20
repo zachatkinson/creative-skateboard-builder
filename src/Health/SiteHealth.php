@@ -164,7 +164,7 @@ final class SiteHealth implements Hookable {
 			case Health::INDEX_STALLED:
 				$label = __( 'The skateboard builder\'s specs index stopped part way', 'creative-skateboard-builder' );
 				/* translators: %s: a number of parts. */
-				$says = sprintf( __( 'Reading every part again got as far as %s parts and has no job waiting to go on. Start it again with "Read every part again" on the Catalogue check.', 'creative-skateboard-builder' ), $parts );
+				$says = sprintf( _n( 'Reading every part again got as far as %s part and has no job waiting to go on. Start it again with "Read every part again" on the Catalogue check.', 'Reading every part again got as far as %s parts and has no job waiting to go on. Start it again with "Read every part again" on the Catalogue check.', $verdict['parts'], 'creative-skateboard-builder' ), $parts );
 				break;
 			case Health::INDEX_BUILDING:
 				$label = __( 'The skateboard builder\'s specs index is being rebuilt', 'creative-skateboard-builder' );
@@ -281,7 +281,8 @@ final class SiteHealth implements Hookable {
 	 * @return array{label: string, status: string, badge: array{label: string, color: string}, description: string, actions: string, test: string}
 	 */
 	public function catalogue(): array {
-		$verdict = Health::catalogue( ( $this->check )()->run() );
+		// It counts no shared cards, so it doesn't work them out (the auditor's 1.0.0 minor 11).
+		$verdict = Health::catalogue( ( $this->check )()->withoutLooks()->run() );
 		$open    = sprintf( '<a href="%s">%s</a>', esc_url( CheckScreen::url() ), esc_html__( 'Open the Catalogue check', 'creative-skateboard-builder' ) );
 		// Parts with no layer image stay in the builder, so they are counted in a sentence of their own (D-211).
 		$layers = '';

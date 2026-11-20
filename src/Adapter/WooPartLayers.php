@@ -30,7 +30,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 final class WooPartLayers implements PartLayers {
 
 	/**
-	 * The most images one name is looked for among: a name this common is refused as ambiguous anyway.
+	 * The most images with one name read: two are already ambiguous, and are refused so.
 	 */
 	private const LOOKED = 20;
 
@@ -70,6 +70,8 @@ final class WooPartLayers implements PartLayers {
 		if ( '' === $stem ) {
 			return array();
 		}
+		$type  = pathinfo( $file, PATHINFO_EXTENSION );
+		$names = array( $file, $stem . '-scaled' . ( '' === $type ? '' : '.' . $type ) );
 		$query = new WP_Query(
 			array(
 				'post_type'      => 'attachment',
@@ -80,12 +82,26 @@ final class WooPartLayers implements PartLayers {
 				'orderby'        => 'ID',
 				'order'          => 'ASC',
 				'no_found_rows'  => true,
+				// The file's whole name in any folder, or the copy WordPress scales a large upload to, so a library of
+				// files whose names merely hold it fills no page before it (the auditor's 1.0.0 minor 3). LIKE wraps
+				// its value in wildcards, so the folder's slash marks the name's start; the match is made exact below.
 				// phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query -- Once a row of an import an admin confirmed, by name, as the Media Library's own search does.
 				'meta_query'     => array(
-					array(
-						'key'     => '_wp_attached_file',
-						'value'   => $stem,
-						'compare' => 'LIKE',
+					'relation' => 'OR',
+					...array_map(
+						static fn( string $name ): array => array(
+							'key'     => '_wp_attached_file',
+							'value'   => '/' . $name,
+							'compare' => 'LIKE',
+						),
+						$names
+					),
+					...array_map(
+						static fn( string $name ): array => array(
+							'key'   => '_wp_attached_file',
+							'value' => $name,
+						),
+						$names
 					),
 				),
 			)

@@ -151,6 +151,20 @@ final class CheckScreen {
 	 * @return list<array{kit: string, about: string, link: string, says: string}>
 	 */
 	private function rows( array $found, array $kits ): array {
+		// The parts, their terms, their meta and their parents read together, so the table asks no query a row (the M9 audit's
+		// minor 11). WooCommerce reads a product from these caches.
+		$ids = array_values( array_unique( array_filter( array_map( static fn( CheckFinding $finding ): int => $finding->part, $found ), static fn( int $part ): bool => $part > 0 ) ) );
+		if ( array() !== $ids ) {
+			_prime_post_caches( $ids, true, true );
+			$parents = array();
+			foreach ( $ids as $id ) {
+				$post = get_post( $id );
+				if ( $post instanceof \WP_Post && $post->post_parent > 0 ) {
+					$parents[] = $post->post_parent;
+				}
+			}
+			_prime_post_caches( array_values( array_unique( $parents ) ), true, true );
+		}
 		$rows = array();
 		foreach ( $found as $finding ) {
 			$product = 0 === $finding->part ? null : wc_get_product( $finding->part );

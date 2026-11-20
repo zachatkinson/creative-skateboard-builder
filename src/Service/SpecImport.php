@@ -117,7 +117,7 @@ final class SpecImport {
 	private ?PartLayers $layers = null;
 
 	/**
-	 * With the `layer_image` column read and written (Cowork's 1.0.0 request; D-287).
+	 * A copy with the `layer_image` column read and written (Cowork's 1.0.0 request; D-287).
 	 *
 	 * @since 1.0.0
 	 *
@@ -125,9 +125,10 @@ final class SpecImport {
 	 * @param PartLayers $layers The parts' own layer images, and the Media Library's by name.
 	 */
 	public function withLayers( LayerCheck $check, PartLayers $layers ): self {
-		$this->check  = $check;
-		$this->layers = $layers;
-		return $this;
+		$copy         = clone $this;
+		$copy->check  = $check;
+		$copy->layers = $layers;
+		return $copy;
 	}
 
 	/**
@@ -508,6 +509,11 @@ final class SpecImport {
 		$cell = trim( $cell );
 		if ( '' === $cell ) {
 			return array( $owned['variation'] && $owned['own'] > 0 ? 0 : self::KEEP_LAYER, array() );
+		}
+		// The part's own image, by its ID or the name an export writes, is no change: it is not looked up, so another
+		// image with that name doesn't refuse the row, nor checked again (the auditor's 1.0.0 should-fix P1).
+		if ( $owned['own'] > 0 && ( (string) $owned['own'] === $cell || $this->layers->fileName( $owned['own'] ) === $cell ) ) {
+			return array( self::KEEP_LAYER, array() );
 		}
 		[ $id, $wrong ] = LayerCheck::named( $cell, $this->layers );
 		if ( array() === $wrong ) {

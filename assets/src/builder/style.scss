@@ -582,7 +582,7 @@
 :where(.cbuild-width__guide > summary) {
 	display: inline-flex;
 	align-items: center;
-	min-block-size: var(--cbuild-control);
+	min-block-size: var(--cbuild-target);
 	text-decoration: underline;
 	cursor: pointer;
 }
@@ -688,6 +688,33 @@
 	display: flex;
 	flex-wrap: wrap;
 	gap: var(--cbuild-gap-small);
+}
+
+/* The width chosen, the step's first line, with Change, which opens the widths (spec: The deck's width first). */
+:where(.cbuild-width__chosen) {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--cbuild-gap-small);
+	min-block-size: var(--cbuild-target);
+	list-style: none;
+	cursor: pointer;
+}
+
+:where(.cbuild-width__chosen)::-webkit-details-marker {
+	display: none;
+}
+
+:where(.cbuild-width__text) {
+	font-weight: 600;
+}
+
+:where(.cbuild-width__change) {
+	color: var(--cbuild-accent);
+	text-decoration: underline;
+}
+
+:where(.cbuild-width__pick[open] > .cbuild-width__chosen) {
+	margin-block-end: var(--cbuild-gap-small);
 }
 
 :where(.cbuild-width__none) {
@@ -995,6 +1022,15 @@
 	font-size: var(--cbuild-small);
 }
 
+/* A link on its own line in the card: a phone's 44 px target (spec: Targets), its words still small. */
+@container cbuild (max-width: 47.99rem) {
+	:where(.cbuild-card__page) {
+		display: inline-flex;
+		align-items: center;
+		min-block-size: var(--cbuild-target);
+	}
+}
+
 /* Chosen: the radio checked, as the shopper's own pick paints it before the server answers. */
 :where(
 	.cbuild-card--chosen,
@@ -1050,7 +1086,7 @@
 
 /* The parts that do not fit. */
 :where(.cbuild-hidden__summary) {
-	min-block-size: var(--cbuild-control);
+	min-block-size: var(--cbuild-target);
 	cursor: pointer;
 }
 
@@ -1771,9 +1807,10 @@
 	box-shadow: 0 0 0 6px var(--cbuild-focus-contrast);
 }
 
-/* A chosen card keeps its inset line in the accent while it has focus. */
+/* A chosen card, and a pressed filter, keep their inset line in the accent while they have focus. */
 .cbuild.cbuild .cbuild-card--chosen:has(> .cbuild-card__control:focus-visible),
-.cbuild.cbuild .cbuild-card:has(> .cbuild-card__control:checked:focus-visible) {
+.cbuild.cbuild .cbuild-card:has(> .cbuild-card__control:checked:focus-visible),
+.cbuild.cbuild .cbuild-filters__option[aria-pressed="true"]:focus-visible {
 	box-shadow:
 		inset 0 0 0 1px var(--cbuild-accent),
 		0 0 0 6px var(--cbuild-focus-contrast);

@@ -92,7 +92,7 @@ final class Sentences {
 				return sprintf( __( 'It has no layer image, so the picture shows its labelled photo in the slot "%s". Add one on its Part specs, under Picture.', 'creative-skateboard-builder' ), $finding->slot );
 			case CatalogueCheck::LOOK_SHARED:
 				/* translators: 1: a list of variations' IDs, such as 11, 12. 2: a slot's key, such as deck. */
-				return sprintf( __( 'Its variations %1$s share a photo, so the builder shows them as one card in the slot "%2$s" and asks for the rest after the pick.', 'creative-skateboard-builder' ), $finding->values['parts'] ?? '', $finding->slot );
+				return sprintf( __( 'Its variations %1$s share a photo, so the builder shows them as one card in the slot "%2$s" and asks for the rest after the pick.', 'creative-skateboard-builder' ), self::ids( $finding->values['parts'] ?? '' ), $finding->slot );
 			case CatalogueCheck::PRESET:
 				$problems = array(
 					/* translators: 1: a preset's name. 2: a slot's key. */
@@ -199,7 +199,7 @@ final class Sentences {
 			/* translators: %s: a file's name. */
 			LayerCheck::NOT_FOUND => sprintf( __( 'Layer image was not saved: no image in the Media Library has the file name "%s".', 'creative-skateboard-builder' ), $parts[0] ),
 			/* translators: 1: a file's name. 2: the attachment IDs of the images with that name, such as 12, 40. */
-			LayerCheck::AMBIGUOUS => sprintf( __( 'Layer image was not saved: more than one image in the Media Library has the file name "%1$s" (IDs %2$s). Use the ID of the one you mean.', 'creative-skateboard-builder' ), $parts[0], $parts[1] ?? '' ),
+			LayerCheck::AMBIGUOUS => sprintf( __( 'Layer image was not saved: more than one image in the Media Library has the file name "%1$s" (IDs %2$s). Use the ID of the one you mean.', 'creative-skateboard-builder' ), $parts[0], self::ids( $parts[1] ?? '' ) ),
 			/* translators: %s: a file's media type, such as image/jpeg. */
 			LayerError::WrongType->value => sprintf( __( 'Layer image was not saved: it is %s, and a layer must be a PNG, WebP or AVIF with a transparent background.', 'creative-skateboard-builder' ), $parts[0] ),
 			/* translators: %s: a file's media type, such as image/avif. */
@@ -259,5 +259,14 @@ final class Sentences {
 			/* translators: %s: a section's name. */
 			default => sprintf( __( '%s: what was sent could not be read. Load the page again and try once more.', 'creative-skateboard-builder' ), $field ),
 		};
+	}
+
+	/**
+	 * IDs the check joined with commas, as the locale writes a list: "11, 12 and 13".
+	 *
+	 * @param string $ids IDs joined with `, `.
+	 */
+	private static function ids( string $ids ): string {
+		return '' === $ids ? '' : wp_sprintf( '%l', explode( ', ', $ids ) );
 	}
 }

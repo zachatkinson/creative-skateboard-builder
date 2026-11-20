@@ -33,7 +33,7 @@ export interface CbuildState {
 		 */
 		thousand_separator: string;
 		/**
-		 * Where the symbol goes: `%1$s%2$s`, `%2$s%1$s`, `%1$s&nbsp;%2$s` or `%2$s&nbsp;%1$s` as WooCommerce has it.
+		 * Where the symbol goes, as plain text: `%1$s%2$s`, `%2$s%1$s`, or either with a no-break space (U+00A0) between, as WooCommerce has it. From 1.0.0 the space is the character, not `&nbsp;`.
 		 */
 		format: string;
 	};

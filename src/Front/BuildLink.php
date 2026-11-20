@@ -11,10 +11,15 @@ namespace CreativeBranding\SkateboardBuilder\Front;
 
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Fields;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Slots;
+use CreativeBranding\SkateboardBuilder\Domain\Look\Shelf;
 use CreativeBranding\SkateboardBuilder\Domain\Look\ShelfAsk;
 use CreativeBranding\SkateboardBuilder\Service\ShelfQuery;
 use CreativeBranding\SkateboardBuilder\Service\State;
 use CreativeBranding\SkateboardBuilder\Support\Cast;
+
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
 
 /**
  * A build as the query parameters of a page: `cbuild[<slot key>]=<part ID>`, with `cbuild[step]`,
@@ -57,11 +62,11 @@ final readonly class BuildLink {
 	public const int PAGE = 24;
 
 	/**
-	 * The most options a step lists: every part a slot can have.
+	 * The most options a step lists, as the shelf lists looks, page by page.
 	 *
 	 * @since 0.6.0
 	 */
-	public const int MOST = 500;
+	public const int MOST = Shelf::MOST;
 
 	/**
 	 * Constructor.

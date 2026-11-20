@@ -302,7 +302,7 @@ final class CheckScreenTest extends IntegrationTestCase {
 		$this->as( 'shop_manager' );
 		$page = self::checked( new CheckScreen( $check, $kits, $this->service( Reindex::class ) ) );
 		self::assertStringContainsString( '<h3 id="cbuild-shared">Variations that share a card</h3>', $page );
-		self::assertStringContainsString( 'Its variations 11, 12 share a photo, so the builder shows them as one card in the slot &quot;deck&quot; and asks for the rest after the pick.', $page );
+		self::assertStringContainsString( 'Its variations 11 and 12 share a photo, so the builder shows them as one card in the slot &quot;deck&quot; and asks for the rest after the pick.', $page );
 		self::assertStringNotContainsString( 'thing to fix', $page, 'not counted among the things to fix' );
 		self::assertSame( 0, substr_count( substr( $page, 0, (int) strpos( $page, 'id="cbuild-shared"' ) ), 'share a photo' ) );
 	}
@@ -416,5 +416,35 @@ final class CheckScreenTest extends IntegrationTestCase {
 		self::assertStringNotContainsString( 'role="status"', self::drawn( $screen ) );
 		self::assertSame( array(), $this->service( Kits::class )->all() );
 		self::assertSame( array(), $this->service( Kits::class )->candidates( 1, 'deck' ) );
+	}
+
+	// The M9 audit's minor 11: the findings' parts and their parents are read together, so the table asks as many
+	// queries for twelve rows as for two.
+	public function test_the_findings_table_reads_its_parts_together(): void {
+		$parent = new \WC_Product_Variable();
+		$parent->set_name( 'Katie' );
+		$parent->save();
+		$parts = array();
+		for ( $n = 0; $n < 12; $n++ ) {
+			$part = 0 === $n % 2 ? new \WC_Product_Simple() : new \WC_Product_Variation();
+			if ( $part instanceof \WC_Product_Variation ) {
+				$part->set_parent_id( $parent->get_id() );
+			} else {
+				$part->set_name( 'Deck ' . $n );
+			}
+			$part->set_sku( 'CHK-' . $n );
+			$parts[] = $part->save();
+		}
+		$rows    = new \ReflectionMethod( CheckScreen::class, 'rows' );
+		$screen  = $this->screen();
+		$queries = static function ( array $ids ) use ( $rows, $screen ): int {
+			global $wpdb;
+			wp_cache_flush();
+			$before = $wpdb->num_queries;
+			$found  = $rows->invoke( $screen, array_map( static fn( int $id ): \CreativeBranding\SkateboardBuilder\Service\CheckFinding => new \CreativeBranding\SkateboardBuilder\Service\CheckFinding( CatalogueCheck::SPEC_MISSING, $id, 0, 'deck', 'deck_width' ), $ids ), array() );
+			self::assertCount( count( $ids ), $found );
+			return $wpdb->num_queries - $before;
+		};
+		self::assertSame( $queries( array_slice( $parts, 0, 2 ) ), $queries( $parts ) );
 	}
 }

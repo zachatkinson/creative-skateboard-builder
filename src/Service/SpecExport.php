@@ -50,15 +50,16 @@ final class SpecExport {
 	private ?PartLayers $layers = null;
 
 	/**
-	 * With each part's own Layer image written by its file's name (Cowork's 1.0.0 request; D-287).
+	 * A copy with each part's own Layer image written by its file's name (Cowork's 1.0.0 request; D-287).
 	 *
 	 * @since 1.0.0
 	 *
 	 * @param PartLayers $layers The parts' own layer images.
 	 */
 	public function withLayers( PartLayers $layers ): self {
-		$this->layers = $layers;
-		return $this;
+		$copy         = clone $this;
+		$copy->layers = $layers;
+		return $copy;
 	}
 
 	/**

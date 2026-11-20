@@ -18,7 +18,7 @@ require_once ABSPATH . WPINC . '/class-wp-image-editor-gd.php';
  * GD's editor without WordPress's range check on the quality `wp_editor_set_quality` answers
  * (wp-includes/class-wp-image-editor.php:291): what reached `imageavif()` on the demo under a media plugin set to AVIF
  * (Cowork's 1.0.0 report). A quality set on the editor itself is still checked. Put first with `wp_image_editors`.
- * With `$throws`, a save of that type throws as GD did.
+ * With `$throws`, a save of that type throws as GD did; with `$resizeThrows`, a resize throws.
  */
 final class LooseQualityEditor extends WP_Image_Editor_GD {
 
@@ -28,6 +28,28 @@ final class LooseQualityEditor extends WP_Image_Editor_GD {
 	 * @var string|null
 	 */
 	public static ?string $throws = null;
+
+	/**
+	 * Whether a resize throws.
+	 *
+	 * @var bool
+	 */
+	public static bool $resizeThrows = false;
+
+	/**
+	 * Resizes, or throws with `$resizeThrows`.
+	 *
+	 * @param int|null   $max_w Width.
+	 * @param int|null   $max_h Height.
+	 * @param bool|array<int, string> $crop  Whether to crop.
+	 * @return true|\WP_Error
+	 */
+	public function resize( $max_w, $max_h, $crop = false ) {
+		if ( self::$resizeThrows ) {
+			throw new \RuntimeException( 'The resize ran out of memory.' );
+		}
+		return parent::resize( $max_w, $max_h, $crop );
+	}
 
 	/**
 	 * Sets the quality: the filter's answer as it is, else as WordPress sets it.

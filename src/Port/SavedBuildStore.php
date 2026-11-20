@@ -24,6 +24,13 @@ if ( ! defined( 'ABSPATH' ) ) {
 interface SavedBuildStore {
 
 	/**
+	 * The most builds a customer keeps (D-217): a new one past it is not written.
+	 *
+	 * @since 1.0.0
+	 */
+	public const int MOST = 100;
+
+	/**
 	 * A customer's builds, the last saved first.
 	 *
 	 * @since 0.8.0

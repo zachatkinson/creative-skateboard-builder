@@ -53,7 +53,7 @@ The kit's Build tab has a Layout section: the board on the left or the right of 
 
 = My theme shows a sticky add-to-cart bar on a kit's page =
 
-The builder has its own bar with the total, Back and Next, so a theme's bar on a kit's page is one too many. Leave kits out of it in your theme's settings. In Kadence Pro, the bar is one of its Elements: edit that element, and in its Exclude Settings add Hide On for each kit, or for a tag your kits share.
+The builder has its own bar with the total, Back and Next, so a theme's bar on a kit's page is one too many. Leave kits out of it in your theme's settings. In Kadence Pro: Appearance > Elements, open the element that holds the bar, then Element Settings > Display Settings > Exclude Settings; set Hide On to Single Products, Select product by to Individually, pick each kit, and save. Kadence can't pick products by type, so add each new kit the same way, or give your kits a tag and pick it under Group.
 
 = Can other plugins build on it? =
 
@@ -72,6 +72,9 @@ Yes. Its hooks, REST routes, block attributes, settings keys, order item keys, C
 * Wheels can say they come with their bearings, and then need none of their own.
 * Steps hide wheels that need a riser the kit can't supply with bolts long enough, and risers no bolts in stock reach through, each with its reason.
 * Part specs opens Sold in sets for parts in slots that take more than one unit. Saving a kit whose presets name a hidden part keeps the presets and says which part.
+* The specs CSV has a layer_image column: an export writes each part's layer image by its file name, and an import sets it by file name or attachment ID, checked as the field checks it.
+* The builder answers faster on a host with no persistent object cache: each part's card is kept with its facts between requests.
+* From 1.0.0 the hooks, the state route's answer, the block and the CSS custom properties are a public API, changed only in a major version (docs/HOOKS.md in the repository).
 
 = 0.9.0 =
 * Focus is seen on a dark theme and a light one: the ring has two tones of its own.

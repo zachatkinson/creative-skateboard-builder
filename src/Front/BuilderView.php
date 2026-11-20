@@ -845,7 +845,7 @@ final class BuilderView {
 			'shown' => null !== $more,
 			'name'  => BuildLink::PARAM . '[_shown]',
 			'value' => null === $more ? '' : (string) $more,
-			/* translators: %s: how many more parts the button lists. */
+			/* translators: %s: how many more the button lists: parts, or looks on the shelf. */
 			'text'  => null === $more ? '' : sprintf( __( 'Show %s more', 'creative-skateboard-builder' ), number_format_i18n( $next ) ),
 			/* translators: 1: how many parts are listed. 2: how many match. */
 			'count' => sprintf( _n( '%1$s of %2$s part shown', '%1$s of %2$s parts shown', $matching, 'creative-skateboard-builder' ), number_format_i18n( $listed ), number_format_i18n( $matching ) ),
@@ -872,13 +872,37 @@ final class BuilderView {
 			'shown' => null !== $more,
 			'name'  => BuildLink::PARAM . '[_shown]',
 			'value' => null === $more ? '' : (string) ( $shown + Shelf::SHOWN ),
-			/* translators: %s: how many more looks the button lists. */
+			/* translators: %s: how many more the button lists: parts, or looks on the shelf. */
 			'text'  => null === $more ? '' : sprintf( __( 'Show %s more', 'creative-skateboard-builder' ), number_format_i18n( min( Shelf::SHOWN, $matching - $listed ) ) ),
 			/* translators: 1: how many looks are listed. 2: how many match. */
 			'count' => sprintf( _n( 'Showing %1$s of %2$s', 'Showing %1$s of %2$s', $matching, 'creative-skateboard-builder' ), number_format_i18n( $listed ), number_format_i18n( $matching ) ),
 			/* translators: 1: how many parts Show more added. 2: how many are listed. 3: how many match. */
 			'added' => $shown > Shelf::SHOWN && $added > 0 ? sprintf( _n( '%1$s more part shown, %2$s of %3$s.', '%1$s more parts shown, %2$s of %3$s.', $added, 'creative-skateboard-builder' ), number_format_i18n( $added ), number_format_i18n( $listed ), number_format_i18n( $matching ) ) : '',
 		);
+	}
+
+	/**
+	 * The search box's hint, in the step's own words: its first brand as the example, where it has brands (spec:
+	 * Search, "Brand or graphic, like Rascals").
+	 *
+	 * @param string                     $slot   The step's slot.
+	 * @param list<array<string, mixed>> $groups The step's chip groups, as the view has them.
+	 */
+	private static function hint( string $slot, array $groups ): string {
+		$example = '';
+		foreach ( $groups as $group ) {
+			if ( Shelf::BRAND === ( $group['key'] ?? null ) ) {
+				$example = Cast::str( Cast::map( Cast::items( $group['inputs'] ?? null )[0] ?? null )['text'] ?? null );
+			}
+		}
+		if ( '' === $example ) {
+			return SlotKey::DECK === $slot ? __( 'Brand or graphic', 'creative-skateboard-builder' ) : __( 'Brand or name', 'creative-skateboard-builder' );
+		}
+		return SlotKey::DECK === $slot
+			/* translators: %s: a brand the step sells, such as Rascals. */
+			? sprintf( __( 'Brand or graphic, like %s', 'creative-skateboard-builder' ), $example )
+			/* translators: %s: a brand the step sells, such as Bones. */
+			: sprintf( __( 'Brand or name, like %s', 'creative-skateboard-builder' ), $example );
 	}
 
 	/**
@@ -896,11 +920,13 @@ final class BuilderView {
 		$widths  = array();
 		$none    = array();
 		$asking  = true;
+		$chosen  = '';
 		foreach ( Cast::items( $shelf['widths'] ?? null ) as $width ) {
 			$width    = Cast::map( $width );
 			$stock    = Cast::int( $width['in_stock'] ?? null );
 			$pressed  = Cast::bool( $width['selected'] ?? null );
 			$asking   = $asking && ! $pressed;
+			$chosen   = $pressed ? Cast::str( $width['text'] ?? null ) : $chosen;
 			$widths[] = array(
 				'value'   => Cast::str( $width['value'] ?? null ),
 				'text'    => Cast::str( $width['text'] ?? null ),
@@ -957,6 +983,10 @@ final class BuilderView {
 				'shown'   => array() !== $widths,
 				'asking'  => $asking,
 				'legend'  => $asking ? __( 'What width do you ride?', 'creative-skateboard-builder' ) : __( 'Width', 'creative-skateboard-builder' ),
+				// Once chosen, the width is the step's first line, with Change, which opens the widths again (spec: The
+				// deck's width first; the spec reviewer's M10 minor M1).
+				'chosen'  => $chosen,
+				'change'  => __( 'Change', 'creative-skateboard-builder' ),
 				'name'    => BuildLink::PARAM . '[_width]',
 				'options' => $widths,
 				'hasNone' => array() !== $none,
@@ -974,7 +1004,7 @@ final class BuilderView {
 			'search'  => array(
 				'shown'  => $offered > self::SEARCHED,
 				'label'  => self::searchLabel( $slot ),
-				'hint'   => SlotKey::DECK === $slot ? __( 'Brand or graphic', 'creative-skateboard-builder' ) : __( 'Brand or name', 'creative-skateboard-builder' ),
+				'hint'   => self::hint( $slot, $groups ),
 				'name'   => BuildLink::PARAM . '[_q]',
 				'value'  => Cast::str( $shelf['query'] ?? null ),
 				'button' => __( 'Search', 'creative-skateboard-builder' ),

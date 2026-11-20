@@ -13,6 +13,7 @@ use CreativeBranding\SkateboardBuilder\Domain\Picture\ImageFacts;
 use CreativeBranding\SkateboardBuilder\Port\LayerImages;
 use CreativeBranding\SkateboardBuilder\Port\ProductMeta;
 use CreativeBranding\SkateboardBuilder\Support\Cast;
+use CreativeBranding\SkateboardBuilder\Support\LayerMeta;
 use CreativeBranding\SkateboardBuilder\Support\Options;
 use Imagick;
 use ImagickException;
@@ -184,7 +185,7 @@ final class WpLayerImages implements LayerImages {
 			if ( ! $product instanceof WC_Product ) {
 				continue;
 			}
-			$image = Cast::int( $product->get_meta( Options::META_LAYER, true ) );
+			$image = LayerMeta::own( $product );
 			if ( $image > 0 ) {
 				$images[ $part ] = $image;
 			} elseif ( $product->is_type( 'variation' ) ) {
@@ -194,7 +195,7 @@ final class WpLayerImages implements LayerImages {
 		$this->meta?->prime( ...array_values( $parents ) );
 		foreach ( $parents as $part => $parent ) {
 			$product = wc_get_product( $parent );
-			$image   = $product instanceof WC_Product ? Cast::int( $product->get_meta( Options::META_LAYER, true ) ) : 0;
+			$image   = $product instanceof WC_Product ? LayerMeta::own( $product ) : 0;
 			if ( $image > 0 ) {
 				$images[ $part ] = $image;
 			}

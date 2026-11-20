@@ -27,6 +27,7 @@ use CreativeBranding\SkateboardBuilder\Service\LayerCheck;
 use CreativeBranding\SkateboardBuilder\Service\SpecIndexer;
 use CreativeBranding\SkateboardBuilder\Service\SpecWriter;
 use CreativeBranding\SkateboardBuilder\Support\Cast;
+use CreativeBranding\SkateboardBuilder\Support\LayerMeta;
 use CreativeBranding\SkateboardBuilder\Support\Options;
 use WC_Admin_Meta_Boxes;
 use WC_Product;
@@ -416,7 +417,7 @@ final class PartSpecsPanel {
 	 * @return array{id: string, name: string, value: string, open: bool, note: string, src: string, box: array{int, int}|null, caption: string, choose: string, title: string, types: list<string>}
 	 */
 	private function layer( WC_Product $product, string $prefix, string $name ): array {
-		$own   = max( 0, Cast::int( $product->get_meta( Options::META_LAYER, true ) ) );
+		$own   = LayerMeta::own( $product );
 		$size  = $this->size( $product );
 		$shown = $own;
 		$note  = $product->is_type( 'variation' )
@@ -424,7 +425,7 @@ final class PartSpecsPanel {
 			: __( 'The part\'s cut-out on a transparent background, a PNG, WebP or AVIF from the Media Library. Choose one, or type its attachment ID. Left empty, the picture shows the part\'s labelled photo. The product image and gallery stay as they are: only the builder\'s picture uses this image.', 'creative-skateboard-builder' );
 		if ( 0 === $own && $product->is_type( 'variation' ) ) {
 			$whole  = wc_get_product( $product->get_parent_id() );
-			$parent = $whole instanceof WC_Product ? max( 0, Cast::int( $whole->get_meta( Options::META_LAYER, true ) ) ) : 0;
+			$parent = $whole instanceof WC_Product ? LayerMeta::own( $whole ) : 0;
 			if ( $parent > 0 ) {
 				$shown = $parent;
 				/* translators: %d: an attachment's ID. */
@@ -448,7 +449,9 @@ final class PartSpecsPanel {
 			'src'     => is_string( $src ) ? $src : '',
 			'box'     => null === $size ? null : array( (int) ceil( $size[0] / 10000 * self::PREVIEW ), (int) ceil( $size[1] / 10000 * self::PREVIEW ) ),
 			'caption' => $caption,
-			'choose'  => __( 'Choose an image', 'creative-skateboard-builder' ),
+			// Named for the part: a page of variations has a button each (the auditor's 1.0.0 P5).
+			/* translators: %s: the product's or variation's name. */
+			'choose'  => sprintf( __( 'Choose an image for %s', 'creative-skateboard-builder' ), $product->get_name() ),
 			'title'   => __( 'Layer image', 'creative-skateboard-builder' ),
 			// The chooser's filter: the domain's one list of layer types (D-210).
 			'types'   => LayerImage::TYPES,

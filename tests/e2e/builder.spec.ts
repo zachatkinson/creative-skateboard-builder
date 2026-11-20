@@ -102,6 +102,11 @@ async function ride( page: Page, width: string ) {
 			hasText: new RegExp( `^${ width.replace( '.', '\\.' ) }$` ),
 		} ),
 	} );
+	// Once one is chosen the widths fold behind the line that says it, with Change.
+	const chosen = page.locator( '.cbuild-width__chosen' );
+	if ( await chosen.isVisible() ) {
+		await chosen.click();
+	}
 	await button.click();
 	await expect( button ).toHaveAttribute( 'aria-pressed', 'true' );
 	// Without JavaScript the page is the server's, with no aria-busy at all.
@@ -1468,6 +1473,13 @@ test.describe( 'The builder with JavaScript', () => {
 		await expect(
 			page.getByRole( 'radio', { name: /^Choose Builder test deck/ } )
 		).toHaveCount( 1 );
+		// The width is now the step's first line, with Change, which opens the widths again (spec: The deck's
+		// width first).
+		const chosen = widths.locator( '.cbuild-width__chosen' );
+		await expect( chosen ).toContainText(
+			inLocale( info.project.name, '8.25″' )
+		);
+		await chosen.click();
 		await expect( width ).toHaveAttribute( 'aria-pressed', 'true' );
 		expect(
 			new URL( page.url() ).searchParams.get( 'cbuild[_width]' )
@@ -1483,8 +1495,14 @@ test.describe( 'The builder with JavaScript', () => {
 		} );
 		await width.focus();
 		await page.keyboard.press( 'Enter' );
+		// The widths fold away once one is chosen, and focus goes to the line that says it, with Change.
+		const chosen = page.locator( '.cbuild-width__chosen' );
+		await expect( chosen, 'the shopper keeps their place' ).toBeFocused();
+		await expect( chosen ).toContainText(
+			inLocale( info.project.name, '8.25″' )
+		);
+		await page.keyboard.press( 'Enter' );
 		await expect( width ).toHaveAttribute( 'aria-pressed', 'true' );
-		await expect( width, 'the shopper keeps their place' ).toBeFocused();
 
 		expect( await stayed( page ), 'the width kept the page' ).toBe( true );
 
@@ -2031,6 +2049,24 @@ test.describe( 'The builder with JavaScript', () => {
 		expect(
 			names.filter( ( name ) => /cbuild|skateboard/i.test( name ) )
 		).toEqual( [] );
+		// Nor anything in the browser's storage (the spec reviewer's M10 minor M6): WooCommerce's cart fragments and
+		// WordPress's emoji check are theirs, and nothing else is kept.
+		const stored = await page.evaluate( () =>
+			[ localStorage, sessionStorage ].flatMap( ( storage ) =>
+				Array.from( { length: storage.length }, ( _, at ) =>
+					String( storage.key( at ) )
+				)
+			)
+		);
+		expect(
+			stored.filter(
+				( key ) =>
+					! /^(wc_(fragments|cart_hash|cart_created)|wpEmojiSettingsSupports$)/.test(
+						key
+					)
+			),
+			stored.join( ', ' )
+		).toEqual( [] );
 	} );
 
 	test( 'keeps its store private', async ( { page } ) => {
@@ -2402,7 +2438,9 @@ test.describe( 'The review with JavaScript', () => {
 } );
 
 // Spec (configurator): The deck's width first, "Not sure of your width?".
-test( 'the width question opens a guide by shoe size', async ( { page } ) => {
+test( 'the width question opens a guide by shoe size', async ( {
+	page,
+}, info ) => {
 	await page.goto( linkTo( {} ) );
 	const guide = page.locator( '.cbuild-width__guide' );
 	await expect( guide.getByRole( 'table' ) ).toBeHidden();
@@ -2412,7 +2450,12 @@ test( 'the width question opens a guide by shoe size', async ( { page } ) => {
 	} );
 	await expect( table ).toBeVisible();
 	await expect(
-		table.getByRole( 'row', { name: '9.5 and larger 8.25″ and wider' } )
+		table.getByRole( 'row', {
+			name: inLocale(
+				info.project.name,
+				'9.5 and larger 8.25″ and wider'
+			),
+		} )
 	).toBeVisible();
 } );
 
@@ -2782,6 +2825,92 @@ test.describe( "The builder's styles", () => {
 		expect( small ).toEqual( [] );
 	} );
 
+	// Spec (configurator): "Targets: 44 px on a phone" (the spec reviewer's M10 minor M7): the widths, the cards'
+	// controls, the chips, Sort and Show more, on the steps that have them and the review.
+	test( 'gives every control a target of at least 44 CSS pixels on a phone', async ( {
+		page,
+	} ) => {
+		test.skip(
+			( page.viewportSize()?.width ?? 1280 ) >= 640,
+			"A phone's targets; a desktop's are 24 px."
+		);
+		const small = () =>
+			page.locator( '.cbuild' ).evaluate( ( root ) => {
+				const found: string[] = [];
+				for ( const node of root.querySelectorAll< HTMLElement >(
+					'button, select, input[type="search"], summary, .cbuild-chip, .cbuild-progress__link, .cbuild-card__page'
+				) ) {
+					const box = node.getBoundingClientRect();
+					if (
+						box.width > 0 &&
+						( box.width < 44 || box.height < 44 )
+					) {
+						found.push(
+							`${ node.className || node.tagName } ${ Math.round( box.width ) }x${ Math.round( box.height ) }`
+						);
+					}
+				}
+				return found;
+			} );
+		for ( const link of [
+			linkTo( { step: 'deck' } ),
+			linkTo( { step: 'deck', _width: '8in' } ),
+			linkTo( {
+				deck: id( 'builder-test-deck-8-0' ),
+				trucks: id( 'builder-test-trucks-139' ),
+				step: 'wheels',
+			} ),
+		] ) {
+			await page.goto( link );
+			await expect( heading( page ) ).toBeVisible();
+			expect( await small(), link ).toEqual( [] );
+		}
+		await page.goto( fixture().page );
+		await page
+			.locator( '.cbuild-presets' )
+			.getByRole( 'button', { name: 'Start from Street' } )
+			.click();
+		await expect( heading( page ) ).toHaveText(
+			'Step 7 of 7: Check your build'
+		);
+		expect( await small(), 'the review' ).toEqual( [] );
+	} );
+
+	// ROADMAP, milestone 10: "200 % zoom" (the spec reviewer's M10 minor M8). A 1,280 px screen at 200 % is 640 CSS
+	// pixels across: the builder lays out as a tablet's, every step and the review in view, nothing scrolling sideways.
+	test( 'takes 200 % zoom with nothing scrolling sideways', async ( {
+		page,
+	} ) => {
+		await page.setViewportSize( { width: 640, height: 450 } );
+		for ( const link of [
+			linkTo( { step: 'deck' } ),
+			linkTo( { step: 'deck', _width: '8in' } ),
+			linkTo( {
+				deck: id( 'builder-test-deck-8-0' ),
+				trucks: id( 'builder-test-trucks-139' ),
+				step: 'wheels',
+			} ),
+		] ) {
+			await page.goto( link );
+			await expect( heading( page ) ).toBeVisible();
+			expect( await overflows( page ), link ).toEqual( [] );
+		}
+		await page.goto( fixture().page );
+		await page
+			.locator( '.cbuild-presets' )
+			.getByRole( 'button', { name: 'Start from Street' } )
+			.click();
+		await expect( heading( page ) ).toHaveText(
+			'Step 7 of 7: Check your build'
+		);
+		expect( await overflows( page ) ).toEqual( [] );
+		await expect(
+			page
+				.locator( '.cbuild' )
+				.getByRole( 'button', { name: 'Add to cart' } )
+		).toBeVisible();
+	} );
+
 	test( 'keeps every word in view with the text spacing WCAG 1.4.12 asks a page to take', async ( {
 		page,
 		javaScriptEnabled,
@@ -2812,6 +2941,34 @@ test.describe( "The builder's styles", () => {
 			return found;
 		} );
 		expect( clipped ).toEqual( [] );
+	} );
+
+	// The M9 audit's minor: a pressed filter keeps its inset line in the accent under the focus ring, as a chosen card
+	// does, so being pressed still shows while it has focus.
+	test( "keeps a pressed filter's inset line under the focus ring", async ( {
+		page,
+	} ) => {
+		await page.goto( linkTo( { step: 'deck' } ) );
+		// A filter as the step's template draws it, pressed.
+		await page.evaluate( () => {
+			const option = document.createElement( 'button' );
+			option.className = 'cbuild-filters__option';
+			option.setAttribute( 'aria-pressed', 'true' );
+			option.textContent = 'Pressed';
+			document.querySelector( '.cbuild' )?.append( option );
+		} );
+		await page.keyboard.press( 'Shift' );
+		const pressed = page.locator(
+			'.cbuild-filters__option[aria-pressed="true"]'
+		);
+		await pressed.focus();
+		await expect( pressed ).toBeFocused();
+		const shadows = await pressed.evaluate( ( option ) => ( {
+			ring: option.matches( ':focus-visible' ),
+			shadow: getComputedStyle( option ).boxShadow,
+		} ) );
+		expect( shadows.ring ).toBe( true );
+		expect( shadows.shadow ).toContain( 'inset' );
 	} );
 
 	test( 'says the chosen card and the focus by a border and an outline in forced colours', async ( {
@@ -2856,6 +3013,22 @@ test.describe( "The builder's styles", () => {
 			.nth( 1 )
 			.evaluate( ( card ) => getComputedStyle( card ).outlineStyle );
 		expect( ring ).toBe( 'solid' );
+		// And in the system's Highlight colour, as its border is: the arrow chose it as it moved the focus (the M9
+		// audit's minor).
+		const colours = await cards.nth( 1 ).evaluate( ( card ) => {
+			const probe = document.createElement( 'span' );
+			probe.style.color = 'Highlight';
+			document.body.append( probe );
+			const highlight = getComputedStyle( probe ).color;
+			probe.remove();
+			return {
+				highlight,
+				border: getComputedStyle( card ).borderTopColor,
+				outline: getComputedStyle( card ).outlineColor,
+			};
+		} );
+		expect( colours.border ).toBe( colours.highlight );
+		expect( colours.outline ).toBe( colours.highlight );
 	} );
 } );
 
@@ -4491,9 +4664,57 @@ test.describe( 'A saved build that has changed, and the deck page', () => {
 		await moveTo( page, 'Choose myself', /: Choose your wheels$/ );
 	} );
 
+	// The spec reviewer's M10 minor M3: "with that deck picked, its width with it". On a variable deck's page the
+	// button follows the variation chosen in WooCommerce's form, and goes back to its own link when it is cleared.
+	test( "a variable deck's button opens the variation chosen in its form", async ( {
+		page,
+		javaScriptEnabled,
+	} ) => {
+		test.skip(
+			! javaScriptEnabled,
+			"WooCommerce's variation form needs a script; without one the button opens the first in stock."
+		);
+		runPhp(
+			`$a = new WC_Product_Attribute(); $a->set_name( 'width' ); $a->set_options( array( '8.0', '8.5' ) ); $a->set_variation( true ); $p = new WC_Product_Variable( wc_get_product_id_by_sku( 'builder-test-deck-variable' ) ); $p->set_name( 'Builder test variable deck' ); $p->set_sku( 'builder-test-deck-variable' ); $p->set_status( 'publish' ); $p->set_attributes( array( $a ) ); $p->set_category_ids( array( get_term_by( 'slug', 'builder-test-deck', 'product_cat' )->term_id ) ); $p->save(); foreach ( array( '8.0' => '8.0000', '8.5' => '8.5000' ) as $o => $w ) { $v = new WC_Product_Variation( wc_get_product_id_by_sku( 'builder-test-deck-variable-' . $o ) ); $v->set_parent_id( $p->get_id() ); $v->set_sku( 'builder-test-deck-variable-' . $o ); $v->set_attributes( array( 'width' => $o ) ); $v->set_regular_price( '60' ); $v->update_meta_data( '_cbuild_specs', array( 'deck_width' => $w ) ); $cbuild_index( $v ); } $cbuild_index( wc_get_product( $p->get_id() ) );`
+		);
+		try {
+			const idOf = ( sku: string ) =>
+				wp( `eval "echo wc_get_product_id_by_sku( '${ sku }' );"` );
+			const wide = idOf( 'builder-test-deck-variable-8.5' );
+			await page.goto( `/?p=${ idOf( 'builder-test-deck-variable' ) }` );
+			const start = page.getByRole( 'link', {
+				name: 'Build a complete with this deck',
+			} );
+			const own = await start.getAttribute( 'href' );
+			await page
+				.locator( 'select[name="attribute_width"]' )
+				.selectOption( '8.5' );
+			await expect( start ).toHaveAttribute(
+				'href',
+				new RegExp( `cbuild%5Bdeck%5D=${ wide }$` )
+			);
+			await page
+				.locator( 'select[name="attribute_width"]' )
+				.selectOption( '' );
+			await expect( start ).toHaveAttribute( 'href', own ?? '' );
+			await page
+				.locator( 'select[name="attribute_width"]' )
+				.selectOption( '8.5' );
+			await start.click();
+			await expect( heading( page ) ).toHaveText(
+				/: Choose your trucks$/
+			);
+			expect( page.url() ).toContain( `cbuild%5Bdeck%5D=${ wide }` );
+		} finally {
+			runPhp(
+				`foreach ( array( 'builder-test-deck-variable-8.0', 'builder-test-deck-variable-8.5', 'builder-test-deck-variable' ) as $s ) { $i = wc_get_product_id_by_sku( $s ); if ( $i ) { wc_get_product( $i )->delete( true ); } }`
+			);
+		}
+	} );
+
 	test( "a deck's page starts a build with that deck, past the width question", async ( {
 		page,
-	} ) => {
+	}, info ) => {
 		await page.goto( `/?p=${ id( 'builder-test-deck-8-25' ) }` );
 		const start = page.getByRole( 'link', {
 			name: 'Build a complete with this deck',
@@ -4505,5 +4726,15 @@ test.describe( 'A saved build that has changed, and the deck page', () => {
 			`cbuild%5Bdeck%5D=${ id( 'builder-test-deck-8-25' ) }`
 		);
 		await expect( page.locator( '.cbuild-width' ) ).toBeHidden();
+		// The deck's width came with it (the spec reviewer's M10 m3): back on the deck step, 8.25″ is the width shown.
+		await page
+			.locator( '.cbuild-progress__step' )
+			.first()
+			.getByRole( 'link' )
+			.click();
+		await expect( heading( page ) ).toHaveText( /: Choose your deck$/ );
+		await expect(
+			page.locator( '.cbuild-width__option[aria-pressed="true"]' )
+		).toContainText( inLocale( info.project.name, '8.25' ) );
 	} );
 } );

@@ -357,6 +357,17 @@ final class CatalogueCheckTest extends TestCase {
 		self::assertStringStartsWith( 'look_shared', (string) end( $lines ), 'last' );
 	}
 
+	// The auditor's 1.0.0 minor 11: Site Health's copy works out no shared cards; the check it came from still does.
+	public function test_without_looks_is_a_copy_that_asks_for_no_looks(): void {
+		$this->kits->add( 5, KitDocuments::kit(), self::stocked() );
+		$without = $this->check->withoutLooks();
+		self::assertNotSame( $this->check, $without );
+		$without->run();
+		self::assertSame( array(), $this->looks->asked );
+		$this->check->run();
+		self::assertNotSame( array(), $this->looks->asked, 'the check it was called on' );
+	}
+
 	public function test_the_parts_of_the_slots_the_picture_draws_with_no_layer_image_are_listed_last(): void {
 		$slots           = self::stocked();
 		$slots['trucks'] = array( Builds::truck( '149' ), Builds::truck( '159' ) );

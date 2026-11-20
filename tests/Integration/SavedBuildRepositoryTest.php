@@ -102,6 +102,23 @@ final class SavedBuildRepositoryTest extends IntegrationTestCase {
 		self::assertSame( 1, $this->store->count( 8 ) );
 	}
 
+	// The M9 audit's minor 10: a customer's builds are read to the most kept, and a new one past it is refused by the
+	// insert itself, so two saves at once can't both pass the count. One already kept is still written again.
+	public function test_a_customer_keeps_the_most_and_no_more_whatever_the_count_said(): void {
+		for ( $n = 1; $n <= SavedBuildStore::MOST; $n++ ) {
+			self::assertTrue( $this->store->put( self::build( sprintf( '00000000-0000-4000-8000-%012d', $n ), 7, 'Build ' . $n ) ) );
+		}
+		self::assertFalse( $this->store->put( self::build( '00000000-0000-4000-8000-999999999999', 7, 'One more' ) ) );
+		self::assertSame( SavedBuildStore::MOST, $this->store->count( 7 ) );
+		self::assertCount( SavedBuildStore::MOST, $this->store->of( 7 ) );
+		self::assertTrue( $this->store->put( self::build( sprintf( '00000000-0000-4000-8000-%012d', 1 ), 7, 'Renamed' ) ), 'one already kept' );
+		self::assertTrue( $this->store->put( self::build( '00000000-0000-4000-8000-999999999999', 8, 'Another customer' ) ) );
+
+		global $wpdb;
+		$this->store->of( 7 );
+		self::assertStringContainsString( 'LIMIT ' . SavedBuildStore::MOST, (string) $wpdb->last_query );
+	}
+
 	public function test_a_write_the_database_refuses_is_said(): void {
 		global $wpdb;
 		$build = self::build( 'a0000000-0000-4000-8000-000000000009', 7, 'Lost' );

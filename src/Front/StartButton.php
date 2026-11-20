@@ -10,6 +10,8 @@ declare( strict_types=1 );
 namespace CreativeBranding\SkateboardBuilder\Front;
 
 use Closure;
+use CreativeBranding\SkateboardBuilder\Domain\Kit\Kit;
+use CreativeBranding\SkateboardBuilder\Domain\Kit\Slot;
 use CreativeBranding\SkateboardBuilder\Hookable;
 use CreativeBranding\SkateboardBuilder\Port\Kits;
 use CreativeBranding\SkateboardBuilder\Support\Cast;
@@ -26,7 +28,8 @@ if ( ! defined( 'ABSPATH' ) ) {
  *
  * - **Which kit.** One whose first slot offers the product, or one of its variations, in stock; where more than one
  *   does, the first by menu order, then by ID.
- * - **Which deck.** The product, or its first variation the kit offers in stock.
+ * - **Which deck.** The product, or its first variation the kit offers in stock; on a variable product's page, the
+ *   variation the shopper chooses in its form, where the kit offers it in stock (the spec reviewer's M10 minor M3).
  * - **What a shop changes.** `cbuild_start_button`.
  *
  * @since 1.0.0
@@ -37,6 +40,14 @@ final class StartButton implements Hookable {
 	 * Where the button goes unless a shop moves it.
 	 */
 	private const string HOOK = 'woocommerce_after_add_to_cart_form';
+
+	/**
+	 * Follows the variation chosen in WooCommerce's form: its `found_variation` and `reset_data` events
+	 * (assets/js/frontend/add-to-cart-variation.js:318, :320 in 11.3.0) carry no DOM event, so jQuery's are read. The
+	 * links are the server's, one a variation, in the button's `data-cbuild-starts`; a variation not among them keeps
+	 * the button's own.
+	 */
+	private const string FOLLOW = 'jQuery(function($){$(".variations_form").on("found_variation reset_data",function(e,v){$(".cbuild-start__link[data-cbuild-starts]").each(function(){var a=$(this),s=a.data("cbuildStarts")||{},d=a.data("cbuildStart");a.attr("href",v&&s[v.variation_id]?s[v.variation_id]:d);});});});';
 
 	/**
 	 * Constructor.
@@ -98,14 +109,58 @@ final class StartButton implements Hookable {
 		if ( null === $read || null === $slot || $part < 1 || '' === $text || '' === $hook ) {
 			return;
 		}
-		$url = ( new BuildLink() )->pick( $slot->key, $part )->address( BuilderUrl::of( $kit ), $read->slots );
+		$url    = ( new BuildLink() )->pick( $slot->key, $part )->address( BuilderUrl::of( $kit ), $read->slots );
+		$starts = $this->starts( $product, $kit, $slot, $read );
 		add_action(
 			$hook,
-			static function () use ( $url, $text ): void {
-				printf( '<p class="cbuild-start"><a class="button cbuild-start__link" href="%1$s" rel="nofollow">%2$s</a></p>', esc_url( $url ), esc_html( $text ) );
+			static function () use ( $url, $text, $starts ): void {
+				if ( array() === $starts ) {
+					printf( '<p class="cbuild-start"><a class="button cbuild-start__link" href="%1$s" rel="nofollow">%2$s</a></p>', esc_url( $url ), esc_html( $text ) );
+					return;
+				}
+				printf(
+					'<p class="cbuild-start"><a class="button cbuild-start__link" href="%1$s" rel="nofollow" data-cbuild-start="%1$s" data-cbuild-starts="%2$s">%3$s</a></p>',
+					esc_url( $url ),
+					esc_attr( (string) wp_json_encode( array_map( 'esc_url_raw', $starts ) ) ),
+					esc_html( $text )
+				);
 			},
 			Cast::int( $said['priority'] ?? 10 )
 		);
+		if ( array() !== $starts ) {
+			// After WooCommerce registers its variation script (class-wc-frontend-scripts.php:56, :238 in 11.3.0).
+			add_action(
+				'wp_enqueue_scripts',
+				static function (): void {
+					wp_add_inline_script( 'wc-add-to-cart-variation', self::FOLLOW );
+				},
+				20
+			);
+		}
+	}
+
+	/**
+	 * On a variable product's page, the builder's link for each of its variations the slot offers in stock, by ID.
+	 *
+	 * @param int  $product The product's ID.
+	 * @param int  $kit     The kit product's ID.
+	 * @param Slot $slot    The slot the deck is picked in.
+	 * @param Kit  $read    The kit.
+	 * @return array<int, string>
+	 */
+	private function starts( int $product, int $kit, Slot $slot, Kit $read ): array {
+		$found = wc_get_product( $product );
+		if ( ! $found instanceof \WC_Product_Variable ) {
+			return array();
+		}
+		$children = array_map( Cast::int( ... ), $found->get_children() );
+		$starts   = array();
+		foreach ( ( $this->kits )()->offered( $kit, $slot ) as $part ) {
+			if ( $part->inStock && in_array( $part->id, $children, true ) ) {
+				$starts[ $part->id ] = ( new BuildLink() )->pick( $slot->key, $part->id )->address( BuilderUrl::of( $kit ), $read->slots );
+			}
+		}
+		return $starts;
 	}
 
 	/**

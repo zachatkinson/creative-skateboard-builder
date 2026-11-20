@@ -993,8 +993,8 @@ msgid "Drawn %1$s by %2$s mm, nose up. The image needs at least %3$s pixels acro
 msgstr "Dessinée à %1$s sur %2$s mm, nez vers le haut. L’image doit faire au moins %3$s pixels en largeur ou %4$s en longueur."
 
 #: src/Admin/PartSpecsPanel.php:451
-msgid "Choose an image"
-msgstr "Choisir une image"
+msgid "Choose an image for %s"
+msgstr "Choisir une image pour %s"
 
 #: src/Admin/ImportScreen.php:256
 #: src/Admin/PartSpecsPanel.php:452
@@ -2267,8 +2267,10 @@ msgstr "Ce montage ne peut plus être rétabli."
 #: src/Front/SavedBuildHooks.php:331
 #: src/Front/SavedBuildHooks.php:455
 #, php-format
-msgid "You have %s saved builds, the most kept. Delete one to save another."
-msgstr "Vous avez %s montages enregistrés, soit le nombre maximal. Supprimez-en un pour en enregistrer un autre."
+msgid "You have %s saved build, the most kept. Delete it to save another."
+msgid_plural "You have %s saved builds, the most kept. Delete one to save another."
+msgstr[0] "Vous avez %s montage enregistré, soit le nombre maximal. Supprimez-le pour en enregistrer un autre."
+msgstr[1] "Vous avez %s montages enregistrés, soit le nombre maximal. Supprimez-en un pour en enregistrer un autre."
 
 #: src/Front/SavedBuildHooks.php:451
 msgid "The build is saved. It is listed below."
@@ -2785,8 +2787,10 @@ msgstr "L’index des caractéristiques du configurateur de planches à roulette
 #. translators: %s: a number of parts.
 #: src/Health/SiteHealth.php:167
 #, php-format
-msgid "Reading every part again got as far as %s parts and has no job waiting to go on. Start it again with \"Read every part again\" on the Catalogue check."
-msgstr "La relecture de toutes les pièces s’est rendue à %s pièces et aucune tâche n’attend pour la poursuivre. Relancez-la avec « Relire toutes les pièces » dans la vérification du catalogue."
+msgid "Reading every part again got as far as %s part and has no job waiting to go on. Start it again with \"Read every part again\" on the Catalogue check."
+msgid_plural "Reading every part again got as far as %s parts and has no job waiting to go on. Start it again with \"Read every part again\" on the Catalogue check."
+msgstr[0] "La relecture de toutes les pièces s’est rendue à %s pièce et aucune tâche n’attend pour la poursuivre. Relancez-la avec « Relire toutes les pièces » dans la vérification du catalogue."
+msgstr[1] "La relecture de toutes les pièces s’est rendue à %s pièces et aucune tâche n’attend pour la poursuivre. Relancez-la avec « Relire toutes les pièces » dans la vérification du catalogue."
 
 #: src/Health/SiteHealth.php:170
 msgid "The skateboard builder's specs index is being rebuilt"
@@ -3457,8 +3461,10 @@ msgstr "L’importation est en cours"
 #. translators: 1: rows done. 2: rows in the file.
 #: templates/admin/import.php:77
 #, php-format
-msgid "%1$s of %2$s rows done. It runs in the background, so this page can be left."
-msgstr "%1$s lignes traitées sur %2$s. L’importation s’exécute en arrière-plan, alors vous pouvez quitter cette page."
+msgid "%1$s of %2$s row done. It runs in the background, so this page can be left."
+msgid_plural "%1$s of %2$s rows done. It runs in the background, so this page can be left."
+msgstr[0] "%1$s ligne traitée sur %2$s. L’importation s’exécute en arrière-plan, alors vous pouvez quitter cette page."
+msgstr[1] "%1$s lignes traitées sur %2$s. L’importation s’exécute en arrière-plan, alors vous pouvez quitter cette page."
 
 #: templates/admin/import.php:80
 msgid "Check again"
@@ -4482,3 +4488,13 @@ msgstr "L’image de calque n’a pas été enregistrée : aucune image de la m
 #, php-format
 msgid "Layer image was not saved: more than one image in the Media Library has the file name \"%1$s\" (IDs %2$s). Use the ID of the one you mean."
 msgstr "L’image de calque n’a pas été enregistrée : plusieurs images de la médiathèque ont le nom de fichier « %1$s » (ID %2$s). Utilisez l’ID de celle que vous voulez."
+
+#. translators: %s: a brand the step sells, such as Rascals.
+#, php-format
+msgid "Brand or graphic, like %s"
+msgstr "Marque ou graphisme, comme %s"
+
+#. translators: %s: a brand the step sells, such as Bones.
+#, php-format
+msgid "Brand or name, like %s"
+msgstr "Marque ou nom, comme %s"

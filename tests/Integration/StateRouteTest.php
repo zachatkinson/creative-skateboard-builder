@@ -490,7 +490,8 @@ final class StateRouteTest extends IntegrationTestCase {
 		yield 'a search that is a list' => array( array( 'q' => array( 'x' ) ), 'q' );
 		yield 'a sort of its own' => array( array( 'sort' => 'cheapest' ), 'sort' );
 		yield 'a page before the first' => array( array( 'from' => '-1' ), 'from' );
-		yield 'a page past the most a step lists' => array( array( 'from' => '2001' ), 'from' );
+		// The auditor's 1.0.0 minor 8: the shelf lists 500 looks at most, so no page starts past them.
+		yield 'a page past the most a step lists' => array( array( 'from' => '501' ), 'from' );
 		yield 'a width with no unit' => array( array( 'width' => '8.25' ), 'width' );
 		yield 'a width with a line break' => array( array( 'width' => "8in\n" ), 'width' );
 		yield 'chips that are no map' => array( array( 'chips' => 'brand' ), 'chips' );

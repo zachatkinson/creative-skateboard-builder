@@ -40,7 +40,7 @@ final class WidthGuide {
 	 */
 	public static function rows( int $kit ): array {
 		$inches = static fn( int $tenThousandths ): string => Words::measure( Measure::inches( $tenThousandths ) );
-		/* translators: 1: the narrower deck width, such as 7″. 2: the wider, such as 7.75″. */
+		/* translators: 1: the smaller of a range, such as a deck width of 7″ or a US shoe size of 7. 2: the larger, such as 7.75″ or 8.5. */
 		$between = static fn( int $from, int $to ): string => sprintf( __( '%1$s to %2$s', 'creative-skateboard-builder' ), $inches( $from ), $inches( $to ) );
 		$rows    = array(
 			array(
@@ -49,12 +49,12 @@ final class WidthGuide {
 				'width' => $between( 70000, 77500 ),
 			),
 			array(
-				/* translators: 1: the smaller US shoe size, such as 7. 2: the larger, such as 8.5. */
+				/* translators: 1: the smaller of a range, such as a deck width of 7″ or a US shoe size of 7. 2: the larger, such as 7.75″ or 8.5. */
 				'shoe'  => sprintf( __( '%1$s to %2$s', 'creative-skateboard-builder' ), number_format_i18n( 7 ), number_format_i18n( 8 ) ),
 				'width' => $between( 77500, 80000 ),
 			),
 			array(
-				/* translators: 1: the smaller US shoe size, such as 7. 2: the larger, such as 8.5. */
+				/* translators: 1: the smaller of a range, such as a deck width of 7″ or a US shoe size of 7. 2: the larger, such as 7.75″ or 8.5. */
 				'shoe'  => sprintf( __( '%1$s to %2$s', 'creative-skateboard-builder' ), number_format_i18n( 8.5, 1 ), number_format_i18n( 9 ) ),
 				'width' => $between( 80000, 82500 ),
 			),

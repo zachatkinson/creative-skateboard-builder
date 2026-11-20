@@ -194,5 +194,13 @@ for block in assets/src/*/block.json; do
 	fi
 done
 
+# 17. Every PHP file under src/ outside the domain stops when it is requested directly: WordPress's guard, as Plugin
+# Check asks of a file it can reach. The domain has none, and gate 13 holds that it runs nothing (the auditor's
+# 1.0.0 P4, three files without it).
+unguarded="$(grep -rL "defined( 'ABSPATH' )" src --include='*.php' | grep -v '^src/Domain/' || true)"
+if [ -n "$unguarded" ]; then
+	echo "Gate 17: no direct-access guard (if ( ! defined( 'ABSPATH' ) ) { exit; }):"; echo "$unguarded"; status=1
+fi
+
 if [ "$status" -eq 0 ]; then echo "Gates: clean."; fi
 exit "$status"

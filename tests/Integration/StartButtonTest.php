@@ -169,4 +169,45 @@ final class StartButtonTest extends IntegrationTestCase {
 		add_filter( 'cbuild_start_button', static fn( $button ) => is_array( $button ) ? array( 'slot' => 'spacers' ) + $button : $button );
 		self::assertStringContainsString( 'cbuild[deck]=' . $this->deck, rawurldecode( html_entity_decode( $this->shown( $this->deck ) ) ), 'a slot the kit does not have is its first' );
 	}
+
+	// The spec reviewer's M10 minor M3: "with that deck picked, its width with it". On a variable deck's page the
+	// button carries each in-stock variation's own link, which the variation form's choice puts in its place.
+	public function test_a_variable_decks_button_carries_each_variations_link_for_the_one_chosen(): void {
+		$decks  = (int) wp_get_object_terms( $this->deck, 'product_cat', array( 'fields' => 'ids' ) )[0];
+		$width  = new \WC_Product_Attribute();
+		$width->set_name( 'width' );
+		$width->set_options( array( '8.0', '8.5', '9.0' ) );
+		$width->set_variation( true );
+		$parent = new \WC_Product_Variable();
+		$parent->set_name( 'Katie' );
+		$parent->set_status( 'publish' );
+		$parent->set_attributes( array( $width ) );
+		$parent->save();
+		wp_set_object_terms( $parent->get_id(), array( $decks ), 'product_cat' );
+		$ids = array();
+		foreach ( array( '8.0' => '8.0000', '8.5' => '8.5000', '9.0' => '9.0000' ) as $option => $spec ) {
+			$variation = new \WC_Product_Variation();
+			$variation->set_parent_id( $parent->get_id() );
+			$variation->set_attributes( array( 'width' => $option ) );
+			$variation->set_regular_price( '60' );
+			$variation->set_stock_status( '9.0' === $option ? 'outofstock' : 'instock' );
+			$variation->update_meta_data( Options::META_SPECS, array( 'deck_width' => $spec ) );
+			$ids[ $option ] = $variation->save();
+			$this->service( SpecIndexer::class )->index( $ids[ $option ] );
+		}
+
+		$html = $this->shown( $parent->get_id() );
+		self::assertSame( 1, preg_match( '/data-cbuild-starts="([^"]*)"/', $html, $found ) );
+		$starts = json_decode( html_entity_decode( $found[1] ), true );
+		self::assertIsArray( $starts );
+		self::assertSame( array( (string) $ids['8.0'], (string) $ids['8.5'] ), array_map( 'strval', array_keys( $starts ) ), 'each variation the kit offers in stock' );
+		self::assertStringContainsString( 'cbuild[deck]=' . $ids['8.5'], rawurldecode( (string) $starts[ $ids['8.5'] ] ) );
+		self::assertStringContainsString( 'data-cbuild-start="', $html, 'the button\'s own link, for a choice cleared' );
+		// The script that follows the form's choice, after WooCommerce's own.
+		do_action( 'wp_enqueue_scripts' );
+		self::assertStringContainsString( 'found_variation reset_data', implode( '', (array) wp_scripts()->get_data( 'wc-add-to-cart-variation', 'after' ) ) );
+
+		remove_all_actions( 'woocommerce_after_add_to_cart_form' );
+		self::assertStringNotContainsString( 'data-cbuild-starts', $this->shown( $this->deck ), 'a simple deck has its one link' );
+	}
 }

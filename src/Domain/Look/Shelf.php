@@ -53,7 +53,7 @@ final class Shelf {
 
 	/**
 	 * The most looks a step lists, page by page: search and filters narrow past it (spec: 30 at a time). The build
-	 * link's `_shown` stops at the same number.
+	 * link's `_shown` stops at the same number (`BuildLink::MOST`), and the state route's `from` before it.
 	 */
 	public const int MOST = 500;
 

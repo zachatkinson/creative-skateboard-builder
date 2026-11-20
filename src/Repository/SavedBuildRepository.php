@@ -48,7 +48,7 @@ final class SavedBuildRepository implements SavedBuildStore {
 	 */
 	public function of( int $user ): array {
 		global $wpdb;
-		$rows = $wpdb->get_results( $wpdb->prepare( 'SELECT uuid, user_id, kit_id, picks, assembly, name, created_at, updated_at FROM %i WHERE user_id = %d ORDER BY updated_at DESC, id DESC', Tables::builds(), $user ) );
+		$rows = $wpdb->get_results( $wpdb->prepare( 'SELECT uuid, user_id, kit_id, picks, assembly, name, created_at, updated_at FROM %i WHERE user_id = %d ORDER BY updated_at DESC, id DESC LIMIT %d', Tables::builds(), $user, self::MOST ) );
 		$out  = array();
 		foreach ( is_array( $rows ) ? $rows : array() as $row ) {
 			$build = self::build( $row );
@@ -104,8 +104,10 @@ final class SavedBuildRepository implements SavedBuildStore {
 		if ( 0 !== $changed || null !== $this->find( $build->user, $build->uuid ) ) {
 			return true;
 		}
-		// INSERT IGNORE: the UUID's unique key keeps another customer's row as it is, and nothing is inserted.
-		return 1 === $wpdb->query( $wpdb->prepare( 'INSERT IGNORE INTO %i (uuid, user_id, kit_id, picks, assembly, name, created_at, updated_at) VALUES (%s, %d, %d, %s, %d, %s, %s, %s)', Tables::builds(), $build->uuid, $build->user, $build->kit, $picks, $build->assembly ? 1 : 0, $build->name, $created, $updated ) );
+		// INSERT IGNORE: the UUID's unique key keeps another customer's row as it is, and nothing is inserted. The row is
+		// written only while the customer keeps fewer than the most, counted in the same statement, so two saves at once
+		// can't both pass a count made before (the M9 audit's minor 10).
+		return 1 === $wpdb->query( $wpdb->prepare( 'INSERT IGNORE INTO %i (uuid, user_id, kit_id, picks, assembly, name, created_at, updated_at) SELECT %s, %d, %d, %s, %d, %s, %s, %s FROM DUAL WHERE (SELECT kept.n FROM (SELECT COUNT(*) AS n FROM %i WHERE user_id = %d) AS kept) < %d', Tables::builds(), $build->uuid, $build->user, $build->kit, $picks, $build->assembly ? 1 : 0, $build->name, $created, $updated, Tables::builds(), $build->user, self::MOST ) );
 	}
 
 	/**

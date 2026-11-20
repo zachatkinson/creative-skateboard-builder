@@ -15,6 +15,8 @@ interface Actions {
 	reveal: ( event: FocusEvent ) => void;
 	pick: ( event: Event ) => void;
 	search: ( event: Event ) => void;
+	narrow: ( event: Event ) => void;
+	fit: () => void;
 	follow: ( event: MouseEvent ) => void;
 	back: () => void;
 	filters: () => void;
@@ -722,6 +724,38 @@ describe( 'the store', () => {
 		expect( state.status ).toBe( 'A deck, assembled. Total: $85.00.' );
 	} );
 
+	// The spec reviewer's M10 minor M1: once chosen, the width is the step's first line with Change. A width pressed
+	// in the open fold folds it again, and focus goes to the line that now says it; with no width chosen yet the line
+	// is hidden and the widths stay open.
+	it( 'folds the widths behind their line after an answer, and gives that line the focus a width button had', async () => {
+		const div = builder();
+		div.insertAdjacentHTML(
+			'beforeend',
+			`<details class="cbuild-width__pick" open><summary class="cbuild-width__chosen">8.25″ Change</summary><button type="submit">8.5″</button></details>
+			<details class="cbuild-width__pick" open><summary class="cbuild-width__chosen" hidden>Asking</summary></details>`
+		);
+		const [ chosen, asking ] =
+			div.querySelectorAll< HTMLDetailsElement >( 'details' );
+		const width = chosen!.querySelector( 'button' )!;
+		width.focus();
+		reply = () =>
+			answer( {
+				...START,
+				url: window.location.origin + '/?width',
+				status: 'Showing 8.5″ decks.',
+			} );
+		await move();
+		vi.advanceTimersToNextFrame();
+		expect( chosen!.open, 'the widths fold behind their line' ).toBe(
+			false
+		);
+		expect( asking!.open, 'no width chosen: they stay open' ).toBe( true );
+		expect(
+			div.ownerDocument.activeElement,
+			'the shopper keeps their place, on the line that says the width'
+		).toBe( chosen!.querySelector( 'summary' ) );
+	} );
+
 	it( 'puts focus on the first new card after Show more, and says how many were added', async () => {
 		const div = builder();
 		div.insertAdjacentHTML(
@@ -1144,6 +1178,212 @@ describe( 'keeping focus clear of the phone bar', () => {
 		actions.reveal( { target: inBar } as unknown as FocusEvent );
 		actions.reveal( { target: document } as unknown as FocusEvent );
 		expect( scrolled ).toEqual( [] );
+	} );
+} );
+
+describe( 'narrowing the step', () => {
+	function chips(): {
+		chip: HTMLInputElement;
+		sort: HTMLSelectElement;
+		loose: HTMLInputElement;
+	} {
+		document.body.innerHTML = `
+			<form method="get" action="/">
+				<input type="hidden" name="page_id" value="25">
+				<input type="checkbox" name="cbuild[brand][]" value="acme" checked>
+				<select name="cbuild[sort]"><option value="price-asc" selected>Price</option></select>
+			</form>
+			<input type="checkbox" class="loose" name="loose" value="1" checked>`;
+		return {
+			chip: document.querySelector< HTMLInputElement >(
+				'form input[type=checkbox]'
+			)!,
+			sort: document.querySelector( 'select' )!,
+			loose: document.querySelector< HTMLInputElement >( '.loose' )!,
+		};
+	}
+
+	it( 'asks for the same step with a chip or a sort, at once, and replaces the history entry', async () => {
+		const replaced = vi.spyOn( window.history, 'replaceState' );
+		for ( const target of [ chips().chip, chips().sort ] ) {
+			fetched = [];
+			state.view = START;
+			actions.narrow( { target } as unknown as Event );
+			await settle();
+			expect( fetched ).toHaveLength( 1 );
+			expect( [ ...fetched[ 0 ]!.searchParams ] ).toEqual( [
+				[ 'cbuild[brand][]', 'acme' ],
+				[ 'cbuild[sort]', 'price-asc' ],
+				[ 'cbuild[step]', 'deck' ],
+				[ 'page', '25' ],
+				[ 'locale', 'fr_CA' ],
+			] );
+		}
+		expect( replaced ).toHaveBeenCalledWith(
+			null,
+			'',
+			window.location.origin + '/?next'
+		);
+	} );
+
+	it( 'leaves a change outside a form, or on anything but a chip or a sort, alone', async () => {
+		const { loose } = chips();
+		actions.narrow( { target: loose } as unknown as Event );
+		actions.narrow( {
+			target: document.querySelector( 'form' ),
+		} as unknown as Event );
+		await settle();
+		expect( fetched ).toEqual( [] );
+	} );
+} );
+
+describe( 'keeping focus clear of the stage that sticks on top', () => {
+	function page( position: string ): {
+		under: HTMLButtonElement;
+		inside: HTMLButtonElement;
+		scrolled: string[];
+	} {
+		document.body.innerHTML = `
+			<div class="cbuild">
+				<div class="cbuild__stage"><button class="inside">Show the top</button></div>
+				<button class="under">Deck 8</button>
+			</div>`;
+		setElement( document.querySelector< HTMLElement >( '.cbuild' )! );
+		(
+			defined.definition as { callbacks: { init: () => void } }
+		 ).callbacks.init();
+		const scrolled: string[] = [];
+		const stage =
+			document.querySelector< HTMLElement >( '.cbuild__stage' )!;
+		stage.getBoundingClientRect = () =>
+			( { top: 0, bottom: 300 } ) as DOMRect;
+		const real = window.getComputedStyle.bind( window );
+		vi.spyOn( window, 'getComputedStyle' ).mockImplementation(
+			( element ) =>
+				element === stage
+					? ( { position } as CSSStyleDeclaration )
+					: real( element )
+		);
+		const under = document.querySelector< HTMLButtonElement >( '.under' )!;
+		under.getBoundingClientRect = () =>
+			( { top: 250, bottom: 294 } ) as DOMRect;
+		const inside =
+			document.querySelector< HTMLButtonElement >( '.inside' )!;
+		inside.getBoundingClientRect = () =>
+			( { top: 10, bottom: 54 } ) as DOMRect;
+		for ( const button of [ under, inside ] ) {
+			button.scrollIntoView = ( options ) =>
+				scrolled.push( JSON.stringify( options ) );
+		}
+		return { under, inside, scrolled };
+	}
+
+	it( 'brings a control the stuck stage covers into view below it', () => {
+		const { under, scrolled } = page( 'sticky' );
+		actions.reveal( { target: under } as unknown as FocusEvent );
+		expect( scrolled ).toEqual( [ '{"block":"nearest"}' ] );
+	} );
+
+	it( 'leaves a control in the stage, and one under a stage that scrolls with the page, alone', () => {
+		let { under, inside, scrolled } = page( 'sticky' );
+		actions.reveal( { target: inside } as unknown as FocusEvent );
+		expect( scrolled ).toEqual( [] );
+		( { under, inside, scrolled } = page( 'static' ) );
+		actions.reveal( { target: under } as unknown as FocusEvent );
+		expect( scrolled ).toEqual( [] );
+	} );
+} );
+
+describe( 'measuring the bar and the stage', () => {
+	function builder(): HTMLElement {
+		document.body.innerHTML = `
+			<div class="cbuild">
+				<div class="cbuild__stage"></div>
+				<div class="cbuild-bar"></div>
+			</div>`;
+		const root = document.querySelector< HTMLElement >( '.cbuild' )!;
+		setElement( root );
+		return root;
+	}
+
+	it( 'measures the bar and the stage again whenever either changes size', () => {
+		const root = builder();
+		const watched: Array< { element: Element; again: () => void } > = [];
+		vi.stubGlobal(
+			'ResizeObserver',
+			class {
+				constructor( private again: () => void ) {}
+				observe( element: Element ): void {
+					watched.push( { element, again: this.again } );
+				}
+			}
+		);
+		(
+			defined.definition as { callbacks: { init: () => void } }
+		 ).callbacks.init();
+		expect( watched.map( ( one ) => one.element.className ) ).toEqual( [
+			'cbuild-bar',
+			'cbuild__stage',
+		] );
+		const page = document.documentElement.style;
+		const bar = root.querySelector< HTMLElement >( '.cbuild-bar' )!;
+		const stage = root.querySelector< HTMLElement >( '.cbuild__stage' )!;
+		for ( const element of [ bar, stage ] ) {
+			element.getClientRects = () => [ {} ] as unknown as DOMRectList;
+			element.getBoundingClientRect = () =>
+				( { height: 120.2 } ) as DOMRect;
+		}
+		vi.spyOn( window, 'getComputedStyle' ).mockImplementation(
+			() => ( { position: 'sticky', top: '8px' } ) as CSSStyleDeclaration
+		);
+		watched[ 0 ]!.again();
+		expect( page.getPropertyValue( '--cbuild-bar-size' ) ).toBe( '121px' );
+		watched[ 1 ]!.again();
+		expect( page.getPropertyValue( '--cbuild-stage-size' ) ).toBe(
+			'129px'
+		);
+		page.removeProperty( '--cbuild-bar-size' );
+		page.removeProperty( '--cbuild-stage-size' );
+	} );
+
+	it( 'measures once, and watches nothing, where the browser has no resize observer', () => {
+		builder();
+		vi.stubGlobal( 'ResizeObserver', undefined );
+		expect( () =>
+			(
+				defined.definition as { callbacks: { init: () => void } }
+			 ).callbacks.init()
+		).not.toThrow();
+		expect(
+			document.documentElement.style.getPropertyValue(
+				'--cbuild-stage-size'
+			)
+		).toBe( '0px' );
+		document.documentElement.style.removeProperty( '--cbuild-stage-size' );
+	} );
+
+	it( 'fits and measures the bar again when the screen changes', () => {
+		const root = builder();
+		(
+			defined.definition as { callbacks: { init: () => void } }
+		 ).callbacks.init();
+		const bar = root.querySelector< HTMLElement >( '.cbuild-bar' )!;
+		bar.getClientRects = () => [ {} ] as unknown as DOMRectList;
+		bar.getBoundingClientRect = () => ( { height: 70 } ) as DOMRect;
+		Object.defineProperty( document, 'elementsFromPoint', {
+			value: () => [],
+			configurable: true,
+		} );
+		vi.spyOn( window, 'getComputedStyle' ).mockImplementation(
+			() => ( { position: 'sticky', top: '0px' } ) as CSSStyleDeclaration
+		);
+		actions.fit();
+		expect(
+			document.documentElement.style.getPropertyValue(
+				'--cbuild-bar-size'
+			)
+		).toBe( '70px' );
+		document.documentElement.style.removeProperty( '--cbuild-bar-size' );
 	} );
 } );
 

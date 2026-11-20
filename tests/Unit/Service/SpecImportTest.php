@@ -953,4 +953,18 @@ final class SpecImportTest extends TestCase {
 		self::assertSame( '', str_getcsv( $lines[2], ',', '"', '' )[5] );
 		self::assertSame( '', str_getcsv( explode( "\n", ( new SpecExport( $this->parts, $this->tables ) )->text() )[1], ',', '"', '' )[5], 'without the layer images' );
 	}
+
+	// The auditor's 1.0.0 minor 9: withLayers() gives a copy, as every other with…() does, so what a 0.9.0 container
+	// built is still 0.9.0's (D-208).
+	public function test_with_layers_gives_a_copy_and_leaves_the_export_and_the_import_it_was_called_on_as_they_were(): void {
+		[ $layered, $layers ] = $this->layered();
+		$export               = new SpecExport( $this->parts, $this->tables );
+		self::assertNotSame( $export, $export->withLayers( $layers ) );
+		self::assertSame( '', str_getcsv( explode( "\n", $export->text() )[1], ',', '"', '' )[5] );
+		$check = ( new \ReflectionProperty( SpecImport::class, 'check' ) )->getValue( $layered );
+		self::assertInstanceOf( LayerCheck::class, $check );
+		$plain = new SpecImport( $this->parts, $this->tables, new SpecWriter( $this->tables ), $this->store, $this->queue, $this->clock, $this->logger );
+		self::assertNotSame( $plain, $plain->withLayers( $check, $layers ) );
+		self::assertNull( ( new \ReflectionProperty( SpecImport::class, 'layers' ) )->getValue( $plain ), 'the import it was called on reads no layer images' );
+	}
 }

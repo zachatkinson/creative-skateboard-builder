@@ -342,6 +342,8 @@ final class SavedBuildsPageTest extends CartTestCase {
 			$this->post( $fields );
 			self::assertSame( array( 'That build can no longer be brought back.' ), self::notices( 'error' ), 'not after them' );
 			self::assertSame( array(), $this->service( SavedBuilds::class )->of( $this->ana ) );
+			// The auditor's 1.0.0 should-fix P2: and the copy is out of the session, read past its 15 minutes.
+			self::assertNull( WC()->session->get( 'cbuild_deleted' ), 'the build is not kept past its Undo' );
 		} finally {
 			$this->container()->set( SavedBuildHooks::class, $hooks );
 		}

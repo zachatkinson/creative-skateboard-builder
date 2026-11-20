@@ -232,7 +232,7 @@
         "SpecsCommand::import": "<file> [--dry-run] [--key=<key>] [--format=<format>]"
     },
     "rest_route_args": {
-        "cbuild/v1/kits/(?P<id>[1-9][0-9]{0,17})/state": "assembly cbuild chips from id locale page picks previous q sort step width 874235929caf9e17d7fbdbd740062ee03ea9e2465b17f60d34ab43ffc37f17fb"
+        "cbuild/v1/kits/(?P<id>[1-9][0-9]{0,17})/state": "assembly cbuild chips from id locale page picks previous q sort step width 4e843753b29ddbcce4ed63dfdbd49c19ee82cee850b037f94efa5e5862580d33"
     },
     "csv_columns": [
         "id",
@@ -288,7 +288,7 @@
         "schema/kit-slots.json": "7c383e3f551b517328d9d195c01e15f9f5dad1a1263a20fa4ff2188592bb820c",
         "schema/order-snapshot.json": "78cc2355e3468a3f4ff06aa8c609594f21ab961dbcf06ca54bb2b4b2e1b18030",
         "schema/settings.json": "c6ce801eae753f4d85734fdf81489cc91a4e2db8adf318aa2da21832d7ef9df4",
-        "schema/state.json": "bed34e9f26294a4181f0c0197df37a1927ce041a5588c7d40eaaf5e13a513dab"
+        "schema/state.json": "0819865ae64878a97305404ab63e98e91359fa3b34e7b41b43727cd7e5fdb2d6"
     },
     "spec_keys": [
         "deck_width",

@@ -27,7 +27,7 @@ final class InMemorySavedBuilds implements SavedBuildStore {
 	public function of( int $user ): array {
 		$mine = array_values( array_filter( $this->rows, static fn( SavedBuild $build ): bool => $build->user === $user ) );
 		usort( $mine, static fn( SavedBuild $a, SavedBuild $b ): int => $b->updated <=> $a->updated );
-		return $mine;
+		return array_slice( $mine, 0, self::MOST );
 	}
 
 	public function find( int $user, string $uuid ): ?SavedBuild {
@@ -46,7 +46,7 @@ final class InMemorySavedBuilds implements SavedBuildStore {
 
 	public function put( SavedBuild $build ): bool {
 		$held = $this->rows[ $build->uuid ] ?? null;
-		if ( $this->refuse || ( null !== $held && $held->user !== $build->user ) ) {
+		if ( $this->refuse || ( null !== $held && $held->user !== $build->user ) || ( null === $held && $this->count( $build->user ) >= self::MOST ) ) {
 			return false;
 		}
 		$this->rows[ $build->uuid ] = $build;

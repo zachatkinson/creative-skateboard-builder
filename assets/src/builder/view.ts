@@ -310,10 +310,32 @@ function steady( change: () => void ): void {
 				);
 	const before = anchor?.getBoundingClientRect().top;
 	change();
+	window.requestAnimationFrame( () => {
+		// Once a width is chosen the widths fold behind its line after every answer. Change opens them natively, and
+		// the server's `asking` stays false throughout, so the bound `open` never changes and would leave them open.
+		root?.querySelectorAll< HTMLDetailsElement >(
+			'details.cbuild-width__pick'
+		).forEach( ( fold ) => {
+			const line =
+				fold.querySelector< HTMLElement >( ':scope > summary' );
+			if ( line ) {
+				fold.open = true === line.hidden;
+			}
+		} );
+	} );
 	if ( ! anchor || undefined === before ) {
 		return;
 	}
 	window.requestAnimationFrame( () => {
+		// A control the view folds away, as a width once chosen is, hands focus to its fold's summary: the line that
+		// now says the width, with Change (the spec reviewer's M10 minor M1).
+		const fold =
+			anchor === focused ? anchor.closest( 'details:not([open])' ) : null;
+		const summary =
+			fold?.querySelector< HTMLElement >( ':scope > summary' );
+		if ( summary && ! summary.hidden ) {
+			summary.focus();
+		}
 		// A control in the phone bar moves as the bar does: stuck at the foot of the screen, then, once the scroll
 		// brings the builder's end into view, at that end. So the scroll is measured again, a few times at most, until
 		// the control is back; each pass lays the page out, and none paints (D-267).

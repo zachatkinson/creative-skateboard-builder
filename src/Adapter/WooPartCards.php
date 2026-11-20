@@ -12,6 +12,7 @@ namespace CreativeBranding\SkateboardBuilder\Adapter;
 use CreativeBranding\SkateboardBuilder\Port\PartFacts;
 use CreativeBranding\SkateboardBuilder\Port\PartCards;
 use CreativeBranding\SkateboardBuilder\Support\Cast;
+use CreativeBranding\SkateboardBuilder\Support\LayerMeta;
 use CreativeBranding\SkateboardBuilder\Support\Options;
 use WC_Product;
 use WC_Tax;
@@ -152,18 +153,29 @@ final class WooPartCards implements PartCards {
 		if ( array() !== $others ) {
 			$keep   = array();
 			$missed = $this->products->load( ...array_keys( $others ) );
-			$images = array();
+			// The parents of variations with no photo and no layer image of their own, read once for them all (the
+			// auditor's 1.0.0 minor 5).
+			$wanted = array();
 			foreach ( $missed as $product ) {
+				if ( Cast::int( $product->get_image_id() ) <= 0 && LayerMeta::own( $product ) <= 0 && $product->get_parent_id() > 0 ) {
+					$wanted[] = $product->get_parent_id();
+				}
+			}
+			$parents = array() === $wanted ? array() : $this->products->load( ...array_values( array_unique( $wanted ) ) );
+			$layers  = array();
+			$images  = array();
+			foreach ( $missed as $id => $product ) {
 				// The photo, else the layer image the card falls back to (D-282), read with the rest in one query.
-				$photo = Cast::int( $product->get_image_id() );
-				$photo = $photo > 0 ? $photo : self::layer( $product );
+				$layers[ $id ] = self::layer( $product, $parents );
+				$photo         = Cast::int( $product->get_image_id() );
+				$photo         = $photo > 0 ? $photo : $layers[ $id ];
 				if ( $photo > 0 ) {
 					$images[] = $photo;
 				}
 			}
 			_prime_post_caches( array_values( array_unique( $images ) ), false, true );
 			foreach ( $missed as $id => $product ) {
-				$cards[ $id ] = self::card( $product );
+				$cards[ $id ] = self::card( $product, $layers[ $id ] );
 				$keep[ $id ]  = array(
 					'stamp' => $stamps[ $id ],
 					'card'  => $cards[ $id ],
@@ -398,27 +410,24 @@ final class WooPartCards implements PartCards {
 	 * A part's layer image, for a card with no photo (D-282): a variation's own, else its parent's, as the picture
 	 * reads it.
 	 *
-	 * @param WC_Product $product The part.
+	 * @param WC_Product             $product The part.
+	 * @param array<int, WC_Product> $parents The parents read for the cards, by ID.
 	 */
-	private static function layer( WC_Product $product ): int {
-		$own = Cast::int( $product->get_meta( Options::META_LAYER, true ) );
-		if ( $own > 0 || 0 === $product->get_parent_id() ) {
-			return $own;
-		}
-		$parent = wc_get_product( $product->get_parent_id() );
-		return $parent instanceof WC_Product ? Cast::int( $parent->get_meta( Options::META_LAYER, true ) ) : 0;
+	private static function layer( WC_Product $product, array $parents ): int {
+		return LayerMeta::inUse( $product, $parents[ $product->get_parent_id() ] ?? null );
 	}
 
 	/**
 	 * A product's card.
 	 *
 	 * @param WC_Product $product The part.
+	 * @param int        $layer   Its layer image, its own or its parent's, or 0.
 	 * @return array{name: string, url: string, price: string, stock: string, stock_class: string, image: array{src: string, width: int, height: int, srcset: string, sizes: string}|null, photo: bool}
 	 */
-	private static function card( WC_Product $product ): array {
+	private static function card( WC_Product $product, int $layer ): array {
 		$availability = $product->get_availability();
 		$photo        = self::image( Cast::int( $product->get_image_id() ) );
-		$image        = $photo ?? self::image( self::layer( $product ), self::LAYER_SIZE );
+		$image        = $photo ?? self::image( $layer, self::LAYER_SIZE );
 		return array(
 			// WordPress stores a title with its entities written out. A card's name is plain text, which the edge escapes.
 			'name'        => html_entity_decode( wp_strip_all_tags( $product->get_name() ), ENT_QUOTES, 'UTF-8' ),

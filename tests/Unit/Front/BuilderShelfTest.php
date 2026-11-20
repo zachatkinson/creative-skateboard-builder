@@ -349,6 +349,9 @@ final class BuilderShelfTest extends TestCase {
 
 		self::assertTrue( $shelf['search']['shown'] );
 		self::assertSame( 'Search wheels', $shelf['search']['label'] );
+		// Spec (configurator): "a hint of the step's own words ("Brand or graphic, like Rascals")": the step's first
+		// brand (the spec reviewer's M10 minor M2).
+		self::assertSame( 'Brand or name, like Bones', $shelf['search']['hint'] );
 		self::assertSame( 'cbuild[_q]', $shelf['search']['name'] );
 		self::assertSame( '', $shelf['search']['value'] );
 

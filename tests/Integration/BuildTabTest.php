@@ -845,4 +845,28 @@ final class BuildTabTest extends IntegrationTestCase {
 		self::assertContains( '<a href="#cbuild-kit-picture-wheelbase">Wheelbase where a deck gives none: type a number, such as 0.25.</a>', self::notices() );
 	}
 
+
+	// The M9 audit's minor 11: a slot's list of products, or of terms, is read together, so it asks as many queries
+	// for twelve as for two.
+	public function test_a_list_of_products_or_terms_is_named_in_queries_that_do_not_grow_with_it(): void {
+		$products = array();
+		$terms    = array();
+		for ( $n = 0; $n < 12; $n++ ) {
+			$product = new \WC_Product_Simple();
+			$product->set_name( 'Deck ' . $n );
+			$products[] = $product->save();
+			$terms[]    = (int) wp_insert_term( 'Category ' . $n, 'product_cat' )['term_id'];
+		}
+		foreach ( array( 'products' => $products, 'terms' => $terms ) as $method => $ids ) {
+			$named   = new \ReflectionMethod( \CreativeBranding\SkateboardBuilder\Admin\BuildTab::class, $method );
+			$queries = static function ( array $some ) use ( $named ): int {
+				global $wpdb;
+				wp_cache_flush();
+				$before = $wpdb->num_queries;
+				self::assertCount( count( $some ), $named->invoke( null, $some ) );
+				return $wpdb->num_queries - $before;
+			};
+			self::assertSame( $queries( array_slice( $ids, 0, 2 ) ), $queries( $ids ), $method );
+		}
+	}
 }

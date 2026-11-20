@@ -1230,11 +1230,13 @@ final class BuildTab {
 	 */
 	private static function terms( mixed $ids ): array {
 		$names = array();
-		foreach ( is_array( $ids ) ? $ids : array() as $id ) {
-			if ( is_int( $id ) && $id > 0 ) {
-				$term         = get_term( $id );
-				$names[ $id ] = $term instanceof WP_Term ? $term->name : '#' . $id;
-			}
+		$ids   = is_array( $ids ) ? array_values( array_filter( $ids, static fn( mixed $id ): bool => is_int( $id ) && $id > 0 ) ) : array();
+		if ( count( $ids ) > 1 ) {
+			_prime_term_caches( $ids );
+		}
+		foreach ( $ids as $id ) {
+			$term         = get_term( $id );
+			$names[ $id ] = $term instanceof WP_Term ? $term->name : '#' . $id;
 		}
 		return $names;
 	}
@@ -1247,11 +1249,14 @@ final class BuildTab {
 	 */
 	private static function products( mixed $ids ): array {
 		$names = array();
-		foreach ( is_array( $ids ) ? $ids : array() as $id ) {
-			if ( is_int( $id ) && $id > 0 ) {
-				$product      = wc_get_product( $id );
-				$names[ $id ] = $product instanceof WC_Product ? wp_strip_all_tags( $product->get_formatted_name() ) : '#' . $id;
-			}
+		$ids   = is_array( $ids ) ? array_values( array_filter( $ids, static fn( mixed $id ): bool => is_int( $id ) && $id > 0 ) ) : array();
+		// Read together, so a slot's long list of products asks no query a product (the M9 audit's minor 11).
+		if ( count( $ids ) > 1 ) {
+			_prime_post_caches( $ids, true, true );
+		}
+		foreach ( $ids as $id ) {
+			$product      = wc_get_product( $id );
+			$names[ $id ] = $product instanceof WC_Product ? wp_strip_all_tags( $product->get_formatted_name() ) : '#' . $id;
 		}
 		return $names;
 	}

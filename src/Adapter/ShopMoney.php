@@ -62,7 +62,8 @@ final class ShopMoney implements Money {
 			'decimals'           => max( 0, wc_get_price_decimals() ),
 			'decimal_separator'  => wc_get_price_decimal_separator(),
 			'thousand_separator' => wc_get_price_thousand_separator(),
-			'format'             => get_woocommerce_price_format(),
+			// Plain text as the symbol is: WooCommerce writes its space as an entity, for HTML (D-290).
+			'format'             => html_entity_decode( get_woocommerce_price_format(), ENT_QUOTES | ENT_HTML5, 'UTF-8' ),
 		);
 	}
 

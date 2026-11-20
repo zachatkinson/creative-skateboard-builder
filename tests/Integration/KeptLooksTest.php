@@ -159,4 +159,38 @@ final class KeptLooksTest extends IntegrationTestCase {
 		$cards->cards( array( $id ) );
 		self::assertContains( $id, $this->read, 'read from the shop again' );
 	}
+
+	// The auditor's 1.0.0 minor 5: variations with no photo and no layer image of their own show their parent's layer
+	// image, and the parent is read once for all of them.
+	public function test_variations_that_fall_back_to_their_parents_layer_image_read_it_once(): void {
+		$layer  = \CreativeBranding\SkateboardBuilder\Tests\Support\LayerFiles::attachment( 420, 1626 );
+		$parent = new \WC_Product_Variable();
+		$parent->set_name( 'Katie' );
+		$parent->set_status( 'publish' );
+		$parent->update_meta_data( \CreativeBranding\SkateboardBuilder\Support\Options::META_LAYER, (string) $layer );
+		$parent->save();
+		$ids = array();
+		foreach ( array( '8.0', '8.25', '8.5' ) as $width ) {
+			$variation = new \WC_Product_Variation();
+			$variation->set_parent_id( $parent->get_id() );
+			$variation->set_regular_price( '60' );
+			$variation->set_attributes( array( 'width' => $width ) );
+			$ids[] = $variation->save();
+		}
+		$cards = $this->service( PartCards::class );
+		self::assertInstanceOf( WooPartCards::class, $cards );
+		$cards->settle();
+		$this->service( Kits::class )->settle();
+		wp_cache_flush();
+		$this->read = array();
+
+		$found = $cards->cards( $ids );
+
+		self::assertCount( 3, $found );
+		foreach ( $found as $card ) {
+			self::assertFalse( $card['photo'] );
+			self::assertNotNull( $card['image'], 'the parent\'s layer image' );
+		}
+		self::assertSame( 1, count( array_keys( $this->read, $parent->get_id(), true ) ), 'the parent read once' );
+	}
 }

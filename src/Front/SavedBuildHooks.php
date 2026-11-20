@@ -328,7 +328,7 @@ final class SavedBuildHooks implements Hookable {
 		}
 		if ( SavedBuilds::FULL === $code ) {
 			/* translators: %s: how many builds a customer may keep, such as 100. */
-			wc_add_notice( sprintf( __( 'You have %s saved builds, the most kept. Delete one to save another.', 'creative-skateboard-builder' ), number_format_i18n( SavedBuilds::MOST ) ), 'error' );
+			wc_add_notice( sprintf( _n( 'You have %s saved build, the most kept. Delete it to save another.', 'You have %s saved builds, the most kept. Delete one to save another.', SavedBuilds::MOST, 'creative-skateboard-builder' ), number_format_i18n( SavedBuilds::MOST ) ), 'error' );
 			return self::url();
 		}
 		wc_add_notice( __( 'The build could not be saved just now. Please try again.', 'creative-skateboard-builder' ), 'error' );
@@ -376,8 +376,12 @@ final class SavedBuildHooks implements Hookable {
 		}
 		$kept = Cast::map( $session->get( self::DELETED ) );
 		$uuid = Cast::str( $kept['uuid'] ?? null );
-		// A copy from before 1.0.0 has no time, and is past its Undo as any other kept too long.
+		// A copy from before 1.0.0 has no time, and is past its Undo as any other kept too long. One past it is taken
+		// out of the session as it is read (the auditor's 1.0.0 should-fix P2).
 		if ( '' === $uuid || $this->clock->now()->getTimestamp() - Cast::int( $kept['deleted'] ?? null ) > self::UNDO_MINUTES * 60 ) {
+			if ( null !== $session->get( self::DELETED ) ) {
+				self::drop();
+			}
 			return null;
 		}
 		$picks = array();
@@ -452,7 +456,7 @@ final class SavedBuildHooks implements Hookable {
 			SavedBuilds::UPDATED => wc_add_notice( __( 'Your saved build is updated.', 'creative-skateboard-builder' ) ),
 			SavedBuilds::FAILED  => wc_add_notice( __( 'The build could not be saved just now. Please try again.', 'creative-skateboard-builder' ), 'error' ),
 			/* translators: %s: how many builds a customer may keep, such as 100. */
-			SavedBuilds::FULL    => wc_add_notice( sprintf( __( 'You have %s saved builds, the most kept. Delete one to save another.', 'creative-skateboard-builder' ), number_format_i18n( SavedBuilds::MOST ) ), 'error' ),
+			SavedBuilds::FULL    => wc_add_notice( sprintf( _n( 'You have %s saved build, the most kept. Delete it to save another.', 'You have %s saved builds, the most kept. Delete one to save another.', SavedBuilds::MOST, 'creative-skateboard-builder' ), number_format_i18n( SavedBuilds::MOST ) ), 'error' ),
 			default              => wc_add_notice( __( 'This build could not be saved: a part is missing or no longer fits. Open it in the builder to check it.', 'creative-skateboard-builder' ), 'error' ),
 		};
 	}

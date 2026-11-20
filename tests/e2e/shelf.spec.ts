@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import type { APIResponse, Route } from '@playwright/test';
-import { test, expect, Page } from './support/test';
+import { test, expect, Page, inLocale } from './support/test';
 import { axe } from './support/axe';
 
 /**
@@ -107,7 +107,7 @@ test.describe( 'A long step', () => {
 	test( 'says which width a search finds its deck in, and offers Clear search when it finds none', async ( {
 		page,
 		javaScriptEnabled,
-	} ) => {
+	}, info ) => {
 		const search = async ( query: string ) => {
 			await page.locator( '#cbuild-search' ).fill( query );
 			await page.locator( '#cbuild-search' ).press( 'Enter' );
@@ -116,7 +116,10 @@ test.describe( 'A long step', () => {
 		await search( 'Ponies' );
 		const found = page.locator( '.cbuild-found' );
 		await expect( found.locator( '.cbuild-found__text' ) ).toHaveText(
-			'No 8.25″ decks match Ponies. Ponies comes in 8″.'
+			inLocale(
+				info.project.name,
+				'No 8.25″ decks match Ponies. Ponies comes in 8″.'
+			)
 		);
 		await expect( cards( page ) ).toHaveCount( 0 );
 		if ( javaScriptEnabled ) {
