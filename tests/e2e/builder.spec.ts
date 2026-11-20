@@ -4719,6 +4719,17 @@ test.describe( 'A saved build that has changed, and the deck page', () => {
 			await page
 				.locator( 'select[name="attribute_width"]' )
 				.selectOption( '8.5' );
+			// WooCommerce slides the variation's details open, which moves the button under a press: in WebKit one
+			// press in eight landed where it had been and went nowhere. The press waits for the page to be still.
+			await page.waitForFunction(
+				() =>
+					0 ===
+					(
+						window as unknown as {
+							jQuery: ( selector: string ) => { length: number };
+						}
+					 ).jQuery( ':animated' ).length
+			);
 			await start.click();
 			await expect( heading( page ) ).toHaveText(
 				/: Choose your trucks$/
