@@ -122,24 +122,14 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
       # The workflows' own lint (#74, D-299), here beside the secrets scan, for the same reason: seconds, and nothing
-      # waits on it but what needs this job. actionlint checks the syntax, the expressions and, with the ShellCheck its
-      # image carries, every run script. zizmor checks them for security at its strictest persona, with its online
-      # audits (known-vulnerable and impostor actions); `.github/zizmor.yml` holds its one turned-off rule.
-      - name: actionlint
-        uses: docker://rhysd/actionlint@sha256:b1934ee5f1c509618f2508e6eb47ee0d3520686341fec936f3b79331f9315667 # 1.7.12
-        with:
-          args: -color
-      - name: zizmor
-        uses: zizmorcore/zizmor-action@45d7276c9ca790aabd705e31ca99c6185c3e76dd # v0.8.1
-        with:
-          inputs: .github
-          persona: pedantic
-          version: 1.32.0
-          config: .github/zizmor.yml
-          # The findings in the log and as annotations; not uploaded to code scanning, which would need
-          # security-events: write.
-          advanced-security: false
-          annotations: true
+      # waits on it but what needs this job. actionlint checks the syntax, the expressions and, with ShellCheck, every
+      # run script; zizmor checks them for security at its pedantic persona, with its online audits. Each is its
+      # release's binary at a pinned version and checksum (tools/workflow-lint.sh): the repository allows GitHub's own
+      # actions and three named ones, so neither tool is an action.
+      - name: actionlint and zizmor
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash tools/workflow-lint.sh
 
   static:
     name: Lint, analyse, architecture, gates, unit tests, API snapshot, audits, benchmarks, PHP 7.4 parse
