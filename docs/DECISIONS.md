@@ -3666,3 +3666,18 @@ CI's Lighthouse gate failed Total Blocking Time on the builder page on Twenty Tw
 **Why:** the budget is met by doing less in any one task, not by moving it; the builder's behaviour is unchanged.
 
 **Status:** Accepted (Zach's call, 20 November).
+
+### D-297 · The domain's path-coverage run goes in shards, one a core, with the domain loaded in one order first · 2026-11-20
+
+**Context:** Xdebug's path coverage of `src/Domain` (D-030) was 80 to 85 % of CI's `static` job, on x64 and arm64 alike (#74, arm64 trial run 44800841710: `composer test:coverage` 372 to 468 s of 446 to 564 s), and some 280 s of every local `/verify`. Its tests are independent and its time spreads evenly: the slowest file took 25 s of 269.
+
+**Decision:**
+- `tools/coverage.sh` runs the path pass as shards, one a core up to eight (`CBUILD_COVERAGE_SHARDS` overrides it; 1 runs it as one). Files are dealt largest first, by size, to the shard with the least so far, through PHPUnit 13's `--test-files-file`. Each shard writes `--coverage-php`, and `tools/coverage-domain-merge.php` joins them with php-code-coverage's own `Merger` and writes the Cobertura report the floor reads, built as PHPUnit builds it. No new tool.
+- A shard that fails stops the run, names the shard and prints its output; nothing is merged.
+- **Every shard loads the domain first, in one sorted order** (`CBUILD_COVERAGE_PRELOAD`, `tests/bootstrap-domain.php`). Xdebug numbers a branch by its opcode's offset, and PHP compiles a file a little differently when a class it names is already loaded. Shards that loaded the domain in their own orders numbered the same branch differently (`BuildValidator::validate`: IDs 64, 68, 70… in four shards and 65, 69, 71… in four), and the merge counted it twice: 1,706 of 1,755 branches.
+- **Measured on the development Mac:** 1,616 of 1,616 branches from the eight shards and from one shard with the same preload, so the merge adds and loses nothing. The single run before read 1,612 of 1,612: the same code compiled in test order. The floor is still 100 % of the branches, whatever their count; it is not moved. Shards plus merge take 13 s where the single run took 278 s, and `composer test:coverage` 37 s.
+- **The deliberate breaks:** with `RiserClearanceTest.php` taken away, the shards read 1,559 of 1,616 and the floor failed. A test that fails only in the shards (on `CBUILD_COVERAGE_PRELOAD`) failed the run: "The domain's path-coverage shard 2 failed:", then that shard's PHPUnit output.
+
+**Why:** the floor stays exactly as strict, and every run of it, in CI and in `/verify`, is quicker. CI's runner has four cores, so four shards there.
+
+**Status:** Accepted.
