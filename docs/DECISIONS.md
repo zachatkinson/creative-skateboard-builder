@@ -3621,7 +3621,21 @@ Zach's answers (19 November): the README is a "Showcase for the agency"; "Issues
 - **SECURITY.md** sends a report through GitHub's private vulnerability reporting, which the repository already has on (checked through the API on 20 November, so no setting was changed), and supports the newest 1.x. It promises an answer within three working days: my call, flagged for Zach, who answers them.
 - **CONTRIBUTING.md** and two issue forms, a bug and an idea or question, with blank issues off and a link to the private report for security. Pull requests are by invitation: one not talked about first on its issue is likely to be closed.
 - **CODE_OF_CONDUCT.md** adopts the Contributor Covenant 2.1 by reference, with reports through the same private channel, so no address of anyone's is published.
-- **LICENSE** is GPL-2.0's text under the plugin's "or any later version" notice, as its header and `readme.txt` say.
+- **LICENSE** is GPL-2.0's text alone, as GitHub's licence detection reads it; the copyright and "or any later version" notice is in the README's Licence section, as the plugin's header and `readme.txt` say it.
 - `.distignore` leaves CONTRIBUTING, CODE_OF_CONDUCT and SECURITY out of the zip: they are about the repository, not the plugin. LICENSE and the readme go in it.
 
 **Why:** Zach's answers; the rest keeps everyone's contact details off the page.
+
+### D-294 · 1.0.0 ships with the state route's cold requests over 80 ms on a persistent object cache (O21) · 2026-11-20
+
+O21 was Zach's to settle before the tag. Under his overnight instruction for milestone 10 ("decide, record, flag"), this is the call, and it is flagged for him in `docs/reviews/M10.md`.
+
+Measured for 1.0.0 (`docs/BENCHMARK.md`, v1.0.0), with 500 candidates in the step and Redis 8.10 with Redis Object Cache 3.0.0: a request after the whole cache is emptied, 89 to 92 ms p95; the first request after one part moves, a shop's ordinary request after a stock change, 79.4 ms; the first after a reindex of 2,000 parts, 80.1 ms; warm requests 56 to 58 ms. Without a persistent cache every row is 48 to 65 ms, and CI holds that.
+
+- **The tag goes ahead.** The rows over the budget are a request that finds the object cache empty, which a Redis site sees after a flush or a deploy, not on its everyday requests; the rows a shopper meets day to day are inside it. Holding 1.0.0 for them would hold every other fix in it.
+- **The budget stays at 80 ms**, and is not scaled for a persistent cache. The benchmark keeps holding it without one, as before.
+- **What was tried:** batching the plugin's own two cache reads (0.9.0, no gain). Most of the misses are WooCommerce's own reads of each product on a cold cache, one round trip each, so priming those products' caches together is the next thing to measure, in 1.0.x.
+
+**Why:** the spec's budget is met where it was set and held, and the cases over it are rare on a real site; the release carries many fixes shops are waiting for.
+
+**Status:** Accepted, for Zach to confirm or reverse.

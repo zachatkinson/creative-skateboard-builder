@@ -266,4 +266,4 @@ Written by Claude Code after the audit, not by the auditor. Each fix has a test 
 | O3 | #43 closed: the canary is green on `main`. |
 | O16 (M9's minors) | Fixed: counts through `_n()`; saved builds read with `LIMIT` and capped by the insert itself; the two admin loops read their products together; the forced-colours test reads the colour; a pressed filter keeps its inset line under the ring. |
 | O17 | Fixed: SECURITY.md names methods, not lines. |
-| O21 | Measured for 1.0.0 in BENCHMARK.md. |
+| O21 | Measured for 1.0.0 in BENCHMARK.md: with Redis the cold rows are 89 to 92 ms, the first request after a part moves 79.4 ms, the warm rows under 60 ms. 1.0.0 ships with the cold rows over the budget, and it stays at 80 ms (D-294). |

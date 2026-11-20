@@ -254,3 +254,49 @@ Machine: Apple M1 Max, PHP 8.5.12 in wp-env on OrbStack, WordPress 7.1.4, WooCom
 | Lighthouse SEO, the clean page on both themes | 0.92 | 0.9 or more |
 
 Not measured here: the renditions migration at 2,000 parts (0.8.0's review, auditor 19), which queues one index job a part and needs a site with that many layer images; it stays open in `docs/AUDIT-0.9.0.md` (O6).
+
+## v1.0.0
+
+Machine: Apple M1 Max, PHP 8.5.12 in wp-env on OrbStack, WordPress 7.1.5, WooCommerce 11.3.0, wp-env's own database server, Xdebug off. Measured 20 November 2026 on the milestone 10 branch, the machine running nothing else. The catalogue is v0.7.0's: seven slots over 2,000 simple products, 500 of them trucks, the decks with layer images and their renditions. `composer test:benchmark` (the fit engine at 500 candidates) passed its budgets. New this release: a search with a chip and a sort, the step's shelf as 1.0.0 lists it (the spec reviewer's B4, S-d).
+
+| The state route, 500 candidates in the step | No persistent cache: p95 | Queries | Redis 8.10 and Redis Object Cache 3.0.0: p95 | Queries | Budget |
+| --- | --- | --- | --- | --- | --- |
+| Cold: the cache emptied before each request | 62.7 ms | 44 | 89.2 ms (91.6 ms in a first run) | 40 | 80 ms |
+| Warm | 53.6 ms | 20 | 58.2 ms | 17 | 80 ms |
+| A move to the next step, cold | 64.8 ms | 44 | 88.9 ms | 40 | 80 ms |
+| A move to the next step, warm | 51.8 ms | 20 | 56.0 ms | 17 | 80 ms |
+| A search with a chip and a sort, cold | 61.8 ms | 44 | 91.9 ms | 40 | 80 ms |
+| A search with a chip and a sort, warm | 47.9 ms | 20 | 55.6 ms | 17 | 80 ms |
+| The first request after one part moves | 59.6 ms | 44 | 79.4 ms | 41 | 80 ms |
+| The first request after a reindex of 2,000 parts | 55.5 ms | 44 | 80.1 ms | 41 | 80 ms |
+| With no row kept at all | 549 ms | 150 | 1,163 ms | 141 | Printed, not held |
+| A visitor whose session holds a 7-part build | 9.0 ms | 59 | 29.0 ms | 58 | Recorded |
+
+**Without a persistent object cache, every row is inside the budget**, search and chips included, and `composer test:benchmark:integration` holds it, as CI does. **With Redis, the cold rows are over it, as in 0.9.0 (O21), and 1.0.0 ships with them so (D-294).** "Cold" empties the whole cache before each request, which a Redis site sees only after a flush. A shop's ordinary request after a stock change, "the first request after one part moves", is 79.4 ms, inside the budget by a hair, and the warm rows are under 60 ms. The budget stays at 80 ms. The Redis rows were measured with the test's time limit lifted for that one run, so every row ran rather than the first over it; the limit is the test's own, back from git. The run with Redis is `tools/object-cache.sh up`, then `CBUILD_OBJECT_CACHE=persistent composer test:benchmark:integration`.
+
+| The rest, no persistent cache | Result | Budget |
+| --- | --- | --- |
+| Adding a 7-part build to the cart by the Store API | p95 31.8 ms, 58 queries | 300 ms, 58 queries |
+| A Store API cart read with the build in it | p95 22.2 ms, 28 queries | Recorded |
+| My builds with 100 saved builds, caches emptied | p95 415 ms, 129 queries | 600 ms, 130 queries |
+| Reindex of 2,000 parts | 22 batches, 0.96 s in all; a batch 75 ms and 319 queries at most | Each batch under 10 s and 400 queries |
+| The specs export, 2,000 rows | 0.43 s | 10 s |
+| The Catalogue check, 2,000 parts | 0.46 s, peak memory 187 MB | 10 s |
+| The import's dry run, 5,000 rows read; an export with layer images read back | 0.29 s planned; 0.46 s planned | 10 s |
+| The import, 1,800 parts written | 20 jobs, 673 ms at the slowest | 10 s a job |
+| A build's three composed pictures, GD | 0.37 s, 19.3 MB; 23 kB a build | 4 s, 64 MB |
+
+With Redis the cart's add is p95 52.5 ms and 48 queries, its read 39.6 ms, and My builds 515 ms and 104 queries, each inside its budget.
+
+| The builder page | Result | Budget |
+| --- | --- | --- |
+| The store's script, Brotli 11 | 3,774 B | 15,360 B |
+| The styles, and their RTL twin | 5,033 B and 5,034 B | 10,240 B |
+| LCP, CLS and TBT, Twenty Twenty-Five, mobile profile, three runs | 2.35 s, 0.012, 27 ms (medians) | LCP and CLS reported (D-165); TBT under 200 ms |
+| LCP, CLS and TBT, Kadence | 1.97 s, 0.000, 33 ms | 2.5 s, 0.1, 200 ms |
+| A build link's review with its layers drawn, Kadence | 2.00 s, 0.000, 51 ms | The same |
+| Lighthouse SEO, the clean page on both themes | 0.92 | 0.9 or more |
+
+The script grew from 3,027 B to 3,774 B and the styles from 2,987 B to 5,033 B with the configurator's layout, the shelf's tools and the stage; both stay well inside their budgets.
+
+Not measured here, as in 0.9.0: the renditions migration at 2,000 parts (`docs/AUDIT-1.0.0.md`, O6).
