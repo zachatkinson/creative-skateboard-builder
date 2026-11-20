@@ -1,0 +1,16 @@
+name: An idea or a question
+description: Something the builder could do, or something you'd like to know.
+labels: ["question"]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What you have in mind
+      description: What you'd like to do, and what is in the way now.
+    validations:
+      required: true
+  - type: textarea
+    id: shop
+    attributes:
+      label: Your shop
+      description: Optional. The kind of parts you sell, and how many, if it bears on it.

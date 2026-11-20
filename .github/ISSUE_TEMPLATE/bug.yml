@@ -1,0 +1,37 @@
+name: Something is wrong
+description: The builder, the cart, an order or an admin screen does something it shouldn't.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: A security problem goes through SECURITY.md, not an issue.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you saw, and what you expected to see.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps that show it
+      placeholder: |
+        1. Open a kit's page
+        2. Pick an 8.25" deck
+        3. ...
+    validations:
+      required: true
+  - type: textarea
+    id: versions
+    attributes:
+      label: Versions
+      description: Site Health > Info has a "Skateboard builder" section with these; it can be copied in whole.
+      placeholder: Plugin 1.0.0, WordPress 7.1, WooCommerce 11.3, PHP 8.5, theme
+    validations:
+      required: true
+  - type: textarea
+    id: more
+    attributes:
+      label: Anything else
+      description: A screenshot, a log line from WooCommerce > Status > Logs (source creative-skateboard-builder), the browser.
