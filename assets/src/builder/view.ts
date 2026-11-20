@@ -595,6 +595,37 @@ function send( form: HTMLFormElement, submitter?: HTMLElement | null ): void {
 	browser.submit( form, submitter ?? null );
 }
 
+/**
+ * Keep a focused control clear of the phone bar at the foot and the stage that sticks on top: the builder's focusin.
+ *
+ * @param event The focus that came in.
+ */
+function reveal( event: FocusEvent ): void {
+	const target = event.target;
+	if ( ! ( target instanceof HTMLElement ) ) {
+		return;
+	}
+	const bar = root?.querySelector< HTMLElement >( '.cbuild-bar' );
+	const shown = root?.querySelector< HTMLElement >( '.cbuild__stage' );
+	const place = target.getBoundingClientRect();
+	// A browser that scrolls a focused control only when it leaves the screen (Firefox, WebKit) leaves it under
+	// the bar at the foot, or the stage that sticks on top; scrolling it into view honours the page's scroll
+	// padding, which clears both (D-160; the auditor's M10 review, 1).
+	const under =
+		!! bar &&
+		0 !== bar.getClientRects().length &&
+		! bar.contains( target ) &&
+		place.bottom > bar.getBoundingClientRect().top;
+	const behind =
+		!! shown &&
+		! shown.contains( target ) &&
+		'sticky' === window.getComputedStyle( shown ).position &&
+		place.top < shown.getBoundingClientRect().bottom;
+	if ( under || behind ) {
+		target.scrollIntoView( { block: 'nearest' } );
+	}
+}
+
 const { state } = store(
 	NAME,
 	{
@@ -610,8 +641,30 @@ const { state } = store(
 			folded: false,
 		} as State,
 		callbacks: {
+			/**
+			 * Say on the builder whether an answer is awaited: its root is no region, so no directive binds it (D-296).
+			 */
+			busy(): void {
+				const busy = String( state.pending );
+				getElement()
+					.ref?.closest( '.cbuild' )
+					?.setAttribute( 'aria-busy', busy );
+			},
+			/**
+			 * Mark the builder ready: run by the bar, its last region, so every piece has been hydrated before it
+			 * (D-296). A press before then goes as the page would send it without the script.
+			 */
+			ready(): void {
+				getElement()
+					.ref?.closest( '.cbuild' )
+					?.setAttribute( 'data-ready', '' );
+			},
 			init(): void {
-				root = getElement().ref;
+				// The builder's pieces are regions of their own, each hydrated in its own task (D-296), so the root
+				// is the builder around the one this runs in.
+				root =
+					getElement().ref?.closest< HTMLElement >( '.cbuild' ) ??
+					null;
 				state.canCopy =
 					'function' === typeof window.navigator.clipboard?.writeText;
 				// The button turns the board in the page; without the script the step's own side is shown.
@@ -622,6 +675,7 @@ const { state } = store(
 				if ( root ) {
 					fit( root );
 					measure( root );
+					root.addEventListener( 'focusin', reveal );
 					root.addEventListener( 'pointerdown', press );
 					root.addEventListener( 'mousedown', steadyPress );
 					root.ownerDocument.addEventListener( 'pointerup', release );
@@ -786,30 +840,7 @@ const { state } = store(
 				}
 			},
 			reveal( event: FocusEvent ): void {
-				const target = event.target;
-				if ( ! ( target instanceof HTMLElement ) ) {
-					return;
-				}
-				const bar = root?.querySelector< HTMLElement >( '.cbuild-bar' );
-				const shown =
-					root?.querySelector< HTMLElement >( '.cbuild__stage' );
-				const place = target.getBoundingClientRect();
-				// A browser that scrolls a focused control only when it leaves the screen (Firefox, WebKit) leaves it under
-				// the bar at the foot, or the stage that sticks on top; scrolling it into view honours the page's scroll
-				// padding, which clears both (D-160; the auditor's M10 review, 1).
-				const under =
-					!! bar &&
-					0 !== bar.getClientRects().length &&
-					! bar.contains( target ) &&
-					place.bottom > bar.getBoundingClientRect().top;
-				const behind =
-					!! shown &&
-					! shown.contains( target ) &&
-					'sticky' === window.getComputedStyle( shown ).position &&
-					place.top < shown.getBoundingClientRect().bottom;
-				if ( under || behind ) {
-					target.scrollIntoView( { block: 'nearest' } );
-				}
+				reveal( event );
 			},
 			async copy(): Promise< void > {
 				try {

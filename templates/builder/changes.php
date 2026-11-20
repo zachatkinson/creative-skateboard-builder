@@ -9,7 +9,7 @@
 
 defined( 'ABSPATH' ) || exit;
 ?>
-<section class="cbuild-changes" data-wp-bind--hidden="!state.view.isChanges">
+<section class="cbuild-changes" data-wp-interactive="creative-skateboard-builder" data-wp-bind--hidden="!state.view.isChanges">
 	<h3 class="cbuild-changes__heading" tabindex="-1" data-wp-bind--autofocus="state.view.isChanges" data-wp-text="state.view.changes.heading"></h3>
 	<div data-wp-bind--hidden="!state.view.changes.hasItems">
 		<h4 data-wp-text="state.view.changes.goneHead"></h4>

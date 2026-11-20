@@ -110,6 +110,17 @@ async function settle(): Promise< void > {
 let fetched: URL[];
 let reply: () => Response | Promise< Response >;
 
+/**
+ * Put what the test has made into a builder, as the page has it: the store's regions are pieces inside one (D-296).
+ */
+function wrapped(): HTMLElement {
+	const root = document.createElement( 'div' );
+	root.className = 'cbuild';
+	root.append( ...document.body.childNodes );
+	document.body.append( root );
+	return root;
+}
+
 beforeEach( () => {
 	vi.useFakeTimers();
 	reset();
@@ -726,7 +737,7 @@ describe( 'the store', () => {
 			'afterbegin',
 			'<h2 class="cbuild-changes__heading" tabindex="-1">Changes</h2>'
 		);
-		setElement( document.body );
+		setElement( wrapped() );
 		(
 			defined.definition as { callbacks: { init: () => void } }
 		 ).callbacks.init();
@@ -765,7 +776,7 @@ describe( 'the store', () => {
 			'afterbegin',
 			'<h2 class="cbuild__heading" tabindex="-1">Step</h2>'
 		);
-		setElement( document.body );
+		setElement( wrapped() );
 		(
 			defined.definition as { callbacks: { init: () => void } }
 		 ).callbacks.init();
@@ -1537,6 +1548,92 @@ describe( 'keeping focus clear of the phone bar', () => {
 		actions.reveal( { target: inBar } as unknown as FocusEvent );
 		actions.reveal( { target: document } as unknown as FocusEvent );
 		expect( scrolled ).toEqual( [] );
+	} );
+
+	// D-296: the builder's pieces are regions of their own, so init runs in one of them: the root around it takes the
+	// focusin, and a focus anywhere in the builder is brought clear of the bar.
+	it( 'brings a control the bar covers into view when it takes focus, from a region inside the builder', () => {
+		const { below, scrolled } = page( 632 );
+		const region = document.createElement( 'p' );
+		document.querySelector( '.cbuild' )!.append( region );
+		setElement( region );
+		// jsdom has no layout: init fits the bar, which asks what is under its foot.
+		Object.defineProperty( document, 'elementsFromPoint', {
+			value: () => [],
+			configurable: true,
+		} );
+		(
+			defined.definition as { callbacks: { init: () => void } }
+		 ).callbacks.init();
+		// An earlier test's listener on the document would hear the focus after the builder: stopped short of it.
+		const stop = ( event: Event ) => event.stopPropagation();
+		document
+			.querySelector( '.cbuild' )!
+			.addEventListener( 'focusin', stop );
+		below.dispatchEvent( new FocusEvent( 'focusin', { bubbles: true } ) );
+		expect( scrolled.length ).toBeGreaterThan( 0 );
+		expect(
+			scrolled.every( ( said ) => '{"block":"nearest"}' === said )
+		).toBe( true );
+		// A focus outside the builder is no concern of its own.
+		const outside = document.createElement( 'button' );
+		const main = document.createElement( 'main' );
+		main.addEventListener( 'focusin', stop );
+		main.append( outside );
+		document.body.append( main );
+		outside.scrollIntoView = () => scrolled.push( 'outside' );
+		outside.getBoundingClientRect = () =>
+			( { top: 600, bottom: 644 } ) as DOMRect;
+		outside.dispatchEvent( new FocusEvent( 'focusin', { bubbles: true } ) );
+		expect( scrolled ).not.toContain( 'outside' );
+	} );
+
+	it( 'says on the builder whether an answer is awaited, from a region inside it', () => {
+		page( 650 );
+		const region = document.createElement( 'p' );
+		document.querySelector( '.cbuild' )!.append( region );
+		setElement( region );
+		const busy = (
+			defined.definition as { callbacks: { busy: () => void } }
+		 ).callbacks.busy;
+		state.pending = true;
+		busy();
+		expect(
+			document.querySelector( '.cbuild' )!.getAttribute( 'aria-busy' )
+		).toBe( 'true' );
+		state.pending = false;
+		busy();
+		expect(
+			document.querySelector( '.cbuild' )!.getAttribute( 'aria-busy' )
+		).toBe( 'false' );
+		// Outside a builder there is nothing to say it on, and nothing throws.
+		const loose = document.createElement( 'p' );
+		document.body.append( loose );
+		setElement( loose );
+		expect( busy ).not.toThrow();
+		setElement( null );
+		expect( busy ).not.toThrow();
+	} );
+
+	it( 'marks the builder ready from its last region, and nothing outside one', () => {
+		page( 650 );
+		const bar = document.querySelector< HTMLElement >( '.cbuild-bar' )!;
+		setElement( bar );
+		const ready = (
+			defined.definition as { callbacks: { ready: () => void } }
+		 ).callbacks.ready;
+		ready();
+		// A bare mark, as the server writes a boolean attribute.
+		expect(
+			document.querySelector( '.cbuild' )!.getAttribute( 'data-ready' )
+		).toBe( '' );
+		const loose = document.createElement( 'p' );
+		document.body.append( loose );
+		setElement( loose );
+		expect( ready ).not.toThrow();
+		expect( loose.hasAttribute( 'data-ready' ) ).toBe( false );
+		setElement( null );
+		expect( ready ).not.toThrow();
 	} );
 
 	it( "leaves a control whose foot meets the bar's top alone", () => {

@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { test, expect, Page, type Locator } from './support/test';
+import { test, expect, builderReady, Page, type Locator } from './support/test';
 import { axe } from './support/axe';
 
 /**
@@ -460,6 +460,8 @@ test.describe( 'A build in a classic cart and checkout', () => {
 		await expect( page.locator( 'h2.cbuild__heading' ) ).toHaveText(
 			'Step 7 of 7: Check your build'
 		);
+		// The heading is the server's: Save changes waits for the store, as a shopper sees the page settle (D-296).
+		await builderReady( page );
 		const review = page.locator( '.cbuild-review' );
 		await expect(
 			review.locator( 'input[name="cbuild[replace]"]' )

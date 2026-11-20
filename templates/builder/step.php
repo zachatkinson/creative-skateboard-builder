@@ -8,7 +8,7 @@
 
 defined( 'ABSPATH' ) || exit;
 ?>
-<form class="cbuild-step" id="cbuild-step-form" method="get" data-wp-on--submit="actions.submit" data-wp-on--change="actions.pick" data-wp-bind--action="state.view.action" data-wp-bind--hidden="!state.view.isStep">
+<form class="cbuild-step" data-wp-interactive="creative-skateboard-builder" id="cbuild-step-form" method="get" data-wp-on--submit="actions.submit" data-wp-on--change="actions.pick" data-wp-bind--action="state.view.action" data-wp-bind--hidden="!state.view.isStep">
 	<?php
 	// The form's default button, which Enter in the search presses: it sends the form as it is, so a search keeps the
 	// width, where the first width button would send its own (the auditor's M10 review, 2). Out of sight and the tab

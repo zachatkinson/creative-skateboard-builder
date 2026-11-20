@@ -36,6 +36,7 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Fixed
 
+- The builder no longer holds the page for long as it starts: each of its pieces starts in a task of its own, where the whole builder took one, which on a slow phone blocked the page for over 200 ms (D-296). Its markup and behaviour are unchanged; the root element is no longer itself an Interactivity region.
 - Layer image renditions are saved at their own quality, so another plugin's image quality setting cannot fail them, and a rendition that fails no longer stops the others: the part is drawn from its WebP copy or its full-size file (D-286).
 - The builder's stylesheet and script are asked for as 1.0.0, so a browser or a page cache no longer serves 0.6.0's against this release's markup: the block's `block.json` still said 0.6.0, which WordPress writes on them as their version. A gate holds it to the plugin's (the auditor's M10 review, 5).
 - On a phone and a tablet, the control in focus is never behind the stage at the top of the screen: the page keeps room for it as it does for the bar, going back up a step and after Next (WCAG 2.4.11; the auditor's M10 review, 1).

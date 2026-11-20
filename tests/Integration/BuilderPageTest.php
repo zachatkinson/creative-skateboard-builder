@@ -179,6 +179,40 @@ final class BuilderPageTest extends IntegrationTestCase {
 		return trim( $node->textContent );
 	}
 
+	/**
+	 * D-296: the root is no region and each piece is one of its own, so the browser hydrates the builder a piece at a
+	 * task and no one task blocks the page for long (CI's Lighthouse found 206 to 228 ms of blocking time with the
+	 * builder one region). What the root shows is the kit's, written by the server.
+	 */
+	public function test_each_piece_of_the_builder_is_a_region_of_its_own_and_the_root_none(): void {
+		$dom  = self::dom( $this->kitPage() );
+		$root = $dom->query( '//div[contains(concat(" ", normalize-space(@class), " "), " cbuild ")]' )->item( 0 );
+		self::assertInstanceOf( \DOMElement::class, $root );
+		self::assertFalse( $root->hasAttribute( 'data-wp-interactive' ), 'the root is no region' );
+		self::assertSame( 'false', $root->getAttribute( 'aria-busy' ) );
+		self::assertNotSame( '', $root->getAttribute( 'data-kit' ) );
+		$regions = array();
+		foreach ( $dom->query( './/*[@data-wp-interactive="creative-skateboard-builder"]', $root ) ?: array() as $region ) {
+			self::assertInstanceOf( \DOMElement::class, $region );
+			self::assertSame( 0, $dom->query( 'ancestor::*[@data-wp-interactive]', $region )->length, 'no region inside another' );
+			$regions[] = strtok( $region->getAttribute( 'class' ), ' ' );
+		}
+		self::assertSame(
+			array( 'cbuild__status', 'cbuild__limited', 'cbuild-progress', 'cbuild__stage', 'cbuild-errors', 'cbuild__heading', 'cbuild-step__lead', 'cbuild-step', 'cbuild-presets', 'cbuild-changes', 'cbuild-review', 'cbuild-bar' ),
+			$regions
+		);
+		// No directive is left outside a region, where nothing would run it.
+		foreach ( $dom->query( './/*', $root ) ?: array() as $node ) {
+			self::assertInstanceOf( \DOMElement::class, $node );
+			if ( 0 !== $dom->query( 'ancestor-or-self::*[@data-wp-interactive]', $node )->length ) {
+				continue;
+			}
+			foreach ( $node->attributes ?? array() as $attribute ) {
+				self::assertStringStartsNotWith( 'data-wp-', $attribute->name, $node->getNodePath() ?? '' );
+			}
+		}
+	}
+
 	public function test_the_kits_page_renders_the_first_step_as_a_form_with_a_radio_for_each_deck(): void {
 		$html = $this->kitPage();
 		$dom  = self::dom( $html );

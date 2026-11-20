@@ -3652,3 +3652,17 @@ CI's static job ran out of its 15 minutes on every push since milestone 10's she
 **Why:** the test stays and keeps its number, and the floor is measured as before, on every other test.
 
 **Status:** Accepted.
+
+### D-296 · Each piece of the builder is an Interactivity region of its own, and the root none · 2026-11-20
+
+CI's Lighthouse gate failed Total Blocking Time on the builder page on Twenty Twenty-Five twice in a row: medians of 228 and 222 ms against 200 ms (runs 44746354681 and 44756457197), where the Mac measured 27 ms. Milestone 10's builder has about 40 % more directives than 0.9.0's (509 in the templates against 363, 602 live on the start page). The builder was one region, and the Interactivity API hydrates a region in one task, yielding only between top-level regions, so the whole builder was one long task. Its `toVdom` walk alone was 64 ms of self time at four times slower, as it reads every node and tries `JSON.parse` on every directive's value. Zach chose to fix the hydration before the tag over shipping with the gate scaled or red.
+
+- **The root is a plain `div`.** Its classes (`cbuild--stage-right`, `cbuild--balanced`) and `data-kit` are the kit's and never change on the page, so `builder.php` writes them. `aria-busy` is written `false` and kept by a watch, `callbacks.busy`, which reads `state.pending` first so that it subscribes even before it finds the root.
+- **Each piece is a region:** the status and limit lines, the rail, the stage, the errors, the heading, the lead, the step, the ready builds, the change panel, the review and the bar, 12 in all. No wrapper element was added, so the layout's CSS is unchanged. `BuilderPageTest` holds the list, that no region is inside another, and that no directive is left outside one.
+- **The root's events:** `init`, popstate and resize sit on the status line's region. `init` takes the root as the `.cbuild` around it, and adds the focusin that keeps a focused control clear of the bar, beside its press listeners.
+- **The ready mark.** The runtime yields twice a region, and WebKit, which has no `scheduler.yield`, yields by timer, so the builder there is hydrated some 100 ms past the load: a press before then went as the page sends it without the script (measured: a ready build's button at 0 and 50 ms after the load reloaded the page, at 150 ms the store answered; Chromium answered at 0). A shopper's press so early still works, by the server. The bar, the last region, runs `callbacks.ready`, which marks the root `data-ready`; the browser tests wait for it after every load the store runs on (`builderReady()` in `tests/e2e/support/test.ts`, through `goto`, `reload`, `goBack`, `goForward` and `answered()`), as a shopper sees the page settle. The mark is the tests', not a public promise.
+- **Measured** with Chrome's CPU really slowed 12 times, near what CI's runner makes of Lighthouse's four: blocking time 356, 358, 377, 399 and 435 ms before, 148, 153, 156, 158 and 159 ms after. The largest hydration task went from 19.1 ms to 7.8 ms unthrottled.
+
+**Why:** the budget is met by doing less in any one task, not by moving it; the builder's behaviour is unchanged.
+
+**Status:** Accepted (Zach's call, 20 November).

@@ -10,7 +10,7 @@
 
 defined( 'ABSPATH' ) || exit;
 ?>
-<section class="cbuild-review" data-wp-bind--hidden="!state.view.isReview">
+<section class="cbuild-review" data-wp-interactive="creative-skateboard-builder" data-wp-bind--hidden="!state.view.isReview">
 	<h3 class="cbuild-review__heading screen-reader-text" data-wp-text="state.view.review.heading"></h3>
 	<ul class="cbuild-review__items">
 		<template data-wp-each--item="state.view.review.items" data-wp-each-key="context.item.key">
