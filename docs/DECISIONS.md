@@ -3681,3 +3681,17 @@ CI's Lighthouse gate failed Total Blocking Time on the builder page on Twenty Tw
 **Why:** the floor stays exactly as strict, and every run of it, in CI and in `/verify`, is quicker. CI's runner has four cores, so four shards there.
 
 **Status:** Accepted.
+
+### D-298 · Each WordPress pair's leg is two jobs, and WebKit and Firefox two each, by project · 2026-11-20
+
+**Context:** a full run is as long as its longest job (#76). On 1.0.0's last full run (CI run 44798766396) that was the newest leg, 44 minutes: the integration suite with the 95 % floor 16, Chromium's browser tests 14, the benchmarks 5, in one job after another. Firefox took 29, the oldest leg 28, WebKit 23 and the variants 23. Starting wp-env took 1 to 2 minutes a job, so the time is the work, not the setup.
+
+**Decision:**
+- **The newest and oldest legs are two jobs each, on two sites.** The integration half starts the integration site alone (with Xdebug in coverage mode on the newest pair) and runs the PHP suites: the 95 % floor on both suites (D-050) and the benchmarks on the newest, the integration suite on the oldest. The browser half starts the browser site alone and runs the i18n check (its POT is made in that site's CLI), Plugin Check, the zip's lifecycle, the update from the previous release, the browser projects and, on the newest, Lighthouse. A draft, and a change only to the browser tests, still run the newest pair's two halves alone (D-041, D-085).
+- **WebKit and Firefox are two jobs each, by project:** desktop and tablet in one, phone in the other. Each project is about 140 tests, so the two take about the same time. Not `--shard`: with `fullyParallel` off, Playwright shards by file, and 87 of the tests are in `builder.spec.ts`; turning it on would change when `beforeAll` hooks run. Split by project, every test runs exactly as it did, on a fresh site.
+- **The required checks change with the names** (the `main` ruleset): the newest, oldest and variants legs become `Integration (newest)`, `Plugin Check, the zip, browser (newest)`, `Integration (oldest)`, `Plugin Check, the zip, browser (oldest)` and `Integration (variants)`; `Browser (webkit)` and `Browser (firefox)` become `Browser (webkit, desktop and tablet)`, `Browser (webkit, phone)`, `Browser (firefox, desktop and tablet)` and `Browser (firefox, phone)`. D-288 kept the old names; this replaces them, with Zach's say-so (20 November).
+- Every job keeps its own fresh site, and no test, floor or project is dropped. The code-passed marker (D-188) is still written only by a run that did all of it.
+
+**Why:** the full run waits on the longest job, and every push to a ready pull request, every merge and every release waits on the full run.
+
+**Status:** Accepted (Zach: "we should do it", and the ruleset change, 20 November).
