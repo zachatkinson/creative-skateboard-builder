@@ -386,6 +386,34 @@ describe( 'Navigator', () => {
 		expect( h.pending.at( -1 ) ).toBe( false );
 	} );
 
+	it( 'asks nothing for a waiting pick once the shopper types on, and never says it waits', () => {
+		const h = harness();
+		const nav = new Navigator( h.deps );
+		nav.pick( {
+			fields: [ [ 'cbuild[deck]', '10' ] ],
+			history: 'replace',
+			fallback: () => undefined,
+		} );
+		nav.drop();
+		vi.advanceTimersByTime( SLOW + WAIT );
+		expect( h.asked ).toEqual( [] );
+		expect( h.pending ).toEqual( [ false ] );
+	} );
+
+	it( 'never says it waits for a pick the route answers quickly', async () => {
+		const h = harness();
+		new Navigator( h.deps ).pick( {
+			fields: [ [ 'cbuild[deck]', '10' ] ],
+			history: 'replace',
+			fallback: () => undefined,
+		} );
+		vi.advanceTimersByTime( WAIT );
+		h.reply( answer( { view: view( 'https://shop.example/?quick' ) } ) );
+		await settle();
+		vi.advanceTimersByTime( SLOW );
+		expect( h.pending ).toEqual( [ false ] );
+	} );
+
 	it( 'cancels a waiting pick when the shopper moves on', async () => {
 		const h = harness();
 		const nav = new Navigator( h.deps );
@@ -407,6 +435,22 @@ describe( 'Navigator', () => {
 		[
 			'the route says 429 with nothing to say',
 			() => answer( { code: 'cbuild_rate_limited' }, 429 ),
+		],
+		[
+			'the route says 429 with an empty message',
+			() => answer( { code: 'cbuild_rate_limited', message: '' }, 429 ),
+		],
+		[
+			'the route says 429 with a message that is no text',
+			() => answer( { code: 'cbuild_rate_limited', message: 20 }, 429 ),
+		],
+		[
+			'the route says 429 with null',
+			() => new Response( 'null', { status: 429 } ),
+		],
+		[
+			'the route says 429 with text',
+			() => answer( 'Too many requests.', 429 ),
 		],
 		[
 			'the route says 500',

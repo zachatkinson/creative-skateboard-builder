@@ -129,7 +129,8 @@ export function open( doc: Document, hash: string, $: Query ): void {
 			.querySelector< HTMLElement >( `ul.wc-tabs a[href="#${ id }"]` )
 			?.click();
 
-	const own = doc.getElementById( field( hash ) ?? '' );
+	// The field's ID is the address without its #, where the address names a field.
+	const own = field( hash ) && doc.getElementById( hash.slice( 1 ) );
 	if ( own ) {
 		tab( PANEL );
 		const group = own.closest( 'details' );

@@ -87,6 +87,18 @@ describe( 'the cart line filters', () => {
 			} ),
 			'a part with no words for it is still not named'
 		).toBe( false );
+		expect(
+			removed( notices )( true, {
+				extensions: line( { role: 'part', build: 'b1', removed: 7 } ),
+			} ),
+			'nor one whose words are no text'
+		).toBe( false );
+		expect(
+			removed( notices )( true, {
+				extensions: line( { role: 'part', build: 'b1' } ),
+			} ),
+			'nor one the server wrote no words for'
+		).toBe( false );
 		expect( createInfoNotice ).not.toHaveBeenCalled();
 		expect(
 			removed( undefined )( true, gone ),
@@ -113,5 +125,62 @@ describe( 'the cart line filters', () => {
 		expect( () =>
 			register( { wc: { blocksCheckout: {} } } )
 		).not.toThrow();
+		expect( () => register( { wp: {} } ) ).not.toThrow();
+		expect( () => register( { wp: { hooks: {} } } ) ).not.toThrow();
+	} );
+
+	it( 'asks for the notices store when a build goes, from the page as it is by then', () => {
+		const addFilter = vi.fn();
+		const page: Parameters< typeof register >[ 0 ] = {
+			wp: { hooks: { addFilter } },
+		};
+		register( page );
+		const answer = addFilter.mock.calls[ 0 ]?.[ 2 ] as ReturnType<
+			typeof removed
+		>;
+		const gone = {
+			extensions: line( {
+				role: 'part',
+				build: 'b2',
+				removed: 'Street was removed from your cart.',
+			} ),
+		};
+		const createInfoNotice = vi.fn();
+		const dispatch = vi.fn( () => ( { createInfoNotice } ) );
+		page.wp = { ...page.wp, data: { dispatch } };
+		expect( answer( true, gone ) ).toBe( false );
+		expect( dispatch ).toHaveBeenCalledWith( 'core/notices' );
+		expect( createInfoNotice ).toHaveBeenCalledWith(
+			'Street was removed from your cart.',
+			expect.objectContaining( { id: 'cbuild-b2-removed' } )
+		);
+		expect( answer( true, { extensions: kit } ), 'a kit' ).toBe( true );
+
+		page.wp = { data: {} };
+		expect( answer( true, gone ), 'no dispatch' ).toBe( false );
+		page.wp = {};
+		expect( answer( true, gone ), 'no data store' ).toBe( false );
+		delete page.wp;
+		expect( answer( true, gone ), 'no wp' ).toBe( false );
+	} );
+
+	it( 'registers on the page as soon as the script loads', async () => {
+		const registerCheckoutFilters = vi.fn();
+		const page = window as unknown as {
+			wc?: { blocksCheckout: { registerCheckoutFilters: unknown } };
+		};
+		page.wc = { blocksCheckout: { registerCheckoutFilters } };
+		vi.resetModules();
+		try {
+			await import( '../../assets/src/cart/lines' );
+		} finally {
+			delete page.wc;
+		}
+		expect( registerCheckoutFilters ).toHaveBeenCalledWith(
+			SPACE,
+			expect.objectContaining( {
+				cartItemClass: expect.any( Function ),
+			} )
+		);
 	} );
 } );

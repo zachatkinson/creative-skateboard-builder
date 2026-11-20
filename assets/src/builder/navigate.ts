@@ -212,11 +212,10 @@ export class Navigator {
 				}
 			);
 			if ( 429 === response.status ) {
-				const refused: unknown = await response.json();
-				const message =
-					refused !== null && 'object' === typeof refused
-						? ( refused as { message?: unknown } ).message
-						: undefined;
+				// Whatever the answer is, null or text included, as an object: its message, if it has one.
+				const { message } = Object( await response.json() ) as {
+					message?: unknown;
+				};
 				return 'string' === typeof message && '' !== message
 					? new Limited( message )
 					: null;
@@ -226,7 +225,7 @@ export class Navigator {
 			}
 			body = await response.json();
 		} catch {
-			return null;
+			// Unread, the body stays undefined, which is no view.
 		}
 		return viewOf( body );
 	}

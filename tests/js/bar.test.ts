@@ -64,6 +64,22 @@ describe( 'unclip', () => {
 		expect( inner.getAttribute( 'style' ) ).toBe( 'overflow-y: auto' );
 		expect( document.documentElement.style.overflowX ).toBe( 'hidden' );
 	} );
+
+	it( 'clips only the axis an ancestor hides', () => {
+		const { root, outer } = page( 'overflow-y: hidden', '' );
+		unclip( root );
+		expect( outer.style.overflowY ).toBe( 'clip' );
+		expect( outer.style.overflowX ).toBe( '' );
+	} );
+
+	it( 'is nothing to do in a document with no window', () => {
+		const other = document.implementation.createHTMLDocument( '' );
+		other.body.innerHTML =
+			'<div style="overflow: hidden"><div class="cbuild"></div></div>';
+		const root = other.querySelector( '.cbuild' ) as HTMLElement;
+		expect( () => unclip( root ) ).not.toThrow();
+		expect( root.parentElement?.style.overflow ).toBe( 'hidden' );
+	} );
 } );
 
 describe( 'taken', () => {
@@ -98,6 +114,33 @@ describe( 'taken', () => {
 
 		box( theme, window.innerHeight - 100, 90 );
 		expect( taken( root ) ).toBe( 0 );
+	} );
+
+	it( 'counts a bar whose foot is the last pixel row of the screen, and not one exactly half the screen tall', () => {
+		const { root, theme } = page( '', '' );
+		theme.style.position = 'fixed';
+		document.elementsFromPoint = vi.fn( () => [ theme ] );
+		box( theme, window.innerHeight - 51, 50 );
+		expect( taken( root ) ).toBe( 51 );
+
+		box( theme, window.innerHeight / 2, window.innerHeight / 2 );
+		expect( taken( root ) ).toBe( 0 );
+	} );
+
+	it( 'never counts the page itself, fixed as a theme may fix it while a menu is open', () => {
+		const { root, theme } = page( '', '' );
+		document.documentElement.style.position = 'fixed';
+		box( document.documentElement, window.innerHeight - 50, 50 );
+		document.elementsFromPoint = vi.fn( () => [ theme ] );
+		expect( taken( root ) ).toBe( 0 );
+	} );
+
+	it( 'is nothing taken in a document with no window', () => {
+		const other = document.implementation.createHTMLDocument( '' );
+		other.body.innerHTML = '<div class="cbuild"></div>';
+		expect( taken( other.querySelector( '.cbuild' ) as HTMLElement ) ).toBe(
+			0
+		);
 	} );
 } );
 
@@ -209,6 +252,14 @@ describe( 'stage', () => {
 		shown.style.position = 'static';
 		stage( root );
 		expect( read() ).toBe( '0px' );
+
+		// Hidden, as the change panel hides it, it covers nothing though its style still says it sticks.
+		shown.style.position = 'sticky';
+		vi.mocked( shown.getClientRects ).mockReturnValue(
+			[] as unknown as DOMRectList
+		);
+		stage( root );
+		expect( read(), 'hidden' ).toBe( '0px' );
 		root.querySelector( '.cbuild__stage' )?.remove();
 		stage( root );
 		expect( read(), 'no stage' ).toBe( '0px' );

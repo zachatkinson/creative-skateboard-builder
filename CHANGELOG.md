@@ -2,7 +2,7 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html). One entry per milestone; `v1.0.0` closes milestone 10 (D-236).
 
-## [Unreleased]
+## [1.0.0] - 2026-11-20
 
 ### Added
 
@@ -53,7 +53,8 @@ All notable changes to this project are documented here. The format follows [Kee
 - My builds' Undo says what it undoes, "Street setup is deleted. You can undo this for 15 minutes.", since a theme can show WooCommerce's notice far from it, and the deleted build is kept for Undo 15 minutes at most (Cowork; #66, #67; D-275).
 - The step rail says each step in one sentence, "Deck, done: Katie", "Trucks, current step", "Wheels, to come", where a screen reader heard the label and its state run together. Once a step has a pick, the next step is a link in the rail (spec: The step rail).
 - Focus stays clear of the bar however many lines the bar takes, on a phone and in a narrow column on a desktop (D-272).
-- On a phone, Next stays under the thumb when the first deck's answer arrives while the shopper is at the end of the step (D-267).
+- On a phone, Next stays under the thumb when the first deck's answer arrives while the shopper is at the end of the step (D-267). In Safari too, where a pressed button takes no focus: the control under a press is kept in place first.
+- In Safari, Show the top turns the board when the top of the picture is scrolled off the screen. The press focused the picture, which scrolled it into view and moved the button from under the pointer.
 - Part specs opens Sold in sets for any part in a slot that takes more than one unit, so a riser's Number in a set is filled in and the riser is offered (Cowork; #61).
 - Saving a kit whose presets are unchanged and name a part the shop hides no longer says the presets were not saved. The Build tab says which preset holds which part, and the presets are kept as they are (Cowork; #62).
 - Clear search, or Enter, pressed within the moment a search waits after typing, no longer has the search put back after it.

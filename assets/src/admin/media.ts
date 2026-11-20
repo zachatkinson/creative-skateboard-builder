@@ -68,6 +68,7 @@ export function layers( doc: Document, media: Media | undefined ): void {
 			return;
 		}
 		event.preventDefault();
+		// Stryker disable next-line StringLiteral: no element has an empty ID or Stryker's placeholder for one, so a button that names no field finds none either way.
 		const input = doc.getElementById( button.dataset.cbuildLayer ?? '' );
 		if ( ! ( input instanceof HTMLInputElement ) ) {
 			return;
