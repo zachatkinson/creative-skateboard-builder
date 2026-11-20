@@ -81,10 +81,13 @@ jobs:
             fi
           fi
           echo "full=$full" >> "$GITHUB_OUTPUT"
+          # Each WordPress pair's leg is two jobs on two sites, the integration half and the browser half, so neither
+          # waits on the other (#76, D-298).
+          newest='{"pair":"newest","part":"integration"},{"pair":"newest","part":"browser"}'
           if [ "$full" = true ]; then
-            echo 'legs=["newest","oldest","variants"]' >> "$GITHUB_OUTPUT"
+            echo "legs=[${newest},{\"pair\":\"oldest\",\"part\":\"integration\"},{\"pair\":\"oldest\",\"part\":\"browser\"},{\"pair\":\"variants\",\"part\":\"integration\"}]" >> "$GITHUB_OUTPUT"
           else
-            echo 'legs=["newest"]' >> "$GITHUB_OUTPUT"
+            echo "legs=[${newest}]" >> "$GITHUB_OUTPUT"
           fi
           echo "browsers=$browsers" >> "$GITHUB_OUTPUT"
           echo "Full run: $full; browser projects: $browsers"
@@ -253,8 +256,11 @@ jobs:
   # integration suite six more times on one wp-env (tools/integration-variants.sh): MySQL 8.4 and MariaDB 10.11 as
   # their own database servers, HPOS off and syncing, a persistent object cache, and multisite, and then the tests that
   # need Yoast SEO, alone (D-102).
+  # Each pair's leg is two jobs (#76, D-298): its integration half starts the integration site alone (:8899) and runs
+  # the PHP suites; its browser half starts the browser site alone (:8898) and runs the rest. The newest leg did both
+  # in one job, 44 minutes, which set the length of every full run.
   integration:
-    name: Integration, Plugin Check, browser (${{ matrix.leg }})
+    name: ${{ matrix.part == 'browser' && format('Plugin Check, the zip, browser ({0})', matrix.pair) || format('Integration ({0})', matrix.pair) }}
     needs: scope
     if: needs.scope.outputs.heavy == 'true'
     runs-on: ubuntu-26.04
@@ -269,7 +275,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        leg: ${{ fromJSON(needs.scope.outputs.legs) }}
+        include: ${{ fromJSON(needs.scope.outputs.legs) }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
@@ -277,8 +283,8 @@ jobs:
       - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
         with:
           php-version: '8.5'
-          # The newest leg measures the unit suite's lines beside the integration suite's (D-050).
-          coverage: ${{ matrix.leg == 'newest' && 'pcov' || 'none' }}
+          # The newest integration half measures the unit suite's lines beside the integration suite's (D-050).
+          coverage: ${{ matrix.pair == 'newest' && matrix.part == 'integration' && 'pcov' || 'none' }}
           tools: composer:v2
       - uses: ramsey/composer-install@65e4f84970763564f46a70b8a54b90d033b3bdda # 4.0.0
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
@@ -288,39 +294,42 @@ jobs:
       - run: npm ci
       - run: npm run build
       - name: Pin the oldest supported WordPress and WooCommerce
-        if: matrix.leg == 'oldest'
+        if: matrix.pair == 'oldest'
         run: npm run env:oldest
-      # The browser site (:8898) and the integration site (:8899) are two wp-env environments (D-047). The variants
-      # leg runs the integration suite alone, so it starts the one.
-      - run: npm run env:start
-        if: matrix.leg != 'variants'
-      - run: npx wp-env start --config=.wp-env.tests.json
-        if: matrix.leg == 'variants'
+      # The browser site (:8898) and the integration site (:8899) are two wp-env environments (D-047); each half starts
+      # its own. The newest integration half's site runs Xdebug in coverage mode, for the floor on both suites.
+      - name: The integration site
+        if: matrix.part == 'integration'
+        run: npx wp-env start --config=.wp-env.tests.json ${{ matrix.pair == 'newest' && '--xdebug=coverage' || '' }}
+      - name: The browser site
+        if: matrix.part == 'browser'
+        run: npx wp-env start
+      # The POT is made in the browser site's CLI.
       - name: The i18n check (the POT current, the translations complete)
-        if: matrix.leg == 'newest'
+        if: matrix.pair == 'newest' && matrix.part == 'browser'
         run: composer i18n:check
       # The integration suite either way. The newest leg runs it with coverage and merges the unit suite's, for the one
       # floor on all of src/ (D-050): this leg already has the site up, so the number costs no job of its own (D-040).
       - name: The integration suite, and the 95 % line floor on both suites together
-        if: matrix.leg == 'newest'
+        if: matrix.pair == 'newest' && matrix.part == 'integration'
         run: composer test:coverage:all
       - run: composer test:integration
-        if: matrix.leg == 'oldest'
+        if: matrix.pair == 'oldest' && matrix.part == 'integration'
       # Seconds on a site that is already up: 2,000 parts indexed, exported, checked and dry-run, each inside a request.
       # A shared runner's speed moves from run to run, so here the budgets are scaled by how much slower than the Mac the
       # runner does a fixed piece of work, at most 2.5 times, and the query counts are held as anywhere (D-124, D-171).
       - name: The benchmarks at 2,000 parts (Xdebug off)
-        if: matrix.leg == 'newest'
+        if: matrix.pair == 'newest' && matrix.part == 'integration'
         env:
           CBUILD_BENCHMARK_SHARED: '1'
         run: composer test:benchmark:integration
       - name: The six variants (two database servers, HPOS off and syncing, object cache, multisite) and the Yoast tests
-        if: matrix.leg == 'variants'
+        if: matrix.pair == 'variants'
         run: bash tools/integration-variants.sh
       - run: npm run plugin-check
-        if: matrix.leg == 'newest' || matrix.leg == 'oldest'
+        if: matrix.part == 'browser'
       - name: The zip installs, upgrades over itself and uninstalls clean
-        if: matrix.leg == 'newest' || matrix.leg == 'oldest'
+        if: matrix.part == 'browser'
         run: npm run zip-lifecycle
       # Where every project runs, newest runs Chromium's desktop and phone, and the `browsers` job the other engines,
       # the other projects, the update from every release and the visual snapshots, each in a job of its own (D-258).
@@ -329,9 +338,12 @@ jobs:
       # packages they need are installed each time.
       - name: The browser projects for the leg
         id: browsers
-        if: matrix.leg == 'newest' || matrix.leg == 'oldest'
+        if: matrix.part == 'browser'
+        env:
+          PAIR: ${{ matrix.pair }}
+          BROWSERS: ${{ needs.scope.outputs.browsers }}
         run: |
-          if [ "${{ matrix.leg }}" = newest ] && [ "${{ needs.scope.outputs.browsers }}" = every ]; then
+          if [ "${PAIR}" = newest ] && [ "${BROWSERS}" = every ]; then
             echo "engines=chromium" >> "$GITHUB_OUTPUT"
             echo "projects=--project=chromium-desktop --project=chromium-phone" >> "$GITHUB_OUTPUT"
           else
@@ -341,7 +353,7 @@ jobs:
           echo "version=$(node -p "require('./node_modules/@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
         id: playwright-cache
-        if: matrix.leg == 'newest' || matrix.leg == 'oldest'
+        if: matrix.part == 'browser'
         with:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ steps.browsers.outputs.version }}-${{ steps.browsers.outputs.engines }}
@@ -350,7 +362,7 @@ jobs:
       # `timeout` stops npx, not the apt-get it started as root, so a try waits up to five minutes for the last one's
       # apt-get to let go of dpkg's lock before it starts (CI run 44194833317, oldest; D-224).
       - name: Playwright's browsers and their system packages (three tries, five minutes each)
-        if: (matrix.leg == 'newest' || matrix.leg == 'oldest') && steps.playwright-cache.outputs.cache-hit != 'true'
+        if: matrix.part == 'browser' && steps.playwright-cache.outputs.cache-hit != 'true'
         run: |
           for try in 1 2 3; do
             timeout 300 bash -c 'while pgrep -x apt-get > /dev/null || pgrep -x dpkg > /dev/null; do sleep 5; done' || true
@@ -367,7 +379,7 @@ jobs:
           done
           exit 1
       - name: The system packages Playwright's cached browsers need (three tries, three minutes each)
-        if: (matrix.leg == 'newest' || matrix.leg == 'oldest') && steps.playwright-cache.outputs.cache-hit == 'true'
+        if: matrix.part == 'browser' && steps.playwright-cache.outputs.cache-hit == 'true'
         run: |
           for try in 1 2 3; do
             timeout 300 bash -c 'while pgrep -x apt-get > /dev/null || pgrep -x dpkg > /dev/null; do sleep 5; done' || true
@@ -388,26 +400,26 @@ jobs:
       # D-208). It needs Playwright's Chromium, so it comes after the install; the browser projects' setup seeds the
       # site again after it, as after the zip's lifecycle.
       - name: The update from the previous release, through the upload screen
-        if: matrix.leg == 'newest' || matrix.leg == 'oldest'
+        if: matrix.part == 'browser'
         env:
           GH_TOKEN: ${{ github.token }}
         run: npm run upgrade
       - run: npm run test:e2e -- ${{ steps.browsers.outputs.projects }}
-        if: matrix.leg == 'newest' || matrix.leg == 'oldest'
+        if: matrix.part == 'browser'
       - name: Lighthouse CI (LCP, CLS, TBT, SEO on the mobile profile)
-        if: matrix.leg == 'newest'
+        if: matrix.pair == 'newest' && matrix.part == 'browser'
         run: npm run lhci
       # On a job that ran out of time as well: a cancelled run prints no failure, so the traces are all there is.
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         if: failure() || cancelled()
         with:
-          name: browser-${{ matrix.leg }}
+          name: ${{ matrix.part }}-${{ matrix.pair }}
           path: |
             test-results
             tmp/lhci
       - name: WordPress's debug log
         if: failure()
-        run: npx wp-env run cli --config=.wp-env.tests.json -- bash -c 'cat wp-content/debug.log 2>/dev/null || true'; npx wp-env run cli -- bash -c 'cat wp-content/debug.log 2>/dev/null || true'
+        run: npx wp-env run cli ${{ matrix.part == 'integration' && '--config=.wp-env.tests.json' || '' }} -- bash -c 'cat wp-content/debug.log 2>/dev/null || true'
 
   # The newest WordPress and WooCommerce's other browser work, beside the newest leg, where every project runs (D-258).
   # The newest leg did all of it in one job, some 95 minutes, which set the length of every full run; each part is now
@@ -423,13 +435,20 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # Each engine's job runs its tablet project too, so the required checks keep their names (D-288).
-          - part: webkit
+          # Each engine is two jobs, by project, so a test runs as it would in one (#76, D-298): its desktop and tablet
+          # projects, and its phone. Each project is some 140 tests, so the two take about the same time.
+          - part: webkit, desktop and tablet
             engines: webkit
-            run: npm run test:e2e -- --project=webkit-desktop --project=webkit-phone --project=webkit-tablet
-          - part: firefox
+            run: npm run test:e2e -- --project=webkit-desktop --project=webkit-tablet
+          - part: webkit, phone
+            engines: webkit
+            run: npm run test:e2e -- --project=webkit-phone
+          - part: firefox, desktop and tablet
             engines: firefox
-            run: npm run test:e2e -- --project=firefox-desktop --project=firefox-phone --project=firefox-tablet
+            run: npm run test:e2e -- --project=firefox-desktop --project=firefox-tablet
+          - part: firefox, phone
+            engines: firefox
+            run: npm run test:e2e -- --project=firefox-phone
           - part: no-js, fr-ca, rtl
             engines: chromium
             run: npm run test:e2e -- --project=no-js --project=fr-ca --project=rtl --project=chromium-tablet
