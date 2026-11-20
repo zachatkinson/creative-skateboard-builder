@@ -3639,3 +3639,16 @@ Measured for 1.0.0 (`docs/BENCHMARK.md`, v1.0.0), with 500 candidates in the ste
 **Why:** the spec's budget is met where it was set and held, and the cases over it are rare on a real site; the release carries many fixes shops are waiting for.
 
 **Status:** Accepted, for Zach to confirm or reverse.
+
+### D-295 · The 500-look cap test stays out of the domain's path-coverage run · 2026-11-20
+
+CI's static job ran out of its 15 minutes on every push since milestone 10's shelf landed, in `composer test:coverage`'s second pass: the fit engine's tests under Xdebug's path coverage, which took about 13 minutes on this Mac. One test was nearly all of it. `ShelfTest::test_no_page_goes_past_the_five_hundredth_look` lists 520 looks five times, 2,600 picks through the engine, which takes a quarter of a second, but 71 seconds alone under path coverage and about 8½ minutes inside the whole run.
+
+- **It is in a group of its own, `cap`, which `tools/coverage.sh` leaves out of that pass only.** The plain unit pass in the same step runs it, as do `composer test:unit` and Infection (`infection-domain.json5` doesn't exclude the group). The run takes 4 minutes 9 seconds here, and the floors still hold: 1,604 of 1,604 lines and 1,612 of 1,612 branches in `src/Domain`, so the test covers nothing the others don't.
+- **Not the timeout.** Raising it would hide the next slow test as well.
+- **Not a smaller cap for the test.** The spec's number is 500, and the test proves that number.
+- **What was tried:** splitting `Shelf::of()` and `SizePicker::pick()`, the two methods at Xdebug's limit of 4,096 paths. It saved 12 seconds and was reverted, so the engine stays as Infection measured it.
+
+**Why:** the test stays and keeps its number, and the floor is measured as before, on every other test.
+
+**Status:** Accepted.

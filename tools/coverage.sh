@@ -18,5 +18,5 @@ if ! has xdebug; then
 	exit 1
 fi
 rm -f tmp/coverage-domain.xml
-php -d pcov.enabled=0 -d xdebug.mode=coverage vendor/bin/phpunit -c phpunit-domain.xml.dist --testsuite unit --exclude-group benchmark --exclude-group invariant --path-coverage --coverage-cobertura tmp/coverage-domain.xml --no-output
+php -d pcov.enabled=0 -d xdebug.mode=coverage vendor/bin/phpunit -c phpunit-domain.xml.dist --testsuite unit --exclude-group benchmark --exclude-group invariant --exclude-group cap --path-coverage --coverage-cobertura tmp/coverage-domain.xml --no-output
 php tools/coverage-floor.php tmp/coverage.xml tmp/coverage-domain.xml

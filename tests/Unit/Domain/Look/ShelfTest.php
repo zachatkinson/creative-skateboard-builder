@@ -27,6 +27,7 @@ use CreativeBranding\SkateboardBuilder\Domain\Measure\Measure;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Domain\Builds;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Domain\KitDocuments;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Domain\Parts;
+use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -250,7 +251,11 @@ final class ShelfTest extends TestCase {
 	/**
 	 * Spec (configurator): 30 at a time, "The cap stays at 500 looks a step: search and filters narrow past it." The
 	 * route's `from` reaches 2,000 (D-265), but no page goes past the 500th look, so a reload shows what was paged.
+	 *
+	 * Its 2,600 picks take a quarter second, but over a minute under Xdebug's path coverage, so the domain's coverage
+	 * run leaves it out (D-295); the unit run beside it and Infection run it.
 	 */
+	#[Group( 'cap' )]
 	public function test_no_page_goes_past_the_five_hundredth_look(): void {
 		$parts   = array();
 		$shelved = array();
