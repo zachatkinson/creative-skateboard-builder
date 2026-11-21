@@ -81,14 +81,33 @@ jobs:
             fi
           fi
           echo "full=$full" >> "$GITHUB_OUTPUT"
-          # Each WordPress pair's leg is two jobs on two sites, the integration half and the browser half, so neither
-          # waits on the other (#76, D-298).
-          newest='{"pair":"newest","part":"integration"},{"pair":"newest","part":"browser"}'
-          if [ "$full" = true ]; then
-            echo "legs=[${newest},{\"pair\":\"oldest\",\"part\":\"integration\"},{\"pair\":\"oldest\",\"part\":\"browser\"},{\"pair\":\"variants\",\"part\":\"integration\"}]" >> "$GITHUB_OUTPUT"
+          # The legs' jobs, each on the one wp-env site it needs (#76, D-298), and none much past 20 minutes (D-300):
+          # its check's name, its WordPress pair, its part, its site and, for a browser part, its Playwright projects
+          # and engines. Where every project runs, newest runs Chromium's desktop and phone apart, and the `browsers`
+          # job the rest; where they don't (a draft, or the oldest pair), one desktop and one phone engine (D-085).
+          leg() { jq -nc --arg name "$1" --arg pair "$2" --arg part "$3" --arg site "$4" --arg projects "${5:-}" --arg engines "${6:-}" '$ARGS.named'; }
+          legs=(
+            "$(leg 'Integration (newest)' newest integration tests)"
+            "$(leg 'The benchmarks at 2,000 parts (newest)' newest benchmarks tests)"
+            "$(leg 'Lighthouse CI (newest)' newest lighthouse browser)"
+          )
+          if [ "$browsers" = every ]; then
+            legs+=(
+              "$(leg 'Plugin Check, the zip, browser (newest)' newest browser browser '--project=chromium-desktop' chromium)"
+              "$(leg 'Browser (newest, chromium phone)' newest phone browser '--project=chromium-phone' chromium)"
+            )
           else
-            echo "legs=[${newest}]" >> "$GITHUB_OUTPUT"
+            legs+=("$(leg 'Plugin Check, the zip, browser (newest)' newest browser browser '--project=chromium-desktop --project=webkit-phone' 'chromium webkit')")
           fi
+          if [ "$full" = true ]; then
+            legs+=(
+              "$(leg 'Integration (oldest)' oldest integration tests)"
+              "$(leg 'Plugin Check, the zip, browser (oldest)' oldest browser browser '--project=chromium-desktop --project=webkit-phone' 'chromium webkit')"
+              "$(leg 'Integration (variants: MySQL 8.4, MariaDB 10.11, HPOS off)' variants databases tests)"
+              "$(leg 'Integration (variants: HPOS syncing, object cache, Yoast, multisite)' variants the-rest tests)"
+            )
+          fi
+          echo "legs=$(printf '%s\n' "${legs[@]}" | jq -sc .)" >> "$GITHUB_OUTPUT"
           echo "browsers=$browsers" >> "$GITHUB_OUTPUT"
           echo "Full run: $full; browser projects: $browsers"
           code="$(bash tools/ci-code-hash.sh)"
@@ -269,7 +288,7 @@ jobs:
   # the PHP suites; its browser half starts the browser site alone (:8898) and runs the rest. The newest leg did both
   # in one job, 44 minutes, which set the length of every full run.
   integration:
-    name: ${{ matrix.part == 'browser' && format('Plugin Check, the zip, browser ({0})', matrix.pair) || format('Integration ({0})', matrix.pair) }}
+    name: ${{ matrix.name }}
     needs: scope
     if: needs.scope.outputs.heavy == 'true'
     runs-on: ubuntu-26.04
@@ -308,17 +327,18 @@ jobs:
       # The browser site (:8898) and the integration site (:8899) are two wp-env environments (D-047); each half starts
       # its own. The newest integration half's site runs Xdebug in coverage mode, for the floor on both suites.
       - name: The integration site
-        if: matrix.part == 'integration'
+        if: matrix.site == 'tests'
         env:
           PAIR: ${{ matrix.pair }}
+          PART: ${{ matrix.part }}
         run: |
-          if [ "$PAIR" = newest ]; then
+          if [ "$PAIR" = newest ] && [ "$PART" = integration ]; then
             npx wp-env start --config=.wp-env.tests.json --xdebug=coverage
           else
             npx wp-env start --config=.wp-env.tests.json
           fi
       - name: The browser site
-        if: matrix.part == 'browser'
+        if: matrix.site == 'browser'
         run: npx wp-env start
       # The POT is made in the browser site's CLI.
       - name: The i18n check (the POT current, the translations complete)
@@ -331,45 +351,33 @@ jobs:
         run: composer test:coverage:all
       - run: composer test:integration
         if: matrix.pair == 'oldest' && matrix.part == 'integration'
-      # Seconds on a site that is already up: 2,000 parts indexed, exported, checked and dry-run, each inside a request.
-      # A shared runner's speed moves from run to run, so here the budgets are scaled by how much slower than the Mac the
-      # runner does a fixed piece of work, at most 2.5 times, and the query counts are held as anywhere (D-124, D-171).
+      # 2,000 parts indexed, exported, checked and dry-run, each inside a request: five minutes, so a job of its own
+      # beside the suite (D-300). A shared runner's speed moves from run to run, so here the budgets are scaled by how
+      # much slower than the Mac the runner does a fixed piece of work, at most 2.5 times, and the query counts are held
+      # as anywhere (D-124, D-171).
       - name: The benchmarks at 2,000 parts (Xdebug off)
-        if: matrix.pair == 'newest' && matrix.part == 'integration'
+        if: matrix.part == 'benchmarks'
         env:
           CBUILD_BENCHMARK_SHARED: '1'
         run: composer test:benchmark:integration
-      - name: The six variants (two database servers, HPOS off and syncing, object cache, multisite) and the Yoast tests
+      # Two halves, about ten minutes each (D-300): the two database servers and HPOS off; HPOS syncing, the object
+      # cache, the Yoast tests and multisite.
+      - name: The integration suite's variants
         if: matrix.pair == 'variants'
-        run: bash tools/integration-variants.sh
+        env:
+          HALF: ${{ matrix.part }}
+        run: bash tools/integration-variants.sh "$HALF"
       - run: npm run plugin-check
         if: matrix.part == 'browser'
       - name: The zip installs, upgrades over itself and uninstalls clean
         if: matrix.part == 'browser'
         run: npm run zip-lifecycle
-      # Where every project runs, newest runs Chromium's desktop and phone, and the `browsers` job the other engines,
-      # the other projects, the update from every release and the visual snapshots, each in a job of its own (D-258).
-      # Oldest, which is there for the WordPress and WooCommerce versions, runs one desktop and one phone engine, and
-      # so does a draft's newest (D-085). The browsers are cached by Playwright's version and the engines; the system
-      # packages they need are installed each time.
-      - name: The browser projects for the leg
-        id: browsers
-        if: matrix.part == 'browser'
-        env:
-          PAIR: ${{ matrix.pair }}
-          BROWSERS: ${{ needs.scope.outputs.browsers }}
-        run: |
-          if [ "${PAIR}" = newest ] && [ "${BROWSERS}" = every ]; then
-            echo "engines=chromium" >> "$GITHUB_OUTPUT"
-            echo "projects=--project=chromium-desktop --project=chromium-phone" >> "$GITHUB_OUTPUT"
-          else
-            echo "engines=chromium webkit" >> "$GITHUB_OUTPUT"
-            echo "projects=--project=chromium-desktop --project=webkit-phone" >> "$GITHUB_OUTPUT"
-          fi
+      # The browsers are cached by Playwright's version and the engines; the system packages they need are installed
+      # each time.
       - uses: ./.github/actions/playwright
-        if: matrix.part == 'browser'
+        if: matrix.projects != ''
         with:
-          engines: ${{ steps.browsers.outputs.engines }}
+          engines: ${{ matrix.engines }}
       # The previous release, as published, updated to this build through the upload screen's "Replace current with
       # uploaded", after a check that its container builds every service from these files (Cowork's M7 review, F3;
       # D-208). It needs Playwright's Chromium, so it comes after the install; the browser projects' setup seeds the
@@ -380,19 +388,20 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: npm run upgrade
       - name: The browser projects
-        if: matrix.part == 'browser'
+        if: matrix.projects != ''
         env:
-          PROJECTS: ${{ steps.browsers.outputs.projects }}
+          PROJECTS: ${{ matrix.projects }}
         run: |
           read -r -a projects <<<"$PROJECTS"
           npm run test:e2e -- "${projects[@]}"
+      # A job of its own (D-300): four minutes, and a runner with no browser tests on it before it measures.
       - name: Lighthouse CI (LCP, CLS, TBT, SEO on the mobile profile)
         id: lhci
-        if: matrix.pair == 'newest' && matrix.part == 'browser'
+        if: matrix.part == 'lighthouse'
         run: npm run lhci
       # Lighthouse CI prints values only for a gate that failed, so the medians go to the job's summary either way (#74).
       - name: Lighthouse's medians in the job's summary
-        if: ${{ !cancelled() && steps.lhci.outcome != 'skipped' && matrix.pair == 'newest' && matrix.part == 'browser' }}
+        if: ${{ !cancelled() && steps.lhci.outcome != 'skipped' && matrix.part == 'lighthouse' }}
         run: php tools/lhci-summary.php tmp/lhci | tee -a "$GITHUB_STEP_SUMMARY"
       # On a job that ran out of time as well: a cancelled run prints no failure, so the traces are all there is.
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
@@ -407,10 +416,10 @@ jobs:
       - name: WordPress's debug log
         if: failure()
         env:
-          PART: ${{ matrix.part }}
+          SITE: ${{ matrix.site }}
         run: |
           config=()
-          if [ "$PART" = integration ]; then config=(--config=.wp-env.tests.json); fi
+          if [ "$SITE" = tests ]; then config=(--config=.wp-env.tests.json); fi
           npx wp-env run cli "${config[@]}" -- bash -c 'cat wp-content/debug.log 2>/dev/null || true'
 
   # The newest WordPress and WooCommerce's other browser work, beside the newest leg, where every project runs (D-258).
@@ -427,11 +436,15 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # Each engine is two jobs, by project, so a test runs as it would in one (#76, D-298): its desktop and tablet
-          # projects, and its phone. Each project is some 140 tests, so the two take about the same time.
-          - part: webkit, desktop and tablet
+          # Split by project, so a test runs as it would in one job (#76, D-298), and no job runs much past 20 minutes
+          # (D-300). WebKit is the slowest engine, so each of its projects is a job; Firefox's desktop and tablet, 13
+          # minutes together, stay one.
+          - part: webkit, desktop
             engines: webkit
-            run: npm run test:e2e -- --project=webkit-desktop --project=webkit-tablet
+            run: npm run test:e2e -- --project=webkit-desktop
+          - part: webkit, tablet
+            engines: webkit
+            run: npm run test:e2e -- --project=webkit-tablet
           - part: webkit, phone
             engines: webkit
             run: npm run test:e2e -- --project=webkit-phone
@@ -441,9 +454,13 @@ jobs:
           - part: firefox, phone
             engines: firefox
             run: npm run test:e2e -- --project=firefox-phone
-          - part: no-js, fr-ca, rtl
+          # Four projects were 21 minutes in one job; two each.
+          - part: no-js, fr-ca
             engines: chromium
-            run: npm run test:e2e -- --project=no-js --project=fr-ca --project=rtl --project=chromium-tablet
+            run: npm run test:e2e -- --project=no-js --project=fr-ca
+          - part: rtl, chromium tablet
+            engines: chromium
+            run: npm run test:e2e -- --project=rtl --project=chromium-tablet
           # Milestone 9: from every published release, each with the shop's data made on it (D-232).
           - part: updates
             engines: chromium

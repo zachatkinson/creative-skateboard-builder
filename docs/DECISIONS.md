@@ -3718,3 +3718,22 @@ CI's Lighthouse gate failed Total Blocking Time on the builder page on Twenty Tw
 **Why:** each closes a way a workflow could be misused or a release be taken for another's, at the cost of seconds in a job that already runs.
 
 **Status:** Accepted (Zach approved the tools, 20 November).
+
+### D-300 · No CI job much past 20 minutes: the five longest are split · 2026-11-20
+
+**Context:** after D-298, a full run took about 30 minutes, set by five jobs of 22 to 25 minutes (PR #78's run 44826319516): the newest integration half (the suite 16.1 minutes, the benchmarks 5.1), the variants (20.5), the newest browser half (its tests 15.1, Lighthouse 4.2), "no-js, fr-ca, rtl" with Chromium's tablet (21.2) and WebKit's desktop and tablet (19.7). Zach asked for the split on 20 November. D-040 weighed billed minutes, but the repository is public and its standard runners free (D-237), so a job's setup costs nothing but a runner, and the free plan runs 20 jobs at once.
+
+**Decision:**
+- **The legs.** The scope job writes each leg's check name, pair, part, site and Playwright projects with `jq`, and the `integration` job reads them; no step works its part out from the pair any more. A full run's legs:
+  - newest: the integration suite with the coverage floor; the benchmarks at 2,000 parts; Lighthouse CI; Plugin Check, the zip, the update and Chromium's desktop project; Chromium's phone project;
+  - oldest: the integration suite; Plugin Check, the zip, the update and one desktop and one phone engine, as before;
+  - variants: two jobs, `tools/integration-variants.sh databases` (MySQL 8.4, MariaDB 10.11, HPOS off) and `the-rest` (HPOS syncing, the object cache, the Yoast tests, multisite). With no argument the script still runs all seven.
+- **Lighthouse on a runner of its own**, with no browser tests before it on the same machine, which may steady its numbers (#75).
+- **The `browsers` job:** WebKit's desktop and tablet apart, and "no-js, fr-ca" and "rtl, chromium tablet" in place of the four together. Firefox's desktop and tablet (13 minutes) stay one.
+- **A draft, and a ready change only to the browser tests,** run what they ran, in the same jobs as above where they apply.
+- A full run is 22 jobs, so at its peak a short one may wait for a runner.
+- The ruleset's required checks are the new names (Zach's authorization for the same change under D-298).
+
+**Why:** the longest job sets the run's length; it should be about 18 minutes (the newest integration suite), so a full run about 20 instead of 30. The first full run's numbers are on #76.
+
+**Status:** Accepted.
