@@ -21,14 +21,17 @@ name: Release
 on:
   push:
     tags: ['v*.*.*']
-  workflow_run:
+  # zizmor flags workflow_run as such: it runs with the base repository's rights on another run's completion. Here it
+  # acts only on CI's push to main that succeeded (the `ci` job's if), finds that commit's tag through the API, and
+  # checks out the tagged commit itself; no artifact or code of the other run is used (D-299).
+  workflow_run: # zizmor: ignore[dangerous-triggers]
     workflows: [CI]
     types: [completed]
     branches: [main]
 
 permissions:
   contents: read
-  actions: read
+  actions: read # the ci job reads CI's runs for the tagged commit
 
 # One queue per commit: GitHub keeps one waiting run per queue and cancels the one already waiting when another
 # arrives, so a single queue could drop a tag's run behind CI completions on other commits.
@@ -164,14 +167,17 @@ jobs:
           tools: composer:v2
           coverage: none
       # The same installs as the CI job that runs the dry run: the script reads the manifest back through the
-      # plugin's own class, which needs Composer's autoloader (gate 10).
+      # plugin's own class, which needs Composer's autoloader (gate 10). No cache: what a release ships is built from
+      # the lock files alone, so no cache another run saved can reach it (zizmor's cache-poisoning, D-299).
       - uses: ramsey/composer-install@65e4f84970763564f46a70b8a54b90d033b3bdda # 4.0.0
         if: steps.plan.outputs.release == 'yes'
+        with:
+          ignore-cache: 'yes'
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         if: steps.plan.outputs.release == 'yes'
         with:
           node-version-file: .nvmrc
-          cache: npm
+          package-manager-cache: false
       # The zip carries the built assets (build/), so the scripts are installed and built first.
       - run: npm ci
         if: steps.plan.outputs.release == 'yes'
@@ -200,11 +206,38 @@ jobs:
             tmp/info.json
             tmp/release-notes.md
 
+  # The zip's build provenance (SLSA, D-299), on a fresh runner with no secret: nothing of the repository's or of any
+  # package has run on it, so nothing but this workflow can sign as it, and gate 9 keeps the token's job to gh alone.
+  # A shop or a reviewer checks a zip with `gh attestation verify <zip> --repo zachatkinson/creative-skateboard-builder`.
+  attest:
+    name: Sign the zip's build provenance
+    needs: [state, build]
+    if: needs.build.outputs.release == 'yes'
+    runs-on: ubuntu-26.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      id-token: write # the provenance is signed with this run's identity (Sigstore)
+      attestations: write # and stored as this repository's attestation
+    env:
+      SLUG: creative-skateboard-builder
+      VERSION: ${{ needs.state.outputs.version }}
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          name: release
+          path: tmp
+      - uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: tmp/${{ env.SLUG }}-${{ env.VERSION }}.zip
+
   # A fresh runner: nothing of the repository's or of any package has run on it. It downloads the files and runs gh.
+  # It waits for the provenance, so no zip is published unsigned; a run that only points info.json at a release an
+  # earlier run published has no zip to sign, and goes on without it.
   publish:
     name: Publish to the releases repo
-    needs: [state, build]
-    if: needs.build.outputs.release == 'yes' || needs.build.outputs.point == 'yes'
+    needs: [state, build, attest]
+    if: ${{ !cancelled() && needs.build.result == 'success' && (needs.attest.result == 'success' || (needs.attest.result == 'skipped' && needs.build.outputs.release != 'yes')) && (needs.build.outputs.release == 'yes' || needs.build.outputs.point == 'yes') }}
     runs-on: ubuntu-26.04
     timeout-minutes: 10
     env:

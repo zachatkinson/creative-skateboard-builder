@@ -13,7 +13,7 @@ Walked before each tag by someone other than the author of the milestone. OWASP'
 7. Saved builds are read and changed only by the customer who owns them, checked on every request.
 8. Generated files are made only for builds that pass validation, from a capped queue, and named by a hash, never by anything a visitor sends.
 9. Logs hold part, kit and order IDs, never names, emails or addresses.
-10. Supply chain: both lock files committed, `composer audit` passing, `npm audit` passing on what the zip ships (D-044), a secrets scan on every push, every GitHub Action pinned to a commit SHA, a CycloneDX SBOM with each release, and the release's token never on a runner that installs or runs the toolchain (D-043, gate 9).
+10. Supply chain: both lock files committed, `composer audit` passing, `npm audit` passing on what the zip ships (D-044), a secrets scan on every push, every GitHub Action pinned to a commit SHA, a CycloneDX SBOM with each release, the zip's SLSA build provenance signed on a runner with no secret and nothing of the toolchain (`gh attestation verify <zip> --repo zachatkinson/creative-skateboard-builder`, from 1.1.0; D-299), the workflows linted by actionlint and zizmor on every push, and the release's token never on a runner that installs or runs the toolchain (D-043, gate 9).
 11. Uninstall removes everything the plugin made and keeps the shop's order records.
 
 ## The repository (from 18 November 2026, D-237)

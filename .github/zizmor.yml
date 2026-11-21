@@ -1,0 +1,7 @@
+# zizmor's configuration (#74, D-299).
+rules:
+  # It asks for GitHub's `$/` self-repository syntax (30 July 2026) in place of `./` for a local action. actionlint
+  # 1.7.12 rejects `$/` ("ref is missing"), and every job that uses the local action checks the repository out first,
+  # so `./` resolves to this commit too. Turn this back on once actionlint accepts `$/`.
+  self-repository:
+    disable: true

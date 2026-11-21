@@ -44,8 +44,8 @@ jobs:
     # The markers are other runs' artifacts, and their runs' conclusions, which need actions: read.
     permissions:
       contents: read
-      pull-requests: read
-      actions: read
+      pull-requests: read # gitleaks lists the pull request's commits; the scope step reads its state
+      actions: read # the code-passed markers are other runs' artifacts
     outputs:
       full: ${{ steps.scope.outputs.full }}
       browsers: ${{ steps.scope.outputs.browsers }}
@@ -121,6 +121,15 @@ jobs:
       - uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
         env:
           GITHUB_TOKEN: ${{ github.token }}
+      # The workflows' own lint (#74, D-299), here beside the secrets scan, for the same reason: seconds, and nothing
+      # waits on it but what needs this job. actionlint checks the syntax, the expressions and, with ShellCheck, every
+      # run script; zizmor checks them for security at its pedantic persona, with its online audits. Each is its
+      # release's binary at a pinned version and checksum (tools/workflow-lint.sh): the repository allows GitHub's own
+      # actions and three named ones, so neither tool is an action.
+      - name: actionlint and zizmor
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash tools/workflow-lint.sh
 
   static:
     name: Lint, analyse, architecture, gates, unit tests, API snapshot, audits, benchmarks, PHP 7.4 parse
@@ -300,7 +309,14 @@ jobs:
       # its own. The newest integration half's site runs Xdebug in coverage mode, for the floor on both suites.
       - name: The integration site
         if: matrix.part == 'integration'
-        run: npx wp-env start --config=.wp-env.tests.json ${{ matrix.pair == 'newest' && '--xdebug=coverage' || '' }}
+        env:
+          PAIR: ${{ matrix.pair }}
+        run: |
+          if [ "$PAIR" = newest ]; then
+            npx wp-env start --config=.wp-env.tests.json --xdebug=coverage
+          else
+            npx wp-env start --config=.wp-env.tests.json
+          fi
       - name: The browser site
         if: matrix.part == 'browser'
         run: npx wp-env start
@@ -350,51 +366,10 @@ jobs:
             echo "engines=chromium webkit" >> "$GITHUB_OUTPUT"
             echo "projects=--project=chromium-desktop --project=webkit-phone" >> "$GITHUB_OUTPUT"
           fi
-          echo "version=$(node -p "require('./node_modules/@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
-      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
-        id: playwright-cache
+      - uses: ./.github/actions/playwright
         if: matrix.part == 'browser'
         with:
-          path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ steps.browsers.outputs.version }}-${{ steps.browsers.outputs.engines }}
-      # apt can hang for as long as the job has when the runner cannot reach Ubuntu's mirrors: two jobs sat here for 15
-      # and 19 minutes on 11 November 2026 (D-123). Each try is stopped after a few minutes, and there are three.
-      # `timeout` stops npx, not the apt-get it started as root, so a try waits up to five minutes for the last one's
-      # apt-get to let go of dpkg's lock before it starts (CI run 44194833317, oldest; D-224).
-      - name: Playwright's browsers and their system packages (three tries, five minutes each)
-        if: matrix.part == 'browser' && steps.playwright-cache.outputs.cache-hit != 'true'
-        run: |
-          for try in 1 2 3; do
-            timeout 300 bash -c 'while pgrep -x apt-get > /dev/null || pgrep -x dpkg > /dev/null; do sleep 5; done' || true
-            if timeout 300 npx playwright install --with-deps ${{ steps.browsers.outputs.engines }}; then exit 0; fi
-            echo "::warning::Try ${try} of Playwright's install did not finish."
-            # `timeout` stopped npx, not the apt-get it started as root, which can keep dpkg's lock for the next try to
-            # wait out and fail on (#64). Stop what the try left, and finish any package it left half set up.
-            sudo pkill -x apt-get || true
-            sudo pkill -x dpkg || true
-            sudo dpkg --configure -a || true
-            # Only after a try has failed: the hosted runners use Azure's mirror, and Ubuntu's own may answer when it does not (D-126).
-            grep -rl azure.archive.ubuntu.com /etc/apt | xargs -r sudo sed -i 's/azure\.archive\.ubuntu\.com/archive.ubuntu.com/g' || true
-            sleep 30
-          done
-          exit 1
-      - name: The system packages Playwright's cached browsers need (three tries, three minutes each)
-        if: matrix.part == 'browser' && steps.playwright-cache.outputs.cache-hit == 'true'
-        run: |
-          for try in 1 2 3; do
-            timeout 300 bash -c 'while pgrep -x apt-get > /dev/null || pgrep -x dpkg > /dev/null; do sleep 5; done' || true
-            if timeout 180 npx playwright install-deps ${{ steps.browsers.outputs.engines }}; then exit 0; fi
-            echo "::warning::Try ${try} of Playwright's system packages did not finish."
-            # `timeout` stopped npx, not the apt-get it started as root, which can keep dpkg's lock for the next try to
-            # wait out and fail on (#64). Stop what the try left, and finish any package it left half set up.
-            sudo pkill -x apt-get || true
-            sudo pkill -x dpkg || true
-            sudo dpkg --configure -a || true
-            # Only after a try has failed: the hosted runners use Azure's mirror, and Ubuntu's own may answer when it does not (D-126).
-            grep -rl azure.archive.ubuntu.com /etc/apt | xargs -r sudo sed -i 's/azure\.archive\.ubuntu\.com/archive.ubuntu.com/g' || true
-            sleep 30
-          done
-          exit 1
+          engines: ${{ steps.browsers.outputs.engines }}
       # The previous release, as published, updated to this build through the upload screen's "Replace current with
       # uploaded", after a check that its container builds every service from these files (Cowork's M7 review, F3;
       # D-208). It needs Playwright's Chromium, so it comes after the install; the browser projects' setup seeds the
@@ -404,22 +379,39 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: npm run upgrade
-      - run: npm run test:e2e -- ${{ steps.browsers.outputs.projects }}
+      - name: The browser projects
         if: matrix.part == 'browser'
+        env:
+          PROJECTS: ${{ steps.browsers.outputs.projects }}
+        run: |
+          read -r -a projects <<<"$PROJECTS"
+          npm run test:e2e -- "${projects[@]}"
       - name: Lighthouse CI (LCP, CLS, TBT, SEO on the mobile profile)
+        id: lhci
         if: matrix.pair == 'newest' && matrix.part == 'browser'
         run: npm run lhci
+      # Lighthouse CI prints values only for a gate that failed, so the medians go to the job's summary either way (#74).
+      - name: Lighthouse's medians in the job's summary
+        if: ${{ !cancelled() && steps.lhci.outcome != 'skipped' && matrix.pair == 'newest' && matrix.part == 'browser' }}
+        run: php tools/lhci-summary.php tmp/lhci | tee -a "$GITHUB_STEP_SUMMARY"
       # On a job that ran out of time as well: a cancelled run prints no failure, so the traces are all there is.
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         if: failure() || cancelled()
         with:
+          # Read the day a run fails or the day after; not kept the 90 days GitHub keeps by default (#74).
+          retention-days: 14
           name: ${{ matrix.part }}-${{ matrix.pair }}
           path: |
             test-results
             tmp/lhci
       - name: WordPress's debug log
         if: failure()
-        run: npx wp-env run cli ${{ matrix.part == 'integration' && '--config=.wp-env.tests.json' || '' }} -- bash -c 'cat wp-content/debug.log 2>/dev/null || true'
+        env:
+          PART: ${{ matrix.part }}
+        run: |
+          config=()
+          if [ "$PART" = integration ]; then config=(--config=.wp-env.tests.json); fi
+          npx wp-env run cli "${config[@]}" -- bash -c 'cat wp-content/debug.log 2>/dev/null || true'
 
   # The newest WordPress and WooCommerce's other browser work, beside the newest leg, where every project runs (D-258).
   # The newest leg did all of it in one job, some 95 minutes, which set the length of every full run; each part is now
@@ -477,55 +469,22 @@ jobs:
       - run: npm ci
       - run: npm run build
       - run: npm run env:start
-      - id: playwright
-        if: matrix.engines != ''
-        run: echo "version=$(node -p "require('./node_modules/@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
-      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
-        id: playwright-cache
+      # As the legs install them (.github/actions/playwright).
+      - uses: ./.github/actions/playwright
         if: matrix.engines != ''
         with:
-          path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}-${{ matrix.engines }}
-      # As the legs install them, with the same three tries (D-123, D-126, D-224).
-      - name: Playwright's browsers and their system packages (three tries, five minutes each)
-        if: matrix.engines != '' && steps.playwright-cache.outputs.cache-hit != 'true'
-        run: |
-          for try in 1 2 3; do
-            timeout 300 bash -c 'while pgrep -x apt-get > /dev/null || pgrep -x dpkg > /dev/null; do sleep 5; done' || true
-            if timeout 300 npx playwright install --with-deps ${{ matrix.engines }}; then exit 0; fi
-            echo "::warning::Try ${try} of Playwright's install did not finish."
-            # `timeout` stopped npx, not the apt-get it started as root, which can keep dpkg's lock for the next try to
-            # wait out and fail on (#64). Stop what the try left, and finish any package it left half set up.
-            sudo pkill -x apt-get || true
-            sudo pkill -x dpkg || true
-            sudo dpkg --configure -a || true
-            grep -rl azure.archive.ubuntu.com /etc/apt | xargs -r sudo sed -i 's/azure\.archive\.ubuntu\.com/archive.ubuntu.com/g' || true
-            sleep 30
-          done
-          exit 1
-      - name: The system packages Playwright's cached browsers need (three tries, three minutes each)
-        if: matrix.engines != '' && steps.playwright-cache.outputs.cache-hit == 'true'
-        run: |
-          for try in 1 2 3; do
-            timeout 300 bash -c 'while pgrep -x apt-get > /dev/null || pgrep -x dpkg > /dev/null; do sleep 5; done' || true
-            if timeout 180 npx playwright install-deps ${{ matrix.engines }}; then exit 0; fi
-            echo "::warning::Try ${try} of Playwright's system packages did not finish."
-            # `timeout` stopped npx, not the apt-get it started as root, which can keep dpkg's lock for the next try to
-            # wait out and fail on (#64). Stop what the try left, and finish any package it left half set up.
-            sudo pkill -x apt-get || true
-            sudo pkill -x dpkg || true
-            sudo dpkg --configure -a || true
-            grep -rl azure.archive.ubuntu.com /etc/apt | xargs -r sudo sed -i 's/azure\.archive\.ubuntu\.com/archive.ubuntu.com/g' || true
-            sleep 30
-          done
-          exit 1
+          engines: ${{ matrix.engines }}
       - name: ${{ matrix.part }}
         env:
           GH_TOKEN: ${{ github.token }}
-        run: ${{ matrix.run }}
+          PART_RUN: ${{ matrix.run }}
+        # The command is the matrix's own, written above; it is passed by env, not pasted into the script.
+        run: bash -c "$PART_RUN"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         if: failure() || cancelled()
         with:
+          # Read the day a run fails or the day after; not kept the 90 days GitHub keeps by default (#74).
+          retention-days: 14
           name: browser-newest-${{ strategy.job-index }}
           path: test-results
       - name: WordPress's debug log
