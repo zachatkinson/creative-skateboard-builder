@@ -258,6 +258,10 @@ test.describe( 'A long step', () => {
 		}
 		await page.getByRole( 'button', { name: 'Next: Trucks' } ).click();
 		await expect.poll( () => field( page, 'step' ) ).toBe( 'trucks' );
+		// The address changes when the next page commits, before it has loaded. Without the script that is a new page,
+		// and Back sent in that moment found no page to go back from (CI run 44838722384, no-js: "Not attached to an
+		// active page"; #91). With the script the step is the same page, already loaded.
+		await page.waitForLoadState( 'load' );
 		await page.goBack();
 		await expect( cards( page ) ).toHaveCount( 11 );
 		await expect( alder.locator( 'input' ) ).toBeChecked();
