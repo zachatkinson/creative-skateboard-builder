@@ -4768,3 +4768,83 @@ test.describe( 'A saved build that has changed, and the deck page', () => {
 		).toContainText( inLocale( info.project.name, '8.25' ) );
 	} );
 } );
+
+/**
+ * #80 (Cowork's 1.0.0 F1): a mouse press that goes down while the builder hydrates and comes up after. Hydration takes
+ * the pressed control out of the page and puts it back, and a browser drops the click of a press whose element left the
+ * page between down and up. Each yield of the runtime is slowed here, so hydration is still under way when the press
+ * goes down, as it is for some 100 ms on a real page in WebKit (D-296).
+ */
+test.describe( 'A mouse press held while the builder hydrates', () => {
+	const cases: Array< [ string, string, string ] > = [
+		[ 'a width', '', '.cbuild-width__option' ],
+		[
+			'a deck card',
+			'?cbuild%5B_width%5D=8in&cbuild%5B_on%5D=deck',
+			'.cbuild-card:not(.cbuild-card--sold-out) label.cbuild-card__body[for]',
+		],
+		[ 'a ready build', '', '.cbuild-presets button' ],
+	];
+	for ( const [ name, query, selector ] of cases ) {
+		test( `goes through on ${ name }`, async ( { context }, info ) => {
+			test.skip(
+				! info.project.name.endsWith( '-desktop' ),
+				'A mouse on a desktop: a finger\'s tap is not affected, and a phone\'s layout settles under the press.'
+			);
+			// A page of the context's own: the fixture's page waits for the ready mark after each load, and this press
+			// must go down before it.
+			const page = await context.newPage();
+			// Every control in view unscrolled: hydration in WebKit puts the panel's own scroll back to its top.
+			await page.setViewportSize( { width: 1440, height: 1800 } );
+			await page.addInitScript( () => {
+				Object.defineProperty( window, 'scheduler', {
+					value: {
+						yield: () =>
+							new Promise( ( done ) => setTimeout( done, 150 ) ),
+					},
+				} );
+			} );
+			let moved = 0;
+			let pressed = false;
+			page.on( 'request', ( request ) => {
+				if (
+					pressed &&
+					( ( request.isNavigationRequest() &&
+						request.frame() === page.mainFrame() ) ||
+						/cbuild\/v1\/kits\/\d+\/state/.test( request.url() ) )
+				) {
+					moved++;
+				}
+			} );
+			await page.goto( fixture().page + query, {
+				waitUntil: 'domcontentloaded',
+			} );
+			const control = page.locator( selector ).first();
+			await control.waitFor();
+			const box = await control.boundingBox();
+			expect( box ).not.toBeNull();
+			expect(
+				await page.locator( '.cbuild[data-ready]' ).count(),
+				'pressed before the builder is hydrated'
+			).toBe( 0 );
+			await page.mouse.move(
+				( box?.x ?? 0 ) + ( box?.width ?? 0 ) / 2,
+				( box?.y ?? 0 ) + ( box?.height ?? 0 ) / 2
+			);
+			pressed = true;
+			await page.mouse.down();
+			await page.locator( '.cbuild[data-ready]' ).waitFor( {
+				state: 'attached',
+				timeout: 15000,
+			} );
+			await page.mouse.up();
+			await expect
+				.poll( () => moved, {
+					message: 'a page load or the store\'s answer',
+					timeout: 5000,
+				} )
+				.toBeGreaterThan( 0 );
+			await page.close();
+		} );
+	}
+} );

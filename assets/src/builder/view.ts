@@ -114,6 +114,74 @@ function release(): void {
 }
 
 /**
+ * A mouse press on one of the builder's controls, noted from the moment the script runs, and whether a click reached
+ * it (#80). Hydration takes a pressed control out of the page and puts it back, and a browser drops the click of a press
+ * whose element left the page between down and up, so a press held while the regions hydrate would come to nothing.
+ */
+let early: { control: HTMLElement; clicked: boolean } | null = null;
+
+/**
+ * Notes the control a mouse press goes down on, inside the builder.
+ *
+ * @param event The pointer going down.
+ */
+function pressEarly( event: PointerEvent ): void {
+	const control =
+		'mouse' === event.pointerType &&
+		0 === event.button &&
+		event.target instanceof Element
+			? event.target.closest< HTMLElement >(
+					'.cbuild :is(button, a, summary, label, input[type="radio"], input[type="checkbox"], input[type="submit"])'
+			  )
+			: null;
+	early = control ? { control, clicked: false } : null;
+}
+
+/**
+ * Notes that the click of the press reached its control.
+ *
+ * @param event The click.
+ */
+function clickEarly( event: MouseEvent ): void {
+	if (
+		early &&
+		event.target instanceof Node &&
+		early.control.contains( event.target )
+	) {
+		early.clicked = true;
+	}
+}
+
+/**
+ * Once the press comes up over its control, gives it the click the browser dropped, if it did. The click comes after
+ * the pointer's up in the same task, so this looks once it has had its turn. A label's click goes to its control.
+ *
+ * @param event The pointer coming up.
+ */
+function releaseEarly( event: PointerEvent ): void {
+	const pressed = early;
+	if ( ! pressed ) {
+		return;
+	}
+	const over = document.elementFromPoint( event.clientX, event.clientY );
+	window.setTimeout( () => {
+		early = null;
+		if (
+			! pressed.clicked &&
+			pressed.control.isConnected &&
+			// Over nothing, `contains()` is false.
+			pressed.control.contains( over )
+		) {
+			pressed.control.click();
+		}
+	} );
+}
+
+document.addEventListener( 'pointerdown', pressEarly, true );
+document.addEventListener( 'click', clickEarly, true );
+document.addEventListener( 'pointerup', releaseEarly, true );
+
+/**
  * Keeps a press on a button inside an element the page can focus, the picture's figure among them, from focusing
  * that element: WebKit focuses no button a pointer presses but hands focus to the nearest such ancestor, and scrolls it
  * into view, which moved the button from under the pointer before the click landed. The click still fires.
