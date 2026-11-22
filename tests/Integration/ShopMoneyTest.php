@@ -20,6 +20,8 @@ final class ShopMoneyTest extends IntegrationTestCase {
 	public function tear_down(): void {
 		delete_option( 'woocommerce_currency_pos' );
 		delete_option( 'woocommerce_currency' );
+		delete_option( 'woocommerce_price_decimal_sep' );
+		delete_option( 'woocommerce_price_thousand_sep' );
 		parent::tear_down();
 	}
 
@@ -35,6 +37,25 @@ final class ShopMoneyTest extends IntegrationTestCase {
 			$settings = $this->service( Money::class )->settings();
 			self::assertSame( $format, $settings['format'], $position );
 			self::assertSame( '€', $settings['symbol'] );
+		}
+	}
+
+	/**
+	 * #87: WooCommerce keeps a separator as the shop typed it, entities and all (its OptionSanitizer decodes one only to
+	 * look for digits, `src/Internal/Settings/OptionSanitizer.php:80`), so the route decodes it as it does the format.
+	 */
+	public function test_the_separators_are_plain_text_with_no_entity(): void {
+		foreach ( array(
+			'&nbsp;'  => "\u{00A0}",
+			'&#8239;' => "\u{202F}",
+			'&amp;'   => '&',
+			','       => ',',
+		) as $stored => $plain ) {
+			update_option( 'woocommerce_price_decimal_sep', $stored );
+			update_option( 'woocommerce_price_thousand_sep', $stored );
+			$settings = $this->service( Money::class )->settings();
+			self::assertSame( $plain, $settings['decimal_separator'], $stored );
+			self::assertSame( $plain, $settings['thousand_separator'], $stored );
 		}
 	}
 }

@@ -25,11 +25,11 @@ export interface CbuildState {
 		 */
 		decimals: number;
 		/**
-		 * Between the whole amount and its decimals.
+		 * Between the whole amount and its decimals, as plain text with no HTML entity.
 		 */
 		decimal_separator: string;
 		/**
-		 * Between thousands.
+		 * Between thousands, as plain text with no HTML entity.
 		 */
 		thousand_separator: string;
 		/**

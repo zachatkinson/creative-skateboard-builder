@@ -39,8 +39,8 @@
 				"code": { "description": "The currency's ISO 4217 code: the shop's, or a currency switcher's.", "type": "string" },
 				"symbol": { "description": "Its symbol, as plain text.", "type": "string" },
 				"decimals": { "description": "How many decimals a price shows.", "type": "integer", "minimum": 0 },
-				"decimal_separator": { "description": "Between the whole amount and its decimals.", "type": "string" },
-				"thousand_separator": { "description": "Between thousands.", "type": "string" },
+				"decimal_separator": { "description": "Between the whole amount and its decimals, as plain text with no HTML entity.", "type": "string" },
+				"thousand_separator": { "description": "Between thousands, as plain text with no HTML entity.", "type": "string" },
 				"format": { "description": "Where the symbol goes, as plain text: `%1$s%2$s`, `%2$s%1$s`, or either with a no-break space (U+00A0) between, as WooCommerce has it. From 1.0.0 the space is the character, not `&nbsp;`.", "type": "string" }
 			}
 		},
