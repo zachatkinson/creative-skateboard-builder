@@ -51,6 +51,7 @@ final class BuilderSeoTest extends IntegrationTestCase {
 
 	public function tear_down(): void {
 		unset( $_GET[ BuildLink::PARAM ] );
+		update_option( 'blog_public', '1' );
 		remove_all_filters( 'wp_robots' );
 		remove_all_filters( 'get_canonical_url' );
 		add_filter( 'wp_robots', 'wp_robots_max_image_preview_large' );
@@ -106,6 +107,31 @@ final class BuilderSeoTest extends IntegrationTestCase {
 		);
 		self::assertStringContainsString( 'noindex, follow', self::robots() );
 		self::assertSame( '<link rel="canonical" href="' . get_permalink( $this->page ) . '" />' . "\n", self::canonical() );
+	}
+
+	/**
+	 * #88: a build link is `noindex`, and `follow` only where nothing said `nofollow`: a site that discourages search
+	 * engines, or another plugin, keeps its `nofollow`.
+	 */
+	public function test_a_build_link_keeps_a_nofollow_the_site_or_another_plugin_set(): void {
+		update_option( 'blog_public', '0' );
+		add_filter( 'wp_robots', 'wp_robots_noindex' );
+		$this->visit( $this->page, array( 'deck' => '12' ) );
+		$robots = self::robots();
+		self::assertStringContainsString( 'noindex, nofollow', $robots, 'a site that discourages search engines' );
+		self::assertDoesNotMatchRegularExpression( '/(?<!no)follow/', $robots );
+
+		update_option( 'blog_public', '1' );
+		add_filter(
+			'wp_robots',
+			static function ( array $robots ): array {
+				return array( 'nofollow' => true ) + $robots;
+			}
+		);
+		$robots = self::robots();
+		self::assertMatchesRegularExpression( '/\bnoindex\b/', $robots );
+		self::assertMatchesRegularExpression( '/\bnofollow\b/', $robots, 'another plugin\'s nofollow' );
+		self::assertDoesNotMatchRegularExpression( '/(?<!no)follow/', $robots );
 	}
 
 	public function test_a_build_link_that_reads_as_nothing_is_still_a_state_of_the_builder(): void {

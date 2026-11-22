@@ -90,6 +90,29 @@ final class BuilderYoastTest extends IntegrationTestCase {
 		self::assertStringContainsString( '<meta property="og:url" content="' . esc_url( (string) get_permalink( $page ) ) . '"', $built );
 	}
 
+	/**
+	 * #88: a build link keeps a `nofollow` another source gave Yoast.
+	 */
+	public function test_yoast_keeps_a_nofollow_another_source_set_on_a_build_link(): void {
+		$kit  = KitFactory::kit( 'Complete' )->get_id();
+		$page = self::factory()->post->create(
+			array(
+				'post_type'    => 'page',
+				'post_status'  => 'publish',
+				'post_content' => '<!-- wp:creative-skateboard-builder/builder {"kit":' . $kit . '} /-->',
+			)
+		);
+		add_filter(
+			'wpseo_robots_array',
+			static function ( array $robots ): array {
+				$robots['follow'] = 'nofollow';
+				return $robots;
+			}
+		);
+		$built = $this->head( $page, array( 'deck' => '12' ) );
+		self::assertMatchesRegularExpression( "/<meta name='robots' content='noindex, nofollow/", $built );
+	}
+
 	public function test_yoasts_title_keeps_its_own_with_the_builders_step_before_it_once(): void {
 		$kit  = KitFactory::kit( 'Complete' )->get_id();
 		$page = self::factory()->post->create(
