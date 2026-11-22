@@ -13,6 +13,8 @@ use CreativeBranding\SkateboardBuilder\Domain\Fit\BuildProblem;
 use CreativeBranding\SkateboardBuilder\Domain\Fit\Problem;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\InvalidMoney;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\SlotKey;
+use CreativeBranding\SkateboardBuilder\Domain\Look\Shelf;
+use CreativeBranding\SkateboardBuilder\Domain\Spec\SpecKey;
 use CreativeBranding\SkateboardBuilder\Domain\Rule\BearingRule;
 use CreativeBranding\SkateboardBuilder\Domain\Rule\MessageCode;
 use CreativeBranding\SkateboardBuilder\Service\BuildState;
@@ -20,6 +22,7 @@ use CreativeBranding\SkateboardBuilder\Service\SavedBuilds;
 use CreativeBranding\SkateboardBuilder\Service\ShelfQuery;
 use CreativeBranding\SkateboardBuilder\Service\State;
 use CreativeBranding\SkateboardBuilder\Service\StateStep;
+use CreativeBranding\SkateboardBuilder\Service\StepShelf;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -57,6 +60,13 @@ final class Builder {
 	private ?SavedBuilds $saved = null;
 
 	/**
+	 * The step's shelf, for the deck a new width moves the build to.
+	 *
+	 * @var StepShelf|null
+	 */
+	private ?StepShelf $shelf = null;
+
+	/**
 	 * Constructor.
 	 *
 	 * @since 0.6.0
@@ -81,6 +91,19 @@ final class Builder {
 		$builder             = clone $this;
 		$builder->remembered = $remembered;
 		$builder->saved      = $saved;
+		return $builder;
+	}
+
+	/**
+	 * The builder with the step's shelf, which a new width asks for the picked deck's look in it (#81).
+	 *
+	 * @since 1.1.0
+	 *
+	 * @param StepShelf $shelf The step's shelf.
+	 */
+	public function withShelf( StepShelf $shelf ): self {
+		$builder        = clone $this;
+		$builder->shelf = $shelf;
 		return $builder;
 	}
 
@@ -125,6 +148,15 @@ final class Builder {
 		$state = $this->builds->of( $kit, $link->picks, $link->was, $link->step, $link->assembly, $link->none );
 		if ( null === $state ) {
 			return null;
+		}
+		$moved = $this->moved( $state, $link );
+		if ( null !== $moved ) {
+			// A new width moves the picked deck to its look in that width, and what no longer fits it is explained (#81).
+			$link  = $link->pick( SlotKey::DECK, $moved['part'] )->after( $link->was ?? $link->picks );
+			$state = $this->builds->of( $kit, $link->picks, $link->was, $link->step, $link->assembly, $link->none );
+			if ( null === $state ) {
+				return null;
+			}
 		}
 		$steps = self::steps( $state );
 		if ( $link->asked && SlotKey::RISERS === $link->step && ! in_array( SlotKey::RISERS, $steps, true ) && in_array( SlotKey::RISERS, $state->kit->slots->keys(), true ) ) {
@@ -171,8 +203,41 @@ final class Builder {
 		return array(
 			'state'  => $state,
 			'answer' => $answer,
-			'view'   => $this->view->of( $state, $answer, $link, $base, $steps, $stopped ),
+			'view'   => $this->view->of( $state, $answer, $link, $base, $steps, $stopped, $moved['said'] ?? '' ),
 		);
+	}
+
+	/**
+	 * The deck a width asked for moves the build to, with what to say of it: the picked deck's look in that width. Null
+	 * where nothing is picked, the deck is in that width already, or its look is not made in it (#81).
+	 *
+	 * @param State     $state The build's state.
+	 * @param BuildLink $link  The address.
+	 * @return array{part: int, said: string}|null
+	 */
+	private function moved( State $state, BuildLink $link ): ?array {
+		$picked = null;
+		foreach ( $state->steps as $step ) {
+			if ( SlotKey::DECK === $step->slot->key ) {
+				$picked = $step->picked;
+			}
+		}
+		$width = $picked?->part->specs->measure( SpecKey::DeckWidth );
+		if ( null === $this->shelf || null === $picked || null === $width || '' === $link->shelf->width || Shelf::named( $width ) === $link->shelf->width ) {
+			return null;
+		}
+		$view = $this->shelf->of( $state->at( SlotKey::DECK ), new ShelfQuery( $link->shelf->width, shown: Shelf::MOST ) );
+		foreach ( null === $view ? array() : array_merge( $view->listing->looks, $view->listing->soldOut ) as $card ) {
+			$size = $card->option->part->specs->measure( SpecKey::DeckWidth );
+			if ( null !== $size && $card->option->part->id !== $picked->part->id && in_array( $picked->part, $card->look->parts(), true ) ) {
+				return array(
+					'part' => $card->option->part->id,
+					/* translators: 1: a deck's name, such as Hard Hat. 2: the width it is now, such as 8.5″. */
+					'said' => sprintf( __( '%1$s is now %2$s.', 'creative-skateboard-builder' ), $view->names[ $card->look->product ] ?? '', Words::measure( $size ) ),
+				);
+			}
+		}
+		return null;
 	}
 
 	/**

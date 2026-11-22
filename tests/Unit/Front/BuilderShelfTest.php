@@ -22,6 +22,7 @@ use CreativeBranding\SkateboardBuilder\Front\RememberedWidth;
 use CreativeBranding\SkateboardBuilder\Front\ShippingWords;
 use CreativeBranding\SkateboardBuilder\Front\StateAnswer;
 use CreativeBranding\SkateboardBuilder\Front\Words;
+use CreativeBranding\SkateboardBuilder\Support\Cast;
 use CreativeBranding\SkateboardBuilder\Port\LookFact;
 use CreativeBranding\SkateboardBuilder\Port\TextFolding;
 use CreativeBranding\SkateboardBuilder\Service\BuildState;
@@ -115,9 +116,10 @@ final class BuilderShelfTest extends TestCase {
 		};
 		$settings = new InMemoryShopSettings();
 		$cards    = new InMemoryPartCards();
+		$shelf    = new StepShelf( $this->looks, $cards, new FakeRanking(), $folding, $settings );
 		$answer   = ( new StateAnswer( $cards, new FakeMoney(), $this->kits, new Delivery( $this->kits, new FakeShippingZones(), new ShippingWords( new FakeMoney() ) ), new PageRenderer() ) )
-			->withShelf( new StepShelf( $this->looks, $cards, new FakeRanking(), $folding, $settings ) );
-		$shown    = ( new Builder( new BuildState( $this->kits, $settings, new FakeLogger() ), $answer, new BuilderView() ) )->withSaved( $remembered, $saved )->show( self::KIT, $link, self::BASE );
+			->withShelf( $shelf );
+		$shown    = ( new Builder( new BuildState( $this->kits, $settings, new FakeLogger() ), $answer, new BuilderView() ) )->withSaved( $remembered, $saved )->withShelf( $shelf )->show( self::KIT, $link, self::BASE );
 		self::assertNotNull( $shown );
 		return $shown;
 	}
@@ -482,6 +484,44 @@ final class BuilderShelfTest extends TestCase {
 		self::assertSame( array( 3044 ), array_column( $fold['options'], 'id' ) );
 		self::assertTrue( $fold['options'][0]['soldOut'] );
 		self::assertTrue( $fold['options'][0]['disabled'] );
+	}
+
+	public function test_a_new_width_moves_the_picked_deck_to_its_look_in_that_width_and_says_so(): void {
+		// Decks 101 (8.0) and 103 (8.5) are one look, Hard Hat (#81).
+		foreach ( array( 101, 103 ) as $part ) {
+			$this->looks->facts[ $part ] = new LookFact( 900, 5, 0, 'Hard Hat', array(), array(), false, 0, 0 );
+		}
+		$shown = $this->shown(
+			BuildLink::read(
+				array(
+					'deck'   => '101',
+					'step'   => 'deck',
+					'_width' => '8.5in',
+				)
+			)
+		);
+		self::assertStringContainsString( rawurlencode( 'cbuild[deck]' ) . '=103', Cast::str( $shown['view']['url'] ), 'the build holds Hard Hat at 8.5″' );
+		self::assertStringStartsWith( 'Hard Hat is now 8.5″.', Cast::str( $shown['view']['status'] ) );
+		$ticked = array_values( array_filter( $shown['view']['step']['options'], static fn( array $card ): bool => (bool) $card['checked'] ) );
+		self::assertCount( 1, $ticked );
+		self::assertSame( 103, $ticked[0]['id'], 'its card ticked at the new width' );
+	}
+
+	public function test_a_new_width_the_picked_decks_look_is_not_made_in_keeps_the_pick_and_its_card_says_which_width_it_is(): void {
+		$shown = $this->shown(
+			BuildLink::read(
+				array(
+					'deck'   => '102',
+					'step'   => 'deck',
+					'_width' => '8.5in',
+				)
+			)
+		);
+		self::assertStringContainsString( rawurlencode( 'cbuild[deck]' ) . '=102', Cast::str( $shown['view']['url'] ), 'the 8.25″ deck is kept' );
+		$ticked = array_values( array_filter( $shown['view']['step']['options'], static fn( array $card ): bool => (bool) $card['checked'] ) );
+		self::assertCount( 1, $ticked );
+		self::assertSame( 102, $ticked[0]['id'] );
+		self::assertContains( 'Picked in 8.25″. Not made in 8.5″.', array_column( $ticked[0]['notes'], 'text' ) );
 	}
 
 	public function test_either_names_one_two_or_more_as_a_choice(): void {

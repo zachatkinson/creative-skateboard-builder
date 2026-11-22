@@ -3737,3 +3737,10 @@ CI's Lighthouse gate failed Total Blocking Time on the builder page on Twenty Tw
 **Why:** the longest job sets the run's length; it should be about 18 minutes (the newest integration suite), so a full run about 20 instead of 30. The first full run's numbers are on #76.
 
 **Status:** Accepted.
+
+### D-301 · A new width moves the picked deck to its look in that width · 2026-11-22
+
+- **What.** With a deck picked, a new width (the width question's Change, or a link's `_width`) moves the pick to the same look in that width, as the size picker chooses it there. The status says so first ("Hard Hat is now 8.5″."), and the change panel lists any later part the new deck no longer fits. A look not made in that width keeps the pick, and its ticked card says "Picked in 8.25″. Not made in 8.5″.", so the shopper sees what Next would keep. `Builder::show()` makes the move, so the page and the route do the same.
+- **Cost.** The shelf is asked again only when the picked deck's width is not the width asked; every other request costs what it did.
+
+**Why:** Cowork's 1.0.0 F2 (#81): the card showed ticked at 8.5″ while the build held the 8″ variation, so a shopper could order the wrong size. Zach chose the move over an unticked card, 22 November.

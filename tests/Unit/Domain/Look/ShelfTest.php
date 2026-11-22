@@ -299,6 +299,26 @@ final class ShelfTest extends TestCase {
 	}
 
 	/**
+	 * #81: a deck picked in one width, with another width asked. Its look's card shows the deck in the width asked,
+	 * which the builder then moves the pick to; a look not made in that width keeps the pick, so the card shows what
+	 * the build holds.
+	 */
+	public function test_a_deck_picked_in_another_width_shows_its_look_in_the_width_asked_or_the_pick_where_the_look_is_not_made_in_it(): void {
+		$deck    = static fn( string $width, int $id ): Part => Parts::of( array( 'deck_width' => $width, 'deck_length' => '32', 'hole_pattern' => 'new_school', 'set_size' => 1 ), $id, 6000, 'baker' );
+		$parts   = array( $deck( '8', 101 ), $deck( '8.5', 102 ), $deck( '8', 103 ), $deck( '8.5', 104 ) );
+		$shelved = array(
+			101 => self::shelved( 1, 1 ),
+			102 => self::shelved( 1, 1 ),
+			103 => self::shelved( 2, 2 ),
+			104 => self::shelved( 3, 3 ),
+		);
+		$wide    = new ShelfAsk( Measure::inches( 85000 ) );
+		self::assertSame( array( '1:1:0' => 102, '3:3:0' => 104 ), self::cards( self::list( SlotKey::DECK, $parts, $shelved, $wide, Picks::none(), 101 )->looks ), 'the look in 8.5″, not the 8″ picked' );
+		self::assertSame( array( '1:1:0' => 102, '2:2:0' => 103, '3:3:0' => 104 ), self::cards( self::list( SlotKey::DECK, $parts, $shelved, $wide, Picks::none(), 103 )->looks ), 'a look not made in 8.5″ keeps its 8″ pick' );
+		self::assertSame( array( '1:1:0' => 101, '2:2:0' => 103 ), self::cards( self::list( SlotKey::DECK, $parts, $shelved, new ShelfAsk( Measure::inches( 80000 ) ), Picks::none(), 101 )->looks ), 'in its own width, the pick' );
+	}
+
+	/**
 	 * Spec (configurator): "Each chip says how many looks it leaves." On the deck step that is in the width asked: a
 	 * deck in another width is not on the step, so a brand's chip does not count it (found on the long step's page).
 	 */

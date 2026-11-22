@@ -17,3 +17,6 @@ UnwrapArrayValues src/Domain/Saved/SavedCheck.php 1
 # has no matched look in stock in any size it offers, and "comes in" finds nothing with or without the deck test.
 # `null !== $spec` narrows the type: the deck always has its width (SlotSize).
 LogicalAnd src/Domain/Look/Shelf.php 1
+# A deck the build holds on the deck step is one the engine offered, and the engine hides a deck with no width, so the
+# held deck's width is never null where a width is asked (#81).
+NullSafeMethodCall src/Domain/Look/Shelf.php 1

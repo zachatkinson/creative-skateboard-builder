@@ -171,7 +171,12 @@ final class Shelf {
 			if ( ! isset( $left[ $look->key ] ) ) {
 				continue;
 			}
-			$option = null !== $picked && in_array( $picked->part, $look->parts(), true ) ? $picked : $this->sizes->pick( $kit, $slot, $look->parts(), $build, $wanted );
+			$held = null !== $picked && in_array( $picked->part, $look->parts(), true ) ? $picked : null;
+			// A deck picked in another width than the one asked shows its look in that width, for the builder to move the
+			// pick to; a look not made in it keeps the pick, so its card shows what the build holds (#81).
+			$option = null !== $held && ( null === $width || true === $held->part->specs->measure( SpecKey::DeckWidth )?->equals( $width ) )
+				? $held
+				: $this->sizes->pick( $kit, $slot, $look->parts(), $build, $wanted ) ?? $held;
 			if ( null === $option ) {
 				continue;
 			}

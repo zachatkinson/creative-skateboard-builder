@@ -86,9 +86,10 @@ final class BuilderView {
 	 * @param string               $base    The address of the page the builder is on, with no build in it.
 	 * @param list<string>         $steps   The slots that are steps, in step order.
 	 * @param BuildProblem|null    $stopped What kept the shopper from the step asked for, if anything did.
+	 * @param string               $moved   What the build moved to on its own, said first, such as "Hard Hat is now 8.5″." (#81).
 	 * @return array<string, mixed>
 	 */
-	public function of( State $state, array $answer, BuildLink $link, string $base, array $steps, ?BuildProblem $stopped ): array {
+	public function of( State $state, array $answer, BuildLink $link, string $base, array $steps, ?BuildProblem $stopped, string $moved = '' ): array {
 		$slots = $state->kit->slots;
 		$url   = static fn ( BuildLink $to ): string => $to->address( $base, $slots );
 		// The picks as the address has them, and as the total counts them: a slot that starts on a part counts it.
@@ -173,6 +174,10 @@ final class BuilderView {
 			/* translators: %s: a number of parts. */
 			? sprintf( _n( '%s part no longer fits.', '%s parts no longer fit.', count( Cast::items( $changes['changes'] ?? null ) ), 'creative-skateboard-builder' ), number_format_i18n( count( Cast::items( $changes['changes'] ?? null ) ) ) )
 			: self::said( Cast::str( $picture['description'] ?? null ), $sum, isset( $total['estimate'] ) ? Cast::str( Cast::map( $total['estimate'] )['text'] ?? null ) : null );
+		if ( '' !== $moved ) {
+			/* translators: 1: what the build moved to, such as "Hard Hat is now 8.5″.". 2: what the status says after it. */
+			$status = sprintf( __( '%1$s %2$s', 'creative-skateboard-builder' ), $moved, $status );
+		}
 
 		$board              = self::board( $picture, $state->id, null );
 		$top                = self::top( $picture, $state->id );
@@ -1209,7 +1214,12 @@ final class BuilderView {
 		// What the step's parts were checked against, as a fitting part's two labels.
 		$against = self::against( Cast::strings( $step['against'] ?? null ), $width, static fn( string $key ): string => Cast::str( Cast::map( $about[ $key ] ?? null )['label'] ?? $key ) );
 
-		$card    = function ( array $option, array $look = array() ) use ( $state, $slot, $counted, $against ): array {
+		// The width asked, for a picked deck its look is not made in, whose card says so (#81).
+		$asked = null;
+		foreach ( Cast::items( Cast::map( $answer['shelf'] ?? null )['widths'] ?? null ) as $offered ) {
+			$asked = Cast::bool( Cast::map( $offered )['selected'] ?? null ) ? Cast::map( $offered ) : $asked;
+		}
+		$card    = function ( array $option, array $look = array() ) use ( $state, $slot, $counted, $against, $asked ): array {
 			$id   = Cast::int( $option['id'] ?? null );
 			$card = Cast::map( $option['card'] ?? null );
 			// A look's card names its product, not a size of it, and the look by what tells it from the product's
@@ -1244,6 +1254,10 @@ final class BuilderView {
 					continue;
 				}
 				$notes[] = array( 'text' => Cast::str( $message['text'] ?? null ) );
+			}
+			if ( $checked && null !== $asked && SlotKey::DECK === $slot && Cast::str( Cast::map( $option['size'] ?? null )['value'] ?? null ) !== Cast::str( $asked['value'] ?? null ) ) {
+				/* translators: 1: the picked deck's width, such as 8.25″. 2: the width asked, such as 8.5″. */
+				$notes[] = array( 'text' => sprintf( __( 'Picked in %1$s. Not made in %2$s.', 'creative-skateboard-builder' ), $size, Cast::str( $asked['text'] ?? null ) ) );
 			}
 			$input = 'cbuild-' . $state->id . '-' . $id;
 			// The picked card's sizes, where the shopper chooses one: radios of the step's own field, after the card. The
