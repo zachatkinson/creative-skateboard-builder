@@ -11,11 +11,18 @@ $cbuild_plugin_dir = dirname( __DIR__ );
 
 // PHPUnit measures coverage from the first test, so the lines that run while WordPress loads the plugin (the main
 // file, Plugin::boot() and every hook's registration) would count as never run. When the merged coverage report is
-// being made (tools/coverage-all.sh, issue #6), Xdebug records them from here to the end of this file, and
-// tools/coverage-merge.php adds them to the suite's report.
-$cbuild_boot_coverage = '1' === getenv( 'CBUILD_COVERAGE' ) && function_exists( 'xdebug_start_code_coverage' );
-if ( $cbuild_boot_coverage ) {
-	xdebug_start_code_coverage();
+// being made (tools/coverage-all.sh, issue #6), the coverage driver records them from here to the end of this file,
+// and tools/coverage-merge.php adds them to the suite's report. The driver is the one PHPUnit picks: pcov when it is
+// loaded and enabled (CBUILD_COVERAGE_DRIVER=pcov, tools/integration.sh), else Xdebug.
+$cbuild_boot_driver = '';
+if ( '1' === getenv( 'CBUILD_COVERAGE' ) ) {
+	if ( extension_loaded( 'pcov' ) && (bool) ini_get( 'pcov.enabled' ) ) {
+		$cbuild_boot_driver = 'pcov';
+		\pcov\start();
+	} elseif ( function_exists( 'xdebug_start_code_coverage' ) ) {
+		$cbuild_boot_driver = 'xdebug';
+		xdebug_start_code_coverage();
+	}
 }
 
 $cbuild_loader = require $cbuild_plugin_dir . '/vendor/autoload.php';
@@ -127,14 +134,23 @@ tests_add_filter(
 
 require $cbuild_tests_dir . '/includes/bootstrap.php';
 
-if ( $cbuild_boot_coverage ) {
+if ( '' !== $cbuild_boot_driver ) {
+	if ( 'pcov' === $cbuild_boot_driver ) {
+		// pcov reports every executable line of a file it is asked for, -1 for one that did not run, and keeps what it
+		// recorded until it is cleared, so it is cleared here and PHPUnit's first test starts from nothing, as with Xdebug.
+		\pcov\stop();
+		$cbuild_boot_raw = \pcov\collect( \pcov\inclusive, \pcov\waiting() );
+		\pcov\clear();
+	} else {
+		$cbuild_boot_raw = xdebug_get_code_coverage();
+		xdebug_stop_code_coverage( true );
+	}
 	$cbuild_boot_lines = array();
-	foreach ( xdebug_get_code_coverage() as $cbuild_boot_file => $cbuild_boot_ran ) {
+	foreach ( $cbuild_boot_raw as $cbuild_boot_file => $cbuild_boot_ran ) {
 		if ( str_starts_with( $cbuild_boot_file, $cbuild_plugin_dir . '/src/' ) ) {
-			$cbuild_boot_lines[ substr( $cbuild_boot_file, strlen( $cbuild_plugin_dir ) + 1 ) ] = array_keys( $cbuild_boot_ran );
+			$cbuild_boot_lines[ substr( $cbuild_boot_file, strlen( $cbuild_plugin_dir ) + 1 ) ] = array_keys( array_filter( $cbuild_boot_ran, static fn( int $cbuild_hits ): bool => $cbuild_hits > 0 ) );
 		}
 	}
-	xdebug_stop_code_coverage( true );
 	file_put_contents( $cbuild_plugin_dir . '/tmp/coverage-bootstrap.json', (string) wp_json_encode( $cbuild_boot_lines ) );
 }
 

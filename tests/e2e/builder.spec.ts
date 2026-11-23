@@ -9,6 +9,7 @@ import {
 	noticeFocusDone,
 	Page,
 	type Locator,
+	SITE,
 } from './support/test';
 import { axe } from './support/axe';
 import { login } from './support/login';
@@ -1398,7 +1399,7 @@ test.describe( 'The builder with JavaScript', () => {
 			{
 				name: 'cbuild_e2e_theme',
 				value: 'twentytwentyfive',
-				url: baseURL || 'http://localhost:8898',
+				url: baseURL || SITE,
 			},
 		] );
 		await ride( page, '8.25″' );
@@ -2318,7 +2319,7 @@ test.describe( 'The keyboard alone', () => {
 			{
 				name: 'cbuild_e2e_classic',
 				value: '1',
-				url: baseURL || 'http://localhost:8898',
+				url: baseURL || SITE,
 			},
 		] );
 	} );
@@ -2590,7 +2591,7 @@ test.describe( 'Fills in the accent on a classic theme', () => {
 			context,
 			baseURL,
 		} ) => {
-			const url = baseURL || 'http://localhost:8898';
+			const url = baseURL || SITE;
 			await context.addCookies( [
 				{ name: 'cbuild_e2e_theme', value: theme, url },
 				{ name: 'cbuild_e2e_scheme', value: scheme, url },
@@ -2721,7 +2722,7 @@ test.describe( 'Radios on a dark theme whose contrast colour is dark', () => {
 		context,
 		baseURL,
 	} ) => {
-		const url = baseURL || 'http://localhost:8898';
+		const url = baseURL || SITE;
 		await context.addCookies( [
 			{ name: 'cbuild_e2e_theme', value: 'kadence', url },
 			{ name: 'cbuild_e2e_scheme', value: 'demo-dark', url },
@@ -4105,7 +4106,7 @@ test.describe( 'The board on the stage', () => {
 				{
 					name: 'cbuild_e2e_theme',
 					value: theme,
-					url: baseURL || 'http://localhost:8898',
+					url: baseURL || SITE,
 				},
 			] );
 			await page.setViewportSize( { width, height } );
@@ -4469,7 +4470,7 @@ test.describe( "A kit's own page", () => {
 			context,
 			baseURL,
 		} ) => {
-			const url = baseURL || 'http://localhost:8898';
+			const url = baseURL || SITE;
 			await context.addCookies( [
 				{ name: 'cbuild_e2e_theme', value: theme, url },
 			] );
@@ -4571,7 +4572,7 @@ test.describe( "A kit's own page", () => {
 			context,
 			baseURL,
 		} ) => {
-			const url = baseURL || 'http://localhost:8898';
+			const url = baseURL || SITE;
 			await context.addCookies( [
 				{ name: 'cbuild_e2e_theme', value: 'kadence', url },
 				{ name: 'cbuild_e2e_template', value: 'shop-kit', url },
@@ -4624,7 +4625,7 @@ test.describe( "A kit's own page", () => {
 		context,
 		baseURL,
 	} ) => {
-		const url = baseURL || 'http://localhost:8898';
+		const url = baseURL || SITE;
 		await context.addCookies( [
 			{ name: 'cbuild_e2e_theme', value: 'kadence', url },
 		] );
@@ -4696,7 +4697,7 @@ test.describe( 'The phone bar', () => {
 				{
 					name: 'cbuild_e2e_theme',
 					value: theme,
-					url: baseURL || 'http://localhost:8898',
+					url: baseURL || SITE,
 				},
 			] );
 			await page.setViewportSize( { width: 412, height: 900 } );
@@ -4782,7 +4783,7 @@ test.describe( 'The phone bar', () => {
 				"axe runs as a script in the page; the bar's colours are its stylesheet's, the same with JavaScript."
 			);
 			// The e2e theme mu-plugin answers these for this request alone (D-162).
-			const url = baseURL || 'http://localhost:8898';
+			const url = baseURL || SITE;
 			await context.addCookies( [
 				{ name: 'cbuild_e2e_theme', value: theme, url },
 				{ name: 'cbuild_e2e_scheme', value: 'dark', url },
@@ -4819,7 +4820,7 @@ test.describe( 'The phone bar', () => {
 				{
 					name: 'cbuild_e2e_theme',
 					value: theme,
-					url: baseURL || 'http://localhost:8898',
+					url: baseURL || SITE,
 				},
 			] );
 			await page.setViewportSize( PHONE );

@@ -3861,3 +3861,36 @@ Cowork's review of 1.0.0, F15 (#100), against the mockup of 18 November: "Next: 
 
 **Status:** Accepted.
 
+### D-311 · Up to three lanes of wp-env, by CBUILD_PORT and CBUILD_TESTS_PORT · 2026-11-23
+
+**Context:** 8898 and 8899 were written into Playwright, the e2e specs, the integration test case, the tools and Lighthouse, so a second checkout could not run /verify beside the first. Zach approved a second lane on 23 November, then asked for three at most: "after verifying two wp env runs ok, we should test with 3 too. but no higher. see how much we can optimize without losing performance".
+
+**Decision:**
+- `CBUILD_PORT` (default 8898) and `CBUILD_TESTS_PORT` (default 8899) are the one source (`tools/ports.sh`). Playwright's base URL (`tests/e2e/support/site.ts`), the specs, Lighthouse, the upgrade upload, the visual run, the container lookups (`wp-env-site.sh`, `imagick-coders.sh`, `zip-lifecycle.sh`, `pcov.sh`) and the integration suite (passed in by `tools/integration.sh`) all read them. Unset, everything is as before, CI included.
+- `bash tools/lane.sh <1|2|3> <command…>` sets them: lane 1 is 8898/8899, lane 2 8900/8901 with MySQL 8910/8911, lane 3 8902/8903 with MySQL 8912/8913. Auxiliary ports stay in 8910 to 8919. A fourth lane is refused.
+- `npm run env:start`, `env:stop` and `env:clean` go through `tools/wp-env.sh`, which gives each config its own port as `WP_ENV_PORT` (wp-env's environment overrides beat the config and override files: `@wordpress/env/lib/config/parse-config.js:153`). It refuses to start, clean or reset a checkout's sites on other ports than they run on, since wp-env names a site by its config file's path.
+- `tools/e2e-site.sh` fails when the checkout's browser site is not on `CBUILD_PORT`, so a lane's browser tests never reach another checkout's site.
+- How many lanes run at once is measured, not assumed: throughput against the timing gates' stability on this Mac, recorded in M11's review.
+
+**Why:** parallel verification in worktrees, without touching the main pair. Proved on lane 2: PictureFilesTest and ShareCardTest, The phone bar on chromium-desktop and Plugin Check passed on 8900 and 8901 while 8898 and 8899 kept serving.
+
+**Status:** Accepted (Zach, 23 November 2026).
+
+### D-312 · pcov for the integration half of the merged line coverage, on by default in /verify · 2026-11-23
+
+**Context:** `composer test:coverage:all` ran the integration suite under Xdebug's coverage mode, the slowest step of /verify. Zach approved trying pcov on 23 November, measured before switching.
+
+**Decision:** `CBUILD_COVERAGE_DRIVER=pcov composer test:coverage:all` builds pcov 1.0.12 from PECL into the integration site's cli container (`tools/pcov.sh`, about 5 s, loaded by nothing else) and runs the integration half with `-d extension=pcov.so -d pcov.enabled=1 -d xdebug.mode=off`. The bootstrap records its lines with pcov when pcov is enabled. `=xdebug` forces Xdebug on both halves; unset is unchanged (unit on pcov where loaded, integration on Xdebug). /verify sets `pcov`; CI keeps Xdebug, the reference. The domain's branch floor stays on Xdebug.
+
+**Measured (lane 2, 664 tests):** integration half 622 s under Xdebug, 230 s under pcov, 2.7 times faster. With the same pcov unit report, merged lines 97.34 % with Xdebug and 97.31 % with pcov. The 5-line gap is six `global $x;` statements pcov does not report as run (BuildTab.php:180, Plugin.php:106, Schema.php:49 and 69, Uninstaller.php:49 and 167) against one line it does (WpPictureFiles.php:162). pcov can only under-count here, so a local run that passes the 95 % floor passes CI's; no floor moves.
+
+**Status:** Accepted (Zach approved the trial; the default is mine, from the numbers).
+
+### D-313 · A pre-commit hook that fixes formatting on staged files · 2026-11-23
+
+**Decision:** `.githooks/pre-commit`, turned on by `composer hooks` (`git config core.hooksPath .githooks`), runs phpcbf and then PHPCS on the staged PHP that phpcs.xml lists, and Prettier on the staged files that package.json's `format` names, re-staging what they fix. It fails only on what PHPCS still finds or Prettier cannot parse. A file staged in part is not rewritten: its staged text is checked and the commit stops naming it. Names are read NUL-separated. No new package (no husky, no lint-staged). Generated files (schema/, the API snapshot, the translations' JSON) and unlinted tool scripts are left alone.
+
+**Why:** formatting failures were reaching /verify and CI; Zach approved the hook on 23 November.
+
+**Status:** Accepted.
+

@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { test, expect, Page } from './support/test';
+import { test, expect, Page, SITE } from './support/test';
 
 /**
  * The builder's look on the three themes of the spec's Quality bar, light and dark (docs/AUDIT.md: visual snapshots):
@@ -87,7 +87,7 @@ for ( const theme of THEMES ) {
 	for ( const scheme of SCHEMES ) {
 		test.describe( `On ${ theme }, ${ scheme }`, () => {
 			test.beforeEach( async ( { context, baseURL } ) => {
-				const url = baseURL || 'http://localhost:8898';
+				const url = baseURL || SITE;
 				await context.addCookies( [
 					{ name: 'cbuild_e2e_theme', value: theme, url },
 					{ name: 'cbuild_e2e_scheme', value: scheme, url },
@@ -160,7 +160,7 @@ test( 'a deck card in focus on the demo’s dark Kadence, desktop', async ( {
 	context,
 	baseURL,
 } ) => {
-	const url = baseURL || 'http://localhost:8898';
+	const url = baseURL || SITE;
 	await context.addCookies( [
 		{ name: 'cbuild_e2e_theme', value: 'kadence', url },
 		{ name: 'cbuild_e2e_scheme', value: 'demo-dark', url },
@@ -215,7 +215,7 @@ for ( const scheme of SCHEMES ) {
 		context,
 		baseURL,
 	} ) => {
-		const url = baseURL || 'http://localhost:8898';
+		const url = baseURL || SITE;
 		await context.addCookies( [
 			{ name: 'cbuild_e2e_theme', value: 'kadence', url },
 			{ name: 'cbuild_e2e_scheme', value: scheme, url },

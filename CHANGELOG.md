@@ -27,6 +27,8 @@ All notable changes to this project are documented here. The format follows [Kee
 - The builder asks the state route for its view alone (`_fields=view`), about half the bytes on a long step; the route's answer is unchanged for anyone who asks without it (#89, D-302).
 - A chip's spoken label and Show more's status name no part: "Hoser, 9" and "30 more shown, 60 of 88." (#84).
 
+- Development: up to three checkouts each run their own pair of sites (`tools/lane.sh`, D-311); /verify measures the integration suite's lines with pcov, about 2.7 times faster (D-312); `composer hooks` turns on a pre-commit hook that fixes formatting on staged files (D-313).
+
 ### Fixed
 
 - After a new width, the picked deck moves to its look in that width, and the status says so: "Hard Hat is now 8.5″." Where the look isn't made in that width, the pick stays and its card says "Picked in 8.25″. Not made in 8.5″." (#81, D-301).

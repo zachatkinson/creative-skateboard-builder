@@ -1,8 +1,10 @@
 import { test as base } from '@playwright/test';
 import type { Page } from '@playwright/test';
+import { SITE } from './site';
 
 export { expect } from '@playwright/test';
 export type { Locator, Page } from '@playwright/test';
+export { SITE } from './site';
 
 /**
  * Playwright's test, with every request to the shop under test marked `X-Creative-Test: 1`, as the agency's other
@@ -11,7 +13,7 @@ export type { Locator, Page } from '@playwright/test';
  */
 export const test = base.extend( {
 	context: async ( { context, baseURL }, provide ) => {
-		const origin = new URL( baseURL || 'http://localhost:8898' ).origin;
+		const origin = new URL( baseURL || SITE ).origin;
 		await context.route(
 			( url ) => url.origin === origin,
 			( route ) =>

@@ -1,0 +1,131 @@
+#!/usr/bin/env bash
+# Before a commit: phpcbf on the staged PHP files and Prettier on the staged JavaScript, TypeScript, styles and JSON,
+# each file re-staged as fixed; then PHPCS on the PHP files, so the commit stops only on what neither tool can fix.
+# Turned on with `composer hooks` (git config core.hooksPath .githooks); `git commit --no-verify` skips it.
+#
+# - Only staged files, and only those the project's own runs cover: the PHP that phpcs.xml lists (`composer lint`) and
+#   the files package.json's `format` script names (`npm run format`), so a generated file (schema/, the API snapshot,
+#   the translations' JSON) or a tool script the standards leave alone is never rewritten.
+# - A file staged in part, with other changes to it not staged, is never rewritten: fixing it would mix the two. Its
+#   staged text is checked instead, and the commit stops if it needs fixing, naming the file.
+# - Names are read NUL-separated, so a file name with spaces is one file. Bash 3.2, as macOS ships it.
+set -euo pipefail
+cd "$(git rev-parse --show-toplevel)"
+# A file name is a name, never a pathspec pattern, for every git command below.
+export GIT_LITERAL_PATHSPECS=1
+
+php_scope=()
+while IFS= read -r entry; do php_scope+=("$entry"); done < <(sed -n 's:.*<file>\(.*\)</file>.*:\1:p' phpcs.xml)
+format_scope=()
+while IFS= read -r entry; do format_scope+=("$entry"); done < <(node -e '
+	const words = require( "./package.json" ).scripts.format.split( /\s+/ );
+	for ( const word of words.slice( words.indexOf( "prettier" ) + 1 ) ) {
+		if ( ! word.startsWith( "-" ) ) console.log( word );
+	}
+')
+
+# Whether a path is one of the entries: the path itself, a file in a folder entry, or a match of a glob entry in the
+# glob's own folder (tools/*.mjs is tools' own scripts, as the shell expands it for npm, not tools/upgrade's).
+in_scope() {
+	local file="$1" entry
+	shift
+	for entry in "$@"; do
+		entry="${entry%/}"
+		if [ "$file" = "$entry" ] || [ "${file#"$entry"/}" != "$file" ]; then
+			return 0
+		fi
+		case "$entry" in
+			*'*'* | *'?'*)
+				# shellcheck disable=SC2053 # the entry is a glob on purpose
+				if [ "$(dirname "$file")" = "$(dirname "$entry")" ] && [[ "$(basename "$file")" == $(basename "$entry") ]]; then
+					return 0
+				fi
+				;;
+		esac
+	done
+	return 1
+}
+
+php_whole=()
+php_part=()
+pretty_whole=()
+pretty_part=()
+while IFS= read -r -d '' file; do
+	case "$file" in
+		*.php) in_scope "$file" ${php_scope[@]+"${php_scope[@]}"} || continue; kind=php ;;
+		*.js | *.mjs | *.cjs | *.jsx | *.ts | *.mts | *.cts | *.tsx | *.scss | *.css | *.json)
+			in_scope "$file" ${format_scope[@]+"${format_scope[@]}"} || continue
+			kind=pretty
+			;;
+		*) continue ;;
+	esac
+	if git diff --quiet -- "$file"; then
+		if [ "$kind" = php ]; then php_whole+=("$file"); else pretty_whole+=("$file"); fi
+	else
+		if [ "$kind" = php ]; then php_part+=("$file"); else pretty_part+=("$file"); fi
+	fi
+done < <(git diff --cached --name-only --diff-filter=ACMR -z)
+
+total=$(( ${#php_whole[@]} + ${#php_part[@]} + ${#pretty_whole[@]} + ${#pretty_part[@]} ))
+[ "$total" -gt 0 ] || exit 0
+
+phpcbf=vendor/bin/phpcbf
+phpcs=vendor/bin/phpcs
+prettier=node_modules/.bin/prettier
+if [ $(( ${#php_whole[@]} + ${#php_part[@]} )) -gt 0 ] && [ ! -x "$phpcbf" ]; then
+	echo "pre-commit: $phpcbf is missing; run composer install." >&2
+	exit 1
+fi
+if [ $(( ${#pretty_whole[@]} + ${#pretty_part[@]} )) -gt 0 ] && [ ! -x "$prettier" ]; then
+	echo "pre-commit: $prettier is missing; run npm ci." >&2
+	exit 1
+fi
+
+failed=0
+
+if [ ${#php_whole[@]} -gt 0 ]; then
+	# phpcbf exits 1 when it fixed something and 2 when it could not fix all it found; PHPCS below says what is left.
+	status=0
+	"$phpcbf" -q "${php_whole[@]}" > /dev/null || status=$?
+	if [ "$status" -gt 2 ]; then
+		echo "pre-commit: phpcbf failed (exit $status)." >&2
+		exit 1
+	fi
+	git add -- "${php_whole[@]}"
+	if ! "$phpcs" -q "${php_whole[@]}"; then
+		echo "pre-commit: PHPCS still finds the problems above, which phpcbf cannot fix." >&2
+		failed=1
+	fi
+fi
+
+if [ ${#pretty_whole[@]} -gt 0 ]; then
+	if ! "$prettier" --write --log-level warn -- "${pretty_whole[@]}"; then
+		echo "pre-commit: Prettier could not format the files above." >&2
+		exit 1
+	fi
+	git add -- "${pretty_whole[@]}"
+fi
+
+# Staged in part: the staged text alone is checked, and nothing is written.
+scratch="$(mktemp -d)"
+trap 'rm -rf "$scratch"' EXIT
+if [ ${#php_part[@]} -gt 0 ]; then
+	for file in "${php_part[@]}"; do
+		if ! git show ":$file" | "$phpcs" -q --stdin-path="$file" - > "$scratch/phpcs.txt"; then
+			cat "$scratch/phpcs.txt" >&2
+			echo "pre-commit: $file is staged in part and its staged text needs fixing: run $phpcbf on it, and stage it again." >&2
+			failed=1
+		fi
+	done
+fi
+if [ ${#pretty_part[@]} -gt 0 ]; then
+	for file in "${pretty_part[@]}"; do
+		git show ":$file" > "$scratch/staged"
+		if ! "$prettier" --stdin-filepath "$file" < "$scratch/staged" > "$scratch/formatted" || ! cmp -s "$scratch/staged" "$scratch/formatted"; then
+			echo "pre-commit: $file is staged in part and its staged text is not formatted: run $prettier --write on it, and stage it again." >&2
+			failed=1
+		fi
+	done
+fi
+
+exit "$failed"
