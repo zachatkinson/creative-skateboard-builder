@@ -1288,14 +1288,15 @@
 
 /*
  * The picture on the stage: the heading at the top, the board filling the space under it, centred, and the button to
- * turn it over in the corner. On a phone or a tablet the board is turned a quarter turn, so it fills the stage's width
- * rather than its short height; the written description is the same (spec: Phone). A board is drawn left to right in
- * either direction (D-203), so the turn is too.
+ * turn it over in a row of its own at the foot, at the end, under the board and never over it (F17, #102). On a phone
+ * or a tablet the board is turned a quarter turn, so it fills the stage's width rather than its short height; the
+ * written description is the same (spec: Phone). A board is drawn left to right in either direction (D-203), so the
+ * turn is too.
  */
 :where(.cbuild__stage .cbuild-picture) {
 	position: relative;
 	display: grid;
-	grid-template-rows: auto auto minmax(0, 1fr) auto;
+	grid-template-rows: auto auto minmax(0, 1fr) auto auto;
 	align-content: start;
 	block-size: 100%;
 	min-block-size: 0;
@@ -1317,17 +1318,30 @@
 }
 
 :where(.cbuild__stage .cbuild-picture__turn) {
-	position: absolute;
-	inset-block-end: var(--cbuild-gap-small);
-	inset-inline-end: 0;
-	z-index: 1;
+	grid-row: 5;
+	justify-self: end;
+	min-block-size: var(--cbuild-target);
 	margin: 0;
+	padding-block-end: var(--cbuild-gap-small);
+}
+
+/* Its row is kept, unseen, while there is no top to turn to, so a board that gains one, or loses it to a deck's
+   photo, is neither moved nor resized. Not while the stage is bare: then it holds the outline alone (#82). */
+.cbuild .cbuild__stage:not(.cbuild__stage--bare) .cbuild-picture__turn[hidden] {
+	display: flex;
+	visibility: hidden;
 }
 
 /* Stacked, on a tablet as on a phone, the stage is a short strip on top: the board turned fills its width (D-280). */
 @container cbuild (max-width: 63.99rem) {
+	/* As long as the stage is wide, less its edges, at most 32rem, and never thicker on its side than its row is
+	   high, so it stays whole above the button on a phone held sideways too. */
 	:where(.cbuild__stage) :where(.cbuild-board:not(.cbuild-board--bar)) {
-		--cbuild-board-size: min(calc(100cqi - 3rem), 32rem);
+		--cbuild-board-size: min(
+			calc(100cqi - 3rem),
+			32rem,
+			calc(100% / (var(--cbuild-board-ratio, 1 / 4)))
+		);
 
 		/* Centred by its own size, the same in either direction, then turned: no edge for a mirrored stylesheet to swap.
 		   Upright it is longer than its row is high, where automatic margins stop centring it, so its top is worked

@@ -4634,6 +4634,138 @@ test.describe( 'The board turned over', () => {
 		);
 	} );
 
+	// Cowork's review of 1.0.0, F17 (#102): on a phone the board lay across the stage's whole width, and the button
+	// that turns it sat over its tail. The mockup has the button at the stage's foot, under the board. Found by its
+	// class, so the French and right-to-left projects, whose words differ, measure it too.
+	for ( const [ width, height, at ] of [
+		[ 390, 844, 'wheels' ],
+		[ 820, 1180, 'wheels' ],
+		[ 1280, 900, 'wheels' ],
+		// The whole board, as the review's baselines showed the button over its tail.
+		[ 390, 844, 'review' ],
+		[ 820, 1180, 'review' ],
+		[ 1280, 900, 'review' ],
+	] as const ) {
+		test( `keeps the button that turns the board clear of either side of it at ${ width } by ${ height }, on the ${ at }`, async ( {
+			page,
+		}, info ) => {
+			test.skip(
+				info.project.name === 'no-js',
+				"The button is the script's: without it there is nothing over the board."
+			);
+			await page.setViewportSize( { width, height } );
+			if ( 'review' === at ) {
+				await page.goto( fixture().page );
+				// With the script a ready build opens in place, with no page load.
+				await page
+					.locator( '.cbuild-presets' )
+					.getByRole( 'button', { name: 'Start from Street' } )
+					.click();
+				await expect( heading( page ) ).toHaveText(
+					/: Check your build$/
+				);
+			} else {
+				await page.goto(
+					linkTo( {
+						deck: id( 'builder-test-deck-8-0' ),
+						trucks: id( 'builder-test-trucks-139' ),
+						step: 'wheels',
+					} )
+				);
+			}
+			const turn = picture( page ).locator(
+				'.cbuild-picture__turn .cbuild-button'
+			);
+			await expect( turn ).toBeVisible();
+			/**
+			 * The drawn layers of the side shown that the button's box crosses, each with the overlap.
+			 *
+			 * @param shown The side's board.
+			 */
+			const covered = ( shown: Locator ) =>
+				shown.evaluate( ( board ) => {
+					const button = document
+						.querySelector(
+							'#cbuild-picture .cbuild-picture__turn .cbuild-button'
+						)
+						?.getBoundingClientRect();
+					if ( ! button ) {
+						return [ 'no button' ];
+					}
+					return [
+						...board.querySelectorAll< HTMLElement >(
+							'.cbuild-board__layer'
+						),
+					]
+						.map( ( layer ) => {
+							// A turned board's layers measure as the boxes they fill on the screen.
+							const box = layer.getBoundingClientRect();
+							const across =
+								Math.min( box.right, button.right ) -
+								Math.max( box.left, button.left );
+							const down =
+								Math.min( box.bottom, button.bottom ) -
+								Math.max( box.top, button.top );
+							return box.width > 0 && across > 0.5 && down > 0.5
+								? `${ layer.className } by ${ Math.round(
+										across
+									) } by ${ Math.round( down ) }`
+								: '';
+						} )
+						.filter( Boolean );
+				} );
+			await expect( under( page ) ).toBeVisible();
+			await expect( page.locator( '.cbuild' ) ).toHaveAttribute(
+				'aria-busy',
+				'false'
+			);
+			await expect
+				.poll( () => covered( under( page ) ), 'the underside' )
+				.toEqual( [] );
+			const box = ( await turn.boundingBox() )!;
+			// Where it is on the stage, not the screen or the page: the click may scroll the page, and on a phone the
+			// stage is sticky.
+			const onPage = () =>
+				turn.evaluate(
+					( button ) =>
+						button.getBoundingClientRect().top -
+						( document
+							.querySelector( '#cbuild-picture' )
+							?.getBoundingClientRect().top ?? 0 )
+				);
+			const before = await onPage();
+			// Below the board's whole box, not only clear of what is drawn: a longer deck than the fixture's fills it.
+			const board = ( await under( page ).boundingBox() )!;
+			expect(
+				box.y,
+				'the button sits under the board'
+			).toBeGreaterThanOrEqual( board.y + board.height - 1 );
+			expect( box.height ).toBeGreaterThanOrEqual( 44 );
+			expect( box.width ).toBeGreaterThanOrEqual( 44 );
+
+			await turn.click();
+			await expect( turn ).toHaveAttribute( 'aria-pressed', 'true' );
+			await expect( top( page ) ).toBeVisible();
+			// Measured once the turn's motion has settled, where the top rests.
+			await page.waitForFunction(
+				() =>
+					document
+						.querySelector( '#cbuild-picture' )
+						?.getAnimations( { subtree: true } )
+						.every( ( one ) => 'running' !== one.playState ) ?? true
+			);
+			await expect
+				.poll( () => covered( top( page ) ), 'the top' )
+				.toEqual( [] );
+			const turned = ( await turn.boundingBox() )!;
+			expect( turned.height ).toBeGreaterThanOrEqual( 44 );
+			expect(
+				Math.abs( ( await onPage() ) - before ),
+				'the button stays put on the stage as the board turns'
+			).toBeLessThan( 1 );
+		} );
+	}
+
 	test( 'has no button without the script, and a deck with no layer image has no top', async ( {
 		page,
 	}, info ) => {

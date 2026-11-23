@@ -3939,3 +3939,16 @@ Issue #98 (F13, Cowork's 1.0.0 review, to the mockup of 18 November): on a deskt
 **Why:** the rule's aim is that a flaky test never sits unowned; here it is owned, measured and bounded, and the gate keeps running.
 
 **Status:** Accepted; listed for Zach in M11's review as a reading of the same-day rule.
+
+### D-320 · The button that turns the board has a row of its own under it on the stage · 2026-11-23
+
+Cowork's review of 1.0.0, F17 (#102): at 390 px the board lay across the stage's whole width and Show the top sat over its tail; the mockup has the button at the stage's bottom right, under the board.
+
+- **What.** On the stage the picture's grid gains a fifth row, at its foot, and the turn button is in it at the inline end (`justify-self: end`), no longer placed over the picture. The board is centred in its own row, upright or turned, so the button is never over it at any width or in either direction. The row is at least the 44 px target, with 8 px under it, which leaves room for the focus ring inside the stage.
+- **No shift.** While there is no top to turn to (a deck shown by its photo, #82, or no script) the row is kept with `visibility: hidden`, so the board is neither moved nor resized when the button comes or goes. A bare stage keeps no row (#82).
+- **The turned board's size.** Stacked, the board is as long as the stage is wide less 3rem, at most 32rem, and now never thicker on its side than its row is high: `calc(100% / var(--cbuild-board-ratio))`. On a phone and a tablet held upright the width still decides; a phone held sideways gets a smaller board, drawn whole above the button, where it ran past the stage before.
+- **Not chosen.** Keeping the button over the picture and shrinking the board by its height wherever the two might meet: the overlap depends on the theme's button and the stage's height, which the stylesheet cannot read, and a row of its own is what the mockup shows.
+
+**Why:** the mockup, and a control over the picture it controls hides what it shows. On a desktop the upright board is about 52 px shorter, the price of the guarantee where the stage is narrow.
+
+**Status:** Accepted.
