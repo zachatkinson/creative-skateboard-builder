@@ -1711,6 +1711,13 @@
 
 /* Without it, on a phone, room for the bar's tallest: the total over two lines, and Back and Next on a row below. */
 @media (max-width: 47.99rem) {
+	/* A phone's 44 px target for the two links in running text, by their box, not their type (#86). */
+	.cbuild :where(.cbuild__back, .cbuild-save__sign-in a) {
+		display: inline-flex;
+		align-items: center;
+		min-block-size: var(--cbuild-target);
+	}
+
 	:root:has(.cbuild .cbuild-bar:not([hidden])) {
 		// The bar, and any bar of the theme's own below it (D-163), on one line for Stylelint.
 		// prettier-ignore

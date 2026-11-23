@@ -2846,7 +2846,8 @@ test.describe( "The builder's styles", () => {
 			page.locator( '.cbuild' ).evaluate( ( root ) => {
 				const found: string[] = [];
 				for ( const node of root.querySelectorAll< HTMLElement >(
-					'button, select, input[type="search"], summary, .cbuild-chip, .cbuild-progress__link, .cbuild-card__page'
+					// "Back to the shop" and "Sign in to save this build" too (#86).
+					'button, select, input[type="search"], summary, .cbuild-chip, .cbuild-progress__link, .cbuild-card__page, .cbuild__back, .cbuild-save__sign-in a'
 				) ) {
 					const box = node.getBoundingClientRect();
 					if (
