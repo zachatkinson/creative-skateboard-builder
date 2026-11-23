@@ -14,6 +14,7 @@
 #  12. An exception of PHP's own made in src/Domain: its refusals are typed, with a reason code (D-062).
 #  14. Markup built in the builder's front scripts: every piece is a server template (CLAUDE.md: Markup).
 #  15. A string literal with words in it in the builder's front scripts: every word the shopper reads is the server's.
+#  18. An mbstring case change with no function_exists() fallback on its line (#72).
 # Gate 1 also covers string-built SQL (1b) and the database's clock in a statement (1c). Every gate has snippets it
 # must reject in tests/Fixtures/gates/, run by tools/gates-selftest.sh.
 # Run: composer gates
@@ -200,6 +201,14 @@ done
 unguarded="$(grep -rL "defined( 'ABSPATH' )" src --include='*.php' | grep -v '^src/Domain/' || true)"
 if [ -n "$unguarded" ]; then
 	echo "Gate 17: no direct-access guard (if ( ! defined( 'ABSPATH' ) ) { exit; }):"; echo "$unguarded"; status=1
+fi
+
+# 18. A case change by mbstring with no fallback on its line. WordPress's compat.php gives mb_substr() and mb_strlen()
+# where PHP has no mbstring, not these, so an unguarded call stops the page on such a host (#72): each goes through
+# function_exists() with strtolower() or strtoupper() after it, as Adapter\WpTextFolding does.
+hits="$(grep -rnE '(^|[^a-zA-Z_>$])(mb_strtolower|mb_strtoupper|mb_convert_case)\s*\(' "${php_files[@]}" --include='*.php' | grep -vE '^[^:]+:[0-9]+:\s*(\*|//|#)' | grep -vE "function_exists\( '(mb_strtolower|mb_strtoupper|mb_convert_case)' \)" || true)"
+if [ -n "$hits" ]; then
+	echo "Gate 18: an mbstring case change with no function_exists() fallback on its line:"; echo "$hits"; status=1
 fi
 
 if [ "$status" -eq 0 ]; then echo "Gates: clean."; fi

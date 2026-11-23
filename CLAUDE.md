@@ -40,6 +40,7 @@ It is the agency's showpiece, built to the twelve-dimension audit in `docs/AUDIT
   - outbound requests;
   - WordPress, words, untyped throws and top-level statements in the domain;
   - em dashes and banned words in the POT;
+  - an mbstring case change with no `function_exists()` fallback (#72);
   - a job of `release.yml` that holds the token and runs anything but `gh`, and the release plan's cases.
 - `composer test:unit`: PHPUnit 13, no WordPress
 - `composer test:coverage`: unit tests with the domain's floors: 100 % of lines and branches in `src/Domain` (Xdebug's path coverage, since pcov measures lines only)
