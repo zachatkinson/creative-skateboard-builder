@@ -20,4 +20,8 @@ export interface CbuildLayout {
 	 * The search in the steps: creative_search, Creative Search where it is active and the builder's own otherwise, or own, the builder's own always. The default is creative_search.
 	 */
 	search?: 'creative_search' | 'own';
+	/**
+	 * From 1.1.0: how the board's parts move. playful moves them onto the board; subtle fades them in, for every shopper, as a device that asks for reduced motion always has. The default is playful.
+	 */
+	motion?: 'playful' | 'subtle';
 }

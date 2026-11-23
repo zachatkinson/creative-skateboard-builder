@@ -24,7 +24,7 @@ final class KitLayoutTest extends TestCase {
 
 	public function test_a_kit_with_no_layout_has_the_defaults(): void {
 		$layout = KitLayout::fromDocument( null );
-		self::assertSame( array( 'left', 'large', 'creative_search' ), array( $layout->stageSide, $layout->boardSize, $layout->search ) );
+		self::assertSame( array( 'left', 'large', 'creative_search', 'playful' ), array( $layout->stageSide, $layout->boardSize, $layout->search, $layout->motion ) );
 		$kit = Kit::fromDocuments( KitDocuments::slots(), KitDocuments::rules(), KitDocuments::presets(), KitDocuments::assembly() );
 		self::assertEquals( $layout, $kit->layout, 'and so does a kit saved before 1.0.0' );
 	}
@@ -39,6 +39,9 @@ final class KitLayoutTest extends TestCase {
 		);
 		self::assertSame( array( 'right', 'balanced', 'creative_search' ), array( $layout->stageSide, $layout->boardSize, $layout->search ) );
 		self::assertSame( 'own', KitLayout::fromDocument( array( 'schema_version' => 1, 'search' => 'own' ) )->search );
+		// Milestone 11: Motion, playful unless the kit says subtle. A layout saved by 1.0.0 has none, so it is playful.
+		self::assertSame( 'subtle', KitLayout::fromDocument( array( 'schema_version' => 1, 'motion' => 'subtle' ) )->motion );
+		self::assertSame( 'playful', KitLayout::fromDocument( array( 'schema_version' => 1, 'stage_side' => 'right' ) )->motion );
 		$kit = Kit::fromDocuments( KitDocuments::slots(), KitDocuments::rules(), KitDocuments::presets(), KitDocuments::assembly(), null, array( 'schema_version' => 1, 'stage_side' => 'right' ) );
 		self::assertSame( 'right', $kit->layout->stageSide );
 	}
@@ -52,6 +55,7 @@ final class KitLayoutTest extends TestCase {
 		yield 'a side that is none' => array( array( 'schema_version' => 1, 'stage_side' => 'top' ), 'document_out_of_range' );
 		yield 'a size that is none' => array( array( 'schema_version' => 1, 'board_size' => 'huge' ), 'document_out_of_range' );
 		yield 'a search that is none' => array( array( 'schema_version' => 1, 'search' => 'google' ), 'document_out_of_range' );
+		yield 'a motion that is none' => array( array( 'schema_version' => 1, 'motion' => 'wild' ), 'document_out_of_range' );
 		yield 'a side that is no text' => array( array( 'schema_version' => 1, 'stage_side' => 1 ), 'document_wrong_type' );
 	}
 

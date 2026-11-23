@@ -281,7 +281,7 @@
     ],
     "schema_digests": {
         "schema/kit-assembly.json": "bb1b0dd6abb55ba95679de5d5fe4b7dfee4e92c6e0209777039dbcb9fb14e9ae",
-        "schema/kit-layout.json": "fac0d195e86120320092171b830db2995293c1a8ff1644eee9e1a6a44d3e1538",
+        "schema/kit-layout.json": "79d9032acdc4e2e4a110cbc3b69c9085f3b3980c706419ca63e3cdef8a5ee3d1",
         "schema/kit-picture.json": "f5a644b1f0082bd93867dbc8ac74342730c47a8008128c32380a80485f9ef939",
         "schema/kit-presets.json": "fa1447fe7d550c544db2236d898f02ca63e5966023a875f73bbbd90dba4f66c3",
         "schema/kit-rules.json": "79f9a5c998a63c1ceee8ec7877096515dabd9e75c6116257874e1d4418242c45",

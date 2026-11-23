@@ -235,6 +235,8 @@ final class BuilderView {
 			'layout'    => array(
 				'stageRight' => 'right' === $state->kit->layout->stageSide,
 				'balanced'   => 'balanced' === $state->kit->layout->boardSize,
+				// Motion on subtle fades the board's parts for every shopper, as reduced motion does (1.1.0, D-256).
+				'subtle'     => 'subtle' === $state->kit->layout->motion,
 			),
 			'status'    => $status,
 			'errors'    => array(

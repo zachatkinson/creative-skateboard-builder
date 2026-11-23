@@ -259,10 +259,10 @@ final class BuilderTest extends TestCase {
 
 	// Spec (configurator): Settings (D-255), the stage's side and the board's size on a desktop.
 	public function test_the_kits_layout_puts_the_stage_on_its_side_at_its_size(): void {
-		self::assertSame( array( 'stageRight' => false, 'balanced' => false ), $this->show( new BuildLink() )['view']['layout'], 'left and large unless the kit says' );
-		$kit = Kit::fromDocuments( KitDocuments::slots(), KitDocuments::rules(), KitDocuments::presets(), KitDocuments::assembly(), null, array( 'schema_version' => 1, 'stage_side' => 'right', 'board_size' => 'balanced' ) );
+		self::assertSame( array( 'stageRight' => false, 'balanced' => false, 'subtle' => false ), $this->show( new BuildLink() )['view']['layout'], 'left, large and playful unless the kit says' );
+		$kit = Kit::fromDocuments( KitDocuments::slots(), KitDocuments::rules(), KitDocuments::presets(), KitDocuments::assembly(), null, array( 'schema_version' => 1, 'stage_side' => 'right', 'board_size' => 'balanced', 'motion' => 'subtle' ) );
 		$this->kits->add( self::KIT, $kit, Shop::parts() );
-		self::assertSame( array( 'stageRight' => true, 'balanced' => true ), $this->show( new BuildLink() )['view']['layout'] );
+		self::assertSame( array( 'stageRight' => true, 'balanced' => true, 'subtle' => true ), $this->show( new BuildLink() )['view']['layout'] );
 	}
 
 	public function test_the_picture_says_nothing_under_it_at_a_blank_start_where_the_summary_says_it(): void {

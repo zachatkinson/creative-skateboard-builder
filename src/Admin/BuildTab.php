@@ -821,7 +821,8 @@ final class BuildTab {
 	}
 
 	/**
-	 * The Layout section's fields (D-255): the stage's side and the board's size on a desktop, and the steps' search.
+	 * The Layout section's fields (D-255): the stage's side and the board's size on a desktop, the steps' search, and
+	 * from 1.1.0 the motion.
 	 *
 	 * @param array<mixed> $document The layout document to show.
 	 * @return list<array{id: string, legend: string, moves: bool, fold: string, open: bool, fields: list<array<string, mixed>>, more: list<array<string, mixed>>}>
@@ -869,6 +870,20 @@ final class BuildTab {
 						'own'             => __( 'The builder\'s own always', 'creative-skateboard-builder' ),
 					),
 					'note'    => __( 'Creative Search corrects typing errors and ranks matches by how well they match. The builder\'s own search matches the words as typed.', 'creative-skateboard-builder' ),
+				)
+			),
+			$this->field(
+				$id . '-motion',
+				$name . '[motion]',
+				__( 'Motion', 'creative-skateboard-builder' ),
+				'select',
+				$chosen( 'motion', KitLayout::MOTIONS ),
+				array(
+					'options' => array(
+						'playful' => __( 'Playful: parts move onto the board', 'creative-skateboard-builder' ),
+						'subtle'  => __( 'Subtle: parts fade in, for every shopper', 'creative-skateboard-builder' ),
+					),
+					'note'    => __( 'A shopper whose device asks for less motion always sees fades.', 'creative-skateboard-builder' ),
 				)
 			),
 		);

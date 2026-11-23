@@ -627,14 +627,14 @@ final class KitEditor {
 
 	/**
 	 * The layout document from the tab's fields (D-255): each choice sent as text, which the domain then holds to its
-	 * choices. Motion is milestone 11's, and is not kept yet.
+	 * choices.
 	 *
 	 * @param array<mixed> $sent The fields.
 	 * @return array<string, mixed>
 	 */
 	private static function layout( array $sent ): array {
 		$document = array( 'schema_version' => 1 );
-		foreach ( array( 'stage_side', 'board_size', 'search' ) as $key ) {
+		foreach ( array( 'stage_side', 'board_size', 'search', 'motion' ) as $key ) {
 			if ( is_string( $sent[ $key ] ?? null ) ) {
 				$document[ $key ] = trim( $sent[ $key ] );
 			}

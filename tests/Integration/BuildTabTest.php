@@ -798,7 +798,7 @@ final class BuildTabTest extends IntegrationTestCase {
 		$kit   = KitFactory::kit();
 		$panel = $this->panel( $kit );
 		self::assertStringContainsString( 'id="cbuild-kit-layout"', $panel );
-		foreach ( array( 'stage_side' => 'left', 'board_size' => 'large', 'search' => 'creative_search' ) as $key => $default ) {
+		foreach ( array( 'stage_side' => 'left', 'board_size' => 'large', 'search' => 'creative_search', 'motion' => 'playful' ) as $key => $default ) {
 			self::assertMatchesRegularExpression( '#name="cbuild_kit\[layout\]\[' . $key . '\]".*?<option value="' . $default . '"\s+selected#s', $panel, $key . ': a kit saved before 1.0.0 shows the default' );
 		}
 
@@ -807,12 +807,13 @@ final class BuildTabTest extends IntegrationTestCase {
 			'stage_side' => 'right',
 			'board_size' => 'balanced',
 			'search'     => 'own',
+			'motion'     => 'subtle',
 		);
 		$this->send( $kit, $sent );
 		self::assertSame( array(), self::notices() );
-		self::assertSame( array( 'schema_version' => 1, 'stage_side' => 'right', 'board_size' => 'balanced', 'search' => 'own' ), self::stored( $kit->get_id() )[ Options::META_KIT_LAYOUT ] );
+		self::assertSame( array( 'schema_version' => 1, 'stage_side' => 'right', 'board_size' => 'balanced', 'search' => 'own', 'motion' => 'subtle' ), self::stored( $kit->get_id() )[ Options::META_KIT_LAYOUT ] );
 		$read = $this->service( \CreativeBranding\SkateboardBuilder\Port\Kits::class )->kit( $kit->get_id() );
-		self::assertSame( array( 'right', 'balanced', 'own' ), array( $read?->layout->stageSide, $read?->layout->boardSize, $read?->layout->search ), 'the kit the builder reads' );
+		self::assertSame( array( 'right', 'balanced', 'own', 'subtle' ), array( $read?->layout->stageSide, $read?->layout->boardSize, $read?->layout->search, $read?->layout->motion ), 'the kit the builder reads' );
 
 		$sent['layout']['stage_side'] = 'top';
 		$this->send( $kit, $sent );

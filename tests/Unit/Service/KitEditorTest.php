@@ -489,12 +489,13 @@ final class KitEditorTest extends TestCase {
 		$sent['layout'] = array(
 			'stage_side' => 'right',
 			'board_size' => 'balanced',
+			'motion'     => 'subtle',
 			'search'     => 'own',
 			'motion'     => 'subtle',
 		);
 		$draft          = $this->editor->draft( $sent, self::stored() );
 		self::assertSame( array(), $draft->problems );
-		self::assertSame( array( 'schema_version' => 1, 'stage_side' => 'right', 'board_size' => 'balanced', 'search' => 'own' ), $draft->documents[ KitEditor::LAYOUT ], 'motion is milestone 11\'s' );
+		self::assertSame( array( 'schema_version' => 1, 'stage_side' => 'right', 'board_size' => 'balanced', 'search' => 'own', 'motion' => 'subtle' ), $draft->documents[ KitEditor::LAYOUT ] );
 
 		$sent['layout'] = array( 'stage_side' => 'top' );
 		$draft          = $this->editor->draft( $sent, self::stored() );
