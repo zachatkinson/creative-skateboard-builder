@@ -81,6 +81,30 @@ final readonly class State {
 	}
 
 	/**
+	 * Where each preset a shopper is offered stands among the kit's, from 0 (#104): none where the kit's Show ready
+	 * builds is off, and none that a problem keeps from the cart, which the Catalogue check lists for the owner
+	 * instead. A preset the state did not build has nothing keeping it from the cart. A link to any preset still
+	 * opens it.
+	 *
+	 * @since 1.1.0
+	 *
+	 * @return list<int>
+	 */
+	public function shownPresets(): array {
+		if ( ! $this->kit->layout->showPresets ) {
+			return array();
+		}
+		$shown = array();
+		foreach ( array_keys( $this->kit->presets ) as $at ) {
+			$built = $this->presets[ $at ] ?? null;
+			if ( null === $built || array() === $built->problems() ) {
+				$shown[] = $at;
+			}
+		}
+		return $shown;
+	}
+
+	/**
 	 * Whether the build can go to the cart as it stands.
 	 *
 	 * @since 0.4.0

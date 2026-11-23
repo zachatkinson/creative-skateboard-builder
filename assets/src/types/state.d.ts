@@ -153,7 +153,7 @@ export interface CbuildState {
 		returns_notice: string;
 	};
 	/**
-	 * The kit's ready builds, six at most.
+	 * The kit's ready builds a shopper is offered, six at most, in the kit's order. From 1.1.0 none where the kit's show_presets is off, and none with a part that's gone, sold out or no longer fits, so each one listed is ready, with no problems. A link with cbuild[preset] still opens any of the kit's.
 	 *
 	 * Items: A preset.
 	 */

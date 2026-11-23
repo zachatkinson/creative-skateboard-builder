@@ -15,6 +15,8 @@ use CreativeBranding\SkateboardBuilder\Front\StateAnswer;
 use CreativeBranding\SkateboardBuilder\Port\Kits;
 use CreativeBranding\SkateboardBuilder\Rest\StateRoute;
 use CreativeBranding\SkateboardBuilder\Service\BuildState;
+use CreativeBranding\SkateboardBuilder\Service\CatalogueCheck;
+use CreativeBranding\SkateboardBuilder\Service\CheckFinding;
 use CreativeBranding\SkateboardBuilder\Service\RateLimit;
 use CreativeBranding\SkateboardBuilder\Service\SpecIndexer;
 use CreativeBranding\SkateboardBuilder\Support\Options;
@@ -50,6 +52,13 @@ final class StateRouteTest extends IntegrationTestCase {
 	 * @var array<string, int>
 	 */
 	private array $parts = array();
+
+	/**
+	 * The deck and trucks slots' categories, by slot key.
+	 *
+	 * @var array<string, int>
+	 */
+	private array $categories = array();
 
 	/**
 	 * The schema, with each reference written out.
@@ -100,6 +109,10 @@ final class StateRouteTest extends IntegrationTestCase {
 			$trucks
 		);
 
+		$this->categories             = array(
+			'deck'   => $decks,
+			'trucks' => $trucks,
+		);
 		$slots                        = KitDocuments::slots();
 		$slots['slots'][0]['sources'] = array( 'categories' => array( $decks ) );
 		$slots['slots'][1]['sources'] = array( 'categories' => array( $trucks ) );
@@ -156,6 +169,77 @@ final class StateRouteTest extends IntegrationTestCase {
 		wp_set_object_terms( $product->get_id(), array( $category ), 'product_cat' );
 		$this->service( SpecIndexer::class )->index( $product->get_id() );
 		return $product->get_id();
+	}
+
+	/**
+	 * A kit like set_up's whose Street is whole (#104): each of its picks one of its slot's parts, in stock and
+	 * fitting, so its tile is shown. Set up's Street names the 8.0 deck in every other slot, which no other slot
+	 * offers, so it is left out for shoppers.
+	 *
+	 * @param array<string, mixed>|null $layout The kit's layout document, or null for one saved before 1.0.0.
+	 * @return array{kit: int, picks: array<string, int>}
+	 */
+	private function whole( ?array $layout = null ): array {
+		$slots = KitDocuments::slots();
+		$picks = array(
+			'deck'   => $this->parts['deck 8.0'],
+			'trucks' => $this->parts['truck 139'],
+		);
+		foreach ( array(
+			'wheels'   => array(
+				'wheel_diameter' => '52.0000',
+				'set_size'       => '4',
+			),
+			'bearings' => array(
+				'bearing_bore' => '8.0000',
+				'set_size'     => '8',
+			),
+			'hardware' => array(
+				'bolt_length' => '1.0000',
+				'set_size'    => '8',
+			),
+			'grip'     => array(
+				'grip_width'  => '9.0000',
+				'grip_length' => '33.0000',
+			),
+		) as $key => $specs ) {
+			$this->categories[ $key ] = self::factory()->term->create( array( 'taxonomy' => 'product_cat' ) );
+			$picks[ $key ]            = $this->part( ucfirst( $key ) . ' for Street', '10', $specs, $this->categories[ $key ] );
+		}
+		foreach ( $slots['slots'] as $at => $slot ) {
+			if ( isset( $this->categories[ $slot['key'] ] ) ) {
+				$slots['slots'][ $at ]['sources'] = array( 'categories' => array( $this->categories[ $slot['key'] ] ) );
+			}
+		}
+		$slots['slots'][1]['help'] = 'Sold in pairs.';
+		$kit                       = KitFactory::kit(
+			'Complete, whole',
+			array(
+				Options::META_KIT_SLOTS    => $slots,
+				Options::META_KIT_PRESETS  => array(
+					'schema_version' => 1,
+					'presets'        => array(
+						array(
+							'name'        => 'Street',
+							'description' => 'For ledges.',
+							'picks'       => $picks,
+						),
+					),
+				),
+				Options::META_KIT_ASSEMBLY => array(
+					'schema_version' => 1,
+					'default_on'     => false,
+					'fee'            => '15',
+					'lead_time'      => 'Two working days.',
+					'returns_notice' => 'An assembled board goes back whole.',
+				),
+				Options::META_KIT_LAYOUT   => $layout,
+			)
+		)->get_id();
+		return array(
+			'kit'   => $kit,
+			'picks' => $picks,
+		);
 	}
 
 	/**
@@ -1001,7 +1085,9 @@ final class StateRouteTest extends IntegrationTestCase {
 	}
 
 	public function test_a_plugin_that_answers_for_the_owners_words_changes_what_the_route_says(): void {
-		$plain = $this->answer();
+		// A Street with every part its slot's, so the answer offers it (#104).
+		$this->kit = $this->whole()['kit'];
+		$plain     = $this->answer();
 		self::assertSame( 'Trucks', $plain['steps'][1]['label'] );
 		self::assertSame( 'Sold in pairs.', $plain['steps'][1]['help'] );
 		self::assertSame( 'Street', $plain['presets'][0]['name'] );
@@ -1033,6 +1119,56 @@ final class StateRouteTest extends IntegrationTestCase {
 		self::assertSame( 'Deux jours ouvrables.', $said['texts']['lead_time'] );
 		self::assertSame( 'Une planche assemblée revient entière.', $said['texts']['returns_notice'] );
 		self::assertContains( 'Trucks (paire): nothing is chosen yet.', array_column( $said['problems'], 'message' ) );
+	}
+
+	/**
+	 * #104 (R1), on the route: a ready build with a part that's gone, sold out or no longer fits is left out of the
+	 * answer's presets and the view's section; a kit with Show ready builds off has neither; a kit saved before 1.1.0
+	 * shows its whole ones. A link with `cbuild[preset]` still opens each, and says what is missing (F6).
+	 */
+	public function test_the_route_offers_whole_ready_builds_alone_and_none_with_show_ready_builds_off(): void {
+		$start = array( 'step' => 'deck' );
+
+		// Set up's Street names the 8.0 deck in every other slot, which none of them offers.
+		$gone = $this->answer( array( 'cbuild' => $start ) );
+		self::assertSame( array(), $gone['presets'] );
+		self::assertFalse( $gone['view']['presets']['shown'] );
+		$street = array(
+			'deck'   => $this->parts['deck 8.0'],
+			'trucks' => $this->parts['truck 139'],
+		) + array_fill_keys( array( 'wheels', 'bearings', 'hardware', 'grip' ), $this->parts['deck 8.0'] );
+		$opened = $this->answer( array( 'cbuild' => array_map( 'strval', $street ) + array( 'step' => 'review', 'preset' => '0' ) ) );
+		self::assertSame( 'part_not_in_slot', $opened['refused'][0]['code'] ?? null, 'the link still opens it' );
+		self::assertMatchesRegularExpression( '/\AWheels: .+ is no longer offered here\.\z/', (string) ( $opened['refused'][0]['message'] ?? '' ), 'named as its tile named it' );
+
+		// A whole Street on a kit saved before 1.1.0, with no show_presets: its tile, at its place among the kit's.
+		$whole     = $this->whole( array( 'schema_version' => 1, 'stage_side' => 'right' ) );
+		$this->kit = $whole['kit'];
+		$shown     = $this->answer( array( 'cbuild' => $start ) );
+		self::assertSame( array( 'Street' ), array_column( $shown['presets'], 'name' ) );
+		self::assertTrue( $shown['presets'][0]['ready'] );
+		self::assertTrue( $shown['view']['presets']['shown'] );
+
+		// Its grip sold out: left out, and the Catalogue check lists it.
+		$grip = wc_get_product( $whole['picks']['grip'] );
+		$grip->set_stock_status( 'outofstock' );
+		$grip->save();
+		$sold = $this->answer( array( 'cbuild' => $start ) );
+		self::assertSame( array(), $sold['presets'] );
+		self::assertFalse( $sold['view']['presets']['shown'] );
+		$lines = array_map( static fn( CheckFinding $finding ): string => $finding->code . ' ' . $finding->part . ' ' . ( $finding->values['problem'] ?? '' ), $this->service( CatalogueCheck::class )->run() );
+		self::assertContains( CatalogueCheck::PRESET . ' ' . $whole['picks']['grip'] . ' part_sold_out', $lines );
+
+		// Show ready builds off: none, and the ready build kept, which its link opens with nothing missing.
+		$off       = $this->whole( array( 'schema_version' => 1, 'show_presets' => false ) );
+		$this->kit = $off['kit'];
+		$hidden    = $this->answer( array( 'cbuild' => $start ) );
+		self::assertSame( array(), $hidden['presets'] );
+		self::assertFalse( $hidden['view']['presets']['shown'] );
+		$review = $this->answer( array( 'cbuild' => array_map( 'strval', $off['picks'] ) + array( 'step' => 'review', 'preset' => '0' ) ) );
+		self::assertSame( 'review', $review['step'] );
+		self::assertSame( array(), $review['refused'] );
+		self::assertTrue( $review['ready'] );
 	}
 
 	public function test_a_plugin_that_rules_a_part_out_takes_it_from_the_route(): void {

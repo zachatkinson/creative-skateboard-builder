@@ -3912,3 +3912,30 @@ Issue #98 (F13, Cowork's 1.0.0 review, to the mockup of 18 November): on a deskt
 **Why:** the mockup shows one row with the biggest brands first. Whether chips fit in a row can only be known in the browser, and the rules want no markup built in JavaScript and nothing hidden without it. Measuring the server's own markup, and toggling a class and attributes, keeps both. Sources: CSS-Tricks, "The Priority+ Navigation Pattern" (https://css-tricks.com/the-priority-navigation-pattern/) and "DIY Priority+ Navigation" (https://css-tricks.com/diy-priority-plus-nav/); W3C WAI-ARIA APG, Disclosure pattern (https://www.w3.org/WAI/ARIA/apg/patterns/disclosure/); Baymard's guidance, via Boag World, to cut desktop filter lists at a few options with a clear "View more" (https://boagworld.com/usability/the-psychology-cro/).
 
 **Status:** Accepted.
+
+
+### D-315 · Show ready builds, and no ready build shown with a part that's gone · 2026-11-23
+
+#104 (R1, Zach's ask in Cowork's 1.0.0 review). On the demo both ready builds were broken: each tile named its test trucks as "no longer offered here", and Cruiser's grip tape was sold out.
+
+- **The switch** is `show_presets`, a boolean in the kit's `_cbuild_layout` (`schema/kit-layout.json`), on unless the kit says off. A layout saved before 1.1.0 has no key and shows its ready builds, so the upgrade changes nothing, with no key renamed and no table. It is kept in the layout document, not `_cbuild_presets`, so turning it off never touches the ready builds, and a refused preset never loses the switch. It is drawn at the top of the Build tab's Presets section, where an owner looks for it, as `cbuild_kit[layout][show_presets]`. It is a checkbox: one not ticked is not sent, and is saved as off (the tab's `END` field already guards a cut-short post, D-122). It needs wp-admin alone.
+- **One rule for broken.** `BuildState::preset()` holds a ready build's picks to their slots' parts and runs the validator. The tiles (`PresetState`) and the Catalogue check's `preset_broken` both call it, so the owner is told of exactly the builds a shopper no longer sees. A build with any problem (a part gone, sold out, short or no longer fitting) is left out of the answer's `presets` and the view's section; `State::shownPresets()` decides which, and none when the switch is off. This reverses D-151's "a preset holding a sold-out part says so on its tile": a shopper is no longer shown a tile that names a part the shop does not offer.
+- **Each tile keeps its place among the kit's** in `cbuild[preset]`, so a link means what it did, and `cbuild_preset_label` and `cbuild_kit_text` still get the kit's position.
+- **F6 stays.** A link with `cbuild[preset]` still opens any of the kit's ready builds. Since the answer no longer lists a broken one, the name of a part it holds that the kit no longer offers is written into the answer's `refused[].message` ("Trucks: Part 139 is no longer offered here.", #85's string) by `StateAnswer`. An ID no ready build holds is named by nothing, as before (BuildState, spec: Security).
+- **The answer's shape is unchanged:** each preset listed keeps `ready` and `problems`, now always true and empty.
+
+- **On merging.** F19's tile-class test used Park, which has sold-out wheels and so no tile now; that one test makes Park whole, and asserts what it did.
+
+**Status:** Accepted. Reverses D-151's tile note for a sold-out part; listed for Zach in M11's review.
+
+### D-319 · A flaky keyboard-only build is watched, not quarantined, after one sighting · 2026-11-23
+
+#108: "builds a board from a blank page and places its order" once read an empty cart for 5 s after Add to cart, on lane 2 with two lanes running. It passed 16 of 16 on that lane alone right after, and in about 60 other runs that day; the trace was lost to the next run.
+
+- **Not quarantined.** CLAUDE.md asks a flaky test to be fixed or quarantined with an issue the same day. This one is the keyboard-only accessibility gate; skipping it on one sighting with no trace would give up a gate for a cause no one has seen. The issue is open the same day.
+- **What changes.** The test keeps each cart read's status and count and says them if the poll ends, so the next sighting names whether the cart was empty, the request failed, or the session was another. /verify now keeps a failed run's `test-results`.
+- **If it recurs** before the cause is fixed, it is quarantined then, with #108.
+
+**Why:** the rule's aim is that a flaky test never sits unowned; here it is owned, measured and bounded, and the gate keeps running.
+
+**Status:** Accepted; listed for Zach in M11's review as a reading of the same-day rule.

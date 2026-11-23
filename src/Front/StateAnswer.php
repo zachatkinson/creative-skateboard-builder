@@ -246,7 +246,7 @@ final class StateAnswer {
 			}
 		}
 		foreach ( $state->presets as $preset ) {
-			foreach ( array_merge( $preset->refused, $preset->validation->problems ) as $kept ) {
+			foreach ( $preset->problems() as $kept ) {
 				if ( null !== $kept->part ) {
 					$ids[] = $kept->part;
 				}
@@ -258,7 +258,16 @@ final class StateAnswer {
 				$ids[] = $change->closest->part->id;
 			}
 		}
-		$cards    = $this->cards->cards( array_values( array_unique( $ids ) ) );
+		$cards = $this->cards->cards( array_values( array_unique( $ids ) ) );
+		// The names of the parts that keep a ready build from the cart, shown or not, for a link that brings one.
+		$held = array();
+		foreach ( $state->presets as $preset ) {
+			foreach ( $preset->problems() as $kept ) {
+				if ( null !== $kept->part ) {
+					$held[ $kept->part ] = $cards[ $kept->part ]['name'] ?? '';
+				}
+			}
+		}
 		$decimals = $this->kits->decimals();
 		$money    = fn( int $amount ): array => array(
 			'amount' => $amount,
@@ -384,13 +393,16 @@ final class StateAnswer {
 		foreach ( $state->steps as $step ) {
 			$begun = $begun || null !== $step->counted();
 		}
-		foreach ( $state->kit->presets as $at => $preset ) {
-			$picks = array();
+		// The presets a shopper is offered (#104): none where the kit's Show ready builds is off, and none a problem keeps
+		// from the cart. Each keeps its place among the kit's for the filters, and the Catalogue check lists the rest.
+		foreach ( $state->shownPresets() as $at ) {
+			$preset = $state->kit->presets[ $at ];
+			$picks  = array();
 			foreach ( $preset->picks as $slot => $part ) {
 				$picks[] = compact( 'slot', 'part' );
 			}
 			$built     = $state->presets[ $at ] ?? null;
-			$kept      = null === $built ? array() : array_merge( $built->refused, $built->validation->problems );
+			$kept      = null === $built ? array() : $built->problems();
 			$first     = self::first( $preset->picks );
 			$presets[] = array(
 				'name'        => self::preset( $preset->name, $at, $state->id ),
@@ -419,7 +431,9 @@ final class StateAnswer {
 			'filters'           => self::filters( $state->step, $all, $brands, $link ),
 			'matching'          => count( $matching ),
 			'more'              => $more,
-			'refused'           => array_map( $problem, $state->refused ),
+			// A part a ready build holds that the kit no longer offers is named as its tile named it (F6, #85), though
+			// the ready build is not shown (#104); an ID a link brought that no ready build holds is named by nothing.
+			'refused'           => array_map( static fn( BuildProblem $kept ): array => array_replace( $problem( $kept ), array( 'message' => Words::named( $kept->code, $labels[ $kept->slot ] ?? $kept->slot, $held[ $kept->part ?? 0 ] ?? '' ) ) ), $state->refused ),
 			'problems'          => array_map( $problem, $state->validation->problems ),
 			'changes'           => $changes,
 			'total'             => array(

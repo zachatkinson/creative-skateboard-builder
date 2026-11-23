@@ -387,7 +387,7 @@ Each is on a kit product, as JSON text, and is the document its schema describes
 | `_cbuild_presets` | 0.4.0 | `schema/kit-presets.json` | Up to six ready builds. |
 | `_cbuild_assembly` | 0.4.0 | `schema/kit-assembly.json` | Assembly: on or off to start, the fee, the lead time and the returns notice. |
 | `_cbuild_picture` | 0.7.0 | `schema/kit-picture.json` | The picture: the layer order and the trucks' anchor on a deck with no wheelbase. A kit may have none. |
-| `_cbuild_layout` | 1.0.0 | `schema/kit-layout.json` | The builder's layout: the stage's side and the board's size on a desktop, and the steps' search (D-255). A kit may have none, and has the defaults. |
+| `_cbuild_layout` | 1.0.0 | `schema/kit-layout.json` | The builder's layout: the stage's side and the board's size on a desktop, and the steps' search (D-255). From 1.1.0 also `motion` (D-256) and `show_presets`, whether the kit's ready builds are shown (#104, D-315). A kit may have none, and has the defaults. |
 
 ### The state route
 

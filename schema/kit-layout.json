@@ -46,6 +46,10 @@
 				"playful",
 				"subtle"
 			]
+		},
+		"show_presets": {
+			"description": "From 1.1.0: whether the builder shows \"Start from a ready build\" with the kit's ready builds. Off, the ready builds are kept and not shown. The default is true.",
+			"type": "boolean"
 		}
 	}
 }

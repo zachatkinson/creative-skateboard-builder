@@ -11,8 +11,9 @@ namespace CreativeBranding\SkateboardBuilder\Domain\Kit;
 
 /**
  * How a kit's builder is laid out, from 1.0.0 (spec: Settings, D-255): the side the stage takes on a desktop, how much
- * of the width the board takes there, which search the steps use, and from 1.1.0 how the board moves. From the `_cbuild_layout` document
- * (`schema/kit-layout.json`); a kit with none has the defaults. There is one layout and no mode switch.
+ * of the width the board takes there, which search the steps use, and from 1.1.0 how the board moves and whether the
+ * kit's ready builds are shown. From the `_cbuild_layout` document (`schema/kit-layout.json`); a kit with none has the
+ * defaults. There is one layout and no mode switch.
  *
  * @since 1.0.0
  */
@@ -43,12 +44,14 @@ final readonly class KitLayout {
 	/**
 	 * Constructor.
 	 *
-	 * @param string $stageSide One of SIDES.
-	 * @param string $boardSize One of SIZES.
-	 * @param string $search    One of SEARCHES.
-	 * @param string $motion    One of MOTIONS (1.1.0).
+	 * @param string $stageSide   One of SIDES.
+	 * @param string $boardSize   One of SIZES.
+	 * @param string $search      One of SEARCHES.
+	 * @param string $motion      One of MOTIONS (1.1.0).
+	 * @param bool   $showPresets Whether a shopper is shown the kit's ready builds (1.1.0, #104). The ready builds are
+	 *                            kept either way.
 	 */
-	private function __construct( public string $stageSide, public string $boardSize, public string $search, public string $motion ) {}
+	private function __construct( public string $stageSide, public string $boardSize, public string $search, public string $motion, public bool $showPresets ) {}
 
 	/**
 	 * From the decoded document, or the defaults where there is none.
@@ -61,9 +64,11 @@ final readonly class KitLayout {
 	 */
 	public static function fromDocument( mixed $document ): self {
 		if ( null === $document ) {
-			return new self( self::SIDES[0], self::SIZES[0], self::SEARCHES[0], self::MOTIONS[0] );
+			return new self( self::SIDES[0], self::SIZES[0], self::SEARCHES[0], self::MOTIONS[0], true );
 		}
 		$root = Fields::document( $document );
-		return new self( $root->choice( 'stage_side', self::SIDES ), $root->choice( 'board_size', self::SIZES ), $root->choice( 'search', self::SEARCHES ), $root->choice( 'motion', self::MOTIONS ) );
+		// A layout saved before 1.1.0 has no show_presets, and shows its ready builds as it did.
+		$shows = ! $root->has( 'show_presets' ) || $root->flag( 'show_presets' );
+		return new self( $root->choice( 'stage_side', self::SIDES ), $root->choice( 'board_size', self::SIZES ), $root->choice( 'search', self::SEARCHES ), $root->choice( 'motion', self::MOTIONS ), $shows );
 	}
 }

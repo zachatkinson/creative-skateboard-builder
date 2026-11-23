@@ -21,6 +21,7 @@ use CreativeBranding\SkateboardBuilder\Domain\Fit\Option;
 use CreativeBranding\SkateboardBuilder\Domain\Fit\Problem;
 use CreativeBranding\SkateboardBuilder\Domain\Fit\Recommender;
 use CreativeBranding\SkateboardBuilder\Domain\Fit\SlotOptions;
+use CreativeBranding\SkateboardBuilder\Domain\Fit\Validation;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\InvalidMoney;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Kit;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Part;
@@ -153,7 +154,7 @@ final class BuildState {
 			// Each preset as the build it starts: its tile's total and what keeps it from the cart.
 			foreach ( $kit->presets as $preset ) {
 				$left      = array();
-				$checked   = $validator->validate( $kit, self::found( $preset->picks, $parts, $left ), $ids );
+				$checked   = self::preset( $validator, $kit, $preset->picks, $parts, $left );
 				$presets[] = new PresetState( $checked, $pricer->quote( $kit, $checked->build, $kit->assembly->defaultOn, $discount, $decimals ), $left );
 			}
 		} catch ( InvalidMoney $unpriced ) {
@@ -174,6 +175,23 @@ final class BuildState {
 			$presets,
 			$estimate
 		);
+	}
+
+	/**
+	 * The one check of a ready build (#104): its picks among their slots' parts, and what the validator finds of the
+	 * build they make. A ready build with any problem, refused or found, is broken: its tile is left out for shoppers
+	 * (`State::shownPresets()`) and the Catalogue check lists each problem as `preset_broken` for the owner.
+	 *
+	 * @since 1.1.0
+	 *
+	 * @param BuildValidator                  $validator The validator every build goes through.
+	 * @param Kit                             $kit       The kit.
+	 * @param array<string, int>              $picks     The preset's picks, by slot key.
+	 * @param array<string, array<int, Part>> $parts     Each of the kit's slots' parts, by ID.
+	 * @param list<BuildProblem>              $refused   Its picks that are no longer one of their slot's parts, added to.
+	 */
+	public static function preset( BuildValidator $validator, Kit $kit, array $picks, array $parts, array &$refused ): Validation {
+		return $validator->validate( $kit, self::found( $picks, $parts, $refused ), array_map( 'array_keys', $parts ) );
 	}
 
 	/**

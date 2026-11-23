@@ -24,4 +24,8 @@ export interface CbuildLayout {
 	 * From 1.1.0: how the board's parts move. playful moves them onto the board; subtle fades them in, for every shopper, as a device that asks for reduced motion always has. The default is playful.
 	 */
 	motion?: 'playful' | 'subtle';
+	/**
+	 * From 1.1.0: whether the builder shows "Start from a ready build" with the kit's ready builds. Off, the ready builds are kept and not shown. The default is true.
+	 */
+	show_presets?: boolean;
 }

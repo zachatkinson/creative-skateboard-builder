@@ -46,6 +46,17 @@ final class KitLayoutTest extends TestCase {
 		self::assertSame( 'right', $kit->layout->stageSide );
 	}
 
+	// #104 (R1): Show ready builds, on unless the kit says off. A kit saved before 1.1.0 has no key, so its ready
+	// builds show as they did.
+	public function test_ready_builds_show_unless_the_kit_turns_them_off(): void {
+		self::assertTrue( KitLayout::fromDocument( null )->showPresets, 'a kit with no layout' );
+		self::assertTrue( KitLayout::fromDocument( array( 'schema_version' => 1, 'motion' => 'subtle' ) )->showPresets, 'a layout saved before 1.1.0' );
+		self::assertTrue( KitLayout::fromDocument( array( 'schema_version' => 1, 'show_presets' => true ) )->showPresets );
+		self::assertFalse( KitLayout::fromDocument( array( 'schema_version' => 1, 'show_presets' => false ) )->showPresets );
+		$kit = Kit::fromDocuments( KitDocuments::slots(), KitDocuments::rules(), KitDocuments::presets(), KitDocuments::assembly(), null, array( 'schema_version' => 1, 'show_presets' => false ) );
+		self::assertFalse( $kit->layout->showPresets );
+	}
+
 	/**
 	 * @return iterable<string, array{mixed, string}>
 	 */
@@ -57,6 +68,7 @@ final class KitLayoutTest extends TestCase {
 		yield 'a search that is none' => array( array( 'schema_version' => 1, 'search' => 'google' ), 'document_out_of_range' );
 		yield 'a motion that is none' => array( array( 'schema_version' => 1, 'motion' => 'wild' ), 'document_out_of_range' );
 		yield 'a side that is no text' => array( array( 'schema_version' => 1, 'stage_side' => 1 ), 'document_wrong_type' );
+		yield 'ready builds shown as text' => array( array( 'schema_version' => 1, 'show_presets' => 'yes' ), 'document_wrong_type' );
 	}
 
 	#[DataProvider( 'refused' )]

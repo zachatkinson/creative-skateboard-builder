@@ -9,6 +9,7 @@ declare( strict_types=1 );
 
 namespace CreativeBranding\SkateboardBuilder\Tests\Unit\Service;
 
+use CreativeBranding\SkateboardBuilder\Domain\Kit\Kit;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Part;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\Origin;
 use CreativeBranding\SkateboardBuilder\Port\LookFact;
@@ -218,6 +219,16 @@ final class CatalogueCheckTest extends TestCase {
 			),
 			self::lines( $this->check->run() )
 		);
+	}
+
+	// #104 (R1): a ready build left out for shoppers, or a kit whose ready builds are not shown, is still listed for
+	// the owner by the one check the builder's tiles use.
+	public function test_a_broken_preset_is_listed_though_the_kit_does_not_show_its_ready_builds(): void {
+		$parts           = self::stocked();
+		$parts['wheels'] = array( Parts::of( array( 'wheel_diameter' => '54', 'set_size' => 4 ), 300, 1000, '', false ), Builds::wheel( '52', 301 ) );
+		$kit             = Kit::fromDocuments( KitDocuments::slots(), KitDocuments::rules(), self::preset( self::PICKS ), KitDocuments::assembly(), null, array( 'schema_version' => 1, 'show_presets' => false ) );
+		$this->kits->add( 5, $kit, $parts );
+		self::assertContains( 'preset_broken part=300 kit=5 wheels preset=Street&problem=part_sold_out', self::lines( $this->check->run() ) );
 	}
 
 	public function test_each_kit_is_checked_and_named_by_its_id(): void {

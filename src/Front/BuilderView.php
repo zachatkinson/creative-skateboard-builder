@@ -128,24 +128,15 @@ final class BuilderView {
 
 		// What keeps the build from where the shopper asked to go, or from the cart.
 		$errors = array();
-		// A part a ready build holds that the kit no longer offers is named as its tile names it; an ID a link brought
-		// that no preset holds is named by nothing (#85).
-		$named = array();
-		foreach ( Cast::items( $answer['presets'] ?? null ) as $preset ) {
-			foreach ( Cast::items( Cast::map( $preset )['problems'] ?? null ) as $kept ) {
-				$kept                                        = Cast::map( $kept );
-				$named[ Cast::int( $kept['part'] ?? null ) ] = Cast::str( $kept['name'] ?? null );
-			}
-		}
+		// A part a ready build holds that the kit no longer offers is named by the answer as its tile named it; an ID a
+		// link brought that no preset holds is named by nothing (#85, #104).
 		$refused = array();
 		foreach ( Cast::items( $answer['refused'] ?? null ) as $problem ) {
 			$problem          = Cast::map( $problem );
 			$slot             = Cast::str( $problem['slot'] ?? null );
-			$code             = Problem::tryFrom( Cast::str( $problem['code'] ?? null ) );
-			$name             = $named[ Cast::int( $problem['part'] ?? null ) ] ?? '';
 			$refused[ $slot ] = true;
 			$errors[]         = array(
-				'text' => Problem::PartNotInSlot === $code && '' !== $name ? Words::named( $code, $label( $slot ), $name ) : Cast::str( $problem['message'] ?? null ),
+				'text' => Cast::str( $problem['message'] ?? null ),
 				'url'  => $url( $link ),
 			);
 		}
@@ -401,10 +392,12 @@ final class BuilderView {
 	}
 
 	/**
-	 * The preset tiles (spec: Presets): on a build not yet begun, one for each of the kit's presets, with its total,
-	 * a line on who it is for, and any part that keeps it from the cart named. Each is a GET form whose button starts
-	 * the build at the review (spec: Search, "Picks, filters, Show more and presets are buttons in GET forms"), its
-	 * fields the preset's part IDs as a build link writes them, each checked again when it arrives.
+	 * The preset tiles (spec: Presets): on a build not yet begun, one for each preset the answer offers, with its total,
+	 * a line on who it is for, and any part that keeps it from the cart named. From 1.1.0 the answer offers none where
+	 * the kit's Show ready builds is off, and none with a part that's gone, sold out or no longer fits (#104). Each is
+	 * a GET form whose button starts the build at the review (spec: Search, "Picks, filters, Show more and presets are
+	 * buttons in GET forms"), its fields the preset's part IDs as a build link writes them, each checked again when it
+	 * arrives.
 	 *
 	 * @param array<string, mixed>    $answer The state's answer.
 	 * @param BuildLink               $link   The address.
@@ -417,7 +410,11 @@ final class BuilderView {
 		// At the start alone: on the first step, with nothing picked. A build begun is the shopper's own.
 		$first = $state->kit->slots->keys()[0] ?? '';
 		if ( array() === $link->picks && null === $link->preset && $first === $state->step ) {
-			foreach ( Cast::items( $answer['presets'] ?? null ) as $at => $preset ) {
+			// The answer lists the presets a shopper is offered, in the kit's order; each keeps its place among the kit's
+			// in `cbuild[preset]` (#104).
+			$places = $state->shownPresets();
+			foreach ( Cast::items( $answer['presets'] ?? null ) as $shown => $preset ) {
+				$at     = $places[ $shown ] ?? $shown;
 				$preset = Cast::map( $preset );
 				$picks  = array();
 				foreach ( Cast::items( $preset['picks'] ?? null ) as $pick ) {
@@ -437,7 +434,8 @@ final class BuilderView {
 						'value' => Cast::str( $value ),
 					);
 				}
-				// One line a slot: a part refused comes first and leaves its slot empty, which says the same again.
+				// One line a slot: a part refused comes first and leaves its slot empty, which says the same again. From
+				// 1.1.0 the answer offers only presets with nothing keeping them from the cart (#104), so a tile has none.
 				$notes = array();
 				$whole = true;
 				foreach ( Cast::items( $preset['problems'] ?? null ) as $problem ) {

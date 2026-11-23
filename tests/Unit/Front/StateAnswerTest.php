@@ -398,7 +398,9 @@ final class StateAnswerTest extends TestCase {
 		self::assertSame( array(), $asked, 'a build begun shows no presets, and asks for none' );
 	}
 
-	public function test_each_preset_says_its_total_and_names_what_keeps_it_from_the_cart(): void {
+	// Spec, Presets: each tile says its total. #104 (R1): one a part keeps from the cart, Park with its wheels sold out,
+	// is left out of the answer, and the Catalogue check lists it for the owner.
+	public function test_each_preset_says_its_total_and_one_a_part_keeps_from_the_cart_is_left_out(): void {
 		$this->worded();
 		$parts                    = Shop::parts();
 		$parts[ SlotKey::WHEELS ] = array_map( static fn( Part $part ): Part => 302 === $part->id ? Shop::priced( $part, $part->price, false, 0 ) : $part, $parts[ SlotKey::WHEELS ] );
@@ -410,13 +412,7 @@ final class StateAnswerTest extends TestCase {
 		self::assertTrue( $street['ready'] );
 		self::assertSame( array(), $street['problems'] );
 		self::assertSame( InMemoryPartCards::card( 101 )['image'], $street['image'], "its picture, for now its deck's photo" );
-		self::assertSame( InMemoryPartCards::card( 103 )['image'], $answer['presets'][1]['image'] );
-
-		$park = $answer['presets'][1];
-		self::assertFalse( $park['ready'] );
-		self::assertSame( array( array( 'part_sold_out', 'wheels', 302 ) ), array_map( static fn( array $problem ): array => array( $problem['code'], $problem['slot'], $problem['part'] ), $park['problems'] ) );
-		self::assertSame( 'Part 302', $park['problems'][0]['name'], 'the part named, for its tile' );
-		self::assertNotSame( '', $park['problems'][0]['message'] );
+		self::assertCount( 1, $answer['presets'], 'Park is left out' );
 	}
 
 	public function test_a_plugins_answer_to_each_filter_is_what_the_answer_says(): void {

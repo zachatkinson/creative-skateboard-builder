@@ -240,17 +240,21 @@ final class StateAnswerDetailTest extends TestCase {
 		self::assertSame( array(), $presets[0]['problems'] );
 	}
 
-	// Spec, Presets: what keeps a preset from the cart is named for its tile. A deck the shop no longer has leaves its
-	// slot empty, and an empty slot has no part to name.
-	public function test_a_preset_whose_part_has_gone_names_the_part_and_not_the_slot_it_leaves_empty(): void {
+	// #104 (R1): a ready build whose deck the shop no longer has is left out of the answer's presets. A link that
+	// opens it (F6) still names the deck in the tile's words, since a ready build holds it; an ID no ready build holds
+	// is named by nothing.
+	public function test_a_preset_whose_part_has_gone_is_left_out_and_a_link_to_it_names_the_part(): void {
 		$parts                  = Shop::parts();
 		$parts[ SlotKey::DECK ] = array_values( array_filter( $parts[ SlotKey::DECK ], static fn( Part $part ): bool => 103 !== $part->id ) );
 		$this->stock( $parts, true );
-		$problems = $this->bare()->of( $this->state() )['presets'][1]['problems'];
+		self::assertSame( array( 'Street' ), array_column( $this->bare()->of( $this->state() )['presets'], 'name' ) );
 
-		$named = array_column( $problems, 'name', 'code' );
-		self::assertSame( '', $named['slot_empty'] ?? null, 'the deck slot, left empty' );
-		self::assertContains( null, array_column( $problems, 'part' ) );
+		$refused = $this->bare()->of( $this->state( self::PARK, 'review' ) )['refused'];
+		self::assertSame( array( 'Deck: Part 103 is no longer offered here.' ), array_column( $refused, 'message' ) );
+		self::assertSame( array( 'part_not_in_slot' ), array_column( $refused, 'code' ) );
+
+		$refused = $this->bare()->of( $this->state( array( SlotKey::DECK => 987654 ) + self::PARK, 'review' ) )['refused'];
+		self::assertSame( array( 'Deck: the part chosen is not one this kit offers here.' ), array_column( $refused, 'message' ) );
 	}
 
 	// Spec, Performance: card data is loaded only for what the answer names, in one call, each part once.

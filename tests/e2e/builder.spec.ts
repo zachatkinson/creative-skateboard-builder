@@ -533,7 +533,7 @@ test.describe( 'The builder without JavaScript', () => {
 		await expect( hidden.getByRole( 'link' ).first() ).toBeVisible();
 	} );
 
-	test( 'a preset tile starts its build at the review, and one with a sold-out part names it and keeps it from the cart', async ( {
+	test( 'a preset tile starts its build at the review, and one with a sold-out part has no tile, opens by its link, names it and keeps it from the cart', async ( {
 		page,
 	} ) => {
 		await page.goto( fixture().page );
@@ -541,9 +541,13 @@ test.describe( 'The builder without JavaScript', () => {
 		await expect(
 			tiles.getByRole( 'heading', { name: 'Start from a ready build' } )
 		).toBeVisible();
+		// #104 (R1): Cruiser's wheels are sold out, so its tile is left out; the Catalogue check lists it.
+		await expect(
+			tiles.getByRole( 'button', { name: 'Start from Cruiser' } )
+		).toHaveCount( 0 );
 		await expect(
 			tiles.getByText( 'Wheels: Builder test wheels 56 is sold out.' )
-		).toBeVisible();
+		).toHaveCount( 0 );
 
 		await answered( page, () =>
 			tiles.getByRole( 'button', { name: 'Start from Street' } ).click()
@@ -584,12 +588,18 @@ test.describe( 'The builder without JavaScript', () => {
 		).toBe( '0' );
 		await expect( page.locator( '.cbuild-presets' ) ).toBeHidden();
 
-		await page.goto( fixture().page );
-		await answered( page, () =>
-			page
-				.locator( '.cbuild-presets' )
-				.getByRole( 'button', { name: 'Start from Cruiser' } )
-				.click()
+		// F6: a link with cbuild[preset] still opens it.
+		await page.goto(
+			linkTo( {
+				deck: id( 'builder-test-deck-8-5' ),
+				trucks: id( 'builder-test-trucks-149' ),
+				wheels: id( 'builder-test-wheels-56' ),
+				bearings: id( 'builder-test-bearings' ),
+				hardware: id( 'builder-test-bolts-1' ),
+				grip: id( 'builder-test-grip' ),
+				step: 'review',
+				preset: 1,
+			} )
 		);
 		await expect( heading( page ) ).toHaveText(
 			'Step 7 of 7: Check your build'
@@ -1747,15 +1757,22 @@ test.describe( 'The builder with JavaScript', () => {
 		expect( await stayed( page ) ).toBe( true );
 	} );
 
-	test( 'a preset with a sold-out part names it on its tile and at the review, and keeps it from the cart', async ( {
+	test( 'a preset with a sold-out part has no tile, and the store draws the rest', async ( {
 		page,
 	} ) => {
+		// #104 (R1): Cruiser's wheels are sold out. Its link still opens it, which the test without the store checks.
 		const tiles = page.locator( '.cbuild-presets' );
 		await expect(
-			tiles.getByText( 'Wheels: Builder test wheels 56 is sold out.' )
+			tiles.getByRole( 'button', { name: 'Start from Street' } )
 		).toBeVisible();
+		await expect(
+			tiles.getByRole( 'button', { name: 'Start from Cruiser' } )
+		).toHaveCount( 0 );
+		await expect(
+			tiles.getByText( 'Wheels: Builder test wheels 56 is sold out.' )
+		).toHaveCount( 0 );
 		await tiles
-			.getByRole( 'button', { name: 'Start from Cruiser' } )
+			.getByRole( 'button', { name: 'Start from Street' } )
 			.click();
 		await expect( heading( page ) ).toHaveText(
 			'Step 7 of 7: Check your build'
@@ -1763,15 +1780,6 @@ test.describe( 'The builder with JavaScript', () => {
 		expect( await stayed( page ), 'the store drew the review' ).toBe(
 			true
 		);
-		await expect( page.locator( '.cbuild-errors' ) ).toContainText(
-			'Wheels: Builder test wheels 56 is sold out.'
-		);
-		// The review's own, or the phone bar's where the review's is hidden: one at each width (P11).
-		await expect(
-			page
-				.locator( '.cbuild' )
-				.getByRole( 'button', { name: 'Add to cart' } )
-		).toBeDisabled();
 	} );
 
 	test( 'starts from a preset without loading the page', async ( {
@@ -2471,18 +2479,26 @@ test.describe( 'The keyboard alone', () => {
 			// WooCommerce writes the cart to the session at PHP's shutdown, which can come after the add's answer has gone out, so a
 			// cart page asked for 120 ms later once read it empty (CI run 44157697581, chromium-desktop; #51). The
 			// cart is read until it holds the build, as a shopper's slower step to View cart would find it.
-			await expect
-				.poll(
-					async () =>
-						(
-							await (
-								await page.request.get(
-									'/wp-json/wc/store/v1/cart'
-								)
-							).json()
-						).items_count as number
-				)
-				.toBeGreaterThan( 0 );
+			// Each read's status and count kept, and said if the poll ends, so a rare empty cart names its cause (#108).
+			const reads: string[] = [];
+			try {
+				await expect
+					.poll( async () => {
+						const answer = await page.request.get(
+							'/wp-json/wc/store/v1/cart'
+						);
+						const count = answer.ok()
+							? ( ( await answer.json() ).items_count as number )
+							: -1;
+						reads.push( `${ answer.status() }:${ count }` );
+						return count;
+					} )
+					.toBeGreaterThan( 0 );
+			} catch ( error ) {
+				throw new Error(
+					`The cart never held the build; its reads, status:count: ${ reads.join( ' ' ) }. ${ String( error ) }`
+				);
+			}
 		}
 		await press(
 			// The builder's own link with a script; without one, WooCommerce's notice over the page has it.

@@ -115,9 +115,16 @@ final class BuilderTest extends TestCase {
 	 */
 	private const array PARK = array( SlotKey::DECK => 103, SlotKey::TRUCKS => 149, SlotKey::WHEELS => 302 ) + self::STREET;
 
-	private function presets(): void {
-		$parts                    = Shop::parts();
-		$parts[ SlotKey::WHEELS ] = array_map( static fn( Part $part ): Part => 302 === $part->id ? Shop::priced( $part, $part->price, false, 0 ) : $part, $parts[ SlotKey::WHEELS ] );
+	/**
+	 * The kit's two ready builds, Street and Park; Park's wheels are sold out unless it is to be whole.
+	 *
+	 * @param bool $whole Whether Park's wheels are in stock, so its tile is shown (#104).
+	 */
+	private function presets( bool $whole = false ): void {
+		$parts = Shop::parts();
+		if ( ! $whole ) {
+			$parts[ SlotKey::WHEELS ] = array_map( static fn( Part $part ): Part => 302 === $part->id ? Shop::priced( $part, $part->price, false, 0 ) : $part, $parts[ SlotKey::WHEELS ] );
+		}
 		$this->kits->add(
 			self::KIT,
 			Shop::kit(
@@ -137,14 +144,15 @@ final class BuilderTest extends TestCase {
 		);
 	}
 
-	// Spec, Presets: "Up to six tiles at the start ... Each shows its picture, its total and a line on who it's for",
-	// and "A preset holding a sold-out part says so on its tile". Spec, Search: presets are buttons in GET forms.
+	// Spec, Presets: "Up to six tiles at the start ... Each shows its picture, its total and a line on who it's for".
+	// Spec, Search: presets are buttons in GET forms. #104 (R1) replaces "A preset holding a sold-out part says so on
+	// its tile": Park, whose wheels are sold out, is left out, and the Catalogue check tells the owner.
 	public function test_a_blank_build_starts_with_a_tile_for_each_preset_that_starts_its_build_at_the_review(): void {
 		$this->presets();
 		$presets = $this->show( new BuildLink() )['view']['presets'];
 		self::assertTrue( $presets['shown'] );
 		self::assertSame( 'Start from a ready build', $presets['heading'] );
-		self::assertCount( 2, $presets['tiles'] );
+		self::assertCount( 1, $presets['tiles'], 'Street alone: Park holds a sold-out part' );
 
 		$street = $presets['tiles'][0];
 		self::assertSame( 'Street', $street['name'] );
@@ -171,13 +179,7 @@ final class BuilderTest extends TestCase {
 		self::assertSame( 'Start from Street', $street['button'], 'each button has a name of its own (P11)' );
 		self::assertTrue( $street['hasImage'] );
 		self::assertSame( 'https://shop.test/101.jpg', $street['src'] );
-		self::assertSame( 'https://shop.test/103.jpg', $presets['tiles'][1]['src'] );
-
-		$park = $presets['tiles'][1];
-		self::assertFalse( $park['hasDescription'] );
-		self::assertSame( array( array( 'text' => 'Wheels: Part 302 is sold out.' ) ), $park['notes'] );
-		self::assertSame( 'Start from Park', $park['button'] );
-		self::assertContains( array( 'name' => 'cbuild[preset]', 'value' => '1' ), $park['fields'] );
+		self::assertTrue( $street['hasTotal'] );
 
 		self::assertFalse( $this->show( new BuildLink( array( SlotKey::DECK => 101 ) ) )['view']['presets']['shown'], 'a build begun has no tiles' );
 		self::assertTrue( $this->show( new BuildLink( array(), null, SlotKey::DECK, null, null, '', '8.5in' ) )['view']['presets']['shown'], 'the first step, a width pressed' );
@@ -195,9 +197,13 @@ final class BuilderTest extends TestCase {
 		);
 	}
 
-	public function test_a_preset_whose_part_is_no_longer_offered_says_so_once_by_name_and_shows_no_total(): void {
-		// Cowork's review, minor 16: the tile said "Trucks: the part chosen is not one this kit offers here. Trucks:
-		// nothing is chosen yet." and a total for a build that lacks its trucks.
+	/**
+	 * #104 (R1): a ready build with a part that's gone, sold out or no longer fits is left out for shoppers, on the
+	 * page and in the state answer. Before, its tile named the part (Cowork's review, minor 16), and on the demo both
+	 * tiles named test trucks "no longer offered here". The tiles that are left keep their place among the kit's in
+	 * `cbuild[preset]`.
+	 */
+	public function test_a_ready_build_with_a_part_gone_or_sold_out_is_left_out_and_the_rest_keep_their_place(): void {
 		$parts                    = Shop::parts();
 		$parts[ SlotKey::TRUCKS ] = array_values( array_filter( $parts[ SlotKey::TRUCKS ], static fn( Part $part ): bool => 139 !== $part->id ) );
 		$this->kits->add(
@@ -212,13 +218,64 @@ final class BuilderTest extends TestCase {
 			),
 			$parts
 		);
-		$tile = $this->show( new BuildLink() )['view']['presets']['tiles'][0];
+		$shown = $this->show( new BuildLink() );
+		self::assertSame( array(), $shown['answer']['presets'], 'a part gone' );
+		self::assertFalse( $shown['view']['presets']['shown'] );
+		self::assertSame( array(), $shown['view']['presets']['tiles'] );
 
-		self::assertSame( array( array( 'text' => 'Trucks: Part 139 is no longer offered here.' ) ), $tile['notes'] );
-		self::assertFalse( $tile['hasTotal'] );
+		// Park's wheels are sold out, Street is whole: Street's tile, second among the kit's, says so.
+		$parts                    = Shop::parts();
+		$parts[ SlotKey::WHEELS ] = array_map( static fn( Part $part ): Part => 302 === $part->id ? Shop::priced( $part, $part->price, false, 0 ) : $part, $parts[ SlotKey::WHEELS ] );
+		$this->kits->add(
+			self::KIT,
+			Shop::kit(
+				presets: array(
+					array(
+						'name'  => 'Park',
+						'picks' => self::PARK,
+					),
+					array(
+						'name'  => 'Street',
+						'picks' => self::STREET,
+					),
+				)
+			),
+			$parts
+		);
+		$shown = $this->show( new BuildLink() );
+		self::assertSame( array( 'Street' ), array_column( $shown['answer']['presets'], 'name' ), 'a part sold out' );
+		self::assertSame( array( 'Start from Street' ), array_column( $shown['view']['presets']['tiles'], 'button' ) );
+		self::assertContains( array( 'name' => 'cbuild[preset]', 'value' => '1' ), $shown['view']['presets']['tiles'][0]['fields'], 'its place among the kit\'s' );
+		self::assertTrue( $shown['answer']['presets'][0]['ready'] );
+	}
 
-		$this->presets();
-		self::assertTrue( $this->show( new BuildLink() )['view']['presets']['tiles'][1]['hasTotal'], 'a sold-out part leaves the build whole, so its total stands' );
+	// #104 (R1): Show ready builds, off, hides the section on the page and in the state answer, and keeps the ready
+	// builds as they are: a link to one still opens it.
+	public function test_show_ready_builds_off_hides_the_section_and_keeps_the_ready_builds(): void {
+		$presets = array(
+			'schema_version' => 1,
+			'presets'        => array(
+				array(
+					'name'  => 'Street',
+					'picks' => self::STREET,
+				),
+			),
+		);
+		$kit     = Kit::fromDocuments( KitDocuments::slots(), KitDocuments::rules(), $presets, KitDocuments::assembly(), null, array( 'schema_version' => 1, 'show_presets' => false ) );
+		$this->kits->add( self::KIT, $kit, Shop::parts() );
+		$shown = $this->show( new BuildLink() );
+		self::assertSame( array(), $shown['answer']['presets'] );
+		self::assertFalse( $shown['view']['presets']['shown'] );
+		self::assertCount( 1, $shown['state']->kit->presets, 'kept as it is' );
+
+		$opened = $this->show( new BuildLink( self::STREET, null, BuildLink::REVIEW, null, 0 ) )['view'];
+		self::assertTrue( $opened['isReview'] );
+		self::assertSame( array(), $opened['errors']['items'] );
+
+		// A kit saved before 1.1.0 has no such key, and shows its ready builds.
+		$kit = Kit::fromDocuments( KitDocuments::slots(), KitDocuments::rules(), $presets, KitDocuments::assembly(), null, array( 'schema_version' => 1, 'stage_side' => 'right' ) );
+		$this->kits->add( self::KIT, $kit, Shop::parts() );
+		self::assertSame( array( 'Start from Street' ), array_column( $this->show( new BuildLink() )['view']['presets']['tiles'], 'button' ) );
 	}
 
 	/**
@@ -1732,7 +1789,8 @@ final class BuilderTest extends TestCase {
 	// Cowork's review of 1.0.0, F19 (#105; D-309): a ready build's tile shows the build, so it takes the classes another
 	// plugin gives each of its parts, merged, and a flagged deck blurs the tile until the shopper shows its artwork.
 	public function test_a_ready_builds_tile_takes_the_classes_another_plugin_gives_its_parts_merged(): void {
-		$this->presets();
+		// Park whole, so both tiles show: a ready build with a sold-out part has no tile (#104).
+		$this->presets( true );
 		$GLOBALS['cbuild_test_filters']['cbuild_part_classes'] = static function ( array $classes, int $part, string $slot, int $kit ): array {
 			return match ( true ) {
 				self::KIT !== $kit         => array(),

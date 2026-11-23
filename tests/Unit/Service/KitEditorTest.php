@@ -495,7 +495,7 @@ final class KitEditorTest extends TestCase {
 		);
 		$draft          = $this->editor->draft( $sent, self::stored() );
 		self::assertSame( array(), $draft->problems );
-		self::assertSame( array( 'schema_version' => 1, 'stage_side' => 'right', 'board_size' => 'balanced', 'search' => 'own', 'motion' => 'subtle' ), $draft->documents[ KitEditor::LAYOUT ] );
+		self::assertSame( array( 'schema_version' => 1, 'stage_side' => 'right', 'board_size' => 'balanced', 'search' => 'own', 'motion' => 'subtle', 'show_presets' => false ), $draft->documents[ KitEditor::LAYOUT ] );
 
 		$sent['layout'] = array( 'stage_side' => 'top' );
 		$draft          = $this->editor->draft( $sent, self::stored() );
@@ -510,7 +510,21 @@ final class KitEditorTest extends TestCase {
 		);
 		$draft          = $this->editor->draft( $sent, self::stored() );
 		self::assertSame( array(), $draft->problems, 'a choice is read without its outer spaces' );
-		self::assertSame( array( 'schema_version' => 1, 'stage_side' => 'left', 'board_size' => 'large', 'search' => 'own' ), $draft->documents[ KitEditor::LAYOUT ] );
+		self::assertSame( array( 'schema_version' => 1, 'stage_side' => 'left', 'board_size' => 'large', 'search' => 'own', 'show_presets' => false ), $draft->documents[ KitEditor::LAYOUT ] );
+	}
+
+	// #104 (R1): Show ready builds is a checkbox, so one not ticked is not sent, and the kit's ready builds are hidden.
+	public function test_show_ready_builds_is_kept_on_when_ticked_and_off_when_not(): void {
+		$sent           = self::sent();
+		$sent['layout'] = array( 'show_presets' => '1' );
+		$draft          = $this->editor->draft( $sent, self::stored() );
+		self::assertSame( array(), $draft->problems );
+		self::assertSame( array( 'schema_version' => 1, 'show_presets' => true ), $draft->documents[ KitEditor::LAYOUT ] );
+
+		$sent['layout'] = array( 'stage_side' => 'left' );
+		$draft          = $this->editor->draft( $sent, self::stored() );
+		self::assertSame( array(), $draft->problems );
+		self::assertSame( array( 'schema_version' => 1, 'stage_side' => 'left', 'show_presets' => false ), $draft->documents[ KitEditor::LAYOUT ] );
 	}
 
 	public function test_assembly_takes_a_fee_as_the_shop_writes_money_and_each_thing_wrong_is_named(): void {

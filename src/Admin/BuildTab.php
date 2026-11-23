@@ -355,7 +355,7 @@ final class BuildTab {
 			KitEditor::PRESETS  => array(
 				__( 'Presets', 'creative-skateboard-builder' ),
 				__( 'Up to six builds a shopper can start from. Each is saved only when its parts are ones its slots take and the rules let them go together. Leave a preset\'s name and parts empty to have none.', 'creative-skateboard-builder' ),
-				$this->presets( $shown[ KitEditor::PRESETS ], $shown[ KitEditor::SLOTS ] ),
+				$this->presets( $shown[ KitEditor::PRESETS ], $shown[ KitEditor::SLOTS ], $shown[ KitEditor::LAYOUT ] ),
 			),
 			KitEditor::ASSEMBLY => array(
 				__( 'Assembly', 'creative-skateboard-builder' ),
@@ -643,15 +643,37 @@ final class BuildTab {
 	}
 
 	/**
-	 * Six presets, the empty ones after those the kit has.
+	 * Show ready builds, then six presets, the empty ones after those the kit has. The switch is kept in the layout
+	 * document (1.1.0, #104), so turning it off keeps the presets as they are; it is shown here, beside them.
 	 *
 	 * @param array<mixed> $document The presets document to show.
 	 * @param array<mixed> $slots    The slots document shown beside it.
+	 * @param array<mixed> $layout   The layout document shown with them. A kit saved before 1.1.0 has no switch in it,
+	 *                               and shows its ready builds.
 	 * @return list<array{id: string, legend: string, moves: bool, fold: string, open: bool, fields: list<array<string, mixed>>, more: list<array<string, mixed>>}>
 	 */
-	private function presets( array $document, array $slots ): array {
+	private function presets( array $document, array $slots, array $layout ): array {
 		$rows   = self::rows( $document, 'presets' );
-		$groups = array();
+		$groups = array(
+			array(
+				'id'     => self::IDS . '-presets-shown',
+				'legend' => '',
+				'moves'  => false,
+				'fold'   => '',
+				'open'   => true,
+				'fields' => array(
+					$this->field(
+						self::IDS . '-layout-show-presets',
+						self::FIELD . '[layout][show_presets]',
+						__( 'Show ready builds', 'creative-skateboard-builder' ),
+						'checkbox',
+						false !== ( $layout['show_presets'] ?? true ) ? '1' : '',
+						array( 'note' => __( 'The presets a shopper can start from, under "Start from a ready build". A preset with a part that is gone, sold out or no longer fits is left out, and the Catalogue check lists it. Off, the presets are kept as they are.', 'creative-skateboard-builder' ) )
+					),
+				),
+				'more'   => array(),
+			),
+		);
 		$shown  = max( Kit::MAX_PRESETS, count( $rows ) );
 		for ( $at = 0; $at < $shown; ++$at ) {
 			$row   = $rows[ $at ] ?? array();
