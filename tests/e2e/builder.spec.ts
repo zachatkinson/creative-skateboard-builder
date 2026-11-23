@@ -4790,7 +4790,7 @@ test.describe( 'A mouse press held while the builder hydrates', () => {
 		test( `goes through on ${ name }`, async ( { context }, info ) => {
 			test.skip(
 				! info.project.name.endsWith( '-desktop' ),
-				'A mouse on a desktop: a finger\'s tap is not affected, and a phone\'s layout settles under the press.'
+				"A mouse on a desktop: a finger's tap is not affected, and a phone's layout settles under the press."
 			);
 			// A page of the context's own: the fixture's page waits for the ready mark after each load, and this press
 			// must go down before it.
@@ -4841,7 +4841,7 @@ test.describe( 'A mouse press held while the builder hydrates', () => {
 			await page.mouse.up();
 			await expect
 				.poll( () => moved, {
-					message: 'a page load or the store\'s answer',
+					message: "a page load or the store's answer",
 					timeout: 5000,
 				} )
 				.toBeGreaterThan( 0 );

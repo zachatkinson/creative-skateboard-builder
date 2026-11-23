@@ -13,8 +13,8 @@ let over: Element | null = null;
 /**
  * A press of the mouse on an element, its button coming up over `over`; the browser's click only where `clicked`.
  *
- * @param element The element pressed.
- * @param options How it is pressed.
+ * @param element         The element pressed.
+ * @param options         How it is pressed.
  * @param options.type    The pointer's type.
  * @param options.button  The mouse button.
  * @param options.clicked Whether the browser's click reaches the element.
@@ -130,7 +130,9 @@ describe( 'a press held while the builder hydrates', () => {
 	it( 'sees the press before a control that keeps its events to itself', () => {
 		const parent = button.parentElement!;
 		for ( const type of [ 'pointerdown', 'pointerup', 'click' ] ) {
-			button.addEventListener( type, ( event ) => event.stopPropagation() );
+			button.addEventListener( type, ( event ) =>
+				event.stopPropagation()
+			);
 		}
 		press( button, {
 			between: () => {
@@ -147,7 +149,10 @@ describe( 'a press held while the builder hydrates', () => {
 		press( button, { clicked: true } );
 		// A click with no press before it, as a keyboard's.
 		button.dispatchEvent(
-			new PointerEvent( 'pointerup', { bubbles: true, pointerType: 'mouse' } )
+			new PointerEvent( 'pointerup', {
+				bubbles: true,
+				pointerType: 'mouse',
+			} )
 		);
 		vi.runAllTimers();
 		expect( clicks ).toBe( 1 );

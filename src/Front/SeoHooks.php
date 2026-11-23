@@ -69,7 +69,7 @@ final class SeoHooks implements Hookable {
 		unset( $robots['index'] );
 		$robots['noindex'] = true;
 		// Follow, but where the site or another source said nofollow: a site that discourages search engines keeps it (#88).
-		if ( empty( $robots['nofollow'] ) ) {
+		if ( true !== ( $robots['nofollow'] ?? null ) ) {
 			$robots['follow'] = true;
 		}
 		return $robots;

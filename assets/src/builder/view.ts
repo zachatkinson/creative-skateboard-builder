@@ -132,7 +132,7 @@ function pressEarly( event: PointerEvent ): void {
 		event.target instanceof Element
 			? event.target.closest< HTMLElement >(
 					'.cbuild :is(button, a, summary, label, input[type="radio"], input[type="checkbox"], input[type="submit"])'
-			  )
+				)
 			: null;
 	early = control ? { control, clicked: false } : null;
 }

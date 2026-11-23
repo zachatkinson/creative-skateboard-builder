@@ -221,6 +221,42 @@ final class BuilderTest extends TestCase {
 		self::assertTrue( $this->show( new BuildLink() )['view']['presets']['tiles'][1]['hasTotal'], 'a sold-out part leaves the build whole, so its total stands' );
 	}
 
+	/**
+	 * #85 (Cowork's 1.0.0 F6): Start from Street, whose trucks the kit no longer offers, opened the trucks step on
+	 * "Trucks: nothing is chosen yet." and "Trucks: the part chosen is not one this kit offers here.": two lines for one
+	 * slot. It says it once, in the tile's own words.
+	 */
+	public function test_a_ready_build_with_a_part_no_longer_offered_opens_on_one_line_for_its_slot_in_the_tiles_words(): void {
+		$parts                    = Shop::parts();
+		$parts[ SlotKey::TRUCKS ] = array_values( array_filter( $parts[ SlotKey::TRUCKS ], static fn( Part $part ): bool => 139 !== $part->id ) );
+		$this->kits->add(
+			self::KIT,
+			Shop::kit(
+				presets: array(
+					array(
+						'name'  => 'Street',
+						'picks' => self::STREET,
+					),
+				)
+			),
+			$parts
+		);
+		$sent = array_map( 'strval', self::STREET ) + array(
+			'preset' => '0',
+			'step'   => 'review',
+		);
+		$view = $this->show( BuildLink::read( $sent ) )['view'];
+		self::assertSame( SlotKey::TRUCKS, $view['step']['slot'], 'the step the build lacks' );
+		self::assertSame( array( 'Trucks: Part 139 is no longer offered here.' ), array_column( $view['errors']['items'], 'text' ) );
+
+		// A link's ID no preset holds is named by nothing, as before.
+		$sent[ SlotKey::TRUCKS ] = '987654';
+		self::assertSame(
+			array( 'Trucks: the part chosen is not one this kit offers here.' ),
+			array_column( $this->show( BuildLink::read( $sent ) )['view']['errors']['items'], 'text' )
+		);
+	}
+
 	// Spec (configurator): Settings (D-255), the stage's side and the board's size on a desktop.
 	public function test_the_kits_layout_puts_the_stage_on_its_side_at_its_size(): void {
 		self::assertSame( array( 'stageRight' => false, 'balanced' => false ), $this->show( new BuildLink() )['view']['layout'], 'left and large unless the kit says' );

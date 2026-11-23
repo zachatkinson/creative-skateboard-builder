@@ -122,16 +122,35 @@ final class BuilderView {
 
 		// What keeps the build from where the shopper asked to go, or from the cart.
 		$errors = array();
-		if ( null !== $stopped ) {
-			$errors[] = array(
-				'text' => Words::problem( $stopped->code, $label( $stopped->slot ) ),
-				'url'  => $url( $link->at( $stopped->slot ) ),
+		// A part a ready build holds that the kit no longer offers is named as its tile names it; an ID a link brought
+		// that no preset holds is named by nothing (#85).
+		$named = array();
+		foreach ( Cast::items( $answer['presets'] ?? null ) as $preset ) {
+			foreach ( Cast::items( Cast::map( $preset )['problems'] ?? null ) as $kept ) {
+				$kept                                        = Cast::map( $kept );
+				$named[ Cast::int( $kept['part'] ?? null ) ] = Cast::str( $kept['name'] ?? null );
+			}
+		}
+		$refused = array();
+		foreach ( Cast::items( $answer['refused'] ?? null ) as $problem ) {
+			$problem          = Cast::map( $problem );
+			$slot             = Cast::str( $problem['slot'] ?? null );
+			$code             = Problem::tryFrom( Cast::str( $problem['code'] ?? null ) );
+			$name             = $named[ Cast::int( $problem['part'] ?? null ) ] ?? '';
+			$refused[ $slot ] = true;
+			$errors[]         = array(
+				'text' => Problem::PartNotInSlot === $code && '' !== $name ? Words::named( $code, $label( $slot ), $name ) : Cast::str( $problem['message'] ?? null ),
+				'url'  => $url( $link ),
 			);
 		}
-		foreach ( Cast::items( $answer['refused'] ?? null ) as $problem ) {
-			$errors[] = array(
-				'text' => Cast::str( Cast::map( $problem )['message'] ?? null ),
-				'url'  => $url( $link ),
+		// The slot a refused part left empty is said once, by that part's line, not again as "nothing is chosen yet".
+		if ( null !== $stopped && ! ( Problem::SlotEmpty === $stopped->code && isset( $refused[ $stopped->slot ] ) ) ) {
+			array_unshift(
+				$errors,
+				array(
+					'text' => Words::problem( $stopped->code, $label( $stopped->slot ) ),
+					'url'  => $url( $link->at( $stopped->slot ) ),
+				)
 			);
 		}
 		if ( $review ) {
@@ -1425,7 +1444,7 @@ final class BuilderView {
 			'shelf'     => self::shelf( $shelf ?? array(), $slot, $folded, $state->id ),
 			// The deck step asking its width lists nothing yet, and says nothing is missing; a search that lists nothing
 			// says so itself, so the fit rule is not given as the reason (#83).
-			'empty'     => array() === $options && ! ( null !== $shelf && SlotKey::DECK === $slot && '' === $link->shelf->width ) && ! $found['shown'],
+			'empty'     => array() === $options && ! ( null !== $shelf && SlotKey::DECK === $slot && '' === $link->shelf->width ) && true !== $found['shown'],
 			'emptyText' => '' === $link->brand && '' === $link->size && array() === $link->shelf->chips
 				? __( 'Nothing the shop has fits the parts before this step.', 'creative-skateboard-builder' )
 				: __( 'No part matches these filters.', 'creative-skateboard-builder' ),

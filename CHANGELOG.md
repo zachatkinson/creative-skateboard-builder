@@ -2,6 +2,22 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html). One entry per milestone; `v1.0.0` closes milestone 10 (D-236).
 
+## [Unreleased]
+
+### Changed
+
+- The state route's `currency.decimal_separator` and `currency.thousand_separator` are plain text with no HTML entity, as `format` is; a shop that set `&nbsp;` gets the character (#87).
+- A chip's spoken label and Show more's status name no part: "Hoser, 9" and "30 more shown, 60 of 88." (#84).
+
+### Fixed
+
+- After a new width, the picked deck moves to its look in that width, and the status says so: "Hard Hat is now 8.5″." Where the look isn't made in that width, the pick stays and its card says "Picked in 8.25″. Not made in 8.5″." (#81, D-301).
+- A mouse press held while the builder hydrates goes through, on Chromium and WebKit (#80).
+- A search or chip that lists nothing says so alone; the fit sentence is for a list the rules empty (#83).
+- A ready build whose part the kit no longer offers opens on one line for its slot, naming the part as its tile does (#85).
+- A build link keeps a `nofollow` the site or another plugin set, through WordPress's robots and through Yoast (#88).
+- "Back to the shop" and "Sign in to save this build" have a phone's 44 px target (#86).
+
 ## [1.0.0] - 2026-11-20
 
 ### Added
