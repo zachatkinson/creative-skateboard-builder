@@ -135,6 +135,8 @@ describe( 'Navigator', () => {
 			[ 'cbuild[step]', 'trucks' ],
 			[ 'page', '25' ],
 			[ 'locale', 'fr_CA' ],
+			// The view alone: the store draws nothing else, and the raw shelf and options doubled the answer (#89).
+			[ '_fields', 'view' ],
 		] );
 		expect( h.inits[ 0 ] ).toMatchObject( {
 			headers: { Accept: 'application/json' },

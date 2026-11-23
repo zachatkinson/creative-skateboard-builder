@@ -74,7 +74,7 @@ export const SLOW = 300;
 const PARAM = 'cbuild';
 
 /**
- * The state route's address for a move: the build link's fields alone, then the page and the language.
+ * The state route's address for a move: the build link's fields alone, then the page, the language and the view.
  *
  * @param deps   The endpoint, page and language.
  * @param fields The move's fields.
@@ -100,6 +100,9 @@ export function route(
 		url.searchParams.append( 'page', String( deps.page ) );
 	}
 	url.searchParams.append( 'locale', deps.locale );
+	// The view alone, which is all the store draws: WordPress trims the answer to it (rest_filter_response_fields,
+	// wp-includes/rest-api.php:953). The raw shelf and options stay in the route's answer for anyone else (#89).
+	url.searchParams.append( '_fields', 'view' );
 	return url.toString();
 }
 

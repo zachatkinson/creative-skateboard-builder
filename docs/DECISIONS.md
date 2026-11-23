@@ -3744,3 +3744,12 @@ CI's Lighthouse gate failed Total Blocking Time on the builder page on Twenty Tw
 - **Cost.** The shelf is asked again only when the picked deck's width is not the width asked; every other request costs what it did.
 
 **Why:** Cowork's 1.0.0 F2 (#81): the card showed ticked at 8.5″ while the build held the 8″ variation, so a shopper could order the wrong size. Zach chose the move over an unticked card, 22 November.
+
+### D-302 · The store asks the state route for its view alone · 2026-11-23
+
+- **What.** The store's request to the state route adds `_fields=view`. WordPress trims any route's answer to the fields asked for (`rest_filter_response_fields`, hooked on `rest_post_dispatch` at `wp-includes/rest-api.php:254`, defined at `:953`, run by `WP_REST_Server::serve_request` at `class-wp-rest-server.php:464`), so the store receives the view and nothing else. The answer's other fields, `shelf` and `options` among them, are frozen API and are unchanged for anyone who asks without `_fields`.
+- **Not chosen.** Building the view in the store from the raw fields: the store would decide what a card says, against "one template per piece, rendered by the server", and the view would no longer be the page's. A route argument of the plugin's own: WordPress already has one, and a new argument is new public API.
+
+**Why:** Cowork's 1.0.0 F10 (#89): the deck step's answer carried its cards three times. On the benchmark's 500-candidate step a move's answer goes from 98,659 to 48,398 bytes (docs/BENCHMARK.md).
+
+**Status:** Accepted.

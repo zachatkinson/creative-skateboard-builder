@@ -247,6 +247,26 @@ final class StateRouteBenchmarkTest extends IntegrationTestCase {
 
 		$view = $ask( $ids['deck'][0], true )[2];
 		self::assertSame( 'Step 2 of 7: Trucks', $view['view']['title'] ?? null, 'a move answers with the view' );
+		// #89: a move's answer as JSON, whole and as the store asks for it, its view alone (`_fields=view`): the raw
+		// shelf and options repeated the step's cards beside the view's own.
+		$sized = static function ( array $query ) use ( $kit ): int {
+			$request = new WP_REST_Request( 'GET', "/cbuild/v1/kits/{$kit}/state" );
+			$request->set_query_params( $query );
+			$server   = rest_get_server();
+			$response = apply_filters( 'rest_post_dispatch', rest_ensure_response( $server->dispatch( $request ) ), $server, $request );
+			return strlen( (string) wp_json_encode( $server->response_to_data( $response, false ) ) );
+		};
+		$moving  = array(
+			'cbuild' => array(
+				'deck' => (string) $ids['deck'][0],
+				'step' => 'trucks',
+			),
+			'page'   => $kit,
+		);
+		$whole   = $sized( $moving );
+		$trimmed = $sized( $moving + array( '_fields' => 'view' ) );
+		self::say( sprintf( 'state route, a move\'s answer on a step of 500 candidates: %s bytes whole, %s bytes as the store asks for it (#89)', number_format( $whole ), number_format( $trimmed ) ) );
+		self::assertLessThan( $whole, $trimmed, 'the store asks for less than the whole answer' );
 		$found = $ask( $ids['deck'][0], false, true )[2];
 		self::assertSame( 'Trucks 1', $found['shelf']['query'] ?? null, 'the search is the one asked' );
 		self::assertSame( 'price-asc', $found['shelf']['sort'] ?? null );

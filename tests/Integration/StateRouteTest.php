@@ -415,6 +415,23 @@ final class StateRouteTest extends IntegrationTestCase {
 		self::assertArrayHasKey( 'view', $answer );
 	}
 
+	/**
+	 * #89: the store asks for `_fields=view`, and WordPress trims the answer to the view it draws; the raw shelf and
+	 * options, which repeated the step's cards, stay in the answer for anyone who asks without it.
+	 */
+	public function test_an_answer_asked_for_its_view_alone_is_that_view_and_no_more(): void {
+		$query   = array(
+			'cbuild' => array( 'step' => 'deck' ),
+			'page'   => $this->kit,
+		);
+		$whole   = self::body( $this->ask( $query ) );
+		$trimmed = self::body( $this->ask( $query + array( '_fields' => 'view' ) ) );
+		self::assertSame( array( 'view' ), array_keys( $trimmed ) );
+		self::assertSame( $whole['view'], $trimmed['view'] );
+		self::assertArrayHasKey( 'shelf', $whole );
+		self::assertArrayHasKey( 'options', $whole );
+	}
+
 	public function test_a_build_link_the_kit_cannot_read_is_still_answered(): void {
 		$answer = $this->answer( array( 'cbuild' => array( 'nope' => 'x', 'deck' => '999999' ) ) );
 		self::assertSame( 'deck', $answer['step'], 'a link is read as the page reads it: what is no part of it is dropped' );

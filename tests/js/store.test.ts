@@ -220,6 +220,7 @@ describe( 'the store', () => {
 			[ 'cbuild[step]', 'trucks' ],
 			[ 'page', '25' ],
 			[ 'locale', 'fr_CA' ],
+			[ '_fields', 'view' ],
 		] );
 		await settle();
 		expect( state.view ).toEqual( NEXT );
@@ -345,6 +346,7 @@ describe( 'the store', () => {
 			[ 'cbuild[step]', 'deck' ],
 			[ 'page', '25' ],
 			[ 'locale', 'fr_CA' ],
+			[ '_fields', 'view' ],
 		] );
 		await settle();
 		expect( replaced ).toHaveBeenCalledWith(
@@ -549,6 +551,7 @@ describe( 'the store', () => {
 			[ 'cbuild[step]', 'deck' ],
 			[ 'page', '25' ],
 			[ 'locale', 'fr_CA' ],
+			[ '_fields', 'view' ],
 		] );
 		await settle();
 		expect( pushed ).toHaveBeenCalledOnce();
@@ -1688,6 +1691,7 @@ describe( 'narrowing the step', () => {
 				[ 'cbuild[step]', 'deck' ],
 				[ 'page', '25' ],
 				[ 'locale', 'fr_CA' ],
+				[ '_fields', 'view' ],
 			] );
 		}
 		expect( replaced ).toHaveBeenCalledWith(
@@ -1746,6 +1750,7 @@ describe( 'narrowing the step', () => {
 			[ 'cbuild[step]', 'deck' ],
 			[ 'page', '25' ],
 			[ 'locale', 'fr_CA' ],
+			[ '_fields', 'view' ],
 		] );
 		await settle();
 		expect( state.view ).toEqual( NEXT );

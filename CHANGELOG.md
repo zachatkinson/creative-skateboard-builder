@@ -7,6 +7,7 @@ All notable changes to this project are documented here. The format follows [Kee
 ### Changed
 
 - The state route's `currency.decimal_separator` and `currency.thousand_separator` are plain text with no HTML entity, as `format` is; a shop that set `&nbsp;` gets the character (#87).
+- The builder asks the state route for its view alone (`_fields=view`), about half the bytes on a long step; the route's answer is unchanged for anyone who asks without it (#89, D-302).
 - A chip's spoken label and Show more's status name no part: "Hoser, 9" and "30 more shown, 60 of 88." (#84).
 
 ### Fixed
