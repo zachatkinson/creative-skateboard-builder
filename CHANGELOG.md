@@ -6,6 +6,7 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Added
 
+- A `Server-Timing` header on the state route's answers to a shop manager: the route's time and its queries, to measure it on a real host (#90, D-304).
 - The state route's `picture.items[].large`: the part's photo uncropped, at the shop's single-product size, or null (#82, D-303).
 
 ### Changed

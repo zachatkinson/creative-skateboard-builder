@@ -370,7 +370,8 @@ final class Container {
 					$c->get( Front\BuilderPlace::class ),
 					static function () use ( $c ): Service\ComposedPictures {
 						return $c->get( Service\ComposedPictures::class );
-					}
+					},
+					$c->get( Port\Clock::class )
 				);
 			},
 			// The cards are built when something a card shows moves.

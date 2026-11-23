@@ -24,6 +24,7 @@ use CreativeBranding\SkateboardBuilder\Front\Words;
 use CreativeBranding\SkateboardBuilder\Domain\Fit\Problem;
 use CreativeBranding\SkateboardBuilder\Hookable;
 use CreativeBranding\SkateboardBuilder\Port\Cart;
+use CreativeBranding\SkateboardBuilder\Port\Clock;
 use CreativeBranding\SkateboardBuilder\Port\Kits;
 use CreativeBranding\SkateboardBuilder\Service\BuildState;
 use CreativeBranding\SkateboardBuilder\Service\ComposedPictures;
@@ -95,8 +96,9 @@ final class StateRoute implements Hookable {
 	 * @param Closure(): Builder                 $builder What the builder shows, for a build link.
 	 * @param BuilderPlace                       $place   Which page holds which kit's builder.
 	 * @param (Closure(): ComposedPictures)|null $pictures Asks for a review's picture, where its link is offered; none in tests that leave it out.
+	 * @param Clock|null                         $clock    Times an answer for a shop manager's Server-Timing header (1.1.0); none in tests that leave it out.
 	 */
-	public function __construct( private Kits $kits, private Closure $state, private Closure $writer, private Closure $limit, private Closure $cart, private Closure $builder, private BuilderPlace $place, private ?Closure $pictures = null ) {}
+	public function __construct( private Kits $kits, private Closure $state, private Closure $writer, private Closure $limit, private Closure $cart, private Closure $builder, private BuilderPlace $place, private ?Closure $pictures = null, private ?Clock $clock = null ) {}
 
 	/**
 	 * Add the hooks.
@@ -228,6 +230,26 @@ final class StateRoute implements Hookable {
 	 * @return WP_REST_Response|WP_Error
 	 */
 	public function state( WP_REST_Request $request ) {
+		$start   = $this->clock?->now();
+		$queries = get_num_queries();
+		$answer  = $this->limited( $request );
+		// The route's own time and queries, to a shop manager alone, so the priming work can be measured on a real
+		// host (#90): `cbuild-route` in milliseconds, from the callback's start, and `cbuild-queries`.
+		if ( null !== $this->clock && null !== $start && $answer instanceof WP_REST_Response && current_user_can( 'manage_woocommerce' ) ) {
+			$end  = $this->clock->now();
+			$took = ( (int) $end->format( 'U' ) - (int) $start->format( 'U' ) ) * 1000 + ( (int) $end->format( 'u' ) - (int) $start->format( 'u' ) ) / 1000;
+			$answer->header( 'Server-Timing', sprintf( 'cbuild-route;dur=%.1F, cbuild-queries;desc="%d"', $took, get_num_queries() - $queries ) );
+		}
+		return $answer;
+	}
+
+	/**
+	 * The route's answer, or its refusal past the rate limit, before it is timed.
+	 *
+	 * @param WP_REST_Request<array<string, mixed>> $request The request.
+	 * @return WP_REST_Response|WP_Error
+	 */
+	private function limited( WP_REST_Request $request ) {
 		$limit  = ( $this->limit )();
 		$header = $limit->header();
 		// The connection's own address, which counts requests and is never kept (Service\RateLimit). The route's answers

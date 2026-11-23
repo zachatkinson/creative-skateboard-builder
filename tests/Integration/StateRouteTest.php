@@ -633,6 +633,31 @@ final class StateRouteTest extends IntegrationTestCase {
 
 	// Spec review of milestone 7, should-fix: the picture's written description had no test in French. Spec, The
 	// picture: "a written description of the build"; Internationalisation: no sentence is built by joining words.
+	/**
+	 * #90: the route's own time and queries, in a Server-Timing header, to a signed-in user who can manage WooCommerce
+	 * alone, so the priming work can be measured on a real host (Zach, 22 November: shop managers only, no filter).
+	 */
+	public function test_a_shop_manager_is_told_the_routes_time_and_queries_and_no_one_else_is(): void {
+		$query = array(
+			'cbuild' => array( 'step' => 'deck' ),
+			'page'   => $this->kit,
+		);
+		self::assertArrayNotHasKey( 'Server-Timing', $this->ask( $query )->get_headers(), 'a visitor' );
+		wp_set_current_user( self::factory()->user->create( array( 'role' => 'customer' ) ) );
+		self::assertArrayNotHasKey( 'Server-Timing', $this->ask( $query )->get_headers(), 'a customer' );
+
+		wp_set_current_user( self::factory()->user->create( array( 'role' => 'shop_manager' ) ) );
+		$response = $this->ask( $query );
+		$timing   = $response->get_headers()['Server-Timing'] ?? '';
+		self::assertMatchesRegularExpression( '#^cbuild-route;dur=\d+\.\d, cbuild-queries;desc="\d+"$#', $timing );
+		preg_match( '#dur=([\d.]+).*desc="(\d+)"#', $timing, $read );
+		self::assertGreaterThan( 0.0, (float) $read[1], 'the route takes some time' );
+		self::assertGreaterThan( 0, (int) $read[2], 'and asks the database something' );
+		self::assertSame( 'no-store', $response->get_headers()['Cache-Control'] ?? null, 'the other headers as they were' );
+		self::assertArrayNotHasKey( 'Server-Timing', $this->ask( array( 'picks' => array( 'deck' => 1 ) ), 999999999 )->get_headers(), 'an error is not timed' );
+		wp_set_current_user( 0 );
+	}
+
 	public function test_the_pictures_description_and_the_status_after_it_are_in_the_language_asked_for(): void {
 		add_filter( 'get_available_languages', static fn( array $languages ): array => array_merge( $languages, array( 'fr_CA' ) ) );
 		$GLOBALS['wp_locale_switcher'] = new WP_Locale_Switcher();

@@ -426,7 +426,7 @@ What the answer holds beside the schema's own descriptions:
 - **A step lists 24 options,** those the shop can supply first, and always the part the step counts. `steps[].offered` and `steps[].hidden` say how many there are in all.
 - **Fields are added** in minor versions, and none is renamed or removed within a major one.
 
-Every answer of the route, a refusal included, carries `Cache-Control: no-store` and `X-Robots-Tag: noindex`. Its refusals are REST errors, each with `code`, `message` and `data.status`:
+Every answer of the route, a refusal included, carries `Cache-Control: no-store` and `X-Robots-Tag: noindex`. From 1.1.0, an answer to a signed-in user who can manage WooCommerce also carries `Server-Timing: cbuild-route;dur=<ms>, cbuild-queries;desc="<n>"`: the route's own time from its callback's start, to a tenth of a millisecond, and its database queries. No one else is sent it, and no filter changes that (#90, D-304). Its refusals are REST errors, each with `code`, `message` and `data.status`:
 
 | Code | Since | Status | When |
 | --- | --- | --- | --- |

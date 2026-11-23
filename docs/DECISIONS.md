@@ -3763,3 +3763,13 @@ CI's Lighthouse gate failed Total Blocking Time on the builder page on Twenty Tw
 **Why:** Cowork's 1.0.0 F3 (#82): on the demo almost every deck has a photo and no layer image, and the stage showed a 60 by 120 px thumbnail in a 920 px stage.
 
 **Status:** Accepted.
+
+### D-304 · The state route tells a shop manager its time and queries · 2026-11-23
+
+- **What.** An answer of the state route (not a REST error) to a signed-in user with `manage_woocommerce` carries `Server-Timing: cbuild-route;dur=<ms>, cbuild-queries;desc="<n>"`. The time runs from the route's callback to its answer, read from `Port\Clock` as every time is (gate 3), so it leaves out WordPress's own start-up and the REST server's work; the queries are `get_num_queries()`'s difference. A browser's network panel shows both under Timing.
+- **Who.** Shop managers alone, with no filter: Zach's answer to the M11 plan's question, 22 November. A visitor and a customer are sent nothing, so the header tells no one outside the shop how its server is loaded.
+- **Not chosen.** `WP_DEBUG`: the demo's host has no way to turn it on from wp-admin, and a debug flag on a live site prints notices.
+
+**Why:** Cowork's 1.0.0 note (#90): on the demo a warm state request takes about 160 ms more than a bare REST request, and the priming work of D-294 can't be measured on a real host without it.
+
+**Status:** Accepted.

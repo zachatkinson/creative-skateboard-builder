@@ -5,7 +5,7 @@ Walked before each tag by someone other than the author of the milestone. OWASP'
 ## Rules the code is held to (spec: Security, performance and compatibility)
 
 1. Nothing from the browser is trusted. A build link, a preset or a form carries IDs only; each is checked on every use, and prices are always the server's.
-2. The state route is public and read-only: a GET with an explicit `permission_callback`, a schema for its arguments, a rate limit per address and `Cache-Control: no-store`. It shows only what the shop shows.
+2. The state route is public and read-only: a GET with an explicit `permission_callback`, a schema for its arguments, a rate limit per address and `Cache-Control: no-store`. It shows only what the shop shows. Its `Server-Timing` header (1.1.0, D-304) goes only to a signed-in user who can manage WooCommerce.
 3. Every admin action checks a capability and a nonce. Input is sanitised where it arrives and output is escaped where it is printed.
 4. SQL only in `src/Repository/` and `src/Install/`, always prepared. Products and orders only through WooCommerce's CRUD. CI: PHPCS `WordPress.DB`, PHPStan and `tools/gates.sh` (gates 1 and 1b).
 5. No user data is unserialised and no PHP object is stored. `unserialize`, `eval`, `extract` and the shell functions are banned (gate 2).
