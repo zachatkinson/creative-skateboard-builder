@@ -10,7 +10,8 @@ declare( strict_types=1 );
 namespace CreativeBranding\SkateboardBuilder\Domain\Picture;
 
 /**
- * An image and the rectangle it is drawn into, in the canvas's pixels from its top left.
+ * An image and the rectangle it is drawn into, in the canvas's pixels from its top left, sharp or, from 1.1.0, blurred
+ * so its artwork can't be made out and its shape stays (D-309).
  *
  * @since 0.7.0
  */
@@ -27,6 +28,7 @@ final readonly class Placement {
 	 * @param int    $y          The top edge.
 	 * @param int    $width      Pixels across.
 	 * @param int    $height     Pixels down.
+	 * @param bool   $blurred    Whether it is drawn blurred, since 1.1.0.
 	 */
-	public function __construct( public int $attachment, public string $url, public int $x, public int $y, public int $width, public int $height ) {}
+	public function __construct( public int $attachment, public string $url, public int $x, public int $y, public int $width, public int $height, public bool $blurred = false ) {}
 }

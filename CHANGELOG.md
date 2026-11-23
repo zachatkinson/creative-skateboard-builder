@@ -13,6 +13,8 @@ All notable changes to this project are documented here. The format follows [Kee
 - A `Server-Timing` header on the state route's answers to a shop manager: the route's time and its queries, to measure it on a real host (#90, D-304).
 - **A deck swap that answers at once** (D-308): a deck's board image is fetched while the pointer rests on its card, a pick made by a press, a tap or a click asks the route at once (the arrows still wait 150 ms), and the old board stays whole until the new one's image is decoded, at most a second. A pick that keeps the shopper 300 ms dims the picture with a line running along its foot (the dim alone under reduced motion), and the picture has `aria-busy` while it waits.
 - The state route's `options[].board`: on the deck step, the board each deck would draw alone (its width, length and deck layer), or null (D-308).
+- `cbuild_composed_layer`, a filter that draws each part's layer in a build's composed pictures as it is, blurred or left out, asked for each use (`cart`, `share`, `email`), so another plugin can blur a flagged deck on the share card a link preview shows to anyone and leave the shopper's cart and emails as they are. The answer is in the picture's name, so a flag set after a picture was drawn draws it again, and the one before is no longer shown (Cowork's 1.0.0 review, F19; #105; D-309).
+- `cbuild-preset__photo`: a ready build's tile picture takes the `cbuild_part_classes` of each of the build's parts, merged, so a flagged deck blurs the tile that shows it (F19, #105).
 - The state route's `picture.items[].large`: the part's photo uncropped, at the shop's single-product size, or null (#82, D-303).
 
 ### Changed
@@ -34,6 +36,7 @@ All notable changes to this project are documented here. The format follows [Kee
 - A ready build whose part the kit no longer offers opens on one line for its slot, naming the part as its tile does (#85).
 - A build link keeps a `nofollow` the site or another plugin set, through WordPress's robots and through Yoast (#88).
 - "Back to the shop" and "Sign in to save this build" have a phone's 44 px target (#86).
+- Until a build's share picture is drawn, a link preview no longer shows the photo of a deck another plugin blurs or leaves out of it, and the cart and My builds no longer stand the deck's photo in for a picture that blurs it (#106, D-309).
 
 ## [1.0.0] - 2026-11-20
 

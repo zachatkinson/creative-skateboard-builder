@@ -3,6 +3,7 @@
         "cbuild_arrival_estimate",
         "cbuild_build_in_one_package",
         "cbuild_builder_url",
+        "cbuild_composed_layer",
         "cbuild_delivery_line",
         "cbuild_kit_text",
         "cbuild_part_available",
@@ -175,6 +176,7 @@
         "cbuild-part",
         "cbuild-part__slot",
         "cbuild-picture__item",
+        "cbuild-preset__photo",
         "cbuild-quantity",
         "cbuild-review__item"
     ],

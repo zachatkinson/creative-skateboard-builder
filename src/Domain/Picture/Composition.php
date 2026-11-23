@@ -19,9 +19,10 @@ use function substr;
 /**
  * The composed picture's drawing, before any library draws it (spec: The picture; D-196): the board fitted inside a
  * margin of a twenty-fifth of the canvas's shorter side, nose up and centred, and each layer image fitted into its
- * layer's rectangle and centred in it, as the page fits it. A part with no art is not drawn. Its name is a hash of the
- * placements, which hold each image's file, of the canvas and of this version, so the same build gives the same file
- * and nothing a visitor sends is in it.
+ * layer's rectangle and centred in it, as the page fits it. A part with no art is not drawn, and from 1.1.0 a part
+ * another plugin flags is drawn blurred (D-309). Its name is a hash of the placements, which hold each image's file and
+ * whether it is blurred, of the canvas and of this version, so the same build gives the same file, a flag set later
+ * gives another, and nothing a visitor sends is in it.
  *
  * @since 0.7.0
  */
@@ -50,11 +51,12 @@ final readonly class Composition {
 	 *
 	 * @since 0.7.0
 	 *
-	 * @param Canvas               $canvas The canvas.
-	 * @param Layout               $layout The layout.
-	 * @param array<int, LayerArt> $art    The art of the parts with a layer image, by part ID.
+	 * @param Canvas               $canvas  The canvas.
+	 * @param Layout               $layout  The layout.
+	 * @param array<int, LayerArt> $art     The art of the parts with a layer image, by part ID.
+	 * @param array<int, bool>     $blurred The parts drawn blurred, by part ID, since 1.1.0.
 	 */
-	public static function of( Canvas $canvas, Layout $layout, array $art ): self {
+	public static function of( Canvas $canvas, Layout $layout, array $art, array $blurred = array() ): self {
 		if ( $layout->width < 1 || $layout->height < 1 ) {
 			return new self( $canvas, array() );
 		}
@@ -77,7 +79,7 @@ final readonly class Composition {
 				self::rounded( $layer->height * $board[1], $layout->height ),
 			);
 			$fit      = self::fitted( $box[2], $box[3], $image->width, $image->height );
-			$placed[] = new Placement( $image->attachment, $image->url, $box[0] + intdiv( $box[2] - $fit[0], 2 ), $box[1] + intdiv( $box[3] - $fit[1], 2 ), $fit[0], $fit[1] );
+			$placed[] = new Placement( $image->attachment, $image->url, $box[0] + intdiv( $box[2] - $fit[0], 2 ), $box[1] + intdiv( $box[3] - $fit[1], 2 ), $fit[0], $fit[1], $blurred[ $layer->part ] ?? false );
 		}
 		return new self( $canvas, $placed );
 	}
@@ -97,10 +99,16 @@ final readonly class Composition {
 	 * @since 0.7.0
 	 */
 	public function name(): string {
-		// One line for the canvas and one for each placement, its address last: no address holds a line break.
+		// One line for the canvas and one for each placement, its address next to last: no address holds a line break.
+		// A blurred placement's line ends with the word, and a sharp one's has none, so a picture with nothing blurred
+		// keeps the name it had before 1.1.0 (D-309).
 		$drawn = array( implode( '|', array( self::VERSION, $this->canvas->width, $this->canvas->height, $this->canvas->type ) ) );
 		foreach ( $this->placements as $placement ) {
-			$drawn[] = implode( '|', array( $placement->attachment, $placement->x, $placement->y, $placement->width, $placement->height, $placement->url ) );
+			$line = array( $placement->attachment, $placement->x, $placement->y, $placement->width, $placement->height, $placement->url );
+			if ( $placement->blurred ) {
+				$line[] = 'blurred';
+			}
+			$drawn[] = implode( '|', $line );
 		}
 		return substr( hash( 'sha256', implode( "\n", $drawn ) ), 0, 32 ) . '.' . $this->canvas->extension();
 	}

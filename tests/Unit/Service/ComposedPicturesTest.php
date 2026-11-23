@@ -20,7 +20,9 @@ use CreativeBranding\SkateboardBuilder\Port\PictureFiles;
 use CreativeBranding\SkateboardBuilder\Support\Options;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Domain\Shop;
 use CreativeBranding\SkateboardBuilder\Service\Health;
+use CreativeBranding\SkateboardBuilder\Port\ComposedLayers;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\FakeClock;
+use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\FakeComposedLayers;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\FakeLogger;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\FakeQueue;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\InMemoryKits;
@@ -62,6 +64,8 @@ final class ComposedPicturesTest extends TestCase {
 
 	private FakeLogger $logger;
 
+	private FakeComposedLayers $answers;
+
 	protected function setUp(): void {
 		$kits       = new InMemoryKits();
 		$this->kits = $kits;
@@ -75,6 +79,7 @@ final class ComposedPicturesTest extends TestCase {
 		);
 		$this->files               = new InMemoryPictureFiles();
 		$this->logger              = new FakeLogger();
+		$this->answers             = new FakeComposedLayers();
 		$this->pictures            = new ComposedPictures(
 			$kits,
 			new BuildState( $kits, new InMemoryShopSettings(), new FakeLogger() ),
@@ -82,7 +87,8 @@ final class ComposedPicturesTest extends TestCase {
 			$this->files,
 			$this->queue,
 			new FakeClock( self::NOW ),
-			$this->logger
+			$this->logger,
+			$this->answers
 		);
 	}
 
@@ -296,5 +302,59 @@ final class ComposedPicturesTest extends TestCase {
 		$this->files->drawn        = array();
 		$this->pictures->offered( $review );
 		self::assertSame( array(), $this->queue->distinct, 'a build with nothing to draw asks nothing' );
+	}
+
+	// Cowork's review of 1.0.0, F19 (#105; D-309): another plugin answers for each part's layer in each use's picture.
+	// Mature Content blurs a flagged deck on the share card alone and leaves the cart and the emails as they are.
+	public function test_each_parts_layer_is_drawn_as_the_filter_answers_for_each_use(): void {
+		$this->answers->answers = array(
+			101 => array(
+				ComposedPictures::SHARE => ComposedLayers::BLURRED,
+				ComposedPictures::EMAIL => ComposedLayers::LEFT_OUT,
+			),
+		);
+		self::assertSame( 3, $this->pictures->compose( self::KIT, self::STREET ) );
+		$drawn = array();
+		foreach ( $this->files->drawn as $composition ) {
+			$drawn[ $composition->canvas->width ] = array_map( static fn( $placement ): array => array( $placement->attachment, $placement->blurred ), $composition->placements );
+		}
+		self::assertSame( array( array( 10, false ), array( 30, false ), array( 30, false ), array( 30, false ), array( 30, false ) ), $drawn[480], 'the cart\'s: as it is' );
+		self::assertSame( array( array( 10, true ), array( 30, false ), array( 30, false ), array( 30, false ), array( 30, false ) ), $drawn[1200], 'the share card\'s: the deck blurred' );
+		self::assertSame( array( array( 30, false ), array( 30, false ), array( 30, false ), array( 30, false ) ), $drawn[600], 'the emails\': the deck left out' );
+		self::assertContains( array( 101, SlotKey::DECK, self::KIT, ComposedPictures::SHARE ), $this->answers->asked, 'asked with the part, its slot, the kit and the use' );
+		self::assertContains( array( 301, SlotKey::WHEELS, self::KIT, ComposedPictures::CART ), $this->answers->asked );
+		foreach ( array_keys( ComposedPictures::CANVASES ) as $use ) {
+			self::assertNotNull( $this->pictures->url( self::KIT, self::STREET, $use ), 'found by the name it was drawn with: ' . $use );
+		}
+		self::assertTrue( $this->pictures->shown( self::KIT, SlotKey::DECK, 101, ComposedPictures::CART ) );
+		self::assertFalse( $this->pictures->shown( self::KIT, SlotKey::DECK, 101, ComposedPictures::SHARE ), 'the deck\'s own photo is no stand-in for a share card that blurs it (#106)' );
+		self::assertFalse( $this->pictures->shown( self::KIT, SlotKey::DECK, 101, ComposedPictures::EMAIL ) );
+	}
+
+	public function test_a_flag_set_after_the_pictures_were_drawn_gives_new_pictures_and_a_flag_lifted_finds_the_old(): void {
+		$this->pictures->compose( self::KIT, self::STREET );
+		$sharp = $this->pictures->url( self::KIT, self::STREET, ComposedPictures::SHARE );
+		self::assertNotNull( $sharp );
+
+		$this->answers->answers = array( 101 => array( ComposedPictures::SHARE => ComposedLayers::BLURRED ) );
+		self::assertNull( $this->pictures->url( self::KIT, self::STREET, ComposedPictures::SHARE ), 'the sharp picture is never shown once the deck is flagged' );
+		self::assertNotNull( $this->pictures->url( self::KIT, self::STREET, ComposedPictures::CART ), 'the cart\'s, which the filter leaves, is kept' );
+		self::assertTrue( $this->pictures->drawable( self::KIT, self::STREET, ComposedPictures::SHARE ), 'and a new one is there to draw' );
+		$this->pictures->compose( self::KIT, self::STREET );
+		$blurred = $this->pictures->url( self::KIT, self::STREET, ComposedPictures::SHARE );
+		self::assertNotNull( $blurred );
+		self::assertNotSame( $sharp, $blurred );
+
+		$this->answers->answers = array();
+		self::assertSame( $sharp, $this->pictures->url( self::KIT, self::STREET, ComposedPictures::SHARE ), 'the flag lifted, the sharp one is found again' );
+	}
+
+	public function test_a_build_whose_every_layer_is_left_out_has_no_picture_to_draw(): void {
+		$this->answers->answers = array(
+			101 => array( ComposedPictures::CART => ComposedLayers::LEFT_OUT ),
+			301 => array( ComposedPictures::CART => ComposedLayers::LEFT_OUT ),
+		);
+		self::assertFalse( $this->pictures->drawable( self::KIT, self::STREET, ComposedPictures::CART ) );
+		self::assertSame( 2, $this->pictures->compose( self::KIT, self::STREET ), 'the share card and the emails\'' );
 	}
 }

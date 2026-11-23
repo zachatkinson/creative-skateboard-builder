@@ -245,4 +245,48 @@ final class PictureFilesTest extends IntegrationTestCase {
 		self::assertFileDoesNotExist( dirname( $old ) . '/never-made.webp' );
 		self::assertTrue( $files->writable() );
 	}
+
+	// Cowork's review of 1.0.0, F19 (#105; D-309): a part another plugin flags is drawn blurred, as Mature Content blurs
+	// it on the page (22 px), so its artwork can't be made out and its shape stays.
+	public function test_a_blurred_layer_is_drawn_so_its_artwork_cannot_be_made_out_and_its_shape_stays(): void {
+		// A deck whose artwork is bands of black and white, 40 pixels each, on a transparent edge.
+		$image = imagecreatetruecolor( 400, 1600 );
+		imagealphablending( $image, false );
+		imagesavealpha( $image, true );
+		imagefill( $image, 0, 0, imagecolorallocatealpha( $image, 0, 0, 0, 127 ) );
+		for ( $band = 0; $band < 36; $band++ ) {
+			$grey = 0 === $band % 2 ? 0 : 255;
+			imagefilledrectangle( $image, 40, 80 + 40 * $band, 359, 119 + 40 * $band, imagecolorallocate( $image, $grey, $grey, $grey ) );
+		}
+		$path = sys_get_temp_dir() . '/cbuild-bands-' . wp_generate_password( 8, false ) . '.png';
+		imagepng( $image, $path );
+		$deck = (int) ( new \WP_UnitTest_Factory_For_Attachment() )->create_upload_object( $path );
+		unlink( $path );
+		$layout = new Layout( 2000000, 8000000, array( new Layer( SlotKey::DECK, 100, 0, 0, 2000000, 8000000 ) ), array() );
+		$art    = array( 100 => new LayerArt( $deck, (string) wp_get_attachment_url( $deck ), 400, 1600, array() ) );
+		// Down the deck's middle, where the bands are: how far apart the darkest and the lightest are.
+		$spread = static function ( \GdImage $drawn ): int {
+			$greys = array();
+			for ( $y = 120; $y <= 510; $y += 2 ) {
+				$greys[] = (int) round( array_sum( self::colour( $drawn, 600, $y ) ) / 3 );
+			}
+			return max( $greys ) - min( $greys );
+		};
+
+		foreach ( array( 'gd', 'imagick' ) as $library ) {
+			foreach ( array( 'image/webp', 'image/jpeg' ) as $type ) {
+				$canvas = new Canvas( 1200, 630, $type );
+				$where  = $library . ' ' . $type;
+				$sharp  = self::drawn( $library, Composition::of( $canvas, $layout, $art ) );
+				self::assertGreaterThan( 200, $spread( $sharp ), 'drawn as it is, the bands are there: ' . $where );
+
+				$blurred = self::drawn( $library, Composition::of( $canvas, $layout, $art, array( 100 => true ) ) );
+				self::assertLessThan( 60, $spread( $blurred ), 'blurred, they are not: ' . $where );
+				$middle = (int) round( array_sum( self::colour( $blurred, 600, 315 ) ) / 3 );
+				self::assertEqualsWithDelta( 128, $middle, 50, 'the deck is still there, its bands run together: ' . $where );
+				self::assertEqualsWithDelta( array( 255, 255, 255 ), self::colour( $blurred, 10, 10 ), 6, 'the ground is white: ' . $where );
+				self::assertEqualsWithDelta( array( 255, 255, 255 ), self::colour( $blurred, 450, 315 ), 6, 'and the deck keeps its shape, nothing drawn beside it: ' . $where );
+			}
+		}
+	}
 }

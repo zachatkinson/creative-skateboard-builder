@@ -145,4 +145,24 @@ final class CompositionTest extends TestCase {
 		$drawn       = Composition::VERSION . "|1200|630|image/webp\n" . implode( '|', array( 10, $placed->x, $placed->y, $placed->width, $placed->height, 'https://example.com/10.png' ) );
 		self::assertSame( substr( hash( 'sha256', $drawn ), 0, 32 ) . '.webp', $composition->name(), 'D-196: named by what is drawn, its version and its size' );
 	}
+
+	// Cowork's review of 1.0.0, F19 (#105; D-309): a part another plugin flags is drawn blurred, and the name says so, so
+	// a flag set after the picture was drawn gives another name and the picture is drawn again. A picture with nothing
+	// blurred keeps the name it had, so no picture drawn before 1.1.0 is drawn again.
+	public function test_a_blurred_layer_is_marked_on_its_placement_and_in_the_name_and_nothing_else_changes(): void {
+		$canvas = new Canvas( 1200, 630, 'image/webp' );
+		$art    = array( 100 => self::art( 10, 400, 1600 ), 300 => self::art( 30, 60, 100 ) );
+		$sharp  = Composition::of( $canvas, self::layout(), $art );
+		$blur   = Composition::of( $canvas, self::layout(), $art, array( 100 => true ) );
+		self::assertSame( array( false, false ), array_map( static fn( Placement $placed ): bool => $placed->blurred, $sharp->placements ) );
+		self::assertSame( array( true, false ), array_map( static fn( Placement $placed ): bool => $placed->blurred, $blur->placements ), 'the deck alone' );
+		self::assertEquals( $sharp->placements[1], $blur->placements[1] );
+		self::assertSame( array( $sharp->placements[0]->x, $sharp->placements[0]->y, $sharp->placements[0]->width, $sharp->placements[0]->height ), array( $blur->placements[0]->x, $blur->placements[0]->y, $blur->placements[0]->width, $blur->placements[0]->height ), 'in the same place, at the same size' );
+		self::assertNotSame( $sharp->name(), $blur->name() );
+		self::assertSame( $sharp->name(), Composition::of( $canvas, self::layout(), $art, array( 300 => false, 999 => true ) )->name(), 'a part not blurred, or one not drawn, changes nothing' );
+
+		$placed = $blur->placements[0];
+		$drawn  = Composition::VERSION . "|1200|630|image/webp\n" . implode( '|', array( 10, $placed->x, $placed->y, $placed->width, $placed->height, 'https://example.com/10.png', 'blurred' ) ) . "\n" . implode( '|', array( 30, $blur->placements[1]->x, $blur->placements[1]->y, $blur->placements[1]->width, $blur->placements[1]->height, 'https://example.com/30.png' ) );
+		self::assertSame( substr( hash( 'sha256', $drawn ), 0, 32 ) . '.webp', $blur->name() );
+	}
 }

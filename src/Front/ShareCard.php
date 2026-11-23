@@ -130,7 +130,8 @@ final class ShareCard {
 
 	/**
 	 * The card's image: the composed picture, else the deck's photo, else its layer image, else none, and whether it
-	 * falls back while the composed picture, which this host can draw, is not made yet. The photo comes before the layer: a layer is a narrow cut-out on
+	 * falls back while the composed picture, which this host can draw, is not made yet. From 1.1.0 none in place of a
+	 * deck another plugin blurs or leaves out of the share card (D-309). The photo comes before the layer: a layer is a narrow cut-out on
 	 * transparency, which platforms draw on black (the audit of milestone 7).
 	 *
 	 * @param State                $state   The build's state, ready.
@@ -157,6 +158,12 @@ final class ShareCard {
 		$waiting = $this->pictures->drawable( $state->id, $picks, ComposedPictures::SHARE );
 		if ( $waiting ) {
 			$this->pictures->ask( $state->id, $picks, ComposedPictures::FROM_PAGE );
+		}
+		$deck = $picks[ SlotKey::DECK ] ?? null;
+		if ( null !== $deck && ! $this->pictures->shown( $state->id, SlotKey::DECK, $deck, ComposedPictures::SHARE ) ) {
+			// A deck another plugin blurs or leaves out of the share card has no stand-in: its photo and its layer are
+			// the artwork the card keeps from a link preview (#106; D-309).
+			return array( null, $waiting );
 		}
 		foreach ( array( 'items', 'layers' ) as $list ) {
 			foreach ( Cast::items( $picture[ $list ] ?? null ) as $entry ) {

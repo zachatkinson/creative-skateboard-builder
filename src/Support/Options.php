@@ -122,8 +122,8 @@ final class Options {
 	/**
 	 * The other classes docs/HOOKS.md promises a theme: in the cart, what a kit's line charges for assembly, the
 	 * slot's label in a part's Part of words, and a kit's composed picture; in the builder, the places
-	 * `cbuild_part_classes` reaches: a part's place in the picture, its layer on the board, the bar's photo and its
-	 * line in the review.
+	 * `cbuild_part_classes` reaches: a part's place in the picture, its layer on the board, the bar's photo, its
+	 * line in the review and, from 1.1.0, a ready build's tile picture, with its parts' classes merged.
 	 */
 	public const CLASS_ASSEMBLY     = 'cbuild-assembly';
 	public const CLASS_PART_SLOT    = 'cbuild-part__slot';
@@ -132,6 +132,7 @@ final class Options {
 	public const CLASS_LAYER        = 'cbuild-board__layer';
 	public const CLASS_BAR_PHOTO    = 'cbuild-bar__photo';
 	public const CLASS_REVIEW_ITEM  = 'cbuild-review__item';
+	public const CLASS_PRESET_PHOTO = 'cbuild-preset__photo';
 
 	/**
 	 * Order item meta (spec: Data model, Order items). Hidden from customers by their underscore, and kept with the
@@ -376,6 +377,7 @@ final class Options {
 			self::CLASS_LAYER,
 			self::CLASS_BAR_PHOTO,
 			self::CLASS_REVIEW_ITEM,
+			self::CLASS_PRESET_PHOTO,
 		);
 	}
 

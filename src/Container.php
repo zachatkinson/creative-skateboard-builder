@@ -49,6 +49,7 @@ final class Container {
 			Port\PartCards::class       => Adapter\WooPartCards::class,
 			Port\PartLooks::class       => Adapter\WooPartLooks::class,
 			Port\Ranking::class         => Adapter\CreativeSearchRanking::class,
+			Port\ComposedLayers::class  => Adapter\WpComposedLayers::class,
 			Port\TextFolding::class     => Adapter\WpTextFolding::class,
 			Port\PartFacts::class       => Repository\PartFactsRepository::class,
 			Port\Tally::class           => Adapter\CacheTally::class,

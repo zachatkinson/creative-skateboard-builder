@@ -420,6 +420,12 @@ final class BuilderView {
 					$pick                                        = Cast::map( $pick );
 					$picks[ Cast::str( $pick['slot'] ?? null ) ] = Cast::int( $pick['part'] ?? null );
 				}
+				// The tile shows the build, so it takes each part's classes from another plugin, merged: a flagged deck
+				// blurs it as it blurs the deck's card (Cowork's review of 1.0.0, F19; D-309).
+				$photo = array( Options::CLASS_PRESET_PHOTO );
+				foreach ( $picks as $slot => $part ) {
+					$photo = array_merge( $photo, explode( ' ', self::flagged( array(), $state->id, $slot, $part ) ) );
+				}
 				$fields = array();
 				foreach ( ( new BuildLink( $picks, null, State::REVIEW, null, $at ) )->query( $state->kit->slots ) as $key => $value ) {
 					$fields[] = array(
@@ -452,6 +458,7 @@ final class BuilderView {
 					'hasTotal'       => $whole,
 					'notes'          => $notes,
 					'fields'         => $fields,
+					'photoClasses'   => implode( ' ', array_values( array_unique( array_filter( $photo, static fn( string $name ): bool => '' !== $name ) ) ) ),
 					/* translators: %s: a preset's name, such as Street. */
 					'button'         => sprintf( __( 'Start from %s', 'creative-skateboard-builder' ), $name ),
 				);

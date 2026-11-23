@@ -1718,4 +1718,24 @@ final class BuilderTest extends TestCase {
 		self::assertSame( 'cbuild-review__item is-flagged badclass', $review[ SlotKey::DECK ] );
 		self::assertSame( 'cbuild-review__item', $review[ SlotKey::TRUCKS ] );
 	}
+
+	// Cowork's review of 1.0.0, F19 (#105; D-309): a ready build's tile shows the build, so it takes the classes another
+	// plugin gives each of its parts, merged, and a flagged deck blurs the tile until the shopper shows its artwork.
+	public function test_a_ready_builds_tile_takes_the_classes_another_plugin_gives_its_parts_merged(): void {
+		$this->presets();
+		$GLOBALS['cbuild_test_filters']['cbuild_part_classes'] = static function ( array $classes, int $part, string $slot, int $kit ): array {
+			return match ( true ) {
+				self::KIT !== $kit         => array(),
+				101 === $part              => array( 'is-flagged', 'is-mature' ),
+				SlotKey::WHEELS === $slot  => array( 'is-flagged', 'is-new"' ),
+				default                    => array(),
+			};
+		};
+		$tiles = $this->show( new BuildLink() )['view']['presets']['tiles'];
+		self::assertSame( 'cbuild-preset__photo is-flagged is-mature is-new', $tiles[0]['photoClasses'], 'Street: the deck\'s and the wheels\', each once, made safe' );
+		self::assertSame( 'cbuild-preset__photo is-flagged is-new', $tiles[1]['photoClasses'], 'Park: its wheels\' alone' );
+
+		unset( $GLOBALS['cbuild_test_filters']['cbuild_part_classes'] );
+		self::assertSame( 'cbuild-preset__photo', $this->show( new BuildLink() )['view']['presets']['tiles'][0]['photoClasses'] );
+	}
 }

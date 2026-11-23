@@ -55,6 +55,11 @@ final class WpPictureFiles implements PictureFiles {
 	private const TOUCHED = 86400;
 
 	/**
+	 * How many cells a blurred layer is averaged down to across its shorter side (D-309).
+	 */
+	private const CELLS = 6;
+
+	/**
 	 * The layer types a library must read to be counted able to compose at all, for Site Health: PNG and WebP. A
 	 * composition with an AVIF layer is drawn by a library that reads AVIF too (D-210).
 	 */
@@ -274,9 +279,61 @@ final class WpPictureFiles implements PictureFiles {
 			if ( null === $layer ) {
 				return false;
 			}
+			if ( $placement->blurred ) {
+				$layer = self::gdBlurred( $layer, $placement->width, $placement->height );
+				if ( null === $layer ) {
+					return false;
+				}
+				imagecopy( $canvas, $layer, $placement->x, $placement->y, 0, 0, $placement->width, $placement->height );
+				continue;
+			}
 			imagecopyresampled( $canvas, $layer, $placement->x, $placement->y, 0, 0, $placement->width, $placement->height, imagesx( $layer ), imagesy( $layer ) );
 		}
 		return 'image/jpeg' === $composition->canvas->type ? imagejpeg( $canvas, $path, self::QUALITY ) : imagewebp( $canvas, $path, self::QUALITY );
+	}
+
+	/**
+	 * A layer blurred at its drawn size, so its artwork can't be made out and its shape stays: averaged down to CELLS
+	 * across its shorter side, which is about the 22 px Mature Content blurs a part with on the page, then scaled back
+	 * up smoothly, its transparency with it (D-309). Null where GD cannot make the image.
+	 *
+	 * @param \GdImage $layer  The layer image.
+	 * @param int      $width  Its drawn width.
+	 * @param int      $height Its drawn height.
+	 */
+	private static function gdBlurred( \GdImage $layer, int $width, int $height ): ?\GdImage {
+		[ $across, $down ] = self::cells( $width, $height );
+		$small             = imagecreatetruecolor( $across, $down );
+		imagealphablending( $small, false );
+		imagesavealpha( $small, true );
+		imagecopyresampled( $small, $layer, 0, 0, 0, 0, $across, $down, imagesx( $layer ), imagesy( $layer ) );
+		$blurred = imagescale( $small, max( 1, $width ), max( 1, $height ), IMG_BICUBIC );
+		if ( false === $blurred ) {
+			return null;
+		}
+		imagealphablending( $blurred, false );
+		imagesavealpha( $blurred, true );
+		for ( $pass = 0; $pass < 4; $pass++ ) {
+			imagefilter( $blurred, IMG_FILTER_GAUSSIAN_BLUR );
+		}
+		imagealphablending( $blurred, true );
+		return $blurred;
+	}
+
+	/**
+	 * How many cells a blurred layer is averaged down to: CELLS across its shorter side, as many along the other as keep
+	 * its shape.
+	 *
+	 * @param int $width  The drawn width.
+	 * @param int $height The drawn height.
+	 * @return array{int<1, max>, int<1, max>}
+	 */
+	private static function cells( int $width, int $height ): array {
+		$shorter = max( 1, min( $width, $height ) );
+		return array(
+			max( 1, (int) round( max( 1, $width ) * self::CELLS / $shorter ) ),
+			max( 1, (int) round( max( 1, $height ) * self::CELLS / $shorter ) ),
+		);
 	}
 
 	/**
@@ -296,7 +353,15 @@ final class WpPictureFiles implements PictureFiles {
 				if ( null === $layer ) {
 					return false;
 				}
-				$layer->resizeImage( $placement->width, $placement->height, Imagick::FILTER_LANCZOS, 1 );
+				if ( $placement->blurred ) {
+					// As GD's: down to a few cells across its shorter side, averaged, then back up smoothly (D-309).
+					[ $across, $down ] = self::cells( $placement->width, $placement->height );
+					$layer->resizeImage( $across, $down, Imagick::FILTER_BOX, 1 );
+					$layer->resizeImage( $placement->width, $placement->height, Imagick::FILTER_GAUSSIAN, 1 );
+					$layer->blurImage( 0, max( 1, min( $placement->width, $placement->height ) / ( 2 * self::CELLS ) ) );
+				} else {
+					$layer->resizeImage( $placement->width, $placement->height, Imagick::FILTER_LANCZOS, 1 );
+				}
 				$canvas->compositeImage( $layer, Imagick::COMPOSITE_OVER, $placement->x, $placement->y );
 			}
 			$canvas->setImageFormat( 'image/jpeg' === $composition->canvas->type ? 'jpeg' : 'webp' );

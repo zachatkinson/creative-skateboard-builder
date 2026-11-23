@@ -12,6 +12,7 @@ namespace CreativeBranding\SkateboardBuilder\Tests\Integration;
 use CreativeBranding\SkateboardBuilder\Admin\CheckScreen;
 use CreativeBranding\SkateboardBuilder\Adapter\WpPictureFiles;
 use CreativeBranding\SkateboardBuilder\Port\Clock;
+use CreativeBranding\SkateboardBuilder\Port\ComposedLayers;
 use CreativeBranding\SkateboardBuilder\Port\Kits;
 use CreativeBranding\SkateboardBuilder\Port\Logger;
 use CreativeBranding\SkateboardBuilder\Port\MigrationStore;
@@ -160,7 +161,7 @@ final class SiteHealthTest extends IntegrationTestCase {
 			fn (): ShopSettings => $this->service( ShopSettings::class ),
 			fn (): MigrationStore => $this->service( MigrationStore::class ),
 			fn (): CatalogueCheck => $this->service( CatalogueCheck::class ),
-			fn (): ComposedPictures => new ComposedPictures( $this->service( Kits::class ), $this->service( BuildState::class ), $this->service( LayerArtwork::class ), $files, $this->service( Queue::class ), $this->service( Clock::class ), $this->service( Logger::class ) )
+			fn (): ComposedPictures => new ComposedPictures( $this->service( Kits::class ), $this->service( BuildState::class ), $this->service( LayerArtwork::class ), $files, $this->service( Queue::class ), $this->service( Clock::class ), $this->service( Logger::class ), $this->service( ComposedLayers::class ) )
 		);
 		$none = $with( new WpPictureFiles( array() ) )->pictures();
 		self::assertSame( array( 'recommended', 'The skateboard builder cannot compose pictures on this server' ), array( $none['status'], $none['label'] ) );

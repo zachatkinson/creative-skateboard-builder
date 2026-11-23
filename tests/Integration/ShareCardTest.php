@@ -21,6 +21,7 @@ use CreativeBranding\SkateboardBuilder\Port\Kits;
 use CreativeBranding\SkateboardBuilder\Rest\StateRoute;
 use CreativeBranding\SkateboardBuilder\Support\Options;
 use CreativeBranding\SkateboardBuilder\Tests\Support\CartTestCase;
+use CreativeBranding\SkateboardBuilder\Domain\Kit\SlotKey;
 use CreativeBranding\SkateboardBuilder\Tests\Support\LayerFiles;
 use WP_Locale_Switcher;
 
@@ -310,5 +311,37 @@ final class ShareCardTest extends CartTestCase {
 		$file = (string) wp_get_attachment_url( $photo );
 		self::assertStringStartsWith( substr( $file, 0, -strlen( '.png' ) ), $tags['og:image'][0], 'the deck\'s photo, at the size the builder shows it' );
 		self::assertGreaterThanOrEqual( array( '300' ), $tags['og:image:width'], 'at least the 300 pixels a large card needs' );
+	}
+
+	// Cowork's review of 1.0.0, F19 (#105, #106; D-309): a deck another plugin blurs on the share card is drawn blurred
+	// in it, and until that picture is made the card shows no photo of the deck, which a link preview would show anyone.
+	public function test_a_flagged_decks_share_card_is_the_blurred_picture_and_never_its_photo_or_layer_meanwhile(): void {
+		$photo = LayerFiles::attachment( 800, 800, false );
+		$deck  = wc_get_product( $this->parts['deck'] );
+		$deck->set_image_id( $photo );
+		$deck->save();
+		$build = array_map( 'strval', $this->picks() ) + array( 'step' => 'review' );
+		$asked = array();
+		$flag  = static function ( string $answer, int $part, string $slot, int $kit, string $use ) use ( &$asked ): string {
+			$asked[] = $use;
+			return SlotKey::DECK === $slot && 'share' === $use ? 'blurred' : $answer;
+		};
+		add_filter( 'cbuild_composed_layer', $flag, 10, 5 );
+		try {
+			$tags = $this->head( $build );
+			self::assertContains( 'share', $asked );
+			self::assertArrayNotHasKey( 'og:image', $tags, 'no photo of the flagged deck, nor its layer, while the picture is made' );
+			self::assertArrayNotHasKey( 'twitter:image', $tags );
+			self::assertSame( array( 'summary' ), $tags['twitter:card'], 'a card with no image is the small one' );
+			self::assertCount( 1, self::waiting( Options::JOB_COMPOSE_PICTURE ), 'the blurred picture is asked for' );
+
+			self::work();
+			$tags = $this->head( $build );
+			self::assertMatchesRegularExpression( '#/creative-skateboard-builder/pictures/[0-9a-f]{32}\.webp$#', $tags['og:image'][0] ?? '', 'the blurred picture, once made' );
+			$blurred = $tags['og:image'][0];
+		} finally {
+			remove_filter( 'cbuild_composed_layer', $flag, 10 );
+		}
+		self::assertNotSame( $blurred, $this->head( $build )['og:image'][0] ?? '', 'the flag lifted, another picture: the sharp one' );
 	}
 }

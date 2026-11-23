@@ -3830,3 +3830,17 @@ Zach, 23 November: a deck swap "seems to take a while for the builder to render 
 **Why:** the board is the builder's answer to a pick; it should change once, whole, as fast as the network allows, and say so when it can't.
 
 **Status:** Accepted.
+
+### D-309 · A part's layer in a composed picture is drawn as another plugin answers, by use, and the answer is in the name · 2026-11-23
+
+Cowork's review of 1.0.0, F19 (#105, should-fix): a part flagged by another plugin, as Mature Content flags mature artwork, blurs wherever the builder shows it (`cbuild_part_classes`), but the composed pictures, the cart's, the share card's and the emails', and the ready builds' tiles drew it sharp. The share card is the one a link preview shows to anyone the link is sent to.
+
+- **A filter per part, per use.** `cbuild_composed_layer` answers `as_is`, `blurred` or `left_out` for each part with a layer image in each use's picture, with the part, its slot, the kit and the use, so a plugin can blur the share card alone and leave the shopper's own cart and emails as they are (Mature Content's choice, the client's). Anything else is `as_is`. It reaches the service through a port (`ComposedLayers`), so the service stays free of WordPress.
+- **The answer is in the name.** A blurred placement's line in the name's hash ends with `blurred`, and a sharp one's has nothing added, so no picture drawn before 1.1.0 is drawn again, and a flag set after a picture was drawn gives another name: the sharp file is never found again, the new one is asked for as a page asks, and lifting the flag finds the sharp one while it is kept. Not chosen: an action that drops a part's pictures, as Creative Search's `csearch_flush_cache`; it needs the flagging plugin to call it at the right time, and a missed call leaves the sharp picture shown.
+- **The blur.** Averaged down to six cells across the layer's shorter side, scaled back up smoothly with its transparency, then blurred once more (GD: four Gaussian passes; Imagick: a box resize, a Gaussian resize and `blurImage`), so the artwork can't be made out at any size and the outline stays, about the 22 px Mature Content blurs a part with on the page. A test draws a striped deck: sharp, its bands span over 200 grey levels; blurred, under 60, the deck still there and nothing drawn beside it, with both libraries and both types.
+- **No stand-in for a flagged deck** (#106). Where a use's picture is not made, the deck's photo stood in: on the share card, the cart's line and My builds. A deck answered other than `as_is` for that use now has none: the share card has no image (the small card), and the cart and My builds show the kit's own. The cart's line also asks for a picture it can't find, so a flag set after the cart was filled draws the new one.
+- **Tiles.** A ready build's tile picture (`cbuild-preset__photo`) takes each of its parts' `cbuild_part_classes`, merged and each once, so the page's blur and "Show artwork" reach it as they reach the deck's card.
+
+**Why:** the plugin promised one answer would blur a part everywhere it is shown; the pictures made in the background are the places furthest from the page, and the share card goes furthest of all.
+
+**Status:** Accepted.

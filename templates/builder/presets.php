@@ -21,7 +21,7 @@ defined( 'ABSPATH' ) || exit;
 					<template data-wp-each--field="context.tile.fields">
 						<input type="hidden" data-wp-bind--name="context.field.name" data-wp-bind--value="context.field.value">
 					</template>
-					<img class="cbuild-preset__photo" alt="" loading="lazy" decoding="async" data-wp-bind--hidden="!context.tile.hasImage" data-wp-bind--src="context.tile.src" data-wp-bind--srcset="context.tile.srcset" data-wp-bind--sizes="context.tile.sizes" data-wp-bind--width="context.tile.width" data-wp-bind--height="context.tile.height">
+					<img class="cbuild-preset__photo" data-wp-bind--class="context.tile.photoClasses" alt="" loading="lazy" decoding="async" data-wp-bind--hidden="!context.tile.hasImage" data-wp-bind--src="context.tile.src" data-wp-bind--srcset="context.tile.srcset" data-wp-bind--sizes="context.tile.sizes" data-wp-bind--width="context.tile.width" data-wp-bind--height="context.tile.height">
 					<p class="cbuild-preset__name" data-wp-text="context.tile.name"></p>
 					<p class="cbuild-preset__description" data-wp-bind--hidden="!context.tile.hasDescription" data-wp-text="context.tile.description"></p>
 					<p class="cbuild-preset__total" data-wp-bind--hidden="!context.tile.hasTotal" data-wp-text="context.tile.total"></p>

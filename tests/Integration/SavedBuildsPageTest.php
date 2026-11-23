@@ -549,4 +549,25 @@ final class SavedBuildsPageTest extends CartTestCase {
 		libxml_clear_errors();
 		return $document;
 	}
+
+	// Cowork's review of 1.0.0, F19 (#105; D-309): a deck another plugin blurs in the cart's picture, which My builds
+	// shows, is not shown by its photo while that picture is made.
+	public function test_my_builds_shows_no_photo_of_a_deck_another_plugin_blurs_while_its_picture_is_made(): void {
+		$photo = \CreativeBranding\SkateboardBuilder\Tests\Support\LayerFiles::attachment( 400, 400, false, 'jpeg' );
+		$deck  = wc_get_product( $this->parts['deck'] );
+		$deck->set_image_id( $photo );
+		$deck->save();
+		wp_set_current_user( $this->ana );
+		$this->post( $this->saveFields( wp_create_nonce( SavedBuildHooks::SAVE ), 'Mine' ) );
+		$file = (string) wp_basename( (string) get_attached_file( $photo ), '.jpeg' );
+		self::assertStringContainsString( $file, $this->page(), 'the deck\'s photo, while the picture is made' );
+
+		$flag = fn ( string $answer, int $part, string $slot, int $kit, string $use ): string => $part === $this->parts['deck'] && 'cart' === $use ? 'blurred' : $answer;
+		add_filter( 'cbuild_composed_layer', $flag, 10, 5 );
+		try {
+			self::assertStringNotContainsString( $file, $this->page(), 'none of a deck flagged in the cart\'s picture' );
+		} finally {
+			remove_filter( 'cbuild_composed_layer', $flag, 10 );
+		}
+	}
 }
