@@ -3799,3 +3799,18 @@ CI's Lighthouse gate failed Total Blocking Time on the builder page on Twenty Tw
 **Why:** Milestone 11's speed tests (ROADMAP: a pick within 100 ms at 4×, INP under 200 ms, no layout shift, a trace of each moment in CI), measured with the browser's own entries and traces, no new tool.
 
 **Status:** Accepted.
+
+### D-307 · A grip's layer image is its whole sheet, drawn once at its size and cut by the deck · 2026-11-23
+
+Cowork's 1.0.0 review, F18 (#103): the top repeated a 1 in swatch across the deck, so a printed grip's artwork was cut into strips, and a real sheet's photo, the image a shop has, was squeezed into an inch.
+
+- **The layout.** The grip's layer on the top is its sheet, `grip_width` by `grip_length`, 9 by 33 in where it gives none, centred on the deck (`Layout::corner()`'s usual centring). `Layout::drawn( grip )` is the same sheet, so the save check and the admin's preview ask for two pixels to the millimetre of it: 458 across or 1,677 along.
+- **The view.** The grip's span keeps the deck's box and the deck's outline as its mask, so the sheet is cut where the deck is, as tape is trimmed to it. The server sets `--cbuild-grip-size`, the sheet against the deck's box, and the stylesheet draws the image once, centred, at that size. A deck wider than its sheet shows maple at its edges, as a real one does. Placing a span at the sheet's own box and masking it would have needed the mask offset by the same shares; one box is simpler and paints the same.
+- **No corner rule.** A sheet shot flat is a rectangle with grit to its corners, so `LayerImage::problems()` takes `$cutOut`, false for a grip (`Layout::cutOut()`), and does not ask for clear corners. Every other drawn part is still a cut-out.
+- **1.0.x's swatches still work.** An image at most an eighth as wide as it is long (a strip is 1 in by about 32; a sheet 9 by 33) has no `--cbuild-grip-size` and is repeated nose to tail as before. A shop that saved swatches under 1.0.x sees no change until it saves a sheet; the save check now asks a new grip image for the sheet's size.
+- **Test images.** Cowork's sheets (two Graffic Grip sheets and a Mumber-Fur, product artwork) were compared locally against its mock on the 8 and 8.5 in decks and match it: the Cam Man figure once, lower right. They are a maker's artwork, and the repository is public, so they are not committed; `tools/layer-art.php` draws a plain sheet and a printed one, a white star a third of the way up, for the tests.
+- **The public API.** `picture.top`'s grip layer is the sheet's box from 1.1.0, not the deck's; a theme reading it sees the sheet. `--cbuild-grip-size` is new (HOOKS.md).
+
+**Why:** a grip is bought as a sheet and photographed as one; drawing it as one shows a printed grip as the shopper will see it on the board.
+
+**Status:** Accepted.

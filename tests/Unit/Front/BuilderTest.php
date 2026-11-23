@@ -469,6 +469,32 @@ final class BuilderTest extends TestCase {
 		self::assertFalse( $this->show( new BuildLink() )['view']['picture']['hero'], 'nothing picked' );
 	}
 
+	/**
+	 * Cowork's 1.0.0 review, F18 (#103): "a grip's layer image should be the whole sheet, drawn like a deck's artwork:
+	 * once, at the sheet's real size, centred on the deck nose to tail, clipped to the deck's outline, under the bolt
+	 * heads"; "keep drawing an image as narrow as a 1-inch strip the old way so a swatch saved under 1.0.x still works".
+	 * The grip keeps the deck's box and its outline as the mask, so it is cut where the deck is; a sheet is drawn once,
+	 * centred, at its size against the deck's. The test above is the old swatch, 51 by 1,626, repeated as before.
+	 */
+	public function test_a_grip_sheet_is_drawn_once_at_its_size_centred_on_the_deck_and_a_swatch_is_repeated_as_before(): void {
+		$this->topArt();
+		$this->layers->images[71] = new ImageFacts( 'image/webp', 460, 1687, false );
+		$picks                    = array( SlotKey::DECK => 101, SlotKey::GRIP => 701, SlotKey::HARDWARE => 601 );
+		$top                      = $this->show( new BuildLink( $picks, null, SlotKey::GRIP ) )['view']['picture']['top'];
+
+		self::assertSame( array( 'deck-1', 'grip-1' ), array_slice( array_column( $top['layers'], 'key' ), 0, 2 ), 'under the bolt heads' );
+		$deck = $top['layers'][0]['style'];
+		$grip = $top['layers'][1]['style'];
+		self::assertStringStartsWith( '--cbuild-layer-x:0%;--cbuild-layer-y:0%;--cbuild-layer-width:100%;--cbuild-layer-height:100%;--cbuild-mask:', $grip, 'the deck\'s box and outline' );
+		self::assertStringContainsString( substr( $deck, strpos( $deck, '--cbuild-mask:' ) ), $grip );
+		// The usual 9 by 33 in sheet on Part 101's 8 by 32 in deck.
+		self::assertStringEndsWith( ';--cbuild-image:url("https://example.com/layer-71.png");--cbuild-grip-size:112.5% 103.125%', $grip );
+
+		$this->layers->images[71] = new ImageFacts( 'image/png', 51, 1626, true );
+		$top                      = $this->show( new BuildLink( $picks, null, SlotKey::GRIP ) )['view']['picture']['top'];
+		self::assertStringNotContainsString( '--cbuild-grip-size', $top['layers'][1]['style'], 'a 1-inch swatch from 1.0.x is repeated nose to tail' );
+	}
+
 	public function test_a_deck_with_no_layer_image_has_no_top_to_turn_to_even_on_the_grip_step(): void {
 		$this->topArt();
 		$this->layers->attachments = array( 701 => 71 );

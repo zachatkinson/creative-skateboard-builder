@@ -137,8 +137,9 @@ final class LayoutTest extends TestCase {
 				array( SlotKey::WHEELS, 300, -885750, -2079625, 324000, 540000 ),
 				array( SlotKey::WHEELS, 300, 885750, -2079625, 324000, 540000 ),
 				array( SlotKey::DECK, 100, 0, 0, 2095500, 8128000 ),
-				// The grip has the deck's whole box, which the deck's shape then cuts.
-				array( SlotKey::GRIP, 700, 0, 0, 2095500, 8128000 ),
+				// The grip is its whole sheet, 9 by 33 in where it gives none, centred on the deck, which the deck's
+				// shape then cuts (F18, #103).
+				array( SlotKey::GRIP, 700, 0, 0, 2286000, 8382000 ),
 				// A 3/8 in head at each hole, from the nose: the inner rows half the wheelbase out, the outer 2.125 in
 				// further, the columns 1.625 in apart; the left of each row first.
 				array( SlotKey::HARDWARE, 600, -206375, 2349500, 95250, 95250 ),
@@ -299,12 +300,17 @@ final class LayoutTest extends TestCase {
 		self::assertSame( array( SpecKey::Wheelbase, SpecKey::DeckLength, SpecKey::AxleWidth, SpecKey::WheelDiameter ), $layout->assumed );
 	}
 
-	public function test_the_grip_is_drawn_on_the_top_alone_as_large_as_the_deck_whatever_its_own_size(): void {
-		$layout = Layout::of( Parts::picks( array( SlotKey::DECK => self::deck( array( 'deck_width' => '8.5' ) ), SlotKey::GRIP => Parts::of( array( 'grip_width' => '9', 'grip_length' => '33' ), 700 ) ) ) );
+	// Cowork's 1.0.0 review, F18 (#103): "a grip's layer image should be the whole sheet, drawn like a deck's artwork:
+	// once, at the sheet's real size, centred on the deck nose to tail, clipped to the deck's outline".
+	public function test_the_grip_is_drawn_on_the_top_alone_as_its_whole_sheet_centred_on_the_deck(): void {
+		$layout = Layout::of( Parts::picks( array( SlotKey::DECK => self::deck( array( 'deck_width' => '8.5' ) ), SlotKey::GRIP => Parts::of( array( 'grip_width' => '10', 'grip_length' => '34' ), 700 ) ) ) );
 
 		self::assertCount( 1, $layout->layers, 'no strip underneath' );
-		self::assertSame( array( SlotKey::GRIP, 700, 0, 0, 2159000, 8128000 ), self::table( $layout->top )[1] );
-		self::assertSame( array(), $layout->assumed );
+		$grip = $layout->top[1];
+		self::assertSame( array( SlotKey::GRIP, 700, 0, 0, 2540000, 8636000 ), self::table( $layout->top )[1] );
+		// Centred: its corner is half the overhang outside the deck's, each way.
+		self::assertSame( array( -190500, -254000 ), $layout->corner( $grip ) );
+		self::assertSame( array(), $layout->assumed, 'a grip with no size is drawn at the usual sheet, as nothing else in the picture rests on it' );
 	}
 
 	public function test_parts_the_board_hides_are_not_drawn(): void {

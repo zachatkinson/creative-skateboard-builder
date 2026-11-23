@@ -47,6 +47,12 @@ final class BuilderView {
 	private const int SEARCHED = 40;
 
 	/**
+	 * A grip's image at most this share as wide as it is long is a 1-inch swatch from 1.0.x, repeated nose to tail; a
+	 * whole sheet is about 9 to 33 (F18, #103).
+	 */
+	private const int SWATCH = 8;
+
+	/**
 	 * The board's height in the picture: at most this many CSS pixels (36rem), from a window this tall, and below
 	 * that this share of the window's height, in vh. The stylesheet's `--cbuild-board-size` is the same.
 	 */
@@ -589,21 +595,25 @@ final class BuilderView {
 		$height = Cast::int( $picture['height'] ?? null );
 		$top    = $height > 0 && $width > 0 ? Cast::items( $picture['top'] ?? null ) : array();
 		$mask   = '';
+		$deck   = array();
 		foreach ( $top as $layer ) {
 			$layer = Cast::map( $layer );
 			if ( SlotKey::DECK === Cast::str( $layer['slot'] ?? null ) ) {
 				$mask = self::url( self::address( Cast::map( $layer['image'] ?? null ) ) );
+				$deck = $layer;
 				break;
 			}
 		}
 		$layers = array();
 		$seen   = array();
 		foreach ( '' === $mask ? array() : $top as $layer ) {
-			$layer         = Cast::map( $layer );
-			$slot          = Cast::str( $layer['slot'] ?? null );
-			$style         = array( self::placed( $layer, $width, $height ) );
+			$layer = Cast::map( $layer );
+			$slot  = Cast::str( $layer['slot'] ?? null );
+			// The grip takes the deck's box and outline, so it is cut where the deck is; its sheet is sized against them.
+			$style         = array( self::placed( SlotKey::GRIP === $slot ? $deck : $layer, $width, $height ) );
 			$style[]       = in_array( $slot, array( SlotKey::DECK, SlotKey::GRIP ), true ) ? '--cbuild-mask:' . $mask : '';
 			$style[]       = SlotKey::DECK === $slot ? '' : '--cbuild-image:' . self::url( self::address( Cast::map( $layer['image'] ?? null ) ) );
+			$style[]       = SlotKey::GRIP === $slot ? self::sheet( $layer, $deck ) : '';
 			$seen[ $slot ] = ( $seen[ $slot ] ?? 0 ) + 1;
 			$layers[]      = array(
 				'key'     => $slot . '-' . $seen[ $slot ],
@@ -615,6 +625,28 @@ final class BuilderView {
 			'shown'  => array() !== $layers,
 			'style'  => array() === $layers ? '' : '--cbuild-board-ratio:' . $width . ' / ' . $height,
 			'layers' => $layers,
+		);
+	}
+
+	/**
+	 * A grip's whole sheet against the deck it covers, as the background's size (F18, #103): drawn once, centred, at
+	 * the sheet's size, as shares of the deck's box. An image at most an eighth as wide as it is long is a 1-inch
+	 * swatch, as 1.0.x asked for, and has none: the stylesheet repeats it nose to tail, as before.
+	 *
+	 * @param array<string, mixed> $grip The grip's layer, its box the sheet.
+	 * @param array<string, mixed> $deck The deck's layer.
+	 */
+	private static function sheet( array $grip, array $deck ): string {
+		$image  = Cast::map( $grip['image'] ?? null );
+		$across = Cast::int( $deck['width'] ?? null );
+		$along  = Cast::int( $deck['height'] ?? null );
+		if ( $across <= 0 || $along <= 0 || Cast::int( $image['width'] ?? null ) * self::SWATCH <= Cast::int( $image['height'] ?? null ) ) {
+			return '';
+		}
+		return sprintf(
+			'--cbuild-grip-size:%1$s%% %2$s%%',
+			self::decimal( 100 * Cast::int( $grip['width'] ?? null ) / $across ),
+			self::decimal( 100 * Cast::int( $grip['height'] ?? null ) / $along )
 		);
 	}
 

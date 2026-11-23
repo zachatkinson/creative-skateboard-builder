@@ -197,6 +197,7 @@
         "--cbuild-focus-contrast",
         "--cbuild-gap",
         "--cbuild-gap-small",
+        "--cbuild-grip-size",
         "--cbuild-ground",
         "--cbuild-image",
         "--cbuild-layer-height",

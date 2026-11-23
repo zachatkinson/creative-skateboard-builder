@@ -361,7 +361,7 @@ final class PartSpecsPanel {
 				'code' => LayerCheck::NOT_IMAGE,
 				'text' => $text,
 			),
-		) : $check->problems( $id, $this->size( $product ) ) as $problem ) {
+		) : $check->problems( $id, $this->size( $product ), $this->cutOut( $product ) ) as $problem ) {
 			$texts[] = (string) Sentences::layer( $problem['code'], LayerCheck::NOT_IMAGE === $problem['code'] ? $text : $problem['text'] );
 		}
 		if ( array() === $texts ) {
@@ -420,9 +420,17 @@ final class PartSpecsPanel {
 		$own   = LayerMeta::own( $product );
 		$size  = $this->size( $product );
 		$shown = $own;
-		$note  = $product->is_type( 'variation' )
-			? __( 'The part\'s cut-out on a transparent background, a PNG, WebP or AVIF from the Media Library. Choose one, or type its attachment ID. Left empty, the variation takes its parent product\'s, or the picture shows its labelled photo. The product image and gallery stay as they are: only the builder\'s picture uses this image.', 'creative-skateboard-builder' )
-			: __( 'The part\'s cut-out on a transparent background, a PNG, WebP or AVIF from the Media Library. Choose one, or type its attachment ID. Left empty, the picture shows the part\'s labelled photo. The product image and gallery stay as they are: only the builder\'s picture uses this image.', 'creative-skateboard-builder' );
+		$sheet = ! $this->cutOut( $product );
+		if ( $sheet ) {
+			// A grip's image is its whole sheet, shot flat, not a cut-out (F18, #103).
+			$note = $product->is_type( 'variation' )
+				? __( 'The whole sheet of grip, shot flat from above, a PNG, WebP or AVIF from the Media Library. Choose one, or type its attachment ID. Left empty, the variation takes its parent product\'s, or the picture shows its labelled photo. The product image and gallery stay as they are: only the builder\'s picture uses this image.', 'creative-skateboard-builder' )
+				: __( 'The whole sheet of grip, shot flat from above, a PNG, WebP or AVIF from the Media Library. Choose one, or type its attachment ID. Left empty, the picture shows the part\'s labelled photo. The product image and gallery stay as they are: only the builder\'s picture uses this image.', 'creative-skateboard-builder' );
+		} else {
+			$note = $product->is_type( 'variation' )
+				? __( 'The part\'s cut-out on a transparent background, a PNG, WebP or AVIF from the Media Library. Choose one, or type its attachment ID. Left empty, the variation takes its parent product\'s, or the picture shows its labelled photo. The product image and gallery stay as they are: only the builder\'s picture uses this image.', 'creative-skateboard-builder' )
+				: __( 'The part\'s cut-out on a transparent background, a PNG, WebP or AVIF from the Media Library. Choose one, or type its attachment ID. Left empty, the picture shows the part\'s labelled photo. The product image and gallery stay as they are: only the builder\'s picture uses this image.', 'creative-skateboard-builder' );
+		}
 		if ( 0 === $own && $product->is_type( 'variation' ) ) {
 			$whole  = wc_get_product( $product->get_parent_id() );
 			$parent = $whole instanceof WC_Product ? LayerMeta::own( $whole ) : 0;
@@ -539,6 +547,17 @@ final class PartSpecsPanel {
 			return array();
 		}
 		return $groups;
+	}
+
+	/**
+	 * Whether the part's layer image is a cut-out with clear corners: not a grip's sheet (F18, #103). A part in no drawn
+	 * slot is held to the cut-out's rule.
+	 *
+	 * @param WC_Product $product The product or variation.
+	 */
+	private function cutOut( WC_Product $product ): bool {
+		$slots = array_values( array_intersect( Layout::DRAWN, $this->slots( $product->get_id() ) ) );
+		return array() === $slots || Layout::cutOut( $slots[0] );
 	}
 
 	/**

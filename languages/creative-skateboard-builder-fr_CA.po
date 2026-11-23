@@ -4535,3 +4535,11 @@ msgstr "Discrète : les pièces apparaissent en fondu, pour chaque client"
 #: src/Admin/BuildTab.php:886
 msgid "A shopper whose device asks for less motion always sees fades."
 msgstr "Un client dont l’appareil demande moins d’animation voit toujours des fondus."
+
+#: src/Admin/PartSpecsPanel.php
+msgid "The whole sheet of grip, shot flat from above, a PNG, WebP or AVIF from the Media Library. Choose one, or type its attachment ID. Left empty, the variation takes its parent product's, or the picture shows its labelled photo. The product image and gallery stay as they are: only the builder's picture uses this image."
+msgstr "La feuille de grip entière, photographiée à plat vue de dessus, un PNG, WebP ou AVIF de la médiathèque. Choisissez-en un, ou saisissez l’ID de son fichier joint. Si le champ reste vide, la variation prend celui du produit parent, ou l’illustration affiche sa photo étiquetée. L’image du produit et la galerie restent telles quelles : seule l’illustration du configurateur utilise cette image."
+
+#: src/Admin/PartSpecsPanel.php
+msgid "The whole sheet of grip, shot flat from above, a PNG, WebP or AVIF from the Media Library. Choose one, or type its attachment ID. Left empty, the picture shows the part's labelled photo. The product image and gallery stay as they are: only the builder's picture uses this image."
+msgstr "La feuille de grip entière, photographiée à plat vue de dessus, un PNG, WebP ou AVIF de la médiathèque. Choisissez-en un, ou saisissez l’ID de son fichier joint. Si le champ reste vide, l’illustration affiche la photo étiquetée de la pièce. L’image du produit et la galerie restent telles quelles : seule l’illustration du configurateur utilise cette image."

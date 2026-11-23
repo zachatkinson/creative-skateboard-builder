@@ -7,12 +7,15 @@ All notable changes to this project are documented here. The format follows [Kee
 ### Added
 
 - **The motion** (spec: Milestone 11; D-305): the deck settles onto the stage, the trucks and wheels slide on, a swapped part settles, the stage's photos close over a part removed, the grip lays down nose to tail, the board turns over like a card, the total counts to the new amount, the panel slides the way the shopper goes, and Add to cart sends the board toward the Mini-Cart. Each moves `transform` and `opacity` alone and is cut short by the next press. Under reduced motion or the kit's subtle, each is a fade of 150 ms or less (D-256), and where the browser has no view transitions a step changes at once. The state route's view carries `money` (the total in minor units and the currency) for the counting total (D-257).
+- `--cbuild-grip-size`, a CSS custom property the builder sets on the top's grip layer: its sheet's size against the deck (F18, #103, D-307).
 - `--cbuild-panel-shift`, a CSS custom property read on `:root`: how far, and which way, the panel slides as a step crosses over (`16px`).
 - **Motion**, in a kit's Build tab, Layout section: `motion` in `_cbuild_layout` (`schema/kit-layout.json`), `playful` or `subtle`. A kit saved before 1.1.0 is playful. On subtle the builder's root has `cbuild--subtle` (spec: Settings, D-256).
 - A `Server-Timing` header on the state route's answers to a shop manager: the route's time and its queries, to measure it on a real host (#90, D-304).
 - The state route's `picture.items[].large`: the part's photo uncropped, at the shop's single-product size, or null (#82, D-303).
 
 ### Changed
+
+- **Grip is its whole sheet** (Cowork's 1.0.0 review, F18; #103; D-307): a grip's layer image is the sheet shot flat from above, drawn once on the board's top at its real size (`grip_width` by `grip_length`, 9 by 33 in where none is given), centred on the deck and cut by the deck's outline, under the bolt heads, so a printed sheet's artwork shows. Its save check asks for two pixels to the millimetre of the sheet, 458 px across or 1,677 along, with no transparent corners. The state route's `picture.top` gives the grip the sheet's box. A 1-inch swatch saved under 1.0.x is still repeated nose to tail.
 
 - A step's crossing no longer animates the size of the panel or of the rail's current step: they take their new size at once and their content slides by transform, so every moment runs on Chrome's compositor (D-306).
 - The state route's `currency.decimal_separator` and `currency.thousand_separator` are plain text with no HTML entity, as `format` is; a shop that set `&nbsp;` gets the character (#87).

@@ -131,10 +131,12 @@ for ( const theme of THEMES ) {
 							name: 'Step 7 of 7: Check your build',
 						} )
 					).toBeVisible();
-					await still( on, size.width, size.height );
 					// The pointer off the builder: left where Start from Street was, it was over the bar's "Show the
 					// parts" once the review was drawn, and the picture had its hover or not by when the page settled.
+					// Moved before the page settles, not after: moved just before the shot, the link's hover was once
+					// still leaving it, and its words were drawn a shade off (158 pixels, Kadence dark, tablet).
 					await on.mouse.move( 0, 0 );
+					await still( on, size.width, size.height );
 					await expect( builder ).toHaveScreenshot(
 						`${ theme }-${ scheme }-${ size.name }-review.png`,
 						{

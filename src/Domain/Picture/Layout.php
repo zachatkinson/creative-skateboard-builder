@@ -26,8 +26,8 @@ use function usort;
  * The board laid out from its parts' specs, seen from underneath with the nose up: the deck by its width and length,
  * the trucks by the wheelbase and the wheels at the axles' ends (spec: The builder, The picture; D-060). Both of
  * milestone 7's renderers draw from this one layout. From 0.8.0 it also gives the board's top, which the page alone
- * draws (#46): the wheels where they stand out past the deck, the deck, the grip over the whole of it, and a bolt
- * head at each of the deck's eight holes. Every number is a whole ten-thousandth of a millimetre, so a renderer's
+ * draws (#46): the wheels where they stand out past the deck, the deck, the grip's whole sheet centred on it (1.1.0),
+ * and a bolt head at each of the deck's eight holes. Every number is a whole ten-thousandth of a millimetre, so a renderer's
  * scale is one multiplication. Where a spec the layout needs is not known, a usual value stands in and the layout
  * says which.
  */
@@ -79,9 +79,14 @@ final readonly class Layout {
 	private const int USUAL_WHEEL = 540000;
 
 	/**
-	 * The grip's image: a strip 1 in wide along the deck's length, which the top repeats across the deck.
+	 * The sheet of a grip that gives no size: 9 by 33 in, the usual sheet (F18, #103).
 	 */
-	private const int GRIP_STRIP = 254000;
+	private const int USUAL_GRIP_WIDTH = 90000;
+
+	/**
+	 * See USUAL_GRIP_WIDTH.
+	 */
+	private const int USUAL_GRIP_LENGTH = 330000;
 
 	/**
 	 * Between a baseplate's two columns of holes, new school or old: 1.625 in.
@@ -163,7 +168,9 @@ final readonly class Layout {
 		$grip = $picks->part( SlotKey::GRIP );
 		$top  = array( ...$round, $board );
 		if ( null !== $grip ) {
-			$top[] = new Layer( SlotKey::GRIP, $grip->id, 0, 0, $wide, $long );
+			// The whole sheet, centred on the deck; the deck's outline cuts it (F18, #103).
+			$sheet = self::sheet( $grip->specs );
+			$top[] = new Layer( SlotKey::GRIP, $grip->id, 0, 0, $sheet[0], $sheet[1] );
 		}
 		$top = array( ...$top, ...self::bolts( $picks->part( SlotKey::HARDWARE ), $out, $spacing ) );
 		return new self( max( $wide, $across ), $long, $layers, $assumed, $top );
@@ -200,7 +207,7 @@ final readonly class Layout {
 				$length = $specs->measure( SpecKey::DeckLength );
 				return null === $width ? null : array( self::mm( $width ), null === $length ? $usual : self::mm( $length ) );
 			case SlotKey::GRIP:
-				return array( self::GRIP_STRIP, $usual );
+				return self::sheet( $specs );
 			case SlotKey::TRUCKS:
 				$axle = $specs->measure( SpecKey::AxleWidth );
 				return null === $axle ? null : array( self::mm( $axle ), self::HOLE_SPACING + self::BASEPLATE_MARGIN );
@@ -295,6 +302,31 @@ final readonly class Layout {
 			}
 		}
 		return Measure::inches( self::NARROW_WHEELBASE );
+	}
+
+	/**
+	 * Whether a slot's layer image is a cut-out, its background clear to its corners: every part's but the grip's,
+	 * whose image is the whole sheet shot flat (F18, #103).
+	 *
+	 * @since 1.1.0
+	 *
+	 * @param string $slot The slot's key.
+	 */
+	public static function cutOut( string $slot ): bool {
+		return SlotKey::GRIP !== $slot;
+	}
+
+	/**
+	 * A grip's whole sheet, across and along: its own width and length, or the usual 9 by 33 in for either it lacks.
+	 *
+	 * @param Specs $specs The grip's specs.
+	 * @return array{int, int}
+	 */
+	private static function sheet( Specs $specs ): array {
+		return array(
+			self::mm( $specs->measure( SpecKey::GripWidth ) ?? Measure::inches( self::USUAL_GRIP_WIDTH ) ),
+			self::mm( $specs->measure( SpecKey::GripLength ) ?? Measure::inches( self::USUAL_GRIP_LENGTH ) ),
+		);
 	}
 
 	/**

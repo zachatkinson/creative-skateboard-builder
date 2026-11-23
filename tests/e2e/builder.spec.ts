@@ -3934,6 +3934,112 @@ test.describe( 'The board turned over', () => {
 		);
 	} );
 
+	// Cowork's 1.0.0 review, F18 (#103): a grip's image is its whole sheet, drawn once at its real size, centred on the deck
+	// and cut by its outline. A printed sheet, a plain one and a 1.0.x swatch, on an 8 in deck and an 8.75 in one.
+	test( 'a grip sheet is drawn once at its size centred on the deck, and a 1.0.x swatch is repeated as before', async ( {
+		page,
+	} ) => {
+		const grip = id( 'builder-test-grip' );
+		const had = wp( `post meta get ${ grip } _cbuild_layer` );
+		const sheets: Record< string, string > = {};
+		for ( const name of [ 'grip-sheet-printed', 'grip-sheet-plain' ] ) {
+			runPhp(
+				`require_once ABSPATH . 'wp-admin/includes/image.php'; $u = wp_upload_bits( '${ name }-e2e.png', null, (string) file_get_contents( WP_PLUGIN_DIR . '/creative-skateboard-builder/tests/e2e/fixtures/layers/${ name }.png' ) ); $a = wp_insert_attachment( array( 'post_mime_type' => 'image/png', 'post_title' => '${ name }', 'post_status' => 'inherit' ), $u['file'] ); wp_update_attachment_metadata( $a, wp_generate_attachment_metadata( $a, $u['file'] ) ); update_option( 'cbuild_e2e_${ name.replace(
+					/-/g,
+					'_'
+				) }', $a );`
+			);
+			sheets[ name ] = wp(
+				`option get cbuild_e2e_${ name.replace( /-/g, '_' ) }`
+			);
+		}
+		const layer = ( attachment: string ) =>
+			runPhp(
+				`$p = wc_get_product( ${ grip } ); $p->update_meta_data( '_cbuild_layer', '${ attachment }' ); $cbuild_index( $p );`
+			);
+		const drawn = async ( deck: string ) => {
+			await page.goto(
+				linkTo( {
+					deck: id( deck ),
+					trucks: id(
+						'builder-test-deck-8-0' === deck
+							? 'builder-test-trucks-139'
+							: 'builder-test-trucks-149'
+					),
+					wheels: id( 'builder-test-wheels-54' ),
+					bearings: id( 'builder-test-bearings' ),
+					hardware: id( 'builder-test-bolts-1-25' ),
+					grip,
+					step: 'grip',
+				} )
+			);
+			const on = top( page ).locator( '.cbuild-board__layer--grip' );
+			await expect( on ).toBeVisible();
+			return on.evaluate( ( span ) => {
+				const style = getComputedStyle( span );
+				const deckLayer = span.parentElement?.querySelector(
+					'.cbuild-board__layer--deck'
+				);
+				const box = span.getBoundingClientRect();
+				const deckBox = deckLayer?.getBoundingClientRect();
+				return {
+					size: style.backgroundSize,
+					repeat: style.backgroundRepeat,
+					position: style.backgroundPosition,
+					box: deckBox
+						? [
+								Math.round( box.width - deckBox.width ),
+								Math.round( box.height - deckBox.height ),
+							]
+						: null,
+					below: [ ...( span.parentElement?.children ?? [] ) ]
+						.slice(
+							[
+								...( span.parentElement?.children ?? [] ),
+							].indexOf( span )
+						)
+						.some( ( after ) =>
+							after.matches( '.cbuild-board__layer--hardware' )
+						),
+				};
+			} );
+		};
+		try {
+			setSpecs( 'builder-test-deck-8-5', { deck_width: '8.7500' } );
+			for ( const name of [ 'grip-sheet-printed', 'grip-sheet-plain' ] ) {
+				layer( sheets[ name ] ?? '' );
+				// The usual 9 by 33 in sheet: on the 8 by 31.5 in deck, and on the 8.75 by 32 in one, where it is narrower
+				// than the deck and the maple shows at its edges.
+				for ( const [ deck, size ] of [
+					[ 'builder-test-deck-8-0', '112.5% 104.762%' ],
+					[ 'builder-test-deck-8-5', '102.857% 103.125%' ],
+				] as const ) {
+					const seen = await drawn( deck );
+					expect( seen.size, `${ name } on ${ deck }` ).toBe( size );
+					expect( seen.repeat, 'drawn once' ).toBe( 'no-repeat' );
+					expect( seen.position, 'centred' ).toBe( '50% 50%' );
+					expect(
+						seen.box,
+						"the deck's box, cut by its outline"
+					).toEqual( [ 0, 0 ] );
+					expect( seen.below, 'under the bolt heads' ).toBe( true );
+				}
+			}
+			layer( had );
+			const swatch = await drawn( 'builder-test-deck-8-0' );
+			expect( swatch.repeat, 'a 1.0.x swatch nose to tail' ).toBe(
+				'repeat-x'
+			);
+			expect( swatch.size ).toBe( 'auto 100%' );
+		} finally {
+			layer( had );
+			setSpecs( 'builder-test-deck-8-5', { deck_width: '8.5000' } );
+			for ( const attachment of Object.values( sheets ) ) {
+				wp( `post delete ${ attachment } --force` );
+			}
+		}
+	} );
+
 	test( "turns with its button from the keyboard, says the side, keeps the shopper's side and shows it in the bar", async ( {
 		page,
 	}, info ) => {

@@ -186,6 +186,27 @@ final class LayerImageFieldTest extends IntegrationTestCase {
 		}
 	}
 
+	// Cowork's 1.0.0 review, F18 (#103): a grip's layer image is its whole sheet, shot flat, so it has no clear corners,
+	// and it needs two pixels to the millimetre of the sheet, 9 by 33 in where the grip gives none.
+	public function test_a_grip_takes_its_whole_sheet_shot_flat_at_two_pixels_to_the_millimetre_of_the_sheet(): void {
+		$grip  = self::part( 'grip' );
+		$group = self::group( $this->panel( $grip ) );
+		self::assertStringContainsString( 'The whole sheet of grip, shot flat from above', $group );
+		self::assertStringContainsString( 'Drawn 228.6 by 838.2 mm, nose up. The image needs at least 458 pixels across or 1,677 along.', $group );
+
+		$sheet = LayerFiles::attachment( 460, 1687, false, 'webp' );
+		self::assertSame( (string) $sheet, $this->send( $grip, (string) $sheet )->get_meta( Options::META_LAYER, true ), 'its corners are the sheet\'s own' );
+		self::assertSame( array(), \WC_Admin_Meta_Boxes::$meta_box_errors );
+
+		self::assertSame( (string) $sheet, $this->send( $grip, (string) LayerFiles::attachment( 457, 1676, false, 'webp' ) )->get_meta( Options::META_LAYER, true ) );
+		self::assertSame( array( '<a href="#cbuild-spec-layer">Layer image was not saved: it is too small for the size the picture draws this part. It needs at least 458 pixels across or 1,677 along.</a>' ), \WC_Admin_Meta_Boxes::$meta_box_errors );
+
+		\WC_Admin_Meta_Boxes::$meta_box_errors = array();
+		$deck = self::part( 'deck', array( 'deck_width' => '8.2500' ) );
+		$this->send( $deck, (string) LayerFiles::attachment( 460, 1687, false, 'webp' ) );
+		self::assertCount( 1, \WC_Admin_Meta_Boxes::$meta_box_errors, 'a deck is still a cut-out' );
+	}
+
 	public function test_an_avif_the_host_reads_is_saved_and_one_it_cannot_read_is_refused_with_its_own_reason(): void {
 		// Cowork's M7 review, F1 (D-210).
 		$deck = self::part( 'deck', array( 'deck_width' => '8.2500' ) );

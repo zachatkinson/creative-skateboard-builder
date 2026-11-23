@@ -1224,7 +1224,8 @@ final class StateAnswerTest extends TestCase {
 
 		self::assertSame( array( SlotKey::DECK ), array_column( $picture['layers'], 'slot' ), 'underneath, the deck alone has a layer image: no grip strip' );
 		self::assertSame( array( SlotKey::DECK, SlotKey::GRIP, ...array_fill( 0, 8, SlotKey::HARDWARE ) ), array_column( $picture['top'], 'slot' ), 'the wheels have no layer image; the trucks are never on the top' );
-		self::assertSame( array( 0, 0, 2159000, 8128000 ), array( $picture['top'][1]['x'], $picture['top'][1]['y'], $picture['top'][1]['width'], $picture['top'][1]['height'] ), 'the grip covers the deck\'s whole box' );
+		// From 1.1.0 the grip is its whole sheet, the usual 9 by 33 in, centred on the 8.5 by 32 in deck (F18, D-307).
+		self::assertSame( array( -63500, -127000, 2286000, 8382000 ), array( $picture['top'][1]['x'], $picture['top'][1]['y'], $picture['top'][1]['width'], $picture['top'][1]['height'] ), 'the grip is its sheet, centred on the deck' );
 		self::assertSame( 'https://example.com/layer-71.png', $picture['top'][1]['image']['src'] );
 		self::assertSame(
 			array( SlotKey::DECK => true, SlotKey::TRUCKS => false, SlotKey::WHEELS => false, SlotKey::BEARINGS => false, SlotKey::HARDWARE => true, SlotKey::GRIP => true ),

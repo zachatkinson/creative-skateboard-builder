@@ -89,9 +89,11 @@ final class LayerCheck {
 	 * @param int                  $attachment The image's attachment ID.
 	 * @param array{int, int}|null $size       The size the picture draws the part at, as size() gives it; the Part
 	 *                                         specs panel gives its own, from the page's parts resolved together.
+	 * @param bool                 $cutOut     Whether its corners must be clear, as cutOut() gives it: not a grip's sheet
+	 *                                         (1.1.0, F18).
 	 * @return list<array{code: string, text: string}> None when it may be the part's layer image.
 	 */
-	public function problems( int $attachment, ?array $size ): array {
+	public function problems( int $attachment, ?array $size, bool $cutOut = true ): array {
 		$facts = $attachment > 0 ? $this->images->facts( $attachment ) : null;
 		if ( null === $facts ) {
 			return array(
@@ -103,13 +105,26 @@ final class LayerCheck {
 		}
 		$needs = null === $size ? array( 0, 0 ) : LayerImage::needs( $size );
 		$found = array();
-		foreach ( LayerImage::problems( $facts, $size ) as $problem ) {
+		foreach ( LayerImage::problems( $facts, $size, $cutOut ) as $problem ) {
 			$found[] = array(
 				'code' => $problem->value,
 				'text' => $facts->type . "\t" . $needs[0] . "\t" . $needs[1],
 			);
 		}
 		return $found;
+	}
+
+	/**
+	 * Whether a part's layer image is a cut-out with clear corners: every drawn part's but a grip's, whose image is its
+	 * whole sheet (1.1.0, F18, #103). A part in no drawn slot is held to the cut-out's rule.
+	 *
+	 * @since 1.1.0
+	 *
+	 * @param int $part The product's or variation's ID.
+	 */
+	public function cutOut( int $part ): bool {
+		$slots = array_values( array_intersect( Layout::DRAWN, $this->kits->slotsOf( $part, ...array_column( $this->kits->all(), 'kit' ) ) ) );
+		return array() === $slots || Layout::cutOut( $slots[0] );
 	}
 
 	/**

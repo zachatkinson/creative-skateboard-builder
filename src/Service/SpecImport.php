@@ -523,7 +523,7 @@ final class SpecImport {
 		}
 		[ $id, $wrong ] = LayerCheck::named( $cell, $layers );
 		if ( array() === $wrong ) {
-			$wrong = $this->check->problems( $id, $this->check->size( $part ) );
+			$wrong = $this->check->problems( $id, $this->check->size( $part ), $this->check->cutOut( $part ) );
 		}
 		if ( array() !== $wrong ) {
 			return array( self::KEEP_LAYER, array_map( static fn( array $problem ): array => self::problem( SpecSheet::LAYER, $problem['code'], $problem['text'] ), $wrong ) );

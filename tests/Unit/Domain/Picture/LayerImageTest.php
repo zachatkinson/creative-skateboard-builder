@@ -42,7 +42,9 @@ final class LayerImageTest extends TestCase {
 		yield 'a deck by its width and length' => array( SlotKey::DECK, array( 'deck_width' => '8.25', 'deck_length' => '31.5' ), array( 2095500, 8001000 ) );
 		yield 'a deck with no length, the usual 32 in' => array( SlotKey::DECK, array( 'deck_width' => '8.5' ), array( 2159000, 8128000 ) );
 		yield 'a deck with no width is not drawn' => array( SlotKey::DECK, array( 'deck_length' => '32' ), null );
-		yield 'grip as the strip, the usual length' => array( SlotKey::GRIP, array(), array( 254000, 8128000 ) );
+		// Cowork's 1.0.0 review, F18 (#103): a grip's image is its whole sheet, 9 by 33 in where its specs give none.
+		yield 'grip as its whole sheet, the usual 9 by 33 in' => array( SlotKey::GRIP, array(), array( 2286000, 8382000 ) );
+		yield 'grip by its sheet\'s width and length' => array( SlotKey::GRIP, array( 'grip_width' => '10', 'grip_length' => '34' ), array( 2540000, 8636000 ) );
 		yield 'trucks by the axle and a new school baseplate' => array( SlotKey::TRUCKS, array( 'axle_width' => '8.5' ), array( 2159000, 762000 ) );
 		yield 'trucks with no axle are not drawn' => array( SlotKey::TRUCKS, array(), null );
 		yield 'a wheel by its diameter' => array( SlotKey::WHEELS, array( 'wheel_diameter' => '54' ), array( 324000, 540000 ) );
@@ -108,6 +110,21 @@ final class LayerImageTest extends TestCase {
 	#[DataProvider( 'checked' )]
 	public function test_a_layer_image_is_a_transparent_png_webp_or_avif_the_host_reads_holding_the_parts_size( array $image, ?array $size, array $problems ): void {
 		self::assertSame( $problems, LayerImage::problems( new ImageFacts( ...$image ), $size ) );
+	}
+
+	// F18 (#103): "Change the grip's save check to 2 px/mm of the sheet with no transparent-corner rule". A sheet is
+	// shot flat, its grit to every edge, so its corners are the sheet's own.
+	public function test_a_grip_sheet_needs_two_pixels_to_the_millimetre_of_the_sheet_and_no_clear_corners(): void {
+		$sheet = Layout::drawn( SlotKey::GRIP, self::specs( array() ) );
+		self::assertNotNull( $sheet );
+		self::assertSame( array( 458, 1677 ), LayerImage::needs( $sheet ) );
+		self::assertSame( array(), LayerImage::problems( new ImageFacts( 'image/webp', 460, 1687, false ), $sheet, false ), 'a sheet shot flat, corners and all' );
+		self::assertSame( array( LayerError::TooSmall ), LayerImage::problems( new ImageFacts( 'image/webp', 457, 1676, false ), $sheet, false ) );
+		self::assertSame( array( LayerError::Opaque ), LayerImage::problems( new ImageFacts( 'image/png', 800, 3000, false ), array( 2095500, 8128000 ) ), 'a cut-out still needs them' );
+		self::assertFalse( Layout::cutOut( SlotKey::GRIP ) );
+		foreach ( array( SlotKey::DECK, SlotKey::TRUCKS, SlotKey::WHEELS, SlotKey::HARDWARE ) as $slot ) {
+			self::assertTrue( Layout::cutOut( $slot ), $slot );
+		}
 	}
 
 	public function test_a_length_just_over_a_whole_number_of_half_millimetres_needs_the_next_pixel(): void {

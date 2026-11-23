@@ -1145,7 +1145,7 @@
 /*
  * The board's top (#46), the same board turned over about its length. Each layer is painted from its style, fitted
  * and centred in its box as the underside's images are: the deck maple inside its own layer image's outline, a mask;
- * the grip's image repeated across that outline, each the deck's length; and each wheel and bolt head its own image.
+ * the grip's sheet over that outline, cut by it; and each wheel and bolt head its own image.
  */
 :where(.cbuild-board--top .cbuild-board__layer) {
 	background: var(--cbuild-image) center / contain no-repeat;
@@ -1163,8 +1163,19 @@
 	background: #dcbf8f;
 }
 
+/* A 1-inch swatch from 1.0.x, repeated nose to tail across the deck. */
 :where(.cbuild-board--top .cbuild-board__layer--grip) {
 	background: var(--cbuild-image) 0 0 / auto 100% repeat-x;
+}
+
+/*
+ * A grip's whole sheet (F18, #103): once, centred, at the sheet's size against the deck's box, which the server gives
+ * as `--cbuild-grip-size`; the deck's outline cuts it, and where a deck is wider than the sheet its maple shows.
+ */
+:where(
+	.cbuild-board--top .cbuild-board__layer--grip[style*="--cbuild-grip-size"]
+) {
+	background: var(--cbuild-image) center / var(--cbuild-grip-size) no-repeat;
 }
 
 /* One side at a time, the picture's and the bar's the same. Not under :where(), so no theme's rule shows both. */
