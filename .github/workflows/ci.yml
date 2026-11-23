@@ -403,6 +403,16 @@ jobs:
       - name: Lighthouse's medians in the job's summary
         if: ${{ !cancelled() && steps.lhci.outcome != 'skipped' && matrix.part == 'lighthouse' }}
         run: php tools/lhci-summary.php tmp/lhci | tee -a "$GITHUB_STEP_SUMMARY"
+      # Milestone 11: a Chromium performance trace of each moment, from the browser test that holds them to INP, no
+      # layout shift and the compositor (D-306). Kept on every run, passing or not; open one in Chrome's Performance
+      # panel.
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        if: ${{ !cancelled() && contains(matrix.projects, 'chromium') }}
+        with:
+          retention-days: 14
+          name: motion-traces-${{ matrix.pair }}-${{ matrix.part }}
+          path: tmp/motion-traces
+          if-no-files-found: error
       # On a job that ran out of time as well: a cancelled run prints no failure, so the traces are all there is.
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         if: failure() || cancelled()

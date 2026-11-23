@@ -1828,11 +1828,25 @@
 		);
 	}
 
-	::view-transition-new(cbuild-panel) {
+	/*
+	 * The groups the builder names take their new size and place at once: where the old and new boxes differ, the
+	 * browser's own group animation moves `width` and `height`, which Chrome cannot composite (its trace's
+	 * kUnsupportedCSSProperty), and the spec holds every moment to transform and opacity (D-306). The panel's content
+	 * and the rail's marker slide in their own pseudo-elements instead, by transform alone.
+	 */
+	::view-transition-group(cbuild-panel),
+	::view-transition-group(cbuild-marker),
+	::view-transition-group(*.cbuild-part) {
+		animation-name: none;
+	}
+
+	::view-transition-new(cbuild-panel),
+	::view-transition-new(cbuild-marker) {
 		animation-name: cbuild-panel-in;
 	}
 
-	::view-transition-old(cbuild-panel) {
+	::view-transition-old(cbuild-panel),
+	::view-transition-old(cbuild-marker) {
 		animation-name: cbuild-panel-out;
 	}
 

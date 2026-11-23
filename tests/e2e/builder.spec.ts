@@ -1,5 +1,5 @@
 import { execSync } from 'node:child_process';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import {
 	test,
@@ -1945,6 +1945,8 @@ test.describe( 'The builder with JavaScript', () => {
 			! info.project.name.startsWith( 'chromium' ),
 			'Only Chromium can slow its CPU (DevTools protocol).'
 		);
+		// With the motion on, as a shopper who has not asked for less has it (milestone 11).
+		await page.emulateMedia( { reducedMotion: 'no-preference' } );
 		// Parts that share a list: the wheels on an 8″ deck and its trucks (D-241 lists one width of deck at a time).
 		await page.goto(
 			linkTo( {
@@ -3081,11 +3083,13 @@ test.describe( 'Motion', () => {
 				transitions: number;
 				watched: boolean;
 				amounts: string[];
+				places: string[];
 			};
 			record.seen = new Map();
 			record.transitions = 0;
 			record.watched = false;
 			record.amounts = [];
+			record.places = [];
 			const start = document.startViewTransition?.bind( document );
 			if ( start ) {
 				document.startViewTransition = ( ( update: () => void ) => {
@@ -3100,6 +3104,23 @@ test.describe( 'Motion', () => {
 				)?.textContent;
 				if ( amount && amount !== record.amounts.at( -1 ) ) {
 					record.amounts.push( amount );
+					// Where the bar, its total and its controls are on the page at each amount, and their sizes, a scroll left
+					// out: the count must not move or grow them.
+					record.places.push(
+						[
+							...document.querySelectorAll< HTMLElement >(
+								'.cbuild-bar, .cbuild-bar__amount, .cbuild-bar a, .cbuild-bar button'
+							),
+						]
+							.filter(
+								( control ) => null !== control.offsetParent
+							)
+							.map( ( control ) => {
+								const box = control.getBoundingClientRect();
+								return `${ Math.round( box.left + window.scrollX ) },${ Math.round( box.top + window.scrollY ) },${ Math.round( box.width ) }x${ Math.round( box.height ) }`;
+							} )
+							.join( ' ' )
+					);
 				}
 				for ( const animation of document.getAnimations() ) {
 					const effect = animation.effect as KeyframeEffect | null;
@@ -3154,11 +3175,13 @@ test.describe( 'Motion', () => {
 				seen: Map< Animation, Seen >;
 				transitions: number;
 				amounts: string[];
+				places: string[];
 			};
 			return {
 				animations: [ ...record.seen.values() ],
 				transitions: record.transitions,
 				amounts: record.amounts,
+				places: record.places,
 			};
 		} );
 	};
@@ -3245,7 +3268,7 @@ test.describe( 'Motion', () => {
 		await page.emulateMedia( { reducedMotion: 'no-preference' } );
 		await watch( page );
 		await pickAndStep( page );
-		const { animations, transitions, amounts } = await seen( page );
+		const { animations, transitions, amounts, places } = await seen( page );
 
 		const deck = moment( animations, 'cbuild-deck' );
 		expect( deck ).toHaveLength( 1 );
@@ -3282,6 +3305,14 @@ test.describe( 'Motion', () => {
 			.textContent();
 		expect( amounts.at( -1 ) ).toBe( total );
 		expect( amounts.length, amounts.join( ' | ' ) ).toBeGreaterThan( 2 );
+		// While it counts, the bar, its total and its controls hold the place and size the last amount gives them: no
+		// layout shift, which CLS itself leaves out within 500 ms of the press (ROADMAP: Milestone 11).
+		expect(
+			new Set( places.slice( 1 ) ),
+			amounts
+				.map( ( amount, at ) => `${ amount }: ${ places[ at ] }` )
+				.join( '\n' )
+		).toEqual( new Set( [ places.at( -1 ) ] ) );
 	} );
 
 	test( 'the trucks slide in 60 ms apart, the wheels 40 ms apart and turning, each for its time', async ( {
@@ -3490,6 +3521,253 @@ test.describe( 'Motion', () => {
 			expect( turned[ 0 ]!.properties ).toEqual( [ 'transform' ] );
 		} );
 	}
+
+	// Milestone 11's speed gates (ROADMAP: Milestone 11), as Chrome's guidance measures motion (D-306): with motion on
+	// and the CPU slowed four times, each moment's interaction is under 200 ms from the input to the next paint (INP,
+	// from Event Timing entries: no new tool); nothing shifts outside the input's 500 ms (CLS); and every animation the
+	// trace shows runs on the compositor, off the main thread, so a slow CPU cannot make it stutter, or else changes
+	// nothing that shows (Chromium's kAnimationHasNoVisibleChange, as the browser's own view-transition blend). The
+	// trace is kept in tmp/motion-traces, which CI keeps as an artifact. The count's own frames, on the main thread,
+	// are held still by the deck's test above.
+	test( 'each moment answers within 200 ms on a CPU slowed four times, shifts nothing, runs on the compositor, and leaves a trace', async ( {
+		page,
+		browser,
+	}, info ) => {
+		test.skip(
+			! info.project.name.startsWith( 'chromium' ),
+			'Only Chromium can slow its CPU and keep a trace (DevTools protocol).'
+		);
+		test.setTimeout( 180_000 );
+		await page.emulateMedia( { reducedMotion: 'no-preference' } );
+		const parts = {
+			deck: id( 'builder-test-deck-8-0' ),
+			trucks: id( 'builder-test-trucks-139' ),
+			wheels: id( 'builder-test-wheels-54' ),
+			bearings: id( 'builder-test-bearings' ),
+			hardware: id( 'builder-test-bolts-1' ),
+		};
+		const builder = page.locator( '.cbuild' );
+		const moments: [
+			string,
+			Record< string, string | number > | null,
+			() => Promise< void >,
+		][] = [
+			[ 'deck', null, () => pickDeck( page, '8.0' ) ],
+			[
+				'step',
+				{ deck: parts.deck, step: 'deck' },
+				() =>
+					builder
+						.getByRole( 'button', { name: 'Next: Trucks' } )
+						.first()
+						.click(),
+			],
+			[
+				'trucks',
+				{ deck: parts.deck, step: 'trucks' },
+				() => choose( page, 'Builder test trucks 139' ),
+			],
+			[
+				'wheels',
+				{ deck: parts.deck, trucks: parts.trucks, step: 'wheels' },
+				() => choose( page, 'Builder test wheels 54' ),
+			],
+			[
+				'swapped',
+				{ ...parts, step: 'wheels' },
+				() => choose( page, 'Builder test wheels 52' ),
+			],
+			[
+				'grip',
+				{ ...parts, step: 'grip' },
+				() => choose( page, 'Builder test grip' ),
+			],
+			[
+				'removed',
+				// The risers are the part a shopper can leave off (D-246).
+				{
+					...parts,
+					risers: id( 'builder-test-risers-1-4' ),
+					step: 'risers',
+				},
+				() =>
+					builder.getByRole( 'radio', { name: 'No risers' } ).check(),
+			],
+			[
+				'turn',
+				{ deck: parts.deck, step: 'trucks' },
+				() =>
+					page
+						.locator( '#cbuild-picture' )
+						.getByRole( 'button', { name: 'Show the top' } )
+						.click(),
+			],
+			[
+				'cart',
+				{ ...parts, grip: id( 'builder-test-grip' ), step: 'review' },
+				() =>
+					builder
+						.getByRole( 'button', { name: 'Add to cart' } )
+						.first()
+						.click(),
+			],
+		];
+		const traces = path.join( process.cwd(), 'tmp', 'motion-traces' );
+		mkdirSync( traces, { recursive: true } );
+		// third_party/blink/renderer/core/animation/compositor_animations.h, FailureReason.
+		const NO_VISIBLE_CHANGE = 2 ** 17;
+		const measured: string[] = [];
+		const devtools = await page.context().newCDPSession( page );
+		for ( const [ name, link, act ] of moments ) {
+			await page.goto( null === link ? fixture().page : linkTo( link ) );
+			await expect( builder ).toHaveAttribute( 'data-ready', '' );
+			await devtools.send( 'Emulation.setCPUThrottlingRate', {
+				rate: 4,
+			} );
+			await page.evaluate( () => {
+				const recorded = window as unknown as {
+					interactions: number[];
+					shifts: number[];
+					frames: number[];
+				};
+				recorded.interactions = [];
+				recorded.shifts = [];
+				recorded.frames = [];
+				new PerformanceObserver( ( list ) => {
+					for ( const entry of list.getEntries() as PerformanceEventTiming[] ) {
+						if ( entry.interactionId ) {
+							recorded.interactions.push( entry.duration );
+						}
+					}
+				} ).observe( {
+					type: 'event',
+					durationThreshold: 16,
+				} as PerformanceObserverInit );
+				new PerformanceObserver( ( list ) => {
+					for ( const entry of list.getEntries() as unknown as {
+						value: number;
+						hadRecentInput: boolean;
+					}[] ) {
+						if ( ! entry.hadRecentInput ) {
+							recorded.shifts.push( entry.value );
+						}
+					}
+				} ).observe( { type: 'layout-shift' } );
+				// Recorded, not held: the frames over 50 ms, the page's work and WooCommerce's as well as the builder's.
+				new PerformanceObserver( ( list ) => {
+					for ( const entry of list.getEntries() ) {
+						recorded.frames.push( entry.duration );
+					}
+				} ).observe( { type: 'long-animation-frame' } );
+			} );
+			const trace = path.join(
+				traces,
+				`${ info.project.name }-${ name }.json`
+			);
+			await browser.startTracing( page, { path: trace } );
+			await act();
+			await expect( builder ).toHaveAttribute( 'aria-busy', 'false' );
+			// The longest moment is the cart's 400 ms; then two frames for the observers to report.
+			await page.waitForTimeout( 600 );
+			await page.evaluate(
+				() =>
+					new Promise( ( done ) =>
+						requestAnimationFrame( () =>
+							requestAnimationFrame( done )
+						)
+					)
+			);
+			await browser.stopTracing();
+			const { interactions, shifts, frames } = await page.evaluate(
+				() => {
+					const recorded = window as unknown as {
+						interactions: number[];
+						shifts: number[];
+						frames: number[];
+					};
+					return {
+						interactions: recorded.interactions,
+						shifts: recorded.shifts,
+						frames: recorded.frames,
+					};
+				}
+			);
+			await devtools.send( 'Emulation.setCPUThrottlingRate', {
+				rate: 1,
+			} );
+			// Each animation in the trace, by its id: what it animated, and every reason it could not be composited.
+			type Event = {
+				name?: string;
+				id?: string;
+				id2?: { local?: string };
+				args?: {
+					data?: {
+						displayName?: string;
+						nodeName?: string;
+						compositeFailed?: number;
+					};
+				};
+			};
+			const events = (
+				JSON.parse( readFileSync( trace, 'utf8' ) ) as {
+					traceEvents: Event[];
+				}
+			 ).traceEvents.filter( ( event ) => 'Animation' === event.name );
+			const animations = new Map<
+				string,
+				{ what: string; failed: number[] }
+			>();
+			for ( const event of events ) {
+				const key = event.id2?.local ?? event.id ?? '';
+				const one = animations.get( key ) ?? { what: '', failed: [] };
+				const data = event.args?.data;
+				if ( data?.nodeName ) {
+					one.what = `${ data.displayName || '(script)' } on ${
+						data.nodeName
+					}`;
+				}
+				if ( data?.compositeFailed ) {
+					one.failed.push( data.compositeFailed );
+				}
+				animations.set( key, one );
+			}
+			const stuck = [ ...animations.values() ]
+				.filter( ( one ) =>
+					one.failed.some(
+						( reason ) =>
+							0 === Math.floor( reason / NO_VISIBLE_CHANGE ) % 2
+					)
+				)
+				.map(
+					( one ) => `${ one.what }: ${ one.failed.join( ', ' ) }`
+				);
+			const longest = Math.max( 0, ...interactions );
+			const shifted = shifts.reduce( ( sum, value ) => sum + value, 0 );
+			measured.push(
+				`${ name }: interaction ${ longest } ms, CLS ${ shifted.toFixed(
+					4
+				) }, ${ animations.size } animations, ${
+					stuck.length
+				} off the compositor, longest frame ${ Math.round(
+					Math.max( 0, ...frames )
+				) } ms`
+			);
+			expect
+				.soft( longest, `${ name }'s interaction` )
+				.toBeLessThan( 200 );
+			expect.soft( shifted, `${ name }'s layout shift` ).toBe( 0 );
+			expect
+				.soft( stuck, `${ name }'s animations off the compositor` )
+				.toEqual( [] );
+			expect
+				.soft( animations.size, `${ name }'s trace has its animations` )
+				.toBeGreaterThan( 0 );
+		}
+		info.annotations.push( {
+			type: 'moments at 4×',
+			description: measured.join( '; ' ),
+		} );
+	} );
 } );
 
 // Issue #46, settled on 17 November 2026: the board has a top, drawn from the deck's own layer image, with the grip
