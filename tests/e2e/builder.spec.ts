@@ -26,6 +26,8 @@ interface Fixture {
 	page: string;
 	drawer: string;
 	parts: Record< string, number >;
+	/** The shelf kit (tests/e2e/shelf.spec.ts): 46 decks at 8.25″ in stock over four brands. */
+	shelf: { kit: number; page: string };
 }
 
 const fixture = (): Fixture =>
@@ -2555,6 +2557,196 @@ test.describe( 'The review with JavaScript', () => {
 	} );
 } );
 
+// #98 (F13), to the mockup of 18 November: on a desktop the brand chips sit in one row under the search, the brands
+// with the most decks first, and "N more" at the end opens the rest in place with focus on the first new chip. Phones
+// keep the Filters fold (D-279), and without the script every chip shows. The shelf kit's four brands fit in one row
+// at 1280 px, so the test widens each chip until they don't: the store measures the row as the page lays it out.
+test.describe( 'The brand chips in one row', () => {
+	const shelfAt = (): string => {
+		const url = new URL( fixture().shelf.page );
+		url.searchParams.set( 'cbuild[_width]', '8.25in' );
+		return url.toString();
+	};
+
+	test( 'shows what fits beside N more, which opens the rest by the keyboard with focus on the first new chip', async ( {
+		page,
+		javaScriptEnabled,
+	}, info ) => {
+		test.skip(
+			info.project.name.endsWith( '-phone' ),
+			'A phone keeps the Filters fold; the phone part is below.'
+		);
+		await page.setViewportSize( { width: 1280, height: 900 } );
+		await page.goto( shelfAt() );
+		const group = page.locator( '.cbuild-chips__group' ).first();
+		const chips = group.locator( '.cbuild-chips__chip' );
+		const more = group.locator( '.cbuild-chips__more' );
+		await expect( chips ).toHaveCount( 4 );
+		if ( ! javaScriptEnabled ) {
+			// Nothing hidden that the script would have to show.
+			for ( const chip of await chips.all() ) {
+				await expect( chip ).toBeVisible();
+			}
+			await expect( more ).toBeHidden();
+			return;
+		}
+		await page.locator( '.cbuild[data-ready]' ).waitFor();
+		// Chips small enough that all four fit in the row, whatever the panel's width: no N more.
+		const small = await page.addStyleTag( {
+			content:
+				'.cbuild .cbuild-chips__group:first-of-type .cbuild-chip { min-inline-size: 0; padding-inline: 0.25em; font-size: 0.625rem; }',
+		} );
+		for ( const chip of await chips.all() ) {
+			await expect( chip ).toBeVisible();
+		}
+		await expect( more ).toBeHidden();
+		await small.evaluate( ( style ) => ( style as Element ).remove() );
+
+		// Each chip at least 15rem wide: some fit beside the button, never all.
+		await page.addStyleTag( {
+			content:
+				'.cbuild .cbuild-chips__group:first-of-type .cbuild-chip { min-inline-size: 15rem; }',
+		} );
+		await expect( more ).toBeVisible();
+		await expect( more ).toHaveAttribute( 'aria-expanded', 'false' );
+		await expect( more ).toHaveAttribute(
+			'aria-controls',
+			( await group
+				.locator( '.cbuild-chips__options' )
+				.getAttribute( 'id' ) ) ?? ''
+		);
+		const shown = await chips.evaluateAll(
+			( all ) =>
+				all.filter(
+					( chip ) => 'hidden' !== getComputedStyle( chip ).visibility
+				).length
+		);
+		expect( shown ).toBeGreaterThan( 0 );
+		expect( shown ).toBeLessThan( 4 );
+		await expect( more ).toHaveText( new RegExp( `^${ 4 - shown }\\D` ) );
+		// One row: every chip shown and the button share a line.
+		const tops = await group
+			.locator( '.cbuild-chips__chip, .cbuild-chips__more' )
+			.evaluateAll( ( all ) =>
+				all
+					.filter(
+						( node ) =>
+							'hidden' !== getComputedStyle( node ).visibility
+					)
+					.map( ( node ) =>
+						Math.round( node.getBoundingClientRect().top )
+					)
+			);
+		expect( new Set( tops ).size ).toBe( 1 );
+		// The chips past the row are out of the tab order: Tab from the last shown chip reaches the button. Safari
+		// tabs to no button unless the shopper asks it to, so there the button is focused as a shopper would reach it.
+		await chips
+			.nth( shown - 1 )
+			.locator( 'input' )
+			.focus();
+		if ( info.project.name.startsWith( 'webkit' ) ) {
+			await more.focus();
+		} else {
+			await page.keyboard.press( 'Tab' );
+		}
+		await expect( more ).toBeFocused();
+
+		await page.keyboard.press( 'Enter' );
+		await expect( more ).toHaveAttribute( 'aria-expanded', 'true' );
+		await expect( chips.nth( shown ).locator( 'input' ) ).toBeFocused();
+		for ( const chip of await chips.all() ) {
+			await expect( chip ).toBeVisible();
+		}
+		// Show fewer, in the shopper's language.
+		await expect( more ).not.toHaveText( /^\d/ );
+		await axe( page, 'the brand chips opened', '.cbuild-chips' );
+
+		// A chip chosen past the row stays in view once the rest fold again.
+		await page.keyboard.press( 'Space' );
+		await expect( chips.nth( shown ).locator( 'input' ) ).toBeChecked();
+		await expect( chips.nth( shown ).locator( 'input' ) ).toBeFocused();
+		await more.click();
+		await expect( more ).toHaveAttribute( 'aria-expanded', 'false' );
+		await expect( chips.nth( shown ) ).toBeVisible();
+	} );
+
+	test( 'keeps the row one line from the first paint, so folding it moves nothing under it', async ( {
+		page,
+		javaScriptEnabled,
+	}, info ) => {
+		test.skip(
+			! javaScriptEnabled || info.project.name.endsWith( '-phone' ),
+			'Only a desktop with the script folds the row.'
+		);
+		await page.setViewportSize( { width: 1280, height: 900 } );
+		// Chips a third of the row wide from the first paint, so the row the server sends wraps and the script folds it.
+		// The style goes in the page's own head, so the row wraps from the first paint, before any script runs.
+		await page.route(
+			( url ) => url.href.startsWith( shelfAt().split( '?' )[ 0 ]! ),
+			async ( route ) => {
+				const response = await route.fetch();
+				const body = ( await response.text() ).replace(
+					'</head>',
+					'<style>.cbuild .cbuild-chips__group:first-of-type .cbuild-chip { min-inline-size: 15rem; }</style></head>'
+				);
+				await route.fulfill( { response, body } );
+			}
+		);
+		// The builder's script held back a second, as on a slow phone or network, so the page the server sent is
+		// painted before the store folds the row: a fast local site would hydrate before its first paint and hide a shift.
+		await page.route( /\/build\/builder\/view\.js/, async ( route ) => {
+			await new Promise( ( done ) => setTimeout( done, 1000 ) );
+			await route.continue();
+		} );
+		// The row's height as the page the server sent is laid out, before the store runs.
+		await page.addInitScript( () => {
+			document.addEventListener( 'DOMContentLoaded', () => {
+				( window as unknown as { first?: number | undefined } ).first =
+					document
+						.querySelector( '.cbuild-chips__options--row' )
+						?.getBoundingClientRect().height;
+			} );
+		} );
+		await page.goto( shelfAt() );
+		await page.locator( '.cbuild[data-ready]' ).waitFor();
+		const group = page.locator( '.cbuild-chips__group' ).first();
+		await expect( group.locator( '.cbuild-chips__more' ) ).toBeVisible();
+		const heights = await page.evaluate( () => ( {
+			first: ( window as unknown as { first?: number | undefined } )
+				.first,
+			folded: document
+				.querySelector( '.cbuild-chips__options--row' )
+				?.getBoundingClientRect().height,
+		} ) );
+		expect(
+			heights.first,
+			'the row is in the first layout'
+		).toBeGreaterThan( 0 );
+		expect(
+			heights.first,
+			'the row keeps its height as the store folds it, so nothing under it moves'
+		).toBe( heights.folded );
+	} );
+
+	test( 'keeps the chips behind Filters on a phone, every brand there and no N more', async ( {
+		page,
+		javaScriptEnabled,
+	} ) => {
+		test.skip( ! javaScriptEnabled, 'The fold is the script’s.' );
+		await page.setViewportSize( { width: 390, height: 844 } );
+		await page.goto( shelfAt() );
+		await page.locator( '.cbuild[data-ready]' ).waitFor();
+		const group = page.locator( '.cbuild-chips__group' ).first();
+		await page.locator( '.cbuild-chips__toggle' ).click();
+		for ( const chip of await group
+			.locator( '.cbuild-chips__chip' )
+			.all() ) {
+			await expect( chip ).toBeVisible();
+		}
+		await expect( group.locator( '.cbuild-chips__more' ) ).toBeHidden();
+	} );
+} );
+
 // Spec (configurator): The deck's width first, "Not sure of your width?".
 test( 'the width question opens a guide by shoe size', async ( {
 	page,
@@ -3132,6 +3324,11 @@ test.describe( "The builder's styles", () => {
 		);
 		const cards = page.locator( '.cbuild-card' );
 		await cards.first().click();
+		// The click's answer drawn before the arrow, so the arrow's choice is never drawn over by it.
+		await expect( page.locator( '.cbuild' ) ).toHaveAttribute(
+			'aria-busy',
+			'false'
+		);
 		const width = ( index: number ) =>
 			cards
 				.nth( index )
@@ -3148,20 +3345,25 @@ test.describe( "The builder's styles", () => {
 		expect( ring ).toBe( 'solid' );
 		// And in the system's Highlight colour, as its border is: the arrow chose it as it moved the focus (the M9
 		// audit's minor).
-		const colours = await cards.nth( 1 ).evaluate( ( card ) => {
-			const probe = document.createElement( 'span' );
-			probe.style.color = 'Highlight';
-			document.body.append( probe );
-			const highlight = getComputedStyle( probe ).color;
-			probe.remove();
-			return {
-				highlight,
-				border: getComputedStyle( card ).borderTopColor,
-				outline: getComputedStyle( card ).outlineColor,
-			};
-		} );
-		expect( colours.border ).toBe( colours.highlight );
-		expect( colours.outline ).toBe( colours.highlight );
+		// Polled: the arrow's pick asks the route 150 ms later (D-308), and its answer is drawn after that.
+		await expect
+			.poll( () =>
+				cards.nth( 1 ).evaluate( ( card ) => {
+					const probe = document.createElement( 'span' );
+					probe.style.color = 'Highlight';
+					document.body.append( probe );
+					const highlight = getComputedStyle( probe ).color;
+					probe.remove();
+					return {
+						border:
+							getComputedStyle( card ).borderTopColor ===
+							highlight,
+						outline:
+							getComputedStyle( card ).outlineColor === highlight,
+					};
+				} )
+			)
+			.toEqual( { border: true, outline: true } );
 	} );
 } );
 

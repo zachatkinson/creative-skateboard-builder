@@ -52,3 +52,18 @@ export function setConfig(
 export function setElement( ref: HTMLElement | null ): void {
 	element = ref;
 }
+
+let context: object = {};
+
+export function getContext< T extends object >(): T {
+	return context as T;
+}
+
+/**
+ * The context the next directive runs in, as `data-wp-each` would give it.
+ *
+ * @param scope The context.
+ */
+export function setContext( scope: object ): void {
+	context = scope;
+}

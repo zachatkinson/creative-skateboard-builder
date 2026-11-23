@@ -171,6 +171,10 @@
         "cbuild-bar__photo",
         "cbuild-board__layer",
         "cbuild-cart-picture",
+        "cbuild-chips__chip--past",
+        "cbuild-chips__more",
+        "cbuild-chips__more--idle",
+        "cbuild-chips__options--row",
         "cbuild-edit",
         "cbuild-kit",
         "cbuild-part",
@@ -292,7 +296,7 @@
         "schema/kit-slots.json": "7c383e3f551b517328d9d195c01e15f9f5dad1a1263a20fa4ff2188592bb820c",
         "schema/order-snapshot.json": "78cc2355e3468a3f4ff06aa8c609594f21ab961dbcf06ca54bb2b4b2e1b18030",
         "schema/settings.json": "c6ce801eae753f4d85734fdf81489cc91a4e2db8adf318aa2da21832d7ef9df4",
-        "schema/state.json": "e4eeb7975ad19939df4c47d96518c8452af3932b9952419ba08db44a38eb40c0"
+        "schema/state.json": "8d904193e9d0d50468758242b106af94960bd9d9ad044e3321eca33241454fe8"
     },
     "spec_keys": [
         "deck_width",

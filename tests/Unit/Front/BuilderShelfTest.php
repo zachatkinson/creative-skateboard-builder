@@ -438,6 +438,30 @@ final class BuilderShelfTest extends TestCase {
 		self::assertSame( 'Filters, 2 chosen', $this->step( BuildLink::read( $at + array( '_chips' => array( 'brand' => array( 'bones', 'ricta' ) ) ) ) )['shelf']['chips']['toggle'] );
 	}
 
+	/**
+	 * #98 (F13): on a desktop the brand chips sit in one row, and "N more" opens the rest in place. How many fit is the
+	 * browser's to measure, so the view gives the button's words for every count it may need, each through `_n()`,
+	 * and the id of the chips it opens. Only the brand group has it.
+	 */
+	public function test_the_brand_chips_have_n_more_for_each_count_the_row_may_leave_out(): void {
+		$this->manyWheels();
+		$groups = $this->step( BuildLink::read( array( 'deck' => '101', 'trucks' => '139', 'step' => 'wheels' ) ) )['shelf']['chips']['groups'];
+		self::assertSame( 'brand', $groups[0]['key'] );
+		self::assertSame(
+			array(
+				'shown' => true,
+				'id'    => 'cbuild-chips-wheels-brand',
+				'texts' => array( '1 more', '2 more', '3 more' ),
+				'fewer' => 'Show fewer',
+			),
+			$groups[0]['more']
+		);
+		foreach ( array_slice( $groups, 1 ) as $group ) {
+			self::assertFalse( $group['more']['shown'], $group['key'] . ' wraps as it did' );
+			self::assertSame( array(), $group['more']['texts'] );
+		}
+	}
+
 	public function test_what_the_shopper_chose_is_said_back(): void {
 		$this->manyWheels();
 		$searched = $this->step( BuildLink::read( array( 'deck' => '101', 'trucks' => '139', 'step' => 'wheels', '_on' => 'wheels', '_q' => 'bones' ) ) );

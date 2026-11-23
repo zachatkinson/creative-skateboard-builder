@@ -170,6 +170,38 @@ final class ChipsTest extends TestCase {
 		self::assertSame( array( '9', '9.5', '10' ), array_map( static fn( Chip $chip ): string => $chip->value, $groups[0]->chips ) );
 	}
 
+	/**
+	 * The brand chips in one row with "N more" (#98): a ranked facet's values come most carried first, counted on the
+	 * looks before any chip, so a choice in another group never moves them; a tie goes in natural order. The facets
+	 * not ranked keep the natural order, so sizes still read as numbers.
+	 */
+	public function test_a_ranked_facets_values_come_most_carried_first_then_in_natural_order(): void {
+		$looks = array(
+			self::wheel( 'a', 'mob', array( '10' ), array( '99a' ) ),
+			self::wheel( 'b', 'zero', array( '9' ), array( '99a' ) ),
+			self::wheel( 'c', 'zero', array( '9' ), array( '101a' ) ),
+			self::wheel( 'd', 'bones', array( '9.5' ), array( '101a' ) ),
+			self::wheel( 'e', 'zero', array( '10' ), array( '101a' ) ),
+			self::wheel( 'f', 'bones', array( '9' ), array( '101a' ) ),
+			self::wheel( 'g', 'acme', array( '10' ), array( '99a' ) ),
+		);
+		$order = static fn( array $groups, string $name ): array => array_map(
+			static fn( Chip $chip ): string => $chip->value,
+			array_values( array_filter( $groups, static fn( ChipGroup $group ): bool => $name === $group->name ) )[0]->chips
+		);
+
+		$groups = Chips::groups( $looks, array( 'brand', 'wheel_diameter' ), array(), array( 'brand' ) );
+		self::assertSame( array( 'zero', 'bones', 'acme', 'mob' ), $order( $groups, 'brand' ), 'three, two, then one each by name' );
+		self::assertSame( array( '9', '9.5', '10' ), $order( $groups, 'wheel_diameter' ), 'a facet not ranked keeps the natural order' );
+
+		$chosen = Chips::groups( $looks, array( 'brand', 'wheel_diameter' ), array( 'pa_hardness' => array( '99a' ) ), array( 'brand' ) );
+		self::assertSame( array( 'zero', 'bones', 'acme', 'mob' ), $order( $chosen, 'brand' ), 'Bones leaves none at 99a, and keeps its place' );
+		self::assertSame( array( 'acme', 'bones', 'mob', 'zero' ), $order( Chips::groups( $looks, array( 'brand' ), array() ), 'brand' ), 'nothing ranked unless asked' );
+
+		$twice = array( new Facets( 'x', array( 'brand' => array( 'acme', 'acme', 'acme' ) ) ), ...array_slice( $looks, 0, 5 ) );
+		self::assertSame( array( 'zero', 'acme', 'bones', 'mob' ), $order( Chips::groups( $twice, array( 'brand' ), array(), array( 'brand' ) ), 'brand' ), 'a look counts once for a value it lists twice' );
+	}
+
 	public function test_no_looks_offer_no_chips(): void {
 		self::assertSame( array(), Chips::groups( array(), array( 'brand' ), array() ) );
 	}

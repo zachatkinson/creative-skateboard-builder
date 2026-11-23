@@ -1293,7 +1293,7 @@ export interface ChipGroup {
 	 */
 	label: string;
 	/**
-	 * Its values, in natural order.
+	 * Its values, in natural order; from 1.1.0, the brand group's with the most looks first, then in natural order (#98).
 	 *
 	 * Items: A chip.
 	 */

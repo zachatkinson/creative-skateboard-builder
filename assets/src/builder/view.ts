@@ -30,8 +30,14 @@
  *   the board turns it, and from then on the side the shopper chose is kept on every view that can draw it. The
  *   picture and the phone bar show the same side, and the stylesheet turns the board only where motion is allowed.
  */
-import { getConfig, getElement, store } from '@wordpress/interactivity';
+import {
+	getConfig,
+	getContext,
+	getElement,
+	store,
+} from '@wordpress/interactivity';
 import { fit, size, stage } from './bar';
+import { shut } from './row';
 import { Navigator, type Move, type View } from './navigate';
 import {
 	build,
@@ -84,6 +90,31 @@ interface State {
 	missing: string;
 	/** Whether the step's Next is dimmed: once the script runs, until the server's view says the step has a pick. */
 	readonly dimmed: boolean;
+	/** The brand chips that don't fit in the row beside "N more", by value (#98). */
+	shut: string[];
+	/** The step whose "N more" the shopper opened, or empty. */
+	opened: string;
+	/** Whether a chip is past the row and out of sight: only on a desktop, where the stylesheet hides it. */
+	readonly past: boolean;
+	/** Whether the group has "N more": only once the script runs, so without it every chip shows. */
+	readonly rests: boolean;
+	/** Whether "N more" has nothing to open: out of sight, but laid out, so it can be measured. */
+	readonly idle: boolean;
+	/** Whether the rest are open. */
+	readonly open: boolean;
+	/** The button's words: how many it holds, or Show fewer once open, from the server's. */
+	readonly rest: string;
+}
+
+/**
+ * The context a chip group's directives run in: the group, and in each chip's, the chip.
+ */
+interface Chipped {
+	group?: {
+		inputs?: { value?: string; count?: string; checked?: boolean }[];
+		more?: { shown?: boolean; texts?: string[]; fewer?: string };
+	};
+	chip?: { value?: string };
 }
 
 let navigator: Navigator | undefined;
@@ -647,6 +678,56 @@ function measure( element: HTMLElement ): void {
 }
 
 /**
+ * How many frames a row is measured in at most: the button's words change with how many it holds, so its width is
+ * measured again once it says them, and only ever taken as wider, so the row settles.
+ */
+const ROW_PASSES = 3;
+
+/**
+ * The frame the row waits for.
+ */
+let frame = 0;
+
+/**
+ * The chips each row was last laid out for, so a view that changes none of them leaves the row as it is.
+ */
+const laid = new WeakMap< Element, string >();
+
+/**
+ * Each row's watcher for a change of size, its own or a chip's.
+ */
+const rowWatchers = new WeakMap< Element, ResizeObserver >();
+
+/**
+ * Lay out a row of brand chips (#98): in the next frame, the values that don't fit beside "N more", measured again
+ * until they settle.
+ *
+ * @param options The group's row of chips.
+ * @param least   The button's width at least.
+ * @param passes  How many frames it may still take.
+ */
+function lay( options: HTMLElement, least = 0, passes = ROW_PASSES ): void {
+	window.cancelAnimationFrame( frame );
+	frame = window.requestAnimationFrame( () => {
+		const found = shut( options, least );
+		if ( found.values.join( '\n' ) === state.shut.join( '\n' ) ) {
+			return;
+		}
+		state.shut = found.values;
+		if ( passes > 1 ) {
+			lay( options, found.button, passes - 1 );
+		}
+	} );
+}
+
+/**
+ * Whether the shopper opened the rest of the step's chips.
+ */
+function opened(): boolean {
+	return '' !== state.opened && state.opened === state.view.step.slot;
+}
+
+/**
  * Mark a pick in the store at once: the step's cards bind their radios' checked to it, so a card drawn again while the
  * route is asked would otherwise put the pick back as it was until the answer came (#47). The answer then says the
  * same, or what the server found instead.
@@ -992,8 +1073,75 @@ const { state } = store(
 			get dimmed(): boolean {
 				return state.live && false === state.view.bar?.next.ready;
 			},
+			shut: [] as string[],
+			opened: '',
+			get past(): boolean {
+				const { group, chip } = getContext< Chipped >();
+				return (
+					true === group?.more?.shown &&
+					! opened() &&
+					state.shut.includes( chip?.value ?? '' )
+				);
+			},
+			get rests(): boolean {
+				return (
+					state.live &&
+					true === getContext< Chipped >().group?.more?.shown
+				);
+			},
+			get idle(): boolean {
+				return 0 === state.shut.length;
+			},
+			get open(): boolean {
+				return opened();
+			},
+			get rest(): string {
+				const more = getContext< Chipped >().group?.more;
+				return opened()
+					? ( more?.fewer ?? '' )
+					: ( more?.texts?.[ Math.max( state.shut.length, 1 ) - 1 ] ??
+							'' );
+			},
 		} as State,
 		callbacks: {
+			/**
+			 * Lay out the brand chips in one row (#98), once hydrated, again when a view changes a chip, what it
+			 * counts or what is chosen, and again when the row's size changes.
+			 */
+			row(): void {
+				const { group } = getContext< Chipped >();
+				const options = getElement().ref;
+				if ( true !== group?.more?.shown || ! options ) {
+					return;
+				}
+				// Read here, so a view that changes the chips runs this again.
+				const marks = ( group.inputs ?? [] )
+					.map( ( chip ) =>
+						[ chip.value, chip.count, chip.checked ].join( ':' )
+					)
+					.join( ' ' );
+				if ( 'function' === typeof window.ResizeObserver ) {
+					let watcher = rowWatchers.get( options );
+					if ( ! watcher ) {
+						watcher = new window.ResizeObserver( () =>
+							lay( options )
+						);
+						rowWatchers.set( options, watcher );
+						watcher.observe( options );
+					}
+					// Each chip as well, as when a web font arrives after the first measure; a view may bring new
+					// chips, and observing one twice does nothing.
+					for ( const chip of options.querySelectorAll(
+						'.cbuild-chips__chip'
+					) ) {
+						watcher.observe( chip );
+					}
+				}
+				if ( marks !== laid.get( options ) ) {
+					laid.set( options, marks );
+					lay( options );
+				}
+			},
 			/**
 			 * Say on the builder whether an answer is awaited: its root is no region, so no directive binds it (D-296).
 			 */
@@ -1218,6 +1366,23 @@ const { state } = store(
 			 */
 			filters(): void {
 				state.folded = ! state.folded;
+			},
+			/**
+			 * Open the brand chips past the row in place, with focus on the first of them, or fold them again (#98).
+			 */
+			more(): void {
+				if ( opened() ) {
+					state.opened = '';
+					return;
+				}
+				const shown = getElement()
+					.ref?.closest( '.cbuild-chips__options' )
+					?.querySelector< HTMLElement >(
+						'.cbuild-chips__chip--past .cbuild-chips__control'
+					);
+				state.opened = state.view.step.slot;
+				// The chip shows once the Interactivity API has rendered the open row, before the next frame.
+				window.requestAnimationFrame( () => shown?.focus() );
 			},
 			/**
 			 * Show the top, or the underside again: the button by the board, its pressed state the side shown (#46).

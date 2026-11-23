@@ -809,6 +809,76 @@
 	box-shadow: 0 0 0 4px var(--cbuild-focus-contrast);
 }
 
+/* The brand chips in one row on a desktop (#98), a "priority+" row: the store measures which chips fit beside
+   "N more" and marks the rest past the row. A chip past the row, and the button with nothing to open, leave the flow
+   and the sight of every reader but keep their widths, so the store can measure them. Without the script nothing is
+   marked, and every chip shows. On a phone the chips wrap behind Filters as before (D-279). */
+:where(.cbuild-chips__options) {
+	position: relative;
+}
+
+.cbuild .cbuild-chips__more:not([hidden]) {
+	display: inline-flex;
+	align-items: center;
+	min-block-size: var(--cbuild-target);
+	margin: 0;
+	padding-block: 0;
+	padding-inline: 1em;
+	border: 1px solid var(--cbuild-line);
+	border-radius: calc(var(--cbuild-target) / 2);
+	background: transparent;
+	box-shadow: none;
+	color: var(--cbuild-accent);
+	font-size: inherit;
+	font-weight: 600;
+	line-height: 1.2;
+	white-space: nowrap;
+	cursor: pointer;
+}
+
+.cbuild .cbuild-chips__more:hover {
+	border-color: var(--cbuild-text);
+}
+
+.cbuild .cbuild-chips__more:focus-visible {
+	outline: 2px solid var(--cbuild-focus);
+	outline-offset: 2px;
+	box-shadow: 0 0 0 4px var(--cbuild-focus-contrast);
+}
+
+@container cbuild (width >= 48rem) {
+	.cbuild .cbuild-chips__chip--past,
+	.cbuild .cbuild-chips__more--idle {
+		position: absolute;
+		inset-block-start: 0;
+		inset-inline-start: 0;
+		visibility: hidden;
+	}
+}
+
+@media (scripting: enabled) {
+	/* Before the script folds the row, a page that will run it shows the row's first line alone, so the fold moves
+	   nothing below it (no layout shift). The button is still hidden then; once the store shows it, the row is its
+	   own height. Without the script, scripting is none and every chip shows. */
+	@container cbuild (width >= 48rem) {
+		.cbuild
+			.cbuild-chips__options--row:not(
+				:has(> .cbuild-chips__more:not([hidden]))
+			) {
+			max-block-size: calc(
+				var(--cbuild-target) + 2px
+			); /* a chip, with its border */
+			overflow: clip;
+		}
+	}
+}
+
+@container cbuild (width < 48rem) {
+	.cbuild .cbuild-chips__more:not([hidden]) {
+		display: none;
+	}
+}
+
 /* The picked card's sizes (D-279): chips under the card, a sold-out size dimmed and not to be picked. */
 :where(.cbuild-sizes) {
 	margin-block-start: var(--cbuild-gap-small);

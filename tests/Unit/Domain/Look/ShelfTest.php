@@ -391,6 +391,32 @@ final class ShelfTest extends TestCase {
 		self::assertSame( array( array(), array() ), array_map( static fn( ShelfLook $look ): array => $look->sizes, $listing->looks ) );
 	}
 
+	/**
+	 * The brand chips in one row with "N more" (#98): the brands with the most looks come first, so those a desktop
+	 * shows before "N more" are the step's biggest.
+	 */
+	public function test_the_brands_with_the_most_looks_come_first(): void {
+		$tools   = array(
+			new Option( Parts::of( array(), 801, 900, 'mob' ), array(), 1 ),
+			new Option( Parts::of( array(), 802, 900, 'shorty' ), array(), 1 ),
+			new Option( Parts::of( array(), 803, 900, 'shorty' ), array(), 1 ),
+		);
+		$shelved = array(
+			801 => self::shelved( 81, 1 ),
+			802 => self::shelved( 82, 2 ),
+			803 => self::shelved( 83, 3 ),
+		);
+		$slots            = KitDocuments::slots();
+		$slots['slots'][] = array(
+			'key'      => 'tool',
+			'label'    => 'Skate tool',
+			'required' => false,
+			'units'    => 1,
+		);
+		$listing          = ( new Shelf( new SizePicker( FitEngine::standard() ) ) )->of( KitDocuments::kit( $slots ), 'tool', Picks::none(), $tools, null, null, $shelved, new ShelfAsk() );
+		self::assertSame( array( 'shorty', 'mob' ), array_map( static fn( Chip $chip ): string => $chip->value, $listing->groups[0]->chips ) );
+	}
+
 	public function test_a_part_the_shelf_knows_nothing_of_is_left_off(): void {
 		[ $parts, $shelved ] = self::wheels();
 		unset( $shelved[304] );

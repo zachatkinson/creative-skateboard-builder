@@ -160,8 +160,9 @@ final class Shelf {
 		// still reads it, for "Rascals comes in 8.5″".
 		$width   = SlotKey::DECK === $slot ? $ask->width : null;
 		$counted = array_flip( array_map( static fn( Look $look ): string => $look->key, array_filter( $looks, static fn( Look $look ): bool => null === $width || in_array( self::named( $width ), array_map( self::named( ... ), $look->sizes( SpecKey::DeckWidth ) ), true ) ) ) );
-		$groups  = Chips::groups( array_values( array_filter( $found, static fn( Facets $look ): bool => isset( $counted[ $look->key ] ) ) ), $always, $ask->chosen );
-		$left    = array_flip( array_map( static fn( Facets $look ): string => $look->key, Chips::filter( $found, $ask->chosen ) ) );
+		// The brands with the most looks first, so those a desktop shows before "N more" are the step's biggest (#98).
+		$groups = Chips::groups( array_values( array_filter( $found, static fn( Facets $look ): bool => isset( $counted[ $look->key ] ) ) ), $always, $ask->chosen, array( self::BRAND ) );
+		$left   = array_flip( array_map( static fn( Facets $look ): string => $look->key, Chips::filter( $found, $ask->chosen ) ) );
 
 		$wanted  = $this->wanted( $slot, $looks, $chip, $recommended, $ask );
 		$inStock = array();

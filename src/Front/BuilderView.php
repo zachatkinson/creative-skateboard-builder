@@ -1100,6 +1100,7 @@ final class BuilderView {
 				'key'    => $name,
 				'legend' => Cast::str( $group['label'] ?? null ),
 				'inputs' => $inputs,
+				'more'   => self::rest( $slot, $name, count( $inputs ) ),
 			);
 		}
 		$sort  = Cast::str( $shelf['sort'] ?? null );
@@ -1808,6 +1809,31 @@ final class BuilderView {
 				'fields' => $none ? array() : self::flat( $undo->query( $state->kit->slots ) ),
 				'text'   => __( 'Undo', 'creative-skateboard-builder' ),
 			),
+		);
+	}
+
+	/**
+	 * The brand chips' "N more" (#98): on a desktop they sit in one row, and the button opens the rest in place. How
+	 * many fit is the browser's to measure, so the button's words come for every count it may leave out, each through
+	 * `_n()`, and the store picks the one it needs. Other groups wrap as they did.
+	 *
+	 * @param string $slot  The step's slot.
+	 * @param string $name  The group's facet.
+	 * @param int    $count How many chips the group has.
+	 * @return array{shown: bool, id: string, texts: list<string>, fewer: string}
+	 */
+	private static function rest( string $slot, string $name, int $count ): array {
+		$shown = Shelf::BRAND === $name;
+		$texts = array();
+		for ( $left = 1; $shown && $left <= $count; $left++ ) {
+			/* translators: %s: how many more chips there are, such as 7. The button opens them. */
+			$texts[] = sprintf( _n( '%s more', '%s more', $left, 'creative-skateboard-builder' ), number_format_i18n( $left ) );
+		}
+		return array(
+			'shown' => $shown,
+			'id'    => 'cbuild-chips-' . $slot . '-' . $name,
+			'texts' => $texts,
+			'fewer' => __( 'Show fewer', 'creative-skateboard-builder' ),
 		);
 	}
 

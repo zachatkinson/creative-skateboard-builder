@@ -31,6 +31,10 @@ declare module '@wordpress/interactivity' {
 		ref: HTMLElement | null;
 		attributes: Record< string, unknown >;
 	};
+	/**
+	 * The context the running directive is in, such as a `data-wp-each` item's.
+	 */
+	export function getContext< T extends object >(): T;
 }
 declare module '@wordpress/blocks' {
 	/**

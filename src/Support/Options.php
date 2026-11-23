@@ -135,6 +135,34 @@ final class Options {
 	public const CLASS_PRESET_PHOTO = 'cbuild-preset__photo';
 
 	/**
+	 * The brand chips' "N more" button (#98, D-314).
+	 *
+	 * @since 1.1.0
+	 */
+	public const CLASS_CHIPS_MORE = 'cbuild-chips__more';
+
+	/**
+	 * "N more" with nothing to open (#98).
+	 *
+	 * @since 1.1.0
+	 */
+	public const CLASS_CHIPS_MORE_IDLE = 'cbuild-chips__more--idle';
+
+	/**
+	 * A brand chip past the row (#98).
+	 *
+	 * @since 1.1.0
+	 */
+	public const CLASS_CHIP_PAST = 'cbuild-chips__chip--past';
+
+	/**
+	 * The brand chips' row, where its group has "N more" (#98, D-314).
+	 *
+	 * @since 1.1.0
+	 */
+	public const CLASS_CHIPS_ROW = 'cbuild-chips__options--row';
+
+	/**
 	 * Order item meta (spec: Data model, Order items). Hidden from customers by their underscore, and kept with the
 	 * shop's order records for good: a key is never renamed.
 	 */
@@ -378,6 +406,10 @@ final class Options {
 			self::CLASS_BAR_PHOTO,
 			self::CLASS_REVIEW_ITEM,
 			self::CLASS_PRESET_PHOTO,
+			self::CLASS_CHIPS_MORE,
+			self::CLASS_CHIPS_MORE_IDLE,
+			self::CLASS_CHIP_PAST,
+			self::CLASS_CHIPS_ROW,
 		);
 	}
 
