@@ -3055,17 +3055,22 @@ test.describe( "The builder's styles", () => {
 	} );
 } );
 
+// Spec (configurator): Milestone 11, the motion (D-256, D-305). Each moment moves for its time in the spec's table, by
+// `transform` and `opacity` alone; under reduced motion or the kit's subtle each is a fade of 150 ms or less; a step
+// crosses over by a view transition, faded where motion is calm, and at once where the browser has none.
 test.describe( 'Motion', () => {
 	type Seen = {
+		id: string;
 		name: string;
 		duration: number;
+		delay: number;
 		iterations: number;
 		properties: string[];
 		pseudo: string;
 	};
 
 	/**
-	 * Watch the page for a second: every animation it runs, frame by frame, and each view transition started.
+	 * Watch the page for a second and a half: every animation it runs, and each view transition started.
 	 *
 	 * @param page The page.
 	 */
@@ -3075,10 +3080,12 @@ test.describe( 'Motion', () => {
 				seen: Map< Animation, unknown >;
 				transitions: number;
 				watched: boolean;
+				amounts: string[];
 			};
 			record.seen = new Map();
 			record.transitions = 0;
 			record.watched = false;
+			record.amounts = [];
 			const start = document.startViewTransition?.bind( document );
 			if ( start ) {
 				document.startViewTransition = ( ( update: () => void ) => {
@@ -3088,13 +3095,21 @@ test.describe( 'Motion', () => {
 			}
 			const until = performance.now() + 1500;
 			const frame = () => {
+				const amount = document.querySelector(
+					'.cbuild-bar__amount > span:first-child'
+				)?.textContent;
+				if ( amount && amount !== record.amounts.at( -1 ) ) {
+					record.amounts.push( amount );
+				}
 				for ( const animation of document.getAnimations() ) {
 					const effect = animation.effect as KeyframeEffect | null;
 					record.seen.set( animation, {
+						id: animation.id,
 						name: ( animation as CSSAnimation ).animationName ?? '',
 						duration: Number(
 							effect?.getComputedTiming().duration ?? 0
 						),
+						delay: Number( effect?.getTiming().delay ?? 0 ),
 						iterations: Number(
 							effect?.getComputedTiming().iterations ?? 0
 						),
@@ -3138,13 +3153,24 @@ test.describe( 'Motion', () => {
 			const record = window as unknown as {
 				seen: Map< Animation, Seen >;
 				transitions: number;
+				amounts: string[];
 			};
 			return {
 				animations: [ ...record.seen.values() ],
 				transitions: record.transitions,
+				amounts: record.amounts,
 			};
 		} );
 	};
+
+	/**
+	 * The builder's own moments, by the name the motion module gives each.
+	 *
+	 * @param animations What the page ran.
+	 * @param name       The moment's name, such as cbuild-deck.
+	 */
+	const moment = ( animations: Seen[], name: string ) =>
+		animations.filter( ( animation ) => name === animation.id );
 
 	const pickAndStep = async ( page: Page ) => {
 		await pickDeck( page, '8.0' );
@@ -3163,23 +3189,71 @@ test.describe( 'Motion', () => {
 		);
 	};
 
+	/**
+	 * Every one of the builder's moments, and of the step's view transition, moves transform and opacity alone.
+	 *
+	 * @param animations What the page ran.
+	 */
+	const onlyTransformAndOpacity = ( animations: Seen[] ) => {
+		for ( const animation of animations ) {
+			if (
+				animation.id.startsWith( 'cbuild-' ) ||
+				animation.name.startsWith( 'cbuild-' )
+			) {
+				expect(
+					animation.properties.filter(
+						( property ) =>
+							! [ 'transform', 'opacity' ].includes( property )
+					),
+					`${ animation.id || animation.name } ${ animation.pseudo }`
+				).toEqual( [] );
+				expect( animation.iterations ).toBe( 1 );
+			}
+		}
+	};
+
+	/**
+	 * Under reduced motion or subtle: each of the builder's moments a fade, opacity alone, of 150 ms or less.
+	 *
+	 * @param animations What the page ran.
+	 */
+	const faded = ( animations: Seen[] ) => {
+		for ( const animation of animations ) {
+			const what = `${ animation.id || animation.name } ${
+				animation.pseudo
+			}`;
+			expect( animation.duration, what ).toBeLessThanOrEqual( 150 );
+			if ( animation.id.startsWith( 'cbuild-' ) ) {
+				expect( animation.properties, what ).toEqual( [ 'opacity' ] );
+				expect( animation.delay, what ).toBe( 0 );
+			}
+		}
+	};
+
 	test.beforeEach( async ( { page }, info ) => {
 		test.skip(
 			info.project.name === 'no-js',
-			"The view transition is the store's; the card settles the same without it."
+			"The moments are the store's; without it the page changes at once."
 		);
 		await page.goto( fixture().page );
 		await page.waitForLoadState( 'load' );
 	} );
 
-	test( 'settles the chosen card and crosses steps over within 150 to 250 ms, moving only transform and opacity', async ( {
+	test( 'the deck settles onto the stage in 280 ms, the total counts to the server’s, and the step crosses over', async ( {
 		page,
 	} ) => {
 		await page.emulateMedia( { reducedMotion: 'no-preference' } );
 		await watch( page );
 		await pickAndStep( page );
-		const { animations, transitions } = await seen( page );
+		const { animations, transitions, amounts } = await seen( page );
 
+		const deck = moment( animations, 'cbuild-deck' );
+		expect( deck ).toHaveLength( 1 );
+		expect( deck[ 0 ]!.duration ).toBe( 280 );
+		expect( deck[ 0 ]!.properties.sort() ).toEqual( [
+			'opacity',
+			'transform',
+		] );
 		expect( animations.map( ( animation ) => animation.name ) ).toContain(
 			'cbuild-settle'
 		);
@@ -3189,41 +3263,205 @@ test.describe( 'Motion', () => {
 			)
 		) {
 			expect( transitions, 'the step crossed over' ).toBeGreaterThan( 0 );
+			expect(
+				animations.some(
+					( animation ) =>
+						'cbuild-panel-in' === animation.name &&
+						200 === animation.duration
+				),
+				'the panel slid in for 200 ms'
+			).toBe( true );
 		}
-		for ( const animation of animations ) {
-			const what = `${ animation.name } ${ animation.pseudo }`;
-			expect( animation.duration, what ).toBeGreaterThanOrEqual( 150 );
-			expect( animation.duration, what ).toBeLessThanOrEqual( 250 );
-			expect( animation.iterations, what ).toBe( 1 );
-			if ( animation.name.startsWith( 'cbuild-' ) ) {
-				expect(
-					animation.properties.filter(
-						( property ) =>
-							! [ 'transform', 'opacity' ].includes( property )
-					),
-					what
-				).toEqual( [] );
-			}
-		}
+		onlyTransformAndOpacity( animations );
+		// The total counted up from nothing through amounts between, and ended on the server's own string; the
+		// frames are hidden from a screen reader, which hears the total from the status region.
+		const bar = page.locator( '.cbuild-bar__amount' );
+		await expect( bar ).toHaveAttribute( 'aria-hidden', 'true' );
+		const total = await bar
+			.locator( ':scope > span:first-child' )
+			.textContent();
+		expect( amounts.at( -1 ) ).toBe( total );
+		expect( amounts.length, amounts.join( ' | ' ) ).toBeGreaterThan( 2 );
 	} );
 
-	test( 'moves nothing where the shopper asks for reduced motion', async ( {
+	test( 'the trucks slide in 60 ms apart, the wheels 40 ms apart and turning, each for its time', async ( {
 		page,
 	} ) => {
-		await page.emulateMedia( { reducedMotion: 'reduce' } );
+		await page.emulateMedia( { reducedMotion: 'no-preference' } );
+		await page.goto(
+			linkTo( { deck: id( 'builder-test-deck-8-0' ), step: 'trucks' } )
+		);
+		await expect( page.locator( '.cbuild' ) ).toHaveAttribute(
+			'data-ready',
+			''
+		);
 		await watch( page );
-		await pickAndStep( page );
-		const { animations, transitions } = await seen( page );
-		expect( animations ).toEqual( [] );
-		expect( transitions ).toBe( 0 );
+		await choose( page, 'Builder test trucks 139' );
+		let { animations } = await seen( page );
+		const trucks = moment( animations, 'cbuild-trucks' );
+		expect( trucks.map( ( animation ) => animation.delay ) ).toEqual( [
+			0, 60,
+		] );
+		expect( trucks.map( ( animation ) => animation.duration ) ).toEqual( [
+			240, 240,
+		] );
+		onlyTransformAndOpacity( animations );
+
+		await page.goto(
+			linkTo( {
+				deck: id( 'builder-test-deck-8-0' ),
+				trucks: id( 'builder-test-trucks-139' ),
+				step: 'wheels',
+			} )
+		);
+		await expect( page.locator( '.cbuild' ) ).toHaveAttribute(
+			'data-ready',
+			''
+		);
+		await watch( page );
+		await choose( page, 'Builder test wheels 54' );
+		( { animations } = await seen( page ) );
+		const wheels = moment( animations, 'cbuild-wheels' );
+		expect( wheels.map( ( animation ) => animation.delay ) ).toEqual( [
+			0, 40, 80, 120,
+		] );
+		expect(
+			new Set( wheels.map( ( animation ) => animation.duration ) )
+		).toEqual( new Set( [ 220 ] ) );
+		onlyTransformAndOpacity( animations );
 	} );
 
-	// Issue #46: "No motion under prefers-reduced-motion"; elsewhere the board turns as the step crosses over.
+	for ( const calm of [ 'reduced motion', 'subtle' ] as const ) {
+		test( `under ${ calm } every moment is a fade of 150 ms or less, opacity alone`, async ( {
+			page,
+		} ) => {
+			await page.emulateMedia( {
+				reducedMotion:
+					'reduced motion' === calm ? 'reduce' : 'no-preference',
+			} );
+			if ( 'subtle' === calm ) {
+				// The kit's Motion on subtle puts the class on the builder's root, as the unit tests show the server
+				// does; the store reads it at each moment.
+				await page
+					.locator( '.cbuild' )
+					.evaluate( ( root ) =>
+						root.classList.add( 'cbuild--subtle' )
+					);
+			}
+			await watch( page );
+			await pickAndStep( page );
+			const { animations, transitions, amounts } = await seen( page );
+			expect( moment( animations, 'cbuild-deck' ) ).toHaveLength( 1 );
+			faded( animations );
+			if (
+				await page.evaluate(
+					() => 'function' === typeof document.startViewTransition
+				)
+			) {
+				expect( transitions, 'the step faded over' ).toBeGreaterThan(
+					0
+				);
+			}
+			// The total changes at once: no amount between.
+			expect( amounts.length, amounts.join( ' | ' ) ).toBeLessThanOrEqual(
+				2
+			);
+			expect(
+				animations.filter(
+					( animation ) => 'cbuild-settle' === animation.name
+				),
+				'the card does not settle'
+			).toEqual( [] );
+		} );
+	}
+
+	test( 'a step changes at once where the browser has no view transitions', async ( {
+		page,
+	} ) => {
+		await page.evaluate( () => {
+			Object.defineProperty( document, 'startViewTransition', {
+				value: undefined,
+				configurable: true,
+			} );
+		} );
+		await pickAndStep( page );
+		await expect(
+			page.evaluate( () =>
+				document.documentElement.classList.contains( 'cbuild-back' )
+			)
+		).resolves.toBe( false );
+	} );
+
+	test( 'the grip lays down on the top in 300 ms, a part swapped settles in 200 ms, and Add to cart sends the board off in 400 ms', async ( {
+		page,
+	} ) => {
+		await page.emulateMedia( { reducedMotion: 'no-preference' } );
+		const parts = {
+			deck: id( 'builder-test-deck-8-0' ),
+			trucks: id( 'builder-test-trucks-139' ),
+			wheels: id( 'builder-test-wheels-54' ),
+			bearings: id( 'builder-test-bearings' ),
+			hardware: id( 'builder-test-bolts-1' ),
+		};
+		const ready = () =>
+			expect( page.locator( '.cbuild' ) ).toHaveAttribute(
+				'data-ready',
+				''
+			);
+
+		await page.goto( linkTo( { ...parts, step: 'grip' } ) );
+		await ready();
+		await watch( page );
+		await choose( page, 'Builder test grip' );
+		let { animations } = await seen( page );
+		const grip = moment( animations, 'cbuild-grip' );
+		expect( grip ).toHaveLength( 1 );
+		expect( grip[ 0 ]!.duration ).toBe( 300 );
+		expect( grip[ 0 ]!.properties ).toEqual( [ 'transform' ] );
+
+		await page.goto( linkTo( { ...parts, step: 'wheels' } ) );
+		await ready();
+		await watch( page );
+		await choose( page, 'Builder test wheels 52' );
+		( { animations } = await seen( page ) );
+		const swapped = moment( animations, 'cbuild-swapped' );
+		expect( swapped.length ).toBeGreaterThan( 0 );
+		expect(
+			new Set( swapped.map( ( animation ) => animation.duration ) )
+		).toEqual( new Set( [ 200 ] ) );
+		expect(
+			moment( animations, 'cbuild-wheels' ),
+			'a swap, not new wheels'
+		).toEqual( [] );
+		onlyTransformAndOpacity( animations );
+
+		await page.goto(
+			linkTo( {
+				...parts,
+				grip: id( 'builder-test-grip' ),
+				step: 'review',
+			} )
+		);
+		await ready();
+		await watch( page );
+		await page
+			.locator( '.cbuild' )
+			.getByRole( 'button', { name: 'Add to cart' } )
+			.first()
+			.click();
+		( { animations } = await seen( page ) );
+		const cart = moment( animations, 'cbuild-cart' );
+		expect( cart ).toHaveLength( 1 );
+		expect( cart[ 0 ]!.duration ).toBe( 400 );
+		onlyTransformAndOpacity( animations );
+	} );
+
+	// Issue #46: the board turns over as a card does; under reduced motion it crosses over with a fade.
 	for ( const motion of [ 'no-preference', 'reduce' ] as const ) {
 		test( `turns the board over ${
 			'reduce' === motion
-				? 'without moving it under reduced motion'
-				: 'in 150 to 250 ms by its transform alone'
+				? 'with a fade under reduced motion'
+				: 'in 400 ms by its transform alone'
 		}`, async ( { page } ) => {
 			await page.emulateMedia( { reducedMotion: motion } );
 			await page.goto(
@@ -3239,19 +3477,17 @@ test.describe( 'Motion', () => {
 			await watch( page );
 			await turn.click();
 			await expect( turn ).toHaveAttribute( 'aria-pressed', 'true' );
-			const turned = ( await seen( page ) ).animations.filter(
-				( animation ) => 'cbuild-turn' === animation.name
+			const turned = moment(
+				( await seen( page ) ).animations,
+				'cbuild-turn'
 			);
+			expect( turned ).toHaveLength( 1 );
 			if ( 'reduce' === motion ) {
-				expect( turned ).toEqual( [] );
+				faded( turned );
 				return;
 			}
-			expect( turned.length ).toBeGreaterThan( 0 );
-			for ( const animation of turned ) {
-				expect( animation.duration ).toBeGreaterThanOrEqual( 150 );
-				expect( animation.duration ).toBeLessThanOrEqual( 250 );
-				expect( animation.properties ).toEqual( [ 'transform' ] );
-			}
+			expect( turned[ 0 ]!.duration ).toBe( 400 );
+			expect( turned[ 0 ]!.properties ).toEqual( [ 'transform' ] );
 		} );
 	}
 } );

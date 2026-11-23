@@ -3773,3 +3773,16 @@ CI's Lighthouse gate failed Total Blocking Time on the builder page on Twenty Tw
 **Why:** Cowork's 1.0.0 note (#90): on the demo a warm state request takes about 160 ms more than a bare REST request, and the priming work of D-294 can't be measured on a real host without it.
 
 **Status:** Accepted.
+
+### D-305 · The motion: one module, the board's moments by the Web Animations API, a step by a view transition · 2026-11-23
+
+- **One module.** `assets/src/builder/motion.ts` decides every moment: it moves (playful, motion allowed), fades in 150 ms with opacity alone (reduced motion, or the kit's subtle: D-256), or changes at once (no `animate()` or no view transitions). The preference is read from the media query at each moment and stored nowhere.
+- **Cut short.** A new answer, a pick, or any press finishes every running animation at its end, skips a running view transition and lands the counting total on the server's string. Nothing waits on a moment: no control is disabled during one.
+- **A swap and a removal are not view transitions.** The spec has the swap as one view transition. On the same step a view transition takes the screen's taps while it runs, and WebKit lost a Next tapped straight after a pick that way (CI run 43461092467, D-161's follow-up). So a part swapped settles into its place with the Web Animations API (200 ms), with no old part lifting away, since its element is gone and no markup is built in the script. A part removed is gone at once, and the stage's other photos slide into their new places (180 ms). A step still crosses over by a view transition, as since 0.6.0.
+- **The direction is a class for every browser.** Firefox has view transitions without types, so `cbuild-back` on the page's root sets the panel's way for all of them: one path, which the unit tests and every engine's browser run share. In a right-to-left page the panel slides toward the start edge.
+- **What is left out.** The deck's growing shadow: a shadow is no `transform` or `opacity`. The phone bar's small board does not turn with the stage's: the stage is where the shopper looks. The 0.8.0 turn's CSS animation (`cbuild-turn`) is the module's `cbuild-turn` now.
+- **The side shown alone moves.** The top has a deck and wheels keyed as the underside's are; a hidden side is not animated.
+
+**Why:** The spec's moments, in one place that tests can read (each `Animation` named by its `id`, its timing read from `getComputedTiming()`), with no moment that can cost the shopper a tap.
+
+**Status:** Accepted. Flagged for Zach: the swap's and the removal's departure from the spec's table.

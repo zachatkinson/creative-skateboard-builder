@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Added
 
+- **The motion** (spec: Milestone 11; D-305): the deck settles onto the stage, the trucks and wheels slide on, a swapped part settles, the stage's photos close over a part removed, the grip lays down nose to tail, the board turns over like a card, the total counts to the new amount, the panel slides the way the shopper goes, and Add to cart sends the board toward the Mini-Cart. Each moves `transform` and `opacity` alone and is cut short by the next press. Under reduced motion or the kit's subtle, each is a fade of 150 ms or less (D-256), and where the browser has no view transitions a step changes at once. The state route's view carries `money` (the total in minor units and the currency) for the counting total (D-257).
+- `--cbuild-panel-shift`, a CSS custom property read on `:root`: how far, and which way, the panel slides as a step crosses over (`16px`).
 - **Motion**, in a kit's Build tab, Layout section: `motion` in `_cbuild_layout` (`schema/kit-layout.json`), `playful` or `subtle`. A kit saved before 1.1.0 is playful. On subtle the builder's root has `cbuild--subtle` (spec: Settings, D-256).
 - A `Server-Timing` header on the state route's answers to a shop manager: the route's time and its queries, to measure it on a real host (#90, D-304).
 - The state route's `picture.items[].large`: the part's photo uncropped, at the shop's single-product size, or null (#82, D-303).

@@ -722,15 +722,59 @@
 					"required": ["turnable", "turned"],
 					"properties": {
 						"turnable": { "description": "Whether the board has a top to show: its deck has a layer image (0.8.0).", "type": "boolean" },
-						"turned": { "description": "Whether the board shows its top: on the grip step, as the server renders it; the store keeps the side the shopper turned it to (0.8.0).", "type": "boolean" }
+						"turned": { "description": "Whether the board shows its top: on the grip step, as the server renders it; the store keeps the side the shopper turned it to (0.8.0).", "type": "boolean" },
+						"board": { "$ref": "#/definitions/drawn", "description": "The underside as drawn: its layers, which the motion compares with the last view's (1.1.0)." },
+						"top": { "$ref": "#/definitions/drawn", "description": "The top as drawn, the same way (1.1.0)." },
+						"items": {
+							"description": "The stage's photos, by slot: a part removed is closed over by the rest (1.1.0).",
+							"type": "array",
+							"items": { "type": "object", "required": ["key"], "properties": { "key": { "type": "string" } }, "additionalProperties": true }
+						}
 					},
 					"additionalProperties": true
+				},
+				"bar": {
+					"type": "object",
+					"required": ["amount"],
+					"properties": {
+						"amount": { "description": "The total as the bar shows it: the server's string, which the counting total writes its frames over and ends on (1.1.0).", "type": "string" }
+					},
+					"additionalProperties": true
+				},
+				"money": {
+					"description": "From 1.1.0: the total in minor units and the shop's way of writing it, for the counting total's in-between frames (D-257).",
+					"type": "object",
+					"required": ["amount", "currency"],
+					"properties": {
+						"amount": { "description": "The total in whole minor units.", "type": "integer" },
+						"currency": { "description": "The answer's `currency`, as it is.", "type": "object", "additionalProperties": true }
+					}
 				}
 			},
 			"additionalProperties": true
 		}
 	},
 	"definitions": {
+		"drawn": {
+			"type": "object",
+			"required": ["layers"],
+			"properties": {
+				"layers": {
+					"type": "array",
+					"items": {
+						"type": "object",
+						"required": ["key", "style"],
+						"properties": {
+							"key": { "description": "The layer's slot and its place among that slot's, such as wheels-3.", "type": "string" },
+							"src": { "description": "Its image, which changes when the part is swapped: on the underside alone, as the top paints its layers from their style.", "type": "string" },
+							"style": { "description": "Where it is drawn, as custom properties.", "type": "string" }
+						},
+						"additionalProperties": true
+					}
+				}
+			},
+			"additionalProperties": true
+		},
 		"layer": {
 			"description": "One layer of the board: a part with a layer image, where it is drawn and the image.",
 			"type": "object",

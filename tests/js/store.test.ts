@@ -2091,11 +2091,49 @@ describe( 'motion', () => {
 		expect( transitions ).toHaveLength( 1 );
 	} );
 
-	it( 'shows the next view at once under reduced motion', async () => {
+	// Milestone 11 (D-256): reduced motion crosses a step over with a fade of 150 ms, not at once; the class on the
+	// page's root gives the stylesheet the fade, and the panel does not slide.
+	it( 'fades the next view in under reduced motion', async () => {
 		const transitions = motion( true, true );
 		await step();
-		expect( transitions ).toHaveLength( 0 );
+		expect( transitions ).toHaveLength( 1 );
+		expect(
+			document.documentElement.classList.contains( 'cbuild-calm' )
+		).toBe( true );
 		expect( state.view ).toEqual( NEXT );
+	} );
+
+	it( 'crosses a step over going on, and back to an earlier step the other way', async () => {
+		motion( false, true );
+		state.view = {
+			...START,
+			progress: [ { current: true }, { current: false } ],
+		};
+		const { form: sheet, next } = form();
+		setElement( sheet );
+		reply = () =>
+			answer( {
+				...NEXT,
+				progress: [ { current: false }, { current: true } ],
+			} );
+		actions.submit(
+			new SubmitEvent( 'submit', { submitter: next, cancelable: true } )
+		);
+		await settle();
+		const page = document.documentElement;
+		expect( page.classList.contains( 'cbuild-back' ) ).toBe( false );
+		expect( page.classList.contains( 'cbuild-calm' ) ).toBe( false );
+		setElement( sheet );
+		reply = () =>
+			answer( {
+				...START,
+				progress: [ { current: true }, { current: false } ],
+			} );
+		actions.submit(
+			new SubmitEvent( 'submit', { submitter: next, cancelable: true } )
+		);
+		await settle();
+		expect( page.classList.contains( 'cbuild-back' ) ).toBe( true );
 	} );
 
 	it( 'shows the next view at once where the browser has no view transitions', async () => {

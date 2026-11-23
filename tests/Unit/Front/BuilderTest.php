@@ -265,6 +265,17 @@ final class BuilderTest extends TestCase {
 		self::assertSame( array( 'stageRight' => true, 'balanced' => true, 'subtle' => true ), $this->show( new BuildLink() )['view']['layout'] );
 	}
 
+	// Spec (configurator): Milestone 11, the counting total (D-257): the view carries the total in minor units and the
+	// shop's way of writing it, so the store can write the frames between one total and the next, and end on the bar's.
+	public function test_the_view_gives_the_total_in_minor_units_and_the_shops_currency_for_the_counting_total(): void {
+		$this->kits->add( self::KIT, Shop::kit(), Shop::parts() );
+		$view = $this->show( new BuildLink( array( SlotKey::DECK => 101 ), null, SlotKey::TRUCKS ) )['view'];
+		self::assertSame( ( new FakeMoney() )->settings(), $view['money']['currency'] );
+		self::assertGreaterThan( 0, $view['money']['amount'] );
+		self::assertSame( ( new FakeMoney() )->text( $view['money']['amount'], 2 ), $view['bar']['amount'], 'the same total the bar shows' );
+		self::assertSame( 0, $this->show( new BuildLink() )['view']['money']['amount'], 'nothing picked' );
+	}
+
 	public function test_the_picture_says_nothing_under_it_at_a_blank_start_where_the_summary_says_it(): void {
 		// Cowork's review, minor 15: "Nothing is chosen yet." showed twice, under the picture and in the summary.
 		$this->kits->add( self::KIT, Shop::kit(), Shop::parts() );

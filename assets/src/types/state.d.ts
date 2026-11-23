@@ -547,7 +547,38 @@ export interface CbuildState {
 			 * Whether the board shows its top: on the grip step, as the server renders it; the store keeps the side the shopper turned it to (0.8.0).
 			 */
 			turned: boolean;
+			board?: Drawn;
+			top?: Drawn1;
+			/**
+			 * The stage's photos, by slot: a part removed is closed over by the rest (1.1.0).
+			 */
+			items?: {
+				key: string;
+				[k: string]: unknown;
+			}[];
 			[k: string]: unknown;
+		};
+		bar?: {
+			/**
+			 * The total as the bar shows it: the server's string, which the counting total writes its frames over and ends on (1.1.0).
+			 */
+			amount: string;
+			[k: string]: unknown;
+		};
+		/**
+		 * From 1.1.0: the total in minor units and the shop's way of writing it, for the counting total's in-between frames (D-257).
+		 */
+		money?: {
+			/**
+			 * The total in whole minor units.
+			 */
+			amount: number;
+			/**
+			 * The answer's `currency`, as it is.
+			 */
+			currency: {
+				[k: string]: unknown;
+			};
 		};
 		[k: string]: unknown;
 	};
@@ -1229,4 +1260,46 @@ export interface Width {
 	 * Whether it is the width asked.
 	 */
 	selected: boolean;
+}
+/**
+ * The underside as drawn: its layers, which the motion compares with the last view's (1.1.0).
+ */
+export interface Drawn {
+	layers: {
+		/**
+		 * The layer's slot and its place among that slot's, such as wheels-3.
+		 */
+		key: string;
+		/**
+		 * Its image, which changes when the part is swapped: on the underside alone, as the top paints its layers from their style.
+		 */
+		src?: string;
+		/**
+		 * Where it is drawn, as custom properties.
+		 */
+		style: string;
+		[k: string]: unknown;
+	}[];
+	[k: string]: unknown;
+}
+/**
+ * The top as drawn, the same way (1.1.0).
+ */
+export interface Drawn1 {
+	layers: {
+		/**
+		 * The layer's slot and its place among that slot's, such as wheels-3.
+		 */
+		key: string;
+		/**
+		 * Its image, which changes when the part is swapped: on the underside alone, as the top paints its layers from their style.
+		 */
+		src?: string;
+		/**
+		 * Where it is drawn, as custom properties.
+		 */
+		style: string;
+		[k: string]: unknown;
+	}[];
+	[k: string]: unknown;
 }

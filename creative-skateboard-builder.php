@@ -3,7 +3,7 @@
  * Plugin Name:       Creative Skateboard Builder
  * Plugin URI:        https://creativebranding.ca
  * Description:       Sells complete skateboards built from parts the shop stocks, with fit checked from specs and each part on its own cart and order line.
- * Version:           1.0.0
+ * Version:           1.1.0
  * Requires at least: 7.0
  * Requires PHP:      8.5
  * Requires Plugins:  woocommerce
@@ -30,7 +30,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'CBUILD_VERSION', '1.0.0' );
+define( 'CBUILD_VERSION', '1.1.0' );
 define( 'CBUILD_FILE', __FILE__ );
 define( 'CBUILD_PATH', plugin_dir_path( __FILE__ ) );
 define( 'CBUILD_URL', plugin_dir_url( __FILE__ ) );

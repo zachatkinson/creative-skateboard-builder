@@ -249,6 +249,12 @@ final class BuilderView {
 			'step'      => $step,
 			'changes'   => $this->changes( $state, $changes, $link, $lines, $label ),
 			'summary'   => $summary,
+			// The total in minor units and how the shop writes it, for the counting total's frames between one total and the
+			// next; the last frame is the server's string (1.1.0, D-257).
+			'money'     => array(
+				'amount'   => Cast::int( Cast::map( Cast::map( $answer['total'] ?? null )['total'] ?? null )['amount'] ?? null ),
+				'currency' => Cast::map( $answer['currency'] ?? null ),
+			),
 			'bar'       => self::bar( $summary, $step, $shown, $review, $panel, $first, $state->id, self::board( $picture, $state->id, self::BAR_SIZE ), self::back( $review, $step, $steps, $link, $url, $label ) ),
 			'picture'   => array(
 				'heading'     => __( 'Your board', 'creative-skateboard-builder' ),

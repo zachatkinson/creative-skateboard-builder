@@ -30,6 +30,18 @@
 import { getConfig, getElement, store } from '@wordpress/interactivity';
 import { fit, size, stage } from './bar';
 import { Navigator, type Move, type View } from './navigate';
+import {
+	build,
+	calm,
+	carted,
+	close,
+	count,
+	cross,
+	cut,
+	measured,
+	play,
+	type Currency,
+} from './motion';
 import { add, body } from './cart';
 import type { CbuildState } from '../types/state';
 
@@ -126,6 +138,8 @@ let early: { control: HTMLElement; clicked: boolean } | null = null;
  * @param event The pointer going down.
  */
 function pressEarly( event: PointerEvent ): void {
+	// No control waits on a moment: a press ends every one at once (spec: Milestone 11).
+	cut();
 	const control =
 		'mouse' === event.pointerType &&
 		0 === event.button &&
@@ -381,24 +395,145 @@ export const browser = {
 };
 
 /**
- * Show a change of view: crossed over with a view transition where the browser has one and the shopper allows
- * motion, at once otherwise (spec: Motion; D-161). The transition waits for the Interactivity API's render, which
- * runs on a microtask, before it takes the new picture; the stylesheet sets its timing.
+ * Where a view is among the steps: the current step's place on the rail, or -1 with none.
+ *
+ * @param view The view.
+ */
+function railPlace( view: Shown ): number {
+	const rail = ( view as { progress?: Array< { current?: boolean } > } )
+		.progress;
+	return ( rail ?? [] ).findIndex( ( step ) => true === step.current );
+}
+
+/**
+ * Show a new step: crossed over with a view transition, the panel sliding the way the shopper is going, or faded where
+ * moments only fade (D-256); at once where the browser has none. The transition waits for the Interactivity API's
+ * render, which runs on a microtask, before it takes the new picture; the stylesheet sets its timing.
  *
  * @param change What changes the view.
+ * @param before The view before.
+ * @param after  The view now.
  */
-function motion( change: () => void ): void {
-	if (
-		'function' !== typeof document.startViewTransition ||
-		window.matchMedia?.( '(prefers-reduced-motion: reduce)' ).matches
-	) {
-		change();
-		return;
+function motion( change: () => void, before: Shown, after: Shown ): void {
+	cross( change, railPlace( after ) >= railPlace( before ), calm( root ) );
+}
+
+/**
+ * The board's element on the stage that shows the side now shown.
+ *
+ * @param turned Whether the top is shown.
+ */
+function board( turned: boolean ): Element | null {
+	return (
+		root?.querySelector(
+			turned
+				? '.cbuild-picture .cbuild-board--top'
+				: '.cbuild-picture .cbuild-board:not(.cbuild-board--top)'
+		) ?? null
+	);
+}
+
+/**
+ * The board turns over like a card, to the side now shown (spec: Milestone 11, Show the top).
+ *
+ * @param toTop Whether the top is now shown.
+ */
+function turnOver( toTop: boolean ): void {
+	const shown = board( toTop );
+	if ( shown ) {
+		play(
+			shown,
+			'turn',
+			[ { transform: 'scaleX(0.1)' }, { transform: 'none' } ],
+			calm( root )
+		);
 	}
-	document.startViewTransition( () => {
-		change();
-		return new Promise< void >( ( done ) => window.setTimeout( done ) );
-	} );
+}
+
+/**
+ * Whether a view takes a part off the stage that the last one had.
+ *
+ * @param before The view before.
+ * @param after  The view now.
+ */
+function removes( before: Shown, after: Shown ): boolean {
+	const now = new Set(
+		( after.picture?.items ?? [] ).map( ( item ) => item.key )
+	);
+	return ( before.picture?.items ?? [] ).some(
+		( item ) => ! now.has( item.key )
+	);
+}
+
+/**
+ * Play what a new view shows on the stage, once it is drawn: each part new to the board or swapped, the grip on its
+ * top, the photos closing over a part removed, and the board turning to a side shown that was not.
+ *
+ * @param before The view before.
+ * @param after  The view now.
+ * @param was    Where the stage's photos were, where a part was removed.
+ */
+function moments(
+	before: Shown,
+	after: Shown,
+	was: Map< Element, DOMRect > | undefined
+): void {
+	const quiet = calm( root );
+	// The side shown alone: the top has a deck and wheels of its own, keyed as the underside's are.
+	const upper = true === after.picture?.turned;
+	const side = upper ? 'top' : 'board';
+	build(
+		board( upper ),
+		before.picture?.turned === after.picture?.turned
+			? ( before.picture?.[ side ]?.layers ?? [] )
+			: ( after.picture?.[ side ]?.layers ?? [] ),
+		after.picture?.[ side ]?.layers ?? [],
+		quiet
+	);
+	if ( was ) {
+		close( was, quiet );
+	}
+	if ( state.turning ) {
+		turnOver( true === after.picture?.turned );
+	}
+}
+
+/**
+ * The total counts from the old amount to the new, each frame in the bar, and ends on the server's string; the
+ * estimate under it fades in when it changes (spec: Milestone 11, Price changes; D-257). The status region says the
+ * total once, as before: the bar's amount is hidden from screen readers.
+ *
+ * @param before The view before.
+ * @param after  The view now, just shown.
+ */
+function priced( before: Shown, after: Shown ): void {
+	const quiet = calm( root );
+	if ( before.money && after.money && after.bar ) {
+		const bar = after.bar;
+		count(
+			before.money.amount,
+			after.money.amount,
+			bar.amount,
+			after.money.currency as unknown as Currency,
+			( text ) => {
+				state.view.bar!.amount = text;
+			},
+			quiet
+		);
+	}
+	const estimate = root?.querySelector( '.cbuild-bar__estimate' );
+	const was = ( before.bar as { estimate?: string } | undefined )?.estimate;
+	const now = ( after.bar as { estimate?: string } | undefined )?.estimate;
+	if ( estimate && was !== now ) {
+		play(
+			estimate,
+			'total',
+			[ { opacity: 0 }, { opacity: 1 } ],
+			quiet,
+			0,
+			'none'
+		);
+	}
 }
 
 /**
@@ -565,6 +700,8 @@ function nav( state: State ): Navigator {
 						? 'push'
 						: history;
 				const before = state.view;
+				// A new answer ends whatever moment the last one started.
+				cut();
 				sided( shown );
 				// A side shown that was not is a turn the shopper sees, where motion is allowed; the same side ends the
 				// last turn, so a board shown again later is not turned.
@@ -572,11 +709,24 @@ function nav( state: State ): Navigator {
 					undefined !== shown.picture &&
 					undefined !== before.picture &&
 					shown.picture.turned !== before.picture.turned;
+				// Where a part comes off the stage, its photos are measured before, to close the gap after.
+				const was =
+					root && removes( before, shown )
+						? measured( [
+								...root.querySelectorAll(
+									'.cbuild-picture .cbuild-picture__item'
+								),
+							] )
+						: undefined;
 				const change = () => {
 					state.view = shown;
 					state.added = false;
 					state.limited = '';
 					say( state, shown, turned, config, before );
+					priced( before, shown );
+					window.requestAnimationFrame( () =>
+						moments( before, shown, was )
+					);
 				};
 				// Only a new step crosses over (spec: Motion): a transition takes the screen's taps while it
 				// runs, so one for a view on the same step would lose a Next tapped straight after a pick.
@@ -584,7 +734,7 @@ function nav( state: State ): Navigator {
 					shown.step.slot !== before.step.slot ||
 					shown.isChanges !== before.isChanges
 				) {
-					motion( change );
+					motion( change, before, shown );
 				} else {
 					steady( change );
 				}
@@ -810,6 +960,7 @@ const { state } = store(
 				) {
 					return;
 				}
+				cut();
 				chosen( state.view, input.value );
 				root?.dispatchEvent(
 					new CustomEvent( 'cbuild:pick', {
@@ -878,6 +1029,10 @@ const { state } = store(
 				);
 				state.added = true;
 				told( state, form.ownerDocument );
+				carted(
+					board( true === state.view.picture?.turned ),
+					calm( root )
+				);
 			},
 			/**
 			 * Open or fold the phone's filters behind their button.
@@ -897,6 +1052,8 @@ const { state } = store(
 				top = ! picture.turned;
 				state.turning = true;
 				picture.turned = ! picture.turned;
+				const shown = picture.turned;
+				window.requestAnimationFrame( () => turnOver( shown ) );
 			},
 			/**
 			 * The screen changed: fit the phone bar into the theme again (D-163).

@@ -1787,23 +1787,35 @@
 }
 
 /*
- * Motion (spec: Motion; D-161). Three movements, each 150 to 250 ms, easing out, moving `transform` and `opacity`
- * alone, none looping and none in the way of a tap: the chosen card settles, a part slides into the picture, and a
- * step crosses over to the next. Nothing moves where the shopper asks for reduced motion, or where the browser has no
- * view transitions (the store then shows the view at once).
+ * Motion (spec: Milestone 11, the motion; D-161, D-256, D-305). The board's parts, the total and Add to cart move
+ * through the store's motion module, with the Web Animations API; a new step crosses over by the browser's view
+ * transition, timed here. Each moves `transform` and `opacity` alone, and none waits on a tap. Where the shopper asks
+ * for reduced motion, or the kit's Motion is subtle, the store fades instead (`cbuild-calm` on the page's root for a
+ * step), in 150 ms, and nothing slides.
  *
  * The view transition's pseudo-elements hang off the page's root, not the builder's, so their timing reads
  * `--cbuild-duration` and `--cbuild-ease` with the same values as fallbacks: a theme that changes them sets them on
  * `:root` as well as on `.cbuild`.
  */
 @media (prefers-reduced-motion: no-preference) {
-	:where(.cbuild-card:has(> .cbuild-card__control:checked)) {
+	:where(.cbuild:not(.cbuild--subtle))
+		:where(.cbuild-card:has(> .cbuild-card__control:checked)) {
 		animation: cbuild-settle var(--cbuild-duration) var(--cbuild-ease);
 	}
 
-	:where(.cbuild-picture__item, .cbuild-board__layer) {
+	:root:not(.cbuild-calm)
+		:where(.cbuild-picture__item, .cbuild-board__layer) {
 		view-transition-class: cbuild-part;
 		view-transition-name: match-element;
+	}
+
+	/* Next step: the panel's content slides 16 px the way the shopper is going, and the rail's marker follows. */
+	:root:not(.cbuild-calm) :where(.cbuild__panel) {
+		view-transition-name: cbuild-panel;
+	}
+
+	:root:not(.cbuild-calm) :where(.cbuild-progress__step--current) {
+		view-transition-name: cbuild-marker;
 	}
 
 	::view-transition-group(*),
@@ -1816,27 +1828,60 @@
 		);
 	}
 
+	::view-transition-new(cbuild-panel) {
+		animation-name: cbuild-panel-in;
+	}
+
+	::view-transition-old(cbuild-panel) {
+		animation-name: cbuild-panel-out;
+	}
+
 	/* A part new to the picture slides up into its place. */
 	::view-transition-new(*.cbuild-part):only-child {
 		animation-name: cbuild-arrive;
 	}
+}
 
-	/* The page under a transition still takes taps. */
-	::view-transition {
-		pointer-events: none;
-	}
+/* Where motion is calm a step fades, whatever the media query: the store sets the class only then. */
+:root.cbuild-calm::view-transition-group(*),
+:root.cbuild-calm::view-transition-old(*),
+:root.cbuild-calm::view-transition-new(*) {
+	animation-duration: 150ms;
+	animation-timing-function: linear;
+}
 
-	/* The board turns over about its length to the side now shown (#46): once a turn is seen, never on load. */
-	:where(.cbuild-picture--turning, .cbuild-bar__picture--turning)
-		> :where(.cbuild-board) {
-		animation: cbuild-turn var(--cbuild-duration) var(--cbuild-ease);
+/* The page under a transition still takes taps. */
+::view-transition {
+	pointer-events: none;
+}
+
+/* The grip lays down from the nose, at the top of the board. */
+:where(.cbuild-board--top .cbuild-board__layer--grip) {
+	transform-origin: 50% 0;
+}
+
+@keyframes cbuild-panel-in {
+	from {
+		opacity: 0;
+		transform: translateX(var(--cbuild-panel-shift, 16px));
 	}
 }
 
-@keyframes cbuild-turn {
-	from {
-		transform: scaleX(0.1);
+@keyframes cbuild-panel-out {
+	to {
+		opacity: 0;
+		transform: translateX(calc(-1 * var(--cbuild-panel-shift, 16px)));
 	}
+}
+
+/* Back, the other way; in a right-to-left page, the start edge is on the right. */
+:root.cbuild-back,
+:root[dir="rtl"]:not(.cbuild-back) {
+	--cbuild-panel-shift: -16px;
+}
+
+:root[dir="rtl"].cbuild-back {
+	--cbuild-panel-shift: 16px;
 }
 
 @keyframes cbuild-settle {

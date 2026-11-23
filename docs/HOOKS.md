@@ -703,9 +703,10 @@ The builder's stylesheet is the Builder block's `style` (`build/builder/style-in
 | `--cbuild-ground` | 0.6.0 | The phone bar's ground, and its parts list's | `--wp--preset--color--base`, then the colour that contrasts with the builder's text (`contrast-color()`), else `Canvas` |
 | `--cbuild-on-ground` | 0.6.0 | Words on the phone bar's ground | `--wp--preset--color--contrast`, then the builder's text where the browser can pick a ground that contrasts with it, else `CanvasText` |
 | `--cbuild-bar-height` | 0.6.0 | The phone bar's least height, which focus is kept clear of | `4.25rem` |
-| `--cbuild-duration` | 0.6.0 | How long each movement lasts: the chosen card settling, a part arriving in the picture, a step crossing over. The step's crossing is the page's view transition, which reads it on `:root`, so set it there too | `200ms` |
+| `--cbuild-duration` | 0.6.0 | How long each movement lasts: the chosen card settling, a part arriving in the picture, a step crossing over. The step's crossing is the page's view transition, which reads it on `:root`, so set it there too. From 1.1.0 the board's moments have the spec's own times (below), and this times the card and the step | `200ms` |
 | `--cbuild-bar-offset` | 0.6.0 | How far above the foot of the screen the phone bar sits, set on the page's root (below) | `0px` |
 | `--cbuild-ease` | 0.6.0 | How each movement eases, read as `--cbuild-duration` is | `cubic-bezier(0.2, 0, 0, 1)` |
+| `--cbuild-panel-shift` | 1.1.0 | How far, and which way, the panel slides as a step crosses over, read on `:root` as the view transition is. The builder sets it to `-16px` going back and in a right-to-left page; a theme sets the distance for going on | `16px` |
 | `--cbuild-top` | 1.0.0 | The height of anything the theme keeps at the top of the screen, such as a sticky header: the stage sticks below it on a phone, and the stage and the panel fit under it on a desktop | `0px` |
 | `--cbuild-stage-height` | 1.0.0 | The stage's height on a phone and a tablet, where it stays at the top above the step | `34svh` (D-284) |
 | `--cbuild-stage-size` | 1.0.0 | Set by the builder's script, not by a theme: how far down the screen the stage reaches while it stays at the top, so the page scrolls a control in focus clear of it (WCAG 2.4.11). A theme can read it for its own sticky elements | `0px` |
@@ -722,7 +723,16 @@ From 0.7.0 the builder sets these on the board and its layers, for a theme's rul
 | `--cbuild-layer-height` | 0.7.0 | Its height, as a share of the board's |
 | `--cbuild-bar-size` | 1.0.0 | On the page's root, with JavaScript: the bar's height while it sticks over the page, which the page's scroll padding reads so focus stays clear of it (D-272) |
 
-Nothing moves where the shopper asks for reduced motion.
+From 1.1.0 the builder's motion (spec: Milestone 11; D-256, D-305). Each moment moves `transform` and `opacity` alone, and is cut short by the shopper's next press or pick:
+
+| Moment | How | Time | Its name |
+| --- | --- | --- | --- |
+| Deck picked, trucks, wheels, a part swapped, grip, Show the top, Add to cart | The Web Animations API, on the board's own layers | 280, 240 (60 apart), 220 (40 apart), 200, 300, 400, 400 ms | The `Animation`'s `id`: `cbuild-deck`, `cbuild-trucks`, `cbuild-wheels`, `cbuild-swapped`, `cbuild-grip`, `cbuild-turn`, `cbuild-cart` |
+| A part removed | The stage's other photos slide into their places | 180 ms | `cbuild-removed` |
+| Price changes | The bar's total counts between amounts written from the route's `currency`, `aria-hidden`, and ends on the server's string; the estimate fades in | 300 ms | `cbuild-total` (the estimate) |
+| Next step | The page's view transition: the panel (`view-transition-name: cbuild-panel`) slides 16 px the way the shopper goes, and the rail's current step (`cbuild-marker`) follows | 200 ms | `cbuild-panel-in`, `cbuild-panel-out` |
+
+Where the shopper asks for reduced motion, or the kit's Motion is subtle (the root then has `cbuild--subtle`), each is a fade of opacity alone in 150 ms or less, and the total changes at once. While a step crosses over, the page's root has `cbuild-calm` where it only fades and `cbuild-back` going back. A theme's own animations on these elements are left alone, but one on `transform` would fight the moments.
 
 On a phone the bar sits above any bar the theme fixes to the foot of the screen: with JavaScript the builder measures it and sets `--cbuild-bar-offset` on the page's root, which the bar's place and the page's scroll padding read. A theme may set it itself. Where an ancestor of the builder has `overflow: hidden`, which would keep the bar from sticking, the builder gives it `overflow: clip` in its place, and a plain block `display: flow-root` (D-163).
 
