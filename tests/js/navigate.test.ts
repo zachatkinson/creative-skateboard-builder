@@ -6,6 +6,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
 	Navigator,
+	HOLD,
 	SLOW,
 	WAIT,
 	type Deps,
@@ -288,6 +289,107 @@ describe( 'Navigator', () => {
 			'https://shop.example/?cbuild%5Bdeck%5D=11',
 		] );
 		expect( h.pushed ).toEqual( [] );
+	} );
+
+	// The slow deck swap (M11, D-308): a pick made with a press, a tap or a click, asks at once; arrowing through the
+	// radios still waits, so a run of arrows asks once.
+	it( 'asks at once for a pick made by a press, and still waits for one made by the arrows', () => {
+		const h = harness();
+		const nav = new Navigator( h.deps );
+		nav.pick(
+			{ fields: STEP, history: 'replace', fallback: () => undefined },
+			true
+		);
+		expect( h.asked, 'no wait' ).toHaveLength( 1 );
+
+		const arrows = harness();
+		new Navigator( arrows.deps ).pick( {
+			fields: STEP,
+			history: 'replace',
+			fallback: () => undefined,
+		} );
+		expect( arrows.asked ).toHaveLength( 0 );
+		vi.advanceTimersByTime( WAIT );
+		expect( arrows.asked ).toHaveLength( 1 );
+	} );
+
+	// Swap in once painted (D-308): the board's new image is decoded before the view is shown, so the old board stays
+	// whole until the new one can take its place, never half drawn; the wait says it is pending, and is capped.
+	it( 'shows an answer once the store has its pictures ready, waiting meanwhile, and at most HOLD ms', async () => {
+		expect( HOLD ).toBe( 1000 );
+		const h = harness();
+		let ready: () => void = () => undefined;
+		const settling: View[] = [];
+		h.deps.settle = ( v ) => {
+			settling.push( v );
+			return new Promise< void >( ( resolve ) => {
+				ready = resolve;
+			} );
+		};
+		new Navigator( h.deps ).go( {
+			fields: STEP,
+			history: 'push',
+			fallback: () => undefined,
+		} );
+		h.reply( answer( { view: view( 'https://shop.example/?deck' ) } ) );
+		await settle();
+		expect( settling.map( ( v ) => v.url ) ).toEqual( [
+			'https://shop.example/?deck',
+		] );
+		expect( h.shown, 'not yet' ).toEqual( [] );
+		vi.advanceTimersByTime( SLOW );
+		expect( h.pending, 'the wait for the picture is a wait' ).toEqual( [
+			true,
+		] );
+		ready();
+		await settle();
+		expect( h.shown.map( ( v ) => v.url ) ).toEqual( [
+			'https://shop.example/?deck',
+		] );
+		expect( h.pending ).toEqual( [ true, false ] );
+
+		const stuck = harness();
+		stuck.deps.settle = () => new Promise< void >( () => undefined );
+		new Navigator( stuck.deps ).go( {
+			fields: STEP,
+			history: 'push',
+			fallback: () => undefined,
+		} );
+		stuck.reply(
+			answer( { view: view( 'https://shop.example/?stuck' ) } )
+		);
+		await settle();
+		vi.advanceTimersByTime( HOLD - 1 );
+		await settle();
+		expect( stuck.shown ).toEqual( [] );
+		vi.advanceTimersByTime( 1 );
+		await settle();
+		expect(
+			stuck.shown.map( ( v ) => v.url ),
+			'never held longer'
+		).toEqual( [ 'https://shop.example/?stuck' ] );
+	} );
+
+	it( 'drops an answer overtaken while its pictures were readied', async () => {
+		const h = harness();
+		const nav = new Navigator( h.deps );
+		const waits: Array< () => void > = [];
+		h.deps.settle = () =>
+			new Promise< void >( ( resolve ) => {
+				waits.push( resolve );
+			} );
+		nav.go( { fields: STEP, history: 'push', fallback: () => undefined } );
+		h.reply( answer( { view: view( 'https://shop.example/?first' ) } ) );
+		await settle();
+		nav.go( { fields: STEP, history: 'push', fallback: () => undefined } );
+		h.reply( answer( { view: view( 'https://shop.example/?second' ) } ) );
+		await settle();
+		waits[ 0 ]?.();
+		waits[ 1 ]?.();
+		await settle();
+		expect( h.shown.map( ( v ) => v.url ) ).toEqual( [
+			'https://shop.example/?second',
+		] );
 	} );
 
 	it( 'drops an answer a later request has overtaken, and aborts it', async () => {

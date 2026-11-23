@@ -283,6 +283,7 @@ final class StateAnswer {
 				'change' => null === $step?->counted() ? '' : Words::change( $kind, $text ),
 			);
 		};
+		$boards   = SlotKey::DECK === $state->step ? $this->boards( $state, array_merge( $offered, array_map( static fn( ShelfLook $look ): Option => $look->option, null === $view ? array() : $view->listing->looks ) ) ) : array();
 		$option   = static fn( Option $option, string $slot, ?StateStep $step ): array => array(
 			'id'          => $option->part->id,
 			'brand'       => $option->part->brand,
@@ -297,6 +298,9 @@ final class StateAnswer {
 			'messages'    => self::messages( $option->findings ),
 			// A card as it is listed: the large photo is the picture's alone (#82), and would add to every card.
 			'card'        => isset( $cards[ $option->part->id ] ) ? array_diff_key( $cards[ $option->part->id ], array( 'large' => true ) ) : null,
+			// From 1.1.0, on the deck step: the board the deck would draw alone, so its image can be fetched as the
+			// shopper points at the card (D-308). Null elsewhere, and for a deck with no layer image.
+			'board'       => $boards[ $option->part->id ] ?? null,
 		);
 		$problem  = static fn( BuildProblem $problem ): array => array(
 			'code'     => $problem->code->value,
@@ -438,6 +442,36 @@ final class StateAnswer {
 			'bearings_included' => Builder::bearingsIncluded( $state ),
 			'currency'          => $this->money->settings(),
 		);
+	}
+
+	/**
+	 * The board each deck would draw alone, by its ID: the picture's layout and renderer, the deck its one layer
+	 * (D-308). A deck's layer is the board's whole length, so its size in the picture is the same whatever else is
+	 * picked, and the browser chooses the same file for it.
+	 *
+	 * @param State        $state   The build.
+	 * @param list<Option> $options The decks the step lists.
+	 * @return array<int, array{width: int, height: int, layers: list<array<string, mixed>>}>
+	 */
+	private function boards( State $state, array $options ): array {
+		if ( null === $this->artwork ) {
+			return array();
+		}
+		$decks = array();
+		foreach ( $options as $option ) {
+			$decks[ $option->part->id ] = $option->part;
+		}
+		$boards = array();
+		foreach ( $this->artwork->decks( array_values( $decks ) ) as $id => $art ) {
+			$layout        = Layout::of( Picks::none()->with( SlotKey::DECK, $decks[ $id ] ), $state->kit->picture );
+			$drawn         = $this->renderer->render( $layout, array( $id => $art ) );
+			$boards[ $id ] = array(
+				'width'  => $drawn['width'],
+				'height' => $drawn['height'],
+				'layers' => $drawn['layers'],
+			);
+		}
+		return $boards;
 	}
 
 	/**

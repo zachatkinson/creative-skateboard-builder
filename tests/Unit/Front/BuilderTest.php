@@ -495,6 +495,26 @@ final class BuilderTest extends TestCase {
 		self::assertStringNotContainsString( '--cbuild-grip-size', $top['layers'][1]['style'], 'a 1-inch swatch from 1.0.x is repeated nose to tail' );
 	}
 
+	// The slow deck swap (M11, D-308): a deck's card carries the files and sizes its board's image will be drawn with,
+	// the same the picture uses once it is picked, so the store fetches the very file the stage will ask for.
+	public function test_a_deck_card_carries_the_files_and_sizes_the_picture_will_draw_its_board_with(): void {
+		$this->topArt();
+		$cards   = array_column( $this->show( new BuildLink( array(), null, SlotKey::DECK ) )['view']['step']['options'], 'preload', 'id' );
+		$picture = $this->show( new BuildLink( array( SlotKey::DECK => 101 ), null, SlotKey::TRUCKS ) )['view']['picture']['board']['layers'][0];
+		$sets    = array_column( $picture['sources'], 'srcset', 'type' );
+		self::assertSame(
+			array(
+				'shown' => true,
+				'src'   => $picture['src'],
+				'avif'  => $sets['image/avif'] ?? '',
+				'webp'  => $sets['image/webp'],
+				'sizes' => $picture['sizes'],
+			),
+			$cards[101]
+		);
+		self::assertSame( array( 'shown' => false, 'src' => '', 'avif' => '', 'webp' => '', 'sizes' => '' ), $cards[102], 'a deck with no layer image' );
+	}
+
 	public function test_a_deck_with_no_layer_image_has_no_top_to_turn_to_even_on_the_grip_step(): void {
 		$this->topArt();
 		$this->layers->attachments = array( 701 => 71 );

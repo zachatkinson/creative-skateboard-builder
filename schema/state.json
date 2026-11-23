@@ -695,7 +695,29 @@
 					"required": ["slot", "options"],
 					"properties": {
 						"slot": { "description": "The step's slot, or empty at the review.", "type": "string" },
-						"options": { "description": "The step's listed parts.", "type": "array", "items": { "type": "object" } },
+						"options": {
+							"description": "The step's listed parts.",
+							"type": "array",
+							"items": {
+								"type": "object",
+								"properties": {
+									"id": { "description": "The part's ID.", "type": "integer" },
+									"preload": {
+										"description": "A deck's board image, which the store fetches as the shopper points at its card: the files the picture will draw it with once picked (1.1.0, D-308).",
+										"type": "object",
+										"required": ["shown", "src", "avif", "webp", "sizes"],
+										"properties": {
+											"shown": { "description": "Whether the deck has a board image.", "type": "boolean" },
+											"src": { "description": "The image's own file.", "type": "string" },
+											"avif": { "description": "Its AVIF files, as a srcset, or empty.", "type": "string" },
+											"webp": { "description": "Its WebP files, as a srcset, or empty.", "type": "string" },
+											"sizes": { "description": "The sizes the picture draws it at.", "type": "string" }
+										}
+									}
+								},
+								"additionalProperties": true
+							}
+						},
 						"more": {
 							"type": "object",
 							"required": ["added"],
@@ -767,7 +789,21 @@
 						"properties": {
 							"key": { "description": "The layer's slot and its place among that slot's, such as wheels-3.", "type": "string" },
 							"src": { "description": "Its image, which changes when the part is swapped: on the underside alone, as the top paints its layers from their style.", "type": "string" },
-							"style": { "description": "Where it is drawn, as custom properties.", "type": "string" }
+							"style": { "description": "Where it is drawn, as custom properties.", "type": "string" },
+							"sizes": { "description": "Its image's sizes, on the underside: the store readies the new deck's before the view is shown (1.1.0, D-308).", "type": "string" },
+							"sources": {
+								"description": "Its image's files by type, on the underside (1.1.0, D-308).",
+								"type": "array",
+								"items": {
+									"type": "object",
+									"required": ["type", "srcset"],
+									"properties": {
+										"type": { "type": "string" },
+										"srcset": { "type": "string" }
+									},
+									"additionalProperties": true
+								}
+							}
 						},
 						"additionalProperties": true
 					}
@@ -959,7 +995,8 @@
 				"picked",
 				"recommended",
 				"messages",
-				"card"
+				"card",
+				"board"
 			],
 			"properties": {
 				"id": {
@@ -1053,6 +1090,41 @@
 					"oneOf": [
 						{
 							"$ref": "#/definitions/card"
+						},
+						{
+							"type": "null"
+						}
+					]
+				},
+				"board": {
+					"description": "From 1.1.0, on the deck step: the board this deck would draw alone, in the picture's units, its one layer the deck's, so a page can fetch its image before it is picked (D-308). Null on every other step, and for a deck with no layer image.",
+					"oneOf": [
+						{
+							"type": "object",
+							"required": [
+								"width",
+								"height",
+								"layers"
+							],
+							"properties": {
+								"width": {
+									"description": "The board's width, as the picture's.",
+									"type": "integer",
+									"minimum": 0
+								},
+								"height": {
+									"description": "The board's length, as the picture's.",
+									"type": "integer",
+									"minimum": 0
+								},
+								"layers": {
+									"description": "The deck's layer, as the picture's layers are.",
+									"type": "array",
+									"items": {
+										"$ref": "#/definitions/layer"
+									}
+								}
+							}
 						},
 						{
 							"type": "null"

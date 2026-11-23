@@ -3774,6 +3774,212 @@ test.describe( 'Motion', () => {
 // filled into it and a bolt head at each hole; the grip step shows it, and a button by the board turns it over.
 // Spec: The layout. The stage holds the whole board at every width: beside the panel on a desktop, and in the short
 // strip on top when the layout is stacked, a tablet's as a phone's, where the board is turned a quarter turn (D-280).
+// The slow deck swap (M11, D-308; NN/g's response limits, Baymard's loading feedback, web.dev's intent preloading): the
+// board's image is fetched while the pointer rests on a deck's card, a press asks at once, and on a slow network the
+// old board stays whole, dimmed with a running line from 300 ms, until the new one can be drawn whole.
+test.describe( 'The deck swap', () => {
+	test.beforeEach( ( {}, info ) => {
+		test.skip(
+			! info.project.name.startsWith( 'chromium' ) ||
+				info.project.name.includes( 'phone' ),
+			'a pointer to rest, and the network slowed through Chromium'
+		);
+	} );
+
+	const start = ( page: Page ) =>
+		page.goto(
+			linkTo( {
+				deck: id( 'builder-test-deck-8-0' ),
+				step: 'deck',
+				_width: '8.5in',
+			} )
+		);
+	const card = ( page: Page ) =>
+		page.locator( '.cbuild-cards > li' ).filter( {
+			has: page.getByRole( 'radio', {
+				name: 'Choose Builder test deck 8.5',
+			} ),
+		} );
+
+	test( "fetches a deck's board image while the pointer rests on its card, and asks for a pressed pick at once", async ( {
+		page,
+	} ) => {
+		await page.emulateMedia( { reducedMotion: 'no-preference' } );
+		await start( page );
+		await expect( page.locator( '.cbuild[data-ready]' ) ).toHaveCount( 1 );
+		const layers = () =>
+			page.evaluate( () =>
+				performance
+					.getEntriesByType( 'resource' )
+					.filter( ( entry ) =>
+						/\/creative-skateboard-builder\/layers\/|-layer[^/]*\.png/.test(
+							entry.name
+						)
+					)
+					.map( ( entry ) => entry.name )
+			);
+		const before = await layers();
+		await card( page ).hover();
+		await expect
+			.poll( async () => ( await layers() ).length, {
+				message: "the 8.5 deck's board image, before any pick",
+			} )
+			.toBeGreaterThan( before.length );
+		await expect( page, 'pointing picks nothing' ).toHaveURL(
+			new RegExp( `deck%5D=${ id( 'builder-test-deck-8-0' ) }(&|$)` )
+		);
+
+		await page.evaluate( () => {
+			const w = window as unknown as { asked?: number; pressed?: number };
+			document.addEventListener(
+				'pointerdown',
+				() => {
+					w.pressed = performance.now();
+				},
+				true
+			);
+			new PerformanceObserver( ( list ) => {
+				for ( const entry of list.getEntries() ) {
+					if (
+						/cbuild(\/|%2F)v1/i.test( entry.name ) &&
+						undefined === w.asked
+					) {
+						w.asked = entry.startTime;
+					}
+				}
+			} ).observe( { type: 'resource' } );
+		} );
+		// The card's radio covers it, as the shopper's press lands.
+		await card( page ).getByRole( 'radio' ).click();
+		await expect
+			.poll( () =>
+				page.evaluate( () => {
+					const w = window as unknown as {
+						asked?: number;
+						pressed?: number;
+					};
+					return undefined === w.asked || undefined === w.pressed
+						? null
+						: w.asked - w.pressed;
+				} )
+			)
+			.not.toBeNull();
+		const waited = await page.evaluate( () => {
+			const w = window as unknown as { asked: number; pressed: number };
+			return w.asked - w.pressed;
+		} );
+		expect( waited, 'asked at once, not 150 ms after' ).toBeLessThan( 100 );
+	} );
+
+	test( 'on Slow 4G keeps the old board whole, says it is drawing from 300 ms, and draws the new one whole', async ( {
+		page,
+	} ) => {
+		await page.emulateMedia( { reducedMotion: 'no-preference' } );
+		await start( page );
+		await expect( page.locator( '.cbuild[data-ready]' ) ).toHaveCount( 1 );
+		const cdp = await page.context().newCDPSession( page );
+		// Chrome DevTools' Slow 4G.
+		await cdp.send( 'Network.emulateNetworkConditions', {
+			offline: false,
+			latency: 562.5,
+			downloadThroughput: ( 1.4 * 1024 * 1024 ) / 8,
+			uploadThroughput: ( 675 * 1024 ) / 8,
+		} );
+		await page.evaluate( () => {
+			const w = window as unknown as {
+				seen: Array< {
+					at: number;
+					drawing: boolean;
+					complete: boolean;
+					src: string;
+				} >;
+				t0: number;
+			};
+			w.seen = [];
+			const picture = document.querySelector( '#cbuild-picture' )!;
+			const note = () => {
+				const image = picture.querySelector< HTMLImageElement >(
+					'.cbuild-board:not(.cbuild-board--top) .cbuild-board__layer--deck img'
+				);
+				w.seen.push( {
+					at: performance.now() - w.t0,
+					drawing: 'true' === picture.getAttribute( 'aria-busy' ),
+					complete:
+						!! image && image.complete && image.naturalWidth > 0,
+					src: image?.getAttribute( 'src' ) ?? '',
+				} );
+			};
+			new MutationObserver( note ).observe( picture, {
+				attributes: true,
+				subtree: true,
+				attributeFilter: [ 'aria-busy', 'src', 'srcset', 'class' ],
+			} );
+			document.addEventListener(
+				'pointerdown',
+				() => {
+					w.t0 = performance.now();
+				},
+				true
+			);
+		} );
+		const was = await page
+			.locator(
+				'#cbuild-picture .cbuild-board:not(.cbuild-board--top) .cbuild-board__layer--deck img'
+			)
+			.evaluate(
+				( image: HTMLImageElement ) => image.getAttribute( 'src' ) ?? ''
+			);
+		// The keyboard's way in, so no resting pointer fetched the image first.
+		await page
+			.getByRole( 'radio', { name: 'Choose Builder test deck 8.5' } )
+			.focus();
+		await page.evaluate( () => {
+			( window as unknown as { t0: number } ).t0 = performance.now();
+		} );
+		await page.keyboard.press( 'Space' );
+		await expect(
+			page.locator( '#cbuild-picture' ),
+			'says it is drawing'
+		).toHaveAttribute( 'aria-busy', 'true', { timeout: 10_000 } );
+		await expect(
+			page.locator( '#cbuild-picture' ),
+			'until the board is drawn'
+		).toHaveAttribute( 'aria-busy', 'false', { timeout: 20_000 } );
+		const seen = await page.evaluate(
+			() =>
+				(
+					window as unknown as {
+						seen: Array< {
+							at: number;
+							drawing: boolean;
+							complete: boolean;
+							src: string;
+						} >;
+					}
+				 ).seen
+		);
+		const first = seen.find( ( entry ) => entry.drawing );
+		expect(
+			first?.at,
+			'not before 300 ms: a quick answer never flickers'
+		).toBeGreaterThanOrEqual( 290 );
+		const swapped = seen.find(
+			( entry ) => '' !== entry.src && entry.src !== was
+		);
+		expect( swapped, 'the new deck drawn' ).toBeDefined();
+		expect(
+			swapped?.complete,
+			"whole when it takes the old one's place"
+		).toBe( true );
+		await cdp.send( 'Network.emulateNetworkConditions', {
+			offline: false,
+			latency: 0,
+			downloadThroughput: -1,
+			uploadThroughput: -1,
+		} );
+	} );
+} );
+
 test.describe( 'The board on the stage', () => {
 	for ( const [ theme, width, height ] of [
 		[ 'kadence', 390, 844 ],
@@ -4663,8 +4869,10 @@ test.describe( 'The phone bar', () => {
 		} );
 		await page.goto( linkTo( { _width: '8in' } ) );
 		const bar = page.locator( '.cbuild-bar' );
+		// Listened for first: a press asks at once (D-308), so the request leaves with the click.
+		const asked = page.waitForRequest( /\/cbuild\/v1\/kits\/\d+\/state/ );
 		await page.locator( '.cbuild-card' ).first().click();
-		await page.waitForRequest( /\/cbuild\/v1\/kits\/\d+\/state/ );
+		await asked;
 		await bar.locator( 'summary' ).click();
 		const lines = bar.locator( '.cbuild-bar__lines' );
 		await expect( lines ).toBeVisible();
@@ -4691,8 +4899,10 @@ test.describe( 'The phone bar', () => {
 			await route.continue();
 		} );
 		await page.goto( linkTo( { _width: '8in' } ) );
+		// Listened for first: a press asks at once (D-308), so the request leaves with the click.
+		const asked = page.waitForRequest( /\/cbuild\/v1\/kits\/\d+\/state/ );
 		await page.locator( '.cbuild-card' ).first().click();
-		await page.waitForRequest( /\/cbuild\/v1\/kits\/\d+\/state/ );
+		await asked;
 		const total = await page.locator( '.cbuild-bar summary' ).boundingBox();
 		await page.mouse.move(
 			( total?.x ?? 0 ) + ( total?.width ?? 0 ) / 2,

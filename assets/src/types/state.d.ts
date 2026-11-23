@@ -513,7 +513,38 @@ export interface CbuildState {
 			/**
 			 * The step's listed parts.
 			 */
-			options: {}[];
+			options: {
+				/**
+				 * The part's ID.
+				 */
+				id?: number;
+				/**
+				 * A deck's board image, which the store fetches as the shopper points at its card: the files the picture will draw it with once picked (1.1.0, D-308).
+				 */
+				preload?: {
+					/**
+					 * Whether the deck has a board image.
+					 */
+					shown: boolean;
+					/**
+					 * The image's own file.
+					 */
+					src: string;
+					/**
+					 * Its AVIF files, as a srcset, or empty.
+					 */
+					avif: string;
+					/**
+					 * Its WebP files, as a srcset, or empty.
+					 */
+					webp: string;
+					/**
+					 * The sizes the picture draws it at.
+					 */
+					sizes: string;
+				};
+				[k: string]: unknown;
+			}[];
 			more?: {
 				/**
 				 * What the status says after Show more: how many it added, or empty (1.0.0).
@@ -738,6 +769,23 @@ export interface Option {
 	 * What its card shows, or null when the product has gone since the index read it.
 	 */
 	card: Card | null;
+	/**
+	 * From 1.1.0, on the deck step: the board this deck would draw alone, in the picture's units, its one layer the deck's, so a page can fetch its image before it is picked (D-308). Null on every other step, and for a deck with no layer image.
+	 */
+	board: {
+		/**
+		 * The board's width, as the picture's.
+		 */
+		width: number;
+		/**
+		 * The board's length, as the picture's.
+		 */
+		height: number;
+		/**
+		 * The deck's layer, as the picture's layers are.
+		 */
+		layers: Layer[];
+	} | null;
 }
 /**
  * What a card shows of a part.
@@ -771,6 +819,65 @@ export interface Card {
 	 * Whether `image` is the part's photo, not its layer image (1.0.0).
 	 */
 	photo: boolean;
+}
+/**
+ * One layer of the board: a part with a layer image, where it is drawn and the image.
+ */
+export interface Layer {
+	/**
+	 * The slot's key.
+	 */
+	slot: string;
+	/**
+	 * The part's ID.
+	 */
+	part: number;
+	/**
+	 * The layer's left edge from the board's.
+	 */
+	x: number;
+	/**
+	 * The layer's top edge from the board's, the nose's end.
+	 */
+	y: number;
+	/**
+	 * The layer across.
+	 */
+	width: number;
+	/**
+	 * The layer along.
+	 */
+	height: number;
+	/**
+	 * The part's layer image: its own file, and the renditions made of it.
+	 */
+	image: {
+		/**
+		 * The image's own file.
+		 */
+		src: string;
+		/**
+		 * Its pixels across.
+		 */
+		width: number;
+		/**
+		 * Its pixels along.
+		 */
+		height: number;
+		/**
+		 * The renditions made, a `srcset` for each type, AVIF first; none until they are made.
+		 */
+		sources: {
+			/**
+			 * The MIME type.
+			 */
+			type: 'image/avif' | 'image/webp';
+			/**
+			 * Its files with their widths, smallest first.
+			 */
+			srcset: string;
+		}[];
+	};
 }
 /**
  * A value a filter offers.
@@ -921,65 +1028,6 @@ export interface Money8 {
 	 * The amount as the shop writes its prices, in plain text.
 	 */
 	text: string;
-}
-/**
- * One layer of the board: a part with a layer image, where it is drawn and the image.
- */
-export interface Layer {
-	/**
-	 * The slot's key.
-	 */
-	slot: string;
-	/**
-	 * The part's ID.
-	 */
-	part: number;
-	/**
-	 * The layer's left edge from the board's.
-	 */
-	x: number;
-	/**
-	 * The layer's top edge from the board's, the nose's end.
-	 */
-	y: number;
-	/**
-	 * The layer across.
-	 */
-	width: number;
-	/**
-	 * The layer along.
-	 */
-	height: number;
-	/**
-	 * The part's layer image: its own file, and the renditions made of it.
-	 */
-	image: {
-		/**
-		 * The image's own file.
-		 */
-		src: string;
-		/**
-		 * Its pixels across.
-		 */
-		width: number;
-		/**
-		 * Its pixels along.
-		 */
-		height: number;
-		/**
-		 * The renditions made, a `srcset` for each type, AVIF first; none until they are made.
-		 */
-		sources: {
-			/**
-			 * The MIME type.
-			 */
-			type: 'image/avif' | 'image/webp';
-			/**
-			 * Its files with their widths, smallest first.
-			 */
-			srcset: string;
-		}[];
-	};
 }
 /**
  * A step's shelf: a page of the looks in stock, the sold-out fold, the chips, the deck's width question and the counts.
@@ -1203,6 +1251,23 @@ export interface Option1 {
 	 * What its card shows, or null when the product has gone since the index read it.
 	 */
 	card: Card | null;
+	/**
+	 * From 1.1.0, on the deck step: the board this deck would draw alone, in the picture's units, its one layer the deck's, so a page can fetch its image before it is picked (D-308). Null on every other step, and for a deck with no layer image.
+	 */
+	board: {
+		/**
+		 * The board's width, as the picture's.
+		 */
+		width: number;
+		/**
+		 * The board's length, as the picture's.
+		 */
+		height: number;
+		/**
+		 * The deck's layer, as the picture's layers are.
+		 */
+		layers: Layer[];
+	} | null;
 }
 /**
  * A group of chips: chips in one group widen, and groups narrow each other.
@@ -1278,6 +1343,18 @@ export interface Drawn {
 		 * Where it is drawn, as custom properties.
 		 */
 		style: string;
+		/**
+		 * Its image's sizes, on the underside: the store readies the new deck's before the view is shown (1.1.0, D-308).
+		 */
+		sizes?: string;
+		/**
+		 * Its image's files by type, on the underside (1.1.0, D-308).
+		 */
+		sources?: {
+			type: string;
+			srcset: string;
+			[k: string]: unknown;
+		}[];
 		[k: string]: unknown;
 	}[];
 	[k: string]: unknown;
@@ -1299,6 +1376,18 @@ export interface Drawn1 {
 		 * Where it is drawn, as custom properties.
 		 */
 		style: string;
+		/**
+		 * Its image's sizes, on the underside: the store readies the new deck's before the view is shown (1.1.0, D-308).
+		 */
+		sizes?: string;
+		/**
+		 * Its image's files by type, on the underside (1.1.0, D-308).
+		 */
+		sources?: {
+			type: string;
+			srcset: string;
+			[k: string]: unknown;
+		}[];
 		[k: string]: unknown;
 	}[];
 	[k: string]: unknown;

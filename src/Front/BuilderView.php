@@ -549,9 +549,7 @@ final class BuilderView {
 			$slot          = Cast::str( $layer['slot'] ?? null );
 			$image         = Cast::map( $layer['image'] ?? null );
 			$share         = Cast::int( $layer['width'] ?? null ) / $height;
-			$sizes         = null === $fixed
-				? sprintf( '(min-height: %1$dpx) %2$dpx, %3$svh', self::BOARD_TALL, (int) ceil( self::BOARD_MOST * $share ), self::decimal( self::BOARD_SHARE * $share ) )
-				: ceil( $fixed * $share ) . 'px';
+			$sizes         = self::sizes( $share, $fixed );
 			$seen[ $slot ] = ( $seen[ $slot ] ?? 0 ) + 1;
 			$layers[]      = array(
 				'key'      => $slot . '-' . $seen[ $slot ],
@@ -576,6 +574,51 @@ final class BuilderView {
 			'shown'  => array() !== $layers,
 			'style'  => array() === $layers ? '' : '--cbuild-board-ratio:' . $width . ' / ' . $height,
 			'layers' => $layers,
+		);
+	}
+
+	/**
+	 * A layer's `sizes`: in the picture, its share of the board's height at most BOARD_MOST pixels or BOARD_SHARE of
+	 * the window's height; in the bar, of its fixed height.
+	 *
+	 * @param float    $share The layer's width over the board's height.
+	 * @param int|null $fixed The board's height in the bar, or null for the picture.
+	 */
+	private static function sizes( float $share, ?int $fixed ): string {
+		return null === $fixed
+			? sprintf( '(min-height: %1$dpx) %2$dpx, %3$svh', self::BOARD_TALL, (int) ceil( self::BOARD_MOST * $share ), self::decimal( self::BOARD_SHARE * $share ) )
+			: ceil( $fixed * $share ) . 'px';
+	}
+
+	/**
+	 * What the store fetches for a deck's card as the shopper points at it (D-308): the files and sizes the picture
+	 * will draw the deck's board with once it is picked, each type's `srcset`, so the store asks for the one the
+	 * browser will choose. Nothing shown for a deck with no layer image, or a card on another step.
+	 *
+	 * @param array<string, mixed> $board The board the deck would draw alone, from the answer.
+	 * @return array{shown: bool, src: string, avif: string, webp: string, sizes: string}
+	 */
+	private static function preload( array $board ): array {
+		$height = Cast::int( $board['height'] ?? null );
+		$layer  = Cast::map( Cast::items( $board['layers'] ?? null )[0] ?? null );
+		$image  = Cast::map( $layer['image'] ?? null );
+		$src    = Cast::str( $image['src'] ?? null );
+		if ( $height <= 0 || '' === $src ) {
+			return array(
+				'shown' => false,
+				'src'   => '',
+				'avif'  => '',
+				'webp'  => '',
+				'sizes' => '',
+			);
+		}
+		$sets = array_column( array_map( static fn( mixed $source ): array => Cast::map( $source ), Cast::items( $image['sources'] ?? null ) ), 'srcset', 'type' );
+		return array(
+			'shown' => true,
+			'src'   => $src,
+			'avif'  => Cast::str( $sets['image/avif'] ?? null ),
+			'webp'  => Cast::str( $sets['image/webp'] ?? null ),
+			'sizes' => self::sizes( Cast::int( $layer['width'] ?? null ) / $height, null ),
 		);
 	}
 
@@ -1407,6 +1450,8 @@ final class BuilderView {
 				'recommended'   => Cast::bool( $option['recommended'] ?? null ),
 				'recommendedAs' => $against['recommended'],
 				'classes'       => self::classes( $state->id, $slot, $id, $fit, $available, $checked ),
+				// From 1.1.0: the board's image, fetched as the shopper points at a deck's card (D-308).
+				'preload'       => self::preload( Cast::map( $option['board'] ?? null ) ),
 			) + self::image( $card['image'] ?? null );
 		};
 		$shelf   = isset( $answer['shelf'] ) ? Cast::map( $answer['shelf'] ) : null;

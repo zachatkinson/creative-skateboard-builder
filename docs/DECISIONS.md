@@ -3814,3 +3814,19 @@ Cowork's 1.0.0 review, F18 (#103): the top repeated a 1 in swatch across the dec
 **Why:** a grip is bought as a sheet and photographed as one; drawing it as one shows a printed grip as the shopper will see it on the board.
 
 **Status:** Accepted.
+
+### D-308 · The deck swap: fetch on intent, ask on a press, swap once decoded, a cue from 300 ms · 2026-11-23
+
+Zach, 23 November: a deck swap "seems to take a while for the builder to render the new one. we either need to speed that up, or have some sort of loading animation. maybe both". Measured: the 150 ms pick wait, then the route's answer, then the board's image, which could only be asked for once the answer named it, with nothing said meanwhile, and the old board replaced by a half-loaded one.
+
+- **Fetch on intent.** Each deck the deck step offers carries the board it would draw alone (`options[].board` on the route, `preload` on the card), from the picture's own layout and renderer, so the files and `sizes` are the stage's and the browser chooses the same one. A pointer resting 80 ms on the card fetches it with `new Image()`, in the type the stage draws (AVIF where it draws AVIF), once; a press fetches it at once. A pointer passing over the shelf fetches nothing. web.dev and instant.page's practice: preload on hover intent, at 65 to 100 ms, and on press.
+- **A press asks at once.** A pick made by a press, a tap or a click is one pick, so the route is asked straight away; the arrows still wait 150 ms, so a run of them asks once (spec: Performance names the wait for a run of picks).
+- **Swap once decoded.** The navigator holds an answer until the store has the new deck's image decoded, at most a second (`HOLD`), so the old board stays whole until the new one takes its place whole, as configurators that keep the last render do. Past a second the view shows, and the image paints as it comes. A view that draws the same deck, or no deck, is shown at once.
+- **Say it after 300 ms.** NN/g's limits: under 0.1 s needs nothing, 1 s keeps the flow, a longer wait needs saying; Baymard: show progress after any action whose answer is not instant. A pick that keeps the shopper 300 ms (the builder's `SLOW`, so a quick one never flickers) dims the board and runs a line along the picture's foot, by `transform`, on the compositor (D-306), with `aria-busy` on the picture, until it is drawn. Reduced motion keeps the dim, without the line. A wait that is no pick (a link, a step) keeps the builder's own `aria-busy` alone.
+- **Not chosen.** A skeleton board: the old board is a truer picture of the build than a grey shape, and stays for a second at most. Preloading every deck on load: up to 24 boards a shopper may never point at, on a phone's data.
+
+**Sources:** NN/g, "Response Times: The 3 Important Limits" and "Progress Indicators Make a Slow System Less Insufferable"; Baymard, loading indicators after a critical action; web.dev, "Preload critical assets" and the Speculation Rules guide's hover intent; the HTML standard's `HTMLImageElement.decode()`.
+
+**Why:** the board is the builder's answer to a pick; it should change once, whole, as fast as the network allows, and say so when it can't.
+
+**Status:** Accepted.

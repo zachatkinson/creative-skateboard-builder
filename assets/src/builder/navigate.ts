@@ -4,7 +4,10 @@
  * carries the view the server would have rendered, which the store shows. Nothing here decides fit, price or words.
  *
  * - **Picks wait.** The route is asked 150 ms after the last pick (spec: Performance), and a step change asks at
- *   once, taking the place of a pick still waiting.
+ *   once, taking the place of a pick still waiting. A pick made by a press, a tap or a click asks at once: it is one
+ *   pick, not a run of arrows (D-308).
+ * - **Pictures first.** An answer is shown once the store has its board's new image decoded, at most HOLD ms, so
+ *   the old board stays whole until the new one can take its place (D-308).
  * - **The last request wins.** A request a later one overtakes is aborted, and its answer, should it arrive, dropped.
  * - **Anything but a view is a failure,** and the form or link does what it does without JavaScript.
  * - **History.** A step change is a new entry, a pick replaces the current one, and going back makes none. The address
@@ -53,6 +56,11 @@ export interface Deps {
 	limited: ( message: string ) => void;
 	push: ( url: string ) => void;
 	replace: ( url: string ) => void;
+	/**
+	 * Readies what a view shows, its board's new image decoded, before it is shown: null where nothing needs readying,
+	 * and the view shows at once. Left out, every view shows at once.
+	 */
+	settle?: ( view: View ) => Promise< void > | null;
 }
 
 /**
@@ -70,6 +78,9 @@ export const WAIT = 150;
 
 /** How long the shopper waits for an answer before the builder says it is on its way: a quick one never flickers. */
 export const SLOW = 300;
+
+/** The longest an answer is held for its pictures: past it, the view shows and its image paints as it comes. */
+export const HOLD = 1000;
 
 const PARAM = 'cbuild';
 
@@ -126,13 +137,18 @@ export class Navigator {
 	/**
 	 * A pick: the route is asked once the shopper has stopped picking for a moment.
 	 *
-	 * @param move Where the pick leaves the build.
+	 * @param move    Where the pick leaves the build.
+	 * @param pressed Whether a press, a tap or a click made it, which asks at once.
 	 */
-	pick( move: Move ): void {
+	pick( move: Move, pressed = false ): void {
 		clearTimeout( this.timer );
-		this.waiting();
 		// The fields are read now: the form may change before the wait is over.
 		const fields = [ ...move.fields ];
+		if ( pressed ) {
+			this.go( { ...move, fields } );
+			return;
+		}
+		this.waiting();
 		this.timer = setTimeout( () => this.go( { ...move, fields } ), WAIT );
 	}
 
@@ -160,9 +176,19 @@ export class Navigator {
 		const asking = new AbortController();
 		this.asking = asking;
 		this.waiting();
-		void this.ask( move, asking.signal ).then( ( view ) => {
+		void this.ask( move, asking.signal ).then( async ( view ) => {
 			if ( asking !== this.asking ) {
 				return;
+			}
+			const readying =
+				null === view || view instanceof Limited
+					? null
+					: ( this.deps.settle?.( view ) ?? null );
+			if ( null !== readying ) {
+				await this.held( readying );
+				if ( asking !== this.asking ) {
+					return;
+				}
 			}
 			clearTimeout( this.slow );
 			this.slow = undefined;
@@ -183,6 +209,22 @@ export class Navigator {
 				this.deps.replace( view.url );
 			}
 		} );
+	}
+
+	/**
+	 * The store's readying of a view, waited for at most HOLD ms.
+	 *
+	 * @param readying The readying.
+	 */
+	private async held( readying: Promise< void > ): Promise< void > {
+		let cap: ReturnType< typeof setTimeout > | undefined;
+		await Promise.race( [
+			readying.catch( () => undefined ),
+			new Promise< void >( ( resolve ) => {
+				cap = setTimeout( resolve, HOLD );
+			} ),
+		] );
+		clearTimeout( cap );
 	}
 
 	/**

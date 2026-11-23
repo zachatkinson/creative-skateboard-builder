@@ -75,6 +75,8 @@ interface State {
 	limited: string;
 	/** Whether a phone's filters are folded behind the Filters button: only once the script runs, so they show without it. */
 	folded: boolean;
+	/** Whether the picture is being drawn: a pick has kept the shopper SLOW, and its answer or image is on its way (D-308). */
+	drawing: boolean;
 }
 
 let navigator: Navigator | undefined;
@@ -677,6 +679,112 @@ function chosen( view: Shown, value: string ): void {
 }
 
 /**
+ * How long, in ms, a pointer rests on a deck's card before its board's image is fetched: one passing over the shelf
+ * fetches nothing (D-308).
+ */
+export const INTENT = 80;
+
+/** How long after a press on a card the pick it makes counts as pressed, and is asked at once. */
+const PRESSED = 1000;
+
+/** The pointer resting on a card, waiting out INTENT. */
+let resting: number | undefined;
+
+/** When a card was last pressed. */
+let pressed = Number.NEGATIVE_INFINITY;
+
+/** Whether a pick waits for its answer: only that wait says the picture is being drawn. */
+let picking = false;
+
+/** The board images fetched, by their files, each once. */
+const boards = new Map< string, HTMLImageElement >();
+
+/** A deck's board image, as its card carries it and as a view's deck layer gives it. */
+interface Preload {
+	shown: boolean;
+	src: string;
+	avif: string;
+	webp: string;
+	sizes: string;
+}
+
+/**
+ * Fetch a board's image in the type the stage draws, once, as the stage will ask for it: the same files and sizes,
+ * so the browser chooses the same one and has it in its cache. Where nothing is drawn yet, WebP, which every browser
+ * the builder supports reads.
+ *
+ * @param preload The image.
+ */
+function fetchBoard( preload: Preload | undefined ): HTMLImageElement | null {
+	if ( ! preload?.shown || '' === preload.src ) {
+		return null;
+	}
+	const drawn =
+		( root ?? document ).querySelector< HTMLImageElement >(
+			'.cbuild-picture .cbuild-board:not(.cbuild-board--top) .cbuild-board__image'
+		)?.currentSrc ?? '';
+	const srcset =
+		( drawn.endsWith( '.avif' ) && preload.avif ) || preload.webp;
+	const key = srcset || preload.src;
+	let image = boards.get( key );
+	if ( undefined === image ) {
+		image = new Image();
+		image.decoding = 'async';
+		if ( '' !== srcset ) {
+			// Sizes before the files, so the browser chooses once.
+			image.sizes = preload.sizes;
+			image.srcset = srcset;
+		}
+		image.src = preload.src;
+		boards.set( key, image );
+	}
+	return image;
+}
+
+/**
+ * The board image of the deck whose card the element is, as the step's options carry it.
+ */
+function pointedAt(): Preload | undefined {
+	const value =
+		getElement().ref?.querySelector< HTMLInputElement >(
+			'input[type=radio]'
+		)?.value;
+	const options = ( state.view.step.options ?? [] ) as Array< {
+		id?: number;
+		preload?: Preload;
+	} >;
+	return options.find( ( option ) => String( option.id ) === value )?.preload;
+}
+
+/**
+ * Ready a view before it is shown: where it draws another deck, that deck's board image fetched and decoded, so the
+ * old board stays whole until the new one takes its place (D-308). The navigator holds it at most HOLD.
+ *
+ * @param view The view to show.
+ */
+function ready( view: View ): Promise< void > | null {
+	const deck = ( view as Shown ).picture?.board?.layers.find(
+		( layer ) => 'deck-1' === layer.key
+	);
+	const now = state.view.picture?.board?.layers.find(
+		( layer ) => 'deck-1' === layer.key
+	);
+	if ( undefined === deck?.src || '' === deck.src || deck.src === now?.src ) {
+		return null;
+	}
+	const of = ( type: string ): string =>
+		deck.sources?.find( ( source ) => type === source.type )?.srcset ?? '';
+	const image = fetchBoard( {
+		shown: true,
+		src: deck.src,
+		avif: of( 'image/avif' ),
+		webp: of( 'image/webp' ),
+		sizes: deck.sizes ?? '',
+	} );
+	return image?.decode() ?? null;
+}
+
+/**
  * The navigator, made on first use from the page's config.
  *
  * @param state The store's state.
@@ -742,7 +850,12 @@ function nav( state: State ): Navigator {
 			},
 			pending: ( on ) => {
 				state.pending = on;
+				state.drawing = on && picking;
+				if ( ! on ) {
+					picking = false;
+				}
 			},
+			settle: ( view ) => ready( view ),
 			limited: ( message ) => {
 				state.limited = message;
 				state.status = message;
@@ -762,6 +875,10 @@ export function reset(): void {
 	root = null;
 	held = null;
 	top = undefined;
+	boards.clear();
+	pressed = Number.NEGATIVE_INFINITY;
+	picking = false;
+	window.clearTimeout( resting );
 }
 
 /**
@@ -849,6 +966,7 @@ const { state } = store(
 	{
 		state: {
 			pending: false,
+			drawing: false,
 			status: '',
 			added: false,
 			canCopy: false,
@@ -951,6 +1069,31 @@ const { state } = store(
 					SEARCH_WAIT
 				);
 			},
+			/**
+			 * A pointer on a deck's card: resting on it, its board's image is fetched after INTENT; pressing it, at
+			 * once, and the pick it makes is asked at once (D-308).
+			 *
+			 * @param event The pointer's event.
+			 */
+			point( event: PointerEvent ): void {
+				window.clearTimeout( resting );
+				const preload = pointedAt();
+				if ( 'pointerdown' === event.type ) {
+					pressed = performance.now();
+					fetchBoard( preload );
+					return;
+				}
+				resting = window.setTimeout(
+					() => fetchBoard( preload ),
+					INTENT
+				);
+			},
+			/**
+			 * The pointer has left the card before INTENT: nothing is fetched.
+			 */
+			leave(): void {
+				window.clearTimeout( resting );
+			},
 			pick( event: Event ): void {
 				const input = event.target;
 				if (
@@ -972,15 +1115,22 @@ const { state } = store(
 						},
 					} )
 				);
-				nav( state ).pick( {
-					fields: [
-						...fields( input.form ),
-						[ 'cbuild[step]', state.view.step.slot ],
-					],
-					history: 'replace',
-					// The radio stays picked, and the form's Next sends it.
-					fallback: () => undefined,
-				} );
+				picking = true;
+				// A press, a tap or a click is one pick, asked at once; the arrows wait for the last (D-308).
+				const byPress = performance.now() - pressed < PRESSED;
+				pressed = Number.NEGATIVE_INFINITY;
+				nav( state ).pick(
+					{
+						fields: [
+							...fields( input.form ),
+							[ 'cbuild[step]', state.view.step.slot ],
+						],
+						history: 'replace',
+						// The radio stays picked, and the form's Next sends it.
+						fallback: () => undefined,
+					},
+					byPress
+				);
 			},
 			async add( event: SubmitEvent ): Promise< void > {
 				const form = getElement().ref;

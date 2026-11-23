@@ -132,7 +132,8 @@ defined( 'ABSPATH' ) || exit;
 		</div>
 		<ul class="cbuild-cards">
 			<template data-wp-each--option="state.view.step.options" data-wp-each-key="context.option.id">
-				<li data-wp-bind--class="context.option.classes">
+				<?php // A pointer resting on a deck's card fetches its board's image; a press asks for the pick at once (D-308). ?>
+				<li data-wp-bind--class="context.option.classes" data-wp-on--pointerenter="actions.point" data-wp-on--pointerdown="actions.point" data-wp-on--pointerleave="actions.leave">
 					<input class="cbuild-card__control" type="radio" data-wp-bind--id="context.option.input" data-wp-bind--name="context.option.field" data-wp-bind--value="context.option.value" data-wp-bind--checked="context.option.checked" data-wp-bind--disabled="context.option.disabled" data-wp-bind--aria-label="context.option.choose" data-wp-bind--aria-describedby="context.option.describedby">
 					<label class="cbuild-card__body" data-wp-bind--for="context.option.input">
 						<img class="cbuild-card__photo" alt="" loading="lazy" decoding="async" data-wp-bind--hidden="!context.option.hasImage" data-wp-bind--src="context.option.src" data-wp-bind--srcset="context.option.srcset" data-wp-bind--sizes="context.option.sizes" data-wp-bind--width="context.option.width" data-wp-bind--height="context.option.height">

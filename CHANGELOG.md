@@ -11,6 +11,8 @@ All notable changes to this project are documented here. The format follows [Kee
 - `--cbuild-panel-shift`, a CSS custom property read on `:root`: how far, and which way, the panel slides as a step crosses over (`16px`).
 - **Motion**, in a kit's Build tab, Layout section: `motion` in `_cbuild_layout` (`schema/kit-layout.json`), `playful` or `subtle`. A kit saved before 1.1.0 is playful. On subtle the builder's root has `cbuild--subtle` (spec: Settings, D-256).
 - A `Server-Timing` header on the state route's answers to a shop manager: the route's time and its queries, to measure it on a real host (#90, D-304).
+- **A deck swap that answers at once** (D-308): a deck's board image is fetched while the pointer rests on its card, a pick made by a press, a tap or a click asks the route at once (the arrows still wait 150 ms), and the old board stays whole until the new one's image is decoded, at most a second. A pick that keeps the shopper 300 ms dims the picture with a line running along its foot (the dim alone under reduced motion), and the picture has `aria-busy` while it waits.
+- The state route's `options[].board`: on the deck step, the board each deck would draw alone (its width, length and deck layer), or null (D-308).
 - The state route's `picture.items[].large`: the part's photo uncropped, at the shop's single-product size, or null (#82, D-303).
 
 ### Changed

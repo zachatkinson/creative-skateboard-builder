@@ -13,6 +13,7 @@ use CreativeBranding\SkateboardBuilder\Domain\Picture\ImageFacts;
 use CreativeBranding\SkateboardBuilder\Front\PageRenderer;
 use CreativeBranding\SkateboardBuilder\Service\LayerArtwork;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\InMemoryLayerImages;
+use CreativeBranding\SkateboardBuilder\Domain\Picture\Renditions;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\InMemoryLayerRenditions;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\BuildTerms;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Part;
@@ -231,6 +232,7 @@ final class StateAnswerTest extends TestCase {
 				'recommended' => false,
 				'messages'    => array(),
 				'card'        => InMemoryPartCards::listed( 101 ),
+				'board'       => null,
 			),
 			$answer['options'][0]
 		);
@@ -1177,6 +1179,29 @@ final class StateAnswerTest extends TestCase {
 		self::assertSame( $this->answer( $picks, SlotKey::TRUCKS )['picture']['items'][0]['part'], $without['items'][0]['part'] );
 	}
 
+	// The slow deck swap (M11, D-308): each deck the step offers carries the board it would draw, alone, so the store can
+	// fetch its image the moment the shopper points at the card, before the pick is asked. The same layout as the
+	// picture's, so the same file is chosen; a deck with no layer image has none, and no other step carries one.
+	public function test_each_deck_on_the_deck_step_carries_the_board_it_would_draw_and_no_other_step_does(): void {
+		$this->layers->attachments = array( 103 => 13 );
+		$this->layers->images      = array( 13 => new ImageFacts( 'image/png', 432, 1626, true ) );
+		$this->renditions->make( 13, Renditions::drawn( SlotKey::DECK, Shop::parts()[ SlotKey::DECK ][2]->specs, 432, 1626 ) );
+
+		$answer = $this->answer( array( SlotKey::DECK => 101 ), SlotKey::DECK );
+		$boards = array_column( $answer['options'], 'board', 'id' );
+		self::assertNull( $boards[101], 'a deck with no layer image' );
+		$board = $boards[103];
+		self::assertIsArray( $board );
+		self::assertSame( array( 2159000, 8128000 ), array( $board['width'], $board['height'] ), 'an 8.5 in deck, 32 in long, alone' );
+		self::assertSame( array( SlotKey::DECK ), array_column( $board['layers'], 'slot' ) );
+		$picked = $this->answer( array( SlotKey::DECK => 103 ), SlotKey::TRUCKS )['picture'];
+		self::assertSame( $picked['layers'][0]['image'], $board['layers'][0]['image'], 'the image the picture draws once it is picked' );
+		self::assertNotSame( array(), $board['layers'][0]['image']['sources'] );
+
+		$trucks = $this->answer( array( SlotKey::DECK => 103 ), SlotKey::TRUCKS );
+		self::assertSame( array( null ), array_values( array_unique( array_column( $trucks['options'], 'board' ), SORT_REGULAR ) ), 'the trucks\' cards carry none' );
+	}
+
 	public function test_the_board_draws_the_parts_with_a_layer_image_and_the_box_keeps_the_rest(): void {
 		$this->layers->attachments = array(
 			103 => 13,
@@ -1340,7 +1365,7 @@ final class StateAnswerTest extends TestCase {
 		$card = $cards['30:5:0'];
 		self::assertSame( 30, $card['product'] );
 		self::assertContains( $card['part']['id'], array( 301, 302 ) );
-		self::assertSame( array( 'id', 'brand', 'size', 'delta', 'fit', 'in_stock', 'available', 'quantity', 'picked', 'recommended', 'messages', 'card' ), array_keys( $card['part'] ), 'the part as an option carries it' );
+		self::assertSame( array( 'id', 'brand', 'size', 'delta', 'fit', 'in_stock', 'available', 'quantity', 'picked', 'recommended', 'messages', 'card', 'board' ), array_keys( $card['part'] ), 'the part as an option carries it' );
 		self::assertSame(
 			array(
 				array(

@@ -4,8 +4,14 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { setConfig, setElement, stores } from './support/interactivity';
-import { NAME, SETTLE, browser, reset } from '../../assets/src/builder/view';
-import { SLOW, WAIT } from '../../assets/src/builder/navigate';
+import {
+	INTENT,
+	NAME,
+	SETTLE,
+	browser,
+	reset,
+} from '../../assets/src/builder/view';
+import { HOLD, SLOW, WAIT } from '../../assets/src/builder/navigate';
 
 interface Actions {
 	submit: ( event: SubmitEvent ) => void;
@@ -20,6 +26,8 @@ interface Actions {
 	follow: ( event: MouseEvent ) => void;
 	back: () => void;
 	filters: () => void;
+	point: ( event: PointerEvent ) => void;
+	leave: () => void;
 }
 
 interface Defined {
@@ -34,6 +42,7 @@ interface Defined {
 		folded: boolean;
 		live: boolean;
 		limited: string;
+		drawing: boolean;
 	};
 	actions: Actions;
 }
@@ -354,6 +363,234 @@ describe( 'the store', () => {
 			'',
 			window.location.origin + '/?next'
 		);
+	} );
+
+	// The slow deck swap (M11, D-308; NN/g's response limits, Baymard's loading feedback): the board's new image is
+	// fetched while the pointer rests on the deck's card, a pick by a press asks at once, the view is shown once the
+	// image is decoded, and the picture says it is being drawn once the shopper has waited SLOW for a pick.
+	describe( 'the deck swap', () => {
+		const PRELOAD = {
+			shown: true,
+			src: 'https://shop.example/12.png',
+			avif: 'https://shop.example/12-216x813.avif 216w',
+			webp: 'https://shop.example/12-216x813.webp 216w',
+			sizes: '(min-height: 960px) 153px, 15.95svh',
+		};
+		let made: Array< {
+			src: string;
+			srcset: string;
+			sizes: string;
+			decoded: () => void;
+		} >;
+
+		/**
+		 * The deck step's cards, the second with a board image, and the page's board drawing the first deck in a type.
+		 *
+		 * @param type The stage image's type, as the browser chose it.
+		 */
+		function deckCards( type: string ): HTMLElement {
+			const { radio } = form();
+			const card = document.createElement( 'li' );
+			card.append( radio.cloneNode() );
+			document.querySelector( 'form' )!.append( card );
+			const stage = document.createElement( 'div' );
+			stage.innerHTML = `<figure class="cbuild-picture"><div class="cbuild-board"><picture><img class="cbuild-board__image" src="https://shop.example/11.${ type }"></picture></div></figure>`;
+			document.body.append( stage );
+			wrapped();
+			Object.defineProperty(
+				document.querySelector( '.cbuild-board__image' )!,
+				'currentSrc',
+				{ value: `https://shop.example/11-216x813.${ type }` }
+			);
+			state.view = {
+				...START,
+				step: {
+					slot: 'deck',
+					options: [
+						{
+							id: 11,
+							value: '11',
+							preload: { ...PRELOAD, shown: false },
+						},
+						{ id: 12, value: '12', preload: PRELOAD },
+					],
+				},
+				picture: {
+					turnable: false,
+					turned: false,
+					board: {
+						layers: [
+							{
+								key: 'deck-1',
+								style: '',
+								src: 'https://shop.example/11.png',
+							},
+						],
+					},
+				},
+			};
+			return document.querySelectorAll< HTMLElement >( 'li' )[ 0 ]!;
+		}
+
+		beforeEach( () => {
+			made = [];
+			vi.stubGlobal(
+				'Image',
+				class {
+					src = '';
+					srcset = '';
+					sizes = '';
+					decoding = '';
+					constructor() {
+						const self = this;
+						made.push( {
+							get src() {
+								return self.src;
+							},
+							get srcset() {
+								return self.srcset;
+							},
+							get sizes() {
+								return self.sizes;
+							},
+							decoded: () => undefined,
+						} );
+					}
+					decode(): Promise< void > {
+						return new Promise( ( resolve ) => {
+							made.at( -1 )!.decoded = resolve;
+						} );
+					}
+				}
+			);
+		} );
+
+		it( "fetches a deck's board image once the pointer rests on its card, in the type the stage draws, and once only", () => {
+			setElement( deckCards( 'avif' ) );
+			actions.point( { type: 'pointerenter' } as PointerEvent );
+			vi.advanceTimersByTime( INTENT - 1 );
+			expect( made, 'a pointer passing over fetches nothing' ).toEqual(
+				[]
+			);
+			actions.leave();
+			vi.advanceTimersByTime( INTENT );
+			expect( made ).toEqual( [] );
+
+			actions.point( { type: 'pointerenter' } as PointerEvent );
+			vi.advanceTimersByTime( INTENT );
+			expect(
+				made.map( ( image ) => [
+					image.srcset,
+					image.sizes,
+					image.src,
+				] )
+			).toEqual( [ [ PRELOAD.avif, PRELOAD.sizes, PRELOAD.src ] ] );
+			actions.point( { type: 'pointerdown' } as PointerEvent );
+			expect( made, 'fetched once' ).toHaveLength( 1 );
+		} );
+
+		it( 'fetches WebP where the stage draws WebP, and nothing for a deck with no board image', () => {
+			setElement( deckCards( 'webp' ) );
+			actions.point( { type: 'pointerdown' } as PointerEvent );
+			expect(
+				made.map( ( image ) => image.srcset ),
+				'a press fetches at once'
+			).toEqual( [ PRELOAD.webp ] );
+
+			state.view = {
+				...state.view,
+				step: {
+					slot: 'deck',
+					options: [
+						{
+							id: 12,
+							value: '12',
+							preload: { ...PRELOAD, shown: false },
+						},
+					],
+				},
+			};
+			reset();
+			made = [];
+			actions.point( { type: 'pointerdown' } as PointerEvent );
+			expect( made ).toEqual( [] );
+		} );
+
+		it( 'asks at once for a pick made by a press, and waits for one made by the arrows', () => {
+			const card = deckCards( 'webp' );
+			setElement( card );
+			const radio = card.querySelector( 'input' )!;
+			actions.point( { type: 'pointerdown' } as PointerEvent );
+			actions.pick( { target: radio } as unknown as Event );
+			expect( fetched, 'no wait' ).toHaveLength( 1 );
+
+			vi.advanceTimersByTime( 2000 );
+			actions.pick( { target: radio } as unknown as Event );
+			expect( fetched, 'the arrows still wait' ).toHaveLength( 1 );
+			vi.advanceTimersByTime( WAIT );
+			expect( fetched ).toHaveLength( 2 );
+		} );
+
+		it( "shows a new deck's view once its board image is decoded, and says the picture is being drawn meanwhile", async () => {
+			const card = deckCards( 'webp' );
+			setElement( card );
+			const radio = card.querySelector( 'input' )!;
+			reply = () =>
+				answer( {
+					...START,
+					url: window.location.origin + '/?deck=12',
+					picture: {
+						turnable: false,
+						turned: false,
+						board: {
+							layers: [
+								{
+									key: 'deck-1',
+									style: '',
+									src: PRELOAD.src,
+									sizes: PRELOAD.sizes,
+									sources: [
+										{
+											type: 'image/avif',
+											srcset: PRELOAD.avif,
+										},
+										{
+											type: 'image/webp',
+											srcset: PRELOAD.webp,
+										},
+									],
+								},
+							],
+						},
+					},
+				} );
+			actions.point( { type: 'pointerdown' } as PointerEvent );
+			actions.pick( { target: radio } as unknown as Event );
+			await settle();
+			expect( state.view.url, 'held for the image' ).toBe( START.url );
+			vi.advanceTimersByTime( SLOW );
+			expect( state.drawing ).toBe( true );
+			expect( made, 'the image the press fetched' ).toHaveLength( 1 );
+			made[ 0 ]!.decoded();
+			await settle();
+			expect( state.view.url ).toBe(
+				window.location.origin + '/?deck=12'
+			);
+			expect( state.drawing ).toBe( false );
+			expect( HOLD ).toBeGreaterThan( SLOW );
+		} );
+
+		it( 'never says the picture is drawn for a wait that is no pick', async () => {
+			link( '/?page_id=25&cbuild%5Bstep%5D=trucks' );
+			reply = () => new Promise< Response >( () => undefined );
+			actions.follow(
+				new MouseEvent( 'click', { cancelable: true, button: 0 } )
+			);
+			vi.advanceTimersByTime( SLOW );
+			await settle();
+			expect( state.pending ).toBe( true );
+			expect( state.drawing ).toBe( false );
+		} );
 	} );
 
 	// #47: the card binds its radio's checked to the store, which said unchecked until the answer, so a re-render of the
