@@ -164,6 +164,28 @@ test.describe( 'The builder without JavaScript', () => {
 		);
 	} );
 
+	// #100, F15: without the script nothing is dimmed, Next sends the form, and the server answers as it always has.
+	test( 'Next with no pick is not dimmed, sends the form, and the server answers with its error summary', async ( {
+		page,
+	} ) => {
+		await page.goto( fixture().page );
+		const button = page
+			.locator( '.cbuild' )
+			.getByRole( 'button', { name: 'Next: Trucks' } )
+			.filter( { visible: true } );
+		await expect( button ).not.toHaveAttribute( 'aria-disabled' );
+		await next( page, 'Next: Trucks' );
+		const summary = page.locator( '.cbuild-errors' );
+		await expect( summary ).toBeVisible();
+		await expect(
+			summary.getByRole( 'link', {
+				name: 'Deck: nothing is chosen yet.',
+			} )
+		).toBeVisible();
+		await expect( page ).toHaveTitle( /^Error: Step 1 of 7: Deck - / );
+		await expect( page.locator( '.cbuild-bar__missing' ) ).toHaveText( '' );
+	} );
+
 	// Milestone 6's audit 29: the assembly switch was a link into a state. It is a button in a GET form, so a crawler
 	// never follows it (spec: SEO and sharing), and the review stays where it was. It is on the review (D-271).
 	// Spec (configurator): The review and Risers (D-246). "Add risers" sits under the parts when the build has none,
@@ -1453,19 +1475,96 @@ test.describe( 'The builder with JavaScript', () => {
 		await expect( boxed, 'its labelled photo instead' ).toBeVisible();
 	} );
 
-	test( 'puts focus on the error summary when a step is asked for past an empty one, and says Error first', async ( {
+	// #100, F15 (Cowork's 1.0.0 review, the 18 November mockup): Next is dimmed until the step has a pick, and stays in
+	// the tab order. Pressed, it says what is missing beside it, in a polite live region, and asks the server nothing:
+	// the shopper has done nothing wrong, so there is no error summary.
+	test( 'dims Next until the step has a pick, and a press says what is missing beside it, with no error summary', async ( {
 		page,
 	} ) => {
-		await page.getByRole( 'button', { name: 'Next: Trucks' } ).click();
+		const asked: URL[] = [];
+		page.on( 'request', ( request ) => {
+			if ( isRoute( request.url() ) ) {
+				asked.push( new URL( request.url() ) );
+			}
+		} );
+		const button = page
+			.locator( '.cbuild' )
+			.getByRole( 'button', { name: 'Next: Trucks' } )
+			.filter( { visible: true } );
+		const said = page.locator( '.cbuild-bar__missing' );
+		await expect( button ).toHaveAttribute( 'aria-disabled', 'true' );
+		// Playwright's toBeEnabled() counts aria-disabled as disabled, so the attribute itself is what is checked.
+		await expect(
+			button,
+			'aria-disabled, never disabled'
+		).not.toHaveAttribute( 'disabled' );
+		await expect(
+			page.locator( '.cbuild [role="status"]' ),
+			'one status region'
+		).toHaveCount( 1 );
+		await expect( said ).toHaveText( '' );
+
+		await button.focus();
+		await expect( button, 'still in the tab order' ).toBeFocused();
+		await page.keyboard.press( 'Enter' );
+		await expect( said ).toHaveText( 'Choose your deck first.' );
+		await expect( said ).toBeVisible();
+		await expect( button ).toHaveAccessibleDescription(
+			'Choose your deck first.'
+		);
+		await expect( button, 'focus stays on Next' ).toBeFocused();
+		await expect( page.locator( '.cbuild-errors' ) ).toBeHidden();
+		await expect( heading( page ) ).toHaveText(
+			'Step 1 of 7: Choose your deck'
+		);
+		await expect( page ).not.toHaveTitle( /^Error:/ );
+		// A dimmed Next is aria-disabled, which Playwright's click() waits on as disabled; a shopper can press it, so the click is forced (#100).
+		await button.click( { force: true } );
+		await expect( said ).toHaveText( 'Choose your deck first.' );
+		expect( asked, 'nothing sent for a press with no pick' ).toHaveLength(
+			0
+		);
+		await axe( page, 'Next pressed with no pick', '.cbuild-bar' );
+
+		// A pick lights Next at once and clears what it said; Next then goes on.
+		await pickDeck( page, '8.0' );
+		await expect( button ).toHaveAttribute( 'aria-disabled', 'false' );
+		await expect( said ).toHaveText( '' );
+		await settled( page );
+		await button.click();
+		await expect( heading( page ) ).toHaveText(
+			'Step 2 of 7: Choose your trucks'
+		);
+		await expect(
+			page
+				.locator( '.cbuild' )
+				.getByRole( 'button', { name: 'Next: Wheels' } )
+				.filter( { visible: true } ),
+			'the trucks step has no pick yet'
+		).toHaveAttribute( 'aria-disabled', 'true' );
+		expect( await stayed( page ) ).toBe( true );
+	} );
+
+	// The error summary still comes where the server answers with one: a link that asks for a step past an empty one,
+	// here reached again with the browser's Back, which the store asks the route for.
+	test( 'puts focus on the error summary when Back returns to a step asked for past an empty one, and says Error first', async ( {
+		page,
+	} ) => {
+		await page.goto( linkTo( { step: 'trucks' } ) );
+		await page.waitForLoadState( 'load' );
 		const summary = page.locator( '.cbuild-errors' );
+		const error = summary.getByRole( 'link', {
+			name: 'Deck: nothing is chosen yet.',
+		} );
+		await expect( error ).toBeVisible();
+		await mark( page );
+		await error.click();
+		await expect( summary ).toBeHidden();
+		await page.goBack();
 		await expect( summary ).toBeVisible();
 		await expect( summary ).toBeFocused();
 		await expect( page ).toHaveTitle( /^Error: Step 1 of 7: Deck - / );
-		await expect(
-			summary.getByRole( 'link', {
-				name: 'Deck: nothing is chosen yet.',
-			} )
-		).toBeVisible();
+		await expect( error ).toBeVisible();
 		expect( await stayed( page ) ).toBe( true );
 	} );
 
@@ -2127,14 +2226,22 @@ test.describe( 'The builder with JavaScript', () => {
 			);
 		await check( 'a width pressed' );
 
-		// The error summary, asked past an empty step.
+		// Next pressed with no pick: dimmed, and what is missing said beside it (#100).
+		// A dimmed Next is aria-disabled, which Playwright's click() waits on as disabled; a shopper can press it, so the click is forced (#100).
 		await page.goto( fixture().page );
 		await page
 			.locator( '.cbuild' )
 			.getByRole( 'button', { name: 'Next: Trucks' } )
-			.first()
-			.click();
-		await expect( page.locator( '.cbuild-errors' ) ).toBeFocused();
+			.filter( { visible: true } )
+			.click( { force: true } );
+		await expect( page.locator( '.cbuild-bar__missing' ) ).toHaveText(
+			'Choose your deck first.'
+		);
+		await check( 'Next pressed with no pick' );
+
+		// The error summary, asked past an empty step by a link: with the script, Next no longer asks for it (#100).
+		await page.goto( linkTo( { step: 'trucks' } ) );
+		await expect( page.locator( '.cbuild-errors' ) ).toBeVisible();
 		// Playwright's Firefox crashes in axe on this state once the store has drawn it, though the same state served
 		// passes there and passes in the other engines (issue #36, D-167).
 		if ( info.project.name.startsWith( 'firefox' ) ) {

@@ -4,7 +4,8 @@
  * line and the notes; Back; and the step's own Next, or the review's Add to cart, each a button of its form by the
  * form's ID. Pinned under the panel on a desktop; on a tablet or a phone, the bar at the foot of the screen, sticky so
  * it stops where the builder ends (D-160), with a small picture of the board that links to the picture, and the
- * delivery line and notes at the review alone (D-250). The small board shows the side the picture shows (#46).
+ * delivery line and notes at the review alone (D-250). The small board shows the side the picture shows (#46). The
+ * step's Next is dimmed until the step has a pick, and a press then says what is missing beside it (#100).
  *
  * @package CreativeBranding\SkateboardBuilder
  */
@@ -53,7 +54,13 @@ defined( 'ABSPATH' ) || exit;
 	</div>
 	<div class="cbuild-bar__actions">
 		<a class="cbuild-button cbuild-bar__back" rel="nofollow" data-wp-on--click="actions.follow" data-wp-bind--hidden="!state.view.bar.back.shown" data-wp-bind--href="state.view.bar.back.url" data-wp-bind--aria-label="state.view.bar.back.label" data-wp-text="state.view.bar.back.text"></a>
-		<button class="cbuild-button cbuild-button--primary cbuild-bar__next" type="submit" form="<?php echo esc_attr( \CreativeBranding\SkateboardBuilder\Front\BuilderView::STEP_FORM ); ?>" data-wp-bind--hidden="!state.view.bar.next.onStep" data-wp-bind--name="state.view.bar.next.name" data-wp-bind--value="state.view.bar.next.value" data-wp-text="state.view.bar.next.text"></button>
+		<?php
+		// The step's Next is dimmed until the step has a pick, once the script runs: aria-disabled, never disabled, so it
+		// stays in the tab order, and a press says what is missing in the live region beside it rather than sending the
+		// form for an error summary (#100). Without the script the form is sent and the server answers as before.
+		?>
+		<p class="cbuild-bar__missing" id="cbuild-bar-missing" data-wp-text="state.missing"></p>
+		<button class="cbuild-button cbuild-button--primary cbuild-bar__next" type="submit" form="<?php echo esc_attr( \CreativeBranding\SkateboardBuilder\Front\BuilderView::STEP_FORM ); ?>" aria-describedby="cbuild-bar-missing" data-wp-bind--hidden="!state.view.bar.next.onStep" data-wp-bind--aria-disabled="state.dimmed" data-wp-bind--name="state.view.bar.next.name" data-wp-bind--value="state.view.bar.next.value" data-wp-text="state.view.bar.next.text"></button>
 		<button class="cbuild-button cbuild-button--primary cbuild-bar__next" type="submit" form="<?php echo esc_attr( \CreativeBranding\SkateboardBuilder\Front\BuilderView::REVIEW_FORM ); ?>" data-wp-bind--hidden="!state.view.bar.next.onReview" data-wp-bind--disabled="state.view.bar.next.disabled" data-wp-text="state.view.bar.next.text"></button>
 	</div>
 </div>

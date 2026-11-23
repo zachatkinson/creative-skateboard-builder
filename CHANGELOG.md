@@ -19,6 +19,7 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Changed
 
+- **Next waits for a pick** (Cowork's 1.0.0 review, F15; #100; D-310): until the step has a pick, the footer's Next is dimmed and `aria-disabled`, still in the tab order, and a press says what is missing beside it ("Choose your deck first.") instead of reloading the step with an error summary. A step that needs no pick is never dimmed, and without JavaScript the form is sent and answered as before.
 - **Grip is its whole sheet** (Cowork's 1.0.0 review, F18; #103; D-307): a grip's layer image is the sheet shot flat from above, drawn once on the board's top at its real size (`grip_width` by `grip_length`, 9 by 33 in where none is given), centred on the deck and cut by the deck's outline, under the bolt heads, so a printed sheet's artwork shows. Its save check asks for two pixels to the millimetre of the sheet, 458 px across or 1,677 along, with no transparent corners. The state route's `picture.top` gives the grip the sheet's box. A 1-inch swatch saved under 1.0.x is still repeated nose to tail.
 
 - A step's crossing no longer animates the size of the panel or of the rail's current step: they take their new size at once and their content slides by transform, so every moment runs on Chrome's compositor (D-306).

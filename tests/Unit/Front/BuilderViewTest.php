@@ -105,6 +105,88 @@ final class BuilderViewTest extends TestCase {
 		self::assertTrue( $this->view( array(), SlotKey::TRUCKS )['bar']['back']['shown'] );
 	}
 
+	/**
+	 * The footer's Next on a step, with the answer's steps saying which need a pick.
+	 *
+	 * @param string                      $step     The step shown.
+	 * @param array<string, bool>         $required Whether each slot needs a pick, by slot.
+	 * @param list<array<string, mixed>>  $lines    The total's lines: the picks the build counts.
+	 * @return array<string, mixed>
+	 */
+	private function next( string $step, array $required, array $lines = array() ): array {
+		$more = array();
+		foreach ( $required as $slot => $needed ) {
+			$more[ $slot ] = array( 'required' => $needed );
+		}
+		$answer = array(
+			'steps' => self::steps( $more ),
+			'total' => array( 'lines' => $lines ),
+		);
+		$next   = $this->view( $answer, $step )['bar']['next'];
+		self::assertIsArray( $next );
+		return $next;
+	}
+
+	// #100, F15: Next is ready once the step has a pick, or on a step that needs none, by the rule the server stops a
+	// step on (Builder: a required slot with nothing counted). Until then it says what is missing, named by the step's
+	// part.
+	public function test_next_is_ready_once_the_step_has_a_pick_or_on_a_step_that_needs_none(): void {
+		$empty = $this->next( SlotKey::DECK, array( 'deck' => true ) );
+		self::assertFalse( $empty['ready'] );
+		self::assertSame( 'Choose your deck first.', $empty['missing'] );
+
+		$picked = $this->next(
+			SlotKey::DECK,
+			array( 'deck' => true ),
+			array(
+				array(
+					'slot'  => 'deck',
+					'part'  => 101,
+					'total' => array( 'text' => '$60.00' ),
+				),
+			)
+		);
+		self::assertTrue( $picked['ready'], 'the deck picked' );
+
+		self::assertTrue( $this->next( SlotKey::RISERS, array( 'risers' => false ) )['ready'], 'No risers is a pick of its own' );
+		self::assertTrue( $this->next( State::REVIEW, array( 'deck' => true ) )['ready'], 'the review has Add to cart, which says itself whether it is ready' );
+	}
+
+	/**
+	 * Each step's words for what is missing.
+	 *
+	 * @return iterable<string, array{string, string}>
+	 */
+	public static function missing(): iterable {
+		yield 'deck' => array( SlotKey::DECK, 'Choose your deck first.' );
+		yield 'trucks' => array( SlotKey::TRUCKS, 'Choose your trucks first.' );
+		yield 'wheels' => array( SlotKey::WHEELS, 'Choose your wheels first.' );
+		yield 'bearings' => array( SlotKey::BEARINGS, 'Choose your bearings first.' );
+		yield 'risers' => array( SlotKey::RISERS, 'Choose your risers first.' );
+		yield 'hardware' => array( SlotKey::HARDWARE, 'Choose your hardware first.' );
+		yield 'grip' => array( SlotKey::GRIP, 'Choose your grip tape first.' );
+		yield 'a slot the plugin does not name' => array( 'stickers', 'Stickers: make a choice first.' );
+	}
+
+	#[DataProvider( 'missing' )]
+	public function test_next_says_what_is_missing_in_each_steps_own_words( string $slot, string $words ): void {
+		$next = $this->next( $slot, array( $slot => true ) );
+		self::assertFalse( $next['ready'] );
+		self::assertSame( $words, $next['missing'] );
+	}
+
+	// #100, F15: the footer's Next is marked aria-disabled, never disabled, so it stays in the tab order and a press
+	// can say what is missing; the words are in a polite live region beside it, drawn by the server (Rules, Markup).
+	public function test_the_footers_next_is_aria_disabled_with_a_live_region_beside_it(): void {
+		$bar = (string) file_get_contents( dirname( __DIR__, 3 ) . '/templates/builder/bar.php' );
+		self::assertSame( 1, preg_match( '/<button class="[^"]*cbuild-bar__next"[^\n]*STEP_FORM[^\n]*<\/button>/', $bar, $found ) );
+		$next = $found[0];
+		self::assertStringContainsString( 'data-wp-bind--aria-disabled="state.dimmed"', $next );
+		self::assertStringNotContainsString( 'disabled="', str_replace( 'aria-disabled="', '', $next ) );
+		self::assertStringContainsString( 'aria-describedby="cbuild-bar-missing"', $next );
+		self::assertSame( 1, preg_match( '/<p class="cbuild-bar__missing" id="cbuild-bar-missing" data-wp-text="state.missing"><\/p>/', $bar ), 'Next\'s description, and no second status region: the builder has one' );
+	}
+
 	// Spec: A change that breaks later picks. The panel asks for Use these or Undo, so the footer has no Back.
 	public function test_the_change_panel_has_its_items_no_prices_and_no_back_in_the_footer(): void {
 		$answer = array(

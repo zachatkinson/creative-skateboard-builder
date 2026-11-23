@@ -594,6 +594,17 @@ export interface CbuildState {
 			 * The total as the bar shows it: the server's string, which the counting total writes its frames over and ends on (1.1.0).
 			 */
 			amount: string;
+			next: {
+				/**
+				 * Whether the step's Next goes on: the step has a pick, or needs none; true at the review and on the change panel. Until then the store dims Next (1.1.0).
+				 */
+				ready: boolean;
+				/**
+				 * What a press of the dimmed Next says is missing, such as Choose your deck first., or empty where Next is ready (1.1.0).
+				 */
+				missing: string;
+				[k: string]: unknown;
+			};
 			[k: string]: unknown;
 		};
 		/**

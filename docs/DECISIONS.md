@@ -3844,3 +3844,20 @@ Cowork's review of 1.0.0, F19 (#105, should-fix): a part flagged by another plug
 **Why:** the plugin promised one answer would blur a part everywhere it is shown; the pictures made in the background are the places furthest from the page, and the share card goes furthest of all.
 
 **Status:** Accepted.
+
+### D-310 · Next is dimmed until the step has a pick, and a press says what is missing beside it · 2026-11-23
+
+Cowork's review of 1.0.0, F15 (#100), against the mockup of 18 November: "Next: Trucks" was lit from the start, and pressed with no deck it reloaded the step as "Error: Step 1 of 6" with "Fix these before going on: Deck: nothing is chosen yet." The shopper had done nothing wrong.
+
+- **The rule is the server's.** The view's `bar.next.ready` is true where the slot is not required or has a part counted: the rule `Builder::show()` stops a step on (`Problem::SlotEmpty`). A step that needs no pick, risers or any slot the kit leaves optional, is never dimmed, and the review and the change panel are always ready. `bar.next.missing` is what a press says, in the step's own words ("Choose your deck first.", as `question()` names the step; "Stickers: make a choice first." for a slot the plugin does not name), so no label is lower-cased and no article guessed.
+- **Dimmed with the script only.** The footer's Next binds `aria-disabled` to the store's `state.dimmed` (running, and not ready), which the server does not render, so without JavaScript nothing is dimmed and the form is sent and answered with its error summary as before. `aria-disabled`, never `disabled`: the button stays in the tab order and takes a press (WCAG 4.1.2; WAI-ARIA APG on focusable disabled controls; UX-RESEARCH W4).
+- **A press says why and sends nothing.** The store's submit sees the dimmed Next as the submitter and puts `missing` beside the button (`p.cbuild-bar__missing`, rendered by the server, Next's description) and says it once in the builder's one status region, with no error summary (P11; WCAG 4.1.3). It is not a second live region: the page keeps one, which the integration suite holds (`BuilderPageTest`). Focus stays on Next.
+- **A pick lights Next at once.** The store marks the shopper's own radio checked before the route answers (#47), and Next ready with it, so a Next pressed just after a pick (D-185) never says the step is empty. A pick or a new view clears the message.
+- **The builder's tokens, not the mockup's hex:** muted words and border on `--cbuild-surface`, the step help's contrast (about 6.8:1 on Twenty Twenty-Five, 8.9:1 on a dark theme), `GrayText` in forced colours, the builder's own focus ring.
+- **The message sits over the bar**, absolutely placed above Next, so the bar keeps its height and Next stays under the thumb (D-185, D-267), and it takes no taps (W7). Empty, it stays in the page, so Next's description always points at something.
+- **Integration note.** Prepared by an agent on 1.0.0's code (its worktree was cut from `main`); merged onto the milestone by hand, its `view.bar.next` folded into the schema's existing `view.bar` (D-257's `amount`).
+
+**Why:** a step that is simply not done yet is no error; saying what to do next, where the shopper pressed, is.
+
+**Status:** Accepted.
+

@@ -757,9 +757,18 @@
 				},
 				"bar": {
 					"type": "object",
-					"required": ["amount"],
+					"required": ["amount", "next"],
 					"properties": {
-						"amount": { "description": "The total as the bar shows it: the server's string, which the counting total writes its frames over and ends on (1.1.0).", "type": "string" }
+						"amount": { "description": "The total as the bar shows it: the server's string, which the counting total writes its frames over and ends on (1.1.0).", "type": "string" },
+						"next": {
+							"type": "object",
+							"required": ["ready", "missing"],
+							"properties": {
+								"ready": { "description": "Whether the step's Next goes on: the step has a pick, or needs none; true at the review and on the change panel. Until then the store dims Next (1.1.0).", "type": "boolean" },
+								"missing": { "description": "What a press of the dimmed Next says is missing, such as Choose your deck first., or empty where Next is ready (1.1.0).", "type": "string" }
+							},
+							"additionalProperties": true
+						}
 					},
 					"additionalProperties": true
 				},

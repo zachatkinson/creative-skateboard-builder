@@ -43,6 +43,8 @@ interface Defined {
 		live: boolean;
 		limited: string;
 		drawing: boolean;
+		missing: string;
+		readonly dimmed: boolean;
 	};
 	actions: Actions;
 }
@@ -144,6 +146,7 @@ beforeEach( () => {
 	state.pending = false;
 	state.status = '';
 	state.added = false;
+	state.missing = '';
 	document.title = 'Build a complete - Shop';
 	fetched = [];
 	reply = () => answer( NEXT );
@@ -732,6 +735,142 @@ describe( 'the store', () => {
 		expect( sent ).not.toHaveBeenCalled();
 		expect( radio.checked ).toBe( true );
 		expect( state.pending ).toBe( false );
+	} );
+
+	/**
+	 * The deck step with nothing picked, as the server draws it: the footer's Next not ready, and what it would say.
+	 */
+	const EMPTY = {
+		...START,
+		step: {
+			slot: 'deck',
+			options: [ { value: '11', checked: false } ],
+		},
+		bar: {
+			next: { ready: false, missing: 'Choose your deck first.' },
+		},
+	};
+
+	/**
+	 * The step's form with the footer's Next as the bar draws it, aria-disabled bound once the script runs.
+	 *
+	 * @param dimmed What the bar's Next says it is: dimmed or not.
+	 */
+	function dimmedForm( dimmed: boolean ): ReturnType< typeof form > {
+		const made = form();
+		made.next.setAttribute( 'aria-disabled', String( dimmed ) );
+		made.radio.checked = false;
+		setElement( made.form );
+		return made;
+	}
+
+	// #100, F15: Next is dimmed until the step has a pick, and only once the script runs: without it the form is
+	// sent and the server answers as before, so nothing is dimmed that would still work.
+	it( "dims the footer's Next until the step has a pick, only once the script runs", () => {
+		state.view = EMPTY;
+		state.live = false;
+		expect( state.dimmed, 'without the script' ).toBe( false );
+		state.live = true;
+		expect( state.dimmed ).toBe( true );
+		state.view = {
+			...EMPTY,
+			bar: { next: { ready: true, missing: '' } },
+		};
+		expect( state.dimmed, 'the step has a pick' ).toBe( false );
+		state.view = START;
+		expect( state.dimmed, 'a view with no footer' ).toBe( false );
+	} );
+
+	it( 'says what the step needs beside a dimmed Next when it is pressed, and sends nothing', async () => {
+		state.view = EMPTY;
+		state.live = true;
+		const { next } = dimmedForm( true );
+		const sent = vi
+			.spyOn( browser, 'submit' )
+			.mockImplementation( () => undefined );
+		const event = new SubmitEvent( 'submit', {
+			submitter: next,
+			cancelable: true,
+		} );
+		actions.submit( event );
+		expect( event.defaultPrevented ).toBe( true );
+		expect( state.missing ).toBe( 'Choose your deck first.' );
+		// Said once, in the builder's one status region: the words beside Next are its description, not a second region.
+		expect( state.status ).toBe( 'Choose your deck first.' );
+		vi.advanceTimersByTime( SLOW );
+		await settle();
+		expect( fetched, 'no error summary asked for' ).toHaveLength( 0 );
+		expect( sent ).not.toHaveBeenCalled();
+		expect( state.view ).toBe( EMPTY );
+	} );
+
+	it( 'lights Next as soon as the shopper picks, before the route answers, and forgets what it said', async () => {
+		state.view = structuredClone( EMPTY );
+		state.live = true;
+		const { next, radio } = dimmedForm( true );
+		actions.submit(
+			new SubmitEvent( 'submit', { submitter: next, cancelable: true } )
+		);
+		expect( state.missing ).not.toBe( '' );
+		radio.checked = true;
+		actions.pick( { target: radio } as unknown as Event );
+		expect( state.missing ).toBe( '' );
+		expect( state.dimmed, 'lit while the route is asked' ).toBe( false );
+		// Pressed before the pick's answer, Next sends the pick.
+		const event = new SubmitEvent( 'submit', {
+			submitter: next,
+			cancelable: true,
+		} );
+		actions.submit( event );
+		expect( event.defaultPrevented ).toBe( true );
+		expect( state.missing ).toBe( '' );
+		vi.advanceTimersByTime( WAIT );
+		await settle();
+		expect(
+			fetched.some(
+				( url ) => url.searchParams.get( 'cbuild[step]' ) === 'trucks'
+			)
+		).toBe( true );
+	} );
+
+	it( 'forgets what it said beside Next once a view comes', async () => {
+		state.view = EMPTY;
+		state.live = true;
+		const { next } = dimmedForm( true );
+		actions.submit(
+			new SubmitEvent( 'submit', { submitter: next, cancelable: true } )
+		);
+		expect( state.missing ).not.toBe( '' );
+		actions.back();
+		await settle();
+		expect( state.view ).toEqual( NEXT );
+		expect( state.missing ).toBe( '' );
+	} );
+
+	it( 'sends a Next the bar says is lit, and any other button of the form, as before', async () => {
+		state.view = { ...EMPTY, bar: { next: { ready: true, missing: '' } } };
+		state.live = true;
+		const { next } = dimmedForm( false );
+		actions.submit(
+			new SubmitEvent( 'submit', { submitter: next, cancelable: true } )
+		);
+		expect( state.missing ).toBe( '' );
+		vi.advanceTimersByTime( SLOW );
+		expect( fetched ).toHaveLength( 1 );
+	} );
+
+	it( 'sends any other button of the form while Next is dimmed, as a width is pressed before a pick', () => {
+		state.view = EMPTY;
+		state.live = true;
+		const { next } = dimmedForm( true );
+		next.removeAttribute( 'aria-disabled' );
+		next.value = 'deck';
+		actions.submit(
+			new SubmitEvent( 'submit', { submitter: next, cancelable: true } )
+		);
+		expect( state.missing ).toBe( '' );
+		vi.advanceTimersByTime( SLOW );
+		expect( fetched ).toHaveLength( 1 );
 	} );
 
 	it.each( [

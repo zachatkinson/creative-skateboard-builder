@@ -352,7 +352,7 @@ final class BuilderView {
 	 * @param int                                                          $kit     The kit product's ID.
 	 * @param array<string, mixed>                                         $board   The board, drawn at the bar's size.
 	 * @param array{shown: bool, url: string, text: string, label: string} $back The footer's Back.
-	 * @return array{shown: bool, seen: bool, board: array<string, mixed>, photo: array{hasImage: bool, src: string, srcset: string, sizes: string, width: int, height: int, classes: string}, picture: string, total: string, amount: string, parts: string, hide: string, back: array{shown: bool, url: string, text: string, label: string}, next: array{shown: bool, onStep: bool, onReview: bool, text: string, form: string, name: string, value: string, disabled: bool}}
+	 * @return array{shown: bool, seen: bool, board: array<string, mixed>, photo: array{hasImage: bool, src: string, srcset: string, sizes: string, width: int, height: int, classes: string}, picture: string, total: string, amount: string, parts: string, hide: string, back: array{shown: bool, url: string, text: string, label: string}, next: array{shown: bool, onStep: bool, onReview: bool, text: string, form: string, name: string, value: string, disabled: bool, ready: bool, missing: string}}
 	 */
 	private static function bar( array $summary, array $step, array $shown, bool $review, bool $panel, array $first, int $kit, array $board, array $back ): array {
 		$next  = Cast::map( $step['next'] ?? null );
@@ -392,6 +392,10 @@ final class BuilderView {
 				'name'     => $review ? '' : Cast::str( $step['stepName'] ?? null ),
 				'value'    => $review ? '' : Cast::str( $next['value'] ?? null ),
 				'disabled' => $review && ! Cast::bool( $shown['ready'] ?? null ),
+				// The step's Next until the step has a pick: dimmed by the store, which says what is missing when it is
+				// pressed (#100). Add to cart says itself whether it is ready, and the panel has no Next.
+				'ready'    => $review || $panel || Cast::bool( $next['ready'] ?? null ),
+				'missing'  => $review || $panel ? '' : Cast::str( $next['missing'] ?? null ),
 			),
 		);
 	}
@@ -833,8 +837,10 @@ final class BuilderView {
 				'text'  => '',
 			),
 			'next'      => array(
-				'value' => '',
-				'text'  => '',
+				'value'   => '',
+				'text'    => '',
+				'ready'   => true,
+				'missing' => '',
 			),
 			'stepName'  => '',
 		);
@@ -1206,6 +1212,27 @@ final class BuilderView {
 	}
 
 	/**
+	 * What a step's Next says is missing when it is pressed before the step has a pick (#100): the step's own part, as
+	 * its question names it, and a slot the plugin does not name by its label.
+	 *
+	 * @param string $slot The step's slot.
+	 * @param string $name The step's label.
+	 */
+	private static function missing( string $slot, string $name ): string {
+		return match ( $slot ) {
+			SlotKey::DECK     => __( 'Choose your deck first.', 'creative-skateboard-builder' ),
+			SlotKey::TRUCKS   => __( 'Choose your trucks first.', 'creative-skateboard-builder' ),
+			SlotKey::WHEELS   => __( 'Choose your wheels first.', 'creative-skateboard-builder' ),
+			SlotKey::BEARINGS => __( 'Choose your bearings first.', 'creative-skateboard-builder' ),
+			SlotKey::RISERS   => __( 'Choose your risers first.', 'creative-skateboard-builder' ),
+			SlotKey::HARDWARE => __( 'Choose your hardware first.', 'creative-skateboard-builder' ),
+			SlotKey::GRIP     => __( 'Choose your grip tape first.', 'creative-skateboard-builder' ),
+			/* translators: %s: a step's name, such as Stickers. */
+			default           => sprintf( __( '%s: make a choice first.', 'creative-skateboard-builder' ), $name ),
+		};
+	}
+
+	/**
 	 * What a search that lists nothing says, and the way on (spec: Search, "When nothing is found"): the widths its
 	 * matches come in, with a button to each; or how many parts that don't fit match, with a link to why; or that
 	 * nothing matches, with Clear search. Shown only where a search lists nothing.
@@ -1572,9 +1599,13 @@ final class BuilderView {
 				'text'  => null === $back ? '' : sprintf( __( 'Back: %s', 'creative-skateboard-builder' ), Cast::str( $about[ $back ]['label'] ?? $back ) ),
 			),
 			'next'      => array(
-				'value' => $next,
+				'value'   => $next,
 				/* translators: %s: the next step's name, such as Wheels. */
-				'text'  => sprintf( __( 'Next: %s', 'creative-skateboard-builder' ), State::REVIEW === $next ? __( 'Review', 'creative-skateboard-builder' ) : Cast::str( $about[ $next ]['label'] ?? $next ) ),
+				'text'    => sprintf( __( 'Next: %s', 'creative-skateboard-builder' ), State::REVIEW === $next ? __( 'Review', 'creative-skateboard-builder' ) : Cast::str( $about[ $next ]['label'] ?? $next ) ),
+				// Next goes on once the step has a pick, or where the step needs none: the rule the server stops a step
+				// on, a required slot with nothing counted (#100). Until then the store dims it, and a press says this.
+				'ready'   => ! $required || isset( $counted[ $slot ] ),
+				'missing' => self::missing( $slot, Cast::str( $step['label'] ?? $slot ) ),
 			),
 			'stepName'  => BuildLink::PARAM . '[step]',
 		);

@@ -8,6 +8,9 @@
  *   sent as it would be without JavaScript.
  * - **A pick** is the shopper's own radio, painted by the browser at once; the route is asked for the same step with it
  *   once the shopper stops picking.
+ * - **The step's Next** is dimmed until the server's view says the step has a pick, or the shopper picks (#100). It
+ *   stays a button in the tab order: pressed dimmed, it sends nothing, the words beside it say what is missing, and the status region says it once,
+ *   in the server's words. Without the script nothing is dimmed, and the server answers the form as it always has.
  * - **A link** on the builder (Back, a step done, Change, an error) asks the route for its address. A link opened in
  *   another tab or window is left to the browser.
  * - **Back and Forward** ask the route for the address the browser is now at.
@@ -77,6 +80,10 @@ interface State {
 	folded: boolean;
 	/** Whether the picture is being drawn: a pick has kept the shopper SLOW, and its answer or image is on its way (D-308). */
 	drawing: boolean;
+	/** What the step's Next said is missing when it was pressed dimmed, in the server's words; empty otherwise (#100). */
+	missing: string;
+	/** Whether the step's Next is dimmed: once the script runs, until the server's view says the step has a pick. */
+	readonly dimmed: boolean;
 }
 
 let navigator: Navigator | undefined;
@@ -676,6 +683,11 @@ function chosen( view: Shown, value: string ): void {
 	if ( step.leave instanceof Object ) {
 		( step.leave as { checked?: boolean } ).checked = '0' === value;
 	}
+	// A radio of the step is checked, a part or No risers, so Next sends a pick: lit before the route answers, as the
+	// card is, so that a Next pressed straight after the pick goes on (#100). The answer then says the same.
+	if ( view.bar ) {
+		view.bar.next.ready = true;
+	}
 }
 
 /**
@@ -830,6 +842,7 @@ function nav( state: State ): Navigator {
 					state.view = shown;
 					state.added = false;
 					state.limited = '';
+					state.missing = '';
 					say( state, shown, turned, config, before );
 					priced( before, shown );
 					window.requestAnimationFrame( () =>
@@ -975,6 +988,10 @@ const { state } = store(
 			turning: false,
 			limited: '',
 			folded: false,
+			missing: '',
+			get dimmed(): boolean {
+				return state.live && false === state.view.bar?.next.ready;
+			},
 		} as State,
 		callbacks: {
 			/**
@@ -1029,6 +1046,17 @@ const { state } = store(
 					return;
 				}
 				event.preventDefault();
+				// The step's Next pressed before the step has a pick says what is missing beside it, and sends nothing:
+				// the error summary the server would answer with is for a page with no script (#100).
+				if (
+					event.submitter?.hasAttribute( 'aria-disabled' ) &&
+					state.dimmed
+				) {
+					state.missing = state.view.bar?.next.missing ?? '';
+					// Heard once, in the builder's one status region; the words beside Next are its description.
+					state.status = state.missing;
+					return;
+				}
 				// A search still waiting from the keys typed would go out after this and undo it, as Clear search was.
 				// The form carries the box as it is, so nothing typed is lost.
 				window.clearTimeout( typing );
@@ -1105,6 +1133,7 @@ const { state } = store(
 				}
 				cut();
 				chosen( state.view, input.value );
+				state.missing = '';
 				root?.dispatchEvent(
 					new CustomEvent( 'cbuild:pick', {
 						bubbles: true,

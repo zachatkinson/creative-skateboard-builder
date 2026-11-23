@@ -624,6 +624,9 @@ final class BuilderTest extends TestCase {
 					'name'     => 'cbuild[step]',
 					'value'    => 'wheels',
 					'disabled' => false,
+					// The trucks step has no pick yet: the store dims Next, and a press says this (#100).
+					'ready'    => false,
+					'missing'  => 'Choose your trucks first.',
 				),
 			),
 			// The estimate has a test of its own, below.
@@ -653,6 +656,9 @@ final class BuilderTest extends TestCase {
 				'name'     => '',
 				'value'    => '',
 				'disabled' => false,
+				// Add to cart says itself whether it is ready: the review's Next is never dimmed (#100).
+				'ready'    => true,
+				'missing'  => '',
 			),
 			$review
 		);
@@ -728,8 +734,10 @@ final class BuilderTest extends TestCase {
 		);
 		self::assertSame(
 			array(
-				'value' => 'trucks',
-				'text'  => 'Next: Trucks',
+				'value'   => 'trucks',
+				'text'    => 'Next: Trucks',
+				'ready'   => false,
+				'missing' => 'Choose your deck first.',
 			),
 			$step['next']
 		);
@@ -1059,8 +1067,10 @@ final class BuilderTest extends TestCase {
 					'text'  => '',
 				),
 				'next'      => array(
-					'value' => '',
-					'text'  => '',
+					'value'   => '',
+					'text'    => '',
+					'ready'   => true,
+					'missing' => '',
 				),
 				'stepName'  => '',
 			),
