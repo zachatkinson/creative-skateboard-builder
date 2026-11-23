@@ -3753,3 +3753,13 @@ CI's Lighthouse gate failed Total Blocking Time on the builder page on Twenty Tw
 **Why:** Cowork's 1.0.0 F10 (#89): the deck step's answer carried its cards three times. On the benchmark's 500-candidate step a move's answer goes from 98,659 to 48,398 bytes (docs/BENCHMARK.md).
 
 **Status:** Accepted.
+
+### D-303 · A deck with no layer image stands in for the board by its photo · 2026-11-23
+
+- **What.** Where the deck picked has a photo and no layer image, the stage shows its photo in the board's place, at the board's size, and every part, drawn or not, by its labelled photo: a truck drawn on no deck says nothing, so nothing is drawn until the deck is. The photo is WooCommerce's single-product size, which is never cropped, from a new card field `large` the state route's picture items carry (`picture.items[].large`, additive). The cards listed in a step leave it out, so a step's answer is no larger; the bar's small picture keeps the thumbnail. "Seen from underneath" is not said over a photo.
+- **Tablets and phones.** The stage is a strip, so the deck's photo fills it alone; the caption, the parts list and the review name the rest. Until there is a part to show (`picture.captioned`), the stage scrolls with the page rather than sticking, so the outline no longer holds a third of a phone's screen.
+- **Not chosen.** Drawing the photo turned a quarter turn on a phone, as the board is: a shop's photo may be at any angle, and a turned photo reads as a mistake.
+
+**Why:** Cowork's 1.0.0 F3 (#82): on the demo almost every deck has a photo and no layer image, and the stage showed a 60 by 120 px thumbnail in a 920 px stage.
+
+**Status:** Accepted.

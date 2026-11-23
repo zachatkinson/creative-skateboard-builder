@@ -422,6 +422,10 @@ export interface CbuildState {
 			 */
 			photo: boolean;
 			/**
+			 * From 1.1.0: the part's photo uncropped, at the shop's single-product size, which the picture shows in the board's place for a deck with no layer image; null when the part has no photo.
+			 */
+			large: Photo | null;
+			/**
 			 * Whether the board draws the part, which then has no labelled photo (0.7.0).
 			 */
 			drawn: boolean;

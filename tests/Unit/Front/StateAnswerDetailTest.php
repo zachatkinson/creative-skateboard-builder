@@ -272,9 +272,9 @@ final class StateAnswerDetailTest extends TestCase {
 		$shelf = $this->shelf( array( SlotKey::DECK => 101, SlotKey::TRUCKS => 139 ), SlotKey::WHEELS );
 
 		self::assertCount( 30, $shelf['looks'] );
-		self::assertSame( InMemoryPartCards::card( 3029 ), self::card( $shelf, 3029 )['part']['card'], 'past the 24 options the step lists' );
+		self::assertSame( InMemoryPartCards::listed( 3029 ), self::card( $shelf, 3029 )['part']['card'], 'past the 24 options the step lists' );
 		self::assertSame( array( 3044 ), array_column( array_column( $shelf['sold_out'], 'part' ), 'id' ) );
-		self::assertSame( InMemoryPartCards::card( 3044 ), $shelf['sold_out'][0]['part']['card'], 'sold out, so after the 24' );
+		self::assertSame( InMemoryPartCards::listed( 3044 ), $shelf['sold_out'][0]['part']['card'], 'sold out, so after the 24' );
 	}
 
 	// Spec, The total: a part whose product has gone keeps its place in the box with no photo.

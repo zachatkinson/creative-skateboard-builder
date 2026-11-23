@@ -132,6 +132,9 @@ for ( const theme of THEMES ) {
 						} )
 					).toBeVisible();
 					await still( on, size.width, size.height );
+					// The pointer off the builder: left where Start from Street was, it was over the bar's "Show the
+					// parts" once the review was drawn, and the picture had its hover or not by when the page settled.
+					await on.mouse.move( 0, 0 );
 					await expect( builder ).toHaveScreenshot(
 						`${ theme }-${ scheme }-${ size.name }-review.png`,
 						{

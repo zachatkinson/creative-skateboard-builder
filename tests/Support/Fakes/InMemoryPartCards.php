@@ -56,9 +56,18 @@ final class InMemoryPartCards implements PartCards {
 	}
 
 	/**
+	 * A card as the route lists it: without the large photo, which is the picture's alone (#82).
+	 *
+	 * @return array<string, mixed>
+	 */
+	public static function listed( int $id ): array {
+		return array_diff_key( self::card( $id ), array( 'large' => true ) );
+	}
+
+	/**
 	 * The card this fake gives a part.
 	 *
-	 * @return array{name: string, url: string, price: string, stock: string, stock_class: string, image: array{src: string, width: int, height: int, srcset: string, sizes: string}|null}
+	 * @return array{name: string, url: string, price: string, stock: string, stock_class: string, image: array{src: string, width: int, height: int, srcset: string, sizes: string}|null, photo: bool, large: array{src: string, width: int, height: int, srcset: string, sizes: string}|null}
 	 */
 	public static function card( int $id ): array {
 		return array(
@@ -75,6 +84,14 @@ final class InMemoryPartCards implements PartCards {
 				'sizes'  => '',
 			),
 			'photo'       => 0 !== $id % 2,
+			// The photo uncropped, at the shop's single-product size (1.1.0, #82).
+			'large'       => 0 === $id % 2 ? null : array(
+				'src'    => "https://shop.test/{$id}-large.jpg",
+				'width'  => 600,
+				'height' => 1200,
+				'srcset' => "https://shop.test/{$id}-large.jpg 600w",
+				'sizes'  => '(max-width: 600px) 100vw, 600px',
+			),
 		);
 	}
 

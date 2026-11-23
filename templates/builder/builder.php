@@ -25,7 +25,7 @@ $cbuild_class  = 'cbuild' . ( $cbuild_layout['stageRight'] ? ' cbuild--stage-rig
 	<?php require __DIR__ . '/progress.php'; ?>
 	<div class="cbuild__layout">
 		<?php // The stage: the board, which stays in view as the panel scrolls (spec: Desktop, Tablet, Phone). ?>
-		<div class="cbuild__stage" data-wp-interactive="creative-skateboard-builder">
+		<div class="cbuild__stage" data-wp-interactive="creative-skateboard-builder" data-wp-class--cbuild__stage--bare="!state.view.picture.captioned">
 			<?php require __DIR__ . '/picture.php'; ?>
 		</div>
 		<?php // The panel: the step, scrolling inside itself on a desktop, and the footer pinned at its foot. ?>

@@ -2685,7 +2685,10 @@ test.describe( "The builder's styles", () => {
 		page,
 	} ) => {
 		await page.setViewportSize( { width: 320, height: 640 } );
-		await page.goto( linkTo( { _width: '8in' } ) );
+		// With a part to show: until there is one, the stage scrolls with the page at any width (#82).
+		await page.goto(
+			linkTo( { deck: id( 'builder-test-deck-8-0' ), step: 'trucks' } )
+		);
 		const stage = page.locator( '.cbuild__stage' );
 		await expect( stage ).toHaveCSS( 'position', 'sticky' );
 		await page.setViewportSize( { width: 300, height: 640 } );
@@ -3501,15 +3504,13 @@ test.describe( 'The board turned over', () => {
 			picture( page ).getByRole( 'button', { name: 'Show the top' } )
 		).toHaveCount( 0 );
 		await expect( top( page ) ).toBeHidden();
-		// The underside is drawn, from the trucks and wheels, and is the only side there is.
-		await expect( description( page ) ).toContainText(
-			'Seen from underneath.',
-			{ useInnerText: true }
-		);
-		await expect( description( page ) ).not.toContainText(
-			'Seen from the top.',
-			{ useInnerText: true }
-		);
+		// The deck's photo takes the board's place (#82): nothing is drawn, so neither side is named, and each part
+		// shows its labelled photo.
+		await expect( picture( page ) ).toHaveClass( /cbuild-picture--hero/ );
+		await expect( description( page ) ).not.toContainText( 'Seen from', {
+			useInnerText: true,
+		} );
+		await expect( under( page ) ).toBeHidden();
 		if ( info.project.name === 'no-js' ) {
 			await page.goto(
 				linkTo( {
@@ -4848,4 +4849,50 @@ test.describe( 'A mouse press held while the builder hydrates', () => {
 			await page.close();
 		} );
 	}
+} );
+
+test.describe( 'A deck with no layer image on the stage (#82)', () => {
+	test( "shows the deck's photo at the board's size, and the stage sticks only once there is a part to show", async ( {
+		page,
+	}, info ) => {
+		// A radio sends nothing without the script: the build link's case, without it, is the test of the top above.
+		test.skip( info.project.name === 'no-js', 'a pick needs the script' );
+		const narrow = info.project.name.endsWith( '-phone' );
+		await page.goto( fixture().page );
+		const stage = page.locator( '.cbuild__stage' );
+		const position = () =>
+			stage.evaluate(
+				( element ) => getComputedStyle( element ).position
+			);
+		// Before a pick, on a tablet or a phone, the outline scrolls with the page and leaves the screen to the step.
+		expect( await position() ).toBe( narrow ? 'static' : 'relative' );
+
+		// The 8.25 in deck has no layer image: its photo takes the board's place.
+		await pickDeck( page, '8.25' );
+		const picture = page.locator( '#cbuild-picture' );
+		await expect( picture ).toHaveClass( /cbuild-picture--hero/ );
+		const photo = picture.locator(
+			'.cbuild-picture__item:first-child .cbuild-picture__photo'
+		);
+		await expect( photo ).toBeVisible();
+		await expect
+			.poll( async () => {
+				const [ shown, room ] = await Promise.all( [
+					photo.boundingBox(),
+					stage.boundingBox(),
+				] );
+				return ( shown?.height ?? 0 ) / ( room?.height ?? 1 );
+			}, "the deck's photo fills the stage's height as the board would" )
+			.toBeGreaterThan( narrow ? 0.4 : 0.6 );
+		expect( await position() ).toBe( narrow ? 'sticky' : 'relative' );
+
+		// With a layer image the board is drawn, as before.
+		await pickDeck( page, '8.0' );
+		await expect( picture ).not.toHaveClass( /cbuild-picture--hero/ );
+		await expect(
+			picture.locator(
+				'.cbuild-board:not(.cbuild-board--top) .cbuild-board__layer--deck'
+			)
+		).toHaveCount( 1 );
+	} );
 } );

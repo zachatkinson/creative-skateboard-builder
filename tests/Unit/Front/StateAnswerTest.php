@@ -230,7 +230,7 @@ final class StateAnswerTest extends TestCase {
 				'picked'      => false,
 				'recommended' => false,
 				'messages'    => array(),
-				'card'        => InMemoryPartCards::card( 101 ),
+				'card'        => InMemoryPartCards::listed( 101 ),
 			),
 			$answer['options'][0]
 		);
@@ -521,7 +521,7 @@ final class StateAnswerTest extends TestCase {
 			),
 			$answer['hidden'][0]['messages']
 		);
-		self::assertSame( InMemoryPartCards::card( 139 ), $answer['hidden'][0]['card'] );
+		self::assertSame( InMemoryPartCards::listed( 139 ), $answer['hidden'][0]['card'] );
 
 		$trucks = self::step( $answer, SlotKey::TRUCKS );
 		self::assertNull( $trucks['picked'] );
@@ -687,7 +687,7 @@ final class StateAnswerTest extends TestCase {
 		self::assertSame( 'Part 139', $change['name'] );
 		self::assertSame( 'The trucks are made for decks from 7.8″ to 8.2″ wide. The deck is 8.5″.', $change['messages'][0]['text'] );
 		self::assertSame( 149, $change['closest']['id'] );
-		self::assertSame( InMemoryPartCards::card( 149 ), $change['closest']['card'] );
+		self::assertSame( InMemoryPartCards::listed( 149 ), $change['closest']['card'] );
 		self::assertFalse( $change['closest']['picked'] );
 		self::assertFalse( $change['closest']['recommended'] );
 		self::assertCount( 1, $this->cards->asked );
@@ -1151,6 +1151,7 @@ final class StateAnswerTest extends TestCase {
 				'name'  => 'Part 103',
 				'image' => InMemoryPartCards::card( 103 )['image'],
 				'photo' => true,
+				'large' => InMemoryPartCards::card( 103 )['large'],
 				'drawn' => false,
 			),
 			$answer['picture']['items'][0]

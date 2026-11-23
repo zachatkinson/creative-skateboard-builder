@@ -63,6 +63,12 @@ final class WooPartCards implements PartCards {
 	private const string LAYER_SIZE = 'medium';
 
 	/**
+	 * The photo in the picture's board's place, for a deck with no layer image (#82): the shop's single-product size,
+	 * which is never cropped, at about the board's size.
+	 */
+	private const string LARGE_SIZE = 'woocommerce_single';
+
+	/**
 	 * The post types a part has.
 	 */
 	private const array TYPES = array( 'product', 'product_variation' );
@@ -90,7 +96,7 @@ final class WooPartCards implements PartCards {
 	 * @since 0.4.0
 	 *
 	 * @param list<int> $ids Parts' IDs.
-	 * @return array<int, array{name: string, url: string, price: string, stock: string, stock_class: string, image: array{src: string, width: int, height: int, srcset: string, sizes: string}|null, photo: bool}>
+	 * @return array<int, array{name: string, url: string, price: string, stock: string, stock_class: string, image: array{src: string, width: int, height: int, srcset: string, sizes: string}|null, photo: bool, large?: array{src: string, width: int, height: int, srcset: string, sizes: string}|null}>
 	 */
 	public function cards( array $ids ): array {
 		$ids = array_values( array_unique( array_filter( $ids, static fn( int $id ): bool => $id > 0 ) ) );
@@ -422,11 +428,12 @@ final class WooPartCards implements PartCards {
 	 *
 	 * @param WC_Product $product The part.
 	 * @param int        $layer   Its layer image, its own or its parent's, or 0.
-	 * @return array{name: string, url: string, price: string, stock: string, stock_class: string, image: array{src: string, width: int, height: int, srcset: string, sizes: string}|null, photo: bool}
+	 * @return array{name: string, url: string, price: string, stock: string, stock_class: string, image: array{src: string, width: int, height: int, srcset: string, sizes: string}|null, photo: bool, large?: array{src: string, width: int, height: int, srcset: string, sizes: string}|null}
 	 */
 	private static function card( WC_Product $product, int $layer ): array {
 		$availability = $product->get_availability();
-		$photo        = self::image( Cast::int( $product->get_image_id() ) );
+		$id           = Cast::int( $product->get_image_id() );
+		$photo        = self::image( $id );
 		$image        = $photo ?? self::image( $layer, self::LAYER_SIZE );
 		return array(
 			// WordPress stores a title with its entities written out. A card's name is plain text, which the edge escapes.
@@ -438,6 +445,7 @@ final class WooPartCards implements PartCards {
 			'image'       => $image,
 			// Whether the image is the part's photo, not its layer image: a share card wants the photo (D-282).
 			'photo'       => null !== $photo,
+			'large'       => null === $photo ? null : self::image( $id, self::LARGE_SIZE ),
 		);
 	}
 
@@ -445,7 +453,7 @@ final class WooPartCards implements PartCards {
 	 * A kept card, when it is one: a cache can hand back anything.
 	 *
 	 * @param mixed $kept What the entry holds for a context.
-	 * @return array{name: string, url: string, price: string, stock: string, stock_class: string, image: array{src: string, width: int, height: int, srcset: string, sizes: string}|null, photo: bool}|null
+	 * @return array{name: string, url: string, price: string, stock: string, stock_class: string, image: array{src: string, width: int, height: int, srcset: string, sizes: string}|null, photo: bool, large?: array{src: string, width: int, height: int, srcset: string, sizes: string}|null}|null
 	 */
 	private static function read( mixed $kept ): ?array {
 		if ( ! is_array( $kept ) ) {
@@ -461,7 +469,12 @@ final class WooPartCards implements PartCards {
 		if ( ! is_bool( $kept['photo'] ?? null ) ) {
 			return null;
 		}
-		if ( null !== $image && ! ( is_array( $image ) && is_string( $image['src'] ?? null ) && is_int( $image['width'] ?? null ) && is_int( $image['height'] ?? null ) && is_string( $image['srcset'] ?? null ) && is_string( $image['sizes'] ?? null ) ) ) {
+		// A card kept before 1.1.0 has no `large`, and is read again with it.
+		if ( ! array_key_exists( 'large', $kept ) ) {
+			return null;
+		}
+		$large = $kept['large'];
+		if ( ( null !== $image && ! self::kept( $image ) ) || ( null !== $large && ! self::kept( $large ) ) ) {
 			return null;
 		}
 		return array(
@@ -478,6 +491,23 @@ final class WooPartCards implements PartCards {
 				'sizes'  => $image['sizes'],
 			),
 			'photo'       => $kept['photo'],
+			'large'       => null === $large ? null : array(
+				'src'    => $large['src'],
+				'width'  => $large['width'],
+				'height' => $large['height'],
+				'srcset' => $large['srcset'],
+				'sizes'  => $large['sizes'],
+			),
 		);
+	}
+
+	/**
+	 * Whether a kept image is one.
+	 *
+	 * @param mixed $image What the entry holds for an image.
+	 * @phpstan-assert-if-true array{src: string, width: int, height: int, srcset: string, sizes: string} $image
+	 */
+	private static function kept( mixed $image ): bool {
+		return is_array( $image ) && is_string( $image['src'] ?? null ) && is_int( $image['width'] ?? null ) && is_int( $image['height'] ?? null ) && is_string( $image['srcset'] ?? null ) && is_string( $image['sizes'] ?? null );
 	}
 }

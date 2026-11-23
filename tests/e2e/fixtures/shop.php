@@ -374,6 +374,31 @@ foreach ( $cbuild_layers as $cbuild_sku => $cbuild_art ) {
 	CreativeBranding\SkateboardBuilder\Plugin::container()->get( CreativeBranding\SkateboardBuilder\Service\PartRenditions::class )->make( $cbuild_item->get_id() );
 }
 
+// A photo for the 8.25 in deck, which has no layer image: the deck a demo's shop has most, a photo and no layer, so its
+// photo takes the board's place on the stage (#82). The 8 in deck's art serves as the photo; made again as a layer is.
+$cbuild_item  = wc_get_product( $cbuild_parts['builder-test-deck-8-25'] );
+$cbuild_had   = $cbuild_item->get_image_id();
+$cbuild_from  = __DIR__ . '/layers/deck-8.0-31.5.png';
+$cbuild_hash  = (string) md5_file( $cbuild_from );
+if ( $cbuild_had < 1 || ! file_exists( (string) get_attached_file( $cbuild_had ) ) || get_post_meta( $cbuild_had, '_cbuild_e2e_art', true ) !== $cbuild_hash ) {
+	if ( $cbuild_had > 0 ) {
+		wp_delete_attachment( $cbuild_had, true );
+	}
+	$cbuild_upload = wp_upload_bits( 'builder-test-deck-8-25-photo.png', null, (string) file_get_contents( $cbuild_from ) );
+	$cbuild_had    = (int) wp_insert_attachment(
+		array(
+			'post_mime_type' => 'image/png',
+			'post_title'     => 'builder-test-deck-8-25 photo',
+			'post_status'    => 'inherit',
+		),
+		$cbuild_upload['file']
+	);
+	wp_update_attachment_metadata( $cbuild_had, wp_generate_attachment_metadata( $cbuild_had, $cbuild_upload['file'] ) );
+	update_post_meta( $cbuild_had, '_cbuild_e2e_art', $cbuild_hash );
+	$cbuild_item->set_image_id( $cbuild_had );
+	$cbuild_item->save();
+}
+
 $cbuild_page = get_page_by_path( 'builder-test-page' );
 $cbuild_page = (int) wp_insert_post(
 	array(

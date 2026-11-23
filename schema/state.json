@@ -556,6 +556,7 @@
 							"name",
 							"image",
 							"photo",
+							"large",
 							"drawn"
 						],
 						"properties": {
@@ -594,6 +595,17 @@
 							"photo": {
 								"description": "Whether `image` is the part's photo, not its layer image (1.0.0).",
 								"type": "boolean"
+							},
+							"large": {
+								"description": "From 1.1.0: the part's photo uncropped, at the shop's single-product size, which the picture shows in the board's place for a deck with no layer image; null when the part has no photo.",
+								"oneOf": [
+									{
+										"$ref": "#/definitions/photo"
+									},
+									{
+										"type": "null"
+									}
+								]
 							},
 							"drawn": {
 								"description": "Whether the board draws the part, which then has no labelled photo (0.7.0).",

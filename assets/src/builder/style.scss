@@ -1286,6 +1286,58 @@
 	object-fit: contain;
 }
 
+/*
+ * A deck with no layer image (#82): its photo in the board's place, at the board's size, and the other parts'
+ * labelled photos in a row under it, as the review shows them. On a tablet or a phone the stage is a strip, and the
+ * deck's photo fills it alone; the caption, the parts list and the review name the rest.
+ */
+:where(.cbuild__stage .cbuild-picture--hero .cbuild-picture__items) {
+	grid-row: 3;
+	grid-template-rows: minmax(0, 1fr);
+	grid-auto-rows: auto;
+	min-block-size: 0;
+	margin-block: var(--cbuild-gap-small);
+}
+
+:where(.cbuild__stage .cbuild-picture--hero .cbuild-picture__item:first-child) {
+	grid-column: 1 / -1;
+	grid-template-rows: minmax(0, 1fr) auto;
+	justify-items: center;
+	min-block-size: 0;
+}
+
+:where(
+	.cbuild__stage
+		.cbuild-picture--hero
+		.cbuild-picture__item:first-child
+		.cbuild-picture__photo
+) {
+	inline-size: auto;
+	max-inline-size: 100%;
+	block-size: 100%;
+	min-block-size: 0;
+	aspect-ratio: auto;
+	object-fit: contain;
+}
+
+@container cbuild (max-width: 63.99rem) {
+	:where(
+		.cbuild__stage
+			.cbuild-picture--hero
+			.cbuild-picture__item:not(:first-child)
+	) {
+		display: none;
+	}
+
+	/* Until there is a part to show, the stage scrolls with the page: the outline alone kept a third of a phone's
+	   screen from the step (#82). */
+	:where(.cbuild__stage--bare) {
+		position: static;
+		block-size: auto;
+		padding-block-end: var(--cbuild-gap-small);
+	}
+}
+
 :where(.cbuild-picture__description) {
 	margin-block-start: var(--cbuild-gap-small);
 	color: var(--cbuild-muted);
@@ -1829,5 +1881,14 @@
 	.cbuild.cbuild :focus-visible:not(.cbuild-card__control),
 	.cbuild.cbuild .cbuild-card:has(> .cbuild-card__control:focus-visible) {
 		outline-color: Highlight;
+	}
+}
+
+/* Without the script, a stage that scrolls with the page has nothing to keep focus clear of (#82). */
+@media (320px <= width < 64rem) {
+	:root:has(.cbuild .cbuild__stage--bare) {
+		scroll-padding-block-start: calc(
+			var(--cbuild-stage-size, 0px) + 0.5rem
+		);
 	}
 }

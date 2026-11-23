@@ -420,6 +420,44 @@ final class BuilderTest extends TestCase {
 		self::assertSame( array( 'deck-1' ), array_column( $before['top']['layers'], 'key' ), 'the plain top, maple in the deck\'s shape' );
 	}
 
+	/**
+	 * #82 (Cowork's 1.0.0 F3): a deck with no layer image drew no board, and its photo was a thumbnail in the corner of
+	 * the stage. Its photo takes the board's place, at the board's size, with every other part's labelled photo below
+	 * it, as the review shows them: a truck drawn with no deck under it says nothing. A drawn deck is the board, as
+	 * before, and a deck with no photo either leaves the picture as it was.
+	 */
+	public function test_a_deck_with_no_layer_image_stands_in_for_the_board_by_its_photo_and_the_rest_show_their_photos(): void {
+		$this->layers->attachments = array( 149 => 49 );
+		$this->layers->images      = array( 49 => new ImageFacts( 'image/png', 432, 160, true ) );
+		$view                      = $this->show( new BuildLink( array( SlotKey::DECK => 101, SlotKey::TRUCKS => 149 ), null, SlotKey::WHEELS ) )['view'];
+		$picture                   = $view['picture'];
+		self::assertTrue( $picture['hero'] );
+		self::assertFalse( $picture['board']['shown'], 'the trucks are not drawn on no deck' );
+		self::assertSame( array(), $picture['board']['layers'] );
+		self::assertFalse( $picture['sided'] );
+		self::assertSame( array( SlotKey::DECK => false, SlotKey::TRUCKS => false ), array_column( $picture['items'], 'drawn', 'key' ), 'each part by its labelled photo' );
+		self::assertSame( array( 'eager', 'high' ), array( $picture['items'][0]['loading'], $picture['items'][0]['priority'] ), 'the deck\'s photo is the largest paint' );
+		self::assertSame(
+			array( 'https://shop.test/101-large.jpg', 600, 1200, 'https://shop.test/101-large.jpg 600w' ),
+			array( $picture['items'][0]['src'], $picture['items'][0]['width'], $picture['items'][0]['height'], $picture['items'][0]['srcset'] ),
+			'at the board\'s size, uncropped: the card\'s thumbnail may be a square crop'
+		);
+		self::assertSame( 'https://shop.test/149.jpg', $picture['items'][1]['src'], 'the rest as the review shows them' );
+		self::assertSame( 'https://shop.test/101.jpg', $view['bar']['photo']['src'], 'the bar\'s small picture keeps the thumbnail' );
+		self::assertFalse( $view['bar']['board']['shown'], 'the bar shows the deck\'s photo too' );
+		self::assertTrue( $view['bar']['seen'] );
+
+		$this->layers->attachments = array( 101 => 11 );
+		$this->layers->images      = array( 11 => new ImageFacts( 'image/png', 420, 1626, true ) );
+		$drawn                     = $this->show( new BuildLink( array( SlotKey::DECK => 101 ), null, SlotKey::TRUCKS ) )['view']['picture'];
+		self::assertFalse( $drawn['hero'], 'a deck with a layer image is the board' );
+		self::assertTrue( $drawn['board']['shown'] );
+
+		$this->layers->attachments = array();
+		self::assertFalse( $this->show( new BuildLink( array( SlotKey::DECK => 102 ), null, SlotKey::TRUCKS ) )['view']['picture']['hero'], 'Part 102 has no photo' );
+		self::assertFalse( $this->show( new BuildLink() )['view']['picture']['hero'], 'nothing picked' );
+	}
+
 	public function test_a_deck_with_no_layer_image_has_no_top_to_turn_to_even_on_the_grip_step(): void {
 		$this->topArt();
 		$this->layers->attachments = array( 701 => 71 );
@@ -535,9 +573,11 @@ final class BuilderTest extends TestCase {
 			array_diff_key( $view['bar'], array_flip( array( 'photo', 'picture', 'board', 'hasEstimate', 'estimate' ) ) )
 		);
 		self::assertSame( $view['step']['next']['text'], $view['bar']['next']['text'], "the step's own Next, sent from its form" );
-		$bar   = array_diff_key( $view['bar']['photo'], array( 'classes' => true ) );
-		$photo = array_intersect_key( $view['picture']['items'][0], $bar );
-		self::assertSame( $photo, $bar, 'a small picture of the board: for now, the first part\'s photo' );
+		// The deck's thumbnail: the stage shows its large photo in the board's place (#82), which the bar's small
+		// picture has no use for.
+		$thumbnail = InMemoryPartCards::card( 101 )['image'];
+		self::assertNotNull( $thumbnail );
+		self::assertSame( array( true, $thumbnail['src'], $thumbnail['width'], $thumbnail['height'] ), array( $view['bar']['photo']['hasImage'], $view['bar']['photo']['src'], $view['bar']['photo']['width'], $view['bar']['photo']['height'] ), 'a small picture of the board: for now, the first part\'s photo' );
 		self::assertSame( 'cbuild-bar__photo', $view['bar']['photo']['classes'] );
 		self::assertTrue( $view['bar']['photo']['hasImage'] );
 		self::assertSame( 'See the picture', $view['bar']['picture'] );

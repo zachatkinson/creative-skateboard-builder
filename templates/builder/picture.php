@@ -14,10 +14,10 @@
 
 defined( 'ABSPATH' ) || exit;
 ?>
-<figure class="cbuild-picture" id="cbuild-picture" tabindex="-1" aria-labelledby="cbuild-picture-heading" data-wp-class--cbuild-picture--top="state.view.picture.turned" data-wp-class--cbuild-picture--turning="state.turning">
+<figure class="cbuild-picture" id="cbuild-picture" tabindex="-1" aria-labelledby="cbuild-picture-heading" data-wp-class--cbuild-picture--top="state.view.picture.turned" data-wp-class--cbuild-picture--turning="state.turning" data-wp-class--cbuild-picture--hero="state.view.picture.hero">
 	<h3 class="cbuild-picture__heading" id="cbuild-picture-heading" data-wp-text="state.view.picture.heading"></h3>
-	<?php // The side shown, under the heading; the caption says it with the build, so it is not read twice. ?>
-	<p class="cbuild-picture__side" aria-hidden="true"><span data-wp-bind--hidden="state.view.picture.turned" data-wp-text="state.view.picture.side.under"></span><span data-wp-bind--hidden="!state.view.picture.turned" data-wp-text="state.view.picture.side.top"></span></p>
+	<?php // The side shown, under the heading; the caption says it with the build, so it is not read twice. A deck's photo in the board's place shows no side (#82). ?>
+	<p class="cbuild-picture__side" aria-hidden="true" data-wp-bind--hidden="state.view.picture.hero"><span data-wp-bind--hidden="state.view.picture.turned" data-wp-text="state.view.picture.side.under"></span><span data-wp-bind--hidden="!state.view.picture.turned" data-wp-text="state.view.picture.side.top"></span></p>
 	<?php // Until a part is picked: where the board will be, and what to do. ?>
 	<p class="cbuild-picture__empty" data-wp-bind--hidden="state.view.picture.captioned" data-wp-text="state.view.picture.empty"></p>
 	<div class="cbuild-board" dir="ltr" data-wp-bind--hidden="!state.view.picture.board.shown" data-wp-bind--style="state.view.picture.board.style">

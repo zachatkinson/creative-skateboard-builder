@@ -189,7 +189,21 @@ final class BuilderView {
 		$total   = Cast::map( $answer['total'] ?? null );
 		$sum     = Cast::str( Cast::map( $total['total'] ?? null )['text'] ?? null );
 		$picture = Cast::map( $answer['picture'] ?? null );
-		$status  = $panel
+		// A deck with no layer image is shown by its photo in the board's place, at the board's size, with every other
+		// part's labelled photo below it, as the review shows them; the other parts' layers wait for a deck to sit on (#82).
+		$first = Cast::map( Cast::items( $picture['items'] ?? null )[0] ?? null );
+		$hero  = SlotKey::DECK === Cast::str( $first['slot'] ?? null ) && true !== ( $first['drawn'] ?? null ) && array() !== Cast::map( $first['image'] ?? null );
+		if ( $hero ) {
+			$picture['layers'] = array();
+			$picture['top']    = array();
+			$picture['items']  = array_map( static fn( mixed $item ): array => array( 'drawn' => false ) + Cast::map( $item ), Cast::items( $picture['items'] ?? null ) );
+			// At the board's size, uncropped: the card's thumbnail may be a square crop of a long deck.
+			$large = Cast::map( $first['large'] ?? null );
+			if ( array() !== $large ) {
+				$picture['items'][0]['image'] = $large;
+			}
+		}
+		$status = $panel
 			/* translators: %s: a number of parts. */
 			? sprintf( _n( '%s part no longer fits.', '%s parts no longer fit.', count( Cast::items( $changes['changes'] ?? null ) ), 'creative-skateboard-builder' ), number_format_i18n( count( Cast::items( $changes['changes'] ?? null ) ) ) )
 			: self::said( Cast::str( $picture['description'] ?? null ), $sum, isset( $total['estimate'] ) ? Cast::str( Cast::map( $total['estimate'] )['text'] ?? null ) : null );
@@ -233,13 +247,15 @@ final class BuilderView {
 			'step'      => $step,
 			'changes'   => $this->changes( $state, $changes, $link, $lines, $label ),
 			'summary'   => $summary,
-			'bar'       => self::bar( $summary, $step, $shown, $review, $panel, Cast::map( Cast::items( $picture['items'] ?? null )[0] ?? null ), $state->id, self::board( $picture, $state->id, self::BAR_SIZE ), self::back( $review, $step, $steps, $link, $url, $label ) ),
+			'bar'       => self::bar( $summary, $step, $shown, $review, $panel, $first, $state->id, self::board( $picture, $state->id, self::BAR_SIZE ), self::back( $review, $step, $steps, $link, $url, $label ) ),
 			'picture'   => array(
 				'heading'     => __( 'Your board', 'creative-skateboard-builder' ),
 				'description' => Cast::str( $picture['description'] ?? null ),
 				// With nothing picked, the stage says what to do where the board will be; the caption waits for a part.
 				'captioned'   => array() !== Cast::items( $picture['items'] ?? null ),
 				'empty'       => __( 'Pick a deck to start', 'creative-skateboard-builder' ),
+				// The deck's photo in the board's place (#82).
+				'hero'        => $hero,
 				'board'       => $board,
 				// The board's top (#46): shown on the grip step, where the shopper sees the grip go on, and turned to
 				// with the button by the board, which the store offers and keeps to once pressed. A deck with no layer
