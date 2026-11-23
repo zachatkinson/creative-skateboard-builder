@@ -855,7 +855,7 @@ describe( 'the store', () => {
 				step: {
 					slot: 'deck',
 					options: [ {}, {}, {}, {} ],
-					more: { added: '2 more parts shown, 4 of 4.' },
+					more: { added: '2 more shown, 4 of 4.' },
 				},
 				status: 'A deck. Total: $70.00.',
 			} );
@@ -871,7 +871,7 @@ describe( 'the store', () => {
 		);
 		// Spec (configurator): "Show 30 more" says how many were added. The card is read with it; the total has not
 		// changed, so it is not said.
-		expect( state.status ).toBe( '2 more parts shown, 4 of 4.' );
+		expect( state.status ).toBe( '2 more shown, 4 of 4.' );
 	} );
 
 	/**
@@ -956,7 +956,7 @@ describe( 'the store', () => {
 				step: {
 					slot: 'deck',
 					options: [ {}, {}, {}, {} ],
-					more: { added: '2 more parts shown, 4 of 4.' },
+					more: { added: '2 more shown, 4 of 4.' },
 				},
 			} );
 		builder();
@@ -975,7 +975,7 @@ describe( 'the store', () => {
 		state.view = { ...START, step: { slot: 'deck', options: [ {}, {} ] } };
 		await move();
 		expect( () => vi.advanceTimersToNextFrame() ).not.toThrow();
-		expect( state.status ).toBe( '2 more parts shown, 4 of 4.' );
+		expect( state.status ).toBe( '2 more shown, 4 of 4.' );
 	} );
 
 	// D-152: the change panel is a step of its own, but going back to it, as to any address, makes no entry.

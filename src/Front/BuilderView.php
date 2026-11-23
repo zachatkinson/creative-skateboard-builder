@@ -881,8 +881,8 @@ final class BuilderView {
 			'text'  => null === $more ? '' : sprintf( __( 'Show %s more', 'creative-skateboard-builder' ), number_format_i18n( min( Shelf::SHOWN, $matching - $listed ) ) ),
 			/* translators: 1: how many looks are listed. 2: how many match. */
 			'count' => sprintf( _n( 'Showing %1$s of %2$s', 'Showing %1$s of %2$s', $matching, 'creative-skateboard-builder' ), number_format_i18n( $listed ), number_format_i18n( $matching ) ),
-			/* translators: 1: how many parts Show more added. 2: how many are listed. 3: how many match. */
-			'added' => $shown > Shelf::SHOWN && $added > 0 ? sprintf( _n( '%1$s more part shown, %2$s of %3$s.', '%1$s more parts shown, %2$s of %3$s.', $added, 'creative-skateboard-builder' ), number_format_i18n( $added ), number_format_i18n( $listed ), number_format_i18n( $matching ) ) : '',
+			/* translators: 1: how many Show more added. 2: how many are listed. 3: how many match. No noun: decks, wheels and so on (#84). */
+			'added' => $shown > Shelf::SHOWN && $added > 0 ? sprintf( _n( '%1$s more shown, %2$s of %3$s.', '%1$s more shown, %2$s of %3$s.', $added, 'creative-skateboard-builder' ), number_format_i18n( $added ), number_format_i18n( $listed ), number_format_i18n( $matching ) ) : '',
 		);
 	}
 
@@ -955,8 +955,8 @@ final class BuilderView {
 				$chip     = Cast::map( $chip );
 				$count    = Cast::int( $chip['count'] ?? null );
 				$inputs[] = array(
-					/* translators: 1: a chip, such as a brand. 2: how many parts it leaves. */
-					'said'    => sprintf( _n( '%1$s, %2$s part', '%1$s, %2$s parts', $count, 'creative-skateboard-builder' ), Cast::str( $chip['label'] ?? null ), number_format_i18n( $count ) ),
+					/* translators: 1: a chip, such as a brand. 2: how many it leaves: decks, wheels and so on (#84). */
+					'said'    => sprintf( _x( '%1$s, %2$s', 'a chip and how many it lists', 'creative-skateboard-builder' ), Cast::str( $chip['label'] ?? null ), number_format_i18n( $count ) ),
 					'id'      => 'cbuild-chip-' . $slot . '-' . $name . '-' . $at,
 					'name'    => BuildLink::PARAM . '[_chips][' . $name . '][]',
 					'value'   => Cast::str( $chip['value'] ?? null ),
@@ -1123,6 +1123,9 @@ final class BuilderView {
 		} elseif ( $why ) {
 			/* translators: %s: how many parts match the search. */
 			$text = sprintf( _n( '%s part matches, but it doesn’t fit your build.', '%s parts match, but they don’t fit your build.', $hidden, 'creative-skateboard-builder' ), number_format_i18n( $hidden ) );
+		} elseif ( SlotKey::DECK === $slot && '' !== $asked ) {
+			/* translators: 1: a deck width, such as 8.25″. 2: what the shopper searched for. */
+			$text = sprintf( __( 'No %1$s decks match %2$s.', 'creative-skateboard-builder' ), $asked, $query );
 		} else {
 			$text = self::noMatch( $slot, $query );
 		}
@@ -1350,6 +1353,7 @@ final class BuilderView {
 		}
 
 		$required = Cast::bool( $step['required'] ?? null );
+		$found    = self::found( $shelf ?? array(), $slot, $options );
 		$line     = Cast::map( $lines[ $slot ] ?? null );
 		$before   = $state->kit->slots->before( $slot );
 		$after    = $state->kit->slots->after( $slot );
@@ -1419,12 +1423,13 @@ final class BuilderView {
 			'filters'   => null === $shelf ? self::filters( $answer, $slot ) : self::filters( array(), '' ),
 			'more'      => null === $shelf ? self::more( $answer, count( $options ) ) : self::page( $shelf, count( $options ), $link ),
 			'shelf'     => self::shelf( $shelf ?? array(), $slot, $folded, $state->id ),
-			// The deck step asking its width lists nothing yet, and says nothing is missing.
-			'empty'     => array() === $options && ! ( null !== $shelf && SlotKey::DECK === $slot && '' === $link->shelf->width ),
-			'emptyText' => '' === $link->brand && '' === $link->size
+			// The deck step asking its width lists nothing yet, and says nothing is missing; a search that lists nothing
+			// says so itself, so the fit rule is not given as the reason (#83).
+			'empty'     => array() === $options && ! ( null !== $shelf && SlotKey::DECK === $slot && '' === $link->shelf->width ) && ! $found['shown'],
+			'emptyText' => '' === $link->brand && '' === $link->size && array() === $link->shelf->chips
 				? __( 'Nothing the shop has fits the parts before this step.', 'creative-skateboard-builder' )
 				: __( 'No part matches these filters.', 'creative-skateboard-builder' ),
-			'found'     => self::found( $shelf ?? array(), $slot, $options ),
+			'found'     => $found,
 			'leave'     => array(
 				'shown'   => ! $required,
 				'id'      => 'cbuild-' . $state->id . '-' . $slot . '-none',

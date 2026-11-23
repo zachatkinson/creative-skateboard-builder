@@ -230,7 +230,7 @@ test.describe( 'A long step', () => {
 			await filters.click();
 		}
 		await expect( alder.locator( 'input' ) ).toHaveAccessibleName(
-			'Alder, 12 parts'
+			'Alder, 12'
 		);
 		// By the keyboard: Safari gives a checkbox no focus when it is clicked or tapped, so only a key shows that focus
 		// stays on the control used.

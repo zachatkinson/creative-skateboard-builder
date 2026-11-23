@@ -384,7 +384,7 @@ final class BuilderShelfTest extends TestCase {
 		self::assertSame( 'cbuild[_chips][brand][]', $brand['inputs'][0]['name'] );
 		self::assertSame( array( '15', '15', '15' ), array_column( $brand['inputs'], 'count' ), 'what each leaves, its sold-out looks with it' );
 		// Heard as words, not "Bones 15" (the auditor's M10 review, 13).
-		self::assertSame( 'Bones, 15 parts', $brand['inputs'][0]['said'] );
+		self::assertSame( 'Bones, 15', $brand['inputs'][0]['said'] );
 
 		self::assertTrue( $shelf['sort']['shown'] );
 		self::assertSame( 'cbuild[_sort]', $shelf['sort']['name'] );
@@ -398,7 +398,7 @@ final class BuilderShelfTest extends TestCase {
 		self::assertSame( '', $step['more']['added'], 'the first page added nothing' );
 		// Spec (configurator): Accessibility, "Show 30 more" says how many were added.
 		$more = $this->step( BuildLink::read( array( 'deck' => '101', 'trucks' => '139', 'step' => 'wheels', '_on' => 'wheels', '_shown' => '60' ) ) );
-		self::assertSame( '14 more parts shown, 44 of 44.', $more['more']['added'] );
+		self::assertSame( '14 more shown, 44 of 44.', $more['more']['added'] );
 		self::assertSame( 'wheels', self::tail( $step )['cbuild[_on]'] ?? null );
 	}
 
@@ -451,6 +451,28 @@ final class BuilderShelfTest extends TestCase {
 		self::assertCount( 15, $step['options'] );
 		self::assertSame( 'Showing 15 of 15', $step['more']['count'] );
 		self::assertFalse( $step['more']['shown'] );
+	}
+
+	/**
+	 * #83 (Cowork's 1.0.0 F4): a search or a chip that empties the list gives that reason alone, not the fit rule's; a
+	 * list the rules empty keeps the fit sentence.
+	 */
+	public function test_a_search_that_empties_the_list_says_so_alone_and_the_fit_sentence_is_for_a_list_the_rules_empty(): void {
+		$deck = $this->step( BuildLink::read( array( 'step' => 'deck', '_on' => 'deck', '_width' => '8.25in', '_q' => 'zzzz' ) ) );
+		self::assertFalse( $deck['empty'], 'no fit sentence' );
+		self::assertSame( 'No 8.25″ decks match zzzz.', $deck['found']['text'], 'in the width asked' );
+		self::assertTrue( $deck['found']['clear']['shown'] );
+
+		$trucks = $this->step( BuildLink::read( array( 'deck' => '101', 'step' => 'trucks', '_on' => 'trucks', '_q' => 'zzz' ) ) );
+		self::assertFalse( $trucks['empty'] );
+		self::assertSame( 'No trucks match zzz.', $trucks['found']['text'] );
+
+		$parts                    = Shop::parts();
+		$parts[ SlotKey::TRUCKS ] = array();
+		$this->stock( $parts );
+		$ruled = $this->step( BuildLink::read( array( 'deck' => '101', 'step' => 'trucks', '_on' => 'trucks' ) ) );
+		self::assertTrue( $ruled['empty'] );
+		self::assertSame( 'Nothing the shop has fits the parts before this step.', $ruled['emptyText'] );
 	}
 
 	// Spec (configurator): Search, "When nothing is found, the step says why and offers the way on".
