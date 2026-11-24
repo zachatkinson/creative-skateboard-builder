@@ -17,6 +17,7 @@ use WC_Order_Item_Product;
 use WC_Product_Simple;
 use WP_Error;
 use WP_REST_Request;
+use WP_REST_Response;
 
 /**
  * Spec, Cart, checkout and orders, Orders; Data model, Order items. Roadmap, milestone 5: both checkouts write the
@@ -114,11 +115,37 @@ final class OrderTest extends CartTestCase {
 				)
 			)
 		);
-		$response = rest_get_server()->dispatch( $request );
+		$response = self::dispatched( $request );
 		self::assertSame( 'cheque' === $gateway ? 200 : 400, $response->get_status(), (string) wp_json_encode( $response->get_data() ) );
 		$order = wc_get_order( 'cheque' === $gateway ? $response->get_data()['order_id'] : WC()->session->get( 'store_api_draft_order' ) );
 		self::assertInstanceOf( WC_Order::class, $order );
 		return $order;
+	}
+
+	/**
+	 * A Store API request, with one deprecation from WooCommerce's own code let through. WooCommerce 11.3.1's session
+	 * guard calls `SplObjectStorage::contains()`, which PHP 8.5 deprecates (`SessionConcurrencyGuard.php:45`,
+	 * woocommerce/woocommerce#71224); on a shop it is a logged notice, here it would make the request a 500. That
+	 * message from that file alone is let through: any other deprecation, notice or warning still fails the test (D-332).
+	 *
+	 * @param WP_REST_Request<array<string, mixed>> $request The request.
+	 */
+	private static function dispatched( WP_REST_Request $request ): WP_REST_Response {
+		$previous = null;
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_set_error_handler -- one upstream deprecation, for one request (D-332).
+		$previous = set_error_handler(
+			static function ( int $level, string $message, string $file = '', int $line = 0 ) use ( &$previous ): bool {
+				if ( E_DEPRECATED === $level && str_ends_with( $file, 'StoreApi/Utilities/SessionConcurrencyGuard.php' ) && str_contains( $message, 'SplObjectStorage::contains()' ) ) {
+					return true;
+				}
+				return is_callable( $previous ) && (bool) $previous( $level, $message, $file, $line );
+			}
+		);
+		try {
+			return rest_get_server()->dispatch( $request );
+		} finally {
+			restore_error_handler();
+		}
 	}
 
 	/**

@@ -2727,6 +2727,61 @@ test.describe( 'The brand chips in one row', () => {
 		}
 	} );
 
+	// #107: the no-script submits (the search's Go, the chips' and the sort's Apply) were shown until the store hid them
+	// as it hydrated, and the step's cards moved up by their height. A page that will run the script hides them from
+	// the first paint; if the script never comes, they come back, so the form still sends.
+	test( 'moves no card as the store hydrates, and keeps the submits for a page whose script never comes', async ( {
+		page,
+		javaScriptEnabled,
+	}, info ) => {
+		test.skip(
+			! javaScriptEnabled || info.project.name.endsWith( '-phone' ),
+			'Only a page with the script hides the submits; a phone folds the chips behind Filters.'
+		);
+		await page.setViewportSize( { width: 1280, height: 2000 } );
+		await page.route( /\/build\/builder\/view\.js/, async ( route ) => {
+			await new Promise( ( done ) => setTimeout( done, 1000 ) );
+			await route.continue();
+		} );
+		await page.addInitScript( () => {
+			document.addEventListener( 'DOMContentLoaded', () => {
+				( window as unknown as { first?: number | undefined } ).first =
+					document
+						.querySelector( '.cbuild-cards' )
+						?.getBoundingClientRect().top;
+			} );
+		} );
+		await page.goto( shelfAt() );
+		await page.locator( '.cbuild[data-ready]' ).waitFor();
+		const cards = await page.evaluate( () => ( {
+			first: ( window as unknown as { first?: number | undefined } )
+				.first,
+			ready: document
+				.querySelector( '.cbuild-cards' )
+				?.getBoundingClientRect().top,
+		} ) );
+		expect(
+			cards.first,
+			'the cards are in the first layout'
+		).toBeGreaterThan( 0 );
+		expect(
+			cards.ready,
+			'the cards stay where the first layout put them'
+		).toBe( cards.first );
+
+		await page.unrouteAll( { behavior: 'ignoreErrors' } );
+		await page.route( /\/build\/builder\/view\.js/, ( route ) =>
+			route.abort()
+		);
+		await page.goto( shelfAt(), { waitUntil: 'load' } ).catch( () => null );
+		await page.waitForTimeout( 4500 );
+		await expect(
+			page.locator( '.cbuild-chips__apply' ),
+			'Apply is back for a page whose script never came'
+		).toBeVisible();
+		await expect( page.locator( '.cbuild-search__go' ) ).toBeVisible();
+	} );
+
 	test( 'keeps the row one line from the first paint, so folding it moves nothing under it', async ( {
 		page,
 		javaScriptEnabled,

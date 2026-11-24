@@ -3,7 +3,7 @@
 	"phpVersion": "8.5",
 	"plugins": [],
 	"mappings": {
-		"wp-content/plugins/woocommerce": "https://downloads.wordpress.org/plugin/woocommerce.11.3.0.zip",
+		"wp-content/plugins/woocommerce": "https://downloads.wordpress.org/plugin/woocommerce.11.3.1.zip",
 		"wp-content/plugins/plugin-check": "https://downloads.wordpress.org/plugin/plugin-check.2.2.0.zip",
 		"wp-content/plugins/creative-skateboard-builder": ".",
 		"wp-content/mu-plugins": "./tests/e2e/mu-plugins"

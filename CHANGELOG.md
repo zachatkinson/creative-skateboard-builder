@@ -38,6 +38,7 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Fixed
 
+- The step's cards no longer move up as the builder loads: the search's and the chips' submits, there for a page with no script, are out of the flow from the first paint where the script will run, and come back if it never does (#107, D-331).
 - If the builder's script never loads, the brand row shows every brand after 4 s rather than its first line alone, and the line that says a picture is on its way stops after four runs, the board staying dimmed (D-328).
 - A theme's own styles for fieldsets, buttons and headings, such as Kadence's, no longer box the builder's questions, fill Filters and Show the top, show Filters on a desktop or push the step's heading down (Cowork's 1.0.0 review, F11; #96; D-321).
 - Board size keeps the board at 60 % (large) or 50 % (balanced) of the width on every desktop screen, and the panel's contents stay 40rem wide at most (F12, #97, D-321).
@@ -54,6 +55,7 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Development
 
+- The newest leg runs WooCommerce 11.3.1. Its Store API session guard's PHP 8.5 deprecation (woocommerce/woocommerce#71224) is let through for the one checkout request that meets it, and every other deprecation still fails the suite (#95, D-332).
 - CI runs the newest integration suite in three shards, and `Integration (newest)` checks that they ran every test class once and still applies the 95 % line floor to both suites together (D-323).
 - `composer focused` (`tools/focused.sh`) runs only the integration and browser tests that cover what changed, and says why, before the full /verify; `--dry-run` prints the commands (D-324).
 - The paint and motion speed tests start once WordPress's emoji polyfill is done with the page; the budgets are unchanged (#49, D-325). axe reads the error summary in Firefox again (#36, D-326).

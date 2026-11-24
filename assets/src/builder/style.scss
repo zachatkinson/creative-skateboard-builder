@@ -926,6 +926,26 @@
 	}
 }
 
+/* The no-script submits (the search's Go, the chips' and the sort's Apply), which the store hides as it hydrates, are
+   out of the flow and unseen from the first paint on a page that will run the script, so hiding them moves nothing
+   (#107). If the script never comes, they come back after 4 s, as the brand row does, and the form still sends.
+   Without the script, scripting is none and they show. */
+@media (scripting: enabled) {
+	.cbuild:not([data-ready])
+		:is(.cbuild-search__go, .cbuild-chips__apply, .cbuild-sort__apply) {
+		position: absolute;
+		visibility: hidden;
+		animation: cbuild-submit-back 0s 4s forwards;
+	}
+}
+
+@keyframes cbuild-submit-back {
+	to {
+		position: static;
+		visibility: visible;
+	}
+}
+
 @keyframes cbuild-unclip {
 	to {
 		max-block-size: none;

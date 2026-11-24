@@ -4056,3 +4056,28 @@ M11's interim audit, two of its should-fixes.
 AUDIT.md (Motion) and SPEC.md (Quality bar) still give 150 to 250 ms for the builder's motion, from before milestone 11. SPEC-CONFIGURATOR's table for M11, which this milestone builds to, gives 280 ms for the deck's settle, 300 ms for the grip and 400 ms for the turn (D-305, D-306). The later, specific table wins, as AUDIT.md's own rule says where two documents differ; D-220's range is read as the default for anything the table doesn't name. Found by M11's interim audit.
 
 **Status:** Accepted; the two documents are Zach's to bring into line, listed in M11's review.
+
+### D-331 · The no-script submits are out of the flow from the first paint where the script will run · 2026-11-23
+
+#107: the search's Go and the chips' and sort's Apply submit the step's form without the script. The store hides them as it hydrates (since M10), and the cards moved up by their height: 61 px at 1280 by 2000 on the shelf fixture, below the fold of a 900 px window, so Lighthouse missed it.
+
+- **Where the page will run the script** (`@media (scripting: enabled)`), they are out of the flow and unseen until the builder's ready mark (D-296), so hiding them moves nothing. Out of the flow and `visibility: hidden` rather than `display: none`, so the animation below can bring them back.
+- **If the script never comes,** a CSS animation of no length brings them back after 4 s, as D-328 does for the brand row, and the form still sends.
+- **Without the script,** scripting is none and they show from the start, as before.
+
+**Tests.** `builder.spec.ts` "moves no card as the store hydrates, and keeps the submits for a page whose script never comes". Before: "the cards stay where the first layout put them / Expected: 1102.328125 / Received: 1041.484375".
+
+**Status:** Accepted.
+
+### D-332 · The newest leg moves to WooCommerce 11.3.1, with its one PHP 8.5 deprecation let through in one test · 2026-11-23
+
+The weekly canary failed on WooCommerce 11.3.1 (#95), which is the stable release since 19 November; the demo updates WooCommerce on its own (D-145), so it runs 11.3.1, and the newest leg moves to it.
+
+- **Two failures, neither the plugin's.** 11.3.1 strips markup from an attribute's label when it saves it; the settings test already accepts either form (f9a0a4d). And 11.3.1's new Store API session guard calls `SplObjectStorage::contains()`, deprecated in PHP 8.5 (`plugins/woocommerce/src/StoreApi/Utilities/SessionConcurrencyGuard.php:45`, woocommerce/woocommerce#71224, open). On a shop it is a logged notice; the integration suite turns every deprecation into a failure (AUDIT.md: zero PHP deprecations), so the Store API checkout came back as a 500.
+- **Let through in one place.** `OrderTest::dispatched()` lets that message from that file through for the Store API checkout request alone, and hands everything else to PHPUnit's handler, so any other deprecation, the plugin's included, still fails. Remove it once a WooCommerce release fixes #71224.
+- **Not chosen:** keeping the pin at 11.3.0 until a fix, which would leave CI on a release the demo no longer runs; or a suite-wide allowance, which would hide the plugin's own deprecations.
+
+**Tests.** Before: `OrderTest::test_the_store_api_checkout_writes_the_build_and_ties_it_again_when_the_cart_changes` on 11.3.1, "Failed asserting that 500 is identical to 400" with "Method SplObjectStorage::contains() is deprecated since 8.5". After: OrderTest 11 of 11.
+
+**Status:** Accepted; listed for Zach in M11's review, as it lets an upstream deprecation through.
+
