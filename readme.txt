@@ -64,10 +64,21 @@ Yes. Its hooks, REST routes, block attributes, settings keys, order item keys, C
 = 1.1.0 =
 * The board's parts move into place as they are picked: the deck settles, the trucks and wheels slide on, the grip lays down and the board turns over like a card. The total counts to its new amount, and a new step slides in the way you are going.
 * A kit's Layout section has Motion: playful, or subtle for fades alone. A shopper whose device asks for less motion always gets fades.
+* A deck answers the moment it is pressed: its board is fetched while the pointer rests on its card, and the old board stays until the new one is ready.
+* A grip is drawn as its whole sheet, once, centred on the deck and trimmed to its shape, so a printed grip's artwork shows as it will on the board.
+* Next waits for a pick: until the step has one, Next is dimmed and a press says what is missing beside it, with no error page.
+* Another plugin can blur a part, or leave it out, in the cart, share and email pictures, for example a deck flagged for its artwork. A ready build's tile blurs with it.
 * A deck with no layer image stands in for the board by its photo, at the board's size.
+* After a new width, the picked deck moves to its look in that width, or its card says where it was picked.
 * Searches and chips that empty a step say so, and the chips and Show more name the step's own parts.
-* A ready build with a part no longer offered says so once for its slot.
+* The builder asks for less on each pick, about half the bytes on a long step.
 * The state route tells a shop manager its time and queries in a Server-Timing header.
+* On a desktop the brand chips sit in one row, the brands with the most decks first, with "N more" to open the rest.
+* The deck step's cards are compact: the deck small and upright, its brand, name and price, two to a row on a desktop.
+* A kit's Layout has Show ready builds. A ready build with a part gone or sold out has no tile; its link still opens it, and the Catalogue check lists it.
+* A theme's own styles for fieldsets, buttons and headings no longer restyle the builder, and Board size holds the board at 60 % or 50 % of a wide screen.
+* On a phone, Show the top has a row of its own under the board, and the rail shows every step in one row, the step you are on named.
+* Fixes: a press held while the builder loads goes through; a build link keeps a nofollow another plugin set; "Back to the shop" and "Sign in to save this build" are easier to tap on a phone; a slot's name in a sentence no longer needs mbstring; the cards no longer move as the builder loads; in Safari the panel keeps its scroll while the builder loads.
 
 = 1.0.0 =
 * A kit's page is a configurator: the board beside the steps on a desktop, above them on a tablet or a phone, a rail of steps, and the total at the foot. A block theme gets a kit template of its own.
@@ -187,7 +198,7 @@ Yes. Its hooks, REST routes, block attributes, settings keys, order item keys, C
 == Upgrade Notice ==
 
 = 1.1.0 =
-Update as usual, from the updater or by uploading the zip. No step is needed, from any earlier release. A kit saved before 1.1.0 keeps playful motion.
+Update as usual, from the updater or by uploading the zip. No step is needed, from any earlier release. A kit saved before 1.1.0 keeps playful motion. A grip's layer image is now the whole sheet shot flat from above: grip strips saved under 1.0 still draw as before, and a new grip image is checked for the sheet's size.
 
 = 1.0.0 =
 Update as usual, from the updater or by uploading the zip. No step is needed, from any earlier release.
