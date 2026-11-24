@@ -23,6 +23,7 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Fixed
 
+- On a build with no part yet, the bar no longer holds an empty line for the estimate, so the deck step's first view after a width shows the whole cards it did: four at 1440 by 900 on Kadence, two on Twenty Twenty-Five. The line now appears at the first pick's press, so the estimate its answer brings still moves nothing (D-374).
 - A grip with no spec in the index, or wheels with none, now gets its layer image's resized copies at the sizes the picture draws it, and the board's top draws the grip from its WebP copy. It got none, so the top loaded the full-size image, and neither "Read every part again" nor Site Health saw it. The update to 1.2.0 queues the index job of each such part, so the copies are made in the background with nothing to press (Cowork's 1.1.0 F29, #129, D-371, D-373).
 - The builder gives the state route 10 s to answer. A request that hung kept the builder busy until the browser gave up; now the step keeps what it shows and says "The shop did not answer in time. Try again in a moment.", in the page's language (D-364).
 - A mouse press on the builder that went down before its script ran, and came up after, now goes through; it was lost (Cowork's 1.1.0 F22, #120, D-363).

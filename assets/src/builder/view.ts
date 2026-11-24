@@ -871,6 +871,7 @@ function chosen( view: Shown, value: string ): void {
  * - Once the step has a part picked, each card says its price against it under its own (D-249): the line is kept,
  *   empty, for the server's words. Left empty, as by No risers, the step says no such prices.
  * - A step recommends a part only while it has none picked.
+ * - The bar keeps the estimate's line once the build has a part, so the estimate the answer brings moves nothing.
  *
  * @param view  The view shown.
  * @param value The radio's value: a part's ID, or "0" for leaving the slot empty.
@@ -878,12 +879,17 @@ function chosen( view: Shown, value: string ): void {
 function foretell( view: Shown, value: string ): void {
 	const known = view as {
 		presets?: { shown?: boolean };
+		bar?: { started?: boolean };
 		step: { slot: string; hasLead?: boolean; options?: unknown };
 	};
 	if ( known.presets ) {
 		known.presets.shown = false;
 	}
 	const part = '0' !== value;
+	// The build has a part: the bar keeps the line for the estimate its answer brings (D-374).
+	if ( known.bar && part ) {
+		known.bar.started = true;
+	}
 	if ( 'deck' === known.step.slot && part ) {
 		known.step.hasLead = false;
 	}

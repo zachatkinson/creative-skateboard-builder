@@ -602,6 +602,10 @@ export interface CbuildState {
 			 * The total as the bar shows it: the server's string, which the counting total writes its frames over and ends on (1.1.0).
 			 */
 			amount: string;
+			/**
+			 * Whether the build has a part, so the bar keeps the estimate's line while there is none. The store sets it at a part's press, before the answer (1.2.0, D-374).
+			 */
+			started?: boolean;
 			next: {
 				/**
 				 * Whether the step's Next goes on: the step has a pick, or needs none; true at the review and on the change panel. Until then the store dims Next (1.1.0).

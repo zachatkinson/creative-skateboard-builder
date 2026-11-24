@@ -223,6 +223,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-361 · The phone rail keeps the page's gutter where the row has room, and its border under the step's name](#d-361--the-phone-rail-keeps-the-pages-gutter-where-the-row-has-room-and-its-border-under-the-steps-name--2026-11-24)
 - [D-363 · A press already down when the store's script starts is taken up as one that went down after](#d-363--a-press-already-down-when-the-stores-script-starts-is-taken-up-as-one-that-went-down-after--2026-11-24)
 - [D-364 · The state route has 10 s to answer, then the step keeps what it shows and says so](#d-364--the-state-route-has-10-s-to-answer-then-the-step-keeps-what-it-shows-and-says-so--2026-11-24)
+- [D-374 · The bar keeps the estimate's line once the build has a part, not on a blank build](#d-374--the-bar-keeps-the-estimates-line-once-the-build-has-a-part-not-on-a-blank-build--2026-11-24)
 
 ### Accessibility
 
@@ -5221,4 +5222,27 @@ D-371 makes a grip's copies when its index job runs, and D-372 names the grips i
 
 **Status:** Accepted.
 
-D-374 is unused: the brief left it for a further decision, and none was needed.
+### D-374 · The bar keeps the estimate's line once the build has a part, not on a blank build · 2026-11-24
+
+After F20 (D-356) and F24 (D-360) met on `m12-settings`, `shelf.spec.ts`'s "Compact deck cards (F14) › shows 2/4 whole decks in the first view after a width at 1440 by 900, under a 70 px notice" found no whole card on Twenty Twenty-Five or Kadence. Each passed on its own tree.
+
+- **The cause, measured.** On the deck step after a width, with no deck picked, neither of F20's other kept places takes room: `data-folded` is not set on a page loaded with its width, and the ready builds and the cards' price lines are `display: none`. The bar's kept estimate line is there, `visibility: hidden` and 17 to 18 px high, so the bar starts at 782 px on Twenty Twenty-Five and 787 px on Kadence. The first row of cards ends at 786 px, and Kadence's second row at about 803 px. With that one rule taken out locally, the bar started at 799 and 805 px and both tests passed.
+- **Why the line was wrong there.** `BuildState` gives an estimate only once the build is started, so a blank build can never show one. D-356 kept the line "on every step before the review" so the estimate the first pick brings moves nothing. That needs the line from the press of the first pick, not from the page's start.
+- **The fix.** The bar view has `started`, true where the summary lists a part, and the bar takes `cbuild-bar--started` from it. The stylesheet keeps the line only on a started bar before the review. `foretell()` sets `view.bar.started` at a part's press, with the rest of what a press foretells. So the line appears at the press, inside the 500 ms CLS leaves out after an input, and the estimate the answer brings 800 ms later moves nothing. A pick of none leaves it as the server said.
+- **What changes for the shopper.** On a blank build the bar is one line shorter, so the first view holds the decks F24 counted on. At the first pick the bar grows by that line, as it did before 1.2.0, and from then on it keeps its height.
+- **Kept.** F20's CLS gate, `builder.spec.ts` "what an answer 800 ms late moves is no layout shift", stays at 0 for the deck on both widths. The tests' 2 and 4 are as F24 set them.
+
+**Tests.** The shelf test is the red run. `builder.spec.ts`'s phone-bar height test now reads no kept line on a blank build and a bar grown by the estimate's line alone at the first deck, where D-356 had it keep its height. `BuilderTest` checks `bar.started`: true with a deck and at the review, false on a blank build. `store.test.ts` checks that a pick's press sets `bar.started`. `schema/state.json` describes `started`, and its types are regenerated.
+
+**Red run.** Before the fix, `shelf.spec.ts:441` on chromium-desktop: "whole cards in the first view / Expected: >= 2 / Received: 0" on Twenty Twenty-Five, and the same on Kadence (shelf.spec.ts:498).
+
+**Deliberate breaks.**
+
+- **The old selector put back** (the line kept on every bar before the review): Twenty Twenty-Five "Expected: >= 2 / Received: 0" and Kadence "Expected: >= 4 / Received: 2" (shelf.spec.ts:498).
+- **`foretell()` not marking the build started:** the CLS gate failed with "a deck's layout shift / Expected: 0 / Received: 0.00016581005520290799" on chromium-desktop and "Received: 0.02077326771195626" on chromium-phone (builder.spec.ts:5451).
+
+Put back, all passed.
+
+**Why:** the line was there to make room for an estimate. A build with no part can't have one, and on that build the line cost the first view a row of decks.
+
+**Status:** Accepted.

@@ -827,6 +827,8 @@ final class BuilderTest extends TestCase {
 				// The bar shows the amount alone, and reads the sentence to a screen reader: beside the board's
 				// picture "Total:" broke the line at 412 pixels, and the bar grew under the thumb (Zach, 16 Nov).
 				'amount' => $view['summary']['total'],
+				// A part is picked, so the bar keeps the estimate's line while there is none (D-374).
+				'started' => true,
 				'parts'  => 'Show the parts',
 				'hide'  => 'Hide the parts',
 				// The footer holds Back beside Next, as the prototype has it; the step's own Back is hidden.
@@ -1353,6 +1355,10 @@ final class BuilderTest extends TestCase {
 		$whole = $this->show( new BuildLink( self::STREET, null, BuildLink::REVIEW ) )['view'];
 		self::assertFalse( $whole['bar']['hasEstimate'], 'every slot picked: no estimate' );
 		self::assertFalse( $this->show( new BuildLink() )['view']['bar']['hasEstimate'], 'nothing before the deck' );
+		// F24 (D-374): only a build with a part can be given an estimate, so only it keeps the estimate's line.
+		self::assertTrue( $view['bar']['started'] );
+		self::assertTrue( $whole['bar']['started'] );
+		self::assertFalse( $this->show( new BuildLink() )['view']['bar']['started'], 'a blank build keeps no line' );
 	}
 
 	public function test_a_card_lists_its_notes_and_the_summary_what_other_plugins_add(): void {

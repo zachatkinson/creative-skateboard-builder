@@ -2265,8 +2265,12 @@
 }
 
 /* Its line is kept on a step while there is no estimate, so the one an answer brings, or takes away, moves neither
-   the total nor the buttons beside it (F20, #118; D-356). Over the builder's own `[hidden]`, as the turn's row is. */
-.cbuild .cbuild-bar:not(.cbuild-bar--review) .cbuild-bar__estimate[hidden] {
+   the total nor the buttons beside it (F20, #118; D-356). Over the builder's own `[hidden]`, as the turn's row is. Only
+   once the build has a part, which the store marks at the first pick's press: a blank build can have no estimate, and
+   the line would take a row of decks from the first view (F24; D-374). */
+.cbuild
+	.cbuild-bar--started:not(.cbuild-bar--review)
+	.cbuild-bar__estimate[hidden] {
 	display: block;
 	visibility: hidden;
 }

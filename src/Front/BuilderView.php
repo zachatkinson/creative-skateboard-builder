@@ -355,7 +355,7 @@ final class BuilderView {
 	 * @param int                                                          $kit     The kit product's ID.
 	 * @param array<string, mixed>                                         $board   The board, drawn at the bar's size.
 	 * @param array{shown: bool, url: string, text: string, label: string} $back The footer's Back.
-	 * @return array{shown: bool, seen: bool, board: array<string, mixed>, photo: array{hasImage: bool, src: string, srcset: string, sizes: string, width: int, height: int, classes: string}, picture: string, total: string, amount: string, parts: string, hide: string, back: array{shown: bool, url: string, text: string, label: string}, next: array{shown: bool, onStep: bool, onReview: bool, text: string, form: string, name: string, value: string, disabled: bool, ready: bool, missing: string}}
+	 * @return array{shown: bool, seen: bool, board: array<string, mixed>, photo: array{hasImage: bool, src: string, srcset: string, sizes: string, width: int, height: int, classes: string}, picture: string, total: string, amount: string, parts: string, hide: string, started: bool, back: array{shown: bool, url: string, text: string, label: string}, next: array{shown: bool, onStep: bool, onReview: bool, text: string, form: string, name: string, value: string, disabled: bool, ready: bool, missing: string}}
 	 */
 	private static function bar( array $summary, array $step, array $shown, bool $review, bool $panel, array $first, int $kit, array $board, array $back ): array {
 		$next  = Cast::map( $step['next'] ?? null );
@@ -380,6 +380,10 @@ final class BuilderView {
 			// own under the amount, while one is given (Cowork's 0.8.0 review, F2; D-230). The status region says it
 			// already, so the line is not read again.
 			'hasEstimate' => Cast::bool( $summary['hasEstimate'] ?? null ),
+			// Whether the build has a part: only then can an answer bring an estimate, so only then does the bar keep the
+			// estimate's line while there is none. A blank build keeps no line, and the first pick keeps it at its press
+			// (F20 and F24; D-356, D-374).
+			'started'     => ! Cast::bool( $summary['empty'] ?? true ),
 			/* translators: %s: an amount of money, such as $184.00. Short: it sits under the total in the phone's bar. */
 			'estimate'    => sprintf( __( 'Complete from about %s', 'creative-skateboard-builder' ), Cast::str( $summary['estimateAmount'] ?? null ) ),
 			'parts'       => __( 'Show the parts', 'creative-skateboard-builder' ),

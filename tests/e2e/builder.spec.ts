@@ -7341,17 +7341,18 @@ test.describe( 'The phone bar', () => {
 			// Beside the board's picture "Total:" broke the line on CI's fonts, and the bar grew under the thumb
 			// (D-207): the amount alone is shown.
 			expect( after.shown, 'the amount on one line' ).toBe( 1 );
-			// The deck brings the estimate, a line of its own under the amount (F2, D-230). The line is kept, unseen, on a
-			// blank build (F20, #118; D-356), so the estimate an answer brings late moves nothing: the bar keeps its
-			// height, and a wider total alone never grows it.
+			// The deck brings the estimate, a line of its own under the amount (F2, D-230). A blank build can have none,
+			// so it keeps no line for one, which would take a row of decks from the first view (F24; D-374). The deck's
+			// press keeps the line, so the estimate an answer brings late moves nothing (F20, #118; D-356): the bar grows
+			// by that line alone, and a wider total never grows it.
 			expect( before.said, 'no estimate on a blank build' ).toBe( false );
-			expect( before.estimate, 'its line kept' ).toBeGreaterThan( 0 );
+			expect( before.estimate, 'and no line kept for one' ).toBe( 0 );
 			expect( after.said, 'the estimate, once a deck is picked' ).toBe(
 				true
 			);
 			expect(
-				Math.abs( after.height - before.height ),
-				'the bar keeps its height'
+				Math.abs( after.height - before.height - after.estimate ),
+				"the bar grows by the estimate's line alone"
 			).toBeLessThanOrEqual( 1 );
 			await total.evaluate( ( summary ) => {
 				(
@@ -7360,12 +7361,9 @@ test.describe( 'The phone bar', () => {
 					) as HTMLElement
 				 ).style.display = 'none';
 			} );
-			// With its line taken out as well, the bar is the blank build's less that line: a wider total adds nothing.
+			// With its line taken out as well, the bar is the blank build's: a wider total adds nothing.
 			expect(
-				Math.abs(
-					( await read() ).height -
-						( before.height - before.estimate )
-				),
+				Math.abs( ( await read() ).height - before.height ),
 				'as high with a wider total, the estimate aside'
 			).toBeLessThanOrEqual( 1 );
 		} );

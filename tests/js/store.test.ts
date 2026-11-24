@@ -3529,6 +3529,7 @@ describe( 'what a press foretells', () => {
 		state.view = {
 			...START,
 			presets: { shown: true },
+			bar: { next: { ready: false, missing: '' }, started: false },
 			step: {
 				slot: 'deck',
 				hasLead: true,
@@ -3555,6 +3556,10 @@ describe( 'what a press foretells', () => {
 			null,
 		] );
 		expect( root.hasAttribute( 'data-picked' ) ).toBe( true );
+		// The build has a part: the bar keeps the estimate's line for the answer (F24; D-374).
+		expect(
+			( state.view as { bar: { started: boolean } } ).bar.started
+		).toBe( true );
 	} );
 
 	it( 'keeps a later step’s line, and at No risers no prices and the recommendation, and asks nothing of a view with no ready builds', () => {
