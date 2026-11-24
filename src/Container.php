@@ -94,6 +94,14 @@ final class Container {
 					$c->get( Port\Logger::class )
 				);
 			},
+			Install\Migrations\UnsizedRenditionsMigration::class => static function ( Container $c ): object {
+				return new Install\Migrations\UnsizedRenditionsMigration(
+					static function () use ( $c ): Port\Reindex {
+						return $c->get( Port\Reindex::class );
+					},
+					$c->get( Port\Logger::class )
+				);
+			},
 			// The index's services are built when a migration finishes, not on every request.
 			Hooks\InstallHooks::class                     => static function ( Container $c ): object {
 				return new Hooks\InstallHooks(

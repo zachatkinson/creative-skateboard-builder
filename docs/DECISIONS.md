@@ -278,6 +278,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-337 · The layer image a part already has is not checked again when the product is saved](#d-337--the-layer-image-a-part-already-has-is-not-checked-again-when-the-product-is-saved--2026-11-23)
 - [D-371 · A part with no spec in the index gets its renditions at the sizes the page draws it at](#d-371--a-part-with-no-spec-in-the-index-gets-its-renditions-at-the-sizes-the-page-draws-it-at--2026-11-24)
 - [D-372 · Site Health names up to five parts whose layer images have no resized copies](#d-372--site-health-names-up-to-five-parts-whose-layer-images-have-no-resized-copies--2026-11-24)
+- [D-373 · The update to 1.2.0 queues the index job of each part whose layer image has no copies](#d-373--the-update-to-120-queues-the-index-job-of-each-part-whose-layer-image-has-no-copies--2026-11-24)
 
 ### Cart, checkout and orders
 
@@ -5139,4 +5140,22 @@ Issue #129 asked that Site Health report the parts missing renditions. The pictu
 
 **Status:** Accepted.
 
-D-373 and D-374 are unused: the brief left them for further decisions, and none was needed.
+### D-373 · The update to 1.2.0 queues the index job of each part whose layer image has no copies · 2026-11-24
+
+D-371 makes a grip's copies when its index job runs, and D-372 names the grips in Site Health. A shop that updated would still have had to press "Read every part again" to get the fix it installed. This step does it for them, as D-214's step did for 0.8.0.
+
+- **The step.** `Install\Migrations\UnsizedRenditionsMigration`, key `layer_renditions_2`, appended to `MigrationRegistry::CLASSES` with `VERSION` raised to 8. It runs 0.8.0's `RenditionsMigration` under its own key: `IndexJobs::requestRenditions()` lists the parts `PartRenditions::missing()` now finds and queues each one's `cbuild_index_part` through Action Scheduler, with `enqueueDistinct()`, and logs the count. The jobs make the copies in the background. The update's request makes no file.
+- **Not a full reindex.** "Read every part again" would read every part in the shop to find a few grips. This step reads only the parts the kits offer in a drawn slot that have a layer image, and each one's stored pixels, with no file opened, which is what Site Health already does on each run of its test.
+- **Idempotent and cheap.** The runner records the key once it is done, so it runs once. Run again before then, a job already waiting is not queued twice. On a shop with nothing missing it queues nothing and logs nothing. Its cost there is the reading above, once, the same as one run of the Site Health test.
+- **A new class, not a second key on the old one.** The registry builds each step from its class, and a step's key never changes once shipped, so 0.8.0's step stays as it was.
+- **`npm run upgrade`** seeds no layer image (`tools/upgrade/seed.php` makes parts, kits, an order and a saved build), so it cannot see this. It checks the schema reaches 8 after the update. Seeding a grip with a layer image and no specs would mean changing a seed every published release runs. That is left as a follow-up for the owner to decide.
+
+**Tests.** `GripRenditionsTest::test_the_update_to_1_2_0_queues_the_jobs_that_make_a_grips_missing_copies`: a site migrated to 7 with a grip that gives no size, its layer image set and not one copy. The update is needed, finishes, and queues the grip's job alone with nothing made in its request. The jobs then make its copies, none are counted missing, and a second run is not needed and queues nothing. `RenditionsMigrationTest::test_the_update_to_1_2_0_queues_the_job_of_a_grip_with_no_spec_and_nothing_on_a_shop_with_none_missing`: the key, the grip's job queued and logged, and on a shop with nothing missing nothing queued or logged. `MigrationRegistryTest`, `ContainerTest`, `ActivationTest` and `MigrationTest` list the new key and version.
+
+**Red run.** Before the step: `GripRenditionsTest::test_the_update_to_1_2_0_queues_the_jobs_that_make_a_grips_missing_copies`, "the update has a step to run / Failed asserting that false is true." (GripRenditionsTest.php:195). **Deliberate break:** the step's `run()` returning done with nothing queued. The integration test failed with "the grip's own job, queued, nothing made in the update's request / Failed asserting that two arrays are identical." (GripRenditionsTest.php:197). The unit test failed with "the grip, which has no row in the index" (RenditionsMigrationTest.php:110). Put back, both passed.
+
+**Why:** a fix that only lands when the shop presses a button, or reads Site Health, has not reached most shops.
+
+**Status:** Accepted.
+
+D-374 is unused: the brief left it for a further decision, and none was needed.

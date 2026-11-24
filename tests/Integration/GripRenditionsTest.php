@@ -11,6 +11,8 @@ namespace CreativeBranding\SkateboardBuilder\Tests\Integration;
 
 use CreativeBranding\SkateboardBuilder\Adapter\WpLayerRenditions;
 use CreativeBranding\SkateboardBuilder\Health\SiteHealth;
+use CreativeBranding\SkateboardBuilder\Install\Migrations\MigrationRunner;
+use CreativeBranding\SkateboardBuilder\Install\Migrations\RunResult;
 use CreativeBranding\SkateboardBuilder\Port\Reindex;
 use CreativeBranding\SkateboardBuilder\Service\IndexJobs;
 use CreativeBranding\SkateboardBuilder\Service\PartRenditions;
@@ -169,5 +171,38 @@ final class GripRenditionsTest extends CartTestCase {
 		$result = $this->service( SiteHealth::class )->pictures();
 		self::assertSame( '6 parts\' layer images have no resized copies', $result['label'] );
 		self::assertMatchesRegularExpression( '/Among them: (Sheet &lt;b&gt;[1-6]&lt;\/b&gt;, ){4}and Sheet &lt;b&gt;[1-6]&lt;\/b&gt;\./', $result['description'], 'five names, as text' );
+	}
+
+	// D-373: a shop that updates to 1.2.0 gets the fix it installed with no step of its own. The update queues the
+	// index job of each part whose layer image has no copies, and the jobs make them in the background.
+	public function test_the_update_to_1_2_0_queues_the_jobs_that_make_a_grips_missing_copies(): void {
+		$runner = $this->service( MigrationRunner::class );
+		update_option( Options::DB_VERSION, '0', true );
+		self::assertSame( RunResult::Finished, $runner->run() );
+		$image = $this->layered( false );
+		self::work();
+		// What 1.1.0 left: a grip that gives no size, with its layer image and not one copy, and its schema at 7.
+		foreach ( (array) glob( wp_get_upload_dir()['basedir'] . '/' . WpLayerRenditions::FOLDER . '/*' ) as $file ) {
+			wp_delete_file( (string) $file );
+		}
+		$states = get_option( Options::MIGRATIONS );
+		self::assertIsArray( $states );
+		unset( $states['layer_renditions_2'] );
+		update_option( Options::MIGRATIONS, $states, false );
+		update_option( Options::DB_VERSION, '7', true );
+		self::assertSame( array( $this->parts['grip'] ), $this->service( PartRenditions::class )->unrenderedParts() );
+
+		self::assertTrue( $runner->needed(), 'the update has a step to run' );
+		self::assertSame( RunResult::Finished, $runner->run() );
+		self::assertSame( array( array( 'part' => $this->parts['grip'] ) ), self::waiting( Options::JOB_INDEX_PART ), 'the grip\'s own job, queued, nothing made in the update\'s request' );
+		self::assertSame( array(), self::made( $image ) );
+
+		self::work();
+		self::assertSame( self::SIZES, self::made( $image )['webp'] ?? array() );
+		self::assertSame( 0, $this->service( PartRenditions::class )->unrendered() );
+
+		// Run again, as a second request may: done once, so nothing is queued.
+		self::assertSame( RunResult::NotNeeded, $runner->run() );
+		self::assertSame( array(), self::waiting( Options::JOB_INDEX_PART ) );
 	}
 }
