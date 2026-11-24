@@ -459,12 +459,34 @@
 		> [aria-hidden="true"] {
 		display: none;
 	}
+
+	/*
+	 * The page's gutter at either end where the row has room (F25, #123; D-361), 16 px or the theme's own, as the
+	 * panel's: a spacer at each end that only takes space the pills leave, its margin giving back the gap beside it, so
+	 * it never wraps the row, and shrinks to nothing where seven pills fill a 320 px screen.
+	 */
+	:where(.cbuild-progress__list)::before,
+	:where(.cbuild-progress__list)::after {
+		content: "";
+		flex: 1 0 0;
+		max-inline-size: max(1rem, var(--wp--style--root--padding-left, 0px));
+	}
+
+	:where(.cbuild-progress__list)::before {
+		margin-inline-end: -0.125rem;
+	}
+
+	:where(.cbuild-progress__list)::after {
+		margin-inline-start: -0.125rem;
+	}
 }
 
 /* Narrower than seven pills and a name: the step shown is a pill of its number too, its name under it, kept inside
    the row at either end. */
 @container cbuild (max-width: 25.99rem) {
-	:where(.cbuild-progress__list) {
+	/* Room for the name above the rail's border. Two classes, as the list's other resets: a theme's rule for a list in
+	   its content (Kadence's) took the padding, and the name hung under the border (F25, #123). */
+	.cbuild.cbuild .cbuild-progress__list {
 		padding-block-end: 1.5em;
 	}
 

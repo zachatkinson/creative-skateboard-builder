@@ -3844,6 +3844,123 @@ test.describe( "The builder's styles", () => {
 		).toEqual( names );
 	} );
 
+	// Cowork's 1.1.0 review, F25 (#123): at 320, 390 and 430 px the pills ran from the screen's left edge to its right,
+	// and on Kadence the step shown had its name under its pill, below the rail's border, so it read as the panel's.
+	// The rail keeps the page's 16 px gutter where the row has room, and its border is drawn under the name.
+	for ( const theme of [ 'kadence', 'storefront', 'twentytwentyfive' ] ) {
+		test( `keeps the phone rail inside the gutter, and the step's name above its border, on ${ theme }`, async ( {
+			page,
+			context,
+			baseURL,
+		} ) => {
+			await context.addCookies( [
+				{
+					name: 'cbuild_e2e_theme',
+					value: theme,
+					url: baseURL || SITE,
+				},
+			] );
+			const builds = [
+				{ step: 'deck' },
+				// The widest name, which from 26rem sits in its pill.
+				{
+					deck: id( 'builder-test-deck-8-0' ),
+					trucks: id( 'builder-test-trucks-139' ),
+					wheels: id( 'builder-test-wheels-52' ),
+					bearings: id( 'builder-test-bearings' ),
+					hardware: id( 'builder-test-bolts-1' ),
+					step: 'hardware',
+				},
+			];
+			for ( const width of [ 320, 390, 430 ] ) {
+				await page.setViewportSize( { width, height: 844 } );
+				for ( const picks of builds ) {
+					await page.goto( linkTo( picks ) );
+					await expect( heading( page ) ).toBeVisible();
+					const at = `${ width } px, step ${ picks.step }`;
+					const drawn = await page
+						.locator( '.cbuild-progress' )
+						.evaluate( ( nav ) => {
+							const edge = nav.getBoundingClientRect();
+							const pills = [
+								...nav.querySelectorAll< HTMLElement >(
+									'.cbuild-progress__step > :not([hidden])'
+								),
+							].map( ( pill ) => pill.getBoundingClientRect() );
+							const name = nav
+								.querySelector(
+									'.cbuild-progress__step--current .cbuild-progress__label > [aria-hidden="true"]'
+								)
+								?.getBoundingClientRect();
+							return {
+								left: edge.left,
+								right: edge.right,
+								// The border's top edge: the rail's foot.
+								foot:
+									edge.bottom -
+									parseFloat(
+										getComputedStyle( nav )
+											.borderBottomWidth
+									),
+								rows: new Set(
+									pills.map( ( box ) =>
+										Math.round( box.top )
+									)
+								).size,
+								first: Math.min(
+									...pills.map( ( box ) => box.left )
+								),
+								last: Math.max(
+									...pills.map( ( box ) => box.right )
+								),
+								// The row's own width: the pills and the least space between them.
+								row:
+									pills.reduce(
+										( sum, box ) => sum + box.width,
+										0
+									) +
+									( pills.length - 1 ) * 2,
+								name: name
+									? {
+											bottom: name.bottom,
+											left: name.left,
+											right: name.right,
+										}
+									: null,
+							};
+						} );
+					// The gutter the row leaves room for: 16 px a side at most, none where the pills fill the rail.
+					const room = drawn.right - drawn.left - drawn.row;
+					const gutter = Math.max( 0, Math.min( 16, room / 2 ) );
+					if ( room >= 0 ) {
+						expect( drawn.rows, `${ at }: one row` ).toBe( 1 );
+					}
+					expect(
+						Math.round( drawn.first - drawn.left ),
+						`${ at }: the rail's start inside the gutter`
+					).toBeGreaterThanOrEqual( Math.floor( gutter ) - 1 );
+					expect(
+						Math.round( drawn.right - drawn.last ),
+						`${ at }: the rail's end inside the gutter`
+					).toBeGreaterThanOrEqual( Math.floor( gutter ) - 1 );
+					expect(
+						drawn.name,
+						`${ at }: the name shows`
+					).not.toBeNull();
+					expect(
+						Math.round( drawn.name!.bottom - drawn.foot ),
+						`${ at }: the name above the rail's border`
+					).toBeLessThanOrEqual( 0 );
+					expect(
+						drawn.name!.left >= drawn.left - 0.5 &&
+							drawn.name!.right <= drawn.right + 0.5,
+						`${ at }: the name inside the rail`
+					).toBe( true );
+				}
+			}
+		} );
+	}
+
 	test( 'reflows at 320 CSS pixels with nothing scrolling sideways', async ( {
 		page,
 	} ) => {
