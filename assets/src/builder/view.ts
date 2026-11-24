@@ -186,10 +186,9 @@ const CONTROLS =
 function pressEarly( event: PointerEvent ): void {
 	// No control waits on a moment: a press ends every one at once (spec: Milestone 11).
 	cut();
+	// A mouse's main button alone: the pointer's up says whether it was a mouse's.
 	const control =
-		'mouse' === event.pointerType &&
-		0 === event.button &&
-		event.target instanceof Element
+		0 === event.button && event.target instanceof Element
 			? event.target.closest< HTMLElement >( CONTROLS )
 			: null;
 	early = control ? { control, clicked: false } : null;
