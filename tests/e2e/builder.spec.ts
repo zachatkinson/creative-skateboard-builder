@@ -5,6 +5,7 @@ import {
 	test,
 	expect,
 	answered,
+	emojiDone,
 	inLocale,
 	noticeFocusDone,
 	Page,
@@ -1906,7 +1907,12 @@ test.describe( 'The builder with JavaScript', () => {
 			}
 		);
 		await page.goto( linkTo( { _width: '8in' } ) );
-		await page.waitForLoadState( 'load' );
+		// Every region hydrated before the pick, as goto() waits for (D-296): a pick before the store ran only checked the
+		// radio and asked nothing, so the address kept its width alone (#70, seen before the ready mark existed).
+		await expect( page.locator( '.cbuild' ) ).toHaveAttribute(
+			'data-ready',
+			''
+		);
 		const button = page
 			.locator( '.cbuild' )
 			.getByRole( 'button', { name: 'Next: Trucks' } )
@@ -2065,7 +2071,8 @@ test.describe( 'The builder with JavaScript', () => {
 				step: 'wheels',
 			} )
 		);
-		await page.waitForLoadState( 'load' );
+		// The pick is timed, not core's emoji polyfill reading the page after its load (#49).
+		await emojiDone( page );
 		const devtools = await page.context().newCDPSession( page );
 		await devtools.send( 'Emulation.setCPUThrottlingRate', { rate: 4 } );
 		// From the input to the next paint, as the browser measures an interaction (Event Timing): the handlers, the
@@ -2253,16 +2260,9 @@ test.describe( 'The builder with JavaScript', () => {
 		// The error summary, asked past an empty step by a link: with the script, Next no longer asks for it (#100).
 		await page.goto( linkTo( { step: 'trucks' } ) );
 		await expect( page.locator( '.cbuild-errors' ) ).toBeVisible();
-		// Playwright's Firefox crashes in axe on this state once the store has drawn it, though the same state served
-		// passes there and passes in the other engines (issue #36, D-167).
-		if ( info.project.name.startsWith( 'firefox' ) ) {
-			test.info().annotations.push( {
-				type: 'quarantined',
-				description: 'axe on the error summary in Firefox: issue #36',
-			} );
-		} else {
-			await check( 'the error summary' );
-		}
+		// Served, in every engine. Firefox's crash was in axe over the summary the store drew after Next (#36, D-167),
+		// which Next no longer asks for (#100).
+		await check( 'the error summary' );
 
 		// A later step, with the parts that do not fit under their disclosure, open.
 		await page.goto( linkTo( { deck: id( 'builder-test-deck-8-5' ) } ) );
@@ -4180,6 +4180,8 @@ test.describe( 'Motion', () => {
 		for ( const [ name, link, act ] of moments ) {
 			await page.goto( null === link ? fixture().page : linkTo( link ) );
 			await expect( builder ).toHaveAttribute( 'data-ready', '' );
+			// Each moment is timed, not core's emoji polyfill reading the page as it loads (#49).
+			await emojiDone( page );
 			await devtools.send( 'Emulation.setCPUThrottlingRate', {
 				rate: 4,
 			} );

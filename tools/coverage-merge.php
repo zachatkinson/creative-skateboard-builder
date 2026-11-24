@@ -14,6 +14,11 @@
  * PHPUnit measures from the first test, so the lines that run while WordPress loads the plugin come in a third file,
  * written by the integration bootstrap: file to line numbers, as JSON.
  *
+ * CI runs the integration suite in shards, one job each (tools/integration-shards.php), so after the unit report it takes
+ * any number of integration reports (.xml) and bootstrap files (.json), at least one of each: a line is covered when any
+ * of them ran it. Each report must have run some line, so a shard measured without a coverage driver is not read as
+ * lines the suite missed.
+ *
  * Run: php tools/coverage-merge.php tmp/coverage.xml tmp/coverage-integration.xml tmp/coverage-bootstrap.json
  *
  * @package CreativeBranding\SkateboardBuilder
@@ -69,34 +74,50 @@ function cbuild_guard_exit_line( string $cbuild_path ): int {
 	return 0;
 }
 
-if ( $argc < 4 ) {
-	fwrite( STDERR, "Usage: php tools/coverage-merge.php <unit clover> <integration clover> <bootstrap lines>\n" );
+$cbuild_reports = array();
+$cbuild_boots   = array();
+foreach ( array_slice( $argv, 2 ) as $cbuild_arg ) {
+	if ( str_ends_with( $cbuild_arg, '.json' ) ) {
+		$cbuild_boots[] = $cbuild_arg;
+	} else {
+		$cbuild_reports[] = $cbuild_arg;
+	}
+}
+if ( $argc < 4 || array() === $cbuild_reports || array() === $cbuild_boots ) {
+	fwrite( STDERR, "Usage: php tools/coverage-merge.php <unit clover> <integration clover>... <bootstrap lines .json>...\n" );
 	exit( 1 );
 }
-$cbuild_unit        = cbuild_clover_lines( $argv[1] );
-$cbuild_integration = cbuild_clover_lines( $argv[2] );
+$cbuild_unit = cbuild_clover_lines( $argv[1] );
 if ( array() === $cbuild_unit ) {
 	fwrite( STDERR, "The unit report lists no file of src/; nothing was measured.\n" );
 	exit( 1 );
 }
-$cbuild_boot = json_decode( is_readable( $argv[3] ) ? (string) file_get_contents( $argv[3] ) : '', true );
-if ( ! is_array( $cbuild_boot ) || array() === $cbuild_boot ) {
-	fwrite( STDERR, "No lines from the integration bootstrap at {$argv[3]}: was the suite run with CBUILD_COVERAGE=1?\n" );
-	exit( 1 );
-}
-foreach ( $cbuild_boot as $cbuild_name => $cbuild_lines ) {
-	foreach ( is_array( $cbuild_lines ) ? $cbuild_lines : array() as $cbuild_num ) {
-		$cbuild_integration[ (string) $cbuild_name ][ (int) $cbuild_num ] = true;
+$cbuild_integration = array();
+foreach ( $cbuild_reports as $cbuild_report ) {
+	$cbuild_ran = 0;
+	foreach ( cbuild_clover_lines( $cbuild_report ) as $cbuild_name => $cbuild_lines ) {
+		foreach ( $cbuild_lines as $cbuild_num => $cbuild_is ) {
+			$cbuild_integration[ $cbuild_name ][ $cbuild_num ] = $cbuild_is || ( $cbuild_integration[ $cbuild_name ][ $cbuild_num ] ?? false );
+			$cbuild_ran                                       += $cbuild_is ? 1 : 0;
+		}
+	}
+	if ( 0 === $cbuild_ran ) {
+		// A run without a coverage driver writes a report with every count at 0, and the floor would read the unit suite alone.
+		fwrite( STDERR, "The integration report {$cbuild_report} ran no line of src/: was the site started with --xdebug=coverage?\n" );
+		exit( 1 );
 	}
 }
-$cbuild_ran = 0;
-foreach ( $cbuild_integration as $cbuild_lines ) {
-	$cbuild_ran += count( array_filter( $cbuild_lines ) );
-}
-if ( 0 === $cbuild_ran ) {
-	// A run without a coverage driver writes a report with every count at 0, and the floor would read the unit suite alone.
-	fwrite( STDERR, "The integration report ran no line of src/: was the site started with --xdebug=coverage?\n" );
-	exit( 1 );
+foreach ( $cbuild_boots as $cbuild_boot_path ) {
+	$cbuild_boot = json_decode( is_readable( $cbuild_boot_path ) ? (string) file_get_contents( $cbuild_boot_path ) : '', true );
+	if ( ! is_array( $cbuild_boot ) || array() === $cbuild_boot ) {
+		fwrite( STDERR, "No lines from the integration bootstrap at {$cbuild_boot_path}: was the suite run with CBUILD_COVERAGE=1?\n" );
+		exit( 1 );
+	}
+	foreach ( $cbuild_boot as $cbuild_name => $cbuild_lines ) {
+		foreach ( is_array( $cbuild_lines ) ? $cbuild_lines : array() as $cbuild_num ) {
+			$cbuild_integration[ (string) $cbuild_name ][ (int) $cbuild_num ] = true;
+		}
+	}
 }
 
 $cbuild_total   = 0;

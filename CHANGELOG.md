@@ -52,6 +52,12 @@ All notable changes to this project are documented here. The format follows [Kee
 - "Back to the shop" and "Sign in to save this build" have a phone's 44 px target (#86).
 - Until a build's share picture is drawn, a link preview no longer shows the photo of a deck another plugin blurs or leaves out of it, and the cart and My builds no longer stand the deck's photo in for a picture that blurs it (#106, D-309).
 
+### Development
+
+- CI runs the newest integration suite in three shards, and `Integration (newest)` checks that they ran every test class once and still applies the 95 % line floor to both suites together (D-323).
+- `composer focused` (`tools/focused.sh`) runs only the integration and browser tests that cover what changed, and says why, before the full /verify; `--dry-run` prints the commands (D-324).
+- The paint and motion speed tests start once WordPress's emoji polyfill is done with the page; the budgets are unchanged (#49, D-325). axe reads the error summary in Firefox again (#36, D-326).
+
 ## [1.0.0] - 2026-11-20
 
 ### Added

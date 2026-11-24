@@ -3998,6 +3998,47 @@ Cowork's 1.0.0 review, F14 (#99), to the 18 November mockup. At 1440 px a deck c
 
 D-316 to D-318 are unused: numbers drafted for three of Cowork's 1.0.0 fixes, which landed as D-320 to D-322 after D-319.
 
+### D-323 · The newest integration suite runs in three shards, and its check proves they ran it all · 2026-11-23
+
+**Context:** after D-300 the newest integration half was 15.1 minutes (CI run 44845495842): 2.6 of setup and the site with Xdebug, then 12.8 for the suite with coverage and the unit suite's lines. Zach approved splitting the suite across jobs, and caching wp-env's downloads, on 23 November.
+
+**Decision:**
+- **Three shards, by class.** `tools/integration-shards.php` reads the suite from `phpunit-integration.xml.dist` and weighs each class by its time in `tools/integration-shards.json`, from a local run on 23 November; a class not listed counts as the median. Heaviest first, each class goes to the shard with the least time so far; ties go to the lower shard, then by name. Every job works out the same split, and a class added later lands in a shard without being listed. StateRouteTest is 31 % of the suite, so a fourth shard would not be shorter. Today: 192, 192 and 192 s estimated.
+- **The split is checked twice.** Every command first fails unless each class is in exactly one shard and no shard is empty. Then the `Integration (newest)` job reads each shard's JUnit report and fails unless every shard uploaded, each ran exactly its planned classes, and every class of the suite ran once across them with no failure.
+- **The required check keeps its name.** The shards are `Integration (newest, shard k of 3)`. `Integration (newest)` runs after them whatever they did, so a failed or missing shard fails it rather than leave it skipped. It merges the unit suite's lines with every shard's report for the 95 % floor (D-050): `tools/coverage-merge.php` now takes any number of reports, each of which must have covered some line.
+- **The oldest pair's suite stays whole.** It runs in 3.2 minutes without coverage, less than a shard's setup.
+- **No wp-env cache.** @wordpress/env 12.1 downloads and unpacks every zip source each time it sets a site up, and a fresh runner always sets one up (`lib/runtime/docker/index.js:104-110, 203`; `lib/download-sources.js:103-160`). Only the PHPUnit library's git checkout would be reused, a few seconds. Restoring `~/.wp-env` whole would bring back `wp-env-cache.json`, and wp-env would then skip setting WordPress up on an empty database. The time in `wp-env start` is the Docker images, the Xdebug build most of all (55 s without it, 96 s with it), which a Docker layer cache would address.
+
+**Why:** the `Integration (newest)` check goes from about 15 to about 8.5 minutes (6.5 to 7 per shard, then 1.5 for the check), at three more jobs and about 7 more runner-minutes. A full run's length is still set by its longest job, `Plugin Check, the zip, browser (oldest)` at 24 to 32 minutes, so this shortens a full run only once that job is shorter too.
+
+**Status:** Accepted (Zach, 23 November).
+
+### D-324 · Focused checks before the full /verify · 2026-11-23
+
+**Decision:** `tools/focused.sh [--dry-run] [<base-ref>]` (`composer focused`) runs, before the full /verify, only the integration and browser tests that cover what changed since `<base-ref>` (HEAD by default: staged, unstaged and untracked). It maps each change from what the repository says. A class maps to the integration tests that name it in full, and the tests of the classes that use it, one step out (an adapter also counts its port's users). A template maps to the classes that require it. A builder template, a builder script, or a class that renders the builder adds the e2e specs that use the builder's classes (visual.spec.ts left out). A changed e2e test maps to its title, through `-g`. A spec named after an admin template or script runs whole. Where a change can't be mapped with confidence, it runs the whole suite or says to run the full /verify, and it prints why each test was chosen. It respects the lanes, builds when `assets/src` changed, and its self-test runs in `composer gates`. It never replaces /verify.
+
+**Why:** a full /verify takes about 18 minutes, and an early failure in the integration or browser tests was found only at its end. The map is built from use statements, requires, imports and test titles rather than a hand list, so it stays right as the code moves (Zach, 23 November).
+
+**Status:** Accepted.
+
+### D-325 · The paint and motion speed tests start once core's emoji polyfill is done with the page · 2026-11-23
+
+Issue #49: "paints a pick within 100 ms on a CPU slowed four times" failed twice on CI's newest leg, at 144 ms (run 44119225891, chromium-phone) and 120 ms (run 44289674928, chromium-desktop), and never locally. In both traces WordPress's emoji polyfill, `twemoji.js` then `wp-emoji.js`, arrived 25 to 50 ms before the first pick, after the CPU was slowed. Core's loader asks a worker whether the browser draws emoji. Where it does not (the headless test browsers; Chrome on Windows, for flags), it adds both scripts, often after the page's load, and `wp-emoji.js` reads the whole page in one task as it starts (`wp-emoji-loader.js`, `wp-emoji.js` `load()`). On this Mac that work costs 16 ms at four times slower. On CI's runner it fell on the first pick.
+
+- **What is measured.** The Quality bar times "a pick's own selected state painted within 100 ms on a 4× slowed CPU" (SPEC.md: Quality bar; AUDIT.md: A pick), and D-296 has the browser tests wait for the page "as a shopper sees the page settle". Core's first read of the page at load is neither the pick nor the builder's.
+- **The change.** `emojiDone()` in `tests/e2e/support/test.ts` waits for core's emoji answer, for both scripts where they are needed, and for the page to fetch nothing for half a second. The paint test and the motion speed test (D-306) call it before slowing the CPU. The reads wp-emoji's observer makes on each later change stay in the measurement, as a shopper whose browser loads the polyfill has them.
+- **Not changed.** The 100 ms and 200 ms budgets, the four times slower CPU, and the worst interaction being the one held.
+
+**Why:** the gate times the builder's pick, not a WordPress script that starts on the page at the same moment.
+
+**Status:** Accepted.
+
+### D-326 · axe reads the error summary in Firefox again · 2026-11-23
+
+D-167 skipped axe on the error summary in Firefox, because Playwright's Firefox crashed in axe over the summary the store drew after Next on an empty step, while the same state served by the server passed. Since #100 (D-310), Next asks for no error summary. The axe test reaches the summary by a link that asks for a step past an empty one, which the server serves, so the skip is removed and every engine reads it. Issue #36 closes once Firefox passes repeated runs.
+
+**Status:** Accepted. Supersedes D-167's quarantine.
+
 ### D-328 · The brand row's first-paint clip lifts if the script never comes, and the drawing line stops after four runs · 2026-11-23
 
 M11's interim audit, two of its should-fixes.

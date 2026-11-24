@@ -3,6 +3,8 @@ name: verify
 description: Run every local gate (lint, analysis, architecture, grep gates, unit tests with the coverage floors, the API snapshot, the JavaScript, CSS and type checks, the asset budgets), plus the integration tests, Plugin Check and a browser smoke run when wp-env is up. Invoke before every commit.
 ---
 
+Before this list, when wp-env is up, `bash tools/focused.sh` (through `bash tools/lane.sh <n> …` in another checkout) runs only the integration and browser tests that cover the change, so an early failure shows in minutes; it never replaces these steps.
+
 Run these in order. Stop at the first failure and report its output verbatim. Docs-only commits skip this skill. In milestone 1, run the steps whose tools exist so far, and say which were skipped.
 
 1. `composer lint`
