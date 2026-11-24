@@ -91,8 +91,11 @@ final class ProductMetaRepository implements ProductMeta {
 		global $wpdb;
 		$list = implode( ', ', array_fill( 0, count( $asked ), '%d' ) );
 		if ( $parents ) {
+			// Two selects, each found by an index: the products' rows by post_id, and their parents' through the posts'
+			// primary key. Under one OR, MySQL read every row of postmeta instead (the auditor's M12 should-fix 3). UNION
+			// drops only a row read twice, a parent also asked for, since each row brings its meta_id.
 			// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber, PluginCheck.Security.DirectDB.UnescapedDBParameter -- Only placeholders are joined in: one %d per product.
-			$rows = $wpdb->get_results( $wpdb->prepare( 'SELECT meta_id, post_id, meta_key, meta_value FROM %i WHERE post_id IN (' . $list . ') OR post_id IN ( SELECT post_parent FROM %i WHERE ID IN (' . $list . ') AND post_type = %s AND post_parent > 0 ) ORDER BY meta_id', array( $wpdb->postmeta, ...$asked, ...array( $wpdb->posts ), ...$asked, 'product_variation' ) ) );
+			$rows = $wpdb->get_results( $wpdb->prepare( 'SELECT meta_id, post_id, meta_key, meta_value FROM %i WHERE post_id IN (' . $list . ') UNION SELECT m.meta_id, m.post_id, m.meta_key, m.meta_value FROM %i AS m INNER JOIN %i AS p ON m.post_id = p.post_parent WHERE p.ID IN (' . $list . ') AND p.post_type = %s AND p.post_parent > 0 ORDER BY meta_id', array( $wpdb->postmeta, ...$asked, ...array( $wpdb->postmeta, $wpdb->posts ), ...$asked, 'product_variation' ) ) );
 		} else {
 			// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber, PluginCheck.Security.DirectDB.UnescapedDBParameter -- Only placeholders are joined in: one %d per product.
 			$rows = $wpdb->get_results( $wpdb->prepare( 'SELECT meta_id, post_id, meta_key, meta_value FROM %i WHERE post_id IN (' . $list . ') ORDER BY meta_id', array( $wpdb->postmeta, ...$asked ) ) );
