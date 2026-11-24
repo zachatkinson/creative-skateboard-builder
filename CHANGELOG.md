@@ -15,6 +15,7 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Changed
 
+- Site Health's "composed pictures" test names the parts whose layer images have no resized copies, up to five, beside how to make them (#129, D-372).
 - `cbuild_builder_url`'s `$url` starts from the kit's Builder page, where it has one, and the filter still answers last (#113).
 - Development: Markdown is linted with markdownlint-cli2 0.24.0 (`npm run lint:md`, in `npm run check`, CI, a workflow for changes to the docs alone, and the pre-commit hook), and the docs' 183 findings are fixed, 67 bold lines among them now real headings (#111, D-345).
 - Development: a `.gitattributes` keeps line endings LF and binaries binary, marks generated types and docs for GitHub, and makes `git archive` hold what the release zip holds; gate 19 keeps its export-ignore list equal to `.distignore` (#112, D-346). Gate 20 fails a merge's conflict marker left in a file (D-347).

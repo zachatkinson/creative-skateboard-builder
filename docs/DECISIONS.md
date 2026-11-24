@@ -277,6 +277,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-309 · A part's layer in a composed picture is drawn as another plugin answers, by use, and the answer is in the name](#d-309--a-parts-layer-in-a-composed-picture-is-drawn-as-another-plugin-answers-by-use-and-the-answer-is-in-the-name--2026-11-23)
 - [D-337 · The layer image a part already has is not checked again when the product is saved](#d-337--the-layer-image-a-part-already-has-is-not-checked-again-when-the-product-is-saved--2026-11-23)
 - [D-371 · A part with no spec in the index gets its renditions at the sizes the page draws it at](#d-371--a-part-with-no-spec-in-the-index-gets-its-renditions-at-the-sizes-the-page-draws-it-at--2026-11-24)
+- [D-372 · Site Health names up to five parts whose layer images have no resized copies](#d-372--site-health-names-up-to-five-parts-whose-layer-images-have-no-resized-copies--2026-11-24)
 
 ### Cart, checkout and orders
 
@@ -5122,3 +5123,20 @@ Cowork's review of 1.1.0, F29 (#129): on the demo, grips 2155, 2156 and 2444 had
 **Why:** the renditions are made for the page, so they are sized as the page sizes the part. Two readings of "no specs" made the page ask for files no job would make.
 
 **Status:** Accepted.
+
+### D-372 · Site Health names up to five parts whose layer images have no resized copies · 2026-11-24
+
+Issue #129 asked that Site Health report the parts missing renditions. The pictures' test counted them (D-209), and with D-371 it counts a grip that gives no size; a count alone left the shop to find which parts they were.
+
+- **What it says.** After the count's sentence and the one that says how to make the copies (D-214's three cases, unchanged), "The part without them: Grip." or "The parts without them: A, B and C.", the names joined as the site's language joins a list (`wp_sprintf_l()`). Over five, "Among them:" and the first five, in the order the kits offer them; the label still gives the whole count.
+- **Why five.** A Site Health description is a short paragraph; five names say which kind of part it is, and "Read every part again" makes the copies for all of them, so a full list would add length and no action.
+- **How.** `PartRenditions::unrenderedParts()`, already the list the update and the reindex queue from, in place of `unrendered()`'s count, so one reading gives both. Each name is the product's, through `wc_get_product()` as the Catalogue check's screen reads it, and printed as text: the description is escaped whole. A part that can no longer be read is left out of the names. No image file is opened.
+- **French.** Both strings have their fr_CA translations, with the no-break space before the colon.
+
+**Tests.** `GripRenditionsTest::test_site_health_names_a_part_whose_copies_are_missing_and_how_to_make_them`: a real grip with a layer image and no copies, the label "1 part's layer image has no resized copies", "The part without them: Grip." and the "Read every part again" sentence; once its job runs, the test passes. `test_site_health_names_five_of_the_parts_whose_copies_are_missing`: six grips, the label says 6, and "Among them:" lists five names, their markup as text.
+
+**Red run.** Before the change: `test_site_health_names_a_part_whose_copies_are_missing_and_how_to_make_them`, "Failed asserting that '`<p>`The builder draws each part from copies …' contains "The part without them: Grip."" (GripRenditionsTest.php:148); `test_site_health_names_five_of_the_parts_whose_copies_are_missing`, "five names, as text / Failed asserting that '`<p>`The builder draws …' matches PCRE pattern "/Among them: …"" (GripRenditionsTest.php:171). **Deliberate break:** the names left off the description: both failed on the same lines. Put back, both passed.
+
+**Status:** Accepted.
+
+D-373 and D-374 are unused: the brief left them for further decisions, and none was needed.

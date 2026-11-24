@@ -178,7 +178,7 @@ In the page, the deck's layer is fetched first (`fetchpriority="high"`), and eve
 - **The cart.** The kit's line shows the 480 by 480 picture once it is made, and the deck's product photo until then, both with the kit's name as their alt text. A build with no deck keeps whatever the kit product shows. Each part keeps its own line with its own photo.
 - **Pruning.** `cbuild_prune_pictures` runs daily, from a day after the first picture is drawn. It deletes the pictures not shown for 30 days, with any file a draw left half-written, then the oldest of the rest until the folder holds 200 MB at most. Showing a picture marks it used, at most once a day.
 - **The libraries.** GD is tried first and Imagick second. Each must read PNG and WebP and write the canvas's type, and a picture with an AVIF layer is drawn by one that reads AVIF too. Imagick reads each layer by its type's own coder. A host with neither makes no composed picture: the cart and share cards show the deck's photo, and the page's own picture is not affected.
-- **Site Health.** Tools > Site Health runs "The skateboard builder's composed pictures". It recommends an action where neither library can make the pictures, where the uploads folder cannot be written, or where drawn parts' layer images have no resized copies, and passes otherwise.
+- **Site Health.** Tools > Site Health runs "The skateboard builder's composed pictures". It recommends an action where neither library can make the pictures, where the uploads folder cannot be written, or where drawn parts' layer images have no resized copies, and passes otherwise. From 1.2.0 it names those parts, up to five, and says how to make their copies (D-372).
 
 Uninstall removes `wp-content/uploads/creative-skateboard-builder/`, with the renditions and the composed pictures, and leaves the shop's own uploads.
 
@@ -219,3 +219,4 @@ The decisions behind this page, in [DECISIONS.md](DECISIONS.md):
 | D-211 | The missing layers, counted apart |
 | D-212 | The share card's name and caching |
 | D-371 | Renditions of a part that gives no size |
+| D-372 | Site Health names the parts without copies |

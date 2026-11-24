@@ -10,12 +10,14 @@ declare( strict_types=1 );
 namespace CreativeBranding\SkateboardBuilder\Tests\Integration;
 
 use CreativeBranding\SkateboardBuilder\Adapter\WpLayerRenditions;
+use CreativeBranding\SkateboardBuilder\Health\SiteHealth;
 use CreativeBranding\SkateboardBuilder\Port\Reindex;
 use CreativeBranding\SkateboardBuilder\Service\IndexJobs;
 use CreativeBranding\SkateboardBuilder\Service\PartRenditions;
 use CreativeBranding\SkateboardBuilder\Support\Options;
 use CreativeBranding\SkateboardBuilder\Tests\Support\CartTestCase;
 use CreativeBranding\SkateboardBuilder\Tests\Support\LayerFiles;
+use WC_Product_Simple;
 
 /**
  * Cowork's review of 1.1.0, F29 (issue #129, D-371): three grips on the demo had layer images and not one rendition,
@@ -132,5 +134,40 @@ final class GripRenditionsTest extends CartTestCase {
 		self::assertContains( array( 'part' => $this->parts['grip'] ), self::waiting( Options::JOB_INDEX_PART ), 'the save queued its own job' );
 		self::work();
 		self::assertSame( self::SIZES, self::made( $image )['webp'] ?? array() );
+	}
+
+	// Issue #129 (D-372): Site Health names the parts whose copies are missing, so the shop knows which to look at,
+	// and says how to make them.
+	public function test_site_health_names_a_part_whose_copies_are_missing_and_how_to_make_them(): void {
+		$this->layered( false );
+		as_unschedule_all_actions( Options::JOB_INDEX_PART, array(), Options::QUEUE_GROUP );
+		delete_transient( Options::RENDITIONS_FAILED );
+
+		$result = $this->service( SiteHealth::class )->pictures();
+		self::assertSame( array( 'recommended', '1 part\'s layer image has no resized copies' ), array( $result['status'], $result['label'] ) );
+		self::assertStringContainsString( 'The part without them: Grip.', $result['description'] );
+		self::assertStringContainsString( '&quot;Read every part again&quot; on the Catalogue check makes the missing copies in the background', $result['description'] );
+
+		self::work();
+		self::assertSame( 'The skateboard builder can compose pictures', $this->service( SiteHealth::class )->pictures()['label'] );
+	}
+
+	public function test_site_health_names_five_of_the_parts_whose_copies_are_missing(): void {
+		$category = (int) wp_get_post_terms( $this->parts['grip'], 'product_cat', array( 'fields' => 'ids' ) )[0];
+		foreach ( range( 1, 6 ) as $n ) {
+			$grip = new WC_Product_Simple();
+			$grip->set_name( 'Sheet <b>' . $n . '</b>' );
+			$grip->set_status( 'publish' );
+			$grip->set_regular_price( '8' );
+			$grip->update_meta_data( Options::META_LAYER, (string) LayerFiles::attachment( 60, 220, true, 'webp' ) );
+			$grip->save();
+			wp_set_object_terms( $grip->get_id(), array( $category ), 'product_cat' );
+		}
+		as_unschedule_all_actions( Options::JOB_INDEX_PART, array(), Options::QUEUE_GROUP );
+		$this->service( \CreativeBranding\SkateboardBuilder\Port\Kits::class )->forget();
+
+		$result = $this->service( SiteHealth::class )->pictures();
+		self::assertSame( '6 parts\' layer images have no resized copies', $result['label'] );
+		self::assertMatchesRegularExpression( '/Among them: (Sheet &lt;b&gt;[1-6]&lt;\/b&gt;, ){4}and Sheet &lt;b&gt;[1-6]&lt;\/b&gt;\./', $result['description'], 'five names, as text' );
 	}
 }
