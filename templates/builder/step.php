@@ -68,26 +68,44 @@ defined( 'ABSPATH' ) || exit;
 			<button class="cbuild-button cbuild-search__go" type="submit" data-wp-bind--hidden="state.live" data-wp-text="state.view.step.shelf.search.button"></button>
 		</span>
 	</div>
-	<div class="cbuild-chips" data-wp-bind--hidden="!state.view.step.shelf.chips.shown" data-wp-class--cbuild-chips--folded="state.folded">
-		<?php // On a phone the cards come first: the chips wait behind this button once the script runs (spec: Phone). ?>
-		<button class="cbuild-button cbuild-chips__toggle" type="button" aria-controls="cbuild-chips-body" hidden data-wp-bind--hidden="!state.live" data-wp-bind--aria-expanded="!state.folded" data-wp-on--click="actions.filters" data-wp-text="state.view.step.shelf.chips.toggle"></button>
-		<div class="cbuild-chips__body" id="cbuild-chips-body">
-			<template data-wp-each--group="state.view.step.shelf.chips.groups" data-wp-each-key="context.group.key">
-				<fieldset class="cbuild-chips__group">
-					<legend class="cbuild-chips__legend" data-wp-text="context.group.legend"></legend>
-					<?php // On a desktop the brand chips sit in one row, and "N more" opens the rest in place; without the script every chip shows (#98). ?>
-					<div class="cbuild-chips__options" data-wp-bind--id="context.group.more.id" data-wp-class--cbuild-chips__options--row="context.group.more.shown" data-wp-watch="callbacks.row">
-						<template data-wp-each--chip="context.group.inputs" data-wp-each-key="context.chip.value">
-							<span class="cbuild-chips__chip" data-wp-class--cbuild-chips__chip--past="state.past">
-								<input class="cbuild-chips__control" type="checkbox" data-wp-bind--id="context.chip.id" data-wp-bind--name="context.chip.name" data-wp-bind--value="context.chip.value" data-wp-bind--checked="context.chip.checked" data-wp-bind--aria-label="context.chip.said" data-wp-on--change="actions.narrow">
-								<label class="cbuild-chip" data-wp-bind--for="context.chip.id"><span class="cbuild-chip__text" data-wp-text="context.chip.text"></span> <span class="cbuild-chip__count" data-wp-text="context.chip.count"></span></label>
-							</span>
-						</template>
-						<button class="cbuild-chips__more" type="button" hidden data-wp-bind--hidden="!state.rests" data-wp-class--cbuild-chips__more--idle="state.idle" data-wp-bind--aria-controls="context.group.more.id" data-wp-bind--aria-expanded="state.open" data-wp-on--click="actions.more" data-wp-text="state.rest"></button>
-					</div>
-				</fieldset>
-			</template>
-			<button class="cbuild-button cbuild-chips__apply" type="submit" data-wp-bind--hidden="state.live" data-wp-text="state.view.step.shelf.chips.apply"></button>
+	<?php // The chips and Sort: what narrows the list and what orders it, on one line on a desktop (#122). ?>
+	<div class="cbuild-step__tools">
+		<div class="cbuild-chips" data-wp-bind--hidden="!state.view.step.shelf.chips.shown" data-wp-class--cbuild-chips--folded="state.folded">
+			<?php // On a phone the cards come first: the chips wait behind this button once the script runs (spec: Phone). ?>
+			<button class="cbuild-button cbuild-chips__toggle" type="button" aria-controls="cbuild-chips-body" hidden data-wp-bind--hidden="!state.live" data-wp-bind--aria-expanded="!state.folded" data-wp-on--click="actions.filters" data-wp-text="state.view.step.shelf.chips.toggle"></button>
+			<div class="cbuild-chips__body" id="cbuild-chips-body">
+				<template data-wp-each--group="state.view.step.shelf.chips.groups" data-wp-each-key="context.group.key">
+					<fieldset class="cbuild-chips__group">
+						<legend class="cbuild-chips__legend" data-wp-text="context.group.legend"></legend>
+						<?php // On a desktop the brand chips sit in one row, and "N more" opens the rest in place; without the script every chip shows (#98). ?>
+						<div class="cbuild-chips__options" data-wp-bind--id="context.group.more.id" data-wp-class--cbuild-chips__options--row="context.group.more.shown" data-wp-watch="callbacks.row">
+							<template data-wp-each--chip="context.group.inputs" data-wp-each-key="context.chip.value">
+								<span class="cbuild-chips__chip" data-wp-class--cbuild-chips__chip--past="state.past">
+									<input class="cbuild-chips__control" type="checkbox" data-wp-bind--id="context.chip.id" data-wp-bind--name="context.chip.name" data-wp-bind--value="context.chip.value" data-wp-bind--checked="context.chip.checked" data-wp-bind--aria-label="context.chip.said" data-wp-on--change="actions.narrow">
+									<label class="cbuild-chip" data-wp-bind--for="context.chip.id"><span class="cbuild-chip__text" data-wp-text="context.chip.text"></span> <span class="cbuild-chip__count" data-wp-text="context.chip.count"></span></label>
+								</span>
+							</template>
+							<button class="cbuild-chips__more" type="button" hidden data-wp-bind--hidden="!state.rests" data-wp-class--cbuild-chips__more--idle="state.idle" data-wp-bind--aria-controls="context.group.more.id" data-wp-bind--aria-expanded="state.open" data-wp-on--click="actions.more" data-wp-text="state.rest"></button>
+						</div>
+					</fieldset>
+				</template>
+				<button class="cbuild-button cbuild-chips__apply" type="submit" data-wp-bind--hidden="state.live" data-wp-text="state.view.step.shelf.chips.apply"></button>
+			</div>
+		</div>
+		<?php
+		// Sort, on the chips' line on a desktop, the brands' on the deck step (#122). The count is said once, at the foot
+		// beside Show more (spec: 30 at a time).
+		?>
+		<div class="cbuild-step__bar" data-wp-bind--hidden="!state.view.step.shelf.sort.shown">
+			<label class="cbuild-sort">
+				<span class="cbuild-sort__label" data-wp-text="state.view.step.shelf.sort.label"></span>
+				<select class="cbuild-sort__select" data-wp-bind--name="state.view.step.shelf.sort.name" data-wp-bind--disabled="!state.view.step.shelf.sort.shown" data-wp-on--change="actions.narrow">
+					<template data-wp-each--sort="state.view.step.shelf.sort.options" data-wp-each-key="context.sort.value">
+						<option data-wp-bind--value="context.sort.value" data-wp-bind--selected="context.sort.selected" data-wp-text="context.sort.text"></option>
+					</template>
+				</select>
+			</label>
+			<button class="cbuild-button cbuild-sort__apply" type="submit" data-wp-bind--hidden="state.live" data-wp-text="state.view.step.shelf.chips.apply"></button>
 		</div>
 	</div>
 	<details class="cbuild-filters" data-wp-bind--open="state.view.step.filters.open" data-wp-bind--hidden="!state.view.step.filters.shown">
@@ -119,18 +137,6 @@ defined( 'ABSPATH' ) || exit;
 				<a class="cbuild-found__why" href="#cbuild-hidden" data-wp-bind--hidden="!state.view.step.found.why.shown" data-wp-text="state.view.step.found.why.text"></a>
 				<button class="cbuild-button cbuild-found__clear" type="submit" value="" data-wp-bind--name="state.view.step.found.clear.name" data-wp-bind--hidden="!state.view.step.found.clear.shown" data-wp-text="state.view.step.found.clear.text"></button>
 			</p>
-		</div>
-		<?php // The count is said once, at the foot beside Show more (spec: 30 at a time). ?>
-		<div class="cbuild-step__bar" data-wp-bind--hidden="!state.view.step.shelf.sort.shown">
-			<label class="cbuild-sort">
-				<span class="cbuild-sort__label" data-wp-text="state.view.step.shelf.sort.label"></span>
-				<select class="cbuild-sort__select" data-wp-bind--name="state.view.step.shelf.sort.name" data-wp-bind--disabled="!state.view.step.shelf.sort.shown" data-wp-on--change="actions.narrow">
-					<template data-wp-each--sort="state.view.step.shelf.sort.options" data-wp-each-key="context.sort.value">
-						<option data-wp-bind--value="context.sort.value" data-wp-bind--selected="context.sort.selected" data-wp-text="context.sort.text"></option>
-					</template>
-				</select>
-			</label>
-			<button class="cbuild-button cbuild-sort__apply" type="submit" data-wp-bind--hidden="state.live" data-wp-text="state.view.step.shelf.chips.apply"></button>
 		</div>
 		<?php // The deck step's cards are compact: the deck small and upright beside its words, two columns on a desktop (F14, #99). ?>
 		<ul class="cbuild-cards" data-wp-class--cbuild-cards--compact="state.view.step.compact">

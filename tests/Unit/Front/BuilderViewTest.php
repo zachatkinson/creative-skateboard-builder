@@ -380,6 +380,15 @@ final class BuilderViewTest extends TestCase {
 		self::assertSame( '', $this->step( array( 'shelf' => array( 'matching' => 0 ) ), SlotKey::WHEELS )['more']['count'], 'a step listing parts, none' );
 	}
 
+	// Cowork's 1.1.0 review, F24 (#122): the deck step says to start with a width until one is chosen, and Sort, which
+	// sits beside the chips out of the step's fieldset, waits for the width as the cards do.
+	public function test_the_deck_steps_lead_and_sort_wait_for_the_width(): void {
+		$asked = $this->deckStep( false, 41 );
+		self::assertSame( array( true, false ), array( $asked['hasLead'], $asked['shelf']['sort']['shown'] ), 'the width asked first' );
+		$chosen = $this->deckStep( true, 41 );
+		self::assertSame( array( false, true ), array( $chosen['hasLead'], $chosen['shelf']['sort']['shown'] ), 'the width chosen' );
+	}
+
 	// Spec (configurator): Tools that grow. Each chip is an input with an ID of its own.
 	public function test_each_chip_has_an_id_of_its_step_its_group_and_its_place(): void {
 		$chip   = static fn( string $value ): array => array(

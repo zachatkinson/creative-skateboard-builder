@@ -1200,8 +1200,9 @@ final class BuilderView {
 				'toggle' => self::toggle( $groups ),
 			),
 			// Nothing listed, nothing to sort: a search or chips that find nothing say so, with no Sort under it (#124).
+			// Beside the chips, out of the step's fieldset, so hidden as well while the deck step asks its width (#122).
 			'sort'    => array(
-				'shown'   => $tools && Cast::int( $shelf['matching'] ?? null ) > 0,
+				'shown'   => $tools && ! $asking && Cast::int( $shelf['matching'] ?? null ) > 0,
 				'label'   => __( 'Sort', 'creative-skateboard-builder' ),
 				'name'    => BuildLink::PARAM . '[_sort]',
 				'options' => array_map(
@@ -1617,7 +1618,8 @@ final class BuilderView {
 			'help'      => Cast::str( $step['help'] ?? null ),
 			'hasHelp'   => '' !== Cast::str( $step['help'] ?? null ),
 			'lead'      => '' !== $lead ? $lead : __( 'Start with a width. Every later step offers only what fits the deck you choose.', 'creative-skateboard-builder' ),
-			'hasLead'   => '' !== $lead || ( SlotKey::DECK === $slot && ! isset( $counted[ $slot ] ) ),
+			// The deck step's lead until a width is chosen: then the width says it, and its line goes to the cards (#122).
+			'hasLead'   => '' !== $lead || ( SlotKey::DECK === $slot && ! isset( $counted[ $slot ] ) && '' === self::shown( $shelf ?? array() ) ),
 			'name'      => BuildLink::PARAM . '[' . $slot . ']',
 			'before'    => self::fields( BuildLink::PARAM, $link->picks, $link->none, $before ),
 			'after'     => self::fields( BuildLink::PARAM, $link->picks, $link->none, $after ),

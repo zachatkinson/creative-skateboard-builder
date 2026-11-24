@@ -1048,6 +1048,33 @@
 	min-block-size: var(--cbuild-target);
 }
 
+/*
+ * The chips and Sort (#122, D-360). Sort sits at the end of the chips' last line, the brands' on the deck step, so the
+ * cards start a line higher. The chips keep 20rem at least, the "N more" button and a chip or two, and where the two
+ * do not fit beside each other Sort takes a line of its own under them, as before. With neither shown the row takes
+ * no place in the step.
+ */
+:where(.cbuild-step__tools) {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: flex-end;
+	gap: var(--cbuild-gap);
+}
+
+:where(.cbuild-step__tools > .cbuild-chips) {
+	flex: 1 1 20rem;
+	min-inline-size: 0;
+}
+
+:where(.cbuild-step__tools > .cbuild-step__bar) {
+	flex: none;
+	margin-inline-start: auto;
+}
+
+.cbuild .cbuild-step__tools:not(:has(> :not([hidden]))) {
+	display: none;
+}
+
 :where(.cbuild-step__bar) {
 	display: flex;
 	flex-wrap: wrap;

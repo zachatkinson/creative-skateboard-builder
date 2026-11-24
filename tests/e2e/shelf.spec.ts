@@ -3,6 +3,7 @@ import path from 'node:path';
 import type { APIResponse, Route } from '@playwright/test';
 import { test, expect, Page, inLocale } from './support/test';
 import { axe } from './support/axe';
+import { SITE } from './support/site';
 
 /**
  * Milestone 10, a long step (spec: One card per look, Search; SPEC-CONFIGURATOR): the shelf kit's deck step has 46
@@ -427,4 +428,102 @@ test.describe( 'Compact deck cards (F14)', () => {
 			'six in view'
 		).toBeGreaterThanOrEqual( 6 );
 	} );
+
+	// Cowork's 1.1.0 review, F24 (#122): once a width is chosen, the first view at 1440 by 900 on the demo (Board size
+	// Balanced) showed two cards, cut off, under the step's lead, a plugin's notice of about 70 px, the width, the
+	// search, the brands and Sort. With the lead gone once a width is chosen and Sort on the brands' line, the builder
+	// at the window's top shows, under a 70 px notice above the step, four whole cards on Kadence (two before) and two
+	// on Twenty Twenty-Five, whose type is larger (none before). D-322's six need the page scrolled to the cards (D-360).
+	for ( const [ theme, held ] of [
+		[ 'twentytwentyfive', 2 ],
+		[ 'kadence', 4 ],
+	] as const ) {
+		test( `shows ${ held } whole decks in the first view after a width at 1440 by 900, under a 70 px notice, on ${ theme }`, async ( {
+			page,
+			context,
+			baseURL,
+		}, info ) => {
+			test.skip(
+				/phone|tablet/.test( info.project.name ),
+				'A desktop: the stage beside the panel.'
+			);
+			test.skip(
+				'no-js' === info.project.name,
+				'Without the script every brand shows, with Apply, over several lines (D-314).'
+			);
+			await context.addCookies( [
+				{
+					name: 'cbuild_e2e_theme',
+					value: theme,
+					url: baseURL || SITE,
+				},
+			] );
+			await page.setViewportSize( { width: 1440, height: 900 } );
+			await page.goto( at() );
+			await expect( cards( page ) ).toHaveCount( 30 );
+			// Board size Balanced, the demo's: the builder's own class for it, as the Board size test sets it.
+			await page
+				.locator( '.cbuild' )
+				.evaluate( ( root ) =>
+					root.classList.add( 'cbuild--balanced' )
+				);
+			// A notice of another plugin's, as Mature Content's, 70 px high above the step.
+			await page.locator( '.cbuild-step' ).evaluate( ( step ) => {
+				const notice = document.createElement( 'div' );
+				notice.style.blockSize = '70px';
+				step.before( notice );
+			} );
+			// The builder at the window's top, as under a shop's header.
+			await page
+				.locator( '.cbuild' )
+				.evaluate( ( builder ) =>
+					builder.scrollIntoView( { block: 'start' } )
+				);
+			const seen = await cards( page ).evaluateAll( ( items ) => {
+				const bar = document
+					.querySelector( '.cbuild-bar:not([hidden])' )
+					?.getBoundingClientRect();
+				const foot =
+					bar && bar.top > 0 && bar.top < innerHeight
+						? bar.top
+						: innerHeight;
+				return items.filter( ( item ) => {
+					const box = item.getBoundingClientRect();
+					return box.top >= 0 && box.bottom <= foot;
+				} ).length;
+			} );
+			expect(
+				seen,
+				'whole cards in the first view'
+			).toBeGreaterThanOrEqual( held );
+			// The step's lead has done its work once the width is chosen.
+			await expect( page.locator( '.cbuild-step__lead' ) ).toBeHidden();
+			// Sort shares the brands' line.
+			const line = await page.evaluate( () => {
+				const sort = document
+					.querySelector( '.cbuild-sort' )
+					?.getBoundingClientRect();
+				// The chips' last line: the last chip shown, those past the row being out of sight (#98).
+				const chips = [
+					...document.querySelectorAll< HTMLElement >(
+						'.cbuild-chips__options--row .cbuild-chips__chip'
+					),
+				]
+					.filter( ( chip ) =>
+						chip.checkVisibility( { visibilityProperty: true } )
+					)
+					.map( ( chip ) => chip.getBoundingClientRect() );
+				const last = chips.at( -1 );
+				return sort && last
+					? Math.abs(
+							sort.top +
+								sort.height / 2 -
+								( last.top + last.height / 2 )
+						)
+					: null;
+			} );
+			expect( line, "Sort on the brands' line" ).not.toBeNull();
+			expect( line! ).toBeLessThanOrEqual( 4 );
+		} );
+	}
 } );
