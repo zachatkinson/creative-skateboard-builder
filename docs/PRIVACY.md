@@ -33,7 +33,8 @@ The plugin sets no cookie of its own, sends nothing about a shopper anywhere, an
 
 **1.2.0 stores nothing new about a person.**
 
-- **Its kit settings** `start_button`, `builder_page` (a page's ID) and `width_guide` (#114, the shop's own words and widths) are keys in a kit's `_cbuild_settings`, the shop's own choices (the table below). It is a document of its own, so a rollback to 1.1.0 still reads the kit (D-354); uninstall removes it with the kit's other documents.
+- **Its kit settings** `start_button`, `builder_page` (a page's ID), `width_guide` (#114, the shop's own words and widths) and `lead_days` (#142, the assembly time in business days) are keys in a kit's `_cbuild_settings`, the shop's own choices (the table below). It is a document of its own, so a rollback to 1.1.0 still reads the kit (D-354); uninstall removes it with the kit's other documents.
+- **The order's snapshot** gains `lead_days` (#142), the kit's assembly time as sold, in `_cbuild_snapshot` with the rest of the build: the shop's own figure, about no one, and kept with the order as the snapshot is.
 - **"Not offered in the builder"** (#116) is a part's `_cbuild_not_offered` meta, the shop's own choice, which uninstall removes too.
 
 ## Personal data

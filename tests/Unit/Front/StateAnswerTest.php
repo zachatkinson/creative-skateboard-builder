@@ -16,6 +16,7 @@ use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\InMemoryLayerImages;
 use CreativeBranding\SkateboardBuilder\Domain\Picture\Renditions;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\InMemoryLayerRenditions;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\BuildTerms;
+use CreativeBranding\SkateboardBuilder\Domain\Kit\Kit;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Part;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\SlotKey;
 use CreativeBranding\SkateboardBuilder\Front\BuildLink;
@@ -1381,6 +1382,39 @@ final class StateAnswerTest extends TestCase {
 		self::assertTrue( $seen['assembly'] );
 		self::assertSame( $answer['total']['total']['amount'], $seen['total'] );
 		self::assertSame( 2, $seen['decimals'] );
+	}
+
+	// #142: the filters' context also has the kit's assembly time in business days, for an assembled build, and the
+	// parts the total counts with how many of each one build takes, so a plugin can give no date for a part on
+	// backorder. A slot left empty is in neither.
+	public function test_the_delivery_filters_are_given_the_assembly_time_and_each_part_with_its_quantity(): void {
+		// Bolts sold in fours, so a build of eight takes two.
+		$parts                       = Shop::parts();
+		$parts[ SlotKey::HARDWARE ][0] = Shop::priced( Parts::of( array( 'bolt_length' => '1', 'set_size' => 4 ), 601 ), 200 );
+		$this->kits->add( self::KIT, Kit::fromDocuments( KitDocuments::slots(), KitDocuments::rules(), KitDocuments::presets(), KitDocuments::assembly(), null, null, array( 'schema_version' => 1, 'lead_days' => '2-4' ) ), $parts );
+		$seen                           = array();
+		$GLOBALS['cbuild_test_filters'] = array(
+			'cbuild_arrival_estimate' => static function ( string $said, array $context ) use ( &$seen ): string {
+				$seen['arrival'] = $context;
+				return '';
+			},
+			'cbuild_delivery_line'    => static function ( string $said, array $context ) use ( &$seen ): string {
+				$seen['line'] = $context;
+				return '';
+			},
+		);
+		$this->answer( self::COMPLETE, null, null, true );
+		self::assertSame( $seen['arrival'], $seen['line'], 'the same for both' );
+		self::assertSame( '2-4', $seen['line']['lead_days'] );
+		self::assertSame( self::COMPLETE, $seen['line']['parts'] );
+		self::assertSame( array_keys( self::COMPLETE ), array_keys( $seen['line']['quantities'] ), 'the risers left empty are in neither' );
+		self::assertSame( 2, $seen['line']['quantities'][ SlotKey::HARDWARE ], 'two packs of four bolts' );
+		self::assertSame( 1, $seen['line']['quantities'][ SlotKey::TRUCKS ], 'one pair of trucks' );
+		self::assertSame( array( 'kit', 'assembly', 'lead_time', 'total', 'decimals', 'lead_days', 'parts', 'quantities' ), array_keys( $seen['line'] ), 'added after 1.1.0\'s keys' );
+
+		$this->answer( self::COMPLETE, null, null, false );
+		self::assertSame( '', $seen['line']['lead_days'], 'a build the shop does not assemble has none' );
+		self::assertSame( self::COMPLETE, $seen['line']['parts'], 'and the same parts' );
 	}
 
 	public function test_other_plugins_lines_under_the_total_are_plain_text_and_six_at_most(): void {

@@ -126,6 +126,12 @@ final class BuildTab {
 	private const GUIDE = 'settings-width_guide';
 
 	/**
+	 * The assembly time's field, kept in the settings document (1.2.0, #142) and shown in the Assembly section beside
+	 * the lead time: its name after the prefix of every control's ID.
+	 */
+	private const DAYS = 'settings-lead_days';
+
+	/**
 	 * What was not saved, by the ID of the field or of the row it belongs to: the ID of the sentence that says why.
 	 *
 	 * @var array<string, string>
@@ -397,7 +403,7 @@ final class BuildTab {
 			KitEditor::ASSEMBLY => array(
 				__( 'Assembly', 'creative-skateboard-builder' ),
 				__( 'What the shop charges to put a build together, and what the shopper is told of it.', 'creative-skateboard-builder' ),
-				$this->assembly( $shown[ KitEditor::ASSEMBLY ] ),
+				$this->assembly( $shown[ KitEditor::ASSEMBLY ], $shown[ KitEditor::SETTINGS ] ),
 			),
 			KitEditor::PICTURE  => array(
 				__( 'Picture', 'creative-skateboard-builder' ),
@@ -415,13 +421,13 @@ final class BuildTab {
 				$this->guide( $shown[ KitEditor::SETTINGS ] ),
 			),
 		) as $name => $section ) {
-			// The settings document (1.2.0, D-354) is shown in two sections: the Builder page and the start button in
-			// Layout, and the width guide in a section of its own. Each lists the problems in its own fields, and is
-			// shown as typed where the settings were refused for one of them.
+			// The settings document (1.2.0, D-354) is shown in three sections: the Builder page and the start button in
+			// Layout, the width guide in a section of its own, and the assembly time in Assembly (#142). Each lists the
+			// problems in its own fields, and is shown as typed where the settings were refused for one of them.
 			$problems = self::GUIDE === $name ? array() : ( $listed[ $name ] ?? array() );
 			$typed    = isset( $refused[ $name ] );
-			if ( KitEditor::LAYOUT === $name || self::GUIDE === $name ) {
-				$own      = array_values( array_filter( $listed[ KitEditor::SETTINGS ] ?? array(), static fn( array $problem ): bool => ( self::GUIDE === $name ) === str_starts_with( $problem['field'], self::IDS . '-' . self::GUIDE ) ) );
+			if ( KitEditor::LAYOUT === $name || self::GUIDE === $name || KitEditor::ASSEMBLY === $name ) {
+				$own      = array_values( array_filter( $listed[ KitEditor::SETTINGS ] ?? array(), static fn( array $problem ): bool => self::home( $problem['field'] ) === $name ) );
 				$problems = array( ...$problems, ...$own );
 				$typed    = $typed || ( isset( $refused[ KitEditor::SETTINGS ] ) && array() !== $own );
 			}
@@ -794,12 +800,26 @@ final class BuildTab {
 	}
 
 	/**
-	 * The assembly settings.
+	 * The section a settings field is shown in, by its control's ID: Width guide, Assembly or Layout.
+	 *
+	 * @param string $field The control's ID.
+	 */
+	private static function home( string $field ): string {
+		return match ( true ) {
+			str_starts_with( $field, self::IDS . '-' . self::GUIDE ) => self::GUIDE,
+			self::IDS . '-' . self::DAYS === $field => KitEditor::ASSEMBLY,
+			default => KitEditor::LAYOUT,
+		};
+	}
+
+	/**
+	 * The assembly settings, with the assembly time from the settings document (#142).
 	 *
 	 * @param array<mixed> $document The assembly document to show.
+	 * @param array<mixed> $settings The settings document to show.
 	 * @return list<array{id: string, legend: string, moves: bool, fold: string, open: bool, fields: list<array<string, mixed>>, more: list<array<string, mixed>>}>
 	 */
-	private function assembly( array $document ): array {
+	private function assembly( array $document, array $settings ): array {
 		$id   = self::IDS . '-assembly';
 		$name = self::FIELD . '[assembly]';
 		return array(
@@ -822,6 +842,17 @@ final class BuildTab {
 						array(
 							'max'  => Assembly::MAX_LEAD_TIME,
 							'note' => __( 'How long putting a build together takes, such as 2 business days. The review says it after "Assembly time:".', 'creative-skateboard-builder' ),
+						)
+					),
+					$this->field(
+						self::IDS . '-' . self::DAYS,
+						self::FIELD . '[settings][lead_days]',
+						__( 'Assembly time in business days', 'creative-skateboard-builder' ),
+						'text',
+						self::text( $settings, 'lead_days' ),
+						array(
+							'class' => 'short',
+							'note'  => __( 'A number of business days, such as 2, or a range, such as 2-4, from 0 to 60. Shoppers do not see it. A plugin that gives a delivery date can count it. Leave it empty for none.', 'creative-skateboard-builder' ),
 						)
 					),
 					$this->field( $id . '-returns_notice', $name . '[returns_notice]', __( 'Returns notice', 'creative-skateboard-builder' ), 'textarea', self::text( $document, 'returns_notice' ), array( 'max' => Assembly::MAX_RETURNS_NOTICE ) ),
@@ -1311,6 +1342,7 @@ final class BuildTab {
 			'description'        => __( 'Description', 'creative-skateboard-builder' ),
 			'fee'                => __( 'Fee', 'creative-skateboard-builder' ),
 			'lead_time'          => __( 'Lead time', 'creative-skateboard-builder' ),
+			'lead_days'          => __( 'Assembly time in business days', 'creative-skateboard-builder' ),
 			'returns_notice'     => __( 'Returns notice', 'creative-skateboard-builder' ),
 			'range_tolerance'    => __( 'Allowed outside the maker\'s deck range', 'creative-skateboard-builder' ),
 			'axle_fit'           => __( 'The axle fits within', 'creative-skateboard-builder' ),
@@ -1412,7 +1444,7 @@ final class BuildTab {
 			KitEditor::PRESETS => __( 'The kit\'s presets were not saved. The Build tab shows them as you typed them, with what to put right.', 'creative-skateboard-builder' ),
 			KitEditor::PICTURE => __( 'The kit\'s picture settings were not saved. The Build tab shows them as you typed them, with what to put right.', 'creative-skateboard-builder' ),
 			KitEditor::LAYOUT  => __( 'The kit\'s layout was not saved. The Build tab shows it as you chose it, with what to put right.', 'creative-skateboard-builder' ),
-			KitEditor::SETTINGS => __( 'The kit\'s Builder page, the button on its parts\' pages and its width guide were not saved. The Build tab shows them as you chose them, with what to put right.', 'creative-skateboard-builder' ),
+			KitEditor::SETTINGS => __( 'The kit\'s Builder page, the button on its parts\' pages, its width guide and its assembly time in business days were not saved. The Build tab shows them as you chose them, with what to put right.', 'creative-skateboard-builder' ),
 			default            => __( 'The kit\'s assembly settings were not saved. The Build tab shows them as you typed them, with what to put right.', 'creative-skateboard-builder' ),
 		};
 	}
@@ -1433,8 +1465,8 @@ final class BuildTab {
 	}
 
 	/**
-	 * The section a document's notice leads to. The settings document (D-354) is shown in two: the Width guide where
-	 * each of its problems is the guide's, and Layout otherwise.
+	 * The section a document's notice leads to. The settings document (D-354) is shown in three: the Width guide where
+	 * each of its problems is the guide's, Assembly where each is the assembly time's (#142), and Layout otherwise.
 	 *
 	 * @param string                                                                                   $document The document's name.
 	 * @param list<array{document: string, code: string, path: string, values: array<string, string>}> $problems What the save found.
@@ -1444,8 +1476,8 @@ final class BuildTab {
 			return self::IDS . '-' . $document;
 		}
 		$paths = array_column( array_filter( $problems, static fn( array $problem ): bool => KitEditor::SETTINGS === $problem['document'] ), 'path' );
-		$guide = array() !== $paths && array() === array_filter( $paths, static fn( string $path ): bool => ! str_starts_with( $path, 'width_guide' ) );
-		return self::IDS . '-' . ( $guide ? self::GUIDE : KitEditor::LAYOUT );
+		$homes = array_unique( array_map( static fn( string $path ): string => self::home( self::id( KitEditor::SETTINGS, $path ) ), $paths ) );
+		return self::IDS . '-' . ( 1 === count( $homes ) ? $homes[ array_key_first( $homes ) ] : KitEditor::LAYOUT );
 	}
 
 	/**

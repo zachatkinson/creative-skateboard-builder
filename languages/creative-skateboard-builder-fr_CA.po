@@ -4765,8 +4765,8 @@ msgid "Not offered in the builder is ticked on these parts, or on their product,
 msgstr "« Non proposé dans le configurateur » est coché sur ces pièces, ou sur leur produit, donc aucun ensemble ne les propose. Elles restent en boutique. Décochez-le dans les caractéristiques de la pièce pour la proposer de nouveau."
 
 #: src/Admin/BuildTab.php:1415
-msgid "The kit's Builder page, the button on its parts' pages and its width guide were not saved. The Build tab shows them as you chose them, with what to put right."
-msgstr "La page du configurateur de l’ensemble, le bouton sur les pages de ses pièces et son guide des largeurs n’ont pas été enregistrés. L’onglet Montage les affiche tels que vous les avez choisis, avec ce qu’il faut corriger."
+msgid "The kit's Builder page, the button on its parts' pages, its width guide and its assembly time in business days were not saved. The Build tab shows them as you chose them, with what to put right."
+msgstr "La page du configurateur de l’ensemble, le bouton sur les pages de ses pièces, son guide des largeurs et son délai d’assemblage en jours ouvrables n’ont pas été enregistrés. L’onglet Montage les affiche tels que vous les avez choisis, avec ce qu’il faut corriger."
 
 #: src/Admin/BuildTab.php:298
 msgid "Width guide: the rows you typed were not saved, since \"Use the builder's rows\" is ticked. Untick it and save again to keep them."
@@ -4808,3 +4808,24 @@ msgstr "Dessous"
 msgctxt "the side of the board shown"
 msgid "Top"
 msgstr "Dessus"
+
+#: src/Admin/BuildTab.php:850
+#: src/Admin/BuildTab.php:1345
+msgid "Assembly time in business days"
+msgstr "Délai d’assemblage (jours ouvrables)"
+
+#: src/Admin/BuildTab.php:856
+msgid "A number of business days, such as 2, or a range, such as 2-4, from 0 to 60. Shoppers do not see it. A plugin that gives a delivery date can count it. Leave it empty for none."
+msgstr "Un nombre de jours ouvrables, par exemple 2, ou un intervalle, par exemple 2-4, de 0 à 60. Les clients ne le voient pas. Une extension qui donne une date de livraison peut en tenir compte. Laissez-le vide s’il n’y en a pas."
+
+#. translators: %s: a field's name, Assembly time in business days.
+#: src/Admin/Sentences.php:260
+#, php-format
+msgid "%s: type a number of business days, such as 2, or a range with the fewer first, such as 2-4."
+msgstr "%s : tapez un nombre de jours ouvrables, par exemple 2, ou un intervalle, le plus petit nombre d’abord, par exemple 2-4."
+
+#. translators: 1: a field's name, Assembly time in business days. 2: the most business days it may be, 60.
+#: src/Admin/Sentences.php:262
+#, php-format
+msgid "%1$s: type business days from 0 to %2$d, such as 2 or 2-4."
+msgstr "%1$s : tapez de 0 à %2$d jours ouvrables, par exemple 2 ou 2-4."

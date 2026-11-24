@@ -135,6 +135,11 @@ final class KitSchemasTest extends IntegrationTestCase {
 		$this->assertTrue( self::accepts( array( 'schema_version' => 1 ), 'kit-settings' ), 'settings with nothing set' );
 		$this->assertTrue( self::accepts( array( 'schema_version' => 1, 'start_button' => false ), 'kit-settings' ), 'Show on its parts\' pages, from 1.2.0 (#115)' );
 		$this->assertTrue( self::accepts( array( 'schema_version' => 1, 'builder_page' => 42 ), 'kit-settings' ), 'Builder page, from 1.2.0 (#113)' );
+		// The assembly time in business days, from 1.2.0 (#142), in the form the Build tab keeps it.
+		foreach ( array( '0', '2', '2-4', '60', '0-60', '59-60' ) as $days ) {
+			$this->assertTrue( self::accepts( array( 'schema_version' => 1, 'lead_days' => $days ), 'kit-settings' ), 'lead_days ' . $days );
+			$this->assertSame( $days, KitSettings::fromDocument( array( 'schema_version' => 1, 'lead_days' => $days ) )->leadDays?->stored() );
+		}
 		// The width guide, from 1.2.0 (#114): hidden, with the shop's own rows, or both.
 		$guide = array(
 			'shown' => false,
@@ -207,6 +212,13 @@ final class KitSchemasTest extends IntegrationTestCase {
 			'the start button as text'       => array( 'kit-settings', array( 'schema_version' => 1, 'start_button' => 'yes' ) ),
 			'a Builder page of no page'      => array( 'kit-settings', array( 'schema_version' => 1, 'builder_page' => 0 ) ),
 			'a Builder page as an address'   => array( 'kit-settings', array( 'schema_version' => 1, 'builder_page' => '/build/' ) ),
+			'an assembly time past 60'       => array( 'kit-settings', array( 'schema_version' => 1, 'lead_days' => '61' ) ),
+			'an assembly time ending past 60' => array( 'kit-settings', array( 'schema_version' => 1, 'lead_days' => '2-61' ) ),
+			'an assembly time in words'      => array( 'kit-settings', array( 'schema_version' => 1, 'lead_days' => '2 to 4' ) ),
+			'an assembly time spaced'        => array( 'kit-settings', array( 'schema_version' => 1, 'lead_days' => '2 - 4' ) ),
+			'an assembly time with a zero'   => array( 'kit-settings', array( 'schema_version' => 1, 'lead_days' => '02' ) ),
+			'an assembly time that is empty' => array( 'kit-settings', array( 'schema_version' => 1, 'lead_days' => '' ) ),
+			'an assembly time as a number'   => array( 'kit-settings', array( 'schema_version' => 1, 'lead_days' => 2 ) ),
 			'a guide that is a list'         => array( 'kit-settings', array( 'schema_version' => 1, 'width_guide' => array( 'rows' ) ) ),
 			'a guide shown as text'          => array( 'kit-settings', array( 'schema_version' => 1, 'width_guide' => array( 'shown' => 'no' ) ) ),
 			'a guide with no rows in it'     => array( 'kit-settings', array( 'schema_version' => 1, 'width_guide' => array( 'rows' => array() ) ) ),
@@ -300,7 +312,18 @@ final class KitSchemasTest extends IntegrationTestCase {
 			'width_guide'    => array( 'rows' => array( array( 'shoe' => '9', 'from' => '8' ), array( 'shoe' => '9', 'from' => '8.5' ) ) ),
 		);
 		$this->assertTrue( self::accepts( $twice, 'kit-settings' ) );
-		foreach ( array( array( Slots::class, $repeated ), array( Slots::class, $reversed ), array( Slots::class, $bolts_first ), array( RuleSettings::class, $disordered ), array( PictureSettings::class, $text ), array( KitSettings::class, $narrower ), array( KitSettings::class, $twice ) ) as [ $reader, $document ] ) {
+		// An assembly time with the most first, or a range of one day, which the Build tab keeps as that day (#142).
+		$backwards = array(
+			'schema_version' => 1,
+			'lead_days'      => '4-2',
+		);
+		$this->assertTrue( self::accepts( $backwards, 'kit-settings' ) );
+		$one_day = array(
+			'schema_version' => 1,
+			'lead_days'      => '3-3',
+		);
+		$this->assertTrue( self::accepts( $one_day, 'kit-settings' ) );
+		foreach ( array( array( Slots::class, $repeated ), array( Slots::class, $reversed ), array( Slots::class, $bolts_first ), array( RuleSettings::class, $disordered ), array( PictureSettings::class, $text ), array( KitSettings::class, $narrower ), array( KitSettings::class, $twice ), array( KitSettings::class, $backwards ), array( KitSettings::class, $one_day ) ) as [ $reader, $document ] ) {
 			try {
 				$reader::fromDocument( $document );
 				$this->fail( 'the domain accepted it' );
@@ -327,7 +350,11 @@ final class KitSchemasTest extends IntegrationTestCase {
 		);
 		$tolerance                    = RuleSettings::DEFAULTS;
 		$tolerance['r1']['axle_fit'] .= "\n";
-		foreach ( array( 'the fee' => array( 'kit-assembly', $fee, Assembly::class ), 'a slot key' => array( 'kit-slots', $key, Slots::class ), 'a taxonomy' => array( 'kit-slots', $taxonomy, Slots::class ), 'a tolerance' => array( 'kit-rules', $tolerance, RuleSettings::class ) ) as $what => [ $schema, $document, $reader ] ) {
+		$days                         = array(
+			'schema_version' => 1,
+			'lead_days'      => "2-4\n",
+		);
+		foreach ( array( 'the fee' => array( 'kit-assembly', $fee, Assembly::class ), 'a slot key' => array( 'kit-slots', $key, Slots::class ), 'a taxonomy' => array( 'kit-slots', $taxonomy, Slots::class ), 'a tolerance' => array( 'kit-rules', $tolerance, RuleSettings::class ), 'the assembly time' => array( 'kit-settings', $days, KitSettings::class ) ) as $what => [ $schema, $document, $reader ] ) {
 			$this->assertFalse( self::accepts( $document, $schema ), $what . ': the schema' );
 			try {
 				$reader::fromDocument( $document );

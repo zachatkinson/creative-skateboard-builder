@@ -282,6 +282,110 @@ test.describe( 'The Build tab', () => {
 		await expect( shoe( 4 ) ).toHaveValue( '' );
 	} );
 
+	// #142: the assembly time in business days, beside the lead time. Typed as "2 to 4", it is kept as "2-4"; past 60
+	// it is not saved, and the notice leads to the field in Assembly, which shows it as typed.
+	test( 'the assembly time in business days is typed beside the lead time, kept as 2-4, and refused past 60', async ( {
+		page,
+	} ) => {
+		const DAYS = '#cbuild-kit-settings-lead_days';
+		const days = page.locator( DAYS );
+		await login( page );
+		await edit( page );
+		await tab( page );
+		await expect( days ).toHaveAccessibleName(
+			'Assembly time in business days'
+		);
+		await expect( days ).toHaveAccessibleDescription( /from 0 to 60/ );
+		// In the Assembly section, after the lead time.
+		const fields = await page
+			.locator( '#cbuild-kit-assembly :is(input, textarea)' )
+			.evaluateAll( ( controls ) =>
+				controls.map( ( control ) => control.id )
+			);
+		expect(
+			fields.slice(
+				fields.indexOf( 'cbuild-kit-assembly-lead_time' ),
+				fields.indexOf( 'cbuild-kit-assembly-lead_time' ) + 2
+			)
+		).toEqual( [
+			'cbuild-kit-assembly-lead_time',
+			'cbuild-kit-settings-lead_days',
+		] );
+
+		await type( page, DAYS, '2 to 4' );
+		await update( page );
+		await expect( page.locator( '#woocommerce_errors' ) ).toHaveCount( 0 );
+		await tab( page );
+		await expect( days ).toHaveValue( '2-4' );
+
+		await type( page, DAYS, '61' );
+		await type( page, '#cbuild-kit-assembly-fee', '14' );
+		await update( page );
+		const link = page.locator( '#woocommerce_errors' ).getByRole( 'link', {
+			name: 'Assembly time in business days: type business days from 0 to 60, such as 2 or 2-4.',
+		} );
+		await expect( link ).toBeVisible();
+		await link.focus();
+		await page.keyboard.press( 'Enter' );
+		await expect( days ).toBeFocused();
+		await expect( days ).toBeInViewport();
+		await expect( days ).toHaveValue( '61' );
+		await expect( days ).toHaveAttribute( 'aria-invalid', 'true' );
+		await expect( days ).toHaveAccessibleDescription(
+			/from 0 to 60, such as 2 or 2-4/
+		);
+		// The fee saved all the same.
+		await expect( page.locator( '#cbuild-kit-assembly-fee' ) ).toHaveValue(
+			'14'
+		);
+		await axe(
+			page,
+			'the Build tab with an assembly time not saved',
+			PANEL,
+			[],
+			THEIRS
+		);
+
+		// Emptied, the kit has none.
+		await days.fill( '' );
+		await update( page );
+		await expect( page.locator( '#woocommerce_errors' ) ).toHaveCount( 0 );
+		await tab( page );
+		await expect( days ).toHaveValue( '' );
+		await expect( days ).not.toHaveAttribute( 'aria-invalid', 'true' );
+	} );
+
+	// #142 in French: the field's label, and its error, in the plugin's French.
+	test( 'the assembly time and its error are said in French', async ( {
+		page,
+	}, info ) => {
+		test.skip( 'fr-ca' !== info.project.name, 'The fr-ca project alone' );
+		await page.setExtraHTTPHeaders( {
+			'x-cbuild-e2e-locale': 'fr_CA',
+			'x-cbuild-e2e-translated': '1',
+		} );
+		const DAYS = '#cbuild-kit-settings-lead_days';
+		const days = page.locator( DAYS );
+		await login( page );
+		await edit( page );
+		await tab( page );
+		await expect( days ).toHaveAccessibleName(
+			'Délai d’assemblage (jours ouvrables)'
+		);
+		await type( page, DAYS, 'deux jours' );
+		await update( page );
+		await expect( page.locator( '#woocommerce_errors' ) ).toContainText(
+			'Délai d’assemblage (jours ouvrables) : tapez un nombre de jours ouvrables, par exemple 2, ou un intervalle, le plus petit nombre d’abord, par exemple 2-4.'
+		);
+		await tab( page );
+		await expect( days ).toHaveValue( 'deux jours' );
+		await expect( days ).toHaveAttribute( 'aria-invalid', 'true' );
+
+		await days.fill( '' );
+		await update( page );
+		await expect( page.locator( '#woocommerce_errors' ) ).toHaveCount( 0 );
+	} );
+
 	test( 'a product that is not a kit has no Build fields in its form', async ( {
 		page,
 	} ) => {

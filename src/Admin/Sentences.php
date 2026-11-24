@@ -12,6 +12,7 @@ namespace CreativeBranding\SkateboardBuilder\Admin;
 use CreativeBranding\SkateboardBuilder\Domain\Picture\LayerError;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\DocumentError;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Kit;
+use CreativeBranding\SkateboardBuilder\Domain\Kit\LeadDays;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Slot;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Slots;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\StoredSpecs;
@@ -255,6 +256,10 @@ final class Sentences {
 			KitEditor::BUILDER_PAGE => sprintf( __( '%s: choose one of the pages listed, or the kit\'s own page. A page is listed when it is published and holds this kit\'s Builder block.', 'creative-skateboard-builder' ), $field ),
 			/* translators: %s: a field's name. */
 			KitEditor::GUIDE_WIDTH => sprintf( __( '%s: type a width from 5 to 12 in.', 'creative-skateboard-builder' ), $field ),
+			/* translators: %s: a field's name, Assembly time in business days. */
+			KitEditor::LEAD_DAYS_FORM => sprintf( __( '%s: type a number of business days, such as 2, or a range with the fewer first, such as 2-4.', 'creative-skateboard-builder' ), $field ),
+			/* translators: 1: a field's name, Assembly time in business days. 2: the most business days it may be, 60. */
+			KitEditor::LEAD_DAYS_RANGE => sprintf( __( '%1$s: type business days from 0 to %2$d, such as 2 or 2-4.', 'creative-skateboard-builder' ), $field, LeadDays::MAX ),
 			/* translators: %s: a field's name. */
 			KitEditor::GUIDE_SHOE_TWICE => sprintf( __( '%s: the guide already has a row for this shoe size. Give each row its own.', 'creative-skateboard-builder' ), $field ),
 			KitEditor::NO_SLOTS => __( 'Presets need the kit\'s slots. Put the slots right and save, then add the presets.', 'creative-skateboard-builder' ),

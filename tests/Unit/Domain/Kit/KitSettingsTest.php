@@ -145,6 +145,39 @@ final class KitSettingsTest extends TestCase {
 		}
 	}
 
+	// #142: the assembly time in business days, "2" or "2-4", or none. A kit saved before 1.2.0 has none.
+	public function test_the_assembly_time_is_the_business_days_named_or_none(): void {
+		self::assertNull( KitSettings::fromDocument( null )->leadDays, 'a kit with no settings' );
+		self::assertNull( KitSettings::fromDocument( array( 'schema_version' => 1 ) )->leadDays, 'settings that name nothing' );
+		$range = KitSettings::fromDocument( array( 'schema_version' => 1, 'lead_days' => '2-4' ) )->leadDays;
+		self::assertSame( array( 2, 4, '2-4' ), array( $range?->from, $range?->to, $range?->stored() ) );
+		self::assertSame( '0', KitSettings::fromDocument( array( 'schema_version' => 1, 'lead_days' => '0' ) )->leadDays?->stored(), 'none to wait is a time' );
+		self::assertSame( '3', KitSettings::fromDocument( array( 'schema_version' => 1, 'lead_days' => '3', 'start_button' => false ) )->leadDays?->stored() );
+		$kit = Kit::fromDocuments( KitDocuments::slots(), KitDocuments::rules(), KitDocuments::presets(), KitDocuments::assembly(), null, null, array( 'schema_version' => 1, 'lead_days' => '60' ) );
+		self::assertSame( '60', $kit->settings->leadDays?->stored() );
+		self::assertTrue( $kit->settings->startButton, 'and nothing else changes' );
+	}
+
+	/**
+	 * @return iterable<string, array{string, string}>
+	 */
+	public static function wrongDays(): iterable {
+		yield 'past 60' => array( '61', 'document_out_of_range' );
+		yield 'the most first' => array( '4-2', 'rules_out_of_order' );
+		yield 'words' => array( 'two days', 'document_bad_measure' );
+		yield 'a form the Build tab reads and never keeps' => array( '2 to 4', 'document_bad_measure' );
+	}
+
+	#[DataProvider( 'wrongDays' )]
+	public function test_an_assembly_time_that_is_not_business_days_from_0_to_60_is_refused_at_its_field( string $days, string $code ): void {
+		try {
+			KitSettings::fromDocument( array( 'schema_version' => 1, 'lead_days' => $days ) );
+			self::fail( 'refused' );
+		} catch ( InvalidDocument $refused ) {
+			self::assertSame( array( $code, 'lead_days' ), array( $refused->reason->value, $refused->path ) );
+		}
+	}
+
 	/**
 	 * @return iterable<string, array{mixed, string}>
 	 */
@@ -157,6 +190,8 @@ final class KitSettingsTest extends TestCase {
 		yield 'a builder page below none' => array( array( 'schema_version' => 1, 'builder_page' => -3 ), 'document_out_of_range' );
 		yield 'a builder page as text' => array( array( 'schema_version' => 1, 'builder_page' => '42' ), 'document_wrong_type' );
 		yield 'a builder page as an address' => array( array( 'schema_version' => 1, 'builder_page' => 'https://elsewhere.example/' ), 'document_wrong_type' );
+		yield 'an assembly time as a number' => array( array( 'schema_version' => 1, 'lead_days' => 2 ), 'document_wrong_type' );
+		yield 'an assembly time that is empty' => array( array( 'schema_version' => 1, 'lead_days' => '' ), 'document_out_of_range' );
 	}
 
 	#[DataProvider( 'refused' )]

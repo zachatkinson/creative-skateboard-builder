@@ -311,6 +311,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-221 · Orders for the customer: the build's picture and words, its notes, and its parts under it](#d-221--orders-for-the-customer-the-builds-picture-and-words-its-notes-and-its-parts-under-it--2026-11-17)
 - [D-335 · Add to cart leaves the Mini-Cart's count to WooCommerce, and three choices from milestone 11's audit](#d-335--add-to-cart-leaves-the-mini-carts-count-to-woocommerce-and-three-choices-from-milestone-11s-audit--2026-11-23)
 - [D-352 · A build's add keeps the cart before it answers](#d-352--a-builds-add-keeps-the-cart-before-it-answers--2026-11-24)
+- [D-375 · The kit's assembly time in business days, and the parts and their quantities, for a plugin that dates a delivery](#d-375--the-kits-assembly-time-in-business-days-and-the-parts-and-their-quantities-for-a-plugin-that-dates-a-delivery--2026-11-24)
 
 ### Saved builds and privacy
 
@@ -5245,5 +5246,24 @@ After F20 (D-356) and F24 (D-360) met on `m12-settings`, `shelf.spec.ts`'s "Comp
 Put back, all passed.
 
 **Why:** the line was there to make room for an estimate. A build with no part can't have one, and on that build the line cost the first view a row of decks.
+
+**Status:** Accepted.
+
+### D-375 · The kit's assembly time in business days, and the parts and their quantities, for a plugin that dates a delivery · 2026-11-24
+
+**Context:** #142, from Cowork's check of Creative Checkout 1.5.0, with Cowork's comment on it. Creative Checkout dates a delivery from a number of business days; the kit's lead time is the owner's words ("Two business days"), which a plugin cannot count. Additions only: nothing renamed, and no key changes meaning.
+
+**Decision:**
+
+- **The parser is the domain's.** `Domain\Kit\LeadDays::read()` takes a count or a range, "2", "2-4", "2 - 4", "2–4" or "2 to 4" (any case), from 0 to 60, and `stored()` gives "2" or "2-4". It returns codes, not words: `document_bad_measure` for what is not business days, `rules_out_of_order` for the most first ("4-2"), `document_out_of_range` past 60. A range of one day ("3-3") is that day. An em dash, a decimal, a unit ("2 days") or a line break are not read: the issue names the forms, and Creative Checkout's field takes these.
+- **Stored in `_cbuild_settings`, as D-354 says a new kit setting is.** `lead_days`, left out for none; `schema/kit-settings.json` holds it to `"2"` or `"2-4"` from 0 to 60. `KitSettings::fromDocument()` reads it with `LeadDays::kept()`, which refuses any form but the one kept, so the schema and the domain refuse the same documents (`KitSchemasTest`); "4-2" and "3-3" are what only the domain can tell. 1.1.0 never reads the document, so a rollback leaves the kit readable (`RollbackTest` now saves an assembly time too).
+- **Shown beside the lead time.** The field is in the Build tab's Assembly section, sent as `cbuild_kit[settings][lead_days]` with the ID `cbuild-kit-settings-lead_days`, so a problem's path leads to it as D-354 set out. The settings are now shown in three sections, and each lists the problems in its own fields: Width guide, Assembly (the assembly time) and Layout. The editor keeps what it reads as "2-4", leaves out an empty field, keeps the kit's where a form does not send it (as the Builder page does), and keeps what is not business days as typed for the domain to refuse, with `settings_lead_days_form` or `settings_lead_days_range`. The settings' "not saved" notice names the assembly time, and leads to Assembly where every problem is the assembly time's.
+- **The filters' context gains three keys, after 1.1.0's five:** `lead_days` (empty for a build not assembled or a kit with none), `parts` (slot key to part ID, as `cbuild_summary_notes` has it) and `quantities` (slot key to how many one build takes, as the cart's `cbuild` holds them), from the quote's lines, so a slot left empty is in neither. `Delivery::said()` takes the lines as an optional fifth argument; a caller of its four gets empty `parts` and `quantities`.
+- **The snapshot gains `lead_days`, after `returns_notice`,** empty for a build not assembled. `schema/order-snapshot.json` lists it and does not require it, so a snapshot made before 1.2.0 still meets the schema. `schema_version` stays 1: a key added that every reader passes over (`OrderReading` reads the keys it knows) changes no key's meaning, and HOOKS.md says a version moves with a change that refuses what was accepted. 1.1.0's reader passes over it too.
+- **Not done.** The lead time's words are unchanged and still shown to the shopper; `lead_days` is not shown in the builder, the cart or the emails, since the issue asks for it for other plugins. The shop's default for a new kit (`kit_defaults`) gains no assembly time: the settings page's assembly is `_cbuild_assembly`'s shape, and a setting there is the owner's to ask for.
+
+**Tests.** Unit: `LeadDaysTest` (each form, 0, 60, past 60, the most first, junk, the stored form alone), `KitSettingsTest`, `KitEditorTest` (kept as "2-4", empty, not sent, each code), `StateAnswerTest` (the context's keys, bolts of four taken twice), `OrderBuildsTest`. Integration: `BuildTabTest` (the field beside the lead time, each form saved, the notice and the Assembly section), `DeliveryTest` (through the state route: trucks sold singly, two to a build, the risers left empty, a build not assembled), `OrderTest` (the snapshot as sold, its schema with and without the key), `KitSchemasTest`, `RollbackTest`. Browser: `build-tab.spec.ts`, the field by keyboard, its error and its French.
+
+**Red run.** Before the code: `LeadDaysTest` failed with `Class "CreativeBranding\SkateboardBuilder\Domain\Kit\LeadDays" not found`; `KitEditorTest::test_the_assembly_time_is_kept_as_business_days_and_one_that_is_not_is_named_at_its_field` at KitEditorTest.php:684, "Failed asserting that two arrays are identical."; `StateAnswerTest::test_the_delivery_filters_are_given_the_assembly_time_and_each_part_with_its_quantity` at StateAnswerTest.php:1387 and `OrderBuildsTest::test_the_assembly_time_is_kept_for_an_assembled_build_alone` at OrderBuildsTest.php:72, each "Failed asserting that null is identical to '2-4'."
 
 **Status:** Accepted.

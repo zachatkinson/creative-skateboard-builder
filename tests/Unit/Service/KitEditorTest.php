@@ -662,6 +662,53 @@ final class KitEditorTest extends TestCase {
 		}
 	}
 
+	// #142: the assembly time in business days, beside the lead time and kept in the settings (D-354). Each form an
+	// owner types is kept as "2-4"; empty is none; a form that does not send it keeps the kit's.
+	public function test_the_assembly_time_is_kept_as_business_days_and_one_that_is_not_is_named_at_its_field(): void {
+		$sent = self::sent();
+		foreach ( array(
+			'2'      => '2',
+			' 2-4 '  => '2-4',
+			'2 - 4'  => '2-4',
+			'2–4'    => '2-4',
+			'2 to 4' => '2-4',
+			'0'      => '0',
+			'60'     => '60',
+		) as $typed => $kept ) {
+			$sent['settings'] = array(
+				'start_button' => '1',
+				'lead_days'    => (string) $typed,
+			);
+			$draft            = $this->editor->draft( $sent, self::stored() );
+			self::assertSame( array(), $draft->problems, (string) $typed );
+			self::assertSame( array( 'schema_version' => 1, 'start_button' => true, 'lead_days' => $kept ), $draft->documents[ KitEditor::SETTINGS ], (string) $typed );
+		}
+
+		$stored                        = self::stored();
+		$stored[ KitEditor::SETTINGS ] = array(
+			'schema_version' => 1,
+			'lead_days'      => '3',
+		);
+		$sent['settings']              = array( 'lead_days' => ' ' );
+		self::assertArrayNotHasKey( 'lead_days', $this->editor->draft( $sent, $stored )->documents[ KitEditor::SETTINGS ], 'left empty, none' );
+		$sent['settings'] = array( 'start_button' => '1' );
+		self::assertSame( '3', $this->editor->draft( $sent, $stored )->documents[ KitEditor::SETTINGS ]['lead_days'] ?? null, 'a form with no assembly time keeps the kit\'s' );
+
+		foreach ( array(
+			'61'       => KitEditor::LEAD_DAYS_RANGE,
+			'2-90'     => KitEditor::LEAD_DAYS_RANGE,
+			'two days' => KitEditor::LEAD_DAYS_FORM,
+			'2.5'      => KitEditor::LEAD_DAYS_FORM,
+			'4-2'      => KitEditor::LEAD_DAYS_FORM,
+		) as $typed => $code ) {
+			$sent['settings'] = array( 'lead_days' => (string) $typed );
+			$draft            = $this->editor->draft( $sent, $stored );
+			self::assertSame( array( 'settings ' . $code . ' lead_days' ), self::problems( $draft ), (string) $typed );
+			self::assertArrayNotHasKey( KitEditor::SETTINGS, $draft->documents, (string) $typed );
+			self::assertSame( (string) $typed, $draft->refused[ KitEditor::SETTINGS ]['lead_days'] ?? null, 'shown as typed' );
+		}
+	}
+
 	public function test_assembly_takes_a_fee_as_the_shop_writes_money_and_each_thing_wrong_is_named(): void {
 		$stored                             = self::stored();
 		$sent                               = self::sent();

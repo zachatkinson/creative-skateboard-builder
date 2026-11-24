@@ -147,6 +147,16 @@ The Build tab gains a **Width guide** section (#114, D-350), kept in the same `_
 | Use the builder's rows | none stored (a checkbox) | ticked, unticked | ticked | The restore-defaults control. Ticked, no `rows` are stored and the guide has the plugin's rows, by US shoe size in the shopper's language. The tab shows those rows in the editor to start from; typing in a row, adding or removing one unticks it where the page runs its script, and a screen reader hears it once as typing unticks it. Without the script, rows typed while it is ticked are not saved, and the tab says so with a link to the box. |
 | Rows | `width_guide.rows[]` with `shoe`, `from`, `to` | One to twelve rows. **Shoe size**: plain text as the shop writes it, up to 40 characters, through `cbuild_kit_text` (`width_guide_shoe`). **Deck width from** and **to**: 5 to 12 in, typed as the shop writes a measure (its decimal separator, or a fraction); **to** left empty is "and wider", and is never under **from**. | none | The guide's rows, in the order given. Add a row and Remove work by keyboard; the server draws twelve rows, and those past the kit's and one empty one wait hidden. A row left empty is no row. A row that is wrong is named at its field, and the settings are not saved. |
 
+### Assembly time (#142)
+
+The Build tab's **Assembly** section gains a field beside the lead time, kept in the same `_cbuild_settings` document as `lead_days` (D-375), so a rollback to 1.1.0 still reads the kit (D-354). A kit saved before 1.2.0 has none.
+
+| Setting | Key | Choices | Default | What it does |
+| --- | --- | --- | --- | --- |
+| Assembly time in business days | `lead_days` | A count, such as `2`, or a range, the fewer first, such as `2-4`, from 0 to 60. Typed as `2-4`, `2 - 4`, `2–4` or `2 to 4`, and kept as `2-4`; a range of one day is kept as that day. Left empty, the key is left out. | none (the key left out) | How many business days putting a build together takes, the form Creative Checkout's "Delivery time (business days)" takes. Shoppers do not see it; the lead time stays the words the review shows. `cbuild_arrival_estimate` and `cbuild_delivery_line` get it as `lead_days` in their context for an assembled build, and the order keeps it in `_cbuild_snapshot` as sold. A value that is not business days, or is past 60, is not saved: the notice leads to the field, which shows it as typed, and the rest of the kit saves. |
+
+**Reading it from another plugin.** A cart line of a build carries the kit's ID as `kit` in its `cbuild`; the kit's `_cbuild_settings` meta holds `lead_days`, and `schema/kit-settings.json` describes it. Within a request of the builder, the filters' `lead_days` is already that value.
+
 ### Not offered in the builder (#116)
 
 On a product's Part specs tab, and on each variation's Part specs fields, kept as `_cbuild_not_offered` product meta (D-351). A part saved before 1.2.0 has none, and is offered.

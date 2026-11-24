@@ -98,6 +98,8 @@ final class RollbackTest extends IntegrationTestCase {
 			self::named( $panel, 'Stage side on a desktop' ) => 'right',
 			self::named( $panel, 'Show ready builds' )       => '1',
 			self::named( $panel, 'Builder page' )            => (string) $page,
+			// The assembly time, beside the lead time in Assembly (#142).
+			self::named( $panel, 'Assembly time in business days' ) => '2 to 4',
 			$guide . '[rows][0][shoe]'                        => 'EU 38 to 40',
 			$guide . '[rows][0][from]'                        => '7.75',
 			$guide . '[rows][0][to]'                          => '8',
@@ -130,6 +132,7 @@ final class RollbackTest extends IntegrationTestCase {
 		$read = $this->service( Kits::class )->kit( $kit->get_id() );
 		self::assertSame( 'right', $read?->layout->stageSide );
 		self::assertSame( $page, $read?->settings->builderPage );
+		self::assertSame( '2-4', $read?->settings->leadDays?->stored() );
 		self::assertFalse( $read?->settings->startButton );
 		self::assertFalse( $read?->settings->guide->shown );
 		self::assertSame( array( 'EU 38 to 40', 'EU 41 and up' ), array_map( static fn( $row ): string => $row->shoe, $read?->settings->guide->rows ?? array() ) );

@@ -18,6 +18,7 @@ use CreativeBranding\SkateboardBuilder\Domain\Kit\Fields;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\InvalidDocument;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\KitLayout;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\KitSettings;
+use CreativeBranding\SkateboardBuilder\Domain\Kit\LeadDays;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Kit;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Part;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Picks;
@@ -90,6 +91,20 @@ final class KitEditor {
 	 * @since 1.2.0
 	 */
 	public const GUIDE_SHOE_TWICE = 'width_guide_shoe_twice';
+
+	/**
+	 * The assembly time is not a count of business days or a range of them, the fewer first (#142).
+	 *
+	 * @since 1.2.0
+	 */
+	public const LEAD_DAYS_FORM = 'settings_lead_days_form';
+
+	/**
+	 * The assembly time names more than 60 business days (#142).
+	 *
+	 * @since 1.2.0
+	 */
+	public const LEAD_DAYS_RANGE = 'settings_lead_days_range';
 
 	/**
 	 * A document the domain read and its schema still refused. The schemas and the domain agree
@@ -335,8 +350,9 @@ final class KitEditor {
 				default                 => Assembly::fromDocument( $document ),
 			};
 		} catch ( InvalidDocument $refused ) {
-			// Only the settings document has a width guide, so its rows' widths need no check of the key.
+			// Only the settings document has a width guide and an assembly time, so neither needs a check of the key.
 			$code = match ( true ) {
+				'lead_days' === $refused->path => DocumentError::OutOfRange === $refused->reason ? self::LEAD_DAYS_RANGE : self::LEAD_DAYS_FORM,
 				self::SETTINGS === $key && DocumentError::Duplicate === $refused->reason => self::GUIDE_SHOE_TWICE,
 				DocumentError::OutOfRange !== $refused->reason => $refused->reason->value,
 				self::PICTURE === $key => self::WHEELBASE_RANGE,
@@ -700,7 +716,9 @@ final class KitEditor {
 	 * The settings document from the tab's fields (D-354). Show "Build a complete with this deck" on its parts' pages
 	 * (#115) is a checkbox: one not ticked is not sent, and is off. The Builder page (#113) is a page's ID, or empty for
 	 * the kit's own page; a form that does not send it at all keeps the one the kit has. The width guide (#114) is
-	 * stored only where its section was sent.
+	 * stored only where its section was sent. The assembly time (#142) is kept as "2-4" however it was typed, left out
+	 * where it is empty, and kept as the kit has it where a form does not send it; what is not business days is kept
+	 * as typed, for the domain to refuse.
 	 *
 	 * @param array<mixed>              $sent      The fields.
 	 * @param array<string, mixed>|null $stored    The settings as stored.
@@ -722,7 +740,26 @@ final class KitEditor {
 			// Anything but an ID is kept as typed, for the domain to refuse.
 			$document['builder_page'] = 1 === preg_match( '/\A[1-9]\d{0,17}\z/', $page ) ? (int) $page : $page;
 		}
+		$days = array_key_exists( 'lead_days', $sent ) ? self::text( $sent, 'lead_days' ) : null;
+		if ( null === $days && isset( $stored['lead_days'] ) ) {
+			$document['lead_days'] = $stored['lead_days'];
+		} elseif ( null !== $days && '' !== $days ) {
+			$document['lead_days'] = self::days( $days );
+		}
 		return $document;
+	}
+
+	/**
+	 * Business days as the settings keep them, "2-4" (#142). Text that is not business days is returned as typed.
+	 *
+	 * @param string $typed What was typed.
+	 */
+	private static function days( string $typed ): string {
+		try {
+			return LeadDays::read( $typed )->stored();
+		} catch ( InvalidDocument ) {
+			return $typed;
+		}
 	}
 
 	/**

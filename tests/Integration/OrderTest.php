@@ -196,7 +196,7 @@ final class OrderTest extends CartTestCase {
 		self::assertMatchesRegularExpression( '/^[0-9a-f-]{36}$/', $kit->get_meta( '_cbuild_id' ) );
 
 		$snapshot = $kit->get_meta( '_cbuild_snapshot' );
-		self::assertSame( array( 'schema_version', 'kit', 'assembly', 'picks', 'lead_time', 'returns_notice' ), array_keys( $snapshot ) );
+		self::assertSame( array( 'schema_version', 'kit', 'assembly', 'picks', 'lead_time', 'returns_notice', 'lead_days' ), array_keys( $snapshot ) );
 		// The auditor's finding 6 on milestone 5: the document kept for as long as the order is has its schema.
 		$schema = json_decode( (string) file_get_contents( dirname( __DIR__, 2 ) . '/schema/order-snapshot.json' ), true );
 		self::assertIsArray( $schema );
@@ -205,7 +205,7 @@ final class OrderTest extends CartTestCase {
 		$wrong = $snapshot;
 		unset( $wrong['picks']['deck']['label'] );
 		self::assertWPError( rest_validate_value_from_schema( $wrong, $schema, '_cbuild_snapshot' ), 'and the schema refuses what is not one' );
-		self::assertSame( array( '', '' ), array( $snapshot['lead_time'], $snapshot['returns_notice'] ), 'the kit has neither' );
+		self::assertSame( array( '', '', '' ), array( $snapshot['lead_time'], $snapshot['returns_notice'], $snapshot['lead_days'] ), 'the kit has none of them' );
 		self::assertSame( array( 1, $this->kit, $assembly ), array( $snapshot['schema_version'], $snapshot['kit'], $snapshot['assembly'] ) );
 		self::assertSame(
 			array(
@@ -293,6 +293,48 @@ final class OrderTest extends CartTestCase {
 		$loose = $builds[1]['item']->get_meta( '_cbuild_snapshot' );
 		self::assertFalse( $loose['assembly'] );
 		self::assertSame( array( '', '' ), array( $loose['lead_time'], $loose['returns_notice'] ), 'neither is said of a build the shop does not assemble' );
+	}
+
+	// #142: the assembly time in business days is kept in the snapshot as sold, for an assembled build alone, and the
+	// snapshot still meets its schema. A snapshot made before 1.2.0, with no key, still does.
+	public function test_an_assembled_builds_order_keeps_the_assembly_time_in_business_days_as_sold(): void {
+		$kit = wc_get_product( $this->kit );
+		$kit->setDocument(
+			Options::META_KIT_SETTINGS,
+			array(
+				'schema_version' => 1,
+				'lead_days'      => '2-4',
+			)
+		);
+		$kit->save();
+		$this->added( true );
+		$this->added( false );
+		$builds = self::told( $this->classic() );
+
+		$assembled = $builds[0]['item']->get_meta( '_cbuild_snapshot' );
+		self::assertTrue( $assembled['assembly'] );
+		self::assertSame( '2-4', $assembled['lead_days'] );
+		$loose = $builds[1]['item']->get_meta( '_cbuild_snapshot' );
+		self::assertFalse( $loose['assembly'] );
+		self::assertSame( '', $loose['lead_days'], 'not said of a build the shop does not assemble' );
+
+		$schema = json_decode( (string) file_get_contents( dirname( __DIR__, 2 ) . '/schema/order-snapshot.json' ), true );
+		self::assertIsArray( $schema );
+		foreach ( array( 'assembled' => $assembled, 'loose' => $loose ) as $what => $snapshot ) {
+			$valid = rest_validate_value_from_schema( $snapshot, $schema, '_cbuild_snapshot' );
+			self::assertTrue( $valid, $what . ': ' . ( is_wp_error( $valid ) ? $valid->get_error_message() : '' ) );
+		}
+		$before = $assembled;
+		unset( $before['lead_days'] );
+		self::assertTrue( rest_validate_value_from_schema( $before, $schema, '_cbuild_snapshot' ), 'a snapshot made before 1.2.0' );
+		$assembled['lead_days'] = '61';
+		self::assertWPError( rest_validate_value_from_schema( $assembled, $schema, '_cbuild_snapshot' ), 'and no more than 60 days' );
+
+		// Kept as sold: the kit's time changed after the order is not the order's.
+		$kit = wc_get_product( $this->kit );
+		$kit->setDocument( Options::META_KIT_SETTINGS, array( 'schema_version' => 1, 'lead_days' => '5' ) );
+		$kit->save();
+		self::assertSame( '2-4', wc_get_order( $builds[0]['item']->get_order_id() )->get_item( $builds[0]['item']->get_id() )->get_meta( '_cbuild_snapshot' )['lead_days'] );
 	}
 
 	public function test_a_kits_line_on_the_order_says_what_its_amount_is_in_place_of_a_bare_price(): void {

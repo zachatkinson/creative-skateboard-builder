@@ -13,6 +13,7 @@ use CreativeBranding\SkateboardBuilder\Adapter\KitProduct;
 use CreativeBranding\SkateboardBuilder\Admin\BuildTab;
 use CreativeBranding\SkateboardBuilder\Admin\BuildTabHooks;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Kit;
+use CreativeBranding\SkateboardBuilder\Domain\Kit\KitSettings;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\RuleSettings;
 use CreativeBranding\SkateboardBuilder\Port\DocumentSchemas;
 use CreativeBranding\SkateboardBuilder\Port\ShopSettings;
@@ -154,6 +155,8 @@ final class BuildTabTest extends IntegrationTestCase {
 				'start_button' => '1',
 				// The kit's own page, as the tab shows it on a kit saved before 1.2.0 (#113).
 				'builder_page' => '',
+				// Empty, as the tab shows it on a kit saved before 1.2.0 (#142).
+				'lead_days'    => '',
 			),
 		);
 	}
@@ -962,7 +965,7 @@ final class BuildTabTest extends IntegrationTestCase {
 		}
 		$sent['settings']['builder_page'] = '<b>about-us</b>';
 		$this->send( $kit, $sent );
-		self::assertStringContainsString( 'The kit&#039;s Builder page, the button on its parts&#039; pages and its width guide were not saved.', implode( '', self::notices() ), 'what is no page is refused' );
+		self::assertStringContainsString( 'The kit&#039;s Builder page, the button on its parts&#039; pages, its width guide and its assembly time in business days were not saved.', implode( '', self::notices() ), 'what is no page is refused' );
 		\WC_Admin_Meta_Boxes::$meta_box_errors = array();
 		$this->panel( $kit );
 
@@ -1154,7 +1157,7 @@ final class BuildTabTest extends IntegrationTestCase {
 		$this->send( $kit, $sent );
 		self::assertSame(
 			array(
-				'<a href="#cbuild-kit-settings-width_guide">The kit&#039;s Builder page, the button on its parts&#039; pages and its width guide were not saved. The Build tab shows them as you chose them, with what to put right.</a>',
+				'<a href="#cbuild-kit-settings-width_guide">The kit&#039;s Builder page, the button on its parts&#039; pages, its width guide and its assembly time in business days were not saved. The Build tab shows them as you chose them, with what to put right.</a>',
 				'<a href="#cbuild-kit-settings-width_guide-rows-1-to">Width guide, row 2, Deck width to: type a width from 5 to 12 in.</a>',
 			),
 			self::notices()
@@ -1169,6 +1172,80 @@ final class BuildTabTest extends IntegrationTestCase {
 		self::assertMatchesRegularExpression( '/id="cbuild-kit-settings-width_guide-rows-1-to"[^>]*aria-describedby="cbuild-kit-settings-width_guide-rows-1-to-note cbuild-kit-error-0"\s+aria-invalid="true"/', $panel );
 		self::assertMatchesRegularExpression( '#id="cbuild-kit-settings-width_guide".*?Not saved\. This is what you typed.*?<li id="cbuild-kit-error-0"><a href="\#cbuild-kit-settings-width_guide-rows-1-to">#s', $panel, 'listed in the Width guide section' );
 		self::assertDoesNotMatchRegularExpression( '#id="cbuild-kit-layout"(?:(?!id="cbuild-kit-settings-width_guide").)*cbuild-kit-error-0#s', $panel, 'and not in the Layout section' );
+	}
+
+	/**
+	 * The assembly time's field as drawn: its value, or null where it is not drawn.
+	 *
+	 * @param string $panel The tab's panel.
+	 */
+	private static function daysField( string $panel ): ?string {
+		$found = array();
+		return 1 === preg_match( '#name="cbuild_kit\[settings\]\[lead_days\]"\s+value="([^"]*)"#', $panel, $found ) ? $found[1] : null;
+	}
+
+	// #142: the assembly time in business days, a field beside the lead time in the Assembly section, kept in
+	// `_cbuild_settings` (D-354). Each form an owner types is kept as "2-4"; left empty there is none; a kit saved
+	// before 1.2.0 shows it empty.
+	public function test_the_assembly_time_is_beside_the_lead_time_and_kept_as_business_days_in_the_settings(): void {
+		$this->as( 'shop_manager' );
+		$kit   = KitFactory::kit();
+		$panel = $this->panel( $kit );
+		self::assertSame( '', self::daysField( $panel ), 'a kit saved before 1.2.0' );
+		self::assertMatchesRegularExpression( '#id="cbuild-kit-assembly".*?id="cbuild-kit-assembly-lead_time".*?<label for="cbuild-kit-settings-lead_days">Assembly time in business days</label>.*?id="cbuild-kit-assembly-returns_notice"#s', $panel, 'in Assembly, after the lead time' );
+		self::assertMatchesRegularExpression( '#id="cbuild-kit-settings-lead_days"[^>]*aria-describedby="cbuild-kit-settings-lead_days-note"#', $panel, 'with its note' );
+
+		foreach ( array( '2' => '2', '2-4' => '2-4', ' 2 - 4 ' => '2-4', '2–4' => '2-4', '2 to 4' => '2-4', '0' => '0', '60' => '60' ) as $typed => $kept ) {
+			\WC_Admin_Meta_Boxes::$meta_box_errors = array();
+			$sent                                  = self::form();
+			$sent['settings']['lead_days']         = (string) $typed;
+			$this->send( $kit, $sent );
+			self::assertSame( array(), self::notices(), (string) $typed );
+			self::assertSame( $kept, self::stored( $kit->get_id() )[ Options::META_KIT_SETTINGS ]['lead_days'] ?? null, (string) $typed );
+			self::assertSame( $kept, self::daysField( $this->panel( $kit ) ) );
+		}
+		self::assertSame( '60', KitSettings::fromDocument( self::stored( $kit->get_id() )[ Options::META_KIT_SETTINGS ] )->leadDays?->stored(), 'read back by the domain' );
+
+		$sent = self::form();
+		$this->send( $kit, $sent );
+		self::assertArrayNotHasKey( 'lead_days', self::stored( $kit->get_id() )[ Options::META_KIT_SETTINGS ] ?? array(), 'left empty, none' );
+		self::assertArrayNotHasKey( 'lead_days', self::stored( $kit->get_id() )[ Options::META_KIT_ASSEMBLY ] ?? array(), 'and nothing of it in the assembly document' );
+	}
+
+	// #142: an assembly time that is not business days from 0 to 60 is not saved; the notice leads to the field in
+	// the Assembly section, which shows it as typed, and the rest of the kit is saved.
+	public function test_an_assembly_time_that_is_not_business_days_is_not_saved_and_the_notice_names_its_field(): void {
+		$this->as( 'shop_manager' );
+		$kit = KitFactory::kit();
+		foreach ( array(
+			'61'       => 'Assembly time in business days: type business days from 0 to 60, such as 2 or 2-4.',
+			'2 to 90'  => 'Assembly time in business days: type business days from 0 to 60, such as 2 or 2-4.',
+			'two days' => 'Assembly time in business days: type a number of business days, such as 2, or a range with the fewer first, such as 2-4.',
+			'4-2'      => 'Assembly time in business days: type a number of business days, such as 2, or a range with the fewer first, such as 2-4.',
+		) as $typed => $sentence ) {
+			\WC_Admin_Meta_Boxes::$meta_box_errors = array();
+			$sent                                  = self::form();
+			$sent['settings']['lead_days']         = (string) $typed;
+			$sent['assembly']['fee']               = '9';
+			$this->send( $kit, $sent );
+			self::assertSame(
+				array(
+					'<a href="#cbuild-kit-assembly">The kit&#039;s Builder page, the button on its parts&#039; pages, its width guide and its assembly time in business days were not saved. The Build tab shows them as you chose them, with what to put right.</a>',
+					'<a href="#cbuild-kit-settings-lead_days">' . esc_html( $sentence ) . '</a>',
+				),
+				self::notices(),
+				(string) $typed
+			);
+			$stored = self::stored( $kit->get_id() );
+			self::assertNull( $stored[ Options::META_KIT_SETTINGS ], 'nothing saved in its place' );
+			self::assertSame( '9', $stored[ Options::META_KIT_ASSEMBLY ]['fee'], 'the rest of the kit saved' );
+
+			$panel = $this->panel( $kit );
+			self::assertSame( esc_attr( (string) $typed ), self::daysField( $panel ), 'shown as typed' );
+			self::assertMatchesRegularExpression( '/id="cbuild-kit-settings-lead_days"[^>]*aria-describedby="cbuild-kit-settings-lead_days-note cbuild-kit-error-0"\s+aria-invalid="true"/', $panel );
+			self::assertMatchesRegularExpression( '#id="cbuild-kit-assembly".*?Not saved\. This is what you typed.*?<li id="cbuild-kit-error-0"><a href="\#cbuild-kit-settings-lead_days">#s', $panel, 'listed in the Assembly section' );
+			self::assertDoesNotMatchRegularExpression( '#id="cbuild-kit-layout"(?:(?!id="cbuild-kit-settings-width_guide").)*cbuild-kit-error-0#s', $panel, 'and not in the Layout section' );
+		}
 	}
 
 	// #114, Security: the guide is saved only through WooCommerce's product save, which checks its nonce first, and

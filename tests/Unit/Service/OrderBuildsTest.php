@@ -45,7 +45,7 @@ final class OrderBuildsTest extends TestCase {
 		$build    = new Build( 'a', self::KIT, array( 'deck' => 103, 'trucks' => 149 ), array( 'deck' => 1, 'trucks' => 2 ), true );
 		$snapshot = $this->orders->snapshot( $build, array( 'deck' => 'Deck', 'trucks' => 'Trucks' ), array( 'trucks' => 'Stage 11', 'deck' => 'Eight and a half' ), array( 'trucks' => 'IND-149' ), 'Two days', 'No returns once gripped' );
 		self::assertSame( 1, $this->kits->readings, 'the parts are read in one reading of the shop' );
-		self::assertSame( array( 'schema_version', 'kit', 'assembly', 'picks', 'lead_time', 'returns_notice' ), array_keys( $snapshot ) );
+		self::assertSame( array( 'schema_version', 'kit', 'assembly', 'picks', 'lead_time', 'returns_notice', 'lead_days' ), array_keys( $snapshot ) );
 		self::assertSame( array( OrderBuilds::SNAPSHOT_VERSION, self::KIT, true ), array( $snapshot['schema_version'], $snapshot['kit'], $snapshot['assembly'] ) );
 		self::assertSame( 1, OrderBuilds::SNAPSHOT_VERSION );
 		self::assertSame( array( 'Two days', 'No returns once gripped' ), array( $snapshot['lead_time'], $snapshot['returns_notice'] ) );
@@ -63,6 +63,16 @@ final class OrderBuildsTest extends TestCase {
 		self::assertFalse( $snapshot['assembly'] );
 		self::assertSame( array( '', '' ), array( $snapshot['lead_time'], $snapshot['returns_notice'] ) );
 		self::assertSame( array( 'deck', '' ), array( $snapshot['picks']['deck']['label'], $snapshot['picks']['deck']['name'] ), 'a slot nobody labelled is kept by its key, and a part nobody named with no name' );
+	}
+
+	// #142: the assembly time in business days as sold, "2-4" or "2", for an assembled build alone. 1.1.0's snapshot
+	// has no key, and one sold with no time set has it empty.
+	public function test_the_assembly_time_is_kept_for_an_assembled_build_alone(): void {
+		$assembled = new Build( 'a', self::KIT, array( 'deck' => 103 ), array( 'deck' => 1 ), true );
+		self::assertSame( '2-4', $this->orders->snapshot( $assembled, array(), array(), array(), 'Two days', '', '2-4' )['lead_days'] );
+		self::assertSame( '', $this->orders->snapshot( $assembled, array(), array(), array(), 'Two days', '' )['lead_days'], 'no time set' );
+		$loose = new Build( 'a', self::KIT, array( 'deck' => 103 ), array( 'deck' => 1 ), false );
+		self::assertSame( '', $this->orders->snapshot( $loose, array(), array(), array(), 'Two days', '', '2-4' )['lead_days'], 'not said of a build the shop does not assemble' );
 	}
 
 	public function test_a_part_or_a_kit_the_shop_no_longer_reads_is_kept_with_no_specs(): void {
