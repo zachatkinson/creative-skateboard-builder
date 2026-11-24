@@ -4,18 +4,45 @@ Everything the plugin stores, why, for how long, who sees it, and how it is expo
 
 The plugin sets no cookie of its own, sends nothing about a shopper anywhere, and loads nothing from another host.
 
-**A step's search** (from 1.0.0) is kept nowhere by the plugin and is in no log of its own: it travels in the build link and the browser's history, as the picks do. Where the kit's Layout says to search with Creative Search and that plugin is active, the words are passed to it on the same site, through its `csearch_ranked_ids` filter with the source `builder`, and Creative Search keeps them in its own search log as it does a search of the shop. That log is Creative Search's, described in its own privacy document; set the kit's search to the builder's own to keep a step's searches out of it (D-255).
+## Contents
 
-From 0.5.0 the state route reads WooCommerce's own session cookie, where the browser sends one, so that a price shown with tax is worked out for the address WooCommerce already holds for that shopper, as the cart will charge it. The plugin reads the address through WooCommerce's tax rates alone and keeps none of it: what is kept of a price is filed under the rates that apply, never under an address. A visitor with no session is given none by asking, and no cart is made or read for the request (`CartPriceTest`). From 0.5.0 the two build abilities read the signed-in user's address the same way. From 0.6.0 the builder's delivery line reads the shipping address WooCommerce holds for the shopper, its country, province, postcode and city, to find the shop's shipping zone for it; a postcode or a city is how it tells an address the shopper typed from the shop's default (D-166, D-178). It keeps none of it.
+- [What it reads and keeps nowhere](#what-it-reads-and-keeps-nowhere)
+- [Releases that store nothing new about a person](#releases-that-store-nothing-new-about-a-person)
+- [Personal data](#personal-data)
+- [What 0.1.0 stores](#what-010-stores)
+- [What leaves the site](#what-leaves-the-site)
+- [What is left behind, and when](#what-is-left-behind-and-when)
+- [Who sees it](#who-sees-it)
 
-**1.1.0 stores nothing new about a person.** Its two settings, `motion` and `show_presets`, are keys in a kit's `_cbuild_layout`, the shop's own choices (the table below). The motion follows the browser's reduced-motion preference, read from the media query at each moment and kept nowhere: no cookie and no browser storage (D-305). A deck's board image fetched while the pointer rests on its card is the site's own upload, asked for by the browser like any image on the page, and nothing about it is kept (D-308). The state route's `Server-Timing` header gives a signed-in shop manager the route's time and how many queries it made; it names no one, is stored nowhere and is sent to no one else (D-304).
+## What it reads and keeps nowhere
 
-**1.2.0 stores nothing new about a person.** Its kit settings `start_button`, `builder_page` (a page's ID) and `width_guide` (#114, the shop's own words and widths) are keys in a kit's `_cbuild_settings`, the shop's own choices (the table below). It is a document of its own, so a rollback to 1.1.0 still reads the kit (D-354); uninstall removes it with the kit's other documents. "Not offered in the builder" (#116) is a part's `_cbuild_not_offered` meta, the shop's own choice, which uninstall removes too.
+- **A step's search** (from 1.0.0) is kept nowhere by the plugin and is in no log of its own: it travels in the build link and the browser's history, as the picks do. Where the kit's Layout says to search with Creative Search and that plugin is active, the words are passed to it on the same site, through its `csearch_ranked_ids` filter with the source `builder`, and Creative Search keeps them in its own search log as it does a search of the shop. That log is Creative Search's, described in its own privacy document; set the kit's search to the builder's own to keep a step's searches out of it (D-255).
+- **The shopper's address, for prices with tax.** From 0.5.0 the state route reads WooCommerce's own session cookie, where the browser sends one, so that a price shown with tax is worked out for the address WooCommerce already holds for that shopper, as the cart will charge it. The plugin reads the address through WooCommerce's tax rates alone and keeps none of it: what is kept of a price is filed under the rates that apply, never under an address.
+- **No session by asking.** A visitor with no session is given none by asking, and no cart is made or read for the request (`CartPriceTest`).
+- **The build abilities.** From 0.5.0 the two build abilities read the signed-in user's address the same way.
+- **The delivery line.** From 0.6.0 the builder's delivery line reads the shipping address WooCommerce holds for the shopper, its country, province, postcode and city, to find the shop's shipping zone for it; a postcode or a city is how it tells an address the shopper typed from the shop's default (D-166, D-178). It keeps none of it.
+
+## Releases that store nothing new about a person
+
+**1.1.0 stores nothing new about a person.**
+
+- **Its two settings,** `motion` and `show_presets`, are keys in a kit's `_cbuild_layout`, the shop's own choices (the table below).
+- **The motion** follows the browser's reduced-motion preference, read from the media query at each moment and kept nowhere: no cookie and no browser storage (D-305).
+- **A deck's board image** fetched while the pointer rests on its card is the site's own upload, asked for by the browser like any image on the page, and nothing about it is kept (D-308).
+- **The state route's `Server-Timing` header** gives a signed-in shop manager the route's time and how many queries it made; it names no one, is stored nowhere and is sent to no one else (D-304).
+
+**1.2.0 stores nothing new about a person.**
+
+- **Its kit settings** `start_button`, `builder_page` (a page's ID) and `width_guide` (#114, the shop's own words and widths) are keys in a kit's `_cbuild_settings`, the shop's own choices (the table below). It is a document of its own, so a rollback to 1.1.0 still reads the kit (D-354); uninstall removes it with the kit's other documents.
+- **"Not offered in the builder"** (#116) is a part's `_cbuild_not_offered` meta, the shop's own choice, which uninstall removes too.
 
 ## Personal data
 
-From 0.8.0, saved builds are the only personal data the plugin keeps (spec: Privacy and data handling; D-217, D-220): the customer's user ID, the picks, assembly, the name they give the build, and when it was made and last saved. From 1.0.0, a build just deleted is kept in the customer's own WooCommerce session for Undo (D-231, D-275): the same build, and no other kind of data. It can be brought back for 15 minutes after the Delete. It goes at the first of: the Undo, My builds shown again after it, the first time an Undo or My builds reads it after those 15 minutes, sign-out, or the session's end (48 hours by default). Before 1.0.0 it stayed until the session ended if My builds wasn't shown again. Nothing else about a customer is stored, and a build link, Copy link or a picture holds nothing of them.
+From 0.8.0, saved builds are the only personal data the plugin keeps (spec: Privacy and data handling; D-217, D-220): the customer's user ID, the picks, assembly, the name they give the build, and when it was made and last saved.
 
+- **Undo.** From 1.0.0, a build just deleted is kept in the customer's own WooCommerce session for Undo (D-231, D-275): the same build, and no other kind of data. It can be brought back for 15 minutes after the Delete.
+- **When a deleted build goes.** It goes at the first of: the Undo, My builds shown again after it, the first time an Undo or My builds reads it after those 15 minutes, sign-out, or the session's end (48 hours by default). Before 1.0.0 it stayed until the session ended if My builds wasn't shown again.
+- **Nothing else.** Nothing else about a customer is stored, and a build link, Copy link or a picture holds nothing of them.
 - **Export.** WordPress's Export Personal Data finds them by the account's email address: the exporter `creative-skateboard-builder`, "Saved builds", gives each build's name, kit, parts, assembly and both times (`PrivacyTest`).
 - **Erase.** Erase Personal Data deletes them all: the eraser `creative-skateboard-builder`. Nothing is kept, so nothing is reported retained (`PrivacyTest`).
 - **A deleted account** takes its saved builds with it: on its site through `delete_user`, and on every site of a network through `wpmu_delete_user`, from the must-use file below where the plugin is not loaded (`PrivacyTest`).
@@ -74,7 +101,11 @@ Order item meta is not personal data the plugin adds: each build's snapshot name
 | WooCommerce's cart session, and its saved cart for a signed-in customer | Cart item keys `cbuild`, `cbuild_children`, `cbuild_parent` and `cbuild_slot` | From 0.5.0, a build in a shopper's cart: an identifier made for the build, the kit's and the parts' product IDs, how many of each, whether it is assembled, and which lines belong together. It is part of the cart, which WooCommerce ties to the shopper's session or account as it does any cart line; the plugin adds nothing that names the shopper. | As the cart it is in | The line is removed, the order is placed, or WooCommerce expires the session. The plugin keeps no copy. | `CartAddTest` |
 | Post content | The Builder block, `creative-skateboard-builder/builder`, with its attribute `kit` | From 0.6.0, where an editor put a builder: the kit product's ID, in the block's comment in the post's content, as WordPress stores any block. The builder itself keeps nothing of a visitor: a build lives in the page's address and is read from it on each request. Nothing about a person. | No | With the post. Uninstall leaves it, as WordPress leaves any block of a plugin that is gone, and the page shows nothing in its place | `BuilderPageTest` |
 
-Order item meta is part of the shop's order records and is kept on uninstall (spec: Uninstall). None is written before 0.5.0. From 0.5.0 an item of a build carries `_cbuild_id`, `_cbuild_role`, `_cbuild_parent`, `_cbuild_children`, `_cbuild_slot` and, on the kit's item, `_cbuild_snapshot`, with two lines the customer reads, Assembly and Build. They hold an identifier made for the build, order item IDs, slot keys and labels, product IDs, names and SKUs, quantities and the parts' specs: what was bought, as any order item records, and nothing else about the person who bought it. They are on the order's items, which WooCommerce keeps when it erases a customer's personal data from an order, as it keeps every item of what was bought (`OrderTest` covers what is written).
+Order item meta is part of the shop's order records and is kept on uninstall (spec: Uninstall). None is written before 0.5.0.
+
+- **The keys.** From 0.5.0 an item of a build carries `_cbuild_id`, `_cbuild_role`, `_cbuild_parent`, `_cbuild_children`, `_cbuild_slot` and, on the kit's item, `_cbuild_snapshot`, with two lines the customer reads, Assembly and Build.
+- **What they hold.** They hold an identifier made for the build, order item IDs, slot keys and labels, product IDs, names and SKUs, quantities and the parts' specs: what was bought, as any order item records, and nothing else about the person who bought it.
+- **Erasure.** They are on the order's items, which WooCommerce keeps when it erases a customer's personal data from an order, as it keeps every item of what was bought (`OrderTest` covers what is written).
 
 ## What leaves the site
 
@@ -89,7 +120,10 @@ Neither carries the site's address, the version of WordPress or WooCommerce, or 
 
 - **Deactivation** keeps everything but pending scheduled actions and the upgrade lock, so reactivation finds the shop as it was.
 - **Uninstall** removes everything in the table above, on every site of a network, but the WooCommerce session's `cbuild_deleted`, which ends with the session.
-- **A site deleted from a network** has its tables dropped with it, wherever the deletion is made. On a network the plugin writes a must-use file, `wp-content/mu-plugins/creative-skateboard-builder-network.php`, which loads on every site and in the network's admin and does two things: it names the plugin's tables for `wpmu_drop_tables`, and on `wpmu_delete_user` deletes the account's rows from each site's builds table, found in one query whatever the network's size (D-222). It is written on activation and, where missing or out of date, by a network admin's next request in wp-admin, never on `admin-ajax.php` or for anyone else (D-226); uninstall removes it. Where the folder cannot be written, Site Health's test "The skateboard builder on a network" says so (#8, D-220; `PrivacyTest`, `SiteHealthTest`, `UninstallTest`).
+- **A site deleted from a network** has its tables dropped with it, wherever the deletion is made.
+  - **The must-use file.** On a network the plugin writes a must-use file, `wp-content/mu-plugins/creative-skateboard-builder-network.php`, which loads on every site and in the network's admin and does two things: it names the plugin's tables for `wpmu_drop_tables`, and on `wpmu_delete_user` deletes the account's rows from each site's builds table, found in one query whatever the network's size (D-222).
+  - **When it is written.** It is written on activation and, where missing or out of date, by a network admin's next request in wp-admin, never on `admin-ajax.php` or for anyone else (D-226); uninstall removes it.
+  - **Where it cannot be.** Where the folder cannot be written, Site Health's test "The skateboard builder on a network" says so (#8, D-220; `PrivacyTest`, `SiteHealthTest`, `UninstallTest`).
 
 ## Who sees it
 
