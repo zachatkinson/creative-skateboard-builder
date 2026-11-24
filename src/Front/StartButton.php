@@ -59,6 +59,28 @@ final class StartButton implements Hookable {
 	public function __construct( private Closure $kits ) {}
 
 	/**
+	 * Where each kit's builder is, as its Build tab chose (1.2.0, #113): none in a copy an earlier release's container
+	 * built, which asks `BuilderUrl::of()` as 1.1.0 did (D-208).
+	 *
+	 * @var BuilderAddress|null
+	 */
+	private ?BuilderAddress $address = null;
+
+	/**
+	 * The same, sending shoppers to the Builder page each kit's Build tab chose (#113, D-348). Only this release's
+	 * container calls it (D-208).
+	 *
+	 * @since 1.2.0
+	 *
+	 * @param BuilderAddress $address Where each kit's builder is.
+	 */
+	public function withAddress( BuilderAddress $address ): self {
+		$copy          = clone $this;
+		$copy->address = $address;
+		return $copy;
+	}
+
+	/**
 	 * Attach hooks: the button is placed once the request knows its product, so a shop's filter can move it.
 	 *
 	 * @since 1.0.0
@@ -109,8 +131,9 @@ final class StartButton implements Hookable {
 		if ( null === $read || null === $slot || $part < 1 || '' === $text || '' === $hook ) {
 			return;
 		}
-		$url    = ( new BuildLink() )->pick( $slot->key, $part )->address( BuilderUrl::of( $kit ), $read->slots );
-		$starts = $this->starts( $product, $kit, $slot, $read );
+		$base   = $this->address?->of( $kit, $read ) ?? BuilderUrl::of( $kit );
+		$url    = ( new BuildLink() )->pick( $slot->key, $part )->address( $base, $read->slots );
+		$starts = $this->starts( $product, $kit, $slot, $read, $base );
 		add_action(
 			$hook,
 			static function () use ( $url, $text, $starts ): void {
@@ -142,13 +165,14 @@ final class StartButton implements Hookable {
 	/**
 	 * On a variable product's page, the builder's link for each of its variations the slot offers in stock, by ID.
 	 *
-	 * @param int  $product The product's ID.
-	 * @param int  $kit     The kit product's ID.
-	 * @param Slot $slot    The slot the deck is picked in.
-	 * @param Kit  $read    The kit.
+	 * @param int    $product The product's ID.
+	 * @param int    $kit     The kit product's ID.
+	 * @param Slot   $slot    The slot the deck is picked in.
+	 * @param Kit    $read    The kit.
+	 * @param string $base    The builder's address for the kit.
 	 * @return array<int, string>
 	 */
-	private function starts( int $product, int $kit, Slot $slot, Kit $read ): array {
+	private function starts( int $product, int $kit, Slot $slot, Kit $read, string $base ): array {
 		$found = wc_get_product( $product );
 		if ( ! $found instanceof \WC_Product_Variable ) {
 			return array();
@@ -157,7 +181,7 @@ final class StartButton implements Hookable {
 		$starts   = array();
 		foreach ( ( $this->kits )()->offered( $kit, $slot ) as $part ) {
 			if ( $part->inStock && in_array( $part->id, $children, true ) ) {
-				$starts[ $part->id ] = ( new BuildLink() )->pick( $slot->key, $part->id )->address( BuilderUrl::of( $kit ), $read->slots );
+				$starts[ $part->id ] = ( new BuildLink() )->pick( $slot->key, $part->id )->address( $base, $read->slots );
 			}
 		}
 		return $starts;

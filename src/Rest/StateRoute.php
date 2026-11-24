@@ -16,6 +16,7 @@ use CreativeBranding\SkateboardBuilder\Domain\Look\Chips;
 use CreativeBranding\SkateboardBuilder\Domain\Look\Shelf;
 use CreativeBranding\SkateboardBuilder\Domain\Look\ShelfAsk;
 use CreativeBranding\SkateboardBuilder\Front\Builder;
+use CreativeBranding\SkateboardBuilder\Front\BuilderAddress;
 use CreativeBranding\SkateboardBuilder\Front\BuilderPlace;
 use CreativeBranding\SkateboardBuilder\Front\BuilderUrl;
 use CreativeBranding\SkateboardBuilder\Front\BuildLink;
@@ -99,6 +100,28 @@ final class StateRoute implements Hookable {
 	 * @param Clock|null                         $clock    Times an answer for a shop manager's Server-Timing header (1.1.0); none in tests that leave it out.
 	 */
 	public function __construct( private Kits $kits, private Closure $state, private Closure $writer, private Closure $limit, private Closure $cart, private Closure $builder, private BuilderPlace $place, private ?Closure $pictures = null, private ?Clock $clock = null ) {}
+
+	/**
+	 * Where each kit's builder is, as its Build tab chose (1.2.0, #113): none in a copy an earlier release's container
+	 * built, which asks `BuilderUrl::of()` as 1.1.0 did (D-208).
+	 *
+	 * @var BuilderAddress|null
+	 */
+	private ?BuilderAddress $address = null;
+
+	/**
+	 * The same, sending shoppers to the Builder page each kit's Build tab chose (#113, D-348). Only this release's
+	 * container calls it (D-208).
+	 *
+	 * @since 1.2.0
+	 *
+	 * @param BuilderAddress $address Where each kit's builder is.
+	 */
+	public function withAddress( BuilderAddress $address ): self {
+		$copy          = clone $this;
+		$copy->address = $address;
+		return $copy;
+	}
 
 	/**
 	 * Add the hooks.
@@ -399,7 +422,7 @@ final class StateRoute implements Hookable {
 		if ( null !== $post && is_post_publicly_viewable( $post ) && ! post_password_required( $post ) && $this->place->holds( $post->ID, $kit ) ) {
 			return (string) get_permalink( $post );
 		}
-		return BuilderUrl::of( $kit );
+		return $this->address?->of( $kit ) ?? BuilderUrl::of( $kit );
 	}
 
 	/**

@@ -246,6 +246,8 @@ final class Sentences {
 			KitEditor::LEAVE_PRESETS => __( 'The slots were not saved. A preset the kit already has names a slot these leave out, or leaves empty one a build must now have. Put that preset right, or remove it, in the same save.', 'creative-skateboard-builder' ),
 			/* translators: %s: a field's name. */
 			KitEditor::WHEELBASE_RANGE => sprintf( __( '%s: type a wheelbase from 10 to 20 in, or leave it empty.', 'creative-skateboard-builder' ), $field ),
+			/* translators: %s: a field's name, Builder page. */
+			KitEditor::BUILDER_PAGE => sprintf( __( '%s: choose one of the pages listed, or the kit\'s own page. A page is listed when it is published and holds this kit\'s Builder block.', 'creative-skateboard-builder' ), $field ),
 			KitEditor::NO_SLOTS => __( 'Presets need the kit\'s slots. Put the slots right and save, then add the presets.', 'creative-skateboard-builder' ),
 			/* translators: 1: a field's name. 2: a product's name. 3: a slot's label. */
 			KitEditor::NOT_IN_SLOT => sprintf( __( '%1$s: %2$s is not a part the %3$s slot takes, or it cannot be bought now.', 'creative-skateboard-builder' ), $field, $part, $slot ),

@@ -108,6 +108,14 @@ final class KitEditor {
 	public const SET_SIZE = 'set_size_missing';
 
 	/**
+	 * The layout names a Builder page the tab does not offer: not a published page that holds the kit's Builder
+	 * block, nor the one the kit has (1.2.0, #113).
+	 *
+	 * @since 1.2.0
+	 */
+	public const BUILDER_PAGE = 'layout_builder_page_not_offered';
+
+	/**
 	 * The slots the rules read, which a new slot may be made as. Any other new slot gets its key from its label.
 	 *
 	 * @since 0.4.0
@@ -147,8 +155,11 @@ final class KitEditor {
 	 * @param array<mixed>                             $sent      The tab's fields: `slots`, `rules`, `presets` and `assembly`.
 	 * @param array<string, array<string, mixed>|null> $stored    The kit's documents as stored, by name; null where there is none.
 	 * @param string                                   $separator The shop's decimal separator.
+	 * @param list<int>|null                           $pages     The pages the layout's Builder page may be, from
+	 *                                                            1.2.0: those that hold the kit's Builder block. The
+	 *                                                            one it has is kept too. Null checks none.
 	 */
-	public function draft( array $sent, array $stored, string $separator = '.' ): KitDraft {
+	public function draft( array $sent, array $stored, string $separator = '.', ?array $pages = null ): KitDraft {
 		$built = array();
 		if ( is_array( $sent['slots'] ?? null ) ) {
 			$built[ self::SLOTS ] = self::slots( $sent['slots'], self::keysOf( $stored[ self::SLOTS ] ?? null ) );
@@ -163,7 +174,7 @@ final class KitEditor {
 			$built[ self::PICTURE ] = self::picture( $sent['picture'], $separator );
 		}
 		if ( is_array( $sent['layout'] ?? null ) ) {
-			$built[ self::LAYOUT ] = self::layout( $sent['layout'] );
+			$built[ self::LAYOUT ] = self::layout( $sent['layout'], $stored[ self::LAYOUT ] ?? null );
 		}
 
 		$problems = array();
@@ -178,6 +189,13 @@ final class KitEditor {
 				$inForce[ $key ] = $built[ $key ];
 			}
 			$problems = array( ...$problems, ...$found );
+		}
+		$page = $built[ self::LAYOUT ]['builder_page'] ?? null;
+		// The page the kit has is kept while the owner leaves it, though it may be one the tab offers no longer: it is
+		// checked again each time it is used.
+		$has = $stored[ self::LAYOUT ]['builder_page'] ?? null;
+		if ( null !== $pages && is_int( $page ) && $has !== $page && ! in_array( $page, $pages, true ) && ! in_array( self::LAYOUT, array_column( $problems, 'document' ), true ) ) {
+			$problems[] = self::problem( self::LAYOUT, self::BUILDER_PAGE, 'builder_page' );
 		}
 
 		$parts     = array();
@@ -628,12 +646,14 @@ final class KitEditor {
 	/**
 	 * The layout document from the tab's fields (D-255): each choice sent as text, which the domain then holds to its
 	 * choices. Show ready builds (1.1.0, #104) and Show on its parts' pages (1.2.0, #115) are checkboxes: one not
-	 * ticked is not sent, and is off.
+	 * ticked is not sent, and is off. The Builder page (1.2.0, #113) is a page's ID, or empty for the kit's own page;
+	 * a form that does not send it at all keeps the one the kit has.
 	 *
-	 * @param array<mixed> $sent The fields.
+	 * @param array<mixed>              $sent   The fields.
+	 * @param array<string, mixed>|null $stored The layout as stored.
 	 * @return array<string, mixed>
 	 */
-	private static function layout( array $sent ): array {
+	private static function layout( array $sent, ?array $stored ): array {
 		$document = array( 'schema_version' => 1 );
 		foreach ( array( 'stage_side', 'board_size', 'search', 'motion' ) as $key ) {
 			if ( is_string( $sent[ $key ] ?? null ) ) {
@@ -642,6 +662,17 @@ final class KitEditor {
 		}
 		$document['show_presets'] = self::on( $sent, 'show_presets' );
 		$document['start_button'] = self::on( $sent, 'start_button' );
+		if ( ! array_key_exists( 'builder_page', $sent ) ) {
+			if ( isset( $stored['builder_page'] ) ) {
+				$document['builder_page'] = $stored['builder_page'];
+			}
+			return $document;
+		}
+		$page = self::text( $sent, 'builder_page' );
+		if ( '' !== $page && '0' !== $page ) {
+			// Anything but an ID is kept as typed, for the domain to refuse.
+			$document['builder_page'] = 1 === preg_match( '/\A[1-9]\d{0,17}\z/', $page ) ? (int) $page : $page;
+		}
 		return $document;
 	}
 

@@ -308,6 +308,15 @@ final class Container {
 					}
 				);
 			},
+			// Where a kit's builder is (1.2.0): the kits are read when an address is asked for.
+			Front\BuilderAddress::class                   => static function ( Container $c ): object {
+				return new Front\BuilderAddress(
+					static function () use ( $c ): Port\Kits {
+						return $c->get( Port\Kits::class );
+					},
+					$c->get( Front\BuilderPlace::class )
+				);
+			},
 			Front\StartButton::class                      => static function ( Container $c ): object {
 				return new Front\StartButton(
 					static function () use ( $c ): Port\Kits {
@@ -468,6 +477,13 @@ final class Container {
 			Service\SpecImport::class       => static fn( object $import, Container $c ): object => $import instanceof Service\SpecImport ? $import->withLayers( $c->get( Service\LayerCheck::class ), $c->get( Port\PartLayers::class ) ) : $import,
 			Service\SpecExport::class       => static fn( object $export, Container $c ): object => $export instanceof Service\SpecExport ? $export->withLayers( $c->get( Port\PartLayers::class ) ) : $export,
 			Service\ComposedPictures::class => static fn( object $pictures, Container $c ): object => $pictures instanceof Service\ComposedPictures ? $pictures->withLayers( $c->get( Port\ComposedLayers::class ) ) : $pictures,
+			// 1.2.0: the Builder page each kit's Build tab chose (#113, D-348).
+			Front\PageHooks::class          => static fn( object $hooks, Container $c ): object => $hooks instanceof Front\PageHooks ? $hooks->withAddress( $c->get( Front\BuilderAddress::class ) ) : $hooks,
+			Front\StartButton::class        => static fn( object $button, Container $c ): object => $button instanceof Front\StartButton ? $button->withAddress( $c->get( Front\BuilderAddress::class ) ) : $button,
+			Front\MyBuildsView::class       => static fn( object $view, Container $c ): object => $view instanceof Front\MyBuildsView ? $view->withAddress( $c->get( Front\BuilderAddress::class ) ) : $view,
+			Cart\ShowHooks::class           => static fn( object $hooks, Container $c ): object => $hooks instanceof Cart\ShowHooks ? $hooks->withAddress( $c->get( Front\BuilderAddress::class ) ) : $hooks,
+			Rest\StateRoute::class          => static fn( object $route, Container $c ): object => $route instanceof Rest\StateRoute ? $route->withAddress( $c->get( Front\BuilderAddress::class ) ) : $route,
+			Admin\BuildTab::class           => static fn( object $tab, Container $c ): object => $tab instanceof Admin\BuildTab ? $tab->withPlace( $c->get( Front\BuilderPlace::class ) ) : $tab,
 		);
 	}
 

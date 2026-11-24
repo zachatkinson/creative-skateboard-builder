@@ -544,6 +544,50 @@ final class KitEditorTest extends TestCase {
 		self::assertSame( array( 'schema_version' => 1, 'show_presets' => true, 'start_button' => false ), $draft->documents[ KitEditor::LAYOUT ] );
 	}
 
+	// #113: the Builder page is a page's ID, or nothing for the kit's own page. Where the tab says which pages may be
+	// chosen, any other is refused; a select not sent at all keeps the page the kit has.
+	public function test_the_builder_page_is_kept_as_an_id_and_one_not_offered_is_refused(): void {
+		$sent           = self::sent();
+		$sent['layout'] = array(
+			'builder_page' => '42',
+			'start_button' => '1',
+		);
+		$draft          = $this->editor->draft( $sent, self::stored(), '.', array( 42, 43 ) );
+		self::assertSame( array(), $draft->problems );
+		self::assertSame( array( 'schema_version' => 1, 'show_presets' => false, 'start_button' => true, 'builder_page' => 42 ), $draft->documents[ KitEditor::LAYOUT ] );
+
+		foreach ( array( '', '0', ' ' ) as $own ) {
+			$sent['layout']['builder_page'] = $own;
+			$draft                          = $this->editor->draft( $sent, self::stored(), '.', array( 42 ) );
+			self::assertSame( array(), $draft->problems, var_export( $own, true ) );
+			self::assertArrayNotHasKey( 'builder_page', $draft->documents[ KitEditor::LAYOUT ], 'the kit\'s own page: ' . var_export( $own, true ) );
+		}
+
+		$sent['layout']['builder_page'] = '44';
+		$draft                          = $this->editor->draft( $sent, self::stored(), '.', array( 42, 43 ) );
+		self::assertSame( array( 'layout ' . KitEditor::BUILDER_PAGE . ' builder_page' ), self::problems( $draft ), 'a page the tab does not offer' );
+		self::assertArrayNotHasKey( KitEditor::LAYOUT, $draft->documents );
+		self::assertSame( 44, $draft->refused[ KitEditor::LAYOUT ]['builder_page'] ?? null, 'shown as chosen' );
+
+		$sent['layout']['builder_page'] = 'https://elsewhere.example/';
+		$draft                          = $this->editor->draft( $sent, self::stored(), '.', array( 42 ) );
+		self::assertSame( array( 'layout document_wrong_type builder_page' ), self::problems( $draft ), 'an address is no page' );
+
+		$sent['layout']['builder_page'] = '44';
+		$draft                          = $this->editor->draft( $sent, self::stored() );
+		self::assertSame( array(), $draft->problems, 'where the tab names no pages, none is checked' );
+
+		unset( $sent['layout']['builder_page'] );
+		$stored                     = self::stored();
+		$stored[ KitEditor::LAYOUT ] = array(
+			'schema_version' => 1,
+			'builder_page'   => 43,
+		);
+		$draft                      = $this->editor->draft( $sent, $stored, '.', array() );
+		self::assertSame( array(), $draft->problems );
+		self::assertSame( 43, $draft->documents[ KitEditor::LAYOUT ]['builder_page'] ?? null, 'a form with no Builder page keeps the kit\'s' );
+	}
+
 	public function test_assembly_takes_a_fee_as_the_shop_writes_money_and_each_thing_wrong_is_named(): void {
 		$stored                             = self::stored();
 		$sent                               = self::sent();

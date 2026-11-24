@@ -51,6 +51,11 @@
 			"description": "From 1.1.0: whether the builder shows \"Start from a ready build\" with the kit's ready builds. Off, the ready builds are kept and not shown. The default is true.",
 			"type": "boolean"
 		},
+		"builder_page": {
+			"description": "From 1.2.0: the page the kit's builder is on, by its ID: a published page that holds the kit's Builder block, chosen in the Build tab. Left out, the kit's own page. A page that is no longer published, or no longer holds the block, is not used, and the kit's own page is.",
+			"type": "integer",
+			"minimum": 1
+		},
 		"start_button": {
 			"description": "From 1.2.0: whether the kit places \"Build a complete with this deck\" on the pages of the parts its first slot offers. Off, the kit is passed over, and another kit that offers the part may place it. The default is true.",
 			"type": "boolean"

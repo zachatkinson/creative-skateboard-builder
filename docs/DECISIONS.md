@@ -4353,6 +4353,24 @@ Issue #112. A review of every ignore file on 24 November 2026 found what ships a
 
 **Status:** Accepted.
 
+### D-348 · A kit's Build tab chooses its Builder page, checked each time it is used, and `cbuild_builder_url` answers last · 2026-11-24
+
+**Context:** #113. A shop that puts a kit's Builder block on a page of its own had to answer `cbuild_builder_url` in code (Skatehouse Core does) to send shoppers there. The owner should set it in wp-admin, as the demo's host has no SSH.
+
+**Decision:**
+
+- **A select in the Layout section.** "Builder page", in the group "Where shoppers find it" beside Show on its parts' pages (D-349), lists "The kit's own page" and then each published page with no password that holds this kit's Builder block, by title. It reuses `Front\BuilderPlace` (the same reading of blocks, synced patterns included, that decides whose builder a page shows) through `Port\BuilderPosts`, which gains `isPage()` and `pages()`. `WpBuilderPosts::pages()` reads at most 500 pages, by title, with their content, so asking each for its blocks asks the database nothing more; a site with more pages than that lists the first 500.
+- **Stored as `builder_page`** in the kit's `_cbuild_layout`, an integer of at least 1, and left out for the kit's own page. A kit saved before 1.2.0 has none and is built on its own page as before. Only a page the select offers, or the one the kit already has, is saved; any other ID gives "Builder page: choose one of the pages listed…" and keeps the page in force, and text that is no ID is refused by the schema.
+- **Checked on every use.** `Front\BuilderAddress` asks `BuilderPlace::opens()` each time: a published page a visitor may see, with no password, other than the kit's own, holding the kit's block. A page drafted, scheduled, made private, given a password, trashed, deleted, without the block, or holding another kit's, is passed over for the kit's own page, and used again once it qualifies. The tab shows such a page as "(not in use now)" and keeps it while the owner leaves it, so nothing changes while no one is looking.
+- **The filter answers last.** `BuilderUrl::from()` gives the chosen page to `cbuild_builder_url` as `$url`; an answer on another host or no address at all is ignored and the chosen page kept. `BuilderUrl::of()` keeps its 1.1.0 meaning, the kit's own page, for any caller outside the container.
+- **Everything follows.** The kit's own page's redirect (`PageHooks`), "Build a complete with this deck" (`StartButton`, the address worked out once per kit), the cart's Edit build (`Cart\ShowHooks`), My builds' Open (`MyBuildsView`) and the state route's links (`StateRoute`) get the address through `withAddress()`, and the Build tab its pages through `withPlace()`, each called only from `Container::additions()` (D-208). A copy an earlier release's container built mid-update has neither, and behaves as 1.1.0.
+
+**Why:** the page must be one that really shows this kit's builder, or the redirect would send a shopper to a page with no builder, or loop. Checking at each use rather than at save is what keeps a page taken down later from stranding shoppers; keeping the stale choice rather than clearing it means publishing the page again restores it without a visit to the tab. The filter answering last keeps Skatehouse Core's answer working unchanged.
+
+**Tests.** `KitLayoutTest::test_the_builder_page_is_the_page_named_or_none` (red: "Failed asserting that null is identical to 42.", KitLayoutTest.php:76), `BuilderPlaceTest::test_a_kits_builder_may_be_sent_only_to_a_shown_page_that_holds_its_block` (red: undefined method `BuilderPlace::pages()`), the unit `BuilderAddressTest` (red: class not found), `KitEditorTest::test_the_builder_page_is_kept_as_an_id_and_one_not_offered_is_refused` (red: the arrays differ, `builder_page` dropped), the integration `BuilderAddressTest` (red: "Unknown service Front\BuilderAddress", BuilderAddressTest.php:76), `BuildTabTest::test_the_builder_page_lists_the_pages_that_hold_the_kits_block_and_saves_only_one_of_them` and the nonce test (red: undefined method `BuildTab::withPlace()`), `StartButtonTest::test_the_button_opens_the_builder_on_the_kits_builder_page`, the Edit build case in `CartShowTest`, `ContainerTest`, and the browser's "A kit's Builder page" in `builder.spec.ts`. **Break:** `isPage()` taken out of `BuilderPlace::opens()` turns the unit `BuilderAddressTest` ("unpublished, trashed or not a page a visitor may see", :97), `BuilderPlaceTest` ("a page a visitor may not see", :184) and the integration `BuilderAddressTest` ("a draft", :164) red.
+
+**Status:** Accepted.
+
 ### D-349 · A kit's Build tab turns "Build a complete with this deck" off, and the lowest menu order still chooses the kit · 2026-11-24
 
 Issue #115. The button on a part's page (D-253) could be turned off or sent to another kit only through `cbuild_start_button`, and the demo's host has no SSH or WP-CLI (CLAUDE.md).

@@ -69,6 +69,16 @@ final class KitLayoutTest extends TestCase {
 		self::assertFalse( $kit->layout->startButton );
 	}
 
+	// #113: the Builder page, a page's ID, or none for the kit's own page. A kit saved before 1.2.0 has none.
+	public function test_the_builder_page_is_the_page_named_or_none(): void {
+		self::assertNull( KitLayout::fromDocument( null )->builderPage, 'a kit with no layout' );
+		self::assertNull( KitLayout::fromDocument( array( 'schema_version' => 1, 'show_presets' => true ) )->builderPage, 'a layout saved before 1.2.0' );
+		self::assertSame( 42, KitLayout::fromDocument( array( 'schema_version' => 1, 'builder_page' => 42 ) )->builderPage );
+		self::assertSame( 1, KitLayout::fromDocument( array( 'schema_version' => 1, 'builder_page' => 1 ) )->builderPage );
+		$kit = Kit::fromDocuments( KitDocuments::slots(), KitDocuments::rules(), KitDocuments::presets(), KitDocuments::assembly(), null, array( 'schema_version' => 1, 'builder_page' => 42 ) );
+		self::assertSame( 42, $kit->layout->builderPage );
+	}
+
 	/**
 	 * @return iterable<string, array{mixed, string}>
 	 */
@@ -82,6 +92,10 @@ final class KitLayoutTest extends TestCase {
 		yield 'a side that is no text' => array( array( 'schema_version' => 1, 'stage_side' => 1 ), 'document_wrong_type' );
 		yield 'ready builds shown as text' => array( array( 'schema_version' => 1, 'show_presets' => 'yes' ), 'document_wrong_type' );
 		yield 'the start button shown as text' => array( array( 'schema_version' => 1, 'start_button' => 'yes' ), 'document_wrong_type' );
+		yield 'a builder page of none' => array( array( 'schema_version' => 1, 'builder_page' => 0 ), 'document_out_of_range' );
+		yield 'a builder page below none' => array( array( 'schema_version' => 1, 'builder_page' => -3 ), 'document_out_of_range' );
+		yield 'a builder page as text' => array( array( 'schema_version' => 1, 'builder_page' => '42' ), 'document_wrong_type' );
+		yield 'a builder page as an address' => array( array( 'schema_version' => 1, 'builder_page' => 'https://elsewhere.example/' ), 'document_wrong_type' );
 		yield 'the start button shown as a number' => array( array( 'schema_version' => 1, 'start_button' => 1 ), 'document_wrong_type' );
 	}
 

@@ -63,6 +63,28 @@ final class MyBuildsView {
 	) {}
 
 	/**
+	 * Where each kit's builder is, as its Build tab chose (1.2.0, #113): none in a copy an earlier release's container
+	 * built, which asks `BuilderUrl::of()` as 1.1.0 did (D-208).
+	 *
+	 * @var BuilderAddress|null
+	 */
+	private ?BuilderAddress $address = null;
+
+	/**
+	 * The same, sending shoppers to the Builder page each kit's Build tab chose (#113, D-348). Only this release's
+	 * container calls it (D-208).
+	 *
+	 * @since 1.2.0
+	 *
+	 * @param BuilderAddress $address Where each kit's builder is.
+	 */
+	public function withAddress( BuilderAddress $address ): self {
+		$copy          = clone $this;
+		$copy->address = $address;
+		return $copy;
+	}
+
+	/**
 	 * Whether this page may still ask for pictures: it stops at the first refusal.
 	 *
 	 * @var bool
@@ -118,7 +140,7 @@ final class MyBuildsView {
 				BuildLink::PARAM => urlencode_deep( $query ),
 				self::PARAM      => $build->uuid,
 			),
-			BuilderUrl::of( $build->kit )
+			$this->address?->of( $build->kit, $kit ) ?? BuilderUrl::of( $build->kit )
 		);
 	}
 

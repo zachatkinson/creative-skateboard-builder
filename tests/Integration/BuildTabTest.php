@@ -45,7 +45,7 @@ final class BuildTabTest extends IntegrationTestCase {
 	}
 
 	private function hooks(): BuildTabHooks {
-		$tab = new BuildTab( $this->service( KitEditor::class ), $this->service( ShopSettings::class ) );
+		$tab = ( new BuildTab( $this->service( KitEditor::class ), $this->service( ShopSettings::class ) ) )->withPlace( $this->service( \CreativeBranding\SkateboardBuilder\Front\BuilderPlace::class ) );
 		return new BuildTabHooks( static fn(): BuildTab => $tab );
 	}
 
@@ -149,6 +149,8 @@ final class BuildTabTest extends IntegrationTestCase {
 				'show_presets' => '1',
 				// Ticked, as the tab shows it on a kit saved before 1.2.0 (#115).
 				'start_button' => '1',
+				// The kit's own page, as the tab shows it on a kit saved before 1.2.0 (#113).
+				'builder_page' => '',
 			),
 		);
 	}
@@ -888,14 +890,107 @@ final class BuildTabTest extends IntegrationTestCase {
 		self::assertTrue( self::stored( $kit->get_id() )[ Options::META_KIT_LAYOUT ]['start_button'], 'any value ticked is on, stored as true and never as what was sent' );
 	}
 
+	/**
+	 * A page holding a kit's Builder block.
+	 *
+	 * @param int                  $kit  The kit.
+	 * @param array<string, mixed> $more The page's other fields.
+	 */
+	private function builderPage( int $kit, array $more = array() ): int {
+		return self::factory()->post->create(
+			$more + array(
+				'post_type'    => 'page',
+				'post_status'  => 'publish',
+				'post_title'   => 'Build a board ' . $kit,
+				'post_content' => '<!-- wp:creative-skateboard-builder/builder {"kit":' . $kit . '} /-->',
+			)
+		);
+	}
+
+	// #113: the Builder page, a select in the Layout section that lists the published pages holding this kit's Builder
+	// block, the kit's own page first and chosen on a kit saved before 1.2.0. Only a page it lists is saved; one that
+	// has since been taken down is shown as not in use, and kept while the owner leaves it.
+	public function test_the_builder_page_lists_the_pages_that_hold_the_kits_block_and_saves_only_one_of_them(): void {
+		$this->as( 'shop_manager' );
+		$kit     = KitFactory::kit();
+		$other   = KitFactory::kit( 'Cruiser complete' );
+		$listed  = $this->builderPage( $kit->get_id() );
+		$draft   = $this->builderPage( $kit->get_id(), array( 'post_status' => 'draft', 'post_title' => 'Draft board' ) );
+		$theirs  = $this->builderPage( $other->get_id(), array( 'post_title' => 'Cruiser board' ) );
+		$without = self::factory()->post->create(
+			array(
+				'post_type'   => 'page',
+				'post_status' => 'publish',
+				'post_title'  => 'About us',
+			)
+		);
+		$select  = static function ( string $panel ): string {
+			self::assertSame( 1, preg_match( '#<select[^>]*id="cbuild-kit-layout-builder-page"[^>]*>.*?</select>#s', $panel, $found ), 'the select' );
+			return $found[0];
+		};
+		$panel = $this->panel( $kit );
+		self::assertMatchesRegularExpression( '#id="cbuild-kit-layout".*?<label for="cbuild-kit-layout-builder-page">Builder page</label>#s', $panel, 'labelled, in the Layout section' );
+		self::assertMatchesRegularExpression( '#id="cbuild-kit-layout-builder-page"[^>]*aria-describedby="cbuild-kit-layout-builder-page-note"#s', $panel, 'and described' );
+		$shown = $select( $panel );
+		self::assertMatchesRegularExpression( '#<option value=""\s+selected=\'selected\'>The kit&\#039;s own page</option>#', $shown, 'a kit saved before 1.2.0: its own page' );
+		self::assertStringContainsString( '<option value="' . $listed . '" >Build a board ' . $kit->get_id() . '</option>', $shown );
+		foreach ( array( $draft, $theirs, $without ) as $page ) {
+			self::assertStringNotContainsString( 'value="' . $page . '"', $shown, 'only published pages holding this kit\'s block' );
+		}
+
+		$sent                           = self::form();
+		$sent['layout']['builder_page'] = (string) $listed;
+		$this->send( $kit, $sent );
+		self::assertSame( array(), self::notices() );
+		self::assertSame( $listed, self::stored( $kit->get_id() )[ Options::META_KIT_LAYOUT ]['builder_page'] );
+		$read = $this->service( \CreativeBranding\SkateboardBuilder\Port\Kits::class )->kit( $kit->get_id() );
+		self::assertSame( $listed, $read?->layout->builderPage, 'the kit the builder reads' );
+		self::assertMatchesRegularExpression( '#<option value="' . $listed . '"\s+selected=\'selected\'>#', $select( $this->panel( $kit ) ) );
+
+		foreach ( array( $draft, $theirs, $without, $other->get_id() ) as $page ) {
+			$sent['layout']['builder_page'] = (string) $page;
+			$this->send( $kit, $sent );
+			self::assertStringContainsString( 'Builder page: choose one of the pages listed, or the kit&#039;s own page.', implode( '', self::notices() ), 'refused: ' . $page );
+			self::assertSame( $listed, self::stored( $kit->get_id() )[ Options::META_KIT_LAYOUT ]['builder_page'], 'the page in force stays' );
+			\WC_Admin_Meta_Boxes::$meta_box_errors = array();
+			$this->panel( $kit );
+		}
+		$sent['layout']['builder_page'] = '<b>about-us</b>';
+		$this->send( $kit, $sent );
+		self::assertStringContainsString( 'The kit&#039;s layout was not saved.', implode( '', self::notices() ), 'what is no page is refused' );
+		\WC_Admin_Meta_Boxes::$meta_box_errors = array();
+		$this->panel( $kit );
+
+		// Taken down after it was chosen: the tab says so, and saving the tab as it is keeps it.
+		wp_update_post(
+			array(
+				'ID'          => $listed,
+				'post_status' => 'draft',
+			)
+		);
+		self::assertMatchesRegularExpression( '#<option value="' . $listed . '"\s+selected=\'selected\'>Build a board ' . $kit->get_id() . ' \(not in use now\)</option>#', $select( $this->panel( $kit ) ) );
+		$sent['layout']['builder_page'] = (string) $listed;
+		$this->send( $kit, $sent );
+		self::assertSame( array(), self::notices() );
+		self::assertSame( $listed, self::stored( $kit->get_id() )[ Options::META_KIT_LAYOUT ]['builder_page'], 'kept, and used again once it is published' );
+
+		$sent['layout']['builder_page'] = '';
+		$this->send( $kit, $sent );
+		self::assertSame( array(), self::notices() );
+		self::assertArrayNotHasKey( 'builder_page', self::stored( $kit->get_id() )[ Options::META_KIT_LAYOUT ], 'the kit\'s own page' );
+		self::assertNull( $this->service( \CreativeBranding\SkateboardBuilder\Port\Kits::class )->kit( $kit->get_id() )?->layout->builderPage );
+	}
+
 	// #115 and #113: the kit's settings go through WooCommerce's own product save, which checks its nonce and who may
 	// edit the product before the tab's hook fires (includes/admin/class-wc-admin-meta-boxes.php:228 and :238).
 	public function test_the_layout_is_saved_through_woocommerces_product_save_and_only_with_its_nonce(): void {
 		$this->as( 'shop_manager' );
 		$kit = KitFactory::kit();
 		$this->hooks()->register();
+		$page = $this->builderPage( $kit->get_id() );
 		$sent = self::form();
 		unset( $sent['layout']['start_button'] );
+		$sent['layout']['builder_page'] = (string) $page;
 		$posted = $_POST;
 		$save   = static function ( string $nonce ) use ( $kit, $sent ): void {
 			( new \ReflectionProperty( \WC_Admin_Meta_Boxes::class, 'saved_meta_boxes' ) )->setValue( null, false );
@@ -912,6 +1007,7 @@ final class BuildTabTest extends IntegrationTestCase {
 			$save( wp_create_nonce( 'woocommerce_save_data' ) );
 			self::assertSame( array(), self::notices() );
 			self::assertFalse( self::stored( $kit->get_id() )[ Options::META_KIT_LAYOUT ]['start_button'] ?? null, 'saved with it' );
+			self::assertSame( $page, self::stored( $kit->get_id() )[ Options::META_KIT_LAYOUT ]['builder_page'] ?? null, 'the Builder page too' );
 			self::assertSame( Options::PRODUCT_TYPE_KIT, \WC_Product_Factory::get_product_type( $kit->get_id() ), 'and still a kit' );
 		} finally {
 			$_POST = $posted;

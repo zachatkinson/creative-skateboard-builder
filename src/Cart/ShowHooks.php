@@ -11,6 +11,7 @@ namespace CreativeBranding\SkateboardBuilder\Cart;
 
 use Automattic\WooCommerce\Blocks\Integrations\IntegrationRegistry;
 use Closure;
+use CreativeBranding\SkateboardBuilder\Front\BuilderAddress;
 use CreativeBranding\SkateboardBuilder\Front\BuilderUrl;
 use CreativeBranding\SkateboardBuilder\Front\BuildLink;
 use CreativeBranding\SkateboardBuilder\Front\StateAnswer;
@@ -72,6 +73,28 @@ final class ShowHooks implements Hookable {
 	 * @param Closure(): Kits $kits The shop's kits, for a slot's label.
 	 */
 	public function __construct( private Closure $kits ) {}
+
+	/**
+	 * Where each kit's builder is, as its Build tab chose (1.2.0, #113): none in a copy an earlier release's container
+	 * built, which asks `BuilderUrl::of()` as 1.1.0 did (D-208).
+	 *
+	 * @var BuilderAddress|null
+	 */
+	private ?BuilderAddress $address = null;
+
+	/**
+	 * The same, sending shoppers to the Builder page each kit's Build tab chose (#113, D-348). Only this release's
+	 * container calls it (D-208).
+	 *
+	 * @since 1.2.0
+	 *
+	 * @param BuilderAddress $address Where each kit's builder is.
+	 */
+	public function withAddress( BuilderAddress $address ): self {
+		$copy          = clone $this;
+		$copy->address = $address;
+		return $copy;
+	}
 
 	/**
 	 * Attach hooks.
@@ -274,7 +297,7 @@ final class ShowHooks implements Hookable {
 			return $data;
 		}
 		$query = ( new BuildLink( $build->picks, null, BuildLink::REVIEW, $build->assembly, replace: $build->id ) )->query( $kit->slots );
-		$url   = add_query_arg( array( BuildLink::PARAM => urlencode_deep( $query ) ), BuilderUrl::of( $build->kit ) );
+		$url   = add_query_arg( array( BuildLink::PARAM => urlencode_deep( $query ) ), $this->address?->of( $build->kit, $kit ) ?? BuilderUrl::of( $build->kit ) );
 		$value = __( 'Edit build', 'creative-skateboard-builder' );
 		$line  = $item['data'] ?? null;
 		/* translators: %s: the kit's name, such as Street complete. */

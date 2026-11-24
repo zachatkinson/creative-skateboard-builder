@@ -7341,6 +7341,57 @@ test.describe( "A kit's Show on its parts' pages", () => {
 	} );
 } );
 
+// #113 (D-348): a kit's Builder page. Chosen in the Build tab, the kit's own page sends a shopper there with the build
+// they came with, and "Build a complete with this deck" opens it; a page that has lost the kit's block is not used.
+test.describe( "A kit's Builder page", () => {
+	/**
+	 * The test kit's Builder page, by the address of a page on the site, or taken off its layout with null.
+	 *
+	 * @param url The page's address, or null.
+	 */
+	const builderPage = ( url: string | null ): void =>
+		runPhp(
+			`$k = wc_get_product( ${ fixture().kit } ); $d = $k->documents()['_cbuild_layout'] ?? array( 'schema_version' => 1 ); $u = ${ JSON.stringify(
+				url
+			) }; if ( null === $u ) { unset( $d['builder_page'] ); } else { $d['builder_page'] = url_to_postid( $u ); } $k->setDocument( '_cbuild_layout', $d ); $k->save();`
+		);
+
+	test.afterAll( () => builderPage( null ) );
+
+	test( "the kit's page and a deck's page send a shopper to it, and not to a page without the kit's block", async ( {
+		page,
+	} ) => {
+		const there = fixture().page;
+		const kitPage = `/?p=${ fixture().kit }`;
+		const deck = `/?p=${ id( 'builder-test-deck-8-25' ) }`;
+		const start = page.getByRole( 'link', {
+			name: 'Build a complete with this deck',
+		} );
+
+		builderPage( there );
+		await page.goto( `${ kitPage }&cbuild[step]=trucks` );
+		expect( page.url().startsWith( there ), page.url() ).toBe( true );
+		expect( decodeURIComponent( page.url() ) ).toContain(
+			'cbuild[step]=trucks'
+		);
+		await expect( heading( page ) ).toBeVisible();
+		await page.goto( deck );
+		expect( await start.getAttribute( 'href' ) ).toMatch(
+			new RegExp( `^${ there.replace( /[.*+?^${}()|[\]\\]/g, '\\$&' ) }` )
+		);
+
+		// The shelf's page holds another kit's builder: the kit's own page is used.
+		builderPage( fixture().shelf.page );
+		await page.goto( kitPage );
+		expect( page.url().startsWith( there ) ).toBe( false );
+		await expect( heading( page ) ).toBeVisible();
+		await page.goto( deck );
+		expect( ( await start.getAttribute( 'href' ) ) ?? '' ).not.toContain(
+			new URL( there ).search || new URL( there ).pathname
+		);
+	} );
+} );
+
 // #81 (D-301): a deck picked at one width, whose look is made in another, moves to that look when the shopper asks for
 // the other width; the status says so, and the cart gets the other width's variation (M11 audit, finding 10). One
 // variable deck, two widths of one look, made for the test and taken away after it.

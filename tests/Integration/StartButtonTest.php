@@ -191,6 +191,35 @@ final class StartButtonTest extends IntegrationTestCase {
 		self::assertSame( $before, $this->shown( $this->deck ) );
 	}
 
+	// #113 (D-348): the button opens the builder on the page the kit's Build tab chose, while that page is published
+	// and holds the kit's Builder block; otherwise the kit's own page.
+	public function test_the_button_opens_the_builder_on_the_kits_builder_page(): void {
+		$page    = self::factory()->post->create(
+			array(
+				'post_type'    => 'page',
+				'post_status'  => 'publish',
+				'post_content' => '<!-- wp:creative-skateboard-builder/builder {"kit":' . $this->first . '} /-->',
+			)
+		);
+		$product = wc_get_product( $this->first );
+		self::assertInstanceOf( \CreativeBranding\SkateboardBuilder\Adapter\KitProduct::class, $product );
+		$product->setDocument( Options::META_KIT_LAYOUT, array( 'schema_version' => 1, 'builder_page' => $page ) );
+		$product->save();
+		$href = static fn( string $html ): string => html_entity_decode( (string) preg_replace( '/\A.*href="([^"]*)".*\z/s', '$1', $html ) );
+		$link = $href( $this->shown( $this->deck ) );
+		self::assertStringStartsWith( (string) get_permalink( $page ), $link );
+		self::assertStringContainsString( 'cbuild[deck]=' . $this->deck, rawurldecode( $link ), 'with the deck picked' );
+
+		remove_all_actions( 'woocommerce_after_add_to_cart_form' );
+		wp_update_post(
+			array(
+				'ID'          => $page,
+				'post_status' => 'draft',
+			)
+		);
+		self::assertStringStartsWith( (string) get_permalink( $this->first ), $href( $this->shown( $this->deck ) ), 'a page taken down: the kit\'s own' );
+	}
+
 	public function test_a_part_no_kits_first_slot_offers_gets_no_button(): void {
 		self::assertSame( '', $this->shown( $this->truck ) );
 	}

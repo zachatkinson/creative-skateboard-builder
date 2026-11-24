@@ -68,6 +68,12 @@ final class ContainerTest extends TestCase {
 				array( \CreativeBranding\SkateboardBuilder\Service\SpecImport::class, 'check', \CreativeBranding\SkateboardBuilder\Service\LayerCheck::class ),
 				array( \CreativeBranding\SkateboardBuilder\Service\SpecImport::class, 'layers', \CreativeBranding\SkateboardBuilder\Port\PartLayers::class ),
 				array( \CreativeBranding\SkateboardBuilder\Service\SpecExport::class, 'layers', \CreativeBranding\SkateboardBuilder\Port\PartLayers::class ),
+				array( \CreativeBranding\SkateboardBuilder\Front\PageHooks::class, 'address', \CreativeBranding\SkateboardBuilder\Front\BuilderAddress::class ),
+				array( \CreativeBranding\SkateboardBuilder\Front\StartButton::class, 'address', \CreativeBranding\SkateboardBuilder\Front\BuilderAddress::class ),
+				array( \CreativeBranding\SkateboardBuilder\Front\MyBuildsView::class, 'address', \CreativeBranding\SkateboardBuilder\Front\BuilderAddress::class ),
+				array( \CreativeBranding\SkateboardBuilder\Cart\ShowHooks::class, 'address', \CreativeBranding\SkateboardBuilder\Front\BuilderAddress::class ),
+				array( \CreativeBranding\SkateboardBuilder\Rest\StateRoute::class, 'address', \CreativeBranding\SkateboardBuilder\Front\BuilderAddress::class ),
+				array( \CreativeBranding\SkateboardBuilder\Admin\BuildTab::class, 'place', \CreativeBranding\SkateboardBuilder\Front\BuilderPlace::class ),
 			) as [ $id, $property, $type ]
 		) {
 			$service = $container->get( $id );

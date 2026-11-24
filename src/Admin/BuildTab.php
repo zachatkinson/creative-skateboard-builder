@@ -18,12 +18,14 @@ use CreativeBranding\SkateboardBuilder\Domain\Kit\Slot;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\SlotKey;
 use CreativeBranding\SkateboardBuilder\Domain\Picture\Layout;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Slots;
+use CreativeBranding\SkateboardBuilder\Front\BuilderPlace;
 use CreativeBranding\SkateboardBuilder\Port\ShopSettings;
 use CreativeBranding\SkateboardBuilder\Service\KitEditor;
 use CreativeBranding\SkateboardBuilder\Support\Options;
 use CreativeBranding\SkateboardBuilder\Support\StoredKit;
 use WC_Admin_Meta_Boxes;
 use WC_Product;
+use WP_Post;
 use WP_Term;
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -133,6 +135,27 @@ final class BuildTab {
 	public function __construct( private KitEditor $editor, private ShopSettings $settings ) {}
 
 	/**
+	 * Which pages hold a kit's builder, for the Builder page (1.2.0, #113): none in a copy an earlier release's
+	 * container built, whose tab has no Builder page and keeps the kit's as it is (D-208).
+	 *
+	 * @var BuilderPlace|null
+	 */
+	private ?BuilderPlace $place = null;
+
+	/**
+	 * The same tab, with the Builder page (#113, D-348). Only this release's container calls it (D-208).
+	 *
+	 * @since 1.2.0
+	 *
+	 * @param BuilderPlace $place Which pages hold a kit's builder.
+	 */
+	public function withPlace( BuilderPlace $place ): self {
+		$tab        = clone $this;
+		$tab->place = $place;
+		return $tab;
+	}
+
+	/**
 	 * Style the tab and load its script.
 	 *
 	 * @since 0.4.0
@@ -214,7 +237,7 @@ final class BuildTab {
 		unset( $sent[ self::END ] );
 
 		$stored = StoredKit::named( $product );
-		$draft  = $this->editor->draft( $sent, $stored, wc_get_price_decimal_separator() );
+		$draft  = $this->editor->draft( $sent, $stored, wc_get_price_decimal_separator(), $this->place?->pages( $product->get_id() ) );
 		if ( ! $whole ) {
 			// Cut short on its way here: nothing is saved, and what did arrive is kept as typed.
 			$text     = __( 'The Build tab was not saved, since only part of this product\'s form reached the server. PHP\'s max_input_vars setting caps how many fields one save may send. Ask the host to raise it, then save again.', 'creative-skateboard-builder' );
@@ -370,7 +393,7 @@ final class BuildTab {
 			KitEditor::LAYOUT   => array(
 				__( 'Layout', 'creative-skateboard-builder' ),
 				__( 'How the builder is laid out on a desktop, which search its steps use, and where shoppers find it. A phone always shows the board above the step.', 'creative-skateboard-builder' ),
-				$this->layout( $shown[ KitEditor::LAYOUT ] ),
+				$this->layout( $shown[ KitEditor::LAYOUT ], $product->get_id() ),
 			),
 		) as $name => $section ) {
 			$sections[] = array(
@@ -867,13 +890,14 @@ final class BuildTab {
 	 * complete with this deck" (#115, D-349). A kit saved before 1.2.0 has no switch, and shows the button.
 	 *
 	 * @param array<mixed> $document The layout document to show.
+	 * @param int          $kit      The kit's ID.
 	 * @return list<array{id: string, legend: string, moves: bool, fold: string, open: bool, fields: list<array<string, mixed>>, more: list<array<string, mixed>>}>
 	 */
-	private function layout( array $document ): array {
-		$id     = self::IDS . '-layout';
-		$name   = self::FIELD . '[layout]';
-		$chosen = static fn( string $key, array $choices ): string => is_string( $document[ $key ] ?? null ) ? $document[ $key ] : $choices[0];
-		$fields = array(
+	private function layout( array $document, int $kit ): array {
+		$id      = self::IDS . '-layout';
+		$name    = self::FIELD . '[layout]';
+		$chosen  = static fn( string $key, array $choices ): string => is_string( $document[ $key ] ?? null ) ? $document[ $key ] : $choices[0];
+		$fields  = array(
 			$this->field(
 				$id . '-stage-side',
 				$name . '[stage_side]',
@@ -929,15 +953,14 @@ final class BuildTab {
 				)
 			),
 		);
-		$found  = array(
-			$this->field(
-				$id . '-start-button',
-				$name . '[start_button]',
-				__( 'Show on its parts\' pages', 'creative-skateboard-builder' ),
-				'checkbox',
-				false !== ( $document['start_button'] ?? true ) ? '1' : '',
-				array( 'note' => __( 'Puts "Build a complete with this deck" on the page of each part the kit\'s first slot offers. Where several kits offer a part, the one with the lowest menu order shows it, and the Products screen\'s Sorting sets that order. Off, the next of them shows it.', 'creative-skateboard-builder' ) )
-			),
+		$found   = null === $this->place ? array() : array( $this->builderPage( $document, $kit ) );
+		$found[] = $this->field(
+			$id . '-start-button',
+			$name . '[start_button]',
+			__( 'Show on its parts\' pages', 'creative-skateboard-builder' ),
+			'checkbox',
+			false !== ( $document['start_button'] ?? true ) ? '1' : '',
+			array( 'note' => __( 'Puts "Build a complete with this deck" on the page of each part the kit\'s first slot offers. Where several kits offer a part, the one with the lowest menu order shows it, and the Products screen\'s Sorting sets that order. Off, the next of them shows it.', 'creative-skateboard-builder' ) )
 		);
 		return array(
 			array(
@@ -959,6 +982,50 @@ final class BuildTab {
 				'more'   => array(),
 			),
 		);
+	}
+
+	/**
+	 * The Builder page (#113, D-348): the kit's own page, then each published page that holds the kit's Builder block.
+	 * A page the kit has that is no longer one of them is listed too, said to be not in use, so that saving the tab
+	 * keeps it and nothing changes while the owner is not looking.
+	 *
+	 * @param array<mixed> $document The layout document to show.
+	 * @param int          $kit      The kit's ID.
+	 * @return array<string, mixed>
+	 */
+	private function builderPage( array $document, int $kit ): array {
+		$options = array( '' => __( 'The kit\'s own page', 'creative-skateboard-builder' ) );
+		$pages   = null === $this->place ? array() : $this->place->pages( $kit );
+		foreach ( $pages as $page ) {
+			$options[ $page ] = self::pageTitle( $page );
+		}
+		$chosen = $document['builder_page'] ?? '';
+		if ( is_int( $chosen ) && ! isset( $options[ $chosen ] ) ) {
+			/* translators: %s: a page's title. */
+			$options[ $chosen ] = sprintf( __( '%s (not in use now)', 'creative-skateboard-builder' ), self::pageTitle( $chosen ) );
+		}
+		return $this->field(
+			self::IDS . '-layout-builder-page',
+			self::FIELD . '[layout][builder_page]',
+			__( 'Builder page', 'creative-skateboard-builder' ),
+			'select',
+			is_int( $chosen ) || is_string( $chosen ) ? (string) $chosen : '',
+			array(
+				'options' => $options,
+				'note'    => __( 'The page shoppers build on. The kit\'s own page, "Build a complete with this deck" and the cart\'s Edit build send them there. The list holds the published pages that hold this kit\'s Builder block. A page that is taken down or loses the block is not used, and shoppers go to the kit\'s own page.', 'creative-skateboard-builder' ),
+			)
+		);
+	}
+
+	/**
+	 * A page's title as a list shows it, or its number where it has none or is gone.
+	 *
+	 * @param int $page The page's ID.
+	 */
+	private static function pageTitle( int $page ): string {
+		$title = get_post( $page ) instanceof WP_Post ? trim( wp_strip_all_tags( get_the_title( $page ) ) ) : '';
+		/* translators: %d: a page's ID. */
+		return '' === $title ? sprintf( __( 'Page %d', 'creative-skateboard-builder' ), $page ) : $title;
 	}
 
 	/**
@@ -1125,6 +1192,7 @@ final class BuildTab {
 			'riser'              => __( 'The riser to suggest', 'creative-skateboard-builder' ),
 			'wheelbase'          => __( 'Wheelbase where a deck gives none', 'creative-skateboard-builder' ),
 			'start_button'       => __( 'Show on its parts\' pages', 'creative-skateboard-builder' ),
+			'builder_page'       => __( 'Builder page', 'creative-skateboard-builder' ),
 		);
 		$found  = array();
 		if ( 1 === preg_match( '/\A(slots|presets)\[(\d+)\]\.?(.*)\z/', $path, $found ) ) {

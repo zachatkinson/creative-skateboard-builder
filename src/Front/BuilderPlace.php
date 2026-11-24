@@ -90,6 +90,32 @@ final class BuilderPlace {
 	}
 
 	/**
+	 * Whether a kit's builder may be sent to a page: a published page a visitor may see, other than the kit's own, that
+	 * holds the kit's Builder block (#113, D-348). Asked each time the page is used, so one unpublished, trashed or
+	 * deleted, or one that has lost the block, is one no longer.
+	 *
+	 * @since 1.2.0
+	 *
+	 * @param int $page The page's ID.
+	 * @param int $kit  The kit's ID.
+	 */
+	public function opens( int $page, int $kit ): bool {
+		return $page > 0 && $page !== $kit && $this->posts->isPage( $page ) && $this->holds( $page, $kit );
+	}
+
+	/**
+	 * The pages a kit's builder may be sent to, in the order the site lists them: what the kit's Build tab offers.
+	 *
+	 * @since 1.2.0
+	 *
+	 * @param int $kit The kit's ID.
+	 * @return list<int>
+	 */
+	public function pages( int $kit ): array {
+		return array_values( array_filter( $this->posts->pages(), fn( int $page ): bool => $this->opens( $page, $kit ) ) );
+	}
+
+	/**
 	 * Walk blocks in order, inner blocks and synced patterns included, telling each Builder block's kit until told
 	 * to stop. A pattern already being walked is not walked again, so one that holds itself ends.
 	 *
