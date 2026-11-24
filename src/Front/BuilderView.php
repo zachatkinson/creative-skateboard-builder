@@ -68,6 +68,11 @@ final class BuilderView {
 	private const int BAR_SIZE = 44;
 
 	/**
+	 * A deck's height on its compact card, in CSS pixels: the stylesheet's 7rem (F14, #99).
+	 */
+	private const int CARD_DECK = 112;
+
+	/**
 	 * The step's form's ID, by which the phone bar's button sends it. A page holds one builder.
 	 *
 	 * @since 0.6.0
@@ -628,6 +633,36 @@ final class BuilderView {
 			'avif'  => Cast::str( $sets['image/avif'] ?? null ),
 			'webp'  => Cast::str( $sets['image/webp'] ?? null ),
 			'sizes' => self::sizes( Cast::int( $layer['width'] ?? null ) / $height, null ),
+		);
+	}
+
+	/**
+	 * A deck's small picture on its compact card (F14, #99): its board's layer image, cut out, upright and
+	 * CARD_DECK pixels tall, so its `sizes` is that height times the image's shape. Its `srcset` is the WebP
+	 * renditions made for the picture, which every browser WordPress supports reads; the smallest is already more than
+	 * a sharp screen needs. Null where the deck has no layer image, or none made smaller than the shop's own file, which
+	 * would be too large to list: the card shows the photo.
+	 *
+	 * @param array<string, mixed> $board The board the deck would draw alone, from the answer.
+	 * @return array{hasImage: bool, drawn: bool, src: string, srcset: string, sizes: string, width: int, height: int}|null
+	 */
+	private static function drawn( array $board ): ?array {
+		$image  = Cast::map( Cast::map( Cast::items( $board['layers'] ?? null )[0] ?? null )['image'] ?? null );
+		$width  = Cast::int( $image['width'] ?? null );
+		$height = Cast::int( $image['height'] ?? null );
+		$sets   = array_column( array_map( static fn( mixed $source ): array => Cast::map( $source ), Cast::items( $image['sources'] ?? null ) ), 'srcset', 'type' );
+		$srcset = Cast::str( $sets['image/webp'] ?? null );
+		if ( '' === $srcset || $width <= 0 || $height <= 0 ) {
+			return null;
+		}
+		return array(
+			'hasImage' => true,
+			'drawn'    => true,
+			'src'      => Cast::str( $image['src'] ?? null ),
+			'srcset'   => $srcset,
+			'sizes'    => self::sizes( $width / $height, self::CARD_DECK ),
+			'width'    => $width,
+			'height'   => $height,
 		);
 	}
 
@@ -1392,7 +1427,9 @@ final class BuilderView {
 					$others[] = $text;
 				}
 			}
-			$also      = SlotKey::DECK === $slot ? Words::also( $others ) : '';
+			// A deck's card says the look's other widths, or that it is made in this one alone (F14, #99).
+			$also      = SlotKey::DECK === $slot ? ( array() === $others && array() !== $look ? Words::only( $size ) : Words::also( $others ) ) : '';
+			$board     = Cast::map( $option['board'] ?? null );
 			$change    = Cast::str( Cast::map( $option['delta'] ?? null )['change'] ?? null );
 			$checked   = ( $counted[ $slot ] ?? null ) === $id;
 			$available = Cast::bool( $option['available'] ?? null );
@@ -1484,8 +1521,8 @@ final class BuilderView {
 				'recommendedAs' => $against['recommended'],
 				'classes'       => self::classes( $state->id, $slot, $id, $fit, $available, $checked ),
 				// From 1.1.0: the board's image, fetched as the shopper points at a deck's card (D-308).
-				'preload'       => self::preload( Cast::map( $option['board'] ?? null ) ),
-			) + self::image( $card['image'] ?? null );
+				'preload'       => self::preload( $board ),
+			) + ( self::drawn( $board ) ?? array( 'drawn' => false ) + self::image( $card['image'] ?? null ) );
 		};
 		$shelf   = isset( $answer['shelf'] ) ? Cast::map( $answer['shelf'] ) : null;
 		$options = array();
@@ -1571,6 +1608,8 @@ final class BuilderView {
 			'before'    => self::fields( BuildLink::PARAM, $link->picks, $link->none, $before ),
 			'after'     => self::fields( BuildLink::PARAM, $link->picks, $link->none, $after ),
 			'tail'      => $tail,
+			// From 1.1.0: the deck step's cards are compact, two columns of them on a desktop (F14, #99).
+			'compact'   => SlotKey::DECK === $slot,
 			'options'   => $options,
 			'hidden'    => self::hidden( $answer, $step ),
 			'filters'   => null === $shelf ? self::filters( $answer, $slot ) : self::filters( array(), '' ),

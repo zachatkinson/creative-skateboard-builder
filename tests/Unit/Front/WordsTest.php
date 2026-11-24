@@ -217,6 +217,11 @@ final class WordsTest extends TestCase {
 		self::assertSame( array(), array_values( array_diff( array_column( MessageCode::cases(), 'value' ), array_keys( $told ) ) ), 'A code with no case here has no sentence that is tested.' );
 	}
 
+	// F14 (#99): a deck's compact card says the one width its look is made in, and nothing where it has no width.
+	public function test_a_look_in_one_size_is_only_in_that_size(): void {
+		self::assertSame( array( 'Only in 8.25″', '' ), array( Words::only( '8.25″' ), Words::only( '' ) ) );
+	}
+
 	public function test_a_spec_this_version_does_not_know_is_named_as_it_came(): void {
 		self::assertSame(
 			'kingpin_angle is not filled in for this part, so its fit cannot be checked.',

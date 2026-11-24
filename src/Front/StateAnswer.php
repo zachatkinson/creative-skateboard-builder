@@ -292,7 +292,7 @@ final class StateAnswer {
 				'change' => null === $step?->counted() ? '' : Words::change( $kind, $text ),
 			);
 		};
-		$boards   = SlotKey::DECK === $state->step ? $this->boards( $state, array_merge( $offered, array_map( static fn( ShelfLook $look ): Option => $look->option, null === $view ? array() : $view->listing->looks ) ) ) : array();
+		$boards   = SlotKey::DECK === $state->step ? $this->boards( $state, array_merge( $offered, array_map( static fn( ShelfLook $look ): Option => $look->option, null === $view ? array() : array_merge( $view->listing->looks, $view->listing->soldOut ) ) ) ) : array();
 		$option   = static fn( Option $option, string $slot, ?StateStep $step ): array => array(
 			'id'          => $option->part->id,
 			'brand'       => $option->part->brand,
@@ -308,7 +308,8 @@ final class StateAnswer {
 			// A card as it is listed: the large photo is the picture's alone (#82), and would add to every card.
 			'card'        => isset( $cards[ $option->part->id ] ) ? array_diff_key( $cards[ $option->part->id ], array( 'large' => true ) ) : null,
 			// From 1.1.0, on the deck step: the board the deck would draw alone, so its image can be fetched as the
-			// shopper points at the card (D-308). Null elsewhere, and for a deck with no layer image.
+			// shopper points at the card (D-308), and its card draws the deck small (F14, #99), sold out or not. Null
+			// elsewhere, and for a deck with no layer image.
 			'board'       => $boards[ $option->part->id ] ?? null,
 		);
 		$problem  = static fn( BuildProblem $problem ): array => array(

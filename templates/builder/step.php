@@ -132,13 +132,14 @@ defined( 'ABSPATH' ) || exit;
 			</label>
 			<button class="cbuild-button cbuild-sort__apply" type="submit" data-wp-bind--hidden="state.live" data-wp-text="state.view.step.shelf.chips.apply"></button>
 		</div>
-		<ul class="cbuild-cards">
+		<?php // The deck step's cards are compact: the deck small and upright beside its words, two columns on a desktop (F14, #99). ?>
+		<ul class="cbuild-cards" data-wp-class--cbuild-cards--compact="state.view.step.compact">
 			<template data-wp-each--option="state.view.step.options" data-wp-each-key="context.option.id">
 				<?php // A pointer resting on a deck's card fetches its board's image; a press asks for the pick at once (D-308). ?>
 				<li data-wp-bind--class="context.option.classes" data-wp-on--pointerenter="actions.point" data-wp-on--pointerdown="actions.point" data-wp-on--pointerleave="actions.leave">
 					<input class="cbuild-card__control" type="radio" data-wp-bind--id="context.option.input" data-wp-bind--name="context.option.field" data-wp-bind--value="context.option.value" data-wp-bind--checked="context.option.checked" data-wp-bind--disabled="context.option.disabled" data-wp-bind--aria-label="context.option.choose" data-wp-bind--aria-describedby="context.option.describedby">
 					<label class="cbuild-card__body" data-wp-bind--for="context.option.input">
-						<img class="cbuild-card__photo" alt="" loading="lazy" decoding="async" data-wp-bind--hidden="!context.option.hasImage" data-wp-bind--src="context.option.src" data-wp-bind--srcset="context.option.srcset" data-wp-bind--sizes="context.option.sizes" data-wp-bind--width="context.option.width" data-wp-bind--height="context.option.height">
+						<img class="cbuild-card__photo" alt="" loading="lazy" decoding="async" data-wp-class--cbuild-card__photo--drawn="context.option.drawn" data-wp-bind--hidden="!context.option.hasImage" data-wp-bind--src="context.option.src" data-wp-bind--srcset="context.option.srcset" data-wp-bind--sizes="context.option.sizes" data-wp-bind--width="context.option.width" data-wp-bind--height="context.option.height">
 						<span class="cbuild-card__brand" data-wp-bind--id="context.option.brandId" data-wp-bind--hidden="!context.option.hasBrand" data-wp-text="context.option.brand"></span>
 						<span class="cbuild-card__name" data-wp-text="context.option.name"></span>
 						<span class="cbuild-card__look" data-wp-bind--hidden="!context.option.hasLook" data-wp-text="context.option.look"></span>
@@ -179,12 +180,12 @@ defined( 'ABSPATH' ) || exit;
 		</p>
 		<details class="cbuild-sold-out" data-wp-bind--hidden="!state.view.step.shelf.soldOut.shown">
 			<summary class="cbuild-sold-out__summary" data-wp-text="state.view.step.shelf.soldOut.summary"></summary>
-			<ul class="cbuild-cards cbuild-cards--sold-out">
+			<ul class="cbuild-cards cbuild-cards--sold-out" data-wp-class--cbuild-cards--compact="state.view.step.compact">
 				<template data-wp-each--option="state.view.step.shelf.soldOut.options" data-wp-each-key="context.option.id">
 					<li data-wp-bind--class="context.option.classes">
 						<input class="cbuild-card__control" type="radio" data-wp-bind--id="context.option.input" data-wp-bind--name="state.view.step.name" data-wp-bind--value="context.option.value" data-wp-bind--checked="context.option.checked" data-wp-bind--disabled="context.option.disabled" data-wp-bind--aria-label="context.option.choose" data-wp-bind--aria-describedby="context.option.describedby">
 						<label class="cbuild-card__body" data-wp-bind--for="context.option.input">
-							<img class="cbuild-card__photo" alt="" loading="lazy" decoding="async" data-wp-bind--hidden="!context.option.hasImage" data-wp-bind--src="context.option.src" data-wp-bind--srcset="context.option.srcset" data-wp-bind--sizes="context.option.sizes" data-wp-bind--width="context.option.width" data-wp-bind--height="context.option.height">
+							<img class="cbuild-card__photo" alt="" loading="lazy" decoding="async" data-wp-class--cbuild-card__photo--drawn="context.option.drawn" data-wp-bind--hidden="!context.option.hasImage" data-wp-bind--src="context.option.src" data-wp-bind--srcset="context.option.srcset" data-wp-bind--sizes="context.option.sizes" data-wp-bind--width="context.option.width" data-wp-bind--height="context.option.height">
 							<span class="cbuild-card__brand" data-wp-bind--id="context.option.brandId" data-wp-bind--hidden="!context.option.hasBrand" data-wp-text="context.option.brand"></span>
 							<span class="cbuild-card__name" data-wp-text="context.option.name"></span>
 							<span class="cbuild-card__look" data-wp-bind--hidden="!context.option.hasLook" data-wp-text="context.option.look"></span>

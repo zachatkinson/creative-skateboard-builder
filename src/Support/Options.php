@@ -163,6 +163,20 @@ final class Options {
 	public const CLASS_CHIPS_ROW = 'cbuild-chips__options--row';
 
 	/**
+	 * The deck step's compact card lists (#99, D-322).
+	 *
+	 * @since 1.1.0
+	 */
+	public const CLASS_CARDS_COMPACT = 'cbuild-cards--compact';
+
+	/**
+	 * A card's picture drawn from the deck's layer image (#99).
+	 *
+	 * @since 1.1.0
+	 */
+	public const CLASS_CARD_DRAWN = 'cbuild-card__photo--drawn';
+
+	/**
 	 * Order item meta (spec: Data model, Order items). Hidden from customers by their underscore, and kept with the
 	 * shop's order records for good: a key is never renamed.
 	 */
@@ -410,6 +424,8 @@ final class Options {
 			self::CLASS_CHIPS_MORE_IDLE,
 			self::CLASS_CHIP_PAST,
 			self::CLASS_CHIPS_ROW,
+			self::CLASS_CARDS_COMPACT,
+			self::CLASS_CARD_DRAWN,
 		);
 	}
 

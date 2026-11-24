@@ -572,6 +572,63 @@ final class BuilderTest extends TestCase {
 		self::assertSame( array( 'shown' => false, 'src' => '', 'avif' => '', 'webp' => '', 'sizes' => '' ), $cards[102], 'a deck with no layer image' );
 	}
 
+	// Cowork's 1.0.0 review, F14 (#99): "a compact card on the deck step. Use the deck's layer image as the small
+	// picture where it has one, since it's cut out and sits on the card's own colour, and the product photo otherwise."
+	// The card draws the deck upright, 112 CSS pixels (7rem) tall, so its `sizes` is that height times the image's
+	// shape, 420 by 1,626: 29px. The WebP renditions made for the picture are the files it chooses from.
+	public function test_a_deck_card_is_compact_and_draws_the_decks_layer_image_small_or_its_photo_where_it_has_none(): void {
+		$this->topArt();
+		$step    = $this->show( new BuildLink( array(), null, SlotKey::DECK ) )['view']['step'];
+		$cards   = array_column( $step['options'], null, 'id' );
+		$picture = $this->show( new BuildLink( array( SlotKey::DECK => 101 ), null, SlotKey::TRUCKS ) )['view']['picture']['board']['layers'][0];
+		$sets    = array_column( $picture['sources'], 'srcset', 'type' );
+
+		self::assertTrue( $step['compact'], 'the deck step lists compact cards' );
+		self::assertSame(
+			array( true, true, $picture['src'], $sets['image/webp'], '29px', $picture['width'], $picture['height'] ),
+			array( $cards[101]['hasImage'], $cards[101]['drawn'], $cards[101]['src'], $cards[101]['srcset'], $cards[101]['sizes'], $cards[101]['width'], $cards[101]['height'] ),
+			'the layer image, upright and small, from the renditions the picture has'
+		);
+		self::assertSame(
+			array( true, false, 'https://shop.test/103.jpg', 300, 300 ),
+			array( $cards[103]['hasImage'], $cards[103]['drawn'], $cards[103]['src'], $cards[103]['width'], $cards[103]['height'] ),
+			'a deck with no layer image shows its photo'
+		);
+
+		$trucks = $this->show( new BuildLink( array( SlotKey::DECK => 101 ), null, SlotKey::TRUCKS ) )['view']['step'];
+		self::assertFalse( $trucks['compact'], 'other steps keep their cards' );
+		self::assertSame( array( false ), array_values( array_unique( array_column( $trucks['options'], 'drawn' ) ) ) );
+	}
+
+	// A layer image with no WebP rendition is the full file the shop uploaded, too large for a card's small picture: the
+	// card keeps the photo, and the picture draws the board as before.
+	public function test_a_deck_card_keeps_its_photo_where_its_layer_image_has_no_small_rendition(): void {
+		$this->topArt();
+		$this->renditions->forget( 11 );
+		$card = array_column( $this->show( new BuildLink( array(), null, SlotKey::DECK ) )['view']['step']['options'], null, 'id' )[101];
+		self::assertSame( array( false, 'https://shop.test/101.jpg' ), array( $card['drawn'], $card['src'] ) );
+
+		// An image with no pixels across or along has no shape to draw at, rather than dividing by nothing.
+		$drawn = new \ReflectionMethod( BuilderView::class, 'drawn' );
+		$board = static fn( int $width, int $height ): array => array(
+			'layers' => array(
+				array(
+					'image' => array(
+						'src'     => 'https://shop.test/deck.png',
+						'width'   => $width,
+						'height'  => $height,
+						'sources' => array( array( 'type' => 'image/webp', 'srcset' => 'https://shop.test/deck.webp 105w' ) ),
+					),
+				),
+			),
+		);
+		self::assertNull( $drawn->invoke( null, $board( 420, 0 ) ) );
+		self::assertNull( $drawn->invoke( null, $board( 0, 1626 ) ) );
+		$sized = $drawn->invoke( null, $board( 420, 1626 ) );
+		self::assertIsArray( $sized );
+		self::assertSame( '29px', $sized['sizes'] );
+	}
+
 	public function test_a_deck_with_no_layer_image_has_no_top_to_turn_to_even_on_the_grip_step(): void {
 		$this->topArt();
 		$this->layers->attachments = array( 701 => 71 );

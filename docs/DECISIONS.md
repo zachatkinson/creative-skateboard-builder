@@ -3973,3 +3973,25 @@ Cowork's review of 1.0.0, F17 (#102): at 390 px the board lay across the stage's
 **Why:** Cowork's 1.0.0 review: on the demo the fieldsets were boxed, Filters and Show the top competed with Next, Filters showed on a desktop, and the board took about two thirds of a wide screen while the setting said half.
 
 **Status:** Accepted. The panel's width past the spec's 380 to 520 px is listed for Zach in M11's review.
+
+### D-322 · Compact deck cards: the deck's cut-out small and upright, two columns · 2026-11-23
+
+Cowork's 1.0.0 review, F14 (#99), to the 18 November mockup. At 1440 px a deck card was 316 by 455 px, most of it the photo on a white square, so two showed at a time and a shopper scrolled about three times as far through 88 decks.
+
+- **The deck step's cards are compact; other steps keep theirs.** The view's step gains `compact`, true on the deck step, and both deck lists (the listing and the sold-out fold) carry `cbuild-cards--compact`, rendered by the server.
+- **Layout.** The deck sits upright in a box 3.5rem wide and 7rem (112 px) tall at the start. Then come the brand, the name, the price with its change on one line, and "Also in…" or "Only in…" and the stock on lines of their own. A card is about 134 px high.
+- **Columns.** At most two, `minmax(min(100%, max(15rem, (100% − gap) / 2)), 1fr)`, so six show at 1440 by 900, and one column in a panel narrower than two of them, a phone's.
+- **What the card keeps.** Its reading order (the radio named by its part, the rest describing it), its 44 px target (the card is at least 130 px), its focus ring and its chosen mark.
+- **No movement.** The words keep clear of the tick on every compact card, picked or not, so a pick moves nothing. The image's box is fixed, so nothing shifts as it loads.
+- **The picture is the deck's layer image where it has a WebP rendition,** since it is cut out and sits on the card's own ground. It is the board the answer already carries for each deck (D-308).
+  - `srcset` is the WebP renditions made for the picture (D-194), which every browser in WordPress's list reads. `sizes` is 112 px times the image's shape (29px for a 420 by 1,626 image), so the smallest rendition is chosen.
+  - A plain `<img>` with WebP rather than a `<picture>` with AVIF keeps the card's markup and rules as they were. At about 30 px wide, AVIF's saving is a few hundred bytes a card.
+  - With no WebP rendition the layer's own file would be the full upload, too large to list, so the card shows the product photo, as it does for a deck with no layer image.
+- **Sold-out decks** in the fold get their board too (`StateAnswer::boards()`), read in the same batch, so the fold's compact cards draw their decks the same way.
+- **"Only in 8.25″"** (`Words::only()`): a deck look made in one width says so, where one in several says "Also in…" (D-240). A deck listed with no look, and every other step, says neither.
+
+- **No scroll anchored on a moving part.** The board's layers and the picture's items are left out of the browser's scroll anchoring (`overflow-anchor: none`). With the compact cards the page sits so that, once the first answer hides the stage's empty note, Chrome took the arriving deck layer as its anchor and scrolled the page by the 5 px the arrival had moved it, under a held press of Next (#80, D-185). Found by the first browser run of this change; the press test failed 5 to 10 times in 15 before, and passes 30 of 30 after.
+
+**Tests.** The unit tests and red runs are listed in section 2. E2E: "Compact deck cards (F14)" in `builder.spec.ts` and `shelf.spec.ts` (six in view at 1440 by 900, two to a row, one column on a phone, each card from 44 to 170 px).
+
+**Status:** Accepted.

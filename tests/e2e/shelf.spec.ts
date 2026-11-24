@@ -356,3 +356,55 @@ test.describe( 'A long step, with JavaScript', () => {
 		await expect( cards( page ) ).toHaveCount( 30 );
 	} );
 } );
+
+// Cowork's 1.0.0 review, F14 (#99): "two columns of compact cards about 134 px high … Six cards show at once at 1440
+// by 900." On a phone, one column, still compact. Each card stays a 44 px target.
+test.describe( 'Compact deck cards (F14)', () => {
+	test( 'shows six decks at once at 1440 by 900, two to a row, and one column on a phone', async ( {
+		page,
+	}, info ) => {
+		const phone = info.project.name.includes( 'phone' );
+		if ( ! phone ) {
+			await page.setViewportSize( { width: 1440, height: 900 } );
+		}
+		await page.goto( at() );
+		await expect( cards( page ) ).toHaveCount( 30 );
+		await cards( page )
+			.first()
+			.evaluate( ( item ) => item.scrollIntoView( { block: 'start' } ) );
+		const boxes = await cards( page ).evaluateAll( ( items ) => {
+			const bar = document
+				.querySelector( '.cbuild-bar:not([hidden])' )
+				?.getBoundingClientRect();
+			// The screen's foot, or the bar's top where a bar sticks over it.
+			const foot =
+				bar && bar.top > 0 && bar.top < innerHeight
+					? bar.top
+					: innerHeight;
+			return items.map( ( item ) => {
+				const box = item.getBoundingClientRect();
+				return {
+					top: Math.round( box.top ),
+					left: Math.round( box.left ),
+					height: box.height,
+					seen: box.top >= 0 && box.bottom <= foot,
+				};
+			} );
+		} );
+		for ( const box of boxes ) {
+			expect( box.height, 'a 44 px target' ).toBeGreaterThanOrEqual( 44 );
+			expect( box.height, 'about 134 px' ).toBeLessThanOrEqual( 170 );
+		}
+		const [ one, two, three ] = boxes;
+		if ( phone ) {
+			expect( two?.left, 'one column' ).toBe( one?.left );
+			return;
+		}
+		expect( two?.top, 'two to a row' ).toBe( one?.top );
+		expect( three?.left, 'and no third' ).toBe( one?.left );
+		expect(
+			boxes.filter( ( box ) => box.seen ).length,
+			'six in view'
+		).toBeGreaterThanOrEqual( 6 );
+	} );
+} );

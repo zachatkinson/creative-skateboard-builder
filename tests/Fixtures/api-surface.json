@@ -170,6 +170,8 @@
         "cbuild-assembly",
         "cbuild-bar__photo",
         "cbuild-board__layer",
+        "cbuild-card__photo--drawn",
+        "cbuild-cards--compact",
         "cbuild-cart-picture",
         "cbuild-chips__chip--past",
         "cbuild-chips__more",

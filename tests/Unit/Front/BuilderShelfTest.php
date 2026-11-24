@@ -357,6 +357,16 @@ final class BuilderShelfTest extends TestCase {
 		);
 	}
 
+	// Cowork's 1.0.0 review, F14 (#99): the compact deck card says "Also in…" or "Only in…". A look made in one width
+	// says that width; a part of another step, or a deck listed with no look, says neither.
+	public function test_a_deck_made_in_one_width_says_it_is_only_in_that_width(): void {
+		$card = $this->step( BuildLink::read( array( '_width' => '8.25in' ) ) )['options'][0];
+		self::assertSame( array( 'Only in 8.25″', true ), array( $card['also'], $card['hasAlso'] ) );
+
+		$wheels = $this->step( BuildLink::read( array( 'deck' => '101', 'trucks' => '139', 'step' => 'wheels' ) ) )['options'];
+		self::assertSame( array( false ), array_values( array_unique( array_column( $wheels, 'hasAlso' ) ) ), 'the deck step\'s alone' );
+	}
+
 	public function test_a_short_step_has_the_cards_alone(): void {
 		$shelf = $this->step( BuildLink::read( array( '_width' => '8.25in' ) ) )['shelf'];
 		self::assertFalse( $shelf['search']['shown'] );

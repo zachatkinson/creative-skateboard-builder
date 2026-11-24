@@ -6376,3 +6376,75 @@ test.describe( 'A deck with no layer image on the stage (#82)', () => {
 		).toHaveCount( 1 );
 	} );
 } );
+
+// Cowork's 1.0.0 review, F14 (#99): the deck step's cards are compact, the deck small and upright at the start from its
+// layer image, cut out on the card's own ground, or its photo where it has none; then the brand, the name, the price
+// and "Also in…" or "Only in…". The card keeps its reading order, its 44 px target and its focus ring; other steps keep
+// theirs. Rendered by the server, so the no-js project holds it too. Six in view at 1440 by 900 is the shelf kit's
+// test, which lists enough decks (shelf.spec.ts).
+test.describe( 'Compact deck cards (F14)', () => {
+	const card = ( page: Page, width: '8.0' | '8.25' | '8.5' ) =>
+		page.locator( '.cbuild-cards > li' ).filter( {
+			has: page.getByRole( 'radio', {
+				name: `Choose Builder test deck ${ width }`,
+			} ),
+		} );
+
+	test( "draws a deck's layer image small and upright, its photo where it has none, and keeps other steps' cards", async ( {
+		page,
+	} ) => {
+		await page.goto( linkTo( { step: 'deck', _width: '8.5in' } ) );
+		await expect( page.locator( '.cbuild-cards' ).first() ).toHaveClass(
+			/cbuild-cards--compact/
+		);
+		const drawn = card( page, '8.5' ).locator( '.cbuild-card__photo' );
+		await expect( drawn ).toHaveClass( /cbuild-card__photo--drawn/ );
+		// The layer image's WebP renditions, made for the picture (D-194, D-214), offered at the card's small size.
+		await expect( drawn ).toHaveAttribute( 'srcset', /\.webp \d+w/ );
+		await expect( drawn ).toHaveAttribute( 'sizes', /^\d+px$/ );
+		const shape = await drawn.evaluate( ( image ) => ( {
+			width: Number( image.getAttribute( 'width' ) ),
+			height: Number( image.getAttribute( 'height' ) ),
+		} ) );
+		expect( shape.height, 'upright' ).toBeGreaterThan( shape.width );
+		await expect(
+			card( page, '8.5' ).locator( '.cbuild-card__also' )
+		).toHaveText( /^(Also|Only) in / );
+
+		const box = await card( page, '8.5' ).boundingBox();
+		expect( box?.height ?? 0, 'a 44 px target' ).toBeGreaterThanOrEqual(
+			44
+		);
+		expect( box?.height ?? 999, 'compact' ).toBeLessThanOrEqual( 170 );
+		// The radio is named by its part, and the rest of the card describes it, as before.
+		await expect(
+			card( page, '8.5' ).getByRole( 'radio' )
+		).toHaveAttribute( 'aria-describedby', /-about .*-notes$/ );
+
+		await page.goto( linkTo( { step: 'deck', _width: '8.25in' } ) );
+		await expect(
+			card( page, '8.25' ).locator( '.cbuild-card__photo' )
+		).not.toHaveClass( /cbuild-card__photo--drawn/ );
+
+		await page.goto(
+			linkTo( { deck: id( 'builder-test-deck-8-0' ), step: 'trucks' } )
+		);
+		await expect( page.locator( '.cbuild-cards' ).first() ).not.toHaveClass(
+			/cbuild-cards--compact/
+		);
+	} );
+
+	test( 'rings the compact card, not the radio inside it, when the keyboard reaches it', async ( {
+		page,
+	}, info ) => {
+		test.skip( info.project.name.includes( 'phone' ), 'a keyboard' );
+		await page.goto( linkTo( { step: 'deck', _width: '8.5in' } ) );
+		// A key pressed first, so the focus that follows is the keyboard's, and :focus-visible.
+		await page.keyboard.press( 'Shift' );
+		await card( page, '8.5' ).getByRole( 'radio' ).focus();
+		const ring = await card( page, '8.5' ).evaluate(
+			( item ) => getComputedStyle( item ).outlineStyle
+		);
+		expect( ring ).not.toBe( 'none' );
+	} );
+} );

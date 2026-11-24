@@ -1154,6 +1154,78 @@
 	}
 }
 
+/*
+ * The deck step's compact cards (F14, #99): the deck small and upright at the start, its board's cut-out on the
+ * card's own ground, or its photo; then the brand, the name, the price and its change on one line, and the widths
+ * and the stock, about 134 px high. At most two columns, so six show at once on a desktop, and one in a panel
+ * narrower than two of them, a phone's. The picture's box is the column's width and 7rem tall, whatever the image
+ * (BuilderView's CARD_DECK), so nothing moves as it loads; the image is fitted into it. The words keep clear of the
+ * chosen card's tick, picked or not, so a pick moves nothing.
+ */
+:where(.cbuild-cards--compact) {
+	grid-template-columns: repeat(
+		auto-fill,
+		minmax(
+			min(100%, max(15rem, calc((100% - var(--cbuild-gap-small)) / 2))),
+			1fr
+		)
+	);
+}
+
+:where(.cbuild-cards--compact) :where(.cbuild-card__body) {
+	grid-template-columns: 3.5rem minmax(0, 1fr);
+	column-gap: var(--cbuild-gap-small);
+	align-content: center;
+	padding-inline-end: 1.75rem;
+}
+
+:where(.cbuild-cards--compact)
+	:where(.cbuild-card__body > :not(.cbuild-card__photo)) {
+	grid-column: 2;
+}
+
+:where(.cbuild-cards--compact) :where(.cbuild-card__photo) {
+	grid-row: 1 / span 4;
+	align-self: center;
+	inline-size: 100%;
+	block-size: 7rem;
+	aspect-ratio: auto;
+	margin-block-end: 0;
+}
+
+:where(.cbuild-cards--compact)
+	:where(.cbuild-card__body:not(:has(> .cbuild-card__photo:not([hidden])))) {
+	grid-template-columns: minmax(0, 1fr);
+}
+
+:where(.cbuild-cards--compact)
+	:where(
+		.cbuild-card__body:not(:has(> .cbuild-card__photo:not([hidden]))) > *
+	) {
+	grid-column: 1;
+}
+
+:where(.cbuild-cards--compact) :where(.cbuild-card__about) {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: baseline;
+	gap: 0.125rem var(--cbuild-gap-small);
+	margin-block-start: 0.125rem;
+}
+
+:where(.cbuild-cards--compact) :where(.cbuild-card__about > *) {
+	flex-basis: 100%;
+}
+
+:where(.cbuild-cards--compact)
+	:where(.cbuild-card__price, .cbuild-card__delta) {
+	flex-basis: auto;
+}
+
+:where(.cbuild-cards--compact) :where(.cbuild-card__about > :empty) {
+	display: none;
+}
+
 /* Chosen: the radio checked, as the shopper's own pick paints it before the server answers. */
 :where(
 	.cbuild-card--chosen,
@@ -1254,6 +1326,16 @@
 	inset-inline-start: var(--cbuild-layer-x);
 	inline-size: var(--cbuild-layer-width);
 	block-size: var(--cbuild-layer-height);
+}
+
+/*
+ * The parts the motion module moves by `transform` never hold the page's scroll in place. Chrome's scroll anchoring
+ * otherwise takes the deck's layer, the first thing on the stage in view once the answer hides the empty note, and on
+ * the next layout scrolls the page by however far the deck's arrival has moved it: 5 px under a held press of Next
+ * while the chosen card settles (#80, D-185).
+ */
+:where(.cbuild-board__layer, .cbuild-picture__item) {
+	overflow-anchor: none;
 }
 
 :where(.cbuild-board__image) {
