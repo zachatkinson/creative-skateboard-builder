@@ -60,6 +60,7 @@ It is built by [Creative Branding](https://creativebranding.ca). Skatehouse is t
 - **Specs from where they already are:** a maker's size chart, a field on the product, a mapped attribute, or a CSV import.
 - **A catalogue check** that lists the parts the builder can't place, and why.
 - **Kits,** a product type with a Build tab: the steps and where their parts come from, the presets, the layout and the assembly fee.
+- **The shop's own choices,** on the same tab: the page the builder is on, whether a deck's page offers "Build a complete with this deck", and the width guide's rows. A part or a variation can be kept out of the builder and still sold on its own.
 - **For the workshop,** each order's build in a box on the order screen, and an assembly ticket to print.
 
 ## Screenshots
