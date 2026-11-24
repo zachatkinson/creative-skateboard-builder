@@ -97,7 +97,9 @@ final class Shelf {
 	 * @param ShelfAsk            $ask         What the shopper asks.
 	 */
 	public function of( Kit $kit, string $slot, Picks $build, array $offered, ?Option $picked, ?Option $recommended, array $shelved, ShelfAsk $ask ): Listing {
-		$spec     = SlotSize::spec( $slot );
+		$spec = SlotSize::spec( $slot );
+		// By ID, so that a tie the order's keys leave falls the same whatever order the parts were found in (D-340).
+		usort( $offered, static fn( Option $one, Option $other ): int => $one->part->id <=> $other->part->id );
 		$variants = array();
 		foreach ( $offered as $option ) {
 			$known = $shelved[ $option->part->id ] ?? null;
@@ -160,8 +162,9 @@ final class Shelf {
 		// still reads it, for "Rascals comes in 8.5″".
 		$width   = SlotKey::DECK === $slot ? $ask->width : null;
 		$counted = array_flip( array_map( static fn( Look $look ): string => $look->key, array_filter( $looks, static fn( Look $look ): bool => null === $width || in_array( self::named( $width ), array_map( self::named( ... ), $look->sizes( SpecKey::DeckWidth ) ), true ) ) ) );
-		$groups  = Chips::groups( array_values( array_filter( $found, static fn( Facets $look ): bool => isset( $counted[ $look->key ] ) ) ), $always, $ask->chosen );
-		$left    = array_flip( array_map( static fn( Facets $look ): string => $look->key, Chips::filter( $found, $ask->chosen ) ) );
+		// The brands with the most looks first, so those a desktop shows before "N more" are the step's biggest (#98).
+		$groups = Chips::groups( array_values( array_filter( $found, static fn( Facets $look ): bool => isset( $counted[ $look->key ] ) ) ), $always, $ask->chosen, array( self::BRAND ) );
+		$left   = array_flip( array_map( static fn( Facets $look ): string => $look->key, Chips::filter( $found, $ask->chosen ) ) );
 
 		$wanted  = $this->wanted( $slot, $looks, $chip, $recommended, $ask );
 		$inStock = array();
@@ -171,7 +174,12 @@ final class Shelf {
 			if ( ! isset( $left[ $look->key ] ) ) {
 				continue;
 			}
-			$option = null !== $picked && in_array( $picked->part, $look->parts(), true ) ? $picked : $this->sizes->pick( $kit, $slot, $look->parts(), $build, $wanted );
+			$held = null !== $picked && in_array( $picked->part, $look->parts(), true ) ? $picked : null;
+			// A deck picked in another width than the one asked shows its look in that width, for the builder to move the
+			// pick to; a look not made in it keeps the pick, so its card shows what the build holds (#81).
+			$option = null !== $held && ( null === $width || true === $held->part->specs->measure( SpecKey::DeckWidth )?->equals( $width ) )
+				? $held
+				: $this->sizes->pick( $kit, $slot, $look->parts(), $build, $wanted ) ?? $held;
 			if ( null === $option ) {
 				continue;
 			}

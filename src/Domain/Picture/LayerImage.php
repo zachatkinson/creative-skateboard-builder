@@ -47,11 +47,13 @@ final class LayerImage {
 	 *
 	 * @since 0.7.0
 	 *
-	 * @param ImageFacts           $image The image.
-	 * @param array{int, int}|null $size  The part's size, where the layout draws it.
+	 * @param ImageFacts           $image  The image.
+	 * @param array{int, int}|null $size   The part's size, where the layout draws it.
+	 * @param bool                 $cutOut Whether its corners must be clear: false for a grip's sheet, from 1.1.0
+	 *                                     (Layout::cutOut()).
 	 * @return list<LayerError>
 	 */
-	public static function problems( ImageFacts $image, ?array $size ): array {
+	public static function problems( ImageFacts $image, ?array $size, bool $cutOut = true ): array {
 		if ( ! in_array( $image->type, self::TYPES, true ) ) {
 			return array( LayerError::WrongType );
 		}
@@ -60,7 +62,7 @@ final class LayerImage {
 			return array( LayerError::Unreadable );
 		}
 		$problems = array();
-		if ( false === $image->clear ) {
+		if ( $cutOut && false === $image->clear ) {
 			$problems[] = LayerError::Opaque;
 		}
 		if ( null !== $size ) {

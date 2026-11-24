@@ -1,0 +1,10 @@
+<?php
+declare( strict_types=1 );
+
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
+function cbuild_probe( string $text ): string {
+	return mb_strtolower( $text );
+}

@@ -167,9 +167,9 @@ final class WpLayerImages implements LayerImages {
 	}
 
 	/**
-	 * The layer images of these parts, read together: the parts' meta in one query, their parents' in another where
-	 * a variation has none of its own, and the images' posts and meta in two more, however many parts there are
-	 * (D-202).
+	 * The layer images of these parts, read together: the parts' meta in one query, their posts, terms and WordPress
+	 * meta in three more, their parents' in another where a variation has none of its own, and the images' posts and
+	 * meta in two more, however many parts there are (D-202, D-308).
 	 *
 	 * @since 0.7.0
 	 *
@@ -178,6 +178,12 @@ final class WpLayerImages implements LayerImages {
 	 */
 	public function attachments( int ...$parts ): array {
 		$this->meta?->prime( ...$parts );
+		// WooCommerce reads each product's post meta and its terms through WordPress's caches: where they are not read
+		// yet, as a step's decks are for their boards, three queries for them all, not two for each (D-308).
+		$cold = array_values( array_filter( array_unique( $parts ), static fn( int $part ): bool => false === wp_cache_get( $part, 'post_meta' ) ) );
+		if ( count( $cold ) > 1 ) {
+			_prime_post_caches( $cold, true, true );
+		}
 		$images  = array();
 		$parents = array();
 		foreach ( $parts as $part ) {

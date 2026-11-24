@@ -217,6 +217,11 @@ final class WordsTest extends TestCase {
 		self::assertSame( array(), array_values( array_diff( array_column( MessageCode::cases(), 'value' ), array_keys( $told ) ) ), 'A code with no case here has no sentence that is tested.' );
 	}
 
+	// F14 (#99): a deck's compact card says the one width its look is made in, and nothing where it has no width.
+	public function test_a_look_in_one_size_is_only_in_that_size(): void {
+		self::assertSame( array( 'Only in 8.25″', '' ), array( Words::only( '8.25″' ), Words::only( '' ) ) );
+	}
+
 	public function test_a_spec_this_version_does_not_know_is_named_as_it_came(): void {
 		self::assertSame(
 			'kingpin_angle is not filled in for this part, so its fit cannot be checked.',
@@ -337,6 +342,21 @@ final class WordsTest extends TestCase {
 		self::assertSame( 'XLarge', Words::inSentence( 'XLarge' ), 'read by its second letter alone' );
 		self::assertSame( 'ÉCOLE', Words::inSentence( 'ÉCOLE' ), 'a capital after an accented one' );
 		self::assertSame( 'aéro', Words::inSentence( 'Aéro' ), 'an accented small letter is a small letter' );
+	}
+
+	// #72: without mbstring the case changes are PHP's own, so a letter outside ASCII keeps its case, as WpTextFolding
+	// folds; an ASCII one changes as before.
+	public function test_without_mbstring_a_label_changes_only_its_ascii_letters(): void {
+		$GLOBALS['cbuild_test_no_mbstring'] = true;
+		try {
+			self::assertSame( 'deck', Words::inSentence( 'Deck' ) );
+			self::assertSame( 'HZRD', Words::inSentence( 'HZRD' ) );
+			self::assertSame( 'Éclat', Words::inSentence( 'Éclat' ), 'its capital is not an ASCII letter' );
+			self::assertSame( 'Aéro', Words::inSentence( 'Aéro' ), 'nor is its second letter, so it reads as a capital' );
+		} finally {
+			unset( $GLOBALS['cbuild_test_no_mbstring'] );
+		}
+		self::assertSame( 'éclat', Words::inSentence( 'Éclat' ), 'and with it, as before' );
 	}
 
 	// Spec: A step, Sold out, "A preset or link that holds one names it".

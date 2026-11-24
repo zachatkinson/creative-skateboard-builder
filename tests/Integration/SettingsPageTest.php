@@ -236,7 +236,9 @@ final class SettingsPageTest extends IntegrationTestCase {
 		self::assertStringNotContainsString( '<script>', $mapping );
 		self::assertStringNotContainsString( 'Width <b>', $mapping );
 		self::assertStringContainsString( 'value="&quot;&gt;&lt;script&gt;alert(1)&lt;/script&gt;"', $mapping );
-		self::assertStringContainsString( '<option value="pa_cbuildwidth" label="Width &lt;b&gt;">', $mapping, 'the shop\'s attributes are offered' );
+		// WooCommerce 11.3.1 strips the markup from an attribute's label as it saves it (#95); 11.3.0 keeps it, and the
+		// page escapes it. Either way the attribute is offered and nothing of the label is printed unescaped.
+		self::assertMatchesRegularExpression( '#<option value="pa_cbuildwidth" label="Width(?: &lt;b&gt;)?">#', $mapping, 'the shop\'s attributes are offered' );
 		self::assertStringContainsString( '<option value="deck_width"  selected=\'selected\'>Deck width</option>', $mapping );
 		self::assertStringContainsString( '<option value="mm"  selected=\'selected\'>Millimetres (mm)</option>', $mapping );
 		self::assertStringNotContainsString( 'aria-invalid', $mapping );

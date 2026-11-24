@@ -10,7 +10,8 @@
  * the files, and Claude in Cowork can upload the same ones to a demo's test parts.
  *
  * From 0.8.0 the board has a top (#46): the grip's image is a swatch the top repeats across the deck, and the
- * hardware's is one bolt's head, drawn at each hole. Both are seen from the top.
+ * hardware's is one bolt's head, drawn at each hole. Both are seen from the top. From 1.1.0 a grip's image is its whole
+ * sheet (F18), and the swatches stay as a 1.0.x shop's.
  *
  * Usage: php tools/layer-art.php [out dir]. Needs GD.
  *
@@ -272,6 +273,52 @@ function grip( int $base, int $fleck, int $seed, string $file ): void {
 }
 
 /**
+ * A whole sheet of grip from the top, 9 by 33 in, as 1.1.0 asks for (F18, #103): grit to every edge, shot flat, with
+ * no clear corners. A printed sheet carries a figure a third of the way up from the tail, off to one side, as a
+ * maker's graphic sits, so the test can tell it is drawn once at its place and not repeated or squeezed.
+ *
+ * @param int    $base    The grit's colour.
+ * @param int    $fleck   The flecks' colour.
+ * @param int    $seed    The flecks' places.
+ * @param bool   $printed Whether the sheet carries a figure.
+ * @param string $file    Where to write it.
+ */
+function sheet( int $base, int $fleck, int $seed, bool $printed, string $file ): void {
+	$width  = (int) ceil( 9 * INCH * PX_PER_MM );
+	$length = (int) ceil( 33 * INCH * PX_PER_MM );
+	$image  = canvas( $width, $length, $base );
+	$w      = $width * SUPER;
+	$h      = $length * SUPER;
+	imagefilledrectangle( $image, 0, 0, $w - 1, $h - 1, colour( $image, $base ) );
+	mt_srand( $seed );
+	for ( $i = 0; $i < 9000; $i++ ) {
+		$size = mt_rand( 1, 3 ) * SUPER;
+		imagefilledellipse( $image, mt_rand( 0, $w - 1 ), mt_rand( 0, $h - 1 ), $size, $size, colour( $image, $fleck, mt_rand( 40, 100 ) ) );
+	}
+	if ( $printed ) {
+		// A white star with a ring round it, 3 in across, its middle 2.5 in right of the sheet's and 22 in from the nose.
+		$s     = PX_PER_MM * SUPER;
+		$cx    = (int) round( $w / 2 + 2.5 * INCH * $s );
+		$cy    = (int) round( 22 * INCH * $s );
+		$outer = 1.5 * INCH * $s;
+		imagesetthickness( $image, (int) round( 0.12 * INCH * $s ) );
+		imageellipse( $image, $cx, $cy, (int) round( 2 * $outer ), (int) round( 2 * $outer ), colour( $image, 0xf4f1ea ) );
+		imagesetthickness( $image, 1 );
+		$points = array();
+		for ( $point = 0; $point < 10; $point++ ) {
+			$radius   = 0 === $point % 2 ? $outer * 0.82 : $outer * 0.34;
+			$angle    = -M_PI / 2 + M_PI / 5 * $point;
+			$points[] = (int) round( $cx + $radius * cos( $angle ) );
+			$points[] = (int) round( $cy + $radius * sin( $angle ) );
+		}
+		imagefilledpolygon( $image, $points, colour( $image, 0xf4f1ea ) );
+	}
+	$small = imagecreatetruecolor( $width, $length );
+	imagecopyresampled( $small, $image, 0, 0, 0, 0, $width, $length, $w, $h );
+	imagepng( $small, $file, 9 );
+}
+
+/**
  * A bolt's head from the top, as the board's top draws one at each of the deck's eight holes (#46): 3/8 in across,
  * round, with a cross for a Phillips head or a hexagon for an Allen key.
  *
@@ -328,6 +375,9 @@ foreach ( array(
 }
 // The top (#46): black grip and a blue one, and the bolts' heads, black Phillips and silver Allen.
 grip( 0x232326, 0x8a8f96, 46, $out . '/grip-black.png' );
+// From 1.1.0 (F18, #103): whole sheets, a plain one and a printed one. The swatches above stay, as 1.0.x's.
+sheet( 0x1f1f22, 0x6d7178, 103, false, $out . '/grip-sheet-plain.png' );
+sheet( 0x1f1f22, 0x6d7178, 104, true, $out . '/grip-sheet-printed.png' );
 grip( 0x1d4f8c, 0xcfe3f7, 47, $out . '/grip-blue.png' );
 bolt( 0x26272b, false, $out . '/bolts-1.png' );
 bolt( 0xc3c8ce, true, $out . '/bolts-1.25.png' );

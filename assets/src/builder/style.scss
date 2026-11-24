@@ -3,8 +3,9 @@
  *
  * - Every colour, size and font is a `--cbuild-*` property that falls back to the theme's presets, then to the
  *   text's own colour, so the builder takes a theme's palette, dark or light, without being told which.
- * - Base rules sit inside `:where()`, so a theme overrides any of them with one class. The two rules outside it are
- *   the ones a theme must not undo by accident: `[hidden]` hides, and the screen-reader text stays off screen.
+ * - Base rules sit inside `:where()`, so a theme overrides any of them with one class. The rules outside it are the
+ *   ones a theme must not undo by accident: `[hidden]` hides, the screen-reader text stays off screen, and the resets
+ *   of a fieldset, a plain button and the step's heading hold against a theme's rules for the bare element (#96).
  * - Logical properties throughout, so a right-to-left page mirrors the layout and nothing else.
  * - The layout follows the builder's own width (container queries), so it works in a narrow column as at full width.
  */
@@ -181,11 +182,24 @@
 }
 
 /*
+ * A fieldset's reset at a class's weight (#96, D-321): a theme's rule for the bare element, as Kadence's and
+ * Storefront's `fieldset` with its border, padding and margin, outweighs a reset inside `:where()`. One class is enough
+ * over an element's rule; the builder's own spacing for a fieldset (the filters' groups, a card's sizes) is set at the
+ * same weight after it. A theme still restyles a fieldset with a class and the element.
+ */
+.cbuild :where(fieldset) {
+	min-inline-size: 0;
+	margin: 0;
+	padding: 0;
+	border: 0;
+}
+
+/*
  * The frame (spec: The layout): the rail across the top, then the stage and the panel, the footer pinned at the
  * panel's foot. Narrower than 64rem the stage sits on top, sticky at 40 to 45 % of the screen's height, and the panel
  * scrolls with the page under it; on a phone the board is turned a quarter turn to fill that space. From 64rem the
- * stage is on the left, the panel 380 to 520 pixels wide on the right, and the two together the screen's height, the
- * panel scrolling inside itself. A theme with a sticky header sets `--cbuild-top` to its height.
+ * stage is on the left, the panel 40 % of the width on the right (50 % on a balanced layout, never under 380 pixels),
+ * and the two together the screen's height, the panel scrolling inside itself. A theme with a sticky header sets `--cbuild-top` to its height.
  */
 :where(.cbuild) {
 	display: grid;
@@ -249,7 +263,9 @@
 	padding-block: var(--cbuild-gap);
 }
 
-:where(.cbuild__heading) {
+/* Two classes, over a theme's rule for a heading in its content, as Kadence's `.single-content h2` with 1.5em above
+   (#96). */
+.cbuild .cbuild__heading {
 	margin: 0;
 }
 
@@ -278,7 +294,7 @@
 @container cbuild (min-width: 64rem) {
 	:where(.cbuild__layout) {
 		display: grid;
-		grid-template-columns: minmax(0, 1fr) clamp(23.75rem, 40%, 32.5rem);
+		grid-template-columns: minmax(0, 1fr) max(23.75rem, 40%);
 		grid-template-rows: minmax(0, 1fr);
 		// The screen's height under the rail: one row a target high, its list's padding, its own and its rule.
 		// prettier-ignore
@@ -300,23 +316,26 @@
 		border-inline-start: 1px solid var(--cbuild-line);
 	}
 
+	/* The panel's contents stop at 40rem and sit in its middle, so a wide panel keeps a line short enough to read; the
+	   panel itself still fills its share, and scrolls at its own edge (#97, D-321). */
 	:where(.cbuild__body) {
 		overflow-y: auto;
 		overscroll-behavior: contain;
-		padding-inline: var(--cbuild-gap);
+		padding-inline: max(var(--cbuild-gap), (100% - 40rem) / 2);
 	}
 
-	/* The kit's Layout (D-255): the board balanced takes half the width, and the stage may take the right side. */
+	/* The kit's Layout (D-255): Board size's share of the width at every width, 60 % for the board on large and 50 % on
+	   balanced (#97), and the stage may take the right side. The panel is never narrower than 380 px. */
 	:where(.cbuild--balanced .cbuild__layout) {
-		grid-template-columns: minmax(0, 1fr) clamp(23.75rem, 50%, 40rem);
+		grid-template-columns: minmax(0, 1fr) max(23.75rem, 50%);
 	}
 
 	:where(.cbuild--stage-right .cbuild__layout) {
-		grid-template-columns: clamp(23.75rem, 40%, 32.5rem) minmax(0, 1fr);
+		grid-template-columns: max(23.75rem, 40%) minmax(0, 1fr);
 	}
 
 	:where(.cbuild--stage-right.cbuild--balanced .cbuild__layout) {
-		grid-template-columns: clamp(23.75rem, 50%, 40rem) minmax(0, 1fr);
+		grid-template-columns: max(23.75rem, 50%) minmax(0, 1fr);
 	}
 
 	:where(.cbuild--stage-right .cbuild__stage) {
@@ -329,8 +348,28 @@
 	}
 }
 
-/* Buttons: the step's Next and Back, Add to cart, the filters, Show more, Use these and Undo, Copy link. */
-:where(.cbuild) :where(button, .cbuild-button) {
+/*
+ * Buttons: the step's Next and Back, Add to cart, the filters, Show more, Use these and Undo, Copy link.
+ *
+ * The reset is written once for two selectors, each with its own weight (#96, D-321):
+ * - every builder button at no weight, so a theme restyles one with a class;
+ * - a plain `button` again at two classes' weight. A classic theme's rule for every `button`, and its `button:hover`
+ *   and `button:focus` (an element and a pseudo-class), outweigh a reset at no weight: on Kadence, Filters and Show
+ *   the top took the theme's fill and shadow, and its `display` showed Filters on a desktop. The step's one action
+ *   keeps whatever fill a theme gives it, and what the builder hides (`[hidden]`, the step form's default button, the
+ *   step's own Next) is left out, so this never shows it. The builder's rules for a kind of button (a chip, a filter,
+ *   Filters on a desktop) sit after this at the same weight or more, and win.
+ */
+:where(.cbuild) :where(button, .cbuild-button),
+.cbuild.cbuild
+	:where(button):not(
+		:where(
+			.cbuild-button--primary,
+			.cbuild-step__next,
+			.cbuild-step__default,
+			[hidden]
+		)
+	) {
 	box-sizing: border-box;
 	display: inline-flex;
 	align-items: center;
@@ -343,13 +382,23 @@
 	border: 1px solid var(--cbuild-line);
 	border-radius: var(--cbuild-radius);
 	background: transparent;
+	box-shadow: none;
 	color: inherit;
 	font: inherit;
 	line-height: 1.3;
 	cursor: pointer;
 }
 
-:where(.cbuild) :where(button:disabled) {
+:where(.cbuild) :where(button:disabled),
+.cbuild.cbuild
+	:where(button:disabled):not(
+		:where(
+			.cbuild-button--primary,
+			.cbuild-step__next,
+			.cbuild-step__default,
+			[hidden]
+		)
+	) {
 	cursor: not-allowed;
 	opacity: 0.55;
 }
@@ -363,9 +412,8 @@
 
 /*
  * The rail (spec: The step rail): a pill a step, numbered, a done step ticked and the current one in the accent. One
- * row of the step before, the step shown and the step after on a phone, and of every step, centred across the top,
- * wider (D-268, D-270). The tick and the
- * number are drawn here and say nothing: each step's name and state are in its text.
+ * row of every step at every width, centred across the top on a desktop (D-268, D-330). The tick and the number are
+ * drawn here and say nothing: each step's name and state are in its text.
  */
 :where(.cbuild-progress) {
 	padding-block: var(--cbuild-gap-small);
@@ -382,31 +430,73 @@
 	font-size: var(--cbuild-small);
 }
 
-/* A phone: the steps either side of the one shown. The others are out of the row, unseen and unread, but still drawn,
-   so every step keeps its count and shows its own number. */
+/*
+ * A phone: every step in one row that never scrolls (D-330). The step shown keeps its name; each other step is a
+ * round pill of its number, or its tick, 44 px across, its name the tooltip and still read. Six pills and the longest
+ * name are about 382 px in English and 404 px in French, so from 26rem the name sits in its pill ("1 Deck 2 3");
+ * narrower, the seven pills alone fill the row (308 px) and the name sits under the step shown. A theme's larger text
+ * or a longer translation wraps the row rather than past the edge.
+ */
 @container cbuild (max-width: 47.99rem) {
-	:where(.cbuild-progress__step) {
-		position: absolute;
-		visibility: hidden;
-	}
-
-	:where(
-		.cbuild-progress__step--current,
-		.cbuild-progress__step:has(+ .cbuild-progress__step--current),
-		.cbuild-progress__step--current + .cbuild-progress__step
-	) {
-		position: static;
-		visibility: visible;
-	}
-
-	/* Three steps to a row at a phone's width; a theme's larger text wraps them rather than past the edge. */
 	:where(.cbuild-progress__list) {
-		gap: 0.375rem;
+		justify-content: space-between;
+		gap: 0.125rem;
 		padding-inline: 0;
 	}
 
 	:where(.cbuild-progress__link, .cbuild-progress__label) {
+		justify-content: center;
+		min-inline-size: var(--cbuild-target);
+		padding-inline: 0;
+	}
+
+	:where(.cbuild-progress__step--current .cbuild-progress__label) {
 		padding-inline: 0.75em;
+	}
+
+	:where(.cbuild-progress__step:not(.cbuild-progress__step--current))
+		:where(.cbuild-progress__link, .cbuild-progress__label)
+		> [aria-hidden="true"] {
+		display: none;
+	}
+}
+
+/* Narrower than seven pills and a name: the step shown is a pill of its number too, its name under it, kept inside
+   the row at either end. */
+@container cbuild (max-width: 25.99rem) {
+	:where(.cbuild-progress__list) {
+		padding-block-end: 1.5em;
+	}
+
+	:where(.cbuild-progress__step--current) {
+		position: relative;
+	}
+
+	:where(.cbuild-progress__step--current .cbuild-progress__label) {
+		padding-inline: 0;
+	}
+
+	:where(.cbuild-progress__step--current .cbuild-progress__label)
+		> [aria-hidden="true"] {
+		position: absolute;
+		inset-block-start: 100%;
+		left: 50%;
+		padding-block-start: 0.125rem;
+		transform: translateX(-50%);
+		color: var(--cbuild-text);
+		-webkit-text-fill-color: currentcolor;
+	}
+
+	:where(.cbuild-progress__step--current:first-child .cbuild-progress__label)
+		> [aria-hidden="true"] {
+		inset-inline: 0 auto;
+		transform: none;
+	}
+
+	:where(.cbuild-progress__step--current:last-child .cbuild-progress__label)
+		> [aria-hidden="true"] {
+		inset-inline: auto 0;
+		transform: none;
 	}
 }
 
@@ -629,7 +719,6 @@
 	flex-wrap: wrap;
 	align-items: center;
 	gap: var(--cbuild-gap-small);
-	margin-block-start: var(--cbuild-gap-small);
 
 	:where(legend) {
 		inline-size: 100%;
@@ -742,8 +831,10 @@
 	}
 }
 
+/* As heavy as a plain button's reset and after it, so neither that reset nor a theme's `display` for a button shows
+   Filters over chips that are already open (#96). */
 @container cbuild (width >= 48rem) {
-	:where(.cbuild-chips__toggle) {
+	.cbuild.cbuild .cbuild-chips__toggle {
 		display: none;
 	}
 }
@@ -809,8 +900,109 @@
 	box-shadow: 0 0 0 4px var(--cbuild-focus-contrast);
 }
 
-/* The picked card's sizes (D-279): chips under the card, a sold-out size dimmed and not to be picked. */
-:where(.cbuild-sizes) {
+/* The brand chips in one row on a desktop (#98), a "priority+" row: the store measures which chips fit beside
+   "N more" and marks the rest past the row. A chip past the row, and the button with nothing to open, leave the flow
+   and the sight of every reader but keep their widths, so the store can measure them. Without the script nothing is
+   marked, and every chip shows. On a phone the chips wrap behind Filters as before (D-279). */
+:where(.cbuild-chips__options) {
+	position: relative;
+}
+
+.cbuild .cbuild-chips__more:not([hidden]) {
+	display: inline-flex;
+	align-items: center;
+	min-block-size: var(--cbuild-target);
+	margin: 0;
+	padding-block: 0;
+	padding-inline: 1em;
+	border: 1px solid var(--cbuild-line);
+	border-radius: calc(var(--cbuild-target) / 2);
+	background: transparent;
+	box-shadow: none;
+	color: var(--cbuild-accent);
+	font-size: inherit;
+	font-weight: 600;
+	line-height: 1.2;
+	white-space: nowrap;
+	cursor: pointer;
+}
+
+.cbuild .cbuild-chips__more:hover {
+	border-color: var(--cbuild-text);
+}
+
+.cbuild .cbuild-chips__more:focus-visible {
+	outline: 2px solid var(--cbuild-focus);
+	outline-offset: 2px;
+	box-shadow: 0 0 0 4px var(--cbuild-focus-contrast);
+}
+
+@container cbuild (width >= 48rem) {
+	.cbuild .cbuild-chips__chip--past,
+	.cbuild .cbuild-chips__more--idle {
+		position: absolute;
+		inset-block-start: 0;
+		inset-inline-start: 0;
+		visibility: hidden;
+	}
+}
+
+@media (scripting: enabled) {
+	/* Before the script folds the row, a page that will run it shows the row's first line alone, so the fold moves
+	   nothing below it (no layout shift). The button is still hidden then; once the store shows it, the row is its
+	   own height. Without the script, scripting is none and every chip shows. If the script never comes (a blocker,
+	   a policy, an error), the clip is lifted after 4 s, so no brand is cut off and no chip that takes focus is out
+	   of sight (M11's interim audit). */
+	@container cbuild (width >= 48rem) {
+		.cbuild:not([data-ready])
+			.cbuild-chips__options--row:not(
+				:has(> .cbuild-chips__more:not([hidden]))
+			) {
+			max-block-size: calc(
+				var(--cbuild-target) + 2px
+			); /* a chip, with its border */
+			overflow: clip;
+			animation: cbuild-unclip 0s 4s forwards;
+		}
+	}
+}
+
+/* The no-script submits (the search's Go, the chips' and the sort's Apply), which the store hides as it hydrates, are
+   out of the flow and unseen from the first paint on a page that will run the script, so hiding them moves nothing
+   (#107). If the script never comes, they come back after 4 s, as the brand row does, and the form still sends.
+   Without the script, scripting is none and they show. */
+@media (scripting: enabled) {
+	.cbuild:not([data-ready])
+		:is(.cbuild-search__go, .cbuild-chips__apply, .cbuild-sort__apply) {
+		position: absolute;
+		visibility: hidden;
+		animation: cbuild-submit-back 0s 4s forwards;
+	}
+}
+
+@keyframes cbuild-submit-back {
+	to {
+		position: static;
+		visibility: visible;
+	}
+}
+
+@keyframes cbuild-unclip {
+	to {
+		max-block-size: none;
+		overflow: visible;
+	}
+}
+
+@container cbuild (width < 48rem) {
+	.cbuild .cbuild-chips__more:not([hidden]) {
+		display: none;
+	}
+}
+
+/* The picked card's sizes (D-279): chips under the card, a sold-out size dimmed and not to be picked. The space above
+   them and above the filters' groups is at a fieldset's reset's weight, after it (#96). */
+.cbuild :where(.cbuild-filters__group, .cbuild-sizes) {
 	margin-block-start: var(--cbuild-gap-small);
 }
 
@@ -1033,6 +1225,78 @@
 	}
 }
 
+/*
+ * The deck step's compact cards (F14, #99): the deck small and upright at the start, its board's cut-out on the
+ * card's own ground, or its photo; then the brand, the name, the price and its change on one line, and the widths
+ * and the stock, about 134 px high. At most two columns, so six show at once on a desktop, and one in a panel
+ * narrower than two of them, a phone's. The picture's box is the column's width and 7rem tall, whatever the image
+ * (BuilderView's CARD_DECK), so nothing moves as it loads; the image is fitted into it. The words keep clear of the
+ * chosen card's tick, picked or not, so a pick moves nothing.
+ */
+:where(.cbuild-cards--compact) {
+	grid-template-columns: repeat(
+		auto-fill,
+		minmax(
+			min(100%, max(15rem, calc((100% - var(--cbuild-gap-small)) / 2))),
+			1fr
+		)
+	);
+}
+
+:where(.cbuild-cards--compact) :where(.cbuild-card__body) {
+	grid-template-columns: 3.5rem minmax(0, 1fr);
+	column-gap: var(--cbuild-gap-small);
+	align-content: center;
+	padding-inline-end: 1.75rem;
+}
+
+:where(.cbuild-cards--compact)
+	:where(.cbuild-card__body > :not(.cbuild-card__photo)) {
+	grid-column: 2;
+}
+
+:where(.cbuild-cards--compact) :where(.cbuild-card__photo) {
+	grid-row: 1 / span 4;
+	align-self: center;
+	inline-size: 100%;
+	block-size: 7rem;
+	aspect-ratio: auto;
+	margin-block-end: 0;
+}
+
+:where(.cbuild-cards--compact)
+	:where(.cbuild-card__body:not(:has(> .cbuild-card__photo:not([hidden])))) {
+	grid-template-columns: minmax(0, 1fr);
+}
+
+:where(.cbuild-cards--compact)
+	:where(
+		.cbuild-card__body:not(:has(> .cbuild-card__photo:not([hidden]))) > *
+	) {
+	grid-column: 1;
+}
+
+:where(.cbuild-cards--compact) :where(.cbuild-card__about) {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: baseline;
+	gap: 0.125rem var(--cbuild-gap-small);
+	margin-block-start: 0.125rem;
+}
+
+:where(.cbuild-cards--compact) :where(.cbuild-card__about > *) {
+	flex-basis: 100%;
+}
+
+:where(.cbuild-cards--compact)
+	:where(.cbuild-card__price, .cbuild-card__delta) {
+	flex-basis: auto;
+}
+
+:where(.cbuild-cards--compact) :where(.cbuild-card__about > :empty) {
+	display: none;
+}
+
 /* Chosen: the radio checked, as the shopper's own pick paints it before the server answers. */
 :where(
 	.cbuild-card--chosen,
@@ -1135,6 +1399,16 @@
 	block-size: var(--cbuild-layer-height);
 }
 
+/*
+ * The parts the motion module moves by `transform` never hold the page's scroll in place. Chrome's scroll anchoring
+ * otherwise takes the deck's layer, the first thing on the stage in view once the answer hides the empty note, and on
+ * the next layout scrolls the page by however far the deck's arrival has moved it: 5 px under a held press of Next
+ * while the chosen card settles (#80, D-185).
+ */
+:where(.cbuild-board__layer, .cbuild-picture__item) {
+	overflow-anchor: none;
+}
+
 :where(.cbuild-board__image) {
 	display: block;
 	inline-size: 100%;
@@ -1145,7 +1419,7 @@
 /*
  * The board's top (#46), the same board turned over about its length. Each layer is painted from its style, fitted
  * and centred in its box as the underside's images are: the deck maple inside its own layer image's outline, a mask;
- * the grip's image repeated across that outline, each the deck's length; and each wheel and bolt head its own image.
+ * the grip's sheet over that outline, cut by it; and each wheel and bolt head its own image.
  */
 :where(.cbuild-board--top .cbuild-board__layer) {
 	background: var(--cbuild-image) center / contain no-repeat;
@@ -1163,8 +1437,19 @@
 	background: #dcbf8f;
 }
 
+/* A 1-inch swatch from 1.0.x, repeated nose to tail across the deck. */
 :where(.cbuild-board--top .cbuild-board__layer--grip) {
 	background: var(--cbuild-image) 0 0 / auto 100% repeat-x;
+}
+
+/*
+ * A grip's whole sheet (F18, #103): once, centred, at the sheet's size against the deck's box, which the server gives
+ * as `--cbuild-grip-size`; the deck's outline cuts it, and where a deck is wider than the sheet its maple shows.
+ */
+:where(
+	.cbuild-board--top .cbuild-board__layer--grip[style*="--cbuild-grip-size"]
+) {
+	background: var(--cbuild-image) center / var(--cbuild-grip-size) no-repeat;
 }
 
 /* One side at a time, the picture's and the bar's the same. Not under :where(), so no theme's rule shows both. */
@@ -1207,17 +1492,23 @@
 
 /*
  * The picture on the stage: the heading at the top, the board filling the space under it, centred, and the button to
- * turn it over in the corner. On a phone or a tablet the board is turned a quarter turn, so it fills the stage's width
- * rather than its short height; the written description is the same (spec: Phone). A board is drawn left to right in
- * either direction (D-203), so the turn is too.
+ * turn it over in a row of its own at the foot, at the end, under the board and never over it (F17, #102). On a phone
+ * or a tablet the board is turned a quarter turn, so it fills the stage's width rather than its short height; the
+ * written description is the same (spec: Phone). A board is drawn left to right in either direction (D-203), so the
+ * turn is too.
  */
 :where(.cbuild__stage .cbuild-picture) {
 	position: relative;
-	display: grid;
-	grid-template-rows: auto auto minmax(0, 1fr) auto;
+	grid-template-rows: auto auto minmax(0, 1fr) auto auto;
 	align-content: start;
 	block-size: 100%;
 	min-block-size: 0;
+}
+
+/* The picture is a <figure>, and a theme's plain rule for one outranks a rule with no weight: Storefront's normalize
+   makes every figure a block, and the board then lay over the button in Firefox. One class, as the resets (D-321). */
+.cbuild :where(.cbuild__stage .cbuild-picture) {
+	display: grid;
 }
 
 :where(.cbuild__stage) :where(.cbuild-board:not(.cbuild-board--bar)) {
@@ -1236,21 +1527,47 @@
 }
 
 :where(.cbuild__stage .cbuild-picture__turn) {
-	position: absolute;
-	inset-block-end: var(--cbuild-gap-small);
-	inset-inline-end: 0;
-	z-index: 1;
+	grid-row: 5;
+	justify-self: end;
+	min-block-size: var(--cbuild-target);
 	margin: 0;
+	padding-block-end: var(--cbuild-gap-small);
+}
+
+/* A phone held sideways leaves the stage about 133 px: too short for the heading, the side line, the board and the
+   button stacked. The button goes up beside the heading and the side line, so the board keeps its own row. */
+@media (orientation: landscape) and (max-height: 30rem) {
+	:where(.cbuild__stage .cbuild-picture__turn) {
+		grid-row: 1 / span 2;
+		align-self: start;
+		padding-block-end: 0;
+	}
+}
+
+/* Its row is kept, unseen, while there is no top to turn to, so a board that gains one, or loses it to a deck's
+   photo, is neither moved nor resized. Not while the stage is bare: then it holds the outline alone (#82). */
+.cbuild .cbuild__stage:not(.cbuild__stage--bare) .cbuild-picture__turn[hidden] {
+	display: flex;
+	visibility: hidden;
 }
 
 /* Stacked, on a tablet as on a phone, the stage is a short strip on top: the board turned fills its width (D-280). */
 @container cbuild (max-width: 63.99rem) {
+	/* As long as the stage is wide, less its edges, at most 32rem, and never thicker on its side than its row is
+	   high, so it stays whole above the button on a phone held sideways too. */
 	:where(.cbuild__stage) :where(.cbuild-board:not(.cbuild-board--bar)) {
-		--cbuild-board-size: min(calc(100cqi - 3rem), 32rem);
+		--cbuild-board-size: min(
+			calc(100cqi - 3rem),
+			32rem,
+			calc(100% / (var(--cbuild-board-ratio, 1 / 4)))
+		);
 
 		/* Centred by its own size, the same in either direction, then turned: no edge for a mirrored stylesheet to swap.
 		   Upright it is longer than its row is high, where automatic margins stop centring it, so its top is worked
-		   out: the middle of its row, under the heading and the labels, less half its length. */
+		   out: the middle of its row, less half its length. Placed, the row is the board's alone, ended at the next
+		   line: `grid-row: 3` alone placed it against rows 3 to the foot, the button's with them, and where a theme's
+		   taller heading left its row short it lay over the button (the M11 walkthrough). */
+		grid-row: 3 / 4;
 		position: absolute;
 		inset-block-start: calc(50% - var(--cbuild-board-size) / 2);
 		inset-inline: 0;
@@ -1258,6 +1575,12 @@
 		margin-block: 0;
 		margin-inline: auto;
 		rotate: -90deg;
+	}
+
+	/* The labels of the parts with no layer image under the board, as on a desktop: the board, placed, takes no cell,
+	   and they had filled its row from the top. */
+	:where(.cbuild__stage .cbuild-picture__items) {
+		grid-row: 4;
 	}
 
 	:where(.cbuild__stage .cbuild-picture__empty) {
@@ -1284,6 +1607,70 @@
 	inline-size: 100%;
 	aspect-ratio: 1;
 	object-fit: contain;
+}
+
+/*
+ * A deck with no layer image (#82): its photo in the board's place, at the board's size, and the other parts'
+ * labelled photos in a row under it, as the review shows them. On a tablet or a phone the stage is a strip, and the
+ * deck's photo fills it alone; the caption, the parts list and the review name the rest.
+ */
+:where(.cbuild__stage .cbuild-picture--hero .cbuild-picture__items) {
+	grid-row: 3;
+	grid-template-rows: minmax(0, 1fr);
+	grid-auto-rows: auto;
+	min-block-size: 0;
+	margin-block: var(--cbuild-gap-small);
+}
+
+:where(.cbuild__stage .cbuild-picture--hero .cbuild-picture__item:first-child) {
+	grid-column: 1 / -1;
+	grid-template-rows: minmax(0, 1fr) auto;
+	justify-items: center;
+	min-block-size: 0;
+}
+
+:where(
+	.cbuild__stage
+		.cbuild-picture--hero
+		.cbuild-picture__item:first-child
+		.cbuild-picture__photo
+) {
+	inline-size: auto;
+	max-inline-size: 100%;
+	min-block-size: 0;
+	aspect-ratio: auto;
+	object-fit: contain;
+}
+
+/* The photo's height is its row's, whatever a theme's rule for every image says: WooCommerce's `.woocommerce img` and
+   a classic theme's `img` (height auto) outweighed it at no weight, and the photo ran past its place, under the deck's
+   caption and the other parts' tiles (the M11 walkthrough). Two classes, the least over `.woocommerce img`. */
+.cbuild.cbuild
+	:where(
+		.cbuild__stage
+			.cbuild-picture--hero
+			.cbuild-picture__item:first-child
+			.cbuild-picture__photo
+	) {
+	block-size: 100%;
+}
+
+@container cbuild (max-width: 63.99rem) {
+	:where(
+		.cbuild__stage
+			.cbuild-picture--hero
+			.cbuild-picture__item:not(:first-child)
+	) {
+		display: none;
+	}
+
+	/* Until there is a part to show, the stage scrolls with the page: the outline alone kept a third of a phone's
+	   screen from the step (#82). */
+	:where(.cbuild__stage--bare) {
+		position: static;
+		block-size: auto;
+		padding-block-end: var(--cbuild-gap-small);
+	}
 }
 
 :where(.cbuild-picture__description) {
@@ -1487,6 +1874,65 @@
 	}
 }
 
+/*
+ * A pick's picture on its way (D-308): once the shopper has waited 300 ms, the board dims and a line runs along its
+ * foot, four times at most (nothing loops; WCAG 2.2.2), the dim staying until the new board is drawn, as a wait of a second or more needs saying (NN/g's response limits); the old
+ * board stays whole meanwhile. With reduced motion, the dim alone.
+ */
+:where(.cbuild-picture--drawing) :where(.cbuild-board) {
+	opacity: 0.55;
+	transition: opacity var(--cbuild-duration, 0.2s) ease;
+}
+
+:where(.cbuild-picture--drawing) {
+	position: relative;
+	overflow: clip;
+}
+
+/* A line two fifths of the picture's width, moved by a transform, so it runs on the compositor (D-306). */
+:where(.cbuild-picture--drawing)::after {
+	position: absolute;
+	inset-block-end: 0;
+	inset-inline-start: 0;
+	inline-size: 40%;
+	block-size: 3px;
+	background: linear-gradient(
+		90deg,
+		transparent,
+		var(--cbuild-accent, currentcolor),
+		transparent
+	);
+	animation: cbuild-drawing 1.1s linear 4; /* nothing loops: four runs, 4.4 s, then the dim alone says it */
+	content: "";
+	transform: translateX(-100%);
+}
+
+@keyframes cbuild-drawing {
+	to {
+		transform: translateX(250%);
+	}
+}
+
+/* Where motion is calm, reduced or the kit's Motion subtle, the wait is said by the dim alone, a fade of 150 ms like
+   every moment there (D-256, D-308). */
+@media (prefers-reduced-motion: reduce) {
+	:where(.cbuild-picture--drawing)::after {
+		display: none;
+	}
+
+	:where(.cbuild-picture--drawing) :where(.cbuild-board) {
+		transition-duration: 150ms;
+	}
+}
+
+:where(.cbuild--subtle .cbuild-picture--drawing)::after {
+	display: none;
+}
+
+:where(.cbuild--subtle .cbuild-picture--drawing) :where(.cbuild-board) {
+	transition-duration: 150ms;
+}
+
 /* Waiting for the server: the shopper's own pick is painted, and the rest says it is on its way. */
 :where(.cbuild[aria-busy="true"])
 	:where(.cbuild-bar__amount, .cbuild-picture__description) {
@@ -1522,7 +1968,8 @@
 		forced-color-adjust: none;
 	}
 
-	:where(.cbuild-picture__turn .cbuild-button[aria-pressed="true"]) {
+	/* Over a plain button's reset, which sets its border at two classes' weight (#96). */
+	.cbuild.cbuild .cbuild-picture__turn .cbuild-button[aria-pressed="true"] {
 		border: 3px solid Highlight;
 	}
 }
@@ -1666,6 +2113,55 @@
 	text-decoration: none;
 }
 
+/*
+ * The step's Next until the step has a pick (#100): dimmed in the builder's muted words on its surface, not the
+ * accent, and still a button that takes focus and a press, which then says what is missing. The muted words are the
+ * step's help text's, AA on the bar's ground; the border is in them too, so the button's edge reads at 3:1. At two
+ * classes' weight, as a plain button's reset (D-321): Kadence's `button` and `button:focus` and Storefront's `button`
+ * and `button:hover` (an element and a pseudo-class) outweighed it at no weight or one class, and Next stayed lit.
+ */
+.cbuild.cbuild :where(.cbuild-bar__next[aria-disabled="true"]) {
+	border-color: var(--cbuild-muted);
+	background: var(--cbuild-surface);
+	color: var(--cbuild-muted);
+	cursor: not-allowed;
+
+	/* In forced colours, the system's colour for what is not available yet. */
+	@media (forced-colors: active) {
+		border-color: GrayText;
+		color: GrayText;
+	}
+}
+
+/*
+ * What a press of the dimmed Next says is missing, above the bar at Next's end: the bar keeps its height, so Next
+ * stays under the thumb, and the words cover none of the bar's own. Placed by the bar, not by Back and Next: on a
+ * phone in a theme's content width they take a row under the total, and the words above them lay over the estimate
+ * (the M11 walkthrough). Always in the page, so the live region is there before it speaks, and nothing to see while
+ * it says nothing. A tap goes through it to the card under it (W7): a pick is what it asks for, and clears it.
+ */
+:where(.cbuild-bar__missing) {
+	position: absolute;
+	inset-block-end: calc(100% + var(--cbuild-gap-small));
+	inset-inline-end: var(--cbuild-gap-small);
+	box-sizing: border-box;
+	inline-size: max-content;
+	max-inline-size: min(20rem, calc(100% - 2 * var(--cbuild-gap-small)));
+	margin: 0;
+	padding: 0.5rem 0.75rem;
+	border: 1px solid var(--cbuild-line);
+	border-radius: var(--cbuild-radius);
+	background: var(--cbuild-ground);
+	color: var(--cbuild-on-ground);
+	font-size: var(--cbuild-small);
+	pointer-events: none;
+}
+
+:where(.cbuild-bar__missing:empty) {
+	padding: 0;
+	border: 0;
+}
+
 /* The delivery line and notes, on a line of their own under the total and the buttons. */
 :where(.cbuild-bar__more-lines) {
 	order: 1;
@@ -1679,6 +2175,11 @@
 	:where(.cbuild-bar) {
 		margin-block-start: 0;
 		padding: var(--cbuild-gap-small) var(--cbuild-gap);
+	}
+
+	/* At Next's end, inside the bar's wider padding. */
+	:where(.cbuild-bar__missing) {
+		inset-inline-end: var(--cbuild-gap);
 	}
 }
 
@@ -1711,6 +2212,13 @@
 
 /* Without it, on a phone, room for the bar's tallest: the total over two lines, and Back and Next on a row below. */
 @media (max-width: 47.99rem) {
+	/* A phone's 44 px target for the two links in running text, by their box, not their type (#86). */
+	.cbuild :where(.cbuild__back, .cbuild-save__sign-in a) {
+		display: inline-flex;
+		align-items: center;
+		min-block-size: var(--cbuild-target);
+	}
+
 	:root:has(.cbuild .cbuild-bar:not([hidden])) {
 		// The bar, and any bar of the theme's own below it (D-163), on one line for Stylelint.
 		// prettier-ignore
@@ -1728,28 +2236,47 @@
 }
 
 /*
- * Motion (spec: Motion; D-161). Three movements, each 150 to 250 ms, easing out, moving `transform` and `opacity`
- * alone, none looping and none in the way of a tap: the chosen card settles, a part slides into the picture, and a
- * step crosses over to the next. Nothing moves where the shopper asks for reduced motion, or where the browser has no
- * view transitions (the store then shows the view at once).
+ * Motion (spec: Milestone 11, the motion; D-161, D-256, D-305). The board's parts, the total and Add to cart move
+ * through the store's motion module, with the Web Animations API; a new step crosses over by the browser's view
+ * transition, timed here. Each moves `transform` and `opacity` alone, and none waits on a tap. Where the shopper asks
+ * for reduced motion, or the kit's Motion is subtle, the store fades instead (`cbuild-calm` on the page's root for a
+ * step), in 150 ms, and nothing slides.
  *
  * The view transition's pseudo-elements hang off the page's root, not the builder's, so their timing reads
  * `--cbuild-duration` and `--cbuild-ease` with the same values as fallbacks: a theme that changes them sets them on
  * `:root` as well as on `.cbuild`.
  */
 @media (prefers-reduced-motion: no-preference) {
-	:where(.cbuild-card:has(> .cbuild-card__control:checked)) {
+	/* A card settles when the shopper picks it, never as a page or a step is drawn with it picked: the store marks the
+	   builder at a pick (M11 audit, finding 8). */
+	:where(.cbuild[data-ready][data-picked]:not(.cbuild--subtle))
+		:where(.cbuild-card:has(> .cbuild-card__control:checked)) {
 		animation: cbuild-settle var(--cbuild-duration) var(--cbuild-ease);
 	}
 
-	:where(.cbuild-picture__item, .cbuild-board__layer) {
+	/*
+	 * Every rule for a view transition holds only while the builder's own runs (`cbuild-crossing` on the page's root,
+	 * which the store sets for its life), so a transition of the theme's or another plugin's is left as it is.
+	 */
+	:root.cbuild-crossing:not(.cbuild-calm)
+		:where(.cbuild-picture__item, .cbuild-board__layer) {
 		view-transition-class: cbuild-part;
 		view-transition-name: match-element;
 	}
 
-	::view-transition-group(*),
-	::view-transition-old(*),
-	::view-transition-new(*) {
+	/* Next step: the panel's content slides 16 px the way the shopper is going, and the rail's marker follows. */
+	:root.cbuild-crossing:not(.cbuild-calm) :where(.cbuild__panel) {
+		view-transition-name: cbuild-panel;
+	}
+
+	:root.cbuild-crossing:not(.cbuild-calm)
+		:where(.cbuild-progress__step--current) {
+		view-transition-name: cbuild-marker;
+	}
+
+	:root.cbuild-crossing::view-transition-group(*),
+	:root.cbuild-crossing::view-transition-old(*),
+	:root.cbuild-crossing::view-transition-new(*) {
 		animation-duration: var(--cbuild-duration, 200ms);
 		animation-timing-function: var(
 			--cbuild-ease,
@@ -1757,27 +2284,74 @@
 		);
 	}
 
+	/*
+	 * The groups the builder names take their new size and place at once: where the old and new boxes differ, the
+	 * browser's own group animation moves `width` and `height`, which Chrome cannot composite (its trace's
+	 * kUnsupportedCSSProperty), and the spec holds every moment to transform and opacity (D-306). The panel's content
+	 * and the rail's marker slide in their own pseudo-elements instead, by transform alone.
+	 */
+	:root.cbuild-crossing::view-transition-group(cbuild-panel),
+	:root.cbuild-crossing::view-transition-group(cbuild-marker),
+	:root.cbuild-crossing::view-transition-group(*.cbuild-part) {
+		animation-name: none;
+	}
+
+	:root.cbuild-crossing::view-transition-new(cbuild-panel),
+	:root.cbuild-crossing::view-transition-new(cbuild-marker) {
+		animation-name: cbuild-panel-in;
+	}
+
+	:root.cbuild-crossing::view-transition-old(cbuild-panel),
+	:root.cbuild-crossing::view-transition-old(cbuild-marker) {
+		animation-name: cbuild-panel-out;
+	}
+
 	/* A part new to the picture slides up into its place. */
-	::view-transition-new(*.cbuild-part):only-child {
+	:root.cbuild-crossing::view-transition-new(*.cbuild-part):only-child {
 		animation-name: cbuild-arrive;
-	}
-
-	/* The page under a transition still takes taps. */
-	::view-transition {
-		pointer-events: none;
-	}
-
-	/* The board turns over about its length to the side now shown (#46): once a turn is seen, never on load. */
-	:where(.cbuild-picture--turning, .cbuild-bar__picture--turning)
-		> :where(.cbuild-board) {
-		animation: cbuild-turn var(--cbuild-duration) var(--cbuild-ease);
 	}
 }
 
-@keyframes cbuild-turn {
+/* Where motion is calm a step fades, whatever the media query: the store sets the class only then. */
+:root.cbuild-crossing.cbuild-calm::view-transition-group(*),
+:root.cbuild-crossing.cbuild-calm::view-transition-old(*),
+:root.cbuild-crossing.cbuild-calm::view-transition-new(*) {
+	animation-duration: 150ms;
+	animation-timing-function: linear;
+}
+
+/* The page under the builder's transition still takes taps. */
+:root.cbuild-crossing::view-transition {
+	pointer-events: none;
+}
+
+/* The grip lays down from the nose, at the top of the board. */
+:where(.cbuild-board--top .cbuild-board__layer--grip) {
+	transform-origin: 50% 0;
+}
+
+@keyframes cbuild-panel-in {
 	from {
-		transform: scaleX(0.1);
+		opacity: 0;
+		transform: translateX(var(--cbuild-panel-shift, 16px));
 	}
+}
+
+@keyframes cbuild-panel-out {
+	to {
+		opacity: 0;
+		transform: translateX(calc(-1 * var(--cbuild-panel-shift, 16px)));
+	}
+}
+
+/* Back, the other way; in a right-to-left page, the start edge is on the right. */
+:root.cbuild-back,
+:root[dir="rtl"]:not(.cbuild-back) {
+	--cbuild-panel-shift: -16px;
+}
+
+:root[dir="rtl"].cbuild-back {
+	--cbuild-panel-shift: 16px;
 }
 
 @keyframes cbuild-settle {
@@ -1822,5 +2396,14 @@
 	.cbuild.cbuild :focus-visible:not(.cbuild-card__control),
 	.cbuild.cbuild .cbuild-card:has(> .cbuild-card__control:focus-visible) {
 		outline-color: Highlight;
+	}
+}
+
+/* Without the script, a stage that scrolls with the page has nothing to keep focus clear of (#82). */
+@media (320px <= width < 64rem) {
+	:root:has(.cbuild .cbuild__stage--bare) {
+		scroll-padding-block-start: calc(
+			var(--cbuild-stage-size, 0px) + 0.5rem
+		);
 	}
 }

@@ -4,8 +4,14 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { setConfig, setElement, stores } from './support/interactivity';
-import { NAME, SETTLE, browser, reset } from '../../assets/src/builder/view';
-import { SLOW, WAIT } from '../../assets/src/builder/navigate';
+import {
+	INTENT,
+	NAME,
+	SETTLE,
+	browser,
+	reset,
+} from '../../assets/src/builder/view';
+import { HOLD, SLOW, WAIT } from '../../assets/src/builder/navigate';
 
 interface Actions {
 	submit: ( event: SubmitEvent ) => void;
@@ -20,6 +26,8 @@ interface Actions {
 	follow: ( event: MouseEvent ) => void;
 	back: () => void;
 	filters: () => void;
+	point: ( event: PointerEvent ) => void;
+	leave: () => void;
 }
 
 interface Defined {
@@ -34,6 +42,9 @@ interface Defined {
 		folded: boolean;
 		live: boolean;
 		limited: string;
+		drawing: boolean;
+		missing: string;
+		readonly dimmed: boolean;
 	};
 	actions: Actions;
 }
@@ -135,6 +146,7 @@ beforeEach( () => {
 	state.pending = false;
 	state.status = '';
 	state.added = false;
+	state.missing = '';
 	document.title = 'Build a complete - Shop';
 	fetched = [];
 	reply = () => answer( NEXT );
@@ -220,6 +232,7 @@ describe( 'the store', () => {
 			[ 'cbuild[step]', 'trucks' ],
 			[ 'page', '25' ],
 			[ 'locale', 'fr_CA' ],
+			[ '_fields', 'view' ],
 		] );
 		await settle();
 		expect( state.view ).toEqual( NEXT );
@@ -345,6 +358,7 @@ describe( 'the store', () => {
 			[ 'cbuild[step]', 'deck' ],
 			[ 'page', '25' ],
 			[ 'locale', 'fr_CA' ],
+			[ '_fields', 'view' ],
 		] );
 		await settle();
 		expect( replaced ).toHaveBeenCalledWith(
@@ -352,6 +366,234 @@ describe( 'the store', () => {
 			'',
 			window.location.origin + '/?next'
 		);
+	} );
+
+	// The slow deck swap (M11, D-308; NN/g's response limits, Baymard's loading feedback): the board's new image is
+	// fetched while the pointer rests on the deck's card, a pick by a press asks at once, the view is shown once the
+	// image is decoded, and the picture says it is being drawn once the shopper has waited SLOW for a pick.
+	describe( 'the deck swap', () => {
+		const PRELOAD = {
+			shown: true,
+			src: 'https://shop.example/12.png',
+			avif: 'https://shop.example/12-216x813.avif 216w',
+			webp: 'https://shop.example/12-216x813.webp 216w',
+			sizes: '(min-height: 960px) 153px, 15.95svh',
+		};
+		let made: Array< {
+			src: string;
+			srcset: string;
+			sizes: string;
+			decoded: () => void;
+		} >;
+
+		/**
+		 * The deck step's cards, the second with a board image, and the page's board drawing the first deck in a type.
+		 *
+		 * @param type The stage image's type, as the browser chose it.
+		 */
+		function deckCards( type: string ): HTMLElement {
+			const { radio } = form();
+			const card = document.createElement( 'li' );
+			card.append( radio.cloneNode() );
+			document.querySelector( 'form' )!.append( card );
+			const stage = document.createElement( 'div' );
+			stage.innerHTML = `<figure class="cbuild-picture"><div class="cbuild-board"><picture><img class="cbuild-board__image" src="https://shop.example/11.${ type }"></picture></div></figure>`;
+			document.body.append( stage );
+			wrapped();
+			Object.defineProperty(
+				document.querySelector( '.cbuild-board__image' )!,
+				'currentSrc',
+				{ value: `https://shop.example/11-216x813.${ type }` }
+			);
+			state.view = {
+				...START,
+				step: {
+					slot: 'deck',
+					options: [
+						{
+							id: 11,
+							value: '11',
+							preload: { ...PRELOAD, shown: false },
+						},
+						{ id: 12, value: '12', preload: PRELOAD },
+					],
+				},
+				picture: {
+					turnable: false,
+					turned: false,
+					board: {
+						layers: [
+							{
+								key: 'deck-1',
+								style: '',
+								src: 'https://shop.example/11.png',
+							},
+						],
+					},
+				},
+			};
+			return document.querySelectorAll< HTMLElement >( 'li' )[ 0 ]!;
+		}
+
+		beforeEach( () => {
+			made = [];
+			vi.stubGlobal(
+				'Image',
+				class {
+					src = '';
+					srcset = '';
+					sizes = '';
+					decoding = '';
+					constructor() {
+						const self = this;
+						made.push( {
+							get src() {
+								return self.src;
+							},
+							get srcset() {
+								return self.srcset;
+							},
+							get sizes() {
+								return self.sizes;
+							},
+							decoded: () => undefined,
+						} );
+					}
+					decode(): Promise< void > {
+						return new Promise( ( resolve ) => {
+							made.at( -1 )!.decoded = resolve;
+						} );
+					}
+				}
+			);
+		} );
+
+		it( "fetches a deck's board image once the pointer rests on its card, in the type the stage draws, and once only", () => {
+			setElement( deckCards( 'avif' ) );
+			actions.point( { type: 'pointerenter' } as PointerEvent );
+			vi.advanceTimersByTime( INTENT - 1 );
+			expect( made, 'a pointer passing over fetches nothing' ).toEqual(
+				[]
+			);
+			actions.leave();
+			vi.advanceTimersByTime( INTENT );
+			expect( made ).toEqual( [] );
+
+			actions.point( { type: 'pointerenter' } as PointerEvent );
+			vi.advanceTimersByTime( INTENT );
+			expect(
+				made.map( ( image ) => [
+					image.srcset,
+					image.sizes,
+					image.src,
+				] )
+			).toEqual( [ [ PRELOAD.avif, PRELOAD.sizes, PRELOAD.src ] ] );
+			actions.point( { type: 'pointerdown' } as PointerEvent );
+			expect( made, 'fetched once' ).toHaveLength( 1 );
+		} );
+
+		it( 'fetches WebP where the stage draws WebP, and nothing for a deck with no board image', () => {
+			setElement( deckCards( 'webp' ) );
+			actions.point( { type: 'pointerdown' } as PointerEvent );
+			expect(
+				made.map( ( image ) => image.srcset ),
+				'a press fetches at once'
+			).toEqual( [ PRELOAD.webp ] );
+
+			state.view = {
+				...state.view,
+				step: {
+					slot: 'deck',
+					options: [
+						{
+							id: 12,
+							value: '12',
+							preload: { ...PRELOAD, shown: false },
+						},
+					],
+				},
+			};
+			reset();
+			made = [];
+			actions.point( { type: 'pointerdown' } as PointerEvent );
+			expect( made ).toEqual( [] );
+		} );
+
+		it( 'asks at once for a pick made by a press, and waits for one made by the arrows', () => {
+			const card = deckCards( 'webp' );
+			setElement( card );
+			const radio = card.querySelector( 'input' )!;
+			actions.point( { type: 'pointerdown' } as PointerEvent );
+			actions.pick( { target: radio } as unknown as Event );
+			expect( fetched, 'no wait' ).toHaveLength( 1 );
+
+			vi.advanceTimersByTime( 2000 );
+			actions.pick( { target: radio } as unknown as Event );
+			expect( fetched, 'the arrows still wait' ).toHaveLength( 1 );
+			vi.advanceTimersByTime( WAIT );
+			expect( fetched ).toHaveLength( 2 );
+		} );
+
+		it( "shows a new deck's view once its board image is decoded, and says the picture is being drawn meanwhile", async () => {
+			const card = deckCards( 'webp' );
+			setElement( card );
+			const radio = card.querySelector( 'input' )!;
+			reply = () =>
+				answer( {
+					...START,
+					url: window.location.origin + '/?deck=12',
+					picture: {
+						turnable: false,
+						turned: false,
+						board: {
+							layers: [
+								{
+									key: 'deck-1',
+									style: '',
+									src: PRELOAD.src,
+									sizes: PRELOAD.sizes,
+									sources: [
+										{
+											type: 'image/avif',
+											srcset: PRELOAD.avif,
+										},
+										{
+											type: 'image/webp',
+											srcset: PRELOAD.webp,
+										},
+									],
+								},
+							],
+						},
+					},
+				} );
+			actions.point( { type: 'pointerdown' } as PointerEvent );
+			actions.pick( { target: radio } as unknown as Event );
+			await settle();
+			expect( state.view.url, 'held for the image' ).toBe( START.url );
+			vi.advanceTimersByTime( SLOW );
+			expect( state.drawing ).toBe( true );
+			expect( made, 'the image the press fetched' ).toHaveLength( 1 );
+			made[ 0 ]!.decoded();
+			await settle();
+			expect( state.view.url ).toBe(
+				window.location.origin + '/?deck=12'
+			);
+			expect( state.drawing ).toBe( false );
+			expect( HOLD ).toBeGreaterThan( SLOW );
+		} );
+
+		it( 'never says the picture is drawn for a wait that is no pick', async () => {
+			link( '/?page_id=25&cbuild%5Bstep%5D=trucks' );
+			reply = () => new Promise< Response >( () => undefined );
+			actions.follow(
+				new MouseEvent( 'click', { cancelable: true, button: 0 } )
+			);
+			vi.advanceTimersByTime( SLOW );
+			await settle();
+			expect( state.pending ).toBe( true );
+			expect( state.drawing ).toBe( false );
+		} );
 	} );
 
 	// #47: the card binds its radio's checked to the store, which said unchecked until the answer, so a re-render of the
@@ -495,6 +737,185 @@ describe( 'the store', () => {
 		expect( state.pending ).toBe( false );
 	} );
 
+	/**
+	 * The deck step with nothing picked, as the server draws it: the footer's Next not ready, and what it would say.
+	 */
+	const EMPTY = {
+		...START,
+		step: {
+			slot: 'deck',
+			options: [ { value: '11', checked: false } ],
+		},
+		bar: {
+			next: { ready: false, missing: 'Choose your deck first.' },
+		},
+	};
+
+	/**
+	 * The step's form with the footer's Next as the bar draws it, aria-disabled bound once the script runs.
+	 *
+	 * @param dimmed What the bar's Next says it is: dimmed or not.
+	 */
+	function dimmedForm( dimmed: boolean ): ReturnType< typeof form > {
+		const made = form();
+		made.next.setAttribute( 'aria-disabled', String( dimmed ) );
+		made.radio.checked = false;
+		setElement( made.form );
+		return made;
+	}
+
+	// #100, F15: Next is dimmed until the step has a pick, and only once the script runs: without it the form is
+	// sent and the server answers as before, so nothing is dimmed that would still work.
+	it( "dims the footer's Next until the step has a pick, only once the script runs", () => {
+		state.view = EMPTY;
+		state.live = false;
+		expect( state.dimmed, 'without the script' ).toBe( false );
+		state.live = true;
+		expect( state.dimmed ).toBe( true );
+		state.view = {
+			...EMPTY,
+			bar: { next: { ready: true, missing: '' } },
+		};
+		expect( state.dimmed, 'the step has a pick' ).toBe( false );
+		state.view = START;
+		expect( state.dimmed, 'a view with no footer' ).toBe( false );
+	} );
+
+	it( 'says what the step needs beside a dimmed Next when it is pressed, and sends nothing', async () => {
+		state.view = EMPTY;
+		state.live = true;
+		const { next } = dimmedForm( true );
+		const sent = vi
+			.spyOn( browser, 'submit' )
+			.mockImplementation( () => undefined );
+		const event = new SubmitEvent( 'submit', {
+			submitter: next,
+			cancelable: true,
+		} );
+		actions.submit( event );
+		expect( event.defaultPrevented ).toBe( true );
+		expect( state.missing ).toBe( 'Choose your deck first.' );
+		// Said once, in the builder's one status region: the words beside Next are its description, not a second region.
+		expect( state.status ).toBe( 'Choose your deck first.' );
+		vi.advanceTimersByTime( SLOW );
+		await settle();
+		expect( fetched, 'no error summary asked for' ).toHaveLength( 0 );
+		expect( sent ).not.toHaveBeenCalled();
+		expect( state.view ).toBe( EMPTY );
+	} );
+
+	// A polite live region says nothing when its text is set to what it already holds: a second press on the dimmed
+	// Next empties the region, and says the words again on the next frame (M11 audit, finding 6).
+	it( 'says what the step needs again when the dimmed Next is pressed a second time', () => {
+		state.view = EMPTY;
+		state.live = true;
+		const { next } = dimmedForm( true );
+		const press = () =>
+			actions.submit(
+				new SubmitEvent( 'submit', {
+					submitter: next,
+					cancelable: true,
+				} )
+			);
+		press();
+		expect( state.status ).toBe( 'Choose your deck first.' );
+		press();
+		expect( state.status, 'emptied, so the region hears a change' ).toBe(
+			''
+		);
+		vi.advanceTimersToNextFrame();
+		expect( state.status ).toBe( 'Choose your deck first.' );
+		expect( state.missing ).toBe( 'Choose your deck first.' );
+	} );
+
+	it( 'leaves the status alone when a view came before the frame after a second press', () => {
+		state.view = EMPTY;
+		state.live = true;
+		const { next } = dimmedForm( true );
+		const press = () =>
+			actions.submit(
+				new SubmitEvent( 'submit', {
+					submitter: next,
+					cancelable: true,
+				} )
+			);
+		press();
+		press();
+		// Something else spoke first, such as a view's answer: the frame does not say the old words over it.
+		state.status = 'A deck. Total: $70.00.';
+		vi.advanceTimersToNextFrame();
+		expect( state.status ).toBe( 'A deck. Total: $70.00.' );
+	} );
+
+	it( 'lights Next as soon as the shopper picks, before the route answers, and forgets what it said', async () => {
+		state.view = structuredClone( EMPTY );
+		state.live = true;
+		const { next, radio } = dimmedForm( true );
+		actions.submit(
+			new SubmitEvent( 'submit', { submitter: next, cancelable: true } )
+		);
+		expect( state.missing ).not.toBe( '' );
+		radio.checked = true;
+		actions.pick( { target: radio } as unknown as Event );
+		expect( state.missing ).toBe( '' );
+		expect( state.dimmed, 'lit while the route is asked' ).toBe( false );
+		// Pressed before the pick's answer, Next sends the pick.
+		const event = new SubmitEvent( 'submit', {
+			submitter: next,
+			cancelable: true,
+		} );
+		actions.submit( event );
+		expect( event.defaultPrevented ).toBe( true );
+		expect( state.missing ).toBe( '' );
+		vi.advanceTimersByTime( WAIT );
+		await settle();
+		expect(
+			fetched.some(
+				( url ) => url.searchParams.get( 'cbuild[step]' ) === 'trucks'
+			)
+		).toBe( true );
+	} );
+
+	it( 'forgets what it said beside Next once a view comes', async () => {
+		state.view = EMPTY;
+		state.live = true;
+		const { next } = dimmedForm( true );
+		actions.submit(
+			new SubmitEvent( 'submit', { submitter: next, cancelable: true } )
+		);
+		expect( state.missing ).not.toBe( '' );
+		actions.back();
+		await settle();
+		expect( state.view ).toEqual( NEXT );
+		expect( state.missing ).toBe( '' );
+	} );
+
+	it( 'sends a Next the bar says is lit, and any other button of the form, as before', async () => {
+		state.view = { ...EMPTY, bar: { next: { ready: true, missing: '' } } };
+		state.live = true;
+		const { next } = dimmedForm( false );
+		actions.submit(
+			new SubmitEvent( 'submit', { submitter: next, cancelable: true } )
+		);
+		expect( state.missing ).toBe( '' );
+		vi.advanceTimersByTime( SLOW );
+		expect( fetched ).toHaveLength( 1 );
+	} );
+
+	it( 'sends any other button of the form while Next is dimmed, as a width is pressed before a pick', () => {
+		state.view = EMPTY;
+		state.live = true;
+		const { next } = dimmedForm( true );
+		next.removeAttribute( 'aria-disabled' );
+		next.value = 'deck';
+		actions.submit(
+			new SubmitEvent( 'submit', { submitter: next, cancelable: true } )
+		);
+		expect( state.missing ).toBe( '' );
+		vi.advanceTimersByTime( SLOW );
+		expect( fetched ).toHaveLength( 1 );
+	} );
+
 	it.each( [
 		[
 			'a text field',
@@ -549,6 +970,7 @@ describe( 'the store', () => {
 			[ 'cbuild[step]', 'deck' ],
 			[ 'page', '25' ],
 			[ 'locale', 'fr_CA' ],
+			[ '_fields', 'view' ],
 		] );
 		await settle();
 		expect( pushed ).toHaveBeenCalledOnce();
@@ -770,6 +1192,36 @@ describe( 'the store', () => {
 		expect( replaced ).toHaveBeenCalledWith( null, '', panel.url );
 	} );
 
+	// "Never on load": a card settles at a pick alone, not when a page or a step is drawn with one picked (M11 audit,
+	// finding 8). The stylesheet plays the settle only under this mark.
+	it( 'marks the builder at a pick, so its card settles, until a new step is shown', async () => {
+		const { radio } = form();
+		const div = wrapped();
+		setElement( div );
+		(
+			defined.definition as { callbacks: { init: () => void } }
+		 ).callbacks.init();
+		expect( div.hasAttribute( 'data-picked' ), 'nothing picked yet' ).toBe(
+			false
+		);
+		reply = () => answer( { ...START, status: 'A deck. Total: $70.00.' } );
+		actions.pick( { target: radio } as unknown as Event );
+		// A mark with no value, as `data-ready` is.
+		expect( div.getAttribute( 'data-picked' ) ).toBe( '' );
+		vi.advanceTimersByTime( WAIT );
+		await settle();
+		expect( state.status ).toBe( 'A deck. Total: $70.00.' );
+		expect(
+			div.hasAttribute( 'data-picked' ),
+			'the pick’s own answer keeps it'
+		).toBe( true );
+		reply = () => answer( NEXT );
+		actions.back();
+		await settle();
+		expect( state.view ).toEqual( NEXT );
+		expect( div.hasAttribute( 'data-picked' ), 'a new step' ).toBe( false );
+	} );
+
 	it( 'says the build and its total after a pick, and leaves focus and the title alone', async () => {
 		const { radio } = form();
 		document.body.insertAdjacentHTML(
@@ -855,7 +1307,7 @@ describe( 'the store', () => {
 				step: {
 					slot: 'deck',
 					options: [ {}, {}, {}, {} ],
-					more: { added: '2 more parts shown, 4 of 4.' },
+					more: { added: '2 more shown, 4 of 4.' },
 				},
 				status: 'A deck. Total: $70.00.',
 			} );
@@ -871,7 +1323,7 @@ describe( 'the store', () => {
 		);
 		// Spec (configurator): "Show 30 more" says how many were added. The card is read with it; the total has not
 		// changed, so it is not said.
-		expect( state.status ).toBe( '2 more parts shown, 4 of 4.' );
+		expect( state.status ).toBe( '2 more shown, 4 of 4.' );
 	} );
 
 	/**
@@ -956,7 +1408,7 @@ describe( 'the store', () => {
 				step: {
 					slot: 'deck',
 					options: [ {}, {}, {}, {} ],
-					more: { added: '2 more parts shown, 4 of 4.' },
+					more: { added: '2 more shown, 4 of 4.' },
 				},
 			} );
 		builder();
@@ -975,7 +1427,7 @@ describe( 'the store', () => {
 		state.view = { ...START, step: { slot: 'deck', options: [ {}, {} ] } };
 		await move();
 		expect( () => vi.advanceTimersToNextFrame() ).not.toThrow();
-		expect( state.status ).toBe( '2 more parts shown, 4 of 4.' );
+		expect( state.status ).toBe( '2 more shown, 4 of 4.' );
 	} );
 
 	// D-152: the change panel is a step of its own, but going back to it, as to any address, makes no entry.
@@ -1688,6 +2140,7 @@ describe( 'narrowing the step', () => {
 				[ 'cbuild[step]', 'deck' ],
 				[ 'page', '25' ],
 				[ 'locale', 'fr_CA' ],
+				[ '_fields', 'view' ],
 			] );
 		}
 		expect( replaced ).toHaveBeenCalledWith(
@@ -1746,6 +2199,7 @@ describe( 'narrowing the step', () => {
 			[ 'cbuild[step]', 'deck' ],
 			[ 'page', '25' ],
 			[ 'locale', 'fr_CA' ],
+			[ '_fields', 'view' ],
 		] );
 		await settle();
 		expect( state.view ).toEqual( NEXT );
@@ -1902,6 +2356,30 @@ describe( 'measuring the bar and the stage', () => {
 		);
 		page.removeProperty( '--cbuild-bar-size' );
 		page.removeProperty( '--cbuild-stage-size' );
+	} );
+
+	it( 'measures the bar again when what the dimmed Next says over it changes size', () => {
+		const root = builder();
+		root.querySelector( '.cbuild-bar' )!.innerHTML =
+			'<div class="cbuild-bar__actions"><p class="cbuild-bar__missing"></p></div>';
+		const watched: string[] = [];
+		vi.stubGlobal(
+			'ResizeObserver',
+			class {
+				observe( element: Element ): void {
+					watched.push( element.className );
+				}
+			}
+		);
+		(
+			defined.definition as { callbacks: { init: () => void } }
+		 ).callbacks.init();
+		expect( watched ).toEqual( [
+			'cbuild-bar',
+			'cbuild-bar__missing',
+			'cbuild__stage',
+		] );
+		document.documentElement.style.removeProperty( '--cbuild-stage-size' );
 	} );
 
 	it( 'measures once, and watches nothing, where the browser has no resize observer', () => {
@@ -2086,11 +2564,49 @@ describe( 'motion', () => {
 		expect( transitions ).toHaveLength( 1 );
 	} );
 
-	it( 'shows the next view at once under reduced motion', async () => {
+	// Milestone 11 (D-256): reduced motion crosses a step over with a fade of 150 ms, not at once; the class on the
+	// page's root gives the stylesheet the fade, and the panel does not slide.
+	it( 'fades the next view in under reduced motion', async () => {
 		const transitions = motion( true, true );
 		await step();
-		expect( transitions ).toHaveLength( 0 );
+		expect( transitions ).toHaveLength( 1 );
+		expect(
+			document.documentElement.classList.contains( 'cbuild-calm' )
+		).toBe( true );
 		expect( state.view ).toEqual( NEXT );
+	} );
+
+	it( 'crosses a step over going on, and back to an earlier step the other way', async () => {
+		motion( false, true );
+		state.view = {
+			...START,
+			progress: [ { current: true }, { current: false } ],
+		};
+		const { form: sheet, next } = form();
+		setElement( sheet );
+		reply = () =>
+			answer( {
+				...NEXT,
+				progress: [ { current: false }, { current: true } ],
+			} );
+		actions.submit(
+			new SubmitEvent( 'submit', { submitter: next, cancelable: true } )
+		);
+		await settle();
+		const page = document.documentElement;
+		expect( page.classList.contains( 'cbuild-back' ) ).toBe( false );
+		expect( page.classList.contains( 'cbuild-calm' ) ).toBe( false );
+		setElement( sheet );
+		reply = () =>
+			answer( {
+				...START,
+				progress: [ { current: true }, { current: false } ],
+			} );
+		actions.submit(
+			new SubmitEvent( 'submit', { submitter: next, cancelable: true } )
+		);
+		await settle();
+		expect( page.classList.contains( 'cbuild-back' ) ).toBe( true );
 	} );
 
 	it( 'shows the next view at once where the browser has no view transitions', async () => {

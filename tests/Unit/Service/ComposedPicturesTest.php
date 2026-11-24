@@ -20,7 +20,9 @@ use CreativeBranding\SkateboardBuilder\Port\PictureFiles;
 use CreativeBranding\SkateboardBuilder\Support\Options;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Domain\Shop;
 use CreativeBranding\SkateboardBuilder\Service\Health;
+use CreativeBranding\SkateboardBuilder\Port\ComposedLayers;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\FakeClock;
+use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\FakeComposedLayers;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\FakeLogger;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\FakeQueue;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\InMemoryKits;
@@ -60,7 +62,16 @@ final class ComposedPicturesTest extends TestCase {
 
 	private ComposedPictures $pictures;
 
+	/**
+	 * The constructor's arguments as 1.0.0 had them.
+	 *
+	 * @var array{0: InMemoryKits, 1: BuildState, 2: LayerArtwork, 3: InMemoryPictureFiles, 4: FakeQueue, 5: FakeClock, 6: FakeLogger}
+	 */
+	private array $built;
+
 	private FakeLogger $logger;
+
+	private FakeComposedLayers $answers;
 
 	protected function setUp(): void {
 		$kits       = new InMemoryKits();
@@ -75,15 +86,17 @@ final class ComposedPicturesTest extends TestCase {
 		);
 		$this->files               = new InMemoryPictureFiles();
 		$this->logger              = new FakeLogger();
-		$this->pictures            = new ComposedPictures(
+		$this->answers             = new FakeComposedLayers();
+		$this->built               = array(
 			$kits,
 			new BuildState( $kits, new InMemoryShopSettings(), new FakeLogger() ),
 			new LayerArtwork( $this->layers, new InMemoryLayerRenditions() ),
 			$this->files,
 			$this->queue,
 			new FakeClock( self::NOW ),
-			$this->logger
+			$this->logger,
 		);
+		$this->pictures            = ( new ComposedPictures( ...$this->built ) )->withLayers( $this->answers );
 	}
 
 	public function test_a_build_is_asked_for_once_with_its_ids_and_nothing_while_the_queue_is_full(): void {
@@ -129,6 +142,36 @@ final class ComposedPicturesTest extends TestCase {
 		$names = array_keys( $this->files->drawn );
 		self::assertSame( 3, $this->pictures->compose( self::KIT, self::STREET ) );
 		self::assertSame( $names, array_keys( $this->files->drawn ), 'the same build is the same three names' );
+	}
+
+	// The auditor's 1.1.0 minor 7: a cart's line asks on every view until its picture is made. wanted() reads the build's
+	// parts once a call, and asks the queue once a picture for the life of the service, a request.
+	public function test_a_picture_wanted_is_read_once_a_call_and_asked_for_once_a_request(): void {
+		$readings = $this->kits->readings;
+		self::assertNull( $this->pictures->wanted( self::KIT, self::STREET, ComposedPictures::CART ) );
+		self::assertSame( $readings + 1, $this->kits->readings, 'one read of the parts' );
+		self::assertSame( array( array( Options::JOB_COMPOSE_PICTURE, array( 'kit' => self::KIT, 'picks' => self::STREET ) ) ), $this->queue->distinct, 'asked for, as a page asks' );
+
+		$this->queue->distinct = array();
+		self::assertNull( $this->pictures->wanted( self::KIT, self::STREET, ComposedPictures::CART ) );
+		self::assertSame( array(), $this->queue->distinct, 'not asked again' );
+
+		$this->answers->answers = array( 101 => array( ComposedPictures::CART => ComposedLayers::BLURRED ) );
+		self::assertNull( $this->pictures->wanted( self::KIT, self::STREET, ComposedPictures::CART ) );
+		self::assertCount( 1, $this->queue->distinct, 'a picture of another name is asked for' );
+		$this->answers->answers = array();
+
+		$this->pictures->compose( self::KIT, self::STREET );
+		$url = $this->pictures->wanted( self::KIT, self::STREET, ComposedPictures::CART );
+		self::assertSame( $this->pictures->url( self::KIT, self::STREET, ComposedPictures::CART ), $url );
+		self::assertNotNull( $url );
+		self::assertSame( array( basename( $url ) => self::NOW ), array_intersect_key( $this->files->used, array( basename( $url ) => true ) ), 'marked as shown' );
+
+		self::assertNull( $this->pictures->wanted( self::KIT, array( SlotKey::DECK => 999 ), ComposedPictures::CART ), 'a part gone' );
+		$this->files->library  = null;
+		$this->queue->distinct = array();
+		self::assertNull( $this->pictures->wanted( self::KIT, array( SlotKey::DECK => 101 ), ComposedPictures::CART ) );
+		self::assertSame( array(), $this->queue->distinct, 'a host that can\'t draw it asks nothing' );
 	}
 
 	// D-252: a rider build's tile shows the build's composed picture, asked for as a page asks until it is made.
@@ -296,5 +339,92 @@ final class ComposedPicturesTest extends TestCase {
 		$this->files->drawn        = array();
 		$this->pictures->offered( $review );
 		self::assertSame( array(), $this->queue->distinct, 'a build with nothing to draw asks nothing' );
+	}
+
+	// Cowork's review of 1.0.0, F19 (#105; D-309): another plugin answers for each part's layer in each use's picture.
+	// Mature Content blurs a flagged deck on the share card alone and leaves the cart and the emails as they are.
+	public function test_each_parts_layer_is_drawn_as_the_filter_answers_for_each_use(): void {
+		$this->answers->answers = array(
+			101 => array(
+				ComposedPictures::SHARE => ComposedLayers::BLURRED,
+				ComposedPictures::EMAIL => ComposedLayers::LEFT_OUT,
+			),
+		);
+		self::assertSame( 3, $this->pictures->compose( self::KIT, self::STREET ) );
+		$drawn = array();
+		foreach ( $this->files->drawn as $composition ) {
+			$drawn[ $composition->canvas->width ] = array_map( static fn( $placement ): array => array( $placement->attachment, $placement->blurred ), $composition->placements );
+		}
+		self::assertSame( array( array( 10, false ), array( 30, false ), array( 30, false ), array( 30, false ), array( 30, false ) ), $drawn[480], 'the cart\'s: as it is' );
+		self::assertSame( array( array( 10, true ), array( 30, false ), array( 30, false ), array( 30, false ), array( 30, false ) ), $drawn[1200], 'the share card\'s: the deck blurred' );
+		self::assertSame( array( array( 30, false ), array( 30, false ), array( 30, false ), array( 30, false ) ), $drawn[600], 'the emails\': the deck left out' );
+		self::assertContains( array( 101, SlotKey::DECK, self::KIT, ComposedPictures::SHARE ), $this->answers->asked, 'asked with the part, its slot, the kit and the use' );
+		self::assertContains( array( 301, SlotKey::WHEELS, self::KIT, ComposedPictures::CART ), $this->answers->asked );
+		foreach ( array_keys( ComposedPictures::CANVASES ) as $use ) {
+			self::assertNotNull( $this->pictures->url( self::KIT, self::STREET, $use ), 'found by the name it was drawn with: ' . $use );
+		}
+		self::assertTrue( $this->pictures->shown( self::KIT, SlotKey::DECK, 101, ComposedPictures::CART ) );
+		self::assertFalse( $this->pictures->shown( self::KIT, SlotKey::DECK, 101, ComposedPictures::SHARE ), 'the deck\'s own photo is no stand-in for a share card that blurs it (#106)' );
+		self::assertFalse( $this->pictures->shown( self::KIT, SlotKey::DECK, 101, ComposedPictures::EMAIL ) );
+	}
+
+	public function test_a_flag_set_after_the_pictures_were_drawn_gives_new_pictures_and_a_flag_lifted_finds_the_old(): void {
+		$this->pictures->compose( self::KIT, self::STREET );
+		$sharp = $this->pictures->url( self::KIT, self::STREET, ComposedPictures::SHARE );
+		self::assertNotNull( $sharp );
+
+		$this->answers->answers = array( 101 => array( ComposedPictures::SHARE => ComposedLayers::BLURRED ) );
+		self::assertNull( $this->pictures->url( self::KIT, self::STREET, ComposedPictures::SHARE ), 'the sharp picture is never shown once the deck is flagged' );
+		self::assertNotNull( $this->pictures->url( self::KIT, self::STREET, ComposedPictures::CART ), 'the cart\'s, which the filter leaves, is kept' );
+		self::assertTrue( $this->pictures->drawable( self::KIT, self::STREET, ComposedPictures::SHARE ), 'and a new one is there to draw' );
+		$this->pictures->compose( self::KIT, self::STREET );
+		$blurred = $this->pictures->url( self::KIT, self::STREET, ComposedPictures::SHARE );
+		self::assertNotNull( $blurred );
+		self::assertNotSame( $sharp, $blurred );
+
+		$this->answers->answers = array();
+		self::assertSame( $sharp, $this->pictures->url( self::KIT, self::STREET, ComposedPictures::SHARE ), 'the flag lifted, the sharp one is found again' );
+	}
+
+	// The auditor's 1.1.0 minor 5: the service alone reads the filter's answer, so an answer it doesn't know, whatever
+	// the port hands it, is drawn as it is, under the name the pictures as they are have.
+	public function test_an_answer_that_is_none_of_the_three_draws_the_layer_as_it_is(): void {
+		$this->answers->answers = array( 101 => array_fill_keys( array_keys( ComposedPictures::CANVASES ), 'junk' ) );
+		self::assertSame( 3, $this->pictures->compose( self::KIT, self::STREET ) );
+		self::assertCount( 3, $this->files->drawn );
+		foreach ( $this->files->drawn as $composition ) {
+			self::assertSame( array( 10, false ), array( $composition->placements[0]->attachment, $composition->placements[0]->blurred ), 'the deck drawn sharp' );
+		}
+		foreach ( array_keys( ComposedPictures::CANVASES ) as $use ) {
+			self::assertTrue( $this->pictures->shown( self::KIT, SlotKey::DECK, 101, $use ), $use );
+		}
+		$junk = $this->pictures->url( self::KIT, self::STREET, ComposedPictures::SHARE );
+		self::assertNotNull( $junk );
+		$this->answers->answers = array();
+		self::assertSame( $junk, $this->pictures->url( self::KIT, self::STREET, ComposedPictures::SHARE ), 'the name the pictures as they are have' );
+	}
+
+	// 1.0.0's container, still running in the request that replaces the plugin's files, builds this class from 1.1.0's
+	// file with 1.0.0's constructor, which has no `ComposedLayers` (CI's `npm run upgrade`: "is not instantiable and has
+	// no binding"). A copy built so draws every layer as it is and asks nothing, as 1.0.0 did (D-208, D-309).
+	public function test_a_copy_built_with_the_constructor_of_1_0_0_draws_every_layer_as_it_is(): void {
+		$this->answers->answers = array( 101 => array_fill_keys( array_keys( ComposedPictures::CANVASES ), ComposedLayers::BLURRED ) );
+		$before                 = new ComposedPictures( ...$this->built );
+		self::assertNotSame( $before, $before->withLayers( $this->answers ), 'a copy, the one built before untouched' );
+		self::assertSame( 3, $before->compose( self::KIT, self::STREET ) );
+		foreach ( $this->files->drawn as $composition ) {
+			self::assertSame( array( 10, false ), array( $composition->placements[0]->attachment, $composition->placements[0]->blurred ), 'the deck drawn sharp' );
+		}
+		self::assertSame( array(), $this->answers->asked, 'no other plugin is asked' );
+		self::assertTrue( $before->shown( self::KIT, SlotKey::DECK, 101, ComposedPictures::SHARE ) );
+	}
+
+	public function test_a_build_whose_every_layer_is_left_out_has_no_picture_to_draw(): void {
+		$this->answers->answers = array(
+			101 => array( ComposedPictures::CART => ComposedLayers::LEFT_OUT ),
+			301 => array( ComposedPictures::CART => ComposedLayers::LEFT_OUT ),
+		);
+		self::assertFalse( $this->pictures->drawable( self::KIT, self::STREET, ComposedPictures::CART ) );
+		self::assertSame( 2, $this->pictures->compose( self::KIT, self::STREET ), 'the share card and the emails\'' );
 	}
 }

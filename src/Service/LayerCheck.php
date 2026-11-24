@@ -89,9 +89,11 @@ final class LayerCheck {
 	 * @param int                  $attachment The image's attachment ID.
 	 * @param array{int, int}|null $size       The size the picture draws the part at, as size() gives it; the Part
 	 *                                         specs panel gives its own, from the page's parts resolved together.
+	 * @param bool                 $cutOut     Whether its corners must be clear, as cutOut() gives it: not a grip's sheet
+	 *                                         (1.1.0, F18).
 	 * @return list<array{code: string, text: string}> None when it may be the part's layer image.
 	 */
-	public function problems( int $attachment, ?array $size ): array {
+	public function problems( int $attachment, ?array $size, bool $cutOut = true ): array {
 		$facts = $attachment > 0 ? $this->images->facts( $attachment ) : null;
 		if ( null === $facts ) {
 			return array(
@@ -103,13 +105,38 @@ final class LayerCheck {
 		}
 		$needs = null === $size ? array( 0, 0 ) : LayerImage::needs( $size );
 		$found = array();
-		foreach ( LayerImage::problems( $facts, $size ) as $problem ) {
+		foreach ( LayerImage::problems( $facts, $size, $cutOut ) as $problem ) {
 			$found[] = array(
 				'code' => $problem->value,
 				'text' => $facts->type . "\t" . $needs[0] . "\t" . $needs[1],
 			);
 		}
 		return $found;
+	}
+
+	/**
+	 * Whether a part's layer image is a cut-out with clear corners: every drawn part's but a grip's, whose image is its
+	 * whole sheet (1.1.0, F18, #103). A part in no drawn slot is held to the cut-out's rule.
+	 *
+	 * @since 1.1.0
+	 *
+	 * @param int $part The product's or variation's ID.
+	 */
+	public function cutOut( int $part ): bool {
+		return self::cutOutIn( $this->kits->slotsOf( $part, ...array_column( $this->kits->all(), 'kit' ) ) );
+	}
+
+	/**
+	 * Whether the layer image of a part that fills these slots is a cut-out: the rule of the first one the picture
+	 * draws, and a cut-out's where it draws none. The one rule the Part specs panel and `cutOut()` ask.
+	 *
+	 * @since 1.1.0
+	 *
+	 * @param list<string> $slots The keys of the slots that take the part, in any kit.
+	 */
+	public static function cutOutIn( array $slots ): bool {
+		$drawn = array_values( array_intersect( Layout::DRAWN, $slots ) );
+		return array() === $drawn || Layout::cutOut( $drawn[0] );
 	}
 
 	/**

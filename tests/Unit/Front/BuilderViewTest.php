@@ -105,6 +105,88 @@ final class BuilderViewTest extends TestCase {
 		self::assertTrue( $this->view( array(), SlotKey::TRUCKS )['bar']['back']['shown'] );
 	}
 
+	/**
+	 * The footer's Next on a step, with the answer's steps saying which need a pick.
+	 *
+	 * @param string                      $step     The step shown.
+	 * @param array<string, bool>         $required Whether each slot needs a pick, by slot.
+	 * @param list<array<string, mixed>>  $lines    The total's lines: the picks the build counts.
+	 * @return array<string, mixed>
+	 */
+	private function next( string $step, array $required, array $lines = array() ): array {
+		$more = array();
+		foreach ( $required as $slot => $needed ) {
+			$more[ $slot ] = array( 'required' => $needed );
+		}
+		$answer = array(
+			'steps' => self::steps( $more ),
+			'total' => array( 'lines' => $lines ),
+		);
+		$next   = $this->view( $answer, $step )['bar']['next'];
+		self::assertIsArray( $next );
+		return $next;
+	}
+
+	// #100, F15: Next is ready once the step has a pick, or on a step that needs none, by the rule the server stops a
+	// step on (Builder: a required slot with nothing counted). Until then it says what is missing, named by the step's
+	// part.
+	public function test_next_is_ready_once_the_step_has_a_pick_or_on_a_step_that_needs_none(): void {
+		$empty = $this->next( SlotKey::DECK, array( 'deck' => true ) );
+		self::assertFalse( $empty['ready'] );
+		self::assertSame( 'Choose your deck first.', $empty['missing'] );
+
+		$picked = $this->next(
+			SlotKey::DECK,
+			array( 'deck' => true ),
+			array(
+				array(
+					'slot'  => 'deck',
+					'part'  => 101,
+					'total' => array( 'text' => '$60.00' ),
+				),
+			)
+		);
+		self::assertTrue( $picked['ready'], 'the deck picked' );
+
+		self::assertTrue( $this->next( SlotKey::RISERS, array( 'risers' => false ) )['ready'], 'No risers is a pick of its own' );
+		self::assertTrue( $this->next( State::REVIEW, array( 'deck' => true ) )['ready'], 'the review has Add to cart, which says itself whether it is ready' );
+	}
+
+	/**
+	 * Each step's words for what is missing.
+	 *
+	 * @return iterable<string, array{string, string}>
+	 */
+	public static function missing(): iterable {
+		yield 'deck' => array( SlotKey::DECK, 'Choose your deck first.' );
+		yield 'trucks' => array( SlotKey::TRUCKS, 'Choose your trucks first.' );
+		yield 'wheels' => array( SlotKey::WHEELS, 'Choose your wheels first.' );
+		yield 'bearings' => array( SlotKey::BEARINGS, 'Choose your bearings first.' );
+		yield 'risers' => array( SlotKey::RISERS, 'Choose your risers first.' );
+		yield 'hardware' => array( SlotKey::HARDWARE, 'Choose your hardware first.' );
+		yield 'grip' => array( SlotKey::GRIP, 'Choose your grip tape first.' );
+		yield 'a slot the plugin does not name' => array( 'stickers', 'Stickers: make a choice first.' );
+	}
+
+	#[DataProvider( 'missing' )]
+	public function test_next_says_what_is_missing_in_each_steps_own_words( string $slot, string $words ): void {
+		$next = $this->next( $slot, array( $slot => true ) );
+		self::assertFalse( $next['ready'] );
+		self::assertSame( $words, $next['missing'] );
+	}
+
+	// #100, F15: the footer's Next is marked aria-disabled, never disabled, so it stays in the tab order and a press
+	// can say what is missing; the words are in a polite live region beside it, drawn by the server (Rules, Markup).
+	public function test_the_footers_next_is_aria_disabled_with_a_live_region_beside_it(): void {
+		$bar = (string) file_get_contents( dirname( __DIR__, 3 ) . '/templates/builder/bar.php' );
+		self::assertSame( 1, preg_match( '/<button class="[^"]*cbuild-bar__next"[^\n]*STEP_FORM[^\n]*<\/button>/', $bar, $found ) );
+		$next = $found[0];
+		self::assertStringContainsString( 'data-wp-bind--aria-disabled="state.dimmed"', $next );
+		self::assertStringNotContainsString( 'disabled="', str_replace( 'aria-disabled="', '', $next ) );
+		self::assertStringContainsString( 'aria-describedby="cbuild-bar-missing"', $next );
+		self::assertSame( 1, preg_match( '/<p class="cbuild-bar__missing" id="cbuild-bar-missing" data-wp-text="state.missing"><\/p>/', $bar ), 'Next\'s description, and no second status region: the builder has one' );
+	}
+
 	// Spec: A change that breaks later picks. The panel asks for Use these or Undo, so the footer has no Back.
 	public function test_the_change_panel_has_its_items_no_prices_and_no_back_in_the_footer(): void {
 		$answer = array(
@@ -121,10 +203,14 @@ final class BuilderViewTest extends TestCase {
 				),
 				'proposed' => array(),
 			),
+			'steps'   => self::steps( array( 'trucks' => array( 'required' => true ) ) ),
 		);
 		$view   = $this->view( $answer, SlotKey::TRUCKS );
 		self::assertTrue( $view['step']['back']['shown'], 'the step has a Back of its own' );
 		self::assertFalse( $view['bar']['back']['shown'], 'the panel shows none' );
+		// The trucks are required and empty, so the step's own Next waits; the panel has no Next to dim (#100).
+		self::assertFalse( $view['step']['next']['ready'] );
+		self::assertSame( array( true, '' ), array( $view['bar']['next']['ready'], $view['bar']['next']['missing'] ) );
 		self::assertTrue( $view['changes']['hasItems'] );
 		self::assertFalse( $view['changes']['hasPrices'], 'a change made now has no new prices' );
 		self::assertFalse( $view['changes']['hasTotals'] );
@@ -168,6 +254,24 @@ final class BuilderViewTest extends TestCase {
 		self::assertFalse( $tiles[0]['hasTotal'], 'empty wheels leave the total short' );
 		self::assertSame( array( 'Truck set: Indy is sold out.', 'Grip: the shop has fewer of Mob than a build takes.' ), array_column( $tiles[1]['notes'], 'text' ) );
 		self::assertTrue( $tiles[1]['hasTotal'], 'a part sold out still counts' );
+	}
+
+	// The auditor's 1.1.0 should-fix 2: the answer lists every ready build, each saying whether it is shown, and the
+	// page makes a tile for those shown alone, each opening its own place among the kit's.
+	public function test_a_ready_build_the_answer_does_not_show_has_no_tile(): void {
+		$answer = array(
+			'presets' => array(
+				array( 'at' => 0, 'shown' => false, 'name' => 'Park' ) + self::preset( array() ),
+				array( 'at' => 1, 'shown' => true, 'name' => 'Street' ) + self::preset( array() ),
+			),
+		);
+		$presets = $this->view( $answer, SlotKey::DECK )['presets'];
+		self::assertSame( array( 'Start from Street' ), array_column( $presets['tiles'], 'button' ) );
+		self::assertContains( array( 'name' => 'cbuild[preset]', 'value' => '1' ), $presets['tiles'][0]['fields'] );
+		self::assertTrue( $presets['shown'] );
+
+		$answer['presets'][1]['shown'] = false;
+		self::assertFalse( $this->view( $answer, SlotKey::DECK )['presets']['shown'], 'none shown, no section' );
 	}
 
 	/**
@@ -371,6 +475,35 @@ final class BuilderViewTest extends TestCase {
 			'steps'   => self::steps( array( 'wheels' => array( 'against' => array( 'trucks' ) ) ) ),
 		);
 		return array_column( $this->step( $answer, SlotKey::WHEELS )['options'], null, 'id' );
+	}
+
+	// #81: only the picked deck's card, and only against a width asked, says it is picked in another width.
+	public function test_only_the_picked_decks_card_says_the_width_asked_is_not_its_own(): void {
+		$sized  = static fn( int $id, string $value, string $text ): array => array(
+			'part' => array( 'size' => compact( 'value', 'text' ) ) + self::option( $id, 'fits' ),
+			'name' => 'Part ' . $id,
+		);
+		$width  = static fn( string $value, string $text, bool $selected ): array => array(
+			'value'    => $value,
+			'text'     => $text,
+			'in_stock' => 1,
+			'selected' => $selected,
+		);
+		$notes  = function ( array $widths ) use ( $sized ): array {
+			$answer = array(
+				'total' => array( 'lines' => array( array( 'slot' => 'deck', 'part' => 102 ) ) ),
+				'shelf' => array(
+					'looks'  => array( $sized( 102, '8.25in', '8.25″' ), $sized( 103, '8.5in', '8.5″' ) ),
+					'widths' => $widths,
+				),
+			);
+			$cards  = $this->step( $answer, SlotKey::DECK, new BuildLink( array( SlotKey::DECK => 102 ), null, SlotKey::DECK ) )['options'];
+			return array_map( static fn( array $card ): array => array_column( $card['notes'], 'text' ), array_column( $cards, null, 'id' ) );
+		};
+		$asked  = $notes( array( $width( '8.25in', '8.25″', false ), $width( '8.5in', '8.5″', true ) ) );
+		self::assertSame( array( 'Picked in 8.25″. Not made in 8.5″.' ), $asked[102] );
+		self::assertSame( array(), $asked[103], 'a card in the width asked that is not picked says nothing' );
+		self::assertSame( array( 102 => array(), 103 => array() ), $notes( array( $width( '8.25in', '8.25″', false ), $width( '8.5in', '8.5″', false ) ) ), 'no width asked, nothing to say' );
 	}
 
 	// Spec: A step, P9; Cowork's review, minors 5 and 14. A fitting card names what it was checked against by the

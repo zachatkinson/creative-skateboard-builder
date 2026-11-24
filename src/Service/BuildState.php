@@ -21,6 +21,7 @@ use CreativeBranding\SkateboardBuilder\Domain\Fit\Option;
 use CreativeBranding\SkateboardBuilder\Domain\Fit\Problem;
 use CreativeBranding\SkateboardBuilder\Domain\Fit\Recommender;
 use CreativeBranding\SkateboardBuilder\Domain\Fit\SlotOptions;
+use CreativeBranding\SkateboardBuilder\Domain\Fit\Validation;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\InvalidMoney;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Kit;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Part;
@@ -107,18 +108,22 @@ final class BuildState {
 		$started     = true;
 		$first       = null;
 		foreach ( $kit->slots->all() as $slot ) {
-			$options     = self::cleared( $clearance, $kit, $counted, $engine->options( $kit, $slot->key, $counted, $candidates[ $slot->key ] ), $candidates );
-			$part        = $picked->part( $slot->key );
-			$starts      = null === $part && $started && ( $slot->required || ! in_array( $slot->key, $left, true ) );
+			$options = self::cleared( $clearance, $kit, $counted, $engine->options( $kit, $slot->key, $counted, $candidates[ $slot->key ] ), $candidates );
+			$part    = $picked->part( $slot->key );
+			// A picked slot names a lead only on the step shown, the one whose cards are listed (D-340).
+			$starts      = $started && ( $slot->required || ! in_array( $slot->key, $left, true ) ) && ( null === $part || $slot->key === $step );
+			$leads       = null;
 			$recommended = null;
 			if ( $starts ) {
 				// Held against the recommendations before it only where there are any: otherwise the options are the same.
-				$against     = $recommends ? self::cleared( $clearance, $kit, $estimated, $engine->options( $kit, $slot->key, $estimated, $candidates[ $slot->key ] ), $candidates ) : $options;
-				$recommended = $recommender->among( $kit, $slot->key, $estimated, $against );
+				$against = $recommends ? self::cleared( $clearance, $kit, $estimated, $engine->options( $kit, $slot->key, $estimated, $candidates[ $slot->key ] ), $candidates ) : $options;
+				$leads   = $recommender->among( $kit, $slot->key, $estimated, $against );
 				// A part that fits the board the estimate counts fits the picks alone: it is the card the step offers.
-				$recommended = null === $recommended ? null : ( $options->offer( $recommended->part->id ) ?? $recommended );
+				$leads = null === $leads ? null : ( $options->offer( $leads->part->id ) ?? $leads );
+				// Made with a pick too, for the order of the step's cards alone, so a pick never moves them (D-340).
+				$recommended = null === $part ? $leads : null;
 			}
-			$steps[] = new StateStep( $slot, $options, null === $part ? null : self::option( $options, $part->id ), $recommended );
+			$steps[] = new StateStep( $slot, $options, null === $part ? null : self::option( $options, $part->id ), $recommended, $leads );
 			if ( null !== $part ) {
 				$counted   = $counted->with( $slot->key, $part );
 				$estimated = $estimated->with( $slot->key, $part );
@@ -153,7 +158,7 @@ final class BuildState {
 			// Each preset as the build it starts: its tile's total and what keeps it from the cart.
 			foreach ( $kit->presets as $preset ) {
 				$left      = array();
-				$checked   = $validator->validate( $kit, self::found( $preset->picks, $parts, $left ), $ids );
+				$checked   = self::preset( $validator, $kit, $preset->picks, $parts, $left );
 				$presets[] = new PresetState( $checked, $pricer->quote( $kit, $checked->build, $kit->assembly->defaultOn, $discount, $decimals ), $left );
 			}
 		} catch ( InvalidMoney $unpriced ) {
@@ -174,6 +179,23 @@ final class BuildState {
 			$presets,
 			$estimate
 		);
+	}
+
+	/**
+	 * The one check of a ready build (#104): its picks among their slots' parts, and what the validator finds of the
+	 * build they make. A ready build with any problem, refused or found, is broken: its tile is left out for shoppers
+	 * (`State::shownPresets()`) and the Catalogue check lists each problem as `preset_broken` for the owner.
+	 *
+	 * @since 1.1.0
+	 *
+	 * @param BuildValidator                  $validator The validator every build goes through.
+	 * @param Kit                             $kit       The kit.
+	 * @param array<string, int>              $picks     The preset's picks, by slot key.
+	 * @param array<string, array<int, Part>> $parts     Each of the kit's slots' parts, by ID.
+	 * @param list<BuildProblem>              $refused   Its picks that are no longer one of their slot's parts, added to.
+	 */
+	public static function preset( BuildValidator $validator, Kit $kit, array $picks, array $parts, array &$refused ): Validation {
+		return $validator->validate( $kit, self::found( $picks, $parts, $refused ), array_map( 'array_keys', $parts ) );
 	}
 
 	/**

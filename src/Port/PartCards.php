@@ -28,9 +28,11 @@ interface PartCards {
 	 * @since 0.4.0
 	 *
 	 * @param list<int> $ids Parts' IDs.
-	 * @return array<int, array{name: string, url: string, price: string, stock: string, stock_class: string, image: array{src: string, width: int, height: int, srcset: string, sizes: string}|null, photo: bool}>
+	 * @return array<int, array{name: string, url: string, price: string, stock: string, stock_class: string, image: array{src: string, width: int, height: int, srcset: string, sizes: string}|null, photo: bool, large?: array{src: string, width: int, height: int, srcset: string, sizes: string}|null}>
 	 *         `name` is plain text; `price` is the price of one as the shop formats it, in plain text; `stock` is the shop's own words for the
 	 *         part's availability, empty where the shop says nothing of a part in stock.
+	 *         `large`, from 1.1.0, is the photo uncropped at the shop's single-product size, for the picture's deck
+	 *         where it has no layer image; null, or absent, where there is no photo.
 	 */
 	public function cards( array $ids ): array;
 

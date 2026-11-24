@@ -15,6 +15,8 @@ use CreativeBranding\SkateboardBuilder\Front\StateAnswer;
 use CreativeBranding\SkateboardBuilder\Port\Kits;
 use CreativeBranding\SkateboardBuilder\Rest\StateRoute;
 use CreativeBranding\SkateboardBuilder\Service\BuildState;
+use CreativeBranding\SkateboardBuilder\Service\CatalogueCheck;
+use CreativeBranding\SkateboardBuilder\Service\CheckFinding;
 use CreativeBranding\SkateboardBuilder\Service\RateLimit;
 use CreativeBranding\SkateboardBuilder\Service\SpecIndexer;
 use CreativeBranding\SkateboardBuilder\Support\Options;
@@ -25,6 +27,7 @@ use CreativeBranding\SkateboardBuilder\Front\BuilderUrl;
 use CreativeBranding\SkateboardBuilder\Front\BuildLink;
 use CreativeBranding\SkateboardBuilder\Plugin;
 use CreativeBranding\SkateboardBuilder\Tests\Support\KitFactory;
+use CreativeBranding\SkateboardBuilder\Tests\Support\LayerFiles;
 use WC_Product_Simple;
 use WP_Locale_Switcher;
 use WP_REST_Request;
@@ -50,6 +53,13 @@ final class StateRouteTest extends IntegrationTestCase {
 	 * @var array<string, int>
 	 */
 	private array $parts = array();
+
+	/**
+	 * The deck and trucks slots' categories, by slot key.
+	 *
+	 * @var array<string, int>
+	 */
+	private array $categories = array();
 
 	/**
 	 * The schema, with each reference written out.
@@ -100,6 +110,10 @@ final class StateRouteTest extends IntegrationTestCase {
 			$trucks
 		);
 
+		$this->categories             = array(
+			'deck'   => $decks,
+			'trucks' => $trucks,
+		);
 		$slots                        = KitDocuments::slots();
 		$slots['slots'][0]['sources'] = array( 'categories' => array( $decks ) );
 		$slots['slots'][1]['sources'] = array( 'categories' => array( $trucks ) );
@@ -156,6 +170,78 @@ final class StateRouteTest extends IntegrationTestCase {
 		wp_set_object_terms( $product->get_id(), array( $category ), 'product_cat' );
 		$this->service( SpecIndexer::class )->index( $product->get_id() );
 		return $product->get_id();
+	}
+
+	/**
+	 * A kit like set_up's whose Street is whole (#104): each of its picks one of its slot's parts, in stock and
+	 * fitting, so its tile is shown. Set up's Street names the 8.0 deck in every other slot, which no other slot
+	 * offers, so it is left out for shoppers.
+	 *
+	 * @param array<string, mixed>|null                                        $layout  The kit's layout document, or null for one saved before 1.0.0.
+	 * @param (callable(array<string, int>): list<array<string, mixed>>)|null $presets The kit's presets from the whole Street's picks, or null for that Street alone.
+	 * @return array{kit: int, picks: array<string, int>}
+	 */
+	private function whole( ?array $layout = null, ?callable $presets = null ): array {
+		$slots = KitDocuments::slots();
+		$picks = array(
+			'deck'   => $this->parts['deck 8.0'],
+			'trucks' => $this->parts['truck 139'],
+		);
+		foreach ( array(
+			'wheels'   => array(
+				'wheel_diameter' => '52.0000',
+				'set_size'       => '4',
+			),
+			'bearings' => array(
+				'bearing_bore' => '8.0000',
+				'set_size'     => '8',
+			),
+			'hardware' => array(
+				'bolt_length' => '1.0000',
+				'set_size'    => '8',
+			),
+			'grip'     => array(
+				'grip_width'  => '9.0000',
+				'grip_length' => '33.0000',
+			),
+		) as $key => $specs ) {
+			$this->categories[ $key ] = self::factory()->term->create( array( 'taxonomy' => 'product_cat' ) );
+			$picks[ $key ]            = $this->part( ucfirst( $key ) . ' for Street', '10', $specs, $this->categories[ $key ] );
+		}
+		foreach ( $slots['slots'] as $at => $slot ) {
+			if ( isset( $this->categories[ $slot['key'] ] ) ) {
+				$slots['slots'][ $at ]['sources'] = array( 'categories' => array( $this->categories[ $slot['key'] ] ) );
+			}
+		}
+		$slots['slots'][1]['help'] = 'Sold in pairs.';
+		$kit                       = KitFactory::kit(
+			'Complete, whole',
+			array(
+				Options::META_KIT_SLOTS    => $slots,
+				Options::META_KIT_PRESETS  => array(
+					'schema_version' => 1,
+					'presets'        => null === $presets ? array(
+						array(
+							'name'        => 'Street',
+							'description' => 'For ledges.',
+							'picks'       => $picks,
+						),
+					) : $presets( $picks ),
+				),
+				Options::META_KIT_ASSEMBLY => array(
+					'schema_version' => 1,
+					'default_on'     => false,
+					'fee'            => '15',
+					'lead_time'      => 'Two working days.',
+					'returns_notice' => 'An assembled board goes back whole.',
+				),
+				Options::META_KIT_LAYOUT   => $layout,
+			)
+		)->get_id();
+		return array(
+			'kit'   => $kit,
+			'picks' => $picks,
+		);
 	}
 
 	/**
@@ -415,6 +501,23 @@ final class StateRouteTest extends IntegrationTestCase {
 		self::assertArrayHasKey( 'view', $answer );
 	}
 
+	/**
+	 * #89: the store asks for `_fields=view`, and WordPress trims the answer to the view it draws; the raw shelf and
+	 * options, which repeated the step's cards, stay in the answer for anyone who asks without it.
+	 */
+	public function test_an_answer_asked_for_its_view_alone_is_that_view_and_no_more(): void {
+		$query   = array(
+			'cbuild' => array( 'step' => 'deck' ),
+			'page'   => $this->kit,
+		);
+		$whole   = self::body( $this->ask( $query ) );
+		$trimmed = self::body( $this->ask( $query + array( '_fields' => 'view' ) ) );
+		self::assertSame( array( 'view' ), array_keys( $trimmed ) );
+		self::assertSame( $whole['view'], $trimmed['view'] );
+		self::assertArrayHasKey( 'shelf', $whole );
+		self::assertArrayHasKey( 'options', $whole );
+	}
+
 	public function test_a_build_link_the_kit_cannot_read_is_still_answered(): void {
 		$answer = $this->answer( array( 'cbuild' => array( 'nope' => 'x', 'deck' => '999999' ) ) );
 		self::assertSame( 'deck', $answer['step'], 'a link is read as the page reads it: what is no part of it is dropped' );
@@ -616,6 +719,31 @@ final class StateRouteTest extends IntegrationTestCase {
 
 	// Spec review of milestone 7, should-fix: the picture's written description had no test in French. Spec, The
 	// picture: "a written description of the build"; Internationalisation: no sentence is built by joining words.
+	/**
+	 * #90: the route's own time and queries, in a Server-Timing header, to a signed-in user who can manage WooCommerce
+	 * alone, so the priming work can be measured on a real host (Zach, 22 November: shop managers only, no filter).
+	 */
+	public function test_a_shop_manager_is_told_the_routes_time_and_queries_and_no_one_else_is(): void {
+		$query = array(
+			'cbuild' => array( 'step' => 'deck' ),
+			'page'   => $this->kit,
+		);
+		self::assertArrayNotHasKey( 'Server-Timing', $this->ask( $query )->get_headers(), 'a visitor' );
+		wp_set_current_user( self::factory()->user->create( array( 'role' => 'customer' ) ) );
+		self::assertArrayNotHasKey( 'Server-Timing', $this->ask( $query )->get_headers(), 'a customer' );
+
+		wp_set_current_user( self::factory()->user->create( array( 'role' => 'shop_manager' ) ) );
+		$response = $this->ask( $query );
+		$timing   = $response->get_headers()['Server-Timing'] ?? '';
+		self::assertMatchesRegularExpression( '#^cbuild-route;dur=\d+\.\d, cbuild-queries;desc="\d+"$#', $timing );
+		preg_match( '#dur=([\d.]+).*desc="(\d+)"#', $timing, $read );
+		self::assertGreaterThan( 0.0, (float) $read[1], 'the route takes some time' );
+		self::assertGreaterThan( 0, (int) $read[2], 'and asks the database something' );
+		self::assertSame( 'no-store', $response->get_headers()['Cache-Control'] ?? null, 'the other headers as they were' );
+		self::assertArrayNotHasKey( 'Server-Timing', $this->ask( array( 'picks' => array( 'deck' => 1 ) ), 999999999 )->get_headers(), 'an error is not timed' );
+		wp_set_current_user( 0 );
+	}
+
 	public function test_the_pictures_description_and_the_status_after_it_are_in_the_language_asked_for(): void {
 		add_filter( 'get_available_languages', static fn( array $languages ): array => array_merge( $languages, array( 'fr_CA' ) ) );
 		$GLOBALS['wp_locale_switcher'] = new WP_Locale_Switcher();
@@ -821,11 +949,65 @@ final class StateRouteTest extends IntegrationTestCase {
 				'page'   => $this->kit,
 			)
 		);
-		$more = function ( int $upTo ) use ( $decks ): void {
+		// Each deck with a layer image of its own, so the deck step draws a board for each card it lists (D-308): the
+		// interim audit of milestone 11 found the decks here had none, so that path never ran.
+		$layered = static function ( int $deck ): void {
+			$product = wc_get_product( $deck );
+			$product->update_meta_data( Options::META_LAYER, (string) LayerFiles::attachment( 54, 204 ) );
+			$product->save();
+		};
+		// The saves' own request ends, and forgets the cards they moved, before a shopper's comes: in one process, the
+		// first read of a card would forget them, and the looks read beside it, part way through the request counted.
+		$settled = function (): void {
+			$cards = $this->service( \CreativeBranding\SkateboardBuilder\Port\PartCards::class );
+			self::assertInstanceOf( \CreativeBranding\SkateboardBuilder\Adapter\WooPartCards::class, $cards );
+			$cards->settle();
+		};
+		$more = function ( int $upTo ) use ( $decks, $layered, $settled ): void {
 			for ( $at = count( $this->parts ); $at < $upTo; $at++ ) {
 				$this->parts[ 'deck ' . $at ] = $this->part( 'Deck ' . $at, '65', array( 'deck_width' => '8.2500' ), $decks );
+				$layered( $this->parts[ 'deck ' . $at ] );
 			}
+			$settled();
 		};
+		$layered( $this->parts['deck 8.0'] );
+		$layered( $this->parts['deck 8.5'] );
+		// A deck made in two widths, picked in 8.0: asking for 8.25 moves it to its 8.25 (#81), which builds a second
+		// shelf and a second state (the auditor's 1.1.0 minor 6).
+		$parent = new \WC_Product_Variable();
+		$parent->set_name( 'Two widths' );
+		$parent->set_status( 'publish' );
+		$parent->save();
+		// One board for both widths, on the parent: the two are one look, as variations sharing a picture are.
+		$layered( $parent->get_id() );
+		wp_set_object_terms( $parent->get_id(), array( $decks ), 'product_cat' );
+		$widths = array();
+		foreach ( array( '8.0000', '8.2500' ) as $width ) {
+			$variation = new \WC_Product_Variation();
+			$variation->set_parent_id( $parent->get_id() );
+			$variation->set_status( 'publish' );
+			$variation->set_regular_price( '65' );
+			$variation->set_attributes( array( 'width' => $width ) );
+			$variation->update_meta_data( Options::META_SPECS, array( 'deck_width' => $width ) );
+			$variation->save();
+			$this->service( SpecIndexer::class )->index( $variation->get_id() );
+			$widths[ $width ] = $variation->get_id();
+		}
+		$widen   = array(
+			'cbuild' => array(
+				'deck'   => (string) $widths['8.0000'],
+				'step'   => 'deck',
+				'_width' => '8.25in',
+			),
+			'page'   => $this->kit,
+		);
+		$widened = fn( bool $cold ): int => $count( $cold, $widen );
+
+		// Fewer decks than a step lists, so each one added is another card and another board.
+		$more( 10 );
+		self::assertSame( array( $widths['8.2500'] ), array_column( array_filter( $this->answer( $widen )['steps'], static fn( array $step ): bool => 'deck' === $step['slot'] ), 'picked' ), 'the width moves the deck' );
+		$few = array( $count( false ), $count( true ), $moved( false ), $moved( true ), $widened( false ), $widened( true ) );
+		self::assertNotNull( $this->answer()['options'][0]['board'] ?? null, 'a deck\'s card draws its board' );
 
 		// More parts than a step lists, and then twice as many.
 		$more( 30 );
@@ -833,11 +1015,18 @@ final class StateRouteTest extends IntegrationTestCase {
 		$cold      = $count( true );
 		$movedWarm = $moved( false );
 		$movedCold = $moved( true );
+		$widenWarm = $widened( false );
+		$widenCold = $widened( true );
+		// A step lists 30 looks at most, so past that the boards drawn stop growing: it is eight decks against thirty
+		// that shows a query for each board.
+		self::assertSame( $few, array( $warm, $cold, $movedWarm, $movedCold, $widenWarm, $widenCold ), 'eight decks or thirty, each with its board' );
 		$more( 60 );
 		self::assertSame( $warm, $count( false ), 'warm' );
 		self::assertSame( $cold, $count( true ), 'cold' );
 		self::assertSame( $movedWarm, $moved( false ), 'a move, warm' );
 		self::assertSame( $movedCold, $moved( true ), 'a move, cold' );
+		self::assertSame( $widenWarm, $widened( false ), 'a deck moved to a new width, warm' );
+		self::assertSame( $widenCold, $widened( true ), 'a deck moved to a new width, cold' );
 		self::assertLessThanOrEqual( 15, $warm, 'warm' );
 		self::assertLessThanOrEqual( 60, $cold, 'cold' );
 		self::assertLessThanOrEqual( 15, $movedWarm, 'a move, warm' );
@@ -959,7 +1148,9 @@ final class StateRouteTest extends IntegrationTestCase {
 	}
 
 	public function test_a_plugin_that_answers_for_the_owners_words_changes_what_the_route_says(): void {
-		$plain = $this->answer();
+		// A Street with every part its slot's, so the answer offers it (#104).
+		$this->kit = $this->whole()['kit'];
+		$plain     = $this->answer();
 		self::assertSame( 'Trucks', $plain['steps'][1]['label'] );
 		self::assertSame( 'Sold in pairs.', $plain['steps'][1]['help'] );
 		self::assertSame( 'Street', $plain['presets'][0]['name'] );
@@ -991,6 +1182,103 @@ final class StateRouteTest extends IntegrationTestCase {
 		self::assertSame( 'Deux jours ouvrables.', $said['texts']['lead_time'] );
 		self::assertSame( 'Une planche assemblée revient entière.', $said['texts']['returns_notice'] );
 		self::assertContains( 'Trucks (paire): nothing is chosen yet.', array_column( $said['problems'], 'message' ) );
+	}
+
+	/**
+	 * #104 (R1), on the route: a ready build with a part that's gone, sold out or no longer fits is listed in the
+	 * answer's presets as not shown, and left out of the view's section; a kit with Show ready builds off shows none; a
+	 * kit saved before 1.1.0 shows its whole ones (D-336). A link with `cbuild[preset]` still opens each, and says what is missing (F6).
+	 */
+	public function test_the_route_offers_whole_ready_builds_alone_and_none_with_show_ready_builds_off(): void {
+		$start = array( 'step' => 'deck' );
+
+		// Set up's Street names the 8.0 deck in every other slot, which none of them offers.
+		$gone = $this->answer( array( 'cbuild' => $start ) );
+		self::assertSame( array( false ), array_column( $gone['presets'], 'shown' ) );
+		self::assertFalse( $gone['view']['presets']['shown'] );
+		$street = array(
+			'deck'   => $this->parts['deck 8.0'],
+			'trucks' => $this->parts['truck 139'],
+		) + array_fill_keys( array( 'wheels', 'bearings', 'hardware', 'grip' ), $this->parts['deck 8.0'] );
+		$opened = $this->answer( array( 'cbuild' => array_map( 'strval', $street ) + array( 'step' => 'review', 'preset' => '0' ) ) );
+		self::assertSame( 'part_not_in_slot', $opened['refused'][0]['code'] ?? null, 'the link still opens it' );
+		self::assertMatchesRegularExpression( '/\AWheels: .+ is no longer offered here\.\z/', (string) ( $opened['refused'][0]['message'] ?? '' ), 'named as its tile named it' );
+
+		// A whole Street on a kit saved before 1.1.0, with no show_presets: its tile, at its place among the kit's.
+		$whole     = $this->whole( array( 'schema_version' => 1, 'stage_side' => 'right' ) );
+		$this->kit = $whole['kit'];
+		$shown     = $this->answer( array( 'cbuild' => $start ) );
+		self::assertSame( array( 'Street' ), array_column( $shown['presets'], 'name' ) );
+		self::assertSame( array( true ), array_column( $shown['presets'], 'shown' ) );
+		self::assertTrue( $shown['presets'][0]['ready'] );
+		self::assertTrue( $shown['view']['presets']['shown'] );
+
+		// Its grip sold out: left out, and the Catalogue check lists it.
+		$grip = wc_get_product( $whole['picks']['grip'] );
+		$grip->set_stock_status( 'outofstock' );
+		$grip->save();
+		$sold = $this->answer( array( 'cbuild' => $start ) );
+		self::assertSame( array( false ), array_column( $sold['presets'], 'shown' ) );
+		self::assertFalse( $sold['presets'][0]['ready'] );
+		self::assertFalse( $sold['view']['presets']['shown'] );
+		$lines = array_map( static fn( CheckFinding $finding ): string => $finding->code . ' ' . $finding->part . ' ' . ( $finding->values['problem'] ?? '' ), $this->service( CatalogueCheck::class )->run() );
+		self::assertContains( CatalogueCheck::PRESET . ' ' . $whole['picks']['grip'] . ' part_sold_out', $lines );
+
+		// Show ready builds off: none, and the ready build kept, which its link opens with nothing missing.
+		$off       = $this->whole( array( 'schema_version' => 1, 'show_presets' => false ) );
+		$this->kit = $off['kit'];
+		$hidden    = $this->answer( array( 'cbuild' => $start ) );
+		self::assertSame( array( false ), array_column( $hidden['presets'], 'shown' ) );
+		self::assertTrue( $hidden['presets'][0]['ready'] );
+		self::assertFalse( $hidden['view']['presets']['shown'] );
+		$review = $this->answer( array( 'cbuild' => array_map( 'strval', $off['picks'] ) + array( 'step' => 'review', 'preset' => '0' ) ) );
+		self::assertSame( 'review', $review['step'] );
+		self::assertSame( array(), $review['refused'] );
+		self::assertTrue( $review['ready'] );
+	}
+
+	/**
+	 * The interim audit of milestone 11, should-fix 1, and the final audit's should-fix 2: a minor release only gains
+	 * fields, so the answer lists every ready build, `presets[i]` is the preset `cbuild[preset]=i` opens and says so in
+	 * `at`, and a broken one says it is not `shown` (#104, D-336). The view has a tile for the shown ones alone.
+	 */
+	public function test_each_ready_build_offered_says_its_place_among_the_kits(): void {
+		$whole     = $this->whole(
+			array(
+				'schema_version' => 1,
+				'stage_side'     => 'right',
+			),
+			fn( array $picks ): array => array(
+				array(
+					'name'        => 'Street',
+					'description' => 'For ledges.',
+					'picks'       => $picks,
+				),
+				// The 8.0 deck in every slot but the deck's and the trucks': none of them offers it.
+				array(
+					'name'        => 'Broken',
+					'description' => '',
+					'picks'       => array(
+						'deck'   => $this->parts['deck 8.0'],
+						'trucks' => $this->parts['truck 139'],
+					) + array_fill_keys( array( 'wheels', 'bearings', 'hardware', 'grip' ), $this->parts['deck 8.0'] ),
+				),
+				array(
+					'name'        => 'Park',
+					'description' => '',
+					'picks'       => $picks,
+				),
+			)
+		);
+		$this->kit = $whole['kit'];
+		$shown     = $this->answer( array( 'cbuild' => array( 'step' => 'deck' ) ) );
+		self::assertCount( 3, $shown['presets'], 'each of the kit\'s ready builds' );
+		self::assertSame( array( 'Street', 'Broken', 'Park' ), array_column( $shown['presets'], 'name' ) );
+		self::assertSame( array( 0, 1, 2 ), array_column( $shown['presets'], 'at' ), 'presets[i] is preset i' );
+		self::assertSame( array( true, false, true ), array_column( $shown['presets'], 'shown' ) );
+		self::assertSame( array( 'Start from Street', 'Start from Park' ), array_column( $shown['view']['presets']['tiles'], 'button' ), 'no tile for the broken one' );
+		$fields = array_map( static fn( array $tile ): array => array_column( $tile['fields'], 'value', 'name' ), $shown['view']['presets']['tiles'] );
+		self::assertSame( array( '0', '2' ), array_column( $fields, BuildLink::PARAM . '[preset]' ), 'each tile opens its own' );
 	}
 
 	public function test_a_plugin_that_rules_a_part_out_takes_it_from_the_route(): void {

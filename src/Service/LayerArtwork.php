@@ -10,6 +10,7 @@ declare( strict_types=1 );
 namespace CreativeBranding\SkateboardBuilder\Service;
 
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Part;
+use CreativeBranding\SkateboardBuilder\Domain\Kit\SlotKey;
 use CreativeBranding\SkateboardBuilder\Domain\Picture\LayerArt;
 use CreativeBranding\SkateboardBuilder\Domain\Picture\Layout;
 use CreativeBranding\SkateboardBuilder\Domain\Picture\Renditions;
@@ -75,5 +76,34 @@ final class LayerArtwork {
 			);
 		}
 		return array_filter( $art );
+	}
+
+	/**
+	 * The art of each deck, as a board with that deck alone would draw it: in one look-up, for the deck step's cards
+	 * (D-308).
+	 *
+	 * @since 1.1.0
+	 *
+	 * @param array<int, Part> $decks The decks, in any order and by any key.
+	 * @return array<int, LayerArt> By part ID, those with a layer image alone.
+	 */
+	public function decks( array $decks ): array {
+		$found = array() === $decks ? array() : $this->layers->attachments( ...array_map( static fn( Part $deck ): int => $deck->id, $decks ) );
+		$art   = array();
+		foreach ( $decks as $deck ) {
+			$attachment = $found[ $deck->id ] ?? null;
+			$image      = null === $attachment ? null : $this->layers->image( $attachment );
+			if ( null === $attachment || null === $image ) {
+				continue;
+			}
+			$art[ $deck->id ] = new LayerArt(
+				$attachment,
+				$image['url'],
+				$image['width'],
+				$image['height'],
+				$this->renditions->sources( $attachment, Renditions::drawn( SlotKey::DECK, $deck->specs, $image['width'], $image['height'] ) )
+			);
+		}
+		return $art;
 	}
 }

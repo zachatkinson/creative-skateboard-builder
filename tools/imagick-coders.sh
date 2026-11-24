@@ -7,7 +7,7 @@
 set -euo pipefail
 source "$(dirname "$0")/wp-env-site.sh"
 project=""
-for container in $(docker ps -q --filter label=com.docker.compose.service=wordpress --filter publish=8899); do
+for container in $(docker ps -q --filter label=com.docker.compose.service=wordpress --filter "publish=$CBUILD_TESTS_PORT"); do
 	if docker inspect "$container" --format '{{range .Mounts}}{{println .Source}}{{end}}' | grep -x "$here" >/dev/null; then
 		project="$(docker inspect "$container" --format '{{index .Config.Labels "com.docker.compose.project"}}')"
 	fi

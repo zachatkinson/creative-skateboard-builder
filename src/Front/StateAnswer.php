@@ -246,7 +246,7 @@ final class StateAnswer {
 			}
 		}
 		foreach ( $state->presets as $preset ) {
-			foreach ( array_merge( $preset->refused, $preset->validation->problems ) as $kept ) {
+			foreach ( $preset->problems() as $kept ) {
 				if ( null !== $kept->part ) {
 					$ids[] = $kept->part;
 				}
@@ -258,7 +258,16 @@ final class StateAnswer {
 				$ids[] = $change->closest->part->id;
 			}
 		}
-		$cards    = $this->cards->cards( array_values( array_unique( $ids ) ) );
+		$cards = $this->cards->cards( array_values( array_unique( $ids ) ) );
+		// The names of the parts that keep a ready build from the cart, shown or not, for a link that brings one.
+		$held = array();
+		foreach ( $state->presets as $preset ) {
+			foreach ( $preset->problems() as $kept ) {
+				if ( null !== $kept->part ) {
+					$held[ $kept->part ] = $cards[ $kept->part ]['name'] ?? '';
+				}
+			}
+		}
 		$decimals = $this->kits->decimals();
 		$money    = fn( int $amount ): array => array(
 			'amount' => $amount,
@@ -283,6 +292,7 @@ final class StateAnswer {
 				'change' => null === $step?->counted() ? '' : Words::change( $kind, $text ),
 			);
 		};
+		$boards   = SlotKey::DECK === $state->step ? $this->boards( $state, array_merge( $offered, array_map( static fn( ShelfLook $look ): Option => $look->option, null === $view ? array() : array_merge( $view->listing->looks, $view->listing->soldOut ) ) ) ) : array();
 		$option   = static fn( Option $option, string $slot, ?StateStep $step ): array => array(
 			'id'          => $option->part->id,
 			'brand'       => $option->part->brand,
@@ -295,7 +305,12 @@ final class StateAnswer {
 			'picked'      => $option->part->id === $step?->picked?->part->id,
 			'recommended' => $option->part->id === $step?->recommended?->part->id,
 			'messages'    => self::messages( $option->findings ),
-			'card'        => $cards[ $option->part->id ] ?? null,
+			// A card as it is listed: the large photo is the picture's alone (#82), and would add to every card.
+			'card'        => isset( $cards[ $option->part->id ] ) ? array_diff_key( $cards[ $option->part->id ], array_flip( array( 'large' ) ) ) : null,
+			// From 1.1.0, on the deck step: the board the deck would draw alone, so its image can be fetched as the
+			// shopper points at the card (D-308), and its card draws the deck small (F14, #99), sold out or not. Null
+			// elsewhere, and for a deck with no layer image.
+			'board'       => $boards[ $option->part->id ] ?? null,
 		);
 		$problem  = static fn( BuildProblem $problem ): array => array(
 			'code'     => $problem->code->value,
@@ -379,19 +394,29 @@ final class StateAnswer {
 		foreach ( $state->steps as $step ) {
 			$begun = $begun || null !== $step->counted();
 		}
+		// Every preset, in the kit's order, so an entry's place is its `cbuild[preset]` as in 1.0 (the auditor's 1.1.0
+		// should-fix 2, D-336). Each says whether a shopper is offered it (#104): not where the kit's Show ready builds is
+		// off, nor where a problem keeps it from the cart, which the Catalogue check lists. The page leaves those out.
+		$tiled = $state->shownPresets();
 		foreach ( $state->kit->presets as $at => $preset ) {
+			$shown = in_array( $at, $tiled, true );
 			$picks = array();
 			foreach ( $preset->picks as $slot => $part ) {
 				$picks[] = compact( 'slot', 'part' );
 			}
 			$built     = $state->presets[ $at ] ?? null;
-			$kept      = null === $built ? array() : array_merge( $built->refused, $built->validation->problems );
+			$kept      = null === $built ? array() : $built->problems();
 			$first     = self::first( $preset->picks );
 			$presets[] = array(
+				// From 1.1.0: its place among the kit's, which `cbuild[preset]` takes, and its own in the list.
+				'at'          => $at,
+				// From 1.1.0: whether the builder shows its tile (#104).
+				'shown'       => $shown,
 				'name'        => self::preset( $preset->name, $at, $state->id ),
 				'description' => self::text( $preset->description, 'preset_description', $state->id, (string) $at ),
 				'picks'       => $picks,
-				'image'       => $this->tile( $state->id, $preset->picks, $preset->image, $begun ) ?? ( null === $first ? null : ( $cards[ $first ]['image'] ?? null ) ),
+				// A tile not shown asks for no picture to be made: its first part's photo will do.
+				'image'       => $this->tile( $state->id, $preset->picks, $preset->image, $begun || ! $shown ) ?? ( null === $first ? null : ( $cards[ $first ]['image'] ?? null ) ),
 				'total'       => $money( $built->quote->total ?? 0 ),
 				'ready'       => array() === $kept,
 				// What keeps it from the cart, each part named for its tile (spec: Presets).
@@ -414,7 +439,9 @@ final class StateAnswer {
 			'filters'           => self::filters( $state->step, $all, $brands, $link ),
 			'matching'          => count( $matching ),
 			'more'              => $more,
-			'refused'           => array_map( $problem, $state->refused ),
+			// A part a ready build holds that the kit no longer offers is named as its tile named it (F6, #85), though
+			// the ready build is not shown (#104); an ID a link brought that no ready build holds is named by nothing.
+			'refused'           => array_map( static fn( BuildProblem $kept ): array => array_replace( $problem( $kept ), array( 'message' => Words::named( $kept->code, $labels[ $kept->slot ] ?? $kept->slot, null === $kept->part ? '' : $held[ $kept->part ] ?? '' ) ) ), $state->refused ),
 			'problems'          => array_map( $problem, $state->validation->problems ),
 			'changes'           => $changes,
 			'total'             => array(
@@ -437,6 +464,36 @@ final class StateAnswer {
 			'bearings_included' => Builder::bearingsIncluded( $state ),
 			'currency'          => $this->money->settings(),
 		);
+	}
+
+	/**
+	 * The board each deck would draw alone, by its ID: the picture's layout and renderer, the deck its one layer
+	 * (D-308). A deck's layer is the board's whole length, so its size in the picture is the same whatever else is
+	 * picked, and the browser chooses the same file for it.
+	 *
+	 * @param State        $state   The build.
+	 * @param list<Option> $options The decks the step lists.
+	 * @return array<int, array{width: int, height: int, layers: list<array<string, mixed>>}>
+	 */
+	private function boards( State $state, array $options ): array {
+		if ( null === $this->artwork ) {
+			return array();
+		}
+		$decks = array();
+		foreach ( $options as $option ) {
+			$decks[ $option->part->id ] = $option->part;
+		}
+		$boards = array();
+		foreach ( $this->artwork->decks( $decks ) as $id => $art ) {
+			$layout        = Layout::of( Picks::none()->with( SlotKey::DECK, $decks[ $id ] ), $state->kit->picture );
+			$drawn         = $this->renderer->render( $layout, array( $id => $art ) );
+			$boards[ $id ] = array(
+				'width'  => $drawn['width'],
+				'height' => $drawn['height'],
+				'layers' => $drawn['layers'],
+			);
+		}
+		return $boards;
 	}
 
 	/**
@@ -799,11 +856,11 @@ final class StateAnswer {
 	 * picture settings, drawn for the page from the parts with a layer image, each of which the box then leaves out
 	 * (spec: The picture; D-195). From 0.8.0 the board's top too, from the same layout (#46).
 	 *
-	 * @param State                                                                                                                                                                                                $state   The build's state.
-	 * @param array<string, Part>                                                                                                                                                                                  $counted The part each slot counts, by slot.
-	 * @param array<string, string>                                                                                                                                                                                $labels  The slots' labels.
-	 * @param array<string, string>                                                                                                                                                                                $brands  Brands' names, by slug.
-	 * @param array<int, array{name: string, url: string, price: string, stock: string, stock_class: string, image: array{src: string, width: int, height: int, srcset: string, sizes: string}|null, photo: bool}> $cards The cards.
+	 * @param State                                                                                                                                                                                                                                                                                         $state   The build's state.
+	 * @param array<string, Part>                                                                                                                                                                                                                                                                           $counted The part each slot counts, by slot.
+	 * @param array<string, string>                                                                                                                                                                                                                                                                         $labels  The slots' labels.
+	 * @param array<string, string>                                                                                                                                                                                                                                                                         $brands  Brands' names, by slug.
+	 * @param array<int, array{name: string, url: string, price: string, stock: string, stock_class: string, image: array{src: string, width: int, height: int, srcset: string, sizes: string}|null, photo: bool, large?: array{src: string, width: int, height: int, srcset: string, sizes: string}|null}> $cards The cards.
 	 * @return array{items: list<array<string, mixed>>, description: string, width: int, height: int, layers: list<array<string, mixed>>, top: list<array<string, mixed>>}
 	 */
 	private function picture( State $state, array $counted, array $labels, array $brands, array $cards ): array {
@@ -829,6 +886,7 @@ final class StateAnswer {
 				'name'  => $name,
 				'image' => $cards[ $line->part ]['image'] ?? null,
 				'photo' => $cards[ $line->part ]['photo'] ?? false,
+				'large' => $cards[ $line->part ]['large'] ?? null,
 				'drawn' => ( $drawn[ $line->slot ] ?? null ) === $line->part,
 			);
 			if ( '' !== $name ) {

@@ -319,6 +319,34 @@ final class BuildStateTest extends TestCase {
 		self::assertTrue( $state->ready(), 'a warning does not keep a build from the cart' );
 	}
 
+	// D-340: picking the recommended wheels took the recommendation off the step, so its cards were listed again by
+	// sales and name, and the card just pressed moved. The step still names what it would recommend, for the order.
+	public function test_a_step_keeps_the_part_its_cards_are_listed_under_whatever_is_picked_in_it(): void {
+		$wheels = self::step( $this->of( array( SlotKey::DECK => 103 ) ), SlotKey::WHEELS );
+		self::assertSame( 302, $wheels->recommended?->part->id );
+		self::assertSame( $wheels->recommended, $wheels->leads, 'with nothing picked, the recommendation' );
+		foreach ( array( 302, 301, 303 ) as $picked ) {
+			$wheels = self::step( $this->of( array( SlotKey::DECK => 103, SlotKey::WHEELS => $picked ), null, SlotKey::WHEELS ), SlotKey::WHEELS );
+			self::assertNull( $wheels->recommended, 'a slot with a pick has no recommendation' );
+			self::assertSame( $wheels->options->offer( 302 ), $wheels->leads, 'picked ' . $picked . ': the card it would recommend' );
+		}
+		self::assertNull( self::step( $this->of( array( SlotKey::DECK => 103 ) ), SlotKey::DECK )->leads, 'the deck is never recommended' );
+		self::assertNull( self::step( $this->of(), SlotKey::WHEELS )->leads, 'nothing starts before the deck' );
+	}
+
+	// D-340 costs a second pass of the fit engine for each picked slot it names a lead in, and only the step shown lists
+	// its cards: a picked slot off that step names none, so a build with every slot picked pays for one (the
+	// integration benchmark's move, cold, went from under 80 ms to 80.4 at p95 while every picked slot paid).
+	public function test_a_picked_slot_names_its_lead_only_on_the_step_shown(): void {
+		$picks = array( SlotKey::DECK => 103, SlotKey::TRUCKS => 149, SlotKey::WHEELS => 302 );
+		$state = $this->of( $picks, null, SlotKey::WHEELS );
+		self::assertNotNull( self::step( $state, SlotKey::WHEELS )->leads, 'the step shown' );
+		self::assertNull( self::step( $state, SlotKey::TRUCKS )->leads, 'a picked slot before it' );
+		self::assertNull( self::step( $this->of( $picks, null, SlotKey::TRUCKS ), SlotKey::WHEELS )->leads, 'a picked slot after it' );
+		self::assertNull( self::step( $this->of( $picks ), SlotKey::WHEELS )->leads, 'no step asked: the first with nothing picked is shown' );
+		self::assertNotNull( self::step( $this->of( $picks ), SlotKey::BEARINGS )->leads, 'a slot with nothing picked, as before' );
+	}
+
 	public function test_the_kits_default_part_is_what_a_slot_starts_on(): void {
 		$this->kits->add( self::KIT, self::kit( array( SlotKey::WHEELS => 301 ) ), self::shop() );
 		self::assertSame( 301, self::step( $this->of( array( SlotKey::DECK => 103 ) ), SlotKey::WHEELS )->recommended?->part->id );
@@ -609,6 +637,16 @@ final class BuildStateTest extends TestCase {
 		self::assertSame( $deck->picked, $both->counted() );
 		self::assertSame( $trucks->slot, $both->slot );
 		self::assertSame( $trucks->options, $both->options );
+	}
+
+	// D-340: a step's cards are listed under the part it would recommend were nothing picked, which it is handed; the
+	// recommendation leads only where it is handed none.
+	public function test_a_step_leads_with_the_part_it_is_handed_and_else_with_its_recommendation(): void {
+		$trucks = self::step( $this->of( array( SlotKey::DECK => 103 ) ), SlotKey::TRUCKS );
+		self::assertNotNull( $trucks->recommended );
+		$other = new Option( Shop::parts()[ SlotKey::TRUCKS ][0], array(), null );
+		self::assertSame( $other, ( new StateStep( $trucks->slot, $trucks->options, null, $trucks->recommended, $other ) )->leads );
+		self::assertSame( $trucks->recommended, ( new StateStep( $trucks->slot, $trucks->options, null, $trucks->recommended ) )->leads );
 	}
 
 	/**

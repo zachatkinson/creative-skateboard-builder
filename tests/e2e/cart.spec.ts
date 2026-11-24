@@ -1,6 +1,13 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { test, expect, builderReady, Page, type Locator } from './support/test';
+import {
+	test,
+	expect,
+	builderReady,
+	Page,
+	type Locator,
+	SITE,
+} from './support/test';
 import { axe } from './support/axe';
 
 /**
@@ -160,7 +167,7 @@ test.describe( 'A build in the Cart block', () => {
 			{
 				name: 'cbuild_e2e_theme',
 				value: 'kadence',
-				url: baseURL || 'http://localhost:8898',
+				url: baseURL || SITE,
 			},
 		] );
 		await page.goto( '/cart/' );
@@ -324,7 +331,7 @@ test.describe( 'A build in a classic cart and checkout', () => {
 			{
 				name: 'cbuild_e2e_classic',
 				value: '1',
-				url: baseURL || 'http://localhost:8898',
+				url: baseURL || SITE,
 			},
 		] );
 	} );

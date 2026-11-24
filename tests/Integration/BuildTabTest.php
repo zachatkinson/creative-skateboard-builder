@@ -142,9 +142,11 @@ final class BuildTabTest extends IntegrationTestCase {
 				'wheelbase' => '',
 			),
 			'layout'   => array(
-				'stage_side' => 'left',
-				'board_size' => 'large',
-				'search'     => 'creative_search',
+				'stage_side'   => 'left',
+				'board_size'   => 'large',
+				'search'       => 'creative_search',
+				// Ticked, as the tab shows it on a kit saved before 1.1.0 (#104).
+				'show_presets' => '1',
 			),
 		);
 	}
@@ -798,26 +800,54 @@ final class BuildTabTest extends IntegrationTestCase {
 		$kit   = KitFactory::kit();
 		$panel = $this->panel( $kit );
 		self::assertStringContainsString( 'id="cbuild-kit-layout"', $panel );
-		foreach ( array( 'stage_side' => 'left', 'board_size' => 'large', 'search' => 'creative_search' ) as $key => $default ) {
+		foreach ( array( 'stage_side' => 'left', 'board_size' => 'large', 'search' => 'creative_search', 'motion' => 'playful' ) as $key => $default ) {
 			self::assertMatchesRegularExpression( '#name="cbuild_kit\[layout\]\[' . $key . '\]".*?<option value="' . $default . '"\s+selected#s', $panel, $key . ': a kit saved before 1.0.0 shows the default' );
 		}
 
 		$sent           = self::form();
 		$sent['layout'] = array(
-			'stage_side' => 'right',
-			'board_size' => 'balanced',
-			'search'     => 'own',
+			'stage_side'   => 'right',
+			'board_size'   => 'balanced',
+			'search'       => 'own',
+			'motion'       => 'subtle',
+			'show_presets' => '1',
 		);
 		$this->send( $kit, $sent );
 		self::assertSame( array(), self::notices() );
-		self::assertSame( array( 'schema_version' => 1, 'stage_side' => 'right', 'board_size' => 'balanced', 'search' => 'own' ), self::stored( $kit->get_id() )[ Options::META_KIT_LAYOUT ] );
+		self::assertSame( array( 'schema_version' => 1, 'stage_side' => 'right', 'board_size' => 'balanced', 'search' => 'own', 'motion' => 'subtle', 'show_presets' => true ), self::stored( $kit->get_id() )[ Options::META_KIT_LAYOUT ] );
 		$read = $this->service( \CreativeBranding\SkateboardBuilder\Port\Kits::class )->kit( $kit->get_id() );
-		self::assertSame( array( 'right', 'balanced', 'own' ), array( $read?->layout->stageSide, $read?->layout->boardSize, $read?->layout->search ), 'the kit the builder reads' );
+		self::assertSame( array( 'right', 'balanced', 'own', 'subtle' ), array( $read?->layout->stageSide, $read?->layout->boardSize, $read?->layout->search, $read?->layout->motion ), 'the kit the builder reads' );
 
 		$sent['layout']['stage_side'] = 'top';
 		$this->send( $kit, $sent );
 		self::assertStringContainsString( 'The kit&#039;s layout was not saved.', implode( '', self::notices() ) );
 		self::assertSame( 'right', self::stored( $kit->get_id() )[ Options::META_KIT_LAYOUT ]['stage_side'], 'the layout in force stays' );
+	}
+
+	// #104 (R1): Show ready builds, in the Presets section and kept in `_cbuild_layout`. Ticked on a kit saved before
+	// 1.1.0; unticked, the kit's ready builds are hidden and kept as they are. All from wp-admin, with no WP-CLI.
+	public function test_show_ready_builds_is_ticked_for_a_kit_saved_before_and_unticking_keeps_the_presets(): void {
+		$this->as( 'shop_manager' );
+		$kit   = KitFactory::kit();
+		$panel = $this->panel( $kit );
+		self::assertMatchesRegularExpression( '/name="cbuild_kit\[layout\]\[show_presets\]"[^>]*checked/', $panel, 'a kit saved before 1.1.0 shows its ready builds' );
+		self::assertStringContainsString( 'Show ready builds', $panel );
+		self::assertMatchesRegularExpression( '#id="cbuild-kit-presets".*?name="cbuild_kit\[layout\]\[show_presets\]"#s', $panel, 'in the Presets section' );
+
+		$presets = self::stored( $kit->get_id() )[ Options::META_KIT_PRESETS ];
+		$sent    = self::form();
+		unset( $sent['layout']['show_presets'], $sent['presets'] );
+		$this->send( $kit, $sent );
+		self::assertSame( array(), self::notices() );
+		self::assertFalse( self::stored( $kit->get_id() )[ Options::META_KIT_LAYOUT ]['show_presets'] );
+		self::assertSame( $presets, self::stored( $kit->get_id() )[ Options::META_KIT_PRESETS ], 'the presets are kept as they are' );
+		$read = $this->service( \CreativeBranding\SkateboardBuilder\Port\Kits::class )->kit( $kit->get_id() );
+		self::assertFalse( $read?->layout->showPresets, 'the kit the builder reads' );
+		self::assertDoesNotMatchRegularExpression( '/name="cbuild_kit\[layout\]\[show_presets\]"[^>]*checked/', $this->panel( $kit ) );
+
+		$sent['layout']['show_presets'] = '1';
+		$this->send( $kit, $sent );
+		self::assertTrue( self::stored( $kit->get_id() )[ Options::META_KIT_LAYOUT ]['show_presets'] );
 	}
 
 	public function test_a_wheelbase_outside_what_a_deck_has_is_not_saved_and_the_notice_says_the_range(): void {

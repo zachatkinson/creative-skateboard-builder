@@ -76,6 +76,9 @@ final class ThumbnailHooks implements Hookable {
 				esc_attr( $picture['name'] )
 			);
 		}
+		if ( ! $picture['shown'] ) {
+			return $html;
+		}
 		$deck = wc_get_product( $picture['deck'] );
 		return $deck instanceof WC_Product ? $deck->get_image( 'woocommerce_thumbnail', array( 'alt' => $picture['name'] ) ) : $html;
 	}
@@ -107,6 +110,9 @@ final class ThumbnailHooks implements Hookable {
 				),
 			);
 		}
+		if ( ! $picture['shown'] ) {
+			return $images;
+		}
 		$deck  = wc_get_product( $picture['deck'] );
 		$image = $deck instanceof WC_Product ? (int) $deck->get_image_id() : 0;
 		$full  = $image > 0 ? wp_get_attachment_image_src( $image, 'full' ) : false;
@@ -129,10 +135,12 @@ final class ThumbnailHooks implements Hookable {
 
 	/**
 	 * A kit's line's picture: the composed picture's address, or null while it is not made, with the deck to show
-	 * until then and the kit's name for the alt text. Null for a line that is no kit's, or a build with no deck.
+	 * until then, whether it may be shown, and the kit's name for the alt text. Null for a line that is no kit's, or a
+	 * build with no deck. A picture not made is asked for, as a page asks: one drawn when the cart was filled is no
+	 * longer found once another plugin's answer for a part changes, and the new one is drawn (D-309).
 	 *
 	 * @param mixed $line The cart line.
-	 * @return array{src: string|null, deck: int, name: string}|null
+	 * @return array{src: string|null, deck: int, shown: bool, name: string}|null
 	 */
 	private function picture( mixed $line ): ?array {
 		$build = Build::read( is_array( $line ) ? ( $line[ Options::CART_BUILD ] ?? null ) : null );
@@ -140,11 +148,16 @@ final class ThumbnailHooks implements Hookable {
 		if ( null === $build || null === $deck ) {
 			return null;
 		}
-		$kit = is_array( $line ) && ( $line['data'] ?? null ) instanceof WC_Product ? $line['data'] : null;
+		$kit      = is_array( $line ) && ( $line['data'] ?? null ) instanceof WC_Product ? $line['data'] : null;
+		$pictures = ( $this->pictures )();
+		// One read of the build a call, and the queue asked once a picture a request (the auditor's 1.1.0 minor 7).
+		$src = $pictures->wanted( $build->kit, $build->picks, ComposedPictures::CART );
 		return array(
-			'src'  => ( $this->pictures )()->url( $build->kit, $build->picks, ComposedPictures::CART ),
-			'deck' => $deck,
-			'name' => null === $kit ? '' : wp_strip_all_tags( $kit->get_name() ),
+			'src'   => $src,
+			'deck'  => $deck,
+			// The deck's photo stands in only where another plugin draws it as it is (D-309).
+			'shown' => $pictures->shown( $build->kit, SlotKey::DECK, $deck, ComposedPictures::CART ),
+			'name'  => null === $kit ? '' : wp_strip_all_tags( $kit->get_name() ),
 		);
 	}
 }

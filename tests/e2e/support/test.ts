@@ -1,8 +1,10 @@
 import { test as base } from '@playwright/test';
 import type { Page } from '@playwright/test';
+import { SITE } from './site';
 
 export { expect } from '@playwright/test';
 export type { Locator, Page } from '@playwright/test';
+export { SITE } from './site';
 
 /**
  * Playwright's test, with every request to the shop under test marked `X-Creative-Test: 1`, as the agency's other
@@ -11,7 +13,7 @@ export type { Locator, Page } from '@playwright/test';
  */
 export const test = base.extend( {
 	context: async ( { context, baseURL }, provide ) => {
-		const origin = new URL( baseURL || 'http://localhost:8898' ).origin;
+		const origin = new URL( baseURL || SITE ).origin;
 		await context.route(
 			( url ) => url.origin === origin,
 			( route ) =>
@@ -29,6 +31,7 @@ export const test = base.extend( {
 	// A page the store runs on waits for the builder's ready mark, set by its last region, as a shopper sees it settle.
 	page: async ( { page, javaScriptEnabled }, provide ) => {
 		if ( false !== javaScriptEnabled ) {
+			await page.addInitScript( countStart );
 			const ready = () => builderReady( page );
 			for ( const name of [
 				'goto',
@@ -59,14 +62,146 @@ export const test = base.extend( {
  * @param page The page.
  */
 export async function builderReady( page: Page ): Promise< void > {
+	try {
+		await page.waitForFunction(
+			() =>
+				! document.querySelector( '.cbuild' ) ||
+				! ( 'jQuery' in window ) ||
+				null !== document.querySelector( '.cbuild[data-ready]' ),
+			undefined,
+			{ timeout: 15000 }
+		);
+	} catch ( error ) {
+		throw new Error(
+			`${ String( error ) }\nThe builder's ready mark never came. Where the page's start stood (#93): ${ JSON.stringify(
+				await startSeen( page )
+			) }`,
+			{ cause: error }
+		);
+	}
+}
+
+interface Start {
+	contentLoaded: number;
+	yields: number;
+	resumed: number;
+}
+
+/**
+ * Counts, from before any of the page's scripts run, what the Interactivity runtime's start waits on: the
+ * DOMContentLoaded event, and each `scheduler.yield()` it hydrates between, asked and resumed (wp-includes'
+ * interactivity module: `onDOMReady( hydrateRegions )`, `splitTask`). In Firefox the runtime once hydrated no region
+ * at all, WooCommerce's Mini-Cart's included, with no error (#93); the counts say which wait it stopped in.
+ * The wrapper calls the browser's own `yield()` and only counts its answer.
+ */
+function countStart() {
+	const start: Start = { contentLoaded: -1, yields: 0, resumed: 0 };
+	( window as unknown as { cbuildStart: Start } ).cbuildStart = start;
+	document.addEventListener( 'DOMContentLoaded', () => {
+		start.contentLoaded = performance.now();
+	} );
+	const scheduler = (
+		window as unknown as { scheduler?: { yield?: () => Promise< void > } }
+	 ).scheduler;
+	const native = scheduler?.yield?.bind( scheduler );
+	if ( scheduler && native ) {
+		scheduler.yield = () => {
+			start.yields++;
+			return native().then( () => {
+				start.resumed++;
+			} );
+		};
+	}
+}
+
+/**
+ * What a page that never set the ready mark had done: its counts from `countStart()`, its load, its regions, and
+ * whether a yield and a timer asked now are answered within a second.
+ *
+ * @param page The page.
+ */
+async function startSeen( page: Page ): Promise< unknown > {
+	return page
+		.evaluate( async () => {
+			const start = ( window as unknown as { cbuildStart?: Start } )
+				.cbuildStart;
+			const counted = start ? { ...start } : null;
+			const [ navigation ] = performance.getEntriesByType(
+				'navigation'
+			) as PerformanceNavigationTiming[];
+			const within = ( answer: Promise< unknown > ) =>
+				Promise.race( [
+					answer.then( () => 'answered' ),
+					new Promise( ( done ) =>
+						setTimeout( () => done( 'not within 1 s' ), 1000 )
+					),
+				] );
+			const scheduler = (
+				window as unknown as {
+					scheduler?: { yield?: () => Promise< void > };
+				}
+			 ).scheduler;
+			return {
+				counted,
+				readyState: document.readyState,
+				contentLoadedStart: navigation?.domContentLoadedEventStart,
+				loadEnd: navigation?.loadEventEnd,
+				regions: document.querySelectorAll( '[data-wp-interactive]' )
+					.length,
+				yieldNow: scheduler?.yield
+					? await within( scheduler.yield() )
+					: 'no scheduler.yield',
+				timerNow: await within(
+					new Promise( ( done ) => setTimeout( done, 0 ) )
+				),
+			};
+		} )
+		.catch( ( error: unknown ) => String( error ) );
+}
+
+/**
+ * Waits until WordPress's emoji script is done with the page. Core asks a worker whether the browser draws emoji
+ * itself, keeps the answer in sessionStorage, and where it does not (the test browsers, headless; Chrome on Windows,
+ * for flags) adds twemoji and wp-emoji, often after the page's load; wp-emoji then reads the whole page in one task as
+ * it loads, or on its 50 ms timer if twemoji came second (wp-emoji-loader.js, wp-emoji.js `load()`). At four times
+ * slower on CI's runner that task fell on the first pick of the paint test (#49). The wait is for the answer, then for
+ * both scripts where they are needed, then for the page to fetch nothing for half a second. The reads wp-emoji's
+ * observer makes on each change after that stay in what is measured, as a shopper whose browser loads it has them.
+ *
+ * @param page The page.
+ */
+export async function emojiDone( page: Page ) {
 	await page.waitForFunction(
-		() =>
-			! document.querySelector( '.cbuild' ) ||
-			! ( 'jQuery' in window ) ||
-			null !== document.querySelector( '.cbuild[data-ready]' ),
+		() => {
+			const settings = (
+				window as unknown as {
+					_wpemojiSettings?: { supports?: { everything?: boolean } };
+				}
+			 )._wpemojiSettings;
+			if ( ! settings?.supports ) {
+				return true;
+			}
+			try {
+				if (
+					null === sessionStorage.getItem( 'wpEmojiSettingsSupports' )
+				) {
+					return false;
+				}
+			} catch {
+				// No storage: the answer is not kept, and its settings are read as they stand.
+			}
+			return (
+				false !== settings.supports.everything ||
+				( 'twemoji' in window &&
+					undefined !==
+						( window as unknown as { wp?: { emoji?: unknown } } ).wp
+							?.emoji )
+			);
+		},
 		undefined,
 		{ timeout: 15000 }
 	);
+	await settled( page );
 }
 
 /**

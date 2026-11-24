@@ -115,9 +115,16 @@ final class BuilderTest extends TestCase {
 	 */
 	private const array PARK = array( SlotKey::DECK => 103, SlotKey::TRUCKS => 149, SlotKey::WHEELS => 302 ) + self::STREET;
 
-	private function presets(): void {
-		$parts                    = Shop::parts();
-		$parts[ SlotKey::WHEELS ] = array_map( static fn( Part $part ): Part => 302 === $part->id ? Shop::priced( $part, $part->price, false, 0 ) : $part, $parts[ SlotKey::WHEELS ] );
+	/**
+	 * The kit's two ready builds, Street and Park; Park's wheels are sold out unless it is to be whole.
+	 *
+	 * @param bool $whole Whether Park's wheels are in stock, so its tile is shown (#104).
+	 */
+	private function presets( bool $whole = false ): void {
+		$parts = Shop::parts();
+		if ( ! $whole ) {
+			$parts[ SlotKey::WHEELS ] = array_map( static fn( Part $part ): Part => 302 === $part->id ? Shop::priced( $part, $part->price, false, 0 ) : $part, $parts[ SlotKey::WHEELS ] );
+		}
 		$this->kits->add(
 			self::KIT,
 			Shop::kit(
@@ -137,14 +144,15 @@ final class BuilderTest extends TestCase {
 		);
 	}
 
-	// Spec, Presets: "Up to six tiles at the start ... Each shows its picture, its total and a line on who it's for",
-	// and "A preset holding a sold-out part says so on its tile". Spec, Search: presets are buttons in GET forms.
+	// Spec, Presets: "Up to six tiles at the start ... Each shows its picture, its total and a line on who it's for".
+	// Spec, Search: presets are buttons in GET forms. #104 (R1) replaces "A preset holding a sold-out part says so on
+	// its tile": Park, whose wheels are sold out, is left out, and the Catalogue check tells the owner.
 	public function test_a_blank_build_starts_with_a_tile_for_each_preset_that_starts_its_build_at_the_review(): void {
 		$this->presets();
 		$presets = $this->show( new BuildLink() )['view']['presets'];
 		self::assertTrue( $presets['shown'] );
 		self::assertSame( 'Start from a ready build', $presets['heading'] );
-		self::assertCount( 2, $presets['tiles'] );
+		self::assertCount( 1, $presets['tiles'], 'Street alone: Park holds a sold-out part' );
 
 		$street = $presets['tiles'][0];
 		self::assertSame( 'Street', $street['name'] );
@@ -171,13 +179,7 @@ final class BuilderTest extends TestCase {
 		self::assertSame( 'Start from Street', $street['button'], 'each button has a name of its own (P11)' );
 		self::assertTrue( $street['hasImage'] );
 		self::assertSame( 'https://shop.test/101.jpg', $street['src'] );
-		self::assertSame( 'https://shop.test/103.jpg', $presets['tiles'][1]['src'] );
-
-		$park = $presets['tiles'][1];
-		self::assertFalse( $park['hasDescription'] );
-		self::assertSame( array( array( 'text' => 'Wheels: Part 302 is sold out.' ) ), $park['notes'] );
-		self::assertSame( 'Start from Park', $park['button'] );
-		self::assertContains( array( 'name' => 'cbuild[preset]', 'value' => '1' ), $park['fields'] );
+		self::assertTrue( $street['hasTotal'] );
 
 		self::assertFalse( $this->show( new BuildLink( array( SlotKey::DECK => 101 ) ) )['view']['presets']['shown'], 'a build begun has no tiles' );
 		self::assertTrue( $this->show( new BuildLink( array(), null, SlotKey::DECK, null, null, '', '8.5in' ) )['view']['presets']['shown'], 'the first step, a width pressed' );
@@ -195,9 +197,13 @@ final class BuilderTest extends TestCase {
 		);
 	}
 
-	public function test_a_preset_whose_part_is_no_longer_offered_says_so_once_by_name_and_shows_no_total(): void {
-		// Cowork's review, minor 16: the tile said "Trucks: the part chosen is not one this kit offers here. Trucks:
-		// nothing is chosen yet." and a total for a build that lacks its trucks.
+	/**
+	 * #104 (R1): a ready build with a part that's gone, sold out or no longer fits is left out for shoppers, on the
+	 * page and in the state answer. Before, its tile named the part (Cowork's review, minor 16), and on the demo both
+	 * tiles named test trucks "no longer offered here". The tiles that are left keep their place among the kit's in
+	 * `cbuild[preset]`.
+	 */
+	public function test_a_ready_build_with_a_part_gone_or_sold_out_is_left_out_and_the_rest_keep_their_place(): void {
 		$parts                    = Shop::parts();
 		$parts[ SlotKey::TRUCKS ] = array_values( array_filter( $parts[ SlotKey::TRUCKS ], static fn( Part $part ): bool => 139 !== $part->id ) );
 		$this->kits->add(
@@ -212,21 +218,124 @@ final class BuilderTest extends TestCase {
 			),
 			$parts
 		);
-		$tile = $this->show( new BuildLink() )['view']['presets']['tiles'][0];
+		$shown = $this->show( new BuildLink() );
+		self::assertSame( array( 'Street' ), array_column( $shown['answer']['presets'], 'name' ), 'a part gone: still listed, at its place (the auditor\'s 1.1.0 should-fix 2)' );
+		self::assertSame( array( false ), array_column( $shown['answer']['presets'], 'shown' ) );
+		self::assertFalse( $shown['view']['presets']['shown'] );
+		self::assertSame( array(), $shown['view']['presets']['tiles'] );
 
-		self::assertSame( array( array( 'text' => 'Trucks: Part 139 is no longer offered here.' ) ), $tile['notes'] );
-		self::assertFalse( $tile['hasTotal'] );
+		// Park's wheels are sold out, Street is whole: Street's tile, second among the kit's, says so.
+		$parts                    = Shop::parts();
+		$parts[ SlotKey::WHEELS ] = array_map( static fn( Part $part ): Part => 302 === $part->id ? Shop::priced( $part, $part->price, false, 0 ) : $part, $parts[ SlotKey::WHEELS ] );
+		$this->kits->add(
+			self::KIT,
+			Shop::kit(
+				presets: array(
+					array(
+						'name'  => 'Park',
+						'picks' => self::PARK,
+					),
+					array(
+						'name'  => 'Street',
+						'picks' => self::STREET,
+					),
+				)
+			),
+			$parts
+		);
+		$shown = $this->show( new BuildLink() );
+		self::assertSame( array( 'Park', 'Street' ), array_column( $shown['answer']['presets'], 'name' ), 'a part sold out: every ready build listed' );
+		self::assertSame( array( 0, 1 ), array_column( $shown['answer']['presets'], 'at' ) );
+		self::assertSame( array( false, true ), array_column( $shown['answer']['presets'], 'shown' ), 'Park is not shown' );
+		self::assertSame( array( 'Start from Street' ), array_column( $shown['view']['presets']['tiles'], 'button' ) );
+		self::assertContains( array( 'name' => 'cbuild[preset]', 'value' => '1' ), $shown['view']['presets']['tiles'][0]['fields'], 'its place among the kit\'s' );
+		self::assertFalse( $shown['answer']['presets'][0]['ready'] );
+		self::assertTrue( $shown['answer']['presets'][1]['ready'] );
+	}
 
-		$this->presets();
-		self::assertTrue( $this->show( new BuildLink() )['view']['presets']['tiles'][1]['hasTotal'], 'a sold-out part leaves the build whole, so its total stands' );
+	// #104 (R1): Show ready builds, off, hides the section on the page and in the state answer, and keeps the ready
+	// builds as they are: a link to one still opens it.
+	public function test_show_ready_builds_off_hides_the_section_and_keeps_the_ready_builds(): void {
+		$presets = array(
+			'schema_version' => 1,
+			'presets'        => array(
+				array(
+					'name'  => 'Street',
+					'picks' => self::STREET,
+				),
+			),
+		);
+		$kit     = Kit::fromDocuments( KitDocuments::slots(), KitDocuments::rules(), $presets, KitDocuments::assembly(), null, array( 'schema_version' => 1, 'show_presets' => false ) );
+		$this->kits->add( self::KIT, $kit, Shop::parts() );
+		$shown = $this->show( new BuildLink() );
+		self::assertSame( array( false ), array_column( $shown['answer']['presets'], 'shown' ), 'listed, and not shown' );
+		self::assertTrue( $shown['answer']['presets'][0]['ready'] );
+		self::assertFalse( $shown['view']['presets']['shown'] );
+		self::assertCount( 1, $shown['state']->kit->presets, 'kept as it is' );
+
+		$opened = $this->show( new BuildLink( self::STREET, null, BuildLink::REVIEW, null, 0 ) )['view'];
+		self::assertTrue( $opened['isReview'] );
+		self::assertSame( array(), $opened['errors']['items'] );
+
+		// A kit saved before 1.1.0 has no such key, and shows its ready builds.
+		$kit = Kit::fromDocuments( KitDocuments::slots(), KitDocuments::rules(), $presets, KitDocuments::assembly(), null, array( 'schema_version' => 1, 'stage_side' => 'right' ) );
+		$this->kits->add( self::KIT, $kit, Shop::parts() );
+		self::assertSame( array( 'Start from Street' ), array_column( $this->show( new BuildLink() )['view']['presets']['tiles'], 'button' ) );
+	}
+
+	/**
+	 * #85 (Cowork's 1.0.0 F6): Start from Street, whose trucks the kit no longer offers, opened the trucks step on
+	 * "Trucks: nothing is chosen yet." and "Trucks: the part chosen is not one this kit offers here.": two lines for one
+	 * slot. It says it once, in the tile's own words.
+	 */
+	public function test_a_ready_build_with_a_part_no_longer_offered_opens_on_one_line_for_its_slot_in_the_tiles_words(): void {
+		$parts                    = Shop::parts();
+		$parts[ SlotKey::TRUCKS ] = array_values( array_filter( $parts[ SlotKey::TRUCKS ], static fn( Part $part ): bool => 139 !== $part->id ) );
+		$this->kits->add(
+			self::KIT,
+			Shop::kit(
+				presets: array(
+					array(
+						'name'  => 'Street',
+						'picks' => self::STREET,
+					),
+				)
+			),
+			$parts
+		);
+		$sent = array_map( 'strval', self::STREET ) + array(
+			'preset' => '0',
+			'step'   => 'review',
+		);
+		$view = $this->show( BuildLink::read( $sent ) )['view'];
+		self::assertSame( SlotKey::TRUCKS, $view['step']['slot'], 'the step the build lacks' );
+		self::assertSame( array( 'Trucks: Part 139 is no longer offered here.' ), array_column( $view['errors']['items'], 'text' ) );
+
+		// A link's ID no preset holds is named by nothing, as before.
+		$sent[ SlotKey::TRUCKS ] = '987654';
+		self::assertSame(
+			array( 'Trucks: the part chosen is not one this kit offers here.' ),
+			array_column( $this->show( BuildLink::read( $sent ) )['view']['errors']['items'], 'text' )
+		);
 	}
 
 	// Spec (configurator): Settings (D-255), the stage's side and the board's size on a desktop.
 	public function test_the_kits_layout_puts_the_stage_on_its_side_at_its_size(): void {
-		self::assertSame( array( 'stageRight' => false, 'balanced' => false ), $this->show( new BuildLink() )['view']['layout'], 'left and large unless the kit says' );
-		$kit = Kit::fromDocuments( KitDocuments::slots(), KitDocuments::rules(), KitDocuments::presets(), KitDocuments::assembly(), null, array( 'schema_version' => 1, 'stage_side' => 'right', 'board_size' => 'balanced' ) );
+		self::assertSame( array( 'stageRight' => false, 'balanced' => false, 'subtle' => false ), $this->show( new BuildLink() )['view']['layout'], 'left, large and playful unless the kit says' );
+		$kit = Kit::fromDocuments( KitDocuments::slots(), KitDocuments::rules(), KitDocuments::presets(), KitDocuments::assembly(), null, array( 'schema_version' => 1, 'stage_side' => 'right', 'board_size' => 'balanced', 'motion' => 'subtle' ) );
 		$this->kits->add( self::KIT, $kit, Shop::parts() );
-		self::assertSame( array( 'stageRight' => true, 'balanced' => true ), $this->show( new BuildLink() )['view']['layout'] );
+		self::assertSame( array( 'stageRight' => true, 'balanced' => true, 'subtle' => true ), $this->show( new BuildLink() )['view']['layout'] );
+	}
+
+	// Spec (configurator): Milestone 11, the counting total (D-257): the view carries the total in minor units and the
+	// shop's way of writing it, so the store can write the frames between one total and the next, and end on the bar's.
+	public function test_the_view_gives_the_total_in_minor_units_and_the_shops_currency_for_the_counting_total(): void {
+		$this->kits->add( self::KIT, Shop::kit(), Shop::parts() );
+		$view = $this->show( new BuildLink( array( SlotKey::DECK => 101 ), null, SlotKey::TRUCKS ) )['view'];
+		self::assertSame( ( new FakeMoney() )->settings(), $view['money']['currency'] );
+		self::assertGreaterThan( 0, $view['money']['amount'] );
+		self::assertSame( ( new FakeMoney() )->text( $view['money']['amount'], 2 ), $view['bar']['amount'], 'the same total the bar shows' );
+		self::assertSame( 0, $this->show( new BuildLink() )['view']['money']['amount'], 'nothing picked' );
 	}
 
 	public function test_the_picture_says_nothing_under_it_at_a_blank_start_where_the_summary_says_it(): void {
@@ -384,6 +493,224 @@ final class BuilderTest extends TestCase {
 		self::assertSame( array( 'deck-1' ), array_column( $before['top']['layers'], 'key' ), 'the plain top, maple in the deck\'s shape' );
 	}
 
+	/**
+	 * #82 (Cowork's 1.0.0 F3): a deck with no layer image drew no board, and its photo was a thumbnail in the corner of
+	 * the stage. Its photo takes the board's place, at the board's size, with every other part's labelled photo below
+	 * it, as the review shows them: a truck drawn with no deck under it says nothing. A drawn deck is the board, as
+	 * before, and a deck with no photo either leaves the picture as it was.
+	 */
+	public function test_a_deck_with_no_layer_image_stands_in_for_the_board_by_its_photo_and_the_rest_show_their_photos(): void {
+		$this->layers->attachments = array( 149 => 49 );
+		$this->layers->images      = array( 49 => new ImageFacts( 'image/png', 432, 160, true ) );
+		$view                      = $this->show( new BuildLink( array( SlotKey::DECK => 101, SlotKey::TRUCKS => 149 ), null, SlotKey::WHEELS ) )['view'];
+		$picture                   = $view['picture'];
+		self::assertTrue( $picture['hero'] );
+		self::assertFalse( $picture['board']['shown'], 'the trucks are not drawn on no deck' );
+		self::assertSame( array(), $picture['board']['layers'] );
+		self::assertFalse( $picture['sided'] );
+		self::assertSame( array( SlotKey::DECK => false, SlotKey::TRUCKS => false ), array_column( $picture['items'], 'drawn', 'key' ), 'each part by its labelled photo' );
+		self::assertSame( array( 'eager', 'high' ), array( $picture['items'][0]['loading'], $picture['items'][0]['priority'] ), 'the deck\'s photo is the largest paint' );
+		self::assertSame(
+			array( 'https://shop.test/101-large.jpg', 600, 1200, 'https://shop.test/101-large.jpg 600w' ),
+			array( $picture['items'][0]['src'], $picture['items'][0]['width'], $picture['items'][0]['height'], $picture['items'][0]['srcset'] ),
+			'at the board\'s size, uncropped: the card\'s thumbnail may be a square crop'
+		);
+		self::assertSame( 'https://shop.test/149.jpg', $picture['items'][1]['src'], 'the rest as the review shows them' );
+		self::assertSame( 'https://shop.test/101.jpg', $view['bar']['photo']['src'], 'the bar\'s small picture keeps the thumbnail' );
+		self::assertFalse( $view['bar']['board']['shown'], 'the bar shows the deck\'s photo too' );
+		self::assertTrue( $view['bar']['seen'] );
+
+		$this->layers->attachments = array( 101 => 11 );
+		$this->layers->images      = array( 11 => new ImageFacts( 'image/png', 420, 1626, true ) );
+		$drawn                     = $this->show( new BuildLink( array( SlotKey::DECK => 101 ), null, SlotKey::TRUCKS ) )['view']['picture'];
+		self::assertFalse( $drawn['hero'], 'a deck with a layer image is the board' );
+		self::assertTrue( $drawn['board']['shown'] );
+
+		$this->layers->attachments = array();
+		self::assertFalse( $this->show( new BuildLink( array( SlotKey::DECK => 102 ), null, SlotKey::TRUCKS ) )['view']['picture']['hero'], 'Part 102 has no photo' );
+		self::assertFalse( $this->show( new BuildLink() )['view']['picture']['hero'], 'nothing picked' );
+	}
+
+	/**
+	 * Cowork's 1.0.0 review, F18 (#103): "a grip's layer image should be the whole sheet, drawn like a deck's artwork:
+	 * once, at the sheet's real size, centred on the deck nose to tail, clipped to the deck's outline, under the bolt
+	 * heads"; "keep drawing an image as narrow as a 1-inch strip the old way so a swatch saved under 1.0.x still works".
+	 * The grip keeps the deck's box and its outline as the mask, so it is cut where the deck is; a sheet is drawn once,
+	 * centred, at its size against the deck's. The test above is the old swatch, 51 by 1,626, repeated as before.
+	 */
+	public function test_a_grip_sheet_is_drawn_once_at_its_size_centred_on_the_deck_and_a_swatch_is_repeated_as_before(): void {
+		$this->topArt();
+		$this->layers->images[71] = new ImageFacts( 'image/webp', 460, 1687, false );
+		$picks                    = array( SlotKey::DECK => 101, SlotKey::GRIP => 701, SlotKey::HARDWARE => 601 );
+		$top                      = $this->show( new BuildLink( $picks, null, SlotKey::GRIP ) )['view']['picture']['top'];
+
+		self::assertSame( array( 'deck-1', 'grip-1' ), array_slice( array_column( $top['layers'], 'key' ), 0, 2 ), 'under the bolt heads' );
+		$deck = $top['layers'][0]['style'];
+		$grip = $top['layers'][1]['style'];
+		self::assertStringStartsWith( '--cbuild-layer-x:0%;--cbuild-layer-y:0%;--cbuild-layer-width:100%;--cbuild-layer-height:100%;--cbuild-mask:', $grip, 'the deck\'s box and outline' );
+		self::assertStringContainsString( substr( $deck, strpos( $deck, '--cbuild-mask:' ) ), $grip );
+		// The usual 9 by 33 in sheet on Part 101's 8 by 32 in deck.
+		self::assertStringEndsWith( ';--cbuild-image:url("https://example.com/layer-71.png");--cbuild-grip-size:112.5% 103.125%', $grip );
+
+		$this->layers->images[71] = new ImageFacts( 'image/png', 51, 1626, true );
+		$top                      = $this->show( new BuildLink( $picks, null, SlotKey::GRIP ) )['view']['picture']['top'];
+		self::assertStringNotContainsString( '--cbuild-grip-size', $top['layers'][1]['style'], 'a 1-inch swatch from 1.0.x is repeated nose to tail' );
+	}
+
+	// The slow deck swap (M11, D-308): a deck's card carries the files and sizes its board's image will be drawn with,
+	// the same the picture uses once it is picked, so the store fetches the very file the stage will ask for.
+	public function test_a_deck_card_carries_the_files_and_sizes_the_picture_will_draw_its_board_with(): void {
+		$this->topArt();
+		$cards   = array_column( $this->show( new BuildLink( array(), null, SlotKey::DECK ) )['view']['step']['options'], 'preload', 'id' );
+		$picture = $this->show( new BuildLink( array( SlotKey::DECK => 101 ), null, SlotKey::TRUCKS ) )['view']['picture']['board']['layers'][0];
+		$sets    = array_column( $picture['sources'], 'srcset', 'type' );
+		self::assertSame(
+			array(
+				'shown' => true,
+				'src'   => $picture['src'],
+				'avif'  => $sets['image/avif'] ?? '',
+				'webp'  => $sets['image/webp'],
+				'sizes' => $picture['sizes'],
+			),
+			$cards[101]
+		);
+		self::assertSame( array( 'shown' => false, 'src' => '', 'avif' => '', 'webp' => '', 'sizes' => '' ), $cards[102], 'a deck with no layer image' );
+	}
+
+	// Cowork's 1.0.0 review, F14 (#99): "a compact card on the deck step. Use the deck's layer image as the small
+	// picture where it has one, since it's cut out and sits on the card's own colour, and the product photo otherwise."
+	// The card draws the deck upright, 112 CSS pixels (7rem) tall, so its `sizes` is that height times the image's
+	// shape, 420 by 1,626: 29px. The WebP renditions made for the picture are the files it chooses from.
+	public function test_a_deck_card_is_compact_and_draws_the_decks_layer_image_small_or_its_photo_where_it_has_none(): void {
+		$this->topArt();
+		$step    = $this->show( new BuildLink( array(), null, SlotKey::DECK ) )['view']['step'];
+		$cards   = array_column( $step['options'], null, 'id' );
+		$picture = $this->show( new BuildLink( array( SlotKey::DECK => 101 ), null, SlotKey::TRUCKS ) )['view']['picture']['board']['layers'][0];
+		$sets    = array_column( $picture['sources'], 'srcset', 'type' );
+
+		self::assertTrue( $step['compact'], 'the deck step lists compact cards' );
+		self::assertSame(
+			array( true, true, $picture['src'], $sets['image/webp'], '29px', $picture['width'], $picture['height'] ),
+			array( $cards[101]['hasImage'], $cards[101]['drawn'], $cards[101]['src'], $cards[101]['srcset'], $cards[101]['sizes'], $cards[101]['width'], $cards[101]['height'] ),
+			'the layer image, upright and small, from the renditions the picture has'
+		);
+		self::assertSame(
+			array( true, false, 'https://shop.test/103.jpg', 300, 300 ),
+			array( $cards[103]['hasImage'], $cards[103]['drawn'], $cards[103]['src'], $cards[103]['width'], $cards[103]['height'] ),
+			'a deck with no layer image shows its photo'
+		);
+
+		$trucks = $this->show( new BuildLink( array( SlotKey::DECK => 101 ), null, SlotKey::TRUCKS ) )['view']['step'];
+		self::assertFalse( $trucks['compact'], 'other steps keep their cards' );
+		self::assertSame( array( false ), array_values( array_unique( array_column( $trucks['options'], 'drawn' ) ) ) );
+	}
+
+	// A layer image with no WebP rendition is the full file the shop uploaded, too large for a card's small picture: the
+	// card keeps the photo, and the picture draws the board as before.
+	public function test_a_deck_card_keeps_its_photo_where_its_layer_image_has_no_small_rendition(): void {
+		$this->topArt();
+		$this->renditions->forget( 11 );
+		$card = array_column( $this->show( new BuildLink( array(), null, SlotKey::DECK ) )['view']['step']['options'], null, 'id' )[101];
+		self::assertSame( array( false, 'https://shop.test/101.jpg' ), array( $card['drawn'], $card['src'] ) );
+
+		// An image with no pixels across or along has no shape to draw at, rather than dividing by nothing.
+		$drawn = new \ReflectionMethod( BuilderView::class, 'drawn' );
+		$board = static fn( int $width, int $height ): array => array(
+			'layers' => array(
+				array(
+					'image' => array(
+						'src'     => 'https://shop.test/deck.png',
+						'width'   => $width,
+						'height'  => $height,
+						'sources' => array( array( 'type' => 'image/webp', 'srcset' => 'https://shop.test/deck.webp 105w' ) ),
+					),
+				),
+			),
+		);
+		self::assertNull( $drawn->invoke( null, $board( 420, 0 ) ) );
+		self::assertNull( $drawn->invoke( null, $board( 0, 1626 ) ) );
+		$sized = $drawn->invoke( null, $board( 420, 1626 ) );
+		self::assertIsArray( $sized );
+		self::assertSame( '29px', $sized['sizes'] );
+	}
+
+	/**
+	 * A deck's board as the answer carries it, for its card's preload and small picture: one layer, its image's sources
+	 * as given.
+	 *
+	 * @param int          $height  The board's height.
+	 * @param string       $src     The image's own file.
+	 * @param list<mixed>  $sources The image's sources.
+	 * @return array<string, mixed>
+	 */
+	private static function deckBoard( int $height, string $src, array $sources ): array {
+		return array(
+			'width'  => 2159000,
+			'height' => $height,
+			'layers' => array(
+				array(
+					'width' => 2159000,
+					'image' => array(
+						'src'     => $src,
+						'width'   => 420,
+						'height'  => 1626,
+						'sources' => $sources,
+					),
+				),
+			),
+		);
+	}
+
+	// D-308 and F14: what a deck's card preloads and draws small is read from the answer as it is. A board with no
+	// height, or an image with no file, preloads nothing, rather than dividing by nothing or asking for no address;
+	// and a source that is not a map is not read.
+	public function test_a_deck_cards_preload_and_small_picture_need_a_height_a_file_and_sources_that_are_maps(): void {
+		$preload = new \ReflectionMethod( BuilderView::class, 'preload' );
+		$drawn   = new \ReflectionMethod( BuilderView::class, 'drawn' );
+		$webp    = array(
+			'type'   => 'image/webp',
+			'srcset' => 'https://shop.test/deck.webp 105w',
+		);
+		$none    = array(
+			'shown' => false,
+			'src'   => '',
+			'avif'  => '',
+			'webp'  => '',
+			'sizes' => '',
+		);
+		self::assertSame( $none, $preload->invoke( null, self::deckBoard( 0, 'https://shop.test/deck.png', array( $webp ) ) ), 'no height' );
+		self::assertSame( $none, $preload->invoke( null, self::deckBoard( 8128000, '', array( $webp ) ) ), 'no file' );
+		$shown = $preload->invoke( null, self::deckBoard( 8128000, 'https://shop.test/deck.png', array( $webp ) ) );
+		self::assertTrue( $shown['shown'] );
+		self::assertSame( 'https://shop.test/deck.webp 105w', $shown['webp'] );
+
+		$object = (object) $webp;
+		self::assertSame( '', $preload->invoke( null, self::deckBoard( 8128000, 'https://shop.test/deck.png', array( $object ) ) )['webp'], 'an object is not a source' );
+		self::assertNull( $drawn->invoke( null, self::deckBoard( 8128000, 'https://shop.test/deck.png', array( $object ) ) ), 'nor one to draw small' );
+	}
+
+	// F18, #103: a grip's sheet is sized against the deck it covers, and a deck with no size across or along gives it no
+	// size, rather than dividing by nothing. A swatch, at most an eighth as wide as it is long, has none: it repeats.
+	public function test_a_grips_sheet_is_sized_against_a_deck_with_a_size_and_a_swatch_has_none(): void {
+		$sheet = new \ReflectionMethod( BuilderView::class, 'sheet' );
+		$grip  = static fn( int $across, int $along ): array => array(
+			'width'  => 2286000,
+			'height' => 8382000,
+			'image'  => array(
+				'width'  => $across,
+				'height' => $along,
+			),
+		);
+		$deck  = static fn( int $across, int $along ): array => array(
+			'width'  => $across,
+			'height' => $along,
+		);
+		self::assertSame( '', $sheet->invoke( null, $grip( 900, 3300 ), $deck( 0, 8128000 ) ), 'no width across' );
+		self::assertSame( '', $sheet->invoke( null, $grip( 900, 3300 ), $deck( 2159000, 0 ) ), 'no length along' );
+		self::assertSame( '', $sheet->invoke( null, $grip( 100, 800 ), $deck( 2159000, 8128000 ) ), 'an eighth as wide as it is long: a swatch' );
+		self::assertNotSame( '', $sheet->invoke( null, $grip( 101, 800 ), $deck( 2159000, 8128000 ) ), 'a little wider: a sheet' );
+	}
+
 	public function test_a_deck_with_no_layer_image_has_no_top_to_turn_to_even_on_the_grip_step(): void {
 		$this->topArt();
 		$this->layers->attachments = array( 701 => 71 );
@@ -493,15 +820,20 @@ final class BuilderTest extends TestCase {
 					'name'     => 'cbuild[step]',
 					'value'    => 'wheels',
 					'disabled' => false,
+					// The trucks step has no pick yet: the store dims Next, and a press says this (#100).
+					'ready'    => false,
+					'missing'  => 'Choose your trucks first.',
 				),
 			),
 			// The estimate has a test of its own, below.
 			array_diff_key( $view['bar'], array_flip( array( 'photo', 'picture', 'board', 'hasEstimate', 'estimate' ) ) )
 		);
 		self::assertSame( $view['step']['next']['text'], $view['bar']['next']['text'], "the step's own Next, sent from its form" );
-		$bar   = array_diff_key( $view['bar']['photo'], array( 'classes' => true ) );
-		$photo = array_intersect_key( $view['picture']['items'][0], $bar );
-		self::assertSame( $photo, $bar, 'a small picture of the board: for now, the first part\'s photo' );
+		// The deck's thumbnail: the stage shows its large photo in the board's place (#82), which the bar's small
+		// picture has no use for.
+		$thumbnail = InMemoryPartCards::card( 101 )['image'];
+		self::assertNotNull( $thumbnail );
+		self::assertSame( array( true, $thumbnail['src'], $thumbnail['width'], $thumbnail['height'] ), array( $view['bar']['photo']['hasImage'], $view['bar']['photo']['src'], $view['bar']['photo']['width'], $view['bar']['photo']['height'] ), 'a small picture of the board: for now, the first part\'s photo' );
 		self::assertSame( 'cbuild-bar__photo', $view['bar']['photo']['classes'] );
 		self::assertTrue( $view['bar']['photo']['hasImage'] );
 		self::assertSame( 'See the picture', $view['bar']['picture'] );
@@ -520,6 +852,9 @@ final class BuilderTest extends TestCase {
 				'name'     => '',
 				'value'    => '',
 				'disabled' => false,
+				// Add to cart says itself whether it is ready: the review's Next is never dimmed (#100).
+				'ready'    => true,
+				'missing'  => '',
 			),
 			$review
 		);
@@ -529,8 +864,7 @@ final class BuilderTest extends TestCase {
 		$panel = $this->show( new BuildLink( array( SlotKey::DECK => 103 ) + $was, $was, SlotKey::TRUCKS ) )['view']['bar'];
 		self::assertTrue( $panel['shown'] );
 		self::assertFalse( $panel['next']['shown'], 'the panel asks for Use these or Undo, in its own forms' );
-		self::assertFalse( $panel['next']['onStep'] || $panel['next']['onReview'], 'so neither of the bar\'s buttons is shown' );
-	}
+		self::assertFalse( $panel['next']['onStep'] || $panel['next']['onReview'], 'so neither of the bar\'s buttons is shown' );	}
 
 	public function test_a_kit_the_shop_does_not_have_shows_nothing(): void {
 		self::assertNull( $this->builder()->show( 5, new BuildLink(), self::BASE ) );
@@ -595,8 +929,10 @@ final class BuilderTest extends TestCase {
 		);
 		self::assertSame(
 			array(
-				'value' => 'trucks',
-				'text'  => 'Next: Trucks',
+				'value'   => 'trucks',
+				'text'    => 'Next: Trucks',
+				'ready'   => false,
+				'missing' => 'Choose your deck first.',
 			),
 			$step['next']
 		);
@@ -926,8 +1262,10 @@ final class BuilderTest extends TestCase {
 					'text'  => '',
 				),
 				'next'      => array(
-					'value' => '',
-					'text'  => '',
+					'value'   => '',
+					'text'    => '',
+					'ready'   => true,
+					'missing' => '',
 				),
 				'stepName'  => '',
 			),
@@ -1584,5 +1922,26 @@ final class BuilderTest extends TestCase {
 		$review = array_column( $view['review']['items'], 'classes', 'key' );
 		self::assertSame( 'cbuild-review__item is-flagged badclass', $review[ SlotKey::DECK ] );
 		self::assertSame( 'cbuild-review__item', $review[ SlotKey::TRUCKS ] );
+	}
+
+	// Cowork's review of 1.0.0, F19 (#105; D-309): a ready build's tile shows the build, so it takes the classes another
+	// plugin gives each of its parts, merged, and a flagged deck blurs the tile until the shopper shows its artwork.
+	public function test_a_ready_builds_tile_takes_the_classes_another_plugin_gives_its_parts_merged(): void {
+		// Park whole, so both tiles show: a ready build with a sold-out part has no tile (#104).
+		$this->presets( true );
+		$GLOBALS['cbuild_test_filters']['cbuild_part_classes'] = static function ( array $classes, int $part, string $slot, int $kit ): array {
+			return match ( true ) {
+				self::KIT !== $kit         => array(),
+				101 === $part              => array( 'is-flagged', 'is-mature' ),
+				SlotKey::WHEELS === $slot  => array( 'is-flagged', 'is-new"' ),
+				default                    => array(),
+			};
+		};
+		$tiles = $this->show( new BuildLink() )['view']['presets']['tiles'];
+		self::assertSame( 'cbuild-preset__photo is-flagged is-mature is-new', $tiles[0]['photoClasses'], 'Street: the deck\'s and the wheels\', each once, made safe' );
+		self::assertSame( 'cbuild-preset__photo is-flagged is-new', $tiles[1]['photoClasses'], 'Park: its wheels\' alone' );
+
+		unset( $GLOBALS['cbuild_test_filters']['cbuild_part_classes'] );
+		self::assertSame( 'cbuild-preset__photo', $this->show( new BuildLink() )['view']['presets']['tiles'][0]['photoClasses'] );
 	}
 }

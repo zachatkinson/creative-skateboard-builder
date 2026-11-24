@@ -240,17 +240,24 @@ final class StateAnswerDetailTest extends TestCase {
 		self::assertSame( array(), $presets[0]['problems'] );
 	}
 
-	// Spec, Presets: what keeps a preset from the cart is named for its tile. A deck the shop no longer has leaves its
-	// slot empty, and an empty slot has no part to name.
-	public function test_a_preset_whose_part_has_gone_names_the_part_and_not_the_slot_it_leaves_empty(): void {
+	// #104 (R1): a ready build whose deck the shop no longer has is listed in the answer's presets and not shown. A link that
+	// opens it (F6) still names the deck in the tile's words, since a ready build holds it; an ID no ready build holds
+	// is named by nothing.
+	public function test_a_preset_whose_part_has_gone_is_not_shown_and_a_link_to_it_names_the_part(): void {
 		$parts                  = Shop::parts();
 		$parts[ SlotKey::DECK ] = array_values( array_filter( $parts[ SlotKey::DECK ], static fn( Part $part ): bool => 103 !== $part->id ) );
 		$this->stock( $parts, true );
-		$problems = $this->bare()->of( $this->state() )['presets'][1]['problems'];
+		$presets = $this->bare()->of( $this->state() )['presets'];
+		self::assertSame( array( 'Street', 'Park' ), array_column( $presets, 'name' ), 'every ready build, each at its place (the auditor\'s 1.1.0 should-fix 2)' );
+		self::assertSame( array( 0, 1 ), array_column( $presets, 'at' ) );
+		self::assertSame( array( true, false ), array_column( $presets, 'shown' ), 'Park is not shown' );
 
-		$named = array_column( $problems, 'name', 'code' );
-		self::assertSame( '', $named['slot_empty'] ?? null, 'the deck slot, left empty' );
-		self::assertContains( null, array_column( $problems, 'part' ) );
+		$refused = $this->bare()->of( $this->state( self::PARK, 'review' ) )['refused'];
+		self::assertSame( array( 'Deck: Part 103 is no longer offered here.' ), array_column( $refused, 'message' ) );
+		self::assertSame( array( 'part_not_in_slot' ), array_column( $refused, 'code' ) );
+
+		$refused = $this->bare()->of( $this->state( array( SlotKey::DECK => 987654 ) + self::PARK, 'review' ) )['refused'];
+		self::assertSame( array( 'Deck: the part chosen is not one this kit offers here.' ), array_column( $refused, 'message' ) );
 	}
 
 	// Spec, Performance: card data is loaded only for what the answer names, in one call, each part once.
@@ -272,9 +279,9 @@ final class StateAnswerDetailTest extends TestCase {
 		$shelf = $this->shelf( array( SlotKey::DECK => 101, SlotKey::TRUCKS => 139 ), SlotKey::WHEELS );
 
 		self::assertCount( 30, $shelf['looks'] );
-		self::assertSame( InMemoryPartCards::card( 3029 ), self::card( $shelf, 3029 )['part']['card'], 'past the 24 options the step lists' );
+		self::assertSame( InMemoryPartCards::listed( 3029 ), self::card( $shelf, 3029 )['part']['card'], 'past the 24 options the step lists' );
 		self::assertSame( array( 3044 ), array_column( array_column( $shelf['sold_out'], 'part' ), 'id' ) );
-		self::assertSame( InMemoryPartCards::card( 3044 ), $shelf['sold_out'][0]['part']['card'], 'sold out, so after the 24' );
+		self::assertSame( InMemoryPartCards::listed( 3044 ), $shelf['sold_out'][0]['part']['card'], 'sold out, so after the 24' );
 	}
 
 	// Spec, The total: a part whose product has gone keeps its place in the box with no photo.

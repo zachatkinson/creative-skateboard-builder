@@ -94,7 +94,14 @@ A kit's Build tab gains a **Layout** section, kept in the kit's `_cbuild_layout`
 | Board size on a desktop | `board_size` | `large` (60 % of the width), `balanced` (50 %) | `large` | How much of the width the board takes there. |
 | Search in the steps | `search` | `creative_search` (Creative Search where it is active, the builder's own otherwise), `own` (the builder's own always) | `creative_search` | Whether a step's search asks Creative Search to rank and correct it (D-248). |
 
-Motion (`motion`: playful, subtle) is milestone 11's, and is not kept before 1.1.0.
+## Milestone 11 (1.1.0)
+
+The Layout section gains **Motion**, in the same `_cbuild_layout` document. A kit saved before 1.1.0 has none and is playful. The Layout document also holds **Show ready builds**, drawn in the Presets section.
+
+| Setting | Key | Choices | Default | What it does |
+| --- | --- | --- | --- | --- |
+| Motion | `motion` | `playful` (parts move onto the board), `subtle` (parts fade in, for every shopper) | `playful` | How the board's parts, the steps and the total move (spec: Milestone 11, D-256). A shopper whose device asks for reduced motion always sees fades of 150 ms or less, whatever the kit says. The builder's root gets `cbuild--subtle` on subtle. |
+| Show ready builds | `show_presets` | `true`, `false` (a checkbox in the Build tab's Presets section) | `true` | Whether the builder shows "Start from a ready build" with the kit's ready builds. Off hides the section on the page, the state route's `presets` each say `shown` false (D-336), and it keeps the ready builds as they are. A ready build with a part that's gone, sold out or no longer fits is never shown; the Catalogue check lists it. A kit saved before 1.1.0 has no key and shows its ready builds (#104, D-315). |
 
 ## Options beside the settings
 

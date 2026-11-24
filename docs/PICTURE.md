@@ -25,7 +25,7 @@ The underside draws three slots: deck, trucks and wheels. The top draws the deck
 | Slot | What the board shows | Its box, across by along | Specs it reads |
 | --- | --- | --- | --- |
 | Deck | The deck | Its width by its length; 32 in long where the deck gives no length | `deck_width`, `deck_length` |
-| Grip | On the top: the deck's whole outline, filled with the grip's image repeated nose to tail. Until 0.8.0 a 1 in strip along the underside's right edge | 1 in (25.4 mm) by the deck's length, for the image; the deck's box on the board | None |
+| Grip | On the top: its whole sheet, drawn once at its real size, centred on the deck and cut by the deck's outline (from 1.1.0). Until 1.1.0 a 1 in swatch repeated nose to tail, and until 0.8.0 a 1 in strip along the underside's right edge | The sheet's width by its length; 9 by 33 in where the grip gives none | `grip_width`, `grip_length` |
 | Trucks | Two trucks, one at each end, placed by the wheelbase | The axle's width by 3 in (76.2 mm): a baseplate's two rows of holes 2.125 in apart and 0.875 in past them. On an old school deck the rows are 2.5 in apart | `axle_width`; the deck's `wheelbase` and `hole_pattern` |
 | Wheels | Four wheels, their outer faces at the axles' ends | Three fifths of the diameter by the diameter; 54 mm where the wheels give none | `wheel_diameter` |
 
@@ -34,7 +34,7 @@ A truck's or a wheel's image is drawn as it is at each place: one truck image at
 **The top** is drawn from the same layout, in the same places, so the board is turned over about its length and nothing moves from left to right:
 
 - **The deck** is plain maple in the shape of its own layer image: the image's transparency is the outline (a CSS mask), and its pixels are not shown. A deck with no layer image has no top, and no button.
-- **The grip** fills the same outline, its image repeated from the nose to the tail at the deck's length, so a swatch of tape 1 in across is enough.
+- **The grip** is its whole sheet, drawn once at the sheet's real size and centred on the deck nose to tail, under the bolt heads; the deck's outline cuts it, as a grip is trimmed to its deck, so a printed sheet's artwork shows where it falls on the board. A deck wider than its sheet shows its maple at the edges. An image at most an eighth as wide as it is long is a 1 in swatch, as 1.0.x asked for, and is still repeated from the nose to the tail (D-307).
 - **The hardware** is a bolt head at each of the deck's eight holes, the hardware's own layer image, 3/8 in (9.5 mm) across, at the trucks' rows of holes, 1 5/8 in (41.3 mm) apart across the board. Hardware is optional here: with no layer image it draws no heads and keeps its labelled photo, and the Catalogue check does not list it.
 - **The wheels** sit under the deck, so they show only where they stand out past its edge.
 - **The trucks** are hidden under the deck.
@@ -72,7 +72,7 @@ What each slot's image shows, as far as the layout says:
 - **Deck:** its underside, seen square on, nose at the top. A cut-out from an existing product photo of the underside works where that photo is square to the deck and has the pixels the field asks for.
 - **Trucks:** one truck seen from underneath, the axle across the image. The box runs the axle's width across and 76.2 mm along.
 - **Wheels:** one wheel seen from underneath, its tread facing the camera, so the image is taller than it is wide: the box is three fifths of the diameter across and the diameter along.
-- **Grip:** the tape seen from the top, a strip 1 in wide along the deck's length. The top repeats it along the deck and clips it to the deck's outline, so a swatch shot flat and cropped to the strip is enough; its corners must still be transparent for the save's check, so leave a pixel clear at each.
+- **Grip:** the whole sheet, shot flat from above with its grit side up, nose at the top, cropped to the sheet's edges: a rectangle with nothing transparent in it. A printed sheet's artwork stays where it is on the sheet. The top centres it on the deck and cuts it to the deck's outline. Its corners are the sheet's own, so the save does not check them for transparency.
 - **Hardware:** one bolt's head seen from the top, centred, about 3/8 in across. It is drawn at each hole in its own colours.
 
 Crop each image close to the part. The picture centres an image in its box and keeps its shape, as CSS's `object-fit: contain` does, so empty space around the part makes the part draw smaller than its box.
@@ -82,7 +82,7 @@ Crop each image close to the part. The picture centres an image in its box and k
 The Layer image field takes an image already in the Media Library. On save it checks the file:
 
 - **Type.** A PNG, a WebP or an AVIF, read from the file itself: a host that maps uploads to AVIF keeps `image/png` on the attachment and an AVIF file under it, which is read as the AVIF it is. Where the server's image library reads the original WordPress kept beside it and not the file in use, the original is read. An AVIF needs GD built with AVIF or Imagick with an AVIF coder (D-210).
-- **Transparency.** All four corners fully transparent. A cut-out shot nose up has no part in its corners, so this catches a file exported with its background left in, even where the file has an alpha channel. Only the corners are read: by GD where PHP has it, else by Imagick where it reads the format. Where neither can read the file, transparency is not known, and the file is checked for its type and size alone.
+- **Transparency.** All four corners fully transparent. A cut-out shot nose up has no part in its corners, so this catches a file exported with its background left in, even where the file has an alpha channel. Only the corners are read: by GD where PHP has it, else by Imagick where it reads the format. Where neither can read the file, transparency is not known, and the file is checked for its type and size alone. A grip's sheet is not a cut-out, and from 1.1.0 its corners are not checked.
 - **Size.** At least two pixels to the millimetre of the part's box, across or along: one side reaching its count is enough. A file is refused only when it falls short both ways. The size is checked only for a part in a drawn slot whose specs give its box.
 
 What the field asks for at two pixels to the millimetre:
@@ -90,7 +90,7 @@ What the field asks for at two pixels to the millimetre:
 | Part | Box | Pixels needed, across or along |
 | --- | --- | --- |
 | A 32 in deck | Its width by 812.8 mm | Twice its width in millimetres, or 1,626 along |
-| Grip | 25.4 by 812.8 mm | 51 across or 1,626 along |
+| Grip, a 9 by 33 in sheet | 228.6 by 838.2 mm | 458 across or 1,677 along |
 | Hardware | No box: the size is not checked | Any; about 20 pixels across is drawn sharp at the page's size |
 | Trucks | The axle by 76.2 mm | Twice the axle in millimetres, or 153 along |
 | A 54 mm wheel | 32.4 by 54 mm | 65 across or 108 along |

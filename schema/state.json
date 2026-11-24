@@ -39,8 +39,8 @@
 				"code": { "description": "The currency's ISO 4217 code: the shop's, or a currency switcher's.", "type": "string" },
 				"symbol": { "description": "Its symbol, as plain text.", "type": "string" },
 				"decimals": { "description": "How many decimals a price shows.", "type": "integer", "minimum": 0 },
-				"decimal_separator": { "description": "Between the whole amount and its decimals.", "type": "string" },
-				"thousand_separator": { "description": "Between thousands.", "type": "string" },
+				"decimal_separator": { "description": "Between the whole amount and its decimals, as plain text with no HTML entity.", "type": "string" },
+				"thousand_separator": { "description": "Between thousands, as plain text with no HTML entity.", "type": "string" },
 				"format": { "description": "Where the symbol goes, as plain text: `%1$s%2$s`, `%2$s%1$s`, or either with a no-break space (U+00A0) between, as WooCommerce has it. From 1.0.0 the space is the character, not `&nbsp;`.", "type": "string" }
 			}
 		},
@@ -125,12 +125,14 @@
 			}
 		},
 		"presets": {
-			"description": "The kit's ready builds, six at most.",
+			"description": "The kit's ready builds, six at most, every one in the kit's order, so an entry's place is the value cbuild[preset] takes to open it. From 1.1.0 each says in `shown` whether the builder shows its tile: not where the kit's show_presets is off, nor where a part that's gone, sold out or no longer fits keeps it from the cart. A link with cbuild[preset] still opens any of the kit's.",
 			"type": "array",
 			"items": {
 				"description": "A preset.",
 				"type": "object",
 				"required": [
+					"at",
+					"shown",
 					"name",
 					"description",
 					"picks",
@@ -140,6 +142,15 @@
 					"image"
 				],
 				"properties": {
+					"at": {
+						"description": "Its place among the kit's presets, counted from 0: the value a link's cbuild[preset] takes to open it, and its own place in the list. From 1.1.0.",
+						"type": "integer",
+						"minimum": 0
+					},
+					"shown": {
+						"description": "Whether the builder shows its tile: false where the kit's show_presets is off, or a part that's gone, sold out or no longer fits keeps it from the cart, which the Catalogue check lists. Its picture is then its first part's photo. From 1.1.0.",
+						"type": "boolean"
+					},
 					"name": {
 						"description": "Its name.",
 						"type": "string"
@@ -556,6 +567,7 @@
 							"name",
 							"image",
 							"photo",
+							"large",
 							"drawn"
 						],
 						"properties": {
@@ -594,6 +606,17 @@
 							"photo": {
 								"description": "Whether `image` is the part's photo, not its layer image (1.0.0).",
 								"type": "boolean"
+							},
+							"large": {
+								"description": "From 1.1.0: the part's photo uncropped, at the shop's single-product size, which the picture shows in the board's place for a deck with no layer image; null when the part has no photo.",
+								"oneOf": [
+									{
+										"$ref": "#/definitions/photo"
+									},
+									{
+										"type": "null"
+									}
+								]
 							},
 							"drawn": {
 								"description": "Whether the board draws the part, which then has no labelled photo (0.7.0).",
@@ -683,7 +706,29 @@
 					"required": ["slot", "options"],
 					"properties": {
 						"slot": { "description": "The step's slot, or empty at the review.", "type": "string" },
-						"options": { "description": "The step's listed parts.", "type": "array", "items": { "type": "object" } },
+						"options": {
+							"description": "The step's listed parts.",
+							"type": "array",
+							"items": {
+								"type": "object",
+								"properties": {
+									"id": { "description": "The part's ID.", "type": "integer" },
+									"preload": {
+										"description": "A deck's board image, which the store fetches as the shopper points at its card: the files the picture will draw it with once picked (1.1.0, D-308).",
+										"type": "object",
+										"required": ["shown", "src", "avif", "webp", "sizes"],
+										"properties": {
+											"shown": { "description": "Whether the deck has a board image.", "type": "boolean" },
+											"src": { "description": "The image's own file.", "type": "string" },
+											"avif": { "description": "Its AVIF files, as a srcset, or empty.", "type": "string" },
+											"webp": { "description": "Its WebP files, as a srcset, or empty.", "type": "string" },
+											"sizes": { "description": "The sizes the picture draws it at.", "type": "string" }
+										}
+									}
+								},
+								"additionalProperties": true
+							}
+						},
 						"more": {
 							"type": "object",
 							"required": ["added"],
@@ -710,15 +755,82 @@
 					"required": ["turnable", "turned"],
 					"properties": {
 						"turnable": { "description": "Whether the board has a top to show: its deck has a layer image (0.8.0).", "type": "boolean" },
-						"turned": { "description": "Whether the board shows its top: on the grip step, as the server renders it; the store keeps the side the shopper turned it to (0.8.0).", "type": "boolean" }
+						"turned": { "description": "Whether the board shows its top: on the grip step, as the server renders it; the store keeps the side the shopper turned it to (0.8.0).", "type": "boolean" },
+						"board": { "$ref": "#/definitions/drawn", "description": "The underside as drawn: its layers, which the motion compares with the last view's (1.1.0)." },
+						"top": { "$ref": "#/definitions/drawn", "description": "The top as drawn, the same way (1.1.0)." },
+						"items": {
+							"description": "The stage's photos, by slot: a part removed is closed over by the rest (1.1.0).",
+							"type": "array",
+							"items": { "type": "object", "required": ["key"], "properties": { "key": { "type": "string" } }, "additionalProperties": true }
+						}
 					},
 					"additionalProperties": true
+				},
+				"bar": {
+					"type": "object",
+					"required": ["amount", "next"],
+					"properties": {
+						"amount": { "description": "The total as the bar shows it: the server's string, which the counting total writes its frames over and ends on (1.1.0).", "type": "string" },
+						"next": {
+							"type": "object",
+							"required": ["ready", "missing"],
+							"properties": {
+								"ready": { "description": "Whether the step's Next goes on: the step has a pick, or needs none; true at the review and on the change panel. Until then the store dims Next (1.1.0).", "type": "boolean" },
+								"missing": { "description": "What a press of the dimmed Next says is missing, such as Choose your deck first., or empty where Next is ready (1.1.0).", "type": "string" }
+							},
+							"additionalProperties": true
+						}
+					},
+					"additionalProperties": true
+				},
+				"money": {
+					"description": "From 1.1.0: the total in minor units and the shop's way of writing it, for the counting total's in-between frames (D-257).",
+					"type": "object",
+					"required": ["amount", "currency"],
+					"properties": {
+						"amount": { "description": "The total in whole minor units.", "type": "integer" },
+						"currency": { "description": "The answer's `currency`, as it is.", "type": "object", "additionalProperties": true }
+					}
 				}
 			},
 			"additionalProperties": true
 		}
 	},
 	"definitions": {
+		"drawn": {
+			"type": "object",
+			"required": ["layers"],
+			"properties": {
+				"layers": {
+					"type": "array",
+					"items": {
+						"type": "object",
+						"required": ["key", "style"],
+						"properties": {
+							"key": { "description": "The layer's slot and its place among that slot's, such as wheels-3.", "type": "string" },
+							"src": { "description": "Its image, which changes when the part is swapped: on the underside alone, as the top paints its layers from their style.", "type": "string" },
+							"style": { "description": "Where it is drawn, as custom properties.", "type": "string" },
+							"sizes": { "description": "Its image's sizes, on the underside: the store readies the new deck's before the view is shown (1.1.0, D-308).", "type": "string" },
+							"sources": {
+								"description": "Its image's files by type, on the underside (1.1.0, D-308).",
+								"type": "array",
+								"items": {
+									"type": "object",
+									"required": ["type", "srcset"],
+									"properties": {
+										"type": { "type": "string" },
+										"srcset": { "type": "string" }
+									},
+									"additionalProperties": true
+								}
+							}
+						},
+						"additionalProperties": true
+					}
+				}
+			},
+			"additionalProperties": true
+		},
 		"layer": {
 			"description": "One layer of the board: a part with a layer image, where it is drawn and the image.",
 			"type": "object",
@@ -903,7 +1015,8 @@
 				"picked",
 				"recommended",
 				"messages",
-				"card"
+				"card",
+				"board"
 			],
 			"properties": {
 				"id": {
@@ -997,6 +1110,41 @@
 					"oneOf": [
 						{
 							"$ref": "#/definitions/card"
+						},
+						{
+							"type": "null"
+						}
+					]
+				},
+				"board": {
+					"description": "From 1.1.0, on the deck step: the board this deck would draw alone, in the picture's units, its one layer the deck's, so a page can fetch its image before it is picked (D-308). Null on every other step, and for a deck with no layer image.",
+					"oneOf": [
+						{
+							"type": "object",
+							"required": [
+								"width",
+								"height",
+								"layers"
+							],
+							"properties": {
+								"width": {
+									"description": "The board's width, as the picture's.",
+									"type": "integer",
+									"minimum": 0
+								},
+								"height": {
+									"description": "The board's length, as the picture's.",
+									"type": "integer",
+									"minimum": 0
+								},
+								"layers": {
+									"description": "The deck's layer, as the picture's layers are.",
+									"type": "array",
+									"items": {
+										"$ref": "#/definitions/layer"
+									}
+								}
+							}
 						},
 						{
 							"type": "null"
@@ -1294,7 +1442,7 @@
 					"type": "string"
 				},
 				"chips": {
-					"description": "Its values, in natural order.",
+					"description": "Its values, in natural order; from 1.1.0, the brand group's with the most looks first, then in natural order (#98).",
 					"type": "array",
 					"items": {
 						"description": "A chip.",

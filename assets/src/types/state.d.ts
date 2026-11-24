@@ -25,11 +25,11 @@ export interface CbuildState {
 		 */
 		decimals: number;
 		/**
-		 * Between the whole amount and its decimals.
+		 * Between the whole amount and its decimals, as plain text with no HTML entity.
 		 */
 		decimal_separator: string;
 		/**
-		 * Between thousands.
+		 * Between thousands, as plain text with no HTML entity.
 		 */
 		thousand_separator: string;
 		/**
@@ -153,11 +153,19 @@ export interface CbuildState {
 		returns_notice: string;
 	};
 	/**
-	 * The kit's ready builds, six at most.
+	 * The kit's ready builds, six at most, every one in the kit's order, so an entry's place is the value cbuild[preset] takes to open it. From 1.1.0 each says in `shown` whether the builder shows its tile: not where the kit's show_presets is off, nor where a part that's gone, sold out or no longer fits keeps it from the cart. A link with cbuild[preset] still opens any of the kit's.
 	 *
 	 * Items: A preset.
 	 */
 	presets: {
+		/**
+		 * Its place among the kit's presets, counted from 0: the value a link's cbuild[preset] takes to open it, and its own place in the list. From 1.1.0.
+		 */
+		at: number;
+		/**
+		 * Whether the builder shows its tile: false where the kit's show_presets is off, or a part that's gone, sold out or no longer fits keeps it from the cart, which the Catalogue check lists. Its picture is then its first part's photo. From 1.1.0.
+		 */
+		shown: boolean;
 		/**
 		 * Its name.
 		 */
@@ -422,6 +430,10 @@ export interface CbuildState {
 			 */
 			photo: boolean;
 			/**
+			 * From 1.1.0: the part's photo uncropped, at the shop's single-product size, which the picture shows in the board's place for a deck with no layer image; null when the part has no photo.
+			 */
+			large: Photo | null;
+			/**
 			 * Whether the board draws the part, which then has no labelled photo (0.7.0).
 			 */
 			drawn: boolean;
@@ -509,7 +521,38 @@ export interface CbuildState {
 			/**
 			 * The step's listed parts.
 			 */
-			options: {}[];
+			options: {
+				/**
+				 * The part's ID.
+				 */
+				id?: number;
+				/**
+				 * A deck's board image, which the store fetches as the shopper points at its card: the files the picture will draw it with once picked (1.1.0, D-308).
+				 */
+				preload?: {
+					/**
+					 * Whether the deck has a board image.
+					 */
+					shown: boolean;
+					/**
+					 * The image's own file.
+					 */
+					src: string;
+					/**
+					 * Its AVIF files, as a srcset, or empty.
+					 */
+					avif: string;
+					/**
+					 * Its WebP files, as a srcset, or empty.
+					 */
+					webp: string;
+					/**
+					 * The sizes the picture draws it at.
+					 */
+					sizes: string;
+				};
+				[k: string]: unknown;
+			}[];
 			more?: {
 				/**
 				 * What the status says after Show more: how many it added, or empty (1.0.0).
@@ -543,7 +586,49 @@ export interface CbuildState {
 			 * Whether the board shows its top: on the grip step, as the server renders it; the store keeps the side the shopper turned it to (0.8.0).
 			 */
 			turned: boolean;
+			board?: Drawn;
+			top?: Drawn1;
+			/**
+			 * The stage's photos, by slot: a part removed is closed over by the rest (1.1.0).
+			 */
+			items?: {
+				key: string;
+				[k: string]: unknown;
+			}[];
 			[k: string]: unknown;
+		};
+		bar?: {
+			/**
+			 * The total as the bar shows it: the server's string, which the counting total writes its frames over and ends on (1.1.0).
+			 */
+			amount: string;
+			next: {
+				/**
+				 * Whether the step's Next goes on: the step has a pick, or needs none; true at the review and on the change panel. Until then the store dims Next (1.1.0).
+				 */
+				ready: boolean;
+				/**
+				 * What a press of the dimmed Next says is missing, such as Choose your deck first., or empty where Next is ready (1.1.0).
+				 */
+				missing: string;
+				[k: string]: unknown;
+			};
+			[k: string]: unknown;
+		};
+		/**
+		 * From 1.1.0: the total in minor units and the shop's way of writing it, for the counting total's in-between frames (D-257).
+		 */
+		money?: {
+			/**
+			 * The total in whole minor units.
+			 */
+			amount: number;
+			/**
+			 * The answer's `currency`, as it is.
+			 */
+			currency: {
+				[k: string]: unknown;
+			};
 		};
 		[k: string]: unknown;
 	};
@@ -703,6 +788,23 @@ export interface Option {
 	 * What its card shows, or null when the product has gone since the index read it.
 	 */
 	card: Card | null;
+	/**
+	 * From 1.1.0, on the deck step: the board this deck would draw alone, in the picture's units, its one layer the deck's, so a page can fetch its image before it is picked (D-308). Null on every other step, and for a deck with no layer image.
+	 */
+	board: {
+		/**
+		 * The board's width, as the picture's.
+		 */
+		width: number;
+		/**
+		 * The board's length, as the picture's.
+		 */
+		height: number;
+		/**
+		 * The deck's layer, as the picture's layers are.
+		 */
+		layers: Layer[];
+	} | null;
 }
 /**
  * What a card shows of a part.
@@ -736,6 +838,65 @@ export interface Card {
 	 * Whether `image` is the part's photo, not its layer image (1.0.0).
 	 */
 	photo: boolean;
+}
+/**
+ * One layer of the board: a part with a layer image, where it is drawn and the image.
+ */
+export interface Layer {
+	/**
+	 * The slot's key.
+	 */
+	slot: string;
+	/**
+	 * The part's ID.
+	 */
+	part: number;
+	/**
+	 * The layer's left edge from the board's.
+	 */
+	x: number;
+	/**
+	 * The layer's top edge from the board's, the nose's end.
+	 */
+	y: number;
+	/**
+	 * The layer across.
+	 */
+	width: number;
+	/**
+	 * The layer along.
+	 */
+	height: number;
+	/**
+	 * The part's layer image: its own file, and the renditions made of it.
+	 */
+	image: {
+		/**
+		 * The image's own file.
+		 */
+		src: string;
+		/**
+		 * Its pixels across.
+		 */
+		width: number;
+		/**
+		 * Its pixels along.
+		 */
+		height: number;
+		/**
+		 * The renditions made, a `srcset` for each type, AVIF first; none until they are made.
+		 */
+		sources: {
+			/**
+			 * The MIME type.
+			 */
+			type: 'image/avif' | 'image/webp';
+			/**
+			 * Its files with their widths, smallest first.
+			 */
+			srcset: string;
+		}[];
+	};
 }
 /**
  * A value a filter offers.
@@ -886,65 +1047,6 @@ export interface Money8 {
 	 * The amount as the shop writes its prices, in plain text.
 	 */
 	text: string;
-}
-/**
- * One layer of the board: a part with a layer image, where it is drawn and the image.
- */
-export interface Layer {
-	/**
-	 * The slot's key.
-	 */
-	slot: string;
-	/**
-	 * The part's ID.
-	 */
-	part: number;
-	/**
-	 * The layer's left edge from the board's.
-	 */
-	x: number;
-	/**
-	 * The layer's top edge from the board's, the nose's end.
-	 */
-	y: number;
-	/**
-	 * The layer across.
-	 */
-	width: number;
-	/**
-	 * The layer along.
-	 */
-	height: number;
-	/**
-	 * The part's layer image: its own file, and the renditions made of it.
-	 */
-	image: {
-		/**
-		 * The image's own file.
-		 */
-		src: string;
-		/**
-		 * Its pixels across.
-		 */
-		width: number;
-		/**
-		 * Its pixels along.
-		 */
-		height: number;
-		/**
-		 * The renditions made, a `srcset` for each type, AVIF first; none until they are made.
-		 */
-		sources: {
-			/**
-			 * The MIME type.
-			 */
-			type: 'image/avif' | 'image/webp';
-			/**
-			 * Its files with their widths, smallest first.
-			 */
-			srcset: string;
-		}[];
-	};
 }
 /**
  * A step's shelf: a page of the looks in stock, the sold-out fold, the chips, the deck's width question and the counts.
@@ -1168,6 +1270,23 @@ export interface Option1 {
 	 * What its card shows, or null when the product has gone since the index read it.
 	 */
 	card: Card | null;
+	/**
+	 * From 1.1.0, on the deck step: the board this deck would draw alone, in the picture's units, its one layer the deck's, so a page can fetch its image before it is picked (D-308). Null on every other step, and for a deck with no layer image.
+	 */
+	board: {
+		/**
+		 * The board's width, as the picture's.
+		 */
+		width: number;
+		/**
+		 * The board's length, as the picture's.
+		 */
+		height: number;
+		/**
+		 * The deck's layer, as the picture's layers are.
+		 */
+		layers: Layer[];
+	} | null;
 }
 /**
  * A group of chips: chips in one group widen, and groups narrow each other.
@@ -1182,7 +1301,7 @@ export interface ChipGroup {
 	 */
 	label: string;
 	/**
-	 * Its values, in natural order.
+	 * Its values, in natural order; from 1.1.0, the brand group's with the most looks first, then in natural order (#98).
 	 *
 	 * Items: A chip.
 	 */
@@ -1225,4 +1344,70 @@ export interface Width {
 	 * Whether it is the width asked.
 	 */
 	selected: boolean;
+}
+/**
+ * The underside as drawn: its layers, which the motion compares with the last view's (1.1.0).
+ */
+export interface Drawn {
+	layers: {
+		/**
+		 * The layer's slot and its place among that slot's, such as wheels-3.
+		 */
+		key: string;
+		/**
+		 * Its image, which changes when the part is swapped: on the underside alone, as the top paints its layers from their style.
+		 */
+		src?: string;
+		/**
+		 * Where it is drawn, as custom properties.
+		 */
+		style: string;
+		/**
+		 * Its image's sizes, on the underside: the store readies the new deck's before the view is shown (1.1.0, D-308).
+		 */
+		sizes?: string;
+		/**
+		 * Its image's files by type, on the underside (1.1.0, D-308).
+		 */
+		sources?: {
+			type: string;
+			srcset: string;
+			[k: string]: unknown;
+		}[];
+		[k: string]: unknown;
+	}[];
+	[k: string]: unknown;
+}
+/**
+ * The top as drawn, the same way (1.1.0).
+ */
+export interface Drawn1 {
+	layers: {
+		/**
+		 * The layer's slot and its place among that slot's, such as wheels-3.
+		 */
+		key: string;
+		/**
+		 * Its image, which changes when the part is swapped: on the underside alone, as the top paints its layers from their style.
+		 */
+		src?: string;
+		/**
+		 * Where it is drawn, as custom properties.
+		 */
+		style: string;
+		/**
+		 * Its image's sizes, on the underside: the store readies the new deck's before the view is shown (1.1.0, D-308).
+		 */
+		sizes?: string;
+		/**
+		 * Its image's files by type, on the underside (1.1.0, D-308).
+		 */
+		sources?: {
+			type: string;
+			srcset: string;
+			[k: string]: unknown;
+		}[];
+		[k: string]: unknown;
+	}[];
+	[k: string]: unknown;
 }

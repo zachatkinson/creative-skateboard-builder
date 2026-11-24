@@ -8,6 +8,9 @@
  *   sent as it would be without JavaScript.
  * - **A pick** is the shopper's own radio, painted by the browser at once; the route is asked for the same step with it
  *   once the shopper stops picking.
+ * - **The step's Next** is dimmed until the server's view says the step has a pick, or the shopper picks (#100). It
+ *   stays a button in the tab order: pressed dimmed, it sends nothing, the words beside it say what is missing, and the status region says it once,
+ *   in the server's words. Without the script nothing is dimmed, and the server answers the form as it always has.
  * - **A link** on the builder (Back, a step done, Change, an error) asks the route for its address. A link opened in
  *   another tab or window is left to the browser.
  * - **Back and Forward** ask the route for the address the browser is now at.
@@ -27,9 +30,27 @@
  *   the board turns it, and from then on the side the shopper chose is kept on every view that can draw it. The
  *   picture and the phone bar show the same side, and the stylesheet turns the board only where motion is allowed.
  */
-import { getConfig, getElement, store } from '@wordpress/interactivity';
+import {
+	getConfig,
+	getContext,
+	getElement,
+	store,
+} from '@wordpress/interactivity';
 import { fit, size, stage } from './bar';
+import { shut } from './row';
 import { Navigator, type Move, type View } from './navigate';
+import {
+	build,
+	calm,
+	carted,
+	close,
+	count,
+	cross,
+	cut,
+	measured,
+	play,
+	type Currency,
+} from './motion';
 import { add, body } from './cart';
 import type { CbuildState } from '../types/state';
 
@@ -63,6 +84,37 @@ interface State {
 	limited: string;
 	/** Whether a phone's filters are folded behind the Filters button: only once the script runs, so they show without it. */
 	folded: boolean;
+	/** Whether the picture is being drawn: a pick has kept the shopper SLOW, and its answer or image is on its way (D-308). */
+	drawing: boolean;
+	/** What the step's Next said is missing when it was pressed dimmed, in the server's words; empty otherwise (#100). */
+	missing: string;
+	/** Whether the step's Next is dimmed: once the script runs, until the server's view says the step has a pick. */
+	readonly dimmed: boolean;
+	/** The brand chips that don't fit in the row beside "N more", by value (#98). */
+	shut: string[];
+	/** The step whose "N more" the shopper opened, or empty. */
+	opened: string;
+	/** Whether a chip is past the row and out of sight: only on a desktop, where the stylesheet hides it. */
+	readonly past: boolean;
+	/** Whether the group has "N more": only once the script runs, so without it every chip shows. */
+	readonly rests: boolean;
+	/** Whether "N more" has nothing to open: out of sight, but laid out, so it can be measured. */
+	readonly idle: boolean;
+	/** Whether the rest are open. */
+	readonly open: boolean;
+	/** The button's words: how many it holds, or Show fewer once open, from the server's. */
+	readonly rest: string;
+}
+
+/**
+ * The context a chip group's directives run in: the group, and in each chip's, the chip.
+ */
+interface Chipped {
+	group?: {
+		inputs?: { value?: string; count?: string; checked?: boolean }[];
+		more?: { shown?: boolean; texts?: string[]; fewer?: string };
+	};
+	chip?: { value?: string };
 }
 
 let navigator: Navigator | undefined;
@@ -112,6 +164,125 @@ function press( event: Event ): void {
 function release(): void {
 	held = null;
 }
+
+/**
+ * A mouse press on one of the builder's controls, noted from the moment the script runs, and whether a click reached
+ * it (#80). Hydration takes a pressed control out of the page and puts it back, and a browser drops the click of a press
+ * whose element left the page between down and up, so a press held while the regions hydrate would come to nothing.
+ */
+let early: { control: HTMLElement; clicked: boolean } | null = null;
+
+/**
+ * Notes the control a mouse press goes down on, inside the builder.
+ *
+ * @param event The pointer going down.
+ */
+function pressEarly( event: PointerEvent ): void {
+	// No control waits on a moment: a press ends every one at once (spec: Milestone 11).
+	cut();
+	const control =
+		'mouse' === event.pointerType &&
+		0 === event.button &&
+		event.target instanceof Element
+			? event.target.closest< HTMLElement >(
+					'.cbuild :is(button, a, summary, label, input[type="radio"], input[type="checkbox"], input[type="submit"])'
+				)
+			: null;
+	early = control ? { control, clicked: false } : null;
+}
+
+/**
+ * Notes that the click of the press reached its control.
+ *
+ * @param event The click.
+ */
+function clickEarly( event: MouseEvent ): void {
+	if (
+		early &&
+		event.target instanceof Node &&
+		early.control.contains( event.target )
+	) {
+		early.clicked = true;
+	}
+}
+
+/**
+ * Once the press comes up over its control, gives it the click the browser dropped, if it did. The click comes after
+ * the pointer's up in the same task, so this looks once it has had its turn. A label's click goes to its control.
+ *
+ * @param event The pointer coming up.
+ */
+function releaseEarly( event: PointerEvent ): void {
+	const pressed = early;
+	if ( ! pressed ) {
+		return;
+	}
+	const over = document.elementFromPoint( event.clientX, event.clientY );
+	window.setTimeout( () => {
+		early = null;
+		if (
+			! pressed.clicked &&
+			pressed.control.isConnected &&
+			// Over nothing, `contains()` is false.
+			pressed.control.contains( over )
+		) {
+			pressed.control.click();
+		}
+	} );
+}
+
+document.addEventListener( 'pointerdown', pressEarly, true );
+document.addEventListener( 'click', clickEarly, true );
+document.addEventListener( 'pointerup', releaseEarly, true );
+
+/**
+ * Each panel the shopper scrolled before its builder was ready, and where they left it (#94). Hydrating a region takes
+ * its `data-wp-each` items out and puts them back. WebKit lays the panel out in between, with its contents shorter, and
+ * cuts its scroll back to the top; nothing puts it back. So, until the builder is ready, the panel is put back where
+ * the shopper left it after each change inside it. A change ends its task before the next scroll event, so the note
+ * is still the shopper's.
+ */
+const scrolled = new Map< Element, number >();
+
+const keep = new MutationObserver( () => {
+	scrolled.forEach( ( kept, panel ) => {
+		panel.scrollTop = kept;
+	} );
+} );
+
+/**
+ * Notes where the shopper left a panel whose builder is not ready yet.
+ *
+ * @param event The scroll, listened for on the document, as a panel's own does not bubble.
+ */
+function scrollEarly( event: Event ): void {
+	const panel = event.target;
+	if (
+		panel instanceof Element &&
+		panel.matches( '.cbuild:not([data-ready]) .cbuild__body' )
+	) {
+		if ( ! scrolled.has( panel ) ) {
+			keep.observe( panel, { childList: true, subtree: true } );
+		}
+		scrolled.set( panel, panel.scrollTop );
+	}
+}
+
+/**
+ * Lets a ready builder's panel scroll as the store moves it.
+ *
+ * @param builder The builder now ready.
+ */
+function scrollReady( builder: Element ): void {
+	builder.querySelectorAll( '.cbuild__body' ).forEach( ( panel ) => {
+		scrolled.delete( panel );
+	} );
+	if ( 0 === scrolled.size ) {
+		keep.disconnect();
+	}
+}
+
+document.addEventListener( 'scroll', scrollEarly, true );
 
 /**
  * Keeps a press on a button inside an element the page can focus, the picture's figure among them, from focusing
@@ -313,24 +484,147 @@ export const browser = {
 };
 
 /**
- * Show a change of view: crossed over with a view transition where the browser has one and the shopper allows
- * motion, at once otherwise (spec: Motion; D-161). The transition waits for the Interactivity API's render, which
- * runs on a microtask, before it takes the new picture; the stylesheet sets its timing.
+ * Where a view is among the steps: the current step's place on the rail, or -1 with none.
+ *
+ * @param view The view.
+ */
+function railPlace( view: Shown ): number {
+	const rail = ( view as { progress?: Array< { current?: boolean } > } )
+		.progress;
+	return ( rail ?? [] ).findIndex( ( step ) => true === step.current );
+}
+
+/**
+ * Show a new step: crossed over with a view transition, the panel sliding the way the shopper is going, or faded where
+ * moments only fade (D-256); at once where the browser has none. The transition waits for the Interactivity API's
+ * render, which runs on a microtask, before it takes the new picture; the stylesheet sets its timing.
  *
  * @param change What changes the view.
+ * @param before The view before.
+ * @param after  The view now.
  */
-function motion( change: () => void ): void {
-	if (
-		'function' !== typeof document.startViewTransition ||
-		window.matchMedia?.( '(prefers-reduced-motion: reduce)' ).matches
-	) {
-		change();
-		return;
+function motion( change: () => void, before: Shown, after: Shown ): void {
+	// A step drawn with a part already picked shows it as it is: the card settles at a pick alone.
+	root?.removeAttribute( 'data-picked' );
+	cross( change, railPlace( after ) >= railPlace( before ), calm( root ) );
+}
+
+/**
+ * The board's element on the stage that shows the side now shown.
+ *
+ * @param turned Whether the top is shown.
+ */
+function board( turned: boolean ): Element | null {
+	return (
+		root?.querySelector(
+			turned
+				? '.cbuild-picture .cbuild-board--top'
+				: '.cbuild-picture .cbuild-board:not(.cbuild-board--top)'
+		) ?? null
+	);
+}
+
+/**
+ * The board turns over like a card, to the side now shown (spec: Milestone 11, Show the top).
+ *
+ * @param toTop Whether the top is now shown.
+ */
+function turnOver( toTop: boolean ): void {
+	const shown = board( toTop );
+	if ( shown ) {
+		play(
+			shown,
+			'turn',
+			[ { transform: 'scaleX(0.1)' }, { transform: 'none' } ],
+			calm( root )
+		);
 	}
-	document.startViewTransition( () => {
-		change();
-		return new Promise< void >( ( done ) => window.setTimeout( done ) );
-	} );
+}
+
+/**
+ * Whether a view takes a part off the stage that the last one had.
+ *
+ * @param before The view before.
+ * @param after  The view now.
+ */
+function removes( before: Shown, after: Shown ): boolean {
+	const now = new Set(
+		( after.picture?.items ?? [] ).map( ( item ) => item.key )
+	);
+	return ( before.picture?.items ?? [] ).some(
+		( item ) => ! now.has( item.key )
+	);
+}
+
+/**
+ * Play what a new view shows on the stage, once it is drawn: each part new to the board or swapped, the grip on its
+ * top, the photos closing over a part removed, and the board turning to a side shown that was not.
+ *
+ * @param before The view before.
+ * @param after  The view now.
+ * @param was    Where the stage's photos were, where a part was removed.
+ */
+function moments(
+	before: Shown,
+	after: Shown,
+	was: Map< Element, DOMRect > | undefined
+): void {
+	const quiet = calm( root );
+	// The side shown alone: the top has a deck and wheels of its own, keyed as the underside's are.
+	const upper = true === after.picture?.turned;
+	const side = upper ? 'top' : 'board';
+	build(
+		board( upper ),
+		before.picture?.turned === after.picture?.turned
+			? ( before.picture?.[ side ]?.layers ?? [] )
+			: ( after.picture?.[ side ]?.layers ?? [] ),
+		after.picture?.[ side ]?.layers ?? [],
+		quiet
+	);
+	if ( was ) {
+		close( was, quiet );
+	}
+	if ( state.turning ) {
+		turnOver( true === after.picture?.turned );
+	}
+}
+
+/**
+ * The total counts from the old amount to the new, each frame in the bar, and ends on the server's string; the
+ * estimate under it fades in when it changes (spec: Milestone 11, Price changes; D-257). The status region says the
+ * total once, as before: the bar's amount is hidden from screen readers.
+ *
+ * @param before The view before.
+ * @param after  The view now, just shown.
+ */
+function priced( before: Shown, after: Shown ): void {
+	const quiet = calm( root );
+	if ( before.money && after.money && after.bar ) {
+		const bar = after.bar;
+		count(
+			before.money.amount,
+			after.money.amount,
+			bar.amount,
+			after.money.currency as unknown as Currency,
+			( text ) => {
+				state.view.bar!.amount = text;
+			},
+			quiet
+		);
+	}
+	const estimate = root?.querySelector( '.cbuild-bar__estimate' );
+	const was = ( before.bar as { estimate?: string } | undefined )?.estimate;
+	const now = ( after.bar as { estimate?: string } | undefined )?.estimate;
+	if ( estimate && was !== now ) {
+		play(
+			estimate,
+			'total',
+			[ { opacity: 0 }, { opacity: 1 } ],
+			quiet,
+			0,
+			'none'
+		);
+	}
 }
 
 /**
@@ -426,12 +720,68 @@ function measure( element: HTMLElement ): void {
 	const bar = element.querySelector( '.cbuild-bar' );
 	const shown = element.querySelector( '.cbuild__stage' );
 	if ( bar ) {
-		new window.ResizeObserver( () => size( element ) ).observe( bar );
+		const sized = new window.ResizeObserver( () => size( element ) );
+		sized.observe( bar );
+		// What a press of the dimmed Next says sits over the bar, outside its box: its height counts as the bar's.
+		const said = bar.querySelector( '.cbuild-bar__missing' );
+		if ( said ) {
+			sized.observe( said );
+		}
 	}
 	// The stage sticks on top, or stands beside the panel, as the builder's width changes its size.
 	if ( shown ) {
 		new window.ResizeObserver( () => stage( element ) ).observe( shown );
 	}
+}
+
+/**
+ * How many frames a row is measured in at most: the button's words change with how many it holds, so its width is
+ * measured again once it says them, and only ever taken as wider, so the row settles.
+ */
+const ROW_PASSES = 3;
+
+/**
+ * The frame the row waits for.
+ */
+let frame = 0;
+
+/**
+ * The chips each row was last laid out for, so a view that changes none of them leaves the row as it is.
+ */
+const laid = new WeakMap< Element, string >();
+
+/**
+ * Each row's watcher for a change of size, its own or a chip's.
+ */
+const rowWatchers = new WeakMap< Element, ResizeObserver >();
+
+/**
+ * Lay out a row of brand chips (#98): in the next frame, the values that don't fit beside "N more", measured again
+ * until they settle.
+ *
+ * @param options The group's row of chips.
+ * @param least   The button's width at least.
+ * @param passes  How many frames it may still take.
+ */
+function lay( options: HTMLElement, least = 0, passes = ROW_PASSES ): void {
+	window.cancelAnimationFrame( frame );
+	frame = window.requestAnimationFrame( () => {
+		const found = shut( options, least );
+		if ( found.values.join( '\n' ) === state.shut.join( '\n' ) ) {
+			return;
+		}
+		state.shut = found.values;
+		if ( passes > 1 ) {
+			lay( options, found.button, passes - 1 );
+		}
+	} );
+}
+
+/**
+ * Whether the shopper opened the rest of the step's chips.
+ */
+function opened(): boolean {
+	return '' !== state.opened && state.opened === state.view.step.slot;
 }
 
 /**
@@ -471,6 +821,117 @@ function chosen( view: Shown, value: string ): void {
 	if ( step.leave instanceof Object ) {
 		( step.leave as { checked?: boolean } ).checked = '0' === value;
 	}
+	// A radio of the step is checked, a part or No risers, so Next sends a pick: lit before the route answers, as the
+	// card is, so that a Next pressed straight after the pick goes on (#100). The answer then says the same.
+	if ( view.bar ) {
+		view.bar.next.ready = true;
+	}
+}
+
+/**
+ * How long, in ms, a pointer rests on a deck's card before its board's image is fetched: one passing over the shelf
+ * fetches nothing (D-308).
+ */
+export const INTENT = 80;
+
+/** How long after a press on a card the pick it makes counts as pressed, and is asked at once. */
+const PRESSED = 1000;
+
+/** The pointer resting on a card, waiting out INTENT. */
+let resting: number | undefined;
+
+/** When a card was last pressed. */
+let pressed = Number.NEGATIVE_INFINITY;
+
+/** Whether a pick waits for its answer: only that wait says the picture is being drawn. */
+let picking = false;
+
+/** The board images fetched, by their files, each once. */
+const boards = new Map< string, HTMLImageElement >();
+
+/** A deck's board image, as its card carries it and as a view's deck layer gives it. */
+interface Preload {
+	shown: boolean;
+	src: string;
+	avif: string;
+	webp: string;
+	sizes: string;
+}
+
+/**
+ * Fetch a board's image in the type the stage draws, once, as the stage will ask for it: the same files and sizes,
+ * so the browser chooses the same one and has it in its cache. Where nothing is drawn yet, WebP, which every browser
+ * the builder supports reads.
+ *
+ * @param preload The image.
+ */
+function fetchBoard( preload: Preload | undefined ): HTMLImageElement | null {
+	if ( ! preload?.shown || '' === preload.src ) {
+		return null;
+	}
+	const drawn =
+		( root ?? document ).querySelector< HTMLImageElement >(
+			'.cbuild-picture .cbuild-board:not(.cbuild-board--top) .cbuild-board__image'
+		)?.currentSrc ?? '';
+	const srcset =
+		( drawn.endsWith( '.avif' ) && preload.avif ) || preload.webp;
+	const key = srcset || preload.src;
+	let image = boards.get( key );
+	if ( undefined === image ) {
+		image = new Image();
+		image.decoding = 'async';
+		if ( '' !== srcset ) {
+			// Sizes before the files, so the browser chooses once.
+			image.sizes = preload.sizes;
+			image.srcset = srcset;
+		}
+		image.src = preload.src;
+		boards.set( key, image );
+	}
+	return image;
+}
+
+/**
+ * The board image of the deck whose card the element is, as the step's options carry it.
+ */
+function pointedAt(): Preload | undefined {
+	const value =
+		getElement().ref?.querySelector< HTMLInputElement >(
+			'input[type=radio]'
+		)?.value;
+	const options = ( state.view.step.options ?? [] ) as Array< {
+		id?: number;
+		preload?: Preload;
+	} >;
+	return options.find( ( option ) => String( option.id ) === value )?.preload;
+}
+
+/**
+ * Ready a view before it is shown: where it draws another deck, that deck's board image fetched and decoded, so the
+ * old board stays whole until the new one takes its place (D-308). The navigator holds it at most HOLD.
+ *
+ * @param view The view to show.
+ */
+function ready( view: View ): Promise< void > | null {
+	const deck = ( view as Shown ).picture?.board?.layers.find(
+		( layer ) => 'deck-1' === layer.key
+	);
+	const now = state.view.picture?.board?.layers.find(
+		( layer ) => 'deck-1' === layer.key
+	);
+	if ( undefined === deck?.src || '' === deck.src || deck.src === now?.src ) {
+		return null;
+	}
+	const of = ( type: string ): string =>
+		deck.sources?.find( ( source ) => type === source.type )?.srcset ?? '';
+	const image = fetchBoard( {
+		shown: true,
+		src: deck.src,
+		avif: of( 'image/avif' ),
+		webp: of( 'image/webp' ),
+		sizes: deck.sizes ?? '',
+	} );
+	return image?.decode() ?? null;
 }
 
 /**
@@ -497,6 +958,8 @@ function nav( state: State ): Navigator {
 						? 'push'
 						: history;
 				const before = state.view;
+				// A new answer ends whatever moment the last one started.
+				cut();
 				sided( shown );
 				// A side shown that was not is a turn the shopper sees, where motion is allowed; the same side ends the
 				// last turn, so a board shown again later is not turned.
@@ -504,11 +967,25 @@ function nav( state: State ): Navigator {
 					undefined !== shown.picture &&
 					undefined !== before.picture &&
 					shown.picture.turned !== before.picture.turned;
+				// Where a part comes off the stage, its photos are measured before, to close the gap after.
+				const was =
+					root && removes( before, shown )
+						? measured( [
+								...root.querySelectorAll(
+									'.cbuild-picture .cbuild-picture__item'
+								),
+							] )
+						: undefined;
 				const change = () => {
 					state.view = shown;
 					state.added = false;
 					state.limited = '';
+					state.missing = '';
 					say( state, shown, turned, config, before );
+					priced( before, shown );
+					window.requestAnimationFrame( () =>
+						moments( before, shown, was )
+					);
 				};
 				// Only a new step crosses over (spec: Motion): a transition takes the screen's taps while it
 				// runs, so one for a view on the same step would lose a Next tapped straight after a pick.
@@ -516,7 +993,7 @@ function nav( state: State ): Navigator {
 					shown.step.slot !== before.step.slot ||
 					shown.isChanges !== before.isChanges
 				) {
-					motion( change );
+					motion( change, before, shown );
 				} else {
 					steady( change );
 				}
@@ -524,7 +1001,12 @@ function nav( state: State ): Navigator {
 			},
 			pending: ( on ) => {
 				state.pending = on;
+				state.drawing = on && picking;
+				if ( ! on ) {
+					picking = false;
+				}
 			},
+			settle: ( view ) => ready( view ),
 			limited: ( message ) => {
 				state.limited = message;
 				state.status = message;
@@ -544,6 +1026,10 @@ export function reset(): void {
 	root = null;
 	held = null;
 	top = undefined;
+	boards.clear();
+	pressed = Number.NEGATIVE_INFINITY;
+	picking = false;
+	window.clearTimeout( resting );
 }
 
 /**
@@ -631,6 +1117,7 @@ const { state } = store(
 	{
 		state: {
 			pending: false,
+			drawing: false,
 			status: '',
 			added: false,
 			canCopy: false,
@@ -639,8 +1126,79 @@ const { state } = store(
 			turning: false,
 			limited: '',
 			folded: false,
+			missing: '',
+			get dimmed(): boolean {
+				return state.live && false === state.view.bar?.next.ready;
+			},
+			shut: [] as string[],
+			opened: '',
+			get past(): boolean {
+				const { group, chip } = getContext< Chipped >();
+				return (
+					true === group?.more?.shown &&
+					! opened() &&
+					state.shut.includes( chip?.value ?? '' )
+				);
+			},
+			get rests(): boolean {
+				return (
+					state.live &&
+					true === getContext< Chipped >().group?.more?.shown
+				);
+			},
+			get idle(): boolean {
+				return 0 === state.shut.length;
+			},
+			get open(): boolean {
+				return opened();
+			},
+			get rest(): string {
+				const more = getContext< Chipped >().group?.more;
+				return opened()
+					? ( more?.fewer ?? '' )
+					: ( more?.texts?.[ Math.max( state.shut.length, 1 ) - 1 ] ??
+							'' );
+			},
 		} as State,
 		callbacks: {
+			/**
+			 * Lay out the brand chips in one row (#98), once hydrated, again when a view changes a chip, what it
+			 * counts or what is chosen, and again when the row's size changes.
+			 */
+			row(): void {
+				const { group } = getContext< Chipped >();
+				const options = getElement().ref;
+				if ( true !== group?.more?.shown || ! options ) {
+					return;
+				}
+				// Read here, so a view that changes the chips runs this again.
+				const marks = ( group.inputs ?? [] )
+					.map( ( chip ) =>
+						[ chip.value, chip.count, chip.checked ].join( ':' )
+					)
+					.join( ' ' );
+				if ( 'function' === typeof window.ResizeObserver ) {
+					let watcher = rowWatchers.get( options );
+					if ( ! watcher ) {
+						watcher = new window.ResizeObserver( () =>
+							lay( options )
+						);
+						rowWatchers.set( options, watcher );
+						watcher.observe( options );
+					}
+					// Each chip as well, as when a web font arrives after the first measure; a view may bring new
+					// chips, and observing one twice does nothing.
+					for ( const chip of options.querySelectorAll(
+						'.cbuild-chips__chip'
+					) ) {
+						watcher.observe( chip );
+					}
+				}
+				if ( marks !== laid.get( options ) ) {
+					laid.set( options, marks );
+					lay( options );
+				}
+			},
 			/**
 			 * Say on the builder whether an answer is awaited: its root is no region, so no directive binds it (D-296).
 			 */
@@ -655,9 +1213,11 @@ const { state } = store(
 			 * (D-296). A press before then goes as the page would send it without the script.
 			 */
 			ready(): void {
-				getElement()
-					.ref?.closest( '.cbuild' )
-					?.setAttribute( 'data-ready', '' );
+				const builder = getElement().ref?.closest( '.cbuild' );
+				if ( builder ) {
+					builder.setAttribute( 'data-ready', '' );
+					scrollReady( builder );
+				}
 			},
 			init(): void {
 				// The builder's pieces are regions of their own, each hydrated in its own task (D-296), so the root
@@ -693,6 +1253,29 @@ const { state } = store(
 					return;
 				}
 				event.preventDefault();
+				// The step's Next pressed before the step has a pick says what is missing beside it, and sends nothing:
+				// the error summary the server would answer with is for a page with no script (#100).
+				if (
+					event.submitter?.hasAttribute( 'aria-disabled' ) &&
+					state.dimmed
+				) {
+					const missing = state.view.bar?.next.missing ?? '';
+					state.missing = missing;
+					// Heard once, in the builder's one status region; the words beside Next are its description. A second
+					// press would set the words the region already holds, which a polite region does not say again: it is
+					// emptied, and the words come back on the next frame unless something else has spoken.
+					if ( state.status !== missing ) {
+						state.status = missing;
+						return;
+					}
+					state.status = '';
+					window.requestAnimationFrame( () => {
+						if ( '' === state.status ) {
+							state.status = missing;
+						}
+					} );
+					return;
+				}
 				// A search still waiting from the keys typed would go out after this and undo it, as Clear search was.
 				// The form carries the box as it is, so nothing typed is lost.
 				window.clearTimeout( typing );
@@ -733,6 +1316,31 @@ const { state } = store(
 					SEARCH_WAIT
 				);
 			},
+			/**
+			 * A pointer on a deck's card: resting on it, its board's image is fetched after INTENT; pressing it, at
+			 * once, and the pick it makes is asked at once (D-308).
+			 *
+			 * @param event The pointer's event.
+			 */
+			point( event: PointerEvent ): void {
+				window.clearTimeout( resting );
+				const preload = pointedAt();
+				if ( 'pointerdown' === event.type ) {
+					pressed = performance.now();
+					fetchBoard( preload );
+					return;
+				}
+				resting = window.setTimeout(
+					() => fetchBoard( preload ),
+					INTENT
+				);
+			},
+			/**
+			 * The pointer has left the card before INTENT: nothing is fetched.
+			 */
+			leave(): void {
+				window.clearTimeout( resting );
+			},
 			pick( event: Event ): void {
 				const input = event.target;
 				if (
@@ -742,7 +1350,11 @@ const { state } = store(
 				) {
 					return;
 				}
+				cut();
 				chosen( state.view, input.value );
+				state.missing = '';
+				// The stylesheet settles the card picked under this mark alone, never as a page or a step is drawn.
+				root?.setAttribute( 'data-picked', '' );
 				root?.dispatchEvent(
 					new CustomEvent( 'cbuild:pick', {
 						bubbles: true,
@@ -753,15 +1365,22 @@ const { state } = store(
 						},
 					} )
 				);
-				nav( state ).pick( {
-					fields: [
-						...fields( input.form ),
-						[ 'cbuild[step]', state.view.step.slot ],
-					],
-					history: 'replace',
-					// The radio stays picked, and the form's Next sends it.
-					fallback: () => undefined,
-				} );
+				picking = true;
+				// A press, a tap or a click is one pick, asked at once; the arrows wait for the last (D-308).
+				const byPress = performance.now() - pressed < PRESSED;
+				pressed = Number.NEGATIVE_INFINITY;
+				nav( state ).pick(
+					{
+						fields: [
+							...fields( input.form ),
+							[ 'cbuild[step]', state.view.step.slot ],
+						],
+						history: 'replace',
+						// The radio stays picked, and the form's Next sends it.
+						fallback: () => undefined,
+					},
+					byPress
+				);
 			},
 			async add( event: SubmitEvent ): Promise< void > {
 				const form = getElement().ref;
@@ -810,12 +1429,33 @@ const { state } = store(
 				);
 				state.added = true;
 				told( state, form.ownerDocument );
+				carted(
+					board( true === state.view.picture?.turned ),
+					calm( root )
+				);
 			},
 			/**
 			 * Open or fold the phone's filters behind their button.
 			 */
 			filters(): void {
 				state.folded = ! state.folded;
+			},
+			/**
+			 * Open the brand chips past the row in place, with focus on the first of them, or fold them again (#98).
+			 */
+			more(): void {
+				if ( opened() ) {
+					state.opened = '';
+					return;
+				}
+				const shown = getElement()
+					.ref?.closest( '.cbuild-chips__options' )
+					?.querySelector< HTMLElement >(
+						'.cbuild-chips__chip--past .cbuild-chips__control'
+					);
+				state.opened = state.view.step.slot;
+				// The chip shows once the Interactivity API has rendered the open row, before the next frame.
+				window.requestAnimationFrame( () => shown?.focus() );
 			},
 			/**
 			 * Show the top, or the underside again: the button by the board, its pressed state the side shown (#46).
@@ -829,6 +1469,8 @@ const { state } = store(
 				top = ! picture.turned;
 				state.turning = true;
 				picture.turned = ! picture.turned;
+				const shown = picture.turned;
+				window.requestAnimationFrame( () => turnOver( shown ) );
 			},
 			/**
 			 * The screen changed: fit the phone bar into the theme again (D-163).

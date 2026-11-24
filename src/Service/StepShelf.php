@@ -172,7 +172,7 @@ final class StepShelf {
 			max( 1, $query->shown )
 		);
 		$width   = null === $ask->width ? '' : Shelf::named( $ask->width );
-		$listing = $this->shelf->of( $state->kit, $slot, $build, $offered, $current->picked, $current->recommended, $shelved, $ask );
+		$listing = $this->shelf->of( $state->kit, $slot, $build, $offered, $current->picked, $current->leads, $shelved, $ask );
 		// A search that finds nothing to list, here or in another width: how many of the parts that don't fit match it,
 		// for "2 trucks match, but they don't fit" (spec: Search, when nothing is found).
 		$hidden = 0;

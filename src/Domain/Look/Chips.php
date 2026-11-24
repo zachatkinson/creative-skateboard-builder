@@ -11,10 +11,11 @@ namespace CreativeBranding\SkateboardBuilder\Domain\Look;
 
 use function array_keys;
 use function array_intersect;
-use function array_unique;
+use function array_map;
 use function count;
 use function in_array;
 use function strnatcasecmp;
+use function strval;
 use function uksort;
 use function usort;
 
@@ -24,7 +25,8 @@ use function usort;
  *
  * - the facets always offered (brand, and the size where the shopper picks it), in the order given;
  * - then each other facet at least 80 % of the looks carry, the most carried first, then by name;
- * - each with two values or more, up to four groups.
+ * - each with two values or more, up to four groups;
+ * - the values in natural order, or, for a facet ranked, the most carried first, then in natural order (#98).
  *
  * Chips in one group widen; groups narrow each other. Each chip counts the looks it leaves with the other groups'
  * choices applied and its own group's not.
@@ -49,12 +51,14 @@ final class Chips {
 	 * @param list<Facets>                $looks  The step's offered looks, before any chip.
 	 * @param list<string>                $always The facets offered whenever they have two values, in order.
 	 * @param array<string, list<string>> $chosen The values chosen, by facet.
+	 * @param list<string>                $ranked The facets whose values come most carried first, counted on the looks
+	 *                                            before any chip, so a choice never moves them (#98).
 	 * @return list<ChipGroup>
 	 */
-	public static function groups( array $looks, array $always, array $chosen ): array {
+	public static function groups( array $looks, array $always, array $chosen, array $ranked = array() ): array {
 		$groups = array();
 		foreach ( self::offered( $looks, $always ) as $name ) {
-			$values = self::values( $looks, $name );
+			$values = self::values( $looks, $name, in_array( $name, $ranked, true ) );
 			if ( count( $values ) < 2 ) {
 				continue;
 			}
@@ -128,21 +132,26 @@ final class Chips {
 	}
 
 	/**
-	 * A facet's values across the looks, each once, in natural order.
+	 * A facet's values across the looks, each once, in natural order, or the most carried first where ranked.
 	 *
-	 * @param list<Facets> $looks The looks.
-	 * @param string       $name  The facet.
+	 * @param list<Facets> $looks  The looks.
+	 * @param string       $name   The facet.
+	 * @param bool         $ranked Whether the most carried come first.
 	 * @return list<string>
 	 */
-	private static function values( array $looks, string $name ): array {
-		$values = array();
+	private static function values( array $looks, string $name, bool $ranked ): array {
+		$carried = array();
 		foreach ( $looks as $look ) {
 			foreach ( $look->facets[ $name ] ?? array() as $value ) {
-				$values[] = $value;
+				$carried[ $value ][ $look->key ] = $look->key;
 			}
 		}
-		$values = array_unique( $values );
+		$values = array_map( strval( ... ), array_keys( $carried ) );
 		usort( $values, strnatcasecmp( ... ) );
+		// PHP's sort is stable, so values carried as often keep the natural order.
+		if ( $ranked ) {
+			usort( $values, static fn( string $a, string $b ): int => count( $carried[ $b ] ) <=> count( $carried[ $a ] ) );
+		}
 		return $values;
 	}
 }

@@ -12,6 +12,15 @@ namespace CreativeBranding\SkateboardBuilder\Tests\Integration;
 use CreativeBranding\SkateboardBuilder\Adapter\WpPictureFiles;
 use CreativeBranding\SkateboardBuilder\Cart\ThumbnailHooks;
 use CreativeBranding\SkateboardBuilder\Hooks\PictureHooks;
+use CreativeBranding\SkateboardBuilder\Port\Clock;
+use CreativeBranding\SkateboardBuilder\Port\ComposedLayers;
+use CreativeBranding\SkateboardBuilder\Port\Kits;
+use CreativeBranding\SkateboardBuilder\Port\Logger;
+use CreativeBranding\SkateboardBuilder\Port\PictureFiles;
+use CreativeBranding\SkateboardBuilder\Port\Queue;
+use CreativeBranding\SkateboardBuilder\Service\BuildState;
+use CreativeBranding\SkateboardBuilder\Service\ComposedPictures;
+use CreativeBranding\SkateboardBuilder\Service\LayerArtwork;
 use CreativeBranding\SkateboardBuilder\Support\Options;
 use CreativeBranding\SkateboardBuilder\Tests\Support\CartTestCase;
 use CreativeBranding\SkateboardBuilder\Tests\Support\LayerFiles;
@@ -119,5 +128,94 @@ final class CartPictureTest extends CartTestCase {
 		self::assertSame( 'as it was', $hooks->thumbnail( 'as it was', $line ) );
 		self::assertSame( array( 'as it was' ), $hooks->images( array( 'as it was' ), $line ) );
 		self::assertSame( 'as it was', $hooks->thumbnail( 'as it was', 'not a line' ) );
+	}
+
+	/**
+	 * The auditor's 1.1.0 minor 7: a page with a Mini-Cart asks for each kit line's thumbnail and its Store API images,
+	 * on every view until the picture is drawn. A picture not made is asked for once a request, and its composition is
+	 * read once a call, so a call after the first asks the queue nothing and costs no more than the one before it.
+	 */
+	public function test_a_mini_cart_asks_the_queue_once_a_picture_and_each_later_call_costs_the_same(): void {
+		foreach ( array( 1, 3 ) as $lines ) {
+			WC()->cart->empty_cart();
+			for ( $line = 0; $line < $lines; $line++ ) {
+				self::assertSame( 201, $this->store( array( 'id' => $this->kit, 'cbuild' => array( 'picks' => $this->picks() ) ) )->get_status() );
+			}
+			// The add's own answer asked for the picture: a page is a request of its own, with a service of its own.
+			as_unschedule_all_actions( Options::JOB_COMPOSE_PICTURE, array(), Options::QUEUE_GROUP );
+			$pictures = ( new ComposedPictures( $this->service( Kits::class ), $this->service( BuildState::class ), $this->service( LayerArtwork::class ), $this->service( PictureFiles::class ), $this->service( Queue::class ), $this->service( Clock::class ), $this->service( Logger::class ) ) )->withLayers( $this->service( ComposedLayers::class ) );
+			$hooks    = new ThumbnailHooks( static fn (): ComposedPictures => $pictures );
+			$passes   = array();
+			for ( $pass = 0; $pass < 3; $pass++ ) {
+				$passes[] = self::queries(
+					static function () use ( $hooks ): void {
+						foreach ( WC()->cart->get_cart() as $line ) {
+							$hooks->thumbnail( '', $line );
+							$hooks->images( array(), $line );
+						}
+					}
+				);
+			}
+			self::assertCount( 1, self::waiting( Options::JOB_COMPOSE_PICTURE ), $lines . ': the picture is asked for' );
+			self::assertGreaterThan( 0, $passes[0]['queue'], $lines . ': the first call asks the queue' );
+			self::assertSame( 0, $passes[1]['queue'], $lines . ': a later call asks it nothing' );
+			self::assertSame( $passes[1], $passes[2], $lines . ': and each costs the same' );
+		}
+	}
+
+	/**
+	 * The queries a call makes: all of them, and those of the queue's tables.
+	 *
+	 * @param callable(): void $call The call.
+	 * @return array{all: int, queue: int}
+	 */
+	private static function queries( callable $call ): array {
+		$counted = array(
+			'all'   => 0,
+			'queue' => 0,
+		);
+		$count   = static function ( string $query ) use ( &$counted ): string {
+			++$counted['all'];
+			if ( str_contains( $query, 'actionscheduler_' ) ) {
+				++$counted['queue'];
+			}
+			return $query;
+		};
+		add_filter( 'query', $count );
+		try {
+			$call();
+		} finally {
+			remove_filter( 'query', $count );
+		}
+		return $counted;
+	}
+
+	// Cowork's review of 1.0.0, F19 (#105; D-309): a flag set after the cart's picture was drawn draws it again, the deck
+	// blurred, and meanwhile the kit's line shows neither the sharp picture nor the deck's photo.
+	public function test_a_flag_set_after_the_carts_picture_was_drawn_draws_it_again_and_shows_no_deck_meanwhile(): void {
+		self::assertSame( 201, $this->store( array( 'id' => $this->kit, 'cbuild' => array( 'picks' => $this->picks() ) ) )->get_status() );
+		self::work();
+		$sharp = self::storeImages()[ $this->kit ][1];
+		self::assertMatchesRegularExpression( '#/pictures/[0-9a-f]{32}\.webp$#', $sharp );
+
+		$flag = fn ( string $answer, int $part ): string => $part === $this->parts['deck'] ? 'blurred' : $answer;
+		add_filter( 'cbuild_composed_layer', $flag, 10, 2 );
+		try {
+			$images     = self::storeImages();
+			$thumbnails = self::thumbnails();
+			self::assertNotSame( $sharp, $images[ $this->kit ][1], 'never the sharp picture once the deck is flagged' );
+			self::assertNotSame( $this->photo, $images[ $this->kit ][0], 'nor the deck\'s photo in its place' );
+			self::assertStringNotContainsString( basename( $sharp ), $thumbnails[ $this->kit ] );
+			self::assertStringNotContainsString( (string) wp_get_attachment_image_src( $this->photo, 'woocommerce_thumbnail' )[0], $thumbnails[ $this->kit ] );
+			self::assertCount( 1, self::waiting( Options::JOB_COMPOSE_PICTURE ), 'the new picture is asked for' );
+
+			self::work();
+			$blurred = self::storeImages()[ $this->kit ][1];
+			self::assertMatchesRegularExpression( '#/pictures/[0-9a-f]{32}\.webp$#', $blurred );
+			self::assertNotSame( $sharp, $blurred );
+			self::assertStringContainsString( 'src="' . esc_url( $blurred ) . '"', self::thumbnails()[ $this->kit ] );
+		} finally {
+			remove_filter( 'cbuild_composed_layer', $flag, 10 );
+		}
 	}
 }

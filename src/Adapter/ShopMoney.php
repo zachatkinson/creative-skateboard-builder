@@ -48,7 +48,7 @@ final class ShopMoney implements Money {
 	/**
 	 * How the shop writes a price, from WooCommerce's own settings and their filters (WooCommerce 11.3.0,
 	 * includes/wc-core-functions.php:716, includes/wc-formatting-functions.php:522, 550, 560 and 571). The symbol is
-	 * plain text: WooCommerce gives it as an HTML entity.
+	 * plain text: WooCommerce gives it as an HTML entity, and the separators as the shop typed them (#87).
 	 *
 	 * @since 1.0.0
 	 *
@@ -60,9 +60,10 @@ final class ShopMoney implements Money {
 			'code'               => $code,
 			'symbol'             => html_entity_decode( get_woocommerce_currency_symbol( $code ), ENT_QUOTES | ENT_HTML5, 'UTF-8' ),
 			'decimals'           => max( 0, wc_get_price_decimals() ),
-			'decimal_separator'  => wc_get_price_decimal_separator(),
-			'thousand_separator' => wc_get_price_thousand_separator(),
-			// Plain text as the symbol is: WooCommerce writes its space as an entity, for HTML (D-290).
+			// Plain text as the symbol is: WooCommerce keeps a separator as the shop typed it, entities and all, and
+			// writes the format's space as one, for HTML (D-290, #87).
+			'decimal_separator'  => html_entity_decode( wc_get_price_decimal_separator(), ENT_QUOTES | ENT_HTML5, 'UTF-8' ),
+			'thousand_separator' => html_entity_decode( wc_get_price_thousand_separator(), ENT_QUOTES | ENT_HTML5, 'UTF-8' ),
 			'format'             => html_entity_decode( get_woocommerce_price_format(), ENT_QUOTES | ENT_HTML5, 'UTF-8' ),
 		);
 	}

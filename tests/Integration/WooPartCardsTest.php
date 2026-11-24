@@ -92,8 +92,11 @@ final class WooPartCardsTest extends IntegrationTestCase {
 		self::assertSame( array( $gone, $deck, $plain ), array_keys( $cards ), 'in the order asked, each once, and nothing for what is no part' );
 
 		$card = $cards[ $deck ];
-		self::assertSame( array( 'name', 'url', 'price', 'stock', 'stock_class', 'image', 'photo' ), array_keys( $card ) );
+		self::assertSame( array( 'name', 'url', 'price', 'stock', 'stock_class', 'image', 'photo', 'large' ), array_keys( $card ) );
 		self::assertTrue( $card['photo'] );
+		// #82: the photo uncropped, at the shop's single-product size, for the picture's deck with no layer image.
+		self::assertSame( wp_get_attachment_image_src( $photo, 'woocommerce_single' )[0], $card['large']['src'] ?? null );
+		self::assertSame( array( 'src', 'width', 'height', 'srcset', 'sizes' ), array_keys( $card['large'] ?? array() ) );
 		self::assertSame( 'Rascals "8.25" & deck', $card['name'], 'plain text, where WordPress stores &amp;: the edge escapes it once' );
 		self::assertSame( get_permalink( $deck ), $card['url'] );
 		self::assertSame( self::price( 44.5 ), $card['price'], 'the price of one as the shop shows it' );
@@ -159,6 +162,7 @@ final class WooPartCardsTest extends IntegrationTestCase {
 		$deck  = self::product( 'Cut-out only' );
 		update_post_meta( $deck, Options::META_LAYER, $layer );
 		self::assertFalse( $this->cards()->cards( array( $deck ) )[ $deck ]['photo'], 'its layer image, not a photo: a share card wants the photo' );
+		self::assertNull( $this->cards()->cards( array( $deck ) )[ $deck ]['large'] ?? null, 'no photo, so nothing large: the board draws the layer itself' );
 		$card = $this->cards()->cards( array( $deck ) )[ $deck ]['image'] ?? null;
 		self::assertSame( wp_get_attachment_image_src( $layer, 'medium' )[0], $card['src'] ?? null, 'uncropped: the shop\'s thumbnail size may be a square crop, which showed a deck\'s middle alone' );
 		self::assertGreaterThan( $card['width'] ?? 0, $card['height'] ?? 0, 'the whole deck, upright' );
@@ -198,6 +202,14 @@ final class WooPartCardsTest extends IntegrationTestCase {
 		self::assertIsArray( $entry );
 		self::assertSame( array( 'stamp', 'cards' ), array_keys( $entry ) );
 		self::assertCount( 1, $entry['cards'] );
+
+		// A card kept before 1.1.0 has no `large`, and is read again with it.
+		$context = array_key_first( $entry['cards'] );
+		unset( $entry['cards'][ $context ]['large'] );
+		wp_cache_set( 'card_' . $deck, $entry, Options::CACHE_GROUP );
+		self::assertSame( self::price( 75 ), $this->cards()->cards( array( $deck ) )[ $deck ]['price'], 'read again: the product as it is now' );
+		$entry = wp_cache_get( 'card_' . $deck, Options::CACHE_GROUP );
+		self::assertIsArray( $entry );
 		self::assertSame( wp_json_encode( $entry ), wp_json_encode( json_decode( (string) wp_json_encode( $entry ), true ) ), 'scalars and arrays of them alone' );
 
 		$this->cards()->forget( $deck, 0, -1 );

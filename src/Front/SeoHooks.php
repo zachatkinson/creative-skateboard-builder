@@ -55,7 +55,7 @@ final class SeoHooks implements Hookable {
 	}
 
 	/**
-	 * WordPress's robots for a page with a build in its address: `noindex, follow`.
+	 * WordPress's robots for a page with a build in its address: `noindex`, and `follow` unless something said `nofollow` (#88).
 	 *
 	 * @since 0.6.0
 	 *
@@ -66,14 +66,17 @@ final class SeoHooks implements Hookable {
 		if ( ! is_array( $robots ) || ! $this->isState() ) {
 			return $robots;
 		}
-		unset( $robots['index'], $robots['nofollow'] );
+		unset( $robots['index'] );
 		$robots['noindex'] = true;
-		$robots['follow']  = true;
+		// Follow, but where the site or another source said nofollow: a site that discourages search engines keeps it (#88).
+		if ( true !== ( $robots['nofollow'] ?? null ) ) {
+			$robots['follow'] = true;
+		}
 		return $robots;
 	}
 
 	/**
-	 * Yoast SEO's robots for a page with a build in its address: `noindex, follow`.
+	 * Yoast SEO's robots for a page with a build in its address: `noindex`, and `follow` unless something said `nofollow` (#88).
 	 *
 	 * @since 0.6.0
 	 *
@@ -84,8 +87,11 @@ final class SeoHooks implements Hookable {
 		if ( ! is_array( $robots ) || ! $this->isState() ) {
 			return $robots;
 		}
-		$robots['index']  = 'noindex';
-		$robots['follow'] = 'follow';
+		$robots['index'] = 'noindex';
+		// As for WordPress's robots: a nofollow from elsewhere stays (#88).
+		if ( 'nofollow' !== ( $robots['follow'] ?? null ) ) {
+			$robots['follow'] = 'follow';
+		}
 		return $robots;
 	}
 

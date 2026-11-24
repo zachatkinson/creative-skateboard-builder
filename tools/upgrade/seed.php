@@ -52,8 +52,10 @@ if ( 'read' === ( $cbuild_args[0] ?? '' ) ) {
 	$list   = $user > 0 ? $builds->of( $user ) : array();
 	$saved  = count( $list );
 	// Each reopened as My builds opens it (the spec reviewer's M10 S6): a build saved before 1.0.0 kept no prices, so
-	// it shows no price changes and no total then, whatever else changed.
+	// it shows no price changes and no total then, whatever else changed. One saved by 1.0.0 or later kept them
+	// (D-254): it shows the total it kept, and no price change where the shop changed none.
 	$clean = 0;
+	$kept  = 0;
 	foreach ( $list as $build ) {
 		// A build where nothing changed does not reopen at all (SavedBuilds::reopened()), so one of its parts is sold
 		// out first: then it must reopen, saying so, and with no prices it never kept.
@@ -67,8 +69,9 @@ if ( 'read' === ( $cbuild_args[0] ?? '' ) ) {
 		$again  = $builds->reopened( $user, $build->uuid );
 		// One that doesn't reopen at all is not clean (the spec reviewer's M10 m2).
 		$clean += null !== $again && null === $again->then && array() === $again->prices ? 1 : 0;
+		$kept  += null !== $again && null !== $again->then && array() === $again->prices ? 1 : 0;
 	}
-	echo "read: order {$order->get_id()}, {$lines} lines, {$found} products, total {$order->get_total()}; kits " . $read . ' of ' . count( $stored ) . ", presets {$priced} of {$presets} priced; saved builds {$saved}, {$clean} reopened with no prices then\n";
+	echo "read: order {$order->get_id()}, {$lines} lines, {$found} products, total {$order->get_total()}; kits " . $read . ' of ' . count( $stored ) . ", presets {$priced} of {$presets} priced; saved builds {$saved}, {$clean} reopened with no prices then, {$kept} with the prices kept\n";
 	return;
 }
 

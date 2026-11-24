@@ -3,11 +3,14 @@
  * current with uploaded" (Cowork's M7 review, F3; D-208), then opens the Plugins screen. The pages WordPress answers
  * with are printed, so the caller can look for the result and for a critical error.
  *
- *   node tools/upgrade/upload.mjs <the zip> [the site, http://localhost:8898]
+ *   node tools/upgrade/upload.mjs <the zip> [the site, http://localhost:<CBUILD_PORT, else 8898>]
  */
 import { chromium } from '@playwright/test';
 
-const [ zip, site = 'http://localhost:8898' ] = process.argv.slice( 2 );
+const [
+	zip,
+	site = `http://localhost:${ process.env.CBUILD_PORT || '8898' }`,
+] = process.argv.slice( 2 );
 if ( ! zip ) {
 	process.stderr.write( 'Usage: node tools/upgrade/upload.mjs <the zip> [the site]\n' );
 	process.exit( 2 );

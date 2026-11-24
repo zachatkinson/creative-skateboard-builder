@@ -47,6 +47,12 @@ final class BuilderView {
 	private const int SEARCHED = 40;
 
 	/**
+	 * A grip's image at most this share as wide as it is long is a 1-inch swatch from 1.0.x, repeated nose to tail; a
+	 * whole sheet is about 9 to 33 (F18, #103).
+	 */
+	private const int SWATCH = 8;
+
+	/**
 	 * The board's height in the picture: at most this many CSS pixels (36rem), from a window this tall, and below
 	 * that this share of the window's height, in vh. The stylesheet's `--cbuild-board-size` is the same.
 	 */
@@ -60,6 +66,11 @@ final class BuilderView {
 	 * The board's height in the phone bar, in CSS pixels: the bar's target, `--cbuild-target`'s 2.75rem.
 	 */
 	private const int BAR_SIZE = 44;
+
+	/**
+	 * A deck's height on its compact card, in CSS pixels: the stylesheet's 7rem (F14, #99).
+	 */
+	private const int CARD_DECK = 112;
 
 	/**
 	 * The step's form's ID, by which the phone bar's button sends it. A page holds one builder.
@@ -86,9 +97,10 @@ final class BuilderView {
 	 * @param string               $base    The address of the page the builder is on, with no build in it.
 	 * @param list<string>         $steps   The slots that are steps, in step order.
 	 * @param BuildProblem|null    $stopped What kept the shopper from the step asked for, if anything did.
+	 * @param string               $moved   What the build moved to on its own, said first, such as "Hard Hat is now 8.5″." (#81).
 	 * @return array<string, mixed>
 	 */
-	public function of( State $state, array $answer, BuildLink $link, string $base, array $steps, ?BuildProblem $stopped ): array {
+	public function of( State $state, array $answer, BuildLink $link, string $base, array $steps, ?BuildProblem $stopped, string $moved = '' ): array {
 		$slots = $state->kit->slots;
 		$url   = static fn ( BuildLink $to ): string => $to->address( $base, $slots );
 		// The picks as the address has them, and as the total counts them: a slot that starts on a part counts it.
@@ -121,16 +133,26 @@ final class BuilderView {
 
 		// What keeps the build from where the shopper asked to go, or from the cart.
 		$errors = array();
-		if ( null !== $stopped ) {
-			$errors[] = array(
-				'text' => Words::problem( $stopped->code, $label( $stopped->slot ) ),
-				'url'  => $url( $link->at( $stopped->slot ) ),
+		// A part a ready build holds that the kit no longer offers is named by the answer as its tile named it; an ID a
+		// link brought that no preset holds is named by nothing (#85, #104).
+		$refused = array();
+		foreach ( Cast::items( $answer['refused'] ?? null ) as $problem ) {
+			$problem   = Cast::map( $problem );
+			$slot      = Cast::str( $problem['slot'] ?? null );
+			$refused[] = $slot;
+			$errors[]  = array(
+				'text' => Cast::str( $problem['message'] ?? null ),
+				'url'  => $url( $link ),
 			);
 		}
-		foreach ( Cast::items( $answer['refused'] ?? null ) as $problem ) {
-			$errors[] = array(
-				'text' => Cast::str( Cast::map( $problem )['message'] ?? null ),
-				'url'  => $url( $link ),
+		// The slot a refused part left empty is said once, by that part's line, not again as "nothing is chosen yet".
+		if ( null !== $stopped && ! ( Problem::SlotEmpty === $stopped->code && in_array( $stopped->slot, $refused, true ) ) ) {
+			array_unshift(
+				$errors,
+				array(
+					'text' => Words::problem( $stopped->code, $label( $stopped->slot ) ),
+					'url'  => $url( $link->at( $stopped->slot ) ),
+				)
 			);
 		}
 		if ( $review ) {
@@ -169,10 +191,28 @@ final class BuilderView {
 		$total   = Cast::map( $answer['total'] ?? null );
 		$sum     = Cast::str( Cast::map( $total['total'] ?? null )['text'] ?? null );
 		$picture = Cast::map( $answer['picture'] ?? null );
-		$status  = $panel
+		// A deck with no layer image is shown by its photo in the board's place, at the board's size, with every other
+		// part's labelled photo below it, as the review shows them; the other parts' layers wait for a deck to sit on (#82).
+		$first = Cast::map( Cast::items( $picture['items'] ?? null )[0] ?? null );
+		$hero  = SlotKey::DECK === Cast::str( $first['slot'] ?? null ) && true !== ( $first['drawn'] ?? null ) && array() !== Cast::map( $first['image'] ?? null );
+		if ( $hero ) {
+			$picture['layers'] = array();
+			$picture['top']    = array();
+			$picture['items']  = array_map( static fn( mixed $item ): array => array( 'drawn' => false ) + Cast::map( $item ), Cast::items( $picture['items'] ?? null ) );
+			// At the board's size, uncropped: the card's thumbnail may be a square crop of a long deck.
+			$large = Cast::map( $first['large'] ?? null );
+			if ( array() !== $large ) {
+				$picture['items'][0]['image'] = $large;
+			}
+		}
+		$status = $panel
 			/* translators: %s: a number of parts. */
 			? sprintf( _n( '%s part no longer fits.', '%s parts no longer fit.', count( Cast::items( $changes['changes'] ?? null ) ), 'creative-skateboard-builder' ), number_format_i18n( count( Cast::items( $changes['changes'] ?? null ) ) ) )
 			: self::said( Cast::str( $picture['description'] ?? null ), $sum, isset( $total['estimate'] ) ? Cast::str( Cast::map( $total['estimate'] )['text'] ?? null ) : null );
+		if ( '' !== $moved ) {
+			/* translators: 1: what the build moved to, such as "Hard Hat is now 8.5″.". 2: what the status says after it. */
+			$status = sprintf( __( '%1$s %2$s', 'creative-skateboard-builder' ), $moved, $status );
+		}
 
 		$board              = self::board( $picture, $state->id, null );
 		$top                = self::top( $picture, $state->id );
@@ -197,6 +237,8 @@ final class BuilderView {
 			'layout'    => array(
 				'stageRight' => 'right' === $state->kit->layout->stageSide,
 				'balanced'   => 'balanced' === $state->kit->layout->boardSize,
+				// Motion on subtle fades the board's parts for every shopper, as reduced motion does (1.1.0, D-256).
+				'subtle'     => 'subtle' === $state->kit->layout->motion,
 			),
 			'status'    => $status,
 			'errors'    => array(
@@ -209,13 +251,21 @@ final class BuilderView {
 			'step'      => $step,
 			'changes'   => $this->changes( $state, $changes, $link, $lines, $label ),
 			'summary'   => $summary,
-			'bar'       => self::bar( $summary, $step, $shown, $review, $panel, Cast::map( Cast::items( $picture['items'] ?? null )[0] ?? null ), $state->id, self::board( $picture, $state->id, self::BAR_SIZE ), self::back( $review, $step, $steps, $link, $url, $label ) ),
+			// The total in minor units and how the shop writes it, for the counting total's frames between one total and the
+			// next; the last frame is the server's string (1.1.0, D-257).
+			'money'     => array(
+				'amount'   => Cast::int( Cast::map( Cast::map( $answer['total'] ?? null )['total'] ?? null )['amount'] ?? null ),
+				'currency' => Cast::map( $answer['currency'] ?? null ),
+			),
+			'bar'       => self::bar( $summary, $step, $shown, $review, $panel, $first, $state->id, self::board( $picture, $state->id, self::BAR_SIZE ), self::back( $review, $step, $steps, $link, $url, $label ) ),
 			'picture'   => array(
 				'heading'     => __( 'Your board', 'creative-skateboard-builder' ),
 				'description' => Cast::str( $picture['description'] ?? null ),
 				// With nothing picked, the stage says what to do where the board will be; the caption waits for a part.
 				'captioned'   => array() !== Cast::items( $picture['items'] ?? null ),
 				'empty'       => __( 'Pick a deck to start', 'creative-skateboard-builder' ),
+				// The deck's photo in the board's place (#82).
+				'hero'        => $hero,
 				'board'       => $board,
 				// The board's top (#46): shown on the grip step, where the shopper sees the grip go on, and turned to
 				// with the button by the board, which the store offers and keeps to once pressed. A deck with no layer
@@ -298,7 +348,7 @@ final class BuilderView {
 	 * @param int                                                          $kit     The kit product's ID.
 	 * @param array<string, mixed>                                         $board   The board, drawn at the bar's size.
 	 * @param array{shown: bool, url: string, text: string, label: string} $back The footer's Back.
-	 * @return array{shown: bool, seen: bool, board: array<string, mixed>, photo: array{hasImage: bool, src: string, srcset: string, sizes: string, width: int, height: int, classes: string}, picture: string, total: string, amount: string, parts: string, hide: string, back: array{shown: bool, url: string, text: string, label: string}, next: array{shown: bool, onStep: bool, onReview: bool, text: string, form: string, name: string, value: string, disabled: bool}}
+	 * @return array{shown: bool, seen: bool, board: array<string, mixed>, photo: array{hasImage: bool, src: string, srcset: string, sizes: string, width: int, height: int, classes: string}, picture: string, total: string, amount: string, parts: string, hide: string, back: array{shown: bool, url: string, text: string, label: string}, next: array{shown: bool, onStep: bool, onReview: bool, text: string, form: string, name: string, value: string, disabled: bool, ready: bool, missing: string}}
 	 */
 	private static function bar( array $summary, array $step, array $shown, bool $review, bool $panel, array $first, int $kit, array $board, array $back ): array {
 		$next  = Cast::map( $step['next'] ?? null );
@@ -338,15 +388,22 @@ final class BuilderView {
 				'name'     => $review ? '' : Cast::str( $step['stepName'] ?? null ),
 				'value'    => $review ? '' : Cast::str( $next['value'] ?? null ),
 				'disabled' => $review && ! Cast::bool( $shown['ready'] ?? null ),
+				// The step's Next until the step has a pick: dimmed by the store, which says what is missing when it is
+				// pressed (#100). Add to cart says itself whether it is ready, and the panel has no Next.
+				'ready'    => $review || $panel || Cast::bool( $next['ready'] ?? null ),
+				'missing'  => $review || $panel ? '' : Cast::str( $next['missing'] ?? null ),
 			),
 		);
 	}
 
 	/**
-	 * The preset tiles (spec: Presets): on a build not yet begun, one for each of the kit's presets, with its total,
-	 * a line on who it is for, and any part that keeps it from the cart named. Each is a GET form whose button starts
-	 * the build at the review (spec: Search, "Picks, filters, Show more and presets are buttons in GET forms"), its
-	 * fields the preset's part IDs as a build link writes them, each checked again when it arrives.
+	 * The preset tiles (spec: Presets): on a build not yet begun, one for each preset the answer offers, with its total,
+	 * a line on who it is for, and any part that keeps it from the cart named. From 1.1.0 none where the kit's Show
+	 * ready builds is off, and none with a part that's gone, sold out or no longer fits: the answer says `shown` (#104,
+	 * D-336). Each is
+	 * a GET form whose button starts the build at the review (spec: Search, "Picks, filters, Show more and presets are
+	 * buttons in GET forms"), its fields the preset's part IDs as a build link writes them, each checked again when it
+	 * arrives.
 	 *
 	 * @param array<string, mixed>    $answer The state's answer.
 	 * @param BuildLink               $link   The address.
@@ -359,12 +416,24 @@ final class BuilderView {
 		// At the start alone: on the first step, with nothing picked. A build begun is the shopper's own.
 		$first = $state->kit->slots->keys()[0] ?? '';
 		if ( array() === $link->picks && null === $link->preset && $first === $state->step ) {
-			foreach ( Cast::items( $answer['presets'] ?? null ) as $at => $preset ) {
+			// The answer lists every preset in the kit's order, each saying whether a shopper is offered it (#104) and its
+			// place among the kit's, which `cbuild[preset]` takes. One not shown has no tile (D-336).
+			foreach ( Cast::items( $answer['presets'] ?? null ) as $preset ) {
 				$preset = Cast::map( $preset );
-				$picks  = array();
+				if ( false === ( $preset['shown'] ?? true ) ) {
+					continue;
+				}
+				$at    = Cast::int( $preset['at'] ?? null );
+				$picks = array();
 				foreach ( Cast::items( $preset['picks'] ?? null ) as $pick ) {
 					$pick                                        = Cast::map( $pick );
 					$picks[ Cast::str( $pick['slot'] ?? null ) ] = Cast::int( $pick['part'] ?? null );
+				}
+				// The tile shows the build, so it takes each part's classes from another plugin, merged: a flagged deck
+				// blurs it as it blurs the deck's card (Cowork's review of 1.0.0, F19; D-309).
+				$photo = array( Options::CLASS_PRESET_PHOTO );
+				foreach ( $picks as $slot => $part ) {
+					$photo = array_merge( $photo, explode( ' ', self::flagged( array(), $state->id, $slot, $part ) ) );
 				}
 				$fields = array();
 				foreach ( ( new BuildLink( $picks, null, State::REVIEW, null, $at ) )->query( $state->kit->slots ) as $key => $value ) {
@@ -373,7 +442,8 @@ final class BuilderView {
 						'value' => Cast::str( $value ),
 					);
 				}
-				// One line a slot: a part refused comes first and leaves its slot empty, which says the same again.
+				// One line a slot: a part refused comes first and leaves its slot empty, which says the same again. From
+				// 1.1.0 the answer shows only presets with nothing keeping them from the cart (#104), so a tile has none.
 				$notes = array();
 				$whole = true;
 				foreach ( Cast::items( $preset['problems'] ?? null ) as $problem ) {
@@ -398,6 +468,7 @@ final class BuilderView {
 					'hasTotal'       => $whole,
 					'notes'          => $notes,
 					'fields'         => $fields,
+					'photoClasses'   => implode( ' ', array_unique( array_filter( $photo, static fn( string $name ): bool => '' !== $name ) ) ),
 					/* translators: %s: a preset's name, such as Street. */
 					'button'         => sprintf( __( 'Start from %s', 'creative-skateboard-builder' ), $name ),
 				);
@@ -495,9 +566,7 @@ final class BuilderView {
 			$slot          = Cast::str( $layer['slot'] ?? null );
 			$image         = Cast::map( $layer['image'] ?? null );
 			$share         = Cast::int( $layer['width'] ?? null ) / $height;
-			$sizes         = null === $fixed
-				? sprintf( '(min-height: %1$dpx) %2$dpx, %3$svh', self::BOARD_TALL, (int) ceil( self::BOARD_MOST * $share ), self::decimal( self::BOARD_SHARE * $share ) )
-				: ceil( $fixed * $share ) . 'px';
+			$sizes         = self::sizes( $share, $fixed );
 			$seen[ $slot ] = ( $seen[ $slot ] ?? 0 ) + 1;
 			$layers[]      = array(
 				'key'      => $slot . '-' . $seen[ $slot ],
@@ -526,6 +595,81 @@ final class BuilderView {
 	}
 
 	/**
+	 * A layer's `sizes`: in the picture, its share of the board's height at most BOARD_MOST pixels or BOARD_SHARE of
+	 * the window's height; in the bar, of its fixed height.
+	 *
+	 * @param float    $share The layer's width over the board's height.
+	 * @param int|null $fixed The board's height in the bar, or null for the picture.
+	 */
+	private static function sizes( float $share, ?int $fixed ): string {
+		return null === $fixed
+			? sprintf( '(min-height: %1$dpx) %2$dpx, %3$svh', self::BOARD_TALL, (int) ceil( self::BOARD_MOST * $share ), self::decimal( self::BOARD_SHARE * $share ) )
+			: ceil( $fixed * $share ) . 'px';
+	}
+
+	/**
+	 * What the store fetches for a deck's card as the shopper points at it (D-308): the files and sizes the picture
+	 * will draw the deck's board with once it is picked, each type's `srcset`, so the store asks for the one the
+	 * browser will choose. Nothing shown for a deck with no layer image, or a card on another step.
+	 *
+	 * @param array<string, mixed> $board The board the deck would draw alone, from the answer.
+	 * @return array{shown: bool, src: string, avif: string, webp: string, sizes: string}
+	 */
+	private static function preload( array $board ): array {
+		$height = Cast::int( $board['height'] ?? null );
+		$layer  = Cast::map( Cast::items( $board['layers'] ?? null )[0] ?? null );
+		$image  = Cast::map( $layer['image'] ?? null );
+		$src    = Cast::str( $image['src'] ?? null );
+		if ( $height <= 0 || '' === $src ) {
+			return array(
+				'shown' => false,
+				'src'   => '',
+				'avif'  => '',
+				'webp'  => '',
+				'sizes' => '',
+			);
+		}
+		$sets = array_column( array_map( static fn( mixed $source ): array => Cast::map( $source ), Cast::items( $image['sources'] ?? null ) ), 'srcset', 'type' );
+		return array(
+			'shown' => true,
+			'src'   => $src,
+			'avif'  => Cast::str( $sets['image/avif'] ?? null ),
+			'webp'  => Cast::str( $sets['image/webp'] ?? null ),
+			'sizes' => self::sizes( Cast::int( $layer['width'] ?? null ) / $height, null ),
+		);
+	}
+
+	/**
+	 * A deck's small picture on its compact card (F14, #99): its board's layer image, cut out, upright and
+	 * CARD_DECK pixels tall, so its `sizes` is that height times the image's shape. Its `srcset` is the WebP
+	 * renditions made for the picture, which every browser WordPress supports reads; the smallest is already more than
+	 * a sharp screen needs. Null where the deck has no layer image, or none made smaller than the shop's own file, which
+	 * would be too large to list: the card shows the photo.
+	 *
+	 * @param array<string, mixed> $board The board the deck would draw alone, from the answer.
+	 * @return array{hasImage: bool, drawn: bool, src: string, srcset: string, sizes: string, width: int, height: int}|null
+	 */
+	private static function drawn( array $board ): ?array {
+		$image  = Cast::map( Cast::map( Cast::items( $board['layers'] ?? null )[0] ?? null )['image'] ?? null );
+		$width  = Cast::int( $image['width'] ?? null );
+		$height = Cast::int( $image['height'] ?? null );
+		$sets   = array_column( array_map( static fn( mixed $source ): array => Cast::map( $source ), Cast::items( $image['sources'] ?? null ) ), 'srcset', 'type' );
+		$srcset = Cast::str( $sets['image/webp'] ?? null );
+		if ( '' === $srcset || $width <= 0 || $height <= 0 ) {
+			return null;
+		}
+		return array(
+			'hasImage' => true,
+			'drawn'    => true,
+			'src'      => Cast::str( $image['src'] ?? null ),
+			'srcset'   => $srcset,
+			'sizes'    => self::sizes( $width / $height, self::CARD_DECK ),
+			'width'    => $width,
+			'height'   => $height,
+		);
+	}
+
+	/**
 	 * The board's top (#46), placed as the underside is, each layer an element the stylesheet paints from its style:
 	 * the deck maple in its own outline, the deck's image as a mask; the grip's image repeated across the same
 	 * outline, nose to tail; and each wheel and bolt head its own image. Each is one file, not a `srcset`: a style takes
@@ -541,21 +685,25 @@ final class BuilderView {
 		$height = Cast::int( $picture['height'] ?? null );
 		$top    = $height > 0 && $width > 0 ? Cast::items( $picture['top'] ?? null ) : array();
 		$mask   = '';
+		$deck   = array();
 		foreach ( $top as $layer ) {
 			$layer = Cast::map( $layer );
 			if ( SlotKey::DECK === Cast::str( $layer['slot'] ?? null ) ) {
 				$mask = self::url( self::address( Cast::map( $layer['image'] ?? null ) ) );
+				$deck = $layer;
 				break;
 			}
 		}
 		$layers = array();
 		$seen   = array();
 		foreach ( '' === $mask ? array() : $top as $layer ) {
-			$layer         = Cast::map( $layer );
-			$slot          = Cast::str( $layer['slot'] ?? null );
-			$style         = array( self::placed( $layer, $width, $height ) );
+			$layer = Cast::map( $layer );
+			$slot  = Cast::str( $layer['slot'] ?? null );
+			// The grip takes the deck's box and outline, so it is cut where the deck is; its sheet is sized against them.
+			$style         = array( self::placed( SlotKey::GRIP === $slot ? $deck : $layer, $width, $height ) );
 			$style[]       = in_array( $slot, array( SlotKey::DECK, SlotKey::GRIP ), true ) ? '--cbuild-mask:' . $mask : '';
 			$style[]       = SlotKey::DECK === $slot ? '' : '--cbuild-image:' . self::url( self::address( Cast::map( $layer['image'] ?? null ) ) );
+			$style[]       = SlotKey::GRIP === $slot ? self::sheet( $layer, $deck ) : '';
 			$seen[ $slot ] = ( $seen[ $slot ] ?? 0 ) + 1;
 			$layers[]      = array(
 				'key'     => $slot . '-' . $seen[ $slot ],
@@ -567,6 +715,28 @@ final class BuilderView {
 			'shown'  => array() !== $layers,
 			'style'  => array() === $layers ? '' : '--cbuild-board-ratio:' . $width . ' / ' . $height,
 			'layers' => $layers,
+		);
+	}
+
+	/**
+	 * A grip's whole sheet against the deck it covers, as the background's size (F18, #103): drawn once, centred, at
+	 * the sheet's size, as shares of the deck's box. An image at most an eighth as wide as it is long is a 1-inch
+	 * swatch, as 1.0.x asked for, and has none: the stylesheet repeats it nose to tail, as before.
+	 *
+	 * @param array<string, mixed> $grip The grip's layer, its box the sheet.
+	 * @param array<string, mixed> $deck The deck's layer.
+	 */
+	private static function sheet( array $grip, array $deck ): string {
+		$image  = Cast::map( $grip['image'] ?? null );
+		$across = Cast::int( $deck['width'] ?? null );
+		$along  = Cast::int( $deck['height'] ?? null );
+		if ( $across <= 0 || $along <= 0 || Cast::int( $image['width'] ?? null ) * self::SWATCH <= Cast::int( $image['height'] ?? null ) ) {
+			return '';
+		}
+		return sprintf(
+			'--cbuild-grip-size:%1$s%% %2$s%%',
+			self::decimal( 100 * Cast::int( $grip['width'] ?? null ) / $across ),
+			self::decimal( 100 * Cast::int( $grip['height'] ?? null ) / $along )
 		);
 	}
 
@@ -703,8 +873,10 @@ final class BuilderView {
 				'text'  => '',
 			),
 			'next'      => array(
-				'value' => '',
-				'text'  => '',
+				'value'   => '',
+				'text'    => '',
+				'ready'   => true,
+				'missing' => '',
 			),
 			'stepName'  => '',
 		);
@@ -876,8 +1048,8 @@ final class BuilderView {
 			'text'  => null === $more ? '' : sprintf( __( 'Show %s more', 'creative-skateboard-builder' ), number_format_i18n( min( Shelf::SHOWN, $matching - $listed ) ) ),
 			/* translators: 1: how many looks are listed. 2: how many match. */
 			'count' => sprintf( _n( 'Showing %1$s of %2$s', 'Showing %1$s of %2$s', $matching, 'creative-skateboard-builder' ), number_format_i18n( $listed ), number_format_i18n( $matching ) ),
-			/* translators: 1: how many parts Show more added. 2: how many are listed. 3: how many match. */
-			'added' => $shown > Shelf::SHOWN && $added > 0 ? sprintf( _n( '%1$s more part shown, %2$s of %3$s.', '%1$s more parts shown, %2$s of %3$s.', $added, 'creative-skateboard-builder' ), number_format_i18n( $added ), number_format_i18n( $listed ), number_format_i18n( $matching ) ) : '',
+			/* translators: 1: how many Show more added. 2: how many are listed. 3: how many match. No noun: decks, wheels and so on (#84). */
+			'added' => $shown > Shelf::SHOWN && $added > 0 ? sprintf( _n( '%1$s more shown, %2$s of %3$s.', '%1$s more shown, %2$s of %3$s.', $added, 'creative-skateboard-builder' ), number_format_i18n( $added ), number_format_i18n( $listed ), number_format_i18n( $matching ) ) : '',
 		);
 	}
 
@@ -950,8 +1122,8 @@ final class BuilderView {
 				$chip     = Cast::map( $chip );
 				$count    = Cast::int( $chip['count'] ?? null );
 				$inputs[] = array(
-					/* translators: 1: a chip, such as a brand. 2: how many parts it leaves. */
-					'said'    => sprintf( _n( '%1$s, %2$s part', '%1$s, %2$s parts', $count, 'creative-skateboard-builder' ), Cast::str( $chip['label'] ?? null ), number_format_i18n( $count ) ),
+					/* translators: 1: a chip, such as a brand. 2: how many it leaves: decks, wheels and so on (#84). */
+					'said'    => sprintf( _x( '%1$s, %2$s', 'a chip and how many it lists', 'creative-skateboard-builder' ), Cast::str( $chip['label'] ?? null ), number_format_i18n( $count ) ),
 					'id'      => 'cbuild-chip-' . $slot . '-' . $name . '-' . $at,
 					'name'    => BuildLink::PARAM . '[_chips][' . $name . '][]',
 					'value'   => Cast::str( $chip['value'] ?? null ),
@@ -964,6 +1136,7 @@ final class BuilderView {
 				'key'    => $name,
 				'legend' => Cast::str( $group['label'] ?? null ),
 				'inputs' => $inputs,
+				'more'   => self::rest( $slot, $name, count( $inputs ) ),
 			);
 		}
 		$sort  = Cast::str( $shelf['sort'] ?? null );
@@ -1076,6 +1249,27 @@ final class BuilderView {
 	}
 
 	/**
+	 * What a step's Next says is missing when it is pressed before the step has a pick (#100): the step's own part, as
+	 * its question names it, and a slot the plugin does not name by its label.
+	 *
+	 * @param string $slot The step's slot.
+	 * @param string $name The step's label.
+	 */
+	private static function missing( string $slot, string $name ): string {
+		return match ( $slot ) {
+			SlotKey::DECK     => __( 'Choose your deck first.', 'creative-skateboard-builder' ),
+			SlotKey::TRUCKS   => __( 'Choose your trucks first.', 'creative-skateboard-builder' ),
+			SlotKey::WHEELS   => __( 'Choose your wheels first.', 'creative-skateboard-builder' ),
+			SlotKey::BEARINGS => __( 'Choose your bearings first.', 'creative-skateboard-builder' ),
+			SlotKey::RISERS   => __( 'Choose your risers first.', 'creative-skateboard-builder' ),
+			SlotKey::HARDWARE => __( 'Choose your hardware first.', 'creative-skateboard-builder' ),
+			SlotKey::GRIP     => __( 'Choose your grip tape first.', 'creative-skateboard-builder' ),
+			/* translators: %s: a step's name, such as Stickers. */
+			default           => sprintf( __( '%s: make a choice first.', 'creative-skateboard-builder' ), $name ),
+		};
+	}
+
+	/**
 	 * What a search that lists nothing says, and the way on (spec: Search, "When nothing is found"): the widths its
 	 * matches come in, with a button to each; or how many parts that don't fit match, with a link to why; or that
 	 * nothing matches, with Clear search. Shown only where a search lists nothing.
@@ -1118,6 +1312,9 @@ final class BuilderView {
 		} elseif ( $why ) {
 			/* translators: %s: how many parts match the search. */
 			$text = sprintf( _n( '%s part matches, but it doesn’t fit your build.', '%s parts match, but they don’t fit your build.', $hidden, 'creative-skateboard-builder' ), number_format_i18n( $hidden ) );
+		} elseif ( SlotKey::DECK === $slot && '' !== $asked ) {
+			/* translators: 1: a deck width, such as 8.25″. 2: what the shopper searched for. */
+			$text = sprintf( __( 'No %1$s decks match %2$s.', 'creative-skateboard-builder' ), $asked, $query );
 		} else {
 			$text = self::noMatch( $slot, $query );
 		}
@@ -1209,7 +1406,12 @@ final class BuilderView {
 		// What the step's parts were checked against, as a fitting part's two labels.
 		$against = self::against( Cast::strings( $step['against'] ?? null ), $width, static fn( string $key ): string => Cast::str( Cast::map( $about[ $key ] ?? null )['label'] ?? $key ) );
 
-		$card    = function ( array $option, array $look = array() ) use ( $state, $slot, $counted, $against ): array {
+		// The width asked, for a picked deck its look is not made in, whose card says so (#81).
+		$asked = null;
+		foreach ( Cast::items( Cast::map( $answer['shelf'] ?? null )['widths'] ?? null ) as $offered ) {
+			$asked = Cast::bool( Cast::map( $offered )['selected'] ?? null ) ? Cast::map( $offered ) : $asked;
+		}
+		$card    = function ( array $option, array $look = array() ) use ( $state, $slot, $counted, $against, $asked ): array {
 			$id   = Cast::int( $option['id'] ?? null );
 			$card = Cast::map( $option['card'] ?? null );
 			// A look's card names its product, not a size of it, and the look by what tells it from the product's
@@ -1228,7 +1430,9 @@ final class BuilderView {
 					$others[] = $text;
 				}
 			}
-			$also      = SlotKey::DECK === $slot ? Words::also( $others ) : '';
+			// A deck's card says the look's other widths, or that it is made in this one alone (F14, #99).
+			$also      = SlotKey::DECK === $slot ? ( array() === $others && array() !== $look ? Words::only( $size ) : Words::also( $others ) ) : '';
+			$board     = Cast::map( $option['board'] ?? null );
 			$change    = Cast::str( Cast::map( $option['delta'] ?? null )['change'] ?? null );
 			$checked   = ( $counted[ $slot ] ?? null ) === $id;
 			$available = Cast::bool( $option['available'] ?? null );
@@ -1244,6 +1448,10 @@ final class BuilderView {
 					continue;
 				}
 				$notes[] = array( 'text' => Cast::str( $message['text'] ?? null ) );
+			}
+			if ( $checked && null !== $asked && SlotKey::DECK === $slot && Cast::str( Cast::map( $option['size'] ?? null )['value'] ?? null ) !== Cast::str( $asked['value'] ?? null ) ) {
+				/* translators: 1: the picked deck's width, such as 8.25″. 2: the width asked, such as 8.5″. */
+				$notes[] = array( 'text' => sprintf( __( 'Picked in %1$s. Not made in %2$s.', 'creative-skateboard-builder' ), $size, Cast::str( $asked['text'] ?? null ) ) );
 			}
 			$input = 'cbuild-' . $state->id . '-' . $id;
 			// The picked card's sizes, where the shopper chooses one: radios of the step's own field, after the card. The
@@ -1315,7 +1523,9 @@ final class BuilderView {
 				'recommended'   => Cast::bool( $option['recommended'] ?? null ),
 				'recommendedAs' => $against['recommended'],
 				'classes'       => self::classes( $state->id, $slot, $id, $fit, $available, $checked ),
-			) + self::image( $card['image'] ?? null );
+				// From 1.1.0: the board's image, fetched as the shopper points at a deck's card (D-308).
+				'preload'       => self::preload( $board ),
+			) + ( self::drawn( $board ) ?? array( 'drawn' => false ) + self::image( $card['image'] ?? null ) );
 		};
 		$shelf   = isset( $answer['shelf'] ) ? Cast::map( $answer['shelf'] ) : null;
 		$options = array();
@@ -1336,6 +1546,7 @@ final class BuilderView {
 		}
 
 		$required = Cast::bool( $step['required'] ?? null );
+		$found    = self::found( $shelf ?? array(), $slot, $options );
 		$line     = Cast::map( $lines[ $slot ] ?? null );
 		$before   = $state->kit->slots->before( $slot );
 		$after    = $state->kit->slots->after( $slot );
@@ -1400,17 +1611,20 @@ final class BuilderView {
 			'before'    => self::fields( BuildLink::PARAM, $link->picks, $link->none, $before ),
 			'after'     => self::fields( BuildLink::PARAM, $link->picks, $link->none, $after ),
 			'tail'      => $tail,
+			// From 1.1.0: the deck step's cards are compact, two columns of them on a desktop (F14, #99).
+			'compact'   => SlotKey::DECK === $slot,
 			'options'   => $options,
 			'hidden'    => self::hidden( $answer, $step ),
 			'filters'   => null === $shelf ? self::filters( $answer, $slot ) : self::filters( array(), '' ),
 			'more'      => null === $shelf ? self::more( $answer, count( $options ) ) : self::page( $shelf, count( $options ), $link ),
 			'shelf'     => self::shelf( $shelf ?? array(), $slot, $folded, $state->id ),
-			// The deck step asking its width lists nothing yet, and says nothing is missing.
-			'empty'     => array() === $options && ! ( null !== $shelf && SlotKey::DECK === $slot && '' === $link->shelf->width ),
-			'emptyText' => '' === $link->brand && '' === $link->size
+			// The deck step asking its width lists nothing yet, and says nothing is missing; a search that lists nothing
+			// says so itself, so the fit rule is not given as the reason (#83).
+			'empty'     => array() === $options && ! ( null !== $shelf && SlotKey::DECK === $slot && '' === $link->shelf->width ) && true !== $found['shown'],
+			'emptyText' => '' === $link->brand && '' === $link->size && array() === $link->shelf->chips
 				? __( 'Nothing the shop has fits the parts before this step.', 'creative-skateboard-builder' )
 				: __( 'No part matches these filters.', 'creative-skateboard-builder' ),
-			'found'     => self::found( $shelf ?? array(), $slot, $options ),
+			'found'     => $found,
 			'leave'     => array(
 				'shown'   => ! $required,
 				'id'      => 'cbuild-' . $state->id . '-' . $slot . '-none',
@@ -1426,9 +1640,13 @@ final class BuilderView {
 				'text'  => null === $back ? '' : sprintf( __( 'Back: %s', 'creative-skateboard-builder' ), Cast::str( $about[ $back ]['label'] ?? $back ) ),
 			),
 			'next'      => array(
-				'value' => $next,
+				'value'   => $next,
 				/* translators: %s: the next step's name, such as Wheels. */
-				'text'  => sprintf( __( 'Next: %s', 'creative-skateboard-builder' ), State::REVIEW === $next ? __( 'Review', 'creative-skateboard-builder' ) : Cast::str( $about[ $next ]['label'] ?? $next ) ),
+				'text'    => sprintf( __( 'Next: %s', 'creative-skateboard-builder' ), State::REVIEW === $next ? __( 'Review', 'creative-skateboard-builder' ) : Cast::str( $about[ $next ]['label'] ?? $next ) ),
+				// Next goes on once the step has a pick, or where the step needs none: the rule the server stops a step
+				// on, a required slot with nothing counted (#100). Until then the store dims it, and a press says this.
+				'ready'   => ! $required || isset( $counted[ $slot ] ),
+				'missing' => self::missing( $slot, Cast::str( $step['label'] ?? $slot ) ),
 			),
 			'stepName'  => BuildLink::PARAM . '[step]',
 		);
@@ -1631,6 +1849,31 @@ final class BuilderView {
 				'fields' => $none ? array() : self::flat( $undo->query( $state->kit->slots ) ),
 				'text'   => __( 'Undo', 'creative-skateboard-builder' ),
 			),
+		);
+	}
+
+	/**
+	 * The brand chips' "N more" (#98): on a desktop they sit in one row, and the button opens the rest in place. How
+	 * many fit is the browser's to measure, so the button's words come for every count it may leave out, each through
+	 * `_n()`, and the store picks the one it needs. Other groups wrap as they did.
+	 *
+	 * @param string $slot  The step's slot.
+	 * @param string $name  The group's facet.
+	 * @param int    $count How many chips the group has.
+	 * @return array{shown: bool, id: string, texts: list<string>, fewer: string}
+	 */
+	private static function rest( string $slot, string $name, int $count ): array {
+		$shown = Shelf::BRAND === $name;
+		$texts = array();
+		for ( $left = 1; $shown && $left <= $count; $left++ ) {
+			/* translators: %s: how many more brands there are to filter by, such as 7. The button shows their chips. */
+			$texts[] = sprintf( _n( '%s more brand', '%s more brands', $left, 'creative-skateboard-builder' ), number_format_i18n( $left ) );
+		}
+		return array(
+			'shown' => $shown,
+			'id'    => 'cbuild-chips-' . $slot . '-' . $name,
+			'texts' => $texts,
+			'fewer' => __( 'Show fewer', 'creative-skateboard-builder' ),
 		);
 	}
 

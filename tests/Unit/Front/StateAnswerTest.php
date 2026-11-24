@@ -13,6 +13,7 @@ use CreativeBranding\SkateboardBuilder\Domain\Picture\ImageFacts;
 use CreativeBranding\SkateboardBuilder\Front\PageRenderer;
 use CreativeBranding\SkateboardBuilder\Service\LayerArtwork;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\InMemoryLayerImages;
+use CreativeBranding\SkateboardBuilder\Domain\Picture\Renditions;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\InMemoryLayerRenditions;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\BuildTerms;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Part;
@@ -230,7 +231,8 @@ final class StateAnswerTest extends TestCase {
 				'picked'      => false,
 				'recommended' => false,
 				'messages'    => array(),
-				'card'        => InMemoryPartCards::card( 101 ),
+				'card'        => InMemoryPartCards::listed( 101 ),
+				'board'       => null,
 			),
 			$answer['options'][0]
 		);
@@ -396,7 +398,9 @@ final class StateAnswerTest extends TestCase {
 		self::assertSame( array(), $asked, 'a build begun shows no presets, and asks for none' );
 	}
 
-	public function test_each_preset_says_its_total_and_names_what_keeps_it_from_the_cart(): void {
+	// Spec, Presets: each tile says its total. #104 (R1): one a part keeps from the cart, Park with its wheels sold out,
+	// is listed in the answer and not shown, and the Catalogue check lists it for the owner.
+	public function test_each_preset_says_its_total_and_one_a_part_keeps_from_the_cart_is_not_shown(): void {
 		$this->worded();
 		$parts                    = Shop::parts();
 		$parts[ SlotKey::WHEELS ] = array_map( static fn( Part $part ): Part => 302 === $part->id ? Shop::priced( $part, $part->price, false, 0 ) : $part, $parts[ SlotKey::WHEELS ] );
@@ -408,13 +412,9 @@ final class StateAnswerTest extends TestCase {
 		self::assertTrue( $street['ready'] );
 		self::assertSame( array(), $street['problems'] );
 		self::assertSame( InMemoryPartCards::card( 101 )['image'], $street['image'], "its picture, for now its deck's photo" );
-		self::assertSame( InMemoryPartCards::card( 103 )['image'], $answer['presets'][1]['image'] );
-
-		$park = $answer['presets'][1];
-		self::assertFalse( $park['ready'] );
-		self::assertSame( array( array( 'part_sold_out', 'wheels', 302 ) ), array_map( static fn( array $problem ): array => array( $problem['code'], $problem['slot'], $problem['part'] ), $park['problems'] ) );
-		self::assertSame( 'Part 302', $park['problems'][0]['name'], 'the part named, for its tile' );
-		self::assertNotSame( '', $park['problems'][0]['message'] );
+		self::assertCount( 2, $answer['presets'], 'Park is listed, at its place' );
+		self::assertSame( array( true, false ), array_column( $answer['presets'], 'shown' ), 'and not shown' );
+		self::assertFalse( $answer['presets'][1]['ready'] );
 	}
 
 	public function test_a_plugins_answer_to_each_filter_is_what_the_answer_says(): void {
@@ -521,7 +521,7 @@ final class StateAnswerTest extends TestCase {
 			),
 			$answer['hidden'][0]['messages']
 		);
-		self::assertSame( InMemoryPartCards::card( 139 ), $answer['hidden'][0]['card'] );
+		self::assertSame( InMemoryPartCards::listed( 139 ), $answer['hidden'][0]['card'] );
 
 		$trucks = self::step( $answer, SlotKey::TRUCKS );
 		self::assertNull( $trucks['picked'] );
@@ -687,7 +687,7 @@ final class StateAnswerTest extends TestCase {
 		self::assertSame( 'Part 139', $change['name'] );
 		self::assertSame( 'The trucks are made for decks from 7.8″ to 8.2″ wide. The deck is 8.5″.', $change['messages'][0]['text'] );
 		self::assertSame( 149, $change['closest']['id'] );
-		self::assertSame( InMemoryPartCards::card( 149 ), $change['closest']['card'] );
+		self::assertSame( InMemoryPartCards::listed( 149 ), $change['closest']['card'] );
 		self::assertFalse( $change['closest']['picked'] );
 		self::assertFalse( $change['closest']['recommended'] );
 		self::assertCount( 1, $this->cards->asked );
@@ -1151,6 +1151,7 @@ final class StateAnswerTest extends TestCase {
 				'name'  => 'Part 103',
 				'image' => InMemoryPartCards::card( 103 )['image'],
 				'photo' => true,
+				'large' => InMemoryPartCards::card( 103 )['large'],
 				'drawn' => false,
 			),
 			$answer['picture']['items'][0]
@@ -1174,6 +1175,74 @@ final class StateAnswerTest extends TestCase {
 		self::assertSame( array( SlotKey::DECK => false ), array_slice( array_column( $without['items'], 'drawn', 'slot' ), 0, 1, true ) );
 		self::assertSame( array( SlotKey::DECK ), array_column( $this->answer( $picks, SlotKey::TRUCKS )['picture']['layers'], 'slot' ) );
 		self::assertSame( $this->answer( $picks, SlotKey::TRUCKS )['picture']['items'][0]['part'], $without['items'][0]['part'] );
+	}
+
+	// The slow deck swap (M11, D-308): each deck the step offers carries the board it would draw, alone, so the store can
+	// fetch its image the moment the shopper points at the card, before the pick is asked. The same layout as the
+	// picture's, so the same file is chosen; a deck with no layer image has none, and no other step carries one.
+	public function test_each_deck_on_the_deck_step_carries_the_board_it_would_draw_and_no_other_step_does(): void {
+		$this->layers->attachments = array( 103 => 13 );
+		$this->layers->images      = array( 13 => new ImageFacts( 'image/png', 432, 1626, true ) );
+		$this->renditions->make( 13, Renditions::drawn( SlotKey::DECK, Shop::parts()[ SlotKey::DECK ][2]->specs, 432, 1626 ) );
+
+		$answer = $this->answer( array( SlotKey::DECK => 101 ), SlotKey::DECK );
+		$boards = array_column( $answer['options'], 'board', 'id' );
+		self::assertNull( $boards[101], 'a deck with no layer image' );
+		$board = $boards[103];
+		self::assertIsArray( $board );
+		self::assertSame( array( 2159000, 8128000 ), array( $board['width'], $board['height'] ), 'an 8.5 in deck, 32 in long, alone' );
+		self::assertSame( array( SlotKey::DECK ), array_column( $board['layers'], 'slot' ) );
+		$picked = $this->answer( array( SlotKey::DECK => 103 ), SlotKey::TRUCKS )['picture'];
+		self::assertSame( $picked['layers'][0]['image'], $board['layers'][0]['image'], 'the image the picture draws once it is picked' );
+		self::assertNotSame( array(), $board['layers'][0]['image']['sources'] );
+
+		$trucks = $this->answer( array( SlotKey::DECK => 103 ), SlotKey::TRUCKS );
+		self::assertSame( array( null ), array_values( array_unique( array_column( $trucks['options'], 'board' ), SORT_REGULAR ) ), 'the trucks\' cards carry none' );
+	}
+
+	// D-308 and F14: each deck card on the shelf carries its board, sold out or not, though the step's list, cut to its
+	// filters and its first page, leaves it out; and a card is as it is listed, without the picture's large photo.
+	public function test_each_deck_the_shelf_lists_carries_its_board_sold_out_or_not_and_its_card_no_large_photo(): void {
+		$parts                    = Shop::parts();
+		$parts[ SlotKey::DECK ][] = Shop::priced( Builds::deck( '8.5', 104 ), 7000, false );
+		$this->kits->add( self::KIT, Shop::kit(), $parts );
+		$this->layers->attachments = array( 103 => 13, 104 => 14 );
+		$this->layers->images      = array(
+			13 => new ImageFacts( 'image/png', 432, 1626, true ),
+			14 => new ImageFacts( 'image/png', 432, 1626, true ),
+		);
+		$state = ( new BuildState( $this->kits, $this->settings, $this->logger ) )->of( self::KIT, array(), null, SlotKey::DECK );
+		self::assertNotNull( $state );
+		$facts = new InMemoryPartLooks();
+		foreach ( $parts[ SlotKey::DECK ] as $part ) {
+			$facts->facts[ $part->id ] = new LookFact( $part->id, $part->id, 0, 'Part ' . $part->id, array(), array(), false, 0, 0 );
+		}
+		$folding = new class() implements TextFolding {
+			public function fold( string $text ): string {
+				return strtolower( $text );
+			}
+		};
+		$answer = ( new StateAnswer( $this->cards, new FakeMoney(), $this->kits, new Delivery( $this->kits, new FakeShippingZones(), new ShippingWords( new FakeMoney() ) ), new PageRenderer() ) )
+			->withArtwork( new LayerArtwork( $this->layers, $this->renditions ) )
+			->withShelf( new StepShelf( $facts, $this->cards, new FakeRanking(), $folding, $this->settings ) );
+		$link   = BuildLink::read(
+			array(
+				'step'   => 'deck',
+				'_width' => '8.5in',
+				'_brand' => 'nobody',
+			)
+		);
+		$shown  = $answer->of( $state, $link );
+		self::assertSame( array(), $shown['options'], 'no deck is of that brand: the step\'s list is empty' );
+		$cards = array_column( array_column( array( ...$shown['shelf']['looks'], ...$shown['shelf']['sold_out'] ), 'part' ), null, 'id' );
+		self::assertSame( array( 103, 104 ), array_keys( $cards ) );
+		foreach ( $cards as $id => $card ) {
+			self::assertIsArray( $card['board'], 'deck ' . $id );
+			self::assertSame( array( SlotKey::DECK ), array_column( $card['board']['layers'], 'slot' ) );
+			self::assertArrayHasKey( 'large', InMemoryPartCards::card( $id ) );
+			self::assertIsArray( $card['card'] );
+			self::assertArrayNotHasKey( 'large', $card['card'], 'the large photo is the picture\'s alone' );
+		}
 	}
 
 	public function test_the_board_draws_the_parts_with_a_layer_image_and_the_box_keeps_the_rest(): void {
@@ -1223,7 +1292,8 @@ final class StateAnswerTest extends TestCase {
 
 		self::assertSame( array( SlotKey::DECK ), array_column( $picture['layers'], 'slot' ), 'underneath, the deck alone has a layer image: no grip strip' );
 		self::assertSame( array( SlotKey::DECK, SlotKey::GRIP, ...array_fill( 0, 8, SlotKey::HARDWARE ) ), array_column( $picture['top'], 'slot' ), 'the wheels have no layer image; the trucks are never on the top' );
-		self::assertSame( array( 0, 0, 2159000, 8128000 ), array( $picture['top'][1]['x'], $picture['top'][1]['y'], $picture['top'][1]['width'], $picture['top'][1]['height'] ), 'the grip covers the deck\'s whole box' );
+		// From 1.1.0 the grip is its whole sheet, the usual 9 by 33 in, centred on the 8.5 by 32 in deck (F18, D-307).
+		self::assertSame( array( -63500, -127000, 2286000, 8382000 ), array( $picture['top'][1]['x'], $picture['top'][1]['y'], $picture['top'][1]['width'], $picture['top'][1]['height'] ), 'the grip is its sheet, centred on the deck' );
 		self::assertSame( 'https://example.com/layer-71.png', $picture['top'][1]['image']['src'] );
 		self::assertSame(
 			array( SlotKey::DECK => true, SlotKey::TRUCKS => false, SlotKey::WHEELS => false, SlotKey::BEARINGS => false, SlotKey::HARDWARE => true, SlotKey::GRIP => true ),
@@ -1338,7 +1408,7 @@ final class StateAnswerTest extends TestCase {
 		$card = $cards['30:5:0'];
 		self::assertSame( 30, $card['product'] );
 		self::assertContains( $card['part']['id'], array( 301, 302 ) );
-		self::assertSame( array( 'id', 'brand', 'size', 'delta', 'fit', 'in_stock', 'available', 'quantity', 'picked', 'recommended', 'messages', 'card' ), array_keys( $card['part'] ), 'the part as an option carries it' );
+		self::assertSame( array( 'id', 'brand', 'size', 'delta', 'fit', 'in_stock', 'available', 'quantity', 'picked', 'recommended', 'messages', 'card', 'board' ), array_keys( $card['part'] ), 'the part as an option carries it' );
 		self::assertSame(
 			array(
 				array(

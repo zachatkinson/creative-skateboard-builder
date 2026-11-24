@@ -2,6 +2,75 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html). One entry per milestone; `v1.0.0` closes milestone 10 (D-236).
 
+## [1.1.0] - 2026-11-24
+
+### Added
+
+- **The motion** (spec: Milestone 11; D-305): the deck settles onto the stage, the trucks and wheels slide on, a swapped part settles, the stage's photos close over a part removed, the grip lays down nose to tail, the board turns over like a card, the total counts to the new amount, the panel slides the way the shopper goes, and Add to cart sends the board toward the Mini-Cart. Each moves `transform` and `opacity` alone and is cut short by the next press. Under reduced motion or the kit's subtle, each is a fade of 150 ms or less (D-256), and where the browser has no view transitions a step changes at once. The state route's view carries `money` (the total in minor units and the currency) for the counting total (D-257).
+- `--cbuild-grip-size`, a CSS custom property the builder sets on the top's grip layer: its sheet's size against the deck (F18, #103, D-307).
+- `--cbuild-panel-shift`, a CSS custom property read on `:root`: how far, and which way, the panel slides as a step crosses over (`16px`).
+- **Motion**, in a kit's Build tab, Layout section: `motion` in `_cbuild_layout` (`schema/kit-layout.json`), `playful` or `subtle`. A kit saved before 1.1.0 is playful. On subtle the builder's root has `cbuild--subtle` (spec: Settings, D-256).
+- A `Server-Timing` header on the state route's answers to a shop manager: the route's time and its queries, to measure it on a real host (#90, D-304).
+- **A deck swap that answers at once** (D-308): a deck's board image is fetched while the pointer rests on its card, a pick made by a press, a tap or a click asks the route at once (the arrows still wait 150 ms), and the old board stays whole until the new one's image is decoded, at most a second. A pick that keeps the shopper 300 ms dims the picture with a line running along its foot (the dim alone under reduced motion), and the picture has `aria-busy` while it waits.
+- The state route's `options[].board`: on the deck step, the board each deck would draw alone (its width, length and deck layer), or null (D-308).
+- `cbuild_composed_layer`, a filter that draws each part's layer in a build's composed pictures as it is, blurred or left out, asked for each use (`cart`, `share`, `email`), so another plugin can blur a flagged deck on the share card a link preview shows to anyone and leave the shopper's cart and emails as they are. The answer is in the picture's name, so a flag set after a picture was drawn draws it again, and the one before is no longer shown (Cowork's 1.0.0 review, F19; #105; D-309).
+- `cbuild-preset__photo`: a ready build's tile picture takes the `cbuild_part_classes` of each of the build's parts, merged, so a flagged deck blurs the tile that shows it (F19, #105).
+- The state route's `picture.items[].large`: the part's photo uncropped, at the shop's single-product size, or null (#82, D-303).
+- **Show ready builds**, in a kit's Build tab, Presets section: `show_presets` in `_cbuild_layout` (`schema/kit-layout.json`), on unless unticked. A kit saved before 1.1.0 shows its ready builds. Off, "Start from a ready build" is hidden on the page, each of the state route's `presets` says `shown` false, and the ready builds are kept as they are (#104, D-315).
+- `cbuild-chips__more`, `cbuild-chips__more--idle`, `cbuild-chips__chip--past` and `cbuild-chips__options--row`: the brand chips' "N more", its state with nothing to open, a chip past the row, and the brand row (#98, D-314).
+- The state route's `presets[].at`, each ready build's place among the kit's, the value `cbuild[preset]` takes, and `presets[].shown`, whether the builder shows its tile (#104, D-336).
+- `cbuild-cards--compact`, on the deck step's card lists, and `cbuild-card__photo--drawn`, on a card's picture drawn from the deck's layer image (#99, D-322).
+
+### Changed
+
+- **Compact deck cards** (Cowork's 1.0.0 review, F14; #99; D-322): the deck step's cards show the deck small and upright from its layer image (or its photo), then its brand, name, price and "Also in…" or "Only in…", two columns on a desktop so six show at once, one on a phone.
+- **The brand chips in one row** (Cowork's 1.0.0 review, F13; #98; D-314): on a desktop the brand chips sit in one row under the search, the brands with the most parts first, and "N more brands" opens the rest in place with focus on the first new chip; a chosen brand always shows, phones keep the Filters fold, and without JavaScript every chip shows. The row is one line from the first paint, so folding it moves nothing.
+- **Only whole ready builds are offered** (Zach's R1; #104; D-315): a ready build with a part that's gone, sold out or no longer fits is left out of "Start from a ready build", and the state route's `presets` lists it with `shown` false, at its place as before (D-336); the Catalogue check still lists it as `preset_broken`, and a `cbuild[preset]` link still opens it, its refused part named in `refused[].message`. This replaces D-151's note on the tile.
+- **Next waits for a pick** (Cowork's 1.0.0 review, F15; #100; D-310): until the step has a pick, the footer's Next is dimmed and `aria-disabled`, still in the tab order, and a press says what is missing beside it ("Choose your deck first.") instead of reloading the step with an error summary. A step that needs no pick is never dimmed, and without JavaScript the form is sent and answered as before.
+- **A phone rail that shows the whole build** (Cowork's 1.0.0 review, F16; #101, D-330): on a phone every step is in one row that never scrolls, the step shown with its name and the others as numbered pills, 44 px across, each with its name as its tooltip and for screen readers. From 26rem the name sits in its pill; narrower, under it. This replaces D-270's three steps; the desktop rail is unchanged.
+- **Grip is its whole sheet** (Cowork's 1.0.0 review, F18; #103; D-307): a grip's layer image is the sheet shot flat from above, drawn once on the board's top at its real size (`grip_width` by `grip_length`, 9 by 33 in where none is given), centred on the deck and cut by the deck's outline, under the bolt heads, so a printed sheet's artwork shows. Its save check asks for two pixels to the millimetre of the sheet, 458 px across or 1,677 along, with no transparent corners. The state route's `picture.top` gives the grip the sheet's box. A 1-inch swatch saved under 1.0.x is still repeated nose to tail.
+
+- A step's crossing no longer animates the size of the panel or of the rail's current step: they take their new size at once and their content slides by transform, so every moment runs on Chrome's compositor (D-306).
+- The state route's `currency.decimal_separator` and `currency.thousand_separator` are plain text with no HTML entity, as `format` is; a shop that set `&nbsp;` gets the character (#87).
+- The builder asks the state route for its view alone (`_fields=view`), about half the bytes on a long step; the route's answer is unchanged for anyone who asks without it (#89, D-302).
+- A chip's spoken label and Show more's status name no part: "Hoser, 9" and "30 more shown, 60 of 88." (#84).
+
+- Development: up to three checkouts each run their own pair of sites (`tools/lane.sh`, D-311); /verify measures the integration suite's lines with pcov, about 2.7 times faster (D-312); `composer hooks` turns on a pre-commit hook that fixes formatting on staged files (D-313).
+
+### Fixed
+
+- Where motion is reduced or the kit's Motion is subtle, a slow answer dims the board by a short fade alone, with no running line.
+- Updating from 0.7.0 or later through the upload screen no longer stops on the composed pictures: a request still running the old release builds them as that release did (D-208).
+- On a phone held sideways, Show the top sits beside the stage's heading, so the board keeps a row of its own and is never drawn under the button.
+- A pick no longer moves the step's cards: the step's recommendation still comes first once it, or another card, is picked, rather than the cards going back to best sellers and name, and a tie is broken by the parts' IDs (D-340).
+- On Storefront in Firefox, Show the top was drawn under the board and a pointer could not reach it: the theme's rule for a figure no longer takes the picture's grid away (D-321).
+- The step's cards no longer move up as the builder loads: the search's and the chips' submits, there for a page with no script, are out of the flow from the first paint where the script will run, and come back if it never does (#107, D-331).
+- If the builder's script never loads, the brand row shows every brand after 4 s rather than its first line alone, and the line that says a picture is on its way stops after four runs, the board staying dimmed (D-328).
+- A theme's own styles for fieldsets, buttons and headings, such as Kadence's, no longer box the builder's questions, fill Filters and Show the top, show Filters on a desktop or push the step's heading down (Cowork's 1.0.0 review, F11; #96; D-321).
+- Board size keeps the board at 60 % (large) or 50 % (balanced) of the width on every desktop screen, and the panel's contents stay 40rem wide at most (F12, #97, D-321).
+- On a phone, Show the top no longer covers the board's tail: the button has a row of its own under the board on the stage at every width, kept while there is no top so nothing moves (Cowork's 1.0.0 review, F17; #102; D-320).
+- After a new width, the picked deck moves to its look in that width, and the status says so: "Hard Hat is now 8.5″." Where the look isn't made in that width, the pick stays and its card says "Picked in 8.25″. Not made in 8.5″." (#81, D-301).
+- A mouse press held while the builder hydrates goes through, on Chromium and WebKit (#80).
+- On a desktop in WebKit, a panel scrolled while the builder hydrates stays where the shopper left it, rather than going back to its top (#94, D-333).
+- A search or chip that lists nothing says so alone; the fit sentence is for a list the rules empty (#83).
+- A deck with no layer image shows its photo in the board's place, at the board's size and uncropped, with the other parts' labelled photos under it on a desktop; on a tablet or a phone the stage scrolls with the page until there is a part to show (#82, D-303).
+- A slot's label inside a sentence no longer needs mbstring's case functions: without them a letter outside ASCII keeps its case, and a new grep gate holds every such call to a fallback (#72).
+- A ready build whose part the kit no longer offers opens on one line for its slot, naming the part as its tile does (#85).
+- A build link keeps a `nofollow` the site or another plugin set, through WordPress's robots and through Yoast (#88).
+- "Back to the shop" and "Sign in to save this build" have a phone's 44 px target (#86).
+- Until a build's share picture is drawn, a link preview no longer shows the photo of a deck another plugin blurs or leaves out of it, and the cart and My builds no longer stand the deck's photo in for a picture that blurs it (#106, D-309).
+- On Kadence and Storefront, Next is dimmed until the step has a pick, also while it has focus or the pointer is over it: the theme's rules for every button had kept it lit (#100, D-310).
+- On a kit's own page, a deck shown by its photo stays in its place on the stage: the photo no longer runs under the deck's caption or the other parts' tiles (#82, D-303).
+- On a phone, what a press of the dimmed Next says sits above the bar and no longer covers the total's estimate (#100, D-335).
+- On a phone and a tablet, Show the top sits under the board on Kadence and Storefront too, and the labels of the parts with no layer image are under the board, as on a desktop (#102, D-320).
+
+### Development
+
+- The newest leg runs WooCommerce 11.3.1. Its Store API session guard's PHP 8.5 deprecation (woocommerce/woocommerce#71224) is let through for the one checkout request that meets it, and every other deprecation still fails the suite (#95, D-332).
+- CI runs the newest integration suite in three shards, and `Integration (newest)` checks that they ran every test class once and still applies the 95 % line floor to both suites together (D-323).
+- `composer focused` (`tools/focused.sh`) runs only the integration and browser tests that cover what changed, and says why, before the full /verify; `--dry-run` prints the commands (D-324).
+- The paint and motion speed tests start once WordPress's emoji polyfill is done with the page; the budgets are unchanged (#49, D-325). axe reads the error summary in Firefox again (#36, D-326).
+
 ## [1.0.0] - 2026-11-20
 
 ### Added

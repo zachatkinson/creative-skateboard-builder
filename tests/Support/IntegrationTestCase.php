@@ -209,7 +209,9 @@ abstract class IntegrationTestCase extends WP_UnitTestCase {
 			return false;
 		}
 		if ( 0 !== self::wp( 'core', 'is-installed' )['code'] ) {
-			$install = self::wp( 'core', 'install', '--url=http://localhost:8899', '--title=Tests', '--admin_user=admin', '--admin_password=password', '--admin_email=shopper+1@example.com', '--skip-email' );
+			// The integration site's own address: tools/integration.sh passes its port in (8899 unless a lane sets it).
+			$port    = getenv( 'CBUILD_TESTS_PORT' );
+			$install = self::wp( 'core', 'install', '--url=http://localhost:' . ( is_string( $port ) && '' !== $port ? $port : '8899' ), '--title=Tests', '--admin_user=admin', '--admin_password=password', '--admin_email=shopper+1@example.com', '--skip-email' );
 			if ( 0 !== $install['code'] ) {
 				throw new \RuntimeException( 'The second site could not be installed: ' . $install['err'] );
 			}

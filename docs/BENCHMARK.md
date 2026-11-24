@@ -105,6 +105,8 @@ The last row is outside the budget and is not held to it: it is what one request
 
 The figures move with the machine. On 11 November 2026 the same Mac, busier, measured 67 to 70 ms cold at p95 and 71 ms after a part moves, for this code and for the commit the table was taken from alike; GitHub's hosted runner measured 66 ms cold, 46 ms warm and 81 ms after a part moves on a sample of 20, which failed the run (D-123). The next run of the same commit there measured 84 ms cold. Since D-124 the 80 ms budget is held where the machine is known, in the audit's local run before each milestone's pull request, and CI holds the query counts (42 cold, 15 warm, 37 after a part moves). Since D-171 CI holds the time to the budget scaled by how much slower than this Mac the runner does a fixed piece of work (7.05 ms here), between 1 and 2.5 times; each run prints the runner's figure and the limit it gives.
 
+The answer's size (#89, 23 November 2026): a move to that trucks step answers 98,659 bytes of JSON whole and 48,398 as the store asks for it, the view alone (`_fields=view`, D-302). The raw `shelf` and `options` repeated the step's cards beside the view's own. The benchmark prints both on every run and holds the second under the first.
+
 An earlier design of this milestone, never released, kept each slot's list in a transient: 53 ms cold, but 435 ms on the first request after any one product moved. The table costs 5 ms cold and takes that request to 71 ms.
 
 Of the cold 58 ms, the fit engine takes about 20 ms for all seven slots, finding the slots' parts and reading their rows and the kit about 15 ms, and the 24 cards about 20 ms, since without a persistent object cache each card's product is loaded on every request.
@@ -300,3 +302,49 @@ With Redis the cart's add is p95 52.5 ms and 48 queries, its read 39.6 ms, and M
 The script grew from 3,027 B to 3,774 B and the styles from 2,987 B to 5,033 B with the configurator's layout, the shelf's tools and the stage; both stay well inside their budgets.
 
 Not measured here, as in 0.9.0: the renditions migration at 2,000 parts (`docs/AUDIT-1.0.0.md`, O6).
+
+## v1.1.0
+
+Machine: Apple M1 Max, PHP 8.5.12 in wp-env on OrbStack, WordPress 7.1.5, WooCommerce 11.3.1, wp-env's own database server, Xdebug off. Measured 24 November 2026 on the milestone 11 branch, with the other lanes' sites idle (load about 3). The catalogue is v0.7.0's: seven slots over 2,000 simple products, 500 of them in the step.
+
+| The state route, 500 candidates in the step, no persistent cache | p95 | Median | Slowest | Queries | Budget |
+| --- | --- | --- | --- | --- | --- |
+| Cold: the cache emptied before each request | 63.3 ms | 60.7 ms | 75.6 ms | 44 | 80 ms |
+| Warm | 51.6 ms | 50.1 ms | 54.3 ms | 20 | 80 ms |
+| A move to the next step, cold | 62.0 ms | 61.2 ms | 64.1 ms | 44 | 80 ms |
+| A move to the next step, warm | 55.5 ms | 49.9 ms | 63.0 ms | 20 | 80 ms |
+| A search with a chip and a sort, cold | 63.9 ms | 59.9 ms | 73.1 ms | 44 | 80 ms |
+| A search with a chip and a sort, warm | 51.1 ms | 48.3 ms | 62.8 ms | 20 | 80 ms |
+| The first request after one part moves | 62.2 ms | 56.4 ms | 66.0 ms | 44 | 80 ms |
+| The first request after a reindex of 2,000 parts | 54.2 ms | | | 44 | 80 ms |
+| With no row kept at all | 545 ms | | | 150 | Printed, not held |
+| A visitor whose session holds a 7-part build | 9.7 ms | | | 47 | Recorded |
+
+**Every row is inside the budget.** A move's answer is 102,648 bytes whole and 51,240 bytes as the store asks for it, the view alone (D-302; 98,659 and 48,398 on 23 November, before the presets' `shown` and the motion's fields).
+
+D-340 first named a lead in every picked slot, a second pass of the fit engine for each: the move, cold, measured 80.4 ms at p95 under the three lanes' load and failed the run. A picked slot now names one on the step shown alone, and the same run measured 68.6 ms; the table's run was quieter. The budget did not move.
+
+With Redis the route was not timed again: milestone 11 changed no query, and the object-cache integration suite passed (672 tests). v1.0.0's Redis figures stand, with D-294.
+
+| The rest, no persistent cache | Result | Budget |
+| --- | --- | --- |
+| Adding a 7-part build to the cart by the Store API | p95 35.3 ms, 58 queries | 300 ms, 58 queries |
+| A Store API cart read with the build in it | p95 22.2 ms, 28 queries | Recorded |
+| My builds with 100 saved builds, caches emptied | p95 400 ms, 129 queries | 600 ms, 130 queries |
+| Reindex of 2,000 parts | 22 batches, 0.93 s in all; a batch 53 ms and 319 queries at most | Each batch under 10 s and 400 queries |
+| The specs export, 2,000 rows | 0.43 s | 10 s |
+| The Catalogue check, 2,000 parts | 0.46 s, peak memory 181 MB | 10 s |
+| The import's dry run, 5,000 rows read; an export with layer images read back | 0.29 s planned; 0.46 s planned | 10 s |
+| The import, 1,800 parts written | 20 jobs, 674 ms at the slowest | 10 s a job |
+| A build's three composed pictures, GD | 0.37 s, 19.3 MB; 23 kB a build | 4 s, 64 MB |
+
+| The builder page | Result | Budget |
+| --- | --- | --- |
+| The store's script, Brotli 11, the motion with it | 7,133 B (3,774 B in 1.0.0) | 15,360 B |
+| The styles, and their RTL twin | 6,172 B and 6,175 B (38.7 kB raw, 31.0 kB in 1.0.0) | 10,240 B |
+| LCP, CLS and TBT, Twenty Twenty-Five, mobile profile, three runs | 2.35 s, 0.012, 0 ms (medians) | LCP and CLS reported (D-165); TBT under 200 ms |
+| LCP, CLS and TBT, Kadence | 2.02 s, 0.000, 0 ms | 2.5 s, 0.1, 200 ms |
+| A build link's review with its layers drawn, Kadence | 2.10 s, 0.000, 0 ms | The same |
+| Lighthouse SEO, the clean page on both themes | 0.92 | 0.9 or more |
+
+Each moment answers a press within 200 ms at 4 times slower (INP from Event Timing entries), shifts nothing and animates `transform` and `opacity` alone; a Chromium trace of each is kept as a CI artifact (D-306).

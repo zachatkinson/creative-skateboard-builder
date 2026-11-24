@@ -8,7 +8,9 @@
  * drawn as layers (milestone 7's plan: "Lighthouse on the builder page with layers"). The theme is asked for by the
  * e2e theme mu-plugin's cookie.
  */
-const url = process.env.CBUILD_LHCI_URL || 'http://localhost:8898/';
+const url =
+	process.env.CBUILD_LHCI_URL ||
+	`http://localhost:${ process.env.CBUILD_PORT || '8898' }/`;
 const theme = process.env.CBUILD_LHCI_THEME || '';
 const shift = 'warn' === process.env.CBUILD_LHCI_SHIFT ? 'warn' : 'error';
 // A build link's page says noindex on purpose (D-147), so its SEO score is not asserted.

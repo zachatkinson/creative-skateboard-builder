@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { test, expect, Page } from './support/test';
+import { test, expect, Page, SITE } from './support/test';
 
 /**
  * Cowork's 0.8.0 review, F1 (#53; D-229): on the demo's dark Kadence, whose "contrast" preset is dark too, focus took
@@ -98,7 +98,7 @@ async function ring( on: Page, selector: string ) {
 
 test.describe( 'Focus on a dark theme whose contrast colour is dark', () => {
 	test.beforeEach( async ( { context, baseURL } ) => {
-		const url = baseURL || 'http://localhost:8898';
+		const url = baseURL || SITE;
 		await context.addCookies( [
 			{ name: 'cbuild_e2e_theme', value: 'kadence', url },
 			{ name: 'cbuild_e2e_scheme', value: 'demo-dark', url },

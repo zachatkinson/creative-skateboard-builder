@@ -13,7 +13,7 @@ defined( 'ABSPATH' ) || exit;
 // no one task holds the page for long (D-296). What the root shows is the kit's, so it is written here; the store keeps
 // aria-busy.
 $cbuild_layout = $shown['view']['layout'];
-$cbuild_class  = 'cbuild' . ( $cbuild_layout['stageRight'] ? ' cbuild--stage-right' : '' ) . ( $cbuild_layout['balanced'] ? ' cbuild--balanced' : '' );
+$cbuild_class  = 'cbuild' . ( $cbuild_layout['stageRight'] ? ' cbuild--stage-right' : '' ) . ( $cbuild_layout['balanced'] ? ' cbuild--balanced' : '' ) . ( $cbuild_layout['subtle'] ? ' cbuild--subtle' : '' );
 ?>
 <div class="<?php echo esc_attr( $cbuild_class ); ?>" data-kit="<?php echo esc_attr( (string) $shown['view']['kit'] ); ?>" aria-busy="false">
 	<?php // The builder's first stop: past the rail to the step, seen once focused (spec: Accessibility, keyboard order). ?>
@@ -25,7 +25,7 @@ $cbuild_class  = 'cbuild' . ( $cbuild_layout['stageRight'] ? ' cbuild--stage-rig
 	<?php require __DIR__ . '/progress.php'; ?>
 	<div class="cbuild__layout">
 		<?php // The stage: the board, which stays in view as the panel scrolls (spec: Desktop, Tablet, Phone). ?>
-		<div class="cbuild__stage" data-wp-interactive="creative-skateboard-builder">
+		<div class="cbuild__stage" data-wp-interactive="creative-skateboard-builder" data-wp-class--cbuild__stage--bare="!state.view.picture.captioned">
 			<?php require __DIR__ . '/picture.php'; ?>
 		</div>
 		<?php // The panel: the step, scrolling inside itself on a desktop, and the footer pinned at its foot. ?>

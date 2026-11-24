@@ -16,6 +16,7 @@ use CreativeBranding\SkateboardBuilder\Domain\Picture\Canvas;
 use CreativeBranding\SkateboardBuilder\Domain\Picture\Composition;
 use CreativeBranding\SkateboardBuilder\Domain\Picture\Layout;
 use CreativeBranding\SkateboardBuilder\Port\Clock;
+use CreativeBranding\SkateboardBuilder\Port\ComposedLayers;
 use CreativeBranding\SkateboardBuilder\Port\Kits;
 use CreativeBranding\SkateboardBuilder\Port\Logger;
 use CreativeBranding\SkateboardBuilder\Port\PictureFiles;
@@ -31,7 +32,9 @@ if ( ! defined( 'ABSPATH' ) ) {
  * job draws a picture for each use. The job takes the build's IDs only and works the build out again; a build that
  * does not pass validation now, or whose picks are not all its own, gets no picture. The queue is capped: while it
  * holds QUEUED_MOST builds, nothing more is asked for and the deck's photo stands in, so a stream of made-up builds
- * costs one count each. A part with no layer image is left out of the drawing, as it is in the page's.
+ * costs one count each. A part with no layer image is left out of the drawing, as it is in the page's. From 1.1.0
+ * another plugin answers for each part's layer in each use's picture, drawn as it is, blurred or left out, and the
+ * answer is in the picture's name, so a flag set after a picture was drawn draws another (D-309).
  *
  * @since 0.7.0
  */
@@ -139,6 +142,20 @@ final class ComposedPictures {
 	public const string FROM_PAGE = 'page';
 
 	/**
+	 * The pictures wanted() has asked for in the life of this service, by name.
+	 *
+	 * @var list<string>
+	 */
+	private array $wanted = array();
+
+	/**
+	 * How each part is drawn in each use's picture: none on a copy an earlier release's container built.
+	 *
+	 * @var ComposedLayers|null
+	 */
+	private ?ComposedLayers $layers = null;
+
+	/**
 	 * Constructor.
 	 *
 	 * @since 0.7.0
@@ -160,6 +177,21 @@ final class ComposedPictures {
 		private Clock $clock,
 		private Logger $logger
 	) {}
+
+	/**
+	 * The same service, asking another plugin how each part is drawn in each use's picture (D-309). Only 1.1.0's
+	 * container calls it: a copy built by an earlier release's, in the request that replaces the files, keeps that
+	 * release's constructor and draws every layer as it is (D-208).
+	 *
+	 * @since 1.1.0
+	 *
+	 * @param ComposedLayers $layers How each part is drawn in each use's picture.
+	 */
+	public function withLayers( ComposedLayers $layers ): self {
+		$pictures         = clone $this;
+		$pictures->layers = $layers;
+		return $pictures;
+	}
 
 	/**
 	 * Ask for a build's pictures. Nothing is asked while the queue is full, or a page's share of it for a page's
@@ -201,7 +233,7 @@ final class ComposedPictures {
 			return;
 		}
 		$counted = $state->counted();
-		$card    = $this->drawings( $state->kit, $counted, array( self::SHARE => self::CANVASES[ self::SHARE ] ) )[ self::SHARE ] ?? null;
+		$card    = $this->drawings( $state->id, $state->kit, $counted, array( self::SHARE => self::CANVASES[ self::SHARE ] ) )[ self::SHARE ] ?? null;
 		if ( null === $card || null !== $this->files->url( $card->name() ) ) {
 			// Nothing of the build is drawn, or its picture is made.
 			return;
@@ -270,8 +302,43 @@ final class ComposedPictures {
 	 */
 	public function url( int $kit, array $picks, string $purpose ): ?string {
 		$composition = $this->composition( $kit, $picks, $purpose );
-		$url         = null === $composition ? null : $this->files->url( $composition->name() );
-		if ( null !== $composition && null !== $url ) {
+		return null === $composition ? null : $this->found( $composition );
+	}
+
+	/**
+	 * A build's picture for one use, as a page that shows it on every view wants it: its address once made; until
+	 * then null, and it is asked for, as a page asks, where this host can draw it. The build's parts are read once a
+	 * call, and a picture is asked for once in the life of the service, a request, so a cart that shows a line in two
+	 * places, or a Mini-Cart on every page, asks the queue once for it (the auditor's 1.1.0 minor 7).
+	 *
+	 * @since 1.1.0
+	 *
+	 * @param int                $kit     The kit product's ID.
+	 * @param array<string, int> $picks   The part's ID for each slot filled.
+	 * @param string             $purpose One of CART, SHARE and EMAIL.
+	 */
+	public function wanted( int $kit, array $picks, string $purpose ): ?string {
+		$composition = $this->composition( $kit, $picks, $purpose );
+		if ( null === $composition ) {
+			return null;
+		}
+		$url  = $this->found( $composition );
+		$name = $composition->name();
+		if ( null === $url && ! in_array( $name, $this->wanted, true ) && null !== $this->files->library( $composition->canvas->type ) ) {
+			$this->wanted[] = $name;
+			$this->ask( $kit, $picks, self::FROM_PAGE );
+		}
+		return $url;
+	}
+
+	/**
+	 * A composition's picture's address, marked as shown, or null while it is not made.
+	 *
+	 * @param Composition $composition The composition.
+	 */
+	private function found( Composition $composition ): ?string {
+		$url = $this->files->url( $composition->name() );
+		if ( null !== $url ) {
 			$this->files->used( $composition->name(), $this->clock->now()->getTimestamp() );
 		}
 		return $url;
@@ -292,6 +359,21 @@ final class ComposedPictures {
 			$this->ask( $kit, $picks, self::FROM_PAGE );
 		}
 		return $url;
+	}
+
+	/**
+	 * Whether a part may be shown as it is where a use's picture is not made: false where another plugin blurs it or
+	 * leaves it out of that use's picture, so its own photo is no stand-in for it (#106; D-309).
+	 *
+	 * @since 1.1.0
+	 *
+	 * @param int    $kit     The kit product's ID.
+	 * @param string $slot    The slot's key.
+	 * @param int    $part    The part's ID.
+	 * @param string $purpose One of CART, SHARE and EMAIL.
+	 */
+	public function shown( int $kit, string $slot, int $part, string $purpose ): bool {
+		return ComposedLayers::AS_IS === $this->answer( $part, $slot, $kit, $purpose );
 	}
 
 	/**
@@ -338,7 +420,7 @@ final class ComposedPictures {
 			}
 			$parts[ $slot ] = $read[ $slot ];
 		}
-		return $this->drawings( $found, $parts, array( $purpose => self::CANVASES[ $purpose ] ) )[ $purpose ] ?? null;
+		return $this->drawings( $kit, $found, $parts, array( $purpose => self::CANVASES[ $purpose ] ) )[ $purpose ] ?? null;
 	}
 
 	/**
@@ -405,18 +487,19 @@ final class ComposedPictures {
 			// state holds otherwise, are no build this picture is named for.
 			return array();
 		}
-		return $this->drawings( $state->kit, $counted, self::CANVASES );
+		return $this->drawings( $kit, $state->kit, $counted, self::CANVASES );
 	}
 
 	/**
 	 * A build's drawings on some canvases, leaving out an empty one.
 	 *
+	 * @param int                                    $id       The kit product's ID.
 	 * @param Kit                                    $kit      The kit.
 	 * @param array<string, Part>                    $parts    The build's parts, by slot in step order.
 	 * @param array<string, array{int, int, string}> $canvases By use, as CANVASES.
 	 * @return array<string, Composition>
 	 */
-	private function drawings( Kit $kit, array $parts, array $canvases ): array {
+	private function drawings( int $id, Kit $kit, array $parts, array $canvases ): array {
 		$built = Picks::none();
 		foreach ( $parts as $slot => $part ) {
 			$built = $built->with( $slot, $part );
@@ -425,11 +508,39 @@ final class ComposedPictures {
 		$art    = $this->artwork->of( $layout, $parts );
 		$drawn  = array();
 		foreach ( $canvases as $use => [ $width, $height, $type ] ) {
-			$composition = ( new ComposedRenderer( new Canvas( $width, $height, $type ) ) )->render( $layout, $art );
+			// Each use's own answers: a part left out has no art in it, and one blurred is marked (D-309).
+			$shown   = $art;
+			$blurred = array();
+			foreach ( $parts as $slot => $part ) {
+				if ( ! isset( $art[ $part->id ] ) ) {
+					continue;
+				}
+				$answer = $this->answer( $part->id, $slot, $id, $use );
+				if ( ComposedLayers::LEFT_OUT === $answer ) {
+					unset( $shown[ $part->id ] );
+				} elseif ( ComposedLayers::BLURRED === $answer ) {
+					$blurred[ $part->id ] = true;
+				}
+			}
+			$composition = Composition::of( new Canvas( $width, $height, $type ), $layout, $shown, $blurred );
 			if ( ! $composition->isEmpty() ) {
 				$drawn[ $use ] = $composition;
 			}
 		}
 		return $drawn;
+	}
+
+	/**
+	 * How a part is drawn in a use's picture: AS_IS, BLURRED or LEFT_OUT, and AS_IS for any other answer. The one place
+	 * the port's answer is read (the auditor's 1.1.0 minor 5).
+	 *
+	 * @param int    $part The part's ID.
+	 * @param string $slot The slot's key.
+	 * @param int    $kit  The kit product's ID.
+	 * @param string $purpose The use.
+	 */
+	private function answer( int $part, string $slot, int $kit, string $purpose ): string {
+		$answer = $this->layers?->answer( $part, $slot, $kit, $purpose );
+		return ComposedLayers::BLURRED === $answer || ComposedLayers::LEFT_OUT === $answer ? $answer : ComposedLayers::AS_IS;
 	}
 }

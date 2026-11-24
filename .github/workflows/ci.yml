@@ -50,6 +50,7 @@ jobs:
       full: ${{ steps.scope.outputs.full }}
       browsers: ${{ steps.scope.outputs.browsers }}
       legs: ${{ steps.scope.outputs.legs }}
+      shards: ${{ steps.scope.outputs.shards }}
       heavy: ${{ steps.scope.outputs.heavy }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -86,8 +87,8 @@ jobs:
           # and engines. Where every project runs, newest runs Chromium's desktop and phone apart, and the `browsers`
           # job the rest; where they don't (a draft, or the oldest pair), one desktop and one phone engine (D-085).
           leg() { jq -nc --arg name "$1" --arg pair "$2" --arg part "$3" --arg site "$4" --arg projects "${5:-}" --arg engines "${6:-}" '$ARGS.named'; }
+          # The newest integration suite is not a leg: it runs in shards, in the `suite` job (D-323).
           legs=(
-            "$(leg 'Integration (newest)' newest integration tests)"
             "$(leg 'The benchmarks at 2,000 parts (newest)' newest benchmarks tests)"
             "$(leg 'Lighthouse CI (newest)' newest lighthouse browser)"
           )
@@ -107,8 +108,12 @@ jobs:
               "$(leg 'Integration (variants: HPOS syncing, object cache, Yoast, multisite)' variants the-rest tests)"
             )
           fi
-          echo "legs=$(printf '%s\n' "${legs[@]}" | jq -sc .)" >> "$GITHUB_OUTPUT"
-          echo "browsers=$browsers" >> "$GITHUB_OUTPUT"
+          {
+            echo "legs=$(printf '%s\n' "${legs[@]}" | jq -sc .)"
+            # The newest integration suite's shards, 1 to the count tools/integration-shards.json gives (D-323).
+            echo "shards=$(jq -c '[range(1; .shards + 1)]' tools/integration-shards.json)"
+            echo "browsers=$browsers"
+          } >> "$GITHUB_OUTPUT"
           echo "Full run: $full; browser projects: $browsers"
           code="$(bash tools/ci-code-hash.sh)"
           echo "code=$code" >> "$GITHUB_OUTPUT"
@@ -311,8 +316,7 @@ jobs:
       - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
         with:
           php-version: '8.5'
-          # The newest integration half measures the unit suite's lines beside the integration suite's (D-050).
-          coverage: ${{ matrix.pair == 'newest' && matrix.part == 'integration' && 'pcov' || 'none' }}
+          coverage: none
           tools: composer:v2
       - uses: ramsey/composer-install@65e4f84970763564f46a70b8a54b90d033b3bdda # 4.0.0
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
@@ -325,18 +329,10 @@ jobs:
         if: matrix.pair == 'oldest'
         run: npm run env:oldest
       # The browser site (:8898) and the integration site (:8899) are two wp-env environments (D-047); each half starts
-      # its own. The newest integration half's site runs Xdebug in coverage mode, for the floor on both suites.
+      # its own. The newest pair's integration suite, with Xdebug in coverage mode, is the `suite` job's (D-323).
       - name: The integration site
         if: matrix.site == 'tests'
-        env:
-          PAIR: ${{ matrix.pair }}
-          PART: ${{ matrix.part }}
-        run: |
-          if [ "$PAIR" = newest ] && [ "$PART" = integration ]; then
-            npx wp-env start --config=.wp-env.tests.json --xdebug=coverage
-          else
-            npx wp-env start --config=.wp-env.tests.json
-          fi
+        run: npx wp-env start --config=.wp-env.tests.json
       - name: The browser site
         if: matrix.site == 'browser'
         run: npx wp-env start
@@ -344,13 +340,10 @@ jobs:
       - name: The i18n check (the POT current, the translations complete)
         if: matrix.pair == 'newest' && matrix.part == 'browser'
         run: composer i18n:check
-      # The integration suite either way. The newest leg runs it with coverage and merges the unit suite's, for the one
-      # floor on all of src/ (D-050): this leg already has the site up, so the number costs no job of its own (D-040).
-      - name: The integration suite, and the 95 % line floor on both suites together
-        if: matrix.pair == 'newest' && matrix.part == 'integration'
-        run: composer test:coverage:all
+      # The oldest pair's integration suite, whole: without coverage it runs in about three minutes, so a split would
+      # save less than a shard's setup costs (D-323).
       - run: composer test:integration
-        if: matrix.pair == 'oldest' && matrix.part == 'integration'
+        if: matrix.part == 'integration'
       # 2,000 parts indexed, exported, checked and dry-run, each inside a request: five minutes, so a job of its own
       # beside the suite (D-300). A shared runner's speed moves from run to run, so here the budgets are scaled by how
       # much slower than the Mac the runner does a fixed piece of work, at most 2.5 times, and the query counts are held
@@ -403,6 +396,16 @@ jobs:
       - name: Lighthouse's medians in the job's summary
         if: ${{ !cancelled() && steps.lhci.outcome != 'skipped' && matrix.part == 'lighthouse' }}
         run: php tools/lhci-summary.php tmp/lhci | tee -a "$GITHUB_STEP_SUMMARY"
+      # Milestone 11: a Chromium performance trace of each moment, from the browser test that holds them to INP, no
+      # layout shift and the compositor (D-306). Kept on every run, passing or not; open one in Chrome's Performance
+      # panel.
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        if: ${{ !cancelled() && contains(matrix.projects, 'chromium') }}
+        with:
+          retention-days: 14
+          name: motion-traces-${{ matrix.pair }}-${{ matrix.part }}
+          path: tmp/motion-traces
+          if-no-files-found: error
       # On a job that ran out of time as well: a cancelled run prints no failure, so the traces are all there is.
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         if: failure() || cancelled()
@@ -421,6 +424,97 @@ jobs:
           config=()
           if [ "$SITE" = tests ]; then config=(--config=.wp-env.tests.json); fi
           npx wp-env run cli "${config[@]}" -- bash -c 'cat wp-content/debug.log 2>/dev/null || true'
+
+  # The newest pair's integration suite in shards, a job each, with Xdebug in coverage mode (D-323). The suite was 13 of
+  # the newest integration half's 15 minutes, all in one job. tools/integration-shards.php splits its classes by their
+  # times in tools/integration-shards.json, the same way in every job, and a class added later lands in a shard by
+  # itself. Each shard uploads its coverage report, the bootstrap's lines and a JUnit report of the classes it ran.
+  suite:
+    name: Integration (newest, shard ${{ matrix.shard }} of ${{ strategy.job-total }})
+    needs: scope
+    if: needs.scope.outputs.heavy == 'true'
+    runs-on: ubuntu-26.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: ${{ fromJSON(needs.scope.outputs.shards) }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
+        with:
+          php-version: '8.5'
+          coverage: none
+          tools: composer:v2
+      - uses: ramsey/composer-install@65e4f84970763564f46a70b8a54b90d033b3bdda # 4.0.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: The integration site, with Xdebug in coverage mode
+        run: npx wp-env start --config=.wp-env.tests.json --xdebug=coverage
+      - name: The shard's part of the integration suite, with coverage
+        env:
+          CBUILD_SHARD: ${{ matrix.shard }}
+          CBUILD_COVERAGE: '1'
+        run: bash tools/integration.sh --coverage-clover tmp/coverage-integration.xml --log-junit tmp/integration-junit.xml
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          # Read by the next job only.
+          retention-days: 3
+          name: integration-shard-${{ matrix.shard }}
+          path: |
+            tmp/coverage-integration.xml
+            tmp/coverage-bootstrap.json
+            tmp/integration-junit.xml
+          if-no-files-found: error
+      - name: WordPress's debug log
+        if: failure()
+        run: npx wp-env run cli --config=.wp-env.tests.json -- bash -c 'cat wp-content/debug.log 2>/dev/null || true'
+
+  # The newest integration suite's required check (D-323): it fails unless every shard passed and uploaded, the shards
+  # ran every class of the suite exactly once between them (from their JUnit reports), and the unit suite's lines with
+  # the shards' merged reach the 95 % floor on all of src/ (D-050). It runs whatever the shards did, so a shard that
+  # failed, or never ran, fails this check rather than leave it skipped.
+  suite-merge:
+    name: Integration (newest)
+    needs: [scope, suite]
+    if: ${{ !cancelled() && needs.scope.result == 'success' && needs.scope.outputs.heavy == 'true' }}
+    runs-on: ubuntu-26.04
+    timeout-minutes: 15
+    steps:
+      - name: Every shard passed
+        env:
+          SHARDS: ${{ needs.suite.result }}
+        run: |
+          if [ "$SHARDS" != success ]; then
+            echo "The integration suite's shards did not all pass: ${SHARDS}."; exit 1
+          fi
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
+        with:
+          php-version: '8.5'
+          coverage: pcov
+          tools: composer:v2
+      - uses: ramsey/composer-install@65e4f84970763564f46a70b8a54b90d033b3bdda # 4.0.0
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          pattern: integration-shard-*
+          path: tmp/shards
+      - name: The shards ran the whole suite, each class once
+        run: |
+          php tools/integration-shards.php plan
+          php tools/integration-shards.php verify tmp/shards
+      - name: The 95 % line floor on both suites together
+        env:
+          CBUILD_COVERAGE_SHARDS: tmp/shards
+        run: composer test:coverage:all
 
   # The newest WordPress and WooCommerce's other browser work, beside the newest leg, where every project runs (D-258).
   # The newest leg did all of it in one job, some 95 minutes, which set the length of every full run; each part is now

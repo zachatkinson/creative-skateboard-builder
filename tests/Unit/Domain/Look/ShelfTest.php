@@ -182,6 +182,18 @@ final class ShelfTest extends TestCase {
 		self::assertSame( array( 312, 311 ), array_values( self::cards( self::list( SlotKey::WHEELS, array( self::wheel( 311, '54' ), self::wheel( 312, '54' ) ), $named )->looks ) ), 'by name, 9 before 10, whatever the case' );
 	}
 
+	// D-340: the step's cards came back in another order after a pick. A tie the order's keys leave is broken by the
+	// parts' IDs, not by the order they were handed in, so the page and the route list a step alike.
+	public function test_a_tie_is_broken_by_the_part_ids_whatever_order_the_parts_come_in(): void {
+		[ $parts, $shelved ] = self::wheels();
+		$order               = static fn( array $given, string $sort ): array => array_keys( self::cards( self::list( SlotKey::WHEELS, $given, $shelved, new ShelfAsk( sort: $sort ) )->looks ) );
+		// Mint and Black are one product: the same name, sales and date, and here the same price.
+		foreach ( array( 'recommended', 'price-asc', 'newest' ) as $sort ) {
+			self::assertSame( $order( $parts, $sort ), $order( array_reverse( $parts ), $sort ), $sort );
+		}
+		self::assertSame( array( '20:3:0', '10:1:0', '10:2:0' ), $order( array_reverse( $parts ), 'recommended' ), 'Mint, whose parts are 301 and 302, before Black, 303' );
+	}
+
 	public function test_sort_by_the_price_of_the_part_each_card_shows_or_by_newest(): void {
 		[ $parts, $shelved ] = self::wheels();
 		$parts[2]            = self::wheel( 303, '54', 4500 );
@@ -299,6 +311,26 @@ final class ShelfTest extends TestCase {
 	}
 
 	/**
+	 * #81: a deck picked in one width, with another width asked. Its look's card shows the deck in the width asked,
+	 * which the builder then moves the pick to; a look not made in that width keeps the pick, so the card shows what
+	 * the build holds.
+	 */
+	public function test_a_deck_picked_in_another_width_shows_its_look_in_the_width_asked_or_the_pick_where_the_look_is_not_made_in_it(): void {
+		$deck    = static fn( string $width, int $id ): Part => Parts::of( array( 'deck_width' => $width, 'deck_length' => '32', 'hole_pattern' => 'new_school', 'set_size' => 1 ), $id, 6000, 'baker' );
+		$parts   = array( $deck( '8', 101 ), $deck( '8.5', 102 ), $deck( '8', 103 ), $deck( '8.5', 104 ) );
+		$shelved = array(
+			101 => self::shelved( 1, 1 ),
+			102 => self::shelved( 1, 1 ),
+			103 => self::shelved( 2, 2 ),
+			104 => self::shelved( 3, 3 ),
+		);
+		$wide    = new ShelfAsk( Measure::inches( 85000 ) );
+		self::assertSame( array( '1:1:0' => 102, '3:3:0' => 104 ), self::cards( self::list( SlotKey::DECK, $parts, $shelved, $wide, Picks::none(), 101 )->looks ), 'the look in 8.5″, not the 8″ picked' );
+		self::assertSame( array( '1:1:0' => 102, '2:2:0' => 103, '3:3:0' => 104 ), self::cards( self::list( SlotKey::DECK, $parts, $shelved, $wide, Picks::none(), 103 )->looks ), 'a look not made in 8.5″ keeps its 8″ pick' );
+		self::assertSame( array( '1:1:0' => 101, '2:2:0' => 103 ), self::cards( self::list( SlotKey::DECK, $parts, $shelved, new ShelfAsk( Measure::inches( 80000 ) ), Picks::none(), 101 )->looks ), 'in its own width, the pick' );
+	}
+
+	/**
 	 * Spec (configurator): "Each chip says how many looks it leaves." On the deck step that is in the width asked: a
 	 * deck in another width is not on the step, so a brand's chip does not count it (found on the long step's page).
 	 */
@@ -369,6 +401,32 @@ final class ShelfTest extends TestCase {
 		$listing          = ( new Shelf( new SizePicker( FitEngine::standard() ) ) )->of( KitDocuments::kit( $slots ), 'tool', Picks::none(), $tools, null, null, $shelved, new ShelfAsk() );
 		self::assertSame( array( 'brand' ), array_map( static fn( ChipGroup $group ): string => $group->name, $listing->groups ) );
 		self::assertSame( array( array(), array() ), array_map( static fn( ShelfLook $look ): array => $look->sizes, $listing->looks ) );
+	}
+
+	/**
+	 * The brand chips in one row with "N more" (#98): the brands with the most looks come first, so those a desktop
+	 * shows before "N more" are the step's biggest.
+	 */
+	public function test_the_brands_with_the_most_looks_come_first(): void {
+		$tools   = array(
+			new Option( Parts::of( array(), 801, 900, 'mob' ), array(), 1 ),
+			new Option( Parts::of( array(), 802, 900, 'shorty' ), array(), 1 ),
+			new Option( Parts::of( array(), 803, 900, 'shorty' ), array(), 1 ),
+		);
+		$shelved = array(
+			801 => self::shelved( 81, 1 ),
+			802 => self::shelved( 82, 2 ),
+			803 => self::shelved( 83, 3 ),
+		);
+		$slots            = KitDocuments::slots();
+		$slots['slots'][] = array(
+			'key'      => 'tool',
+			'label'    => 'Skate tool',
+			'required' => false,
+			'units'    => 1,
+		);
+		$listing          = ( new Shelf( new SizePicker( FitEngine::standard() ) ) )->of( KitDocuments::kit( $slots ), 'tool', Picks::none(), $tools, null, null, $shelved, new ShelfAsk() );
+		self::assertSame( array( 'shorty', 'mob' ), array_map( static fn( Chip $chip ): string => $chip->value, $listing->groups[0]->chips ) );
 	}
 
 	public function test_a_part_the_shelf_knows_nothing_of_is_left_off(): void {

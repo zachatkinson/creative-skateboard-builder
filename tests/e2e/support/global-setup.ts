@@ -4,6 +4,7 @@ import path from 'node:path';
 import { request } from '@playwright/test';
 import type { FullConfig } from '@playwright/test';
 import { SESSION } from './login';
+import { SITE } from './site';
 
 /**
  * Once before every spec: the plugin active on the browser site with the default theme (tools/e2e-site.sh). The shop
@@ -23,8 +24,7 @@ export default async function globalSetup( config: FullConfig ) {
 		} );
 	}
 
-	const baseURL =
-		config.projects[ 0 ]?.use.baseURL || 'http://localhost:8898';
+	const baseURL = config.projects[ 0 ]?.use.baseURL || SITE;
 	const api = await request.newContext( {
 		baseURL,
 		extraHTTPHeaders: { 'x-creative-test': '1' },

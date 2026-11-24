@@ -436,6 +436,21 @@ final class Words {
 	}
 
 	/**
+	 * The one size a look comes in, on a deck's compact card, as "Only in 8.25″" (F14, #99).
+	 *
+	 * @since 1.1.0
+	 *
+	 * @param string $size The size, as a person reads it, or empty.
+	 */
+	public static function only( string $size ): string {
+		if ( '' === $size ) {
+			return '';
+		}
+		/* translators: %s: the one size a deck is made in, such as 8.25″. */
+		return sprintf( __( 'Only in %s', 'creative-skateboard-builder' ), $size );
+	}
+
+	/**
 	 * A part's label in the picture of what is in the box (spec: The picture): its slot, then its brand and its
 	 * size where it has them, as "Wheels: Retna, 54 mm".
 	 *
@@ -554,10 +569,14 @@ final class Words {
 		if ( 'lowercase' !== _x( 'lowercase', 'a slot label inside a sentence', 'creative-skateboard-builder' ) ) {
 			return $label;
 		}
+		// mb_substr() is WordPress's where PHP has no mbstring; the case changes are not, so without it a letter outside
+		// ASCII keeps its case, as WpTextFolding folds (#72).
 		$second = mb_substr( $label, 1, 1 );
-		if ( '' === $second || mb_strtoupper( $second ) === $second ) {
+		$upper  = function_exists( 'mb_strtoupper' ) ? mb_strtoupper( $second, 'UTF-8' ) : strtoupper( $second );
+		if ( '' === $second || $upper === $second ) {
 			return $label;
 		}
-		return mb_strtolower( mb_substr( $label, 0, 1 ) ) . mb_substr( $label, 1 );
+		$first = mb_substr( $label, 0, 1 );
+		return ( function_exists( 'mb_strtolower' ) ? mb_strtolower( $first, 'UTF-8' ) : strtolower( $first ) ) . mb_substr( $label, 1 );
 	}
 }

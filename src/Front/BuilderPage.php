@@ -184,6 +184,9 @@ final class BuilderPage {
 					'live'    => false,
 					// Set by the store once a turn is seen, so the board turns where motion is allowed, never on load.
 					'turning' => false,
+					// What a press of the step's dimmed Next says is missing, set by the store (#100). The store dims
+					// Next itself once it runs, so without the script nothing is dimmed and the form is sent as before.
+					'missing' => '',
 				)
 			);
 			// Where the store asks for the next view: the state route, for this page, in its language (D-148), and the

@@ -11,7 +11,6 @@ namespace CreativeBranding\SkateboardBuilder\Service;
 
 use CreativeBranding\SkateboardBuilder\Domain\Fit\BuildValidator;
 use CreativeBranding\SkateboardBuilder\Domain\Fit\FitEngine;
-use CreativeBranding\SkateboardBuilder\Domain\Fit\Problem;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Kit;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Part;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Picks;
@@ -290,15 +289,13 @@ final class CatalogueCheck {
 		$engine = FitEngine::standard();
 		$found  = array();
 		$parts  = array();
-		$ids    = array();
 		foreach ( $kit->slots->all() as $slot ) {
-			$candidates        = $this->kits->candidates( $id, $slot->key );
-			$ids[ $slot->key ] = array();
-			$stocked           = false;
+			$candidates          = $this->kits->candidates( $id, $slot->key );
+			$parts[ $slot->key ] = array();
+			$stocked             = false;
 			foreach ( $candidates as $part ) {
-				$ids[ $slot->key ][] = $part->id;
-				$parts[ $part->id ]  = $part;
-				$stocked             = $stocked || $part->inStock;
+				$parts[ $slot->key ][ $part->id ] = $part;
+				$stocked                          = $stocked || $part->inStock;
 				// Two rules may need the same spec of a part; it is said once, by the first.
 				$lacks = array();
 				foreach ( $engine->judge( $kit, $slot->key, $part, Picks::none() ) as $finding ) {
@@ -320,29 +317,14 @@ final class CatalogueCheck {
 			}
 		}
 
+		// Each preset by the one check its tile is shown or left out by (#104): what keeps it from the cart is said here.
 		$validator = new BuildValidator( $engine );
 		foreach ( $kit->presets as $preset ) {
-			$picks = Picks::none();
-			foreach ( $preset->picks as $slot => $part ) {
-				if ( in_array( $part, $ids[ $slot ], true ) ) {
-					$picks = $picks->with( $slot, $parts[ $part ] );
-					continue;
-				}
-				$found[] = new CheckFinding(
-					self::PRESET,
-					$part,
-					$id,
-					$slot,
-					'',
-					array(
-						'preset'  => $preset->name,
-						'problem' => Problem::PartNotInSlot->value,
-					)
-				);
-			}
-			foreach ( $validator->validate( $kit, $picks, $ids )->problems as $problem ) {
+			$refused = array();
+			$checked = BuildState::preset( $validator, $kit, $preset->picks, $parts, $refused );
+			foreach ( array_merge( $refused, $checked->problems ) as $problem ) {
 				if ( null === $problem->part ) {
-					// An empty slot: its part is no longer the slot's, which is said above.
+					// An empty slot: its part is no longer the slot's, which is said by that part's line.
 					continue;
 				}
 				$found[] = new CheckFinding(

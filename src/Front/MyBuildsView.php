@@ -190,7 +190,9 @@ final class MyBuildsView {
 				// the page's share is taken, the rest wait for another visit.
 				$this->asking = $this->pictures->ask( $build->kit, $build->picks, ComposedPictures::FROM_PAGE );
 			}
-			$deck  = wc_get_product( $build->picks[ SlotKey::DECK ] ?? 0 );
+			// The deck's photo stands in only where another plugin draws it as it is in the cart's picture (D-309).
+			$id    = $build->picks[ SlotKey::DECK ] ?? 0;
+			$deck  = $id > 0 && $this->pictures->shown( $build->kit, SlotKey::DECK, $id, ComposedPictures::CART ) ? wc_get_product( $id ) : null;
 			$photo = $deck instanceof \WC_Product ? $deck->get_image( 'woocommerce_gallery_thumbnail', array( 'alt' => '' ) ) : '';
 		}
 		return array(

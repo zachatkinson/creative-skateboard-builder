@@ -36,4 +36,16 @@ final readonly class PresetState {
 	 * @param list<BuildProblem> $refused    Its picks that are no longer one of their slot's parts.
 	 */
 	public function __construct( public Validation $validation, public Quote $quote, public array $refused ) {}
+
+	/**
+	 * What keeps it from the cart: its picks no longer their slot's parts first, then what the validator finds. A
+	 * preset with any is broken (#104), and its tile is left out for shoppers.
+	 *
+	 * @since 1.1.0
+	 *
+	 * @return list<BuildProblem>
+	 */
+	public function problems(): array {
+		return array( ...$this->refused, ...$this->validation->problems );
+	}
 }

@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { defineConfig, devices } from '@playwright/test';
+import { SITE } from './tests/e2e/support/site';
 
 /**
  * Three engines at desktop and phone widths, then JavaScript off, fr_CA, right to left and the visual snapshots
@@ -46,7 +47,7 @@ export default defineConfig( {
 	snapshotPathTemplate:
 		'{testDir}/__snapshots__/{testFilePath}/{projectName}/{arg}{ext}',
 	use: {
-		baseURL: process.env.WP_BASE_URL || 'http://localhost:8898',
+		baseURL: SITE,
 		screenshot: 'only-on-failure',
 		trace: 'retain-on-failure',
 	},
