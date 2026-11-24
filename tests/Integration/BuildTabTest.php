@@ -867,6 +867,9 @@ final class BuildTabTest extends IntegrationTestCase {
 		self::assertMatchesRegularExpression( '#<label for="cbuild-kit-layout-start-button">Show on its parts&\#039; pages</label>#', $panel, 'labelled' );
 		self::assertMatchesRegularExpression( '#id="cbuild-kit-layout-start-button"[^>]*aria-describedby="cbuild-kit-layout-start-button-note"#', $panel, 'and described' );
 		self::assertStringContainsString( 'lowest menu order', $panel, 'the note says which kit wins where several offer a part' );
+		// One switch, in the Layout section: a second, in Picture, sent `cbuild_kit[picture][start_button]` and did nothing (M12's walkthrough).
+		self::assertSame( 1, preg_match_all( '/\[start_button\]"/', $panel ), 'one Show on its parts\' pages' );
+		self::assertSame( 1, substr_count( $panel, 'Where shoppers find it' ), 'one Where shoppers find it' );
 
 		$sent = self::form();
 		unset( $sent['layout']['start_button'] );

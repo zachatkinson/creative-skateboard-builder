@@ -870,16 +870,6 @@ final class BuildTab {
 			self::measure( is_string( $document['wheelbase'] ?? null ) ? $document['wheelbase'] : '' ),
 			array( 'note' => __( 'Where the picture puts the trucks on a deck whose wheelbase is not in its specs, from 10 to 20 in. Leave it empty for the usual on a deck of its width and length.', 'creative-skateboard-builder' ) )
 		);
-		$found    = array(
-			$this->field(
-				$id . '-start-button',
-				$name . '[start_button]',
-				__( 'Show on its parts\' pages', 'creative-skateboard-builder' ),
-				'checkbox',
-				false !== ( $document['start_button'] ?? true ) ? '1' : '',
-				array( 'note' => __( 'Puts "Build a complete with this deck" on the page of each part the kit\'s first slot offers. Where several kits offer a part, the one with the lowest menu order shows it, and the Products screen\'s Sorting sets that order. Off, the next of them shows it.', 'creative-skateboard-builder' ) )
-			),
-		);
 		return array(
 			array(
 				'id'     => $id . '-fields',
@@ -888,15 +878,6 @@ final class BuildTab {
 				'fold'   => '',
 				'open'   => true,
 				'fields' => $fields,
-				'more'   => array(),
-			),
-			array(
-				'id'     => $id . '-found',
-				'legend' => __( 'Where shoppers find it', 'creative-skateboard-builder' ),
-				'moves'  => false,
-				'fold'   => '',
-				'open'   => true,
-				'fields' => $found,
 				'more'   => array(),
 			),
 		);
