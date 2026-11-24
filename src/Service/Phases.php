@@ -90,6 +90,7 @@ final class Phases {
 	 * @param DateTimeImmutable $end   The second.
 	 */
 	public static function between( DateTimeImmutable $start, DateTimeImmutable $end ): float {
-		return ( (int) $end->format( 'U' ) - (int) $start->format( 'U' ) ) * 1000 + ( (int) $end->format( 'u' ) - (int) $start->format( 'u' ) ) / 1000;
+		// The seconds and microseconds as integers, read from each moment rather than cast from its text.
+		return ( $end->getTimestamp() - $start->getTimestamp() ) * 1000 + ( $end->getMicrosecond() - $start->getMicrosecond() ) / 1000;
 	}
 }

@@ -24,6 +24,7 @@ use CreativeBranding\SkateboardBuilder\Front\ShippingWords;
 use CreativeBranding\SkateboardBuilder\Front\StateAnswer;
 use CreativeBranding\SkateboardBuilder\Port\LookFact;
 use CreativeBranding\SkateboardBuilder\Port\TextFolding;
+use CreativeBranding\SkateboardBuilder\Service\Phases;
 use CreativeBranding\SkateboardBuilder\Service\ShelfQuery;
 use CreativeBranding\SkateboardBuilder\Service\StepShelf;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\FakeRanking;
@@ -33,6 +34,7 @@ use CreativeBranding\SkateboardBuilder\Tests\Support\Domain\Builds;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Domain\KitDocuments;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Domain\Parts;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Domain\Shop;
+use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\FakeClock;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\FakeMoney;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\FakeLogger;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\FakeShippingZones;
@@ -186,6 +188,22 @@ final class StateAnswerTest extends TestCase {
 
 	private static function money( int $amount, string $text ): array {
 		return compact( 'amount', 'text' );
+	}
+
+	/**
+	 * The auditor's second pass on M12, should-fix 2: `withPhases()` times a copy, and the answer it was called on
+	 * times nothing, as an earlier release's container builds it (#125, D-365).
+	 */
+	public function test_with_phases_times_a_copy_and_leaves_the_answer_it_was_called_on_untimed(): void {
+		$state = ( new BuildState( $this->kits, $this->settings, $this->logger ) )->of( self::KIT, array(), null, SlotKey::DECK, null );
+		self::assertNotNull( $state );
+		$phases = new Phases( new FakeClock() );
+		$plain  = new StateAnswer( $this->cards, new FakeMoney(), $this->kits, new Delivery( $this->kits, new FakeShippingZones(), new ShippingWords( new FakeMoney() ) ), new PageRenderer() );
+		$timed  = $plain->withPhases( $phases );
+		$plain->of( $state );
+		self::assertSame( array(), $phases->took(), 'the answer withPhases() was called on times nothing' );
+		$timed->of( $state );
+		self::assertArrayHasKey( 'shelf', $phases->took(), 'its copy times its phases' );
 	}
 
 	public function test_with_nothing_picked_the_first_step_lists_its_parts_each_with_its_card(): void {
