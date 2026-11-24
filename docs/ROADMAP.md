@@ -539,11 +539,12 @@ Each is a small release of its own, once the hooks it needs are in a tagged buil
 | Plugin | Who builds it | What it does with the builder |
 | --- | --- | --- |
 | Creative Checkout | Claude in Cowork | Answers `cbuild_arrival_estimate` and `cbuild_delivery_line`; adds the assembly lead time wherever a cart or order holds an assembled build, Apple Pay's and Google Pay's sheets included; adds an assembly step to "What happens next" |
-| Mature Content | Claude in Cowork | Blurs a flagged part on its card, in the picture's layers and in the review, through `cbuild_part_classes` and `mcw_image_selectors` |
+| Mature Content | Claude in Cowork | Blurs a flagged part on its card, in the picture's layers and in the review, through `cbuild_part_classes` and `mcw_image_selectors`; from 1.3.0 that includes the review's thumbnails (#132) |
 | Creative Shipment Tracking | Claude Code | Shows a build under the kit's name in "In this parcel" |
-| Creative Reviews | Claude Code | Leaves the kit out of review requests |
+| Creative Reviews | Claude Code | Leaves the kit out of review requests. Its `creviews_should_send_request` (1.0.3) decides per order, so this needs a per-line filter in a Reviews release. The ratings shown in each step (#137) need nothing from it: its reviews are WooCommerce's own, read through the product |
 | Creative Loyalty | Claude Code, from its own brief (Phase 3) | Points per part line; a points line under the builder's total through `cbuild_summary_notes` |
-| Creative Schema | Claude in Cowork | Skips kits, if its markup ever reaches them |
+
+Creative Schema needs no release: a kit prints no product markup, and from 1.3.0 a browser test holds the kit's page to carrying none, so Schema's markup can't reach it unnoticed.
 
 ### Skatehouse's setup
 
