@@ -38,5 +38,8 @@ Thumbs.db
 /tools/integration/vendor/
 /.deptrac.cache
 
+# Claude Code's agent worktrees, each a checkout of its own: never committed, and never linted as this one's files.
+/.claude/worktrees/
+
 # The browser tool's screenshots and snapshots, local only.
 /.playwright-mcp/

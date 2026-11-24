@@ -16,7 +16,7 @@ The spec's budgets are tests: a build fails when one is missed. The numbers from
 | My builds with a customer's 100 saved builds, p95 of 10 views with the caches emptied | Under 600 ms and 130 queries, the same queries as for one build (D-222) | `composer test:benchmark:integration` (`MyBuildsBenchmarkTest`) | Milestone 8 |
 | The builder's script, compressed (Brotli, quality 11) | Under 15 kB | `npm run budget` | Milestone 6 |
 | The builder's styles, compressed (Brotli, quality 11) | Under 10 kB | `npm run budget` | Milestone 6 |
-| LCP on the builder page, mobile profile, median of three | 2.5 s or less | `npm run lhci` | Milestone 1 (the front page until milestone 6) |
+| LCP on the builder page, mobile profile, median of five (three before 1.2.0) | 2.5 s or less | `npm run lhci` | Milestone 1 (the front page until milestone 6) |
 | CLS, the same run | Under 0.1; 0 is the target | `npm run lhci` | Milestone 1 |
 | TBT, the same run | Under 200 ms | `npm run lhci` | Milestone 1 |
 | LCP, CLS and TBT on a build link's review, its deck, trucks and wheels drawn as layers, on Kadence | The same limits; its SEO score is not asserted, as the page says noindex (D-147) | `npm run lhci` | Milestone 7 |

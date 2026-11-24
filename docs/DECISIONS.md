@@ -4296,6 +4296,14 @@ Red: with the state route held 1.6 s, "the deck settles onto the stage in 280 ms
 
 **Status:** Accepted.
 
+### D-344 · Lighthouse's median is of five runs a page · 2026-11-24
+
+Issue #75: Twenty Twenty-Five's LCP sat 55 to 65 ms under its 2.5 s gate on every CI run, so one slow server answer among three runs set the median and failed it (2,507 ms, run 44798766396). D-339 found no change to the page that would buy headroom: inlining the stylesheet doesn't fit core's page total. D-342 then measured warm.
+
+Lighthouse CI's guidance is that a median steadies with more runs, and it recommends five for an assertion. With five, two slow answers can no longer set the median, and the 2.5 s limit is unchanged. The cost is about two minutes a CI run. Zach was asked about this in D-339 and gave the call to the overnight authority of 24 November; it is listed for him in M12's review.
+
+**Status:** Accepted.
+
 ### D-345 · Markdown is linted with markdownlint-cli2, on its default rules but five · 2026-11-24
 
 Issue #111. Zach approved a Markdown linter on 24 November 2026, the 2026 standard. markdownlint's rules (MD001 to MD060) are the reference set, and markdownlint-cli2 is its maintained command line. rumdl runs the same rules in Rust, but this is already a Node project.
@@ -4342,3 +4350,4 @@ Issue #112. A review of every ignore file on 24 November 2026 found what ships a
 **Red runs.** `tools/gates-selftest.sh` with gate 19's block taken out: "Gates self-test: gate 19 did not reject 19-export-ignored-but-shipped.gitattributes." and the same for `19-left-out-of-the-zip-but-exported.distignore`. On this tree: with `.gitattributes` moved away, "Gate 19: .gitattributes' export-ignore lines and .distignore differ"; with `tools` on `.distignore` alone, the same with "> tools"; with `.githooks` on neither, "Gate 19: tracked at the top, and on neither .distignore nor .gitattributes' export-ignore lines: .githooks". Each put back: "Gates: clean."
 
 **Status:** Accepted.
+||||||| Stash base

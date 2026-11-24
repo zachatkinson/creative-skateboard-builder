@@ -1,5 +1,5 @@
 /**
- * Lighthouse CI on the builder page in wp-env, median of three on the mobile profile (docs/AUDIT.md: Performance).
+ * Lighthouse CI on the builder page in wp-env, median of five on the mobile profile (docs/AUDIT.md: Performance; D-344).
  * tools/lhci.sh points it at the shop fixture's builder page, a blank start with its presets and the first step's
  * parts; run alone, it reads the front page. It runs it with minified assets and the shop open, as a shop serves
  * the page (D-032), twice (D-165): on Twenty Twenty-Five, whose own web font moves the page as it arrives, with layout
@@ -21,7 +21,8 @@ module.exports = {
 	ci: {
 		collect: {
 			url: [ url ],
-			numberOfRuns: 3,
+			// Five, not three (D-344): with three, one slow server answer set the median (#75).
+			numberOfRuns: 5,
 			settings: {
 				preset: 'perf',
 				onlyCategories: [ 'performance', 'seo' ],

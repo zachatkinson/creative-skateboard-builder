@@ -200,7 +200,7 @@ tools/                    gates.sh, integration/ (PHPUnit 9.6), build, release, 
 | JavaScript unit | Vitest, jsdom | The store's actions and derived state |
 | JavaScript mutation | StrykerJS with the Vitest runner | 90 % on the store |
 | Browser | Playwright, `@axe-core/playwright` | Chromium, WebKit and Firefox at phone and desktop widths; projects for JavaScript off, fr_CA, right to left and visual snapshots. Firefox on macOS 27 needs the `CFFIXED_USER_HOME` workaround (Search D-022) |
-| Lab performance | Lighthouse CI | The builder page on wp-env, median of three |
+| Lab performance | Lighthouse CI | The builder page on wp-env, median of five (D-344) |
 | Benchmarks | PHPUnit's `benchmark` group | The server budgets, on a generated catalogue |
 
 - Test names say the behaviour: `test_an_8_5_inch_deck_blocks_indy_144_trucks`.
