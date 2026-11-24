@@ -43,7 +43,7 @@ The rest can wait: D-009 and D-010 (the cart count, the Mini-Cart script) by mil
 
 ## 2. The repository
 
-```
+```bash
 mkdir -p ~/web-projects/creative-skateboard-builder
 cd ~/web-projects/creative-skateboard-builder
 git init -b main

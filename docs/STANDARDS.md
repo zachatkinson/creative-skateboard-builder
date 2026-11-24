@@ -27,7 +27,7 @@ When a source is unclear or the installed code differs from its docs, read the s
 
 The starting layout. Claude Code may refine it in milestone 1 with a `DECISIONS.md` entry; deptrac enforces whatever is settled.
 
-```
+```text
 creative-skateboard-builder.php  Bootstrap only: headers, constants, the autoloader, Plugin::boot()
 uninstall.php             Calls Install\Uninstaller
 src/

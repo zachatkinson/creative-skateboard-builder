@@ -10,6 +10,8 @@ Status is one of:
 
 Zach accepted D-002 to D-011 as proposed on 9 November 2026, before milestone 1.
 
+## The decisions
+
 ### D-001 · The name: Creative Skateboard Builder · 2026-11-09
 
 Zach chose Creative Skateboard Builder over the working name, Creative Builder, which read as generic (a page builder, a site builder). The names follow two rules: anything WordPress expects to match the slug uses the slug, and everything the code prefixes keeps the short prefix.
@@ -1119,7 +1121,7 @@ Zach had every minor of milestone 2's reviews fixed, and these follow that.
 
 Zach's answer on 10 November 2026 to the two open figures of D-072 (Venture 5.0's axle, and Thunder's 143, 148 and 161): "lets do whatever is best practice for 2026 and standard." A figure a shop's builder decides fit by should come from whoever makes the part, with the page and the day beside it.
 
-- **Thunder publishes a chart,** at https://www.thundertrucks.com/sizing/, as one image a size. The spec took Thunder's sizes from two retailers because the chart is an image; read on 10 November 2026, the images give every size an axle and a deck range. All eight rows are now Thunder's:
+- **Thunder publishes a chart,** at <https://www.thundertrucks.com/sizing/>, as one image a size. The spec took Thunder's sizes from two retailers because the chart is an image; read on 10 November 2026, the images give every size an axle and a deck range. All eight rows are now Thunder's:
 
   | Size | Axle | Decks |
   | --- | --- | --- |
@@ -1133,7 +1135,7 @@ Zach's answer on 10 November 2026 to the two open figures of D-072 (Venture 5.0'
   | 181 | 10.0 in | 9.5 in and up |
 
 - **What changed from the seed before.** The 143's axle was 7.0 in, the spec's figure, and is 7.125. The 145's was 7.6 and is 7.62. The 143 and 161 had no deck range and have one. The retailers' ranges for the 145 to 151 were half an inch wide and overlapped; Thunder's are a quarter inch and meet end to end, so rule R1 now offers a Thunder truck to fewer deck widths, the ones its maker names. The 181 is new, from the maker's chart of 2026.
-- **Venture publishes one too,** at https://venturetrucks.net/sizes/. Its five sizes are what the seed held from Rollersnakes, the 5.0's 7.62 in axle among them, so the figures stay and the source is now Venture. The spec's grid puts the 5.0 in its 7.6 in row, which groups makers by axle; the row is a grouping, not a figure.
+- **Venture publishes one too,** at <https://venturetrucks.net/sizes/>. Its five sizes are what the seed held from Rollersnakes, the 5.0's 7.62 in axle among them, so the figures stay and the source is now Venture. The spec's grid puts the 5.0 in its 7.6 in row, which groups makers by axle; the row is a grouping, not a figure.
 - **Every seeded row now has the day it was read,** and `SpecTablesMigrationTest` holds that each names its maker's own site.
 - **`docs/SPEC.md` is not edited.** Its table under R1 and its line "Thunder's chart is an image and Venture publishes none" are behind this; they are Zach's to change.
 - **A shop that already has a chart keeps it** (D-072): the seed is passed over where a table exists. 0.3.0 is the first version with charts, so no shop has the old rows.
@@ -3982,10 +3984,10 @@ Cowork's review of 1.0.0, F17 (#102): at 390 px the board lay across the stage's
   - Cascade layers were weighed and turned down. Every unlayered style beats every layered one, and themes ship unlayered CSS, so putting the builder in a layer would make it lose to more theme rules, not fewer. Colours and spacing stay at no weight, so a theme still restyles them with one class.
 - **Board size (#97, F12).** The panel's column is `max(23.75rem, 40%)` on large and `max(23.75rem, 50%)` on balanced, so the board is 60 % or 50 % of the width at 1280, 1440 and 1920 px alike. The panel's contents stop at 40rem and sit in its middle, so lines stay readable in a wide panel. This replaces D-292's cap on the column. The spec's "380 to 520 px" for the panel now holds only for its contents' measure, not its width, as the setting's own words win (Zach, 20 November).
 - **Sources:**
-  - CSS Cascading and Inheritance Level 5, cascade layers ("unlayered styles … take precedence"): https://www.w3.org/TR/css-cascade-5/#layer-ordering
+  - CSS Cascading and Inheritance Level 5, cascade layers ("unlayered styles … take precedence"): <https://www.w3.org/TR/css-cascade-5/#layer-ordering>
   - Selectors Level 4, specificity of `:where()`, `:is()` and `:not()`: https://www.w3.org/TR/selectors-4/#specificity-rules
   - MDN, `:where()`: https://developer.mozilla.org/en-US/docs/Web/CSS/:where
-  - MDN, Specificity (repeating a class raises it): https://developer.mozilla.org/en-US/docs/Web/CSS/Specificity
+  - MDN, Specificity (repeating a class raises it): <https://developer.mozilla.org/en-US/docs/Web/CSS/Specificity>
   - Kadence 1.x `assets/css/global.min.css` (`fieldset`, `button`, `button:hover`) and `content.min.css` (`.single-content h2`), as wp-env installed them.
 
 **Why:** Cowork's 1.0.0 review: on the demo the fieldsets were boxed, Filters and Show the top competed with Next, Filters showed on a desktop, and the board took about two thirds of a wide screen while the setting said half.
@@ -4271,10 +4273,20 @@ PR #109's visual job failed 17 of 32 snapshots by about 1 % each, every differen
 
 The review's pictures also differed now and then at the bar's "Show the parts", whose hover the pointer sometimes still held: the test waits now until nothing in the bar matches `:hover` or runs a transition. Four runs in a row were clean.
 
+**Added before the merge, after the second CI run.** The review shots still failed now and then (CI run 45356034288; 3 of 180 locally under load), always the bar's "Show the parts" drawn a pixel lower. Logged before each shot, the layout was the same in failing and passing runs to the thousandth of a pixel; drawn with the bar unstuck, it still failed. The link is masked in the review shot alone, quarantined with #110 as CLAUDE.md allows for a flaky test, and the start shot still compares it. The 18 review baselines were remade with the mask, and 180 runs in a row passed.
+
 **Status:** Accepted.
 
 ### D-342 · Lighthouse measures the builder's page warm · 2026-11-24
 
 PR #109's Lighthouse job measured Twenty Twenty-Five's LCP at 3.19, 2.85 and 2.25 s, a median of 2.85 s against the 2.5 s gate. The paint was right after first paint each time; what moved was the server's answer, 1.09 and 1.19 s in the first two runs and 0.56 s in the third. The first runs came straight after the site was set up and minified assets turned on, and the jobs a visit queues (the ready builds' pictures, D-252) ran beside them on the runner's two cores. A shop's page has been visited before. `tools/lhci.sh` now loads the page on each theme, runs the plugin's queued jobs, and loads it again, before the three measured runs. The gate stays at 2.5 s, the median of three (#75 and D-339 still ask Zach about five runs).
+
+**Status:** Accepted.
+
+### D-343 · The motion tests watch until the page is still · 2026-11-24
+
+The Motion tests record every animation for a fixed 1.5 s from the pick. On CI's webkit-desktop the step crossed over after that (run 45356034288), and "the panel slid in for 200 ms" failed though the panel had slid. The watcher now records for 1.5 s at least, and then until nothing has run and nothing has waited for half a second, eight seconds at most. Seen longer, a slow answer's line (D-308) is seen too, which runs four times by design: the check that each moment runs once leaves it out, and its own test holds its four runs.
+
+Red: with the state route held 1.6 s, "the deck settles onto the stage in 280 ms ..." failed at builder.spec.ts:4318, the deck's moment unseen; with the new watcher it passed on Chromium and WebKit.
 
 **Status:** Accepted.

@@ -4029,10 +4029,19 @@ test.describe( 'Motion', () => {
 			if ( start ) {
 				document.startViewTransition = ( ( update: () => void ) => {
 					record.transitions++;
-					return start( update );
+					crossing++;
+					const transition = start( update );
+					transition.finished.finally( () => crossing-- );
+					return transition;
 				} ) as typeof document.startViewTransition;
 			}
-			const until = performance.now() + 1500;
+			// Watched for 1.5 s at least, and then until the page has been still for half a second: on a slow runner the
+			// step crossed over after a fixed 1.5 s had run out, and its panel's slide went unseen (CI run 45356034288,
+			// webkit-desktop). Eight seconds at most.
+			const began = performance.now();
+			const until = began + 1500;
+			let still = began;
+			let crossing = 0;
 			const frame = () => {
 				const amount = document.querySelector(
 					'.cbuild-bar__amount > span:first-child'
@@ -4109,7 +4118,21 @@ test.describe( 'Motion', () => {
 						pseudo: effect?.pseudoElement ?? '',
 					} );
 				}
-				if ( performance.now() < until ) {
+				const now = performance.now();
+				if (
+					crossing > 0 ||
+					document.getAnimations().length > 0 ||
+					'true' ===
+						document
+							.querySelector( '.cbuild' )
+							?.getAttribute( 'aria-busy' )
+				) {
+					still = now;
+				}
+				if (
+					now < began + 8000 &&
+					( now < until || now - still < 500 )
+				) {
 					window.requestAnimationFrame( frame );
 				} else {
 					record.watched = true;
@@ -4188,7 +4211,10 @@ test.describe( 'Motion', () => {
 					),
 					`${ animation.id || animation.name } ${ animation.pseudo }`
 				).toEqual( [] );
-				expect( animation.iterations ).toBe( 1 );
+				// The line that says a slow answer is drawing runs four times (D-308), and its own test holds that.
+				if ( 'cbuild-drawing' !== animation.name ) {
+					expect( animation.iterations ).toBe( 1 );
+				}
 			}
 		}
 	};
