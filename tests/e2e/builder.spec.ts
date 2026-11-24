@@ -7140,75 +7140,83 @@ test.describe( 'A saved build that has changed, and the deck page', () => {
 	}, info ) => {
 		await login( page );
 		const name = `Changed ${ info.project.name } ${ Date.now() }`;
-		await page.goto(
-			linkTo( {
-				deck: id( 'builder-test-deck-8-0' ),
-				trucks: id( 'builder-test-trucks-139' ),
-				wheels: id( 'builder-test-wheels-54' ),
-				bearings: id( 'builder-test-bearings' ),
-				hardware: id( 'builder-test-bolts-1-25' ),
-				grip: id( 'builder-test-grip' ),
-				step: 'review',
-			} )
-		);
-		await page.getByLabel( 'Name it (optional)' ).fill( name );
-		await answered( page, () =>
-			page.getByRole( 'button', { name: 'Save build' } ).click()
-		);
-		await expect( page ).toHaveURL( /my-builds/ );
+		// Its build is deleted however the test ends: one left a run reached My builds' cap of 100 on a lane's site, and
+		// every save after it was refused (M12's combined /verify).
+		try {
+			await page.goto(
+				linkTo( {
+					deck: id( 'builder-test-deck-8-0' ),
+					trucks: id( 'builder-test-trucks-139' ),
+					wheels: id( 'builder-test-wheels-54' ),
+					bearings: id( 'builder-test-bearings' ),
+					hardware: id( 'builder-test-bolts-1-25' ),
+					grip: id( 'builder-test-grip' ),
+					step: 'review',
+				} )
+			);
+			await page.getByLabel( 'Name it (optional)' ).fill( name );
+			await answered( page, () =>
+				page.getByRole( 'button', { name: 'Save build' } ).click()
+			);
+			await expect( page ).toHaveURL( /my-builds/ );
 
-		runPhp(
-			`$p = wc_get_product( ${ id( 'builder-test-wheels-54' ) } ); $p->set_stock_status( 'outofstock' ); $cbuild_index( $p );`
-		);
-		runPhp(
-			`$p = wc_get_product( ${ id( 'builder-test-bearings' ) } ); $p->set_regular_price( '16' ); $cbuild_index( $p );`
-		);
-		const open = async () => {
-			await page.goto( '/my-account/my-builds/' );
-			await page
-				.locator( '.cbuild-my-builds__build' )
-				.filter( { hasText: name } )
-				.getByRole( 'link', { name: 'Open' } )
-				.click();
-			const changed = page.getByRole( 'heading', {
-				name: 'Your build has changed',
-			} );
-			await expect( changed ).toBeVisible();
+			runPhp(
+				`$p = wc_get_product( ${ id( 'builder-test-wheels-54' ) } ); $p->set_stock_status( 'outofstock' ); $cbuild_index( $p );`
+			);
+			runPhp(
+				`$p = wc_get_product( ${ id( 'builder-test-bearings' ) } ); $p->set_regular_price( '16' ); $cbuild_index( $p );`
+			);
+			const open = async () => {
+				await page.goto( '/my-account/my-builds/' );
+				await page
+					.locator( '.cbuild-my-builds__build' )
+					.filter( { hasText: name } )
+					.getByRole( 'link', { name: 'Open' } )
+					.click();
+				const changed = page.getByRole( 'heading', {
+					name: 'Your build has changed',
+				} );
+				await expect( changed ).toBeVisible();
+				if ( javaScriptEnabled ) {
+					await expect( changed ).toBeFocused();
+				}
+				return changed;
+			};
+
+			await open();
+			await expect(
+				page.getByText( 'Wheels: Builder test wheels 54 is sold out.' )
+			).toBeVisible();
+			await expect(
+				page.getByText( /^Closest fit: Builder test wheels / )
+			).toBeVisible();
+			await expect(
+				page.getByText(
+					/^Builder test bearings: .*15\.00 when you saved, .*16\.00 now$/
+				)
+			).toBeVisible();
 			if ( javaScriptEnabled ) {
-				await expect( changed ).toBeFocused();
+				await axe( page, 'a saved build that has changed', '.cbuild' );
 			}
-			return changed;
-		};
+			await moveTo( page, 'Use these', /: Check your build$/ );
+			// The review's heading is on the page under the panel already, so the panel's going away is the move's end.
+			await expect(
+				page.getByRole( 'heading', { name: 'Your build has changed' } )
+			).toHaveCount( 0 );
+			await page.waitForLoadState( 'load' );
+			await expect(
+				page
+					.locator( '.cbuild-review' )
+					.getByText( 'Builder test wheels 54' )
+			).toHaveCount( 0 );
 
-		await open();
-		await expect(
-			page.getByText( 'Wheels: Builder test wheels 54 is sold out.' )
-		).toBeVisible();
-		await expect(
-			page.getByText( /^Closest fit: Builder test wheels / )
-		).toBeVisible();
-		await expect(
-			page.getByText(
-				/^Builder test bearings: .*15\.00 when you saved, .*16\.00 now$/
-			)
-		).toBeVisible();
-		if ( javaScriptEnabled ) {
-			await axe( page, 'a saved build that has changed', '.cbuild' );
+			await open();
+			await moveTo( page, 'Choose myself', /: Choose your wheels$/ );
+		} finally {
+			runPhp(
+				`global $wpdb; $wpdb->delete( \\CreativeBranding\\SkateboardBuilder\\Support\\Tables::builds(), array( 'name' => '${ name }' ) );`
+			);
 		}
-		await moveTo( page, 'Use these', /: Check your build$/ );
-		// The review's heading is on the page under the panel already, so the panel's going away is the move's end.
-		await expect(
-			page.getByRole( 'heading', { name: 'Your build has changed' } )
-		).toHaveCount( 0 );
-		await page.waitForLoadState( 'load' );
-		await expect(
-			page
-				.locator( '.cbuild-review' )
-				.getByText( 'Builder test wheels 54' )
-		).toHaveCount( 0 );
-
-		await open();
-		await moveTo( page, 'Choose myself', /: Choose your wheels$/ );
 	} );
 
 	// The spec reviewer's M10 minor M3: "with that deck picked, its width with it". On a variable deck's page the

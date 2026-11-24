@@ -16,6 +16,7 @@
 #  15. A string literal with words in it in the builder's front scripts: every word the shopper reads is the server's.
 #  18. An mbstring case change with no function_exists() fallback on its line (#72).
 #  19. .gitattributes' export-ignore lines and .distignore listing different paths, or a tracked dotfile on neither.
+#  20. A merge's conflict marker left in a file.
 # Gate 1 also covers string-built SQL (1b) and the database's clock in a statement (1c). Every gate has snippets it
 # must reject in tests/Fixtures/gates/, run by tools/gates-selftest.sh.
 # Run: composer gates
@@ -227,6 +228,19 @@ unlisted="$(comm -23 <(printf '%s\n' "$dotted" | grep . || true) <(printf '%s\n'
 if [ -n "$unlisted" ]; then
 	echo "Gate 19: tracked at the top, and on neither .distignore nor .gitattributes' export-ignore lines:"; echo "$unlisted"
 	status=1
+fi
+
+# 20. A conflict marker a merge, cherry-pick or stash left behind: git writes each with its label after a space. One
+# reached a pushed DECISIONS.md in M12, where Markdown read it as text. Every file git tracks, or, outside a work tree,
+# every file; the gate's own fixtures hold markers on purpose.
+marker='^(<{7}|[|]{7}|>{7}) '
+if git rev-parse --is-inside-work-tree > /dev/null 2>&1; then
+	hits="$(git ls-files -z -- . ':!tests/Fixtures/gates/' | xargs -0 grep -nIE "$marker" 2> /dev/null || true)"
+else
+	hits="$(grep -rnIE "$marker" . 2> /dev/null || true)"
+fi
+if [ -n "$hits" ]; then
+	echo "Gate 20: a merge's conflict marker left in a file:"; echo "$hits"; status=1
 fi
 
 if [ "$status" -eq 0 ]; then echo "Gates: clean."; fi

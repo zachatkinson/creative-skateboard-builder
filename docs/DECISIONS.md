@@ -4353,6 +4353,16 @@ Issue #112. A review of every ignore file on 24 November 2026 found what ships a
 
 **Status:** Accepted.
 
+### D-347 · Gate 20 fails a merge's conflict marker left in a file · 2026-11-24
+
+Resolving DECISIONS.md after a stash pop left a line `||||||| Stash base` at its end, and 4ff1e83 pushed it. Markdown read it as a paragraph, so markdownlint passed it, and no other check looked.
+
+**Decision:** gate 20 in `tools/gates.sh` fails any file git tracks with a line that starts with seven `<`, `|` or `>` and a space, as git writes them with their label. A lone `=======` is left out, since a setext heading or a divider can be one, and git never writes it without the others. Outside a work tree (the gates' self-test) it reads every file. `tests/Fixtures/gates/20-conflict-marker.fixture` holds one of each, and is the only tracked file left out.
+
+**Red runs.** The marker put back at the end of DECISIONS.md: "Gate 20: a merge's conflict marker left in a file: docs/DECISIONS.md:4390:||||||| Stash base". The gate's pattern made one that matches nothing: "Gates self-test: gate 20 did not reject 20-conflict-marker." Each put back: "Gates: clean."
+
+**Status:** Accepted.
+
 ### D-348 · A kit's Build tab chooses its Builder page, checked each time it is used, and `cbuild_builder_url` answers last · 2026-11-24
 
 **Context:** #113. A shop that puts a kit's Builder block on a page of its own had to answer `cbuild_builder_url` in code (Skatehouse Core does) to send shoppers there. The owner should set it in wp-admin, as the demo's host has no SSH.

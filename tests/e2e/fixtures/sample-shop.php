@@ -37,7 +37,10 @@ function sample_shop_photo( string $name, string $shape, string $ground, string 
 			'fields'      => 'ids',
 		)
 	);
-	if ( array() !== $found ) {
+	// An attachment is reused only while its file is there: a site whose uploads were reset under its database kept
+	// the row and lost the photo, and the shop's pages asked for it with a 404 (M12's combined /verify, lane 2).
+	$kept = array() === $found ? '' : (string) get_attached_file( (int) $found[0] );
+	if ( '' !== $kept && file_exists( $kept ) ) {
 		return (int) $found[0];
 	}
 	$size  = 600;
@@ -85,6 +88,13 @@ function sample_shop_photo( string $name, string $shape, string $ground, string 
 		default:
 			imagefilledrectangle( $image, 200, 80, 400, 520, $fill );
 			imagefilledrectangle( $image, 200, 280, 400, 320, $ink );
+	}
+	if ( '' !== $kept ) {
+		// The row stays, so every product that shows it keeps its photo: only the file is drawn again, where it was.
+		wp_mkdir_p( dirname( $kept ) );
+		imagepng( $image, $kept );
+		wp_update_attachment_metadata( (int) $found[0], wp_generate_attachment_metadata( (int) $found[0], $kept ) );
+		return (int) $found[0];
 	}
 	$uploads = wp_upload_dir();
 	$file    = trailingslashit( $uploads['path'] ) . 'sample-' . $name . '.png';
