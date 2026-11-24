@@ -57,6 +57,18 @@ final class KitLayoutTest extends TestCase {
 		self::assertFalse( $kit->layout->showPresets );
 	}
 
+	// #115: "Build a complete with this deck" on the kit's parts' pages, on unless the kit says off. A kit saved before
+	// 1.2.0 has no key, so its parts' pages show the button as they did.
+	public function test_the_start_button_shows_unless_the_kit_turns_it_off(): void {
+		self::assertTrue( KitLayout::fromDocument( null )->startButton, 'a kit with no layout' );
+		self::assertTrue( KitLayout::fromDocument( array( 'schema_version' => 1, 'show_presets' => false ) )->startButton, 'a layout saved before 1.2.0' );
+		self::assertTrue( KitLayout::fromDocument( array( 'schema_version' => 1, 'start_button' => true ) )->startButton );
+		self::assertFalse( KitLayout::fromDocument( array( 'schema_version' => 1, 'start_button' => false ) )->startButton );
+		self::assertTrue( KitLayout::fromDocument( array( 'schema_version' => 1, 'start_button' => false ) )->showPresets, 'and nothing else changes' );
+		$kit = Kit::fromDocuments( KitDocuments::slots(), KitDocuments::rules(), KitDocuments::presets(), KitDocuments::assembly(), null, array( 'schema_version' => 1, 'start_button' => false ) );
+		self::assertFalse( $kit->layout->startButton );
+	}
+
 	/**
 	 * @return iterable<string, array{mixed, string}>
 	 */
@@ -69,6 +81,8 @@ final class KitLayoutTest extends TestCase {
 		yield 'a motion that is none' => array( array( 'schema_version' => 1, 'motion' => 'wild' ), 'document_out_of_range' );
 		yield 'a side that is no text' => array( array( 'schema_version' => 1, 'stage_side' => 1 ), 'document_wrong_type' );
 		yield 'ready builds shown as text' => array( array( 'schema_version' => 1, 'show_presets' => 'yes' ), 'document_wrong_type' );
+		yield 'the start button shown as text' => array( array( 'schema_version' => 1, 'start_button' => 'yes' ), 'document_wrong_type' );
+		yield 'the start button shown as a number' => array( array( 'schema_version' => 1, 'start_button' => 1 ), 'document_wrong_type' );
 	}
 
 	#[DataProvider( 'refused' )]

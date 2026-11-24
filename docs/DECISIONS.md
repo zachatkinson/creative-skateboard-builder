@@ -4352,4 +4352,20 @@ Issue #112. A review of every ignore file on 24 November 2026 found what ships a
 **Red runs.** `tools/gates-selftest.sh` with gate 19's block taken out: "Gates self-test: gate 19 did not reject 19-export-ignored-but-shipped.gitattributes." and the same for `19-left-out-of-the-zip-but-exported.distignore`. On this tree: with `.gitattributes` moved away, "Gate 19: .gitattributes' export-ignore lines and .distignore differ"; with `tools` on `.distignore` alone, the same with "> tools"; with `.githooks` on neither, "Gate 19: tracked at the top, and on neither .distignore nor .gitattributes' export-ignore lines: .githooks". Each put back: "Gates: clean."
 
 **Status:** Accepted.
-||||||| Stash base
+
+### D-349 · A kit's Build tab turns "Build a complete with this deck" off, and the lowest menu order still chooses the kit · 2026-11-24
+
+Issue #115. The button on a part's page (D-253) could be turned off or sent to another kit only through `cbuild_start_button`, and the demo's host has no SSH or WP-CLI (CLAUDE.md).
+
+**Decision:**
+
+- **The setting.** A checkbox, **Show on its parts' pages**, in the Build tab's Layout section under a new group, "Where shoppers find it", kept as `start_button` in the kit's `_cbuild_layout` (`schema/kit-layout.json`). It sits with the kit's other settings of how shoppers reach the builder, beside #113's Builder page, rather than in a section of its own.
+- **Default on.** A kit saved before 1.2.0 has no key and places the button as 1.1.0 did (`KitLayout::fromDocument()`, as `show_presets` reads, D-315). A box not ticked is not sent, so the Build tab stores it as false, as Show ready builds does.
+- **Off passes the kit over, not the part.** `Front\StartButton::start()` skips a kit that is off and goes on to the next by menu order, then ID, so a shop with two kits can keep the button for the other one. The issue's "the kit with the lowest menu order keeps winning" is unchanged, and SETTINGS.md now says where a shop sets that order (the Products screen's Sorting, or the product's Menu order).
+- **The filter answers last.** `cbuild_start_button` is given the button the settings make, or false where no kit that is on offers the part, and its answer is followed as before, a kit that is off included, so Skatehouse Core and other plugins keep working.
+
+**Why:** a setting on the kit is where an owner looks for what a kit does, and passing a kit over (rather than hiding the button for the part) is what lets a shop with a second kit choose which one starts a build from the same deck. Only who may manage the shop saves it, through WooCommerce's own product save and its nonce, as every Build tab setting is.
+
+**Tests.** `KitLayoutTest::test_the_start_button_shows_unless_the_kit_turns_it_off` (red: "a kit with no layout", null for true, KitLayoutTest.php:63), `KitEditorTest::test_the_start_button_is_kept_on_when_ticked_and_off_when_not`, `BuildTabTest::test_show_on_its_parts_pages_is_ticked_for_a_kit_saved_before_and_saved_by_who_may_manage_the_shop` (red: "a kit saved before 1.2.0 places the button", BuildTabTest.php:863) and `::test_the_layout_is_saved_through_woocommerces_product_save_and_only_with_its_nonce` (red: "saved with it", null for false), `KitSchemasTest`, `StartButtonTest::test_a_kit_turned_off_is_skipped_and_the_next_kit_by_menu_order_places_the_button` and `::test_a_kit_with_no_setting_or_with_it_on_places_the_button_as_before`, and the browser's "off, a deck's page has no button; on, it is back" in `builder.spec.ts`. **Break:** the skip taken out of `StartButton::start()` turns the first red ("the next kit by menu order", StartButtonTest.php:152) and the browser case red at `toHaveCount( 0 )`.
+
+**Status:** Accepted.

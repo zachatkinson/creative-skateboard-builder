@@ -369,7 +369,7 @@ final class BuildTab {
 			),
 			KitEditor::LAYOUT   => array(
 				__( 'Layout', 'creative-skateboard-builder' ),
-				__( 'How the builder is laid out on a desktop, and which search its steps use. A phone always shows the board above the step.', 'creative-skateboard-builder' ),
+				__( 'How the builder is laid out on a desktop, which search its steps use, and where shoppers find it. A phone always shows the board above the step.', 'creative-skateboard-builder' ),
 				$this->layout( $shown[ KitEditor::LAYOUT ] ),
 			),
 		) as $name => $section ) {
@@ -829,6 +829,16 @@ final class BuildTab {
 			self::measure( is_string( $document['wheelbase'] ?? null ) ? $document['wheelbase'] : '' ),
 			array( 'note' => __( 'Where the picture puts the trucks on a deck whose wheelbase is not in its specs, from 10 to 20 in. Leave it empty for the usual on a deck of its width and length.', 'creative-skateboard-builder' ) )
 		);
+		$found    = array(
+			$this->field(
+				$id . '-start-button',
+				$name . '[start_button]',
+				__( 'Show on its parts\' pages', 'creative-skateboard-builder' ),
+				'checkbox',
+				false !== ( $document['start_button'] ?? true ) ? '1' : '',
+				array( 'note' => __( 'Puts "Build a complete with this deck" on the page of each part the kit\'s first slot offers. Where several kits offer a part, the one with the lowest menu order shows it, and the Products screen\'s Sorting sets that order. Off, the next of them shows it.', 'creative-skateboard-builder' ) )
+			),
+		);
 		return array(
 			array(
 				'id'     => $id . '-fields',
@@ -839,12 +849,22 @@ final class BuildTab {
 				'fields' => $fields,
 				'more'   => array(),
 			),
+			array(
+				'id'     => $id . '-found',
+				'legend' => __( 'Where shoppers find it', 'creative-skateboard-builder' ),
+				'moves'  => false,
+				'fold'   => '',
+				'open'   => true,
+				'fields' => $found,
+				'more'   => array(),
+			),
 		);
 	}
 
 	/**
-	 * The Layout section's fields (D-255): the stage's side and the board's size on a desktop, the steps' search, and
-	 * from 1.1.0 the motion.
+	 * The Layout section's fields (D-255): the stage's side and the board's size on a desktop, the steps' search, from
+	 * 1.1.0 the motion, and from 1.2.0 where shoppers find the builder: whether the kit's parts' pages show "Build a
+	 * complete with this deck" (#115, D-349). A kit saved before 1.2.0 has no switch, and shows the button.
 	 *
 	 * @param array<mixed> $document The layout document to show.
 	 * @return list<array{id: string, legend: string, moves: bool, fold: string, open: bool, fields: list<array<string, mixed>>, more: list<array<string, mixed>>}>
@@ -909,6 +929,16 @@ final class BuildTab {
 				)
 			),
 		);
+		$found  = array(
+			$this->field(
+				$id . '-start-button',
+				$name . '[start_button]',
+				__( 'Show on its parts\' pages', 'creative-skateboard-builder' ),
+				'checkbox',
+				false !== ( $document['start_button'] ?? true ) ? '1' : '',
+				array( 'note' => __( 'Puts "Build a complete with this deck" on the page of each part the kit\'s first slot offers. Where several kits offer a part, the one with the lowest menu order shows it, and the Products screen\'s Sorting sets that order. Off, the next of them shows it.', 'creative-skateboard-builder' ) )
+			),
+		);
 		return array(
 			array(
 				'id'     => $id . '-fields',
@@ -917,6 +947,15 @@ final class BuildTab {
 				'fold'   => '',
 				'open'   => true,
 				'fields' => $fields,
+				'more'   => array(),
+			),
+			array(
+				'id'     => $id . '-found',
+				'legend' => __( 'Where shoppers find it', 'creative-skateboard-builder' ),
+				'moves'  => false,
+				'fold'   => '',
+				'open'   => true,
+				'fields' => $found,
 				'more'   => array(),
 			),
 		);
@@ -1085,6 +1124,7 @@ final class BuildTab {
 			'over'               => __( 'Wheel over the limit by up to', 'creative-skateboard-builder' ),
 			'riser'              => __( 'The riser to suggest', 'creative-skateboard-builder' ),
 			'wheelbase'          => __( 'Wheelbase where a deck gives none', 'creative-skateboard-builder' ),
+			'start_button'       => __( 'Show on its parts\' pages', 'creative-skateboard-builder' ),
 		);
 		$found  = array();
 		if ( 1 === preg_match( '/\A(slots|presets)\[(\d+)\]\.?(.*)\z/', $path, $found ) ) {

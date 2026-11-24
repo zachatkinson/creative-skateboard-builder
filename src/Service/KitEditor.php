@@ -627,7 +627,8 @@ final class KitEditor {
 
 	/**
 	 * The layout document from the tab's fields (D-255): each choice sent as text, which the domain then holds to its
-	 * choices. Show ready builds (1.1.0, #104) is a checkbox: one not ticked is not sent, and is off.
+	 * choices. Show ready builds (1.1.0, #104) and Show on its parts' pages (1.2.0, #115) are checkboxes: one not
+	 * ticked is not sent, and is off.
 	 *
 	 * @param array<mixed> $sent The fields.
 	 * @return array<string, mixed>
@@ -640,6 +641,7 @@ final class KitEditor {
 			}
 		}
 		$document['show_presets'] = self::on( $sent, 'show_presets' );
+		$document['start_button'] = self::on( $sent, 'start_button' );
 		return $document;
 	}
 

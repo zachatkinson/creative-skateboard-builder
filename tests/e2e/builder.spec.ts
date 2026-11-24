@@ -7297,6 +7297,50 @@ test.describe( 'A saved build that has changed, and the deck page', () => {
 	} );
 } );
 
+// #115 (D-349): a kit's Show on its parts' pages. Off on every kit that offers the deck, its page has no "Build a
+// complete with this deck"; on again, the button is back where it was.
+test.describe( "A kit's Show on its parts' pages", () => {
+	/**
+	 * Every kit's Show on its parts' pages set, or taken off the kit's layout as a kit saved before 1.2.0 has it.
+	 *
+	 * @param on True or false, or null to take the setting off.
+	 */
+	const startButton = ( on: boolean | null ): void =>
+		runPhp(
+			`foreach ( wc_get_products( array( 'type' => 'cbuild_kit', 'limit' => -1, 'status' => 'any' ) ) as $k ) { $d = $k->documents()['_cbuild_layout'] ?? array( 'schema_version' => 1 ); if ( null === ${ JSON.stringify(
+				on
+			) } ) { unset( $d['start_button'] ); } else { $d['start_button'] = ${ JSON.stringify(
+				on
+			) }; } $k->setDocument( '_cbuild_layout', $d ); $k->save(); }`
+		);
+
+	test.afterAll( () => startButton( null ) );
+
+	test( "off, a deck's page has no button; on, it is back", async ( {
+		page,
+	} ) => {
+		const deck = `/?p=${ id( 'builder-test-deck-8-25' ) }`;
+		const start = page.getByRole( 'link', {
+			name: 'Build a complete with this deck',
+		} );
+		await page.goto( deck );
+		await expect( start ).toBeVisible();
+		const before = await start.getAttribute( 'href' );
+
+		startButton( false );
+		await page.goto( deck );
+		await expect(
+			page.locator( 'form.cart' ).first(),
+			'the page is drawn'
+		).toBeVisible();
+		await expect( start ).toHaveCount( 0 );
+
+		startButton( true );
+		await page.goto( deck );
+		await expect( start ).toHaveAttribute( 'href', before ?? '' );
+	} );
+} );
+
 // #81 (D-301): a deck picked at one width, whose look is made in another, moves to that look when the shopper asks for
 // the other width; the status says so, and the cart gets the other width's variation (M11 audit, finding 10). One
 // variable deck, two widths of one look, made for the test and taken away after it.

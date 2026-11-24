@@ -147,6 +147,8 @@ final class BuildTabTest extends IntegrationTestCase {
 				'search'       => 'creative_search',
 				// Ticked, as the tab shows it on a kit saved before 1.1.0 (#104).
 				'show_presets' => '1',
+				// Ticked, as the tab shows it on a kit saved before 1.2.0 (#115).
+				'start_button' => '1',
 			),
 		);
 	}
@@ -811,10 +813,11 @@ final class BuildTabTest extends IntegrationTestCase {
 			'search'       => 'own',
 			'motion'       => 'subtle',
 			'show_presets' => '1',
+			'start_button' => '1',
 		);
 		$this->send( $kit, $sent );
 		self::assertSame( array(), self::notices() );
-		self::assertSame( array( 'schema_version' => 1, 'stage_side' => 'right', 'board_size' => 'balanced', 'search' => 'own', 'motion' => 'subtle', 'show_presets' => true ), self::stored( $kit->get_id() )[ Options::META_KIT_LAYOUT ] );
+		self::assertSame( array( 'schema_version' => 1, 'stage_side' => 'right', 'board_size' => 'balanced', 'search' => 'own', 'motion' => 'subtle', 'show_presets' => true, 'start_button' => true ), self::stored( $kit->get_id() )[ Options::META_KIT_LAYOUT ] );
 		$read = $this->service( \CreativeBranding\SkateboardBuilder\Port\Kits::class )->kit( $kit->get_id() );
 		self::assertSame( array( 'right', 'balanced', 'own', 'subtle' ), array( $read?->layout->stageSide, $read?->layout->boardSize, $read?->layout->search, $read?->layout->motion ), 'the kit the builder reads' );
 
@@ -848,6 +851,72 @@ final class BuildTabTest extends IntegrationTestCase {
 		$sent['layout']['show_presets'] = '1';
 		$this->send( $kit, $sent );
 		self::assertTrue( self::stored( $kit->get_id() )[ Options::META_KIT_LAYOUT ]['show_presets'] );
+	}
+
+	// #115: Show on its parts' pages, in the Layout section and kept in `_cbuild_layout`. Ticked on a kit saved before
+	// 1.2.0; unticked, the kit places no "Build a complete with this deck". Saved by who may manage the shop alone,
+	// through WooCommerce's product save, from wp-admin with no WP-CLI.
+	public function test_show_on_its_parts_pages_is_ticked_for_a_kit_saved_before_and_saved_by_who_may_manage_the_shop(): void {
+		$this->as( 'shop_manager' );
+		$kit   = KitFactory::kit();
+		$panel = $this->panel( $kit );
+		self::assertMatchesRegularExpression( '/name="cbuild_kit\[layout\]\[start_button\]"[^>]*checked/', $panel, 'a kit saved before 1.2.0 places the button' );
+		self::assertMatchesRegularExpression( '#id="cbuild-kit-layout".*?<input\s+type="checkbox"[^>]*id="cbuild-kit-layout-start-button"[^>]*name="cbuild_kit\[layout\]\[start_button\]"#s', $panel, 'in the Layout section' );
+		self::assertMatchesRegularExpression( '#<label for="cbuild-kit-layout-start-button">Show on its parts&\#039; pages</label>#', $panel, 'labelled' );
+		self::assertMatchesRegularExpression( '#id="cbuild-kit-layout-start-button"[^>]*aria-describedby="cbuild-kit-layout-start-button-note"#', $panel, 'and described' );
+		self::assertStringContainsString( 'lowest menu order', $panel, 'the note says which kit wins where several offer a part' );
+
+		$sent = self::form();
+		unset( $sent['layout']['start_button'] );
+		$this->send( $kit, $sent );
+		self::assertSame( array(), self::notices() );
+		self::assertFalse( self::stored( $kit->get_id() )[ Options::META_KIT_LAYOUT ]['start_button'] );
+		$read = $this->service( \CreativeBranding\SkateboardBuilder\Port\Kits::class )->kit( $kit->get_id() );
+		self::assertFalse( $read?->layout->startButton, 'the kit the button reads' );
+		self::assertTrue( $read?->layout->showPresets, 'and nothing else' );
+		self::assertDoesNotMatchRegularExpression( '/name="cbuild_kit\[layout\]\[start_button\]"[^>]*checked/', $this->panel( $kit ) );
+
+		// A customer's post is not saved, whatever it says.
+		$this->as( 'customer' );
+		$sent['layout']['start_button'] = '1';
+		$this->send( $kit, $sent );
+		self::assertFalse( self::stored( $kit->get_id() )[ Options::META_KIT_LAYOUT ]['start_button'], 'not saved by a customer' );
+
+		$this->as( 'shop_manager' );
+		$sent['layout']['start_button'] = '<b>yes</b>';
+		$this->send( $kit, $sent );
+		self::assertTrue( self::stored( $kit->get_id() )[ Options::META_KIT_LAYOUT ]['start_button'], 'any value ticked is on, stored as true and never as what was sent' );
+	}
+
+	// #115 and #113: the kit's settings go through WooCommerce's own product save, which checks its nonce and who may
+	// edit the product before the tab's hook fires (includes/admin/class-wc-admin-meta-boxes.php:228 and :238).
+	public function test_the_layout_is_saved_through_woocommerces_product_save_and_only_with_its_nonce(): void {
+		$this->as( 'shop_manager' );
+		$kit = KitFactory::kit();
+		$this->hooks()->register();
+		$sent = self::form();
+		unset( $sent['layout']['start_button'] );
+		$posted = $_POST;
+		$save   = static function ( string $nonce ) use ( $kit, $sent ): void {
+			( new \ReflectionProperty( \WC_Admin_Meta_Boxes::class, 'saved_meta_boxes' ) )->setValue( null, false );
+			$_POST = array(
+				'woocommerce_meta_nonce' => $nonce,
+				'post_ID'                => (string) $kit->get_id(),
+				BuildTab::FIELD          => wp_slash( $sent + array( BuildTab::END => '1' ) ),
+			);
+			( new \WC_Admin_Meta_Boxes() )->save_meta_boxes( $kit->get_id(), get_post( $kit->get_id() ) );
+		};
+		try {
+			$save( 'not-the-nonce' );
+			self::assertNull( self::stored( $kit->get_id() )[ Options::META_KIT_LAYOUT ], 'nothing saved without the nonce' );
+			$save( wp_create_nonce( 'woocommerce_save_data' ) );
+			self::assertSame( array(), self::notices() );
+			self::assertFalse( self::stored( $kit->get_id() )[ Options::META_KIT_LAYOUT ]['start_button'] ?? null, 'saved with it' );
+			self::assertSame( Options::PRODUCT_TYPE_KIT, \WC_Product_Factory::get_product_type( $kit->get_id() ), 'and still a kit' );
+		} finally {
+			$_POST = $posted;
+			( new \ReflectionProperty( \WC_Admin_Meta_Boxes::class, 'saved_meta_boxes' ) )->setValue( null, false );
+		}
 	}
 
 	public function test_a_wheelbase_outside_what_a_deck_has_is_not_saved_and_the_notice_says_the_range(): void {

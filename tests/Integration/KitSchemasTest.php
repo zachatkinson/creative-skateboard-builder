@@ -126,6 +126,7 @@ final class KitSchemasTest extends IntegrationTestCase {
 		$this->assertTrue( self::accepts( array( 'schema_version' => 1, 'stage_side' => 'right', 'board_size' => 'balanced', 'search' => 'own' ), 'kit-layout' ) );
 		$this->assertTrue( self::accepts( array( 'schema_version' => 1, 'motion' => 'subtle' ), 'kit-layout' ), 'motion, from 1.1.0' );
 		$this->assertTrue( self::accepts( array( 'schema_version' => 1, 'show_presets' => false ), 'kit-layout' ), 'Show ready builds, from 1.1.0 (#104)' );
+		$this->assertTrue( self::accepts( array( 'schema_version' => 1, 'start_button' => false ), 'kit-layout' ), 'Show on its parts\' pages, from 1.2.0 (#115)' );
 
 		$kit = Kit::fromDocuments( $slots, RuleSettings::DEFAULTS, self::presets(), $assembly, $picture );
 		$this->assertSame( array( 'grip', 'deck', 'wheels', 'trucks' ), $kit->picture->order );
@@ -180,6 +181,7 @@ final class KitSchemasTest extends IntegrationTestCase {
 			'a search that is none'          => array( 'kit-layout', array( 'schema_version' => 1, 'search' => 'google' ) ),
 			'a motion that is none'          => array( 'kit-layout', array( 'schema_version' => 1, 'motion' => 'wild' ) ),
 			'ready builds shown as text'     => array( 'kit-layout', array( 'schema_version' => 1, 'show_presets' => 'yes' ) ),
+			'the start button as text'       => array( 'kit-layout', array( 'schema_version' => 1, 'start_button' => 'yes' ) ),
 			'an order with a bad key'        => array( 'kit-picture', array( 'schema_version' => 1, 'order' => array( 'Grip Tape' ) ) ),
 			'an order naming a slot twice'   => array( 'kit-picture', array( 'schema_version' => 1, 'order' => array( 'deck', 'deck' ) ) ),
 			'an order of 21 slots'           => array( 'kit-picture', array( 'schema_version' => 1, 'order' => array_map( static fn( int $n ): string => 'slot_' . $n, range( 1, 21 ) ) ) ),

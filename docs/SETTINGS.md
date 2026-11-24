@@ -103,6 +103,16 @@ The Layout section gains **Motion**, in the same `_cbuild_layout` document. A ki
 | Motion | `motion` | `playful` (parts move onto the board), `subtle` (parts fade in, for every shopper) | `playful` | How the board's parts, the steps and the total move (spec: Milestone 11, D-256). A shopper whose device asks for reduced motion always sees fades of 150 ms or less, whatever the kit says. The builder's root gets `cbuild--subtle` on subtle. |
 | Show ready builds | `show_presets` | `true`, `false` (a checkbox in the Build tab's Presets section) | `true` | Whether the builder shows "Start from a ready build" with the kit's ready builds. Off hides the section on the page, the state route's `presets` each say `shown` false (D-336), and it keeps the ready builds as they are. A ready build with a part that's gone, sold out or no longer fits is never shown; the Catalogue check lists it. A kit saved before 1.1.0 has no key and shows its ready builds (#104, D-315). |
 
+## Milestone 12 (1.2.0)
+
+The Layout section gains a group, **Where shoppers find it**, in the same `_cbuild_layout` document. A kit saved before 1.2.0 has none of its keys and behaves as 1.1.0 did. Each is saved with the rest of the Build tab, through WooCommerce's product save, by a user with `manage_woocommerce`.
+
+| Setting | Key | Choices | Default | What it does |
+| --- | --- | --- | --- | --- |
+| Show on its parts' pages | `start_button` | `true`, `false` (a checkbox) | `true` | Whether the kit places "Build a complete with this deck" after the add-to-cart form of each part its first slot offers in stock (D-253). Off, the kit is passed over, and another kit that offers the part may place it. `cbuild_start_button` answers last, and may still name a kit that is off (#115, D-349). |
+
+**Which kit's button a part's page shows.** Where several kits offer a part in their first slot, the button opens the one with the lowest menu order whose Show on its parts' pages is on, and the lowest ID among kits of the same order. A kit's menu order is the Products screen's Sorting, or Menu order under the product's Advanced tab.
+
 ## Options beside the settings
 
 The plugin keeps seven options of its own, which no screen edits: `cbuild_db_version`, `cbuild_migrations`, `cbuild_migration_lock` and, from 0.3.0, `cbuild_reindex_state`, `cbuild_reindex_owed`, `cbuild_import_state` and `cbuild_import_rows`. [HOOKS.md](HOOKS.md) says what each holds, and [PRIVACY.md](PRIVACY.md) lists everything stored.

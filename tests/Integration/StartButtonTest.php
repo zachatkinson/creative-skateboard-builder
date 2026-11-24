@@ -137,6 +137,60 @@ final class StartButtonTest extends IntegrationTestCase {
 		self::assertSame( $few, $count() );
 	}
 
+	// #115: a kit's Show on its parts' pages off leaves it out when the button picks its kit. Another kit that offers
+	// the deck still places it, the lowest menu order first; with every kit off there is none.
+	public function test_a_kit_turned_off_is_skipped_and_the_next_kit_by_menu_order_places_the_button(): void {
+		$off = static function ( int $kit ): void {
+			$product = wc_get_product( $kit );
+			self::assertInstanceOf( \CreativeBranding\SkateboardBuilder\Adapter\KitProduct::class, $product );
+			$product->setDocument( Options::META_KIT_LAYOUT, array( 'schema_version' => 1, 'start_button' => false ) );
+			$product->save();
+		};
+		$off( $this->first );
+		$html = $this->shown( $this->deck );
+		self::assertStringContainsString( '>Build a complete with this deck</a>', $html );
+		self::assertStringStartsWith( BuilderUrl::of( $this->second ), html_entity_decode( (string) preg_replace( '/\A.*href="([^"]*)".*\z/s', '$1', $html ) ), 'the next kit by menu order' );
+
+		remove_all_actions( 'woocommerce_after_add_to_cart_form' );
+		$off( $this->second );
+		self::assertSame( '', $this->shown( $this->deck ), 'no kit places it' );
+
+		// The filter answers last: a shop may still place it for a kit that is off.
+		remove_all_actions( 'woocommerce_after_add_to_cart_form' );
+		$asked = null;
+		add_filter(
+			'cbuild_start_button',
+			function ( $button ) use ( &$asked ) {
+				$asked = $button;
+				return array(
+					'kit'      => $this->second,
+					'part'     => $this->deck,
+					'slot'     => 'deck',
+					'text'     => 'Build a complete with this deck',
+					'hook'     => 'woocommerce_after_add_to_cart_form',
+					'priority' => 10,
+				);
+			}
+		);
+		$html = $this->shown( $this->deck );
+		self::assertFalse( $asked, 'the filter is told no kit places it' );
+		self::assertStringContainsString( html_entity_decode( BuilderUrl::of( $this->second ) ), html_entity_decode( $html ), 'and its answer is followed' );
+	}
+
+	// #115: a kit saved before 1.2.0 has no start_button, and places the button as 1.1.0 did; on, as the tab saves it,
+	// the same.
+	public function test_a_kit_with_no_setting_or_with_it_on_places_the_button_as_before(): void {
+		$product = wc_get_product( $this->first );
+		self::assertInstanceOf( \CreativeBranding\SkateboardBuilder\Adapter\KitProduct::class, $product );
+		self::assertNull( $product->documents()[ Options::META_KIT_LAYOUT ], 'saved before 1.2.0' );
+		$before = $this->shown( $this->deck );
+		self::assertStringStartsWith( BuilderUrl::of( $this->first ), html_entity_decode( (string) preg_replace( '/\A.*href="([^"]*)".*\z/s', '$1', $before ) ) );
+		remove_all_actions( 'woocommerce_after_add_to_cart_form' );
+		$product->setDocument( Options::META_KIT_LAYOUT, array( 'schema_version' => 1, 'start_button' => true ) );
+		$product->save();
+		self::assertSame( $before, $this->shown( $this->deck ) );
+	}
+
 	public function test_a_part_no_kits_first_slot_offers_gets_no_button(): void {
 		self::assertSame( '', $this->shown( $this->truck ) );
 	}

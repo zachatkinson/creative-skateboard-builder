@@ -50,6 +50,10 @@
 		"show_presets": {
 			"description": "From 1.1.0: whether the builder shows \"Start from a ready build\" with the kit's ready builds. Off, the ready builds are kept and not shown. The default is true.",
 			"type": "boolean"
+		},
+		"start_button": {
+			"description": "From 1.2.0: whether the kit places \"Build a complete with this deck\" on the pages of the parts its first slot offers. Off, the kit is passed over, and another kit that offers the part may place it. The default is true.",
+			"type": "boolean"
 		}
 	}
 }
