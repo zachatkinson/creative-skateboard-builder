@@ -399,7 +399,8 @@ final class StateAnswerTest extends TestCase {
 	}
 
 	// Spec, Presets: each tile says its total. #104 (R1): one a part keeps from the cart, Park with its wheels sold out,
-	// is listed in the answer and not shown, and the Catalogue check lists it for the owner.
+	// is listed in the answer and not shown, and the Catalogue check lists it for the owner. Spec, Presets: "A preset or
+	// link that holds one names it", so what keeps Park from the cart carries the wheels' name from their card.
 	public function test_each_preset_says_its_total_and_one_a_part_keeps_from_the_cart_is_not_shown(): void {
 		$this->worded();
 		$parts                    = Shop::parts();
@@ -415,6 +416,20 @@ final class StateAnswerTest extends TestCase {
 		self::assertCount( 2, $answer['presets'], 'Park is listed, at its place' );
 		self::assertSame( array( true, false ), array_column( $answer['presets'], 'shown' ), 'and not shown' );
 		self::assertFalse( $answer['presets'][1]['ready'] );
+		self::assertSame(
+			array(
+				array(
+					'code'     => 'part_sold_out',
+					'slot'     => SlotKey::WHEELS,
+					'part'     => 302,
+					'message'  => 'Wheels: the part chosen is sold out.',
+					'messages' => array(),
+					'name'     => 'Part 302',
+				),
+			),
+			$answer['presets'][1]['problems'],
+			'what keeps it from the cart, the part named as its card names it'
+		);
 	}
 
 	public function test_a_plugins_answer_to_each_filter_is_what_the_answer_says(): void {
