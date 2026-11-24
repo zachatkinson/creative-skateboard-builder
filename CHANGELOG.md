@@ -25,6 +25,10 @@ All notable changes to this project are documented here. The format follows [Kee
 - The builder gives the state route 10 s to answer. A request that hung kept the builder busy until the browser gave up; now the step keeps what it shows and says "The shop did not answer in time. Try again in a moment.", in the page's language (D-364).
 - A mouse press on the builder that went down before its script ran, and came up after, now goes through; it was lost (Cowork's 1.1.0 F22, #120, D-363).
 - A build's Add to cart keeps the cart in the session before the add answers, so a cart page opened straight after holds the build; it read empty while WooCommerce saved the session at shutdown (#108, #51, D-352).
+- On a phone held sideways the board is drawn at 299 by 76 px or more (400 by 100 on most themes), beside the picture's heading and Show the top, not 47 by 13 under them, and the heading no longer sits over its side line (#119, D-359).
+- Once a width is chosen, the deck step drops its "Start with a width" line and Sort sits on the brands' line, so a desktop's first view holds a whole row of decks or two (#122, D-360).
+- The phone rail keeps the page's gutter at either end where the row has room, and the current step's name sits above the rail's border on Kadence (#123, D-361).
+- A search or chips that list nothing show no Sort and no "Showing 0 of 0", with the script and without it (#124).
 
 ## [1.1.0] - 2026-11-24
 

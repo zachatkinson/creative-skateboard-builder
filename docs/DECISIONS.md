@@ -4972,3 +4972,68 @@ The store sent the state request with no time limit (`navigate.ts`, the `fetch` 
 **Status:** Accepted.
 
 D-366 is unused: the brief left it for a fourth decision, and none was needed.
+||||||| parent of cb61a64 (Docs: D-359 to D-361, the changelog and A11Y for Cowork's F21, F24, F25 and F26)
+
+### D-359 · A phone held sideways keeps the strip, with the words in a column beside the board · 2026-11-24
+
+**Context:** Cowork's 1.1.0 review, F21 (#119, should-fix). On a phone held sideways the stage is the sticky strip of 34svh on top (about 116 px at 342 px high), the board turned across it. The picture's heading, its side line and Show the top each took a row of that strip, so the board was drawn 47 by 13 px on Kadence at 750 by 342. The heading and side line were also auto-placed after D-320's turn button rows, so the heading took the board's row with a 1 px box and the side line was drawn over it.
+
+**Measured first** (chromium, the trucks step with an 8″ deck, the board's long by short side):
+
+| Theme | 750 by 342 before | after | 844 by 390 before | after |
+| --- | --- | --- | --- | --- |
+| Twenty Twenty-Five | 168 by 43 | 418 by 106 | 232 by 59 | 483 by 123 |
+| Kadence | 47 by 12, heading over side line | 430 by 109 | 110 by 28, heading over side line | 494 by 126 |
+| Storefront | 90 by 23, heading over side line | 403 by 102 | 154 by 39 | 299 by 76 |
+
+**Decision:** under `(orientation: landscape) and (max-height: 30rem)` with the builder narrower than 64rem, the strip stays on top, and the picture is two columns inside it: the heading, the side line and Show the top in a column of 13rem at the strip's start (as wide as "Show the underside" on one line in Twenty Twenty-Five's type), and the board across the rest, in every row. The board's size takes the words' column off the strip's width. The labelled parts' photos are hidden in that strip, as they are for a deck's photo (D-303): there is no height for them, and the summary still lists every part. The heading and side line are placed in their rows in D-320's short-landscape rule too, so they never land in the board's row again. Storefront's and Kadence's heading and paragraph margins are zeroed there at `.cbuild.cbuild` weight (D-321), or the column overflows the strip.
+
+**Not chosen:** the builder in two columns, the stage beside the panel, as on a desktop. Measured: the board 322 by 82 at 750 and 416 by 106 at 844, smaller than the strip's; the panel's body 116 to 188 px tall by 379 wide, scrolling inside itself with the footer under it; and on Storefront at 844 the builder is 562 px wide, so it would stay stacked anyway.
+
+**Why:** the brief's floor is 261 by 69 px, the board's size at 390 px held upright. The strip already holds the board in view while the panel scrolls, which is what the stacked layout is for; the words were what cost it. WCAG 2.2 SC 1.3.4 (Orientation) asks that the content work held either way, and SC 1.4.10 (Reflow) that nothing scrolls in two directions, which the two-column layout's inner scroll came near.
+
+**Test:** `builder.spec.ts`, "draws the board at least 261 by 69 with no words over each other, held sideways at {750 by 342, 844 by 390} on {three themes}": the board's sides, no two of the heading's, the side line's, the button's and the board's boxes over each other (each line trimmed to its line-height), all inside the stage, the underside and then the top. **Red run:** six of six failed at builder.spec.ts:5978, 'Expected "whole, clear"', with the figures above. **Deliberate break:** the words' column as `minmax(0, 1fr)`, and Kadence at 750 failed with "the board past the stage".
+
+**Status:** Accepted.
+
+### D-360 · Once a width is chosen the deck step drops its lead, and Sort sits on the brands' line · 2026-11-24
+
+**Context:** Cowork's 1.1.0 review, F24 (#122). On the demo (Board size Balanced) at 1440 by 900, once a width was chosen the first view showed two compact cards, cut off, under the step's lead, a plugin's notice of about 70 px, the width, the search, the brands and Sort.
+
+**Decision:**
+
+- The deck step's lead, "Start with a width…", shows until a width is chosen. After it the width's own line says what was chosen. This is `hasLead` in `BuilderView`, a line of the view's, not of the template: the brief asked to keep F24 to the template and CSS, and the lead's condition can only be the view's, since the template reads `hasLead`.
+- Sort moves out of the step's fieldset into a row with the chips, `.cbuild-step__tools`, and sits at the end of the chips' last line. The chips keep 20rem at least; where the two do not fit, Sort wraps to a line of its own under them, as before, and on a phone, where the chips fold behind Filters, Sort keeps its own line. Since Sort is no longer inside the fieldset the width question hides, its `shown` is false while the deck step asks its width.
+
+**The counts held** (1440 by 900, Balanced, the builder at the window's top, 8.25″ chosen, whole cards above the bar):
+
+| Theme | before | after | before, under a 70 px notice | after, under a 70 px notice |
+| --- | --- | --- | --- | --- |
+| Kadence | 2 | 4 | 2 | 4 |
+| Twenty Twenty-Five | 0 | 2 | 0 | 2 |
+
+The test holds the counts under the 70 px notice: four on Kadence and two on Twenty Twenty-Five, whose type is larger. D-322's six at a time still need the page scrolled to the cards, as its own test does. Without the script every brand shows with Apply over several lines (D-314), so the count is not held there.
+
+**Why:** what the shopper came to the step for is the cards. NN/g's "Scrolling and Attention" finds most viewing time above the fold, and a listing's first view that shows no whole product reads as empty. A lead whose instruction has been followed is noise; Sort beside the filters is where Baymard's product list benchmarks find it, on the line above the list.
+
+**Test:** `shelf.spec.ts`, "shows {2, 4} whole decks in the first view after a width at 1440 by 900, under a 70 px notice, on {Twenty Twenty-Five, Kadence}": the count, the lead hidden, and Sort's middle within 4 px of the last brand chip's. **Red run:** at shelf.spec.ts:498, "whole cards in the first view, Expected: >= 2, Received: 0" (Twenty Twenty-Five) and "Expected: >= 4, Received: 2" (Kadence). **Deliberate break:** the chips at `flex: 1 1 100%`, so Sort wraps again; the same two failures.
+
+**Flagged for Zach:** the view change to `hasLead` and Sort's `shown`, beside the template and CSS.
+
+**Status:** Accepted.
+
+### D-361 · The phone rail keeps the page's gutter where the row has room, and its border under the step's name · 2026-11-24
+
+**Context:** Cowork's 1.1.0 review, F25 (#123). Below 48rem the rail's pills were spread edge to edge with `space-between`, from 0 to the builder's full width; and below 26rem Kadence's list rule took the padding that leaves room for the current step's name, so the name was drawn 15 px under the rail's border.
+
+**Decision:** two flex spacers at the row's ends, each growing to at most the theme's root padding or 1rem (`--wp--style--root--padding-left`), with a negative margin that cancels the gap beside each, so the row wraps where it wrapped before and the pills keep their 44 px. With no room left the spacers take none, and D-330's one row at 320 px holds. The padding under the pills is set at `.cbuild.cbuild` weight (D-321).
+
+**Measured:** Kadence at 390, the pills from 21 to 369 px of 390, the rail's border at 86 under the name's 59 to 81. Storefront's 274 px column at 320 still wraps as D-330 allows.
+
+**Why:** WordPress's own gutter is the root padding (theme.json `useRootPaddingAwareAlignments`), and Apple's and Material's layout guides keep 16 px margins on a phone. A control at the screen's edge sits under the case's curve and a thumb's grip.
+
+**Test:** `builder.spec.ts`, "keeps the phone rail inside the gutter, and the step's name above its border, on {three themes}", at 320, 390 and 430 on the deck and hardware steps. **Red run:** at builder.spec.ts:3803, Kadence "320 px, step deck: the name above the rail's border, Expected <= 0, Received 15"; Storefront "390 px, step deck: the rail's start inside the gutter, Expected >= 11, Received 0"; Twenty Twenty-Five the same, "Expected >= 15, Received 0". **Deliberate break:** the spacers' content removed and the padding back at `:where()` weight; the same failures.
+
+**Status:** Accepted.
+
+D-362 was not used: F26 (#124), Sort and the count left out of an empty list, follows the spec's "the step says why" and needed no choice of its own.
