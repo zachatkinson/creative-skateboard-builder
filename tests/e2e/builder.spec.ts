@@ -6015,6 +6015,181 @@ test.describe( 'The board turned over', () => {
 		} );
 	}
 
+	// Cowork's 1.1.0 review, F21 (#119): held sideways (750 by 342 on Kadence) the stage was a strip 116 px high, the
+	// board 47 by 13 px, and the heading's box 1 px high, so the side line was drawn over it. The board is to be no
+	// smaller than on a 320 px phone held upright, 261 by 69 px, and no two of the stage's words may overlap.
+	for ( const theme of [ 'twentytwentyfive', 'kadence', 'storefront' ] ) {
+		for ( const [ width, height ] of [
+			[ 750, 342 ],
+			[ 844, 390 ],
+		] as const ) {
+			test( `draws the board at least 261 by 69 with no words over each other, held sideways at ${ width } by ${ height } on ${ theme }`, async ( {
+				page,
+				context,
+				baseURL,
+			} ) => {
+				await context.addCookies( [
+					{
+						name: 'cbuild_e2e_theme',
+						value: theme,
+						url: baseURL || SITE,
+					},
+				] );
+				await page.setViewportSize( { width, height } );
+				await page.goto(
+					linkTo( {
+						deck: id( 'builder-test-deck-8-0' ),
+						step: 'trucks',
+					} )
+				);
+				await expect( under( page ) ).toBeVisible();
+				/**
+				 * What is wrong with the stage as it rests: the board shown smaller than 261 by 69, any of its words
+				 * drawn over another or over the board, or any of them past the stage's edge, where it is cut off.
+				 *
+				 * @param side The board shown, the underside or the top.
+				 */
+				const wrong = ( side: string ) =>
+					picture( page ).evaluate( ( figure, shownSide ) => {
+						if (
+							figure
+								.getAnimations( { subtree: true } )
+								.some( ( one ) => 'running' === one.playState )
+						) {
+							return 'moving';
+						}
+						const box = figure
+							.querySelector( shownSide )
+							?.getBoundingClientRect();
+						if ( ! box ) {
+							return 'no board';
+						}
+						const long = Math.max( box.width, box.height );
+						const short = Math.min( box.width, box.height );
+						const said: string[] = [];
+						if ( long < 261 - 0.5 || short < 69 - 0.5 ) {
+							said.push(
+								`the board is ${ Math.round( box.width ) } by ${ Math.round( box.height ) }`
+							);
+						}
+						// The stage's words as they are drawn: the heading's, the side line's and the button's
+						// lines, from the text itself, so a heading whose box is 1 px high still shows its words
+						// where they are. Each line is as high as its line-height, about its middle: a font's
+						// ascent and descent reach past it (Twenty Twenty-Five's heading by 3 px) with no glyph
+						// there.
+						const words: { name: string; box: DOMRect }[] = [];
+						for ( const [ name, selector ] of [
+							[ 'the heading', '.cbuild-picture__heading' ],
+							[ 'the side line', '.cbuild-picture__side' ],
+							[
+								'the button',
+								'.cbuild-picture__turn .cbuild-button',
+							],
+						] as const ) {
+							const shown = figure.querySelector( selector );
+							if (
+								! shown ||
+								0 === shown.getClientRects().length ||
+								'hidden' ===
+									getComputedStyle( shown ).visibility
+							) {
+								continue;
+							}
+							const range = document.createRange();
+							range.selectNodeContents( shown );
+							const high = parseFloat(
+								getComputedStyle( shown ).lineHeight
+							);
+							for ( const line of range.getClientRects() ) {
+								if ( line.width > 0 && line.height > 0 ) {
+									const lined =
+										high > 0 && high < line.height
+											? high
+											: line.height;
+									words.push( {
+										name,
+										box: new DOMRect(
+											line.left,
+											line.top +
+												( line.height - lined ) / 2,
+											line.width,
+											lined
+										),
+									} );
+								}
+							}
+						}
+						words.push( { name: 'the board', box } );
+						// The stage cuts off what runs past its edges: each word, the button's whole box and the
+						// board inside it.
+						const stage = figure
+							.closest( '.cbuild__stage' )
+							?.getBoundingClientRect();
+						const button = figure
+							.querySelector(
+								'.cbuild-picture__turn .cbuild-button'
+							)
+							?.getBoundingClientRect();
+						for ( const one of [
+							...words,
+							...( button && button.height > 0
+								? [ { name: 'the button', box: button } ]
+								: [] ),
+						] ) {
+							if (
+								stage &&
+								( one.box.top < stage.top - 0.5 ||
+									one.box.bottom > stage.bottom + 0.5 ||
+									one.box.left < stage.left - 0.5 ||
+									one.box.right > stage.right + 0.5 )
+							) {
+								said.push( `${ one.name } past the stage` );
+							}
+						}
+						const meet = ( a: DOMRect, b: DOMRect ) =>
+							Math.min( a.right, b.right ) -
+								Math.max( a.left, b.left ) >
+								0.5 &&
+							Math.min( a.bottom, b.bottom ) -
+								Math.max( a.top, b.top ) >
+								0.5;
+						words.forEach( ( one, at ) => {
+							for ( const other of words.slice( at + 1 ) ) {
+								if (
+									one.name !== other.name &&
+									meet( one.box, other.box )
+								) {
+									said.push(
+										`${ one.name } over ${ other.name }`
+									);
+								}
+							}
+						} );
+						return said.length
+							? [ ...new Set( said ) ].join( '; ' )
+							: 'whole, clear';
+					}, side );
+				await expect
+					.poll( () =>
+						wrong( '.cbuild-board:not(.cbuild-board--top)' )
+					)
+					.toBe( 'whole, clear' );
+				// Turned over, the button says "Show the underside", the longer name.
+				const turn = picture( page ).locator(
+					'.cbuild-picture__turn .cbuild-button'
+				);
+				if ( ! ( await turn.isVisible() ) ) {
+					return;
+				}
+				await turn.click();
+				await expect( turn ).toHaveAttribute( 'aria-pressed', 'true' );
+				await expect
+					.poll( () => wrong( '.cbuild-board--top' ) )
+					.toBe( 'whole, clear' );
+			} );
+		}
+	}
+
 	// Milestone 11's walkthrough: on Kadence at 390 px the button lay about 5 px over the board's lower edge, where the
 	// theme's taller heading left the board's row shorter. Each side's whole box, on the themes with a heading of their
 	// own, held and stacked.

@@ -1535,12 +1535,31 @@
 }
 
 /* A phone held sideways leaves the stage about 133 px: too short for the heading, the side line, the board and the
-   button stacked. The button goes up beside the heading and the side line, so the board keeps its own row. */
+   button stacked. The button goes up beside the heading and the side line, so the board keeps its own row. The two
+   are placed in their rows: left to the grid, they went after the button's, the heading took the board's row with a
+   box 1 px high, and the side line was drawn over it (F21, #119). */
 @media (orientation: landscape) and (max-height: 30rem) {
 	:where(.cbuild__stage .cbuild-picture__turn) {
 		grid-row: 1 / span 2;
 		align-self: start;
 		padding-block-end: 0;
+	}
+
+	:where(.cbuild__stage .cbuild-picture__heading) {
+		grid-area: 1 / 1;
+	}
+
+	:where(.cbuild__stage .cbuild-picture__side) {
+		grid-area: 2 / 1;
+	}
+
+	/* Each a line high and no more: a theme's margins for a heading and a paragraph, and Storefront's heading's
+	   line-height of 1.6, took 142 px of a strip 109 px high on Storefront. Two classes, over a theme's rule for them in
+	   its content, as Kadence's `.single-content h3` and `.single-content p` (D-321). */
+	.cbuild.cbuild :where(.cbuild__stage .cbuild-picture__heading),
+	.cbuild.cbuild :where(.cbuild__stage .cbuild-picture__side) {
+		margin-block: 0;
+		line-height: 1.25;
 	}
 }
 
@@ -1670,6 +1689,57 @@
 		position: static;
 		block-size: auto;
 		padding-block-end: var(--cbuild-gap-small);
+	}
+}
+
+/*
+ * A phone held sideways (F21, #119; D-359). The strip on top was about 116 px high, and the board in it 47 by 13 px on
+ * Kadence: the heading, the side line, the board and the button in one column left the board a row a few pixels high.
+ * The words take a column of their own at the strip's start, the heading, the side line and the button under them, and
+ * the board has the rest, as long as it is wide and as thick as the strip is high. The stage shows the board alone:
+ * the labelled photos of the parts with no layer image have no room beside it, and the caption, the bar's parts and the
+ * review name them, as for a deck's photo (D-303).
+ */
+@media (orientation: landscape) and (max-height: 30rem) {
+	/* Below the desktop's two columns, where the stage is the strip on top. */
+	@container cbuild (width < 64rem) {
+		/* The words' column: as wide as the button's longer name, "Show the underside", on one line in a theme's larger
+		   type (Twenty Twenty-Five's 19.7 px). */
+		:where(.cbuild__stage .cbuild-picture) {
+			grid-template-columns: minmax(0, 13rem) minmax(0, 1fr);
+			grid-template-rows: auto auto auto minmax(0, 1fr);
+			column-gap: var(--cbuild-gap-small);
+		}
+
+		:where(.cbuild__stage .cbuild-picture__turn) {
+			grid-area: 3 / 1;
+			justify-self: start;
+			max-inline-size: 100%;
+		}
+
+		:where(.cbuild__stage)
+			:where(
+				.cbuild-board:not(.cbuild-board--bar),
+				.cbuild-picture__empty,
+				.cbuild-picture--hero .cbuild-picture__items
+			) {
+			grid-area: 1 / 2 / -1 / 3;
+		}
+
+		:where(.cbuild__stage) :where(.cbuild-board:not(.cbuild-board--bar)) {
+			/* Beside the board: the words' 13rem with the strip's padding, 16rem, and the gap. No custom property for
+			   them, so none joins the public API. */
+			--cbuild-board-size: min(
+				calc(100cqi - 16rem - var(--cbuild-gap-small)),
+				32rem,
+				calc(100% / (var(--cbuild-board-ratio, 1 / 4)))
+			);
+		}
+
+		:where(.cbuild__stage .cbuild-picture:not(.cbuild-picture--hero))
+			:where(.cbuild-picture__items) {
+			display: none;
+		}
 	}
 }
 
