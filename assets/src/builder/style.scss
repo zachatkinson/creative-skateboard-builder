@@ -2038,6 +2038,19 @@
 	transform: translateX(-100%);
 }
 
+/* A deck drawn at its press (D-357): the deck shows whole, and the rest of the board keeps the dim until the answer. */
+:where(.cbuild[data-swapped] .cbuild-picture--drawing) :where(.cbuild-board) {
+	opacity: 1;
+}
+
+:where(.cbuild[data-swapped] .cbuild-picture--drawing)
+	:where(
+		.cbuild-board > .cbuild-board__layer:not(.cbuild-board__layer--deck)
+	) {
+	opacity: 0.55;
+	transition: opacity var(--cbuild-duration, 0.2s) ease;
+}
+
 @keyframes cbuild-drawing {
 	to {
 		transform: translateX(250%);
@@ -2051,7 +2064,8 @@
 		display: none;
 	}
 
-	:where(.cbuild-picture--drawing) :where(.cbuild-board) {
+	:where(.cbuild-picture--drawing)
+		:where(.cbuild-board, .cbuild-board__layer) {
 		transition-duration: 150ms;
 	}
 }
@@ -2060,7 +2074,8 @@
 	display: none;
 }
 
-:where(.cbuild--subtle .cbuild-picture--drawing) :where(.cbuild-board) {
+:where(.cbuild--subtle .cbuild-picture--drawing)
+	:where(.cbuild-board, .cbuild-board__layer) {
 	transition-duration: 150ms;
 }
 

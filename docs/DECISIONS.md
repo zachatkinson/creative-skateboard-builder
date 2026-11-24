@@ -5074,3 +5074,22 @@ The rest of F20 (#118). Held back 800 ms on the fixture, a width shifted 0.018 o
 **Why:** the store knew at the press what these answers would move; making the change then is within the 500 ms the shopper expects a change in, and leaves the late answer nothing to move.
 
 **Status:** Accepted.
+
+### D-357 · The pressed deck's board is drawn at the press, once decoded, and the answer confirms it or puts it back · 2026-11-24
+
+Cowork's review of 1.1.0, F23 (#121, design): a deck pressed showed the old board, dimmed, until the route answered, up to a second on a real host. D-308 held the swap until the answer named the board.
+
+- **At the press.** The card carries the board it would draw alone (`options[].board`, `preload` in the view, D-308), and the press fetched it. Once that image is decoded, the store draws it in the deck's layer: its file, its sources by type and `sizes`, so the browser picks the file the stage will draw, and settles it with the swap's moment. It is never drawn half decoded; an image that fails to decode leaves the old board.
+- **The cue stays on the rest.** From 300 ms (D-308) the picture keeps `aria-busy` and the dim, but the deck drawn at the press is at full strength, and the other layers dimmed, until the answer.
+- **The answer decides.** The server still decides fit and price. Its view confirms the deck, which is drawn already, so nothing changes; or brings up the change panel; or refuses it, with its error summary, and its view draws the board it holds, so the old deck comes back and the status says why. An answer that comes before the image is decoded is shown, and the image decoded after it is drawn over nothing.
+- **Not drawn at the press:** a deck with no board image of its own (the photo stand-in of D-303), the same deck, a board turned to its top, or a board with no deck.
+- **Reduced motion and subtle** draw it by a fade of 150 ms or less, opacity alone (D-256).
+- **This changes D-308's "swap once decoded"** from the answer's moment to the press's. The navigator still holds an answer for the deck's image (`HOLD`); that image is the one drawn already, so the answer shows at once.
+
+**Red runs and breaks** are in the commit.
+
+**Sources:** D-308's (NN/g's response time limits, Baymard's loading indicators, the HTML standard's `HTMLImageElement.decode()`).
+
+**Why:** the board is the builder's answer to a pick; a shopper who presses a deck should see that deck, and the server's word still comes after it.
+
+**Status:** Accepted.

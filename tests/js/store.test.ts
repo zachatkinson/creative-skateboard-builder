@@ -583,6 +583,246 @@ describe( 'the store', () => {
 			expect( HOLD ).toBeGreaterThan( SLOW );
 		} );
 
+		// Cowork's review of 1.1.0, F23 (#121; D-357): the pressed deck's board is drawn at the press, once decoded, and
+		// the answer confirms it or puts it back.
+		describe( 'drawn at the press', () => {
+			const init = (): void =>
+				(
+					defined.definition as { callbacks: { init: () => void } }
+				 ).callbacks.init();
+
+			/**
+			 * The deck step drawing deck 11 with its files by type, the builder started, and deck 12's card to press.
+			 */
+			function started(): {
+				radio: HTMLInputElement;
+				deck: {
+					src: string;
+					sizes: string;
+					sources: { type: string; srcset: string; sizes: string }[];
+				};
+			} {
+				const card = deckCards( 'webp' );
+				setElement(
+					document.querySelector< HTMLElement >( '.cbuild' )!
+				);
+				init();
+				setElement( card );
+				const deck = {
+					key: 'deck-1',
+					style: '',
+					src: 'https://shop.example/11.png',
+					sizes: '153px',
+					sources: [
+						{
+							type: 'image/avif',
+							srcset: 'https://shop.example/11.avif 216w',
+							sizes: '153px',
+						},
+						{
+							type: 'image/webp',
+							srcset: 'https://shop.example/11.webp 216w',
+							sizes: '153px',
+						},
+					],
+				};
+				(
+					state.view as {
+						picture: { board: { layers: unknown[] } };
+					}
+				 ).picture.board.layers = [
+					deck,
+					{ key: 'trucks-1', style: '' },
+				];
+				return { radio: card.querySelector( 'input' )!, deck };
+			}
+
+			it( "draws the pressed deck's board once its image is decoded, before the answer, and the answer confirms it", async () => {
+				const { radio, deck } = started();
+				const animated: string[] = [];
+				Object.assign(
+					document.querySelector( '.cbuild-board > picture' )!,
+					{
+						animate: () => {
+							const animation = {
+								id: '',
+								finished: Promise.resolve(),
+							};
+							queueMicrotask( () =>
+								animated.push( animation.id )
+							);
+							return animation;
+						},
+					}
+				);
+				reply = () => new Promise< Response >( () => undefined );
+				actions.point( { type: 'pointerdown' } as PointerEvent );
+				actions.pick( { target: radio } as unknown as Event );
+				expect( deck.src, 'not before it is decoded' ).toBe(
+					'https://shop.example/11.png'
+				);
+				made[ 0 ]!.decoded();
+				await settle();
+				expect( deck.src ).toBe( PRELOAD.src );
+				expect( deck.sizes ).toBe( PRELOAD.sizes );
+				expect( deck.sources ).toEqual( [
+					{
+						type: 'image/avif',
+						srcset: PRELOAD.avif,
+						sizes: PRELOAD.sizes,
+					},
+					{
+						type: 'image/webp',
+						srcset: PRELOAD.webp,
+						sizes: PRELOAD.sizes,
+					},
+				] );
+				const root = document.querySelector( '.cbuild' )!;
+				expect( root.getAttribute( 'data-swapped' ) ).toBe( '' );
+				expect( animated, 'on the next frame' ).toEqual( [] );
+				vi.advanceTimersToNextFrame();
+				await settle();
+				expect( animated ).toEqual( [ 'cbuild-swapped' ] );
+				expect( state.view.url, 'the answer still awaited' ).toBe(
+					START.url
+				);
+			} );
+
+			it( 'gives way to the answer: no mark once it is in, and no image decoded after it drawn over it', async () => {
+				const { radio, deck } = started();
+				reply = () =>
+					answer( { ...START, url: START.url + '&answered' } );
+				actions.pick( { target: radio } as unknown as Event );
+				vi.advanceTimersByTime( WAIT );
+				await settle();
+				expect( state.view.url ).toBe( START.url + '&answered' );
+				made[ 0 ]!.decoded();
+				await settle();
+				expect( deck.src, 'the answer drew the board' ).toBe(
+					'https://shop.example/11.png'
+				);
+
+				// Drawn, then answered: the mark goes with the answer.
+				const again = started();
+				let answered: ( response: Response ) => void = () => undefined;
+				reply = () =>
+					new Promise< Response >( ( done ) => ( answered = done ) );
+				actions.pick( { target: again.radio } as unknown as Event );
+				vi.advanceTimersByTime( WAIT );
+				made.at( -1 )!.decoded();
+				await settle();
+				const root = document.querySelector( '.cbuild' )!;
+				expect( again.deck.src ).toBe( PRELOAD.src );
+				vi.advanceTimersByTime( SLOW );
+				expect( state.pending ).toBe( true );
+				expect(
+					root.hasAttribute( 'data-swapped' ),
+					'kept while the answer is awaited'
+				).toBe( true );
+				answered( answer( { ...START, url: START.url + '&again' } ) );
+				await settle();
+				expect( state.view.url ).toBe( START.url + '&again' );
+				expect( root.hasAttribute( 'data-swapped' ) ).toBe( false );
+			} );
+
+			it( 'draws nothing for a deck with no board image, one already drawn, a board turned over, no deck on the board, or an image never decoded', async () => {
+				reply = () => new Promise< Response >( () => undefined );
+				const cases: Array< ( deck: { src: string } ) => void > = [
+					() => {
+						(
+							state.view.step as {
+								options: { preload: { shown: boolean } }[];
+							}
+						 ).options[ 1 ]!.preload = { ...PRELOAD, shown: false };
+					},
+					( deck ) => {
+						deck.src = PRELOAD.src;
+					},
+					() => {
+						( state.view.picture as { turned: boolean } ).turned =
+							true;
+					},
+					() => {
+						(
+							state.view as {
+								picture: { board: { layers: unknown[] } };
+							}
+						 ).picture.board.layers = [
+							{ key: 'trucks-1', style: '' },
+						];
+					},
+					() => {
+						( state.view as { picture?: unknown } ).picture =
+							undefined;
+					},
+					() => {
+						(
+							state.view as { picture: { board?: unknown } }
+						 ).picture.board = undefined;
+					},
+					() => {
+						(
+							state.view.step as {
+								options: { preload: { src: string } }[];
+							}
+						 ).options[ 1 ]!.preload = { ...PRELOAD, src: '' };
+					},
+				];
+				for ( const make of cases ) {
+					reset();
+					made = [];
+					const { radio, deck } = started();
+					make( deck );
+					const was = JSON.stringify( state.view.picture );
+					actions.pick( { target: radio } as unknown as Event );
+					made.forEach( ( image ) => image.decoded() );
+					await settle();
+					expect( JSON.stringify( state.view.picture ) ).toBe( was );
+					expect(
+						document
+							.querySelector( '.cbuild' )!
+							.hasAttribute( 'data-swapped' )
+					).toBe( false );
+				}
+
+				reset();
+				made = [];
+				const { radio, deck } = started();
+				vi.stubGlobal(
+					'Image',
+					class {
+						decode(): Promise< void > {
+							return Promise.reject( new Error( 'Not decoded' ) );
+						}
+					}
+				);
+				actions.pick( { target: radio } as unknown as Event );
+				await settle();
+				expect( deck.src ).toBe( 'https://shop.example/11.png' );
+			} );
+
+			it( 'draws the board for a builder the script never started', async () => {
+				const card = deckCards( 'webp' );
+				setElement( card );
+				const deck = {
+					key: 'deck-1',
+					style: '',
+					src: 'https://shop.example/11.png',
+				};
+				(
+					state.view as { picture: { board: { layers: unknown[] } } }
+				 ).picture.board.layers = [ deck ];
+				reply = () => new Promise< Response >( () => undefined );
+				actions.pick( {
+					target: card.querySelector( 'input' )!,
+				} as unknown as Event );
+				made[ 0 ]!.decoded();
+				await settle();
+				expect( deck.src ).toBe( PRELOAD.src );
+				expect( () => vi.advanceTimersToNextFrame() ).not.toThrow();
+			} );
+		} );
+
 		it( 'never says the picture is drawn for a wait that is no pick', async () => {
 			link( '/?page_id=25&cbuild%5Bstep%5D=trucks' );
 			reply = () => new Promise< Response >( () => undefined );

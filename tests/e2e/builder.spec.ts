@@ -5788,6 +5788,246 @@ test.describe( 'The deck swap', () => {
 	} );
 } );
 
+// Cowork's review of 1.1.0, F23 (#121; D-357): the board a deck's card carries, which pointing at the card fetched
+// (D-308), is drawn at the press, once decoded, while the route is still asked; the rest of the picture keeps the cue
+// until the answer, which confirms the deck, or refuses it and puts the board back with the reason. Every engine, as a
+// press is every shopper's; the route is held back with `page.route`, which each of them has.
+test.describe( 'The deck drawn at its press', () => {
+	test.beforeEach( ( {}, info ) => {
+		test.skip(
+			'no-js' === info.project.name,
+			'The store draws the board; without it the page is the server’s.'
+		);
+	} );
+
+	const deckImage =
+		'.cbuild-board:not(.cbuild-board--top) .cbuild-board__layer--deck img';
+
+	/**
+	 * The deck's image on the board as drawn: its layer's file, and whether what the browser draws of it is whole.
+	 *
+	 * @param page The page.
+	 */
+	const drawn = ( page: Page ) =>
+		page
+			.locator( `#cbuild-picture ${ deckImage }` )
+			.evaluate( ( image: HTMLImageElement ) => ( {
+				// The layer's own file, which names the part; the browser draws one of its renditions.
+				file:
+					( image.getAttribute( 'src' ) ?? '' ).split( '/' ).pop() ??
+					'',
+				whole: image.complete && image.naturalWidth > 0,
+			} ) );
+
+	/**
+	 * The board at 8.5 in with the 8.0 deck and the 139 trucks on it, the route held until the test lets it answer,
+	 * asked as the test would have it asked, and the 8.5 deck pressed.
+	 *
+	 * @param page   The page.
+	 * @param ask    The address the route is asked.
+	 * @param motion Whether motion is reduced.
+	 */
+	async function pressed(
+		page: Page,
+		ask: ( url: URL ) => URL,
+		motion: 'reduce' | 'no-preference'
+	): Promise< { was: string; release: () => void } > {
+		await page.emulateMedia( { reducedMotion: motion } );
+		await page.goto(
+			linkTo( {
+				deck: id( 'builder-test-deck-8-0' ),
+				trucks: id( 'builder-test-trucks-139' ),
+				step: 'deck',
+				_width: '8.5in',
+			} )
+		);
+		await expect( page.locator( '.cbuild[data-ready]' ) ).toHaveCount( 1 );
+		const { file: was } = await drawn( page );
+		let release: () => void = () => undefined;
+		const held = new Promise< void >( ( done ) => ( release = done ) );
+		await page.route(
+			( url ) => url.pathname.endsWith( '/state' ),
+			async ( route ) => {
+				const answer = await route
+					.fetch( {
+						url: ask( new URL( route.request().url() ) ).toString(),
+					} )
+					.catch( () => null );
+				await held;
+				if ( answer ) {
+					await route
+						.fulfill( { response: answer } )
+						.catch( () => null );
+				}
+			}
+		);
+		await page
+			.getByRole( 'radio', { name: 'Choose Builder test deck 8.5' } )
+			.click();
+		return { was, release };
+	}
+
+	test( "draws the pressed deck's board, whole, before its late answer, with the cue on the rest", async ( {
+		page,
+	} ) => {
+		const { was, release } = await pressed(
+			page,
+			( url ) => url,
+			'no-preference'
+		);
+		await expect
+			.poll( async () => ( await drawn( page ) ).file, {
+				message: 'the 8.5 deck, the answer still held',
+				timeout: 5_000,
+			} )
+			.toContain( 'deck-8-5' );
+		expect( was ).toContain( 'deck-8-0' );
+		expect( ( await drawn( page ) ).whole, 'whole when drawn' ).toBe(
+			true
+		);
+		// The cue stays on the rest of the picture, from 300 ms on, until the answer: the trucks dimmed, the deck not.
+		const picture = page.locator( '#cbuild-picture' );
+		await expect( picture ).toHaveAttribute( 'aria-busy', 'true' );
+		const opacity = ( selector: string ) =>
+			picture
+				.locator(
+					`.cbuild-board:not(.cbuild-board--top) > ${ selector }`
+				)
+				.first()
+				// As drawn: the layer's own opacity times the board's and the picture's around it.
+				.evaluate( ( layer ) => {
+					let seen = 1;
+					for (
+						let at: Element | null = layer;
+						at && 'cbuild-picture' !== at.id;
+						at = at.parentElement
+					) {
+						seen *= Number( getComputedStyle( at ).opacity );
+					}
+					return seen;
+				} );
+		await expect
+			.poll( () => opacity( '.cbuild-board__layer--trucks' ) )
+			.toBeLessThan( 1 );
+		await expect
+			.poll( () => opacity( '.cbuild-board__layer--deck' ) )
+			.toBe( 1 );
+		release();
+		await expect( picture ).toHaveAttribute( 'aria-busy', 'false' );
+		expect( ( await drawn( page ) ).file ).toContain( 'deck-8-5' );
+		await expect( page ).toHaveURL(
+			new RegExp( `deck%5D=${ id( 'builder-test-deck-8-5' ) }(&|$)` )
+		);
+	} );
+
+	// The route refuses a deck as it refuses any part it does not offer: asked for a truck as the deck, it answers with
+	// the error summary and no deck, as for one sold out since the page was drawn.
+	test( 'puts the board back when the answer refuses the deck, and says why', async ( {
+		page,
+	} ) => {
+		const { release } = await pressed(
+			page,
+			( url ) => {
+				url.searchParams.set(
+					'cbuild[deck]',
+					String( id( 'builder-test-trucks-139' ) )
+				);
+				return url;
+			},
+			'no-preference'
+		);
+		await expect
+			.poll( async () => ( await drawn( page ) ).file, {
+				timeout: 5_000,
+			} )
+			.toContain( 'deck-8-5' );
+		release();
+		await expect( page.locator( '.cbuild-errors' ) ).toContainText(
+			'Deck: the part chosen is not one this kit offers here.'
+		);
+		await expect(
+			page.locator( `#cbuild-picture ${ deckImage }` ),
+			'the pressed deck is no longer drawn'
+		).toHaveCount( 0 );
+		await expect( page.locator( '.cbuild' ) ).toHaveAttribute(
+			'aria-busy',
+			'false'
+		);
+	} );
+
+	test( "under reduced motion draws the pressed deck's board at the press by a fade of 150 ms or less", async ( {
+		page,
+	} ) => {
+		await page.addInitScript( () => {
+			const w = window as unknown as {
+				swaps: { duration: number; properties: string[] }[];
+			};
+			w.swaps = [];
+			const animate = Element.prototype.animate;
+			Element.prototype.animate = function ( frames, options ) {
+				const animation = animate.call( this, frames, options );
+				queueMicrotask( () => {
+					if ( 'cbuild-swapped' !== animation.id ) {
+						return;
+					}
+					const keyframes = (
+						animation.effect as KeyframeEffect
+					 ).getKeyframes() as Keyframe[];
+					w.swaps.push( {
+						duration: Number(
+							animation.effect?.getComputedTiming().duration ?? 0
+						),
+						properties: [
+							...new Set(
+								keyframes.flatMap( ( frame ) =>
+									Object.keys( frame ).filter(
+										( key ) =>
+											! [
+												'offset',
+												'computedOffset',
+												'easing',
+												'composite',
+											].includes( key )
+									)
+								)
+							),
+						],
+					} );
+				} );
+				return animation;
+			};
+		} );
+		const { release } = await pressed( page, ( url ) => url, 'reduce' );
+		await expect
+			.poll( async () => ( await drawn( page ) ).file, {
+				timeout: 5_000,
+			} )
+			.toContain( 'deck-8-5' );
+		await expect
+			.poll( () =>
+				page.evaluate(
+					() =>
+						( window as unknown as { swaps: unknown[] } ).swaps
+							.length
+				)
+			)
+			.toBeGreaterThan( 0 );
+		const swaps = await page.evaluate(
+			() =>
+				(
+					window as unknown as {
+						swaps: { duration: number; properties: string[] }[];
+					}
+				 ).swaps
+		);
+		release();
+		for ( const swap of swaps ) {
+			expect( swap.duration ).toBeLessThanOrEqual( 150 );
+			expect( swap.properties ).toEqual( [ 'opacity' ] );
+		}
+	} );
+} );
+
 test.describe( 'The board on the stage', () => {
 	for ( const [ theme, width, height ] of [
 		[ 'kadence', 390, 844 ],

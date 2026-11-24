@@ -364,4 +364,4 @@ The route held back 800 ms after the request, as a slow host answers (Cowork's r
 
 Next is measured pressed a second after the pick's answer, once the answer asked ahead is in (D-355). The phone's stage still starts to stick at the answer (D-303): made to stick from the press, it measured the same 0.000 (D-356). Pressed straight after the pick's answer, before the one asked ahead is in, it still shifted 0.021 on the desktop and 0.046 on the phone: the press waits for the rest of that answer, as any press waits for its own.
 
-The store's script is 7,604 B compressed (7,133 B in 1.1.0).
+The store's script is 7,604 B compressed (7,133 B in 1.1.0), and 7,760 B with the deck drawn at its press (D-357, #121).

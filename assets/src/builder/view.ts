@@ -941,6 +941,63 @@ function folding(
 	};
 }
 
+/** The pick whose board is being drawn at its press, until a view is shown, so one decoded late draws over nothing. */
+let swapping: object | undefined;
+
+/**
+ * Draw the pressed deck's board at the press, from its card's image, which pointing at the card fetched (F23, #121;
+ * D-357), once it is decoded, so the board never shows half drawn. The rest of the picture keeps the cue that its
+ * answer is on its way. The answer then confirms the deck, or brings the change panel or a refusal, and the board is
+ * drawn as it says: put back, where the server refused the deck. The server still decides fit and price; this shows.
+ *
+ * @param view  The view shown.
+ * @param value The radio's value.
+ */
+function swap( view: Shown, value: string ): void {
+	const now = {};
+	swapping = now;
+	// Anything in the list that is not a card is no deck.
+	const options = ( view.step.options ?? [] ) as Array< {
+		id?: number;
+		preload?: Preload;
+	} | null >;
+	const preload = options.find(
+		( option ) => String( option?.id ) === value
+	)?.preload;
+	const layers = view.picture?.board?.layers ?? [];
+	const deck = layers.find( ( layer ) => 'deck-1' === layer.key );
+	if (
+		! preload?.shown ||
+		true === view.picture?.turned ||
+		! deck ||
+		deck.src === preload.src
+	) {
+		return;
+	}
+	const image = fetchBoard( preload );
+	void image?.decode().then(
+		() => {
+			if ( now !== swapping ) {
+				return;
+			}
+			const before = layers.map( ( layer ) => ( { ...layer } ) );
+			deck.src = preload.src;
+			deck.sizes = preload.sizes;
+			for ( const source of deck.sources ?? [] ) {
+				source.srcset =
+					'image/avif' === source.type ? preload.avif : preload.webp;
+				source.sizes = preload.sizes;
+			}
+			root?.setAttribute( 'data-swapped', '' );
+			window.requestAnimationFrame( () =>
+				build( board( false ), before, layers, calm( root ) )
+			);
+		},
+		// Not decoded: the old board stays whole until the answer.
+		() => undefined
+	);
+}
+
 /**
  * Ask ahead for the step's Next once it is lit, so the next step can be shown at the press of it (F20, #118; D-355):
  * on a real host its answer comes after the 500 ms CLS leaves out after a press, and the new step it brings would be
@@ -1125,6 +1182,8 @@ function nav( state: State ): Navigator {
 								),
 							] )
 						: undefined;
+				// A deck drawn at its press is the view's to confirm or put back from now (D-357).
+				swapping = undefined;
 				const ahead = ! narrowing;
 				const change = () => {
 					state.view = shown;
@@ -1159,6 +1218,7 @@ function nav( state: State ): Navigator {
 					picking = false;
 					// The answer is in, or failed: what the press foretold gives way to it.
 					root?.removeAttribute( 'data-folded' );
+					root?.removeAttribute( 'data-swapped' );
 				}
 			},
 			settle: ( view ) => ready( view ),
@@ -1185,6 +1245,7 @@ export function reset(): void {
 	pressed = Number.NEGATIVE_INFINITY;
 	picking = false;
 	narrowing = undefined;
+	swapping = undefined;
 	window.clearTimeout( resting );
 }
 
@@ -1520,6 +1581,7 @@ const { state } = store(
 				// The stylesheet settles the card picked under this mark alone, never as a page or a step is drawn; and
 				// the stage keeps the place a part picked will keep (D-303, D-356).
 				root?.setAttribute( 'data-picked', '' );
+				swap( state.view, input.value );
 				state.missing = '';
 				root?.dispatchEvent(
 					new CustomEvent( 'cbuild:pick', {
