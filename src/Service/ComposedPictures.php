@@ -144,7 +144,7 @@ final class ComposedPictures {
 	/**
 	 * The pictures wanted() has asked for in the life of this service, by name.
 	 *
-	 * @var array<string, true>
+	 * @var list<string>
 	 */
 	private array $wanted = array();
 
@@ -304,8 +304,8 @@ final class ComposedPictures {
 		}
 		$url  = $this->found( $composition );
 		$name = $composition->name();
-		if ( null === $url && ! isset( $this->wanted[ $name ] ) && null !== $this->files->library( $composition->canvas->type ) ) {
-			$this->wanted[ $name ] = true;
+		if ( null === $url && ! in_array( $name, $this->wanted, true ) && null !== $this->files->library( $composition->canvas->type ) ) {
+			$this->wanted[] = $name;
 			$this->ask( $kit, $picks, self::FROM_PAGE );
 		}
 		return $url;

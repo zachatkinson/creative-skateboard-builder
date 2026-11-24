@@ -17,3 +17,4 @@ if ( ! defined( 'CBUILD_VERSION' ) ) {
 }
 
 require_once __DIR__ . '/Support/wp-shims.php';
+require_once __DIR__ . '/Support/no-mbstring.php';

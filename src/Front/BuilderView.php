@@ -137,16 +137,16 @@ final class BuilderView {
 		// link brought that no preset holds is named by nothing (#85, #104).
 		$refused = array();
 		foreach ( Cast::items( $answer['refused'] ?? null ) as $problem ) {
-			$problem          = Cast::map( $problem );
-			$slot             = Cast::str( $problem['slot'] ?? null );
-			$refused[ $slot ] = true;
-			$errors[]         = array(
+			$problem   = Cast::map( $problem );
+			$slot      = Cast::str( $problem['slot'] ?? null );
+			$refused[] = $slot;
+			$errors[]  = array(
 				'text' => Cast::str( $problem['message'] ?? null ),
 				'url'  => $url( $link ),
 			);
 		}
 		// The slot a refused part left empty is said once, by that part's line, not again as "nothing is chosen yet".
-		if ( null !== $stopped && ! ( Problem::SlotEmpty === $stopped->code && isset( $refused[ $stopped->slot ] ) ) ) {
+		if ( null !== $stopped && ! ( Problem::SlotEmpty === $stopped->code && in_array( $stopped->slot, $refused, true ) ) ) {
 			array_unshift(
 				$errors,
 				array(
@@ -468,7 +468,7 @@ final class BuilderView {
 					'hasTotal'       => $whole,
 					'notes'          => $notes,
 					'fields'         => $fields,
-					'photoClasses'   => implode( ' ', array_values( array_unique( array_filter( $photo, static fn( string $name ): bool => '' !== $name ) ) ) ),
+					'photoClasses'   => implode( ' ', array_unique( array_filter( $photo, static fn( string $name ): bool => '' !== $name ) ) ),
 					/* translators: %s: a preset's name, such as Street. */
 					'button'         => sprintf( __( 'Start from %s', 'creative-skateboard-builder' ), $name ),
 				);

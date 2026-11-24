@@ -1200,6 +1200,51 @@ final class StateAnswerTest extends TestCase {
 		self::assertSame( array( null ), array_values( array_unique( array_column( $trucks['options'], 'board' ), SORT_REGULAR ) ), 'the trucks\' cards carry none' );
 	}
 
+	// D-308 and F14: each deck card on the shelf carries its board, sold out or not, though the step's list, cut to its
+	// filters and its first page, leaves it out; and a card is as it is listed, without the picture's large photo.
+	public function test_each_deck_the_shelf_lists_carries_its_board_sold_out_or_not_and_its_card_no_large_photo(): void {
+		$parts                    = Shop::parts();
+		$parts[ SlotKey::DECK ][] = Shop::priced( Builds::deck( '8.5', 104 ), 7000, false );
+		$this->kits->add( self::KIT, Shop::kit(), $parts );
+		$this->layers->attachments = array( 103 => 13, 104 => 14 );
+		$this->layers->images      = array(
+			13 => new ImageFacts( 'image/png', 432, 1626, true ),
+			14 => new ImageFacts( 'image/png', 432, 1626, true ),
+		);
+		$state = ( new BuildState( $this->kits, $this->settings, $this->logger ) )->of( self::KIT, array(), null, SlotKey::DECK );
+		self::assertNotNull( $state );
+		$facts = new InMemoryPartLooks();
+		foreach ( $parts[ SlotKey::DECK ] as $part ) {
+			$facts->facts[ $part->id ] = new LookFact( $part->id, $part->id, 0, 'Part ' . $part->id, array(), array(), false, 0, 0 );
+		}
+		$folding = new class() implements TextFolding {
+			public function fold( string $text ): string {
+				return strtolower( $text );
+			}
+		};
+		$answer = ( new StateAnswer( $this->cards, new FakeMoney(), $this->kits, new Delivery( $this->kits, new FakeShippingZones(), new ShippingWords( new FakeMoney() ) ), new PageRenderer() ) )
+			->withArtwork( new LayerArtwork( $this->layers, $this->renditions ) )
+			->withShelf( new StepShelf( $facts, $this->cards, new FakeRanking(), $folding, $this->settings ) );
+		$link   = BuildLink::read(
+			array(
+				'step'   => 'deck',
+				'_width' => '8.5in',
+				'_brand' => 'nobody',
+			)
+		);
+		$shown  = $answer->of( $state, $link );
+		self::assertSame( array(), $shown['options'], 'no deck is of that brand: the step\'s list is empty' );
+		$cards = array_column( array_column( array( ...$shown['shelf']['looks'], ...$shown['shelf']['sold_out'] ), 'part' ), null, 'id' );
+		self::assertSame( array( 103, 104 ), array_keys( $cards ) );
+		foreach ( $cards as $id => $card ) {
+			self::assertIsArray( $card['board'], 'deck ' . $id );
+			self::assertSame( array( SlotKey::DECK ), array_column( $card['board']['layers'], 'slot' ) );
+			self::assertArrayHasKey( 'large', InMemoryPartCards::card( $id ) );
+			self::assertIsArray( $card['card'] );
+			self::assertArrayNotHasKey( 'large', $card['card'], 'the large photo is the picture\'s alone' );
+		}
+	}
+
 	public function test_the_board_draws_the_parts_with_a_layer_image_and_the_box_keeps_the_rest(): void {
 		$this->layers->attachments = array(
 			103 => 13,

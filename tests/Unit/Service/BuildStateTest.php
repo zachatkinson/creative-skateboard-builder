@@ -639,6 +639,16 @@ final class BuildStateTest extends TestCase {
 		self::assertSame( $trucks->options, $both->options );
 	}
 
+	// D-340: a step's cards are listed under the part it would recommend were nothing picked, which it is handed; the
+	// recommendation leads only where it is handed none.
+	public function test_a_step_leads_with_the_part_it_is_handed_and_else_with_its_recommendation(): void {
+		$trucks = self::step( $this->of( array( SlotKey::DECK => 103 ) ), SlotKey::TRUCKS );
+		self::assertNotNull( $trucks->recommended );
+		$other = new Option( Shop::parts()[ SlotKey::TRUCKS ][0], array(), null );
+		self::assertSame( $other, ( new StateStep( $trucks->slot, $trucks->options, null, $trucks->recommended, $other ) )->leads );
+		self::assertSame( $trucks->recommended, ( new StateStep( $trucks->slot, $trucks->options, null, $trucks->recommended ) )->leads );
+	}
+
 	/**
 	 * The codes of an option's findings.
 	 *

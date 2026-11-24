@@ -344,6 +344,21 @@ final class WordsTest extends TestCase {
 		self::assertSame( 'aéro', Words::inSentence( 'Aéro' ), 'an accented small letter is a small letter' );
 	}
 
+	// #72: without mbstring the case changes are PHP's own, so a letter outside ASCII keeps its case, as WpTextFolding
+	// folds; an ASCII one changes as before.
+	public function test_without_mbstring_a_label_changes_only_its_ascii_letters(): void {
+		$GLOBALS['cbuild_test_no_mbstring'] = true;
+		try {
+			self::assertSame( 'deck', Words::inSentence( 'Deck' ) );
+			self::assertSame( 'HZRD', Words::inSentence( 'HZRD' ) );
+			self::assertSame( 'Éclat', Words::inSentence( 'Éclat' ), 'its capital is not an ASCII letter' );
+			self::assertSame( 'Aéro', Words::inSentence( 'Aéro' ), 'nor is its second letter, so it reads as a capital' );
+		} finally {
+			unset( $GLOBALS['cbuild_test_no_mbstring'] );
+		}
+		self::assertSame( 'éclat', Words::inSentence( 'Éclat' ), 'and with it, as before' );
+	}
+
 	// Spec: A step, Sold out, "A preset or link that holds one names it".
 	public function test_a_problem_about_a_part_names_the_part(): void {
 		self::assertSame( 'Wheels: Retna is sold out.', Words::named( Problem::PartSoldOut, 'Wheels', 'Retna' ) );

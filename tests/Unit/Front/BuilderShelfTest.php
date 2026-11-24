@@ -28,6 +28,7 @@ use CreativeBranding\SkateboardBuilder\Port\TextFolding;
 use CreativeBranding\SkateboardBuilder\Service\BuildState;
 use CreativeBranding\SkateboardBuilder\Service\SavedBuilds;
 use CreativeBranding\SkateboardBuilder\Service\StepShelf;
+use CreativeBranding\SkateboardBuilder\Tests\Support\Domain\Parts;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Domain\Shop;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\CountingUuids;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\FakeClock;
@@ -597,6 +598,114 @@ final class BuilderShelfTest extends TestCase {
 		self::assertCount( 1, $ticked );
 		self::assertSame( 102, $ticked[0]['id'] );
 		self::assertContains( 'Picked in 8.25″. Not made in 8.5″.', array_column( $ticked[0]['notes'], 'text' ) );
+		// Its own card is the look's in the width asked: the pick is kept, not moved to itself, and nothing is said.
+		self::assertStringNotContainsString( 'is now', Cast::str( $shown['view']['status'] ) );
+		self::assertStringNotContainsString( rawurlencode( 'cbuild[_was]' ), Cast::str( $shown['view']['url'] ), 'no change to explain' );
+	}
+
+	public function test_a_new_width_moves_the_picked_deck_to_its_look_in_that_width_though_it_is_sold_out_there(): void {
+		$parts                     = Shop::parts();
+		$parts[ SlotKey::DECK ][2] = Shop::priced( $parts[ SlotKey::DECK ][2], 7000, false );
+		$this->stock( $parts );
+		foreach ( array( 101, 103 ) as $part ) {
+			$this->looks->facts[ $part ] = new LookFact( 900, 5, 0, 'Hard Hat', array(), array(), false, 0, 0 );
+		}
+		$shown = $this->shown(
+			BuildLink::read(
+				array(
+					'deck'   => '101',
+					'step'   => 'deck',
+					'_width' => '8.5in',
+				)
+			)
+		);
+		self::assertStringContainsString( rawurlencode( 'cbuild[deck]' ) . '=103', Cast::str( $shown['view']['url'] ), 'the sold-out card is the look in 8.5″' );
+		self::assertStringStartsWith( 'Hard Hat is now 8.5″.', Cast::str( $shown['view']['status'] ) );
+	}
+
+	public function test_a_new_width_keeps_the_picks_before_the_change_the_link_was_explaining(): void {
+		foreach ( array( 101, 103 ) as $part ) {
+			$this->looks->facts[ $part ] = new LookFact( 900, 5, 0, 'Hard Hat', array(), array(), false, 0, 0 );
+		}
+		$shown = $this->shown(
+			BuildLink::read(
+				array(
+					'deck'   => '101',
+					'trucks' => '139',
+					'wheels' => '301',
+					'step'   => 'deck',
+					'_width' => '8.5in',
+					'_was'   => array(
+						'deck'   => '101',
+						'trucks' => '144',
+						'wheels' => '302',
+					),
+				)
+			)
+		);
+		self::assertStringContainsString( rawurlencode( 'cbuild[deck]' ) . '=103', Cast::str( $shown['view']['url'] ) );
+		self::assertStringContainsString( rawurlencode( 'cbuild[_was][wheels]' ) . '=302', Cast::str( $shown['view']['url'] ), 'the picks before, as the link sent them' );
+	}
+
+	public function test_a_picked_deck_with_no_width_asked_reads_the_shelf_once_and_moves_nowhere(): void {
+		foreach ( array( 101, 103 ) as $part ) {
+			$this->looks->facts[ $part ] = new LookFact( 900, 5, 0, 'Hard Hat', array(), array(), false, 0, 0 );
+		}
+		$shown = $this->shown(
+			BuildLink::read(
+				array(
+					'deck' => '101',
+					'step' => 'deck',
+				)
+			)
+		);
+		self::assertStringContainsString( rawurlencode( 'cbuild[deck]' ) . '=101', Cast::str( $shown['view']['url'] ) );
+		self::assertCount( 1, $this->looks->asked, 'the step\'s own shelf alone: no width asked, nothing to move' );
+	}
+
+	public function test_a_picked_deck_with_no_width_of_its_own_is_kept_whatever_width_is_asked(): void {
+		$parts                    = Shop::parts();
+		$parts[ SlotKey::DECK ][] = Shop::priced( Parts::of( array( 'deck_length' => '32', 'hole_pattern' => 'new_school', 'set_size' => 1 ), 104 ), 6000 );
+		$this->stock( $parts );
+		$shown = $this->shown(
+			BuildLink::read(
+				array(
+					'deck'   => '104',
+					'step'   => 'deck',
+					'_width' => '8.5in',
+				)
+			)
+		);
+		self::assertStringContainsString( rawurlencode( 'cbuild[deck]' ) . '=104', Cast::str( $shown['view']['url'] ) );
+		self::assertStringNotContainsString( 'is now', Cast::str( $shown['view']['status'] ) );
+	}
+
+	public function test_a_builder_given_the_shelf_is_a_copy_and_the_one_without_moves_no_deck(): void {
+		foreach ( array( 101, 103 ) as $part ) {
+			$this->looks->facts[ $part ] = new LookFact( 900, 5, 0, 'Hard Hat', array(), array(), false, 0, 0 );
+		}
+		$folding  = new class() implements TextFolding {
+			public function fold( string $text ): string {
+				return strtolower( $text );
+			}
+		};
+		$settings = new InMemoryShopSettings();
+		$cards    = new InMemoryPartCards();
+		$shelf    = new StepShelf( $this->looks, $cards, new FakeRanking(), $folding, $settings );
+		$answer   = new StateAnswer( $cards, new FakeMoney(), $this->kits, new Delivery( $this->kits, new FakeShippingZones(), new ShippingWords( new FakeMoney() ) ), new PageRenderer() );
+		$plain    = new Builder( new BuildState( $this->kits, $settings, new FakeLogger() ), $answer, new BuilderView() );
+		$link     = BuildLink::read(
+			array(
+				'deck'   => '101',
+				'step'   => 'deck',
+				'_width' => '8.5in',
+			)
+		);
+		self::assertNotSame( $plain, $plain->withShelf( $shelf ) );
+		$shown = $plain->show( self::KIT, $link, self::BASE );
+		self::assertNotNull( $shown );
+		self::assertStringContainsString( rawurlencode( 'cbuild[deck]' ) . '=101', Cast::str( $shown['view']['url'] ), 'a builder with no shelf, as an earlier release\'s container makes, keeps the pick' );
+		self::assertStringNotContainsString( 'is now', Cast::str( $shown['view']['status'] ) );
 	}
 
 	public function test_either_names_one_two_or_more_as_a_choice(): void {

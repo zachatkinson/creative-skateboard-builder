@@ -84,7 +84,7 @@ final class LayerArtwork {
 	 *
 	 * @since 1.1.0
 	 *
-	 * @param list<Part> $decks The decks.
+	 * @param array<int, Part> $decks The decks, in any order and by any key.
 	 * @return array<int, LayerArt> By part ID, those with a layer image alone.
 	 */
 	public function decks( array $decks ): array {

@@ -94,4 +94,26 @@ final class LayerArtworkTest extends TestCase {
 		self::assertSame( array( 200 ), array_keys( $art->of( $layout, array( SlotKey::TRUCKS => $trucks ) ) ), 'no part for the deck\'s slot' );
 		self::assertSame( array( 200 ), array_keys( $art->of( $layout, array( SlotKey::DECK => $trucks, SlotKey::TRUCKS => $trucks ) ) ), 'the trucks handed in as the deck' );
 	}
+
+	// D-308: each deck on the deck step, in one look-up, by its ID: one with no layer image, or one whose image is gone
+	// from the Media Library, has none.
+	public function test_each_deck_with_a_layer_image_has_its_art_and_one_whose_image_is_gone_has_none(): void {
+		$decks               = array(
+			7 => Parts::of( array( 'deck_width' => '8.25', 'deck_length' => '32' ), 100 ),
+			3 => Parts::of( array( 'deck_width' => '8.5', 'deck_length' => '32' ), 101 ),
+			Parts::of( array( 'deck_width' => '8', 'deck_length' => '32' ), 102 ),
+			Parts::of( array( 'deck_width' => '8', 'deck_length' => '32' ), 103 ),
+		);
+		$layers              = new InMemoryLayerImages();
+		$layers->attachments = array( 100 => 10, 101 => 11, 102 => 12 );
+		$layers->images      = array(
+			10 => new ImageFacts( 'image/png', 420, 1626, true ),
+			11 => new ImageFacts( 'image/png', 432, 1626, true ),
+		);
+		$art = ( new LayerArtwork( $layers, new InMemoryLayerRenditions() ) )->decks( $decks );
+		self::assertSame( array( 100, 101 ), array_keys( $art ), 'the image of 102 is gone; 103 has none' );
+		self::assertSame( array( 10, 432 ), array( $art[100]->attachment, $art[101]->width ) );
+		self::assertSame( array( array( 100, 101, 102, 103 ) ), $layers->together, 'asked for together, once' );
+		self::assertSame( array(), ( new LayerArtwork( $layers, new InMemoryLayerRenditions() ) )->decks( array() ) );
+	}
 }

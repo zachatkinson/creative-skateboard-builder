@@ -203,10 +203,14 @@ final class BuilderViewTest extends TestCase {
 				),
 				'proposed' => array(),
 			),
+			'steps'   => self::steps( array( 'trucks' => array( 'required' => true ) ) ),
 		);
 		$view   = $this->view( $answer, SlotKey::TRUCKS );
 		self::assertTrue( $view['step']['back']['shown'], 'the step has a Back of its own' );
 		self::assertFalse( $view['bar']['back']['shown'], 'the panel shows none' );
+		// The trucks are required and empty, so the step's own Next waits; the panel has no Next to dim (#100).
+		self::assertFalse( $view['step']['next']['ready'] );
+		self::assertSame( array( true, '' ), array( $view['bar']['next']['ready'], $view['bar']['next']['missing'] ) );
 		self::assertTrue( $view['changes']['hasItems'] );
 		self::assertFalse( $view['changes']['hasPrices'], 'a change made now has no new prices' );
 		self::assertFalse( $view['changes']['hasTotals'] );
@@ -471,6 +475,35 @@ final class BuilderViewTest extends TestCase {
 			'steps'   => self::steps( array( 'wheels' => array( 'against' => array( 'trucks' ) ) ) ),
 		);
 		return array_column( $this->step( $answer, SlotKey::WHEELS )['options'], null, 'id' );
+	}
+
+	// #81: only the picked deck's card, and only against a width asked, says it is picked in another width.
+	public function test_only_the_picked_decks_card_says_the_width_asked_is_not_its_own(): void {
+		$sized  = static fn( int $id, string $value, string $text ): array => array(
+			'part' => array( 'size' => compact( 'value', 'text' ) ) + self::option( $id, 'fits' ),
+			'name' => 'Part ' . $id,
+		);
+		$width  = static fn( string $value, string $text, bool $selected ): array => array(
+			'value'    => $value,
+			'text'     => $text,
+			'in_stock' => 1,
+			'selected' => $selected,
+		);
+		$notes  = function ( array $widths ) use ( $sized ): array {
+			$answer = array(
+				'total' => array( 'lines' => array( array( 'slot' => 'deck', 'part' => 102 ) ) ),
+				'shelf' => array(
+					'looks'  => array( $sized( 102, '8.25in', '8.25″' ), $sized( 103, '8.5in', '8.5″' ) ),
+					'widths' => $widths,
+				),
+			);
+			$cards  = $this->step( $answer, SlotKey::DECK, new BuildLink( array( SlotKey::DECK => 102 ), null, SlotKey::DECK ) )['options'];
+			return array_map( static fn( array $card ): array => array_column( $card['notes'], 'text' ), array_column( $cards, null, 'id' ) );
+		};
+		$asked  = $notes( array( $width( '8.25in', '8.25″', false ), $width( '8.5in', '8.5″', true ) ) );
+		self::assertSame( array( 'Picked in 8.25″. Not made in 8.5″.' ), $asked[102] );
+		self::assertSame( array(), $asked[103], 'a card in the width asked that is not picked says nothing' );
+		self::assertSame( array( 102 => array(), 103 => array() ), $notes( array( $width( '8.25in', '8.25″', false ), $width( '8.5in', '8.5″', false ) ) ), 'no width asked, nothing to say' );
 	}
 
 	// Spec: A step, P9; Cowork's review, minors 5 and 14. A fitting card names what it was checked against by the

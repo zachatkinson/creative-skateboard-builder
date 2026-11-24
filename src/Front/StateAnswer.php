@@ -306,7 +306,7 @@ final class StateAnswer {
 			'recommended' => $option->part->id === $step?->recommended?->part->id,
 			'messages'    => self::messages( $option->findings ),
 			// A card as it is listed: the large photo is the picture's alone (#82), and would add to every card.
-			'card'        => isset( $cards[ $option->part->id ] ) ? array_diff_key( $cards[ $option->part->id ], array( 'large' => true ) ) : null,
+			'card'        => isset( $cards[ $option->part->id ] ) ? array_diff_key( $cards[ $option->part->id ], array_flip( array( 'large' ) ) ) : null,
 			// From 1.1.0, on the deck step: the board the deck would draw alone, so its image can be fetched as the
 			// shopper points at the card (D-308), and its card draws the deck small (F14, #99), sold out or not. Null
 			// elsewhere, and for a deck with no layer image.
@@ -441,7 +441,7 @@ final class StateAnswer {
 			'more'              => $more,
 			// A part a ready build holds that the kit no longer offers is named as its tile named it (F6, #85), though
 			// the ready build is not shown (#104); an ID a link brought that no ready build holds is named by nothing.
-			'refused'           => array_map( static fn( BuildProblem $kept ): array => array_replace( $problem( $kept ), array( 'message' => Words::named( $kept->code, $labels[ $kept->slot ] ?? $kept->slot, $held[ $kept->part ?? 0 ] ?? '' ) ) ), $state->refused ),
+			'refused'           => array_map( static fn( BuildProblem $kept ): array => array_replace( $problem( $kept ), array( 'message' => Words::named( $kept->code, $labels[ $kept->slot ] ?? $kept->slot, null === $kept->part ? '' : $held[ $kept->part ] ?? '' ) ) ), $state->refused ),
 			'problems'          => array_map( $problem, $state->validation->problems ),
 			'changes'           => $changes,
 			'total'             => array(
@@ -484,7 +484,7 @@ final class StateAnswer {
 			$decks[ $option->part->id ] = $option->part;
 		}
 		$boards = array();
-		foreach ( $this->artwork->decks( array_values( $decks ) ) as $id => $art ) {
+		foreach ( $this->artwork->decks( $decks ) as $id => $art ) {
 			$layout        = Layout::of( Picks::none()->with( SlotKey::DECK, $decks[ $id ] ), $state->kit->picture );
 			$drawn         = $this->renderer->render( $layout, array( $id => $art ) );
 			$boards[ $id ] = array(

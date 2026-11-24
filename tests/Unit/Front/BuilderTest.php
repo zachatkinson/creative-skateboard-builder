@@ -634,6 +634,83 @@ final class BuilderTest extends TestCase {
 		self::assertSame( '29px', $sized['sizes'] );
 	}
 
+	/**
+	 * A deck's board as the answer carries it, for its card's preload and small picture: one layer, its image's sources
+	 * as given.
+	 *
+	 * @param int          $height  The board's height.
+	 * @param string       $src     The image's own file.
+	 * @param list<mixed>  $sources The image's sources.
+	 * @return array<string, mixed>
+	 */
+	private static function deckBoard( int $height, string $src, array $sources ): array {
+		return array(
+			'width'  => 2159000,
+			'height' => $height,
+			'layers' => array(
+				array(
+					'width' => 2159000,
+					'image' => array(
+						'src'     => $src,
+						'width'   => 420,
+						'height'  => 1626,
+						'sources' => $sources,
+					),
+				),
+			),
+		);
+	}
+
+	// D-308 and F14: what a deck's card preloads and draws small is read from the answer as it is. A board with no
+	// height, or an image with no file, preloads nothing, rather than dividing by nothing or asking for no address;
+	// and a source that is not a map is not read.
+	public function test_a_deck_cards_preload_and_small_picture_need_a_height_a_file_and_sources_that_are_maps(): void {
+		$preload = new \ReflectionMethod( BuilderView::class, 'preload' );
+		$drawn   = new \ReflectionMethod( BuilderView::class, 'drawn' );
+		$webp    = array(
+			'type'   => 'image/webp',
+			'srcset' => 'https://shop.test/deck.webp 105w',
+		);
+		$none    = array(
+			'shown' => false,
+			'src'   => '',
+			'avif'  => '',
+			'webp'  => '',
+			'sizes' => '',
+		);
+		self::assertSame( $none, $preload->invoke( null, self::deckBoard( 0, 'https://shop.test/deck.png', array( $webp ) ) ), 'no height' );
+		self::assertSame( $none, $preload->invoke( null, self::deckBoard( 8128000, '', array( $webp ) ) ), 'no file' );
+		$shown = $preload->invoke( null, self::deckBoard( 8128000, 'https://shop.test/deck.png', array( $webp ) ) );
+		self::assertTrue( $shown['shown'] );
+		self::assertSame( 'https://shop.test/deck.webp 105w', $shown['webp'] );
+
+		$object = (object) $webp;
+		self::assertSame( '', $preload->invoke( null, self::deckBoard( 8128000, 'https://shop.test/deck.png', array( $object ) ) )['webp'], 'an object is not a source' );
+		self::assertNull( $drawn->invoke( null, self::deckBoard( 8128000, 'https://shop.test/deck.png', array( $object ) ) ), 'nor one to draw small' );
+	}
+
+	// F18, #103: a grip's sheet is sized against the deck it covers, and a deck with no size across or along gives it no
+	// size, rather than dividing by nothing. A swatch, at most an eighth as wide as it is long, has none: it repeats.
+	public function test_a_grips_sheet_is_sized_against_a_deck_with_a_size_and_a_swatch_has_none(): void {
+		$sheet = new \ReflectionMethod( BuilderView::class, 'sheet' );
+		$grip  = static fn( int $across, int $along ): array => array(
+			'width'  => 2286000,
+			'height' => 8382000,
+			'image'  => array(
+				'width'  => $across,
+				'height' => $along,
+			),
+		);
+		$deck  = static fn( int $across, int $along ): array => array(
+			'width'  => $across,
+			'height' => $along,
+		);
+		self::assertSame( '', $sheet->invoke( null, $grip( 900, 3300 ), $deck( 0, 8128000 ) ), 'no width across' );
+		self::assertSame( '', $sheet->invoke( null, $grip( 900, 3300 ), $deck( 2159000, 0 ) ), 'no length along' );
+		self::assertSame( '', $sheet->invoke( null, $grip( 100, 800 ), $deck( 2159000, 8128000 ) ), 'an eighth as wide as it is long: a swatch' );
+		self::assertNotSame( '', $sheet->invoke( null, $grip( 101, 800 ), $deck( 2159000, 8128000 ) ), 'a little wider: a sheet' );
+	}
+
 	public function test_a_deck_with_no_layer_image_has_no_top_to_turn_to_even_on_the_grip_step(): void {
 		$this->topArt();
 		$this->layers->attachments = array( 701 => 71 );
@@ -787,8 +864,7 @@ final class BuilderTest extends TestCase {
 		$panel = $this->show( new BuildLink( array( SlotKey::DECK => 103 ) + $was, $was, SlotKey::TRUCKS ) )['view']['bar'];
 		self::assertTrue( $panel['shown'] );
 		self::assertFalse( $panel['next']['shown'], 'the panel asks for Use these or Undo, in its own forms' );
-		self::assertFalse( $panel['next']['onStep'] || $panel['next']['onReview'], 'so neither of the bar\'s buttons is shown' );
-	}
+		self::assertFalse( $panel['next']['onStep'] || $panel['next']['onReview'], 'so neither of the bar\'s buttons is shown' );	}
 
 	public function test_a_kit_the_shop_does_not_have_shows_nothing(): void {
 		self::assertNull( $this->builder()->show( 5, new BuildLink(), self::BASE ) );
