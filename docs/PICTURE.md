@@ -2,11 +2,30 @@
 
 How the builder draws a board from its parts, and how to prepare the layer images it draws from. The first half is for a shop owner or the photographer who shoots the parts; the last section is for a developer. Every figure here is the code's, as of 0.8.0.
 
+## Contents
+
+- [What the picture is](#what-the-picture-is)
+- [The parts it draws](#the-parts-it-draws)
+- [The shooting template](#the-shooting-template)
+- [The file](#the-file)
+- [Where to set it](#where-to-set-it)
+- [The kit's Picture section](#the-kits-picture-section)
+- [The renditions](#the-renditions)
+- [The composed pictures](#the-composed-pictures)
+- [Finding parts without one](#finding-parts-without-one)
+- [For developers](#for-developers)
+
 ## What the picture is
 
 The picture is the board as the shopper builds it, seen from underneath with the nose at the top. It heads every step of the builder and the review, and is drawn again with each pick.
 
-From 0.8.0 the page also draws the board's top, the same board turned over about its length (#46). The grip tape step shows the top, and every other step the underside. With JavaScript a button by the board, "Show the top", turns it over on any step; it is pressed (`aria-pressed`) while the top is shown, and once the shopper has used it, their side is kept on every later step that can draw it. Without JavaScript the button is not shown, and each step shows its own side. The phone bar's board shows the same side as the picture, and the picture's description ends "Seen from underneath." or "Seen from the top.". The board turns over in the time of the builder's other movements, and not at all where the shopper asks for reduced motion. The composed pictures stay the underside.
+From 0.8.0 the page also draws the board's top, the same board turned over about its length (#46). The grip tape step shows the top, and every other step the underside.
+
+- **With JavaScript** a button by the board, "Show the top", turns it over on any step; it is pressed (`aria-pressed`) while the top is shown, and once the shopper has used it, their side is kept on every later step that can draw it.
+- **Without JavaScript** the button is not shown, and each step shows its own side.
+- **The phone bar's board** shows the same side as the picture, and the picture's description ends "Seen from underneath." or "Seen from the top.".
+- **Turning over.** The board turns over in the time of the builder's other movements, and not at all where the shopper asks for reduced motion.
+- **The composed pictures** stay the underside.
 
 It is drawn in two places from one layout:
 
@@ -164,7 +183,11 @@ Uninstall removes `wp-content/uploads/creative-skateboard-builder/`, with the re
 
 ## Finding parts without one
 
-WooCommerce > Builder > Catalogue check lists each part of a drawn slot with no layer image: one line per kit, slot and part, saying "It has no layer image, so the picture shows its labelled photo in the slot …". A variation that takes its parent's image is not listed, and an image deleted from the Media Library counts as none. These lines come after every other finding, since a part without a layer image still sells. The check's page lists them in a section of their own, "Parts with no layer image", with the number of parts and its own 500 rows, and Site Health counts them apart from the things to fix, in words of their own (D-211). Each links to the part's Layer image field.
+WooCommerce > Builder > Catalogue check lists each part of a drawn slot with no layer image: one line per kit, slot and part, saying "It has no layer image, so the picture shows its labelled photo in the slot …".
+
+- **What counts.** A variation that takes its parent's image is not listed, and an image deleted from the Media Library counts as none.
+- **Where they are listed.** These lines come after every other finding, since a part without a layer image still sells. The check's page lists them in a section of their own, "Parts with no layer image", with the number of parts and its own 500 rows, and Site Health counts them apart from the things to fix, in words of their own (D-211).
+- **A link to the field.** Each links to the part's Layer image field.
 
 ## For developers
 
@@ -173,4 +196,24 @@ WooCommerce > Builder > Catalogue check lists each part of a drawn slot with no 
 - **One layout, two renderers.** `Domain\Picture\Layout::of()` lays the board out from the picks and the kit's `PictureSettings`. `Port\PictureRenderer` takes that layout and the parts' `LayerArt`. `Front\PageRenderer` gives the page's layers, which the state route's `picture.layers` carries (see [HOOKS.md](HOOKS.md)). `Service\ComposedRenderer` gives a `Domain\Picture\Composition`, worked out to the pixel before any library is called, which `Adapter\WpPictureFiles` draws with GD or Imagick. The interface is internal and has no filter yet; a 3D view after 1.0 would be a third renderer.
 - **Names change with the drawing.** `Composition::VERSION` is in every composed picture's name, so a change to how a picture is drawn gives new files rather than showing old ones.
 
-The decisions behind this page: D-060 (the layout), D-190 (the layer image), D-192 (the kit's settings), D-193 (the Catalogue check), D-194 (the renditions), D-195 (the renderer and the page), D-196 (the composer), D-197 (the job), D-198 (pruning and Site Health), D-199 (the cart's thumbnail), D-200 (the share card), D-201 (the renditions' cleanup), D-208 (updating from an earlier release), D-209 (renditions under an output format), D-210 (AVIF layer images), D-211 (the missing layers, counted apart) and D-212 (the share card's name and caching), in [DECISIONS.md](DECISIONS.md).
+The decisions behind this page, in [DECISIONS.md](DECISIONS.md):
+
+| Decision | What it settled |
+| --- | --- |
+| D-060 | The layout |
+| D-190 | The layer image |
+| D-192 | The kit's settings |
+| D-193 | The Catalogue check |
+| D-194 | The renditions |
+| D-195 | The renderer and the page |
+| D-196 | The composer |
+| D-197 | The job |
+| D-198 | Pruning and Site Health |
+| D-199 | The cart's thumbnail |
+| D-200 | The share card |
+| D-201 | The renditions' cleanup |
+| D-208 | Updating from an earlier release |
+| D-209 | Renditions under an output format |
+| D-210 | AVIF layer images |
+| D-211 | The missing layers, counted apart |
+| D-212 | The share card's name and caching |
