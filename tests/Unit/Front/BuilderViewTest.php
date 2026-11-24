@@ -252,7 +252,14 @@ final class BuilderViewTest extends TestCase {
 		);
 		$tiles  = $this->view( $answer, SlotKey::DECK )['presets']['tiles'];
 		self::assertFalse( $tiles[0]['hasTotal'], 'empty wheels leave the total short' );
-		self::assertSame( array( 'Truck set: Indy is sold out.', 'Grip: the shop has fewer of Mob than a build takes.' ), array_column( $tiles[1]['notes'], 'text' ) );
+		self::assertSame(
+			array(
+				array( 'text' => 'Truck set: Indy is sold out.' ),
+				array( 'text' => 'Grip: the shop has fewer of Mob than a build takes.' ),
+			),
+			$tiles[1]['notes'],
+			'a list, as the template iterates it and the store reads it from JSON, not a map by slot'
+		);
 		self::assertTrue( $tiles[1]['hasTotal'], 'a part sold out still counts' );
 	}
 
