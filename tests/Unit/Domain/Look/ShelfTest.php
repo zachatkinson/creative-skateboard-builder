@@ -182,6 +182,18 @@ final class ShelfTest extends TestCase {
 		self::assertSame( array( 312, 311 ), array_values( self::cards( self::list( SlotKey::WHEELS, array( self::wheel( 311, '54' ), self::wheel( 312, '54' ) ), $named )->looks ) ), 'by name, 9 before 10, whatever the case' );
 	}
 
+	// D-340: the step's cards came back in another order after a pick. A tie the order's keys leave is broken by the
+	// parts' IDs, not by the order they were handed in, so the page and the route list a step alike.
+	public function test_a_tie_is_broken_by_the_part_ids_whatever_order_the_parts_come_in(): void {
+		[ $parts, $shelved ] = self::wheels();
+		$order               = static fn( array $given, string $sort ): array => array_keys( self::cards( self::list( SlotKey::WHEELS, $given, $shelved, new ShelfAsk( sort: $sort ) )->looks ) );
+		// Mint and Black are one product: the same name, sales and date, and here the same price.
+		foreach ( array( 'recommended', 'price-asc', 'newest' ) as $sort ) {
+			self::assertSame( $order( $parts, $sort ), $order( array_reverse( $parts ), $sort ), $sort );
+		}
+		self::assertSame( array( '20:3:0', '10:1:0', '10:2:0' ), $order( array_reverse( $parts ), 'recommended' ), 'Mint, whose parts are 301 and 302, before Black, 303' );
+	}
+
 	public function test_sort_by_the_price_of_the_part_each_card_shows_or_by_newest(): void {
 		[ $parts, $shelved ] = self::wheels();
 		$parts[2]            = self::wheel( 303, '54', 4500 );

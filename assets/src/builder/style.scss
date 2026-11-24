@@ -1534,6 +1534,16 @@
 	padding-block-end: var(--cbuild-gap-small);
 }
 
+/* A phone held sideways leaves the stage about 133 px: too short for the heading, the side line, the board and the
+   button stacked. The button goes up beside the heading and the side line, so the board keeps its own row. */
+@media (orientation: landscape) and (max-height: 30rem) {
+	:where(.cbuild__stage .cbuild-picture__turn) {
+		grid-row: 1 / span 2;
+		align-self: start;
+		padding-block-end: 0;
+	}
+}
+
 /* Its row is kept, unseen, while there is no top to turn to, so a board that gains one, or loses it to a deck's
    photo, is neither moved nor resized. Not while the stage is bare: then it holds the outline alone (#82). */
 .cbuild .cbuild__stage:not(.cbuild__stage--bare) .cbuild-picture__turn[hidden] {
@@ -1554,7 +1564,10 @@
 
 		/* Centred by its own size, the same in either direction, then turned: no edge for a mirrored stylesheet to swap.
 		   Upright it is longer than its row is high, where automatic margins stop centring it, so its top is worked
-		   out: the middle of its row, under the heading and the labels, less half its length. */
+		   out: the middle of its row, less half its length. Placed, the row is the board's alone, ended at the next
+		   line: `grid-row: 3` alone placed it against rows 3 to the foot, the button's with them, and where a theme's
+		   taller heading left its row short it lay over the button (the M11 walkthrough). */
+		grid-row: 3 / 4;
 		position: absolute;
 		inset-block-start: calc(50% - var(--cbuild-board-size) / 2);
 		inset-inline: 0;
@@ -1562,6 +1575,12 @@
 		margin-block: 0;
 		margin-inline: auto;
 		rotate: -90deg;
+	}
+
+	/* The labels of the parts with no layer image under the board, as on a desktop: the board, placed, takes no cell,
+	   and they had filled its row from the top. */
+	:where(.cbuild__stage .cbuild-picture__items) {
+		grid-row: 4;
 	}
 
 	:where(.cbuild__stage .cbuild-picture__empty) {
@@ -1618,10 +1637,22 @@
 ) {
 	inline-size: auto;
 	max-inline-size: 100%;
-	block-size: 100%;
 	min-block-size: 0;
 	aspect-ratio: auto;
 	object-fit: contain;
+}
+
+/* The photo's height is its row's, whatever a theme's rule for every image says: WooCommerce's `.woocommerce img` and
+   a classic theme's `img` (height auto) outweighed it at no weight, and the photo ran past its place, under the deck's
+   caption and the other parts' tiles (the M11 walkthrough). Two classes, the least over `.woocommerce img`. */
+.cbuild.cbuild
+	:where(
+		.cbuild__stage
+			.cbuild-picture--hero
+			.cbuild-picture__item:first-child
+			.cbuild-picture__photo
+	) {
+	block-size: 100%;
 }
 
 @container cbuild (max-width: 63.99rem) {
@@ -2071,9 +2102,11 @@
 /*
  * The step's Next until the step has a pick (#100): dimmed in the builder's muted words on its surface, not the
  * accent, and still a button that takes focus and a press, which then says what is missing. The muted words are the
- * step's help text's, AA on the bar's ground; the border is in them too, so the button's edge reads at 3:1.
+ * step's help text's, AA on the bar's ground; the border is in them too, so the button's edge reads at 3:1. At two
+ * classes' weight, as a plain button's reset (D-321): Kadence's `button` and `button:focus` and Storefront's `button`
+ * and `button:hover` (an element and a pseudo-class) outweighed it at no weight or one class, and Next stayed lit.
  */
-:where(.cbuild-bar__next[aria-disabled="true"]) {
+.cbuild.cbuild :where(.cbuild-bar__next[aria-disabled="true"]) {
 	border-color: var(--cbuild-muted);
 	background: var(--cbuild-surface);
 	color: var(--cbuild-muted);
@@ -2087,21 +2120,19 @@
 }
 
 /*
- * What a press of the dimmed Next says is missing, over the button: the bar keeps its height, so Next stays under the
- * thumb. Always in the page, so the live region is there before it speaks, and nothing to see while it says nothing.
- * A tap goes through it to the card under it (W7): a pick is what it asks for, and clears it.
+ * What a press of the dimmed Next says is missing, above the bar at Next's end: the bar keeps its height, so Next
+ * stays under the thumb, and the words cover none of the bar's own. Placed by the bar, not by Back and Next: on a
+ * phone in a theme's content width they take a row under the total, and the words above them lay over the estimate
+ * (the M11 walkthrough). Always in the page, so the live region is there before it speaks, and nothing to see while
+ * it says nothing. A tap goes through it to the card under it (W7): a pick is what it asks for, and clears it.
  */
-:where(.cbuild-bar__actions) {
-	position: relative;
-}
-
 :where(.cbuild-bar__missing) {
 	position: absolute;
 	inset-block-end: calc(100% + var(--cbuild-gap-small));
-	inset-inline-end: 0;
+	inset-inline-end: var(--cbuild-gap-small);
 	box-sizing: border-box;
 	inline-size: max-content;
-	max-inline-size: min(20rem, calc(100vw - 2rem));
+	max-inline-size: min(20rem, calc(100% - 2 * var(--cbuild-gap-small)));
 	margin: 0;
 	padding: 0.5rem 0.75rem;
 	border: 1px solid var(--cbuild-line);
@@ -2130,6 +2161,11 @@
 	:where(.cbuild-bar) {
 		margin-block-start: 0;
 		padding: var(--cbuild-gap-small) var(--cbuild-gap);
+	}
+
+	/* At Next's end, inside the bar's wider padding. */
+	:where(.cbuild-bar__missing) {
+		inset-inline-end: var(--cbuild-gap);
 	}
 }
 
@@ -2197,29 +2233,36 @@
  * `:root` as well as on `.cbuild`.
  */
 @media (prefers-reduced-motion: no-preference) {
-	:where(.cbuild:not(.cbuild--subtle))
+	/* A card settles when the shopper picks it, never as a page or a step is drawn with it picked: the store marks the
+	   builder at a pick (M11 audit, finding 8). */
+	:where(.cbuild[data-ready][data-picked]:not(.cbuild--subtle))
 		:where(.cbuild-card:has(> .cbuild-card__control:checked)) {
 		animation: cbuild-settle var(--cbuild-duration) var(--cbuild-ease);
 	}
 
-	:root:not(.cbuild-calm)
+	/*
+	 * Every rule for a view transition holds only while the builder's own runs (`cbuild-crossing` on the page's root,
+	 * which the store sets for its life), so a transition of the theme's or another plugin's is left as it is.
+	 */
+	:root.cbuild-crossing:not(.cbuild-calm)
 		:where(.cbuild-picture__item, .cbuild-board__layer) {
 		view-transition-class: cbuild-part;
 		view-transition-name: match-element;
 	}
 
 	/* Next step: the panel's content slides 16 px the way the shopper is going, and the rail's marker follows. */
-	:root:not(.cbuild-calm) :where(.cbuild__panel) {
+	:root.cbuild-crossing:not(.cbuild-calm) :where(.cbuild__panel) {
 		view-transition-name: cbuild-panel;
 	}
 
-	:root:not(.cbuild-calm) :where(.cbuild-progress__step--current) {
+	:root.cbuild-crossing:not(.cbuild-calm)
+		:where(.cbuild-progress__step--current) {
 		view-transition-name: cbuild-marker;
 	}
 
-	::view-transition-group(*),
-	::view-transition-old(*),
-	::view-transition-new(*) {
+	:root.cbuild-crossing::view-transition-group(*),
+	:root.cbuild-crossing::view-transition-old(*),
+	:root.cbuild-crossing::view-transition-new(*) {
 		animation-duration: var(--cbuild-duration, 200ms);
 		animation-timing-function: var(
 			--cbuild-ease,
@@ -2233,38 +2276,38 @@
 	 * kUnsupportedCSSProperty), and the spec holds every moment to transform and opacity (D-306). The panel's content
 	 * and the rail's marker slide in their own pseudo-elements instead, by transform alone.
 	 */
-	::view-transition-group(cbuild-panel),
-	::view-transition-group(cbuild-marker),
-	::view-transition-group(*.cbuild-part) {
+	:root.cbuild-crossing::view-transition-group(cbuild-panel),
+	:root.cbuild-crossing::view-transition-group(cbuild-marker),
+	:root.cbuild-crossing::view-transition-group(*.cbuild-part) {
 		animation-name: none;
 	}
 
-	::view-transition-new(cbuild-panel),
-	::view-transition-new(cbuild-marker) {
+	:root.cbuild-crossing::view-transition-new(cbuild-panel),
+	:root.cbuild-crossing::view-transition-new(cbuild-marker) {
 		animation-name: cbuild-panel-in;
 	}
 
-	::view-transition-old(cbuild-panel),
-	::view-transition-old(cbuild-marker) {
+	:root.cbuild-crossing::view-transition-old(cbuild-panel),
+	:root.cbuild-crossing::view-transition-old(cbuild-marker) {
 		animation-name: cbuild-panel-out;
 	}
 
 	/* A part new to the picture slides up into its place. */
-	::view-transition-new(*.cbuild-part):only-child {
+	:root.cbuild-crossing::view-transition-new(*.cbuild-part):only-child {
 		animation-name: cbuild-arrive;
 	}
 }
 
 /* Where motion is calm a step fades, whatever the media query: the store sets the class only then. */
-:root.cbuild-calm::view-transition-group(*),
-:root.cbuild-calm::view-transition-old(*),
-:root.cbuild-calm::view-transition-new(*) {
+:root.cbuild-crossing.cbuild-calm::view-transition-group(*),
+:root.cbuild-crossing.cbuild-calm::view-transition-old(*),
+:root.cbuild-crossing.cbuild-calm::view-transition-new(*) {
 	animation-duration: 150ms;
 	animation-timing-function: linear;
 }
 
-/* The page under a transition still takes taps. */
-::view-transition {
+/* The page under the builder's transition still takes taps. */
+:root.cbuild-crossing::view-transition {
 	pointer-events: none;
 }
 

@@ -3764,6 +3764,8 @@ CI's Lighthouse gate failed Total Blocking Time on the builder page on Twenty Tw
 
 **Why:** Cowork's 1.0.0 F3 (#82): on the demo almost every deck has a photo and no layer image, and the stage showed a 60 by 120 px thumbnail in a 920 px stage.
 
+**Added in the M11 walkthrough.** On a kit's own product page the photo ran past its place: WooCommerce's `.woocommerce img` and a classic theme's `img` (height auto) outweighed the photo's height at no weight, so it was drawn at its file's height, under the deck's caption, under the other parts' tiles on a desktop, and in dark under light words. The photo's `block-size: 100%` is raised to two classes, `.cbuild.cbuild :where(...)`, the least weight over `.woocommerce img` (one class lost to it on Twenty Twenty-Five and Kadence), and nothing else of the rule. Red: "keeps the deck's photo inside its own place on twentytwentyfive at 1280 by 900, clear of its caption and the other tiles", builder.spec.ts:7378, "past its item's foot by 1082", "under its caption" (each theme at 1280 by 900 and 390 by 844).
+
 **Status:** Accepted.
 
 ### D-304 · The state route tells a shop manager its time and queries · 2026-11-23
@@ -3863,6 +3865,8 @@ Cowork's review of 1.0.0, F15 (#100), against the mockup of 18 November: "Next: 
 
 **Why:** a step that is simply not done yet is no error; saying what to do next, where the shopper pressed, is.
 
+**Added in the M11 walkthrough.** On Kadence and Storefront Next was never dimmed: their rules for every `button` outweighed the dimmed look at no weight, and their `button:focus` (Kadence) and `button:hover` (Storefront), an element and a pseudo-class, outweighed it at one class too, while a pressed Next keeps focus. The dimmed rule is raised to two classes, `.cbuild.cbuild :where(.cbuild-bar__next[aria-disabled="true"])`, as a plain button's reset is (D-321). The look is unchanged. Red: "is dimmed on kadence at rest, focused and under the pointer, and lit by a pick", builder.spec.ts:3148, "at rest", received `rgb(43, 108, 176) | rgb(255, 255, 255) | rgb(255, 255, 255)`; at one class, "focused after a press" (Kadence) and "under the pointer" (Storefront) still failed.
+
 **Status:** Accepted.
 
 ### D-311 · Up to three lanes of wp-env, by CBUILD_PORT and CBUILD_TESTS_PORT · 2026-11-23
@@ -3954,6 +3958,8 @@ Cowork's review of 1.0.0, F17 (#102): at 390 px the board lay across the stage's
 - **Not chosen.** Keeping the button over the picture and shrinking the board by its height wherever the two might meet: the overlap depends on the theme's button and the stage's height, which the stylesheet cannot read, and a row of its own is what the mockup shows.
 
 **Why:** the mockup, and a control over the picture it controls hides what it shows. On a desktop the upright board is about 52 px shorter, the price of the guarantee where the stage is narrow.
+
+**Added in the M11 walkthrough.** On Kadence at 390 px the button lay 4.7 px over the board's lower edge. The stacked board is placed out of the flow, and `grid-row: 3` alone made its box rows 3 to the picture's foot, the button's row with them, so it was centred over the button's row and sized by it; Twenty Twenty-Five's short heading left enough room to hide it. The board is now placed by `grid-row: 3 / 4`, its own row, and the labels of the parts with no layer image take row 4 under it, as on a desktop, where they had filled the board's row from the top. Red: "keeps the button under either side of the board on kadence at 390 by 844", builder.spec.ts:5762, "over it by 4.7". A phone held sideways (844 by 390) leaves the stage about 133 px, too short for the heading, the side line, the board and the button stacked: with the board in its own row it was drawn at no size on Kadence and Storefront. There the button goes up beside the heading and the side line (`orientation: landscape` and `max-height: 30rem`), and the board keeps its row: 110 by 28 px on Kadence, 154 by 39 on Storefront, 232 by 59 on Twenty Twenty-Five, each clear of the button. Red: "draws the board clear of the button on a phone held sideways on kadence", "the board is 0 by 0" (Storefront the same); break: the button left at the foot fails it the same way.
 
 **Status:** Accepted.
 
@@ -4135,6 +4141,30 @@ The weekly canary failed on WooCommerce 11.3.1 (#95), which is the stable releas
 
 **Status:** Accepted. #73 can close as "1.0.0's split stands".
 
+### D-335 · Add to cart leaves the Mini-Cart's count to WooCommerce, and three choices from milestone 11's audit · 2026-11-23
+
+**Context:** the spec's table says Add to cart sends the board "toward the cart's icon, which bumps its count", and "The count changes" under reduced motion or subtle. `motion.ts`'s `carted()` animates the board alone. Milestone 11's audit (finding 5) asked whether the Mini-Cart's badge animates on an add.
+
+**What WooCommerce 11.3.1 does** (the browser site's copy, `wp-content/plugins/woocommerce`):
+
+- `src/Blocks/BlockTypes/MiniCart.php` line 404: the Mini-Cart listens for `wc-blocks_added_to_cart` on the document (`woocommerce::actions.refreshCartItems`); lines 406 to 407 open its drawer on it only where the block's `addToCartBehaviour` is `open_drawer`.
+- Line 432: the badge is `data-wp-text="state.totalItemsInCart"`, so its number changes once the cart is read again. Nothing else changes on it.
+- `assets/client/blocks/wc-block-library-style.css` (one line): `.wc-block-mini-cart__badge` has no `animation` or `transition`, and no keyframes name it. `assets/client/blocks/woocommerce/mini-cart.js`, the block's script module, has neither word in it.
+
+So the badge does not bump; its count changes at once, after the builder's `wc-blocks_added_to_cart` (`view.ts`, `actions.add`).
+
+**Decision:** no code change. "Bumps its count" is read as the count going up, which the event already does, the same with motion or without. The builder does not animate the Mini-Cart's badge: it is WooCommerce's element, outside the builder's root, and `STANDARDS.md` styles nothing there.
+
+**Three choices made with the audit's other fixes:**
+
+- **The message over Next (finding 7).** The bar's measured size (`bar.ts`, `size()`) counts what a press of the dimmed Next says over the bar while it says something, and the bar's resize observer watches it. Clearing the words when Next loses focus was the other choice: WebKit gives a pressed button no focus, so the words could stay with no blur to clear them.
+- **The card's settle (finding 8).** It plays under `.cbuild[data-ready][data-picked]` alone. The store sets `data-picked` on the builder at a pick and takes it away when a new step is shown, as it sets `data-ready` and `aria-busy`, so a link, a page without the script or a step drawn with a part picked shows the card still.
+- **The view transition's rules (finding 9).** Each holds only under `cbuild-crossing` on the page's root, which `cross()` sets before it starts the transition and takes away when it ends, or when a newer one has not taken it over. The class is a state of the builder's own, not in `Options::cssClasses()` or `HOOKS.md`'s class table, as `cbuild-calm` and `cbuild-back` are not: a theme has no reason to style it.
+
+**Added in the M11 walkthrough.** On a phone in a theme's content width, Back and Next take a row under the total, and the words over Next lay over the estimate ("Complete from about $29" on Kadence). The words are placed by the bar now, not by Back and Next: above the bar's top edge at Next's end, inset by the bar's own padding. The bar keeps its height and Next does not move, which D-310 asks; the words cover none of the bar's own at any width, and `size()` counts them as before. A row of their own inside the bar was the other choice: it grows the bar by a line at a press, and where the bar is not stuck Next moves down under the thumb. Red: "says what is missing clear of the bar's words on a phone on kadence", builder.spec.ts:3249, `.cbuild-bar__estimate by 24 by 16`.
+
+**Status:** Accepted. Flagged for Zach: if "bumps its count" means a visible bump of the badge, it is WooCommerce's to make, or a rule of the shop's theme.
+
 ### D-336 · The state route lists every ready build again, each saying whether it is shown · 2026-11-23
 
 **Context:** D-315 left a broken ready build out of the state route's `presets`, so `presets[i]` was no longer the preset `cbuild[preset]=i` opens, and `presets[].at` was added to make up for it. The auditor's 1.1.0 should-fix 2: a minor release may only gain fields (AUDIT.md, Public API), and an entry dropped from a list a 1.0.x client reads by position changes what it means.
@@ -4207,5 +4237,20 @@ Kadence's page (LCP 1,995, the page's intro paragraph) and its build at the revi
 - If a release takes the median past the gate, the first thing to read is whether the page's blocking list grew, from WordPress, WooCommerce or the plugin, before anything is changed.
 
 **Not done without Zach.** Five runs a page in place of three would keep one slow server response from setting the median, for about a minute more a page in a job with 60, and the gate would stay at 2,500 ms. But AUDIT.md defines the gate as the median of three runs, and how a floor is measured is Zach's to move (CLAUDE.md), so it stays at three for 1.1.0 and is listed for him.
+
+**Status:** Accepted.
+
+### D-340 · A step's cards are listed under its recommendation whatever is picked in it, and a tie falls by the parts' IDs · 2026-11-23
+
+**Context:** the browser's forced-colours case (`builder.spec.ts`, "says the chosen card and the focus by a border and an outline in forced colours") failed twice under load: it pressed the first wheels card, the recommended 54, and once the route answered the cards read 52, 54, 58, so card 0 was not the one chosen. The default order is the recommendation, featured, best sellers, then name (D-243). `Service\BuildState::of()` made a slot's recommendation only while nothing was picked in it (`src/Service/BuildState.php`, the `$starts` line, `null === $part && …`), and `Service\StepShelf::of()` handed the shelf that recommendation. So a pick took the first key away and the cards fell back to best sellers and name. Which card came first then hung on `total_sales`: on lane 2 the 54 had sold twice, so it stayed first and the case passed 40 of 40; on a fresh site, or before another test's order for the 54 went through, the 52 came first by name. The order itself was already total: the parts come ksorted by ID from `Adapter\WooKits::chosen()`, and the shelf's last key is the look's place among them.
+
+**Decision:**
+- `StateStep` gains `leads`: the part the slot recommends, or would recommend were nothing picked in it, made against the same picks and recommendations before it. `recommended` is unchanged (null with a pick, so nothing is labelled or estimated differently), and `StepShelf` orders the cards by `leads`. A pick never moves the step's cards.
+- `Domain\Look\Shelf::of()` sorts the parts it is given by ID before anything else, so a tie its keys leave falls by ID whatever order a caller found them in, as the only caller's already do.
+- The Recommender's tie stays "the first given" (`RecommenderTest`, the even-number case), since its only callers hand it the parts by ID.
+
+**Why:** a card that moves as it is pressed breaks the shopper's place (and the focus ring's), and the page and the route must list one step alike. Keeping the recommendation first after the pick is the smallest change that makes them agree; dropping it from the page's order instead would put the recommended card wherever its name falls.
+
+**Tests.** `ShelfTest::test_a_tie_is_broken_by_the_part_ids_whatever_order_the_parts_come_in` (red before: 10:2:0 before 10:1:0 with the parts reversed), `BuildStateTest::test_a_step_keeps_the_part_its_cards_are_listed_under_whatever_is_picked_in_it` (red before: no `leads`), and `BuilderPageTest::test_a_pick_keeps_the_steps_cards_in_the_order_the_page_listed_them_cold_and_warm`: four trucks, two tied on all but their IDs, the page's radios and the route's `shelf.looks` with each truck picked, cold and warm (red before: "the route, cold, with 15 picked", 18 before 15). The browser case is right as it stands and is unchanged.
 
 **Status:** Accepted.

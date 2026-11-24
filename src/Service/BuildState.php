@@ -110,16 +110,19 @@ final class BuildState {
 		foreach ( $kit->slots->all() as $slot ) {
 			$options     = self::cleared( $clearance, $kit, $counted, $engine->options( $kit, $slot->key, $counted, $candidates[ $slot->key ] ), $candidates );
 			$part        = $picked->part( $slot->key );
-			$starts      = null === $part && $started && ( $slot->required || ! in_array( $slot->key, $left, true ) );
+			$starts      = $started && ( $slot->required || ! in_array( $slot->key, $left, true ) );
+			$leads       = null;
 			$recommended = null;
 			if ( $starts ) {
 				// Held against the recommendations before it only where there are any: otherwise the options are the same.
-				$against     = $recommends ? self::cleared( $clearance, $kit, $estimated, $engine->options( $kit, $slot->key, $estimated, $candidates[ $slot->key ] ), $candidates ) : $options;
-				$recommended = $recommender->among( $kit, $slot->key, $estimated, $against );
+				$against = $recommends ? self::cleared( $clearance, $kit, $estimated, $engine->options( $kit, $slot->key, $estimated, $candidates[ $slot->key ] ), $candidates ) : $options;
+				$leads   = $recommender->among( $kit, $slot->key, $estimated, $against );
 				// A part that fits the board the estimate counts fits the picks alone: it is the card the step offers.
-				$recommended = null === $recommended ? null : ( $options->offer( $recommended->part->id ) ?? $recommended );
+				$leads = null === $leads ? null : ( $options->offer( $leads->part->id ) ?? $leads );
+				// Made with a pick too, for the order of the step's cards alone, so a pick never moves them (D-340).
+				$recommended = null === $part ? $leads : null;
 			}
-			$steps[] = new StateStep( $slot, $options, null === $part ? null : self::option( $options, $part->id ), $recommended );
+			$steps[] = new StateStep( $slot, $options, null === $part ? null : self::option( $options, $part->id ), $recommended, $leads );
 			if ( null !== $part ) {
 				$counted   = $counted->with( $slot->key, $part );
 				$estimated = $estimated->with( $slot->key, $part );

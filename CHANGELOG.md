@@ -39,6 +39,8 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Fixed
 
+- On a phone held sideways, Show the top sits beside the stage's heading, so the board keeps a row of its own and is never drawn under the button.
+- A pick no longer moves the step's cards: the step's recommendation still comes first once it, or another card, is picked, rather than the cards going back to best sellers and name, and a tie is broken by the parts' IDs (D-340).
 - On Storefront in Firefox, Show the top was drawn under the board and a pointer could not reach it: the theme's rule for a figure no longer takes the picture's grid away (D-321).
 - The step's cards no longer move up as the builder loads: the search's and the chips' submits, there for a page with no script, are out of the flow from the first paint where the script will run, and come back if it never does (#107, D-331).
 - If the builder's script never loads, the brand row shows every brand after 4 s rather than its first line alone, and the line that says a picture is on its way stops after four runs, the board staying dimmed (D-328).
@@ -55,6 +57,10 @@ All notable changes to this project are documented here. The format follows [Kee
 - A build link keeps a `nofollow` the site or another plugin set, through WordPress's robots and through Yoast (#88).
 - "Back to the shop" and "Sign in to save this build" have a phone's 44 px target (#86).
 - Until a build's share picture is drawn, a link preview no longer shows the photo of a deck another plugin blurs or leaves out of it, and the cart and My builds no longer stand the deck's photo in for a picture that blurs it (#106, D-309).
+- On Kadence and Storefront, Next is dimmed until the step has a pick, also while it has focus or the pointer is over it: the theme's rules for every button had kept it lit (#100, D-310).
+- On a kit's own page, a deck shown by its photo stays in its place on the stage: the photo no longer runs under the deck's caption or the other parts' tiles (#82, D-303).
+- On a phone, what a press of the dimmed Next says sits above the bar and no longer covers the total's estimate (#100, D-335).
+- On a phone and a tablet, Show the top sits under the board on Kadence and Storefront too, and the labels of the parts with no layer image are under the board, as on a desktop (#102, D-320).
 
 ### Development
 

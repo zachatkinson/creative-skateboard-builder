@@ -410,14 +410,19 @@ export function cross(
 	const page = document.documentElement;
 	page.classList.toggle( 'cbuild-back', ! forward );
 	page.classList.toggle( 'cbuild-calm', quiet );
+	// The stylesheet's view-transition rules hold only while this mark is on, so a transition of the theme's or
+	// another plugin's is left as its author made it.
+	page.classList.add( 'cbuild-crossing' );
 	const transition = document.startViewTransition( () => {
 		change();
 		return new Promise< void >( ( done ) => window.setTimeout( done ) );
 	} );
 	crossing = transition;
 	const done = () => {
-		if ( crossing === transition ) {
+		// A newer transition keeps the mark; this one, the last or cut short, takes it away.
+		if ( crossing === transition || undefined === crossing ) {
 			crossing = undefined;
+			page.classList.remove( 'cbuild-crossing' );
 		}
 	};
 	transition.finished.then( done, done );

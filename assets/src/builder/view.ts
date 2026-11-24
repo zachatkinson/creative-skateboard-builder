@@ -504,6 +504,8 @@ function railPlace( view: Shown ): number {
  * @param after  The view now.
  */
 function motion( change: () => void, before: Shown, after: Shown ): void {
+	// A step drawn with a part already picked shows it as it is: the card settles at a pick alone.
+	root?.removeAttribute( 'data-picked' );
 	cross( change, railPlace( after ) >= railPlace( before ), calm( root ) );
 }
 
@@ -718,7 +720,13 @@ function measure( element: HTMLElement ): void {
 	const bar = element.querySelector( '.cbuild-bar' );
 	const shown = element.querySelector( '.cbuild__stage' );
 	if ( bar ) {
-		new window.ResizeObserver( () => size( element ) ).observe( bar );
+		const sized = new window.ResizeObserver( () => size( element ) );
+		sized.observe( bar );
+		// What a press of the dimmed Next says sits over the bar, outside its box: its height counts as the bar's.
+		const said = bar.querySelector( '.cbuild-bar__missing' );
+		if ( said ) {
+			sized.observe( said );
+		}
 	}
 	// The stage sticks on top, or stands beside the panel, as the builder's width changes its size.
 	if ( shown ) {
@@ -1251,9 +1259,21 @@ const { state } = store(
 					event.submitter?.hasAttribute( 'aria-disabled' ) &&
 					state.dimmed
 				) {
-					state.missing = state.view.bar?.next.missing ?? '';
-					// Heard once, in the builder's one status region; the words beside Next are its description.
-					state.status = state.missing;
+					const missing = state.view.bar?.next.missing ?? '';
+					state.missing = missing;
+					// Heard once, in the builder's one status region; the words beside Next are its description. A second
+					// press would set the words the region already holds, which a polite region does not say again: it is
+					// emptied, and the words come back on the next frame unless something else has spoken.
+					if ( state.status !== missing ) {
+						state.status = missing;
+						return;
+					}
+					state.status = '';
+					window.requestAnimationFrame( () => {
+						if ( '' === state.status ) {
+							state.status = missing;
+						}
+					} );
 					return;
 				}
 				// A search still waiting from the keys typed would go out after this and undo it, as Clear search was.
@@ -1333,6 +1353,8 @@ const { state } = store(
 				cut();
 				chosen( state.view, input.value );
 				state.missing = '';
+				// The stylesheet settles the card picked under this mark alone, never as a page or a step is drawn.
+				root?.setAttribute( 'data-picked', '' );
 				root?.dispatchEvent(
 					new CustomEvent( 'cbuild:pick', {
 						bubbles: true,

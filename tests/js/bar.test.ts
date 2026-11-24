@@ -212,6 +212,31 @@ describe( 'size', () => {
 		size( root );
 		expect( read(), 'no bar shown' ).toBe( '' );
 	} );
+
+	// What a press of the dimmed Next says sits over the bar, so focus stays clear of it too while it says something
+	// (WCAG 2.4.11; M11 audit, finding 7).
+	it( 'counts what the dimmed Next says over the bar while it says something', () => {
+		const { root } = page( '', '' );
+		const bar = root.querySelector( '.cbuild-bar' ) as HTMLElement;
+		bar.innerHTML = '<p class="cbuild-bar__missing"></p>';
+		const missing = bar.firstElementChild as HTMLElement;
+		vi.spyOn( bar, 'getClientRects' ).mockReturnValue( [
+			new DOMRect(),
+		] as unknown as DOMRectList );
+		bar.style.position = 'sticky';
+		box( bar, 600, 100 );
+		// Empty, it has no height, wherever the browser puts it.
+		box( missing, 590, 0 );
+		size( root );
+		expect( read(), 'nothing said' ).toBe( '100px' );
+		box( missing, 540.5, 44 );
+		size( root );
+		expect( read() ).toBe( '160px' );
+		// Below the bar's top, as it never is, it adds nothing.
+		box( missing, 620, 20 );
+		size( root );
+		expect( read() ).toBe( '100px' );
+	} );
 } );
 
 // The auditor's M10 review, 1 (WCAG 2.4.11): narrower than 64rem the stage sticks at the top of the screen, so the page

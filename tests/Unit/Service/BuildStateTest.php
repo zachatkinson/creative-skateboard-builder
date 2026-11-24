@@ -319,6 +319,21 @@ final class BuildStateTest extends TestCase {
 		self::assertTrue( $state->ready(), 'a warning does not keep a build from the cart' );
 	}
 
+	// D-340: picking the recommended wheels took the recommendation off the step, so its cards were listed again by
+	// sales and name, and the card just pressed moved. The step still names what it would recommend, for the order.
+	public function test_a_step_keeps_the_part_its_cards_are_listed_under_whatever_is_picked_in_it(): void {
+		$wheels = self::step( $this->of( array( SlotKey::DECK => 103 ) ), SlotKey::WHEELS );
+		self::assertSame( 302, $wheels->recommended?->part->id );
+		self::assertSame( $wheels->recommended, $wheels->leads, 'with nothing picked, the recommendation' );
+		foreach ( array( 302, 301, 303 ) as $picked ) {
+			$wheels = self::step( $this->of( array( SlotKey::DECK => 103, SlotKey::WHEELS => $picked ) ), SlotKey::WHEELS );
+			self::assertNull( $wheels->recommended, 'a slot with a pick has no recommendation' );
+			self::assertSame( $wheels->options->offer( 302 ), $wheels->leads, 'picked ' . $picked . ': the card it would recommend' );
+		}
+		self::assertNull( self::step( $this->of( array( SlotKey::DECK => 103 ) ), SlotKey::DECK )->leads, 'the deck is never recommended' );
+		self::assertNull( self::step( $this->of(), SlotKey::WHEELS )->leads, 'nothing starts before the deck' );
+	}
+
 	public function test_the_kits_default_part_is_what_a_slot_starts_on(): void {
 		$this->kits->add( self::KIT, self::kit( array( SlotKey::WHEELS => 301 ) ), self::shop() );
 		self::assertSame( 301, self::step( $this->of( array( SlotKey::DECK => 103 ) ), SlotKey::WHEELS )->recommended?->part->id );

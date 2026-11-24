@@ -277,3 +277,184 @@ for ( const size of [ WIDTHS[ 0 ], WIDTHS[ 2 ] ] ) {
 		);
 	} );
 }
+
+// Milestone 11 (ROADMAP: "Each moment: its end state as a visual baseline"; M11 audit, finding 1): each moment of the
+// spec's table played with motion on, and pictured once every animation it started has finished. One theme, light,
+// at a desktop's width: the moments are the builder's own, the same on every theme.
+test.describe( 'The end state of each moment, Twenty Twenty-Five, light, desktop', () => {
+	const fixture = (): { page: string; parts: Record< string, number > } =>
+		JSON.parse(
+			readFileSync(
+				path.join( process.cwd(), 'tmp', 'e2e-builder.json' ),
+				'utf8'
+			)
+		);
+	const part = ( sku: string ): number => {
+		const found = fixture().parts[ sku ];
+		if ( undefined === found ) {
+			throw new Error( `The fixture has no part ${ sku }.` );
+		}
+		return found;
+	};
+	const linkTo = ( build: Record< string, string | number > ): string => {
+		const url = new URL( fixture().page );
+		for ( const [ key, value ] of Object.entries( build ) ) {
+			url.searchParams.set( `cbuild[${ key }]`, String( value ) );
+		}
+		return url.toString();
+	};
+	const choose = ( on: Page, name: string ) =>
+		on.getByRole( 'radio', { name: `Choose ${ name }` } ).check();
+	const parts = () => ( {
+		deck: part( 'builder-test-deck-8-0' ),
+		trucks: part( 'builder-test-trucks-139' ),
+		wheels: part( 'builder-test-wheels-54' ),
+		bearings: part( 'builder-test-bearings' ),
+		hardware: part( 'builder-test-bolts-1' ),
+	} );
+	const moments: [
+		string,
+		() => Record< string, string | number > | null,
+		( on: Page ) => Promise< unknown >,
+	][] = [
+		[
+			'deck',
+			() => ( { _width: '8in' } ),
+			( on ) => choose( on, 'Builder test deck 8.0' ),
+		],
+		[
+			'step',
+			() => ( { deck: parts().deck, step: 'deck' } ),
+			( on ) =>
+				on
+					.locator( '.cbuild' )
+					.getByRole( 'button', { name: 'Next: Trucks' } )
+					.first()
+					.click(),
+		],
+		[
+			'trucks',
+			() => ( { deck: parts().deck, step: 'trucks' } ),
+			( on ) => choose( on, 'Builder test trucks 139' ),
+		],
+		[
+			'wheels',
+			() => ( {
+				deck: parts().deck,
+				trucks: parts().trucks,
+				step: 'wheels',
+			} ),
+			( on ) => choose( on, 'Builder test wheels 54' ),
+		],
+		[
+			'swapped',
+			() => ( { ...parts(), step: 'wheels' } ),
+			( on ) => choose( on, 'Builder test wheels 52' ),
+		],
+		[
+			'grip',
+			() => ( { ...parts(), step: 'grip' } ),
+			( on ) => choose( on, 'Builder test grip' ),
+		],
+		[
+			'removed',
+			() => ( {
+				...parts(),
+				risers: part( 'builder-test-risers-1-4' ),
+				step: 'risers',
+			} ),
+			( on ) =>
+				on
+					.locator( '.cbuild' )
+					.getByRole( 'radio', { name: 'No risers' } )
+					.check(),
+		],
+		[
+			'turn',
+			() => ( { deck: parts().deck, step: 'trucks' } ),
+			async ( on ) => {
+				const turn = on
+					.locator( '#cbuild-picture' )
+					.getByRole( 'button', { name: 'Show the top' } );
+				await turn.click();
+				await expect( turn ).toHaveAttribute( 'aria-pressed', 'true' );
+			},
+		],
+		[
+			'cart',
+			() => ( {
+				...parts(),
+				grip: part( 'builder-test-grip' ),
+				step: 'review',
+			} ),
+			async ( on ) => {
+				await on
+					.locator( '.cbuild' )
+					.getByRole( 'button', { name: 'Add to cart' } )
+					.first()
+					.click();
+				await expect(
+					on.locator( '.cbuild-review__added' )
+				).toBeVisible();
+			},
+		],
+	];
+
+	test.beforeEach( async ( { context, baseURL } ) => {
+		const url = baseURL || SITE;
+		await context.addCookies( [
+			{ name: 'cbuild_e2e_theme', value: 'twentytwentyfive', url },
+			{ name: 'cbuild_e2e_scheme', value: 'light', url },
+		] );
+	} );
+
+	for ( const [ name, link, act ] of moments ) {
+		test( `the end state of each moment: ${ name }`, async ( {
+			page: on,
+		} ) => {
+			await on.setViewportSize( { width: 1280, height: 900 } );
+			// Motion on, so the moment plays as a shopper sees it.
+			await on.emulateMedia( {
+				colorScheme: 'light',
+				reducedMotion: 'no-preference',
+			} );
+			const at = link();
+			await on.goto( null === at ? page() : linkTo( at ) );
+			await expect( on.locator( '.cbuild' ) ).toHaveAttribute(
+				'data-ready',
+				''
+			);
+			await act( on );
+			await expect( on.locator( '.cbuild' ) ).toHaveAttribute(
+				'aria-busy',
+				'false'
+			);
+			// Every animation the moment started has finished, the view transition's too.
+			await on.waitForFunction( () =>
+				document
+					.getAnimations()
+					.every(
+						( animation ) =>
+							'running' !== animation.playState ||
+							Infinity ===
+								animation.effect?.getComputedTiming().iterations
+					)
+			);
+			await on.mouse.move( 0, 0 );
+			await still( on, 1280, 900 );
+			await expect( on.locator( '.cbuild' ) ).toHaveScreenshot(
+				`twentytwentyfive-light-desktop-moment-${ name }.png`,
+				{
+					animations: 'disabled',
+					caret: 'hide',
+					// As in the shots above: the review's link names the site's own IDs, and a preset's tile is drawn
+					// by a job of its own.
+					mask: [
+						on.locator( '.cbuild-share__link' ),
+						on.locator( '.cbuild-preset__photo' ),
+					],
+				}
+			);
+		} );
+	}
+} );

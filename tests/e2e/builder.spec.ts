@@ -3092,6 +3092,197 @@ test.describe( 'Radios on a dark theme whose contrast colour is dark', () => {
 	} );
 } );
 
+// Milestone 11's walkthrough (#100, F15): on Kadence the step's Next had aria-disabled and was never dimmed, since the
+// theme's rule for every `button` outweighed the dimmed look at no weight; Storefront's did too. Pressed, Next keeps
+// focus, and on a desktop the pointer is over it, so the look must hold under a theme's `button:focus` and
+// `button:hover` as well. The look is D-310's: the builder's muted words and border on its surface.
+test.describe( 'The dimmed Next on a theme (#100)', () => {
+	for ( const theme of [ 'twentytwentyfive', 'storefront', 'kadence' ] ) {
+		test( `is dimmed on ${ theme } at rest, focused and under the pointer, and lit by a pick`, async ( {
+			page,
+			context,
+			baseURL,
+		}, info ) => {
+			test.skip(
+				info.project.name === 'no-js',
+				'Next is dimmed by the script alone (D-310).'
+			);
+			await context.addCookies( [
+				{
+					name: 'cbuild_e2e_theme',
+					value: theme,
+					url: baseURL || SITE,
+				},
+			] );
+			await page.goto(
+				linkTo( {
+					deck: id( 'builder-test-deck-8-0' ),
+					step: 'trucks',
+				} )
+			);
+			const button = page
+				.locator( '.cbuild-bar__next' )
+				.filter( { visible: true } );
+			await expect( button ).toHaveAttribute( 'aria-disabled', 'true' );
+			/**
+			 * The button's colours, and the dimmed look's as the builder's tokens give them in the bar.
+			 */
+			const look = () =>
+				button.evaluate( ( dim ) => {
+					const token = document.createElement( 'span' );
+					token.style.cssText =
+						'background-color: var(--cbuild-surface); color: var(--cbuild-muted); border: 1px solid var(--cbuild-muted)';
+					dim.parentElement?.append( token );
+					const want = getComputedStyle( token );
+					const own = getComputedStyle( dim );
+					const both = {
+						shown: [
+							own.backgroundColor,
+							own.color,
+							own.borderTopColor,
+						].join( ' | ' ),
+						dimmed: [
+							want.backgroundColor,
+							want.color,
+							want.borderTopColor,
+						].join( ' | ' ),
+					};
+					token.remove();
+					return both;
+				} );
+			// A theme's button may ease between its colours (Kadence's does), so the look is read once it has settled.
+			const dimmed = () =>
+				look().then( ( { shown, dimmed: want } ) =>
+					shown === want ? 'dimmed' : `${ shown }, not ${ want }`
+				);
+			await page.mouse.move( 0, 0 );
+			await expect.poll( dimmed, 'at rest' ).toBe( 'dimmed' );
+
+			await button.focus();
+			await page.keyboard.press( 'Enter' );
+			await expect( page.locator( '.cbuild-bar__missing' ) ).toHaveText(
+				'Choose your trucks first.'
+			);
+			await expect( button ).toBeFocused();
+			await expect
+				.poll( dimmed, 'focused after a press' )
+				.toBe( 'dimmed' );
+
+			if ( ! info.project.name.endsWith( '-phone' ) ) {
+				await button.hover( { force: true } );
+				await expect
+					.poll( dimmed, 'under the pointer' )
+					.toBe( 'dimmed' );
+			}
+
+			await choose( page, 'Builder test trucks 139' );
+			await expect( button ).toHaveAttribute( 'aria-disabled', 'false' );
+			await expect
+				.poll( dimmed, 'lit once the step has a pick' )
+				.not.toBe( 'dimmed' );
+		} );
+
+		// Milestone 11's walkthrough: on a phone the words a press says sat over the bar's own, and the estimate read
+		// "Complete from about $29" under them. They cover none of the bar's words, and none is cut.
+		test( `says what is missing clear of the bar's words on a phone on ${ theme }`, async ( {
+			page,
+			context,
+			baseURL,
+		}, info ) => {
+			test.skip(
+				info.project.name === 'no-js',
+				'Next is dimmed by the script alone (D-310).'
+			);
+			await context.addCookies( [
+				{
+					name: 'cbuild_e2e_theme',
+					value: theme,
+					url: baseURL || SITE,
+				},
+			] );
+			await page.setViewportSize( { width: 390, height: 844 } );
+			// On the kit's own page, in the theme's content width, where Back and Next take a row under the total.
+			const kit = new URL(
+				'/product/builder-test-kit/',
+				baseURL || SITE
+			);
+			kit.searchParams.set(
+				'cbuild[deck]',
+				String( id( 'builder-test-deck-8-0' ) )
+			);
+			kit.searchParams.set( 'cbuild[step]', 'trucks' );
+			await page.goto( kit.toString() );
+			const bar = page.locator( '.cbuild-bar' );
+			await expect(
+				bar.locator( '.cbuild-bar__estimate' )
+			).toBeVisible();
+			const button = bar
+				.locator( '.cbuild-bar__next' )
+				.filter( { visible: true } );
+			await expect( button ).toHaveAttribute( 'aria-disabled', 'true' );
+			// A dimmed Next is aria-disabled, which Playwright's click() waits on as disabled; a shopper can tap it.
+			await button.click( { force: true } );
+			await expect( bar.locator( '.cbuild-bar__missing' ) ).toHaveText(
+				'Choose your trucks first.'
+			);
+			const crossed = await bar.evaluate( ( shown ) => {
+				const said = shown
+					.querySelector( '.cbuild-bar__missing' )
+					?.getBoundingClientRect();
+				if ( ! said ) {
+					return [ 'no message' ];
+				}
+				const words = [
+					'.cbuild-bar__label',
+					'.cbuild-bar__amount > :first-child',
+					'.cbuild-bar__estimate',
+					'.cbuild-bar__more--show',
+					'.cbuild-bar__back',
+					'.cbuild-bar__next:not([hidden])',
+				];
+				return words.flatMap( ( selector ) => {
+					const box = shown
+						.querySelector( selector )
+						?.getBoundingClientRect();
+					if ( ! box || box.width === 0 ) {
+						return [];
+					}
+					const across =
+						Math.min( box.right, said.right ) -
+						Math.max( box.left, said.left );
+					const down =
+						Math.min( box.bottom, said.bottom ) -
+						Math.max( box.top, said.top );
+					return across > 0.5 && down > 0.5
+						? [
+								`${ selector } by ${ Math.round(
+									across
+								) } by ${ Math.round( down ) }`,
+							]
+						: [];
+				} );
+			} );
+			expect( crossed, "the bar's words the message covers" ).toEqual(
+				[]
+			);
+			const estimate = await bar
+				.locator( '.cbuild-bar__estimate' )
+				.evaluate( ( shown ) => ( {
+					scroll: shown.scrollWidth,
+					client: shown.clientWidth,
+				} ) );
+			expect( estimate.scroll, 'the estimate whole' ).toBeLessThanOrEqual(
+				estimate.client
+			);
+			const said = ( await bar
+				.locator( '.cbuild-bar__missing' )
+				.boundingBox() )!;
+			expect( said.x, 'on the screen' ).toBeGreaterThanOrEqual( 0 );
+			expect( said.x + said.width ).toBeLessThanOrEqual( 390 );
+		} );
+	}
+} );
+
 // Cowork's 1.0.0 review, F11 (#96): a theme's plain rules for a fieldset, a button and a heading outranked the
 // builder's resets, which sat at no weight inside :where(). On Kadence the fieldsets were boxed and padded, Filters
 // and Show the top took the theme's button fill, Filters showed on a desktop, and the step's heading had 60 px above
@@ -3826,12 +4017,14 @@ test.describe( 'Motion', () => {
 				watched: boolean;
 				amounts: string[];
 				places: string[];
+				said: { amount: string; status: string }[];
 			};
 			record.seen = new Map();
 			record.transitions = 0;
 			record.watched = false;
 			record.amounts = [];
 			record.places = [];
+			record.said = [];
 			const start = document.startViewTransition?.bind( document );
 			if ( start ) {
 				document.startViewTransition = ( ( update: () => void ) => {
@@ -3844,24 +4037,45 @@ test.describe( 'Motion', () => {
 				const amount = document.querySelector(
 					'.cbuild-bar__amount > span:first-child'
 				)?.textContent;
+				// What the status region holds at each frame where it or the bar's amount changed: a screen reader hears
+				// the total from it once, never a frame of the count (spec: The counting total).
+				const status =
+					document.querySelector( '.cbuild__status' )?.textContent ??
+					'';
+				const last = record.said.at( -1 );
+				if (
+					! last ||
+					last.status !== status ||
+					( amount && last.amount !== amount )
+				) {
+					record.said.push( { amount: amount ?? '', status } );
+				}
 				if ( amount && amount !== record.amounts.at( -1 ) ) {
 					record.amounts.push( amount );
-					// Where the bar, its total and its controls are on the page at each amount, and their sizes, a scroll left
-					// out: the count must not move or grow them.
+					// Where the bar, its total and its controls are at each amount, and their sizes: the count must not move
+					// or grow them. Each frame is written as the bar's size with each control's place and size inside it,
+					// then where the bar is on the screen, then the page's scroll. The bar sticks to the foot of the screen
+					// and stops where the builder ends, so a scroll of the page under it (as the picked card is kept in its
+					// place, which WebKit did during the count) moves it on the page, or on the screen, and is no shift.
+					const own = document.querySelector( '.cbuild-bar' );
+					const frame0 = own?.getBoundingClientRect();
+					const inside = [
+						...document.querySelectorAll< HTMLElement >(
+							'.cbuild-bar, .cbuild-bar__amount, .cbuild-bar a, .cbuild-bar button'
+						),
+					]
+						.filter( ( control ) => null !== control.offsetParent )
+						.map( ( control ) => {
+							const box = control.getBoundingClientRect();
+							return `${ Math.round( box.left - ( frame0?.left ?? 0 ) ) },${ Math.round( box.top - ( frame0?.top ?? 0 ) ) },${ Math.round( box.width ) }x${ Math.round( box.height ) }`;
+						} )
+						.join( ' ' );
 					record.places.push(
-						[
-							...document.querySelectorAll< HTMLElement >(
-								'.cbuild-bar, .cbuild-bar__amount, .cbuild-bar a, .cbuild-bar button'
-							),
-						]
-							.filter(
-								( control ) => null !== control.offsetParent
-							)
-							.map( ( control ) => {
-								const box = control.getBoundingClientRect();
-								return `${ Math.round( box.left + window.scrollX ) },${ Math.round( box.top + window.scrollY ) },${ Math.round( box.width ) }x${ Math.round( box.height ) }`;
-							} )
-							.join( ' ' )
+						`${ inside } | ${ Math.round(
+							frame0?.left ?? 0
+						) },${ Math.round( frame0?.top ?? 0 ) } | ${ Math.round(
+							window.scrollY
+						) }`
 					);
 				}
 				for ( const animation of document.getAnimations() ) {
@@ -3918,12 +4132,14 @@ test.describe( 'Motion', () => {
 				transitions: number;
 				amounts: string[];
 				places: string[];
+				said: { amount: string; status: string }[];
 			};
 			return {
 				animations: [ ...record.seen.values() ],
 				transitions: record.transitions,
 				amounts: record.amounts,
 				places: record.places,
+				said: record.said,
 			};
 		} );
 	};
@@ -3995,6 +4211,90 @@ test.describe( 'Motion', () => {
 		}
 	};
 
+	/**
+	 * Every moment in the spec's table, each as its name, the link that leads to it (null: the builder's own page) and
+	 * the press that plays it.
+	 *
+	 * @param page The page.
+	 */
+	const momentsOf = (
+		page: Page
+	): [
+		string,
+		Record< string, string | number > | null,
+		() => Promise< void >,
+	][] => {
+		const parts = {
+			deck: id( 'builder-test-deck-8-0' ),
+			trucks: id( 'builder-test-trucks-139' ),
+			wheels: id( 'builder-test-wheels-54' ),
+			bearings: id( 'builder-test-bearings' ),
+			hardware: id( 'builder-test-bolts-1' ),
+		};
+		const builder = page.locator( '.cbuild' );
+		return [
+			[ 'deck', null, () => pickDeck( page, '8.0' ) ],
+			[
+				'step',
+				{ deck: parts.deck, step: 'deck' },
+				() =>
+					builder
+						.getByRole( 'button', { name: 'Next: Trucks' } )
+						.first()
+						.click(),
+			],
+			[
+				'trucks',
+				{ deck: parts.deck, step: 'trucks' },
+				() => choose( page, 'Builder test trucks 139' ),
+			],
+			[
+				'wheels',
+				{ deck: parts.deck, trucks: parts.trucks, step: 'wheels' },
+				() => choose( page, 'Builder test wheels 54' ),
+			],
+			[
+				'swapped',
+				{ ...parts, step: 'wheels' },
+				() => choose( page, 'Builder test wheels 52' ),
+			],
+			[
+				'grip',
+				{ ...parts, step: 'grip' },
+				() => choose( page, 'Builder test grip' ),
+			],
+			[
+				'removed',
+				// The risers are the part a shopper can leave off (D-246).
+				{
+					...parts,
+					risers: id( 'builder-test-risers-1-4' ),
+					step: 'risers',
+				},
+				() =>
+					builder.getByRole( 'radio', { name: 'No risers' } ).check(),
+			],
+			[
+				'turn',
+				{ deck: parts.deck, step: 'trucks' },
+				() =>
+					page
+						.locator( '#cbuild-picture' )
+						.getByRole( 'button', { name: 'Show the top' } )
+						.click(),
+			],
+			[
+				'cart',
+				{ ...parts, grip: id( 'builder-test-grip' ), step: 'review' },
+				() =>
+					builder
+						.getByRole( 'button', { name: 'Add to cart' } )
+						.first()
+						.click(),
+			],
+		];
+	};
+
 	test.beforeEach( async ( { page }, info ) => {
 		test.skip(
 			info.project.name === 'no-js',
@@ -4010,7 +4310,8 @@ test.describe( 'Motion', () => {
 		await page.emulateMedia( { reducedMotion: 'no-preference' } );
 		await watch( page );
 		await pickAndStep( page );
-		const { animations, transitions, amounts, places } = await seen( page );
+		const { animations, transitions, amounts, places, said } =
+			await seen( page );
 
 		const deck = moment( animations, 'cbuild-deck' );
 		expect( deck ).toHaveLength( 1 );
@@ -4049,12 +4350,105 @@ test.describe( 'Motion', () => {
 		expect( amounts.length, amounts.join( ' | ' ) ).toBeGreaterThan( 2 );
 		// While it counts, the bar, its total and its controls hold the place and size the last amount gives them: no
 		// layout shift, which CLS itself leaves out within 500 ms of the press (ROADMAP: Milestone 11).
+		const [ inside0, screen0, scroll0 ] = places.at( -1 )!.split( ' | ' );
 		expect(
-			new Set( places.slice( 1 ) ),
+			places.slice( 1 ).filter( ( place ) => {
+				const [ inside, screen, scroll ] = place.split( ' | ' );
+				return (
+					inside !== inside0 ||
+					( scroll === scroll0 && screen !== screen0 )
+				);
+			} ),
 			amounts
 				.map( ( amount, at ) => `${ amount }: ${ places[ at ] }` )
 				.join( '\n' )
-		).toEqual( new Set( [ places.at( -1 ) ] ) );
+		).toEqual( [] );
+		// A screen reader hears the total once, from the status region (spec: The counting total; M11 audit, finding
+		// 3): the region took the total's sentence once, and held it while the amounts between were drawn.
+		const story = said
+			.map( ( one ) => `${ one.amount } | ${ one.status }` )
+			.join( '\n' );
+		const spoken = said
+			.map( ( one ) => one.status )
+			.filter( ( status, at, all ) => status !== all[ at - 1 ] );
+		const between = said.filter(
+			( one ) =>
+				'' !== one.amount &&
+				one.amount !== amounts[ 0 ] &&
+				one.amount !== amounts.at( -1 )
+		);
+		expect( between.length, story ).toBeGreaterThan( 0 );
+		// While it counted, the region held one sentence, with the total in it once (the width pressed before the pick
+		// said its own total, before the count).
+		const held = new Set( between.map( ( one ) => one.status ) );
+		expect( held.size, `the status while it counted\n${ story }` ).toBe(
+			1
+		);
+		const sentence = [ ...held ][ 0 ]!;
+		expect( sentence.split( 'Total:' ), story ).toHaveLength( 2 );
+		// It was set once, not once a frame: the region spoke it once.
+		expect(
+			spoken.filter( ( status ) => sentence === status ),
+			story
+		).toHaveLength( 1 );
+	} );
+
+	// "Never on load" (M11 audit, finding 8): a card settles when the shopper picks it, not when a link with a pick
+	// is loaded and its card is drawn checked; and it still does on a pick.
+	test( 'a card settles at a pick, never as a link with a pick loads', async ( {
+		page,
+	} ) => {
+		await page.emulateMedia( { reducedMotion: 'no-preference' } );
+		// Every CSS animation that starts on the page, from its first paint.
+		await page.addInitScript( () => {
+			const started: string[] = [];
+			( window as unknown as { started: string[] } ).started = started;
+			document.addEventListener(
+				'animationstart',
+				( event ) => started.push( event.animationName ),
+				true
+			);
+		} );
+		const started = () =>
+			page.evaluate(
+				() => ( window as unknown as { started: string[] } ).started
+			);
+		await page.goto(
+			linkTo( { deck: id( 'builder-test-deck-8-0' ), step: 'deck' } )
+		);
+		await expect( page.locator( '.cbuild' ) ).toHaveAttribute(
+			'data-ready',
+			''
+		);
+		await expect(
+			page.getByRole( 'radio', { name: 'Choose Builder test deck 8.0' } )
+		).toBeChecked();
+		// Two frames for a settle that had started to be seen.
+		await page.evaluate(
+			() =>
+				new Promise( ( done ) =>
+					requestAnimationFrame( () => requestAnimationFrame( done ) )
+				)
+		);
+		expect(
+			await started(),
+			'nothing settles as the page loads'
+		).not.toContain( 'cbuild-settle' );
+		expect(
+			await page.evaluate( () =>
+				document
+					.getAnimations()
+					.map(
+						( animation ) =>
+							( animation as CSSAnimation ).animationName
+					)
+			)
+		).not.toContain( 'cbuild-settle' );
+
+		await pickDeck( page, '8.25' );
+		await expect
+			.poll( started, { message: 'the card picked settles' } )
+			.toContain( 'cbuild-settle' );
 	} );
 
 	test( 'the trucks slide in 60 ms apart, the wheels 40 ms apart and turning, each for its time', async ( {
@@ -4148,19 +4542,130 @@ test.describe( 'Motion', () => {
 		} );
 	}
 
+	// Every moment in the spec's table, not the deck and the step alone, is a fade under both calm modes, and Add to
+	// cart plays no move of its own: the Mini-Cart's count changing is the moment (M11 audit, finding 2).
+	for ( const calm of [ 'reduced motion', 'subtle' ] as const ) {
+		test( `under ${ calm } each moment in the table is a fade of 150 ms or less, and Add to cart sends nothing off`, async ( {
+			page,
+		} ) => {
+			test.setTimeout( 120_000 );
+			await page.emulateMedia( {
+				reducedMotion:
+					'reduced motion' === calm ? 'reduce' : 'no-preference',
+			} );
+			const builder = page.locator( '.cbuild' );
+			for ( const [ name, link, act ] of momentsOf( page ) ) {
+				await page.goto(
+					null === link ? fixture().page : linkTo( link )
+				);
+				await expect( builder ).toHaveAttribute( 'data-ready', '' );
+				if ( 'subtle' === calm ) {
+					// As the server marks a kit whose Motion is subtle (see the test above).
+					await builder.evaluate( ( root ) =>
+						root.classList.add( 'cbuild--subtle' )
+					);
+				}
+				await watch( page );
+				await act();
+				await expect( builder ).toHaveAttribute( 'aria-busy', 'false' );
+				const { animations } = await seen( page );
+				await test.step( name, () => faded( animations ) );
+				if ( 'cart' === name ) {
+					expect(
+						moment( animations, 'cbuild-cart' ),
+						'the board is not sent off'
+					).toEqual( [] );
+				}
+			}
+		} );
+	}
+
 	test( 'a step changes at once where the browser has no view transitions', async ( {
 		page,
 	} ) => {
+		await page.emulateMedia( { reducedMotion: 'no-preference' } );
 		await page.evaluate( () => {
 			Object.defineProperty( document, 'startViewTransition', {
 				value: undefined,
 				configurable: true,
 			} );
 		} );
-		await pickAndStep( page );
+		await pickDeck( page, '8.0' );
+		await settled( page );
+		await expect( page.locator( '.cbuild' ) ).toHaveAttribute(
+			'aria-busy',
+			'false'
+		);
+		// Watched once the API is gone, so nothing of the watch's own can start a transition; each frame counted, the
+		// frame the step's answer came in, and the first frame that shows the new heading (M11 audit, finding 4).
+		await watch( page );
+		await page.evaluate( () => {
+			const record = window as unknown as {
+				frame: number;
+				answered: number[];
+				headed: number;
+			};
+			record.frame = 0;
+			record.answered = [];
+			record.headed = -1;
+			const was =
+				document.querySelector( '.cbuild__heading' )?.textContent;
+			const tick = () => {
+				record.frame++;
+				if (
+					record.headed < 0 &&
+					document.querySelector( '.cbuild__heading' )
+						?.textContent !== was
+				) {
+					record.headed = record.frame;
+				}
+				window.requestAnimationFrame( tick );
+			};
+			window.requestAnimationFrame( tick );
+			const own = window.fetch.bind( window );
+			window.fetch = async ( ...args: Parameters< typeof fetch > ) => {
+				const response = await own( ...args );
+				if ( String( args[ 0 ] ).includes( '/cbuild/v1/' ) ) {
+					await response.clone().text();
+					record.answered.push( record.frame );
+				}
+				return response;
+			};
+		} );
+		await page
+			.locator( '.cbuild' )
+			.getByRole( 'button', { name: 'Next: Trucks' } )
+			.first()
+			.click();
+		await expect( heading( page ) ).toHaveText(
+			'Step 2 of 7: Choose your trucks'
+		);
+		const { animations, transitions } = await seen( page );
+		expect( transitions, 'no view transition started' ).toBe( 0 );
+		expect(
+			animations.filter( ( animation ) =>
+				[ 'cbuild-panel-in', 'cbuild-panel-out' ].includes(
+					animation.name
+				)
+			),
+			'the panel did not slide'
+		).toEqual( [] );
+		const { answers, headed } = await page.evaluate( () => {
+			const record = window as unknown as {
+				answered: number[];
+				headed: number;
+			};
+			return { answers: record.answered, headed: record.headed };
+		} );
+		const answer = answers.filter( ( at ) => at <= headed ).at( -1 );
+		expect( answer, `answers at ${ answers.join( ', ' ) }` ).toBeDefined();
+		expect(
+			headed - answer!,
+			'the heading changed in the frame after the answer'
+		).toBeLessThanOrEqual( 1 );
 		await expect(
 			page.evaluate( () =>
-				document.documentElement.classList.contains( 'cbuild-back' )
+				document.documentElement.classList.contains( 'cbuild-crossing' )
 			)
 		).resolves.toBe( false );
 	} );
@@ -4227,6 +4732,40 @@ test.describe( 'Motion', () => {
 		expect( cart ).toHaveLength( 1 );
 		expect( cart[ 0 ]!.duration ).toBe( 400 );
 		onlyTransformAndOpacity( animations );
+
+		// A part removed: the risers left off, the stage's other photos close the gap in 180 ms (M11 audit, finding 2).
+		await page.goto(
+			linkTo( {
+				...parts,
+				risers: id( 'builder-test-risers-1-4' ),
+				step: 'risers',
+			} )
+		);
+		await ready();
+		await watch( page );
+		await page
+			.locator( '.cbuild' )
+			.getByRole( 'radio', { name: 'No risers' } )
+			.check();
+		( { animations } = await seen( page ) );
+		const removed = moment( animations, 'cbuild-removed' );
+		expect( removed.length ).toBeGreaterThan( 0 );
+		expect(
+			new Set( removed.map( ( animation ) => animation.duration ) )
+		).toEqual( new Set( [ 180 ] ) );
+		onlyTransformAndOpacity( animations );
+
+		// The price changes: the estimate under the total fades in over 300 ms as the first deck brings it.
+		await page.goto( fixture().page );
+		await ready();
+		await watch( page );
+		await pickDeck( page, '8.0' );
+		await settled( page );
+		( { animations } = await seen( page ) );
+		const total = moment( animations, 'cbuild-total' );
+		expect( total ).toHaveLength( 1 );
+		expect( total[ 0 ]!.duration ).toBe( 300 );
+		expect( total[ 0 ]!.properties ).toEqual( [ 'opacity' ] );
 	} );
 
 	// Issue #46: the board turns over as a card does; under reduced motion it crosses over with a fade.
@@ -4281,79 +4820,8 @@ test.describe( 'Motion', () => {
 		);
 		test.setTimeout( 180_000 );
 		await page.emulateMedia( { reducedMotion: 'no-preference' } );
-		const parts = {
-			deck: id( 'builder-test-deck-8-0' ),
-			trucks: id( 'builder-test-trucks-139' ),
-			wheels: id( 'builder-test-wheels-54' ),
-			bearings: id( 'builder-test-bearings' ),
-			hardware: id( 'builder-test-bolts-1' ),
-		};
 		const builder = page.locator( '.cbuild' );
-		const moments: [
-			string,
-			Record< string, string | number > | null,
-			() => Promise< void >,
-		][] = [
-			[ 'deck', null, () => pickDeck( page, '8.0' ) ],
-			[
-				'step',
-				{ deck: parts.deck, step: 'deck' },
-				() =>
-					builder
-						.getByRole( 'button', { name: 'Next: Trucks' } )
-						.first()
-						.click(),
-			],
-			[
-				'trucks',
-				{ deck: parts.deck, step: 'trucks' },
-				() => choose( page, 'Builder test trucks 139' ),
-			],
-			[
-				'wheels',
-				{ deck: parts.deck, trucks: parts.trucks, step: 'wheels' },
-				() => choose( page, 'Builder test wheels 54' ),
-			],
-			[
-				'swapped',
-				{ ...parts, step: 'wheels' },
-				() => choose( page, 'Builder test wheels 52' ),
-			],
-			[
-				'grip',
-				{ ...parts, step: 'grip' },
-				() => choose( page, 'Builder test grip' ),
-			],
-			[
-				'removed',
-				// The risers are the part a shopper can leave off (D-246).
-				{
-					...parts,
-					risers: id( 'builder-test-risers-1-4' ),
-					step: 'risers',
-				},
-				() =>
-					builder.getByRole( 'radio', { name: 'No risers' } ).check(),
-			],
-			[
-				'turn',
-				{ deck: parts.deck, step: 'trucks' },
-				() =>
-					page
-						.locator( '#cbuild-picture' )
-						.getByRole( 'button', { name: 'Show the top' } )
-						.click(),
-			],
-			[
-				'cart',
-				{ ...parts, grip: id( 'builder-test-grip' ), step: 'review' },
-				() =>
-					builder
-						.getByRole( 'button', { name: 'Add to cart' } )
-						.first()
-						.click(),
-			],
-		];
+		const moments = momentsOf( page );
 		const traces = path.join( process.cwd(), 'tmp', 'motion-traces' );
 		mkdirSync( traces, { recursive: true } );
 		// third_party/blink/renderer/core/animation/compositor_animations.h, FailureReason.
@@ -5239,6 +5707,158 @@ test.describe( 'The board turned over', () => {
 		} );
 	}
 
+	// A phone held sideways: the stage is about 133 px high, too short for the heading, the side line, the board and
+	// the button stacked. The button goes up beside the heading, so the board keeps a row of its own, drawn, and
+	// clear of the button (M11's walkthrough fix had left it no height at all).
+	for ( const theme of [ 'twentytwentyfive', 'kadence', 'storefront' ] ) {
+		test( `draws the board clear of the button on a phone held sideways on ${ theme }`, async ( {
+			page,
+			context,
+			baseURL,
+		}, info ) => {
+			test.skip(
+				info.project.name === 'no-js',
+				"The button is the script's: without it there is nothing to turn."
+			);
+			await context.addCookies( [
+				{
+					name: 'cbuild_e2e_theme',
+					value: theme,
+					url: baseURL || SITE,
+				},
+			] );
+			await page.setViewportSize( { width: 844, height: 390 } );
+			await page.goto(
+				linkTo( {
+					deck: id( 'builder-test-deck-8-0' ),
+					step: 'trucks',
+				} )
+			);
+			const turn = picture( page ).locator(
+				'.cbuild-picture__turn .cbuild-button'
+			);
+			await expect( turn ).toBeVisible();
+			await expect
+				.poll( () =>
+					picture( page ).evaluate( ( figure ) => {
+						if (
+							figure
+								.getAnimations( { subtree: true } )
+								.some( ( one ) => 'running' === one.playState )
+						) {
+							return 'moving';
+						}
+						const board = figure
+							.querySelector(
+								'.cbuild-board:not(.cbuild-board--top) .cbuild-board__image'
+							)
+							?.getBoundingClientRect();
+						const button = figure
+							.querySelector(
+								'.cbuild-picture__turn .cbuild-button'
+							)
+							?.getBoundingClientRect();
+						if ( ! board || ! button ) {
+							return 'missing';
+						}
+						if ( board.width < 80 || board.height < 20 ) {
+							return `the board is ${ Math.round( board.width ) } by ${ Math.round( board.height ) }`;
+						}
+						const apart =
+							board.right <= button.left ||
+							button.right <= board.left ||
+							board.bottom <= button.top ||
+							button.bottom <= board.top;
+						return apart ? 'drawn, clear' : 'under the button';
+					} )
+				)
+				.toBe( 'drawn, clear' );
+		} );
+	}
+
+	// Milestone 11's walkthrough: on Kadence at 390 px the button lay about 5 px over the board's lower edge, where the
+	// theme's taller heading left the board's row shorter. Each side's whole box, on the themes with a heading of their
+	// own, held and stacked.
+	for ( const theme of [ 'kadence', 'storefront' ] ) {
+		for ( const [ width, height ] of [
+			[ 390, 844 ],
+			[ 820, 1180 ],
+		] as const ) {
+			test( `keeps the button under either side of the board on ${ theme } at ${ width } by ${ height }`, async ( {
+				page,
+				context,
+				baseURL,
+			}, info ) => {
+				test.skip(
+					info.project.name === 'no-js',
+					"The button is the script's: without it there is nothing to turn."
+				);
+				await context.addCookies( [
+					{
+						name: 'cbuild_e2e_theme',
+						value: theme,
+						url: baseURL || SITE,
+					},
+				] );
+				await page.setViewportSize( { width, height } );
+				await page.goto( fixture().page );
+				await page
+					.locator( '.cbuild-presets' )
+					.getByRole( 'button', { name: 'Start from Street' } )
+					.click();
+				await expect( heading( page ) ).toHaveText(
+					/: Check your build$/
+				);
+				await expect( page.locator( '.cbuild' ) ).toHaveAttribute(
+					'aria-busy',
+					'false'
+				);
+				const turn = picture( page ).locator(
+					'.cbuild-picture__turn .cbuild-button'
+				);
+				await expect( turn ).toBeVisible();
+				/**
+				 * How far the side's board reaches past the button's top, measured together once its motion has settled.
+				 *
+				 * @param shown The side's board.
+				 */
+				const over = ( shown: Locator ) =>
+					shown.evaluate( ( board ) => {
+						const button = document
+							.querySelector(
+								'#cbuild-picture .cbuild-picture__turn .cbuild-button'
+							)
+							?.getBoundingClientRect();
+						const still =
+							document
+								.querySelector( '#cbuild-picture' )
+								?.getAnimations( { subtree: true } )
+								.every(
+									( one ) => 'running' !== one.playState
+								) ?? true;
+						if ( ! button || ! still ) {
+							return 'not yet';
+						}
+						const by =
+							board.getBoundingClientRect().bottom - button.top;
+						return by > 0.5
+							? `over it by ${ by.toFixed( 1 ) }`
+							: 'clear';
+					} );
+				await expect
+					.poll( () => over( under( page ) ), 'the underside' )
+					.toBe( 'clear' );
+
+				await turn.click();
+				await expect( turn ).toHaveAttribute( 'aria-pressed', 'true' );
+				await expect( top( page ) ).toBeVisible();
+				await expect
+					.poll( () => over( top( page ) ), 'the top' )
+					.toBe( 'clear' );
+			} );
+		}
+	}
+
 	test( 'has no button without the script, and a deck with no layer image has no top', async ( {
 		page,
 	}, info ) => {
@@ -5848,30 +6468,53 @@ test.describe( 'The phone bar', () => {
 		await expect( page.locator( '.cbuild-bar__lines' ) ).toBeVisible();
 	} );
 
-	for ( const [ name, picked ] of [
-		[ 'a blank build', false ],
+	for ( const [ name, kind ] of [
+		[ 'a blank build', 'blank' ],
 		// Cowork's 0.8.0 review, F2 (D-230): with the estimate the bar is taller.
-		[ 'the bar giving the estimate', true ],
+		[ 'the bar giving the estimate', 'estimate' ],
+		// M11 audit, finding 7 (WCAG 2.4.11): what a press of the dimmed Next says sits over the bar, and covers what is
+		// under it as the bar does.
+		[ 'with what the dimmed Next says shown over the bar', 'missing' ],
 	] as const ) {
 		test( `never covers the control in focus, ${ name }`, async ( {
 			page,
+			javaScriptEnabled,
 		} ) => {
+			test.skip(
+				'missing' === kind && ! javaScriptEnabled,
+				'Without JavaScript Next is never dimmed: the form is sent.'
+			);
 			await page.setViewportSize( PHONE );
 			const at = new URL( fixture().page );
-			if ( picked ) {
+			if ( 'estimate' === kind ) {
 				at.searchParams.set(
 					'cbuild[deck]',
 					String( fixture().parts[ 'builder-test-deck-8-25' ] )
 				);
 				at.searchParams.set( 'cbuild[step]', 'trucks' );
 			}
+			if ( 'missing' === kind ) {
+				// The decks listed, none picked, so the cards run down under the bar.
+				at.searchParams.set( 'cbuild[_width]', '8in' );
+			}
 			await page.goto( at.toString() );
-			if ( picked ) {
+			if ( 'estimate' === kind ) {
 				await expect(
 					page.locator( '.cbuild-bar__estimate' )
 				).toBeVisible();
 			}
 			const bar = page.locator( '.cbuild-bar' );
+			const missing = bar.locator( '.cbuild-bar__missing' );
+			if ( 'missing' === kind ) {
+				await expect( page.locator( '.cbuild' ) ).toHaveAttribute(
+					'data-ready',
+					''
+				);
+				// From the keyboard: Playwright will not click a control that says it is disabled.
+				await bar.locator( '.cbuild-bar__next:visible' ).focus();
+				await page.keyboard.press( 'Enter' );
+				await expect( missing ).not.toBeEmpty();
+			}
 			await page.locator( '.cbuild__heading' ).focus();
 			const covered: string[] = [];
 			for ( let tab = 0; tab < 40; tab++ ) {
@@ -5888,7 +6531,14 @@ test.describe( 'The phone bar', () => {
 						return null;
 					}
 					const box = focused.getBoundingClientRect();
-					const top = own.getBoundingClientRect().top;
+					// The bar's top, or the top of what it says over itself while it says something.
+					const said = own
+						.querySelector( '.cbuild-bar__missing' )
+						?.getBoundingClientRect();
+					const top = Math.min(
+						own.getBoundingClientRect().top,
+						said && said.height > 0 ? said.top : Infinity
+					);
 					return box.bottom > top + 1
 						? `${ focused.className || focused.tagName } ${ box.bottom } > ${ top }`
 						: '';
@@ -5902,6 +6552,9 @@ test.describe( 'The phone bar', () => {
 			}
 			expect( covered ).toEqual( [] );
 			await expect( bar ).toBeVisible();
+			if ( 'missing' === kind ) {
+				await expect( missing, 'still said' ).not.toBeEmpty();
+			}
 		} );
 	}
 
@@ -6532,6 +7185,95 @@ test.describe( 'A saved build that has changed, and the deck page', () => {
 	} );
 } );
 
+// #81 (D-301): a deck picked at one width, whose look is made in another, moves to that look when the shopper asks for
+// the other width; the status says so, and the cart gets the other width's variation (M11 audit, finding 10). One
+// variable deck, two widths of one look, made for the test and taken away after it.
+test.describe( 'A picked deck in a new width (#81)', () => {
+	test.beforeEach( ( {}, info ) => {
+		test.skip(
+			! [ 'chromium-desktop', 'webkit-phone' ].includes(
+				info.project.name
+			),
+			"One desktop and one phone engine: the move is the server's, the same in each."
+		);
+	} );
+
+	test.beforeAll( () => {
+		runPhp(
+			`$a = new WC_Product_Attribute(); $a->set_name( 'width' ); $a->set_options( array( '8.0', '8.5' ) ); $a->set_variation( true ); $p = new WC_Product_Variable( wc_get_product_id_by_sku( 'builder-test-deck-look' ) ); $p->set_name( 'Builder test look deck' ); $p->set_sku( 'builder-test-deck-look' ); $p->set_status( 'publish' ); $p->set_attributes( array( $a ) ); $p->set_category_ids( array( get_term_by( 'slug', 'builder-test-deck', 'product_cat' )->term_id ) ); $p->save(); foreach ( array( '8.0' => array( '8.0000', '31.5000' ), '8.5' => array( '8.5000', '32.0000' ) ) as $o => $w ) { $v = new WC_Product_Variation( wc_get_product_id_by_sku( 'builder-test-deck-look-' . $o ) ); $v->set_parent_id( $p->get_id() ); $v->set_sku( 'builder-test-deck-look-' . $o ); $v->set_attributes( array( 'width' => $o ) ); $v->set_regular_price( '60' ); $v->set_stock_status( 'instock' ); $v->update_meta_data( '_cbuild_specs', array( 'deck_width' => $w[0], 'deck_length' => $w[1], 'hole_pattern' => 'new_school' ) ); $cbuild_index( $v ); } WC_Product_Variable::sync( $p->get_id() ); $cbuild_index( wc_get_product( $p->get_id() ) );`
+		);
+	} );
+
+	test.afterAll( () => {
+		runPhp(
+			`foreach ( array( 'builder-test-deck-look-8.0', 'builder-test-deck-look-8.5', 'builder-test-deck-look' ) as $s ) { $i = wc_get_product_id_by_sku( $s ); if ( $i ) { wc_get_product( $i )->delete( true ); } }`
+		);
+	} );
+
+	test( 'moves the deck to its look in the width asked, says so, and the cart gets that width', async ( {
+		page,
+	} ) => {
+		const idOf = ( sku: string ) =>
+			Number(
+				wp( `eval "echo wc_get_product_id_by_sku( '${ sku }' );"` )
+			);
+		const narrow = idOf( 'builder-test-deck-look-8.0' );
+		const wide = idOf( 'builder-test-deck-look-8.5' );
+		expect( narrow ).toBeGreaterThan( 0 );
+		expect( wide ).toBeGreaterThan( 0 );
+		await page.goto( linkTo( { deck: narrow, step: 'deck' } ) );
+		await expect( page.locator( '.cbuild' ) ).toHaveAttribute(
+			'data-ready',
+			''
+		);
+		await ride( page, '8.5″' );
+		await expect( page.locator( '.cbuild__status' ) ).toContainText(
+			'Builder test look deck is now 8.5″.'
+		);
+		await expect
+			.poll( () =>
+				new URL( page.url() ).searchParams.get( 'cbuild[deck]' )
+			)
+			.toBe( String( wide ) );
+
+		// The rest of the build at the review, from the address the move left, and Add to cart.
+		const review = new URL( page.url() );
+		for ( const [ slot, sku ] of [
+			[ 'trucks', 'builder-test-trucks-149' ],
+			[ 'wheels', 'builder-test-wheels-54' ],
+			[ 'bearings', 'builder-test-bearings' ],
+			[ 'hardware', 'builder-test-bolts-1' ],
+			[ 'grip', 'builder-test-grip' ],
+		] as const ) {
+			review.searchParams.set( `cbuild[${ slot }]`, String( id( sku ) ) );
+		}
+		review.searchParams.set( 'cbuild[step]', 'review' );
+		review.searchParams.delete( 'cbuild[_width]' );
+		await page.goto( review.toString() );
+		await expect( heading( page ) ).toHaveText(
+			'Step 7 of 7: Check your build'
+		);
+		await page
+			.locator( '.cbuild' )
+			.getByRole( 'button', { name: 'Add to cart' } )
+			.first()
+			.click();
+		await expect( page.locator( '.cbuild-review__added' ) ).toBeVisible();
+		const cart = ( await (
+			await page.request.get( '/wp-json/wc/store/v1/cart' )
+		).json() ) as {
+			items: { id: number; variation: { value: string }[] }[];
+		};
+		const deck = cart.items.find( ( item ) =>
+			[ narrow, wide ].includes( item.id )
+		);
+		expect( deck?.id, "the cart's deck line" ).toBe( wide );
+		expect( deck?.variation.map( ( one ) => one.value ) ).toEqual( [
+			'8.5',
+		] );
+	} );
+} );
+
 /**
  * #80 (Cowork's 1.0.0 F1): a mouse press that goes down while the builder hydrates and comes up after. Hydration takes
  * the pressed control out of the page and puts it back, and a browser drops the click of a press whose element left the
@@ -6699,6 +7441,118 @@ test.describe( 'A deck with no layer image on the stage (#82)', () => {
 			)
 		).toHaveCount( 1 );
 	} );
+
+	// Milestone 11's walkthrough: on a kit's own page the photo was drawn at its file's height, since a theme's or
+	// WooCommerce's rule for every image (`img`, `.woocommerce img`: height auto) outweighed the size the stage gives it
+	// at no weight. Taller than its item, it lay under the deck's own caption and the other parts' tiles.
+	for ( const theme of [ 'twentytwentyfive', 'storefront', 'kadence' ] ) {
+		for ( const [ width, height ] of [
+			[ 1280, 900 ],
+			[ 390, 844 ],
+		] as const ) {
+			test( `keeps the deck's photo inside its own place on ${ theme } at ${ width } by ${ height }, clear of its caption and the other tiles`, async ( {
+				page,
+				context,
+				baseURL,
+			} ) => {
+				await context.addCookies( [
+					{
+						name: 'cbuild_e2e_theme',
+						value: theme,
+						url: baseURL || SITE,
+					},
+				] );
+				await page.setViewportSize( { width, height } );
+				const kit = new URL(
+					'/product/builder-test-kit/',
+					baseURL || SITE
+				);
+				kit.searchParams.set(
+					'cbuild[deck]',
+					String( id( 'builder-test-deck-8-25' ) )
+				);
+				kit.searchParams.set(
+					'cbuild[trucks]',
+					String( id( 'builder-test-trucks-139' ) )
+				);
+				kit.searchParams.set( 'cbuild[step]', 'wheels' );
+				await page.goto( kit.toString() );
+				const picture = page.locator(
+					'.cbuild__stage #cbuild-picture'
+				);
+				await expect( picture ).toHaveClass( /cbuild-picture--hero/ );
+				const photo = picture.locator(
+					'.cbuild-picture__item:first-child .cbuild-picture__photo'
+				);
+				await expect( photo ).toBeVisible();
+				await expect
+					.poll( () =>
+						photo.evaluate(
+							( image ) =>
+								( image as HTMLImageElement ).complete &&
+								( image as HTMLImageElement ).naturalHeight > 0
+						)
+					)
+					.toBe( true );
+				const wrong = () =>
+					picture.evaluate( ( figure ) => {
+						const items = [
+							...figure.querySelectorAll< HTMLElement >(
+								'.cbuild-picture__item'
+							),
+						].filter(
+							( item ) => item.getClientRects().length > 0
+						);
+						const first = items[ 0 ];
+						const image = first
+							?.querySelector( '.cbuild-picture__photo' )
+							?.getBoundingClientRect();
+						const label = first
+							?.querySelector( '.cbuild-picture__label' )
+							?.getBoundingClientRect();
+						if ( ! first || ! image || ! label ) {
+							return [ 'no photo' ];
+						}
+						const own = first.getBoundingClientRect();
+						const meets = ( box: DOMRect ) =>
+							Math.min( box.right, image.right ) -
+								Math.max( box.left, image.left ) >
+								0.5 &&
+							Math.min( box.bottom, image.bottom ) -
+								Math.max( box.top, image.top ) >
+								0.5;
+						const found: string[] = [];
+						const past = {
+							top: own.top - image.top,
+							foot: image.bottom - own.bottom,
+							start: own.left - image.left,
+							end: image.right - own.right,
+						};
+						for ( const [ edge, by ] of Object.entries( past ) ) {
+							if ( by > 1 ) {
+								found.push(
+									`past its item's ${ edge } by ${ Math.round(
+										by
+									) }`
+								);
+							}
+						}
+						if ( meets( label ) ) {
+							found.push( 'under its caption' );
+						}
+						items.slice( 1 ).forEach( ( item, at ) => {
+							if ( meets( item.getBoundingClientRect() ) ) {
+								found.push( `under tile ${ at + 2 }` );
+							}
+						} );
+						return found;
+					} );
+				await expect
+					.poll( wrong, "the deck's photo, where it lies" )
+					.toEqual( [] );
+			} );
+		}
+	}
 } );
 
 // Cowork's 1.0.0 review, F14 (#99): the deck step's cards are compact, the deck small and upright at the start from its

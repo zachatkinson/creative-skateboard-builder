@@ -97,7 +97,9 @@ final class Shelf {
 	 * @param ShelfAsk            $ask         What the shopper asks.
 	 */
 	public function of( Kit $kit, string $slot, Picks $build, array $offered, ?Option $picked, ?Option $recommended, array $shelved, ShelfAsk $ask ): Listing {
-		$spec     = SlotSize::spec( $slot );
+		$spec = SlotSize::spec( $slot );
+		// By ID, so that a tie the order's keys leave falls the same whatever order the parts were found in (D-340).
+		usort( $offered, static fn( Option $one, Option $other ): int => $one->part->id <=> $other->part->id );
 		$variants = array();
 		foreach ( $offered as $option ) {
 			$known = $shelved[ $option->part->id ] ?? null;

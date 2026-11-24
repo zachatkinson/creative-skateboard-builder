@@ -675,6 +675,67 @@ describe( 'cross', () => {
 		);
 	} );
 
+	// The builder's view-transition rules hold only while its own transition runs, so another on the page is left as
+	// its author made it (M11 audit, finding 9).
+	it( 'marks the page’s root as crossing for the life of its own transition alone', async () => {
+		const page = document.documentElement;
+		const first = transitions();
+		let during: boolean | undefined;
+		cross(
+			() => {
+				during = page.classList.contains( 'cbuild-crossing' );
+			},
+			true,
+			false
+		);
+		expect( page.classList.contains( 'cbuild-crossing' ) ).toBe( true );
+		vi.useFakeTimers();
+		const drawn = first.updates[ 0 ]!() as Promise< void >;
+		vi.runAllTimers();
+		await drawn;
+		vi.useRealTimers();
+		expect( during, 'while the view changes' ).toBe( true );
+		first.finish();
+		await Promise.resolve();
+		await Promise.resolve();
+		expect( page.classList.contains( 'cbuild-crossing' ) ).toBe( false );
+
+		// An older transition that finishes while a newer one runs leaves the mark to the newer.
+		const older = transitions();
+		cross( () => undefined, true, false );
+		const newer = transitions();
+		cross( () => undefined, false, false );
+		older.finish();
+		await Promise.resolve();
+		await Promise.resolve();
+		expect(
+			page.classList.contains( 'cbuild-crossing' ),
+			'the newer'
+		).toBe( true );
+		newer.finish();
+		await Promise.resolve();
+		await Promise.resolve();
+		expect( page.classList.contains( 'cbuild-crossing' ) ).toBe( false );
+
+		// Cut short, the transition still takes its mark away when it ends.
+		const skipped = transitions();
+		cross( () => undefined, true, false );
+		cut();
+		skipped.finish();
+		await Promise.resolve();
+		await Promise.resolve();
+		expect( page.classList.contains( 'cbuild-crossing' ), 'cut' ).toBe(
+			false
+		);
+	} );
+
+	it( 'leaves the page’s root unmarked where the browser has no view transitions', () => {
+		cross( () => undefined, true, false );
+		expect(
+			document.documentElement.classList.contains( 'cbuild-crossing' )
+		).toBe( false );
+	} );
+
 	it( 'changes at once where the browser has no view transitions', () => {
 		const change = vi.fn();
 		cross( change, true, false );

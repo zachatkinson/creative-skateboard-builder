@@ -804,6 +804,49 @@ describe( 'the store', () => {
 		expect( state.view ).toBe( EMPTY );
 	} );
 
+	// A polite live region says nothing when its text is set to what it already holds: a second press on the dimmed
+	// Next empties the region, and says the words again on the next frame (M11 audit, finding 6).
+	it( 'says what the step needs again when the dimmed Next is pressed a second time', () => {
+		state.view = EMPTY;
+		state.live = true;
+		const { next } = dimmedForm( true );
+		const press = () =>
+			actions.submit(
+				new SubmitEvent( 'submit', {
+					submitter: next,
+					cancelable: true,
+				} )
+			);
+		press();
+		expect( state.status ).toBe( 'Choose your deck first.' );
+		press();
+		expect( state.status, 'emptied, so the region hears a change' ).toBe(
+			''
+		);
+		vi.advanceTimersToNextFrame();
+		expect( state.status ).toBe( 'Choose your deck first.' );
+		expect( state.missing ).toBe( 'Choose your deck first.' );
+	} );
+
+	it( 'leaves the status alone when a view came before the frame after a second press', () => {
+		state.view = EMPTY;
+		state.live = true;
+		const { next } = dimmedForm( true );
+		const press = () =>
+			actions.submit(
+				new SubmitEvent( 'submit', {
+					submitter: next,
+					cancelable: true,
+				} )
+			);
+		press();
+		press();
+		// Something else spoke first, such as a view's answer: the frame does not say the old words over it.
+		state.status = 'A deck. Total: $70.00.';
+		vi.advanceTimersToNextFrame();
+		expect( state.status ).toBe( 'A deck. Total: $70.00.' );
+	} );
+
 	it( 'lights Next as soon as the shopper picks, before the route answers, and forgets what it said', async () => {
 		state.view = structuredClone( EMPTY );
 		state.live = true;
@@ -1147,6 +1190,36 @@ describe( 'the store', () => {
 		vi.advanceTimersByTime( WAIT );
 		await settle();
 		expect( replaced ).toHaveBeenCalledWith( null, '', panel.url );
+	} );
+
+	// "Never on load": a card settles at a pick alone, not when a page or a step is drawn with one picked (M11 audit,
+	// finding 8). The stylesheet plays the settle only under this mark.
+	it( 'marks the builder at a pick, so its card settles, until a new step is shown', async () => {
+		const { radio } = form();
+		const div = wrapped();
+		setElement( div );
+		(
+			defined.definition as { callbacks: { init: () => void } }
+		 ).callbacks.init();
+		expect( div.hasAttribute( 'data-picked' ), 'nothing picked yet' ).toBe(
+			false
+		);
+		reply = () => answer( { ...START, status: 'A deck. Total: $70.00.' } );
+		actions.pick( { target: radio } as unknown as Event );
+		// A mark with no value, as `data-ready` is.
+		expect( div.getAttribute( 'data-picked' ) ).toBe( '' );
+		vi.advanceTimersByTime( WAIT );
+		await settle();
+		expect( state.status ).toBe( 'A deck. Total: $70.00.' );
+		expect(
+			div.hasAttribute( 'data-picked' ),
+			'the pick’s own answer keeps it'
+		).toBe( true );
+		reply = () => answer( NEXT );
+		actions.back();
+		await settle();
+		expect( state.view ).toEqual( NEXT );
+		expect( div.hasAttribute( 'data-picked' ), 'a new step' ).toBe( false );
 	} );
 
 	it( 'says the build and its total after a pick, and leaves focus and the title alone', async () => {
@@ -2283,6 +2356,30 @@ describe( 'measuring the bar and the stage', () => {
 		);
 		page.removeProperty( '--cbuild-bar-size' );
 		page.removeProperty( '--cbuild-stage-size' );
+	} );
+
+	it( 'measures the bar again when what the dimmed Next says over it changes size', () => {
+		const root = builder();
+		root.querySelector( '.cbuild-bar' )!.innerHTML =
+			'<div class="cbuild-bar__actions"><p class="cbuild-bar__missing"></p></div>';
+		const watched: string[] = [];
+		vi.stubGlobal(
+			'ResizeObserver',
+			class {
+				observe( element: Element ): void {
+					watched.push( element.className );
+				}
+			}
+		);
+		(
+			defined.definition as { callbacks: { init: () => void } }
+		 ).callbacks.init();
+		expect( watched ).toEqual( [
+			'cbuild-bar',
+			'cbuild-bar__missing',
+			'cbuild__stage',
+		] );
+		document.documentElement.style.removeProperty( '--cbuild-stage-size' );
 	} );
 
 	it( 'measures once, and watches nothing, where the browser has no resize observer', () => {

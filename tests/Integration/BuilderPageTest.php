@@ -403,6 +403,82 @@ final class BuilderPageTest extends IntegrationTestCase {
 		self::assertLessThanOrEqual( 60, $cold, 'cold, as the state route' );
 	}
 
+	// D-340: the browser's forced-colours case pressed the first wheels on the page, the recommended 54, and the route's
+	// answer listed them 52, 54, 58: with the pick, the step had no recommendation to list first, so the cards fell back
+	// to sales and name, and moved. The step's cards keep the page's order whatever is picked in it, cold and warm, with
+	// parts tied on everything but their IDs.
+	public function test_a_pick_keeps_the_steps_cards_in_the_order_the_page_listed_them_cold_and_warm(): void {
+		$trucks = (int) wp_get_object_terms( $this->parts['truck 139'], 'product_cat', array( 'fields' => 'ids' ) )[0];
+		$truck  = array(
+			'axle_width'    => '8.0000',
+			'deck_min'      => '7.8000',
+			'deck_max'      => '8.2000',
+			'baseplate'     => 'new_school',
+			'max_wheel'     => '56.0000',
+			'axle_diameter' => '8.0000',
+			'set_size'      => '2',
+		);
+		// Prices 20, 25, 27 (the 149, which a 8.0 deck hides), 30 and 30: the middle is 27, so the 139 is recommended,
+		// and by name it is second. The two Truck 160 are tied on everything but their IDs.
+		$this->parts['truck 120']   = $this->part( 'Truck 120', '20', $truck, $trucks );
+		$this->parts['truck 160']   = $this->part( 'Truck 160', '30', $truck, $trucks );
+		$this->parts['truck 160 b'] = $this->part( 'Truck 160', '30', $truck, $trucks );
+		$listed                     = array( $this->parts['truck 139'], $this->parts['truck 120'], $this->parts['truck 160'], $this->parts['truck 160 b'] );
+
+		rest_get_server();
+		$this->service( \CreativeBranding\SkateboardBuilder\Rest\StateRoute::class )->register();
+		// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- WordPress's own, to build the routes.
+		do_action( 'rest_api_init', rest_get_server() );
+		$deck  = (string) $this->parts['deck 8.0'];
+		$cold  = function (): void {
+			$this->service( Kits::class )->forget();
+			wp_cache_flush();
+		};
+		$page  = function () use ( $deck ): array {
+			$GLOBALS['wp_interactivity'] = new WP_Interactivity_API();
+			$radios                      = self::dom(
+				$this->kitPage(
+					array(
+						'deck' => $deck,
+						'step' => 'trucks',
+					)
+				)
+			)->query( '//li[contains(@class,"cbuild-card")]/input[@type="radio" and @name="cbuild[trucks]"]' );
+			self::assertNotFalse( $radios );
+			$ids = array();
+			foreach ( $radios as $radio ) {
+				$ids[] = (int) $radio->getAttribute( 'value' );
+			}
+			return $ids;
+		};
+		$route = function ( int $picked ) use ( $deck ): array {
+			$request = new \WP_REST_Request( 'GET', '/cbuild/v1/kits/' . $this->kit . '/state' );
+			$request->set_query_params(
+				array(
+					'cbuild' => array(
+						'deck'   => $deck,
+						'trucks' => (string) $picked,
+						'step'   => 'trucks',
+					),
+				)
+			);
+			$data = rest_get_server()->response_to_data( rest_get_server()->dispatch( $request ), false );
+			self::assertIsArray( $data );
+			$looks = $data['shelf']['looks'] ?? null;
+			self::assertIsArray( $looks );
+			return array_map( static fn( array $look ): int => (int) $look['part']['id'], $looks );
+		};
+
+		$cold();
+		self::assertSame( $listed, $page(), 'the page, cold: the recommendation, then by name, then by ID' );
+		self::assertSame( $listed, $page(), 'the page, warm' );
+		foreach ( $listed as $picked ) {
+			$cold();
+			self::assertSame( $listed, $route( $picked ), 'the route, cold, with ' . $picked . ' picked' );
+			self::assertSame( $listed, $route( $picked ), 'the route, warm, with ' . $picked . ' picked' );
+		}
+	}
+
 	// Cowork's review of 0.9.0 (#65): "Fits your %s" with "8.5″ deck" in it left French no room for its determiner, so
 	// the deck's labels are sentences of their own, and a translation says « votre planche de 8,5″ ».
 	public function test_a_translation_gives_the_decks_fit_labels_their_own_sentence(): void {
