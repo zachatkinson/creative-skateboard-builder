@@ -203,7 +203,7 @@ test.describe( 'The Build tab', () => {
 	}, info ) => {
 		// The builder's own first row, as the site's locale writes its number: 6,5 in French.
 		const smallest = inLocale( info.project.name, '6.5 or smaller' );
-		const GUIDE = '#cbuild-kit-layout-width_guide';
+		const GUIDE = '#cbuild-kit-settings-width_guide';
 		const row = ( at: number ) => `${ GUIDE }-rows-${ at }`;
 		const shoe = ( at: number ) => page.locator( `${ row( at ) }-shoe` );
 		const shown = page.locator( `${ GUIDE }-shown` );

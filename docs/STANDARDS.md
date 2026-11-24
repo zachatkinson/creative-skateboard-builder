@@ -132,6 +132,7 @@ tools/                    gates.sh, integration/ (PHPUnit 9.6), build, release, 
   - `cart_checkout_blocks` true;
   - `product_block_editor` false, only if the installed WooCommerce still has that feature. Its beta was retired in 2026: check `FeaturesController` on the floor and record what you find.
 - **The product type:** `KitProduct extends WC_Product`, registered through `product_type_selector` and `woocommerce_product_class`. Its settings go through the product's own CRUD on save.
+- **Kit documents and rollback:** a kit's settings are JSON documents in its product meta, each held to a schema in `schema/`. The release before reads a kit only when each document it knows passes its own copy of that schema, and every document from `_cbuild_slots` to `_cbuild_layout` refuses a key it does not know. So a new kit setting goes in `_cbuild_settings` (`schema/kit-settings.json`), whose schema lets through what it does not know, never as a new key in an older document. `RollbackTest` holds each stored document to the previous release's schemas in `tests/Fixtures/previous-schemas/`, refreshed at each release (D-354).
 - **Cart and checkout:**
   - The Store API through its extension points: `woocommerce_store_api_register_endpoint_data()` and `ExtendSchema`.
   - The blocks through `registerCheckoutFilters`.

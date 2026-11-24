@@ -1625,7 +1625,7 @@ final class BuilderView {
 			'hidden'    => self::hidden( $answer, $step ),
 			'filters'   => null === $shelf ? self::filters( $answer, $slot ) : self::filters( array(), '' ),
 			'more'      => null === $shelf ? self::more( $answer, count( $options ) ) : self::page( $shelf, count( $options ), $link ),
-			'shelf'     => self::shelf( $shelf ?? array(), $slot, $folded, $state->id, $state->kit->layout->guide ),
+			'shelf'     => self::shelf( $shelf ?? array(), $slot, $folded, $state->id, $state->kit->settings->guide ),
 			// The deck step asking its width lists nothing yet, and says nothing is missing; a search that lists nothing
 			// says so itself, so the fit rule is not given as the reason (#83).
 			'empty'     => array() === $options && ! ( null !== $shelf && SlotKey::DECK === $slot && '' === $link->shelf->width ) && true !== $found['shown'],

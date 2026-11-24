@@ -214,7 +214,7 @@ final class StartButton implements Hookable {
 			$slot = null === $read ? null : ( $read->slots->all()[0] ?? null );
 			// A kit whose Show on its parts' pages is off is passed over, and the next that offers the part places it
 			// (#115, D-349).
-			if ( null === $read || null === $slot || ! $read->layout->startButton ) {
+			if ( null === $read || null === $slot || ! $read->settings->startButton ) {
 				continue;
 			}
 			if ( ! in_array( $slot->key, $every->slotsOf( $product, $read ), true ) ) {

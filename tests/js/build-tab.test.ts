@@ -594,7 +594,7 @@ describe( 'the script, when the page loads it', () => {
 function guide( kept: string[][], total = 4 ) {
 	const drawn = ( at: number ) => {
 		const [ shoe = '', from = '', to = '' ] = kept[ at ] ?? [];
-		return `<fieldset id="cbuild-kit-layout-width_guide-rows-${ at }" class="cbuild-kit-group cbuild-kit-adds"${
+		return `<fieldset id="cbuild-kit-settings-width_guide-rows-${ at }" class="cbuild-kit-group cbuild-kit-adds"${
 			at > kept.length ? ' hidden' : ''
 		}>
 			<legend>Row ${ at + 1 }</legend>
@@ -605,17 +605,17 @@ function guide( kept: string[][], total = 4 ) {
 		</fieldset>`;
 	};
 	document.body.innerHTML = `<div id="cbuild_build">
-		<div class="options_group" id="cbuild-kit-layout-width_guide">
+		<div class="options_group" id="cbuild-kit-settings-width_guide">
 			<div class="cbuild-kit-group">
-				<input type="checkbox" id="cbuild-kit-layout-width_guide-shown" checked>
-				<input type="checkbox" id="cbuild-kit-layout-width_guide-plugins" checked>
+				<input type="checkbox" id="cbuild-kit-settings-width_guide-shown" checked>
+				<input type="checkbox" id="cbuild-kit-settings-width_guide-plugins" checked>
 			</div>
 			<div>${ Array.from( { length: total }, ( _, at ) => drawn( at ) ).join( '' ) }</div>
 			<p><button type="button" data-cbuild-add data-cbuild-removed="%s removed. The rows after it moved up." hidden>Add a row</button></p>
 		</div>
 	</div>`;
 	return document.getElementById(
-		'cbuild-kit-layout-width_guide'
+		'cbuild-kit-settings-width_guide'
 	) as HTMLElement;
 }
 
@@ -634,7 +634,7 @@ function shown() {
 function plugins() {
 	return (
 		document.getElementById(
-			'cbuild-kit-layout-width_guide-plugins'
+			'cbuild-kit-settings-width_guide-plugins'
 		) as HTMLInputElement
 	 ).checked;
 }
@@ -715,7 +715,7 @@ describe( 'adds', () => {
 		guide( [ [ 'a', '7', '' ] ] );
 		adds( document );
 		const shownBox = document.getElementById(
-			'cbuild-kit-layout-width_guide-shown'
+			'cbuild-kit-settings-width_guide-shown'
 		) as HTMLInputElement;
 		shownBox.dispatchEvent( new Event( 'input', { bubbles: true } ) );
 		expect( plugins() ).toBe( true );

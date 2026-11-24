@@ -143,7 +143,7 @@ final class StartButtonTest extends IntegrationTestCase {
 		$off = static function ( int $kit ): void {
 			$product = wc_get_product( $kit );
 			self::assertInstanceOf( \CreativeBranding\SkateboardBuilder\Adapter\KitProduct::class, $product );
-			$product->setDocument( Options::META_KIT_LAYOUT, array( 'schema_version' => 1, 'start_button' => false ) );
+			$product->setDocument( Options::META_KIT_SETTINGS, array( 'schema_version' => 1, 'start_button' => false ) );
 			$product->save();
 		};
 		$off( $this->first );
@@ -182,11 +182,11 @@ final class StartButtonTest extends IntegrationTestCase {
 	public function test_a_kit_with_no_setting_or_with_it_on_places_the_button_as_before(): void {
 		$product = wc_get_product( $this->first );
 		self::assertInstanceOf( \CreativeBranding\SkateboardBuilder\Adapter\KitProduct::class, $product );
-		self::assertNull( $product->documents()[ Options::META_KIT_LAYOUT ], 'saved before 1.2.0' );
+		self::assertNull( $product->documents()[ Options::META_KIT_SETTINGS ], 'saved before 1.2.0' );
 		$before = $this->shown( $this->deck );
 		self::assertStringStartsWith( BuilderUrl::of( $this->first ), html_entity_decode( (string) preg_replace( '/\A.*href="([^"]*)".*\z/s', '$1', $before ) ) );
 		remove_all_actions( 'woocommerce_after_add_to_cart_form' );
-		$product->setDocument( Options::META_KIT_LAYOUT, array( 'schema_version' => 1, 'start_button' => true ) );
+		$product->setDocument( Options::META_KIT_SETTINGS, array( 'schema_version' => 1, 'start_button' => true ) );
 		$product->save();
 		self::assertSame( $before, $this->shown( $this->deck ) );
 	}
@@ -203,7 +203,7 @@ final class StartButtonTest extends IntegrationTestCase {
 		);
 		$product = wc_get_product( $this->first );
 		self::assertInstanceOf( \CreativeBranding\SkateboardBuilder\Adapter\KitProduct::class, $product );
-		$product->setDocument( Options::META_KIT_LAYOUT, array( 'schema_version' => 1, 'builder_page' => $page ) );
+		$product->setDocument( Options::META_KIT_SETTINGS, array( 'schema_version' => 1, 'builder_page' => $page ) );
 		$product->save();
 		$href = static fn( string $html ): string => html_entity_decode( (string) preg_replace( '/\A.*href="([^"]*)".*\z/s', '$1', $html ) );
 		$link = $href( $this->shown( $this->deck ) );

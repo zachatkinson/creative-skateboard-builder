@@ -105,7 +105,7 @@ The Layout section gains **Motion**, in the same `_cbuild_layout` document. A ki
 
 ## Milestone 12 (1.2.0)
 
-The Layout section gains a group, **Where shoppers find it**, in the same `_cbuild_layout` document. A kit saved before 1.2.0 has none of its keys and behaves as 1.1.0 did. Each is saved with the rest of the Build tab, through WooCommerce's product save, by a user with `manage_woocommerce`.
+The Layout section gains a group, **Where shoppers find it**, kept in a new document, `_cbuild_settings` (`schema/kit-settings.json`), which 1.1.0 never reads, so a rollback to 1.1.0 still reads the kit (D-354). A kit saved before 1.2.0 has none of its keys and behaves as 1.1.0 did. Each is saved with the rest of the Build tab, through WooCommerce's product save, by a user with `manage_woocommerce`.
 
 | Setting | Key | Choices | Default | What it does |
 | --- | --- | --- | --- | --- |
@@ -116,13 +116,13 @@ The Layout section gains a group, **Where shoppers find it**, in the same `_cbui
 
 ### Width guide (#114)
 
-The Build tab gains a **Width guide** section (#114, D-350), kept in the same `_cbuild_layout` document as `width_guide`. A kit saved before 1.2.0 has none, and shows the plugin's rows as 1.1.0 did.
+The Build tab gains a **Width guide** section (#114, D-350), kept in the same `_cbuild_settings` document as `width_guide`. A kit saved before 1.2.0 has none, and shows the plugin's rows as 1.1.0 did.
 
 | Setting | Key | Choices | Default | What it does |
 | --- | --- | --- | --- | --- |
 | Show the width guide | `width_guide.shown` | `true`, `false` (a checkbox) | `true` | Whether "Not sure of your width?" is under the deck step's width question. Off takes it out of the page and out of the state route's answer, words and all, not hidden by a style, and keeps the rows. `cbuild_width_guide` is still asked, with no rows, and answers last. |
 | Use the builder's rows | none stored (a checkbox) | ticked, unticked | ticked | The restore-defaults control. Ticked, no `rows` are stored and the guide has the plugin's rows, by US shoe size in the shopper's language. The tab shows those rows in the editor to start from; typing in a row, adding or removing one unticks it where the page runs its script. |
-| Rows | `width_guide.rows[]` with `shoe`, `from`, `to` | One to twelve rows. **Shoe size**: plain text as the shop writes it, up to 40 characters, through `cbuild_kit_text` (`width_guide_shoe`). **Deck width from** and **to**: 5 to 12 in, typed as the shop writes a measure (its decimal separator, or a fraction); **to** left empty is "and wider", and is never under **from**. | none | The guide's rows, in the order given. Add a row and Remove work by keyboard; the server draws twelve rows, and those past the kit's and one empty one wait hidden. A row left empty is no row. A row that is wrong is named at its field, and the layout is not saved. |
+| Rows | `width_guide.rows[]` with `shoe`, `from`, `to` | One to twelve rows. **Shoe size**: plain text as the shop writes it, up to 40 characters, through `cbuild_kit_text` (`width_guide_shoe`). **Deck width from** and **to**: 5 to 12 in, typed as the shop writes a measure (its decimal separator, or a fraction); **to** left empty is "and wider", and is never under **from**. | none | The guide's rows, in the order given. Add a row and Remove work by keyboard; the server draws twelve rows, and those past the kit's and one empty one wait hidden. A row left empty is no row. A row that is wrong is named at its field, and the settings are not saved. |
 
 ### Not offered in the builder (#116)
 

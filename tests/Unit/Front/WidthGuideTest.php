@@ -10,7 +10,7 @@ declare( strict_types=1 );
 namespace CreativeBranding\SkateboardBuilder\Tests\Unit\Front;
 
 use ArrayObject;
-use CreativeBranding\SkateboardBuilder\Domain\Kit\KitLayout;
+use CreativeBranding\SkateboardBuilder\Domain\Kit\KitSettings;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\SizeGuide;
 use CreativeBranding\SkateboardBuilder\Front\WidthGuide;
 use PHPUnit\Framework\TestCase;
@@ -56,12 +56,12 @@ final class WidthGuideTest extends TestCase {
 	}
 
 	/**
-	 * A kit's width guide, as its layout document holds it.
+	 * A kit's width guide, as its settings document holds it.
 	 *
 	 * @param array<string, mixed> $guide The document's `width_guide`.
 	 */
 	private static function kits( array $guide ): SizeGuide {
-		return KitLayout::fromDocument(
+		return KitSettings::fromDocument(
 			array(
 				'schema_version' => 1,
 				'width_guide'    => $guide,

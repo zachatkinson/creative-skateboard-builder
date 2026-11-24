@@ -4379,7 +4379,7 @@ Resolving DECISIONS.md after a stash pop left a line `||||||| Stash base` at its
 
 **Tests.** `KitLayoutTest::test_the_builder_page_is_the_page_named_or_none` (red: "Failed asserting that null is identical to 42.", KitLayoutTest.php:76), `BuilderPlaceTest::test_a_kits_builder_may_be_sent_only_to_a_shown_page_that_holds_its_block` (red: undefined method `BuilderPlace::pages()`), the unit `BuilderAddressTest` (red: class not found), `KitEditorTest::test_the_builder_page_is_kept_as_an_id_and_one_not_offered_is_refused` (red: the arrays differ, `builder_page` dropped), the integration `BuilderAddressTest` (red: "Unknown service Front\BuilderAddress", BuilderAddressTest.php:76), `BuildTabTest::test_the_builder_page_lists_the_pages_that_hold_the_kits_block_and_saves_only_one_of_them` and the nonce test (red: undefined method `BuildTab::withPlace()`), `StartButtonTest::test_the_button_opens_the_builder_on_the_kits_builder_page`, the Edit build case in `CartShowTest`, `ContainerTest`, and the browser's "A kit's Builder page" in `builder.spec.ts`. **Break:** `isPage()` taken out of `BuilderPlace::opens()` turns the unit `BuilderAddressTest` ("unpublished, trashed or not a page a visitor may see", :97), `BuilderPlaceTest` ("a page a visitor may not see", :184) and the integration `BuilderAddressTest` ("a draft", :164) red.
 
-**Status:** Accepted.
+**Status:** Accepted. Where it is stored is superseded by D-354: the key is in `_cbuild_settings`, not `_cbuild_layout`.
 
 ### D-349 · A kit's Build tab turns "Build a complete with this deck" off, and the lowest menu order still chooses the kit · 2026-11-24
 
@@ -4396,7 +4396,7 @@ Issue #115. The button on a part's page (D-253) could be turned off or sent to a
 
 **Tests.** `KitLayoutTest::test_the_start_button_shows_unless_the_kit_turns_it_off` (red: "a kit with no layout", null for true, KitLayoutTest.php:63), `KitEditorTest::test_the_start_button_is_kept_on_when_ticked_and_off_when_not`, `BuildTabTest::test_show_on_its_parts_pages_is_ticked_for_a_kit_saved_before_and_saved_by_who_may_manage_the_shop` (red: "a kit saved before 1.2.0 places the button", BuildTabTest.php:863) and `::test_the_layout_is_saved_through_woocommerces_product_save_and_only_with_its_nonce` (red: "saved with it", null for false), `KitSchemasTest`, `StartButtonTest::test_a_kit_turned_off_is_skipped_and_the_next_kit_by_menu_order_places_the_button` and `::test_a_kit_with_no_setting_or_with_it_on_places_the_button_as_before`, and the browser's "off, a deck's page has no button; on, it is back" in `builder.spec.ts`. **Break:** the skip taken out of `StartButton::start()` turns the first red ("the next kit by menu order", StartButtonTest.php:152) and the browser case red at `toHaveCount( 0 )`.
 
-**Status:** Accepted.
+**Status:** Accepted. Where it is stored is superseded by D-354: the key is in `_cbuild_settings`, not `_cbuild_layout`.
 
 ### D-350 · A kit's width guide is kept in its layout, as structured widths, and a hidden one is gone from the answer · 2026-11-24
 
@@ -4412,7 +4412,7 @@ Issue #114 asks for the width guide to be edited per kit or hidden, from the kit
 
 Red: `KitLayoutTest::test_the_width_guide_is_the_plugins_and_shown_unless_the_kit_says_otherwise` failed at KitLayoutTest.php:72 with "Undefined property: KitLayout::$guide"; `WidthGuideTest::test_a_hidden_guide_has_no_rows` at WidthGuideTest.php:134 ("Failed asserting that two arrays are identical"); `BuilderShelfTest::test_a_kits_width_guide_shows_its_own_rows_or_is_gone_from_the_view` at BuilderShelfTest.php:217; `KitEditorTest::test_the_width_guide_keeps_the_shops_rows_or_the_plugins_and_whether_it_is_shown` at KitEditorTest.php:546 ("Failed asserting that null is identical to Array"); `BuildTabTest::test_the_width_guide_section_keeps_the_shops_rows_restores_the_plugins_and_hides_the_guide` at BuildTabTest.php:872, the section absent. The shoe size given twice: `KitLayoutTest::test_a_guide_that_breaks_its_shape_is_refused_at_its_field` with "a shoe size twice" failed at KitLayoutTest.php:142, and `KitEditorTest::test_a_width_guide_row_that_is_wrong_is_named_at_its_field` at KitEditorTest.php:583. Deliberate breaks: with a hidden guide's rows left in, `StateRouteTest::test_the_width_guide_is_the_kits_own_through_the_text_filter_and_a_hidden_one_is_not_in_the_answer` failed ("Failed asserting that two arrays are identical"); with Remove not moving the rows up, the Vitest case "removes a row: the rows after it move up …" failed at build-tab.test.ts:688.
 
-**Status:** Accepted.
+**Status:** Accepted. Where it is stored is superseded by D-354: the key is in `_cbuild_settings`, not `_cbuild_layout`.
 
 ### D-351 · "Not offered in the builder" is the part-available filter's first value · 2026-11-24
 
@@ -4461,5 +4461,26 @@ The benchmark's first view asked 121 or 133 queries, before 1.2.0 as after, agai
 **Measured on lane 2, six runs each.** With the settle: 105 queries at most every time, all passing. Without it: 121, 133, 133, 133, 121, 121; three failed with "Failed asserting that 133 is equal to 130 or is less than 130."
 
 **Flagged for Zach:** this leaves out of the count a view the benchmark used to measure. I read that as a fixture's leftover rather than the page's cost, but it is a judgment about a test.
+
+**Status:** Accepted.
+
+### D-354 · A kit's settings from 1.2.0 on are a document of their own, which the release before never reads · 2026-11-24
+
+**Context:** the auditor's blocker on milestone 12. The spec says "Rolling back one minor release leaves a working shop" (docs/SPEC.md:694). 1.1.0 reads a kit only when each of its documents passes 1.1.0's schema (`WooKits::read()`), and 1.1.0's `schema/kit-layout.json` has `additionalProperties` false. Milestone 12 put three keys in `_cbuild_layout`: `builder_page` (#113, D-348), `start_button` (#115, D-349) and `width_guide` (#114, D-350), and the Build tab wrote `start_button` and `width_guide` on every save. After a rollback to 1.1.0 every kit saved on 1.2.0 would read as none: no builder, and the Catalogue check saying `kit_unread`.
+
+**Decision (Zach's call in the brief, recorded here):**
+
+- **A new document, `_cbuild_settings`,** with `schema/kit-settings.json`, read, written, listed, exported, uninstalled and snapshotted as the kit's other documents are: `Options::META_KIT_SETTINGS`, in `kitDocuments()`, `kitDocumentNames()` (as `settings`) and `metaKeys()`, `KitSchemas`, `WooKits::read()` (optional, as the picture and the layout are), `KitEditor::SETTINGS` and the Build tab. 1.1.0 never reads it, so a rollback leaves every kit readable; the shop loses only the 1.2.0 settings until it updates again, since they are kept in the meta 1.1.0 passes over.
+- **`_cbuild_layout` goes back to exactly 1.1.0's.** Its schema is 1.1.0's file, byte for byte (the API snapshot's digest is 1.1.0's again), and `KitLayout` keeps 1.1.0's fields. The three settings are read by a domain object of their own, `Domain\Kit\KitSettings` (`startButton`, `builderPage`, `guide`), with the same defaults: a kit with none shows the button, builds on its own page and has the plugin's rows. `Kit` gains `settings`, and `Kit::fromDocuments()` a seventh argument, optional, so every caller of 1.1.0's six still works. Neither constructor is one 1.1.0's container builds (both are private, made by `fromDocuments()`), and `KitEditor`'s and `BuildTab`'s constructors are unchanged, so no with-er is needed (D-208).
+- **Its schema lets through a key it does not know.** `additionalProperties` is true at the top of `schema/kit-settings.json`, and `KitSettings::fromDocument()` passes over a key it does not read, so a later release can add a setting here and this release still reads the kit. The width guide's own object keeps its limits and allows nothing extra: a later change to the guide's shape goes in a new top-level key.
+- **The rule.** A new kit setting goes in `_cbuild_settings`, never as a new key in an older document. docs/STANDARDS.md says so where kit documents are described.
+- **No migration, nothing renamed.** 1.2.0 is unreleased, so no release ever wrote these keys into `_cbuild_layout`. The plan's public API list (docs/reviews/M12.md) names `_cbuild_settings` now.
+- **The Build tab.** The fields are sent as `cbuild_kit[settings][…]`, so each control's ID follows the document and the path, as every other field's does: `cbuild-kit-settings-builder_page`, `cbuild-kit-settings-start_button` and the Width guide section `cbuild-kit-settings-width_guide`. The Builder page and the start button were `cbuild-kit-layout-builder-page` and `-start-button`, which a problem's path (`builder_page`) did not lead to, so the notice's link and `aria-invalid` missed the field; following the path puts both right. The settings are listed in two sections, as before: problems in the width guide's fields in Width guide, the rest in Layout. The notice that the settings were not saved leads to Width guide where every problem is the guide's, and to Layout otherwise: "The kit's Builder page, the button on its parts' pages and its width guide were not saved. The Build tab shows them as you chose them, with what to put right." A layout refused no longer takes the settings with it, nor the other way.
+
+**The test that catches it again.** `RollbackTest::test_a_kit_saved_with_every_setting_of_this_release_passes_the_schemas_of_the_release_before` saves the Build tab as a browser does, finding each field by its label, with every 1.2.0 setting set (a Builder page, the start button off, a guide of the shop's own rows, hidden), and validates every stored kit document 1.1.0 reads against 1.1.0's copy of its schema in `tests/Fixtures/previous-schemas/`, with `rest_validate_value_from_schema()`. The fixtures are refreshed at each release, from the tag just made.
+
+**Red run:** the test on the code as it stood failed at RollbackTest.php:126 with "_cbuild_layout fails the release before's schema: width_guide is not a valid property of Object." (`rest_additional_properties_forbidden`). **Deliberate break:** with `start_button` put back into the layout, in this release's `schema/kit-layout.json` and in `KitEditor::layout()`, the same test failed at the same line with "_cbuild_layout fails the release before's schema: start_button is not a valid property of Object."; put back, it passed.
+
+**Flagged for Zach:** the Build tab's notice for the settings is a new sentence, and the fields' IDs and names changed (unreleased, so nothing public).
 
 **Status:** Accepted.

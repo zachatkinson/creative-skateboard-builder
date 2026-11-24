@@ -17,6 +17,7 @@ use CreativeBranding\SkateboardBuilder\Domain\Kit\DocumentError;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Fields;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\InvalidDocument;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\KitLayout;
+use CreativeBranding\SkateboardBuilder\Domain\Kit\KitSettings;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Kit;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Part;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Picks;
@@ -60,6 +61,14 @@ final class KitEditor {
 	public const ASSEMBLY = 'assembly';
 	public const PICTURE  = 'picture';
 	public const LAYOUT   = 'layout';
+
+	/**
+	 * The kit's settings from 1.2.0 on: the Builder page, the start button and the width guide (D-354). A new kit
+	 * setting goes in this document, which the release before never reads, never as a new key in an older one.
+	 *
+	 * @since 1.2.0
+	 */
+	public const SETTINGS = 'settings';
 
 	/**
 	 * The picture's wheelbase anchor is outside what a deck has: 10 to 20 in.
@@ -122,7 +131,7 @@ final class KitEditor {
 	public const SET_SIZE = 'set_size_missing';
 
 	/**
-	 * The layout names a Builder page the tab does not offer: not a published page that holds the kit's Builder
+	 * The settings name a Builder page the tab does not offer: not a published page that holds the kit's Builder
 	 * block, nor the one the kit has (1.2.0, #113).
 	 *
 	 * @since 1.2.0
@@ -169,7 +178,7 @@ final class KitEditor {
 	 * @param array<mixed>                             $sent      The tab's fields: `slots`, `rules`, `presets` and `assembly`.
 	 * @param array<string, array<string, mixed>|null> $stored    The kit's documents as stored, by name; null where there is none.
 	 * @param string                                   $separator The shop's decimal separator.
-	 * @param list<int>|null                           $pages     The pages the layout's Builder page may be, from
+	 * @param list<int>|null                           $pages     The pages the settings' Builder page may be, from
 	 *                                                            1.2.0: those that hold the kit's Builder block. The
 	 *                                                            one it has is kept too. Null checks none.
 	 */
@@ -188,12 +197,15 @@ final class KitEditor {
 			$built[ self::PICTURE ] = self::picture( $sent['picture'], $separator );
 		}
 		if ( is_array( $sent['layout'] ?? null ) ) {
-			$built[ self::LAYOUT ] = self::layout( $sent['layout'], $stored[ self::LAYOUT ] ?? null, $separator );
+			$built[ self::LAYOUT ] = self::layout( $sent['layout'] );
+		}
+		if ( is_array( $sent['settings'] ?? null ) ) {
+			$built[ self::SETTINGS ] = self::settings( $sent['settings'], $stored[ self::SETTINGS ] ?? null, $separator );
 		}
 
 		$problems = array();
 		$inForce  = array();
-		foreach ( array( self::SLOTS, self::RULES, self::ASSEMBLY, self::PICTURE, self::LAYOUT ) as $key ) {
+		foreach ( array( self::SLOTS, self::RULES, self::ASSEMBLY, self::PICTURE, self::LAYOUT, self::SETTINGS ) as $key ) {
 			$inForce[ $key ] = $stored[ $key ] ?? null;
 			if ( ! isset( $built[ $key ] ) ) {
 				continue;
@@ -204,12 +216,12 @@ final class KitEditor {
 			}
 			$problems = array( ...$problems, ...$found );
 		}
-		$page = $built[ self::LAYOUT ]['builder_page'] ?? null;
+		$page = $built[ self::SETTINGS ]['builder_page'] ?? null;
 		// The page the kit has is kept while the owner leaves it, though it may be one the tab offers no longer: it is
 		// checked again each time it is used.
-		$has = $stored[ self::LAYOUT ]['builder_page'] ?? null;
-		if ( null !== $pages && is_int( $page ) && $has !== $page && ! in_array( $page, $pages, true ) && ! in_array( self::LAYOUT, array_column( $problems, 'document' ), true ) ) {
-			$problems[] = self::problem( self::LAYOUT, self::BUILDER_PAGE, 'builder_page' );
+		$has = $stored[ self::SETTINGS ]['builder_page'] ?? null;
+		if ( null !== $pages && is_int( $page ) && $has !== $page && ! in_array( $page, $pages, true ) && ! in_array( self::SETTINGS, array_column( $problems, 'document' ), true ) ) {
+			$problems[] = self::problem( self::SETTINGS, self::BUILDER_PAGE, 'builder_page' );
 		}
 
 		$parts     = array();
@@ -319,14 +331,15 @@ final class KitEditor {
 				self::RULES => RuleSettings::fromDocument( $document ),
 				self::PICTURE => PictureSettings::fromDocument( $document ),
 				self::LAYOUT => KitLayout::fromDocument( $document ),
+				self::SETTINGS => KitSettings::fromDocument( $document ),
 				default                 => Assembly::fromDocument( $document ),
 			};
 		} catch ( InvalidDocument $refused ) {
 			$code = match ( true ) {
-				self::LAYOUT === $key && DocumentError::Duplicate === $refused->reason => self::GUIDE_SHOE_TWICE,
+				self::SETTINGS === $key && DocumentError::Duplicate === $refused->reason => self::GUIDE_SHOE_TWICE,
 				DocumentError::OutOfRange !== $refused->reason => $refused->reason->value,
 				self::PICTURE === $key => self::WHEELBASE_RANGE,
-				self::LAYOUT === $key && 1 === preg_match( '/\Awidth_guide\.rows\[\d+\]\.(from|to)\z/', $refused->path ) => self::GUIDE_WIDTH,
+				self::SETTINGS === $key && 1 === preg_match( '/\Awidth_guide\.rows\[\d+\]\.(from|to)\z/', $refused->path ) => self::GUIDE_WIDTH,
 				default => $refused->reason->value,
 			};
 			return array( self::problem( $key, $code, $refused->path ) );
@@ -665,17 +678,13 @@ final class KitEditor {
 
 	/**
 	 * The layout document from the tab's fields (D-255): each choice sent as text, which the domain then holds to its
-	 * choices. Show ready builds (1.1.0, #104) and Show on its parts' pages (1.2.0, #115) are checkboxes: one not
-	 * ticked is not sent, and is off. The Builder page (1.2.0, #113) is a page's ID, or empty for the kit's own page;
-	 * a form that does not send it at all keeps the one the kit has. The width guide (1.2.0, #114) is stored only where
-	 * its section was sent.
+	 * choices. Show ready builds (1.1.0, #104) is a checkbox: one not ticked is not sent, and is off. It holds 1.1.0's
+	 * keys alone: a later setting goes in the settings document (D-354).
 	 *
-	 * @param array<mixed>              $sent      The fields.
-	 * @param array<string, mixed>|null $stored    The layout as stored.
-	 * @param string                    $separator The shop's decimal separator.
+	 * @param array<mixed> $sent The fields.
 	 * @return array<string, mixed>
 	 */
-	private static function layout( array $sent, ?array $stored, string $separator ): array {
+	private static function layout( array $sent ): array {
 		$document = array( 'schema_version' => 1 );
 		foreach ( array( 'stage_side', 'board_size', 'search', 'motion' ) as $key ) {
 			if ( is_string( $sent[ $key ] ?? null ) ) {
@@ -683,10 +692,28 @@ final class KitEditor {
 			}
 		}
 		$document['show_presets'] = self::on( $sent, 'show_presets' );
+		return $document;
+	}
+
+	/**
+	 * The settings document from the tab's fields (D-354). Show "Build a complete with this deck" on its parts' pages
+	 * (#115) is a checkbox: one not ticked is not sent, and is off. The Builder page (#113) is a page's ID, or empty for
+	 * the kit's own page; a form that does not send it at all keeps the one the kit has. The width guide (#114) is
+	 * stored only where its section was sent.
+	 *
+	 * @param array<mixed>              $sent      The fields.
+	 * @param array<string, mixed>|null $stored    The settings as stored.
+	 * @param string                    $separator The shop's decimal separator.
+	 * @return array<string, mixed>
+	 */
+	private static function settings( array $sent, ?array $stored, string $separator ): array {
+		$document = array(
+			'schema_version' => 1,
+			'start_button'   => self::on( $sent, 'start_button' ),
+		);
 		if ( is_array( $sent['width_guide'] ?? null ) ) {
 			$document['width_guide'] = self::guide( $sent['width_guide'], $separator );
 		}
-		$document['start_button'] = self::on( $sent, 'start_button' );
 		if ( ! array_key_exists( 'builder_page', $sent ) ) {
 			if ( isset( $stored['builder_page'] ) ) {
 				$document['builder_page'] = $stored['builder_page'];

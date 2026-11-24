@@ -38,11 +38,11 @@ final class BuilderAddressTest extends TestCase {
 	 * A kit whose layout names this page, or none.
 	 */
 	private static function kit( ?int $page ): Kit {
-		$layout = null === $page ? null : array(
+		$settings = null === $page ? null : array(
 			'schema_version' => 1,
 			'builder_page'   => $page,
 		);
-		return Kit::fromDocuments( KitDocuments::slots(), KitDocuments::rules(), KitDocuments::presets(), KitDocuments::assembly(), null, $layout );
+		return Kit::fromDocuments( KitDocuments::slots(), KitDocuments::rules(), KitDocuments::presets(), KitDocuments::assembly(), null, null, $settings );
 	}
 
 	/**

@@ -28,41 +28,4 @@ export interface CbuildLayout {
 	 * From 1.1.0: whether the builder shows "Start from a ready build" with the kit's ready builds. Off, the ready builds are kept and not shown. The default is true.
 	 */
 	show_presets?: boolean;
-	/**
-	 * From 1.2.0: the page the kit's builder is on, by its ID: a published page that holds the kit's Builder block, chosen in the Build tab. Left out, the kit's own page. A page that is no longer published, or no longer holds the block, is not used, and the kit's own page is.
-	 */
-	builder_page?: number;
-	/**
-	 * From 1.2.0: whether the kit places "Build a complete with this deck" on the pages of the parts its first slot offers. Off, the kit is passed over, and another kit that offers the part may place it. The default is true.
-	 */
-	start_button?: boolean;
-	/**
-	 * From 1.2.0: "Not sure of your width?" under the deck step's width question. Left out, the guide is shown with the plugin's rows, by US shoe size.
-	 */
-	width_guide?: {
-		/**
-		 * Whether the guide is on the page. Off, it is left out of the page and of the state route's answer, and its rows are kept. The default is true.
-		 */
-		shown?: boolean;
-		/**
-		 * The shop's own rows, in the order shown. Left out, the guide has the plugin's rows, in the shopper's language.
-		 *
-		 * @minItems 1
-		 * @maxItems 12
-		 */
-		rows?: {
-			/**
-			 * The shoe size, as the shop writes it: EU 40 to 42. Plain text.
-			 */
-			shoe: string;
-			/**
-			 * The narrowest deck it rides, in inches, from 5 to 12, with a point and up to four decimals.
-			 */
-			from: string;
-			/**
-			 * The widest, in inches, no narrower than from. Left out or empty, the row says from and wider.
-			 */
-			to?: string;
-		}[];
-	};
 }

@@ -60,15 +60,15 @@ final class BuilderAddressTest extends IntegrationTestCase {
 	}
 
 	/**
-	 * The kit's layout, as the Build tab saves it.
+	 * The kit's settings, as the Build tab saves them.
 	 *
-	 * @param array<string, mixed> $layout The document's settings.
+	 * @param array<string, mixed> $settings The document's settings.
 	 */
-	private function layout( array $layout ): void {
+	private function settings( array $settings ): void {
 		clean_post_cache( $this->kit );
 		$kit = wc_get_product( $this->kit );
 		self::assertInstanceOf( KitProduct::class, $kit );
-		$kit->setDocument( Options::META_KIT_LAYOUT, array( 'schema_version' => 1 ) + $layout );
+		$kit->setDocument( Options::META_KIT_SETTINGS, array( 'schema_version' => 1 ) + $settings );
 		$kit->save();
 	}
 
@@ -114,7 +114,7 @@ final class BuilderAddressTest extends IntegrationTestCase {
 
 	public function test_the_chosen_page_is_where_the_kits_page_my_builds_and_the_route_send_a_visitor(): void {
 		$page = $this->page();
-		$this->layout( array( 'builder_page' => $page ) );
+		$this->settings( array( 'builder_page' => $page ) );
 		$there = (string) get_permalink( $page );
 		self::assertSame( $there, $this->address()->of( $this->kit ) );
 		self::assertSame( $page, $this->address()->page( $this->kit ) );
@@ -160,7 +160,7 @@ final class BuilderAddressTest extends IntegrationTestCase {
 			'a product'                => fn(): int => $other,
 		);
 		foreach ( $cases as $why => $make ) {
-			$this->layout( array( 'builder_page' => $make() ) );
+			$this->settings( array( 'builder_page' => $make() ) );
 			self::assertSame( $own, $this->address()->of( $this->kit ), $why );
 			self::assertNull( $this->sent(), $why . ': the kit\'s page keeps its visitor' );
 			self::assertSame( $own, $this->route(), $why . ': the route' );
@@ -168,7 +168,7 @@ final class BuilderAddressTest extends IntegrationTestCase {
 
 		// Published again, it is used again: the page is checked each time.
 		$page = $this->page( null, array( 'post_status' => 'draft' ) );
-		$this->layout( array( 'builder_page' => $page ) );
+		$this->settings( array( 'builder_page' => $page ) );
 		self::assertSame( $own, $this->address()->of( $this->kit ) );
 		wp_publish_post( $page );
 		self::assertSame( (string) get_permalink( $page ), $this->address()->of( $this->kit ) );
@@ -176,7 +176,7 @@ final class BuilderAddressTest extends IntegrationTestCase {
 
 	public function test_the_filter_answers_last_over_the_chosen_page(): void {
 		$page = $this->page();
-		$this->layout( array( 'builder_page' => $page ) );
+		$this->settings( array( 'builder_page' => $page ) );
 		$there = (string) get_permalink( $page );
 		$told  = null;
 		$other = $this->page( '<p>The shop\'s own.</p>' );
@@ -204,7 +204,7 @@ final class BuilderAddressTest extends IntegrationTestCase {
 	// D-208: a copy an earlier release's container built mid-update has no address, and goes where 1.1.0 did.
 	public function test_a_copy_an_earlier_release_built_keeps_the_kits_own_page(): void {
 		$page = $this->page();
-		$this->layout( array( 'builder_page' => $page ) );
+		$this->settings( array( 'builder_page' => $page ) );
 		$own   = (string) get_permalink( $this->kit );
 		$hooks = new PageHooks( fn(): BuilderPage => $this->service( BuilderPage::class ), $this->service( BuilderPlace::class ) );
 		$this->go_to( $own );

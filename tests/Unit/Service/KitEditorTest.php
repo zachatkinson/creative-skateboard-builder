@@ -495,7 +495,7 @@ final class KitEditorTest extends TestCase {
 		);
 		$draft          = $this->editor->draft( $sent, self::stored() );
 		self::assertSame( array(), $draft->problems );
-		self::assertSame( array( 'schema_version' => 1, 'stage_side' => 'right', 'board_size' => 'balanced', 'search' => 'own', 'motion' => 'subtle', 'show_presets' => false, 'start_button' => false ), $draft->documents[ KitEditor::LAYOUT ] );
+		self::assertSame( array( 'schema_version' => 1, 'stage_side' => 'right', 'board_size' => 'balanced', 'search' => 'own', 'motion' => 'subtle', 'show_presets' => false ), $draft->documents[ KitEditor::LAYOUT ] );
 
 		$sent['layout'] = array( 'stage_side' => 'top' );
 		$draft          = $this->editor->draft( $sent, self::stored() );
@@ -510,7 +510,7 @@ final class KitEditorTest extends TestCase {
 		);
 		$draft          = $this->editor->draft( $sent, self::stored() );
 		self::assertSame( array(), $draft->problems, 'a choice is read without its outer spaces' );
-		self::assertSame( array( 'schema_version' => 1, 'stage_side' => 'left', 'board_size' => 'large', 'search' => 'own', 'show_presets' => false, 'start_button' => false ), $draft->documents[ KitEditor::LAYOUT ] );
+		self::assertSame( array( 'schema_version' => 1, 'stage_side' => 'left', 'board_size' => 'large', 'search' => 'own', 'show_presets' => false ), $draft->documents[ KitEditor::LAYOUT ] );
 	}
 
 	// #104 (R1): Show ready builds is a checkbox, so one not ticked is not sent, and the kit's ready builds are hidden.
@@ -519,87 +519,85 @@ final class KitEditorTest extends TestCase {
 		$sent['layout'] = array( 'show_presets' => '1' );
 		$draft          = $this->editor->draft( $sent, self::stored() );
 		self::assertSame( array(), $draft->problems );
-		self::assertSame( array( 'schema_version' => 1, 'show_presets' => true, 'start_button' => false ), $draft->documents[ KitEditor::LAYOUT ] );
+		self::assertSame( array( 'schema_version' => 1, 'show_presets' => true ), $draft->documents[ KitEditor::LAYOUT ] );
 
 		$sent['layout'] = array( 'stage_side' => 'left' );
 		$draft          = $this->editor->draft( $sent, self::stored() );
 		self::assertSame( array(), $draft->problems );
-		self::assertSame( array( 'schema_version' => 1, 'stage_side' => 'left', 'show_presets' => false, 'start_button' => false ), $draft->documents[ KitEditor::LAYOUT ] );
+		self::assertSame( array( 'schema_version' => 1, 'stage_side' => 'left', 'show_presets' => false ), $draft->documents[ KitEditor::LAYOUT ] );
 	}
 
 	// #115: Show on its parts' pages is a checkbox, so one not ticked is not sent, and the kit places no start button.
 	public function test_the_start_button_is_kept_on_when_ticked_and_off_when_not(): void {
 		$sent           = self::sent();
-		$sent['layout'] = array(
-			'show_presets' => '1',
-			'start_button' => '1',
-		);
-		$draft          = $this->editor->draft( $sent, self::stored() );
+		$sent['settings'] = array( 'start_button' => '1' );
+		$draft            = $this->editor->draft( $sent, self::stored() );
 		self::assertSame( array(), $draft->problems );
-		self::assertSame( array( 'schema_version' => 1, 'show_presets' => true, 'start_button' => true ), $draft->documents[ KitEditor::LAYOUT ] );
+		self::assertSame( array( 'schema_version' => 1, 'start_button' => true ), $draft->documents[ KitEditor::SETTINGS ] );
+		self::assertArrayNotHasKey( KitEditor::LAYOUT, $draft->documents, 'nothing of it in the layout (D-354)' );
 
-		$sent['layout'] = array( 'show_presets' => '1' );
-		$draft          = $this->editor->draft( $sent, self::stored() );
+		$sent['settings'] = array( 'builder_page' => '' );
+		$draft            = $this->editor->draft( $sent, self::stored() );
 		self::assertSame( array(), $draft->problems );
-		self::assertSame( array( 'schema_version' => 1, 'show_presets' => true, 'start_button' => false ), $draft->documents[ KitEditor::LAYOUT ] );
+		self::assertSame( array( 'schema_version' => 1, 'start_button' => false ), $draft->documents[ KitEditor::SETTINGS ] );
 	}
 
 	// #113: the Builder page is a page's ID, or nothing for the kit's own page. Where the tab says which pages may be
 	// chosen, any other is refused; a select not sent at all keeps the page the kit has.
 	public function test_the_builder_page_is_kept_as_an_id_and_one_not_offered_is_refused(): void {
 		$sent           = self::sent();
-		$sent['layout'] = array(
+		$sent['settings'] = array(
 			'builder_page' => '42',
 			'start_button' => '1',
 		);
 		$draft          = $this->editor->draft( $sent, self::stored(), '.', array( 42, 43 ) );
 		self::assertSame( array(), $draft->problems );
-		self::assertSame( array( 'schema_version' => 1, 'show_presets' => false, 'start_button' => true, 'builder_page' => 42 ), $draft->documents[ KitEditor::LAYOUT ] );
+		self::assertSame( array( 'schema_version' => 1, 'start_button' => true, 'builder_page' => 42 ), $draft->documents[ KitEditor::SETTINGS ] );
 
 		foreach ( array( '', '0', ' ' ) as $own ) {
-			$sent['layout']['builder_page'] = $own;
+			$sent['settings']['builder_page'] = $own;
 			$draft                          = $this->editor->draft( $sent, self::stored(), '.', array( 42 ) );
 			self::assertSame( array(), $draft->problems, var_export( $own, true ) );
-			self::assertArrayNotHasKey( 'builder_page', $draft->documents[ KitEditor::LAYOUT ], 'the kit\'s own page: ' . var_export( $own, true ) );
+			self::assertArrayNotHasKey( 'builder_page', $draft->documents[ KitEditor::SETTINGS ], 'the kit\'s own page: ' . var_export( $own, true ) );
 		}
 
-		$sent['layout']['builder_page'] = '44';
+		$sent['settings']['builder_page'] = '44';
 		$draft                          = $this->editor->draft( $sent, self::stored(), '.', array( 42, 43 ) );
-		self::assertSame( array( 'layout ' . KitEditor::BUILDER_PAGE . ' builder_page' ), self::problems( $draft ), 'a page the tab does not offer' );
-		self::assertArrayNotHasKey( KitEditor::LAYOUT, $draft->documents );
-		self::assertSame( 44, $draft->refused[ KitEditor::LAYOUT ]['builder_page'] ?? null, 'shown as chosen' );
+		self::assertSame( array( 'settings ' . KitEditor::BUILDER_PAGE . ' builder_page' ), self::problems( $draft ), 'a page the tab does not offer' );
+		self::assertArrayNotHasKey( KitEditor::SETTINGS, $draft->documents );
+		self::assertSame( 44, $draft->refused[ KitEditor::SETTINGS ]['builder_page'] ?? null, 'shown as chosen' );
 
-		// A layout that is already refused for another field is named at that field alone, and the page is checked
+		// Settings that are already refused for another field is named at that field alone, and the page is checked
 		// once the rest of the section reads.
-		$sent['layout']['width_guide'] = array( 'rows' => array( array( 'shoe' => 'EU 40', 'from' => '21' ) ) );
+		$sent['settings']['width_guide'] = array( 'rows' => array( array( 'shoe' => 'EU 40', 'from' => '21' ) ) );
 		$draft                         = $this->editor->draft( $sent, self::stored(), '.', array( 42, 43 ) );
-		self::assertSame( array( 'layout ' . KitEditor::GUIDE_WIDTH . ' width_guide.rows[0].from' ), self::problems( $draft ) );
-		unset( $sent['layout']['width_guide'] );
+		self::assertSame( array( 'settings ' . KitEditor::GUIDE_WIDTH . ' width_guide.rows[0].from' ), self::problems( $draft ) );
+		unset( $sent['settings']['width_guide'] );
 
-		$sent['layout']['builder_page'] = 'https://elsewhere.example/';
+		$sent['settings']['builder_page'] = 'https://elsewhere.example/';
 		$draft                          = $this->editor->draft( $sent, self::stored(), '.', array( 42 ) );
-		self::assertSame( array( 'layout document_wrong_type builder_page' ), self::problems( $draft ), 'an address is no page' );
+		self::assertSame( array( 'settings document_wrong_type builder_page' ), self::problems( $draft ), 'an address is no page' );
 
-		$sent['layout']['builder_page'] = '44';
+		$sent['settings']['builder_page'] = '44';
 		$draft                          = $this->editor->draft( $sent, self::stored() );
 		self::assertSame( array(), $draft->problems, 'where the tab names no pages, none is checked' );
 
-		unset( $sent['layout']['builder_page'] );
+		unset( $sent['settings']['builder_page'] );
 		$stored                     = self::stored();
-		$stored[ KitEditor::LAYOUT ] = array(
+		$stored[ KitEditor::SETTINGS ] = array(
 			'schema_version' => 1,
 			'builder_page'   => 43,
 		);
 		$draft                      = $this->editor->draft( $sent, $stored, '.', array() );
 		self::assertSame( array(), $draft->problems );
-		self::assertSame( 43, $draft->documents[ KitEditor::LAYOUT ]['builder_page'] ?? null, 'a form with no Builder page keeps the kit\'s' );
+		self::assertSame( 43, $draft->documents[ KitEditor::SETTINGS ]['builder_page'] ?? null, 'a form with no Builder page keeps the kit\'s' );
 	}
 
 	// #114: the width guide's section. A box to show the guide, a box for the plugin's rows, and the shop's own rows,
 	// each width as the shop writes a measure. A row left empty is no row, and the plugin's rows store none.
 	public function test_the_width_guide_keeps_the_shops_rows_or_the_plugins_and_whether_it_is_shown(): void {
 		$sent           = self::sent();
-		$sent['layout'] = array(
+		$sent['settings'] = array(
 			'width_guide' => array(
 				'shown' => '1',
 				'rows'  => array(
@@ -619,40 +617,40 @@ final class KitEditorTest extends TestCase {
 					array( 'shoe' => 'EU 41 and up', 'from' => '8.25' ),
 				),
 			),
-			$draft->documents[ KitEditor::LAYOUT ]['width_guide'] ?? null
+			$draft->documents[ KitEditor::SETTINGS ]['width_guide'] ?? null
 		);
 
 		// The plugin's rows ticked: whatever the rows hold, none is stored, and the guide shows the plugin's.
-		$sent['layout']['width_guide']['plugins'] = '1';
-		unset( $sent['layout']['width_guide']['shown'] );
+		$sent['settings']['width_guide']['plugins'] = '1';
+		unset( $sent['settings']['width_guide']['shown'] );
 		$draft = $this->editor->draft( $sent, self::stored(), ',' );
-		self::assertSame( array( 'shown' => false ), $draft->documents[ KitEditor::LAYOUT ]['width_guide'] ?? null, 'hidden, with the plugin\'s rows' );
+		self::assertSame( array( 'shown' => false ), $draft->documents[ KitEditor::SETTINGS ]['width_guide'] ?? null, 'hidden, with the plugin\'s rows' );
 
 		// No rows typed is the plugin's rows too.
-		$sent['layout']['width_guide'] = array(
+		$sent['settings']['width_guide'] = array(
 			'shown' => '1',
 			'rows'  => array( array( 'shoe' => ' ', 'from' => '', 'to' => '' ) ),
 		);
 		$draft = $this->editor->draft( $sent, self::stored() );
-		self::assertSame( array( 'shown' => true ), $draft->documents[ KitEditor::LAYOUT ]['width_guide'] ?? null );
+		self::assertSame( array( 'shown' => true ), $draft->documents[ KitEditor::SETTINGS ]['width_guide'] ?? null );
 
-		// A section that sends no guide, as a 1.1.0 screen's, stores none, and the kit shows the plugin's rows.
-		$sent['layout'] = array( 'stage_side' => 'left' );
-		self::assertArrayNotHasKey( 'width_guide', $this->editor->draft( $sent, self::stored() )->documents[ KitEditor::LAYOUT ] );
+		// Settings that send no guide store none, and the kit shows the plugin's rows.
+		$sent['settings'] = array( 'start_button' => '1' );
+		self::assertArrayNotHasKey( 'width_guide', $this->editor->draft( $sent, self::stored() )->documents[ KitEditor::SETTINGS ] );
 	}
 
-	// #114: what is wrong with a row is named at its field, and the layout is not saved.
+	// #114: what is wrong with a row is named at its field, and the settings are not saved.
 	public function test_a_width_guide_row_that_is_wrong_is_named_at_its_field(): void {
 		foreach ( array(
-			'a width with no shoe size'      => array( array( 'shoe' => '', 'from' => '8', 'to' => '' ), 'layout document_field_missing width_guide.rows[1].shoe' ),
-			'a shoe size with no width'      => array( array( 'shoe' => 'EU 40', 'from' => '', 'to' => '8.5' ), 'layout document_field_missing width_guide.rows[1].from' ),
-			'a width that is no number'      => array( array( 'shoe' => 'EU 40', 'from' => 'eight', 'to' => '' ), 'layout document_bad_measure width_guide.rows[1].from' ),
-			'a width no deck has'            => array( array( 'shoe' => 'EU 40', 'from' => '8', 'to' => '21' ), 'layout ' . KitEditor::GUIDE_WIDTH . ' width_guide.rows[1].to' ),
-			'a shoe size the guide has'      => array( array( 'shoe' => 'EU 38', 'from' => '8', 'to' => '' ), 'layout ' . KitEditor::GUIDE_SHOE_TWICE . ' width_guide.rows[1].shoe' ),
-			'a widest under the narrowest'   => array( array( 'shoe' => 'EU 40', 'from' => '8.5', 'to' => '8' ), 'layout rules_out_of_order width_guide.rows[1].to' ),
+			'a width with no shoe size'      => array( array( 'shoe' => '', 'from' => '8', 'to' => '' ), 'settings document_field_missing width_guide.rows[1].shoe' ),
+			'a shoe size with no width'      => array( array( 'shoe' => 'EU 40', 'from' => '', 'to' => '8.5' ), 'settings document_field_missing width_guide.rows[1].from' ),
+			'a width that is no number'      => array( array( 'shoe' => 'EU 40', 'from' => 'eight', 'to' => '' ), 'settings document_bad_measure width_guide.rows[1].from' ),
+			'a width no deck has'            => array( array( 'shoe' => 'EU 40', 'from' => '8', 'to' => '21' ), 'settings ' . KitEditor::GUIDE_WIDTH . ' width_guide.rows[1].to' ),
+			'a shoe size the guide has'      => array( array( 'shoe' => 'EU 38', 'from' => '8', 'to' => '' ), 'settings ' . KitEditor::GUIDE_SHOE_TWICE . ' width_guide.rows[1].shoe' ),
+			'a widest under the narrowest'   => array( array( 'shoe' => 'EU 40', 'from' => '8.5', 'to' => '8' ), 'settings rules_out_of_order width_guide.rows[1].to' ),
 		) as $case => [ $row, $expected ] ) {
 			$sent           = self::sent();
-			$sent['layout'] = array(
+			$sent['settings'] = array(
 				'width_guide' => array(
 					'shown' => '1',
 					'rows'  => array( array( 'shoe' => 'EU 38', 'from' => '7.75' ), $row ),
@@ -660,7 +658,7 @@ final class KitEditorTest extends TestCase {
 			);
 			$draft          = $this->editor->draft( $sent, self::stored() );
 			self::assertSame( array( $expected ), self::problems( $draft ), $case );
-			self::assertArrayNotHasKey( KitEditor::LAYOUT, $draft->documents, $case );
+			self::assertArrayNotHasKey( KitEditor::SETTINGS, $draft->documents, $case );
 		}
 	}
 

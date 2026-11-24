@@ -244,7 +244,7 @@ final class CartShowTest extends CartTestCase {
 		);
 		$product = wc_get_product( $this->kit );
 		self::assertInstanceOf( \CreativeBranding\SkateboardBuilder\Adapter\KitProduct::class, $product );
-		$product->setDocument( Options::META_KIT_LAYOUT, array( 'schema_version' => 1, 'builder_page' => $chosen ) );
+		$product->setDocument( Options::META_KIT_SETTINGS, array( 'schema_version' => 1, 'builder_page' => $chosen ) );
 		$product->save();
 		$data = apply_filters( 'woocommerce_get_item_data', array(), $kit[1] ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- as above.
 		self::assertStringContainsString( 'href="' . esc_url( get_permalink( $chosen ) ), $data[1]['display'], 'the kit\'s Builder page' );

@@ -2908,19 +2908,19 @@ test( 'the width question opens a guide by shoe size', async ( {
 } );
 
 // #114: a kit's own width guide, edited in its Build tab: the shop's rows in place of the plugin's, and a guide hidden
-// is gone from the page, not hidden by a style alone. The kit's layout is put back after.
+// is gone from the page, not hidden by a style alone. The kit's settings are put back after.
 test.describe( "A kit's own width guide", () => {
 	const layout = ( guide: string ) =>
 		runPhp(
 			`$k = wc_get_product( ${
 				fixture().kit
-			} ); if ( false === get_option( 'cbuild_e2e_layout' ) ) { update_option( 'cbuild_e2e_layout', array( 'had' => $k->get_meta( '_cbuild_layout' ) ) ); } $k->setDocument( '_cbuild_layout', array( 'schema_version' => 1, 'width_guide' => json_decode( '${ guide }', true ) ) ); $k->save();`
+			} ); if ( false === get_option( 'cbuild_e2e_layout' ) ) { update_option( 'cbuild_e2e_layout', array( 'had' => $k->documents()['_cbuild_settings'] ) ); } $k->setDocument( '_cbuild_settings', array( 'schema_version' => 1, 'width_guide' => json_decode( '${ guide }', true ) ) ); $k->save();`
 		);
 	test.afterAll( () => {
 		runPhp(
 			`$k = wc_get_product( ${
 				fixture().kit
-			} ); $had = get_option( 'cbuild_e2e_layout' )['had'] ?? ''; if ( is_array( $had ) ) { $k->setDocument( '_cbuild_layout', $had ); } else { $k->delete_meta_data( '_cbuild_layout' ); } $k->save(); delete_option( 'cbuild_e2e_layout' );`
+			} ); $had = get_option( 'cbuild_e2e_layout' )['had'] ?? ''; if ( is_array( $had ) ) { $k->setDocument( '_cbuild_settings', $had ); } else { $k->delete_meta_data( '_cbuild_settings' ); } $k->save(); delete_option( 'cbuild_e2e_layout' );`
 		);
 	} );
 
@@ -7396,17 +7396,17 @@ test.describe( 'A saved build that has changed, and the deck page', () => {
 // complete with this deck"; on again, the button is back where it was.
 test.describe( "A kit's Show on its parts' pages", () => {
 	/**
-	 * Every kit's Show on its parts' pages set, or taken off the kit's layout as a kit saved before 1.2.0 has it.
+	 * Every kit's Show on its parts' pages set, or taken off the kit's settings as a kit saved before 1.2.0 has it.
 	 *
 	 * @param on True or false, or null to take the setting off.
 	 */
 	const startButton = ( on: boolean | null ): void =>
 		runPhp(
-			`foreach ( wc_get_products( array( 'type' => 'cbuild_kit', 'limit' => -1, 'status' => 'any' ) ) as $k ) { $d = $k->documents()['_cbuild_layout'] ?? array( 'schema_version' => 1 ); if ( null === ${ JSON.stringify(
+			`foreach ( wc_get_products( array( 'type' => 'cbuild_kit', 'limit' => -1, 'status' => 'any' ) ) as $k ) { $d = $k->documents()['_cbuild_settings'] ?? array( 'schema_version' => 1 ); if ( null === ${ JSON.stringify(
 				on
 			) } ) { unset( $d['start_button'] ); } else { $d['start_button'] = ${ JSON.stringify(
 				on
-			) }; } $k->setDocument( '_cbuild_layout', $d ); $k->save(); }`
+			) }; } $k->setDocument( '_cbuild_settings', $d ); $k->save(); }`
 		);
 
 	test.afterAll( () => startButton( null ) );
@@ -7440,15 +7440,15 @@ test.describe( "A kit's Show on its parts' pages", () => {
 // they came with, and "Build a complete with this deck" opens it; a page that has lost the kit's block is not used.
 test.describe( "A kit's Builder page", () => {
 	/**
-	 * The test kit's Builder page, by the address of a page on the site, or taken off its layout with null.
+	 * The test kit's Builder page, by the address of a page on the site, or taken off its settings with null.
 	 *
 	 * @param url The page's address, or null.
 	 */
 	const builderPage = ( url: string | null ): void =>
 		runPhp(
-			`$k = wc_get_product( ${ fixture().kit } ); $d = $k->documents()['_cbuild_layout'] ?? array( 'schema_version' => 1 ); $u = ${ JSON.stringify(
+			`$k = wc_get_product( ${ fixture().kit } ); $d = $k->documents()['_cbuild_settings'] ?? array( 'schema_version' => 1 ); $u = ${ JSON.stringify(
 				url
-			) }; if ( null === $u ) { unset( $d['builder_page'] ); } else { $d['builder_page'] = url_to_postid( $u ); } $k->setDocument( '_cbuild_layout', $d ); $k->save();`
+			) }; if ( null === $u ) { unset( $d['builder_page'] ); } else { $d['builder_page'] = url_to_postid( $u ); } $k->setDocument( '_cbuild_settings', $d ); $k->save();`
 		);
 
 	test.afterAll( () => builderPage( null ) );

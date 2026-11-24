@@ -1,0 +1,55 @@
+{
+	"$schema": "http://json-schema.org/draft-04/schema#",
+	"title": "cbuild_layout",
+	"description": "A kit's layout settings (from 1.0.0), stored in the _cbuild_layout product meta. A kit with none, or a setting left out, has the default.",
+	"type": "object",
+	"additionalProperties": false,
+	"required": [
+		"schema_version"
+	],
+	"properties": {
+		"schema_version": {
+			"description": "The document's version. Version 1 is the only one so far.",
+			"type": "integer",
+			"enum": [
+				1
+			]
+		},
+		"stage_side": {
+			"description": "The side the stage takes on a desktop. The default is left.",
+			"type": "string",
+			"enum": [
+				"left",
+				"right"
+			]
+		},
+		"board_size": {
+			"description": "How much of a desktop's width the board takes: large, 60 %, or balanced, 50 %. The default is large.",
+			"type": "string",
+			"enum": [
+				"large",
+				"balanced"
+			]
+		},
+		"search": {
+			"description": "The search in the steps: creative_search, Creative Search where it is active and the builder's own otherwise, or own, the builder's own always. The default is creative_search.",
+			"type": "string",
+			"enum": [
+				"creative_search",
+				"own"
+			]
+		},
+		"motion": {
+			"description": "From 1.1.0: how the board's parts move. playful moves them onto the board; subtle fades them in, for every shopper, as a device that asks for reduced motion always has. The default is playful.",
+			"type": "string",
+			"enum": [
+				"playful",
+				"subtle"
+			]
+		},
+		"show_presets": {
+			"description": "From 1.1.0: whether the builder shows \"Start from a ready build\" with the kit's ready builds. Off, the ready builds are kept and not shown. The default is true.",
+			"type": "boolean"
+		}
+	}
+}

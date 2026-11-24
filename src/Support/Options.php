@@ -261,6 +261,14 @@ final class Options {
 	public const META_KIT_LAYOUT = '_cbuild_layout';
 
 	/**
+	 * A kit's meta: its settings from 1.2.0 on, as JSON text (schema/kit-settings.json). A kit may have none. A new
+	 * kit setting goes here, never as a new key in an older document, so a rollback still reads the kit (D-354).
+	 *
+	 * @since 1.2.0
+	 */
+	public const META_KIT_SETTINGS = '_cbuild_settings';
+
+	/**
 	 * The spec tables' post type.
 	 *
 	 * @since 0.3.0
@@ -386,14 +394,15 @@ final class Options {
 	}
 
 	/**
-	 * The meta keys of a kit's documents: the four, the picture's from 0.7.0 and the layout's from 1.0.0.
+	 * The meta keys of a kit's documents: the four, the picture's from 0.7.0, the layout's from 1.0.0 and the settings'
+	 * from 1.2.0.
 	 *
 	 * @since 0.4.0
 	 *
 	 * @return list<string>
 	 */
 	public static function kitDocuments(): array {
-		return array( self::META_KIT_SLOTS, self::META_KIT_RULES, self::META_KIT_PRESETS, self::META_KIT_ASSEMBLY, self::META_KIT_PICTURE, self::META_KIT_LAYOUT );
+		return array( self::META_KIT_SLOTS, self::META_KIT_RULES, self::META_KIT_PRESETS, self::META_KIT_ASSEMBLY, self::META_KIT_PICTURE, self::META_KIT_LAYOUT, self::META_KIT_SETTINGS );
 	}
 
 	/**
@@ -411,6 +420,7 @@ final class Options {
 			'assembly' => self::META_KIT_ASSEMBLY,
 			'picture'  => self::META_KIT_PICTURE,
 			'layout'   => self::META_KIT_LAYOUT,
+			'settings' => self::META_KIT_SETTINGS,
 		);
 	}
 

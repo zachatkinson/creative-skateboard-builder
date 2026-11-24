@@ -210,7 +210,7 @@ final class BuilderShelfTest extends TestCase {
 	// #114: a kit's own width guide. Its own rows are its shoe sizes as the shop writes them, so the column says no
 	// country's sizes; hidden, the guide is gone from the view, which the page and the state route's answer both draw.
 	public function test_a_kits_width_guide_shows_its_own_rows_or_is_gone_from_the_view(): void {
-		$kit = static fn( array $guide ): Kit => Kit::fromDocuments( KitDocuments::slots(), KitDocuments::rules(), KitDocuments::presets(), KitDocuments::assembly(), null, array( 'schema_version' => 1, 'width_guide' => $guide ) );
+		$kit = static fn( array $guide ): Kit => Kit::fromDocuments( KitDocuments::slots(), KitDocuments::rules(), KitDocuments::presets(), KitDocuments::assembly(), null, null, array( 'schema_version' => 1, 'width_guide' => $guide ) );
 		$this->kits->add( self::KIT, $kit( array( 'rows' => array( array( 'shoe' => 'EU 38 to 40', 'from' => '7.75', 'to' => '8' ) ) ) ), Shop::parts() );
 		$guide = $this->step( new BuildLink() )['shelf']['width']['guide'];
 		self::assertTrue( $guide['shown'] );

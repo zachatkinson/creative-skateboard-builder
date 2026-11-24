@@ -178,10 +178,11 @@ final class StateRouteTest extends IntegrationTestCase {
 	 * offers, so it is left out for shoppers.
 	 *
 	 * @param array<string, mixed>|null                                        $layout  The kit's layout document, or null for one saved before 1.0.0.
-	 * @param (callable(array<string, int>): list<array<string, mixed>>)|null $presets The kit's presets from the whole Street's picks, or null for that Street alone.
+	 * @param (callable(array<string, int>): list<array<string, mixed>>)|null $presets  The kit's presets from the whole Street's picks, or null for that Street alone.
+	 * @param array<string, mixed>|null                                        $settings The kit's settings document, or null for one saved before 1.2.0.
 	 * @return array{kit: int, picks: array<string, int>}
 	 */
-	private function whole( ?array $layout = null, ?callable $presets = null ): array {
+	private function whole( ?array $layout = null, ?callable $presets = null, ?array $settings = null ): array {
 		$slots = KitDocuments::slots();
 		$picks = array(
 			'deck'   => $this->parts['deck 8.0'],
@@ -236,6 +237,7 @@ final class StateRouteTest extends IntegrationTestCase {
 					'returns_notice' => 'An assembled board goes back whole.',
 				),
 				Options::META_KIT_LAYOUT   => $layout,
+				Options::META_KIT_SETTINGS => $settings,
 			)
 		)->get_id();
 		return array(
@@ -581,7 +583,7 @@ final class StateRouteTest extends IntegrationTestCase {
 				'from' => '8.25',
 			),
 		);
-		$this->kit = $this->whole( array( 'schema_version' => 1, 'width_guide' => array( 'rows' => $rows ) ) )['kit'];
+		$this->kit = $this->whole( null, null, array( 'schema_version' => 1, 'width_guide' => array( 'rows' => $rows ) ) )['kit'];
 		$kit       = $this->kit;
 		add_filter( 'cbuild_kit_text', static fn( string $text, string $field, int $id, string $of ): string => 'width_guide_shoe' === $field && $kit === $id && '1' === $of ? 'EU 41 et plus' : $text, 10, 4 );
 		$own = $guide( $this->answer( $deck ) );
@@ -595,7 +597,7 @@ final class StateRouteTest extends IntegrationTestCase {
 			$own['rows']
 		);
 
-		$this->kit = $this->whole( array( 'schema_version' => 1, 'width_guide' => array( 'shown' => false, 'rows' => $rows ) ) )['kit'];
+		$this->kit = $this->whole( null, null, array( 'schema_version' => 1, 'width_guide' => array( 'shown' => false, 'rows' => $rows ) ) )['kit'];
 		$body      = (string) wp_json_encode( $this->answer( $deck ) );
 		self::assertSame( array( 'shown' => false, 'summary' => '', 'caption' => '', 'shoe' => '', 'width' => '', 'rows' => array() ), $guide( json_decode( $body, true ) ) );
 		self::assertStringNotContainsString( 'EU 38', $body, 'nothing of the rows in the answer' );

@@ -33,6 +33,7 @@ final class KitSchemas implements DocumentSchemas {
 		'assembly' => 'kit-assembly.json',
 		'picture'  => 'kit-picture.json',
 		'layout'   => 'kit-layout.json',
+		'settings' => 'kit-settings.json',
 	);
 
 	/**

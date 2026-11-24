@@ -70,6 +70,7 @@
         "_cbuild_rows",
         "_cbuild_rules",
         "_cbuild_seed",
+        "_cbuild_settings",
         "_cbuild_slots",
         "_cbuild_spec_table",
         "_cbuild_specs"
@@ -287,6 +288,7 @@
         "schema/kit-picture.json",
         "schema/kit-presets.json",
         "schema/kit-rules.json",
+        "schema/kit-settings.json",
         "schema/kit-slots.json",
         "schema/order-snapshot.json",
         "schema/settings.json",
@@ -294,10 +296,11 @@
     ],
     "schema_digests": {
         "schema/kit-assembly.json": "bb1b0dd6abb55ba95679de5d5fe4b7dfee4e92c6e0209777039dbcb9fb14e9ae",
-        "schema/kit-layout.json": "b3d769567700888ff6f16c449f1b9ca4f24d98339926c515dd9aa8f411258bb0",
+        "schema/kit-layout.json": "f26c9b6d852bd55a7433186ed2859de98d1e0e160ac7f4bb4f64dcb31be56035",
         "schema/kit-picture.json": "f5a644b1f0082bd93867dbc8ac74342730c47a8008128c32380a80485f9ef939",
         "schema/kit-presets.json": "fa1447fe7d550c544db2236d898f02ca63e5966023a875f73bbbd90dba4f66c3",
         "schema/kit-rules.json": "79f9a5c998a63c1ceee8ec7877096515dabd9e75c6116257874e1d4418242c45",
+        "schema/kit-settings.json": "581e67ffd556411603bcd24c208d278fb06e54238599042695b562e496c3836e",
         "schema/kit-slots.json": "7c383e3f551b517328d9d195c01e15f9f5dad1a1263a20fa4ff2188592bb820c",
         "schema/order-snapshot.json": "78cc2355e3468a3f4ff06aa8c609594f21ab961dbcf06ca54bb2b4b2e1b18030",
         "schema/settings.json": "c6ce801eae753f4d85734fdf81489cc91a4e2db8adf318aa2da21832d7ef9df4",

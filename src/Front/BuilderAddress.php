@@ -65,7 +65,7 @@ final class BuilderAddress {
 	 * @param Kit|null $read The kit, where the caller has read it already.
 	 */
 	public function page( int $kit, ?Kit $read = null ): int {
-		$chosen = ( $read ?? ( $this->kits )()->kit( $kit ) )?->layout->builderPage;
+		$chosen = ( $read ?? ( $this->kits )()->kit( $kit ) )?->settings->builderPage;
 		return null !== $chosen && $this->place->opens( $chosen, $kit ) ? $chosen : 0;
 	}
 }

@@ -14,8 +14,8 @@ use CreativeBranding\SkateboardBuilder\Domain\Measure\Unit;
 
 /**
  * "Not sure of your width?" under the deck step's width question, as a kit sets it (#114, D-350): shown or hidden,
- * with the plugin's rows or the shop's own. From the `width_guide` object of the `_cbuild_layout` document; a kit
- * with none shows the plugin's rows, as 1.1.0 did.
+ * with the plugin's rows or the shop's own. From the `width_guide` object of the `_cbuild_settings` document
+ * (D-354); a kit with none shows the plugin's rows, as 1.1.0 did.
  *
  * @since 1.2.0
  */
@@ -57,7 +57,7 @@ final readonly class SizeGuide {
 	}
 
 	/**
-	 * From the layout document's `width_guide` object.
+	 * From the settings document's `width_guide` object.
 	 *
 	 * @since 1.2.0
 	 *
