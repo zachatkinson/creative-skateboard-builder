@@ -3469,6 +3469,57 @@ describe( 'what a press foretells', () => {
 		expect( root.hasAttribute( 'data-folded' ) ).toBe( false );
 	} );
 
+	// The auditor's second pass on M12, should-fix 3: a width press the rate limit or the store's limit stopped kept its
+	// fold, the widths folded away and no decks under them, and only Change asked again (D-364).
+	it( 'asks the width question again, its options open and the pressed one focused, when the press hits a limit', async () => {
+		const { root, width: button } = builder();
+		state.view = structuredClone( ASKING );
+		reply = () =>
+			new Response(
+				JSON.stringify( {
+					message: 'Too many searches. Try again in a minute.',
+				} ),
+				{ status: 429, headers: { 'Content-Type': 'application/json' } }
+			);
+		button.focus();
+		actions.submit(
+			new SubmitEvent( 'submit', { submitter: button, cancelable: true } )
+		);
+		expect( width().asking ).toBe( false );
+		await settle();
+		await vi.advanceTimersByTimeAsync( 50 );
+		expect( width().asking ).toBe( true );
+		expect( width().chosen ).toBe( '' );
+		expect( width().options.map( ( option ) => option.pressed ) ).toEqual( [
+			'false',
+			'false',
+		] );
+		expect(
+			( state.view.step as { more: { count: string } } ).more.count
+		).toBe( 'Showing 0 of 0' );
+		expect( root.hasAttribute( 'data-folded' ) ).toBe( false );
+		expect( state.limited ).toBe(
+			'Too many searches. Try again in a minute.'
+		);
+		expect( state.status ).toBe( state.limited );
+		expect( button.ownerDocument.activeElement ).toBe( button );
+
+		// A view that comes after leaves the next limit nothing to undo.
+		reply = () => answer( NEXT );
+		actions.back();
+		await settle();
+		state.view = structuredClone( ASKING );
+		reply = () =>
+			new Response( JSON.stringify( { message: 'Later.' } ), {
+				status: 429,
+				headers: { 'Content-Type': 'application/json' },
+			} );
+		actions.back();
+		await settle();
+		expect( width().asking ).toBe( true );
+		expect( state.limited ).toBe( 'Later.' );
+	} );
+
 	it( 'folds a step with no count, and a builder the script never started', () => {
 		const { width: button } = builder();
 		const view = structuredClone( ASKING );

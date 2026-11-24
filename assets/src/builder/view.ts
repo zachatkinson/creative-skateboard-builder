@@ -953,6 +953,22 @@ function folding(
 		return null;
 	}
 	return () => {
+		const said = width.chosen ?? '';
+		const was = width.options.map( ( option ) => option.pressed );
+		const more = known.step.more;
+		const counted = more?.count ?? '';
+		// A press the rate limit or the store's limit stops asks the question again, with the width it pressed (D-364).
+		unfold = () => {
+			width.asking = true;
+			width.chosen = said;
+			width.options.forEach( ( option, at ) => {
+				option.pressed = was[ at ] ?? 'false';
+			} );
+			if ( more ) {
+				more.count = counted;
+			}
+			window.requestAnimationFrame( () => button.focus() );
+		};
 		width.asking = false;
 		width.chosen = pressed.text;
 		for ( const option of width.options ) {
@@ -960,11 +976,14 @@ function folding(
 		}
 		root?.setAttribute( 'data-folded', '' );
 		// "Showing 0 of 0" until the answer lists the decks: a line the cards would push down.
-		if ( known.step.more ) {
-			known.step.more.count = '';
+		if ( more ) {
+			more.count = '';
 		}
 	};
 }
+
+/** Undo a width's fold made at its press, until the answer comes. */
+let unfold: ( () => void ) | undefined;
 
 /** The pick whose board is being drawn at its press, until a view is shown, so one decoded late draws over nothing. */
 let swapping: object | undefined;
@@ -1216,6 +1235,7 @@ function nav( state: State ): Navigator {
 						: undefined;
 				// A deck drawn at its press is the view's to confirm or put back from now (D-357).
 				swapping = undefined;
+				unfold = undefined;
 				const ahead = ! narrowing;
 				const change = () => {
 					state.view = shown;
@@ -1252,6 +1272,8 @@ function nav( state: State ): Navigator {
 			},
 			settle: ( view ) => ready( view ),
 			limited: ( message ) => {
+				unfold?.();
+				unfold = undefined;
 				state.limited = message;
 				state.status = message;
 			},

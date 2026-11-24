@@ -1355,6 +1355,47 @@ test.describe( 'The builder with JavaScript', () => {
 		await expect( page.locator( '.cbuild__limited' ) ).toBeHidden();
 	} );
 
+	// The auditor's second pass on M12, should-fix 3: a width press the limit stopped kept its fold, and only Change
+	// asked the question again (D-364).
+	test( 'asks the width question again, its options in view, when a width press hits the rate limit', async ( {
+		page,
+	} ) => {
+		const limit = 'Too many requests. Try again in 20 seconds.';
+		await page.route( isRoute, ( route ) =>
+			route.fulfill( {
+				status: 429,
+				contentType: 'application/json',
+				body: JSON.stringify( {
+					code: 'cbuild_rate_limited',
+					message: limit,
+				} ),
+			} )
+		);
+		const options = page.locator( '.cbuild-width__option' );
+		const button = options.filter( {
+			has: page.locator( '.cbuild-chip__text', { hasText: /^8″$/ } ),
+		} );
+		await button.click();
+		await expect( page.locator( '.cbuild__limited' ) ).toHaveText( limit );
+		await expect( page.locator( '.cbuild__status' ) ).toHaveText( limit );
+		await expect( page.locator( '.cbuild[data-folded]' ) ).toHaveCount( 0 );
+		await expect( page.locator( '.cbuild-width__chosen' ) ).toBeHidden();
+		for ( const option of await options.all() ) {
+			await expect( option ).toBeVisible();
+			await expect( option ).toHaveAttribute( 'aria-pressed', 'false' );
+		}
+		await expect( button, 'focus on the width pressed' ).toBeFocused();
+		expect( await stayed( page ), 'no page was loaded' ).toBe( true );
+		// Pressed again once the limit is past, the width lists its decks.
+		await page.unroute( isRoute );
+		await button.click();
+		await expect( button ).toHaveAttribute( 'aria-pressed', 'true' );
+		await expect(
+			page.getByRole( 'radio', { name: /^Choose Builder test deck/ } )
+		).toHaveCount( 1 );
+		await expect( page.locator( '.cbuild__limited' ) ).toBeHidden();
+	} );
+
 	test( 'sends the form when the state route fails, the server shows the next step, and the build still reaches the cart', async ( {
 		page,
 	} ) => {
