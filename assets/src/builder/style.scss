@@ -412,9 +412,8 @@
 
 /*
  * The rail (spec: The step rail): a pill a step, numbered, a done step ticked and the current one in the accent. One
- * row of the step before, the step shown and the step after on a phone, and of every step, centred across the top,
- * wider (D-268, D-270). The tick and the
- * number are drawn here and say nothing: each step's name and state are in its text.
+ * row of every step at every width, centred across the top on a desktop (D-268, D-330). The tick and the number are
+ * drawn here and say nothing: each step's name and state are in its text.
  */
 :where(.cbuild-progress) {
 	padding-block: var(--cbuild-gap-small);
@@ -431,31 +430,73 @@
 	font-size: var(--cbuild-small);
 }
 
-/* A phone: the steps either side of the one shown. The others are out of the row, unseen and unread, but still drawn,
-   so every step keeps its count and shows its own number. */
+/*
+ * A phone: every step in one row that never scrolls (D-330). The step shown keeps its name; each other step is a
+ * round pill of its number, or its tick, 44 px across, its name the tooltip and still read. Six pills and the longest
+ * name are about 382 px in English and 404 px in French, so from 26rem the name sits in its pill ("1 Deck 2 3");
+ * narrower, the seven pills alone fill the row (308 px) and the name sits under the step shown. A theme's larger text
+ * or a longer translation wraps the row rather than past the edge.
+ */
 @container cbuild (max-width: 47.99rem) {
-	:where(.cbuild-progress__step) {
-		position: absolute;
-		visibility: hidden;
-	}
-
-	:where(
-		.cbuild-progress__step--current,
-		.cbuild-progress__step:has(+ .cbuild-progress__step--current),
-		.cbuild-progress__step--current + .cbuild-progress__step
-	) {
-		position: static;
-		visibility: visible;
-	}
-
-	/* Three steps to a row at a phone's width; a theme's larger text wraps them rather than past the edge. */
 	:where(.cbuild-progress__list) {
-		gap: 0.375rem;
+		justify-content: space-between;
+		gap: 0.125rem;
 		padding-inline: 0;
 	}
 
 	:where(.cbuild-progress__link, .cbuild-progress__label) {
+		justify-content: center;
+		min-inline-size: var(--cbuild-target);
+		padding-inline: 0;
+	}
+
+	:where(.cbuild-progress__step--current .cbuild-progress__label) {
 		padding-inline: 0.75em;
+	}
+
+	:where(.cbuild-progress__step:not(.cbuild-progress__step--current))
+		:where(.cbuild-progress__link, .cbuild-progress__label)
+		> [aria-hidden="true"] {
+		display: none;
+	}
+}
+
+/* Narrower than seven pills and a name: the step shown is a pill of its number too, its name under it, kept inside
+   the row at either end. */
+@container cbuild (max-width: 25.99rem) {
+	:where(.cbuild-progress__list) {
+		padding-block-end: 1.5em;
+	}
+
+	:where(.cbuild-progress__step--current) {
+		position: relative;
+	}
+
+	:where(.cbuild-progress__step--current .cbuild-progress__label) {
+		padding-inline: 0;
+	}
+
+	:where(.cbuild-progress__step--current .cbuild-progress__label)
+		> [aria-hidden="true"] {
+		position: absolute;
+		inset-block-start: 100%;
+		left: 50%;
+		padding-block-start: 0.125rem;
+		transform: translateX(-50%);
+		color: var(--cbuild-text);
+		-webkit-text-fill-color: currentcolor;
+	}
+
+	:where(.cbuild-progress__step--current:first-child .cbuild-progress__label)
+		> [aria-hidden="true"] {
+		inset-inline: 0 auto;
+		transform: none;
+	}
+
+	:where(.cbuild-progress__step--current:last-child .cbuild-progress__label)
+		> [aria-hidden="true"] {
+		inset-inline: auto 0;
+		transform: none;
 	}
 }
 

@@ -3356,45 +3356,147 @@ test.describe( "The builder's styles", () => {
 		}
 	} );
 
-	// Zach, 19 Nov (D-270): on a phone the rail shows the step before, the step shown and the step after; on a
-	// desktop, every step.
-	test( 'shows the steps either side of the one shown on a phone, and every step on a desktop', async ( {
+	// Zach, 20 Nov (#101, F16, D-330, which replaces D-270): on a phone every step is in one row that never scrolls,
+	// the step shown with its name and the others as numbered pills, each with its name as its tooltip; on a desktop,
+	// every step with its name.
+	test( 'shows every step in one row on a phone, the one shown named, and every step named on a desktop', async ( {
 		page,
 	} ) => {
-		const parts = fixture().parts;
-		// Each step's name, without the state a screen reader hears after it.
-		const shown = () =>
-			page
-				.locator( '.cbuild-progress__step' )
-				.evaluateAll( ( steps ) =>
-					steps
-						.filter(
-							( step ) =>
-								'visible' ===
-								getComputedStyle( step ).visibility
-						)
-						.map(
-							( step ) =>
-								step.querySelector(
-									':scope > :not([hidden]) > span:first-child'
-								)?.textContent ?? ''
-						)
-				);
-		await page.setViewportSize( { width: 390, height: 844 } );
-		await page.goto( linkTo( { step: 'deck' } ) );
-		expect( await shown() ).toEqual( [ 'Deck', 'Trucks' ] );
-		await page.goto(
-			linkTo( {
-				deck: String( parts[ 'builder-test-deck-8-25' ] ),
-				trucks: String( parts[ 'builder-test-trucks-139' ] ),
+		/**
+		 * The rail as drawn: each step's name, whether that name shows, its tooltip, its pill's box, and the list's.
+		 */
+		const rail = () =>
+			page.locator( '.cbuild-progress__list' ).evaluate( ( list ) => {
+				const edge = list.getBoundingClientRect();
+				return {
+					left: edge.left,
+					right: edge.right,
+					scrolls: list.scrollWidth > list.clientWidth + 1,
+					steps: [
+						...list.querySelectorAll< HTMLElement >(
+							'.cbuild-progress__step'
+						),
+					].map( ( step ) => {
+						const pill = step.querySelector< HTMLElement >(
+							':scope > :not([hidden])'
+						);
+						const name = pill?.querySelector< HTMLElement >(
+							':scope > [aria-hidden="true"]'
+						);
+						const box = pill?.getBoundingClientRect();
+						const said = name?.getBoundingClientRect();
+						return {
+							name: name?.textContent ?? '',
+							named:
+								!! name?.checkVisibility( {
+									visibilityProperty: true,
+								} ) &&
+								( said?.width ?? 0 ) > 0 &&
+								( said?.left ?? 0 ) >= edge.left - 1 &&
+								( said?.right ?? 0 ) <= edge.right + 1,
+							tip: step.getAttribute( 'title' ),
+							current: step.matches(
+								'.cbuild-progress__step--current'
+							),
+							link: 'A' === pill?.tagName,
+							visible: !! pill?.checkVisibility( {
+								visibilityProperty: true,
+							} ),
+							top: Math.round( box?.top ?? 0 ),
+							left: box?.left ?? 0,
+							right: box?.right ?? 0,
+							width: box?.width ?? 0,
+							height: box?.height ?? 0,
+						};
+					} ),
+				};
+			} );
+		const names = [
+			'Deck',
+			'Trucks',
+			'Wheels',
+			'Bearings',
+			'Hardware',
+			'Grip tape',
+			'Review',
+		];
+		const builds = [
+			{ step: 'deck' },
+			{
+				deck: id( 'builder-test-deck-8-25' ),
+				trucks: id( 'builder-test-trucks-139' ),
 				step: 'wheels',
-			} )
-		);
-		expect( await shown() ).toEqual( [ 'Trucks', 'Wheels', 'Bearings' ] );
+			},
+			// The widest name, with the step after it a link.
+			{
+				deck: id( 'builder-test-deck-8-0' ),
+				trucks: id( 'builder-test-trucks-139' ),
+				wheels: id( 'builder-test-wheels-52' ),
+				bearings: id( 'builder-test-bearings' ),
+				hardware: id( 'builder-test-bolts-1' ),
+				step: 'hardware',
+			},
+			// Six links and the review.
+			{
+				deck: id( 'builder-test-deck-8-0' ),
+				trucks: id( 'builder-test-trucks-139' ),
+				wheels: id( 'builder-test-wheels-52' ),
+				bearings: id( 'builder-test-bearings' ),
+				hardware: id( 'builder-test-bolts-1' ),
+				grip: id( 'builder-test-grip' ),
+				step: 'review',
+			},
+		];
+		for ( const width of [ 320, 390, 430 ] ) {
+			await page.setViewportSize( { width, height: 844 } );
+			for ( const picks of builds ) {
+				await page.goto( linkTo( picks ) );
+				await expect( heading( page ) ).toBeVisible();
+				const at = `${ width } px, step ${ picks.step }`;
+				const drawn = await rail();
+				expect( drawn.scrolls, `${ at }: the rail scrolls` ).toBe(
+					false
+				);
+				expect(
+					drawn.steps.map( ( step ) => step.tip ),
+					`${ at }: each step's name is its tooltip`
+				).toEqual( names );
+				expect(
+					drawn.steps.filter( ( step ) => step.visible ),
+					`${ at }: every step is shown`
+				).toHaveLength( 7 );
+				expect(
+					new Set( drawn.steps.map( ( step ) => step.top ) ).size,
+					`${ at }: the steps are in one row`
+				).toBe( 1 );
+				for ( const step of drawn.steps ) {
+					expect(
+						step.left >= drawn.left - 1 &&
+							step.right <= drawn.right + 1,
+						`${ at }: ${ step.name } is inside the rail`
+					).toBe( true );
+					expect(
+						step.named,
+						`${ at }: ${ step.name } shows its name`
+					).toBe( step.current );
+					if ( step.link ) {
+						expect(
+							Math.min( step.width, step.height ),
+							`${ at }: ${ step.name } is a 44 px target`
+						).toBeGreaterThanOrEqual( 44 );
+					}
+				}
+			}
+		}
 		// The kit's own page gives the builder a desktop's width; the test page's column is a phone's.
 		await page.setViewportSize( { width: 1280, height: 900 } );
 		await page.goto( '/product/builder-test-kit/' );
-		expect( await shown() ).toHaveLength( 7 );
+		const desktop = await rail();
+		expect(
+			desktop.steps
+				.filter( ( step ) => step.named )
+				.map( ( step ) => step.name )
+		).toEqual( names );
 	} );
 
 	test( 'reflows at 320 CSS pixels with nothing scrolling sideways', async ( {

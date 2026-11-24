@@ -3389,6 +3389,8 @@ Zach's call. The heading shows the prototype's words, "Choose your deck", with t
 
 Zach's call. The prototype's phone rail scrolls sideways, which leaves steps behind a swipe that a shopper may not notice, and broke the reflow test at 320 pixels. A rail that scrolled with faded edges was tried and dropped for this. Below 48rem the rail shows the step before, the step shown and the step after; the others are taken out of the row with `visibility: hidden`, not `display: none`, so the step counter still counts them and each pill keeps its own number. From 48rem every step shows. Every step stays one tap away: Back, and the review's Change buttons. The total of steps is not shown on a phone; a screen reader hears it from the heading (D-269).
 
+**Status:** Superseded by D-330 (#101): on a phone the rail now shows every step in one row.
+
 ### D-271 · The prototype's layout: a stage, a panel and a footer · 2026-11-19
 
 The redesign's layout, made from the prototype's frames (`docs/reviews/redesign/screenshots/`), with the comparisons in `docs/reviews/M10/layout/`.
@@ -4057,6 +4059,19 @@ AUDIT.md (Motion) and SPEC.md (Quality bar) still give 150 to 250 ms for the bui
 
 **Status:** Accepted; the two documents are Zach's to bring into line, listed in M11's review.
 
+### D-330 · On a phone the rail shows every step in one row: the step shown named, the others numbered · 2026-11-23
+
+Zach's call (#101, F16 of Cowork's 1.0.0 review), replacing D-270. The mockup's phone rail shows the whole build; D-270 showed three steps. D-270's reasons stand: a step behind a swipe may go unnoticed, and the scrolling rail broke the reflow test at 320 pixels. So below 48rem every step is in one row that never scrolls.
+
+- **The pills.** Each step but the one shown is a round pill, 44 px across, of its number, or its tick once done, as on a desktop. Its name is still read with its state ("Trucks, to come") and is the step's tooltip (`title` on its list item, which every width has; on a desktop it repeats the name shown). The step shown is filled in the accent with its name.
+- **Measured.** With seven steps, six 44 px pills and the step shown with its name take 382 px for the longest English name ("5 Hardware", 106 px) and 404 px for French ("Récapitulatif", 128 px). So from 26rem (416 px) the name sits in its pill, "1 Deck 2 3 4 5 6 7"; narrower, the step shown is a pill of its number too and its name sits under it, kept inside the row at either end. Seven pills fill 308 px, so at 320 px they are one row 2 px apart. At 390 px the inline name would fit in English (3 px apart) but wrap in French, so 390 px takes the name underneath, 14 px apart. A theme's gutter, larger text or a longer translation wraps the row rather than running past the edge.
+- **Done steps keep no name.** Zach asked whether a done step could keep its name at 390 px. It can't: a done step with its name is 79 to 101 px, against 44 px as a pill, and two of them already pass 390 px beside the others.
+- **Unchanged.** The desktop rail (D-268); the done steps and the step after a picked one as links (spec: The step rail); the 44 px targets on a phone, the targets being the links.
+
+**Tests.** `builder.spec.ts` "shows every step in one row on a phone, the one shown named, and every step named on a desktop": at 320, 390 and 430 px, on the deck, the wheels, the hardware with the step after linked, and the review, the seven steps in one row inside the rail with none scrolling, only the step shown named, each step's name its tooltip, each link 44 px; on a desktop every step named. It replaces D-270's test. Before the change: "320 px, step deck: each step's name is its tooltip / Received: null", then "320 px, step deck: every step is shown / Expected length: 7, Received length: 2". The deliberate break (the narrow layout taken out): "320 px, step deck: the steps are in one row / Expected: 1, Received: 2".
+
+**Status:** Accepted.
+
 ### D-331 · The no-script submits are out of the flow from the first paint where the script will run · 2026-11-23
 
 #107: the search's Go and the chips' and sort's Apply submit the step's form without the script. The store hides them as it hydrates (since M10), and the cards moved up by their height: 61 px at 1280 by 2000 on the shelf fixture, below the fold of a 900 px window, so Lighthouse missed it.
@@ -4080,4 +4095,3 @@ The weekly canary failed on WooCommerce 11.3.1 (#95), which is the stable releas
 **Tests.** Before: `OrderTest::test_the_store_api_checkout_writes_the_build_and_ties_it_again_when_the_cart_changes` on 11.3.1, "Failed asserting that 500 is identical to 400" with "Method SplObjectStorage::contains() is deprecated since 8.5". After: OrderTest 11 of 11.
 
 **Status:** Accepted; listed for Zach in M11's review, as it lets an upstream deprecation through.
-
