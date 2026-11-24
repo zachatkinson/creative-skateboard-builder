@@ -55,6 +55,15 @@ final class MyBuildsBenchmarkTest extends CartTestCase {
 		$hooks = $this->service( SavedBuildHooks::class );
 		$limit = RunnerSpeed::limit( self::BUDGET );
 		self::say( RunnerSpeed::line( self::BUDGET ) );
+		// One view first, not measured: the products set_up() saved emptied WooCommerce's `wc_term_counts` transient
+		// (includes/wc-term-functions.php:595), which the first get_terms() fills again in the options table
+		// (:677), past wp_cache_flush(). A shop pays that once after a product changes, not on each view, and as its
+		// timeout is written within the same second or the next the first view asked 121 or 133 queries, before 1.2.0
+		// as after (D-353). Every view measured still starts with the object cache emptied.
+		wp_cache_flush();
+		ob_start();
+		$hooks->page();
+		ob_end_clean();
 		$times   = array();
 		$queries = array();
 		for ( $n = 0; $n < self::VIEWS; $n++ ) {
