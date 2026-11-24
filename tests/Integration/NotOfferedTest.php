@@ -267,14 +267,14 @@ final class NotOfferedTest extends IntegrationTestCase {
 		ob_start();
 		$this->hooks()->product();
 		$panel = (string) ob_get_clean();
-		self::assertMatchesRegularExpression( '#<p class="form-field cbuild-not-offered">\s*<input\s+type="checkbox"\s+class="checkbox"\s+id="cbuild-spec-not-offered"\s+name="cbuild_not_offered"\s+value="1"\s+checked=\'checked\'\s+aria-describedby="cbuild-spec-not-offered-note"#', $panel );
+		self::assertMatchesRegularExpression( '#<p class="form-field cbuild-not-offered">\s*<label for="cbuild-spec-not-offered">Not offered in the builder</label>\s*<input\s+type="checkbox"\s+class="checkbox"\s+id="cbuild-spec-not-offered"\s+name="cbuild_not_offered"\s+value="1"\s+checked=\'checked\'\s+aria-describedby="cbuild-spec-not-offered-note"#', $panel );
 		self::assertStringContainsString( '<label for="cbuild-spec-not-offered">Not offered in the builder</label>', $panel );
 
 		[ , $variation ] = $this->variable();
 		ob_start();
 		$this->hooks()->variation( 4, array(), get_post( $variation ) );
 		$fields = (string) ob_get_clean();
-		self::assertMatchesRegularExpression( '#<p class="form-row form-row-full cbuild-not-offered">\s*<input\s+type="checkbox"\s+class="checkbox"\s+id="cbuild-spec-4-not-offered"\s+name="cbuild_variation_not_offered\[4\]"\s+value="1"\s+aria-describedby="cbuild-spec-4-not-offered-note"#', $fields );
+		self::assertMatchesRegularExpression( '#<p class="form-row form-row-full cbuild-not-offered">\s*<label for="cbuild-spec-4-not-offered">Not offered in the builder</label>\s*<input\s+type="checkbox"\s+class="checkbox"\s+id="cbuild-spec-4-not-offered"\s+name="cbuild_variation_not_offered\[4\]"\s+value="1"\s+aria-describedby="cbuild-spec-4-not-offered-note"#', $fields );
 
 		// A part no kit takes has no fields, unless its box is ticked, which must be seen to be unticked.
 		$alone = new \WC_Product_Simple();
@@ -336,6 +336,14 @@ final class NotOfferedTest extends IntegrationTestCase {
 		$count = function (): int {
 			do_action( 'cbuild_parts_changed' ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- The plugin's own prefix.
 			wp_cache_flush_runtime();
+			// WooCommerce's term counts settled first: a product saved empties its `wc_term_counts` transient, and whether
+			// its refill lands in one second or two changed the count by five, whichever way the parts were kept out (D-353).
+			get_terms(
+				array(
+					'taxonomy'   => 'product_cat',
+					'hide_empty' => false,
+				)
+			);
 			$asked = 0;
 			$watch = static function ( string $query ) use ( &$asked ): string {
 				++$asked;
@@ -348,6 +356,7 @@ final class NotOfferedTest extends IntegrationTestCase {
 		};
 		$decks  = array_map( fn(): int => $this->deck(), range( 1, 8 ) );
 		$out    = array_slice( $decks, 2 );
+		$none   = $count();
 		$plugin = static fn( bool $available, int $id ): bool => in_array( $id, $out, true ) ? false : $available;
 		add_filter( 'cbuild_part_available', $plugin, 10, 2 );
 		self::assertSame( array_slice( $decks, 0, 2 ), $this->offered() );
@@ -361,5 +370,6 @@ final class NotOfferedTest extends IntegrationTestCase {
 		}
 		self::assertSame( array_slice( $decks, 0, 2 ), $this->offered() );
 		self::assertSame( $filtered, $count(), 'six kept out by their box ask what six kept out by a plugin did' );
+		self::assertLessThanOrEqual( $none, $filtered, 'and no more than none kept out asks: a part kept out costs the slot no query' );
 	}
 }
