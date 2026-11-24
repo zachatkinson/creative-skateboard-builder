@@ -149,18 +149,24 @@ final class ComposedPictures {
 	private array $wanted = array();
 
 	/**
+	 * How each part is drawn in each use's picture: none on a copy an earlier release's container built.
+	 *
+	 * @var ComposedLayers|null
+	 */
+	private ?ComposedLayers $layers = null;
+
+	/**
 	 * Constructor.
 	 *
 	 * @since 0.7.0
 	 *
-	 * @param Kits           $kits    The kits.
-	 * @param BuildState     $states  Works a build out.
-	 * @param LayerArtwork   $artwork The parts' layer images.
-	 * @param PictureFiles   $files   The pictures' files.
-	 * @param Queue          $queue   Where the job waits.
-	 * @param Clock          $clock   The time.
-	 * @param Logger         $logger  Where a picture that cannot be drawn is written, at most hourly for a kit.
-	 * @param ComposedLayers $layers  How each part is drawn in each use's picture, since 1.1.0.
+	 * @param Kits         $kits    The kits.
+	 * @param BuildState   $states  Works a build out.
+	 * @param LayerArtwork $artwork The parts' layer images.
+	 * @param PictureFiles $files   The pictures' files.
+	 * @param Queue        $queue   Where the job waits.
+	 * @param Clock        $clock   The time.
+	 * @param Logger       $logger  Where a picture that cannot be drawn is written, at most hourly for a kit.
 	 */
 	public function __construct(
 		private Kits $kits,
@@ -169,9 +175,23 @@ final class ComposedPictures {
 		private PictureFiles $files,
 		private Queue $queue,
 		private Clock $clock,
-		private Logger $logger,
-		private ComposedLayers $layers
+		private Logger $logger
 	) {}
+
+	/**
+	 * The same service, asking another plugin how each part is drawn in each use's picture (D-309). Only 1.1.0's
+	 * container calls it: a copy built by an earlier release's, in the request that replaces the files, keeps that
+	 * release's constructor and draws every layer as it is (D-208).
+	 *
+	 * @since 1.1.0
+	 *
+	 * @param ComposedLayers $layers How each part is drawn in each use's picture.
+	 */
+	public function withLayers( ComposedLayers $layers ): self {
+		$pictures         = clone $this;
+		$pictures->layers = $layers;
+		return $pictures;
+	}
 
 	/**
 	 * Ask for a build's pictures. Nothing is asked while the queue is full, or a page's share of it for a page's
@@ -520,7 +540,7 @@ final class ComposedPictures {
 	 * @param string $purpose The use.
 	 */
 	private function answer( int $part, string $slot, int $kit, string $purpose ): string {
-		$answer = $this->layers->answer( $part, $slot, $kit, $purpose );
+		$answer = $this->layers?->answer( $part, $slot, $kit, $purpose );
 		return ComposedLayers::BLURRED === $answer || ComposedLayers::LEFT_OUT === $answer ? $answer : ComposedLayers::AS_IS;
 	}
 }

@@ -39,6 +39,8 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Fixed
 
+- Where motion is reduced or the kit's Motion is subtle, a slow answer dims the board by a short fade alone, with no running line.
+- Updating from 0.7.0 or later through the upload screen no longer stops on the composed pictures: a request still running the old release builds them as that release did (D-208).
 - On a phone held sideways, Show the top sits beside the stage's heading, so the board keeps a row of its own and is never drawn under the button.
 - A pick no longer moves the step's cards: the step's recommendation still comes first once it, or another card, is picked, rather than the cards going back to best sellers and name, and a tie is broken by the parts' IDs (D-340).
 - On Storefront in Firefox, Show the top was drawn under the board and a pointer could not reach it: the theme's rule for a figure no longer takes the picture's grid away (D-321).

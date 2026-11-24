@@ -143,7 +143,7 @@ final class CartPictureTest extends CartTestCase {
 			}
 			// The add's own answer asked for the picture: a page is a request of its own, with a service of its own.
 			as_unschedule_all_actions( Options::JOB_COMPOSE_PICTURE, array(), Options::QUEUE_GROUP );
-			$pictures = new ComposedPictures( $this->service( Kits::class ), $this->service( BuildState::class ), $this->service( LayerArtwork::class ), $this->service( PictureFiles::class ), $this->service( Queue::class ), $this->service( Clock::class ), $this->service( Logger::class ), $this->service( ComposedLayers::class ) );
+			$pictures = ( new ComposedPictures( $this->service( Kits::class ), $this->service( BuildState::class ), $this->service( LayerArtwork::class ), $this->service( PictureFiles::class ), $this->service( Queue::class ), $this->service( Clock::class ), $this->service( Logger::class ) ) )->withLayers( $this->service( ComposedLayers::class ) );
 			$hooks    = new ThumbnailHooks( static fn (): ComposedPictures => $pictures );
 			$passes   = array();
 			for ( $pass = 0; $pass < 3; $pass++ ) {

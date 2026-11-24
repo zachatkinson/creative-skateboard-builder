@@ -2813,6 +2813,8 @@ Cowork's review of 0.7.0-rc.1, F3: updating 0.6.0 by uploading the new zip and c
 - **Releases before 0.6.0 are not made clean.** The same check from 0.4.0 names seven services (0.4.0's container has no binding for 0.5.0's `ShippingZones` and builds `SavedSources` without its documents), and 0.3.x's and earlier's have no `Port\Kits`. Those releases were the agency's own builds before the builder had a page; no shop runs one. `readme.txt` says to deactivate the plugin before updating a release older than 0.6.0, which takes its callbacks out of the request: in its upgrade notice, and in 0.7.0's changelog, which the plugin's update offer shows under View details, since the updater passes no upgrade notice and the upload screen shows none (the audit of the fixes).
 - **Tests.** `ReplacedFilesTest` (each of the three hooks, this plugin's folder and another's, a `WP_Error` passed on), `ContainerTest::test_each_class_an_earlier_release_built_gets_what_this_release_adds`, a test per with-er that a copy without the addition works, and `npm run upgrade`. **Red runs:** `ReplacedFilesTest` without the three hooks, two failures ("Failed asserting that two arrays are identical.") and an error; the graph check and the upload with rc.1, as above.
 
+**Added before the 1.1.0 merge.** CI's update check on PR #109 named `ComposedPictures`, `ShareCard` and `MyBuildsView` as not built by 1.0.0's container (and 0.7.0's) from 1.1.0's files: "Service `Port\ComposedLayers` is not instantiable and has no binding". D-309 had added the port to `ComposedPictures`' constructor. It keeps 0.7.0's constructor now, and the port comes through `withLayers()`, which only 1.1.0's container calls (`Container::additions()`); a copy an earlier release built draws every layer as it is and asks no other plugin, as those releases did. Red: `ComposedPicturesTest::test_a_copy_built_with_the_constructor_of_1_0_0_draws_every_layer_as_it_is`, ArgumentCountError, "7 passed ... exactly 8 expected", ComposedPicturesTest.php:99. Break: the `additions()` line taken out turns `CartPictureTest`, `SavedBuildsPageTest` and `ShareCardTest`'s flag tests red. The check's last step expected a saved build to reopen with no prices, as every release before 1.0.0 saved them; 1.0.0's keep theirs (D-254), so from 1.0.0 on it expects the build to reopen with the total it kept and no price change (`tools/upgrade.sh`, `tools/upgrade/seed.php`). `npm run upgrade` from 1.0.0 then passed: all three requests' containers, the upload, the order, the kits, the presets and the saved build.
+
 **Status:** Accepted.
 
 ### D-209 · A rendition is saved in the type it is asked for, whatever the shop's output format · 2026-11-16
@@ -3837,6 +3839,8 @@ Zach, 23 November: a deck swap "seems to take a while for the builder to render 
 
 **Why:** the board is the builder's answer to a pick; it should change once, whole, as fast as the network allows, and say so when it can't.
 
+**Added before the 1.1.0 merge.** Where motion is calm the cue broke D-256's fade: under reduced motion the dim was a 200 ms transition, and under subtle the line ran too, 1.1 s four times. Firefox caught the dim under load in the subtle moments' test, whenever an answer took more than 300 ms. Under both, the wait is said by the dim alone, a 150 ms fade. Red: "under reduced motion dims the board for a slow answer by a fade of 150 ms or less, with no running line", "the dim itself", Received 200 (builder.spec.ts:5162); the same under subtle, `cbuild-drawing` 1,100 ms. Break: the subtle rules taken out turn the subtle case red again.
+
 **Status:** Accepted.
 
 ### D-309 · A part's layer in a composed picture is drawn as another plugin answers, by use, and the answer is in the name · 2026-11-23
@@ -4258,5 +4262,19 @@ Kadence's page (LCP 1,995, the page's intro paragraph) and its build at the revi
 **Tests.** `ShelfTest::test_a_tie_is_broken_by_the_part_ids_whatever_order_the_parts_come_in` (red before: 10:2:0 before 10:1:0 with the parts reversed), `BuildStateTest::test_a_step_keeps_the_part_its_cards_are_listed_under_whatever_is_picked_in_it` (red before: no `leads`), and `BuilderPageTest::test_a_pick_keeps_the_steps_cards_in_the_order_the_page_listed_them_cold_and_warm`: four trucks, two tied on all but their IDs, the page's radios and the route's `shelf.looks` with each truck picked, cold and warm (red before: "the route, cold, with 15 picked", 18 before 15). The browser case is right as it stands and is unchanged.
 
 **Added before the release.** Naming a lead in every picked slot cost a second pass of the fit engine for each, and the integration benchmark's move, cold, measured 80.4 ms at p95 against the 80 ms budget (load 3.3). Only the step shown lists its cards, so a picked slot names its lead on that step alone (`BuildState`, `null === $part || $slot->key === $step`); a step asked for by nothing is the first with nothing picked, which names one as before. The same run then measured 68.6 ms (load 1.8). Red: `BuildStateTest::test_a_picked_slot_names_its_lead_only_on_the_step_shown`, "a picked slot before it", an `Option` where null was asserted, BuildStateTest.php:344. The budget is not moved.
+
+**Status:** Accepted.
+
+### D-341 · Every lane's browser site has CI's title · 2026-11-24
+
+PR #109's visual job failed 17 of 32 snapshots by about 1 % each, every difference in the text alone. wp-env names a site after its checkout's folder, so a worktree's site was "csb-b" or "csb-j" and CI's "creative-skateboard-builder", and Twenty Twenty-Five's header wraps the two on different lines: the builder sat a part of a pixel lower or higher and its text was drawn a shade off. The baselines made in worktrees since `e7129b2` had never run in CI. `tools/e2e-site.sh`, which Playwright's setup and `tools/visual.sh` both run, now sets the title to CI's on every lane. Checked: with the title set, lane 2 matched CI's own pictures of the starts and the nine moments exactly; the baselines were then remade there.
+
+The review's pictures also differed now and then at the bar's "Show the parts", whose hover the pointer sometimes still held: the test waits now until nothing in the bar matches `:hover` or runs a transition. Four runs in a row were clean.
+
+**Status:** Accepted.
+
+### D-342 · Lighthouse measures the builder's page warm · 2026-11-24
+
+PR #109's Lighthouse job measured Twenty Twenty-Five's LCP at 3.19, 2.85 and 2.25 s, a median of 2.85 s against the 2.5 s gate. The paint was right after first paint each time; what moved was the server's answer, 1.09 and 1.19 s in the first two runs and 0.56 s in the third. The first runs came straight after the site was set up and minified assets turned on, and the jobs a visit queues (the ready builds' pictures, D-252) ran beside them on the runner's two cores. A shop's page has been visited before. `tools/lhci.sh` now loads the page on each theme, runs the plugin's queued jobs, and loads it again, before the three measured runs. The gate stays at 2.5 s, the median of three (#75 and D-339 still ask Zach about five runs).
 
 **Status:** Accepted.

@@ -136,6 +136,22 @@ for ( const theme of THEMES ) {
 					// Moved before the page settles, not after: moved just before the shot, the link's hover was once
 					// still leaving it, and its words were drawn a shade off (158 pixels, Kadence dark, tablet).
 					await on.mouse.move( 0, 0 );
+					// And until the bar's "Show the parts" has let its hover go, transition and all: moved off, it still
+					// matched :hover now and then, and its words were drawn a shade off (152 pixels, CI and lane runs of
+					// 24 November, Twenty Twenty-Five dark tablet and Storefront light phone).
+					await expect
+						.poll( () =>
+							on.locator( '.cbuild-bar__parts' ).evaluate(
+								( parts ) =>
+									! parts.matches( ':hover' ) &&
+									! parts.querySelector( ':hover' ) &&
+									0 ===
+										parts.getAnimations( {
+											subtree: true,
+										} ).length
+							)
+						)
+						.toBe( true );
 					await still( on, size.width, size.height );
 					await expect( builder ).toHaveScreenshot(
 						`${ theme }-${ scheme }-${ size.name }-review.png`,

@@ -1913,10 +1913,24 @@
 	}
 }
 
+/* Where motion is calm, reduced or the kit's Motion subtle, the wait is said by the dim alone, a fade of 150 ms like
+   every moment there (D-256, D-308). */
 @media (prefers-reduced-motion: reduce) {
 	:where(.cbuild-picture--drawing)::after {
 		display: none;
 	}
+
+	:where(.cbuild-picture--drawing) :where(.cbuild-board) {
+		transition-duration: 150ms;
+	}
+}
+
+:where(.cbuild--subtle .cbuild-picture--drawing)::after {
+	display: none;
+}
+
+:where(.cbuild--subtle .cbuild-picture--drawing) :where(.cbuild-board) {
+	transition-duration: 150ms;
 }
 
 /* Waiting for the server: the shopper's own pick is painted, and the rest says it is on its way. */

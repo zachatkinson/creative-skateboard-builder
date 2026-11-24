@@ -17,4 +17,8 @@ if [ -z "${WP_BASE_URL:-}" ] && [ "$home" != "http://localhost:$CBUILD_PORT" ]; 
 	exit 1
 fi
 npx wp-env run cli -- sh -c "wp theme is-active twentytwentyfive || wp theme activate twentytwentyfive" > /dev/null
+# One site title on every lane: wp-env names a site after its checkout's folder, and Twenty Twenty-Five's header wraps
+# a worktree's short name ("csb-b") on another line than CI's, which moves the builder by a part of a pixel and every
+# visual snapshot's text with it (D-341).
+npx wp-env run cli -- sh -c "[ \"\$(wp option get blogname)\" = creative-skateboard-builder ] || wp option update blogname creative-skateboard-builder" > /dev/null
 npx wp-env run cli -- wp eval-file wp-content/plugins/creative-skateboard-builder/tests/e2e/fixtures/shop.php > /dev/null

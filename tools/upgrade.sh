@@ -146,7 +146,12 @@ kitsread="$(sed -n 's/.*; kits \([0-9]*\) of [0-9]*,.*/\1/p' <<<"$read")"
 presets="$(sed -n 's/.*presets \([0-9]*\) of \([0-9]*\) priced.*/\1 \2/p' <<<"$read")"
 [ "${presets% *}" = "${presets#* }" ] || fail "after the update, not every preset was priced: $read"
 [ "$user" = 0 ] || case "$read" in *"saved builds 1"*) ;; *) fail "after the update, $from's saved build was not listed: $read" ;; esac
-[ "$user" = 0 ] || case "$read" in *"saved builds 1, 1 reopened with no prices then"*) ;; *) fail "after the update, $from's saved build reopened with prices it never kept: $read" ;; esac
+# A build saved before 1.0.0 kept no prices; one saved by 1.0.0 or later kept them, and shows the total it kept (D-254).
+if [ "$(printf '%s\n' 1.0.0 "$from" | sort -V | head -n 1)" = 1.0.0 ]; then
+	[ "$user" = 0 ] || case "$read" in *"saved builds 1, 0 reopened with no prices then, 1 with the prices kept"*) ;; *) fail "after the update, $from's saved build did not reopen with the prices it kept: $read" ;; esac
+else
+	[ "$user" = 0 ] || case "$read" in *"saved builds 1, 1 reopened with no prices then"*) ;; *) fail "after the update, $from's saved build reopened with prices it never kept: $read" ;; esac
+fi
 failed="$(wp action-scheduler action list --group=creative-skateboard-builder --status=failed --format=count 2>/dev/null | tail -n 1)"
 case "$failed" in ''|*[!0-9]*) fail "the plugin's failed jobs could not be counted: '$failed'" ;; esac
 [ "$failed" = 0 ] || fail "after the update, $failed of the plugin's jobs failed"

@@ -5085,6 +5085,84 @@ test.describe( 'The deck swap', () => {
 
 	// The interim audit of M11: nothing loops (SPEC-CONFIGURATOR: Motion; WCAG 2.2.2). The line that says a picture is on
 	// its way runs four times at most, under five seconds, and the dimmed board goes on saying it after.
+	// Where motion is calm the wait is said by the dim alone, a fade of 150 ms or less like every moment there (D-256):
+	// the dim's 200 ms transition was caught under subtle on Firefox, whenever an answer took more than 300 ms.
+	for ( const calm of [ 'reduced motion', 'subtle' ] as const ) {
+		test( `under ${ calm } dims the board for a slow answer by a fade of 150 ms or less, with no running line`, async ( {
+			page,
+		} ) => {
+			await page.emulateMedia( {
+				reducedMotion:
+					'reduced motion' === calm ? 'reduce' : 'no-preference',
+			} );
+			await start( page );
+			const builder = page.locator( '.cbuild[data-ready]' );
+			await expect( builder ).toHaveCount( 1 );
+			if ( 'subtle' === calm ) {
+				await builder.evaluate( ( root ) =>
+					root.classList.add( 'cbuild--subtle' )
+				);
+			}
+			let release: () => void = () => undefined;
+			const held = new Promise< void >( ( done ) => ( release = done ) );
+			await page.route(
+				( url ) => url.pathname.endsWith( '/state' ),
+				async ( route ) => {
+					const answer = await route.fetch();
+					await held;
+					await route
+						.fulfill( { response: answer } )
+						.catch( () => null );
+				}
+			);
+			await page
+				.getByRole( 'radio', { name: 'Choose Builder test deck 8.5' } )
+				.focus();
+			await page.keyboard.press( 'Space' );
+			const picture = page.locator( '#cbuild-picture' );
+			await expect( picture ).toHaveAttribute( 'aria-busy', 'true', {
+				timeout: 10_000,
+			} );
+			await expect( picture ).toHaveClass( /cbuild-picture--drawing/ );
+			const moving = await page.evaluate( () =>
+				document
+					.getAnimations()
+					.filter( ( one ) =>
+						(
+							one.effect as KeyframeEffect | null
+						 )?.target?.closest?.( '#cbuild-picture' )
+					)
+					.map( ( one ) => ( {
+						name:
+							( one as CSSAnimation ).animationName ??
+							( one as CSSTransition ).transitionProperty ??
+							'',
+						duration: Number(
+							one.effect?.getComputedTiming().duration ?? 0
+						),
+					} ) )
+					.filter( ( one ) => one.duration > 150 )
+			);
+			// The dim's own transition, read as set: it may have ended by the time the animations above are read.
+			const dim = await picture
+				.locator( '.cbuild-board' )
+				.first()
+				.evaluate( ( board ) =>
+					Math.max(
+						...getComputedStyle( board )
+							.transitionDuration.split( ',' )
+							.map( ( one ) => parseFloat( one ) * 1000 )
+					)
+				);
+			release();
+			expect(
+				moving,
+				'nothing in the picture runs past a 150 ms fade'
+			).toEqual( [] );
+			expect( dim, 'the dim itself' ).toBeLessThanOrEqual( 150 );
+		} );
+	}
+
 	test( 'stops the line that says the board is drawing within five seconds, and keeps the board dimmed', async ( {
 		page,
 	} ) => {
@@ -7463,7 +7541,11 @@ test.describe( 'A deck with no layer image on the stage (#82)', () => {
 				page,
 				context,
 				baseURL,
-			} ) => {
+			}, info ) => {
+				test.skip(
+					info.project.name === 'no-js',
+					"Without the script the photo stands in for no board: the picture lists each part as a tile of its own, the deck's caption under it."
+				);
 				await context.addCookies( [
 					{
 						name: 'cbuild_e2e_theme',

@@ -459,14 +459,15 @@ final class Container {
 	 */
 	private static function additions(): array {
 		return array(
-			Service\IndexJobs::class      => static fn( object $jobs, Container $c ): object => $jobs instanceof Service\IndexJobs ? $jobs->withRenditions( $c->get( Service\PartRenditions::class ) ) : $jobs,
-			Service\CatalogueCheck::class => static fn( object $check, Container $c ): object => $check instanceof Service\CatalogueCheck ? $check->withLayers( $c->get( Port\LayerImages::class ) )->withLooks( $c->get( Port\PartLooks::class ) ) : $check,
-			Front\StateAnswer::class      => static fn( object $answer, Container $c ): object => $answer instanceof Front\StateAnswer ? $answer->withArtwork( $c->get( Service\LayerArtwork::class ) )->withShelf( $c->get( Service\StepShelf::class ) )->withPictures( self::tiles( $c ) ) : $answer,
-			Admin\PartSpecsPanel::class   => static fn( object $panel, Container $c ): object => $panel instanceof Admin\PartSpecsPanel ? $panel->withImages( $c->get( Port\LayerImages::class ) ) : $panel,
-			Front\BuilderPage::class      => static fn( object $page, Container $c ): object => $page instanceof Front\BuilderPage ? $page->withSaved( $c->get( Service\SavedBuilds::class ) ) : $page,
-			Front\Builder::class          => static fn( object $builder, Container $c ): object => $builder instanceof Front\Builder ? $builder->withSaved( $c->get( Front\RememberedWidth::class ), $c->get( Service\SavedBuilds::class ) )->withShelf( $c->get( Service\StepShelf::class ) ) : $builder,
-			Service\SpecImport::class     => static fn( object $import, Container $c ): object => $import instanceof Service\SpecImport ? $import->withLayers( $c->get( Service\LayerCheck::class ), $c->get( Port\PartLayers::class ) ) : $import,
-			Service\SpecExport::class     => static fn( object $export, Container $c ): object => $export instanceof Service\SpecExport ? $export->withLayers( $c->get( Port\PartLayers::class ) ) : $export,
+			Service\IndexJobs::class        => static fn( object $jobs, Container $c ): object => $jobs instanceof Service\IndexJobs ? $jobs->withRenditions( $c->get( Service\PartRenditions::class ) ) : $jobs,
+			Service\CatalogueCheck::class   => static fn( object $check, Container $c ): object => $check instanceof Service\CatalogueCheck ? $check->withLayers( $c->get( Port\LayerImages::class ) )->withLooks( $c->get( Port\PartLooks::class ) ) : $check,
+			Front\StateAnswer::class        => static fn( object $answer, Container $c ): object => $answer instanceof Front\StateAnswer ? $answer->withArtwork( $c->get( Service\LayerArtwork::class ) )->withShelf( $c->get( Service\StepShelf::class ) )->withPictures( self::tiles( $c ) ) : $answer,
+			Admin\PartSpecsPanel::class     => static fn( object $panel, Container $c ): object => $panel instanceof Admin\PartSpecsPanel ? $panel->withImages( $c->get( Port\LayerImages::class ) ) : $panel,
+			Front\BuilderPage::class        => static fn( object $page, Container $c ): object => $page instanceof Front\BuilderPage ? $page->withSaved( $c->get( Service\SavedBuilds::class ) ) : $page,
+			Front\Builder::class            => static fn( object $builder, Container $c ): object => $builder instanceof Front\Builder ? $builder->withSaved( $c->get( Front\RememberedWidth::class ), $c->get( Service\SavedBuilds::class ) )->withShelf( $c->get( Service\StepShelf::class ) ) : $builder,
+			Service\SpecImport::class       => static fn( object $import, Container $c ): object => $import instanceof Service\SpecImport ? $import->withLayers( $c->get( Service\LayerCheck::class ), $c->get( Port\PartLayers::class ) ) : $import,
+			Service\SpecExport::class       => static fn( object $export, Container $c ): object => $export instanceof Service\SpecExport ? $export->withLayers( $c->get( Port\PartLayers::class ) ) : $export,
+			Service\ComposedPictures::class => static fn( object $pictures, Container $c ): object => $pictures instanceof Service\ComposedPictures ? $pictures->withLayers( $c->get( Port\ComposedLayers::class ) ) : $pictures,
 		);
 	}
 

@@ -16,6 +16,14 @@ wp option update woocommerce_coming_soon no >/dev/null
 # The builder's page, with the shop's fixture kit on it, unless another page is asked for.
 bash tools/e2e-site.sh
 export CBUILD_LHCI_URL="${CBUILD_LHCI_URL:-$(node -p "require('./tmp/e2e-builder.json').page")}"
+# Measured warm, as a shop's page is: once on each theme, the jobs that visit queued (the ready builds' pictures,
+# D-252) run, then once more. Cold, the first two runs answered in 1.1 to 1.2 s where the third took 0.56 s, while
+# those jobs ran beside them on CI's two cores (PR #109's first run, LCP 3.19, 2.85 and 2.25 s). The gate's 2.5 s
+# stands (D-342).
+for warm in twentytwentyfive kadence twentytwentyfive kadence; do
+	curl -sf -o /dev/null -H "Cookie: cbuild_e2e_theme=$warm" "$CBUILD_LHCI_URL" || true
+	[ "$warm" = kadence ] && wp action-scheduler run --group=creative-skateboard-builder >/dev/null || true
+done
 # Twenty Twenty-Five's font moves the page as it arrives, so its layout shift is reported; Kadence gates (D-165).
 CBUILD_LHCI_THEME=twentytwentyfive CBUILD_LHCI_SHIFT=warn npx lhci autorun --config=lighthouserc.cjs "$@"
 CBUILD_LHCI_THEME=kadence npx lhci autorun --config=lighthouserc.cjs "$@"

@@ -62,6 +62,13 @@ final class ComposedPicturesTest extends TestCase {
 
 	private ComposedPictures $pictures;
 
+	/**
+	 * The constructor's arguments as 1.0.0 had them.
+	 *
+	 * @var array{0: InMemoryKits, 1: BuildState, 2: LayerArtwork, 3: InMemoryPictureFiles, 4: FakeQueue, 5: FakeClock, 6: FakeLogger}
+	 */
+	private array $built;
+
 	private FakeLogger $logger;
 
 	private FakeComposedLayers $answers;
@@ -80,7 +87,7 @@ final class ComposedPicturesTest extends TestCase {
 		$this->files               = new InMemoryPictureFiles();
 		$this->logger              = new FakeLogger();
 		$this->answers             = new FakeComposedLayers();
-		$this->pictures            = new ComposedPictures(
+		$this->built               = array(
 			$kits,
 			new BuildState( $kits, new InMemoryShopSettings(), new FakeLogger() ),
 			new LayerArtwork( $this->layers, new InMemoryLayerRenditions() ),
@@ -88,8 +95,8 @@ final class ComposedPicturesTest extends TestCase {
 			$this->queue,
 			new FakeClock( self::NOW ),
 			$this->logger,
-			$this->answers
 		);
+		$this->pictures            = ( new ComposedPictures( ...$this->built ) )->withLayers( $this->answers );
 	}
 
 	public function test_a_build_is_asked_for_once_with_its_ids_and_nothing_while_the_queue_is_full(): void {
@@ -395,6 +402,21 @@ final class ComposedPicturesTest extends TestCase {
 		self::assertNotNull( $junk );
 		$this->answers->answers = array();
 		self::assertSame( $junk, $this->pictures->url( self::KIT, self::STREET, ComposedPictures::SHARE ), 'the name the pictures as they are have' );
+	}
+
+	// 1.0.0's container, still running in the request that replaces the plugin's files, builds this class from 1.1.0's
+	// file with 1.0.0's constructor, which has no `ComposedLayers` (CI's `npm run upgrade`: "is not instantiable and has
+	// no binding"). A copy built so draws every layer as it is and asks nothing, as 1.0.0 did (D-208, D-309).
+	public function test_a_copy_built_with_the_constructor_of_1_0_0_draws_every_layer_as_it_is(): void {
+		$this->answers->answers = array( 101 => array_fill_keys( array_keys( ComposedPictures::CANVASES ), ComposedLayers::BLURRED ) );
+		$before                 = new ComposedPictures( ...$this->built );
+		self::assertNotSame( $before, $before->withLayers( $this->answers ), 'a copy, the one built before untouched' );
+		self::assertSame( 3, $before->compose( self::KIT, self::STREET ) );
+		foreach ( $this->files->drawn as $composition ) {
+			self::assertSame( array( 10, false ), array( $composition->placements[0]->attachment, $composition->placements[0]->blurred ), 'the deck drawn sharp' );
+		}
+		self::assertSame( array(), $this->answers->asked, 'no other plugin is asked' );
+		self::assertTrue( $before->shown( self::KIT, SlotKey::DECK, 101, ComposedPictures::SHARE ) );
 	}
 
 	public function test_a_build_whose_every_layer_is_left_out_has_no_picture_to_draw(): void {
