@@ -6495,6 +6495,7 @@ test.describe( 'The board turned over', () => {
 	// ringed in focus.
 	test( 'marks the side shown on its button by more than colour, each a target of 24 px or more with a focus ring', async ( {
 		page,
+		browserName,
 	}, info ) => {
 		test.skip(
 			info.project.name === 'no-js',
@@ -6532,10 +6533,12 @@ test.describe( 'The board turned over', () => {
 		await expect.poll( () => look( topSide( page ) ) ).toEqual( pressed );
 		await expect.poll( () => look( underSide( page ) ) ).toEqual( plain );
 		await axe( page, 'the two sides, the top pressed', '#cbuild-picture' );
+		// WebKit on macOS moves to a button with Option and Tab, as a Safari user does.
+		const tab = browserName === 'webkit' ? 'Alt+Tab' : 'Tab';
 		for ( const side of [ underSide( page ), topSide( page ) ] ) {
 			await side.focus();
-			await page.keyboard.press( 'Shift+Tab' );
-			await page.keyboard.press( 'Tab' );
+			await page.keyboard.press( `Shift+${ tab }` );
+			await page.keyboard.press( tab );
 			await expect( side ).toBeFocused();
 			await expect( side ).toHaveCSS( 'outline-style', 'solid' );
 		}
