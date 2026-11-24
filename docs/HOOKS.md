@@ -4,7 +4,78 @@ Everything another plugin, a theme or a shop's own code may rely on, added as it
 
 `composer api:check` reads the code and fails when an item is missing from this file or from `tests/Fixtures/api-surface.json`. Renaming or removing anything here is a breaking change and needs Zach.
 
-**From 1.0.0 this list is frozen, and Semantic Versioning holds** (docs/AUDIT.md, dimension 10). No minor or patch release removes or renames anything here or changes what it means. REST responses only gain fields; a removal or a rename is a `v2` namespace, with `v1` kept until the next major release. A hook to retire is deprecated first, with `apply_filters_deprecated()` or `do_action_deprecated()`, and kept until the next major release and for at least six months. Settings, option and meta keys are never renamed in place: a migration copies them and the old key stays readable until the next major release. Block attributes keep working through the block's `deprecated` entries. What the sections below call the builder's own (its template markup, the store's state, the state route's `view`, the keys of the builder's forms that start with an underscore, and markup said to be the plugin's own) is not part of the API and may change in any release. `tests/Fixtures/api-surface.json` as committed with 1.0.0 is the snapshot the next releases are held to.
+## Contents
+
+- [Stability from 1.0.0](#stability-from-100)
+- [Milestone 1: the foundation (0.1.0)](#milestone-1-the-foundation-010)
+  - [`cbuild_updates_enabled` (filter)](#cbuild_updates_enabled-filter)
+  - [`CBUILD_DISABLE_UPDATES` (constant)](#cbuild_disable_updates-constant)
+  - [Constants the plugin defines](#constants-the-plugin-defines)
+  - [Options](#options)
+  - [Site transients](#site-transients)
+  - [Tables](#tables)
+  - [Scheduled actions](#scheduled-actions)
+  - [Log source](#log-source)
+- [Milestone 2: the domain (0.2.0)](#milestone-2-the-domain-020)
+  - [Document schemas](#document-schemas)
+  - [Spec keys](#spec-keys)
+  - [Findings and message codes](#findings-and-message-codes)
+  - [Build problems](#build-problems)
+  - [Refusal codes](#refusal-codes)
+- [Milestone 3: specs (0.3.0)](#milestone-3-specs-030)
+  - [Index sources](#index-sources)
+  - [Product meta](#product-meta)
+  - [Post types](#post-types)
+  - [Settings keys](#settings-keys)
+  - [Options](#options-1)
+  - [Scheduled actions](#scheduled-actions-1)
+  - [The specs sheet](#the-specs-sheet)
+  - [The Catalogue check](#the-catalogue-check)
+  - [WP-CLI commands](#wp-cli-commands)
+  - [Abilities](#abilities)
+  - [Site Health](#site-health)
+  - [REST routes](#rest-routes)
+- [Milestone 4: kits (0.4.0)](#milestone-4-kits-040)
+  - [Product types](#product-types)
+  - [Kit meta](#kit-meta)
+  - [The state route](#the-state-route)
+  - [Filters](#filters)
+  - [Actions the plugin listens for](#actions-the-plugin-listens-for)
+  - [Abilities](#abilities-1)
+- [Milestone 5: cart and checkout (0.5.0)](#milestone-5-cart-and-checkout-050)
+  - [Adding a build](#adding-a-build)
+  - [Cart item keys](#cart-item-keys)
+  - [Why a build is not added](#why-a-build-is-not-added)
+  - [A build in the cart stays whole](#a-build-in-the-cart-stays-whole)
+  - [A build shown in the carts](#a-build-shown-in-the-carts)
+  - [Shipping, express pay and delivery](#shipping-express-pay-and-delivery)
+  - [Order item keys](#order-item-keys)
+- [Milestone 6: the builder (0.6.0)](#milestone-6-the-builder-060)
+  - [The build link](#the-build-link)
+  - [What the state route's answer gains](#what-the-state-routes-answer-gains)
+  - [The Builder block](#the-builder-block)
+  - [Filters](#filters-1)
+  - [Adding a build: `replace`](#adding-a-build-replace)
+  - [Edit build on a kit's line](#edit-build-on-a-kits-line)
+  - [Styling the builder](#styling-the-builder)
+  - [DOM events](#dom-events)
+- [Milestone 8: orders and after (0.8.0)](#milestone-8-orders-and-after-080)
+  - [The state route and the price ability](#the-state-route-and-the-price-ability)
+  - [Saved builds and My builds](#saved-builds-and-my-builds)
+  - [Styling the board's top](#styling-the-boards-top)
+  - [The workshop: the Build box, the assembly ticket and the orders list](#the-workshop-the-build-box-the-assembly-ticket-and-the-orders-list)
+  - [Privacy tools and orders](#privacy-tools-and-orders)
+
+## Stability from 1.0.0
+
+**From 1.0.0 this list is frozen, and Semantic Versioning holds** (docs/AUDIT.md, dimension 10). No minor or patch release removes or renames anything here or changes what it means.
+
+- **REST responses** only gain fields; a removal or a rename is a `v2` namespace, with `v1` kept until the next major release.
+- **A hook to retire** is deprecated first, with `apply_filters_deprecated()` or `do_action_deprecated()`, and kept until the next major release and for at least six months.
+- **Settings, option and meta keys** are never renamed in place: a migration copies them and the old key stays readable until the next major release.
+- **Block attributes** keep working through the block's `deprecated` entries.
+- **The builder's own is not API.** What the sections below call the builder's own (its template markup, the store's state, the state route's `view`, the keys of the builder's forms that start with an underscore, and markup said to be the plugin's own) is not part of the API and may change in any release.
+- **The snapshot.** `tests/Fixtures/api-surface.json` as committed with 1.0.0 is the snapshot the next releases are held to.
 
 ## Milestone 1: the foundation (0.1.0)
 
@@ -95,7 +166,6 @@ A kit is four JSON documents. Each has a JSON Schema (draft 4) in the plugin's `
 | `schema/kit-assembly.json` | 0.2.0 | Whether assembly is on by default, its fee as a decimal string in the shop's currency, the lead time and the returns notice. |
 | `schema/kit-picture.json` | 0.7.0 | The picture's settings: the field order, slot keys from the bottom of the stack, each once, 20 at most; and the field wheelbase, where the trucks sit on a deck that gives none, inches as a decimal string from 10 to 20, or empty. A slot the order leaves out is drawn after it in the usual order (deck, grip, trucks, wheels), and a key the kit has no slot for is passed over. Unlike the other four, a kit may have none: it is drawn in the usual order with the wheelbase guessed from the deck's shape (D-192). |
 | `schema/kit-settings.json` | 1.2.0 | The kit's settings from 1.2.0 on (D-354): `builder_page`, `start_button` and `width_guide`, as `_cbuild_settings` below has them. Unlike every other kit document, it lets through a key it does not know (`additionalProperties` true at the top), so a later release adds its settings here and the release before still reads the kit. A kit may have none. |
-
 | `schema/settings.json` | 0.3.0 | Not a kit document: the shape of the option `cbuild_settings` as the plugin writes it. `attribute_mapping` is up to 50 lines, each an `attribute` of 1 to 190 characters, a `spec` that is a spec key and a `unit` of `in`, `mm` or empty; `source_order` is `table`, `field` and `attribute`, each once. From 0.4.0 it also holds the five keys that version adds, listed under Settings keys with their ranges: the discount as text, the coupon's place, the rate as a whole number, the header's name, and a new kit's assembly as `schema/kit-assembly.json` has it. Other keys are allowed, so a later version's settings pass. It has no `schema_version`: a key that is missing or malformed reads as its default. |
 | `schema/order-snapshot.json` | 0.5.0 | Not a kit document: the order item meta `_cbuild_snapshot`, a build as it was sold. See Order item keys. |
 
@@ -297,11 +367,20 @@ The CSV file that WooCommerce > Builder > Import and export writes and reads. On
 | `layer_image` | 1.0.0 | The file name of its own Layer image, as uploaded, empty for none. A variation's parent's is not written. | An attachment's ID, or the file name of an image in the Media Library, held to the Layer image field's rules. A name more than one image has is refused, and the row names their IDs. Empty leaves a product's image as it is, and takes a variation's own away, so it takes its parent's. A change is saved through the product, which queues its index job and the image's copies. The product image and gallery are left as they are (D-287). |
 | One per spec key | 0.3.0 | The part's own value, as stored. What it takes from a chart, an attribute or its parent is not written. | A value, read as the Part specs panel reads one: the shop's decimal separator or a point, or a fraction. Empty removes it. |
 
-An import reads a file of 2 MB and 5,000 rows at most, comma- or semicolon-separated, in UTF-8 with or without the mark. A heading is matched whatever its case, and a column the sheet does not have is passed over. A column the file leaves out is left as it is. A cell that an export neutralised with a leading apostrophe is read without it. A row with anything wrong in it is not written at all.
+What an import reads:
+
+- **Size and format.** An import reads a file of 2 MB and 5,000 rows at most, comma- or semicolon-separated, in UTF-8 with or without the mark.
+- **Headings.** A heading is matched whatever its case, and a column the sheet does not have is passed over. A column the file leaves out is left as it is.
+- **Cells.** A cell that an export neutralised with a leading apostrophe is read without it.
+- **Rows.** A row with anything wrong in it is not written at all.
 
 Why a file is not read: `upload_missing`, `upload_failed`, `upload_not_csv`, `file_too_big`, `file_not_utf8`, `file_empty`, `rows_too_many`, `key_column_missing`, `column_twice`, `no_spec_columns` and `import_running`.
 
-Why a row is not written: `key_missing`, `key_twice`, `part_missing`, `sku_mismatch`, `table_unknown`, `table_ambiguous`, `table_missing`, `size_missing`, `size_long`, and the refusal codes of a value (`measure_malformed`, `measure_zero_denominator`, `measure_negative`, `spec_unknown_choice`, `spec_not_positive`, `spec_wrong_kind`), and from 1.0.0 a layer image's: `layer_not_image`, `layer_not_found`, `layer_ambiguous`, `layer_wrong_type`, `layer_unreadable`, `layer_opaque` and `layer_too_small`.
+Why a row is not written:
+
+- `key_missing`, `key_twice`, `part_missing`, `sku_mismatch`, `table_unknown`, `table_ambiguous`, `table_missing`, `size_missing`, `size_long`,
+- and the refusal codes of a value (`measure_malformed`, `measure_zero_denominator`, `measure_negative`, `spec_unknown_choice`, `spec_not_positive`, `spec_wrong_kind`),
+- and from 1.0.0 a layer image's: `layer_not_image`, `layer_not_found`, `layer_ambiguous`, `layer_wrong_type`, `layer_unreadable`, `layer_opaque` and `layer_too_small`.
 
 ### The Catalogue check
 
@@ -430,7 +509,16 @@ What the answer holds beside the schema's own descriptions:
 - **A step lists 24 options,** those the shop can supply first, and always the part the step counts. `steps[].offered` and `steps[].hidden` say how many there are in all.
 - **Fields are added** in minor versions, and none is renamed or removed within a major one.
 
-Every answer of the route, a refusal included, carries `Cache-Control: no-store` and `X-Robots-Tag: noindex`. From 1.1.0, an answer to a signed-in user who can manage WooCommerce also carries `Server-Timing: cbuild-route;dur=<ms>, cbuild-queries;desc="<n>"`: the route's own time from its callback's start, to a tenth of a millisecond, and its database queries. From 1.2.0 the same header goes on with each phase of the answer that ran, in milliseconds, in the order it first ran: `cbuild-shelf` (the step's shelf), `cbuild-cards` (what each card shows of its part, read in one call) and, on the deck step, `cbuild-boards` (the board each deck would draw alone, D-308), so a manager sees where the route's time goes (`@since 1.2.0`, #125, D-365). No one else is sent it, and no filter changes that (#90, D-304). The builder's own requests carry no REST nonce, so WordPress answers them as signed out and they never get it, a manager's included; a manager reads it on a request made with one, such as `wp.apiFetch( { path: '/cbuild/v1/kits/<id>/state', parse: false } )` in wp-admin's console, and the answer's `server-timing` header. Its refusals are REST errors, each with `code`, `message` and `data.status`:
+Every answer of the route, a refusal included, carries `Cache-Control: no-store` and `X-Robots-Tag: noindex`.
+
+The `Server-Timing` header, for a shop manager:
+
+- **From 1.1.0,** an answer to a signed-in user who can manage WooCommerce also carries `Server-Timing: cbuild-route;dur=<ms>, cbuild-queries;desc="<n>"`: the route's own time from its callback's start, to a tenth of a millisecond, and its database queries.
+- **From 1.2.0** the same header goes on with each phase of the answer that ran, in milliseconds, in the order it first ran: `cbuild-shelf` (the step's shelf), `cbuild-cards` (what each card shows of its part, read in one call) and, on the deck step, `cbuild-boards` (the board each deck would draw alone, D-308), so a manager sees where the route's time goes (`@since 1.2.0`, #125, D-365).
+- **No one else is sent it,** and no filter changes that (#90, D-304).
+- **Reading it.** The builder's own requests carry no REST nonce, so WordPress answers them as signed out and they never get it, a manager's included; a manager reads it on a request made with one, such as `wp.apiFetch( { path: '/cbuild/v1/kits/<id>/state', parse: false } )` in wp-admin's console, and the answer's `server-timing` header.
+
+Its refusals are REST errors, each with `code`, `message` and `data.status`:
 
 | Code | Since | Status | When |
 | --- | --- | --- | --- |
@@ -468,7 +556,12 @@ In the category `creative-skateboard-builder`, which the Catalogue check's abili
 | `creative-skateboard-builder/check-build` | 0.4.0 | Whoever may run an ability | `kit`, the kit product's ID; `picks`, an object of slot key to part ID, 20 at most; `assembly`, a boolean. Only `kit` is required. | `kit`, `ready`, `refused` and `problems`, as the state route's answer holds them: whether the build may go to the cart, and each thing in the way with its `code`, `slot`, `part`, `message` and the rules' `messages`. |
 | `creative-skateboard-builder/price-build` | 0.4.0 | Whoever may run an ability | The same. | `kit` and `total`, as the state route's answer holds it: `lines` (each with `slot`, `part`, `name`, `quantity`, `price`, `charged` and `total`), `parts`, `saved`, `assembly`, `fee` and `total`. Each amount is `amount`, in whole minor units, and `text`. From 0.8.0 `total` counts the picks alone, and `estimate` is the board with each slot's recommendation in it, or null (D-213). |
 
-Both are annotated read-only and idempotent and shown in REST, so WordPress serves each at `GET /wp-abilities/v1/abilities/<name>/run`. Each answers to a signed-in user alone, over REST and when run in PHP (D-118), and refuses a `POST` with 405. They ask the state route's own service, for the shopper WooCommerce knows the signed-in user as (from 0.5.0, D-138), and give parts of its answer, so the two cannot disagree: from 0.8.0 a slot with no pick is counted empty, as the route counts it (D-213); before, it was counted with the part the builder started it on. A kit a visitor may not see is `cbuild_kit_not_found` to everyone, as it is on the route. Input that is not the schema's is refused by WordPress as `ability_invalid_input`; a slot key the kit lacks is not refused, and comes back in `refused` as `slot_unknown`. Neither is counted against the route's rate limit.
+Both are annotated read-only and idempotent and shown in REST, so WordPress serves each at `GET /wp-abilities/v1/abilities/<name>/run`.
+
+- **Who.** Each answers to a signed-in user alone, over REST and when run in PHP (D-118), and refuses a `POST` with 405.
+- **One answer with the route.** They ask the state route's own service, for the shopper WooCommerce knows the signed-in user as (from 0.5.0, D-138), and give parts of its answer, so the two cannot disagree: from 0.8.0 a slot with no pick is counted empty, as the route counts it (D-213); before, it was counted with the part the builder started it on.
+- **Refusals.** A kit a visitor may not see is `cbuild_kit_not_found` to everyone, as it is on the route. Input that is not the schema's is refused by WordPress as `ability_invalid_input`; a slot key the kit lacks is not refused, and comes back in `refused` as `slot_unknown`.
+- **The rate limit.** Neither is counted against the route's rate limit.
 
 ## Milestone 5: cart and checkout (0.5.0)
 
@@ -479,7 +572,12 @@ A build is added by the kit's ID and one more parameter, `cbuild` (0.5.0), on ei
 - the Store API's `POST /wc/store/v1/cart/add-item`, beside `id` and `quantity`, as JSON: `"cbuild": { "picks": { "deck": 103, "trucks": 149 }, "assembly": true }`;
 - WooCommerce's add-to-cart form, as fields: `cbuild[picks][deck]=103`, `cbuild[assembly]=1`, posted with `add-to-cart=<kit>`.
 
-`picks` is slot key to part ID. `assembly` may be left out, and is then the kit's own default. `quantity` is how many of the build. Nothing else is read: no price, no quantity of a part and no line of the cart comes from the request. Each part is read from WooCommerce at that moment, so the cart charges what the shop holds even where the builder was shown an older price.
+What is read:
+
+- **`picks`** is slot key to part ID.
+- **`assembly`** may be left out, and is then the kit's own default.
+- **`quantity`** is how many of the build.
+- **Nothing else is read:** no price, no quantity of a part and no line of the cart comes from the request. Each part is read from WooCommerce at that moment, so the cart charges what the shop holds even where the builder was shown an older price.
 
 A kit added with no `cbuild` is refused by every route, `WC_Cart::add_to_cart()` called in PHP among them: `is_purchasable()` is true for a kit only between its build being taken and its parts being added, in the same request.
 
@@ -514,7 +612,6 @@ The server keeps it so, whichever cart or plugin makes the change:
 - **Removal.** Removing any line of a build removes all of it. Putting one back, as the classic cart's Undo does, puts all of it back, or none where a line can no longer be restored.
 - **The Store API's limits.** A part's line has `quantity_limits.editable` false. A kit's line's `quantity_limits.maximum` is no more than its scarcest part allows, beside what the cart's other lines hold of that part, and never less than 1.
 - **The check before paying.** On `woocommerce_check_cart_items`, which the cart page, both checkouts and every Store API cart response run, a build that has lost a line is removed with what is left of it, and each whole build is judged again as the shop is then. What is found is an error notice, which stops the order; the Store API lists it under the cart's `errors`.
-
 - **Prices.** The kit's line is priced at the assembly fee or nothing, and each part's line at the shop's price less the setting `build_discount`, on `woocommerce_before_calculate_totals` at priority 999. A plugin that sets a line's price does so at an earlier priority, and the discount is taken from its price.
 - **Coupons.** On `woocommerce_coupon_is_valid_for_product`, a part's line answers with its kit's: see `fixed_coupons` in `docs/SETTINGS.md`.
 - **The count.** `woocommerce_cart_contents_count` leaves the parts' lines out, so a build counts as its kit's line does.
@@ -541,9 +638,17 @@ A kit's line raised past what the shop has of a part is refused as `cbuild_build
 
 **The parent key.** Where WooCommerce's Store API gives a cart item a `parent_item_key` (11.3.0 and later), a part's is its kit's cart item key, answered on `woocommerce_store_api_cart_item_parent_item_key`. The kit's line and a line of no build are left as WooCommerce or another plugin answered. WooCommerce counts a product's quantity in the cart from lines with no parent, so a part in a build is not counted as that product bought alone.
 
-**The kit's thumbnail.** From 0.7.0 a kit's line shows its build's composed picture, 480 by 480, once the `cbuild_compose_picture` job has made it, and the deck's product photo until then, both with the kit's name as their alt text. In the Store API this is the line's `images`, answered on `woocommerce_store_api_cart_item_images`: one image, whose `id` is 0 for the composed picture, which is in no Media Library, and the deck's attachment for its photo. In a classic cart and the mini-cart widget it is `woocommerce_cart_item_thumbnail`, an `<img>` with the class `cbuild-cart-picture` for the composed picture. A part's line, and a line of no build, are left as WooCommerce or another plugin answered.
+**The kit's thumbnail.** From 0.7.0 a kit's line shows its build's composed picture, 480 by 480, once the `cbuild_compose_picture` job has made it, and the deck's product photo until then, both with the kit's name as their alt text.
 
-**Item data.** A part's line has one more entry in `woocommerce_get_item_data`, and so in the Store API's `item_data`: Part of, with the kit's name and the slot's label. Its `raw_key` is `cbuild_slot`, and its `display` wraps the words in `<span class="cbuild-part">`. From 0.6.0 the slot's label, in brackets, has a `<span class="cbuild-part__slot">` of its own inside it, which the plugin's styles hide on a row whose name already starts with the slot; the Mini-Cart's rows, which run no line filter, keep it. A theme or a cart drawer that prints a line's item data can group a build's parts by that class, as the Mini-Cart's styles do.
+- **In the Store API** this is the line's `images`, answered on `woocommerce_store_api_cart_item_images`: one image, whose `id` is 0 for the composed picture, which is in no Media Library, and the deck's attachment for its photo.
+- **In a classic cart and the mini-cart widget** it is `woocommerce_cart_item_thumbnail`, an `<img>` with the class `cbuild-cart-picture` for the composed picture.
+- **A part's line, and a line of no build,** are left as WooCommerce or another plugin answered.
+
+**Item data.** A part's line has one more entry in `woocommerce_get_item_data`, and so in the Store API's `item_data`: Part of, with the kit's name and the slot's label.
+
+- **Its `raw_key`** is `cbuild_slot`, and its `display` wraps the words in `<span class="cbuild-part">`.
+- **From 0.6.0 the slot's label,** in brackets, has a `<span class="cbuild-part__slot">` of its own inside it, which the plugin's styles hide on a row whose name already starts with the slot; the Mini-Cart's rows, which run no line filter, keep it.
+- **Grouping.** A theme or a cart drawer that prints a line's item data can group a build's parts by that class, as the Mini-Cart's styles do.
 
 **Classes.** A theme or a cart drawer may style these or group a build's lines by them:
 
@@ -587,7 +692,12 @@ A kit's line raised past what the shop has of a part is refused as `cbuild_build
 
 The kit is virtual, so it is in no shipping package, and each part ships as the product it is.
 
-**Express pay.** The plugin answers four filters of two payment plugins, so that neither offers Apple Pay or Google Pay on a kit's page: `wc_stripe_hide_payment_request_on_product_page` (true for a kit) and `wc_stripe_payment_request_supported_types` of WooCommerce Stripe Gateway, and `wcpay_payment_request_is_product_supported` (false for a kit) and `wcpay_payment_request_supported_types` of WooPayments. A kit that reaches the cart with no build is refused whichever way it comes.
+**Express pay.** The plugin answers four filters of two payment plugins, so that neither offers Apple Pay or Google Pay on a kit's page:
+
+- **WooCommerce Stripe Gateway:** `wc_stripe_hide_payment_request_on_product_page` (true for a kit) and `wc_stripe_payment_request_supported_types`;
+- **WooPayments:** `wcpay_payment_request_is_product_supported` (false for a kit) and `wcpay_payment_request_supported_types`.
+
+A kit that reaches the cart with no build is refused whichever way it comes.
 
 ### Order item keys
 
@@ -602,7 +712,9 @@ Both checkouts write them, on `woocommerce_checkout_create_order_line_item`. The
 | `_cbuild_slot` | 0.5.0 | A part's item | The key of the slot it fills. |
 | `_cbuild_snapshot` | 0.5.0 | The kit's item | The build as sold, the document `schema/order-snapshot.json` describes, with a version of its own that moves only when this document does: `schema_version` (1), `kit`, `assembly` and `picks`, slot key to `label` (the slot's, as the shopper read it), `name` (the part's), `sku` (the part's SKU when it was sold, empty where it had none), `part` (its product ID), `quantity` (how many one build takes) and `specs` (spec key to value, as the index held them). Then `lead_time` and `returns_notice`, the kit's own as the shopper read them, each empty for a build the shop does not assemble. |
 
-The kit's item also carries two lines without an underscore, which WooCommerce shows wherever it shows an item's meta: Assembly (Yes or No) and Build (each slot's label, part and quantity). Their names and values are written in the shop's language as the order is placed. They are for people to read. Code reads `_cbuild_snapshot`, and never those two: their keys are translated words, so they differ from one shop's language to the next and on one shop when its language changes.
+The kit's item also carries two lines without an underscore, which WooCommerce shows wherever it shows an item's meta: Assembly (Yes or No) and Build (each slot's label, part and quantity). Their names and values are written in the shop's language as the order is placed.
+
+They are for people to read. Code reads `_cbuild_snapshot`, and never those two: their keys are translated words, so they differ from one shop's language to the next and on one shop when its language changes.
 
 `_cbuild_id` is what ties a build: every item with the same one is the same build, and it survives anything that gives the items new IDs. `_cbuild_parent` and `_cbuild_children` are worked out from it and hold order item IDs, so code that copies or remakes an order's items (a renewal, a duplicate, a refund's lines) ties them again from `_cbuild_id` and `_cbuild_role` and does not carry the two over.
 
@@ -629,7 +741,12 @@ The plugin writes a link in one order: the kit's slots in step order, then the s
 
 No slot is keyed `step`, `assembly`, `preset` or `review`; a slots document with one is refused as `document_bad_key`. A kit saved by 0.4.0 or 0.5.0 with one has it renamed `<key>_slot` on upgrade (D-169).
 
-Keys that start with an underscore are the builder's own forms' and are not part of a shared link. They may change in any release: `_was` (the picks before a change, slot key to part ID), `_brand` and `_size` (the step's filters), `_shown` (how many options the step lists), `_on` (the step whose form was sent: its filters and Show more count only on it) and `_replace` (the build in the cart an add takes the place of); from 1.0.0, `_width`, `_chips`, `_q` and `_sort` (the step's shelf, as the state route's arguments of those names), and `_saved` (the saved build My builds opened, checked against the shop once, D-278). A slot's key starts with a letter, so none can be one.
+Keys that start with an underscore are the builder's own forms' and are not part of a shared link. They may change in any release:
+
+- `_was` (the picks before a change, slot key to part ID), `_brand` and `_size` (the step's filters), `_shown` (how many options the step lists), `_on` (the step whose form was sent: its filters and Show more count only on it) and `_replace` (the build in the cart an add takes the place of);
+- from 1.0.0, `_width`, `_chips`, `_q` and `_sort` (the step's shelf, as the state route's arguments of those names), and `_saved` (the saved build My builds opened, checked against the shop once, D-278).
+
+A slot's key starts with a letter, so none can be one.
 
 ### What the state route's answer gains
 
@@ -666,11 +783,29 @@ The published schema no longer closes its objects (`additionalProperties`), so a
 | --- | --- | --- |
 | `creative-skateboard-builder/builder` | 0.6.0 | The builder for one kit, on any page or post. Its attribute `kit` (integer, default `0`) is the kit product's ID. From 1.0.0, `0` on a kit's own page is that kit, as the kit template has it, and `title` (boolean, default `false`) prints the product's name as the page's h1, for a template with no title of its own. From 1.0.0 the block takes the editor's alignment, spacing, colours and font size on the builder's root, and `align` (string, default `full`) is full width unless the editor chose otherwise (D-283). A kit that is a draft, private or password-protected, a product that is no kit, and `0` anywhere else render nothing. The block can be used once in a post (`supports.multiple: false`), and a page shows one builder: the first one rendered, the kit's own page included. |
 
-The kit's own product page shows the same builder. From 1.0.0, in a block theme a kit's page takes the template `creative-skateboard-builder//cbuild-kit` (Templates in the Site Editor, "Skateboard kit"), put first in `single_template_hierarchy`: the theme's header, the block with `title`, the product's details, and the theme's footer. The shop may edit it. In a classic theme the builder renders at `woocommerce_before_single_product_summary`, priority 5, at the page's width, with the product's name as its h1, and the summary's title (`woocommerce_template_single_title`) and form (`woocommerce_template_single_add_to_cart`) are left out for kits. Elsewhere, as in a page builder's product template, it renders where WooCommerce asks a product type for its add-to-cart area (`woocommerce_cbuild_kit_add_to_cart`), as in the Add to Cart form block, and adds no h1. Each has a link back to the shop page at the panel's head. Where the kit's Builder page (from 1.2.0) or `cbuild_builder_url` names another page, the kit's page sends a visitor there instead, with the build in their address, by a 302. Both are rendered on the server, and the template's markup and the store's state are the builder's own: they may change in any release, and are no part of this API. With JavaScript, the store asks the state route for each move with `cbuild` and `page`, and shows the answer's `view` without loading the page. The store, `creative-skateboard-builder`, is private and locked: no other script can read or change it (D-148).
+The kit's own product page shows the same builder:
 
-A page that holds a builder and carries a `cbuild` query, whatever it holds, says `noindex, follow` through `wp_robots`, and through `wpseo_robots_array` where Yoast SEO prints its own robots tag. Its canonical through `get_canonical_url` is the page without `cbuild`, so a canonical another filter wrote with the build in it is made clean. Yoast SEO prints no canonical on a noindex page. An SEO plugin that reads neither filter is asked to do the same through its own (D-147).
+- **From 1.0.0, in a block theme** a kit's page takes the template `creative-skateboard-builder//cbuild-kit` (Templates in the Site Editor, "Skateboard kit"), put first in `single_template_hierarchy`: the theme's header, the block with `title`, the product's details, and the theme's footer. The shop may edit it.
+- **In a classic theme** the builder renders at `woocommerce_before_single_product_summary`, priority 5, at the page's width, with the product's name as its h1, and the summary's title (`woocommerce_template_single_title`) and form (`woocommerce_template_single_add_to_cart`) are left out for kits.
+- **Elsewhere,** as in a page builder's product template, it renders where WooCommerce asks a product type for its add-to-cart area (`woocommerce_cbuild_kit_add_to_cart`), as in the Add to Cart form block, and adds no h1.
+- **Each has a link back** to the shop page at the panel's head.
+- **Another page.** Where the kit's Builder page (from 1.2.0) or `cbuild_builder_url` names another page, the kit's page sends a visitor there instead, with the build in their address, by a 302.
 
-From 0.7.0, such a page carries a share card: Open Graph and X card tags with the build's name, its total, the build link as `og:url`, its brackets encoded as `%5B` and `%5D`, and the build's composed picture, or the deck's photo or else its layer image until the picture is made. While the card falls back that way, the page defines `DONOTCACHEPAGE` and sends `nocache_headers()` at `template_redirect`, so page caches keep no copy of it; once the picture is made it caches as any other. A build that could not go to the cart, a part sold out or no longer offered, has no card of the plugin's (D-212). With no SEO plugin active, the plugin prints them itself in `wp_head`, at priority 5. With Yoast SEO, they go through `wpseo_opengraph_title`, `wpseo_opengraph_desc` and `wpseo_opengraph_url`, and the picture replaces the page's Open Graph images on the presentation `wpseo_frontend_presentation` passes, all at priority 20, so a later answer of the shop's still wins. Where Rank Math, SEOPress or All in One SEO is active, the plugin prints no tags, so the page never has two sets. A build that could go to the cart asks for its picture when its link is opened (D-200).
+**Both are rendered on the server,** and the template's markup and the store's state are the builder's own: they may change in any release, and are no part of this API. With JavaScript, the store asks the state route for each move with `cbuild` and `page`, and shows the answer's `view` without loading the page. The store, `creative-skateboard-builder`, is private and locked: no other script can read or change it (D-148).
+
+A page that holds a builder and carries a `cbuild` query, whatever it holds, says `noindex, follow` through `wp_robots`, and through `wpseo_robots_array` where Yoast SEO prints its own robots tag.
+
+- **Its canonical** through `get_canonical_url` is the page without `cbuild`, so a canonical another filter wrote with the build in it is made clean. Yoast SEO prints no canonical on a noindex page.
+- **An SEO plugin that reads neither filter** is asked to do the same through its own (D-147).
+
+**From 0.7.0, such a page carries a share card:** Open Graph and X card tags with the build's name, its total, the build link as `og:url`, its brackets encoded as `%5B` and `%5D`, and the build's composed picture, or the deck's photo or else its layer image until the picture is made.
+
+- **While the card falls back** that way, the page defines `DONOTCACHEPAGE` and sends `nocache_headers()` at `template_redirect`, so page caches keep no copy of it; once the picture is made it caches as any other.
+- **A build that could not go to the cart,** a part sold out or no longer offered, has no card of the plugin's (D-212).
+- **With no SEO plugin active,** the plugin prints them itself in `wp_head`, at priority 5.
+- **With Yoast SEO,** they go through `wpseo_opengraph_title`, `wpseo_opengraph_desc` and `wpseo_opengraph_url`, and the picture replaces the page's Open Graph images on the presentation `wpseo_frontend_presentation` passes, all at priority 20, so a later answer of the shop's still wins.
+- **Where Rank Math, SEOPress or All in One SEO is active,** the plugin prints no tags, so the page never has two sets.
+- **A build that could go to the cart** asks for its picture when its link is opened (D-200).
 
 ### Filters
 
@@ -685,16 +820,30 @@ From 0.7.0, such a page carries a share card: Open Graph and X card tags with th
 
 ### Adding a build: `replace`
 
-From 0.6.0, `cbuild` on either route of Adding a build (0.5.0, above) takes `replace`: the `id` of a build in the shopper's cart, as its kit's line holds it under `cbuild`. As JSON, `"cbuild": { "picks": { … }, "replace": "<id>" }`; as a field, `cbuild[replace]=<id>`. The new build is judged and added as any other is; only once all of it is in the cart is the build `replace` names taken out, its kit's line and its parts'. A build the cart refuses leaves the one before it as it was. A `replace` that names no build in this cart, or is no identifier, takes nothing out. The builder's review sends it when Edit build opened it (D-157).
+From 0.6.0, `cbuild` on either route of Adding a build (0.5.0, above) takes `replace`: the `id` of a build in the shopper's cart, as its kit's line holds it under `cbuild`. As JSON, `"cbuild": { "picks": { … }, "replace": "<id>" }`; as a field, `cbuild[replace]=<id>`.
+
+- **The new build** is judged and added as any other is; only once all of it is in the cart is the build `replace` names taken out, its kit's line and its parts'.
+- **A build the cart refuses** leaves the one before it as it was.
+- **A `replace` that names no build** in this cart, or is no identifier, takes nothing out.
+- **The builder's review** sends it when Edit build opened it (D-157).
 
 ### Edit build on a kit's line
 
-Each kit's line in the cart has two item data entries from 0.6.0.
-The first, `raw_key` `cbuild_assembly`, keyed "Assembly", says what the line charges: the fee as the cart shows prices, "free", or "not added" for a build the shop does not assemble; a classic cart prints no price or subtotal on the kit's line, and an order's line subtotal says "Assembly: …" in the same words. The second, `raw_key` `cbuild_edit`, has an empty key, so the blocks print the link alone, and its `display` is a link with the class `cbuild-edit`. The link is the kit's builder, where `cbuild_builder_url` says it is, at the review, with the build's parts and assembly and `cbuild[_replace]`, the build's `id`. The Cart and Checkout blocks, the Mini-Cart and a classic cart all print it.
+Each kit's line in the cart has two item data entries from 0.6.0:
+
+- **Assembly.** The first, `raw_key` `cbuild_assembly`, keyed "Assembly", says what the line charges: the fee as the cart shows prices, "free", or "not added" for a build the shop does not assemble; a classic cart prints no price or subtotal on the kit's line, and an order's line subtotal says "Assembly: …" in the same words.
+- **Edit build.** The second, `raw_key` `cbuild_edit`, has an empty key, so the blocks print the link alone, and its `display` is a link with the class `cbuild-edit`. The link is the kit's builder, where `cbuild_builder_url` says it is, at the review, with the build's parts and assembly and `cbuild[_replace]`, the build's `id`.
+
+The Cart and Checkout blocks, the Mini-Cart and a classic cart all print it.
 
 ### Styling the builder
 
-The builder's stylesheet is the Builder block's `style` (`build/builder/style-index.css`, handle `creative-skateboard-builder-builder-style`), loaded wherever a builder renders, on a kit's own page as in the block. Its rules sit inside `:where()`, so a theme overrides any of them with a single class; only `.cbuild [hidden]`, `.cbuild .screen-reader-text` and, from 1.0.0, the focus ring are outside it, the ring so that it wins over a theme's own focus style on a button or a link (D-229). Its classes are BEM under the `cbuild-` prefix, on the builder's root `.cbuild`, and its templates are not for overriding (docs/STANDARDS.md). A theme restyles it most simply by setting these on `.cbuild` (D-159 to D-162):
+The builder's stylesheet is the Builder block's `style` (`build/builder/style-index.css`, handle `creative-skateboard-builder-builder-style`), loaded wherever a builder renders, on a kit's own page as in the block.
+
+- **Its rules sit inside `:where()`,** so a theme overrides any of them with a single class; only `.cbuild [hidden]`, `.cbuild .screen-reader-text` and, from 1.0.0, the focus ring are outside it, the ring so that it wins over a theme's own focus style on a button or a link (D-229).
+- **Its classes are BEM** under the `cbuild-` prefix, on the builder's root `.cbuild`, and its templates are not for overriding (docs/STANDARDS.md).
+
+A theme restyles it most simply by setting these on `.cbuild` (D-159 to D-162):
 
 | Property | Since | What it sets | Falls back to |
 | --- | --- | --- | --- |
@@ -781,11 +930,17 @@ The builder also sends WooCommerce's own `wc-blocks_added_to_cart` on `document.
 | My account endpoint `my-builds` | 0.8.0 | My builds: each of the signed-in customer's saved builds with its picture, name, total today and the date it was saved, and Open, Rename and Delete. Added through WooCommerce's `woocommerce_get_query_vars`, with its menu item before Log out (`woocommerce_account_menu_items`). A shop that wants it elsewhere in the menu reorders that filter's answer at a later priority. |
 | `cbuild_saved` | 0.8.0 | The query parameter Open adds: the saved build's UUID. Read only on its owner's page, where Save build then updates that build. Another customer's page, and a visitor's, ignore it; no build link, Copy link or `og:url` carries it. |
 
-Save build, Rename, Delete and, from 0.9.0, Undo (the action `cbuild_restore_build`) are forms posted to My builds with a nonce each, answered on `template_redirect`. Their fields are the builder's own and no part of this API (D-217, D-231). The phone bar's estimate line, `.cbuild-bar__estimate` (1.0.0, D-230), is the builder's own markup, as the rest of the bar is. From 1.1.0 the footer's Next carries `aria-disabled="true"` while the step has no pick, and `.cbuild-bar__missing` says what is missing when it is pressed (#100, D-310); both are the builder's own markup too. There is no REST route for saved builds.
+Save build, Rename, Delete and, from 0.9.0, Undo (the action `cbuild_restore_build`) are forms posted to My builds with a nonce each, answered on `template_redirect`. Their fields are the builder's own and no part of this API (D-217, D-231).
+
+- **The phone bar's estimate line,** `.cbuild-bar__estimate` (1.0.0, D-230), is the builder's own markup, as the rest of the bar is.
+- **From 1.1.0 the footer's Next** carries `aria-disabled="true"` while the step has no pick, and `.cbuild-bar__missing` says what is missing when it is pressed (#100, D-310); both are the builder's own markup too.
+- **There is no REST route** for saved builds.
 
 ### Styling the board's top
 
-The picture and the phone bar draw the board's top (#46) beside its underside, as `.cbuild-board.cbuild-board--top`, and show one side at a time: the picture has `cbuild-picture--top` and the bar's link `cbuild-bar__picture--top` while the top is shown, and `--turning` while the board turns over (with JavaScript, never on load). Each of the top's layers is a `span.cbuild-board__layer` placed by the four `--cbuild-layer-*` properties above, and the builder sets these on it for the stylesheet to paint; a theme does not set them:
+The picture and the phone bar draw the board's top (#46) beside its underside, as `.cbuild-board.cbuild-board--top`, and show one side at a time: the picture has `cbuild-picture--top` and the bar's link `cbuild-bar__picture--top` while the top is shown, and `--turning` while the board turns over (with JavaScript, never on load).
+
+Each of the top's layers is a `span.cbuild-board__layer` placed by the four `--cbuild-layer-*` properties above, and the builder sets these on it for the stylesheet to paint; a theme does not set them:
 
 | Property | Since | What it holds |
 | --- | --- | --- |
