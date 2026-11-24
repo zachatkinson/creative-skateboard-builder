@@ -240,14 +240,17 @@ final class StateAnswerDetailTest extends TestCase {
 		self::assertSame( array(), $presets[0]['problems'] );
 	}
 
-	// #104 (R1): a ready build whose deck the shop no longer has is left out of the answer's presets. A link that
+	// #104 (R1): a ready build whose deck the shop no longer has is listed in the answer's presets and not shown. A link that
 	// opens it (F6) still names the deck in the tile's words, since a ready build holds it; an ID no ready build holds
 	// is named by nothing.
-	public function test_a_preset_whose_part_has_gone_is_left_out_and_a_link_to_it_names_the_part(): void {
+	public function test_a_preset_whose_part_has_gone_is_not_shown_and_a_link_to_it_names_the_part(): void {
 		$parts                  = Shop::parts();
 		$parts[ SlotKey::DECK ] = array_values( array_filter( $parts[ SlotKey::DECK ], static fn( Part $part ): bool => 103 !== $part->id ) );
 		$this->stock( $parts, true );
-		self::assertSame( array( 'Street' ), array_column( $this->bare()->of( $this->state() )['presets'], 'name' ) );
+		$presets = $this->bare()->of( $this->state() )['presets'];
+		self::assertSame( array( 'Street', 'Park' ), array_column( $presets, 'name' ), 'every ready build, each at its place (the auditor\'s 1.1.0 should-fix 2)' );
+		self::assertSame( array( 0, 1 ), array_column( $presets, 'at' ) );
+		self::assertSame( array( true, false ), array_column( $presets, 'shown' ), 'Park is not shown' );
 
 		$refused = $this->bare()->of( $this->state( self::PARK, 'review' ) )['refused'];
 		self::assertSame( array( 'Deck: Part 103 is no longer offered here.' ), array_column( $refused, 'message' ) );

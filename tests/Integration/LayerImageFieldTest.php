@@ -207,6 +207,22 @@ final class LayerImageFieldTest extends IntegrationTestCase {
 		self::assertCount( 1, \WC_Admin_Meta_Boxes::$meta_box_errors, 'a deck is still a cut-out' );
 	}
 
+	// The auditor's 1.1.0 should-fix 1: a 1.0.x grip's swatch, about 51 pixels across, was set under the old sizes.
+	// Saving the product with the field as it was is no change, so the image is kept and not checked again (D-307).
+	public function test_a_grip_saved_with_the_swatch_it_already_has_keeps_it_with_no_notice(): void {
+		$grip   = self::part( 'grip' );
+		$swatch = LayerFiles::attachment( 51, 1626 );
+		$grip->update_meta_data( Options::META_LAYER, (string) $swatch );
+		$grip->save();
+
+		self::assertSame( (string) $swatch, $this->send( $grip, (string) $swatch )->get_meta( Options::META_LAYER, true ) );
+		self::assertSame( array(), \WC_Admin_Meta_Boxes::$meta_box_errors, 'nothing changed, so nothing is refused' );
+
+		$other = LayerFiles::attachment( 51, 1626 );
+		self::assertSame( (string) $swatch, $this->send( $grip, (string) $other )->get_meta( Options::META_LAYER, true ), 'another image that size is still checked' );
+		self::assertCount( 1, \WC_Admin_Meta_Boxes::$meta_box_errors );
+	}
+
 	public function test_an_avif_the_host_reads_is_saved_and_one_it_cannot_read_is_refused_with_its_own_reason(): void {
 		// Cowork's M7 review, F1 (D-210).
 		$deck = self::part( 'deck', array( 'deck_width' => '8.2500' ) );

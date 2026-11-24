@@ -398,8 +398,9 @@ final class BuilderView {
 
 	/**
 	 * The preset tiles (spec: Presets): on a build not yet begun, one for each preset the answer offers, with its total,
-	 * a line on who it is for, and any part that keeps it from the cart named. From 1.1.0 the answer offers none where
-	 * the kit's Show ready builds is off, and none with a part that's gone, sold out or no longer fits (#104). Each is
+	 * a line on who it is for, and any part that keeps it from the cart named. From 1.1.0 none where the kit's Show
+	 * ready builds is off, and none with a part that's gone, sold out or no longer fits: the answer says `shown` (#104,
+	 * D-336). Each is
 	 * a GET form whose button starts the build at the review (spec: Search, "Picks, filters, Show more and presets are
 	 * buttons in GET forms"), its fields the preset's part IDs as a build link writes them, each checked again when it
 	 * arrives.
@@ -415,12 +416,15 @@ final class BuilderView {
 		// At the start alone: on the first step, with nothing picked. A build begun is the shopper's own.
 		$first = $state->kit->slots->keys()[0] ?? '';
 		if ( array() === $link->picks && null === $link->preset && $first === $state->step ) {
-			// The answer lists the presets a shopper is offered, in the kit's order; each says its place among the kit's,
-			// which `cbuild[preset]` takes (#104).
+			// The answer lists every preset in the kit's order, each saying whether a shopper is offered it (#104) and its
+			// place among the kit's, which `cbuild[preset]` takes. One not shown has no tile (D-336).
 			foreach ( Cast::items( $answer['presets'] ?? null ) as $preset ) {
 				$preset = Cast::map( $preset );
-				$at     = Cast::int( $preset['at'] ?? null );
-				$picks  = array();
+				if ( false === ( $preset['shown'] ?? true ) ) {
+					continue;
+				}
+				$at    = Cast::int( $preset['at'] ?? null );
+				$picks = array();
 				foreach ( Cast::items( $preset['picks'] ?? null ) as $pick ) {
 					$pick                                        = Cast::map( $pick );
 					$picks[ Cast::str( $pick['slot'] ?? null ) ] = Cast::int( $pick['part'] ?? null );
@@ -439,7 +443,7 @@ final class BuilderView {
 					);
 				}
 				// One line a slot: a part refused comes first and leaves its slot empty, which says the same again. From
-				// 1.1.0 the answer offers only presets with nothing keeping them from the cart (#104), so a tile has none.
+				// 1.1.0 the answer shows only presets with nothing keeping them from the cart (#104), so a tile has none.
 				$notes = array();
 				$whole = true;
 				foreach ( Cast::items( $preset['problems'] ?? null ) as $problem ) {
@@ -1862,8 +1866,8 @@ final class BuilderView {
 		$shown = Shelf::BRAND === $name;
 		$texts = array();
 		for ( $left = 1; $shown && $left <= $count; $left++ ) {
-			/* translators: %s: how many more chips there are, such as 7. The button opens them. */
-			$texts[] = sprintf( _n( '%s more', '%s more', $left, 'creative-skateboard-builder' ), number_format_i18n( $left ) );
+			/* translators: %s: how many more brands there are to filter by, such as 7. The button shows their chips. */
+			$texts[] = sprintf( _n( '%s more brand', '%s more brands', $left, 'creative-skateboard-builder' ), number_format_i18n( $left ) );
 		}
 		return array(
 			'shown' => $shown,

@@ -137,6 +137,36 @@ final class ComposedPicturesTest extends TestCase {
 		self::assertSame( $names, array_keys( $this->files->drawn ), 'the same build is the same three names' );
 	}
 
+	// The auditor's 1.1.0 minor 7: a cart's line asks on every view until its picture is made. wanted() reads the build's
+	// parts once a call, and asks the queue once a picture for the life of the service, a request.
+	public function test_a_picture_wanted_is_read_once_a_call_and_asked_for_once_a_request(): void {
+		$readings = $this->kits->readings;
+		self::assertNull( $this->pictures->wanted( self::KIT, self::STREET, ComposedPictures::CART ) );
+		self::assertSame( $readings + 1, $this->kits->readings, 'one read of the parts' );
+		self::assertSame( array( array( Options::JOB_COMPOSE_PICTURE, array( 'kit' => self::KIT, 'picks' => self::STREET ) ) ), $this->queue->distinct, 'asked for, as a page asks' );
+
+		$this->queue->distinct = array();
+		self::assertNull( $this->pictures->wanted( self::KIT, self::STREET, ComposedPictures::CART ) );
+		self::assertSame( array(), $this->queue->distinct, 'not asked again' );
+
+		$this->answers->answers = array( 101 => array( ComposedPictures::CART => ComposedLayers::BLURRED ) );
+		self::assertNull( $this->pictures->wanted( self::KIT, self::STREET, ComposedPictures::CART ) );
+		self::assertCount( 1, $this->queue->distinct, 'a picture of another name is asked for' );
+		$this->answers->answers = array();
+
+		$this->pictures->compose( self::KIT, self::STREET );
+		$url = $this->pictures->wanted( self::KIT, self::STREET, ComposedPictures::CART );
+		self::assertSame( $this->pictures->url( self::KIT, self::STREET, ComposedPictures::CART ), $url );
+		self::assertNotNull( $url );
+		self::assertSame( array( basename( $url ) => self::NOW ), array_intersect_key( $this->files->used, array( basename( $url ) => true ) ), 'marked as shown' );
+
+		self::assertNull( $this->pictures->wanted( self::KIT, array( SlotKey::DECK => 999 ), ComposedPictures::CART ), 'a part gone' );
+		$this->files->library  = null;
+		$this->queue->distinct = array();
+		self::assertNull( $this->pictures->wanted( self::KIT, array( SlotKey::DECK => 101 ), ComposedPictures::CART ) );
+		self::assertSame( array(), $this->queue->distinct, 'a host that can\'t draw it asks nothing' );
+	}
+
 	// D-252: a rider build's tile shows the build's composed picture, asked for as a page asks until it is made.
 	public function test_a_presets_tile_has_its_picture_once_made_and_asks_for_it_until_then(): void {
 		self::assertNull( $this->pictures->tile( self::KIT, self::STREET ) );
@@ -347,6 +377,24 @@ final class ComposedPicturesTest extends TestCase {
 
 		$this->answers->answers = array();
 		self::assertSame( $sharp, $this->pictures->url( self::KIT, self::STREET, ComposedPictures::SHARE ), 'the flag lifted, the sharp one is found again' );
+	}
+
+	// The auditor's 1.1.0 minor 5: the service alone reads the filter's answer, so an answer it doesn't know, whatever
+	// the port hands it, is drawn as it is, under the name the pictures as they are have.
+	public function test_an_answer_that_is_none_of_the_three_draws_the_layer_as_it_is(): void {
+		$this->answers->answers = array( 101 => array_fill_keys( array_keys( ComposedPictures::CANVASES ), 'junk' ) );
+		self::assertSame( 3, $this->pictures->compose( self::KIT, self::STREET ) );
+		self::assertCount( 3, $this->files->drawn );
+		foreach ( $this->files->drawn as $composition ) {
+			self::assertSame( array( 10, false ), array( $composition->placements[0]->attachment, $composition->placements[0]->blurred ), 'the deck drawn sharp' );
+		}
+		foreach ( array_keys( ComposedPictures::CANVASES ) as $use ) {
+			self::assertTrue( $this->pictures->shown( self::KIT, SlotKey::DECK, 101, $use ), $use );
+		}
+		$junk = $this->pictures->url( self::KIT, self::STREET, ComposedPictures::SHARE );
+		self::assertNotNull( $junk );
+		$this->answers->answers = array();
+		self::assertSame( $junk, $this->pictures->url( self::KIT, self::STREET, ComposedPictures::SHARE ), 'the name the pictures as they are have' );
 	}
 
 	public function test_a_build_whose_every_layer_is_left_out_has_no_picture_to_draw(): void {

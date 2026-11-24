@@ -2618,10 +2618,10 @@ test.describe( 'The brand chips in one row', () => {
 		await expect( more ).toBeHidden();
 		await small.evaluate( ( style ) => ( style as Element ).remove() );
 
-		// Each chip at least 15rem wide: some fit beside the button, never all.
+		// Each chip at least 12rem wide: some fit beside the button, never all. 15rem left none beside "N more brands".
 		await page.addStyleTag( {
 			content:
-				'.cbuild .cbuild-chips__group:first-of-type .cbuild-chip { min-inline-size: 15rem; }',
+				'.cbuild .cbuild-chips__group:first-of-type .cbuild-chip { min-inline-size: 12rem; }',
 		} );
 		await expect( more ).toBeVisible();
 		await expect( more ).toHaveAttribute( 'aria-expanded', 'false' );
@@ -2799,7 +2799,7 @@ test.describe( 'The brand chips in one row', () => {
 				const response = await route.fetch();
 				const body = ( await response.text() ).replace(
 					'</head>',
-					'<style>.cbuild .cbuild-chips__group:first-of-type .cbuild-chip { min-inline-size: 15rem; }</style></head>'
+					'<style>.cbuild .cbuild-chips__group:first-of-type .cbuild-chip { min-inline-size: 12rem; }</style></head>'
 				);
 				await route.fulfill( { response, body } );
 			}
@@ -3170,6 +3170,25 @@ test.describe( "A theme's own fieldset, button and heading rules (#96)", () => {
 				'.cbuild__stage .cbuild-picture__turn button'
 			);
 			await expect( turn ).toBeVisible();
+			// The picture is a grid whatever the theme's rule for a figure (Storefront's normalize sets every figure to a
+			// block), so the button keeps its row under the board and nothing of the board lies over it.
+			await expect(
+				page.locator( '.cbuild__stage .cbuild-picture' )
+			).toHaveCSS( 'display', 'grid' );
+			expect(
+				await turn.evaluate( ( button ) => {
+					button.scrollIntoView( { block: 'center' } );
+					const box = button.getBoundingClientRect();
+					const top = document.elementFromPoint(
+						box.x + box.width / 2,
+						box.y + box.height / 2
+					);
+					return button.contains( top )
+						? 'the button'
+						: top?.outerHTML.slice( 0, 120 );
+				} ),
+				"what is on top of the button's middle"
+			).toBe( 'the button' );
 			// A plain button is drawn second to the step's one action: no fill and no shadow of the theme's, at rest or
 			// under the pointer, whose rule on Kadence outweighs a single class.
 			for ( const state of [ 'at rest', 'under the pointer' ] ) {
@@ -3697,6 +3716,7 @@ test.describe( "The builder's styles", () => {
 	test( 'says the chosen card and the focus by a border and an outline in forced colours', async ( {
 		page,
 		browserName,
+		javaScriptEnabled,
 	} ) => {
 		test.skip(
 			'chromium' !== browserName,
@@ -3724,11 +3744,15 @@ test.describe( "The builder's styles", () => {
 		// The click's answer drawn before the arrow, so the arrow's choice is never drawn over by it. Waited for by the
 		// answer itself: the pick asks 150 ms after the click (D-308), so aria-busy can still be false before it asks,
 		// and under load the answer came after the arrow (three lanes, 23 November).
-		const picked = page.waitForResponse(
-			( response ) =>
-				response.url().includes( '/state' ) &&
-				response.url().includes( 'wheels' )
-		);
+		// Without the script a click only checks the radio: nothing is asked.
+		const picked =
+			false === javaScriptEnabled
+				? Promise.resolve()
+				: page.waitForResponse(
+						( response ) =>
+							response.url().includes( '/state' ) &&
+							response.url().includes( 'wheels' )
+					);
 		await cards.first().click();
 		await picked;
 		await expect( page.locator( '.cbuild' ) ).toHaveAttribute(
@@ -3741,7 +3765,9 @@ test.describe( "The builder's styles", () => {
 				.evaluate( ( card ) =>
 					parseFloat( getComputedStyle( card ).borderTopWidth )
 				);
-		expect( await width( 0 ) ).toBeGreaterThanOrEqual( 3 );
+		// Polled: under load the answer is drawn a task after it comes, and aria-busy can read false before it is (three
+		// lanes, the M11 audit's /verify: "Expected: >= 3 / Received: 1").
+		await expect.poll( () => width( 0 ) ).toBeGreaterThanOrEqual( 3 );
 		expect( await width( 1 ) ).toBeLessThan( 3 );
 		// Next in either direction of text; ArrowRight is the previous radio right to left.
 		await page.keyboard.press( 'ArrowDown' );
@@ -4984,7 +5010,17 @@ test.describe( 'The board turned over', () => {
 					[ 'builder-test-deck-8-5', '102.857% 103.125%' ],
 				] as const ) {
 					const seen = await drawn( deck );
-					expect( seen.size, `${ name } on ${ deck }` ).toBe( size );
+					// As numbers to three places: WebKit writes the percentage it computed to six (104.761902%).
+					expect(
+						seen.size
+							.split( ' ' )
+							.map( ( part ) => parseFloat( part ).toFixed( 3 ) ),
+						`${ name } on ${ deck }`
+					).toEqual(
+						size
+							.split( ' ' )
+							.map( ( part ) => parseFloat( part ).toFixed( 3 ) )
+					);
 					expect( seen.repeat, 'drawn once' ).toBe( 'no-repeat' );
 					expect( seen.position, 'centred' ).toBe( '50% 50%' );
 					expect(
@@ -6689,7 +6725,9 @@ test.describe( 'Compact deck cards (F14)', () => {
 		await expect( drawn ).toHaveClass( /cbuild-card__photo--drawn/ );
 		// The layer image's WebP renditions, made for the picture (D-194, D-214), offered at the card's small size.
 		await expect( drawn ).toHaveAttribute( 'srcset', /\.webp \d+w/ );
-		await expect( drawn ).toHaveAttribute( 'sizes', /^\d+px$/ );
+		// The server's markup keeps core's `auto, ` for a lazy image (wp-includes/media.php:1267, 2165); the store's re-render has
+		// the size alone. Either way the rendition is chosen for the card's small size.
+		await expect( drawn ).toHaveAttribute( 'sizes', /^(auto, )?\d+px$/ );
 		const shape = await drawn.evaluate( ( image ) => ( {
 			width: Number( image.getAttribute( 'width' ) ),
 			height: Number( image.getAttribute( 'height' ) ),

@@ -1499,11 +1499,16 @@
  */
 :where(.cbuild__stage .cbuild-picture) {
 	position: relative;
-	display: grid;
 	grid-template-rows: auto auto minmax(0, 1fr) auto auto;
 	align-content: start;
 	block-size: 100%;
 	min-block-size: 0;
+}
+
+/* The picture is a <figure>, and a theme's plain rule for one outranks a rule with no weight: Storefront's normalize
+   makes every figure a block, and the board then lay over the button in Firefox. One class, as the resets (D-321). */
+.cbuild :where(.cbuild__stage .cbuild-picture) {
+	display: grid;
 }
 
 :where(.cbuild__stage) :where(.cbuild-board:not(.cbuild-board--bar)) {

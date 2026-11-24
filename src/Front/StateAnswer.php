@@ -394,12 +394,13 @@ final class StateAnswer {
 		foreach ( $state->steps as $step ) {
 			$begun = $begun || null !== $step->counted();
 		}
-		// The presets a shopper is offered (#104): none where the kit's Show ready builds is off, and none a problem keeps
-		// from the cart. Each keeps its place among the kit's for the filters and says it in `at`, and the Catalogue check
-		// lists the rest.
-		foreach ( $state->shownPresets() as $at ) {
-			$preset = $state->kit->presets[ $at ];
-			$picks  = array();
+		// Every preset, in the kit's order, so an entry's place is its `cbuild[preset]` as in 1.0 (the auditor's 1.1.0
+		// should-fix 2, D-336). Each says whether a shopper is offered it (#104): not where the kit's Show ready builds is
+		// off, nor where a problem keeps it from the cart, which the Catalogue check lists. The page leaves those out.
+		$tiled = $state->shownPresets();
+		foreach ( $state->kit->presets as $at => $preset ) {
+			$shown = in_array( $at, $tiled, true );
+			$picks = array();
 			foreach ( $preset->picks as $slot => $part ) {
 				$picks[] = compact( 'slot', 'part' );
 			}
@@ -407,12 +408,15 @@ final class StateAnswer {
 			$kept      = null === $built ? array() : $built->problems();
 			$first     = self::first( $preset->picks );
 			$presets[] = array(
-				// From 1.1.0: its place among the kit's, which `cbuild[preset]` takes, as the list leaves some out.
+				// From 1.1.0: its place among the kit's, which `cbuild[preset]` takes, and its own in the list.
 				'at'          => $at,
+				// From 1.1.0: whether the builder shows its tile (#104).
+				'shown'       => $shown,
 				'name'        => self::preset( $preset->name, $at, $state->id ),
 				'description' => self::text( $preset->description, 'preset_description', $state->id, (string) $at ),
 				'picks'       => $picks,
-				'image'       => $this->tile( $state->id, $preset->picks, $preset->image, $begun ) ?? ( null === $first ? null : ( $cards[ $first ]['image'] ?? null ) ),
+				// A tile not shown asks for no picture to be made: its first part's photo will do.
+				'image'       => $this->tile( $state->id, $preset->picks, $preset->image, $begun || ! $shown ) ?? ( null === $first ? null : ( $cards[ $first ]['image'] ?? null ) ),
 				'total'       => $money( $built->quote->total ?? 0 ),
 				'ready'       => array() === $kept,
 				// What keeps it from the cart, each part named for its tile (spec: Presets).

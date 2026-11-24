@@ -24,7 +24,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 final class WpComposedLayers implements ComposedLayers {
 
 	/**
-	 * How a part is drawn in one use's picture.
+	 * How a part is drawn in one use's picture, as the filter answers it.
 	 *
 	 * @since 1.1.0
 	 *
@@ -49,6 +49,7 @@ final class WpComposedLayers implements ComposedLayers {
 		 * @param string $purpose  The picture's use: `cart`, `share` or `email`.
 		 */
 		$answer = apply_filters( 'cbuild_composed_layer', self::AS_IS, $part, $slot, $kit, $purpose );
-		return self::BLURRED === $answer || self::LEFT_OUT === $answer ? $answer : self::AS_IS;
+		// Handed on as it is: `ComposedPictures::answer()` alone reads it, and draws any other answer as it is.
+		return is_string( $answer ) ? $answer : self::AS_IS;
 	}
 }

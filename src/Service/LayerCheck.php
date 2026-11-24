@@ -123,8 +123,20 @@ final class LayerCheck {
 	 * @param int $part The product's or variation's ID.
 	 */
 	public function cutOut( int $part ): bool {
-		$slots = array_values( array_intersect( Layout::DRAWN, $this->kits->slotsOf( $part, ...array_column( $this->kits->all(), 'kit' ) ) ) );
-		return array() === $slots || Layout::cutOut( $slots[0] );
+		return self::cutOutIn( $this->kits->slotsOf( $part, ...array_column( $this->kits->all(), 'kit' ) ) );
+	}
+
+	/**
+	 * Whether the layer image of a part that fills these slots is a cut-out: the rule of the first one the picture
+	 * draws, and a cut-out's where it draws none. The one rule the Part specs panel and `cutOut()` ask.
+	 *
+	 * @since 1.1.0
+	 *
+	 * @param list<string> $slots The keys of the slots that take the part, in any kit.
+	 */
+	public static function cutOutIn( array $slots ): bool {
+		$drawn = array_values( array_intersect( Layout::DRAWN, $slots ) );
+		return array() === $drawn || Layout::cutOut( $drawn[0] );
 	}
 
 	/**

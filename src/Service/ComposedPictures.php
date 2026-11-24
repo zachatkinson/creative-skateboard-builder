@@ -142,6 +142,13 @@ final class ComposedPictures {
 	public const string FROM_PAGE = 'page';
 
 	/**
+	 * The pictures wanted() has asked for in the life of this service, by name.
+	 *
+	 * @var array<string, true>
+	 */
+	private array $wanted = array();
+
+	/**
 	 * Constructor.
 	 *
 	 * @since 0.7.0
@@ -275,8 +282,43 @@ final class ComposedPictures {
 	 */
 	public function url( int $kit, array $picks, string $purpose ): ?string {
 		$composition = $this->composition( $kit, $picks, $purpose );
-		$url         = null === $composition ? null : $this->files->url( $composition->name() );
-		if ( null !== $composition && null !== $url ) {
+		return null === $composition ? null : $this->found( $composition );
+	}
+
+	/**
+	 * A build's picture for one use, as a page that shows it on every view wants it: its address once made; until
+	 * then null, and it is asked for, as a page asks, where this host can draw it. The build's parts are read once a
+	 * call, and a picture is asked for once in the life of the service, a request, so a cart that shows a line in two
+	 * places, or a Mini-Cart on every page, asks the queue once for it (the auditor's 1.1.0 minor 7).
+	 *
+	 * @since 1.1.0
+	 *
+	 * @param int                $kit     The kit product's ID.
+	 * @param array<string, int> $picks   The part's ID for each slot filled.
+	 * @param string             $purpose One of CART, SHARE and EMAIL.
+	 */
+	public function wanted( int $kit, array $picks, string $purpose ): ?string {
+		$composition = $this->composition( $kit, $picks, $purpose );
+		if ( null === $composition ) {
+			return null;
+		}
+		$url  = $this->found( $composition );
+		$name = $composition->name();
+		if ( null === $url && ! isset( $this->wanted[ $name ] ) && null !== $this->files->library( $composition->canvas->type ) ) {
+			$this->wanted[ $name ] = true;
+			$this->ask( $kit, $picks, self::FROM_PAGE );
+		}
+		return $url;
+	}
+
+	/**
+	 * A composition's picture's address, marked as shown, or null while it is not made.
+	 *
+	 * @param Composition $composition The composition.
+	 */
+	private function found( Composition $composition ): ?string {
+		$url = $this->files->url( $composition->name() );
+		if ( null !== $url ) {
 			$this->files->used( $composition->name(), $this->clock->now()->getTimestamp() );
 		}
 		return $url;
@@ -469,7 +511,8 @@ final class ComposedPictures {
 	}
 
 	/**
-	 * How a part is drawn in a use's picture: AS_IS, BLURRED or LEFT_OUT.
+	 * How a part is drawn in a use's picture: AS_IS, BLURRED or LEFT_OUT, and AS_IS for any other answer. The one place
+	 * the port's answer is read (the auditor's 1.1.0 minor 5).
 	 *
 	 * @param int    $part The part's ID.
 	 * @param string $slot The slot's key.

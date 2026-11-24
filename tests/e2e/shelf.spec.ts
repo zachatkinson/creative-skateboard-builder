@@ -229,6 +229,15 @@ test.describe( 'A long step', () => {
 		if ( await filters.isVisible() ) {
 			await filters.click();
 		}
+		// On a desktop, a brand past the row waits behind "N more brands", which opens it in place (#98).
+		const more = page.locator( '.cbuild-chips__more' ).first();
+		if (
+			( await more.isVisible() ) &&
+			'false' === ( await more.getAttribute( 'aria-expanded' ) ) &&
+			! ( await alder.isVisible() )
+		) {
+			await more.click();
+		}
 		await expect( alder.locator( 'input' ) ).toHaveAccessibleName(
 			'Alder, 12'
 		);

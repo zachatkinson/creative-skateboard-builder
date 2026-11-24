@@ -219,7 +219,8 @@ final class BuilderTest extends TestCase {
 			$parts
 		);
 		$shown = $this->show( new BuildLink() );
-		self::assertSame( array(), $shown['answer']['presets'], 'a part gone' );
+		self::assertSame( array( 'Street' ), array_column( $shown['answer']['presets'], 'name' ), 'a part gone: still listed, at its place (the auditor\'s 1.1.0 should-fix 2)' );
+		self::assertSame( array( false ), array_column( $shown['answer']['presets'], 'shown' ) );
 		self::assertFalse( $shown['view']['presets']['shown'] );
 		self::assertSame( array(), $shown['view']['presets']['tiles'] );
 
@@ -243,10 +244,13 @@ final class BuilderTest extends TestCase {
 			$parts
 		);
 		$shown = $this->show( new BuildLink() );
-		self::assertSame( array( 'Street' ), array_column( $shown['answer']['presets'], 'name' ), 'a part sold out' );
+		self::assertSame( array( 'Park', 'Street' ), array_column( $shown['answer']['presets'], 'name' ), 'a part sold out: every ready build listed' );
+		self::assertSame( array( 0, 1 ), array_column( $shown['answer']['presets'], 'at' ) );
+		self::assertSame( array( false, true ), array_column( $shown['answer']['presets'], 'shown' ), 'Park is not shown' );
 		self::assertSame( array( 'Start from Street' ), array_column( $shown['view']['presets']['tiles'], 'button' ) );
 		self::assertContains( array( 'name' => 'cbuild[preset]', 'value' => '1' ), $shown['view']['presets']['tiles'][0]['fields'], 'its place among the kit\'s' );
-		self::assertTrue( $shown['answer']['presets'][0]['ready'] );
+		self::assertFalse( $shown['answer']['presets'][0]['ready'] );
+		self::assertTrue( $shown['answer']['presets'][1]['ready'] );
 	}
 
 	// #104 (R1): Show ready builds, off, hides the section on the page and in the state answer, and keeps the ready
@@ -264,7 +268,8 @@ final class BuilderTest extends TestCase {
 		$kit     = Kit::fromDocuments( KitDocuments::slots(), KitDocuments::rules(), $presets, KitDocuments::assembly(), null, array( 'schema_version' => 1, 'show_presets' => false ) );
 		$this->kits->add( self::KIT, $kit, Shop::parts() );
 		$shown = $this->show( new BuildLink() );
-		self::assertSame( array(), $shown['answer']['presets'] );
+		self::assertSame( array( false ), array_column( $shown['answer']['presets'], 'shown' ), 'listed, and not shown' );
+		self::assertTrue( $shown['answer']['presets'][0]['ready'] );
 		self::assertFalse( $shown['view']['presets']['shown'] );
 		self::assertCount( 1, $shown['state']->kit->presets, 'kept as it is' );
 

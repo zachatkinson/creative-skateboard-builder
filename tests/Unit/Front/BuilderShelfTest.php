@@ -461,7 +461,8 @@ final class BuilderShelfTest extends TestCase {
 			array(
 				'shown' => true,
 				'id'    => 'cbuild-chips-wheels-brand',
-				'texts' => array( '1 more', '2 more', '3 more' ),
+				// Named for what it opens (the auditor's 1.1.0 minor 3): a button's name says what it does and to what.
+				'texts' => array( '1 more brand', '2 more brands', '3 more brands' ),
 				'fewer' => 'Show fewer',
 			),
 			$groups[0]['more']

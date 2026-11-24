@@ -112,8 +112,7 @@
 	"timeout": 20,
 	"logs": {
 		"text": "tmp/infection.log",
-		"summary": "tmp/infection-summary.log",
-		"json": "tmp/infection.json"
+		"summary": "tmp/infection-summary.log"
 	},
 	"tmpDir": "tmp/infection",
 	"phpUnit": {

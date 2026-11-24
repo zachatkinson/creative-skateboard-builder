@@ -43,7 +43,8 @@ interface ComposedLayers {
 	public const string LEFT_OUT = 'left_out';
 
 	/**
-	 * How a part is drawn in one use's picture: AS_IS, BLURRED or LEFT_OUT, and AS_IS for any other answer.
+	 * How a part is drawn in one use's picture: AS_IS, BLURRED or LEFT_OUT. Any other answer is handed on as it is,
+	 * and `ComposedPictures` draws the part as it is.
 	 *
 	 * @since 1.1.0
 	 *

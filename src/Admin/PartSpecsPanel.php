@@ -353,7 +353,13 @@ final class PartSpecsPanel {
 			$product->delete_meta_data( Options::META_LAYER );
 			return;
 		}
-		$id    = ctype_digit( $text ) ? (int) $text : 0;
+		$id = ctype_digit( $text ) ? (int) $text : 0;
+		// The image the part already has is no change, so it is not checked again: one set under 1.0.x's sizes, as a
+		// grip's swatch, keeps the product saving as it did (the auditor's 1.1.0 should-fix 1, D-307). The CSV does the
+		// same (SpecImport::layer()).
+		if ( $id > 0 && LayerMeta::own( $product ) === $id ) {
+			return;
+		}
 		$texts = array();
 		$check = $this->check();
 		foreach ( 0 === $id || null === $check ? array(
@@ -556,8 +562,7 @@ final class PartSpecsPanel {
 	 * @param WC_Product $product The product or variation.
 	 */
 	private function cutOut( WC_Product $product ): bool {
-		$slots = array_values( array_intersect( Layout::DRAWN, $this->slots( $product->get_id() ) ) );
-		return array() === $slots || Layout::cutOut( $slots[0] );
+		return LayerCheck::cutOutIn( $this->slots( $product->get_id() ) );
 	}
 
 	/**

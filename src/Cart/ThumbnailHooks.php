@@ -150,10 +150,8 @@ final class ThumbnailHooks implements Hookable {
 		}
 		$kit      = is_array( $line ) && ( $line['data'] ?? null ) instanceof WC_Product ? $line['data'] : null;
 		$pictures = ( $this->pictures )();
-		$src      = $pictures->url( $build->kit, $build->picks, ComposedPictures::CART );
-		if ( null === $src && $pictures->drawable( $build->kit, $build->picks, ComposedPictures::CART ) ) {
-			$pictures->ask( $build->kit, $build->picks, ComposedPictures::FROM_PAGE );
-		}
+		// One read of the build a call, and the queue asked once a picture a request (the auditor's 1.1.0 minor 7).
+		$src = $pictures->wanted( $build->kit, $build->picks, ComposedPictures::CART );
 		return array(
 			'src'   => $src,
 			'deck'  => $deck,

@@ -252,6 +252,24 @@ final class BuilderViewTest extends TestCase {
 		self::assertTrue( $tiles[1]['hasTotal'], 'a part sold out still counts' );
 	}
 
+	// The auditor's 1.1.0 should-fix 2: the answer lists every ready build, each saying whether it is shown, and the
+	// page makes a tile for those shown alone, each opening its own place among the kit's.
+	public function test_a_ready_build_the_answer_does_not_show_has_no_tile(): void {
+		$answer = array(
+			'presets' => array(
+				array( 'at' => 0, 'shown' => false, 'name' => 'Park' ) + self::preset( array() ),
+				array( 'at' => 1, 'shown' => true, 'name' => 'Street' ) + self::preset( array() ),
+			),
+		);
+		$presets = $this->view( $answer, SlotKey::DECK )['presets'];
+		self::assertSame( array( 'Start from Street' ), array_column( $presets['tiles'], 'button' ) );
+		self::assertContains( array( 'name' => 'cbuild[preset]', 'value' => '1' ), $presets['tiles'][0]['fields'] );
+		self::assertTrue( $presets['shown'] );
+
+		$answer['presets'][1]['shown'] = false;
+		self::assertFalse( $this->view( $answer, SlotKey::DECK )['presets']['shown'], 'none shown, no section' );
+	}
+
 	/**
 	 * Filters as the answer has them.
 	 *

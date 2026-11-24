@@ -3974,6 +3974,8 @@ Cowork's review of 1.0.0, F17 (#102): at 390 px the board lay across the stage's
 
 **Why:** Cowork's 1.0.0 review: on the demo the fieldsets were boxed, Filters and Show the top competed with Next, Filters showed on a desktop, and the board took about two thirds of a wide screen while the setting said half.
 
+**Added in the M11 audit.** The stage's picture is a `<figure>`, and Storefront's normalize sets every figure to `display: block`, so the picture lost its grid: in Firefox the board lay over Show the top, which a pointer could not reach (Chromium kept the button beside the board by `justify-self` in block layout). The picture's `display: grid` is raised to one class as the resets are. Red: the #96 test on Storefront, "Expected: grid / Received: block" (chromium-desktop and firefox-desktop; the audit's Firefox run: `locator.hover` timed out, the board's image intercepting the pointer).
+
 **Status:** Accepted. The panel's width past the spec's 380 to 520 px is listed for Zach in M11's review.
 
 ### D-322 · Compact deck cards: the deck's cut-out small and upright, two columns · 2026-11-23
@@ -3999,6 +4001,8 @@ Cowork's 1.0.0 review, F14 (#99), to the 18 November mockup. At 1440 px a deck c
 **Status:** Accepted.
 
 D-316 to D-318 are unused: numbers drafted for three of Cowork's 1.0.0 fixes, which landed as D-320 to D-322 after D-319.
+
+D-327 is unused: a number skipped between D-326 and D-328, which no decision or commit took.
 
 ### D-323 · The newest integration suite runs in three shards, and its check proves they ran it all · 2026-11-23
 
@@ -4128,3 +4132,44 @@ The weekly canary failed on WooCommerce 11.3.1 (#95), which is the stable releas
 **Why:** the most either option could take off is within noise and short of a fifth, and the one way to defer a region is a private API WordPress says will break.
 
 **Status:** Accepted. #73 can close as "1.0.0's split stands".
+
+### D-336 · The state route lists every ready build again, each saying whether it is shown · 2026-11-23
+
+**Context:** D-315 left a broken ready build out of the state route's `presets`, so `presets[i]` was no longer the preset `cbuild[preset]=i` opens, and `presets[].at` was added to make up for it. The auditor's 1.1.0 should-fix 2: a minor release may only gain fields (AUDIT.md, Public API), and an entry dropped from a list a 1.0.x client reads by position changes what it means.
+
+**Decision:**
+- `presets` lists every one of the kit's ready builds in the kit's order, as in 1.0.x, so `presets[i]` is preset `i` and `at` equals `i`. Each gains `shown`, a boolean: false where the kit's Show ready builds is off, or `State::shownPresets()` finds a problem that keeps it from the cart. A broken one has `ready` false and its `problems`, as 1.0.x gave them.
+- The page leaves out what is not shown, where it renders: `BuilderView::presets()` makes no tile for an entry with `shown` false, and the store re-renders the view the route sends, so the one template stays the one template. An answer without `shown`, from a filter written for 1.0.x, shows every tile, as before.
+- A preset not shown asks for no tile picture to be made; its `image` is its first part's photo.
+
+**Why:** every 1.0.x reading of `presets` holds, the shopper sees what D-315 decided, and the filtering sits in the one place that draws the tiles.
+
+**Tests.** StateRouteTest (the route), BuilderTest, BuilderViewTest, StateAnswerTest and StateAnswerDetailTest.
+
+**Status:** Accepted. Amends D-315's "left out of the answer's `presets`".
+
+### D-337 · The layer image a part already has is not checked again when the product is saved · 2026-11-23
+
+**Context:** D-307 raised a grip's size check to two pixels to the millimetre of the sheet (458 px across or 1,677 along). The Part specs panel checked the Layer image field on every save, the stored ID included, so a grip with a 1.0.x swatch (about 51 px across) could no longer be saved without "Layer image was not saved: it is too small…", though nothing about its image changed (the auditor's 1.1.0 should-fix 1). The CSV import already kept a part's own image unchecked (the auditor's 1.0.0 should-fix P1).
+
+**Decision:** `PartSpecsPanel::storeLayer()` returns at once when the ID sent is the product's own stored layer (`LayerMeta::own()`), as `SpecImport::layer()` does. A new image, or the same file under another ID, is checked as before. The cut-out rule both ask is now one method, `LayerCheck::cutOutIn()` (the auditor's minor 4).
+
+**Why:** a check guards a change; re-checking an unchanged value against a rule made later turns an upgrade into an error on every save, which D-307 and the readme's upgrade notice promise not to do.
+
+**Status:** Accepted.
+
+### D-338 · A cart's undrawn picture is read once a call and asked for once a request · 2026-11-23
+
+**Context:** the auditor's 1.1.0 minor 7: `ThumbnailHooks` called `url()` and `drawable()`, each composing the build, and `ask()`, which counts the queue, on every thumbnail and Store API image filter call for each kit line, so a page with a Mini-Cart paid for both lookups and the queue's queries per line per call until the picture was drawn.
+
+**Decision:**
+- `ComposedPictures::wanted()` composes the build once, returns the picture's address once made, and otherwise asks for it, where the host can draw it, once for each picture name in the life of the service: a request. The memo is by the picture's name, so a flag another plugin sets (D-309) names a new picture, which is asked for at once.
+- `cbuild_composed_layer`'s answer is read in one place, `ComposedPictures::answer()`; `WpComposedLayers` hands any string on (the auditor's minor 5).
+
+**Why:** the cart asks for a picture on every view by design (D-199); the queue only needs to hear of it once a request, and the parts once a call.
+
+**Tests.** ComposedPicturesTest (`wanted()`, and an answer of `junk`), CartPictureTest (a Mini-Cart with one and three undrawn kit lines, each line's thumbnail and Store API images asked three times). Measured on lane 1: before, every pass over one line cost 4 queries, all the queue's; after, the first pass costs 2, both the queue's, and each pass after it 0, for one line and for three.
+
+**Also measured (the auditor's minor 6).** The state route's query test now moves a picked deck to a new width (`_width`), which builds a second shelf and a second state: 6 queries warm and 37 cold, the same at 12, 32 and 62 decks, inside the move's ceilings of 15 and 60 (unchanged). The test ends the products' saves as their own request would (`WooPartCards::settle()`) before counting: in one process, the counted request's first card read forgot the cards of decks just saved, and the looks it had read beside them, part way through, which counted 3 queries at 12 decks and 5 at 32.
+
+**Status:** Accepted.

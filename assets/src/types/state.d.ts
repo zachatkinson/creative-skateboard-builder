@@ -153,15 +153,19 @@ export interface CbuildState {
 		returns_notice: string;
 	};
 	/**
-	 * The kit's ready builds a shopper is offered, six at most, in the kit's order. From 1.1.0 none where the kit's show_presets is off, and none with a part that's gone, sold out or no longer fits, so each one listed is ready, with no problems, and says its place among the kit's in `at`. A link with cbuild[preset] still opens any of the kit's.
+	 * The kit's ready builds, six at most, every one in the kit's order, so an entry's place is the value cbuild[preset] takes to open it. From 1.1.0 each says in `shown` whether the builder shows its tile: not where the kit's show_presets is off, nor where a part that's gone, sold out or no longer fits keeps it from the cart. A link with cbuild[preset] still opens any of the kit's.
 	 *
 	 * Items: A preset.
 	 */
 	presets: {
 		/**
-		 * Its place among the kit's presets, counted from 0: the value a link's cbuild[preset] takes to open it. The list leaves some out, so it may not be the entry's own place in the list. From 1.1.0.
+		 * Its place among the kit's presets, counted from 0: the value a link's cbuild[preset] takes to open it, and its own place in the list. From 1.1.0.
 		 */
 		at: number;
+		/**
+		 * Whether the builder shows its tile: false where the kit's show_presets is off, or a part that's gone, sold out or no longer fits keeps it from the cart, which the Catalogue check lists. Its picture is then its first part's photo. From 1.1.0.
+		 */
+		shown: boolean;
 		/**
 		 * Its name.
 		 */

@@ -69,6 +69,20 @@ final class LayerCheckTest extends TestCase {
 		self::assertNull( $this->check->size( 0 ) );
 	}
 
+	// The auditor's 1.1.0 minor 4: one rule for a cut-out, which the Part specs panel and the CSV both ask (F18, #103).
+	public function test_a_layer_is_a_cut_out_unless_the_first_drawn_slot_the_part_fills_is_the_grip(): void {
+		self::assertTrue( LayerCheck::cutOutIn( array() ), 'a part in no slot is held to the cut-out\'s rule' );
+		self::assertTrue( LayerCheck::cutOutIn( array( 'risers', 'hardware' ) ), 'nor in a slot the picture draws' );
+		self::assertFalse( LayerCheck::cutOutIn( array( 'risers', 'grip' ) ), 'a grip is its whole sheet' );
+		self::assertTrue( LayerCheck::cutOutIn( array( 'grip', 'deck' ) ), 'the deck is drawn first' );
+		self::assertFalse( LayerCheck::cutOutIn( array( 'wheels', 'grip' ) ), 'the grip is drawn before the wheels' );
+
+		self::assertTrue( $this->check->cutOut( 7 ), 'trucks and a deck' );
+		$this->kits->slotsOf[8] = array( 'grip' );
+		self::assertFalse( $this->check->cutOut( 8 ) );
+		self::assertTrue( $this->check->cutOut( 9 ), 'a part no kit takes' );
+	}
+
 	public function test_an_image_is_checked_by_the_fields_rules_at_the_parts_size(): void {
 		$needs = LayerImage::needs( (array) $this->check->size( 7 ) );
 		$this->images->images = array(
