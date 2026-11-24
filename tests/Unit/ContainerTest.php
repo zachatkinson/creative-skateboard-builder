@@ -74,6 +74,9 @@ final class ContainerTest extends TestCase {
 				array( \CreativeBranding\SkateboardBuilder\Cart\ShowHooks::class, 'address', \CreativeBranding\SkateboardBuilder\Front\BuilderAddress::class ),
 				array( \CreativeBranding\SkateboardBuilder\Rest\StateRoute::class, 'address', \CreativeBranding\SkateboardBuilder\Front\BuilderAddress::class ),
 				array( \CreativeBranding\SkateboardBuilder\Admin\BuildTab::class, 'place', \CreativeBranding\SkateboardBuilder\Front\BuilderPlace::class ),
+				array( \CreativeBranding\SkateboardBuilder\Service\CatalogueCheck::class, 'kept', \CreativeBranding\SkateboardBuilder\Port\PartsKeptOut::class ),
+				array( \CreativeBranding\SkateboardBuilder\Port\Kits::class, 'meta', \CreativeBranding\SkateboardBuilder\Port\ProductMeta::class ),
+				array( \CreativeBranding\SkateboardBuilder\Front\MyBuildsView::class, 'meta', \CreativeBranding\SkateboardBuilder\Port\ProductMeta::class ),
 			) as [ $id, $property, $type ]
 		) {
 			$service = $container->get( $id );

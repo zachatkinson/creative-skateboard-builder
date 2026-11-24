@@ -124,6 +124,14 @@ The Build tab gains a **Width guide** section (#114, D-350), kept in the same `_
 | Use the builder's rows | none stored (a checkbox) | ticked, unticked | ticked | The restore-defaults control. Ticked, no `rows` are stored and the guide has the plugin's rows, by US shoe size in the shopper's language. The tab shows those rows in the editor to start from; typing in a row, adding or removing one unticks it where the page runs its script. |
 | Rows | `width_guide.rows[]` with `shoe`, `from`, `to` | One to twelve rows. **Shoe size**: plain text as the shop writes it, up to 40 characters, through `cbuild_kit_text` (`width_guide_shoe`). **Deck width from** and **to**: 5 to 12 in, typed as the shop writes a measure (its decimal separator, or a fraction); **to** left empty is "and wider", and is never under **from**. | none | The guide's rows, in the order given. Add a row and Remove work by keyboard; the server draws twelve rows, and those past the kit's and one empty one wait hidden. A row left empty is no row. A row that is wrong is named at its field, and the layout is not saved. |
 
+### Not offered in the builder (#116)
+
+On a product's Part specs tab, and on each variation's Part specs fields, kept as `_cbuild_not_offered` product meta (D-351). A part saved before 1.2.0 has none, and is offered.
+
+| Setting | Key | Choices | Default | What it does |
+| --- | --- | --- | --- | --- |
+| Not offered in the builder | `_cbuild_not_offered` (product meta) | ticked (`yes`), not ticked (no meta) | not ticked | Keeps the part out of every kit, exactly as `cbuild_part_available` returning `false` does, and the filter still answers last. On a variable product it keeps out every variation; on a variation, that variation alone. The part stays in the shop. The Catalogue check lists it under "Parts kept out of the builder", not as a fix. Saved by who may edit products, through WooCommerce's product save and its nonce. |
+
 ## Options beside the settings
 
 The plugin keeps seven options of its own, which no screen edits: `cbuild_db_version`, `cbuild_migrations`, `cbuild_migration_lock` and, from 0.3.0, `cbuild_reindex_state`, `cbuild_reindex_owed`, `cbuild_import_state` and `cbuild_import_rows`. [HOOKS.md](HOOKS.md) says what each holds, and [PRIVACY.md](PRIVACY.md) lists everything stored.

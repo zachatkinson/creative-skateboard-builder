@@ -172,6 +172,14 @@ final class SentencesTest extends TestCase {
 				$finding( 'preset_broken', 'decks' ),
 				'The preset "" names it for the slot "decks", and it no longer fits the preset\'s other parts.',
 			),
+			'a part the shop keeps out'              => array(
+				new CheckFinding( 'part_not_offered', 10, values: array( 'from' => 'part' ) ),
+				'Not offered in the builder is ticked on its Part specs, so no kit offers it.',
+			),
+			'a variation its product keeps out'      => array(
+				new CheckFinding( 'part_not_offered', 11, values: array( 'from' => 'product' ) ),
+				'Not offered in the builder is ticked on its product\'s Part specs, so no kit offers it or the product\'s other variations.',
+			),
 			'a code with no sentence'                => array( $finding( 'something_new', 'decks', 'deck_width' ), 'something_new' ),
 		);
 	}

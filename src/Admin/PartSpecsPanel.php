@@ -28,6 +28,7 @@ use CreativeBranding\SkateboardBuilder\Service\SpecIndexer;
 use CreativeBranding\SkateboardBuilder\Service\SpecWriter;
 use CreativeBranding\SkateboardBuilder\Support\Cast;
 use CreativeBranding\SkateboardBuilder\Support\LayerMeta;
+use CreativeBranding\SkateboardBuilder\Support\NotOffered;
 use CreativeBranding\SkateboardBuilder\Support\Options;
 use WC_Admin_Meta_Boxes;
 use WC_Product;
@@ -103,6 +104,13 @@ final class PartSpecsPanel {
 	 * The prefix of each control's ID in the product's panel. The screen's script opens a field an address names by it.
 	 */
 	private const FIELDS = 'cbuild-spec';
+
+	/**
+	 * The names "Not offered in the builder" is sent under, on the product and on each variation (1.2.0, #116).
+	 */
+	private const OFFER = 'cbuild_not_offered';
+
+	private const VARIATION_OFFER = 'cbuild_variation_not_offered';
 
 	/**
 	 * The slot whose parts need each group, by the group's first spec. Sets are any part's.
@@ -212,6 +220,7 @@ final class PartSpecsPanel {
 		}
 		$groups = $this->groups( $product_object, self::FIELDS, 'cbuild_specs', 'cbuild_spec_table' );
 		$layer  = array() === $groups ? null : $this->layer( $product_object, self::FIELDS, 'cbuild_layer' );
+		$offer  = self::offer( $product_object, $groups, self::FIELDS, self::OFFER );
 		$whole  = true;
 		include CBUILD_PATH . 'templates/admin/part-specs.php';
 	}
@@ -230,10 +239,11 @@ final class PartSpecsPanel {
 			return;
 		}
 		$groups = $this->groups( $product, self::FIELDS . '-' . $loop, 'cbuild_variation_specs[' . $loop . ']', 'cbuild_variation_spec_table[' . $loop . ']' );
-		if ( array() === $groups ) {
+		$offer  = self::offer( $product, $groups, self::FIELDS . '-' . $loop, self::VARIATION_OFFER . '[' . $loop . ']' );
+		if ( null === $offer ) {
 			return;
 		}
-		$layer = $this->layer( $product, self::FIELDS . '-' . $loop, 'cbuild_variation_layer[' . $loop . ']' );
+		$layer = array() === $groups ? null : $this->layer( $product, self::FIELDS . '-' . $loop, 'cbuild_variation_layer[' . $loop . ']' );
 		$whole = false;
 		include CBUILD_PATH . 'templates/admin/part-specs.php';
 	}
@@ -256,11 +266,15 @@ final class PartSpecsPanel {
 		$sent  = isset( $_POST['cbuild_specs'] ) && is_array( $_POST['cbuild_specs'] ) ? wp_unslash( $_POST['cbuild_specs'] ) : null;
 		$chart = isset( $_POST['cbuild_spec_table'] ) ? wp_unslash( $_POST['cbuild_spec_table'] ) : null;
 		$layer = isset( $_POST['cbuild_layer'] ) ? wp_unslash( $_POST['cbuild_layer'] ) : null;
+		$offer = isset( $_POST[ self::OFFER ] ) ? wp_unslash( $_POST[ self::OFFER ] ) : null;
+		// The product data box was sent, so a box not ticked is unticked; a save without it, as another plugin's, is not.
+		$form = isset( $_POST['product-type'] );
 		// phpcs:enable
 		if ( null !== $sent ) {
 			$this->store( $product, $sent, $chart );
 		}
 		$this->storeLayer( $product, $layer );
+		self::storeOffer( $product, $form, $offer );
 	}
 
 	/**
@@ -282,11 +296,67 @@ final class PartSpecsPanel {
 		$rows   = isset( $_POST['cbuild_variation_specs'] ) && is_array( $_POST['cbuild_variation_specs'] ) ? wp_unslash( $_POST['cbuild_variation_specs'] ) : array();
 		$charts = isset( $_POST['cbuild_variation_spec_table'] ) && is_array( $_POST['cbuild_variation_spec_table'] ) ? wp_unslash( $_POST['cbuild_variation_spec_table'] ) : array();
 		$layers = isset( $_POST['cbuild_variation_layer'] ) && is_array( $_POST['cbuild_variation_layer'] ) ? wp_unslash( $_POST['cbuild_variation_layer'] ) : array();
+		$offers = isset( $_POST[ self::VARIATION_OFFER ] ) && is_array( $_POST[ self::VARIATION_OFFER ] ) ? wp_unslash( $_POST[ self::VARIATION_OFFER ] ) : array();
 		// phpcs:enable
 		if ( isset( $rows[ $loop ] ) && is_array( $rows[ $loop ] ) ) {
 			$this->store( $variation, $rows[ $loop ], $charts[ $loop ] ?? null );
 		}
 		$this->storeLayer( $variation, $layers[ $loop ] ?? null );
+		// WooCommerce saves the variations its form sent, so a box not ticked in one is unticked.
+		self::storeOffer( $variation, true, $offers[ $loop ] ?? null );
+	}
+
+	/**
+	 * "Not offered in the builder" (1.2.0, #116, D-351): drawn where the panel has fields, and where it is ticked, so
+	 * it can be unticked on a part no kit takes now.
+	 *
+	 * @param WC_Product  $product The product or variation.
+	 * @param list<mixed> $groups  The panel's groups of fields for it.
+	 * @param string      $prefix  The prefix of each control's ID.
+	 * @param string      $name    The name the box is sent under.
+	 * @return array{id: string, name: string, checked: bool, label: string, note: string}|null
+	 */
+	private static function offer( WC_Product $product, array $groups, string $prefix, string $name ): ?array {
+		$checked = NotOffered::own( $product );
+		if ( array() === $groups && ! $checked ) {
+			return null;
+		}
+		return array(
+			'id'      => self::field( $prefix, 'not_offered' ),
+			'name'    => $name,
+			'checked' => $checked,
+			'label'   => __( 'Not offered in the builder', 'creative-skateboard-builder' ),
+			'note'    => $product->is_type( 'variable' )
+				? __( 'Ticked, no kit offers this product\'s variations, whatever their own box says. It stays in the shop.', 'creative-skateboard-builder' )
+				: __( 'Ticked, no kit offers this part. It stays in the shop, and the Catalogue check lists it.', 'creative-skateboard-builder' ),
+		);
+	}
+
+	/**
+	 * Tick or untick the box on the product WooCommerce is about to write. Only `1` ticks it. A box not ticked sends
+	 * nothing, so on a form that held it, it is unticked, and a save of no such form leaves it. A change tells what is
+	 * kept of the part, as `cbuild_parts_changed` does.
+	 *
+	 * @param WC_Product $product The product or variation.
+	 * @param bool       $form    Whether the form the box is on was sent.
+	 * @param mixed      $sent    What the box sent, unslashed, or null.
+	 */
+	private static function storeOffer( WC_Product $product, bool $form, mixed $sent ): void {
+		if ( ! $form && null === $sent ) {
+			return;
+		}
+		$ticked = is_string( $sent ) && '1' === sanitize_text_field( $sent );
+		$was    = NotOffered::own( $product );
+		if ( $was === $ticked ) {
+			return;
+		}
+		if ( $ticked ) {
+			$product->update_meta_data( Options::META_NOT_OFFERED, 'yes' );
+		} else {
+			$product->delete_meta_data( Options::META_NOT_OFFERED );
+		}
+		/** This action is documented in src/Hooks/CardHooks.php */
+		do_action( 'cbuild_parts_changed', array( $product->get_id() ) );
 	}
 
 	/**

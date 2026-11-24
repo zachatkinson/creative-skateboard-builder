@@ -69,6 +69,34 @@ final class ProductMetaRepositoryTest extends IntegrationTestCase {
 		self::assertSame( $queries, get_num_queries(), 'what WooCommerce already holds is not read again' );
 	}
 
+	// #116, D-351: a page of saved builds knows its parts, not their products; their meta comes in the same query.
+	public function test_parts_are_read_with_their_variations_products_in_one_query(): void {
+		$parent = new \WC_Product_Variable();
+		$parent->set_name( 'Trucks' );
+		$parent->update_meta_data( 'cbuild_test_note', 'parent' );
+		$parent->save();
+		$variation = new \WC_Product_Variation();
+		$variation->set_parent_id( $parent->get_id() );
+		$variation->update_meta_data( 'cbuild_test_note', 'variation' );
+		$variation->save();
+		$deck = self::product();
+		wp_cache_flush();
+
+		$queries = get_num_queries();
+		$this->service( ProductMeta::class )->primeWithParents( $variation->get_id(), $deck );
+		self::assertSame( $queries + 1, get_num_queries(), 'one query for the parts and the variation\'s product' );
+		foreach ( array( $parent->get_id() => 'parent', $variation->get_id() => 'variation', $deck => 'kept' ) as $id => $note ) {
+			$product = wc_get_product( $id );
+			$before  = get_num_queries();
+			self::assertSame( $note, $product->get_meta( 'cbuild_test_note', true ) );
+			self::assertSame( $before, get_num_queries(), 'WooCommerce reads it from its own cache' );
+		}
+
+		$queries = get_num_queries();
+		$this->service( ProductMeta::class )->primeWithParents( $variation->get_id(), $deck );
+		self::assertSame( $queries, get_num_queries(), 'what WooCommerce already holds is not read again' );
+	}
+
 	public function test_a_boards_layer_images_are_read_in_a_few_queries_however_many_parts_it_draws(): void {
 		$images = array( LayerFiles::attachment( 40, 160 ), LayerFiles::attachment( 40, 20 ), LayerFiles::attachment( 20, 30 ) );
 		$parts  = array( self::product( (string) $images[0] ), self::product( (string) $images[1] ), self::product( (string) $images[2] ), self::product() );

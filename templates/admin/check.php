@@ -14,6 +14,8 @@
  * @var int                                                                  $past   How many of those it does not list.
  * @var list<array{kit: string, about: string, link: string, says: string}> $alike  Variations that share a card, as far as the page lists (D-281).
  * @var int                                                                  $beyond How many of those it does not list.
+ * @var list<array{kit: string, about: string, link: string, says: string}> $kept   Parts the shop keeps out of the builder, as far as the page lists (#116).
+ * @var int                                                                  $aside  How many of those it does not list.
  * @var bool                                                                 $none  Whether the shop has no kit yet.
  * @var string                                                               $nonce The form's nonce action.
  * @var string                                                               $back  The tab's own address.
@@ -44,6 +46,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 		<div class="notice notice-success inline" role="status"><p><?php esc_html_e( 'Every part is being read again in the background, 100 at a time. Tools > Site Health shows how far it is.', 'creative-skateboard-builder' ); ?></p></div>
 	<?php endif; ?>
 	<?php if ( $ran && 0 === $count && 0 === $unlaid && array() === $alike ) : ?>
+		<div class="notice notice-success inline" role="status"><p><?php esc_html_e( 'The check found nothing to fix.', 'creative-skateboard-builder' ); ?></p></div>
+	<?php elseif ( $ran && 0 === $count && array() !== $kept ) : ?>
 		<div class="notice notice-success inline" role="status"><p><?php esc_html_e( 'The check found nothing to fix.', 'creative-skateboard-builder' ); ?></p></div>
 	<?php elseif ( $ran && 0 === $count ) : ?>
 		<div class="notice notice-success inline" role="status"><p><?php esc_html_e( 'Nothing the check found keeps a part out of the builder.', 'creative-skateboard-builder' ); ?></p></div>
@@ -76,6 +80,14 @@ if ( ! defined( 'ABSPATH' ) ) {
 			__( 'The builder shows a product\'s variations that share a photo and a layer image as one card, and asks for what tells them apart after the pick. Give a variation a photo of its own to give it a card of its own.', 'creative-skateboard-builder' ),
 			$alike,
 			$beyond,
+			__( 'What it says', 'creative-skateboard-builder' ),
+		),
+		array(
+			'cbuild-kept',
+			__( 'Parts kept out of the builder', 'creative-skateboard-builder' ),
+			__( 'Not offered in the builder is ticked on these parts, or on their product, so no kit offers them. They stay in the shop. Untick it on the part\'s Part specs to offer it again.', 'creative-skateboard-builder' ),
+			$kept,
+			$aside,
 			__( 'What it says', 'creative-skateboard-builder' ),
 		),
 	);

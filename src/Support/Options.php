@@ -215,6 +215,14 @@ final class Options {
 	public const META_LAYER = '_cbuild_layer';
 
 	/**
+	 * Product meta: "Not offered in the builder", ticked on a part's Part specs (#116, D-351). `yes` when ticked; a
+	 * part with none is offered.
+	 *
+	 * @since 1.2.0
+	 */
+	public const META_NOT_OFFERED = '_cbuild_not_offered';
+
+	/**
 	 * The kit's product type.
 	 *
 	 * @since 0.4.0
@@ -367,7 +375,7 @@ final class Options {
 	 * @return string[]
 	 */
 	public static function metaKeys(): array {
-		return array( self::META_SPECS, self::META_SPEC_TABLE, self::META_LAYER, self::META_TABLE_ROWS, self::META_TABLE_SEED, ...self::kitDocuments() );
+		return array( self::META_SPECS, self::META_SPEC_TABLE, self::META_LAYER, self::META_NOT_OFFERED, self::META_TABLE_ROWS, self::META_TABLE_SEED, ...self::kitDocuments() );
 	}
 
 	/**

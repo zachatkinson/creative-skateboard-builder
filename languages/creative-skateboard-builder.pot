@@ -9,7 +9,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-11-24T12:27:32+00:00\n"
+"POT-Creation-Date: 2026-11-24T12:31:19+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: creative-skateboard-builder\n"
@@ -164,7 +164,7 @@ msgid "Import and export"
 msgstr ""
 
 #: src/Admin/BuilderHooks.php:71
-#: templates/admin/check.php:32
+#: templates/admin/check.php:34
 msgid "Catalogue check"
 msgstr ""
 
@@ -172,7 +172,7 @@ msgstr ""
 #: src/Admin/BuilderHooks.php:123
 #: src/Admin/SettingsPage.php:75
 #: templates/admin/builder-tabs.php:16
-#: templates/admin/check.php:30
+#: templates/admin/check.php:32
 #: templates/admin/import.php:30
 #: templates/admin/spec-tables.php:24
 msgid "Builder"
@@ -251,7 +251,7 @@ msgstr ""
 
 #: src/Admin/BuildTab.php:397
 #: src/Admin/BuildTab.php:1368
-#: templates/admin/part-specs.php:95
+#: templates/admin/part-specs.php:112
 msgid "Picture"
 msgstr ""
 
@@ -356,7 +356,7 @@ msgstr ""
 
 #: src/Admin/BuildTab.php:544
 #: src/Admin/BuildTab.php:766
-#: src/Admin/PartSpecsPanel.php:633
+#: src/Admin/PartSpecsPanel.php:703
 #: src/Front/BuilderView.php:1639
 #: src/Front/BuilderView.php:2125
 #: src/Health/SiteHealth.php:365
@@ -747,37 +747,37 @@ msgid "Remove"
 msgstr ""
 
 #: src/Admin/BuildTab.php:1230
-#: src/Admin/PartSpecsPanel.php:603
+#: src/Admin/PartSpecsPanel.php:673
 msgid "Deck"
 msgstr ""
 
 #: src/Admin/BuildTab.php:1231
-#: src/Admin/PartSpecsPanel.php:604
+#: src/Admin/PartSpecsPanel.php:674
 msgid "Trucks"
 msgstr ""
 
 #: src/Admin/BuildTab.php:1232
-#: src/Admin/PartSpecsPanel.php:605
+#: src/Admin/PartSpecsPanel.php:675
 msgid "Wheels"
 msgstr ""
 
 #: src/Admin/BuildTab.php:1233
-#: src/Admin/PartSpecsPanel.php:606
+#: src/Admin/PartSpecsPanel.php:676
 msgid "Risers"
 msgstr ""
 
 #: src/Admin/BuildTab.php:1234
-#: src/Admin/PartSpecsPanel.php:608
+#: src/Admin/PartSpecsPanel.php:678
 msgid "Bearings"
 msgstr ""
 
 #: src/Admin/BuildTab.php:1235
-#: src/Admin/PartSpecsPanel.php:607
+#: src/Admin/PartSpecsPanel.php:677
 msgid "Hardware"
 msgstr ""
 
 #: src/Admin/BuildTab.php:1236
-#: src/Admin/PartSpecsPanel.php:609
+#: src/Admin/PartSpecsPanel.php:679
 msgid "Grip tape"
 msgstr ""
 
@@ -913,16 +913,16 @@ msgid "The kit's assembly settings were not saved. The Build tab shows them as y
 msgstr ""
 
 #. translators: %s: a product's ID.
-#: src/Admin/CheckScreen.php:181
+#: src/Admin/CheckScreen.php:191
 #, php-format
 msgid "Product %s"
 msgstr ""
 
-#: src/Admin/CheckScreen.php:183
+#: src/Admin/CheckScreen.php:193
 msgid "Background work"
 msgstr ""
 
-#: src/Admin/CheckScreen.php:190
+#: src/Admin/CheckScreen.php:200
 msgid "The kit's Build tab"
 msgstr ""
 
@@ -957,8 +957,8 @@ msgid "Size in the chart"
 msgstr ""
 
 #: src/Admin/ImportScreen.php:256
-#: src/Admin/PartSpecsPanel.php:469
-#: templates/admin/part-specs.php:97
+#: src/Admin/PartSpecsPanel.php:539
+#: templates/admin/part-specs.php:114
 msgid "Layer image"
 msgstr ""
 
@@ -1156,7 +1156,7 @@ msgid "%s mm"
 msgstr ""
 
 #: src/Admin/Labels.php:171
-#: src/Admin/PartSpecsPanel.php:521
+#: src/Admin/PartSpecsPanel.php:591
 #: src/Health/SiteHealth.php:370
 #: src/Order/OrderHooks.php:341
 #: src/Privacy/PrivacyHooks.php:144
@@ -1164,521 +1164,541 @@ msgid "Yes"
 msgstr ""
 
 #: src/Admin/Labels.php:171
-#: src/Admin/PartSpecsPanel.php:522
+#: src/Admin/PartSpecsPanel.php:592
 #: src/Health/SiteHealth.php:370
 #: src/Order/OrderHooks.php:341
 #: src/Privacy/PrivacyHooks.php:144
 msgid "No"
 msgstr ""
 
-#: src/Admin/PartSpecsPanel.php:195
+#: src/Admin/PartSpecsPanel.php:203
 #: src/Admin/SettingsPage.php:95
-#: templates/admin/part-specs.php:28
+#: templates/admin/part-specs.php:29
 msgid "Part specs"
 msgstr ""
 
-#. translators: 1: a variation's ID. 2: a sentence saying what was not saved.
+#: src/Admin/PartSpecsPanel.php:328
+msgid "Not offered in the builder"
+msgstr ""
+
 #: src/Admin/PartSpecsPanel.php:330
-#: src/Admin/PartSpecsPanel.php:380
+msgid "Ticked, no kit offers this product's variations, whatever their own box says. It stays in the shop."
+msgstr ""
+
+#: src/Admin/PartSpecsPanel.php:331
+msgid "Ticked, no kit offers this part. It stays in the shop, and the Catalogue check lists it."
+msgstr ""
+
+#. translators: 1: a variation's ID. 2: a sentence saying what was not saved.
+#: src/Admin/PartSpecsPanel.php:400
+#: src/Admin/PartSpecsPanel.php:450
 #, php-format
 msgid "Variation #%1$d: %2$s"
 msgstr ""
 
-#: src/Admin/PartSpecsPanel.php:433
+#: src/Admin/PartSpecsPanel.php:503
 msgid "The whole sheet of grip, shot flat from above, a PNG, WebP or AVIF from the Media Library. Choose one, or type its attachment ID. Left empty, the variation takes its parent product's, or the picture shows its labelled photo. The product image and gallery stay as they are: only the builder's picture uses this image."
 msgstr ""
 
-#: src/Admin/PartSpecsPanel.php:434
+#: src/Admin/PartSpecsPanel.php:504
 msgid "The whole sheet of grip, shot flat from above, a PNG, WebP or AVIF from the Media Library. Choose one, or type its attachment ID. Left empty, the picture shows the part's labelled photo. The product image and gallery stay as they are: only the builder's picture uses this image."
 msgstr ""
 
-#: src/Admin/PartSpecsPanel.php:437
+#: src/Admin/PartSpecsPanel.php:507
 msgid "The part's cut-out on a transparent background, a PNG, WebP or AVIF from the Media Library. Choose one, or type its attachment ID. Left empty, the variation takes its parent product's, or the picture shows its labelled photo. The product image and gallery stay as they are: only the builder's picture uses this image."
 msgstr ""
 
-#: src/Admin/PartSpecsPanel.php:438
+#: src/Admin/PartSpecsPanel.php:508
 msgid "The part's cut-out on a transparent background, a PNG, WebP or AVIF from the Media Library. Choose one, or type its attachment ID. Left empty, the picture shows the part's labelled photo. The product image and gallery stay as they are: only the builder's picture uses this image."
 msgstr ""
 
 #. translators: %d: an attachment's ID.
-#: src/Admin/PartSpecsPanel.php:446
+#: src/Admin/PartSpecsPanel.php:516
 #, php-format
 msgid "In use: image #%d, from the parent product."
 msgstr ""
 
 #. translators: 1: a part's width in millimetres. 2: its length. 3: a number of pixels. 4: another.
-#: src/Admin/PartSpecsPanel.php:453
+#: src/Admin/PartSpecsPanel.php:523
 #, php-format
 msgid "Drawn %1$s by %2$s mm, nose up. The image needs at least %3$s pixels across or %4$s along."
 msgstr ""
 
 #. translators: %s: the product's or variation's name.
-#: src/Admin/PartSpecsPanel.php:468
+#: src/Admin/PartSpecsPanel.php:538
 #, php-format
 msgid "Choose an image for %s"
 msgstr ""
 
-#: src/Admin/PartSpecsPanel.php:610
+#: src/Admin/PartSpecsPanel.php:680
 msgid "Sold in sets"
 msgstr ""
 
-#: src/Admin/PartSpecsPanel.php:636
+#: src/Admin/PartSpecsPanel.php:706
 msgid "Leave as it is"
 msgstr ""
 
-#: src/Admin/PartSpecsPanel.php:642
+#: src/Admin/PartSpecsPanel.php:712
 msgid "Maker's chart and size"
 msgstr ""
 
-#: src/Admin/PartSpecsPanel.php:644
+#: src/Admin/PartSpecsPanel.php:714
 msgid "A truck that names its size in a chart takes that row's figures."
 msgstr ""
 
 #. translators: 1: a spec's value with its unit, such as 32 in. 2: a product attribute's name, such as Length.
-#: src/Admin/PartSpecsPanel.php:693
+#: src/Admin/PartSpecsPanel.php:763
 #, php-format
 msgid "In use: %1$s, from the parent product's %2$s attribute."
 msgstr ""
 
 #. translators: 1: a spec's value with its unit, such as 8.25 in. 2: a product attribute's name, such as Width.
-#: src/Admin/PartSpecsPanel.php:696
+#: src/Admin/PartSpecsPanel.php:766
 #, php-format
 msgid "In use: %1$s, from the %2$s attribute."
 msgstr ""
 
 #. translators: 1: a spec's value with its unit, such as 8.5 in. 2: a truck maker's name, such as Independent. 3: a size in the maker's chart, such as 149.
-#: src/Admin/PartSpecsPanel.php:702
+#: src/Admin/PartSpecsPanel.php:772
 #, php-format
 msgid "In use: %1$s, from %2$s's chart, size %3$s."
 msgstr ""
 
 #. translators: %s: a spec's value with its unit, such as 8.25 in.
-#: src/Admin/PartSpecsPanel.php:705
+#: src/Admin/PartSpecsPanel.php:775
 #, php-format
 msgid "In use: %s, from the parent product."
 msgstr ""
 
 #. translators: %s: the size that was chosen.
-#: src/Admin/PartSpecsPanel.php:739
+#: src/Admin/PartSpecsPanel.php:809
 #, php-format
 msgid "The maker's chart was not saved: the chart has no size %s now. Choose again."
 msgstr ""
 
-#: src/Admin/PartSpecsPanel.php:740
+#: src/Admin/PartSpecsPanel.php:810
 msgid "The maker's chart was not saved: that chart is no longer there. Choose again."
 msgstr ""
 
-#: src/Admin/PartSpecsPanel.php:741
+#: src/Admin/PartSpecsPanel.php:811
 msgid "The maker's chart was not saved. Choose again."
 msgstr ""
 
 #. translators: 1: a deck's width with its unit, such as 8.6 in. 2: another, such as 8.375 in.
-#: src/Admin/PartSpecsPanel.php:748
+#: src/Admin/PartSpecsPanel.php:818
 #, php-format
 msgid "Narrowest deck and Widest deck were not saved: the narrowest, %1$s, is wider than the widest, %2$s."
 msgstr ""
 
 #. translators: 1: a spec's name. 2: what was typed.
-#: src/Admin/PartSpecsPanel.php:750
+#: src/Admin/PartSpecsPanel.php:820
 #, php-format
 msgid "%1$s was not saved: \"%2$s\" is not a measurement. Type a number, or a fraction such as 8 1/4."
 msgstr ""
 
 #. translators: 1: a spec's name. 2: what was typed.
-#: src/Admin/PartSpecsPanel.php:752
+#: src/Admin/PartSpecsPanel.php:822
 #, php-format
 msgid "%1$s was not saved: the fraction in \"%2$s\" divides by zero."
 msgstr ""
 
 #. translators: 1: a spec's name. 2: what was typed.
-#: src/Admin/PartSpecsPanel.php:754
+#: src/Admin/PartSpecsPanel.php:824
 #, php-format
 msgid "%1$s was not saved: \"%2$s\" is below zero."
 msgstr ""
 
 #. translators: 1: a spec's name. 2: what was typed.
-#: src/Admin/PartSpecsPanel.php:756
+#: src/Admin/PartSpecsPanel.php:826
 #, php-format
 msgid "%1$s was not saved: \"%2$s\" must be more than zero."
 msgstr ""
 
 #. translators: 1: a spec's name. 2: what was typed.
-#: src/Admin/PartSpecsPanel.php:758
+#: src/Admin/PartSpecsPanel.php:828
 #, php-format
 msgid "%1$s was not saved: \"%2$s\" is too large a number."
 msgstr ""
 
 #. translators: 1: a spec's name. 2: what was typed.
-#: src/Admin/PartSpecsPanel.php:760
+#: src/Admin/PartSpecsPanel.php:830
 #, php-format
 msgid "%1$s was not saved: \"%2$s\" is not a value it takes."
 msgstr ""
 
 #. translators: 1: a spec's name. 2: a source, such as "The maker's chart". 3: a value. 4: another source. 5: its value.
-#: src/Admin/Sentences.php:58
+#: src/Admin/Sentences.php:59
 #, php-format
 msgid "%1$s: two sources disagree. %2$s says %3$s, which is used. %4$s says %5$s."
 msgstr ""
 
-#: src/Admin/Sentences.php:61
+#: src/Admin/Sentences.php:62
 msgid "It names a maker's chart that is no longer there. Choose another on its Part specs."
 msgstr ""
 
 #. translators: %s: a size in a maker's chart.
-#: src/Admin/Sentences.php:65
+#: src/Admin/Sentences.php:66
 #, php-format
 msgid "It names the size \"%s\", which its maker's chart does not have."
 msgstr ""
 
 #. translators: 1: a spec's name. 2: a source. 3: what the source holds.
-#: src/Admin/Sentences.php:68
+#: src/Admin/Sentences.php:69
 #, php-format
 msgid "%1$s: %2$s holds \"%3$s\", which cannot be read as a value."
 msgstr ""
 
-#: src/Admin/Sentences.php:70
+#: src/Admin/Sentences.php:71
 msgid "Reading every part again stopped after five failures. Start it again with \"Read every part again\" on this page; WooCommerce > Status > Logs has the reason."
 msgstr ""
 
-#: src/Admin/Sentences.php:72
+#: src/Admin/Sentences.php:73
 msgid "The last specs import stopped before its end. Import the file again; WooCommerce > Status > Logs has the reason."
 msgstr ""
 
-#: src/Admin/Sentences.php:77
+#: src/Admin/Sentences.php:78
 msgid "The builder cannot read this kit's settings, so no shopper can open it. Open its Build tab, put right what it names, and save."
 msgstr ""
 
 #. translators: %s: a slot's key, such as trucks.
-#: src/Admin/Sentences.php:80
+#: src/Admin/Sentences.php:81
 #, php-format
 msgid "The slot \"%s\" has no parts."
 msgstr ""
 
 #. translators: %s: a slot's key, such as trucks.
-#: src/Admin/Sentences.php:83
+#: src/Admin/Sentences.php:84
 #, php-format
 msgid "The slot \"%s\" has nothing in stock."
 msgstr ""
 
 #. translators: 1: a spec's name. 2: a slot's key.
-#: src/Admin/Sentences.php:86
+#: src/Admin/Sentences.php:87
 #, php-format
 msgid "%1$s is missing, so the part is not offered in the slot \"%2$s\"."
 msgstr ""
 
 #. translators: %s: a spec's name.
-#: src/Admin/Sentences.php:89
+#: src/Admin/Sentences.php:90
 #, php-format
 msgid "%s is not filled in, so the builder assumes the usual one."
 msgstr ""
 
 #. translators: %s: a slot's key, such as trucks.
-#: src/Admin/Sentences.php:92
+#: src/Admin/Sentences.php:93
 #, php-format
 msgid "It has no layer image, so the picture shows its labelled photo in the slot \"%s\". Add one on its Part specs, under Picture."
 msgstr ""
 
 #. translators: 1: a list of variations' IDs, such as 11, 12. 2: a slot's key, such as deck.
-#: src/Admin/Sentences.php:95
+#: src/Admin/Sentences.php:96
 #, php-format
 msgid "Its variations %1$s share a photo, so the builder shows them as one card in the slot \"%2$s\" and asks for the rest after the pick."
 msgstr ""
 
-#. translators: 1: a preset's name. 2: a slot's key.
 #: src/Admin/Sentences.php:99
-#, php-format
-msgid "The preset \"%1$s\" names it for the slot \"%2$s\", and it is not one of that slot's parts now."
+msgid "Not offered in the builder is ticked on its product's Part specs, so no kit offers it or the product's other variations."
 msgstr ""
 
-#. translators: 1: a preset's name. 2: a slot's key.
-#: src/Admin/Sentences.php:101
-#, php-format
-msgid "The preset \"%1$s\" names it for the slot \"%2$s\", and it is sold out."
+#: src/Admin/Sentences.php:100
+msgid "Not offered in the builder is ticked on its Part specs, so no kit offers it."
 msgstr ""
 
 #. translators: 1: a preset's name. 2: a slot's key.
 #: src/Admin/Sentences.php:104
 #, php-format
+msgid "The preset \"%1$s\" names it for the slot \"%2$s\", and it is not one of that slot's parts now."
+msgstr ""
+
+#. translators: 1: a preset's name. 2: a slot's key.
+#: src/Admin/Sentences.php:106
+#, php-format
+msgid "The preset \"%1$s\" names it for the slot \"%2$s\", and it is sold out."
+msgstr ""
+
+#. translators: 1: a preset's name. 2: a slot's key.
+#: src/Admin/Sentences.php:109
+#, php-format
 msgid "The preset \"%1$s\" names it for the slot \"%2$s\", and it no longer fits the preset's other parts."
 msgstr ""
 
-#: src/Admin/Sentences.php:118
+#: src/Admin/Sentences.php:123
 msgid "Choose a CSV file first."
 msgstr ""
 
-#: src/Admin/Sentences.php:119
+#: src/Admin/Sentences.php:124
 msgid "The file did not arrive whole. Choose it again."
 msgstr ""
 
-#: src/Admin/Sentences.php:120
+#: src/Admin/Sentences.php:125
 msgid "That is not a .csv file. Save the sheet as CSV and choose it again."
 msgstr ""
 
-#: src/Admin/Sentences.php:121
+#: src/Admin/Sentences.php:126
 msgid "The file is over 2 MB. Split it into smaller files."
 msgstr ""
 
-#: src/Admin/Sentences.php:122
+#: src/Admin/Sentences.php:127
 msgid "The file is not saved as UTF-8. Save it as CSV UTF-8 and choose it again."
 msgstr ""
 
-#: src/Admin/Sentences.php:123
+#: src/Admin/Sentences.php:128
 msgid "The file has no rows under its headings."
 msgstr ""
 
-#: src/Admin/Sentences.php:124
+#: src/Admin/Sentences.php:129
 msgid "The file has more than 5,000 rows. Split it into smaller files."
 msgstr ""
 
-#: src/Admin/Sentences.php:125
+#: src/Admin/Sentences.php:130
 msgid "The file has no column for what parts are matched by. Add an id or a sku column, or change the choice below."
 msgstr ""
 
-#: src/Admin/Sentences.php:126
+#: src/Admin/Sentences.php:131
 msgid "A column is in the file twice. Keep one of each."
 msgstr ""
 
-#: src/Admin/Sentences.php:127
+#: src/Admin/Sentences.php:132
 msgid "The file has no spec columns, so there is nothing to import."
 msgstr ""
 
-#: src/Admin/Sentences.php:128
+#: src/Admin/Sentences.php:133
 msgid "An import is running. Wait for it to finish."
 msgstr ""
 
-#: src/Admin/Sentences.php:156
+#: src/Admin/Sentences.php:161
 msgid "The row does not say which part it is for."
 msgstr ""
 
 #. translators: %s: an ID or a SKU.
-#: src/Admin/Sentences.php:158
+#: src/Admin/Sentences.php:163
 #, php-format
 msgid "\"%s\" is in the file more than once. Keep one row for it."
 msgstr ""
 
 #. translators: %s: an ID or a SKU.
-#: src/Admin/Sentences.php:160
+#: src/Admin/Sentences.php:165
 #, php-format
 msgid "No product is \"%s\"."
 msgstr ""
 
 #. translators: %s: a SKU.
-#: src/Admin/Sentences.php:162
+#: src/Admin/Sentences.php:167
 #, php-format
 msgid "The product with this ID does not have the SKU \"%s\". Check the row is for this shop, or match parts by SKU."
 msgstr ""
 
 #. translators: %s: a chart's name.
-#: src/Admin/Sentences.php:164
+#: src/Admin/Sentences.php:169
 #, php-format
 msgid "There is no chart named \"%s\". Add it under Spec tables first."
 msgstr ""
 
 #. translators: %s: a chart's name.
-#: src/Admin/Sentences.php:166
+#: src/Admin/Sentences.php:171
 #, php-format
 msgid "More than one chart is named \"%s\". Rename one under Spec tables."
 msgstr ""
 
 #. translators: %s: a size in a chart.
-#: src/Admin/Sentences.php:168
+#: src/Admin/Sentences.php:173
 #, php-format
 msgid "The chart has no size \"%s\"."
 msgstr ""
 
-#: src/Admin/Sentences.php:169
+#: src/Admin/Sentences.php:174
 #: src/Admin/SpecTablesScreen.php:336
 msgid "The size is too long. Use 40 characters or fewer."
 msgstr ""
 
 #. translators: 1: a deck's width with its unit, such as 8.6 in. 2: another, such as 8.375 in.
-#: src/Admin/Sentences.php:171
+#: src/Admin/Sentences.php:176
 #, php-format
 msgid "The narrowest deck, %1$s, is wider than the widest deck, %2$s."
 msgstr ""
 
-#: src/Admin/Sentences.php:172
+#: src/Admin/Sentences.php:177
 #: src/Admin/SpecTablesScreen.php:319
 #: src/Admin/SpecTablesScreen.php:334
 msgid "That chart is no longer there."
 msgstr ""
 
 #. translators: %s: what a cell held.
-#: src/Admin/Sentences.php:174
+#: src/Admin/Sentences.php:179
 #, php-format
 msgid "\"%s\" is not a measurement. Use a number, or a fraction such as 8 1/4."
 msgstr ""
 
 #. translators: %s: what a cell held.
-#: src/Admin/Sentences.php:176
+#: src/Admin/Sentences.php:181
 #, php-format
 msgid "The fraction in \"%s\" divides by zero."
 msgstr ""
 
 #. translators: %s: what a cell held.
-#: src/Admin/Sentences.php:178
+#: src/Admin/Sentences.php:183
 #, php-format
 msgid "\"%s\" is below zero."
 msgstr ""
 
 #. translators: %s: what a cell held.
-#: src/Admin/Sentences.php:180
+#: src/Admin/Sentences.php:185
 #, php-format
 msgid "\"%s\" is not a value this column takes."
 msgstr ""
 
 #. translators: %s: what was typed in the Layer image field.
-#: src/Admin/Sentences.php:198
+#: src/Admin/Sentences.php:203
 #, php-format
 msgid "Layer image was not saved: \"%s\" is not the ID of an image in the Media Library."
 msgstr ""
 
 #. translators: %s: a file's name.
-#: src/Admin/Sentences.php:200
+#: src/Admin/Sentences.php:205
 #, php-format
 msgid "Layer image was not saved: no image in the Media Library has the file name \"%s\"."
 msgstr ""
 
 #. translators: 1: a file's name. 2: the attachment IDs of the images with that name, such as 12, 40.
-#: src/Admin/Sentences.php:202
+#: src/Admin/Sentences.php:207
 #, php-format
 msgid "Layer image was not saved: more than one image in the Media Library has the file name \"%1$s\" (IDs %2$s). Use the ID of the one you mean."
 msgstr ""
 
 #. translators: %s: a file's media type, such as image/jpeg.
-#: src/Admin/Sentences.php:204
+#: src/Admin/Sentences.php:209
 #, php-format
 msgid "Layer image was not saved: it is %s, and a layer must be a PNG, WebP or AVIF with a transparent background."
 msgstr ""
 
 #. translators: %s: a file's media type, such as image/avif.
-#: src/Admin/Sentences.php:206
+#: src/Admin/Sentences.php:211
 #, php-format
 msgid "Layer image was not saved: it is %s, and this server's image library cannot read that type. Upload the cut-out as a PNG or WebP, or ask your host to turn on AVIF in GD or Imagick."
 msgstr ""
 
-#: src/Admin/Sentences.php:207
+#: src/Admin/Sentences.php:212
 msgid "Layer image was not saved: its corners are not transparent. Export the cut-out with a transparent background."
 msgstr ""
 
 #. translators: 1: a number of pixels. 2: another.
-#: src/Admin/Sentences.php:209
+#: src/Admin/Sentences.php:214
 #, php-format
 msgid "Layer image was not saved: it is too small for the size the picture draws this part. It needs at least %1$s pixels across or %2$s along."
 msgstr ""
 
 #. translators: %s: a field's name.
-#: src/Admin/Sentences.php:229
+#: src/Admin/Sentences.php:234
 #, php-format
 msgid "%s: fill this in."
 msgstr ""
 
 #. translators: %s: a field's name.
-#: src/Admin/Sentences.php:231
+#: src/Admin/Sentences.php:236
 #, php-format
 msgid "%s: type a number, such as 0.25."
 msgstr ""
 
 #. translators: 1: a field's name. 2: the most units a slot takes. 3: the most slots a kit takes. 4: the most presets a kit takes.
-#: src/Admin/Sentences.php:233
+#: src/Admin/Sentences.php:238
 #, php-format
 msgid "%1$s: this is more than the kit takes, or less. A slot takes 1 to %2$d units, a kit %3$d slots and %4$d presets, and text no more than its field allows."
 msgstr ""
 
 #. translators: %s: a field's name.
-#: src/Admin/Sentences.php:235
+#: src/Admin/Sentences.php:240
 #, php-format
 msgid "%s: the kit already has a slot of this kind. A kit takes one of each."
 msgstr ""
 
 #. translators: %s: a field's name.
-#: src/Admin/Sentences.php:237
+#: src/Admin/Sentences.php:242
 #, php-format
 msgid "%s: the deck's slot must come first, since every other part is checked against the deck. Move it up."
 msgstr ""
 
 #. translators: %s: a field's name.
-#: src/Admin/Sentences.php:239
+#: src/Admin/Sentences.php:244
 #, php-format
 msgid "%s: the risers' slot must come before the hardware's, since the bolts' length depends on the riser. Move it up."
 msgstr ""
 
 #. translators: %s: a field's name.
-#: src/Admin/Sentences.php:241
+#: src/Admin/Sentences.php:246
 #, php-format
 msgid "%s: this must not be less than the figure before it."
 msgstr ""
 
 #. translators: %s: a field's name.
-#: src/Admin/Sentences.php:243
+#: src/Admin/Sentences.php:248
 #, php-format
 msgid "%s: the kit has no such slot now. Clear the part, or keep the slot."
 msgstr ""
 
 #. translators: %s: a field's name.
-#: src/Admin/Sentences.php:245
+#: src/Admin/Sentences.php:250
 #, php-format
 msgid "%s: choose a part. A build must have one."
 msgstr ""
 
-#: src/Admin/Sentences.php:246
+#: src/Admin/Sentences.php:251
 msgid "The slots were not saved. A preset the kit already has names a slot these leave out, or leaves empty one a build must now have. Put that preset right, or remove it, in the same save."
 msgstr ""
 
 #. translators: %s: a field's name.
-#: src/Admin/Sentences.php:248
+#: src/Admin/Sentences.php:253
 #, php-format
 msgid "%s: type a wheelbase from 10 to 20 in, or leave it empty."
 msgstr ""
 
 #. translators: %s: a field's name, Builder page.
-#: src/Admin/Sentences.php:250
+#: src/Admin/Sentences.php:255
 #, php-format
 msgid "%s: choose one of the pages listed, or the kit's own page. A page is listed when it is published and holds this kit's Builder block."
 msgstr ""
 
 #. translators: %s: a field's name.
-#: src/Admin/Sentences.php:252
+#: src/Admin/Sentences.php:257
 #, php-format
 msgid "%s: type a width from 5 to 12 in."
 msgstr ""
 
 #. translators: %s: a field's name.
-#: src/Admin/Sentences.php:254
+#: src/Admin/Sentences.php:259
 #, php-format
 msgid "%s: the guide already has a row for this shoe size. Give each row its own."
 msgstr ""
 
-#: src/Admin/Sentences.php:255
+#: src/Admin/Sentences.php:260
 msgid "Presets need the kit's slots. Put the slots right and save, then add the presets."
 msgstr ""
 
 #. translators: 1: a field's name. 2: a product's name. 3: a slot's label.
-#: src/Admin/Sentences.php:257
+#: src/Admin/Sentences.php:262
 #, php-format
 msgid "%1$s: %2$s is not a part the %3$s slot takes, or it cannot be bought now."
 msgstr ""
 
 #. translators: 1: a field's name. 2: a product's name. 3: a rule's number, such as R1.
-#: src/Admin/Sentences.php:260
+#: src/Admin/Sentences.php:265
 #, php-format
 msgid "%1$s: %2$s lacks a spec that rule %3$s reads, so the builder does not offer it. Fill it in on its Part specs."
 msgstr ""
 
 #. translators: 1: a field's name. 2: a product's name. 3: a rule's number, such as R1. 4: a preset's name.
-#: src/Admin/Sentences.php:262
+#: src/Admin/Sentences.php:267
 #, php-format
 msgid "%1$s: %2$s does not fit the other parts of \"%4$s\". Rule %3$s does not let them go together."
 msgstr ""
 
 #. translators: %s: a field's name.
-#: src/Admin/Sentences.php:264
+#: src/Admin/Sentences.php:269
 #, php-format
 msgid "%s: this is not a value the field takes."
 msgstr ""
 
 #. translators: %s: a section's name.
-#: src/Admin/Sentences.php:266
+#: src/Admin/Sentences.php:271
 #, php-format
 msgid "%s: what was sent could not be read. Load the page again and try once more."
 msgstr ""
@@ -2014,13 +2034,14 @@ msgid "%1$s: %2$s"
 msgstr ""
 
 #: src/Cli/CheckCommand.php:87
-#: templates/admin/check.php:47
+#: templates/admin/check.php:49
+#: templates/admin/check.php:51
 msgid "The check found nothing to fix."
 msgstr ""
 
 #. translators: %s: a number of findings.
 #: src/Cli/CheckCommand.php:95
-#: templates/admin/check.php:55
+#: templates/admin/check.php:59
 #, php-format
 msgid "The check found %s thing to fix."
 msgid_plural "The check found %s things to fix."
@@ -2949,7 +2970,7 @@ msgstr ""
 msgid "Sign in to save this build"
 msgstr ""
 
-#: src/Front/MyBuildsView.php:185
+#: src/Front/MyBuildsView.php:209
 msgid "A saved build"
 msgstr ""
 
@@ -3755,7 +3776,7 @@ msgstr ""
 
 #. translators: %s: a number of parts.
 #: src/Health/SiteHealth.php:291
-#: templates/admin/check.php:68
+#: templates/admin/check.php:72
 #, php-format
 msgid "%s part the picture draws has no layer image. It is still offered, and the picture shows its labelled photo beside the board until one is chosen on its product page."
 msgid_plural "%s parts the picture draws have no layer image. Each is still offered, and the picture shows its labelled photo beside the board until one is chosen on its product page."
@@ -4012,7 +4033,7 @@ msgid "Builds saved under My builds."
 msgstr ""
 
 #: src/Privacy/PrivacyHooks.php:135
-#: templates/admin/check.php:98
+#: templates/admin/check.php:110
 #: build/builder/index.js:1
 msgid "Kit"
 msgstr ""
@@ -4232,60 +4253,69 @@ msgstr ""
 msgid "%s removed. The rows after it moved up."
 msgstr ""
 
-#: templates/admin/check.php:33
+#: templates/admin/check.php:35
 msgid "Finds what keeps a part out of the builder: sources that disagree about a part, values that cannot be read, and background work that failed. It reads every part and changes nothing. It also lists, apart, the parts the picture draws that have no layer image."
 msgstr ""
 
-#: templates/admin/check.php:35
+#: templates/admin/check.php:37
 msgid "The shop has no kit yet. Once it has one, the check also lists each kit's parts that lack a spec, presets that no longer fit and slots with nothing in stock."
 msgstr ""
 
-#: templates/admin/check.php:40
+#: templates/admin/check.php:42
 msgid "Run the check again"
 msgstr ""
 
-#: templates/admin/check.php:40
+#: templates/admin/check.php:42
 msgid "Run the check"
 msgstr ""
 
-#: templates/admin/check.php:44
+#: templates/admin/check.php:46
 msgid "Every part is being read again in the background, 100 at a time. Tools > Site Health shows how far it is."
 msgstr ""
 
-#: templates/admin/check.php:49
+#: templates/admin/check.php:53
 msgid "Nothing the check found keeps a part out of the builder."
 msgstr ""
 
-#: templates/admin/check.php:61
+#: templates/admin/check.php:65
 msgid "What to fix"
 msgstr ""
 
-#: templates/admin/check.php:63
+#: templates/admin/check.php:67
 msgid "What it found"
 msgstr ""
 
-#: templates/admin/check.php:66
+#: templates/admin/check.php:70
 msgid "Parts with no layer image"
 msgstr ""
 
-#: templates/admin/check.php:75
+#: templates/admin/check.php:79
 msgid "Variations that share a card"
 msgstr ""
 
-#: templates/admin/check.php:76
+#: templates/admin/check.php:80
 msgid "The builder shows a product's variations that share a photo and a layer image as one card, and asks for what tells them apart after the pick. Give a variation a photo of its own to give it a card of its own."
 msgstr ""
 
-#: templates/admin/check.php:79
+#: templates/admin/check.php:83
+#: templates/admin/check.php:91
 msgid "What it says"
 msgstr ""
 
-#: templates/admin/check.php:97
+#: templates/admin/check.php:87
+msgid "Parts kept out of the builder"
+msgstr ""
+
+#: templates/admin/check.php:88
+msgid "Not offered in the builder is ticked on these parts, or on their product, so no kit offers them. They stay in the shop. Untick it on the part's Part specs to offer it again."
+msgstr ""
+
+#: templates/admin/check.php:109
 msgid "Where"
 msgstr ""
 
 #. translators: %s: how many more rows a list has than it shows.
-#: templates/admin/check.php:123
+#: templates/admin/check.php:135
 #: templates/admin/import.php:131
 #: templates/admin/import.php:167
 #, php-format
@@ -4294,12 +4324,12 @@ msgid_plural "And %s more."
 msgstr[0] ""
 msgstr[1] ""
 
-#: templates/admin/check.php:128
-#: templates/admin/check.php:134
+#: templates/admin/check.php:140
+#: templates/admin/check.php:146
 msgid "Read every part again"
 msgstr ""
 
-#: templates/admin/check.php:129
+#: templates/admin/check.php:141
 msgid "The builder keeps an index of each part's specs and updates a part whenever it is saved. Use this when the index was not rebuilt, or stopped part way. It runs in the background, and parts keep what they held until they are reached."
 msgstr ""
 
@@ -4501,19 +4531,19 @@ msgstr ""
 msgid "(opens in a new tab)"
 msgstr ""
 
-#: templates/admin/part-specs.php:32
+#: templates/admin/part-specs.php:33
 msgid "No kit takes this product, so the builder needs nothing of it. To make it a part, put it in a category or brand that a kit's slot takes, or name it in a slot, then save. Its fields appear here."
 msgstr ""
 
-#: templates/admin/part-specs.php:34
+#: templates/admin/part-specs.php:35
 msgid "What the builder needs to know of this part to check that it fits. Fill in the group that matches it and leave the rest. A measurement takes a decimal or a fraction: 8.25 or 8 1/4. On a variable product, each variation takes these values unless it has its own."
 msgstr ""
 
-#: templates/admin/part-specs.php:36
+#: templates/admin/part-specs.php:37
 msgid "A field left blank takes the parent product's value."
 msgstr ""
 
-#: templates/admin/part-specs.php:70
+#: templates/admin/part-specs.php:87
 #: templates/admin/spec-table.php:134
 msgid "Not set"
 msgstr ""

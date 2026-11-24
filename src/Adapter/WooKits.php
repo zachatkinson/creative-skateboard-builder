@@ -20,8 +20,10 @@ use CreativeBranding\SkateboardBuilder\Port\DocumentSchemas;
 use CreativeBranding\SkateboardBuilder\Port\Kits;
 use CreativeBranding\SkateboardBuilder\Port\PartFact;
 use CreativeBranding\SkateboardBuilder\Port\PartFacts;
+use CreativeBranding\SkateboardBuilder\Port\ProductMeta;
 use CreativeBranding\SkateboardBuilder\Port\SpecIndex;
 use CreativeBranding\SkateboardBuilder\Support\Cast;
+use CreativeBranding\SkateboardBuilder\Support\NotOffered;
 use CreativeBranding\SkateboardBuilder\Support\Options;
 use WC_Product;
 
@@ -86,6 +88,13 @@ final class WooKits implements Kits {
 	private ?array $held = null;
 
 	/**
+	 * Reads several products' meta in one query, for "Not offered in the builder" (1.2.0); null in a container of 1.1.0.
+	 *
+	 * @var ProductMeta|null
+	 */
+	private ?ProductMeta $meta = null;
+
+	/**
 	 * Constructor.
 	 *
 	 * @since 0.4.0
@@ -97,6 +106,20 @@ final class WooKits implements Kits {
 	 * @param Clock           $clock    The time.
 	 */
 	public function __construct( private Products $products, private DocumentSchemas $schemas, private SpecIndex $index, private PartFacts $facts, private Clock $clock ) {}
+
+	/**
+	 * A copy that reads the parts' and their products' meta together, so the box each has asks no query a part
+	 * (#116, D-351). Called only from the container's additions (D-208).
+	 *
+	 * @since 1.2.0
+	 *
+	 * @param ProductMeta $meta Reads several products' meta in one query.
+	 */
+	public function withMeta( ProductMeta $meta ): self {
+		$copy       = clone $this;
+		$copy->meta = $meta;
+		return $copy;
+	}
 
 	/**
 	 * Every kit whose documents read, by the kit product's ID.
@@ -401,6 +424,8 @@ final class WooKits implements Kits {
 		foreach ( $all as $id => $part ) {
 			$owners[ $id ] = $part->is_type( 'variation' ) ? $part->get_parent_id() : $id;
 		}
+		// "Not offered in the builder" is read from each part's meta and its product's: together, not one a part.
+		$this->meta?->prime( ...array_keys( $parents ) );
 		$brands = $this->brands( ...array_values( $owners ) );
 		$specs  = array() === $all ? array() : $this->index->specsOf( ...array_keys( $all ) );
 		$facts  = array();
@@ -662,15 +687,18 @@ final class WooKits implements Kits {
 			&& 'hidden' !== $owner->get_catalog_visibility()
 			&& '' === $owner->get_post_password()
 			&& $part->is_purchasable()
-			&& self::available( $part );
+			&& self::available( $part, $owner );
 	}
 
 	/**
-	 * Whether no plugin rules the part out (spec: Pricing, stock, assembly and returns).
+	 * Whether the shop and no plugin rules the part out (spec: Pricing, stock, assembly and returns). The shop's "Not
+	 * offered in the builder", on the part or a variation's product, is the filter's first value (1.2.0, #116, D-351),
+	 * so a plugin still answers last; it is read from the products already loaded.
 	 *
-	 * @param WC_Product $part A part a shopper could be shown and could buy.
+	 * @param WC_Product $part  A part a shopper could be shown and could buy.
+	 * @param WC_Product $owner The part itself, or a variation's parent.
 	 */
-	private static function available( WC_Product $part ): bool {
+	private static function available( WC_Product $part, WC_Product $owner ): bool {
 		/**
 		 * Filter whether a product or a variation may be a part of a build. A plugin that knows something of a part
 		 * WooCommerce does not, such as stock held elsewhere, rules it out here, and the builder then neither offers
@@ -678,12 +706,13 @@ final class WooKits implements Kits {
 		 * false leaves the part in.
 		 *
 		 * @since 0.4.0
+		 * @since 1.2.0 Starts false where the shop ticks "Not offered in the builder" on the part or its product.
 		 *
-		 * @param bool       $available Whether the part may be used. Default true.
+		 * @param bool       $available Whether the part may be used. Default true, or false where the shop keeps it out.
 		 * @param int        $id        The product's or the variation's ID.
 		 * @param WC_Product $part      The product or the variation.
 		 */
-		return false !== apply_filters( 'cbuild_part_available', true, $part->get_id(), $part );
+		return false !== apply_filters( 'cbuild_part_available', ! NotOffered::keptOut( $part, $owner ), $part->get_id(), $part );
 	}
 
 	/**

@@ -18,7 +18,9 @@
         "cbuild_updates_enabled",
         "cbuild_width_guide"
     ],
-    "actions": [],
+    "actions": [
+        "cbuild_parts_changed"
+    ],
     "listened_actions": [
         "cbuild_parts_changed"
     ],
@@ -62,6 +64,7 @@
         "_cbuild_assembly",
         "_cbuild_layer",
         "_cbuild_layout",
+        "_cbuild_not_offered",
         "_cbuild_picture",
         "_cbuild_presets",
         "_cbuild_rows",

@@ -108,6 +108,58 @@ test.describe( 'The Part specs panel', () => {
 		await expect( width ).toHaveValue( '' );
 	} );
 
+	// #116: "Not offered in the builder", ticked by keyboard, is listed apart by the Catalogue check, whose link lands
+	// on the box; unticked, the part is offered again, as the fixture left it.
+	test( 'a part ticked Not offered in the builder is listed by the Catalogue check, with a link to its box', async ( {
+		page,
+	} ) => {
+		const PANEL = '#cbuild_part_specs';
+		const box = page.locator( '#cbuild-spec-not-offered' );
+		await login( page );
+		await edit( page, 'smoke-test-deck', 'Smoke test deck' );
+		await tab( page, PANEL );
+		await expect( box ).not.toBeChecked();
+		await expect( box ).toHaveAccessibleName(
+			'Not offered in the builder'
+		);
+		await expect( box ).toHaveAccessibleDescription(
+			/no kit offers this part/
+		);
+		await box.focus();
+		await page.keyboard.press( 'Space' );
+		await axe( page, 'the Part specs tab, Not offered ticked', PANEL );
+		await update( page );
+		await tab( page, PANEL );
+		await expect( box ).toBeChecked();
+
+		await page.goto( '/wp-admin/admin.php?page=cbuild&tab=check' );
+		await page.getByRole( 'button', { name: 'Run the check' } ).click();
+		const kept = page.getByRole( 'region', {
+			name: 'Parts kept out of the builder',
+		} );
+		await expect( kept ).toBeVisible();
+		const row = kept
+			.getByRole( 'row' )
+			.filter( { hasText: 'Smoke test deck' } );
+		await expect( row ).toContainText(
+			'Not offered in the builder is ticked on its Part specs, so no kit offers it.'
+		);
+		await axe(
+			page,
+			'the Catalogue check, with a part kept out',
+			'#wpbody-content .wrap'
+		);
+		await row.getByRole( 'link' ).click();
+		await expect( page.locator( PANEL ) ).toBeVisible();
+		await expect( box ).toBeFocused();
+
+		// Unticked, as the fixture left it.
+		await page.keyboard.press( 'Space' );
+		await update( page );
+		await tab( page, PANEL );
+		await expect( box ).not.toBeChecked();
+	} );
+
 	test( "a variation names its size in a maker's chart, and each figure says where it comes from", async ( {
 		page,
 	}, testInfo ) => {

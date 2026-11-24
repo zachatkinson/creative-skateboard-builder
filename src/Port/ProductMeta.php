@@ -31,4 +31,14 @@ interface ProductMeta {
 	 * @param int ...$products Product or variation IDs.
 	 */
 	public function prime( int ...$products ): void;
+
+	/**
+	 * Read these products' and variations' meta, and the meta of each variation's product, into WooCommerce's cache
+	 * in one query, where the caller does not know the products yet: a page of saved builds (#116, D-351).
+	 *
+	 * @since 1.2.0
+	 *
+	 * @param int ...$products Product or variation IDs.
+	 */
+	public function primeWithParents( int ...$products ): void;
 }

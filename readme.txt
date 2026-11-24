@@ -65,6 +65,7 @@ Yes. Its hooks, REST routes, block attributes, settings keys, order item keys, C
 * A kit's Build tab chooses the page its builder is on. The kit's page, "Build a complete with this deck", the cart's Edit build and My builds open the builder there, while the page is published and holds the kit's Builder block.
 * A kit's Build tab can turn "Build a complete with this deck" off for that kit. Another kit that offers the deck may still show it.
 * A kit's Build tab edits the width guide under the deck step: your own shoe sizes and deck widths, the builder's rows back with one box, or the guide hidden.
+* A part's Part specs, and each variation's, have a "Not offered in the builder" box. Ticked, no kit offers the part, which stays in the shop, and the Catalogue check lists it.
 * A build's Add to cart keeps the cart before it answers, so a cart page opened straight after holds the build.
 
 = 1.1.0 =

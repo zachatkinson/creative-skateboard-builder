@@ -20,6 +20,7 @@ use CreativeBranding\SkateboardBuilder\Domain\Rule\MessageCode;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\Origin;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\SpecKey;
 use CreativeBranding\SkateboardBuilder\Port\UploadRefused;
+use CreativeBranding\SkateboardBuilder\Port\PartsKeptOut;
 use CreativeBranding\SkateboardBuilder\Service\CatalogueCheck;
 use CreativeBranding\SkateboardBuilder\Service\CheckFinding;
 use CreativeBranding\SkateboardBuilder\Service\KitEditor;
@@ -93,6 +94,10 @@ final class Sentences {
 			case CatalogueCheck::LOOK_SHARED:
 				/* translators: 1: a list of variations' IDs, such as 11, 12. 2: a slot's key, such as deck. */
 				return sprintf( __( 'Its variations %1$s share a photo, so the builder shows them as one card in the slot "%2$s" and asks for the rest after the pick.', 'creative-skateboard-builder' ), self::ids( $finding->values['parts'] ?? '' ), $finding->slot );
+			case CatalogueCheck::NOT_OFFERED:
+				return PartsKeptOut::PRODUCT === ( $values['from'] ?? '' )
+					? __( 'Not offered in the builder is ticked on its product\'s Part specs, so no kit offers it or the product\'s other variations.', 'creative-skateboard-builder' )
+					: __( 'Not offered in the builder is ticked on its Part specs, so no kit offers it.', 'creative-skateboard-builder' );
 			case CatalogueCheck::PRESET:
 				$problems = array(
 					/* translators: 1: a preset's name. 2: a slot's key. */
