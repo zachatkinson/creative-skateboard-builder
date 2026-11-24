@@ -3774,6 +3774,8 @@ CI's Lighthouse gate failed Total Blocking Time on the builder page on Twenty Tw
 
 **Why:** Cowork's 1.0.0 note (#90): on the demo a warm state request takes about 160 ms more than a bare REST request, and the priming work of D-294 can't be measured on a real host without it.
 
+**Added in the M11 audit.** The builder's own state requests send no REST nonce, on purpose (a nonce in a cached page goes stale; see the Store API's), so WordPress answers them as signed out (`wp-includes/rest-api.php:1159-1161`) and a manager browsing the builder is never sent the header. A request with the nonce is: from wp-admin's console, `wp.apiFetch( { path: '/cbuild/v1/kits/<id>/state', parse: false } )` and its `server-timing` header. Checked on lane 1 against four kits: 9.2 ms and 24 queries to 92.0 ms and 98, while the same request with no nonce had none. That is still from wp-admin with no code on the host, as this decision meant; HOOKS.md says how.
+
 **Status:** Accepted.
 
 ### D-305 · The motion: one module, the board's moments by the Web Animations API, a step by a view transition · 2026-11-23
