@@ -34,7 +34,7 @@ Zach accepted D-002 to D-011 as proposed on 9 November 2026, before milestone 1.
 
 ## Index by area
 
-Each decision is listed once, under the area it is mostly about, in number order. The entries themselves follow in [The decisions](#the-decisions).
+Each decision is listed once, under the area it is mostly about, in number order. The entries themselves follow in [The decisions](#the-decisions). D-358, D-362 and D-366 are unused.
 
 ### Project, scope and reviews
 
@@ -218,6 +218,9 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-331 · The no-script submits are out of the flow from the first paint where the script will run](#d-331--the-no-script-submits-are-out-of-the-flow-from-the-first-paint-where-the-script-will-run--2026-11-23)
 - [D-333 · The panel's own scroll is put back after each change inside it until the builder is ready](#d-333--the-panels-own-scroll-is-put-back-after-each-change-inside-it-until-the-builder-is-ready--2026-11-23)
 - [D-340 · A step's cards are listed under its recommendation whatever is picked in it, and a tie falls by the parts' IDs](#d-340--a-steps-cards-are-listed-under-its-recommendation-whatever-is-picked-in-it-and-a-tie-falls-by-the-parts-ids--2026-11-23)
+- [D-359 · A phone held sideways keeps the strip, with the words in a column beside the board](#d-359--a-phone-held-sideways-keeps-the-strip-with-the-words-in-a-column-beside-the-board--2026-11-24)
+- [D-360 · Once a width is chosen the deck step drops its lead, and Sort sits on the brands' line](#d-360--once-a-width-is-chosen-the-deck-step-drops-its-lead-and-sort-sits-on-the-brands-line--2026-11-24)
+- [D-361 · The phone rail keeps the page's gutter where the row has room, and its border under the step's name](#d-361--the-phone-rail-keeps-the-pages-gutter-where-the-row-has-room-and-its-border-under-the-steps-name--2026-11-24)
 - [D-363 · A press already down when the store's script starts is taken up as one that went down after](#d-363--a-press-already-down-when-the-stores-script-starts-is-taken-up-as-one-that-went-down-after--2026-11-24)
 - [D-364 · The state route has 10 s to answer, then the step keeps what it shows and says so](#d-364--the-state-route-has-10-s-to-answer-then-the-step-keeps-what-it-shows-and-says-so--2026-11-24)
 
@@ -350,6 +353,9 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-342 · Lighthouse measures the builder's page warm](#d-342--lighthouse-measures-the-builders-page-warm--2026-11-24)
 - [D-344 · Lighthouse's median is of five runs a page](#d-344--lighthouses-median-is-of-five-runs-a-page--2026-11-24)
 - [D-353 · The My builds benchmark settles WooCommerce's term counts before it measures](#d-353--the-my-builds-benchmark-settles-woocommerces-term-counts-before-it-measures--2026-11-24)
+- [D-355 · Next is asked ahead once it lights, so the next step shows at its press](#d-355--next-is-asked-ahead-once-it-lights-so-the-next-step-shows-at-its-press--2026-11-24)
+- [D-356 · What a press foretells is made at the press, and the lines the answer brings keep their place; the phone's stage still sticks at the answer](#d-356--what-a-press-foretells-is-made-at-the-press-and-the-lines-the-answer-brings-keep-their-place-the-phones-stage-still-sticks-at-the-answer--2026-11-24)
+- [D-357 · The pressed deck's board is drawn at the press, once decoded, and the answer confirms it or puts it back](#d-357--the-pressed-decks-board-is-drawn-at-the-press-once-decoded-and-the-answer-confirms-it-or-puts-it-back--2026-11-24)
 - [D-365 · The state route's Server-Timing names the shelf, the cards and the decks' boards](#d-365--the-state-routes-server-timing-names-the-shelf-the-cards-and-the-decks-boards--2026-11-24)
 
 ### Compatibility, upgrades and uninstall
