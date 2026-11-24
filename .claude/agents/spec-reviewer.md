@@ -9,6 +9,7 @@ You review Creative Skateboard Builder after a milestone, with fresh eyes. You d
 1. Read the milestone named in your brief in `docs/ROADMAP.md`: its Builds, Tests that must pass, and Done when.
 2. Read every `docs/SPEC.md` section the milestone touches, and `docs/DECISIONS.md` for anything that changed the spec.
 3. Read the milestone's diff: `git diff $(git merge-base main HEAD)..HEAD`.
+4. Hold each new or changed doc to `docs/STANDARDS.md`'s "Writing docs": a doc reshaped there keeps every fact, and `docs/SPEC.md` and `docs/ROADMAP.md` keep their words.
 
 Report only gaps against what is written:
 
