@@ -158,3 +158,91 @@ describe( 'a press held while the builder hydrates', () => {
 		expect( clicks ).toBe( 1 );
 	} );
 } );
+
+/**
+ * #120 (Cowork's 1.1.0 F22): a press that went down before the store's script ran, so before its listener. The script
+ * takes the control `:active` names as pressed; jsdom keeps no `:active`, so the page's answer to that one question is
+ * given here.
+ */
+describe( 'a press that went down before the script ran', () => {
+	let button: HTMLButtonElement;
+	let clicks: number;
+
+	/**
+	 * Runs the store's script afresh, with `pressed` as the control the page says is `:active`.
+	 *
+	 * @param pressed The control under the mouse's button, or null.
+	 */
+	async function start( pressed: Element | null ): Promise< void > {
+		const find = document.querySelector.bind( document );
+		const asked = vi
+			.spyOn( document, 'querySelector' )
+			.mockImplementation( ( selector: string ) =>
+				selector.endsWith( ':active' ) ? pressed : find( selector )
+			);
+		vi.resetModules();
+		await import( '../../assets/src/builder/view' );
+		expect( asked ).toHaveBeenCalledWith(
+			'.cbuild :is(button, a, summary, label, input[type="radio"], input[type="checkbox"], input[type="submit"]):active'
+		);
+		asked.mockRestore();
+	}
+
+	/**
+	 * The pointer coming up over the control, with no click from the browser.
+	 *
+	 * @param type The pointer's type.
+	 */
+	function up( type = 'mouse' ): void {
+		button.dispatchEvent(
+			new PointerEvent( 'pointerup', {
+				bubbles: true,
+				pointerType: type,
+			} )
+		);
+		vi.runAllTimers();
+	}
+
+	beforeEach( () => {
+		vi.useFakeTimers();
+		document.body.innerHTML =
+			'<div class="cbuild"><div class="cbuild-width"><button type="button">8.25″</button></div></div>';
+		button = document.querySelector( 'button' )!;
+		clicks = 0;
+		button.addEventListener( 'click', () => clicks++ );
+		over = button;
+		document.elementFromPoint = () => over;
+	} );
+
+	afterEach( () => {
+		vi.useRealTimers();
+		document.body.innerHTML = '';
+	} );
+
+	it( 'clicks the control already pressed once the press comes up over it, once', async () => {
+		await start( button );
+		const parent = button.parentElement!;
+		// Hydration takes it out of the page and puts it back.
+		button.remove();
+		parent.append( button );
+		up();
+		expect( clicks ).toBe( 1 );
+		up();
+		expect( clicks, 'the press is forgotten once it has come up' ).toBe(
+			1
+		);
+	} );
+
+	it( 'clicks nothing where nothing was pressed', async () => {
+		await start( null );
+		up();
+		expect( clicks ).toBe( 0 );
+	} );
+
+	it( "clicks nothing for a finger's tap, which the browser never drops", async () => {
+		await start( button );
+		up( 'touch' );
+		up();
+		expect( clicks ).toBe( 0 );
+	} );
+} );

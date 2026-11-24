@@ -4484,3 +4484,20 @@ The benchmark's first view asked 121 or 133 queries, before 1.2.0 as after, agai
 **Flagged for Zach:** the Build tab's notice for the settings is a new sentence, and the fields' IDs and names changed (unreleased, so nothing public).
 
 **Status:** Accepted.
+
+### D-363 · A press already down when the store's script starts is taken up as one that went down after · 2026-11-24
+
+Cowork's 1.1.0 review, F22 (#120): #80's fix notes a mouse press from the store's own `pointerdown` listener, which `view.js` adds when it runs. A press that went down before that, held past the ready mark, still ended in no click, no page load and no answer: hydration takes the pressed control out of the page and puts it back, and the browser drops the click (D-296). On the demo the window is 130 to 160 ms on a desktop.
+
+- **The change.** As the store's script starts, `document.querySelector()` asks for the builder's control that is `:active` (`.cbuild :is(button, a, summary, label, input[type="radio"], input[type="checkbox"], input[type="submit"]):active`, the controls #80 notes). While a mouse's main button is down, the control under it and every element around it match `:active` (HTML: Selectors, "the :active pseudo-class"), so the first in the document's order is the outermost control pressed, a card's label before its radio. It is taken up as `early`, and the press's `pointerup` does the rest as it does for #80: once the press comes up over the control, and only where the browser's click did not reach it, the control is clicked.
+- **A finger.** `:active` can also name a control under a finger, and a tap's click is never dropped (M10). So the `pointerup` that ends a press noted this way must be a mouse's; any other forgets it. A press #80 notes was a mouse's already, so nothing changes for it.
+- **WebKit.** Confirmed in Playwright's WebKit as in Chromium and Firefox: without the change the browser test fails in both named projects; with it all three pass.
+- **Not chosen.** An inline script in the page to note the press before `view.js` arrives: markup and script the server would print outside the store, for a window `:active` already answers.
+
+**Tests.** `builder.spec.ts` "A mouse press that starts before the builder's script runs": `view.js` held back 500 ms, and until the press has gone down, the press made on the width before it came and let go after the ready mark, then a page load or the store's answer (desktop projects; a phone's tap is not affected). `press.test.ts`: the store's script run afresh with a control `:active` clicks it once, with none clicks nothing, and a finger's `pointerup` clicks nothing.
+
+**Red runs.** Before the change: chromium-desktop and webkit-desktop, "a page load or the store's answer / Expected: > 0 / Received: 0" (builder.spec.ts:7721). The deliberate break, the finger's check taken out of `releaseEarly()`: "clicks nothing for a finger's tap, which the browser never drops", "expected 1 to be +0". Put back, both passed.
+
+**Why:** the press that came too early is the shopper's same press; it should end as one that came a moment later does.
+
+**Status:** Accepted.

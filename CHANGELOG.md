@@ -21,6 +21,7 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Fixed
 
+- A mouse press on the builder that went down before its script ran, and came up after, now goes through; it was lost (Cowork's 1.1.0 F22, #120, D-363).
 - A build's Add to cart keeps the cart in the session before the add answers, so a cart page opened straight after holds the build; it read empty while WooCommerce saved the session at shutdown (#108, #51, D-352).
 
 ## [1.1.0] - 2026-11-24

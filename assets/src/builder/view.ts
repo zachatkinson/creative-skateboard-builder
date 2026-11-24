@@ -173,6 +173,12 @@ function release(): void {
 let early: { control: HTMLElement; clicked: boolean } | null = null;
 
 /**
+ * The builder's controls a press can land on.
+ */
+const CONTROLS =
+	'.cbuild :is(button, a, summary, label, input[type="radio"], input[type="checkbox"], input[type="submit"])';
+
+/**
  * Notes the control a mouse press goes down on, inside the builder.
  *
  * @param event The pointer going down.
@@ -184,9 +190,7 @@ function pressEarly( event: PointerEvent ): void {
 		'mouse' === event.pointerType &&
 		0 === event.button &&
 		event.target instanceof Element
-			? event.target.closest< HTMLElement >(
-					'.cbuild :is(button, a, summary, label, input[type="radio"], input[type="checkbox"], input[type="submit"])'
-				)
+			? event.target.closest< HTMLElement >( CONTROLS )
 			: null;
 	early = control ? { control, clicked: false } : null;
 }
@@ -214,7 +218,9 @@ function clickEarly( event: MouseEvent ): void {
  */
 function releaseEarly( event: PointerEvent ): void {
 	const pressed = early;
-	if ( ! pressed ) {
+	// A press taken up as the script started may have been a finger's, whose tap the browser never drops.
+	if ( ! pressed || 'mouse' !== event.pointerType ) {
+		early = null;
 		return;
 	}
 	const over = document.elementFromPoint( event.clientX, event.clientY );
@@ -234,6 +240,13 @@ function releaseEarly( event: PointerEvent ): void {
 document.addEventListener( 'pointerdown', pressEarly, true );
 document.addEventListener( 'click', clickEarly, true );
 document.addEventListener( 'pointerup', releaseEarly, true );
+
+/**
+ * A press that went down before this script ran, so before the listener above, is taken up as one that went down
+ * after (#120, D-363): while the button is down, the control and the elements around it are `:active`.
+ */
+const already = document.querySelector< HTMLElement >( CONTROLS + ':active' );
+early = already ? { control: already, clicked: false } : null;
 
 /**
  * Each panel the shopper scrolled before its builder was ready, and where they left it (#94). Hydrating a region takes

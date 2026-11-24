@@ -7656,6 +7656,75 @@ test.describe( 'A mouse press held while the builder hydrates', () => {
 	}
 } );
 
+/**
+ * #120 (Cowork's 1.1.0 F22): a mouse press that goes down before the store's script has run, so before its press
+ * listener, and comes up after the ready mark. The script is held back 500 ms, and until the press, so the press lands
+ * while the page is the server's alone; hydration then takes the pressed control out and puts it back, as in #80.
+ */
+test.describe( "A mouse press that starts before the builder's script runs", () => {
+	test( 'goes through on a width', async ( { context }, info ) => {
+		test.skip(
+			! info.project.name.endsWith( '-desktop' ),
+			"A mouse on a desktop: a finger's tap is not affected, and a phone's layout settles under the press."
+		);
+		// A page of the context's own: the fixture's page waits for the ready mark after each load.
+		const page = await context.newPage();
+		await page.setViewportSize( { width: 1440, height: 1800 } );
+		let down: () => void = () => undefined;
+		const pressing = new Promise< void >( ( done ) => {
+			down = done;
+		} );
+		let served = false;
+		await page.route( /\/build\/builder\/view\.js/, async ( route ) => {
+			await Promise.all( [
+				pressing,
+				new Promise( ( done ) => setTimeout( done, 500 ) ),
+			] );
+			served = true;
+			await route.continue();
+		} );
+		let moved = 0;
+		let pressed = false;
+		page.on( 'request', ( request ) => {
+			if (
+				pressed &&
+				( ( request.isNavigationRequest() &&
+					request.frame() === page.mainFrame() ) ||
+					/cbuild\/v1\/kits\/\d+\/state/.test( request.url() ) )
+			) {
+				moved++;
+			}
+		} );
+		await page.goto( fixture().page, { waitUntil: 'commit' } );
+		const control = page.locator( '.cbuild-width__option' ).first();
+		await control.waitFor();
+		const box = await control.boundingBox();
+		expect( box ).not.toBeNull();
+		await page.mouse.move(
+			( box?.x ?? 0 ) + ( box?.width ?? 0 ) / 2,
+			( box?.y ?? 0 ) + ( box?.height ?? 0 ) / 2
+		);
+		pressed = true;
+		await page.mouse.down();
+		expect( served, "pressed before the store's script came" ).toBe(
+			false
+		);
+		down();
+		await page.locator( '.cbuild[data-ready]' ).waitFor( {
+			state: 'attached',
+			timeout: 15000,
+		} );
+		await page.mouse.up();
+		await expect
+			.poll( () => moved, {
+				message: "a page load or the store's answer",
+				timeout: 5000,
+			} )
+			.toBeGreaterThan( 0 );
+		await page.close();
+	} );
+} );
+
 test.describe( "The panel's own scroll while the builder hydrates (#94)", () => {
 	test( 'stays where the shopper put it', async ( { context }, info ) => {
 		test.skip(
