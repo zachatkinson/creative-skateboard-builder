@@ -230,6 +230,13 @@ final class Options {
 	public const PRODUCT_TYPE_KIT = 'cbuild_kit';
 
 	/**
+	 * The Builder block's name, which a page's content holds as `<!-- wp:creative-skateboard-builder/builder`.
+	 *
+	 * @since 1.2.0
+	 */
+	public const BLOCK = 'creative-skateboard-builder/builder';
+
+	/**
 	 * A kit's meta: its four documents, each as JSON text (docs/HOOKS.md, Document schemas).
 	 *
 	 * @since 0.4.0

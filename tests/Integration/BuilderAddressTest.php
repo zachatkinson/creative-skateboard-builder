@@ -213,4 +213,29 @@ final class BuilderAddressTest extends IntegrationTestCase {
 		$hooks = $hooks->withAddress( $this->address() );
 		self::assertSame( (string) get_permalink( $page ), $hooks->elsewhere(), 'with it, the chosen page' );
 	}
+
+	// The auditor's M12 minor 8: the Build tab listed the first 500 pages by title, so a Builder page past them could
+	// not be chosen. Only pages that hold the block, or a synced pattern, are read now.
+	public function test_a_builder_page_past_the_sites_first_five_hundred_pages_is_offered(): void {
+		self::factory()->post->create_many(
+			501,
+			array(
+				'post_type'    => 'page',
+				'post_status'  => 'publish',
+				'post_title'   => 'A page',
+				'post_content' => '<!-- wp:paragraph --><p>About us.</p><!-- /wp:paragraph -->',
+			)
+		);
+		$pattern = self::factory()->post->create(
+			array(
+				'post_type'    => 'wp_block',
+				'post_status'  => 'publish',
+				'post_content' => '<!-- wp:creative-skateboard-builder/builder {"kit":' . $this->kit . '} /-->',
+			)
+		);
+		$through = $this->page( '<!-- wp:block {"ref":' . $pattern . '} /-->', array( 'post_title' => 'Zz through a pattern' ) );
+		$page    = $this->page( null, array( 'post_title' => 'Zz build yours' ) );
+
+		self::assertSame( array( $page, $through ), $this->service( BuilderPlace::class )->pages( $this->kit ) );
+	}
 }

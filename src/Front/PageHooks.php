@@ -36,7 +36,7 @@ final class PageHooks implements Hookable {
 	 *
 	 * @since 0.6.0
 	 */
-	public const string BLOCK = 'creative-skateboard-builder/builder';
+	public const string BLOCK = Options::BLOCK;
 
 	/**
 	 * The block template kits take in a block theme: a slug no product can be read as, since a product's own
