@@ -1,4 +1,4 @@
-import { test, expect, Page } from './support/test';
+import { test, expect, inLocale, Page } from './support/test';
 import { axe } from './support/axe';
 import { login } from './support/login';
 
@@ -200,7 +200,9 @@ test.describe( 'The Build tab', () => {
 	// the guide hidden, and the builder's rows put back, which leaves the kit as it was found.
 	test( "the width guide takes rows of its own by keyboard, hides, and goes back to the builder's rows", async ( {
 		page,
-	} ) => {
+	}, info ) => {
+		// The builder's own first row, as the site's locale writes its number: 6,5 in French.
+		const smallest = inLocale( info.project.name, '6.5 or smaller' );
 		const GUIDE = '#cbuild-kit-layout-width_guide';
 		const row = ( at: number ) => `${ GUIDE }-rows-${ at }`;
 		const shoe = ( at: number ) => page.locator( `${ row( at ) }-shoe` );
@@ -214,7 +216,7 @@ test.describe( 'The Build tab', () => {
 		await expect( shown ).toBeChecked();
 		await expect( plugins ).toBeChecked();
 		// The builder's rows, to start from, and one empty row; the rest wait.
-		await expect( shoe( 0 ) ).toHaveValue( '6.5 or smaller' );
+		await expect( shoe( 0 ) ).toHaveValue( smallest );
 		await expect( shoe( 4 ) ).toHaveValue( '' );
 		await expect( page.locator( row( 4 ) ) ).toBeVisible();
 		await expect( page.locator( row( 5 ) ) ).toBeHidden();
@@ -270,7 +272,7 @@ test.describe( 'The Build tab', () => {
 		await tab( page );
 		await expect( shown ).toBeChecked();
 		await expect( plugins ).toBeChecked();
-		await expect( shoe( 0 ) ).toHaveValue( '6.5 or smaller' );
+		await expect( shoe( 0 ) ).toHaveValue( smallest );
 		await expect( shoe( 4 ) ).toHaveValue( '' );
 	} );
 

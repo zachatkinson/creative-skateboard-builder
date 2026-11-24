@@ -2558,7 +2558,12 @@ test.describe( 'The review with JavaScript', () => {
 		page,
 		context,
 		baseURL,
+		javaScriptEnabled,
 	} ) => {
+		test.skip(
+			! javaScriptEnabled,
+			'Without a script the add is a form post, and its answer is a page WooCommerce sends after the session is saved.'
+		);
 		const url = baseURL || SITE;
 		await context.addCookies( [
 			{ name: 'cbuild_e2e_slow_end', value: '1', url },
