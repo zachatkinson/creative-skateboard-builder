@@ -4328,6 +4328,8 @@ Issue #111. Zach approved a Markdown linter on 24 November 2026, the 2026 standa
 
 **Red runs.** With this config on the docs as they stood at f3fa60d, `npm run lint:md`: "Summary: 183 issues in 22 files" (MD036 67, MD060 38, MD032 26, MD012 20, MD029 14, MD034 9, MD033 5, MD018 4). Deliberate break: `docs/A11Y.md`'s escape taken out again, "docs/A11Y.md:102:174 error MD033/no-inline-html Inline HTML [Element: part]"; put back, "0 issues in 0 files". The hook, in a scratch clone: a doubled blank line staged whole was fixed and staged; `<part>` staged whole stopped the commit; `<part>` in a file's staged text, with the working copy clean, stopped it; the reverse passed; the readme staged in part passed, and failed with its H1 made an H2.
 
+**Added the same night.** CI's `paths-ignore` skips `docs/**` and Markdown, so a change to the docs alone was linted only by the pre-commit hook. `.github/workflows/docs.yml` runs `npm run lint:md` on exactly those paths, in about a minute; a change that touches code still lints its Markdown in CI's `npm run check`. actionlint and zizmor (`tools/workflow-lint.sh`) pass on it.
+
 **Status:** Accepted.
 
 ### D-346 · A .gitattributes for line endings, binaries and the source archive, kept equal to .distignore by gate 19 · 2026-11-24
