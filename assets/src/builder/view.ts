@@ -236,6 +236,55 @@ document.addEventListener( 'click', clickEarly, true );
 document.addEventListener( 'pointerup', releaseEarly, true );
 
 /**
+ * Each panel the shopper scrolled before its builder was ready, and where they left it (#94). Hydrating a region takes
+ * its `data-wp-each` items out and puts them back. WebKit lays the panel out in between, with its contents shorter, and
+ * cuts its scroll back to the top; nothing puts it back. So, until the builder is ready, the panel is put back where
+ * the shopper left it after each change inside it. A change ends its task before the next scroll event, so the note
+ * is still the shopper's.
+ */
+const scrolled = new Map< Element, number >();
+
+const keep = new MutationObserver( () => {
+	scrolled.forEach( ( kept, panel ) => {
+		panel.scrollTop = kept;
+	} );
+} );
+
+/**
+ * Notes where the shopper left a panel whose builder is not ready yet.
+ *
+ * @param event The scroll, listened for on the document, as a panel's own does not bubble.
+ */
+function scrollEarly( event: Event ): void {
+	const panel = event.target;
+	if (
+		panel instanceof Element &&
+		panel.matches( '.cbuild:not([data-ready]) .cbuild__body' )
+	) {
+		if ( ! scrolled.has( panel ) ) {
+			keep.observe( panel, { childList: true, subtree: true } );
+		}
+		scrolled.set( panel, panel.scrollTop );
+	}
+}
+
+/**
+ * Lets a ready builder's panel scroll as the store moves it.
+ *
+ * @param builder The builder now ready.
+ */
+function scrollReady( builder: Element ): void {
+	builder.querySelectorAll( '.cbuild__body' ).forEach( ( panel ) => {
+		scrolled.delete( panel );
+	} );
+	if ( 0 === scrolled.size ) {
+		keep.disconnect();
+	}
+}
+
+document.addEventListener( 'scroll', scrollEarly, true );
+
+/**
  * Keeps a press on a button inside an element the page can focus, the picture's figure among them, from focusing
  * that element: WebKit focuses no button a pointer presses but hands focus to the nearest such ancestor, and scrolls it
  * into view, which moved the button from under the pointer before the click landed. The click still fires.
@@ -1156,9 +1205,11 @@ const { state } = store(
 			 * (D-296). A press before then goes as the page would send it without the script.
 			 */
 			ready(): void {
-				getElement()
-					.ref?.closest( '.cbuild' )
-					?.setAttribute( 'data-ready', '' );
+				const builder = getElement().ref?.closest( '.cbuild' );
+				if ( builder ) {
+					builder.setAttribute( 'data-ready', '' );
+					scrollReady( builder );
+				}
 			},
 			init(): void {
 				// The builder's pieces are regions of their own, each hydrated in its own task (D-296), so the root

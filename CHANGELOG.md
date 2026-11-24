@@ -46,6 +46,7 @@ All notable changes to this project are documented here. The format follows [Kee
 - On a phone, Show the top no longer covers the board's tail: the button has a row of its own under the board on the stage at every width, kept while there is no top so nothing moves (Cowork's 1.0.0 review, F17; #102; D-320).
 - After a new width, the picked deck moves to its look in that width, and the status says so: "Hard Hat is now 8.5″." Where the look isn't made in that width, the pick stays and its card says "Picked in 8.25″. Not made in 8.5″." (#81, D-301).
 - A mouse press held while the builder hydrates goes through, on Chromium and WebKit (#80).
+- On a desktop in WebKit, a panel scrolled while the builder hydrates stays where the shopper left it, rather than going back to its top (#94, D-333).
 - A search or chip that lists nothing says so alone; the fit sentence is for a list the rules empty (#83).
 - A deck with no layer image shows its photo in the board's place, at the board's size and uncropped, with the other parts' labelled photos under it on a desktop; on a tablet or a phone the stage scrolls with the page until there is a part to show (#82, D-303).
 - A slot's label inside a sentence no longer needs mbstring's case functions: without them a letter outside ASCII keeps its case, and a new grep gate holds every such call to a fallback (#72).

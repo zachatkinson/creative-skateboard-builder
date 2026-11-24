@@ -4095,3 +4095,17 @@ The weekly canary failed on WooCommerce 11.3.1 (#95), which is the stable releas
 **Tests.** Before: `OrderTest::test_the_store_api_checkout_writes_the_build_and_ties_it_again_when_the_cart_changes` on 11.3.1, "Failed asserting that 500 is identical to 400" with "Method SplObjectStorage::contains() is deprecated since 8.5". After: OrderTest 11 of 11.
 
 **Status:** Accepted; listed for Zach in M11's review, as it lets an upstream deprecation through.
+
+### D-333 · The panel's own scroll is put back after each change inside it until the builder is ready · 2026-11-23
+
+**Context:** on a desktop the panel body scrolls inside itself. In WebKit, a panel scrolled before the ready mark (D-296) went back to its top when the ready builds' region hydrated: hydration takes a region's `data-wp-each` items out and puts them back, and WebKit lays the panel out in between, with its contents shorter, so its scroll is cut to 0 and nothing restores it (#94). Chromium and Firefox keep it. Measured with the runtime's yields slowed to 150 ms, 1280 by 720: the panel scrolled to 447 read 0 after the mark; a scroll event logged in the page read 447 after the step's region and 0 after the ready builds'.
+
+**Decision:**
+- The store listens for scroll on the document from the moment its script runs, as #80's press is. A scroll of a `.cbuild__body` whose builder has no ready mark is noted, and that panel watched by a `MutationObserver`. After each change inside a noted panel, the observer sets its `scrollTop` back to the note. A change's task ends before the next scroll event, so the note is still the shopper's when the observer runs.
+- `callbacks.ready` forgets the ready builder's panels, so from then on the store's own moves (focus, a new step) scroll the panel as before; the observer stops when no panel is noted.
+- A panel never scrolled is never read, so a load where the shopper waits costs nothing more. Hydration moves nothing (D-296, D-314), so keeping the panel's pixel offset is right in every engine.
+- Not done: CSS that holds the panel's height while it hydrates. It would add space a shopper could scroll into, on a page that never gets the mark without the script.
+
+**Tests.** `builder.spec.ts` "The panel's own scroll while the builder hydrates (#94)": before the fix, webkit-desktop failed 10 of 10, "the panel's scroll after hydration / Expected: 447 / Received: 0"; with it, 20 of 20 pass. Chromium and Firefox passed before and after. With the observer's line taken out, 3 of 3 failed again. `tests/js/scroll.test.ts`: 11 tests.
+
+**Status:** Accepted.

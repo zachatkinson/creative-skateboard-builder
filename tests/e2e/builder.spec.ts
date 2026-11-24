@@ -6521,7 +6521,7 @@ test.describe( 'A mouse press held while the builder hydrates', () => {
 			// A page of the context's own: the fixture's page waits for the ready mark after each load, and this press
 			// must go down before it.
 			const page = await context.newPage();
-			// Every control in view unscrolled: hydration in WebKit puts the panel's own scroll back to its top.
+			// Every control in view unscrolled, so the press lands where the test measured it.
 			await page.setViewportSize( { width: 1440, height: 1800 } );
 			await page.addInitScript( () => {
 				Object.defineProperty( window, 'scheduler', {
@@ -6574,6 +6574,49 @@ test.describe( 'A mouse press held while the builder hydrates', () => {
 			await page.close();
 		} );
 	}
+} );
+
+test.describe( "The panel's own scroll while the builder hydrates (#94)", () => {
+	test( 'stays where the shopper put it', async ( { context }, info ) => {
+		test.skip(
+			! info.project.name.endsWith( '-desktop' ),
+			'The panel scrolls inside itself on a desktop; on a tablet or a phone the page scrolls.'
+		);
+		// A page of the context's own: the fixture's page waits for the ready mark after each load, and this scroll
+		// must come before it.
+		const page = await context.newPage();
+		// A window short enough that the panel scrolls.
+		await page.setViewportSize( { width: 1280, height: 720 } );
+		await page.addInitScript( () => {
+			Object.defineProperty( window, 'scheduler', {
+				value: {
+					yield: () =>
+						new Promise( ( done ) => setTimeout( done, 150 ) ),
+				},
+			} );
+		} );
+		await page.goto( fixture().page, { waitUntil: 'domcontentloaded' } );
+		const body = page.locator( '.cbuild__body' );
+		await body.waitFor();
+		const scrolled = await body.evaluate( ( element ) => {
+			element.scrollTop = element.scrollHeight;
+			return element.scrollTop;
+		} );
+		expect(
+			await page.locator( '.cbuild[data-ready]' ).count(),
+			'scrolled before the builder is hydrated'
+		).toBe( 0 );
+		expect( scrolled, 'the panel scrolls' ).toBeGreaterThan( 100 );
+		await page.locator( '.cbuild[data-ready]' ).waitFor( {
+			state: 'attached',
+			timeout: 15000,
+		} );
+		expect(
+			await body.evaluate( ( element ) => element.scrollTop ),
+			"the panel's scroll after hydration"
+		).toBe( scrolled );
+		await page.close();
+	} );
 } );
 
 test.describe( 'A deck with no layer image on the stage (#82)', () => {
