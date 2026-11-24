@@ -177,6 +177,41 @@ final class Options {
 	public const CLASS_CARD_DRAWN = 'cbuild-card__photo--drawn';
 
 	/**
+	 * A part's card in a step, where `cbuild_part_classes` lands (#143, D-376).
+	 *
+	 * @since 1.2.0
+	 */
+	public const CLASS_CARD = 'cbuild-card';
+
+	/**
+	 * A card's own radio (#143).
+	 *
+	 * @since 1.2.0
+	 */
+	public const CLASS_CARD_CONTROL = 'cbuild-card__control';
+
+	/**
+	 * The picture's root, on the stage (#143).
+	 *
+	 * @since 1.2.0
+	 */
+	public const CLASS_PICTURE = 'cbuild-picture';
+
+	/**
+	 * The stage, around the picture (#143, D-376).
+	 *
+	 * @since 1.2.0
+	 */
+	public const CLASS_STAGE = 'cbuild__stage';
+
+	/**
+	 * A step's form (#143, D-376).
+	 *
+	 * @since 1.2.0
+	 */
+	public const CLASS_STEP = 'cbuild-step';
+
+	/**
 	 * Order item meta (spec: Data model, Order items). Hidden from customers by their underscore, and kept with the
 	 * shop's order records for good: a key is never renamed.
 	 */
@@ -451,6 +486,11 @@ final class Options {
 			self::CLASS_CHIPS_ROW,
 			self::CLASS_CARDS_COMPACT,
 			self::CLASS_CARD_DRAWN,
+			self::CLASS_CARD,
+			self::CLASS_CARD_CONTROL,
+			self::CLASS_PICTURE,
+			self::CLASS_STAGE,
+			self::CLASS_STEP,
 		);
 	}
 

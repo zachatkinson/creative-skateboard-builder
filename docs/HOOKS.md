@@ -677,6 +677,11 @@ A kit's line raised past what the shop has of a part is refused as `cbuild_build
 | `cbuild-chips__options--row` | 1.1.0 | The brand chips' row, where its group has "N more". With the script, the row shows its first line alone until the store has folded it, so the fold moves nothing (D-314). |
 | `cbuild-cards--compact` | 1.1.0 | The deck step's card lists, the sold-out fold's included: compact cards, the deck small and upright, two to a row at most (#99, D-322). |
 | `cbuild-card__photo--drawn` | 1.1.0 | A card's picture when it is the deck's layer image rather than its photo (#99). |
+| `cbuild-card` | 1.2.0 | A part's card in a step, the `<li>` the filter above adds the part's classes to, with `cbuild-card--chosen` on the one the build counts and `cbuild-card--sold-out` on one the shop cannot supply (#143, D-376). |
+| `cbuild-card__control` | 1.2.0 | The card's own radio, which picks the part the card shows. Where that part comes in sizes, the card picked has a radio for each size after it, and its own radio stands aside (D-279, #143). |
+| `cbuild-picture` | 1.2.0 | The picture's root, the `<figure>` on the stage that holds the board, the parts' photos and the sentence that says the build (#143). |
+| `cbuild__stage` | 1.2.0 | The stage, around the picture, which stays in view as the panel scrolls (#143). |
+| `cbuild-step` | 1.2.0 | A step's form, around its fields and cards. The same element on every step, hidden on the change panel and the review (#143). |
 
 **What the plugin loads.** A few style rules in the page, under the handle `cbuild-cart`, with the Mini-Cart, the Cart or Checkout block, or a classic cart or checkout page. With the Cart or Checkout block, also the script `cbuild-cart`, which answers `cartItemClass`, `itemName` and `showRemoveItemLink` in the namespace above and needs `wc-blocks-checkout`. Both only where the cart holds a build as the page is drawn.
 
@@ -911,12 +916,13 @@ On a phone the bar sits above any bar the theme fixes to the foot of the screen:
 
 ### DOM events
 
-The builder sends two events on its own element (`.cbuild`), with JavaScript only. Each bubbles, so a listener on the document hears every builder on the page. They are for a shop's own analytics, under the shop's own consent: the plugin sends nothing anywhere itself, and each carries IDs alone, never a name, a price or anything of the shopper. A listener cannot change what the builder does.
+The builder sends three events on its own element (`.cbuild`), with JavaScript only. Each bubbles, so a listener on the document hears every builder on the page. The first two are for a shop's own analytics, under the shop's own consent; the third tells another plugin the builder has drawn a view. The plugin sends nothing anywhere itself, and each carries IDs and keys alone, never a name, a price or anything of the shopper. A listener cannot change what the builder does.
 
 | Event | Since | `detail` | When |
 | --- | --- | --- | --- |
 | `cbuild:pick` | 0.6.0 | `{ kit: number, slot: string, part: number }`: the kit product's ID, the slot's key, and the part's ID, `0` for a slot left empty by choice. | The shopper picks a part, at once, before the state route answers. A pick the route then refuses is still sent. |
 | `cbuild:added` | 0.6.0 | `{ kit: number, picks: { [slot: string]: number }, assembly: boolean }`: the kit's ID, the build's parts by slot, and whether it is assembled. | The Store API has added the build to the cart. An add that falls back to WooCommerce's own handler loads the page, and sends nothing. |
+| `cbuild:rendered` | 1.2.0 | `{ kit: number, step: string }`: the kit's ID, and the step shown as the build link's `cbuild[step]` names it, a slot's key or `review`. On the change panel, the step it opened over. | Once the builder is hydrated, as it sets `data-ready`, and once after each answer of the state route it draws, on the frame the view is drawn in: a pick's, a step's, a search's, a filter's. Never for a pick or a key before its answer, nor for an answer dropped because a later move overtook it. Another plugin's script listens for it in place of watching the builder's attributes (#143, D-376). |
 
 The builder also sends WooCommerce's own `wc-blocks_added_to_cart` on `document.body` after an add, on which the Mini-Cart reads the cart again (D-155). It is WooCommerce's event, not part of this plugin's API.
 

@@ -22,7 +22,8 @@
  *   Mini-Cart refreshes) and says so; without the Store API, the form goes to WooCommerce's own handler (D-155).
  * - **Two events** on the builder's element, bubbling, for a shop's own analytics under its own consent (spec:
  *   Privacy): `cbuild:pick`, with the kit, the slot and the part, and `cbuild:added`, with the kit, its picks and
- *   assembly. They carry IDs alone.
+ *   assembly. They carry IDs alone. A third, `cbuild:rendered`, with the kit and the step, tells another plugin the
+ *   builder has drawn a view: once hydrated, and after each answer (#143, D-376).
  * - **The phone bar** never covers the control in focus: one the bar overlaps is scrolled clear of it (D-160).
  * - **Copy link** writes the build's shared link to the clipboard and says so. It is offered only where the browser
  *   has a clipboard to write to; the address is in the page as a field either way, and a refused copy selects it.
@@ -143,6 +144,25 @@ function sided( view: Shown ): void {
  * The builder's own element, as its init callback found it.
  */
 let root: HTMLElement | null = null;
+
+/**
+ * Tell the page the builder has drawn a view (#143, D-376): `cbuild:rendered`, bubbling, with the kit and the step as
+ * the build link names it, the review as `review`.
+ *
+ * @param builder The builder's element.
+ * @param view    The view drawn.
+ */
+function rendered( builder: Element | null, view: Shown ): void {
+	builder?.dispatchEvent(
+		new CustomEvent( 'cbuild:rendered', {
+			bubbles: true,
+			detail: {
+				kit: view.kit,
+				step: true === view.isReview ? 'review' : view.step.slot,
+			},
+		} )
+	);
+}
 
 /**
  * The control under a press, from the pointer going down to its coming up.
@@ -1249,6 +1269,8 @@ function nav( state: State ): Navigator {
 						if ( ahead ) {
 							foresee();
 						}
+						// The Interactivity API has drawn the view by this frame.
+						rendered( root, shown );
 					} );
 				};
 				// Only a new step crosses over (spec: Motion): a transition takes the screen's taps while it
@@ -1487,6 +1509,7 @@ const { state } = store(
 					builder.setAttribute( 'data-ready', '' );
 					scrollReady( builder );
 				}
+				rendered( builder ?? null, state.view );
 			},
 			init(): void {
 				// The builder's pieces are regions of their own, each hydrated in its own task (D-296), so the root

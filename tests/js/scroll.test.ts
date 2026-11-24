@@ -7,9 +7,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { setElement, stores } from './support/interactivity';
 import { NAME } from '../../assets/src/builder/view';
 
-const { callbacks } = stores.get( NAME )!.definition as {
+const { callbacks, state } = stores.get( NAME )!.definition as {
 	callbacks: { ready: () => void };
+	state: { view: unknown };
 };
+
+// The view the server rendered the page with, which hydration tells the page about (#143).
+state.view = { kit: 7, step: { slot: 'deck' } };
 
 /**
  * A panel whose scroll can be set and read, as jsdom lays nothing out.

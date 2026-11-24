@@ -174,6 +174,8 @@
         "cbuild-assembly",
         "cbuild-bar__photo",
         "cbuild-board__layer",
+        "cbuild-card",
+        "cbuild-card__control",
         "cbuild-card__photo--drawn",
         "cbuild-cards--compact",
         "cbuild-cart-picture",
@@ -185,14 +187,18 @@
         "cbuild-kit",
         "cbuild-part",
         "cbuild-part__slot",
+        "cbuild-picture",
         "cbuild-picture__item",
         "cbuild-preset__photo",
         "cbuild-quantity",
-        "cbuild-review__item"
+        "cbuild-review__item",
+        "cbuild-step",
+        "cbuild__stage"
     ],
     "dom_events": [
         "cbuild:added",
-        "cbuild:pick"
+        "cbuild:pick",
+        "cbuild:rendered"
     ],
     "css_properties": [
         "--cbuild-accent",

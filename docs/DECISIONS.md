@@ -152,6 +152,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-265 · The shelf on the state route and in the build link](#d-265--the-shelf-on-the-state-route-and-in-the-build-link--2026-11-18)
 - [D-290 · The state route's currency format is plain text, as its symbol is](#d-290--the-state-routes-currency-format-is-plain-text-as-its-symbol-is--2026-11-19)
 - [D-336 · The state route lists every ready build again, each saying whether it is shown](#d-336--the-state-route-lists-every-ready-build-again-each-saying-whether-it-is-shown--2026-11-23)
+- [D-376 · A rendered event and five builder classes for other plugins](#d-376--a-rendered-event-and-five-builder-classes-for-other-plugins--2026-11-24)
 
 ### The builder page
 
@@ -5268,6 +5269,24 @@ Put back, all passed.
 **Red run.** Before the code: `LeadDaysTest` failed with `Class "CreativeBranding\SkateboardBuilder\Domain\Kit\LeadDays" not found`; `KitEditorTest::test_the_assembly_time_is_kept_as_business_days_and_one_that_is_not_is_named_at_its_field` at KitEditorTest.php:684, "Failed asserting that two arrays are identical."; `StateAnswerTest::test_the_delivery_filters_are_given_the_assembly_time_and_each_part_with_its_quantity` at StateAnswerTest.php:1387 and `OrderBuildsTest::test_the_assembly_time_is_kept_for_an_assembled_build_alone` at OrderBuildsTest.php:72, each "Failed asserting that null is identical to '2-4'."
 
 **Deliberate breaks.** `lead_days` given empty in the filters' context and the snapshot: `DeliveryTest.php:282` and `OrderTest.php:316`, "Failed asserting that two strings are identical." The filters given no `parts`: `DeliveryTest.php:283`, "Failed asserting that two arrays are identical." The assembly time's problems left to Layout: `BuildTabTest.php:1231`, "Failed asserting that two arrays are identical." The editor keeping "2 to 4" as typed: `build-tab.spec.ts:317` on chromium-desktop, "Expected: 0 / Received: 1" (a notice where none was due). Put back, all passed.
+
+**Status:** Accepted.
+
+### D-376 · A rendered event and five builder classes for other plugins · 2026-11-24
+
+Issue #143, from Cowork's check of Mature Content 1.5.0. Mature Content puts a Show artwork button over the board and a notice in the step, and finds when to look again by a MutationObserver on the builder's `hidden`, `class` and `data-ready`. It named classes HOOKS.md never promised.
+
+- **The event.** `cbuild:rendered` on `.cbuild`, bubbling, with `{ kit, step }`, beside `cbuild:pick` and `cbuild:added`. `step` is the build link's word for the step shown: a slot's key, or `review`. On the change panel it is the step the panel opened over, as the view's own slot is, so no new word is added to the link's.
+- **When.** Once on hydration, from the bar's `ready` callback, where the builder sets `data-ready`: the bar is the last region to hydrate (D-296), so every piece is live. Then once per answer the store shows, in the frame after the view is set, where the store already plays its moments and keeps focus because the Interactivity API has drawn the view by then (D-185). A pick, a width, a chip or a key sends nothing until its answer is drawn. An answer the navigator drops, because a later move overtook it, is never shown, so it sends nothing. A turn of the board is no answer and sends nothing.
+- **The classes.** `cbuild-card` (where `cbuild_part_classes` lands), `cbuild-card__control`, `cbuild-picture`, `cbuild__stage` and `cbuild-step` join HOOKS.md's Builder classes at 1.2.0, and `Options::cssClasses()`, so `composer api:check` fails a rename. They already existed; listing them makes them API, not new markup.
+- **The places.** The issue asks HOOKS.md to say that an element another plugin adds inside the stage or the step's form stays there through each redraw. The store removes no element (it has no `remove()`, `innerHTML` or `replaceChildren()`), and Preact's diff, under the Interactivity API, is expected to leave alone a child it did not render. That is a reading of the store and an expectation of the library, not a test: the browser test written with this decision (`builder.spec.ts`, "What another plugin may rely on (#143)") checks it through a width, a pick that opens the change panel, Use these, Next and a pick, and HOOKS.md says it once that test has passed on every engine.
+- **Size.** The event is one function and two calls: the store's script stays at about 7.9 kB of its 15 kB under Brotli.
+
+**Tests.** `store.test.ts`, "the rendered event": once on hydration, on the builder, bubbling, with the kit and the step; once after a pick's answer and once after a step's, neither at the pick nor before the frame; once for a search typed in three keys; `review` on the review and the step on the change panel; nothing, and no error, where no builder is found. Stryker kills all 13 of the new lines' mutants. In the browser, `builder.spec.ts` as above, and `shelf.spec.ts`, "sends cbuild:rendered once for a search, after its answer, not per key".
+
+**Red run.** Before the code: "is sent once the builder is hydrated, …": "expected [] to have a length of 1 but got +0" (store.test.ts:3794); "is sent once after each answer is drawn, …" (3816) and "is sent once for a search, …" (3854) the same; "names the review as the build link does, …": "expected [] to deeply equal [ { kit: 7, step: 'review' }, …(1) ]" (3874). `OptionsTest::test_every_class_hooks_md_lists_in_a_table_is_in_the_api_surface` failed with `cbuild-card`, `cbuild-card__control`, `cbuild-picture` and `cbuild-step` not in the list (OptionsTest.php:71). **Deliberate break:** the call after an answer taken out: the three answer tests failed (store.test.ts:3817, 3855, 3875). Put back, they passed.
+
+**Why:** an event the builder sends when it has drawn is cheaper and surer for another plugin than watching attributes the builder may change in any release, and named classes let it find its places without reading the templates.
 
 **Status:** Accepted.
 

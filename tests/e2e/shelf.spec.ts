@@ -527,3 +527,40 @@ test.describe( 'Compact deck cards (F14)', () => {
 		} );
 	}
 } );
+
+// Issue #143: a search sends `cbuild:rendered` once its answer is drawn, not for each key typed before it.
+test.describe( 'The rendered event on a search (#143)', () => {
+	test( 'sends cbuild:rendered once for a search, after its answer, not per key', async ( {
+		page,
+		javaScriptEnabled,
+	} ) => {
+		test.skip( ! javaScriptEnabled, 'The event is the script’s.' );
+		await page.addInitScript( () => {
+			const heard: unknown[] = [];
+			(
+				window as unknown as { cbuildRendered: unknown[] }
+			 ).cbuildRendered = heard;
+			document.addEventListener( 'cbuild:rendered', ( event ) => {
+				heard.push( ( event as CustomEvent ).detail );
+			} );
+		} );
+		const rendered = () =>
+			page.evaluate(
+				() =>
+					( window as unknown as { cbuildRendered: unknown[] } )
+						.cbuildRendered
+			);
+		await page.goto( at() );
+		const once = { kit: shelf().kit, step: 'deck' };
+		await expect.poll( rendered ).toEqual( [ once ] );
+		await page
+			.locator( '#cbuild-search' )
+			.pressSequentially( 'Rascals', { delay: 40 } );
+		await expect( cards( page ) ).toHaveCount( 1 );
+		await expect( page.locator( '.cbuild' ) ).toHaveAttribute(
+			'aria-busy',
+			'false'
+		);
+		await expect.poll( rendered ).toEqual( [ once, once ] );
+	} );
+} );

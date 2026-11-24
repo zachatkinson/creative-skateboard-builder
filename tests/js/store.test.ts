@@ -3801,3 +3801,146 @@ describe( 'what a press foretells', () => {
 		}
 	} );
 } );
+
+// Issue #143: a companion plugin (Mature Content) learns that the builder has drawn a view from one event, in place of a
+// MutationObserver on `hidden`, `class` and `data-ready`. Once when the page is hydrated, and once after each answer
+// the view shows, on the frame the Interactivity API has drawn it; never for a key or a pick before its answer.
+describe( 'the rendered event', () => {
+	const KIT = { ...START, kit: 7 };
+
+	function builder(): { root: HTMLElement; bar: HTMLElement } {
+		const { form: step } = form();
+		const root = wrapped();
+		const bar = document.createElement( 'div' );
+		bar.className = 'cbuild-bar';
+		root.append( bar );
+		setElement( root );
+		(
+			defined.definition as { callbacks: { init: () => void } }
+		 ).callbacks.init();
+		setElement( step );
+		return { root, bar };
+	}
+
+	function hydrated( bar: HTMLElement ): void {
+		setElement( bar );
+		(
+			defined.definition as { callbacks: { ready: () => void } }
+		 ).callbacks.ready();
+	}
+
+	function heard(): { events: CustomEvent[]; stop: () => void } {
+		const events: CustomEvent[] = [];
+		const hear = ( event: Event ) => {
+			events.push( event as CustomEvent );
+		};
+		document.addEventListener( 'cbuild:rendered', hear );
+		return {
+			events,
+			stop: () => document.removeEventListener( 'cbuild:rendered', hear ),
+		};
+	}
+
+	it( 'is sent once the builder is hydrated, on its element, bubbling, with the kit and the step', () => {
+		const { root, bar } = builder();
+		state.view = KIT;
+		const { events, stop } = heard();
+		hydrated( bar );
+		stop();
+		expect( events ).toHaveLength( 1 );
+		expect( events[ 0 ]!.target ).toBe( root );
+		expect( events[ 0 ]!.bubbles ).toBe( true );
+		expect( events[ 0 ]!.detail ).toEqual( { kit: 7, step: 'deck' } );
+	} );
+
+	it( 'is sent once after each answer is drawn, not at the pick, nor before the frame that draws it', async () => {
+		const { root, bar } = builder();
+		state.view = KIT;
+		hydrated( bar );
+		const { events, stop } = heard();
+		const radio =
+			root.querySelectorAll< HTMLInputElement >(
+				'input[type=radio]'
+			)[ 1 ]!;
+		reply = () => answer( { ...KIT, status: 'A deck. Total: $70.00.' } );
+		actions.pick( { target: radio } as unknown as Event );
+		expect( events, 'a pick is not an answer' ).toHaveLength( 0 );
+		vi.advanceTimersByTime( WAIT );
+		await settle();
+		expect( state.status ).toBe( 'A deck. Total: $70.00.' );
+		expect( events, 'not before the view is drawn' ).toHaveLength( 0 );
+		vi.advanceTimersToNextFrame();
+		expect( events ).toHaveLength( 1 );
+		expect( events[ 0 ]!.target ).toBe( root );
+		expect( events[ 0 ]!.detail ).toEqual( { kit: 7, step: 'deck' } );
+
+		// A step changed is a view drawn too, once.
+		reply = () => answer( { ...NEXT, kit: 7 } );
+		actions.back();
+		await settle();
+		vi.advanceTimersToNextFrame();
+		vi.advanceTimersToNextFrame();
+		stop();
+		expect( events ).toHaveLength( 2 );
+		expect( events[ 1 ]!.detail ).toEqual( { kit: 7, step: 'trucks' } );
+	} );
+
+	it( 'is sent once for a search, after its answer, not for each key typed before it', async () => {
+		const { root, bar } = builder();
+		state.view = KIT;
+		hydrated( bar );
+		const search = document.createElement( 'input' );
+		search.type = 'search';
+		search.name = 'cbuild[_q]';
+		root.querySelector( 'form' )!.append( search );
+		const { events, stop } = heard();
+		reply = () => answer( { ...KIT, url: window.location.origin + '/?q' } );
+		for ( const typed of [ 'Z', 'Ze', 'Zeb' ] ) {
+			search.value = typed;
+			actions.search( { target: search } as unknown as Event );
+			vi.advanceTimersByTime( 50 );
+			vi.advanceTimersToNextFrame();
+		}
+		expect( events, 'no answer yet' ).toHaveLength( 0 );
+		vi.advanceTimersByTime( 150 );
+		await settle();
+		vi.advanceTimersToNextFrame();
+		vi.advanceTimersToNextFrame();
+		stop();
+		expect( fetched ).toHaveLength( 1 );
+		expect( events ).toHaveLength( 1 );
+		expect( events[ 0 ]!.detail ).toEqual( { kit: 7, step: 'deck' } );
+	} );
+
+	it( 'names the review as the build link does, and the step the change panel opened over', async () => {
+		const { bar } = builder();
+		state.view = { ...REVIEW, kit: 7, isReview: true, step: { slot: '' } };
+		const { events, stop } = heard();
+		hydrated( bar );
+		reply = () =>
+			answer( {
+				...KIT,
+				url: window.location.origin + '/?changes',
+				isChanges: true,
+				status: '1 part no longer fits.',
+			} );
+		actions.back();
+		await settle();
+		vi.advanceTimersToNextFrame();
+		stop();
+		expect( events.map( ( event ) => event.detail ) ).toEqual( [
+			{ kit: 7, step: 'review' },
+			{ kit: 7, step: 'deck' },
+		] );
+	} );
+
+	it( 'sends nothing on hydration where no builder is found, and throws nothing', () => {
+		document.body.innerHTML = '<div class="cbuild-bar"></div>';
+		const { events, stop } = heard();
+		expect( () =>
+			hydrated( document.querySelector< HTMLElement >( '.cbuild-bar' )! )
+		).not.toThrow();
+		stop();
+		expect( events ).toHaveLength( 0 );
+	} );
+} );

@@ -9006,3 +9006,180 @@ test.describe( 'Compact deck cards (F14)', () => {
 		expect( ring ).not.toBe( 'none' );
 	} );
 } );
+
+/**
+ * Issue #143: what a companion plugin (Mature Content) may rely on. The builder sends `cbuild:rendered` once it is
+ * hydrated and once after each answer it draws, and an element another plugin puts in the stage or the step's form
+ * stays there through a pick, a step change and the change panel, as the Interactivity API redraws around it.
+ */
+test.describe( 'What another plugin may rely on (#143)', () => {
+	test.beforeEach( ( {}, info ) => {
+		test.skip(
+			info.project.name === 'no-js',
+			'The event and the redraws are the script’s.'
+		);
+	} );
+
+	/**
+	 * Each `cbuild:rendered` the page has heard, its detail and whether it bubbled from the builder.
+	 *
+	 * @param page The page.
+	 */
+	const rendered = ( page: Page ) =>
+		page.evaluate(
+			() =>
+				( window as unknown as { cbuildRendered: unknown[] } )
+					.cbuildRendered
+		);
+
+	/**
+	 * Whether each element the test put in the builder is still where it was put.
+	 *
+	 * @param page The page.
+	 */
+	const kept = ( page: Page ) =>
+		page.evaluate( () =>
+			(
+				window as unknown as {
+					cbuildOwn: { element: Element; parent: Element }[];
+				}
+			 ).cbuildOwn.map(
+				( { element, parent } ) =>
+					element.isConnected && element.parentElement === parent
+			)
+		);
+
+	test( 'sends cbuild:rendered once hydrated and once per answer, and keeps what another plugin adds to the stage and the step', async ( {
+		page,
+	}, info ) => {
+		await page.addInitScript( () => {
+			const heard: unknown[] = [];
+			(
+				window as unknown as { cbuildRendered: unknown[] }
+			 ).cbuildRendered = heard;
+			document.addEventListener( 'cbuild:rendered', ( event ) => {
+				heard.push( {
+					...( event as CustomEvent ).detail,
+					bubbles: event.bubbles,
+					fromBuilder:
+						event.target instanceof Element &&
+						event.target.matches( '.cbuild' ),
+				} );
+			} );
+		} );
+		await page.goto(
+			linkTo( {
+				deck: id( 'builder-test-deck-8-0' ),
+				trucks: id( 'builder-test-trucks-139' ),
+				step: 'deck',
+			} )
+		);
+		await mark( page );
+		const kit = fixture().kit;
+		const seen = ( step: string ) => ( {
+			kit,
+			step,
+			bubbles: true,
+			fromBuilder: true,
+		} );
+		const steps: ReturnType< typeof seen >[] = [ seen( 'deck' ) ];
+		await expect.poll( () => rendered( page ) ).toEqual( steps );
+
+		// Another plugin's own elements, put in once the builder is ready: a button over the board, and a notice
+		// before the step's fields and after them.
+		await page.evaluate( () => {
+			const own = ( parent: Element, first: boolean ) => {
+				const element = document.createElement( 'div' );
+				element.className = 'another-plugin';
+				element.textContent = 'Another plugin';
+				if ( first ) {
+					parent.prepend( element );
+				} else {
+					parent.append( element );
+				}
+				return { element, parent };
+			};
+			const stage = document.querySelector( '.cbuild__stage' )!;
+			const step = document.querySelector( '.cbuild-step' )!;
+			(
+				window as unknown as {
+					cbuildOwn: { element: Element; parent: Element }[];
+				}
+			 ).cbuildOwn = [
+				own( stage, false ),
+				own( step, true ),
+				own( step, false ),
+			];
+		} );
+		const all = [ true, true, true ];
+
+		// A list narrowed by a width: an answer on the same step.
+		await ride( page, inLocale( info.project.name, '8.5″' ) );
+		steps.push( seen( 'deck' ) );
+		await expect.poll( () => rendered( page ) ).toEqual( steps );
+		expect( await kept( page ) ).toEqual( all );
+
+		// A pick that opens the change panel, which hides the step's form.
+		await pickDeck( page, '8.5' );
+		await expect( page.locator( '.cbuild-changes' ) ).toBeVisible();
+		steps.push( seen( 'deck' ) );
+		await expect.poll( () => rendered( page ) ).toEqual( steps );
+		expect( await kept( page ) ).toEqual( all );
+
+		// Use these: a new step.
+		await page.locator( '.cbuild-changes__use button' ).click();
+		await expect( page.locator( '.cbuild-step' ) ).toBeVisible();
+		steps.push( seen( 'trucks' ) );
+		await expect.poll( () => rendered( page ) ).toEqual( steps );
+		expect( await kept( page ) ).toEqual( all );
+
+		// Next: another step, whichever the kit has after the trucks.
+		await page.locator( '.cbuild-bar__next:visible' ).click();
+		await expect
+			.poll( () =>
+				new URL( page.url() ).searchParams.get( 'cbuild[step]' )
+			)
+			.not.toBe( 'trucks' );
+		const after = String(
+			new URL( page.url() ).searchParams.get( 'cbuild[step]' )
+		);
+		steps.push( seen( after ) );
+		await expect.poll( () => rendered( page ) ).toEqual( steps );
+		expect( await kept( page ) ).toEqual( all );
+
+		// A pick on it: nothing is sent until its answer is drawn.
+		let release: () => void = () => undefined;
+		const held = new Promise< void >( ( done ) => {
+			release = done;
+		} );
+		const state = ( url: URL ) => url.pathname.endsWith( '/state' );
+		await page.route( state, async ( route ) => {
+			await held;
+			await route.continue();
+		} );
+		await page
+			.locator(
+				'.cbuild-step .cbuild-card__control:not([disabled]):not(:checked)'
+			)
+			.first()
+			.check();
+		await expect( page.locator( '.cbuild' ) ).toHaveAttribute(
+			'aria-busy',
+			'true'
+		);
+		expect( await rendered( page ), 'not before the answer' ).toEqual(
+			steps
+		);
+		release();
+		await page.unroute( state );
+		await expect( page.locator( '.cbuild' ) ).toHaveAttribute(
+			'aria-busy',
+			'false'
+		);
+		steps.push( seen( after ) );
+		await expect.poll( () => rendered( page ) ).toEqual( steps );
+		expect( await kept( page ) ).toEqual( all );
+		await expect( page.locator( '.another-plugin' ) ).toHaveCount( 3 );
+		expect( await stayed( page ) ).toBe( true );
+	} );
+} );
