@@ -335,11 +335,12 @@ final class KitEditor {
 				default                 => Assembly::fromDocument( $document ),
 			};
 		} catch ( InvalidDocument $refused ) {
+			// Only the settings document has a width guide, so its rows' widths need no check of the key.
 			$code = match ( true ) {
 				self::SETTINGS === $key && DocumentError::Duplicate === $refused->reason => self::GUIDE_SHOE_TWICE,
 				DocumentError::OutOfRange !== $refused->reason => $refused->reason->value,
 				self::PICTURE === $key => self::WHEELBASE_RANGE,
-				self::SETTINGS === $key && 1 === preg_match( '/\Awidth_guide\.rows\[\d+\]\.(from|to)\z/', $refused->path ) => self::GUIDE_WIDTH,
+				(bool) preg_match( '/\Awidth_guide\.rows\[\d+\]\.(from|to)\z/', $refused->path ) => self::GUIDE_WIDTH,
 				default => $refused->reason->value,
 			};
 			return array( self::problem( $key, $code, $refused->path ) );
@@ -714,14 +715,10 @@ final class KitEditor {
 		if ( is_array( $sent['width_guide'] ?? null ) ) {
 			$document['width_guide'] = self::guide( $sent['width_guide'], $separator );
 		}
-		if ( ! array_key_exists( 'builder_page', $sent ) ) {
-			if ( isset( $stored['builder_page'] ) ) {
-				$document['builder_page'] = $stored['builder_page'];
-			}
-			return $document;
-		}
-		$page = self::text( $sent, 'builder_page' );
-		if ( '' !== $page && '0' !== $page ) {
+		$page = array_key_exists( 'builder_page', $sent ) ? self::text( $sent, 'builder_page' ) : null;
+		if ( null === $page && isset( $stored['builder_page'] ) ) {
+			$document['builder_page'] = $stored['builder_page'];
+		} elseif ( null !== $page && '' !== $page && '0' !== $page ) {
 			// Anything but an ID is kept as typed, for the domain to refuse.
 			$document['builder_page'] = 1 === preg_match( '/\A[1-9]\d{0,17}\z/', $page ) ? (int) $page : $page;
 		}
@@ -740,11 +737,9 @@ final class KitEditor {
 	 */
 	private static function guide( array $sent, string $separator ): array {
 		$guide = array( 'shown' => self::on( $sent, 'shown' ) );
-		if ( self::on( $sent, 'plugins' ) ) {
-			return $guide;
-		}
-		$rows = array();
-		foreach ( self::map( $sent['rows'] ?? null ) as $row ) {
+		$rows  = array();
+		// The plugin's rows ticked, any typed are not kept.
+		foreach ( self::on( $sent, 'plugins' ) ? array() : self::map( $sent['rows'] ?? null ) as $row ) {
 			$row    = self::map( $row );
 			$fields = array_filter(
 				array(
