@@ -33,6 +33,8 @@ All notable changes to this project are documented here. The format follows [Kee
 - Once a width is chosen, the deck step drops its "Start with a width" line and Sort sits on the brands' line, so a desktop's first view holds a whole row of decks or two (#122, D-360).
 - The phone rail keeps the page's gutter at either end where the row has room, and the current step's name sits above the rail's border on Kadence (#123, D-361).
 - A search or chips that list nothing show no Sort and no "Showing 0 of 0", with the script and without it (#124).
+- Each step opens on the side of the board its part is seen on: the hardware step now shows the top, where the shopper's bolt heads are drawn, as the grip tape step does, and the other steps and the review show the underside. A turn lasts until the shopper changes step; it was kept on every later step (Cowork's 1.1.0 F27, #127, D-367, D-368).
+- The control by the board is two buttons, Underside and Top, the side shown pressed, filled, bold and ticked. The one button read "Show the top" whichever side was shown and looked the same either way (Cowork's 1.1.0 F28, #128, D-369).
 
 ## [1.1.0] - 2026-11-24
 

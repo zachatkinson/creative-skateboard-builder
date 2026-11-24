@@ -19,10 +19,11 @@ How the builder draws a board from its parts, and how to prepare the layer image
 
 The picture is the board as the shopper builds it, seen from underneath with the nose at the top. It heads every step of the builder and the review, and is drawn again with each pick.
 
-From 0.8.0 the page also draws the board's top, the same board turned over about its length (#46). The grip tape step shows the top, and every other step the underside.
+From 0.8.0 the page also draws the board's top, the same board turned over about its length (#46). From 1.2.0 each step opens on the side its part is seen on: the hardware and grip tape steps on the top, where the bolt heads and the grip are drawn, and every other step and the review underneath (#127, D-367). A slot of a shop's own, which the picture does not draw, opens underneath.
 
-- **With JavaScript** a button by the board, "Show the top", turns it over on any step; it is pressed (`aria-pressed`) while the top is shown, and once the shopper has used it, their side is kept on every later step that can draw it.
-- **Without JavaScript** the button is not shown, and each step shows its own side.
+- **With JavaScript** two buttons by the board, "Underside" and "Top", in a group named by the picture's heading, turn it over on any step. The side shown is pressed (`aria-pressed`), filled in the accent, bold and ticked; the other is a plain button (#128, D-369).
+- **A turn lasts for the step.** The side the shopper chose is kept while they stay on the step, through a pick or a filter, and the next step opens on its own side (#127, D-368).
+- **Without JavaScript** the buttons are not shown, and each step shows its own side.
 - **The phone bar's board** shows the same side as the picture, and the picture's description ends "Seen from underneath." or "Seen from the top.".
 - **Turning over.** The board turns over in the time of the builder's other movements, and not at all where the shopper asks for reduced motion.
 - **The composed pictures** stay the underside.

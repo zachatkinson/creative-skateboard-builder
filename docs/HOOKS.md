@@ -948,7 +948,7 @@ Each of the top's layers is a `span.cbuild-board__layer` placed by the four `--c
 | `--cbuild-grip-size` | 1.1.0 | On the top's grip layer, where its image is a whole sheet: the sheet's size against the deck's box, across then along, as a `background-size` (`112.5% 103.125%`: a 9 by 33 in sheet on an 8 by 32 in deck). The grip layer has the deck's box and outline; a 1-inch swatch has none (F18, D-307) |
 | `--cbuild-mask` | 0.8.0 | On the top's deck and grip layers: the deck's layer image, as a `url()`, whose transparency is their outline (`mask-image`). A layer image served from another origin needs `Access-Control-Allow-Origin` for the browser to use it as a mask |
 
-The button by the board, `.cbuild-picture__turn .cbuild-button`, has `aria-pressed` true while the top is shown.
+The buttons by the board, `.cbuild-picture__turn .cbuild-button`, have `aria-pressed` true while the top is shown. From 1.2.0 there are two, Underside and Top, in `.cbuild-picture__sides`, and each has `aria-pressed` true while its own side is shown (#128, D-369).
 
 ### The workshop: the Build box, the assembly ticket and the orders list
 

@@ -34,7 +34,7 @@ Zach accepted D-002 to D-011 as proposed on 9 November 2026, before milestone 1.
 
 ## Index by area
 
-Each decision is listed once, under the area it is mostly about, in number order. The entries themselves follow in [The decisions](#the-decisions). D-316 to D-318, D-327, D-358, D-362 and D-366 are unused.
+Each decision is listed once, under the area it is mostly about, in number order. The entries themselves follow in [The decisions](#the-decisions). D-316 to D-318, D-327, D-358, D-362, D-366, D-370 and D-374 are unused.
 
 ### Project, scope and reviews
 
@@ -239,6 +239,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-272 · The page's scroll padding reads the bar's measured height](#d-272--the-pages-scroll-padding-reads-the-bars-measured-height--2026-11-19)
 - [D-279 · The picked card's sizes are picks of the step, and the card's own radio stands aside](#d-279--the-picked-cards-sizes-are-picks-of-the-step-and-the-cards-own-radio-stands-aside--2026-11-19)
 - [D-326 · axe reads the error summary in Firefox again](#d-326--axe-reads-the-error-summary-in-firefox-again--2026-11-23)
+- [D-369 · The side is chosen with two buttons, Underside and Top, the side shown pressed](#d-369--the-side-is-chosen-with-two-buttons-underside-and-top-the-side-shown-pressed--2026-11-24)
 
 ### Motion
 
@@ -276,6 +277,8 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-307 · A grip's layer image is its whole sheet, drawn once at its size and cut by the deck](#d-307--a-grips-layer-image-is-its-whole-sheet-drawn-once-at-its-size-and-cut-by-the-deck--2026-11-23)
 - [D-309 · A part's layer in a composed picture is drawn as another plugin answers, by use, and the answer is in the name](#d-309--a-parts-layer-in-a-composed-picture-is-drawn-as-another-plugin-answers-by-use-and-the-answer-is-in-the-name--2026-11-23)
 - [D-337 · The layer image a part already has is not checked again when the product is saved](#d-337--the-layer-image-a-part-already-has-is-not-checked-again-when-the-product-is-saved--2026-11-23)
+- [D-367 · Each step opens on the side its part is seen on, which the layout knows](#d-367--each-step-opens-on-the-side-its-part-is-seen-on-which-the-layout-knows--2026-11-24)
+- [D-368 · A turn lasts until the step changes](#d-368--a-turn-lasts-until-the-step-changes--2026-11-24)
 - [D-371 · A part with no spec in the index gets its renditions at the sizes the page draws it at](#d-371--a-part-with-no-spec-in-the-index-gets-its-renditions-at-the-sizes-the-page-draws-it-at--2026-11-24)
 - [D-372 · Site Health names up to five parts whose layer images have no resized copies](#d-372--site-health-names-up-to-five-parts-whose-layer-images-have-no-resized-copies--2026-11-24)
 - [D-373 · The update to 1.2.0 queues the index job of each part whose layer image has no copies](#d-373--the-update-to-120-queues-the-index-job-of-each-part-whose-layer-image-has-no-copies--2026-11-24)
@@ -5107,6 +5110,66 @@ Cowork's review of 1.1.0, F23 (#121, design): a deck pressed showed the old boar
 **Why:** the board is the builder's answer to a pick; a shopper who presses a deck should see that deck, and the server's word still comes after it.
 
 **Status:** Accepted.
+
+### D-367 · Each step opens on the side its part is seen on, which the layout knows · 2026-11-24
+
+Cowork's review of 1.1.0, F27 (#127). Deck, Trucks and Wheels showed the underside, Grip tape the top and the review the underside, as D-218 set. Hardware showed the underside too, but the bolt heads are drawn on the top alone, so the shopper's pick never showed on its own step.
+
+**Decision:** a step opens on the top when the layout draws its slot on the top and not on the underside. `Layout::onTop()` answers for a slot key, from the domain's own list (`ON_TOP`: the hardware and the grip). `BuilderView` sets `picture.turned` from it, so the server says which side each step opens on, and the store never names a step.
+
+- **The default kit:** deck, trucks, wheels, risers and bearings open underneath; hardware and grip tape on the top; the review underneath, where the trucks and wheels are.
+- **A shop's own slots,** with keys the rules don't know, are never drawn by the layout, so they open underneath. A slot drawn on both sides (the deck, the wheels) opens underneath, the side the picture is first drawn from.
+- **Kept honest by a test:** `LayoutTest` lays out a board with a part in every slot the rules know and checks that `onTop()` holds for a slot exactly when the top has its layers and the underside has none. A slot added to either side of `Layout::of()` without `ON_TOP` fails it.
+
+**Not chosen:**
+
+- **A kit setting,** a side per slot in `_cbuild_settings` (D-354). The side a part is seen on follows from what the layout draws on each side, which no shop can change: a shop that set its hardware to the underside would open its step on a side that shows no bolts. A setting would be a way to get it wrong, and a new field in a schema, SETTINGS.md and the Build tab for it.
+- **The step names in the store.** The browser would hold a list of slot keys, and the server's view already carries the side.
+
+**This changes** D-218's "the grip step turns the board to the top and back after it" and SPEC.md's line for the top, which says the same: the hardware step opens on the top too. SPEC.md is the owner's and is left as it is; the change is recorded here.
+
+**Why:** the picture is there to show the part being chosen. A step that opens on a side where its part is not drawn shows the shopper nothing of their pick.
+
+**Status:** Accepted.
+
+### D-368 · A turn lasts until the step changes · 2026-11-24
+
+F27 (#127) too. The store kept the side the shopper turned to for the page's life (D-218): pressed on Wheels, the board stayed on its top through Trucks and every step after.
+
+**Decision:** the store keeps the shopper's side while the step stays the same, and forgets it when the step changes. A step changes where D-172 crosses over: another slot, the review, or the change panel coming or going. A view of the same step (a pick answered, a width, a chip, a search, Show more) keeps the side the shopper chose, where the board can draw it. The next step opens on its own side, from the server (D-367), and where that is not the side shown, the board turns to it with the turn's moment.
+
+**Why:** a turn is a look at the board from the other side, on the step where the shopper made it. Carried over, it hid the next step's part: turned on Wheels, the trucks were out of sight on the Trucks step.
+
+**Reduced motion:** unchanged. The turn is a transform only inside the stylesheet's `prefers-reduced-motion: no-preference` block and the store's motion; under reduced motion or the kit's subtle the side shown fades in over 150 ms or less, opacity alone, and nothing turns (D-256).
+
+**Status:** Accepted.
+
+### D-369 · The side is chosen with two buttons, Underside and Top, the side shown pressed · 2026-11-24
+
+Cowork's review of 1.1.0, F28 (#128). The one button read "Show the top" on either side and looked the same pressed; only `aria-pressed` changed. D-218 had kept its name fixed, as the button pattern asks, so a sighted shopper had no mark of the side shown on the control itself.
+
+**Decision:** two toggle buttons, "Underside" and "Top", in a group named by the picture's heading, "Your board" (`role="group"`, `aria-labelledby`). The group takes the visible heading's name rather than an `aria-label`, since the picture has no name only a screen reader hears (milestone 6's audit 27, `BuilderPageTest`). Each has `aria-pressed`, true on the side shown and false on the other; each name stays the same in either state. Pressing the side already shown does nothing. They stay in `.cbuild-picture__turn`, each a `.cbuild-button`, so the stage's row for the control, D-320's placement and D-359's column on a phone held sideways are unchanged.
+
+- **Marked without colour alone.** The side shown is filled in the accent, in bold, with a tick before its name; the other is the plain outlined button. Under forced colours, where the fill is lost, the pressed one keeps its 3 px Highlight border (D-218) and its tick.
+- **Keyboard.** Each is a button in the tab order, pressed with Enter or Space, with the builder's focus ring. No arrow keys and no roving tab stop.
+- **Size.** Each is at least 44 by 44 px, as every builder button is (`--cbuild-target`), over WCAG 2.5.8's 24 by 24. Their inline padding (0.625rem) and the tick's gap (0.375em) keep the pair on one line in D-359's 13rem column in Twenty Twenty-Five's type; at 1rem and the theme's spacing they wrapped to two rows there and ran past the strip.
+- **Without JavaScript** the group is hidden, as the one button was, and each step shows its own side (D-367).
+
+**Not chosen: a radio group.** The APG radio group is a single tab stop whose arrow keys move focus and check the next radio at once, and is the pattern for a choice a form holds. The side is not part of the build or its link; it is a view of the board, changed at the press. Léonie Watson's advice, in Lea Verou's survey of the question: what looks like buttons should act as buttons, or a screen reader user's expectations do not match what they find. The builder's other choices of one in a set that act at once, the deck widths (D-241) and a step's filters, are already toggle buttons with `aria-pressed`, so the side is read the same way. A segmented control in GitHub's Primer is buttons in a named group too, Tab between them and Enter or Space to choose.
+
+**For Zach:** HOOKS.md's "Styling the board's top" named the one button, `.cbuild-picture__turn .cbuild-button`, pressed while the top is shown. The selector now finds both buttons, each pressed while its own side is shown; the classes are kept, and the section says so.
+
+**Sources:**
+
+- WAI-ARIA Authoring Practices, [Button pattern](https://www.w3.org/WAI/ARIA/apg/patterns/button/): a toggle button has `aria-pressed`, and its label does not change when its state does.
+- WAI-ARIA Authoring Practices, [Radio group pattern](https://www.w3.org/WAI/ARIA/apg/patterns/radio/): Tab into and out of the group, the arrow keys move focus and check.
+- Lea Verou, ["What is the best way to mark up an exclusive button group?"](https://lea.verou.me/blog/2022/07/button-group) (2022), with Léonie Watson's answer.
+- GitHub Primer, [SegmentedControl accessibility](https://primer.style/product/components/segmented-control/accessibility): buttons in a group with a label, not a radio group, toolbar or tab list.
+- WCAG 2.2: 1.4.1 Use of Color, 1.4.11 Non-text Contrast, 2.5.8 Target Size (Minimum).
+
+**Status:** Accepted, with the point for Zach above.
+
+D-370 is unused: the brief left it for a fourth decision, and none was needed.
 
 ### D-371 · A part with no spec in the index gets its renditions at the sizes the page draws it at · 2026-11-24
 
