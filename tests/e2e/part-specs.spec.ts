@@ -119,6 +119,8 @@ test.describe( 'The Part specs panel', () => {
 		await edit( page, 'smoke-test-deck', 'Smoke test deck' );
 		await tab( page, PANEL );
 		await expect( box ).not.toBeChecked();
+		// A pointer reaches the box: its label, after it, once lay over it (M12's walkthrough).
+		await box.click( { trial: true, timeout: 5000 } );
 		await expect( box ).toHaveAccessibleName(
 			'Not offered in the builder'
 		);

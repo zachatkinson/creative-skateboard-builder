@@ -39,7 +39,9 @@ $cbuild_row = $whole ? 'form-field' : 'form-row form-row-full';
 	</p>
 	<?php if ( null !== $offer ) : ?>
 		<?php // A box not ticked sends nothing, so it adds no field to a page of variations (issue #23). ?>
+		<?php // The label first, as woocommerce_wp_checkbox() writes it: the panel floats both, and a label after the box lay over it (M12's walkthrough). ?>
 		<p class="<?php echo esc_attr( $cbuild_row ); ?> cbuild-not-offered">
+			<label for="<?php echo esc_attr( $offer['id'] ); ?>"><?php echo esc_html( $offer['label'] ); ?></label>
 			<input
 				type="checkbox"
 				class="checkbox"
@@ -49,7 +51,6 @@ $cbuild_row = $whole ? 'form-field' : 'form-row form-row-full';
 				<?php checked( $offer['checked'] ); ?>
 				aria-describedby="<?php echo esc_attr( $offer['id'] . '-note' ); ?>"
 			/>
-			<label for="<?php echo esc_attr( $offer['id'] ); ?>"><?php echo esc_html( $offer['label'] ); ?></label>
 			<span class="description" id="<?php echo esc_attr( $offer['id'] . '-note' ); ?>"><?php echo esc_html( $offer['note'] ); ?></span>
 		</p>
 	<?php endif; ?>
