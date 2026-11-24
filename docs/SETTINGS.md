@@ -114,6 +114,16 @@ The Layout section gains a group, **Where shoppers find it**, in the same `_cbui
 
 **Which kit's button a part's page shows.** Where several kits offer a part in their first slot, the button opens the one with the lowest menu order whose Show on its parts' pages is on, and the lowest ID among kits of the same order. A kit's menu order is the Products screen's Sorting, or Menu order under the product's Advanced tab.
 
+### Width guide (#114)
+
+The Build tab gains a **Width guide** section (#114, D-350), kept in the same `_cbuild_layout` document as `width_guide`. A kit saved before 1.2.0 has none, and shows the plugin's rows as 1.1.0 did.
+
+| Setting | Key | Choices | Default | What it does |
+| --- | --- | --- | --- | --- |
+| Show the width guide | `width_guide.shown` | `true`, `false` (a checkbox) | `true` | Whether "Not sure of your width?" is under the deck step's width question. Off takes it out of the page and out of the state route's answer, words and all, not hidden by a style, and keeps the rows. `cbuild_width_guide` is still asked, with no rows, and answers last. |
+| Use the builder's rows | none stored (a checkbox) | ticked, unticked | ticked | The restore-defaults control. Ticked, no `rows` are stored and the guide has the plugin's rows, by US shoe size in the shopper's language. The tab shows those rows in the editor to start from; typing in a row, adding or removing one unticks it where the page runs its script. |
+| Rows | `width_guide.rows[]` with `shoe`, `from`, `to` | One to twelve rows. **Shoe size**: plain text as the shop writes it, up to 40 characters, through `cbuild_kit_text` (`width_guide_shoe`). **Deck width from** and **to**: 5 to 12 in, typed as the shop writes a measure (its decimal separator, or a fraction); **to** left empty is "and wider", and is never under **from**. | none | The guide's rows, in the order given. Add a row and Remove work by keyboard; the server draws twelve rows, and those past the kit's and one empty one wait hidden. A row left empty is no row. A row that is wrong is named at its field, and the layout is not saved. |
+
 ## Options beside the settings
 
 The plugin keeps seven options of its own, which no screen edits: `cbuild_db_version`, `cbuild_migrations`, `cbuild_migration_lock` and, from 0.3.0, `cbuild_reindex_state`, `cbuild_reindex_owed`, `cbuild_import_state` and `cbuild_import_rows`. [HOOKS.md](HOOKS.md) says what each holds, and [PRIVACY.md](PRIVACY.md) lists everything stored.

@@ -14,11 +14,13 @@ use CreativeBranding\SkateboardBuilder\Domain\Kit\Kit;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Preset;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\KitLayout;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\RuleSettings;
+use CreativeBranding\SkateboardBuilder\Domain\Kit\SizeGuide;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Slot;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\SlotKey;
 use CreativeBranding\SkateboardBuilder\Domain\Picture\Layout;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Slots;
 use CreativeBranding\SkateboardBuilder\Front\BuilderPlace;
+use CreativeBranding\SkateboardBuilder\Front\WidthGuide;
 use CreativeBranding\SkateboardBuilder\Port\ShopSettings;
 use CreativeBranding\SkateboardBuilder\Service\KitEditor;
 use CreativeBranding\SkateboardBuilder\Support\Options;
@@ -116,6 +118,12 @@ final class BuildTab {
 	 * Fields that take more than one line.
 	 */
 	private const LINES = array( 'help', 'returns_notice' );
+
+	/**
+	 * The width guide's section, which is kept in the layout document (1.2.0, #114): its name after the prefix of
+	 * every control's ID, as a problem's path gives it.
+	 */
+	private const GUIDE = 'layout-width_guide';
 
 	/**
 	 * What was not saved, by the ID of the field or of the row it belongs to: the ID of the sentence that says why.
@@ -334,7 +342,7 @@ final class BuildTab {
 	 * The tab's sections, each with its groups of fields.
 	 *
 	 * @param WC_Product $product The kit.
-	 * @return list<array{id: string, title: string, intro: string, refused: bool, problems: list<array{error: string, field: string, text: string}>, groups: list<array{id: string, legend: string, moves: bool, fold: string, open: bool, fields: list<array<string, mixed>>, more: list<array<string, mixed>>}>}>
+	 * @return list<array{id: string, title: string, intro: string, refused: bool, problems: list<array{error: string, field: string, text: string}>, groups: list<array{id: string, legend: string, moves: bool, fold: string, open: bool, fields: list<array<string, mixed>>, more: list<array<string, mixed>>, hidden?: bool, remove?: string}>, add: string}>
 	 */
 	private function sections( WC_Product $product ): array {
 		$stored = StoredKit::named( $product );
@@ -395,14 +403,24 @@ final class BuildTab {
 				__( 'How the builder is laid out on a desktop, which search its steps use, and where shoppers find it. A phone always shows the board above the step.', 'creative-skateboard-builder' ),
 				$this->layout( $shown[ KitEditor::LAYOUT ], $product->get_id() ),
 			),
+			self::GUIDE         => array(
+				__( 'Width guide', 'creative-skateboard-builder' ),
+				__( 'Under the deck step\'s question "What width do you ride?", "Not sure of your width?" opens a table of shoe sizes and the deck widths each rides.', 'creative-skateboard-builder' ),
+				$this->guide( $shown[ KitEditor::LAYOUT ] ),
+			),
 		) as $name => $section ) {
+			// The width guide is kept in the layout document and has a section of its own (1.2.0, #114): each of the
+			// two lists the problems in its own fields.
+			$document   = self::GUIDE === $name ? KitEditor::LAYOUT : $name;
+			$problems   = array_values( array_filter( $listed[ $document ] ?? array(), static fn( array $problem ): bool => KitEditor::LAYOUT !== $document || ( self::GUIDE === $name ) === str_starts_with( $problem['field'], self::IDS . '-' . self::GUIDE ) ) );
 			$sections[] = array(
 				'id'       => self::IDS . '-' . $name,
 				'title'    => $section[0],
 				'intro'    => $section[1],
-				'refused'  => isset( $refused[ $name ] ),
-				'problems' => $listed[ $name ] ?? array(),
+				'refused'  => isset( $refused[ $document ] ) && ( array() !== $problems || self::GUIDE !== $name ),
+				'problems' => $problems,
 				'groups'   => $section[2],
+				'add'      => self::GUIDE === $name ? __( 'Add a row', 'creative-skateboard-builder' ) : '',
 			);
 		}
 		return $sections;
@@ -1029,6 +1047,89 @@ final class BuildTab {
 	}
 
 	/**
+	 * The Width guide section's fields (1.2.0, #114, D-350): whether the guide is shown, whether it has the builder's
+	 * rows, and a group for each row, twelve at most. A kit with the builder's rows shows them in the rows, to start
+	 * the shop's own from. The rows it has, and one empty one, are shown; the rest wait, hidden, for Add a row.
+	 *
+	 * @param array<mixed> $document The layout document to show.
+	 * @return list<array{id: string, legend: string, moves: bool, fold: string, open: bool, fields: list<array<string, mixed>>, more: list<array<string, mixed>>, hidden?: bool, remove?: string}>
+	 */
+	private function guide( array $document ): array {
+		$id      = self::IDS . '-' . self::GUIDE;
+		$name    = self::FIELD . '[layout][width_guide]';
+		$guide   = is_array( $document['width_guide'] ?? null ) ? $document['width_guide'] : array();
+		$plugins = ! isset( $guide['rows'] );
+		$rows    = self::rows( $guide, 'rows' );
+		if ( $plugins ) {
+			$rows = array_map(
+				static fn( array $row ): array => array(
+					'shoe' => $row['shoe'],
+					'from' => $row['from']->decimal(),
+					'to'   => null === $row['to'] ? '' : $row['to']->decimal(),
+				),
+				WidthGuide::defaults()
+			);
+		}
+		$groups = array(
+			array(
+				'id'     => $id . '-fields',
+				'legend' => '',
+				'moves'  => false,
+				'fold'   => '',
+				'open'   => true,
+				'fields' => array(
+					$this->field(
+						$id . '-shown',
+						$name . '[shown]',
+						__( 'Show the width guide', 'creative-skateboard-builder' ),
+						'checkbox',
+						false !== ( $guide['shown'] ?? true ) ? '1' : '',
+						array( 'note' => __( 'Off, the guide is left out of the page, and its rows are kept.', 'creative-skateboard-builder' ) )
+					),
+					$this->field(
+						$id . '-plugins',
+						$name . '[plugins]',
+						__( 'Use the builder\'s rows', 'creative-skateboard-builder' ),
+						'checkbox',
+						$plugins ? '1' : '',
+						array( 'note' => __( 'The builder\'s rows go by US shoe size and are shown in the shopper\'s language. Ticked, the rows below are not saved: untick it to save your own. With no rows, the guide has the builder\'s.', 'creative-skateboard-builder' ) )
+					),
+				),
+				'more'   => array(),
+			),
+		);
+		$shown  = count( $rows ) + 1;
+		for ( $at = 0; $at < SizeGuide::MAX_ROWS; ++$at ) {
+			$row = $rows[ $at ] ?? array();
+			/* translators: %d: the row's number in the chart. */
+			$legend   = sprintf( __( 'Row %d', 'creative-skateboard-builder' ), $at + 1 );
+			$groups[] = array(
+				'id'     => $id . '-rows-' . $at,
+				'legend' => $legend,
+				'moves'  => false,
+				'fold'   => '',
+				'open'   => true,
+				'fields' => array(
+					$this->field( $id . '-rows-' . $at . '-shoe', $name . '[rows][' . $at . '][shoe]', __( 'Shoe size', 'creative-skateboard-builder' ), 'text', self::text( $row, 'shoe' ), array( 'max' => SizeGuide::MAX_SHOE ) ),
+					$this->field( $id . '-rows-' . $at . '-from', $name . '[rows][' . $at . '][from]', __( 'Deck width from (in)', 'creative-skateboard-builder' ), 'text', self::measure( $row['from'] ?? '' ) ),
+					$this->field(
+						$id . '-rows-' . $at . '-to',
+						$name . '[rows][' . $at . '][to]',
+						__( 'Deck width to (in)', 'creative-skateboard-builder' ),
+						'text',
+						self::measure( $row['to'] ?? '' ),
+						array( 'note' => __( 'Leave it empty for that width and wider.', 'creative-skateboard-builder' ) )
+					),
+				),
+				'more'   => array(),
+				'hidden' => $at >= $shown,
+				'remove' => __( 'Remove', 'creative-skateboard-builder' ),
+			);
+		}
+		return $groups;
+	}
+
+	/**
 	 * A field as the template draws it.
 	 *
 	 * @param string                    $id    The control's ID.
@@ -1193,8 +1294,29 @@ final class BuildTab {
 			'wheelbase'          => __( 'Wheelbase where a deck gives none', 'creative-skateboard-builder' ),
 			'start_button'       => __( 'Show on its parts\' pages', 'creative-skateboard-builder' ),
 			'builder_page'       => __( 'Builder page', 'creative-skateboard-builder' ),
+			'stage_side'         => __( 'Stage side on a desktop', 'creative-skateboard-builder' ),
+			'board_size'         => __( 'Board size on a desktop', 'creative-skateboard-builder' ),
+			'search'             => __( 'Search in the steps', 'creative-skateboard-builder' ),
+			'motion'             => __( 'Motion', 'creative-skateboard-builder' ),
+			'show_presets'       => __( 'Show ready builds', 'creative-skateboard-builder' ),
+			'width_guide'        => __( 'Width guide', 'creative-skateboard-builder' ),
+			'width_guide.rows'   => __( 'Width guide', 'creative-skateboard-builder' ),
+			'width_guide.shown'  => __( 'Show the width guide', 'creative-skateboard-builder' ),
 		);
 		$found  = array();
+		if ( 1 === preg_match( '/\Awidth_guide\.rows\[(\d+)\]\.?(.*)\z/', $path, $found ) ) {
+			$label = array(
+				'shoe' => __( 'Shoe size', 'creative-skateboard-builder' ),
+				'from' => __( 'Deck width from', 'creative-skateboard-builder' ),
+				'to'   => __( 'Deck width to', 'creative-skateboard-builder' ),
+			)[ $found[2] ] ?? '';
+			if ( '' === $label ) {
+				/* translators: %d: a row's number in the width guide, 1 to 12. */
+				return sprintf( __( 'Width guide, row %d', 'creative-skateboard-builder' ), (int) $found[1] + 1 );
+			}
+			/* translators: 1: a row's number in the width guide, 1 to 12. 2: a field's label, such as Shoe size. */
+			return sprintf( __( 'Width guide, row %1$d, %2$s', 'creative-skateboard-builder' ), (int) $found[1] + 1, $label );
+		}
 		if ( 1 === preg_match( '/\A(slots|presets)\[(\d+)\]\.?(.*)\z/', $path, $found ) ) {
 			$at    = (int) $found[2];
 			$row   = self::rows( $shown[ $document ] ?? null, $found[1] )[ $at ] ?? array();
@@ -1244,6 +1366,7 @@ final class BuildTab {
 			KitEditor::RULES   => __( 'Rules', 'creative-skateboard-builder' ),
 			KitEditor::PRESETS => __( 'Presets', 'creative-skateboard-builder' ),
 			KitEditor::PICTURE => __( 'Picture', 'creative-skateboard-builder' ),
+			KitEditor::LAYOUT  => __( 'Layout', 'creative-skateboard-builder' ),
 			default            => __( 'Assembly', 'creative-skateboard-builder' ),
 		};
 	}

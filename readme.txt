@@ -64,6 +64,7 @@ Yes. Its hooks, REST routes, block attributes, settings keys, order item keys, C
 = 1.2.0 =
 * A kit's Build tab chooses the page its builder is on. The kit's page, "Build a complete with this deck", the cart's Edit build and My builds open the builder there, while the page is published and holds the kit's Builder block.
 * A kit's Build tab can turn "Build a complete with this deck" off for that kit. Another kit that offers the deck may still show it.
+* A kit's Build tab edits the width guide under the deck step: your own shoe sizes and deck widths, the builder's rows back with one box, or the guide hidden.
 * A build's Add to cart keeps the cart before it answers, so a cart page opened straight after holds the build.
 
 = 1.1.0 =
@@ -203,7 +204,7 @@ Yes. Its hooks, REST routes, block attributes, settings keys, order item keys, C
 == Upgrade Notice ==
 
 = 1.2.0 =
-Update from the updater or by uploading the zip; no step is needed. A kit saved before 1.2.0 keeps its builder on its own page and its button on its decks' pages.
+Update from the updater or by uploading the zip; no step is needed. A kit saved before 1.2.0 keeps its builder on its own page, its button on its decks' pages and the builder's width guide.
 
 = 1.1.0 =
 Update from the updater or by uploading the zip; no step is needed. A kit saved before 1.1.0 keeps playful motion. A grip's layer image is now the whole sheet shot flat from above; grip strips saved under 1.0 still draw as before.

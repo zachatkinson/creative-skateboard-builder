@@ -196,6 +196,84 @@ test.describe( 'The Build tab', () => {
 		expect( await slots( page ) ).toEqual( before );
 	} );
 
+	// #114: the Width guide section. Rows removed and added by their buttons from the keyboard, the shop's rows saved,
+	// the guide hidden, and the builder's rows put back, which leaves the kit as it was found.
+	test( "the width guide takes rows of its own by keyboard, hides, and goes back to the builder's rows", async ( {
+		page,
+	} ) => {
+		const GUIDE = '#cbuild-kit-layout-width_guide';
+		const row = ( at: number ) => `${ GUIDE }-rows-${ at }`;
+		const shoe = ( at: number ) => page.locator( `${ row( at ) }-shoe` );
+		const shown = page.locator( `${ GUIDE }-shown` );
+		const plugins = page.locator( `${ GUIDE }-plugins` );
+		await login( page );
+		await edit( page );
+		await tab( page );
+		const add = page.locator( `${ GUIDE } button[data-cbuild-add]` );
+		await expect( add ).toBeVisible();
+		await expect( shown ).toBeChecked();
+		await expect( plugins ).toBeChecked();
+		// The builder's rows, to start from, and one empty row; the rest wait.
+		await expect( shoe( 0 ) ).toHaveValue( '6.5 or smaller' );
+		await expect( shoe( 4 ) ).toHaveValue( '' );
+		await expect( page.locator( row( 4 ) ) ).toBeVisible();
+		await expect( page.locator( row( 5 ) ) ).toBeHidden();
+		await axe( page, 'the Build tab, Width guide', PANEL, [], THEIRS );
+
+		// Remove the first row, named with it: the rows after it move up, and focus stays in its place.
+		const remove = page.getByRole( 'button', { name: 'Remove Row 1' } );
+		await remove.focus();
+		await page.keyboard.press( 'Enter' );
+		await expect( shoe( 0 ) ).toHaveValue( '7 to 8' );
+		await expect( shoe( 0 ) ).toBeFocused();
+		await expect( page.locator( row( 4 ) ) ).toBeHidden();
+		await expect( page.locator( '#a11y-speak-polite' ) ).toHaveText(
+			'Row 1 removed. The rows after it moved up.'
+		);
+		await expect( plugins ).not.toBeChecked();
+
+		// Add a row, with Space: it is shown and takes focus.
+		await add.focus();
+		await page.keyboard.press( 'Space' );
+		await expect( page.locator( row( 4 ) ) ).toBeVisible();
+		await expect( shoe( 4 ) ).toBeFocused();
+		await page.keyboard.type( 'EU 46' );
+		await page.keyboard.press( 'Tab' );
+		await page.keyboard.type( '9' );
+		await axe(
+			page,
+			'the Build tab, Width guide with a row added',
+			PANEL,
+			[],
+			THEIRS
+		);
+		await update( page );
+		await expect( page.locator( '#woocommerce_errors' ) ).toHaveCount( 0 );
+		await tab( page );
+		await expect( plugins ).not.toBeChecked();
+		await expect( shoe( 0 ) ).toHaveValue( '7 to 8' );
+		await expect( shoe( 3 ) ).toHaveValue( 'EU 46' );
+		await expect( page.locator( `${ row( 3 ) }-from` ) ).toHaveValue( '9' );
+
+		// Hidden, by keyboard: its rows are kept.
+		await shown.focus();
+		await page.keyboard.press( 'Space' );
+		await update( page );
+		await tab( page );
+		await expect( shown ).not.toBeChecked();
+		await expect( shoe( 3 ) ).toHaveValue( 'EU 46' );
+
+		// The builder's rows again, and shown: the kit as it was found.
+		await shown.check();
+		await plugins.check();
+		await update( page );
+		await tab( page );
+		await expect( shown ).toBeChecked();
+		await expect( plugins ).toBeChecked();
+		await expect( shoe( 0 ) ).toHaveValue( '6.5 or smaller' );
+		await expect( shoe( 4 ) ).toHaveValue( '' );
+	} );
+
 	test( 'a product that is not a kit has no Build fields in its form', async ( {
 		page,
 	} ) => {

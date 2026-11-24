@@ -248,6 +248,10 @@ final class Sentences {
 			KitEditor::WHEELBASE_RANGE => sprintf( __( '%s: type a wheelbase from 10 to 20 in, or leave it empty.', 'creative-skateboard-builder' ), $field ),
 			/* translators: %s: a field's name, Builder page. */
 			KitEditor::BUILDER_PAGE => sprintf( __( '%s: choose one of the pages listed, or the kit\'s own page. A page is listed when it is published and holds this kit\'s Builder block.', 'creative-skateboard-builder' ), $field ),
+			/* translators: %s: a field's name. */
+			KitEditor::GUIDE_WIDTH => sprintf( __( '%s: type a width from 5 to 12 in.', 'creative-skateboard-builder' ), $field ),
+			/* translators: %s: a field's name. */
+			KitEditor::GUIDE_SHOE_TWICE => sprintf( __( '%s: the guide already has a row for this shoe size. Give each row its own.', 'creative-skateboard-builder' ), $field ),
 			KitEditor::NO_SLOTS => __( 'Presets need the kit\'s slots. Put the slots right and save, then add the presets.', 'creative-skateboard-builder' ),
 			/* translators: 1: a field's name. 2: a product's name. 3: a slot's label. */
 			KitEditor::NOT_IN_SLOT => sprintf( __( '%1$s: %2$s is not a part the %3$s slot takes, or it cannot be bought now.', 'creative-skateboard-builder' ), $field, $part, $slot ),

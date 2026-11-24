@@ -11,6 +11,7 @@ namespace CreativeBranding\SkateboardBuilder\Front;
 
 use CreativeBranding\SkateboardBuilder\Domain\Fit\BuildProblem;
 use CreativeBranding\SkateboardBuilder\Domain\Fit\Problem;
+use CreativeBranding\SkateboardBuilder\Domain\Kit\SizeGuide;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\SlotKey;
 use CreativeBranding\SkateboardBuilder\Domain\Look\Shelf;
 use CreativeBranding\SkateboardBuilder\Service\State;
@@ -1085,9 +1086,10 @@ final class BuilderView {
 	 * @param string                     $slot   The step's slot.
 	 * @param list<array<string, mixed>> $folded The sold-out looks' cards.
 	 * @param int                        $kit    The kit product's ID, for the width guide's filter.
+	 * @param SizeGuide|null             $sizes  The kit's width guide (1.2.0); none where there is no step.
 	 * @return array<string, mixed>
 	 */
-	private static function shelf( array $shelf, string $slot, array $folded, int $kit ): array {
+	private static function shelf( array $shelf, string $slot, array $folded, int $kit, ?SizeGuide $sizes = null ): array {
 		$offered = Cast::int( $shelf['offered'] ?? null );
 		$widths  = array();
 		$none    = array();
@@ -1150,7 +1152,11 @@ final class BuilderView {
 		$asking = $asking && array() !== $widths;
 		$tools  = $offered > self::CARDS_ALONE;
 		// "Not sure of your width?" under the question, asked only where there is a question (spec: The deck's width).
-		$guide = array() === $widths ? array() : WidthGuide::rows( $kit );
+		// From 1.2.0 as the kit sets it (#114): its own rows, or none where it hides the guide.
+		$guide = array() === $widths ? array() : WidthGuide::rows( $kit, $sizes );
+		$shown = array() !== $guide;
+		// The plugin's rows are US sizes; a shop's own say which sizes they are in their own words.
+		$shoe = null === $sizes?->rows ? __( 'Shoe size (US)', 'creative-skateboard-builder' ) : __( 'Shoe size', 'creative-skateboard-builder' );
 		return array(
 			'width'   => array(
 				'shown'   => array() !== $widths,
@@ -1165,12 +1171,14 @@ final class BuilderView {
 				'hasNone' => array() !== $none,
 				/* translators: %s: widths, such as 7.75″, 8.125″ or 9″. */
 				'none'    => array() === $none ? '' : sprintf( __( 'Nothing in %s is in stock right now.', 'creative-skateboard-builder' ), Words::either( $none ) ),
+				// A guide with no rows is gone from the view, words and all, so the page draws an empty, hidden box and
+				// the state route's answer carries nothing of it (#114).
 				'guide'   => array(
-					'shown'   => array() !== $guide,
-					'summary' => __( 'Not sure of your width?', 'creative-skateboard-builder' ),
-					'caption' => __( 'Deck width by shoe size', 'creative-skateboard-builder' ),
-					'shoe'    => __( 'Shoe size (US)', 'creative-skateboard-builder' ),
-					'width'   => __( 'Deck width', 'creative-skateboard-builder' ),
+					'shown'   => $shown,
+					'summary' => $shown ? __( 'Not sure of your width?', 'creative-skateboard-builder' ) : '',
+					'caption' => $shown ? __( 'Deck width by shoe size', 'creative-skateboard-builder' ) : '',
+					'shoe'    => $shown ? $shoe : '',
+					'width'   => $shown ? __( 'Deck width', 'creative-skateboard-builder' ) : '',
 					'rows'    => $guide,
 				),
 			),
@@ -1617,7 +1625,7 @@ final class BuilderView {
 			'hidden'    => self::hidden( $answer, $step ),
 			'filters'   => null === $shelf ? self::filters( $answer, $slot ) : self::filters( array(), '' ),
 			'more'      => null === $shelf ? self::more( $answer, count( $options ) ) : self::page( $shelf, count( $options ), $link ),
-			'shelf'     => self::shelf( $shelf ?? array(), $slot, $folded, $state->id ),
+			'shelf'     => self::shelf( $shelf ?? array(), $slot, $folded, $state->id, $state->kit->layout->guide ),
 			// The deck step asking its width lists nothing yet, and says nothing is missing; a search that lists nothing
 			// says so itself, so the fit rule is not given as the reason (#83).
 			'empty'     => array() === $options && ! ( null !== $shelf && SlotKey::DECK === $slot && '' === $link->shelf->width ) && true !== $found['shown'],

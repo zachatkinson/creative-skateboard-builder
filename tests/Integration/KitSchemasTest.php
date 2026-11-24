@@ -12,6 +12,7 @@ namespace CreativeBranding\SkateboardBuilder\Tests\Integration;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Assembly;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\InvalidDocument;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Kit;
+use CreativeBranding\SkateboardBuilder\Domain\Kit\KitLayout;
 use CreativeBranding\SkateboardBuilder\Domain\Picture\PictureSettings;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\RuleSettings;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Slots;
@@ -128,6 +129,20 @@ final class KitSchemasTest extends IntegrationTestCase {
 		$this->assertTrue( self::accepts( array( 'schema_version' => 1, 'show_presets' => false ), 'kit-layout' ), 'Show ready builds, from 1.1.0 (#104)' );
 		$this->assertTrue( self::accepts( array( 'schema_version' => 1, 'start_button' => false ), 'kit-layout' ), 'Show on its parts\' pages, from 1.2.0 (#115)' );
 		$this->assertTrue( self::accepts( array( 'schema_version' => 1, 'builder_page' => 42 ), 'kit-layout' ), 'Builder page, from 1.2.0 (#113)' );
+		// The width guide, from 1.2.0 (#114): hidden, with the shop's own rows, or both.
+		$guide = array(
+			'shown' => false,
+			'rows'  => array(
+				array( 'shoe' => 'EU 38 to 40', 'from' => '7.75', 'to' => '8' ),
+				array( 'shoe' => str_repeat( 'é', 40 ), 'from' => '5', 'to' => '12.0000' ),
+				array( 'shoe' => 'EU 44 and up', 'from' => '11.9999', 'to' => '' ),
+				array( 'shoe' => 'EU 45', 'from' => '8.25' ),
+			),
+		);
+		$this->assertTrue( self::accepts( array( 'schema_version' => 1, 'width_guide' => $guide ), 'kit-layout' ), 'the width guide, from 1.2.0 (#114)' );
+		$this->assertTrue( self::accepts( array( 'schema_version' => 1, 'width_guide' => array( 'shown' => true ) ), 'kit-layout' ), 'shown with the plugin\'s rows' );
+		$this->assertTrue( self::accepts( array( 'schema_version' => 1, 'width_guide' => array( 'rows' => array_fill( 0, 12, $guide['rows'][0] ) ) ), 'kit-layout' ), 'twelve rows' );
+		$this->assertSame( 4, count( Kit::fromDocuments( KitDocuments::slots(), RuleSettings::DEFAULTS, KitDocuments::presets(), KitDocuments::assembly(), null, array( 'schema_version' => 1, 'width_guide' => $guide ) )->layout->guide->rows ?? array() ) );
 
 		$kit = Kit::fromDocuments( $slots, RuleSettings::DEFAULTS, self::presets(), $assembly, $picture );
 		$this->assertSame( array( 'grip', 'deck', 'wheels', 'trucks' ), $kit->picture->order );
@@ -185,6 +200,18 @@ final class KitSchemasTest extends IntegrationTestCase {
 			'the start button as text'       => array( 'kit-layout', array( 'schema_version' => 1, 'start_button' => 'yes' ) ),
 			'a Builder page of no page'      => array( 'kit-layout', array( 'schema_version' => 1, 'builder_page' => 0 ) ),
 			'a Builder page as an address'   => array( 'kit-layout', array( 'schema_version' => 1, 'builder_page' => '/build/' ) ),
+			'a guide that is a list'         => array( 'kit-layout', array( 'schema_version' => 1, 'width_guide' => array( 'rows' ) ) ),
+			'a guide shown as text'          => array( 'kit-layout', array( 'schema_version' => 1, 'width_guide' => array( 'shown' => 'no' ) ) ),
+			'a guide with no rows in it'     => array( 'kit-layout', array( 'schema_version' => 1, 'width_guide' => array( 'rows' => array() ) ) ),
+			'a guide of thirteen rows'       => array( 'kit-layout', array( 'schema_version' => 1, 'width_guide' => array( 'rows' => array_fill( 0, 13, array( 'shoe' => '9', 'from' => '8' ) ) ) ) ),
+			'a row with no shoe size'        => array( 'kit-layout', array( 'schema_version' => 1, 'width_guide' => array( 'rows' => array( array( 'from' => '8' ) ) ) ) ),
+			'a row with an empty shoe size'  => array( 'kit-layout', array( 'schema_version' => 1, 'width_guide' => array( 'rows' => array( array( 'shoe' => '', 'from' => '8' ) ) ) ) ),
+			'a shoe size of 41 characters'   => array( 'kit-layout', array( 'schema_version' => 1, 'width_guide' => array( 'rows' => array( array( 'shoe' => str_repeat( 'a', 41 ), 'from' => '8' ) ) ) ) ),
+			'a row with no width'            => array( 'kit-layout', array( 'schema_version' => 1, 'width_guide' => array( 'rows' => array( array( 'shoe' => '9' ) ) ) ) ),
+			'a width as a fraction'          => array( 'kit-layout', array( 'schema_version' => 1, 'width_guide' => array( 'rows' => array( array( 'shoe' => '9', 'from' => '8 1/4' ) ) ) ) ),
+			'a width as a number'            => array( 'kit-layout', array( 'schema_version' => 1, 'width_guide' => array( 'rows' => array( array( 'shoe' => '9', 'from' => 8 ) ) ) ) ),
+			'a width of 4.5 in'              => array( 'kit-layout', array( 'schema_version' => 1, 'width_guide' => array( 'rows' => array( array( 'shoe' => '9', 'from' => '4.5' ) ) ) ) ),
+			'a widest past 12 in'            => array( 'kit-layout', array( 'schema_version' => 1, 'width_guide' => array( 'rows' => array( array( 'shoe' => '9', 'from' => '8', 'to' => '12.5' ) ) ) ) ),
 			'an order with a bad key'        => array( 'kit-picture', array( 'schema_version' => 1, 'order' => array( 'Grip Tape' ) ) ),
 			'an order naming a slot twice'   => array( 'kit-picture', array( 'schema_version' => 1, 'order' => array( 'deck', 'deck' ) ) ),
 			'an order of 21 slots'           => array( 'kit-picture', array( 'schema_version' => 1, 'order' => array_map( static fn( int $n ): string => 'slot_' . $n, range( 1, 21 ) ) ) ),
@@ -218,6 +245,9 @@ final class KitSchemasTest extends IntegrationTestCase {
 				case 'kit-picture':
 					PictureSettings::fromDocument( $document );
 					break;
+				case 'kit-layout':
+					KitLayout::fromDocument( $document );
+					break;
 				default:
 					Assembly::fromDocument( $document );
 			}
@@ -248,7 +278,19 @@ final class KitSchemasTest extends IntegrationTestCase {
 			'order'          => 'deck',
 		);
 		$this->assertTrue( self::accepts( $text, 'kit-picture' ) );
-		foreach ( array( array( Slots::class, $repeated ), array( Slots::class, $reversed ), array( Slots::class, $bolts_first ), array( RuleSettings::class, $disordered ), array( PictureSettings::class, $text ) ) as [ $reader, $document ] ) {
+		// A width guide's row whose widest is narrower than its narrowest (#114).
+		$narrower = array(
+			'schema_version' => 1,
+			'width_guide'    => array( 'rows' => array( array( 'shoe' => '9', 'from' => '8.25', 'to' => '8' ) ) ),
+		);
+		$this->assertTrue( self::accepts( $narrower, 'kit-layout' ) );
+		// And one that names a shoe size twice, which the page keys its rows by.
+		$twice = array(
+			'schema_version' => 1,
+			'width_guide'    => array( 'rows' => array( array( 'shoe' => '9', 'from' => '8' ), array( 'shoe' => '9', 'from' => '8.5' ) ) ),
+		);
+		$this->assertTrue( self::accepts( $twice, 'kit-layout' ) );
+		foreach ( array( array( Slots::class, $repeated ), array( Slots::class, $reversed ), array( Slots::class, $bolts_first ), array( RuleSettings::class, $disordered ), array( PictureSettings::class, $text ), array( KitLayout::class, $narrower ), array( KitLayout::class, $twice ) ) as [ $reader, $document ] ) {
 			try {
 				$reader::fromDocument( $document );
 				$this->fail( 'the domain accepted it' );

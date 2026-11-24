@@ -559,6 +559,49 @@ final class StateRouteTest extends IntegrationTestCase {
 		self::assertStringContainsString( rawurlencode( 'cbuild[_width]' ) . '=8in', $changed['view']['url'], 'the view\'s address is the build as now listed' );
 	}
 
+	// #114, on the route: a kit saved before 1.2.0 answers the plugin's rows; the shop's own rows are answered with
+	// their shoe sizes through `cbuild_kit_text`, and a hidden guide carries no rows and no words.
+	public function test_the_width_guide_is_the_kits_own_through_the_text_filter_and_a_hidden_one_is_not_in_the_answer(): void {
+		$guide = static fn( array $answer ): mixed => $answer['view']['step']['shelf']['width']['guide'] ?? null;
+		$deck  = array( 'cbuild' => array( 'step' => 'deck' ) );
+		$plain = $guide( $this->answer( $deck ) );
+		self::assertIsArray( $plain );
+		self::assertTrue( $plain['shown'] );
+		self::assertSame( 'Shoe size (US)', $plain['shoe'] );
+		self::assertSame( array( '6.5 or smaller', '7 to 8', '8.5 to 9', '9.5 and larger' ), array_column( $plain['rows'], 'shoe' ) );
+
+		$rows      = array(
+			array(
+				'shoe' => 'EU 38 to 40',
+				'from' => '7.75',
+				'to'   => '8',
+			),
+			array(
+				'shoe' => 'EU 41 and up',
+				'from' => '8.25',
+			),
+		);
+		$this->kit = $this->whole( array( 'schema_version' => 1, 'width_guide' => array( 'rows' => $rows ) ) )['kit'];
+		$kit       = $this->kit;
+		add_filter( 'cbuild_kit_text', static fn( string $text, string $field, int $id, string $of ): string => 'width_guide_shoe' === $field && $kit === $id && '1' === $of ? 'EU 41 et plus' : $text, 10, 4 );
+		$own = $guide( $this->answer( $deck ) );
+		self::assertIsArray( $own );
+		self::assertSame( 'Shoe size', $own['shoe'], 'not the plugin\'s US sizes' );
+		self::assertSame(
+			array(
+				array( 'shoe' => 'EU 38 to 40', 'width' => '7.75″ to 8″' ),
+				array( 'shoe' => 'EU 41 et plus', 'width' => '8.25″ and wider' ),
+			),
+			$own['rows']
+		);
+
+		$this->kit = $this->whole( array( 'schema_version' => 1, 'width_guide' => array( 'shown' => false, 'rows' => $rows ) ) )['kit'];
+		$body      = (string) wp_json_encode( $this->answer( $deck ) );
+		self::assertSame( array( 'shown' => false, 'summary' => '', 'caption' => '', 'shoe' => '', 'width' => '', 'rows' => array() ), $guide( json_decode( $body, true ) ) );
+		self::assertStringNotContainsString( 'EU 38', $body, 'nothing of the rows in the answer' );
+		self::assertStringNotContainsString( 'Not sure of your width?', $body );
+	}
+
 	public function test_the_schema_refuses_an_answer_that_is_not_its_own(): void {
 		$body = $this->answer();
 		unset( $body['total'] );

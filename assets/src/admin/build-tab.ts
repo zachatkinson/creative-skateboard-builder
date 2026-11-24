@@ -31,6 +31,10 @@ const PANEL = 'cbuild_build';
 const IDS = 'cbuild-kit';
 const LIST = '.cbuild-kit-rows';
 const ROW = '.cbuild-kit-row';
+const SECTION = '.options_group';
+const ADDS = '.cbuild-kit-adds';
+const ADD = 'button[data-cbuild-add]';
+const REMOVE = 'button[data-cbuild-remove]';
 const CONTROLS =
 	'input:not([type="hidden"]), select, textarea, button:not(:disabled)';
 
@@ -202,6 +206,150 @@ export function rows( doc: Document, speak?: Speak, $?: Query ): void {
 }
 
 /**
+ * The rows of a section that adds and removes them (1.2.0, #114), all of them, shown or waiting.
+ *
+ * @param section The section.
+ */
+function addsOf( section: Element ): HTMLElement[] {
+	return Array.from( section.querySelectorAll< HTMLElement >( ADDS ) );
+}
+
+/**
+ * The text fields of a row that adds and removes.
+ *
+ * @param row The row.
+ */
+function inputsOf( row: Element ): HTMLInputElement[] {
+	return Array.from(
+		row.querySelectorAll< HTMLInputElement >( 'input[type="text"]' )
+	);
+}
+
+/**
+ * Switches Add a row off once every row the list takes is shown.
+ *
+ * @param section The section.
+ */
+function full( section: Element ): void {
+	const adding = section.querySelector< HTMLButtonElement >( ADD );
+	if ( adding ) {
+		adding.disabled = addsOf( section ).every( ( row ) => ! row.hidden );
+	}
+}
+
+/**
+ * The shop is typing rows of its own, so the builder's rows are no longer ticked.
+ *
+ * @param section The section.
+ */
+function own( section: Element ): void {
+	const plugins = section.querySelector< HTMLInputElement >(
+		'input[type="checkbox"][id$="-plugins"]'
+	);
+	if ( plugins ) {
+		plugins.checked = false;
+	}
+}
+
+/**
+ * Shows the next row that waits, and moves focus to its first field.
+ *
+ * @param section The section.
+ */
+export function add( section: Element ): void {
+	const next = addsOf( section ).find( ( row ) => row.hidden );
+	if ( ! next ) {
+		return;
+	}
+	next.hidden = false;
+	own( section );
+	full( section );
+	inputsOf( next )[ 0 ]?.focus();
+}
+
+/**
+ * Removes a row: the rows after it move up a place, so the numbers stay in order, and the last one shown is emptied
+ * and waits again. Focus stays in the place of the row removed, or goes to the row before it, or to Add a row; and a
+ * screen reader hears what happened.
+ *
+ * @param pressed The Remove button pressed.
+ * @param speak   Says a sentence to a screen reader.
+ */
+export function remove( pressed: HTMLButtonElement, speak?: Speak ): void {
+	const row = pressed.closest< HTMLElement >( ADDS );
+	const section = row?.closest( SECTION );
+	if ( ! row || ! section ) {
+		return;
+	}
+	const shown = addsOf( section ).filter( ( each ) => ! each.hidden );
+	const at = shown.indexOf( row );
+	const legend = row.querySelector( 'legend' )?.textContent?.trim() ?? '';
+	shown.slice( at ).forEach( ( each, from ) => {
+		const after = shown[ at + from + 1 ];
+		inputsOf( each ).forEach( ( input, place ) => {
+			input.value = after
+				? ( inputsOf( after )[ place ]?.value ?? '' )
+				: '';
+		} );
+	} );
+	const last = shown[ shown.length - 1 ];
+	if ( last ) {
+		last.hidden = true;
+	}
+	own( section );
+	full( section );
+	const stays = shown[ at + 1 ] ? row : shown[ at - 1 ];
+	( stays
+		? inputsOf( stays )[ 0 ]
+		: section.querySelector< HTMLButtonElement >( ADD )
+	)?.focus();
+	const said =
+		section.querySelector< HTMLElement >( ADD )?.dataset.cbuildRemoved;
+	if ( said && speak && legend ) {
+		speak( said.replace( '%s', legend ) );
+	}
+}
+
+/**
+ * Makes each section that adds and removes rows work: its buttons, which wait hidden for this script, are shown.
+ *
+ * @param doc   The product screen.
+ * @param speak Says a sentence to a screen reader.
+ */
+export function adds( doc: Document, speak?: Speak ): void {
+	doc.querySelectorAll< HTMLButtonElement >( ADD ).forEach( ( pressed ) => {
+		const section = pressed.closest( SECTION );
+		if ( ! section ) {
+			return;
+		}
+		section
+			.querySelectorAll< HTMLButtonElement >( `${ ADD }, ${ REMOVE }` )
+			.forEach( ( each ) => {
+				each.hidden = false;
+			} );
+		full( section );
+		section.addEventListener( 'click', ( event ) => {
+			const target =
+				event.target instanceof Element ? event.target : null;
+			const removing = target?.closest< HTMLButtonElement >( REMOVE );
+			if ( removing ) {
+				remove( removing, speak );
+			} else if ( target?.closest( ADD ) ) {
+				add( section );
+			}
+		} );
+		section.addEventListener( 'input', ( event ) => {
+			if (
+				event.target instanceof Element &&
+				event.target.closest( ADDS )
+			) {
+				own( section );
+			}
+		} );
+	} );
+}
+
+/**
  * Makes the rows move, then opens what the address names once the page is ready, and again each time the address
  * changes, as it does when a notice's link is followed.
  *
@@ -219,6 +367,7 @@ export function start(
 	const now = () => open( doc, win.location.hash );
 	const ready = () => {
 		rows( doc, win.wp?.a11y?.speak, win.jQuery );
+		adds( doc, win.wp?.a11y?.speak );
 		now();
 	};
 	if ( win.jQuery ) {

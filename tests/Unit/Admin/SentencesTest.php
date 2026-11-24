@@ -289,6 +289,8 @@ final class SentencesTest extends TestCase {
 			'slots_leave_presets'         => 'The slots were not saved. A preset the kit already has names a slot these leave out, or leaves empty one a build must now have. Put that preset right, or remove it, in the same save.',
 			'presets_without_slots'       => 'Presets need the kit\'s slots. Put the slots right and save, then add the presets.',
 			'picture_wheelbase_range'     => 'The Trucks slot, Units per build: type a wheelbase from 10 to 20 in, or leave it empty.',
+			'width_guide_width_range'     => 'The Trucks slot, Units per build: type a width from 5 to 12 in.',
+			'width_guide_shoe_twice'      => 'The Trucks slot, Units per build: the guide already has a row for this shoe size. Give each row its own.',
 			'preset_part_not_in_slot'     => 'The Trucks slot, Units per build: Indy 144 is not a part the Trucks slot takes, or it cannot be bought now.',
 			'preset_part_blocked'         => 'The Trucks slot, Units per build: Indy 144 does not fit the other parts of "Street". Rule R1 does not let them go together.',
 			'document_wrong_type'         => 'The Trucks slot, Units per build: this is not a value the field takes.',

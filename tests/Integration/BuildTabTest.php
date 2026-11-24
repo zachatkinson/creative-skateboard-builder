@@ -1015,6 +1015,160 @@ final class BuildTabTest extends IntegrationTestCase {
 		}
 	}
 
+	/**
+	 * A width guide's row, as the tab draws its field.
+	 *
+	 * @param string $panel The panel.
+	 * @param int    $row   The row's place, from 0.
+	 * @param string $field shoe, from or to.
+	 */
+	private static function guideField( string $panel, int $row, string $field ): ?string {
+		$found = array();
+		return 1 === preg_match( '#name="cbuild_kit\[layout\]\[width_guide\]\[rows\]\[' . $row . '\]\[' . $field . '\]"\s+value="([^"]*)"#', $panel, $found ) ? $found[1] : null;
+	}
+
+	// #114: the Build tab's Width guide section. A kit saved before 1.2.0 shows the guide with the plugin's rows, which
+	// the editor starts from; the shop's own rows are kept as plain text in `_cbuild_layout`, "Use the builder's rows"
+	// stores none again, and unticking Show takes the guide away. All from wp-admin, with no WP-CLI.
+	public function test_the_width_guide_section_keeps_the_shops_rows_restores_the_plugins_and_hides_the_guide(): void {
+		$this->as( 'shop_manager' );
+		$kit   = KitFactory::kit();
+		$panel = $this->panel( $kit );
+		self::assertMatchesRegularExpression( '#<div class="options_group" id="cbuild-kit-layout-width_guide"[^>]*>\s*<h3>Width guide</h3>#', $panel );
+		self::assertMatchesRegularExpression( '/name="cbuild_kit\[layout\]\[width_guide\]\[shown\]"[^>]*checked/', $panel, 'shown, on a kit saved before 1.2.0' );
+		self::assertMatchesRegularExpression( '/name="cbuild_kit\[layout\]\[width_guide\]\[plugins\]"[^>]*checked/', $panel, 'with the plugin\'s rows' );
+		self::assertSame( array( '6.5 or smaller', '7', '7.75' ), array( self::guideField( $panel, 0, 'shoe' ), self::guideField( $panel, 0, 'from' ), self::guideField( $panel, 0, 'to' ) ), 'the editor starts from them' );
+		self::assertSame( array( '9.5 and larger', '8.25', '' ), array( self::guideField( $panel, 3, 'shoe' ), self::guideField( $panel, 3, 'from' ), self::guideField( $panel, 3, 'to' ) ) );
+		self::assertSame( '', self::guideField( $panel, 4, 'shoe' ), 'a row to add one, shown' );
+		self::assertMatchesRegularExpression( '#<fieldset id="cbuild-kit-layout-width_guide-rows-4" class="cbuild-kit-group cbuild-kit-adds">#', $panel );
+		self::assertMatchesRegularExpression( '#<fieldset id="cbuild-kit-layout-width_guide-rows-5" class="cbuild-kit-group cbuild-kit-adds" hidden>#', $panel, 'the rest wait for Add a row' );
+		self::assertSame( 12, preg_match_all( '#id="cbuild-kit-layout-width_guide-rows-\d+-shoe"#', $panel ), 'twelve rows at most' );
+		self::assertSame( 1, preg_match_all( '#<button type="button" class="button" data-cbuild-add data-cbuild-removed="%s removed. The rows after it moved up." hidden>Add a row</button>#', $panel ), 'shown by the script' );
+		self::assertSame( 1, preg_match_all( '#<button type="button" class="button" data-cbuild-remove id="cbuild-kit-layout-width_guide-rows-1-remove" hidden>Remove <span class="screen-reader-text">Row 2</span></button>#', $panel ), 'each Remove named with its row' );
+		self::assertMatchesRegularExpression( '#<input\s+type="text"\s+class="short"\s+id="cbuild-kit-layout-width_guide-rows-0-shoe"\s+name="[^"]+"\s+value="[^"]*"\s+autocomplete="off"\s+maxlength="40"#', $panel );
+
+		// The shop's own rows, typed with its separator and with markup, which is kept as plain text.
+		update_option( 'woocommerce_price_decimal_sep', ',' );
+		$sent                          = self::form();
+		$sent['layout']['width_guide'] = array(
+			'shown' => '1',
+			'rows'  => array(
+				array( 'shoe' => '<b>EU 38</b> to 40', 'from' => '7,75', 'to' => '8' ),
+				array( 'shoe' => '', 'from' => '', 'to' => '' ),
+				array( 'shoe' => 'EU 41 and up', 'from' => '8 1/4', 'to' => '' ),
+			),
+		);
+		$this->send( $kit, $sent );
+		self::assertSame( array(), self::notices() );
+		self::assertSame(
+			array(
+				'shown' => true,
+				'rows'  => array(
+					array( 'shoe' => 'EU 38 to 40', 'from' => '7.75', 'to' => '8' ),
+					array( 'shoe' => 'EU 41 and up', 'from' => '8.25' ),
+				),
+			),
+			self::stored( $kit->get_id() )[ Options::META_KIT_LAYOUT ]['width_guide']
+		);
+		$read = $this->service( \CreativeBranding\SkateboardBuilder\Port\Kits::class )->kit( $kit->get_id() );
+		self::assertSame( 'EU 41 and up', $read?->layout->guide->rows[1]->shoe ?? null, 'the kit the builder reads' );
+		$panel = $this->panel( $kit );
+		self::assertDoesNotMatchRegularExpression( '/name="cbuild_kit\[layout\]\[width_guide\]\[plugins\]"[^>]*checked/', $panel );
+		self::assertSame( array( 'EU 41 and up', '8,25', '' ), array( self::guideField( $panel, 1, 'shoe' ), self::guideField( $panel, 1, 'from' ), self::guideField( $panel, 1, 'to' ) ), 'shown with the shop\'s separator' );
+		self::assertMatchesRegularExpression( '#<fieldset id="cbuild-kit-layout-width_guide-rows-2" class="cbuild-kit-group cbuild-kit-adds">#', $panel );
+		self::assertMatchesRegularExpression( '#<fieldset id="cbuild-kit-layout-width_guide-rows-3" class="cbuild-kit-group cbuild-kit-adds" hidden>#', $panel );
+
+		// Hidden: its rows are kept for when it is shown again.
+		unset( $sent['layout']['width_guide']['shown'] );
+		$this->send( $kit, $sent );
+		self::assertFalse( self::stored( $kit->get_id() )[ Options::META_KIT_LAYOUT ]['width_guide']['shown'] );
+		self::assertCount( 2, self::stored( $kit->get_id() )[ Options::META_KIT_LAYOUT ]['width_guide']['rows'] );
+		self::assertDoesNotMatchRegularExpression( '/name="cbuild_kit\[layout\]\[width_guide\]\[shown\]"[^>]*checked/', $this->panel( $kit ) );
+
+		// Restored: the plugin's rows, stored as none, whatever the rows hold.
+		$sent['layout']['width_guide'] += array(
+			'shown'   => '1',
+			'plugins' => '1',
+		);
+		$this->send( $kit, $sent );
+		self::assertSame( array( 'shown' => true ), self::stored( $kit->get_id() )[ Options::META_KIT_LAYOUT ]['width_guide'] );
+	}
+
+	// #114: a row that is wrong is named at its field, in the Width guide section, and the layout in force stays.
+	public function test_a_width_guide_row_that_is_wrong_is_not_saved_and_the_notice_names_its_field(): void {
+		$this->as( 'shop_manager' );
+		$kit                           = KitFactory::kit();
+		$sent                          = self::form();
+		$sent['layout']['width_guide'] = array(
+			'shown' => '1',
+			'rows'  => array(
+				array( 'shoe' => 'EU 38', 'from' => '7.75', 'to' => '' ),
+				array( 'shoe' => 'EU 50', 'from' => '8', 'to' => '21' ),
+			),
+		);
+		$sent['assembly']['fee']       = '9';
+		$this->send( $kit, $sent );
+		self::assertSame(
+			array(
+				'<a href="#cbuild-kit-layout">The kit&#039;s layout was not saved. The Build tab shows it as you chose it, with what to put right.</a>',
+				'<a href="#cbuild-kit-layout-width_guide-rows-1-to">Width guide, row 2, Deck width to: type a width from 5 to 12 in.</a>',
+			),
+			self::notices()
+		);
+		$stored = self::stored( $kit->get_id() );
+		self::assertNull( $stored[ Options::META_KIT_LAYOUT ], 'nothing saved in its place' );
+		self::assertSame( '9', $stored[ Options::META_KIT_ASSEMBLY ]['fee'], 'the rest of the kit saved' );
+
+		$panel = $this->panel( $kit );
+		self::assertSame( '21', self::guideField( $panel, 1, 'to' ), 'shown as typed' );
+		self::assertMatchesRegularExpression( '/id="cbuild-kit-layout-width_guide-rows-1-to"[^>]*aria-describedby="cbuild-kit-layout-width_guide-rows-1-to-note cbuild-kit-error-0"\s+aria-invalid="true"/', $panel );
+		self::assertMatchesRegularExpression( '#id="cbuild-kit-layout-width_guide".*?Not saved\. This is what you typed.*?<li id="cbuild-kit-error-0"><a href="\#cbuild-kit-layout-width_guide-rows-1-to">#s', $panel, 'listed in the Width guide section' );
+		self::assertDoesNotMatchRegularExpression( '#id="cbuild-kit-layout"(?:(?!id="cbuild-kit-layout-width_guide").)*cbuild-kit-error-0#s', $panel, 'and not in the Layout section' );
+	}
+
+	// #114, Security: the guide is saved only through WooCommerce's product save, which checks its nonce first, and
+	// only for who may manage the shop.
+	public function test_the_width_guide_is_saved_through_woocommerces_product_save_with_its_nonce_by_who_may_manage_the_shop(): void {
+		$kit  = KitFactory::kit();
+		$sent = self::form();
+		$sent['layout']['width_guide'] = array(
+			'shown' => '1',
+			'rows'  => array( array( 'shoe' => 'EU 40', 'from' => '8', 'to' => '' ) ),
+		);
+		$hooks = $this->hooks();
+		$hooks->register();
+		$save = function ( ?string $nonce ) use ( $kit, $sent ): void {
+			$property = new \ReflectionProperty( \WC_Admin_Meta_Boxes::class, 'saved_meta_boxes' );
+			$property->setValue( null, false );
+			$_POST = array(
+				'post_ID'      => (string) $kit->get_id(),
+				'product-type' => Options::PRODUCT_TYPE_KIT,
+				BuildTab::FIELD => wp_slash( $sent + array( BuildTab::END => '1' ) ),
+			) + ( null === $nonce ? array() : array( 'woocommerce_meta_nonce' => $nonce ) );
+			( new \WC_Admin_Meta_Boxes() )->save_meta_boxes( $kit->get_id(), get_post( $kit->get_id() ) );
+		};
+		try {
+			$this->as( 'shop_manager' );
+			$save( null );
+			self::assertNull( self::stored( $kit->get_id() )[ Options::META_KIT_LAYOUT ], 'no nonce, nothing saved' );
+			$save( 'not-a-nonce' );
+			self::assertNull( self::stored( $kit->get_id() )[ Options::META_KIT_LAYOUT ], 'a wrong nonce, nothing saved' );
+
+			$user = new \WP_User( $this->as( 'author' ) );
+			$user->add_cap( 'edit_products' );
+			$user->add_cap( 'edit_others_products' );
+			$user->add_cap( 'edit_published_products' );
+			$save( wp_create_nonce( 'woocommerce_save_data' ) );
+			self::assertNull( self::stored( $kit->get_id() )[ Options::META_KIT_LAYOUT ], 'who may edit products and not manage the shop saves nothing' );
+
+			$this->as( 'shop_manager' );
+			$save( wp_create_nonce( 'woocommerce_save_data' ) );
+			self::assertSame( 'EU 40', self::stored( $kit->get_id() )[ Options::META_KIT_LAYOUT ]['width_guide']['rows'][0]['shoe'] ?? null );
+		} finally {
+			$_POST = array();
+		}
+	}
+
 	public function test_a_wheelbase_outside_what_a_deck_has_is_not_saved_and_the_notice_says_the_range(): void {
 		$this->as( 'shop_manager' );
 		$kit                          = KitFactory::kit();

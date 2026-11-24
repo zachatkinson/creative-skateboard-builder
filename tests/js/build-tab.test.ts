@@ -1,10 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+	add,
+	adds,
 	edges,
 	field,
 	find,
 	move,
 	open,
+	remove,
 	rows,
 	start,
 } from '../../assets/src/admin/build-tab';
@@ -583,5 +586,171 @@ describe( 'the script, when the page loads it', () => {
 			'cbuild-kit-slots-0:up',
 			'cbuild-kit-slots-2:down',
 		] );
+	} );
+} );
+
+// The Width guide section as the tab prints it (1.2.0, #114): every row the list takes, those past what is kept and
+// one empty one waiting hidden, and the buttons hidden until the script shows them.
+function guide( kept: string[][], total = 4 ) {
+	const drawn = ( at: number ) => {
+		const [ shoe = '', from = '', to = '' ] = kept[ at ] ?? [];
+		return `<fieldset id="cbuild-kit-layout-width_guide-rows-${ at }" class="cbuild-kit-group cbuild-kit-adds"${
+			at > kept.length ? ' hidden' : ''
+		}>
+			<legend>Row ${ at + 1 }</legend>
+			<input type="text" id="g${ at }-shoe" value="${ shoe }">
+			<input type="text" id="g${ at }-from" value="${ from }">
+			<input type="text" id="g${ at }-to" value="${ to }">
+			<p><button type="button" data-cbuild-remove id="g${ at }-remove" hidden>Remove</button></p>
+		</fieldset>`;
+	};
+	document.body.innerHTML = `<div id="cbuild_build">
+		<div class="options_group" id="cbuild-kit-layout-width_guide">
+			<div class="cbuild-kit-group">
+				<input type="checkbox" id="cbuild-kit-layout-width_guide-shown" checked>
+				<input type="checkbox" id="cbuild-kit-layout-width_guide-plugins" checked>
+			</div>
+			<div>${ Array.from( { length: total }, ( _, at ) => drawn( at ) ).join( '' ) }</div>
+			<p><button type="button" data-cbuild-add data-cbuild-removed="%s removed. The rows after it moved up." hidden>Add a row</button></p>
+		</div>
+	</div>`;
+	return document.getElementById(
+		'cbuild-kit-layout-width_guide'
+	) as HTMLElement;
+}
+
+function shown() {
+	return Array.from(
+		document.querySelectorAll< HTMLElement >( '.cbuild-kit-adds' )
+	)
+		.filter( ( each ) => ! each.hidden )
+		.map( ( each ) =>
+			Array.from( each.querySelectorAll( 'input' ) )
+				.map( ( input ) => input.value )
+				.join( '|' )
+		);
+}
+
+function plugins() {
+	return (
+		document.getElementById(
+			'cbuild-kit-layout-width_guide-plugins'
+		) as HTMLInputElement
+	 ).checked;
+}
+
+function addButton() {
+	return document.querySelector( '[data-cbuild-add]' ) as HTMLButtonElement;
+}
+
+describe( 'adds', () => {
+	it( 'shows the buttons that wait for it, and leaves Add a row on while a row waits', () => {
+		guide( [ [ 'EU 38', '7.75', '8' ] ] );
+		adds( document );
+		expect(
+			Array.from(
+				document.querySelectorAll< HTMLButtonElement >( 'button' )
+			).map( ( each ) => each.hidden )
+		).toEqual( [ false, false, false, false, false ] );
+		expect( addButton().disabled ).toBe( false );
+	} );
+
+	it( 'adds a row by its button, from the keyboard as a click, and moves focus to its first field', () => {
+		guide( [ [ 'EU 38', '7.75', '8' ] ] );
+		adds( document );
+		addButton().focus();
+		addButton().click();
+		expect( shown() ).toEqual( [ 'EU 38|7.75|8', '||', '||' ] );
+		expect( focus()?.id ).toBe( 'g2-shoe' );
+		expect( plugins() ).toBe( false );
+	} );
+
+	it( 'switches Add a row off once every row is shown, and adds nothing more', () => {
+		const section = guide(
+			[
+				[ 'a', '7', '' ],
+				[ 'b', '8', '' ],
+			],
+			4
+		);
+		adds( document );
+		addButton().click();
+		expect( addButton().disabled ).toBe( true );
+		add( section );
+		expect( shown() ).toHaveLength( 4 );
+	} );
+
+	it( 'removes a row: the rows after it move up, the last waits again empty, focus stays in its place, and it is said', () => {
+		guide( [
+			[ 'a', '7', '7.5' ],
+			[ 'b', '7.5', '8' ],
+			[ 'c', '8', '' ],
+		] );
+		const speak = vi.fn();
+		adds( document, speak );
+		addButton().click();
+		expect( addButton().disabled ).toBe( true );
+		( document.getElementById( 'g1-remove' ) as HTMLButtonElement ).click();
+		expect( shown() ).toEqual( [ 'a|7|7.5', 'c|8|', '||' ] );
+		expect( focus()?.id ).toBe( 'g1-shoe' );
+		expect( speak ).toHaveBeenCalledWith(
+			'Row 2 removed. The rows after it moved up.'
+		);
+		expect( addButton().disabled ).toBe( false );
+		expect( plugins() ).toBe( false );
+	} );
+
+	it( 'moves focus to the row before when the last is removed, and to Add a row when none is left', () => {
+		guide( [ [ 'a', '7', '' ] ], 2 );
+		adds( document );
+		( document.getElementById( 'g1-remove' ) as HTMLButtonElement ).click();
+		expect( shown() ).toEqual( [ 'a|7|' ] );
+		expect( focus()?.id ).toBe( 'g0-shoe' );
+		( document.getElementById( 'g0-remove' ) as HTMLButtonElement ).click();
+		expect( shown() ).toEqual( [] );
+		expect( focus() ).toBe( addButton() );
+	} );
+
+	it( "unticks the builder's rows once a row is typed in, and not for the guide's other boxes", () => {
+		guide( [ [ 'a', '7', '' ] ] );
+		adds( document );
+		const shownBox = document.getElementById(
+			'cbuild-kit-layout-width_guide-shown'
+		) as HTMLInputElement;
+		shownBox.dispatchEvent( new Event( 'input', { bubbles: true } ) );
+		expect( plugins() ).toBe( true );
+		const shoe = document.getElementById( 'g0-shoe' ) as HTMLInputElement;
+		shoe.value = 'EU 38';
+		shoe.dispatchEvent( new Event( 'input', { bubbles: true } ) );
+		expect( plugins() ).toBe( false );
+	} );
+
+	it( 'says nothing without words or a screen reader, and leaves other clicks alone', () => {
+		const section = guide( [ [ 'a', '7', '' ] ] );
+		delete addButton().dataset.cbuildRemoved;
+		const speak = vi.fn();
+		adds( document, speak );
+		( document.getElementById( 'g0-remove' ) as HTMLButtonElement ).click();
+		expect( speak ).not.toHaveBeenCalled();
+		section.querySelector( 'legend' )?.click();
+		section.dispatchEvent( new Event( 'input', { bubbles: true } ) );
+		expect( shown() ).toEqual( [ '||' ] );
+	} );
+
+	it( 'does nothing for a Remove outside a row or a section, or an Add with no section', () => {
+		document.body.innerHTML = `<button data-cbuild-remove id="lost">Remove</button>
+			<div class="cbuild-kit-adds"><button data-cbuild-remove id="alone">Remove</button></div>
+			<button data-cbuild-add id="nowhere" hidden>Add a row</button>`;
+		adds( document );
+		expect(
+			( document.getElementById( 'nowhere' ) as HTMLElement ).hidden
+		).toBe( true );
+		remove( document.getElementById( 'lost' ) as HTMLButtonElement );
+		remove( document.getElementById( 'alone' ) as HTMLButtonElement );
+		add( document.body );
+		expect(
+			( document.querySelector( '.cbuild-kit-adds' ) as HTMLElement )
+				.hidden
+		).toBe( false );
 	} );
 } );

@@ -9,6 +9,7 @@ declare( strict_types=1 );
 
 namespace CreativeBranding\SkateboardBuilder\Tests\Unit\Front;
 
+use CreativeBranding\SkateboardBuilder\Domain\Kit\Kit;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Part;
 use CreativeBranding\SkateboardBuilder\Domain\Saved\SavedBuild;
 use CreativeBranding\SkateboardBuilder\Domain\Saved\SavedPrices;
@@ -28,6 +29,7 @@ use CreativeBranding\SkateboardBuilder\Port\TextFolding;
 use CreativeBranding\SkateboardBuilder\Service\BuildState;
 use CreativeBranding\SkateboardBuilder\Service\SavedBuilds;
 use CreativeBranding\SkateboardBuilder\Service\StepShelf;
+use CreativeBranding\SkateboardBuilder\Tests\Support\Domain\KitDocuments;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Domain\Parts;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Domain\Shop;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\CountingUuids;
@@ -203,6 +205,35 @@ final class BuilderShelfTest extends TestCase {
 		} finally {
 			unset( $GLOBALS['cbuild_test_filters']['cbuild_width_guide'] );
 		}
+	}
+
+	// #114: a kit's own width guide. Its own rows are its shoe sizes as the shop writes them, so the column says no
+	// country's sizes; hidden, the guide is gone from the view, which the page and the state route's answer both draw.
+	public function test_a_kits_width_guide_shows_its_own_rows_or_is_gone_from_the_view(): void {
+		$kit = static fn( array $guide ): Kit => Kit::fromDocuments( KitDocuments::slots(), KitDocuments::rules(), KitDocuments::presets(), KitDocuments::assembly(), null, array( 'schema_version' => 1, 'width_guide' => $guide ) );
+		$this->kits->add( self::KIT, $kit( array( 'rows' => array( array( 'shoe' => 'EU 38 to 40', 'from' => '7.75', 'to' => '8' ) ) ) ), Shop::parts() );
+		$guide = $this->step( new BuildLink() )['shelf']['width']['guide'];
+		self::assertTrue( $guide['shown'] );
+		self::assertSame( array( 'Shoe size', 'Deck width' ), array( $guide['shoe'], $guide['width'] ) );
+		self::assertSame( array( array( 'shoe' => 'EU 38 to 40', 'width' => '7.75″ to 8″' ) ), $guide['rows'] );
+
+		$this->kits->add( self::KIT, $kit( array( 'shown' => false, 'rows' => array( array( 'shoe' => 'EU 38 to 40', 'from' => '7.75' ) ) ) ), Shop::parts() );
+		$guide = $this->step( new BuildLink() )['shelf']['width']['guide'];
+		self::assertSame(
+			array(
+				'shown'   => false,
+				'summary' => '',
+				'caption' => '',
+				'shoe'    => '',
+				'width'   => '',
+				'rows'    => array(),
+			),
+			$guide,
+			'nothing of the guide left to draw or to read'
+		);
+
+		$this->kits->add( self::KIT, $kit( array( 'shown' => true ) ), Shop::parts() );
+		self::assertSame( 'Shoe size (US)', $this->step( new BuildLink() )['shelf']['width']['guide']['shoe'], 'the plugin\'s rows are US sizes' );
 	}
 
 	// Spec (configurator): The deck's width first, "A signed-in customer's width comes from their most recent saved

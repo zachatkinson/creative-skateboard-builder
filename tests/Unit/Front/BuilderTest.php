@@ -1154,12 +1154,13 @@ final class BuilderTest extends TestCase {
 				'options' => array(),
 				'hasNone' => false,
 				'none'    => '',
+				// A guide not shown has no words either, from 1.2.0 (#114).
 				'guide'   => array(
 					'shown'   => false,
-					'summary' => 'Not sure of your width?',
-					'caption' => 'Deck width by shoe size',
-					'shoe'    => 'Shoe size (US)',
-					'width'   => 'Deck width',
+					'summary' => '',
+					'caption' => '',
+					'shoe'    => '',
+					'width'   => '',
 					'rows'    => array(),
 				),
 			),

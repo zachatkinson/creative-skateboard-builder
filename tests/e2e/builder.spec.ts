@@ -2902,6 +2902,67 @@ test( 'the width question opens a guide by shoe size', async ( {
 	).toBeVisible();
 } );
 
+// #114: a kit's own width guide, edited in its Build tab: the shop's rows in place of the plugin's, and a guide hidden
+// is gone from the page, not hidden by a style alone. The kit's layout is put back after.
+test.describe( "A kit's own width guide", () => {
+	const layout = ( guide: string ) =>
+		runPhp(
+			`$k = wc_get_product( ${
+				fixture().kit
+			} ); if ( false === get_option( 'cbuild_e2e_layout' ) ) { update_option( 'cbuild_e2e_layout', array( 'had' => $k->get_meta( '_cbuild_layout' ) ) ); } $k->setDocument( '_cbuild_layout', array( 'schema_version' => 1, 'width_guide' => json_decode( '${ guide }', true ) ) ); $k->save();`
+		);
+	test.afterAll( () => {
+		runPhp(
+			`$k = wc_get_product( ${
+				fixture().kit
+			} ); $had = get_option( 'cbuild_e2e_layout' )['had'] ?? ''; if ( is_array( $had ) ) { $k->setDocument( '_cbuild_layout', $had ); } else { $k->delete_meta_data( '_cbuild_layout' ); } $k->save(); delete_option( 'cbuild_e2e_layout' );`
+		);
+	} );
+
+	test( "the guide shows the shop's rows, and a hidden one is not on the page", async ( {
+		page,
+		javaScriptEnabled,
+	} ) => {
+		layout(
+			JSON.stringify( {
+				rows: [
+					{ shoe: 'EU 38 to 40', from: '7.75', to: '8' },
+					{ shoe: 'EU 41 and up', from: '8.25' },
+				],
+			} )
+		);
+		await page.goto( linkTo( {} ) );
+		const guide = page.locator( '.cbuild-width__guide' );
+		await guide.locator( 'summary' ).click();
+		const table = guide.getByRole( 'table' );
+		await expect( table ).toBeVisible();
+		await expect( table.locator( 'tbody tr' ) ).toHaveCount( 2 );
+		await expect(
+			table.getByRole( 'row', { name: /^EU 38 to 40 / } )
+		).toBeVisible();
+		await expect(
+			table.getByRole( 'row', { name: /^EU 41 and up / } )
+		).toBeVisible();
+		// axe runs its script in the page, which the no-js project cannot.
+		if ( javaScriptEnabled ) {
+			await axe( page, "a kit's own width guide", '.cbuild-width' );
+		}
+
+		layout(
+			JSON.stringify( {
+				shown: false,
+				rows: [ { shoe: 'EU 38 to 40', from: '7.75', to: '8' } ],
+			} )
+		);
+		await page.goto( linkTo( {} ) );
+		await expect( page.locator( '.cbuild-width' ) ).toBeVisible();
+		await expect( guide ).toBeHidden();
+		await expect( guide.locator( 'tbody tr' ) ).toHaveCount( 0 );
+		await expect( guide.locator( 'summary' ) ).toHaveText( '' );
+		expect( await page.content() ).not.toContain( 'EU 38 to 40' );
+	} );
+} );
+
 // Cowork's review of 0.9.0, F3 (#68): on the demo's dark theme a native radio drew an unpicked card's as a white disc
 // and a picked one's as a white ring, so the unpicked one looked filled in.
 // A classic theme names no colour presets, so the accent is the text's colour. A fill in it once painted its words in

@@ -69,6 +69,20 @@ final class KitEditor {
 	public const WHEELBASE_RANGE = 'picture_wheelbase_range';
 
 	/**
+	 * A width guide's row names a deck width outside 5 to 12 in (#114).
+	 *
+	 * @since 1.2.0
+	 */
+	public const GUIDE_WIDTH = 'width_guide_width_range';
+
+	/**
+	 * A width guide names a shoe size twice (#114).
+	 *
+	 * @since 1.2.0
+	 */
+	public const GUIDE_SHOE_TWICE = 'width_guide_shoe_twice';
+
+	/**
 	 * A document the domain read and its schema still refused. The schemas and the domain agree
 	 * (`KitSchemasTest`), so this is a guard and not a path a person should meet.
 	 *
@@ -174,7 +188,7 @@ final class KitEditor {
 			$built[ self::PICTURE ] = self::picture( $sent['picture'], $separator );
 		}
 		if ( is_array( $sent['layout'] ?? null ) ) {
-			$built[ self::LAYOUT ] = self::layout( $sent['layout'], $stored[ self::LAYOUT ] ?? null );
+			$built[ self::LAYOUT ] = self::layout( $sent['layout'], $stored[ self::LAYOUT ] ?? null, $separator );
 		}
 
 		$problems = array();
@@ -308,7 +322,13 @@ final class KitEditor {
 				default                 => Assembly::fromDocument( $document ),
 			};
 		} catch ( InvalidDocument $refused ) {
-			$code = self::PICTURE === $key && DocumentError::OutOfRange === $refused->reason ? self::WHEELBASE_RANGE : $refused->reason->value;
+			$code = match ( true ) {
+				self::LAYOUT === $key && DocumentError::Duplicate === $refused->reason => self::GUIDE_SHOE_TWICE,
+				DocumentError::OutOfRange !== $refused->reason => $refused->reason->value,
+				self::PICTURE === $key => self::WHEELBASE_RANGE,
+				self::LAYOUT === $key && 1 === preg_match( '/\Awidth_guide\.rows\[\d+\]\.(from|to)\z/', $refused->path ) => self::GUIDE_WIDTH,
+				default => $refused->reason->value,
+			};
 			return array( self::problem( $key, $code, $refused->path ) );
 		}
 		return array();
@@ -647,13 +667,15 @@ final class KitEditor {
 	 * The layout document from the tab's fields (D-255): each choice sent as text, which the domain then holds to its
 	 * choices. Show ready builds (1.1.0, #104) and Show on its parts' pages (1.2.0, #115) are checkboxes: one not
 	 * ticked is not sent, and is off. The Builder page (1.2.0, #113) is a page's ID, or empty for the kit's own page;
-	 * a form that does not send it at all keeps the one the kit has.
+	 * a form that does not send it at all keeps the one the kit has. The width guide (1.2.0, #114) is stored only where
+	 * its section was sent.
 	 *
-	 * @param array<mixed>              $sent   The fields.
-	 * @param array<string, mixed>|null $stored The layout as stored.
+	 * @param array<mixed>              $sent      The fields.
+	 * @param array<string, mixed>|null $stored    The layout as stored.
+	 * @param string                    $separator The shop's decimal separator.
 	 * @return array<string, mixed>
 	 */
-	private static function layout( array $sent, ?array $stored ): array {
+	private static function layout( array $sent, ?array $stored, string $separator ): array {
 		$document = array( 'schema_version' => 1 );
 		foreach ( array( 'stage_side', 'board_size', 'search', 'motion' ) as $key ) {
 			if ( is_string( $sent[ $key ] ?? null ) ) {
@@ -661,6 +683,9 @@ final class KitEditor {
 			}
 		}
 		$document['show_presets'] = self::on( $sent, 'show_presets' );
+		if ( is_array( $sent['width_guide'] ?? null ) ) {
+			$document['width_guide'] = self::guide( $sent['width_guide'], $separator );
+		}
 		$document['start_button'] = self::on( $sent, 'start_button' );
 		if ( ! array_key_exists( 'builder_page', $sent ) ) {
 			if ( isset( $stored['builder_page'] ) ) {
@@ -674,6 +699,48 @@ final class KitEditor {
 			$document['builder_page'] = 1 === preg_match( '/\A[1-9]\d{0,17}\z/', $page ) ? (int) $page : $page;
 		}
 		return $document;
+	}
+
+	/**
+	 * The width guide from its section's fields (#114, D-350): whether it is shown, and the shop's own rows unless the
+	 * plugin's are ticked. A row left empty is no row, and no rows at all is the plugin's, which are stored as none so
+	 * they keep their translatable words. A field left empty in a row that has others is left out, so the domain names
+	 * it as missing.
+	 *
+	 * @param array<mixed> $sent      The section's fields.
+	 * @param string       $separator The shop's decimal separator.
+	 * @return array<string, mixed>
+	 */
+	private static function guide( array $sent, string $separator ): array {
+		$guide = array( 'shown' => self::on( $sent, 'shown' ) );
+		if ( self::on( $sent, 'plugins' ) ) {
+			return $guide;
+		}
+		$rows = array();
+		foreach ( self::map( $sent['rows'] ?? null ) as $row ) {
+			$row    = self::map( $row );
+			$fields = array_filter(
+				array(
+					'shoe' => self::text( $row, 'shoe' ),
+					'from' => self::text( $row, 'from' ),
+					'to'   => self::text( $row, 'to' ),
+				),
+				static fn( string $text ): bool => '' !== $text
+			);
+			if ( array() === $fields ) {
+				continue;
+			}
+			foreach ( array( 'from', 'to' ) as $width ) {
+				if ( isset( $fields[ $width ] ) ) {
+					$fields[ $width ] = self::measure( $fields[ $width ], Unit::Inch, $separator );
+				}
+			}
+			$rows[] = $fields;
+		}
+		if ( array() !== $rows ) {
+			$guide['rows'] = $rows;
+		}
+		return $guide;
 	}
 
 	/**

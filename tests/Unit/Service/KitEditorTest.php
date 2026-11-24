@@ -588,6 +588,75 @@ final class KitEditorTest extends TestCase {
 		self::assertSame( 43, $draft->documents[ KitEditor::LAYOUT ]['builder_page'] ?? null, 'a form with no Builder page keeps the kit\'s' );
 	}
 
+	// #114: the width guide's section. A box to show the guide, a box for the plugin's rows, and the shop's own rows,
+	// each width as the shop writes a measure. A row left empty is no row, and the plugin's rows store none.
+	public function test_the_width_guide_keeps_the_shops_rows_or_the_plugins_and_whether_it_is_shown(): void {
+		$sent           = self::sent();
+		$sent['layout'] = array(
+			'width_guide' => array(
+				'shown' => '1',
+				'rows'  => array(
+					array( 'shoe' => ' EU 38 to 40 ', 'from' => '7,75', 'to' => '8 in' ),
+					array( 'shoe' => '', 'from' => '', 'to' => '' ),
+					array( 'shoe' => 'EU 41 and up', 'from' => '8 1/4', 'to' => '' ),
+				),
+			),
+		);
+		$draft = $this->editor->draft( $sent, self::stored(), ',' );
+		self::assertSame( array(), $draft->problems );
+		self::assertSame(
+			array(
+				'shown' => true,
+				'rows'  => array(
+					array( 'shoe' => 'EU 38 to 40', 'from' => '7.75', 'to' => '8' ),
+					array( 'shoe' => 'EU 41 and up', 'from' => '8.25' ),
+				),
+			),
+			$draft->documents[ KitEditor::LAYOUT ]['width_guide'] ?? null
+		);
+
+		// The plugin's rows ticked: whatever the rows hold, none is stored, and the guide shows the plugin's.
+		$sent['layout']['width_guide']['plugins'] = '1';
+		unset( $sent['layout']['width_guide']['shown'] );
+		$draft = $this->editor->draft( $sent, self::stored(), ',' );
+		self::assertSame( array( 'shown' => false ), $draft->documents[ KitEditor::LAYOUT ]['width_guide'] ?? null, 'hidden, with the plugin\'s rows' );
+
+		// No rows typed is the plugin's rows too.
+		$sent['layout']['width_guide'] = array(
+			'shown' => '1',
+			'rows'  => array( array( 'shoe' => ' ', 'from' => '', 'to' => '' ) ),
+		);
+		$draft = $this->editor->draft( $sent, self::stored() );
+		self::assertSame( array( 'shown' => true ), $draft->documents[ KitEditor::LAYOUT ]['width_guide'] ?? null );
+
+		// A section that sends no guide, as a 1.1.0 screen's, stores none, and the kit shows the plugin's rows.
+		$sent['layout'] = array( 'stage_side' => 'left' );
+		self::assertArrayNotHasKey( 'width_guide', $this->editor->draft( $sent, self::stored() )->documents[ KitEditor::LAYOUT ] );
+	}
+
+	// #114: what is wrong with a row is named at its field, and the layout is not saved.
+	public function test_a_width_guide_row_that_is_wrong_is_named_at_its_field(): void {
+		foreach ( array(
+			'a width with no shoe size'      => array( array( 'shoe' => '', 'from' => '8', 'to' => '' ), 'layout document_field_missing width_guide.rows[1].shoe' ),
+			'a shoe size with no width'      => array( array( 'shoe' => 'EU 40', 'from' => '', 'to' => '8.5' ), 'layout document_field_missing width_guide.rows[1].from' ),
+			'a width that is no number'      => array( array( 'shoe' => 'EU 40', 'from' => 'eight', 'to' => '' ), 'layout document_bad_measure width_guide.rows[1].from' ),
+			'a width no deck has'            => array( array( 'shoe' => 'EU 40', 'from' => '8', 'to' => '21' ), 'layout ' . KitEditor::GUIDE_WIDTH . ' width_guide.rows[1].to' ),
+			'a shoe size the guide has'      => array( array( 'shoe' => 'EU 38', 'from' => '8', 'to' => '' ), 'layout ' . KitEditor::GUIDE_SHOE_TWICE . ' width_guide.rows[1].shoe' ),
+			'a widest under the narrowest'   => array( array( 'shoe' => 'EU 40', 'from' => '8.5', 'to' => '8' ), 'layout rules_out_of_order width_guide.rows[1].to' ),
+		) as $case => [ $row, $expected ] ) {
+			$sent           = self::sent();
+			$sent['layout'] = array(
+				'width_guide' => array(
+					'shown' => '1',
+					'rows'  => array( array( 'shoe' => 'EU 38', 'from' => '7.75' ), $row ),
+				),
+			);
+			$draft          = $this->editor->draft( $sent, self::stored() );
+			self::assertSame( array( $expected ), self::problems( $draft ), $case );
+			self::assertArrayNotHasKey( KitEditor::LAYOUT, $draft->documents, $case );
+		}
+	}
+
 	public function test_assembly_takes_a_fee_as_the_shop_writes_money_and_each_thing_wrong_is_named(): void {
 		$stored                             = self::stored();
 		$sent                               = self::sent();
