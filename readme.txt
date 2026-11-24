@@ -4,7 +4,7 @@ Tags: woocommerce, skateboard, product builder, configurator, bundle
 Requires at least: 7.0
 Tested up to: 7.1
 Requires PHP: 8.5
-Stable tag: 1.1.0
+Stable tag: 1.2.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -14,7 +14,7 @@ Sells complete skateboards built from parts the shop stocks, with fit checked fr
 
 Creative Skateboard Builder lets a shopper put a complete skateboard together from the decks, trucks, wheels, bearings, hardware and grip a WooCommerce shop already sells. It checks that the parts fit from each part's specs, draws a picture of the build, keeps the total in view, and gives each part its own line in the cart and on the order, so stock, tax and refunds work as they do for any other product.
 
-This is version 1.1.0. A kit's page is the builder: the board on one side, the steps on the other, and the total at the foot, and the Builder block puts it on any other page. The shopper goes one step a slot, picks a deck by the width they ride, sees one card a look with only the parts that fit what they picked, can search, sort and filter a long step, can start from one of your rider builds, and reaches a review with the total, a link to the build and Add to cart. A deck's own page can open the builder with that deck picked. The builder draws the board to scale from each part's layer image, top and underside, and the cart, the order, its emails and a shared build link show a picture of it. A signed-in customer can save a build and find it again under My builds in My account. The workshop gets each order's build in a box on the order screen and a printed assembly ticket. From 1.1.0 the board's parts move into place as they are picked, the total counts to its new amount, and a kit can keep its motion to fades for every shopper; a shopper whose device asks for less motion always gets fades.
+This is version 1.2.0. A kit's page is the builder: the board on one side, the steps on the other, and the total at the foot, and the Builder block puts it on any other page. The shopper goes one step a slot, picks a deck by the width they ride, sees one card a look with only the parts that fit what they picked, can search, sort and filter a long step, can start from one of your rider builds, and reaches a review with the total, a link to the build and Add to cart. A deck's own page can open the builder with that deck picked. The builder draws the board to scale from each part's layer image, top and underside, and the cart, the order, its emails and a shared build link show a picture of it. A signed-in customer can save a build and find it again under My builds in My account. The workshop gets each order's build in a box on the order screen and a printed assembly ticket. From 1.1.0 the board's parts move into place as they are picked, the total counts to its new amount, and a kit can keep its motion to fades for every shopper; a shopper whose device asks for less motion always gets fades. From 1.2.0 a kit's Build tab also chooses the page its builder is on and whether its decks' pages offer "Build a complete with this deck".
 
 It works with a keyboard and a screen reader, on a phone, without JavaScript, in English and French (Canada), and right to left.
 
@@ -60,6 +60,11 @@ The builder has its own bar with the total, Back and Next, so a theme's bar on a
 Yes. Its hooks, REST routes, block attributes, settings keys, order item keys, CSS custom properties and DOM events are listed with the version each arrived in, and from 1.0.0 they follow Semantic Versioning: no minor or patch release removes or renames one, and a deprecation comes first.
 
 == Changelog ==
+
+= 1.2.0 =
+* A kit's Build tab chooses the page its builder is on. The kit's page, "Build a complete with this deck", the cart's Edit build and My builds open the builder there, while the page is published and holds the kit's Builder block.
+* A kit's Build tab can turn "Build a complete with this deck" off for that kit. Another kit that offers the deck may still show it.
+* A build's Add to cart keeps the cart before it answers, so a cart page opened straight after holds the build.
 
 = 1.1.0 =
 * The board's parts move into place as they are picked: the deck settles, the trucks and wheels slide on, the grip lays down and the board turns over like a card. The total counts to its new amount, and a new step slides in the way you are going.
@@ -196,6 +201,9 @@ Yes. Its hooks, REST routes, block attributes, settings keys, order item keys, C
 * Foundation: the plugin skeleton, the two tables, the upgrade steps, uninstall, the update check, the test harness and the CI gates. Nothing a shopper or shop owner sees yet.
 
 == Upgrade Notice ==
+
+= 1.2.0 =
+Update from the updater or by uploading the zip; no step is needed. A kit saved before 1.2.0 keeps its builder on its own page and its button on its decks' pages.
 
 = 1.1.0 =
 Update from the updater or by uploading the zip; no step is needed. A kit saved before 1.1.0 keeps playful motion. A grip's layer image is now the whole sheet shot flat from above; grip strips saved under 1.0 still draw as before.

@@ -2,6 +2,24 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html). One entry per milestone; `v1.0.0` closes milestone 10 (D-236).
 
+## [Unreleased]
+
+### Added
+
+- **Builder page**, in a kit's Build tab, Layout section, under "Where shoppers find it": `builder_page` in `_cbuild_layout` (`schema/kit-layout.json`), a published page that holds the kit's Builder block. The kit's page, "Build a complete with this deck", the cart's Edit build, My builds' Open and the state route's links go there, checked each time they are made; a page unpublished, locked or without the block sends shoppers to the kit's own page. A kit saved before 1.2.0 has none (#113, D-348).
+- **Show on its parts' pages**, in the same group: `start_button` in `_cbuild_layout`, on unless unticked. Off, the kit places no "Build a complete with this deck", and the next kit by menu order that offers the part may (#115, D-349).
+
+### Changed
+
+- `cbuild_builder_url`'s `$url` starts from the kit's Builder page, where it has one, and the filter still answers last (#113).
+- Development: Markdown is linted with markdownlint-cli2 0.24.0 (`npm run lint:md`, in `npm run check`, CI, a workflow for changes to the docs alone, and the pre-commit hook), and the docs' 183 findings are fixed, 67 bold lines among them now real headings (#111, D-345).
+- Development: a `.gitattributes` keeps line endings LF and binaries binary, marks generated types and docs for GitHub, and makes `git archive` hold what the release zip holds; gate 19 keeps its export-ignore list equal to `.distignore` (#112, D-346). Gate 20 fails a merge's conflict marker left in a file (D-347).
+- Development: Lighthouse CI takes the median of five runs a page, not three (#75, D-344). A browser test whose builder never sets its ready mark reports the page's errors and whether the Interactivity runtime finished loading (#93).
+
+### Fixed
+
+- A build's Add to cart keeps the cart in the session before the add answers, so a cart page opened straight after holds the build; it read empty while WooCommerce saved the session at shutdown (#108, #51, D-352).
+
 ## [1.1.0] - 2026-11-24
 
 ### Added
