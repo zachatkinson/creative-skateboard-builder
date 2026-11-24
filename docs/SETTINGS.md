@@ -2,6 +2,21 @@
 
 Everything a shop owner can set, with its default and its range. A setting is added here in the same commit that adds it to the code.
 
+## Contents
+
+- [Milestone 1 (0.1.0)](#milestone-1-010)
+- [Milestone 3 (0.3.0)](#milestone-3-030)
+  - [The screen](#the-screen)
+- [Milestone 4 (0.4.0)](#milestone-4-040)
+  - [The screen](#the-screen-1)
+- [Milestone 7 (0.7.0)](#milestone-7-070)
+- [Milestone 10 (1.0.0)](#milestone-10-100)
+- [Milestone 11 (1.1.0)](#milestone-11-110)
+- [Milestone 12 (1.2.0)](#milestone-12-120)
+  - [Width guide (#114)](#width-guide-114)
+  - [Not offered in the builder (#116)](#not-offered-in-the-builder-116)
+- [Options beside the settings](#options-beside-the-settings)
+
 ## Milestone 1 (0.1.0)
 
 No setting yet. The option `cbuild_settings` arrives in milestone 3.
@@ -26,10 +41,13 @@ The option `cbuild_settings` arrives with its first two keys, set at WooCommerce
 
 WooCommerce > Settings > Builder, for a user with `manage_woocommerce`. It works with scripts off, apart from WooCommerce's own Save button, which WooCommerce keeps disabled until a script sees a change.
 
-- **Attribute mapping.** One group of three controls per line: the attribute (type a name, or choose one of the shop's attribute taxonomies from the list the field offers), the spec and the unit. The saved lines are shown with three blank ones after them; saving adds three more. A line with its attribute and its spec both cleared is removed. The mapping holds 50 lines at most.
+- **Attribute mapping.** One group of three controls per line: the attribute (type a name, or choose one of the shop's attribute taxonomies from the list the field offers), the spec and the unit.
+  - The saved lines are shown with three blank ones after them; saving adds three more.
+  - A line with its attribute and its spec both cleared is removed.
+  - The mapping holds 50 lines at most.
 - **Which source wins.** Three lists, first, second and third, each naming a source.
 
-A save is all or nothing. When any line or the order is wrong, nothing is stored, the screen comes back with what was typed, and each problem is written beside its field. What the screen refuses:
+**A save is all or nothing.** When any line or the order is wrong, nothing is stored, the screen comes back with what was typed, and each problem is written beside its field. What the screen refuses:
 
 | Problem | What the screen says |
 | --- | --- |
@@ -82,7 +100,12 @@ Saving these alone reads no part again: they feed no spec.
 
 ## Milestone 7 (0.7.0)
 
-No new setting. What the picture needs is kept with the products it draws: a part's Layer image on its Part specs panel (`_cbuild_layer`) and a kit's layer order and wheelbase in the Build tab's Picture section (`_cbuild_picture`), each in [HOOKS.md](HOOKS.md). The composed pictures' limits are fixed, not settings: 50 builds waiting, 10 of them from pages; 200 MB in the folder; 30 days unshown (D-197, D-198, D-205).
+No new setting. What the picture needs is kept with the products it draws, each in [HOOKS.md](HOOKS.md):
+
+- **A part's Layer image** on its Part specs panel (`_cbuild_layer`), and
+- **a kit's layer order and wheelbase** in the Build tab's Picture section (`_cbuild_picture`).
+
+**The composed pictures' limits are fixed, not settings:** 50 builds waiting, 10 of them from pages; 200 MB in the folder; 30 days unshown (D-197, D-198, D-205).
 
 ## Milestone 10 (1.0.0)
 
