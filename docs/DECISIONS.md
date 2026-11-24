@@ -4173,3 +4173,37 @@ The weekly canary failed on WooCommerce 11.3.1 (#95), which is the stable releas
 **Also measured (the auditor's minor 6).** The state route's query test now moves a picked deck to a new width (`_width`), which builds a second shelf and a second state: 6 queries warm and 37 cold, the same at 12, 32 and 62 decks, inside the move's ceilings of 15 and 60 (unchanged). The test ends the products' saves as their own request would (`WooPartCards::settle()`) before counting: in one process, the counted request's first card read forgot the cards of decks just saved, and the looks it had read beside them, part way through, which counted 3 queries at 12 decks and 5 at 32.
 
 **Status:** Accepted.
+
+### D-339 · The builder's stylesheet stays a file of its own: inlining it buys too little on the gate's page (#75) · 2026-11-23
+
+**Context:** #75. On CI, Lighthouse's median LCP on Twenty Twenty-Five's builder page sat 55 to 65 ms under its 2,500 ms gate. Measured on lane 3 (WordPress 7.1.5, WooCommerce 11.3.1, Lighthouse 13.6.0, `npm run lhci`, three runs a page), the LCP element is the first step's lead (`.cbuild-step__lead`), and LCP is only TTFB and render delay:
+
+| Twenty Twenty-Five                                              | LCP median (runs)      | TTFB | Render delay | TBT | CLS    |
+| --------------------------------------------------------------- | ---------------------- | ---- | ------------ | --- | ------ |
+| As 1.1.0 serves it, run 1                                       | 2,371 (2,319 to 2,447) | 564  | 1,807        | 0   | 0.0013 |
+| As 1.1.0 serves it, run 2                                       | 2,362 (2,332 to 2,363) | 564  | 1,798        | 0   | 0.0013 |
+| The builder's stylesheet inlined (a throwaway mu-plugin), run 1 | 2,321 (2,307 to 2,327) | 564  | 1,758        | 0   | 0.0013 |
+| The same, run 2                                                 | 2,284 (2,279 to 2,302) | 564  | 1,721        | 0   | 0.0013 |
+
+Kadence's page (LCP 1,995, the page's intro paragraph) and its build at the review (2,044, the deck layer) are well inside. Lighthouse lists eleven render-blocking files on Twenty Twenty-Five's page: `jquery.min.js` and `jquery-migrate.min.js` (WordPress), seven of WooCommerce's stylesheets, the navigation block's `style.min.css` (WordPress), and one of the plugin's, `build/builder/style-index.css`.
+
+**What the source says:**
+
+- The plugin's stylesheet is the block's `style` in `block.json`, so `register_block_style_handle()` already gives it the `path` that core's inlining needs, the RTL file's on a right-to-left site (`wp-includes/blocks.php:423` and `:431` to `:434`). It needs nothing more to qualify.
+- `wp_maybe_inline_styles()` (`wp-includes/script-loader.php:3095`, run on `wp_head` at priority 1, `default-filters.php:663`) inlines queued styles with a path, smallest first (`:3145`), until the next would pass one total of 40,000 bytes for the whole page (`:3098`, raised from 20,000 in WordPress 6.9; `:3164`). The builder's stylesheet is 38,805 bytes (38,811 right to left), and on this page the budget is already spent before the navigation block's 2,899 bytes, which stays a link. A smaller "critical" part of the builder's styles would not fit either.
+- So inlining it would mean raising `styles_inline_size_limit`, which changes every style on the site, or writing into `$wp_styles`' internals as the experiment did, which no API supports. It would also send 38.8 kB more in every builder page's HTML, which no browser can cache.
+- jQuery in the head is WordPress's and WooCommerce's: core registers `jquery-core` and `jquery-migrate` in the head (`script-loader.php:907` to `:909`), and WooCommerce enqueues `woocommerce` on every front page (`includes/class-wc-frontend-scripts.php:558`, and `wc-add-to-cart` at `:486`), each depending on `jquery`. The test site's mu-plugins add none. The plugin's only jQuery on the front end is `StartButton`'s inline script on `wc-add-to-cart-variation`, a variable kit's product page, not the builder's page. Nothing there is the plugin's to remove.
+
+**Decision:** no change. The stylesheet stays a separate, cached file, and the gate stays at 2,500 ms.
+
+**Why:** inlining saved 40 to 87 ms at the median, under the 100 ms worth a change, by a route core does not support for a file this size. Render delay is set by the ten blocking files that are WordPress's and WooCommerce's, and their costs overlap, so taking one file of eleven out moves LCP little.
+
+**What would steady CI instead:**
+
+- Lighthouse already runs on a runner of its own (D-300); more runs a page (five in place of three) would steady its median without moving the gate.
+- The plugin's own lever is the size of its stylesheet: it was 30,952 bytes in 1.0.0 and is 38,805 now. Keeping it from growing keeps its share of the blocking bytes where it is.
+- If a release takes the median past the gate, the first thing to read is whether the page's blocking list grew, from WordPress, WooCommerce or the plugin, before anything is changed.
+
+**Not done without Zach.** Five runs a page in place of three would keep one slow server response from setting the median, for about a minute more a page in a job with 60, and the gate would stay at 2,500 ms. But AUDIT.md defines the gate as the median of three runs, and how a floor is measured is Zach's to move (CLAUDE.md), so it stays at three for 1.1.0 and is listed for him.
+
+**Status:** Accepted.
