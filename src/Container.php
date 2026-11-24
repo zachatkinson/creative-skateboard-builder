@@ -471,7 +471,7 @@ final class Container {
 		return array(
 			Service\IndexJobs::class        => static fn( object $jobs, Container $c ): object => $jobs instanceof Service\IndexJobs ? $jobs->withRenditions( $c->get( Service\PartRenditions::class ) ) : $jobs,
 			Service\CatalogueCheck::class   => static fn( object $check, Container $c ): object => $check instanceof Service\CatalogueCheck ? $check->withLayers( $c->get( Port\LayerImages::class ) )->withLooks( $c->get( Port\PartLooks::class ) )->withKeptOut( $c->get( Port\PartsKeptOut::class ) ) : $check,
-			Front\StateAnswer::class        => static fn( object $answer, Container $c ): object => $answer instanceof Front\StateAnswer ? $answer->withArtwork( $c->get( Service\LayerArtwork::class ) )->withShelf( $c->get( Service\StepShelf::class ) )->withPictures( self::tiles( $c ) ) : $answer,
+			Front\StateAnswer::class        => static fn( object $answer, Container $c ): object => $answer instanceof Front\StateAnswer ? $answer->withArtwork( $c->get( Service\LayerArtwork::class ) )->withShelf( $c->get( Service\StepShelf::class ) )->withPictures( self::tiles( $c ) )->withPhases( $c->get( Service\Phases::class ) ) : $answer,
 			Admin\PartSpecsPanel::class     => static fn( object $panel, Container $c ): object => $panel instanceof Admin\PartSpecsPanel ? $panel->withImages( $c->get( Port\LayerImages::class ) ) : $panel,
 			Front\BuilderPage::class        => static fn( object $page, Container $c ): object => $page instanceof Front\BuilderPage ? $page->withSaved( $c->get( Service\SavedBuilds::class ) ) : $page,
 			Front\Builder::class            => static fn( object $builder, Container $c ): object => $builder instanceof Front\Builder ? $builder->withSaved( $c->get( Front\RememberedWidth::class ), $c->get( Service\SavedBuilds::class ) )->withShelf( $c->get( Service\StepShelf::class ) ) : $builder,
@@ -484,7 +484,7 @@ final class Container {
 			Front\StartButton::class        => static fn( object $button, Container $c ): object => $button instanceof Front\StartButton ? $button->withAddress( $c->get( Front\BuilderAddress::class ) ) : $button,
 			Front\MyBuildsView::class       => static fn( object $view, Container $c ): object => $view instanceof Front\MyBuildsView ? $view->withAddress( $c->get( Front\BuilderAddress::class ) )->withMeta( $c->get( Port\ProductMeta::class ) ) : $view,
 			Cart\ShowHooks::class           => static fn( object $hooks, Container $c ): object => $hooks instanceof Cart\ShowHooks ? $hooks->withAddress( $c->get( Front\BuilderAddress::class ) ) : $hooks,
-			Rest\StateRoute::class          => static fn( object $route, Container $c ): object => $route instanceof Rest\StateRoute ? $route->withAddress( $c->get( Front\BuilderAddress::class ) ) : $route,
+			Rest\StateRoute::class          => static fn( object $route, Container $c ): object => $route instanceof Rest\StateRoute ? $route->withAddress( $c->get( Front\BuilderAddress::class ) )->withPhases( $c->get( Service\Phases::class ) ) : $route,
 			Admin\BuildTab::class           => static fn( object $tab, Container $c ): object => $tab instanceof Admin\BuildTab ? $tab->withPlace( $c->get( Front\BuilderPlace::class ) ) : $tab,
 		);
 	}

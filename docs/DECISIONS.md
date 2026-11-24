@@ -4501,3 +4501,21 @@ Cowork's 1.1.0 review, F22 (#120): #80's fix notes a mouse press from the store'
 **Why:** the press that came too early is the shopper's same press; it should end as one that came a moment later does.
 
 **Status:** Accepted.
+
+### D-365 · The state route's Server-Timing names the shelf, the cards and the decks' boards · 2026-11-24
+
+Cowork's 1.1.0 review of D-304 (#125): from wp-admin on the demo, the deck step's route runs 228 to 254 ms and the trucks step's 72 to 127 ms, and the header could not say whether the shelf, the cards or each deck's board (D-308) took the difference.
+
+- **The phases.** `Service\Phases` runs and times named work with the Clock (gate 3), in milliseconds, adding up a phase run twice. `Front\StateAnswer` times the step's shelf (`StepShelf::of()`), the cards (`PartCards::cards()`, one call for every part the answer names) and, on the deck step, the boards each deck would draw alone (`boards()`: the decks' layer images, their renditions and each board's layout). The route forgets them as its callback starts and, for a shop manager, adds each phase that ran after its time and queries: `cbuild-shelf;dur=`, `cbuild-cards;dur=`, `cbuild-boards;dur=`, plain lowercase tokens as D-304's are. A phase that did not run is not named; the trucks step has no boards.
+- **D-304's rules stand.** The same `manage_woocommerce` check and the same header, so a visitor or a customer is sent nothing, and the builder's own requests, which carry no nonce, never get it. A shop measures from wp-admin's console as HOOKS.md says.
+- **How it is given.** `withPhases()` on `StateAnswer` and `StateRoute`, which only this release's container calls (D-208), one shared `Phases` for the request. A copy an earlier release's container built times nothing and sends 1.1.0's header.
+- **Measured on lane 2's sample shop** (`tests/e2e/fixtures/sample-shop.php`, 14 decks as 60 or so variations, none with a layer image), from wp-admin as the admin, five warm runs each: the deck step at 8.5 in and at 8.25 in, with and without a deck picked, 35 to 72 ms of route with `cbuild-boards` 16 to 38 ms (about 20 typically), `cbuild-shelf` 1.6 to 3.3 ms and `cbuild-cards` 0.4 to 6.3 ms; the trucks step 16 to 17 ms with the shelf 0.7 and the cards 0.4, and no boards. So the boards are the deck step's extra time here, about two thirds of it, though no sample deck has a layer image to draw: the time is the looking. The rest of both steps, some 15 to 20 ms, is the build's state and the view, which these phases leave out. The demo's decks have their images, so its boards phase also reads their renditions and lays each board out; its own numbers will say how much.
+- **Not chosen.** A phase for each deck: 30 cards would make 30 entries in a header a manager reads by eye, and the sum is the question. Phases for the state and the view: not asked for, and the remainder is what is left once these three are known.
+
+**Tests.** `StateRouteTest::test_a_shop_manager_is_told_the_deck_steps_phases_and_no_one_else_is`: on the deck step a manager's header is the route, the queries, then the shelf, the cards and the boards; a visitor and a customer get none. D-304's test now lets phases follow its two. `PhasesTest`: a phase's time across a second, a phase run twice adds up, the order each first ran, a phase that throws still timed, and `forget()`.
+
+**Red run.** Before the change: "Failed asserting that 'cbuild-route;dur=25.5, cbuild-queries;desc="4"' matches PCRE pattern …cbuild-shelf…cbuild-cards…cbuild-boards…" (StateRouteTest.php:808). **Deliberate break:** `forget()` taken out of the route's callback, the visitor's and the customer's phases carried into the manager's: "the phases are within the route / Failed asserting that 41.7 is equal to 16.599999999999998 or is less than 16.599999999999998." (StateRouteTest.php:812). Put back, it passed.
+
+**Why:** the header was put there to find where a real host's time goes; it now says which part of the deck step to look at first.
+
+**Status:** Accepted.

@@ -780,12 +780,36 @@ final class StateRouteTest extends IntegrationTestCase {
 		wp_set_current_user( self::factory()->user->create( array( 'role' => 'shop_manager' ) ) );
 		$response = $this->ask( $query );
 		$timing   = $response->get_headers()['Server-Timing'] ?? '';
-		self::assertMatchesRegularExpression( '#^cbuild-route;dur=\d+\.\d, cbuild-queries;desc="\d+"$#', $timing );
+		self::assertMatchesRegularExpression( '#^cbuild-route;dur=\d+\.\d, cbuild-queries;desc="\d+"(, cbuild-[a-z]+;dur=\d+\.\d)*$#', $timing );
 		preg_match( '#dur=([\d.]+).*desc="(\d+)"#', $timing, $read );
 		self::assertGreaterThan( 0.0, (float) $read[1], 'the route takes some time' );
 		self::assertGreaterThan( 0, (int) $read[2], 'and asks the database something' );
 		self::assertSame( 'no-store', $response->get_headers()['Cache-Control'] ?? null, 'the other headers as they were' );
 		self::assertArrayNotHasKey( 'Server-Timing', $this->ask( array( 'picks' => array( 'deck' => 1 ) ), 999999999 )->get_headers(), 'an error is not timed' );
+		wp_set_current_user( 0 );
+	}
+
+	/**
+	 * #125: the deck step's phases in the same header, the shelf, the cards and the decks' boards (D-365), so a shop
+	 * manager sees where the route's time goes; still no one else is sent them.
+	 */
+	public function test_a_shop_manager_is_told_the_deck_steps_phases_and_no_one_else_is(): void {
+		$query = array(
+			'cbuild' => array( 'step' => 'deck' ),
+			'page'   => $this->kit,
+			'width'  => '8in',
+		);
+		self::assertArrayNotHasKey( 'Server-Timing', $this->ask( $query )->get_headers(), 'a visitor' );
+		wp_set_current_user( self::factory()->user->create( array( 'role' => 'customer' ) ) );
+		self::assertArrayNotHasKey( 'Server-Timing', $this->ask( $query )->get_headers(), 'a customer' );
+
+		wp_set_current_user( self::factory()->user->create( array( 'role' => 'shop_manager' ) ) );
+		$timing = $this->ask( $query )->get_headers()['Server-Timing'] ?? '';
+		self::assertMatchesRegularExpression( '#^cbuild-route;dur=\d+\.\d, cbuild-queries;desc="\d+", cbuild-shelf;dur=\d+\.\d, cbuild-cards;dur=\d+\.\d, cbuild-boards;dur=\d+\.\d$#', $timing );
+		preg_match_all( '#cbuild-([a-z]+);dur=([\d.]+)#', $timing, $read );
+		$took = array_combine( $read[1], array_map( 'floatval', $read[2] ) );
+		// Each phase is this request's alone, inside the route's time: none is carried over from the requests before.
+		self::assertLessThanOrEqual( $took['route'] + 0.2, $took['shelf'] + $took['cards'] + $took['boards'], 'the phases are within the route' );
 		wp_set_current_user( 0 );
 	}
 

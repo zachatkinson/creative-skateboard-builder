@@ -29,6 +29,7 @@ use CreativeBranding\SkateboardBuilder\Port\Clock;
 use CreativeBranding\SkateboardBuilder\Port\Kits;
 use CreativeBranding\SkateboardBuilder\Service\BuildState;
 use CreativeBranding\SkateboardBuilder\Service\ComposedPictures;
+use CreativeBranding\SkateboardBuilder\Service\Phases;
 use CreativeBranding\SkateboardBuilder\Service\RateLimit;
 use CreativeBranding\SkateboardBuilder\Service\ShelfQuery;
 use CreativeBranding\SkateboardBuilder\Support\Cast;
@@ -108,6 +109,28 @@ final class StateRoute implements Hookable {
 	 * @var BuilderAddress|null
 	 */
 	private ?BuilderAddress $address = null;
+
+	/**
+	 * The answer's phases, timed, for a shop manager's Server-Timing header (1.2.0, #125): none in a copy an earlier
+	 * release's container built, whose header has the route's time and queries alone.
+	 *
+	 * @var Phases|null
+	 */
+	private ?Phases $phases = null;
+
+	/**
+	 * The same, telling a shop manager the answer's phases beside the route's time (#125, D-365). Only this release's
+	 * container calls it (D-208).
+	 *
+	 * @since 1.2.0
+	 *
+	 * @param Phases $phases The answer's phases, as `Front\StateAnswer` times them.
+	 */
+	public function withPhases( Phases $phases ): self {
+		$copy         = clone $this;
+		$copy->phases = $phases;
+		return $copy;
+	}
 
 	/**
 	 * The same, sending shoppers to the Builder page each kit's Build tab chose (#113, D-348). Only this release's
@@ -255,13 +278,18 @@ final class StateRoute implements Hookable {
 	public function state( WP_REST_Request $request ) {
 		$start   = $this->clock?->now();
 		$queries = get_num_queries();
-		$answer  = $this->limited( $request );
+		$this->phases?->forget();
+		$answer = $this->limited( $request );
 		// The route's own time and queries, to a shop manager alone, so the priming work can be measured on a real
-		// host (#90): `cbuild-route` in milliseconds, from the callback's start, and `cbuild-queries`.
+		// host (#90): `cbuild-route` in milliseconds, from the callback's start, and `cbuild-queries`. Then each phase
+		// of the answer that ran, in milliseconds, in the order it first ran: the shelf, the cards and the decks'
+		// boards (#125, D-365).
 		if ( null !== $this->clock && null !== $start && $answer instanceof WP_REST_Response && current_user_can( 'manage_woocommerce' ) ) {
-			$end  = $this->clock->now();
-			$took = ( (int) $end->format( 'U' ) - (int) $start->format( 'U' ) ) * 1000 + ( (int) $end->format( 'u' ) - (int) $start->format( 'u' ) ) / 1000;
-			$answer->header( 'Server-Timing', sprintf( 'cbuild-route;dur=%.1F, cbuild-queries;desc="%d"', $took, get_num_queries() - $queries ) );
+			$timing = sprintf( 'cbuild-route;dur=%.1F, cbuild-queries;desc="%d"', Phases::between( $start, $this->clock->now() ), get_num_queries() - $queries );
+			foreach ( $this->phases?->took() ?? array() as $phase => $took ) {
+				$timing .= sprintf( ', cbuild-%s;dur=%.1F', $phase, $took );
+			}
+			$answer->header( 'Server-Timing', $timing );
 		}
 		return $answer;
 	}

@@ -29,6 +29,7 @@ use CreativeBranding\SkateboardBuilder\Domain\Look\ShelfLook;
 use CreativeBranding\SkateboardBuilder\Domain\Look\Width;
 use CreativeBranding\SkateboardBuilder\Service\ComposedPictures;
 use CreativeBranding\SkateboardBuilder\Service\LayerArtwork;
+use CreativeBranding\SkateboardBuilder\Service\Phases;
 use CreativeBranding\SkateboardBuilder\Service\Reopened;
 use CreativeBranding\SkateboardBuilder\Service\ShelfQuery;
 use CreativeBranding\SkateboardBuilder\Service\ShelfView;
@@ -135,6 +136,39 @@ final class StateAnswer {
 	private ?Closure $pictures = null;
 
 	/**
+	 * Times the answer's phases for a shop manager's Server-Timing header, since 1.2.0, given by the container through
+	 * `withPhases()`. An answer an earlier release's container builds times nothing (#125, D-365).
+	 *
+	 * @var Phases|null
+	 */
+	private ?Phases $phases = null;
+
+	/**
+	 * The same answer, timing its shelf, its cards and its decks' boards (#125, D-365).
+	 *
+	 * @since 1.2.0
+	 *
+	 * @param Phases $phases Times each phase.
+	 */
+	public function withPhases( Phases $phases ): self {
+		$answer         = clone $this;
+		$answer->phases = $phases;
+		return $answer;
+	}
+
+	/**
+	 * A phase's work, timed where the answer has its phases.
+	 *
+	 * @template T
+	 * @param string       $phase Its name.
+	 * @param Closure(): T $work  The work.
+	 * @return T
+	 */
+	private function timed( string $phase, Closure $work ): mixed {
+		return null === $this->phases ? $work() : $this->phases->run( $phase, $work );
+	}
+
+	/**
 	 * The same answer, with the presets' tile pictures (D-252).
 	 *
 	 * @since 1.0.0
@@ -188,7 +222,7 @@ final class StateAnswer {
 	 */
 	public function of( State $state, ?BuildLink $link = null, ?ShelfQuery $query = null ): array {
 		$link  ??= new BuildLink();
-		$view    = $this->shelf?->of( $state, $query ?? self::page( $link ) );
+		$view    = $this->timed( 'shelf', fn(): ?ShelfView => $this->shelf?->of( $state, $query ?? self::page( $link ) ) );
 		$labels  = array();
 		$current = null;
 		$counted = $state->counted();
@@ -258,7 +292,7 @@ final class StateAnswer {
 				$ids[] = $change->closest->part->id;
 			}
 		}
-		$cards = $this->cards->cards( array_values( array_unique( $ids ) ) );
+		$cards = $this->timed( 'cards', fn(): array => $this->cards->cards( array_values( array_unique( $ids ) ) ) );
 		// The names of the parts that keep a ready build from the cart, shown or not, for a link that brings one.
 		$held = array();
 		foreach ( $state->presets as $preset ) {
@@ -292,7 +326,7 @@ final class StateAnswer {
 				'change' => null === $step?->counted() ? '' : Words::change( $kind, $text ),
 			);
 		};
-		$boards   = SlotKey::DECK === $state->step ? $this->boards( $state, array_merge( $offered, array_map( static fn( ShelfLook $look ): Option => $look->option, null === $view ? array() : array_merge( $view->listing->looks, $view->listing->soldOut ) ) ) ) : array();
+		$boards   = SlotKey::DECK === $state->step ? $this->timed( 'boards', fn(): array => $this->boards( $state, array_merge( $offered, array_map( static fn( ShelfLook $look ): Option => $look->option, null === $view ? array() : array_merge( $view->listing->looks, $view->listing->soldOut ) ) ) ) ) : array();
 		$option   = static fn( Option $option, string $slot, ?StateStep $step ): array => array(
 			'id'          => $option->part->id,
 			'brand'       => $option->part->brand,
