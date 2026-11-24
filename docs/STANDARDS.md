@@ -249,6 +249,25 @@ tools/                    gates.sh, integration/ (PHPUnit 9.6), build, release, 
 
 Comments in code say why, not what. A workaround names the issue it works around and when to remove it.
 
+## Writing docs
+
+The reference docs take the shape `README.md` sets (issue #126). The auditor and the spec-reviewer hold a new or changed doc to it.
+
+- **A contents list** under the opening paragraph of a doc with several sections, each entry linking to its heading.
+- **Short sections** under headings in sentence case. A section that runs long splits under subheadings.
+- **Bullets that lead with a bold phrase.** The phrase names the point, and the rest of the bullet makes it.
+- **Tables where there is data to compare:** versions, budgets, settings, or files and what each holds.
+- **Paragraphs of two or three sentences.** A longer run of points becomes a list or a table.
+- **Code, hooks, paths and keys in backticks:** `cbuild_start_button`, `src/Domain`, `_cbuild_settings`.
+- **One paragraph or list item per line,** unwrapped, as `.markdownlint-cli2.jsonc` sets out (D-345). `npm run lint:md` holds every doc to markdownlint's rules.
+- **The copy rules** below apply to the docs too: plain words, sentence case, no em dashes, superlatives or exclamation marks.
+
+**Reshaping keeps every fact.** Turning a doc into this shape changes its layout, not what it says. Every claim, number, D-number, issue number, file and line, hook name, version and `@since` stays, and none is softened or added.
+
+**Two docs keep their words.** `docs/SPEC.md` and `docs/ROADMAP.md` take a contents list and paragraph breaks only, since the spec-reviewer judges the code against their exact words. `docs/DECISIONS.md` takes an index at the top, and its entries are never rewritten.
+
+**`docs/HOOKS.md` keeps the layout `composer api:check` reads.** `tools/api-surface.php` takes an item's version from the first line that names it in backticks, or from the lines under a heading that names it. A reshape keeps each item's name and version on that line.
+
 ## Copy: the words shoppers and admins read
 
 - Plain words, sentence case, active voice. Say what happened and what to do next ("These trucks are too narrow for an 8.5″ deck. Pick a pair from 8.5″ up.").
