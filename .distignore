@@ -1,12 +1,20 @@
+# What tools/build-zip.sh leaves out of the release zip (rsync --exclude-from), and, line for line, what .gitattributes
+# marks export-ignore, so git archive and GitHub's "Source code (zip)" hold the same files (gate 19, D-346).
+# The dotfile lines are a second safeguard: build-zip.sh drops every dotfile and then checks that none is left. They
+# stay so the two lists agree, and so a dotfile is still left out if that rule is ever changed.
+# composer.json is not here: the zip ships it beside vendor/, so a reviewer can see what vendor/ holds.
 .git
 .github
+.githooks
 .claude
 .idea
 .vscode
 .distignore
 .deptrac.cache
 .editorconfig
+.gitattributes
 .gitignore
+.markdownlint-cli2.jsonc
 .nvmrc
 .prettierrc.js
 .prettierignore
@@ -17,7 +25,6 @@
 .wp-env.tests.override.json
 CLAUDE.md
 START.md
-composer.json
 composer.lock
 deptrac.yaml
 docs

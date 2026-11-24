@@ -15,6 +15,7 @@
 #  14. Markup built in the builder's front scripts: every piece is a server template (CLAUDE.md: Markup).
 #  15. A string literal with words in it in the builder's front scripts: every word the shopper reads is the server's.
 #  18. An mbstring case change with no function_exists() fallback on its line (#72).
+#  19. .gitattributes' export-ignore lines and .distignore listing different paths, or a tracked dotfile on neither.
 # Gate 1 also covers string-built SQL (1b) and the database's clock in a statement (1c). Every gate has snippets it
 # must reject in tests/Fixtures/gates/, run by tools/gates-selftest.sh.
 # Run: composer gates
@@ -209,6 +210,23 @@ fi
 hits="$(grep -rnE '(^|[^a-zA-Z_>$])(mb_strtolower|mb_strtoupper|mb_convert_case)\s*\(' "${php_files[@]}" --include='*.php' | grep -vE '^[^:]+:[0-9]+:\s*(\*|//|#)' | grep -vE "function_exists\( '(mb_strtolower|mb_strtoupper|mb_convert_case)' \)" || true)"
 if [ -n "$hits" ]; then
 	echo "Gate 18: an mbstring case change with no function_exists() fallback on its line:"; echo "$hits"; status=1
+fi
+
+# 19. .gitattributes' export-ignore lines and .distignore name the same paths, one for one, so git archive and GitHub's
+# "Source code (zip)" hold what the release zip holds (D-346). And every dotfile or dot folder git tracks at the top is
+# on both lists: build-zip.sh drops them all, and the archive must too.
+ignored="$(sed -nE 's/^([^#[:space:]]+)[[:space:]]+export-ignore[[:space:]]*$/\1/p' .gitattributes 2> /dev/null | sort -u || true)"
+distignored="$(grep -vE '^[[:space:]]*(#|$)' .distignore 2> /dev/null | sed -E 's/[[:space:]]+$//' | sort -u || true)"
+if [ "$ignored" != "$distignored" ]; then
+	echo "Gate 19: .gitattributes' export-ignore lines and .distignore differ (< export-ignore only, > .distignore only):"
+	diff <(printf '%s\n' "$ignored" | sed '/^$/d') <(printf '%s\n' "$distignored" | sed '/^$/d') | grep -E '^[<>]' || true
+	status=1
+fi
+dotted="$(git ls-files 2> /dev/null | cut -d/ -f1 | grep '^\.' | sort -u || true)"
+unlisted="$(comm -23 <(printf '%s\n' "$dotted" | grep . || true) <(printf '%s\n' "$distignored"))"
+if [ -n "$unlisted" ]; then
+	echo "Gate 19: tracked at the top, and on neither .distignore nor .gitattributes' export-ignore lines:"; echo "$unlisted"
+	status=1
 fi
 
 if [ "$status" -eq 0 ]; then echo "Gates: clean."; fi

@@ -4321,3 +4321,24 @@ Issue #111. Zach approved a Markdown linter on 24 November 2026, the 2026 standa
 **Red runs.** With this config on the docs as they stood at f3fa60d, `npm run lint:md`: "Summary: 183 issues in 22 files" (MD036 67, MD060 38, MD032 26, MD012 20, MD029 14, MD034 9, MD033 5, MD018 4). Deliberate break: `docs/A11Y.md`'s escape taken out again, "docs/A11Y.md:102:174 error MD033/no-inline-html Inline HTML [Element: part]"; put back, "0 issues in 0 files". The hook, in a scratch clone: a doubled blank line staged whole was fixed and staged; `<part>` staged whole stopped the commit; `<part>` in a file's staged text, with the working copy clean, stopped it; the reverse passed; the readme staged in part passed, and failed with its H1 made an H2.
 
 **Status:** Accepted.
+
+### D-346 · A .gitattributes for line endings, binaries and the source archive, kept equal to .distignore by gate 19 · 2026-11-24
+
+Issue #112. A review of every ignore file on 24 November 2026 found what ships and what's committed correct, and one piece of the usual setup missing: a `.gitattributes`.
+
+- **Line endings.** `* text=auto eol=lf`: every text file is stored and checked out with LF on any machine, so no checkout or editor turns a shell script, the PHP or a snapshot into CRLF. `git add --renormalize .` on f3fa60d with the new file changed nothing: all 932 text files were already LF.
+- **Binaries.** `*.png`, `*.avif` and `*.mo` (the 348 binaries git holds, the visual baselines among them), and the image, font and zip types a later change could add, are `binary`: never converted, merged or diffed as text.
+- **The source archive.** Each line of `.distignore` is an `export-ignore` line, so `git archive` and GitHub's "Source code (zip)" leave out what the release zip leaves out. On f3fa60d, `git archive` held 1,281 files. With these lines it holds the zip's files but the two folders the build makes, `build/` (13 files) and `vendor/` (12).
+- **Two changes to `.distignore` to get there,** neither of which changes the zip:
+  - `composer.json` is off it. `tools/build-zip.sh` left it out and then copied it back in, beside `vendor/`, so the zip has always shipped it; the archive now does too.
+  - `.githooks`, `.gitattributes` and `.markdownlint-cli2.jsonc` are on it. The zip drops every dotfile, but the archive drops only what it is told to.
+- **Gate 19** (`composer gates`) fails when the export-ignore lines and `.distignore`'s lines differ, either way, and when a file or folder git tracks at the top starts with a dot and is on neither, so the next dotfile can't reach the archive. Its two snippets put one file without the other.
+- **`linguist-generated`** on `assets/src/types/`, which `npm run types` writes, so GitHub folds its diffs in a pull request; **`linguist-documentation`** on `docs/`.
+- **`.gitignore`:** `.deptrac.cache` and `.playwright-mcp/` anchored with a leading `/`, as every other root entry is, and `/.stylelintcache` added.
+- **`.distignore`** says at its top that its dotfile lines are a second safeguard, since `build-zip.sh` drops every dotfile and then checks that none is left.
+
+**The zip.** `composer build` on f3fa60d and on this tree: 470 entries each, the same names (`unzip -Z1`, sorted and compared).
+
+**Red runs.** `tools/gates-selftest.sh` with gate 19's block taken out: "Gates self-test: gate 19 did not reject 19-export-ignored-but-shipped.gitattributes." and the same for `19-left-out-of-the-zip-but-exported.distignore`. On this tree: with `.gitattributes` moved away, "Gate 19: .gitattributes' export-ignore lines and .distignore differ"; with `tools` on `.distignore` alone, the same with "> tools"; with `.githooks` on neither, "Gate 19: tracked at the top, and on neither .distignore nor .gitattributes' export-ignore lines: .githooks". Each put back: "Gates: clean."
+
+**Status:** Accepted.
