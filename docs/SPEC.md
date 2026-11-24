@@ -4,6 +4,62 @@ Oct 22, 2026, updated Nov 9, 2026 · Zach Atkinson
 
 Build a WooCommerce plugin of our own that sells a complete made from parts the shop already stocks: the shopper picks a deck, sees only the trucks, wheels, bearings, hardware and grip that fit it, watches the total as they go, and orders it assembled. Each part stays its own line in the cart and the order, so stock, tax and refunds work as WooCommerce means them to. Built for reuse, like Creative Locator, Creative Stockroom and Creative Search: Skatehouse is the first shop, and any skate shop the agency builds can run it.
 
+## Contents
+
+- [What changed on 9 Nov](#what-changed-on-9-nov)
+- [What changed since 22 Oct](#what-changed-since-22-oct)
+- [Goal and scope](#goal-and-scope)
+  - [What it does](#what-it-does)
+  - [Working with Claude Code](#working-with-claude-code)
+- [The bar to clear](#the-bar-to-clear)
+  - [Where 1.0 beats them](#where-10-beats-them)
+- [Quality bar](#quality-bar)
+  - [The matrix, applied to the builder](#the-matrix-applied-to-the-builder)
+  - [CI gates](#ci-gates)
+- [Vocabulary](#vocabulary)
+- [How it fits](#how-it-fits)
+  - [How a build travels](#how-a-build-travels)
+- [Data model](#data-model)
+- [Compatibility rules](#compatibility-rules)
+- [The builder](#the-builder)
+  - [Ways in](#ways-in)
+  - [A step](#a-step)
+  - [The total](#the-total)
+  - [The picture](#the-picture)
+  - [Review and add to cart](#review-and-add-to-cart)
+  - [Without JavaScript](#without-javascript)
+  - [Speed](#speed)
+- [Cart, checkout and orders](#cart-checkout-and-orders)
+  - [Showing it](#showing-it)
+  - [Orders](#orders)
+- [Pricing, stock, assembly and returns](#pricing-stock-assembly-and-returns)
+  - [Pricing](#pricing)
+  - [Stock](#stock)
+  - [Assembly](#assembly)
+  - [Returns](#returns)
+- [Admin](#admin)
+  - [WooCommerce > Builder](#woocommerce--builder)
+  - [On orders](#on-orders)
+- [French and other languages](#french-and-other-languages)
+- [SEO and sharing](#seo-and-sharing)
+- [Privacy and data handling](#privacy-and-data-handling)
+- [Security, performance and compatibility](#security-performance-and-compatibility)
+  - [Compatibility](#compatibility)
+  - [Upgrades and the public API](#upgrades-and-the-public-api)
+  - [Resilience](#resilience)
+- [Testing](#testing)
+  - [Unit, with no WordPress](#unit-with-no-wordpress)
+  - [Integration, in wp-env with the WordPress test suite](#integration-in-wp-env-with-the-wordpress-test-suite)
+  - [Browser, in Playwright on Chromium, WebKit and Firefox at phone and desktop widths](#browser-in-playwright-on-chromium-webkit-and-firefox-at-phone-and-desktop-widths)
+  - [Accessibility](#accessibility)
+  - [Also](#also)
+- [What Skatehouse needs before the builder can sell](#what-skatehouse-needs-before-the-builder-can-sell)
+- [Milestones for Claude Code](#milestones-for-claude-code)
+- [Open questions](#open-questions)
+- [Sources](#sources)
+  - [Fit rules](#fit-rules)
+  - [WooCommerce](#woocommerce)
+
 ## What changed on 9 Nov
 
 The UX deep dive, Zach's audit list and the plugin's new name reshaped the plan. Milestones 1 to 5 build what they did before, with the additions below; the builder's front end is now two milestones.
@@ -50,7 +106,9 @@ The demo moved on in the two weeks after this spec was written (checked 6 Nov 20
 - Adds a **build** to the cart as one parent line (the kit, carrying the assembly fee) with one child line per part, so each part keeps its own price, tax class, stock and refund. The Cart block, the Mini-Cart and a classic checkout all show the build grouped, and nothing in it can be changed piece by piece.
 - Carries the build into the order, the emails and the admin, and prints an **assembly ticket** for the workshop.
 
-**Who it's for.** Skatehouse first: one kit, the complete skateboard, built from 160 deck variations, wheels, hardware and grip, plus the trucks and bearings the shop will add. Then any skate shop Creative Branding builds. The kit model underneath (slots, parts, rules) isn't tied to skateboards, so another kind of kit could follow one day, but 1.0's rules, spec tables and words are for skateboards. The owner sets up kits, slots and presets once; a shop manager only ever fills in part specs.
+**Who it's for.** Skatehouse first: one kit, the complete skateboard, built from 160 deck variations, wheels, hardware and grip, plus the trucks and bearings the shop will add. Then any skate shop Creative Branding builds.
+
+The kit model underneath (slots, parts, rules) isn't tied to skateboards, so another kind of kit could follow one day, but 1.0's rules, spec tables and words are for skateboards. The owner sets up kits, slots and presets once; a shop manager only ever fills in part specs.
 
 **Requirements.** PHP 8.5 or later, WordPress 7.0 or later and WooCommerce 11.2 or later (open question 8: Creative Search moved to the same PHP and WordPress floors on 21 Oct, and WooCommerce 11.2 brought the Store API validation filters the cart relies on), and MySQL 8.0 or MariaDB 10.6 or later, as WordPress itself asks. Tested against the oldest pair, WordPress 7.0 with WooCommerce 11.2.0, and the newest, pinned in `.wp-env.json`: WordPress 7.1.4 with WooCommerce 11.2.2, as on the demo on 6 Nov, all on PHP 8.5, on MySQL 8.4 and MariaDB 10.11. No external service, no API key, and no outbound request but the agency's update check.
 
@@ -234,7 +292,9 @@ The browser never decides fit or price. The server checks a build as the shopper
 
 Three tables (two until 0.4.0, D-116), product meta on the kit and the parts, and keys on cart and order items. Everything the plugin stores is either the owner's settings or rebuildable from WooCommerce.
 
-**The kit**, a product of type `cbuild_kit` (class `KitProduct extends WC_Product`). It is virtual (the parts ship), can't be bought outside the builder, and its price is the assembly fee, read from its assembly settings rather than WooCommerce's price fields and set to $0 by the cart when the shopper turns assembly off. Its settings are product meta, each a JSON document carrying a `schema_version` and validated against a JSON Schema in the plugin's `schema/` folder, which ships with it. Validation runs at the edge through WordPress's own `rest_validate_value_from_schema()`, with no library added, and the domain's value objects check their own invariants:
+**The kit**, a product of type `cbuild_kit` (class `KitProduct extends WC_Product`). It is virtual (the parts ship), can't be bought outside the builder, and its price is the assembly fee, read from its assembly settings rather than WooCommerce's price fields and set to $0 by the cart when the shopper turns assembly off.
+
+Its settings are product meta, each a JSON document carrying a `schema_version` and validated against a JSON Schema in the plugin's `schema/` folder, which ships with it. Validation runs at the edge through WordPress's own `rest_validate_value_from_schema()`, with no library added, and the domain's value objects check their own invariants:
 
 | Meta | Holds |
 | --- | --- |
@@ -244,7 +304,9 @@ Three tables (two until 0.4.0, D-116), product meta on the kit and the parts, an
 | `_cbuild_assembly` | Default on or off, the fee, the lead time, and the returns notice shown before checkout |
 | `_cbuild_picture` | The picture's settings (milestone 7): the slots' layer order, and any anchor the kit moves, such as where the trucks sit on a shape with no wheelbase |
 
-**Part specs.** A shop manager fills them in on each part's Part specs panel (simple products and variations), or imports them; they're stored as `_cbuild_specs` meta, one value per spec key. Two other sources feed the same specs: an attribute mapping, set once for the shop at WooCommerce > Settings > Builder (the deck's `deck_width` comes from the `pa_width` attribute, in inches), and **spec tables**, a post type `cbuild_spec_table` holding a maker's size chart (Independent 149: axle 8.5 in, decks 8.375 to 8.6 in, height 55 mm, wheels up to 56 mm). A truck variation names its table and size, and inherits the rest. Which source wins where two disagree is a shop-wide setting as well, so the index holds one value per part and spec whichever kit reads it (D-026). From milestone 7 a part can also carry a **layer image** for the picture, an attachment ID in `_cbuild_layer`, set on the same panel.
+**Part specs.** A shop manager fills them in on each part's Part specs panel (simple products and variations), or imports them; they're stored as `_cbuild_specs` meta, one value per spec key. Two other sources feed the same specs: an attribute mapping, set once for the shop at WooCommerce > Settings > Builder (the deck's `deck_width` comes from the `pa_width` attribute, in inches), and **spec tables**, a post type `cbuild_spec_table` holding a maker's size chart (Independent 149: axle 8.5 in, decks 8.375 to 8.6 in, height 55 mm, wheels up to 56 mm). A truck variation names its table and size, and inherits the rest.
+
+Which source wins where two disagree is a shop-wide setting as well, so the index holds one value per part and spec whichever kit reads it (D-026). From milestone 7 a part can also carry a **layer image** for the picture, an attachment ID in `_cbuild_layer`, set on the same panel.
 
 **The specs index**, table `{prefix}cbuild_specs`: one row per part and spec, with the value as a number (`DECIMAL(10,4)`) or a short text, where it came from, and when. Keyed on the part and the spec, indexed on spec and value so a slot's candidates come back in one query. Derived: rebuilt in the background from the three sources, never edited.
 
@@ -345,7 +407,9 @@ Seed spec tables. Each maker's figures come from its own size chart, read on 10 
 
 ## The builder
 
-One step per slot, in the kit's order, then a review. The deck comes first, every later step offers only what fits, and every step shows the picture and the running total. A pick never leaves the shopper guessing whether it fits. The research behind this section is `docs/UX-RESEARCH.md`; its patterns are numbered there, P1 to P12, and each milestone's review checks them.
+One step per slot, in the kit's order, then a review. The deck comes first, every later step offers only what fits, and every step shows the picture and the running total.
+
+A pick never leaves the shopper guessing whether it fits. The research behind this section is `docs/UX-RESEARCH.md`; its patterns are numbered there, P1 to P12, and each milestone's review checks them.
 
 ### Ways in
 
