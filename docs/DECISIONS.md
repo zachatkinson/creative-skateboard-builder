@@ -4109,3 +4109,22 @@ The weekly canary failed on WooCommerce 11.3.1 (#95), which is the stable releas
 **Tests.** `builder.spec.ts` "The panel's own scroll while the builder hydrates (#94)": before the fix, webkit-desktop failed 10 of 10, "the panel's scroll after hydration / Expected: 447 / Received: 0"; with it, 20 of 20 pass. Chromium and Firefox passed before and after. With the observer's line taken out, 3 of 3 failed again. `tests/js/scroll.test.ts`: 11 tests.
 
 **Status:** Accepted.
+
+### D-334 · 1.0.0's split stands: the start page keeps hydrating its hidden pieces (#73) · 2026-11-23
+
+**Context:** #73 asked whether the pieces the start page doesn't show (the review, the change panel, the errors, the limit line, about a third of its directives) could be hydrated later or bound more thinly, to take blocking time off the start page beyond D-296's split.
+
+**What the runtime offers.** Nothing public. WordPress 7.1.5's `wp-includes/js/dist/script-modules/interactivity/index.js` hydrates every `[data-wp-interactive]` element once, at DOM ready (`hydrateRegions`, lines 3308 to 3320, called at line 3355), and never looks for a region again. Hydrating one later needs `toVdom`, `render` and `getRegionRootFragment`, which only `privateApis` hands out, behind the words "using private APIs means my theme or plugin will inevitably break in the next version of WordPress" (lines 3328 to 3330). `data-wp-ignore` is deprecated (lines 3092 to 3101). The router's `attachTo` (`interactivity-router/index.js`, lines 694 to 765) attaches regions from a page it fetches on navigation, not ones already in the page. `toVdom` walks a `<template>`'s content too (`index.js`, lines 2190 to 2193), so moving a hidden piece into a `data-wp-each` saves its render, not its walk.
+
+**Measured** on the browser site as a shop serves it (`SCRIPT_DEBUG` off, the shop open), Twenty Twenty-Five, 1280 by 800, Chrome's CPU slowed 12 times, blocking time summed over every long task of the load, interleaved runs:
+
+- As 1.0.0 serves it: medians 140 ms (9 runs) and 137 ms (11), near D-296's 148 to 159 ms. Longest task 143 to 151 ms.
+- The upper bound, set by rewriting the page in the browser: the same page passed through unchanged, 74 and 69 ms (the rewrite alone delivers the page in one piece, so it is the control); the four hidden pieces left out of hydration altogether, 79 and 55 ms; the review, change panel and errors inside an empty `data-wp-each`, 70 and 59 ms. Long-task time, the work itself, was 176 ms for the control against 171 and 170 ms.
+- So hydrating nothing hidden saves at most about 3 % of the work, and between none and 20 % of the blocking time, inside the runs' spread (the control alone ran 18 to 65 ms after DOM ready). Deferring that hydration would then put it on the press that first shows the piece.
+- `npm run lhci`, medians of 3: Twenty Twenty-Five LCP 2,248 ms, TBT 0 ms, CLS 0.001; Kadence LCP 2,007 ms, TBT 0 ms, CLS 0; Kadence at a build's review LCP 2,044 ms, TBT 0 ms, CLS 0.
+
+**Decision:** no change. D-296's twelve regions stay as they are, each piece keeps its one template and its server markup, and the hidden pieces hydrate with the rest.
+
+**Why:** the most either option could take off is within noise and short of a fifth, and the one way to defer a region is a private API WordPress says will break.
+
+**Status:** Accepted. #73 can close as "1.0.0's split stands".
