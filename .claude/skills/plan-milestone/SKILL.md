@@ -11,7 +11,7 @@ description: Start a milestone. Read its roadmap entry and spec sections, write 
    - what the milestone builds, in a short list;
    - the spec sections it touches;
    - the public API it adds (hooks, routes, settings, meta keys, events), which `api:check` will expect;
-   - **risks**: one line per dimension, all twelve, saying what could go wrong in this milestone and the test, gate or review that will catch it. "None: <why>" is a fine line; a blank isn't;
+   - **risks**: one line per dimension, all twelve, saying what could go wrong in this milestone and the test, gate or review that will catch it. "None: \<why>" is a fine line; a blank isn't;
    - the order of work, test-first items marked;
    - **questions for Zach**, if any.
 5. Commit the plan alone: `M<n>: plan`.

@@ -46,7 +46,7 @@ It is the agency's showpiece, built to the twelve-dimension audit in `docs/AUDIT
 - `composer test:coverage`: unit tests with the domain's floors: 100 % of lines and branches in `src/Domain` (Xdebug's path coverage, since pcov measures lines only)
 - `composer test:coverage:all`: the unit and integration suites' line coverage merged, with the floor: 95 % of all of `src/`, each file's direct-access guard left out (D-050, D-061). Needs the integration site, which `npm run env:start` starts with Xdebug in coverage mode. `CBUILD_COVERAGE_DRIVER=pcov` runs the integration half with pcov and Xdebug off (`tools/pcov.sh` builds it into the cli container), about 2.7 times faster, and /verify uses it; `=xdebug` forces Xdebug on both halves (D-312). In CI the integration suite runs in three shards (`tools/integration-shards.php`), and `CBUILD_COVERAGE_SHARDS=<folder>` merges their reports in place of a run of the suite (D-323)
 - `composer focused` / `bash tools/focused.sh [--dry-run] [<base-ref>]`: before the full /verify, only the integration and browser tests that cover what changed since `<base-ref>` (HEAD: the working tree), with the reason for each; in a lane, `bash tools/lane.sh 2 bash tools/focused.sh`. It never replaces /verify (D-324)
-- `composer hooks`: turns on `.githooks/pre-commit` (phpcbf and PHPCS on staged PHP in the lint's scope, Prettier on staged files in the format's scope, re-staged; a file staged in part is checked, not rewritten; D-313)
+- `composer hooks`: turns on `.githooks/pre-commit` (phpcbf and PHPCS on staged PHP in the lint's scope, Prettier on staged files in the format's scope, markdownlint-cli2 on staged Markdown, re-staged; a file staged in part is checked, not rewritten; D-313)
 - `composer test:benchmark`: the server budgets
 - `composer test:benchmark:integration`: `tests/Benchmark` in the integration site with Xdebug off: 2,000 parts indexed, exported, checked and dry-run, each inside a request
 - `composer infection`: 100 % MSI on `src/Domain`, 95 % elsewhere. In the domain, a mutant only static analysis catches must be in `tools/infection-static-allowed.txt` (D-063)
@@ -58,7 +58,8 @@ It is the agency's showpiece, built to the twelve-dimension audit in `docs/AUDIT
 - `npm run upgrade` / `npm run upgrade:all`: the update from the newest published release, or from every one (D-232), each with that release's own kits and data made on it, on the browser site
 - `npm run build` / `npm run start`: `wp-scripts --experimental-modules` (script modules, Interactivity API)
 - `npm run types`: the state route's TypeScript types, generated from its JSON Schema. CI fails if the tree changes
-- `npm run check`: ESLint, Stylelint, Prettier, `tsc --noEmit` and Vitest
+- `npm run lint:md`: markdownlint-cli2 on every Markdown file git doesn't ignore, with the rules `.markdownlint-cli2.jsonc` sets (D-345)
+- `npm run check`: ESLint, Stylelint, markdownlint, Prettier, `tsc --noEmit` and Vitest
 - `npm run mutate:js`: StrykerJS on the builder's store (90 %)
 - `npm run budget`: the script under 15 kB and the styles under 10 kB, compressed with Brotli at quality 11
 - `npm run test:e2e`: Playwright with axe. The projects are `chromium-desktop`, `chromium-phone`, `webkit-desktop`, `webkit-phone`, `firefox-desktop`, `firefox-phone`, `no-js`, `fr-ca`, `rtl` and `visual`. `visual` runs only in Playwright's Linux container, through `bash tools/visual.sh` (CI's `Browser (visual)` job runs it, beside the newest leg (D-258); `--update-snapshots` remakes the baselines, on purpose only), so its baselines stay stable

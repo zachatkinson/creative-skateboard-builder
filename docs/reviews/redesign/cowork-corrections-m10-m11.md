@@ -28,6 +28,9 @@
 
 ## Added after a full pass
 
+<!-- The findings are numbered through the whole review and cited by number, so this list goes on from the one before. -->
+<!-- markdownlint-disable MD029 -->
+
 11. **The demo's kit page is a Shop Kit template, so D-238's classic path doesn't reach it.** The demo draws every product page with Shop Kit's "Single Post" template (Products > Woo Templates): its title, gallery, add-to-cart and reviews blocks in a two-column row, with no WooCommerce summary. The builder renders inside the add-to-cart block's column, so "full width before the product's summary" has nothing to attach to, and Skatehouse runs the same stack. As with the bar, it's the shop's setup, not Shop Kit code: leave the kits out of that template (its Hide On uses the same rules as Elements), so they get the theme's own product layout, or give kits a template whose add-to-cart block sits in one full-width row. Say so in the spec and the readme, and run the layout tests under Kadence and the suite's Shop Kit stand-in (`builder.spec.ts`, from line 2550), not only on the demo. I'll set the demo up for the milestone 10 review, with Zach's OK then, and leave it as it is until 0.9.0's review is done.
 
 12. **The keyboard (accessibility).** "Enter or Space picks" isn't how the cards work, and the slip was mine in the proposal. They're native radios in a form that picks on change (`templates/builder/step.php`: `data-wp-on--change="actions.pick"`), so the arrow keys move and pick together, and Enter submits the form, which is Next. Write the keyboard section as 0.9.0 behaves, and make sure milestone 11's motion and the route keep up with a shopper arrowing through 30 cards: each pick cut short by the next, stale answers dropped.
@@ -37,6 +40,8 @@
 14. **The rate limit (D-244, D-247, D-248).** Search as you type, chips and Show more all go through the state route, which allows 120 requests a minute per address (`rate_limit`). That's plenty for one shopper, but a shop's wifi or a phone carrier's shared address puts several shoppers on one. Check the default during the hallway test, and say what a step shows after a 429 mid-search: the last results, and when to try again.
 
 15. **`ChangePlanner::closest()` is private (D-254).** Reopening a saved build should share it, moved where both can call it, not copied.
+
+<!-- markdownlint-enable MD029 -->
 
 ## Smaller
 

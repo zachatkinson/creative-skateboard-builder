@@ -791,7 +791,6 @@ The picture and the phone bar draw the board's top (#46) beside its underside, a
 
 The button by the board, `.cbuild-picture__turn .cbuild-button`, has `aria-pressed` true while the top is shown.
 
-
 ### The workshop: the Build box, the assembly ticket and the orders list
 
 For users with `edit_shop_orders`. The Build box, the ticket and the orders list read an order's builds from its lines each time they are shown: each slot as sold from `_cbuild_snapshot`, matched to its line by `_cbuild_id` and `_cbuild_slot`.
@@ -818,4 +817,3 @@ The names another plugin may meet on the order screens:
 | --- | --- | --- |
 | Exporter and eraser `creative-skateboard-builder` | 0.8.0 | "Saved builds" in Tools > Export Personal Data and Erase Personal Data: each of the account's saved builds, found by its email address. One page each (D-220). |
 | The build under a kit's order line | 0.8.0 | On `woocommerce_order_item_meta_end`: the build's picture, `.cbuild-email-picture`, with a short alt text from 0.9.0, "The build, as drawn", since the parts are listed under it, on the order's page and in HTML emails; the build in words in plain text. Each part's row has the class `cbuild-order-part` (D-221). The markup is the plugin's own and may change in any release. |
-

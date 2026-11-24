@@ -34,7 +34,7 @@ You audit Creative Skateboard Builder against the twelve dimensions in `docs/AUD
    - **UX and content:** a pattern from P1 to P12 missing, a failure from W1 to W9 present, copy that breaks the rules (em dashes, superlatives, templated constructions, vague errors).
    - **DRY and SOLID, and testing:** a rule or price worked out twice, a class with two jobs, a spec case without its test, a test that passes when its code is reverted.
 
-**Report**
+## Report
 
 | Dimension | Verdict (Pass, Pass with notes, Fail, Not touched) | Evidence |
 | --- | --- | --- |

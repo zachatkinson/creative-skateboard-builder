@@ -147,7 +147,7 @@ tools/                    gates.sh, integration/ (PHPUnit 9.6), build, release, 
 
 ## Front end: HTML, CSS, TypeScript, the Interactivity API
 
-**HTML**
+### HTML
 
 - Semantic and valid:
   - landmarks, one H1 per page, headings in order;
@@ -156,7 +156,7 @@ tools/                    gates.sh, integration/ (PHPUnit 9.6), build, release, 
   - images with `alt`, `width`, `height`, `decoding` and the right `loading`.
 - No inline event handlers. Inline `style` is used only to set the builder's custom properties.
 
-**CSS**
+### CSS
 
 - The block's stylesheet uses `@wordpress/stylelint-config` (SCSS) and Prettier.
 - Logical properties throughout.
@@ -166,7 +166,7 @@ tools/                    gates.sh, integration/ (PHPUnit 9.6), build, release, 
 - `:focus-visible` rings, `forced-colors` support and `prefers-reduced-motion`.
 - No `!important`, no IDs in selectors, nothing styled outside the builder's root.
 
-**TypeScript**
+### TypeScript
 
 - The builder's store, the Cart block filters and the admin scripts are TypeScript in `strict` mode, built by `@wordpress/scripts` and type-checked by `tsc --noEmit` in `npm run check`.
 - The state route's response types are generated from its JSON Schema (`json-schema-to-typescript`), so the store and the server can't drift.
@@ -174,7 +174,7 @@ tools/                    gates.sh, integration/ (PHPUnit 9.6), build, release, 
 - No jQuery and no framework.
 - The `@wordpress/*` packages are externals, provided by WordPress at run time, as Creative Search's ESLint config sets out.
 
-**The Interactivity API**
+### The Interactivity API
 
 - One store, `creative-skateboard-builder`, private (`lock: true`). Other code listens to the builder's DOM events instead.
 - State starts on the server with `wp_interactivity_state()`.

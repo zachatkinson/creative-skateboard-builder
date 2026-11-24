@@ -43,7 +43,7 @@ It is built by [Creative Branding](https://creativebranding.ca). Skatehouse is t
 
 ## Features
 
-**For the shopper**
+### For the shopper
 
 - **Only what fits.** Fit is worked out from each part's specs: trucks for the deck's width, wheels that clear the trucks, risers where the wheels need them, and bolts long enough to reach through.
 - **The deck's width first,** with a guide by shoe size. Every later step offers only what fits that deck.
@@ -54,7 +54,7 @@ It is built by [Creative Branding](https://creativebranding.ca). Skatehouse is t
 - **Saved builds.** A signed-in customer can save a build and open it again from My account. If a part has changed since, the builder says what changed and offers the closest parts.
 - **For everyone.** It works by keyboard and with a screen reader, on a phone, without JavaScript, in English and French (Canada), and right to left.
 
-**For the shop**
+### For the shop
 
 - **Each part on its own line** in the cart, on the order and in its emails, with a picture of the build.
 - **Specs from where they already are:** a maker's size chart, a field on the product, a mapped attribute, or a CSV import.

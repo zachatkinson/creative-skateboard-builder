@@ -64,7 +64,7 @@ The commands are in `CLAUDE.md`. The fast gates run on every commit through `ver
 | Public API snapshot: hooks, REST schemas, block attributes, settings keys, against `docs/HOOKS.md` and the committed snapshot | `composer api:check` | 10 |
 | Integration: WordPress test suite in wp-env, oldest and newest, HPOS on, off and syncing, multisite, a persistent object cache | `composer test:integration` and its variants | 3, 4, 9, 10, 11 |
 | Benchmarks: the server budgets as tests | `composer test:benchmark` | 8 |
-| JavaScript and CSS standards, types, unit tests | `npm run check` | 1, 2, 9 |
+| JavaScript, CSS and Markdown standards, types, unit tests | `npm run check` | 1, 2, 9 |
 | Asset budgets: script and styles, compressed | `npm run budget` | 8 |
 | Browser: Playwright on Chromium, WebKit and Firefox, phone and desktop; JavaScript off; fr_CA; right to left; visual snapshots; axe on every state | `npm run test:e2e` | 5, 6, 7, 9, 11, 12 |
 | Lighthouse CI on the builder page: LCP, CLS, TBT, SEO | `npm run lhci` | 7, 8 |
@@ -77,7 +77,7 @@ The commands are in `CLAUDE.md`. The fast gates run on every commit through `ver
 
 ### 1. DRY and SOLID
 
-**What it means here**
+#### What it means here
 
 - One fit engine, in PHP, in `src/Domain`. The state route, the cart validation, the no-JavaScript form, WP-CLI and the abilities all call it. The browser never decides fit or price.
 - One template per piece of the builder: the server renders it for the first load and the no-JavaScript path, and the Interactivity API re-renders the same markup from the state route's answer. No second copy of the markup in JavaScript.
@@ -135,7 +135,7 @@ The commands are in `CLAUDE.md`. The fast gates run on every commit through `ver
 
 ### 4. Privacy and data handling
 
-**What it means here**
+#### What it means here
 
 - `docs/PRIVACY.md` keeps the data inventory: every table, option, meta key, transient, file, log line, cookie and browser storage key the plugin writes. For each: whether it's personal, why it's kept, how long, who can see it, and how it's exported and erased. A milestone that stores something new updates the inventory in the same pull request.
 - Personal data in 1.0 is only saved builds (a customer's ID, their picks and the name they give it). The rate limiter keeps a salted hash of the address for its one-minute window, never the address. Logs hold no names, emails or addresses.
@@ -179,7 +179,7 @@ The commands are in `CLAUDE.md`. The fast gates run on every commit through `ver
 
 ### 7. SEO
 
-**What it means here**
+#### What it means here
 
 - The builder's clean URL (Skatehouse's /build-a-complete/) is an indexable, fast page with real content in the HTML: one H1, an intro, the first step's options with names and prices, and links to the parts' own pages.
 - Builder state never becomes a crawl trap. Picks, filters, Show more and presets are buttons in GET forms, so crawlers that don't submit forms never enter the builder's states. Every state travels in the `cbuild[…]` parameters, written in slot order. Pages that carry them get `noindex, follow` through `wp_robots` and a canonical link to the clean URL. The only links into states, the done steps and the review's Change links, carry `rel="nofollow"`. There's no robots.txt line, so shared builds can still unfurl (D-017).
@@ -285,7 +285,7 @@ The commands are in `CLAUDE.md`. The fast gates run on every commit through `ver
 
 ### 11. Resilience and error handling
 
-**What it means here**
+#### What it means here
 
 - Nothing the builder does takes down the page around it. Its render callback is a boundary: it logs an exception, shows the shopper "This builder isn't available right now" and shows an admin the reason.
 - Without WooCommerce, or below the floors, the plugin hooks nothing and shows an admin notice.
@@ -304,7 +304,7 @@ The commands are in `CLAUDE.md`. The fast gates run on every commit through `ver
 
 ### 12. UX and content
 
-**What it means here**
+#### What it means here
 
 - **Baymard.** Every screen is checked against Baymard's guidelines for its kind of page (complex configurations, product lists, the cart, the checkout), each check cited in the review.
 - **The deep dive's patterns.** `UX-RESEARCH.md` numbers them, P1 to P12. Each one is either in, with its test, or marked out with a reason. Its list of what goes wrong (W1 to W9) is checked as never done.
