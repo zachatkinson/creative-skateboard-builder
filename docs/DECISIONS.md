@@ -4433,6 +4433,8 @@ Issue #116 asks for a part to be kept out of the builder from wp-admin, without 
 
 Red: with the meta key alone, `NotOfferedTest::test_a_part_with_no_box_is_offered_as_in_1_1_0_and_one_ticked_is_not` failed at NotOfferedTest.php:160 ("Failed asserting that two arrays are identical"), `test_the_box_is_the_filters_first_value_so_the_filter_answers_last` at :174, `test_a_products_box_keeps_out_its_variations_and_a_variations_own_keeps_out_it_alone` at :191, `test_the_box_is_saved_by_who_may_edit_products_through_woocommerces_save_and_tells_what_is_kept` at :225, `test_the_panel_draws_the_box_on_a_product_and_on_each_variation` at :266 and `test_the_catalogue_check_lists_the_parts_kept_out_and_by_whose_box` with `Class "Port\PartsKeptOut" not found`. Deliberate breaks: the filter's first value put back to `true` failed five of the class's tests (the first at NotOfferedTest.php:164); a product's box not read for its variations failed `test_a_products_box_keeps_out_its_variations_and_a_variations_own_keeps_out_it_alone` at :199.
 
+**Status:** Accepted.
+
 ### D-352 · A build's add keeps the cart before it answers · 2026-11-24
 
 Issue #108, and the question #51 left for later: "builds a board from a blank page and places its order" once read an empty cart for 5 s after Add to cart, and in #51 a cart page asked for 120 ms after the add said "Your cart is currently empty."

@@ -1363,6 +1363,26 @@ final class StateRouteTest extends IntegrationTestCase {
 		self::assertSame( 'part_not_in_slot', $picked['refused'][0]['code'] );
 	}
 
+	// Issue #116: a part ticked Not offered in the builder leaves the route as a plugin's false does, and a link or a
+	// saved build that names it is refused as any part that is not the slot's.
+	public function test_a_part_the_shop_keeps_out_is_taken_from_the_route_and_refused_when_picked(): void {
+		$query = array(
+			'picks' => array( 'deck' => $this->parts['deck 8.5'] ),
+			'step'  => 'trucks',
+		);
+		$out   = $this->parts['truck 149'];
+		self::assertSame( array( $out ), array_column( $this->answer( $query )['options'], 'id' ) );
+
+		$truck = wc_get_product( $out );
+		$truck->update_meta_data( Options::META_NOT_OFFERED, 'yes' );
+		$truck->save();
+		do_action( 'cbuild_parts_changed', array( $out ) ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- The plugin's own prefix.
+
+		self::assertSame( array(), $this->answer( $query )['options'], 'kept out of the slot' );
+		$picked = $this->answer( array( 'picks' => array( 'deck' => $this->parts['deck 8.5'], 'trucks' => $out ) ) );
+		self::assertSame( 'part_not_in_slot', $picked['refused'][0]['code'], 'and refused when a link names it' );
+	}
+
 	public function test_a_plugin_that_prices_some_shoppers_apart_says_so_and_each_gets_their_own_card(): void {
 		$deck  = $this->parts['deck 8.0'];
 		$price = fn(): string => $this->answer()['options'][0]['card']['price'];
