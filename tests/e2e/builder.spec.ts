@@ -2468,6 +2468,8 @@ test.describe( 'The keyboard alone', () => {
 		await expect(
 			page.locator( '.cbuild-width__option' ).first()
 		).toHaveAttribute( 'aria-pressed', 'true' );
+		// The question folds at the press (D-356); the decks are drawn once its answer is in and the mark is gone.
+		await expect( page.locator( '.cbuild[data-folded]' ) ).toHaveCount( 0 );
 		const decks = page.getByRole( 'radio', {
 			name: /^Choose Builder test deck/,
 		} );
@@ -4877,12 +4879,19 @@ test.describe( 'Motion', () => {
 				configurable: true,
 			} );
 		} );
+		// Next's answer, asked ahead once the deck's answer lights it (D-355): in hand before the press.
+		const ahead = page.waitForResponse(
+			( response ) =>
+				isRoute( response.url() ) &&
+				response.url().includes( 'cbuild%5Bstep%5D=trucks' )
+		);
 		await pickDeck( page, '8.0' );
 		await settled( page );
 		await expect( page.locator( '.cbuild' ) ).toHaveAttribute(
 			'aria-busy',
 			'false'
 		);
+		await ( await ahead ).finished();
 		// Watched once the API is gone, so nothing of the watch's own can start a transition; each frame counted, the
 		// frame the step's answer came in, and the first frame that shows the new heading (M11 audit, finding 4).
 		await watch( page );
@@ -4918,8 +4927,8 @@ test.describe( 'Motion', () => {
 				}
 				return response;
 			};
-			// Next's answer is asked ahead once it lights (D-355), so it may be in hand before the press: then the
-			// press is the moment the answer is there to show.
+			// Next's answer is asked ahead once it lights (D-355) and is in hand before the press: the press is the
+			// moment the answer is there to show.
 			document.addEventListener(
 				'click',
 				() => record.answered.push( record.frame ),
