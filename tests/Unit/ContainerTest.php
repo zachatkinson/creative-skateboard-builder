@@ -77,6 +77,7 @@ final class ContainerTest extends TestCase {
 				array( \CreativeBranding\SkateboardBuilder\Service\CatalogueCheck::class, 'kept', \CreativeBranding\SkateboardBuilder\Port\PartsKeptOut::class ),
 				array( \CreativeBranding\SkateboardBuilder\Port\Kits::class, 'meta', \CreativeBranding\SkateboardBuilder\Port\ProductMeta::class ),
 				array( \CreativeBranding\SkateboardBuilder\Front\MyBuildsView::class, 'meta', \CreativeBranding\SkateboardBuilder\Port\ProductMeta::class ),
+				array( \CreativeBranding\SkateboardBuilder\Service\ComposedPictures::class, 'layers', \CreativeBranding\SkateboardBuilder\Port\ComposedLayers::class ),
 			) as [ $id, $property, $type ]
 		) {
 			$service = $container->get( $id );
