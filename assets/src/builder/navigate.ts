@@ -80,6 +80,17 @@ class Limited {
 	constructor( readonly message: string ) {}
 }
 
+/**
+ * A refusal in the words given, or null, the form's fallback, where there are none to say.
+ *
+ * @param message The words, which may be none or no text.
+ */
+function limited( message: unknown ): Limited | null {
+	return 'string' === typeof message && '' !== message
+		? new Limited( message )
+		: null;
+}
+
 /** How long a pick waits for the next before the route is asked. */
 export const WAIT = 150;
 
@@ -257,8 +268,9 @@ export class Navigator {
 				return;
 			}
 			// Only the limit aborts the request still asked: a later one or the shopper's typing takes its place first.
+			// A page cached before its words were in the config has none, and sends the form, as a 429 with none does.
 			const view = asking.signal.aborted
-				? new Limited( this.deps.late )
+				? limited( this.deps.late )
 				: answer;
 			const readying =
 				null === view || view instanceof Limited
@@ -343,9 +355,7 @@ export class Navigator {
 				const { message } = Object( await response.json() ) as {
 					message?: unknown;
 				};
-				return 'string' === typeof message && '' !== message
-					? new Limited( message )
-					: null;
+				return limited( message );
 			}
 			if ( ! response.ok ) {
 				return null;

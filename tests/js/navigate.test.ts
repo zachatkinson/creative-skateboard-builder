@@ -502,6 +502,23 @@ describe( 'Navigator', () => {
 		expect( h.pushed ).toEqual( [] );
 	} );
 
+	// The auditor's second pass on M12, minor 8: a page cached before 1.2.0 has no words for the limit in its config,
+	// so past it the form is sent, as past a 429 with nothing to say.
+	it( 'sends the form past LIMIT where the page has no words for it', async () => {
+		const h = harness();
+		const nav = new Navigator( { ...h.deps, late: '' } );
+		nav.go( {
+			fields: STEP,
+			history: 'push',
+			fallback: () => h.fallbacks.push( 'form' ),
+		} );
+		await vi.advanceTimersByTimeAsync( LIMIT );
+		await settle();
+		expect( h.limited, 'nothing said' ).toEqual( [] );
+		expect( h.fallbacks ).toEqual( [ 'form' ] );
+		expect( h.pending ).toEqual( [ true, false ] );
+	} );
+
 	it( 'gives up nothing once the answer is in, nor a request a later one overtook', async () => {
 		const h = harness();
 		const nav = new Navigator( h.deps );
