@@ -27,6 +27,7 @@ use CreativeBranding\SkateboardBuilder\Front\BuilderUrl;
 use CreativeBranding\SkateboardBuilder\Front\BuildLink;
 use CreativeBranding\SkateboardBuilder\Plugin;
 use CreativeBranding\SkateboardBuilder\Tests\Support\KitFactory;
+use CreativeBranding\SkateboardBuilder\Tests\Support\LayerFiles;
 use WC_Product_Simple;
 use WP_Locale_Switcher;
 use WP_REST_Request;
@@ -176,10 +177,11 @@ final class StateRouteTest extends IntegrationTestCase {
 	 * fitting, so its tile is shown. Set up's Street names the 8.0 deck in every other slot, which no other slot
 	 * offers, so it is left out for shoppers.
 	 *
-	 * @param array<string, mixed>|null $layout The kit's layout document, or null for one saved before 1.0.0.
+	 * @param array<string, mixed>|null                                        $layout  The kit's layout document, or null for one saved before 1.0.0.
+	 * @param (callable(array<string, int>): list<array<string, mixed>>)|null $presets The kit's presets from the whole Street's picks, or null for that Street alone.
 	 * @return array{kit: int, picks: array<string, int>}
 	 */
-	private function whole( ?array $layout = null ): array {
+	private function whole( ?array $layout = null, ?callable $presets = null ): array {
 		$slots = KitDocuments::slots();
 		$picks = array(
 			'deck'   => $this->parts['deck 8.0'],
@@ -218,13 +220,13 @@ final class StateRouteTest extends IntegrationTestCase {
 				Options::META_KIT_SLOTS    => $slots,
 				Options::META_KIT_PRESETS  => array(
 					'schema_version' => 1,
-					'presets'        => array(
+					'presets'        => null === $presets ? array(
 						array(
 							'name'        => 'Street',
 							'description' => 'For ledges.',
 							'picks'       => $picks,
 						),
-					),
+					) : $presets( $picks ),
 				),
 				Options::META_KIT_ASSEMBLY => array(
 					'schema_version' => 1,
@@ -947,11 +949,26 @@ final class StateRouteTest extends IntegrationTestCase {
 				'page'   => $this->kit,
 			)
 		);
-		$more = function ( int $upTo ) use ( $decks ): void {
+		// Each deck with a layer image of its own, so the deck step draws a board for each card it lists (D-308): the
+		// interim audit of milestone 11 found the decks here had none, so that path never ran.
+		$layered = static function ( int $deck ): void {
+			$product = wc_get_product( $deck );
+			$product->update_meta_data( Options::META_LAYER, (string) LayerFiles::attachment( 54, 204 ) );
+			$product->save();
+		};
+		$more = function ( int $upTo ) use ( $decks, $layered ): void {
 			for ( $at = count( $this->parts ); $at < $upTo; $at++ ) {
 				$this->parts[ 'deck ' . $at ] = $this->part( 'Deck ' . $at, '65', array( 'deck_width' => '8.2500' ), $decks );
+				$layered( $this->parts[ 'deck ' . $at ] );
 			}
 		};
+		$layered( $this->parts['deck 8.0'] );
+		$layered( $this->parts['deck 8.5'] );
+
+		// Fewer decks than a step lists, so each one added is another card and another board.
+		$more( 10 );
+		$few = array( $count( false ), $count( true ), $moved( false ), $moved( true ) );
+		self::assertNotNull( $this->answer()['options'][0]['board'] ?? null, 'a deck\'s card draws its board' );
 
 		// More parts than a step lists, and then twice as many.
 		$more( 30 );
@@ -959,6 +976,9 @@ final class StateRouteTest extends IntegrationTestCase {
 		$cold      = $count( true );
 		$movedWarm = $moved( false );
 		$movedCold = $moved( true );
+		// A step lists 30 looks at most, so past that the boards drawn stop growing: it is eight decks against thirty
+		// that shows a query for each board.
+		self::assertSame( $few, array( $warm, $cold, $movedWarm, $movedCold ), 'eight decks or thirty, each with its board' );
 		$more( 60 );
 		self::assertSame( $warm, $count( false ), 'warm' );
 		self::assertSame( $cold, $count( true ), 'cold' );
@@ -1169,6 +1189,47 @@ final class StateRouteTest extends IntegrationTestCase {
 		self::assertSame( 'review', $review['step'] );
 		self::assertSame( array(), $review['refused'] );
 		self::assertTrue( $review['ready'] );
+	}
+
+	/**
+	 * The interim audit of milestone 11, should-fix 1: from 1.1.0 the answer leaves a broken ready build out (#104), so
+	 * `presets[i]` is no longer the preset `cbuild[preset]=i` opens. Each says its place among the kit's in `at`, and
+	 * the view's tile takes it from there.
+	 */
+	public function test_each_ready_build_offered_says_its_place_among_the_kits(): void {
+		$whole     = $this->whole(
+			array(
+				'schema_version' => 1,
+				'stage_side'     => 'right',
+			),
+			fn( array $picks ): array => array(
+				array(
+					'name'        => 'Street',
+					'description' => 'For ledges.',
+					'picks'       => $picks,
+				),
+				// The 8.0 deck in every slot but the deck's and the trucks': none of them offers it.
+				array(
+					'name'        => 'Broken',
+					'description' => '',
+					'picks'       => array(
+						'deck'   => $this->parts['deck 8.0'],
+						'trucks' => $this->parts['truck 139'],
+					) + array_fill_keys( array( 'wheels', 'bearings', 'hardware', 'grip' ), $this->parts['deck 8.0'] ),
+				),
+				array(
+					'name'        => 'Park',
+					'description' => '',
+					'picks'       => $picks,
+				),
+			)
+		);
+		$this->kit = $whole['kit'];
+		$shown     = $this->answer( array( 'cbuild' => array( 'step' => 'deck' ) ) );
+		self::assertSame( array( 'Street', 'Park' ), array_column( $shown['presets'], 'name' ) );
+		self::assertSame( array( 0, 2 ), array_column( $shown['presets'], 'at' ) );
+		$fields = array_map( static fn( array $tile ): array => array_column( $tile['fields'], 'value', 'name' ), $shown['view']['presets']['tiles'] );
+		self::assertSame( array( '0', '2' ), array_column( $fields, BuildLink::PARAM . '[preset]' ), 'each tile opens its own' );
 	}
 
 	public function test_a_plugin_that_rules_a_part_out_takes_it_from_the_route(): void {

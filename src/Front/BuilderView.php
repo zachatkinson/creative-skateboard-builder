@@ -415,12 +415,11 @@ final class BuilderView {
 		// At the start alone: on the first step, with nothing picked. A build begun is the shopper's own.
 		$first = $state->kit->slots->keys()[0] ?? '';
 		if ( array() === $link->picks && null === $link->preset && $first === $state->step ) {
-			// The answer lists the presets a shopper is offered, in the kit's order; each keeps its place among the kit's
-			// in `cbuild[preset]` (#104).
-			$places = $state->shownPresets();
-			foreach ( Cast::items( $answer['presets'] ?? null ) as $shown => $preset ) {
-				$at     = $places[ $shown ] ?? $shown;
+			// The answer lists the presets a shopper is offered, in the kit's order; each says its place among the kit's,
+			// which `cbuild[preset]` takes (#104).
+			foreach ( Cast::items( $answer['presets'] ?? null ) as $preset ) {
 				$preset = Cast::map( $preset );
+				$at     = Cast::int( $preset['at'] ?? null );
 				$picks  = array();
 				foreach ( Cast::items( $preset['picks'] ?? null ) as $pick ) {
 					$pick                                        = Cast::map( $pick );

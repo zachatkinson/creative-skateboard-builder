@@ -395,7 +395,8 @@ final class StateAnswer {
 			$begun = $begun || null !== $step->counted();
 		}
 		// The presets a shopper is offered (#104): none where the kit's Show ready builds is off, and none a problem keeps
-		// from the cart. Each keeps its place among the kit's for the filters, and the Catalogue check lists the rest.
+		// from the cart. Each keeps its place among the kit's for the filters and says it in `at`, and the Catalogue check
+		// lists the rest.
 		foreach ( $state->shownPresets() as $at ) {
 			$preset = $state->kit->presets[ $at ];
 			$picks  = array();
@@ -406,6 +407,8 @@ final class StateAnswer {
 			$kept      = null === $built ? array() : $built->problems();
 			$first     = self::first( $preset->picks );
 			$presets[] = array(
+				// From 1.1.0: its place among the kit's, which `cbuild[preset]` takes, as the list leaves some out.
+				'at'          => $at,
 				'name'        => self::preset( $preset->name, $at, $state->id ),
 				'description' => self::text( $preset->description, 'preset_description', $state->id, (string) $at ),
 				'picks'       => $picks,

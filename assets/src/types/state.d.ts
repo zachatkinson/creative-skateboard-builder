@@ -153,11 +153,15 @@ export interface CbuildState {
 		returns_notice: string;
 	};
 	/**
-	 * The kit's ready builds a shopper is offered, six at most, in the kit's order. From 1.1.0 none where the kit's show_presets is off, and none with a part that's gone, sold out or no longer fits, so each one listed is ready, with no problems. A link with cbuild[preset] still opens any of the kit's.
+	 * The kit's ready builds a shopper is offered, six at most, in the kit's order. From 1.1.0 none where the kit's show_presets is off, and none with a part that's gone, sold out or no longer fits, so each one listed is ready, with no problems, and says its place among the kit's in `at`. A link with cbuild[preset] still opens any of the kit's.
 	 *
 	 * Items: A preset.
 	 */
 	presets: {
+		/**
+		 * Its place among the kit's presets, counted from 0: the value a link's cbuild[preset] takes to open it. The list leaves some out, so it may not be the entry's own place in the list. From 1.1.0.
+		 */
+		at: number;
 		/**
 		 * Its name.
 		 */

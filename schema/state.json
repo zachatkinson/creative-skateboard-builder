@@ -125,12 +125,13 @@
 			}
 		},
 		"presets": {
-			"description": "The kit's ready builds a shopper is offered, six at most, in the kit's order. From 1.1.0 none where the kit's show_presets is off, and none with a part that's gone, sold out or no longer fits, so each one listed is ready, with no problems. A link with cbuild[preset] still opens any of the kit's.",
+			"description": "The kit's ready builds a shopper is offered, six at most, in the kit's order. From 1.1.0 none where the kit's show_presets is off, and none with a part that's gone, sold out or no longer fits, so each one listed is ready, with no problems, and says its place among the kit's in `at`. A link with cbuild[preset] still opens any of the kit's.",
 			"type": "array",
 			"items": {
 				"description": "A preset.",
 				"type": "object",
 				"required": [
+					"at",
 					"name",
 					"description",
 					"picks",
@@ -140,6 +141,11 @@
 					"image"
 				],
 				"properties": {
+					"at": {
+						"description": "Its place among the kit's presets, counted from 0: the value a link's cbuild[preset] takes to open it. The list leaves some out, so it may not be the entry's own place in the list. From 1.1.0.",
+						"type": "integer",
+						"minimum": 0
+					},
 					"name": {
 						"description": "Its name.",
 						"type": "string"

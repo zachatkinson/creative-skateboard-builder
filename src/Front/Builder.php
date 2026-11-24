@@ -230,10 +230,12 @@ final class Builder {
 		foreach ( null === $view ? array() : array_merge( $view->listing->looks, $view->listing->soldOut ) as $card ) {
 			$size = $card->option->part->specs->measure( SpecKey::DeckWidth );
 			if ( null !== $size && $card->option->part->id !== $picked->part->id && in_array( $picked->part, $card->look->parts(), true ) ) {
+				// A deck with no name moves all the same, and is not said with none.
+				$name = $view->names[ $card->look->product ] ?? '';
 				return array(
 					'part' => $card->option->part->id,
 					/* translators: 1: a deck's name, such as Hard Hat. 2: the width it is now, such as 8.5″. */
-					'said' => sprintf( __( '%1$s is now %2$s.', 'creative-skateboard-builder' ), $view->names[ $card->look->product ] ?? '', Words::measure( $size ) ),
+					'said' => '' === $name ? '' : sprintf( __( '%1$s is now %2$s.', 'creative-skateboard-builder' ), $name, Words::measure( $size ) ),
 				);
 			}
 		}

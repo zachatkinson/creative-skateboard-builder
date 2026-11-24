@@ -563,6 +563,24 @@ final class BuilderShelfTest extends TestCase {
 		self::assertSame( 103, $ticked[0]['id'], 'its card ticked at the new width' );
 	}
 
+	// The interim audit of milestone 11: a look with no name said " is now 8.5″." It moves all the same, and says nothing.
+	public function test_a_new_width_moves_a_deck_with_no_name_and_says_nothing_of_it(): void {
+		foreach ( array( 101, 103 ) as $part ) {
+			$this->looks->facts[ $part ] = new LookFact( 900, 5, 0, '', array(), array(), false, 0, 0 );
+		}
+		$shown = $this->shown(
+			BuildLink::read(
+				array(
+					'deck'   => '101',
+					'step'   => 'deck',
+					'_width' => '8.5in',
+				)
+			)
+		);
+		self::assertStringContainsString( rawurlencode( 'cbuild[deck]' ) . '=103', Cast::str( $shown['view']['url'] ), 'the build holds the deck at 8.5″' );
+		self::assertStringNotContainsString( 'is now', Cast::str( $shown['view']['status'] ) );
+	}
+
 	public function test_a_new_width_the_picked_decks_look_is_not_made_in_keeps_the_pick_and_its_card_says_which_width_it_is(): void {
 		$shown = $this->shown(
 			BuildLink::read(

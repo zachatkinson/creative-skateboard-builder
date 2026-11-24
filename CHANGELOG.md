@@ -18,6 +18,7 @@ All notable changes to this project are documented here. The format follows [Kee
 - The state route's `picture.items[].large`: the part's photo uncropped, at the shop's single-product size, or null (#82, D-303).
 - **Show ready builds**, in a kit's Build tab, Presets section: `show_presets` in `_cbuild_layout` (`schema/kit-layout.json`), on unless unticked. A kit saved before 1.1.0 shows its ready builds. Off, "Start from a ready build" is hidden on the page and in the state route, and the ready builds are kept as they are (#104, D-315).
 - `cbuild-chips__more`, `cbuild-chips__more--idle`, `cbuild-chips__chip--past` and `cbuild-chips__options--row`: the brand chips' "N more", its state with nothing to open, a chip past the row, and the brand row (#98, D-314).
+- The state route's `presets[].at`: each ready build's place among the kit's, the value `cbuild[preset]` takes, since `presets` leaves out the ones that aren't whole (#104).
 - `cbuild-cards--compact`, on the deck step's card lists, and `cbuild-card__photo--drawn`, on a card's picture drawn from the deck's layer image (#99, D-322).
 
 ### Changed
