@@ -2686,6 +2686,47 @@ test.describe( 'The brand chips in one row', () => {
 		await expect( chips.nth( shown ) ).toBeVisible();
 	} );
 
+	// The interim audit of M11: a page that will run the script clips the row to one line until the store folds it. If
+	// the script never comes (a blocker, a policy, an error), the clip is lifted after a while, so no brand is cut off
+	// and no focusable chip is out of sight.
+	test( 'shows every brand if the script never comes', async ( {
+		page,
+		javaScriptEnabled,
+	}, info ) => {
+		test.skip(
+			! javaScriptEnabled || info.project.name.endsWith( '-phone' ),
+			'Only a desktop with the script clips the row.'
+		);
+		await page.setViewportSize( { width: 1280, height: 900 } );
+		await page.route(
+			( url ) => url.href.startsWith( shelfAt().split( '?' )[ 0 ]! ),
+			async ( route ) => {
+				const response = await route.fetch();
+				const body = ( await response.text() ).replace(
+					'</head>',
+					'<style>.cbuild .cbuild-chips__group:first-of-type .cbuild-chip { min-inline-size: 15rem; }</style></head>'
+				);
+				await route.fulfill( { response, body } );
+			}
+		);
+		await page.route( /\/build\/builder\/view\.js/, ( route ) =>
+			route.abort()
+		);
+		// Not the fixture's goto, which waits for the ready mark the store never sets here.
+		await page.goto( shelfAt(), { waitUntil: 'load' } ).catch( () => null );
+		const chips = page
+			.locator( '.cbuild-chips__group' )
+			.first()
+			.locator( '.cbuild-chips__chip' );
+		expect( await chips.count() ).toBeGreaterThan( 3 );
+		// Past the 4 s the clip waits for, each chip scrolled to is seen: one cut off by the clip stays out of sight.
+		await page.waitForTimeout( 4500 );
+		for ( const chip of await chips.all() ) {
+			await chip.scrollIntoViewIfNeeded();
+			await expect( chip ).toBeInViewport();
+		}
+	} );
+
 	test( 'keeps the row one line from the first paint, so folding it moves nothing under it', async ( {
 		page,
 		javaScriptEnabled,
@@ -4387,6 +4428,51 @@ test.describe( 'The deck swap', () => {
 			return w.asked - w.pressed;
 		} );
 		expect( waited, 'asked at once, not 150 ms after' ).toBeLessThan( 100 );
+	} );
+
+	// The interim audit of M11: nothing loops (SPEC-CONFIGURATOR: Motion; WCAG 2.2.2). The line that says a picture is on
+	// its way runs four times at most, under five seconds, and the dimmed board goes on saying it after.
+	test( 'stops the line that says the board is drawing within five seconds, and keeps the board dimmed', async ( {
+		page,
+	} ) => {
+		await page.emulateMedia( { reducedMotion: 'no-preference' } );
+		await start( page );
+		await expect( page.locator( '.cbuild[data-ready]' ) ).toHaveCount( 1 );
+		let release: () => void = () => undefined;
+		const held = new Promise< void >( ( done ) => ( release = done ) );
+		await page.route(
+			( url ) => url.pathname.endsWith( '/state' ),
+			async ( route ) => {
+				const answer = await route.fetch();
+				await held;
+				await route.fulfill( { response: answer } ).catch( () => null );
+			}
+		);
+		await page
+			.getByRole( 'radio', { name: 'Choose Builder test deck 8.5' } )
+			.focus();
+		await page.keyboard.press( 'Space' );
+		const picture = page.locator( '#cbuild-picture' );
+		await expect( picture ).toHaveAttribute( 'aria-busy', 'true', {
+			timeout: 10_000,
+		} );
+		const running = () =>
+			page.evaluate(
+				() =>
+					document
+						.getAnimations()
+						.filter(
+							( one ) =>
+								'cbuild-drawing' ===
+									( one as CSSAnimation ).animationName &&
+								'running' === one.playState
+						).length
+			);
+		expect( await running(), 'the line runs at first' ).toBe( 1 );
+		await page.waitForTimeout( 5000 );
+		expect( await running(), 'the line has stopped' ).toBe( 0 );
+		await expect( picture ).toHaveAttribute( 'aria-busy', 'true' );
+		release();
 	} );
 
 	test( 'on Slow 4G keeps the old board whole, says it is drawing from 300 ms, and draws the new one whole', async ( {

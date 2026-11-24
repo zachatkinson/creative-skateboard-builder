@@ -3995,3 +3995,23 @@ Cowork's 1.0.0 review, F14 (#99), to the 18 November mockup. At 1440 px a deck c
 **Tests.** The unit tests and red runs are listed in section 2. E2E: "Compact deck cards (F14)" in `builder.spec.ts` and `shelf.spec.ts` (six in view at 1440 by 900, two to a row, one column on a phone, each card from 44 to 170 px).
 
 **Status:** Accepted.
+
+D-316 to D-318 are unused: numbers drafted for three of Cowork's 1.0.0 fixes, which landed as D-320 to D-322 after D-319.
+
+### D-328 · The brand row's first-paint clip lifts if the script never comes, and the drawing line stops after four runs · 2026-11-23
+
+M11's interim audit, two of its should-fixes.
+
+- **The clip (D-314).** A page that will run the script shows the brand row's first line alone until the store folds it, so the fold moves nothing. If the script never comes (a blocker, a content policy, an error), the chips past that line were cut off for good, and still took focus out of sight (WCAG 2.4.11). The clip now holds only while the builder has no ready mark (D-296), and lifts after 4 s by a CSS animation of no length, which needs no script. A script slower than 4 s folds a row already shown in full, a shift a page that slow already has elsewhere.
+- **The line (D-308).** The line that says a picture is on its way ran for as long as the wait. The spec says nothing loops (SPEC-CONFIGURATOR: Motion; AUDIT.md: UX), and past 5 s a moving thing needs a way to stop it (WCAG 2.2.2). It now runs four times, 4.4 s; the dimmed board goes on saying the picture is coming.
+- **Not changed.** The state route's request still has no time limit (`navigate.ts`); a request that hangs leaves the board dimmed. Listed for Zach in M11's review.
+
+**Tests.** `builder.spec.ts` "shows every brand if the script never comes" (the script aborted; each chip scrolled to is in view after 4.5 s) and "stops the line that says the board is drawing within five seconds, and keeps the board dimmed". Before the change: "Received: viewport ratio 0" and "the line has stopped / Expected: 0 / Received: 1".
+
+**Status:** Accepted.
+
+### D-329 · M11's motion durations stand over the older 150 to 250 ms range · 2026-11-23
+
+AUDIT.md (Motion) and SPEC.md (Quality bar) still give 150 to 250 ms for the builder's motion, from before milestone 11. SPEC-CONFIGURATOR's table for M11, which this milestone builds to, gives 280 ms for the deck's settle, 300 ms for the grip and 400 ms for the turn (D-305, D-306). The later, specific table wins, as AUDIT.md's own rule says where two documents differ; D-220's range is read as the default for anything the table doesn't name. Found by M11's interim audit.
+
+**Status:** Accepted; the two documents are Zach's to bring into line, listed in M11's review.
