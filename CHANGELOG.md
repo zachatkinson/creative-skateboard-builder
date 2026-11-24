@@ -35,6 +35,8 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Fixed
 
+- A theme's own styles for fieldsets, buttons and headings, such as Kadence's, no longer box the builder's questions, fill Filters and Show the top, show Filters on a desktop or push the step's heading down (Cowork's 1.0.0 review, F11; #96; D-321).
+- Board size keeps the board at 60 % (large) or 50 % (balanced) of the width on every desktop screen, and the panel's contents stay 40rem wide at most (F12, #97, D-321).
 - On a phone, Show the top no longer covers the board's tail: the button has a row of its own under the board on the stage at every width, kept while there is no top so nothing moves (Cowork's 1.0.0 review, F17; #102; D-320).
 - After a new width, the picked deck moves to its look in that width, and the status says so: "Hard Hat is now 8.5″." Where the look isn't made in that width, the pick stays and its card says "Picked in 8.25″. Not made in 8.5″." (#81, D-301).
 - A mouse press held while the builder hydrates goes through, on Chromium and WebKit (#80).

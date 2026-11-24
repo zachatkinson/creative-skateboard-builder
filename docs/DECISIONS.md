@@ -3952,3 +3952,24 @@ Cowork's review of 1.0.0, F17 (#102): at 390 px the board lay across the stage's
 **Why:** the mockup, and a control over the picture it controls hides what it shows. On a desktop the upright board is about 52 px shorter, the price of the guarantee where the stage is narrow.
 
 **Status:** Accepted.
+
+### D-321 · A theme's plain rules for a fieldset, a button and a heading no longer outrank the builder's resets, and Board size's share holds at every width · 2026-11-23
+
+- **The resets (#96, F11).** A rule inside `:where()` has no weight, so Kadence's `fieldset`, `button`, `button:hover` and `.single-content h2`, and Storefront's `fieldset`, beat the builder's resets. The fix raises only the resets, each to the least weight that wins:
+  - a fieldset to one class, `.cbuild :where(fieldset)`;
+  - the step's heading to two classes, `.cbuild .cbuild__heading`, over `.single-content h2`;
+  - a plain `button` to two classes, `.cbuild.cbuild :where(button):not(:where(...))`, over `button:hover`, which is one class and an element. The same declarations keep a selector at no weight for every other builder button.
+  - The step's one action, `[hidden]`, the step form's default button and the step's own Next are left out, so the reset never shows what the builder hides and the primary button keeps a theme's fill.
+  - The builder's own rules that must beat the reset come after it at the same weight or more: Filters' `display: none` from 48rem, the space above the filters' groups and a card's sizes, and the pressed border of Show the top under forced colours.
+  - Cascade layers were weighed and turned down. Every unlayered style beats every layered one, and themes ship unlayered CSS, so putting the builder in a layer would make it lose to more theme rules, not fewer. Colours and spacing stay at no weight, so a theme still restyles them with one class.
+- **Board size (#97, F12).** The panel's column is `max(23.75rem, 40%)` on large and `max(23.75rem, 50%)` on balanced, so the board is 60 % or 50 % of the width at 1280, 1440 and 1920 px alike. The panel's contents stop at 40rem and sit in its middle, so lines stay readable in a wide panel. This replaces D-292's cap on the column. The spec's "380 to 520 px" for the panel now holds only for its contents' measure, not its width, as the setting's own words win (Zach, 20 November).
+- **Sources:**
+  - CSS Cascading and Inheritance Level 5, cascade layers ("unlayered styles … take precedence"): https://www.w3.org/TR/css-cascade-5/#layer-ordering
+  - Selectors Level 4, specificity of `:where()`, `:is()` and `:not()`: https://www.w3.org/TR/selectors-4/#specificity-rules
+  - MDN, `:where()`: https://developer.mozilla.org/en-US/docs/Web/CSS/:where
+  - MDN, Specificity (repeating a class raises it): https://developer.mozilla.org/en-US/docs/Web/CSS/Specificity
+  - Kadence 1.x `assets/css/global.min.css` (`fieldset`, `button`, `button:hover`) and `content.min.css` (`.single-content h2`), as wp-env installed them.
+
+**Why:** Cowork's 1.0.0 review: on the demo the fieldsets were boxed, Filters and Show the top competed with Next, Filters showed on a desktop, and the board took about two thirds of a wide screen while the setting said half.
+
+**Status:** Accepted. The panel's width past the spec's 380 to 520 px is listed for Zach in M11's review.

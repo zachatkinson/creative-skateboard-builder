@@ -3,8 +3,9 @@
  *
  * - Every colour, size and font is a `--cbuild-*` property that falls back to the theme's presets, then to the
  *   text's own colour, so the builder takes a theme's palette, dark or light, without being told which.
- * - Base rules sit inside `:where()`, so a theme overrides any of them with one class. The two rules outside it are
- *   the ones a theme must not undo by accident: `[hidden]` hides, and the screen-reader text stays off screen.
+ * - Base rules sit inside `:where()`, so a theme overrides any of them with one class. The rules outside it are the
+ *   ones a theme must not undo by accident: `[hidden]` hides, the screen-reader text stays off screen, and the resets
+ *   of a fieldset, a plain button and the step's heading hold against a theme's rules for the bare element (#96).
  * - Logical properties throughout, so a right-to-left page mirrors the layout and nothing else.
  * - The layout follows the builder's own width (container queries), so it works in a narrow column as at full width.
  */
@@ -181,11 +182,24 @@
 }
 
 /*
+ * A fieldset's reset at a class's weight (#96, D-321): a theme's rule for the bare element, as Kadence's and
+ * Storefront's `fieldset` with its border, padding and margin, outweighs a reset inside `:where()`. One class is enough
+ * over an element's rule; the builder's own spacing for a fieldset (the filters' groups, a card's sizes) is set at the
+ * same weight after it. A theme still restyles a fieldset with a class and the element.
+ */
+.cbuild :where(fieldset) {
+	min-inline-size: 0;
+	margin: 0;
+	padding: 0;
+	border: 0;
+}
+
+/*
  * The frame (spec: The layout): the rail across the top, then the stage and the panel, the footer pinned at the
  * panel's foot. Narrower than 64rem the stage sits on top, sticky at 40 to 45 % of the screen's height, and the panel
  * scrolls with the page under it; on a phone the board is turned a quarter turn to fill that space. From 64rem the
- * stage is on the left, the panel 380 to 520 pixels wide on the right, and the two together the screen's height, the
- * panel scrolling inside itself. A theme with a sticky header sets `--cbuild-top` to its height.
+ * stage is on the left, the panel 40 % of the width on the right (50 % on a balanced layout, never under 380 pixels),
+ * and the two together the screen's height, the panel scrolling inside itself. A theme with a sticky header sets `--cbuild-top` to its height.
  */
 :where(.cbuild) {
 	display: grid;
@@ -249,7 +263,9 @@
 	padding-block: var(--cbuild-gap);
 }
 
-:where(.cbuild__heading) {
+/* Two classes, over a theme's rule for a heading in its content, as Kadence's `.single-content h2` with 1.5em above
+   (#96). */
+.cbuild .cbuild__heading {
 	margin: 0;
 }
 
@@ -278,7 +294,7 @@
 @container cbuild (min-width: 64rem) {
 	:where(.cbuild__layout) {
 		display: grid;
-		grid-template-columns: minmax(0, 1fr) clamp(23.75rem, 40%, 32.5rem);
+		grid-template-columns: minmax(0, 1fr) max(23.75rem, 40%);
 		grid-template-rows: minmax(0, 1fr);
 		// The screen's height under the rail: one row a target high, its list's padding, its own and its rule.
 		// prettier-ignore
@@ -300,23 +316,26 @@
 		border-inline-start: 1px solid var(--cbuild-line);
 	}
 
+	/* The panel's contents stop at 40rem and sit in its middle, so a wide panel keeps a line short enough to read; the
+	   panel itself still fills its share, and scrolls at its own edge (#97, D-321). */
 	:where(.cbuild__body) {
 		overflow-y: auto;
 		overscroll-behavior: contain;
-		padding-inline: var(--cbuild-gap);
+		padding-inline: max(var(--cbuild-gap), (100% - 40rem) / 2);
 	}
 
-	/* The kit's Layout (D-255): the board balanced takes half the width, and the stage may take the right side. */
+	/* The kit's Layout (D-255): Board size's share of the width at every width, 60 % for the board on large and 50 % on
+	   balanced (#97), and the stage may take the right side. The panel is never narrower than 380 px. */
 	:where(.cbuild--balanced .cbuild__layout) {
-		grid-template-columns: minmax(0, 1fr) clamp(23.75rem, 50%, 40rem);
+		grid-template-columns: minmax(0, 1fr) max(23.75rem, 50%);
 	}
 
 	:where(.cbuild--stage-right .cbuild__layout) {
-		grid-template-columns: clamp(23.75rem, 40%, 32.5rem) minmax(0, 1fr);
+		grid-template-columns: max(23.75rem, 40%) minmax(0, 1fr);
 	}
 
 	:where(.cbuild--stage-right.cbuild--balanced .cbuild__layout) {
-		grid-template-columns: clamp(23.75rem, 50%, 40rem) minmax(0, 1fr);
+		grid-template-columns: max(23.75rem, 50%) minmax(0, 1fr);
 	}
 
 	:where(.cbuild--stage-right .cbuild__stage) {
@@ -329,8 +348,28 @@
 	}
 }
 
-/* Buttons: the step's Next and Back, Add to cart, the filters, Show more, Use these and Undo, Copy link. */
-:where(.cbuild) :where(button, .cbuild-button) {
+/*
+ * Buttons: the step's Next and Back, Add to cart, the filters, Show more, Use these and Undo, Copy link.
+ *
+ * The reset is written once for two selectors, each with its own weight (#96, D-321):
+ * - every builder button at no weight, so a theme restyles one with a class;
+ * - a plain `button` again at two classes' weight. A classic theme's rule for every `button`, and its `button:hover`
+ *   and `button:focus` (an element and a pseudo-class), outweigh a reset at no weight: on Kadence, Filters and Show
+ *   the top took the theme's fill and shadow, and its `display` showed Filters on a desktop. The step's one action
+ *   keeps whatever fill a theme gives it, and what the builder hides (`[hidden]`, the step form's default button, the
+ *   step's own Next) is left out, so this never shows it. The builder's rules for a kind of button (a chip, a filter,
+ *   Filters on a desktop) sit after this at the same weight or more, and win.
+ */
+:where(.cbuild) :where(button, .cbuild-button),
+.cbuild.cbuild
+	:where(button):not(
+		:where(
+			.cbuild-button--primary,
+			.cbuild-step__next,
+			.cbuild-step__default,
+			[hidden]
+		)
+	) {
 	box-sizing: border-box;
 	display: inline-flex;
 	align-items: center;
@@ -343,13 +382,23 @@
 	border: 1px solid var(--cbuild-line);
 	border-radius: var(--cbuild-radius);
 	background: transparent;
+	box-shadow: none;
 	color: inherit;
 	font: inherit;
 	line-height: 1.3;
 	cursor: pointer;
 }
 
-:where(.cbuild) :where(button:disabled) {
+:where(.cbuild) :where(button:disabled),
+.cbuild.cbuild
+	:where(button:disabled):not(
+		:where(
+			.cbuild-button--primary,
+			.cbuild-step__next,
+			.cbuild-step__default,
+			[hidden]
+		)
+	) {
 	cursor: not-allowed;
 	opacity: 0.55;
 }
@@ -629,7 +678,6 @@
 	flex-wrap: wrap;
 	align-items: center;
 	gap: var(--cbuild-gap-small);
-	margin-block-start: var(--cbuild-gap-small);
 
 	:where(legend) {
 		inline-size: 100%;
@@ -742,8 +790,10 @@
 	}
 }
 
+/* As heavy as a plain button's reset and after it, so neither that reset nor a theme's `display` for a button shows
+   Filters over chips that are already open (#96). */
 @container cbuild (width >= 48rem) {
-	:where(.cbuild-chips__toggle) {
+	.cbuild.cbuild .cbuild-chips__toggle {
 		display: none;
 	}
 }
@@ -879,8 +929,9 @@
 	}
 }
 
-/* The picked card's sizes (D-279): chips under the card, a sold-out size dimmed and not to be picked. */
-:where(.cbuild-sizes) {
+/* The picked card's sizes (D-279): chips under the card, a sold-out size dimmed and not to be picked. The space above
+   them and above the filters' groups is at a fieldset's reset's weight, after it (#96). */
+.cbuild :where(.cbuild-filters__group, .cbuild-sizes) {
 	margin-block-start: var(--cbuild-gap-small);
 }
 
@@ -1714,7 +1765,8 @@
 		forced-color-adjust: none;
 	}
 
-	:where(.cbuild-picture__turn .cbuild-button[aria-pressed="true"]) {
+	/* Over a plain button's reset, which sets its border at two classes' weight (#96). */
+	.cbuild.cbuild .cbuild-picture__turn .cbuild-button[aria-pressed="true"] {
 		border: 3px solid Highlight;
 	}
 }

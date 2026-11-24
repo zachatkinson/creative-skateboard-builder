@@ -2996,6 +2996,190 @@ test.describe( 'Radios on a dark theme whose contrast colour is dark', () => {
 	} );
 } );
 
+// Cowork's 1.0.0 review, F11 (#96): a theme's plain rules for a fieldset, a button and a heading outranked the
+// builder's resets, which sat at no weight inside :where(). On Kadence the fieldsets were boxed and padded, Filters
+// and Show the top took the theme's button fill, Filters showed on a desktop, and the step's heading had 60 px above
+// it. Storefront boxes and pads a fieldset too. Twenty Twenty-Five, which styles none of them, must look as it did.
+test.describe( "A theme's own fieldset, button and heading rules (#96)", () => {
+	for ( const theme of [ 'kadence', 'storefront', 'twentytwentyfive' ] ) {
+		test( `leave the builder's fieldsets, plain buttons and step heading as the builder draws them on ${ theme }`, async ( {
+			page,
+			context,
+			baseURL,
+		} ) => {
+			const url = baseURL || 'http://localhost:8898';
+			await context.addCookies( [
+				{ name: 'cbuild_e2e_theme', value: theme, url },
+			] );
+			await page.setViewportSize( { width: 1280, height: 900 } );
+			// The deck step with a width picked: the width line, the brand chips and the step's cards, each a fieldset.
+			await page.goto( linkTo( { _width: '8in' } ) );
+			await expect(
+				page.locator( '.cbuild-step__fieldset' )
+			).toBeVisible();
+			// Each shown fieldset, by its class, with any border, padding or margin a theme gave it. The sizes and the
+			// filters' groups keep the small space the builder puts above them.
+			const boxed = await page
+				.locator( '.cbuild fieldset' )
+				.evaluateAll( ( sets ) =>
+					sets
+						.filter( ( set ) => set.getClientRects().length > 0 )
+						.flatMap( ( set ) => {
+							const own = getComputedStyle( set );
+							const spaced = ! set.matches(
+								'.cbuild-sizes, .cbuild-filters__group'
+							);
+							const wrong = [
+								[ 'border', own.borderTopWidth ],
+								[ 'border', own.borderInlineStartWidth ],
+								[ 'padding', own.paddingTop ],
+								[ 'padding', own.paddingInlineStart ],
+								[ 'padding', own.paddingInlineEnd ],
+								[ 'margin', own.marginInlineStart ],
+								...( spaced
+									? [
+											[ 'margin', own.marginTop ],
+											[ 'margin', own.marginBottom ],
+										]
+									: [] ),
+							].filter( ( [ , value ] ) => value !== '0px' );
+							return wrong.map(
+								( [ what, value ] ) =>
+									`${ set.className } ${ what } ${ value }`
+							);
+						} )
+				);
+			expect( boxed, 'no fieldset boxed, padded or spaced' ).toEqual(
+				[]
+			);
+			// The step's heading, under Back to the shop, with no theme margin round it.
+			const title = page.locator( '.cbuild__heading' );
+			await expect( title ).toHaveCSS( 'margin-top', '0px' );
+			await expect( title ).toHaveCSS( 'margin-bottom', '0px' );
+			// Filters, which only a phone needs: the chips are open beside it from 48rem.
+			await expect(
+				page.locator( '.cbuild-chips__toggle' )
+			).toBeHidden();
+			// Without the script the board is never turned, so there is no Show the top to look at.
+			if ( test.info().project.name === 'no-js' ) {
+				return;
+			}
+			await page.goto(
+				linkTo( {
+					deck: id( 'builder-test-deck-8-0' ),
+					step: 'trucks',
+				} )
+			);
+			const turn = page.locator(
+				'.cbuild__stage .cbuild-picture__turn button'
+			);
+			await expect( turn ).toBeVisible();
+			// A plain button is drawn second to the step's one action: no fill and no shadow of the theme's, at rest or
+			// under the pointer, whose rule on Kadence outweighs a single class.
+			for ( const state of [ 'at rest', 'under the pointer' ] ) {
+				if ( state === 'under the pointer' ) {
+					await turn.hover();
+				}
+				await expect( turn, state ).toHaveCSS(
+					'background-color',
+					'rgba(0, 0, 0, 0)'
+				);
+				await expect( turn, state ).toHaveCSS( 'box-shadow', 'none' );
+				// The builder's inline-flex, made a flex box by its row: not the theme's inline-block.
+				await expect( turn, state ).toHaveCSS( 'display', /flex$/ );
+			}
+			// What the builder hides stays hidden, whatever the theme's `display` for a button.
+			expect(
+				await page
+					.locator( '.cbuild button[hidden]' )
+					.evaluateAll(
+						( hidden ) =>
+							hidden.filter(
+								( button ) => button.getClientRects().length > 0
+							).length
+					),
+				'no hidden button shown'
+			).toBe( 0 );
+		} );
+	}
+
+	test( 'leave Filters a plain button on a phone, on kadence', async ( {
+		page,
+		context,
+		baseURL,
+	} ) => {
+		test.skip(
+			test.info().project.name === 'no-js',
+			'Filters is the script’s: without it the chips are open.'
+		);
+		const url = baseURL || 'http://localhost:8898';
+		await context.addCookies( [
+			{ name: 'cbuild_e2e_theme', value: 'kadence', url },
+		] );
+		await page.setViewportSize( { width: 390, height: 844 } );
+		// The shelf kit's deck step, with enough decks to have chips behind Filters.
+		const shelf = new URL( fixture().shelf.page );
+		shelf.searchParams.set( 'cbuild[_width]', '8.25in' );
+		await page.goto( shelf.toString() );
+		const filters = page.locator( '.cbuild-chips__toggle' );
+		await expect( filters ).toBeVisible();
+		await expect( filters ).toHaveCSS(
+			'background-color',
+			'rgba(0, 0, 0, 0)'
+		);
+		await expect( filters ).toHaveCSS( 'box-shadow', 'none' );
+	} );
+} );
+
+// Cowork's 1.0.0 review, F12 (#97): Board size's labels are "Large, 60 % of the width" and "Balanced, 50 % of the
+// width", but the panel stopped growing at 520 or 640 px, so past about 1,300 px the board took more. The board's
+// share holds at every desktop width, with the stage on either side.
+test.describe( 'Board size on a desktop (#97)', () => {
+	for ( const width of [ 1280, 1440, 1920 ] ) {
+		test( `keeps the board at 60 % on large and 50 % on balanced at ${ width } px`, async ( {
+			page,
+		} ) => {
+			await page.setViewportSize( { width, height: 900 } );
+			// The kit's own page gives the builder the screen's width (D-283).
+			await page.goto( '/product/builder-test-kit/' );
+			await expect( page.locator( '.cbuild__layout' ) ).toHaveCSS(
+				'display',
+				'grid'
+			);
+			// The builder's own classes for the kit's Layout (templates/builder/builder.php), set here so one kit
+			// serves every case; the setting that sets them is the integration suite's.
+			const share = ( classes: string[] ) =>
+				page.locator( '.cbuild' ).evaluate( ( root, set ) => {
+					root.classList.remove(
+						'cbuild--balanced',
+						'cbuild--stage-right'
+					);
+					root.classList.add( ...set );
+					const layout = root
+						.querySelector( '.cbuild__layout' )
+						?.getBoundingClientRect();
+					const stage = root
+						.querySelector( '.cbuild__stage' )
+						?.getBoundingClientRect();
+					return layout && stage ? stage.width / layout.width : 0;
+				}, classes );
+			for ( const [ classes, expected ] of [
+				[ [], 0.6 ],
+				[ [ 'cbuild--balanced' ], 0.5 ],
+				[ [ 'cbuild--stage-right' ], 0.6 ],
+				[ [ 'cbuild--stage-right', 'cbuild--balanced' ], 0.5 ],
+			] as const ) {
+				expect(
+					await share( [ ...classes ] ),
+					`the board's share with ${
+						classes.join( ' and ' ) || 'the defaults'
+					}`
+				).toBeCloseTo( expected, 2 );
+			}
+		} );
+	}
+} );
+
 test.describe( "The builder's styles", () => {
 	// Spec (configurator): Accessibility, zoom and reflow. Below 320 px the stage stops being sticky, so the panel is
 	// never squeezed out.
@@ -3339,8 +3523,16 @@ test.describe( "The builder's styles", () => {
 			} )
 		);
 		const cards = page.locator( '.cbuild-card' );
+		// The click's answer drawn before the arrow, so the arrow's choice is never drawn over by it. Waited for by the
+		// answer itself: the pick asks 150 ms after the click (D-308), so aria-busy can still be false before it asks,
+		// and under load the answer came after the arrow (three lanes, 23 November).
+		const picked = page.waitForResponse(
+			( response ) =>
+				response.url().includes( '/state' ) &&
+				response.url().includes( 'wheels' )
+		);
 		await cards.first().click();
-		// The click's answer drawn before the arrow, so the arrow's choice is never drawn over by it.
+		await picked;
 		await expect( page.locator( '.cbuild' ) ).toHaveAttribute(
 			'aria-busy',
 			'false'

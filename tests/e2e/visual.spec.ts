@@ -246,3 +246,34 @@ for ( const scheme of SCHEMES ) {
 		);
 	} );
 }
+
+// Cowork's 1.0.0 review, F11 (#96): the deck step with a width picked on Kadence, whose plain rules for a fieldset,
+// a button and a heading once outranked the builder's resets. The width line, the brand chips and the cards are each a
+// fieldset, the step's heading is under Back to the shop, and on a phone Filters waits above the folded chips.
+for ( const size of [ WIDTHS[ 0 ], WIDTHS[ 2 ] ] ) {
+	test( `the deck step with a width picked on Kadence, light, ${ size.name }`, async ( {
+		page: on,
+		context,
+		baseURL,
+	} ) => {
+		const url = baseURL || 'http://localhost:8898';
+		await context.addCookies( [
+			{ name: 'cbuild_e2e_theme', value: 'kadence', url },
+			{ name: 'cbuild_e2e_scheme', value: 'light', url },
+		] );
+		await on.setViewportSize( { width: size.width, height: size.height } );
+		await on.emulateMedia( {
+			colorScheme: 'light',
+			reducedMotion: 'reduce',
+		} );
+		const link = new URL( page() );
+		link.searchParams.set( 'cbuild[_width]', '8in' );
+		await on.goto( link.toString() );
+		await expect( on.locator( '.cbuild-step__fieldset' ) ).toBeVisible();
+		await still( on, size.width, size.height );
+		await expect( on.locator( '.cbuild' ) ).toHaveScreenshot(
+			`kadence-light-${ size.name }-deck.png`,
+			{ animations: 'disabled', caret: 'hide' }
+		);
+	} );
+}
