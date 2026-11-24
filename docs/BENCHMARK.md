@@ -2,6 +2,22 @@
 
 The spec's budgets are tests: a build fails when one is missed. The numbers from each tag are added below.
 
+## Contents
+
+- [Budgets (spec: Quality bar, Performance)](#budgets-spec-quality-bar-performance)
+- [v0.1.0](#v010)
+- [v0.2.0](#v020)
+- [v0.3.0](#v030)
+- [v0.4.0](#v040)
+- [v0.5.0](#v050)
+- [v0.6.0](#v060)
+- [v0.7.0](#v070)
+- [v0.9.0](#v090)
+- [v1.0.0](#v100)
+- [v1.1.0](#v110)
+- [v1.2.0](#v120)
+  - [A press with its answer held back (#118, #121)](#a-press-with-its-answer-held-back-118-121)
+
 ## Budgets (spec: Quality bar, Performance)
 
 | What | Budget | Measured by | From |
@@ -28,7 +44,7 @@ The spec's budgets are tests: a build fails when one is missed. The numbers from
 
 ## v0.1.0
 
-Machine: Apple M1 Max, PHP 8.5.12, Node 24.22.2, wp-env on OrbStack with WordPress 7.1.4 and WooCommerce 11.2.2. 9 November 2026. CI runs the same gates on `ubuntu-26.04`.
+**Machine:** Apple M1 Max, PHP 8.5.12, Node 24.22.2, wp-env on OrbStack with WordPress 7.1.4 and WooCommerce 11.2.2. 9 November 2026. CI runs the same gates on `ubuntu-26.04`.
 
 The plugin draws nothing yet, so these are the site's own numbers with the plugin active: the floor the builder starts from.
 
@@ -47,7 +63,7 @@ The plugin's presence costs nothing measurable: 5 ms between the two debug-mode 
 
 ## v0.2.0
 
-Machine: Apple M1 Max, PHP 8.5.12, Xdebug off. 9 November 2026.
+**Machine:** Apple M1 Max, PHP 8.5.12, Xdebug off. 9 November 2026.
 
 The fit engine alone, with no WordPress: every slot of a generated catalogue judged against a complete build, the quickest of five runs. The catalogue has a shop's faults in it (parts that warn, are blocked, lack a spec or a set size, or are sold out), so the hidden groups are counted too.
 
@@ -63,7 +79,7 @@ The test's two limits were each broken on purpose and seen to fail: the growth l
 
 ## v0.3.0
 
-Machine: Apple M1 Max, PHP 8.5.12 in wp-env on OrbStack, WordPress 7.1.4, WooCommerce 11.2.2, wp-env's own database server, Xdebug off, no persistent object cache. 10 November 2026.
+**Machine:** Apple M1 Max, PHP 8.5.12 in wp-env on OrbStack, WordPress 7.1.4, WooCommerce 11.2.2, wp-env's own database server, Xdebug off, no persistent object cache. 10 November 2026.
 
 2,000 simple products, each with three specs of its own. WordPress's cache is emptied before each piece, as a request starts.
 
@@ -82,13 +98,17 @@ Peak memory for the whole run was 111 MB, with 2,000 products made in the same p
 
 Each piece is two orders under what a request allows, so the Catalogue check stays in the request that asks for it (D-077) and the dry run is planned whole when the page is drawn (D-076).
 
-The query counts are one a product and a page's own. That one is WooCommerce reading a product's meta when the product is built (`WC_Data_Store_WP::read_meta()`), a look-up by the product's ID on an indexed column, which WooCommerce caches in the object cache where a shop has one. Reading the meta past WooCommerce would save it and break the rule that products go through its CRUD (D-081). A batch late in the reindex's first pass asks what an early one does: that pass walks the index's rows by ID, not by offset, and the test holds the last full batch to the second's count. The second pass pages the shop's products by offset, through WooCommerce's own query (D-071).
+The query counts are one a product and a page's own:
+
+- **That one is WooCommerce reading a product's meta** when the product is built (`WC_Data_Store_WP::read_meta()`), a look-up by the product's ID on an indexed column, which WooCommerce caches in the object cache where a shop has one. Reading the meta past WooCommerce would save it and break the rule that products go through its CRUD (D-081).
+- **A batch late in the reindex's first pass** asks what an early one does: that pass walks the index's rows by ID, not by offset, and the test holds the last full batch to the second's count.
+- **The second pass** pages the shop's products by offset, through WooCommerce's own query (D-071).
 
 The test's limits were each broken on purpose and seen to fail: see `docs/reviews/M3.md`.
 
 ## v0.4.0
 
-Machine: Apple M1 Max, PHP 8.5.12 in wp-env on OrbStack, WordPress 7.1.4, WooCommerce 11.2.2, wp-env's own database server, Xdebug off, no persistent object cache. 10 November 2026.
+**Machine:** Apple M1 Max, PHP 8.5.12 in wp-env on OrbStack, WordPress 7.1.4, WooCommerce 11.2.2, wp-env's own database server, Xdebug off, no persistent object cache. 10 November 2026.
 
 A kit of seven slots over 2,000 simple products: 500 trucks and 250 in each other slot, every one with its slot's specs. The request picks a deck and asks for the trucks step, so all 500 trucks are judged, some offered and the rest hidden with why, and 24 cards are read. 40 requests a run, over seven decks.
 
@@ -103,7 +123,11 @@ The first three are inside the 80 ms budget and held to it. They hold because a 
 
 The last row is outside the budget and is not held to it: it is what one request pays the first time a kit is asked for in a price context (a currency, a language, a set of tax rates), and again after a reindex or a brand or attribute term is edited, which empty the table. The benchmark prints it on every run so that it is known.
 
-The figures move with the machine. On 11 November 2026 the same Mac, busier, measured 67 to 70 ms cold at p95 and 71 ms after a part moves, for this code and for the commit the table was taken from alike; GitHub's hosted runner measured 66 ms cold, 46 ms warm and 81 ms after a part moves on a sample of 20, which failed the run (D-123). The next run of the same commit there measured 84 ms cold. Since D-124 the 80 ms budget is held where the machine is known, in the audit's local run before each milestone's pull request, and CI holds the query counts (42 cold, 15 warm, 37 after a part moves). Since D-171 CI holds the time to the budget scaled by how much slower than this Mac the runner does a fixed piece of work (7.05 ms here), between 1 and 2.5 times; each run prints the runner's figure and the limit it gives.
+The figures move with the machine:
+
+- **On 11 November 2026** the same Mac, busier, measured 67 to 70 ms cold at p95 and 71 ms after a part moves, for this code and for the commit the table was taken from alike; GitHub's hosted runner measured 66 ms cold, 46 ms warm and 81 ms after a part moves on a sample of 20, which failed the run (D-123). The next run of the same commit there measured 84 ms cold.
+- **Since D-124** the 80 ms budget is held where the machine is known, in the audit's local run before each milestone's pull request, and CI holds the query counts (42 cold, 15 warm, 37 after a part moves).
+- **Since D-171** CI holds the time to the budget scaled by how much slower than this Mac the runner does a fixed piece of work (7.05 ms here), between 1 and 2.5 times; each run prints the runner's figure and the limit it gives.
 
 The answer's size (#89, 23 November 2026): a move to that trucks step answers 98,659 bytes of JSON whole and 48,398 as the store asks for it, the view alone (`_fields=view`, D-302). The raw `shelf` and `options` repeated the step's cards beside the view's own. The benchmark prints both on every run and holds the second under the first.
 
@@ -113,7 +137,7 @@ Of the cold 58 ms, the fit engine takes about 20 ms for all seven slots, finding
 
 ## v0.5.0
 
-Machine: Apple M1 Max, PHP 8.5.12 in wp-env on OrbStack, WordPress 7.1.4, WooCommerce 11.2.2, wp-env's own database server, Xdebug off, no persistent object cache. 11 November 2026.
+**Machine:** Apple M1 Max, PHP 8.5.12 in wp-env on OrbStack, WordPress 7.1.4, WooCommerce 11.2.2, wp-env's own database server, Xdebug off, no persistent object cache. 11 November 2026.
 
 A kit of seven slots and a build with a part in each, trucks twice: a kit's line and seven parts' lines. 40 requests a run through the Store API, WordPress's cache emptied before each.
 
@@ -144,7 +168,7 @@ Measured again on WooCommerce 11.3.0, the newest leg from D-139, on the same mac
 
 ## v0.6.0
 
-Machine: Apple M1 Max, PHP 8.5.12 in wp-env on OrbStack, WordPress 7.1.4, WooCommerce 11.3.0, wp-env's own database server, Xdebug off, no persistent object cache. Measured 12 November 2026, and again on 13 November after the audit's fixes; the table is the second run.
+**Machine:** Apple M1 Max, PHP 8.5.12 in wp-env on OrbStack, WordPress 7.1.4, WooCommerce 11.3.0, wp-env's own database server, Xdebug off, no persistent object cache. Measured 12 November 2026, and again on 13 November after the audit's fixes; the table is the second run.
 
 The kit and catalogue of v0.4.0: seven slots over 2,000 simple products, 500 of them trucks.
 
@@ -180,7 +204,7 @@ The second row stays outside the budget and is printed, not held. It is now paid
 
 ## v0.7.0
 
-Machine: Apple M1 Max, PHP 8.5.12 in wp-env on OrbStack, WordPress 7.1.4, WooCommerce 11.3.0, wp-env's own database server, Xdebug off, no persistent object cache. Measured 16 November 2026, on the tree after the audit's fixes.
+**Machine:** Apple M1 Max, PHP 8.5.12 in wp-env on OrbStack, WordPress 7.1.4, WooCommerce 11.3.0, wp-env's own database server, Xdebug off, no persistent object cache. Measured 16 November 2026, on the tree after the audit's fixes.
 
 The kit and catalogue of v0.4.0, seven slots over 2,000 simple products, 500 of them trucks, now with the decks given layer images and their renditions, so the route draws the board from them.
 
@@ -221,7 +245,7 @@ Twenty Twenty-Five's shift measured 0.012 here, against 0.133 for 0.6.0; it stay
 
 ## v0.9.0
 
-Machine: Apple M1 Max, PHP 8.5.12 in wp-env on OrbStack, WordPress 7.1.4, WooCommerce 11.3.0, wp-env's own database server, Xdebug off. Measured 18 November 2026 on the milestone 9 branch. The catalogue is v0.7.0's: seven slots over 2,000 simple products, 500 of them trucks, the decks with layer images and their renditions. `composer test:benchmark` (the fit engine at 500 candidates) passed its budgets.
+**Machine:** Apple M1 Max, PHP 8.5.12 in wp-env on OrbStack, WordPress 7.1.4, WooCommerce 11.3.0, wp-env's own database server, Xdebug off. Measured 18 November 2026 on the milestone 9 branch. The catalogue is v0.7.0's: seven slots over 2,000 simple products, 500 of them trucks, the decks with layer images and their renditions. `composer test:benchmark` (the fit engine at 500 candidates) passed its budgets.
 
 | The state route, 500 candidates in the step | No persistent cache: p95 | Queries | Redis 8.10 and Redis Object Cache 3.0.0: p95 | Queries | Budget |
 | --- | --- | --- | --- | --- | --- |
@@ -233,7 +257,13 @@ Machine: Apple M1 Max, PHP 8.5.12 in wp-env on OrbStack, WordPress 7.1.4, WooCom
 | The first request after a reindex of 2,000 parts | 58.6 ms | 40 | | | 80 ms |
 | With no row kept at all | 459 ms | 106 | | | Printed, not held |
 
-**With a persistent object cache, three rows are over the budget.** Each is a request that finds the cache empty or emptied, and pays a round trip to Redis for each miss and each write it makes. The warm rows are faster than without the cache. "Cold" empties the whole cache before each request, which models a site with no persistent cache and happens on a Redis site only after a flush. "The first request after one part moves" is a shop's ordinary request after a stock change, and it is the one that matters. The budget stays at 80 ms. Batching the plugin's own two reads of the cache (`wp_cache_get_multiple()` in `ProductMetaRepository::prime()` and `WooPartCards::cards()`) was tried on 18 November and measured no better: 98.5 ms after a part moves, in a run that shared the machine with an update test, so no gain could be trusted. It is not in 1.0.0. Most of the misses are WooCommerce's own reads of each product, which is where to look next; it is open for Zach in `docs/reviews/M9.md` before the tag. `composer test:benchmark:integration` holds the budget without the cache, as before. The run with Redis is `tools/object-cache.sh up`, then `CBUILD_OBJECT_CACHE=persistent composer test:benchmark:integration`.
+**With a persistent object cache, three rows are over the budget.** Each is a request that finds the cache empty or emptied, and pays a round trip to Redis for each miss and each write it makes. The warm rows are faster than without the cache.
+
+- **"Cold"** empties the whole cache before each request, which models a site with no persistent cache and happens on a Redis site only after a flush.
+- **"The first request after one part moves"** is a shop's ordinary request after a stock change, and it is the one that matters. The budget stays at 80 ms.
+- **Batching the plugin's own two reads of the cache** (`wp_cache_get_multiple()` in `ProductMetaRepository::prime()` and `WooPartCards::cards()`) was tried on 18 November and measured no better: 98.5 ms after a part moves, in a run that shared the machine with an update test, so no gain could be trusted. It is not in 1.0.0.
+- **Most of the misses are WooCommerce's own reads** of each product, which is where to look next; it is open for Zach in `docs/reviews/M9.md` before the tag.
+- **`composer test:benchmark:integration` holds the budget** without the cache, as before. The run with Redis is `tools/object-cache.sh up`, then `CBUILD_OBJECT_CACHE=persistent composer test:benchmark:integration`.
 
 | The rest, no persistent cache | Result | Budget |
 | --- | --- | --- |
@@ -259,7 +289,9 @@ Not measured here: the renditions migration at 2,000 parts (0.8.0's review, audi
 
 ## v1.0.0
 
-Machine: Apple M1 Max, PHP 8.5.12 in wp-env on OrbStack, WordPress 7.1.5, WooCommerce 11.3.0, wp-env's own database server, Xdebug off. Measured 20 November 2026 on the milestone 10 branch, the machine running nothing else. The catalogue is v0.7.0's: seven slots over 2,000 simple products, 500 of them trucks, the decks with layer images and their renditions. `composer test:benchmark` (the fit engine at 500 candidates) passed its budgets. New this release: a search with a chip and a sort, the step's shelf as 1.0.0 lists it (the spec reviewer's B4, S-d).
+**Machine:** Apple M1 Max, PHP 8.5.12 in wp-env on OrbStack, WordPress 7.1.5, WooCommerce 11.3.0, wp-env's own database server, Xdebug off. Measured 20 November 2026 on the milestone 10 branch, the machine running nothing else.
+
+The catalogue is v0.7.0's: seven slots over 2,000 simple products, 500 of them trucks, the decks with layer images and their renditions. `composer test:benchmark` (the fit engine at 500 candidates) passed its budgets. New this release: a search with a chip and a sort, the step's shelf as 1.0.0 lists it (the spec reviewer's B4, S-d).
 
 | The state route, 500 candidates in the step | No persistent cache: p95 | Queries | Redis 8.10 and Redis Object Cache 3.0.0: p95 | Queries | Budget |
 | --- | --- | --- | --- | --- | --- |
@@ -274,7 +306,12 @@ Machine: Apple M1 Max, PHP 8.5.12 in wp-env on OrbStack, WordPress 7.1.5, WooCom
 | With no row kept at all | 549 ms | 150 | 1,163 ms | 141 | Printed, not held |
 | A visitor whose session holds a 7-part build | 9.0 ms | 59 | 29.0 ms | 58 | Recorded |
 
-**Without a persistent object cache, every row is inside the budget**, search and chips included, and `composer test:benchmark:integration` holds it, as CI does. **With Redis, the cold rows are over it, as in 0.9.0 (O21), and 1.0.0 ships with them so (D-294).** "Cold" empties the whole cache before each request, which a Redis site sees only after a flush. A shop's ordinary request after a stock change, "the first request after one part moves", is 79.4 ms, inside the budget by a hair, and the warm rows are under 60 ms. The budget stays at 80 ms. The Redis rows were measured with the test's time limit lifted for that one run, so every row ran rather than the first over it; the limit is the test's own, back from git. The run with Redis is `tools/object-cache.sh up`, then `CBUILD_OBJECT_CACHE=persistent composer test:benchmark:integration`.
+**Without a persistent object cache, every row is inside the budget**, search and chips included, and `composer test:benchmark:integration` holds it, as CI does. **With Redis, the cold rows are over it, as in 0.9.0 (O21), and 1.0.0 ships with them so (D-294).**
+
+- **"Cold"** empties the whole cache before each request, which a Redis site sees only after a flush.
+- **A shop's ordinary request after a stock change,** "the first request after one part moves", is 79.4 ms, inside the budget by a hair, and the warm rows are under 60 ms. The budget stays at 80 ms.
+- **The Redis rows were measured with the test's time limit lifted** for that one run, so every row ran rather than the first over it; the limit is the test's own, back from git.
+- **The run with Redis** is `tools/object-cache.sh up`, then `CBUILD_OBJECT_CACHE=persistent composer test:benchmark:integration`.
 
 | The rest, no persistent cache | Result | Budget |
 | --- | --- | --- |
@@ -305,7 +342,7 @@ Not measured here, as in 0.9.0: the renditions migration at 2,000 parts (`docs/A
 
 ## v1.1.0
 
-Machine: Apple M1 Max, PHP 8.5.12 in wp-env on OrbStack, WordPress 7.1.5, WooCommerce 11.3.1, wp-env's own database server, Xdebug off. Measured 24 November 2026 on the milestone 11 branch, with the other lanes' sites idle (load about 3). The catalogue is v0.7.0's: seven slots over 2,000 simple products, 500 of them in the step.
+**Machine:** Apple M1 Max, PHP 8.5.12 in wp-env on OrbStack, WordPress 7.1.5, WooCommerce 11.3.1, wp-env's own database server, Xdebug off. Measured 24 November 2026 on the milestone 11 branch, with the other lanes' sites idle (load about 3). The catalogue is v0.7.0's: seven slots over 2,000 simple products, 500 of them in the step.
 
 | The state route, 500 candidates in the step, no persistent cache | p95 | Median | Slowest | Queries | Budget |
 | --- | --- | --- | --- | --- | --- |
