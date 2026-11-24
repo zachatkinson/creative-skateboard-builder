@@ -6930,6 +6930,7 @@ test.describe( 'The steps that appear only when needed', () => {
 
 	test( 'wheels over the trucks are hidden when no bolt is long enough for the riser they need, and offered when one is', async ( {
 		page,
+		javaScriptEnabled,
 	} ) => {
 		// The trucks take 52 mm: 54 mm wheels are 2 mm over and need ¼″ risers, 56 mm wheels 4 mm over and ½″
 		// (R3's table). A ½″ riser needs a bolt of 1⅜″ (R4), longer than the kit's 1¼″.
@@ -6984,7 +6985,14 @@ test.describe( 'The steps that appear only when needed', () => {
 				.getByText( 'Needs ½″ risers with your trucks' )
 		).toBeVisible();
 		await choose( page, 'Builder test wheels 56' );
-		await moveTo( page, 'Next: Bearings', /: Choose your risers$/ );
+		// Without JavaScript the button names the step after the wheels as the page had it; the server then opens the
+		// risers. With it, the store names the risers once the route answers: Next is lit at the pick (#100), and a
+		// press of "Next: Bearings" raced the answer, which on WebKit came first about one run in ten.
+		await moveTo(
+			page,
+			javaScriptEnabled ? 'Next: Risers' : 'Next: Bearings',
+			/: Choose your risers$/
+		);
 		await expect(
 			page.getByText(
 				'Your 56 mm wheels need ½″ risers with these trucks'
@@ -7403,7 +7411,8 @@ test.describe( 'A deck with no layer image on the stage (#82)', () => {
 	}, info ) => {
 		// A radio sends nothing without the script: the build link's case, without it, is the test of the top above.
 		test.skip( info.project.name === 'no-js', 'a pick needs the script' );
-		const narrow = info.project.name.endsWith( '-phone' );
+		// Stacked, as on a tablet or a phone: the stage's container narrower than 64rem.
+		const narrow = ( page.viewportSize()?.width ?? 0 ) < 1024;
 		await page.goto( fixture().page );
 		const stage = page.locator( '.cbuild__stage' );
 		const position = () =>

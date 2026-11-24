@@ -123,6 +123,15 @@ test.describe( 'A long step', () => {
 		);
 		await expect( cards( page ) ).toHaveCount( 0 );
 		if ( javaScriptEnabled ) {
+			// Where the layout is stacked, the bar covers the foot of the window, and axe counts a target it covers as
+			// too small wherever the page happens to stand (D-288). Since the bare stage scrolls with the page (#82), on
+			// a tablet the step's Sort stands across the bar's edge. It is brought into view as a shopper scrolls to it,
+			// clear of the bar by the page's scroll padding.
+			await page
+				.locator( '.cbuild-sort__select' )
+				.evaluate( ( sort ) =>
+					sort.scrollIntoView( { block: 'nearest' } )
+				);
 			await axe( page, 'a search that finds nothing here', '.cbuild' );
 		}
 		await found.getByRole( 'button', { name: 'Show 8″ decks' } ).click();
