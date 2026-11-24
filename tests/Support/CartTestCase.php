@@ -9,6 +9,7 @@ declare( strict_types=1 );
 
 namespace CreativeBranding\SkateboardBuilder\Tests\Support;
 
+use Automattic\WooCommerce\StoreApi\Utilities\SessionConcurrencyGuard;
 use CreativeBranding\SkateboardBuilder\Cart\CartHooks;
 use CreativeBranding\SkateboardBuilder\Cart\AgainHooks;
 use CreativeBranding\SkateboardBuilder\Cart\ExpressHooks;
@@ -107,6 +108,13 @@ abstract class CartTestCase extends IntegrationTestCase {
 		wc_load_cart();
 		WC()->cart->empty_cart();
 		wc_clear_notices();
+		// The session handler is the process's, shared by every test, and the database is rolled back under it. A
+		// build's add keeps the session before it answers (issue #108), so the handler can remember a session an
+		// earlier test saved and the rollback took away, and WooCommerce's checkout would answer that the cart
+		// changed (src/StoreApi/Routes/V1/Checkout.php:1253). It remembers what is stored now. WooCommerce 11.3.
+		if ( class_exists( SessionConcurrencyGuard::class ) ) {
+			SessionConcurrencyGuard::capture( WC()->session, WC()->session->get_session_data() );
+		}
 	}
 
 	public function tear_down(): void {

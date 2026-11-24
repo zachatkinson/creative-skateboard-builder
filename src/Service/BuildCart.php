@@ -300,6 +300,16 @@ final class BuildCart {
 	}
 
 	/**
+	 * A build's add is about to be answered: the cart is kept first, so the page the shopper goes to next finds the
+	 * build in it however soon they ask (issues #51 and #108).
+	 *
+	 * @since 1.2.0
+	 */
+	public function answering(): void {
+		$this->cart->keep();
+	}
+
+	/**
 	 * Check a build whose kit reads.
 	 *
 	 * @param int                $id       The kit product's ID.

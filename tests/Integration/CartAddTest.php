@@ -481,6 +481,52 @@ final class CartAddTest extends CartTestCase {
 		self::assertSame( array(), WC()->cart->get_cart() );
 	}
 
+	// Issues #51 and #108: WooCommerce keeps the session at `shutdown`, after a REST route has written its answer out,
+	// so a cart page asked for as soon as the add answered found no build. The add keeps it before it answers.
+	public function test_a_builds_add_is_kept_in_the_session_before_it_is_answered(): void {
+		$stored = $this->storedCart(
+			fn() => $this->store( array( 'id' => $this->kit, 'cbuild' => array( 'picks' => $this->picks() ) ) )
+		);
+		self::assertIsArray( $stored, 'the cart is in the stored session before the request ends' );
+		self::assertSame( array_keys( WC()->cart->get_cart() ), array_keys( $stored ), 'the kit and its six parts' );
+		self::assertCount( 7, $stored );
+	}
+
+	public function test_an_add_of_anything_but_a_build_leaves_the_session_to_woocommerce(): void {
+		$product = new WC_Product_Simple();
+		$product->set_name( 'Sticker' );
+		$product->set_status( 'publish' );
+		$product->set_regular_price( '3' );
+		$product->save();
+		$stored = $this->storedCart(
+			fn() => $this->store( array( 'id' => $product->get_id() ) )
+		);
+		self::assertCount( 1, WC()->cart->get_cart() );
+		self::assertNull( $stored, 'kept as WooCommerce keeps any add: as the request ends' );
+	}
+
+	/**
+	 * The cart the session's store holds once an add has answered, before the request ends: read from the database,
+	 * not from what this request remembers. The shopper has a session, as the cookie the add sets gives them one.
+	 *
+	 * @param Closure(): \WP_REST_Response $add The add.
+	 * @return array<mixed>|null
+	 */
+	private function storedCart( Closure $add ): ?array {
+		$cookie             = 'wp_woocommerce_session_' . COOKIEHASH;
+		$_COOKIE[ $cookie ] = 'a shopper with a session';
+		try {
+			$response = $add();
+			self::assertSame( 201, $response->get_status(), (string) wp_json_encode( $response->get_data() ) );
+			wp_cache_flush();
+			$kept = WC()->session->get_session( WC()->session->get_customer_id(), array() );
+		} finally {
+			unset( $_COOKIE[ $cookie ] );
+		}
+		$cart = is_array( $kept ) ? maybe_unserialize( $kept['cart'] ?? '' ) : null;
+		return is_array( $cart ) ? $cart : null;
+	}
+
 	public function test_a_build_comes_back_from_the_session_whole_priced_and_for_sale(): void {
 		self::assertSame( 201, $this->store( array( 'id' => $this->kit, 'cbuild' => array( 'picks' => $this->picks(), 'assembly' => true ) ) )->get_status() );
 		$before = self::builds();

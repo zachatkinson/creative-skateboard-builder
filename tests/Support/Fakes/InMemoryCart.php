@@ -131,6 +131,12 @@ final class InMemoryCart implements Cart {
 		++$this->shoppers;
 	}
 
+	public int $kept = 0;
+
+	public function keep(): void {
+		++$this->kept;
+	}
+
 	public function setChildren( string $key, array $children ): void {
 		$line                = $this->lines[ $key ];
 		$this->lines[ $key ] = new CartLine( $key, $line->part, $line->quantity, $line->build, $children, $line->kit, $line->slot );

@@ -88,4 +88,13 @@ interface Cart {
 	 * @since 0.5.0
 	 */
 	public function shopper(): void;
+
+	/**
+	 * Write the cart to the shopper's session now, not as the request ends. A route whose answer goes out before
+	 * its request ends would otherwise be answered before the cart it changed is kept, and a page asked for at once
+	 * would find the cart empty (issues #51 and #108).
+	 *
+	 * @since 1.2.0
+	 */
+	public function keep(): void;
 }

@@ -2476,29 +2476,8 @@ test.describe( 'The keyboard alone', () => {
 			await expect(
 				builder.locator( '.cbuild-review__added' )
 			).toBeFocused();
-			// WooCommerce writes the cart to the session at PHP's shutdown, which can come after the add's answer has gone out, so a
-			// cart page asked for 120 ms later once read it empty (CI run 44157697581, chromium-desktop; #51). The
-			// cart is read until it holds the build, as a shopper's slower step to View cart would find it.
-			// Each read's status and count kept, and said if the poll ends, so a rare empty cart names its cause (#108).
-			const reads: string[] = [];
-			try {
-				await expect
-					.poll( async () => {
-						const answer = await page.request.get(
-							'/wp-json/wc/store/v1/cart'
-						);
-						const count = answer.ok()
-							? ( ( await answer.json() ).items_count as number )
-							: -1;
-						reads.push( `${ answer.status() }:${ count }` );
-						return count;
-					} )
-					.toBeGreaterThan( 0 );
-			} catch ( error ) {
-				throw new Error(
-					`The cart never held the build; its reads, status:count: ${ reads.join( ' ' ) }. ${ String( error ) }`
-				);
-			}
+			// Then straight on to View cart, as a shopper would: the add keeps the cart before it answers, so the cart page
+			// holds the build however soon it is asked for (#51, #108).
 		}
 		await press(
 			// The builder's own link with a script; without one, WooCommerce's notice over the page has it.
@@ -2570,6 +2549,48 @@ test.describe( 'The review with JavaScript', () => {
 		await expect(
 			page.getByRole( 'radio', { name: 'No risers' } )
 		).toBeVisible();
+	} );
+
+	// Issues #51 and #108: WooCommerce saves the session as a request ends, and the add's answer had gone out before,
+	// so a cart asked for as soon as the add said so read empty. Here the add's request ends a second late, as a loaded
+	// server's can (tests/e2e/mu-plugins/cbuild-e2e-slow-end.php); the add keeps the cart before it answers.
+	test( 'the cart holds the build as soon as the add says it is in', async ( {
+		page,
+		context,
+		baseURL,
+	} ) => {
+		const url = baseURL || SITE;
+		await context.addCookies( [
+			{ name: 'cbuild_e2e_slow_end', value: '1', url },
+			{ name: 'cbuild_e2e_classic', value: '1', url },
+		] );
+		await page.goto(
+			linkTo( {
+				deck: id( 'builder-test-deck-8-0' ),
+				trucks: id( 'builder-test-trucks-139' ),
+				wheels: id( 'builder-test-wheels-52' ),
+				bearings: id( 'builder-test-bearings' ),
+				hardware: id( 'builder-test-bolts-1' ),
+				grip: id( 'builder-test-grip' ),
+				step: 'review',
+			} )
+		);
+		await page
+			.locator( '.cbuild' )
+			.getByRole( 'button', { name: 'Add to cart' } )
+			.first()
+			.click();
+		const added = page.locator( '.cbuild-review__added' );
+		await expect( added ).toBeVisible();
+		const cart = await page.request.get( '/wp-json/wc/store/v1/cart' );
+		expect(
+			( ( await cart.json() ) as { items_count: number } ).items_count,
+			'the cart, read the moment the add says the build is in'
+		).toBeGreaterThan( 0 );
+		await added.getByRole( 'link', { name: /^View cart/ } ).click();
+		await expect( page.locator( '.woocommerce-cart-form' ) ).toContainText(
+			'Builder test kit'
+		);
 	} );
 } );
 
