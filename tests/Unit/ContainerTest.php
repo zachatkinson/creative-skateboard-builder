@@ -85,6 +85,28 @@ final class ContainerTest extends TestCase {
 		self::assertNull( ( new \ReflectionProperty( \CreativeBranding\SkateboardBuilder\Front\StateAnswer::class, 'artwork' ) )->getValue( ( new \ReflectionClass( \CreativeBranding\SkateboardBuilder\Front\StateAnswer::class ) )->newInstanceWithoutConstructor() ), 'none without the container' );
 	}
 
+	// D-208: what 1.2.0 adds is given to a copy, so the object it was called on is still what an earlier release's
+	// container built: My builds' Open and the start button go to the kit's own page, and My builds reads its parts'
+	// meta a part at a time, as 1.1.0 did.
+	public function test_each_with_this_release_adds_gives_a_copy_and_leaves_the_one_it_was_called_on_as_it_was(): void {
+		$container = new Container();
+		$address   = $container->get( \CreativeBranding\SkateboardBuilder\Front\BuilderAddress::class );
+		$meta      = $container->get( \CreativeBranding\SkateboardBuilder\Port\ProductMeta::class );
+		foreach (
+			array(
+				array( \CreativeBranding\SkateboardBuilder\Front\StartButton::class, 'address', static fn( object $earlier ): object => $earlier->withAddress( $address ) ),
+				array( \CreativeBranding\SkateboardBuilder\Front\MyBuildsView::class, 'address', static fn( object $earlier ): object => $earlier->withAddress( $address ) ),
+				array( \CreativeBranding\SkateboardBuilder\Front\MyBuildsView::class, 'meta', static fn( object $earlier ): object => $earlier->withMeta( $meta ) ),
+			) as [ $class, $property, $with ]
+		) {
+			$earlier = ( new \ReflectionClass( $class ) )->newInstanceWithoutConstructor();
+			$copy    = $with( $earlier );
+			$read    = new \ReflectionProperty( $class, $property );
+			self::assertNotNull( $read->getValue( $copy ), $class . ' ' . $property );
+			self::assertNull( $read->getValue( $earlier ), $class . ' ' . $property . ': the one it was called on' );
+		}
+	}
+
 	public function test_set_replaces_a_service_and_has_reports_it(): void {
 		$container = new Container();
 		self::assertFalse( $container->has( Clock::class ) );

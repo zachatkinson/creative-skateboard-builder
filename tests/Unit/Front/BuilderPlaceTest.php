@@ -188,4 +188,16 @@ final class BuilderPlaceTest extends TestCase {
 		self::assertFalse( $place->opens( 20, 0 ), 'no kit' );
 		self::assertSame( array(), $place->pages( 0 ) );
 	}
+
+	// #113 (D-348): a Builder page that names no post is no page, and the site is not asked about it.
+	public function test_no_post_is_asked_whether_it_is_a_page_for_a_builder_page_of_none(): void {
+		$posts = new FakeBuilderPosts( array( 0 => array( self::builder( 7 ) ) ), array( 7 ), array( 0, 20 ) );
+		$place = new BuilderPlace( $posts );
+		self::assertFalse( $place->opens( 0, 7 ) );
+		self::assertFalse( $place->opens( -20, 7 ) );
+		self::assertSame( array(), $posts->pagesAsked );
+		self::assertSame( array(), $posts->asked );
+		self::assertFalse( $place->opens( 20, 7 ), 'a page that holds no builder' );
+		self::assertSame( array( 20 ), $posts->pagesAsked, 'a page is asked about' );
+	}
 }

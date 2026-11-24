@@ -24,6 +24,13 @@ final class FakeBuilderPosts implements BuilderPosts {
 	public array $asked = array();
 
 	/**
+	 * The posts asked whether they are pages, in order.
+	 *
+	 * @var list<int>
+	 */
+	public array $pagesAsked = array();
+
+	/**
 	 * Constructor.
 	 *
 	 * @param array<int, array<mixed>> $blocks Each post's parsed blocks.
@@ -42,6 +49,7 @@ final class FakeBuilderPosts implements BuilderPosts {
 	}
 
 	public function isPage( int $post ): bool {
+		$this->pagesAsked[] = $post;
 		return in_array( $post, $this->pages, true );
 	}
 

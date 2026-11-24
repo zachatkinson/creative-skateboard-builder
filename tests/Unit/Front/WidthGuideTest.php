@@ -90,6 +90,17 @@ final class WidthGuideTest extends TestCase {
 		self::assertSame( self::plugins(), WidthGuide::rows( self::KIT, self::kits( array( 'shown' => true ) ) ) );
 	}
 
+	// #114: the Build tab starts a kit's own rows from the plugin's, so it asks for them from outside the guide: each
+	// shoe size in the shopper's words, and the widths as measures, the last row with no widest.
+	public function test_the_build_tab_starts_a_kits_own_rows_from_the_plugins(): void {
+		$defaults = WidthGuide::defaults();
+		self::assertSame( array_column( self::plugins(), 'shoe' ), array_column( $defaults, 'shoe' ) );
+		self::assertSame(
+			array( '7.0000 7.7500', '7.7500 8.0000', '8.0000 8.2500', '8.2500 none' ),
+			array_map( static fn( array $row ): string => $row['from']->decimal() . ' ' . ( $row['to']?->decimal() ?? 'none' ), $defaults )
+		);
+	}
+
 	// #114: the shop's own rows, each shoe size as the owner typed it, through `cbuild_kit_text` as the kit's other
 	// texts are, and each width in the shopper's units.
 	public function test_a_kit_with_rows_of_its_own_shows_them_its_shoe_sizes_through_the_kits_text_filter(): void {

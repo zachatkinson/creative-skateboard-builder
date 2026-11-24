@@ -569,6 +569,13 @@ final class KitEditorTest extends TestCase {
 		self::assertArrayNotHasKey( KitEditor::LAYOUT, $draft->documents );
 		self::assertSame( 44, $draft->refused[ KitEditor::LAYOUT ]['builder_page'] ?? null, 'shown as chosen' );
 
+		// A layout that is already refused for another field is named at that field alone, and the page is checked
+		// once the rest of the section reads.
+		$sent['layout']['width_guide'] = array( 'rows' => array( array( 'shoe' => 'EU 40', 'from' => '21' ) ) );
+		$draft                         = $this->editor->draft( $sent, self::stored(), '.', array( 42, 43 ) );
+		self::assertSame( array( 'layout ' . KitEditor::GUIDE_WIDTH . ' width_guide.rows[0].from' ), self::problems( $draft ) );
+		unset( $sent['layout']['width_guide'] );
+
 		$sent['layout']['builder_page'] = 'https://elsewhere.example/';
 		$draft                          = $this->editor->draft( $sent, self::stored(), '.', array( 42 ) );
 		self::assertSame( array( 'layout document_wrong_type builder_page' ), self::problems( $draft ), 'an address is no page' );
