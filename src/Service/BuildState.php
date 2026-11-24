@@ -108,9 +108,10 @@ final class BuildState {
 		$started     = true;
 		$first       = null;
 		foreach ( $kit->slots->all() as $slot ) {
-			$options     = self::cleared( $clearance, $kit, $counted, $engine->options( $kit, $slot->key, $counted, $candidates[ $slot->key ] ), $candidates );
-			$part        = $picked->part( $slot->key );
-			$starts      = $started && ( $slot->required || ! in_array( $slot->key, $left, true ) );
+			$options = self::cleared( $clearance, $kit, $counted, $engine->options( $kit, $slot->key, $counted, $candidates[ $slot->key ] ), $candidates );
+			$part    = $picked->part( $slot->key );
+			// A picked slot names a lead only on the step shown, the one whose cards are listed (D-340).
+			$starts      = $started && ( $slot->required || ! in_array( $slot->key, $left, true ) ) && ( null === $part || $slot->key === $step );
 			$leads       = null;
 			$recommended = null;
 			if ( $starts ) {
