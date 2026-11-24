@@ -1,6 +1,8 @@
 # Roadmap
 
-The whole Creative Skateboard Builder project: ten milestones to 1.0 (D-236), then what follows it. `SPEC.md` says what each part must do; this file says what each milestone builds, what proves it, and where its audit looks hardest. The milestones are in order. Don't start one until Zach approves the last. Milestones 1 to 9 are tagged `v0.1.0` to `v0.9.0`; milestone 10 is `v1.0.0`.
+The whole Creative Skateboard Builder project: ten milestones to 1.0 (D-236), then what follows it. `SPEC.md` says what each part must do; this file says what each milestone builds, what proves it, and where its audit looks hardest. The milestones are in order.
+
+Don't start one until Zach approves the last. Milestones 1 to 9 are tagged `v0.1.0` to `v0.9.0`; milestone 10 is `v1.0.0`.
 
 **Every milestone runs the same way** (`AUDIT.md`):
 
@@ -9,6 +11,41 @@ The whole Creative Skateboard Builder project: ten milestones to 1.0 (D-236), th
 3. `/audit-milestone`: the two reviewer agents, every blocker and should-fix fixed with a test that fails without it, and the review written up.
 4. A draft pull request using the template, with a `CHANGELOG.md` entry, marked ready once the gates pass locally (D-041).
 5. Zach sends the summary to Claude in Cowork for the independent review. Its fixes land, Claude merges once the full CI run is green, and the next milestone's `/plan-milestone` tags the merge (`v0.<n>.0`; `v1.0.0` for milestone 10).
+
+## Contents
+
+- [Milestone 1: Foundation (0.1.0)](#milestone-1-foundation-010)
+  - [Builds](#builds)
+  - [Tests that must pass](#tests-that-must-pass)
+- [Milestone 2: Domain (0.2.0)](#milestone-2-domain-020)
+  - [Tests that must pass](#tests-that-must-pass-1)
+- [Milestone 3: Specs (0.3.0)](#milestone-3-specs-030)
+  - [Builds](#builds-1)
+  - [Tests that must pass](#tests-that-must-pass-2)
+- [Milestone 4: Kits (0.4.0)](#milestone-4-kits-040)
+  - [Builds](#builds-2)
+  - [Tests that must pass](#tests-that-must-pass-3)
+- [Milestone 5: Cart and checkout (0.5.0)](#milestone-5-cart-and-checkout-050)
+  - [Tests that must pass](#tests-that-must-pass-4)
+- [Milestone 6: The builder (0.6.0)](#milestone-6-the-builder-060)
+  - [Tests that must pass](#tests-that-must-pass-5)
+- [Milestone 7: The picture (0.7.0)](#milestone-7-the-picture-070)
+  - [Builds](#builds-3)
+  - [Tests that must pass](#tests-that-must-pass-6)
+- [Milestone 8: Orders and after (0.8.0)](#milestone-8-orders-and-after-080)
+  - [Tests that must pass](#tests-that-must-pass-7)
+- [Milestone 9: Hardening (0.9.0)](#milestone-9-hardening-090)
+  - [Builds and checks](#builds-and-checks)
+- [Milestone 10: The configurator and 1.0 (1.0.0)](#milestone-10-the-configurator-and-10-100)
+  - [Tests that must pass](#tests-that-must-pass-8)
+- [Milestone 11: The motion (1.1.0)](#milestone-11-the-motion-110)
+  - [Tests that must pass](#tests-that-must-pass-9)
+- [After 1.0](#after-10)
+  - [Companion releases](#companion-releases)
+  - [Skatehouse's setup](#skatehouses-setup)
+  - [Module A: your own graphic](#module-a-your-own-graphic)
+  - [Module B: 3D on a tap](#module-b-3d-on-a-tap)
+  - [Later ideas, not planned](#later-ideas-not-planned)
 
 ---
 
