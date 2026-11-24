@@ -2,6 +2,17 @@
 
 Updated 9 November 2026. This replaces the 6 November package. The brief now covers the whole project around the spec.
 
+## Contents
+
+- [What's in the package](#whats-in-the-package)
+- [1. Confirm the proposed decisions](#1-confirm-the-proposed-decisions)
+- [2. The repository](#2-the-repository)
+- [3. The first prompt for Claude Code](#3-the-first-prompt-for-claude-code)
+- [4. How each milestone is reviewed](#4-how-each-milestone-is-reviewed)
+- [5. What waits on the owner](#5-what-waits-on-the-owner)
+- [6. Beside the builder](#6-beside-the-builder)
+- [7. After 1.0](#7-after-10)
+
 ## What's in the package
 
 `repo/` holds everything Claude Code needs, laid out as the repository's root:
@@ -39,7 +50,13 @@ They're in `docs/DECISIONS.md`, each marked Proposed, with our suggestion. D-001
 | D-006, the picture | Layered 2D in 1.0; 3D on a tap after 1.0 |
 | D-007, shoppers' own graphics | A module after 1.0, once the owner answers |
 
-The rest can wait: D-009 and D-010 (the cart count, the Mini-Cart script) by milestone 5, D-008 (where it lives) by milestone 6, and D-011 (dealers) before Skatehouse's setup. Say yes to all of them in the first prompt below, or name the ones you'd change.
+The rest can wait:
+
+- **By milestone 5:** D-009 and D-010 (the cart count, the Mini-Cart script).
+- **By milestone 6:** D-008 (where it lives).
+- **Before Skatehouse's setup:** D-011 (dealers).
+
+Say yes to all of them in the first prompt below, or name the ones you'd change.
 
 ## 2. The repository
 
