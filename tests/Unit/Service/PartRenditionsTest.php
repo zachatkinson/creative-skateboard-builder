@@ -14,6 +14,7 @@ use CreativeBranding\SkateboardBuilder\Domain\Picture\Renditions;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\IndexedSpec;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\Origin;
 use CreativeBranding\SkateboardBuilder\Domain\Spec\SpecKey;
+use CreativeBranding\SkateboardBuilder\Domain\Spec\Specs;
 use CreativeBranding\SkateboardBuilder\Service\PartRenditions;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Domain\Shop;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Fakes\FakeClock;
@@ -155,6 +156,33 @@ final class PartRenditionsTest extends TestCase {
 		self::assertTrue( array_is_list( $offered ), 'a list, numbered from 0' );
 		self::assertSame( array_unique( $offered ), $offered, 'two kits that offer a part list it once' );
 		self::assertContains( 101, $offered );
+	}
+
+	// Issue #129 (D-371): a part with no spec in the index is drawn by the page from the usual values, a grip as the 9 by
+	// 33 in sheet and wheels as 54 mm, so it is made at those sizes and missing until it is. A deck needs its width.
+	public function test_a_part_with_no_indexed_spec_is_made_at_the_sizes_the_page_draws_it_at(): void {
+		$this->layer( 7, 70 );
+		$this->layer( 8, 80 );
+		$this->layer( 9, 90 );
+		$this->layers->layered = array( 7, 8, 9 );
+		$this->kits->slotsOf   = array(
+			7 => array( 'grip' ),
+			8 => array( 'wheels' ),
+			9 => array( 'deck' ),
+		);
+		self::assertSame( array( 7, 8 ), $this->made()->missing( 7, 8, 9 ) );
+
+		$this->made()->make( 7, 8, 9 );
+		$none = Specs::none();
+		self::assertSame(
+			array(
+				array( 70, Renditions::drawn( 'grip', $none, 420, 1626 ) ),
+				array( 80, Renditions::drawn( 'wheels', $none, 420, 1626 ) ),
+			),
+			$this->renditions->made
+		);
+		self::assertSame( array( array( 108, 420 ), array( 217, 839 ), array( 420, 1626 ) ), $this->renditions->made[0][1], 'the 9 by 33 in sheet, never larger than the image' );
+		self::assertSame( array(), $this->made()->missing( 7, 8, 9 ) );
 	}
 
 	// D-209: every drawn part with no rendition is said, not the first alone.

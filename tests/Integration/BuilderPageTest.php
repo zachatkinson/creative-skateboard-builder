@@ -9,6 +9,7 @@ declare( strict_types=1 );
 
 namespace CreativeBranding\SkateboardBuilder\Tests\Integration;
 
+use CreativeBranding\SkateboardBuilder\Adapter\KitProduct;
 use CreativeBranding\SkateboardBuilder\Tests\Support\LayerFiles;
 use CreativeBranding\SkateboardBuilder\Service\PartRenditions;
 use CreativeBranding\SkateboardBuilder\Cart\ShowHooks;
@@ -326,6 +327,34 @@ final class BuilderPageTest extends IntegrationTestCase {
 		$caption = '//figcaption[contains(@class,"cbuild-picture__description")]';
 		self::assertNotNull( $dom->query( $caption . '/span[not(@hidden)]/span[not(@hidden)][.="Seen from underneath."]' )->item( 0 ) );
 		self::assertNotNull( $dom->query( $caption . '/span/span[@hidden][.="Seen from the top."]' )->item( 0 ) );
+	}
+
+	// Cowork's review of 1.1.0, F29 (issue #129, D-371): the top drew the demo's grips from their 350 KB files, as no
+	// rendition of a grip that gives no size was made. Its index job makes them, and the top takes the largest WebP.
+	public function test_the_tops_grip_is_drawn_from_its_largest_webp_rendition_when_the_grip_gives_no_size(): void {
+		$grips = self::factory()->term->create( array( 'taxonomy' => 'product_cat' ) );
+		$grip  = $this->part( 'Grip', '8', array(), $grips );
+		$slots = KitDocuments::slots();
+		foreach ( array( 0 => $this->parts['deck 8.5'], 1 => $this->parts['truck 149'] ) as $at => $part ) {
+			$slots['slots'][ $at ]['sources'] = array( 'categories' => array_map( 'intval', wp_get_post_terms( $part, 'product_cat', array( 'fields' => 'ids' ) ) ) );
+		}
+		$slots['slots'][6]['sources'] = array( 'categories' => array( $grips ) );
+		$kit                          = wc_get_product( $this->kit );
+		self::assertInstanceOf( KitProduct::class, $kit );
+		$kit->setDocument( Options::META_KIT_SLOTS, $slots );
+		$kit->save();
+		foreach ( array( $this->parts['deck 8.5'] => array( 432, 1626, true, 'png' ), $grip => array( 572, 2096, true, 'webp' ) ) as $part => $file ) {
+			$product = wc_get_product( $part );
+			$product->update_meta_data( Options::META_LAYER, (string) LayerFiles::attachment( ...$file ) );
+			$product->save();
+		}
+		self::work();
+		$this->service( Kits::class )->forget();
+
+		$dom   = self::dom( $this->kitPage( array( 'deck' => (string) $this->parts['deck 8.5'], 'grip' => (string) $grip, 'step' => 'grip' ) ) );
+		$layer = $dom->query( '//figure[@id="cbuild-picture"]/div[contains(@class,"cbuild-board--top")]/span[contains(@class,"cbuild-board__layer--grip")]' )->item( 0 );
+		self::assertInstanceOf( \DOMElement::class, $layer );
+		self::assertMatchesRegularExpression( '#;--cbuild-image:url\("[^"]+/creative-skateboard-builder/layers/[0-9]+-[0-9a-f]{20}-458x1677\.webp"\)#', $layer->getAttribute( 'style' ), 'the 9 by 33 in sheet at 2 px/mm, not the full-size file' );
 	}
 
 	public function test_the_kits_page_gives_the_store_its_route_page_and_language_and_loads_it(): void {

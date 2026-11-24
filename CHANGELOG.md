@@ -22,6 +22,7 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Fixed
 
+- A grip with no spec in the index, or wheels with none, now gets its layer image's resized copies at the sizes the picture draws it, and the board's top draws the grip from its WebP copy. It got none, so the top loaded the full-size image, and neither "Read every part again" nor Site Health saw it (Cowork's 1.1.0 F29, #129, D-371).
 - The builder gives the state route 10 s to answer. A request that hung kept the builder busy until the browser gave up; now the step keeps what it shows and says "The shop did not answer in time. Try again in a moment.", in the page's language (D-364).
 - A mouse press on the builder that went down before its script ran, and came up after, now goes through; it was lost (Cowork's 1.1.0 F22, #120, D-363).
 - A press no longer moves the page when the state route answers late: a width folds its question at the press, Next is asked ahead once it lights and shows its step at the press, and the lines a pick's answer brings or takes away (the estimate, each card's price against the pick, its recommendation, the ready builds) keep or give up their place at the press. Held back 800 ms, a width, a deck, Next and a truck shift nothing on a desktop or a phone; on a phone a width shifted 0.100 and a deck 0.124 (#118, D-355, D-356).

@@ -276,6 +276,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-307 · A grip's layer image is its whole sheet, drawn once at its size and cut by the deck](#d-307--a-grips-layer-image-is-its-whole-sheet-drawn-once-at-its-size-and-cut-by-the-deck--2026-11-23)
 - [D-309 · A part's layer in a composed picture is drawn as another plugin answers, by use, and the answer is in the name](#d-309--a-parts-layer-in-a-composed-picture-is-drawn-as-another-plugin-answers-by-use-and-the-answer-is-in-the-name--2026-11-23)
 - [D-337 · The layer image a part already has is not checked again when the product is saved](#d-337--the-layer-image-a-part-already-has-is-not-checked-again-when-the-product-is-saved--2026-11-23)
+- [D-371 · A part with no spec in the index gets its renditions at the sizes the page draws it at](#d-371--a-part-with-no-spec-in-the-index-gets-its-renditions-at-the-sizes-the-page-draws-it-at--2026-11-24)
 
 ### Cart, checkout and orders
 
@@ -5102,5 +5103,22 @@ Cowork's review of 1.1.0, F23 (#121, design): a deck pressed showed the old boar
 **Sources:** D-308's (NN/g's response time limits, Baymard's loading indicators, the HTML standard's `HTMLImageElement.decode()`).
 
 **Why:** the board is the builder's answer to a pick; a shopper who presses a deck should see that deck, and the server's word still comes after it.
+
+**Status:** Accepted.
+
+### D-371 · A part with no spec in the index gets its renditions at the sizes the page draws it at · 2026-11-24
+
+Cowork's review of 1.1.0, F29 (#129): on the demo, grips 2155, 2156 and 2444 had layer images (5227, 5226 and 5228, each 572 by 2096 WebP, about 350 KB) and not one rendition. The top drew them from their full files, "Read every part again" made none, and Site Health flagged nothing. Wheels' renditions were there.
+
+- **The cause.** `PartRenditions::drawn()` gave nothing to make for a part the index holds no spec for: `SpecIndexRepository::specsOf()` returns only the parts that have rows, and `drawn()` returned null where `$specs[ $part ]` was not set. The page reads the same part with no specs (`WooKits` gives it an empty `Specs`), and `Layout::drawn()` sizes a grip with no width or length as the usual 9 by 33 in sheet, so the page asked for `458x1677` and the other sizes, and found none on disk. A grip is the part most likely to have no spec at all. `missing()` uses the same `drawn()`, so neither the index job, the reindex's queueing of missing copies, nor Site Health's count saw the part. Reproduced in the integration site: a grip with a layer image and its specs got its six files; the same grip without specs got none, and `unrendered()` said 0.
+- **The race was not it.** The index job ran in the same second as the import set the layer image, but a save that moves the layer queues a job of its own, since `enqueueDistinct()` looks only for a waiting job, not a running one. And the reindex would have queued the grips had `missing()` seen them.
+- **The fix.** `drawn()` reads a part with no rows as `Specs::none()`, as the page does, so the box is the one the page draws: the usual sheet for a grip, the usual 54 mm wheel for wheels. A deck with no width and trucks with no axle width still have no box, so nothing is made for them, as before. A part not indexed yet is made at those sizes only once its index job has run, as before, since the job indexes it first.
+- **Bolt heads** are not in `Layout::DRAWN` and get no renditions; at about 8 KB each that stands.
+
+**Tests.** `GripRenditionsTest`, through the container and the queue: a grip that gives no size has its six renditions (115x420, 229x839 and 458x1677, AVIF and WebP) once its job runs, and none counted missing; a grip with its size has the same; with its copies deleted, `unrenderedParts()` names it and "Read every part again" makes them; and an index job run before the layer image is set leaves none missing, as the save queues its own job (green before the fix, as the race is not the cause). `BuilderPageTest::test_the_tops_grip_is_drawn_from_its_largest_webp_rendition_when_the_grip_gives_no_size`: the top's grip layer has `--cbuild-image` on the `458x1677.webp` rendition. `PartRenditionsTest::test_a_part_with_no_indexed_spec_is_made_at_the_sizes_the_page_draws_it_at`: a grip and wheels with no rows are missing, then made at `Renditions::drawn()` of `Specs::none()`; a deck is neither.
+
+**Red runs.** Before the fix: `GripRenditionsTest::test_a_grip_that_gives_no_size_has_its_layer_image_made_at_the_usual_sheets_sizes`, "its index job made them / Failed asserting that two arrays are identical", the six sizes expected and an empty array found (GripRenditionsTest.php:89); `test_read_every_part_again_makes_a_grips_missing_copies`, "Site Health counts it", the grip expected and nothing found (GripRenditionsTest.php:118); `BuilderPageTest::test_the_tops_grip_is_drawn_from_its_largest_webp_rendition_when_the_grip_gives_no_size`, "Failed asserting that '…--cbuild-image:url("…/uploads/2026/11/cbuild-layer-….webp")…' matches PCRE pattern …-458x1677\.webp…" (BuilderPageTest.php:357), Cowork's finding as the page served it; `PartRenditionsTest::test_a_part_with_no_indexed_spec_is_made_at_the_sizes_the_page_draws_it_at`, `array( 7, 8 )` expected and `array()` found (PartRenditionsTest.php:173). **Deliberate break:** the `isset( $specs[ $part ] )` check put back in `drawn()`: the same four failed on the same lines, and the race test passed. Put back, all passed.
+
+**Why:** the renditions are made for the page, so they are sized as the page sizes the part. Two readings of "no specs" made the page ask for files no job would make.
 
 **Status:** Accepted.
