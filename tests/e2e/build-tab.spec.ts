@@ -79,6 +79,12 @@ test.describe( 'The Build tab', () => {
 			page.locator( `${ PANEL } legend`, { hasText: 'Slot: Trucks' } )
 		).toBeVisible();
 		await axe( page, 'the Build tab', PANEL, [], THEIRS );
+		// The start button's box says what it shows (M12's audit).
+		await expect(
+			page.locator( '#cbuild-kit-settings-start_button' )
+		).toHaveAccessibleName(
+			'Show "Build a complete with this deck" on its parts\' pages'
+		);
 
 		// By keyboard alone: the Trucks slot's settings opened, units that are no number, and a fee.
 		const fold = page.locator(

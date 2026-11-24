@@ -611,7 +611,7 @@ function guide( kept: string[][], total = 4 ) {
 				<input type="checkbox" id="cbuild-kit-settings-width_guide-plugins" checked>
 			</div>
 			<div>${ Array.from( { length: total }, ( _, at ) => drawn( at ) ).join( '' ) }</div>
-			<p><button type="button" data-cbuild-add data-cbuild-removed="%s removed. The rows after it moved up." hidden>Add a row</button></p>
+			<p><button type="button" data-cbuild-add data-cbuild-removed="%s removed. The rows after it moved up." data-cbuild-unticked="Use the builder's rows is now unticked, so the rows you type are saved." hidden>Add a row</button></p>
 		</div>
 	</div>`;
 	return document.getElementById(
@@ -725,15 +725,43 @@ describe( 'adds', () => {
 		expect( plugins() ).toBe( false );
 	} );
 
+	it( "says once that the builder's rows were unticked as a row is typed in (M12 audit)", () => {
+		guide( [ [ 'a', '7', '' ] ] );
+		const speak = vi.fn();
+		adds( document, speak );
+		const shoe = document.getElementById( 'g0-shoe' ) as HTMLInputElement;
+		shoe.value = 'EU 38';
+		shoe.dispatchEvent( new Event( 'input', { bubbles: true } ) );
+		shoe.value = 'EU 39';
+		shoe.dispatchEvent( new Event( 'input', { bubbles: true } ) );
+		expect( speak.mock.calls ).toEqual( [
+			[
+				"Use the builder's rows is now unticked, so the rows you type are saved.",
+			],
+		] );
+		(
+			document.getElementById(
+				'cbuild-kit-settings-width_guide-plugins'
+			) as HTMLInputElement
+		 ).checked = true;
+		shoe.dispatchEvent( new Event( 'input', { bubbles: true } ) );
+		expect( speak ).toHaveBeenCalledTimes( 2 );
+	} );
+
 	it( 'says nothing without words or a screen reader, and leaves other clicks alone', () => {
 		const section = guide( [ [ 'a', '7', '' ] ] );
 		delete addButton().dataset.cbuildRemoved;
+		delete addButton().dataset.cbuildUnticked;
 		const speak = vi.fn();
 		adds( document, speak );
 		( document.getElementById( 'g0-remove' ) as HTMLButtonElement ).click();
 		expect( speak ).not.toHaveBeenCalled();
 		section.querySelector( 'legend' )?.click();
 		section.dispatchEvent( new Event( 'input', { bubbles: true } ) );
+		const shoe = document.getElementById( 'g0-shoe' ) as HTMLInputElement;
+		shoe.dispatchEvent( new Event( 'input', { bubbles: true } ) );
+		expect( speak ).not.toHaveBeenCalled();
+		expect( plugins() ).toBe( false );
 		expect( shown() ).toEqual( [ '||' ] );
 	} );
 

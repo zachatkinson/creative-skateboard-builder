@@ -866,7 +866,7 @@ final class BuildTabTest extends IntegrationTestCase {
 		$panel = $this->panel( $kit );
 		self::assertMatchesRegularExpression( '/name="cbuild_kit\[settings\]\[start_button\]"[^>]*checked/', $panel, 'a kit saved before 1.2.0 places the button' );
 		self::assertMatchesRegularExpression( '#id="cbuild-kit-layout".*?<input\s+type="checkbox"[^>]*id="cbuild-kit-settings-start_button"[^>]*name="cbuild_kit\[settings\]\[start_button\]"#s', $panel, 'in the Layout section' );
-		self::assertMatchesRegularExpression( '#<label for="cbuild-kit-settings-start_button">Show on its parts&\#039; pages</label>#', $panel, 'labelled' );
+		self::assertMatchesRegularExpression( '#<label for="cbuild-kit-settings-start_button">Show &quot;Build a complete with this deck&quot; on its parts&\#039; pages</label>#', $panel, 'labelled with what it shows (M12 audit)' );
 		self::assertMatchesRegularExpression( '#id="cbuild-kit-settings-start_button"[^>]*aria-describedby="cbuild-kit-settings-start_button-note"#', $panel, 'and described' );
 		self::assertStringContainsString( 'lowest menu order', $panel, 'the note says which kit wins where several offer a part' );
 		// One switch, in the Layout section: a second, in Picture, sent `cbuild_kit[picture][start_button]` and did nothing (M12's walkthrough).
@@ -1048,7 +1048,7 @@ final class BuildTabTest extends IntegrationTestCase {
 		self::assertMatchesRegularExpression( '#<fieldset id="cbuild-kit-settings-width_guide-rows-4" class="cbuild-kit-group cbuild-kit-adds">#', $panel );
 		self::assertMatchesRegularExpression( '#<fieldset id="cbuild-kit-settings-width_guide-rows-5" class="cbuild-kit-group cbuild-kit-adds" hidden>#', $panel, 'the rest wait for Add a row' );
 		self::assertSame( 12, preg_match_all( '#id="cbuild-kit-settings-width_guide-rows-\d+-shoe"#', $panel ), 'twelve rows at most' );
-		self::assertSame( 1, preg_match_all( '#<button type="button" class="button" data-cbuild-add data-cbuild-removed="%s removed. The rows after it moved up." hidden>Add a row</button>#', $panel ), 'shown by the script' );
+		self::assertSame( 1, preg_match_all( '#<button type="button" class="button" data-cbuild-add data-cbuild-removed="%s removed. The rows after it moved up." data-cbuild-unticked="&quot;Use the builder&\#039;s rows&quot; is now unticked, so the rows you type are saved." hidden>Add a row</button>#', $panel ), 'shown by the script, with what it says' );
 		self::assertSame( 1, preg_match_all( '#<button type="button" class="button" data-cbuild-remove id="cbuild-kit-settings-width_guide-rows-1-remove" hidden>Remove <span class="screen-reader-text">Row 2</span></button>#', $panel ), 'each Remove named with its row' );
 		self::assertMatchesRegularExpression( '#<input\s+type="text"\s+class="short"\s+id="cbuild-kit-settings-width_guide-rows-0-shoe"\s+name="[^"]+"\s+value="[^"]*"\s+autocomplete="off"\s+maxlength="40"#', $panel );
 
@@ -1097,6 +1097,45 @@ final class BuildTabTest extends IntegrationTestCase {
 		);
 		$this->send( $kit, $sent );
 		self::assertSame( array( 'shown' => true ), self::stored( $kit->get_id() )[ Options::META_KIT_SETTINGS ]['width_guide'] );
+	}
+
+	// M12's audit: without the script, rows typed while "Use the builder's rows" is ticked are not saved, and the tab
+	// says so with a link to the box. Rows sent as the tab drew them, the builder's own, say nothing.
+	public function test_rows_typed_while_the_builders_rows_are_ticked_are_not_saved_and_the_tab_says_so(): void {
+		$this->as( 'shop_manager' );
+		update_option( 'woocommerce_price_decimal_sep', ',' );
+		$kit   = KitFactory::kit();
+		$panel = $this->panel( $kit );
+		$rows  = array();
+		for ( $at = 0; $at < 12; $at++ ) {
+			$rows[] = array(
+				'shoe' => (string) self::guideField( $panel, $at, 'shoe' ),
+				'from' => (string) self::guideField( $panel, $at, 'from' ),
+				'to'   => (string) self::guideField( $panel, $at, 'to' ),
+			);
+		}
+		$sent                            = self::form();
+		$sent['settings']['width_guide'] = array(
+			'shown'   => '1',
+			'plugins' => '1',
+			'rows'    => $rows,
+		);
+		$this->send( $kit, $sent );
+		self::assertSame( array(), self::notices(), 'the builder\'s rows sent back as drawn say nothing' );
+
+		$sent['settings']['width_guide']['rows'][4] = array( 'shoe' => 'EU 46', 'from' => '9', 'to' => '' );
+		$this->send( $kit, $sent );
+		self::assertSame(
+			array( '<a href="#cbuild-kit-settings-width_guide-plugins">Width guide: the rows you typed were not saved, since &quot;Use the builder&#039;s rows&quot; is ticked. Untick it and save again to keep them.</a>' ),
+			self::notices()
+		);
+		self::assertSame( array( 'shown' => true ), self::stored( $kit->get_id() )[ Options::META_KIT_SETTINGS ]['width_guide'], 'the builder\'s rows kept, as the box says' );
+		\WC_Admin_Meta_Boxes::$meta_box_errors = array();
+
+		$sent['settings']['width_guide']['rows'][0]['shoe'] = 'EU 38';
+		unset( $sent['settings']['width_guide']['rows'][4] );
+		$this->send( $kit, $sent );
+		self::assertCount( 1, self::notices(), 'a row of the builder\'s changed is said too' );
 	}
 
 	// #114: a row that is wrong is named at its field, in the Width guide section, and the settings in force stay.

@@ -225,8 +225,10 @@ if ( ! defined( 'ABSPATH' ) ) {
 				// The screen's script says a row went, in these words, once it has removed it.
 				/* translators: %s: a row's name, such as Row 2. */
 				$cbuild_removed = __( '%s removed. The rows after it moved up.', 'creative-skateboard-builder' );
+				// And that typing in a row unticked the builder's rows, once.
+				$cbuild_unticked = __( '"Use the builder\'s rows" is now unticked, so the rows you type are saved.', 'creative-skateboard-builder' );
 				?>
-				<p class="cbuild-kit-add"><button type="button" class="button" data-cbuild-add data-cbuild-removed="<?php echo esc_attr( $cbuild_removed ); ?>" hidden><?php echo esc_html( $cbuild_section['add'] ); ?></button></p>
+				<p class="cbuild-kit-add"><button type="button" class="button" data-cbuild-add data-cbuild-removed="<?php echo esc_attr( $cbuild_removed ); ?>" data-cbuild-unticked="<?php echo esc_attr( $cbuild_unticked ); ?>" hidden><?php echo esc_html( $cbuild_section['add'] ); ?></button></p>
 			<?php endif; ?>
 		</div>
 	<?php endforeach; ?>

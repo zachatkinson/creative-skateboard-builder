@@ -241,14 +241,17 @@ function full( section: Element ): void {
  * The shop is typing rows of its own, so the builder's rows are no longer ticked.
  *
  * @param section The section.
+ * @return Whether the box was ticked until now.
  */
-function own( section: Element ): void {
+function own( section: Element ): boolean {
 	const plugins = section.querySelector< HTMLInputElement >(
 		'input[type="checkbox"][id$="-plugins"]'
 	);
+	const was = plugins?.checked ?? false;
 	if ( plugins ) {
 		plugins.checked = false;
 	}
+	return was;
 }
 
 /**
@@ -343,7 +346,13 @@ export function adds( doc: Document, speak?: Speak ): void {
 				event.target instanceof Element &&
 				event.target.closest( ADDS )
 			) {
-				own( section );
+				// Typing unticks the box, so a screen reader hears it once (M12's audit).
+				const said =
+					section.querySelector< HTMLElement >( ADD )?.dataset
+						.cbuildUnticked;
+				if ( own( section ) && said && speak ) {
+					speak( said );
+				}
 			}
 		} );
 	} );

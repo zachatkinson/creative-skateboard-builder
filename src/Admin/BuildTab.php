@@ -292,6 +292,12 @@ final class BuildTab {
 			);
 			self::notice( $field, $text );
 		}
+		if ( self::typedOver( $sent ) ) {
+			self::notice(
+				self::IDS . '-' . self::GUIDE . '-plugins',
+				__( 'Width guide: the rows you typed were not saved, since "Use the builder\'s rows" is ticked. Untick it and save again to keep them.', 'creative-skateboard-builder' )
+			);
+		}
 		foreach ( $draft->unoffered as $kept ) {
 			$part = (int) ( $kept['values']['part'] ?? 0 );
 			self::notice(
@@ -964,7 +970,7 @@ final class BuildTab {
 		$found[] = $this->field(
 			self::IDS . '-settings-start_button',
 			self::FIELD . '[settings][start_button]',
-			__( 'Show on its parts\' pages', 'creative-skateboard-builder' ),
+			__( 'Show "Build a complete with this deck" on its parts\' pages', 'creative-skateboard-builder' ),
 			'checkbox',
 			false !== ( $settings['start_button'] ?? true ) ? '1' : '',
 			array( 'note' => __( 'Puts "Build a complete with this deck" on the page of each part the kit\'s first slot offers. Where several kits offer a part, the one with the lowest menu order shows it, and the Products screen\'s Sorting sets that order. Off, the next of them shows it.', 'creative-skateboard-builder' ) )
@@ -1050,14 +1056,7 @@ final class BuildTab {
 		$plugins = ! isset( $guide['rows'] );
 		$rows    = self::rows( $guide, 'rows' );
 		if ( $plugins ) {
-			$rows = array_map(
-				static fn( array $row ): array => array(
-					'shoe' => $row['shoe'],
-					'from' => $row['from']->decimal(),
-					'to'   => null === $row['to'] ? '' : $row['to']->decimal(),
-				),
-				WidthGuide::defaults()
-			);
+			$rows = self::pluginRows();
 		}
 		$groups = array(
 			array(
@@ -1116,6 +1115,47 @@ final class BuildTab {
 			);
 		}
 		return $groups;
+	}
+
+	/**
+	 * The plugin's rows of the width guide, as the editor starts from them.
+	 *
+	 * @return list<array{shoe: string, from: string, to: string}>
+	 */
+	private static function pluginRows(): array {
+		return array_map(
+			static fn( array $row ): array => array(
+				'shoe' => $row['shoe'],
+				'from' => $row['from']->decimal(),
+				'to'   => null === $row['to'] ? '' : $row['to']->decimal(),
+			),
+			WidthGuide::defaults()
+		);
+	}
+
+	/**
+	 * Whether the width guide's rows were typed in while "Use the builder's rows" was ticked, so they are not saved. The
+	 * script unticks the box as a row is typed in; without it, the rows come back as typed, and are held to the plugin's
+	 * rows as the editor drew them. A row left empty is no row.
+	 *
+	 * @param array<mixed> $sent The tab's fields.
+	 */
+	private static function typedOver( array $sent ): bool {
+		$settings = is_array( $sent['settings'] ?? null ) ? $sent['settings'] : array();
+		$guide    = is_array( $settings['width_guide'] ?? null ) ? $settings['width_guide'] : array();
+		if ( '' === self::text( $guide, 'plugins' ) || ! is_array( $guide['rows'] ?? null ) ) {
+			return false;
+		}
+		$typed = array();
+		foreach ( $guide['rows'] as $row ) {
+			$row    = is_array( $row ) ? $row : array();
+			$fields = array( self::text( $row, 'shoe' ), self::text( $row, 'from' ), self::text( $row, 'to' ) );
+			if ( array( '', '', '' ) !== $fields ) {
+				$typed[] = $fields;
+			}
+		}
+		$drawn = array_map( static fn( array $row ): array => array( trim( $row['shoe'] ), self::measure( $row['from'] ), self::measure( $row['to'] ) ), self::pluginRows() );
+		return $typed !== $drawn;
 	}
 
 	/**
@@ -1281,7 +1321,7 @@ final class BuildTab {
 			'over'               => __( 'Wheel over the limit by up to', 'creative-skateboard-builder' ),
 			'riser'              => __( 'The riser to suggest', 'creative-skateboard-builder' ),
 			'wheelbase'          => __( 'Wheelbase where a deck gives none', 'creative-skateboard-builder' ),
-			'start_button'       => __( 'Show on its parts\' pages', 'creative-skateboard-builder' ),
+			'start_button'       => __( 'Show "Build a complete with this deck" on its parts\' pages', 'creative-skateboard-builder' ),
 			'builder_page'       => __( 'Builder page', 'creative-skateboard-builder' ),
 			'stage_side'         => __( 'Stage side on a desktop', 'creative-skateboard-builder' ),
 			'board_size'         => __( 'Board size on a desktop', 'creative-skateboard-builder' ),

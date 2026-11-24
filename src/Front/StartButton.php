@@ -27,7 +27,8 @@ if ( ! defined( 'ABSPATH' ) ) {
  * its width, so the builder skips the question.
  *
  * - **Which kit.** One whose first slot offers the product, or one of its variations, in stock, and whose Build tab
- *   leaves Show on its parts' pages on (1.2.0, #115); where more than one does, the first by menu order, then by ID.
+ *   leaves Show "Build a complete with this deck" on its parts' pages on (1.2.0, #115); where more than one does, the
+ *   first by menu order, then by ID.
  * - **Which deck.** The product, or its first variation the kit offers in stock; on a variable product's page, the
  *   variation the shopper chooses in its form, where the kit offers it in stock (the spec reviewer's M10 minor M3).
  * - **What a shop changes.** `cbuild_start_button`.
@@ -212,8 +213,8 @@ final class StartButton implements Hookable {
 		foreach ( $kits as $kit ) {
 			$read = $every->isPublic( $kit ) ? $every->kit( $kit ) : null;
 			$slot = null === $read ? null : ( $read->slots->all()[0] ?? null );
-			// A kit whose Show on its parts' pages is off is passed over, and the next that offers the part places it
-			// (#115, D-349).
+			// A kit whose Show "Build a complete with this deck" on its parts' pages is off is passed over, and the next
+			// that offers the part places it (#115, D-349).
 			if ( null === $read || null === $slot || ! $read->settings->startButton ) {
 				continue;
 			}
