@@ -1300,6 +1300,54 @@ test.describe( 'The builder with JavaScript', () => {
 		await expect( total ).toHaveCSS( 'opacity', '1' );
 	} );
 
+	test( 'gives the route 10 s to answer, then stops waiting, keeps the step and says the answer did not come (D-364)', async ( {
+		page,
+	} ) => {
+		test.slow();
+		await ride( page, '8″' );
+		let release: () => void = () => undefined;
+		const held = new Promise< void >( ( done ) => {
+			release = done;
+		} );
+		await page.route( isRoute, async ( route ) => {
+			await held;
+			// The page gave the request up: there is no one to answer.
+			await route.continue().catch( () => undefined );
+		} );
+		const deck = page.getByRole( 'radio', {
+			name: 'Choose Builder test deck 8.0',
+		} );
+		const asked = Date.now();
+		await deck.check();
+		const builder = page.locator( '.cbuild' );
+		await expect( builder ).toHaveAttribute( 'aria-busy', 'true' );
+		// In English in every project, fr-ca's included: french.spec.ts reads it in French.
+		const late = 'The shop did not answer in time. Try again in a moment.';
+		await expect( page.locator( '.cbuild__limited' ) ).toHaveText( late, {
+			timeout: 20000,
+		} );
+		expect(
+			Date.now() - asked,
+			'not before the limit'
+		).toBeGreaterThanOrEqual( 10000 );
+		await expect( page.locator( '.cbuild__status' ) ).toHaveText( late );
+		await expect( builder ).toHaveAttribute( 'aria-busy', 'false' );
+		await expect( deck, 'the step keeps what it shows' ).toBeChecked();
+		expect(
+			await page.evaluate( () => document.getAnimations().length ),
+			'no moment plays'
+		).toBe( 0 );
+		expect( await stayed( page ), 'no page was loaded' ).toBe( true );
+		release();
+		await page.unroute( isRoute );
+		// Asked again, the answer comes and the line goes.
+		await page.getByRole( 'button', { name: 'Next: Trucks' } ).click();
+		await expect( heading( page ) ).toHaveText(
+			'Step 2 of 7: Choose your trucks'
+		);
+		await expect( page.locator( '.cbuild__limited' ) ).toBeHidden();
+	} );
+
 	test( 'sends the form when the state route fails, the server shows the next step, and the build still reaches the cart', async ( {
 		page,
 	} ) => {

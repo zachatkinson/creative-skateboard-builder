@@ -62,6 +62,8 @@ interface Config {
 	page: number;
 	locale: string;
 	title: { before: string; after: string };
+	/** What the step says when the route has not answered in time (D-364). */
+	late: string;
 }
 
 /**
@@ -958,6 +960,7 @@ function nav( state: State ): Navigator {
 			endpoint: String( config.endpoint ),
 			page: Number( config.page ?? 0 ),
 			locale: String( config.locale ?? '' ),
+			late: String( config.late ?? '' ),
 			fetch: ( input, init ) => window.fetch( input, init ),
 			show: ( view, history ) => {
 				const shown = view as Shown;

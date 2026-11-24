@@ -338,6 +338,8 @@ final class BuilderPageTest extends IntegrationTestCase {
 				'page'     => $this->kit,
 				'locale'   => determine_locale(),
 				'title'    => PageTitle::around( PageTitle::base() ),
+				// What the step says when the route has not answered in time (D-364).
+				'late'     => 'The shop did not answer in time. Try again in a moment.',
 			),
 			wp_interactivity_config( BuilderPage::STORE )
 		);

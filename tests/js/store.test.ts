@@ -1472,6 +1472,41 @@ describe( 'the store', () => {
 		expect( state.limited ).toBe( '' );
 	} );
 
+	// D-364: past the store's limit the request is given up, and the step says so in the page's words, as past the rate limit.
+	it( "says the page's words when the route has not answered in time, and keeps the view", async () => {
+		setConfig( NAME, {
+			endpoint: ENDPOINT,
+			late: 'The shop did not answer in time. Try again in a moment.',
+		} );
+		vi.stubGlobal(
+			'fetch',
+			( _input: string, init?: RequestInit ) =>
+				new Promise< Response >( ( _done, fail ) =>
+					init?.signal?.addEventListener( 'abort', () =>
+						fail( new DOMException( 'Aborted', 'AbortError' ) )
+					)
+				)
+		);
+		actions.back();
+		await vi.advanceTimersByTimeAsync( 10000 );
+		await settle();
+		expect( state.limited ).toBe(
+			'The shop did not answer in time. Try again in a moment.'
+		);
+		expect( state.status ).toBe( state.limited );
+		expect( state.pending ).toBe( false );
+		expect( state.view ).toBe( START );
+
+		// A page whose config has no words for it says nothing, rather than "undefined".
+		reset();
+		setConfig( NAME, { endpoint: ENDPOINT } );
+		state.limited = '';
+		actions.back();
+		await vi.advanceTimersByTimeAsync( 10000 );
+		await settle();
+		expect( state.limited ).toBe( '' );
+	} );
+
 	it( 'says the step alone in the title when the page gave no title, and moves no focus with no builder found', async () => {
 		setConfig( NAME, { endpoint: ENDPOINT } );
 		document.body.innerHTML =

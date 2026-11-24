@@ -4519,3 +4519,23 @@ Cowork's 1.1.0 review of D-304 (#125): from wp-admin on the demo, the deck step'
 **Why:** the header was put there to find where a real host's time goes; it now says which part of the deck step to look at first.
 
 **Status:** Accepted.
+
+### D-364 · The state route has 10 s to answer, then the step keeps what it shows and says so · 2026-11-24
+
+The store sent the state request with no time limit (`navigate.ts`, the `fetch` in `ask()`), so a request that hung left the builder busy, its picture dimmed and Next waiting, until the browser gave up, which can be minutes. Cowork's 1.1.0 review measured answers of up to about 1.1 s on the demo (D-304, D-328: "a limit of several seconds wouldn't cut a working request short").
+
+- **The limit: 10 s** (`LIMIT` in `navigate.ts`), from the request's start to its whole answer read. That is about nine times the slowest answer Cowork measured on the demo, which leaves room for a slow phone network and a host whose first request of the day starts cold (the demo's first bare REST request took 1.5 s). It is also the limit Nielsen gives for keeping a person's attention on a task ("Response Times: The 3 Important Limits", nngroup.com): past it, the shopper is better told than kept waiting. A shorter limit would cut off answers that would have come; a longer one keeps the builder busy after the shopper has stopped watching it.
+- **How.** The navigator already aborts a request a later one overtakes, through its own `AbortController`. A timer of its own aborts that controller at the limit, and is cleared once the answer is in. `AbortSignal.timeout()` is supported in every browser the plugin targets (`@wordpress/browserslist-config`: Safari and iOS Safari 16 on, Firefox 100 on, Chrome and Edge 124 on, MDN's Baseline since April 2024), but it cannot be cancelled once the answer is in and needs `AbortSignal.any()` to join the controller's signal; MDN suggests a controller with `setTimeout()` and `clearTimeout()` for that case. A timer of the navigator's own is also one the unit tests can move.
+- **When it fires.** The request is aborted, the builder stops being busy (`aria-busy`, the dim and the line go), nothing is shown, so no moment plays, and the step keeps what it shows. The status region and the limit line say "The shop did not answer in time. Try again in a moment.", through the path a 429 takes (spec: Search, "the step keeps what it shows and says when to try again"): the words are the page's, in its language, from the store's config (`late`). The next answer clears them.
+- **Not the form's fallback.** Any other failure sends the form or follows the link as without JavaScript. A request that took 10 s means the server is slow, and a page load would ask it the same thing again with nothing on screen; the shopper chooses when to try.
+- **French.** The sentence is translatable and has its fr_CA translation: « La boutique n’a pas répondu à temps. Réessayez dans un instant. »
+
+**Tests.** `navigate.test.ts`: at LIMIT less 1 ms nothing is given up; at LIMIT the request's signal is aborted, the builder stops waiting, the step's words are said through `limited`, and nothing is shown, sent or pushed; an answer in before the limit has nothing aborted after it, and a request that overtakes another has its own 10 s. `builder.spec.ts` "gives the route 10 s to answer, then stops waiting, keeps the step and says the answer did not come": the route held, a deck picked, the words in the limit line and the status region no sooner than 10 s, `aria-busy` false, the deck still picked, no animation running and no page loaded; then Next answers and the line goes. `french.spec.ts`: the same words in French.
+
+**Red runs.** Before the change: chromium-desktop, "Expected: "The shop did not answer in time. Try again in a moment." / Received: """ (builder.spec.ts:1328); `navigate.test.ts`, "the request is given up: expected false to be true". The deliberate break, the limit's `clearTimeout()` taken out: "gives up nothing once the answer is in, nor a request a later one overtook" failed with "expected true to be false". Put back, all passed.
+
+**Why:** a builder that waits forever looks broken; one that says the shop did not answer, and keeps the shopper's picks, lets them try again.
+
+**Status:** Accepted.
+
+D-366 is unused: the brief left it for a fourth decision, and none was needed.

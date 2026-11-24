@@ -19,7 +19,7 @@ $cbuild_class  = 'cbuild' . ( $cbuild_layout['stageRight'] ? ' cbuild--stage-rig
 	<?php // The builder's first stop: past the rail to the step, seen once focused (spec: Accessibility, keyboard order). ?>
 	<a class="cbuild__skip" href="#cbuild-heading"><?php esc_html_e( 'Skip to the step', 'creative-skateboard-builder' ); ?></a>
 	<p class="cbuild__status screen-reader-text" role="status" aria-live="polite" data-wp-interactive="creative-skateboard-builder" data-wp-init="callbacks.init" data-wp-watch="callbacks.busy" data-wp-on-window--popstate="actions.back" data-wp-on-window--resize="actions.fit" data-wp-text="state.status"></p>
-	<?php // Past the route's rate limit, the step keeps what it shows and says when to try again; the status region reads it out. ?>
+	<?php // Past the route's rate limit, or when it has not answered in time (D-364), the step keeps what it shows and says when to try again; the status region reads it out. ?>
 	<p class="cbuild__limited" hidden data-wp-interactive="creative-skateboard-builder" data-wp-bind--hidden="!state.limited" data-wp-text="state.limited"></p>
 	<?php // The rail first: a row across the top on a desktop (D-268), the sheet's head on a tablet or a phone. ?>
 	<?php require __DIR__ . '/progress.php'; ?>

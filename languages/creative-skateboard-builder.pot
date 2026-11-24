@@ -9,7 +9,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-11-24T15:21:45+00:00\n"
+"POT-Creation-Date: 2026-11-24T19:21:17+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: creative-skateboard-builder\n"
@@ -47,29 +47,29 @@ msgid "Creative Skateboard Builder: run \"composer install\" before activating t
 msgstr ""
 
 #: src/Abilities/BuildAbility.php:108
-#: src/Rest/StateRoute.php:176
+#: src/Rest/StateRoute.php:199
 msgid "The kit product's ID."
 msgstr ""
 
 #: src/Abilities/BuildAbility.php:112
-#: src/Rest/StateRoute.php:181
+#: src/Rest/StateRoute.php:204
 msgid "The picks: each of the kit's slot keys to a part's ID."
 msgstr ""
 
 #: src/Abilities/BuildAbility.php:121
-#: src/Rest/StateRoute.php:189
+#: src/Rest/StateRoute.php:212
 msgid "Whether the shop assembles the build. Left out, the kit's own default."
 msgstr ""
 
 #: src/Abilities/BuildAbility.php:140
-#: src/Rest/StateRoute.php:319
-#: src/Rest/StateRoute.php:380
+#: src/Rest/StateRoute.php:347
+#: src/Rest/StateRoute.php:408
 msgid "There is no such kit."
 msgstr ""
 
 #: src/Abilities/BuildAbility.php:149
-#: src/Rest/StateRoute.php:346
-#: src/Rest/StateRoute.php:377
+#: src/Rest/StateRoute.php:374
+#: src/Rest/StateRoute.php:405
 msgid "This build cannot be priced in the shop's currency settings."
 msgstr ""
 
@@ -1001,7 +1001,7 @@ msgid "Deck hole pattern"
 msgstr ""
 
 #: src/Admin/Labels.php:45
-#: src/Front/StateAnswer.php:759
+#: src/Front/StateAnswer.php:793
 msgid "Axle width"
 msgstr ""
 
@@ -2040,13 +2040,12 @@ msgstr ""
 
 #: src/Cli/CheckCommand.php:87
 #: templates/admin/check.php:49
-#: templates/admin/check.php:51
 msgid "The check found nothing to fix."
 msgstr ""
 
 #. translators: %s: a number of findings.
 #: src/Cli/CheckCommand.php:95
-#: templates/admin/check.php:59
+#: templates/admin/check.php:57
 #, php-format
 msgid "The check found %s thing to fix."
 msgid_plural "The check found %s things to fix."
@@ -2123,12 +2122,16 @@ msgstr ""
 msgid "%1$s is now %2$s."
 msgstr ""
 
-#: src/Front/BuilderPage.php:236
+#: src/Front/BuilderPage.php:205
+msgid "The shop did not answer in time. Try again in a moment."
+msgstr ""
+
+#: src/Front/BuilderPage.php:238
 msgid "This builder isn't available right now."
 msgstr ""
 
 #. translators: %s: why the builder could not be shown, as the error said it.
-#: src/Front/BuilderPage.php:240
+#: src/Front/BuilderPage.php:242
 #, php-format
 msgid "Shown to shop managers only: %s"
 msgstr ""
@@ -2289,7 +2292,7 @@ msgstr[0] ""
 msgstr[1] ""
 
 #: src/Front/BuilderView.php:948
-#: src/Front/StateAnswer.php:627
+#: src/Front/StateAnswer.php:661
 msgid "Brand"
 msgstr ""
 
@@ -2407,7 +2410,7 @@ msgid "What width do you ride?"
 msgstr ""
 
 #: src/Front/BuilderView.php:1164
-#: src/Front/StateAnswer.php:758
+#: src/Front/StateAnswer.php:792
 msgid "Width"
 msgstr ""
 
@@ -3069,23 +3072,23 @@ msgstr ""
 msgid "Shipping to %1$s: %2$s."
 msgstr ""
 
-#: src/Front/StartButton.php:104
+#: src/Front/StartButton.php:105
 msgid "Build a complete with this deck"
 msgstr ""
 
-#: src/Front/StateAnswer.php:760
+#: src/Front/StateAnswer.php:794
 msgid "Diameter"
 msgstr ""
 
-#: src/Front/StateAnswer.php:761
+#: src/Front/StateAnswer.php:795
 msgid "Thickness"
 msgstr ""
 
-#: src/Front/StateAnswer.php:762
+#: src/Front/StateAnswer.php:796
 msgid "Length"
 msgstr ""
 
-#: src/Front/StateAnswer.php:763
+#: src/Front/StateAnswer.php:797
 #: templates/admin/spec-table.php:96
 msgid "Size"
 msgstr ""
@@ -3781,7 +3784,7 @@ msgstr ""
 
 #. translators: %s: a number of parts.
 #: src/Health/SiteHealth.php:291
-#: templates/admin/check.php:72
+#: templates/admin/check.php:70
 #, php-format
 msgid "%s part the picture draws has no layer image. It is still offered, and the picture shows its labelled photo beside the board until one is chosen on its product page."
 msgid_plural "%s parts the picture draws have no layer image. Each is still offered, and the picture shows its labelled photo beside the board until one is chosen on its product page."
@@ -4038,7 +4041,7 @@ msgid "Builds saved under My builds."
 msgstr ""
 
 #: src/Privacy/PrivacyHooks.php:135
-#: templates/admin/check.php:110
+#: templates/admin/check.php:111
 #: build/builder/index.js:1
 msgid "Kit"
 msgstr ""
@@ -4068,48 +4071,48 @@ msgstr ""
 msgid "A link to a build holds only the parts picked, and nothing about you. A picture of a build holds only the parts' images."
 msgstr ""
 
-#: src/Rest/StateRoute.php:182
+#: src/Rest/StateRoute.php:205
 msgid "The picks as they were before the last change, for the change list."
 msgstr ""
 
-#: src/Rest/StateRoute.php:184
+#: src/Rest/StateRoute.php:207
 msgid "The key of the slot whose options are listed."
 msgstr ""
 
-#: src/Rest/StateRoute.php:193
+#: src/Rest/StateRoute.php:216
 msgid "The language to answer in, when the site has it installed."
 msgstr ""
 
-#: src/Rest/StateRoute.php:198
+#: src/Rest/StateRoute.php:221
 msgid "A build link, as a page's address holds it. It takes the place of picks, previous, step and assembly, and the answer gains the view the page would show."
 msgstr ""
 
-#: src/Rest/StateRoute.php:203
+#: src/Rest/StateRoute.php:226
 msgid "The ID of the post the builder is on, for the view's links. A post that holds no builder for the kit is not used."
 msgstr ""
 
-#: src/Rest/StateRoute.php:208
+#: src/Rest/StateRoute.php:231
 msgid "The deck width the shelf lists, as its widths name one: 8.25in."
 msgstr ""
 
-#: src/Rest/StateRoute.php:213
+#: src/Rest/StateRoute.php:236
 msgid "The chips chosen: each group's name to the values chosen in it."
 msgstr ""
 
-#: src/Rest/StateRoute.php:229
+#: src/Rest/StateRoute.php:252
 msgid "What the shopper searched the step for."
 msgstr ""
 
-#: src/Rest/StateRoute.php:234
+#: src/Rest/StateRoute.php:257
 msgid "The order the shelf lists the step in."
 msgstr ""
 
-#: src/Rest/StateRoute.php:239
+#: src/Rest/StateRoute.php:262
 msgid "Where the shelf's page starts, as the last answer's more said."
 msgstr ""
 
 #. translators: %s: how many seconds until the shopper can try again.
-#: src/Rest/StateRoute.php:291
+#: src/Rest/StateRoute.php:319
 #, php-format
 msgid "Too many requests. Try again in %s second."
 msgid_plural "Too many requests. Try again in %s seconds."
@@ -4117,7 +4120,7 @@ msgstr[0] ""
 msgstr[1] ""
 
 #. translators: %s: the argument's name, such as picks.
-#: src/Rest/StateRoute.php:367
+#: src/Rest/StateRoute.php:395
 #, php-format
 msgid "A build link takes the place of %s: send one or the other."
 msgstr ""
@@ -4282,40 +4285,40 @@ msgstr ""
 msgid "Every part is being read again in the background, 100 at a time. Tools > Site Health shows how far it is."
 msgstr ""
 
-#: templates/admin/check.php:53
+#: templates/admin/check.php:51
 msgid "Nothing the check found keeps a part out of the builder."
 msgstr ""
 
-#: templates/admin/check.php:65
+#: templates/admin/check.php:63
 msgid "What to fix"
 msgstr ""
 
-#: templates/admin/check.php:67
+#: templates/admin/check.php:65
 msgid "What it found"
 msgstr ""
 
-#: templates/admin/check.php:70
+#: templates/admin/check.php:68
 msgid "Parts with no layer image"
 msgstr ""
 
-#: templates/admin/check.php:79
+#: templates/admin/check.php:77
 msgid "Variations that share a card"
 msgstr ""
 
-#: templates/admin/check.php:80
+#: templates/admin/check.php:78
 msgid "The builder shows a product's variations that share a photo and a layer image as one card, and asks for what tells them apart after the pick. Give a variation a photo of its own to give it a card of its own."
 msgstr ""
 
-#: templates/admin/check.php:83
-#: templates/admin/check.php:91
+#: templates/admin/check.php:81
+#: templates/admin/check.php:89
 msgid "What it says"
 msgstr ""
 
-#: templates/admin/check.php:87
+#: templates/admin/check.php:85
 msgid "Parts kept out of the builder"
 msgstr ""
 
-#: templates/admin/check.php:88
+#: templates/admin/check.php:86
 msgid "Not offered in the builder is ticked on these parts, or on their product, so no kit offers them. They stay in the shop. Untick it on the part's Part specs to offer it again."
 msgstr ""
 
@@ -4324,7 +4327,7 @@ msgid "Where"
 msgstr ""
 
 #. translators: %s: how many more rows a list has than it shows.
-#: templates/admin/check.php:135
+#: templates/admin/check.php:139
 #: templates/admin/import.php:131
 #: templates/admin/import.php:167
 #, php-format
@@ -4333,12 +4336,12 @@ msgid_plural "And %s more."
 msgstr[0] ""
 msgstr[1] ""
 
-#: templates/admin/check.php:140
-#: templates/admin/check.php:146
+#: templates/admin/check.php:144
+#: templates/admin/check.php:150
 msgid "Read every part again"
 msgstr ""
 
-#: templates/admin/check.php:141
+#: templates/admin/check.php:145
 msgid "The builder keeps an index of each part's specs and updates a part whenever it is saved. Use this when the index was not rebuilt, or stopped part way. It runs in the background, and parts keep what they held until they are reached."
 msgstr ""
 

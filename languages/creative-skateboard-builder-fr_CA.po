@@ -46,29 +46,29 @@ msgid "Creative Skateboard Builder: run \"composer install\" before activating t
 msgstr "Creative Skateboard Builder : lancez « composer install » avant d’activer l’extension."
 
 #: src/Abilities/BuildAbility.php:108
-#: src/Rest/StateRoute.php:176
+#: src/Rest/StateRoute.php:199
 msgid "The kit product's ID."
 msgstr "L’ID du produit ensemble."
 
 #: src/Abilities/BuildAbility.php:112
-#: src/Rest/StateRoute.php:181
+#: src/Rest/StateRoute.php:204
 msgid "The picks: each of the kit's slot keys to a part's ID."
 msgstr "Les choix : chaque clé d’emplacement de l’ensemble associée à l’ID d’une pièce."
 
 #: src/Abilities/BuildAbility.php:121
-#: src/Rest/StateRoute.php:189
+#: src/Rest/StateRoute.php:212
 msgid "Whether the shop assembles the build. Left out, the kit's own default."
 msgstr "Si le magasin assemble le montage. Omis, c’est la valeur par défaut de l’ensemble."
 
 #: src/Abilities/BuildAbility.php:140
-#: src/Rest/StateRoute.php:319
-#: src/Rest/StateRoute.php:380
+#: src/Rest/StateRoute.php:347
+#: src/Rest/StateRoute.php:408
 msgid "There is no such kit."
 msgstr "Cet ensemble n’existe pas."
 
 #: src/Abilities/BuildAbility.php:149
-#: src/Rest/StateRoute.php:346
-#: src/Rest/StateRoute.php:377
+#: src/Rest/StateRoute.php:374
+#: src/Rest/StateRoute.php:405
 msgid "This build cannot be priced in the shop's currency settings."
 msgstr "Ce montage ne peut pas être chiffré avec les réglages de devise du magasin."
 
@@ -768,7 +768,7 @@ msgid "Deck hole pattern"
 msgstr "Perçage de la planche"
 
 #: src/Admin/Labels.php:45
-#: src/Front/StateAnswer.php:759
+#: src/Front/StateAnswer.php:793
 msgid "Axle width"
 msgstr "Largeur de l’essieu"
 
@@ -1737,13 +1737,12 @@ msgstr "%1$s : %2$s"
 
 #: src/Cli/CheckCommand.php:87
 #: templates/admin/check.php:49
-#: templates/admin/check.php:51
 msgid "The check found nothing to fix."
 msgstr "La vérification n’a rien trouvé à corriger."
 
 #. translators: %s: a number of findings.
 #: src/Cli/CheckCommand.php:95
-#: templates/admin/check.php:59
+#: templates/admin/check.php:57
 #, php-format
 msgid "The check found %s thing to fix."
 msgid_plural "The check found %s things to fix."
@@ -1814,12 +1813,12 @@ msgstr "%s n’est pas un fichier .csv."
 msgid "The file has no %s column. Add one, or match parts by the other with --key."
 msgstr "Le fichier n’a pas de colonne %s. Ajoutez-en une, ou associez les pièces par l’autre colonne avec --key."
 
-#: src/Front/BuilderPage.php:236
+#: src/Front/BuilderPage.php:238
 msgid "This builder isn't available right now."
 msgstr "Ce configurateur n’est pas disponible pour le moment."
 
 #. translators: %s: why the builder could not be shown, as the error said it.
-#: src/Front/BuilderPage.php:240
+#: src/Front/BuilderPage.php:242
 #, php-format
 msgid "Shown to shop managers only: %s"
 msgstr "Affiché aux gestionnaires du magasin seulement : %s"
@@ -1912,7 +1911,7 @@ msgstr[0] "%s pièce masquée : elle n’est pas compatible avec les pièces de
 msgstr[1] "%s pièces masquées : elles ne sont pas compatibles avec les pièces des étapes précédentes."
 
 #: src/Front/BuilderView.php:948
-#: src/Front/StateAnswer.php:627
+#: src/Front/StateAnswer.php:661
 msgid "Brand"
 msgstr "Marque"
 
@@ -1921,23 +1920,23 @@ msgid "Any brand"
 msgstr "Toutes les marques"
 
 #: src/Front/BuilderView.php:1164
-#: src/Front/StateAnswer.php:758
+#: src/Front/StateAnswer.php:792
 msgid "Width"
 msgstr "Largeur"
 
-#: src/Front/StateAnswer.php:760
+#: src/Front/StateAnswer.php:794
 msgid "Diameter"
 msgstr "Diamètre"
 
-#: src/Front/StateAnswer.php:761
+#: src/Front/StateAnswer.php:795
 msgid "Thickness"
 msgstr "Épaisseur"
 
-#: src/Front/StateAnswer.php:762
+#: src/Front/StateAnswer.php:796
 msgid "Length"
 msgstr "Longueur"
 
-#: src/Front/StateAnswer.php:763
+#: src/Front/StateAnswer.php:797
 #: templates/admin/spec-table.php:96
 msgid "Size"
 msgstr "Taille"
@@ -2924,7 +2923,7 @@ msgstr "Chaque montage ajouté à un panier reçoit des images de la planche mon
 
 #. translators: %s: a number of parts.
 #: src/Health/SiteHealth.php:291
-#: templates/admin/check.php:72
+#: templates/admin/check.php:70
 #, php-format
 msgid "%s part the picture draws has no layer image. It is still offered, and the picture shows its labelled photo beside the board until one is chosen on its product page."
 msgid_plural "%s parts the picture draws have no layer image. Each is still offered, and the picture shows its labelled photo beside the board until one is chosen on its product page."
@@ -3181,7 +3180,7 @@ msgid "Builds saved under My builds."
 msgstr "Montages enregistrés sous Mes montages."
 
 #: src/Privacy/PrivacyHooks.php:135
-#: templates/admin/check.php:110
+#: templates/admin/check.php:111
 #: build/builder/index.js:1
 msgid "Kit"
 msgstr "Ensemble"
@@ -3211,28 +3210,28 @@ msgstr "Les montages enregistrés sont gardés jusqu’à ce que vous les suppri
 msgid "A link to a build holds only the parts picked, and nothing about you. A picture of a build holds only the parts' images."
 msgstr "Un lien vers un montage contient seulement les pièces choisies, et rien sur vous. Une image d’un montage contient seulement les images des pièces."
 
-#: src/Rest/StateRoute.php:182
+#: src/Rest/StateRoute.php:205
 msgid "The picks as they were before the last change, for the change list."
 msgstr "Les choix tels qu’ils étaient avant la dernière modification, pour la liste des modifications."
 
-#: src/Rest/StateRoute.php:184
+#: src/Rest/StateRoute.php:207
 msgid "The key of the slot whose options are listed."
 msgstr "La clé de l’emplacement dont les options sont listées."
 
-#: src/Rest/StateRoute.php:193
+#: src/Rest/StateRoute.php:216
 msgid "The language to answer in, when the site has it installed."
 msgstr "La langue de la réponse, lorsque le site l’a installée."
 
-#: src/Rest/StateRoute.php:198
+#: src/Rest/StateRoute.php:221
 msgid "A build link, as a page's address holds it. It takes the place of picks, previous, step and assembly, and the answer gains the view the page would show."
 msgstr "Un lien de montage, tel que l’adresse d’une page le contient. Il remplace picks, previous, step et assembly, et la réponse comprend en plus la vue que la page afficherait."
 
-#: src/Rest/StateRoute.php:203
+#: src/Rest/StateRoute.php:226
 msgid "The ID of the post the builder is on, for the view's links. A post that holds no builder for the kit is not used."
 msgstr "L’ID de la publication où se trouve le configurateur, pour les liens de la vue. Une publication qui ne contient pas de configurateur pour l’ensemble n’est pas utilisée."
 
 #. translators: %s: the argument's name, such as picks.
-#: src/Rest/StateRoute.php:367
+#: src/Rest/StateRoute.php:395
 #, php-format
 msgid "A build link takes the place of %s: send one or the other."
 msgstr "Un lien de montage remplace %s : envoyez l’un ou l’autre."
@@ -3373,15 +3372,15 @@ msgstr "Lancer la vérification"
 msgid "Every part is being read again in the background, 100 at a time. Tools > Site Health shows how far it is."
 msgstr "Toutes les pièces sont relues en arrière-plan, 100 à la fois. Outils > Santé du site montre où elle en est."
 
-#: templates/admin/check.php:53
+#: templates/admin/check.php:51
 msgid "Nothing the check found keeps a part out of the builder."
 msgstr "Rien de ce que la vérification a trouvé n’exclut une pièce du configurateur."
 
-#: templates/admin/check.php:67
+#: templates/admin/check.php:65
 msgid "What it found"
 msgstr "Ce qu’elle a trouvé"
 
-#: templates/admin/check.php:70
+#: templates/admin/check.php:68
 msgid "Parts with no layer image"
 msgstr "Pièces sans image de calque"
 
@@ -3389,12 +3388,12 @@ msgstr "Pièces sans image de calque"
 msgid "Where"
 msgstr "Où"
 
-#: templates/admin/check.php:65
+#: templates/admin/check.php:63
 msgid "What to fix"
 msgstr "Quoi corriger"
 
 #. translators: %s: how many more rows a list has than it shows.
-#: templates/admin/check.php:135
+#: templates/admin/check.php:139
 #: templates/admin/import.php:131
 #: templates/admin/import.php:167
 #, php-format
@@ -3403,12 +3402,12 @@ msgid_plural "And %s more."
 msgstr[0] "Et %s de plus."
 msgstr[1] "Et %s de plus."
 
-#: templates/admin/check.php:140
-#: templates/admin/check.php:146
+#: templates/admin/check.php:144
+#: templates/admin/check.php:150
 msgid "Read every part again"
 msgstr "Relire toutes les pièces"
 
-#: templates/admin/check.php:141
+#: templates/admin/check.php:145
 msgid "The builder keeps an index of each part's specs and updates a part whenever it is saved. Use this when the index was not rebuilt, or stopped part way. It runs in the background, and parts keep what they held until they are reached."
 msgstr "Le configurateur garde un index des caractéristiques de chaque pièce et met une pièce à jour chaque fois qu’elle est enregistrée. Utilisez ceci lorsque l’index n’a pas été reconstruit, ou s’est arrêté en cours de route. La relecture s’exécute en arrière-plan, et les pièces gardent ce qu’elles contenaient jusqu’à ce que leur tour vienne."
 
@@ -3872,23 +3871,23 @@ msgid_plural "%s parts hidden: the wheels come with their bearings."
 msgstr[0] "%s pièce masquée : les roues sont vendues avec leurs roulements."
 msgstr[1] "%s pièces masquées : les roues sont vendues avec leurs roulements."
 
-#: src/Rest/StateRoute.php:208
+#: src/Rest/StateRoute.php:231
 msgid "The deck width the shelf lists, as its widths name one: 8.25in."
 msgstr "La largeur de planche que la tablette affiche, comme ses largeurs la nomment : 8.25in."
 
-#: src/Rest/StateRoute.php:213
+#: src/Rest/StateRoute.php:236
 msgid "The chips chosen: each group's name to the values chosen in it."
 msgstr "Les puces choisies : le nom de chaque groupe, avec les valeurs qui y sont choisies."
 
-#: src/Rest/StateRoute.php:229
+#: src/Rest/StateRoute.php:252
 msgid "What the shopper searched the step for."
 msgstr "Ce que la personne a cherché dans l’étape."
 
-#: src/Rest/StateRoute.php:234
+#: src/Rest/StateRoute.php:257
 msgid "The order the shelf lists the step in."
 msgstr "L’ordre dans lequel la tablette affiche l’étape."
 
-#: src/Rest/StateRoute.php:239
+#: src/Rest/StateRoute.php:262
 msgid "Where the shelf's page starts, as the last answer's more said."
 msgstr "Où commence la page de la tablette, comme l’a indiqué le champ more de la dernière réponse."
 
@@ -4381,12 +4380,12 @@ msgstr "Changé depuis l’enregistrement"
 msgid "Choose myself"
 msgstr "Choisir moi-même"
 
-#: src/Front/StartButton.php:104
+#: src/Front/StartButton.php:105
 msgid "Build a complete with this deck"
 msgstr "Monter un skate complet avec cette planche"
 
 #. translators: %s: how many seconds until the shopper can try again.
-#: src/Rest/StateRoute.php:291
+#: src/Rest/StateRoute.php:319
 #, php-format
 msgid "Too many requests. Try again in %s second."
 msgid_plural "Too many requests. Try again in %s seconds."
@@ -4429,16 +4428,16 @@ msgstr "Ses variations %1$s ont la même photo : le configurateur les montre en
 msgid "Your %1$s wheels need %2$s risers with these trucks."
 msgstr "Vos roues de %1$s demandent des risers de %2$s avec ces trucks."
 
-#: templates/admin/check.php:79
+#: templates/admin/check.php:77
 msgid "Variations that share a card"
 msgstr "Variations qui partagent une carte"
 
-#: templates/admin/check.php:80
+#: templates/admin/check.php:78
 msgid "The builder shows a product's variations that share a photo and a layer image as one card, and asks for what tells them apart after the pick. Give a variation a photo of its own to give it a card of its own."
 msgstr "Le configurateur montre en une seule carte les variations d’un produit qui ont la même photo et la même image de calque, et demande ce qui les distingue après le choix. Donnez à une variation sa propre photo pour lui donner sa propre carte."
 
-#: templates/admin/check.php:83
-#: templates/admin/check.php:91
+#: templates/admin/check.php:81
+#: templates/admin/check.php:89
 msgid "What it says"
 msgstr "Ce qu’il indique"
 
@@ -4761,11 +4760,11 @@ msgstr "« Non proposé dans le configurateur » est coché dans les caractér
 msgid "Not offered in the builder is ticked on its Part specs, so no kit offers it."
 msgstr "« Non proposé dans le configurateur » est coché dans ses caractéristiques, donc aucun ensemble ne la propose."
 
-#: templates/admin/check.php:87
+#: templates/admin/check.php:85
 msgid "Parts kept out of the builder"
 msgstr "Pièces tenues hors du configurateur"
 
-#: templates/admin/check.php:88
+#: templates/admin/check.php:86
 msgid "Not offered in the builder is ticked on these parts, or on their product, so no kit offers them. They stay in the shop. Untick it on the part's Part specs to offer it again."
 msgstr "« Non proposé dans le configurateur » est coché sur ces pièces, ou sur leur produit, donc aucun ensemble ne les propose. Elles restent en boutique. Décochez-le dans les caractéristiques de la pièce pour la proposer de nouveau."
 
@@ -4785,3 +4784,7 @@ msgstr "Afficher « Monter un skate complet avec cette planche » sur les page
 #: templates/admin/build-tab.php:229
 msgid "\"Use the builder's rows\" is now unticked, so the rows you type are saved."
 msgstr "« Utiliser les lignes du configurateur » est maintenant décoché, donc les lignes que vous tapez sont enregistrées."
+
+#: src/Front/BuilderPage.php:205
+msgid "The shop did not answer in time. Try again in a moment."
+msgstr "La boutique n’a pas répondu à temps. Réessayez dans un instant."

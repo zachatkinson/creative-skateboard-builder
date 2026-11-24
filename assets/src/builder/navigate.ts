@@ -10,6 +10,8 @@
  *   the old board stays whole until the new one can take its place (D-308).
  * - **The last request wins.** A request a later one overtakes is aborted, and its answer, should it arrive, dropped.
  * - **Anything but a view is a failure,** and the form or link does what it does without JavaScript.
+ * - **An answer has LIMIT ms.** Past it the request is given up, and the step keeps what it shows and says so, as past
+ *   the rate limit (D-364).
  * - **History.** A step change is a new entry, a pick replaces the current one, and going back makes none. The address
  *   is the one the answer says the view is at, which the server may have moved to another step. The store, shown the
  *   view, may say it is a step of its own though a pick brought it: the change panel (D-152).
@@ -54,6 +56,8 @@ export interface Deps {
 	pending: ( on: boolean ) => void;
 	/** Says the route's rate limit is reached, in its own words, which say when to try again. */
 	limited: ( message: string ) => void;
+	/** What the step says when the route has not answered within LIMIT, in the page's language (D-364). */
+	late: string;
 	push: ( url: string ) => void;
 	replace: ( url: string ) => void;
 	/**
@@ -81,6 +85,9 @@ export const SLOW = 300;
 
 /** The longest an answer is held for its pictures: past it, the view shows and its image paints as it comes. */
 export const HOLD = 1000;
+
+/** How long the route has to answer, from the request to its whole answer read (D-364). */
+export const LIMIT = 10000;
 
 const PARAM = 'cbuild';
 
@@ -176,10 +183,17 @@ export class Navigator {
 		const asking = new AbortController();
 		this.asking = asking;
 		this.waiting();
-		void this.ask( move, asking.signal ).then( async ( view ) => {
+		// A request that hangs would keep the builder busy until the browser gives up (D-364).
+		const limit = setTimeout( () => asking.abort(), LIMIT );
+		void this.ask( move, asking.signal ).then( async ( answer ) => {
+			clearTimeout( limit );
 			if ( asking !== this.asking ) {
 				return;
 			}
+			// Only the limit aborts the request still asked: a later one or the shopper's typing takes its place first.
+			const view = asking.signal.aborted
+				? new Limited( this.deps.late )
+				: answer;
 			const readying =
 				null === view || view instanceof Limited
 					? null
