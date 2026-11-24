@@ -36,17 +36,28 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Added
 
-- **The motion** (spec: Milestone 11; D-305): the deck settles onto the stage, the trucks and wheels slide on, a swapped part settles, the stage's photos close over a part removed, the grip lays down nose to tail, the board turns over like a card, the total counts to the new amount, the panel slides the way the shopper goes, and Add to cart sends the board toward the Mini-Cart. Each moves `transform` and `opacity` alone and is cut short by the next press. Under reduced motion or the kit's subtle, each is a fade of 150 ms or less (D-256), and where the browser has no view transitions a step changes at once. The state route's view carries `money` (the total in minor units and the currency) for the counting total (D-257).
+- **The motion** (spec: Milestone 11; D-305):
+  - The deck settles onto the stage, the trucks and wheels slide on, a swapped part settles, the stage's photos close over a part removed, the grip lays down nose to tail, the board turns over like a card, the total counts to the new amount, the panel slides the way the shopper goes, and Add to cart sends the board toward the Mini-Cart.
+  - Each moves `transform` and `opacity` alone and is cut short by the next press.
+  - Under reduced motion or the kit's subtle, each is a fade of 150 ms or less (D-256), and where the browser has no view transitions a step changes at once.
+  - The state route's view carries `money` (the total in minor units and the currency) for the counting total (D-257).
 - `--cbuild-grip-size`, a CSS custom property the builder sets on the top's grip layer: its sheet's size against the deck (F18, #103, D-307).
 - `--cbuild-panel-shift`, a CSS custom property read on `:root`: how far, and which way, the panel slides as a step crosses over (`16px`).
 - **Motion**, in a kit's Build tab, Layout section: `motion` in `_cbuild_layout` (`schema/kit-layout.json`), `playful` or `subtle`. A kit saved before 1.1.0 is playful. On subtle the builder's root has `cbuild--subtle` (spec: Settings, D-256).
 - A `Server-Timing` header on the state route's answers to a shop manager: the route's time and its queries, to measure it on a real host (#90, D-304).
-- **A deck swap that answers at once** (D-308): a deck's board image is fetched while the pointer rests on its card, a pick made by a press, a tap or a click asks the route at once (the arrows still wait 150 ms), and the old board stays whole until the new one's image is decoded, at most a second. A pick that keeps the shopper 300 ms dims the picture with a line running along its foot (the dim alone under reduced motion), and the picture has `aria-busy` while it waits.
+- **A deck swap that answers at once** (D-308):
+  - A deck's board image is fetched while the pointer rests on its card, a pick made by a press, a tap or a click asks the route at once (the arrows still wait 150 ms), and the old board stays whole until the new one's image is decoded, at most a second.
+  - A pick that keeps the shopper 300 ms dims the picture with a line running along its foot (the dim alone under reduced motion), and the picture has `aria-busy` while it waits.
 - The state route's `options[].board`: on the deck step, the board each deck would draw alone (its width, length and deck layer), or null (D-308).
-- `cbuild_composed_layer`, a filter that draws each part's layer in a build's composed pictures as it is, blurred or left out, asked for each use (`cart`, `share`, `email`), so another plugin can blur a flagged deck on the share card a link preview shows to anyone and leave the shopper's cart and emails as they are. The answer is in the picture's name, so a flag set after a picture was drawn draws it again, and the one before is no longer shown (Cowork's 1.0.0 review, F19; #105; D-309).
+- **`cbuild_composed_layer`, a filter for each part's layer in the composed pictures.**
+  - `cbuild_composed_layer`, a filter that draws each part's layer in a build's composed pictures as it is, blurred or left out, asked for each use (`cart`, `share`, `email`), so another plugin can blur a flagged deck on the share card a link preview shows to anyone and leave the shopper's cart and emails as they are.
+  - The answer is in the picture's name, so a flag set after a picture was drawn draws it again, and the one before is no longer shown (Cowork's 1.0.0 review, F19; #105; D-309).
 - `cbuild-preset__photo`: a ready build's tile picture takes the `cbuild_part_classes` of each of the build's parts, merged, so a flagged deck blurs the tile that shows it (F19, #105).
 - The state route's `picture.items[].large`: the part's photo uncropped, at the shop's single-product size, or null (#82, D-303).
-- **Show ready builds**, in a kit's Build tab, Presets section: `show_presets` in `_cbuild_layout` (`schema/kit-layout.json`), on unless unticked. A kit saved before 1.1.0 shows its ready builds. Off, "Start from a ready build" is hidden on the page, each of the state route's `presets` says `shown` false, and the ready builds are kept as they are (#104, D-315).
+- **Show ready builds**, in a kit's Build tab, Presets section:
+  - `show_presets` in `_cbuild_layout` (`schema/kit-layout.json`), on unless unticked.
+  - A kit saved before 1.1.0 shows its ready builds.
+  - Off, "Start from a ready build" is hidden on the page, each of the state route's `presets` says `shown` false, and the ready builds are kept as they are (#104, D-315).
 - `cbuild-chips__more`, `cbuild-chips__more--idle`, `cbuild-chips__chip--past` and `cbuild-chips__options--row`: the brand chips' "N more", its state with nothing to open, a chip past the row, and the brand row (#98, D-314).
 - The state route's `presets[].at`, each ready build's place among the kit's, the value `cbuild[preset]` takes, and `presets[].shown`, whether the builder shows its tile (#104, D-336).
 - `cbuild-cards--compact`, on the deck step's card lists, and `cbuild-card__photo--drawn`, on a card's picture drawn from the deck's layer image (#99, D-322).
@@ -54,18 +65,33 @@ All notable changes to this project are documented here. The format follows [Kee
 ### Changed
 
 - **Compact deck cards** (Cowork's 1.0.0 review, F14; #99; D-322): the deck step's cards show the deck small and upright from its layer image (or its photo), then its brand, name, price and "Also in…" or "Only in…", two columns on a desktop so six show at once, one on a phone.
-- **The brand chips in one row** (Cowork's 1.0.0 review, F13; #98; D-314): on a desktop the brand chips sit in one row under the search, the brands with the most parts first, and "N more brands" opens the rest in place with focus on the first new chip; a chosen brand always shows, phones keep the Filters fold, and without JavaScript every chip shows. The row is one line from the first paint, so folding it moves nothing.
-- **Only whole ready builds are offered** (Zach's R1; #104; D-315): a ready build with a part that's gone, sold out or no longer fits is left out of "Start from a ready build", and the state route's `presets` lists it with `shown` false, at its place as before (D-336); the Catalogue check still lists it as `preset_broken`, and a `cbuild[preset]` link still opens it, its refused part named in `refused[].message`. This replaces D-151's note on the tile.
-- **Next waits for a pick** (Cowork's 1.0.0 review, F15; #100; D-310): until the step has a pick, the footer's Next is dimmed and `aria-disabled`, still in the tab order, and a press says what is missing beside it ("Choose your deck first.") instead of reloading the step with an error summary. A step that needs no pick is never dimmed, and without JavaScript the form is sent and answered as before.
-- **A phone rail that shows the whole build** (Cowork's 1.0.0 review, F16; #101, D-330): on a phone every step is in one row that never scrolls, the step shown with its name and the others as numbered pills, 44 px across, each with its name as its tooltip and for screen readers. From 26rem the name sits in its pill; narrower, under it. This replaces D-270's three steps; the desktop rail is unchanged.
-- **Grip is its whole sheet** (Cowork's 1.0.0 review, F18; #103; D-307): a grip's layer image is the sheet shot flat from above, drawn once on the board's top at its real size (`grip_width` by `grip_length`, 9 by 33 in where none is given), centred on the deck and cut by the deck's outline, under the bolt heads, so a printed sheet's artwork shows. Its save check asks for two pixels to the millimetre of the sheet, 458 px across or 1,677 along, with no transparent corners. The state route's `picture.top` gives the grip the sheet's box. A 1-inch swatch saved under 1.0.x is still repeated nose to tail.
-
+- **The brand chips in one row** (Cowork's 1.0.0 review, F13; #98; D-314):
+  - On a desktop the brand chips sit in one row under the search, the brands with the most parts first, and "N more brands" opens the rest in place with focus on the first new chip; a chosen brand always shows, phones keep the Filters fold, and without JavaScript every chip shows.
+  - The row is one line from the first paint, so folding it moves nothing.
+- **Only whole ready builds are offered** (Zach's R1; #104; D-315):
+  - A ready build with a part that's gone, sold out or no longer fits is left out of "Start from a ready build", and the state route's `presets` lists it with `shown` false, at its place as before (D-336); the Catalogue check still lists it as `preset_broken`, and a `cbuild[preset]` link still opens it, its refused part named in `refused[].message`.
+  - This replaces D-151's note on the tile.
+- **Next waits for a pick** (Cowork's 1.0.0 review, F15; #100; D-310):
+  - Until the step has a pick, the footer's Next is dimmed and `aria-disabled`, still in the tab order, and a press says what is missing beside it ("Choose your deck first.") instead of reloading the step with an error summary.
+  - A step that needs no pick is never dimmed, and without JavaScript the form is sent and answered as before.
+- **A phone rail that shows the whole build** (Cowork's 1.0.0 review, F16; #101, D-330):
+  - On a phone every step is in one row that never scrolls, the step shown with its name and the others as numbered pills, 44 px across, each with its name as its tooltip and for screen readers.
+  - From 26rem the name sits in its pill; narrower, under it.
+  - This replaces D-270's three steps; the desktop rail is unchanged.
+- **Grip is its whole sheet** (Cowork's 1.0.0 review, F18; #103; D-307):
+  - A grip's layer image is the sheet shot flat from above, drawn once on the board's top at its real size (`grip_width` by `grip_length`, 9 by 33 in where none is given), centred on the deck and cut by the deck's outline, under the bolt heads, so a printed sheet's artwork shows.
+  - Its save check asks for two pixels to the millimetre of the sheet, 458 px across or 1,677 along, with no transparent corners.
+  - The state route's `picture.top` gives the grip the sheet's box.
+  - A 1-inch swatch saved under 1.0.x is still repeated nose to tail.
 - A step's crossing no longer animates the size of the panel or of the rail's current step: they take their new size at once and their content slides by transform, so every moment runs on Chrome's compositor (D-306).
 - The state route's `currency.decimal_separator` and `currency.thousand_separator` are plain text with no HTML entity, as `format` is; a shop that set `&nbsp;` gets the character (#87).
 - The builder asks the state route for its view alone (`_fields=view`), about half the bytes on a long step; the route's answer is unchanged for anyone who asks without it (#89, D-302).
 - A chip's spoken label and Show more's status name no part: "Hoser, 9" and "30 more shown, 60 of 88." (#84).
-
 - Development: up to three checkouts each run their own pair of sites (`tools/lane.sh`, D-311); /verify measures the integration suite's lines with pcov, about 2.7 times faster (D-312); `composer hooks` turns on a pre-commit hook that fixes formatting on staged files (D-313).
+- Development: the newest leg runs WooCommerce 11.3.1. Its Store API session guard's PHP 8.5 deprecation (woocommerce/woocommerce#71224) is let through for the one checkout request that meets it, and every other deprecation still fails the suite (#95, D-332).
+- Development: CI runs the newest integration suite in three shards, and `Integration (newest)` checks that they ran every test class once and still applies the 95 % line floor to both suites together (D-323).
+- Development: `composer focused` (`tools/focused.sh`) runs only the integration and browser tests that cover what changed, and says why, before the full /verify; `--dry-run` prints the commands (D-324).
+- Development: the paint and motion speed tests start once WordPress's emoji polyfill is done with the page; the budgets are unchanged (#49, D-325). axe reads the error summary in Firefox again (#36, D-326).
 
 ### Fixed
 
@@ -94,50 +120,95 @@ All notable changes to this project are documented here. The format follows [Kee
 - On a phone, what a press of the dimmed Next says sits above the bar and no longer covers the total's estimate (#100, D-335).
 - On a phone and a tablet, Show the top sits under the board on Kadence and Storefront too, and the labels of the parts with no layer image are under the board, as on a desktop (#102, D-320).
 
-### Development
-
-- The newest leg runs WooCommerce 11.3.1. Its Store API session guard's PHP 8.5 deprecation (woocommerce/woocommerce#71224) is let through for the one checkout request that meets it, and every other deprecation still fails the suite (#95, D-332).
-- CI runs the newest integration suite in three shards, and `Integration (newest)` checks that they ran every test class once and still applies the 95 % line floor to both suites together (D-323).
-- `composer focused` (`tools/focused.sh`) runs only the integration and browser tests that cover what changed, and says why, before the full /verify; `--dry-run` prints the commands (D-324).
-- The paint and motion speed tests start once WordPress's emoji polyfill is done with the page; the budgets are unchanged (#49, D-325). axe reads the error summary in Firefox again (#36, D-326).
-
 ## [1.0.0] - 2026-11-20
 
 ### Added
 
-- The specs CSV's `layer_image` column. An export writes the file name of each part's own Layer image; an import sets it by attachment ID or file name, held to the Layer image field's rules, with a refusal in the field's own words. An empty cell leaves a product's image as it is and gives a variation its parent's. WP-CLI's `cbuild specs` takes it too (D-287).
+- **The specs CSV's `layer_image` column.**
+  - An export writes the file name of each part's own Layer image; an import sets it by attachment ID or file name, held to the Layer image field's rules, with a refusal in the field's own words.
+  - An empty cell leaves a product's image as it is and gives a variation its parent's.
+  - WP-CLI's `cbuild specs` takes it too (D-287).
 - Message codes for parts a step hides because the kit can't supply the riser they need (D-245): `riser_not_in_stock`, `riser_no_bolts` and `riser_no_slot` on wheels, and `riser_bolts_short` on risers.
 - The `bearings_included` spec on wheels, in Part specs and the CSV. Wheels that carry it fill the kit's Bearings slot, and R5 blocks a separate bearing with the code `bearings_included` (D-246).
-- The state route's `shelf`: the current step as cards, one per look, with the chips, the deck's width question, a page of 30 and the sold-out looks (D-264). The route takes `width`, `chips`, `q`, `sort` and `from` for it, and a build link carries them as `_width`, `_chips`, `_q` and `_sort`. A search is ranked by Creative Search where it answers `csearch_ranked_ids`, and matched by the builder otherwise (D-248).
-
-- The deck step asks "What width do you ride?" first, one button a width with how many decks it has in stock, and lists that width's decks; a build that holds a deck starts at its width. A step with more than 40 parts has a search box, one with more than 12 has chips, and every step has a sort, a page of 30 with "Show 30 more", and its sold-out parts folded under "Show N sold out". Each works without JavaScript; with it, the step changes in place and focus stays on the control used (D-266).
-
+- **The state route's `shelf`:**
+  - The current step as cards, one per look, with the chips, the deck's width question, a page of 30 and the sold-out looks (D-264).
+  - The route takes `width`, `chips`, `q`, `sort` and `from` for it, and a build link carries them as `_width`, `_chips`, `_q` and `_sort`.
+  - A search is ranked by Creative Search where it answers `csearch_ranked_ids`, and matched by the builder otherwise (D-248).
+- **The deck step asks the width first, and steps get search, chips, a sort and pages.**
+  - The deck step asks "What width do you ride?" first, one button a width with how many decks it has in stock, and lists that width's decks; a build that holds a deck starts at its width.
+  - A step with more than 40 parts has a search box, one with more than 12 has chips, and every step has a sort, a page of 30 with "Show 30 more", and its sold-out parts folded under "Show N sold out".
+  - Each works without JavaScript; with it, the step changes in place and focus stays on the control used (D-266).
 - `--cbuild-bar-size`, which the builder sets on the page's root to the bar's height while the bar sticks over the page.
 - On the state route, each look of the `shelf` names its product (`name`), its `brand` and what tells it from the product's other looks (`look`), and an option's `delta` says its `change` as a card does under the full price (D-249, D-273).
-- A kit's page takes the page's width (D-274). In a block theme it takes a template of the plugin's, "Skateboard kit", which the shop can edit in the Site Editor; in a classic theme the builder sits before the product's summary, whose title and form go. The builder prints the product's name as the page's h1 where it takes the theme's title's place, and has a link back to the shop. The Builder block gains `title`, and a block with no kit on a kit's page is that kit's.
+- **A kit's page takes the page's width (D-274).**
+  - In a block theme it takes a template of the plugin's, "Skateboard kit", which the shop can edit in the Site Editor; in a classic theme the builder sits before the product's summary, whose title and form go.
+  - The builder prints the product's name as the page's h1 where it takes the theme's title's place, and has a link back to the shop.
+  - The Builder block gains `title`, and a block with no kit on a kit's page is that kit's.
 - `--cbuild-top`, for a theme's sticky header to keep the stage and the panel clear of it, `--cbuild-stage-height`, the stage's height on a phone, and `--cbuild-stage-size`, which the builder sets to how far down the screen the stage reaches, so a control in focus is scrolled clear of it.
 - A signed-in customer's deck step opens on the width of the deck in the build they saved last, where the kit offers it; a width asked for, or the deck the build holds, comes first. Nothing is stored for it (spec: The deck's width first; D-242).
-- A search that lists nothing says why and offers the way on: "No 8.25″ decks match Rascals. Rascals comes in 8.5″." with a button to each width; "2 parts match, but they don't fit your build." with See why, which opens the hidden parts; or "No trucks match zzz." with Clear search. The state route's `shelf` gains `elsewhere` and `hidden_matching` (spec: Search).
-- A saved build that has changed since it was saved opens from My builds on "Your build has changed" before its review: each part gone, sold out or no longer fitting, with the closest part that fits in its place; each new price, "Independent 149 trucks: $59.00 when you saved, $64.00 now"; and the total then and now. Use these takes the replacements to the review, and Choose myself opens the first changed step. Save build keeps each line's price and the currency beside the picks; a build saved before 1.0.0 shows the parts alone (spec: A saved build that has changed; D-254, D-278).
-- A kit's Build tab has a Layout section: the stage on the left or right of a desktop, the board large (60 %) or balanced (50 %), and the steps' search, Creative Search where it is active or the builder's own always. It is kept in `_cbuild_layout` (`schema/kit-layout.json`); a kit with none has the defaults (spec: Settings; D-255).
-- The state route's answer gains `photo` on each card and picture item, whether its image is the part's photo or its layer image, `bearings_included`, `currency` (how the shop writes a price, for milestone 11's totals) and, for a build link carrying `_saved`, `reopened`: what changed in a saved build and its prices then and now.
+- **A search that lists nothing says why and offers the way on:**
+  - "No 8.25″ decks match Rascals. Rascals comes in 8.5″." with a button to each width; "2 parts match, but they don't fit your build." with See why, which opens the hidden parts; or "No trucks match zzz." with Clear search.
+  - The state route's `shelf` gains `elsewhere` and `hidden_matching` (spec: Search).
+- **A saved build that has changed says what changed when it is opened.**
+  - A saved build that has changed since it was saved opens from My builds on "Your build has changed" before its review: each part gone, sold out or no longer fitting, with the closest part that fits in its place; each new price, "Independent 149 trucks: $59.00 when you saved, $64.00 now"; and the total then and now.
+  - Use these takes the replacements to the review, and Choose myself opens the first changed step.
+  - Save build keeps each line's price and the currency beside the picks; a build saved before 1.0.0 shows the parts alone (spec: A saved build that has changed; D-254, D-278).
+- **A kit's Build tab has a Layout section:**
+  - The stage on the left or right of a desktop, the board large (60 %) or balanced (50 %), and the steps' search, Creative Search where it is active or the builder's own always.
+  - It is kept in `_cbuild_layout` (`schema/kit-layout.json`); a kit with none has the defaults (spec: Settings; D-255).
+- **The state route's answer gains four fields.**
+  - The state route's answer gains `photo` on each card and picture item, whether its image is the part's photo or its layer image, `bearings_included`, `currency` (how the shop writes a price, for milestone 11's totals) and, for a build link carrying `_saved`, `reopened`: what changed in a saved build and its prices then and now.
 - The Catalogue check says which variations share a photo, and so a card, in a list of its own (`look_shared`, D-281).
 - The risers step says why it appeared: "Your 58 mm wheels need ¼″ risers with these trucks."
 - A step lists 500 looks at most, page by page, as a reload keeps; search and filters narrow past it.
 - On a phone the step's filter chips fold behind a Filters button, which says how many are chosen, so the cards come first; without JavaScript they show as before (spec: Phone).
 - The picked card is followed by its sizes, "Size for Retna Cruiser, Mint", where nothing in the build decides the size, as wheels' diameter. Each size is a pick of the step; the route's looks gain `sized` (spec: One card per look; D-279).
 - "Build a complete with this deck" after a deck's add-to-cart form opens the first kit by menu order whose first slot offers it, with the deck picked and its width with it. `cbuild_start_button` chooses the kit, moves the button, words it or turns it off (spec: Ways in that skip the hunt; D-253).
-- Rider builds: a preset's tile shows a rider photo set on the preset, else the build's composed picture once made, asked for as a page asks; the deck's photo until then. Presets gain an optional `image` in `schema/kit-presets.json`, and the Build tab a Photo field with the media library's modal (D-252).
+- **Rider builds:**
+  - A preset's tile shows a rider photo set on the preset, else the build's composed picture once made, asked for as a page asks; the deck's photo until then.
+  - Presets gain an optional `image` in `schema/kit-presets.json`, and the Build tab a Photo field with the media library's modal (D-252).
 - "Not sure of your width?" under the deck's width question opens a guide by shoe size, after Skate Warehouse's deck buying guide, without JavaScript; `cbuild_width_guide` gives a shop its own rows (spec: The deck's width first).
 - A wheel card over the trucks' limit says the riser it needs, "Needs ¼″ risers with your trucks", in place of "Fits, with a note"; each finding in the state route's answer and in the `check-build` ability's `problems[].messages[]` gains `short`, that label or empty (spec: Risers).
 - Wheels sold with their bearings take the bearings step off the rail, and the review says "Bearings: Included with your wheels", changed with the wheels. "Add risers" under the review's parts opens the risers step when nothing asks for it (spec: Bearings, Risers, The review; D-246, D-276).
 - A skip link, "Skip to the step", is the builder's first stop; the first deck is at most eight presses after it. "Show 30 more" says how many it added, and below 320 px the stage scrolls with the page (spec: Accessibility).
 
+### Changed
+
+- On a phone and a tablet the stage is about a third of the screen, as the prototype's, so the step starts in the first screen (D-284).
+- The footer says "Total" over the sum (D-285).
+- A heading the builder moves focus to is not outlined by a theme that outlines anything in focus; the error summary keeps its ring.
+- **The Builder block is full width unless the editor chose otherwise.**
+  - The Builder block is full width unless the editor chose otherwise (its `align` defaults to `full`), so a page's builder has its stage beside its steps on a desktop rather than above them in the theme's column.
+  - The editor's alignment, spacing, colours and font size now reach the page, as they reach the editor; until 1.0.0 the page left them off (D-283).
+- A part card with no photo shows the part's layer image, uncropped, and the chosen card is marked by a tick and a thicker border in place of the radio's circle (D-282, #68).
+- The parts table gains `look` and `card` columns (schema version 7, D-289).
+- The state route's `currency.format` is plain text, its space a no-break space, not `&nbsp;` (D-290).
+- **The builder takes the prototype's layout (D-268 to D-271).**
+  - A row of steps across the top; the board on a stage with "Your board" and the side it shows, and "Pick a deck to start" before a deck; the step beside it in a panel that scrolls on its own; and a footer pinned under the panel with the total, the estimate, Back and Next, or Add to cart.
+  - On a phone the stage stays at the top, the rail shows the step before, the step shown and the step after, and the footer is the bar.
+- The step's heading says its question, such as "Choose your deck", with its help under it; a screen reader hears the count first, and the page's title keeps it (D-269).
+- Each row of the review shows the part's price and a Change button. The assembly switch is on the review.
+- `--cbuild-card-width` defaults to `13.5rem`.
+- **The prototype's card:**
+  - The photo large, the brand, the product's name and the look's (such as "Mint"), the full price large, and under it, once the step has a pick, "+$12.00 over your pick", "Same price", "$8.00 less" or "Included".
+  - A deck card names its other widths, "Also in 8″ and 8.5″".
+  - On a phone the photo sits beside the words (D-249, D-273).
+- CI runs the newest leg's other browser engines, projects, updates and visual snapshots as five jobs beside it, so a full run takes about 30 minutes rather than 95 (D-258).
+
+### Removed
+
+- The summary beside the steps, and with it `--cbuild-summary-width`, which set its width. The footer holds the total and the parts at every width (D-271).
+- The phone bar's small picture of the board: the stage stays in view above the step.
+
 ### Fixed
 
-- The builder no longer holds the page for long as it starts: each of its pieces starts in a task of its own, where the whole builder took one, which on a slow phone blocked the page for over 200 ms (D-296). Its markup and behaviour are unchanged; the root element is no longer itself an Interactivity region.
+- **The builder no longer holds the page for long as it starts:**
+  - Each of its pieces starts in a task of its own, where the whole builder took one, which on a slow phone blocked the page for over 200 ms (D-296).
+  - Its markup and behaviour are unchanged; the root element is no longer itself an Interactivity region.
 - Layer image renditions are saved at their own quality, so another plugin's image quality setting cannot fail them, and a rendition that fails no longer stops the others: the part is drawn from its WebP copy or its full-size file (D-286).
-- The builder's stylesheet and script are asked for as 1.0.0, so a browser or a page cache no longer serves 0.6.0's against this release's markup: the block's `block.json` still said 0.6.0, which WordPress writes on them as their version. A gate holds it to the plugin's (the auditor's M10 review, 5).
+- **The builder's stylesheet and script are asked for as 1.0.0.**
+  - The builder's stylesheet and script are asked for as 1.0.0, so a browser or a page cache no longer serves 0.6.0's against this release's markup: the block's `block.json` still said 0.6.0, which WordPress writes on them as their version.
+  - A gate holds it to the plugin's (the auditor's M10 review, 5).
 - On a phone and a tablet, the control in focus is never behind the stage at the top of the screen: the page keeps room for it as it does for the bar, going back up a step and after Next (WCAG 2.4.11; the auditor's M10 review, 1).
 - Enter in a step's search searches it at the width shown; it pressed the narrowest width's button (the auditor's M10 review, 2).
 - Typing in a step's search no longer loses letters while an answer is slow: a key drops the answer asked for before it (the auditor's M10 review, 19).
@@ -146,7 +217,8 @@ All notable changes to this project are documented here. The format follows [Kee
 - On a tablet the board is turned on the stage as on a phone, so it fits the strip on top (D-280).
 - On a theme with no colour presets, the rail's current step and a pressed chip read: their words are painted in the colour on the accent. The rail, cards and ready builds take no list numbers or indent from the theme (D-280).
 - The deck step shows only its width question until a width is picked.
-- French: names no longer follow « de » (« Annuler la suppression du montage %s », « Voir la fiche du produit %s », « Partir du modèle %s »), the bar says « Planche complète dès environ », My builds names the « Récapitulatif » step, and a card's fit label has a sentence per case, so English now has "Fits your %s deck" and "Recommended for your %s deck" of their own (Cowork; #65).
+- **French:**
+  - Names no longer follow « de » (« Annuler la suppression du montage %s », « Voir la fiche du produit %s », « Partir du modèle %s »), the bar says « Planche complète dès environ », My builds names the « Récapitulatif » step, and a card's fit label has a sentence per case, so English now has "Fits your %s deck" and "Recommended for your %s deck" of their own (Cowork; #65).
 - CI stops an apt-get a timed-out Playwright install left, and repairs dpkg, before the next try (#64; D-224).
 - The builder draws its own radios, a ring in its text colour on its own ground and a dot once picked, so an unpicked card no longer looks filled in on a dark theme. With forced colours the browser's radio is drawn (Cowork; #68).
 - In HTML emails a kit with no photo of its own has no placeholder image on its line, alt "Placeholder", above the build's picture (Cowork; #69).
@@ -177,41 +249,22 @@ All notable changes to this project are documented here. The format follows [Kee
 - On a variable deck's page, "Build a complete with this deck" opens the variation chosen in the product's form; it opened the first in stock.
 - On a phone, the width guide, the parts that don't fit and a card's link to its product page are 44 px targets.
 
-### Changed
-
-- On a phone and a tablet the stage is about a third of the screen, as the prototype's, so the step starts in the first screen (D-284).
-- The footer says "Total" over the sum (D-285).
-- A heading the builder moves focus to is not outlined by a theme that outlines anything in focus; the error summary keeps its ring.
-- The Builder block is full width unless the editor chose otherwise (its `align` defaults to `full`), so a page's builder has its stage beside its steps on a desktop rather than above them in the theme's column. The editor's alignment, spacing, colours and font size now reach the page, as they reach the editor; until 1.0.0 the page left them off (D-283).
-- A part card with no photo shows the part's layer image, uncropped, and the chosen card is marked by a tick and a thicker border in place of the radio's circle (D-282, #68).
-- The parts table gains `look` and `card` columns (schema version 7, D-289).
-- The state route's `currency.format` is plain text, its space a no-break space, not `&nbsp;` (D-290).
-
-- The builder takes the prototype's layout (D-268 to D-271). A row of steps across the top; the board on a stage with "Your board" and the side it shows, and "Pick a deck to start" before a deck; the step beside it in a panel that scrolls on its own; and a footer pinned under the panel with the total, the estimate, Back and Next, or Add to cart. On a phone the stage stays at the top, the rail shows the step before, the step shown and the step after, and the footer is the bar.
-- The step's heading says its question, such as "Choose your deck", with its help under it; a screen reader hears the count first, and the page's title keeps it (D-269).
-- Each row of the review shows the part's price and a Change button. The assembly switch is on the review.
-- `--cbuild-card-width` defaults to `13.5rem`.
-- The prototype's card: the photo large, the brand, the product's name and the look's (such as "Mint"), the full price large, and under it, once the step has a pick, "+$12.00 over your pick", "Same price", "$8.00 less" or "Included". A deck card names its other widths, "Also in 8″ and 8.5″". On a phone the photo sits beside the words (D-249, D-273).
-- CI runs the newest leg's other browser engines, projects, updates and visual snapshots as five jobs beside it, so a full run takes about 30 minutes rather than 95 (D-258).
-
-### Removed
-
-- The summary beside the steps, and with it `--cbuild-summary-width`, which set its width. The footer holds the total and the parts at every width (D-271).
-- The phone bar's small picture of the board: the stage stays in view above the step.
-
 ## [0.9.0] - 2026-11-18
-
-### Changed
-
-- The focus ring has two tones, a dark outline between light bands, so it is seen on a dark theme and a light one alike, and it wins over a theme's own focus style on a button or a link. `--cbuild-focus` sets the outline as before, now `#000` where it took the theme's contrast colour, which a dark theme can have dark too (Cowork's 0.8.0 review, F1; #53; D-229).
 
 ### Added
 
 - `--cbuild-focus-contrast`, the focus ring's light bands, `#fff` (D-229).
-- Undo after Delete on My builds: the notice is followed by an Undo button, named for the build, a form that works without JavaScript. The build comes back as it was, its parts, name and dates, even with a part gone since, and a second press makes nothing more (Cowork's 0.8.0 review, F3; #55; D-231).
+- **Undo after Delete on My builds:**
+  - The notice is followed by an Undo button, named for the build, a form that works without JavaScript.
+  - The build comes back as it was, its parts, name and dates, even with a part gone since, and a second press makes nothing more (Cowork's 0.8.0 review, F3; #55; D-231).
 - French (Canada), complete: `languages/creative-skateboard-builder-fr_CA` as `.po`, `.mo`, `.l10n.php` and the editor script's JSON. `composer i18n:check` requires it, and the copy gate reads it (D-233).
 - `npm run upgrade:all`: the update from every published release, each with its own kits, parts and, from 0.8.0, a saved build made on it by that release, read back by this one (D-232).
 - On a phone, the bar gives the estimate under its amount while one is given, "Complete from about $207.96", as the summary does on a wider screen: the summary is in the shut parts sheet there. (Cowork's 0.8.0 review, F2; #54; D-230).
+
+### Changed
+
+- **The focus ring has two tones.**
+  - The focus ring has two tones, a dark outline between light bands, so it is seen on a dark theme and a light one alike, and it wins over a theme's own focus style on a button or a link. `--cbuild-focus` sets the outline as before, now `#000` where it took the theme's contrast colour, which a dark theme can have dark too (Cowork's 0.8.0 review, F1; #53; D-229).
 
 ### Fixed
 
@@ -229,20 +282,38 @@ All notable changes to this project are documented here. The format follows [Kee
 - WordPress's privacy tools find saved builds: the exporter and eraser `creative-skateboard-builder`, "Saved builds". A deleted account's builds go with it, and the suggested policy text says what is kept (D-220).
 - On a network, a must-use file that drops a deleted site's tables and deletes a deleted account's saved builds on every site, where the plugin is not loaded too, with a Site Health test, `cbuild_network`, when it cannot be written (#8, D-220).
 - The build's picture under the kit's line on the order's page and in the HTML emails, with the build in words as its alt text and alone in plain-text emails; the lead time and returns notice after the emails' order table; and the parts indented under their kit (D-221).
-- Saved builds (D-217). A signed-in customer saves the build at the review, named or not, and finds it under My builds, a new My account endpoint (`my-builds`), with its picture, its total today, the date it was saved, and Open, Rename and Delete. Open goes back to the builder at the review, checked again, and Save build there updates the same build (`cbuild_saved`, read for its owner alone). A visitor signed out gets a link to sign in that comes back to the build. Up to 100 builds a customer. The forms carry a nonce each and work without JavaScript.
+- **Saved builds (D-217).**
+  - A signed-in customer saves the build at the review, named or not, and finds it under My builds, a new My account endpoint (`my-builds`), with its picture, its total today, the date it was saved, and Open, Rename and Delete.
+  - Open goes back to the builder at the review, checked again, and Save build there updates the same build (`cbuild_saved`, read for its owner alone).
+  - A visitor signed out gets a link to sign in that comes back to the build.
+  - Up to 100 builds a customer.
+  - The forms carry a nonce each and work without JavaScript.
 - The option `cbuild_endpoints`, which makes the rewrite rules again once when the plugin's account endpoints change, so My builds answers after the update.
-- The Build box on the order screen, with HPOS on or off, for users with `edit_shop_orders`: each build by slot with the part, its SKU and its specs as sold, how many boards and whether the shop assembles them, and the build's picture. It says where the order's lines no longer match the build: a part's line removed, a quantity changed, a line added again without the build's details, or a kit's line with no build behind it (D-219).
-- The assembly ticket: a page of its own that prints one board to a page, with the order's number, the customer, each slot's part and SKU with the specs that matter at the bench, the customer's note and a tick box per step. The Build box's "Print assembly ticket" opens it, behind `edit_shop_orders` and a nonce, with no PDF (D-219).
+- **The Build box on the order screen.**
+  - The Build box on the order screen, with HPOS on or off, for users with `edit_shop_orders`: each build by slot with the part, its SKU and its specs as sold, how many boards and whether the shop assembles them, and the build's picture.
+  - It says where the order's lines no longer match the build: a part's line removed, a quantity changed, a line added again without the build's details, or a kit's line with no build behind it (D-219).
+- **The assembly ticket:**
+  - A page of its own that prints one board to a page, with the order's number, the customer, each slot's part and SKU with the specs that matter at the bench, the customer's note and a tick box per step.
+  - The Build box's "Print assembly ticket" opens it, behind `edit_shop_orders` and a nonce, with no PDF (D-219).
 - The bulk action Print assembly tickets (`cbuild_print_tickets`) and the Assembly column (`cbuild_assembly`) on the orders list, with HPOS on or off (D-219).
 - The refund help in the Build box: Restock refunded items covers a whole refund, so where the grip is already applied the unused parts are refunded first with it ticked, and the rest in a second refund with it cleared (D-219).
 - The filters `cbuild_ticket_specs` and `cbuild_ticket_steps`: which specs the assembly ticket shows for each slot's part, and the steps it lists with a tick box each, so a workshop can change either without a template (D-219).
-- The state route's `total.estimate`: what a complete board would cost with each slot's recommendation in it, priced as the total is, while a recommendation fills a slot; null otherwise. The summary says it under the total, "A complete board from about $184", and the status region says it with each pick (D-213).
+- **The state route's `total.estimate`:**
+  - What a complete board would cost with each slot's recommendation in it, priced as the total is, while a recommendation fills a slot; null otherwise.
+  - The summary says it under the total, "A complete board from about $184", and the status region says it with each pick (D-213).
 - The state route's `picture.top`: the board seen from the top, from the deck's own layer image's outline, with the grip filled into it nose to tail, a bolt head at each hole from the hardware's layer image, and the wheels at the edges (#46).
-- The board turns over (#46). The picture and the phone bar draw its top beside its underside and show one side: the grip tape step the top, the others the underside, and a button by the board, "Show the top" with `aria-pressed`, turns it on any step with JavaScript, after which the shopper's side is kept. The board turns over where motion is allowed, and the picture's description says which side is shown. The top's layers set `--cbuild-image` and `--cbuild-mask` for the stylesheet.
+- **The board turns over (#46).**
+  - The picture and the phone bar draw its top beside its underside and show one side: the grip tape step the top, the others the underside, and a button by the board, "Show the top" with `aria-pressed`, turns it on any step with JavaScript, after which the shopper's side is kept.
+  - The board turns over where motion is allowed, and the picture's description says which side is shown.
+  - The top's layers set `--cbuild-image` and `--cbuild-mask` for the stylesheet.
 
 ### Changed
 
-- Nothing is picked for the shopper (#45, D-213). After the deck, each later step labels its recommendation and picks nothing; the board, the total, the state route's `total` and `creative-skateboard-builder/price-build`'s `total` count only what was picked, with the board with each recommendation in it as `total.estimate` in both; `creative-skateboard-builder/check-build` says a required slot with no pick is a problem and the build not `ready`; and the review and the cart need every slot the kit requires picked. Each step's parts are checked against the picks alone. A card with nothing picked in its slot says its whole price. Presets still fill every slot.
+- **Nothing is picked for the shopper (#45, D-213).**
+  - After the deck, each later step labels its recommendation and picks nothing; the board, the total, the state route's `total` and `creative-skateboard-builder/price-build`'s `total` count only what was picked, with the board with each recommendation in it as `total.estimate` in both; `creative-skateboard-builder/check-build` says a required slot with no pick is a problem and the build not `ready`; and the review and the cart need every slot the kit requires picked.
+  - Each step's parts are checked against the picks alone.
+  - A card with nothing picked in its slot says its whole price.
+  - Presets still fill every slot.
 - Site Health's advice on missing layer image copies names the logs only when a copy failed in the last 30 days, and otherwise says that "Read every part again" makes them (Cowork's recheck of 0.7.0, N1; D-214).
 - The upgrade notice asks for no manual step (D-216).
 - The grip is no longer drawn as a 1 in strip on the underside: the state route's `picture.layers` drops it, and the grip is drawn on the top. The composed pictures in the cart and share cards are the underside, so a build's new picture has no strip (#46).
@@ -269,43 +340,83 @@ All notable changes to this project are documented here. The format follows [Kee
 ### Added
 
 - The product meta `_cbuild_layer`: a part's layer image for the picture, an attachment ID, on simple products and variations. A variation with none takes its parent's (D-190).
-- The Part specs panel's Picture group holds the Layer image field. With WordPress's media modal, Choose an image offers PNG, WebP and AVIF; without it the field takes an attachment's ID. The image is shown on a chequer in a box the size the picture draws the part at, half a pixel to the millimetre, with that size and the pixels it needs. A save refuses a file that is not a PNG, WebP or AVIF, an AVIF the server's image library cannot read, one whose corners are not transparent, and one with fewer than two pixels to the millimetre both across and along, says why in WooCommerce's notice, and keeps what the part had (D-190).
-
-- The API surface lists every class docs/HOOKS.md promises a theme: `cbuild-assembly`, `cbuild-part__slot` and `cbuild-cart-picture` in the cart, and the builder's `cbuild-picture__item`, `cbuild-board__layer`, `cbuild-bar__photo` and `cbuild-review__item`, so `composer api:check` notices one renamed (the spec review of milestone 7).
+- **The Part specs panel's Picture group holds the Layer image field.**
+  - With WordPress's media modal, Choose an image offers PNG, WebP and AVIF; without it the field takes an attachment's ID.
+  - The image is shown on a chequer in a box the size the picture draws the part at, half a pixel to the millimetre, with that size and the pixels it needs.
+  - A save refuses a file that is not a PNG, WebP or AVIF, an AVIF the server's image library cannot read, one whose corners are not transparent, and one with fewer than two pixels to the millimetre both across and along, says why in WooCommerce's notice, and keeps what the part had (D-190).
+- **The API surface lists every class docs/HOOKS.md promises a theme:**
+  - `cbuild-assembly`, `cbuild-part__slot` and `cbuild-cart-picture` in the cart, and the builder's `cbuild-picture__item`, `cbuild-board__layer`, `cbuild-bar__photo` and `cbuild-review__item`, so `composer api:check` notices one renamed (the spec review of milestone 7).
 - The kit meta `_cbuild_picture` and its schema `schema/kit-picture.json`: the picture's layer order and where the trucks sit on a deck that gives no wheelbase. A kit saved before 0.7.0 has none and is drawn as before (D-192).
-- The Build tab's Picture section: a layer, from 1 at the bottom, for each of the kit's slots the picture draws (deck, grip, trucks and wheels), and the wheelbase to use where a deck gives none, from 10 to 20 in. Equal layers keep the order the slots are listed in. A wheelbase outside that range is not saved, and the notice says the range.
-- The Catalogue check's finding `layer_missing`: for each kit, a part of a slot the picture draws (deck, grip, trucks and wheels) with no layer image of its own or its parent's, or one no longer in the Media Library. These come after every other finding, and each links to the part's Layer image field (D-193).
-- Each part's layer image is made again as AVIF and WebP at half a pixel, one pixel and two pixels to the millimetre of the size the picture draws it, fitted and never enlarged, in `uploads/creative-skateboard-builder/layers/`. The part's index job makes them in the background, and a save that changes its layer image queues that job. WordPress's handling of the shop's other uploads is not changed. An image's old renditions go when it is edited or replaced and its new ones are made, and all of them when it is deleted from the Media Library (D-194, D-201).
-- The picture draws the board: each part with a layer image stacked to scale from the domain's layout, in the kit's layer order, as a `<picture>` with its AVIF and WebP renditions and its own file until they are made. The deck's layer is fetched first. A part with no layer image keeps its labelled photo under the board, and the phone bar's small picture is the same board. A pick swaps a layer in place, with the view transition a part already had, and the build is said once (D-195).
+- **The Build tab's Picture section:**
+  - A layer, from 1 at the bottom, for each of the kit's slots the picture draws (deck, grip, trucks and wheels), and the wheelbase to use where a deck gives none, from 10 to 20 in. Equal layers keep the order the slots are listed in. A wheelbase outside that range is not saved, and the notice says the range.
+- **The Catalogue check's finding `layer_missing`:**
+  - For each kit, a part of a slot the picture draws (deck, grip, trucks and wheels) with no layer image of its own or its parent's, or one no longer in the Media Library.
+  - These come after every other finding, and each links to the part's Layer image field (D-193).
+- **Each part's layer image gets AVIF and WebP renditions.**
+  - Each part's layer image is made again as AVIF and WebP at half a pixel, one pixel and two pixels to the millimetre of the size the picture draws it, fitted and never enlarged, in `uploads/creative-skateboard-builder/layers/`.
+  - The part's index job makes them in the background, and a save that changes its layer image queues that job.
+  - WordPress's handling of the shop's other uploads is not changed.
+  - An image's old renditions go when it is edited or replaced and its new ones are made, and all of them when it is deleted from the Media Library (D-194, D-201).
+- **The picture draws the board:**
+  - Each part with a layer image stacked to scale from the domain's layout, in the kit's layer order, as a `<picture>` with its AVIF and WebP renditions and its own file until they are made.
+  - The deck's layer is fetched first.
+  - A part with no layer image keeps its labelled photo under the board, and the phone bar's small picture is the same board.
+  - A pick swaps a layer in place, with the view transition a part already had, and the build is said once (D-195).
 - The state route's `picture` gains `width`, `height` and `layers`, and each item `drawn`. Nothing is taken away.
 - The custom property `--cbuild-board-size` a theme may set, and `--cbuild-board-ratio`, `--cbuild-layer-x`, `--cbuild-layer-y`, `--cbuild-layer-width` and `--cbuild-layer-height`, which the builder sets on the board and its layers.
-- The composer draws the picture's layout as one image, a JPEG or a WebP on a white ground, with GD, or with Imagick where GD cannot. GD and Imagick agree to within a mean of 0.25 and at most 48 out of 255 per channel on the same layout (measured: 0.0492 and 40). The files go in `uploads/creative-skateboard-builder/pictures/`, named by a hash of what is drawn, and never in the Media Library (D-196).
-- The Action Scheduler action `cbuild_compose_picture` draws a build's composed pictures in the background, for the cart and share cards, once it is added to the cart. It takes the build's IDs alone and checks the build again; a build that does not pass validation gets no picture. At most 50 builds wait at a time, and a build's three pictures took 0.46 s with GD in wp-env (D-197).
+- **The composer draws the picture's layout as one image.**
+  - The composer draws the picture's layout as one image, a JPEG or a WebP on a white ground, with GD, or with Imagick where GD cannot.
+  - GD and Imagick agree to within a mean of 0.25 and at most 48 out of 255 per channel on the same layout (measured: 0.0492 and 40).
+  - The files go in `uploads/creative-skateboard-builder/pictures/`, named by a hash of what is drawn, and never in the Media Library (D-196).
+- **The Action Scheduler action `cbuild_compose_picture`.**
+  - The Action Scheduler action `cbuild_compose_picture` draws a build's composed pictures in the background, for the cart and share cards, once it is added to the cart.
+  - It takes the build's IDs alone and checks the build again; a build that does not pass validation gets no picture.
+  - At most 50 builds wait at a time, and a build's three pictures took 0.46 s with GD in wp-env (D-197).
 - The Action Scheduler action `cbuild_prune_pictures` runs daily from the first composed picture. It deletes pictures not shown for 30 days, then the oldest until the folder holds 200 MB at most (D-198).
-- A page's asks for a composed picture, from a build link's page or a review offering its link, take at most 10 of the 50 places, where an add to the cart may take any, so visitors opening links cannot crowd out shoppers' builds. Each `cbuild_compose_picture` job holds the folder to its 200 MB before it draws, not only the daily prune. A picture that cannot be drawn is logged as a warning at most once an hour a kit, with the kit's ID and why: `empty`, `no_library`, `no_folder`, `layer_unreadable`, `draw_failed` or `move_failed` (D-205).
-- The Site Health test `cbuild_pictures` says when the server has neither GD nor Imagick able to make the composed pictures, or cannot write the uploads folder, and that carts and share cards then show the deck's photo (D-198). It also counts the drawn parts whose layer image has no resized copy (D-209).
+- **The picture queue keeps places for shoppers' builds.**
+  - A page's asks for a composed picture, from a build link's page or a review offering its link, take at most 10 of the 50 places, where an add to the cart may take any, so visitors opening links cannot crowd out shoppers' builds.
+  - Each `cbuild_compose_picture` job holds the folder to its 200 MB before it draws, not only the daily prune.
+  - A picture that cannot be drawn is logged as a warning at most once an hour a kit, with the kit's ID and why: `empty`, `no_library`, `no_folder`, `layer_unreadable`, `draw_failed` or `move_failed` (D-205).
+- **The Site Health test `cbuild_pictures`.**
+  - The Site Health test `cbuild_pictures` says when the server has neither GD nor Imagick able to make the composed pictures, or cannot write the uploads folder, and that carts and share cards then show the deck's photo (D-198).
+  - It also counts the drawn parts whose layer image has no resized copy (D-209).
 - Uninstall removes `uploads/creative-skateboard-builder/`, with the layers' renditions and the composed pictures in it.
-- A kit's line in every cart shows the build's composed picture once it is made, and the deck's photo until then, through the Store API's cart item images and `woocommerce_cart_item_thumbnail`. The class `cbuild-cart-picture` marks the composed picture in a classic cart. The parts keep their own photos (D-199).
-- A build link's page carries a share card: Open Graph and X card tags with the build's name, as "8.25″ complete: Baker, Independent 8.5″, and Spitfire 54 mm", a part with no brand by its product's name, its total, the build link as `og:url`, its brackets encoded, and its composed picture, at 1200 by 630, or the deck's photo or else its layer image until it is made. The plugin prints them where no SEO plugin is active and passes them through Yoast SEO's filters where it is, and prints none where Rank Math, SEOPress or All in One SEO is active. `rel=canonical` stays the clean page (D-200).
+- **A kit's line in every cart shows the build's composed picture.**
+  - A kit's line in every cart shows the build's composed picture once it is made, and the deck's photo until then, through the Store API's cart item images and `woocommerce_cart_item_thumbnail`.
+  - The class `cbuild-cart-picture` marks the composed picture in a classic cart.
+  - The parts keep their own photos (D-199).
+- **A build link's page carries a share card:**
+  - Open Graph and X card tags with the build's name, as "8.25″ complete: Baker, Independent 8.5″, and Spitfire 54 mm", a part with no brand by its product's name, its total, the build link as `og:url`, its brackets encoded, and its composed picture, at 1200 by 630, or the deck's photo or else its layer image until it is made.
+  - The plugin prints them where no SEO plugin is active and passes them through Yoast SEO's filters where it is, and prints none where Rank Math, SEOPress or All in One SEO is active. `rel=canonical` stays the clean page (D-200).
 - The state route's answer to a review that could go to the cart asks for the build's composed picture, so by the time its link is shared the picture is usually made. Until it is, the share card shows the deck's product photo, then its layer image (D-205).
 
 ### Changed
 
 - A build's parts' specs are read once a request, however many cart lines ask for them, and the parts' layer images are read together, so the cart and the builder ask fewer queries for the pictures than each part read alone would (D-202).
 - With Yoast SEO, a build link's page has the build link as its `og:url`, where 0.6.0 gave the clean page (D-200, in place of that part of D-147).
-- The seeded Independent chart gives each size's baseplate, from Independent's own pages: the 146, 151, 159, 166, 169 and 215 take both patterns, and the 109, 129, 139, 144 and 149 new school. A chart made before 0.7.0 has its empty baseplates filled on upgrade, never a value the shop typed, and the log says which sizes. Thunder's and Venture's pages give no holes, so their charts still leave the baseplate to the shop (issue #39, D-189).
-
-- CI runs each state of the code once: a push to main, or a pull request's push of docs alone, skips the legs and mutation testing when a full run has passed on the same code. A pull request's runs queue by its number, so one that starts after the merge cannot cancel main's, and runs nothing heavy. The newest leg has 120 minutes (D-188).
+- **The seeded Independent chart gives each size's baseplate.**
+  - The seeded Independent chart gives each size's baseplate, from Independent's own pages: the 146, 151, 159, 166, 169 and 215 take both patterns, and the 109, 129, 139, 144 and 149 new school.
+  - A chart made before 0.7.0 has its empty baseplates filled on upgrade, never a value the shop typed, and the log says which sizes.
+  - Thunder's and Venture's pages give no holes, so their charts still leave the baseplate to the shop (issue #39, D-189).
+- **CI runs each state of the code once:**
+  - A push to main, or a pull request's push of docs alone, skips the legs and mutation testing when a full run has passed on the same code.
+  - A pull request's runs queue by its number, so one that starts after the merge cannot cancel main's, and runs nothing heavy.
+  - The newest leg has 120 minutes (D-188).
 
 ### Fixed
 
-- Updating 0.6.x through the upload screen's "Replace current with uploaded" no longer ends in a critical error that left the uploaded zip in uploads. The classes 0.6.0's container built keep their constructors, with what 0.7.0 adds given by with-ers, and from 0.7.0 the request that replaces the plugin's files takes the plugin's callbacks off every hook. `npm run upgrade` updates the previous release to the build through the upload screen, and CI runs it (Cowork's review of rc.1, F3; D-208).
-- Layer images may be AVIF where the server's GD or Imagick reads it, with a refusal of its own where it cannot. The type is read from the file, so a PNG a host's output format turned into AVIF is read as AVIF, or as the PNG WordPress kept beside it. The chooser's filter comes from the same list. Imagick reads each layer by its type's own coder (F1, M7; D-210).
+- **Updating 0.6.x through the upload screen no longer ends in a critical error.**
+  - Updating 0.6.x through the upload screen's "Replace current with uploaded" no longer ends in a critical error that left the uploaded zip in uploads.
+  - The classes 0.6.0's container built keep their constructors, with what 0.7.0 adds given by with-ers, and from 0.7.0 the request that replaces the plugin's files takes the plugin's callbacks off every hook. `npm run upgrade` updates the previous release to the build through the upload screen, and CI runs it (Cowork's review of rc.1, F3; D-208).
+- **Layer images may be AVIF.**
+  - Layer images may be AVIF where the server's GD or Imagick reads it, with a refusal of its own where it cannot.
+  - The type is read from the file, so a PNG a host's output format turned into AVIF is read as AVIF, or as the PNG WordPress kept beside it.
+  - The chooser's filter comes from the same list.
+  - Imagick reads each layer by its type's own coder (F1, M7; D-210).
 - A rendition is written in its own type under an `image_editor_output_format` mapping, which is set aside while it is saved, and no rendition is deleted as another's; failures are logged (F2; D-209).
 - The Catalogue check's page lists the parts with no layer image in a section of their own with their own count and length, and Site Health counts them apart from the things to fix, in words of their own (F4; D-211).
 - A build link's page whose card falls back to the deck's photo or layer is kept out of page caches until its picture is made. A build that could not go to the cart has no card of the plugin's (F5, M2; D-212).
 - Site Health no longer speaks of emails, which come in milestone 8. The Layer image field's caption is in its `aria-describedby`, and the Build tab's groups with no legend are no longer fieldsets (M4, M5).
-
 - A drawn deck's hidden product photo was fetched first, at high priority, beside the deck's layer. It now waits, lazily, so the layer is the page's largest paint on a phone; on a desktop the step's heading is, and no other image (D-204).
 - On a phone, Next rose under a press held as the first deck's answer came: the bar's small picture appeared beside the total, the total took two lines and the bar grew about Next's middle. WebKit dropped the press. The bar's contents now sit at its foot (D-206).
 - On a phone, the bar's total took two lines once the board's small picture sat beside it, and the bar grew from 68 to 90 pixels. The bar now shows the amount alone, and a screen reader still hears "Total:" with it. (D-207).
@@ -318,34 +429,89 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Added
 
-- The build link's format, read and written by `Front\BuildLink`: `cbuild[<slot key>]=<part ID>`, `cbuild[step]` (a slot's key, or `review`), `cbuild[assembly]` (`1` or `0`) and `cbuild[preset]` (0 to 5). Written in the kit's slot order, so one build has one address. The builder's own forms add keys that start with an underscore, which are not part of a shared link: `_was`, `_brand`, `_size`, `_shown`, `_on` and `_replace` (D-142, D-150).
-
-- The state route's answer gains fields, and loses none. Each option says its `size` and its `delta`, what taking it does to the total: `+$12.00`, `−$5.00`, `Same price` for a part that costs no more and no less (the kind stays `free`), and `Included` for the part the total counts. The current step has its `filters` (brands and sizes, each with a count), how many parts match (`matching`) and how many to ask for to list the next 24 (`more`). `picture` lists what is in the box, each part labelled with its slot, brand and size, with the build in one sentence. `delivery` carries what `cbuild_arrival_estimate` and `cbuild_delivery_line` answer. `step` may be `review` (D-143). Each step says what its parts were checked `against`: the picks before it that the kit's rules read, by slot key, or null where no rule reads the slot. Each preset has an `image`, for now its first slot's part's photo, and says its `total`, whether it is `ready` for the cart, and its `problems`, each part named: a sold-out part, or one the shop no longer offers in its slot. Each is worked out by the engine every build is, from the parts the state has already read (D-151). An answer to a build link also carries `view`, what the builder's template draws, which is the builder's own and may change in any release; the schema describes the fields the builder's script reads, so its types are generated from it.
+- **The build link's format, read and written by `Front\BuildLink`:**
+  - `cbuild[<slot key>]=<part ID>`, `cbuild[step]` (a slot's key, or `review`), `cbuild[assembly]` (`1` or `0`) and `cbuild[preset]` (0 to 5).
+  - Written in the kit's slot order, so one build has one address.
+  - The builder's own forms add keys that start with an underscore, which are not part of a shared link: `_was`, `_brand`, `_size`, `_shown`, `_on` and `_replace` (D-142, D-150).
+- **The state route's answer gains fields, and loses none.**
+  - Each option says its `size` and its `delta`, what taking it does to the total: `+$12.00`, `−$5.00`, `Same price` for a part that costs no more and no less (the kind stays `free`), and `Included` for the part the total counts.
+  - The current step has its `filters` (brands and sizes, each with a count), how many parts match (`matching`) and how many to ask for to list the next 24 (`more`). `picture` lists what is in the box, each part labelled with its slot, brand and size, with the build in one sentence. `delivery` carries what `cbuild_arrival_estimate` and `cbuild_delivery_line` answer. `step` may be `review` (D-143).
+  - Each step says what its parts were checked `against`: the picks before it that the kit's rules read, by slot key, or null where no rule reads the slot.
+  - Each preset has an `image`, for now its first slot's part's photo, and says its `total`, whether it is `ready` for the cart, and its `problems`, each part named: a sold-out part, or one the shop no longer offers in its slot.
+  - Each is worked out by the engine every build is, from the parts the state has already read (D-151).
+  - An answer to a build link also carries `view`, what the builder's template draws, which is the builder's own and may change in any release; the schema describes the fields the builder's script reads, so its types are generated from it.
 - The filter `cbuild_summary_notes`: lines other plugins put under a build's total, six at most, as plain text.
-- The builder, rendered on the server with the first step, the summary and the picture in the page's HTML: on the kit's own product page, and anywhere through the Builder block (`creative-skateboard-builder/builder`, attribute `kit`). Each step is a form whose picks travel in the address, so the builder works with no JavaScript. A step past a required slot with nothing in it stops on that slot and says why. Risers the kit does not require are a step only while the wheels need them or the build holds some, and wheels that now need them stop the shopper on that step before going past it (D-146). The change panel's Use these and Undo are buttons in GET forms. A kit that is a draft, private or password-protected renders nothing, and a render that fails says "This builder isn't available right now", shows a shop manager why, and is logged with the kit (D-144, D-146).
+- **The builder, rendered on the server.**
+  - The builder, rendered on the server with the first step, the summary and the picture in the page's HTML: on the kit's own product page, and anywhere through the Builder block (`creative-skateboard-builder/builder`, attribute `kit`).
+  - Each step is a form whose picks travel in the address, so the builder works with no JavaScript.
+  - A step past a required slot with nothing in it stops on that slot and says why.
+  - Risers the kit does not require are a step only while the wheels need them or the build holds some, and wheels that now need them stop the shopper on that step before going past it (D-146).
+  - The change panel's Use these and Undo are buttons in GET forms.
+  - A kit that is a draft, private or password-protected renders nothing, and a render that fails says "This builder isn't available right now", shows a shop manager why, and is logged with the kit (D-144, D-146).
 - `0` in a build link leaves a slot the kit does not require empty by choice (D-144).
 - The filter `cbuild_part_classes`: classes another plugin adds to a part wherever the builder shows it, after the builder's own: its card, its place in the picture (`cbuild-picture__item`), the bar's photo (`cbuild-bar__photo`) and its line in the review (`cbuild-review__item`).
 - The filter `cbuild_builder_url`: the page a kit's builder is on. Where it names another page on the site, the kit's own page sends a visitor there with their build (D-146).
 - Each item of the answer's `picture` says the part's `size`, or an empty string.
-- The builder's store, private and locked: with JavaScript, a step's form, a pick, a link on the builder and Back each ask the state route and show its answer without loading the page. A pick is the shopper's own radio, painted at once, and the route is asked once, 150 ms after the last pick. A request a later one overtakes is aborted and its answer dropped. A step is a history entry at the address the server writes, and a pick replaces it. When the route fails, the form is sent, the link followed or the page reloaded, as without JavaScript (D-148).
-- With JavaScript, a pick that breaks later picks opens the change panel as a step of its own: a new history entry that Back leaves for the step the pick was made on, with focus on the panel's heading and the count of parts that changed said once. Use these and Undo move the builder without loading the page (D-152).
-- After a step changes, focus goes to the error summary, the change panel's heading or the step's heading, and the page's title says the step, "Error:" first where the summary is shown. After a pick, the status region says the build and its total once; the change panel's says how many parts changed. A page with a build in its address says the step in its title from the server too, before the title its SEO plugin or WordPress writes; the clean page keeps its own, for search (D-149).
+- **The builder's store, private and locked:**
+  - With JavaScript, a step's form, a pick, a link on the builder and Back each ask the state route and show its answer without loading the page.
+  - A pick is the shopper's own radio, painted at once, and the route is asked once, 150 ms after the last pick.
+  - A request a later one overtakes is aborted and its answer dropped.
+  - A step is a history entry at the address the server writes, and a pick replaces it.
+  - When the route fails, the form is sent, the link followed or the page reloaded, as without JavaScript (D-148).
+- **A pick that breaks later picks opens the change panel as a step.**
+  - With JavaScript, a pick that breaks later picks opens the change panel as a step of its own: a new history entry that Back leaves for the step the pick was made on, with focus on the panel's heading and the count of parts that changed said once.
+  - Use these and Undo move the builder without loading the page (D-152).
+- **Focus, the page's title and the status region follow each change.**
+  - After a step changes, focus goes to the error summary, the change panel's heading or the step's heading, and the page's title says the step, "Error:" first where the summary is shown.
+  - After a pick, the status region says the build and its total once; the change panel's says how many parts changed.
+  - A page with a build in its address says the step in its title from the server too, before the title its SEO plugin or WordPress writes; the clean page keeps its own, for search (D-149).
 - The state route takes `cbuild`, a build link (`cbuild[…]`) as a page's address holds it, with `page`, the post the builder is on. Its answer is what the page shows for the link, with the builder's own `view` added (D-148).
-- A step lists its parts 24 at a time, with Show more and how many are shown of how many match. Where its parts have more than one brand or size, buttons above them filter by each, saying how many each lists, with one to clear each group; the deck's widths come first. On a phone they are a drawer, closed until opened or a filter is pressed (D-170). Parts that do not fit the build so far are listed under a disclosure that says how many and why, each linked to its page. All of it works without JavaScript (D-150).
-- Preset tiles at the start of a blank build: each says its total, who it is for, and any part that keeps it from the cart, by name. Its button starts the build at the review. A sold-out part a preset or a link brings is named in the review's error summary, and the build cannot go to the cart until it is swapped (D-151).
+- **A step lists its parts 24 at a time, with Show more and how many are shown of how many match.**
+  - Where its parts have more than one brand or size, buttons above them filter by each, saying how many each lists, with one to clear each group; the deck's widths come first.
+  - On a phone they are a drawer, closed until opened or a filter is pressed (D-170).
+  - Parts that do not fit the build so far are listed under a disclosure that says how many and why, each linked to its page.
+  - All of it works without JavaScript (D-150).
+- **Preset tiles at the start of a blank build:**
+  - Each says its total, who it is for, and any part that keeps it from the cart, by name.
+  - Its button starts the build at the review.
+  - A sold-out part a preset or a link brings is named in the review's error summary, and the build cannot go to the cart until it is swapped (D-151).
 - The review says assembly with its fee and lead time, the arrival date, the total and the returns notice before Add to cart. The picture's first photo loads at once as the page's largest paint, and the rest lazily; each preset tile shows its deck's photo (D-154).
-- With JavaScript, Add to cart puts the build in the cart through the Store API without loading the page, tells the Mini-Cart with WooCommerce's `wc-blocks_added_to_cart`, says the build is in the cart with a link to it, and moves focus there. Where the Store API cannot add it, the form goes to WooCommerce's own handler, which says why (D-155).
-- The review holds the build's link, the page's own address, in a field labelled "Link to this build", with or without JavaScript. Where the browser has a clipboard to write to, a Copy link button copies it and says so; a copy the browser refuses selects the link for the shopper to copy (D-156). The link is `BuildLink::shared()`: the parts, the step and assembly, and neither the preset nor any of the builder's own keys (D-157).
-- Edit build on each kit's line in the Cart and Checkout blocks, the Mini-Cart and a classic cart. It opens the kit's builder at the review with the build in it, and Add to cart there takes the build's place at the quantity the cart held of it. The one it replaces is taken out first, so the shop's stock counts it once, and put back as it was if any part of the new one cannot go in. Each link has the class `cbuild-edit` and is named for its kit, so a screen reader tells two builds' links apart. `cbuild` on either route of the cart's add takes `replace`, the ID of the build it replaces (D-157).
-- The builder's stylesheet: the cards, the steps, the summary beside them on a wide builder, the review and the presets, laid out by the builder's own width. It takes the theme's palette and spacing, and sixteen custom properties restyle it: `--cbuild-text`, `--cbuild-muted`, `--cbuild-line`, `--cbuild-surface`, `--cbuild-accent`, `--cbuild-on-accent`, `--cbuild-focus`, `--cbuild-wrong`, `--cbuild-radius`, `--cbuild-gap`, `--cbuild-gap-small`, `--cbuild-target`, `--cbuild-control`, `--cbuild-small`, `--cbuild-card-width`, `--cbuild-summary-width`. Every button is at least 44 pixels square, every other control at least 24; nothing scrolls sideways at 320 pixels or with WCAG's text spacing; in forced colours the chosen card and a pressed filter keep a thick border, and focus keeps its ring (D-159).
-- The phone bar: on a screen under 48rem wide, a bar at the foot of the builder with the board's photo, which links to the picture; the total, which opens the parts list above the bar; and the step's Next or the review's Add to cart, which on a phone are the bar's alone. It stops where the builder ends. Focus is kept clear of it, by the page's scroll padding and, where the browser scrolls a control only once it leaves the screen, by the builder's script. Two more custom properties: `--cbuild-ground` and `--cbuild-bar-height` (D-160).
-- Motion: the chosen card settles, a part new to the picture slides into place, and a step crosses over to the next with the browser's view transition. Each lasts 200 ms, eases out and moves only `transform` and `opacity`; nothing moves under reduced motion, and a browser without view transitions shows the step at once. Two more custom properties: `--cbuild-duration` and `--cbuild-ease` (D-161).
-- Visual snapshots of the builder at its start and at the review, at desktop and phone widths, on Twenty Twenty-Five, Storefront and Kadence in light and dark, taken in Playwright's Linux image (`bash tools/visual.sh`) here and in CI. They found the phone bar white on a classic theme's dark colours, its total too faint to read: its ground now contrasts with the builder's text, with one more custom property, `--cbuild-on-ground` (D-162).
+- **Add to cart through the Store API.**
+  - With JavaScript, Add to cart puts the build in the cart through the Store API without loading the page, tells the Mini-Cart with WooCommerce's `wc-blocks_added_to_cart`, says the build is in the cart with a link to it, and moves focus there.
+  - Where the Store API cannot add it, the form goes to WooCommerce's own handler, which says why (D-155).
+- **The review holds the build's link, with Copy link.**
+  - The review holds the build's link, the page's own address, in a field labelled "Link to this build", with or without JavaScript.
+  - Where the browser has a clipboard to write to, a Copy link button copies it and says so; a copy the browser refuses selects the link for the shopper to copy (D-156).
+  - The link is `BuildLink::shared()`: the parts, the step and assembly, and neither the preset nor any of the builder's own keys (D-157).
+- **Edit build on each kit's line in the Cart and Checkout blocks, the Mini-Cart and a classic cart.**
+  - It opens the kit's builder at the review with the build in it, and Add to cart there takes the build's place at the quantity the cart held of it.
+  - The one it replaces is taken out first, so the shop's stock counts it once, and put back as it was if any part of the new one cannot go in. Each link has the class `cbuild-edit` and is named for its kit, so a screen reader tells two builds' links apart. `cbuild` on either route of the cart's add takes `replace`, the ID of the build it replaces (D-157).
+- **The builder's stylesheet:**
+  - The cards, the steps, the summary beside them on a wide builder, the review and the presets, laid out by the builder's own width.
+  - It takes the theme's palette and spacing, and sixteen custom properties restyle it: `--cbuild-text`, `--cbuild-muted`, `--cbuild-line`, `--cbuild-surface`, `--cbuild-accent`, `--cbuild-on-accent`, `--cbuild-focus`, `--cbuild-wrong`, `--cbuild-radius`, `--cbuild-gap`, `--cbuild-gap-small`, `--cbuild-target`, `--cbuild-control`, `--cbuild-small`, `--cbuild-card-width`, `--cbuild-summary-width`.
+  - Every button is at least 44 pixels square, every other control at least 24; nothing scrolls sideways at 320 pixels or with WCAG's text spacing; in forced colours the chosen card and a pressed filter keep a thick border, and focus keeps its ring (D-159).
+- **The phone bar:**
+  - On a screen under 48rem wide, a bar at the foot of the builder with the board's photo, which links to the picture; the total, which opens the parts list above the bar; and the step's Next or the review's Add to cart, which on a phone are the bar's alone.
+  - It stops where the builder ends.
+  - Focus is kept clear of it, by the page's scroll padding and, where the browser scrolls a control only once it leaves the screen, by the builder's script.
+  - Two more custom properties: `--cbuild-ground` and `--cbuild-bar-height` (D-160).
+- **Motion:**
+  - The chosen card settles, a part new to the picture slides into place, and a step crosses over to the next with the browser's view transition.
+  - Each lasts 200 ms, eases out and moves only `transform` and `opacity`; nothing moves under reduced motion, and a browser without view transitions shows the step at once.
+  - Two more custom properties: `--cbuild-duration` and `--cbuild-ease` (D-161).
+- **Visual snapshots of the builder.**
+  - Visual snapshots of the builder at its start and at the review, at desktop and phone widths, on Twenty Twenty-Five, Storefront and Kadence in light and dark, taken in Playwright's Linux image (`bash tools/visual.sh`) here and in CI.
+  - They found the phone bar white on a classic theme's dark colours, its total too faint to read: its ground now contrasts with the builder's text, with one more custom property, `--cbuild-on-ground` (D-162).
 - The phone bar on Storefront: it stays at the foot of the screen, which Storefront's `overflow: hidden` on the page had kept it from, and above Storefront's own bar there, by `--cbuild-bar-offset` on the page's root, which a theme may also set (D-163).
-- No express payment buttons on a kit's page: PayPal Payments' buttons, its Apple Pay and Google Pay buttons and its Pay Later message offered the kit alone, which the cart refuses. A kit answers PayPal Payments' `woocommerce_paypal_payments_product_supports_payment_request_button` with no. Measured: a pick paints within 100 ms on a CPU slowed four times, and a guest's state request costs no geolocation beyond WooCommerce's own (D-164).
+- **No express payment buttons on a kit's page:**
+  - PayPal Payments' buttons, its Apple Pay and Google Pay buttons and its Pay Later message offered the kit alone, which the cart refuses.
+  - A kit answers PayPal Payments' `woocommerce_paypal_payments_product_supports_payment_request_button` with no.
+  - Measured: a pick paints within 100 ms on a CPU slowed four times, and a guest's state request costs no geolocation beyond WooCommerce's own (D-164).
 - Lighthouse reads the builder page, not the front page: gated under Kadence on LCP, CLS, TBT and SEO, and reported under Twenty Twenty-Five, whose own web font moves the page as it arrives (D-165).
 - The delivery line, where no plugin answers `cbuild_delivery_line`, is worded from WooCommerce's shipping zones for the address it holds for the shopper: "Spend $18.00 more for free shipping to Ontario.", "Free shipping to Ontario." or "Shipping to Alberta: $15.50." (D-166).
-- The keyboard alone builds a board from a blank page and places its order, in every engine, and axe reads every state the builder shows: the blank start, a filtered step, the error summary, a step with its hidden parts open, the change panel, the review and the build added. Firefox skips axe on the error summary, where Playwright's Firefox crashes (issue #36, D-167).
+- **A keyboard-only build and axe on every state.**
+  - The keyboard alone builds a board from a blank page and places its order, in every engine, and axe reads every state the builder shows: the blank start, a filtered step, the error summary, a step with its hidden parts open, the change panel, the review and the build added.
+  - Firefox skips axe on the error summary, where Playwright's Firefox crashes (issue #36, D-167).
 - Two DOM events on the builder's element, for a shop's own analytics: `cbuild:pick`, with the kit, the slot and the part, and `cbuild:added`, with the kit, its picks and assembly. Each carries IDs alone.
 - A page holding a builder with a build in its address says `noindex, follow`, and its canonical is the page without the build, through WordPress's filters and Yoast SEO's; with Yoast, which prints no canonical on a noindex page, its `og:url` is the clean page (D-147).
 
@@ -353,37 +519,80 @@ All notable changes to this project are documented here. The format follows [Kee
 
 - A page with a builder carries the carts' line styles whatever the cart holds, so a first build added there without a page load is grouped in the page's Mini-Cart. Before, they came with the next page (D-132, D-158).
 - `schema/state.json` no longer closes its objects, so a reader that checks an answer against it accepts the fields a later release adds (D-143).
-- A slots document with a slot keyed `step`, `assembly`, `preset` or `review` is refused as `document_bad_key`: a build link keeps those words for itself (D-142). An upgrade renames such a slot in a kit saved by 0.4.0 or 0.5.0 `<key>_slot`, in its slots and its presets' picks, keeps its label, and logs the kit (schema version 4, D-169).
-
-- From Claude in Cowork's review of the release candidate: the Cart and Checkout blocks wait for the script that groups a build, so it is grouped on their first drawing (D-173). A kit's own page gives its builder the content's width, with no gallery and no price under its title (D-174). A card's fit label names what its part was checked against, "Fits your trucks", or nothing where no rule read it (D-175), and a card that fits says nothing of a spec a rule assumed, which the catalogue check tells the owner (D-176). A kit's line in every cart and on the order says "Assembly: $15.00", "Assembly: free" or "Assembly: not added" in place of a bare price, in a `cbuild-assembly` span; "Part of" does not repeat the slot a part's name starts with, whose label has a `cbuild-part__slot` span; Edit build shows alone (D-177). An address typed through the Store API counts for the delivery line (D-178). The slot-key migration reads kits in the bin (D-179). Edit build's review says "Save changes" and that it replaces the build in the cart. Lengths read 8.25″. A preset tile says one line a slot, naming a part no longer offered, and shows no total for a build short of a part. The review says "Assembly time: …". The phone bar says "Show the parts" and "Hide the parts". Where a cart drawer takes focus after an add, it keeps it and the builder says the add. Under Kadence, the filters are toggles and their drawer's heading stays off a desktop. WC tested up to 11.3.
-
-- From Claude in Cowork's recheck of the second release candidate: under Shop Kit's product template, a kit's page hides the gallery's column and gives the builder the row (D-184). A list of item data that is not the blocks' says "Assembly: not added" with Edit build after it, and no empty label (D-180). The order received page, My account and the emails leave a kit's assembly and build out of its meta, which its total and its parts' lines say; the order screen says "Assembly: free", "Assembly: $15.00" or "Assembly: not added" (D-181). Removing a build in the Cart block says so once, naming the build: each line's Store API data has a new field, `removed` (D-182). The add is said the same way when the Mini-Cart's drawer opens after it (D-183). The phone bar has no theme's marker and says "Show the parts" whole under its total (D-186). A pick keeps the control in use where it was on the screen, so a press made as the answer arrives is not lost (D-185).
-
-- The job that indexes a part, and each batch of a reindex, writes that part's row of the parts table itself, for the prices a visitor nothing is known of is shown. The first request after a reindex of 2,000 parts answered in about 490 ms and 101 queries; it answers in 58 ms and 37, inside the route's budget and held to it (#28, D-140).
+- **Slot keys the build link keeps for itself are refused, and renamed on upgrade.**
+  - A slots document with a slot keyed `step`, `assembly`, `preset` or `review` is refused as `document_bad_key`: a build link keeps those words for itself (D-142).
+  - An upgrade renames such a slot in a kit saved by 0.4.0 or 0.5.0 `<key>_slot`, in its slots and its presets' picks, keeps its label, and logs the kit (schema version 4, D-169).
+- **From Claude in Cowork's review of the release candidate:**
+  - The Cart and Checkout blocks wait for the script that groups a build, so it is grouped on their first drawing (D-173).
+  - A kit's own page gives its builder the content's width, with no gallery and no price under its title (D-174).
+  - A card's fit label names what its part was checked against, "Fits your trucks", or nothing where no rule read it (D-175), and a card that fits says nothing of a spec a rule assumed, which the catalogue check tells the owner (D-176).
+  - A kit's line in every cart and on the order says "Assembly: $15.00", "Assembly: free" or "Assembly: not added" in place of a bare price, in a `cbuild-assembly` span; "Part of" does not repeat the slot a part's name starts with, whose label has a `cbuild-part__slot` span; Edit build shows alone (D-177).
+  - An address typed through the Store API counts for the delivery line (D-178).
+  - The slot-key migration reads kits in the bin (D-179).
+  - Edit build's review says "Save changes" and that it replaces the build in the cart.
+  - Lengths read 8.25″.
+  - A preset tile says one line a slot, naming a part no longer offered, and shows no total for a build short of a part.
+  - The review says "Assembly time: …".
+  - The phone bar says "Show the parts" and "Hide the parts".
+  - Where a cart drawer takes focus after an add, it keeps it and the builder says the add.
+  - Under Kadence, the filters are toggles and their drawer's heading stays off a desktop.
+  - WC tested up to 11.3.
+- **From Claude in Cowork's recheck of the second release candidate:**
+  - Under Shop Kit's product template, a kit's page hides the gallery's column and gives the builder the row (D-184).
+  - A list of item data that is not the blocks' says "Assembly: not added" with Edit build after it, and no empty label (D-180).
+  - The order received page, My account and the emails leave a kit's assembly and build out of its meta, which its total and its parts' lines say; the order screen says "Assembly: free", "Assembly: $15.00" or "Assembly: not added" (D-181).
+  - Removing a build in the Cart block says so once, naming the build: each line's Store API data has a new field, `removed` (D-182).
+  - The add is said the same way when the Mini-Cart's drawer opens after it (D-183).
+  - The phone bar has no theme's marker and says "Show the parts" whole under its total (D-186).
+  - A pick keeps the control in use where it was on the screen, so a press made as the answer arrives is not lost (D-185).
+- **A reindex writes the parts table's rows itself.**
+  - The job that indexes a part, and each batch of a reindex, writes that part's row of the parts table itself, for the prices a visitor nothing is known of is shown.
+  - The first request after a reindex of 2,000 parts answered in about 490 ms and 101 queries; it answers in 58 ms and 37, inside the route's budget and held to it (#28, D-140).
 
 ## [0.5.0] - 2026-11-11
 
 ### Added
 
-- A build goes to the cart as a kit's line with a line for each part, by the Store API's `cart/add-item` and by WooCommerce's own add-to-cart form alike. Each sends the kit's ID with a `cbuild` parameter: `picks`, slot key to part ID, and `assembly`, which may be left out for the kit's default. Nothing else of the request is used: each part is read from WooCommerce as it is then, checked against its slot and the kit's rules, and counted across every line the cart already holds (#26, D-128).
+- **A build goes to the cart as a kit's line and a line for each part.**
+  - A build goes to the cart as a kit's line with a line for each part, by the Store API's `cart/add-item` and by WooCommerce's own add-to-cart form alike.
+  - Each sends the kit's ID with a `cbuild` parameter: `picks`, slot key to part ID, and `assembly`, which may be left out for the kit's default.
+  - Nothing else of the request is used: each part is read from WooCommerce as it is then, checked against its slot and the kit's rules, and counted across every line the cart already holds (#26, D-128).
 - Four cart item keys. A kit's line carries `cbuild`, the build (`schema_version`, `id`, `kit`, `picks`, `quantities`, `assembly`), and `cbuild_children`, its parts' cart keys. A part's line carries `cbuild_parent`, its kit's cart key, and `cbuild_slot`, the slot it fills.
 - A kit's line costs the kit's assembly fee where the build is assembled, and nothing where it is not. A kit may be bought only with a build taken in the same request: one added bare, by any route, is refused.
-- The cart's refusals, each a code the Store API answers with and a sentence the form shows as a notice: `cbuild_no_build`, `cbuild_kit_not_found`, `cbuild_build_refused` (with each problem's `code`, `slot` and `part` under `problems`), `cbuild_no_price` and `cbuild_not_added`, when WooCommerce will not add one of the parts and so nothing of the build stays.
-- A build in the cart stays whole, by every route. The kit's line's quantity sets its parts'; a part's line set alone goes back, and is refused as `cbuild_part_locked` by the Store API and the classic cart's Update cart. Removing any line removes the build, and the cart's Undo brings all of it back. In the Store API a part's quantity is not editable, and a kit's line's maximum is what its scarcest part allows (D-129).
-- Prices in the cart. Each part is charged at the shop's own price, less the setting `build_discount` where the shop has one, taken once and never off the assembly fee or a line outside the build; the classic cart shows the part's own price struck through, and the Store API gives both. Each line keeps its own tax class (D-130).
+- **The cart's refusals.**
+  - The cart's refusals, each a code the Store API answers with and a sentence the form shows as a notice: `cbuild_no_build`, `cbuild_kit_not_found`, `cbuild_build_refused` (with each problem's `code`, `slot` and `part` under `problems`), `cbuild_no_price` and `cbuild_not_added`, when WooCommerce will not add one of the parts and so nothing of the build stays.
+- **A build in the cart stays whole, by every route.**
+  - The kit's line's quantity sets its parts'; a part's line set alone goes back, and is refused as `cbuild_part_locked` by the Store API and the classic cart's Update cart.
+  - Removing any line removes the build, and the cart's Undo brings all of it back.
+  - In the Store API a part's quantity is not editable, and a kit's line's maximum is what its scarcest part allows (D-129).
+- **Prices in the cart.**
+  - Each part is charged at the shop's own price, less the setting `build_discount` where the shop has one, taken once and never off the assembly fee or a line outside the build; the classic cart shows the part's own price struck through, and the Store API gives both.
+  - Each line keeps its own tax class (D-130).
 - Coupons. A coupon that takes the kit takes its parts, and one that leaves the kit out leaves them out. A fixed product coupon lands on the kit's line alone, or on each part too where the setting `fixed_coupons` is `parts`.
 - A coupon's own exclusions hold for a part in a build: a part the coupon leaves out by its ID, its category or its being on sale is left out, though the coupon takes its kit (D-137).
-- WooCommerce's Order again, on an order with a build, puts the build back whole: the kit's build is judged again from the order's snapshot as the shop is now and given a new identifier, and its lines are tied to one another. A build the shop would no longer sell, or one WooCommerce left a line out of, is not put back at all, and one notice says so (D-137).
+- **Order again puts a build back whole.**
+  - WooCommerce's Order again, on an order with a build, puts the build back whole: the kit's build is judged again from the order's snapshot as the shop is now and given a new identifier, and its lines are tied to one another.
+  - A build the shop would no longer sell, or one WooCommerce left a line out of, is not put back at all, and one notice says so (D-137).
 - A cart read back from the session shows each part at what it is charged, so the classic mini-cart's lines add up to its subtotal on every page (D-137).
 - A build in the cart that stops the order is named, with what to do, before what is wrong with it: "… cannot be bought as it is now. Remove it from your cart to check out, then build it again." A kit taken down says "… is no longer sold. Remove it from your cart to check out." (D-137).
 - The schema `schema/order-snapshot.json`, for the order item meta `_cbuild_snapshot`, whose `schema_version` is its own and no longer the cart's build's (D-138).
 - The classic mini-cart widget gives a build's rows the classes `cbuild-kit` and `cbuild-part`, by `woocommerce_mini_cart_item_class`, and indents a part's (D-138).
 - The cart's count counts a build once, as its kit's line, in `WC_Cart::get_cart_contents_count()` and the Store API's `items_count`.
-- A build is shown grouped in all three carts. The Store API gives each cart item `role`, `build`, `parent`, `slot` and `name` under `extensions`, in the namespace `creative-skateboard-builder`, and a small script on a page with the Cart or Checkout block gives them to WooCommerce's `cartItemClass`, `itemName` and `showRemoveItemLink` filters. A part's line carries item data, Part of, with the class `cbuild-part` and the raw key `cbuild_slot`, which is what the Mini-Cart groups by. A classic cart and checkout are drawn through `woocommerce_cart_item_name`, `_class`, `_quantity` and `_remove_link`: a kit's row has the class `cbuild-kit` and a part's `cbuild-part`, and a part's quantity is a number in `cbuild-quantity`. The styles and the script reach a page only where the cart already holds a build (D-132).
-- Shipping. The kit is virtual and is in no package, so a kit's line at nothing goes through any shipping method. Where a shop's code splits the cart into several packages, a build the shop assembles has its parts put back in one; the filter `cbuild_build_in_one_package` decides otherwise for either kind of build (D-133).
+- **A build is shown grouped in all three carts.**
+  - The Store API gives each cart item `role`, `build`, `parent`, `slot` and `name` under `extensions`, in the namespace `creative-skateboard-builder`, and a small script on a page with the Cart or Checkout block gives them to WooCommerce's `cartItemClass`, `itemName` and `showRemoveItemLink` filters.
+  - A part's line carries item data, Part of, with the class `cbuild-part` and the raw key `cbuild_slot`, which is what the Mini-Cart groups by.
+  - A classic cart and checkout are drawn through `woocommerce_cart_item_name`, `_class`, `_quantity` and `_remove_link`: a kit's row has the class `cbuild-kit` and a part's `cbuild-part`, and a part's quantity is a number in `cbuild-quantity`.
+  - The styles and the script reach a page only where the cart already holds a build (D-132).
+- **Shipping.**
+  - The kit is virtual and is in no package, so a kit's line at nothing goes through any shipping method.
+  - Where a shop's code splits the cart into several packages, a build the shop assembles has its parts put back in one; the filter `cbuild_build_in_one_package` decides otherwise for either kind of build (D-133).
 - No express pay on a kit's page: the plugin answers WooCommerce Stripe Gateway's and WooPayments' filters for hiding their buttons there.
 - Two filters for the line under the builder's total, shown from 0.6.0: `cbuild_arrival_estimate` and `cbuild_delivery_line`, each given the kit, whether the build is assembled, the lead time and the total.
-- A build is written to the order by both checkouts. Six hidden order item keys: `_cbuild_id`, the build's identifier, on every item of it; `_cbuild_role`, `kit` or `part`; `_cbuild_parent`, on a part, its kit's item ID; `_cbuild_children`, on the kit's item, its parts' item IDs in step order; `_cbuild_slot`, on a part, the slot it fills; and `_cbuild_snapshot`, on the kit's item, each slot's label, part, name, quantity and specs as sold, with the kit's lead time and returns notice where the build is assembled. The kit's item also shows the customer and the workshop two lines: Assembly, and the build with each slot's part and quantity. A part is named with its slot wherever an order lists its items, and the order screen neither lists nor edits the hidden keys. Stock is WooCommerce's, part by part (D-131).
+- **A build is written to the order by both checkouts.**
+  - Six hidden order item keys: `_cbuild_id`, the build's identifier, on every item of it; `_cbuild_role`, `kit` or `part`; `_cbuild_parent`, on a part, its kit's item ID; `_cbuild_children`, on the kit's item, its parts' item IDs in step order; `_cbuild_slot`, on a part, the slot it fills; and `_cbuild_snapshot`, on the kit's item, each slot's label, part, name, quantity and specs as sold, with the kit's lead time and returns notice where the build is assembled.
+  - The kit's item also shows the customer and the workshop two lines: Assembly, and the build with each slot's part and quantity.
+  - A part is named with its slot wherever an order lists its items, and the order screen neither lists nor edits the hidden keys.
+  - Stock is WooCommerce's, part by part (D-131).
 - A part's line names its kit's line as its parent to the Store API, by `woocommerce_store_api_cart_item_parent_item_key`, where WooCommerce has that key (11.3.0 and later). A line of no build is left as it was (D-139).
 - Each pick of `_cbuild_snapshot` keeps `sku`, the part's SKU as it was sold, empty where it had none (D-139).
 - A coupon added to or removed from an order with a build, on the order's screen, follows the kit to its parts as it did in the cart, so the order's total does not move for a coupon the shopper already had (D-139).
@@ -394,9 +603,14 @@ All notable changes to this project are documented here. The format follows [Kee
 ### Changed
 
 - Site Health's Info section lists the build discount, where a fixed product coupon lands, the state route's rate limit, the trusted proxy header's name and whether a new kit starts with assembly chosen (#29).
-- The state route prices for the shopper WooCommerce knows, by its own session, so where tax goes by the shopper's address the builder's total is the cart's. A visitor with no session is priced for the shop's default address as before, and is given no session by asking (#27, D-135). The route makes no cart for the request, so a shopper's cart is not read to answer it (D-138).
+- **The state route prices for the shopper WooCommerce knows.**
+  - The state route prices for the shopper WooCommerce knows, by its own session, so where tax goes by the shopper's address the builder's total is the cart's.
+  - A visitor with no session is priced for the shop's default address as before, and is given no session by asking (#27, D-135).
+  - The route makes no cart for the request, so a shopper's cart is not read to answer it (D-138).
 - The abilities `check-build` and `price-build` price for the signed-in user as the state route does (D-137, D-138).
-- The shopper's address reaches a price only where a price the shop shows can depend on it: prices shown with tax, or entered with tax and adjusted for where the shopper is. On any other shop every shopper shares one price context, the session is not read for the state route, and the parts table keeps one set of rows (D-139).
+- **The shopper's address reaches a price only where the price can depend on it.**
+  - The shopper's address reaches a price only where a price the shop shows can depend on it: prices shown with tax, or entered with tax and adjusted for where the shopper is.
+  - On any other shop every shopper shares one price context, the session is not read for the state route, and the parts table keeps one set of rows (D-139).
 - A build's parts gathered into one shipping package leave every package under the key it came with, so a shipping method chosen for a package stays that package's (D-139).
 - The newest versions the suites run on are WordPress 7.1.4 with WooCommerce 11.3.0 (D-139).
 - Mutation testing names the cart's and the order's hook classes among those it leaves out, now that what they decided is in services it does not leave out (D-138).
@@ -412,15 +626,35 @@ All notable changes to this project are documented here. The format follows [Kee
 - A kit stays out of the catalogue, search results, product feeds, WordPress's sitemap and Yoast SEO's, and prints no product markup. Its catalogue visibility is always hidden.
 - The shop's kits are read from its kit products, and a slot's parts from its sources: the products in its categories, of its brands and with its attribute values, and any it names, each variable product as its variations. A part is one a shopper could be shown and could buy (D-101).
 - The Catalogue check's kit rules run on the shop's kits: a slot with no parts or nothing in stock, a part missing a spec its slot needs, a preset that no longer fits.
-- The Build tab on a kit's product screen: its slots (label, help, required, units, the categories, brands, products and attribute values that may fill it, a default part), the rules R1 to R6 with their settings, up to six presets and the assembly settings. A section that fails its checks is not saved while the rest is, each problem is a notice that links to its field, and the tab shows the section once more as it was typed. Rows move by Move up and Move down as well as by dragging. Saved by who may manage the shop (D-106, D-108).
-- Five more keys of the option `cbuild_settings`, set at WooCommerce > Settings > Builder and saved with the rest or not at all: `build_discount` and `fixed_coupons`, which the cart reads from 0.5.0; `rate_limit` and `trusted_proxy_header`, for the state route; and `kit_defaults`, the assembly settings a new kit's Build tab starts from (D-109).
+- **The Build tab on a kit's product screen:**
+  - Its slots (label, help, required, units, the categories, brands, products and attribute values that may fill it, a default part), the rules R1 to R6 with their settings, up to six presets and the assembly settings.
+  - A section that fails its checks is not saved while the rest is, each problem is a notice that links to its field, and the tab shows the section once more as it was typed.
+  - Rows move by Move up and Move down as well as by dragging.
+  - Saved by who may manage the shop (D-106, D-108).
+- **Five more keys of the option `cbuild_settings`.**
+  - Five more keys of the option `cbuild_settings`, set at WooCommerce > Settings > Builder and saved with the rest or not at all: `build_discount` and `fixed_coupons`, which the cart reads from 0.5.0
+  - `rate_limit` and `trusted_proxy_header`, for the state route
+  - And `kit_defaults`, the assembly settings a new kit's Build tab starts from (D-109).
 - A part's stock count is held against what a build takes of it. A part the shop holds too few of is not recommended and is not the closest fit in a change list, and the validator refuses it with the new problem code `part_short` (#14).
 - What a part's card shows (its name, page, price, availability and photo, as the shop shows them) is kept in the object cache per part for an hour at most, and read again when the part is saved, restocked, sold, put on or taken off sale, or deleted (D-111).
-- The state route, `GET cbuild/v1/kits/<id>/state` (registered as `cbuild/v1/kits/(?P<id>[1-9][0-9]{0,17})/state`), with the arguments `picks`, `previous`, `step`, `assembly` and `locale`: the state of a build of a kit, as `schema/state.json` describes it. Each step's pick, the part it starts on and how many parts it offers and hides and why; the current step's options, 24 at most, each with its fit, its reasons as sentences and its card; the picks refused; what keeps the build from the cart; the change list when a change breaks a later pick; and the total with the assembly fee and the build discount. Public and read-only, answered `no-store`, in the language asked for when the site has it. A kit that is not there, or that a visitor may not see, is a 404 `cbuild_kit_not_found`; a build the shop's currency settings cannot price is a 500 `cbuild_no_price`. A kit that is not published is answered as one that is not there (`cbuild_kit_not_found`).
+- **The state route, `GET cbuild/v1/kits/<id>/state`.**
+  - The state route, `GET cbuild/v1/kits/<id>/state` (registered as `cbuild/v1/kits/(?P<id>[1-9][0-9]{0,17})/state`), with the arguments `picks`, `previous`, `step`, `assembly` and `locale`: the state of a build of a kit, as `schema/state.json` describes it.
+  - Each step's pick, the part it starts on and how many parts it offers and hides and why; the current step's options, 24 at most, each with its fit, its reasons as sentences and its card; the picks refused; what keeps the build from the cart; the change list when a change breaks a later pick; and the total with the assembly fee and the build discount.
+  - Public and read-only, answered `no-store`, in the language asked for when the site has it.
+  - A kit that is not there, or that a visitor may not see, is a 404 `cbuild_kit_not_found`; a build the shop's currency settings cannot price is a 500 `cbuild_no_price`.
+  - A kit that is not published is answered as one that is not there (`cbuild_kit_not_found`).
 - The state route's rate limit: the setting `rate_limit` a minute for each address, then 429 `cbuild_rate_limited` with `Retry-After`. What is counted is a salted hash of the address and the minute, kept two minutes at most; the address is stored nowhere (D-112).
-- Five filters. `cbuild_part_available` lets a plugin rule a part out of every kit. `cbuild_price_context` lets a plugin that prices some shoppers apart say what tells them apart, so each is shown a card of their own. `cbuild_slot_label`, `cbuild_preset_label` and `cbuild_kit_text` let a translation plugin answer for the owner's own words: a slot's label and help, a preset's name and description, the lead time and the returns notice. The state route's answer carries the kit's texts and presets (D-114).
-- Two abilities, `creative-skateboard-builder/check-build` and `creative-skateboard-builder/price-build`: read-only, in the plugin's category, they take a kit and its picks and give a signed-in user the state route's own answer to whether the build may go to the cart and to what it costs (D-115, D-118).
-- The state route answers within its budget on a large catalogue: 58 ms at p95 with 2,000 parts in a kit and 500 in the step, on a site with no persistent object cache. What a build needs of each part is kept in a table, `cbuild_parts`, a row per part and price context. A row is deleted when its product, price, stock, terms or specs move, and the next request reads that one part from the shop again (D-116).
+- **Five filters.**
+  - `cbuild_part_available` lets a plugin rule a part out of every kit.
+  - `cbuild_price_context` lets a plugin that prices some shoppers apart say what tells them apart, so each is shown a card of their own.
+  - `cbuild_slot_label`, `cbuild_preset_label` and `cbuild_kit_text` let a translation plugin answer for the owner's own words: a slot's label and help, a preset's name and description, the lead time and the returns notice.
+  - The state route's answer carries the kit's texts and presets (D-114).
+- **Two abilities, to check and to price a build.**
+  - Two abilities, `creative-skateboard-builder/check-build` and `creative-skateboard-builder/price-build`: read-only, in the plugin's category, they take a kit and its picks and give a signed-in user the state route's own answer to whether the build may go to the cart and to what it costs (D-115, D-118).
+- **The state route answers within its budget on a large catalogue:**
+  - 58 ms at p95 with 2,000 parts in a kit and 500 in the step, on a site with no persistent object cache.
+  - What a build needs of each part is kept in a table, `cbuild_parts`, a row per part and price context.
+  - A row is deleted when its product, price, stock, terms or specs move, and the next request reads that one part from the shop again (D-116).
 - The Catalogue check lists a kit whose settings do not read, under the code `kit_unread`, and the log says so at most once an hour. The Build tab does not save slots beside presets they would break (`slots_leave_presets`). Each row's Move up, Move down and fold are named with the row.
 - Without a persistent object cache the rate limit's counts take 1,024 rows of the options table at most (D-119).
 - A Build tab save that reaches the server cut short, as PHP's `max_input_vars` cuts a long form with no error, saves nothing of the tab, says so in a notice and keeps what arrived as typed (D-122). The tab is drawn only for a user who may save it.
@@ -446,7 +680,12 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Fixed
 
-- The Part specs panel no longer pushes a product's edit form past PHP's `max_input_vars` (issue #23). It added 21 named fields to the product's tab and to each variation WooCommerce loads, 15 to a page, on every product. Where the limit is 1,000, a common host default, PHP kept the first 1,000 fields of an Update and dropped the rest without an error: other plugins' fields, the short description, the slug. A group of fields that is closed is now drawn disabled and sends nothing, and the screen's script enables a group when it opens. A part with no specs adds no field to the form; one with specs adds its open groups'. A group that sends nothing keeps what the part has.
+- **The Part specs panel no longer pushes a product's edit form past PHP's `max_input_vars` (issue #23).**
+  - It added 21 named fields to the product's tab and to each variation WooCommerce loads, 15 to a page, on every product.
+  - Where the limit is 1,000, a common host default, PHP kept the first 1,000 fields of an Update and dropped the rest without an error: other plugins' fields, the short description, the slug.
+  - A group of fields that is closed is now drawn disabled and sends nothing, and the screen's script enables a group when it opens.
+  - A part with no specs adds no field to the form; one with specs adds its open groups'.
+  - A group that sends nothing keeps what the part has.
 - A link to a variation's fields (`#cbuild_variation_<id>`) checks a frame later that the control it moved focus to is still in view, and scrolls it back if the page moved.
 
 ## [0.3.0] - 2026-11-10
@@ -457,21 +696,47 @@ All notable changes to this project are documented here. The format follows [Kee
 - A part's own specs in the product meta `_cbuild_specs`, a value per spec key; a variation left blank for a spec takes its parent's.
 - The option `cbuild_settings` with its first two keys: `attribute_mapping` (which attribute feeds which spec, in which unit) and `source_order` (which source wins where two disagree).
 - The settings screen, WooCommerce > Settings > Builder: the attribute mapping, a line per attribute, and which source wins. A save with a mistake in it stores nothing and names each mistake beside its field. `schema/settings.json` is the shape the option is written in (D-073).
-- The index is kept in the background. Saving or deleting a product queues the `cbuild_index_part` action for it, and the request that saves indexes nothing. Saving the settings or editing a term of a mapped attribute queues `cbuild_reindex`, which indexes every part again, 100 at a time, from a place it keeps in the option `cbuild_reindex_state`, so one stopped halfway carries on (D-071).
-- Spec tables: the post type `cbuild_spec_table`, a maker's size chart with a row per size in the meta `_cbuild_rows`. A part names a table and a size in the product meta `_cbuild_spec_table` and takes that row's values; a variation left blank takes its parent's. Independent's, Thunder's and Venture's charts are made by a migration, each marked with `_cbuild_seed`, on a new site and an upgraded one alike. Saving, binning or deleting a table indexes every part again. (D-072).
-- The Part specs panel: a tab of the product data box on simple and variable products, and a group of fields inside each variation. A field takes the shop's decimal separator or a fraction, and what is stored is the same in every locale. A value in use that comes from the parent product, a mapped attribute or a maker's chart is named beneath its field. A value that is wrong is not saved, what the part had is kept, and the rest of the product saves (D-074).
-- WooCommerce > Builder, with the spec tables' screen: the list of charts, a chart's sizes to edit, a chart added by its maker's name, and a chart deleted after the page asks. A chart saves whole or not at all, and one that is refused comes back as typed with each problem in its row. Every form works with scripts off (D-075).
-- WooCommerce > Builder > Import and export: every part's own specs as a CSV file, out and in, with the columns `id`, `sku`, `name`, `spec_table`, `spec_size` and one per spec key. A file that is chosen is checked and shown, with what it would change and each row it cannot read, and nothing is written until the person who sent it confirms. A confirmed import is written in the background by the action `cbuild_import`, 100 rows at a time, from a place it keeps in the option `cbuild_import_state`. A cell of an export that a spreadsheet would run is neutralised (D-076).
-- WooCommerce > Builder > Catalogue check: run when asked, it reads every part and lists what keeps one out of the builder, each with a link to the part's fields: two sources that disagree about a spec, a value that cannot be read (a chart that is gone, a size its chart does not have), a reindex or an import that stopped, and the plugin's failed background jobs. For each kit it also lists parts that lack a spec a rule needs, specs a rule had to assume, slots with no parts or none in stock, and presets that can no longer be bought; a shop has kits from 0.4.0. It changes nothing.
-- WP-CLI: the commands `cbuild specs` (`wp cbuild specs export [<file>]` and `wp cbuild specs import <file> [--dry-run] [--key=<id|sku>]`), `cbuild check` and `cbuild reindex` (`wp cbuild reindex [--background]`), each the service its screen runs. A command exits 1 when a file or a row is not read, a batch fails, or the check finds anything.
+- **The index is kept in the background.**
+  - Saving or deleting a product queues the `cbuild_index_part` action for it, and the request that saves indexes nothing.
+  - Saving the settings or editing a term of a mapped attribute queues `cbuild_reindex`, which indexes every part again, 100 at a time, from a place it keeps in the option `cbuild_reindex_state`, so one stopped halfway carries on (D-071).
+- **Spec tables:**
+  - The post type `cbuild_spec_table`, a maker's size chart with a row per size in the meta `_cbuild_rows`.
+  - A part names a table and a size in the product meta `_cbuild_spec_table` and takes that row's values; a variation left blank takes its parent's.
+  - Independent's, Thunder's and Venture's charts are made by a migration, each marked with `_cbuild_seed`, on a new site and an upgraded one alike.
+  - Saving, binning or deleting a table indexes every part again. (D-072).
+- **The Part specs panel:**
+  - A tab of the product data box on simple and variable products, and a group of fields inside each variation.
+  - A field takes the shop's decimal separator or a fraction, and what is stored is the same in every locale.
+  - A value in use that comes from the parent product, a mapped attribute or a maker's chart is named beneath its field.
+  - A value that is wrong is not saved, what the part had is kept, and the rest of the product saves (D-074).
+- **WooCommerce > Builder, with the spec tables' screen:**
+  - The list of charts, a chart's sizes to edit, a chart added by its maker's name, and a chart deleted after the page asks.
+  - A chart saves whole or not at all, and one that is refused comes back as typed with each problem in its row.
+  - Every form works with scripts off (D-075).
+- **WooCommerce > Builder > Import and export:**
+  - Every part's own specs as a CSV file, out and in, with the columns `id`, `sku`, `name`, `spec_table`, `spec_size` and one per spec key.
+  - A file that is chosen is checked and shown, with what it would change and each row it cannot read, and nothing is written until the person who sent it confirms.
+  - A confirmed import is written in the background by the action `cbuild_import`, 100 rows at a time, from a place it keeps in the option `cbuild_import_state`.
+  - A cell of an export that a spreadsheet would run is neutralised (D-076).
+- **WooCommerce > Builder > Catalogue check:**
+  - Run when asked, it reads every part and lists what keeps one out of the builder, each with a link to the part's fields: two sources that disagree about a spec, a value that cannot be read (a chart that is gone, a size its chart does not have), a reindex or an import that stopped, and the plugin's failed background jobs.
+  - For each kit it also lists parts that lack a spec a rule needs, specs a rule had to assume, slots with no parts or none in stock, and presets that can no longer be bought; a shop has kits from 0.4.0.
+  - It changes nothing.
+- **WP-CLI:**
+  - The commands `cbuild specs` (`wp cbuild specs export [<file>]` and `wp cbuild specs import <file> [--dry-run] [--key=<id|sku>]`), `cbuild check` and `cbuild reindex` (`wp cbuild reindex [--background]`), each the service its screen runs.
+  - A command exits 1 when a file or a row is not read, a batch fails, or the check finds anything.
 - The ability `creative-skateboard-builder/catalogue-check` (WordPress's Abilities API), in the category `creative-skateboard-builder`: the Catalogue check's findings for the shop's own tools, for those who can manage WooCommerce. Read-only, and served over REST by `GET`.
 - Site Health: the tests `cbuild_index` (critical when a reindex stopped after its failures, recommended when one stopped part way) and `cbuild_jobs` (recommended when a background job of the plugin has failed), and a section on the Info tab with the plugin's versions and settings.
-- Site Health: the asynchronous test `cbuild_catalogue`, which runs the Catalogue check and is recommended when it finds something in a part or a kit, with the counts and a link to the check. Site Health's page reads it from the REST route `cbuild/v1/site-health/catalogue-check`, which answers those who can see Site Health (D-094).
+- **Site Health:**
+  - The asynchronous test `cbuild_catalogue`, which runs the Catalogue check and is recommended when it finds something in a part or a kit, with the counts and a link to the check.
+  - Site Health's page reads it from the REST route `cbuild/v1/site-health/catalogue-check`, which answers those who can see Site Health (D-094).
 - The option `cbuild_reindex_owed`: a site activated while WooCommerce is missing has no queue, so the reindex is owed and asked for on the first request that finds one (D-095).
 - The seeded charts hold each maker's own figures: Thunder's eight sizes from thundertrucks.com, with the 181 added and a deck range for every size, and Venture's five from venturetrucks.net (D-093).
 - Every part is read into the index after an install, after an upgrade's migrations and on activation, in the background, 100 at a time. WooCommerce > Builder > Catalogue check has a button, "Read every part again", to start it by hand (D-082).
 - A term of a mapped attribute that is deleted asks for a reindex, as an edited one does (D-082).
-- A mapping line names one attribute: `pa_width` is the shop's Width taxonomy, and `Width` is a product's own attribute of that name. A variation with no value of its own for a mapped attribute takes its parent's, where the parent does not use the attribute for variations, and the Part specs panel says so (D-089).
+- **A mapping line names one attribute:**
+  - `pa_width` is the shop's Width taxonomy, and `Width` is a product's own attribute of that name.
+  - A variation with no value of its own for a mapped attribute takes its parent's, where the parent does not use the attribute for variations, and the Part specs panel says so (D-089).
 - The option `cbuild_import_rows`: the rows of the specs import in hand, written once when the file is read. `cbuild_import_state` keeps the import's place and counts, so a batch no longer saves the whole file again (D-090).
 - A size an import or the panel names is matched to a chart's row by its number when no name matches: `5` finds Venture's `5.0`, as a spreadsheet writes it (D-091).
 - A narrowest deck wider than the widest is refused, on the Part specs panel, in a chart's row and in an import, with both figures named. A chart cannot take a name another chart has (D-092).
@@ -482,11 +747,6 @@ All notable changes to this project are documented here. The format follows [Kee
 - `Domain\Kit\Part::$stock`: a part's managed stock count, or null where stock is not managed. Nothing reads it yet.
 - A value a person types is read with the shop's decimal separator and, when that does not read, with a point: in a shop that writes a comma, `8,25` and `8.25` are one value, on the Part specs panel, in a chart and in a mapped attribute.
 
-### Fixed
-
-- Uninstall forgets the ID Action Scheduler caches for the plugin's group. On a shop with a persistent object cache, a reinstall within ten minutes filed its jobs under a group that was gone (D-084).
-- Deactivation unschedules a pending action whatever its arguments. With the group given, Action Scheduler cancelled only actions with no arguments, which was every action until this version (D-071).
-
 ### Changed
 
 - A class that attaches hooks is built only on a request where its hooks can fire: wp-admin, WP-CLI, cron, REST or the storefront (D-067).
@@ -495,32 +755,58 @@ All notable changes to this project are documented here. The format follows [Kee
 - The browser tests log in once for the run, and a draft pull request runs one desktop and one phone engine; every project runs once it is ready (D-085).
 - Mutation testing covers the admin's labels and sentences, and every class it leaves out has its reason beside it (D-087).
 
+### Fixed
+
+- Uninstall forgets the ID Action Scheduler caches for the plugin's group. On a shop with a persistent object cache, a reinstall within ten minutes filed its jobs under a group that was gone (D-084).
+- Deactivation unschedules a pending action whatever its arguments. With the group given, Action Scheduler cancelled only actions with no arguments, which was every action until this version (D-071).
+
 ## [0.2.0] - 2026-11-09
 
 ### Added
 
 - The kit's four document schemas, `schema/kit-slots.json`, `schema/kit-rules.json`, `schema/kit-presets.json` and `schema/kit-assembly.json`, each at `schema_version` 1, with the domain's value objects that read the same documents and an integration test that holds the two together.
-- The spec keys: `deck_width`, `deck_length`, `wheelbase`, `hole_pattern`, `axle_width`, `deck_min`, `deck_max`, `truck_height`, `height_class`, `max_wheel`, `baseplate`, `axle_diameter`, `wheel_diameter`, `riser_thickness`, `bolt_length`, `bearing_bore`, `spacers_built_in`, `grip_width`, `grip_length` and `set_size`.
-- The fit rules R1 to R6 (`Domain\Rule`), each answering with findings: a severity, a message code, the values behind it, its source and the slots it read (D-055). The message codes: `spec_missing`, `deck_below_range`, `deck_above_range`, `axle_narrower`, `axle_wider`, `pattern_mismatch`, `pattern_assumed`, `wheel_needs_riser`, `wheel_no_riser`, `limit_from_class`, `bolts_too_short`, `bolts_too_long`, `bore_mismatch`, `axle_assumed`, `spacers_built_in`, `grip_too_narrow`, `grip_too_short` and `length_unchecked`. R3's seeded limits were checked against their sources and stand (D-054).
+- **The spec keys:**
+  - `deck_width`, `deck_length`, `wheelbase`, `hole_pattern`, `axle_width`, `deck_min`, `deck_max`, `truck_height`, `height_class`, `max_wheel`, `baseplate`, `axle_diameter`, `wheel_diameter`, `riser_thickness`, `bolt_length`, `bearing_bore`, `spacers_built_in`, `grip_width`, `grip_length` and `set_size`.
+- **The fit rules R1 to R6 (`Domain\Rule`), each answering with findings:**
+  - A severity, a message code, the values behind it, its source and the slots it read (D-055).
+  - The message codes: `spec_missing`, `deck_below_range`, `deck_above_range`, `axle_narrower`, `axle_wider`, `pattern_mismatch`, `pattern_assumed`, `wheel_needs_riser`, `wheel_no_riser`, `limit_from_class`, `bolts_too_short`, `bolts_too_long`, `bore_mismatch`, `axle_assumed`, `spacers_built_in`, `grip_too_narrow`, `grip_too_short` and `length_unchecked`.
+  - R3's seeded limits were checked against their sources and stand (D-054).
 - The fit engine (`Domain\Fit`): each slot's options against the picks before it, the parts it hid grouped by rule and reason, the quantity a build takes of each part (R7), and a whole build held together for the cart (D-056).
 - The change list for a pick that breaks later ones (the picks kept, each that no longer fits with the closest part that does, the build proposed and the undo) and the recommendation each slot after the deck starts on (D-057).
 - Pricing (`Domain\Pricing`): each part at the price passed in times the quantity the build takes, the build discount off each part's price rounded half up, and the assembly fee on the parent, all in whole minor units (D-058).
-- The build validator the cart will use, which is the engine asked about a whole build, with the problems `slot_unknown`, `slot_empty`, `part_not_in_slot`, `part_sold_out` and `part_blocked`; and the invariant, over seeded random builds on a generated catalogue: what the engine offers, the validator accepts, and what it hides, the validator refuses (D-059).
+- **The build validator the cart will use, and its invariant.**
+  - The build validator the cart will use, which is the engine asked about a whole build, with the problems `slot_unknown`, `slot_empty`, `part_not_in_slot`, `part_sold_out` and `part_blocked`
+  - And the invariant, over seeded random builds on a generated catalogue: what the engine offers, the validator accepts, and what it hides, the validator refuses (D-059).
 - The picture's layout, from the specs to each layer's position and size: the deck by its width and length, the trucks by the wheelbase or the shape's usual one, the wheels at the axles' ends and the grip as a strip along the edge. It names every spec it had to assume (D-060).
 - The engine's benchmark: each slot of a generated catalogue at 500, 1,000 and 2,000 candidates. It fails when the slowest slot at 500 takes 40 ms or more, or when the time grows faster than the candidates. `docs/BENCHMARK.md` has the figures.
 - The rules' ids `r1`, `r2`, `r3`, `r4`, `r5`, `r6` and `r7`, and the names of the values each message code carries, which a finding may not add to.
-- The refusal codes, each the `reason` of a typed exception: `document_not_an_object`, `document_unknown_version`, `document_field_missing`, `document_wrong_type`, `document_out_of_range`, `document_bad_measure`, `document_bad_key`, `document_duplicate`, `slots_deck_not_first`, `slots_risers_after_hardware`, `rules_out_of_order`, `presets_unknown_slot`, `presets_slot_not_filled`, `spec_wrong_kind`, `spec_unknown_choice`, `spec_not_positive`, `spec_too_many`, `measure_malformed`, `measure_zero_denominator`, `measure_negative`, `part_id_not_positive`, `part_price_negative`, `discount_out_of_range` and `price_decimals_over_eight`.
+- **The refusal codes, each the `reason` of a typed exception:**
+  - `document_not_an_object`, `document_unknown_version`, `document_field_missing`, `document_wrong_type`, `document_out_of_range`, `document_bad_measure`, `document_bad_key`, `document_duplicate`, `slots_deck_not_first`, `slots_risers_after_hardware`, `rules_out_of_order`, `presets_unknown_slot`, `presets_slot_not_filled`, `spec_wrong_kind`, `spec_unknown_choice`, `spec_not_positive`, `spec_too_many`, `measure_malformed`, `measure_zero_denominator`, `measure_negative`, `part_id_not_positive`, `part_price_negative`, `discount_out_of_range` and `price_decimals_over_eight`.
 - R1 holds a truck to whichever end of its deck range the maker publishes; the other end is open (D-062).
 - The assembly fee in the shop's minor units at up to eight price decimals.
-- After Claude in Cowork's review (D-064): a slot that takes one unit needs no `set_size` on its parts; the risers step starts on the riser the wheels ask for; a swapped truck is the one nearest the new deck's width; a row of the specs index this version cannot read is passed over, and the part keeps its other specs; a missing spec's finding has the source `none`; a whole number followed by a fraction of one or more is refused; and the schemas' patterns refuse a trailing line break, as the domain does.
-- Gates: no words in a string in `src/Domain` (11), no exception of PHP's own made there (12), and no statement at the top of a file there that is not a declaration (13). A mutant of the domain that only static analysis catches must be on a list (D-063). The runs that measure the domain, and the benchmark, fail when they find nothing to measure.
-- `composer api:check` reads the schemas, by path and by content, the spec keys, with each one's kind and unit, the message codes with their value names, the build problems, the rule ids and the refusal codes. It also fails when `docs/HOOKS.md` dates an item to a version newer than the plugin header's, or `readme.txt` has no entry for that version (D-062).
+- **After Claude in Cowork's review (D-064):**
+  - A slot that takes one unit needs no `set_size` on its parts
+  - The risers step starts on the riser the wheels ask for
+  - A swapped truck is the one nearest the new deck's width
+  - A row of the specs index this version cannot read is passed over, and the part keeps its other specs
+  - A missing spec's finding has the source `none`
+  - A whole number followed by a fraction of one or more is refused
+  - And the schemas' patterns refuse a trailing line break, as the domain does.
+- **Gates:**
+  - No words in a string in `src/Domain` (11), no exception of PHP's own made there (12), and no statement at the top of a file there that is not a declaration (13).
+  - A mutant of the domain that only static analysis catches must be on a list (D-063).
+  - The runs that measure the domain, and the benchmark, fail when they find nothing to measure.
+- **`composer api:check` reads the schemas and the domain's codes.**
+  - `composer api:check` reads the schemas, by path and by content, the spec keys, with each one's kind and unit, the message codes with their value names, the build problems, the rule ids and the refusal codes.
+  - It also fails when `docs/HOOKS.md` dates an item to a version newer than the plugin header's, or `readme.txt` has no entry for that version (D-062).
 
 ### Changed
 
 - The update's "View details" popup and the release's notes show `readme.txt`'s changelog, written for shop owners, not this file's (D-053).
 - `composer api:check` also fails when the changelog's entry for an item's version does not name it (issue #5). The 0.1.0 entry now names its options and its site transient.
-- The line floor is on all of `src/`, read from the unit and integration suites together by `composer test:coverage:all`; no class is left out by name (D-050, issue #6). It is 95 %, up from 90 %, and each file's direct-access guard is left out of the count by one rule in `tools/coverage-merge.php` (D-061).
+- **The line floor is on all of `src/`, at 95 %.**
+  - The line floor is on all of `src/`, read from the unit and integration suites together by `composer test:coverage:all`; no class is left out by name (D-050, issue #6).
+  - It is 95 %, up from 90 %, and each file's direct-access guard is left out of the count by one rule in `tools/coverage-merge.php` (D-061).
 - Infection's floor outside the domain is 95 %, up from 90 % (D-061).
 - The weekly canary fails on a high or critical advisory anywhere in the npm tree (D-051, issue #9).
 - The toolchain: TypeScript 6.0, the newest `typescript-eslint` accepts, and `actions/github-script` 9 in the canary. Dependabot leaves TypeScript 6.1 and later, and `@types/node`'s major versions, alone (D-049).
@@ -535,14 +821,47 @@ Milestone 1, the foundation. Nothing a shopper or shop owner sees yet: the skele
 
 ### Added
 
-- The bootstrap (`creative-skateboard-builder.php`): headers, constants, the PHP and WordPress floors checked before the autoloader, the activation and deactivation hooks, compatibility declared for HPOS and the Cart and Checkout blocks, and boot on `plugins_loaded`. Below PHP 8.5, WordPress 7.0 or WooCommerce 11.2 the plugin does nothing and shows one notice to people who can manage plugins (D-023).
+- **The bootstrap (`creative-skateboard-builder.php`):**
+  - Headers, constants, the PHP and WordPress floors checked before the autoloader, the activation and deactivation hooks, compatibility declared for HPOS and the Cart and Checkout blocks, and boot on `plugins_loaded`.
+  - Below PHP 8.5, WordPress 7.0 or WooCommerce 11.2 the plugin does nothing and shows one notice to people who can manage plugins (D-023).
 - `Plugin`, a hand-written `Container` and the `Hookable` contract, in the PSR-4 layers `docs/STANDARDS.md` sets out, enforced by deptrac.
 - The two tables, `cbuild_specs` and `cbuild_builds` (`Install\Schema`), created by the first migration on activation with nothing seeded (D-037). `dbDelta()` a second time changes nothing, and a table it fails to create fails the migration.
-- The migration framework (`Install\Migrations`): versioned, ordered, idempotent steps; a lock taken in one statement that names its holder and expires after 300 seconds (D-021, D-033); batches that resume from a saved cursor, read from the table once the lock is held; a failed step retried after 1, 5 and 30 minutes, then hourly. Migrations run inline only for a shop manager on an admin page, for up to 2 seconds, and otherwise in one queued `cbuild_migrate` action, which queues its own continuation (D-022, D-043).
-- Activation and deactivation on a single site and across a network, with a site added later installing itself (D-025); uninstall, which removes the tables, options, transients, scheduled actions with their logs and group, and the cache group, on every site, with or without WooCommerce active and on a PHP below the floor (D-024, D-039, D-043), and keeps order item meta.
+- **The migration framework (`Install\Migrations`):**
+  - Versioned, ordered, idempotent steps; a lock taken in one statement that names its holder and expires after 300 seconds (D-021, D-033); batches that resume from a saved cursor, read from the table once the lock is held; a failed step retried after 1, 5 and 30 minutes, then hourly.
+  - Migrations run inline only for a shop manager on an admin page, for up to 2 seconds, and otherwise in one queued `cbuild_migrate` action, which queues its own continuation (D-022, D-043).
+- **Activation, deactivation and uninstall.**
+  - Activation and deactivation on a single site and across a network, with a site added later installing itself (D-025)
+  - Uninstall, which removes the tables, options, transients, scheduled actions with their logs and group, and the cache group, on every site, with or without WooCommerce active and on a PHP below the floor (D-024, D-039, D-043), and keeps order item meta.
 - `Port\Clock` and `Port\Logger` with `Adapter\SystemClock` (UTC) and `Adapter\WooCommerceLogger` (source `creative-skateboard-builder`); `Port\Queue` over Action Scheduler.
-- The updater (`Updates\`): reads the agency's release manifest over HTTPS, takes a package only from this plugin's own releases, refuses a zip whose SHA-256 does not match, and names only the plugin in its two requests. Off with `CBUILD_DISABLE_UPDATES` or the `cbuild_updates_enabled` filter, whenever either is set; its own package is then refused, not installed unchecked.
-- The public API: the `cbuild_updates_enabled` filter; the constants `CBUILD_DISABLE_UPDATES`, `CBUILD_VERSION`, `CBUILD_FILE`, `CBUILD_PATH` and `CBUILD_URL`; the options `cbuild_db_version`, `cbuild_migrations` and `cbuild_migration_lock`; the site transient `cbuild_update_manifest`; the tables `cbuild_specs` and `cbuild_builds`; the `cbuild_migrate` action and the log source `creative-skateboard-builder`, each in `docs/HOOKS.md` and the snapshot (`tests/Fixtures/api-surface.json`). `composer api:check` fails when the code, the snapshot and the document disagree.
-- Tests: 153 unit tests; 62 integration tests in wp-env on the newest and oldest WordPress and WooCommerce, MySQL 8.4, MariaDB 10.11, HPOS off, HPOS syncing, multisite and with WordPress told a persistent object cache is present (a real shared cache is issue #4), among them two real processes racing for the migration lock; a browser smoke test on nine Playwright projects, with axe.
-- CI (`.github/workflows/ci.yml`): PHPCS, PHPStan level 9, deptrac, the grep gates and their self-test, the coverage floors, the API snapshot, the JavaScript and CSS standards, the asset budgets, Infection and StrykerJS, the benchmarks, the integration matrix, Plugin Check on the built zip, the zip installed, upgraded over itself and uninstalled, the browser projects, Lighthouse CI, a release dry run, the dependency audits and a gitleaks scan, with every action pinned to a commit SHA. A weekly canary on WordPress trunk and WooCommerce's pre-release, the release workflow with CycloneDX SBOMs, and Dependabot.
+- **The updater (`Updates\`):**
+  - Reads the agency's release manifest over HTTPS, takes a package only from this plugin's own releases, refuses a zip whose SHA-256 does not match, and names only the plugin in its two requests.
+  - Off with `CBUILD_DISABLE_UPDATES` or the `cbuild_updates_enabled` filter, whenever either is set; its own package is then refused, not installed unchecked.
+- **The public API:**
+  - The `cbuild_updates_enabled` filter
+  - The constants `CBUILD_DISABLE_UPDATES`, `CBUILD_VERSION`, `CBUILD_FILE`, `CBUILD_PATH` and `CBUILD_URL`
+  - The options `cbuild_db_version`, `cbuild_migrations` and `cbuild_migration_lock`
+  - The site transient `cbuild_update_manifest`
+  - The tables `cbuild_specs` and `cbuild_builds`
+  - The `cbuild_migrate` action and the log source `creative-skateboard-builder`, each in `docs/HOOKS.md` and the snapshot (`tests/Fixtures/api-surface.json`). `composer api:check` fails when the code, the snapshot and the document disagree.
+- **Tests:**
+  - 153 unit tests
+  - 62 integration tests in wp-env on the newest and oldest WordPress and WooCommerce, MySQL 8.4, MariaDB 10.11, HPOS off, HPOS syncing, multisite and with WordPress told a persistent object cache is present (a real shared cache is issue #4), among them two real processes racing for the migration lock
+  - A browser smoke test on nine Playwright projects, with axe.
+- **CI (`.github/workflows/ci.yml`):**
+  - PHPCS, PHPStan level 9, deptrac, the grep gates and their self-test, the coverage floors, the API snapshot, the JavaScript and CSS standards, the asset budgets, Infection and StrykerJS, the benchmarks, the integration matrix, Plugin Check on the built zip, the zip installed, upgraded over itself and uninstalled, the browser projects, Lighthouse CI, a release dry run, the dependency audits and a gitleaks scan, with every action pinned to a commit SHA.
+  - A weekly canary on WordPress trunk and WooCommerce's pre-release, the release workflow with CycloneDX SBOMs, and Dependabot.
 - Docs: `HOOKS.md`, `SETTINGS.md`, `SECURITY.md`, `PRIVACY.md`, `A11Y.md`, `BENCHMARK.md`, `DECISIONS.md` (D-020 to D-048), `reviews/M1.md`, `README.md` and `readme.txt`; the POT file.
+
+[Unreleased]: https://github.com/zachatkinson/creative-skateboard-builder/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/zachatkinson/creative-skateboard-builder/compare/v1.0.0...v1.1.0
+[1.0.0]: https://github.com/zachatkinson/creative-skateboard-builder/compare/v0.9.0...v1.0.0
+[0.9.0]: https://github.com/zachatkinson/creative-skateboard-builder/compare/v0.8.0...v0.9.0
+[0.8.0]: https://github.com/zachatkinson/creative-skateboard-builder/compare/v0.7.0...v0.8.0
+[0.7.0]: https://github.com/zachatkinson/creative-skateboard-builder/compare/v0.6.0...v0.7.0
+[0.6.0]: https://github.com/zachatkinson/creative-skateboard-builder/compare/v0.5.0...v0.6.0
+[0.5.0]: https://github.com/zachatkinson/creative-skateboard-builder/compare/v0.4.0...v0.5.0
+[0.4.0]: https://github.com/zachatkinson/creative-skateboard-builder/compare/v0.3.1...v0.4.0
+[0.3.1]: https://github.com/zachatkinson/creative-skateboard-builder/compare/v0.3.0...v0.3.1
+[0.3.0]: https://github.com/zachatkinson/creative-skateboard-builder/compare/v0.2.0...v0.3.0
+[0.2.0]: https://github.com/zachatkinson/creative-skateboard-builder/compare/v0.1.0...v0.2.0
+[0.1.0]: https://github.com/zachatkinson/creative-skateboard-builder/releases/tag/v0.1.0
