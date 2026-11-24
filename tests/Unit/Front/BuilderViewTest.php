@@ -344,6 +344,42 @@ final class BuilderViewTest extends TestCase {
 		self::assertSame( '8.25in', array_column( $step['tail'], 'value', 'name' )['cbuild[_width]'] ?? null );
 	}
 
+	/**
+	 * The deck step's answer, 41 decks offered in two widths, one of them chosen or none.
+	 *
+	 * @param bool $chosen   Whether 8.25in is chosen.
+	 * @param int  $matching How many decks the shelf finds.
+	 * @return array<string, mixed>
+	 */
+	private function deckStep( bool $chosen, int $matching ): array {
+		$width = static fn( string $value, bool $selected ): array => array(
+			'value'    => $value,
+			'text'     => $value,
+			'in_stock' => 1,
+			'selected' => $selected,
+		);
+		return $this->step(
+			array(
+				'shelf' => array(
+					'looks'    => array(),
+					'offered'  => 41,
+					'matching' => $matching,
+					'widths'   => array( $width( '8in', false ), $width( '8.25in', $chosen ) ),
+				),
+			),
+			SlotKey::DECK
+		);
+	}
+
+	// Cowork's 1.1.0 review, F26 (#124): a list that holds nothing has no Sort and no count; the step says why.
+	public function test_a_list_that_holds_nothing_has_neither_sort_nor_count(): void {
+		$listed = $this->deckStep( true, 41 );
+		self::assertSame( array( true, 'Showing 0 of 41' ), array( $listed['shelf']['sort']['shown'], $listed['more']['count'] ) );
+		$none = $this->deckStep( true, 0 );
+		self::assertSame( array( false, '' ), array( $none['shelf']['sort']['shown'], $none['more']['count'] ), 'nothing listed' );
+		self::assertSame( '', $this->step( array( 'shelf' => array( 'matching' => 0 ) ), SlotKey::WHEELS )['more']['count'], 'a step listing parts, none' );
+	}
+
 	// Spec (configurator): Tools that grow. Each chip is an input with an ID of its own.
 	public function test_each_chip_has_an_id_of_its_step_its_group_and_its_place(): void {
 		$chip   = static fn( string $value ): array => array(
@@ -380,9 +416,10 @@ final class BuilderViewTest extends TestCase {
 	#[DataProvider( 'offered' )]
 	public function test_the_tools_grow_with_the_looks_a_step_offers( int $offered, bool $sorted, bool $searched ): void {
 		$shelf = array(
-			'looks'   => array(),
-			'offered' => $offered,
-			'chips'   => array(
+			'looks'    => array(),
+			'offered'  => $offered,
+			'matching' => $offered,
+			'chips'    => array(
 				array(
 					'name'  => 'brand',
 					'label' => 'Brand',

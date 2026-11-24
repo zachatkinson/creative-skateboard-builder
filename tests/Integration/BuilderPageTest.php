@@ -623,6 +623,43 @@ final class BuilderPageTest extends IntegrationTestCase {
 		self::assertNotNull( $dom->query( '//input[@type="hidden"][@name="cbuild[_on]"][@value="deck"]' )->item( 0 ), 'the step its form is on' );
 	}
 
+	/**
+	 * The deck step at 8″ with more decks than a step lists alone, so it has Sort, as the step's form sends it: Sort's
+	 * row and the count's paragraph, as served.
+	 *
+	 * @param array<string, string> $sent The build link's shelf fields.
+	 * @return array{0: DOMXPath, 1: \DOMElement, 2: \DOMElement}
+	 */
+	private function sortAndCount( array $sent ): array {
+		$decks = (int) wp_get_object_terms( $this->parts['deck 8.0'], 'product_cat', array( 'fields' => 'ids' ) )[0];
+		for ( $at = 0; $at < 13; $at++ ) {
+			$this->parts[ 'deck 8.0 ' . $at ] = $this->part( 'Deck 8.0 no. ' . $at, '65', array( 'deck_width' => '8.0000' ), $decks );
+		}
+		$dom   = self::dom( $this->kitPage( array( '_on' => 'deck', '_width' => '8in' ) + $sent ) );
+		$sort  = $dom->query( '//div[contains(@class,"cbuild-step__bar")]' )->item( 0 );
+		$count = $dom->query( '//p[contains(@class,"cbuild-step__more")]' )->item( 0 );
+		self::assertInstanceOf( \DOMElement::class, $sort );
+		self::assertInstanceOf( \DOMElement::class, $count );
+		return array( $dom, $sort, $count );
+	}
+
+	// Cowork's 1.1.0 review, F26 (#124): a search that found nothing still showed Sort and "Showing 0 of 0" under its
+	// message. With nothing listed, neither is in the page; with decks listed, both are (the next test).
+	public function test_a_search_that_lists_nothing_shows_no_sort_and_no_count(): void {
+		[ $dom, $sort, $count ] = $this->sortAndCount( array( '_q' => 'zzzq' ) );
+		self::assertFalse( $dom->query( '//div[contains(@class,"cbuild-found")]' )->item( 0 )->hasAttribute( 'hidden' ), 'the search says it found nothing' );
+		self::assertTrue( $sort->hasAttribute( 'hidden' ), 'no Sort' );
+		self::assertTrue( $count->hasAttribute( 'hidden' ), 'no count' );
+		self::assertSame( '', trim( $count->textContent ) );
+	}
+
+	public function test_a_step_that_lists_decks_shows_sort_and_the_count(): void {
+		[ , $sort, $count ] = $this->sortAndCount( array() );
+		self::assertFalse( $sort->hasAttribute( 'hidden' ), 'Sort' );
+		self::assertFalse( $count->hasAttribute( 'hidden' ), 'the count' );
+		self::assertSame( 'Showing 14 of 14', trim( $count->textContent ) );
+	}
+
 	public function test_a_step_past_one_the_build_leaves_empty_stays_there_and_says_why(): void {
 		$dom = self::dom( $this->kitPage( array( 'step' => 'review' ) ) );
 

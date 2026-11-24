@@ -1020,8 +1020,9 @@ final class BuilderView {
 			'value' => null === $more ? '' : (string) $more,
 			/* translators: %s: how many more the button lists: parts, or looks on the shelf. */
 			'text'  => null === $more ? '' : sprintf( __( 'Show %s more', 'creative-skateboard-builder' ), number_format_i18n( $more - $listed ) ),
+			// None of none is not said: the step says why it lists nothing (#124).
 			/* translators: 1: how many parts are listed. 2: how many match. */
-			'count' => sprintf( _n( '%1$s of %2$s part shown', '%1$s of %2$s parts shown', $matching, 'creative-skateboard-builder' ), number_format_i18n( $listed ), number_format_i18n( $matching ) ),
+			'count' => 0 === $matching ? '' : sprintf( _n( '%1$s of %2$s part shown', '%1$s of %2$s parts shown', $matching, 'creative-skateboard-builder' ), number_format_i18n( $listed ), number_format_i18n( $matching ) ),
 			'added' => '',
 		);
 	}
@@ -1047,8 +1048,9 @@ final class BuilderView {
 			'value' => null === $more ? '' : (string) ( $shown + Shelf::SHOWN ),
 			/* translators: %s: how many more the button lists: parts, or looks on the shelf. */
 			'text'  => null === $more ? '' : sprintf( __( 'Show %s more', 'creative-skateboard-builder' ), number_format_i18n( min( Shelf::SHOWN, $matching - $listed ) ) ),
+			// "Showing 0 of 0" is not said: the step says why it lists nothing (#124).
 			/* translators: 1: how many looks are listed. 2: how many match. */
-			'count' => sprintf( _n( 'Showing %1$s of %2$s', 'Showing %1$s of %2$s', $matching, 'creative-skateboard-builder' ), number_format_i18n( $listed ), number_format_i18n( $matching ) ),
+			'count' => 0 === $matching ? '' : sprintf( _n( 'Showing %1$s of %2$s', 'Showing %1$s of %2$s', $matching, 'creative-skateboard-builder' ), number_format_i18n( $listed ), number_format_i18n( $matching ) ),
 			/* translators: 1: how many Show more added. 2: how many are listed. 3: how many match. No noun: decks, wheels and so on (#84). */
 			'added' => $shown > Shelf::SHOWN && $added > 0 ? sprintf( _n( '%1$s more shown, %2$s of %3$s.', '%1$s more shown, %2$s of %3$s.', $added, 'creative-skateboard-builder' ), number_format_i18n( $added ), number_format_i18n( $listed ), number_format_i18n( $matching ) ) : '',
 		);
@@ -1197,8 +1199,9 @@ final class BuilderView {
 				// A phone folds the chips behind this button (spec: Phone); it says how many narrow the cards.
 				'toggle' => self::toggle( $groups ),
 			),
+			// Nothing listed, nothing to sort: a search or chips that find nothing say so, with no Sort under it (#124).
 			'sort'    => array(
-				'shown'   => $tools,
+				'shown'   => $tools && Cast::int( $shelf['matching'] ?? null ) > 0,
 				'label'   => __( 'Sort', 'creative-skateboard-builder' ),
 				'name'    => BuildLink::PARAM . '[_sort]',
 				'options' => array_map(

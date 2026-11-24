@@ -1229,7 +1229,8 @@ final class BuilderTest extends TestCase {
 					'name'  => 'cbuild[_shown]',
 					'value' => '',
 					'text'  => '',
-					'count' => '0 of 0 parts shown',
+					// None of none is not said (#124).
+					'count' => '',
 					'added' => '',
 				),
 				'shelf'     => self::emptyShelf(),

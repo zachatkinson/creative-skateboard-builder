@@ -174,7 +174,8 @@ defined( 'ABSPATH' ) || exit;
 				</li>
 			</template>
 		</ul>
-		<p class="cbuild-step__more">
+		<?php // The count, and Show more, where anything is listed: a step that lists nothing says why itself (#124). ?>
+		<p class="cbuild-step__more" data-wp-bind--hidden="!state.view.step.more.count">
 			<span class="cbuild-step__count" data-wp-text="state.view.step.more.count"></span>
 			<button class="cbuild-step__show" type="submit" data-wp-bind--hidden="!state.view.step.more.shown" data-wp-bind--name="state.view.step.more.name" data-wp-bind--value="state.view.step.more.value" data-wp-text="state.view.step.more.text"></button>
 		</p>

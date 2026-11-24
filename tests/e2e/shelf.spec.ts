@@ -122,16 +122,11 @@ test.describe( 'A long step', () => {
 			)
 		);
 		await expect( cards( page ) ).toHaveCount( 0 );
+		// Nothing listed, so nothing to sort and no "Showing 0 of 0" (Cowork's 1.1.0 review, F26, #124), as served
+		// without the script and as the store draws it with.
+		await expect( page.locator( '.cbuild-sort' ) ).toBeHidden();
+		await expect( page.locator( '.cbuild-step__count' ) ).toBeHidden();
 		if ( javaScriptEnabled ) {
-			// Where the layout is stacked, the bar covers the foot of the window, and axe counts a target it covers as
-			// too small wherever the page happens to stand (D-288). Since the bare stage scrolls with the page (#82), on
-			// a tablet the step's Sort stands across the bar's edge. It is brought into view as a shopper scrolls to it,
-			// clear of the bar by the page's scroll padding.
-			await page
-				.locator( '.cbuild-sort__select' )
-				.evaluate( ( sort ) =>
-					sort.scrollIntoView( { block: 'nearest' } )
-				);
 			await axe( page, 'a search that finds nothing here', '.cbuild' );
 		}
 		await found.getByRole( 'button', { name: 'Show 8″ decks' } ).click();
@@ -154,8 +149,15 @@ test.describe( 'A long step', () => {
 		await expect(
 			found.getByRole( 'button', { name: 'Show 8″ decks' } )
 		).toHaveCount( 0 );
+		await expect( page.locator( '.cbuild-sort' ) ).toBeHidden();
+		await expect( page.locator( '.cbuild-step__count' ) ).toBeHidden();
 		await found.getByRole( 'button', { name: 'Clear search' } ).click();
 		await expect( cards( page ) ).toHaveCount( 30 );
+		// Listed again, Sort and the count are back.
+		await expect( page.locator( '.cbuild-sort' ) ).toBeVisible();
+		await expect(
+			page.locator( '.cbuild-step__more .cbuild-step__count' )
+		).toHaveText( /30\D+46/ );
 		await expect( page.locator( '#cbuild-search' ) ).toHaveValue( '' );
 		// Without JavaScript the box's own text goes too, before the button's empty one, which PHP reads last.
 		await expect
