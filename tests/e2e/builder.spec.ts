@@ -6197,6 +6197,63 @@ test.describe( 'The board turned over', () => {
 		);
 	} );
 
+	// Cowork's review of 1.1.0, F27 (#127): "Each step opens on its part's side: deck, trucks and wheels underneath;
+	// hardware and grip on top; review underneath." The hardware step showed the underside, where no bolt head is drawn.
+	// By each step's link, so the page is the server's with the script or without.
+	test( "each step opens on the side its part is seen on, the hardware's bolt heads on the top", async ( {
+		page,
+	} ) => {
+		const picks = {
+			deck: id( 'builder-test-deck-8-0' ),
+			trucks: id( 'builder-test-trucks-139' ),
+			wheels: id( 'builder-test-wheels-54' ),
+			bearings: id( 'builder-test-bearings' ),
+			hardware: id( 'builder-test-bolts-1-25' ),
+			grip: id( 'builder-test-grip' ),
+		};
+		const sides: Record< string, string > = {};
+		for ( const step of [
+			'deck',
+			'trucks',
+			'wheels',
+			'risers',
+			'bearings',
+			'hardware',
+			'grip',
+			'review',
+		] ) {
+			await page.goto( linkTo( { ...picks, step } ) );
+			// One side drawn at a time.
+			await expect(
+				picture( page ).locator( '.cbuild-board:visible' )
+			).toHaveCount( 1 );
+			sides[ step ] = ( await top( page ).isVisible() )
+				? 'top'
+				: 'underside';
+			if ( 'hardware' === step ) {
+				await expect(
+					top( page ).locator(
+						'.cbuild-board__layer--hardware:visible'
+					),
+					"the shopper's bolts, a head at each hole"
+				).toHaveCount( 8 );
+				await expect( description( page ) ).toContainText(
+					'Seen from the top.'
+				);
+			}
+		}
+		expect( sides ).toEqual( {
+			deck: 'underside',
+			trucks: 'underside',
+			wheels: 'underside',
+			risers: 'underside',
+			bearings: 'underside',
+			hardware: 'top',
+			grip: 'top',
+			review: 'underside',
+		} );
+	} );
+
 	// Cowork's 1.0.0 review, F18 (#103): a grip's image is its whole sheet, drawn once at its real size, centred on the deck
 	// and cut by its outline. A printed sheet, a plain one and a 1.0.x swatch, on an 8 in deck and an 8.75 in one.
 	test( 'a grip sheet is drawn once at its size centred on the deck, and a 1.0.x swatch is repeated as before', async ( {
@@ -6313,7 +6370,9 @@ test.describe( 'The board turned over', () => {
 		}
 	} );
 
-	test( "turns with its button from the keyboard, says the side, keeps the shopper's side and shows it in the bar", async ( {
+	// F27 (#127): "A turn the shopper makes lasts until they change step." Pressed on the wheels, the next step showed
+	// the top.
+	test( 'turns with its button from the keyboard, says the side, shows it in the bar, and keeps it until the step changes', async ( {
 		page,
 	}, info ) => {
 		test.skip(
@@ -6352,7 +6411,22 @@ test.describe( 'The board turned over', () => {
 		}
 		await axe( page, 'the board turned to its top', '#cbuild-picture' );
 
+		// A pick is answered on the same step: the shopper's side stays.
 		await choose( page, 'Builder test wheels 54' );
+		// Answered once the top draws the wheels picked at its edges.
+		await expect(
+			top( page ).locator( '.cbuild-board__layer--wheels' )
+		).toHaveCount( 4 );
+		await expect( page.locator( '.cbuild' ) ).toHaveAttribute(
+			'aria-busy',
+			'false'
+		);
+		await expect( turn, 'the step keeps the turn' ).toHaveAttribute(
+			'aria-pressed',
+			'true'
+		);
+		await expect( top( page ) ).toBeVisible();
+
 		await page.getByRole( 'button', { name: 'Next: Bearings' } ).click();
 		await expect( heading( page ) ).toHaveText( /: Choose your bearings$/ );
 		// The step has landed when focus is on its heading and the builder is no longer busy: pressed before, focus
@@ -6364,8 +6438,25 @@ test.describe( 'The board turned over', () => {
 		);
 		await expect(
 			turn,
-			'the top stays on a step that shows the underside: the shopper chose it'
+			"the bearings step opens underneath: the turn was the last step's"
+		).toHaveAttribute( 'aria-pressed', 'false' );
+		await expect( under( page ) ).toBeVisible();
+		await expect( description( page ) ).toContainText(
+			'Seen from underneath.'
+		);
+
+		await choose( page, 'Builder test bearings' );
+		await page.getByRole( 'button', { name: 'Next: Hardware' } ).click();
+		await expect( heading( page ) ).toHaveText( /: Choose your hardware$/ );
+		await expect( page.locator( '.cbuild' ) ).toHaveAttribute(
+			'aria-busy',
+			'false'
+		);
+		await expect(
+			turn,
+			'the hardware step opens on its own side, the top'
 		).toHaveAttribute( 'aria-pressed', 'true' );
+		await expect( top( page ) ).toBeVisible();
 		await turn.focus();
 		await page.keyboard.press( 'Space' );
 		await expect( turn ).toHaveAttribute( 'aria-pressed', 'false' );

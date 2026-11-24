@@ -493,6 +493,31 @@ final class BuilderTest extends TestCase {
 		self::assertSame( array( 'deck-1' ), array_column( $before['top']['layers'], 'key' ), 'the plain top, maple in the deck\'s shape' );
 	}
 
+	// Cowork's review of 1.1.0, F27 (#127): "Each step opens on its part's side: deck, trucks and wheels underneath;
+	// hardware and grip on top; review underneath." The hardware step showed the underside, where no bolt head is drawn.
+	public function test_each_step_of_the_kit_opens_on_the_side_its_part_is_seen_on(): void {
+		$this->topArt();
+		$picks = array( SlotKey::DECK => 101, SlotKey::TRUCKS => 139, SlotKey::WHEELS => 301, SlotKey::BEARINGS => 501, SlotKey::HARDWARE => 601, SlotKey::GRIP => 701 );
+		$sides = array();
+		foreach ( array_merge( array_column( KitDocuments::slots()['slots'], 'key' ), array( BuildLink::REVIEW ) ) as $step ) {
+			$picture        = $this->show( new BuildLink( $picks, null, $step ) )['view']['picture'];
+			$sides[ $step ] = $picture['turnable'] ? ( $picture['turned'] ? 'top' : 'underside' ) : 'no top';
+		}
+		self::assertSame(
+			array(
+				SlotKey::DECK     => 'underside',
+				SlotKey::TRUCKS   => 'underside',
+				SlotKey::WHEELS   => 'underside',
+				SlotKey::RISERS   => 'underside',
+				SlotKey::BEARINGS => 'underside',
+				SlotKey::HARDWARE => 'top',
+				SlotKey::GRIP     => 'top',
+				BuildLink::REVIEW => 'underside',
+			),
+			$sides
+		);
+	}
+
 	/**
 	 * #82 (Cowork's 1.0.0 F3): a deck with no layer image drew no board, and its photo was a thumbnail in the corner of
 	 * the stage. Its photo takes the board's place, at the board's size, with every other part's labelled photo below

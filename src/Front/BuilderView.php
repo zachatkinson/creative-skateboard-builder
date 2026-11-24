@@ -14,6 +14,7 @@ use CreativeBranding\SkateboardBuilder\Domain\Fit\Problem;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\SizeGuide;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\SlotKey;
 use CreativeBranding\SkateboardBuilder\Domain\Look\Shelf;
+use CreativeBranding\SkateboardBuilder\Domain\Picture\Layout;
 use CreativeBranding\SkateboardBuilder\Service\State;
 use CreativeBranding\SkateboardBuilder\Support\Cast;
 use CreativeBranding\SkateboardBuilder\Support\Options;
@@ -268,12 +269,13 @@ final class BuilderView {
 				// The deck's photo in the board's place (#82).
 				'hero'        => $hero,
 				'board'       => $board,
-				// The board's top (#46): shown on the grip step, where the shopper sees the grip go on, and turned to
-				// with the button by the board, which the store offers and keeps to once pressed. A deck with no layer
-				// image has no outline to draw the top from.
+				// The board's top (#46): each step opens on the side its part is seen on, the top for the hardware and
+				// the grip and the underside for the rest and the review (F27, #127). The control by the board turns it,
+				// with the script, until the shopper changes step. A deck with no layer image has no outline to draw the
+				// top from.
 				'top'         => $top,
 				'turnable'    => $top['shown'],
-				'turned'      => $top['shown'] && SlotKey::GRIP === $state->step,
+				'turned'      => $top['shown'] && Layout::onTop( $state->step ),
 				'turn'        => __( 'Show the top', 'creative-skateboard-builder' ),
 				'sided'       => $board['shown'],
 				'seen'        => array(

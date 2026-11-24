@@ -3206,9 +3206,9 @@ describe( 'keeping the control in use where it was', () => {
 	} );
 } );
 
-// Issue #46, settled on 17 November 2026: "The flip is a button by the board ... with aria-pressed"; "The grip step
-// turns the board to the top, and back after it, unless the shopper chose a side"; "The phone bar's board shows the
-// same side". The server says which side a step shows (`picture.turned`); the store keeps the shopper's own choice.
+// Issue #46, settled on 17 November 2026: "The flip is a button by the board ... with aria-pressed"; "The phone bar's
+// board shows the same side". The server says which side a step opens on (`picture.turned`); from 1.2.0 the store keeps
+// the shopper's own turn until the step changes (F27, #127).
 describe( 'turning the board over', () => {
 	interface Picture {
 		turnable: boolean;
@@ -3264,35 +3264,53 @@ describe( 'turning the board over', () => {
 		expect( shown().turned ).toBe( false );
 	} );
 
-	it( "turns the board with the button, and keeps the shopper's side through the grip step and after it", async () => {
-		state.view = view( 'trucks', { turnable: true, turned: false } );
+	// Cowork's review of 1.1.0, F27 (#127): "A turn the shopper makes lasts until they change step". Pressed on the
+	// wheels, the trucks step showed the top.
+	it( "turns the board with the button for the step, and opens the next step on the server's side", async () => {
+		state.view = view( 'wheels', { turnable: true, turned: false } );
 		actions.turn();
 		expect( shown().turned, 'pressed: the top' ).toBe( true );
 		expect( state.turning ).toBe( true );
-		await go( view( 'grip', { turnable: true, turned: true } ) );
+		await go( view( 'trucks', { turnable: true, turned: false } ) );
+		expect(
+			shown().turned,
+			'the trucks step opens underneath, the turn on the wheels over'
+		).toBe( false );
+		expect( state.turning, 'the board turns back' ).toBe( true );
+		await go( view( 'hardware', { turnable: true, turned: true } ) );
 		expect( shown().turned ).toBe( true );
-		await go( view( 'review', { turnable: true, turned: false } ) );
-		expect( shown().turned, 'the top stays: the shopper chose it' ).toBe(
-			true
-		);
 
 		actions.turn();
 		expect( shown().turned, 'pressed again: the underside' ).toBe( false );
 		await go( view( 'grip', { turnable: true, turned: true } ) );
-		expect(
-			shown().turned,
-			'the grip step keeps the underside the shopper chose'
-		).toBe( false );
+		expect( shown().turned, 'the grip step opens on the top' ).toBe( true );
+		await go( view( 'review', { turnable: true, turned: false } ) );
+		expect( shown().turned ).toBe( false );
 	} );
 
-	it( 'shows the underside where a chosen top cannot be drawn, and the top again once it can', async () => {
+	it( 'keeps the turn while the step stays, as a pick on it is answered, and forgets it on the change panel', async () => {
+		state.view = view( 'wheels', { turnable: true, turned: false } );
+		actions.turn();
+		await go( view( 'wheels', { turnable: true, turned: false } ) );
+		expect( shown().turned, 'a pick on the same step' ).toBe( true );
+		expect( state.turning ).toBe( false );
+		await go( {
+			...view( 'wheels', { turnable: true, turned: false } ),
+			isChanges: true,
+		} );
+		expect( shown().turned, 'the change panel is a step of its own' ).toBe(
+			false
+		);
+	} );
+
+	it( 'shows the underside where a chosen top cannot be drawn, and the top again once it can, on the same step', async () => {
 		state.view = view( 'deck', { turnable: true, turned: false } );
 		actions.turn();
-		await go( view( 'trucks', { turnable: false, turned: false } ) );
+		await go( view( 'deck', { turnable: false, turned: false } ) );
 		expect( shown().turned, 'a deck with no layer image has no top' ).toBe(
 			false
 		);
-		await go( view( 'wheels', { turnable: true, turned: false } ) );
+		await go( view( 'deck', { turnable: true, turned: false } ) );
 		expect( shown().turned ).toBe( true );
 	} );
 
@@ -3326,7 +3344,7 @@ describe( 'turning the board over', () => {
 		state.view = view( 'deck', { turnable: true, turned: false } );
 		actions.turn();
 		expect( state.turning ).toBe( true );
-		await go( view( 'trucks', { turnable: true, turned: false } ) );
+		await go( view( 'deck', { turnable: true, turned: false } ) );
 		expect( shown().turned ).toBe( true );
 		expect( state.turning, 'the turn is over' ).toBe( false );
 	} );

@@ -26,9 +26,10 @@
  * - **The phone bar** never covers the control in focus: one the bar overlaps is scrolled clear of it (D-160).
  * - **Copy link** writes the build's shared link to the clipboard and says so. It is offered only where the browser
  *   has a clipboard to write to; the address is in the page as a field either way, and a refused copy selects it.
- * - **The board turns over** (#46). Each view says which side its step shows (the grip step, the top); the button by
- *   the board turns it, and from then on the side the shopper chose is kept on every view that can draw it. The
- *   picture and the phone bar show the same side, and the stylesheet turns the board only where motion is allowed.
+ * - **The board turns over** (#46). Each view says which side its step opens on, the side its part is seen on (F27,
+ *   #127); the button by the board turns it, and the side the shopper chose is kept on every view of that step that
+ *   can draw it, until the step changes. The picture and the phone bar show the same side, and the stylesheet turns
+ *   the board only where motion is allowed.
  */
 import {
 	getConfig,
@@ -122,7 +123,8 @@ interface Chipped {
 let navigator: Navigator | undefined;
 
 /**
- * Whether the shopper turned the board to its top with the button, once they have: it then holds over each step's own.
+ * Whether the shopper turned the board to its top with the button, once they have on the step shown: it then holds
+ * over the step's own side until the step changes (F27, #127).
  */
 let top: boolean | undefined;
 
@@ -1166,6 +1168,13 @@ function nav( state: State ): Navigator {
 				const before = state.view;
 				// A new answer ends whatever moment the last one started.
 				cut();
+				const moved =
+					shown.step.slot !== before.step.slot ||
+					shown.isChanges !== before.isChanges;
+				// A new step opens on its own side: the shopper's turn was the last step's (F27, #127).
+				if ( moved ) {
+					top = undefined;
+				}
 				sided( shown );
 				// A side shown that was not is a turn the shopper sees, where motion is allowed; the same side ends the
 				// last turn, so a board shown again later is not turned.
@@ -1201,10 +1210,7 @@ function nav( state: State ): Navigator {
 				};
 				// Only a new step crosses over (spec: Motion): a transition takes the screen's taps while it
 				// runs, so one for a view on the same step would lose a Next tapped straight after a pick.
-				if (
-					shown.step.slot !== before.step.slot ||
-					shown.isChanges !== before.isChanges
-				) {
+				if ( moved ) {
 					motion( change, before, shown );
 				} else {
 					steady( change );
@@ -1687,7 +1693,7 @@ const { state } = store(
 			},
 			/**
 			 * Show the top, or the underside again: the button by the board, its pressed state the side shown (#46).
-			 * The shopper's side is kept from now on.
+			 * The shopper's side is kept until the step changes (F27, #127).
 			 */
 			turn(): void {
 				const picture = state.view.picture;
