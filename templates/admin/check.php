@@ -47,8 +47,6 @@ if ( ! defined( 'ABSPATH' ) ) {
 	<?php endif; ?>
 	<?php if ( $ran && 0 === $count && 0 === $unlaid && array() === $alike ) : ?>
 		<div class="notice notice-success inline" role="status"><p><?php esc_html_e( 'The check found nothing to fix.', 'creative-skateboard-builder' ); ?></p></div>
-	<?php elseif ( $ran && 0 === $count && array() !== $kept ) : ?>
-		<div class="notice notice-success inline" role="status"><p><?php esc_html_e( 'The check found nothing to fix.', 'creative-skateboard-builder' ); ?></p></div>
 	<?php elseif ( $ran && 0 === $count ) : ?>
 		<div class="notice notice-success inline" role="status"><p><?php esc_html_e( 'Nothing the check found keeps a part out of the builder.', 'creative-skateboard-builder' ); ?></p></div>
 	<?php elseif ( $ran ) : ?>
@@ -97,6 +95,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 		if ( array() === $cbuild_rows ) {
 			continue;
 		}
+		// A list whose rows belong to no kit, as parts kept out of every kit, has no Kit column.
+		$cbuild_kits = array() !== array_filter( array_column( $cbuild_rows, 'kit' ), static fn( string $kit ): bool => '' !== $kit );
 		?>
 		<h3 id="<?php echo esc_attr( $cbuild_id ); ?>"><?php echo esc_html( $cbuild_heading ); ?></h3>
 		<?php if ( '' !== $cbuild_intro ) : ?>
@@ -107,7 +107,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 				<thead>
 					<tr>
 						<th scope="col"><?php esc_html_e( 'Where', 'creative-skateboard-builder' ); ?></th>
-						<th scope="col"><?php esc_html_e( 'Kit', 'creative-skateboard-builder' ); ?></th>
+						<?php if ( $cbuild_kits ) : ?>
+							<th scope="col"><?php esc_html_e( 'Kit', 'creative-skateboard-builder' ); ?></th>
+						<?php endif; ?>
 						<th scope="col"><?php echo esc_html( $cbuild_column ); ?></th>
 					</tr>
 				</thead>
@@ -121,7 +123,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 									<?php echo esc_html( $cbuild_row['about'] ); ?>
 								<?php endif; ?>
 							</td>
-							<td><?php echo esc_html( $cbuild_row['kit'] ); ?></td>
+							<?php if ( $cbuild_kits ) : ?>
+								<td><?php echo esc_html( $cbuild_row['kit'] ); ?></td>
+							<?php endif; ?>
 							<td><?php echo esc_html( $cbuild_row['says'] ); ?></td>
 						</tr>
 					<?php endforeach; ?>
