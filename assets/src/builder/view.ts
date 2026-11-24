@@ -27,7 +27,7 @@
  * - **Copy link** writes the build's shared link to the clipboard and says so. It is offered only where the browser
  *   has a clipboard to write to; the address is in the page as a field either way, and a refused copy selects it.
  * - **The board turns over** (#46). Each view says which side its step opens on, the side its part is seen on (F27,
- *   #127); the button by the board turns it, and the side the shopper chose is kept on every view of that step that
+ *   #127); the two buttons by the board, Underside and Top, turn it (F28, #128), and the side the shopper chose is kept on every view of that step that
  *   can draw it, until the step changes. The picture and the phone bar show the same side, and the stylesheet turns
  *   the board only where motion is allowed.
  */
@@ -555,6 +555,23 @@ function turnOver( toTop: boolean ): void {
 			calm( root )
 		);
 	}
+}
+
+/**
+ * Turn the board to a side, from the buttons by it (#46, F28): the side the shopper chose is kept until the step
+ * changes (F27, #127). The side already shown, or a board with no top, is left as it is.
+ *
+ * @param toTop Whether the top is to be shown.
+ */
+function turnTo( toTop: boolean ): void {
+	const picture = state.view.picture;
+	if ( ! picture?.turnable || picture.turned === toTop ) {
+		return;
+	}
+	top = toTop;
+	state.turning = true;
+	picture.turned = toTop;
+	window.requestAnimationFrame( () => turnOver( toTop ) );
 }
 
 /**
@@ -1692,19 +1709,16 @@ const { state } = store(
 				window.requestAnimationFrame( () => shown?.focus() );
 			},
 			/**
-			 * Show the top, or the underside again: the button by the board, its pressed state the side shown (#46).
-			 * The shopper's side is kept until the step changes (F27, #127).
+			 * Show the underside: its button by the board, pressed while it is shown (F28, #128).
 			 */
-			turn(): void {
-				const picture = state.view.picture;
-				if ( ! picture?.turnable ) {
-					return;
-				}
-				top = ! picture.turned;
-				state.turning = true;
-				picture.turned = ! picture.turned;
-				const shown = picture.turned;
-				window.requestAnimationFrame( () => turnOver( shown ) );
+			under(): void {
+				turnTo( false );
+			},
+			/**
+			 * Show the top: its button by the board, pressed while it is shown (F28, #128).
+			 */
+			over(): void {
+				turnTo( true );
 			},
 			/**
 			 * The screen changed: fit the phone bar into the theme again (D-163).

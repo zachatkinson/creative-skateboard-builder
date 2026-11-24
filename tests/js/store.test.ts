@@ -17,7 +17,8 @@ interface Actions {
 	submit: ( event: SubmitEvent ) => void;
 	add: ( event: SubmitEvent ) => Promise< void >;
 	copy: () => Promise< void >;
-	turn: () => void;
+	under: () => void;
+	over: () => void;
 	reveal: ( event: FocusEvent ) => void;
 	pick: ( event: Event ) => void;
 	search: ( event: Event ) => void;
@@ -3268,7 +3269,7 @@ describe( 'turning the board over', () => {
 	// wheels, the trucks step showed the top.
 	it( "turns the board with the button for the step, and opens the next step on the server's side", async () => {
 		state.view = view( 'wheels', { turnable: true, turned: false } );
-		actions.turn();
+		actions.over();
 		expect( shown().turned, 'pressed: the top' ).toBe( true );
 		expect( state.turning ).toBe( true );
 		await go( view( 'trucks', { turnable: true, turned: false } ) );
@@ -3280,7 +3281,7 @@ describe( 'turning the board over', () => {
 		await go( view( 'hardware', { turnable: true, turned: true } ) );
 		expect( shown().turned ).toBe( true );
 
-		actions.turn();
+		actions.under();
 		expect( shown().turned, 'pressed again: the underside' ).toBe( false );
 		await go( view( 'grip', { turnable: true, turned: true } ) );
 		expect( shown().turned, 'the grip step opens on the top' ).toBe( true );
@@ -3290,7 +3291,7 @@ describe( 'turning the board over', () => {
 
 	it( 'keeps the turn while the step stays, as a pick on it is answered, and forgets it on the change panel', async () => {
 		state.view = view( 'wheels', { turnable: true, turned: false } );
-		actions.turn();
+		actions.over();
 		await go( view( 'wheels', { turnable: true, turned: false } ) );
 		expect( shown().turned, 'a pick on the same step' ).toBe( true );
 		expect( state.turning ).toBe( false );
@@ -3305,7 +3306,7 @@ describe( 'turning the board over', () => {
 
 	it( 'shows the underside where a chosen top cannot be drawn, and the top again once it can, on the same step', async () => {
 		state.view = view( 'deck', { turnable: true, turned: false } );
-		actions.turn();
+		actions.over();
 		await go( view( 'deck', { turnable: false, turned: false } ) );
 		expect( shown().turned, 'a deck with no layer image has no top' ).toBe(
 			false
@@ -3316,12 +3317,12 @@ describe( 'turning the board over', () => {
 
 	it( 'does nothing where there is no top, and leaves a view with no picture as it came', async () => {
 		state.view = view( 'deck', { turnable: false, turned: false } );
-		actions.turn();
+		actions.over();
 		expect( shown().turned ).toBe( false );
 		expect( state.turning ).toBe( false );
 
 		state.view = view( 'deck', undefined );
-		actions.turn();
+		actions.over();
 		const plain = view( 'trucks', undefined );
 		await go( plain );
 		expect( state.view ).toEqual( plain );
@@ -3340,9 +3341,25 @@ describe( 'turning the board over', () => {
 		expect( state.turning ).toBe( false );
 	} );
 
+	// Cowork's review of 1.1.0, F28 (#128): "a two-option control, Underside and Top"; the side shown is pressed.
+	it( 'turns nothing when the side already shown is pressed', () => {
+		state.view = view( 'wheels', { turnable: true, turned: false } );
+		actions.under();
+		expect( shown().turned ).toBe( false );
+		expect( state.turning, 'the underside is shown already' ).toBe( false );
+		actions.over();
+		state.turning = false;
+		actions.over();
+		expect( shown().turned ).toBe( true );
+		expect( state.turning, 'the top is shown already' ).toBe( false );
+		actions.under();
+		expect( shown().turned ).toBe( false );
+		expect( state.turning ).toBe( true );
+	} );
+
 	it( 'moves nothing when a new view shows the side already shown, so a board shown again later is not turned', async () => {
 		state.view = view( 'deck', { turnable: true, turned: false } );
-		actions.turn();
+		actions.over();
 		expect( state.turning ).toBe( true );
 		await go( view( 'deck', { turnable: true, turned: false } ) );
 		expect( shown().turned ).toBe( true );

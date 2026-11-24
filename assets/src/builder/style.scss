@@ -1527,6 +1527,44 @@
 	margin-block-end: var(--cbuild-gap-small);
 }
 
+/*
+ * The board's two sides (F28, #128; D-369): a button a side, side by side. The side shown is filled in the accent, in
+ * bold, with a tick before its name, so it is marked by more than its colour; the other is the plain button.
+ */
+:where(.cbuild-picture__sides) {
+	display: inline-flex;
+	flex-wrap: wrap;
+	gap: 0.25rem;
+}
+
+/* Narrow enough that the pair sits on one line in a phone held sideways' words column, 13rem, in a theme's larger
+   type: the tick's gap is the type's, not the theme's spacing. */
+.cbuild.cbuild .cbuild-picture__sides .cbuild-button {
+	gap: 0.375em;
+	padding-inline: 0.625rem;
+	font-weight: 400;
+}
+
+.cbuild.cbuild .cbuild-picture__sides .cbuild-button[aria-pressed="true"] {
+	border-color: var(--cbuild-accent);
+	background: var(--cbuild-accent);
+	color: var(--cbuild-text);
+	-webkit-text-fill-color: var(--cbuild-on-accent);
+	font-weight: 600;
+}
+
+/* A tick drawn by its outline, which a mirrored stylesheet leaves as it is. */
+.cbuild.cbuild
+	.cbuild-picture__sides
+	.cbuild-button[aria-pressed="true"]::before {
+	content: "";
+	flex: none;
+	inline-size: 0.75em;
+	block-size: 0.75em;
+	background: var(--cbuild-on-accent);
+	clip-path: polygon(14% 44%, 0 59%, 39% 100%, 100% 22%, 86% 8%, 39% 72%);
+}
+
 :where(.cbuild-picture__heading) {
 	margin: 0;
 }
@@ -1764,8 +1802,8 @@
 @media (orientation: landscape) and (max-height: 30rem) {
 	/* Below the desktop's two columns, where the stage is the strip on top. */
 	@container cbuild (width < 64rem) {
-		/* The words' column: as wide as the button's longer name, "Show the underside", on one line in a theme's larger
-		   type (Twenty Twenty-Five's 19.7 px). */
+		/* The words' column: as wide as "Show the underside" on one line in a theme's larger type (Twenty Twenty-Five's
+		   19.7 px), which holds the two buttons, Underside and Top, side by side (D-369). */
 		:where(.cbuild__stage .cbuild-picture) {
 			grid-template-columns: minmax(0, 13rem) minmax(0, 1fr);
 			grid-template-rows: auto auto auto minmax(0, 1fr);
@@ -2117,6 +2155,14 @@
 	/* Over a plain button's reset, which sets its border at two classes' weight (#96). */
 	.cbuild.cbuild .cbuild-picture__turn .cbuild-button[aria-pressed="true"] {
 		border: 3px solid Highlight;
+	}
+
+	/* The side shown keeps its tick where the system takes its fill (D-369). */
+	.cbuild.cbuild
+		.cbuild-picture__sides
+		.cbuild-button[aria-pressed="true"]::before {
+		background: ButtonText;
+		forced-color-adjust: none;
 	}
 }
 

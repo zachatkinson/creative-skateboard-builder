@@ -463,7 +463,7 @@ final class BuilderTest extends TestCase {
 		$picture = $view['picture'];
 		self::assertTrue( $picture['turnable'] );
 		self::assertTrue( $picture['turned'], 'the grip step shows the top' );
-		self::assertSame( 'Show the top', $picture['turn'] );
+		self::assertSame( array( 'under' => 'Underside', 'top' => 'Top' ), $picture['sides'], 'a button a side (F28, #128)' );
 		self::assertSame( array( 'under' => 'Seen from underneath.', 'top' => 'Seen from the top.' ), $picture['seen'] );
 
 		$top = $picture['top'];

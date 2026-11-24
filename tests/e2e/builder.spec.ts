@@ -3503,9 +3503,10 @@ test.describe( "A theme's own fieldset, button and heading rules (#96)", () => {
 					step: 'trucks',
 				} )
 			);
-			const turn = page.locator(
-				'.cbuild__stage .cbuild-picture__turn button'
-			);
+			// The side not shown: a plain button (F28, #128).
+			const turn = page
+				.locator( '.cbuild__stage .cbuild-picture__sides' )
+				.getByRole( 'button', { name: 'Top', exact: true } );
 			await expect( turn ).toBeVisible();
 			// The picture is a grid whatever the theme's rule for a figure (Storefront's normalize sets every figure to a
 			// block), so the button keeps its row under the board and nothing of the board lies over it.
@@ -4569,7 +4570,7 @@ test.describe( 'Motion', () => {
 				() =>
 					page
 						.locator( '#cbuild-picture' )
-						.getByRole( 'button', { name: 'Show the top' } )
+						.getByRole( 'button', { name: 'Top', exact: true } )
 						.click(),
 			],
 			[
@@ -5087,7 +5088,7 @@ test.describe( 'Motion', () => {
 			);
 			const turn = page
 				.locator( '#cbuild-picture' )
-				.getByRole( 'button', { name: 'Show the top' } );
+				.getByRole( 'button', { name: 'Top', exact: true } );
 			await expect( turn ).toBeVisible();
 			await watch( page );
 			await turn.click();
@@ -6112,6 +6113,14 @@ test.describe( 'The board turned over', () => {
 		picture( page ).locator( '.cbuild-board:not(.cbuild-board--top)' );
 	const description = ( page: Page ) =>
 		picture( page ).locator( '.cbuild-picture__description' );
+	// The two buttons by the board, a side each (F28, #128).
+	const topSide = ( page: Page ) =>
+		picture( page ).getByRole( 'button', { name: 'Top', exact: true } );
+	const underSide = ( page: Page ) =>
+		picture( page ).getByRole( 'button', {
+			name: 'Underside',
+			exact: true,
+		} );
 
 	test( 'the grip step shows the top, filled with the grip and the bolt heads, and the next step the underside', async ( {
 		page,
@@ -6371,13 +6380,14 @@ test.describe( 'The board turned over', () => {
 	} );
 
 	// F27 (#127): "A turn the shopper makes lasts until they change step." Pressed on the wheels, the next step showed
-	// the top.
-	test( 'turns with its button from the keyboard, says the side, shows it in the bar, and keeps it until the step changes', async ( {
+	// the top. F28 (#128): "a two-option control, Underside and Top", the side shown marked to the eye and to
+	// assistive tech.
+	test( 'turns with Underside and Top from the keyboard, says the side, shows it in the bar, and keeps it until the step changes', async ( {
 		page,
 	}, info ) => {
 		test.skip(
 			info.project.name === 'no-js',
-			"The button is the script's: without it the step's own side is shown."
+			"The buttons are the script's: without them the step's own side is shown."
 		);
 		await page.goto(
 			linkTo( {
@@ -6386,14 +6396,24 @@ test.describe( 'The board turned over', () => {
 				step: 'wheels',
 			} )
 		);
-		const turn = picture( page ).getByRole( 'button', {
-			name: 'Show the top',
-		} );
-		await expect( turn ).toHaveAttribute( 'aria-pressed', 'false' );
-		await turn.focus();
+		await expect(
+			picture( page ).getByRole( 'group', { name: 'Your board' } )
+		).toBeVisible();
+		/**
+		 * Which side the buttons say is shown, to assistive tech, and whether each looks it.
+		 */
+		const said = async () => [
+			await underSide( page ).getAttribute( 'aria-pressed' ),
+			await topSide( page ).getAttribute( 'aria-pressed' ),
+		];
+		await expect.poll( said ).toEqual( [ 'true', 'false' ] );
+		await topSide( page ).focus();
 		await page.keyboard.press( 'Enter' );
-		await expect( turn ).toHaveAttribute( 'aria-pressed', 'true' );
-		await expect( turn, 'the shopper keeps their place' ).toBeFocused();
+		await expect.poll( said ).toEqual( [ 'false', 'true' ] );
+		await expect(
+			topSide( page ),
+			'the shopper keeps their place'
+		).toBeFocused();
 		await expect( top( page ) ).toBeVisible();
 		await expect( under( page ) ).toBeHidden();
 		await expect( description( page ) ).toContainText(
@@ -6421,10 +6441,9 @@ test.describe( 'The board turned over', () => {
 			'aria-busy',
 			'false'
 		);
-		await expect( turn, 'the step keeps the turn' ).toHaveAttribute(
-			'aria-pressed',
-			'true'
-		);
+		await expect
+			.poll( said, 'the step keeps the turn' )
+			.toEqual( [ 'false', 'true' ] );
 		await expect( top( page ) ).toBeVisible();
 
 		await page.getByRole( 'button', { name: 'Next: Bearings' } ).click();
@@ -6436,10 +6455,12 @@ test.describe( 'The board turned over', () => {
 			'aria-busy',
 			'false'
 		);
-		await expect(
-			turn,
-			"the bearings step opens underneath: the turn was the last step's"
-		).toHaveAttribute( 'aria-pressed', 'false' );
+		await expect
+			.poll(
+				said,
+				"the bearings step opens underneath: the turn was the last step's"
+			)
+			.toEqual( [ 'true', 'false' ] );
 		await expect( under( page ) ).toBeVisible();
 		await expect( description( page ) ).toContainText(
 			'Seen from underneath.'
@@ -6452,18 +6473,72 @@ test.describe( 'The board turned over', () => {
 			'aria-busy',
 			'false'
 		);
-		await expect(
-			turn,
-			'the hardware step opens on its own side, the top'
-		).toHaveAttribute( 'aria-pressed', 'true' );
+		await expect
+			.poll( said, 'the hardware step opens on its own side, the top' )
+			.toEqual( [ 'false', 'true' ] );
 		await expect( top( page ) ).toBeVisible();
-		await turn.focus();
+		await underSide( page ).focus();
 		await page.keyboard.press( 'Space' );
-		await expect( turn ).toHaveAttribute( 'aria-pressed', 'false' );
+		await expect.poll( said ).toEqual( [ 'true', 'false' ] );
 		await expect( under( page ) ).toBeVisible();
 		await expect( description( page ) ).toContainText(
 			'Seen from underneath.'
 		);
+		// Pressed again, the side shown stays.
+		await page.keyboard.press( 'Space' );
+		await expect.poll( said ).toEqual( [ 'true', 'false' ] );
+		await expect( under( page ) ).toBeVisible();
+	} );
+
+	// F28 (#128): "the turn button reads Show the top whether or not the top is showing, and looks the same in both
+	// states". The side shown is filled, bold and ticked; the other plain. Each at least 24 by 24 px (WCAG 2.5.8) and
+	// ringed in focus.
+	test( 'marks the side shown on its button by more than colour, each a target of 24 px or more with a focus ring', async ( {
+		page,
+	}, info ) => {
+		test.skip(
+			info.project.name === 'no-js',
+			"The buttons are the script's: without them the step's own side is shown."
+		);
+		await page.goto(
+			linkTo( {
+				deck: id( 'builder-test-deck-8-0' ),
+				step: 'trucks',
+			} )
+		);
+		/**
+		 * How a button is drawn: its fill, its weight, its tick and its size.
+		 *
+		 * @param button The button.
+		 */
+		const look = ( button: Locator ) =>
+			button.evaluate( ( shown ) => {
+				const style = getComputedStyle( shown );
+				const tick = getComputedStyle( shown, '::before' );
+				const box = shown.getBoundingClientRect();
+				return {
+					filled: 'rgba(0, 0, 0, 0)' !== style.backgroundColor,
+					bold: parseInt( style.fontWeight, 10 ) >= 600,
+					ticked:
+						'none' !== tick.content && 0 < parseFloat( tick.width ),
+					big: box.width >= 24 && box.height >= 24,
+				};
+			} );
+		const pressed = { filled: true, bold: true, ticked: true, big: true };
+		const plain = { filled: false, bold: false, ticked: false, big: true };
+		await expect.poll( () => look( underSide( page ) ) ).toEqual( pressed );
+		await expect.poll( () => look( topSide( page ) ) ).toEqual( plain );
+		await topSide( page ).click();
+		await expect.poll( () => look( topSide( page ) ) ).toEqual( pressed );
+		await expect.poll( () => look( underSide( page ) ) ).toEqual( plain );
+		await axe( page, 'the two sides, the top pressed', '#cbuild-picture' );
+		for ( const side of [ underSide( page ), topSide( page ) ] ) {
+			await side.focus();
+			await page.keyboard.press( 'Shift+Tab' );
+			await page.keyboard.press( 'Tab' );
+			await expect( side ).toBeFocused();
+			await expect( side ).toHaveCSS( 'outline-style', 'solid' );
+		}
 	} );
 
 	// Cowork's review of 1.0.0, F17 (#102): on a phone the board lay across the stage's whole width, and the button
@@ -6505,9 +6580,7 @@ test.describe( 'The board turned over', () => {
 					} )
 				);
 			}
-			const turn = picture( page ).locator(
-				'.cbuild-picture__turn .cbuild-button'
-			);
+			const turn = picture( page ).locator( '.cbuild-picture__sides' );
 			await expect( turn ).toBeVisible();
 			/**
 			 * The drawn layers of the side shown that the button's box crosses, each with the overlap.
@@ -6518,7 +6591,7 @@ test.describe( 'The board turned over', () => {
 				shown.evaluate( ( board ) => {
 					const button = document
 						.querySelector(
-							'#cbuild-picture .cbuild-picture__turn .cbuild-button'
+							'#cbuild-picture .cbuild-picture__sides'
 						)
 						?.getBoundingClientRect();
 					if ( ! button ) {
@@ -6575,8 +6648,11 @@ test.describe( 'The board turned over', () => {
 			expect( box.height ).toBeGreaterThanOrEqual( 44 );
 			expect( box.width ).toBeGreaterThanOrEqual( 44 );
 
-			await turn.click();
-			await expect( turn ).toHaveAttribute( 'aria-pressed', 'true' );
+			await topSide( page ).click();
+			await expect( topSide( page ) ).toHaveAttribute(
+				'aria-pressed',
+				'true'
+			);
 			await expect( top( page ) ).toBeVisible();
 			// Measured once the turn's motion has settled, where the top rests.
 			await page.waitForFunction(
@@ -6625,9 +6701,7 @@ test.describe( 'The board turned over', () => {
 					step: 'trucks',
 				} )
 			);
-			const turn = picture( page ).locator(
-				'.cbuild-picture__turn .cbuild-button'
-			);
+			const turn = picture( page ).locator( '.cbuild-picture__sides' );
 			await expect( turn ).toBeVisible();
 			await expect
 				.poll( () =>
@@ -6645,9 +6719,7 @@ test.describe( 'The board turned over', () => {
 							)
 							?.getBoundingClientRect();
 						const button = figure
-							.querySelector(
-								'.cbuild-picture__turn .cbuild-button'
-							)
+							.querySelector( '.cbuild-picture__sides' )
 							?.getBoundingClientRect();
 						if ( ! board || ! button ) {
 							return 'missing';
@@ -6733,10 +6805,7 @@ test.describe( 'The board turned over', () => {
 						for ( const [ name, selector ] of [
 							[ 'the heading', '.cbuild-picture__heading' ],
 							[ 'the side line', '.cbuild-picture__side' ],
-							[
-								'the button',
-								'.cbuild-picture__turn .cbuild-button',
-							],
+							[ 'the button', '.cbuild-picture__sides' ],
 						] as const ) {
 							const shown = figure.querySelector( selector );
 							if (
@@ -6778,9 +6847,7 @@ test.describe( 'The board turned over', () => {
 							.closest( '.cbuild__stage' )
 							?.getBoundingClientRect();
 						const button = figure
-							.querySelector(
-								'.cbuild-picture__turn .cbuild-button'
-							)
+							.querySelector( '.cbuild-picture__sides' )
 							?.getBoundingClientRect();
 						for ( const one of [
 							...words,
@@ -6828,13 +6895,16 @@ test.describe( 'The board turned over', () => {
 					.toBe( 'whole, clear' );
 				// Turned over, the button says "Show the underside", the longer name.
 				const turn = picture( page ).locator(
-					'.cbuild-picture__turn .cbuild-button'
+					'.cbuild-picture__sides'
 				);
 				if ( ! ( await turn.isVisible() ) ) {
 					return;
 				}
-				await turn.click();
-				await expect( turn ).toHaveAttribute( 'aria-pressed', 'true' );
+				await topSide( page ).click();
+				await expect( topSide( page ) ).toHaveAttribute(
+					'aria-pressed',
+					'true'
+				);
 				await expect
 					.poll( () => wrong( '.cbuild-board--top' ) )
 					.toBe( 'whole, clear' );
@@ -6880,7 +6950,7 @@ test.describe( 'The board turned over', () => {
 					'false'
 				);
 				const turn = picture( page ).locator(
-					'.cbuild-picture__turn .cbuild-button'
+					'.cbuild-picture__sides'
 				);
 				await expect( turn ).toBeVisible();
 				/**
@@ -6892,7 +6962,7 @@ test.describe( 'The board turned over', () => {
 					shown.evaluate( ( board ) => {
 						const button = document
 							.querySelector(
-								'#cbuild-picture .cbuild-picture__turn .cbuild-button'
+								'#cbuild-picture .cbuild-picture__sides'
 							)
 							?.getBoundingClientRect();
 						const still =
@@ -6915,8 +6985,11 @@ test.describe( 'The board turned over', () => {
 					.poll( () => over( under( page ) ), 'the underside' )
 					.toBe( 'clear' );
 
-				await turn.click();
-				await expect( turn ).toHaveAttribute( 'aria-pressed', 'true' );
+				await topSide( page ).click();
+				await expect( topSide( page ) ).toHaveAttribute(
+					'aria-pressed',
+					'true'
+				);
 				await expect( top( page ) ).toBeVisible();
 				await expect
 					.poll( () => over( top( page ) ), 'the top' )
@@ -6944,7 +7017,7 @@ test.describe( 'The board turned over', () => {
 			/: Choose your grip tape$/
 		);
 		await expect(
-			picture( page ).getByRole( 'button', { name: 'Show the top' } )
+			picture( page ).getByRole( 'button', { name: 'Top', exact: true } )
 		).toHaveCount( 0 );
 		await expect( top( page ) ).toBeHidden();
 		// The deck's photo takes the board's place (#82): nothing is drawn, so neither side is named, and each part
@@ -6962,7 +7035,10 @@ test.describe( 'The board turned over', () => {
 				} )
 			);
 			await expect(
-				picture( page ).getByRole( 'button', { name: 'Show the top' } )
+				picture( page ).getByRole( 'button', {
+					name: 'Top',
+					exact: true,
+				} )
 			).toHaveCount( 0 );
 			await expect( under( page ) ).toBeVisible();
 		}

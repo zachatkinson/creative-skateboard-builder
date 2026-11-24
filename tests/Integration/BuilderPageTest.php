@@ -320,9 +320,16 @@ final class BuilderPageTest extends IntegrationTestCase {
 		self::assertMatchesRegularExpression( '#;--cbuild-mask:url\("[^"]+/creative-skateboard-builder/layers/[0-9]+-[0-9a-f]{20}-432x1626\.webp"\)$#', $top->item( 0 )->getAttribute( 'style' ), 'its outline is the deck\'s largest WebP rendition' );
 		self::assertSame( 1, $dom->query( '//div[contains(@class,"cbuild-bar")]//span[contains(@class,"cbuild-board--top")]/span' )->length, 'the bar has the same top' );
 
-		$button = $dom->query( '//div[@class="cbuild-picture__turn"][not(@hidden)]/button[@hidden]' )->item( 0 );
-		self::assertInstanceOf( \DOMElement::class, $button, 'offered by the script alone' );
-		self::assertSame( array( 'button', 'false', 'Show the top' ), array( $button->getAttribute( 'type' ), $button->getAttribute( 'aria-pressed' ), trim( $button->textContent ) ) );
+		// F28 (#128): a button a side, Underside and Top, the side shown pressed, in a group the picture's heading names.
+		$group = $dom->query( '//div[@class="cbuild-picture__turn"][not(@hidden)]/div[@class="cbuild-picture__sides"][@hidden]' )->item( 0 );
+		self::assertInstanceOf( \DOMElement::class, $group, 'offered by the script alone' );
+		self::assertSame( array( 'group', 'cbuild-picture-heading' ), array( $group->getAttribute( 'role' ), $group->getAttribute( 'aria-labelledby' ) ) );
+		$buttons = array();
+		foreach ( $dom->query( './button', $group ) as $button ) {
+			self::assertInstanceOf( \DOMElement::class, $button );
+			$buttons[] = array( $button->getAttribute( 'type' ), trim( $button->textContent ), $button->getAttribute( 'aria-pressed' ) );
+		}
+		self::assertSame( array( array( 'button', 'Underside', 'true' ), array( 'button', 'Top', 'false' ) ), $buttons, 'the trucks step shows the underside' );
 
 		$caption = '//figcaption[contains(@class,"cbuild-picture__description")]';
 		self::assertNotNull( $dom->query( $caption . '/span[not(@hidden)]/span[not(@hidden)][.="Seen from underneath."]' )->item( 0 ) );

@@ -276,7 +276,11 @@ final class BuilderView {
 				'top'         => $top,
 				'turnable'    => $top['shown'],
 				'turned'      => $top['shown'] && Layout::onTop( $state->step ),
-				'turn'        => __( 'Show the top', 'creative-skateboard-builder' ),
+				// The control by the board (F28, #128): a button a side, the side shown pressed.
+				'sides'       => array(
+					'under' => _x( 'Underside', 'the side of the board shown', 'creative-skateboard-builder' ),
+					'top'   => _x( 'Top', 'the side of the board shown', 'creative-skateboard-builder' ),
+				),
 				'sided'       => $board['shown'],
 				'seen'        => array(
 					'under' => __( 'Seen from underneath.', 'creative-skateboard-builder' ),
