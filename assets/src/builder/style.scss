@@ -101,6 +101,12 @@
 	display: none;
 }
 
+/* The ready builds, while a width pressed waits for its answer: their place kept, out of sight, so the decks the answer
+   brings take it rather than push them down (F20, #118; D-356). */
+:where(.cbuild[data-folded] .cbuild-presets) {
+	visibility: hidden;
+}
+
 /*
  * The footer at every width, and the step's own Next and Back and the review's Add to cart give way to its own: one
  * control of each name (P11; spec: The layout, Footer). Outside `:where()`, so a theme's `display` cannot bring back
@@ -1245,6 +1251,12 @@
 	font-variant-numeric: tabular-nums;
 }
 
+/* From a pick's press to its answer the line is kept, empty, for the server's words, so the answer moves nothing
+   under it (F20, #118; D-356). */
+:where(.cbuild-card__delta:empty)::before {
+	content: "\a0";
+}
+
 :where(
 	.cbuild-card__also,
 	.cbuild-card__stock,
@@ -2189,6 +2201,13 @@
 	font-size: var(--cbuild-small);
 	font-weight: 400;
 	line-height: 1.25;
+}
+
+/* Its line is kept on a step while there is no estimate, so the one an answer brings, or takes away, moves neither
+   the total nor the buttons beside it (F20, #118; D-356). Over the builder's own `[hidden]`, as the turn's row is. */
+.cbuild .cbuild-bar:not(.cbuild-bar--review) .cbuild-bar__estimate[hidden] {
+	display: block;
+	visibility: hidden;
 }
 
 :where(.cbuild-bar__more) {

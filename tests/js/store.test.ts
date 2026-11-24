@@ -3091,3 +3091,382 @@ describe( 'turning the board over', () => {
 		expect( state.turning, 'the turn is over' ).toBe( false );
 	} );
 } );
+
+// Cowork's review of 1.1.0, F20 (#118; D-355, D-356): on a real host the route answers past the 500 ms CLS leaves out
+// after a press, so what the store knows a press brings is made at the press, and the step's lit Next is asked ahead.
+describe( 'what a press foretells', () => {
+	const init = (): void =>
+		(
+			defined.definition as { callbacks: { init: () => void } }
+		 ).callbacks.init();
+
+	/**
+	 * A builder with the step's form and the bar's Next, started, the form the element its directives run on.
+	 */
+	function builder(): {
+		root: HTMLElement;
+		sheet: HTMLFormElement;
+		radio: HTMLInputElement;
+		width: HTMLButtonElement;
+		next: HTMLButtonElement;
+	} {
+		document.body.innerHTML = `
+			<div class="cbuild">
+				<form class="cbuild-step" id="cbuild-step-form" method="get" action="/">
+					<input type="hidden" name="page_id" value="25">
+					<button type="submit" class="cbuild-width__option" name="cbuild[_width]" value="8.5in">8.5″</button>
+					<input type="radio" name="cbuild[deck]" value="12">
+				</form>
+				<div class="cbuild-bar">
+					<button type="submit" class="cbuild-bar__next" form="cbuild-step-form" name="cbuild[step]" value="trucks">Next: Trucks</button>
+				</div>
+			</div>`;
+		const root = document.querySelector< HTMLElement >( '.cbuild' )!;
+		setElement( root );
+		init();
+		const sheet = root.querySelector( 'form' )!;
+		setElement( sheet );
+		return {
+			root,
+			sheet,
+			radio: root.querySelector( 'input[type=radio]' )!,
+			width: root.querySelector( '.cbuild-width__option' )!,
+			next: root.querySelector( '.cbuild-bar__next' )!,
+		};
+	}
+
+	const ASKING = {
+		...START,
+		presets: { shown: true },
+		step: {
+			slot: 'deck',
+			hasLead: true,
+			more: { count: 'Showing 0 of 0' },
+			shelf: {
+				width: {
+					name: 'cbuild[_width]',
+					asking: true,
+					chosen: '',
+					options: [
+						{ value: '8in', text: '8″', pressed: 'false' },
+						{ value: '8.5in', text: '8.5″', pressed: 'false' },
+					],
+				},
+			},
+		},
+	};
+
+	type Width = {
+		asking: boolean;
+		chosen: string;
+		options: { pressed: string }[];
+	};
+	const width = (): Width =>
+		( state.view.step as { shelf: { width: Width } } ).shelf.width;
+
+	it( 'folds the width question to the width pressed at its press, keeping the ready builds’ place until the answer', async () => {
+		const { root, width: button } = builder();
+		state.view = structuredClone( ASKING );
+		let answered: ( response: Response ) => void = () => undefined;
+		reply = () =>
+			new Promise< Response >( ( done ) => ( answered = done ) );
+		actions.submit(
+			new SubmitEvent( 'submit', { submitter: button, cancelable: true } )
+		);
+		expect( width().asking ).toBe( false );
+		expect( width().chosen ).toBe( '8.5″' );
+		expect( width().options.map( ( option ) => option.pressed ) ).toEqual( [
+			'false',
+			'true',
+		] );
+		expect(
+			( state.view.step as { more: { count: string } } ).more.count
+		).toBe( '' );
+		expect(
+			( state.view as { presets: { shown: boolean } } ).presets.shown,
+			'shown, out of sight'
+		).toBe( true );
+		expect( root.getAttribute( 'data-folded' ) ).toBe( '' );
+		expect( fetched ).toHaveLength( 1 );
+		await settle();
+		answered( answer( NEXT ) );
+		await settle();
+		expect( root.hasAttribute( 'data-folded' ) ).toBe( false );
+	} );
+
+	it( 'folds a step with no count, and a builder the script never started', () => {
+		const { width: button } = builder();
+		const view = structuredClone( ASKING );
+		delete ( view.step as { more?: unknown } ).more;
+		state.view = view;
+		reply = () => new Promise< Response >( () => undefined );
+		actions.submit(
+			new SubmitEvent( 'submit', { submitter: button, cancelable: true } )
+		);
+		expect( width().chosen ).toBe( '8.5″' );
+
+		reset();
+		state.view = structuredClone( ASKING );
+		setElement( document.querySelector( 'form' )! );
+		actions.submit(
+			new SubmitEvent( 'submit', { submitter: button, cancelable: true } )
+		);
+		expect( width().chosen ).toBe( '8.5″' );
+	} );
+
+	it( 'folds nothing for a press that is no width the step asks for', () => {
+		const { root, width: button, next } = builder();
+		const presses: Array< [ HTMLElement, () => void ] > = [
+			[ next, () => undefined ],
+			[ button, () => ( width().asking = false ) ],
+			[ button, () => button.setAttribute( 'value', '9in' ) ],
+			[ button, () => button.setAttribute( 'name', 'cbuild[deck]' ) ],
+			[
+				button,
+				() => {
+					( state.view.step as { shelf?: unknown } ).shelf =
+						undefined;
+				},
+			],
+		];
+		state.view = structuredClone( ASKING );
+		actions.submit( new SubmitEvent( 'submit', { cancelable: true } ) );
+		expect( state.view, 'no button pressed' ).toEqual( ASKING );
+		for ( const [ pressed, make ] of presses ) {
+			button.setAttribute( 'name', 'cbuild[_width]' );
+			button.setAttribute( 'value', '8.5in' );
+			state.view = structuredClone( ASKING );
+			make();
+			const was = JSON.stringify( state.view );
+			actions.submit(
+				new SubmitEvent( 'submit', {
+					submitter: pressed,
+					cancelable: true,
+				} )
+			);
+			expect( JSON.stringify( state.view ) ).toBe( was );
+			expect( root.hasAttribute( 'data-folded' ) ).toBe( false );
+		}
+	} );
+
+	it( 'makes at a pick what its answer will show: no ready builds, no deck line, a line kept for each price, none recommended', () => {
+		const { root, radio } = builder();
+		state.view = {
+			...START,
+			presets: { shown: true },
+			step: {
+				slot: 'deck',
+				hasLead: true,
+				options: [
+					{ value: '11', hasDelta: false, recommended: true },
+					{ value: '12', hasDelta: false, recommended: false },
+					null,
+				],
+			},
+		};
+		reply = () => new Promise< Response >( () => undefined );
+		actions.pick( { target: radio } as unknown as Event );
+		const step = state.view.step as {
+			hasLead: boolean;
+			options: ( { hasDelta: boolean; recommended: boolean } | null )[];
+		};
+		expect(
+			( state.view as { presets: { shown: boolean } } ).presets.shown
+		).toBe( false );
+		expect( step.hasLead ).toBe( false );
+		expect( step.options ).toEqual( [
+			{ value: '11', hasDelta: true, recommended: false, checked: false },
+			{ value: '12', hasDelta: true, recommended: false, checked: true },
+			null,
+		] );
+		expect( root.hasAttribute( 'data-picked' ) ).toBe( true );
+	} );
+
+	it( 'keeps a later step’s line, and at No risers no prices and the recommendation, and asks nothing of a view with no ready builds', () => {
+		const { radio } = builder();
+		state.view = {
+			...START,
+			step: {
+				slot: 'risers',
+				hasLead: true,
+				options: [
+					{ value: '40', hasDelta: true, recommended: true },
+					{ value: '39', hasDelta: true, recommended: false },
+				],
+			},
+		};
+		reply = () => new Promise< Response >( () => undefined );
+		const risers = structuredClone( state.view );
+		radio.value = '40';
+		actions.pick( { target: radio } as unknown as Event );
+		expect(
+			( state.view.step as { hasLead: boolean } ).hasLead,
+			'the lead is the deck step’s alone'
+		).toBe( true );
+		state.view = risers;
+		radio.value = '0';
+		expect( () =>
+			actions.pick( { target: radio } as unknown as Event )
+		).not.toThrow();
+		const step = state.view.step as {
+			hasLead: boolean;
+			options: { hasDelta: boolean; recommended: boolean }[];
+		};
+		expect( step.hasLead ).toBe( true );
+		expect(
+			step.options.map( ( option ) => [
+				option.hasDelta,
+				option.recommended,
+			] )
+		).toEqual( [
+			[ false, true ],
+			[ false, false ],
+		] );
+
+		state.view = {
+			...START,
+			step: { slot: 'deck', hasLead: true },
+		};
+		actions.pick( { target: radio } as unknown as Event );
+		expect(
+			( state.view.step as { hasLead: boolean } ).hasLead,
+			'No risers is no deck'
+		).toBe( true );
+	} );
+
+	const READY = {
+		...NEXT,
+		url: window.location.origin + '/?picked',
+		step: { slot: 'deck' },
+		bar: {
+			next: {
+				ready: true,
+				onStep: true,
+				name: 'cbuild[step]',
+				value: 'trucks',
+			},
+		},
+	};
+
+	it( 'asks ahead for the lit Next once a pick’s answer is shown, and shows its answer at the press of Next', async () => {
+		const { radio, next } = builder();
+		radio.checked = true;
+		reply = () => answer( READY );
+		actions.pick( { target: radio } as unknown as Event );
+		vi.advanceTimersByTime( WAIT );
+		await settle();
+		expect( state.view ).toEqual( READY );
+		expect( fetched ).toHaveLength( 1 );
+		vi.advanceTimersToNextFrame();
+		expect( fetched, 'Next asked ahead' ).toHaveLength( 2 );
+		expect( fetched[ 1 ]!.searchParams.get( 'cbuild[step]' ) ).toBe(
+			'trucks'
+		);
+		expect( fetched[ 1 ]!.searchParams.get( 'cbuild[deck]' ) ).toBe( '12' );
+		reply = () => answer( NEXT );
+		await settle();
+		expect( state.view, 'nothing shown for it' ).toEqual( READY );
+
+		actions.submit(
+			new SubmitEvent( 'submit', { submitter: next, cancelable: true } )
+		);
+		await settle();
+		expect( fetched, 'nothing asked again' ).toHaveLength( 2 );
+		expect( state.view.url ).toBe( READY.url );
+	} );
+
+	it( 'asks nothing ahead for a Next not lit, not the step’s, on the change panel, with no form or no such button, or after a search', async () => {
+		const cases: Array< [ string, () => void ] > = [
+			[ 'not lit', () => ( READY_OF().bar.next.ready = false ) ],
+			[ 'the review’s', () => ( READY_OF().bar.next.onStep = false ) ],
+			[ 'the change panel', () => ( READY_OF().isChanges = true ) ],
+			[
+				'another button',
+				() => ( READY_OF().bar.next.value = 'wheels' ),
+			],
+			[
+				'another name',
+				() => ( READY_OF().bar.next.name = 'cbuild[x]' ),
+			],
+			[
+				'no bar',
+				() => ( ( READY_OF() as { bar?: unknown } ).bar = undefined ),
+			],
+			[
+				'no form',
+				() =>
+					document
+						.querySelector( 'form' )!
+						.classList.remove( 'cbuild-step' ),
+			],
+			[
+				'no bar button',
+				() =>
+					document
+						.querySelector( '.cbuild-bar__next' )!
+						.classList.remove( 'cbuild-bar__next' ),
+			],
+		];
+		let shown = structuredClone( READY ) as typeof READY & {
+			isChanges: boolean;
+		};
+		function READY_OF(): typeof shown {
+			return shown;
+		}
+		for ( const [ what, make ] of cases ) {
+			const { radio } = builder();
+			fetched = [];
+			shown = structuredClone( READY ) as typeof shown;
+			make();
+			reply = () => answer( shown );
+			actions.pick( { target: radio } as unknown as Event );
+			vi.advanceTimersByTime( WAIT );
+			await settle();
+			vi.advanceTimersToNextFrame();
+			expect( [ what, fetched.length ] ).toEqual( [ what, 1 ] );
+		}
+
+		const { sheet } = builder();
+		fetched = [];
+		reply = () => answer( READY );
+		const box = document.createElement( 'input' );
+		box.type = 'search';
+		box.name = 'cbuild[_q]';
+		sheet.append( box );
+		actions.narrow( { target: box } as unknown as Event );
+		await settle();
+		vi.advanceTimersToNextFrame();
+		expect( fetched, 'a search asks nothing ahead' ).toHaveLength( 1 );
+	} );
+
+	it( 'asks ahead again after a link or Back, once a search went before', async () => {
+		for ( const move of [ 'follow', 'back' ] as const ) {
+			const { sheet } = builder();
+			fetched = [];
+			reply = () => answer( READY );
+			const box = document.createElement( 'input' );
+			box.type = 'search';
+			box.name = 'cbuild[_q]';
+			sheet.append( box );
+			actions.narrow( { target: box } as unknown as Event );
+			await settle();
+			vi.advanceTimersToNextFrame();
+			expect( fetched ).toHaveLength( 1 );
+			if ( 'follow' === move ) {
+				const link = document.createElement( 'a' );
+				link.href =
+					window.location.origin + '/?page_id=25&cbuild%5Bdeck%5D=12';
+				document.querySelector( '.cbuild' )!.append( link );
+				setElement( link );
+				actions.follow(
+					new MouseEvent( 'click', { cancelable: true, button: 0 } )
+				);
+			} else {
+				actions.back();
+			}
+			await settle();
+			vi.advanceTimersToNextFrame();
+			expect( [ move, fetched.length ] ).toEqual( [ move, 3 ] );
+		}
+	} );
+} );

@@ -843,6 +843,140 @@ function chosen( view: Shown, value: string ): void {
 }
 
 /**
+ * Make at a pick what the store already knows its answer will show, so that the answer, which on a real host comes
+ * after the 500 ms CLS leaves out after a press, moves nothing on the page (F20, #118; D-356). The answer then says
+ * the same, or what the server found instead.
+ *
+ * - The ready builds are offered at the start alone: a build begun is the shopper's own.
+ * - The deck step's line ("Start with a width") goes once its deck is chosen.
+ * - Once the step has a part picked, each card says its price against it under its own (D-249): the line is kept,
+ *   empty, for the server's words. Left empty, as by No risers, the step says no such prices.
+ * - A step recommends a part only while it has none picked.
+ *
+ * @param view  The view shown.
+ * @param value The radio's value: a part's ID, or "0" for leaving the slot empty.
+ */
+function foretell( view: Shown, value: string ): void {
+	const known = view as {
+		presets?: { shown?: boolean };
+		step: { slot: string; hasLead?: boolean; options?: unknown };
+	};
+	if ( known.presets ) {
+		known.presets.shown = false;
+	}
+	const part = '0' !== value;
+	if ( 'deck' === known.step.slot && part ) {
+		known.step.hasLead = false;
+	}
+	if ( Array.isArray( known.step.options ) ) {
+		for ( const option of known.step.options as unknown[] ) {
+			if ( option instanceof Object ) {
+				const card = option as {
+					hasDelta?: boolean;
+					recommended?: boolean;
+				};
+				card.hasDelta = part;
+				// A step recommends a part only while it has none picked.
+				card.recommended = true === card.recommended && ! part;
+			}
+		}
+	}
+}
+
+/**
+ * Fold the width question to its chosen line at the press of a width, as its answer will: the widths behind the line
+ * that says the one pressed, with Change, and the step's list, which the answer fills, under it (F20, #118; D-356).
+ * The ready builds wait for the answer out of sight, in their place (`data-folded`), so the decks it brings take it
+ * rather than push them down, and the page under the builder does not move twice. Null where the press is no width
+ * the step asks for.
+ *
+ * @param view   The view shown.
+ * @param button The button pressed.
+ */
+function folding(
+	view: Shown,
+	button: HTMLElement | null | undefined
+): ( () => void ) | null {
+	const known = view as {
+		step: {
+			more?: { count?: string };
+			shelf?: {
+				width?: {
+					name?: string;
+					asking?: boolean;
+					chosen?: string;
+					options: {
+						value: string;
+						text: string;
+						pressed: string;
+					}[];
+				};
+			};
+		};
+	};
+	const width = known.step.shelf?.width;
+	if (
+		! button ||
+		true !== width?.asking ||
+		button.getAttribute( 'name' ) !== width.name
+	) {
+		return null;
+	}
+	const value = button.getAttribute( 'value' );
+	const pressed = width.options.find( ( option ) => option.value === value );
+	if ( ! pressed ) {
+		return null;
+	}
+	return () => {
+		width.asking = false;
+		width.chosen = pressed.text;
+		for ( const option of width.options ) {
+			option.pressed = option === pressed ? 'true' : 'false';
+		}
+		root?.setAttribute( 'data-folded', '' );
+		// "Showing 0 of 0" until the answer lists the decks: a line the cards would push down.
+		if ( known.step.more ) {
+			known.step.more.count = '';
+		}
+	};
+}
+
+/**
+ * Ask ahead for the step's Next once it is lit, so the next step can be shown at the press of it (F20, #118; D-355):
+ * on a real host its answer comes after the 500 ms CLS leaves out after a press, and the new step it brings would be
+ * counted as layout shift. Its fields are the form's, sent by the bar's Next, as a press of it sends them. Not on a
+ * view a search, a chip or Sort brought: a shopper narrowing the shelf asks often, and the route counts each request.
+ */
+function foresee(): void {
+	const view = state.view;
+	const next = view.bar?.next as
+		| { ready?: boolean; onStep?: boolean; name?: string; value?: string }
+		| undefined;
+	const form = root?.querySelector< HTMLFormElement >( 'form.cbuild-step' );
+	if (
+		true !== next?.ready ||
+		true !== next.onStep ||
+		view.isChanges ||
+		! form
+	) {
+		return;
+	}
+	const button = [ ...form.elements ].find(
+		( control ): control is HTMLButtonElement =>
+			control instanceof HTMLButtonElement &&
+			control.classList.contains( 'cbuild-bar__next' ) &&
+			control.name === next.name &&
+			control.value === next.value
+	);
+	if ( button ) {
+		nav( state ).prefetch( fields( form, button ) );
+	}
+}
+
+/** Whether the last move narrowed the shelf: its answer asks nothing ahead. */
+let narrowing: boolean | undefined;
+
+/**
  * How long, in ms, a pointer rests on a deck's card before its board's image is fetched: one passing over the shelf
  * fetches nothing (D-308).
  */
@@ -991,6 +1125,7 @@ function nav( state: State ): Navigator {
 								),
 							] )
 						: undefined;
+				const ahead = ! narrowing;
 				const change = () => {
 					state.view = shown;
 					state.added = false;
@@ -998,9 +1133,12 @@ function nav( state: State ): Navigator {
 					state.missing = '';
 					say( state, shown, turned, config, before );
 					priced( before, shown );
-					window.requestAnimationFrame( () =>
-						moments( before, shown, was )
-					);
+					window.requestAnimationFrame( () => {
+						moments( before, shown, was );
+						if ( ahead ) {
+							foresee();
+						}
+					} );
 				};
 				// Only a new step crosses over (spec: Motion): a transition takes the screen's taps while it
 				// runs, so one for a view on the same step would lose a Next tapped straight after a pick.
@@ -1019,6 +1157,8 @@ function nav( state: State ): Navigator {
 				state.drawing = on && picking;
 				if ( ! on ) {
 					picking = false;
+					// The answer is in, or failed: what the press foretold gives way to it.
+					root?.removeAttribute( 'data-folded' );
 				}
 			},
 			settle: ( view ) => ready( view ),
@@ -1044,6 +1184,7 @@ export function reset(): void {
 	boards.clear();
 	pressed = Number.NEGATIVE_INFINITY;
 	picking = false;
+	narrowing = undefined;
 	window.clearTimeout( resting );
 }
 
@@ -1079,6 +1220,7 @@ let typing: number | undefined;
  * @param form The step's form.
  */
 function narrowed( form: HTMLFormElement ): void {
+	narrowing = true;
 	nav( state ).go( {
 		fields: [ ...fields( form ), [ 'cbuild[step]', state.view.step.slot ] ],
 		history: 'replace',
@@ -1294,6 +1436,12 @@ const { state } = store(
 				// A search still waiting from the keys typed would go out after this and undo it, as Clear search was.
 				// The form carries the box as it is, so nothing typed is lost.
 				window.clearTimeout( typing );
+				narrowing = false;
+				// The width pressed folds behind its line, which takes focus from it as an answer's fold does.
+				const fold = folding( state.view, event.submitter );
+				if ( fold ) {
+					steady( fold );
+				}
 				const move: Move = {
 					fields: fields( form, event.submitter ),
 					history: 'push',
@@ -1366,10 +1514,13 @@ const { state } = store(
 					return;
 				}
 				cut();
+				narrowing = false;
 				chosen( state.view, input.value );
-				state.missing = '';
-				// The stylesheet settles the card picked under this mark alone, never as a page or a step is drawn.
+				foretell( state.view, input.value );
+				// The stylesheet settles the card picked under this mark alone, never as a page or a step is drawn; and
+				// the stage keeps the place a part picked will keep (D-303, D-356).
 				root?.setAttribute( 'data-picked', '' );
+				state.missing = '';
 				root?.dispatchEvent(
 					new CustomEvent( 'cbuild:pick', {
 						bubbles: true,
@@ -1531,6 +1682,7 @@ const { state } = store(
 					return;
 				}
 				event.preventDefault();
+				narrowing = false;
 				nav( state ).go( {
 					fields: [ ...url.searchParams ],
 					history: 'push',
@@ -1538,6 +1690,7 @@ const { state } = store(
 				} );
 			},
 			back(): void {
+				narrowing = false;
 				nav( state ).go( {
 					fields: [
 						...new URLSearchParams( window.location.search ),

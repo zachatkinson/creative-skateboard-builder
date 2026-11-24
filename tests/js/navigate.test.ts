@@ -6,6 +6,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
 	Navigator,
+	FRESH,
 	HOLD,
 	LIMIT,
 	SLOW,
@@ -674,5 +675,172 @@ describe( 'Navigator', () => {
 			fallback: () => undefined,
 		} );
 		expect( h.asked[ 0 ]!.searchParams.get( 'cbuild' ) ).toBe( '' );
+	} );
+
+	// Cowork's review of 1.1.0, F20 (#118; D-355): the store asks ahead for the step's lit Next, so the next step shows at
+	// the press, not after a route that answers past CLS's 500 ms.
+	describe( 'asked ahead', () => {
+		const NEXT_STEP: Array< [ string, string ] > = [
+			[ 'cbuild[deck]', '12' ],
+			[ 'cbuild[step]', 'trucks' ],
+		];
+		const move = ( h: Harness, fields = NEXT_STEP ): Move => ( {
+			fields,
+			history: 'push',
+			fallback: () => h.fallbacks.push( 'form' ),
+		} );
+
+		it( 'asks once, says and shows nothing, and the move made with the same fields takes its answer at once', async () => {
+			expect( FRESH ).toBe( 60_000 );
+			const h = harness();
+			const navigator = new Navigator( h.deps );
+			navigator.prefetch( NEXT_STEP );
+			expect( h.asked ).toHaveLength( 1 );
+			expect( h.asked[ 0 ]!.searchParams.get( 'cbuild[step]' ) ).toBe(
+				'trucks'
+			);
+			h.reply(
+				answer( { view: view( 'https://shop.example/?trucks' ) } )
+			);
+			await settle();
+			vi.advanceTimersByTime( SLOW );
+			expect( h.shown ).toEqual( [] );
+			expect( h.pending ).toEqual( [] );
+			expect( h.pushed ).toEqual( [] );
+
+			navigator.go( move( h ) );
+			await settle();
+			expect( h.asked, 'nothing asked again' ).toHaveLength( 1 );
+			expect( h.shown ).toEqual( [
+				view( 'https://shop.example/?trucks' ),
+			] );
+			expect( h.pushed ).toEqual( [ 'https://shop.example/?trucks' ] );
+			expect( h.pending ).toEqual( [ false ] );
+		} );
+
+		it( 'waits for an answer asked ahead and still on its way, rather than asking again', async () => {
+			const h = harness();
+			const navigator = new Navigator( h.deps );
+			navigator.prefetch( NEXT_STEP );
+			navigator.go( move( h ) );
+			expect( h.asked ).toHaveLength( 1 );
+			vi.advanceTimersByTime( SLOW );
+			expect( h.pending, 'the press waits as any does' ).toEqual( [
+				true,
+			] );
+			h.reply(
+				answer( { view: view( 'https://shop.example/?trucks' ) } )
+			);
+			await settle();
+			expect( h.shown ).toHaveLength( 1 );
+			expect( h.pending ).toEqual( [ true, false ] );
+		} );
+
+		it( 'asks ahead once for the same fields while fresh, and again once past FRESH', () => {
+			const h = harness();
+			const navigator = new Navigator( h.deps );
+			navigator.prefetch( NEXT_STEP );
+			vi.advanceTimersByTime( FRESH - 1 );
+			navigator.prefetch( NEXT_STEP );
+			expect( h.asked ).toHaveLength( 1 );
+			vi.advanceTimersByTime( 1 );
+			navigator.prefetch( NEXT_STEP );
+			expect( h.asked ).toHaveLength( 2 );
+			navigator.prefetch( [ ...NEXT_STEP, [ 'cbuild[trucks]', '30' ] ] );
+			expect( h.asked, 'other fields asked for at once' ).toHaveLength(
+				3
+			);
+		} );
+
+		it( 'asks the route again for a move past FRESH, or with other fields, and forgets what it asked ahead', async () => {
+			const stale = harness();
+			const late = new Navigator( stale.deps );
+			late.prefetch( NEXT_STEP );
+			stale.reply(
+				answer( { view: view( 'https://shop.example/?stale' ) } )
+			);
+			await settle();
+			vi.advanceTimersByTime( FRESH );
+			late.go( move( stale ) );
+			expect( stale.asked ).toHaveLength( 2 );
+
+			const h = harness();
+			const navigator = new Navigator( h.deps );
+			navigator.prefetch( NEXT_STEP );
+			h.reply(
+				answer( { view: view( 'https://shop.example/?trucks' ) } )
+			);
+			await settle();
+			navigator.go( move( h, [ [ 'cbuild[deck]', '11' ] ] ) );
+			expect( h.asked ).toHaveLength( 2 );
+			h.reply(
+				answer( { view: view( 'https://shop.example/?other' ) } )
+			);
+			await settle();
+			navigator.go( move( h ) );
+			expect( h.asked, 'what was asked ahead is forgotten' ).toHaveLength(
+				3
+			);
+		} );
+
+		it( 'asks the route again where what it asked ahead was no view, or the rate limit', async () => {
+			for ( const failed of [
+				answer( null, 500 ),
+				answer( { message: 'Try again in a minute.' }, 429 ),
+			] ) {
+				const h = harness();
+				const navigator = new Navigator( h.deps );
+				navigator.prefetch( NEXT_STEP );
+				h.reply( failed );
+				await settle();
+				expect( h.limited, 'nothing said for it' ).toEqual( [] );
+				navigator.go( move( h ) );
+				await settle();
+				expect( h.asked ).toHaveLength( 2 );
+				h.reply(
+					answer( { view: view( 'https://shop.example/?trucks' ) } )
+				);
+				await settle();
+				expect( h.shown ).toEqual( [
+					view( 'https://shop.example/?trucks' ),
+				] );
+				expect( h.fallbacks ).toEqual( [] );
+			}
+		} );
+
+		it( 'lets no later move abort what it asked ahead', () => {
+			const h = harness();
+			const navigator = new Navigator( h.deps );
+			navigator.prefetch( NEXT_STEP );
+			navigator.go( move( h, [ [ 'cbuild[deck]', '11' ] ] ) );
+			expect( h.inits[ 0 ]?.signal?.aborted ).toBe( false );
+			navigator.go( move( h, [ [ 'cbuild[deck]', '13' ] ] ) );
+			expect( h.inits[ 0 ]?.signal?.aborted ).toBe( false );
+			expect( h.inits[ 1 ]?.signal?.aborted ).toBe( true );
+		} );
+
+		it( 'gives up what it asked ahead past LIMIT, so a move waiting for it stops waiting and says so (D-364)', async () => {
+			const h = harness();
+			const navigator = new Navigator( h.deps );
+			navigator.prefetch( NEXT_STEP );
+			navigator.go( move( h ) );
+			expect(
+				h.asked,
+				'the move waits for what was asked ahead'
+			).toHaveLength( 1 );
+			await vi.advanceTimersByTimeAsync( LIMIT - 1 );
+			expect( h.inits[ 0 ]?.signal?.aborted ).toBe( false );
+			expect( h.limited ).toEqual( [] );
+			await vi.advanceTimersByTimeAsync( 1 );
+			await settle();
+			expect(
+				h.inits[ 0 ]?.signal?.aborted,
+				'what was asked ahead is given up'
+			).toBe( true );
+			expect( h.limited ).toEqual( [ LATE_WORDS ] );
+			expect( h.pending ).toEqual( [ true, false ] );
+			expect( h.shown ).toEqual( [] );
+			expect( h.fallbacks ).toEqual( [] );
+		} );
 	} );
 } );

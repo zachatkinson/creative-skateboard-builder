@@ -348,3 +348,20 @@ With Redis the route was not timed again: milestone 11 changed no query, and the
 | Lighthouse SEO, the clean page on both themes | 0.92 | 0.9 or more |
 
 Each moment answers a press within 200 ms at 4 times slower (INP from Event Timing entries), shifts nothing and animates `transform` and `opacity` alone; a Chromium trace of each is kept as a CI artifact (D-306).
+
+## v1.2.0
+
+### A press with its answer held back (#118, #121)
+
+The route held back 800 ms after the request, as a slow host answers (Cowork's review of 1.1.0, F20), and the shifts counted (`hadRecentInput` false) for a second after the answer. Chromium only, as the Layout Instability API is. The fixture's builder page at 1280 by 720 (Desktop Chrome) and 412 by 839 (Pixel 7); `builder.spec.ts`, "what an answer 800 ms late moves is no layout shift: a width, a deck, Next and a truck".
+
+| Press | Desktop, 1.1.0 | Desktop, 1.2.0 | Phone, 1.1.0 | Phone, 1.2.0 | Held to |
+| --- | --- | --- | --- | --- | --- |
+| A width (8″) | 0.018 | 0.000 | 0.100 | 0.000 | Under 0.1 |
+| A deck, picked scrolled to its card | 0.011 | 0.000 | 0.124 | 0.000 | 0 (D-306) |
+| Next | 0.021 | 0.000 | 0.046 | 0.000 | 0 |
+| A truck | 0.00014 | 0.000 | 0.00067 | 0.000 | 0 |
+
+Next is measured pressed a second after the pick's answer, once the answer asked ahead is in (D-355). The phone's stage still starts to stick at the answer (D-303): made to stick from the press, it measured the same 0.000 (D-356). Pressed straight after the pick's answer, before the one asked ahead is in, it still shifted 0.021 on the desktop and 0.046 on the phone: the press waits for the rest of that answer, as any press waits for its own.
+
+The store's script is 7,604 B compressed (7,133 B in 1.1.0).

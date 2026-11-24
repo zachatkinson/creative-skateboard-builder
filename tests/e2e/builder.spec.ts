@@ -114,7 +114,9 @@ async function ride( page: Page, width: string ) {
 	}
 	await button.click();
 	await expect( button ).toHaveAttribute( 'aria-pressed', 'true' );
-	// Without JavaScript the page is the server's, with no aria-busy at all.
+	// The store folds the question at the press (D-356) and keeps its mark until the answer is in. Without JavaScript
+	// the page is the server's, with neither the mark nor aria-busy.
+	await expect( page.locator( '.cbuild[data-folded]' ) ).toHaveCount( 0 );
 	await expect( page.locator( '.cbuild' ) ).not.toHaveAttribute(
 		'aria-busy',
 		'true'
@@ -1244,7 +1246,12 @@ test.describe( 'The builder with JavaScript', () => {
 			'aria-busy',
 			'false'
 		);
-		expect( asked ).toHaveLength( 1 );
+		// What the store asks once the answer is shown, ahead of a press of the lit Next (D-355), is no pick's.
+		expect(
+			asked.filter(
+				( url ) => 'wheels' === url.searchParams.get( 'cbuild[step]' )
+			)
+		).toHaveLength( 1 );
 		expect( asked[ 0 ]!.searchParams.get( 'cbuild[wheels]' ) ).toBe(
 			String( id( 'builder-test-wheels-54' ) )
 		);
@@ -1672,6 +1679,8 @@ test.describe( 'The builder with JavaScript', () => {
 		);
 		await page.keyboard.press( 'Enter' );
 		await expect( width ).toHaveAttribute( 'aria-pressed', 'true' );
+		// The question folds at the press (D-356); its answer is in once the mark is gone.
+		await expect( page.locator( '.cbuild[data-folded]' ) ).toHaveCount( 0 );
 
 		expect( await stayed( page ), 'the width kept the page' ).toBe( true );
 
@@ -4909,6 +4918,13 @@ test.describe( 'Motion', () => {
 				}
 				return response;
 			};
+			// Next's answer is asked ahead once it lights (D-355), so it may be in hand before the press: then the
+			// press is the moment the answer is there to show.
+			document.addEventListener(
+				'click',
+				() => record.answered.push( record.frame ),
+				{ capture: true }
+			);
 		} );
 		await page
 			.locator( '.cbuild' )
@@ -5257,6 +5273,185 @@ test.describe( 'Motion', () => {
 			type: 'moments at 4×',
 			description: measured.join( '; ' ),
 		} );
+	} );
+
+	// Cowork's review of 1.1.0, F20 (#118): on a real host the state route answers 700 to 1,100 ms after a press, past the
+	// 500 ms after an input that CLS leaves out, so whatever the answer moves counts. CI's local route answers within
+	// 500 ms, so the gate above never saw it. Here every answer is held back 800 ms, and each press is read for the shifts
+	// CLS counts (no recent input): a width under 0.1, as web.dev counts good; the deck, Next and a truck, D-306's moments,
+	// none at all.
+	test( 'what an answer 800 ms late moves is no layout shift: a width, a deck, Next and a truck', async ( {
+		page,
+	}, info ) => {
+		test.skip(
+			! info.project.name.startsWith( 'chromium' ),
+			'Only Chromium reports layout shift (the Layout Instability API).'
+		);
+		test.setTimeout( 120_000 );
+		const builder = page.locator( '.cbuild' );
+		await page.goto( fixture().page );
+		await expect( builder ).toHaveAttribute( 'data-ready', '' );
+		await emojiDone( page );
+		await page.route(
+			( url ) => url.pathname.endsWith( '/state' ),
+			async ( route ) => {
+				const answer = await route.fetch().catch( () => null );
+				await new Promise( ( done ) => setTimeout( done, 800 ) );
+				if ( answer ) {
+					await route
+						.fulfill( { response: answer } )
+						.catch( () => null );
+				}
+			}
+		);
+		await page.evaluate( () => {
+			const recorded = window as unknown as {
+				shifts: { at: number; value: number; sources: string[] }[];
+			};
+			recorded.shifts = [];
+			new PerformanceObserver( ( list ) => {
+				for ( const entry of list.getEntries() as unknown as {
+					value: number;
+					hadRecentInput: boolean;
+					startTime: number;
+					sources?: {
+						node?: Node | null;
+						previousRect: DOMRectReadOnly;
+						currentRect: DOMRectReadOnly;
+					}[];
+				}[] ) {
+					if ( ! entry.hadRecentInput ) {
+						recorded.shifts.push( {
+							at: entry.startTime,
+							value: entry.value,
+							sources: ( entry.sources ?? [] ).map(
+								( source ) =>
+									`${
+										source.node instanceof Element
+											? String(
+													source.node.className
+												).split( ' ' )[ 0 ]
+											: ( source.node?.nodeName ?? '?' )
+									} ${ Math.round(
+										source.previousRect.y
+									) }→${ Math.round( source.currentRect.y ) }`
+							),
+						} );
+					}
+				}
+			} ).observe( { type: 'layout-shift' } );
+		} );
+		// Each press, the most it may shift, and what its answer puts in the page's address once it is shown. The deck is
+		// picked scrolled to its card. Next is pressed a second after the deck's answer is drawn, as a shopper looks at
+		// the board first.
+		const presses: [ string, number, () => Promise< void >, string ][] = [
+			[
+				'a width',
+				0.1,
+				() =>
+					page
+						.locator( '.cbuild-width__option', {
+							has: page.locator( '.cbuild-chip__text', {
+								hasText: /^8″$/,
+							} ),
+						} )
+						.click(),
+				'cbuild%5B_width%5D=8in',
+			],
+			[
+				'a deck',
+				0,
+				// Picked with its card in the middle of the screen, the stage scrolled away, as a phone's shopper picks.
+				async () => {
+					await page
+						.getByRole( 'radio', {
+							name: 'Choose Builder test deck 8.0',
+						} )
+						.evaluate( ( radio ) =>
+							radio
+								.closest( 'li' )
+								?.scrollIntoView( { block: 'center' } )
+						);
+					await choose( page, 'Builder test deck 8.0' );
+				},
+				`cbuild%5Bdeck%5D=${ id( 'builder-test-deck-8-0' ) }`,
+			],
+			[
+				'Next',
+				0,
+				() =>
+					builder
+						.getByRole( 'button', { name: 'Next: Trucks' } )
+						.first()
+						.click(),
+				'cbuild%5Bstep%5D=trucks',
+			],
+			[
+				'a truck',
+				0,
+				() => choose( page, 'Builder test trucks 139' ),
+				`cbuild%5Btrucks%5D=${ id( 'builder-test-trucks-139' ) }`,
+			],
+		];
+		const measured: string[] = [];
+		for ( const [ name, most, press, shown ] of presses ) {
+			const from = await page.evaluate( () => performance.now() );
+			await press();
+			await expect
+				.poll( () => page.url(), { timeout: 10_000 } )
+				.toContain( shown );
+			await expect( builder ).toHaveAttribute( 'aria-busy', 'false' );
+			// The answer drawn, its pictures painted, and two frames for the observer to report.
+			await page.waitForTimeout( 1000 );
+			await page.evaluate(
+				() =>
+					new Promise( ( done ) =>
+						requestAnimationFrame( () =>
+							requestAnimationFrame( done )
+						)
+					)
+			);
+			const shifts = await page.evaluate(
+				( since ) =>
+					(
+						window as unknown as {
+							shifts: {
+								at: number;
+								value: number;
+								sources: string[];
+							}[];
+						}
+					 ).shifts.filter( ( shift ) => shift.at >= since ),
+				from
+			);
+			const counted = shifts.reduce(
+				( sum, shift ) => sum + shift.value,
+				0
+			);
+			measured.push(
+				`${ name }: ${ counted.toFixed( 3 ) } ${ shifts
+					.map(
+						( shift ) =>
+							`+${ Math.round( shift.at - from ) } ms ${ shift.value.toFixed(
+								3
+							) } [${ shift.sources.join( '; ' ) }]`
+					)
+					.join( ' | ' ) }`
+			);
+			if ( 0 === most ) {
+				expect.soft( counted, `${ name }'s layout shift` ).toBe( 0 );
+			} else {
+				expect
+					.soft( counted, `${ name }'s layout shift` )
+					.toBeLessThan( most );
+			}
+		}
+		info.annotations.push( {
+			type: 'layout shift, answers 800 ms late',
+			description: measured.join( '\n' ),
+		} );
+		// eslint-disable-next-line no-console
+		console.log( measured.join( '\n' ) );
 	} );
 } );
 
@@ -6688,12 +6883,16 @@ test.describe( 'The phone bar', () => {
 					const sum = summary.querySelector(
 						'.cbuild-bar__amount > :first-child'
 					)!;
-					const estimate = summary.querySelector(
+					const estimate = summary.querySelector< HTMLElement >(
 						'.cbuild-bar__estimate'
 					)!;
 					return {
 						shown: sum.getClientRects().length,
 						estimate: estimate.getBoundingClientRect().height,
+						said:
+							! estimate.hidden &&
+							'visible' ===
+								getComputedStyle( estimate ).visibility,
 						display: getComputedStyle( summary ).display,
 						lines: more.getClientRects().length,
 						under:
@@ -6723,17 +6922,18 @@ test.describe( 'The phone bar', () => {
 			// Beside the board's picture "Total:" broke the line on CI's fonts, and the bar grew under the thumb
 			// (D-207): the amount alone is shown.
 			expect( after.shown, 'the amount on one line' ).toBe( 1 );
-			// The deck brings the estimate, a line of its own under the amount (F2, D-230), which may grow the bar by
-			// at most that line. Without it the bar is as high as before: a wider total alone never grows it.
-			expect( before.estimate, 'no estimate on a blank build' ).toBe( 0 );
+			// The deck brings the estimate, a line of its own under the amount (F2, D-230). The line is kept, unseen, on a
+			// blank build (F20, #118; D-356), so the estimate an answer brings late moves nothing: the bar keeps its
+			// height, and a wider total alone never grows it.
+			expect( before.said, 'no estimate on a blank build' ).toBe( false );
+			expect( before.estimate, 'its line kept' ).toBeGreaterThan( 0 );
+			expect( after.said, 'the estimate, once a deck is picked' ).toBe(
+				true
+			);
 			expect(
-				after.estimate,
-				'the estimate, once a deck is picked'
-			).toBeGreaterThan( 0 );
-			expect(
-				after.height - before.height,
-				"grown by the estimate's line at most"
-			).toBeLessThanOrEqual( Math.ceil( after.estimate ) );
+				Math.abs( after.height - before.height ),
+				'the bar keeps its height'
+			).toBeLessThanOrEqual( 1 );
 			await total.evaluate( ( summary ) => {
 				(
 					summary.querySelector(
@@ -6741,10 +6941,14 @@ test.describe( 'The phone bar', () => {
 					) as HTMLElement
 				 ).style.display = 'none';
 			} );
+			// With its line taken out as well, the bar is the blank build's less that line: a wider total adds nothing.
 			expect(
-				( await read() ).height,
+				Math.abs(
+					( await read() ).height -
+						( before.height - before.estimate )
+				),
 				'as high with a wider total, the estimate aside'
-			).toBe( before.height );
+			).toBeLessThanOrEqual( 1 );
 		} );
 
 		test( `keeps its words readable on ${ theme }'s dark colours, and its open parts list too`, async ( {

@@ -4958,7 +4958,7 @@ Cowork's 1.1.0 review of D-304 (#125): from wp-admin on the demo, the deck step'
 The store sent the state request with no time limit (`navigate.ts`, the `fetch` in `ask()`), so a request that hung left the builder busy, its picture dimmed and Next waiting, until the browser gave up, which can be minutes. Cowork's 1.1.0 review measured answers of up to about 1.1 s on the demo (D-304, D-328: "a limit of several seconds wouldn't cut a working request short").
 
 - **The limit: 10 s** (`LIMIT` in `navigate.ts`), from the request's start to its whole answer read. That is about nine times the slowest answer Cowork measured on the demo, which leaves room for a slow phone network and a host whose first request of the day starts cold (the demo's first bare REST request took 1.5 s). It is also the limit Nielsen gives for keeping a person's attention on a task ("Response Times: The 3 Important Limits", nngroup.com): past it, the shopper is better told than kept waiting. A shorter limit would cut off answers that would have come; a longer one keeps the builder busy after the shopper has stopped watching it.
-- **How.** The navigator already aborts a request a later one overtakes, through its own `AbortController`. A timer of its own aborts that controller at the limit, and is cleared once the answer is in. `AbortSignal.timeout()` is supported in every browser the plugin targets (`@wordpress/browserslist-config`: Safari and iOS Safari 16 on, Firefox 100 on, Chrome and Edge 124 on, MDN's Baseline since April 2024), but it cannot be cancelled once the answer is in and needs `AbortSignal.any()` to join the controller's signal; MDN suggests a controller with `setTimeout()` and `clearTimeout()` for that case. A timer of the navigator's own is also one the unit tests can move.
+- **How.** The navigator already aborts a request a later one overtakes, through its own `AbortController`. A timer of its own aborts that controller at the limit, and is cleared once the answer is in. `AbortSignal.timeout()` is supported in every browser the plugin targets (`@wordpress/browserslist-config`: Safari and iOS Safari 16 on, Firefox 100 on, Chrome and Edge 124 on, MDN's Baseline since April 2024), but it cannot be cancelled once the answer is in and needs `AbortSignal.any()` to join the controller's signal; MDN suggests a controller with `setTimeout()` and `clearTimeout()` for that case. A timer of the navigator's own is also one the unit tests can move. A request asked ahead for Next (D-355) has a timer of its own, cleared once it is answered, so a press that waits for it is not left waiting on one that hangs.
 - **When it fires.** The request is aborted, the builder stops being busy (`aria-busy`, the dim and the line go), nothing is shown, so no moment plays, and the step keeps what it shows. The status region and the limit line say "The shop did not answer in time. Try again in a moment.", through the path a 429 takes (spec: Search, "the step keeps what it shows and says when to try again"): the words are the page's, in its language, from the store's config (`late`). The next answer clears them.
 - **Not the form's fallback.** Any other failure sends the form or follows the link as without JavaScript. A request that took 10 s means the server is slow, and a page load would ask it the same thing again with nothing on screen; the shopper chooses when to try.
 - **French.** The sentence is translatable and has its fr_CA translation: « La boutique n’a pas répondu à temps. Réessayez dans un instant. »
@@ -4972,7 +4972,6 @@ The store sent the state request with no time limit (`navigate.ts`, the `fetch` 
 **Status:** Accepted.
 
 D-366 is unused: the brief left it for a fourth decision, and none was needed.
-||||||| parent of cb61a64 (Docs: D-359 to D-361, the changelog and A11Y for Cowork's F21, F24, F25 and F26)
 
 ### D-359 · A phone held sideways keeps the strip, with the words in a column beside the board · 2026-11-24
 
@@ -5037,3 +5036,41 @@ The test holds the counts under the 70 px notice: four on Kadence and two on Twe
 **Status:** Accepted.
 
 D-362 was not used: F26 (#124), Sort and the count left out of an empty list, follows the spec's "the step says why" and needed no choice of its own.
+
+### D-355 · Next is asked ahead once it lights, so the next step shows at its press · 2026-11-24
+
+Cowork's review of 1.1.0, F20 (#118, should-fix): on a real host the state route answers 700 to 1,100 ms after a press, past the 500 ms the Layout Instability API leaves out after an input (`hadRecentInput`), so what the answer moves counts as layout shift. Next was the press that changes the most: a new step, its heading, shelf and cards. Held back 800 ms on the fixture, Next shifted 0.021 on a desktop and 0.046 on a phone.
+
+The brief offered two ways: show the next step's heading at the press and hold the panel's height, or ask ahead once Next lights, as D-308 fetches a deck's board on intent.
+
+- **Asked ahead.** Once a view is shown whose bar has Next lit on a step (`bar.next.ready` and `onStep`, not the change panel), the store asks the route for the move Next makes, the step's form with Next among its fields, on the frame after the view is shown, and keeps the answer (`Navigator::prefetch()`). Nothing is shown or said for it: no `aria-busy`, no view, no history. A press of Next with the same fields within a minute (`FRESH`) takes that answer at once, or waits for it if it is still on its way; anything else asks anew, and what was asked ahead is forgotten. An answer asked ahead that is no view, or the rate limit's refusal, is asked again at the press, so a refusal is never shown for a request the shopper did not make.
+- **When.** After a pick, a step, a link and Back: whatever shows a step where Next is lit. Never after a search, a chip or a sort (`narrowed()`), which can come a key at a time; a pick, a link, Back or a sent form after them asks ahead again.
+- **The rate limit.** The route allows 120 a minute from one address by default (D-112). Asking ahead adds one request per view shown with Next lit, so a shopper reaches the limit only at 60 picks a minute, one a second, and a shop's limit is 10 at the least, which a shopper picking every six seconds would reach either way. The limit is unchanged.
+- **Not chosen: the heading at the press.** The view the store holds has no next step's heading, shelf or cards in it, and the builder builds no markup in JavaScript (CLAUDE.md), so a heading at the press would be a template rendered from a guessed view, and the panel's height held for it would be a gap the answer fills. Asking ahead moves nothing at all.
+- **What is left.** Next pressed before the answer asked ahead is in waits for the rest of it, as any press does, and on a host as slow as the review's that wait can still pass 500 ms: pressed straight after a pick's answer, the fixture measured 0.046 on a phone and 0.021 on a desktop. A shopper who looks at the board before pressing Next sees none.
+
+**Measured** (`builder.spec.ts`, "what an answer 800 ms late moves is no layout shift: a width, a deck, Next and a truck", the route held back 800 ms, Next pressed a second after the pick's answer): Next 0.021 to 0.000 on chromium-desktop, 0.046 to 0.000 on chromium-phone.
+
+**Sources:** web.dev, "Cumulative Layout Shift (CLS)": "if a user interaction triggers a network request that may take a while to complete, it's best to create some space right away and show a loading indicator", and shifts within 500 ms of an input are left out; the Layout Instability API's `hadRecentInput`; D-308's sources for fetching on intent (web.dev's Speculation Rules guide, instant.page).
+
+**Why:** the press the shopper makes most often after a pick should change the panel at once, and the answer is the server's either way.
+
+**Status:** Accepted.
+
+### D-356 · What a press foretells is made at the press, and the lines the answer brings keep their place; the phone's stage still sticks at the answer · 2026-11-24
+
+The rest of F20 (#118). Held back 800 ms on the fixture, a width shifted 0.018 on a desktop and 0.100 on a phone, a deck 0.011 and, picked scrolled to its card as on a phone, 0.124, a truck 0.0001 and 0.0007. Each source was a line or a box the answer added or took away, which the store already knew at the press from the view it holds: the ready builds, the deck step's lead, the cards' price lines, the recommendation, the bar's estimate, and, on the phone, the page under the builder, which those moved.
+
+- **The phone's stage (D-303), decided by measurement.** A bare stage scrolls with the page and starts to stick once there is a part to show, at the answer. Cowork asked whether it should stick from the first pick's press, or from the start. Measured with the other changes in place, the stage sticking at the answer shifts nothing, picked at the top of the page or scrolled to the card, on chromium-phone. The reading, not checked further: the stage is the builder's first box, so sticking changes where it is drawn while the page is scrolled, not where anything after it is laid out. A version that made it stick from the press (`data-picked`) measured the same 0.000, so it was taken out. Not chosen either: a stage that sticks from the start, which takes back the third of a phone's screen #82 freed for a shopper who has picked nothing, for no shift saved. D-303 is unchanged.
+- **The estimate's line.** The bar keeps the estimate's line on every step before the review, out of sight while there is none, so the estimate the first pick brings moves nothing. The bar is one line taller from the start.
+- **The cards.** At a pick the store sets what the answer will: each card's price line against the pick is kept (an empty line holds its height), "Recommended for your deck" goes, the deck step's lead goes with a deck, and the ready builds go. At No risers there are no prices, and the recommendation stays. The server's answer still sets them all; the store sets the same.
+- **A width.** Pressing a width folds the question to its chosen line at the press, says the width pressed, clears "Showing N of M" and keeps the ready builds' place out of sight (`visibility: hidden` through `data-folded`) until the answer: taking them out moved the content under the builder up, and the answer put it back. The ready builds still show after a width, as the server draws them; Cowork read them as gone because the fold moved them out of view.
+- **Focus.** The width press keeps its control in place across the fold (`steady()`), as a same-step answer does: focus goes to the chosen line at the press, as it went at the answer.
+
+**Measured** (the test in D-355, each press held back 800 ms, the deck picked scrolled to its card): every press 0.000 on chromium-desktop and chromium-phone. Before: a width 0.018 and 0.100, a deck 0.011 and 0.124, Next 0.021 and 0.046, a truck 0.00014 and 0.0007. The test holds the width under 0.1 and the deck, Next and the truck at 0, as D-306 asks.
+
+**Sources:** web.dev, "Cumulative Layout Shift (CLS)": "if a user interaction triggers a network request that may take a while to complete, it's best to create some space right away and show a loading indicator", and the 500 ms after an input left out (`hadRecentInput`).
+
+**Why:** the store knew at the press what these answers would move; making the change then is within the 500 ms the shopper expects a change in, and leaves the late answer nothing to move.
+
+**Status:** Accepted.
