@@ -198,7 +198,7 @@ Yes. Its hooks, REST routes, block attributes, settings keys, order item keys, C
 == Upgrade Notice ==
 
 = 1.1.0 =
-Update as usual, from the updater or by uploading the zip. No step is needed, from any earlier release. A kit saved before 1.1.0 keeps playful motion. A grip's layer image is now the whole sheet shot flat from above: grip strips saved under 1.0 still draw as before, and a new grip image is checked for the sheet's size.
+Update from the updater or by uploading the zip; no step is needed. A kit saved before 1.1.0 keeps playful motion. A grip's layer image is now the whole sheet shot flat from above; grip strips saved under 1.0 still draw as before.
 
 = 1.0.0 =
 Update as usual, from the updater or by uploading the zip. No step is needed, from any earlier release.
