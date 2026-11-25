@@ -319,27 +319,33 @@ test.describe( 'A long step, with JavaScript', () => {
 
 	// The auditor's M10 review, 19: an answer that came back while the shopper typed on put the box back to the letters
 	// it was asked with. The answer to "R" is held until "a" is typed, then let through inside the search's 150 ms wait,
-	// before "Ra" is asked.
+	// before "Ra" is asked. The request is held as soon as it is asked, and its answer waited for on its own: held only
+	// once the server had answered, a server slower than the poll's 5 s under load looked like no search asked (#145).
 	test( 'keeps every letter typed when an answer comes back mid-word', async ( {
 		page,
 	} ) => {
 		await page.goto( at() );
-		let held: { route: Route; response: APIResponse } | undefined;
+		let held:
+			{ route: Route; response: Promise< APIResponse > } | undefined;
 		let holding = true;
 		await page.route( /cbuild\/v1\/kits\/\d+\/state/, async ( route ) => {
 			if ( ! holding ) {
 				await route.continue();
 				return;
 			}
-			held = { route, response: await route.fetch() };
+			held = { route, response: route.fetch() };
 		} );
 		const search = page.locator( '#cbuild-search' );
 		await search.press( 'R' );
-		await expect.poll( () => held ).toBeDefined();
+		await expect
+			.poll( () => held, 'the search for "R" asked' )
+			.toBeDefined();
+		// The answer to "R" in hand before "a" is typed, however long the server takes.
+		const response = await held!.response;
 		await search.press( 'a' );
 		holding = false;
 		const answered = page.waitForResponse( /cbuild\/v1\/kits\/\d+\/state/ );
-		await held!.route.fulfill( { response: held!.response } );
+		await held!.route.fulfill( { response } );
 		await answered;
 		await page.evaluate(
 			() =>
