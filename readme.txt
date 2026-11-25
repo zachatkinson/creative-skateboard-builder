@@ -107,6 +107,7 @@ Yes. Its hooks, REST routes, block attributes, settings keys, order item keys, C
 = 1.3.0 =
 * My builds compares up to three saved builds side by side, at today's prices. The parts that differ and the gap between the totals are said in words, and a part changed since the save is named.
 * "Help me choose" at the builder's start asks a shoe size, where the shopper skates and a budget, each optional, and recommends a deck width, wheel sizes and up to three ready builds from parts in stock that fit. A kit's Build tab sets the wheel sizes for each riding style.
+* Each part's line in the review shows its thumbnail, the picture its card shows, so colourways with near-identical names are told apart before Add to cart.
 
 = 1.2.0 =
 * A kit's Build tab chooses the page its builder is on. The kit's page, "Build a complete with this deck", the cart's Edit build and My builds open the builder there, while the page is published and holds the kit's Builder block.

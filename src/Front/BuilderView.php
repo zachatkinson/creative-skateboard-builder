@@ -2009,10 +2009,33 @@ final class BuilderView {
 	 * @param int          $part    The part's ID: a product's or a variation's.
 	 */
 	private static function flagged( array $classes, int $kit, string $slot, int $part ): string {
+		return self::joined( $classes, self::added( $kit, $slot, $part ) );
+	}
+
+	/**
+	 * The builder's own classes, then another plugin's, each once.
+	 *
+	 * @param list<string> $own   The builder's own classes.
+	 * @param list<string> $added What another plugin adds.
+	 */
+	private static function joined( array $own, array $added ): string {
+		return implode( ' ', array_unique( array_merge( $own, $added ) ) );
+	}
+
+	/**
+	 * What another plugin adds to a part's classes, each made safe for a class attribute.
+	 *
+	 * @param int    $kit  The kit product's ID.
+	 * @param string $slot The slot's key.
+	 * @param int    $part The part's ID: a product's or a variation's.
+	 * @return list<string>
+	 */
+	private static function added( int $kit, string $slot, int $part ): array {
+		$classes = array();
 		/**
 		 * Filter the classes of a part in the builder: its card in a step, its place in the picture and the bar's
-		 * photo, and its line in the review. The builder's own come first and are kept whatever the answer: what is
-		 * added is made safe for a class attribute and put after them.
+		 * photo, and its line and, from 1.3.0, its thumbnail in the review. The builder's own come first and are kept
+		 * whatever the answer: what is added is made safe for a class attribute and put after them.
 		 *
 		 * @since 0.6.0
 		 *
@@ -2028,7 +2051,32 @@ final class BuilderView {
 				$classes[] = $class;
 			}
 		}
-		return implode( ' ', array_unique( $classes ) );
+		return $classes;
+	}
+
+	/**
+	 * Each picked part's thumbnail for its line in the review, by slot (#132, D-403): the picture its card shows, in
+	 * the same rendition, so a part already seen loads nothing new. A deck whose card draws its layer image small (#99)
+	 * has that, from the picture's own deck layer; any other part, its card's photo. Read from the answer's picture,
+	 * which holds each counted part's card image, so nothing is asked for again.
+	 *
+	 * @param array<string, mixed> $picture The answer's picture, before the stage puts a large photo in the board's place.
+	 * @return array<string, array<string, mixed>>
+	 */
+	private static function thumbnails( array $picture ): array {
+		$thumbnails = array();
+		foreach ( Cast::items( $picture['items'] ?? null ) as $item ) {
+			$item = Cast::map( $item );
+			$thumbnails[ Cast::str( $item['slot'] ?? null ) ] = self::image( $item['image'] ?? null );
+		}
+		foreach ( Cast::items( $picture['layers'] ?? null ) as $layer ) {
+			$layer = Cast::map( $layer );
+			$drawn = SlotKey::DECK === Cast::str( $layer['slot'] ?? null ) ? self::drawn( array( 'layers' => array( $layer ) ) ) : null;
+			if ( null !== $drawn ) {
+				$thumbnails[ SlotKey::DECK ] = array_diff_key( $drawn, array( 'drawn' => true ) );
+			}
+		}
+		return $thumbnails;
 	}
 
 	/**
@@ -2376,8 +2424,11 @@ final class BuilderView {
 			$problem                                      = Cast::map( $problem );
 			$wrong[ Cast::str( $problem['slot'] ?? '' ) ] = Cast::str( $problem['message'] ?? null );
 		}
-		$items    = array();
-		$included = Builder::bearingsIncluded( $state );
+		$items      = array();
+		$included   = Builder::bearingsIncluded( $state );
+		$thumbnails = self::thumbnails( Cast::map( $answer['picture'] ?? null ) );
+		// A row with no picture of its own keeps the thumbnail's place, empty (#132).
+		$none = array( 'photoClasses' => Options::CLASS_REVIEW_PHOTO ) + self::image( null );
 		foreach ( $state->kit->slots->keys() as $slot ) {
 			if ( ! in_array( $slot, $steps, true ) ) {
 				if ( SlotKey::BEARINGS === $slot && $included ) {
@@ -2394,25 +2445,29 @@ final class BuilderView {
 						'text'    => __( 'Change', 'creative-skateboard-builder' ),
 						/* translators: %s: a slot's label, such as Trucks. */
 						'change'  => sprintf( __( 'Change %s', 'creative-skateboard-builder' ), Words::inSentence( $label( SlotKey::WHEELS ) ) ),
-					);
+					) + $none;
 				}
 				continue;
 			}
-			$own     = isset( $wrong[ $slot ] ) ? array( Options::CLASS_REVIEW_ITEM, Options::CLASS_REVIEW_ITEM . '--wrong' ) : array( Options::CLASS_REVIEW_ITEM );
+			$own = isset( $wrong[ $slot ] ) ? array( Options::CLASS_REVIEW_ITEM, Options::CLASS_REVIEW_ITEM . '--wrong' ) : array( Options::CLASS_REVIEW_ITEM );
+			// What another plugin adds lands on the row and on its thumbnail, so a flagged part blurs here too (#132).
+			$added   = isset( $counted[ $slot ] ) ? self::added( $state->id, $slot, $counted[ $slot ] ) : array();
+			$photo   = isset( $counted[ $slot ], $thumbnails[ $slot ] ) ? $thumbnails[ $slot ] : self::image( null );
 			$items[] = array(
-				'key'     => $slot,
-				'classes' => isset( $counted[ $slot ] ) ? self::flagged( $own, $state->id, $slot, $counted[ $slot ] ) : implode( ' ', $own ),
-				'label'   => $label( $slot ),
-				'name'    => isset( $counted[ $slot ] ) ? Cast::str( $lines[ $slot ]['name'] ?? null ) : __( 'None', 'creative-skateboard-builder' ),
-				'fits'    => ! isset( $wrong[ $slot ] ),
-				'fit'     => $wrong[ $slot ] ?? ( isset( $counted[ $slot ] ) ? __( 'Fits', 'creative-skateboard-builder' ) : '' ),
-				'amount'  => isset( $counted[ $slot ] ) ? Cast::str( $lines[ $slot ]['amount'] ?? null ) : '',
-				'url'     => $url( $link->at( $slot ) ),
+				'key'          => $slot,
+				'classes'      => self::joined( $own, $added ),
+				'photoClasses' => self::joined( array( Options::CLASS_REVIEW_PHOTO ), $added ),
+				'label'        => $label( $slot ),
+				'name'         => isset( $counted[ $slot ] ) ? Cast::str( $lines[ $slot ]['name'] ?? null ) : __( 'None', 'creative-skateboard-builder' ),
+				'fits'         => ! isset( $wrong[ $slot ] ),
+				'fit'          => $wrong[ $slot ] ?? ( isset( $counted[ $slot ] ) ? __( 'Fits', 'creative-skateboard-builder' ) : '' ),
+				'amount'       => isset( $counted[ $slot ] ) ? Cast::str( $lines[ $slot ]['amount'] ?? null ) : '',
+				'url'          => $url( $link->at( $slot ) ),
 				// "Change" to the eye, as the prototype has it, and read with the slot it changes.
-				'text'    => __( 'Change', 'creative-skateboard-builder' ),
+				'text'         => __( 'Change', 'creative-skateboard-builder' ),
 				/* translators: %s: a slot's label, such as Trucks. */
-				'change'  => sprintf( __( 'Change %s', 'creative-skateboard-builder' ), Words::inSentence( $label( $slot ) ) ),
-			);
+				'change'       => sprintf( __( 'Change %s', 'creative-skateboard-builder' ), Words::inSentence( $label( $slot ) ) ),
+			) + $photo;
 		}
 		$texts = Cast::map( $answer['texts'] ?? null );
 		$on    = Cast::bool( Cast::map( $answer['total'] ?? null )['assembly'] ?? null );

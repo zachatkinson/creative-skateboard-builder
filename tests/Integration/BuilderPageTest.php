@@ -763,6 +763,53 @@ final class BuilderPageTest extends IntegrationTestCase {
 		$review = $dom->query( '//ul[contains(@class,"cbuild-review__items")]/li' );
 		self::assertSame( 'cbuild-review__item is-flagged', $review->item( 0 )->getAttribute( 'class' ), 'the deck' );
 		self::assertStringNotContainsString( 'is-flagged', $review->item( 1 )->getAttribute( 'class' ), 'the trucks' );
+		// Issue #132: and its thumbnail there, which Mature Content blurs.
+		$photos = $dom->query( '//ul[contains(@class,"cbuild-review__items")]/li/span[@class="cbuild-review__thumb"]/img' );
+		self::assertSame( 'cbuild-review__photo is-flagged', $photos->item( 0 )->getAttribute( 'class' ), 'the deck\'s thumbnail' );
+		self::assertSame( 'cbuild-review__photo', $photos->item( 1 )->getAttribute( 'class' ), 'the trucks\'' );
+	}
+
+	// Issue #132: each row of the review shows its part's thumbnail, the picture and rendition its card shows, decorative
+	// beside the name; a row with no picture keeps the place, its image hidden.
+	public function test_each_row_of_the_review_is_served_with_its_cards_thumbnail_and_a_row_without_one_keeps_its_place(): void {
+		$truck = wc_get_product( $this->parts['truck 149'] );
+		$photo = LayerFiles::attachment( 600, 600, false, 'png' );
+		$truck->set_image_id( $photo );
+		$truck->save();
+		do_action( 'cbuild_parts_changed', array( $this->parts['truck 149'] ) );
+		$picks = array(
+			'deck'   => (string) $this->parts['deck 8.5'],
+			'trucks' => (string) $this->parts['truck 149'],
+		);
+
+		$card = self::dom( $this->kitPage( $picks + array( 'step' => 'trucks' ) ) )->query( '//li[contains(@class,"cbuild-card--chosen")]//img[contains(@class,"cbuild-card__photo")]' )->item( 0 );
+		self::assertInstanceOf( \DOMElement::class, $card, 'the trucks\' card has a photo' );
+		$GLOBALS['wp_interactivity'] = new WP_Interactivity_API();
+
+		$dom  = self::dom( $this->kitPage( $picks + array( 'step' => 'review' ) ) );
+		$rows = $dom->query( '//ul[contains(@class,"cbuild-review__items")]/li' );
+		self::assertGreaterThan( 2, $rows->length );
+		foreach ( $rows as $row ) {
+			self::assertSame( 1, $dom->query( './span[@class="cbuild-review__thumb"]/img[@alt=""]', $row )->length, 'every row keeps the thumbnail\'s place, its image decorative' );
+		}
+		$trucks = $dom->query( './span[@class="cbuild-review__thumb"]/img', $rows->item( 1 ) )->item( 0 );
+		self::assertInstanceOf( \DOMElement::class, $trucks );
+		self::assertFalse( $trucks->hasAttribute( 'hidden' ) );
+		$attributes = array( 'src', 'srcset', 'sizes', 'width', 'height' );
+		self::assertSame(
+			array_map( static fn( string $name ): string => $card->getAttribute( $name ), $attributes ),
+			array_map( static fn( string $name ): string => $trucks->getAttribute( $name ), $attributes ),
+			'the card\'s picture, in the same rendition'
+		);
+		self::assertSame( (string) wp_get_attachment_image_src( $photo, 'woocommerce_thumbnail' )[0], $trucks->getAttribute( 'src' ) );
+		self::assertSame( 'lazy', $trucks->getAttribute( 'loading' ) );
+
+		$deck = $dom->query( './span[@class="cbuild-review__thumb"]/img', $rows->item( 0 ) )->item( 0 );
+		self::assertInstanceOf( \DOMElement::class, $deck );
+		self::assertTrue( $deck->hasAttribute( 'hidden' ), 'the deck has no photo: its place is kept, empty' );
+		$grip = $dom->query( './span[@class="cbuild-review__thumb"]/img', $rows->item( $rows->length - 1 ) )->item( 0 );
+		self::assertInstanceOf( \DOMElement::class, $grip );
+		self::assertTrue( $grip->hasAttribute( 'hidden' ), 'nothing chosen: the place kept' );
 	}
 
 	// Audit, spec review S12 (plan risk 3): markup sent through every text the builder shows is text, never a tag.

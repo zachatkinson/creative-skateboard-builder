@@ -11317,3 +11317,161 @@ test.describe( 'What another plugin may rely on (#143)', () => {
 		expect( await stayed( page ) ).toBe( true );
 	} );
 } );
+
+/**
+ * #132 (D-403): each row of the review shows its part's thumbnail, the picture and rendition its card shows, so a part
+ * already seen loads nothing new. The thumbnail is decorative, its name beside it, and its place, a 3rem square, is
+ * kept on a row with no picture, so nothing moves. A part another plugin flags, as Mature Content flags one, blurs
+ * there too (spec: "A flagged part blurs on its card in a step, in the parts picture and in the review").
+ */
+test.describe( 'Thumbnails in the review (#132)', () => {
+	const picks = {
+		deck: id( 'builder-test-deck-8-0' ),
+		trucks: id( 'builder-test-trucks-139' ),
+		wheels: id( 'builder-test-wheels-52' ),
+		bearings: id( 'builder-test-bearings' ),
+		// The 1 in bolts have no photo and no layer image: their row has no picture.
+		hardware: id( 'builder-test-bolts-1' ),
+		grip: id( 'builder-test-grip' ),
+	};
+	const row = ( page: Page, slot: string ) =>
+		page.locator( '.cbuild-review__items > li' ).filter( {
+			has: page.locator( '.cbuild-review__slot', { hasText: slot } ),
+		} );
+	const loaded = ( photo: Locator ) =>
+		photo.evaluate(
+			( img: HTMLImageElement ) => img.complete && img.naturalWidth > 0
+		);
+	// The picture the chosen card shows on a step, as the browser chose it.
+	const chosen = async ( page: Page, step: string ): Promise< string > => {
+		await page.goto( linkTo( { ...picks, step } ) );
+		const photo = page
+			.locator( '.cbuild-card--chosen .cbuild-card__photo' )
+			.first();
+		await expect( photo ).toBeVisible();
+		await expect.poll( () => loaded( photo ) ).toBe( true );
+		return photo.evaluate( ( img: HTMLImageElement ) => img.currentSrc );
+	};
+
+	test( "shows each part's card picture on its row, and keeps the place on a row with none", async ( {
+		page,
+	} ) => {
+		const deck = await chosen( page, 'deck' );
+		const trucks = await chosen( page, 'trucks' );
+
+		await page.goto( linkTo( { ...picks, step: 'review' } ) );
+		const rows = page.locator( '.cbuild-review__items > li' );
+		await expect( rows.first() ).toBeVisible();
+		const thumbs = rows.locator( '.cbuild-review__photo' );
+		await expect( thumbs ).toHaveCount( await rows.count() );
+		for ( const thumb of await thumbs.all() ) {
+			await expect(
+				thumb,
+				'decorative: the name is beside it'
+			).toHaveAttribute( 'alt', '' );
+		}
+
+		for ( const [ slot, src ] of [
+			[ 'Deck', deck ],
+			[ 'Trucks', trucks ],
+		] as const ) {
+			const photo = row( page, slot ).locator( '.cbuild-review__photo' );
+			await expect( photo ).toBeVisible();
+			await expect.poll( () => loaded( photo ) ).toBe( true );
+			expect(
+				await photo.evaluate(
+					( img: HTMLImageElement ) => img.currentSrc
+				),
+				`the ${ slot }' card's picture, in the same rendition`
+			).toBe( src );
+		}
+		await expect(
+			row( page, 'Hardware' ).locator( '.cbuild-review__photo' ),
+			'the bolts have no picture'
+		).toBeHidden();
+
+		// Every row's place is the same 3rem square, a picture in it or not.
+		const boxes = await rows.evaluateAll( ( items ) => {
+			const rem = parseFloat(
+				getComputedStyle( document.documentElement ).fontSize
+			);
+			return items.map( ( item ) => {
+				const box = item
+					.querySelector( '.cbuild-review__thumb' )
+					?.getBoundingClientRect();
+				return [
+					Math.round( ( ( box?.width ?? 0 ) / rem ) * 100 ) / 100,
+					Math.round( ( ( box?.height ?? 0 ) / rem ) * 100 ) / 100,
+				];
+			} );
+		} );
+		expect( boxes ).toEqual( boxes.map( () => [ 3, 3 ] ) );
+		await axe( page, 'the review with its thumbnails', '.cbuild-review' );
+	} );
+
+	test( 'moves nothing as the thumbnails load', async ( { page } ) => {
+		await page.addInitScript( () => {
+			const counted = window as unknown as { cbuildShift: number };
+			counted.cbuildShift = 0;
+			// Only the browsers that report layout shifts (Chromium) add to it; the others measure the list's box.
+			new PerformanceObserver( ( list ) => {
+				for ( const entry of list.getEntries() as unknown as {
+					value: number;
+				}[] ) {
+					counted.cbuildShift += entry.value;
+				}
+			} ).observe( { type: 'layout-shift', buffered: true } );
+		} );
+		await page.goto( linkTo( { ...picks, step: 'review' } ) );
+		const items = page.locator( '.cbuild-review__items' );
+		await expect( items ).toBeVisible();
+		const before = await items.boundingBox();
+		const photos = page.locator( '.cbuild-review__photo:visible' );
+		await expect( photos.first() ).toBeVisible();
+		await expect
+			.poll( () =>
+				photos.evaluateAll( ( imgs ) =>
+					( imgs as HTMLImageElement[] ).every(
+						( img ) => img.complete
+					)
+				)
+			)
+			.toBe( true );
+		expect( await items.boundingBox(), 'the list as it was' ).toEqual(
+			before
+		);
+		const shift = await page.evaluate(
+			() => ( window as unknown as { cbuildShift: number } ).cbuildShift
+		);
+		expect( shift, "the review's layout shift" ).toBe( 0 );
+	} );
+
+	test( "blurs a flagged part's thumbnail, as Mature Content blurs it", async ( {
+		page,
+		context,
+		baseURL,
+	} ) => {
+		// tests/e2e/mu-plugins/cbuild-e2e-flag.php flags the deck by cbuild_part_classes and blurs what it reaches.
+		await context.addCookies( [
+			{
+				name: 'cbuild_e2e_flag',
+				value: String( picks.deck ),
+				url: baseURL || SITE,
+			},
+		] );
+		await page.goto( linkTo( { ...picks, step: 'review' } ) );
+		const photo = ( slot: string ) =>
+			row( page, slot ).locator( '.cbuild-review__photo' );
+		const filter = ( slot: string ) =>
+			photo( slot ).evaluate( ( img ) => getComputedStyle( img ).filter );
+		await expect( photo( 'Deck' ) ).toHaveClass(
+			/(^| )cbuild-e2e-flagged( |$)/
+		);
+		expect( await filter( 'Deck' ), 'the flagged deck' ).toMatch(
+			/^blur\(/
+		);
+		expect( await filter( 'Trucks' ), 'the trucks, not flagged' ).toBe(
+			'none'
+		);
+	} );
+} );

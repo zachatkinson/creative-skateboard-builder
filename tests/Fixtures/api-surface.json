@@ -194,6 +194,7 @@
         "cbuild-preset__photo",
         "cbuild-quantity",
         "cbuild-review__item",
+        "cbuild-review__photo",
         "cbuild-step",
         "cbuild__stage"
     ],

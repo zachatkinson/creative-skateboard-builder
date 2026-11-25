@@ -234,6 +234,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-391 · Every step's card puts its picture beside its words, in a 5rem square](#d-391--every-steps-card-puts-its-picture-beside-its-words-in-a-5rem-square--2026-11-25)
 - [D-392 · A card says the ready builds that pick it, and its rating from WooCommerce's own numbers](#d-392--a-card-says-the-ready-builds-that-pick-it-and-its-rating-from-woocommerces-own-numbers--2026-11-25)
 - [D-393 · A card's rating sits beside its price, and a ready build's pick costs a card one line](#d-393--a-cards-rating-sits-beside-its-price-and-a-ready-builds-pick-costs-a-card-one-line--2026-11-25)
+- [D-403 · Each row of the review shows its card's picture in a 3rem square, its place kept](#d-403--each-row-of-the-review-shows-its-cards-picture-in-a-3rem-square-its-place-kept--2026-11-25)
 
 ### Accessibility
 
@@ -5786,6 +5787,28 @@ Issue #134 and Zach's answers (`docs/research/plan-after-1-2.md`, "Guided start"
 One break no test in the file fails: the whole build's last check (`ReadyBuilds::key()`) accepting a warning, since walking the slots against the picks before them already leaves no warning in this catalogue. Three of `ReadyBuildsTest`'s fail it (ReadyBuildsTest.php:240, :290 and :313: the riser's, a build that only fits with a warning, and a tier whose whole build does not fit), so the check is tested there.
 
 **Why:** a finder a shopper can ignore costs the shoppers who know what they want nothing, and one form with every answer optional is the shortest path for those who don't; keeping the answers in the link keeps the visit shareable and stores nothing.
+
+**Status:** Accepted.
+
+### D-403 · Each row of the review shows its card's picture in a 3rem square, its place kept · 2026-11-25
+
+Issue #132, from Zach on 24 November, in milestone 13's plan: "Each row of the review gets its part's thumbnail, the same picture and rendition as its card. A row without a picture keeps the space." Colourways of one wheel or grip have names that differ by a word, and Baymard's checkout research has shoppers checking the thumbnails at the last step.
+
+- **The card's picture, read from what the review has.** A row's thumbnail is its part's card image as the answer's picture already holds it (`picture.items[].image`, the card's `image`), so the view asks for nothing and makes no query per row. That is the shop's thumbnail, or the part's layer image where it has no photo (D-282), with the card's `srcset` and `sizes`, so the browser chooses the file the card had. Not the stage's large photo, which a deck with no layer image shows in the board's place (#82).
+- **A deck the card draws.** A deck with a layer image has its card draw that image small and upright from the picture's WebP renditions (#99). Its row does the same, from the picture's own deck layer, with the card's `sizes` (the 7rem card's), so it is the same file. In a 3rem square that is the board's outline upright, a narrow shape, but it is the picture the shopper chose by, and the stage beside the review shows the whole board.
+- **3rem, not the card's 5rem.** The review is a list to check, not to choose from: a 48 px square sits within the row's two lines of name and fit, so the rows are no taller than before, and the seven rows of a build still fit a desktop's screen with the total and Add to cart. The picture is fitted whole into the square (`object-fit: contain`). Square by `inline-size` and `aspect-ratio`, as the cards are (D-391), since a theme's `img { height: auto }` outranks `:where()`.
+- **Its place kept.** The square is a box of its own (`cbuild-review__thumb`) on every row; the image in it is hidden where the part has no picture, nothing is chosen, or the bearings come with the wheels. So rows line up and nothing moves as the pictures load. On a narrow builder the square stays at the row's start and the slot, name and fit stack beside it.
+- **Decorative.** `alt=""`: the part's name is beside it. Lazy, as the cards' pictures are.
+- **Flagged parts blur there too.** The image takes the same `cbuild_part_classes` answer as its row, as the bar's photo does, under a class of its own, `cbuild-review__photo`, added to HOOKS.md's Builder classes and `Options::cssClasses()` at 1.3.0. Mature Content can blur it by either the row's class or its own. The filter is asked once per row, as before: the row and its image share the answer.
+- **No change to the state route's API.** The rows are part of `view`, which `schema/state.json` describes as the builder's own; no new string, so no translation.
+
+**Tests.** `BuilderTest`: each row's thumbnail is its card's (a deck by its photo and by its drawn layer image, the trucks), a part with no photo, a slot with nothing and bearings that come with the wheels keep an empty place, and a flagged deck's thumbnail takes the flag. `BuilderPageTest` (integration): every row has its square with a decorative image, the trucks' image has the chosen card's `src`, `srcset`, `sizes`, `width` and `height`, and a row with none is hidden in its place. `builder.spec.ts`, "Thumbnails in the review (#132)": the deck's and trucks' rows show the `currentSrc` their chosen cards showed, every row's square is 3rem, axe is clean, nothing shifts as the pictures load, and a deck flagged by `tests/e2e/mu-plugins/cbuild-e2e-flag.php` is blurred while the trucks are not. The integration and browser tests were written with the change and not run (every lane was busy); they run at the batch's `/verify`.
+
+**Red run.** `BuilderTest::test_each_row_of_the_review_shows_its_cards_picture_and_a_row_without_one_keeps_its_place`, "a deck with no layer image: its card's thumbnail, not the stage's large photo (#82)", Expected `true, 'https://shop.test/101.jpg', …` Received `null, null, …` (BuilderTest.php:2004).
+
+**Visual baselines that move** (not remade here): every `{theme}-{scheme}-{size}-review` shot, and the moment `twentytwentyfive-light-desktop-moment-cart`.
+
+**Why:** the review is where a shopper confirms the build before paying, and a picture tells two colourways apart where their names hardly do. The card's own file costs nothing more to show.
 
 **Status:** Accepted.
 

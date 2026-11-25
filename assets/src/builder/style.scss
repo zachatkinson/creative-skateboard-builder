@@ -2031,10 +2031,11 @@
 	font-size: var(--cbuild-small);
 }
 
-/* A row of the review, as the prototype has it: the slot, the part with its fit under it, the price, and Change. */
+/* A row of the review, as the prototype has it: the slot, the part with its fit under it, the price, and Change, after
+   the part's thumbnail (#132, D-403). */
 :where(.cbuild-review__item) {
 	display: grid;
-	grid-template-columns: minmax(5rem, auto) minmax(0, 1fr) auto auto;
+	grid-template-columns: 3rem minmax(5rem, auto) minmax(0, 1fr) auto auto;
 	align-items: center;
 	gap: 0 var(--cbuild-gap-small);
 	padding: var(--cbuild-gap-small);
@@ -2043,57 +2044,80 @@
 	background: var(--cbuild-surface);
 }
 
+/* The thumbnail's place, a 3rem square kept whether or not the part has a picture, so nothing moves as it loads or
+   from row to row. Square by its inline size and shape, as the cards' (D-391): a theme's img { height: auto } outranks
+   :where(). The picture is fitted into it whole. */
+:where(.cbuild-review__thumb) {
+	display: block;
+	grid-area: 1 / 1 / span 2;
+	align-self: center;
+	inline-size: 3rem;
+	aspect-ratio: 1;
+}
+
+:where(.cbuild-review__photo) {
+	display: block;
+	inline-size: 100%;
+	block-size: auto;
+	aspect-ratio: 1;
+	object-fit: contain;
+	border-radius: calc(var(--cbuild-radius) / 2);
+}
+
 :where(.cbuild-review__slot) {
-	grid-row: 1 / span 2;
+	grid-area: 1 / 2 / span 2;
 	color: var(--cbuild-muted);
 	font-size: var(--cbuild-small);
 }
 
 :where(.cbuild-review__name) {
-	grid-column: 2;
+	grid-column: 3;
 	font-weight: 600;
 }
 
 :where(.cbuild-review__fit) {
-	grid-column: 2;
+	grid-column: 3;
 	color: var(--cbuild-muted);
 	font-size: var(--cbuild-small);
 }
 
 :where(.cbuild-review__amount) {
-	grid-area: 1 / 3 / span 2;
+	grid-area: 1 / 4 / span 2;
 	font-variant-numeric: tabular-nums;
 	white-space: nowrap;
 }
 
 :where(.cbuild-review__change) {
-	grid-area: 1 / 4 / span 2;
+	grid-area: 1 / 5 / span 2;
 	padding-inline: 0.875rem;
 	font-size: 1rem;
 	text-decoration: none;
 }
 
-/* Narrow: the slot over the part, the price and Change beside them. */
+/* Narrow: the thumbnail, then the slot over the part, the price and Change beside them. */
 @container cbuild (max-width: 30rem) {
 	:where(.cbuild-review__item) {
-		grid-template-columns: minmax(0, 1fr) auto auto;
+		grid-template-columns: 3rem minmax(0, 1fr) auto auto;
+	}
+
+	:where(.cbuild-review__thumb) {
+		grid-row: 1 / span 3;
 	}
 
 	:where(.cbuild-review__slot) {
-		grid-row: auto;
-		grid-column: 1;
+		grid-area: auto / 2;
 	}
 
 	:where(.cbuild-review__name, .cbuild-review__fit) {
-		grid-column: 1;
+		grid-column: 2;
 	}
 
 	:where(.cbuild-review__amount) {
-		grid-area: 1 / 2 / span 3;
+		grid-area: 1 / 3 / span 3;
 	}
 
 	:where(.cbuild-review__change) {
-		grid-area: 1 / 3 / span 3;
+		grid-area: 1 / 4 / span 3;
 	}
 }
 

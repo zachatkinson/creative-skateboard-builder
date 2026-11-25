@@ -212,6 +212,13 @@ final class Options {
 	public const CLASS_STEP = 'cbuild-step';
 
 	/**
+	 * A part's thumbnail on its line in the review, where `cbuild_part_classes` lands too (#132, D-403).
+	 *
+	 * @since 1.3.0
+	 */
+	public const CLASS_REVIEW_PHOTO = 'cbuild-review__photo';
+
+	/**
 	 * Order item meta (spec: Data model, Order items). Hidden from customers by their underscore, and kept with the
 	 * shop's order records for good: a key is never renamed.
 	 */
@@ -491,6 +498,7 @@ final class Options {
 			self::CLASS_PICTURE,
 			self::CLASS_STAGE,
 			self::CLASS_STEP,
+			self::CLASS_REVIEW_PHOTO,
 		);
 	}
 

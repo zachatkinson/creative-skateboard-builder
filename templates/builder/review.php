@@ -15,6 +15,8 @@ defined( 'ABSPATH' ) || exit;
 	<ul class="cbuild-review__items">
 		<template data-wp-each--item="state.view.review.items" data-wp-each-key="context.item.key">
 			<li data-wp-bind--class="context.item.classes">
+				<?php // The part's thumbnail, its card's picture (#132, D-403): decorative, since its name is beside it. A row with none keeps the place. ?>
+				<span class="cbuild-review__thumb"><img data-wp-bind--class="context.item.photoClasses" alt="" loading="lazy" decoding="async" data-wp-bind--hidden="!context.item.hasImage" data-wp-bind--src="context.item.src" data-wp-bind--srcset="context.item.srcset" data-wp-bind--sizes="context.item.sizes" data-wp-bind--width="context.item.width" data-wp-bind--height="context.item.height"></span>
 				<span class="cbuild-review__slot" data-wp-text="context.item.label"></span>
 				<span class="cbuild-review__name" data-wp-text="context.item.name"></span>
 				<span class="cbuild-review__fit" data-wp-text="context.item.fit"></span>

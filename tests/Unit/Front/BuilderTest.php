@@ -1472,6 +1472,8 @@ final class BuilderTest extends TestCase {
 		self::assertSame( array( 'Bearings', 'Included with your wheels', '' ), array( $items[ SlotKey::BEARINGS ]['label'], $items[ SlotKey::BEARINGS ]['name'], $items[ SlotKey::BEARINGS ]['amount'] ) );
 		self::assertSame( 'Change wheels', $items[ SlotKey::BEARINGS ]['change'], 'they change with the wheels' );
 		self::assertTrue( $items[ SlotKey::BEARINGS ]['fits'], 'and they fit' );
+		self::assertSame( array( false, '' ), array( $items[ SlotKey::BEARINGS ]['hasImage'], $items[ SlotKey::BEARINGS ]['src'] ), 'no thumbnail of their own, the place kept (#132)' );
+		self::assertSame( 'cbuild-review__photo', $items[ SlotKey::BEARINGS ]['photoClasses'] );
 	}
 
 	// Spec (configurator): Risers, "It opens on the riser that clears them, with the reason ("Your 56 mm wheels need ½″
@@ -1643,18 +1645,26 @@ final class BuilderTest extends TestCase {
 		self::assertSame( array( 'deck', 'trucks', 'wheels', 'bearings', 'hardware', 'grip' ), array_column( $review['items'], 'key' ) );
 		self::assertSame(
 			array(
-				'key'     => 'trucks',
-				'classes' => 'cbuild-review__item',
-				'label'   => 'Trucks',
-				'name'    => 'Part 139',
-				'fits'    => true,
-				'fit'     => 'Fits',
+				'key'          => 'trucks',
+				'classes'      => 'cbuild-review__item',
+				'photoClasses' => 'cbuild-review__photo',
+				'label'        => 'Trucks',
+				'name'         => 'Part 139',
+				'fits'         => true,
+				'fit'          => 'Fits',
 				// Each row carries its price, as the prototype's review has it.
-				'amount'  => '$50.00',
-				'url'     => 'https://shop.test/?page_id=5&lang=fr&' . http_build_query( array( 'cbuild' => array_map( 'strval', self::STREET ) + array( 'step' => 'trucks' ) ) ),
+				'amount'       => '$50.00',
+				'url'          => 'https://shop.test/?page_id=5&lang=fr&' . http_build_query( array( 'cbuild' => array_map( 'strval', self::STREET ) + array( 'step' => 'trucks' ) ) ),
 				// "Change" to the eye, read with what it changes.
-				'text'    => 'Change',
-				'change'  => 'Change trucks',
+				'text'         => 'Change',
+				'change'       => 'Change trucks',
+				// Its card's thumbnail (#132).
+				'hasImage'     => true,
+				'src'          => 'https://shop.test/139.jpg',
+				'srcset'       => '',
+				'sizes'        => '',
+				'width'        => 300,
+				'height'       => 300,
 			),
 			$review['items'][1]
 		);
@@ -1955,6 +1965,10 @@ final class BuilderTest extends TestCase {
 		$review = array_column( $view['review']['items'], 'classes', 'key' );
 		self::assertSame( 'cbuild-review__item is-flagged badclass', $review[ SlotKey::DECK ] );
 		self::assertSame( 'cbuild-review__item', $review[ SlotKey::TRUCKS ] );
+		// Issue #132: Mature Content blurs a flagged part's thumbnail in the review, as the bar's photo, by the same answer.
+		$photos = array_column( $view['review']['items'], 'photoClasses', 'key' );
+		self::assertSame( 'cbuild-review__photo is-flagged badclass', $photos[ SlotKey::DECK ] );
+		self::assertSame( 'cbuild-review__photo', $photos[ SlotKey::TRUCKS ] );
 	}
 
 	// Cowork's review of 1.0.0, F19 (#105; D-309): a ready build's tile shows the build, so it takes the classes another
@@ -1976,5 +1990,48 @@ final class BuilderTest extends TestCase {
 
 		unset( $GLOBALS['cbuild_test_filters']['cbuild_part_classes'] );
 		self::assertSame( 'cbuild-preset__photo', $this->show( new BuildLink() )['view']['presets']['tiles'][0]['photoClasses'] );
+	}
+
+	/**
+	 * A row's thumbnail as the template binds it, in a fixed order.
+	 *
+	 * @param array<string, mixed> $item A review row, or a card.
+	 * @return list<mixed>
+	 */
+	private static function thumb( array $item ): array {
+		return array_map( static fn( string $key ): mixed => $item[ $key ] ?? null, array( 'hasImage', 'src', 'srcset', 'sizes', 'width', 'height' ) );
+	}
+
+	// Issue #132: each row of the review shows its part's thumbnail, "the same picture and rendition as its card", so a
+	// part already seen loads nothing new, and "a row without a picture keeps the space". Read from the answer's
+	// picture, which the review already has: the view asks for nothing.
+	public function test_each_row_of_the_review_shows_its_cards_picture_and_a_row_without_one_keeps_its_place(): void {
+		$review = array_column( $this->show( new BuildLink( self::STREET, null, State::REVIEW ) )['view']['review']['items'], null, 'key' );
+		$decks  = array_column( $this->show( new BuildLink( self::STREET, null, SlotKey::DECK ) )['view']['step']['options'], null, 'id' );
+		$trucks = array_column( $this->show( new BuildLink( self::STREET, null, SlotKey::TRUCKS ) )['view']['step']['options'], null, 'id' );
+		self::assertSame( array( true, 'https://shop.test/101.jpg', '', '', 300, 300 ), self::thumb( $review[ SlotKey::DECK ] ), 'a deck with no layer image: its card\'s thumbnail, not the stage\'s large photo (#82)' );
+		self::assertSame( self::thumb( $decks[101] ), self::thumb( $review[ SlotKey::DECK ] ), 'the deck\'s card' );
+		self::assertSame( self::thumb( $trucks[139] ), self::thumb( $review[ SlotKey::TRUCKS ] ), 'the trucks\' card' );
+		self::assertSame( 'cbuild-review__photo', $review[ SlotKey::TRUCKS ]['photoClasses'] );
+
+		// A deck with a layer image: its card draws the layer image small and upright, from the picture's renditions
+		// (#99), and so does its row, with the same `sizes`, so the browser chooses the file the card had.
+		$this->topArt();
+		$review = array_column( $this->show( new BuildLink( self::STREET, null, State::REVIEW ) )['view']['review']['items'], null, 'key' );
+		$decks  = array_column( $this->show( new BuildLink( self::STREET, null, SlotKey::DECK ) )['view']['step']['options'], null, 'id' );
+		self::assertTrue( $decks[101]['drawn'] );
+		self::assertSame( '29px', $review[ SlotKey::DECK ]['sizes'] );
+		self::assertSame( self::thumb( $decks[101] ), self::thumb( $review[ SlotKey::DECK ] ), 'the deck\'s card, drawn' );
+		self::assertSame( 'https://shop.test/701.jpg', $review[ SlotKey::GRIP ]['src'], 'a grip the top draws keeps its card\'s photo' );
+
+		// No picture: a part with no photo, and a slot with nothing in it. The place is kept, empty.
+		$none = array( false, '', '', '', 0, 0 );
+		$bare = array( SlotKey::DECK => 102 ) + self::STREET;
+		unset( $bare[ SlotKey::GRIP ] );
+		$this->layers->attachments = array();
+		$review                    = array_column( $this->show( new BuildLink( $bare, null, State::REVIEW ) )['view']['review']['items'], null, 'key' );
+		self::assertSame( $none, self::thumb( $review[ SlotKey::DECK ] ), 'Part 102 has no photo' );
+		self::assertSame( $none, self::thumb( $review[ SlotKey::GRIP ] ), 'nothing chosen' );
+		self::assertSame( 'cbuild-review__photo', $review[ SlotKey::GRIP ]['photoClasses'] );
 	}
 }

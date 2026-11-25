@@ -42,6 +42,7 @@ All notable changes to this project are documented here. The format follows [Kee
   - `.cbuild[data-ready]`, the sign the builder has hydrated, for a script that loads after the first event;
   - the classes `cbuild-card`, `cbuild-card__control`, `cbuild-picture`, `cbuild__stage` and `cbuild-step`, named in HOOKS.md as API, with the last child of `.cbuild__stage` and the first of `form.cbuild-step` kept for another plugin's element through every redraw.
 - **Ready builds' picks and ratings on the cards:** a part a ready build shown picks says "Picked for Street", and a part with reviews shows a star and "4.5 (12)" beside its price, read as "4.5 out of 5, 12 reviews", from WooCommerce's own rating and count, wherever the shop shows ratings. A card with both is one line taller at most, so a screen holds as many plain cards as before. The state route's answer gains `presets` on each option and `rating` on each card; nothing is renamed (#137, D-392, D-393).
+- **A thumbnail on each part's row in the review,** the picture its card shows, in the same file, in a 3rem square kept on a row with no picture. Decorative (`alt=""`), and a part another plugin flags is flagged there too: the class `cbuild-review__photo` takes `cbuild_part_classes`' answer, as its row does (#132, D-403).
 - **The deck step's time, placed:** the state route's `Server-Timing` header to a shop manager names the answer's phases after its time and queries: `cbuild-shelf`, `cbuild-cards` and, on the deck step, `cbuild-boards` (#125, D-365).
 
 ### Changed
