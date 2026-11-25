@@ -45,10 +45,25 @@ upload="$copy-$version.zip"
 from="$(sed -n "s/^define( 'CBUILD_VERSION', '\([^']*\)' );/\1/p" "tmp/upgrade/old/$copy/$slug.php")"
 
 here=wp-content/plugins/$slug
-# WP-CLI prints a deprecation of its own on PHP 8.5 after the answer (php-cli-tools), which is not the plugin's.
-wp() { npx wp-env run cli -- wp "$@" 2>/dev/null | tr -d '\r' | grep -v 'php-cli-tools' || true; }
+# WP-CLI prints a deprecation of its own on PHP 8.5 (vendor/wp-cli/php-cli-tools/lib/cli/Colors.php:95, "Using null as an
+# array offset"), which is not the plugin's. It can land in the middle of the next line, so it is cut out where it is,
+# not by dropping its line. A PHP deprecation, warning or notice from the plugin's own files fails the run (noise()).
+noise_file="tmp/upgrade-noise.txt"
+: > "$noise_file"
+quiet() { sed -E 's#(PHP )?Deprecated: Using null as an array offset is deprecated, use an empty string instead in phar://[^ ]*php-cli-tools/lib/cli/Colors\.php on line [0-9]+##g'; }
+noted() { tee >(grep -E '(Deprecated|Warning|Notice|Fatal error):' >> "$noise_file" || true); }
+noise() {
+	[ -s "$noise_file" ] || return 0
+	# The plugin's own files, either copy: a notice from them fails the run. Another's (WordPress, WooCommerce, WP-CLI) is listed.
+	if grep -qE "/plugins/($slug|$copy)/" "$noise_file"; then
+		grep -E "/plugins/($slug|$copy)/" "$noise_file" | sort -u | sed 's/^/   /' >&2
+		fail "a WP-CLI call printed the plugin's PHP notices above"
+	fi
+	sort -u "$noise_file" | sed 's/^/   not the plugin'"'"'s: /'
+}
+wp() { npx wp-env run cli -- wp "$@" 2> >(tr -d '\r' | quiet | noted > /dev/null) | tr -d '\r' | quiet | noted || true; }
 # WP-CLI's own error lines matter here, so stderr is kept, less wp-env's progress and a WP-CLI deprecation of its own.
-wp_said() { npx wp-env run cli -- wp "$@" 2>&1 | tr -d '\r' | grep -v '^ℹ\|^✔\|^✖\|^Command failed\|php-cli-tools' || true; }
+wp_said() { npx wp-env run cli -- wp "$@" 2>&1 | tr -d '\r' | quiet | noted | grep -v '^ℹ\|^✔\|^✖\|^Command failed\|^\s*$' || true; }
 fail() { echo "upgrade: $1" >&2; exit 1; }
 restore() {
 	# What the seed made goes with the run, so a browser run after it meets the site as it was (audit of 1.0.0, M8).
@@ -167,6 +182,7 @@ failed="$(wp action-scheduler action list --group=creative-skateboard-builder --
 case "$failed" in ''|*[!0-9]*) fail "the plugin's failed jobs could not be counted: '$failed'" ;; esac
 [ "$failed" = 0 ] || fail "after the update, $failed of the plugin's jobs failed"
 [ "$(errors)" = "$before" ] || fail "the jobs after the update logged a PHP error naming the plugin"
+noise
 echo "   after: $read; no failed job."
 if [ "$clean" = 1 ]; then
 	echo "Upgrade: $from updates to $version through the upload screen, and its container fits $version's files."
