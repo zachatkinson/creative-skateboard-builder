@@ -5533,6 +5533,8 @@ The walkthrough of milestone 12, finding 9, older than M12: "Search in the steps
 
 **Red run.** chromium-desktop: "options cut short / Received: cbuild-kit-layout-search: Creative Search where it is active, the builder's own otherwise".
 
+**Without a second `!important` (the audit's third pass, 25 Nov).** The lists' `width:auto!important` was there only to beat the tab's own `width:100%!important`. The full width is now scoped to every field but a list of one option (`.short:not(select:not([multiple]))`) and Select2's box, which sets its width inline, and the lists' rule has no `!important`: its selector, 0,4,2, outranks WooCommerce's widths for the panel's fields, 0,4,1 at most (`assets/css/admin.css`, `.wc-wp-version-gte-70 .woocommerce_options_panel input[type=text].short`). The tab's styles hold two `!important`s, not three. The same test now also checks every other field keeps the full width, up to 30em. Deliberate breaks, chromium-desktop: the lists' `width:auto` taken out, "options cut short / Received + 3" (build-tab.spec.ts:333); the scoped full width taken out, "fields narrower than the full width / cbuild-kit-slots-0-label: 388.5 of 420" and 80 more. Put back, it passes.
+
 **Why:** a choice the owner cannot read whole is a choice they must open to make.
 
 **Status:** Accepted.

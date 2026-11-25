@@ -331,6 +331,41 @@ test.describe( 'The Build tab', () => {
 					} )
 			);
 		expect( cut, 'options cut short' ).toEqual( [] );
+		// Every other field keeps the full width, up to 30em: the lists' own rule is scoped, not forced.
+		const narrow = await page
+			.locator(
+				`${ PANEL } p.form-field :is(input, textarea).short, ${ PANEL } p.form-field .select2-container`
+			)
+			.evaluateAll( ( fields ) =>
+				fields
+					.filter(
+						( field ) =>
+							( field as HTMLElement ).offsetParent !== null
+					)
+					.flatMap( ( field ) => {
+						const line = field.parentElement;
+						if ( ! line ) {
+							return [];
+						}
+						const style = getComputedStyle( line );
+						const room =
+							line.clientWidth -
+							parseFloat( style.paddingInlineStart ) -
+							parseFloat( style.paddingInlineEnd );
+						const full = Math.min(
+							room,
+							30 *
+								parseFloat( getComputedStyle( field ).fontSize )
+						);
+						const width = field.getBoundingClientRect().width;
+						return Math.abs( width - full ) > 1
+							? [
+									`${ field.id || field.className }: ${ width } of ${ full }`,
+								]
+							: [];
+					} )
+			);
+		expect( narrow, 'fields narrower than the full width' ).toEqual( [] );
 	} );
 
 	// #142: the assembly time in business days, beside the lead time. Typed as "2 - 4", it is kept as "2-4"; past 60

@@ -96,10 +96,13 @@ final class BuildTab {
 		. '.cbuild-kit p.form-field label{float:none;display:block;width:auto;margin:0 0 4px}'
 		. '.cbuild-kit p.form-field input.checkbox{float:none;margin:0;margin-inline-end:6px}'
 		. '.cbuild-kit p.form-field input.checkbox+label{display:inline}'
-		. '.cbuild-kit p.form-field .short,.cbuild-kit p.form-field .select2-container{float:none;width:100%!important;max-width:30em;box-sizing:border-box}'
+		. '.cbuild-kit p.form-field .short,.cbuild-kit p.form-field .select2-container{float:none;max-width:30em;box-sizing:border-box}'
+		// The full width is for every field but a list that takes one option. Select2 sets its box's width inline.
+		. '.cbuild-kit p.form-field .short:not(select:not([multiple])),.cbuild-kit p.form-field .select2-container{width:100%!important}'
 		// A list cannot wrap its option: one is as wide as its longest option, 30em at the least, up to the field's
-		// width, so no option is cut short where there is room (the walkthrough of M12, finding 9; D-387).
-		. '.cbuild-kit p.form-field select.short:not([multiple]){width:auto!important;min-width:min(30em,100%);max-width:100%}'
+		// width, so no option is cut short where there is room (the walkthrough of M12, finding 9; D-387). Its
+		// selector outranks WooCommerce's widths for the panel's fields, 0,4,1 at most, without a forced priority.
+		. '.cbuild-kit p.form-field select.short:not([multiple]){width:auto;min-width:min(30em,100%);max-width:100%}'
 		. '.cbuild-kit p.form-field .description{display:block;clear:both;margin:4px 0 0}'
 		. '.cbuild-kit-moves{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0;padding:8px 12px}'
 		. '.cbuild-kit-moves .button{min-height:30px}'
