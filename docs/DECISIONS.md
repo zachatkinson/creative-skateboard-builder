@@ -5639,6 +5639,29 @@ Issue #134 and Zach's answer 2 (`docs/research/plan-after-1-2.md`): the guided s
 
 **Status:** Accepted.
 
+### D-401 · The guided start's ready builds: the cheapest, the middle and the dearest part a slot, through the fit engine · 2026-11-25
+
+Issue #134: three ready builds, budget, mid and premium, from in-stock parts that pass the fit engine at the guided width and wheel size, as many as the shop can make and never one that fails fit, the rules in `src/Domain`. `Domain\Guide\ReadyBuilds` makes them; the choices the issue leaves:
+
+- **A tier is a price position in each slot,** not a price band: budget takes each slot's cheapest part, premium its dearest, mid the middle, the cheaper of two in the middle. A price band would need numbers the shop has to set and keep up to date for every currency; a position needs none, and holds whatever the shop stocks. A part's price is what the build pays for it, its price times the sets it takes (R7), so four wheels sold singly are four prices. Two parts at one price go by ID, so the same catalogue always makes the same builds.
+- **The slots are walked in the kit's order, each against the picks before it,** as the shopper's steps are (`FitEngine::options()`). A slot takes only parts in stock in what the build takes (`Option::available()`), and a part that fits before one that only fits with a warning: the wheels over a truck's limit warn until a riser is picked, so they are taken when nothing else in the sizes asked fits.
+- **The deck is the width asked, the wheels the sizes asked;** the trucks, risers, bolts and grip take the size the build takes (`SizePicker::pick()`, the size each step's chips choose), and the tier chooses among the parts of that size. So a premium build is not 9 in trucks under an 8.25 in deck because they cost more.
+- **A slot the kit does not require is filled only where the build asks for it** (`Asking::findings()`), as wheels over the trucks' limit ask for a riser; Bearings is skipped where the wheels come with theirs (D-246). A required slot nothing fills makes no build of that tier.
+- **The whole build is checked last,** each part against every other (`FitEngine::build()`, as the cart is), and is offered only where every part is `Fits`. A build with a warning is not one that "passes the fit engine": the shopper did not choose it and was not told.
+- **Two alike are one,** named for what it is: the budget build where it is the cheapest, the premium where it is the dearest. A shop with one build has `Tier::Only`. The tier is a code; the words are the edge's.
+- **The width,** from a row of the width guide (D-350): of the in-stock decks in the row, the width nearest its middle, the narrower of two as near (the guide's rows overlap at their ends, and a shopper between sizes is usually told to go narrower for street); a row with no end is measured from its first width. `ReadyBuilds::width()`.
+- **The budget** keeps the builds whose total is at or under it, a total at the budget included. Where it covers none, the cheapest is kept alone, so an answer never empties the page, and the edge says it is over (`ReadyBuilds::affordable()`).
+
+**Tests.** `ReadyBuildsTest`, 15 tests: three builds from three prices a slot, each validated with `BuildValidator` and every part `Fits`; the middle of an even number; a set against singles; a sheet with no set size; one part a slot (one build, `only`); two alike (budget and premium); sold-out parts and too few of a single part; no deck in the width or wheel in the sizes (none); no width or size asked (any); wheels over the limit bringing the kit's riser and bolts through it, the riser sold out (none); a slot not required left empty, or filled when asked for and empty when the shop cannot; wheels with their bearings; a required slot with nothing (none); a build that only fits with a warning (none); a tier whose whole build warns left out and the others kept; the width at each tie and end, a deck with one left and one with none; the budget at, under and over. Domain coverage 100 % of lines and branches; Infection on `Domain\Guide` 176 mutants, 175 killed by tests, and one cast PHPStan needs, added to `tools/infection-static-allowed.txt` with its reason (an offered part always has a quantity: R7 blocks one with no set size where the slot takes more).
+
+**Red run.** `ReadyBuildsTest` with the classes missing: "Class "CreativeBranding\SkateboardBuilder\Domain\Guide\ReadyBuilds" not found" (ReadyBuildsTest.php:90), in all 13 tests then written.
+
+**Deliberate break.** The premium tier set to the cheapest: four tests failed, the first at ReadyBuildsTest.php:132, "Failed asserting that two arrays are identical." Put back, all passed.
+
+**Why:** a position in each slot's prices needs no setting and works for any catalogue, and checking the whole build with the same engine the cart uses is the only way to promise a build that fits.
+
+**Status:** Accepted.
+
 ### D-410 · A kit's page and the Builder page print no Product markup, with WooCommerce's or Yoast's, and need no new filter · 2026-11-25
 
 Issue #141, from the roadmap's companion review of 24 November: in place of a Creative Schema release, a test that a kit's page and the Builder block's page print no Product JSON-LD, with WooCommerce's structured data and with Yoast SEO's. Where one did, the builder was to remove it through that plugin's filter, for the kit only.
