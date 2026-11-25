@@ -34,7 +34,7 @@ Zach accepted D-002 to D-011 as proposed on 9 November 2026, before milestone 1.
 
 ## Index by area
 
-Each decision is listed once, under the area it is mostly about, in number order. The entries themselves follow in [The decisions](#the-decisions). D-316 to D-318, D-327, D-358, D-362, D-366 and D-370 are unused.
+Each decision is listed once, under the area it is mostly about, in number order. The entries themselves follow in [The decisions](#the-decisions). D-316 to D-318, D-327, D-358, D-362, D-366, D-370 and D-381 are unused.
 
 ### Project, scope and reviews
 
@@ -5417,6 +5417,8 @@ The auditor's minor 7 on milestone 12 asked for axe on the states M12 added. axe
 **Why:** muted words are still words a shopper reads, and the builder takes the theme's colours without being told them, so it has to keep them readable whatever they are.
 
 **Status:** Accepted.
+
+D-381 is unused: it was kept for #145, whose three tests were fixed with no decision to take.
 
 ### D-382 · The bar follows the panel, not inside it, so its sticky foot can rise to the builder's top · 2026-11-24
 
