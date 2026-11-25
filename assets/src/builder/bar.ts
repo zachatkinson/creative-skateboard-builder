@@ -139,13 +139,17 @@ export function size( root: Element ): void {
 		return;
 	}
 	const box = bar.getBoundingClientRect();
-	// What a press of the dimmed Next says sits over the bar while it says something, and covers what is under it as
-	// the bar does (WCAG 2.4.11). Empty, it has no height.
-	const said = bar
-		.querySelector( '.cbuild-bar__missing' )
-		?.getBoundingClientRect();
-	const above =
-		said && said.height > 0 ? Math.max( 0, box.top - said.top ) : 0;
+	// What a press of the dimmed Next says, and the limit's line (D-383), sit over the bar while they say something,
+	// and cover what is under them as the bar does (WCAG 2.4.11). Empty or hidden, each has no height.
+	let above = 0;
+	for ( const line of bar.querySelectorAll(
+		'.cbuild-bar__missing, .cbuild__limited'
+	) ) {
+		const said = line.getBoundingClientRect();
+		if ( said.height > 0 ) {
+			above = Math.max( above, box.top - said.top );
+		}
+	}
 	page.style.setProperty(
 		'--cbuild-bar-size',
 		`${ Math.ceil( box.height + above ) }px`

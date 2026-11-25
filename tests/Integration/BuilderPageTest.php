@@ -199,7 +199,7 @@ final class BuilderPageTest extends IntegrationTestCase {
 			$regions[] = strtok( $region->getAttribute( 'class' ), ' ' );
 		}
 		self::assertSame(
-			array( 'cbuild__status', 'cbuild__limited', 'cbuild-progress', 'cbuild__stage', 'cbuild-errors', 'cbuild__heading', 'cbuild-step__lead', 'cbuild-step', 'cbuild-presets', 'cbuild-changes', 'cbuild-review', 'cbuild-bar' ),
+			array( 'cbuild__status', 'cbuild-progress', 'cbuild__stage', 'cbuild-errors', 'cbuild__heading', 'cbuild-step__lead', 'cbuild-step', 'cbuild-presets', 'cbuild-changes', 'cbuild-review', 'cbuild-bar' ),
 			$regions
 		);
 		// No directive is left outside a region, where nothing would run it.

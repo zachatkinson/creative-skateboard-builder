@@ -237,6 +237,34 @@ describe( 'size', () => {
 		size( root );
 		expect( read() ).toBe( '100px' );
 	} );
+
+	// The limit's line sits over the bar too, where a shopper scrolled to a card sees it (D-364, D-383): the taller of
+	// the two counts, and a hidden line nothing.
+	it( "counts the limit's line over the bar while it shows, and the taller of it and what Next says", () => {
+		const { root } = page( '', '' );
+		const bar = root.querySelector( '.cbuild-bar' ) as HTMLElement;
+		bar.innerHTML =
+			'<p class="cbuild__limited" hidden></p><p class="cbuild-bar__missing"></p>';
+		const limited = bar.querySelector( '.cbuild__limited' ) as HTMLElement;
+		const missing = bar.querySelector(
+			'.cbuild-bar__missing'
+		) as HTMLElement;
+		vi.spyOn( bar, 'getClientRects' ).mockReturnValue( [
+			new DOMRect(),
+		] as unknown as DOMRectList );
+		bar.style.position = 'sticky';
+		box( bar, 600, 100 );
+		box( limited, 0, 0 );
+		box( missing, 590, 0 );
+		size( root );
+		expect( read(), 'nothing said' ).toBe( '100px' );
+		box( limited, 530, 62 );
+		size( root );
+		expect( read(), "the limit's line" ).toBe( '170px' );
+		box( missing, 500, 44 );
+		size( root );
+		expect( read(), 'the taller of the two' ).toBe( '200px' );
+	} );
 } );
 
 // The auditor's M10 review, 1 (WCAG 2.4.11): narrower than 64rem the stage sticks at the top of the screen, so the page

@@ -2004,7 +2004,7 @@
 	}
 }
 
-:where(.cbuild-review__item--wrong, .cbuild__limited) {
+:where(.cbuild-review__item--wrong) {
 	border-inline-start: 0.25rem solid var(--cbuild-wrong);
 	padding-inline-start: var(--cbuild-gap-small);
 }
@@ -2393,6 +2393,34 @@
 	border: 0;
 }
 
+/*
+ * The limit's line (D-364): over the bar, across the panel's column, where a shopper scrolled to the card they pressed
+ * sees it. Drawn at the builder's top it was off the screen above them, and at full width it had no gutter. Out of the
+ * page's flow, it moves nothing as it comes or goes, and a press passes through it (D-383).
+ */
+:where(.cbuild__limited) {
+	position: absolute;
+	inset-block-end: calc(100% + var(--cbuild-gap-small));
+	inset-inline: var(--cbuild-gap-small);
+	box-sizing: border-box;
+	margin: 0;
+	padding: 0.5rem 0.75rem;
+	border: 1px solid var(--cbuild-line);
+	border-inline-start: 0.25rem solid var(--cbuild-wrong);
+	border-radius: var(--cbuild-radius);
+	background: var(--cbuild-ground);
+	color: var(--cbuild-on-ground);
+	pointer-events: none;
+}
+
+/* Full width, the panel's words keep the page's gutter (D-283), and so does the line. */
+@container cbuild (max-width: 63.99rem) {
+	:where(.cbuild[class~="alignfull"] .cbuild__limited) {
+		// prettier-ignore
+		inset-inline: max(1rem, var(--wp--style--root--padding-left, 0px)) max(1rem, var(--wp--style--root--padding-right, 0px));
+	}
+}
+
 /* The delivery line and notes, on a line of their own under the total and the buttons. */
 :where(.cbuild-bar__more-lines) {
 	order: 1;
@@ -2411,6 +2439,11 @@
 	/* At Next's end, inside the bar's wider padding. */
 	:where(.cbuild-bar__missing) {
 		inset-inline-end: var(--cbuild-gap);
+	}
+
+	/* The panel's column, as its words are set in it (#97, D-321). */
+	:where(.cbuild__limited) {
+		inset-inline: max(var(--cbuild-gap), (100% - 40rem) / 2);
 	}
 }
 

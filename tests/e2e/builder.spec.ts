@@ -7972,6 +7972,117 @@ test.describe( 'The full-width builder on a theme', () => {
 				.toBe( 'whole' );
 		} );
 	}
+
+	// The limit's line (D-364) was drawn at the builder's top: 110 px above the screen on a phone scrolled to the card
+	// pressed, and at full width with no gutter, its rule at 0 px and its words at 11. It is drawn over the bar, in the
+	// panel's column, and moves nothing as it comes.
+	for ( const [ size, screen ] of [
+		[ 'phone', PHONE ],
+		[ 'desktop', { width: 1440, height: 900 } ],
+	] as const ) {
+		test( `says the limit in view at the card pressed, in the panel's column, on a ${ size } (D-364)`, async ( {
+			page,
+			context,
+			baseURL,
+			javaScriptEnabled,
+		} ) => {
+			test.skip( ! javaScriptEnabled, "The limit is the store's." );
+			test.slow();
+			await context.addCookies( [
+				{
+					name: 'cbuild_e2e_theme',
+					value: 'kadence',
+					url: baseURL || SITE,
+				},
+			] );
+			await page.setViewportSize( screen );
+			await page.goto( linkTo( { _width: '8in' } ) );
+			await expect( page.locator( '.cbuild[data-ready]' ) ).toHaveCount(
+				1
+			);
+			const deck = page.getByRole( 'radio', {
+				name: 'Choose Builder test deck 8.0',
+			} );
+			// Where a shopper presses it: the card in the middle of the screen.
+			await deck.evaluate( ( radio ) =>
+				( radio.closest( 'li' ) ?? radio ).scrollIntoView( {
+					block: 'center',
+				} )
+			);
+			await page.evaluate( () => {
+				const shifts: number[] = [];
+				(
+					window as unknown as { cbuildShifts: number[] }
+				 ).cbuildShifts = shifts;
+				new PerformanceObserver( ( list ) => {
+					for ( const entry of list.getEntries() as unknown as {
+						value: number;
+						hadRecentInput: boolean;
+					}[] ) {
+						if ( ! entry.hadRecentInput ) {
+							shifts.push( entry.value );
+						}
+					}
+				} ).observe( { type: 'layout-shift' } );
+			} );
+			let release: () => void = () => undefined;
+			const held = new Promise< void >( ( done ) => {
+				release = done;
+			} );
+			await page.route( isRoute, async ( route ) => {
+				await held;
+				await route.continue().catch( () => undefined );
+			} );
+			await deck.check();
+			const late =
+				'The shop did not answer in time. Try again in a moment.';
+			const line = page.locator( '.cbuild__limited' );
+			await expect( line ).toHaveText( late, { timeout: 20000 } );
+			await expect( page.locator( '.cbuild__status' ) ).toHaveText(
+				late
+			);
+			// A moment for anything the line moved to be reported.
+			await page.waitForTimeout( 500 );
+			const seen = await line.evaluate( ( element ) => {
+				const box = element.getBoundingClientRect();
+				const words = document
+					.querySelector( '.cbuild__heading' )!
+					.getBoundingClientRect();
+				// A press passes through it, so it is found by the point only while it takes presses.
+				( element as HTMLElement ).style.pointerEvents = 'auto';
+				const at = document.elementFromPoint(
+					box.left + box.width / 2,
+					box.top + box.height / 2
+				);
+				( element as HTMLElement ).style.pointerEvents = '';
+				return {
+					top: Math.round( box.top ),
+					bottom: Math.round( box.bottom ),
+					left: Math.round( box.left ),
+					right: Math.round( box.right ),
+					from: Math.round( words.left ),
+					to: Math.round( words.right ),
+					screen: window.innerHeight,
+					drawn: !! at && element.contains( at ),
+					shift: (
+						window as unknown as { cbuildShifts: number[] }
+					 ).cbuildShifts.reduce( ( sum, value ) => sum + value, 0 ),
+				};
+			} );
+			release();
+			await page.unroute( isRoute );
+			expect(
+				seen.top >= 0 && seen.bottom <= seen.screen,
+				`on the screen: ${ seen.top } to ${ seen.bottom } on ${ seen.screen } px`
+			).toBe( true );
+			expect( seen.drawn, 'drawn over what is under it' ).toBe( true );
+			expect(
+				seen.left >= seen.from - 1 && seen.right <= seen.to + 1,
+				`in the panel's column, ${ seen.from } to ${ seen.to } px: ${ seen.left } to ${ seen.right } px`
+			).toBe( true );
+			expect( seen.shift, 'nothing moved as it came' ).toBe( 0 );
+		} );
+	}
 } );
 
 test.describe( 'Every control a name of its own (P11)', () => {

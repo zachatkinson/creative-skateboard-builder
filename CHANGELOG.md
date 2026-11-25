@@ -55,6 +55,7 @@ All notable changes to this project are documented here. The format follows [Kee
 - **The builder's muted words keep 4.5:1** on a theme whose text is already near it, as Storefront's is: "Total", "Show the parts", the deck step's lead, a ready build's description and the picture's side line now read at 4.5:1 or more; they read at 2.95:1. Every other theme's look is unchanged (D-380).
 - **A build's Add to cart keeps the cart in the session** before the add answers, so a cart page opened straight after holds the build; it read empty while WooCommerce saved the session at shutdown (#108, #51, D-352).
 - **The phone bar is whole at first view** on a page that holds the kit's Builder block under its title: on Kadence and Storefront up to 59 px of it was under the screen's foot once a part was picked. It now sticks from the builder's top, not the panel's (D-382).
+- **"The shop did not answer in time"** and the rate limit's words are drawn over the bar, in the panel's column, so a phone scrolled to the card pressed sees them, and nothing moves as they come. They were drawn at the builder's top, off the screen, and at full width with no gutter (D-383).
 
 ## [1.1.0] - 2026-11-24
 

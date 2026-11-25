@@ -13,6 +13,8 @@
 defined( 'ABSPATH' ) || exit;
 ?>
 <div class="cbuild-bar" data-wp-interactive="creative-skateboard-builder" data-wp-init="callbacks.ready" data-wp-bind--hidden="!state.view.bar.shown" data-wp-class--cbuild-bar--review="state.view.isReview" data-wp-class--cbuild-bar--started="state.view.bar.started">
+	<?php // Past the route's rate limit, or when it has not answered in time (D-364), the step keeps what it shows and says when to try again, over the bar where a shopper at a card sees it (D-383); the status region reads it out. ?>
+	<p class="cbuild__limited" hidden data-wp-bind--hidden="!state.limited" data-wp-text="state.limited"></p>
 	<a class="cbuild-bar__picture" href="#cbuild-picture" data-wp-bind--hidden="!state.view.bar.seen" data-wp-class--cbuild-bar__picture--top="state.view.picture.turned" data-wp-class--cbuild-bar__picture--turning="state.turning">
 		<span class="cbuild-board cbuild-board--bar" dir="ltr" data-wp-bind--hidden="!state.view.bar.board.shown" data-wp-bind--style="state.view.bar.board.style">
 			<template data-wp-each--layer="state.view.bar.board.layers" data-wp-each-key="context.layer.key">

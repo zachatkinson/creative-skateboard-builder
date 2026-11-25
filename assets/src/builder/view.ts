@@ -775,11 +775,11 @@ function measure( element: HTMLElement ): void {
 	if ( bar ) {
 		const sized = new window.ResizeObserver( () => size( element ) );
 		sized.observe( bar );
-		// What a press of the dimmed Next says sits over the bar, outside its box: its height counts as the bar's.
-		const said = bar.querySelector( '.cbuild-bar__missing' );
-		if ( said ) {
-			sized.observe( said );
-		}
+		// What a press of the dimmed Next says, and the limit's line, sit over the bar, outside its box: their
+		// heights count as the bar's (D-383).
+		bar.querySelectorAll(
+			'.cbuild-bar__missing, .cbuild__limited'
+		).forEach( ( said ) => sized.observe( said ) );
 	}
 	// The stage sticks on top, or stands beside the panel, as the builder's width changes its size.
 	if ( shown ) {

@@ -227,6 +227,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-374 · The bar keeps the estimate's line once the build has a part, not on a blank build](#d-374--the-bar-keeps-the-estimates-line-once-the-build-has-a-part-not-on-a-blank-build--2026-11-24)
 - [D-377 · A compact card's words sit the builder's gap from the deck, and the start button is the theme's second button](#d-377--a-compact-cards-words-sit-the-builders-gap-from-the-deck-and-the-start-button-is-the-themes-second-button--2026-11-24)
 - [D-382 · The bar follows the panel, not inside it, so its sticky foot can rise to the builder's top](#d-382--the-bar-follows-the-panel-not-inside-it-so-its-sticky-foot-can-rise-to-the-builders-top--2026-11-24)
+- [D-383 · The limit's line is drawn over the bar, in the panel's column](#d-383--the-limits-line-is-drawn-over-the-bar-in-the-panels-column--2026-11-24)
 
 ### Accessibility
 
@@ -5429,5 +5430,25 @@ M12's walkthrough, on the page that holds the kit's Builder block at full width 
 **Deliberate break.** `bar.php` put back inside the panel: chromium-phone failed with "Received: "804 to 919 on 844 px"" on Kadence and "781 to 902 on 844 px" on Storefront (builder.spec.ts:7816). Put back, both passed.
 
 **Why:** the bar holds the total and Next; a shopper who can't see it at first view has no total and no way on but to scroll.
+
+**Status:** Accepted.
+
+### D-383 · The limit's line is drawn over the bar, in the panel's column · 2026-11-24
+
+M12's walkthrough, on the full-width builder on Kadence: after a deck press that hit the 10 s limit (D-364), at 390 by 844 with the shopper scrolled to the card, the line's top was at -110 px (the test measured -138 to -84 px). The status region said it; nothing on the screen did. At full width, desktop and phone, its red rule was at 0 px and its words at about 11, beside a theme whose text starts at 131.
+
+- **The cause.** `.cbuild__limited` was the builder's second child, above the rail, in the page's flow. A phone shopper presses a card well down the page, so the line came and went above the screen. At full width the builder's own box reaches the screen's edges, and the line, outside the panel, had none of the panel's padding (D-283).
+- **Where it goes.** Into the bar, as its first child, drawn out of the flow over the bar (`position: absolute`, the bar being sticky), as what a press of the dimmed Next says already is (#100). The bar is at the screen's foot on a phone and under the panel on a desktop, so the line is in view wherever the shopper is in the step, beside Next, which is what they press to try again.
+- **Nothing moves.** Out of the flow, the line takes no room: it moves nothing as it comes or goes, so the press's layout shift stays 0 (the test reads the page's `layout-shift` entries from the press to 500 ms after the line). In the flow anywhere in view it would have pushed the cards under the shopper's finger 10 s after the press, outside the 500 ms CLS leaves out after an input. A press passes through it (`pointer-events: none`), and its height counts in the page's scroll padding as the bar's does, so focus is kept clear of it (WCAG 2.4.11).
+- **Its column.** Its edges are the panel's words': stacked, the bar's padding, and at full width the page's gutter, the theme's root padding and never under 16 px (D-384); beside the stage, the panel's centred column (#97, D-321).
+- **Its words** are unchanged, still said through the status region, and the next answer clears them (D-364). It is no longer an Interactivity region of its own: it is inside the bar's.
+
+**Tests.** `builder.spec.ts`, "The full-width builder on a theme › says the limit in view at the card pressed, in the panel's column, on a phone (D-364)", and the same on a desktop at 1440 by 900, on Kadence: the route held, the deck's card scrolled to the screen's middle and checked; once the words are in the line and the status region, the line is on the screen, the element drawn at its middle is the line, its edges are within the step heading's, and the layout shift is 0. `bar.test.ts`, "counts the limit's line over the bar while it shows, and the taller of it and what Next says". `BuilderPageTest`'s regions lose `cbuild__limited`.
+
+**Red runs.** Before the change, on chromium-desktop and chromium-phone: on a phone, "on the screen: -138 to -84 on 844 px / Received: false" (builder.spec.ts:7949); on a desktop, "in the panel's column, 881 to 1424 px: 0 to 1440 px / Received: false" (builder.spec.ts:7954). `bar.test.ts`: "the limit's line: expected '100px' to be '170px'" (bar.test.ts:260).
+
+**Deliberate break.** The line put back at the builder's top: chromium-desktop and chromium-phone failed with "on the screen: -397 to -325 on 844 px" on a phone and "on the screen: -74 to -29 on 900 px" on a desktop (builder.spec.ts:7952). Put back, all passed, on chromium, WebKit and Firefox at both sizes, fr-ca and rtl.
+
+**Why:** a shopper told nothing where they are looking reads the dimmed press as the shop ignoring them.
 
 **Status:** Accepted.
