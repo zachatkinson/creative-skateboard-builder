@@ -86,6 +86,8 @@ final class GuidedStartTest extends IntegrationTestCase {
 		$this->part( 'truck 8.25', 'trucks', '50', array( 'axle_width' => '8.2500', 'deck_min' => '8.0000', 'deck_max' => '8.3750' ) + $truck );
 		$this->part( 'truck 8.25 dear', 'trucks', '90', array( 'axle_width' => '8.2500', 'deck_min' => '8.0000', 'deck_max' => '8.3750' ) + $truck );
 		$this->part( 'truck 8.5', 'trucks', '55', array( 'axle_width' => '8.5000', 'deck_min' => '8.3750', 'deck_max' => '8.6000' ) + $truck );
+		// The cheapest wheels in stock, smaller than any riding style's: a build at a style's sizes never takes them.
+		$this->part( 'wheels 48', 'wheels', '25', array( 'wheel_diameter' => '48.0000', 'set_size' => '4' ) );
 		$this->part( 'wheels 52 sold out', 'wheels', '20', array( 'wheel_diameter' => '52.0000', 'set_size' => '4' ), false );
 		$this->part( 'wheels 52', 'wheels', '30', array( 'wheel_diameter' => '52.0000', 'set_size' => '4' ) );
 		$this->part( 'wheels 53', 'wheels', '40', array( 'wheel_diameter' => '53.0000', 'set_size' => '4' ) );
@@ -229,6 +231,16 @@ final class GuidedStartTest extends IntegrationTestCase {
 	}
 
 	public function test_each_build_opens_at_the_review_whole_fitting_and_at_the_total_its_tile_says(): void {
+		// A fee for assembly, which builds start with, and the shop's build discount: the tile's total is the cart's, not
+		// the sum of its parts' prices.
+		update_option( Options::SETTINGS, array( Options::SETTING_BUILD_DISCOUNT => '10' ) );
+		$this->kit = KitFactory::kit(
+			'Assembled',
+			array(
+				Options::META_KIT_SLOTS    => $this->slots,
+				Options::META_KIT_ASSEMBLY => array( 'fee' => '20' ) + KitDocuments::assembly(),
+			)
+		)->get_id();
 		$guide = $this->guide(
 			array(
 				'shoe'  => '3',
@@ -274,10 +286,12 @@ final class GuidedStartTest extends IntegrationTestCase {
 		$totals = array_map( static fn( array $tile ): string => (string) $tile['total'], array_values( (array) $all['tiles'] ) );
 		// The budget build is $65 + $50 + $30 + $15 + $4 + $8 = $172.
 		self::assertSame( '$172.00', html_entity_decode( wp_strip_all_tags( $totals[0] ) ) );
-		$within = $this->guide( array( 'shoe' => '3', 'style' => 'street', 'budget' => '172' ) );
-		self::assertSame( array( 'Budget build' ), array_keys( $this->builds( $within ) ), 'a total at the budget is within it' );
+		// The mid-range build is $65 + $50 + $40 + $15 + $4 + $8 = $182; a budget there keeps it beside the cheaper one.
+		self::assertSame( '$182.00', html_entity_decode( wp_strip_all_tags( $totals[1] ) ) );
+		$within = $this->guide( array( 'shoe' => '3', 'style' => 'street', 'budget' => '182' ) );
+		self::assertSame( array( 'Budget build', 'Mid-range build' ), array_keys( $this->builds( $within ) ), 'a total at the budget is within it' );
 		self::assertContains( 'Every build here is within your budget.', self::reasons( $within ) );
-		self::assertSame( array(), $within['tiles'][0]['notes'] );
+		self::assertSame( array( array(), array() ), array_column( $within['tiles'], 'notes' ) );
 		$over = $this->guide( array( 'shoe' => '3', 'style' => 'street', 'budget' => '150' ) );
 		self::assertSame( array( 'Budget build' ), array_keys( $this->builds( $over ) ), 'none within: the closest alone' );
 		self::assertContains( 'No build comes within your budget. The closest is ' . $totals[0] . '.', self::reasons( $over ) );
