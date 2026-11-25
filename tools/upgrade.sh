@@ -47,16 +47,20 @@ from="$(sed -n "s/^define( 'CBUILD_VERSION', '\([^']*\)' );/\1/p" "tmp/upgrade/o
 here=wp-content/plugins/$slug
 # WP-CLI prints a deprecation of its own on PHP 8.5 (vendor/wp-cli/php-cli-tools/lib/cli/Colors.php:95, "Using null as an
 # array offset"), which is not the plugin's. It can land in the middle of the next line, so it is cut out where it is,
-# not by dropping its line. A PHP deprecation, warning or notice from the plugin's own files fails the run (noise()).
+# not by dropping its line; its "Deprecated: " can even be split from the rest by a line of WP-CLI's, so the rest is cut
+# alone too. A PHP deprecation, warning or notice from the plugin's own files fails the run (noise()).
 noise_file="tmp/upgrade-noise.txt"
 : > "$noise_file"
-quiet() { sed -E 's#(PHP )?Deprecated: Using null as an array offset is deprecated, use an empty string instead in phar://[^ ]*php-cli-tools/lib/cli/Colors\.php on line [0-9]+##g'; }
+quiet() { sed -E 's#((PHP )?Deprecated: )?Using null as an array offset is deprecated, use an empty string instead in phar://[^ ]*php-cli-tools/lib/cli/Colors\.php on line [0-9]+##g'; }
 noted() { tee >(grep -E '(Deprecated|Warning|Notice|Fatal error):' >> "$noise_file" || true); }
 noise() {
 	[ -s "$noise_file" ] || return 0
 	# The plugin's own files, either copy: a notice from them fails the run. Another's (WordPress, WooCommerce, WP-CLI) is listed.
-	if grep -qE "/plugins/($slug|$copy)/" "$noise_file"; then
-		grep -E "/plugins/($slug|$copy)/" "$noise_file" | sort -u | sed 's/^/   /' >&2
+	# A notice is PHP's shape, "<kind>: <message> in <file> on line <n>": a WP-CLI line that only names a file of the plugin's,
+	# with a stray "Deprecated: " in front of it, is not one.
+	local own="(Deprecated|Warning|Notice|Fatal error): .* in [^ ]*/plugins/($slug|$copy)/[^ ]+ on line [0-9]+"
+	if grep -qE "$own" "$noise_file"; then
+		grep -E "$own" "$noise_file" | sort -u | sed 's/^/   /' >&2
 		fail "a WP-CLI call printed the plugin's PHP notices above"
 	fi
 	sort -u "$noise_file" | sed 's/^/   not the plugin'"'"'s: /'
