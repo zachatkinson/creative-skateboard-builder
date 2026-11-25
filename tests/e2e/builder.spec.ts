@@ -8824,6 +8824,7 @@ test.describe( 'The start button on a theme (#133)', () => {
 	 * @param context The browser context, for the theme's cookie.
 	 * @param baseURL The site.
 	 * @param theme   The theme.
+	 * @param engine  The browser's engine: WebKit, as Safari, tabs to a link with Option held.
 	 * @param styles  A theme's own rules, added to the page.
 	 */
 	const tabbedMark = async (
@@ -8831,6 +8832,7 @@ test.describe( 'The start button on a theme (#133)', () => {
 		context: BrowserContext,
 		baseURL: string | undefined,
 		theme: string,
+		engine: string,
 		styles = ''
 	): Promise< void > => {
 		await context.addCookies( [
@@ -8850,7 +8852,9 @@ test.describe( 'The start button on a theme (#133)', () => {
 		const rest = await focusMark();
 		await page.locator( 'form.cart .single_add_to_cart_button' ).focus();
 		for ( let i = 0; i < 10; i++ ) {
-			await page.keyboard.press( 'Tab' );
+			await page.keyboard.press(
+				'webkit' === engine ? 'Alt+Tab' : 'Tab'
+			);
 			if (
 				await start.evaluate(
 					( link ) => link === link.ownerDocument.activeElement
@@ -9080,8 +9084,9 @@ test.describe( 'The start button on a theme (#133)', () => {
 			page,
 			context,
 			baseURL,
+			browserName,
 		} ) => {
-			await tabbedMark( page, context, baseURL, theme );
+			await tabbedMark( page, context, baseURL, theme, browserName );
 		} );
 	}
 
@@ -9090,12 +9095,14 @@ test.describe( 'The start button on a theme (#133)', () => {
 		page,
 		context,
 		baseURL,
+		browserName,
 	} ) => {
 		await tabbedMark(
 			page,
 			context,
 			baseURL,
 			'kadence',
+			browserName,
 			'.button:focus{outline:none;box-shadow:0 0 0 3px rgb(26, 32, 44)}'
 		);
 	} );
