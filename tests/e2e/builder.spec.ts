@@ -12027,4 +12027,88 @@ test.describe( 'A hostile theme', () => {
 			`the bar, ${ own.height } px without the theme's rules`
 		).toBeLessThanOrEqual( own.height + 0.5 );
 	} );
+
+	// The sweep: the builder's start, a step, the review and a deck's page, each with the fixture off and then on. The
+	// bar and the first card or ready build may differ by no more than LIMIT px, a rounding's worth, and axe finds no
+	// failure, colour contrast among them, with the fixture on.
+	const LIMIT = 2;
+	const sweep: [ string, () => string ][] = [
+		[ 'the start', () => fixture().page ],
+		[ 'a step', () => linkTo( { _width: '8in' } ) ],
+		[ 'the review', review ],
+	];
+	for ( const [ name, address ] of sweep ) {
+		test( `keeps ${ name }'s bar and cards, and its contrast, under the hostile theme`, async ( {
+			page,
+			context,
+			baseURL,
+			javaScriptEnabled,
+		} ) => {
+			// Read by the page's layout alone, so the same with JavaScript off.
+			const heights = async () => {
+				const height = async ( selector: string ) => {
+					const shown = page
+						.locator( selector )
+						.filter( { visible: true } )
+						.first();
+					const box = ( await shown.count() )
+						? await shown.boundingBox()
+						: null;
+					return box ? Math.round( box.height * 2 ) / 2 : null;
+				};
+				return {
+					bar: await height( '.cbuild-bar' ),
+					card: await height( '.cbuild-cards > li, .cbuild-preset' ),
+				};
+			};
+			await hostile( context, baseURL, false );
+			await page.goto( address() );
+			const own = await heights();
+			expect(
+				own.bar ?? own.card,
+				'a bar or a card to measure'
+			).not.toBeNull();
+			await hostile( context, baseURL, true );
+			await page.goto( address() );
+			const theirs = await heights();
+			for ( const key of [ 'bar', 'card' ] as const ) {
+				expect(
+					null === theirs[ key ],
+					`the ${ key } shown as without the theme's rules`
+				).toBe( null === own[ key ] );
+				expect(
+					Math.abs( ( theirs[ key ] ?? 0 ) - ( own[ key ] ?? 0 ) ),
+					`the ${ key }: ${ theirs[ key ] } px, ${ own[ key ] } px without the theme's rules`
+				).toBeLessThanOrEqual( LIMIT );
+			}
+			if ( javaScriptEnabled ) {
+				// axe runs in the page, which a browser with JavaScript off does not allow.
+				await axe(
+					page,
+					`${ name } under the hostile theme`,
+					'.cbuild'
+				);
+			}
+		} );
+	}
+
+	test( "keeps a deck page's start button readable under the hostile theme", async ( {
+		page,
+		context,
+		baseURL,
+		javaScriptEnabled,
+	} ) => {
+		test.skip(
+			! javaScriptEnabled,
+			"The button's colours are the script's (D-377, D-416); without it the button is the theme's own."
+		);
+		await hostile( context, baseURL, true );
+		await page.goto( `/?p=${ id( 'builder-test-deck-8-25' ) }` );
+		await expect( page.locator( '.cbuild-start__link' ) ).toBeVisible();
+		await axe(
+			page,
+			'a deck page under the hostile theme',
+			'.cbuild-start'
+		);
+	} );
 } );

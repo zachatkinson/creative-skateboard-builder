@@ -243,6 +243,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-403 · Each row of the review shows its card's picture in a 3rem square, its place kept](#d-403--each-row-of-the-review-shows-its-cards-picture-in-a-3rem-square-its-place-kept--2026-11-25)
 - [D-416 · The start button is Add to cart's twin by its fill alone, its words read on its fill, and a hostile theme fixture tests the builder against a theme's rules](#d-416--the-start-button-is-add-to-carts-twin-by-its-fill-alone-its-words-read-on-its-fill-and-a-hostile-theme-fixture-tests-the-builder-against-a-themes-rules--2026-11-25)
 - [D-417 · The bar's Back and Next, and its delivery lines, hold their size and margins at two classes' weight](#d-417--the-bars-back-and-next-and-its-delivery-lines-hold-their-size-and-margins-at-two-classes-weight--2026-11-25)
+- [D-418 · The hostile theme sweep, and a ready build's lines at two classes' weight](#d-418--the-hostile-theme-sweep-and-a-ready-builds-lines-at-two-classes-weight--2026-11-25)
 
 ### Accessibility
 
@@ -6188,6 +6189,24 @@ Found with the hostile theme fixture (D-416), on the way to Cowork's F33 (#150).
 - "A hostile theme › keeps the bar no taller at the review on a phone under a theme's paragraph margin (#150)": the lines' block margins the same with the fixture as without, and the bar no taller.
 
 **Why:** the bar's buttons are sized to fit beside the total, and its lines are spaced by its gap; a theme's padding for every button and margin for every paragraph are not aimed at them.
+
+**Status:** Accepted.
+
+### D-418 · The hostile theme sweep, and a ready build's lines at two classes' weight · 2026-11-25
+
+Asked for with the hostile theme fixture (D-416): one test that runs the builder with the fixture on and reports what it breaks.
+
+**The sweep.** "A hostile theme › keeps …'s bar and cards, and its contrast, under the hostile theme", for the builder's start, a deck step after a width, and the review, and "keeps a deck page's start button readable under the hostile theme". Each page is opened with the fixture off and then on, with the delivery lines said. The bar's height and the first card's (or, at the start, the first ready build's) may differ by no more than 2 px, a rounding's worth at any zoom, and axe's A and AA rules, colour contrast among them, pass on `.cbuild` with the fixture on. Heights are read from the layout alone, so they run without JavaScript too; axe runs in the page, so not there, and the deck page's button is the script's, so that test is skipped there (D-377).
+
+**What it found, beyond F32 and F33:**
+
+- **A ready build's tile** (and the guided start's builds, in the same tile): its name, description and total are each a `p`, under the reset at no weight, so the fixture's paragraph margin put 32 px under each. A tile was 566.5 px, not 470.5, at 1280 px, on every project. Fixed: `.cbuild-preset .cbuild-preset__form > p { margin: 0 }`, two classes and an element, over a theme's class and element. The tile's notes, a list of words, keep the theme's list style, as D-321 leaves them.
+- **Back and Next in the bar** (D-417) and **the bar's lines** (F33, D-417), fixed before.
+- **Nothing else.** Axe found no colour contrast or other failure on the three builder pages or the deck page's button. The step heading and the stage's heading already hold at two classes (D-321). The fixture's blue link colour reaches the bar's Back, a link, which reads on the bar's ground.
+
+**Not covered.** The sweep measures the bar and one card or tile; other paragraphs in the builder (the review's lead and total, the guide's questions, a step's help) still take a theme's paragraph margin over the reset, by the reset's design, which leaves a theme's spacing to its words. A page whose spacing a theme makes worse than this is a finding for a later pass, not this one.
+
+**Why:** a theme's rules are aimed at its content's words, not at the builder's tiles and bar, whose sizes the builder sets so they fit.
 
 **Status:** Accepted.
 

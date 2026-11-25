@@ -2008,6 +2008,12 @@
 	object-fit: contain;
 }
 
+/* A tile's lines sit close, at two classes' weight: a theme's margin for a paragraph in its content, a class and an
+   element as Kadence's `.single-content p`, outranked the reset at no weight and put 32 px under each (D-418). */
+.cbuild-preset .cbuild-preset__form > p {
+	margin: 0;
+}
+
 :where(.cbuild-preset__name, .cbuild-preset__total) {
 	font-weight: 600;
 }
