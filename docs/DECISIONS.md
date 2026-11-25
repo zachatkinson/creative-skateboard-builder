@@ -342,6 +342,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-200 · The share card, through Yoast's filters or the plugin's own tags, and none beside another SEO plugin](#d-200--the-share-card-through-yoasts-filters-or-the-plugins-own-tags-and-none-beside-another-seo-plugin--2026-11-15)
 - [D-212 · The share card names what it shows, and stays out of page caches while it falls back](#d-212--the-share-card-names-what-it-shows-and-stays-out-of-page-caches-while-it-falls-back--2026-11-16)
 - [D-215 · Yoast's `og:url` is handed the build link in the form its urldecode() gives back](#d-215--yoasts-ogurl-is-handed-the-build-link-in-the-form-its-urldecode-gives-back--2026-11-17)
+- [D-410 · A kit's page and the Builder page print no Product markup, with WooCommerce's or Yoast's, and need no new filter](#d-410--a-kits-page-and-the-builder-page-print-no-product-markup-with-woocommerces-or-yoasts-and-need-no-new-filter--2026-11-25)
 
 ### Languages
 
@@ -5595,5 +5596,34 @@ The auditor's third pass on milestone 12, a minor: `LeadDays` read "2 to 4" in a
 **Deliberate break.** The word put back in the form, `(?:-|\x{2013}|to)` with `/i`: the same three failed at the same lines. Put back, all passed, and Infection kills all 75 of the class's mutants.
 
 **Why:** a form the domain reads should mean the same in every language the shop is run in; a hyphen does, and a word never does.
+
+**Status:** Accepted.
+
+### D-410 · A kit's page and the Builder page print no Product markup, with WooCommerce's or Yoast's, and need no new filter · 2026-11-25
+
+Issue #141, from the roadmap's companion review of 24 November: in place of a Creative Schema release, a test that a kit's page and the Builder block's page print no Product JSON-LD, with WooCommerce's structured data and with Yoast SEO's. Where one did, the builder was to remove it through that plugin's filter, for the kit only.
+
+**The test found none to remove.** So no code changes, and the tests hold what is already true:
+
+- **WooCommerce.** It makes a product's markup at `woocommerce_single_product_summary` (WooCommerce 11.3.1, `includes/class-wc-structured-data.php:42`), passes it through `woocommerce_structured_data_product` (:552), and prints it at `wp_footer` (:48). `KitHooks::markup()` has answered an empty array for a kit there since 0.4.0 (D-100), and WooCommerce prints nothing for markup with no type. On Twenty Twenty-Five a kit takes its own block template (`PageHooks`), where WooCommerce makes no product markup at all.
+- **Yoast SEO 28.8.** Its graph's pieces are those in `src/generators/schema/` (article, author, breadcrumb, FAQ, how-to, main image, organization, person, web page, website), and none is a Product. Had one been, the filters to remove it are `wpseo_schema_needs_<identifier>` (`src/generators/schema-generator.php:103`) and `wpseo_schema_graph` (:161). Yoast's schema aggregator, off unless the shop turns on its endpoint, asks WooCommerce for a product's markup through the same `woocommerce_structured_data_product` (`src/schema-aggregator/infrastructure/schema-pieces/woo-schema-piece-repository.php:78`), so the kit's is empty there too.
+- **A part's page keeps its Product.** The filter answers by the product's type, so only a kit's is emptied.
+- **Yoast WooCommerce SEO,** the paid add-on that makes a richer Product from WooCommerce's, enriches the markup that filter has already emptied. It is not installed or tested.
+
+**Tests.**
+
+- **Browser:** "No Product markup for a kit (#141)" in `tests/e2e/builder.spec.ts`, on Kadence, Storefront and Twenty Twenty-Five: every `@type` in the page's JSON-LD, on the kit's page, the Builder page and a deck's page.
+- **Yoast:** `BuilderYoastTest::test_with_yoast_a_kits_page_and_the_builder_page_print_no_product_and_a_parts_page_keeps_it`, in `composer test:integration:yoast`. The head with Yoast's graph, the Builder block's content, and WooCommerce's footer markup made as the summary action makes it.
+
+**Red run.** Both tests passed on arrival, since the removal is 0.4.0's. The red run is the deliberate break.
+
+**Deliberate break.** With `woocommerce_structured_data_product` unhooked in `KitHooks::register()`:
+
+- the Yoast test failed with "the kit's page. Failed asserting that an array does not contain 'Product'." (`BuilderYoastTest.php:194`);
+- the browser test failed on Kadence and Storefront with "the kit's page", its types `BreadcrumbList, ListItem ×3, Product, Offer, UnitPriceSpecification, Organization`.
+
+Twenty Twenty-Five passed with the break, as its kit template makes no markup. Put back, all passed.
+
+**Why:** a kit's own price is only its assembly fee, so a Product would offer the kit alone at that price, which the cart refuses (SPEC.md, SEO and sharing). A filter that removes nothing would be code no test could fail.
 
 **Status:** Accepted.

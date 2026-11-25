@@ -9459,6 +9459,70 @@ test.describe( "A kit's Builder page", () => {
 	} );
 } );
 
+// #141 (D-410): a kit is bought through its builder, never alone, so neither its page nor the Builder block's page
+// prints a Product in its JSON-LD, which would offer the kit at its assembly fee. A part's page keeps WooCommerce's. On
+// each theme, since a classic theme and a block theme make WooCommerce's markup from different templates. Yoast SEO's
+// graph is held by BuilderYoastTest, in the integration site where Yoast is.
+test.describe( 'No Product markup for a kit (#141)', () => {
+	/**
+	 * Every `@type` in the page's JSON-LD.
+	 *
+	 * @param page The page.
+	 */
+	const types = async ( page: Page ): Promise< string[] > =>
+		page
+			.locator( 'script[type="application/ld+json"]' )
+			.evaluateAll( ( scripts ) => {
+				const found: string[] = [];
+				const walk = ( node: unknown ): void => {
+					if ( Array.isArray( node ) ) {
+						node.forEach( walk );
+					} else if ( node && 'object' === typeof node ) {
+						for ( const [ key, value ] of Object.entries( node ) ) {
+							if ( '@type' === key ) {
+								found.push( ...[ value ].flat().map( String ) );
+							}
+							walk( value );
+						}
+					}
+				};
+				scripts.forEach( ( script ) =>
+					walk( JSON.parse( script.textContent ?? 'null' ) )
+				);
+				return found;
+			} );
+
+	for ( const theme of [ 'kadence', 'storefront', 'twentytwentyfive' ] ) {
+		test( `on ${ theme } a kit's page and the Builder page print no Product, and a part's page keeps it`, async ( {
+			page,
+			context,
+			baseURL,
+		} ) => {
+			await context.addCookies( [
+				{
+					name: 'cbuild_e2e_theme',
+					value: theme,
+					url: baseURL || SITE,
+				},
+			] );
+			await page.goto( '/product/builder-test-kit/' );
+			await expect( page.locator( '.cbuild' ).first() ).toBeAttached();
+			expect( await types( page ), "the kit's page" ).not.toContain(
+				'Product'
+			);
+			await page.goto( fixture().page );
+			await expect( page.locator( '.cbuild' ).first() ).toBeAttached();
+			expect( await types( page ), 'the Builder page' ).not.toContain(
+				'Product'
+			);
+			await page.goto( `/?p=${ id( 'builder-test-deck-8-25' ) }` );
+			expect( await types( page ), "a part's page" ).toContain(
+				'Product'
+			);
+		} );
+	}
+} );
+
 // #81 (D-301): a deck picked at one width, whose look is made in another, moves to that look when the shopper asks for
 // the other width; the status says so, and the cart gets the other width's variation (M11 audit, finding 10). One
 // variable deck, two widths of one look, made for the test and taken away after it.
