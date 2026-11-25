@@ -198,8 +198,9 @@ final class BuilderPageTest extends IntegrationTestCase {
 			self::assertSame( 0, $dom->query( 'ancestor::*[@data-wp-interactive]', $region )->length, 'no region inside another' );
 			$regions[] = strtok( $region->getAttribute( 'class' ), ' ' );
 		}
+		// From 1.3.0 the smart swap's notice is a piece of its own, before the step (#135, D-397).
 		self::assertSame(
-			array( 'cbuild__status', 'cbuild-progress', 'cbuild__stage', 'cbuild-errors', 'cbuild__heading', 'cbuild-step__lead', 'cbuild-guide', 'cbuild-step', 'cbuild-presets', 'cbuild-changes', 'cbuild-review', 'cbuild-bar' ),
+			array( 'cbuild__status', 'cbuild-progress', 'cbuild__stage', 'cbuild-errors', 'cbuild__heading', 'cbuild-step__lead', 'cbuild-guide', 'cbuild-swapped', 'cbuild-step', 'cbuild-presets', 'cbuild-changes', 'cbuild-review', 'cbuild-bar' ),
 			$regions
 		);
 		// No directive is left outside a region, where nothing would run it.
