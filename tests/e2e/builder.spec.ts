@@ -15,6 +15,13 @@ import {
 } from './support/test';
 import type { BrowserContext } from '@playwright/test';
 import { axe } from './support/axe';
+import {
+	holdAnswers,
+	now as pageNow,
+	shiftsSince,
+	themeHeader,
+	watchShifts,
+} from './support/held';
 import { login } from './support/login';
 
 /**
@@ -5102,31 +5109,20 @@ test.describe( 'Motion', () => {
 		}, info ) => {
 			await page.emulateMedia( { reducedMotion: motion } );
 			await atTrucks( page );
+			// The pick's answer held a second, as the demo's host takes it (D-406).
+			await holdAnswers( page );
+			const chromium = info.project.name.startsWith( 'chromium' );
+			if ( chromium ) {
+				await watchShifts( page );
+			}
+			const from = await pageNow( page );
 			await page.evaluate( () => {
 				const record = window as unknown as {
-					shift: number;
 					boxes: Set< string >;
 					outlined: number;
 				};
-				record.shift = 0;
 				record.boxes = new Set();
 				record.outlined = 0;
-				if (
-					PerformanceObserver.supportedEntryTypes.includes(
-						'layout-shift'
-					)
-				) {
-					new PerformanceObserver( ( list ) => {
-						for ( const entry of list.getEntries() as unknown as {
-							value: number;
-							hadRecentInput: boolean;
-						}[] ) {
-							if ( ! entry.hadRecentInput ) {
-								record.shift += entry.value;
-							}
-						}
-					} ).observe( { type: 'layout-shift' } );
-				}
 				// At each frame an outline is shown or playing: where each of the board's layers and images is laid out,
 				// its offsets, which a transform does not move. Every such frame must be the same.
 				const began = performance.now();
@@ -5165,20 +5161,23 @@ test.describe( 'Motion', () => {
 				window.requestAnimationFrame( frame );
 			} );
 			await choose( page, 'Builder test trucks 139' );
+			await expect( page.locator( '.cbuild' ) ).toHaveAttribute(
+				'aria-busy',
+				'false',
+				{ timeout: 10_000 }
+			);
 			await expect(
 				page.locator(
 					'#cbuild-picture .cbuild-board__layer[data-outlined]'
 				)
 			).toHaveCount( 0 );
 			await page.waitForTimeout( 1500 );
-			const { shift, boxes, outlined } = await page.evaluate( () => {
+			const { boxes, outlined } = await page.evaluate( () => {
 				const record = window as unknown as {
-					shift: number;
 					boxes: Set< string >;
 					outlined: number;
 				};
 				return {
-					shift: record.shift,
 					boxes: [ ...record.boxes ],
 					outlined: record.outlined,
 				};
@@ -5188,8 +5187,9 @@ test.describe( 'Motion', () => {
 				boxes,
 				'the board laid out the same at each frame'
 			).toHaveLength( 1 );
-			if ( info.project.name.startsWith( 'chromium' ) ) {
-				expect( shift, 'layout shift' ).toBe( 0 );
+			if ( chromium ) {
+				const { counted, said } = await shiftsSince( page, from );
+				expect( counted, `layout shift: ${ said }` ).toBe( 0 );
 			}
 		} );
 	}
@@ -5693,10 +5693,10 @@ test.describe( 'Motion', () => {
 
 	// Cowork's review of 1.1.0, F20 (#118): on a real host the state route answers 700 to 1,100 ms after a press, past the
 	// 500 ms after an input that CLS leaves out, so whatever the answer moves counts. CI's local route answers within
-	// 500 ms, so the gate above never saw it. Here every answer is held back 800 ms, and each press is read for the shifts
-	// CLS counts (no recent input): a width under 0.1, as web.dev counts good; the deck, Next and a truck, D-306's moments,
-	// none at all.
-	test( 'what an answer 800 ms late moves is no layout shift: a width, a deck, Next and a truck', async ( {
+	// 500 ms, so the gate above never saw it. Here every answer is held back a second, the demo's (D-406), under a theme's
+	// 129 px header as on the demo, and each press is read for the builder's shifts CLS counts (no recent input): a width
+	// under 0.1, as web.dev counts good; the deck, Next and a truck, D-306's moments, none at all.
+	test( 'what an answer a second late moves is no layout shift: a width, a deck, Next and a truck', async ( {
 		page,
 	}, info ) => {
 		test.skip(
@@ -5708,55 +5708,9 @@ test.describe( 'Motion', () => {
 		await page.goto( fixture().page );
 		await expect( builder ).toHaveAttribute( 'data-ready', '' );
 		await emojiDone( page );
-		await page.route(
-			( url ) => url.pathname.endsWith( '/state' ),
-			async ( route ) => {
-				const answer = await route.fetch().catch( () => null );
-				await new Promise( ( done ) => setTimeout( done, 800 ) );
-				if ( answer ) {
-					await route
-						.fulfill( { response: answer } )
-						.catch( () => null );
-				}
-			}
-		);
-		await page.evaluate( () => {
-			const recorded = window as unknown as {
-				shifts: { at: number; value: number; sources: string[] }[];
-			};
-			recorded.shifts = [];
-			new PerformanceObserver( ( list ) => {
-				for ( const entry of list.getEntries() as unknown as {
-					value: number;
-					hadRecentInput: boolean;
-					startTime: number;
-					sources?: {
-						node?: Node | null;
-						previousRect: DOMRectReadOnly;
-						currentRect: DOMRectReadOnly;
-					}[];
-				}[] ) {
-					if ( ! entry.hadRecentInput ) {
-						recorded.shifts.push( {
-							at: entry.startTime,
-							value: entry.value,
-							sources: ( entry.sources ?? [] ).map(
-								( source ) =>
-									`${
-										source.node instanceof Element
-											? String(
-													source.node.className
-												).split( ' ' )[ 0 ]
-											: ( source.node?.nodeName ?? '?' )
-									} ${ Math.round(
-										source.previousRect.y
-									) }→${ Math.round( source.currentRect.y ) }`
-							),
-						} );
-					}
-				}
-			} ).observe( { type: 'layout-shift' } );
-		} );
+		await themeHeader( page, 129 );
+		await holdAnswers( page );
+		await watchShifts( page );
 		// Each press, the most it may shift, and what its answer puts in the page's address once it is shown. The deck is
 		// picked scrolled to its card. Next is pressed a second after the deck's answer is drawn, as a shopper looks at
 		// the board first.
@@ -5811,59 +5765,28 @@ test.describe( 'Motion', () => {
 		];
 		const measured: string[] = [];
 		for ( const [ name, most, press, shown ] of presses ) {
-			const from = await page.evaluate( () => performance.now() );
+			const from = await pageNow( page );
 			await press();
 			await expect
 				.poll( () => page.url(), { timeout: 10_000 } )
 				.toContain( shown );
 			await expect( builder ).toHaveAttribute( 'aria-busy', 'false' );
-			// The answer drawn, its pictures painted, and two frames for the observer to report.
+			// The answer drawn and its pictures painted.
 			await page.waitForTimeout( 1000 );
-			await page.evaluate(
-				() =>
-					new Promise( ( done ) =>
-						requestAnimationFrame( () =>
-							requestAnimationFrame( done )
-						)
-					)
-			);
-			const shifts = await page.evaluate(
-				( since ) =>
-					(
-						window as unknown as {
-							shifts: {
-								at: number;
-								value: number;
-								sources: string[];
-							}[];
-						}
-					 ).shifts.filter( ( shift ) => shift.at >= since ),
-				from
-			);
-			const counted = shifts.reduce(
-				( sum, shift ) => sum + shift.value,
-				0
-			);
-			measured.push(
-				`${ name }: ${ counted.toFixed( 3 ) } ${ shifts
-					.map(
-						( shift ) =>
-							`+${ Math.round( shift.at - from ) } ms ${ shift.value.toFixed(
-								3
-							) } [${ shift.sources.join( '; ' ) }]`
-					)
-					.join( ' | ' ) }`
-			);
+			const { counted, said } = await shiftsSince( page, from );
+			measured.push( `${ name }: ${ said }` );
 			if ( 0 === most ) {
-				expect.soft( counted, `${ name }'s layout shift` ).toBe( 0 );
+				expect
+					.soft( counted, `${ name }'s layout shift: ${ said }` )
+					.toBe( 0 );
 			} else {
 				expect
-					.soft( counted, `${ name }'s layout shift` )
+					.soft( counted, `${ name }'s layout shift: ${ said }` )
 					.toBeLessThan( most );
 			}
 		}
 		info.annotations.push( {
-			type: 'layout shift, answers 800 ms late',
+			type: 'layout shift, answers a second late',
 			description: measured.join( '\n' ),
 		} );
 		// eslint-disable-next-line no-console

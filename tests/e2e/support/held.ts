@@ -34,9 +34,17 @@ export interface Measured {
 /** The answer's JSON, as a test may change it before the page has it. */
 export type Answer = Record< string, unknown >;
 
+/** Answers held, and how to let them go. */
+export interface Held {
+	/** Let the answers through again. */
+	release: () => Promise< void >;
+	/** Wait until no answer is held: a press the store waits for without saying it is busy, as Next asked ahead. */
+	drained: () => Promise< void >;
+}
+
 /**
  * Hold each answer of the state route for `delay` ms, as the demo's host takes. `edit` may change an answer's JSON
- * before the page has it. Returns a function that lets the answers through again.
+ * before the page has it.
  *
  * @param page          The page.
  * @param options       How long, and what to change.
@@ -49,9 +57,10 @@ export async function holdAnswers(
 		delay = 1000,
 		edit,
 	}: { delay?: number; edit?: ( answer: Answer ) => void } = {}
-): Promise< () => Promise< void > > {
+): Promise< Held > {
 	const state = ( url: URL ) => url.pathname.endsWith( '/state' );
-	const hold = async ( route: Route ) => {
+	let holding = 0;
+	const pass = async ( route: Route ) => {
 		const answer = await route.fetch().catch( () => null );
 		await new Promise( ( done ) => setTimeout( done, delay ) );
 		if ( ! answer ) {
@@ -65,8 +74,23 @@ export async function holdAnswers(
 		edit( json );
 		await route.fulfill( { response: answer, json } ).catch( () => null );
 	};
+	const hold = async ( route: Route ) => {
+		holding++;
+		try {
+			await pass( route );
+		} finally {
+			holding--;
+		}
+	};
 	await page.route( state, hold );
-	return () => page.unroute( state, hold );
+	return {
+		release: () => page.unroute( state, hold ),
+		drained: async () => {
+			while ( holding > 0 ) {
+				await new Promise( ( done ) => setTimeout( done, 50 ) );
+			}
+		},
+	};
 }
 
 /**
