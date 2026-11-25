@@ -1292,7 +1292,8 @@
  * and the stock, about 134 px high. At most two columns, so six show at once on a desktop, and one in a panel
  * narrower than two of them, a phone's. The picture's box is the column's width and 7rem tall, whatever the image
  * (BuilderView's CARD_DECK), so nothing moves as it loads; the image is fitted into it. The words keep clear of the
- * chosen card's tick, picked or not, so a pick moves nothing.
+ * chosen card's tick, picked or not, so a pick moves nothing. The picture and the words are the builder's gap apart,
+ * the space the cards keep, so the words do not press against a tall deck (#130, D-377).
  */
 :where(.cbuild-cards--compact) {
 	grid-template-columns: repeat(
@@ -1306,7 +1307,7 @@
 
 :where(.cbuild-cards--compact) :where(.cbuild-card__body) {
 	grid-template-columns: 3.5rem minmax(0, 1fr);
-	column-gap: var(--cbuild-gap-small);
+	column-gap: var(--cbuild-gap);
 	align-content: center;
 	padding-inline-end: 1.75rem;
 }

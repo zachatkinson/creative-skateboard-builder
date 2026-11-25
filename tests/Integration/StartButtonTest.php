@@ -286,11 +286,29 @@ final class StartButtonTest extends IntegrationTestCase {
 		self::assertSame( array( (string) $ids['8.0'], (string) $ids['8.5'] ), array_map( 'strval', array_keys( $starts ) ), 'each variation the kit offers in stock' );
 		self::assertStringContainsString( 'cbuild[deck]=' . $ids['8.5'], rawurldecode( (string) $starts[ $ids['8.5'] ] ) );
 		self::assertStringContainsString( 'data-cbuild-start="', $html, 'the button\'s own link, for a choice cleared' );
+		self::assertStringContainsString( '<a class="button wp-element-button cbuild-start__link"', $html, 'the theme\'s button, as on a simple deck\'s page (#133)' );
 		// The script that follows the form's choice, after WooCommerce's own.
 		do_action( 'wp_enqueue_scripts' );
 		self::assertStringContainsString( 'found_variation reset_data', implode( '', (array) wp_scripts()->get_data( 'wc-add-to-cart-variation', 'after' ) ) );
 
 		remove_all_actions( 'woocommerce_after_add_to_cart_form' );
 		self::assertStringNotContainsString( 'data-cbuild-starts', $this->shown( $this->deck ), 'a simple deck has its one link' );
+	}
+
+	// #133 (D-377): the theme draws the button as its own. A block theme styles `wp-element-button`, which WooCommerce's
+	// buttons carry; without it Twenty Twenty-Five drew an underlined link. Never `single_add_to_cart_button`, which
+	// WooCommerce's scripts bind to, nor `alt`, a classic theme's primary: the button is the page's second action. A
+	// variable deck's button is checked in the test above.
+	public function test_the_button_carries_the_themes_button_classes_and_none_of_add_to_carts(): void {
+		$html = $this->shown( $this->deck );
+		self::assertSame( 1, preg_match( '/<a class="([^"]*)"/', $html, $found ), $html );
+		$classes = explode( ' ', $found[1] );
+		self::assertContains( 'button', $classes, 'a classic theme\'s button' );
+		self::assertContains( 'wp-element-button', $classes, 'a block theme\'s button' );
+		self::assertNotContains( 'single_add_to_cart_button', $classes, 'WooCommerce\'s scripts bind to Add to cart\'s class' );
+		self::assertNotContains( 'alt', $classes, 'not the page\'s first action' );
+		// What matches Add to cart's weight and height: one script straight after each button the hook prints.
+		self::assertSame( 1, preg_match( '#</p><script[^>]*>\\s*\\(function\\(s\\)#', $html ), 'the script that matches Add to cart, after the button' );
+		self::assertSame( substr_count( $html, '<p class="cbuild-start">' ), substr_count( $html, '<script' ), 'one script a button' );
 	}
 }

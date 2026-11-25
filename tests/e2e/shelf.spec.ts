@@ -429,6 +429,46 @@ test.describe( 'Compact deck cards (F14)', () => {
 		).toBeGreaterThanOrEqual( 6 );
 	} );
 
+	// #130 (D-377): with the builder's gap between the deck's picture and its words, the cards keep their rows on each
+	// theme: two to a row at 1440 and one on a phone. The gap itself is measured on decks with pictures (builder.spec.ts).
+	for ( const theme of [ 'twentytwentyfive', 'storefront', 'kadence' ] ) {
+		test( `keeps two decks to a row at 1440 and one on a phone on ${ theme }`, async ( {
+			page,
+			context,
+			baseURL,
+		}, info ) => {
+			const phone = info.project.name.includes( 'phone' );
+			await context.addCookies( [
+				{
+					name: 'cbuild_e2e_theme',
+					value: theme,
+					url: baseURL || SITE,
+				},
+			] );
+			if ( ! phone ) {
+				await page.setViewportSize( { width: 1440, height: 900 } );
+			}
+			await page.goto( at() );
+			await expect( cards( page ) ).toHaveCount( 30 );
+			const [ one, two, three ] = await cards( page ).evaluateAll(
+				( items ) =>
+					items.slice( 0, 3 ).map( ( item ) => {
+						const box = item.getBoundingClientRect();
+						return {
+							top: Math.round( box.top ),
+							left: Math.round( box.left ),
+						};
+					} )
+			);
+			if ( phone ) {
+				expect( two?.left, 'one column' ).toBe( one?.left );
+				return;
+			}
+			expect( two?.top, 'two to a row' ).toBe( one?.top );
+			expect( three?.left, 'and no third' ).toBe( one?.left );
+		} );
+	}
+
 	// Cowork's 1.1.0 review, F24 (#122): once a width is chosen, the first view at 1440 by 900 on the demo (Board size
 	// Balanced) showed two cards, cut off, under the step's lead, a plugin's notice of about 70 px, the width, the
 	// search, the brands and Sort. With the lead gone once a width is chosen and Sort on the brands' line, the builder

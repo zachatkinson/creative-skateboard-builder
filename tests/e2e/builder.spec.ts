@@ -8398,6 +8398,201 @@ test.describe( 'A saved build that has changed, and the deck page', () => {
 	} );
 } );
 
+// #133 (D-377): "Build a complete with this deck" is drawn as the theme's own button, the page's second action. Measured
+// at 1280 px before: Kadence drew it as Add to cart's twin, 3 px taller; Storefront in its grey secondary; Twenty
+// Twenty-Five as an underlined link. Now on each theme it is a button, with Add to cart's weight and, on a line of its
+// own, its height, in colours that are not Add to cart's.
+test.describe( 'The start button on a theme (#133)', () => {
+	for ( const theme of [ 'kadence', 'storefront', 'twentytwentyfive' ] ) {
+		test( `is ${ theme }'s button, second to Add to cart, with its weight and height`, async ( {
+			page,
+			context,
+			baseURL,
+			javaScriptEnabled,
+		}, info ) => {
+			await context.addCookies( [
+				{
+					name: 'cbuild_e2e_theme',
+					value: theme,
+					url: baseURL || SITE,
+				},
+			] );
+			if ( ! info.project.name.includes( 'phone' ) ) {
+				await page.setViewportSize( { width: 1280, height: 900 } );
+			}
+			await page.goto( `/?p=${ id( 'builder-test-deck-8-25' ) }` );
+			const start = page.locator( '.cbuild-start__link' );
+			await expect( start ).toBeVisible();
+			const add = page.locator( 'form.cart .single_add_to_cart_button' );
+			await expect( add ).toBeVisible();
+			// Fonts in, so both are measured as drawn.
+			await page.evaluate( async () => {
+				await document.fonts.ready;
+			} );
+			const drawn = ( locator: Locator ) =>
+				locator.evaluate( ( element ) => {
+					const style = getComputedStyle( element );
+					const range = document.createRange();
+					range.selectNodeContents( element );
+					// The words' lines, by their tops.
+					const lines = new Set(
+						[ ...range.getClientRects() ].map( ( rect ) =>
+							Math.round( rect.top )
+						)
+					).size;
+					return {
+						weight: style.fontWeight,
+						height: element.getBoundingClientRect().height,
+						lines,
+						underline:
+							style.textDecorationLine.includes( 'underline' ),
+						background: style.backgroundColor,
+						color: style.color,
+						border:
+							'none' !== style.borderTopStyle &&
+							parseFloat( style.borderTopWidth ) > 0,
+						ring: 'none' !== style.boxShadow,
+						filled: ! /^(transparent|rgba\(.*, 0\))$/.test(
+							style.backgroundColor
+						),
+						padding:
+							parseFloat( style.paddingInlineStart ) > 0 &&
+							parseFloat( style.paddingInlineEnd ) > 0,
+					};
+				} );
+			const ours = await drawn( start );
+			const theirs = await drawn( add );
+
+			expect( ours.underline, 'no underline' ).toBe( false );
+			expect(
+				ours.filled || ours.border || ours.ring,
+				'a background, a border or a ring'
+			).toBe( true );
+			expect( ours.padding, 'padding' ).toBe( true );
+			if ( ! javaScriptEnabled ) {
+				// Add to cart's colours, weight and height as drawn are read by the page's script (D-377); without it
+				// the button is the theme's own as it stands, which on Kadence and Twenty Twenty-Five is Add to cart's.
+				return;
+			}
+			expect(
+				`${ ours.background } | ${ ours.color }`,
+				"its colours are not Add to cart's"
+			).not.toBe( `${ theirs.background } | ${ theirs.color }` );
+			expect( ours.weight, "Add to cart's weight" ).toBe( theirs.weight );
+			if ( 1 === ours.lines && 1 === theirs.lines ) {
+				expect(
+					Math.abs( ours.height - theirs.height ),
+					`Add to cart's height: ${ ours.height } and ${ theirs.height } px`
+				).toBeLessThanOrEqual( 0.5 );
+			}
+		} );
+
+		// A theme's button may change size at a breakpoint: the copy follows Add to cart from 1280 px to a phone's 390.
+		test( `keeps Add to cart's weight and height on ${ theme } from 1280 to 390 px`, async ( {
+			page,
+			context,
+			baseURL,
+			javaScriptEnabled,
+		}, info ) => {
+			test.skip( ! javaScriptEnabled, 'The copy is the script (D-377).' );
+			test.skip(
+				info.project.name.includes( 'phone' ),
+				'A desktop window, narrowed.'
+			);
+			await context.addCookies( [
+				{
+					name: 'cbuild_e2e_theme',
+					value: theme,
+					url: baseURL || SITE,
+				},
+			] );
+			await page.setViewportSize( { width: 1280, height: 900 } );
+			await page.goto( `/?p=${ id( 'builder-test-deck-8-25' ) }` );
+			const start = page.locator( '.cbuild-start__link' );
+			await expect( start ).toBeVisible();
+			await page.evaluate( async () => {
+				await document.fonts.ready;
+			} );
+			/**
+			 * What the two buttons differ by: weight, font size, line height, the block padding with the borders, and the
+			 * height where both are on one line.
+			 */
+			const differ = () =>
+				start.evaluate( ( ours ) => {
+					const add = document.querySelector(
+						'form.cart .single_add_to_cart_button'
+					);
+					if ( ! add ) {
+						return [ 'no Add to cart' ];
+					}
+					const read = ( element: Element ) => {
+						const style = getComputedStyle( element );
+						const range = document.createRange();
+						range.selectNodeContents( element );
+						const block = [
+							'paddingTop',
+							'paddingBottom',
+							'borderTopWidth',
+							'borderBottomWidth',
+						].reduce(
+							( sum, key ) =>
+								sum +
+								parseFloat(
+									style.getPropertyValue(
+										key.replace(
+											/[A-Z]/g,
+											( letter ) =>
+												`-${ letter.toLowerCase() }`
+										)
+									)
+								),
+							0
+						);
+						return {
+							weight: style.fontWeight,
+							size: style.fontSize,
+							line: style.lineHeight,
+							block: Math.round( block * 2 ) / 2,
+							height: element.getBoundingClientRect().height,
+							lines: new Set(
+								[ ...range.getClientRects() ].map( ( rect ) =>
+									Math.round( rect.top )
+								)
+							).size,
+						};
+					};
+					const a = read( add );
+					const b = read( ours );
+					const off = [ 'weight', 'size', 'line', 'block' ]
+						.filter(
+							( key ) =>
+								a[ key as keyof typeof a ] !==
+								b[ key as keyof typeof b ]
+						)
+						.map(
+							( key ) =>
+								`${ key }: ${ b[ key as keyof typeof b ] } and ${
+									a[ key as keyof typeof a ]
+								}`
+						);
+					if (
+						1 === a.lines &&
+						1 === b.lines &&
+						Math.abs( a.height - b.height ) > 0.5
+					) {
+						off.push( `height: ${ b.height } and ${ a.height }` );
+					}
+					return off;
+				} );
+			await expect
+				.poll( differ, { message: 'at 1280 px' } )
+				.toEqual( [] );
+			await page.setViewportSize( { width: 390, height: 844 } );
+			await expect.poll( differ, { message: 'at 390 px' } ).toEqual( [] );
+		} );
+	}
+} );
+
 // #115 (D-349): a kit's Show on its parts' pages. Off on every kit that offers the deck, its page has no "Build a
 // complete with this deck"; on again, the button is back where it was.
 test.describe( "A kit's Show on its parts' pages", () => {
@@ -8995,6 +9190,113 @@ test.describe( 'Compact deck cards (F14)', () => {
 			/cbuild-cards--compact/
 		);
 	} );
+
+	// #130 (D-377): the deck's picture and its words are kept apart by the builder's gap, the space the cards keep, not
+	// the theme's smallest step (0.5rem by default, less on some themes), at which the words read as pressed against a
+	// tall deck. At least 16 px on each theme, beside a layer image (8.5″) and a photo (8.25″), and the words still
+	// clear of the chosen card's tick (D-322). The rows are the shelf kit's test, which lists enough decks.
+	for ( const theme of [ 'twentytwentyfive', 'storefront', 'kadence' ] ) {
+		test( `keeps 16 px or more between the deck and its words on ${ theme }, clear of the tick`, async ( {
+			page,
+			context,
+			baseURL,
+		}, info ) => {
+			await context.addCookies( [
+				{
+					name: 'cbuild_e2e_theme',
+					value: theme,
+					url: baseURL || SITE,
+				},
+			] );
+			if ( ! info.project.name.includes( 'phone' ) ) {
+				await page.setViewportSize( { width: 1440, height: 900 } );
+			}
+			for ( const width of [ '8.5', '8.25' ] as const ) {
+				await page.goto(
+					linkTo( { step: 'deck', _width: `${ width }in` } )
+				);
+				const item = card( page, width );
+				await expect(
+					item.locator( '.cbuild-card__photo' )
+				).toBeVisible();
+				// Chosen as the shopper's own pick paints it, so its tick is drawn; nothing is sent.
+				await item
+					.locator( '.cbuild-card__control' )
+					.evaluate( ( radio ) => {
+						( radio as HTMLInputElement ).checked = true;
+					} );
+				const measured = await item.evaluate( ( li ) => {
+					const rtl = 'rtl' === getComputedStyle( li ).direction;
+					const box = li
+						.querySelector( '.cbuild-card__photo' )
+						?.getBoundingClientRect();
+					const words = [
+						...li.querySelectorAll(
+							'.cbuild-card__body > :not(.cbuild-card__photo)'
+						),
+					];
+					const boxes = words
+						.map( ( word ) => word.getBoundingClientRect() )
+						.filter( ( word ) => word.width > 0 );
+					const gap = box
+						? Math.min(
+								...boxes.map( ( word ) =>
+									rtl
+										? box.left - word.right
+										: word.left - box.right
+								)
+							)
+						: -1;
+					// The tick where the chosen card draws it: its ::before, from the card's padding box.
+					const own = li.getBoundingClientRect();
+					const look = getComputedStyle( li );
+					const tick = getComputedStyle( li, '::before' );
+					const size = parseFloat( tick.width );
+					const top =
+						own.top +
+						parseFloat( look.borderTopWidth ) +
+						parseFloat( tick.top );
+					const left = rtl
+						? own.left +
+							parseFloat( look.borderLeftWidth ) +
+							parseFloat( tick.left )
+						: own.right -
+							parseFloat( look.borderRightWidth ) -
+							parseFloat( tick.right ) -
+							size;
+					// Any line of the words under the tick.
+					const range = document.createRange();
+					const under = words.some( ( word ) => {
+						range.selectNodeContents( word );
+						return [ ...range.getClientRects() ].some(
+							( line ) =>
+								line.width > 0 &&
+								line.left < left + size &&
+								line.right > left &&
+								line.top < top + size &&
+								line.bottom > top
+						);
+					} );
+					return {
+						gap,
+						under,
+						tick: 'none' !== tick.content && size > 0,
+					};
+				} );
+				expect(
+					measured.gap,
+					`${ width }: the deck and its words, 16 px apart or more`
+				).toBeGreaterThanOrEqual( 15.5 );
+				expect( measured.tick, `${ width }: the tick is drawn` ).toBe(
+					true
+				);
+				expect(
+					measured.under,
+					`${ width }: the words clear of the tick`
+				).toBe( false );
+			}
+		} );
+	}
 
 	test( 'rings the compact card, not the radio inside it, when the keyboard reaches it', async ( {
 		page,

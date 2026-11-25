@@ -225,6 +225,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-363 · A press already down when the store's script starts is taken up as one that went down after](#d-363--a-press-already-down-when-the-stores-script-starts-is-taken-up-as-one-that-went-down-after--2026-11-24)
 - [D-364 · The state route has 10 s to answer, then the step keeps what it shows and says so](#d-364--the-state-route-has-10-s-to-answer-then-the-step-keeps-what-it-shows-and-says-so--2026-11-24)
 - [D-374 · The bar keeps the estimate's line once the build has a part, not on a blank build](#d-374--the-bar-keeps-the-estimates-line-once-the-build-has-a-part-not-on-a-blank-build--2026-11-24)
+- [D-377 · A compact card's words sit the builder's gap from the deck, and the start button is the theme's second button](#d-377--a-compact-cards-words-sit-the-builders-gap-from-the-deck-and-the-start-button-is-the-themes-second-button--2026-11-24)
 
 ### Accessibility
 
@@ -5294,6 +5295,60 @@ Issue #143, from Cowork's check of Mature Content 1.5.0. Mature Content puts a S
 **The hydrated marker (Cowork, the same day).** A script that loads after hydration misses the first `cbuild:rendered`, since an event is not replayed. HOOKS.md now documents `.cbuild[data-ready]` at 1.2.0 with the pattern: check the attribute first, then listen for the event. In the code, the bar's `ready` callback sets it and then, in the same call, sends the first event, and nothing removes it (the store and the stylesheet only read it). It promises nothing about `DOMContentLoaded`. The API snapshot tracks classes, events and properties, not attributes, so it is in HOOKS.md alone. **Tests:** the Vitest hydration case checks that a listener on the first event finds `data-ready` set. Deliberate break: the event sent before the attribute failed with "data-ready is set by the first event: expected false to be true" (store.test.ts:3856). Put back, it passes. `builder.spec.ts` adds a listener once the builder is ready: it finds `data-ready` set, hears nothing replayed, and then hears the next redraw once.
 
 **Why:** an event the builder sends when it has drawn is cheaper and surer for another plugin than watching attributes the builder may change in any release, and named classes let it find its places without reading the templates.
+
+**Status:** Accepted.
+
+### D-377 · A compact card's words sit the builder's gap from the deck, and the start button is the theme's second button · 2026-11-24
+
+Issues #130 and #133, from Zach on 24 November. Both are about how the builder's pieces sit beside a theme's.
+
+**The compact card's gap (#130).** A compact deck card (D-322) put `--cbuild-gap-small` between the deck's picture and its words. That is the theme's smallest spacing step, `--wp--preset--spacing--20`: 0.44rem from WordPress's default scale, 10px on Twenty Twenty-Five (theme.json, the `20` size). Beside a 112 px deck the words read as pressed against it.
+
+- **The fix.** The card body's `column-gap` is `--cbuild-gap`, the step 40 the builder keeps between its parts: 1rem (16 px) on Kadence and Storefront from WordPress's default scale, 30px on Twenty Twenty-Five.
+- **What it leaves as it was.** The columns are set by the card's width, not by its inside, so two still show to a row at 1440 and one on a phone. The tick's room is the body's `padding-inline-end`, so the words still clear it, picked or not.
+
+**The start button (#133).** "Build a complete with this deck" printed only `<a class="button cbuild-start__link">`. Measured on the test sites at 1280 px against the page's Add to cart: Kadence drew both as the same blue button at weight 400, ours 3 px taller; Storefront drew Add to cart dark at 600 and ours in its grey at 600; Twenty Twenty-Five drew ours as an underlined link. Zach chose a secondary button in the theme's own style, with Add to cart's weight and height, still visibly the page's second action (one primary action per view).
+
+How each theme draws Add to cart, read in the sources wp-env installed (Kadence 1.6.0, Storefront 4.6.2, Twenty Twenty-Five 1.5, WooCommerce 11.3.1):
+
+| Theme | Weight and height | Colours |
+| --- | --- | --- |
+| Kadence | `button, .button, …` take the font and padding of the Customizer's `buttons_typography` and `buttons_padding` (inc/components/styles/component.php:2122 to 2125), so both buttons share a weight. Add to cart alone is `height:40px;line-height:40px;padding:0 1em`, `.woocommerce div.product .button.single_add_to_cart_button`, or 50 or 60 px at 125 % under the body's `kadence-cart-button-<size>` (assets/css/woocommerce.min.css:1; inc/components/woocommerce/component.php:863). | One palette colour for every `.button`: the twin. |
+| Storefront | `button, …, .button` at `font-weight:600` and `padding:.6180469716em 1.41575em` (style.css:31). | `.button` in `storefront_button_background_color`, #eeeeee, and `.button.alt` in `storefront_button_alt_background_color`, #333333 (inc/customizer/class-storefront-customizer.php:63, :65, :973, :985). |
+| Twenty Twenty-Five | The `button` element's padding and font size (theme.json:597 to 628), on `wp-element-button`, which WooCommerce adds to Add to cart on a block theme alone (includes/wc-conditional-functions.php:622; templates/single-product/add-to-cart/simple.php:49). | The `button` element only: no secondary style. Its outline is the button block's style variation, which needs the block's own wrapper. |
+
+- **Classes.** The link carries `button wp-element-button cbuild-start__link`. `wp-element-button` is the block theme's button, as on WooCommerce's own buttons; on a classic theme it is inert, since Storefront has no theme.json and Kadence's leaves the element's styles empty (theme.json:176). Never `single_add_to_cart_button`, which WooCommerce's scripts bind to, and never `alt`, the classic themes' primary.
+- **Weight and height, from Add to cart as drawn.** Kadence sizes Add to cart through its own selector and a setting aimed at it alone, so no rule of the plugin's can match it without naming the theme. A script printed after the button copies Add to cart's computed font family, size, weight, letter spacing and line height, and its block padding, with any difference in the borders made up in the padding. So a button on one line is Add to cart's height on any theme. It runs as the button is parsed, before the first paint.
+- **At a breakpoint.** A theme's button may change size at a breakpoint: Kadence's `kadence-cart-button-<size>` rules change it at 576 and 400 px, and its tablet and mobile button fonts at others. A `ResizeObserver` on Add to cart copies the sizes again whenever its box changes, and disconnects once Add to cart leaves the page. With no `ResizeObserver` the sizes read at load stay. A change of weight alone, with no change of size, is not seen; no theme read here does that. The script is about 1 kB, with no dependency.
+- **With the theme's transitions off.** Kadence eases every change of a button. The first run on every project found the button 1 to 6 px taller than Add to cart on Kadence, read as it shrank from its own padding to Add to cart's, about 5.6 px at load. The copy is made with `transition: none`, the layout read once, and the theme's transition given back, so the button is Add to cart's height from the first paint and keeps the theme's hover easing.
+- **Colours.** A theme with a secondary style keeps it: Storefront's grey. Where the two buttons are drawn in the same colours, as on Kadence and Twenty Twenty-Five, the script adds `cbuild-start__link--outline`: no fill, its words and a 2 px inset ring in Add to cart's colour, and a 12 % tint of it under the pointer. The ring is inset, not a border, so the height holds. The rule outranks a theme's plain `.button:hover`.
+- **Where the rules are.** The product page does not load the builder's stylesheet, so the three rules (about 500 bytes) are printed under a style handle with no file, `cbuild-start`, as the carts' are (D-132). The builder's style budget is not touched.
+- **Without the script.** The button is the theme's as it stands: a button on all three, the same colours as Add to cart on Kadence and Twenty Twenty-Five, and on Kadence 3 px taller.
+
+**Tests.**
+
+- `StartButtonTest::test_the_button_carries_the_themes_button_classes_and_none_of_add_to_carts`: the link carries `button` and `wp-element-button`, neither `single_add_to_cart_button` nor `alt`, and a script straight after each button. `test_a_variable_decks_button_carries_each_variations_link_for_the_one_chosen` checks the variable deck's markup carries the same classes.
+- `builder.spec.ts`, "The start button on a theme (#133)": on Kadence, Storefront and Twenty Twenty-Five at 1280 px, the button has no underline, a fill, border or ring, and padding; with the script, colours that are not Add to cart's, its weight, and on one line its height, to half a pixel. "keeps Add to cart's weight and height … from 1280 to 390 px": on each theme, with the script, the weight, font size, line height and block padding with borders match at 1280 px and again once the window is 390 px wide, and the height where both are on one line.
+- `builder.spec.ts`, "Compact deck cards (F14)": on the three themes, the deck's picture and its words 16 px apart or more beside a layer image (8.5″) and a photo (8.25″), and the chosen card's words clear of its tick. `shelf.spec.ts`: two cards to a row at 1440 and one on a phone on the three themes.
+
+**Red runs** (lane 3, before each fix, chromium-desktop for the browser):
+
+- `StartButtonTest::test_the_button_carries_the_themes_button_classes_and_none_of_add_to_carts`: "a block theme's button / Failed asserting that an array contains 'wp-element-button'." (StartButtonTest.php:307). `test_a_variable_decks_button_carries_each_variations_link_for_the_one_chosen`: the markup without `wp-element-button` (StartButtonTest.php:289).
+- "is kadence's button, second to Add to cart": "its colours are not Add to cart's / Expected: not "rgb(43, 108, 176) | rgb(255, 255, 255)"" (builder.spec.ts:8476). "is twentytwentyfive's button": "no underline / Expected: false / Received: true" (builder.spec.ts:8462). Storefront's passed, as its secondary was already there.
+- "keeps Add to cart's weight and height … from 1280 to 390 px", at 1280 px (builder.spec.ts:8585): on Kadence "line: 28.8px and 40px", "block: 14.5 and 0", "height: 43.171875 and 40"; on Twenty Twenty-Five "size: 21.7632px and 17.8816px", "line: 30.4685px and 25.0342px", "block: 0 and 32", "height: 30 and 57.015625".
+- "keeps 16 px or more between the deck and its words": "8.5: the deck and its words, 16 px apart or more / Expected: >= 15.5 / Received: 7.03125" on Kadence and Storefront, and "Received: 10" on Twenty Twenty-Five (builder.spec.ts:9285).
+- `shelf.spec.ts`'s rows passed before and after, as they should: the gap does not change them.
+
+**Deliberate breaks.**
+
+- **No script printed:** "the script that matches Add to cart, after the button / Failed asserting that 0 is identical to 1." (StartButtonTest.php:311).
+- **No `ResizeObserver`:** Twenty Twenty-Five, "at 390 px": "size: 17.8816px and 16.1372px", "line: 25.0342px and 22.5921px", "height: 57.03125 and 54.59375" (builder.spec.ts:8587), its font sizes being `clamp()`s of the window's width. Kadence and Storefront passed, their buttons the same size at 390 px in a desktop browser.
+
+- **The copy eased by the theme** (found, not made): before the transition was turned off, "is kadence's button" failed on nine projects with "Add to cart's height: 46.09375 and 40 px" (chromium-desktop and fr-ca) down to "41.06666564941406 and 40 px" (firefox-phone and firefox-tablet), builder.spec.ts:8482. A probe at load read the button's padding as 5.61 px with 0 px set, and 0 px 1.5 s later.
+
+Put back, all passed.
+
+**Why:** a button the theme draws, at Add to cart's weight and height, reads as part of the page; one that looks like Add to cart competes with it.
 
 **Status:** Accepted.
 
