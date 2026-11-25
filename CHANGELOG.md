@@ -4,6 +4,8 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-11-25
+
 ### Added
 
 - **Builder page**, in a kit's Build tab, Layout section, under "Where shoppers find it": `builder_page` in `_cbuild_settings`, a published page that holds the kit's Builder block. The kit's page, "Build a complete with this deck", the cart's Edit build, My builds' Open and the state route's links go there, checked each time they are made; a page unpublished, locked or without the block sends shoppers to the kit's own page. A kit saved before 1.2.0 has none (#113, D-348).
@@ -885,7 +887,8 @@ Milestone 1, the foundation. Nothing a shopper or shop owner sees yet: the skele
   - A weekly canary on WordPress trunk and WooCommerce's pre-release, the release workflow with CycloneDX SBOMs, and Dependabot.
 - Docs: `HOOKS.md`, `SETTINGS.md`, `SECURITY.md`, `PRIVACY.md`, `A11Y.md`, `BENCHMARK.md`, `DECISIONS.md` (D-020 to D-048), `reviews/M1.md`, `README.md` and `readme.txt`; the POT file.
 
-[Unreleased]: https://github.com/zachatkinson/creative-skateboard-builder/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/zachatkinson/creative-skateboard-builder/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/zachatkinson/creative-skateboard-builder/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/zachatkinson/creative-skateboard-builder/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/zachatkinson/creative-skateboard-builder/compare/v0.9.0...v1.0.0
 [0.9.0]: https://github.com/zachatkinson/creative-skateboard-builder/compare/v0.8.0...v0.9.0
