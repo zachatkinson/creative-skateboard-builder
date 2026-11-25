@@ -155,6 +155,16 @@ From 1.3.0 the Build tab gains a **Wheel guide** section, kept in the same `_cbu
 | --- | --- | --- | --- | --- |
 | Smallest wheel and Largest wheel, a row a riding style: Street, Skatepark, Bowl and transition, Cruising | `wheel_guide.rows[]` with `style` (`street`, `park`, `bowl` or `cruising`), `from` and `to` | 40 to 90 mm, typed as the shop writes a measure (its decimal separator, with or without "mm"). **Largest** left empty is the smallest alone, and is never under **smallest**. A row with both left empty is stored as no row. | none: street 50 to 54 mm, park 53 to 56, bowl 55 to 58, cruising 59 to 65 (D-400) | The wheel sizes the guided start recommends for each answer to "Where do you skate?". A style with no row has the plugin's sizes, which each row's note names, so a later release's change of them reaches the kit. A size that is wrong is named at its style's field and the guide is not saved; its notice leads to the field, and the rest of the kit saves (D-385). `cbuild_guided_start` answers last. |
 
+### Shown in the builder (D-409)
+
+From 1.3.0 the Build tab's **Layout** section gains a group, **Shown in the builder**, three checkboxes kept in the same `_cbuild_settings` document, so a rollback to 1.2.0 still reads the kit (D-354). A kit saved before 1.3.0 has none of the keys, and shows all three. Each box sends `0` unticked, so a form that does not send the field, as another plugin's save may, keeps what the kit has. Saved by who may manage the shop, through WooCommerce's product save and its nonce.
+
+| Setting | Key | Choices | Default | What it does |
+| --- | --- | --- | --- | --- |
+| Help me choose | `guide` | `true`, `false` (a checkbox) | `true` (the key left out) | Whether the builder offers "Help me choose", the guided start's questions and the ready builds they recommend, at its start (#134). Off, the page draws none of it, with or without JavaScript: no disclosure, form, label or builds, and no room left for them; the step follows its lead, and answers in a link recommend nothing. The Wheel guide's sizes are kept. `cbuild_help_me_choose` answers last. |
+| Ready-build picks on cards | `picks` | `true`, `false` (a checkbox) | `true` (the key left out) | Whether a card whose part a ready build shown uses says which, such as "Picked for Street" (#137). Off, no card says it, and no card keeps a line for it. `cbuild_card_picks` answers last. |
+| Ratings on cards | `ratings` | `true`, `false` (a checkbox) | `true` (the key left out) | Whether a card whose part has reviews shows its star and score beside its price, and says its rating to a screen reader (#137). Off, no card shows or says it. On, none shows while WooCommerce's "Enable star rating on reviews" is off, as before. `cbuild_card_ratings` answers last. |
+
 ### Assembly time (#142)
 
 The Build tab's **Assembly** section gains a field beside the lead time, kept in the same `_cbuild_settings` document as `lead_days` (D-375), so a rollback to 1.1.0 still reads the kit (D-354). A kit saved before 1.2.0 has none.

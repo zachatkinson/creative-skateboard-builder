@@ -524,11 +524,14 @@ final class BuilderView {
 		$name     = BuildLink::PARAM . '[_guide]';
 		$results  = null === $recommended ? array() : self::recommended( $state, $recommended, $answers, $base );
 		$currency = Cast::str( Cast::map( $answer['currency'] ?? null )['symbol'] ?? null );
+		// The kit's Help me choose, and a plugin's answer (D-409): off, the page draws none of it.
+		$offered = Shown::guide( $state->id, $state->kit->settings );
 		return array(
+			'offered' => $offered,
 			// At the start, until a width is pressed: that is the shopper's own answer, and the decks need the room.
 			// Builds asked for stay with the width they bring (D-404).
-			'shown'   => self::atStart( $state, $link ) && ( '' === $link->shelf->width || null !== $recommended ),
-			'asked'   => null !== $recommended,
+			'shown'   => $offered && self::atStart( $state, $link ) && ( '' === $link->shelf->width || null !== $recommended ),
+			'asked'   => $offered && null !== $recommended,
 			'summary' => null === $recommended ? __( 'Help me choose', 'creative-skateboard-builder' ) : __( 'Change your answers', 'creative-skateboard-builder' ),
 			'intro'   => __( 'Answer what you know and leave the rest. Each answer is optional.', 'creative-skateboard-builder' ),
 			'shoe'    => array(

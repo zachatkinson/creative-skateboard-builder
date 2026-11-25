@@ -115,6 +115,7 @@ final class GuidedStartTest extends IntegrationTestCase {
 
 	public function tear_down(): void {
 		remove_all_filters( 'cbuild_guided_start' );
+		remove_all_filters( 'cbuild_help_me_choose' );
 		parent::tear_down();
 	}
 
@@ -432,6 +433,55 @@ final class GuidedStartTest extends IntegrationTestCase {
 		)->get_id();
 		self::assertFalse( $this->show( array() )['view']['guide']['shoe']['shown'] );
 		self::assertSame( array( '3 builds fit and are in stock.' ), self::reasons( $this->guide( array( 'shoe' => '3' ) ) ), 'a shoe answer with no guide is no answer' );
+	}
+
+	/**
+	 * The kit with these settings, its slots the fixture's.
+	 *
+	 * @param array<string, mixed> $settings The settings document's keys past its version.
+	 */
+	private function settled( array $settings ): void {
+		$this->kit = KitFactory::kit(
+			'Settled',
+			array(
+				Options::META_KIT_SLOTS    => $this->slots,
+				Options::META_KIT_SETTINGS => array( 'schema_version' => 1 ) + $settings,
+			)
+		)->get_id();
+	}
+
+	// D-409: the Build tab's Help me choose. Off, the start offers no questions and a link's answers recommend no build;
+	// a kit whose settings were saved before 1.3.0 has no key and offers it. `cbuild_help_me_choose` answers last.
+	public function test_help_me_choose_off_offers_nothing_and_a_kit_saved_without_the_key_offers_it(): void {
+		$asked = array( '_guide' => array( 'style' => 'street', 'asked' => '1' ) );
+		$this->settled( array( 'start_button' => true ) );
+		$guide = $this->show( array() )['view']['guide'];
+		self::assertTrue( $guide['offered'], 'saved before 1.3.0' );
+		self::assertTrue( $guide['shown'] );
+		self::assertCount( 3, $this->show( $asked )['view']['guide']['tiles'], 'and its builds' );
+
+		$this->settled( array( 'guide' => false ) );
+		foreach ( array(
+			'at the start'      => array(),
+			'with answers sent' => $asked,
+		) as $case => $sent ) {
+			$shown = $this->show( $sent );
+			$guide = $shown['view']['guide'];
+			self::assertFalse( $guide['offered'], $case );
+			self::assertFalse( $guide['shown'], $case );
+			self::assertFalse( $guide['asked'], $case . ': no builds asked' );
+			self::assertSame( array(), $guide['tiles'], $case );
+			self::assertSame( 'deck', $shown['state']->step, $case . ': the first step' );
+		}
+
+		$own = $this->kit;
+		add_filter( 'cbuild_help_me_choose', static fn( mixed $offered, int $kit ): bool => $kit === $own && false === $offered, 10, 2 );
+		self::assertTrue( $this->show( array() )['view']['guide']['shown'], 'a plugin answers last, with the kit\'s setting and its ID' );
+		self::assertCount( 3, $this->show( $asked )['view']['guide']['tiles'] );
+		remove_all_filters( 'cbuild_help_me_choose' );
+		$this->settled( array() );
+		add_filter( 'cbuild_help_me_choose', static fn(): string => 'yes' );
+		self::assertFalse( $this->show( array() )['view']['guide']['shown'], 'anything but true is off' );
 	}
 
 	public function test_a_builder_an_earlier_release_built_asks_the_questions_and_shows_no_builds(): void {

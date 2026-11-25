@@ -1070,7 +1070,57 @@ final class BuildTab {
 				'fields' => $found,
 				'more'   => array(),
 			),
+			array(
+				'id'     => $id . '-shown',
+				'legend' => __( 'Shown in the builder', 'creative-skateboard-builder' ),
+				'moves'  => false,
+				'fold'   => '',
+				'open'   => true,
+				'fields' => $this->switches( $settings ),
+				'more'   => array(),
+			),
 		);
+	}
+
+	/**
+	 * The Layout section's switches for what the builder shows (1.3.0, D-409): "Help me choose" at its start, and on
+	 * the cards the ready builds that pick a part and its rating, kept in the settings document. Each is ticked for a
+	 * kit that has none, as one saved before 1.3.0, and its box sends 0 unticked, so a form that sends none keeps the
+	 * kit's.
+	 *
+	 * @param array<mixed> $settings The settings document to show.
+	 * @return list<array<string, mixed>>
+	 */
+	private function switches( array $settings ): array {
+		$fields = array();
+		foreach ( array(
+			'guide'   => array(
+				__( 'Help me choose', 'creative-skateboard-builder' ),
+				__( 'At the builder\'s start, offers a few optional questions that recommend ready builds. Off, the builder starts at its first step with no questions.', 'creative-skateboard-builder' ),
+			),
+			'picks'   => array(
+				__( 'Ready-build picks on cards', 'creative-skateboard-builder' ),
+				__( 'A card whose part a ready build uses says which, such as "Picked for Street". Off, no card says it.', 'creative-skateboard-builder' ),
+			),
+			'ratings' => array(
+				__( 'Ratings on cards', 'creative-skateboard-builder' ),
+				__( 'A card whose part has reviews shows its star and score. Off, no card shows them. They are never shown while WooCommerce\'s star ratings are off.', 'creative-skateboard-builder' ),
+			),
+		) as $key => [ $label, $note ] ) {
+			$on       = $settings[ $key ] ?? true;
+			$fields[] = $this->field(
+				self::IDS . '-settings-' . $key,
+				self::FIELD . '[settings][' . $key . ']',
+				$label,
+				'checkbox',
+				false === $on ? '' : '1',
+				array(
+					'note'     => $note,
+					'unticked' => '0',
+				)
+			);
+		}
+		return $fields;
 	}
 
 	/**
@@ -1454,6 +1504,9 @@ final class BuildTab {
 			'width_guide.shown'  => __( 'Show the width guide', 'creative-skateboard-builder' ),
 			'wheel_guide'        => __( 'Wheel guide', 'creative-skateboard-builder' ),
 			'wheel_guide.rows'   => __( 'Wheel guide', 'creative-skateboard-builder' ),
+			'guide'              => __( 'Help me choose', 'creative-skateboard-builder' ),
+			'picks'              => __( 'Ready-build picks on cards', 'creative-skateboard-builder' ),
+			'ratings'            => __( 'Ratings on cards', 'creative-skateboard-builder' ),
 		);
 		$found  = array();
 		if ( 1 === preg_match( '/\Awheel_guide\.([a-z]+)\.(from|to)\z/', $path, $found ) && null !== RidingStyle::tryFrom( $found[1] ) ) {

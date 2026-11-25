@@ -50,6 +50,32 @@ final class KitSettingsTest extends TestCase {
 		self::assertFalse( $kit->settings->startButton );
 	}
 
+	// D-409: Help me choose, the cards' ready-build picks and their ratings, each on unless the kit turns it off. A kit
+	// saved before 1.3.0 has no key, and shows each as 1.3.0 does by default.
+	public function test_help_me_choose_the_cards_picks_and_their_ratings_show_unless_the_kit_turns_each_off(): void {
+		foreach ( array(
+			'a kit with no settings'       => null,
+			'settings saved before 1.3.0'  => array( 'schema_version' => 1, 'start_button' => false ),
+			'each said on'                 => array( 'schema_version' => 1, 'guide' => true, 'picks' => true, 'ratings' => true ),
+		) as $case => $document ) {
+			$settings = KitSettings::fromDocument( $document );
+			self::assertTrue( $settings->guided, $case . ': Help me choose' );
+			self::assertTrue( $settings->cardPicks, $case . ': the picks' );
+			self::assertTrue( $settings->cardRatings, $case . ': the ratings' );
+		}
+		foreach ( array(
+			'guide'   => array( false, true, true ),
+			'picks'   => array( true, false, true ),
+			'ratings' => array( true, true, false ),
+		) as $key => $expected ) {
+			$off = KitSettings::fromDocument( array( 'schema_version' => 1, $key => false ) );
+			self::assertSame( $expected, array( $off->guided, $off->cardPicks, $off->cardRatings ), $key . ' off, and the others not' );
+			self::assertTrue( $off->startButton, $key . ' off, and nothing else changes' );
+		}
+		$kit = Kit::fromDocuments( KitDocuments::slots(), KitDocuments::rules(), KitDocuments::presets(), KitDocuments::assembly(), null, null, array( 'schema_version' => 1, 'guide' => false ) );
+		self::assertFalse( $kit->settings->guided );
+	}
+
 	// #113: the Builder page, a page's ID, or none for the kit's own page. A kit saved before 1.2.0 has none.
 	public function test_smart_swaps_are_offered_unless_the_kit_turns_them_off(): void {
 		self::assertTrue( KitSettings::fromDocument( null )->swaps, 'a kit with no settings, as before 1.2.0' );
@@ -196,6 +222,9 @@ final class KitSettingsTest extends TestCase {
 		yield 'the start button shown as text' => array( array( 'schema_version' => 1, 'start_button' => 'yes' ), 'document_wrong_type' );
 		yield 'the start button shown as a number' => array( array( 'schema_version' => 1, 'start_button' => 1 ), 'document_wrong_type' );
 		yield 'smart swaps as text' => array( array( 'schema_version' => 1, 'swaps' => 'on' ), 'document_wrong_type' );
+		yield 'Help me choose as text' => array( array( 'schema_version' => 1, 'guide' => 'on' ), 'document_wrong_type' );
+		yield 'the cards\' picks as a number' => array( array( 'schema_version' => 1, 'picks' => 0 ), 'document_wrong_type' );
+		yield 'the cards\' ratings as text' => array( array( 'schema_version' => 1, 'ratings' => '' ), 'document_wrong_type' );
 		yield 'a builder page of none' => array( array( 'schema_version' => 1, 'builder_page' => 0 ), 'document_out_of_range' );
 		yield 'a builder page below none' => array( array( 'schema_version' => 1, 'builder_page' => -3 ), 'document_out_of_range' );
 		yield 'a builder page as text' => array( array( 'schema_version' => 1, 'builder_page' => '42' ), 'document_wrong_type' );

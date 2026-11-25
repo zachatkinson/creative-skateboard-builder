@@ -558,6 +558,27 @@ final class KitEditorTest extends TestCase {
 		self::assertFalse( $this->editor->draft( $sent, $stored )->documents[ KitEditor::SETTINGS ]['swaps'] ?? null, 'not sent: the kit\'s kept' );
 	}
 
+	// D-409: Help me choose, the cards' ready-build picks and their ratings each send 0 unticked, so each is stored where
+	// sent and kept as the kit has it where not; one never stored and never sent is left out, on.
+	public function test_the_three_switches_are_stored_as_sent_and_kept_as_the_kit_has_them_where_not(): void {
+		$sent             = self::sent();
+		$sent['settings'] = array( 'start_button' => '1' );
+		$draft            = $this->editor->draft( $sent, self::stored() );
+		self::assertSame( array( 'schema_version' => 1, 'start_button' => true ), $draft->documents[ KitEditor::SETTINGS ], 'none stored and none sent: left out, on' );
+		foreach ( array( 'guide', 'picks', 'ratings' ) as $key ) {
+			foreach ( array( '0' => false, '1' => true, '' => false, 'yes' => true ) as $box => $on ) {
+				$with                    = $sent;
+				$with['settings'][ $key ] = (string) $box;
+				$document                = $this->editor->draft( $with, self::stored() )->documents[ KitEditor::SETTINGS ] ?? array();
+				self::assertSame( $on, $document[ $key ] ?? null, $key . ' sent as ' . var_export( $box, true ) );
+				self::assertSame( array( 'schema_version', 'start_button', $key ), array_keys( $document ), $key . ': the others left out' );
+			}
+			$stored                       = self::stored();
+			$stored[ KitEditor::SETTINGS ] = array( 'schema_version' => 1, $key => false );
+			self::assertFalse( $this->editor->draft( $sent, $stored )->documents[ KitEditor::SETTINGS ][ $key ] ?? null, $key . ' not sent: the kit\'s kept' );
+		}
+	}
+
 	// #113: the Builder page is a page's ID, or nothing for the kit's own page. Where the tab says which pages may be
 	// chosen, any other is refused; a select not sent at all keeps the page the kit has.
 	public function test_the_builder_page_is_kept_as_an_id_and_one_not_offered_is_refused(): void {

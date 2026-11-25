@@ -17,6 +17,18 @@ export interface CbuildSettings {
 	 */
 	lead_days?: string;
 	/**
+	 * Whether the builder offers "Help me choose", the guided start's questions, at its start, from 1.3.0 (D-409). Off, the page draws no disclosure, form or builds, and answers in a link recommend nothing. The default is true.
+	 */
+	guide?: boolean;
+	/**
+	 * Whether a card in the builder says which ready builds pick its part, such as "Picked for Street", from 1.3.0 (#137, D-409). Off, no card says it. The default is true.
+	 */
+	picks?: boolean;
+	/**
+	 * Whether a card in the builder shows its part's rating, a star and its score, from 1.3.0 (#137, D-409). Off, no card shows them; on, none show while WooCommerce's star ratings are off. The default is true.
+	 */
+	ratings?: boolean;
+	/**
 	 * Whether the kit places "Build a complete with this deck" on the pages of the parts its first slot offers. Off, the kit is passed over, and another kit that offers the part may place it. The default is true.
 	 */
 	start_button?: boolean;

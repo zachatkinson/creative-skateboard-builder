@@ -231,7 +231,7 @@ final class Builder {
 		$link   = $shown;
 		$answer = $this->writer->of( $state, $link );
 		$view   = $this->view->of( $state, $answer, $link, $base, $steps, $stopped, $moved['said'] ?? '' );
-		if ( null !== $this->guided && $link->guide->asked && BuilderView::atStart( $state, $link ) ) {
+		if ( null !== $this->guided && $link->guide->asked && BuilderView::atStart( $state, $link ) && Shown::guide( $state->id, $state->kit->settings ) ) {
 			$view['guide'] = BuilderView::guide( $state, $answer, $link, $base, $this->guided->of( $state, $link->guide ) );
 		}
 		return array(

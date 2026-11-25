@@ -1,4 +1,5 @@
-import { readFileSync } from 'node:fs';
+import { execSync } from 'node:child_process';
+import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { test, expect, answered, inLocale, Page } from './support/test';
 import { axe } from './support/axe';
@@ -338,5 +339,144 @@ test.describe( 'Help me choose', () => {
 			} )
 		).toBeVisible();
 		await axe( page, 'the guided start in French', '.cbuild-guide' );
+	} );
+} );
+
+/**
+ * The test kit's Help me choose set, or taken off its settings as a kit saved before 1.3.0 has it (D-409).
+ *
+ * @param on True or false, or null to take the setting off.
+ */
+const helpMeChoose = ( on: boolean | null ): void => {
+	const file = path.join( process.cwd(), 'tmp', 'e2e-eval.php' );
+	writeFileSync(
+		file,
+		`<?php\n$k = wc_get_product( ${
+			JSON.parse(
+				readFileSync(
+					path.join( process.cwd(), 'tmp', 'e2e-builder.json' ),
+					'utf8'
+				)
+			).kit
+		} ); $d = $k->documents()['_cbuild_settings'] ?? array( 'schema_version' => 1 ); if ( null === ${ JSON.stringify(
+			on
+		) } ) { unset( $d['guide'] ); } else { $d['guide'] = ${ JSON.stringify(
+			on
+		) }; } $k->setDocument( '_cbuild_settings', $d ); $k->save();\n`
+	);
+	execSync(
+		'npx wp-env run cli -- wp eval-file wp-content/plugins/creative-skateboard-builder/tmp/e2e-eval.php',
+		{ stdio: [ 'ignore', 'pipe', 'ignore' ] }
+	);
+};
+
+// D-409: the kit's Help me choose, in its Build tab. Off, the page draws none of the guide, with JavaScript or without:
+// no disclosure, no form, no label, no builds, even for answers in the link, and the step follows the lead at the gap
+// the builder leaves between any two of its pieces, so nothing marks where the guide was. Once a width is pressed the
+// decks fill the same screen as with the guide on.
+test.describe( 'Help me choose turned off', () => {
+	test.afterAll( () => helpMeChoose( null ) );
+
+	test( 'draws no guide, leaves no gap, and the decks fill the screen as before', async ( {
+		page,
+		javaScriptEnabled,
+	} ) => {
+		const js = false !== javaScriptEnabled;
+		// The gap from the step's lead to what follows it, and the whole deck cards in view once a width is chosen,
+		// the step at the window's top.
+		const after = () =>
+			page.evaluate( () => {
+				const lead = document
+					.querySelector( '.cbuild-step__lead' )
+					?.getBoundingClientRect();
+				const next = [
+					...document.querySelectorAll< HTMLElement >(
+						'.cbuild__body > *'
+					),
+				].find(
+					( piece ) =>
+						piece.checkVisibility() &&
+						lead &&
+						piece.getBoundingClientRect().top >= lead.bottom
+				);
+				return {
+					next: next?.classList[ 0 ] ?? '',
+					gap: lead
+						? Math.round(
+								( next?.getBoundingClientRect().top ?? 0 ) -
+									lead.bottom
+							)
+						: -1,
+				};
+			} );
+		const whole = async () => {
+			await page.goto( `${ fixture().page }?cbuild[_width]=8in` );
+			await page
+				.locator( '.cbuild-step' )
+				.evaluate( ( step ) =>
+					step.scrollIntoView( { block: 'start' } )
+				);
+			return page.locator( '.cbuild-cards > li' ).evaluateAll(
+				( items ) =>
+					items.filter( ( item ) => {
+						const box = item.getBoundingClientRect();
+						const bar = document
+							.querySelector( '.cbuild-bar:not([hidden])' )
+							?.getBoundingClientRect();
+						const foot =
+							bar && bar.top > 0 && bar.top < innerHeight
+								? bar.top
+								: innerHeight;
+						return (
+							box.height > 0 && box.top >= 0 && box.bottom <= foot
+						);
+					} ).length
+			);
+		};
+
+		await page.goto( fixture().page );
+		await expect( page.locator( '.cbuild-guide' ) ).toBeVisible();
+		const on = await after();
+		expect( on.next, 'on, the guide follows the lead' ).toBe(
+			'cbuild-guide'
+		);
+		const decks = await whole();
+		expect(
+			decks,
+			'whole decks in view with the guide on'
+		).toBeGreaterThan( 0 );
+
+		helpMeChoose( false );
+		for ( const address of [
+			fixture().page,
+			asked( { style: 'street', budget: '150' } ),
+		] ) {
+			await page.goto( address );
+			await expect( page.locator( '.cbuild-step' ) ).toBeVisible();
+			await expect(
+				page.locator( '.cbuild-guide, [class*="cbuild-guide__"]' ),
+				'nothing of the guide'
+			).toHaveCount( 0 );
+			await expect(
+				page.getByText(
+					/Help me choose|Builds for you|Change your answers/
+				)
+			).toHaveCount( 0 );
+			await expect(
+				page.locator( 'label[for^="cbuild-guide"]' )
+			).toHaveCount( 0 );
+			const off = await after();
+			expect( off.next, 'the step follows the lead' ).toBe(
+				'cbuild-step'
+			);
+			expect( off.gap, 'at the gap the guide had' ).toBe( on.gap );
+			if ( js ) {
+				await expect(
+					page.locator( '.cbuild' ),
+					'the builder hydrated'
+				).toHaveAttribute( 'data-ready', '' );
+			}
+		}
+		expect( await whole(), 'whole decks in view' ).toBe( decks );
 	} );
 } );

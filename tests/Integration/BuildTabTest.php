@@ -860,9 +860,6 @@ final class BuildTabTest extends IntegrationTestCase {
 		self::assertTrue( self::stored( $kit->get_id() )[ Options::META_KIT_LAYOUT ]['show_presets'] );
 	}
 
-	// #115: Show on its parts' pages, in the Layout section and kept in `_cbuild_settings` (D-354). Ticked on a kit
-	// saved before 1.2.0; unticked, the kit places no "Build a complete with this deck". Saved by who may manage the
-	// shop alone, through WooCommerce's product save, from wp-admin with no WP-CLI.
 	// #135: Offer smart swaps, beside Show on its parts' pages and kept in `_cbuild_settings` (D-397). Ticked on a kit
 	// saved before 1.3.0; the box sends 0 under its 1, so a form that sends neither, as another plugin's save may,
 	// keeps what the kit has.
@@ -891,6 +888,53 @@ final class BuildTabTest extends IntegrationTestCase {
 		self::assertTrue( self::stored( $kit->get_id() )[ Options::META_KIT_SETTINGS ]['swaps'], 'ticked, stored as true' );
 	}
 
+	// D-409: Help me choose, the cards' ready-build picks and their ratings, three boxes in the Layout section's "Shown in
+	// the builder", kept in `_cbuild_settings`. Each is ticked on a kit saved before 1.3.0, and sends 0 under its 1, so a
+	// form that sends neither, as another plugin's save may, keeps what the kit has.
+	public function test_the_three_switches_are_ticked_for_a_kit_saved_before_and_each_unticked_turns_its_feature_off(): void {
+		$this->as( 'shop_manager' );
+		$kit   = KitFactory::kit();
+		$panel = $this->panel( $kit );
+		self::assertMatchesRegularExpression( '#id="cbuild-kit-layout".*?<legend id="cbuild-kit-layout-shown-legend">Shown in the builder</legend>#s', $panel, 'a group of the Layout section' );
+		$read = fn(): ?\CreativeBranding\SkateboardBuilder\Domain\Kit\KitSettings => $this->service( \CreativeBranding\SkateboardBuilder\Port\Kits::class )->kit( $kit->get_id() )?->settings;
+		$on   = static fn( ?\CreativeBranding\SkateboardBuilder\Domain\Kit\KitSettings $settings ): array => array( $settings?->guided, $settings?->cardPicks, $settings?->cardRatings );
+		foreach ( array(
+			'guide'   => array( 'Help me choose', array( false, true, true ) ),
+			'picks'   => array( 'Ready-build picks on cards', array( false, false, true ) ),
+			'ratings' => array( 'Ratings on cards', array( false, false, false ) ),
+		) as $key => [ $label, $after ] ) {
+			$id = 'cbuild-kit-settings-' . $key;
+			self::assertMatchesRegularExpression( '#<input\s+type="hidden"\s+name="cbuild_kit\[settings\]\[' . $key . '\]"\s+value="0"\s*/>\s*<input\s+type="checkbox"[^>]*id="' . $id . '"[^>]*name="cbuild_kit\[settings\]\[' . $key . '\]"[^>]*checked#', $panel, $key . ': ticked, its unticked value before it' );
+			self::assertMatchesRegularExpression( '#<label for="' . $id . '">' . preg_quote( $label, '#' ) . '</label>#', $panel, $key . ': labelled' );
+			self::assertMatchesRegularExpression( '#id="' . $id . '"[^>]*aria-describedby="' . $id . '-note"#', $panel, $key . ': described' );
+			self::assertSame( 2, preg_match_all( '/name="cbuild_kit\[settings\]\[' . $key . '\]"/', $panel ), $key . ': one box and its unticked value' );
+		}
+		self::assertSame( array( true, true, true ), $on( $read() ), 'a kit saved before 1.3.0 shows all three' );
+
+		// Each unticked in turn, the others as the form last had them.
+		$sent = self::form();
+		foreach ( array( 'guide', 'picks', 'ratings' ) as $at => $key ) {
+			$sent['settings'][ $key ] = '0';
+			$this->send( $kit, $sent );
+			self::assertSame( array(), self::notices() );
+			self::assertFalse( self::stored( $kit->get_id() )[ Options::META_KIT_SETTINGS ][ $key ], $key . ': stored off' );
+			self::assertSame( array( $at < 0, $at < 1, $at < 2 ), $on( $read() ), $key . ': off, and the rest as they were' );
+			self::assertDoesNotMatchRegularExpression( '/id="cbuild-kit-settings-' . $key . '"[^>]*checked/', $this->panel( $kit ), $key . ': unticked' );
+		}
+
+		unset( $sent['settings']['guide'], $sent['settings']['picks'], $sent['settings']['ratings'] );
+		$this->send( $kit, $sent );
+		self::assertSame( array( false, false, false ), $on( $read() ), 'a form without the fields keeps them' );
+
+		$sent['settings']['picks'] = '1';
+		$this->send( $kit, $sent );
+		self::assertTrue( self::stored( $kit->get_id() )[ Options::META_KIT_SETTINGS ]['picks'], 'ticked, stored as true' );
+		self::assertSame( array( false, true, false ), $on( $read() ) );
+	}
+
+	// #115: Show on its parts' pages, in the Layout section and kept in `_cbuild_settings` (D-354). Ticked on a kit
+	// saved before 1.2.0; unticked, the kit places no "Build a complete with this deck". Saved by who may manage the
+	// shop alone, through WooCommerce's product save, from wp-admin with no WP-CLI.
 	public function test_show_on_its_parts_pages_is_ticked_for_a_kit_saved_before_and_saved_by_who_may_manage_the_shop(): void {
 		$this->as( 'shop_manager' );
 		$kit   = KitFactory::kit();

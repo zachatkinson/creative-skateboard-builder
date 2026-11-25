@@ -292,6 +292,34 @@ final class BuilderPageTest extends IntegrationTestCase {
 		}
 	}
 
+	// D-409: with the kit's Help me choose off, the page draws no guide: no disclosure, no form, no label and no region,
+	// and the step follows the lead as it would with no guide at all, without JavaScript too.
+	public function test_help_me_choose_off_draws_no_guide_and_the_step_follows_the_lead(): void {
+		$product = wc_get_product( $this->kit );
+		self::assertInstanceOf( KitProduct::class, $product );
+		$product->setDocument( Options::META_KIT_SETTINGS, array( 'schema_version' => 1, 'guide' => false ) );
+		$product->save();
+		foreach ( array(
+			'at the start'      => null,
+			'with answers sent' => array(
+				'_guide' => array(
+					'style' => 'park',
+					'asked' => '1',
+				),
+			),
+		) as $case => $sent ) {
+			$html = $this->kitPage( $sent );
+			$dom  = self::dom( $html );
+			self::assertStringNotContainsString( 'cbuild-guide', $html, $case . ': nothing of the guide' );
+			self::assertStringNotContainsString( 'Help me choose', $html, $case );
+			self::assertSame( 0, $dom->query( '//*[@for="cbuild-guide-budget"]' )->length, $case . ': no label' );
+			$next = $dom->query( '//p[contains(@class, "cbuild-step__lead")]/following-sibling::*[1]' )->item( 0 );
+			self::assertInstanceOf( \DOMElement::class, $next, $case );
+			self::assertSame( 'form', $next->tagName, $case . ': the step next' );
+			self::assertStringContainsString( 'cbuild-step', $next->getAttribute( 'class' ), $case );
+		}
+	}
+
 	public function test_the_picture_is_named_by_a_heading_a_sighted_shopper_reads_too(): void {
 		$dom    = self::dom( $this->kitPage( array( 'deck' => (string) $this->parts['deck 8.5'] ) ) );
 		$figure = $dom->query( '//figure[@id="cbuild-picture"]' )->item( 0 );
