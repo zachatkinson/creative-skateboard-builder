@@ -1781,6 +1781,38 @@ test.describe( 'The builder with JavaScript', () => {
 		expect( await stayed( page ) ).toBe( true );
 	} );
 
+	test( "keeps the widths open where Change was pressed before the width's answer came", async ( {
+		page,
+	}, info ) => {
+		// A width folds its question at the press (D-356), so its Change can be pressed before the answer; the answer
+		// closed the widths again, and the shopper's Change was lost (CI run 45590634639, webkit-phone).
+		let release: () => void = () => undefined;
+		const held = new Promise< void >( ( done ) => {
+			release = done;
+		} );
+		await page.route( isRoute, async ( route ) => {
+			await held;
+			await route.continue().catch( () => undefined );
+		} );
+		const width = page.locator( '.cbuild-width' ).getByRole( 'button', {
+			name: inLocale( info.project.name, '8.25″, 1' ),
+		} );
+		await width.focus();
+		await page.keyboard.press( 'Enter' );
+		const chosen = page.locator( '.cbuild-width__chosen' );
+		await expect( chosen ).toBeFocused();
+		await page.keyboard.press( 'Enter' );
+		await expect( width, 'Change opens the widths' ).toBeVisible();
+		release();
+		await expect( page.locator( '.cbuild' ) ).toHaveAttribute(
+			'aria-busy',
+			'false'
+		);
+		await expect( page.locator( '.cbuild[data-folded]' ) ).toHaveCount( 0 );
+		await expect( width, 'the answer keeps them open' ).toBeVisible();
+		await expect( width ).toHaveAttribute( 'aria-pressed', 'true' );
+	} );
+
 	test( 'keeps focus on a width and on the assembly switch, and says the new total (Accessibility)', async ( {
 		page,
 	}, info ) => {
@@ -4455,6 +4487,53 @@ test.describe( 'Motion', () => {
 			record.amounts = [];
 			record.places = [];
 			record.said = [];
+			// Each animation is noted as it is made, as well as at each frame: on a slow runner a frame can come after a
+			// 220 ms moment with no delay has already ended, and getAnimations() no longer holds it (CI run 45590634639,
+			// webkit-phone, the first wheel's).
+			const note = ( animation: Animation ) => {
+				if ( record.seen.has( animation ) ) {
+					return;
+				}
+				const effect = animation.effect as KeyframeEffect | null;
+				record.seen.set( animation, {
+					id: animation.id,
+					name: ( animation as CSSAnimation ).animationName ?? '',
+					duration: Number(
+						effect?.getComputedTiming().duration ?? 0
+					),
+					delay: Number( effect?.getTiming().delay ?? 0 ),
+					iterations: Number(
+						effect?.getComputedTiming().iterations ?? 0
+					),
+					properties: [
+						...new Set(
+							( effect?.getKeyframes() ?? [] ).flatMap(
+								( keyframe ) =>
+									Object.keys( keyframe ).filter(
+										( key ) =>
+											! [
+												'offset',
+												'computedOffset',
+												'easing',
+												'composite',
+											].includes( key )
+									)
+							)
+						),
+					],
+					pseudo: effect?.pseudoElement ?? '',
+				} );
+			};
+			const animate = Element.prototype.animate;
+			Element.prototype.animate = function (
+				this: Element,
+				...args: Parameters< Element[ 'animate' ] >
+			) {
+				const animation = animate.apply( this, args );
+				// Once the caller has named it: the motion module sets its id after animate() returns.
+				queueMicrotask( () => note( animation ) );
+				return animation;
+			};
 			const start = document.startViewTransition?.bind( document );
 			if ( start ) {
 				document.startViewTransition = ( ( update: () => void ) => {
@@ -4517,37 +4596,7 @@ test.describe( 'Motion', () => {
 						) }`
 					);
 				}
-				for ( const animation of document.getAnimations() ) {
-					const effect = animation.effect as KeyframeEffect | null;
-					record.seen.set( animation, {
-						id: animation.id,
-						name: ( animation as CSSAnimation ).animationName ?? '',
-						duration: Number(
-							effect?.getComputedTiming().duration ?? 0
-						),
-						delay: Number( effect?.getTiming().delay ?? 0 ),
-						iterations: Number(
-							effect?.getComputedTiming().iterations ?? 0
-						),
-						properties: [
-							...new Set(
-								( effect?.getKeyframes() ?? [] ).flatMap(
-									( keyframe ) =>
-										Object.keys( keyframe ).filter(
-											( key ) =>
-												! [
-													'offset',
-													'computedOffset',
-													'easing',
-													'composite',
-												].includes( key )
-										)
-								)
-							),
-						],
-						pseudo: effect?.pseudoElement ?? '',
-					} );
-				}
+				document.getAnimations().forEach( note );
 				const now = performance.now();
 				if (
 					crossing > 0 ||

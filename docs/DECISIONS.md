@@ -5105,6 +5105,8 @@ The rest of F20 (#118). Held back 800 ms on the fixture, a width shifted 0.018 o
 
 **Why:** the store knew at the press what these answers would move; making the change then is within the 500 ms the shopper expects a change in, and leaves the late answer nothing to move.
 
+**Change before the answer (25 Nov, found by CI run 45590634639, webkit-phone).** Since the width folds at the press, its Change can be pressed before the answer comes. After each answer, `steady()` closes the widths wherever the chosen line shows, so the answer closed them again and the shopper's Change was lost. The view that answers a width folded at its press now leaves the widths as they are: the press closed them, so they are open only where the shopper opened them. `steady()` reads the mark before it makes the change, since the press's own fold sets it. Red, with the answer held until Change was pressed: "keeps the widths open where Change was pressed before the width's answer came", "the answer keeps them open / element(s) not found" (builder.spec.ts:1812) on chromium, webkit and firefox. Break: the check taken out, the same line fails.
+
 **Status:** Accepted.
 
 ### D-357 · The pressed deck's board is drawn at the press, once decoded, and the answer confirms it or puts it back · 2026-11-24

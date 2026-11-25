@@ -714,6 +714,11 @@ function steady( change: () => void ): void {
 					'.cbuild-step input[type="radio"]:checked'
 				) );
 	const before = anchor?.getBoundingClientRect().top ?? 0;
+	// The view that answers a width folded at its press leaves the widths as they are: the press closed them, so they
+	// are open only where the shopper pressed Change before the answer came. Read before the change, since the press's
+	// own fold sets it.
+	const kept = pressFolded;
+	pressFolded = false;
 	change();
 	window.requestAnimationFrame( () => {
 		// Once a width is chosen the widths fold behind its line after every answer. Change opens them natively, and
@@ -725,7 +730,7 @@ function steady( change: () => void ): void {
 			.forEach( ( fold ) => {
 				const line =
 					fold.querySelector< HTMLElement >( ':scope > summary' );
-				if ( line ) {
+				if ( line && ! ( kept && fold.open ) ) {
 					fold.open = true === line.hidden;
 				}
 			} );
@@ -984,6 +989,7 @@ function folding(
 		const counted = more?.count ?? '';
 		// A press the rate limit or the store's limit stops asks the question again, with the width it pressed (D-364).
 		unfold = () => {
+			pressFolded = false;
 			width.asking = true;
 			width.chosen = said;
 			width.options.forEach( ( option, at ) => {
@@ -1000,6 +1006,7 @@ function folding(
 			option.pressed = option === pressed ? 'true' : 'false';
 		}
 		root?.setAttribute( 'data-folded', '' );
+		pressFolded = true;
 		// "Showing 0 of 0" until the answer lists the decks: a line the cards would push down.
 		if ( more ) {
 			more.count = '';
@@ -1009,6 +1016,9 @@ function folding(
 
 /** Undo a width's fold made at its press, until the answer comes. */
 let unfold: ( () => void ) | undefined;
+
+/** Whether the next view shown answers a width folded at its press, whose widths the shopper may have opened since. */
+let pressFolded = false;
 
 /** The pick whose board is being drawn at its press, until a view is shown, so one decoded late draws over nothing. */
 let swapping: object | undefined;
