@@ -6,7 +6,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { setContext, setElement, stores } from './support/interactivity';
 import { NAME } from '../../assets/src/builder/view';
-import { fitting } from '../../assets/src/builder/row';
+import { fitting, shut } from '../../assets/src/builder/row';
 
 interface Group {
 	key: string;
@@ -151,6 +151,24 @@ describe( 'which chips fit in one row', () => {
 		).toEqual( [ false, false, true ] );
 	} );
 
+	it( 'counts a chosen chip and its gap once, beside the rest', () => {
+		// 60 + 108 chosen, then 108 and 108: 384; a fourth would take it to 492.
+		expect(
+			fitting( [ 100, 100, 100, 100 ], [ true ], 400, 8, 60 )
+		).toEqual( [ true, true, true, false ] );
+		// 60 + 108 + 108 = 276; a third would take it to 384.
+		expect(
+			fitting( [ 100, 100, 100, 100 ], [ true ], 375, 8, 60 )
+		).toEqual( [ true, true, false, false ] );
+	} );
+
+	it( 'shows every chosen chip, and only those chips, where they alone fill the row', () => {
+		expect( fitting( [ 100, 100 ], [ true, true ], 150, 8, 60 ) ).toEqual( [
+			true,
+			true,
+		] );
+	} );
+
 	it( "counts a chip's part pixel as a whole one, so a row the browser would wrap is not taken for one that fits", () => {
 		// 101 + 8 + 101 = 210: the second goes behind the button.
 		expect( fitting( [ 100.4, 100.4 ], [], 208.8, 8, 60 ) ).toEqual( [
@@ -161,6 +179,25 @@ describe( 'which chips fit in one row', () => {
 			true,
 			true,
 		] );
+	} );
+} );
+
+describe( 'which chips a row shuts away', () => {
+	it( 'measures a row with no button, no chip control or no window as nothing there, and names a chip with no control by nothing', () => {
+		const page = document.implementation.createHTMLDocument( '' );
+		page.body.innerHTML =
+			'<div class="cbuild-chips__options"><span class="cbuild-chips__chip"><input class="cbuild-chips__control" type="checkbox" value="zero"></span><span class="cbuild-chips__chip"></span></div>';
+		const options = page.querySelector< HTMLElement >(
+			'.cbuild-chips__options'
+		)!;
+		Object.defineProperty( options, 'clientWidth', { value: 150 } );
+		options
+			.querySelectorAll< HTMLElement >( '.cbuild-chips__chip' )
+			.forEach( ( chip ) => {
+				chip.getBoundingClientRect = () =>
+					( { width: 100 } ) as DOMRect;
+			} );
+		expect( shut( options, 0 ) ).toEqual( { values: [ '' ], button: 0 } );
 	} );
 } );
 
@@ -293,6 +330,63 @@ describe( 'the brand chips in one row', () => {
 		vi.unstubAllGlobals();
 	} );
 
+	it( 'lays the row out again for a view that changes a chip, though its words run on into the next', () => {
+		const { options } = rendered( [ 100, 100, 100, 100 ], 400 );
+		setElement( options );
+		const group = {
+			...BRAND,
+			inputs: [ { value: 'zero', count: '12', checked: false } ],
+		};
+		setContext( { group } );
+		callbacks.row();
+		for ( let frame = 0; frame < 4; frame++ ) {
+			vi.advanceTimersToNextFrame();
+		}
+		expect( state.shut ).toEqual( [ 'mob' ] );
+		state.shut = [];
+		group.inputs = [ { value: 'zero1', count: '2', checked: false } ];
+		callbacks.row();
+		vi.advanceTimersToNextFrame();
+		expect( state.shut ).toEqual( [ 'mob' ] );
+
+		// A group whose chips the view leaves out is laid out once, as one with none.
+		state.shut = [];
+		const bare = rendered( [ 100, 100, 100, 100 ], 400 );
+		setElement( bare.options );
+		setContext( { group: { more: BRAND.more } } );
+		callbacks.row();
+		vi.advanceTimersToNextFrame();
+		expect( state.shut ).toEqual( [ 'mob' ] );
+	} );
+
+	it( 'measures the row in three frames at most, however the button’s words keep changing its width', () => {
+		const { options, more } = rendered( [ 100, 100, 100, 100 ], 400 );
+		const widths = [ 60, 80, 200, 300 ];
+		let asked = 0;
+		more.getBoundingClientRect = () =>
+			( {
+				width: widths[ Math.min( asked++, widths.length - 1 ) ],
+			} ) as DOMRect;
+		setElement( options );
+		setContext( { group: BRAND } );
+		callbacks.row();
+		for ( let frame = 0; frame < 5; frame++ ) {
+			vi.advanceTimersToNextFrame();
+		}
+		expect( state.shut ).toEqual( [ 'bones', 'acme', 'mob' ] );
+	} );
+
+	it( 'lays out nothing, and throws nothing, outside a group or in one with no "N more"', () => {
+		const { options } = rendered( [ 100, 100, 100, 100 ], 100 );
+		setElement( options );
+		for ( const context of [ {}, { group: { inputs: BRAND.inputs } } ] ) {
+			setContext( context );
+			expect( () => callbacks.row() ).not.toThrow();
+			vi.advanceTimersToNextFrame();
+			expect( state.shut ).toEqual( [] );
+		}
+	} );
+
 	it( 'leaves a group with no "N more" as it is', () => {
 		const { options } = rendered( [ 100, 100, 100, 100 ], 100 );
 		setElement( options );
@@ -324,5 +418,24 @@ describe( 'the brand chips in one row', () => {
 		expect( state.opened ).toBe( '' );
 		vi.advanceTimersToNextFrame();
 		expect( options.ownerDocument.activeElement ).toBe( more );
+	} );
+	it( 'opens the rest, and throws nothing, where no chip is past the row, the button is in none, or none was found', () => {
+		const { options, more } = rendered( [ 100, 100, 100, 100 ], 400 );
+		setElement( more );
+		actions.more();
+		expect( state.opened ).toBe( 'deck' );
+		expect( () => vi.advanceTimersToNextFrame() ).not.toThrow();
+		state.opened = '';
+		const loose = document.createElement( 'button' );
+		document.body.append( loose );
+		setElement( loose );
+		actions.more();
+		expect( state.opened ).toBe( 'deck' );
+		state.opened = '';
+		setElement( null );
+		actions.more();
+		expect( state.opened ).toBe( 'deck' );
+		expect( () => vi.advanceTimersToNextFrame() ).not.toThrow();
+		expect( options.isConnected ).toBe( true );
 	} );
 } );
