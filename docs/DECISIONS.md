@@ -234,13 +234,14 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-391 · Every step's card puts its picture beside its words, in a 5rem square](#d-391--every-steps-card-puts-its-picture-beside-its-words-in-a-5rem-square--2026-11-25)
 - [D-392 · A card says the ready builds that pick it, and its rating from WooCommerce's own numbers](#d-392--a-card-says-the-ready-builds-that-pick-it-and-its-rating-from-woocommerces-own-numbers--2026-11-25)
 - [D-393 · A card's rating sits beside its price, and a ready build's pick costs a card one line](#d-393--a-cards-rating-sits-beside-its-price-and-a-ready-builds-pick-costs-a-card-one-line--2026-11-25)
-- [D-403 · Each row of the review shows its card's picture in a 3rem square, its place kept](#d-403--each-row-of-the-review-shows-its-cards-picture-in-a-3rem-square-its-place-kept--2026-11-25)
 - [D-394 · A swap is the cheapest or the next better part that fits the whole build, and the same board for less swaps every slot but the deck](#d-394--a-swap-is-the-cheapest-or-the-next-better-part-that-fits-the-whole-build-and-the-same-board-for-less-swaps-every-slot-but-the-deck--2026-11-25)
 - [D-395 · A part's rank is a whole number on its Part specs, higher being better, and a filter answers last](#d-395--a-parts-rank-is-a-whole-number-on-its-part-specs-higher-being-better-and-a-filter-answers-last--2026-11-25)
 - [D-396 · Swaps are worked out on the review and on a step with a pick, and priced as the total is](#d-396--swaps-are-worked-out-on-the-review-and-on-a-step-with-a-pick-and-priced-as-the-total-is--2026-11-25)
 - [D-397 · A swap is a link that carries the picks before it, its Undo lives in a notice until the next move, and a kit can switch swaps off](#d-397--a-swap-is-a-link-that-carries-the-picks-before-it-its-undo-lives-in-a-notice-until-the-next-move-and-a-kit-can-switch-swaps-off--2026-11-25)
 - [D-398 · The review's thumbnail of a deck's layer image is marked drawn, as its card is](#d-398--the-reviews-thumbnail-of-a-decks-layer-image-is-marked-drawn-as-its-card-is--2026-11-25)
 - [D-399 · A deck's card counts its other widths past two, keeps its stock beside the price and its picture in its 7rem box](#d-399--a-decks-card-counts-its-other-widths-past-two-keeps-its-stock-beside-the-price-and-its-picture-in-its-7rem-box--2026-11-25)
+- [D-403 · Each row of the review shows its card's picture in a 3rem square, its place kept](#d-403--each-row-of-the-review-shows-its-cards-picture-in-a-3rem-square-its-place-kept--2026-11-25)
+- [D-416 · The start button is Add to cart's twin by its fill alone, its words read on its fill, and a hostile theme fixture tests the builder against a theme's rules](#d-416--the-start-button-is-add-to-carts-twin-by-its-fill-alone-its-words-read-on-its-fill-and-a-hostile-theme-fixture-tests-the-builder-against-a-themes-rules--2026-11-25)
 
 ### Accessibility
 
@@ -6135,6 +6136,34 @@ Found while probing #110 on lane 3. The review shots in `tests/e2e/visual.spec.t
 **Why in the test, not the page:** the outline is the design (D-413): 600 ms of it after a pick. A picture of the builder's settled look is taken once it has settled.
 
 **#110 is not this.** Its failures are the bar's "Show the parts" a pixel lower, not the board, and the link stays masked. In 560 probe runs of Twenty Twenty-Five light tablet unmasked (360 without the wait, 200 with it), the link was never drawn lower, so this neither shows nor rules out a link with the wait. Prior traces had the step's crossing still on when `still()` began, which the wait now rules out before every review shot.
+
+### D-416 · The start button is Add to cart's twin by its fill alone, its words read on its fill, and a hostile theme fixture tests the builder against a theme's rules · 2026-11-25
+
+Cowork's review of 1.2.0, F32 (#149, should-fix, WCAG 1.4.3). On the demo's deck page, with Kadence and Kadence Blocks, a row's rule for its links, `.kb-row-layout-id…_pdp-b a`, gave "Build a complete with this deck", a link, cream words (rgb 244, 241, 234) on the theme's button fill, Add to cart's yellow (rgb 232, 228, 0): 1.20:1. Add to cart beside it read 13.85:1. D-377's script took the button for Add to cart's twin, and gave it the outline, only where both its fill and its words were Add to cart's. Here only the fill was, so the button stayed the theme's own, unreadable and in Add to cart's colour.
+
+**The hostile theme fixture (approved by Zach on 25 November).** F32 and F33 are one failure: a theme's rule outranking the builder's own. `tests/e2e/mu-plugins/cbuild-e2e-hostile.php`, on only for a browser that sends the cookie `cbuild_e2e_hostile`, as the other e2e fixtures are switched, prints after every stylesheet, as a page builder's per-block styles print:
+
+- a dark row round a product's add-to-cart form and what prints after it, whose links are cream, as Kadence Blocks' row on the demo, and a blue link colour for the content's other links, at a class and an element;
+- `.cbuild-e2e-hostile p{margin:0 0 32px}`, Kadence's `.single-content p` (a class and an element, 32 px at the block's end) on every page, through a body class;
+- the headings' margins, `1.5em 0 .75em`, at the same weight;
+- every `button`, `.button`, `a.button` and `.wp-element-button` in Add to cart's yellow with dark words, its own radius, padding and weight.
+
+`tests/e2e/mu-plugins/cbuild-e2e-delivery.php`, on the cookie `cbuild_e2e_delivery`, answers `cbuild_delivery_line` and `cbuild_arrival_estimate`, as another plugin does on the demo, so a test sees the bar's two lines. With the fixture, the three themes the test site runs each drew the start button cream on yellow, 1.20:1.
+
+**Decision:** the script reads the button's colours against its own fill, then against Add to cart's.
+
+- **Its words.** Where the button's words read below 4.5:1 on its own fill (or, where it has none, on the first background behind it that is not transparent), it takes Add to cart's words where they read at 4.5:1 on that fill, else black or white, whichever reads more. They are set as `--cbuild-start-words` under `cbuild-start__link--words`, at three classes' weight, over a row's rule for its links (a class and an element) and the fixture's (two classes and an element).
+- **Its outline.** A button in Add to cart's fill is its twin whatever its words, and takes D-377's outline. So does one whose words read on its fill in neither its own colour nor Add to cart's. The outline's colour is chosen as D-377 chose it: Add to cart's fill where it reads on the background behind the button, else Add to cart's words, else none.
+- **Focused,** the outline gives way to the theme's own button and focus mark, as D-377 has it, and the words set above still read on its fill. Where black or white is set, the outline, if a colour reads for it, covers them at rest.
+- **Unchanged.** A theme whose words read on its own fill and whose fill is not Add to cart's keeps its button as it was: Storefront's grey. The script is still ES5 inside the PHP constant, with no angle bracket, and 282 bytes longer.
+
+**Measured with the fixture, at 1280 px.** Twenty Twenty-Five: before, cream on yellow, 1.20:1; after, the outline in Add to cart's yellow on the row's #121212, 13.85:1, and focused, Add to cart's dark words on yellow, 13.85:1. Kadence and Storefront, whose Add to cart is their own blue and dark grey with white words: before, 1.20:1; after, a white outline on the row, 18.73:1, and focused, black on yellow, 15.53:1. Without the fixture every theme draws the button as before.
+
+**Tests.** "The start button under a row's link colour (#149)", on each of the three themes: the words against the fill they sit on at 4.5:1 or more, at rest and focused, colours that are not Add to cart's, and axe on the button. D-377's tests are unchanged and pass. Without JavaScript the button is the theme's own as it stands, as D-377 says, so the test is skipped there.
+
+**Why:** a shopper must be able to read the page's second action whatever colours a theme's container gives its links; Add to cart's fill alone is what makes the two buttons look alike.
+
+**Status:** Accepted.
 
 ### D-420 · The toolchain's patch and minor releases, and TypeScript kept at 6 while typescript-eslint is · 2026-11-25
 

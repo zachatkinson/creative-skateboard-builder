@@ -9762,6 +9762,120 @@ test.describe( 'The start button on a light accent', () => {
 	} );
 } );
 
+// Cowork's review of 1.2.0, F32 (#149, D-416): on the demo a Kadence Blocks row coloured its links cream, and the start
+// button, a link, took them on Add to cart's yellow fill: 1.20:1. The script took the button for Add to cart's twin only
+// where both its fill and its words were Add to cart's, so it kept the theme's unreadable button. The hostile theme
+// fixture draws the same: a dark row round the add-to-cart form whose links are cream, and every button yellow.
+test.describe( "The start button under a row's link colour (#149)", () => {
+	for ( const theme of [ 'twentytwentyfive', 'kadence', 'storefront' ] ) {
+		test( `reads at 4.5:1 on ${ theme }, and is still second to Add to cart`, async ( {
+			page,
+			context,
+			baseURL,
+			javaScriptEnabled,
+		} ) => {
+			test.skip(
+				! javaScriptEnabled,
+				"Add to cart's colours are read by the script (D-377); without it the button is the theme's own."
+			);
+			await context.addCookies( [
+				{
+					name: 'cbuild_e2e_theme',
+					value: theme,
+					url: baseURL || SITE,
+				},
+				{
+					name: 'cbuild_e2e_hostile',
+					value: '1',
+					url: baseURL || SITE,
+				},
+			] );
+			await page.goto( `/?p=${ id( 'builder-test-deck-8-25' ) }` );
+			const start = page.locator( '.cbuild-start__link' );
+			const add = page.locator( 'form.cart .single_add_to_cart_button' );
+			await expect( start ).toBeVisible();
+			await expect(
+				page.locator( '.cbuild-e2e-row .cbuild-start__link' ),
+				"the fixture's row is round the button"
+			).toHaveCount( 1 );
+			// The words against the fill they sit on: the button's own, or the first one behind it that is not
+			// transparent.
+			const contrast = () =>
+				start.evaluate( ( link ) => {
+					const channels = ( colour: string ) =>
+						( colour.match( /[\d.]+/g ) ?? [] ).map( Number );
+					const luminance = ( colour: string ) =>
+						channels( colour )
+							.slice( 0, 3 )
+							.map( ( part ) => {
+								const c = part / 255;
+								return c <= 0.04045
+									? c / 12.92
+									: ( ( c + 0.055 ) / 1.055 ) ** 2.4;
+							} )
+							.reduce(
+								( sum, c, at ) =>
+									sum + [ 0.2126, 0.7152, 0.0722 ][ at ]! * c,
+								0
+							);
+					let fill = 'rgb(255, 255, 255)';
+					for (
+						let element: Element | null = link;
+						element;
+						element = element.parentElement
+					) {
+						const ground =
+							getComputedStyle( element ).backgroundColor;
+						const parts = channels( ground );
+						if ( 3 === parts.length || ( parts[ 3 ] ?? 0 ) > 0 ) {
+							fill = ground;
+							break;
+						}
+					}
+					const words = getComputedStyle( link ).color;
+					const [ a, b ] = [ luminance( words ), luminance( fill ) ];
+					return {
+						words,
+						fill,
+						ratio:
+							Math.round(
+								( ( Math.max( a, b ) + 0.05 ) /
+									( Math.min( a, b ) + 0.05 ) ) *
+									100
+							) / 100,
+					};
+				} );
+			const read = await contrast();
+			expect(
+				read.ratio,
+				`its words ${ read.words } on ${ read.fill }`
+			).toBeGreaterThanOrEqual( 4.5 );
+			// Focused, the button is the theme's own with its focus mark (D-377), and its words still read.
+			await start.focus();
+			const focused = await contrast();
+			expect(
+				focused.ratio,
+				`focused, its words ${ focused.words } on ${ focused.fill }`
+			).toBeGreaterThanOrEqual( 4.5 );
+			await start.blur();
+			const colours = ( locator: Locator ) =>
+				locator.evaluate( ( element ) => {
+					const style = getComputedStyle( element );
+					return `${ style.backgroundColor } | ${ style.color }`;
+				} );
+			expect(
+				await colours( start ),
+				"its colours are not Add to cart's"
+			).not.toBe( await colours( add ) );
+			await axe(
+				page,
+				`the start button under a row's link colour on ${ theme }`,
+				'.cbuild-start'
+			);
+		} );
+	}
+} );
+
 // #115 (D-349): a kit's Show on its parts' pages. Off on every kit that offers the deck, its page has no "Build a
 // complete with this deck"; on again, the button is back where it was.
 test.describe( "A kit's Show on its parts' pages", () => {

@@ -28,6 +28,7 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Fixed
 
+- "Build a complete with this deck" reads on a theme whose row colours its links. In Add to cart's fill it takes the outline whatever its words, and words that read below 4.5:1 on its fill take Add to cart's, or black or white. On the demo it was cream on Add to cart's yellow, 1.20:1 (#149, D-416).
 - My builds names each build on a phone. WooCommerce's small-screen styles hid each row's header, the build's picture and name, so a phone showed each build's total and buttons with nothing to say which build they were for (D-412).
 - **A deck's card after a width is about 150 px again, not 230:** a deck sold in more than two other widths says how many, as "Also in 6 other widths", in place of listing them over three lines; one or two are still named. The stock sits beside the price where the line has room, and the deck's picture keeps its 7rem box on a theme that sets `img { height: auto }`, as Kadence and Storefront do, where an upright deck was drawn 211 px tall, and 1,500 px before the script ran. Under a theme's 129 px header, the first view after a width holds a whole deck on Twenty Twenty-Five, Kadence and Storefront (Cowork's 1.2.0 F31, #148, D-399).
 
