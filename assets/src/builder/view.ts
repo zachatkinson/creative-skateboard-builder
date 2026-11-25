@@ -993,9 +993,9 @@ function foretell( view: Shown, value: string ): void {
  * Fold the width question to its chosen line at the press of a width, as its answer will: the widths behind the line
  * that says the one pressed, with Change, and the step's list, which the answer fills, under it (F20, #118; D-356).
  * The ready builds wait for the answer out of sight, in their place (`data-folded`), so the decks it brings take it
- * rather than push them down, and the page under the builder does not move twice. The step's lead and the guided
- * start go at the press too, as the answer takes them (F30, D-405). Null where the press is no width the step asks
- * for.
+ * rather than push them down, and the page under the builder does not move twice. The step's lead, the guided
+ * start and a smart swap's notice go at the press too, as the answer takes them (F30, D-405). Null where the press is
+ * no width the step asks for.
  *
  * @param view   The view shown.
  * @param button The button pressed.
@@ -1006,6 +1006,7 @@ function folding(
 ): ( () => void ) | null {
 	const known = view as {
 		guide?: { shown?: boolean; asked?: boolean };
+		swapped?: { shown?: boolean };
 		step: {
 			hasLead?: boolean;
 			more?: { count?: string };
@@ -1045,6 +1046,8 @@ function folding(
 		const led = true === step.hasLead;
 		const guide = known.guide;
 		const guided = true === guide?.shown;
+		const notice = known.swapped;
+		const noticed = true === notice?.shown;
 		// A press the rate limit or the store's limit stops asks the question again, with the width it pressed (D-364).
 		unfold = () => {
 			pressFolded = false;
@@ -1059,6 +1062,9 @@ function folding(
 			step.hasLead = led;
 			if ( guide ) {
 				guide.shown = guided;
+			}
+			if ( notice ) {
+				notice.shown = noticed;
 			}
 			window.requestAnimationFrame( () => button.focus() );
 		};
@@ -1075,6 +1081,10 @@ function folding(
 		step.hasLead = false;
 		if ( guide && true !== guide.asked ) {
 			guide.shown = false;
+		}
+		// A smart swap's notice lasts until the next move, which this is, so the answer takes it too (#135, D-397).
+		if ( notice ) {
+			notice.shown = false;
 		}
 		// "Showing 0 of 0" until the answer lists the decks: a line the cards would push down.
 		if ( more ) {

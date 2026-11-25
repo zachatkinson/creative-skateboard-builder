@@ -3937,6 +3937,46 @@ describe( 'what a press foretells', () => {
 		expect( 'guide' in state.view ).toBe( false );
 	} );
 
+	// The smart swap's notice sits above the step (#135, D-397) and lasts until the next move, which a width's press is: its
+	// answer takes the notice away, so the press does, as it does the lead and the guided start (F30, D-405).
+	it( 'takes a swap’s notice away at a width’s press, and puts it back when the press hits a limit', async () => {
+		const { width: button } = builder();
+		state.view = {
+			...structuredClone( ASKING ),
+			swapped: {
+				shown: true,
+				text: 'Swapped: deck.',
+				undo: { url: '/kit/?_undo[deck]=7', text: 'Undo swap' },
+			},
+		} as unknown as typeof state.view;
+		reply = () =>
+			new Response( JSON.stringify( { message: 'Later.' } ), {
+				status: 429,
+				headers: { 'Content-Type': 'application/json' },
+			} );
+		actions.submit(
+			new SubmitEvent( 'submit', { submitter: button, cancelable: true } )
+		);
+		const swapped = () =>
+			( state.view as { swapped: { shown: boolean; text: string } } )
+				.swapped;
+		expect( swapped().shown, 'gone at the press' ).toBe( false );
+		await settle();
+		await vi.advanceTimersByTimeAsync( 50 );
+		expect( width().asking ).toBe( true );
+		expect( swapped().shown, 'back at the limit' ).toBe( true );
+		expect( swapped().text ).toBe( 'Swapped: deck.' );
+		// No notice in the view: none is made.
+		const { width: again } = builder();
+		state.view = structuredClone( ASKING );
+		actions.submit(
+			new SubmitEvent( 'submit', { submitter: again, cancelable: true } )
+		);
+		await settle();
+		await vi.advanceTimersByTimeAsync( 50 );
+		expect( 'swapped' in state.view ).toBe( false );
+	} );
+
 	// The auditor's second pass on M12, should-fix 3: a width press the rate limit or the store's limit stopped kept its
 	// fold, the widths folded away and no decks under them, and only Change asked again (D-364).
 	it( 'asks the width question again, its options open and the pressed one focused, when the press hits a limit', async () => {

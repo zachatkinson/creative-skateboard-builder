@@ -313,7 +313,12 @@ final class BuilderPageTest extends IntegrationTestCase {
 			self::assertStringNotContainsString( 'cbuild-guide', $html, $case . ': nothing of the guide' );
 			self::assertStringNotContainsString( 'Help me choose', $html, $case );
 			self::assertSame( 0, $dom->query( '//*[@for="cbuild-guide-budget"]' )->length, $case . ': no label' );
-			$next = $dom->query( '//p[contains(@class, "cbuild-step__lead")]/following-sibling::*[1]' )->item( 0 );
+			// Between them only the smart swap's notice (#135, D-397), hidden where no swap was made.
+			$notice = $dom->query( '//p[contains(@class, "cbuild-step__lead")]/following-sibling::*[1]' )->item( 0 );
+			self::assertInstanceOf( \DOMElement::class, $notice, $case );
+			self::assertSame( 'cbuild-swapped', $notice->getAttribute( 'class' ), $case . ': the swap\'s notice next' );
+			self::assertTrue( $notice->hasAttribute( 'hidden' ), $case . ': hidden, with no swap' );
+			$next = $dom->query( '//p[contains(@class, "cbuild-step__lead")]/following-sibling::*[2]' )->item( 0 );
 			self::assertInstanceOf( \DOMElement::class, $next, $case );
 			self::assertSame( 'form', $next->tagName, $case . ': the step next' );
 			self::assertStringContainsString( 'cbuild-step', $next->getAttribute( 'class' ), $case );
