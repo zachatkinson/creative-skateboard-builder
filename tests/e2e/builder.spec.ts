@@ -13,6 +13,7 @@ import {
 	type Locator,
 	SITE,
 } from './support/test';
+import type { BrowserContext } from '@playwright/test';
 import { axe } from './support/axe';
 import { login } from './support/login';
 
@@ -8815,6 +8816,55 @@ test.describe( 'A saved build that has changed, and the deck page', () => {
 // Twenty-Five as an underlined link. Now on each theme it is a button, with Add to cart's weight and, on a line of its
 // own, its height, in colours that are not Add to cart's.
 test.describe( 'The start button on a theme (#133)', () => {
+	/**
+	 * Tabs from Add to cart to the start button on a theme, and expects its outline, ring or background to differ from
+	 * how it rests.
+	 *
+	 * @param page    The page.
+	 * @param context The browser context, for the theme's cookie.
+	 * @param baseURL The site.
+	 * @param theme   The theme.
+	 * @param styles  A theme's own rules, added to the page.
+	 */
+	const tabbedMark = async (
+		page: Page,
+		context: BrowserContext,
+		baseURL: string | undefined,
+		theme: string,
+		styles = ''
+	): Promise< void > => {
+		await context.addCookies( [
+			{ name: 'cbuild_e2e_theme', value: theme, url: baseURL || SITE },
+		] );
+		await page.goto( `/?p=${ id( 'builder-test-deck-8-25' ) }` );
+		if ( styles ) {
+			await page.addStyleTag( { content: styles } );
+		}
+		const start = page.locator( '.cbuild-start__link' );
+		await expect( start ).toBeVisible();
+		const focusMark = () =>
+			start.evaluate( ( link ) => {
+				const style = getComputedStyle( link );
+				return `outline ${ style.outlineStyle } ${ style.outlineWidth } ${ style.outlineColor } | shadow ${ style.boxShadow } | background ${ style.backgroundColor }`;
+			} );
+		const rest = await focusMark();
+		await page.locator( 'form.cart .single_add_to_cart_button' ).focus();
+		for ( let i = 0; i < 10; i++ ) {
+			await page.keyboard.press( 'Tab' );
+			if (
+				await start.evaluate(
+					( link ) => link === link.ownerDocument.activeElement
+				)
+			) {
+				break;
+			}
+		}
+		await expect( start, 'tabbed to' ).toBeFocused();
+		await expect
+			.poll( focusMark, { message: `a mark of focus, from ${ rest }` } )
+			.not.toBe( rest );
+	};
+
 	for ( const theme of [ 'kadence', 'storefront', 'twentytwentyfive' ] ) {
 		test( `is ${ theme }'s button, second to Add to cart, with its weight and height`, async ( {
 			page,
@@ -9023,7 +9073,94 @@ test.describe( 'The start button on a theme (#133)', () => {
 			await page.setViewportSize( { width: 390, height: 844 } );
 			await expect.poll( differ, { message: 'at 390 px' } ).toEqual( [] );
 		} );
+
+		// The auditor's third pass on M12, a minor: the outline pinned background and ring at `:focus` too, so a
+		// theme's focus mark drawn as a shadow or a background was lost. Tabbed to, the button shows the theme's mark.
+		test( `shows ${ theme }'s focus mark when tabbed to`, async ( {
+			page,
+			context,
+			baseURL,
+		} ) => {
+			await tabbedMark( page, context, baseURL, theme );
+		} );
 	}
+
+	// A theme whose focus mark is a shadow alone, as a theme may draw it on `.button:focus`.
+	test( "shows a theme's focus mark drawn as a shadow when tabbed to", async ( {
+		page,
+		context,
+		baseURL,
+	} ) => {
+		await tabbedMark(
+			page,
+			context,
+			baseURL,
+			'kadence',
+			'.button:focus{outline:none;box-shadow:0 0 0 3px rgb(26, 32, 44)}'
+		);
+	} );
+} );
+
+// The auditor's third pass on M12, should-fix: where the theme draws both buttons alike, the outline took Add to cart's
+// fill as the start button's words and ring, read against nothing. On Kadence with a light accent and dark words, as
+// a shop sets them in the Customizer, that fill read about 1.6:1 on the white page (WCAG 1.4.3, 1.4.11).
+test.describe( 'The start button on a light accent', () => {
+	/**
+	 * Kadence's button colours in the site's theme mods, as the Customizer's Buttons panel keeps them; null puts back
+	 * what the site had. The e2e theme fixture shows Kadence by cookie and leaves the active theme as it is, so
+	 * Kadence reads the active theme's mods.
+	 *
+	 * @param colours The fill and the words, or null.
+	 */
+	const accent = ( colours: { fill: string; words: string } | null ): void =>
+		runPhp(
+			null === colours
+				? "$o = 'theme_mods_' . get_option( 'stylesheet' ); $b = get_option( 'cbuild_e2e_theme_mods', null ); delete_option( 'cbuild_e2e_theme_mods' ); if ( is_array( $b ) && is_array( $b['mods'] ?? null ) ) { update_option( $o, $b['mods'] ); } elseif ( is_array( $b ) ) { delete_option( $o ); }"
+				: `$o = 'theme_mods_' . get_option( 'stylesheet' ); if ( false === get_option( 'cbuild_e2e_theme_mods' ) ) { update_option( 'cbuild_e2e_theme_mods', array( 'mods' => get_option( $o, null ) ), false ); } $m = (array) get_option( $o, array() ); $m['buttons_background'] = array( 'color' => '${ colours.fill }', 'hover' => '${ colours.fill }' ); $m['buttons_color'] = array( 'color' => '${ colours.words }', 'hover' => '${ colours.words }' ); update_option( $o, $m );`
+		);
+
+	test.beforeAll( () => accent( { fill: '#F7C948', words: '#1A202C' } ) );
+	test.afterAll( () => accent( null ) );
+
+	test( 'reads against the page on Kadence, and is still second to Add to cart', async ( {
+		page,
+		context,
+		baseURL,
+		javaScriptEnabled,
+	} ) => {
+		await context.addCookies( [
+			{
+				name: 'cbuild_e2e_theme',
+				value: 'kadence',
+				url: baseURL || SITE,
+			},
+		] );
+		await page.goto( `/?p=${ id( 'builder-test-deck-8-25' ) }` );
+		const start = page.locator( '.cbuild-start__link' );
+		const add = page.locator( 'form.cart .single_add_to_cart_button' );
+		await expect( start ).toBeVisible();
+		await expect(
+			add,
+			"the theme mods are Kadence's: Add to cart's light fill"
+		).toHaveCSS( 'background-color', 'rgb(247, 201, 72)' );
+		await axe(
+			page,
+			'the start button on a light accent',
+			'.cbuild-start'
+		);
+		if ( ! javaScriptEnabled ) {
+			return;
+		}
+		const colours = ( locator: Locator ) =>
+			locator.evaluate( ( element ) => {
+				const style = getComputedStyle( element );
+				return `${ style.backgroundColor } | ${ style.color }`;
+			} );
+		expect(
+			await colours( start ),
+			"its colours are not Add to cart's"
+		).not.toBe( await colours( add ) );
+	} );
 } );
 
 // #115 (D-349): a kit's Show on its parts' pages. Off on every kit that offers the deck, its page has no "Build a
