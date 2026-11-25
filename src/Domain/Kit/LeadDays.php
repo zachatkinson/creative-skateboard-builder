@@ -123,13 +123,17 @@ final readonly class LeadDays {
 		$bytes = array_map( ord( ... ), str_split( $digit ) );
 		// The lead byte of a character of n bytes starts with n ones and a nought: take them away, then add six bits
 		// from each byte after it, past its leading 10.
-		$point = $bytes[0] - 256 + 2 ** ( 8 - strlen( $digit ) );
-		foreach ( array_slice( $bytes, 1 ) as $byte ) {
-			$point = $point * 64 + $byte - 128;
-		}
-		// The digits in a row that end at this one, itself among them.
+		// Folded, not looped: a digit is never one byte here, so a loop's path with no byte after the lead is one no
+		// digit takes, and the domain's branches are all covered.
+		$point = array_reduce(
+			array_slice( $bytes, 1 ),
+			static fn ( int $point, int $byte ): int => $point * 64 + $byte - 128,
+			$bytes[0] - 256 + 2 ** ( 8 - strlen( $digit ) )
+		);
+		// The digits in a row that end at this one, itself among them. `\preg_match()` is named in full: PHP 8.4 and
+		// later look a frameless function's unqualified name up in the namespace first, a branch no digit takes.
 		$run = 0;
-		while ( 1 === preg_match( self::ONE_DIGIT, html_entity_decode( '&#' . ( $point - $run ) . ';', ENT_HTML5, 'UTF-8' ) ) ) {
+		while ( 1 === \preg_match( self::ONE_DIGIT, html_entity_decode( '&#' . ( $point - $run ) . ';', ENT_HTML5, 'UTF-8' ) ) ) {
 			++$run;
 		}
 		return (string) ( ( $run - 1 ) % 10 );
