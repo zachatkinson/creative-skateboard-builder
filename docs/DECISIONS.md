@@ -485,6 +485,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-422 · The browser tests reach wp-env one command at a time, under a lock](#d-422--the-browser-tests-reach-wp-env-one-command-at-a-time-under-a-lock--2026-11-25)
 - [D-423 · The i18n check fails a translation compiled before its strings were translated](#d-423--the-i18n-check-fails-a-translation-compiled-before-its-strings-were-translated--2026-11-25)
 - [D-430 · The swaps-off test measures its own plain card, so it holds when it runs alone](#d-430--the-swaps-off-test-measures-its-own-plain-card-so-it-holds-when-it-runs-alone--2026-11-25)
+- [D-431 · Every browser test passes when it runs alone](#d-431--every-browser-test-passes-when-it-runs-alone--2026-11-25)
 
 ### Releases and the repository
 
@@ -6459,5 +6460,30 @@ Found by the fr-ca run for D-421 and D-422 on lane 3. "Compare saved builds (#13
 **Red run.** Run alone, `builder.spec.ts:11775` on chromium-desktop and no-js: "a plain card no taller beside a swap than with none, Expected: 0, Received: 339.75".
 
 **Deliberate break.** Every card on the step shows the swaps' paragraph when the step offers a swap (`'hasSwaps' => array() !== ( $swaps[ $slot ] ?? array() )` in `BuilderView`). Run alone, the test failed on chromium-desktop and no-js: "Expected: 349.75, Received: 339.75", a 10 px empty paragraph on a plain card.
+
+**Status:** Accepted.
+
+### D-431 · Every browser test passes when it runs alone · 2026-11-25
+
+D-430 found a browser test that compared against a variable only the test before it set. A whole run passed; a run that picked the test alone compared against 0. `tools/focused.sh`, `--last-failed` and a rerun by line all pick tests alone, so each of them would have reported a pass or a failure that wasn't the test's.
+
+**Decision:** every test in `tests/e2e` passes when it is the only one selected, by its line or by its title.
+
+- A test sets up what it reads itself, or a `beforeAll` or `beforeEach` of its group does, since those run when one test of the group is picked. No test reads a value another test stored in a variable of its group or module.
+- `test.describe.configure( { mode: 'serial' } )` only stops the group after a failure. It is never what makes a later test's setup.
+- A test that changes the shop through WP-CLI (`wp`, `runPhp`, `setSpecs`, `tempPart`) puts it back in a `finally` or in its group's `afterAll`, so a later test or file sees the fixture as `tools/e2e-site.sh` made it.
+
+**How it was checked, on 25 November, on `m13-early`.**
+
+- Statically, across `tests/e2e/*.spec.ts`: every `let` at a group's or module's level, every mutable value there, every serial group, every `beforeAll` and `afterAll`, and every call that changes the shop through WP-CLI or saves it through wp-admin.
+  - One `let` is at a group's level: `deck` in `check.spec.ts`, set by its `beforeAll`.
+  - One group is serial: "Smart swaps (#135)" in `builder.spec.ts`, its swaps-off test fixed by D-430. Its first two tests rely only on the kit's swaps being on, which is the fixture's default and what the group's `afterAll` puts back.
+  - Every change made through WP-CLI is put back by its test's `finally` or its group's `afterAll`, at the fixture's own values.
+- By running each candidate alone, one test of a group to a command, on chromium-desktop and no-js. That covered the three Smart swaps tests, each in a command of its own, and the Catalogue check. In `builder.spec.ts` it covered a kit's own width guide, the grip sheet, Saved builds, Compare saved builds, the steps that appear only when needed, a saved build that has changed and the deck page, the start button on a light accent, a kit's Show on its parts' pages, a kit's Builder page, and a picked deck in a new width. It also covered the second tests of the Settings tab, the Build tab and the Part specs panel. Each one passed alone: none hid a dependency beyond the one D-430 fixed.
+
+**Left as found, and noted.**
+
+- The grip sheet test deletes its attachments but leaves the options `cbuild_e2e_grip_sheet_printed` and `cbuild_e2e_grip_sheet_plain` behind. No test reads them, and the next run writes them again.
+- The Settings tab's terms test and the Build tab's tests save through wp-admin and put the shop back at their own end, not in an `afterAll`. A failure part way leaves its values behind. The Settings tests start by setting what a new shop has, so their next run is not misled. The Build tab's tests work on a kit of their own, which no other file reads.
 
 **Status:** Accepted.
