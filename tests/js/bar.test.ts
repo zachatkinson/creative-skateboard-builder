@@ -265,6 +265,44 @@ describe( 'size', () => {
 		size( root );
 		expect( read(), 'the taller of the two' ).toBe( '200px' );
 	} );
+
+	// Under the panel on a desktop the bar is in the flow, and the lines lie over the panel's foot, which scrolls
+	// inside itself: their height is the panel's scroll padding, sticky or not (D-383).
+	it( "makes the height of what the bar says over itself the panel's scroll padding, sticky or not, and none while it says nothing", () => {
+		const { root } = page( '', '' );
+		const panel = document.createElement( 'div' );
+		panel.className = 'cbuild__body';
+		root.prepend( panel );
+		const said = () =>
+			panel.style.getPropertyValue( 'scroll-padding-block-end' );
+		const bar = root.querySelector( '.cbuild-bar' ) as HTMLElement;
+		bar.innerHTML = '<p class="cbuild__limited"></p>';
+		const limited = bar.querySelector( '.cbuild__limited' ) as HTMLElement;
+		const shown = vi
+			.spyOn( bar, 'getClientRects' )
+			.mockReturnValue( [ new DOMRect() ] as unknown as DOMRectList );
+		bar.style.position = 'static';
+		box( bar, 600, 100 );
+		box( limited, 0, 0 );
+		size( root );
+		expect( said(), 'nothing said' ).toBe( '' );
+		box( limited, 529.5, 62 );
+		size( root );
+		expect( said(), 'under the panel' ).toBe( '71px' );
+		expect( read(), 'the page has no bar over it' ).toBe( '' );
+		bar.style.position = 'sticky';
+		size( root );
+		expect( said(), 'sticky' ).toBe( '71px' );
+		expect( read() ).toBe( '171px' );
+		box( limited, 0, 0 );
+		size( root );
+		expect( said(), 'said and gone' ).toBe( '' );
+		box( limited, 529.5, 62 );
+		size( root );
+		shown.mockReturnValue( [] as unknown as DOMRectList );
+		size( root );
+		expect( said(), 'no bar shown' ).toBe( '' );
+	} );
 } );
 
 // The auditor's M10 review, 1 (WCAG 2.4.11): narrower than 64rem the stage sticks at the top of the screen, so the page

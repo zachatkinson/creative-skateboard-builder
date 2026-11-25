@@ -773,7 +773,12 @@ function measure( element: HTMLElement ): void {
 	const bar = element.querySelector( '.cbuild-bar' );
 	const shown = element.querySelector( '.cbuild__stage' );
 	if ( bar ) {
-		const sized = new window.ResizeObserver( () => size( element ) );
+		// The control in focus keeps it while the bar or a line over it grows: the limit's line comes 10 s after a
+		// press, over a card picked with Space just above the bar, and nothing else scrolls it clear (D-383).
+		const sized = new window.ResizeObserver( () => {
+			size( element );
+			clear( element.ownerDocument.activeElement );
+		} );
 		sized.observe( bar );
 		// What a press of the dimmed Next says, and the limit's line, sit over the bar, outside its box: their
 		// heights count as the bar's (D-383).
@@ -1398,8 +1403,17 @@ function covers( bar: HTMLElement ): number {
  * @param event The focus that came in.
  */
 function reveal( event: FocusEvent ): void {
-	const target = event.target;
-	if ( ! ( target instanceof HTMLElement ) ) {
+	clear( event.target );
+}
+
+/**
+ * Bring a control clear of the bar and the stage where either covers it: the one focus comes to, or the one that keeps
+ * it while the bar grows or says something over itself (D-383).
+ *
+ * @param target The control.
+ */
+function clear( target: EventTarget | null ): void {
+	if ( ! ( target instanceof HTMLElement ) || ! root?.contains( target ) ) {
 		return;
 	}
 	const bar = root?.querySelector< HTMLElement >( '.cbuild-bar' );

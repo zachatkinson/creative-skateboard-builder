@@ -8099,6 +8099,131 @@ test.describe( 'The full-width builder on a theme', () => {
 		} );
 	}
 
+	// The auditor's third pass on M12: the line comes 10 s after the press, over the bar's top edge, where a deck the
+	// shopper picked with Space just above the bar keeps focus. It covered the card, and nothing scrolled it clear: on a
+	// phone the page's scroll padding grew, and on a desktop the panel, which scrolls inside itself, had none (D-383).
+	for ( const [ size, screen, long ] of [
+		[ 'phone', PHONE, false ],
+		[ 'desktop', { width: 1440, height: 900 }, false ],
+		// The shelf kit's 46 decks: the panel scrolls inside itself, under its own scroll padding.
+		[ 'desktop, the panel scrolled', { width: 1440, height: 900 }, true ],
+	] as const ) {
+		test( `keeps the card in focus clear of the limit's line on a ${ size } (D-383)`, async ( {
+			page,
+			context,
+			baseURL,
+			javaScriptEnabled,
+		} ) => {
+			test.skip( ! javaScriptEnabled, "The limit is the store's." );
+			test.slow();
+			await context.addCookies( [
+				{
+					name: 'cbuild_e2e_theme',
+					value: 'kadence',
+					url: baseURL || SITE,
+				},
+			] );
+			await page.setViewportSize( screen );
+			if ( long ) {
+				const at = new URL( fixture().shelf.page );
+				at.searchParams.set( 'cbuild[_width]', '8.25in' );
+				await page.goto( at.toString() );
+			} else {
+				await page.goto( linkTo( { _width: '8in' } ) );
+			}
+			await expect( page.locator( '.cbuild[data-ready]' ) ).toHaveCount(
+				1
+			);
+			// The step's last deck, placed with its foot 4 px above the bar, and focused there.
+			const value = await page
+				.locator(
+					'.cbuild-step .cbuild-cards:not(.cbuild-cards--sold-out) .cbuild-card__control:not([disabled]):not(:checked)'
+				)
+				.last()
+				.getAttribute( 'value' );
+			const card = page.locator(
+				`.cbuild-step .cbuild-card__control[value="${ value }"]`
+			);
+			const placed = await card.evaluate( ( input, panel ) => {
+				const bar = document.querySelector( '.cbuild-bar' )!;
+				// On a desktop the bar is under the panel: the page brought to it first, and with the long step to its
+				// foot, so the page can scroll no further and only the panel can move the card.
+				bar.scrollIntoView( { block: 'nearest' } );
+				if ( panel ) {
+					window.scrollTo( 0, document.documentElement.scrollHeight );
+				}
+				const body = input.closest< HTMLElement >( '.cbuild__body' );
+				const by =
+					input.getBoundingClientRect().bottom -
+					( bar.getBoundingClientRect().top - 4 );
+				if (
+					body &&
+					'auto' === window.getComputedStyle( body ).overflowY &&
+					body.scrollHeight > body.clientHeight
+				) {
+					body.scrollTop += by;
+				} else {
+					window.scrollBy( 0, by );
+				}
+				( input as HTMLElement ).focus( { preventScroll: true } );
+				return Math.round(
+					bar.getBoundingClientRect().top -
+						input.getBoundingClientRect().bottom
+				);
+			}, long );
+			if ( long ) {
+				expect(
+					await page
+						.locator( '.cbuild__body' )
+						.evaluate( ( body ) => body.scrollTop ),
+					'the panel scrolled inside itself'
+				).toBeGreaterThan( 0 );
+			}
+			expect( placed, 'the card just above the bar' ).toBeGreaterThan(
+				0
+			);
+			expect( placed, 'the card just above the bar' ).toBeLessThan( 12 );
+			let release: () => void = () => undefined;
+			const held = new Promise< void >( ( done ) => {
+				release = done;
+			} );
+			await page.route( isRoute, async ( route ) => {
+				await held;
+				await route.continue().catch( () => undefined );
+			} );
+			await page.keyboard.press( 'Space' );
+			await expect( card ).toBeChecked();
+			const line = page.locator( '.cbuild__limited' );
+			await expect( line ).not.toBeEmpty( { timeout: 20000 } );
+			await expect
+				.poll(
+					() =>
+						page.evaluate( () => {
+							const own =
+								document.querySelector( '.cbuild__limited' )!;
+							const focused = own.ownerDocument.activeElement!;
+							const said = own.getBoundingClientRect();
+							const box = focused.getBoundingClientRect();
+							return said.height > 0 &&
+								box.bottom <= said.top + 1 &&
+								box.top >= 0 &&
+								box.bottom <= window.innerHeight
+								? 'clear'
+								: `${ focused.className }: ${ Math.round(
+										box.top
+									) } to ${ Math.round(
+										box.bottom
+									) }, the line from ${ Math.round( said.top ) }`;
+						} ),
+					{ message: 'the card in focus, clear of the line' }
+				)
+				.toBe( 'clear' );
+			await expect( card, 'focus kept' ).toBeFocused();
+			release();
+			await page.unroute( isRoute );
+		} );
+	}
+
 	// At full width the builder spans what the theme gives a full-width block, the screen on Kadence and Twenty
 	// Twenty-Five. Stacked, its words, picture and buttons keep the page's gutter: on a phone "Your board" and the
 	// picture were 7 px from the edge on Kadence, and 10 px on Twenty Twenty-Five, beside a heading at 16 and 30. Beside

@@ -2953,6 +2953,68 @@ describe( 'measuring the bar and the stage', () => {
 		document.documentElement.style.removeProperty( '--cbuild-stage-size' );
 	} );
 
+	// The auditor's third pass on M12: the limit's line comes 10 s after a press, over a card picked with Space just
+	// above the bar, which keeps focus. As the line takes its height the card in focus is brought clear (D-383).
+	it( 'brings the control in focus clear when a line over the bar takes its height, and nothing else', () => {
+		const root = builder();
+		const bar = root.querySelector< HTMLElement >( '.cbuild-bar' )!;
+		bar.innerHTML =
+			'<p class="cbuild__limited"></p><button class="in-bar">Next</button>';
+		const card = document.createElement( 'input' );
+		card.type = 'radio';
+		root.prepend( card );
+		const watched: Array< () => void > = [];
+		vi.stubGlobal(
+			'ResizeObserver',
+			class {
+				constructor( private again: () => void ) {}
+				observe(): void {
+					watched.push( this.again );
+				}
+			}
+		);
+		(
+			defined.definition as { callbacks: { init: () => void } }
+		 ).callbacks.init();
+		const line = bar.querySelector< HTMLElement >( '.cbuild__limited' )!;
+		bar.getClientRects = () => [ {} ] as unknown as DOMRectList;
+		bar.getBoundingClientRect = () =>
+			( { top: 700, bottom: 780, height: 80 } ) as DOMRect;
+		line.getBoundingClientRect = () =>
+			( { top: 700, bottom: 700, height: 0 } ) as DOMRect;
+		card.getBoundingClientRect = () =>
+			( { top: 560, bottom: 696, height: 136 } ) as DOMRect;
+		const scrolled: string[] = [];
+		card.scrollIntoView = ( options ) =>
+			scrolled.push( JSON.stringify( options ) );
+		// Focus said without a focus event, which another test's listener on the page could take.
+		let focused: Element = card;
+		Object.defineProperty( document, 'activeElement', {
+			get: () => focused,
+			configurable: true,
+		} );
+		watched[ 0 ]!();
+		expect( scrolled, 'the line says nothing' ).toEqual( [] );
+		line.getBoundingClientRect = () =>
+			( { top: 630, bottom: 692, height: 62 } ) as DOMRect;
+		watched[ 0 ]!();
+		expect( scrolled ).toEqual( [ '{"block":"nearest"}' ] );
+		// Focus in the bar, or nowhere in the builder, is left where it is.
+		focused = bar.querySelector< HTMLElement >( '.in-bar' )!;
+		watched[ 0 ]!();
+		const outside = document.createElement( 'button' );
+		document.body.append( outside );
+		outside.getBoundingClientRect = card.getBoundingClientRect;
+		outside.scrollIntoView = card.scrollIntoView;
+		focused = outside;
+		watched[ 0 ]!();
+		expect( scrolled ).toHaveLength( 1 );
+		delete ( document as unknown as { activeElement?: Element } )
+			.activeElement;
+		document.documentElement.style.removeProperty( '--cbuild-bar-size' );
+		document.documentElement.style.removeProperty( '--cbuild-stage-size' );
+	} );
+
 	it( 'measures once, and watches nothing, where the browser has no resize observer', () => {
 		builder();
 		vi.stubGlobal( 'ResizeObserver', undefined );
