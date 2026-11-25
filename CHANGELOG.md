@@ -4,12 +4,27 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
-## [1.2.0] - 2026-11-25
-
 ### Added
 
 - **Compare saved builds** under My builds (#136, D-411): tick up to three builds and see them side by side in one table, a column a build, at today's prices. The rows whose parts differ say "Differs", and the gap between the totals is said in words, both tinted too. A part changed since the save is named as reopening names it (D-254). On a phone the table scrolls sideways in its own region. It is the query parameter `cbuild_compare`, sent as `cbuild_compare[]`, on My builds' own endpoint; nothing is stored, and only the customer's own builds are read.
 - **The part picked is outlined on the board** for 600 ms, each of its layers, by transform and opacity alone; under reduced motion or a kit's subtle Motion it shows at once and fades, with no movement. The build's sentence still says what changed (#138, D-413).
+- **Wheel guide** (1.3.0), a section of a kit's Build tab: the smallest and largest wheel the guided start recommends for each riding style, street, skatepark, bowl and transition, and cruising, 40 to 90 mm. Kept as `wheel_guide` in `_cbuild_settings`; a kit without one, or a style left empty, has the builder's sizes from published wheel guides: 50 to 54, 53 to 56, 55 to 58 and 59 to 65 mm (#134, D-400).
+- **Help me choose** (1.3.0), at the builder's start: a shoe size from the kit's width guide, where the shopper skates and a budget, each optional, in a GET form that works without JavaScript, with Skip from the questions and from the builds. The answers recommend a deck width, wheel sizes from the kit's wheel guide and up to three ready builds, budget, mid-range and high-end, from parts in stock that pass the fit engine whole, each with its total and why. As many as the shop can make, never one that fails fit; a budget keeps the builds within it, or the closest, said to be over. The answers travel in the build's link alone, as `cbuild[_guide][…]`, and are stored nowhere. `cbuild_guided_start` answers with the width and wheel sizes after the kit's settings (#134, D-401, D-402).
+
+### Changed
+
+- **Development:**
+  - CI's update job updates from every release from 1.0.0 on, and from 0.1.0 and 0.9.0, with `npm run upgrade:all -- --sample`: from every release it took 16 minutes (#144, D-414). `npm run upgrade:all` alone still updates from every release.
+  - `npm run upgrade` and `upgrade:all` read an old release's own browser fixture from its tag file by file: from 1.2.0, `.gitattributes` keeps `tests/` out of `git archive`, so the update from 1.2.0 found no fixture and failed (D-414).
+
+### Fixed
+
+- My builds names each build on a phone. WooCommerce's small-screen styles hid each row's header, the build's picture and name, so a phone showed each build's total and buttons with nothing to say which build they were for (D-412).
+
+## [1.2.0] - 2026-11-25
+
+### Added
+
 - **Builder page**, in a kit's Build tab, Layout section, under "Where shoppers find it": `builder_page` in `_cbuild_settings`, a published page that holds the kit's Builder block. The kit's page, "Build a complete with this deck", the cart's Edit build, My builds' Open and the state route's links go there, checked each time they are made; a page unpublished, locked or without the block sends shoppers to the kit's own page. A kit saved before 1.2.0 has none (#113, D-348).
 - **Show "Build a complete with this deck" on its parts' pages**, in the same group: `start_button` in `_cbuild_settings`, on unless unticked. Off, the kit places no "Build a complete with this deck", and the next kit by menu order that offers the part may (#115, D-349).
 - **Width guide**, a section of a kit's Build tab: up to twelve rows of a shoe size and deck widths, added and removed by keyboard, the builder's rows back with one box, or the guide hidden.
@@ -26,8 +41,6 @@ All notable changes to this project are documented here. The format follows [Kee
   - a DOM event, `cbuild:rendered`, on the builder's element, bubbling, with the kit and the step, once the builder is hydrated and once after each answer it draws, never for a pick or a key before its answer;
   - `.cbuild[data-ready]`, the sign the builder has hydrated, for a script that loads after the first event;
   - the classes `cbuild-card`, `cbuild-card__control`, `cbuild-picture`, `cbuild__stage` and `cbuild-step`, named in HOOKS.md as API, with the last child of `.cbuild__stage` and the first of `form.cbuild-step` kept for another plugin's element through every redraw.
-- **Wheel guide** (1.3.0), a section of a kit's Build tab: the smallest and largest wheel the guided start recommends for each riding style, street, skatepark, bowl and transition, and cruising, 40 to 90 mm. Kept as `wheel_guide` in `_cbuild_settings`; a kit without one, or a style left empty, has the builder's sizes from published wheel guides: 50 to 54, 53 to 56, 55 to 58 and 59 to 65 mm (#134, D-400).
-- **Help me choose** (1.3.0), at the builder's start: a shoe size from the kit's width guide, where the shopper skates and a budget, each optional, in a GET form that works without JavaScript, with Skip from the questions and from the builds. The answers recommend a deck width, wheel sizes from the kit's wheel guide and up to three ready builds, budget, mid-range and high-end, from parts in stock that pass the fit engine whole, each with its total and why. As many as the shop can make, never one that fails fit; a budget keeps the builds within it, or the closest, said to be over. The answers travel in the build's link alone, as `cbuild[_guide][…]`, and are stored nowhere. `cbuild_guided_start` answers with the width and wheel sizes after the kit's settings (#134, D-401, D-402).
 - **The deck step's time, placed:** the state route's `Server-Timing` header to a shop manager names the answer's phases after its time and queries: `cbuild-shelf`, `cbuild-cards` and, on the deck step, `cbuild-boards` (#125, D-365).
 
 ### Changed
@@ -40,12 +53,9 @@ All notable changes to this project are documented here. The format follows [Kee
   - Markdown is linted with markdownlint-cli2 0.24.0 (`npm run lint:md`, in `npm run check`, CI, a workflow for changes to the docs alone, and the pre-commit hook). The docs' 183 findings are fixed, 67 bold lines among them now real headings (#111, D-345).
   - A `.gitattributes` keeps line endings LF and binaries binary, marks generated types and docs for GitHub, and makes `git archive` hold what the release zip holds; gate 19 keeps its export-ignore list equal to `.distignore` (#112, D-346). Gate 20 fails a merge's conflict marker left in a file (D-347).
   - Lighthouse CI takes the median of five runs a page, not three (#75, D-344). A browser test whose builder never sets its ready mark reports the page's errors and whether the Interactivity runtime finished loading (#93).
-  - CI's update job updates from every release from 1.0.0 on, and from 0.1.0 and 0.9.0, with `npm run upgrade:all -- --sample`: from every release it took 16 minutes (#144, D-414). `npm run upgrade:all` alone still updates from every release.
-  - `npm run upgrade` and `upgrade:all` read an old release's own browser fixture from its tag file by file: from 1.2.0, `.gitattributes` keeps `tests/` out of `git archive`, so the update from 1.2.0 found no fixture and failed (D-414).
 
 ### Fixed
 
-- My builds names each build on a phone. WooCommerce's small-screen styles hid each row's header, the build's picture and name, so a phone showed each build's total and buttons with nothing to say which build they were for (D-412).
 - In a kit's Build tab, a wrong Builder page, width guide or assembly time in business days is refused alone, and the kit's other settings are saved. One wrong field threw away all four, and the notice named them all; it now names the field refused and leads to it (D-385).
 - A Build tab field that was not saved is marked where it is, by a border in WordPress's error red twice as thick as a field that saved (D-386).
 - The Build tab's lists are as wide as their longest option, up to the field, so "Search in the steps" shows its options whole on a desktop (D-387).
