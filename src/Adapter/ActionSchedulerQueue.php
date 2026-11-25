@@ -154,6 +154,36 @@ final class ActionSchedulerQueue implements Queue {
 	}
 
 	/**
+	 * Schedule an action for a moment to come, unless one with the same hook and arguments waits for a moment to come.
+	 *
+	 * @since 1.2.0
+	 *
+	 * @param int                  $timestamp When, a UTC timestamp.
+	 * @param string               $hook      The action.
+	 * @param array<string, mixed> $args      Its arguments.
+	 */
+	public function scheduleDistinct( int $timestamp, string $hook, array $args ): void {
+		if ( ! function_exists( 'as_schedule_single_action' ) || ! function_exists( 'as_get_scheduled_actions' ) || ! function_exists( 'as_get_datetime_object' ) ) {
+			return;
+		}
+		$waiting = as_get_scheduled_actions(
+			array(
+				'hook'         => $hook,
+				'args'         => $args,
+				'group'        => Options::QUEUE_GROUP,
+				'status'       => \ActionScheduler_Store::STATUS_PENDING,
+				'date'         => as_get_datetime_object(),
+				'date_compare' => '>',
+				'per_page'     => 1,
+			),
+			'ids'
+		);
+		if ( array() === $waiting ) {
+			as_schedule_single_action( $timestamp, $hook, $args, Options::QUEUE_GROUP, false );
+		}
+	}
+
+	/**
 	 * How many of the plugin's actions have failed and are still on the queue's record. Action Scheduler keeps a
 	 * failed action for three months by default (WooCommerce 11.2.2,
 	 * packages/action-scheduler/classes/ActionScheduler_QueueCleaner.php:121), so the caller says from when.

@@ -228,6 +228,25 @@ final class IndexJobsTest extends IntegrationTestCase {
 		self::assertSame( array( 'deck_width=8.0000' ), $this->indexed( $deck->get_id() )[ $deck->get_id() ] );
 	}
 
+	// D-378: a job an update's step asks for is due later, past any runner the earlier release started; one due now,
+	// which such a runner may claim, does not stand in for it, and one already waiting for later does.
+	public function test_a_job_scheduled_for_later_is_scheduled_once_and_one_due_now_does_not_stand_in_for_it(): void {
+		$queue = $this->service( Queue::class );
+		$queue->cancelAll( Options::JOB_INDEX_PART );
+		$later = time() + IndexJobs::AFTER_UPDATE;
+		$queue->enqueueDistinct( Options::JOB_INDEX_PART, array( 'part' => 7 ) );
+		$queue->scheduleDistinct( $later, Options::JOB_INDEX_PART, array( 'part' => 7 ) );
+		$queue->scheduleDistinct( $later + 60, Options::JOB_INDEX_PART, array( 'part' => 7 ) );
+		$queue->scheduleDistinct( $later, Options::JOB_INDEX_PART, array( 'part' => 8 ) );
+		$dates = array_map(
+			static fn( \ActionScheduler_Action $action ): array => array( $action->get_args(), $action->get_schedule()->get_date()?->getTimestamp() ),
+			array_values( as_get_scheduled_actions( array( 'hook' => Options::JOB_INDEX_PART, 'group' => Options::QUEUE_GROUP, 'status' => \ActionScheduler_Store::STATUS_PENDING, 'orderby' => 'action_id', 'order' => 'ASC', 'per_page' => -1 ) ) )
+		);
+		self::assertSame( array( array( 'part' => 7 ), array( 'part' => 7 ), array( 'part' => 8 ) ), array_column( $dates, 0 ), 'the 7 due now and once for later, the 8 for later' );
+		self::assertSame( array( $later, $later ), array_slice( array_column( $dates, 1 ), 1 ) );
+		$queue->cancelAll( Options::JOB_INDEX_PART );
+	}
+
 	public function test_a_variable_products_job_indexes_its_variations_and_a_deleted_products_removes_its_rows(): void {
 		[ $parent, $variations ] = self::variable( '8.0000', '8.2500' );
 		$this->service( Queue::class )->cancelAll( Options::JOB_INDEX_PART );

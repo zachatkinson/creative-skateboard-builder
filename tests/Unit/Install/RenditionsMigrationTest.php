@@ -75,12 +75,12 @@ final class RenditionsMigrationTest extends TestCase {
 		$migration = new RenditionsMigration( static fn(): IndexJobs => self::jobs( $kits, $index, $queue )->withRenditions( $parts ), $logger );
 		self::assertSame( 'layer_renditions_1', $migration->key() );
 		self::assertTrue( $migration->run( Cursor::start() )->done );
-		self::assertSame( array( array( IndexJobs::JOB_PART, array( 'part' => 101 ) ) ), $queue->distinct, 'the 101 alone: the 102 has no layer image and the 103 its copies' );
+		self::assertSame( array( array( IndexJobs::JOB_PART, array( 'part' => 101 ), 1_800_000_000 + IndexJobs::AFTER_UPDATE ) ), $queue->scheduledDistinct, 'the 101 alone: the 102 has no layer image and the 103 its copies' );
 		self::assertSame( Logger::INFO, $logger->lines[0]['level'] );
 		self::assertSame( array( 'parts' => 1 ), $logger->lines[0]['context'] );
 
 		$migration->run( Cursor::start() );
-		self::assertCount( 1, $queue->distinct, 'run again while the job waits, nothing is queued twice' );
+		self::assertCount( 1, $queue->scheduledDistinct, 'run again while the job waits, nothing is queued twice' );
 
 		$bare  = new InMemoryKits();
 		$quiet = new RenditionsMigration( static fn(): IndexJobs => self::jobs( $bare, $index, new FakeQueue() )->withRenditions( new PartRenditions( $bare, $index, $layers, $renditions ) ), $silent = new FakeLogger() );
@@ -107,14 +107,15 @@ final class RenditionsMigrationTest extends TestCase {
 		$migration = new UnsizedRenditionsMigration( static fn(): IndexJobs => self::jobs( $kits, $index, $queue )->withRenditions( $parts ), $logger );
 		self::assertSame( 'layer_renditions_2', $migration->key() );
 		self::assertTrue( $migration->run( Cursor::start() )->done );
-		self::assertSame( array( array( IndexJobs::JOB_PART, array( 'part' => $grip->id ) ) ), $queue->distinct, 'the grip, which has no row in the index' );
+		self::assertSame( array( array( IndexJobs::JOB_PART, array( 'part' => $grip->id ), 1_800_000_000 + IndexJobs::AFTER_UPDATE ) ), $queue->scheduledDistinct, 'the grip, which has no row in the index, its job due once a runner the earlier release started has stopped' );
+		self::assertSame( array(), $queue->distinct, 'nothing due now, for that runner to claim (D-378)' );
 		self::assertSame( array( 'parts' => 1 ), $logger->lines[0]['context'] ?? null );
 
 		$parts->make( $grip->id );
 		$after = new FakeQueue();
 		$quiet = new UnsizedRenditionsMigration( static fn(): IndexJobs => self::jobs( $kits, $index, $after )->withRenditions( $parts ), $silent = new FakeLogger() );
 		self::assertTrue( $quiet->run( Cursor::start() )->done );
-		self::assertSame( array(), $after->distinct, 'nothing missing, nothing queued' );
+		self::assertSame( array(), $after->scheduledDistinct, 'nothing missing, nothing queued' );
 		self::assertSame( array(), $silent->lines );
 	}
 

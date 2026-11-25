@@ -63,7 +63,8 @@ final class RenditionsUpgradeTest extends CartTestCase {
 		self::assertSame( RunResult::Finished, $runner->run() );
 		self::assertSame( array( array( 'part' => $this->parts['deck'] ) ), self::waiting( Options::JOB_INDEX_PART ), 'the deck\'s own job, queued by the update' );
 
-		self::work();
+		self::assertSame( 0, self::work(), 'not due in the update\'s request (D-378)' );
+		self::workAll();
 		self::assertSame( 0, $this->service( PartRenditions::class )->unrendered(), 'made, with nobody saving the part' );
 	}
 

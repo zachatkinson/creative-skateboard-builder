@@ -164,6 +164,31 @@ abstract class IntegrationTestCase extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Run the plugin's waiting actions, those due later too, as the queue's runner does once they are due.
+	 *
+	 * @return int How many ran.
+	 */
+	protected static function workAll(): int {
+		$ran = 0;
+		do {
+			$waiting = as_get_scheduled_actions(
+				array(
+					'group'    => Options::QUEUE_GROUP,
+					'status'   => \ActionScheduler_Store::STATUS_PENDING,
+					'per_page' => 50,
+				),
+				'ids'
+			);
+			foreach ( $waiting as $id ) {
+				\ActionScheduler::runner()->process_action( (int) $id, 'tests' );
+				++$ran;
+			}
+			self::assertLessThan( 200, $ran, 'the queue does not empty' );
+		} while ( array() !== $waiting );
+		return $ran;
+	}
+
+	/**
 	 * The plugin's container.
 	 */
 	protected function container(): Container {

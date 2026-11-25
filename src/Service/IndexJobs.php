@@ -57,6 +57,14 @@ final class IndexJobs implements Reindex {
 	public const RETRY_AFTER = 60;
 
 	/**
+	 * Seconds after an update's step asks for a part's job before the job is due: longer than a queue runner that the
+	 * earlier release started before its files were replaced keeps claiming due actions with that release's code (30 s
+	 * by default, WooCommerce 11.3.1, packages/action-scheduler/classes/abstracts/ActionScheduler_Abstract_QueueRunner.php:317),
+	 * with room for a host that raises it (D-378).
+	 */
+	public const AFTER_UPDATE = 300;
+
+	/**
 	 * Constructor.
 	 *
 	 * @since 0.3.0
@@ -96,7 +104,10 @@ final class IndexJobs implements Reindex {
 	private ?PartRenditions $renditions = null;
 
 	/**
-	 * Queue the index job of every drawn part whose layer image has no resized copy (D-214).
+	 * Queue the index job of every drawn part whose layer image has no resized copy (D-214). An update's step asks for
+	 * them, in the request that finishes the update, so each job is due AFTER_UPDATE seconds on: a queue runner the
+	 * earlier release started before its files were replaced would otherwise claim it, and run it with that release's
+	 * code, which makes no copy for a part it never drew (D-378).
 	 *
 	 * @since 0.8.0
 	 *
@@ -104,8 +115,9 @@ final class IndexJobs implements Reindex {
 	 */
 	public function requestRenditions(): int {
 		$parts = $this->renditions?->unrenderedParts() ?? array();
+		$due   = $this->clock->now()->getTimestamp() + self::AFTER_UPDATE;
 		foreach ( $parts as $part ) {
-			$this->queue->enqueueDistinct( self::JOB_PART, array( 'part' => $part ) );
+			$this->queue->scheduleDistinct( $due, self::JOB_PART, array( 'part' => $part ) );
 		}
 		return count( $parts );
 	}

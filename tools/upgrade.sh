@@ -115,8 +115,12 @@ kits="$(wp eval-file "$here/tools/upgrade/seed.php" kits | tail -n 1)"
 kits="${kits#kits:}"
 saved="$(wp eval-file "$here/tools/upgrade/seed.php" saved | tail -n 1)"
 user="${saved#saved:}"; [ "$user" = none ] && user=0
+# A grip with a layer image and no spec, as the demo's were, from 0.7.0 (#129, D-373): until 1.2.0 it got no copies.
+layer="$(wp eval-file "$here/tools/upgrade/seed.php" layer | tail -n 1)"
+case "$layer" in layer:*) ;; *) fail "the grip with a layer image was not made on $from: $layer" ;; esac
+layer="${layer#layer:}"; [ "$layer" = none ] && layer=0
 wp action-scheduler run --group=creative-skateboard-builder >/dev/null
-echo "   on $from: $seed; kits $from reads: $kits; $saved"
+echo "   on $from: $seed; kits $from reads: $kits; $saved; layer image $layer"
 before="$(errors)"
 [ "$clean" = 1 ] || wp plugin deactivate "$copy" >/dev/null
 page="$(node tools/upgrade/upload.mjs "tmp/upgrade/$upload")"
@@ -137,7 +141,11 @@ echo "   version|status|schema: $state; no zip left in uploads."
 # The release's own jobs after the update, then the data read by this release: the order with its lines, the old
 # release's kits and their presets, its saved build, and no failed job of the plugin's.
 wp action-scheduler run --group=creative-skateboard-builder >/dev/null
-read="$(wp eval-file "$here/tools/upgrade/seed.php" read "${seed#order:}" "$user" | tail -n 1)"
+# The update's own jobs are due a few minutes on, past any runner the old release started (D-378): run them as the
+# queue will once they are due.
+later="$(wp action-scheduler action list --group=creative-skateboard-builder --status=pending --field=id --format=ids | tail -n 1)"
+[ -z "$later" ] || wp action-scheduler action run $later >/dev/null
+read="$(wp eval-file "$here/tools/upgrade/seed.php" read "${seed#order:}" "$user" "$layer" | tail -n 1)"
 case "$read" in read:*) ;; *) fail "after the update, the shop's data did not read: $read" ;; esac
 # Every preset is priced, and the old release's saved build is listed.
 # Every kit the old release read, this one reads too.
@@ -152,6 +160,9 @@ if [ "$(printf '%s\n' 1.0.0 "$from" | sort -V | head -n 1)" = 1.0.0 ]; then
 else
 	[ "$user" = 0 ] || case "$read" in *"saved builds 1, 1 reopened with no prices then"*) ;; *) fail "after the update, $from's saved build reopened with prices it never kept: $read" ;; esac
 fi
+# The update leaves no part without its resized copies, and the old release's grip has its own (#129, D-373).
+case "$read" in *"parts missing copies 0"*) ;; *) fail "after the update, a part has no resized copies of its layer image: $read" ;; esac
+[ "$layer" = 0 ] || case "$read" in *"layer copies 0,"*) fail "after the update, $from's grip has no resized copies: $read" ;; esac
 failed="$(wp action-scheduler action list --group=creative-skateboard-builder --status=failed --format=count 2>/dev/null | tail -n 1)"
 case "$failed" in ''|*[!0-9]*) fail "the plugin's failed jobs could not be counted: '$failed'" ;; esac
 [ "$failed" = 0 ] || fail "after the update, $failed of the plugin's jobs failed"

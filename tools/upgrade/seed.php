@@ -2,8 +2,9 @@
 /**
  * The shop's data for tools/upgrade.sh. With WooCommerce alone, the same on every release: a few products with SKUs,
  * prices, stock and an attribute, and a paid order holding them. `saved` makes a customer's saved build with the old
- * release's own service, from 0.8.0 (D-232). The old release's own kits come from its own browser fixture, which
- * upgrade.sh runs. `read <order> [<user>]` reads all of it back with this release after the update. Run with wp eval-file; never shipped (milestone 9: upgrades from every 0.x release).
+ * release's own service, from 0.8.0 (D-232), and `layer` a grip with a layer image and no spec, from 0.7.0 (D-373).
+ * The old release's own kits come from its own browser fixture, which
+ * upgrade.sh runs. `read <order> [<user>] [<layer image>]` reads all of it back with this release after the update. Run with wp eval-file; never shipped (milestone 9: upgrades from every 0.x release).
  *
  * @package CreativeBranding\SkateboardBuilder\Tests
  */
@@ -71,7 +72,11 @@ if ( 'read' === ( $cbuild_args[0] ?? '' ) ) {
 		$clean += null !== $again && null === $again->then && array() === $again->prices ? 1 : 0;
 		$kept  += null !== $again && null !== $again->then && array() === $again->prices ? 1 : 0;
 	}
-	echo "read: order {$order->get_id()}, {$lines} lines, {$found} products, total {$order->get_total()}; kits " . $read . ' of ' . count( $stored ) . ", presets {$priced} of {$presets} priced; saved builds {$saved}, {$clean} reopened with no prices then, {$kept} with the prices kept\n";
+	// The grip the layer seed made, if it made one: its resized copies on disk, and the parts still missing copies (#129).
+	$layer   = (int) ( $cbuild_args[3] ?? 0 );
+	$copies  = $layer > 0 ? count( (array) glob( wp_get_upload_dir()['basedir'] . '/creative-skateboard-builder/layers/' . $layer . '-*' ) ) : 0;
+	$missing = count( $container->get( CreativeBranding\SkateboardBuilder\Service\PartRenditions::class )->unrenderedParts() );
+	echo "read: order {$order->get_id()}, {$lines} lines, {$found} products, total {$order->get_total()}; kits " . $read . ' of ' . count( $stored ) . ", presets {$priced} of {$presets} priced; saved builds {$saved}, {$clean} reopened with no prices then, {$kept} with the prices kept; layer copies {$copies}, parts missing copies {$missing}\n";
 	return;
 }
 
@@ -105,11 +110,61 @@ if ( 'clean' === ( $cbuild_args[0] ?? '' ) ) {
 	foreach ( wc_get_orders( array( 'billing_email' => 'shopper+1@example.com', 'limit' => -1 ) ) as $order ) {
 		$order->delete( true );
 	}
+	foreach ( get_posts( array( 'post_type' => 'attachment', 'title' => 'cbuild-upgrade-grip', 'post_status' => 'any', 'numberposts' => -1, 'fields' => 'ids' ) ) as $id ) {
+		wp_delete_attachment( (int) $id, true );
+	}
 	require_once ABSPATH . 'wp-admin/includes/user.php';
 	foreach ( get_users( array( 'search' => 'upgrade-shopper-*', 'search_columns' => array( 'user_login' ), 'fields' => 'ID' ) ) as $id ) {
 		wp_delete_user( (int) $id );
 	}
 	echo "clean\n";
+	return;
+}
+
+// 0.7.0 on (#129, D-373): a grip with a layer image and no spec, in the category of a grip a kit offers, as the demo's
+// grips were. Up to 1.1.0 such a grip got no resized copy, and nothing counted it missing; the update to 1.2.0 queues
+// its job. Releases before 0.7.0 had no layer images, and make none.
+if ( 'layer' === ( $cbuild_args[0] ?? '' ) ) {
+	if ( ! class_exists( 'CreativeBranding\\SkateboardBuilder\\Service\\PartRenditions' ) ) {
+		echo "layer:none\n";
+		return;
+	}
+	$kits       = CreativeBranding\SkateboardBuilder\Plugin::container()->get( CreativeBranding\SkateboardBuilder\Port\Kits::class );
+	$categories = array();
+	foreach ( array_keys( $kits->all() ) as $kit ) {
+		foreach ( $kits->candidates( (int) $kit, 'grip' ) as $part ) {
+			$product    = wc_get_product( $part->id );
+			$owner      = $product instanceof WC_Product && $product->get_parent_id() > 0 ? $product->get_parent_id() : $part->id;
+			$categories = wp_get_post_terms( $owner, 'product_cat', array( 'fields' => 'ids' ) );
+			break 2;
+		}
+	}
+	if ( ! is_array( $categories ) || array() === $categories ) {
+		echo "no layer: no kit offers a grip\n";
+		return;
+	}
+	// A sheet of grip, 60 by 220 pixels, drawn with GD and put in the Media Library.
+	$image = imagecreatetruecolor( 60, 220 );
+	imagefill( $image, 0, 0, (int) imagecolorallocate( $image, 31, 31, 34 ) );
+	ob_start();
+	imagepng( $image );
+	$upload = wp_upload_bits( 'cbuild-upgrade-grip.png', null, (string) ob_get_clean() );
+	if ( ! empty( $upload['error'] ) ) {
+		echo "no layer: {$upload['error']}\n";
+		return;
+	}
+	require_once ABSPATH . 'wp-admin/includes/image.php';
+	$attachment = wp_insert_attachment( array( 'post_mime_type' => 'image/png', 'post_title' => 'cbuild-upgrade-grip', 'post_status' => 'inherit' ), $upload['file'] );
+	wp_update_attachment_metadata( $attachment, wp_generate_attachment_metadata( $attachment, $upload['file'] ) );
+	$grip = new WC_Product_Simple();
+	$grip->set_name( 'Upgrade grip sheet' );
+	$grip->set_sku( 'UPG-grip-' . wp_generate_password( 6, false ) );
+	$grip->set_regular_price( '9' );
+	$grip->set_status( 'publish' );
+	$grip->set_category_ids( array_map( 'intval', $categories ) );
+	$grip->update_meta_data( '_cbuild_layer', (string) $attachment );
+	$grip->save();
+	echo "layer:{$attachment}\n";
 	return;
 }
 

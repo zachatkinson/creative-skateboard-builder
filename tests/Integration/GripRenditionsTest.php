@@ -196,8 +196,15 @@ final class GripRenditionsTest extends CartTestCase {
 		self::assertSame( RunResult::Finished, $runner->run() );
 		self::assertSame( array( array( 'part' => $this->parts['grip'] ) ), self::waiting( Options::JOB_INDEX_PART ), 'the grip\'s own job, queued, nothing made in the update\'s request' );
 		self::assertSame( array(), self::made( $image ) );
+		// A runner the earlier release started before its files were replaced keeps that release's code, and claims what
+		// is due until its time runs out (30 s by default). The job is not due until well after, so this release runs it.
+		self::assertSame( 0, self::work(), 'nothing due in the update\'s request, for an earlier release\'s runner to claim (D-378)' );
+		$job = as_get_scheduled_actions( array( 'hook' => Options::JOB_INDEX_PART, 'group' => Options::QUEUE_GROUP, 'status' => \ActionScheduler_Store::STATUS_PENDING ) );
+		$due = array_values( $job )[0]->get_schedule()->get_date();
+		self::assertInstanceOf( \DateTimeInterface::class, $due );
+		self::assertGreaterThanOrEqual( time() + IndexJobs::AFTER_UPDATE - 5, $due->getTimestamp(), 'due once such a runner has stopped' );
 
-		self::work();
+		self::workAll();
 		self::assertSame( self::SIZES, self::made( $image )['webp'] ?? array() );
 		self::assertSame( 0, $this->service( PartRenditions::class )->unrendered() );
 
