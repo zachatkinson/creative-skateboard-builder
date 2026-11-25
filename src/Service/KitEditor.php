@@ -321,7 +321,7 @@ final class KitEditor {
 			if ( array() === $found ) {
 				break;
 			}
-			$field = (string) preg_replace( '/[.\[].*\z/s', '', $found[0]['path'] );
+			$field = self::fieldOf( $found[0]['path'] );
 			// What the kit has for a field put back fails too: the problem is the field's, named once already.
 			if ( in_array( $field, $back, true ) ) {
 				return array( null, $problems );
@@ -359,6 +359,18 @@ final class KitEditor {
 			unset( $settings[ $field ] );
 		}
 		return $settings;
+	}
+
+	/**
+	 * The settings field a problem's path is in: its key before the first "." or "[", "width_guide" for
+	 * "width_guide.rows[0].from" (D-385). The editor refuses that field alone, and the Build tab names it.
+	 *
+	 * @since 1.2.0
+	 *
+	 * @param string $path A problem's path in the settings.
+	 */
+	public static function fieldOf( string $path ): string {
+		return (string) preg_replace( '/[.\[].*\z/s', '', $path );
 	}
 
 	/**

@@ -1473,7 +1473,7 @@ final class BuildTab {
 		$fields = array();
 		foreach ( $problems as $problem ) {
 			if ( KitEditor::SETTINGS === $problem['document'] ) {
-				$fields[ (string) preg_replace( '/[.\[].*\z/s', '', $problem['path'] ) ] ??= $problem['path'];
+				$fields[ KitEditor::fieldOf( $problem['path'] ) ] ??= $problem['path'];
 			}
 		}
 		return $fields;
@@ -1488,7 +1488,9 @@ final class BuildTab {
 		return match ( $field ) {
 			'builder_page' => __( 'The kit\'s Builder page was not saved. The Build tab shows it as you chose it, with what to put right.', 'creative-skateboard-builder' ),
 			'width_guide'  => __( 'The kit\'s width guide was not saved. The Build tab shows it as you typed it, with what to put right.', 'creative-skateboard-builder' ),
-			default        => __( 'The kit\'s assembly time in business days was not saved. The Build tab shows it as you typed it, with what to put right.', 'creative-skateboard-builder' ),
+			'lead_days'    => __( 'The kit\'s assembly time in business days was not saved. The Build tab shows it as you typed it, with what to put right.', 'creative-skateboard-builder' ),
+			// A field the editor never refuses alone: the sentence for the whole settings is true of it.
+			default        => self::refused( KitEditor::SETTINGS ),
 		};
 	}
 

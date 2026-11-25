@@ -712,6 +712,22 @@ final class KitEditorTest extends TestCase {
 		}
 	}
 
+	// D-385: a problem's path names the settings field it is in, the key before its first "." or "[", as the editor
+	// refuses it and the Build tab names it.
+	public function test_a_problems_path_names_the_settings_field_it_is_in(): void {
+		foreach ( array(
+			'lead_days'                => 'lead_days',
+			'builder_page'             => 'builder_page',
+			'width_guide.rows[0].from' => 'width_guide',
+			'width_guide[rows]'        => 'width_guide',
+			'width_guide.shown'        => 'width_guide',
+			''                         => '',
+		) as $path => $field ) {
+			self::assertSame( $field, KitEditor::fieldOf( (string) $path ), (string) $path );
+		}
+		self::assertSame( 'width_guide', KitEditor::fieldOf( "width_guide.rows[0]\n.from" ), 'a line in the rest' );
+	}
+
 	// The walkthrough of M12, finding 6 (D-385): one field of the settings that is wrong is refused alone. The Builder
 	// page, the start button, the width guide and the assembly time are four settings in three sections, so the
 	// others are saved as sent, and the wrong one keeps what the kit has.
