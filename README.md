@@ -139,7 +139,7 @@ Each release is held to twelve dimensions, written down in [docs/AUDIT.md](docs/
 | Browsers | Playwright with axe on Chromium, WebKit and Firefox, at phone, tablet and desktop widths, without JavaScript, in French and right to left |
 | Accessibility | WCAG 2.2 AA ([docs/A11Y.md](docs/A11Y.md)) |
 | Speed | The state route under 80 ms at the 95th percentile with 500 parts in a step; the script under 15 kB and the styles under 10 kB, compressed ([docs/BENCHMARK.md](docs/BENCHMARK.md)) |
-| Upgrades | Every published release updated to the new one in CI, with its own data |
+| Upgrades | Every published release from 1.0.0 on, and 0.1.0 and 0.9.0, updated to the new one in CI with its own data; every release before each tag |
 
 ## Development
 

@@ -401,6 +401,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-216 · The upgrade notice asks for no manual step](#d-216--the-upgrade-notice-asks-for-no-manual-step--2026-11-17)
 - [D-232 · The update is tested from every published release, with that release's own data on it](#d-232--the-update-is-tested-from-every-published-release-with-that-releases-own-data-on-it--2026-11-18)
 - [D-332 · The newest leg moves to WooCommerce 11.3.1, with its one PHP 8.5 deprecation let through in one test](#d-332--the-newest-leg-moves-to-woocommerce-1131-with-its-one-php-85-deprecation-let-through-in-one-test--2026-11-23)
+- [D-414 · CI updates from every release from 1.0.0 on, and from 0.1.0 and 0.9.0](#d-414--ci-updates-from-every-release-from-100-on-and-from-010-and-090--2026-11-25)
 
 ### Tooling, CI and tests
 
@@ -3576,6 +3577,8 @@ After the update, the plugin's jobs run and none may fail, no PHP error may name
 
 What it does not make: an order holding a build, written by an old release's own cart and checkout. That needs each release's Store API add and a checkout in a request, which WP-CLI is not. The order shapes are held by the tests that start from each stored snapshot (`OrderEmailTest`, `WorkshopTest`, from 0.8.0's), and it stays an open item in `AUDIT-1.0.0.md` (0.8.0's review, auditor 20).
 
+**Status:** Replaced in part by D-414: CI's run updates from every release from 1.0.0 on, and from 0.1.0 and 0.9.0. `npm run upgrade:all` alone still runs every release.
+
 ### D-233 · French ships, complete, and the checks require it · 2026-11-18
 
 Milestone 9: "French: complete and read by a person". `languages/creative-skateboard-builder-fr_CA.po` holds every one of the POT's 769 strings, with `.mo`, `.l10n.php` and the editor script's JSON made by `composer i18n:compile`. The words are Canadian French: « configurateur » for the builder, « montage » for a build, « Illustration » for the picture, « UGS » for SKU, the no-break spaces of D-158 (Creative Search) before a colon and inside « », and `%s mm` with its no-break space (D-228).
@@ -5718,5 +5721,35 @@ Issue #138, from Cowork's competitor review and Zach's answers (24 Nov): after a
 **Why:** the eye finds a change to a picture faster with a cue at its place than from the sentence alone; 600 ms is the issue's figure, long enough to be seen past the part's own 200 to 300 ms moment and short of a wait. A ring inside the part's box, moved by transform and opacity, keeps D-306's gates: no shift, the compositor alone.
 
 **Sources:** WCAG 2.2 2.3.3 (Animation from Interactions) and 1.4.1 (Use of Color: the sentence says it in words); MDN, `Element.animate()`'s `pseudoElement` option (Chrome 84, Firefox 75, Safari 14); web.dev, "Optimize Cumulative Layout Shift" (transform animations shift nothing).
+
+**Status:** Accepted.
+
+### D-414 · CI updates from every release from 1.0.0 on, and from 0.1.0 and 0.9.0 · 2026-11-25
+
+Issue #144, folded into milestone 13 by Zach (25 November): once CI's update job takes more than 15 minutes, it updates from every release from 1.0.0 on and from 0.1.0 and 0.9.0 alone, and until then from every release. This replaces D-232's "every release" for CI.
+
+**Measured.** The job is `Browser (updates)` in `ci.yml`, run on a pull request's full run; a push to `main` skips it. From `gh run view <id> --json jobs`:
+
+| Run | Tree | Releases below it | Job | `upgrade:all` step |
+| --- | --- | --- | --- | --- |
+| 45364836012, 24 Nov | m11-motion, 1.1.0 | 10 | 13 min 51 s | 10 min 53 s |
+| 45590634639, 25 Nov | m12-settings, 1.2.0 | 11 | 14 min 20 s | 11 min 22 s |
+| 45603524938, 25 Nov | m12-settings, 1.2.0 | 11 | 15 min 40 s | 12 min 20 s |
+| 45610406221, 25 Nov | Dependabot, on 1.2.0 | 11 | 16 min 27 s | 13 min 13 s |
+
+Each release costs about 65 to 72 s, and the job's setup (wp-env, Playwright) about 3 min. The job passed 15 minutes on 1.2.0's tree, and 1.3.0 adds a twelfth release, so the switch is on from this milestone.
+
+**Decision:**
+
+- **The choice is a script's.** `tools/upgrade-releases.sh` reads the published versions and prints those below this build's version, in version order; with `--sample`, only those from 1.0.0 on, and 0.1.0 and 0.9.0. A sample without 0.1.0 or 0.9.0 fails, so a release taken down can't shrink the run unseen. Its cases are `tools/upgrade-releases-selftest.sh`, in `composer gates`.
+- **`npm run upgrade:all -- --sample`** runs the sample; `npm run upgrade:all` alone runs every release, as before. The release list is read with `--limit 1000`: `creative-releases` holds every plugin's releases, 72 today, and at the old 100 the oldest of this plugin's would have been the first cut.
+- **CI's `updates` part passes `--sample`,** written in the matrix. Locally, each milestone's combined tree still runs every release (the plan's step 4), so the 0.2.0 to 0.8.0 paths are still run before each tag.
+- **0.1.0 and 0.9.0:** the first release, with the oldest stored shapes and the deactivated update of D-208, and the last before 1.0.0, whose saved builds and kits 1.0.0 had to read.
+
+**Why a fixed flag, not a measured trigger:** the job only grows, one release a milestone and never fewer, so once past 15 minutes a trigger would stay on. A trigger on the last run's time would need another run's timings from the API in the job, and the same tree took 14 min 20 s and 15 min 40 s within two hours, so it would flip between runs. A count of releases is a fixed flag by another name. The sample grows by one release a milestone too: at about 70 s each it reaches 15 minutes near ten releases, five more than today's, which is when to choose again.
+
+**Red run.** The self-test against the selection moved out unchanged, with no `--sample`: "upgrade-releases, the sample: every 1.x, 0.1.0 and 0.9.0: got '0.1.0 0.2.0 0.3.0 0.3.1 0.4.0 0.6.0 0.7.0 0.8.0 0.9.0 1.0.0 1.1.0 1.2.0', want '0.1.0 0.9.0 1.0.0 1.1.0 1.2.0'", and "upgrade-releases accepted a sample without 0.1.0".
+
+**Deliberate breaks.** With 0.9.0 not kept, "the sample: every 1.x, 0.1.0 and 0.9.0: got ''" (the sample has no 0.9.0). With 0.x not dropped, the same case got every release.
 
 **Status:** Accepted.
