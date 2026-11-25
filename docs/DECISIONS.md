@@ -248,6 +248,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-326 · axe reads the error summary in Firefox again](#d-326--axe-reads-the-error-summary-in-firefox-again--2026-11-23)
 - [D-369 · The side is chosen with two buttons, Underside and Top, the side shown pressed](#d-369--the-side-is-chosen-with-two-buttons-underside-and-top-the-side-shown-pressed--2026-11-24)
 - [D-380 · Muted words keep 4.5:1 on a theme whose text is near the limit](#d-380--muted-words-keep-451-on-a-theme-whose-text-is-near-the-limit--2026-11-24)
+- [D-386 · A Build tab field not saved is marked where it is](#d-386--a-build-tab-field-not-saved-is-marked-where-it-is--2026-11-24)
 
 ### Motion
 
@@ -5492,5 +5493,20 @@ The walkthrough of milestone 12, finding 6: on "Build tab test kit", 61 typed in
 **Deliberate break.** `settled()` giving up at the first wrong field, as before: the four unit tests failed again (KitEditorTest.php:573, :660, :706, :735). Put back, all passed.
 
 **Why:** an owner who mistypes one field should lose that field, not three others they set in other sections, as every other section of the tab already works.
+
+**Status:** Accepted.
+
+### D-386 · A Build tab field not saved is marked where it is · 2026-11-24
+
+The walkthrough of milestone 12, finding 7: the assembly time refused showed "61" in a plain border, with its usual description, and only the section's "Not saved" box said anything was wrong. The field had `aria-invalid="true"` and its `aria-describedby` named the sentence in that box, so a screen reader heard it; nothing marked it to the eye. No other field of the Build tab was marked either: the walkthrough read the width guide and the layout as marked, but they had the same plain border.
+
+- **The mark.** Every field of the tab with `aria-invalid="true"` has WordPress's error red, `#d63638`, as its border, with a ring of 1 px in the same colour, so the border is twice as thick as a field that saved. The thickness tells it apart without colour (WCAG 1.4.1), and the red reads at 4.5:1 on white (1.4.11). The sentence stays in the section's box, which the field's description names (3.3.1).
+- **Focus** keeps WordPress's own ring: the mark is left off while the field is focused, and comes back after.
+
+**Tests.** `build-tab.spec.ts`, "the assembly time in business days is typed beside the lead time, kept as 2-4, and refused past 60": the field refused has the red border and ring, and a field that saved has neither.
+
+**Red run.** chromium-desktop: "the field refused / Expected colour rgb(214, 54, 56), ring rgb(214, 54, 56) 0px 0px 0px 1px / Received rgb(148, 148, 148), rgba(0, 0, 0, 0) 0px 0px 0px 0px" (build-tab.spec.ts:345).
+
+**Why:** an owner looking for what to put right should find it at the field, as WordPress's own forms mark theirs.
 
 **Status:** Accepted.

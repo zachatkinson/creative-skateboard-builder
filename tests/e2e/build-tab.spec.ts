@@ -1,4 +1,4 @@
-import { test, expect, inLocale, Page } from './support/test';
+import { test, expect, inLocale, Locator, Page } from './support/test';
 import { axe } from './support/axe';
 import { login } from './support/login';
 
@@ -331,6 +331,26 @@ test.describe( 'The Build tab', () => {
 		await refused.focus();
 		await page.keyboard.press( 'Enter' );
 		await expect( days ).toBeFocused();
+		// Finding 7 (D-386): the field refused is marked beside the section's list, by a thicker border in WordPress's
+		// error red, so it is seen apart from the fields that saved, and not by colour alone.
+		const edge = ( locator: Locator ) =>
+			locator.evaluate( ( field ) => {
+				const style = getComputedStyle( field );
+				return {
+					colour: style.borderTopColor,
+					ring: style.boxShadow,
+				};
+			} );
+		await page.locator( '#cbuild-kit-assembly-fee' ).focus();
+		expect( await edge( days ), 'the field refused' ).toEqual( {
+			colour: 'rgb(214, 54, 56)',
+			ring: 'rgb(214, 54, 56) 0px 0px 0px 1px',
+		} );
+		expect(
+			( await edge( page.locator( '#cbuild-kit-assembly-lead_time' ) ) )
+				.colour,
+			'a field that saved'
+		).not.toBe( 'rgb(214, 54, 56)' );
 		const link = page.locator( '#woocommerce_errors' ).getByRole( 'link', {
 			name: 'Assembly time in business days: type business days from 0 to 60, such as 2 or 2-4.',
 		} );

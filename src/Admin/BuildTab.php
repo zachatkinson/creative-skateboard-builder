@@ -102,6 +102,10 @@ final class BuildTab {
 		. '.cbuild-kit-moves .button{min-height:30px}'
 		. '.cbuild-kit-handle{cursor:move;padding:6px}'
 		. '.cbuild-kit-problems{margin:0 12px 12px;padding:8px 12px;border-inline-start:4px solid #d63638;background:#fcf0f1}'
+		// A field not saved is marked where it is, in WordPress's error red and twice as thick, so it is seen apart from
+		// the fields that saved by its border's weight as well as its colour (WCAG 1.4.1, 3.3.1; D-386). Focus keeps
+		// WordPress's own ring.
+		. '.cbuild-kit [aria-invalid="true"]:not(:focus){border-color:#d63638;box-shadow:0 0 0 1px #d63638}'
 		. '.cbuild-kit summary{padding:8px 12px;cursor:pointer;font-weight:600}';
 
 	/**
