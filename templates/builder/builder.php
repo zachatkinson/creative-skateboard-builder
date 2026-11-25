@@ -39,6 +39,8 @@ $cbuild_class  = 'cbuild' . ( $cbuild_layout['stageRight'] ? ' cbuild--stage-rig
 				<?php require __DIR__ . '/errors.php'; ?>
 				<h2 class="cbuild__heading" id="cbuild-heading" tabindex="-1" data-wp-interactive="creative-skateboard-builder"><span class="screen-reader-text" data-wp-text="state.view.count"></span> <span data-wp-text="state.view.heading"></span></h2>
 				<p class="cbuild-step__lead" data-wp-interactive="creative-skateboard-builder" data-wp-bind--hidden="!state.view.step.hasLead" data-wp-text="state.view.step.lead"></p>
+				<?php // "Help me choose", the guided start, at the start alone, before the first step's cards (#134). ?>
+				<?php require __DIR__ . '/guide.php'; ?>
 				<?php require __DIR__ . '/step.php'; ?>
 				<?php // The ready builds after the step's question, as another way in (spec: Ways in). ?>
 				<?php require __DIR__ . '/presets.php'; ?>

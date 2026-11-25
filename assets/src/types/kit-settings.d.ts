@@ -49,5 +49,29 @@ export interface CbuildSettings {
 			to?: string;
 		}[];
 	};
+	/**
+	 * From 1.3.0 (#134): the wheel sizes the guided start recommends for each riding style, in millimetres. Left out, or a style with no row, the plugin's sizes, from published wheel guides: street 50 to 54, park 53 to 56, bowl 55 to 58 and cruising 59 to 65.
+	 */
+	wheel_guide?: {
+		/**
+		 * The shop's own sizes, a row a riding style at most.
+		 *
+		 * @maxItems 4
+		 */
+		rows?: {
+			/**
+			 * The riding style the guided start asks about.
+			 */
+			style: 'street' | 'park' | 'bowl' | 'cruising';
+			/**
+			 * The smallest wheel it recommends, in millimetres, from 40 to 90, with a point and up to four decimals.
+			 */
+			from: string;
+			/**
+			 * The largest, in millimetres, no smaller than from. Left out or empty, from alone.
+			 */
+			to?: string;
+		}[];
+	};
 	[k: string]: unknown;
 }

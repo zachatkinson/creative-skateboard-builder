@@ -9,8 +9,10 @@ declare( strict_types=1 );
 
 namespace CreativeBranding\SkateboardBuilder\Tests\Unit\Front;
 
+use CreativeBranding\SkateboardBuilder\Domain\Guide\RidingStyle;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\Slots;
 use CreativeBranding\SkateboardBuilder\Front\BuildLink;
+use CreativeBranding\SkateboardBuilder\Front\GuideAnswers;
 use CreativeBranding\SkateboardBuilder\Tests\Support\Domain\KitDocuments;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
@@ -402,5 +404,68 @@ final class BuildLinkTest extends TestCase {
 
 	public function test_a_query_that_is_not_utf_8_is_no_query_even_with_a_control_character_in_it(): void {
 		self::assertSame( '', BuildLink::read( array( '_q' => "Retna\t\xff" ) )->shelf->query );
+	}
+
+	public function test_the_guided_starts_answers_travel_under_guide_and_change_nothing_else(): void {
+		$link = BuildLink::read(
+			array(
+				'_guide' => array(
+					'shoe'   => '2',
+					'style'  => 'bowl',
+					'budget' => '180',
+					'asked'  => '1',
+				),
+			)
+		);
+		self::assertSame( array( 2, RidingStyle::Bowl, 180, true ), array( $link->guide->shoe, $link->guide->style, $link->guide->budget, $link->guide->asked ) );
+		self::assertFalse( $link->isClean(), 'answers are a state' );
+		self::assertSame( array( '_guide' => array( 'shoe' => '2', 'style' => 'bowl', 'budget' => '180', 'asked' => '1' ) ), $link->query( self::slots() ) );
+		self::assertSame( array(), ( new BuildLink() )->query( self::slots() ) );
+		$asked = BuildLink::read( array( '_guide' => array( 'asked' => '1' ) ) );
+		self::assertSame( array( '_guide' => array( 'asked' => '1' ) ), $asked->query( self::slots() ), 'every answer left blank is still an answer' );
+		self::assertSame( array( 'deck' => '12', 'step' => 'review', '_guide' => array( 'style' => 'street' ) ), BuildLink::read( array( 'deck' => '12', 'step' => 'review', '_guide' => array( 'style' => 'street' ) ) )->query( self::slots() ), 'after the build' );
+		self::assertTrue( $link->at( 'deck' )->guide->isEmpty(), 'a step taken leaves the answers behind' );
+		self::assertTrue( $link->pick( 'deck', 12 )->guide->isEmpty() );
+		self::assertTrue( $link->shared()->guide->isEmpty(), 'and a shared link carries none' );
+		self::assertSame( $link->guide, ( new BuildLink() )->guided( $link->guide )->guide );
+	}
+
+	/**
+	 * Answers that are none.
+	 *
+	 * @return array<string, array{mixed}>
+	 */
+	public static function notAnswers(): array {
+		return array(
+			'not a list'         => array( 'street' ),
+			'a shoe row too far' => array( array( 'shoe' => '12' ) ),
+			'a shoe not a row'   => array( array( 'shoe' => '-1' ) ),
+			'a shoe as 02'       => array( array( 'shoe' => '02' ) ),
+			'a shoe of words'    => array( array( 'shoe' => 'ten' ) ),
+			'a style not asked'  => array( array( 'style' => 'vert' ) ),
+			'a style in capitals' => array( array( 'style' => 'Street' ) ),
+			'a budget of none'   => array( array( 'budget' => '0' ) ),
+			'a budget too long'  => array( array( 'budget' => '1000000' ) ),
+			'a budget in cents'  => array( array( 'budget' => '12.50' ) ),
+			'a budget below'     => array( array( 'budget' => '-5' ) ),
+			'a budget as a list' => array( array( 'budget' => array( '5' ) ) ),
+			'asked as anything'  => array( array( 'asked' => 'yes' ) ),
+		);
+	}
+
+	/**
+	 * @param mixed $sent What was sent under `_guide`.
+	 */
+	#[DataProvider( 'notAnswers' )]
+	public function test_what_is_no_answer_is_left_out( mixed $sent ): void {
+		self::assertTrue( BuildLink::read( array( '_guide' => $sent ) )->isClean() );
+		self::assertTrue( GuideAnswers::read( $sent )->isEmpty() );
+	}
+
+	public function test_the_largest_answers_are_kept(): void {
+		$guide = GuideAnswers::read( array( 'shoe' => '11', 'budget' => '999999' ) );
+		self::assertSame( array( 11, 999999 ), array( $guide->shoe, $guide->budget ) );
+		self::assertSame( 0, GuideAnswers::read( array( 'shoe' => '0' ) )->shoe );
+		self::assertSame( 1, GuideAnswers::read( array( 'budget' => '1' ) )->budget );
 	}
 }

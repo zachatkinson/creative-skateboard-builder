@@ -31,6 +31,7 @@ This is version 1.3.0.
 * **The kit's choices, from 1.2.0.** A kit's Build tab also chooses the page its builder is on, whether its decks' pages offer "Build a complete with this deck" and the rows of its width guide.
 * **Parts kept out, from 1.2.0.** A part's Part specs can keep it out of the builder while it stays in the shop.
 * **Compare, from 1.3.0.** Under My builds, a customer can see up to three saved builds side by side at today's prices, with what differs said in words.
+* **Help me choose, from 1.3.0.** At the builder's start, a shopper can answer a shoe size, where they skate and a budget, each optional, and see up to three ready builds from parts in stock that fit, with why.
 
 = Accessibility and languages =
 
@@ -105,6 +106,7 @@ Yes. Its hooks, REST routes, block attributes, settings keys, order item keys, C
 
 = 1.3.0 =
 * My builds compares up to three saved builds side by side, at today's prices. The parts that differ and the gap between the totals are said in words, and a part changed since the save is named.
+* "Help me choose" at the builder's start asks a shoe size, where the shopper skates and a budget, each optional, and recommends a deck width, wheel sizes and up to three ready builds from parts in stock that fit. A kit's Build tab sets the wheel sizes for each riding style.
 
 = 1.2.0 =
 * A kit's Build tab chooses the page its builder is on. The kit's page, "Build a complete with this deck", the cart's Edit build and My builds open the builder there, while the page is published and holds the kit's Builder block.
@@ -255,7 +257,7 @@ Yes. Its hooks, REST routes, block attributes, settings keys, order item keys, C
 == Upgrade Notice ==
 
 = 1.3.0 =
-Update from the updater or by uploading the zip; no step is needed.
+Update from the updater or by uploading the zip; no step is needed. A kit saved before 1.3.0 has the builder's wheel sizes.
 
 = 1.2.0 =
 Update from the updater or by uploading the zip; no step is needed. A kit saved before 1.2.0 keeps its builder on its own page, its button on its decks' pages and the builder's width guide, and every part stays offered.

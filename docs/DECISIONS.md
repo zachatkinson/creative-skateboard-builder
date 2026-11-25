@@ -251,6 +251,10 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-380 · Muted words keep 4.5:1 on a theme whose text is near the limit](#d-380--muted-words-keep-451-on-a-theme-whose-text-is-near-the-limit--2026-11-24)
 - [D-386 · A Build tab field not saved is marked where it is](#d-386--a-build-tab-field-not-saved-is-marked-where-it-is--2026-11-24)
 - [D-387 · The Build tab's lists are as wide as their longest option, up to the field](#d-387--the-build-tabs-lists-are-as-wide-as-their-longest-option-up-to-the-field--2026-11-24)
+- [D-400 · The wheel guide: a row a riding style in `_cbuild_settings`, with defaults from published wheel guides](#d-400--the-wheel-guide-a-row-a-riding-style-in-_cbuild_settings-with-defaults-from-published-wheel-guides--2026-11-25)
+- [D-401 · The guided start's ready builds: the cheapest, the middle and the dearest part a slot, through the fit engine](#d-401--the-guided-starts-ready-builds-the-cheapest-the-middle-and-the-dearest-part-a-slot-through-the-fit-engine--2026-11-25)
+- [D-402 · Help me choose: a disclosure at the builder's start, one GET form, answers in the link alone](#d-402--help-me-choose-a-disclosure-at-the-builders-start-one-get-form-answers-in-the-link-alone--2026-11-25)
+- [D-404 · Help me choose steps aside once a width is pressed, and the guide's tiles have their own list](#d-404--help-me-choose-steps-aside-once-a-width-is-pressed-and-the-guides-tiles-have-their-own-list--2026-11-25)
 
 ### Motion
 
@@ -5659,6 +5663,41 @@ Issue #134: three ready builds, budget, mid and premium, from in-stock parts tha
 **Deliberate break.** The premium tier set to the cheapest: four tests failed, the first at ReadyBuildsTest.php:132, "Failed asserting that two arrays are identical." Put back, all passed.
 
 **Why:** a position in each slot's prices needs no setting and works for any catalogue, and checking the whole build with the same engine the cart uses is the only way to promise a build that fits.
+
+**Status:** Accepted.
+
+### D-402 · Help me choose: a disclosure at the builder's start, one GET form, answers in the link alone · 2026-11-25
+
+Issue #134 and Zach's answers (`docs/research/plan-after-1-2.md`, "Guided start"): optional questions before the first step, skippable at every point, recommendations explained, a form that works without JavaScript, the answers kept only in the build's link. The choices they leave:
+
+- **Where it sits.** A closed disclosure, "Help me choose", at the builder's start, under the first step's question and before its cards (`templates/builder/guide.php`, `BuilderView::guide()`), shown where the shop's presets are: the first step with nothing picked and no preset (`BuilderView::atStart()`). Baymard's guided-selling finding is that a finder helps shoppers new to a category and must never stand between the others and the products, so it is offered, not asked first: a shopper who knows their width never sees a question. It is not a step of the rail, so the steps' count and the footer's Next stay as they are.
+- **One form, three questions.** The shoe size (the kit's width guide's rows, with "Not sure"), where they skate (four, with "Not sure") and a budget, in one GET form with "Show builds", so leaving any blank is an answer and every answer left blank still shows builds. Three short questions read as one screen on a phone; a page a question would be three round trips without JavaScript for answers that are each optional. With the kit's width guide hidden there is no shoe question, and a shoe answer in a link is no answer.
+- **Skip.** "Skip to the builder" is a link to the builder's start with nothing in its address, beside "Show builds" and again under the builds, a plain link with or without JavaScript, so a keyboard or screen reader reaches it from the questions and from the builds. Closing the disclosure is a skip too.
+- **The budget is a whole amount** in the shop's currency, labelled with its symbol: a text field with `inputmode="numeric"`, not `type="number"`, after the GOV.UK Design System ("Text input: Asking for whole numbers", and "Why the GOV.UK Design System team changed the input type for numbers", 2020), which found `type="number"` rounds and scrolls values and fails some assistive technology. 1 to 999999; anything else is no answer.
+- **The answers travel in the link alone** as `cbuild[_guide][shoe|style|budget|asked]` (`Front\GuideAnswers`, carried by `BuildLink::guided()`), only in the address of the start: a pick, a step, a tile's form, a shared link and Copy link carry none, so a build begun is the shopper's own. `asked=1` tells a sent form from a link that names no answer. Nothing is stored or logged (PRIVACY.md).
+- **The shoe sizes come from the kit's rows as widths** (`WidthGuide::structured()`), not from `cbuild_width_guide`, whose answer is words; `cbuild_guided_start` is the hook for a plugin to recommend another width or wheel size. It gets the settings' recommendation first, as sizes the build link already writes (`8.25in`, `54mm`), with the answers and the kit, and answers last.
+- **The results.** "Builds for you": the reasons first, each one translatable sentence ("Deck width %1$s, for shoe size %2$s.", one sentence a riding style for the wheels, the budget, and `_n()` for the count), then the builds as the presets' tiles (`templates/builder/tile.php`, now shared, from `BuilderView::tile()`), each starting its build at the review as a preset's does, with "Build your own at %s", the recommended width as `_width`, and Skip. A budget no build is within keeps the closest, its tile saying by how much it is over. Where the shop can make none, it says so and offers Skip; it never shows a build that fails fit (D-401). The shop's presets stay under them.
+- **The names.** "Budget build", "Mid-range build" and "High-end build", or "Ready build" for a shop's only one, each with a line on what it is ("The lowest-priced part that fits in each slot."). The issue's "premium" is on the copy's banned list (`tools/copy-words.txt`), so the shopper reads "High-end"; the tier's code stays `premium`.
+- **D-208.** A builder an earlier release's container built mid-update has no `GuidedStart` (`Builder::withGuide()`): it asks the questions and shows no builds.
+
+**Tests.** `BuildLinkTest` (the answers read, written in one order, every bad answer left out, the largest kept, dropped by every link made from another but the start's), `GuidedStartTest` (11, a catalogue with a sold-out deck and a sold-out set of wheels: three builds at the guide's width and street's wheels and never a sold-out part; each opens at the review valid, ready and at its tile's total; every answer blank; cruising's wheels bring the kit's half-inch riser and longer bolts; a budget at, over and under; a shoe size with no deck in stock; bearings sold out, no build; the filter's arguments and answer, and an answer that does not read; the answers in the start's address only; the questions from the kit's guide and none where it is hidden; an earlier release's builder), `BuilderPageTest` (the form and its answers as served without JavaScript, and its region).
+
+**Why:** a finder a shopper can ignore costs the shoppers who know what they want nothing, and one form with every answer optional is the shortest path for those who don't; keeping the answers in the link keeps the visit shareable and stores nothing.
+
+**Status:** Accepted.
+
+### D-404 · Help me choose steps aside once a width is pressed, and the guide's tiles have their own list · 2026-11-25
+
+Found by /verify on lane 2 after D-402, on chromium at both widths.
+
+- **Once a width is pressed, the questions go.** D-402 showed "Help me choose" wherever the builder was at its start: no picks, no ready build, on the first step. A width pressed left all three true, so the closed disclosure stayed over the decks, and the deck step's first view at 1440 by 900 held 0 whole decks on Twenty Twenty-Five and 2 on Kadence where F14 holds 2 and 4 (`shelf.spec.ts`, "Compact deck cards (F14)"). A pressed width is the shopper's own answer to the question the guide's shoe size would answer, so the guide steps aside, as the plan has it ("before the first step"). Builds already asked for stay, with the width they bring, so "Change your answers" is still there beside them. The ready builds' tiles keep D-336's rule.
+- **The guide's tiles are their own list.** The guide's builds sat in a second `ul.cbuild-presets__tiles`, so the page had two lists of that class and the presets' test, which reads it, found two ("strict mode violation", builder.spec.ts:3293). The guide's list is `cbuild-guide__tiles`, styled with the presets' list through one rule; neither class is public.
+
+**Tests.** `GuidedStartTest::test_a_width_pressed_puts_the_questions_away_and_builds_asked_for_stay`. The browser tests that found it, unchanged: F14's whole decks, the classic themes' accent test and "what an answer 800 ms late moves is no layout shift".
+
+**Red run.** `test_a_width_pressed_puts_the_questions_away_and_builds_asked_for_stay`: "a width pressed, Failed asserting that true is false" (GuidedStartTest.php:386).
+
+**Why:** the guide is a way in, and a shopper who has answered the deck step's question has taken another.
 
 **Status:** Accepted.
 

@@ -52,22 +52,13 @@ final class WidthGuide {
 	 * @return list<array{shoe: string, width: string}>
 	 */
 	public static function rows( int $kit, ?SizeGuide $guide = null ): array {
-		$guide ??= SizeGuide::plugins();
-		if ( ! $guide->shown ) {
-			$rows = array();
-		} elseif ( null === $guide->rows ) {
-			$rows = self::plugins();
-		} else {
-			$rows = array();
-			foreach ( $guide->rows as $at => $row ) {
-				$rows[] = array(
-					// The owner's words, which no translation file holds: a translation plugin answers them, as it
-					// does the kit's other texts.
-					'shoe'  => StateAnswer::text( $row->shoe, self::SHOE, $kit, (string) $at ),
-					'width' => self::widths( $row->from, $row->to ),
-				);
-			}
-		}
+		$rows = array_map(
+			static fn( array $row ): array => array(
+				'shoe'  => $row['shoe'],
+				'width' => self::widths( $row['from'], $row['to'] ),
+			),
+			self::structured( $kit, $guide )
+		);
 		/**
 		 * Filters the rows of the deck width guide by shoe size, "Not sure of your width?", under the deck step's width
 		 * question. Each row is an array with `shoe` (the shoe size, as the shop writes it) and `width` (the deck width
@@ -97,6 +88,38 @@ final class WidthGuide {
 			}
 		}
 		return array_slice( $kept, 0, self::MOST );
+	}
+
+	/**
+	 * The kit's rows as widths, before any plugin answers: the plugin's, the shop's own from its Build tab, or none
+	 * where the kit hides the guide. The guided start asks its shoe size question from these (#134), since
+	 * `cbuild_width_guide` answers in words, not widths.
+	 *
+	 * @since 1.3.0
+	 *
+	 * @param int            $kit   The kit product's ID.
+	 * @param SizeGuide|null $guide The kit's width guide; none is the plugin's rows.
+	 * @return list<array{shoe: string, from: Measure, to: Measure|null}>
+	 */
+	public static function structured( int $kit, ?SizeGuide $guide = null ): array {
+		$guide ??= SizeGuide::plugins();
+		if ( ! $guide->shown ) {
+			return array();
+		}
+		if ( null === $guide->rows ) {
+			return self::defaults();
+		}
+		$rows = array();
+		foreach ( $guide->rows as $at => $row ) {
+			$rows[] = array(
+				// The owner's words, which no translation file holds: a translation plugin answers them, as it does the
+				// kit's other texts.
+				'shoe' => StateAnswer::text( $row->shoe, self::SHOE, $kit, (string) $at ),
+				'from' => $row->from,
+				'to'   => $row->to,
+			);
+		}
+		return $rows;
 	}
 
 	/**
@@ -131,21 +154,6 @@ final class WidthGuide {
 				'from' => Measure::inches( 82500 ),
 				'to'   => null,
 			),
-		);
-	}
-
-	/**
-	 * The plugin's rows as the guide shows them.
-	 *
-	 * @return list<array{shoe: string, width: string}>
-	 */
-	private static function plugins(): array {
-		return array_map(
-			static fn( array $row ): array => array(
-				'shoe'  => $row['shoe'],
-				'width' => self::widths( $row['from'], $row['to'] ),
-			),
-			self::defaults()
 		);
 	}
 

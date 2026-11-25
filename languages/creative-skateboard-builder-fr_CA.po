@@ -4836,3 +4836,171 @@ msgstr "Bowl et courbes"
 msgctxt "where a shopper skates"
 msgid "Cruising"
 msgstr "Balade"
+
+#: src/Front/BuilderView.php:511
+msgid "Not sure"
+msgstr "Je ne sais pas"
+
+#: src/Front/BuilderView.php:520
+msgid "Help me choose"
+msgstr "Aidez-moi à choisir"
+
+#: src/Front/BuilderView.php:520
+msgid "Change your answers"
+msgstr "Modifier vos réponses"
+
+#: src/Front/BuilderView.php:521
+msgid "Answer what you know and leave the rest. Each answer is optional."
+msgstr "Répondez à ce que vous savez et laissez le reste. Chaque réponse est facultative."
+
+#: src/Front/BuilderView.php:526
+msgid "Your shoe size (US)"
+msgstr "Votre pointure (É.-U.)"
+
+#: src/Front/BuilderView.php:526
+msgid "Your shoe size"
+msgstr "Votre pointure"
+
+#: src/Front/BuilderView.php:531
+msgid "Where do you skate?"
+msgstr "Où faites-vous de la planche ?"
+
+#. translators: %s: the shop's currency symbol, such as $.
+#: src/Front/BuilderView.php:537
+#, php-format
+msgid "Your budget (%s)"
+msgstr "Votre budget (%s)"
+
+#: src/Front/BuilderView.php:538
+msgid "A whole amount. Leave it empty for any."
+msgstr "Un montant entier. Laissez vide pour n’importe quel budget."
+
+#: src/Front/BuilderView.php:546
+msgid "Show builds"
+msgstr "Voir les montages"
+
+#: src/Front/BuilderView.php:549
+msgid "Skip to the builder"
+msgstr "Passer au configurateur"
+
+#: src/Front/BuilderView.php:551
+msgid "Builds for you"
+msgstr "Montages pour vous"
+
+#: src/Front/BuilderView.php:555
+msgid "The shop cannot make a build from these answers right now. Leave one blank, or skip to the builder."
+msgstr "La boutique ne peut pas faire de montage avec ces réponses pour le moment. Laissez-en une vide, ou passez au configurateur."
+
+#. translators: %s: a deck width, such as 8.25″.
+#: src/Front/BuilderView.php:581
+#, php-format
+msgid "Deck width %s."
+msgstr "Largeur de planche de %s."
+
+#. translators: 1: a deck width, such as 8.25″. 2: a shoe size from the kit's width guide, such as 8.5 to 9.
+#: src/Front/BuilderView.php:583
+#, php-format
+msgid "Deck width %1$s, for shoe size %2$s."
+msgstr "Largeur de planche de %1$s, pour la pointure %2$s."
+
+#. translators: %s: a shoe size from the kit's width guide, such as 8.5 to 9.
+#: src/Front/BuilderView.php:586
+#, php-format
+msgid "No deck for shoe size %s is in stock right now, so the builds take any width."
+msgstr "Aucune planche pour la pointure %s n’est en stock pour le moment, alors les montages prennent toute largeur."
+
+#. translators: %s: wheel sizes, such as 50 mm to 54 mm.
+#: src/Front/BuilderView.php:592
+#, php-format
+msgid "Wheels of %s."
+msgstr "Roues de %s."
+
+#. translators: %s: the cheapest build's total, such as $184.00.
+#: src/Front/BuilderView.php:601
+#, php-format
+msgid "No build comes within your budget. The closest is %s."
+msgstr "Aucun montage n’entre dans votre budget. Le plus proche coûte %s."
+
+#: src/Front/BuilderView.php:602
+msgid "Every build here is within your budget."
+msgstr "Chaque montage ici entre dans votre budget."
+
+#. translators: %s: how many builds, such as 3.
+#: src/Front/BuilderView.php:606
+#, php-format
+msgid "%s build fits and is in stock."
+msgid_plural "%s builds fit and are in stock."
+msgstr[0] "%s montage compatible et en stock."
+msgstr[1] "%s montages compatibles et en stock."
+
+#. translators: %s: an amount of money, such as $12.00.
+#: src/Front/BuilderView.php:628
+#, php-format
+msgid "Over your budget by %s."
+msgstr "Dépasse votre budget de %s."
+
+#. translators: %s: a deck width, such as 8.25″.
+#: src/Front/BuilderView.php:637
+#, php-format
+msgid "Build your own at %s"
+msgstr "Faire le vôtre en %s"
+
+#. translators: %s: wheel sizes, such as 50 mm to 54 mm.
+#: src/Front/Words.php:633
+#, php-format
+msgid "Wheels of %s suit street skating."
+msgstr "Des roues de %s conviennent à la rue."
+
+#. translators: %s: wheel sizes, such as 53 mm to 56 mm.
+#: src/Front/Words.php:635
+#, php-format
+msgid "Wheels of %s suit a skatepark."
+msgstr "Des roues de %s conviennent au skatepark."
+
+#. translators: %s: wheel sizes, such as 55 mm to 58 mm.
+#: src/Front/Words.php:637
+#, php-format
+msgid "Wheels of %s suit bowls and transition."
+msgstr "Des roues de %s conviennent aux bowls et aux courbes."
+
+#. translators: %s: wheel sizes, such as 59 mm to 65 mm.
+#: src/Front/Words.php:639
+#, php-format
+msgid "Wheels of %s suit cruising."
+msgstr "Des roues de %s conviennent à la balade."
+
+#: src/Front/Words.php:652
+msgctxt "a ready build from the guided start"
+msgid "Budget build"
+msgstr "Montage économique"
+
+#: src/Front/Words.php:653
+msgctxt "a ready build from the guided start"
+msgid "Mid-range build"
+msgstr "Montage intermédiaire"
+
+#: src/Front/Words.php:654
+msgctxt "a ready build from the guided start"
+msgid "High-end build"
+msgstr "Montage haut de gamme"
+
+#: src/Front/Words.php:655
+msgctxt "a ready build from the guided start"
+msgid "Ready build"
+msgstr "Montage prêt"
+
+#: src/Front/Words.php:668
+msgid "The lowest-priced part that fits in each slot."
+msgstr "La pièce compatible la moins chère à chaque emplacement."
+
+#: src/Front/Words.php:669
+msgid "A part from the middle of the prices in each slot."
+msgstr "Une pièce au milieu des prix à chaque emplacement."
+
+#: src/Front/Words.php:670
+msgid "The highest-priced part that fits in each slot."
+msgstr "La pièce compatible la plus chère à chaque emplacement."
+
+#: src/Front/Words.php:671
+msgid "The one build the shop can make from these answers."
+msgstr "Le seul montage que la boutique peut faire avec ces réponses."

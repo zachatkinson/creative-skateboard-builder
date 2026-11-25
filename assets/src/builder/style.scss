@@ -91,6 +91,7 @@
 .cbuild.cbuild .cbuild-progress__list,
 .cbuild.cbuild .cbuild-cards,
 .cbuild.cbuild .cbuild-presets__tiles,
+.cbuild.cbuild .cbuild-guide__tiles,
 .cbuild.cbuild .cbuild-picture__items,
 .cbuild.cbuild .cbuild-review__items,
 .cbuild.cbuild .cbuild-changes__kept,
@@ -104,6 +105,7 @@
 .cbuild .cbuild-progress__step,
 .cbuild .cbuild-cards > li,
 .cbuild .cbuild-presets__tiles > li,
+.cbuild .cbuild-guide__tiles > li,
 .cbuild .cbuild-picture__items > li,
 .cbuild .cbuild-review__items > li,
 .cbuild .cbuild-changes__kept > li,
@@ -1893,7 +1895,8 @@
 	gap: var(--cbuild-gap-small);
 }
 
-:where(.cbuild-presets__tiles) {
+/* The ready builds' tiles, and the guided start's builds in the same tiles (#134). */
+:where(.cbuild-presets__tiles, .cbuild-guide__tiles) {
 	display: grid;
 	grid-template-columns: repeat(auto-fill, minmax(min(100%, 15rem), 1fr));
 	gap: var(--cbuild-gap-small);
@@ -1921,6 +1924,63 @@
 :where(.cbuild-preset__description, .cbuild-preset__notes) {
 	color: var(--cbuild-muted);
 	font-size: var(--cbuild-small);
+}
+
+/* The guided start (#134): a disclosure at the start, its questions one form, and the builds it recommends. */
+:where(.cbuild-guide, .cbuild-guide__builds, .cbuild-guide__form) {
+	display: grid;
+	gap: var(--cbuild-gap-small);
+}
+
+:where(.cbuild-guide__summary) {
+	display: inline-flex;
+	align-items: center;
+	min-block-size: var(--cbuild-target);
+	font-weight: 600;
+	text-decoration: underline;
+	cursor: pointer;
+}
+
+.cbuild :where(.cbuild-guide__question) {
+	display: grid;
+	gap: 0.25rem;
+}
+
+:where(.cbuild-guide__question > legend) {
+	margin-block-end: 0.25rem;
+	font-weight: 600;
+}
+
+/* Each answer a whole row of target height, so a thumb can press its words as well as its circle. */
+:where(.cbuild-guide__choice) {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	min-block-size: var(--cbuild-target);
+	cursor: pointer;
+}
+
+:where(.cbuild-guide__hint, .cbuild-guide__reasons, .cbuild-guide__none) {
+	color: var(--cbuild-muted);
+	font-size: var(--cbuild-small);
+}
+
+:where(.cbuild-guide__budget) {
+	inline-size: 8rem;
+	min-block-size: var(--cbuild-target);
+}
+
+:where(.cbuild-guide__actions) {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--cbuild-gap-small);
+}
+
+:where(.cbuild-guide__skip, .cbuild-guide__width) {
+	display: inline-flex;
+	align-items: center;
+	min-block-size: var(--cbuild-target);
 }
 
 /* The change panel and the review. */

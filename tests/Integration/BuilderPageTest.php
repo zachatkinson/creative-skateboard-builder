@@ -199,7 +199,7 @@ final class BuilderPageTest extends IntegrationTestCase {
 			$regions[] = strtok( $region->getAttribute( 'class' ), ' ' );
 		}
 		self::assertSame(
-			array( 'cbuild__status', 'cbuild-progress', 'cbuild__stage', 'cbuild-errors', 'cbuild__heading', 'cbuild-step__lead', 'cbuild-step', 'cbuild-presets', 'cbuild-changes', 'cbuild-review', 'cbuild-bar' ),
+			array( 'cbuild__status', 'cbuild-progress', 'cbuild__stage', 'cbuild-errors', 'cbuild__heading', 'cbuild-step__lead', 'cbuild-guide', 'cbuild-step', 'cbuild-presets', 'cbuild-changes', 'cbuild-review', 'cbuild-bar' ),
 			$regions
 		);
 		// No directive is left outside a region, where nothing would run it.
@@ -249,6 +249,46 @@ final class BuilderPageTest extends IntegrationTestCase {
 		// The stage keeps its heading and says what starts the board, as the prototype has it.
 		self::assertNull( $dom->query( '//figure[@id="cbuild-picture"]//*[contains(@class,"cbuild-picture__heading")][@hidden]' )->item( 0 ), 'The stage is headed before anything is picked.' );
 		self::assertSame( 'Pick a deck to start', self::text( $dom, '//figure[@id="cbuild-picture"]//p[contains(@class,"cbuild-picture__empty")][not(@hidden)]' ) );
+	}
+
+	/**
+	 * #134: "Help me choose" works with no JavaScript, as a GET form whose answers travel in the address, its answers
+	 * checked as sent, with Skip a plain link to the start; once sent, what it found is in the page.
+	 */
+	public function test_the_guided_start_is_a_get_form_at_the_start_with_its_answers_checked_and_skip_a_link(): void {
+		$dom  = self::dom( $this->kitPage() );
+		$form = '//section[contains(@class, "cbuild-guide")]//form[@method="get"]';
+		self::assertSame( 'Help me choose', self::text( $dom, '//summary[@id="cbuild-guide-summary"]' ) );
+		self::assertSame( 5, $dom->query( $form . '//input[@type="radio"][@name="cbuild[_guide][shoe]"]' )->length, 'Not sure and four rows' );
+		self::assertSame( 5, $dom->query( $form . '//input[@type="radio"][@name="cbuild[_guide][style]"]' )->length );
+		self::assertSame( 1, $dom->query( $form . '//input[@id="cbuild-guide-budget"][@name="cbuild[_guide][budget]"]' )->length );
+		self::assertSame( 1, $dom->query( '//label[@for="cbuild-guide-budget"]' )->length );
+		self::assertSame( 1, $dom->query( $form . '//input[@type="hidden"][@name="cbuild[_guide][asked]"][@value="1"]' )->length );
+		self::assertSame( 1, $dom->query( $form . '//input[@type="radio"][@name="cbuild[_guide][style]"][@value=""][@checked]' )->length, 'Not sure, until answered' );
+		self::assertSame( 1, $dom->query( '//div[contains(@class, "cbuild-guide__builds")][@hidden]' )->length, 'no builds until asked' );
+
+		$dom = self::dom(
+			$this->kitPage(
+				array(
+					'_guide' => array(
+						'style'  => 'park',
+						'budget' => '90',
+						'asked'  => '1',
+					),
+				)
+			)
+		);
+		self::assertSame( 'Change your answers', self::text( $dom, '//summary[@id="cbuild-guide-summary"]' ) );
+		self::assertSame( 1, $dom->query( $form . '//input[@type="radio"][@name="cbuild[_guide][style]"][@value="park"][@checked]' )->length );
+		self::assertSame( 0, $dom->query( $form . '//input[@type="radio"][@name="cbuild[_guide][style]"][@value=""][@checked]' )->length );
+		self::assertSame( 1, $dom->query( $form . '//input[@name="cbuild[_guide][budget]"][@value="90"]' )->length );
+		self::assertSame( 0, $dom->query( '//div[contains(@class, "cbuild-guide__builds")][@hidden]' )->length );
+		// This catalogue holds no wheels: no build, said so.
+		self::assertSame( 'The shop cannot make a build from these answers right now. Leave one blank, or skip to the builder.', self::text( $dom, '//p[contains(@class, "cbuild-guide__none")]' ) );
+		foreach ( $dom->query( '//a[contains(@class, "cbuild-guide__skip")]' ) ?: array() as $skip ) {
+			self::assertInstanceOf( \DOMElement::class, $skip );
+			self::assertStringNotContainsString( 'cbuild', $skip->getAttribute( 'href' ), 'Skip is the builder with nothing in its address' );
+		}
 	}
 
 	public function test_the_picture_is_named_by_a_heading_a_sighted_shopper_reads_too(): void {

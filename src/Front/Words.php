@@ -12,6 +12,8 @@ namespace CreativeBranding\SkateboardBuilder\Front;
 use CreativeBranding\SkateboardBuilder\Admin\Labels;
 use CreativeBranding\SkateboardBuilder\Domain\Fit\Problem;
 use CreativeBranding\SkateboardBuilder\Domain\Guide\RidingStyle;
+use CreativeBranding\SkateboardBuilder\Domain\Guide\Span;
+use CreativeBranding\SkateboardBuilder\Domain\Guide\Tier;
 use CreativeBranding\SkateboardBuilder\Domain\Measure\Measure;
 use CreativeBranding\SkateboardBuilder\Domain\Measure\Unit;
 use CreativeBranding\SkateboardBuilder\Domain\Rule\Finding;
@@ -594,6 +596,79 @@ final class Words {
 			RidingStyle::Park     => _x( 'Skatepark', 'where a shopper skates', 'creative-skateboard-builder' ),
 			RidingStyle::Bowl     => _x( 'Bowl and transition', 'where a shopper skates', 'creative-skateboard-builder' ),
 			RidingStyle::Cruising => _x( 'Cruising', 'where a shopper skates', 'creative-skateboard-builder' ),
+		};
+	}
+
+	/**
+	 * Sizes from one to another, one alone, or one and larger: "50 mm to 54 mm", "59 mm and larger" (#134).
+	 *
+	 * @since 1.3.0
+	 *
+	 * @param Span $span The sizes.
+	 */
+	public static function span( Span $span ): string {
+		if ( null === $span->to ) {
+			/* translators: %s: a size, such as 59 mm. */
+			return sprintf( __( '%s and larger', 'creative-skateboard-builder' ), self::measure( $span->from ) );
+		}
+		return $span->from->equals( $span->to )
+			? self::measure( $span->from )
+			/* translators: 1: the smaller of a range, such as a deck width of 7″ or a US shoe size of 7. 2: the larger, such as 7.75″ or 8.5. */
+			: sprintf( __( '%1$s to %2$s', 'creative-skateboard-builder' ), self::measure( $span->from ), self::measure( $span->to ) );
+	}
+
+	/**
+	 * Why the guided start's wheels are the sizes they are: where the shopper skates, and the sizes (#134). One
+	 * sentence a style, so each language says it whole.
+	 *
+	 * @since 1.3.0
+	 *
+	 * @param RidingStyle $style The style.
+	 * @param Span        $span  The sizes.
+	 */
+	public static function wheelsFor( RidingStyle $style, Span $span ): string {
+		$sizes = self::span( $span );
+		return match ( $style ) {
+			/* translators: %s: wheel sizes, such as 50 mm to 54 mm. */
+			RidingStyle::Street   => sprintf( __( 'Wheels of %s suit street skating.', 'creative-skateboard-builder' ), $sizes ),
+			/* translators: %s: wheel sizes, such as 53 mm to 56 mm. */
+			RidingStyle::Park     => sprintf( __( 'Wheels of %s suit a skatepark.', 'creative-skateboard-builder' ), $sizes ),
+			/* translators: %s: wheel sizes, such as 55 mm to 58 mm. */
+			RidingStyle::Bowl     => sprintf( __( 'Wheels of %s suit bowls and transition.', 'creative-skateboard-builder' ), $sizes ),
+			/* translators: %s: wheel sizes, such as 59 mm to 65 mm. */
+			RidingStyle::Cruising => sprintf( __( 'Wheels of %s suit cruising.', 'creative-skateboard-builder' ), $sizes ),
+		};
+	}
+
+	/**
+	 * A ready build's name, by its tier (#134).
+	 *
+	 * @since 1.3.0
+	 *
+	 * @param Tier $tier The tier.
+	 */
+	public static function tier( Tier $tier ): string {
+		return match ( $tier ) {
+			Tier::Budget  => _x( 'Budget build', 'a ready build from the guided start', 'creative-skateboard-builder' ),
+			Tier::Mid     => _x( 'Mid-range build', 'a ready build from the guided start', 'creative-skateboard-builder' ),
+			Tier::Premium => _x( 'High-end build', 'a ready build from the guided start', 'creative-skateboard-builder' ),
+			Tier::Only    => _x( 'Ready build', 'a ready build from the guided start', 'creative-skateboard-builder' ),
+		};
+	}
+
+	/**
+	 * What a ready build is, by its tier: the line under its name (#134).
+	 *
+	 * @since 1.3.0
+	 *
+	 * @param Tier $tier The tier.
+	 */
+	public static function tierLine( Tier $tier ): string {
+		return match ( $tier ) {
+			Tier::Budget  => __( 'The lowest-priced part that fits in each slot.', 'creative-skateboard-builder' ),
+			Tier::Mid     => __( 'A part from the middle of the prices in each slot.', 'creative-skateboard-builder' ),
+			Tier::Premium => __( 'The highest-priced part that fits in each slot.', 'creative-skateboard-builder' ),
+			Tier::Only    => __( 'The one build the shop can make from these answers.', 'creative-skateboard-builder' ),
 		};
 	}
 }

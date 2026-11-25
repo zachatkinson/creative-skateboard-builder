@@ -11,10 +11,15 @@ namespace CreativeBranding\SkateboardBuilder\Front;
 
 use CreativeBranding\SkateboardBuilder\Domain\Fit\BuildProblem;
 use CreativeBranding\SkateboardBuilder\Domain\Fit\Problem;
+use CreativeBranding\SkateboardBuilder\Domain\Guide\RidingStyle;
+use CreativeBranding\SkateboardBuilder\Domain\Guide\Span;
+use CreativeBranding\SkateboardBuilder\Domain\Guide\Tier;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\SizeGuide;
 use CreativeBranding\SkateboardBuilder\Domain\Kit\SlotKey;
 use CreativeBranding\SkateboardBuilder\Domain\Look\Shelf;
+use CreativeBranding\SkateboardBuilder\Domain\Measure\Measure;
 use CreativeBranding\SkateboardBuilder\Domain\Picture\Layout;
+use CreativeBranding\SkateboardBuilder\Service\ShelfQuery;
 use CreativeBranding\SkateboardBuilder\Service\State;
 use CreativeBranding\SkateboardBuilder\Support\Cast;
 use CreativeBranding\SkateboardBuilder\Support\Options;
@@ -250,6 +255,8 @@ final class BuilderView {
 			),
 			'progress'  => $progress,
 			'presets'   => self::presets( $answer, $link, $state, $label ),
+			// The guided start's questions, before the first step (#134); Builder adds its builds once it is asked.
+			'guide'     => self::guide( $state, $answer, $link, $base, null ),
 			'step'      => $step,
 			'changes'   => $this->changes( $state, $changes, $link, $lines, $label ),
 			'summary'   => $summary,
@@ -425,8 +432,7 @@ final class BuilderView {
 	private static function presets( array $answer, BuildLink $link, State $state, callable $label ): array {
 		$tiles = array();
 		// At the start alone: on the first step, with nothing picked. A build begun is the shopper's own.
-		$first = $state->kit->slots->keys()[0] ?? '';
-		if ( array() === $link->picks && null === $link->preset && $first === $state->step ) {
+		if ( self::atStart( $state, $link ) ) {
 			// The answer lists every preset in the kit's order, each saying whether a shopper is offered it (#104) and its
 			// place among the kit's, which `cbuild[preset]` takes. One not shown has no tile (D-336).
 			foreach ( Cast::items( $answer['presets'] ?? null ) as $preset ) {
@@ -439,19 +445,6 @@ final class BuilderView {
 				foreach ( Cast::items( $preset['picks'] ?? null ) as $pick ) {
 					$pick                                        = Cast::map( $pick );
 					$picks[ Cast::str( $pick['slot'] ?? null ) ] = Cast::int( $pick['part'] ?? null );
-				}
-				// The tile shows the build, so it takes each part's classes from another plugin, merged: a flagged deck
-				// blurs it as it blurs the deck's card (Cowork's review of 1.0.0, F19; D-309).
-				$photo = array( Options::CLASS_PRESET_PHOTO );
-				foreach ( $picks as $slot => $part ) {
-					$photo = array_merge( $photo, explode( ' ', self::flagged( array(), $state->id, $slot, $part ) ) );
-				}
-				$fields = array();
-				foreach ( ( new BuildLink( $picks, null, State::REVIEW, null, $at ) )->query( $state->kit->slots ) as $key => $value ) {
-					$fields[] = array(
-						'name'  => BuildLink::PARAM . '[' . $key . ']',
-						'value' => Cast::str( $value ),
-					);
 				}
 				// One line a slot: a part refused comes first and leaves its slot empty, which says the same again. From
 				// 1.1.0 the answer shows only presets with nothing keeping them from the cart (#104), so a tile has none.
@@ -468,27 +461,246 @@ final class BuilderView {
 					}
 					$notes[ $slot ] = array( 'text' => null === $code ? Cast::str( $problem['message'] ?? null ) : Words::named( $code, $label( $slot ), Cast::str( $problem['name'] ?? null ) ) );
 				}
-				$notes       = array_values( $notes );
-				$name        = Cast::str( $preset['name'] ?? null );
-				$description = Cast::str( $preset['description'] ?? null );
-				$tiles[]     = self::image( $preset['image'] ?? null ) + array(
-					'name'           => $name,
-					'description'    => $description,
-					'hasDescription' => '' !== $description,
-					'total'          => Cast::str( Cast::map( $preset['total'] ?? null )['text'] ?? null ),
-					'hasTotal'       => $whole,
-					'notes'          => $notes,
-					'fields'         => $fields,
-					'photoClasses'   => implode( ' ', array_unique( array_filter( $photo, static fn( string $name ): bool => '' !== $name ) ) ),
-					/* translators: %s: a preset's name, such as Street. */
-					'button'         => sprintf( __( 'Start from %s', 'creative-skateboard-builder' ), $name ),
-				);
+				$tiles[] = self::tile( $state, new BuildLink( $picks, null, State::REVIEW, null, $at ), $preset['image'] ?? null, Cast::str( $preset['name'] ?? null ), Cast::str( $preset['description'] ?? null ), $whole ? Cast::str( Cast::map( $preset['total'] ?? null )['text'] ?? null ) : '', array_values( $notes ) );
 			}
 		}
 		return array(
 			'shown'   => array() !== $tiles,
 			'heading' => __( 'Start from a ready build', 'creative-skateboard-builder' ),
 			'tiles'   => $tiles,
+		);
+	}
+
+	/**
+	 * The guided start (#134): "Help me choose", optional questions at the builder's start, as a GET form, and once
+	 * it is sent the builds they recommend, each a tile that starts it at the review, with why in plain words. Skip
+	 * goes to the builder's start with no answers, from the questions or the builds. With the kit's width guide hidden
+	 * there is no shoe question. The answers travel in the link alone (D-402).
+	 *
+	 * @since 1.3.0
+	 *
+	 * @param State                     $state       The build's state.
+	 * @param array<string, mixed>      $answer      The state's answer, for the shop's currency.
+	 * @param BuildLink                 $link        The address.
+	 * @param string                    $base        The address of the page the builder is on, with no build in it.
+	 * @param array<string, mixed>|null $recommended What `GuidedStart` recommends from the answers, or null where
+	 *                                               they were not asked for.
+	 * @return array<string, mixed>
+	 */
+	public static function guide( State $state, array $answer, BuildLink $link, string $base, ?array $recommended ): array {
+		$answers = $link->guide;
+		$rows    = WidthGuide::structured( $state->id, $state->kit->settings->guide );
+		$shoes   = array();
+		foreach ( $rows as $at => $row ) {
+			$shoes[] = array(
+				'value'   => (string) $at,
+				'label'   => $row['shoe'],
+				'checked' => $at === $answers->shoe,
+			);
+		}
+		$styles = array();
+		foreach ( RidingStyle::cases() as $style ) {
+			$styles[] = array(
+				'value'   => $style->value,
+				'label'   => Words::style( $style ),
+				'checked' => $style === $answers->style,
+			);
+		}
+		$none     = static fn( bool $checked ): array => array(
+			'value'   => '',
+			'label'   => __( 'Not sure', 'creative-skateboard-builder' ),
+			'checked' => $checked,
+		);
+		$name     = BuildLink::PARAM . '[_guide]';
+		$results  = null === $recommended ? array() : self::recommended( $state, $recommended, $answers, $base );
+		$currency = Cast::str( Cast::map( $answer['currency'] ?? null )['symbol'] ?? null );
+		return array(
+			// At the start, until a width is pressed: that is the shopper's own answer, and the decks need the room.
+			// Builds asked for stay with the width they bring (D-404).
+			'shown'   => self::atStart( $state, $link ) && ( '' === $link->shelf->width || null !== $recommended ),
+			'asked'   => null !== $recommended,
+			'summary' => null === $recommended ? __( 'Help me choose', 'creative-skateboard-builder' ) : __( 'Change your answers', 'creative-skateboard-builder' ),
+			'intro'   => __( 'Answer what you know and leave the rest. Each answer is optional.', 'creative-skateboard-builder' ),
+			'shoe'    => array(
+				'shown'   => array() !== $shoes,
+				// The plugin's rows are US sizes; a shop's own say which sizes they are in their own words, as the width
+				// guide's heading does.
+				'legend'  => null === $state->kit->settings->guide->rows ? __( 'Your shoe size (US)', 'creative-skateboard-builder' ) : __( 'Your shoe size', 'creative-skateboard-builder' ),
+				'name'    => $name . '[shoe]',
+				'choices' => array( $none( null === $answers->shoe ), ...$shoes ),
+			),
+			'style'   => array(
+				'legend'  => __( 'Where do you skate?', 'creative-skateboard-builder' ),
+				'name'    => $name . '[style]',
+				'choices' => array( $none( null === $answers->style ), ...$styles ),
+			),
+			'budget'  => array(
+				/* translators: %s: the shop's currency symbol, such as $. */
+				'label' => sprintf( __( 'Your budget (%s)', 'creative-skateboard-builder' ), $currency ),
+				'hint'  => __( 'A whole amount. Leave it empty for any.', 'creative-skateboard-builder' ),
+				'name'  => $name . '[budget]',
+				'value' => null === $answers->budget ? '' : (string) $answers->budget,
+			),
+			'asks'    => array(
+				'name'  => $name . '[asked]',
+				'value' => '1',
+			),
+			'submit'  => __( 'Show builds', 'creative-skateboard-builder' ),
+			'skip'    => array(
+				'url'  => $base,
+				'text' => __( 'Skip to the builder', 'creative-skateboard-builder' ),
+			),
+			'heading' => __( 'Builds for you', 'creative-skateboard-builder' ),
+			'reasons' => $results['reasons'] ?? array(),
+			'tiles'   => $results['tiles'] ?? array(),
+			'hasNone' => null !== $recommended && array() === ( $results['tiles'] ?? array() ),
+			'none'    => __( 'The shop cannot make a build from these answers right now. Leave one blank, or skip to the builder.', 'creative-skateboard-builder' ),
+			'width'   => $results['width'] ?? array(
+				'shown' => false,
+				'url'   => '',
+				'text'  => '',
+			),
+		);
+	}
+
+	/**
+	 * The builds the guided start recommends, as tiles, with why: the deck width and the shoe size it is for, the wheel
+	 * sizes and where they suit, the budget, and how many builds, each one translatable sentence (#134).
+	 *
+	 * @param State                $state       The build's state.
+	 * @param array<string, mixed> $recommended What `GuidedStart` recommends.
+	 * @param GuideAnswers         $answers     The answers.
+	 * @param string               $base        The address of the page the builder is on, with no build in it.
+	 * @return array{reasons: list<array{text: string}>, tiles: list<array<string, mixed>>, width: array{shown: bool, url: string, text: string}}
+	 */
+	private static function recommended( State $state, array $recommended, GuideAnswers $answers, string $base ): array {
+		$reasons = array();
+		$width   = $recommended['width'] ?? null;
+		$shoe    = Cast::str( $recommended['shoe'] ?? null );
+		if ( $width instanceof Measure ) {
+			$reasons[] = '' === $shoe
+				/* translators: %s: a deck width, such as 8.25″. */
+				? sprintf( __( 'Deck width %s.', 'creative-skateboard-builder' ), Words::measure( $width ) )
+				/* translators: 1: a deck width, such as 8.25″. 2: a shoe size from the kit's width guide, such as 8.5 to 9. */
+				: sprintf( __( 'Deck width %1$s, for shoe size %2$s.', 'creative-skateboard-builder' ), Words::measure( $width ), $shoe );
+		} elseif ( Cast::bool( $recommended['noDeck'] ?? null ) ) {
+			/* translators: %s: a shoe size from the kit's width guide, such as 8.5 to 9. */
+			$reasons[] = sprintf( __( 'No deck for shoe size %s is in stock right now, so the builds take any width.', 'creative-skateboard-builder' ), $shoe );
+		}
+		$wheels = $recommended['wheels'] ?? null;
+		if ( $wheels instanceof Span ) {
+			$reasons[] = null === $answers->style
+				/* translators: %s: wheel sizes, such as 50 mm to 54 mm. */
+				? sprintf( __( 'Wheels of %s.', 'creative-skateboard-builder' ), Words::span( $wheels ) )
+				: Words::wheelsFor( $answers->style, $wheels );
+		}
+		$builds = Cast::items( $recommended['builds'] ?? null );
+		$budget = $recommended['budget'] ?? null;
+		if ( is_int( $budget ) && array() !== $builds ) {
+			$amount    = Cast::str( Cast::map( $builds[0] )['total'] ?? null );
+			$reasons[] = Cast::bool( $recommended['over'] ?? null )
+				/* translators: %s: the cheapest build's total, such as $184.00. */
+				? sprintf( __( 'No build comes within your budget. The closest is %s.', 'creative-skateboard-builder' ), $amount )
+				: __( 'Every build here is within your budget.', 'creative-skateboard-builder' );
+		}
+		if ( array() !== $builds ) {
+			/* translators: %s: how many builds, such as 3. */
+			$reasons[] = sprintf( _n( '%s build fits and is in stock.', '%s builds fit and are in stock.', count( $builds ), 'creative-skateboard-builder' ), number_format_i18n( count( $builds ) ) );
+		}
+		$tiles = array();
+		foreach ( $builds as $build ) {
+			$build = Cast::map( $build );
+			$tier  = $build['tier'] ?? null;
+			if ( ! $tier instanceof Tier ) {
+				continue;
+			}
+			$picks = array();
+			foreach ( Cast::map( $build['picks'] ?? null ) as $slot => $part ) {
+				$picks[ (string) $slot ] = Cast::int( $part );
+			}
+			$over    = Cast::str( $build['over'] ?? null );
+			$tiles[] = self::tile(
+				$state,
+				new BuildLink( $picks, null, State::REVIEW ),
+				$build['image'] ?? null,
+				Words::tier( $tier ),
+				Words::tierLine( $tier ),
+				Cast::str( $build['total'] ?? null ),
+				/* translators: %s: an amount of money, such as $12.00. */
+				'' === $over ? array() : array( array( 'text' => sprintf( __( 'Over your budget by %s.', 'creative-skateboard-builder' ), $over ) ) )
+			);
+		}
+		$start = null;
+		if ( $width instanceof Measure ) {
+			$start = array(
+				'shown' => true,
+				'url'   => ( new BuildLink() )->shelved( new ShelfQuery( Shelf::named( $width ) ) )->address( $base, $state->kit->slots ),
+				/* translators: %s: a deck width, such as 8.25″. */
+				'text'  => sprintf( __( 'Build your own at %s', 'creative-skateboard-builder' ), Words::measure( $width ) ),
+			);
+		}
+		return array(
+			'reasons' => array_map( static fn( string $text ): array => array( 'text' => $text ), $reasons ),
+			'tiles'   => $tiles,
+			'width'   => $start ?? array(
+				'shown' => false,
+				'url'   => '',
+				'text'  => '',
+			),
+		);
+	}
+
+	/**
+	 * Whether the builder is at its start: on the first step, with nothing picked and no preset. The ready builds and
+	 * the guided start show there alone; a build begun is the shopper's own.
+	 *
+	 * @since 1.3.0
+	 *
+	 * @param State     $state The build's state.
+	 * @param BuildLink $link  The address.
+	 */
+	public static function atStart( State $state, BuildLink $link ): bool {
+		return array() === $link->picks && null === $link->preset && ( $state->kit->slots->keys()[0] ?? '' ) === $state->step;
+	}
+
+	/**
+	 * A ready build's tile (spec: Presets; #134): its picture, name, a line on what it is, its total and its notes, and
+	 * the GET form's fields that start it at the review, its part IDs as a build link writes them, each checked again
+	 * when it arrives. The tile shows the build, so it takes each part's classes from another plugin, merged: a flagged
+	 * deck blurs it as it blurs the deck's card (Cowork's review of 1.0.0, F19; D-309).
+	 *
+	 * @param State                     $state       The build's state.
+	 * @param BuildLink                 $start       The link the tile starts.
+	 * @param mixed                     $image       Its picture, as a card holds one, or null.
+	 * @param string                    $name        Its name.
+	 * @param string                    $description Its line, or empty.
+	 * @param string                    $total       Its total, or empty for none shown.
+	 * @param list<array{text: string}> $notes       Its notes.
+	 * @return array<string, mixed>
+	 */
+	private static function tile( State $state, BuildLink $start, mixed $image, string $name, string $description, string $total, array $notes ): array {
+		$photo = array( Options::CLASS_PRESET_PHOTO );
+		foreach ( $start->picks as $slot => $part ) {
+			$photo = array_merge( $photo, explode( ' ', self::flagged( array(), $state->id, $slot, $part ) ) );
+		}
+		$fields = array();
+		foreach ( $start->query( $state->kit->slots ) as $key => $value ) {
+			$fields[] = array(
+				'name'  => BuildLink::PARAM . '[' . $key . ']',
+				'value' => Cast::str( $value ),
+			);
+		}
+		return self::image( $image ) + array(
+			'name'           => $name,
+			'description'    => $description,
+			'hasDescription' => '' !== $description,
+			'total'          => $total,
+			'hasTotal'       => '' !== $total,
+			'notes'          => $notes,
+			'fields'         => $fields,
+			'photoClasses'   => implode( ' ', array_unique( array_filter( $photo, static fn( string $name ): bool => '' !== $name ) ) ),
+			/* translators: %s: a preset's name, such as Street. */
+			'button'         => sprintf( __( 'Start from %s', 'creative-skateboard-builder' ), $name ),
 		);
 	}
 

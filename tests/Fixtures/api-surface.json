@@ -5,6 +5,7 @@
         "cbuild_builder_url",
         "cbuild_composed_layer",
         "cbuild_delivery_line",
+        "cbuild_guided_start",
         "cbuild_kit_text",
         "cbuild_part_available",
         "cbuild_part_classes",

@@ -4837,3 +4837,171 @@ msgstr ""
 msgctxt "where a shopper skates"
 msgid "Cruising"
 msgstr ""
+
+#: src/Front/BuilderView.php:511
+msgid "Not sure"
+msgstr ""
+
+#: src/Front/BuilderView.php:520
+msgid "Help me choose"
+msgstr ""
+
+#: src/Front/BuilderView.php:520
+msgid "Change your answers"
+msgstr ""
+
+#: src/Front/BuilderView.php:521
+msgid "Answer what you know and leave the rest. Each answer is optional."
+msgstr ""
+
+#: src/Front/BuilderView.php:526
+msgid "Your shoe size (US)"
+msgstr ""
+
+#: src/Front/BuilderView.php:526
+msgid "Your shoe size"
+msgstr ""
+
+#: src/Front/BuilderView.php:531
+msgid "Where do you skate?"
+msgstr ""
+
+#. translators: %s: the shop's currency symbol, such as $.
+#: src/Front/BuilderView.php:537
+#, php-format
+msgid "Your budget (%s)"
+msgstr ""
+
+#: src/Front/BuilderView.php:538
+msgid "A whole amount. Leave it empty for any."
+msgstr ""
+
+#: src/Front/BuilderView.php:546
+msgid "Show builds"
+msgstr ""
+
+#: src/Front/BuilderView.php:549
+msgid "Skip to the builder"
+msgstr ""
+
+#: src/Front/BuilderView.php:551
+msgid "Builds for you"
+msgstr ""
+
+#: src/Front/BuilderView.php:555
+msgid "The shop cannot make a build from these answers right now. Leave one blank, or skip to the builder."
+msgstr ""
+
+#. translators: %s: a deck width, such as 8.25″.
+#: src/Front/BuilderView.php:581
+#, php-format
+msgid "Deck width %s."
+msgstr ""
+
+#. translators: 1: a deck width, such as 8.25″. 2: a shoe size from the kit's width guide, such as 8.5 to 9.
+#: src/Front/BuilderView.php:583
+#, php-format
+msgid "Deck width %1$s, for shoe size %2$s."
+msgstr ""
+
+#. translators: %s: a shoe size from the kit's width guide, such as 8.5 to 9.
+#: src/Front/BuilderView.php:586
+#, php-format
+msgid "No deck for shoe size %s is in stock right now, so the builds take any width."
+msgstr ""
+
+#. translators: %s: wheel sizes, such as 50 mm to 54 mm.
+#: src/Front/BuilderView.php:592
+#, php-format
+msgid "Wheels of %s."
+msgstr ""
+
+#. translators: %s: the cheapest build's total, such as $184.00.
+#: src/Front/BuilderView.php:601
+#, php-format
+msgid "No build comes within your budget. The closest is %s."
+msgstr ""
+
+#: src/Front/BuilderView.php:602
+msgid "Every build here is within your budget."
+msgstr ""
+
+#. translators: %s: how many builds, such as 3.
+#: src/Front/BuilderView.php:606
+#, php-format
+msgid "%s build fits and is in stock."
+msgid_plural "%s builds fit and are in stock."
+msgstr[0] ""
+msgstr[1] ""
+
+#. translators: %s: an amount of money, such as $12.00.
+#: src/Front/BuilderView.php:628
+#, php-format
+msgid "Over your budget by %s."
+msgstr ""
+
+#. translators: %s: a deck width, such as 8.25″.
+#: src/Front/BuilderView.php:637
+#, php-format
+msgid "Build your own at %s"
+msgstr ""
+
+#. translators: %s: wheel sizes, such as 50 mm to 54 mm.
+#: src/Front/Words.php:633
+#, php-format
+msgid "Wheels of %s suit street skating."
+msgstr ""
+
+#. translators: %s: wheel sizes, such as 53 mm to 56 mm.
+#: src/Front/Words.php:635
+#, php-format
+msgid "Wheels of %s suit a skatepark."
+msgstr ""
+
+#. translators: %s: wheel sizes, such as 55 mm to 58 mm.
+#: src/Front/Words.php:637
+#, php-format
+msgid "Wheels of %s suit bowls and transition."
+msgstr ""
+
+#. translators: %s: wheel sizes, such as 59 mm to 65 mm.
+#: src/Front/Words.php:639
+#, php-format
+msgid "Wheels of %s suit cruising."
+msgstr ""
+
+#: src/Front/Words.php:652
+msgctxt "a ready build from the guided start"
+msgid "Budget build"
+msgstr ""
+
+#: src/Front/Words.php:653
+msgctxt "a ready build from the guided start"
+msgid "Mid-range build"
+msgstr ""
+
+#: src/Front/Words.php:654
+msgctxt "a ready build from the guided start"
+msgid "High-end build"
+msgstr ""
+
+#: src/Front/Words.php:655
+msgctxt "a ready build from the guided start"
+msgid "Ready build"
+msgstr ""
+
+#: src/Front/Words.php:668
+msgid "The lowest-priced part that fits in each slot."
+msgstr ""
+
+#: src/Front/Words.php:669
+msgid "A part from the middle of the prices in each slot."
+msgstr ""
+
+#: src/Front/Words.php:670
+msgid "The highest-priced part that fits in each slot."
+msgstr ""
+
+#: src/Front/Words.php:671
+msgid "The one build the shop can make from these answers."
+msgstr ""

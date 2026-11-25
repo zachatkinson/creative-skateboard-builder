@@ -90,6 +90,8 @@ final readonly class BuildLink {
 	 * @param string                  $saved    The UUID of the saved build My builds opened, so it is checked against
 	 *                                          the shop once, or empty (from 1.0.0, D-254). No link made from this one
 	 *                                          carries it.
+	 * @param GuideAnswers            $guide    The guided start's answers (from 1.3.0, #134). Only the guided start's
+	 *                                          own address keeps them; a link made from this one does not.
 	 */
 	public function __construct(
 		public array $picks = array(),
@@ -104,7 +106,8 @@ final readonly class BuildLink {
 		public array $none = array(),
 		public ShelfQuery $shelf = new ShelfQuery(),
 		public bool $asked = false,
-		public string $saved = ''
+		public string $saved = '',
+		public GuideAnswers $guide = new GuideAnswers()
 	) {}
 
 	/**
@@ -149,7 +152,8 @@ final readonly class BuildLink {
 				$own && in_array( $sent['_sort'] ?? null, ShelfAsk::SORTS, true ) ? Cast::str( $sent['_sort'] ) : ShelfAsk::SORTS[0]
 			),
 			null !== $step && null === $on,
-			self::matching( $sent['_saved'] ?? null, '/\A[a-f0-9-]{36}\z/' )
+			self::matching( $sent['_saved'] ?? null, '/\A[a-f0-9-]{36}\z/' ),
+			GuideAnswers::read( $sent['_guide'] ?? null )
 		);
 	}
 
@@ -161,7 +165,8 @@ final readonly class BuildLink {
 	public function isClean(): bool {
 		return array() === $this->picks && null === $this->was && null === $this->step && null === $this->assembly && null === $this->preset
 			&& '' === $this->brand && '' === $this->size && 0 === $this->shown && '' === $this->replace && array() === $this->none
-			&& '' === $this->shelf->width && array() === $this->shelf->chips && '' === $this->shelf->query && ShelfAsk::SORTS[0] === $this->shelf->sort;
+			&& '' === $this->shelf->width && array() === $this->shelf->chips && '' === $this->shelf->query && ShelfAsk::SORTS[0] === $this->shelf->sort
+			&& $this->guide->isEmpty();
 	}
 
 	/**
@@ -225,6 +230,9 @@ final readonly class BuildLink {
 		}
 		if ( array() !== $this->shelf->chips ) {
 			$query['_chips'] = $this->shelf->chips;
+		}
+		if ( ! $this->guide->isEmpty() ) {
+			$query['_guide'] = $this->guide->query();
 		}
 		return $query;
 	}
@@ -334,6 +342,17 @@ final readonly class BuildLink {
 	 */
 	public function shelved( ShelfQuery $shelf ): self {
 		return new self( $this->picks, $this->was, $this->step, $this->assembly, $this->preset, $this->brand, $this->size, 0, $this->replace, $this->none, $shelf );
+	}
+
+	/**
+	 * The link with the guided start's answers, which the guided start's own address keeps (#134).
+	 *
+	 * @since 1.3.0
+	 *
+	 * @param GuideAnswers $guide The answers.
+	 */
+	public function guided( GuideAnswers $guide ): self {
+		return new self( $this->picks, $this->was, $this->step, $this->assembly, $this->preset, $this->brand, $this->size, $this->shown, $this->replace, $this->none, $this->shelf, $this->asked, $this->saved, $guide );
 	}
 
 	/**

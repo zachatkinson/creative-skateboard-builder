@@ -67,6 +67,13 @@ final class Builder {
 	private ?StepShelf $shelf = null;
 
 	/**
+	 * The guided start's recommendations (from 1.3.0, #134).
+	 *
+	 * @var GuidedStart|null
+	 */
+	private ?GuidedStart $guided = null;
+
+	/**
 	 * Constructor.
 	 *
 	 * @since 0.6.0
@@ -104,6 +111,21 @@ final class Builder {
 	public function withShelf( StepShelf $shelf ): self {
 		$builder        = clone $this;
 		$builder->shelf = $shelf;
+		return $builder;
+	}
+
+	/**
+	 * The builder with the guided start, which recommends builds from a shopper's answers at its start (#134). Only
+	 * this release's container calls it, so a builder an earlier release's container makes mid-update asks the
+	 * questions and shows no builds (D-208).
+	 *
+	 * @since 1.3.0
+	 *
+	 * @param GuidedStart $guided The guided start.
+	 */
+	public function withGuide( GuidedStart $guided ): self {
+		$builder         = clone $this;
+		$builder->guided = $guided;
 		return $builder;
 	}
 
@@ -198,12 +220,20 @@ final class Builder {
 		if ( null !== $state->changes && null !== $link->was ) {
 			$shown = $shown->after( $link->was );
 		}
+		// The guided start's answers stay in the address of the start they were given at, and in no other (#134).
+		if ( BuilderView::atStart( $state, $shown ) ) {
+			$shown = $shown->guided( $link->guide );
+		}
 		$link   = $shown;
 		$answer = $this->writer->of( $state, $link );
+		$view   = $this->view->of( $state, $answer, $link, $base, $steps, $stopped, $moved['said'] ?? '' );
+		if ( null !== $this->guided && $link->guide->asked && BuilderView::atStart( $state, $link ) ) {
+			$view['guide'] = BuilderView::guide( $state, $answer, $link, $base, $this->guided->of( $state, $link->guide ) );
+		}
 		return array(
 			'state'  => $state,
 			'answer' => $answer,
-			'view'   => $this->view->of( $state, $answer, $link, $base, $steps, $stopped, $moved['said'] ?? '' ),
+			'view'   => $view,
 		);
 	}
 
