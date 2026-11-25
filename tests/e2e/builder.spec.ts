@@ -11520,34 +11520,76 @@ test.describe( 'Thumbnails in the review (#132)', () => {
 		}
 	} );
 
-	test( "blurs a flagged part's thumbnail, as Mature Content blurs it", async ( {
-		page,
-		context,
-		baseURL,
-	} ) => {
-		// tests/e2e/mu-plugins/cbuild-e2e-flag.php flags the deck by cbuild_part_classes and blurs what it reaches.
-		await context.addCookies( [
-			{
-				name: 'cbuild_e2e_flag',
-				value: String( picks.deck ),
-				url: baseURL || SITE,
-			},
-		] );
-		await page.goto( linkTo( { ...picks, step: 'review' } ) );
-		const photo = ( slot: string ) =>
-			row( page, slot ).locator( '.cbuild-review__photo' );
-		const filter = ( slot: string ) =>
-			photo( slot ).evaluate( ( img ) => getComputedStyle( img ).filter );
-		await expect( photo( 'Deck' ) ).toHaveClass(
-			/(^| )cbuild-e2e-flagged( |$)/
-		);
-		expect( await filter( 'Deck' ), 'the flagged deck' ).toMatch(
-			/^blur\(/
-		);
-		expect( await filter( 'Trucks' ), 'the trucks, not flagged' ).toBe(
-			'none'
-		);
-	} );
+	// tests/e2e/mu-plugins/cbuild-e2e-flag.php flags the deck by cbuild_part_classes and blurs what it reaches, either
+	// way Mature Content does: as a whole (`mcw-mature`), every picture of it; or in its layer image alone
+	// (`mcw-mature-layer`), the pictures marked drawn and the board, its photo left sharp (D-398). The 8.0 in deck's
+	// row shows its layer image, as its card does; the 8.25 in deck has none, so its row shows its photo.
+	for ( const [ flag, cookie ] of [
+		[ 'as a whole', 'cbuild_e2e_flag' ],
+		[ 'in its layer image alone', 'cbuild_e2e_flag_layer' ],
+	] as const ) {
+		test( `blurs a flagged part's thumbnail, as Mature Content blurs a deck flagged ${ flag }`, async ( {
+			page,
+			context,
+			baseURL,
+		} ) => {
+			const layer = 'cbuild_e2e_flag_layer' === cookie;
+			const photo = ( slot: string ) =>
+				row( page, slot ).locator( '.cbuild-review__photo' );
+			const filter = ( slot: string ) =>
+				photo( slot ).evaluate(
+					( img ) => getComputedStyle( img ).filter
+				);
+			for ( const [ deck, drawn ] of [
+				[ id( 'builder-test-deck-8-0' ), true ],
+				[ id( 'builder-test-deck-8-25' ), false ],
+			] as const ) {
+				await context.clearCookies( { name: cookie } );
+				await context.addCookies( [
+					{
+						name: cookie,
+						value: String( deck ),
+						url: baseURL || SITE,
+					},
+				] );
+				await page.goto( linkTo( { ...picks, deck, step: 'review' } ) );
+				await expect( photo( 'Deck' ) ).toBeVisible();
+				await expect( photo( 'Deck' ) ).toHaveClass(
+					layer
+						? /(^| )cbuild-e2e-flagged-layer( |$)/
+						: /(^| )cbuild-e2e-flagged( |$)/
+				);
+				if ( drawn ) {
+					await expect(
+						photo( 'Deck' ),
+						'its layer image, marked as its card is'
+					).toHaveClass( /(^| )cbuild-review__photo--drawn( |$)/ );
+				} else {
+					await expect(
+						photo( 'Deck' ),
+						'its photo'
+					).not.toHaveClass( /cbuild-review__photo--drawn/ );
+				}
+				if ( drawn || ! layer ) {
+					expect(
+						await filter( 'Deck' ),
+						drawn
+							? 'the flagged layer image'
+							: 'the deck flagged whole'
+					).toMatch( /^blur\(/ );
+				} else {
+					expect(
+						await filter( 'Deck' ),
+						'a photo stays sharp when only the layer image is flagged'
+					).toBe( 'none' );
+				}
+				expect(
+					await filter( 'Trucks' ),
+					'the trucks, not flagged'
+				).toBe( 'none' );
+			}
+		} );
+	}
 } );
 
 /**

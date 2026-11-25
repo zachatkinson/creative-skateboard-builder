@@ -2018,6 +2018,7 @@ final class BuilderTest extends TestCase {
 		self::assertSame( self::thumb( $decks[101] ), self::thumb( $review[ SlotKey::DECK ] ), 'the deck\'s card' );
 		self::assertSame( self::thumb( $trucks[139] ), self::thumb( $review[ SlotKey::TRUCKS ] ), 'the trucks\' card' );
 		self::assertSame( 'cbuild-review__photo', $review[ SlotKey::TRUCKS ]['photoClasses'] );
+		self::assertSame( 'cbuild-review__photo', $review[ SlotKey::DECK ]['photoClasses'], 'a deck\'s photo is not marked drawn' );
 
 		// A deck with a layer image: its card draws the layer image small and upright, from the picture's renditions
 		// (#99), and so does its row, with the same `sizes`, so the browser chooses the file the card had.
@@ -2026,6 +2027,10 @@ final class BuilderTest extends TestCase {
 		$decks  = array_column( $this->show( new BuildLink( self::STREET, null, SlotKey::DECK ) )['view']['step']['options'], null, 'id' );
 		self::assertTrue( $decks[101]['drawn'] );
 		self::assertSame( '29px', $review[ SlotKey::DECK ]['sizes'] );
+		// Marked as its card is, so Mature Content's layer flag blurs the layer image and not a photo (#132, D-398).
+		self::assertSame( 'cbuild-review__photo cbuild-review__photo--drawn', $review[ SlotKey::DECK ]['photoClasses'], 'the deck\'s layer image, marked drawn' );
+		self::assertArrayNotHasKey( 'drawn', $review[ SlotKey::DECK ] );
+		self::assertSame( 'cbuild-review__photo', $review[ SlotKey::TRUCKS ]['photoClasses'] );
 		self::assertSame( self::thumb( $decks[101] ), self::thumb( $review[ SlotKey::DECK ] ), 'the deck\'s card, drawn' );
 		self::assertSame( 'https://shop.test/701.jpg', $review[ SlotKey::GRIP ]['src'], 'a grip the top draws keeps its card\'s photo' );
 

@@ -198,6 +198,7 @@
         "cbuild-quantity",
         "cbuild-review__item",
         "cbuild-review__photo",
+        "cbuild-review__photo--drawn",
         "cbuild-step",
         "cbuild__stage"
     ],

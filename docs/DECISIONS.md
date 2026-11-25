@@ -239,6 +239,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-395 · A part's rank is a whole number on its Part specs, higher being better, and a filter answers last](#d-395--a-parts-rank-is-a-whole-number-on-its-part-specs-higher-being-better-and-a-filter-answers-last--2026-11-25)
 - [D-396 · Swaps are worked out on the review and on a step with a pick, and priced as the total is](#d-396--swaps-are-worked-out-on-the-review-and-on-a-step-with-a-pick-and-priced-as-the-total-is--2026-11-25)
 - [D-397 · A swap is a link that carries the picks before it, its Undo lives in a notice until the next move, and a kit can switch swaps off](#d-397--a-swap-is-a-link-that-carries-the-picks-before-it-its-undo-lives-in-a-notice-until-the-next-move-and-a-kit-can-switch-swaps-off--2026-11-25)
+- [D-398 · The review's thumbnail of a deck's layer image is marked drawn, as its card is](#d-398--the-reviews-thumbnail-of-a-decks-layer-image-is-marked-drawn-as-its-card-is--2026-11-25)
 
 ### Accessibility
 
@@ -5890,6 +5891,23 @@ Issue #135: "one press swaps in a part … one Undo puts the build back", and ev
 **Breaks.** `Builder::show` not keeping `_undo`: `BuilderTest` fails at :2105 ("false is true", no notice). Swaps on every card, not the picked one alone: :2121. The store not noting a swap's press: the browser test fails "focus on what the swap did, beside its Undo".
 
 **Why:** a link works everywhere the builder does, and an Undo that waits for the shopper, not a timer, is the one every shopper can reach.
+
+**Status:** Accepted.
+
+### D-398 · The review's thumbnail of a deck's layer image is marked drawn, as its card is · 2026-11-25
+
+Cowork, for Mature Content: it flags a deck as a whole (`mcw-mature`) or in its layer image alone (`mcw-mature-layer`), and for the second it blurs the layer image and leaves the photo, already censored, sharp. It knows which picture it is looking at by a mark, `cbuild-card__photo--drawn` on a card (#99). #132's review thumbnail showed the deck's layer image where its card draws it, but `BuilderView::thumbnails()` dropped the mark, so a layer-flagged deck's thumbnail was left sharp.
+
+- **The fix.** The thumbnail of a deck's layer image is also `cbuild-review__photo--drawn` (`Options::CLASS_REVIEW_DRAWN`, in HOOKS.md's builder classes, `@since 1.3.0`); a photo is not.
+- **Smart swaps show no picture.** A swap control is text, so it needs no mark and no part's classes (D-397).
+- **A ready build's tile needs no mark.** Its picture is the preset's own image, a picture composed of the build, which draws each layer through `cbuild_composed_layer` and so is already blurred or left out by Mature Content's answer, or the first part's card photo (`StateAnswer::tile()`, `presets[].image`). None is a deck's layer image as it is, so `cbuild-preset__photo` is never one to mark.
+- **The test fixture flags either way.** `tests/e2e/mu-plugins/cbuild-e2e-flag.php` reads `cbuild_e2e_flag` (as a whole: every picture of the part blurs) and `cbuild_e2e_flag_layer` (the layer image alone: the pictures marked `…__photo--drawn` and the board's layers blur). "Thumbnails in the review (#132)" runs its blur test with each flag, on the 8.0 in deck (its layer image) and the 8.25 in deck (its photo): the drawn thumbnail blurs under either flag, and the photo blurs as a whole and stays sharp under the layer flag.
+
+**Red run.** `BuilderTest::test_each_row_of_the_review_shows_its_cards_picture_and_a_row_without_one_keeps_its_place`: "Failed asserting that two strings are identical", expected `'cbuild-review__photo cbuild-review__photo--drawn'`, got `'cbuild-review__photo'` (BuilderTest.php:2031).
+
+**Break.** The row's marks put back to `cbuild-review__photo` alone: the same test fails at :2031, and the browser test fails under both flags with "its layer image, marked as its card is" (builder.spec.ts:11104).
+
+**Why:** a plugin that tells a layer image from a photo by its mark must find the mark wherever the layer image is shown.
 
 **Status:** Accepted.
 

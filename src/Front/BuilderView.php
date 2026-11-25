@@ -2088,7 +2088,8 @@ final class BuilderView {
 			$layer = Cast::map( $layer );
 			$drawn = SlotKey::DECK === Cast::str( $layer['slot'] ?? null ) ? self::drawn( array( 'layers' => array( $layer ) ) ) : null;
 			if ( null !== $drawn ) {
-				$thumbnails[ SlotKey::DECK ] = array_diff_key( $drawn, array( 'drawn' => true ) );
+				// Kept, so the row marks it drawn as the card is (D-398).
+				$thumbnails[ SlotKey::DECK ] = $drawn;
 			}
 		}
 		return $thumbnails;
@@ -2539,12 +2540,16 @@ final class BuilderView {
 			}
 			$own = isset( $wrong[ $slot ] ) ? array( Options::CLASS_REVIEW_ITEM, Options::CLASS_REVIEW_ITEM . '--wrong' ) : array( Options::CLASS_REVIEW_ITEM );
 			// What another plugin adds lands on the row and on its thumbnail, so a flagged part blurs here too (#132).
-			$added   = isset( $counted[ $slot ] ) ? self::added( $state->id, $slot, $counted[ $slot ] ) : array();
-			$photo   = isset( $counted[ $slot ], $thumbnails[ $slot ] ) ? $thumbnails[ $slot ] : self::image( null );
+			$added = isset( $counted[ $slot ] ) ? self::added( $state->id, $slot, $counted[ $slot ] ) : array();
+			$photo = isset( $counted[ $slot ], $thumbnails[ $slot ] ) ? $thumbnails[ $slot ] : self::image( null );
+			// The deck's layer image is marked as its card's is, so a plugin that flags only a layer image blurs it and
+			// leaves a photo sharp (D-398).
+			$marks   = true === ( $photo['drawn'] ?? null ) ? array( Options::CLASS_REVIEW_PHOTO, Options::CLASS_REVIEW_DRAWN ) : array( Options::CLASS_REVIEW_PHOTO );
+			$photo   = array_diff_key( $photo, array( 'drawn' => true ) );
 			$items[] = array(
 				'key'          => $slot,
 				'classes'      => self::joined( $own, $added ),
-				'photoClasses' => self::joined( array( Options::CLASS_REVIEW_PHOTO ), $added ),
+				'photoClasses' => self::joined( $marks, $added ),
 				'label'        => $label( $slot ),
 				'name'         => isset( $counted[ $slot ] ) ? Cast::str( $lines[ $slot ]['name'] ?? null ) : __( 'None', 'creative-skateboard-builder' ),
 				'fits'         => ! isset( $wrong[ $slot ] ),

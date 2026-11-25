@@ -673,6 +673,7 @@ A kit's line raised past what the shop has of a part is refused as `cbuild_build
 | `cbuild-bar__photo` | 0.6.0 | The bar's small picture of the deck's photo, until the board draws a layer. |
 | `cbuild-review__item` | 0.6.0 | A part's line in the review, with `cbuild-review__item--wrong` where it no longer fits. |
 | `cbuild-review__photo` | 1.3.0 | A part's thumbnail on its line in the review, the picture its card shows; hidden, its place kept, on a line with none (#132, D-403). |
+| `cbuild-review__photo--drawn` | 1.3.0 | The deck's thumbnail in the review when it is the deck's layer image rather than its photo, as `cbuild-card__photo--drawn` marks its card (D-398), so a plugin that flags only the layer image can blur it alone. |
 | `cbuild-preset__photo` | 1.1.0 | A ready build's tile picture, with the classes the answer gives each of the build's parts, merged and each once: a deck flagged on its card is flagged on the tile that shows it (Cowork's review of 1.0.0, F19; D-309). |
 | `cbuild-chips__more` | 1.1.0 | The brand chips' "N more" button on a desktop, a disclosure for the chips past the row. Its rule sits at a class's weight, so a theme's `button` rule can't change its display (#98, D-314). |
 | `cbuild-chips__more--idle` | 1.1.0 | "N more" with nothing to open: out of sight and of the flow, its width kept for measuring. |
