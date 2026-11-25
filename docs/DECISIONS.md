@@ -5555,6 +5555,24 @@ The walkthrough of milestone 12, finding 9, older than M12: "Search in the steps
 
 **Status:** Accepted.
 
+### D-388 · Focus is kept clear of what the bar says over itself, in Firefox too · 2026-11-24
+
+The full matrix on the milestone 12 tree (74df3d2) failed three browser tests. Lane 2 bisected the Firefox two between 1.1.0 and the tree.
+
+- **Firefox: a card left under what the dimmed Next says.** "The phone bar › never covers the control in focus, with what the dimmed Next says shown over the bar", firefox-desktop and firefox-phone at 390 by 700: "cbuild-card__control 571.97 > 567.63" (builder.spec.ts:7875). Firefox scrolls a focused control only once it leaves the screen, whatever the padding (D-160), so the store's `reveal` scrolls a control the bar covers into view. It compared the control's foot with the bar's own top only. What a press of the dimmed Next says (#100) sits over the bar, 47 px above its top here, and the page's scroll padding already counts it (`size()`, the M11 audit's finding 7); `reveal` did not, so a card whose foot fell between the line's top and the bar's stayed under the line. Chromium and WebKit honour the padding themselves and passed. The bug is from M11 (40a44bd's `reveal`, the line over the bar after it); 53d1285 (#122, D-360), which drops the deck step's lead after a width, moved the cards 30 px and put the first one in that band. 1.1.0 passed by where the cards fell.
+- **The fix.** `reveal` takes the top of what the bar covers as `size()` does: the bar's top, or the top of the dimmed Next's words or the limit's line (D-383) while either has height. A control under either is scrolled into view, which honours the padding.
+- **WebKit on a short phone: axe on a covered "Back to the shop".** "The builder with JavaScript › passes axe on every state it shows", webkit-phone (390 by 664): `target-size` on `.cbuild__back` at "the blank start", "partially obscured … 104.3px by 11.3px" by `.cbuild-bar__total` (support/axe.ts:58, from builder.spec.ts:2399). It passed at bccb5cc; cd5fe38 (D-382) is the change. Before it, the bar could rise no higher than the panel's top, which was 627 px on that screen, so it stood 627 to 712 px, wholly over the link (627 to 671) and partly under the screen's foot, and axe leaves a target it finds wholly covered out. From the builder's top, the bar sticks at the screen's foot, 578 to 664, as D-382 meant it to, and 11 px of the link shows under the total. The link is under the bar at first view either way, as any target at the foot of a first screen is under a sticky bar (D-160); focus is kept clear of it by the scroll padding, and its tests hold that. The finding is of where the page stands, as D-288 and D-380 found for other states: the test now brings the panel's head into view on each page it loads before axe reads it, as a shopper scrolls to it, which the scroll padding keeps clear of the bar. It checks every target of each state as before. The same link failed the same way at "the error summary", a page loaded at its top, once the blank start passed.
+
+**Tests.** `store.test.ts`, "keeping focus clear of the phone bar › brings a control under what the bar says over itself into view, and not while it says nothing", for both lines. The Firefox and WebKit tests above, unchanged but for the axe test's scroll to the panel's head.
+
+**Red run.** firefox-desktop and firefox-phone: "cbuild-card__control 571.9666748046875 > 567.63330078125" (builder.spec.ts:7875); `store.test.ts`: "cbuild-bar__missing: expected [] to deeply equal [ '{"block":"nearest"}' ]" (store.test.ts:2648). webkit-phone: "the blank start: target-size … `.cbuild__back`" (support/axe.ts:58, from builder.spec.ts:2399), and with that state's scroll alone, "the error summary: target-size … `.cbuild__back`".
+
+**Deliberate break.** `reveal`'s top taken from the bar alone again: both Firefox tests failed with the same line at builder.spec.ts:7875, and the unit test at store.test.ts:2648. Put back, all passed.
+
+**Why:** a keyboard shopper in Firefox who presses the dimmed Next and tabs on should see the card in focus, not the line that asks them to pick it.
+
+**Status:** Accepted.
+
 ### D-389 · No word joins the assembly time's range, in any language · 2026-11-25
 
 The auditor's third pass on milestone 12, a minor: `LeadDays` read "2 to 4" in any case (D-375), while the French "2 à 4", or any other language's word, was refused with `document_bad_measure`. The domain held one language's word, and a French-speaking owner was told their range was no business days.

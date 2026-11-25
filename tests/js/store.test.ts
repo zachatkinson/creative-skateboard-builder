@@ -2633,6 +2633,32 @@ describe( 'keeping focus clear of the phone bar', () => {
 		expect( ready ).not.toThrow();
 	} );
 
+	// Firefox scrolls a focused control only once it leaves the screen: a card under what the dimmed Next says, above
+	// the bar's own top, stayed there (D-388).
+	it( 'brings a control under what the bar says over itself into view, and not while it says nothing', () => {
+		for ( const said of [ 'cbuild-bar__missing', 'cbuild__limited' ] ) {
+			let { below, scrolled } = page( 650 );
+			const bar = document.querySelector< HTMLElement >( '.cbuild-bar' )!;
+			const line = document.createElement( 'p' );
+			line.className = said;
+			bar.prepend( line );
+			line.getBoundingClientRect = () =>
+				( { top: 610, bottom: 642, height: 32 } ) as DOMRect;
+			actions.reveal( { target: below } as unknown as FocusEvent );
+			expect( scrolled, `${ said }` ).toEqual( [
+				'{"block":"nearest"}',
+			] );
+			( { below, scrolled } = page( 650 ) );
+			const empty = document.createElement( 'p' );
+			empty.className = said;
+			document.querySelector( '.cbuild-bar' )!.prepend( empty );
+			empty.getBoundingClientRect = () =>
+				( { top: 650, bottom: 650, height: 0 } ) as DOMRect;
+			actions.reveal( { target: below } as unknown as FocusEvent );
+			expect( scrolled, `${ said }, empty` ).toEqual( [] );
+		}
+	} );
+
 	it( "leaves a control whose foot meets the bar's top alone", () => {
 		const { below, scrolled } = page( 644 );
 		actions.reveal( { target: below } as unknown as FocusEvent );

@@ -63,6 +63,7 @@ All notable changes to this project are documented here. The format follows [Kee
 - **"The shop did not answer in time"** and the rate limit's words are drawn over the bar, in the panel's column, so a phone scrolled to the card pressed sees them, and nothing moves as they come. They were drawn at the builder's top, off the screen, and at full width with no gutter (D-383).
 - **The full-width builder keeps the page's gutter on a phone:** the picture, its heading and the bar's total and buttons sit as far from the screen's edge as the step's words, the theme's own padding and never under 16 px. They were 7 px from the edge on Kadence and 10 px on Twenty Twenty-Five (D-384).
 - **"Build a complete with this deck" lines up** with the quantity and Add to cart on Twenty Twenty-Five, where WooCommerce's add-to-cart form block set it 4 px in (#133).
+- **In Firefox, a card focused from the keyboard** after a press of the dimmed Next is scrolled clear of "Choose your deck first.", and of the limit's words, over the bar. A card whose foot fell under the words, above the bar, stayed partly covered (D-388).
 
 ## [1.1.0] - 2026-11-24
 

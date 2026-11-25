@@ -1373,6 +1373,26 @@ function send( form: HTMLFormElement, submitter?: HTMLElement | null ): void {
 }
 
 /**
+ * The top of what the bar covers: its own top, or the top of what it says over itself while it says something, what
+ * a press of the dimmed Next says (#100) and the limit's line (D-383), as `size()` counts them for the page's scroll
+ * padding (D-388). Empty or hidden, each has no height.
+ *
+ * @param bar The bar.
+ */
+function covers( bar: HTMLElement ): number {
+	let at = bar.getBoundingClientRect().top;
+	for ( const line of bar.querySelectorAll(
+		'.cbuild-bar__missing, .cbuild__limited'
+	) ) {
+		const said = line.getBoundingClientRect();
+		if ( said.height > 0 ) {
+			at = Math.min( at, said.top );
+		}
+	}
+	return at;
+}
+
+/**
  * Keep a focused control clear of the phone bar at the foot and the stage that sticks on top: the builder's focusin.
  *
  * @param event The focus that came in.
@@ -1392,7 +1412,7 @@ function reveal( event: FocusEvent ): void {
 		!! bar &&
 		0 !== bar.getClientRects().length &&
 		! bar.contains( target ) &&
-		place.bottom > bar.getBoundingClientRect().top;
+		place.bottom > covers( bar );
 	const behind =
 		!! shown &&
 		! shown.contains( target ) &&

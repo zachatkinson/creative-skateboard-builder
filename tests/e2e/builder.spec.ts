@@ -2396,7 +2396,20 @@ test.describe( 'The builder with JavaScript', () => {
 		const check = ( state: string ) =>
 			axe( page, `${ info.project.name }: ${ state }`, region );
 
+		// Stacked, the bar sticks over the screen's foot from the builder's top (D-382), so on a short phone
+		// (webkit-phone, 390 by 664) a page's first screen ends with "Back to the shop" partly under it, and axe counts a
+		// target it covers as too small wherever the page happens to stand (D-288, D-380). On a page just loaded, the
+		// panel's head is brought into view as a shopper scrolls to it, clear of the bar by the page's scroll padding
+		// (D-388).
+		const toHead = () =>
+			page
+				.locator( '.cbuild__head' )
+				.evaluate( ( head ) =>
+					head.scrollIntoView( { block: 'nearest' } )
+				);
+
 		// The blank start: presets and the deck step's width question.
+		await toHead();
 		await check( 'the blank start' );
 
 		// A width pressed: the deck step lists its decks.
@@ -2437,6 +2450,7 @@ test.describe( 'The builder with JavaScript', () => {
 		await expect( page.locator( '.cbuild-errors' ) ).toBeVisible();
 		// Served, in every engine. Firefox's crash was in axe over the summary the store drew after Next (#36, D-167),
 		// which Next no longer asks for (#100).
+		await toHead();
 		await check( 'the error summary' );
 
 		// A later step, with the parts that do not fit under their disclosure, open.
