@@ -1056,6 +1056,32 @@
 	}
 }
 
+@media (scripting: enabled) {
+	/* After an answer that changes the brands, the store lays the row out again over a frame or three: until it has, the
+	   row keeps to one line, its chips side by side at their own widths and the rest clipped, so chips it has not
+	   measured never draw a second line that the fold then takes away (F30, D-405). One line is a chip's height on any
+	   theme, with or without its border counted in. Not while the shopper has opened the rest. Back to wrapping after
+	   4 s, as above, should the store never finish. */
+	@container cbuild (width >= 48rem) {
+		.cbuild .cbuild-chips__options--laying {
+			flex-wrap: nowrap;
+			overflow: clip;
+			animation: cbuild-rewrap 0s 4s forwards;
+		}
+
+		.cbuild .cbuild-chips__options--laying > * {
+			flex-shrink: 0;
+		}
+	}
+}
+
+@keyframes cbuild-rewrap {
+	to {
+		flex-wrap: wrap;
+		overflow: visible;
+	}
+}
+
 /* The no-script submits (the search's Go, the chips' and the sort's Apply), which the store hides as it hydrates, are
    out of the flow and unseen from the first paint on a page that will run the script, so hiding them moves nothing
    (#107). If the script never comes, they come back after 4 s, as the brand row does, and the form still sends.

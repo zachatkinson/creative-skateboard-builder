@@ -25,6 +25,8 @@ interface Defined {
 		readonly idle: boolean;
 		readonly open: boolean;
 		readonly rest: string;
+		laid: string;
+		readonly laying: boolean;
 	};
 	actions: { more: () => void };
 	callbacks: { row: () => void };
@@ -95,6 +97,7 @@ beforeEach( () => {
 	state.live = true;
 	state.shut = [];
 	state.opened = '';
+	state.laid = '';
 	BRAND.inputs.forEach( ( chip ) => ( chip.checked = false ) );
 } );
 
@@ -202,6 +205,65 @@ describe( 'which chips a row shuts away', () => {
 } );
 
 describe( 'the brand chips in one row', () => {
+	// Cowork's review of 1.2.0, F30: after a width's answer the row drew the chips it brought on two lines for a frame
+	// or two, until the store had laid it out, and the cards under it moved up 51 px as it folded (D-405).
+	it( 'keeps the row to its line from a view that changes its chips until it is laid out again', () => {
+		const { options, more } = rendered( [ 100, 100, 100, 100 ], 400, 60 );
+		setElement( options );
+		setContext( { group: BRAND } );
+		expect( state.laying, 'never laid out' ).toBe( true );
+		callbacks.row();
+		vi.advanceTimersToNextFrame();
+		expect( state.shut ).toEqual( [ 'mob' ] );
+		expect( state.laying, 'still measuring' ).toBe( true );
+		vi.advanceTimersToNextFrame();
+		expect( state.laying, 'laid out' ).toBe( false );
+
+		// A view that brings another chip count: on its line again, before the row is measured.
+		const counted = {
+			...BRAND,
+			inputs: BRAND.inputs.map( ( chip, at ) =>
+				0 === at ? { ...chip, count: '9' } : chip
+			),
+		};
+		setContext( { group: counted } );
+		expect( state.laying ).toBe( true );
+		// Opened by the shopper, every chip shows, and none is clipped.
+		state.opened = 'deck';
+		expect( state.laying ).toBe( false );
+		state.opened = '';
+		setContext( {
+			group: { ...counted, more: { ...counted.more, shown: false } },
+		} );
+		expect( state.laying, 'a group with no N more' ).toBe( false );
+
+		// Measuring that has not settled by its last pass ends there: the row is its own height again.
+		setContext( { group: counted } );
+		state.shut = [];
+		const widths = [ 60, 80, 200 ];
+		more.getBoundingClientRect = () =>
+			( { width: widths.shift() ?? 200 } ) as DOMRect;
+		callbacks.row();
+		vi.advanceTimersToNextFrame();
+		vi.advanceTimersToNextFrame();
+		expect( state.laying ).toBe( true );
+		vi.advanceTimersToNextFrame();
+		expect( state.shut ).toEqual( [ 'bones', 'acme', 'mob' ] );
+		expect( state.laying ).toBe( false );
+		// Another view, laid out at once: the row is its own height again in the frame it is measured.
+		setContext( {
+			group: {
+				...counted,
+				inputs: counted.inputs.map( ( chip, at ) =>
+					1 === at ? { ...chip, count: '8' } : chip
+				),
+			},
+		} );
+		callbacks.row();
+		vi.advanceTimersToNextFrame();
+		expect( state.laying ).toBe( false );
+	} );
+
 	it( 'hides a chip past the row only where the group has "N more" and it is not open', () => {
 		state.shut = [ 'acme', 'mob' ];
 		setContext( { group: BRAND, chip: BRAND.inputs[ 2 ] } );

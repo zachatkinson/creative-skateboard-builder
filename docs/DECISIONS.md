@@ -398,6 +398,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-356 · What a press foretells is made at the press, and the lines the answer brings keep their place; the phone's stage still sticks at the answer](#d-356--what-a-press-foretells-is-made-at-the-press-and-the-lines-the-answer-brings-keep-their-place-the-phones-stage-still-sticks-at-the-answer--2026-11-24)
 - [D-357 · The pressed deck's board is drawn at the press, once decoded, and the answer confirms it or puts it back](#d-357--the-pressed-decks-board-is-drawn-at-the-press-once-decoded-and-the-answer-confirms-it-or-puts-it-back--2026-11-24)
 - [D-365 · The state route's Server-Timing names the shelf, the cards and the decks' boards](#d-365--the-state-routes-server-timing-names-the-shelf-the-cards-and-the-decks-boards--2026-11-24)
+- [D-405 · A width's press takes the lead and the guided start away, and the brand row keeps its line until it is laid out again](#d-405--a-widths-press-takes-the-lead-and-the-guided-start-away-and-the-brand-row-keeps-its-line-until-it-is-laid-out-again--2026-11-25)
 
 ### Compatibility, upgrades and uninstall
 
@@ -476,6 +477,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-345 · Markdown is linted with markdownlint-cli2, on its default rules but five](#d-345--markdown-is-linted-with-markdownlint-cli2-on-its-default-rules-but-five--2026-11-24)
 - [D-347 · Gate 20 fails a merge's conflict marker left in a file](#d-347--gate-20-fails-a-merges-conflict-marker-left-in-a-file--2026-11-24)
 - [D-379 · StrykerJS's floor is 95 %, once the store reached 98.99 %](#d-379--strykerjss-floor-is-95--once-the-store-reached-9899---2026-11-24)
+- [D-406 · The layout-shift tests hold the state route's answer a second, as the demo's host takes](#d-406--the-layout-shift-tests-hold-the-state-routes-answer-a-second-as-the-demos-host-takes--2026-11-25)
 - [D-415 · The review shot waits until the page is still, the pick's outline gone](#d-415--the-review-shot-waits-until-the-page-is-still-the-picks-outline-gone--2026-11-25)
 - [D-420 · The toolchain's patch and minor releases, and TypeScript kept at 6 while typescript-eslint is](#d-420--the-toolchains-patch-and-minor-releases-and-typescript-kept-at-6-while-typescript-eslint-is--2026-11-25)
 
@@ -5976,6 +5978,32 @@ Found by /verify on lane 2 after D-402, on chromium at both widths.
 **Red run.** `test_a_width_pressed_puts_the_questions_away_and_builds_asked_for_stay`: "a width pressed, Failed asserting that true is false" (GuidedStartTest.php:386).
 
 **Why:** the guide is a way in, and a shopper who has answered the deck step's question has taken another.
+
+**Status:** Accepted.
+
+### D-405 · A width's press takes the lead and the guided start away, and the brand row keeps its line until it is laid out again · 2026-11-25
+
+Cowork's review of 1.2.0, F30 (#147). On the demo a width's answer comes 0.9 to 1.3 s after the press, past the 500 ms after an input that CLS leaves out. A width press counted 0.130 on an iPhone 13 and 0.099 at 1440 by 900, against M12's gate of under 0.1 (D-356), with no other plugin's script.
+
+- **The lead and the guide at the press.** The answer hid the deck step's lead (D-360), and since #134 "Help me choose" (D-404), both above the step, so the step moved up as the answer came: 97 px on the phone, where the lead takes two lines. D-356 already folds the width question at the press; `folding()` now also sets `hasLead` false and, where no builds were asked for, the guide's `shown` false, as the answer will. A guide with builds asked for stays, as the server keeps it. A press the rate limit or the store's limit stops puts both back with the widths (D-364).
+- **The brand row after an answer.** D-314 keeps the row to its first line until the store first folds it, through `.cbuild:not([data-ready])`. After an answer that brings brands the row has not measured, nothing held it: the row drew them on two lines for a frame or two until `lay()` had measured (it runs from a watch, after the paint, and measures a frame later), and the cards under it moved up 51 px. The store now keeps `laid`, the chips the row was last laid out for once its measuring settled, and `state.laying` is true while the group's chips differ from them. The row then has `cbuild-chips__options--laying`, set in the same render as the chips, and under `scripting: enabled` from 48rem it does not wrap: its chips sit side by side at their own widths (`flex-shrink: 0`, so the store measures them as they are) and what runs past the row is clipped, so the row is one chip high on any theme. D-314's clip, `calc(var(--cbuild-target) + 2px)`, was tried first: on Kadence a chip is 44 px with its border counted in, and the 46 px let 2 px of the second line through. A custom property holding the measured line was tried next and dropped, since every `--cbuild-` property is public API. Not while the shopper has opened the rest, where every chip shows. Back to wrapping after 4 s, as D-314's rule is lifted. The class is not public.
+
+**Measured** (`shelf.spec.ts`, "A width pressed, its answer a second late (F30)", the answer held 1 s and a 129 px header above the builder, D-406; the desktop's brands 12rem wide and a fifth brand in the answer, since the shelf kit's four are in stock at both widths): before, a phone (390 by 664) 0.160 on Twenty Twenty-Five and 0.881 on Kadence, and the desktop 0.043 and 0.046 with the row drawn at 100 and 95 px for two frames; after, 0.000 on the phone and 0.001 on the desktop ("N more" coming into the row). On Kadence's phone the theme's footer still moves as the decks fill the page, 0.021, outside the builder and not counted (D-406): the fold at the press leaves the page short enough to show it.
+
+**Tests.** The browser test above, on chromium-desktop and chromium-phone: the lead and the guide hidden at the press, read once while the answer is held; the builder's shift under 0.1; and on the desktop the brand row no taller in any frame than once folded. `store.test.ts`, "takes the step's lead and the guided start away at a width's press, keeping builds the guide was asked for" and "puts the lead and the guided start back when a width's press hits a limit"; `chips.test.ts`, "keeps the row to its line from a view that changes its chips until it is laid out again".
+
+**Why:** the store knows at the press what the answer will take away, so it takes it then, within the 500 ms the shopper expects a change in, as D-356 does for the rest; and a row that cannot be measured until it is drawn is drawn at the line it will fold to.
+
+**Status:** Accepted.
+
+### D-406 · The layout-shift tests hold the state route's answer a second, as the demo's host takes · 2026-11-25
+
+F30 (#147, D-405) slipped through because the layout-shift tests answered almost at once, while the demo answers 0.9 to 1.3 s after a press. Zach asked, on 25 November, for the held answer as a shared helper rather than a one-off.
+
+- **`tests/e2e/support/held.ts`.** `holdAnswers()` holds each answer of the state route for 1 s by default, the middle of the demo's range, and may change an answer's JSON before the page has it; it returns a function that lets answers through again. `themeHeader()` puts a block of a set height just above the builder and scrolls to it, as a theme's header does: on the demo Kadence's puts the rail at 129 px (F31). `watchShifts()` and `shiftsSince()` read the shifts CLS counts, those with no recent input, as the existing tests did.
+- **The builder's own shifts.** A shift counts where one of the nodes it moved is the builder or inside it. A shift of the page's own, a theme's footer moved as the decks fill the page, is reported beside the count, not in it: the builder's gate is what the builder moves, and on the test site's short pages the footer is in view where on a shop's it is not. A shift that moves the builder and the footer together counts whole.
+
+**Why:** a test that answers within the 500 ms CLS leaves out can never see what a late answer moves; holding the answer is the only way the local site shows the demo's case.
 
 **Status:** Accepted.
 

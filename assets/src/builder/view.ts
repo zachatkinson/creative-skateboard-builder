@@ -105,6 +105,10 @@ interface State {
 	readonly rests: boolean;
 	/** Whether "N more" has nothing to open: out of sight, but laid out, so it can be measured. */
 	readonly idle: boolean;
+	/** The chips the brand row was last laid out for, once its measuring settled (F30, D-405). */
+	laid: string;
+	/** Whether the brand row shows chips it has not yet been laid out for: it then shows its first line alone. */
+	readonly laying: boolean;
 	/** Whether the rest are open. */
 	readonly open: boolean;
 	/** The button's words: how many it holds, or Show fewer once open, from the server's. */
@@ -846,6 +850,18 @@ let frame = 0;
 const laid = new WeakMap< Element, string >();
 
 /**
+ * What a row of chips is laid out for: each chip's value, count and whether it is chosen. A view that changes any of
+ * them lays the row out again.
+ *
+ * @param group The chips' group.
+ */
+function marked( group: Chipped[ 'group' ] ): string {
+	return ( group?.inputs ?? [] )
+		.map( ( chip ) => [ chip.value, chip.count, chip.checked ].join( ':' ) )
+		.join( ' ' );
+}
+
+/**
  * Each row's watcher for a change of size, its own or a chip's.
  */
 const rowWatchers = new WeakMap< Element, ResizeObserver >();
@@ -863,12 +879,15 @@ function lay( options: HTMLElement, least = 0, passes = ROW_PASSES ): void {
 	frame = window.requestAnimationFrame( () => {
 		const found = shut( options, least );
 		if ( found.values.join( '\n' ) === state.shut.join( '\n' ) ) {
+			state.laid = laid.get( options ) ?? '';
 			return;
 		}
 		state.shut = found.values;
 		if ( passes > 1 ) {
 			lay( options, found.button, passes - 1 );
+			return;
 		}
+		state.laid = laid.get( options ) ?? '';
 	} );
 }
 
@@ -974,8 +993,9 @@ function foretell( view: Shown, value: string ): void {
  * Fold the width question to its chosen line at the press of a width, as its answer will: the widths behind the line
  * that says the one pressed, with Change, and the step's list, which the answer fills, under it (F20, #118; D-356).
  * The ready builds wait for the answer out of sight, in their place (`data-folded`), so the decks it brings take it
- * rather than push them down, and the page under the builder does not move twice. Null where the press is no width
- * the step asks for.
+ * rather than push them down, and the page under the builder does not move twice. The step's lead and the guided
+ * start go at the press too, as the answer takes them (F30, D-405). Null where the press is no width the step asks
+ * for.
  *
  * @param view   The view shown.
  * @param button The button pressed.
@@ -985,7 +1005,9 @@ function folding(
 	button: HTMLElement | null | undefined
 ): ( () => void ) | null {
 	const known = view as {
+		guide?: { shown?: boolean; asked?: boolean };
 		step: {
+			hasLead?: boolean;
 			more?: { count?: string };
 			shelf?: {
 				width?: {
@@ -1019,6 +1041,10 @@ function folding(
 		const was = width.options.map( ( option ) => option.pressed );
 		const more = known.step.more;
 		const counted = more?.count ?? '';
+		const step = known.step;
+		const led = true === step.hasLead;
+		const guide = known.guide;
+		const guided = true === guide?.shown;
 		// A press the rate limit or the store's limit stops asks the question again, with the width it pressed (D-364).
 		unfold = () => {
 			pressFolded = false;
@@ -1030,6 +1056,10 @@ function folding(
 			if ( more ) {
 				more.count = counted;
 			}
+			step.hasLead = led;
+			if ( guide ) {
+				guide.shown = guided;
+			}
 			window.requestAnimationFrame( () => button.focus() );
 		};
 		width.asking = false;
@@ -1039,6 +1069,13 @@ function folding(
 		}
 		root?.setAttribute( 'data-folded', '' );
 		pressFolded = true;
+		// The step's lead and the guided start go with a width, as the answer will take them (D-360, D-404): gone at
+		// the press, within the 500 ms CLS leaves out, they leave the late answer nothing to move up (F30, D-405).
+		// Builds the guide was asked for stay, as the answer keeps them.
+		step.hasLead = false;
+		if ( guide && true !== guide.asked ) {
+			guide.shown = false;
+		}
 		// "Showing 0 of 0" until the answer lists the decks: a line the cards would push down.
 		if ( more ) {
 			more.count = '';
@@ -1517,6 +1554,15 @@ const { state } = store(
 			get idle(): boolean {
 				return 0 === state.shut.length;
 			},
+			laid: '',
+			get laying(): boolean {
+				const { group } = getContext< Chipped >();
+				return (
+					true === group?.more?.shown &&
+					! opened() &&
+					marked( group ) !== state.laid
+				);
+			},
 			get open(): boolean {
 				return opened();
 			},
@@ -1540,11 +1586,7 @@ const { state } = store(
 					return;
 				}
 				// Read here, so a view that changes the chips runs this again.
-				const marks = ( group.inputs ?? [] )
-					.map( ( chip ) =>
-						[ chip.value, chip.count, chip.checked ].join( ':' )
-					)
-					.join( ' ' );
+				const marks = marked( group );
 				if ( 'function' === typeof window.ResizeObserver ) {
 					let watcher = rowWatchers.get( options );
 					if ( ! watcher ) {

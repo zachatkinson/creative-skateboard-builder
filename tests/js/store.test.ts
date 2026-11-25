@@ -3850,6 +3850,93 @@ describe( 'what a press foretells', () => {
 		expect( root.hasAttribute( 'data-folded' ) ).toBe( false );
 	} );
 
+	// Cowork's review of 1.2.0, F30: the step's lead and the guided start went at the width's answer, 0.9 to 1.3 s after
+	// the press on the demo, and moved the step up then (D-405).
+	it( 'takes the step’s lead and the guided start away at a width’s press, keeping builds the guide was asked for', () => {
+		for ( const [ asked, shown ] of [
+			[ false, false ],
+			[ true, true ],
+		] as const ) {
+			const { width: button } = builder();
+			state.view = {
+				...structuredClone( ASKING ),
+				guide: { shown: true, asked },
+			} as unknown as typeof state.view;
+			reply = () => new Promise< Response >( () => undefined );
+			actions.submit(
+				new SubmitEvent( 'submit', {
+					submitter: button,
+					cancelable: true,
+				} )
+			);
+			expect( ( state.view.step as { hasLead: boolean } ).hasLead ).toBe(
+				false
+			);
+			expect(
+				( state.view as { guide: { shown: boolean } } ).guide.shown
+			).toBe( shown );
+		}
+		// A builder an earlier release's container drew has no guide in its view.
+		const { width: button } = builder();
+		state.view = structuredClone( ASKING );
+		actions.submit(
+			new SubmitEvent( 'submit', { submitter: button, cancelable: true } )
+		);
+		expect( ( state.view.step as { hasLead: boolean } ).hasLead ).toBe(
+			false
+		);
+		expect( 'guide' in state.view ).toBe( false );
+	} );
+
+	it( 'puts the lead and the guided start back when a width’s press hits a limit', async () => {
+		for ( const [ led, guided ] of [
+			[ true, true ],
+			[ false, false ],
+		] as const ) {
+			const { width: button } = builder();
+			const view = {
+				...structuredClone( ASKING ),
+				guide: { shown: guided, asked: false },
+			};
+			view.step.hasLead = led;
+			state.view = view as unknown as typeof state.view;
+			reply = () =>
+				new Response( JSON.stringify( { message: 'Later.' } ), {
+					status: 429,
+					headers: { 'Content-Type': 'application/json' },
+				} );
+			actions.submit(
+				new SubmitEvent( 'submit', {
+					submitter: button,
+					cancelable: true,
+				} )
+			);
+			await settle();
+			await vi.advanceTimersByTimeAsync( 50 );
+			expect( width().asking ).toBe( true );
+			expect( ( state.view.step as { hasLead: boolean } ).hasLead ).toBe(
+				led
+			);
+			expect(
+				( state.view as { guide: { shown: boolean } } ).guide.shown
+			).toBe( guided );
+		}
+		// No guide: none is made.
+		const { width: button } = builder();
+		state.view = structuredClone( ASKING );
+		reply = () =>
+			new Response( JSON.stringify( { message: 'Later.' } ), {
+				status: 429,
+				headers: { 'Content-Type': 'application/json' },
+			} );
+		actions.submit(
+			new SubmitEvent( 'submit', { submitter: button, cancelable: true } )
+		);
+		await settle();
+		await vi.advanceTimersByTimeAsync( 50 );
+		expect( 'guide' in state.view ).toBe( false );
+	} );
+
 	// The auditor's second pass on M12, should-fix 3: a width press the rate limit or the store's limit stopped kept its
 	// fold, the widths folded away and no decks under them, and only Change asked again (D-364).
 	it( 'asks the width question again, its options open and the pressed one focused, when the press hits a limit', async () => {

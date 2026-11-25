@@ -678,7 +678,7 @@ A kit's line raised past what the shop has of a part is refused as `cbuild_build
 | `cbuild-chips__more` | 1.1.0 | The brand chips' "N more" button on a desktop, a disclosure for the chips past the row. Its rule sits at a class's weight, so a theme's `button` rule can't change its display (#98, D-314). |
 | `cbuild-chips__more--idle` | 1.1.0 | "N more" with nothing to open: out of sight and of the flow, its width kept for measuring. |
 | `cbuild-chips__chip--past` | 1.1.0 | A brand chip past the row: out of sight, the flow, the tab order and the accessibility tree, its width kept for measuring. |
-| `cbuild-chips__options--row` | 1.1.0 | The brand chips' row, where its group has "N more". With the script, the row shows its first line alone until the store has folded it, so the fold moves nothing (D-314). |
+| `cbuild-chips__options--row` | 1.1.0 | The brand chips' row, where its group has "N more". With the script, the row shows its first line alone until the store has folded it, so the fold moves nothing (D-314), and from 1.3.0 again after an answer that changes its chips, until the store has laid it out (D-405). |
 | `cbuild-cards--compact` | 1.1.0 | The deck step's card lists, the sold-out fold's included: compact cards, the deck small and upright, two to a row at most (#99, D-322). |
 | `cbuild-card__photo--drawn` | 1.1.0 | A card's picture when it is the deck's layer image rather than its photo (#99). |
 | `cbuild-card` | 1.2.0 | A part's card in a step, the `<li>` the filter above adds the part's classes to, with `cbuild-card--chosen` on the one the build counts and `cbuild-card--sold-out` on one the shop cannot supply (#143, D-376). |

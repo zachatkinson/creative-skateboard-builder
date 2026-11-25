@@ -77,8 +77,11 @@ defined( 'ABSPATH' ) || exit;
 				<template data-wp-each--group="state.view.step.shelf.chips.groups" data-wp-each-key="context.group.key">
 					<fieldset class="cbuild-chips__group">
 						<legend class="cbuild-chips__legend" data-wp-text="context.group.legend"></legend>
-						<?php // On a desktop the brand chips sit in one row, and "N more" opens the rest in place; without the script every chip shows (#98). ?>
-						<div class="cbuild-chips__options" data-wp-bind--id="context.group.more.id" data-wp-class--cbuild-chips__options--row="context.group.more.shown" data-wp-watch="callbacks.row">
+						<?php
+						// On a desktop the brand chips sit in one row, and "N more" opens the rest in place; without the script every
+						// chip shows (#98). Until the store has laid out chips an answer brought, the row shows its first line alone (D-405).
+						?>
+						<div class="cbuild-chips__options" data-wp-bind--id="context.group.more.id" data-wp-class--cbuild-chips__options--row="context.group.more.shown" data-wp-class--cbuild-chips__options--laying="state.laying" data-wp-watch="callbacks.row">
 							<template data-wp-each--chip="context.group.inputs" data-wp-each-key="context.chip.value">
 								<span class="cbuild-chips__chip" data-wp-class--cbuild-chips__chip--past="state.past">
 									<input class="cbuild-chips__control" type="checkbox" data-wp-bind--id="context.chip.id" data-wp-bind--name="context.chip.name" data-wp-bind--value="context.chip.value" data-wp-bind--checked="context.chip.checked" data-wp-bind--aria-label="context.chip.said" data-wp-on--change="actions.narrow">
