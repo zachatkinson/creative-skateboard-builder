@@ -317,7 +317,7 @@
 	:where(.cbuild__layout) {
 		display: grid;
 		grid-template-columns: minmax(0, 1fr) max(23.75rem, 40%);
-		grid-template-rows: minmax(0, 1fr);
+		grid-template-rows: minmax(0, 1fr) auto;
 		// The screen's height under the rail: one row a target high, its list's padding, its own and its rule.
 		// prettier-ignore
 		block-size: calc(100svh - var(--cbuild-top, 0px) - var(--cbuild-target) - 2 * var(--cbuild-gap-small) - 0.5rem - 1px);
@@ -327,14 +327,23 @@
 		order: 0;
 		position: relative;
 		inset-block-start: auto;
+		grid-area: 1 / 1 / span 2;
 		block-size: auto;
 		padding: var(--cbuild-gap);
 	}
 
+	/* The panel, and the footer pinned under it: a row of the frame's own, after the panel in the markup so that,
+	   stacked, its sticky foot may rise as high as the builder's top (D-382). */
 	:where(.cbuild__panel) {
-		grid-template-rows: minmax(0, 1fr) auto;
+		grid-area: 1 / 2;
+		grid-template-rows: minmax(0, 1fr);
 		align-content: stretch;
 		min-block-size: 0;
+		border-inline-start: 1px solid var(--cbuild-line);
+	}
+
+	:where(.cbuild__layout > .cbuild-bar) {
+		grid-area: 2 / 2;
 		border-inline-start: 1px solid var(--cbuild-line);
 	}
 
@@ -361,10 +370,12 @@
 	}
 
 	:where(.cbuild--stage-right .cbuild__stage) {
-		order: 1;
+		grid-column: 2;
 	}
 
-	:where(.cbuild--stage-right .cbuild__panel) {
+	:where(.cbuild--stage-right .cbuild__panel),
+	:where(.cbuild--stage-right .cbuild__layout > .cbuild-bar) {
+		grid-column: 1;
 		border-inline-start: 0;
 		border-inline-end: 1px solid var(--cbuild-line);
 	}
@@ -2489,6 +2500,12 @@
 		view-transition-name: cbuild-panel;
 	}
 
+	/* The footer stays where it is, and over the panel's words where it sticks over them on a phone: after the panel
+	   since D-382, it has a group of its own, drawn after the panel's. */
+	:root.cbuild-crossing:not(.cbuild-calm) :where(.cbuild-bar) {
+		view-transition-name: cbuild-bar;
+	}
+
 	:root.cbuild-crossing:not(.cbuild-calm)
 		:where(.cbuild-progress__step--current) {
 		view-transition-name: cbuild-marker;
@@ -2514,6 +2531,16 @@
 	:root.cbuild-crossing::view-transition-group(cbuild-marker),
 	:root.cbuild-crossing::view-transition-group(*.cbuild-part) {
 		animation-name: none;
+	}
+
+	/* The bar does not move: its group neither grows nor fades, and shows its new state from the start (D-382). */
+	:root.cbuild-crossing::view-transition-group(cbuild-bar),
+	:root.cbuild-crossing::view-transition-new(cbuild-bar) {
+		animation: none;
+	}
+
+	:root.cbuild-crossing::view-transition-old(cbuild-bar) {
+		display: none;
 	}
 
 	:root.cbuild-crossing::view-transition-new(cbuild-panel),

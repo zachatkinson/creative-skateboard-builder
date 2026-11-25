@@ -7898,6 +7898,82 @@ test.describe( 'The phone bar', () => {
 	} );
 } );
 
+/**
+ * The builder at full width, on the page that holds the kit's Builder block (M12's walkthrough), on each theme at a
+ * phone's 390 by 844.
+ */
+test.describe( 'The full-width builder on a theme', () => {
+	const PHONE = { width: 390, height: 844 };
+
+	/**
+	 * The page on a theme, at a phone's size unless another is given, on the trucks step with a deck and trucks picked.
+	 *
+	 * @param page          The page.
+	 * @param context       The browser context.
+	 * @param theme         The theme's slug.
+	 * @param baseURL       The site.
+	 * @param screen        The window's size.
+	 * @param screen.width  Its width.
+	 * @param screen.height Its height.
+	 */
+	async function opened(
+		page: Page,
+		context: import( '@playwright/test' ).BrowserContext,
+		theme: string,
+		baseURL: string | undefined,
+		screen: { width: number; height: number } = PHONE
+	): Promise< void > {
+		await context.addCookies( [
+			{ name: 'cbuild_e2e_theme', value: theme, url: baseURL || SITE },
+		] );
+		await page.setViewportSize( screen );
+		await page.goto(
+			linkTo( {
+				deck: id( 'builder-test-deck-8-0' ),
+				trucks: id( 'builder-test-trucks-139' ),
+				step: 'trucks',
+			} )
+		);
+		await page.evaluate( async () => {
+			await document.fonts.ready;
+		} );
+	}
+
+	for ( const theme of [ 'kadence', 'storefront', 'twentytwentyfive' ] ) {
+		// Kadence and Storefront: the bar stood 804 to 903 px on the 844 px screen. Sticky inside the panel, it could rise
+		// no higher than the panel's top, which the page's title, the stage and the rail put near the screen's foot.
+		test( `shows the whole bar in the first view on ${ theme }, a part picked`, async ( {
+			page,
+			context,
+			baseURL,
+			javaScriptEnabled,
+		} ) => {
+			test.skip(
+				! javaScriptEnabled && 'storefront' === theme,
+				"Storefront's overflow: hidden stops a sticky box without the script (D-163)."
+			);
+			await opened( page, context, theme, baseURL );
+			const bar = page.locator( '.cbuild-bar' );
+			await expect( bar ).toBeVisible();
+			await expect
+				.poll(
+					() =>
+						bar.evaluate( ( element ) => {
+							const box = element.getBoundingClientRect();
+							return box.top >= 0 &&
+								box.bottom <= window.innerHeight + 0.5
+								? 'whole'
+								: `${ Math.round( box.top ) } to ${ Math.round(
+										box.bottom
+									) } on ${ window.innerHeight } px`;
+						} ),
+					{ message: 'the bar, whole on the screen' }
+				)
+				.toBe( 'whole' );
+		} );
+	}
+} );
+
 test.describe( 'Every control a name of its own (P11)', () => {
 	for ( const [ width, height ] of [
 		[ 390, 700 ],

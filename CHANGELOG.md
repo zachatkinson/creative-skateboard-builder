@@ -54,6 +54,7 @@ All notable changes to this project are documented here. The format follows [Kee
 - **"Build a complete with this deck" is the theme's own button,** the page's second one. It carries `wp-element-button`, so a block theme such as Twenty Twenty-Five draws a button, not an underlined link, and it takes Add to cart's font weight and height. Where the theme draws both buttons alike, as Kadence does, it is outlined in Add to cart's colour (#133, D-377).
 - **The builder's muted words keep 4.5:1** on a theme whose text is already near it, as Storefront's is: "Total", "Show the parts", the deck step's lead, a ready build's description and the picture's side line now read at 4.5:1 or more; they read at 2.95:1. Every other theme's look is unchanged (D-380).
 - **A build's Add to cart keeps the cart in the session** before the add answers, so a cart page opened straight after holds the build; it read empty while WooCommerce saved the session at shutdown (#108, #51, D-352).
+- **The phone bar is whole at first view** on a page that holds the kit's Builder block under its title: on Kadence and Storefront up to 59 px of it was under the screen's foot once a part was picked. It now sticks from the builder's top, not the panel's (D-382).
 
 ## [1.1.0] - 2026-11-24
 

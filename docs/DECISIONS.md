@@ -226,6 +226,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-364 · The state route has 10 s to answer, then the step keeps what it shows and says so](#d-364--the-state-route-has-10-s-to-answer-then-the-step-keeps-what-it-shows-and-says-so--2026-11-24)
 - [D-374 · The bar keeps the estimate's line once the build has a part, not on a blank build](#d-374--the-bar-keeps-the-estimates-line-once-the-build-has-a-part-not-on-a-blank-build--2026-11-24)
 - [D-377 · A compact card's words sit the builder's gap from the deck, and the start button is the theme's second button](#d-377--a-compact-cards-words-sit-the-builders-gap-from-the-deck-and-the-start-button-is-the-themes-second-button--2026-11-24)
+- [D-382 · The bar follows the panel, not inside it, so its sticky foot can rise to the builder's top](#d-382--the-bar-follows-the-panel-not-inside-it-so-its-sticky-foot-can-rise-to-the-builders-top--2026-11-24)
 
 ### Accessibility
 
@@ -5408,5 +5409,25 @@ The auditor's minor 7 on milestone 12 asked for axe on the states M12 added. axe
 **Two findings of the test, not the builder.** On a phone, and under Storefront's tall header on a desktop, the first screen leaves "Back to the shop" under the bar, which sticks over the screen's foot, and axe reads it as a covered target (2.5.8). The bar's own tests hold focus clear of it (D-160), so the whole-start test runs at 1280 by 900 with the panel's head scrolled to the middle of the screen; colours are the same at every width. And in Firefox, the axe helper (`tests/e2e/support/axe.ts`) waited for every finite animation to end before measuring, but Firefox never moves a transition on the widths folded inside a shut `details`, so axe on the bar after a pick waited out the test ("page.evaluate: Test timeout of 60000ms exceeded", support/axe.ts:22, from builder.spec.ts:7510, firefox-desktop and firefox-phone on Kadence). The helper now leaves out an animation on an element that is not drawn (`checkVisibility()`), which axe leaves out too.
 
 **Why:** muted words are still words a shopper reads, and the builder takes the theme's colours without being told them, so it has to keep them readable whatever they are.
+
+**Status:** Accepted.
+
+### D-382 · The bar follows the panel, not inside it, so its sticky foot can rise to the builder's top · 2026-11-24
+
+M12's walkthrough, on the page that holds the kit's Builder block at full width (`/builder-test-page/`), at 390 by 844 with a part picked: the bar stood 804 to 903 px on Kadence and 781 to 902 px on Storefront, so up to 59 of its 99 px were under the screen's foot at first view. Twenty Twenty-Five, and the kit's own page on any theme, were whole.
+
+- **The cause, measured.** The bar is `position: sticky` at the screen's foot (D-160), and a sticky box moves only inside its containing block, which was `.cbuild__panel`. On that page the theme's header and the page's title put the builder's top at 422 px on Kadence, and the stage (235 px) and the rail (78 px) come before the panel, so the panel's top was at 788 px and the bar, with its 16 px margin, could rise no higher than 804. The kit's own page starts the builder at 134 px, and Twenty Twenty-Five's page at 280, so there the panel's top was high enough. Nothing in it is the screen's height unit: the bar has no `vh` in its place.
+- **Not new in M12, made worse by it.** With 1.1.0's stylesheet on the same page and build (Kadence), the bar stood 784 to 868 px: 24 px under the foot. The estimate's line a started bar keeps from 1.2.0 (D-356, D-374) made it 16 px taller.
+- **The fix.** `bar.php` is required after the panel, inside `.cbuild__layout`, not at the panel's foot. Stacked, below 64rem, `.cbuild__layout` is `display: contents`, so the bar is one of the builder's own rows and its sticky range is the whole builder: it sticks from the builder's top down, and still stops where the builder ends (D-160). From 64rem the frame's grid has a second row: the stage spans both, the panel takes the first in its column, and the bar the second, with the panel's rule beside it; a stage on the right mirrors them. The panel holds the step alone.
+- **Checked by moving the bar in the page,** in Chromium, Firefox and WebKit before the change: 745 to 844 px on Kadence and 654 to 775 px on Storefront, above its own fixed bar (D-163), and at the page's foot the bar's bottom was the builder's.
+- **The crossing.** The bar was in the panel's view-transition snapshot and slid 16 px with it. Outside the panel it would have been under the panel's sliding words on a phone for the crossing's 200 ms, so while the builder's crossing runs it is named `cbuild-bar`: a group of its own, drawn after the panel's, which stays where it is.
+
+**Tests.** `builder.spec.ts`, "The full-width builder on a theme › shows the whole bar in the first view on each theme, a part picked", on Kadence, Storefront and Twenty Twenty-Five at 390 by 844.
+
+**Red run.** Before the change, chromium-phone: "the bar, whole on the screen / Expected: "whole" / Received: "781 to 902 on 844 px"" on Storefront (builder.spec.ts:7843), and Kadence failed the same way (804 to 903 px in the walkthrough's probe), on chromium-desktop too.
+
+**Deliberate break.** `bar.php` put back inside the panel: chromium-phone failed with "Received: "804 to 919 on 844 px"" on Kadence and "781 to 902 on 844 px" on Storefront (builder.spec.ts:7816). Put back, both passed.
+
+**Why:** the bar holds the total and Next; a shopper who can't see it at first view has no total and no way on but to scroll.
 
 **Status:** Accepted.
