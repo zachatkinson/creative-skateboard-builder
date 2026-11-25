@@ -235,6 +235,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-392 · A card says the ready builds that pick it, and its rating from WooCommerce's own numbers](#d-392--a-card-says-the-ready-builds-that-pick-it-and-its-rating-from-woocommerces-own-numbers--2026-11-25)
 - [D-393 · A card's rating sits beside its price, and a ready build's pick costs a card one line](#d-393--a-cards-rating-sits-beside-its-price-and-a-ready-builds-pick-costs-a-card-one-line--2026-11-25)
 - [D-403 · Each row of the review shows its card's picture in a 3rem square, its place kept](#d-403--each-row-of-the-review-shows-its-cards-picture-in-a-3rem-square-its-place-kept--2026-11-25)
+- [D-394 · A swap is the cheapest or the next better part that fits the whole build, and the same board for less swaps every slot but the deck](#d-394--a-swap-is-the-cheapest-or-the-next-better-part-that-fits-the-whole-build-and-the-same-board-for-less-swaps-every-slot-but-the-deck--2026-11-25)
 
 ### Accessibility
 
@@ -5809,6 +5810,25 @@ Issue #132, from Zach on 24 November, in milestone 13's plan: "Each row of the r
 **Visual baselines that move** (not remade here): every `{theme}-{scheme}-{size}-review` shot, and the moment `twentytwentyfive-light-desktop-moment-cart`.
 
 **Why:** the review is where a shopper confirms the build before paying, and a picture tells two colourways apart where their names hardly do. The card's own file costs nothing more to show.
+
+**Status:** Accepted.
+
+### D-394 · A swap is the cheapest or the next better part that fits the whole build, and the same board for less swaps every slot but the deck · 2026-11-25
+
+Issue #135, in milestone 13's plan ("Smart swaps"), with Zach's answers of 24 November: "For less" is the cheapest part in stock that fits; "better" follows the shop's ranking per slot, and falls back to price where a slot has none. The plan leaves open what "Same board for less" swaps, how a tie is broken and what counts as fitting. The choice is the domain's, `Domain\Fit\Swapper`, beside the recommender and the closest part, and like them it asks the engine and decides nothing about fit itself.
+
+- **What fits.** A swap is the build with the part in its place, checked by the validator as the cart checks a build (`BuildValidator`): the part fits the whole build with no warning, before and after its slot, not only the picks before it as a step's cards are checked; the shop holds what the build takes of it (`Option::available()`); and the build has no problem it did not have before, by kind and slot. So wheels that come with their bearings are swapped only for wheels that do too, unless the build has bearings picked, and a build still being made (an empty grip slot) can be offered a swap that leaves that slot as it was. A part that fails is passed over for the next, so a swap is offered only where one exists, never an empty button.
+- **For less.** The cheapest by what the build is charged for it, its price times the quantity the build takes (R7), since a set of eight bolts and a single sheet of grip are compared as the total counts them. Only a part that costs less than the pick; one that costs the same is no saving. A tie goes to the lower ID, so the same build is always offered the same part.
+- **Better.** Where any part of the slot has a rank (D-395), the next rank up: the lowest rank above the pick's, a part the shop ranks being better than one it does not, then the cheaper, then the lower ID. Not the top rank: one step up is the upgrade a shopper weighs, and a tier at a time is how a shop's "good, better, best" is read. Where no part of the slot has one, the next dearer part, as Zach set. A part that is both the cheapest and the next better is offered once, as better, its price difference saying it costs less.
+- **The deck is never swapped.** It is the board's look, the one choice a shopper makes by eye, and the builder never picks one for them (D-213). A cheaper deck that fits is not "the same board". Every other slot with a pick can be.
+- **"Same board for less" swaps every slot but the deck at once (for Zach).** One press, the board's saving in one figure, as "Same board for $23.00 less" reads. In step order, each picked slot takes the cheapest part that fits the board as it stands with the slots before it already swapped, so the board they make together fits as a whole: bolts that reach through the risers picked are passed over once cheaper, thicker risers are swapped in before them. A slot with nothing cheaper that fits keeps its part. The per-slot "for less" stays for a shopper who wants to save on one part only. The other reading, a cheaper part for one slot alone, is what each slot's own swap already offers, so the board's would add nothing.
+- **Only what the shopper picked.** A recommendation is not a pick (D-213) and is not swapped; a slot with none is offered nothing.
+
+**Tests.** `SwapperTest`, 17 cases at every boundary: sold out, too big, short, the same price, the same rank, unranked beside ranked, a part with no set size picked or offered, bearings that come with the wheels, problems kept and problems new by kind and by slot, the deck, an empty slot, a slot the kit lacks, and the board held against the slots swapped before it. 100 % of lines and branches, and 100 % MSI on `Swapper` (92 mutants).
+
+**Red run.** `SwapperTest`, before `Swapper` was written: every case, `Class "CreativeBranding\SkateboardBuilder\Domain\Fit\Swapper" not found` (SwapperTest.php:85).
+
+**Why:** Zach's answers, with the smallest choice that leaves a shopper the say: a swap that fits as the cart will check it, one step at a time, and the look left alone.
 
 **Status:** Accepted.
 
