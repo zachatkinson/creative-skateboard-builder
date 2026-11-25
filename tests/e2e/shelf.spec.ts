@@ -525,6 +525,35 @@ test.describe( 'Compact deck cards (F14)', () => {
 				.evaluate( ( builder ) =>
 					builder.scrollIntoView( { block: 'start' } )
 				);
+			// The brands on one line with "N more" and Sort (#98). The row is laid out again for the narrower panel Balanced
+			// gives it, in the frames after the class. Counted before then, the row still held the chips the wider panel had
+			// room for and took two lines, and the cards were a line lower: 0 seen on Twenty Twenty-Five and 2 on Kadence
+			// (#145). The count waits for the one line.
+			const line = () =>
+				page.evaluate( () => {
+					// Each chip shown, those past the row being out of sight, "N more" and Sort: how far apart their middles are.
+					const middles = [
+						...document.querySelectorAll< HTMLElement >(
+							'.cbuild-chips__options--row .cbuild-chips__chip, .cbuild-chips__options--row .cbuild-chips__more, .cbuild-sort'
+						),
+					]
+						.filter( ( shown ) =>
+							shown.checkVisibility( {
+								visibilityProperty: true,
+							} )
+						)
+						.map( ( shown ) => {
+							const box = shown.getBoundingClientRect();
+							return box.top + box.height / 2;
+						} );
+					// A chip and Sort at least, or there is no line to read.
+					return middles.length >= 2
+						? Math.max( ...middles ) - Math.min( ...middles )
+						: Number.POSITIVE_INFINITY;
+				} );
+			await expect
+				.poll( line, 'the brands, N more and Sort on one line' )
+				.toBeLessThanOrEqual( 4 );
 			const seen = await cards( page ).evaluateAll( ( items ) => {
 				const bar = document
 					.querySelector( '.cbuild-bar:not([hidden])' )
@@ -544,32 +573,6 @@ test.describe( 'Compact deck cards (F14)', () => {
 			).toBeGreaterThanOrEqual( held );
 			// The step's lead has done its work once the width is chosen.
 			await expect( page.locator( '.cbuild-step__lead' ) ).toBeHidden();
-			// Sort shares the brands' line.
-			const line = await page.evaluate( () => {
-				const sort = document
-					.querySelector( '.cbuild-sort' )
-					?.getBoundingClientRect();
-				// The chips' last line: the last chip shown, those past the row being out of sight (#98).
-				const chips = [
-					...document.querySelectorAll< HTMLElement >(
-						'.cbuild-chips__options--row .cbuild-chips__chip'
-					),
-				]
-					.filter( ( chip ) =>
-						chip.checkVisibility( { visibilityProperty: true } )
-					)
-					.map( ( chip ) => chip.getBoundingClientRect() );
-				const last = chips.at( -1 );
-				return sort && last
-					? Math.abs(
-							sort.top +
-								sort.height / 2 -
-								( last.top + last.height / 2 )
-						)
-					: null;
-			} );
-			expect( line, "Sort on the brands' line" ).not.toBeNull();
-			expect( line! ).toBeLessThanOrEqual( 4 );
 		} );
 	}
 } );
