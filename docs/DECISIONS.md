@@ -462,6 +462,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-345 · Markdown is linted with markdownlint-cli2, on its default rules but five](#d-345--markdown-is-linted-with-markdownlint-cli2-on-its-default-rules-but-five--2026-11-24)
 - [D-347 · Gate 20 fails a merge's conflict marker left in a file](#d-347--gate-20-fails-a-merges-conflict-marker-left-in-a-file--2026-11-24)
 - [D-379 · StrykerJS's floor is 95 %, once the store reached 98.99 %](#d-379--strykerjss-floor-is-95--once-the-store-reached-9899---2026-11-24)
+- [D-415 · The review shot waits until the page is still, the pick's outline gone](#d-415--the-review-shot-waits-until-the-page-is-still-the-picks-outline-gone--2026-11-25)
 
 ### Releases and the repository
 
@@ -5847,3 +5848,17 @@ Each release costs about 65 to 72 s, and the job's setup (wp-env, Playwright) ab
 **Deliberate breaks.** With 0.9.0 not kept, "the sample: every 1.x, 0.1.0 and 0.9.0: got ''" (the sample has no 0.9.0). With 0.x not dropped, the same case got every release.
 
 **Status:** Accepted.
+
+### D-415 · The review shot waits until the page is still, the pick's outline gone · 2026-11-25
+
+Found while probing #110 on lane 3. The review shots in `tests/e2e/visual.spec.ts` press Start from Street, and since #138 (D-413) a pick outlines each part new to the board. Where motion is calm, as it is in the shots, the outline is held 450 ms by the layer's `data-outlined`, a mark no animation shows, and then faded. The test waited for the bar's hover and its animations alone, and for no answer pending, so the shot began while the outline was still drawn.
+
+**Measured.** With a line that logged the mark just before each review shot, 52 of 54 shots (the 18 review tests, three times each, on three workers) began with the board outlined. `toHaveScreenshot` takes pictures until two in a row agree, which mostly outlasted the hold, but 2 of the 54 failed: "On storefront, light › the builder at its start and at the review, tablet", "468 pixels (ratio 0.01 of all image pixels) are different", and the same on the phone, 477 pixels, each the outline around the board's parts. A probe of Twenty Twenty-Five light tablet that compared against a picture taken with the outline failed 8 of 200 the other way (1,876 pixels).
+
+**Decision:** before `still()`, the review shot waits until the page is still: no `cbuild-crossing` on the root, no `[data-outlined]` in the builder, and no finite animation running, as the moments' shots already wait (D-343). Nothing is masked and no threshold moves; the baselines, made before #138, are the board without the outline, and the shot now always takes that picture.
+
+**After.** The same 18 review tests, five times each on three workers: 90 passed, and the log showed the outline at none of the 90 shots. The probe with the same wait: 200 of 200.
+
+**Why in the test, not the page:** the outline is the design (D-413): 600 ms of it after a pick. A picture of the builder's settled look is taken once it has settled.
+
+**#110 is not this.** Its failures are the bar's "Show the parts" a pixel lower, not the board, and the link stays masked. In 560 probe runs of Twenty Twenty-Five light tablet unmasked (360 without the wait, 200 with it), the link was never drawn lower, so this neither shows nor rules out a link with the wait. Prior traces had the step's crossing still on when `still()` began, which the wait now rules out before every review shot.
