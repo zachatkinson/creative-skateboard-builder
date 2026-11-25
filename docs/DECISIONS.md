@@ -473,6 +473,7 @@ Each decision is listed once, under the area it is mostly about, in number order
 - [D-347 · Gate 20 fails a merge's conflict marker left in a file](#d-347--gate-20-fails-a-merges-conflict-marker-left-in-a-file--2026-11-24)
 - [D-379 · StrykerJS's floor is 95 %, once the store reached 98.99 %](#d-379--strykerjss-floor-is-95--once-the-store-reached-9899---2026-11-24)
 - [D-415 · The review shot waits until the page is still, the pick's outline gone](#d-415--the-review-shot-waits-until-the-page-is-still-the-picks-outline-gone--2026-11-25)
+- [D-420 · The toolchain's patch and minor releases, and TypeScript kept at 6 while typescript-eslint is](#d-420--the-toolchains-patch-and-minor-releases-and-typescript-kept-at-6-while-typescript-eslint-is--2026-11-25)
 
 ### Releases and the repository
 
@@ -6134,3 +6135,24 @@ Found while probing #110 on lane 3. The review shots in `tests/e2e/visual.spec.t
 **Why in the test, not the page:** the outline is the design (D-413): 600 ms of it after a pick. A picture of the builder's settled look is taken once it has settled.
 
 **#110 is not this.** Its failures are the bar's "Show the parts" a pixel lower, not the board, and the link stays masked. In 560 probe runs of Twenty Twenty-Five light tablet unmasked (360 without the wait, 200 with it), the link was never drawn lower, so this neither shows nor rules out a link with the wait. Prior traces had the step's crossing still on when `still()` began, which the wait now rules out before every review shot.
+
+### D-420 · The toolchain's patch and minor releases, and TypeScript kept at 6 while typescript-eslint is · 2026-11-25
+
+Zach asked on 25 November for the toolchains to be reviewed and brought up to date where it applies. `composer outdated --direct` and `npm outdated` on milestone 13's landed tree:
+
+- **Moved, each a patch or minor release:**
+  - Composer: PHPStan 2.3.5 to 2.3.7, its strict 2.1.2 and deprecation 2.0.6 rules, disallowed-calls 4.15.1, PHPUnit 13.4.8, Infection 0.35.12, and the WooCommerce stubs 11.2.2 to 11.3.1, the WooCommerce the sites run.
+  - npm: Playwright 1.65.1, axe 4.14.1, Lighthouse CI 0.16.1, `@wordpress/env` 12.2.0, `@wordpress/scripts` 37.2.0, jsdom 31.0.1, markdownlint-cli2 0.24.2 and Vitest 5.1.2.
+  - The integration variants' plugins: Yoast SEO 28.9 (`tools/yoast.sh`) and Redis Object Cache 3.0.1 (`tools/object-cache.sh`). CLAUDE.md names them.
+- **Kept:**
+  - WordPress 7.1.5, WooCommerce 11.3.1, PHP 8.5 and Node 24 are the newest.
+  - PHPUnit 9.6 under `tools/integration/` stays: WordPress's test suite needs it.
+  - `@types/node` stays at 24, the Node the plugin runs on, not 26.
+  - The workflows' actions are pinned to full SHAs and moved by Dependabot.
+- **TypeScript stays at 6.0.3.** TypeScript 7, the native compiler, is out, but typescript-eslint 8.74, the newest, declares `typescript >=4.8.4 <6.1.0`, and `@wordpress/scripts` lints through it. So `npm run check` would lint with an unsupported compiler. It moves once typescript-eslint supports 7, tried first on a spare lane.
+
+**Tests.** The whole of milestone 13's combined-tree run, on the moved tools. Playwright's patch release means new browser builds, so the visual baselines are made again in that run, on purpose, as milestone 13's screens need anyway.
+
+**Why:** current tools, without a major release that the linter under it doesn't support yet.
+
+**Status:** Accepted.

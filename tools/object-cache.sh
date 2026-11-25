@@ -10,7 +10,7 @@ cd "$(dirname "$0")/.."
 # Pinned, and the plugin's zip is checked against the hash of the release these were chosen from.
 image="redis:8.10-alpine"
 name="cbuild-redis"
-plugin_version="3.0.0"
+plugin_version="3.0.1"
 plugin_sha256="7a03342d3defbe94cac8d0470b42dc1a1c34331b19c47205df20ceccd3c8f54a"
 
 site() {

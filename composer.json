@@ -18,7 +18,7 @@
 		"dealerdirect/phpcodesniffer-composer-installer": "^1.2",
 		"deptrac/deptrac": "^4.7",
 		"infection/infection": "^0.35",
-		"php-stubs/woocommerce-stubs": "^11.2",
+		"php-stubs/woocommerce-stubs": "^11.3",
 		"php-stubs/wordpress-stubs": "^7.1",
 		"phpcompatibility/phpcompatibility-wp": "^2.1",
 		"phpstan/extension-installer": "^1.4",

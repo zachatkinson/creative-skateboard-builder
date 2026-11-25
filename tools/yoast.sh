@@ -7,7 +7,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-plugin_version="28.8"
+plugin_version="28.9"
 plugin_sha256="27cc01cb149db7186ef750552a5cc2ae5028933473886e419918af273b075105"
 
 site() {

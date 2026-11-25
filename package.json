@@ -36,19 +36,19 @@
 		"check": "npm run lint:js && npm run lint:css && npm run lint:md && npm run format:check && npm run typecheck && npm run test:js"
 	},
 	"devDependencies": {
-		"@axe-core/playwright": "^4.14.0",
-		"@lhci/cli": "^0.16.0",
-		"@playwright/test": "^1.65.0",
+		"@axe-core/playwright": "^4.14.1",
+		"@lhci/cli": "^0.16.1",
+		"@playwright/test": "^1.65.1",
 		"@stryker-mutator/core": "^10.1.1",
 		"@stryker-mutator/vitest-runner": "^10.1.1",
 		"@types/node": "^24.0.0",
-		"@wordpress/env": "^12.1.0",
-		"@wordpress/scripts": "^37.1.0",
-		"jsdom": "^31.0.0",
+		"@wordpress/env": "^12.2.0",
+		"@wordpress/scripts": "^37.2.0",
+		"jsdom": "^31.0.1",
 		"json-schema-to-typescript": "^16.0.0",
-		"markdownlint-cli2": "0.24.0",
+		"markdownlint-cli2": "0.24.2",
 		"typescript": "^6.0.3",
-		"vitest": "5.1.0"
+		"vitest": "5.1.2"
 	},
 	"allowScripts": {
 		"core-js-pure": false,
