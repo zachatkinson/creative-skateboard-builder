@@ -580,6 +580,8 @@ The deck layer of the picture already takes any image, so the shopper sees their
 
 ### Module B: 3D on a tap
 
+Replaced by milestone 14's 3D view, generated from each part's sizes with no model files, on three.js (Zach, 24 Nov 2026; `docs/research/plan-after-1-2.md`). Kept below for its history.
+
 Waits on trucks being stocked and the owner paying for models (US$1,400 to $10,400). It builds on what 1.0 already has:
 
 - A third renderer behind the picture's interface.
@@ -595,4 +597,5 @@ Waits on trucks being stocked and the owner paying for models (US$1,400 to $10,4
 - **Dealer prices** (Phase 4, with the wholesale build), through the price context the card cache is already keyed on, once the owner's trade terms arrive (open question 7).
 - **Structured data for the builder page** (a price range from the presets), once Google's rules for configurable products are checked.
 - **A "Surprise me" preset** that picks a random build that fits and is in stock.
+- **A fit helper** that answers fit questions from the plugin's own compatibility data. It needs an AI provider, a monthly cost and a privacy position; it has no budget (Zach, 24 Nov 2026).
 - **Presets side by side.**
